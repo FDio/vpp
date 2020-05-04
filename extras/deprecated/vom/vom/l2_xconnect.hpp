@@ -26,7 +26,7 @@
 
 namespace VOM {
 /**
- * A Class representing the cross connnect of an L2 interface with another
+ * A Class representing the cross connect of an L2 interface with another
  * l2 interface
  */
 class l2_xconnect : public object_base
@@ -38,7 +38,7 @@ public:
   typedef std::pair<interface::key_t, interface::key_t> key_t;
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   l2_xconnect(const interface& east_itf, const interface& west_itf);
 
@@ -125,7 +125,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enque commands to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const l2_xconnect& obj);
 

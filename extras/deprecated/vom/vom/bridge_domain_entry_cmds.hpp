@@ -98,7 +98,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the interface spans
+ * A cmd class that dumps all the interface spans
  */
 class dump_cmd : public VOM::dump_cmd<vapi::L2_fib_table_dump>
 {
@@ -125,7 +125,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };

@@ -99,7 +99,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the acl ethertypes on given interface
+ * A cmd class that dumps all the acl ethertypes on given interface
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Acl_interface_etype_whitelist_dump>
 {

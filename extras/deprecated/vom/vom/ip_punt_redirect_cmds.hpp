@@ -64,13 +64,13 @@ private:
   const handle_t m_tx_itf;
 
   /**
-   * Reference to nexh hop ip address
+   * Reference to next hop ip address
    */
   const boost::asio::ip::address& m_addr;
 };
 
 /**
- * A cmd class that Unconfigs Ip punt redirect
+ * A cmd class that unconfigures Ip punt redirect
  */
 class unconfig_cmd : public rpc_cmd<HW::item<bool>, vapi::Ip_punt_redirect>
 {
@@ -108,13 +108,13 @@ private:
   const handle_t m_tx_itf;
 
   /**
-   * Reference to nexh hop ip address
+   * Reference to next hop ip address
    */
   const boost::asio::ip::address& m_addr;
 };
 
 /**
- * A cmd class that Dumps all the IP punt redirect
+ * A cmd class that dumps all the IP punt redirect
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Ip_punt_redirect_dump>
 {
@@ -140,7 +140,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };

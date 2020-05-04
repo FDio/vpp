@@ -86,7 +86,7 @@ singular_db<uint32_t, bridge_domain> bridge_domain::m_db;
 bridge_domain::event_handler bridge_domain::m_evh;
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 bridge_domain::bridge_domain(uint32_t id,
                              const learning_mode_t& lmode,
@@ -241,7 +241,7 @@ bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
 
     /*
      * Write each of the discovered bridge-domains into the OM,
-     * but disable the HW Command q whilst we do, so that no
+     * but disable the HW command queue whilst we do, so that no
      * commands are sent to VPP
      */
     OM::commit(key, bd);

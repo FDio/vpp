@@ -98,7 +98,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the nat_statics
+ * A cmd class that dumps all the nat_statics
  */
 class dump_44_cmd : public dump_cmd<vapi::Nat44_static_mapping_dump>
 {
@@ -125,7 +125,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };
@@ -203,7 +203,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the nat_statics
+ * A cmd class that dumps all the nat_statics
  */
 class dump_66_cmd : public dump_cmd<vapi::Nat66_static_mapping_dump>
 {
@@ -230,7 +230,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };

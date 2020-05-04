@@ -65,7 +65,7 @@ public:
   };
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    *
    * @param itf_from - The interface to be mirrored
    * @param itf_to - The interface where the traffic is mirrored
@@ -147,7 +147,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enquue commonds to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const interface_span& obj);
 
@@ -158,7 +158,7 @@ private:
     const interface_span& temp);
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class OM;
 

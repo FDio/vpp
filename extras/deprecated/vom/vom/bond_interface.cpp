@@ -20,7 +20,7 @@
 
 namespace VOM {
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 bond_interface::bond_interface(const std::string& name,
                                admin_state_t state,

@@ -20,7 +20,7 @@ namespace VOM {
 namespace ACL {
 namespace list_cmds {
 /*
- * Jumping through hoops to not expose the VAPI types publically
+ * Jumping through hoops to not expose the VAPI types publicly
  */
 static void
 to_vpp(const l2_rule& rule, vapi_type_macip_acl_rule& payload)

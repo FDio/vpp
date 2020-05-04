@@ -17,7 +17,7 @@
 
 namespace VOM {
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 bond_member::bond_member(const interface& itf, mode_t mode, rate_t rate)
   : m_itf(itf.singular())

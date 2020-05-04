@@ -100,7 +100,7 @@ public:
   typedef std::multiset<ethertype_rule_t> ethertype_rules_t;
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   acl_ethertype(const interface& itf, const ethertype_rules_t& le);
 
@@ -181,7 +181,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enque commands to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const acl_ethertype& obj);
 
@@ -218,7 +218,7 @@ private:
   const std::shared_ptr<interface> m_itf;
 
   /**
-   * Inbound and outbound ethers list applied on given interface
+   * Inbound and outbound ethertype rules list applied on given interface
    */
   ethertype_rules_t m_le;
 

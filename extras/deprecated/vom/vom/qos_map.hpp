@@ -131,7 +131,7 @@ private:
   static std::shared_ptr<map> find_or_add(const map& temp);
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class VOM::OM;
 
@@ -167,7 +167,7 @@ private:
   static singular_db<key_t, map> m_db;
 };
 
-}; // namesapce QoS
+}; // namespace QoS
 
 }; // namespace VOM
 

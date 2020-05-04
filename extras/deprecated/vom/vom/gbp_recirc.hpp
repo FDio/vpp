@@ -35,7 +35,7 @@ public:
   struct type_t : public enum_base<type_t>
   {
     /**
-     * Internal recirclation interfaces accept per-NAT translation
+     * Internal recirculation interfaces accept per-NAT translation
      * traffic from the external/NAT EPG and inject into the
      * private/NAT-inside EPG
      */
@@ -85,12 +85,12 @@ public:
   std::shared_ptr<gbp_recirc> singular() const;
 
   /**
-   * Find the instnace of the recirc interface in the OM
+   * Find the instance of the recirc interface in the OM
    */
   static std::shared_ptr<gbp_recirc> find(const key_t& k);
 
   /**
-   * Dump all bridge_domain-doamin into the stream provided
+   * Dump all bridge_domain-domain into the stream provided
    */
   static void dump(std::ostream& os);
 
@@ -146,17 +146,17 @@ private:
   static event_handler m_evh;
 
   /**
-   * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
+   * Commit the accumulated changes into VPP. i.e. to a 'HW" write.
    */
   void update(const gbp_recirc& obj);
 
   /**
-   * Find or add the instnace of the bridge_domain domain in the OM
+   * Find or add the instance of the bridge_domain domain in the OM
    */
   static std::shared_ptr<gbp_recirc> find_or_add(const gbp_recirc& temp);
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class OM;
 
@@ -181,7 +181,7 @@ private:
   std::shared_ptr<interface> m_itf;
 
   /**
-   * Is the reicrc for the external (i.e. post-NAT) or internal
+   * Is the recirc for the external (i.e. post-NAT) or internal
    */
   type_t m_type;
 

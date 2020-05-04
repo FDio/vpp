@@ -23,7 +23,7 @@ singular_db<igmp_listen::key_t, igmp_listen> igmp_listen::m_db;
 igmp_listen::event_handler igmp_listen::m_evh;
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 igmp_listen::igmp_listen(const igmp_binding& igmp_bind,
                          const boost::asio::ip::address_v4& gaddr,
@@ -113,7 +113,7 @@ void
 igmp_listen::update(const igmp_listen& desired)
 {
   /*
-   * no updates for the listen. chaning the interface or the group addr is a
+   * no updates for the listen. changing the interface or the group addr is a
    * change to the key, hence a new object
    */
   if (!m_listen) {

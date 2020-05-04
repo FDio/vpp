@@ -26,13 +26,13 @@ namespace VOM {
 /**
  * An Event command base class.
  * Events are one of the sub-set of command type to VPP.
- * A client performs a one time 'registration/subsription' to VPP for the
+ * A client performs a one time 'registration/subscription' to VPP for the
  * event in question and then is notified asynchronously when those events
  * occur.
- * The model here then is that the lifetime of the event command represensts
+ * The model here then is that the lifetime of the event command represents
  * the during of the clients subscription. When the command is 'issued' the
  * subscription begins, when it is 'retired' the subscription ends. For the
- * subscription duration the client will be notified as events are recieved.
+ * subscription duration the client will be notified as events are received.
  * The client can then 'pop' these events from this command object.
  */
 template <typename WANT, typename EVENT>
@@ -69,7 +69,7 @@ public:
   void unlock() { m_mutex.unlock(); }
 
   /**
-   * flush/free all the events thus far reeived.
+   * flush/free all the events thus far received.
    * Call with the lock held!
    */
   void flush() { m_reg->get_result_set().free_all_responses(); }

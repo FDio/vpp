@@ -150,7 +150,7 @@ rc_t
 events_cmd::issue(connection& con)
 {
   /*
-   * Set the call back to handle DHCP complete envets.
+   * Set the call back to handle DHCP complete events.
    */
   m_reg.reset(new reg_t(con.ctx(), std::ref(*this)));
 

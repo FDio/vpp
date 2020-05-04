@@ -66,7 +66,7 @@ public:
   typedef std::tuple<interface::key_t, direction_t, l3_proto_t> key_t;
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    *  @param itf The interface onto which we bind/apply the feature
    *  @param dir The direction (input/output)
    *  @param proto The L3 proto used inside.
@@ -155,7 +155,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enquue commonds to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const nat_binding& obj);
 

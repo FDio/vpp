@@ -103,7 +103,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps all the GBP contracts
+ * A cmd class that dumps all the GBP contracts
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Gbp_contract_dump>
 {
@@ -129,7 +129,7 @@ public:
 
 private:
   /**
-   * HW reutrn code
+   * HW return code
    */
   HW::item<bool> item;
 };

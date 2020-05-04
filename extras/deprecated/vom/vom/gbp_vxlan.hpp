@@ -36,7 +36,7 @@ public:
   typedef uint32_t key_t;
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   gbp_vxlan(uint32_t vni,
             const gbp_bridge_domain& gbd,
@@ -68,7 +68,7 @@ public:
   const key_t key() const;
 
   /**
-   * Debug rpint function
+   * Debug print function
    */
   virtual std::string to_string() const;
 
@@ -124,7 +124,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
+   * Commit the accumulated changes into VPP. i.e. to a 'HW" write.
    */
   void update(const gbp_vxlan& obj);
 
@@ -140,7 +140,7 @@ private:
   static std::shared_ptr<gbp_vxlan> find_or_add(const gbp_vxlan& temp);
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class OM;
 
@@ -168,7 +168,7 @@ private:
   boost::asio::ip::address_v4 m_src;
 
   /**
-   * A map of all VLAN tunnela against thier key
+   * A map of all VLAN tunnels against their key
    */
   static singular_db<key_t, gbp_vxlan> m_db;
 

@@ -18,7 +18,7 @@
 
 namespace VOM {
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 sub_interface::sub_interface(const interface& parent,
                              admin_state_t state,
@@ -30,7 +30,7 @@ sub_interface::sub_interface(const interface& parent,
 }
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 sub_interface::sub_interface(const interface& parent,
                              admin_state_t state,

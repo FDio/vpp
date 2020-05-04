@@ -36,7 +36,7 @@ public:
   typedef std::pair<interface::key_t, route::prefix_t> key_t;
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   l3_binding(const interface& itf, const route::prefix_t& pfx);
 
@@ -136,7 +136,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enquue commonds to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const l3_binding& obj);
 
@@ -146,7 +146,7 @@ private:
   static std::shared_ptr<l3_binding> find_or_add(const l3_binding& temp);
 
   /*
-   * It's the VPPHW class that updates the objects in HW
+   * It's the VPP/HW class that updates the objects in HW
    */
   friend class OM;
 

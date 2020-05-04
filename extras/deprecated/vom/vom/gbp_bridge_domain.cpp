@@ -48,7 +48,7 @@ singular_db<uint32_t, gbp_bridge_domain> gbp_bridge_domain::m_db;
 gbp_bridge_domain::event_handler gbp_bridge_domain::m_evh;
 
 /**
- * Construct a new object matching the desried state
+ * Construct a new object matching the desired state
  */
 gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
                                      const gbp_route_domain& rd,

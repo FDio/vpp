@@ -26,7 +26,7 @@ class ra_config
 {
 public:
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   ra_config(uint8_t suppress,
             uint8_t send_unicast,

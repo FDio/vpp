@@ -95,7 +95,7 @@ private:
 };
 
 /**
- * A cmd class that Dumps slave itfs
+ * A cmd class that dumps slave itfs
  */
 class dump_cmd : public VOM::dump_cmd<vapi::Sw_interface_slave_dump>
 {

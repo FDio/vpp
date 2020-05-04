@@ -36,7 +36,7 @@ public:
   inspect() = default;
 
   /**
-   * Destructor to tidyup socket resources
+   * Destructor to tidy up socket resources
    */
   ~inspect() = default;
 

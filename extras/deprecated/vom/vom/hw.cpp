@@ -133,7 +133,7 @@ HW::cmd_q::write()
       /*
        * before we issue the command we must move it to the pending
        * store
-       * ince a async event can be recieved before the command
+       * since a async event can be received before the command
        * completes
        */
       rc = c->issue(m_conn);
@@ -179,7 +179,7 @@ stat_reader* HW::m_statReader;
 HW::item<bool> HW::m_poll_state;
 
 /**
- * Initialse the connection to VPP
+ * Initialize the connection to VPP
  */
 void
 HW::init(HW::cmd_q* f)
@@ -189,7 +189,7 @@ HW::init(HW::cmd_q* f)
 }
 
 /**
- * Initialse the connection to VPP
+ * Initialize the connection to VPP
  */
 void
 HW::init(HW::cmd_q* f, stat_reader* s)
@@ -199,7 +199,7 @@ HW::init(HW::cmd_q* f, stat_reader* s)
 }
 
 /**
- * Initialse the connection to VPP
+ * Initialize the connection to VPP
  */
 void
 HW::init()

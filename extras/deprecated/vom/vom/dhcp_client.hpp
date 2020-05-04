@@ -107,7 +107,7 @@ public:
   };
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   dhcp_client(const interface& itf,
               const std::string& hostname,
@@ -116,7 +116,7 @@ public:
               event_listener* ev = nullptr);
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   dhcp_client(const interface& itf,
               const std::string& hostname,
@@ -207,7 +207,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enquue commonds to the VPP command Q for the update
+   * Enqueue commands to the VPP command queue for the update
    */
   void update(const dhcp_client& obj);
 

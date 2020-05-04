@@ -32,7 +32,7 @@ class bridge_domain : public object_base
 {
 public:
   /**
-   * Key Type for Bridge Domains in the sigular DB
+   * Key Type for Bridge Domains in the singular DB
    */
   typedef uint32_t key_t;
 
@@ -127,12 +127,12 @@ public:
   };
 
   /**
-   * The value of the defaultbridge domain
+   * The value of the default bridge domain
    */
   const static uint32_t DEFAULT_TABLE = 0;
 
   /**
-   * Construct a new object matching the desried state
+   * Construct a new object matching the desired state
    */
   bridge_domain(uint32_t id,
                 const learning_mode_t& lmode = learning_mode_t::ON,
@@ -168,7 +168,7 @@ public:
   const key_t& key() const;
 
   /**
-   * Return the matchin 'singular' instance of the bridge-domain
+   * Return the matching 'singular' instance of the bridge-domain
    */
   std::shared_ptr<bridge_domain> singular() const;
 
@@ -183,7 +183,7 @@ public:
   static std::shared_ptr<bridge_domain> find(const key_t& key);
 
   /**
-   * Dump all bridge-doamin into the stream provided
+   * Dump all bridge-domain into the stream provided
    */
   static void dump(std::ostream& os);
 
@@ -224,7 +224,7 @@ private:
   static event_handler m_evh;
 
   /**
-   * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
+   * Commit the accumulated changes into VPP. i.e. to a 'HW" write.
    */
   void update(const bridge_domain& obj);
 
