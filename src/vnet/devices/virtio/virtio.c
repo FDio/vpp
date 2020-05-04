@@ -116,6 +116,8 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   if (idx & 1)
     {
       clib_memset_u32 (vring->buffers, ~0, sz);
+      gro_flow_table_init (&vring->flow_table);
+      vring->flow_table->is_l2 = (vif->type & VIRTIO_IF_TYPE_TAP);
     }
 
   vring->size = sz;
@@ -216,6 +218,7 @@ virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
   if (vring->avail)
     clib_mem_free (vring->avail);
   vec_free (vring->buffers);
+  gro_flow_table_free (vring->flow_table);
   clib_spinlock_free (&vring->lockp);
   return 0;
 }
@@ -410,6 +413,11 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	  {
 	    vlib_cli_output (vm, "    kickfd %d, callfd %d", vring->kick_fd,
 			     vring->call_fd);
+	  }
+	if (vring->flow_table)
+	  {
+	    vlib_cli_output (vm, "    %U", gro_flow_table_format,
+			     vring->flow_table);
 	  }
 	if (show_descr)
 	  {

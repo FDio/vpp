@@ -23,6 +23,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/vnet.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/gso/gro_func.h>
 #include <vnet/gso/hdr_offset_parser.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
@@ -524,6 +525,20 @@ retry:
   while (n_left && free_desc_count)
     {
       u16 n_added = 0;
+
+      if (do_gso)
+	{
+	  vring->flow_table->node_index = node->node_index;
+	  buffers[0] =
+	    vnet_gro_flow_table_inline (vm, vring->flow_table, buffers[0]);
+	  if (buffers[0] == 0)
+	    {
+	      n_left--;
+	      buffers++;
+	      continue;
+	    }
+	}
+
       n_added =
 	add_buffer_to_slot (vm, vif, vring, buffers[0], free_desc_count,
 			    avail, next, mask, do_gso, csum_offload,

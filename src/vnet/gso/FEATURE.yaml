@@ -13,3 +13,14 @@ missing:
   - Thorough Testing, GRE, Geneve
 state: experimental
 properties: [API, CLI]
+
+name: VNET GRO
+maintainer: sykazmi@cisco.com
+features:
+  - Basic GRO support
+  - Implements flow table support
+description: "Generic Receive Offload"
+missing:
+  - Thorough Testing
+state: experimental
+properties: [API, CLI]
