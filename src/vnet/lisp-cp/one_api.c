@@ -1214,7 +1214,7 @@ one_adjacency_copy (vl_api_one_adjacency_t * dst, lisp_adjacency_t * adjs)
 	  clib_memcpy (a.leid, &nsh, sizeof (nsh));
 	  break;
 	default:
-	  ASSERT (0);
+	  ALWAYS_ASSERT (0);
 	}
       dst[i] = a;
     }
