@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b6f3e80f_2cf7d5a7",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 1571,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-05-04T16:13:31Z",
+      "side": 1,
+      "message": "I expected a-\u003esrc_port here (and in line 1577).",
+      "range": {
+        "startLine": 1571,
+        "startChar": 31,
+        "endLine": 1571,
+        "endChar": 42
+      },
+      "revId": "9634948226e442c3c4f5e951ab983a5a813eec4c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
