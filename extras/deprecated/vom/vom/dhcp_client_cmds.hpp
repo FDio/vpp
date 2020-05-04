@@ -39,7 +39,7 @@ public:
            const handle_t& itf,
            const std::string& hostname,
            const l2_address_t& client_id,
-           bool set_braodcast_flag,
+           bool set_broadcast_flag,
            const ip_dscp_t& dscp);
 
   /**
