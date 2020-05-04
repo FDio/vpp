@@ -22,6 +22,7 @@
 #include <linux/virtio_net.h>
 #include <linux/virtio_pci.h>
 #include <linux/virtio_ring.h>
+#include <vnet/gso/gro.h>
 
 #define foreach_virtio_net_features      \
   _ (VIRTIO_NET_F_CSUM, 0)	/* Host handles pkts w/ partial csum */ \
@@ -123,6 +124,7 @@ typedef struct
   u32 *buffers;
   u16 last_used_idx;
   u16 last_kick_avail_idx;
+  gro_flow_table_t *flow_table;
 } virtio_vring_t;
 
 typedef union
