@@ -330,6 +330,11 @@ extern void vppcom_worker_unregister (void);
 extern int vppcom_worker_index (void);
 
 /**
+ * Set current worker index
+ */
+extern void vppcom_worker_index_set (int);
+
+/**
  * Returns the current worker's message queues epoll fd
  *
  * This only works if vcl is configured to do eventfd based message queue
