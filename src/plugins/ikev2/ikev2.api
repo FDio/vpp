@@ -142,7 +142,7 @@ autoreply define ikev2_set_local_key
   u32 client_index;
   u32 context;
 
-  u8 key_file[256];
+  string key_file[256];
   option vat_help = "file <absolute_file_path>";
 };
 
