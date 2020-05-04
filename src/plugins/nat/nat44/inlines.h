@@ -77,33 +77,6 @@ nat44_global_lru_insert (snat_main_per_thread_data_t * tsm,
   s->last_lru_update = now;
 }
 
-static_always_inline snat_session_t *
-nat44_session_alloc_new (snat_main_per_thread_data_t * tsm, snat_user_t * u,
-			 f64 now)
-{
-  snat_session_t *s;
-  dlist_elt_t *per_user_translation_list_elt;
-
-  pool_get (tsm->sessions, s);
-  clib_memset (s, 0, sizeof (*s));
-  /* Create list elts */
-  pool_get (tsm->list_pool, per_user_translation_list_elt);
-  clib_dlist_init (tsm->list_pool,
-		   per_user_translation_list_elt - tsm->list_pool);
-
-  per_user_translation_list_elt->value = s - tsm->sessions;
-  s->per_user_index = per_user_translation_list_elt - tsm->list_pool;
-  s->per_user_list_head_index = u->sessions_per_user_list_head_index;
-
-  clib_dlist_addtail (tsm->list_pool,
-		      s->per_user_list_head_index,
-		      per_user_translation_list_elt - tsm->list_pool);
-
-  nat44_global_lru_insert (tsm, s, now);
-  s->ha_last_refreshed = now;
-  return s;
-}
-
 static_always_inline void
 nat44_user_del_sessions (snat_user_t * u, u32 thread_index)
 {
