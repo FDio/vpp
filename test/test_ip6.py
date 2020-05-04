@@ -979,6 +979,80 @@ class TestIPv6(TestIPv6ND):
         self.assertEqual(mld.records_number, 4)
 
 
+class TestIPv6RouteLookup(VppTestCase):
+    """ IPv6 Route Lookup Test Case """
+    routes = []
+
+    def route_lookup(self, prefix, exact):
+        return self.vapi.api(self.vapi.papi.ip_route_lookup,
+                             {
+                                 'table_id': 0,
+                                 'exact': exact,
+                                 'prefix': prefix,
+                             })
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv6RouteLookup, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv6RouteLookup, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIPv6RouteLookup, self).setUp()
+
+        drop_nh = VppRoutePath("::1", 0xffffffff,
+                               type=FibPathType.FIB_PATH_TYPE_DROP)
+
+        # Add 3 routes
+        r = VppIpRoute(self, "2001:1111::", 32, [drop_nh])
+        r.add_vpp_config()
+        self.routes.append(r)
+
+        r = VppIpRoute(self, "2001:1111:2222::", 48, [drop_nh])
+        r.add_vpp_config()
+        self.routes.append(r)
+
+        r = VppIpRoute(self, "2001:1111:2222::1", 128, [drop_nh])
+        r.add_vpp_config()
+        self.routes.append(r)
+
+    def tearDown(self):
+        # Remove the routes we added
+        for r in self.routes:
+            r.remove_vpp_config()
+
+        super(TestIPv6RouteLookup, self).tearDown()
+
+    def test_exact_match(self):
+        # Verify we find the host route
+        prefix = "2001:1111:2222::1/128"
+        result = self.route_lookup(prefix, True)
+        assert (prefix == str(result.route.prefix))
+
+        # Verify we find a middle prefix route
+        prefix = "2001:1111:2222::/48"
+        result = self.route_lookup(prefix, True)
+        assert (prefix == str(result.route.prefix))
+
+        # Verify we do not find an available LPM.
+        with self.vapi.assert_negative_api_retval():
+            self.route_lookup("2001::2/128", True)
+
+    def test_longest_prefix_match(self):
+        # verify we find lpm
+        lpm_prefix = "2001:1111:2222::/48"
+        result = self.route_lookup("2001:1111:2222::2/128", False)
+        assert (lpm_prefix == str(result.route.prefix))
+
+        # Verify we find the exact when not requested
+        result = self.route_lookup(lpm_prefix, False)
+        assert (lpm_prefix == str(result.route.prefix))
+
+        # Can't seem to delete the default route so no negative LPM test.
+
+
 class TestIPv6IfAddrRoute(VppTestCase):
     """ IPv6 Interface Addr Route Test Case """
 
