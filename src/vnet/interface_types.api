@@ -52,7 +52,7 @@ enum sub_if_flags
   SUB_IF_API_FLAG_DOT1AH = 256,
 };
 
-enum rx_mode
+enum rx_mode : u8
 {
   RX_MODE_API_UNKNOWN = 0,
   RX_MODE_API_POLLING,
