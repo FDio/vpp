@@ -282,6 +282,11 @@ class TestGSO(VppTestCase):
         size = rxs[33][TCP].seq + rxs[33][IPv6].plen - 20
         self.assertEqual(size, 65200)
 
+        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index,
+                                             enable_disable=0)
+        self.vapi.feature_gso_enable_disable(self.pg1.sw_if_index,
+                                             enable_disable=0)
+
     def test_gso_vxlan(self):
         """ GSO VXLAN test """
         self.logger.info(self.vapi.cli("sh int addr"))
@@ -415,6 +420,9 @@ class TestGSO(VppTestCase):
         #
         self.vxlan2.remove_vpp_config()
 
+        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index,
+                                             enable_disable=0)
+
     def test_gso_ipip(self):
         """ GSO IPIP test """
         self.logger.info(self.vapi.cli("sh int addr"))
@@ -496,7 +504,8 @@ class TestGSO(VppTestCase):
         # create IPIP tunnel on VPP pg0. Enable gso feature node on ipip
         # tunnel - IPSec use case
         #
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index, 0)
+        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index,
+                                             enable_disable=0)
         self.vapi.feature_gso_enable_disable(self.ipip4.sw_if_index)
 
         rxs = self.send_and_expect(self.pg2, [p47], self.pg0, 45)
@@ -516,7 +525,8 @@ class TestGSO(VppTestCase):
         #
         # disable ipip4
         #
-        self.vapi.feature_gso_enable_disable(self.ipip4.sw_if_index, 0)
+        self.vapi.feature_gso_enable_disable(self.ipip4.sw_if_index,
+                                             enable_disable=0)
         self.ip4_via_ip4_tunnel.remove_vpp_config()
         self.ip6_via_ip4_tunnel.remove_vpp_config()
         self.ipip4.remove_vpp_config()
@@ -596,6 +606,9 @@ class TestGSO(VppTestCase):
         self.ip4_via_ip6_tunnel.remove_vpp_config()
         self.ip6_via_ip6_tunnel.remove_vpp_config()
         self.ipip6.remove_vpp_config()
+
+        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index,
+                                             enable_disable=0)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
