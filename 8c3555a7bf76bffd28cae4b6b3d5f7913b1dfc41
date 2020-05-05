@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "28e82bbe_ae400911",
+        "filename": "Makefile",
+        "patchSetId": 8
+      },
+      "lineNbr": 503,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-05-05T21:01:29Z",
+      "side": 1,
+      "message": "Build output for test should reside in the TEST_BR directory [0] instead of being included in the source tree.\n\n[0] https://git.fd.io/vpp/tree/test/Makefile#n16",
+      "range": {
+        "startLine": 503,
+        "startChar": 22,
+        "endLine": 503,
+        "endChar": 42
+      },
+      "revId": "8c3555a7bf76bffd28cae4b6b3d5f7913b1dfc41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "398c6db1_56009193",
+        "filename": "Makefile",
+        "patchSetId": 8
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-05-05T21:01:29Z",
+      "side": 1,
+      "message": "Same here.",
+      "range": {
+        "startLine": 508,
+        "startChar": 22,
+        "endLine": 508,
+        "endChar": 46
+      },
+      "revId": "8c3555a7bf76bffd28cae4b6b3d5f7913b1dfc41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
