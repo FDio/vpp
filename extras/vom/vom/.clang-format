@@ -1,4 +1,7 @@
 
 BasedOnStyle: mozilla
-AlwaysBreakAfterReturnType: TopLevelDefinitions
+AlwaysBreakAfterReturnType: All
+PointerAlignment: Left
 BinPackParameters: false
+BraceWrapping:
+  SplitEmptyFunction: false
