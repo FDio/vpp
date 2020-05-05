@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8d5b4ff9_448e4758",
+        "filename": "src/plugins/memif/test/test_memif.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-05-05T21:20:40Z",
+      "side": 1,
+      "message": "Should this use .get(\u0027default\u0027, 1024) in case the default is removed from the  api definition or do you intentionally want to throw an error here in that case?",
+      "range": {
+        "startLine": 55,
+        "startChar": 40,
+        "endLine": 55,
+        "endChar": 51
+      },
+      "revId": "d98c6681b03087c03a9b0fe7dc1f3c67c3a8f118",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
