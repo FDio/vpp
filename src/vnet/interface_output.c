@@ -339,22 +339,34 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 		   VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
 		   VNET_BUFFER_F_OFFLOAD_IP_CKSUM))
 		{
-		  vnet_calc_checksums_inline
-		    (vm, b[0],
-		     b[0]->flags & VNET_BUFFER_F_IS_IP4,
-		     b[0]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
-		  vnet_calc_checksums_inline
-		    (vm, b[1],
-		     b[1]->flags & VNET_BUFFER_F_IS_IP4,
-		     b[1]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
-		  vnet_calc_checksums_inline
-		    (vm, b[2],
-		     b[2]->flags & VNET_BUFFER_F_IS_IP4,
-		     b[2]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
-		  vnet_calc_checksums_inline
-		    (vm, b[3],
-		     b[3]->flags & VNET_BUFFER_F_IS_IP4,
-		     b[3]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
+		  if (b[0]->flags & (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+				     VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
+				     VNET_BUFFER_F_OFFLOAD_IP_CKSUM))
+		    vnet_calc_checksums_inline
+		      (vm, b[0],
+		       b[0]->flags & VNET_BUFFER_F_IS_IP4,
+		       b[0]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
+		  if (b[1]->flags & (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+				     VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
+				     VNET_BUFFER_F_OFFLOAD_IP_CKSUM))
+		    vnet_calc_checksums_inline
+		      (vm, b[1],
+		       b[1]->flags & VNET_BUFFER_F_IS_IP4,
+		       b[1]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
+		  if (b[2]->flags & (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+				     VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
+				     VNET_BUFFER_F_OFFLOAD_IP_CKSUM))
+		    vnet_calc_checksums_inline
+		      (vm, b[2],
+		       b[2]->flags & VNET_BUFFER_F_IS_IP4,
+		       b[2]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
+		  if (b[3]->flags & (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+				     VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
+				     VNET_BUFFER_F_OFFLOAD_IP_CKSUM))
+		    vnet_calc_checksums_inline
+		      (vm, b[3],
+		       b[3]->flags & VNET_BUFFER_F_IS_IP4,
+		       b[3]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
 		}
 	    }
 	  b += 4;
