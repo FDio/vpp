@@ -1003,6 +1003,7 @@ static void vl_api_sw_interface_set_rx_mode_t_handler
   vnet_sw_interface_t *si;
   clib_error_t *error;
   int rv = 0;
+  vnet_hw_interface_rx_mode rx_mode;
 
   VALIDATE_SW_IF_INDEX (mp);
 
@@ -1013,11 +1014,12 @@ static void vl_api_sw_interface_set_rx_mode_t_handler
       goto bad_sw_if_index;
     }
 
+  rx_mode = (vnet_hw_interface_rx_mode) ntohl (mp->mode);
   error = set_hw_interface_change_rx_mode (vnm, si->hw_if_index,
 					   mp->queue_id_valid,
 					   ntohl (mp->queue_id),
 					   (vnet_hw_interface_rx_mode)
-					   mp->mode);
+					   rx_mode);
 
   if (error)
     {
@@ -1045,7 +1047,7 @@ send_interface_rx_placement_details (vpe_api_main_t * am,
   mp->sw_if_index = htonl (sw_if_index);
   mp->queue_id = htonl (queue_id);
   mp->worker_id = htonl (worker_id);
-  mp->mode = mode;
+  mp->mode = htonl (mode);
   mp->context = context;
 
   vl_api_send_msg (rp, (u8 *) mp);
