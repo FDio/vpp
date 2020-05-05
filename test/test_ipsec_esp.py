@@ -585,6 +585,7 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
         LARGE_PKT_SZ = [
             1970,  # results in 2 chained buffers entering decrypt node
                    # but leaving as simple buffer due to ICV removal (tra4)
+            2004,  # footer+ICV will be added to 2nd buffer (tun4)
             4010,  # ICV ends up splitted accross 2 buffers in esp_decrypt
                    # for transport4; transport6 takes normal path
             4020,  # same as above but tra4 and tra6 are switched
