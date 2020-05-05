@@ -9,6 +9,7 @@ import logging
 import binascii
 import os
 import sys
+from subprocess import Popen, PIPE
 
 log = logging.getLogger('vppapigen')
 
@@ -322,25 +323,20 @@ class Import():
 
         return seen_imports[args[0]]
 
-    def __init__(self, filename):
+    def __init__(self, filename, revision):
         if self._initialized:
             return
         else:
             self.filename = filename
             # Deal with imports
-            parser = VPPAPI(filename=filename)
+            parser = VPPAPI(filename=filename, revision=revision)
             dirlist = dirlist_get()
             f = filename
             for dir in dirlist:
                 f = os.path.join(dir, filename)
                 if os.path.exists(f):
                     break
-            if sys.version[0] == '2':
-                with open(f) as fd:
-                    self.result = parser.parse_file(fd, None)
-            else:
-                with open(f, encoding='utf-8') as fd:
-                    self.result = parser.parse_file(fd, None)
+            self.result = parser.parse_filename(f, None)
             self._initialized = True
 
     def __repr__(self):
@@ -430,10 +426,11 @@ class ParseError(Exception):
 class VPPAPIParser(object):
     tokens = VPPAPILexer.tokens
 
-    def __init__(self, filename, logger):
+    def __init__(self, filename, logger, revision=None):
         self.filename = filename
         self.logger = logger
         self.fields = []
+        self.revision = revision
 
     def _parse_error(self, msg, coord):
         raise ParseError("%s: %s" % (coord, msg))
@@ -478,7 +475,7 @@ class VPPAPIParser(object):
 
     def p_import(self, p):
         '''import : IMPORT STRING_LITERAL ';' '''
-        p[0] = Import(p[2])
+        p[0] = Import(p[2], revision=self.revision)
 
     def p_service(self, p):
         '''service : SERVICE '{' service_statements '}' ';' '''
@@ -731,11 +728,14 @@ class VPPAPIParser(object):
 
 class VPPAPI(object):
 
-    def __init__(self, debug=False, filename='', logger=None):
+    def __init__(self, debug=False, filename='', logger=None, revision=None):
         self.lexer = lex.lex(module=VPPAPILexer(filename), debug=debug)
-        self.parser = yacc.yacc(module=VPPAPIParser(filename, logger),
+        self.parser = yacc.yacc(module=VPPAPIParser(filename, logger,
+                                                    revision=revision),
                                 write_tables=False, debug=debug)
         self.logger = logger
+        self.revision = revision
+        self.filename = filename
 
     def parse_string(self, code, debug=0, lineno=1):
         self.lexer.lineno = lineno
@@ -744,6 +744,15 @@ class VPPAPI(object):
     def parse_file(self, fd, debug=0):
         data = fd.read()
         return self.parse_string(data, debug=debug)
+
+    def parse_filename(self, filename, debug=0):
+        if self.revision:
+            git_show = f'git show  {self.revision}:{filename}'
+            with Popen(git_show.split(), stdout=PIPE, encoding='utf-8') as git:
+                return self.parse_file(git.stdout, None)
+        else:
+            with open(filename, encoding='utf-8') as fd:
+                return self.parse_file(fd, None)
 
     def autoreply_block(self, name):
         block = [Field('u32', 'context'),
@@ -935,6 +944,8 @@ def main():
     cliparser.add_argument('output_module', nargs='?', default='C')
     cliparser.add_argument('--debug', action='store_true')
     cliparser.add_argument('--show-name', nargs=1)
+    cliparser.add_argument('--git-revision',
+                           help="Git revision to use for opening files")
     args = cliparser.parse_args()
 
     dirlist_add(args.includedir)
@@ -954,8 +965,12 @@ def main():
     else:
         logging.basicConfig()
 
-    parser = VPPAPI(debug=args.debug, filename=filename, logger=log)
-    parsed_objects = parser.parse_file(args.input, log)
+    parser = VPPAPI(debug=args.debug, filename=filename, logger=log,
+                    revision=args.git_revision)
+    if args.input == sys.stdin:
+        parsed_objects = parser.parse_file(args.input, log)
+    else:
+        parsed_objects = parser.parse_filename(args.input.name, log)
 
     # Build a list of objects. Hash of lists.
     result = []
