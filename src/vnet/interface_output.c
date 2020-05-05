@@ -334,27 +334,32 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 
 	  if (do_tx_offloads)
 	    {
-	      if (or_flags &
-		  (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
-		   VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
-		   VNET_BUFFER_F_OFFLOAD_IP_CKSUM))
+	      u32 vnet_buffer_offload_flags =
+		(VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+		 VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
+		 VNET_BUFFER_F_OFFLOAD_IP_CKSUM);
+	      if (or_flags & vnet_buffer_offload_flags)
 		{
-		  vnet_calc_checksums_inline
-		    (vm, b[0],
-		     b[0]->flags & VNET_BUFFER_F_IS_IP4,
-		     b[0]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
-		  vnet_calc_checksums_inline
-		    (vm, b[1],
-		     b[1]->flags & VNET_BUFFER_F_IS_IP4,
-		     b[1]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
-		  vnet_calc_checksums_inline
-		    (vm, b[2],
-		     b[2]->flags & VNET_BUFFER_F_IS_IP4,
-		     b[2]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
-		  vnet_calc_checksums_inline
-		    (vm, b[3],
-		     b[3]->flags & VNET_BUFFER_F_IS_IP4,
-		     b[3]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
+		  if (b[0]->flags & vnet_buffer_offload_flags)
+		    vnet_calc_checksums_inline
+		      (vm, b[0],
+		       b[0]->flags & VNET_BUFFER_F_IS_IP4,
+		       b[0]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
+		  if (b[1]->flags & vnet_buffer_offload_flags)
+		    vnet_calc_checksums_inline
+		      (vm, b[1],
+		       b[1]->flags & VNET_BUFFER_F_IS_IP4,
+		       b[1]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
+		  if (b[2]->flags & vnet_buffer_offload_flags)
+		    vnet_calc_checksums_inline
+		      (vm, b[2],
+		       b[2]->flags & VNET_BUFFER_F_IS_IP4,
+		       b[2]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
+		  if (b[3]->flags & vnet_buffer_offload_flags)
+		    vnet_calc_checksums_inline
+		      (vm, b[3],
+		       b[3]->flags & VNET_BUFFER_F_IS_IP4,
+		       b[3]->flags & VNET_BUFFER_F_IS_IP6, 1 /* with gso */ );
 		}
 	    }
 	  b += 4;
