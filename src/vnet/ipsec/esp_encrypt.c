@@ -695,17 +695,9 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (n_bufs > 1)
 	{
-	  crypto_ops = &ptd->chained_crypto_ops;
-	  integ_ops = &ptd->chained_integ_ops;
-
 	  /* find last buffer in the chain */
 	  while (lb->flags & VLIB_BUFFER_NEXT_PRESENT)
 	    lb = vlib_get_buffer (vm, lb->next_buffer);
-	}
-      else
-	{
-	  crypto_ops = &ptd->crypto_ops;
-	  integ_ops = &ptd->integ_ops;
 	}
 
       if (PREDICT_FALSE (esp_seq_advance (sa0)))
@@ -877,6 +869,17 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
+	}
+
+      if (lb != b[0])
+	{
+	  crypto_ops = &ptd->chained_crypto_ops;
+	  integ_ops = &ptd->chained_integ_ops;
+	}
+      else
+	{
+	  crypto_ops = &ptd->crypto_ops;
+	  integ_ops = &ptd->integ_ops;
 	}
 
       esp->spi = spi;
