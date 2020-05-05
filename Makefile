@@ -227,6 +227,7 @@ help:
 	@echo " checkstyle           - check coding style"
 	@echo " checkstyle-commit    - check commit message format"
 	@echo " checkstyle-test      - check test framework coding style"
+	@echo " checkstyle-api       - check api for incompatible changes"
 	@echo " fixstyle             - fix coding style"
 	@echo " doxygen              - (re)generate documentation"
 	@echo " bootstrap-doxygen    - setup Doxygen dependencies"
@@ -676,6 +677,10 @@ checkstyle-all: checkstyle-commit checkstyle checkstyle-test
 .PHONY: fixstyle
 fixstyle:
 	@build-root/scripts/checkstyle.sh --fix
+
+.PHONY: checkstyle-api
+checkstyle-api:
+	@extras/scripts/crcchecker.py --check-patch
 
 # necessary because Bug 1696324 - Update to python3.6 breaks PyYAML dependencies
 # Status:	CLOSED CANTFIX
