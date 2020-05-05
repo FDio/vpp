@@ -53,6 +53,24 @@
     },
     {
       "key": {
+        "uuid": "4850f525_a50cc41e",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 558,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-05T15:37:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ca8368f7_7757993e",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4223488d_621115b8",
         "filename": "src/vnet/devices/virtio/node.c",
         "patchSetId": 14
@@ -64,6 +82,24 @@
       "writtenOn": "2020-04-23T13:22:03Z",
       "side": 1,
       "message": "I think this should be embed in vnet_gro_flow_table_schedule_node_on_dispatcher() instead, with the flush_count counter in the flow_table struct, so that we can just call vnet_gro_flow_table_schedule_node_on_dispatcher() straight in the driver (to minimize code in the driver).\nRegarding the threshold of 100: it should be a macro (\"#define GRO_FLUSH_COUNT 100\" or similar) and on my Skylake test system, when idling with several HW interfaces my workers can do ~7.5M/s call to input nodes \u003d ~7.5 calls/µs, so if we want to target a max delay of ~100µs between checks when idling, we can probably use eg. 512 instead of 100.\nFinally, the test could be \u0027if (PREDICT_FALSE(0 \u003d\u003d (++flow_table-\u003eflush_counter \u0026 (512-1)))) { ... }\u0027",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "59b88448_b079430c",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-05T15:37:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4223488d_621115b8",
       "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -104,6 +140,24 @@
     },
     {
       "key": {
+        "uuid": "098ef93a_ec9c88f5",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-05T15:37:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4ab8b615_85d2a2a8",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "756cbdbd_7e7f76d8",
         "filename": "src/vnet/devices/virtio/virtio.c",
         "patchSetId": 14
@@ -115,6 +169,24 @@
       "writtenOn": "2020-04-23T13:22:03Z",
       "side": 1,
       "message": "gro_flow_table_free()...",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2f9f8096_c3a9affe",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-05T15:37:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "756cbdbd_7e7f76d8",
       "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -149,6 +221,24 @@
       "writtenOn": "2020-04-23T13:22:03Z",
       "side": 1,
       "message": "as mentioned earlier, I\u0027d prefer total_gro_vectors, n_gro_vectors and flush_count inside gro_flow_table_t to minimize code impact in drivers",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e7f2828c_92ee560b",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-05T15:37:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6e3a63f5_d1cde7ea",
       "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -359,6 +449,24 @@
     },
     {
       "key": {
+        "uuid": "c70b455e_3ade71bf",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 244,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-05T15:37:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a3b07c03_f40542e1",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d801999b_783cc6e8",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 14
@@ -370,6 +478,24 @@
       "writtenOn": "2020-04-23T13:22:03Z",
       "side": 1,
       "message": "you need to take care of tcp sequence number wrapping to 0 here. A usual trick is to compare with signed integer instead of unsigned:\nelse if ((i32)(next_tcp_sqe0 + payload_len0) \u003e (i32) next_tcp_seq1)",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f54268dd_7395229c",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-05T15:37:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d801999b_783cc6e8",
       "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -410,6 +536,24 @@
     },
     {
       "key": {
+        "uuid": "7bca14f6_bfc150fb",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 268,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-05T15:37:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8dba6fbb_1a4b8d68",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "eb869cfe_e777f9d3",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 14
@@ -421,6 +565,24 @@
       "writtenOn": "2020-04-23T13:22:03Z",
       "side": 1,
       "message": "No need to initialize all variables to 0 here. Not initializing them can help catch errors because the compiler will complain if we use an unitialized var.",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ee5b4862_e1796aae",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 286,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-05T15:37:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "eb869cfe_e777f9d3",
       "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
