@@ -29,8 +29,15 @@ endif()
 
 string_append(RDMA_LINK_FLAGS "-Wl,--whole-archive,${MLX5_LIB},--no-whole-archive")
 
-set(CMAKE_REQUIRED_FLAGS "-fPIC -shared -pthread ${RDMA_LINK_FLAGS} ${IBVERBS_LIB} ${RDMA_UTIL_LIB}")
-CHECK_C_SOURCE_COMPILES("int main(void) { return 0; }" IBVERBS_COMPILES_CHECK)
+set(CMAKE_REQUIRED_FLAGS "-fPIC -shared -pthread -Wno-unused-command-line-argument ${RDMA_LINK_FLAGS} ${IBVERBS_LIB} ${RDMA_UTIL_LIB}")
+set(CMAKE_REQUIRED_INCLUDES "${IBVERBS_INCLUDE_DIR}")
+set(CMAKE_REQUIRED_LIBRARIES "c") # force linkage by including libc explicitely
+CHECK_C_SOURCE_COMPILES("
+#include <infiniband/verbs.h>
+int main(void)
+{
+    return 0 != ibv_get_device_list(0);
+}" IBVERBS_COMPILES_CHECK)
 
 if (NOT IBVERBS_COMPILES_CHECK)
   message(WARNING "rdma plugins - no working ibverbs found - rdma plugin disabled")
