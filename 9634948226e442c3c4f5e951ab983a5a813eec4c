@@ -22,6 +22,30 @@
       "revId": "9634948226e442c3c4f5e951ab983a5a813eec4c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4dbfc1df_306a098a",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 1571,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-05-05T07:55:58Z",
+      "side": 1,
+      "message": "This is fine for now as the support for NAT- traversal in IKE will be added later (after merging this patch)",
+      "parentUuid": "b6f3e80f_2cf7d5a7",
+      "range": {
+        "startLine": 1571,
+        "startChar": 31,
+        "endLine": 1571,
+        "endChar": 42
+      },
+      "revId": "9634948226e442c3c4f5e951ab983a5a813eec4c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
