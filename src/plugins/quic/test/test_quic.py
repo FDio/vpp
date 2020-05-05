@@ -141,6 +141,7 @@ class QUICEchoIntTestCase(QUICTestCase):
 class QUICEchoIntTransferTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal Transfer Test Case"""
     def test_quic_int_transfer(self):
+        """QUIC internal transfer"""
         self.server()
         self.client("no-output", "mbytes", "2")
 
@@ -148,6 +149,7 @@ class QUICEchoIntTransferTestCase(QUICEchoIntTestCase):
 class QUICEchoIntSerialTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal Serial Transfer Test Case"""
     def test_quic_serial_int_transfer(self):
+        """QUIC serial internal transfer"""
         self.server()
         self.client("no-output", "mbytes", "2")
         self.client("no-output", "mbytes", "2")
@@ -159,6 +161,7 @@ class QUICEchoIntSerialTestCase(QUICEchoIntTestCase):
 class QUICEchoIntMStreamTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal MultiStream Test Case"""
     def test_quic_int_multistream_transfer(self):
+        """QUIC internal multi-stream transfer"""
         self.server()
         self.client("nclients", "10", "mbytes", "1", "no-output")
 
@@ -271,6 +274,7 @@ class QUICEchoExtTransferTestCase(QUICEchoExtTestCase):
     timeout = 60
 
     def test_quic_ext_transfer(self):
+        """QUIC external transfer"""
         self.server()
         self.client()
         self.validate_ext_test_results()
@@ -285,6 +289,7 @@ class QUICEchoExtTransferBigTestCase(QUICEchoExtTestCase):
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_ext_transfer_big(self):
+        """QUIC external transfer, big stream"""
         self.server("TX=0", "RX=2G")
         self.client("TX=2G", "RX=0")
         self.validate_ext_test_results()
@@ -296,6 +301,7 @@ class QUICEchoExtQcloseRxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_qclose_rx(self):
+        """QUIC external transfer, rx close"""
         self.server("TX=0", "RX=10M", "qclose=Y", "sclose=N")
         self.client("TX=10M", "RX=0", "qclose=W", "sclose=W")
         self.validate_ext_test_results()
@@ -307,6 +313,7 @@ class QUICEchoExtQcloseTxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_qclose_tx(self):
+        """QUIC external transfer, tx close"""
         self.server("TX=0", "RX=10M", "qclose=W", "sclose=W",
                     "rx-results-diff")
         self.client("TX=10M", "RX=0", "qclose=Y", "sclose=N")
@@ -319,6 +326,7 @@ class QUICEchoExtEarlyQcloseRxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_early_qclose_rx(self):
+        """QUIC external transfer, early rx close"""
         self.server("TX=0", "RX=10M", "qclose=Y", "sclose=N")
         self.client("TX=20M", "RX=0", "qclose=W", "sclose=W",
                     "tx-results-diff")
@@ -331,6 +339,7 @@ class QUICEchoExtEarlyQcloseTxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_early_qclose_tx(self):
+        """QUIC external transfer, early tx close"""
         self.server("TX=0", "RX=20M", "qclose=W", "sclose=W",
                     "rx-results-diff")
         self.client("TX=10M", "RX=0", "qclose=Y", "sclose=N")
@@ -343,6 +352,7 @@ class QUICEchoExtScloseRxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_sclose_rx(self):
+        """QUIC external transfer, rx stream close"""
         self.server("TX=0", "RX=10M", "qclose=N", "sclose=Y")
         self.client("TX=10M", "RX=0", "qclose=W", "sclose=W")
         self.validate_ext_test_results()
@@ -354,6 +364,7 @@ class QUICEchoExtScloseTxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_sclose_tx(self):
+        """QUIC external transfer, tx stream close"""
         self.server("TX=0", "RX=10M", "qclose=W", "sclose=W")
         self.client("TX=10M", "RX=0", "qclose=Y", "sclose=Y")
         self.validate_ext_test_results()
@@ -365,6 +376,7 @@ class QUICEchoExtEarlyScloseRxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_early_sclose_rx(self):
+        """QUIC external transfer, early rx stream close"""
         self.server("TX=0", "RX=10M", "qclose=N", "sclose=Y")
         self.client("TX=20M", "RX=0", "qclose=W", "sclose=W",
                     "tx-results-diff")
@@ -377,6 +389,7 @@ class QUICEchoExtEarlyScloseTxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_early_sclose_tx(self):
+        """QUIC external transfer, early tx stream close"""
         self.server("TX=0", "RX=20M", "qclose=W", "sclose=W",
                     "rx-results-diff")
         self.client("TX=10M", "RX=0", "qclose=Y", "sclose=Y")
@@ -389,6 +402,7 @@ class QUICEchoExtServerStreamTestCase(QUICEchoExtTestCase):
     timeout = 60
 
     def test_quic_ext_transfer_server_stream(self):
+        """QUIC external server transfer"""
         self.server("TX=10M", "RX=0")
         self.client("TX=0", "RX=10M")
         self.validate_ext_test_results()
@@ -404,6 +418,7 @@ class QUICEchoExtServerStreamBigTestCase(QUICEchoExtTestCase):
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_quic_ext_transfer_server_stream_big(self):
+        """QUIC external server transfer, big stream"""
         self.server("TX=2G", "RX=0")
         self.client("TX=0", "RX=2G")
         self.validate_ext_test_results()
@@ -416,6 +431,7 @@ class QUICEchoExtServerStreamQcloseRxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_server_stream_qclose_rx(self):
+        """QUIC external server transfer, rx close"""
         self.server("TX=10M", "RX=0", "qclose=W", "sclose=W")
         self.client("TX=0", "RX=10M", "qclose=Y", "sclose=N")
         self.validate_ext_test_results()
@@ -428,6 +444,7 @@ class QUICEchoExtServerStreamQcloseTxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_server_stream_qclose_tx(self):
+        """QUIC external server transfer, tx close"""
         self.server("TX=10M", "RX=0", "qclose=Y", "sclose=N")
         self.client("TX=0", "RX=10M", "qclose=W", "sclose=W",
                     "rx-results-diff")
@@ -441,6 +458,7 @@ class QUICEchoExtServerStreamEarlyQcloseRxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_server_stream_early_qclose_rx(self):
+        """QUIC external server transfer, early rx close"""
         self.server("TX=20M", "RX=0", "qclose=W", "sclose=W",
                     "tx-results-diff")
         self.client("TX=0", "RX=10M", "qclose=Y", "sclose=N")
@@ -454,6 +472,7 @@ class QUICEchoExtServerStreamEarlyQcloseTxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_server_stream_early_qclose_tx(self):
+        """QUIC external server transfer, early tx close"""
         self.server("TX=10M", "RX=0", "qclose=Y", "sclose=N")
         self.client("TX=0", "RX=20M", "qclose=W", "sclose=W",
                     "rx-results-diff")
@@ -467,6 +486,7 @@ class QUICEchoExtServerStreamScloseRxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_server_stream_sclose_rx(self):
+        """QUIC external server transfer, rx stream close"""
         self.server("TX=10M", "RX=0", "qclose=W", "sclose=W")
         self.client("TX=0", "RX=10M", "qclose=N", "sclose=Y")
         self.validate_ext_test_results()
@@ -479,6 +499,7 @@ class QUICEchoExtServerStreamScloseTxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_server_stream_sclose_tx(self):
+        """QUIC external server transfer, tx stream close"""
         self.server("TX=10M", "RX=0", "qclose=Y", "sclose=Y")
         self.client("TX=0", "RX=10M", "qclose=W", "sclose=W")
         self.validate_ext_test_results()
@@ -491,6 +512,7 @@ class QUICEchoExtServerStreamEarlyScloseRxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_server_stream_early_sclose_rx(self):
+        """QUIC external server transfer, early rx stream close"""
         self.server("TX=20M", "RX=0", "qclose=W", "sclose=W",
                     "tx-results-diff")
         self.client("TX=0", "RX=10M", "qclose=N", "sclose=Y")
@@ -504,6 +526,7 @@ class QUICEchoExtServerStreamEarlyScloseTxTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_server_stream_early_sclose_tx(self):
+        """QUIC external server transfer, early tx stream close"""
         self.server("TX=10M", "RX=0", "qclose=Y", "sclose=Y")
         self.client("TX=0", "RX=20M", "qclose=W", "sclose=W",
                     "rx-results-diff")
@@ -517,6 +540,7 @@ class QUICEchoExtServerStreamWorkersTestCase(QUICEchoExtTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     @unittest.skip("testcase under development")
     def test_quic_ext_transfer_server_stream_multi_workers(self):
+        """QUIC external server transfer, multi-worker"""
         self.server("nclients", "4", "quic-streams", "4", "TX=10M", "RX=0")
         self.client("nclients", "4", "quic-streams", "4", "TX=0", "RX=10M")
         self.validate_ext_test_results()
