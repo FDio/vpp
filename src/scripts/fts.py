@@ -248,12 +248,12 @@ def main():
         featurefile = featurefile.rstrip()
 
         # Load configuration file
-        with open(featurefile) as f:
+        with open(featurefile, encoding='utf-8') as f:
             cfg = yaml.load(f, Loader=yaml.SafeLoader)
         try:
             validate(instance=cfg, schema=schema)
         except exceptions.ValidationError:
-            print('File does not validate: {featurefile}',
+            print(f'File does not validate: {featurefile}',
                   file=sys.stderr)
             raise
         features[featurefile] = cfg
