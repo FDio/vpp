@@ -22,6 +22,30 @@
       "revId": "d98c6681b03087c03a9b0fe7dc1f3c67c3a8f118",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "18c8fd44_2b89059d",
+        "filename": "src/plugins/memif/test/test_memif.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-05T21:41:11Z",
+      "side": 1,
+      "message": "No.  The idea is to get the hardcoded defaults out of the tests.  I can return .get(\u0027default\u0027, None), but it would make finding the error harder for someone troubleshooting a change in the api in the future.  I can ignore the KeyError and the tests will fail later because the values are initialized to none above (which is the same as the .get).\n\nIf it would be clearer, I can catch the KeyError and raise a RuntimeError explaining the api change.",
+      "parentUuid": "8d5b4ff9_448e4758",
+      "range": {
+        "startLine": 55,
+        "startChar": 40,
+        "endLine": 55,
+        "endChar": 51
+      },
+      "revId": "d98c6681b03087c03a9b0fe7dc1f3c67c3a8f118",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
