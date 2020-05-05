@@ -259,6 +259,123 @@ seconds. If necessary, please use clib_cpu_time_now(...) for direct
 access to the CPU clock-cycle counter. Note that the number of CPU
 clock cycles per second varies significantly across CPU architectures.
 
+Timer Wheels
+------------
+
+Vppinfra includes configurable timer wheel support. See the source
+code in .../src/vppinfra/tw_timer_template.[ch], as well as a
+considerable number of template instances defined in
+.../src/vppinfra/tw_timer_<wheel-geometry-spec>.[ch].
+
+Instantiation of tw_timer_template.h generates named structures to
+implement specific timer wheel geometries. Choices include: number of
+timer wheels (currently, 1 or 2), number of slots per ring (a power of
+two), and the number of timers per "object handle".
+
+Internally, user object/timer handles are 32-bit integers, so if one
+selects 16 timers/object (4 bits), the resulting timer wheel handle is
+limited to 2**28 objects.
+
+Here are the specific settings required to generate a single 2048 slot
+wheel which supports 2 timers per object:
+
+```
+    #define TW_TIMER_WHEELS 1
+    #define TW_SLOTS_PER_RING 2048
+    #define TW_RING_SHIFT 11
+    #define TW_RING_MASK (TW_SLOTS_PER_RING -1)
+    #define TW_TIMERS_PER_OBJECT 2
+    #define LOG2_TW_TIMERS_PER_OBJECT 1
+    #define TW_SUFFIX _2t_1w_2048sl
+    #define TW_FAST_WHEEL_BITMAP 0
+    #define TW_TIMER_ALLOW_DUPLICATE_STOP 0
+```
+
+See tw_timer_2t_1w_2048sl.h for a complete
+example.
+
+tw_timer_template.h is not intended to be #included directly. Client
+codes can include multiple timer geometry header files, although
+extreme caution would required to use the TW and TWT macros in such a
+case.
+
+### API usage examples
+
+The unit test code in .../src/vppinfra/test_tw_timer.c provides a
+concrete API usage example. It uses a synthetic clock to rapidly
+exercise the underlying tw_timer_expire_timers(...) template.
+
+There are not many API routines to call.
+
+#### Initialize a two-timer, single 2048-slot wheel w/ a 1-second timer granularity
+
+```
+    tw_timer_wheel_init_2t_1w_2048sl (&tm->single_wheel,
+                                     expired_timer_single_callback,
+				      1.0 / * timer interval * / );
+```
+
+#### Start a timer
+
+```
+    handle = tw_timer_start_2t_1w_2048sl (&tm->single_wheel, elt_index,
+                                          [0 | 1] / * timer id * / ,
+                                          expiration_time_in_u32_ticks);
+```
+
+#### Stop a timer
+
+```
+    tw_timer_stop_2t_1w_2048sl (&tm->single_wheel, handle);
+```
+
+#### An expired timer callback
+
+```
+    static void
+    expired_timer_single_callback (u32 * expired_timers)
+    {
+    	int i;
+        u32 pool_index, timer_id;
+        tw_timer_test_elt_t *e;
+        tw_timer_test_main_t *tm = &tw_timer_test_main;
+
+        for (i = 0; i < vec_len (expired_timers);
+            {
+            pool_index = expired_timers[i] & 0x7FFFFFFF;
+            timer_id = expired_timers[i] >> 31;
+
+            ASSERT (timer_id == 1);
+
+            e = pool_elt_at_index (tm->test_elts, pool_index);
+
+            if (e->expected_to_expire != tm->single_wheel.current_tick)
+              {
+              	fformat (stdout, "[%d] expired at %d not %d\n",
+                         e - tm->test_elts, tm->single_wheel.current_tick,
+                         e->expected_to_expire);
+              }
+         pool_put (tm->test_elts, e);
+         }
+     }
+```
+
+We use wheel timers extensively in the vpp host stack. Each TCP
+session needs 5 timers, so supporting 10 million flows requires up to
+50 million concurrent timers.
+
+Timers rarely expire, so it's of utmost important that stopping and
+restarting a timer costs as few clock cycles as possible.
+
+Stopping a timer costs a doubly-linked list dequeue. Starting a timer
+involves modular arithmetic to determine the correct timer wheel and
+slot, and a list head enqueue.
+
+Expired timer processing generally involves bulk link-list retirement
+with user callback presentation. Some additional complexity at wheel
+wrap time, to relocate timers from slower-turning timer wheels into
+faster-turning wheels.
+
 Format
 ------
 
