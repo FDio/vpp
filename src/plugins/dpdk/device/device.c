@@ -144,6 +144,8 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
 	mb->pool =
 	  dpdk_no_cache_mempool_by_buffer_pool_index[b->buffer_pool_index];
     }
+
+  mb->next = 0;
 }
 
 /*
