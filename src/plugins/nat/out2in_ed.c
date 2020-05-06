@@ -71,6 +71,7 @@ icmp_out2in_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
 			  vlib_node_runtime_t * node, u32 next0, f64 now,
 			  u32 thread_index, snat_session_t ** p_s0)
 {
+  vlib_main_t *vm = vlib_get_main();
   next0 = icmp_out2in (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		       next0, thread_index, p_s0, 0);
   snat_session_t *s0 = *p_s0;
@@ -78,8 +79,7 @@ icmp_out2in_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
     {
       /* Accounting */
       nat44_session_update_counters (s0, now,
-				     vlib_buffer_length_in_chain
-				     (sm->vlib_main, b0), thread_index);
+				     vlib_buffer_length_in_chain(vm, b0), thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
     }
@@ -327,7 +327,8 @@ create_bypass_for_fwd (snat_main_t * sm, vlib_buffer_t * b, ip4_header_t * ip,
   udp_header_t *udp;
   snat_session_t *s = 0;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-  f64 now = vlib_time_now (sm->vlib_main);
+  vlib_main_t *vm = vlib_get_main();
+  f64 now = vlib_time_now (vm);
   u16 l_port, r_port;
 
   if (ip->protocol == IP_PROTOCOL_ICMP)
@@ -438,6 +439,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 
   sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
   rx_fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
+  vlib_main_t *vm = vlib_get_main();
 
   if (get_icmp_o2i_ed_key
       (b, ip, rx_fib_index, ~0ULL, p_proto, &l_port, &r_port, &kv))
@@ -509,7 +511,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 						rx_fib_index, thread_index, 0,
 						0,
 						vlib_time_now
-						(sm->vlib_main));
+						(vm));
 
       if (!s)
 	{
@@ -689,7 +691,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  next0 = vnet_buffer2 (b0)->nat.arc_next;
+	  next0 = NAT_NEXT_LOOKUP;
 
 	  vnet_buffer (b0)->snat.flags = 0;
 	  ip0 = vlib_buffer_get_current (b0);
@@ -880,7 +882,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 		t->session_index = ~0;
 	    }
 
-	  pkts_processed += next0 == vnet_buffer2 (b0)->nat.arc_next;
+	  pkts_processed += next0 == NAT_NEXT_LOOKUP;
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -962,7 +964,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  next0 = vnet_buffer2 (b0)->nat.arc_next;
+	  next0 = NAT_NEXT_LOOKUP;
 
 	  vnet_buffer (b0)->snat.flags = 0;
 	  ip0 = vlib_buffer_get_current (b0);
@@ -1220,7 +1222,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 		t->session_index = ~0;
 	    }
 
-	  pkts_processed += next0 == vnet_buffer2 (b0)->nat.arc_next;
+	  pkts_processed += next0 == NAT_NEXT_LOOKUP;
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
