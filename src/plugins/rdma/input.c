@@ -103,7 +103,7 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
 
   if (is_mlx5dv)
     {
-      u64 va[8];
+      u64 __clib_aligned (32) va[8];
       mlx5dv_rwq_t *wqe = rxq->wqes + slot;
 
       while (n >= 1)
@@ -488,7 +488,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   rdma_rxq_t *rxq = vec_elt_at_index (rd->rxqs, qid);
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   struct ibv_wc wc[VLIB_FRAME_SIZE];
-  u32 byte_cnts[VLIB_FRAME_SIZE];
+  u32 __clib_aligned (32) byte_cnts[VLIB_FRAME_SIZE];
   vlib_buffer_t bt;
   u32 next_index, *to_next, n_left_to_next, n_rx_bytes = 0;
   int n_rx_packets, skip_ip4_cksum = 0;
