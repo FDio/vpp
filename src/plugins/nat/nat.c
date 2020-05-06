@@ -216,7 +216,6 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
 	}
       else
 	{
-	  proto = snat_proto_to_ip_proto (s->in2out.protocol);
 	  l_port = s->in2out.port;
 	  r_port = s->ext_host_port;
 	  l_addr = &s->in2out.addr;
