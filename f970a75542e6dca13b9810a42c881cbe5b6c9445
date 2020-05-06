@@ -16,6 +16,24 @@
       "revId": "f970a75542e6dca13b9810a42c881cbe5b6c9445",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e30f037c_281a547c",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 721,
+      "author": {
+        "id": 2190
+      },
+      "writtenOn": "2020-05-06T14:04:26Z",
+      "side": 0,
+      "message": "Apparently is_ipv6 field was removed from vxlan_gpe_add_del_tunnel message a while ago and the test wasn\u0027t updated. This has probably happened due to vxlan_gpe tests being disabled by default. Furthermore, nowhere does the test call vxlan_gpe_add_del_tunnel with is_ipv6\u003d1.\n\nI do agree that this is probably a messy fix that doesn\u0027t logically belong to this change set. Still I believe that both setting is_ipv6 key in the dictionary and is_ipv6 function parameter should be removed.\n\nWould you prefer if I do that first in a separate patch?",
+      "parentUuid": "aa36b06f_91b3d15a",
+      "revId": "f970a75542e6dca13b9810a42c881cbe5b6c9445",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
