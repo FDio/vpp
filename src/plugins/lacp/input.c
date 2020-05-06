@@ -283,11 +283,11 @@ lacp_input_format_trace (u8 * s, va_list * args)
 	  s = format (s, "  Marker Information TLV: length %u\n",
 		      marker->marker_info.tlv_length);
 	  s = format (s, "  Requester port: %u\n",
-		      marker->marker_info.requester_port);
+		      ntohs (marker->marker_info.requester_port));
 	  s = format (s, "  Requester system: %U\n", format_ethernet_address,
 		      marker->marker_info.requester_system);
 	  s = format (s, "  Requester transaction ID: %u\n",
-		      marker->marker_info.requester_transaction_id);
+		      ntohl (marker->marker_info.requester_transaction_id));
 	  break;
 
 	case LACP_SUBTYPE:
