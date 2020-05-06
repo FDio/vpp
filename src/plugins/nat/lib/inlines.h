@@ -49,20 +49,18 @@ nat_proto_to_ip_proto (nat_protocol_t nat_proto)
   return lookup_table[nat_proto];
 }
 
-static_always_inline u8
+static_always_inline int
 icmp_type_is_error_message (u8 icmp_type)
 {
-  switch (icmp_type)
-    {
-    case ICMP4_destination_unreachable:
-    case ICMP4_time_exceeded:
-    case ICMP4_parameter_problem:
-    case ICMP4_source_quench:
-    case ICMP4_redirect:
-    case ICMP4_alternate_host_address:
-      return 1;
-    }
-  return 0;
+  int bmp = 0;
+  bmp |= 1 << ICMP4_destination_unreachable;
+  bmp |= 1 << ICMP4_time_exceeded;
+  bmp |= 1 << ICMP4_parameter_problem;
+  bmp |= 1 << ICMP4_source_quench;
+  bmp |= 1 << ICMP4_redirect;
+  bmp |= 1 << ICMP4_alternate_host_address;
+
+  return (1ULL << icmp_type) & bmp;
 }
 
 #endif /* included_nat_inlines_h__ */
