@@ -116,8 +116,8 @@ class TestVxlanGpe(BridgeDomain, VppTestCase):
         vni_end = vni_start + n_shared_dst_tunnels
         for vni in range(vni_start, vni_end):
             r = cls.vapi.vxlan_gpe_add_del_tunnel(
-                local=cls.pg0.local_ip4,
-                remote=cls.mcast_ip4,
+                src_addr=cls.pg0.local_ip4,
+                dst_addr=cls.mcast_ip4,
                 mcast_sw_if_index=1,
                 vni=vni,
                 is_add=is_add)

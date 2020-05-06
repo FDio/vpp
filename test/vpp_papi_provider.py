@@ -698,7 +698,6 @@ class VppPapiProvider(object):
             dst_addr,
             mcast_sw_if_index=0xFFFFFFFF,
             is_add=1,
-            is_ipv6=0,
             encap_vrf_id=0,
             decap_vrf_id=0,
             protocol=3,
@@ -708,7 +707,6 @@ class VppPapiProvider(object):
         :param local:
         :param remote:
         :param is_add:  (Default value = 1)
-        :param is_ipv6:  (Default value = 0)
         :param encap_vrf_id:  (Default value = 0)
         :param decap_vrf_id:  (Default value = 0)
         :param mcast_sw_if_index:  (Default value = 0xFFFFFFFF)
@@ -718,7 +716,6 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.vxlan_gpe_add_del_tunnel,
                         {'is_add': is_add,
-                         'is_ipv6': is_ipv6,
                          'local': src_addr,
                          'remote': dst_addr,
                          'mcast_sw_if_index': mcast_sw_if_index,
