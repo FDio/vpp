@@ -586,6 +586,7 @@ run-vat:
 .PHONY: pkg-deb
 pkg-deb:
 	$(call make,$(PLATFORM),vpp-package-deb)
+	if (ls build-root/*.deb | grep -v vpp); then echo "All .deb build artifacts should have 'vpp' in their name"; exit 1; fi
 
 .PHONY: pkg-snap
 pkg-snap:
