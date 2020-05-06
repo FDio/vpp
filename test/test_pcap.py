@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
+import os
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_gcov_tests
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
-from os import path, remove
 
 
 class TestPcap(VppTestCase):
@@ -77,12 +77,13 @@ class TestPcap(VppTestCase):
                 else:
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
 
-        self.assertTrue(path.exists('/tmp/dispatch.pcap'))
-        self.assertTrue(path.exists('/tmp/rxtx.pcap'))
-        self.assertTrue(path.exists('/tmp/filt.pcap'))
+        self.assertTrue(os.path.exists('/tmp/dispatch.pcap'))
+        self.assertTrue(os.path.exists('/tmp/rxtx.pcap'))
+        self.assertTrue(os.path.exists('/tmp/filt.pcap'))
         os.remove('/tmp/dispatch.pcap')
         os.remove('/tmp/rxtx.pcap')
         os.remove('/tmp/filt.pcap')
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
