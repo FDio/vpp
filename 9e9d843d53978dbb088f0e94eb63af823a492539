@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cdebd0fb_37d8e95e",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 926,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-06T17:17:28Z",
+      "side": 1,
+      "message": "Is it better to remove the global and just add it as a kwarg to VPPAPIParser() and Import()?",
+      "range": {
+        "startLine": 926,
+        "startChar": 4,
+        "endLine": 926,
+        "endChar": 19
+      },
+      "revId": "9e9d843d53978dbb088f0e94eb63af823a492539",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
