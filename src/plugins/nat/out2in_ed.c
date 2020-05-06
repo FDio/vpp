@@ -689,7 +689,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  next0 = vnet_buffer2 (b0)->nat.arc_next;
+	  next0 = NAT_NEXT_LOOKUP;
 
 	  vnet_buffer (b0)->snat.flags = 0;
 	  ip0 = vlib_buffer_get_current (b0);
@@ -880,7 +880,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 		t->session_index = ~0;
 	    }
 
-	  pkts_processed += next0 == vnet_buffer2 (b0)->nat.arc_next;
+	  pkts_processed += next0 == NAT_NEXT_LOOKUP;
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -962,7 +962,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  next0 = vnet_buffer2 (b0)->nat.arc_next;
+	  next0 = NAT_NEXT_LOOKUP;
 
 	  vnet_buffer (b0)->snat.flags = 0;
 	  ip0 = vlib_buffer_get_current (b0);
@@ -1220,7 +1220,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 		t->session_index = ~0;
 	    }
 
-	  pkts_processed += next0 == vnet_buffer2 (b0)->nat.arc_next;
+	  pkts_processed += next0 == NAT_NEXT_LOOKUP;
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,

@@ -2108,7 +2108,7 @@ feature_set:
 	    if (rv)
 	      return rv;
             vnet_feature_enable_disable ("ip4-unicast", del_feature_name,
-                                         sw_if_index, 0, 0, 0);
+                                         sw_if_index, 1, 0, 0);
             vnet_feature_enable_disable ("ip4-unicast", feature_name,
                                          sw_if_index, 1, 0, 0);
             if (!is_inside)
@@ -4549,6 +4549,7 @@ VLIB_REGISTER_NODE (nat_default_node) = {
     [NAT_NEXT_IN2OUT_ED_OUTPUT_SLOW_PATH] = "nat44-ed-in2out-output-slowpath",
     [NAT_NEXT_OUT2IN_ED_FAST_PATH] = "nat44-ed-out2in",
     [NAT_NEXT_OUT2IN_ED_SLOW_PATH] = "nat44-ed-out2in-slowpath",
+    [NAT_NEXT_LOOKUP] = "ip4-lookup"
   },
 };
 /* *INDENT-ON* */

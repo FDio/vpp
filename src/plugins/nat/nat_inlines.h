@@ -44,7 +44,6 @@ nat_pre_node_fn_inline (vlib_main_t * vm,
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
 	  u32 next0, next1;
-	  u32 arc_next0, arc_next1;
 	  u32 bi0, bi1;
 	  vlib_buffer_t *b0, *b1;
 
@@ -76,12 +75,6 @@ nat_pre_node_fn_inline (vlib_main_t * vm,
 	  next0 = def_next;
 	  next1 = def_next;
 
-	  vnet_feature_next (&arc_next0, b0);
-	  vnet_feature_next (&arc_next1, b1);
-
-	  vnet_buffer2 (b0)->nat.arc_next = arc_next0;
-	  vnet_buffer2 (b1)->nat.arc_next = arc_next1;
-
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
 	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
@@ -107,7 +100,6 @@ nat_pre_node_fn_inline (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 next0;
-	  u32 arc_next0;
 	  u32 bi0;
 	  vlib_buffer_t *b0;
 
@@ -121,8 +113,6 @@ nat_pre_node_fn_inline (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  next0 = def_next;
-	  vnet_feature_next (&arc_next0, b0);
-	  vnet_buffer2 (b0)->nat.arc_next = arc_next0;
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
