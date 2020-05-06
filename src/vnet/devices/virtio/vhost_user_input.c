@@ -406,7 +406,13 @@ vhost_user_if_input (vlib_main_t * vm,
   {
     /* do we have pending interrupts ? */
     vhost_user_vring_t *rxvq = &vui->vrings[VHOST_VRING_IDX_RX (qid)];
-    vhost_user_input_do_interrupt (vm, txvq, rxvq);
+    f64 now = vlib_time_now (vm);
+
+    if ((txvq->n_since_last_int) && (txvq->int_deadline < now))
+      vhost_user_send_call (vm, txvq);
+
+    if ((rxvq->n_since_last_int) && (rxvq->int_deadline < now))
+      vhost_user_send_call (vm, rxvq);
   }
 
   /*
@@ -502,11 +508,36 @@ vhost_user_if_input (vlib_main_t * vm,
 	}
     }
 
-  vhost_user_input_setup_frame (vm, node, vui, &current_config_index,
-				&next_index, &to_next, &n_left_to_next);
+  if (PREDICT_FALSE (vnet_have_features (feature_arc_idx, vui->sw_if_index)))
+    {
+      vnet_feature_config_main_t *cm;
+      cm = &fm->feature_config_mains[feature_arc_idx];
+      current_config_index = vec_elt (cm->config_index_by_sw_if_index,
+				      vui->sw_if_index);
+      vnet_get_config_data (&cm->config_main, &current_config_index,
+			    &next_index, 0);
+    }
 
   u16 last_avail_idx = txvq->last_avail_idx;
   u16 last_used_idx = txvq->last_used_idx;
+
+  vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+  if (next_index == VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT)
+    {
+      /* give some hints to ethernet-input */
+      vlib_next_frame_t *nf;
+      vlib_frame_t *f;
+      ethernet_input_frame_t *ef;
+      nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
+      f = vlib_get_frame (vm, nf->frame);
+      f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
+
+      ef = vlib_frame_scalar_args (f);
+      ef->sw_if_index = vui->sw_if_index;
+      ef->hw_if_index = vui->hw_if_index;
+      vlib_frame_no_append (f);
+    }
 
   while (n_left > 0)
     {
