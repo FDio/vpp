@@ -34,6 +34,24 @@
       "revId": "f970a75542e6dca13b9810a42c881cbe5b6c9445",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7dc95be4_759a4b64",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 721,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-06T15:08:47Z",
+      "side": 0,
+      "message": "I have a change submitted that removes the fn in it\u0027s entirety in \nhttps://gerrit.fd.io/r/c/vpp/+/26832/2/test/vpp_papi_provider.py",
+      "parentUuid": "e30f037c_281a547c",
+      "revId": "f970a75542e6dca13b9810a42c881cbe5b6c9445",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
