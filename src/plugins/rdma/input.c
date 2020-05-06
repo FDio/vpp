@@ -103,7 +103,7 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
 
   if (is_mlx5dv)
     {
-      u64 va[8];
+      u64 __clib_aligned (32) va[8];
       mlx5dv_rwq_t *wqe = rxq->wqes + slot;
 
       while (n >= 1)
