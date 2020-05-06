@@ -32,8 +32,7 @@ bind_layers(LISP_GPE_Header, IPv6, next_proto=2)
 bind_layers(LISP_GPE_Header, Ether, next_proto=3)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Driver(object):
+class Driver(object, metaclass=abc.ABCMeta):
 
     config_order = ['locator-sets',
                     'locators',

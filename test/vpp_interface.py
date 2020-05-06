@@ -2,7 +2,6 @@ import binascii
 import socket
 import abc
 
-import six
 from six import moves
 
 from util import Host, mk_ll_addr
@@ -15,8 +14,7 @@ except NameError:
     text_type = str
 
 
-@six.add_metaclass(abc.ABCMeta)
-class VppInterface(object):
+class VppInterface(object, metaclass=abc.ABCMeta):
     """Generic VPP interface."""
 
     @property
