@@ -175,7 +175,7 @@ define show_lisp_use_petr_reply
 {
   u32 context;
   i32 retval;
-  bool is_petr_enable [default=true];
+  bool is_petr_enable;
   vl_api_address_t ip_address;
 };
 
@@ -198,7 +198,7 @@ define show_lisp_rloc_probe_state_reply
 {
   u32 context;
   i32 retval;
-  bool is_enabled [default=true];
+  bool is_enabled;
 };
 
 /** \brief enable/disable LISP RLOC probing
@@ -243,7 +243,7 @@ define show_lisp_map_register_state_reply
 {
   u32 context;
   i32 retval;
-  bool is_enabled [default=true];
+  bool is_enabled;
 };
 
 /** \brief set LISP map-request mode. Based on configuration VPP will send
