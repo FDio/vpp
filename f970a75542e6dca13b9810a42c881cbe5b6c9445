@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aa36b06f_91b3d15a",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 721,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2020-05-06T13:34:18Z",
+      "side": 0,
+      "message": "Why ?",
+      "revId": "f970a75542e6dca13b9810a42c881cbe5b6c9445",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
