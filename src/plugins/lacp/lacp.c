@@ -42,7 +42,7 @@ lacp_fill_pdu (lacp_pdu_t * lacpdu, slave_if_t * sif)
  * send a lacp pkt on an ethernet interface
  */
 static void
-lacp_send_ethernet_lacp_pdu (slave_if_t * sif)
+lacp_send_ethernet_lacp_pdu (vlib_main_t * vm, slave_if_t * sif)
 {
   lacp_main_t *lm = &lacp_main;
   u32 *to_next;
@@ -51,7 +51,6 @@ lacp_send_ethernet_lacp_pdu (slave_if_t * sif)
   u32 bi0;
   vlib_buffer_t *b0;
   vlib_frame_t *f;
-  vlib_main_t *vm = lm->vlib_main;
   vnet_main_t *vnm = lm->vnet_main;
 
   /*
@@ -90,7 +89,7 @@ lacp_send_ethernet_lacp_pdu (slave_if_t * sif)
 
   vlib_put_frame_to_node (vm, hw->output_node_index, f);
 
-  sif->last_lacpdu_sent_time = vlib_time_now (lm->vlib_main);
+  sif->last_lacpdu_sent_time = vlib_time_now (vm);
   sif->pdu_sent++;
 }
 
@@ -127,7 +126,7 @@ lacp_send_lacp_pdu (vlib_main_t * vm, slave_if_t * sif)
   switch (sif->packet_template_index)
     {
     case LACP_PACKET_TEMPLATE_ETHERNET:
-      lacp_send_ethernet_lacp_pdu (sif);
+      lacp_send_ethernet_lacp_pdu (vm, sif);
       break;
 
     default:
@@ -139,7 +138,6 @@ void
 lacp_periodic (vlib_main_t * vm)
 {
   bond_main_t *bm = &bond_main;
-  lacp_main_t *lm = &lacp_main;
   slave_if_t *sif;
   bond_if_t *bif;
   u8 actor_state, partner_state;
@@ -153,20 +151,20 @@ lacp_periodic (vlib_main_t * vm)
     actor_state = sif->actor.state;
     partner_state = sif->partner.state;
     if (lacp_timer_is_running (sif->current_while_timer) &&
-	lacp_timer_is_expired (lm->vlib_main, sif->current_while_timer))
+	lacp_timer_is_expired (vm, sif->current_while_timer))
       {
         lacp_machine_dispatch (&lacp_rx_machine, vm, sif,
 			       LACP_RX_EVENT_TIMER_EXPIRED, &sif->rx_state);
       }
 
     if (lacp_timer_is_running (sif->periodic_timer) &&
-	lacp_timer_is_expired (lm->vlib_main, sif->periodic_timer))
+	lacp_timer_is_expired (vm, sif->periodic_timer))
       {
         lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
 			       LACP_PTX_EVENT_TIMER_EXPIRED, &sif->ptx_state);
       }
     if (lacp_timer_is_running (sif->wait_while_timer) &&
-	lacp_timer_is_expired (lm->vlib_main, sif->wait_while_timer))
+	lacp_timer_is_expired (vm, sif->wait_while_timer))
       {
 	sif->ready_n = 1;
         lacp_stop_timer (&sif->wait_while_timer);

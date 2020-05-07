@@ -62,7 +62,7 @@ marker_fill_request_pdu (marker_pdu_t * marker, slave_if_t * sif)
 }
 
 static void
-send_ethernet_marker_response_pdu (slave_if_t * sif)
+send_ethernet_marker_response_pdu (vlib_main_t * vm, slave_if_t * sif)
 {
   lacp_main_t *lm = &lacp_main;
   u32 *to_next;
@@ -71,7 +71,6 @@ send_ethernet_marker_response_pdu (slave_if_t * sif)
   u32 bi0;
   vlib_buffer_t *b0;
   vlib_frame_t *f;
-  vlib_main_t *vm = lm->vlib_main;
   vnet_main_t *vnm = lm->vnet_main;
 
   /*
@@ -109,7 +108,7 @@ send_ethernet_marker_response_pdu (slave_if_t * sif)
   f->n_vectors = 1;
 
   vlib_put_frame_to_node (vm, hw->output_node_index, f);
-  sif->last_marker_pdu_sent_time = vlib_time_now (lm->vlib_main);
+  sif->last_marker_pdu_sent_time = vlib_time_now (vm);
   sif->marker_pdu_sent++;
 }
 
@@ -126,7 +125,7 @@ handle_marker_protocol (vlib_main_t * vm, slave_if_t * sif)
       (marker->terminator.tlv_length != 0))
     return (LACP_ERROR_BAD_TLV);
 
-  send_ethernet_marker_response_pdu (sif);
+  send_ethernet_marker_response_pdu (vm, sif);
 
   return LACP_ERROR_NONE;
 }
@@ -138,7 +137,6 @@ lacp_error_t
 lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
 {
   bond_main_t *bm = &bond_main;
-  lacp_main_t *lm = &lacp_main;
   slave_if_t *sif;
   uword nbytes;
   lacp_error_t e;
@@ -157,7 +155,7 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
   marker = (marker_pdu_t *) (b0->data + b0->current_data);
   if (marker->subtype == MARKER_SUBTYPE)
     {
-      sif->last_marker_pdu_recd_time = vlib_time_now (lm->vlib_main);
+      sif->last_marker_pdu_recd_time = vlib_time_now (vm);
       if (sif->last_marker_pkt)
 	_vec_len (sif->last_marker_pkt) = 0;
       vec_validate (sif->last_marker_pkt,
@@ -195,7 +193,7 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
   nbytes = vlib_buffer_contents (vm, bi0, sif->last_rx_pkt);
   ASSERT (nbytes <= vec_len (sif->last_rx_pkt));
 
-  sif->last_lacpdu_recd_time = vlib_time_now (lm->vlib_main);
+  sif->last_lacpdu_recd_time = vlib_time_now (vm);
   if (nbytes < sizeof (lacp_pdu_t))
     {
       sif->bad_pdu_received++;
@@ -209,8 +207,7 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
       (sif->last_packet_signature == last_packet_signature) &&
       ((sif->actor.state & LACP_STEADY_STATE) == LACP_STEADY_STATE))
     {
-      lacp_start_current_while_timer (lm->vlib_main, sif,
-				      sif->ttl_in_seconds);
+      lacp_start_current_while_timer (vm, sif, sif->ttl_in_seconds);
       e = LACP_ERROR_CACHE_HIT;
     }
   else

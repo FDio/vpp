@@ -98,14 +98,13 @@ lacp_mux_action_detached (void *p1, void *p2)
 {
   vlib_main_t *vm = p1;
   slave_if_t *sif = p2;
-  lacp_main_t *lm = &lacp_main;
 
   lacp_detach_mux_from_aggregator (vm, sif);
   sif->actor.state &= ~LACP_STATE_COLLECTING;
   bond_disable_collecting_distributing (vm, sif);
   sif->actor.state &= ~LACP_STATE_DISTRIBUTING;
   sif->ntt = 1;
-  lacp_start_periodic_timer (lm->vlib_main, sif, 0);
+  lacp_start_periodic_timer (vm, sif, 0);
 
   if (sif->selected == LACP_PORT_SELECTED)
     lacp_machine_dispatch (&lacp_mux_machine, vm, sif,
@@ -123,14 +122,13 @@ lacp_mux_action_attached (void *p1, void *p2)
 {
   vlib_main_t *vm = p1;
   slave_if_t *sif = p2;
-  lacp_main_t *lm = &lacp_main;
 
   lacp_attach_mux_to_aggregator (vm, sif);
   sif->actor.state &= ~LACP_STATE_COLLECTING;
   bond_disable_collecting_distributing (vm, sif);
   sif->actor.state &= ~LACP_STATE_DISTRIBUTING;
   sif->ntt = 1;
-  lacp_start_periodic_timer (lm->vlib_main, sif, 0);
+  lacp_start_periodic_timer (vm, sif, 0);
 
   if ((sif->selected == LACP_PORT_UNSELECTED) ||
       (sif->selected == LACP_PORT_STANDBY))
@@ -149,11 +147,9 @@ lacp_mux_action_waiting (void *p1, void *p2)
 {
   vlib_main_t *vm = p1;
   slave_if_t *sif = p2;
-  lacp_main_t *lm = &lacp_main;
 
   if (!lacp_timer_is_running (sif->wait_while_timer))
-    lacp_start_wait_while_timer (lm->vlib_main, sif,
-				 LACP_AGGREGATE_WAIT_TIME);
+    lacp_start_wait_while_timer (vm, sif, LACP_AGGREGATE_WAIT_TIME);
 
   if ((sif->selected == LACP_PORT_SELECTED) && sif->ready)
     lacp_machine_dispatch (&lacp_mux_machine, vm, sif,
@@ -171,13 +167,12 @@ lacp_mux_action_collecting_distributing (void *p1, void *p2)
 {
   vlib_main_t *vm = p1;
   slave_if_t *sif = p2;
-  lacp_main_t *lm = &lacp_main;
 
   sif->actor.state |= LACP_STATE_SYNCHRONIZATION | LACP_STATE_COLLECTING |
     LACP_STATE_DISTRIBUTING;
   bond_enable_collecting_distributing (vm, sif);
   sif->ntt = 1;
-  lacp_start_periodic_timer (lm->vlib_main, sif, 0);
+  lacp_start_periodic_timer (vm, sif, 0);
   if ((sif->selected == LACP_PORT_UNSELECTED) ||
       (sif->selected == LACP_PORT_STANDBY) ||
       !(sif->partner.state & LACP_STATE_SYNCHRONIZATION))

@@ -174,7 +174,6 @@ lacp_update_ntt (vlib_main_t * vm, slave_if_t * sif)
   lacp_pdu_t *lacpdu = (lacp_pdu_t *) sif->last_rx_pkt;
   u8 states = LACP_STATE_LACP_ACTIVITY | LACP_STATE_LACP_TIMEOUT |
     LACP_STATE_SYNCHRONIZATION | LACP_STATE_AGGREGATION;
-  lacp_main_t *lm = &lacp_main;
 
   if ((states & lacpdu->partner.port_info.state) !=
       (states & sif->actor.state)
@@ -182,7 +181,7 @@ lacp_update_ntt (vlib_main_t * vm, slave_if_t * sif)
 		 sizeof (sif->actor) - sizeof (sif->actor.state)))
     {
       sif->ntt = 1;
-      lacp_start_periodic_timer (lm->vlib_main, sif, 0);
+      lacp_start_periodic_timer (vm, sif, 0);
     }
 }
 
@@ -285,17 +284,16 @@ lacp_rx_action_expired (void *p1, void *p2)
   vlib_main_t *vm = p1;
   slave_if_t *sif = p2;
   u8 timer_expired;
-  lacp_main_t *lm = &lacp_main;
 
   sif->partner.state &= ~LACP_STATE_SYNCHRONIZATION;
   sif->partner.state |= LACP_STATE_LACP_TIMEOUT;
   lacp_ptx_post_short_timeout_event (vm, sif);
   if (lacp_timer_is_running (sif->current_while_timer) &&
-      lacp_timer_is_expired (lm->vlib_main, sif->current_while_timer))
+      lacp_timer_is_expired (vm, sif->current_while_timer))
     timer_expired = 1;
   else
     timer_expired = 0;
-  lacp_start_current_while_timer (lm->vlib_main, sif, sif->ttl_in_seconds);
+  lacp_start_current_while_timer (vm, sif, sif->ttl_in_seconds);
   sif->actor.state |= LACP_STATE_EXPIRED;
   if (timer_expired)
     lacp_machine_dispatch (&lacp_rx_machine, vm, sif,
@@ -365,12 +363,11 @@ lacp_rx_action_current (void *p1, void *p2)
 {
   vlib_main_t *vm = p1;
   slave_if_t *sif = p2;
-  lacp_main_t *lm = &lacp_main;
 
   lacp_update_selected (vm, sif);
   lacp_update_ntt (vm, sif);
   lacp_record_pdu (vm, sif);
-  lacp_start_current_while_timer (lm->vlib_main, sif, sif->ttl_in_seconds);
+  lacp_start_current_while_timer (vm, sif, sif->ttl_in_seconds);
   sif->actor.state &= ~LACP_STATE_EXPIRED;
   if (lacp_port_is_moved (vm, sif))
     lacp_set_port_moved (vm, sif, 1);
