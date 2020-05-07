@@ -306,10 +306,10 @@ search_free_list (void *v, uword size)
 	    if ((s = f_size - size) >= 0)
 	      break;
 	  }
-	while (l >= 0);
+	while (l > 0);
 
 	/* If we fail to find a large enough object, try the next larger size. */
-	if (l < 0)
+	if (l <= 0)
 	  continue;
 
 	ASSERT (heap_is_free (f));
