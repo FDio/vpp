@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f60b93f3_862b82f2",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2020-05-07T07:20:36Z",
+      "side": 1,
+      "message": "yes, will do.",
+      "parentUuid": "fa7c77c3_e1264fe8",
+      "revId": "ff0fe4bfada5fce516c04595fd172eebbddc7438",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "55b0bbc4_a5b43611",
         "filename": "src/vlib/buffer_funcs.h",
         "patchSetId": 5
@@ -30,6 +48,24 @@
       "writtenOn": "2020-04-30T10:15:04Z",
       "side": 1,
       "message": "We already have uXXxYY_pack(), (looks like there is a bug in sse4.2 code, should be _mm_packus_epi32, not _mm_packs_epi32). Can you use that and, sure, add neon version...",
+      "revId": "ff0fe4bfada5fce516c04595fd172eebbddc7438",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7df4021b_b52aff39",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 374,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2020-05-07T07:20:36Z",
+      "side": 1,
+      "message": "Hi Damjan,\nI can add NEON version of uXXxYY_pack(), but I don\u0027t think think it meets the requirement here.\n\ne.g.,\na \u003d {1, 2, 3, 4}; b \u003d {5, 6, 7, 8}\nI\u0027m expecting to get c as (u32x4) {1, 3, 5, 7} via \u0027c \u003d u32x4_even_elements (a, b)\u0027\nwhile,\nI got c as (u16x8) {1, 2, 3, 4, 5, 6, 7, 8} via \u0027u16x8 u32x4_pack (u32x4 lo, u32x4 hi)\u0027",
+      "parentUuid": "55b0bbc4_a5b43611",
       "revId": "ff0fe4bfada5fce516c04595fd172eebbddc7438",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
