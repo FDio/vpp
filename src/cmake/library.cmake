@@ -34,7 +34,7 @@ macro(add_vpp_library lib)
   endif()
   install(
     TARGETS ${lib}
-    DESTINATION lib
+    DESTINATION ${VPP_LIBRARY_DIR}
     COMPONENT ${ARG_COMPONENT}
   )
 
