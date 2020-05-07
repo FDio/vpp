@@ -86,13 +86,13 @@ macro(add_vpp_plugin name)
       LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/vpp_api_test_plugins)
     install(
       TARGETS ${test_plugin_name}
-      DESTINATION lib/vpp_api_test_plugins
+      DESTINATION ${VPP_LIBRARY_DIR}/vpp_api_test_plugins
       COMPONENT ${PLUGIN_COMPONENT}
     )
   endif()
   install(
     TARGETS ${plugin_name}
-    DESTINATION lib/vpp_plugins
+    DESTINATION ${VPP_LIBRARY_DIR}/vpp_plugins
     COMPONENT ${PLUGIN_COMPONENT}
   )
 endmacro()
