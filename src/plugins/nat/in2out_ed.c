@@ -292,7 +292,7 @@ slow_path_ed (snat_main_t * sm,
   snat_session_key_t key0, key1;
   lb_nat_type_t lb = 0;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-  u32 snat_proto = ip_proto_to_snat_proto (proto);
+  u32 snat_proto = sm->ip_proto_to_snat_proto[proto];
   nat_outside_fib_t *outside_fib;
   fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
   clib_bihash_kv_16_8_t out2in_ed_kv;
@@ -988,7 +988,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 
 	  udp0 = ip4_next_header (ip0);
 	  tcp0 = (tcp_header_t *) udp0;
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = sm->ip_proto_to_snat_proto[ip0->protocol];
 
 	  if (PREDICT_FALSE (proto0 == ~0))
 	    {
@@ -1270,7 +1270,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	  udp0 = ip4_next_header (ip0);
 	  tcp0 = (tcp_header_t *) udp0;
 	  icmp0 = (icmp46_header_t *) udp0;
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = sm->ip_proto_to_snat_proto[ip0->protocol];
 
 	  if (PREDICT_FALSE (proto0 == ~0))
 	    {

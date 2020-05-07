@@ -373,7 +373,7 @@ create_bypass_for_fwd (snat_main_t * sm, vlib_buffer_t * b, ip4_header_t * ip,
 	  return;
 	}
 
-      proto = ip_proto_to_snat_proto (ip->protocol);
+      proto = sm->ip_proto_to_snat_proto[ip->protocol];
 
       s->ext_host_addr = ip->src_address;
       s->ext_host_port = r_port;
@@ -452,7 +452,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
       /* Try to match static mapping */
       e_key.addr = ip->dst_address;
       e_key.port = l_port;
-      e_key.protocol = ip_proto_to_snat_proto (ip->protocol);
+      e_key.protocol = sm->ip_proto_to_snat_proto[ip->protocol];
       e_key.fib_index = rx_fib_index;
       if (snat_static_mapping_match
 	  (sm, e_key, &l_key, 1, &is_addr_only, 0, 0, 0, &identity_nat))
@@ -711,7 +711,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 
 	  udp0 = ip4_next_header (ip0);
 	  tcp0 = (tcp_header_t *) udp0;
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = sm->ip_proto_to_snat_proto[ip0->protocol];
 
 	  if (PREDICT_FALSE (proto0 == ~0))
 	    {
@@ -985,7 +985,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	  udp0 = ip4_next_header (ip0);
 	  tcp0 = (tcp_header_t *) udp0;
 	  icmp0 = (icmp46_header_t *) udp0;
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = sm->ip_proto_to_snat_proto[ip0->protocol];
 
 	  if (PREDICT_FALSE (proto0 == ~0))
 	    {

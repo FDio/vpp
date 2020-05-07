@@ -417,7 +417,7 @@ static_always_inline
     {
       inner_ip0 = (ip4_header_t *) (echo0 + 1);
       l4_header = ip4_next_header (inner_ip0);
-      key0.protocol = ip_proto_to_snat_proto (inner_ip0->protocol);
+      key0.protocol = snat_main.ip_proto_to_snat_proto[inner_ip0->protocol];
       key0.addr = inner_ip0->dst_address;
       switch (key0.protocol)
 	{
@@ -971,7 +971,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	      goto trace00;
 	    }
 
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = sm->ip_proto_to_snat_proto[ip0->protocol];
 
 	  /* Next configured feature, probably ip4-lookup */
 	  if (is_slow_path)
@@ -1179,7 +1179,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	      goto trace01;
 	    }
 
-	  proto1 = ip_proto_to_snat_proto (ip1->protocol);
+	  proto1 = sm->ip_proto_to_snat_proto[ip1->protocol];
 
 	  /* Next configured feature, probably ip4-lookup */
 	  if (is_slow_path)
@@ -1422,7 +1422,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = sm->ip_proto_to_snat_proto[ip0->protocol];
 
 	  /* Next configured feature, probably ip4-lookup */
 	  if (is_slow_path)
@@ -1828,7 +1828,7 @@ VLIB_NODE_FN (snat_in2out_fast_node) (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = sm->ip_proto_to_snat_proto[ip0->protocol];
 
 	  if (PREDICT_FALSE (proto0 == ~0))
 	    goto trace0;

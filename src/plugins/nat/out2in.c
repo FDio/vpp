@@ -286,7 +286,7 @@ static_always_inline
     {
       inner_ip0 = (ip4_header_t *) (echo0 + 1);
       l4_header = ip4_next_header (inner_ip0);
-      key0.protocol = ip_proto_to_snat_proto (inner_ip0->protocol);
+      key0.protocol = snat_main.ip_proto_to_snat_proto[inner_ip0->protocol];
       key0.addr = inner_ip0->src_address;
       switch (key0.protocol)
 	{
@@ -808,7 +808,7 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = sm->ip_proto_to_snat_proto[ip0->protocol];
 
 	  if (PREDICT_FALSE (proto0 == ~0))
 	    {
@@ -982,7 +982,7 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	      goto trace1;
 	    }
 
-	  proto1 = ip_proto_to_snat_proto (ip1->protocol);
+	  proto1 = sm->ip_proto_to_snat_proto[ip1->protocol];
 
 	  if (PREDICT_FALSE (proto1 == ~0))
 	    {
@@ -1187,7 +1187,7 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	  rx_fib_index0 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index,
 				   sw_if_index0);
 
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = sm->ip_proto_to_snat_proto[ip0->protocol];
 
 	  if (PREDICT_FALSE (proto0 == ~0))
 	    {
@@ -1469,7 +1469,7 @@ VLIB_NODE_FN (snat_out2in_fast_node) (vlib_main_t * vm,
 	      goto trace00;
 	    }
 
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = sm->ip_proto_to_snat_proto[ip0->protocol];
 
 	  if (PREDICT_FALSE (proto0 == ~0))
 	    goto trace00;

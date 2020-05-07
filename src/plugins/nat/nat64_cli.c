@@ -395,7 +395,8 @@ nat64_cli_bib_walk (nat64_db_bib_entry_t * bibe, void *ctx)
 		       format_ip4_address, &bibe->out_addr,
 		       clib_net_to_host_u16 (bibe->out_port),
 		       format_snat_protocol,
-		       ip_proto_to_snat_proto (bibe->proto), fib->ft_table_id,
+		       snat_main.ip_proto_to_snat_proto[bibe->proto],
+		       fib->ft_table_id,
 		       bibe->is_static ? "static" : "dynamic", bibe->ses_num);
       break;
     default:
@@ -485,7 +486,7 @@ nat64_cli_st_walk (nat64_db_st_entry_t * ste, void *arg)
 		     format_ip4_address, &ste->out_r_addr,
 		     clib_net_to_host_u16 (bibe->out_port),
 		     format_snat_protocol,
-		     ip_proto_to_snat_proto (bibe->proto), vrf_id);
+		     snat_main.ip_proto_to_snat_proto[bibe->proto], vrf_id);
   else if (ste->proto == IP_PROTOCOL_TCP || ste->proto == IP_PROTOCOL_UDP)
     vlib_cli_output (vm, " %U %u %U %u %U %u %U %u protcol %U vrf %u",
 		     format_ip6_address, &bibe->in_addr,
@@ -497,7 +498,7 @@ nat64_cli_st_walk (nat64_db_st_entry_t * ste, void *arg)
 		     format_ip4_address, &ste->out_r_addr,
 		     clib_net_to_host_u16 (ste->r_port),
 		     format_snat_protocol,
-		     ip_proto_to_snat_proto (bibe->proto), vrf_id);
+		     snat_main.ip_proto_to_snat_proto[bibe->proto], vrf_id);
   else
     vlib_cli_output (vm, " %U %U %U %U protocol %u vrf %u",
 		     format_ip6_address, &bibe->in_addr,

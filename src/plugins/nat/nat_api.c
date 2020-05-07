@@ -1118,7 +1118,7 @@ static void
 
   vrf_id = clib_net_to_host_u32 (mp->vrf_id);
   external_sw_if_index = clib_net_to_host_u32 (mp->external_sw_if_index);
-  proto = ip_proto_to_snat_proto (mp->protocol);
+  proto = sm->ip_proto_to_snat_proto[mp->protocol];
 
   if (mp->flags & NAT_API_IS_TWICE_NAT)
     twice_nat = TWICE_NAT;
@@ -1315,7 +1315,7 @@ static void
   if (!(mp->flags & NAT_API_IS_ADDR_ONLY))
     {
       port = clib_net_to_host_u16 (mp->port);
-      proto = ip_proto_to_snat_proto (mp->protocol);
+      proto = sm->ip_proto_to_snat_proto[mp->protocol];
     }
   vrf_id = clib_net_to_host_u32 (mp->vrf_id);
   sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
@@ -1801,7 +1801,7 @@ static void
     unformat_nat44_lb_addr_port (mp->locals,
 				 clib_net_to_host_u32 (mp->local_num));
   clib_memcpy (&e_addr, mp->external_addr, 4);
-  proto = ip_proto_to_snat_proto (mp->protocol);
+  proto = sm->ip_proto_to_snat_proto[mp->protocol];
 
   if (mp->flags & NAT_API_IS_TWICE_NAT)
     twice_nat = TWICE_NAT;
@@ -1858,7 +1858,7 @@ static void
 
   clib_memcpy (&e_addr, mp->external_addr, 4);
   clib_memcpy (&l_addr, mp->local.addr, 4);
-  proto = ip_proto_to_snat_proto (mp->protocol);
+  proto = sm->ip_proto_to_snat_proto[mp->protocol];
 
   rv =
     nat44_lb_static_mapping_add_del_local (e_addr,
@@ -1991,7 +1991,7 @@ vl_api_nat44_del_session_t_handler (vl_api_nat44_del_session_t * mp)
   memcpy (&addr.as_u8, mp->address, 4);
   port = clib_net_to_host_u16 (mp->port);
   vrf_id = clib_net_to_host_u32 (mp->vrf_id);
-  proto = ip_proto_to_snat_proto (mp->protocol);
+  proto = sm->ip_proto_to_snat_proto[mp->protocol];
   memcpy (&eh_addr.as_u8, mp->ext_host_address, 4);
   eh_port = clib_net_to_host_u16 (mp->ext_host_port);
 

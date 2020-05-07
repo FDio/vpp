@@ -679,6 +679,8 @@ typedef struct snat_main_s
   ip4_main_t *ip4_main;
   ip_lookup_main_t *ip4_lookup_main;
   api_main_t *api_main;
+
+  snat_protocol_t ip_proto_to_snat_proto[255];
 } snat_main_t;
 
 typedef struct

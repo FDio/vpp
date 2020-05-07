@@ -134,7 +134,7 @@ icmp_match_in2out_det (snat_main_t * sm, vlib_node_runtime_t * node,
       /* if error message, then it's not fragmented and we can access it */
       inner_ip0 = (ip4_header_t *) (echo0 + 1);
       l4_header = ip4_next_header (inner_ip0);
-      protocol = ip_proto_to_snat_proto (inner_ip0->protocol);
+      protocol = sm->ip_proto_to_snat_proto[inner_ip0->protocol];
       in_addr = inner_ip0->dst_address;
       switch (protocol)
 	{
@@ -333,7 +333,7 @@ VLIB_NODE_FN (snat_det_in2out_node) (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = sm->ip_proto_to_snat_proto[ip0->protocol];
 
 	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
 	    {
@@ -506,7 +506,7 @@ VLIB_NODE_FN (snat_det_in2out_node) (vlib_main_t * vm,
 	      goto trace1;
 	    }
 
-	  proto1 = ip_proto_to_snat_proto (ip1->protocol);
+	  proto1 = sm->ip_proto_to_snat_proto[ip1->protocol];
 
 	  if (PREDICT_FALSE (proto1 == SNAT_PROTOCOL_ICMP))
 	    {
@@ -715,7 +715,7 @@ VLIB_NODE_FN (snat_det_in2out_node) (vlib_main_t * vm,
 	      goto trace00;
 	    }
 
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = sm->ip_proto_to_snat_proto[ip0->protocol];
 
 	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
 	    {

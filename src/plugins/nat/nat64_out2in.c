@@ -575,7 +575,7 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
 
 	  next0 = NAT64_OUT2IN_NEXT_IP6_LOOKUP;
 
-	  proto0 = ip_proto_to_snat_proto (ip40->protocol);
+	  proto0 = snat_main.ip_proto_to_snat_proto[ip40->protocol];
 
 	  if (PREDICT_FALSE (proto0 == ~0))
 	    {

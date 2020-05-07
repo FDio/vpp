@@ -69,7 +69,7 @@ nat64_db_bib_entry_create (u32 thread_index, nat64_db_t * db,
     }
 
   /* create pool entry */
-  switch (ip_proto_to_snat_proto (proto))
+  switch (snat_main.ip_proto_to_snat_proto[proto])
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -136,7 +136,7 @@ nat64_db_bib_entry_free (u32 thread_index, nat64_db_t * db,
   nat64_db_st_entry_t *st, *ste;
   fib_table_t *fib;
 
-  switch (ip_proto_to_snat_proto (bibe->proto))
+  switch (snat_main.ip_proto_to_snat_proto[bibe->proto])
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -214,7 +214,7 @@ nat64_db_bib_entry_find (nat64_db_t * db, ip46_address_t * addr, u16 port,
   clib_bihash_kv_24_8_t kv, value;
   nat64_db_bib_entry_t *bib;
 
-  switch (ip_proto_to_snat_proto (proto))
+  switch (snat_main.ip_proto_to_snat_proto[proto])
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -273,7 +273,7 @@ nat64_db_bib_walk (nat64_db_t * db, u8 proto,
     }
   else
     {
-      switch (ip_proto_to_snat_proto (proto))
+      switch (snat_main.ip_proto_to_snat_proto[proto])
 	{
     /* *INDENT-OFF* */
     #define _(N, i, n, s) \
@@ -303,7 +303,7 @@ nat64_db_bib_entry_by_index (nat64_db_t * db, u8 proto, u32 bibe_index)
 {
   nat64_db_bib_entry_t *bib;
 
-  switch (ip_proto_to_snat_proto (proto))
+  switch (snat_main.ip_proto_to_snat_proto[proto])
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -347,7 +347,7 @@ nat64_db_st_walk (nat64_db_t * db, u8 proto,
     }
   else
     {
-      switch (ip_proto_to_snat_proto (proto))
+      switch (snat_main.ip_proto_to_snat_proto[proto])
 	{
     /* *INDENT-OFF* */
     #define _(N, i, n, s) \
@@ -391,7 +391,7 @@ nat64_db_st_entry_create (u32 thread_index, nat64_db_t * db,
     }
 
   /* create pool entry */
-  switch (ip_proto_to_snat_proto (bibe->proto))
+  switch (snat_main.ip_proto_to_snat_proto[bibe->proto])
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -478,7 +478,7 @@ nat64_db_st_entry_free (u32 thread_index,
   clib_bihash_kv_48_8_t kv;
   fib_table_t *fib;
 
-  switch (ip_proto_to_snat_proto (ste->proto))
+  switch (snat_main.ip_proto_to_snat_proto[ste->proto])
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -563,7 +563,7 @@ nat64_db_st_entry_find (nat64_db_t * db, ip46_address_t * l_addr,
   nat64_db_st_entry_key_t ste_key;
   clib_bihash_kv_48_8_t kv, value;
 
-  switch (ip_proto_to_snat_proto (proto))
+  switch (snat_main.ip_proto_to_snat_proto[proto])
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -606,7 +606,7 @@ nat64_db_st_entry_get_index (nat64_db_t * db, nat64_db_st_entry_t * ste)
 {
   nat64_db_st_entry_t *st;
 
-  switch (ip_proto_to_snat_proto (ste->proto))
+  switch (snat_main.ip_proto_to_snat_proto[ste->proto])
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -629,7 +629,7 @@ nat64_db_st_entry_by_index (nat64_db_t * db, u8 proto, u32 ste_index)
 {
   nat64_db_st_entry_t *st;
 
-  switch (ip_proto_to_snat_proto (proto))
+  switch (snat_main.ip_proto_to_snat_proto[proto])
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \

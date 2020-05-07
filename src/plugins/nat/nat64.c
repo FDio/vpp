@@ -133,7 +133,7 @@ nat64_get_worker_out2in (vlib_buffer_t * b, ip4_header_t * ip)
   u16 port;
   u32 proto;
 
-  proto = ip_proto_to_snat_proto (ip->protocol);
+  proto = sm->ip_proto_to_snat_proto[ip->protocol];
   udp = ip4_next_header (ip);
   port = udp->dst_port;
 
@@ -170,7 +170,7 @@ nat64_get_worker_out2in (vlib_buffer_t * b, ip4_header_t * ip)
 	{
 	  /* if error message, then it's not fragmented and we can access it */
 	  ip4_header_t *inner_ip = (ip4_header_t *) (echo + 1);
-	  proto = ip_proto_to_snat_proto (inner_ip->protocol);
+	  proto = sm->ip_proto_to_snat_proto[inner_ip->protocol];
 	  void *l4_header = ip4_next_header (inner_ip);
 	  switch (proto)
 	    {
@@ -559,7 +559,7 @@ nat64_free_out_addr_and_port (struct nat64_db_s *db, ip4_address_t * addr,
   int i;
   snat_address_t *a;
   u32 thread_index = db - nm->db;
-  snat_protocol_t proto = ip_proto_to_snat_proto (protocol);
+  snat_protocol_t proto = snat_main.ip_proto_to_snat_proto[protocol];
   u16 port_host_byte_order = clib_net_to_host_u16 (port);
 
   for (i = 0; i < vec_len (nm->addr_pool); i++)
@@ -662,7 +662,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
   nat64_db_bib_entry_t *bibe;
   u32 fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
 						     nat_fib_src_hi);
-  snat_protocol_t p = ip_proto_to_snat_proto (proto);
+  snat_protocol_t p = snat_main.ip_proto_to_snat_proto[proto];
   ip46_address_t addr;
   int i;
   snat_address_t *a;
@@ -869,7 +869,7 @@ nat64_session_reset_timeout (nat64_db_st_entry_t * ste, vlib_main_t * vm)
   nat64_main_t *nm = &nat64_main;
   u32 now = (u32) vlib_time_now (vm);
 
-  switch (ip_proto_to_snat_proto (ste->proto))
+  switch (snat_main.ip_proto_to_snat_proto[ste->proto])
     {
     case SNAT_PROTOCOL_ICMP:
       ste->expire = now + nm->icmp_timeout;

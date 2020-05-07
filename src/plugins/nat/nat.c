@@ -2551,6 +2551,17 @@ test_ed_make_split ()
   ASSERT (value == value2);
 }
 
+static void
+nat_init_ip_proto_to_snat_proto (snat_main_t * sm)
+{
+  clib_memset (sm->ip_proto_to_snat_proto, ~0,
+	       sizeof (sm->ip_proto_to_snat_proto));
+  sm->ip_proto_to_snat_proto[IP_PROTOCOL_TCP] = SNAT_PROTOCOL_TCP;
+  sm->ip_proto_to_snat_proto[IP_PROTOCOL_UDP] = SNAT_PROTOCOL_UDP;
+  sm->ip_proto_to_snat_proto[IP_PROTOCOL_ICMP] = SNAT_PROTOCOL_ICMP;
+  sm->ip_proto_to_snat_proto[IP_PROTOCOL_ICMP6] = SNAT_PROTOCOL_ICMP;
+}
+
 static clib_error_t *
 snat_init (vlib_main_t * vm)
 {
@@ -2719,6 +2730,8 @@ snat_init (vlib_main_t * vm)
   nat_fib_src_low = fib_source_allocate ("nat-low",
 					 FIB_SOURCE_PRIORITY_LOW,
 					 FIB_SOURCE_BH_SIMPLE);
+
+  nat_init_ip_proto_to_snat_proto (sm);
 
   test_ed_make_split ();
   return error;
@@ -3289,7 +3302,7 @@ snat_get_worker_out2in_cb (vlib_buffer_t * b, ip4_header_t * ip0,
 	}
     }
 
-  proto = ip_proto_to_snat_proto (ip0->protocol);
+  proto = sm->ip_proto_to_snat_proto[ip0->protocol];
   udp = ip4_next_header (ip0);
   port = udp->dst_port;
 
@@ -3311,7 +3324,7 @@ snat_get_worker_out2in_cb (vlib_buffer_t * b, ip4_header_t * ip0,
 	{
 	  /* if error message, then it's not fragmented and we can access it */
 	  ip4_header_t *inner_ip = (ip4_header_t *) (echo + 1);
-	  proto = ip_proto_to_snat_proto (inner_ip->protocol);
+	  proto = sm->ip_proto_to_snat_proto[inner_ip->protocol];
 	  void *l4_header = ip4_next_header (inner_ip);
 	  switch (proto)
 	    {
@@ -3472,7 +3485,7 @@ nat44_ed_get_worker_out2in_cb (vlib_buffer_t * b, ip4_header_t * ip,
   snat_static_mapping_t *m;
   u32 hash;
 
-  proto = ip_proto_to_snat_proto (ip->protocol);
+  proto = sm->ip_proto_to_snat_proto[ip->protocol];
 
   if (PREDICT_TRUE (proto == SNAT_PROTOCOL_UDP || proto == SNAT_PROTOCOL_TCP))
     {
@@ -3556,7 +3569,7 @@ nat44_ed_get_worker_out2in_cb (vlib_buffer_t * b, ip4_header_t * ip,
 	{
 	  /* if error message, then it's not fragmented and we can access it */
 	  ip4_header_t *inner_ip = (ip4_header_t *) (echo + 1);
-	  proto = ip_proto_to_snat_proto (inner_ip->protocol);
+	  proto = sm->ip_proto_to_snat_proto[inner_ip->protocol];
 	  void *l4_header = ip4_next_header (inner_ip);
 	  switch (proto)
 	    {

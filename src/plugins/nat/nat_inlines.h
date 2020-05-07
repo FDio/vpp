@@ -143,21 +143,6 @@ nat_pre_node_fn_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-always_inline u32
-ip_proto_to_snat_proto (u8 ip_proto)
-{
-  u32 snat_proto = ~0;
-
-  snat_proto = (ip_proto == IP_PROTOCOL_UDP) ? SNAT_PROTOCOL_UDP : snat_proto;
-  snat_proto = (ip_proto == IP_PROTOCOL_TCP) ? SNAT_PROTOCOL_TCP : snat_proto;
-  snat_proto =
-    (ip_proto == IP_PROTOCOL_ICMP) ? SNAT_PROTOCOL_ICMP : snat_proto;
-  snat_proto =
-    (ip_proto == IP_PROTOCOL_ICMP6) ? SNAT_PROTOCOL_ICMP : snat_proto;
-
-  return snat_proto;
-}
-
 always_inline u8
 snat_proto_to_ip_proto (snat_protocol_t snat_proto)
 {
@@ -558,7 +543,7 @@ get_icmp_i2o_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
       proto = inner_ip0->protocol;
       r_addr = &inner_ip0->src_address;
       l_addr = &inner_ip0->dst_address;
-      switch (ip_proto_to_snat_proto (inner_ip0->protocol))
+      switch (snat_main.ip_proto_to_snat_proto[inner_ip0->protocol])
 	{
 	case SNAT_PROTOCOL_ICMP:
 	  inner_icmp0 = (icmp46_header_t *) l4_header;
@@ -579,7 +564,7 @@ get_icmp_i2o_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
 	      kv);
   if (snat_proto)
     {
-      *snat_proto = ip_proto_to_snat_proto (proto);
+      *snat_proto = snat_main.ip_proto_to_snat_proto[proto];
     }
   if (l_port)
     {
@@ -626,7 +611,7 @@ get_icmp_o2i_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
       proto = inner_ip0->protocol;
       l_addr = &inner_ip0->src_address;
       r_addr = &inner_ip0->dst_address;
-      switch (ip_proto_to_snat_proto (inner_ip0->protocol))
+      switch (snat_main.ip_proto_to_snat_proto[inner_ip0->protocol])
 	{
 	case SNAT_PROTOCOL_ICMP:
 	  inner_icmp0 = (icmp46_header_t *) l4_header;
@@ -645,9 +630,10 @@ get_icmp_o2i_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
     }
   make_ed_kv (l_addr, r_addr, proto, rx_fib_index, _l_port, _r_port, value,
 	      kv);
+
   if (snat_proto)
     {
-      *snat_proto = ip_proto_to_snat_proto (proto);
+      *snat_proto = snat_main.ip_proto_to_snat_proto[proto];
     }
   if (l_port)
     {

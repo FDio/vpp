@@ -218,7 +218,7 @@ snat_icmp_hairpinning (snat_main_t * sm,
 
       inner_ip0 = (ip4_header_t *) ((icmp_echo_header_t *) (icmp0 + 1) + 1);
       l4_header = ip4_next_header (inner_ip0);
-      u32 protocol = ip_proto_to_snat_proto (inner_ip0->protocol);
+      u32 protocol = snat_main.ip_proto_to_snat_proto[inner_ip0->protocol];
 
       if (protocol != SNAT_PROTOCOL_TCP && protocol != SNAT_PROTOCOL_UDP)
 	return 1;
@@ -473,7 +473,7 @@ nat44_hairpinning_fn_inline (vlib_main_t * vm,
 	  udp0 = ip4_next_header (ip0);
 	  tcp0 = (tcp_header_t *) udp0;
 
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = sm->ip_proto_to_snat_proto[ip0->protocol];
 
 	  vnet_get_config_data (&cm->config_main, &b0->current_config_index,
 				&next0, 0);
@@ -584,7 +584,7 @@ snat_hairpin_dst_fn_inline (vlib_main_t * vm,
 	  next0 = NAT_HAIRPIN_NEXT_LOOKUP;
 	  ip0 = vlib_buffer_get_current (b0);
 
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = sm->ip_proto_to_snat_proto[ip0->protocol];
 
 	  vnet_buffer (b0)->snat.flags = 0;
 	  if (PREDICT_FALSE (is_hairpinning (sm, &ip0->dst_address)))

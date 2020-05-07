@@ -224,7 +224,7 @@ nat64_in2out_tcp_udp (vlib_main_t * vm, vlib_buffer_t * p, u16 l4_offset,
 	  u16 out_port;
 	  ip4_address_t out_addr;
 	  if (nat64_alloc_out_addr_and_port
-	      (fib_index, ip_proto_to_snat_proto (proto), &out_addr,
+	      (fib_index, snat_main.ip_proto_to_snat_proto[proto], &out_addr,
 	       &out_port, ctx->thread_index))
 	    return -1;
 
@@ -715,7 +715,7 @@ nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 	  u16 out_port;
 	  ip4_address_t out_addr;
 	  if (nat64_alloc_out_addr_and_port
-	      (fib_index, ip_proto_to_snat_proto (proto), &out_addr,
+	      (fib_index, snat_main.ip_proto_to_snat_proto[proto], &out_addr,
 	       &out_port, thread_index))
 	    return -1;
 
@@ -1112,7 +1112,7 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto trace0;
 	    }
 
-	  proto0 = ip_proto_to_snat_proto (l4_protocol0);
+	  proto0 = snat_main.ip_proto_to_snat_proto[l4_protocol0];
 
 	  if (is_slow_path)
 	    {
