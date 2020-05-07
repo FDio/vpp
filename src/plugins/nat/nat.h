@@ -489,6 +489,9 @@ typedef struct
   /* real thread index */
   u32 thread_index;
 
+  // per thread data structures
+  vlib_main_t *vlib_main;
+
 } snat_main_per_thread_data_t;
 
 struct snat_main_s;
@@ -674,7 +677,6 @@ typedef struct snat_main_s
   u8 log_level;
 
   /* convenience */
-  vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
   ip4_main_t *ip4_main;
   ip_lookup_main_t *ip4_lookup_main;
@@ -850,19 +852,19 @@ typedef enum nat_log_level_t_
 #undef _
 } nat_log_level_t;
 
-#define nat_elog(_level, _str)                    \
-do                                                \
-  {                                               \
-    snat_main_t *sm = &snat_main;                 \
-    if (PREDICT_FALSE (sm->log_level >= _level))  \
-      {                                           \
-        ELOG_TYPE_DECLARE (e) =                   \
-          {                                       \
-            .format = "nat-msg " _str,            \
-            .format_args = "",                    \
-          };                                      \
-        ELOG_DATA (&sm->vlib_main->elog_main, e); \
-      }                                           \
+#define nat_elog(_level, _str)                           \
+do                                                       \
+  {                                                      \
+    snat_main_t *sm = &snat_main;                        \
+    if (PREDICT_FALSE (sm->log_level >= _level))         \
+      {                                                  \
+        ELOG_TYPE_DECLARE (e) =                          \
+          {                                              \
+            .format = "nat-msg " _str,                   \
+            .format_args = "",                           \
+          };                                             \
+        ELOG_DATA (&vlib_global_main.elog_main, e);      \
+      }                                                  \
   } while (0);
 
 #define nat_elog_addr(_level, _str, _addr)               \
@@ -970,24 +972,24 @@ do                                                                           \
     }                                                                        \
   } while (0);
 
-#define nat_elog_X1(_level, _fmt, _arg, _val1)         \
-do                                                     \
-  {                                                    \
-    snat_main_t *sm = &snat_main;                      \
-    if (PREDICT_FALSE (sm->log_level >= _level))       \
-      {                                                \
-        ELOG_TYPE_DECLARE (e) =                        \
-          {                                            \
-            .format = "nat-msg " _fmt,                 \
-            .format_args = _arg,                       \
-          };                                           \
-        CLIB_PACKED(struct                             \
-          {                                            \
-            typeof (_val1) val1;                       \
-          }) *ed;                                      \
-        ed = ELOG_DATA (&sm->vlib_main->elog_main, e); \
-        ed->val1 = _val1;                              \
-      }                                                \
+#define nat_elog_X1(_level, _fmt, _arg, _val1)            \
+do                                                        \
+  {                                                       \
+    snat_main_t *sm = &snat_main;                         \
+    if (PREDICT_FALSE (sm->log_level >= _level))          \
+      {                                                   \
+        ELOG_TYPE_DECLARE (e) =                           \
+          {                                               \
+            .format = "nat-msg " _fmt,                    \
+            .format_args = _arg,                          \
+          };                                              \
+        CLIB_PACKED(struct                                \
+          {                                               \
+            typeof (_val1) val1;                          \
+          }) *ed;                                         \
+        ed = ELOG_DATA (&vlib_global_main.elog_main, e);  \
+        ed->val1 = _val1;                                 \
+      }                                                   \
   } while (0);
 
 #define nat_elog_notice(nat_elog_str) \

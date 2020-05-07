@@ -654,7 +654,7 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   u32 count = 0;
 
-  u64 now = vlib_time_now (sm->vlib_main);
+  u64 now = vlib_time_now (vm);
   u64 sess_timeout_time;
 
   u32 udp_sessions = 0;
