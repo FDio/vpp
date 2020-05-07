@@ -38,6 +38,8 @@ class VppTransport(object):
         # The following fields are set in connect().
         self.message_thread = None
         self.socket = None
+        self.remember_sent = False
+        self.last_sent = None
 
     def msg_thread_func(self):
         while True:
@@ -58,7 +60,7 @@ class VppTransport(object):
 
                 elif r == self.socket:
                     try:
-                        msg = self._read()
+                        msg = self.read_message()
                         if not msg:
                             self.q.put(None)
                             return
@@ -74,6 +76,62 @@ class VppTransport(object):
                 else:
                     raise VppTransportSocketIOError(
                         2, 'Unknown response from select')
+
+    def start_reader_thread(self):
+        """Create and start thread to read and handle messages on background.
+
+        In high performance asynchronous setups this background handling
+        is a bottleneck, so we are allowing users
+        to stop and start it as needed.
+
+        If thread appears to be created already, raise an exception.
+        """
+        if self.message_thread is not None:
+            raise VppTransportSocketIOError(
+                1, "start_reader_thread: already started"
+            )
+        self.message_thread = threading.Thread(target=self.msg_thread_func)
+        self.message_thread.daemon = True
+        self.message_thread.start()
+
+
+    def stop_reader_thread(self):
+        """Stop the thread that reads and handles messages on background.
+
+        In high performance asynchronous setups this background handling
+        is a bottleneck, so we are allowing users
+        to stop and start it as needed.
+
+        If the thread appears to be stopped already, return early.
+
+        The current implementation fails if there are messages in self.q.
+        """
+        if self.message_thread is None:
+            return
+        if self.sque is None:
+            raise VppTransportSocketIOError(
+                1, "stop_reader_thread: sque is None"
+            )
+        self.sque.put(True)  # This tells the thread function to return.
+        if self.message_thread.is_alive():
+            # Join works for threads that stopped already,
+            # but not for threads that never started for some reason.
+            # Hence the condition is needed, it is not just a speedup.
+            self.message_thread.join()
+        # Pop the one None added when the thread closes.
+        non = self.q.get(block=True, timeout=self.read_timeout)
+        if non is not None:
+            raise VppTransportSocketIOError(
+                1, "Got non-None from q {non!r}".format(non-non)
+            )
+        # Also pop the True we used to kill the thread with.
+        non = self.sque.get(block=False)
+        if non is not True:
+            raise VppTransportSocketIOError(
+                1, "Got non-True from sque {non!r}".format(non=non)
+            )
+        self.message_thread = None
+
 
     def connect(self, name, pfx, msg_handler, rx_qlen):
         # TODO: Reorder the actions and add "roll-backs",
@@ -105,7 +163,6 @@ class VppTransport(object):
         # Finally safe to replace.
         self.sque = multiprocessing.Queue()
         self.q = multiprocessing.Queue()
-        self.message_thread = threading.Thread(target=self.msg_thread_func)
 
         # Initialise sockclnt_create
         sockclnt_create = self.parent.messages['sockclnt_create']
@@ -116,11 +173,11 @@ class VppTransport(object):
                 'context': 124}
         b = sockclnt_create.pack(args)
         self.write(b)
-        msg = self._read()
+        msg = self.read_message()
         hdr, length = self.parent.header.unpack(msg, 0)
         if hdr.msgid != 16:
             # TODO: Add first numeric argument.
-            raise VppTransportSocketIOError('Invalid reply message')
+            raise VppTransportSocketIOError(1, 'Invalid reply message')
 
         r, length = sockclnt_create_reply.unpack(msg)
         self.socket_index = r.index
@@ -128,8 +185,7 @@ class VppTransport(object):
             n = m.name
             self.message_table[n] = m.index
 
-        self.message_thread.daemon = True
-        self.message_thread.start()
+        self.start_reader_thread()
 
         return 0
 
@@ -145,17 +201,12 @@ class VppTransport(object):
         except (IOError, vpp_papi.VPPApiError):
             pass
         self.connected = False
+        self.stop_reading_thread()
         if self.socket is not None:
             self.socket.close()
-        if self.sque is not None:
-            self.sque.put(True)  # Terminate listening thread
-        if self.message_thread is not None and self.message_thread.is_alive():
-            # Allow additional connect() calls.
-            self.message_thread.join()
         # Wipe message table, VPP can be restarted with different plugins.
         self.message_table = {}
         # Collect garbage.
-        self.message_thread = None
         self.socket = None
         # Queues will be collected after connect replaces them.
         return rv
@@ -189,6 +240,8 @@ class VppTransport(object):
         # Send header
         header = self.header.pack(0, len(buf), 0)
         try:
+            if self.remember_sent:
+                self.last_sent = bytes(header) + bytes(buf)
             self.socket.sendall(header)
             self.socket.sendall(buf)
         except socket.error as err:
@@ -212,8 +265,16 @@ class VppTransport(object):
             view = view[got:]
         return buf
 
-    def _read(self):
-        """Read single complete message, return it or empty on error."""
+    def read_message(self):
+        """Read single complete message, return it or empty on error.
+
+        The message is returned as bytes, e.g. not deserialized yet.
+        This is mainly called by the background reading thread.
+
+        In high performance scenarios with reading thread stopped,
+        users need to call this explicitly to avoid
+        a deadlock (Unix Domain Socket buffers getting full).
+        """
         hdr = self._read_fixed(16)
         if not hdr:
             return
