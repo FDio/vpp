@@ -76,30 +76,37 @@ crypto_native_init (vlib_main_t * vm)
   cm->crypto_engine_index =
     vnet_crypto_register_engine (vm, "native", 100,
 				 "Native ISA Optimized Crypto");
-
 #if __x86_64__
+#ifdef __VAES__
   if (clib_cpu_supports_vaes ())
     error = crypto_native_aes_cbc_init_vaes (vm);
-  else if (clib_cpu_supports_avx512f ())
+#elif __AVX512F__
+  if (clib_cpu_supports_avx512f ())
     error = crypto_native_aes_cbc_init_avx512 (vm);
-  else if (clib_cpu_supports_avx2 ())
+#elif __AVX2__
+  if (clib_cpu_supports_avx2 ())
     error = crypto_native_aes_cbc_init_avx2 (vm);
-  else
-    error = crypto_native_aes_cbc_init_sse42 (vm);
+#else
+  error = crypto_native_aes_cbc_init_sse42 (vm);
+#endif
 
   if (error)
     goto error;
 
   if (clib_cpu_supports_pclmulqdq ())
     {
+#ifdef __VAES__
       if (clib_cpu_supports_vaes ())
 	error = crypto_native_aes_gcm_init_vaes (vm);
-      else if (clib_cpu_supports_avx512f ())
+#elif __AVX512F__
+      if (clib_cpu_supports_avx512f ())
 	error = crypto_native_aes_gcm_init_avx512 (vm);
-      else if (clib_cpu_supports_avx2 ())
+#elif __AVX2__
+      if (clib_cpu_supports_avx2 ())
 	error = crypto_native_aes_gcm_init_avx2 (vm);
-      else
-	error = crypto_native_aes_gcm_init_sse42 (vm);
+#else
+      error = crypto_native_aes_gcm_init_sse42 (vm);
+#endif
 
       if (error)
 	goto error;
