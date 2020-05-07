@@ -30,7 +30,7 @@ macro(add_vpp_executable exec)
     add_dependencies(${exec} ${ARG_DEPENDS})
   endif()
   if(NOT ARG_NO_INSTALL)
-    install(TARGETS ${exec} DESTINATION bin)
+    install(TARGETS ${exec} DESTINATION ${VPP_RUNTIME_DIR})
   endif()
 endmacro()
 

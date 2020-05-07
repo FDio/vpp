@@ -50,9 +50,11 @@ set(CMAKE_C_COMPILER_TARGET ${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
 ##############################################################################
 check_c_compiler_flag("-Wno-address-of-packed-member"
 		      compiler_flag_no_address_of_packed_member)
+set(VPP_RUNTIME_DIR "bin" CACHE STRING "Relative runtime directory path")
+set(VPP_LIBRARY_DIR "lib" CACHE STRING "Relative library directory path")
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${VPP_RUNTIME_DIR})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${VPP_LIBRARY_DIR})
 
 if (CMAKE_BUILD_TYPE)
   set(CMAKE_C_FLAGS "-g -fPIC -Werror -Wall ${CMAKE_C_FLAGS}")
@@ -107,12 +109,12 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
 # sanitizers
 ##############################################################################
 
-option(ENABLE_SANITIZE_ADDR "Enable Address Sanitizer" OFF)
-if (ENABLE_SANITIZE_ADDR)
+option(VPP_ENABLE_SANITIZE_ADDR "Enable Address Sanitizer" OFF)
+if (VPP_ENABLE_SANITIZE_ADDR)
   set(CMAKE_C_FLAGS "-fsanitize=address --param asan-stack=0 -DCLIB_SANITIZE_ADDR ${CMAKE_C_FLAGS}")
   set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address ${CMAKE_EXE_LINKER_FLAGS}")
   set(CMAKE_SHARED_LINKER_FLAGS "-fsanitize=address ${CMAKE_SHARED_LINKER_FLAGS}")
-endif (ENABLE_SANITIZE_ADDR)
+endif (VPP_ENABLE_SANITIZE_ADDR)
 
 ##############################################################################
 # install config
@@ -139,7 +141,10 @@ include(cmake/plugin.cmake)
 ##############################################################################
 # subdirs - order matters
 ##############################################################################
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+option(VPP_HOST_TOOLS_ONLY "Build only host tools" OFF)
+if(VPP_HOST_TOOLS_ONLY)
+  set(SUBDIRS tools/vppapigen cmake)
+elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
   find_package(OpenSSL REQUIRED)
   set(SUBDIRS
     vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vcl plugins

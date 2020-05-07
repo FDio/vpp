@@ -30,6 +30,6 @@ set(SOURCE_FILES
 
 add_executable(${TEST_NAME} ${SOURCE_FILES})
 target_include_directories(${TEST_NAME} PRIVATE $<BUILD_INTERFACE:${HEADERS_DIR}>)
-target_link_libraries(${TEST_NAME} ${LIBMEMIF} ${CHECK_LIBRARY} ${SUBUNIT_LIBRARY} ${TEST_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(${TEST_NAME} memif ${CHECK_LIBRARY} ${SUBUNIT_LIBRARY} ${TEST_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
 add_test(unit_test unit-test)

@@ -55,6 +55,6 @@ install(
   vapi_cpp_gen.py
   vapi_json_parser.py
 
-  DESTINATION bin
+  DESTINATION ${VPP_RUNTIME_DIR}
   COMPONENT vpp-dev
 )

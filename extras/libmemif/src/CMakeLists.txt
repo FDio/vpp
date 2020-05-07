@@ -32,12 +32,15 @@ list(APPEND MEMIF_SOURCES
 
 include_directories(${HEADERS_DIR})
 
-add_vpp_library(${LIBMEMIF}
-  SOURCES ${MEMIF_SOURCES}
+add_library(memif SHARED ${MEMIF_SOURCES})
+target_link_libraries(memif ${CMAKE_THREAD_LIBS_INIT})
+foreach(file ${MEMIF_HEADERS})
+  get_filename_component(dir ${file} DIRECTORY)
+     install(
+	FILES ${file}
+	DESTINATION include/${lib}/${dir}
+	COMPONENT libmemif-dev
+      )
+endforeach()
 
-  INSTALL_HEADERS ${MEMIF_HEADERS}
-
-  LINK_LIBRARIES ${CMAKE_THREAD_LIBS_INIT}
-
-  COMPONENT libmemif
-)
+install(TARGETS memif DESTINATION lib COMPONENT libmemif)
