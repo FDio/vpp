@@ -329,6 +329,7 @@ icmp_match_out2in_slow (snat_main_t * sm, vlib_node_runtime_t * node,
 			snat_session_key_t * p_value,
 			u8 * p_dont_translate, void *d, void *e)
 {
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   u32 sw_if_index0;
   u32 rx_fib_index0;
   snat_session_key_t key0;
@@ -357,8 +358,7 @@ icmp_match_out2in_slow (snat_main_t * sm, vlib_node_runtime_t * node,
 
   kv0.key = key0.as_u64;
 
-  if (clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].out2in, &kv0,
-			      &value0))
+  if (clib_bihash_search_8_8 (&tsm->out2in, &kv0, &value0))
     {
       /* Try to match static mapping by external address and port,
          destination address and port in packet */
@@ -404,7 +404,7 @@ icmp_match_out2in_slow (snat_main_t * sm, vlib_node_runtime_t * node,
       /* Create session initiated by host from external network */
       s0 = create_session_for_static_mapping (sm, b0, sm0, key0,
 					      node, thread_index,
-					      vlib_time_now (sm->vlib_main));
+					      vlib_time_now (tsm->vlib_main));
 
       if (!s0)
 	{
@@ -427,8 +427,7 @@ icmp_match_out2in_slow (snat_main_t * sm, vlib_node_runtime_t * node,
 	  goto out;
 	}
 
-      s0 = pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
-			      value0.value);
+      s0 = pool_elt_at_index (tsm->sessions, value0.value);
     }
 
 out:
@@ -531,6 +530,7 @@ icmp_out2in (snat_main_t * sm,
 	     vlib_node_runtime_t * node,
 	     u32 next0, u32 thread_index, void *d, void *e)
 {
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   snat_session_key_t sm0;
   u8 protocol;
   icmp_echo_header_t *echo0, *inner_echo0 = 0;
@@ -556,11 +556,12 @@ icmp_out2in (snat_main_t * sm,
 
   if (PREDICT_TRUE (!ip4_is_fragment (ip0)))
     {
-      sum0 = ip_incremental_checksum_buffer (sm->vlib_main, b0, (u8 *) icmp0 -
-					     (u8 *)
-					     vlib_buffer_get_current (b0),
-					     ntohs (ip0->length) -
-					     ip4_header_bytes (ip0), 0);
+      sum0 =
+	ip_incremental_checksum_buffer (tsm->vlib_main, b0,
+					(u8 *) icmp0 -
+					(u8 *) vlib_buffer_get_current (b0),
+					ntohs (ip0->length) -
+					ip4_header_bytes (ip0), 0);
       checksum0 = ~ip_csum_fold (sum0);
       if (checksum0 != 0 && checksum0 != 0xffff)
 	{
@@ -669,6 +670,7 @@ icmp_out2in_slow_path (snat_main_t * sm,
 		       u32 next0, f64 now,
 		       u32 thread_index, snat_session_t ** p_s0)
 {
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   next0 = icmp_out2in (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		       next0, thread_index, p_s0, 0);
   snat_session_t *s0 = *p_s0;
@@ -677,7 +679,7 @@ icmp_out2in_slow_path (snat_main_t * sm,
       /* Accounting */
       nat44_session_update_counters (s0, now,
 				     vlib_buffer_length_in_chain
-				     (sm->vlib_main, b0), thread_index);
+				     (tsm->vlib_main, b0), thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
     }
@@ -725,6 +727,7 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
   snat_main_t *sm = &snat_main;
   f64 now = vlib_time_now (vm);
   u32 thread_index = vm->thread_index;
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   u32 tcp_packets = 0, udp_packets = 0, icmp_packets = 0, other_packets =
     0, fragments = 0;
 
@@ -885,9 +888,7 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 		}
 	    }
 	  else
-	    s0 =
-	      pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
-				 value0.value);
+	    s0 = pool_elt_at_index (tsm->sessions, value0.value);
 
 	  old_addr0 = ip0->dst_address.as_u32;
 	  ip0->dst_address = s0->in2out.addr;

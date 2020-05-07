@@ -413,6 +413,7 @@ nat64_add_interface_address (u32 sw_if_index, int is_add)
 int
 nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
 {
+  vlib_main_t *vm = vlib_get_main ();
   nat64_main_t *nm = &nat64_main;
   snat_interface_t *interface = 0, *i;
   snat_address_t *ap;
@@ -445,7 +446,7 @@ nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
 	interface->flags |= NAT_INTERFACE_FLAG_IS_OUTSIDE;
 
       nm->total_enabled_count++;
-      vlib_process_signal_event (nm->sm->vlib_main,
+      vlib_process_signal_event (vm,
 				 nm->nat64_expire_walk_node_index,
 				 NAT64_CLEANER_RESCHEDULE, 0);
 

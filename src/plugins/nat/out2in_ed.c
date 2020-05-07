@@ -71,6 +71,7 @@ icmp_out2in_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
 			  vlib_node_runtime_t * node, u32 next0, f64 now,
 			  u32 thread_index, snat_session_t ** p_s0)
 {
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   next0 = icmp_out2in (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		       next0, thread_index, p_s0, 0);
   snat_session_t *s0 = *p_s0;
@@ -79,7 +80,7 @@ icmp_out2in_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
       /* Accounting */
       nat44_session_update_counters (s0, now,
 				     vlib_buffer_length_in_chain
-				     (sm->vlib_main, b0), thread_index);
+				     (tsm->vlib_main, b0), thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
     }
@@ -327,7 +328,7 @@ create_bypass_for_fwd (snat_main_t * sm, vlib_buffer_t * b, ip4_header_t * ip,
   udp_header_t *udp;
   snat_session_t *s = 0;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-  f64 now = vlib_time_now (sm->vlib_main);
+  f64 now = vlib_time_now (vlib_mains[thread_index]);
   u16 l_port, r_port;
 
   if (ip->protocol == IP_PROTOCOL_ICMP)
@@ -509,7 +510,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 						rx_fib_index, thread_index, 0,
 						0,
 						vlib_time_now
-						(sm->vlib_main));
+						(tsm->vlib_main));
 
       if (!s)
 	{
@@ -916,6 +917,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next, pkts_processed = 0, stats_node_index;
   nat_next_t next_index;
   snat_main_t *sm = &snat_main;
+  // HERE
   f64 now = vlib_time_now (vm);
   u32 thread_index = vm->thread_index;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
@@ -1071,6 +1073,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 			  next0 = NAT_NEXT_IN2OUT_ED_FAST_PATH;
 			  goto trace0;
 			}
+		      // TEST:
 		      if (sm->num_workers > 1)
 			create_bypass_for_fwd_worker (sm, b0, ip0,
 						      rx_fib_index0);
