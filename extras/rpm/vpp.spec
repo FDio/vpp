@@ -375,7 +375,6 @@ fi
 %{_unitdir}/vpp.service
 /usr/bin/vpp*
 /usr/bin/svm*
-/usr/bin/elftool
 %config(noreplace) /etc/sysctl.d/80-vpp.conf
 %config(noreplace) /etc/vpp/startup.conf
 /usr/share/vpp/api/*
