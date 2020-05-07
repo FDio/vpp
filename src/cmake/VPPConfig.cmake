@@ -33,7 +33,9 @@ if (compiler_flag_no_address_of_packed_member)
   add_definitions(-Wno-address-of-packed-member)
 endif()
 
-include(CheckCCompilerFlag)
+set(VPP_RUNTIME_DIR "bin" CACHE STRING "Relative runtime directory path")
+set(VPP_LIBRARY_DIR "lib" CACHE STRING "Relative library directory path")
+
 include(${CMAKE_CURRENT_LIST_DIR}/cpu.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/api.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/library.cmake)
