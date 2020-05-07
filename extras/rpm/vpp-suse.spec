@@ -289,7 +289,6 @@ export NO_BRP_CHECK_RPATH=true
 %{_unitdir}/vpp.service
 %{_bindir}/vpp*
 %{_bindir}/svm*
-%{_bindir}/elftool
 %dir %{_sysconfdir}/vpp
 %config %{_sysconfdir}/sysctl.d/80-vpp.conf
 %config %{_sysconfdir}/vpp/startup.conf
