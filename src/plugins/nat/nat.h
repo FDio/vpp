@@ -1261,7 +1261,6 @@ void nat_free_session_data (snat_main_t * sm, snat_session_t * s,
 			    u32 thread_index, u8 is_ha);
 
 /**
-<<<<<<< bdfe5955f59a735fd8d70e9026f8c1867a4c8cc6
  * @brief Set NAT44 session limit (session limit, vrf id)
  *
  * @param session_limit Session limit
@@ -1271,10 +1270,7 @@ void nat_free_session_data (snat_main_t * sm, snat_session_t * s,
 int nat44_set_session_limit (u32 session_limit, u32 vrf_id);
 
 /**
- * @brief Free NAT44 ED session data (lookup keys, external addrres port)
-=======
  * @brief Free NAT44 ED session data (lookup keys, external address port)
->>>>>>> docs: clean up make docs job
  *
  * @param s            NAT session
  * @param thread_index thread index
