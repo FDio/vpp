@@ -99,7 +99,7 @@ icmp_match_in2out_det (snat_main_t * sm, vlib_node_runtime_t * node,
 		       snat_session_key_t * p_value, u8 * p_dont_translate,
 		       void *d, void *e)
 {
-  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  vlib_main_t *vm = vlib_get_main ();
   icmp46_header_t *icmp0;
   u32 sw_if_index0;
   u32 rx_fib_index0;
@@ -227,7 +227,7 @@ icmp_match_in2out_det (snat_main_t * sm, vlib_node_runtime_t * node,
       goto out;
     }
 
-  u32 now = (u32) vlib_time_now (tsm->vlib_main);
+  u32 now = (u32) vlib_time_now (vm);
 
   ses0->state = SNAT_SESSION_ICMP_ACTIVE;
   ses0->expire = now + sm->icmp_timeout;
