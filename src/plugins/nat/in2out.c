@@ -469,6 +469,7 @@ icmp_match_in2out_slow (snat_main_t * sm, vlib_node_runtime_t * node,
   clib_bihash_kv_8_8_t kv0, value0;
   u32 next0 = ~0;
   int err;
+  vlib_main_t *vm = vlib_get_main ();
 
   sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
   rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
@@ -521,7 +522,7 @@ icmp_match_in2out_slow (snat_main_t * sm, vlib_node_runtime_t * node,
 	}
 
       next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0, &s0, node, next0,
-			 thread_index, vlib_time_now (tsm->vlib_main));
+			 thread_index, vlib_time_now (vm));
 
       if (PREDICT_FALSE (next0 == SNAT_IN2OUT_NEXT_DROP))
 	goto out;
@@ -659,7 +660,7 @@ icmp_in2out (snat_main_t * sm,
 	     vlib_node_runtime_t * node,
 	     u32 next0, u32 thread_index, void *d, void *e)
 {
-  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  vlib_main_t *vm = vlib_get_main ();
   snat_session_key_t sm0;
   u8 protocol;
   icmp_echo_header_t *echo0, *inner_echo0 = 0;
@@ -687,7 +688,7 @@ icmp_in2out (snat_main_t * sm,
   if (PREDICT_TRUE (!ip4_is_fragment (ip0)))
     {
       sum0 =
-	ip_incremental_checksum_buffer (tsm->vlib_main, b0,
+	ip_incremental_checksum_buffer (vm, b0,
 					(u8 *) icmp0 -
 					(u8 *) vlib_buffer_get_current (b0),
 					ntohs (ip0->length) -
@@ -819,7 +820,8 @@ icmp_in2out_slow_path (snat_main_t * sm,
 		       u32 next0,
 		       f64 now, u32 thread_index, snat_session_t ** p_s0)
 {
-  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  vlib_main_t *vm = vlib_get_main ();
+
   next0 = icmp_in2out (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		       next0, thread_index, p_s0, 0);
   snat_session_t *s0 = *p_s0;
@@ -828,7 +830,7 @@ icmp_in2out_slow_path (snat_main_t * sm,
       /* Accounting */
       nat44_session_update_counters (s0, now,
 				     vlib_buffer_length_in_chain
-				     (tsm->vlib_main, b0), thread_index);
+				     (vm, b0), thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
     }

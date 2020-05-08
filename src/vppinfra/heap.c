@@ -93,7 +93,7 @@ size_to_bin (uword size)
 }
 
 /* Convert bin to size. */
-always_inline __attribute__ ((unused))
+always_inline __attribute__((unused))
      uword bin_to_size (uword bin)
 {
   uword size;
