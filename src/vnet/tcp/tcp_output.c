@@ -148,7 +148,7 @@ tcp_update_rcv_wnd (tcp_connection_t * tc)
     {
       wnd &= ~((1 << tc->rcv_wscale) - 1);
       if (wnd == 0)
-	wnd = 1 << tc->rcv_wscale;
+	wnd = clib_max (1 << tc->rcv_wscale, tc->rcv_opts.mss);
     }
 
   tc->rcv_wnd = clib_min (wnd, TCP_WND_MAX << tc->rcv_wscale);
