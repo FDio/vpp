@@ -1514,7 +1514,7 @@ trace0:
           if (PREDICT_FALSE (t1->decap_next_index != GTPU_INPUT_NEXT_IP4_INPUT) &&
             (t1->decap_next_index != GTPU_INPUT_NEXT_IP6_INPUT))
           {
-            next1 = GTPU_FLOW_ERROR_PAYLOAD_ERROR;
+            error1 = GTPU_FLOW_ERROR_PAYLOAD_ERROR;
             next1 = GTPU_INPUT_NEXT_DROP;
             goto trace1;
           }
@@ -1643,7 +1643,7 @@ trace1:
           if (PREDICT_FALSE (t0->decap_next_index != GTPU_INPUT_NEXT_IP4_INPUT) &&
               (t0->decap_next_index != GTPU_INPUT_NEXT_IP6_INPUT))
           {
-            next0 = GTPU_FLOW_ERROR_PAYLOAD_ERROR;
+            error0 = GTPU_FLOW_ERROR_PAYLOAD_ERROR;
             next0 = GTPU_INPUT_NEXT_DROP;
             goto trace00;
           }
