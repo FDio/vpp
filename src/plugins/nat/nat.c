@@ -2549,20 +2549,9 @@ test_ed_make_split ()
   ASSERT (value == value2);
 }
 
-always_inline vlib_main_t *
-nat_get_vlib_main (u32 thread_index)
-{
-  vlib_main_t *vm;
-  vm = vlib_mains[thread_index];
-  ASSERT (vm);
-  return vm;
-}
-
 static clib_error_t *
 snat_init (vlib_main_t * vm)
 {
-  snat_main_per_thread_data_t *tsm;
-
   snat_main_t *sm = &snat_main;
   clib_error_t *error = 0;
   ip4_main_t *im = &ip4_main;
@@ -2679,11 +2668,6 @@ snat_init (vlib_main_t * vm)
     {
       sm->per_thread_data[0].snat_thread_index = 0;
     }
-
-  vec_foreach (tsm, sm->per_thread_data)
-  {
-    tsm->vlib_main = nat_get_vlib_main (tsm->thread_index);
-  }
 
   error = snat_api_init (vm, sm);
   if (error)
@@ -3642,7 +3626,8 @@ nat_ha_sadd_cb (ip4_address_t * in_addr, u16 in_port,
   snat_user_t *u;
   snat_session_t *s;
   clib_bihash_kv_8_8_t kv;
-  f64 now = vlib_time_now (tsm->vlib_main);
+  vlib_main_t *vm = vlib_get_main ();
+  f64 now = vlib_time_now (vm);
   nat_outside_fib_t *outside_fib;
   fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
   fib_prefix_t pfx = {
@@ -3789,7 +3774,8 @@ nat_ha_sadd_ed_cb (ip4_address_t * in_addr, u16 in_port,
   snat_session_key_t key;
   snat_session_t *s;
   clib_bihash_kv_16_8_t kv;
-  f64 now = vlib_time_now (tsm->vlib_main);
+  vlib_main_t *vm = vlib_get_main ();
+  f64 now = vlib_time_now (vm);
   nat_outside_fib_t *outside_fib;
   fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
   fib_prefix_t pfx = {

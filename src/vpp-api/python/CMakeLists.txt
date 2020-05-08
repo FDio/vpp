@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_package(PythonInterp 2.7)
+find_package(Python3 COMPONENTS Interpreter)
 
 if(PYTHONINTERP_FOUND)
   install(
