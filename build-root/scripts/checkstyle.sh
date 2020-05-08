@@ -72,6 +72,11 @@ cd ${VPP_DIR}
 git status
 for i in ${FILELIST}; do
     if [ -f ${i} ] && [ ${i} != "build-root/scripts/checkstyle.sh" ] && [ ${i} != "extras/emacs/fix-coding-style.el" ]; then
+        grep -q '>>>>>>>' ${i}
+        if [ $? == 0 ]; then
+            echo "Unresolved merge conflict detected in" ${i} "... Abort."
+            exit 1
+        fi
         grep -q "fd.io coding-style-patch-verification: ON" ${i}
         if [ $? == 0 ]; then
             EXTENSION=`basename ${i} | sed 's/^\w\+.//'`
