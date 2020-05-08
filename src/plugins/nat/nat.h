@@ -489,9 +489,6 @@ typedef struct
   /* real thread index */
   u32 thread_index;
 
-  // per thread data structures
-  vlib_main_t *vlib_main;
-
 } snat_main_per_thread_data_t;
 
 struct snat_main_s;

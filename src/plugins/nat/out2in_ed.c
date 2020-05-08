@@ -71,7 +71,8 @@ icmp_out2in_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
 			  vlib_node_runtime_t * node, u32 next0, f64 now,
 			  u32 thread_index, snat_session_t ** p_s0)
 {
-  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  vlib_main_t *vm = vlib_get_main ();
+
   next0 = icmp_out2in (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		       next0, thread_index, p_s0, 0);
   snat_session_t *s0 = *p_s0;
@@ -80,7 +81,7 @@ icmp_out2in_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
       /* Accounting */
       nat44_session_update_counters (s0, now,
 				     vlib_buffer_length_in_chain
-				     (tsm->vlib_main, b0), thread_index);
+				     (vm, b0), thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
     }
@@ -328,7 +329,8 @@ create_bypass_for_fwd (snat_main_t * sm, vlib_buffer_t * b, ip4_header_t * ip,
   udp_header_t *udp;
   snat_session_t *s = 0;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-  f64 now = vlib_time_now (vlib_mains[thread_index]);
+  vlib_main_t *vm = vlib_get_main ();
+  f64 now = vlib_time_now (vm);
   u16 l_port, r_port;
 
   if (ip->protocol == IP_PROTOCOL_ICMP)
@@ -436,6 +438,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
   u8 dont_translate = 0, is_addr_only, identity_nat;
   snat_session_key_t e_key, l_key;
   u16 l_port, r_port;
+  vlib_main_t *vm = vlib_get_main ();
 
   sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
   rx_fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
@@ -508,9 +511,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
       /* Create session initiated by host from external network */
       s = create_session_for_static_mapping_ed (sm, b, l_key, e_key, node,
 						rx_fib_index, thread_index, 0,
-						0,
-						vlib_time_now
-						(tsm->vlib_main));
+						0, vlib_time_now (vm));
 
       if (!s)
 	{

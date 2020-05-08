@@ -170,7 +170,8 @@ icmp_in2out_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
 			  vlib_node_runtime_t * node, u32 next0, f64 now,
 			  u32 thread_index, snat_session_t ** p_s0)
 {
-  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  vlib_main_t *vm = vlib_get_main ();
+
   next0 = icmp_in2out (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		       next0, thread_index, p_s0, 0);
   snat_session_t *s0 = *p_s0;
@@ -179,7 +180,7 @@ icmp_in2out_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
       /* Accounting */
       nat44_session_update_counters (s0, now,
 				     vlib_buffer_length_in_chain
-				     (tsm->vlib_main, b0), thread_index);
+				     (vm, b0), thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
     }
@@ -645,6 +646,7 @@ icmp_match_in2out_ed (snat_main_t * sm, vlib_node_runtime_t * node,
   u32 next = ~0;
   int err;
   u16 l_port = 0, r_port = 0;	// initialize to workaround gcc warning
+  vlib_main_t *vm = vlib_get_main ();
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
 
   sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
@@ -697,7 +699,7 @@ icmp_match_in2out_ed (snat_main_t * sm, vlib_node_runtime_t * node,
       next =
 	slow_path_ed (sm, b, ip->src_address, ip->dst_address, l_port, r_port,
 		      ip->protocol, rx_fib_index, &s, node, next,
-		      thread_index, vlib_time_now (tsm->vlib_main));
+		      thread_index, vlib_time_now (vm));
 
       if (PREDICT_FALSE (next == NAT_NEXT_DROP))
 	goto out;
