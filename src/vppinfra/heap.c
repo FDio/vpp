@@ -297,6 +297,7 @@ search_free_list (void *v, uword size)
 	/* Find an object that is large enough.
 	   Search list in reverse so that more recently freed objects will be
 	   allocated again sooner. */
+	u8 found = 0;
 	do
 	  {
 	    l--;
@@ -304,12 +305,15 @@ search_free_list (void *v, uword size)
 	    f = elt_at (h, f_index);
 	    f_size = heap_elt_size (v, f);
 	    if ((s = f_size - size) >= 0)
-	      break;
+	      {
+		found = 1;
+		break;
+	      }
 	  }
 	while (l > 0);
 
 	/* If we fail to find a large enough object, try the next larger size. */
-	if (l < 0)
+	if (found == 0)
 	  continue;
 
 	ASSERT (heap_is_free (f));
