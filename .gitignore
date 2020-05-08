@@ -84,6 +84,10 @@ GTAGS
 /sphinx_venv
 !/docs/Makefile
 
+# language servers
+compile_commands.json
+.clangd
+
 # indent backup files
 *.BAK
 

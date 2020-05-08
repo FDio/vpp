@@ -223,6 +223,7 @@ help:
 	@echo " ctags                - (re)generate ctags database"
 	@echo " gtags                - (re)generate gtags database"
 	@echo " cscope               - (re)generate cscope database"
+	@echo " compdb               - (re)generate compile_commands.json"
 	@echo " checkstyle           - check coding style"
 	@echo " checkstyle-commit    - check commit message format"
 	@echo " checkstyle-test      - check test framework coding style"
@@ -653,6 +654,10 @@ gtags: ctags
 .PHONY: cscope
 cscope: cscope.files
 	@cscope -b -q -v
+
+.PHONY: compdb
+compdb:
+	@ninja -C build-root/build-vpp_debug-native/vpp -t compdb > compile_commands.json
 
 .PHONY: checkstyle
 checkstyle: checkfeaturelist
