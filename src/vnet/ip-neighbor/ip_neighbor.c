@@ -821,12 +821,11 @@ ip_neighbor_entries (u32 sw_if_index, ip46_type_t type)
   /* *INDENT-OFF* */
   pool_foreach (ipn, ip_neighbor_pool,
   ({
-    if (sw_if_index != ~0 &&
-        ipn->ipn_key->ipnk_sw_if_index != sw_if_index &&
+    if ((sw_if_index == ~0 ||
+        ipn->ipn_key->ipnk_sw_if_index == sw_if_index) &&
         (IP46_TYPE_ANY == type ||
-         (ipn->ipn_key->ipnk_type == type)))
-      continue;
-    vec_add1 (ipnis, ip_neighbor_get_index(ipn));
+         ipn->ipn_key->ipnk_type == type))
+       vec_add1 (ipnis, ip_neighbor_get_index(ipn));
   }));
 
   /* *INDENT-ON* */
