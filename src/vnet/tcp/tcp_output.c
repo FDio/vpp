@@ -143,13 +143,11 @@ tcp_update_rcv_wnd (tcp_connection_t * tc)
       wnd = available_space;
     }
 
-  /* Make sure we have a multiple of rcv_wscale */
+  /* Make sure we have a multiple of 1 << rcv_wscale. We round up to
+   * avoid advertising a window less than mss which could happen if
+   * 1 << rcv_wscale < mss */
   if (wnd && tc->rcv_wscale)
-    {
-      wnd &= ~((1 << tc->rcv_wscale) - 1);
-      if (wnd == 0)
-	wnd = 1 << tc->rcv_wscale;
-    }
+    wnd = round_pow2 (wnd, 1 << tc->rcv_wscale);
 
   tc->rcv_wnd = clib_min (wnd, TCP_WND_MAX << tc->rcv_wscale);
 }
