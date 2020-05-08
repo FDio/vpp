@@ -52,7 +52,7 @@ vl_api_p2p_ethernet_add_t_handler (vl_api_p2p_ethernet_add_t * mp)
 
   u32 parent_if_index = htonl (mp->parent_if_index);
   u32 sub_id = htonl (mp->subif_id);
-  u32 p2pe_if_index;
+  u32 p2pe_if_index = ~0;
   u8 remote_mac[6];
 
   if (!vnet_sw_if_index_is_api_valid (parent_if_index))
