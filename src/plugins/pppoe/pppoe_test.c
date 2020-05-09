@@ -237,4 +237,49 @@ api_pppoe_session_dump (vat_main_t * vam)
   return ret;
 }
 
+static void vl_api_pppoe_add_del_cp_reply_t_handler
+  (vl_api_pppoe_add_del_session_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
+static int
+api_pppoe_add_del_cp (vat_main_t * vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_pppoe_add_del_cp_t *mp;
+  u8 is_add = 1;
+  u32 sw_if_index = ~0;
+  int ret;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "del"))
+	{
+	  is_add = 0;
+	}
+      else if (unformat (line_input, "cp-if-index %d", &sw_if_index))
+	;
+    }
+
+  mp->is_add = is_add;
+  mp->sw_if_index = sw_if_index;
+
+  M (PPPOE_ADD_DEL_CP, mp);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
 #include <pppoe/pppoe.api_test.c>
