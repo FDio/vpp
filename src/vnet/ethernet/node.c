@@ -902,7 +902,7 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
       n_left -= 1;
       etype += 1;
       tag += 1;
-      dmac += 4;
+      dmac += 1;
     }
 
   if (dmac_check)
