@@ -17,6 +17,30 @@
 
 #include <pppoe/pppoe.h>
 
+int
+pppoe_add_del_cp (u32 cp_if_index, u8 is_add)
+{
+  pppoe_main_t *pem = &pppoe_main;
+
+  if (cp_if_index == 0)
+    {
+      return ~0;
+    }
+
+  vnet_feature_enable_disable ("device-input", "pppoe-input",
+			       cp_if_index, is_add, 0, 0);
+
+  if (is_add)
+    {
+      pem->cp_if_index = cp_if_index;
+    }
+  else
+    {
+      pem->cp_if_index = ~0;
+    }
+  return 0;
+}
+
 static clib_error_t *
 pppoe_add_del_cp_command_fn (vlib_main_t * vm,
 			     unformat_input_t * input,
@@ -55,6 +79,9 @@ pppoe_add_del_cp_command_fn (vlib_main_t * vm,
       goto done;
     }
 
+  vnet_feature_enable_disable ("device-input", "pppoe-input",
+			       cp_if_index, is_add, 0, 0);
+
   if (is_add)
     {
       pem->cp_if_index = cp_if_index;
@@ -74,7 +101,7 @@ done:
 VLIB_CLI_COMMAND (create_pppoe_cp_cmd, static) =
 {
     .path = "create pppoe cp",
-    .short_help = "create pppoe cp if-name <intfc> [del]",
+    .short_help = "create pppoe cp-if-index <intfc> [del]",
     .function = pppoe_add_del_cp_command_fn,
 };
 /* *INDENT-ON* */
