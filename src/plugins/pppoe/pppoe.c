@@ -98,23 +98,53 @@ pppoe_build_rewrite (vnet_main_t * vnm,
 		     u32 sw_if_index,
 		     vnet_link_t link_type, const void *dst_address)
 {
-  int len = sizeof (pppoe_header_t) + sizeof (ethernet_header_t);
   pppoe_main_t *pem = &pppoe_main;
   pppoe_session_t *t;
+  vnet_hw_interface_t *hi;
+  vnet_sw_interface_t *si;
+  pppoe_header_t *pppoe;
   u32 session_id;
   u8 *rw = 0;
 
   session_id = pem->session_index_by_sw_if_index[sw_if_index];
   t = pool_elt_at_index (pem->sessions, session_id);
 
+  int len = sizeof (pppoe_header_t) + sizeof (ethernet_header_t);
+  si = vnet_get_sw_interface (vnm, t->encap_if_index);
+  if (si->type == VNET_SW_INTERFACE_TYPE_SUB)
+    {
+      if (si->sub.eth.flags.one_tag == 1)
+	{
+	  len += sizeof (ethernet_vlan_header_t);
+	}
+    }
+
   vec_validate_aligned (rw, len - 1, CLIB_CACHE_LINE_BYTES);
 
   ethernet_header_t *eth_hdr = (ethernet_header_t *) rw;
-  clib_memcpy (eth_hdr->dst_address, t->client_mac, 6);
-  clib_memcpy (eth_hdr->src_address, t->local_mac, 6);
   eth_hdr->type = clib_host_to_net_u16 (ETHERNET_TYPE_PPPOE_SESSION);
+  pppoe = (pppoe_header_t *) (eth_hdr + 1);
 
-  pppoe_header_t *pppoe = (pppoe_header_t *) (eth_hdr + 1);
+  if (si->type == VNET_SW_INTERFACE_TYPE_SUB)
+    {
+      if (si->sub.eth.flags.one_tag == 1)
+	{
+	  eth_hdr->type = clib_host_to_net_u16 (ETHERNET_TYPE_VLAN);
+	  ethernet_vlan_header_t *vlan =
+	    (ethernet_vlan_header_t *) (eth_hdr + 1);
+	  vlan->type = clib_host_to_net_u16 (ETHERNET_TYPE_PPPOE_SESSION);
+	  vlan->priority_cfi_and_id =
+	    clib_host_to_net_u16 (si->sub.eth.outer_vlan_id);
+	  pppoe = (pppoe_header_t *) (vlan + 1);
+	}
+      si = vnet_get_sw_interface (vnm, si->sup_sw_if_index);
+    }
+
+  // set the right mac addresses
+  hi = vnet_get_hw_interface (vnm, si->hw_if_index);
+  clib_memcpy (eth_hdr->src_address, hi->hw_address, 6);
+  clib_memcpy (eth_hdr->dst_address, t->client_mac, 6);
+
   pppoe->ver_type = PPPOE_VER_TYPE;
   pppoe->code = 0;
   pppoe->session_id = clib_host_to_net_u16 (t->session_id);
@@ -142,20 +172,16 @@ static void
 pppoe_fixup (vlib_main_t * vm,
 	     const ip_adjacency_t * adj, vlib_buffer_t * b0, const void *data)
 {
-  const pppoe_session_t *t;
+  //const pppoe_session_t *t;
   pppoe_header_t *pppoe0;
+  uword len = (uword) data;
 
   /* update the rewrite string */
-  pppoe0 = vlib_buffer_get_current (b0) + sizeof (ethernet_header_t);
+  pppoe0 = vlib_buffer_get_current (b0) + len;
 
   pppoe0->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
 					 - sizeof (pppoe_header_t)
-					 + sizeof (pppoe0->ppp_proto)
-					 - sizeof (ethernet_header_t));
-  /* Swap to the the packet's output interface to the encap (not the
-   * session) interface */
-  t = data;
-  vnet_buffer (b0)->sw_if_index[VLIB_TX] = t->encap_if_index;
+					 + sizeof (pppoe0->ppp_proto) - len);
 }
 
 static void
@@ -165,6 +191,7 @@ pppoe_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   dpo_id_t dpo = DPO_INVALID;
   ip_adjacency_t *adj;
   pppoe_session_t *t;
+  vnet_sw_interface_t *si;
   u32 session_id;
 
   ASSERT (ADJ_INDEX_INVALID != ai);
@@ -173,12 +200,23 @@ pppoe_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   session_id = pem->session_index_by_sw_if_index[sw_if_index];
   t = pool_elt_at_index (pem->sessions, session_id);
 
+  uword len = sizeof (ethernet_header_t);
+
+  si = vnet_get_sw_interface (vnm, t->encap_if_index);
+  if (si->type == VNET_SW_INTERFACE_TYPE_SUB)
+    {
+      if (si->sub.eth.flags.one_tag == 1)
+	{
+	  len += sizeof (ethernet_vlan_header_t);
+	}
+    }
+
   switch (adj->lookup_next_index)
     {
     case IP_LOOKUP_NEXT_ARP:
     case IP_LOOKUP_NEXT_GLEAN:
     case IP_LOOKUP_NEXT_BCAST:
-      adj_nbr_midchain_update_rewrite (ai, pppoe_fixup, t,
+      adj_nbr_midchain_update_rewrite (ai, pppoe_fixup, (void *) len,
 				       ADJ_FLAG_NONE,
 				       pppoe_build_rewrite (vnm,
 							    sw_if_index,
@@ -190,7 +228,7 @@ pppoe_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
        * Construct a partial rewrite from the known ethernet mcast dest MAC
        * There's no MAC fixup, so the last 2 parameters are 0
        */
-      adj_mcast_midchain_update_rewrite (ai, pppoe_fixup, t,
+      adj_mcast_midchain_update_rewrite (ai, pppoe_fixup, (void *) len,
 					 ADJ_FLAG_NONE,
 					 pppoe_build_rewrite (vnm,
 							      sw_if_index,
