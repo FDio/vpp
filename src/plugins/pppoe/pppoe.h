@@ -204,6 +204,8 @@ typedef struct
   u32 cp_if_index;
 } vnet_pppoe_add_del_tap_args_t;
 
+int pppoe_add_del_cp (u32 cp_if_index, u8 is_add);
+
 always_inline u64
 pppoe_make_key (u8 * mac_address, u16 session_id)
 {
