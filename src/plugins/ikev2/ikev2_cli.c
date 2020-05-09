@@ -683,7 +683,7 @@ ikev2_set_log_level_command_fn (vlib_main_t * vm,
 				vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 log_level = IKEV2_LOG_NONE;
+  u32 log_level = IKEV2_LOG_NONE;
   clib_error_t *error = 0;
 
   /* Get a line of input. */
