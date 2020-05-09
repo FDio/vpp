@@ -55,6 +55,9 @@ pppoe_add_del_cp_command_fn (vlib_main_t * vm,
       goto done;
     }
 
+  vnet_feature_enable_disable ("device-input", "pppoe-input",
+			       cp_if_index, is_add, 0, 0);
+
   if (is_add)
     {
       pem->cp_if_index = cp_if_index;
