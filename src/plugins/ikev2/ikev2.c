@@ -4054,7 +4054,6 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	      if (p)
 		{
 		  ikev2_initiate_sa_init (vm, p->name);
-		  continue;
 		}
 	    }
 	  vec_foreach (c, sa->childs)
@@ -4062,6 +4061,7 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  hash_unset (tkm->sa_by_rspi, sa->rspi);
 	  pool_put (tkm->sas, sa);
 	}
+	vec_free (to_be_deleted);
       }
 
       /* process ipsec sas */
