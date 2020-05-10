@@ -182,7 +182,7 @@ rdma_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
 
   switch (flags)
     {
-    case 0:
+    case  ETHERNET_INTERFACE_FLAG_DEFAULT_L3:
       return rdma_dev_set_ucast (rd);
     case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
       return rdma_dev_set_promisc (rd);
@@ -339,9 +339,17 @@ rdma_async_event_cleanup (rdma_device_t * rd)
 static clib_error_t *
 rdma_register_interface (vnet_main_t * vnm, rdma_device_t * rd)
 {
-  return ethernet_register_interface (vnm, rdma_device_class.index,
-				      rd->dev_instance, rd->hwaddr.bytes,
-				      &rd->hw_if_index, rdma_flag_change);
+  clib_error_t *err = 
+    ethernet_register_interface (vnm, rdma_device_class.index,
+				 rd->dev_instance, rd->hwaddr.bytes,
+				 &rd->hw_if_index, rdma_flag_change);
+  vnet_hw_interface_t *hi =
+    vnet_get_hw_interface (dm->vnet_main, xd->hw_if_index);
+  
+  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER;
+  ethenet_set_flags (dm->vnet_main, xd->hw_if_index,
+		     ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
+  return err;
 }
 
 static void

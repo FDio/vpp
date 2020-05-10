@@ -428,16 +428,44 @@ ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   ethernet_main_t *em = &ethernet_main;
   vnet_hw_interface_t *hi;
   ethernet_interface_t *ei;
+  u32 opn_flags = flags & ETHERNET_INTERFACE_FLAGS_SET_OPN_MASK;
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
 
   ASSERT (hi->hw_class_index == ethernet_hw_interface_class.index);
 
   ei = pool_elt_at_index (em->interfaces, hi->hw_instance);
-  ei->flags = flags;
+
+  /* preserve status bits and update last set operation bits */
+  ei->flags =
+    (ei->flags & ETHERNET_INTERFACE_FLAGS_STATUS_MASK) | opn_flags;
+
   if (ei->flag_change)
-    return ei->flag_change (vnm, hi, flags);
-  return (u32) ~ 0;
+    {
+      switch (opn_flags)
+	{
+	case ETHERNET_INTERFACE_FLAG_DEFAULT_L3:
+	  if (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER)
+	    {
+	      if (ei->flag_change (vnm, hi, opn_flags) != ~0)
+		{
+		  ei->flags |= ETHERNET_INTERFACE_FLAG_STATUS_L3;
+		  return 0;
+		}
+	      ei->flags &= ~ETHERNET_INTERFACE_FLAG_STATUS_L3;
+	      return ~0;
+	    }
+	  /* fall through */
+	case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
+	  ei->flags &= ~ETHERNET_INTERFACE_FLAG_STATUS_L3;
+	  /* fall through */
+	case ETHERNET_INTERFACE_FLAG_MTU:
+	  return ei->flag_change (vnm, hi, opn_flags);
+	default:
+	  return ~0;
+	}
+    }
+  return ~0;
 }
 
 /**
