@@ -105,7 +105,7 @@ done:
 
 static u32
 mrvl_pp2_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
-			  u32 flags)
+			  u32 * flags)
 {
   /* nothing for now */
   return 0;
