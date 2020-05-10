@@ -98,13 +98,16 @@ class IKEv2ChildSA(object):
 
 class IKEv2SA(object):
     def __init__(self, test, is_initiator=True, spi=b'\x04' * 8,
-                 id=None, id_type='fqdn', nonce=None, auth_data=None,
-                 local_ts=None, remote_ts=None, auth_method='shared-key'):
+                 i_id=None, r_id=None, id_type='fqdn', nonce=None,
+                 auth_data=None, local_ts=None, remote_ts=None,
+                 auth_method='shared-key'):
         self.dh_params = None
         self.test = test
         self.is_initiator = is_initiator
         nonce = nonce or os.urandom(32)
         self.auth_data = auth_data
+        self.i_id = i_id
+        self.r_id = r_id
         if isinstance(id_type, str):
             self.id_type = IDType.value(id_type)
         else:
@@ -113,12 +116,10 @@ class IKEv2SA(object):
         if self.is_initiator:
             self.rspi = None
             self.ispi = spi
-            self.i_id = id
             self.i_nonce = nonce
         else:
             self.rspi = spi
             self.ispi = None
-            self.r_id = id
             self.r_nonce = None
         self.child_sas = [IKEv2ChildSA(local_ts, remote_ts)]
 
@@ -390,8 +391,9 @@ class TestResponder(VppTestCase):
         self.p.add_remote_ts(start_addr=0xa000000, end_addr=0xa0000ff)
         self.p.add_vpp_config()
 
-        self.sa = IKEv2SA(self, id=self.p.remote_id['data'], is_initiator=True,
-                          auth_data=self.p.auth['data'],
+        self.sa = IKEv2SA(self, i_id=self.p.remote_id['data'],
+                          r_id=self.p.local_id['data'],
+                          is_initiator=True, auth_data=self.p.auth['data'],
                           id_type=self.p.local_id['id_type'],
                           local_ts=self.p.remote_ts, remote_ts=self.p.local_ts)
 
@@ -456,8 +458,10 @@ class TestResponder(VppTestCase):
                  SPIsize=4, SPI=os.urandom(4), trans_nb=4, trans=trans))
 
         tsi, tsr = self.sa.generate_ts()
-        plain = (ikev2.IKEv2_payload_IDi(next_payload='AUTH',
+        plain = (ikev2.IKEv2_payload_IDi(next_payload='IDr',
                  IDtype=self.sa.id_type, load=self.sa.i_id) /
+                 ikev2.IKEv2_payload_IDr(next_payload='AUTH',
+                 IDtype=self.sa.id_type, load=self.sa.r_id) /
                  ikev2.IKEv2_payload_AUTH(next_payload='SA',
                  auth_type=2, load=self.sa.auth_data) /
                  ikev2.IKEv2_payload_SA(next_payload='TSi', prop=props) /
