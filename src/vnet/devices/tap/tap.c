@@ -67,7 +67,7 @@ VNET_HW_INTERFACE_CLASS (tun_device_hw_interface_class, static) =
 
 static u32
 virtio_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
-			u32 flags)
+			u32 * flags)
 {
   /* nothing for now */
   //TODO On MTU change call vnet_netlink_set_if_mtu
