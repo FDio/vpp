@@ -109,20 +109,31 @@ port_type_from_link_speed (u32 link_speed)
 }
 
 static u32
-dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
+dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 * flags)
 {
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
   u32 old = 0;
 
-  if (ETHERNET_INTERFACE_FLAG_CONFIG_PROMISC (flags))
+  if (ETHERNET_INTERFACE_FLAG_CONFIG_MTU (flags[0]))
+    {
+      xd->port_conf.rxmode.max_rx_pkt_len = hi->max_packet_bytes;
+      dpdk_device_setup (xd);
+    }
+  else
     {
       old = (xd->flags & DPDK_DEVICE_FLAG_PROMISC) != 0;
 
-      if (flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL)
-	xd->flags |= DPDK_DEVICE_FLAG_PROMISC;
-      else
-	xd->flags &= ~DPDK_DEVICE_FLAG_PROMISC;
+      if (flags[0] & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL)
+	{
+	  xd->flags |= DPDK_DEVICE_FLAG_PROMISC;
+	  flags[0] &= ~ETHERNET_INTERFACE_FLAG_STATUS_L3;
+	}
+      else			/* set to L3/non-promisc mode */
+	{
+	  xd->flags &= ~DPDK_DEVICE_FLAG_PROMISC;
+	  flags[0] |= ETHERNET_INTERFACE_FLAG_STATUS_L3;
+	}
 
       if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
 	{
@@ -131,11 +142,6 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 	  else
 	    rte_eth_promiscuous_disable (xd->port_id);
 	}
-    }
-  else if (ETHERNET_INTERFACE_FLAG_CONFIG_MTU (flags))
-    {
-      xd->port_conf.rxmode.max_rx_pkt_len = hi->max_packet_bytes;
-      dpdk_device_setup (xd);
     }
   return old;
 }
