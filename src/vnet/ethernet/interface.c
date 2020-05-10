@@ -339,7 +339,7 @@ ethernet_register_interface (vnet_main_t * vnm,
   ethernet_interface_t *ei;
   vnet_hw_interface_t *hi;
   clib_error_t *error = 0;
-  u32 hw_if_index;
+  u32 hw_if_index, r;
 
   pool_get (em->interfaces, ei);
   ei->flag_change = flag_change;
@@ -351,6 +351,11 @@ ethernet_register_interface (vnet_main_t * vnm,
   *hw_if_index_return = hw_if_index;
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
+
+  /* Set flags to show L3/non-promisc mode for drivers supporting it */
+  ei->flags = 0;
+  if (flag_change)
+    r = ei->flag_change (vnm, hi, &ei->flags);
 
   ethernet_setup_node (vnm->vlib_main, hi->output_node_index);
 
@@ -434,9 +439,11 @@ ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   ASSERT (hi->hw_class_index == ethernet_hw_interface_class.index);
 
   ei = pool_elt_at_index (em->interfaces, hi->hw_instance);
-  ei->flags = flags;
+  ei->flags =			/* preserve status bits and update set flags bits */
+    (ei->flags & ETHERNET_INTERFACE_FLAGS_STATUS_MASK) |
+    (flags & ETHERNET_INTERFACE_FLAGS_FLAG_MASK);
   if (ei->flag_change)
-    return ei->flag_change (vnm, hi, flags);
+    return ei->flag_change (vnm, hi, &ei->flags);
   return (u32) ~ 0;
 }
 

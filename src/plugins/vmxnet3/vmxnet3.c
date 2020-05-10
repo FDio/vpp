@@ -148,7 +148,7 @@ VNET_DEVICE_CLASS (vmxnet3_device_class,) =
 /* *INDENT-ON* */
 
 static u32
-vmxnet3_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
+vmxnet3_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 * flags)
 {
   return 0;
 }
