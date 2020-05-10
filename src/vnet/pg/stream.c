@@ -172,7 +172,7 @@ VNET_HW_INTERFACE_CLASS (pg_interface_class,static) = {
 /* *INDENT-ON* */
 
 static u32
-pg_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
+pg_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 * flags)
 {
   /* nothing for now */
   return 0;
