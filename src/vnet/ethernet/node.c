@@ -200,6 +200,31 @@ ethernet_input_inline_dmac_check (vnet_hw_interface_t * hi,
 				  u32 n_packets, ethernet_interface_t * ei,
 				  u8 have_sec_dmac);
 
+// Check if packet DMAC is bad because it is not bcast/mcast MAC
+// and does not match interface MAC
+static_always_inline u8
+packet_dmac_bad (vnet_hw_interface_t * hi, vlib_buffer_t * b0)
+{
+  u64 dmacs[2];
+  u8 dmacs_bad[2];
+  ethernet_header_t *e0;
+  ethernet_interface_t *ei0;
+
+  e0 = (void *) (b0->data + vnet_buffer (b0)->l2_hdr_offset);
+  dmacs[0] = *(u64 *) e0;
+  ei0 = ethernet_get_interface (&ethernet_main, hi->hw_if_index);
+
+  if (ei0 && vec_len (ei0->secondary_addrs))
+    ethernet_input_inline_dmac_check (hi, dmacs, dmacs_bad,
+				      1 /* n_packets */ , ei0,
+				      1 /* have_sec_dmac */ );
+  else
+    ethernet_input_inline_dmac_check (hi, dmacs, dmacs_bad,
+				      1 /* n_packets */ , ei0,
+				      0 /* have_sec_dmac */ );
+  return dmacs_bad[0];
+}
+
 // Determine the subinterface for this packet, given the result of the
 // vlan table lookups and vlan header parsing. Check the most specific
 // matches first.
@@ -224,25 +249,7 @@ identify_subint (vnet_hw_interface_t * hi,
       // This is required for promiscuous mode, else we will forward packets we aren't supposed to.
       if (!(*is_l2))
 	{
-	  u64 dmacs[2];
-	  u8 dmacs_bad[2];
-	  ethernet_header_t *e0;
-	  ethernet_interface_t *ei0;
-
-	  e0 = (void *) (b0->data + vnet_buffer (b0)->l2_hdr_offset);
-	  dmacs[0] = *(u64 *) e0;
-	  ei0 = ethernet_get_interface (&ethernet_main, hi->hw_if_index);
-
-	  if (ei0 && vec_len (ei0->secondary_addrs))
-	    ethernet_input_inline_dmac_check (hi, dmacs, dmacs_bad,
-					      1 /* n_packets */ , ei0,
-					      1 /* have_sec_dmac */ );
-	  else
-	    ethernet_input_inline_dmac_check (hi, dmacs, dmacs_bad,
-					      1 /* n_packets */ , ei0,
-					      0 /* have_sec_dmac */ );
-
-	  if (dmacs_bad[0])
+	  if (packet_dmac_bad (hi, b0))
 	    *error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
 	}
 
@@ -576,7 +583,21 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
 	l->adv = is_l2 ? -(int) sizeof (ethernet_header_t) :
 	  l->n_tags * sizeof (ethernet_vlan_header_t);
       else
-	l->adv = is_l2 ? 0 : l->len;
+	{
+	  /* main is_l2 here */
+	  if (PREDICT_TRUE (is_l2))
+	    l->adv = 0;
+	  else
+	    {
+	      /* main is_l2 and sub-intf is_l3, rare case */
+	      l->adv = l->len;
+	      if (check_dmac == 0)
+		{
+		  check_dmac = 1;
+		  dmac_bad = packet_dmac_bad (hi, b);
+		}
+	    }
+	}
 
       if (PREDICT_FALSE (l->err != ETHERNET_ERROR_NONE))
 	l->next = ETHERNET_INPUT_NEXT_DROP;
@@ -1085,29 +1106,29 @@ eth_input_single_int (vlib_main_t * vm, vlib_node_runtime_t * node,
   subint_config_t *subint0 = &intf0->untagged_subint;
 
   int main_is_l3 = (subint0->flags & SUBINT_CONFIG_L2) == 0;
-  int promisc = (ei->flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL) != 0;
+  int int_is_l3 = ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3;
 
-  if (main_is_l3)
+  if (int_is_l3)
     {
-      /* main interface is L3, we dont expect tagged packets and interface
-         is not in promisc node, so we dont't need to check DMAC */
-      int is_l3 = 1;
-
-      if (promisc == 0)
-	eth_input_process_frame (vm, node, hi, from, n_pkts, is_l3,
-				 ip4_cksum_ok, 0);
-      else
-	/* subinterfaces and promisc mode so DMAC check is needed */
-	eth_input_process_frame (vm, node, hi, from, n_pkts, is_l3,
-				 ip4_cksum_ok, 1);
+      /* Interface is in L3/non-promiscuous mode, no DMAC check needed
+         as DMAC filter is already done by interface HW/driver */
+      eth_input_process_frame (vm, node, hi, from, n_pkts, /*is_l3 */ 1,
+			       ip4_cksum_ok, /*dmac_check */ 0);
+      return;
+    }
+  else if (main_is_l3)
+    {
+      /* DMAC check is needed for L3 */
+      eth_input_process_frame (vm, node, hi, from, n_pkts, /*is_l3 */ 1,
+			       ip4_cksum_ok, /*dmac_check */ 1);
       return;
     }
   else
     {
-      /* untagged packets are treated as L2 */
-      int is_l3 = 0;
-      eth_input_process_frame (vm, node, hi, from, n_pkts, is_l3,
-			       ip4_cksum_ok, 1);
+      /* DMAC check not needed for L2, if a sub-interface is L3 mode,
+         (very rare case) DMAC check done on that sub-interface only */
+      eth_input_process_frame (vm, node, hi, from, n_pkts, /*is_l3 */ 0,
+			       ip4_cksum_ok, /*dmac_check */ 0);
       return;
     }
 }

@@ -249,7 +249,7 @@ virtio_pci_legacy_set_queue_irq (vlib_main_t * vm, virtio_if_t * vif, u16 vec,
 
 static u32
 virtio_pci_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw,
-			u32 flags)
+			u32 * flags)
 {
   return 0;
 }

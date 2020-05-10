@@ -43,7 +43,8 @@
 memif_main_t memif_main;
 
 static u32
-memif_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
+memif_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
+		       u32 * flags)
 {
   /* nothing for now */
   return 0;
