@@ -1358,6 +1358,9 @@ ikev2_sa_match_ts (ikev2_sa_t * sa)
         memcmp(p->rem_id.data, id->data, vec_len(p->rem_id.data)))
       continue;
 
+    sa->is_profile_index_set = 1;
+    sa->profile_index = p - km->profiles;
+
     vec_foreach(ts, sa->childs[0].tsi)
       {
         if (ikev2_ts_cmp(p_tsi, ts))
@@ -1854,7 +1857,7 @@ ikev2_create_tunnel_interface (vlib_main_t * vm,
       a.src_port = sa->ipsec_over_udp_port;
     }
 
-  if (sa->is_profile_index_set)
+  if (sa->is_initiator && sa->is_profile_index_set)
     p = pool_elt_at_index (km->profiles, sa->profile_index);
 
   if (p && p->lifetime)
@@ -3195,6 +3198,91 @@ ikev2_unregister_udp_port (ikev2_profile_t * p)
   p->ipsec_over_udp_port = IPSEC_UDP_PORT_NONE;
 }
 
+static void
+ikev2_initiate_delete_ike_sa_internal (vlib_main_t * vm,
+				       ikev2_main_per_thread_data_t * tkm,
+				       ikev2_sa_t * sa)
+{
+  ikev2_main_t *km = &ikev2_main;
+  ip4_address_t *src, *dst;
+
+  /* Create the Initiator notification for IKE SA removal */
+  ike_header_t *ike0;
+  u32 bi0 = 0;
+  int len;
+
+  bi0 = ikev2_get_new_ike_header_buff (vm, &ike0);
+
+  ike0->exchange = IKEV2_EXCHANGE_INFORMATIONAL;
+  ike0->ispi = clib_host_to_net_u64 (sa->ispi);
+  ike0->rspi = clib_host_to_net_u64 (sa->rspi);
+  vec_resize (sa->del, 1);
+  sa->del->protocol_id = IKEV2_PROTOCOL_IKE;
+  sa->del->spi = sa->ispi;
+  ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id + 1);
+  sa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
+  len = ikev2_generate_message (sa, ike0, 0, 0);
+
+  if (sa->is_initiator)
+    {
+      src = &sa->iaddr;
+      dst = &sa->raddr;
+    }
+  else
+    {
+      dst = &sa->iaddr;
+      src = &sa->raddr;
+    }
+
+  ikev2_send_ike (vm, src, dst, bi0, len,
+                 ikev2_get_port (sa), sa->dst_port, 0);
+
+  /* delete local SA */
+  ikev2_child_sa_t *c;
+  vec_foreach (c, sa->childs)
+  {
+    ikev2_delete_tunnel_interface (km->vnet_main, sa, c);
+    ikev2_sa_del_child_sa (sa, c);
+  }
+  u64 rspi = sa->rspi;
+  ikev2_sa_free_all_vec (sa);
+  uword *p = hash_get (tkm->sa_by_rspi, rspi);
+  if (p)
+    {
+      hash_unset (tkm->sa_by_rspi, rspi);
+      pool_put (tkm->sas, sa);
+    }
+}
+
+static void
+ikev2_cleanup_profile_sessions (ikev2_main_t * km, ikev2_profile_t * p)
+{
+  ikev2_main_per_thread_data_t *tkm;
+  ikev2_sa_t *sa;
+  u32 pi = p - km->profiles;
+  u32 *sai;
+
+  vec_foreach (tkm, km->per_thread_data)
+  {
+    u32 *del_sai = 0;
+
+    /* *INDENT-OFF* */
+    pool_foreach (sa, tkm->sas, ({
+      if (sa->is_profile_index_set && pi == sa->profile_index)
+        vec_add1 (del_sai, sa - tkm->sas);
+    }));
+    /* *INDENT-ON* */
+
+    vec_foreach (sai, del_sai)
+    {
+      sa = pool_elt_at_index (tkm->sas, sai[0]);
+      ikev2_initiate_delete_ike_sa_internal (km->vlib_main, tkm, sa);
+    }
+
+    vec_free (del_sai);
+  }
+}
+
 clib_error_t *
 ikev2_add_del_profile (vlib_main_t * vm, u8 * name, int is_add)
 {
@@ -3222,6 +3310,7 @@ ikev2_add_del_profile (vlib_main_t * vm, u8 * name, int is_add)
 	return clib_error_return (0, "policy %v does not exists", name);
 
       ikev2_unregister_udp_port (p);
+      ikev2_cleanup_profile_sessions (km, p);
 
       vec_free (p->name);
       pool_put (km->profiles, p);
@@ -3765,48 +3854,7 @@ ikev2_initiate_delete_ike_sa (vlib_main_t * vm, u64 ispi)
       return r;
     }
 
-
-  /* Create the Initiator notification for IKE SA removal */
-  {
-    ike_header_t *ike0;
-    u32 bi0 = 0;
-    int len;
-
-    bi0 = ikev2_get_new_ike_header_buff (vm, &ike0);
-
-
-    ike0->exchange = IKEV2_EXCHANGE_INFORMATIONAL;
-    ike0->ispi = clib_host_to_net_u64 (fsa->ispi);
-    ike0->rspi = clib_host_to_net_u64 (fsa->rspi);
-    vec_resize (fsa->del, 1);
-    fsa->del->protocol_id = IKEV2_PROTOCOL_IKE;
-    fsa->del->spi = ispi;
-    ike0->msgid = clib_host_to_net_u32 (fsa->last_init_msg_id + 1);
-    fsa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
-    len = ikev2_generate_message (fsa, ike0, 0, 0);
-    if (fsa->natt)
-      len = ikev2_insert_non_esp_marker (ike0, len);
-    ikev2_send_ike (vm, &fsa->iaddr, &fsa->raddr, bi0, len,
-		    ikev2_get_port (fsa), fsa->dst_port, fsa->sw_if_index);
-  }
-
-
-  /* delete local SA */
-  ikev2_child_sa_t *c;
-  vec_foreach (c, fsa->childs)
-  {
-    ikev2_delete_tunnel_interface (km->vnet_main, fsa, c);
-    ikev2_sa_del_child_sa (fsa, c);
-  }
-  ikev2_sa_free_all_vec (fsa);
-  uword *p = hash_get (ftkm->sa_by_rspi, fsa->rspi);
-  if (p)
-    {
-      hash_unset (ftkm->sa_by_rspi, fsa->rspi);
-      pool_put (ftkm->sas, fsa);
-    }
-
-
+  ikev2_initiate_delete_ike_sa_internal (vm, ftkm, fsa);
   return 0;
 }
 
@@ -4086,7 +4134,7 @@ ikev2_mngr_process_ipsec_sa (ipsec_sa_t * ipsec_sa)
   vlib_get_combined_counter (&ipsec_sa_counters,
 			     ipsec_sa->stat_index, &counts);
 
-  if (fsa && fsa->is_profile_index_set)
+  if (fsa && fsa->is_profile_index_set && fsa->is_initiator)
     p = pool_elt_at_index (km->profiles, fsa->profile_index);
 
   if (fchild && p && p->lifetime_maxdata)
