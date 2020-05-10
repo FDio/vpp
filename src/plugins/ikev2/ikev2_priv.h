@@ -420,7 +420,6 @@ typedef struct
 
   u8 is_initiator;
   u32 last_init_msg_id;
-  u8 is_profile_index_set;
   u32 profile_index;
   u8 is_tun_itf_set;
   u32 tun_itf;
