@@ -1120,30 +1120,31 @@ error:
 }
 
 static u32
-avf_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
+avf_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 * flags)
 {
   vlib_main_t *vm = vlib_get_main ();
   avf_main_t *am = &avf_main;
   avf_device_t *ad = vec_elt_at_index (am->devices, hw->dev_instance);
-  if (ETHERNET_INTERFACE_FLAG_CONFIG_PROMISC (flags))
+  clib_error_t *error;
+  int promisc_enabled = flags[0] & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL;
+  u32 new_flags = promisc_enabled ?
+    ad->flags | AVF_DEVICE_F_PROMISC : ad->flags & ~AVF_DEVICE_F_PROMISC;
+
+  if (new_flags == ad->flags)
+    return flags[0];
+
+  if ((error = avf_config_promisc_mode (vm, ad, promisc_enabled)))
     {
-      clib_error_t *error;
-      int promisc_enabled = (flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL) != 0;
-      u32 new_flags = promisc_enabled ?
-	ad->flags | AVF_DEVICE_F_PROMISC : ad->flags & ~AVF_DEVICE_F_PROMISC;
-
-      if (new_flags == ad->flags)
-	return flags;
-
-      if ((error = avf_config_promisc_mode (vm, ad, promisc_enabled)))
-	{
-	  avf_log_err (ad, "%s: %U", format_clib_error, error);
-	  clib_error_free (error);
-	  return 0;
-	}
-
-      ad->flags = new_flags;
+      avf_log_err (ad, "%s: %U", format_clib_error, error);
+      clib_error_free (error);
+      return 0;
     }
+
+  ad->flags = new_flags;
+  flags[0] = promisc_enabled ?
+    flags[0] & ~ETHERNET_INTERFACE_FLAG_STATUS_L3 :
+    flags[0] | ETHERNET_INTERFACE_FLAG_STATUS_L3;
+
   return 0;
 }
 
