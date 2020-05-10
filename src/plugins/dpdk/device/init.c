@@ -113,30 +113,33 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 {
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
-  u32 old = 0;
+  u32 old = (xd->flags & DPDK_DEVICE_FLAG_PROMISC) != 0;
 
-  if (ETHERNET_INTERFACE_FLAG_CONFIG_PROMISC (flags))
+  switch (flags)
     {
-      old = (xd->flags & DPDK_DEVICE_FLAG_PROMISC) != 0;
-
-      if (flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL)
-	xd->flags |= DPDK_DEVICE_FLAG_PROMISC;
-      else
-	xd->flags &= ~DPDK_DEVICE_FLAG_PROMISC;
-
-      if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
-	{
-	  if (xd->flags & DPDK_DEVICE_FLAG_PROMISC)
-	    rte_eth_promiscuous_enable (xd->port_id);
-	  else
-	    rte_eth_promiscuous_disable (xd->port_id);
-	}
-    }
-  else if (ETHERNET_INTERFACE_FLAG_CONFIG_MTU (flags))
-    {
+    case ETHERNET_INTERFACE_FLAG_DEFAULT_L3:
+      /* set to L3/non-promisc mode */
+      xd->flags &= ~DPDK_DEVICE_FLAG_PROMISC;
+      break;
+    case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
+      xd->flags |= DPDK_DEVICE_FLAG_PROMISC;
+      break;
+    case ETHERNET_INTERFACE_FLAG_MTU:
       xd->port_conf.rxmode.max_rx_pkt_len = hi->max_packet_bytes;
       dpdk_device_setup (xd);
+      return 0;
+    default:
+      return ~0;
     }
+
+  if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
+    {
+      if (xd->flags & DPDK_DEVICE_FLAG_PROMISC)
+	rte_eth_promiscuous_enable (xd->port_id);
+      else
+	rte_eth_promiscuous_disable (xd->port_id);
+    }
+
   return old;
 }
 
@@ -737,6 +740,12 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  hi->max_packet_bytes = mtu;
 	  hi->max_supported_packet_bytes = max_rx_frame;
 	  hi->numa_node = xd->cpu_socket;
+
+	  /* Indicate ability to support L3 DMAC filtering and
+	   * initialize interface to L3 non-promisc mode */
+	  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER;
+	  ethernet_set_flags (dm->vnet_main, xd->hw_if_index,
+			     ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
 	}
 
       if (dm->conf->no_tx_checksum_offload == 0)
