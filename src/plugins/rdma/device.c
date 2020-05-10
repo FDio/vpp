@@ -175,16 +175,18 @@ rdma_dev_change_mtu (rdma_device_t * rd)
 }
 
 static u32
-rdma_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
+rdma_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 * flags)
 {
   rdma_main_t *rm = &rdma_main;
   rdma_device_t *rd = vec_elt_at_index (rm->devices, hw->dev_instance);
 
-  switch (flags)
+  switch (flags[0] & ETHERNET_INTERFACE_FLAGS_SET_OPN_MASK)
     {
     case 0:
+      flags[0] |= ETHERNET_INTERFACE_FLAG_STATUS_L3;
       return rdma_dev_set_ucast (rd);
     case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
+      flags[0] &= ~ETHERNET_INTERFACE_FLAG_STATUS_L3;
       return rdma_dev_set_promisc (rd);
     case ETHERNET_INTERFACE_FLAG_MTU:
       return rdma_dev_change_mtu (rd);

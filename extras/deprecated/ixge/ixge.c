@@ -2593,7 +2593,7 @@ ixge_dma_init (ixge_device_t * xd, vlib_rx_or_tx_t rt, u32 queue_index)
 }
 
 static u32
-ixge_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
+ixge_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 * flags)
 {
   ixge_device_t *xd;
   ixge_regs_t *r;
@@ -2605,10 +2605,16 @@ ixge_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
 
   old = r->filter_control;
 
-  if (flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL)
-    r->filter_control = old | (1 << 9) /* unicast promiscuous */ ;
-  else
-    r->filter_control = old & ~(1 << 9);
+  if (flags[0] & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL)
+    {
+      r->filter_control = old | (1 << 9) /* unicast promiscuous */ ;
+      flags[0] &= ~ETHERNET_INTERFACE_FLAG_STATUS_L3;
+    }
+  else if ((flags[0] & ETHERNET_INTERFACE_FLAGS_SET_OPN_MASK) == 0)
+    {
+      r->filter_control = old & ~(1 << 9);
+      flags[0] |= ETHERNET_INTERFACE_FLAG_STATUS_L3;
+    }
 
   return old;
 }
