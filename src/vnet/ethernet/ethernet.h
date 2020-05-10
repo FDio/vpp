@@ -127,7 +127,7 @@ typedef struct
 struct vnet_hw_interface_t;
 /* Ethernet flag change callback. */
 typedef u32 (ethernet_flag_change_function_t)
-  (vnet_main_t * vnm, struct vnet_hw_interface_t * hi, u32 flags);
+  (vnet_main_t * vnm, struct vnet_hw_interface_t * hi, u32 * flags);
 
 #define ETHERNET_MIN_PACKET_BYTES  64
 #define ETHERNET_MAX_PACKET_BYTES  9216
@@ -136,6 +136,13 @@ typedef u32 (ethernet_flag_change_function_t)
 typedef struct ethernet_interface
 {
   u32 flags;
+
+  /* Top 16 bits for status and bottom 16 bits for operation flag */
+#define ETHERNET_INTERFACE_FLAGS_STATUS_MASK (0xffff0000)
+#define ETHERNET_INTERFACE_FLAGS_FLAG_MASK   (0x0000ffff)
+
+  /* Interface driver/hw is in L3/non-promiscuous mode */
+#define ETHERNET_INTERFACE_FLAG_STATUS_L3 (1 << 16)
 
   /* Accept all packets (promiscuous mode). */
 #define ETHERNET_INTERFACE_FLAG_ACCEPT_ALL (1 << 0)
