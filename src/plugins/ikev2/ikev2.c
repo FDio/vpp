@@ -406,10 +406,12 @@ ikev2_complete_sa_data (ikev2_sa_t * sa, ikev2_sa_t * sai)
   sa->raddr.as_u32 = sai->raddr.as_u32;
   sa->is_initiator = sai->is_initiator;
   sa->i_id.type = sai->i_id.type;
+  sa->r_id.type = sai->r_id.type;
   sa->profile_index = sai->profile_index;
   sa->tun_itf = sai->tun_itf;
   sa->is_tun_itf_set = sai->is_tun_itf_set;
   sa->i_id.data = _(sai->i_id.data);
+  sa->r_id.data = _(sai->r_id.data);
   sa->i_auth.method = sai->i_auth.method;
   sa->i_auth.hex = sai->i_auth.hex;
   sa->i_auth.data = _(sai->i_auth.data);
@@ -895,6 +897,21 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike, u8 * payload)
   return ikev2_decrypt_data (sa, ikep->payload, plen);
 }
 
+static_always_inline int
+ikev2_is_id_equal (ikev2_id_t * i1, ikev2_id_t * i2)
+{
+  if (i1->type != i2->type)
+    return 0;
+
+  if (vec_len (i1->data) != vec_len (i2->data))
+    return 0;
+
+  if (memcmp (i1->data, i2->data, vec_len (i1->data)))
+    return 0;
+
+  return 1;
+}
+
 static void
 ikev2_initial_contact_cleanup (ikev2_sa_t * sa)
 {
@@ -910,9 +927,8 @@ ikev2_initial_contact_cleanup (ikev2_sa_t * sa)
   /* find old IKE SAs with the same authenticated identity */
   /* *INDENT-OFF* */
   pool_foreach (tmp, km->per_thread_data[thread_index].sas, ({
-        if (tmp->i_id.type != sa->i_id.type ||
-            vec_len(tmp->i_id.data) != vec_len(sa->i_id.data) ||
-            memcmp(sa->i_id.data, tmp->i_id.data, vec_len(sa->i_id.data)))
+        if (!ikev2_is_id_equal (&tmp->i_id, &sa->i_id)
+            || !ikev2_is_id_equal(&tmp->r_id, &sa->r_id))
           continue;
 
         if (sa->rspi != tmp->rspi)
@@ -1333,7 +1349,7 @@ ikev2_sa_match_ts (ikev2_sa_t * sa)
   ikev2_main_t *km = &ikev2_main;
   ikev2_profile_t *p;
   ikev2_ts_t *ts, *p_tsi, *p_tsr, *tsi = 0, *tsr = 0;
-  ikev2_id_t *id;
+  ikev2_id_t *id_rem, *id_loc;
 
   /* *INDENT-OFF* */
   pool_foreach (p, km->profiles, ({
@@ -1342,19 +1358,20 @@ ikev2_sa_match_ts (ikev2_sa_t * sa)
       {
         p_tsi = &p->loc_ts;
         p_tsr = &p->rem_ts;
-        id = &sa->r_id;
+        id_rem = &sa->r_id;
+        id_loc = &sa->i_id;
       }
     else
       {
         p_tsi = &p->rem_ts;
         p_tsr = &p->loc_ts;
-        id = &sa->i_id;
+        id_rem = &sa->i_id;
+        id_loc = &sa->r_id;
       }
 
     /* check id */
-    if (p->rem_id.type != id->type ||
-        vec_len(p->rem_id.data) != vec_len(id->data) ||
-        memcmp(p->rem_id.data, id->data, vec_len(p->rem_id.data)))
+    if (!ikev2_is_id_equal (&p->rem_id, id_rem)
+          || !ikev2_is_id_equal (&p->loc_id, id_loc))
       continue;
 
     sa->profile_index = p - km->profiles;
@@ -1421,17 +1438,19 @@ ikev2_sa_auth (ikev2_sa_t * sa)
   key_pad = format (0, "%s", IKEV2_KEY_PAD);
   authmsg = ikev2_sa_generate_authmsg (sa, sa->is_initiator);
 
-  ikev2_id_t *sa_id;
+  ikev2_id_t *id_rem, *id_loc;
   ikev2_auth_t *sa_auth;
 
   if (sa->is_initiator)
     {
-      sa_id = &sa->r_id;
+      id_rem = &sa->r_id;
+      id_loc = &sa->i_id;
       sa_auth = &sa->r_auth;
     }
   else
     {
-      sa_id = &sa->i_id;
+      id_rem = &sa->i_id;
+      id_loc = &sa->r_id;
       sa_auth = &sa->i_auth;
     }
 
@@ -1439,9 +1458,8 @@ ikev2_sa_auth (ikev2_sa_t * sa)
   pool_foreach (p, km->profiles, ({
 
     /* check id */
-    if (p->rem_id.type != sa_id->type ||
-        vec_len(p->rem_id.data) != vec_len(sa_id->data) ||
-        memcmp(p->rem_id.data, sa_id->data, vec_len(p->rem_id.data)))
+    if (!ikev2_is_id_equal (&p->rem_id, id_rem)
+          || !ikev2_is_id_equal (&p->loc_id, id_loc))
       continue;
 
     if (sa_auth->method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
@@ -1494,6 +1512,8 @@ ikev2_sa_auth (ikev2_sa_t * sa)
 	  vec_free (sa->r_id.data);
 	  sa->r_id.data = vec_dup (sel_p->loc_id.data);
 	  sa->r_id.type = sel_p->loc_id.type;
+	  sa->i_id.data = vec_dup (sel_p->rem_id.data);
+	  sa->i_id.type = sel_p->rem_id.type;
 
 	  /* generate our auth data */
 	  authmsg = ikev2_sa_generate_authmsg (sa, 1);
@@ -2095,6 +2115,7 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user,
       if (sa->state == IKEV2_STATE_AUTHENTICATED)
 	{
 	  ikev2_payload_add_id (chain, &sa->r_id, IKEV2_PAYLOAD_IDR);
+	  ikev2_payload_add_id (chain, &sa->i_id, IKEV2_PAYLOAD_IDI);
 	  ikev2_payload_add_auth (chain, &sa->r_auth);
 	  ikev2_payload_add_sa (chain, sa->childs[0].r_proposals);
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsi, IKEV2_PAYLOAD_TSI);
@@ -2136,6 +2157,7 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user,
       else if (sa->state == IKEV2_STATE_SA_INIT)
 	{
 	  ikev2_payload_add_id (chain, &sa->i_id, IKEV2_PAYLOAD_IDI);
+	  ikev2_payload_add_id (chain, &sa->r_id, IKEV2_PAYLOAD_IDR);
 	  ikev2_payload_add_auth (chain, &sa->i_auth);
 	  ikev2_payload_add_sa (chain, sa->childs[0].i_proposals);
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsi, IKEV2_PAYLOAD_TSI);
@@ -3727,6 +3749,8 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     sa.raddr.as_u32 = p->responder.ip4.as_u32;
     sa.i_id.type = p->loc_id.type;
     sa.i_id.data = vec_dup (p->loc_id.data);
+    sa.r_id.type = p->rem_id.type;
+    sa.r_id.data = vec_dup (p->rem_id.data);
     sa.i_auth.method = p->auth.method;
     sa.i_auth.hex = p->auth.hex;
     sa.i_auth.data = vec_dup (p->auth.data);
