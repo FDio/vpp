@@ -42,14 +42,30 @@ connect_to_vpe (char *name)
   return 0;
 }
 
+/* *INDENT-OFF* */
+
+
 vlib_main_t vlib_global_main;
-vlib_main_t **vlib_mains;
+
+static struct
+{
+  vec_header_t h;
+  vlib_main_t *vm;
+} __attribute__ ((packed)) __bootstrap_vlib_main_vector
+__attribute__ ((aligned (CLIB_CACHE_LINE_BYTES))) =
+{
+  .h.len = 1,
+  .vm = &vlib_global_main,
+};
+/* *INDENT-ON* */
+
+vlib_main_t **vlib_mains = &__bootstrap_vlib_main_vector.vm;
+
 void
 vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
 {
   clib_warning ("BUG");
 }
-
 
 static u8 *
 format_api_error (u8 * s, va_list * args)
@@ -338,6 +354,45 @@ load_features (void)
     }
 }
 
+static inline clib_error_t *
+call_init_exit_functions_internal (vlib_main_t * vm,
+				   _vlib_init_function_list_elt_t ** headp,
+				   int call_once, int do_sort)
+{
+  clib_error_t *error = 0;
+  _vlib_init_function_list_elt_t *i;
+
+#if 0
+  /* Not worth copying the topological sort code */
+  if (do_sort && (error = vlib_sort_init_exit_functions (headp)))
+    return (error);
+#endif
+
+  i = *headp;
+  while (i)
+    {
+      if (call_once && !hash_get (vm->init_functions_called, i->f))
+	{
+	  if (call_once)
+	    hash_set1 (vm->init_functions_called, i->f);
+	  error = i->f (vm);
+	  if (error)
+	    return error;
+	}
+      i = i->next_init_function;
+    }
+  return error;
+}
+
+clib_error_t *
+vlib_call_init_exit_functions (vlib_main_t * vm,
+			       _vlib_init_function_list_elt_t ** headp,
+			       int call_once)
+{
+  return call_init_exit_functions_internal (vm, headp, call_once,
+					    1 /* do_sort */ );
+}
+
 int
 main (int argc, char **argv)
 {
@@ -351,6 +406,8 @@ main (int argc, char **argv)
   u8 json_output = 0;
   int i;
   f64 timeout;
+  clib_error_t *error;
+  vlib_main_t *vm = &vlib_global_main;
 
   clib_mem_init_thread_safe (0, 128 << 20);
 
@@ -446,6 +503,22 @@ main (int argc, char **argv)
 
   vam->current_file = (u8 *) "plugin-init";
   vat_plugin_init (vam);
+
+  /* Set up the init function hash table */
+  vm->init_functions_called = hash_create (0, 0);
+
+  /* Execute plugin init and api_init functions */
+  error = vlib_call_init_exit_functions
+    (vm, &vm->init_function_registrations, 1 /* call once */ );
+
+  if (error)
+    clib_error_report (error);
+
+  error = vlib_call_init_exit_functions
+    (vm, &vm->api_init_function_registrations, 1 /* call_once */ );
+
+  if (error)
+    clib_error_report (error);
 
   for (i = 0; i < vec_len (input_files); i++)
     {
