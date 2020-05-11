@@ -37,19 +37,122 @@ typedef struct
 
 tracedump_test_main_t tracedump_test_main;
 
+
+int
+api_trace_set_filters (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_trace_set_filters_t *mp;
+  u32 flag;
+  u32 count;
+  u32 node_index;
+  u32 classifier;
+
+  flag = TRACE_FF_NONE;
+  count = 50;
+  node_index = ~0;
+  classifier = ~0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "none"))
+	flag = TRACE_FF_NONE;
+      else if (unformat (i, "include_node %u", &node_index))
+	flag = TRACE_FF_INCLUDE_NODE;
+      else if (unformat (i, "exclude_node %u", &node_index))
+	flag = TRACE_FF_EXCLUDE_NODE;
+      else if (unformat (i, "include_classifier %u", &classifier))
+	flag = TRACE_FF_INCLUDE_CLASSIFIER;
+      else if (unformat (i, "exclude_classifier %u", &classifier))
+	flag = TRACE_FF_EXCLUDE_CLASSIFIER;
+      else if (unformat (i, "count %u", &count))
+	;
+      else
+	{
+	  clib_warning ("Unknown input: %U\n", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (TRACE_SET_FILTERS, mp);
+  mp->flag = htonl (flag);
+  mp->node_index = htonl (node_index);
+  mp->count = htonl (count);
+  mp->classifier_table_index = htonl (classifier);
+
+  int ret = 0;
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+
+int
+api_trace_capture_packets (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_trace_capture_packets_t *mp;
+  u32 node_index;
+  u32 max;
+  bool pre_capture_clear;
+  bool use_filter;
+  bool verbose;
+
+  node_index = ~0;
+  max = 50;
+  pre_capture_clear = use_filter = verbose = false;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "node_index %u", &node_index))
+	;
+      else if (unformat (i, "max %u", &max))
+	;
+      else if (unformat (i, "pre_capture_clear"))
+	pre_capture_clear = false;
+      else if (unformat (i, "use_filter"))
+	use_filter = false;
+      else if (unformat (i, "verbose"))
+	verbose = false;
+      else
+	{
+	  clib_warning ("Unknown input: %U\n", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (TRACE_CAPTURE_PACKETS, mp);
+  mp->node_index = htonl (node_index);
+  mp->max_packets = htonl (max);
+  mp->use_filter = use_filter;
+  mp->verbose = verbose;
+  mp->pre_capture_clear = pre_capture_clear;
+
+  int ret = 0;
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+
 static void
 vl_api_trace_details_t_handler (vl_api_trace_details_t * dmp)
 {
+  u32 packet_number;
   u32 thread_id, position;
 
   thread_id = clib_net_to_host_u32 (dmp->thread_id);
   position = clib_net_to_host_u32 (dmp->position);
+  packet_number = clib_net_to_host_u32 (dmp->packet_number);
   fformat
     (stdout,
      "thread %d position %d more_this_thread %d more_threads %d done %d\n",
      thread_id, position, (u32) dmp->more_this_thread,
      (u32) dmp->more_threads, (u32) dmp->done);
-  fformat (stdout, "  %U\n", vl_api_format_string, (&dmp->trace_data));
+  fformat (stdout, "Packet %d\n%U\n\n",
+	   packet_number, vl_api_format_string, (&dmp->trace_data));
 }
 
 
@@ -116,6 +219,21 @@ api_trace_dump (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+int
+api_trace_clear_capture (vat_main_t * vam)
+{
+  vl_api_trace_clear_capture_t *mp;
+  int ret;
+
+  M (TRACE_CLEAR_CAPTURE, mp);
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+
+
 
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_endianfun

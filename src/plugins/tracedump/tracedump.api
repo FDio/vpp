@@ -1,3 +1,4 @@
+/* Hey Emacs use -*- mode: C -*- */
 /*
  * tracedump.api - streaming packet trace dump API
  *
@@ -23,9 +24,72 @@
  * called through a shared memory interface.
  */
 
-/* Version and type recitations */
 
 option version = "0.1.0";
+
+enum trace_filter_flag : u32
+{
+  TRACE_FF_NONE = 0,
+  TRACE_FF_INCLUDE_NODE = 1,
+  TRACE_FF_EXCLUDE_NODE = 2,
+  TRACE_FF_INCLUDE_CLASSIFIER = 3,
+  TRACE_FF_EXCLUDE_CLASSIFIER = 4,
+};
+
+
+/** \brief trace_set_filters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param flag - One of the trace_filter_flag values
+    @param node_index = The node-index to include/exclude 
+    @param classifier_table_index = The include/exclude classifier table
+    @param count = The number of packets to include/exclude
+*/
+autoreply define trace_set_filters
+{
+  u32 client_index;
+  u32 context;
+  vl_api_trace_filter_flag_t flag;	/* TRACE_FF_* */
+  u32 count;
+  u32 node_index [default = 0xffffffff];
+  u32 classifier_table_index [default = 0xffffffff];
+  option vat_help =   "trace_set_filters [none] | [(include_node|exclude_node) <node-index>] | [(include_classifier|exclude_classifier) <classifier-index>] [count <count>]";
+};
+
+
+/** \brief trace_capture_packets
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param node_index - graph input node whose packets are captured
+    @param max_packets - maximum number of packets to capture
+    @param use_filter - if true, apply filters to select/reject packets
+    @param verbose - if true, set verbose packet capture flag
+    @param pre_capture_clear - if true, clear buffer before capture begins
+*/
+autoreply define trace_capture_packets
+{
+  u32 client_index;
+  u32 context;
+  u32 node_index;
+  u32 max_packets;
+  bool use_filter;
+  bool verbose;
+  bool pre_capture_clear;
+  option vat_help = "trace_capture_packets [node_index <index>] [max <max>] [pre_capture_clear] [use_filter] [verbose]";
+};
+
+
+/** \brief trace_clear_capture
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define trace_clear_capture
+{
+  u32 client_index;
+  u32 context;
+  option vat_help = "trace_clear_capture";
+};
+
 
 service {
     rpc trace_dump returns trace_dump_reply
@@ -48,6 +112,8 @@ define trace_dump {
 
     /* Max number of replies per burst */
     u32 max_records;
+
+    option vat_help = "trace_dump [thread_id <tid>] [position <pos>] [max <max>]";
 };
 
 define trace_dump_reply {
@@ -78,5 +144,6 @@ define trace_details {
     /* Needed when set ends in the middle of a batch */
     u8 done;
 
+    u32 packet_number;
     string trace_data[];
 };
