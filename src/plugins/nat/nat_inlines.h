@@ -143,49 +143,6 @@ nat_pre_node_fn_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-always_inline u32
-ip_proto_to_snat_proto (u8 ip_proto)
-{
-  u32 snat_proto = ~0;
-
-  snat_proto = (ip_proto == IP_PROTOCOL_UDP) ? SNAT_PROTOCOL_UDP : snat_proto;
-  snat_proto = (ip_proto == IP_PROTOCOL_TCP) ? SNAT_PROTOCOL_TCP : snat_proto;
-  snat_proto =
-    (ip_proto == IP_PROTOCOL_ICMP) ? SNAT_PROTOCOL_ICMP : snat_proto;
-  snat_proto =
-    (ip_proto == IP_PROTOCOL_ICMP6) ? SNAT_PROTOCOL_ICMP : snat_proto;
-
-  return snat_proto;
-}
-
-always_inline u8
-snat_proto_to_ip_proto (snat_protocol_t snat_proto)
-{
-  u8 ip_proto = ~0;
-
-  ip_proto = (snat_proto == SNAT_PROTOCOL_UDP) ? IP_PROTOCOL_UDP : ip_proto;
-  ip_proto = (snat_proto == SNAT_PROTOCOL_TCP) ? IP_PROTOCOL_TCP : ip_proto;
-  ip_proto = (snat_proto == SNAT_PROTOCOL_ICMP) ? IP_PROTOCOL_ICMP : ip_proto;
-
-  return ip_proto;
-}
-
-static_always_inline u8
-icmp_type_is_error_message (u8 icmp_type)
-{
-  switch (icmp_type)
-    {
-    case ICMP4_destination_unreachable:
-    case ICMP4_time_exceeded:
-    case ICMP4_parameter_problem:
-    case ICMP4_source_quench:
-    case ICMP4_redirect:
-    case ICMP4_alternate_host_address:
-      return 1;
-    }
-  return 0;
-}
-
 always_inline u8
 is_interface_addr (snat_main_t * sm, vlib_node_runtime_t * node,
 		   u32 sw_if_index0, u32 ip4_addr)
@@ -415,11 +372,11 @@ nat44_session_get_timeout (snat_main_t * sm, snat_session_t * s)
 {
   switch (s->in2out.protocol)
     {
-    case SNAT_PROTOCOL_ICMP:
+    case NAT_PROTOCOL_ICMP:
       return sm->icmp_timeout;
-    case SNAT_PROTOCOL_UDP:
+    case NAT_PROTOCOL_UDP:
       return sm->udp_timeout;
-    case SNAT_PROTOCOL_TCP:
+    case NAT_PROTOCOL_TCP:
       {
 	if (s->state)
 	  return sm->tcp_transitory_timeout;
@@ -526,7 +483,7 @@ make_sm_kv (clib_bihash_kv_8_8_t * kv, ip4_address_t * addr, u8 proto,
 
 static_always_inline int
 get_icmp_i2o_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
-		     u64 value, u8 * snat_proto, u16 * l_port, u16 * r_port,
+		     u64 value, u8 * nat_proto, u16 * l_port, u16 * r_port,
 		     clib_bihash_kv_16_8_t * kv)
 {
   u8 proto;
@@ -558,16 +515,16 @@ get_icmp_i2o_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
       proto = inner_ip0->protocol;
       r_addr = &inner_ip0->src_address;
       l_addr = &inner_ip0->dst_address;
-      switch (ip_proto_to_snat_proto (inner_ip0->protocol))
+      switch (ip_proto_to_nat_proto (inner_ip0->protocol))
 	{
-	case SNAT_PROTOCOL_ICMP:
+	case NAT_PROTOCOL_ICMP:
 	  inner_icmp0 = (icmp46_header_t *) l4_header;
 	  inner_echo0 = (icmp_echo_header_t *) (inner_icmp0 + 1);
 	  _r_port = 0;
 	  _l_port = inner_echo0->identifier;
 	  break;
-	case SNAT_PROTOCOL_UDP:
-	case SNAT_PROTOCOL_TCP:
+	case NAT_PROTOCOL_UDP:
+	case NAT_PROTOCOL_TCP:
 	  _l_port = ((tcp_udp_header_t *) l4_header)->dst_port;
 	  _r_port = ((tcp_udp_header_t *) l4_header)->src_port;
 	  break;
@@ -577,9 +534,9 @@ get_icmp_i2o_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
     }
   make_ed_kv (l_addr, r_addr, proto, rx_fib_index, _l_port, _r_port, value,
 	      kv);
-  if (snat_proto)
+  if (nat_proto)
     {
-      *snat_proto = ip_proto_to_snat_proto (proto);
+      *nat_proto = ip_proto_to_nat_proto (proto);
     }
   if (l_port)
     {
@@ -595,7 +552,7 @@ get_icmp_i2o_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
 
 static_always_inline int
 get_icmp_o2i_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
-		     u64 value, u8 * snat_proto, u16 * l_port, u16 * r_port,
+		     u64 value, u8 * nat_proto, u16 * l_port, u16 * r_port,
 		     clib_bihash_kv_16_8_t * kv)
 {
   icmp46_header_t *icmp0;
@@ -626,16 +583,16 @@ get_icmp_o2i_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
       proto = inner_ip0->protocol;
       l_addr = &inner_ip0->src_address;
       r_addr = &inner_ip0->dst_address;
-      switch (ip_proto_to_snat_proto (inner_ip0->protocol))
+      switch (ip_proto_to_nat_proto (inner_ip0->protocol))
 	{
-	case SNAT_PROTOCOL_ICMP:
+	case NAT_PROTOCOL_ICMP:
 	  inner_icmp0 = (icmp46_header_t *) l4_header;
 	  inner_echo0 = (icmp_echo_header_t *) (inner_icmp0 + 1);
 	  _l_port = inner_echo0->identifier;
 	  _r_port = 0;
 	  break;
-	case SNAT_PROTOCOL_UDP:
-	case SNAT_PROTOCOL_TCP:
+	case NAT_PROTOCOL_UDP:
+	case NAT_PROTOCOL_TCP:
 	  _l_port = ((tcp_udp_header_t *) l4_header)->src_port;
 	  _r_port = ((tcp_udp_header_t *) l4_header)->dst_port;
 	  break;
@@ -645,9 +602,9 @@ get_icmp_o2i_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
     }
   make_ed_kv (l_addr, r_addr, proto, rx_fib_index, _l_port, _r_port, value,
 	      kv);
-  if (snat_proto)
+  if (nat_proto)
     {
-      *snat_proto = ip_proto_to_snat_proto (proto);
+      *nat_proto = ip_proto_to_nat_proto (proto);
     }
   if (l_port)
     {

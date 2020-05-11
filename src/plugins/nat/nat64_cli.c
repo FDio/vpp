@@ -119,7 +119,7 @@ nat64_cli_pool_walk (snat_address_t * ap, void *ctx)
 
 #define _(N, i, n, s) \
   vlib_cli_output (vm, "  %d busy %s ports", ap->busy_##n##_ports, s);
-  foreach_snat_protocol
+  foreach_nat_protocol
 #undef _
     return 0;
 }
@@ -288,7 +288,7 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
   u32 in_port = 0;
   u32 out_port = 0;
   u32 vrf_id = 0, protocol;
-  snat_protocol_t proto = 0;
+  nat_protocol_t proto = 0;
   u8 p = 0;
   int rv;
 
@@ -305,7 +305,7 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
 	;
       else if (unformat (line_input, "vrf %u", &vrf_id))
 	;
-      else if (unformat (line_input, "%U", unformat_snat_protocol, &proto))
+      else if (unformat (line_input, "%U", unformat_nat_protocol, &proto))
 	;
       else
 	if (unformat
@@ -338,7 +338,7 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
 	  goto done;
 	}
 
-      p = snat_proto_to_ip_proto (proto);
+      p = nat_proto_to_ip_proto (proto);
     }
 
   rv =
@@ -394,8 +394,8 @@ nat64_cli_bib_walk (nat64_db_bib_entry_t * bibe, void *ctx)
 		       clib_net_to_host_u16 (bibe->in_port),
 		       format_ip4_address, &bibe->out_addr,
 		       clib_net_to_host_u16 (bibe->out_port),
-		       format_snat_protocol,
-		       ip_proto_to_snat_proto (bibe->proto), fib->ft_table_id,
+		       format_nat_protocol,
+		       ip_proto_to_nat_proto (bibe->proto), fib->ft_table_id,
 		       bibe->is_static ? "static" : "dynamic", bibe->ses_num);
       break;
     default:
@@ -415,15 +415,15 @@ nat64_show_bib_command_fn (vlib_main_t * vm,
   nat64_main_t *nm = &nat64_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
-  u32 proto = ~0;
+  u32 proto = NAT_PROTOCOL_OTHER;
   u8 p = 255;
   nat64_db_t *db;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  if (unformat (line_input, "%U", unformat_snat_protocol, &proto))
-    p = snat_proto_to_ip_proto (proto);
+  if (unformat (line_input, "%U", unformat_nat_protocol, &proto))
+    p = nat_proto_to_ip_proto (proto);
   else if (unformat (line_input, "unknown"))
     p = 0;
   else if (unformat (line_input, "all"))
@@ -438,8 +438,7 @@ nat64_show_bib_command_fn (vlib_main_t * vm,
   if (p == 255)
     vlib_cli_output (vm, "NAT64 BIB entries:");
   else
-    vlib_cli_output (vm, "NAT64 %U BIB entries:", format_snat_protocol,
-		     proto);
+    vlib_cli_output (vm, "NAT64 %U BIB entries:", format_nat_protocol, proto);
 
   /* *INDENT-OFF* */
   vec_foreach (db, nm->db)
@@ -484,8 +483,8 @@ nat64_cli_st_walk (nat64_db_st_entry_t * ste, void *arg)
 		     format_ip4_address, &bibe->out_addr,
 		     format_ip4_address, &ste->out_r_addr,
 		     clib_net_to_host_u16 (bibe->out_port),
-		     format_snat_protocol,
-		     ip_proto_to_snat_proto (bibe->proto), vrf_id);
+		     format_nat_protocol,
+		     ip_proto_to_nat_proto (bibe->proto), vrf_id);
   else if (ste->proto == IP_PROTOCOL_TCP || ste->proto == IP_PROTOCOL_UDP)
     vlib_cli_output (vm, " %U %u %U %u %U %u %U %u protcol %U vrf %u",
 		     format_ip6_address, &bibe->in_addr,
@@ -496,8 +495,8 @@ nat64_cli_st_walk (nat64_db_st_entry_t * ste, void *arg)
 		     clib_net_to_host_u16 (bibe->out_port),
 		     format_ip4_address, &ste->out_r_addr,
 		     clib_net_to_host_u16 (ste->r_port),
-		     format_snat_protocol,
-		     ip_proto_to_snat_proto (bibe->proto), vrf_id);
+		     format_nat_protocol,
+		     ip_proto_to_nat_proto (bibe->proto), vrf_id);
   else
     vlib_cli_output (vm, " %U %U %U %U protocol %u vrf %u",
 		     format_ip6_address, &bibe->in_addr,
@@ -516,7 +515,7 @@ nat64_show_st_command_fn (vlib_main_t * vm,
   nat64_main_t *nm = &nat64_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
-  u32 proto = ~0;
+  u32 proto = NAT_PROTOCOL_OTHER;
   u8 p = 255;
   nat64_db_t *db;
   nat64_cli_st_walk_ctx_t ctx = {
@@ -526,8 +525,8 @@ nat64_show_st_command_fn (vlib_main_t * vm,
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  if (unformat (line_input, "%U", unformat_snat_protocol, &proto))
-    p = snat_proto_to_ip_proto (proto);
+  if (unformat (line_input, "%U", unformat_nat_protocol, &proto))
+    p = nat_proto_to_ip_proto (proto);
   else if (unformat (line_input, "unknown"))
     p = 0;
   else if (unformat (line_input, "all"))
@@ -542,7 +541,7 @@ nat64_show_st_command_fn (vlib_main_t * vm,
   if (p == 255)
     vlib_cli_output (vm, "NAT64 sessions:");
   else
-    vlib_cli_output (vm, "NAT64 %U sessions:", format_snat_protocol, proto);
+    vlib_cli_output (vm, "NAT64 %U sessions:", format_nat_protocol, proto);
   /* *INDENT-OFF* */
   vec_foreach (db, nm->db)
     {

@@ -113,12 +113,12 @@ void snat_ipfix_logging_init (vlib_main_t * vm);
 int snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port);
 void snat_ipfix_logging_nat44_ses_create (u32 thread_index, u32 src_ip,
                                           u32 nat_src_ip,
-                                          snat_protocol_t snat_proto,
+                                          nat_protocol_t nat_proto,
                                           u16 src_port, u16 nat_src_port,
                                           u32 vrf_id);
 void snat_ipfix_logging_nat44_ses_delete (u32 thread_index, u32 src_ip,
                                           u32 nat_src_ip,
-                                          snat_protocol_t snat_proto,
+                                          nat_protocol_t nat_proto,
                                           u16 src_port, u16 nat_src_port,
                                           u32 vrf_id);
 void snat_ipfix_logging_addresses_exhausted(u32 thread_index, u32 pool_id);

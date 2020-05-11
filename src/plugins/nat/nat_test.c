@@ -299,7 +299,7 @@ static int api_nat44_add_del_static_mapping(vat_main_t * vam)
   u32 local_port = 0, external_port = 0, vrf_id = ~0;
   u32 sw_if_index = ~0;
   u8 sw_if_index_set = 0;
-  u32 proto = ~0;
+  u32 proto = NAT_PROTOCOL_OTHER;
   u8 proto_set = 0;
   int ret;
 

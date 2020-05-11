@@ -161,7 +161,7 @@ snat_hairpinning (snat_main_t * sm,
       old_dst_port0 = tcp0->dst;
       if (PREDICT_TRUE (new_dst_port0 != old_dst_port0))
 	{
-	  if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
+	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
 	    {
 	      tcp0->dst = new_dst_port0;
 	      sum0 = tcp0->checksum;
@@ -179,7 +179,7 @@ snat_hairpinning (snat_main_t * sm,
 	}
       else
 	{
-	  if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
+	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
 	    {
 	      sum0 = tcp0->checksum;
 	      sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0,
@@ -218,9 +218,9 @@ snat_icmp_hairpinning (snat_main_t * sm,
 
       inner_ip0 = (ip4_header_t *) ((icmp_echo_header_t *) (icmp0 + 1) + 1);
       l4_header = ip4_next_header (inner_ip0);
-      u32 protocol = ip_proto_to_snat_proto (inner_ip0->protocol);
+      u32 protocol = ip_proto_to_nat_proto (inner_ip0->protocol);
 
-      if (protocol != SNAT_PROTOCOL_TCP && protocol != SNAT_PROTOCOL_UDP)
+      if (protocol != NAT_PROTOCOL_TCP && protocol != NAT_PROTOCOL_UDP)
 	return 1;
 
       if (is_ed)
@@ -298,7 +298,7 @@ snat_icmp_hairpinning (snat_main_t * sm,
 	      u16 icmp_id0 = echo0->identifier;
 	      key0.addr = ip0->dst_address;
 	      key0.port = icmp_id0;
-	      key0.protocol = SNAT_PROTOCOL_ICMP;
+	      key0.protocol = NAT_PROTOCOL_ICMP;
 	      key0.fib_index = sm->outside_fib_index;
 	      kv0.key = key0.as_u64;
 	      if (sm->num_workers > 1)
@@ -473,7 +473,7 @@ nat44_hairpinning_fn_inline (vlib_main_t * vm,
 	  udp0 = ip4_next_header (ip0);
 	  tcp0 = (tcp_header_t *) udp0;
 
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
 
 	  vnet_get_config_data (&cm->config_main, &b0->current_config_index,
 				&next0, 0);
@@ -584,19 +584,19 @@ snat_hairpin_dst_fn_inline (vlib_main_t * vm,
 	  next0 = NAT_HAIRPIN_NEXT_LOOKUP;
 	  ip0 = vlib_buffer_get_current (b0);
 
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
 
 	  vnet_buffer (b0)->snat.flags = 0;
 	  if (PREDICT_FALSE (is_hairpinning (sm, &ip0->dst_address)))
 	    {
-	      if (proto0 == SNAT_PROTOCOL_TCP || proto0 == SNAT_PROTOCOL_UDP)
+	      if (proto0 == NAT_PROTOCOL_TCP || proto0 == NAT_PROTOCOL_UDP)
 		{
 		  udp_header_t *udp0 = ip4_next_header (ip0);
 		  tcp_header_t *tcp0 = (tcp_header_t *) udp0;
 
 		  snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0, is_ed);
 		}
-	      else if (proto0 == SNAT_PROTOCOL_ICMP)
+	      else if (proto0 == NAT_PROTOCOL_ICMP)
 		{
 		  icmp46_header_t *icmp0 = ip4_next_header (ip0);
 

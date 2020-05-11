@@ -19,16 +19,11 @@
 #ifndef included_nat_lib_h__
 #define included_nat_lib_h__
 
-#define foreach_nat_error \
-  _(VALUE_EXIST, -1, "Value already exists") \
-  _(NO_SUCH_ENTRY, -2, "No such entry") \
-  _(UNKNOWN_PROTOCOL, -3, "Unknown protocol") \
-  _(OUT_OF_TRANSLATIONS, -4, "Out of translations")
-
-#define foreach_nat_protocol \
-  _(UDP, 0, udp, "udp")       \
-  _(TCP, 1, tcp, "tcp")       \
-  _(ICMP, 2, icmp, "icmp")
+#define foreach_nat_error                      \
+  _ (VALUE_EXIST, -1, "Value already exists")  \
+  _ (NO_SUCH_ENTRY, -2, "No such entry")       \
+  _ (UNKNOWN_PROTOCOL, -3, "Unknown protocol") \
+  _ (OUT_OF_TRANSLATIONS, -4, "Out of translations")
 
 typedef enum
 {
@@ -36,6 +31,12 @@ typedef enum
   foreach_nat_error
 #undef _
 } nat_error_t;
+
+#define foreach_nat_protocol   \
+  _ (OTHER, 0, other, "other") \
+  _ (UDP, 1, udp, "udp")       \
+  _ (TCP, 2, tcp, "tcp")       \
+  _ (ICMP, 3, icmp, "icmp")
 
 typedef enum
 {
