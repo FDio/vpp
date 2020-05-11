@@ -38,7 +38,7 @@ class Event(Packet):
     fields_desc = [ByteEnumField("event_type", None,
                                  {1: "add", 2: "del", 3: "refresh"}),
                    ByteEnumField("protocol", None,
-                                 {0: "udp", 1: "tcp", 2: "icmp"}),
+                                 {0: "other", 1: "udp", 2: "tcp", 3: "icmp"}),
                    ShortField("flags", 0),
                    IPField("in_addr", None),
                    IPField("out_addr", None),

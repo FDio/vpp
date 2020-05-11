@@ -226,7 +226,7 @@ int nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat64_alloc_out_addr_and_port (u32 fib_index, snat_protocol_t proto,
+int nat64_alloc_out_addr_and_port (u32 fib_index, nat_protocol_t proto,
 				   ip4_address_t * addr, u16 * port,
 				   u32 thread_index);
 

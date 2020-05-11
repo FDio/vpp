@@ -13,34 +13,40 @@
  * limitations under the License.
  */
 /**
- * @brief The NAT44 inline functions
+ * @brief Common NAT inline functions
  */
 #ifndef included_nat_inlines_h__
 #define included_nat_inlines_h__
 
-static_always_inline u32
+always_inline nat_protocol_t
 ip_proto_to_nat_proto (u8 ip_proto)
 {
-  u32 nat_proto = ~0;
+  static const nat_protocol_t lookup_table[256] = {
+    [IP_PROTOCOL_TCP] = NAT_PROTOCOL_TCP,
+    [IP_PROTOCOL_UDP] = NAT_PROTOCOL_UDP,
+    [IP_PROTOCOL_ICMP] = NAT_PROTOCOL_ICMP,
+    [IP_PROTOCOL_ICMP6] = NAT_PROTOCOL_ICMP,
+  };
 
-  nat_proto = (ip_proto == IP_PROTOCOL_UDP) ? NAT_PROTOCOL_UDP : nat_proto;
-  nat_proto = (ip_proto == IP_PROTOCOL_TCP) ? NAT_PROTOCOL_TCP : nat_proto;
-  nat_proto = (ip_proto == IP_PROTOCOL_ICMP) ? NAT_PROTOCOL_ICMP : nat_proto;
-  nat_proto = (ip_proto == IP_PROTOCOL_ICMP6) ? NAT_PROTOCOL_ICMP : nat_proto;
-
-  return nat_proto;
+  return lookup_table[ip_proto];
 }
 
 static_always_inline u8
 nat_proto_to_ip_proto (nat_protocol_t nat_proto)
 {
-  u8 ip_proto = ~0;
+  ASSERT (nat_proto <= NAT_PROTOCOL_ICMP);
 
-  ip_proto = (nat_proto == NAT_PROTOCOL_UDP) ? IP_PROTOCOL_UDP : ip_proto;
-  ip_proto = (nat_proto == NAT_PROTOCOL_TCP) ? IP_PROTOCOL_TCP : ip_proto;
-  ip_proto = (nat_proto == NAT_PROTOCOL_ICMP) ? IP_PROTOCOL_ICMP : ip_proto;
+  static const u8 lookup_table[256] = {
+    [NAT_PROTOCOL_OTHER] = ~0,
+    [NAT_PROTOCOL_TCP] = IP_PROTOCOL_TCP,
+    [NAT_PROTOCOL_UDP] = IP_PROTOCOL_UDP,
+    [NAT_PROTOCOL_ICMP] = IP_PROTOCOL_ICMP,
+  };
 
-  return ip_proto;
+  ASSERT (NAT_PROTOCOL_OTHER == nat_proto || NAT_PROTOCOL_TCP == nat_proto
+	  || NAT_PROTOCOL_UDP == nat_proto || NAT_PROTOCOL_ICMP == nat_proto);
+
+  return lookup_table[nat_proto];
 }
 
 static_always_inline u8

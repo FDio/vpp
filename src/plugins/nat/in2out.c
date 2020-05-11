@@ -409,7 +409,7 @@ static_always_inline
   if (!icmp_type_is_error_message
       (vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags))
     {
-      key0.protocol = SNAT_PROTOCOL_ICMP;
+      key0.protocol = NAT_PROTOCOL_ICMP;
       key0.addr = ip0->src_address;
       key0.port = vnet_buffer (b)->ip.reass.l4_src_port;	// TODO fixme should this be dst port?
     }
@@ -417,17 +417,17 @@ static_always_inline
     {
       inner_ip0 = (ip4_header_t *) (echo0 + 1);
       l4_header = ip4_next_header (inner_ip0);
-      key0.protocol = ip_proto_to_snat_proto (inner_ip0->protocol);
+      key0.protocol = ip_proto_to_nat_proto (inner_ip0->protocol);
       key0.addr = inner_ip0->dst_address;
       switch (key0.protocol)
 	{
-	case SNAT_PROTOCOL_ICMP:
+	case NAT_PROTOCOL_ICMP:
 	  inner_icmp0 = (icmp46_header_t *) l4_header;
 	  inner_echo0 = (icmp_echo_header_t *) (inner_icmp0 + 1);
 	  key0.port = inner_echo0->identifier;
 	  break;
-	case SNAT_PROTOCOL_UDP:
-	case SNAT_PROTOCOL_TCP:
+	case NAT_PROTOCOL_UDP:
+	case NAT_PROTOCOL_TCP:
 	  key0.port = ((tcp_udp_header_t *) l4_header)->dst_port;
 	  break;
 	default:
@@ -503,7 +503,7 @@ icmp_match_in2out_slow (snat_main_t * sm, vlib_node_runtime_t * node,
       else
 	{
 	  if (PREDICT_FALSE (snat_not_translate (sm, node, sw_if_index0,
-						 ip0, SNAT_PROTOCOL_ICMP,
+						 ip0, NAT_PROTOCOL_ICMP,
 						 rx_fib_index0,
 						 thread_index)))
 	    {
@@ -765,7 +765,7 @@ icmp_in2out (snat_main_t * sm,
 
 	  switch (protocol)
 	    {
-	    case SNAT_PROTOCOL_ICMP:
+	    case NAT_PROTOCOL_ICMP:
 	      inner_icmp0 = (icmp46_header_t *) l4_header;
 	      inner_echo0 = (icmp_echo_header_t *) (inner_icmp0 + 1);
 
@@ -779,8 +779,8 @@ icmp_in2out (snat_main_t * sm,
 				identifier);
 	      icmp0->checksum = ip_csum_fold (sum0);
 	      break;
-	    case SNAT_PROTOCOL_UDP:
-	    case SNAT_PROTOCOL_TCP:
+	    case NAT_PROTOCOL_UDP:
+	    case NAT_PROTOCOL_TCP:
 	      old_id0 = ((tcp_udp_header_t *) l4_header)->dst_port;
 	      new_id0 = sm0.port;
 	      ((tcp_udp_header_t *) l4_header)->dst_port = new_id0;
@@ -975,12 +975,12 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	      goto trace00;
 	    }
 
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
 
 	  /* Next configured feature, probably ip4-lookup */
 	  if (is_slow_path)
 	    {
-	      if (PREDICT_FALSE (proto0 == ~0))
+	      if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_OTHER))
 		{
 		  if (nat_in2out_sm_unknown_proto
 		      (sm, b0, ip0, rx_fib_index0))
@@ -993,7 +993,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		  goto trace00;
 		}
 
-	      if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
+	      if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
 		{
 		  next0 = icmp_in2out_slow_path
 		    (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0,
@@ -1004,13 +1004,13 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      if (PREDICT_FALSE (proto0 == ~0))
+	      if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_OTHER))
 		{
 		  next0 = SNAT_IN2OUT_NEXT_SLOW_PATH;
 		  goto trace00;
 		}
 
-	      if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
+	      if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
 		{
 		  next0 = SNAT_IN2OUT_NEXT_SLOW_PATH;
 		  goto trace00;
@@ -1046,7 +1046,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		       * be able to use dhcp client on the outside interface
 		       */
 		      if (PREDICT_FALSE
-			  (proto0 == SNAT_PROTOCOL_UDP
+			  (proto0 == NAT_PROTOCOL_UDP
 			   && (vnet_buffer (b0)->ip.reass.l4_dst_port ==
 			       clib_host_to_net_u16
 			       (UDP_DST_PORT_dhcp_to_server))
@@ -1096,7 +1096,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	  ip0->checksum = ip_csum_fold (sum0);
 
 
-	  if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
+	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
 	    {
 	      if (!vnet_buffer (b0)->ip.reass.is_non_first_fragment)
 		{
@@ -1183,12 +1183,12 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	      goto trace01;
 	    }
 
-	  proto1 = ip_proto_to_snat_proto (ip1->protocol);
+	  proto1 = ip_proto_to_nat_proto (ip1->protocol);
 
 	  /* Next configured feature, probably ip4-lookup */
 	  if (is_slow_path)
 	    {
-	      if (PREDICT_FALSE (proto1 == ~0))
+	      if (PREDICT_FALSE (proto1 == NAT_PROTOCOL_OTHER))
 		{
 		  if (nat_in2out_sm_unknown_proto
 		      (sm, b1, ip1, rx_fib_index1))
@@ -1201,7 +1201,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		  goto trace01;
 		}
 
-	      if (PREDICT_FALSE (proto1 == SNAT_PROTOCOL_ICMP))
+	      if (PREDICT_FALSE (proto1 == NAT_PROTOCOL_ICMP))
 		{
 		  next1 = icmp_in2out_slow_path
 		    (sm, b1, ip1, icmp1, sw_if_index1, rx_fib_index1, node,
@@ -1212,13 +1212,13 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      if (PREDICT_FALSE (proto1 == ~0))
+	      if (PREDICT_FALSE (proto1 == NAT_PROTOCOL_OTHER))
 		{
 		  next1 = SNAT_IN2OUT_NEXT_SLOW_PATH;
 		  goto trace01;
 		}
 
-	      if (PREDICT_FALSE (proto1 == SNAT_PROTOCOL_ICMP))
+	      if (PREDICT_FALSE (proto1 == NAT_PROTOCOL_ICMP))
 		{
 		  next1 = SNAT_IN2OUT_NEXT_SLOW_PATH;
 		  goto trace01;
@@ -1254,7 +1254,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		       * be able to use dhcp client on the outside interface
 		       */
 		      if (PREDICT_FALSE
-			  (proto1 == SNAT_PROTOCOL_UDP
+			  (proto1 == NAT_PROTOCOL_UDP
 			   && (vnet_buffer (b1)->ip.reass.l4_dst_port ==
 			       clib_host_to_net_u16
 			       (UDP_DST_PORT_dhcp_to_server))
@@ -1303,7 +1303,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 				 src_address /* changed member */ );
 	  ip1->checksum = ip_csum_fold (sum1);
 
-	  if (PREDICT_TRUE (proto1 == SNAT_PROTOCOL_TCP))
+	  if (PREDICT_TRUE (proto1 == NAT_PROTOCOL_TCP))
 	    {
 	      if (!vnet_buffer (b0)->ip.reass.is_non_first_fragment)
 		{
@@ -1426,12 +1426,12 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
 
 	  /* Next configured feature, probably ip4-lookup */
 	  if (is_slow_path)
 	    {
-	      if (PREDICT_FALSE (proto0 == ~0))
+	      if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_OTHER))
 		{
 		  if (nat_in2out_sm_unknown_proto
 		      (sm, b0, ip0, rx_fib_index0))
@@ -1444,7 +1444,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		  goto trace0;
 		}
 
-	      if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
+	      if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
 		{
 		  next0 = icmp_in2out_slow_path
 		    (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
@@ -1455,13 +1455,13 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      if (PREDICT_FALSE (proto0 == ~0))
+	      if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_OTHER))
 		{
 		  next0 = SNAT_IN2OUT_NEXT_SLOW_PATH;
 		  goto trace0;
 		}
 
-	      if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
+	      if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
 		{
 		  next0 = SNAT_IN2OUT_NEXT_SLOW_PATH;
 		  goto trace0;
@@ -1495,7 +1495,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		       * be able to use dhcp client on the outside interface
 		       */
 		      if (PREDICT_FALSE
-			  (proto0 == SNAT_PROTOCOL_UDP
+			  (proto0 == NAT_PROTOCOL_UDP
 			   && (vnet_buffer (b0)->ip.reass.l4_dst_port ==
 			       clib_host_to_net_u16
 			       (UDP_DST_PORT_dhcp_to_server))
@@ -1545,7 +1545,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 				 src_address /* changed member */ );
 	  ip0->checksum = ip_csum_fold (sum0);
 
-	  if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
+	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
 	    {
 	      if (!vnet_buffer (b0)->ip.reass.is_non_first_fragment)
 		{
@@ -1832,12 +1832,12 @@ VLIB_NODE_FN (snat_in2out_fast_node) (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_OTHER))
 	    goto trace0;
 
-	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
+	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
 	    {
 	      next0 = icmp_in2out (sm, b0, ip0, icmp0, sw_if_index0,
 				   rx_fib_index0, node, next0, ~0, 0, 0);
@@ -1873,7 +1873,7 @@ VLIB_NODE_FN (snat_in2out_fast_node) (vlib_main_t * vm,
 	      old_port0 = udp0->src_port;
 	      udp0->src_port = new_port0;
 
-	      if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
+	      if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
 		{
 		  sum0 = tcp0->checksum;
 		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
@@ -1899,7 +1899,7 @@ VLIB_NODE_FN (snat_in2out_fast_node) (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
+	      if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
 		{
 		  sum0 = tcp0->checksum;
 		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,

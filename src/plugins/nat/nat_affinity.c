@@ -38,7 +38,7 @@ format_affinity_kvp (u8 * s, va_list * args)
 	      format_ip4_address, &k.client_addr,
 	      format_ip4_address, &k.service_addr,
 	      clib_net_to_host_u16 (k.service_port),
-	      format_snat_protocol, k.proto);
+	      format_nat_protocol, k.proto);
 
   return s;
 }

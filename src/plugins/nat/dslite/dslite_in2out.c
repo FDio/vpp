@@ -316,7 +316,7 @@ dslite_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip40 = vlib_buffer_get_current (b0) + sizeof (ip6_header_t);
 	  proto0 = ip_proto_to_nat_proto (ip40->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_OTHER))
 	    {
 	      error0 = DSLITE_ERROR_UNSUPPORTED_PROTOCOL;
 	      next0 = DSLITE_IN2OUT_NEXT_DROP;

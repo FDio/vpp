@@ -81,7 +81,7 @@ VLIB_NODE_FN (dslite_ce_decap_node) (vlib_main_t * vm,
 	  ip40 = vlib_buffer_get_current (b0) + sizeof (ip6_header_t);
 	  proto0 = ip_proto_to_nat_proto (ip40->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_OTHER))
 	    {
 	      error0 = DSLITE_ERROR_UNSUPPORTED_PROTOCOL;
 	      next0 = DSLITE_CE_DECAP_NEXT_DROP;
