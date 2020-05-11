@@ -863,13 +863,13 @@ VNET_FEATURE_INIT (gso_l2_ip6_node, static) = {
 VNET_FEATURE_INIT (gso_ip4_node, static) = {
   .arc_name = "ip4-output",
   .node_name = "gso-ip4",
-  .runs_before = VNET_FEATURES ("esp4-encrypt-tun","ipsec4-output-feature"),
+  .runs_before = VNET_FEATURES ("ipsec4-output-feature"),
 };
 
 VNET_FEATURE_INIT (gso_ip6_node, static) = {
   .arc_name = "ip6-output",
   .node_name = "gso-ip6",
-  .runs_before = VNET_FEATURES ("esp6-encrypt-tun","ipsec6-output-feature"),
+  .runs_before = VNET_FEATURES ("ipsec6-output-feature"),
 };
 
 /*
