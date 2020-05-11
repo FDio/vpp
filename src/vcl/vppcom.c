@@ -2896,6 +2896,8 @@ vcl_epoll_wait_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
   svm_msg_q_msg_t *msg;
   session_event_t *e;
   int i;
+  int num = 0;
+  int ret = VPPCOM_OK;
 
   if (vec_len (wrk->mq_msg_vector) && svm_msg_q_is_empty (mq))
     goto handle_dequeued;
@@ -2906,7 +2908,7 @@ vcl_epoll_wait_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
       if (!wait_for_time)
 	{
 	  svm_msg_q_unlock (mq);
-	  return 0;
+	  return ret;
 	}
       else if (wait_for_time < 0)
 	{
@@ -2917,13 +2919,24 @@ vcl_epoll_wait_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
 	  if (svm_msg_q_timedwait (mq, wait_for_time / 1e3))
 	    {
 	      svm_msg_q_unlock (mq);
-	      return 0;
+	      return ret;
 	    }
 	}
     }
   ASSERT (maxevents > *num_ev);
-  vcl_mq_dequeue_batch (wrk, mq, maxevents - *num_ev);
+  do
+    {
+      num += vcl_mq_dequeue_batch (wrk, mq, maxevents - *num_ev - num);
+    }
+  while (mq->q->cursize > 0 && num < maxevents - *num_ev);
   svm_msg_q_unlock (mq);
+
+  if (mq->q->cursize > 0)
+    {
+      VDBG (1, "Too many events! cursize=%d, maxevents=%u, num=%d, num_ev=%u",
+	    mq->q->cursize, maxevents, num, *num_ev);
+      ret = VPPCOM_EAGAIN;
+    }
 
 handle_dequeued:
   for (i = 0; i < vec_len (wrk->mq_msg_vector); i++)
@@ -2935,7 +2948,7 @@ handle_dequeued:
     }
   vec_reset_length (wrk->mq_msg_vector);
   vcl_handle_pending_wrk_updates (wrk);
-  return *num_ev;
+  return ret;
 }
 
 static int
@@ -2984,8 +2997,11 @@ again:
   for (i = 0; i < n_mq_evts; i++)
     {
       mqc = vcl_mq_evt_conn_get (wrk, wrk->mq_events[i].data.u32);
-      n_read = read (mqc->mq_fd, &buf, sizeof (buf));
-      vcl_epoll_wait_handle_mq (wrk, mqc->mq, events, maxevents, 0, &n_evts);
+      if (VPPCOM_EAGAIN != vcl_epoll_wait_handle_mq (wrk, mqc->mq, events,
+						     maxevents, 0, &n_evts))
+	{
+	  n_read = read (mqc->mq_fd, &buf, sizeof (buf));
+	}
     }
   if (!n_evts && n_mq_evts > 0)
     goto again;
