@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "30a3b461_3d937a48",
+        "filename": "MAINTAINERS",
+        "patchSetId": 20
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-05-11T19:14:54Z",
+      "side": 1,
+      "message": "Do we really need new category.\nWhy it cannot be generic segmentation offload?",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
