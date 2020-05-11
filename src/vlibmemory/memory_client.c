@@ -63,7 +63,7 @@ rx_thread_fn (void *arg)
 
   vlibapi_set_main (a->am);
   vlibapi_set_memory_client_main (a->mm);
-  clib_mem_free (a);
+  free (a);
 
   mm = vlibapi_get_memory_client_main ();
   q = vlibapi_get_main ()->vl_input_queue;
@@ -428,7 +428,7 @@ connect_to_vlib_internal (const char *svm_name,
       if (thread_fn == rx_thread_fn)
 	{
 	  rx_thread_fn_arg_t *arg;
-	  arg = clib_mem_alloc (sizeof (*arg));
+	  arg = malloc (sizeof (*arg));
 	  arg->am = vlibapi_get_main ();
 	  arg->mm = vlibapi_get_memory_client_main ();
 	  thread_fn_arg = (void *) arg;
