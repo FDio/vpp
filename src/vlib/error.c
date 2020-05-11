@@ -247,10 +247,10 @@ show_errors (vlib_main_t * vm,
 	      continue;
 
             if (verbose)
-              vlib_cli_output (vm, "%10Ld%=40v%=20s%=6d", c, n->name,
+              vlib_cli_output (vm, "%10lu%=40v%=20s%=6d", c, n->name,
                                em->error_strings_heap[i], i);
             else
-              vlib_cli_output (vm, "%10d%=40v%s", c, n->name,
+              vlib_cli_output (vm, "%10lu%=40v%s", c, n->name,
                                em->error_strings_heap[i]);
 	  }
       }
@@ -270,7 +270,7 @@ show_errors (vlib_main_t * vm,
 	  if (sums[i])
 	    {
 	      if (verbose)
-		vlib_cli_output (vm, "%10Ld%=40v%=20s%=10d", sums[i], n->name,
+		vlib_cli_output (vm, "%10lu%=40v%=20s%=10d", sums[i], n->name,
 				 em->error_strings_heap[i], i);
 	    }
 	}
