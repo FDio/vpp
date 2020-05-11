@@ -1,0 +1,95 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright 2020 Rubicon Communications, LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+
+enum node_flag : u32
+{
+  NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH	= 0x0001,
+  NODE_FLAG_IS_OUTPUT				= 0x0002,
+  NODE_FLAG_IS_DROP				= 0x0004,
+  NODE_FLAG_IS_PUNT				= 0x0008,
+  NODE_FLAG_IS_HANDOFF				= 0x0010,
+  NODE_FLAG_TRACE				= 0x0020,
+  NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE=0x0040,
+  NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE=0x0080,
+  NODE_FLAG_TRACE_SUPPORTED			= 0x0100,
+};
+
+
+service {
+  rpc graph_node_get returns graph_node_get_reply
+    stream graph_node_details;
+};
+
+/** \brief graph_node_get - Get nodes of the packet processing graph
+    In order:
+    if index != ~0, dump node with given index
+    if index == ~0 and name[0] != 0, dump named node
+    if index == ~0 and name[0] == 0 and flag != 0, dump flagged nodes
+    otherwise when no selection criteria given, dump all nodes.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param cursor - Starting iterator value, ~0 for initial request
+    @param index - index of a specific node, or ~0 for all
+    @param name - name of a specific node, or 0 for all
+    @param flags - NODE_FLAG_* values
+    @param flags - If true, dump details will contain next nodes out-arcs
+*/
+define graph_node_get
+{
+  u32 client_index;
+  u32 context;
+  u32 cursor;
+  u32 index;
+  string name[64];			/* GRAPH_NODE_LEN */
+  vl_api_node_flag_t flags;		/* NODE_FLAG_* bits */
+  bool want_arcs;			/* Include node out-arcs? */
+  option vat_help = "graph_node_dump [start <cursor>] [node_index <index>]|[node_name <name>]|[flags]";
+};
+
+define graph_node_get_reply
+{
+  u32 context;
+  i32 retval;
+  u32 cursor;
+};
+
+/** \brief Details for each graph node
+    @param index - index of the node
+    @param name - name of the node
+    @param flags - NODE_FLAG_* values
+    @param n_arcs - If requested, the number of out-arcs to other nodes
+    @param arcs - If requested, the set of out-arc next-node-indices
+*/
+define graph_node_details
+{
+  u32 context;
+  u32 index;
+  string name[64];			/* GRAPH_NODE_LEN */
+  vl_api_node_flag_t flags;
+  u32 n_arcs;
+  u32 arcs_out[n_arcs];
+};
+
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
