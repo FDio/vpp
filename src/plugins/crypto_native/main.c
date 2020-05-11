@@ -77,39 +77,52 @@ crypto_native_init (vlib_main_t * vm)
     vnet_crypto_register_engine (vm, "native", 100,
 				 "Native ISA Optimized Crypto");
 
+  if (0);
 #if __x86_64__
-  if (clib_cpu_supports_vaes ())
-    error = crypto_native_aes_cbc_init_vaes (vm);
-  else if (clib_cpu_supports_avx512f ())
-    error = crypto_native_aes_cbc_init_avx512 (vm);
-  else if (clib_cpu_supports_avx2 ())
-    error = crypto_native_aes_cbc_init_avx2 (vm);
+  else if (crypto_native_aes_cbc_init_icl && clib_cpu_supports_vaes ())
+    error = crypto_native_aes_cbc_init_icl (vm);
+  else if (crypto_native_aes_cbc_init_skx && clib_cpu_supports_avx512f ())
+    error = crypto_native_aes_cbc_init_skx (vm);
+  else if (crypto_native_aes_cbc_init_hsw && clib_cpu_supports_avx2 ())
+    error = crypto_native_aes_cbc_init_hsw (vm);
+  else if (crypto_native_aes_cbc_init_slm)
+    error = crypto_native_aes_cbc_init_slm (vm);
+#endif
+#if __aarch64__
+  else if (crypto_native_aes_cbc_init_neon)
+    error = crypto_native_aes_cbc_init_neon (vm);
+#endif
   else
-    error = crypto_native_aes_cbc_init_sse42 (vm);
+    error = clib_error_return (0, "No AES CBC implemenation available");
 
   if (error)
     goto error;
 
+#if __x86_64__
   if (clib_cpu_supports_pclmulqdq ())
     {
-      if (clib_cpu_supports_vaes ())
-	error = crypto_native_aes_gcm_init_vaes (vm);
-      else if (clib_cpu_supports_avx512f ())
-	error = crypto_native_aes_gcm_init_avx512 (vm);
-      else if (clib_cpu_supports_avx2 ())
-	error = crypto_native_aes_gcm_init_avx2 (vm);
+      if (crypto_native_aes_gcm_init_icl && clib_cpu_supports_vaes ())
+	error = crypto_native_aes_gcm_init_icl (vm);
+      else if (crypto_native_aes_gcm_init_skx && clib_cpu_supports_avx512f ())
+	error = crypto_native_aes_gcm_init_skx (vm);
+      else if (crypto_native_aes_gcm_init_hsw && clib_cpu_supports_avx2 ())
+	error = crypto_native_aes_gcm_init_hsw (vm);
+      else if (crypto_native_aes_gcm_init_slm)
+	error = crypto_native_aes_gcm_init_slm (vm);
       else
-	error = crypto_native_aes_gcm_init_sse42 (vm);
+	error = clib_error_return (0, "No AES GCM implemenation available");
 
       if (error)
 	goto error;
     }
 #endif
 #if __aarch64__
-  if ((error = crypto_native_aes_cbc_init_neon (vm)))
-    goto error;
+  if (crypto_native_aes_gcm_init_neon)
+    error = crypto_native_aes_gcm_init_neon (vm);
+  else
+    error = clib_error_return (0, "No AES GCM implemenation available");
 
-  if ((error = crypto_native_aes_gcm_init_neon (vm)))
+  if (error)
     goto error;
 #endif
 

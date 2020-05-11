@@ -474,15 +474,15 @@ foreach_aes_cbc_handler_type;
 
 clib_error_t *
 #ifdef __VAES__
-crypto_native_aes_cbc_init_vaes (vlib_main_t * vm)
+crypto_native_aes_cbc_init_icl (vlib_main_t * vm)
 #elif __AVX512F__
-crypto_native_aes_cbc_init_avx512 (vlib_main_t * vm)
+crypto_native_aes_cbc_init_skx (vlib_main_t * vm)
 #elif __aarch64__
 crypto_native_aes_cbc_init_neon (vlib_main_t * vm)
 #elif __AVX2__
-crypto_native_aes_cbc_init_avx2 (vlib_main_t * vm)
+crypto_native_aes_cbc_init_hsw (vlib_main_t * vm)
 #else
-crypto_native_aes_cbc_init_sse42 (vlib_main_t * vm)
+crypto_native_aes_cbc_init_slm (vlib_main_t * vm)
 #endif
 {
   crypto_native_main_t *cm = &crypto_native_main;
