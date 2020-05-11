@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e39d6630_d878d750",
+        "filename": "src/plugins/crypto_native/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-05-11T11:16:21Z",
+      "side": 0,
+      "message": "This doesn\u0027t make any sense, as main.c is never compiled against -march whicg defines __VAES__",
+      "revId": "bedf48a17cbac03684d28af5dfba099ea3fd9d3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
