@@ -3237,6 +3237,18 @@ vlib_unix_cli_set_prompt (char *prompt)
   cm->cli_prompt = format (0, fmt, prompt);
 }
 
+static unix_cli_file_t *
+unix_cli_file_if_interactive (unix_cli_main_t * cm)
+{
+  unix_cli_file_t *cf;
+  if (!cm->cli_file_pool)
+    return 0;
+  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+  if (!cf->is_interactive)
+    return 0;
+  return cf;
+}
+
 /** CLI command to quit the terminal session.
  * @note If this is a stdin session then this will
  *       shutdown VPP also.
@@ -3246,8 +3258,10 @@ unix_cli_quit (vlib_main_t * vm,
 	       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unix_cli_main_t *cm = &unix_cli_main;
-  unix_cli_file_t *cf = pool_elt_at_index (cm->cli_file_pool,
-					   cm->current_input_file_index);
+  unix_cli_file_t *cf;
+
+  if (!(cf = unix_cli_file_if_interactive (cm)))
+    return clib_error_return (0, "invalid for non-interactive sessions");
 
   /* Cosmetic: suppress the final prompt from appearing before we die */
   cf->is_interactive = 0;
@@ -3499,9 +3513,7 @@ unix_cli_show_history (vlib_main_t * vm,
   unix_cli_file_t *cf;
   int i, j;
 
-  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
-
-  if (!cf->is_interactive)
+  if (!(cf = unix_cli_file_if_interactive (cm)))
     return clib_error_return (0, "invalid for non-interactive sessions");
 
   if (cf->has_history && cf->history_limit)
@@ -3539,7 +3551,9 @@ unix_cli_show_terminal (vlib_main_t * vm,
   unix_cli_file_t *cf;
   vlib_node_t *n;
 
-  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+  if (!(cf = unix_cli_file_if_interactive (cm)))
+    return clib_error_return (0, "invalid for non-interactive sessions");
+
   n = vlib_get_node (vm, cf->process_node_index);
 
   vlib_cli_output (vm, "Terminal name:   %v\n", n->name);
@@ -3691,9 +3705,7 @@ unix_cli_set_terminal_pager (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
 
-  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
-
-  if (!cf->is_interactive)
+  if (!(cf = unix_cli_file_if_interactive (cm)))
     return clib_error_return (0, "invalid for non-interactive sessions");
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -3750,9 +3762,7 @@ unix_cli_set_terminal_history (vlib_main_t * vm,
   u32 limit;
   clib_error_t *error = 0;
 
-  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
-
-  if (!cf->is_interactive)
+  if (!(cf = unix_cli_file_if_interactive (cm)))
     return clib_error_return (0, "invalid for non-interactive sessions");
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -3820,9 +3830,7 @@ unix_cli_set_terminal_ansi (vlib_main_t * vm,
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
 
-  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
-
-  if (!cf->is_interactive)
+  if (!(cf = unix_cli_file_if_interactive (cm)))
     return clib_error_return (0, "invalid for non-interactive sessions");
 
   if (unformat (input, "on"))
