@@ -138,7 +138,7 @@ nat64_get_worker_out2in (vlib_buffer_t * b, ip4_header_t * ip)
   port = udp->dst_port;
 
   /* unknown protocol */
-  if (PREDICT_FALSE (proto == ~0))
+  if (PREDICT_FALSE (proto == SNAT_PROTOCOL_OTHER))
     {
       nat64_db_t *db;
       ip46_address_t daddr;

@@ -993,7 +993,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 	  tcp0 = (tcp_header_t *) udp0;
 	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_OTHER))
 	    {
 	      next0 = def_slow;
 	      goto trace0;
@@ -1275,7 +1275,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	  icmp0 = (icmp46_header_t *) udp0;
 	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_OTHER))
 	    {
 	      s0 = nat44_ed_in2out_unknown_proto (sm, b0, ip0,
 						  rx_fib_index0,

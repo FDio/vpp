@@ -3292,7 +3292,7 @@ snat_get_worker_out2in_cb (vlib_buffer_t * b, ip4_header_t * ip0,
   port = udp->dst_port;
 
   /* unknown protocol */
-  if (PREDICT_FALSE (proto == ~0))
+  if (PREDICT_FALSE (proto == SNAT_PROTOCOL_OTHER))
     {
       /* use current thread */
       return vlib_get_thread_index ();
@@ -3533,7 +3533,7 @@ nat44_ed_get_worker_out2in_cb (vlib_buffer_t * b, ip4_header_t * ip,
     }
 
   /* unknown protocol */
-  if (PREDICT_FALSE (proto == ~0))
+  if (PREDICT_FALSE (proto == SNAT_PROTOCOL_OTHER))
     {
       /* use current thread */
       next_worker_index = vlib_get_thread_index ();

@@ -1116,7 +1116,7 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (is_slow_path)
 	    {
-	      if (PREDICT_TRUE (proto0 == ~0))
+	      if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_OTHER))
 		{
 		  other_packets++;
 		  if (is_hairpinning (&ip60->dst_address))
@@ -1146,7 +1146,7 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      if (PREDICT_FALSE (proto0 == ~0))
+	      if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_OTHER))
 		{
 		  next0 = NAT64_IN2OUT_NEXT_SLOWPATH;
 		  goto trace0;

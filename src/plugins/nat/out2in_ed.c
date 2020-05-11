@@ -384,7 +384,7 @@ create_bypass_for_fwd (snat_main_t * sm, vlib_buffer_t * b, ip4_header_t * ip,
       s->out2in.addr = ip->dst_address;
       s->out2in.port = l_port;
       s->out2in.protocol = proto;
-      if (proto == ~0)
+      if (proto == SNAT_PROTOCOL_OTHER)
 	{
 	  s->flags |= SNAT_SESSION_FLAG_UNKNOWN_PROTO;
 	  s->out2in.port = ip->protocol;
@@ -715,7 +715,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  tcp0 = (tcp_header_t *) udp0;
 	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_OTHER))
 	    {
 	      next0 = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	      goto trace0;
@@ -990,7 +990,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	  icmp0 = (icmp46_header_t *) udp0;
 	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_OTHER))
 	    {
 	      s0 =
 		nat44_ed_out2in_unknown_proto (sm, b0, ip0, rx_fib_index0,

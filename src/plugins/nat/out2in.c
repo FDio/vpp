@@ -815,7 +815,7 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 
 	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_OTHER))
 	    {
 	      if (nat_out2in_sm_unknown_proto (sm, b0, ip0, rx_fib_index0))
 		{
@@ -987,7 +987,7 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 
 	  proto1 = ip_proto_to_snat_proto (ip1->protocol);
 
-	  if (PREDICT_FALSE (proto1 == ~0))
+	  if (PREDICT_FALSE (proto1 == SNAT_PROTOCOL_OTHER))
 	    {
 	      if (nat_out2in_sm_unknown_proto (sm, b1, ip1, rx_fib_index1))
 		{
@@ -1192,7 +1192,7 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 
 	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_OTHER))
 	    {
 	      if (nat_out2in_sm_unknown_proto (sm, b0, ip0, rx_fib_index0))
 		{
@@ -1474,7 +1474,7 @@ VLIB_NODE_FN (snat_out2in_fast_node) (vlib_main_t * vm,
 
 	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_OTHER))
 	    goto trace00;
 
 	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
