@@ -36,17 +36,15 @@ typedef struct
 
 extern crypto_native_main_t crypto_native_main;
 
-clib_error_t *crypto_native_aes_cbc_init_sse42 (vlib_main_t * vm);
-clib_error_t *crypto_native_aes_cbc_init_avx2 (vlib_main_t * vm);
-clib_error_t *crypto_native_aes_cbc_init_avx512 (vlib_main_t * vm);
-clib_error_t *crypto_native_aes_cbc_init_vaes (vlib_main_t * vm);
-clib_error_t *crypto_native_aes_cbc_init_neon (vlib_main_t * vm);
+#define foreach_crypto_native_march_variant _(slm) _(hsw) _(skx) _(icl) _(neon)
 
-clib_error_t *crypto_native_aes_gcm_init_sse42 (vlib_main_t * vm);
-clib_error_t *crypto_native_aes_gcm_init_avx2 (vlib_main_t * vm);
-clib_error_t *crypto_native_aes_gcm_init_avx512 (vlib_main_t * vm);
-clib_error_t *crypto_native_aes_gcm_init_vaes (vlib_main_t * vm);
-clib_error_t *crypto_native_aes_gcm_init_neon (vlib_main_t * vm);
+#define _(v) \
+clib_error_t __clib_weak *crypto_native_aes_cbc_init_##v (vlib_main_t * vm); \
+clib_error_t __clib_weak *crypto_native_aes_gcm_init_##v (vlib_main_t * vm); \
+
+foreach_crypto_native_march_variant;
+#undef _
+
 #endif /* __crypto_native_h__ */
 
 /*
