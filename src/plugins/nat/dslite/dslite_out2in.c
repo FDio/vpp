@@ -146,7 +146,7 @@ VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
 	  ip40 = vlib_buffer_get_current (b0);
 	  proto0 = ip_proto_to_nat_proto (ip40->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_OTHER))
 	    {
 	      error0 = DSLITE_ERROR_UNSUPPORTED_PROTOCOL;
 	      next0 = DSLITE_OUT2IN_NEXT_DROP;

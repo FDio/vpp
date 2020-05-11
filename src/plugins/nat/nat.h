@@ -33,6 +33,8 @@
 #include <vlibapi/api.h>
 #include <vlib/log.h>
 #include <vppinfra/bihash_16_8.h>
+#include <nat/lib/lib.h>
+#include <nat/lib/inlines.h>
 
 /* default session timeouts */
 #define SNAT_UDP_TIMEOUT 300
@@ -139,21 +141,6 @@ typedef enum
   foreach_nat_addr_and_port_alloc_alg
 #undef _
 } nat_addr_and_port_alloc_alg_t;
-
-
-/* Supported L4 protocols */
-#define foreach_snat_protocol \
-  _(UDP, 0, udp, "udp")       \
-  _(TCP, 1, tcp, "tcp")       \
-  _(ICMP, 2, icmp, "icmp")
-
-typedef enum
-{
-#define _(N, i, n, s) SNAT_PROTOCOL_##N = i,
-  foreach_snat_protocol
-#undef _
-} snat_protocol_t;
-
 
 /* Session state */
 #define foreach_snat_session_state          \
@@ -328,7 +315,7 @@ typedef struct
   u16 busy_##n##_ports; \
   u16 * busy_##n##_ports_per_thread; \
   u32 busy_##n##_port_refcounts[65535];
-  foreach_snat_protocol
+  foreach_nat_protocol
 #undef _
 /* *INDENT-ON* */
 } snat_address_t;
@@ -419,7 +406,7 @@ typedef struct
   u32 vrf_id;
   u32 fib_index;
   /* protocol */
-  snat_protocol_t proto;
+  nat_protocol_t proto;
   /* 0 = disabled, otherwise client IP affinity sticky time in seconds */
   u32 affinity;
   /* worker threads used by backends/local host */
@@ -447,7 +434,7 @@ typedef struct
   u16 e_port;
   u32 sw_if_index;
   u32 vrf_id;
-  snat_protocol_t proto;
+  nat_protocol_t proto;
   u32 flags;
   int addr_only;
   int twice_nat;
@@ -722,10 +709,10 @@ format_function_t format_snat_session;
 format_function_t format_det_map_ses;
 format_function_t format_snat_key;
 format_function_t format_static_mapping_key;
-format_function_t format_snat_protocol;
+format_function_t format_nat_protocol;
 format_function_t format_nat_addr_and_port_alloc_alg;
 /* unformat functions */
-unformat_function_t unformat_snat_protocol;
+unformat_function_t unformat_nat_protocol;
 
 /** \brief Check if SNAT session is created from static mapping.
     @param s SNAT session
@@ -1143,7 +1130,7 @@ void nat44_add_del_address_dpo (ip4_address_t addr, u8 is_add);
 int snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 			     u16 l_port, u16 e_port, u32 vrf_id,
 			     int addr_only, u32 sw_if_index,
-			     snat_protocol_t proto, int is_add,
+			     nat_protocol_t proto, int is_add,
 			     twice_nat_type_t twice_nat, u8 out2in_only,
 			     u8 * tag, u8 identity_nat);
 
@@ -1163,14 +1150,14 @@ int snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
  * @return 0 on success, non-zero value otherwise
  */
 int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
-				     snat_protocol_t proto,
+				     nat_protocol_t proto,
 				     nat44_lb_addr_port_t * locals, u8 is_add,
 				     twice_nat_type_t twice_nat,
 				     u8 out2in_only, u8 * tag, u32 affinity);
 
 int nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
 					   ip4_address_t l_addr, u16 l_port,
-					   snat_protocol_t proto, u32 vrf_id,
+					   nat_protocol_t proto, u32 vrf_id,
 					   u8 probability, u8 is_add);
 
 clib_error_t *snat_api_init (vlib_main_t * vm, snat_main_t * sm);
@@ -1231,7 +1218,7 @@ int snat_add_interface_address (snat_main_t * sm, u32 sw_if_index, int is_del,
  * @return 0 on success, non-zero value otherwise
  */
 int nat44_del_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
-		       snat_protocol_t proto, u32 vrf_id, int is_in);
+		       nat_protocol_t proto, u32 vrf_id, int is_in);
 
 /**
  * @brief Delete NAT44 endpoint-dependent session

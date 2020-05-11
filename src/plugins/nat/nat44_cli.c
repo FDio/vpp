@@ -681,10 +681,10 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
             switch (s->in2out.protocol)
               {
-              case SNAT_PROTOCOL_ICMP:
+              case NAT_PROTOCOL_ICMP:
                 icmp_sessions++;
                 break;
-              case SNAT_PROTOCOL_TCP:
+              case NAT_PROTOCOL_TCP:
                 tcp_sessions++;
                 if (s->state)
                   {
@@ -704,7 +704,7 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
                 else
                   established++;
                 break;
-              case SNAT_PROTOCOL_UDP:
+              case NAT_PROTOCOL_UDP:
               default:
                 udp_sessions++;
                 break;
@@ -727,10 +727,10 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
         switch (s->in2out.protocol)
           {
-          case SNAT_PROTOCOL_ICMP:
+          case NAT_PROTOCOL_ICMP:
             icmp_sessions++;
             break;
-          case SNAT_PROTOCOL_TCP:
+          case NAT_PROTOCOL_TCP:
             tcp_sessions++;
             if (s->state)
               {
@@ -750,7 +750,7 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
             else
               established++;
             break;
-          case SNAT_PROTOCOL_UDP:
+          case NAT_PROTOCOL_UDP:
           default:
             udp_sessions++;
             break;
@@ -796,7 +796,7 @@ nat44_show_addresses_command_fn (vlib_main_t * vm, unformat_input_t * input,
         vlib_cli_output (vm, "  tenant VRF independent");
     #define _(N, i, n, s) \
       vlib_cli_output (vm, "  %d busy %s ports", ap->busy_##n##_ports, s);
-      foreach_snat_protocol
+      foreach_nat_protocol
     #undef _
     }
   vlib_cli_output (vm, "NAT44 twice-nat pool addresses:");
@@ -810,7 +810,7 @@ nat44_show_addresses_command_fn (vlib_main_t * vm, unformat_input_t * input,
         vlib_cli_output (vm, "  tenant VRF independent");
     #define _(N, i, n, s) \
       vlib_cli_output (vm, "  %d busy %s ports", ap->busy_##n##_ports, s);
-      foreach_snat_protocol
+      foreach_nat_protocol
     #undef _
     }
   /* *INDENT-ON* */
@@ -975,7 +975,7 @@ add_static_mapping_command_fn (vlib_main_t * vm,
   u32 sw_if_index = ~0;
   vnet_main_t *vnm = vnet_get_main ();
   int rv;
-  snat_protocol_t proto = ~0;
+  nat_protocol_t proto = ~0;
   u8 proto_set = 0;
   twice_nat_type_t twice_nat = TWICE_NAT_DISABLED;
   u8 out2in_only = 0;
@@ -1011,7 +1011,7 @@ add_static_mapping_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "vrf %u", &vrf_id))
 	;
-      else if (unformat (line_input, "%U", unformat_snat_protocol, &proto))
+      else if (unformat (line_input, "%U", unformat_nat_protocol, &proto))
 	proto_set = 1;
       else if (unformat (line_input, "twice-nat"))
 	twice_nat = TWICE_NAT;
@@ -1092,7 +1092,7 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
   u32 sw_if_index = ~0;
   vnet_main_t *vnm = vnet_get_main ();
   int rv;
-  snat_protocol_t proto;
+  nat_protocol_t proto;
 
   if (sm->deterministic)
     return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
@@ -1112,7 +1112,7 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "vrf %u", &vrf_id))
 	;
-      else if (unformat (line_input, "%U %u", unformat_snat_protocol, &proto,
+      else if (unformat (line_input, "%U %u", unformat_nat_protocol, &proto,
 			 &port))
 	addr_only = 0;
       else if (unformat (line_input, "del"))
@@ -1168,7 +1168,7 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
   u32 l_port = 0, e_port = 0, vrf_id = 0, probability = 0, affinity = 0;
   int is_add = 1;
   int rv;
-  snat_protocol_t proto;
+  nat_protocol_t proto;
   u8 proto_set = 0;
   nat44_lb_addr_port_t *locals = 0, local;
   twice_nat_type_t twice_nat = TWICE_NAT_DISABLED;
@@ -1206,7 +1206,7 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "external %U:%u", unformat_ip4_address,
 			 &e_addr, &e_port))
 	;
-      else if (unformat (line_input, "protocol %U", unformat_snat_protocol,
+      else if (unformat (line_input, "protocol %U", unformat_nat_protocol,
 			 &proto))
 	proto_set = 1;
       else if (unformat (line_input, "twice-nat"))
@@ -1283,7 +1283,7 @@ add_lb_backend_command_fn (vlib_main_t * vm,
   u32 l_port = 0, e_port = 0, vrf_id = 0, probability = 0;
   int is_add = 1;
   int rv;
-  snat_protocol_t proto;
+  nat_protocol_t proto;
   u8 proto_set = 0;
 
   if (sm->deterministic)
@@ -1305,7 +1305,7 @@ add_lb_backend_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "external %U:%u", unformat_ip4_address,
 			 &e_addr, &e_port))
 	;
-      else if (unformat (line_input, "protocol %U", unformat_snat_protocol,
+      else if (unformat (line_input, "protocol %U", unformat_nat_protocol,
 			 &proto))
 	proto_set = 1;
       else if (unformat (line_input, "del"))
@@ -1657,7 +1657,7 @@ nat44_del_session_command_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
   ip4_address_t addr, eh_addr;
   u32 port = 0, eh_port = 0, vrf_id = sm->outside_vrf_id;
-  snat_protocol_t proto;
+  nat_protocol_t proto;
   int rv;
 
   if (sm->deterministic)
@@ -1671,7 +1671,7 @@ nat44_del_session_command_fn (vlib_main_t * vm,
     {
       if (unformat
 	  (line_input, "%U:%u %U", unformat_ip4_address, &addr, &port,
-	   unformat_snat_protocol, &proto))
+	   unformat_nat_protocol, &proto))
 	;
       else if (unformat (line_input, "in"))
 	{
@@ -1701,7 +1701,7 @@ nat44_del_session_command_fn (vlib_main_t * vm,
   if (is_ed)
     rv =
       nat44_del_ed_session (sm, &addr, port, &eh_addr, eh_port,
-			    snat_proto_to_ip_proto (proto), vrf_id, is_in);
+			    nat_proto_to_ip_proto (proto), vrf_id, is_in);
   else
     rv = nat44_del_session (sm, &addr, port, proto, vrf_id, is_in);
 

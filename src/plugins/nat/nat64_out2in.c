@@ -575,9 +575,9 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
 
 	  next0 = NAT64_OUT2IN_NEXT_IP6_LOOKUP;
 
-	  proto0 = ip_proto_to_snat_proto (ip40->protocol);
+	  proto0 = ip_proto_to_nat_proto (ip40->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_OTHER))
 	    {
 	      if (nat64_out2in_unk_proto (vm, b0, &ctx0))
 		{
@@ -588,7 +588,7 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  if (proto0 == SNAT_PROTOCOL_ICMP)
+	  if (proto0 == NAT_PROTOCOL_ICMP)
 	    {
 	      icmp_packets++;
 	      if (icmp_to_icmp6
@@ -602,7 +602,7 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      if (proto0 == SNAT_PROTOCOL_TCP)
+	      if (proto0 == NAT_PROTOCOL_TCP)
 		tcp_packets++;
 	      else
 		udp_packets++;
@@ -614,7 +614,7 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
 		   * Send DHCP packets to the ipv4 stack, or we won't
 		   * be able to use dhcp client on the outside interface
 		   */
-		  if ((proto0 == SNAT_PROTOCOL_UDP)
+		  if ((proto0 == NAT_PROTOCOL_UDP)
 		      && (udp0->dst_port ==
 			  clib_host_to_net_u16 (UDP_DST_PORT_dhcp_to_client)))
 		    {

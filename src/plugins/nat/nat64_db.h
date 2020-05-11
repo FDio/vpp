@@ -60,7 +60,7 @@ typedef struct
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
   nat64_db_bib_entry_t *_##n##_bib;
-  foreach_snat_protocol
+  foreach_nat_protocol
 #undef _
 /* *INDENT-ON* */
   nat64_db_bib_entry_t *_unk_proto_bib;
@@ -110,7 +110,7 @@ typedef struct
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
   nat64_db_st_entry_t *_##n##_st;
-  foreach_snat_protocol
+  foreach_nat_protocol
 #undef _
 /* *INDENT-ON* */
   nat64_db_st_entry_t *_unk_proto_st;

@@ -101,7 +101,7 @@ nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
 	}
       else
 	{
-	  proto = snat_proto_to_ip_proto (s->in2out.protocol);
+	  proto = nat_proto_to_ip_proto (s->in2out.protocol);
 	  l_port = s->out2in.port;
 	  r_port = s->ext_host_port;
 	}
@@ -197,7 +197,7 @@ snat_random_port (u16 min, u16 max)
 
 static int
 nat_ed_alloc_addr_and_port (snat_main_t * sm, u32 rx_fib_index,
-			    u32 snat_proto, u32 thread_index,
+			    u32 nat_proto, u32 thread_index,
 			    ip4_address_t r_addr, u16 r_port, u8 proto,
 			    u16 port_per_thread, u32 snat_thread_index,
 			    snat_session_t * s,
@@ -215,10 +215,10 @@ nat_ed_alloc_addr_and_port (snat_main_t * sm, u32 rx_fib_index,
   for (i = 0; i < vec_len (sm->addresses); i++)
     {
       a = sm->addresses + i;
-      switch (snat_proto)
+      switch (nat_proto)
 	{
 #define _(N, j, n, unused)                                                    \
-  case SNAT_PROTOCOL_##N:                                                     \
+  case NAT_PROTOCOL_##N:                                                     \
     if (a->fib_index == rx_fib_index)                                         \
       {                                                                       \
         u16 port = snat_random_port (1, port_per_thread);                     \
@@ -250,7 +250,7 @@ nat_ed_alloc_addr_and_port (snat_main_t * sm, u32 rx_fib_index,
       }                                                                       \
     break;
 
-	  foreach_snat_protocol;
+	  foreach_nat_protocol;
 	default:
 	  nat_elog_info ("unknown protocol");
 	  return 1;
@@ -262,9 +262,9 @@ nat_ed_alloc_addr_and_port (snat_main_t * sm, u32 rx_fib_index,
       /* fake fib_index to reuse macro */
       rx_fib_index = ~0;
       a = ga;
-      switch (snat_proto)
+      switch (nat_proto)
 	{
-	  foreach_snat_protocol;
+	  foreach_nat_protocol;
 	default:
 	  nat_elog_info ("unknown protocol");
 	  return 1;
@@ -294,7 +294,7 @@ slow_path_ed (snat_main_t * sm,
   snat_session_key_t key0, key1;
   lb_nat_type_t lb = 0;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-  u32 snat_proto = ip_proto_to_snat_proto (proto);
+  u32 nat_proto = ip_proto_to_nat_proto (proto);
   nat_outside_fib_t *outside_fib;
   fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
   clib_bihash_kv_16_8_t out2in_ed_kv;
@@ -308,7 +308,7 @@ slow_path_ed (snat_main_t * sm,
   };
   nat44_is_idle_session_ctx_t ctx;
 
-  if (PREDICT_TRUE (snat_proto == SNAT_PROTOCOL_TCP))
+  if (PREDICT_TRUE (nat_proto == NAT_PROTOCOL_TCP))
     {
       if (PREDICT_FALSE
 	  (!tcp_flags_is_init
@@ -334,7 +334,7 @@ slow_path_ed (snat_main_t * sm,
 
   key0.addr = l_addr;
   key0.port = l_port;
-  key1.protocol = key0.protocol = snat_proto;
+  key1.protocol = key0.protocol = nat_proto;
   key0.fib_index = rx_fib_index;
   key1.fib_index = sm->outside_fib_index;
 
@@ -376,7 +376,7 @@ slow_path_ed (snat_main_t * sm,
 	}
 
       /* Try to create dynamic translation */
-      if (nat_ed_alloc_addr_and_port (sm, rx_fib_index, snat_proto,
+      if (nat_ed_alloc_addr_and_port (sm, rx_fib_index, nat_proto,
 				      thread_index, r_addr, r_port, proto,
 				      sm->port_per_thread,
 				      tsm->snat_thread_index, s,
@@ -678,7 +678,7 @@ icmp_match_in2out_ed (snat_main_t * sm, vlib_node_runtime_t * node,
       else
 	{
 	  if (PREDICT_FALSE (nat44_ed_not_translate (sm, node, sw_if_index,
-						     ip, SNAT_PROTOCOL_ICMP,
+						     ip, NAT_PROTOCOL_ICMP,
 						     rx_fib_index,
 						     thread_index)))
 	    {
@@ -991,9 +991,9 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 
 	  udp0 = ip4_next_header (ip0);
 	  tcp0 = (tcp_header_t *) udp0;
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_OTHER))
 	    {
 	      next0 = def_slow;
 	      goto trace0;
@@ -1006,7 +1006,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 		goto trace0;
 	    }
 
-	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
+	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
 	    {
 	      next0 = def_slow;
 	      goto trace0;
@@ -1073,7 +1073,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 
 	  old_port0 = vnet_buffer (b0)->ip.reass.l4_src_port;
 
-	  if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
+	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
 	    {
 	      if (!vnet_buffer (b0)->ip.reass.is_non_first_fragment)
 		{
@@ -1273,9 +1273,9 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	  udp0 = ip4_next_header (ip0);
 	  tcp0 = (tcp_header_t *) udp0;
 	  icmp0 = (icmp46_header_t *) udp0;
-	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
+	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_OTHER))
 	    {
 	      s0 = nat44_ed_in2out_unknown_proto (sm, b0, ip0,
 						  rx_fib_index0,
@@ -1288,7 +1288,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
+	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
 	    {
 	      next0 = icmp_in2out_ed_slow_path
 		(sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0,
@@ -1332,7 +1332,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 		   * be able to use dhcp client on the outside interface
 		   */
 		  if (PREDICT_FALSE
-		      (proto0 == SNAT_PROTOCOL_UDP
+		      (proto0 == NAT_PROTOCOL_UDP
 		       && (vnet_buffer (b0)->ip.reass.l4_dst_port ==
 			   clib_host_to_net_u16 (UDP_DST_PORT_dhcp_to_server))
 		       && ip0->dst_address.as_u32 == 0xffffffff))
@@ -1380,7 +1380,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 
 	  old_port0 = vnet_buffer (b0)->ip.reass.l4_src_port;
 
-	  if (PREDICT_TRUE (proto0 == SNAT_PROTOCOL_TCP))
+	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
 	    {
 	      if (!vnet_buffer (b0)->ip.reass.is_non_first_fragment)
 		{

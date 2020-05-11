@@ -69,15 +69,15 @@ nat64_db_bib_entry_create (u32 thread_index, nat64_db_t * db,
     }
 
   /* create pool entry */
-  switch (ip_proto_to_snat_proto (proto))
+  switch (ip_proto_to_nat_proto (proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
-    case SNAT_PROTOCOL_##N: \
+    case NAT_PROTOCOL_##N: \
       pool_get (db->bib._##n##_bib, bibe); \
       kv.value = bibe - db->bib._##n##_bib; \
       break;
-      foreach_snat_protocol
+      foreach_nat_protocol
 #undef _
 /* *INDENT-ON* */
     default:
@@ -136,15 +136,15 @@ nat64_db_bib_entry_free (u32 thread_index, nat64_db_t * db,
   nat64_db_st_entry_t *st, *ste;
   fib_table_t *fib;
 
-  switch (ip_proto_to_snat_proto (bibe->proto))
+  switch (ip_proto_to_nat_proto (bibe->proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
-    case SNAT_PROTOCOL_##N: \
+    case NAT_PROTOCOL_##N: \
       bib = db->bib._##n##_bib; \
       st = db->st._##n##_st; \
       break;
-      foreach_snat_protocol
+      foreach_nat_protocol
 #undef _
 /* *INDENT-ON* */
     default:
@@ -214,14 +214,14 @@ nat64_db_bib_entry_find (nat64_db_t * db, ip46_address_t * addr, u16 port,
   clib_bihash_kv_24_8_t kv, value;
   nat64_db_bib_entry_t *bib;
 
-  switch (ip_proto_to_snat_proto (proto))
+  switch (ip_proto_to_nat_proto (proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
-    case SNAT_PROTOCOL_##N: \
+    case NAT_PROTOCOL_##N: \
       bib = db->bib._##n##_bib; \
       break;
-      foreach_snat_protocol
+      foreach_nat_protocol
 #undef _
 /* *INDENT-ON* */
     default:
@@ -262,7 +262,7 @@ nat64_db_bib_walk (nat64_db_t * db, u8 proto,
         if (fn (bibe, ctx)) \
           return; \
       }));
-      foreach_snat_protocol
+      foreach_nat_protocol
     #undef _
       bib = db->bib._unk_proto_bib;
       pool_foreach (bibe, bib, ({
@@ -273,14 +273,14 @@ nat64_db_bib_walk (nat64_db_t * db, u8 proto,
     }
   else
     {
-      switch (ip_proto_to_snat_proto (proto))
+      switch (ip_proto_to_nat_proto (proto))
 	{
     /* *INDENT-OFF* */
     #define _(N, i, n, s) \
-        case SNAT_PROTOCOL_##N: \
+        case NAT_PROTOCOL_##N: \
           bib = db->bib._##n##_bib; \
           break;
-          foreach_snat_protocol
+          foreach_nat_protocol
     #undef _
     /* *INDENT-ON* */
 	default:
@@ -303,14 +303,14 @@ nat64_db_bib_entry_by_index (nat64_db_t * db, u8 proto, u32 bibe_index)
 {
   nat64_db_bib_entry_t *bib;
 
-  switch (ip_proto_to_snat_proto (proto))
+  switch (ip_proto_to_nat_proto (proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
-    case SNAT_PROTOCOL_##N: \
+    case NAT_PROTOCOL_##N: \
       bib = db->bib._##n##_bib; \
       break;
-      foreach_snat_protocol
+      foreach_nat_protocol
 #undef _
 /* *INDENT-ON* */
     default:
@@ -336,7 +336,7 @@ nat64_db_st_walk (nat64_db_t * db, u8 proto,
         if (fn (ste, ctx)) \
           return; \
       }));
-      foreach_snat_protocol
+      foreach_nat_protocol
     #undef _
       st = db->st._unk_proto_st;
       pool_foreach (ste, st, ({
@@ -347,14 +347,14 @@ nat64_db_st_walk (nat64_db_t * db, u8 proto,
     }
   else
     {
-      switch (ip_proto_to_snat_proto (proto))
+      switch (ip_proto_to_nat_proto (proto))
 	{
     /* *INDENT-OFF* */
     #define _(N, i, n, s) \
-        case SNAT_PROTOCOL_##N: \
+        case NAT_PROTOCOL_##N: \
           st = db->st._##n##_st; \
           break;
-          foreach_snat_protocol
+          foreach_nat_protocol
     #undef _
     /* *INDENT-ON* */
 	default:
@@ -391,16 +391,16 @@ nat64_db_st_entry_create (u32 thread_index, nat64_db_t * db,
     }
 
   /* create pool entry */
-  switch (ip_proto_to_snat_proto (bibe->proto))
+  switch (ip_proto_to_nat_proto (bibe->proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
-    case SNAT_PROTOCOL_##N: \
+    case NAT_PROTOCOL_##N: \
       pool_get (db->st._##n##_st, ste); \
       kv.value = ste - db->st._##n##_st; \
       bib = db->bib._##n##_bib; \
       break;
-      foreach_snat_protocol
+      foreach_nat_protocol
 #undef _
 /* *INDENT-ON* */
     default:
@@ -478,15 +478,15 @@ nat64_db_st_entry_free (u32 thread_index,
   clib_bihash_kv_48_8_t kv;
   fib_table_t *fib;
 
-  switch (ip_proto_to_snat_proto (ste->proto))
+  switch (ip_proto_to_nat_proto (ste->proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
-    case SNAT_PROTOCOL_##N: \
+    case NAT_PROTOCOL_##N: \
       st = db->st._##n##_st; \
       bib = db->bib._##n##_bib; \
       break;
-      foreach_snat_protocol
+      foreach_nat_protocol
 #undef _
 /* *INDENT-ON* */
     default:
@@ -563,14 +563,14 @@ nat64_db_st_entry_find (nat64_db_t * db, ip46_address_t * l_addr,
   nat64_db_st_entry_key_t ste_key;
   clib_bihash_kv_48_8_t kv, value;
 
-  switch (ip_proto_to_snat_proto (proto))
+  switch (ip_proto_to_nat_proto (proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
-    case SNAT_PROTOCOL_##N: \
+    case NAT_PROTOCOL_##N: \
       st = db->st._##n##_st; \
       break;
-      foreach_snat_protocol
+      foreach_nat_protocol
 #undef _
 /* *INDENT-ON* */
     default:
@@ -606,14 +606,14 @@ nat64_db_st_entry_get_index (nat64_db_t * db, nat64_db_st_entry_t * ste)
 {
   nat64_db_st_entry_t *st;
 
-  switch (ip_proto_to_snat_proto (ste->proto))
+  switch (ip_proto_to_nat_proto (ste->proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
-    case SNAT_PROTOCOL_##N: \
+    case NAT_PROTOCOL_##N: \
       st = db->st._##n##_st; \
       break;
-      foreach_snat_protocol
+      foreach_nat_protocol
 #undef _
 /* *INDENT-ON* */
     default:
@@ -629,14 +629,14 @@ nat64_db_st_entry_by_index (nat64_db_t * db, u8 proto, u32 ste_index)
 {
   nat64_db_st_entry_t *st;
 
-  switch (ip_proto_to_snat_proto (proto))
+  switch (ip_proto_to_nat_proto (proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
-    case SNAT_PROTOCOL_##N: \
+    case NAT_PROTOCOL_##N: \
       st = db->st._##n##_st; \
       break;
-      foreach_snat_protocol
+      foreach_nat_protocol
 #undef _
 /* *INDENT-ON* */
     default:
@@ -657,7 +657,7 @@ nad64_db_st_free_expired (u32 thread_index, nat64_db_t * db, u32 now)
 #define _(N, i, n, s) \
   st = db->st._##n##_st; \
   pool_foreach (ste, st, ({\
-    if (i == SNAT_PROTOCOL_TCP && !ste->tcp_state) \
+    if (i == NAT_PROTOCOL_TCP && !ste->tcp_state) \
       continue; \
     if (ste->expire < now) \
       vec_add1 (ste_to_be_free, ste - st); \
@@ -667,7 +667,7 @@ nad64_db_st_free_expired (u32 thread_index, nat64_db_t * db, u32 now)
                             pool_elt_at_index(st, ste_index[0])); \
   vec_free (ste_to_be_free); \
   ste_to_be_free = 0;
-  foreach_snat_protocol
+  foreach_nat_protocol
 #undef _
   st = db->st._unk_proto_st;
   pool_foreach (ste, st, ({
@@ -703,7 +703,7 @@ nat64_db_free_out_addr (u32 thread_index,
                             pool_elt_at_index(st, ste_index[0])); \
   vec_free (ste_to_be_free); \
   ste_to_be_free = 0;
-  foreach_snat_protocol
+  foreach_nat_protocol
 #undef _
   st = db->st._unk_proto_st;
   pool_foreach (ste, st, ({
