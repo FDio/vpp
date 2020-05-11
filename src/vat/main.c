@@ -423,6 +423,9 @@ main (int argc, char **argv)
   vam->current_file = (u8 *) "plugin-init";
   vat_plugin_init (vam);
 
+  clib_error_t * graph_test_vat_plugin_register (vat_main_t *vam);
+  graph_test_vat_plugin_register(vam);
+
   for (i = 0; i < vec_len (input_files); i++)
     {
       vam->ifp = fopen ((char *) input_files[i], "r");
