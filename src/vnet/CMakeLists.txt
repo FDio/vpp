@@ -29,6 +29,8 @@ list(APPEND VNET_SOURCES
   devices/netlink.c
   flow/flow.c
   flow/flow_cli.c
+  graph_api.c
+  graph_cli.c
   handoff.c
   interface.c
   interface_api.c
@@ -37,6 +39,7 @@ list(APPEND VNET_SOURCES
   interface_output.c
   interface_stats.c
   misc.c
+  pkt_trace_api.c
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
@@ -74,9 +77,11 @@ list(APPEND VNET_HEADERS
 )
 
 list(APPEND VNET_API_FILES
+  graph.api
   interface.api
   interface_types.api
   ip/ip_types.api
+  pkt_trace.api
 )
 
 ##############################################################################

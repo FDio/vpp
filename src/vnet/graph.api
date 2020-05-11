@@ -1,0 +1,66 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright 2020 Rubicon Communications, LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+
+enum node_flag : u16
+{
+  NODE_FLAG_TRACE_SUPPORTED = 0x0100,
+};
+
+
+/** \brief Dump nodes of the packet processing graph
+    In order:
+    if index != ~0, dump node with given index
+    if index == ~0 and name[0] != 0, dump named node
+    if index == ~0 and name[0] == 0 and flag != 0, dump flagged nodes
+    otherwise when no selection criteria given, dump all nodes.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param index - index of a specific node, or ~0 for all
+    @param name - name of a specific node, or 0 for all
+    @param flags - NODE_FLAG_* values
+*/
+define graph_node_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 index;
+  string name[64];			/* GRAPH_NODE_LEN */
+  vl_api_node_flag_t flags;		/* NODE_FLAG_* bits */
+};
+
+/** \brief Dump details for each graph node
+    @param index - index of the node
+    @param name - name of the node
+    @param flags - NODE_FLAG_* values
+*/
+define graph_node_details
+{
+  u32 context;
+  u32 index;
+  string name[64];			/* GRAPH_NODE_LEN */
+  vl_api_node_flag_t flags;
+};
+
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -1,0 +1,107 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Buffered packet tracing API
+ *
+ * Copyright 2020 Rubicon Communications, LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+enum trace_filter_flag : u32
+{
+  TRACE_FF_NONE = 0,
+  TRACE_FF_INCLUDE_NODE = 1,
+  TRACE_FF_EXCLUDE_NODE = 2,
+};
+
+/** \brief pkt_trace_set_filters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define pkt_trace_set_filters
+{
+  u32 client_index;
+  u32 context;
+  vl_api_trace_filter_flag_t flag;	/* TRACE_FF_* */
+  u32 node_index;
+  u32 count;
+};
+
+
+/** \brief pkt_trace_capture_packets
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param node_index - graph input node whose packets are captured
+    @param max_packets - maximum number of packets to capture
+    @param use_filter - if true, apply filters to select/reject packets
+    @param verbose - if true, set verbose packet capture flag
+    @param pre_capture_clear - if true, clear buffer before capture begins
+*/
+autoreply define pkt_trace_capture_packets
+{
+  u32 client_index;
+  u32 context;
+  u32 node_index;
+  u32 max_packets;
+  bool use_filter;
+  bool verbose;
+  bool pre_capture_clear;
+};
+
+
+/** \brief pkt_trace_capture_dump
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param max_packets_dumped - Max number of packets returned
+*/
+define pkt_trace_capture_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 max_packets_dumped;
+};
+
+/** \brief Dump response for each pkt_traced packet matching filters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param packet_number - The unique, linear ordering of packets
+    @param log_size - the number of bytes of packet log data
+    @param packet_log - the actual packet trace details
+*/
+define pkt_trace_capture_details
+{
+  u32 context;
+  u32 thread_id;
+  u32 packet_number;
+  u32 log_size;				/* including trailing NUL */
+  string packet_log[];			/* length is log_size */
+};
+
+/** \brief pkt_trace_clear_packets
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define pkt_trace_clear_packets
+{
+  u32 client_index;
+  u32 context;
+};
+
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
