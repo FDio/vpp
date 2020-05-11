@@ -143,19 +143,17 @@ nat_pre_node_fn_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-always_inline u32
+always_inline snat_protocol_t
 ip_proto_to_snat_proto (u8 ip_proto)
 {
-  u32 snat_proto = ~0;
+  static const snat_protocol_t lookup_table[256] = {
+    [IP_PROTOCOL_TCP] = SNAT_PROTOCOL_TCP,
+    [IP_PROTOCOL_UDP] = SNAT_PROTOCOL_UDP,
+    [IP_PROTOCOL_ICMP] = SNAT_PROTOCOL_ICMP,
+    [IP_PROTOCOL_ICMP6] = SNAT_PROTOCOL_ICMP,
+  };
 
-  snat_proto = (ip_proto == IP_PROTOCOL_UDP) ? SNAT_PROTOCOL_UDP : snat_proto;
-  snat_proto = (ip_proto == IP_PROTOCOL_TCP) ? SNAT_PROTOCOL_TCP : snat_proto;
-  snat_proto =
-    (ip_proto == IP_PROTOCOL_ICMP) ? SNAT_PROTOCOL_ICMP : snat_proto;
-  snat_proto =
-    (ip_proto == IP_PROTOCOL_ICMP6) ? SNAT_PROTOCOL_ICMP : snat_proto;
-
-  return snat_proto;
+  return lookup_table[ip_proto];
 }
 
 always_inline u8
