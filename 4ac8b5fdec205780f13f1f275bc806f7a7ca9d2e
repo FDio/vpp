@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "b61b2a34_da898f65",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 525,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "I think so, [interface]-tx node index is only available when actual traffic starts flowing through it.",
+      "parentUuid": "77517fc0_faf38e9f",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c50859ea_691dec55",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 14
@@ -30,6 +48,24 @@
       "writtenOn": "2020-04-23T13:22:03Z",
       "side": 1,
       "message": "I wonder if we should not make a vectorized version instead o fprocessing packets 1-by-1, ie n_left \u003d vnet_gro_flow_table_inline (vm, flow_table, buffers, n_left), with \u0027buffers\u0027 updated in the call",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b6319348_383bc0d8",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 527,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "I will keep it for separate patch.",
+      "parentUuid": "c50859ea_691dec55",
       "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -123,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "3a3b9fa3_9b681418",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 1435,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c9f24b91_e80e93ad",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4ab8b615_85d2a2a8",
         "filename": "src/vnet/devices/virtio/virtio.c",
         "patchSetId": 14
@@ -210,6 +264,24 @@
     },
     {
       "key": {
+        "uuid": "ccfa6b45_dd792883",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 415,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "04e68ba5_09f5b3d9",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6e3a63f5_d1cde7ea",
         "filename": "src/vnet/devices/virtio/virtio.h",
         "patchSetId": 14
@@ -262,6 +334,24 @@
     },
     {
       "key": {
+        "uuid": "e39b8bce_48a10d0d",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "GRO can be used at input node. We don\u0027t have output interface information at that time. We can\u0027t use sw_if_index as part of key. In my opinion, MAC, IP and Ports are enough to distinguish between different flows.",
+      "parentUuid": "13390e7e_47ce16ae",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "950cc125_5b03b82a",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 14
@@ -276,6 +366,24 @@
       "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3bc0adb3_7cb2e4e5",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "950cc125_5b03b82a",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -296,6 +404,24 @@
     },
     {
       "key": {
+        "uuid": "b8c593b1_994e22ea",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "127362a4_2bcf39d4",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a97e3211_f82cb8c2",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 14
@@ -313,6 +439,24 @@
     },
     {
       "key": {
+        "uuid": "7c4f9dec_c3fe27b4",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a97e3211_f82cb8c2",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e1a84e21_2c8e91fe",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 14
@@ -324,6 +468,24 @@
       "writtenOn": "2020-04-23T13:22:03Z",
       "side": 1,
       "message": "vlib_time_now() should be called once per call to gro_coalesce_buffers() and passed as a parameter here to avoid multiple calls to vlib_time_now() (we want a single call per device node)",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "89362fa2_c3de7ed6",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "It is to use the accurate times.",
+      "parentUuid": "e1a84e21_2c8e91fe",
       "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -347,6 +509,24 @@
     },
     {
       "key": {
+        "uuid": "bbcc1389_b1ac88fa",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "it is inside the functions for accuracy.",
+      "parentUuid": "b89c4074_5371cd63",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "7c8ac8c7_297eea8c",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 14
@@ -358,6 +538,24 @@
       "writtenOn": "2020-04-23T13:22:03Z",
       "side": 1,
       "message": "As above, I think it would be better to allocate everything statically instead to avoid pointer chasing",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3d28b5bb_32e73914",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "Only flow table is allocated dynamically. Rest of the elements/variables are static in flow table sturct. I fix it to use clib_mem_alloc() instead.",
+      "parentUuid": "7c8ac8c7_297eea8c",
       "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -381,6 +579,24 @@
     },
     {
       "key": {
+        "uuid": "918fbb30_e75ba578",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "It is debatable as different possible approaches are available when flow table is full and we hit a new flow.\nWith the approach mentioned above, we will not be able to coalesce any flow if packet input stream is evenly shared among different flows.\nIn current approach, we are making sure to coalesce packets from 16 flows at least. In future, we can modify the flow table size or make it user configurable to increase or decrease it.",
+      "parentUuid": "95d4d119_45de1fb2",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d8066295_b827d149",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 14
@@ -392,6 +608,24 @@
       "writtenOn": "2020-04-23T13:22:03Z",
       "side": 1,
       "message": "we do not need to do all this, just do flow_table-\u003eflow_table_size\u003d0",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d2dd8737_46567367",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "Routine resets a flow in flow table (which contains 16 flows).",
+      "parentUuid": "d8066295_b827d149",
       "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -415,6 +649,24 @@
     },
     {
       "key": {
+        "uuid": "78335135_b0e77228",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "Mac addresses instead!",
+      "parentUuid": "17c74cb8_6c99d5d4",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ddad3641_66b0eb4e",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 14
@@ -426,6 +678,24 @@
       "writtenOn": "2020-04-23T13:22:03Z",
       "side": 1,
       "message": "sw_if_index...",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "65f1005c_ed85e229",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 224,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "Mac addresses instead!",
+      "parentUuid": "ddad3641_66b0eb4e",
       "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -519,6 +789,24 @@
     },
     {
       "key": {
+        "uuid": "48d9135a_607b2cf6",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "I\u0027ll keep it for the separate patch.",
+      "parentUuid": "4d6d7c22_ccfb3473",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8dba6fbb_1a4b8d68",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 14
@@ -600,6 +888,24 @@
       "writtenOn": "2020-04-23T13:22:03Z",
       "side": 1,
       "message": "What about vlib_buffer_enqueue_to_single_next() instead?",
+      "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ca1fbfdd_5600b160",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-11T14:55:52Z",
+      "side": 1,
+      "message": "Can\u0027t use it here, it takes current node and look for possible neighbors (next_nodes) from it.",
+      "parentUuid": "15597e35_1e2692ec",
       "revId": "4ac8b5fdec205780f13f1f275bc806f7a7ca9d2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
