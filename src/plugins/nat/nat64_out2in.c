@@ -577,7 +577,7 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
 
 	  proto0 = ip_proto_to_snat_proto (ip40->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_OTHER))
 	    {
 	      if (nat64_out2in_unk_proto (vm, b0, &ctx0))
 		{

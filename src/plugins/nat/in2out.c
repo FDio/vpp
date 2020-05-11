@@ -976,7 +976,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	  /* Next configured feature, probably ip4-lookup */
 	  if (is_slow_path)
 	    {
-	      if (PREDICT_FALSE (proto0 == ~0))
+	      if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_OTHER))
 		{
 		  if (nat_in2out_sm_unknown_proto
 		      (sm, b0, ip0, rx_fib_index0))
@@ -1000,7 +1000,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      if (PREDICT_FALSE (proto0 == ~0))
+	      if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_OTHER))
 		{
 		  next0 = SNAT_IN2OUT_NEXT_SLOW_PATH;
 		  goto trace00;
@@ -1184,7 +1184,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	  /* Next configured feature, probably ip4-lookup */
 	  if (is_slow_path)
 	    {
-	      if (PREDICT_FALSE (proto1 == ~0))
+	      if (PREDICT_FALSE (proto1 == SNAT_PROTOCOL_OTHER))
 		{
 		  if (nat_in2out_sm_unknown_proto
 		      (sm, b1, ip1, rx_fib_index1))
@@ -1208,7 +1208,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      if (PREDICT_FALSE (proto1 == ~0))
+	      if (PREDICT_FALSE (proto1 == SNAT_PROTOCOL_OTHER))
 		{
 		  next1 = SNAT_IN2OUT_NEXT_SLOW_PATH;
 		  goto trace01;
@@ -1427,7 +1427,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	  /* Next configured feature, probably ip4-lookup */
 	  if (is_slow_path)
 	    {
-	      if (PREDICT_FALSE (proto0 == ~0))
+	      if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_OTHER))
 		{
 		  if (nat_in2out_sm_unknown_proto
 		      (sm, b0, ip0, rx_fib_index0))
@@ -1451,7 +1451,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      if (PREDICT_FALSE (proto0 == ~0))
+	      if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_OTHER))
 		{
 		  next0 = SNAT_IN2OUT_NEXT_SLOW_PATH;
 		  goto trace0;
@@ -1830,7 +1830,7 @@ VLIB_NODE_FN (snat_in2out_fast_node) (vlib_main_t * vm,
 
 	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
-	  if (PREDICT_FALSE (proto0 == ~0))
+	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_OTHER))
 	    goto trace0;
 
 	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
