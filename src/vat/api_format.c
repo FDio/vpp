@@ -5154,7 +5154,10 @@ _(tcp_configure_src_addresses_reply)			\
 _(session_rule_add_del_reply)				\
 _(ip_container_proxy_add_del_reply)                     \
 _(output_acl_set_interface_reply)                       \
-_(qos_record_enable_disable_reply)
+_(qos_record_enable_disable_reply)			\
+_(pkt_trace_set_filters_reply)				\
+_(pkt_trace_capture_packets_reply)			\
+_(pkt_trace_clear_packets_reply)			\
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -5451,7 +5454,13 @@ _(SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)		\
 _(SESSION_RULES_DETAILS, session_rules_details)				\
 _(IP_CONTAINER_PROXY_ADD_DEL_REPLY, ip_container_proxy_add_del_reply)	\
 _(OUTPUT_ACL_SET_INTERFACE_REPLY, output_acl_set_interface_reply)       \
-_(QOS_RECORD_ENABLE_DISABLE_REPLY, qos_record_enable_disable_reply)
+_(QOS_RECORD_ENABLE_DISABLE_REPLY, qos_record_enable_disable_reply)	\
+_(GRAPH_NODE_DETAILS, graph_node_details)				\
+_(PKT_TRACE_SET_FILTERS_REPLY, pkt_trace_set_filters_reply)		\
+_(PKT_TRACE_CAPTURE_PACKETS_REPLY, pkt_trace_capture_packets_reply)	\
+_(PKT_TRACE_CAPTURE_DETAILS, pkt_trace_capture_details)			\
+_(PKT_TRACE_CLEAR_PACKETS_REPLY, pkt_trace_clear_packets_reply)		\
+
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_EVENT, sw_interface_event)
@@ -20372,6 +20381,292 @@ dump_node_table (vat_main_t * vam)
   return 0;
 }
 
+
+uword
+api_unformat_node_index (unformat_input_t * input, va_list * args)
+{
+  u32 *result = va_arg (*args, u32 *);
+
+  return unformat (input, "%u", result);
+}
+
+int
+api_graph_node_dump (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_graph_node_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  u32 node_index;
+  char *node_name;
+  u32 flags;
+  bool want_arcs;
+
+  if (vam->json_output)
+    {
+      clib_warning ("JSON output not supported for graph_node_dump");
+      return -99;
+    }
+
+  node_index = ~0;
+  node_name = 0;
+  flags = 0;
+  want_arcs = false;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "node_index %u", &node_index))
+	;
+      else if (unformat (i, "node_name %s", &node_name))
+	;
+      else if (unformat (i, "want_arcs"))
+	want_arcs = true;
+      else if (unformat (i, "trace_supported"))
+	flags |= NODE_FLAG_TRACE_SUPPORTED;
+      else if (unformat (i, "input"))
+	flags |= NODE_FLAG_TRACE_SUPPORTED;
+      else if (unformat (i, "drop"))
+	flags |= NODE_FLAG_IS_DROP;
+      else if (unformat (i, "ouptput"))
+	flags |= NODE_FLAG_IS_OUTPUT;
+      else if (unformat (i, "PUNT"))
+	flags |= NODE_FLAG_IS_PUNT;
+      else if (unformat (i, "HANDOFF"))
+	flags |= NODE_FLAG_IS_HANDOFF;
+      else if (unformat (i, "no_free"))
+	flags |= NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH;
+      else if (unformat (i, "polling"))
+	flags |= NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE;
+      else if (unformat (i, "interrupt"))
+	flags |= NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE;
+      else
+	{
+	  clib_warning ("Unknown input: %U\n", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (GRAPH_NODE_DUMP, mp);
+  mp->index = htonl (node_index);
+  mp->flags = htonl (flags);
+  mp->want_arcs = want_arcs;
+
+  if (node_name && node_name[0])
+    clib_strncpy ((char *) mp->name, node_name, sizeof (mp->name) - 1);
+
+  int ret = 0;
+  S (mp);
+
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+
+  return ret;
+}
+
+void
+vl_api_graph_node_details_t_handler (vl_api_graph_node_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  u32 n_arcs;
+  int i;
+
+  fformat (vam->ofp,
+	   "Node: %s  Index:%d  Flags:0x%x\n",
+	   mp->name, ntohl (mp->index), ntohl (mp->flags));
+
+  n_arcs = ntohl (mp->n_arcs);
+  for (i = 0; i < n_arcs; ++i)
+    {
+      u32 node_index = ntohl (mp->arcs_out[i]);
+      fformat (vam->ofp, "    next: %d\n", node_index);
+    }
+}
+
+void
+vl_api_graph_node_details_t_handler_json (vl_api_graph_node_details_t * mp)
+{
+  clib_error ("graph_node_details JSON not supported");
+}
+
+
+int
+api_pkt_trace_set_filters (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_pkt_trace_set_filters_t *mp;
+  u32 flag;
+  u32 count;
+  u32 node_index;
+  u32 classifier;
+
+  flag = TRACE_FF_NONE;
+  count = 50;
+  node_index = ~0;
+  classifier = ~0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "none"))
+	flag = TRACE_FF_NONE;
+      else if (unformat (i, "include_node %u", &node_index))
+	flag = TRACE_FF_INCLUDE_NODE;
+      else if (unformat (i, "exclude_node %u", &node_index))
+	flag = TRACE_FF_EXCLUDE_NODE;
+      else if (unformat (i, "include_classifier %u", &classifier))
+	flag = TRACE_FF_INCLUDE_CLASSIFIER;
+      else if (unformat (i, "exclude_classifier %u", &classifier))
+	flag = TRACE_FF_EXCLUDE_CLASSIFIER;
+      else if (unformat (i, "count %u", &count))
+	;
+      else
+	{
+	  clib_warning ("Unknown input: %U\n", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (PKT_TRACE_SET_FILTERS, mp);
+  mp->flag = htonl (flag);
+  mp->node_index = htonl (node_index);
+  mp->count = htonl (count);
+  mp->classifier_table_index = htonl (classifier);
+
+  int ret = 0;
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+
+int
+api_pkt_trace_capture_packets (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_pkt_trace_capture_packets_t *mp;
+  u32 node_index;
+  u32 max;
+  bool pre_capture_clear;
+  bool use_filter;
+  bool verbose;
+
+  node_index = ~0;
+  max = 50;
+  pre_capture_clear = use_filter = verbose = false;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "node_index %u", &node_index))
+	;
+      else if (unformat (i, "max %u", &max))
+	;
+      else if (unformat (i, "pre_capture_clear"))
+	pre_capture_clear = false;
+      else if (unformat (i, "use_filter"))
+	use_filter = false;
+      else if (unformat (i, "verbose"))
+	verbose = false;
+      else
+	{
+	  clib_warning ("Unknown input: %U\n", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (PKT_TRACE_CAPTURE_PACKETS, mp);
+  mp->node_index = htonl (node_index);
+  mp->max_packets = htonl (max);
+  mp->use_filter = use_filter;
+  mp->verbose = verbose;
+  mp->pre_capture_clear = pre_capture_clear;
+
+  int ret = 0;
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+
+int
+api_pkt_trace_capture_dump (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_pkt_trace_capture_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  u32 max;
+
+  max = 50;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "max %u", &max))
+	;
+      else
+	{
+	  clib_warning ("Unknown input: %U\n", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (PKT_TRACE_CAPTURE_DUMP, mp);
+  mp->max_packets_dumped = htonl (max);
+
+  int ret = 0;
+  S (mp);
+
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+  W (ret);
+
+  return ret;
+}
+
+
+void
+  vl_api_pkt_trace_capture_details_t_handler
+  (vl_api_pkt_trace_capture_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  fformat (vam->ofp,
+	   "\nNumber: %d  Thread: %d  Size: %d\n%s\n",
+	   ntohl (mp->packet_number),
+	   ntohl (mp->thread_id), ntohl (mp->log_size), mp->packet_log.buf);
+}
+
+
+void
+  vl_api_pkt_trace_capture_details_t_handler_json
+  (vl_api_pkt_trace_capture_details_t * mp)
+{
+  clib_error ("pkt_trace_capture_details JSON not supported");
+}
+
+
+int
+api_pkt_trace_clear_packets (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_pkt_trace_clear_packets_t *mp;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      clib_error ("Unexpected input: %U\n", format_unformat_error, i);
+      return -99;
+    }
+
+  M (PKT_TRACE_CLEAR_PACKETS, mp);
+
+  int ret = 0;
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+
 static int
 value_sort_cmp (void *a1, void *a2)
 {
@@ -20973,7 +21268,19 @@ _(ip_container_proxy_add_del, "[add|del] <address> <sw_if_index>")	\
 _(output_acl_set_interface,                                             \
   "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
   "  [l2-table <nn>] [del]")                                            \
-_(qos_record_enable_disable, "<record-source> <intfc> | sw_if_index <id> [disable]")
+_(qos_record_enable_disable, "<record-source> <intfc> | sw_if_index <id> [disable]") \
+_(graph_node_dump, "graph_node_dump [node-index <index>]")		\
+_(pkt_trace_set_filters,						\
+  "pkt_trace_set_filters [none] \n"					\
+  "  | [(include_node|exclude_node) <node-index>]\n"			\
+  "  | [(include_classifier|exclude_classifier) <classifier-index>]\n"	\
+  "  [count <count>]")							\
+_(pkt_trace_capture_packets,						\
+  "pkt_trace_capture_packets [node_index <index>]\n"			\
+  "  [max <max>] [pre_capture_clear] [use_filter] [verbose]")		\
+_(pkt_trace_capture_dump, "pkt_trace_capture_dump [max <max>]")		\
+_(pkt_trace_clear_packets, "pkt_trace_clear_packets")			\
+
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
