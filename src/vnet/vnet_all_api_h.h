@@ -73,6 +73,8 @@
 #include <vnet/syslog/syslog.api.h>
 #include <vnet/devices/virtio/virtio.api.h>
 #include <vnet/gso/gso.api.h>
+#include <vnet/graph.api.h>
+#include <vnet/pkt_trace.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
