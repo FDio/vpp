@@ -1254,6 +1254,7 @@ vppcom_app_destroy (void)
   munmap (mspace_least_addr (heap), mi.arena);
 
   vcm = &_vppcom_main;
+  vcm->is_init = 0;
 }
 
 int
