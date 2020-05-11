@@ -894,10 +894,16 @@ class VPPAPI(object):
                 continue
 
             if d.endswith('_details'):
-                if d[:-8]+'_dump' not in msgs:
-                    raise ValueError('{} missing dump message'
-                                     .format(d))
-                continue
+                if d[:-8]+'_get' in msgs:
+                    if d[:-8]+'_get' in svcs:
+                        continue
+                    else:
+                        raise ValueError('{} should be in a stream service'
+                                         .format(d[:-8]+'_get'))
+                if d[:-8]+'_dump' in msgs:
+                    continue
+                raise ValueError('{} missing dump or get message'
+                                 .format(d))
 
             if d in svcs:
                 continue

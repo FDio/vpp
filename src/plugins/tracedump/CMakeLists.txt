@@ -14,13 +14,17 @@
 
 add_vpp_plugin(tracedump
   SOURCES
+  graph_api.c
+  graph_cli.c
   tracedump.c
   tracedump.h
 
   API_FILES
+  graph.api
   tracedump.api
 
   API_TEST_SOURCES
+  graph_test.c
   tracedump_test.c
 )
 

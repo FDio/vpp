@@ -33,6 +33,109 @@
 
 tracedump_main_t tracedump_main;
 
+
+static void
+vl_api_trace_set_filters_t_handler (vl_api_trace_set_filters_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  tracedump_main_t *tdmp = &tracedump_main;
+  u32 node_index = clib_net_to_host_u32 (mp->node_index);
+  u32 flag = clib_net_to_host_u32 (mp->flag);
+  u32 count = clib_net_to_host_u32 (mp->count);
+  vl_api_trace_set_filters_reply_t *rmp;
+  int rv = 0;
+
+  if (flag == TRACE_FF_NONE)
+    {
+      count = node_index = 0;
+    }
+  else if (flag != TRACE_FF_INCLUDE_NODE && flag != TRACE_FF_EXCLUDE_NODE)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+
+  vlib_node_t *node;
+  node = vlib_get_node (vm, node_index);
+  if (!node)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_NODE;
+      goto done;
+    }
+
+  trace_filter_set (node_index, flag, count);
+
+done:
+  REPLY_MACRO (VL_API_TRACE_SET_FILTERS_REPLY);
+}
+
+
+static void
+vl_api_trace_capture_packets_t_handler (vl_api_trace_capture_packets_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  tracedump_main_t *tdmp = &tracedump_main;
+  u32 add = clib_net_to_host_u32 (mp->max_packets);
+  u32 node_index = clib_net_to_host_u32 (mp->node_index);
+  u8 filter = mp->use_filter;
+  u8 verbose = mp->verbose;
+  u8 pre_clear = mp->pre_capture_clear;
+  vl_api_trace_capture_packets_reply_t *rmp;
+  int rv = 0;
+
+  if (!vnet_trace_placeholder)
+    vec_validate_aligned (vnet_trace_placeholder, 2048,
+			  CLIB_CACHE_LINE_BYTES);
+
+  vlib_node_t *node;
+  node = vlib_get_node (vm, node_index);
+  if (!node)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_NODE;
+      goto done;
+    }
+
+  if ((node->flags & VLIB_NODE_FLAG_TRACE_SUPPORTED) == 0)
+    {
+      /* FIXME: Make a new, better error like "UNSUPPORTED_NODE_OPERATION"? */
+      rv = VNET_API_ERROR_NO_SUCH_NODE;
+      goto done;
+    }
+
+  if (filter)
+    {
+      if (vlib_enable_disable_pkt_trace_filter (1) < 0)	/* enable */
+	{
+	  /* FIXME: Make a new error like "UNSUPPORTED_NODE_OPERATION"? */
+	  rv = VNET_API_ERROR_NO_SUCH_NODE;
+	  goto done;
+	}
+    }
+
+  if (pre_clear)
+    vlib_trace_stop_and_clear ();
+
+  trace_update_capture_options (add, node_index, filter, verbose);
+
+done:
+  REPLY_MACRO (VL_API_TRACE_CAPTURE_PACKETS_REPLY);
+}
+
+
+static void
+vl_api_trace_clear_capture_t_handler (vl_api_trace_clear_capture_t * mp)
+{
+  vl_api_trace_clear_capture_reply_t *rmp;
+  tracedump_main_t *tdmp = &tracedump_main;
+
+  vlib_trace_stop_and_clear ();
+
+  int rv = 0;
+  REPLY_MACRO (VL_API_TRACE_CLEAR_CAPTURE_REPLY);
+}
+
+
+
 static int
 trace_cmp (void *a1, void *a2)
 {
@@ -120,6 +223,13 @@ vl_api_trace_dump_t_handler (vl_api_trace_dump_t * mp)
   iterator_position = clib_net_to_host_u32 (mp->position);
   max_records = clib_net_to_host_u32 (mp->max_records);
 
+  /* Don't overflow the existing queue space. */
+  svm_queue_t *q = rp->vl_input_queue;
+  u32 queue_slots_available = q->maxsize - q->cursize;
+  int chunk = (queue_slots_available > 0) ? queue_slots_available - 1 : 0;
+  if (chunk < max_records)
+    max_records = chunk;
+
   /* Need a fresh cache for this client? */
   if (vec_len (client_trace_cache) == 0
       && (iterator_thread_id != ~0 || iterator_position != ~0))
@@ -168,8 +278,7 @@ vl_api_trace_dump_t_handler (vl_api_trace_dump_t * mp)
 
 	  vec_reset_length (s);
 
-	  s = format (s, "Packet %d\n%U\n\n", j + 1, format_vlib_trace,
-		      &vlib_global_main, th[0]);
+	  s = format (s, "%U", format_vlib_trace, &vlib_global_main, th[0]);
 
 	  dmp = vl_msg_api_alloc (sizeof (*dmp) + vec_len (s));
 	  dmp->_vl_msg_id =
@@ -178,6 +287,7 @@ vl_api_trace_dump_t_handler (vl_api_trace_dump_t * mp)
 	  last_thread_id = dmp->thread_id = ntohl (i);
 	  last_position = dmp->position = ntohl (j);
 	  vl_api_vec_to_api_string (s, &dmp->trace_data);
+	  dmp->packet_number = htonl (j);
 	  dmp->more_threads = 0;
 	  dmp->more_this_thread = 0;
 
