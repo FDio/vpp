@@ -32,6 +32,8 @@ add_vpp_executable(vpp_api_test ENABLE_EXPORTS
   ip_types_api.c
   ip_types.c
   protocols.def
+  ../vnet/graph_test.c
+  ../vnet/pkt_trace_test.c
 
   DEPENDS api_headers
 
