@@ -100,6 +100,7 @@ VNET_FEATURE_INIT (ip4_nat_det_classify, static) = {
   .node_name = "nat44-det-classify",
   .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
 };
+// TODO: they don't have to initinalized as features
 VNET_FEATURE_INIT (ip4_nat44_ed_in2out, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-ed-in2out",
@@ -1960,11 +1961,11 @@ snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
 
   if (sm->fq_in2out_index == ~0 && !sm->deterministic && sm->num_workers > 1)
     sm->fq_in2out_index =
-      vlib_frame_queue_main_init (sm->handoff_in2out_index, NAT_FQ_NELTS);
+      vlib_frame_queue_main_init (sm->in2out_node_index, NAT_FQ_NELTS);
 
   if (sm->fq_out2in_index == ~0 && !sm->deterministic && sm->num_workers > 1)
     sm->fq_out2in_index =
-      vlib_frame_queue_main_init (sm->handoff_out2in_index, NAT_FQ_NELTS);
+      vlib_frame_queue_main_init (sm->out2in_node_index, NAT_FQ_NELTS);
 
   if (!is_inside)
     {
@@ -2326,11 +2327,11 @@ feature_set:
 fq:
   if (sm->fq_in2out_output_index == ~0 && sm->num_workers > 1)
     sm->fq_in2out_output_index =
-      vlib_frame_queue_main_init (sm->handoff_in2out_output_index, 0);
+      vlib_frame_queue_main_init (sm->in2out_output_node_index, 0);
 
   if (sm->fq_out2in_index == ~0 && sm->num_workers > 1)
     sm->fq_out2in_index =
-      vlib_frame_queue_main_init (sm->handoff_out2in_index, 0);
+      vlib_frame_queue_main_init (sm->out2in_node_index, 0);
 
   /* *INDENT-OFF* */
   pool_foreach (i, sm->output_feature_interfaces,
@@ -3994,7 +3995,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 {
   snat_main_t *sm = &snat_main;
   nat66_main_t *nm = &nat66_main;
-  //dslite_main_t *dm = &dslite_main;
   snat_main_per_thread_data_t *tsm;
 
   u32 static_mapping_buckets = 1024;
@@ -4151,10 +4151,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 	  sm->worker_in2out_cb = nat44_ed_get_worker_in2out_cb;
 	  sm->worker_out2in_cb = nat44_ed_get_worker_out2in_cb;
 
-	  sm->handoff_out2in_index = nat_pre_out2in_node.index;
-	  sm->handoff_in2out_index = nat_pre_in2out_node.index;
-	  sm->handoff_in2out_output_index = nat44_ed_in2out_output_node.index;
-
 	  sm->in2out_node_index = nat44_ed_in2out_node.index;
 	  sm->in2out_output_node_index = nat44_ed_in2out_output_node.index;
 	  sm->out2in_node_index = nat44_ed_out2in_node.index;
@@ -4170,13 +4166,10 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 	  sm->worker_in2out_cb = snat_get_worker_in2out_cb;
 	  sm->worker_out2in_cb = snat_get_worker_out2in_cb;
 
-	  sm->handoff_out2in_index = snat_out2in_node.index;
-	  sm->handoff_in2out_index = snat_in2out_node.index;
-	  sm->handoff_in2out_output_index = snat_in2out_output_node.index;
-
 	  sm->in2out_node_index = snat_in2out_node.index;
 	  sm->in2out_output_node_index = snat_in2out_output_node.index;
 	  sm->out2in_node_index = snat_out2in_node.index;
+
 	  sm->icmp_match_in2out_cb = icmp_match_in2out_slow;
 	  sm->icmp_match_out2in_cb = icmp_match_out2in_slow;
 	  nat_ha_init (vm, nat_ha_sadd_cb, nat_ha_sdel_cb, nat_ha_sref_cb);
@@ -4565,13 +4558,15 @@ VLIB_REGISTER_NODE (nat_default_node) = {
   .next_nodes = {
     [NAT_NEXT_DROP] = "error-drop",
     [NAT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
-    [NAT_NEXT_IN2OUT_PRE] = "nat-pre-in2out",
-    [NAT_NEXT_OUT2IN_PRE] = "nat-pre-out2in",
+    //[NAT_NEXT_IN2OUT_PRE] = "nat-pre-in2out",
+    //[NAT_NEXT_OUT2IN_PRE] = "nat-pre-out2in",
     [NAT_NEXT_IN2OUT_ED_FAST_PATH] = "nat44-ed-in2out",
     [NAT_NEXT_IN2OUT_ED_SLOW_PATH] = "nat44-ed-in2out-slowpath",
     [NAT_NEXT_IN2OUT_ED_OUTPUT_SLOW_PATH] = "nat44-ed-in2out-output-slowpath",
     [NAT_NEXT_OUT2IN_ED_FAST_PATH] = "nat44-ed-out2in",
     [NAT_NEXT_OUT2IN_ED_SLOW_PATH] = "nat44-ed-out2in-slowpath",
+    [NAT_NEXT_IN2OUT_CLASSIFY] = "nat44-in2out-worker-handoff",
+    [NAT_NEXT_OUT2IN_CLASSIFY] = "nat44-out2in-worker-handoff",
   },
 };
 /* *INDENT-ON* */

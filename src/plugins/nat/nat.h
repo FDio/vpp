@@ -50,19 +50,22 @@ typedef enum
 {
   NAT_NEXT_DROP,
   NAT_NEXT_ICMP_ERROR,
-  NAT_NEXT_IN2OUT_PRE,
-  NAT_NEXT_OUT2IN_PRE,
+  //NAT_NEXT_IN2OUT_PRE,
+  //NAT_NEXT_OUT2IN_PRE,
   NAT_NEXT_IN2OUT_ED_FAST_PATH,
   NAT_NEXT_IN2OUT_ED_SLOW_PATH,
   NAT_NEXT_IN2OUT_ED_OUTPUT_SLOW_PATH,
   NAT_NEXT_OUT2IN_ED_FAST_PATH,
   NAT_NEXT_OUT2IN_ED_SLOW_PATH,
+  NAT_NEXT_IN2OUT_CLASSIFY,
+  NAT_NEXT_OUT2IN_CLASSIFY,
   NAT_N_NEXT,
 } nat_next_t;
 
 typedef struct
 {
   u32 next_index;
+  u32 arc_next_index;
 } nat_pre_trace_t;
 
 /* session key (4-tuple) */
