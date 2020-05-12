@@ -342,7 +342,6 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   vnet_main_t *vnm = vnet_get_main ();
   vnet_sw_interface_t *sw;
   bond_if_t *bif;
-  vnet_hw_interface_t *hw;
 
   if ((args->mode == BOND_MODE_LACP) && bm->lacp_plugin_loaded == 0)
     {
@@ -420,9 +419,16 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   bif->group = bif->sw_if_index;
   bif->numa_only = args->numa_only;
 
-  hw = vnet_get_hw_interface (vnm, bif->hw_if_index);
-  hw->flags |= (VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
-		VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
+  /*
+   * Add GSO and Checksum offload flags if GSO is enabled on Bond
+   */
+  if (args->gso)
+    {
+      vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, bif->hw_if_index);
+
+      hw->flags |= (VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
+		    VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
+    }
   if (vlib_get_thread_main ()->n_vlib_mains > 1)
     clib_spinlock_init (&bif->lockp);
 
