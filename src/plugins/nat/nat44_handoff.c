@@ -100,6 +100,7 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm,
 
   while (n_left_from >= 4)
     {
+      u32 arc_next0, arc_next1, arc_next2, arc_next3;
       u32 sw_if_index0, sw_if_index1, sw_if_index2, sw_if_index3;
       u32 rx_fib_index0, rx_fib_index1, rx_fib_index2, rx_fib_index3;
       u32 iph_offset0 = 0, iph_offset1 = 0, iph_offset2 = 0, iph_offset3 = 0;
@@ -133,6 +134,16 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm,
 			      iph_offset2);
       ip3 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b[3]) +
 			      iph_offset3);
+
+      vnet_feature_next (&arc_next0, b[0]);
+      vnet_feature_next (&arc_next1, b[1]);
+      vnet_feature_next (&arc_next2, b[2]);
+      vnet_feature_next (&arc_next3, b[3]);
+
+      vnet_buffer2 (b[0])->nat.arc_next = arc_next0;
+      vnet_buffer2 (b[1])->nat.arc_next = arc_next1;
+      vnet_buffer2 (b[2])->nat.arc_next = arc_next2;
+      vnet_buffer2 (b[3])->nat.arc_next = arc_next3;
 
       sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
       sw_if_index1 = vnet_buffer (b[1])->sw_if_index[VLIB_RX];
@@ -186,6 +197,7 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm,
 
   while (n_left_from > 0)
     {
+      u32 arc_next0;
       u32 sw_if_index0;
       u32 rx_fib_index0;
       u32 iph_offset0 = 0;
@@ -197,6 +209,9 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm,
 
       ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b[0]) +
 			      iph_offset0);
+
+      vnet_feature_next (&arc_next0, b[0]);
+      vnet_buffer2 (b[0])->nat.arc_next = arc_next0;
 
       sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
       rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
@@ -261,8 +276,6 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm,
 			       NAT44_HANDOFF_ERROR_DO_HANDOFF, do_handoff);
   return frame->n_vectors;
 }
-
-
 
 VLIB_NODE_FN (snat_in2out_worker_handoff_node) (vlib_main_t * vm,
 						vlib_node_runtime_t * node,
