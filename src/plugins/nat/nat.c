@@ -2403,7 +2403,6 @@ snat_set_workers (uword * bitmap)
   /* *INDENT-ON* */
 
   sm->port_per_thread = (0xffff - 1024) / _vec_len (sm->workers);
-  sm->num_snat_thread = _vec_len (sm->workers);
 
   return 0;
 }
@@ -2570,7 +2569,6 @@ snat_init (vlib_main_t * vm)
   sm->api_main = vlibapi_get_main ();
   sm->first_worker_index = 0;
   sm->num_workers = 0;
-  sm->num_snat_thread = 1;
   sm->workers = 0;
   sm->port_per_thread = 0xffff - 1024;
   sm->fq_in2out_index = ~0;
