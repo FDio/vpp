@@ -361,7 +361,7 @@ adj_midchain_teardown (ip_adjacency_t *adj)
     dpo_reset(&adj->sub_type.midchain.next_dpo);
 
     vlib_worker_thread_barrier_sync(vm);
-    vnet_feature_modify_end_node(
+    adj->ia_cfg_index = vnet_feature_modify_end_node(
         adj_midchain_get_feature_arc_index_for_link_type (adj),
         adj->rewrite_header.sw_if_index,
         vlib_get_node_by_name (vlib_get_main(),
@@ -405,7 +405,7 @@ adj_midchain_setup (adj_index_t adj_index,
     tx_node = adj_nbr_midchain_get_tx_node(adj);
 
     vlib_worker_thread_barrier_sync(vm);
-    vnet_feature_modify_end_node(
+    adj->ia_cfg_index = vnet_feature_modify_end_node(
         adj_midchain_get_feature_arc_index_for_link_type (adj),
         adj->rewrite_header.sw_if_index,
         tx_node);
@@ -481,7 +481,7 @@ adj_nbr_midchain_update_next_node (adj_index_t adj_index,
                                                         adj->ia_node_index,
                                                         next_node);
 
-    vnet_feature_modify_end_node(
+    adj->ia_cfg_index = vnet_feature_modify_end_node(
         adj_midchain_get_feature_arc_index_for_link_type (adj),
         adj->rewrite_header.sw_if_index,
         next_node);
@@ -490,7 +490,7 @@ adj_nbr_midchain_update_next_node (adj_index_t adj_index,
 }
 
 void
-adj_nbr_midchain_reset_next_node(adj_index_t adj_index)
+adj_nbr_midchain_reset_next_node (adj_index_t adj_index)
 {
     ip_adjacency_t *adj;
     vlib_main_t * vm;
@@ -507,7 +507,7 @@ adj_nbr_midchain_reset_next_node(adj_index_t adj_index)
                            adj->ia_node_index,
                            adj_nbr_midchain_get_tx_node(adj));
 
-    vnet_feature_modify_end_node(
+    adj->ia_cfg_index = vnet_feature_modify_end_node(
         adj_midchain_get_feature_arc_index_for_link_type (adj),
         adj->rewrite_header.sw_if_index,
         adj_nbr_midchain_get_tx_node(adj));

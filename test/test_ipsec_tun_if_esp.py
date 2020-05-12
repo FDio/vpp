@@ -21,6 +21,7 @@ from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 from vpp_teib import VppTeib
 from util import ppp
 from vpp_papi import VppEnum
+from vpp_acl import AclRule, VppAcl, VppAclInterface
 
 
 def config_tun_params(p, encryption_type, tun_if):
@@ -2026,6 +2027,17 @@ class TestIpsec4TunProtectTun(TemplateIpsec,
         self.config_network(p)
         self.config_sa_tun(p)
         self.config_protect(p)
+
+        # also add an output features on the tunnel and physical interface
+        # so we test they still work
+        r_all = AclRule(True,
+                        src_prefix="0.0.0.0/0",
+                        dst_prefix="0.0.0.0/0",
+                        proto=0)
+        a = VppAcl(self, [r_all]).add_vpp_config()
+
+        VppAclInterface(self, self.pg0.sw_if_index, [a]).add_vpp_config()
+        VppAclInterface(self, p.tun_if.sw_if_index, [a]).add_vpp_config()
 
         self.verify_tun_44(p, count=127)
 

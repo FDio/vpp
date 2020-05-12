@@ -219,7 +219,7 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
 			     void *feature_config,
 			     u32 n_feature_config_bytes);
 
-int
+u32
 vnet_feature_modify_end_node (u8 arc_index, u32 sw_if_index, u32 node_index);
 
 static_always_inline u32
