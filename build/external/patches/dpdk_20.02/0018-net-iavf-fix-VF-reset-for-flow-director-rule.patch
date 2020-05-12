@@ -1,0 +1,70 @@
+From ada64daa1a5b5745263b4f265f5b927194219e74 Mon Sep 17 00:00:00 2001
+From: Simei Su <simei.su@intel.com>
+Date: Tue, 28 Apr 2020 13:49:19 +0800
+Subject: [DPDK] net/iavf: fix VF reset for flow director rule
+
+After VF reset, FDIR rule still takes effect. To solve the issue,
+this patch adds to flush all flows before flow uninit. VIRTCHNL
+sends message to PF by Admin Queue, so flow flush should be implemented
+before Admin Queue shut down.
+
+Fixes: ff2d0c345c3b ("net/iavf: support generic flow API")
+
+Signed-off-by: Simei Su <simei.su@intel.com>
+Acked-by: Xiaolong Ye <xiaolong.ye@intel.com>
+---
+ drivers/net/iavf/iavf_ethdev.c       | 1 +
+ drivers/net/iavf/iavf_generic_flow.c | 4 +---
+ drivers/net/iavf/iavf_generic_flow.h | 2 ++
+ 3 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/iavf/iavf_ethdev.c b/drivers/net/iavf/iavf_ethdev.c
+index 117fbc5f7..e09efffd1 100644
+--- a/drivers/net/iavf/iavf_ethdev.c
++++ b/drivers/net/iavf/iavf_ethdev.c
+@@ -1431,6 +1431,7 @@ iavf_dev_close(struct rte_eth_dev *dev)
+ 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+ 
+ 	iavf_dev_stop(dev);
++	iavf_flow_flush(dev, NULL);
+ 	iavf_shutdown_adminq(hw);
+ 	/* disable uio intr before callback unregister */
+ 	rte_intr_disable(intr_handle);
+diff --git a/drivers/net/iavf/iavf_generic_flow.c b/drivers/net/iavf/iavf_generic_flow.c
+index bca1ffeb3..8c66ac8f2 100644
+--- a/drivers/net/iavf/iavf_generic_flow.c
++++ b/drivers/net/iavf/iavf_generic_flow.c
+@@ -34,8 +34,6 @@ static struct rte_flow *iavf_flow_create(struct rte_eth_dev *dev,
+ static int iavf_flow_destroy(struct rte_eth_dev *dev,
+ 		struct rte_flow *flow,
+ 		struct rte_flow_error *error);
+-static int iavf_flow_flush(struct rte_eth_dev *dev,
+-		struct rte_flow_error *error);
+ static int iavf_flow_query(struct rte_eth_dev *dev,
+ 		struct rte_flow *flow,
+ 		const struct rte_flow_action *actions,
+@@ -966,7 +964,7 @@ iavf_flow_destroy(struct rte_eth_dev *dev,
+ 	return ret;
+ }
+ 
+-static int
++int
+ iavf_flow_flush(struct rte_eth_dev *dev,
+ 		struct rte_flow_error *error)
+ {
+diff --git a/drivers/net/iavf/iavf_generic_flow.h b/drivers/net/iavf/iavf_generic_flow.h
+index c41ca1bd9..978d0716b 100644
+--- a/drivers/net/iavf/iavf_generic_flow.h
++++ b/drivers/net/iavf/iavf_generic_flow.h
+@@ -306,6 +306,8 @@ struct iavf_flow_parser_node {
+ void iavf_register_flow_engine(struct iavf_flow_engine *engine);
+ int iavf_flow_init(struct iavf_adapter *ad);
+ void iavf_flow_uninit(struct iavf_adapter *ad);
++int iavf_flow_flush(struct rte_eth_dev *dev,
++		struct rte_flow_error *error);
+ int iavf_register_parser(struct iavf_flow_parser *parser,
+ 			 struct iavf_adapter *ad);
+ void iavf_unregister_parser(struct iavf_flow_parser *parser,
+-- 
+2.17.1
+
