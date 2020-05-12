@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2ce4174e_3b3f880b",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 460,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-05-12T14:41:49Z",
+      "side": 1,
+      "message": "We should probably move the statement hw \u003d vnet_get_hw_interface() inside the if (args-\u003egso) also.",
+      "revId": "af8abf86efffd2a108bde5598b471e65eba077de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
