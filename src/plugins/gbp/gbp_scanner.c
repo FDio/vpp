@@ -90,6 +90,7 @@ VLIB_REGISTER_NODE (gbp_scanner_node) = {
     .function = gbp_scanner,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "gbp-scanner",
+    .process_log2_n_stack_bytes = 16,
 };
 /* *INDENT-ON* */
 
