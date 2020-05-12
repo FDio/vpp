@@ -51,20 +51,6 @@ vnet_gso_header_offset_parser (vlib_buffer_t * b0, int is_ip6)
   u8 l4_proto = 0;
   u8 l4_hdr_sz = 0;
 
-  if (PREDICT_TRUE ((b0->flags & (VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
-				  VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
-				  VNET_BUFFER_F_L4_HDR_OFFSET_VALID)) ==
-		    (VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
-		     VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
-		     VNET_BUFFER_F_L4_HDR_OFFSET_VALID)))
-    {
-      gho.l2_hdr_offset = vnet_buffer (b0)->l2_hdr_offset;
-      gho.l3_hdr_offset = vnet_buffer (b0)->l3_hdr_offset;
-      gho.l4_hdr_offset = vnet_buffer (b0)->l4_hdr_offset;
-      gho.l4_hdr_sz = vnet_buffer2 (b0)->gso_l4_hdr_sz;
-      return gho;
-    }
-
   ethernet_header_t *eh = (ethernet_header_t *) vlib_buffer_get_current (b0);
   u16 ethertype = clib_net_to_host_u16 (eh->type);
   u16 l2hdr_sz = sizeof (ethernet_header_t);
