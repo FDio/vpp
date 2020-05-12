@@ -89,12 +89,14 @@ nat_pre_node_fn_inline (vlib_main_t * vm,
 		  nat_pre_trace_t *t =
 		    vlib_add_trace (vm, node, b0, sizeof (*t));
 		  t->next_index = next0;
+		  t->arc_next_index = arc_next0;
 		}
 	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
 		{
 		  nat_pre_trace_t *t =
 		    vlib_add_trace (vm, node, b0, sizeof (*t));
-		  t->next_index = next0;
+		  t->next_index = next1;
+		  t->arc_next_index = arc_next1;
 		}
 	    }
 
@@ -129,6 +131,7 @@ nat_pre_node_fn_inline (vlib_main_t * vm,
 	    {
 	      nat_pre_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->next_index = next0;
+	      t->arc_next_index = arc_next0;
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */

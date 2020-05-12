@@ -85,7 +85,7 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
   u32 *fragments_to_drop = 0;
-  u32 next_in2out = 0, next_out2in = 0, frag_cached = 0;
+  u32 next_in2out = 0, next_out2in = 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -189,26 +189,20 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 			       NAT44_CLASSIFY_ERROR_NEXT_IN2OUT, next_in2out);
   vlib_node_increment_counter (vm, node->node_index,
 			       NAT44_CLASSIFY_ERROR_NEXT_OUT2IN, next_out2in);
-  vlib_node_increment_counter (vm, node->node_index,
-			       NAT44_CLASSIFY_ERROR_FRAG_CACHED, frag_cached);
-
   return frame->n_vectors;
 }
 
 static inline uword
-nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   nat44_classify_next_t next_index;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
-  u32 thread_index = vm->thread_index;
-  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   u32 *fragments_to_drop = 0;
-  u32 next_in2out = 0, next_out2in = 0, frag_cached = 0;
-  u8 in_loopback = 0;
+  u32 next_in2out = 0, next_out2in = 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -224,8 +218,126 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
-	  u32 next0 =
-	    NAT_NEXT_IN2OUT_ED_FAST_PATH, sw_if_index0, rx_fib_index0;
+	  u32 next0 = NAT_NEXT_IN2OUT_CLASSIFY;
+	  ip4_header_t *ip0;
+	  snat_address_t *ap;
+	  snat_session_key_t m_key0;
+	  clib_bihash_kv_8_8_t kv0, value0;
+
+	  /* speculatively enqueue b0 to the current next frame */
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  ip0 = vlib_buffer_get_current (b0);
+
+          /* *INDENT-OFF* */
+          vec_foreach (ap, sm->addresses)
+            {
+              if (ip0->dst_address.as_u32 == ap->addr.as_u32)
+                {
+                  next0 = NAT_NEXT_OUT2IN_CLASSIFY;
+                  goto enqueue0;
+                }
+            }
+          /* *INDENT-ON* */
+
+	  if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
+	    {
+	      m_key0.addr = ip0->dst_address;
+	      m_key0.port = 0;
+	      m_key0.protocol = 0;
+	      m_key0.fib_index = 0;
+	      kv0.key = m_key0.as_u64;
+	      /* try to classify the fragment based on IP header alone */
+	      if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external,
+					   &kv0, &value0))
+		{
+		  m = pool_elt_at_index (sm->static_mappings, value0.value);
+		  if (m->local_addr.as_u32 != m->external_addr.as_u32)
+		    next0 = NAT_NEXT_OUT2IN_CLASSIFY;
+		  goto enqueue0;
+		}
+	      m_key0.port =
+		clib_net_to_host_u16 (vnet_buffer (b0)->ip.reass.l4_dst_port);
+	      m_key0.protocol = ip_proto_to_snat_proto (ip0->protocol);
+	      kv0.key = m_key0.as_u64;
+	      if (!clib_bihash_search_8_8
+		  (&sm->static_mapping_by_external, &kv0, &value0))
+		{
+		  m = pool_elt_at_index (sm->static_mappings, value0.value);
+		  if (m->local_addr.as_u32 != m->external_addr.as_u32)
+		    next0 = NAT_NEXT_OUT2IN_CLASSIFY;
+		}
+	    }
+
+	enqueue0:
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	    {
+	      nat44_classify_trace_t *t =
+		vlib_add_trace (vm, node, b0, sizeof (*t));
+	      t->cached = 0;
+	      t->next_in2out = next0 == NAT_NEXT_IN2OUT_CLASSIFY ? 1 : 0;
+	    }
+
+	  next_in2out += next0 == NAT_NEXT_IN2OUT_CLASSIFY;
+	  next_out2in += next0 == NAT_NEXT_OUT2IN_CLASSIFY;
+
+	  /* verify speculative enqueue, maybe switch current next frame */
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  nat_send_all_to_node (vm, fragments_to_drop, node, 0, NAT_NEXT_DROP);
+
+  vec_free (fragments_to_drop);
+
+  vlib_node_increment_counter (vm, node->node_index,
+			       NAT44_CLASSIFY_ERROR_NEXT_IN2OUT, next_in2out);
+  vlib_node_increment_counter (vm, node->node_index,
+			       NAT44_CLASSIFY_ERROR_NEXT_OUT2IN, next_out2in);
+  return frame->n_vectors;
+}
+
+static inline uword
+nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
+{
+  u32 n_left_from, *from, *to_next;
+  nat44_classify_next_t next_index;
+  snat_main_t *sm = &snat_main;
+  snat_static_mapping_t *m;
+  u32 thread_index = vm->thread_index;
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  u32 *fragments_to_drop = 0;
+  u32 next_in2out = 0, next_out2in = 0;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  vlib_buffer_t *b0;
+	  u32 next0 = NAT_NEXT_IN2OUT_ED_FAST_PATH;
+	  u32 sw_if_index0, rx_fib_index0;
 	  ip4_header_t *ip0;
 	  snat_address_t *ap;
 	  snat_session_key_t m_key0;
@@ -243,13 +355,9 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ip0 = vlib_buffer_get_current (b0);
 
-	  if (!in_loopback)
-	    {
-	      u32 arc_next = 0;
-
-	      vnet_feature_next (&arc_next, b0);
-	      vnet_buffer2 (b0)->nat.arc_next = arc_next;
-	    }
+	  u32 arc_next;
+	  vnet_feature_next (&arc_next, b0);
+	  vnet_buffer2 (b0)->nat.arc_next = arc_next;
 
 	  if (ip0->protocol != IP_PROTOCOL_ICMP)
 	    {
@@ -341,9 +449,6 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 			       NAT44_CLASSIFY_ERROR_NEXT_IN2OUT, next_in2out);
   vlib_node_increment_counter (vm, node->node_index,
 			       NAT44_CLASSIFY_ERROR_NEXT_OUT2IN, next_out2in);
-  vlib_node_increment_counter (vm, node->node_index,
-			       NAT44_CLASSIFY_ERROR_FRAG_CACHED, frag_cached);
-
   return frame->n_vectors;
 }
 
@@ -414,21 +519,16 @@ VLIB_NODE_FN (nat44_handoff_classify_node) (vlib_main_t * vm,
 					    vlib_node_runtime_t * node,
 					    vlib_frame_t * frame)
 {
-  return nat44_classify_node_fn_inline (vm, node, frame);
+  return nat44_handoff_classify_node_fn_inline (vm, node, frame);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_handoff_classify_node) = {
   .name = "nat44-handoff-classify",
   .vector_size = sizeof (u32),
+  .sibling_of = "nat-default",
   .format_trace = format_nat44_classify_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_next_nodes = NAT44_CLASSIFY_N_NEXT,
-  .next_nodes = {
-    [NAT44_CLASSIFY_NEXT_IN2OUT] = "nat44-in2out-worker-handoff",
-    [NAT44_CLASSIFY_NEXT_OUT2IN] = "nat44-out2in-worker-handoff",
-    [NAT44_CLASSIFY_NEXT_DROP] = "error-drop",
-  },
 };
 
 /* *INDENT-ON* */
