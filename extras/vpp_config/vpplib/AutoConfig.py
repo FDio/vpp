@@ -507,7 +507,6 @@ class AutoConfig(object):
         total_mbufs = (((rx_queues * desc_entries) +
                         (tx_queues * desc_entries)) *
                        total_ports_per_numa)
-        total_mbufs = total_mbufs
 
         return total_mbufs
 
