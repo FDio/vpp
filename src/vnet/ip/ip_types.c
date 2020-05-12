@@ -511,16 +511,11 @@ ip6_prefix_max_address_host_order (ip6_address_t * ip, u8 plen,
 u32
 ip6_mask_to_preflen (ip6_address_t * mask)
 {
-  u8 first1, first0;
-  if (mask->as_u64[0] == 0 && mask->as_u64[1] == 0)
-    return 0;
-  first1 = log2_first_set (clib_net_to_host_u64 (mask->as_u64[1]));
-  first0 = log2_first_set (clib_net_to_host_u64 (mask->as_u64[0]));
-
-  if (first1 != 0)
-    return 128 - first1;
-  else
-    return 64 - first0;
+  if (mask->as_u64[1] != 0)
+    return 128 - log2_first_set (clib_net_to_host_u64 (mask->as_u64[1]));
+  if (mask->as_u64[0] != 0)
+    return 64 - log2_first_set (clib_net_to_host_u64 (mask->as_u64[0]));
+  return 0;
 }
 
 /*
