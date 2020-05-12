@@ -11,7 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_package(Python3 COMPONENTS Interpreter)
+if (CMAKE_VERSION VERSION_LESS 3.12)
+  find_package(PythonInterp 2.7)
+else()
+  find_package(Python3 COMPONENTS Interpreter)
+endif()
 
 if(PYTHONINTERP_FOUND)
   install(
