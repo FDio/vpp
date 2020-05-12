@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "500bbbc2_a3036f50",
+        "filename": "MAINTAINERS",
+        "patchSetId": 20
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "30a3b461_3d937a48",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "38142fbf_0df3f420",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 20
@@ -33,6 +51,24 @@
       "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "67eadce9_f98eaf36",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 531,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "38142fbf_0df3f420",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "ff796283_b06740fe",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 827,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d160b5d1_07c71ee8",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d1b467ae_7f809c81",
         "filename": "src/vnet/devices/virtio/virtio.c",
         "patchSetId": 20
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "e6b73d26_3cc1dbce",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d1b467ae_7f809c81",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9ef6265b_5cb6cc28",
         "filename": "src/vnet/devices/virtio/virtio.h",
         "patchSetId": 20
@@ -81,6 +153,24 @@
       "writtenOn": "2020-05-12T12:59:20Z",
       "side": 1,
       "message": "We should have the flow_table directly in the structure instead of a pointer to avoid pointer indirection: gro_flow_table_t flow_table;",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "38e08f8e_87577765",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "It will add extra memory for rx vring where we are not coalesce packets.",
+      "parentUuid": "9ef6265b_5cb6cc28",
       "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -104,6 +194,24 @@
     },
     {
       "key": {
+        "uuid": "ea409347_f9109105",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "41466017_18063c1a",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "913a711d_48ad2a49",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 20
@@ -118,6 +226,24 @@
       "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fa0e9131_1422b44b",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "913a711d_48ad2a49",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -138,6 +264,24 @@
     },
     {
       "key": {
+        "uuid": "3fb904a0_1411c4c4",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3b8de1fc_06b6fa3c",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e0b46313_0376cd8c",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 20
@@ -149,6 +293,24 @@
       "writtenOn": "2020-05-12T12:59:20Z",
       "side": 1,
       "message": "current time should be passed as a parameter instead of calling vlib_time_now() each call",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7c0bf459_bb9222bb",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "It is a call per packet. And here for more time accuracy.",
+      "parentUuid": "e0b46313_0376cd8c",
       "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -172,6 +334,24 @@
     },
     {
       "key": {
+        "uuid": "280404d5_35655cb6",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "It is here for time accuracy.",
+      "parentUuid": "e8063b1d_65def4a9",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4b7d319e_a485813c",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 20
@@ -183,6 +363,24 @@
       "writtenOn": "2020-05-12T12:59:20Z",
       "side": 1,
       "message": "allocation not needed if declared inside parent structure",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6ae0dbf0_818d3126",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "Keeping it dynamic at the moment to save memory for rx vrings.",
+      "parentUuid": "4b7d319e_a485813c",
       "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -206,6 +404,24 @@
     },
     {
       "key": {
+        "uuid": "d346f8b8_3ca19e58",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "It is dynamic at the moment to save memory. So we need free to delete the flow_table",
+      "parentUuid": "73c05c98_aa691108",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a749801a_331bc332",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 20
@@ -217,6 +433,24 @@
       "writtenOn": "2020-05-12T12:59:20Z",
       "side": 1,
       "message": "we should flush the oldest flow and replace it with the new flow instead",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c91cd8e3_729ae411",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "It is debatable as different possible approaches are available when flow table is full and we hit a new flow.\nWith the approach mentioned above, we will not be able to coalesce any flow if packet input stream is evenly shared among different flows.\nIn current approach, we are making sure to coalesce packets from 16 flows at least. In future, we can modify the flow table size or make it user configurable to increase or decrease it.",
+      "parentUuid": "a749801a_331bc332",
       "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -240,6 +474,24 @@
     },
     {
       "key": {
+        "uuid": "7176b075_851369d6",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "These are two different routines and we call one to find while other one to add new flow.",
+      "parentUuid": "8b0a3859_4f114d24",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "82dac777_30c59395",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 20
@@ -251,6 +503,24 @@
       "writtenOn": "2020-05-12T12:59:20Z",
       "side": 1,
       "message": "we do not have to set the whole flow to 0, eg. only set key.sw_if_index to ~0 or n_buffers to 0 should be enough",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7211e7a4_13573f82",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "it will be pretty quick using vectorized instruction.",
+      "parentUuid": "82dac777_30c59395",
       "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -274,6 +544,24 @@
     },
     {
       "key": {
+        "uuid": "7e166194_07710bf6",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "I have tried to increase the readiness. May be fix it later if necessary.",
+      "parentUuid": "6d01d0d5_8643dcef",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "458b0f2c_78cd8759",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 20
@@ -291,6 +579,24 @@
     },
     {
       "key": {
+        "uuid": "c44a8cba_31b8c7a6",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "458b0f2c_78cd8759",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7d0a2338_44ea832a",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 20
@@ -302,6 +608,24 @@
       "writtenOn": "2020-05-12T12:59:20Z",
       "side": 1,
       "message": "All those actions are confusing as we seem to care only about GRO_PACKET_ACTION_ENQUEUE.\nI think we do not need different actions: we should either merge the buffer, or flush \u0026 send",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "34ee353a_2f03ad73",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 318,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "We need these actions to be more granular in our approach.",
+      "parentUuid": "7d0a2338_44ea832a",
       "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -325,6 +649,24 @@
     },
     {
       "key": {
+        "uuid": "374f177c_ee786ffb",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "In this way, we will miss enqueuing opportunity, if we will not be more granular in our approach.",
+      "parentUuid": "577eceb6_25be71b1",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a88cc43c_422d4367",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 20
@@ -342,6 +684,24 @@
     },
     {
       "key": {
+        "uuid": "045386a5_05681b41",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 336,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "Here, we have received the retransmission, so we will only send it immediately. We keep the enqueued buffers from the same flow in hope of next packet(s) will be enqueued.",
+      "parentUuid": "a88cc43c_422d4367",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "e1b101a7_e0717bdc",
         "filename": "src/vnet/gso/gro_func.h",
         "patchSetId": 20
@@ -353,6 +713,24 @@
       "writtenOn": "2020-05-12T12:59:20Z",
       "side": 1,
       "message": "we should use vlib_buffer_enqueue_to_single_next() instead",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "89d1e92d_69072517",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-05-12T19:29:27Z",
+      "side": 1,
+      "message": "Can\u0027t use it here, it takes current node and look for possible neighbors (next_nodes) from it.",
+      "parentUuid": "e1b101a7_e0717bdc",
       "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
