@@ -16,6 +16,346 @@
       "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "38142fbf_0df3f420",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 531,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "This should be done at init",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d160b5d1_07c71ee8",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 827,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "this should be done in gro_flow_table_init ()",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d1b467ae_7f809c81",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "should be done in gro_flow_table_init ()",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9ef6265b_5cb6cc28",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "We should have the flow_table directly in the structure instead of a pointer to avoid pointer indirection: gro_flow_table_t flow_table;",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "41466017_18063c1a",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "should be sw_if_index instead of mac addresses",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "913a711d_48ad2a49",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "please declare structures elements from biggest to smallest to avoid padding",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3b8de1fc_06b6fa3c",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "please declare structures elements from biggest to smallest to avoid padding",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e0b46313_0376cd8c",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "current time should be passed as a parameter instead of calling vlib_time_now() each call",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e8063b1d_65def4a9",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "current time should be passed as a parameter instead of calling vlib_time_now() each call",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4b7d319e_a485813c",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "allocation not needed if declared inside parent structure",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "73c05c98_aa691108",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "free not needed if declared inside parent structure",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a749801a_331bc332",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "we should flush the oldest flow and replace it with the new flow instead",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8b0a3859_4f114d24",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "here we go through the flow table 2x: get_flow() then add_flow()\nit would be better to loop on flow_table only once to search for the flow and elect the victim flow (oldest flow) if the flow is not found",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "82dac777_30c59395",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "we do not have to set the whole flow to 0, eg. only set key.sw_if_index to ~0 or n_buffers to 0 should be enough",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6d01d0d5_8643dcef",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "we should have a single gro_get_ip_flow_from_packet() with a ip6 parameter:\n\ngro_get_flow_from_packet (ethernet_header_t * eh, void *ip, tcp_header_t *tcp, gro_flow_key_t flow_key, int is_ip6)\n{\n    if (is_ip6)\n      {\n        ip6_header_t *ip6 \u003d ip;\n        ip46_address_set_ip6(...);\n        ...\n       }\n     else\n       {\n         ip4_header_t *ip4 \u003d ip;\n         ip46_address_set_ip4(...);\n       }\n    ...\n}",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "458b0f2c_78cd8759",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "instead of is_l2 + mac_address, just use sw_if_index inconditionally",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7d0a2338_44ea832a",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 318,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "All those actions are confusing as we seem to care only about GRO_PACKET_ACTION_ENQUEUE.\nI think we do not need different actions: we should either merge the buffer, or flush \u0026 send",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "577eceb6_25be71b1",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "should be int gro_is_mergeable() returning true (1) if we should merge the packet or false (0) if we should flush \u0026 send",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a88cc43c_422d4367",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 336,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "we do not care about subcases: if it is not strictly the next data, we should flush \u0026 send, otherwise we\u0027ll hide information to the receiver tcp stack",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e1b101a7_e0717bdc",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "we should use vlib_buffer_enqueue_to_single_next() instead",
+      "revId": "2770bffd142fd13113d50f9b2c5689470c0164a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }

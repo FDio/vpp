@@ -1,0 +1,208 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0fbeed68_202a8103",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 529,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "I think it should be independent from GSO (ie GSO can be enabled, but GRO is not)",
+      "revId": "80101f715c34c71dfa172a8f7df8d2ecb02bdc9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1780a9ca_0a49914b",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 531,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "this should not be accessed directly, instead an inline function should be use.\nAlso, couldn\u0027t this be set once at initialization instead?",
+      "revId": "80101f715c34c71dfa172a8f7df8d2ecb02bdc9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6d1c2745_4f7e0e23",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "Instead of processing buffers 1-per-1 it would be better to have a vector-based API",
+      "revId": "80101f715c34c71dfa172a8f7df8d2ecb02bdc9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7e3c94bf_e4a6dada",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "gro_enabled",
+      "revId": "80101f715c34c71dfa172a8f7df8d2ecb02bdc9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dead916d_4cd92221",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 827,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "should not be accessed directly but passed as parameter to gro_flow_table_init() eg. gro_flow_table_init(\u0026vring-\u003eflow_table, 1)",
+      "revId": "80101f715c34c71dfa172a8f7df8d2ecb02bdc9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a15794a9_1dc17379",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "This should not be accessed directly here. Instead it should be a parameter for gro_flow_table_init(), eg. gro_flow_table_init(\u0026vring-\u003eflow_table, vif-\u003etype \u0026 VIRTIO_IF_TYPE_TAP)",
+      "revId": "80101f715c34c71dfa172a8f7df8d2ecb02bdc9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3e4d79da_b462df41",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "would be better if directly allocated in the parent struct instead to avoid pointer chasing",
+      "revId": "80101f715c34c71dfa172a8f7df8d2ecb02bdc9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c785977c_0ac92264",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "should be sw_if_index instead of mac addresses",
+      "revId": "80101f715c34c71dfa172a8f7df8d2ecb02bdc9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bd5115fa_195a9f02",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "please order struct fields in size order to avoid padding",
+      "revId": "80101f715c34c71dfa172a8f7df8d2ecb02bdc9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f477d37d_f44b0d81",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "please order struct fields in size order to avoid padding",
+      "revId": "80101f715c34c71dfa172a8f7df8d2ecb02bdc9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "eb79d851_d5aa397f",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "vlib_time_now() should be called once at the beginning of processing and pass a parameter here",
+      "revId": "80101f715c34c71dfa172a8f7df8d2ecb02bdc9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c8d0d04e_a9b89d27",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-12T12:59:20Z",
+      "side": 1,
+      "message": "vlib_time_now() should be called once at the beginning of processing and pass a parameter here",
+      "revId": "80101f715c34c71dfa172a8f7df8d2ecb02bdc9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
