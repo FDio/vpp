@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "87d5a221_af5e83cc",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 1178
+      },
+      "writtenOn": "2020-05-12T13:42:21Z",
+      "side": 1,
+      "message": "I need to add dh-python here to make it work:\n\n  DEB_DEPENDS +\u003d python3-virtualenv dh-python",
+      "revId": "6614c5ab01f0369aa01f290d9d3581413ac68b2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
