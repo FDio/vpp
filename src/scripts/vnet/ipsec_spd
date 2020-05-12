@@ -1,0 +1,55 @@
+
+create packet-generator interface pg0
+create packet-generator interface pg1
+
+set int ip address pg0 192.168.0.1/24
+set int ip address pg1 192.168.1.1/24
+
+pipe create
+
+ip6 table add 1
+ip table add 1
+set int ip6 table pipe0.1 1
+set int ip table pipe0.1 1
+
+set int ip address pipe0.0 2001::1/64
+set int ip address pipe0.1 2001::2/64
+set int unnum pipe0.1 use pg1
+
+set int state pg0 up
+set int state pg1 up
+set int state pipe0 up
+
+ipsec sa add 20 spi 200 crypto-key 6541686776336961656264656f6f6579 crypto-alg aes-cbc-128 tunnel-src 2001::1 tunnel-dst 2001::2
+ipsec sa add 30 spi 200 crypto-key 6541686776336961656264656f6f6579 crypto-alg aes-cbc-128 tunnel-src 2001::1 tunnel-dst 2001::2
+
+ipsec spd add 1
+ipsec spd add 2
+set interface ipsec spd pipe0.0 1
+set interface ipsec spd pipe0.1 2
+ipsec policy add spd 1 ip6 priority 100 outbound action bypass protocol 50
+ipsec policy add spd 1 priority 10 outbound action protect sa 20 local-ip-range 192.168.0.0 - 192.168.0.255 remote-ip-range 10.6.0.0 - 10.6.255.255
+
+ipsec policy add spd 2 priority 10 inbound  action protect sa 30 local-ip-range 2001::2 - 2001::2 remote-ip-range 2001::1 - 2001::1
+
+ip route add 10.6.0.0/16 via pipe0.0 
+ip route table 1 add 10.6.0.0/16 via 192.168.1.2 pg1
+set ip neighbor pg1 192.168.1.2 00:11:22:33:44:55
+
+
+trace add pg-input 100
+
+packet-generator new {
+  name ipsec1
+  limit 1
+  rate 1e4
+  node ip4-input
+  interface pg0
+  size 100-100
+  data {
+   UDP: 192.168.0.2 -> 10.6.0.1
+   UDP: 4321 -> 1234
+    length 72
+    incrementing 100
+  }
+}
