@@ -529,7 +529,6 @@ typedef struct snat_main_s
   snat_get_worker_in2out_function_t *worker_in2out_cb;
   snat_get_worker_out2in_function_t *worker_out2in_cb;
   u16 port_per_thread;
-  u32 num_snat_thread;
 
   /* Per thread data */
   snat_main_per_thread_data_t *per_thread_data;
