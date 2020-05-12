@@ -291,7 +291,81 @@ class TemplateIpsecEsp(ConfigIpsecESP):
 class TestIpsecEsp1(TemplateIpsecEsp, IpsecTra46Tests,
                     IpsecTun46Tests, IpsecTra6ExtTests):
     """ Ipsec ESP - TUN & TRA tests """
-    pass
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIpsecEsp1, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIpsecEsp1, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIpsecEsp1, self).setUp()
+
+    def tearDown(self):
+        super(TestIpsecEsp1, self).tearDown()
+
+    def test_tun_46(self):
+        """ ipsec 4o6 tunnel """
+        # add an SPD entry to direct 2.2.2.2 to the v6 tunnel SA
+        p6 = self.ipv6_params
+        p4 = self.ipv4_params
+
+        p6.remote_tun_if_host4 = "2.2.2.2"
+        e = VppEnum.vl_api_ipsec_spd_action_t
+
+        VppIpsecSpdEntry(self,
+                         self.tun_spd,
+                         p6.scapy_tun_sa_id,
+                         self.pg1.remote_addr[p4.addr_type],
+                         self.pg1.remote_addr[p4.addr_type],
+                         p6.remote_tun_if_host4,
+                         p6.remote_tun_if_host4,
+                         0,
+                         priority=10,
+                         policy=e.IPSEC_API_SPD_ACTION_PROTECT,
+                         is_outbound=1).add_vpp_config()
+        VppIpRoute(self,  p6.remote_tun_if_host4, p4.addr_len,
+                   [VppRoutePath(self.tun_if.remote_addr[p4.addr_type],
+                                 0xffffffff)]).add_vpp_config()
+
+        old_name = self.tun6_encrypt_node_name
+        self.tun6_encrypt_node_name = "esp4-encrypt"
+
+        self.verify_tun_46(p6, count=63)
+        self.tun6_encrypt_node_name = old_name
+
+    def test_tun_64(self):
+        """ ipsec 6o4 tunnel """
+        # add an SPD entry to direct 4444::4 to the v4 tunnel SA
+        p6 = self.ipv6_params
+        p4 = self.ipv4_params
+
+        p4.remote_tun_if_host6 = "4444::4"
+        e = VppEnum.vl_api_ipsec_spd_action_t
+
+        VppIpsecSpdEntry(self,
+                         self.tun_spd,
+                         p4.scapy_tun_sa_id,
+                         self.pg1.remote_addr[p6.addr_type],
+                         self.pg1.remote_addr[p6.addr_type],
+                         p4.remote_tun_if_host6,
+                         p4.remote_tun_if_host6,
+                         0,
+                         priority=10,
+                         policy=e.IPSEC_API_SPD_ACTION_PROTECT,
+                         is_outbound=1).add_vpp_config()
+        d = DpoProto.DPO_PROTO_IP6
+        VppIpRoute(self,  p4.remote_tun_if_host6, p6.addr_len,
+                   [VppRoutePath(self.tun_if.remote_addr[p6.addr_type],
+                                 0xffffffff,
+                                 proto=d)]).add_vpp_config()
+
+        old_name = self.tun4_encrypt_node_name
+        self.tun4_encrypt_node_name = "esp6-encrypt"
+        self.verify_tun_64(p4, count=63)
+        self.tun4_encrypt_node_name = old_name
 
 
 class TestIpsecEsp2(TemplateIpsecEsp, IpsecTcpTests):
