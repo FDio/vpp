@@ -199,8 +199,17 @@ interface_handoff_enable_disable (vlib_main_t * vm, u32 sw_if_index,
 
   if (hm->frame_queue_index == ~0)
     {
+      u32 frame_queue_nelts = hm->num_workers * hm->num_workers;
+      if (frame_queue_nelts < FRAME_QUEUE_MAX_NELTS)
+        frame_queue_nelts = FRAME_QUEUE_MAX_NELTS;
+      else if ((frame_queue_nelts >= FRAME_QUEUE_MAX_NELTS)
+               && (frame_queue_nelts < FRAME_QUEUE_MAX_NELTS * 2))
+        frame_queue_nelts = FRAME_QUEUE_MAX_NELTS * 2;
+      else
+        frame_queue_nelts = FRAME_QUEUE_MAX_NELTS * 4;
+
       vlib_node_t *n = vlib_get_node_by_name (vm, (u8 *) "ethernet-input");
-      hm->frame_queue_index = vlib_frame_queue_main_init (n->index, 0);
+      hm->frame_queue_index = vlib_frame_queue_main_init (n->index, frame_queue_nelts);
     }
 
   vec_validate (hm->if_data, sw_if_index);
