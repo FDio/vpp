@@ -495,6 +495,14 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index, int verbose)
 	  else
 	    vlib_cli_output (vm, "  %v", n->name);
 	}
+      if (verbose)
+	{
+	  n =
+	    vlib_get_node (vm,
+			   vcm->end_node_indices_by_user_index
+			   [current_config_index]);
+	  vlib_cli_output (vm, "  [end] %v", n->name);
+	}
     }
 }
 

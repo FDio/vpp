@@ -95,7 +95,8 @@ typedef struct
   u32 *config_string_heap;
 
   /* Node index which starts/ends feature processing. */
-  u32 *start_node_indices, end_node_index;
+  u32 *start_node_indices, *end_node_indices_by_user_index,
+    default_end_node_index;
 
   /* Interior feature processing nodes (not including start and end nodes). */
   u32 *node_index_by_feature_index;
