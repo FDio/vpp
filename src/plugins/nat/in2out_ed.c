@@ -1591,7 +1591,8 @@ format_nat_pre_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   nat_pre_trace_t *t = va_arg (*args, nat_pre_trace_t *);
-  return format (s, "in2out next_index %d", t->next_index);
+  return format (s, "in2out next_index %d arc_next_index %d", t->next_index,
+		 t->arc_next_index);
 }
 
 VLIB_NODE_FN (nat_pre_in2out_node)
