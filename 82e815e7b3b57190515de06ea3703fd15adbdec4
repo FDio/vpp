@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a1aa841_e6fe1a26",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2939,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-05-12T04:26:37Z",
+      "side": 1,
+      "message": "We can allow vcl_mq_dequeue_batch to dequeue all the events (just pass ~0 as limit) and then all events above *num_ev - num should either be moved to unhandled_evts_vector or should be dropped.\n\nLet\u0027s go with unhandled for now but, if application is too slow, we should probably start dropping to avoid consuming too much memory. \n\nAs for the second issue, I guess it should be solved by this as well. That is, vcl dequeues all events while holding the lock and that forces vpp to trigger a new event once vcl drops the lock",
+      "range": {
+        "startLine": 2927,
+        "startChar": 0,
+        "endLine": 2939,
+        "endChar": 5
+      },
+      "revId": "82e815e7b3b57190515de06ea3703fd15adbdec4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
