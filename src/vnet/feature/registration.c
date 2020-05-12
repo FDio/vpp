@@ -50,7 +50,7 @@
     <CODE><PRE>
     VNET_FEATURE_INIT (ip4_lookup, static) =
     {
-      .arch_name = "ip4-unicast",
+      .arc_name = "ip4-unicast",
       .node_name = "my-ip4-unicast-feature",
       .runs_before = VLIB_FEATURES ("ip4-lookup")
     };
