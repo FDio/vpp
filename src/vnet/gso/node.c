@@ -55,17 +55,38 @@ static_always_inline u16
 tso_alloc_tx_bufs (vlib_main_t * vm,
 		   vnet_interface_per_thread_data_t * ptd,
 		   vlib_buffer_t * b0, u32 n_bytes_b0, u16 l234_sz,
-		   u16 gso_size, gso_header_offset_t * gho)
+		   u16 gso_size, u16 first_data_size,
+		   gso_header_offset_t * gho)
 {
-  u16 size =
+
+  u16 n_alloc, size;
+  u16 first_packet_length = l234_sz + first_data_size;
+
+  /*
+   * size is the amount of data per segmented buffer except the 1st
+   * segmented buffer.
+   * l2_hdr_offset is an offset == current_data of vlib_buffer_t.
+   * l234_sz is hdr_sz from l2_hdr_offset.
+   */
+  size =
     clib_min (gso_size, vlib_buffer_get_default_data_size (vm) - l234_sz
 	      - gho->l2_hdr_offset);
 
-  /* rounded-up division */
-  u16 n_bufs = (n_bytes_b0 - l234_sz + (size - 1)) / size;
-  u16 n_alloc;
+  /*
+   * First segmented buffer length is calculated separately.
+   * As it may contain less data than gso_size (when gso_size is
+   * greater than current_length of 1st buffer from GSO chained
+   * buffers) and/or size calculated above.
+   */
+  u16 n_bufs = 1;
 
-  ASSERT (n_bufs > 0);
+  /*
+   * Total packet length minus first packet length including l234 header.
+   * rounded-up division
+   */
+  ASSERT (n_bytes_b0 > first_packet_length);
+  n_bufs += ((n_bytes_b0 - first_packet_length + (size - 1)) / size);
+
   vec_validate (ptd->split_buffers, n_bufs - 1);
 
   n_alloc = vlib_buffer_alloc (vm, ptd->split_buffers, n_bufs);
@@ -126,12 +147,10 @@ tso_fixup_segmented_buf (vlib_buffer_t * b0, u8 tcp_flags, int is_ip6,
 
   if (is_ip6)
     ip6->payload_length =
-      clib_host_to_net_u16 (b0->current_length -
-			    (gho->l4_hdr_offset - gho->l2_hdr_offset));
+      clib_host_to_net_u16 (b0->current_length - gho->l4_hdr_offset);
   else
     ip4->length =
-      clib_host_to_net_u16 (b0->current_length -
-			    (gho->l3_hdr_offset - gho->l2_hdr_offset));
+      clib_host_to_net_u16 (b0->current_length - gho->l3_hdr_offset);
 }
 
 /**
@@ -166,12 +185,13 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
 
   u32 default_bflags =
     sb0->flags & ~(VNET_BUFFER_F_GSO | VLIB_BUFFER_NEXT_PRESENT);
-  u16 l234_sz = gho->l4_hdr_offset + l4_hdr_sz - gho->l2_hdr_offset;
+  u16 l234_sz = gho->l4_hdr_offset + l4_hdr_sz;
   int first_data_size = clib_min (gso_size, sb0->current_length - l234_sz);
   next_tcp_seq += first_data_size;
 
   if (PREDICT_FALSE
-      (!tso_alloc_tx_bufs (vm, ptd, sb0, n_bytes_b0, l234_sz, gso_size, gho)))
+      (!tso_alloc_tx_bufs
+       (vm, ptd, sb0, n_bytes_b0, l234_sz, gso_size, first_data_size, gho)))
     return 0;
 
   vlib_buffer_t *b0 = vlib_get_buffer (vm, ptd->split_buffers[0]);
@@ -489,6 +509,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 			    {
 			      sbi0 = to_next[0] = from_seg[0];
 			      sb0 = vlib_get_buffer (vm, sbi0);
+			      ASSERT (sb0->current_length > 0);
 			      to_next += 1;
 			      from_seg += 1;
 			      n_left_to_next -= 1;
@@ -509,6 +530,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 			{
 			  sbi0 = to_next[0] = from_seg[0];
 			  sb0 = vlib_get_buffer (vm, sbi0);
+			  ASSERT (sb0->current_length > 0);
 			  to_next += 1;
 			  from_seg += 1;
 			  n_left_to_next -= 1;

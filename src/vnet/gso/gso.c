@@ -34,9 +34,11 @@ vnet_sw_interface_gso_enable_disable (u32 sw_if_index, u8 enable)
   em = &ethernet_main;
   si = vnet_get_sw_interface (vnm, sw_if_index);
 
-  /*
-   * only ethernet HW interfaces are supported at this time
-   */
+  if (si->type == VNET_SW_INTERFACE_TYPE_SUB)
+    {
+      si = vnet_get_sup_sw_interface (vnm, sw_if_index);
+    }
+
   if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
     {
       return (VNET_API_ERROR_INVALID_VALUE);
