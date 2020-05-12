@@ -5,9 +5,7 @@ Maintainer: fd.io VPP Packaging Team <vpp-dev@fd.io>
 Build-Depends: debhelper (>= 9),
                dh-systemd,
 	       dh-python,
-	       python-all,
-	       python3-all,
-	       python3-setuptools
+	       @VPP_DEB_BUILD_DEPENDS@
 Standards-Version: 3.9.4
 
 Package: vpp

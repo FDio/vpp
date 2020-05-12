@@ -20,14 +20,34 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-foreach(f rules changelog)
+# parse /etc/os-release
+file(READ "/etc/os-release" os_release)
+string(REPLACE "\n" ";" os_release ${os_release})
+foreach(l ${os_release})
+  string(REPLACE "=" ";" l ${l})
+  list(GET l 0 _name)
+  list(GET l 1 _value)
+  string(REPLACE "\"" "" _value ${_value})
+  set(OS_${_name} ${_value})
+endforeach()
+
+if (OS_ID STREQUAL "ubuntu" AND OS_VERSION_ID VERSION_LESS 20.04)
+  set(VPP_DEB_BUILD_DEPENDS "python-all, python3-all, python3-setuptools")
+  set(VPP_DEB_WITH_PYTHON2 "yes")
+else()
+  set(VPP_DEB_BUILD_DEPENDS "python3-all, python3-setuptools")
+  set(VPP_DEB_WITH_PYTHON2 "no")
+endif()
+
+foreach(f rules changelog control)
   configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/debian/${f}.in
     ${CMAKE_BINARY_DIR}/debian/${f}
+    @ONLY
   )
 endforeach()
 
-foreach(f control copyright vpp.preinst vpp.postrm vpp.postinst vpp.service)
+foreach(f copyright vpp.preinst vpp.postrm vpp.postinst vpp.service)
   file(COPY
     ${CMAKE_CURRENT_SOURCE_DIR}/debian/${f}
     DESTINATION ${CMAKE_BINARY_DIR}/debian
