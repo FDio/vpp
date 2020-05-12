@@ -1,0 +1,13 @@
+#!/bin/bash
+
+echo Clean up old results
+rm -f /tmp/vpp.prof*
+
+echo Run tests...
+LLVM_PROFILE_FILE="/tmp/vpp.profraw" make SANITY=no TEST_JOBS=1 GCOV_TESTS=yes test-gcov
+
+echo Merge Profile...
+llvm-profdata merge -sparse /tmp/vpp.profraw -o /tmp/vpp.profdata
+
+echo Create Line Coverage Report
+llvm-cov show build-root/install-vpp_gcov-native/vpp/bin/vpp -instr-profile /tmp/vpp.profdata > /tmp/vpp.linecov

@@ -93,8 +93,8 @@ string(CONCAT CMAKE_C_FLAGS_GCOV
   "-O0 "
   "-DCLIB_DEBUG "
   "-DCLIB_GCOV "
-  "-fprofile-arcs "
-  "-ftest-coverage ")
+  "-fprofile-instr-generate "
+  "-fcoverage-mapping ")
 
 string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_UC)
 
