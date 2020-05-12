@@ -13,19 +13,12 @@
 # limitations under the License.
 import sys
 
-stdlib_enum = sys.version_info >= (3, 6)
-stdlib_ipaddress = sys.version_info >= (3, 3)
-
 try:
     from setuptools import setup, find_packages
 except ImportError:
     from distutils.core import setup, find_packages
 
 requirements = ['cffi >= 1.6']
-if not stdlib_enum:
-    requirements.append('aenum')
-if not stdlib_ipaddress:
-    requirements.append('ipaddress')
 
 setup(
     name='vpp_papi',
