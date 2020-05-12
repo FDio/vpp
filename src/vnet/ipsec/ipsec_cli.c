@@ -234,13 +234,13 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   ipsec_policy_t p;
   int rv, is_add = 0;
-  u32 tmp, tmp2, stat_index;
+  u32 tmp, tmp2, stat_index, local_range_set, remote_range_set;
   clib_error_t *error = NULL;
   u32 is_outbound;
 
   clib_memset (&p, 0, sizeof (p));
   p.lport.stop = p.rport.stop = ~0;
-  is_outbound = 0;
+  remote_range_set = local_range_set = is_outbound = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -251,6 +251,8 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
 	is_add = 1;
       else if (unformat (line_input, "del"))
 	is_add = 0;
+      else if (unformat (line_input, "ip6"))
+	p.is_ipv6 = 1;
       else if (unformat (line_input, "spd %u", &p.id))
 	;
       else if (unformat (line_input, "inbound"))
@@ -277,22 +279,24 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "local-ip-range %U - %U",
 			 unformat_ip4_address, &p.laddr.start.ip4,
 			 unformat_ip4_address, &p.laddr.stop.ip4))
-	;
+	local_range_set = 1;
       else if (unformat (line_input, "remote-ip-range %U - %U",
 			 unformat_ip4_address, &p.raddr.start.ip4,
 			 unformat_ip4_address, &p.raddr.stop.ip4))
-	;
+	remote_range_set = 1;
       else if (unformat (line_input, "local-ip-range %U - %U",
 			 unformat_ip6_address, &p.laddr.start.ip6,
 			 unformat_ip6_address, &p.laddr.stop.ip6))
 	{
 	  p.is_ipv6 = 1;
+	  local_range_set = 1;
 	}
       else if (unformat (line_input, "remote-ip-range %U - %U",
 			 unformat_ip6_address, &p.raddr.start.ip6,
 			 unformat_ip6_address, &p.raddr.stop.ip6))
 	{
 	  p.is_ipv6 = 1;
+	  remote_range_set = 1;
 	}
       else if (unformat (line_input, "local-port-range %u - %u", &tmp, &tmp2))
 	{
@@ -311,6 +315,21 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
 				     format_unformat_error, line_input);
 	  goto done;
 	}
+    }
+
+  if (!remote_range_set)
+    {
+      if (p.is_ipv6)
+	clib_memset (&p.raddr.stop.ip6, 0xff, 16);
+      else
+	clib_memset (&p.raddr.stop.ip4, 0xff, 4);
+    }
+  if (!local_range_set)
+    {
+      if (p.is_ipv6)
+	clib_memset (&p.laddr.stop.ip6, 0xff, 16);
+      else
+	clib_memset (&p.laddr.stop.ip4, 0xff, 4);
     }
 
   rv = ipsec_policy_mk_type (is_outbound, p.is_ipv6, p.policy, &p.type);

@@ -27,9 +27,11 @@
 #include <vnet/ipsec/esp.h>
 
 #define foreach_esp_encrypt_next                   \
-_(DROP, "error-drop")                              \
+_(DROP4, "ip4-drop")                               \
+_(DROP6, "ip6-drop")                               \
 _(PENDING, "pending")                              \
-_(HANDOFF, "handoff")                              \
+_(HANDOFF4, "handoff4")                            \
+_(HANDOFF6, "handoff6")                            \
 _(INTERFACE_OUTPUT, "interface-output")
 
 #define _(v, s) ESP_ENCRYPT_NEXT_##v,
@@ -235,7 +237,8 @@ esp_get_ip6_hdr_len (ip6_header_t * ip6, ip6_ext_header_t ** ext_hdr)
 static_always_inline void
 esp_process_chained_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
 			 vnet_crypto_op_t * ops, vlib_buffer_t * b[],
-			 u16 * nexts, vnet_crypto_op_chunk_t * chunks)
+			 u16 * nexts, vnet_crypto_op_chunk_t * chunks,
+                         u16 drop_next)
 {
   u32 n_fail, n_ops = vec_len (ops);
   vnet_crypto_op_t *op = ops;
@@ -253,7 +256,7 @@ esp_process_chained_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u32 bi = op->user_data;
 	  b[bi]->error = node->errors[ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR];
-	  nexts[bi] = ESP_ENCRYPT_NEXT_DROP;
+	  nexts[bi] = drop_next;
 	  n_fail--;
 	}
       op++;
@@ -262,7 +265,8 @@ esp_process_chained_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 static_always_inline void
 esp_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
-		 vnet_crypto_op_t * ops, vlib_buffer_t * b[], u16 * nexts)
+		 vnet_crypto_op_t * ops, vlib_buffer_t * b[], u16 * nexts,
+                 u16 drop_next)
 {
   u32 n_fail, n_ops = vec_len (ops);
   vnet_crypto_op_t *op = ops;
@@ -280,7 +284,7 @@ esp_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u32 bi = op->user_data;
 	  b[bi]->error = node->errors[ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR];
-	  nexts[bi] = ESP_ENCRYPT_NEXT_DROP;
+	  nexts[bi] = drop_next;
 	  n_fail--;
 	}
       op++;
@@ -555,13 +559,14 @@ out:
 /* when submitting a frame is failed, drop all buffers in the frame */
 static_always_inline void
 esp_async_recycle_failed_submit (vnet_crypto_async_frame_t * f,
-				 vlib_buffer_t ** b, u16 * next)
+				 vlib_buffer_t ** b, u16 * next,
+                                 u16 drop_next)
 {
   u32 n_drop = f->n_elts;
   while (--n_drop)
     {
       (b - n_drop)[0]->error = ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR;
-      (next - n_drop)[0] = ESP_ENCRYPT_NEXT_DROP;
+      (next - n_drop)[0] = drop_next;
     }
   vnet_crypto_async_reset_frame (f);
 }
@@ -590,6 +595,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vnet_crypto_async_frame_t *async_frame = 0;
   int is_async = im->async_mode;
   vnet_crypto_async_op_id_t last_async_op = ~0;
+  u16 drop_next = (is_ip6 ? ESP_ENCRYPT_NEXT_DROP6 : ESP_ENCRYPT_NEXT_DROP4);
 
   vlib_get_buffers (vm, from, b, n_left);
   if (!is_async)
@@ -653,7 +659,8 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  if (vnet_crypto_async_submit_open_frame (vm, async_frame)
 		      < 0)
-		    esp_async_recycle_failed_submit (async_frame, b, next);
+		    esp_async_recycle_failed_submit (async_frame, b,
+                                                     next, drop_next);
 		}
 	      async_frame =
 		vnet_crypto_async_get_frame (vm, sa0->crypto_async_enc_op_id);
@@ -672,7 +679,8 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (PREDICT_TRUE (thread_index != sa0->encrypt_thread_index))
 	{
-	  next[0] = ESP_ENCRYPT_NEXT_HANDOFF;
+	  next[0] = (is_ip6 ?
+		     ESP_ENCRYPT_NEXT_HANDOFF6 : ESP_ENCRYPT_NEXT_HANDOFF4);
 	  goto trace;
 	}
 
@@ -681,7 +689,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (n_bufs == 0)
 	{
 	  b[0]->error = node->errors[ESP_ENCRYPT_ERROR_NO_BUFFERS];
-	  next[0] = ESP_ENCRYPT_NEXT_DROP;
+	  next[0] = drop_next;
 	  goto trace;
 	}
 
@@ -703,7 +711,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (PREDICT_FALSE (esp_seq_advance (sa0)))
 	{
 	  b[0]->error = node->errors[ESP_ENCRYPT_ERROR_SEQ_CYCLED];
-	  next[0] = ESP_ENCRYPT_NEXT_DROP;
+	  next[0] = drop_next;
 	  goto trace;
 	}
 
@@ -721,7 +729,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (!next_hdr_ptr)
 	    {
 	      b[0]->error = node->errors[ESP_ENCRYPT_ERROR_NO_BUFFERS];
-	      next[0] = ESP_ENCRYPT_NEXT_DROP;
+	      next[0] = drop_next;
 	      goto trace;
 	    }
 	  b[0]->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -884,7 +892,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				       icv_sz, from[b - bufs], next, hdr_len,
 				       async_next, lb))
 	    {
-	      esp_async_recycle_failed_submit (async_frame, b, next);
+	      esp_async_recycle_failed_submit (async_frame, b, next, drop_next);
 	      goto trace;
 	    }
 	}
@@ -924,18 +932,18 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				   current_sa_bytes);
   if (!is_async)
     {
-      esp_process_ops (vm, node, ptd->crypto_ops, bufs, nexts);
+      esp_process_ops (vm, node, ptd->crypto_ops, bufs, nexts, drop_next);
       esp_process_chained_ops (vm, node, ptd->chained_crypto_ops, bufs, nexts,
-			       ptd->chunks);
+			       ptd->chunks, drop_next);
 
-      esp_process_ops (vm, node, ptd->integ_ops, bufs, nexts);
+      esp_process_ops (vm, node, ptd->integ_ops, bufs, nexts, drop_next);
       esp_process_chained_ops (vm, node, ptd->chained_integ_ops, bufs, nexts,
-			       ptd->chunks);
+			       ptd->chunks, drop_next);
     }
   else if (async_frame && async_frame->n_elts)
     {
       if (vnet_crypto_async_submit_open_frame (vm, async_frame) < 0)
-	esp_async_recycle_failed_submit (async_frame, b, next);
+	esp_async_recycle_failed_submit (async_frame, b, next, drop_next);
     }
 
   vlib_node_increment_counter (vm, node->node_index,
@@ -1051,8 +1059,10 @@ VLIB_REGISTER_NODE (esp4_encrypt_node) = {
 
   .n_next_nodes = ESP_ENCRYPT_N_NEXT,
   .next_nodes = {
-    [ESP_ENCRYPT_NEXT_DROP] = "ip4-drop",
-    [ESP_ENCRYPT_NEXT_HANDOFF] = "esp4-encrypt-handoff",
+    [ESP_ENCRYPT_NEXT_DROP4] = "ip4-drop",
+    [ESP_ENCRYPT_NEXT_DROP6] = "ip6-drop",
+    [ESP_ENCRYPT_NEXT_HANDOFF4] = "esp4-encrypt-handoff",
+    [ESP_ENCRYPT_NEXT_HANDOFF6] = "esp6-encrypt-handoff",
     [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "interface-output",
     [ESP_ENCRYPT_NEXT_PENDING] = "esp-encrypt-pending",
   },
@@ -1093,17 +1103,10 @@ VLIB_REGISTER_NODE (esp6_encrypt_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_esp_encrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
+  .sibling_of = "esp4-encrypt",
 
   .n_errors = ARRAY_LEN(esp_encrypt_error_strings),
   .error_strings = esp_encrypt_error_strings,
-
-  .n_next_nodes = ESP_ENCRYPT_N_NEXT,
-  .next_nodes = {
-    [ESP_ENCRYPT_NEXT_DROP] = "ip6-drop",
-    [ESP_ENCRYPT_NEXT_HANDOFF] = "esp6-encrypt-handoff",
-    [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "interface-output",
-    [ESP_ENCRYPT_NEXT_PENDING] = "esp-encrypt-pending",
-  },
 };
 /* *INDENT-ON* */
 
@@ -1120,7 +1123,7 @@ VLIB_REGISTER_NODE (esp6_encrypt_post_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_esp_post_encrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .sibling_of = "esp6-encrypt",
+  .sibling_of = "esp4-encrypt",
 
   .n_errors = ARRAY_LEN(esp_encrypt_error_strings),
   .error_strings = esp_encrypt_error_strings,
@@ -1147,8 +1150,10 @@ VLIB_REGISTER_NODE (esp4_encrypt_tun_node) = {
 
   .n_next_nodes = ESP_ENCRYPT_N_NEXT,
   .next_nodes = {
-    [ESP_ENCRYPT_NEXT_DROP] = "ip4-drop",
-    [ESP_ENCRYPT_NEXT_HANDOFF] = "esp4-encrypt-tun-handoff",
+    [ESP_ENCRYPT_NEXT_DROP4] = "ip4-drop",
+    [ESP_ENCRYPT_NEXT_DROP6] = "ip6-drop",
+    [ESP_ENCRYPT_NEXT_HANDOFF4] = "esp4-encrypt-tun-handoff",
+    [ESP_ENCRYPT_NEXT_HANDOFF6] = "error-drop",
     [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "adj-midchain-tx",
     [ESP_ENCRYPT_NEXT_PENDING] = "esp-encrypt-pending",
   },
@@ -1194,8 +1199,10 @@ VLIB_REGISTER_NODE (esp6_encrypt_tun_node) = {
 
   .n_next_nodes = ESP_ENCRYPT_N_NEXT,
   .next_nodes = {
-    [ESP_ENCRYPT_NEXT_DROP] = "ip6-drop",
-    [ESP_ENCRYPT_NEXT_HANDOFF] = "esp6-encrypt-tun-handoff",
+    [ESP_ENCRYPT_NEXT_DROP4] = "ip4-drop",
+    [ESP_ENCRYPT_NEXT_DROP6] = "ip6-drop",
+    [ESP_ENCRYPT_NEXT_HANDOFF4] = "error-drop",
+    [ESP_ENCRYPT_NEXT_HANDOFF6] = "esp6-encrypt-tun-handoff",
     [ESP_ENCRYPT_NEXT_PENDING] = "esp-encrypt-pending",
     [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "adj-midchain-tx",
   },
