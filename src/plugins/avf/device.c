@@ -1125,25 +1125,29 @@ avf_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
   vlib_main_t *vm = vlib_get_main ();
   avf_main_t *am = &avf_main;
   avf_device_t *ad = vec_elt_at_index (am->devices, hw->dev_instance);
-  if (ETHERNET_INTERFACE_FLAG_CONFIG_PROMISC (flags))
+  clib_error_t *error;
+  u8 promisc_enabled;
+
+  switch (flags)
     {
-      clib_error_t *error;
-      int promisc_enabled = (flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL) != 0;
-      u32 new_flags = promisc_enabled ?
-	ad->flags | AVF_DEVICE_F_PROMISC : ad->flags & ~AVF_DEVICE_F_PROMISC;
-
-      if (new_flags == ad->flags)
-	return flags;
-
-      if ((error = avf_config_promisc_mode (vm, ad, promisc_enabled)))
-	{
-	  avf_log_err (ad, "%s: %U", format_clib_error, error);
-	  clib_error_free (error);
-	  return 0;
-	}
-
-      ad->flags = new_flags;
+    case ETHERNET_INTERFACE_FLAG_DEFAULT_L3:
+      ad->flags &= ~AVF_DEVICE_F_PROMISC;
+      break;
+    case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
+      ad->flags |= AVF_DEVICE_F_PROMISC;
+      break;
+    default:
+      return ~0;
     }
+
+  promisc_enabled = ((ad->flags & AVF_DEVICE_F_PROMISC) != 0);
+  if ((error = avf_config_promisc_mode (vm, ad, promisc_enabled)))
+    {
+      avf_log_err (ad, "%s: %U", format_clib_error, error);
+      clib_error_free (error);
+      return ~0;
+    }
+
   return 0;
 }
 
@@ -1469,6 +1473,13 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 
   if (error)
     goto error;
+
+  /* Indicate ability to support L3 DMAC filtering and
+   * initialize interface to L3 non-promisc mode */
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, ad->hw_if_index);
+  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER;
+  ethernet_set_flags (vnm, ad->hw_if_index,
+		      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
 
   vnet_sw_interface_t *sw = vnet_get_hw_sw_interface (vnm, ad->hw_if_index);
   args->sw_if_index = ad->sw_if_index = sw->sw_if_index;

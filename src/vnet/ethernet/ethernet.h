@@ -137,15 +137,22 @@ typedef struct ethernet_interface
 {
   u32 flags;
 
-  /* Accept all packets (promiscuous mode). */
-#define ETHERNET_INTERFACE_FLAG_ACCEPT_ALL (1 << 0)
-#define ETHERNET_INTERFACE_FLAG_CONFIG_PROMISC(flags) \
-  (((flags) & ~ETHERNET_INTERFACE_FLAG_ACCEPT_ALL) == 0)
+  /* Top 16 bits for status and bottom 16 bits for set operation */
+#define ETHERNET_INTERFACE_FLAGS_STATUS_MASK  (0xffff0000)
+#define ETHERNET_INTERFACE_FLAGS_SET_OPN_MASK (0x0000ffff)
+
+  /* Interface driver/hw is in L3/non-promiscuous mode so packet DMAC
+     would already be filtered */
+#define ETHERNET_INTERFACE_FLAG_STATUS_L3 (1 << 16)
+
+  /* Set interface to default L3 mode */
+#define ETHERNET_INTERFACE_FLAG_DEFAULT_L3 0
+
+  /* Set interface to accept all packets (promiscuous mode). */
+#define ETHERNET_INTERFACE_FLAG_ACCEPT_ALL 1
 
   /* Change MTU on interface from hw interface structure */
-#define ETHERNET_INTERFACE_FLAG_MTU (1 << 1)
-#define ETHERNET_INTERFACE_FLAG_CONFIG_MTU(flags) \
-  ((flags) & ETHERNET_INTERFACE_FLAG_MTU)
+#define ETHERNET_INTERFACE_FLAG_MTU        2
 
   /* Callback, e.g. to turn on/off promiscuous mode */
   ethernet_flag_change_function_t *flag_change;
