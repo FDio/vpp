@@ -7043,6 +7043,103 @@ class TestNAT44EndpointDependent(MethodHolder):
         capture = self.pg2.get_capture(1)
         self.verify_syslog_sess(capture[0][Raw].load, False)
 
+    def test_ed_users_dump(self):
+        """ API test - nat44_user_dump """
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            flags=flags, is_add=1)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1)
+        self.vapi.nat44_forwarding_enable_disable(enable=1)
+
+        real_ip = self.pg0.remote_ip4
+        alias_ip = self.nat_addr
+        flags = self.config_flags.NAT_IS_ADDR_ONLY
+        self.vapi.nat44_add_del_static_mapping(is_add=1,
+                                               local_ip_address=real_ip,
+                                               external_ip_address=alias_ip,
+                                               external_sw_if_index=0xFFFFFFFF,
+                                               flags=flags)
+
+        try:
+            # in2out - static mapping match
+
+            pkts = self.create_stream_out(self.pg1)
+            self.pg1.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            capture = self.pg0.get_capture(len(pkts))
+            self.verify_capture_in(capture, self.pg0)
+
+            pkts = self.create_stream_in(self.pg0, self.pg1)
+            self.pg0.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            capture = self.pg1.get_capture(len(pkts))
+            self.verify_capture_out(capture, same_port=True)
+
+            # in2out - no static mapping match
+
+            host0 = self.pg0.remote_hosts[0]
+            self.pg0.remote_hosts[0] = self.pg0.remote_hosts[1]
+            try:
+                pkts = self.create_stream_out(self.pg1,
+                                              dst_ip=self.pg0.remote_ip4,
+                                              use_inside_ports=True)
+                self.pg1.add_stream(pkts)
+                self.pg_enable_capture(self.pg_interfaces)
+                self.pg_start()
+                capture = self.pg0.get_capture(len(pkts))
+                self.verify_capture_in(capture, self.pg0)
+
+                pkts = self.create_stream_in(self.pg0, self.pg1)
+                self.pg0.add_stream(pkts)
+                self.pg_enable_capture(self.pg_interfaces)
+                self.pg_start()
+                capture = self.pg1.get_capture(len(pkts))
+                self.verify_capture_out(capture, nat_ip=self.pg0.remote_ip4,
+                                        same_port=True)
+            finally:
+                self.pg0.remote_hosts[0] = host0
+
+            users = self.vapi.nat44_user_dump()
+            self.assertEqual(len(users), 2)
+            if str(users[0].ip_address) == self.pg0.remote_hosts[0].ip4:
+                non_static_user = users[1]
+                static_user = users[0]
+            else:
+                non_static_user = users[0]
+                static_user = users[1]
+            self.assertEqual(static_user.nstaticsessions, 3)
+            self.assertEqual(static_user.nsessions, 0)
+            self.assertEqual(non_static_user.nstaticsessions, 0)
+            self.assertEqual(non_static_user.nsessions, 3)
+
+            users = self.vapi.nat44_user_dump()
+            self.assertEqual(len(users), 2)
+            if str(users[0].ip_address) == self.pg0.remote_hosts[0].ip4:
+                non_static_user = users[1]
+                static_user = users[0]
+            else:
+                non_static_user = users[0]
+                static_user = users[1]
+            self.assertEqual(static_user.nstaticsessions, 3)
+            self.assertEqual(static_user.nsessions, 0)
+            self.assertEqual(non_static_user.nstaticsessions, 0)
+            self.assertEqual(non_static_user.nsessions, 3)
+
+        finally:
+            self.vapi.nat44_forwarding_enable_disable(enable=0)
+            flags = self.config_flags.NAT_IS_ADDR_ONLY
+            self.vapi.nat44_add_del_static_mapping(
+                is_add=0,
+                local_ip_address=real_ip,
+                external_ip_address=alias_ip,
+                external_sw_if_index=0xFFFFFFFF,
+                flags=flags)
+
     def tearDown(self):
         super(TestNAT44EndpointDependent, self).tearDown()
         if not self.vpp_dead:
