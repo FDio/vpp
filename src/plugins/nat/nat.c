@@ -983,13 +983,13 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	  if (rp_match)
 	    return VNET_API_ERROR_VALUE_EXIST;
 
-	  snat_add_static_mapping_when_resolved
-	    (sm, l_addr, l_port, sw_if_index, e_port, vrf_id, proto,
-	     addr_only, is_add, tag, twice_nat, out2in_only, identity_nat);
-
 	  /* DHCP resolution required? */
 	  if (first_int_addr == 0)
 	    {
+	      snat_add_static_mapping_when_resolved
+		(sm, l_addr, l_port, sw_if_index, e_port, vrf_id, proto,
+		 addr_only, is_add, tag, twice_nat, out2in_only,
+		 identity_nat);
 	      return 0;
 	    }
 	  else
