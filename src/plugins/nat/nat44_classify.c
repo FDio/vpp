@@ -264,7 +264,7 @@ nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
 		}
 	      m_key0.port =
 		clib_net_to_host_u16 (vnet_buffer (b0)->ip.reass.l4_dst_port);
-	      m_key0.protocol = ip_proto_to_snat_proto (ip0->protocol);
+	      m_key0.protocol = ip_proto_to_nat_proto (ip0->protocol);
 	      kv0.key = m_key0.as_u64;
 	      if (!clib_bihash_search_8_8
 		  (&sm->static_mapping_by_external, &kv0, &value0))
