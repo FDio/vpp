@@ -1,5 +1,6 @@
 # Release Notes    {#release_notes}
 
+* @subpage release_notes_2009
 * @subpage release_notes_2005
 * @subpage release_notes_2001
 * @subpage release_notes_19082
@@ -26,6 +27,10 @@
 * @subpage release_notes_1701
 * @subpage release_notes_1609
 * @subpage release_notes_1606
+
+@page release_notes_2005 Release notes for VPP 20.09
+
+TBD
 
 @page release_notes_2005 Release notes for VPP 20.05
 
