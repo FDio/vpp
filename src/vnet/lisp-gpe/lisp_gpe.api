@@ -33,14 +33,8 @@ typedef gpe_locator
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
-    @param eid_type -
-      0 : ipv4
-      1 : ipv6
-      2 : mac
     @param rmt_eid - remote eid
     @param lcl_eid - local eid
-    @param rmt_len - remote prefix len
-    @param lcl_len - local prefix len
     @param vni - virtual network identifier
     @param dp_table - vrf/bridge domain id
     @param action - negative action when 0 locators configured
