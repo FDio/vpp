@@ -215,9 +215,10 @@ identify_subint (vnet_hw_interface_t * hi,
     {
 
       // Perform L3 my-mac filter
-      // A unicast packet arriving on an L3 interface must have a dmac matching the interface mac.
-      // This is required for promiscuous mode, else we will forward packets we aren't supposed to.
-      if (!(*is_l2))
+      // A unicast packet arriving on an L3 interface must have a dmac
+      // matching the interface mac. If interface has STATUS_L3 bit set
+      // mac filter is already done.
+      if (!(*is_l2 || (hi->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)))
 	{
 	  ethernet_header_t *e0;
 	  e0 = (void *) (b0->data + vnet_buffer (b0)->l2_hdr_offset);
@@ -939,29 +940,35 @@ eth_input_single_int (vlib_main_t * vm, vlib_node_runtime_t * node,
   subint_config_t *subint0 = &intf0->untagged_subint;
 
   int main_is_l3 = (subint0->flags & SUBINT_CONFIG_L2) == 0;
-  int promisc = (ei->flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL) != 0;
+  int int_is_l3 = ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3;
 
   if (main_is_l3)
     {
-      /* main interface is L3, we dont expect tagged packets and interface
-         is not in promisc node, so we dont't need to check DMAC */
-      int is_l3 = 1;
-
-      if (promisc == 0)
-	eth_input_process_frame (vm, node, hi, from, n_pkts, is_l3,
-				 ip4_cksum_ok, 0);
+      if (int_is_l3 ||		/* DMAC filter already done by NIC */
+	  ((hi->l2_if_count != 0) && (hi->l3_if_count == 0)))
+	{			/* All L2 usage - DMAC check not needed */
+	  eth_input_process_frame (vm, node, hi, from, n_pkts,
+				   /*is_l3 */ 1, ip4_cksum_ok, 0);
+	}
       else
-	/* subinterfaces and promisc mode so DMAC check is needed */
-	eth_input_process_frame (vm, node, hi, from, n_pkts, is_l3,
-				 ip4_cksum_ok, 1);
+	{			/* DMAC check needed for L3 */
+	  eth_input_process_frame (vm, node, hi, from, n_pkts,
+				   /*is_l3 */ 1, ip4_cksum_ok, 1);
+	}
       return;
     }
   else
     {
-      /* untagged packets are treated as L2 */
-      int is_l3 = 0;
-      eth_input_process_frame (vm, node, hi, from, n_pkts, is_l3,
-			       ip4_cksum_ok, 1);
+      if (hi->l3_if_count == 0)
+	{			/* All L2 usage - DMAC check not needed */
+	  eth_input_process_frame (vm, node, hi, from, n_pkts,
+				   /*is_l3 */ 0, ip4_cksum_ok, 0);
+	}
+      else
+	{			/* DMAC check needed for L3 */
+	  eth_input_process_frame (vm, node, hi, from, n_pkts,
+				   /*is_l3 */ 0, ip4_cksum_ok, 1);
+	}
       return;
     }
 }
@@ -1165,6 +1172,9 @@ ethernet_input_inline (vlib_main_t * vm,
 		}
 	      else
 		{
+		  if (hi->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)
+		    goto skip_dmac_check01;
+
 		  if (!ethernet_address_cast (e0->dst_address) &&
 		      (hi->hw_address != 0) &&
 		      !ethernet_mac_address_equal ((u8 *) e0, hi->hw_address))
@@ -1173,6 +1183,8 @@ ethernet_input_inline (vlib_main_t * vm,
 		      (hi->hw_address != 0) &&
 		      !ethernet_mac_address_equal ((u8 *) e1, hi->hw_address))
 		    error1 = ETHERNET_ERROR_L3_MAC_MISMATCH;
+
+		skip_dmac_check01:
 		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
 		  determine_next_node (em, variant, 0, type0, b0,
 				       &error0, &next0);
@@ -1387,10 +1399,15 @@ ethernet_input_inline (vlib_main_t * vm,
 		}
 	      else
 		{
+		  if (hi->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)
+		    goto skip_dmac_check0;
+
 		  if (!ethernet_address_cast (e0->dst_address) &&
 		      (hi->hw_address != 0) &&
 		      !ethernet_mac_address_equal ((u8 *) e0, hi->hw_address))
 		    error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
+
+		skip_dmac_check0:
 		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
 		  determine_next_node (em, variant, 0, type0, b0,
 				       &error0, &next0);
