@@ -11,6 +11,8 @@ import os
 import sys
 from subprocess import Popen, PIPE
 
+assert sys.version_info >= (3, 6), \
+    "Not supported Python version: {}".format(sys.version)
 log = logging.getLogger('vppapigen')
 
 # Ensure we don't leave temporary files around
@@ -285,7 +287,7 @@ class Define():
                     self.options[b.option] = b.value
                 remove.append(b)
 
-        block = [x for x in block if not x in remove]
+        block = [x for x in block if x not in remove]
         self.block = block
         self.vla = vla_is_last_check(name, block)
         self.crc = str(block).encode()
@@ -765,7 +767,7 @@ class VPPAPI(object):
         block = [Field('u32', 'context'),
                  Field('i32', 'retval')]
         # inherhit the parent's options
-        for k,v in parent.options.items():
+        for k, v in parent.options.items():
             block.append(Option(k, v))
         return Define(name + '_reply', [], block)
 
