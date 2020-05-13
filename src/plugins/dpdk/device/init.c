@@ -259,7 +259,6 @@ dpdk_lib_init (dpdk_main_t * dm)
       int vlan_off;
       struct rte_eth_dev_info dev_info;
       struct rte_pci_device *pci_dev;
-      struct rte_eth_link l;
       dpdk_portid_t next_port_id;
       dpdk_device_config_t *devconf = 0;
       vlib_pci_addr_t pci_addr;
@@ -268,7 +267,6 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (!rte_eth_dev_is_valid_port(i))
 	continue;
 
-      rte_eth_link_get_nowait (i, &l);
       rte_eth_dev_info_get (i, &dev_info);
 
       if (dev_info.device == 0)
@@ -519,9 +517,13 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	      /* Cisco VIC */
 	    case VNET_DPDK_PMD_ENIC:
-	      xd->port_type = port_type_from_link_speed (l.link_speed);
-	      if (dm->conf->enable_tcp_udp_checksum)
-		dpdk_enable_l4_csum_offload (xd);
+                {
+                  struct rte_eth_link l;
+                  rte_eth_link_get_nowait (i, &l);
+                  xd->port_type = port_type_from_link_speed (l.link_speed);
+                  if (dm->conf->enable_tcp_udp_checksum)
+                    dpdk_enable_l4_csum_offload (xd);
+                }
 	      break;
 
 	      /* Intel Red Rock Canyon */
@@ -566,7 +568,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      break;
 
 	    case VNET_DPDK_PMD_NETVSC:
-	      xd->port_type = port_type_from_link_speed (l.link_speed);
+                {
+                  struct rte_eth_link l;
+                  rte_eth_link_get_nowait (i, &l);
+                  xd->port_type = port_type_from_link_speed (l.link_speed);
+                }
 	      break;
 
 	    default:
