@@ -72,7 +72,7 @@ autoreply define lisp_add_del_locator
         @param client_index - opaque cookie to identify the sender
         @param context - sender context, to match reply w/ request
         @param is_add - add address if non-zero, else delete
-        @param eid - EID can be ip4, ip6 or mac
+        @param eid - endpoint identifier
         @param locator_set_name - name of locator_set to add/del eid-table
         @param vni - virtual network instance
         @param key - secret key
@@ -434,15 +434,9 @@ define lisp_locator_set_dump
                                 is negative
     @param action - negative map request action
     @param is_local - local if non-zero, else remote
-    @param eid_type:
-      0 : ipv4
-      1 : ipv6
-      2 : mac
     @param is_src_dst - EID is type of source/destination
-    @param eid - EID can be ip4, ip6 or mac
-    @param eid_prefix_len - prefix length
-    @param seid - source EID can be ip4, ip6 or mac
-    @param seid_prefix_len - source prefix length
+    @param deid - dst EID
+    @param seid - src EID
     @param vni - virtual network instance
     @param ttl - time to live
     @param authoritative - authoritative
@@ -475,11 +469,6 @@ define lisp_eid_table_details
     @param vni - virtual network instance; valid only if eid_set != 0
     @param prefix_length - prefix length if EID is IP address;
       valid only if eid_set != 0
-    @param eid_type - EID type; valid only if eid_set != 0
-      Supported values:
-        0: EID is IPv4
-        1: EID is IPv6
-        2: EID is ethernet address
     @param eid - endpoint identifier
     @param filter - filter type;
       Support values:
@@ -499,14 +488,8 @@ define lisp_eid_table_dump
 };
 
 /** \brief LISP adjacency
-    @param eid_type -
-      0 : ipv4
-      1 : ipv6
-      2 : mac
     @param reid - remote EID
     @param leid - local EID
-    @param reid_prefix_len - remote EID IP prefix length
-    @param leid_prefix_len - local EID IP prefix length
   */
 typedef lisp_adjacency
 {
