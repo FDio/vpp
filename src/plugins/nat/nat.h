@@ -1428,6 +1428,7 @@ typedef struct
   u16 src_port, dst_port;
 } tcp_udp_header_t;
 
+u8 *format_user_kvp (u8 * s, va_list * args);
 #endif /* __included_nat_h__ */
 /*
  * fd.io coding-style-patch-verification: ON
