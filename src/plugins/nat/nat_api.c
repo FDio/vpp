@@ -1586,6 +1586,62 @@ send_nat44_user_details (snat_user_t * u, vl_api_registration_t * reg,
 }
 
 static void
+nat_ed_user_create_helper (snat_main_per_thread_data_t * tsm,
+			   snat_session_t * s)
+{
+  snat_user_key_t k;
+  k.addr = s->in2out.addr;
+  k.fib_index = s->in2out.fib_index;
+  clib_bihash_kv_8_8_t key, value;
+  key.key = k.as_u64;
+  snat_user_t *u;
+  if (clib_bihash_search_8_8 (&tsm->user_hash, &key, &value))
+    {
+      pool_get (tsm->users, u);
+      u->addr = k.addr;
+      u->fib_index = k.fib_index;
+      u->nsessions = 0;
+      u->nstaticsessions = 0;
+      key.value = u - tsm->users;
+      clib_bihash_add_del_8_8 (&tsm->user_hash, &key, 1);
+    }
+  else
+    {
+      u = pool_elt_at_index (tsm->users, value.value);
+    }
+  if (snat_is_session_static (s))
+    {
+      ++u->nstaticsessions;
+    }
+  else
+    {
+      ++u->nsessions;
+    }
+}
+
+static void
+nat_ed_users_create (snat_main_per_thread_data_t * tsm)
+{
+  snat_session_t *s;
+  /* *INDENT-OFF* */
+  pool_foreach (s, tsm->sessions, { nat_ed_user_create_helper (tsm, s); });
+  /* *INDENT-ON* */
+}
+
+static void
+nat_ed_users_destroy (snat_main_per_thread_data_t * tsm)
+{
+  snat_user_t *u;
+  /* *INDENT-OFF* */
+  pool_flush (u, tsm->users, { });
+  /* *INDENT-ON* */
+  clib_bihash_free_8_8 (&tsm->user_hash);
+  clib_bihash_init_8_8 (&tsm->user_hash, "users", snat_main.user_buckets,
+			snat_main.user_memory_size);
+  clib_bihash_set_kvp_format_fn_8_8 (&tsm->user_hash, format_user_kvp);
+}
+
+static void
 vl_api_nat44_user_dump_t_handler (vl_api_nat44_user_dump_t * mp)
 {
   vl_api_registration_t *reg;
@@ -1603,10 +1659,18 @@ vl_api_nat44_user_dump_t_handler (vl_api_nat44_user_dump_t * mp)
   /* *INDENT-OFF* */
   vec_foreach (tsm, sm->per_thread_data)
     {
+      if (sm->endpoint_dependent)
+	{
+	  nat_ed_users_create (tsm);
+	}
       pool_foreach (u, tsm->users,
       ({
         send_nat44_user_details (u, reg, mp->context);
       }));
+      if (sm->endpoint_dependent)
+	{
+	  nat_ed_users_destroy (tsm);
+	}
     }
   /* *INDENT-ON* */
 }
