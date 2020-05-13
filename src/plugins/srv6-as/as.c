@@ -177,8 +177,12 @@ srv6_as_localsid_creation_fn (ip6_sr_localsid_t * localsid)
 
       /* Set interface in promiscuous mode */
       vnet_main_t *vnm = vnet_get_main ();
-      ethernet_set_flags (vnm, ls_mem->sw_if_index_in,
-			  ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
+      vnet_hw_interface_t *hi =
+	vnet_get_sup_hw_interface (vnm, ls_mem->sw_if_index_in);
+      /* Make sure it is main interface */
+      if (hi->sw_if_index == ls_mem->sw_if_index_in)
+	ethernet_set_flags (vnm, hi->hw_if_index,
+			    ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
 
       /* Prepare rewrite string */
       ls_mem->rewrite = prepare_rewrite (ls_mem->src_addr, ls_mem->sid_list,
@@ -278,7 +282,11 @@ srv6_as_localsid_removal_fn (ip6_sr_localsid_t * localsid)
 
       /* Disable promiscuous mode on the interface */
       vnet_main_t *vnm = vnet_get_main ();
-      ethernet_set_flags (vnm, ls_mem->sw_if_index_in, 0);
+      vnet_hw_interface_t *hi =
+	vnet_get_sup_hw_interface (vnm, ls_mem->sw_if_index_in);
+      /* Make sure it is main interface */
+      if (hi->sw_if_index == ls_mem->sw_if_index_in)
+	ethernet_set_flags (vnm, hi->hw_if_index, 0);
 
       /* Remove local SID index from interface table */
       sm->sw_iface_localsid2[ls_mem->sw_if_index_in] = ~(u32) 0;
