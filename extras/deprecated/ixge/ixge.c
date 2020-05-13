@@ -2605,10 +2605,12 @@ ixge_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
 
   old = r->filter_control;
 
-  if (flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL)
+  if (flags == ETHERNET_INTERFACE_FLAG_ACCEPT_ALL)
     r->filter_control = old | (1 << 9) /* unicast promiscuous */ ;
-  else
+  else if (flags == ETHERNET_INTERFACE_FLAGS_DEFAULT_L3)
     r->filter_control = old & ~(1 << 9);
+  else
+    return ~0;
 
   return old;
 }

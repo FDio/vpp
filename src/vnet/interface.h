@@ -503,6 +503,9 @@ typedef enum vnet_hw_interface_flags_t_
 
   /* non-broadcast multiple access */
   VNET_HW_INTERFACE_FLAG_NBMA = (1 << 19),
+
+  /* hw/driver can switch between l2-promisc and l3-dmac-filter modes */
+  VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER = (1 << 20),
 } vnet_hw_interface_flags_t;
 
 #define VNET_HW_INTERFACE_FLAG_DUPLEX_SHIFT 1
@@ -570,8 +573,9 @@ typedef struct vnet_hw_interface_t
   /* Hash table mapping sub interface id to sw_if_index. */
   uword *sub_interface_sw_if_index_by_id;
 
-  /* Count of number of L2 subinterfaces */
+  /* Count of number of L2 and L3 subinterfaces */
   u32 l2_if_count;
+  u32 l3_if_count;
 
   /* Bonded interface info -
      0       - not a bonded interface nor a slave
