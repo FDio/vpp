@@ -239,6 +239,8 @@ void
 ip6_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
 {
   ip6_main_t *im = &ip6_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
 
   vec_validate_init_empty (im->ip_enabled_by_sw_if_index, sw_if_index, 0);
 
@@ -264,6 +266,11 @@ ip6_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
 
   vnet_feature_enable_disable ("ip6-multicast", "ip6-not-enabled",
 			       sw_if_index, !is_enable, 0, 0);
+
+  if (is_enable)
+    hi->l3_if_count++;
+  else if (hi->l3_if_count)
+    hi->l3_if_count--;
 }
 
 /* get first interface address */
