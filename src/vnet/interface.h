@@ -503,6 +503,9 @@ typedef enum vnet_hw_interface_flags_t_
 
   /* non-broadcast multiple access */
   VNET_HW_INTERFACE_FLAG_NBMA = (1 << 19),
+
+  /* hw/driver can switch between l2-promisc and l3-dmac-filter modes */
+  VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER = (1 << 20),
 } vnet_hw_interface_flags_t;
 
 #define VNET_HW_INTERFACE_FLAG_DUPLEX_SHIFT 1
