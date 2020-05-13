@@ -7106,14 +7106,14 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.logger.info(self.vapi.cli("show nat timeouts"))
 
 
-class TestNAT44EndpointDependent2(MethodHolder):
+class TestNAT44EndpointDependent3(MethodHolder):
     """ Endpoint-Dependent mapping and filtering extra test cases """
 
     translation_buckets = 5
 
     @classmethod
     def setUpConstants(cls):
-        super(TestNAT44EndpointDependent2, cls).setUpConstants()
+        super(TestNAT44EndpointDependent3, cls).setUpConstants()
         cls.vpp_cmdline.extend([
             "nat", "{", "endpoint-dependent",
             "translation hash buckets %d" % cls.translation_buckets,
@@ -7122,7 +7122,7 @@ class TestNAT44EndpointDependent2(MethodHolder):
 
     @classmethod
     def setUpClass(cls):
-        super(TestNAT44EndpointDependent2, cls).setUpClass()
+        super(TestNAT44EndpointDependent3, cls).setUpClass()
         cls.vapi.cli("set log class nat level debug")
 
         cls.nat_addr = '10.0.0.3'
@@ -7135,7 +7135,7 @@ class TestNAT44EndpointDependent2(MethodHolder):
             i.resolve_arp()
 
     def setUp(self):
-        super(TestNAT44EndpointDependent2, self).setUp()
+        super(TestNAT44EndpointDependent3, self).setUp()
         self.vapi.nat_set_timeouts(
             udp=1, tcp_established=7440, tcp_transitory=30, icmp=1)
         self.nat44_add_address(self.nat_addr)
@@ -7147,7 +7147,7 @@ class TestNAT44EndpointDependent2(MethodHolder):
 
     @classmethod
     def tearDownClass(cls):
-        super(TestNAT44EndpointDependent2, cls).tearDownClass()
+        super(TestNAT44EndpointDependent3, cls).tearDownClass()
 
     def init_tcp_session(self, in_if, out_if, sport, ext_dport):
         # SYN packet in->out
