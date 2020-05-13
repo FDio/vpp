@@ -42,6 +42,8 @@ mpls_sw_interface_enable_disable (mpls_main_t * mm,
                                   u8 is_api)
 {
   fib_node_index_t lfib_index;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
 
   vec_validate_init_empty (mm->mpls_enabled_by_sw_if_index, sw_if_index, 0);
 
@@ -78,6 +80,11 @@ mpls_sw_interface_enable_disable (mpls_main_t * mm,
 
   vnet_feature_enable_disable ("mpls-input", "mpls-not-enabled",
                                sw_if_index, !is_enable, 0, 0);
+
+  if (is_enable)
+    hi->l3_if_count++;
+  else if (hi->l3_if_count)
+    hi->l3_if_count--;
 
   return (0);
 }
