@@ -386,7 +386,6 @@ slow_path_ed (snat_main_t * sm,
 	{
 	  nat_elog_notice ("addresses exhausted");
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_OUT_OF_PORTS];
-	  nat_free_session_data (sm, s, thread_index, 0);
 	  nat_ed_session_delete (sm, s, thread_index, 1);
 	  return NAT_NEXT_DROP;
 	}
