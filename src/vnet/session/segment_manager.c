@@ -67,13 +67,13 @@ segment_manager_props_init (segment_manager_props_t * props)
 u8
 segment_manager_app_detached (segment_manager_t * sm)
 {
-  return (sm->app_wrk_index == SEGMENT_MANAGER_INVALID_APP_INDEX);
+  return (sm->flags & SEG_MANAGER_F_DETACHED);
 }
 
 void
 segment_manager_app_detach (segment_manager_t * sm)
 {
-  sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
+  sm->flags |= SEG_MANAGER_F_DETACHED;
 }
 
 always_inline u32
@@ -425,6 +425,18 @@ segment_manager_init (segment_manager_t * sm)
   return 0;
 }
 
+void
+segment_manager_cleanup_detached_listener (segment_manager_t * sm)
+{
+  app_worker_t *app_wrk;
+
+  app_wrk = app_worker_get_if_valid (sm->app_wrk_index);
+  if (!app_wrk)
+    return;
+
+  app_worker_del_detached_sm (app_wrk, segment_manager_index (sm));
+}
+
 /**
  * Cleanup segment manager.
  */
@@ -436,6 +448,9 @@ segment_manager_free (segment_manager_t * sm)
 
   ASSERT (!segment_manager_has_fifos (sm)
 	  && segment_manager_app_detached (sm));
+
+  if (sm->flags & SEG_MANAGER_F_DETACHED_LISTENER)
+    segment_manager_cleanup_detached_listener (sm);
 
   /* If we have empty preallocated segments that haven't been removed, remove
    * them now. Apart from that, the first segment in the first segment manager
