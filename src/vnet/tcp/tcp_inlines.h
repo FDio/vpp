@@ -218,7 +218,9 @@ tcp_time_now_us (u32 thread_index)
 always_inline u32
 tcp_set_time_now (tcp_worker_ctx_t * wrk)
 {
-  wrk->time_now = clib_cpu_time_now () * tcp_main.tstamp_ticks_per_clock;
+  tcp_main_t *tm = &tcp_main;
+  /* Cast to u64 needed to convince clang to do proper truncation to u32 */
+  wrk->time_now = (u64) (clib_cpu_time_now () * tm->tstamp_ticks_per_clock);
   return wrk->time_now;
 }
 
