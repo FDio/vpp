@@ -4712,6 +4712,53 @@ class TestNAT44EndpointDependent(MethodHolder):
         sessions = self.statistics.get_counter('/nat44/total-sessions')
         self.assertEqual(sessions[0][0], 3)
 
+    def test_dynamic_out_of_ports(self):
+        """ NAT44 dynamic translation test: out of ports """
+
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            flags=flags, is_add=1)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1)
+
+        nat_config = self.vapi.nat_show_config()
+        self.assertEqual(1, nat_config.endpoint_dependent)
+
+        # in2out and no NAT addresses added
+        err_old = self.statistics.get_err_counter(
+            '/err/nat44-ed-in2out-slowpath/out of ports')
+
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(0, timeout=1)
+
+        err_new = self.statistics.get_err_counter(
+            '/err/nat44-ed-in2out-slowpath/out of ports')
+
+        self.assertEqual(err_new - err_old, len(pkts))
+
+        # in2out after NAT addresses added
+        self.nat44_add_address(self.nat_addr)
+
+        err_old = self.statistics.get_err_counter(
+            '/err/nat44-ed-in2out-slowpath/out of ports')
+
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_out(capture)
+
+        err_new = self.statistics.get_err_counter(
+            '/err/nat44-ed-in2out-slowpath/out of ports')
+
+        self.assertEqual(err_new, err_old)
+
     def test_dynamic_output_feature_vrf(self):
         """ NAT44 dynamic translation test: output-feature, VRF"""
 
