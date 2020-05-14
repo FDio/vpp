@@ -42,6 +42,12 @@ typedef struct _segment_manager_props
   u8 pct_first_alloc;			/**< pct of fifo size to alloc */
 } segment_manager_props_t;
 
+typedef enum seg_manager_flag_
+{
+  SEG_MANAGER_F_DETACHED = 1 << 0,
+  SEG_MANAGER_F_DETACHED_LISTENER = 1 << 1,
+} seg_manager_flag_t;
+
 typedef struct _segment_manager
 {
   /** Pool of segments allocated by this manager */
@@ -64,6 +70,8 @@ typedef struct _segment_manager
    * App event queue allocated in first segment
    */
   svm_msg_q_t *event_queue;
+
+  u8 flags;
 
   u32 max_fifo_size;
   u8 high_watermark;
