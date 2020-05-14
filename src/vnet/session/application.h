@@ -66,6 +66,9 @@ typedef struct app_worker_
 
   /** Per transport proto hash tables of half-open connection handles */
   uword **half_open_table;
+
+  /** Vector of detached listener segment managers */
+  u32 *detached_seg_managers;
 } app_worker_t;
 
 typedef struct app_worker_map_
@@ -292,6 +295,7 @@ int app_worker_lock_and_send_event (app_worker_t * app, session_t * s,
 				    u8 evt_type);
 session_t *app_worker_proxy_listener (app_worker_t * app, u8 fib_proto,
 				      u8 transport_proto);
+void app_worker_del_detached_sm (app_worker_t * app_wrk, u32 sm_index);
 u8 *format_app_worker (u8 * s, va_list * args);
 u8 *format_app_worker_listener (u8 * s, va_list * args);
 u8 *format_crypto_engine (u8 * s, va_list * args);
