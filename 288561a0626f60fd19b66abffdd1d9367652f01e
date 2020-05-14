@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2da62d29_363484d2",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-05-14T11:13:42Z",
+      "side": 1,
+      "message": "I would not blame clang here. \n\nYour arithmetic expression involves arithmetic conversion as described in C11 6.3.1.8 which says:\n\"... if the corresponding real type of either operand is double, the other operand is converted, without change of type domain, to a type whose corresponding real type is double.\"\n\nSo resulting type of your arithmetic operation is double.\n\nAccording to C11 spec, section 6.3.1.4:\n\nIf the value being converted is outside the range of values that can be represented, the behaviour is undefined. So by converting any double value greater than  ((1 \u003c\u003c 32) -1) into unsigned int triggers undefined behaviour.",
+      "revId": "288561a0626f60fd19b66abffdd1d9367652f01e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
