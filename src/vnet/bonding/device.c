@@ -99,9 +99,6 @@ bond_set_l2_mode_function (vnet_main_t * vnm,
 	sif_hw = vnet_get_sup_hw_interface (vnm, *sw_if_index);
 	ethernet_set_flags (vnm, sif_hw->hw_if_index,
 			    ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
-
-	/* ensure all packets go to ethernet-input */
-	ethernet_set_rx_redirect (vnm, sif_hw, 1);
       }
     }
   else if ((bif_hw->l2_if_count == 0) && (l2_if_adjust == -1))
@@ -110,9 +107,8 @@ bond_set_l2_mode_function (vnet_main_t * vnm,
       vec_foreach (sw_if_index, bif->slaves)
       {
 	sif_hw = vnet_get_sup_hw_interface (vnm, *sw_if_index);
-
-	/* Allow ip packets to go directly to ip4-input etc */
-	ethernet_set_rx_redirect (vnm, sif_hw, 0);
+	ethernet_set_flags (vnm, sif_hw->hw_if_index,
+			    /*ETHERNET_INTERFACE_FLAG_DEFAULT_L3 */ 0);
       }
     }
 

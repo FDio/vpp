@@ -727,12 +727,11 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
   bond_slave_add_del_mac_addrs (bif, sif->sw_if_index, 1 /* is_add */ );
 
   if (bif_hw->l2_if_count)
-    {
-      ethernet_set_flags (vnm, sif_hw->hw_if_index,
-			  ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
-      /* ensure all packets go to ethernet-input */
-      ethernet_set_rx_redirect (vnm, sif_hw, 1);
-    }
+    ethernet_set_flags (vnm, sif_hw->hw_if_index,
+			ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
+  else
+    ethernet_set_flags (vnm, sif_hw->hw_if_index,
+			/*ETHERNET_INTERFACE_FLAG_DEFAULT_L3 */ 0);
 
   if (bif->mode == BOND_MODE_LACP)
     {

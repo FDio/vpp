@@ -800,9 +800,6 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	  config->feature_bitmap &=
 	    ~(L2INPUT_FEAT_LEARN | L2INPUT_FEAT_FWD | L2INPUT_FEAT_FLOOD);
 	  shg = 0;		/* not used in xconnect */
-
-	  /* Insure all packets go to ethernet-input */
-	  ethernet_set_rx_redirect (vnet_main, hi, 1);
 	}
 
       /* set up split-horizon group and set output feature bit */
@@ -827,25 +824,18 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
     {
       if ((hi->l2_if_count == 1) && (l2_if_adjust == 1))
 	{
-	  /* Just added first L2 interface on this port */
-
-	  /* Set promiscuous mode on the l2 interface */
+	  /* Just added first L2 interface on this port
+	   * Set promiscuous mode on the l2 interface */
 	  ethernet_set_flags (vnet_main, hi->hw_if_index,
 			      ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
-
-	  /* ensure all packets go to ethernet-input */
-	  ethernet_set_rx_redirect (vnet_main, hi, 1);
-
 	}
       else if ((hi->l2_if_count == 0) && (l2_if_adjust == -1))
 	{
-	  /* Just removed only L2 subinterface on this port */
+	  /* Just removed only L2 subinterface on this port
+	   * Disable promiscuous mode on the l2 interface */
+	  ethernet_set_flags (vnet_main, hi->hw_if_index,
+			      /*ETHERNET_INTERFACE_FLAG_DEFAULT_L3 */ 0);
 
-	  /* Disable promiscuous mode on the l2 interface */
-	  ethernet_set_flags (vnet_main, hi->hw_if_index, 0);
-
-	  /* Allow ip packets to go directly to ip4-input etc */
-	  ethernet_set_rx_redirect (vnet_main, hi, 0);
 	}
     }
 
