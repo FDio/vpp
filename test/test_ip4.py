@@ -411,6 +411,24 @@ class TestIPv4IfAddrRoute(VppTestCase):
         fib4_dump = self.vapi.ip_route_dump(0)
         self.assertTrue(lo_if.is_ip4_entry_in_fib_dump(fib4_dump))
 
+    def test_ipv4_ifaddr_del(self):
+        """ Delete an interface address that does not exist """
+
+        loopbacks = self.create_loopback_interfaces(1)
+        lo = self.lo_interfaces[0]
+
+        lo.config_ip4()
+        lo.admin_up()
+
+        #
+        # try and remove pg0's subnet from lo
+        #
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.sw_interface_add_del_address(
+                sw_if_index=lo.sw_if_index,
+                prefix=self.pg0.local_ip4_prefix,
+                is_add=0)
+
 
 class TestICMPEcho(VppTestCase):
     """ ICMP Echo Test Case """

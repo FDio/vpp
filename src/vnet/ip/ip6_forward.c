@@ -428,7 +428,10 @@ ip6_add_del_interface_address (vlib_main_t * vm,
 	  goto done;
 	}
 
-      ip_interface_address_del (lm, if_address_index, addr_fib);
+      error = ip_interface_address_del (lm, vnm, if_address_index, addr_fib,
+					address_length, sw_if_index);
+      if (error)
+	goto done;
     }
   else
     {
