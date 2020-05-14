@@ -90,13 +90,21 @@ ip_interface_address_add (ip_lookup_main_t * lm,
   return (NULL);
 }
 
-void
+clib_error_t *
 ip_interface_address_del (ip_lookup_main_t * lm,
-			  u32 address_index, void *addr_fib)
+			  u32 address_index, void *addr_fib,
+			  u32 address_length, u32 sw_if_index)
 {
   ip_interface_address_t *a, *prev, *next;
 
   a = pool_elt_at_index (lm->if_address_pool, address_index);
+
+  if (a->sw_if_index != sw_if_index)
+    return clib_error_create ("%U not found for interface %U",
+			      lm->format_address_and_length,
+			      addr_fib, address_length,
+			      format_vnet_sw_if_index_name,
+			      vnet_get_main (), sw_if_index);
 
   if (a->prev_this_sw_interface != ~0)
     {
@@ -121,6 +129,7 @@ ip_interface_address_del (ip_lookup_main_t * lm,
   mhash_unset (&lm->address_to_if_address_index, addr_fib,
 	       /* old_value */ 0);
   pool_put (lm->if_address_pool, a);
+  return NULL;
 }
 
 u8
