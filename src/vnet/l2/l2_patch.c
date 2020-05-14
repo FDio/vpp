@@ -270,15 +270,15 @@ vnet_l2_patch_add_del (u32 rx_sw_if_index, u32 tx_sw_if_index, int is_add)
 			  ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
 
       vnet_feature_enable_disable ("device-input", "l2-patch",
-				   rxhi->hw_if_index, 1, 0, 0);
+				   rxhi->sw_if_index, 1, 0, 0);
     }
   else
     {
       ethernet_set_flags (l2pm->vnet_main, rxhi->hw_if_index,
-			  0 /* disable promiscuous mode */ );
+			  /*ETHERNET_INTERFACE_FLAG_DEFAULT_L3 */ 0);
 
       vnet_feature_enable_disable ("device-input", "l2-patch",
-				   rxhi->hw_if_index, 0, 0, 0);
+				   rxhi->sw_if_index, 0, 0, 0);
       if (vec_len (l2pm->tx_next_by_rx_sw_if_index) > rx_sw_if_index)
 	{
 	  l2pm->tx_next_by_rx_sw_if_index[rx_sw_if_index] = ~0;
