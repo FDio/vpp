@@ -9,6 +9,7 @@
 # - Verify that sending Jumbo frame with GSO enabled only on ingress interface
 #
 import unittest
+import copy
 
 from scapy.packet import Raw
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, ICMPv6PacketTooBig
@@ -16,7 +17,9 @@ from scapy.layers.inet6 import ipv6nh, IPerror6
 from scapy.layers.inet import TCP, ICMP
 from scapy.layers.vxlan import VXLAN
 from scapy.data import ETH_P_IP, ETH_P_IPV6, ETH_P_ARP
+from scapy.layers.ipsec import SecurityAssociation, ESP
 
+from vpp_papi import VppEnum
 from framework import VppTestCase, VppTestRunner
 from vpp_object import VppObject
 from vpp_interface import VppInterface
@@ -26,7 +29,12 @@ from vpp_ipip_tun_interface import VppIpIpTunInterface
 from vpp_vxlan_tunnel import VppVxlanTunnel
 from socket import AF_INET, AF_INET6, inet_pton
 from util import reassemble4
-
+from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry,\
+        VppIpsecSpdItfBinding
+from template_ipsec import TemplateIpsec, IpsecTun4Tests, IpsecTun6Tests, \
+    IpsecTun4, IpsecTun6, IpsecTcpTests, mk_scapy_crypt_key, \
+    IpsecTun6HandoffTests, IpsecTun4HandoffTests, config_tun_params
+from test_ipsec_tun_if_esp import TemplateIpsec4TunProtect, TestIpsec4TunProtect
 
 """ Test_gso is a subclass of VPPTestCase classes.
     GSO tests.
@@ -609,6 +617,128 @@ class TestGSO(VppTestCase):
 
         self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index,
                                              enable_disable=0)
+
+class TestIpsecTransportModeGSO(TemplateIpsec,
+                           TemplateIpsec4TunProtect,
+                           IpsecTun4):
+    """ IPsec IPv4 Tunnel protect - transport mode"""
+    def setUp(self):
+        super(TestIpsecTransportModeGSO, self).setUp()
+
+        self.tun_if = self.pg0
+
+    def tearDown(self):
+        super(TestIpsecTransportModeGSO, self).tearDown()
+
+    def test_tun_44_gso(self):
+        """IPSEC tunnel protect"""
+
+        p = self.ipv4_params
+
+        self.config_network(p)
+
+        self.vapi.feature_gso_enable_disable(self.pg1.sw_if_index)
+        self.vapi.cli("set int feature gso ipip enable")
+
+        self.config_sa_tra(p)
+        self.config_protect(p)
+
+        self.verify_tun_44(p, count=1, payload_size=9000)
+
+        c = p.tun_if.get_rx_stats()
+        self.assertEqual(c['packets'], 1)
+        c = p.tun_if.get_tx_stats()
+        self.assertEqual(c['packets'], 1)
+
+        # teardown
+        self.unconfig_protect(p)
+        self.unconfig_sa(p)
+        self.unconfig_network(p)
+
+class TestIpsecTunnelModeGSO(TemplateIpsec,
+                              TemplateIpsec4TunProtect,
+                              IpsecTun4):
+    """ IPsec IPv4 Tunnel protect - tunnel mode"""
+
+    encryption_type = ESP
+    tun4_encrypt_node_name = "esp4-encrypt-tun"
+    tun4_decrypt_node_name = "esp4-decrypt-tun"
+
+    def setUp(self):
+        super(TestIpsecTunnelModeGSO, self).setUp()
+
+        self.tun_if = self.pg0
+
+    def tearDown(self):
+        super(TestIpsecTunnelModeGSO, self).tearDown()
+
+    def gen_encrypt_pkts(self, p, sa, sw_intf, src, dst, count=1,
+                         payload_size=100):
+        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                sa.encrypt(IP(src=sw_intf.remote_ip4,
+                              dst=sw_intf.local_ip4) /
+                           IP(src=src, dst=dst) /
+                           UDP(sport=1144, dport=2233) /
+                           Raw(b'X' * payload_size))
+                for i in range(count)]
+
+    def gen_pkts(self, sw_intf, src, dst, count=1,
+                 payload_size=100):
+        return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
+                IP(src=src, dst=dst) /
+                UDP(sport=1144, dport=2233) /
+                Raw(b'X' * payload_size)
+                for i in range(count)]
+
+    def verify_decrypted(self, p, rxs):
+        for rx in rxs:
+            self.assert_equal(rx[IP].dst, self.pg1.remote_ip4)
+            self.assert_equal(rx[IP].src, p.remote_tun_if_host)
+            self.assert_packet_checksums_valid(rx)
+
+    def verify_encrypted(self, p, sa, rxs):
+        for rx in rxs:
+            try:
+                pkt = sa.decrypt(rx[IP])
+                if not pkt.haslayer(IP):
+                    pkt = IP(pkt[Raw].load)
+                self.assert_packet_checksums_valid(pkt)
+                self.assert_equal(pkt[IP].dst, self.pg0.remote_ip4)
+                self.assert_equal(pkt[IP].src, self.pg0.local_ip4)
+                inner = pkt[IP].payload
+                self.assertEqual(inner[IP][IP].dst, p.remote_tun_if_host)
+
+            except (IndexError, AssertionError):
+                self.logger.debug(ppp("Unexpected packet:", rx))
+                try:
+                    self.logger.debug(ppp("Decrypted packet:", pkt))
+                except:
+                    pass
+                raise
+
+    def test_tun_44(self):
+        """IPSEC tunnel protect """
+
+        p = self.ipv4_params
+
+        self.config_network(p)
+        self.config_sa_tun(p)
+        self.config_protect(p)
+
+        self.vapi.cli("set int feature gso ipip enable")
+        self.vapi.feature_gso_enable_disable(self.pg1.sw_if_index)
+
+        self.verify_tun_44(p, count=1, payload_size=9000)
+
+        c = p.tun_if.get_rx_stats()
+        self.assertEqual(c['packets'], 1)
+        c = p.tun_if.get_tx_stats()
+        self.assertEqual(c['packets'], 1)
+
+        # teardown
+        self.unconfig_protect(np)
+        self.unconfig_sa(np)
+        self.unconfig_network(p)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
