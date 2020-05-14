@@ -1125,6 +1125,24 @@ class TestIPv6IfAddrRoute(VppTestCase):
         self.assertFalse(find_route(self, addr1, 128))
         self.assertFalse(find_route(self, addr2, 128))
 
+    def test_ipv6_ifaddr_del(self):
+        """ Delete an interface address that does not exist """
+
+        loopbacks = self.create_loopback_interfaces(1)
+        lo = self.lo_interfaces[0]
+
+        lo.config_ip6()
+        lo.admin_up()
+
+        #
+        # try and remove pg0's subnet from lo
+        #
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.sw_interface_add_del_address(
+                sw_if_index=lo.sw_if_index,
+                prefix=self.pg0.local_ip6_prefix,
+                is_add=0)
+
 
 class TestICMPv6Echo(VppTestCase):
     """ ICMPv6 Echo Test Case """
