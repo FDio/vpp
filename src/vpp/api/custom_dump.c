@@ -2559,6 +2559,21 @@ static void *vl_api_pg_enable_disable_t_print
   FINISH;
 }
 
+static void *vl_api_pg_interface_enable_disable_coalesce_t_print
+  (vl_api_pg_interface_enable_disable_coalesce_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: pg_interface_enable_disable_coalesce ");
+  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
+  if (!mp->coalesce_enabled)
+    s = format (s, "disable");
+  else
+    s = format (s, "enable");
+  FINISH;
+}
+
+
 static void *vl_api_ip_source_and_port_range_check_add_del_t_print
   (vl_api_ip_source_and_port_range_check_add_del_t * mp, void *handle)
 {
@@ -3641,6 +3656,7 @@ _(GET_NEXT_INDEX, get_next_index)                                       \
 _(PG_CREATE_INTERFACE,pg_create_interface)                              \
 _(PG_CAPTURE, pg_capture)                                               \
 _(PG_ENABLE_DISABLE, pg_enable_disable)                                 \
+_(PG_INTERFACE_ENABLE_DISABLE_COALESCE, pg_interface_enable_disable_coalesce) \
 _(POLICER_ADD_DEL, policer_add_del)                                     \
 _(POLICER_DUMP, policer_dump)                                           \
 _(POLICER_CLASSIFY_SET_INTERFACE, policer_classify_set_interface)       \

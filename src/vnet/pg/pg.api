@@ -26,7 +26,7 @@ import "vnet/interface_types.api";
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param interface_id - interface index
-    @param enable_gso - enable gso on this interface
+    @param gso_enabled - enable gso on this interface
     @param gso_size - gso size on this interface
 */
 define pg_create_interface
@@ -47,6 +47,20 @@ define pg_create_interface_reply
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief PacketGenerator interface enable/disable packet coalesce
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param interface_id - interface index
+    @param coalesce_enabled - enable/disable packet coalesce on this interface
+*/
+autoreply define pg_interface_enable_disable_coalesce
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool coalesce_enabled;
 };
 
 /** \brief PacketGenerator capture packets on given interface request
