@@ -327,17 +327,16 @@ startup_config_process (vlib_main_t * vm,
 	{
 	  u8 *lv = 0;
 	  lv = format (lv, "%U: ***** Startup Config *****\n%v",
-		       format_timeval, 0 /* current bat-time */ ,
-		       0 /* current bat-format */ ,
-		       buf);
+		       format_timeval, NULL /* current bat-format */,
+		       0 /* current bat-time */, buf);
 	  {
 	    int rv __attribute__ ((unused)) =
 	      write (um->log_fd, lv, vec_len (lv));
 	  }
 	  vec_reset_length (lv);
-	  lv = format (lv, "%U: ***** End Startup Config *****\n",
-		       format_timeval, 0 /* current bat-time */ ,
-		       0 /* current bat-format */ );
+	  lv =
+	    format (lv, "%U: ***** End Startup Config *****\n", format_timeval,
+		    NULL /* current bat-format */, 0 /* current bat-time */);
 	  {
 	    int rv __attribute__ ((unused)) =
 	      write (um->log_fd, lv, vec_len (lv));
@@ -477,9 +476,8 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	    {
 	      u8 *lv = 0;
 	      lv = format (0, "%U: ***** Start: PID %d *****\n",
-			   format_timeval, 0 /* current bat-time */ ,
-			   0 /* current bat-format */ ,
-			   getpid ());
+			   format_timeval, NULL /* current bat-format */,
+			   0 /* current bat-time */, getpid ());
 	      {
 		int rv __attribute__ ((unused)) =
 		  write (um->log_fd, lv, vec_len (lv));
