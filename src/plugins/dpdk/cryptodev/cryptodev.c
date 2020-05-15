@@ -37,7 +37,6 @@
 
 #define CRYPTODEV_IV_OFFSET (offsetof (cryptodev_op_t, iv))
 #define CRYPTODEV_AAD_OFFSET (offsetof (cryptodev_op_t, aad))
-#define CRYPTODEV_DIGEST_OFFSET (offsetof (cryptodev_op_t, digest))
 
 /* VNET_CRYPTO_ALGO, TYPE, DPDK_CRYPTO_ALGO, IV_LEN, TAG_LEN, AAD_LEN */
 #define foreach_vnet_aead_crypto_conversion \
@@ -134,6 +133,7 @@ typedef struct
   cryptodev_numa_data_t *per_numa_data;
   cryptodev_key_t *keys;
   cryptodev_engine_thread_t *per_thread_data;
+  enum rte_iova_mode iova_mode;
   cryptodev_inst_t *cryptodev_inst;
   clib_bitmap_t *active_cdev_inst_mask;
   clib_spinlock_t tlock;
@@ -408,16 +408,37 @@ cryptodev_mark_frame_err_status (vnet_crypto_async_frame_t * f,
   f->state = VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
 }
 
-/* when vlib_buffer in chain is adjusted mbuf is not adjusted along, this
- * function does that */
 static_always_inline rte_iova_t
-cryptodev_validate_mbuf_chain (vlib_main_t * vm, struct rte_mbuf *mb,
-			       vlib_buffer_t * b, u8 * digest)
+cryptodev_get_iova (clib_pmalloc_main_t * pm, enum rte_iova_mode mode,
+		    void *data)
 {
-  rte_iova_t digest_iova = 0;
+  u64 index;
+  if (mode == RTE_IOVA_VA)
+    return (rte_iova_t) pointer_to_uword (data);
+
+  index = clib_pmalloc_get_page_index (pm, data);
+  return pointer_to_uword (data) - pm->lookup_table[index];
+}
+
+static_always_inline void
+cryptodev_validate_mbuf_chain (vlib_main_t * vm, struct rte_mbuf *mb,
+			       vlib_buffer_t * b)
+{
   struct rte_mbuf *first_mb = mb, *last_mb = mb; /**< last mbuf */
+  /* when input node is not dpdk, mbuf data len is not initialized, for
+   * single buffer it is not a problem since the data length is written
+   * into cryptodev operation. For chained buffer a reference data length
+   * has to be computed through vlib_buffer.
+   *
+   * even when input node is dpdk, it is possible chained vlib_buffers
+   * are updated (either added or removed a buffer) but not not mbuf fields.
+   * we have to re-link every mbuf in the chain.
+   */
+  u16 data_len = b->current_length + (b->data + b->current_data -
+				      rte_pktmbuf_mtod (mb, u8 *));
 
   first_mb->nb_segs = 1;
+  first_mb->pkt_len = first_mb->data_len = data_len;
 
   while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
     {
@@ -434,23 +455,16 @@ cryptodev_validate_mbuf_chain (vlib_main_t * vm, struct rte_mbuf *mb,
       if (PREDICT_FALSE (b->ref_count > 1))
 	mb->pool =
 	  dpdk_no_cache_mempool_by_buffer_pool_index[b->buffer_pool_index];
-
-      if (b->data <= digest &&
-	  b->data + b->current_data + b->current_length > digest)
-	digest_iova = rte_pktmbuf_iova (mb) + digest -
-	  rte_pktmbuf_mtod (mb, u8 *);
     }
-
-  return digest_iova;
 }
 
 static_always_inline int
 cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
 				     vnet_crypto_async_frame_t * frame,
-				     cryptodev_op_type_t op_type,
-				     u32 digest_len)
+				     cryptodev_op_type_t op_type)
 {
   cryptodev_main_t *cmt = &cryptodev_main;
+  clib_pmalloc_main_t *pm = vm->physmem_main.pmalloc_main;
   cryptodev_numa_data_t *numa = cmt->per_numa_data + vm->numa_node;
   cryptodev_engine_thread_t *cet = cmt->per_thread_data + vm->thread_index;
   vnet_crypto_async_frame_elt_t *fe;
@@ -459,6 +473,7 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
   u32 n_enqueue, n_elts;
   cryptodev_key_t *key;
   u32 last_key_index;
+  int ret;
 
   if (PREDICT_FALSE (frame == 0 || frame->n_elts == 0))
     return -1;
@@ -510,6 +525,7 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
 	}
 
       sop->m_src = rte_mbuf_from_vlib_buffer (b);
+      sop->m_src->data_off = VLIB_BUFFER_PRE_DATA_SIZE;
       sop->m_dst = 0;
       /* mbuf prepend happens in the tx, but vlib_buffer happens in the nodes,
        * so we have to manually adjust mbuf data_off here so cryptodev can
@@ -517,7 +533,7 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
        * rewritten by tx. */
       if (PREDICT_TRUE (fe->integ_start_offset < 0))
 	{
-	  rte_pktmbuf_prepend (sop->m_src, -fe->integ_start_offset);
+	  sop->m_src->data_off += fe->integ_start_offset;
 	  integ_offset = 0;
 	  crypto_offset = offset_diff;
 	}
@@ -527,12 +543,17 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
       sop->auth.data.offset = integ_offset;
       sop->auth.data.length = fe->crypto_total_length + fe->integ_length_adj;
       sop->auth.digest.data = fe->digest;
-      if (PREDICT_TRUE (!(fe->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)))
-	sop->auth.digest.phys_addr = rte_pktmbuf_iova (sop->m_src) +
-	  fe->digest - rte_pktmbuf_mtod (sop->m_src, u8 *);
+      sop->auth.digest.phys_addr = cryptodev_get_iova (pm, cmt->iova_mode,
+						       fe->digest);
+      if (PREDICT_FALSE (fe->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS))
+	cryptodev_validate_mbuf_chain (vm, sop->m_src, b);
       else
-	sop->auth.digest.phys_addr =
-	  cryptodev_validate_mbuf_chain (vm, sop->m_src, b, fe->digest);
+	/* for input nodes that are not dpdk-input, it is possible the mbuf
+	 * was updated before as one of the chained mbufs. Setting nb_segs
+	 * to 1 here to prevent the cryptodev PMD to access potentially
+	 * invalid m_src->next pointers.
+	 */
+	sop->m_src->nb_segs = 1;
       clib_memcpy_fast (cop[0]->iv, fe->iv, 16);
       cop++;
       bi++;
@@ -556,6 +577,7 @@ cryptodev_frame_gcm_enqueue (vlib_main_t * vm,
 			     cryptodev_op_type_t op_type, u8 aad_len)
 {
   cryptodev_main_t *cmt = &cryptodev_main;
+  clib_pmalloc_main_t *pm = vm->physmem_main.pmalloc_main;
   cryptodev_numa_data_t *numa = cmt->per_numa_data + vm->numa_node;
   cryptodev_engine_thread_t *cet = cmt->per_thread_data + vm->thread_index;
   vnet_crypto_async_frame_elt_t *fe;
@@ -564,6 +586,7 @@ cryptodev_frame_gcm_enqueue (vlib_main_t * vm,
   u32 n_enqueue = 0, n_elts;
   cryptodev_key_t *key;
   u32 last_key_index;
+  u8 sess_aad_len;
 
   if (PREDICT_FALSE (frame == 0 || frame->n_elts == 0))
     return -1;
@@ -589,10 +612,13 @@ cryptodev_frame_gcm_enqueue (vlib_main_t * vm,
   bi = frame->buffer_indices;
   cop[0]->frame = frame;
   cop[0]->n_elts = n_elts;
-  frame->state = VNET_CRYPTO_OP_STATUS_COMPLETED;
 
   key = pool_elt_at_index (cmt->keys, fe->key_index);
   last_key_index = fe->key_index;
+  sess_aad_len = (u8) key->keys[op_type]->opaque_data;
+  if (PREDICT_FALSE (sess_aad_len != aad_len))
+    cryptodev_sess_handler (vm, VNET_CRYPTO_KEY_OP_MODIFY,
+			    fe->key_index, aad_len);
 
   while (n_elts)
     {
@@ -609,7 +635,6 @@ cryptodev_frame_gcm_enqueue (vlib_main_t * vm,
 	}
       if (last_key_index != fe->key_index)
 	{
-	  u8 sess_aad_len;
 	  key = pool_elt_at_index (cmt->keys, fe->key_index);
 	  sess_aad_len = (u8) key->keys[op_type]->opaque_data;
 	  if (PREDICT_FALSE (sess_aad_len != aad_len))
@@ -638,12 +663,17 @@ cryptodev_frame_gcm_enqueue (vlib_main_t * vm,
       sop->aead.data.length = fe->crypto_total_length;
       sop->aead.data.offset = crypto_offset;
       sop->aead.digest.data = fe->tag;
-      if (PREDICT_TRUE (!(fe->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)))
-	sop->aead.digest.phys_addr = rte_pktmbuf_iova (sop->m_src) +
-	  fe->tag - rte_pktmbuf_mtod (sop->m_src, u8 *);
+      sop->aead.digest.phys_addr = cryptodev_get_iova (pm, cmt->iova_mode,
+						       fe->tag);
+      if (PREDICT_FALSE (fe->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS))
+	cryptodev_validate_mbuf_chain (vm, sop->m_src, b);
       else
-	sop->aead.digest.phys_addr =
-	  cryptodev_validate_mbuf_chain (vm, sop->m_src, b, fe->tag);
+	/* for input nodes that are not dpdk-input, it is possible the mbuf
+	 * was updated before as one of the chained mbufs. Setting nb_segs
+	 * to 1 here to prevent the cryptodev PMD to access potentially
+	 * invalid m_src->next pointers.
+	 */
+	sop->m_src->nb_segs = 1;
       clib_memcpy_fast (cop[0]->iv, fe->iv, 12);
       clib_memcpy_fast (cop[0]->aad, fe->aad, aad_len);
       cop++;
@@ -737,44 +767,51 @@ cryptodev_frame_dequeue (vlib_main_t * vm)
 }
 
 /* *INDENT-OFF* */
-
-#define _(a, b, c, d, e, f) \
-static_always_inline int \
-cryptodev_enqueue_##a##_AAD##f##_enc (vlib_main_t * vm, \
-				      vnet_crypto_async_frame_t * frame) \
-{ \
-  return cryptodev_frame_gcm_enqueue (vm, frame, \
-				      CRYPTODEV_OP_TYPE_ENCRYPT, f); \
-} \
-static_always_inline int \
-cryptodev_enqueue_##a##_AAD##f##_dec (vlib_main_t * vm, \
-				      vnet_crypto_async_frame_t * frame) \
-{ \
-  return cryptodev_frame_gcm_enqueue (vm, frame, \
-				      CRYPTODEV_OP_TYPE_DECRYPT, f); \
+static_always_inline int
+cryptodev_enqueue_gcm_aad_8_enc (vlib_main_t * vm,
+				 vnet_crypto_async_frame_t * frame)
+{
+  return cryptodev_frame_gcm_enqueue (vm, frame,
+				      CRYPTODEV_OP_TYPE_ENCRYPT, 8);
+}
+static_always_inline int
+cryptodev_enqueue_gcm_aad_12_enc (vlib_main_t * vm,
+				 vnet_crypto_async_frame_t * frame)
+{
+  return cryptodev_frame_gcm_enqueue (vm, frame,
+				      CRYPTODEV_OP_TYPE_ENCRYPT, 12);
 }
 
-foreach_vnet_aead_crypto_conversion
-#undef _
-
-#define _(a, b, c, d) \
-static_always_inline int \
-cryptodev_enqueue_##a##_##c##_TAG##d##_enc (vlib_main_t * vm, \
-				      vnet_crypto_async_frame_t * frame) \
-{ \
-  return cryptodev_frame_linked_algs_enqueue (vm, frame, \
-					      CRYPTODEV_OP_TYPE_ENCRYPT, d); \
-} \
-static_always_inline int \
-cryptodev_enqueue_##a##_##c##_TAG##d##_dec (vlib_main_t * vm, \
-				      vnet_crypto_async_frame_t * frame) \
-{ \
-  return cryptodev_frame_linked_algs_enqueue (vm, frame, \
-					      CRYPTODEV_OP_TYPE_DECRYPT, d); \
+static_always_inline int
+cryptodev_enqueue_gcm_aad_8_dec (vlib_main_t * vm,
+				 vnet_crypto_async_frame_t * frame)
+{
+  return cryptodev_frame_gcm_enqueue (vm, frame,
+				      CRYPTODEV_OP_TYPE_DECRYPT, 8);
+}
+static_always_inline int
+cryptodev_enqueue_gcm_aad_12_dec (vlib_main_t * vm,
+				 vnet_crypto_async_frame_t * frame)
+{
+  return cryptodev_frame_gcm_enqueue (vm, frame,
+				      CRYPTODEV_OP_TYPE_DECRYPT, 12);
 }
 
-foreach_cryptodev_link_async_alg
-#undef _
+static_always_inline int
+cryptodev_enqueue_linked_alg_enc (vlib_main_t * vm,
+				  vnet_crypto_async_frame_t * frame)
+{
+  return cryptodev_frame_linked_algs_enqueue (vm, frame,
+					      CRYPTODEV_OP_TYPE_ENCRYPT);
+}
+
+static_always_inline int
+cryptodev_enqueue_linked_alg_dec (vlib_main_t * vm,
+				  vnet_crypto_async_frame_t * frame)
+{
+  return cryptodev_frame_linked_algs_enqueue (vm, frame,
+					      CRYPTODEV_OP_TYPE_DECRYPT);
+}
 
 typedef enum
 {
@@ -1242,6 +1279,8 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   clib_error_t *error;
   struct rte_crypto_op_pool_private *priv;
 
+  cmt->iova_mode = rte_eal_iova_mode ();
+
   sess_sz = cryptodev_get_session_sz(vm, n_workers);
   if (sess_sz < 0)
     {
@@ -1250,7 +1289,7 @@ dpdk_cryptodev_init (vlib_main_t * vm)
     }
 
   /* A total of 4 times n_worker threads * frame size as crypto ops */
-  n_cop_elts = max_pow2 (n_workers * CRYPTODEV_NB_CRYPTO_OPS);
+  n_cop_elts = max_pow2 ((u64)n_workers * CRYPTODEV_NB_CRYPTO_OPS);
 
   vec_validate (cmt->per_numa_data, vm->numa_node);
   numa_data = vec_elt_at_index (cmt->per_numa_data, numa);
@@ -1340,11 +1379,11 @@ dpdk_cryptodev_init (vlib_main_t * vm)
 #define _(a, b, c, d, e, f) \
   vnet_crypto_register_async_handler \
     (vm, eidx, VNET_CRYPTO_OP_##a##_TAG##e##_AAD##f##_ENC, \
-	cryptodev_enqueue_##a##_AAD##f##_enc, \
+	cryptodev_enqueue_gcm_aad_##f##_enc,\
 	cryptodev_frame_dequeue); \
   vnet_crypto_register_async_handler \
     (vm, eidx, VNET_CRYPTO_OP_##a##_TAG##e##_AAD##f##_DEC, \
-	cryptodev_enqueue_##a##_AAD##f##_dec, \
+	cryptodev_enqueue_gcm_aad_##f##_dec, \
 	cryptodev_frame_dequeue);
 
   foreach_vnet_aead_crypto_conversion
@@ -1353,11 +1392,11 @@ dpdk_cryptodev_init (vlib_main_t * vm)
 #define _(a, b, c, d) \
   vnet_crypto_register_async_handler \
     (vm, eidx, VNET_CRYPTO_OP_##a##_##c##_TAG##d##_ENC, \
-	cryptodev_enqueue_##a##_##c##_TAG##d##_enc, \
+	cryptodev_enqueue_linked_alg_enc, \
 	cryptodev_frame_dequeue); \
   vnet_crypto_register_async_handler \
     (vm, eidx, VNET_CRYPTO_OP_##a##_##c##_TAG##d##_DEC, \
-	cryptodev_enqueue_##a##_##c##_TAG##d##_dec, \
+	cryptodev_enqueue_linked_alg_dec, \
 	cryptodev_frame_dequeue);
 
     foreach_cryptodev_link_async_alg
