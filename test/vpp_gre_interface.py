@@ -48,3 +48,11 @@ class VppGreInterface(VppInterface):
     def query_vpp_config(self):
         return (self.test.vapi.gre_tunnel_dump(
             sw_if_index=self._sw_if_index))
+
+    @property
+    def remote_ip(self):
+        return self.t_dst
+
+    @property
+    def local_ip(self):
+        return self.t_src

@@ -368,6 +368,9 @@ autoreply define ipsec_tunnel_protect_del
   vl_api_interface_index_t sw_if_index;
 };
 
+/**
+ * @brief Dump all tunnel protections
+ */
 define ipsec_tunnel_protect_dump
 {
   u32 client_index;
@@ -407,6 +410,10 @@ define ipsec_spd_interface_details {
 };
 
 /** \brief Add or delete IPsec tunnel interface
+
+    !!DEPRECATED!!
+         use the tunnel protect APIs instead
+
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add IPsec tunnel interface if nonzero, else delete
@@ -523,6 +530,9 @@ define ipsec_sa_details {
 };
 
 /** \brief Set new SA on IPsec interface
+
+    !! DEPRECATED !!
+
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - index of tunnel interface

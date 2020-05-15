@@ -47,7 +47,8 @@ typedef enum
  _(RUNT, "undersized packet")                                   \
  _(CHAINED_BUFFER, "chained buffers (packet dropped)")          \
  _(OVERSIZED_HEADER, "buffer with oversized header (dropped)")  \
- _(NO_TAIL_SPACE, "no enough buffer tail space (dropped)")
+ _(NO_TAIL_SPACE, "no enough buffer tail space (dropped)")      \
+ _(TUN_NO_PROTO, "no tunnel protocol")                          \
 
 
 typedef enum
@@ -497,8 +498,11 @@ esp_decrypt_inline (vlib_main_t * vm,
 						     &ip4->dst_address) ||
 			  !ip46_address_is_equal_v4 (&itp->itp_tun.dst,
 						     &ip4->src_address))
-			next[0] = ESP_DECRYPT_NEXT_DROP;
-
+			{
+			  next[0] = ESP_DECRYPT_NEXT_DROP;
+			  b[0]->error =
+			    node->errors[ESP_DECRYPT_ERROR_TUN_NO_PROTO];
+			}
 		    }
 		  else if (f->next_header == IP_PROTOCOL_IPV6)
 		    {
@@ -510,7 +514,11 @@ esp_decrypt_inline (vlib_main_t * vm,
 						     &ip6->dst_address) ||
 			  !ip46_address_is_equal_v6 (&itp->itp_tun.dst,
 						     &ip6->src_address))
-			next[0] = ESP_DECRYPT_NEXT_DROP;
+			{
+			  next[0] = ESP_DECRYPT_NEXT_DROP;
+			  b[0]->error =
+			    node->errors[ESP_DECRYPT_ERROR_TUN_NO_PROTO];
+			}
 		    }
 		}
 	    }
@@ -615,16 +623,9 @@ VLIB_REGISTER_NODE (esp4_decrypt_tun_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-
   .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
   .error_strings = esp_decrypt_error_strings,
-
-  .n_next_nodes = ESP_DECRYPT_N_NEXT,
-  .next_nodes = {
-#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
-    foreach_esp_decrypt_next
-#undef _
-  },
+  .sibling_of = "esp4-decrypt",
 };
 
 VLIB_REGISTER_NODE (esp6_decrypt_tun_node) = {
@@ -632,16 +633,9 @@ VLIB_REGISTER_NODE (esp6_decrypt_tun_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-
   .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
   .error_strings = esp_decrypt_error_strings,
-
-  .n_next_nodes = ESP_DECRYPT_N_NEXT,
-  .next_nodes = {
-#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
-    foreach_esp_decrypt_next
-#undef _
-  },
+  .sibling_of = "esp6-decrypt",
 };
 /* *INDENT-ON* */
 

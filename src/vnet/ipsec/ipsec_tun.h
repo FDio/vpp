@@ -17,6 +17,36 @@
 
 #include <vnet/ipsec/ipsec.h>
 
+/* *INDENT-OFF* */
+typedef CLIB_PACKED(struct {
+  /*
+   * Key fields: remote ip and spi on incoming packet
+   * all fields in NET byte order
+   */
+  union {
+    struct {
+      ip4_address_t remote_ip;
+      u32 spi;
+    };
+    u64 as_u64;
+  };
+}) ipsec4_tunnel_key_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+typedef CLIB_PACKED(struct {
+  /*
+   * Key fields: remote ip and spi on incoming packet
+   * all fields in NET byte order
+   */
+  ip6_address_t remote_ip;
+  u32 spi;
+}) ipsec6_tunnel_key_t;
+/* *INDENT-ON* */
+
+extern u8 *format_ipsec4_tunnel_key (u8 * s, va_list * args);
+extern u8 *format_ipsec6_tunnel_key (u8 * s, va_list * args);
+
 typedef enum ipsec_protect_flags_t_
 {
   IPSEC_PROTECT_L2 = (1 << 0),
@@ -66,8 +96,13 @@ typedef struct ipsec_tun_protect_t_
   }                                                        \
 }
 
+extern int ipsec_tun_protect_update_one (u32 sw_if_index, u32 sa_out,
+					 u32 sa_in);
 extern int ipsec_tun_protect_update (u32 sw_if_index, u32 sa_out,
-				     u32 sa_ins[2]);
+				     u32 * sa_ins);
+extern int ipsec_tun_protect_update_in (u32 sw_if_index, u32 sa_in);
+extern int ipsec_tun_protect_update_out (u32 sw_if_index, u32 sa_out);
+
 extern int ipsec_tun_protect_del (u32 sw_if_index);
 
 typedef walk_rc_t (*ipsec_tun_protect_walk_cb_t) (index_t itpi, void *arg);

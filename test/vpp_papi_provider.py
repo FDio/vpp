@@ -1729,7 +1729,7 @@ class VppPapiProvider(object):
                                 remote_crypto_key, integ_alg, local_integ_key,
                                 remote_integ_key, is_add=1, esn=0, salt=0,
                                 anti_replay=1, renumber=0,
-                                udp_encap=0, show_instance=0):
+                                udp_encap=0, show_instance=0xffffffff):
         return self.api(
             self.papi.ipsec_tunnel_if_add_del,
             {
