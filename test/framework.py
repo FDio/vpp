@@ -819,7 +819,7 @@ class VppTestCase(unittest.TestCase):
         cls._captures = []
 
     @classmethod
-    def create_pg_interfaces(cls, interfaces, gso=0, gso_size=0):
+    def create_pg_interfaces(cls, interfaces, gso=0, gso_size=0, coalesce=0):
         """
         Create packet-generator interfaces.
 
@@ -829,7 +829,7 @@ class VppTestCase(unittest.TestCase):
         """
         result = []
         for i in interfaces:
-            intf = VppPGInterface(cls, i, gso, gso_size)
+            intf = VppPGInterface(cls, i, gso, gso_size, coalesce)
             setattr(cls, intf.name, intf)
             result.append(intf)
         cls.pg_interfaces = result

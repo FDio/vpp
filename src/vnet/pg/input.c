@@ -54,6 +54,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/udp/udp_packet.h>
 #include <vnet/devices/devices.h>
+#include <vnet/gso/gro_func.h>
 
 static int
 validate_buffer_data2 (vlib_buffer_t * b, pg_stream_t * s,
@@ -1588,12 +1589,14 @@ fill_gso_buffer_flags (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	}
       if (l4_proto == IP_PROTOCOL_TCP)
 	{
-	  b0->flags |= (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM | VNET_BUFFER_F_GSO);
+	  /* add gso flag only for chained buffers */
+	  if (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
+	    b0->flags |= VNET_BUFFER_F_GSO;
+	  b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
 	  tcp_header_t *tcp = (tcp_header_t *) (vlib_buffer_get_current (b0) +
 						vnet_buffer
 						(b0)->l4_hdr_offset);
 	  l4_hdr_sz = tcp_header_bytes (tcp);
-	  tcp->checksum = 0;
 	  vnet_buffer2 (b0)->gso_l4_hdr_sz = l4_hdr_sz;
 	  vnet_buffer2 (b0)->gso_size = packet_data_size;
 	}
@@ -1604,7 +1607,6 @@ fill_gso_buffer_flags (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 						vnet_buffer
 						(b0)->l4_hdr_offset);
 	  vnet_buffer2 (b0)->gso_l4_hdr_sz = sizeof (*udp);
-	  udp->checksum = 0;
 	}
     }
 }
@@ -1641,6 +1643,9 @@ pg_generate_packets (vlib_node_runtime_t * node,
       vnet_get_config_data (&cm->config_main, &current_config_index,
 			    &next_index, 0);
     }
+
+  if (PREDICT_FALSE (pi->coalesce_enabled))
+    vnet_gro_flow_table_schedule_node_on_dispatcher (vm, pi->flow_table);
 
   while (n_packets_to_generate > 0)
     {
