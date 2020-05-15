@@ -23,6 +23,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/vnet.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/gso/gro_func.h>
 #include <vnet/gso/hdr_offset_parser.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
@@ -480,7 +481,7 @@ virtio_find_free_desc (virtio_vring_t * vring, u16 size, u16 mask,
 static_always_inline uword
 virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    vlib_frame_t * frame, virtio_if_t * vif,
-			    int do_gso, int csum_offload)
+			    int do_gso, int csum_offload, int do_gro)
 {
   u16 n_left = frame->n_vectors;
   virtio_vring_t *vring;
@@ -524,6 +525,19 @@ retry:
   while (n_left && free_desc_count)
     {
       u16 n_added = 0;
+
+      if (do_gro)
+	{
+	  buffers[0] =
+	    vnet_gro_flow_table_inline (vm, vring->flow_table, buffers[0]);
+	  if (buffers[0] == 0)
+	    {
+	      n_left--;
+	      buffers++;
+	      continue;
+	    }
+	}
+
       n_added =
 	add_buffer_to_slot (vm, vif, vring, buffers[0], free_desc_count,
 			    avail, next, mask, do_gso, csum_offload,
@@ -582,13 +596,15 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
 
   if (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
     return virtio_interface_tx_inline (vm, node, frame, vif, 1 /* do_gso */ ,
-				       1);
+				       1, vif->packet_coalesce);
   else if (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD)
     return virtio_interface_tx_inline (vm, node, frame, vif,
-				       0 /* no do_gso */ , 1);
+				       0 /* no do_gso */ , 1,
+				       0 /* do_gro */ );
   else
     return virtio_interface_tx_inline (vm, node, frame, vif,
-				       0 /* no do_gso */ , 0);
+				       0 /* no do_gso */ , 0,
+				       0 /* do_gro */ );
 }
 
 static void
