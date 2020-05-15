@@ -201,7 +201,7 @@ tap_offload_command_fn (vlib_main_t * vm, unformat_input_t * input,
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
   vnet_main_t *vnm = vnet_get_main ();
-  int gso_enable = 0, gso_disable = 0;
+  int gso_enable = 0, gso_disable = 0, is_gro_coalesce = 0;
   int csum_offload_enable = 0, csum_offload_disable = 0;
   int rv = 0;
 
@@ -217,7 +217,11 @@ tap_offload_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vnm, &sw_if_index))
 	;
       else if (unformat (line_input, "gso-enable"))
-	gso_enable = 1;
+	{
+	  gso_enable = 1;
+	  if (unformat (line_input, "gro-coalesce"))
+	    is_gro_coalesce = 1;
+	}
       else if (unformat (line_input, "gso-disable"))
 	gso_disable = 1;
       else if (unformat (line_input, "csum-offload-enable"))
@@ -235,11 +239,11 @@ tap_offload_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			      "please specify interface name or sw_if_index");
 
   if (gso_enable)
-    rv = tap_gso_enable_disable (vm, sw_if_index, 1);
+    rv = tap_gso_enable_disable (vm, sw_if_index, 1, is_gro_coalesce);
   else if (csum_offload_enable)
     rv = tap_csum_offload_enable_disable (vm, sw_if_index, 1);
   else if (gso_disable)
-    rv = tap_gso_enable_disable (vm, sw_if_index, 0);
+    rv = tap_gso_enable_disable (vm, sw_if_index, 0, 0);
   else if (csum_offload_disable)
     rv = tap_csum_offload_enable_disable (vm, sw_if_index, 0);
 
@@ -256,7 +260,8 @@ VLIB_CLI_COMMAND (tap_offload_command, static) =
 {
   .path = "set tap offload",
   .short_help = "set tap offload {<interface> | sw_if_index <sw_idx>}"
-    " <gso-enable | gso-disable | csum-offload-enable | csum-offload-disable>",
+    " <gso-enable [gro-coalesce]  | gso-disable | csum-offload-enable |"
+    "csum-offload-disable>",
   .function = tap_offload_command_fn,
 };
 /* *INDENT-ON* */

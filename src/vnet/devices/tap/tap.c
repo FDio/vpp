@@ -716,6 +716,12 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     {
       hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
     }
+  if ((args->tap_flags & TAP_FLAG_GSO)
+      && (args->tap_flags & TAP_FLAG_GRO_COALESCE))
+    {
+      vif->packet_coalesce = 1;
+      virtio_set_packet_coalesce (vif);
+    }
   vnet_hw_interface_set_input_node (vnm, vif->hw_if_index,
 				    virtio_input_node.index);
 
@@ -813,6 +819,7 @@ tap_csum_offload_enable_disable (vlib_main_t * vm, u32 sw_if_index,
   vec_foreach_index (i, vif->tap_fds)
     _IOCTL (vif->tap_fds[i], TUNSETOFFLOAD, offload);
   vif->gso_enabled = 0;
+  vif->packet_coalesce = 0;
   vif->csum_offload_enabled = enable_disable ? 1 : 0;
 
   if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) != 0)
@@ -848,7 +855,8 @@ error:
 }
 
 int
-tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable)
+tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable,
+			int is_packet_coalesce)
 {
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *mm = &virtio_main;
@@ -878,6 +886,11 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable)
 	  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
 	    VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
 	}
+      if (is_packet_coalesce)
+	{
+	  vif->packet_coalesce = 1;
+	  virtio_set_packet_coalesce (vif);
+	}
     }
   else
     {
@@ -886,6 +899,7 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable)
 	  hw->flags &= ~(VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
 			 VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
 	}
+      vif->packet_coalesce = 0;
     }
 
 error:
