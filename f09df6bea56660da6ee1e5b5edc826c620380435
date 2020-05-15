@@ -16,6 +16,24 @@
       "revId": "f09df6bea56660da6ee1e5b5edc826c620380435",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3396c271_f166d4b1",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1053,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-15T12:45:18Z",
+      "side": 1,
+      "message": "The issue is that for the .api crc, vppagigen explicitly sets the size to be set to a u32 unless specifically specified.",
+      "parentUuid": "0e536e72_1f8d5129",
+      "revId": "f09df6bea56660da6ee1e5b5edc826c620380435",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
