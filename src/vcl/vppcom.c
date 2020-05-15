@@ -1556,10 +1556,6 @@ vppcom_unformat_proto (uint8_t * proto, char *proto_str)
     *proto = VPPCOM_PROTO_UDP;
   else if (!strcmp (proto_str, "udp"))
     *proto = VPPCOM_PROTO_UDP;
-  else if (!strcmp (proto_str, "UDPC"))
-    *proto = VPPCOM_PROTO_UDPC;
-  else if (!strcmp (proto_str, "udpc"))
-    *proto = VPPCOM_PROTO_UDPC;
   else if (!strcmp (proto_str, "TLS"))
     *proto = VPPCOM_PROTO_TLS;
   else if (!strcmp (proto_str, "tls"))
