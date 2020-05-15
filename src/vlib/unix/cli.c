@@ -3238,13 +3238,18 @@ vlib_unix_cli_set_prompt (char *prompt)
 }
 
 static unix_cli_file_t *
+unix_cli_file_if_exists (unix_cli_main_t * cm)
+{
+  if (!cm->cli_file_pool)
+    return 0;
+  return pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+}
+
+static unix_cli_file_t *
 unix_cli_file_if_interactive (unix_cli_main_t * cm)
 {
   unix_cli_file_t *cf;
-  if (!cm->cli_file_pool)
-    return 0;
-  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
-  if (!cf->is_interactive)
+  if ((cf = unix_cli_file_if_exists (cm)) && !cf->is_interactive)
     return 0;
   return cf;
 }
@@ -3260,8 +3265,8 @@ unix_cli_quit (vlib_main_t * vm,
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
 
-  if (!(cf = unix_cli_file_if_interactive (cm)))
-    return clib_error_return (0, "invalid for non-interactive sessions");
+  if (!(cf = unix_cli_file_if_exists (cm)))
+    return clib_error_return (0, "invalid session");
 
   /* Cosmetic: suppress the final prompt from appearing before we die */
   cf->is_interactive = 0;
@@ -3551,8 +3556,8 @@ unix_cli_show_terminal (vlib_main_t * vm,
   unix_cli_file_t *cf;
   vlib_node_t *n;
 
-  if (!(cf = unix_cli_file_if_interactive (cm)))
-    return clib_error_return (0, "invalid for non-interactive sessions");
+  if (!(cf = unix_cli_file_if_exists (cm)))
+    return clib_error_return (0, "invalid session");
 
   n = vlib_get_node (vm, cf->process_node_index);
 
