@@ -11,10 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-option(VPP_BUILD_G2 "Build g2 tool." OFF)
+option(VPP_BUILD_G2 "Build g2 tool." ON)
 if(VPP_BUILD_G2)
   find_package(GTK2 COMPONENTS gtk)
   if(GTK2_FOUND)
+    set(CMAKE_C_FLAGS "-Wno-deprecated-declarations ${CMAKE_C_FLAGS}")
     include_directories(${GTK2_INCLUDE_DIRS})
     add_vpp_executable(g2
       SOURCES
@@ -29,8 +30,6 @@ if(VPP_BUILD_G2)
       view1.c
 
       LINK_LIBRARIES vppinfra Threads::Threads m ${GTK2_LIBRARIES}
-      NO_INSTALL
     )
   endif()
 endif()
-
