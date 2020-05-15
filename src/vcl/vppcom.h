@@ -51,7 +51,6 @@ typedef enum
   VPPCOM_PROTO_UDP,
   VPPCOM_PROTO_NONE,
   VPPCOM_PROTO_TLS,
-  VPPCOM_PROTO_UDPC,
   VPPCOM_PROTO_QUIC,
 } vppcom_proto_t;
 
@@ -71,9 +70,6 @@ vppcom_proto_str (vppcom_proto_t proto)
     case VPPCOM_PROTO_TLS:
       proto_str = "TLS";
       break;
-    case VPPCOM_PROTO_UDPC:
-      proto_str = "UDPC";
-      break;
     case VPPCOM_PROTO_QUIC:
       proto_str = "QUIC";
       break;
@@ -87,7 +83,7 @@ vppcom_proto_str (vppcom_proto_t proto)
 static inline int
 vcl_proto_is_dgram (uint8_t proto)
 {
-  return proto == VPPCOM_PROTO_UDP || proto == VPPCOM_PROTO_UDPC;
+  return proto == VPPCOM_PROTO_UDP;
 }
 
 typedef enum
