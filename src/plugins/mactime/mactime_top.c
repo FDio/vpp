@@ -445,7 +445,7 @@ print_device_table (mt_main_t * mm)
 {
   mactime_device_t *dev;
 
-  fformat (stdout, "%U", format_device, 0 /* header */ , 0 /* verbose */ );
+  fformat (stdout, "%U", format_device, NULL /* header */ , 0 /* verbose */ );
   /* *INDENT-OFF* */
   pool_foreach (dev, mm->devices,
   ({

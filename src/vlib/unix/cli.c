@@ -2554,8 +2554,8 @@ more:
       static u8 *lv;
       vec_reset_length (lv);
       lv = format (lv, "%U[%d]: %v",
-		   format_timeval, 0 /* current bat-time */ ,
-		   0 /* current bat-format */ ,
+		   format_timeval, NULL /* current bat-format */ ,
+		   0 /* current bat-time */ ,
 		   cli_file_index, cf->current_command);
       if ((vec_len (cf->current_command) > 0) &&
 	  (cf->current_command[vec_len (cf->current_command) - 1] != '\n'))
