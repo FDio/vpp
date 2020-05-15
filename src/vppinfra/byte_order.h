@@ -56,14 +56,7 @@
 always_inline u16
 clib_byte_swap_u16 (u16 x)
 {
-#if defined (__aarch64__)
-  if (!__builtin_constant_p (x))
-    {
-    __asm__ ("rev16 %w0, %w0":"+r" (x));
-      return x;
-    }
-#endif
-  return (x >> 8) | (x << 8);
+  return __builtin_bswap16 (x);
 }
 
 always_inline i16
@@ -75,20 +68,7 @@ clib_byte_swap_i16 (i16 x)
 always_inline u32
 clib_byte_swap_u32 (u32 x)
 {
-#if defined (i386) || defined (__x86_64__)
-  if (!__builtin_constant_p (x))
-    {
-      asm volatile ("bswap %0":"=r" (x):"0" (x));
-      return x;
-    }
-#elif defined (__aarch64__)
-  if (!__builtin_constant_p (x))
-    {
-    __asm__ ("rev %w0, %w0":"+r" (x));
-      return x;
-    }
-#endif
-  return ((x << 24) | ((x & 0xff00) << 8) | ((x >> 8) & 0xff00) | (x >> 24));
+  return __builtin_bswap32 (x);
 }
 
 always_inline i32
@@ -100,25 +80,7 @@ clib_byte_swap_i32 (i32 x)
 always_inline u64
 clib_byte_swap_u64 (u64 x)
 {
-#if defined (__x86_64__)
-  if (!__builtin_constant_p (x))
-    {
-      asm volatile ("bswapq %0":"=r" (x):"0" (x));
-      return x;
-    }
-#elif defined (__aarch64__)
-  if (!__builtin_constant_p (x))
-    {
-    __asm__ ("rev %0, %0":"+r" (x));
-      return x;
-    }
-#endif
-#define _(x,n,i) \
-  ((((x) >> (8*(i))) & 0xff) << (8*((n)-(i)-1)))
-  return (_(x, 8, 0) | _(x, 8, 1)
-	  | _(x, 8, 2) | _(x, 8, 3)
-	  | _(x, 8, 4) | _(x, 8, 5) | _(x, 8, 6) | _(x, 8, 7));
-#undef _
+  return __builtin_bswap64 (x);
 }
 
 always_inline i64
