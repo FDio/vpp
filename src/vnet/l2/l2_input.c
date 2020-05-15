@@ -298,10 +298,12 @@ l2input_node_inline (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next;
   l2input_next_t next_index;
   l2input_main_t *msm = &l2input_main;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;	/* number of packets to process */
   next_index = node->cached_next_index;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
   while (n_left_from > 0)
     {
@@ -312,30 +314,22 @@ l2input_node_inline (vlib_main_t * vm,
 
       while (n_left_from >= 8 && n_left_to_next >= 4)
 	{
-	  u32 bi0, bi1, bi2, bi3;
-	  vlib_buffer_t *b0, *b1, *b2, *b3;
 	  u32 next0, next1, next2, next3;
 	  u32 sw_if_index0, sw_if_index1, sw_if_index2, sw_if_index3;
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t *p4, *p5, *p6, *p7;
-
-	    p4 = vlib_get_buffer (vm, from[4]);
-	    p5 = vlib_get_buffer (vm, from[5]);
-	    p6 = vlib_get_buffer (vm, from[6]);
-	    p7 = vlib_get_buffer (vm, from[7]);
 
 	    /* Prefetch the buffer header and packet for the N+2 loop iteration */
-	    vlib_prefetch_buffer_header (p4, LOAD);
-	    vlib_prefetch_buffer_header (p5, LOAD);
-	    vlib_prefetch_buffer_header (p6, LOAD);
-	    vlib_prefetch_buffer_header (p7, LOAD);
+	    vlib_prefetch_buffer_header (b[4], LOAD);
+	    vlib_prefetch_buffer_header (b[5], LOAD);
+	    vlib_prefetch_buffer_header (b[6], LOAD);
+	    vlib_prefetch_buffer_header (b[7], LOAD);
 
-	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (b[4]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[5]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[6]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[7]->data, CLIB_CACHE_LINE_BYTES, LOAD);
 
 	    /*
 	     * Don't bother prefetching the bridge-domain config (which
@@ -347,112 +341,104 @@ l2input_node_inline (vlib_main_t * vm,
 
 	  /* speculatively enqueue b0 and b1 to the current next frame */
 	  /* bi is "buffer index", b is pointer to the buffer */
-	  to_next[0] = bi0 = from[0];
-	  to_next[1] = bi1 = from[1];
-	  to_next[2] = bi2 = from[2];
-	  to_next[3] = bi3 = from[3];
-	  from += 4;
-	  to_next += 4;
-	  n_left_from -= 4;
-	  n_left_to_next -= 4;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
-	  b2 = vlib_get_buffer (vm, bi2);
-	  b3 = vlib_get_buffer (vm, bi3);
 
 	  if (do_trace)
 	    {
 	      /* RX interface handles */
-	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
-	      sw_if_index2 = vnet_buffer (b2)->sw_if_index[VLIB_RX];
-	      sw_if_index3 = vnet_buffer (b3)->sw_if_index[VLIB_RX];
+	      sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+	      sw_if_index1 = vnet_buffer (b[1])->sw_if_index[VLIB_RX];
+	      sw_if_index2 = vnet_buffer (b[2])->sw_if_index[VLIB_RX];
+	      sw_if_index3 = vnet_buffer (b[3])->sw_if_index[VLIB_RX];
 
-	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
+	      if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 		{
-		  ethernet_header_t *h0 = vlib_buffer_get_current (b0);
+		  ethernet_header_t *h0 = vlib_buffer_get_current (b[0]);
 		  l2input_trace_t *t =
-		    vlib_add_trace (vm, node, b0, sizeof (*t));
+		    vlib_add_trace (vm, node, b[0], sizeof (*t));
 		  t->sw_if_index = sw_if_index0;
 		  clib_memcpy_fast (t->src, h0->src_address, 6);
 		  clib_memcpy_fast (t->dst, h0->dst_address, 6);
 		}
-	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
+	      if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
 		{
-		  ethernet_header_t *h1 = vlib_buffer_get_current (b1);
+		  ethernet_header_t *h1 = vlib_buffer_get_current (b[1]);
 		  l2input_trace_t *t =
-		    vlib_add_trace (vm, node, b1, sizeof (*t));
+		    vlib_add_trace (vm, node, b[1], sizeof (*t));
 		  t->sw_if_index = sw_if_index1;
 		  clib_memcpy_fast (t->src, h1->src_address, 6);
 		  clib_memcpy_fast (t->dst, h1->dst_address, 6);
 		}
-	      if (b2->flags & VLIB_BUFFER_IS_TRACED)
+	      if (b[2]->flags & VLIB_BUFFER_IS_TRACED)
 		{
-		  ethernet_header_t *h2 = vlib_buffer_get_current (b2);
+		  ethernet_header_t *h2 = vlib_buffer_get_current (b[2]);
 		  l2input_trace_t *t =
-		    vlib_add_trace (vm, node, b2, sizeof (*t));
+		    vlib_add_trace (vm, node, b[2], sizeof (*t));
 		  t->sw_if_index = sw_if_index2;
 		  clib_memcpy_fast (t->src, h2->src_address, 6);
 		  clib_memcpy_fast (t->dst, h2->dst_address, 6);
 		}
-	      if (b3->flags & VLIB_BUFFER_IS_TRACED)
+	      if (b[3]->flags & VLIB_BUFFER_IS_TRACED)
 		{
-		  ethernet_header_t *h3 = vlib_buffer_get_current (b3);
+		  ethernet_header_t *h3 = vlib_buffer_get_current (b[3]);
 		  l2input_trace_t *t =
-		    vlib_add_trace (vm, node, b3, sizeof (*t));
+		    vlib_add_trace (vm, node, b[3], sizeof (*t));
 		  t->sw_if_index = sw_if_index3;
 		  clib_memcpy_fast (t->src, h3->src_address, 6);
 		  clib_memcpy_fast (t->dst, h3->dst_address, 6);
 		}
 	    }
 
-	  classify_and_dispatch (msm, b0, &next0);
-	  classify_and_dispatch (msm, b1, &next1);
-	  classify_and_dispatch (msm, b2, &next2);
-	  classify_and_dispatch (msm, b3, &next3);
+	  classify_and_dispatch (msm, b[0], &next0);
+	  classify_and_dispatch (msm, b[1], &next1);
+	  //show the better performance when clib_memcpy_fast is put here.
+	  clib_memcpy_fast (to_next, from, sizeof (from[0]) * 4);
+	  to_next += 4;
+	  classify_and_dispatch (msm, b[2], &next2);
+	  classify_and_dispatch (msm, b[3], &next3);
+	  b += 4;
+	  n_left_from -= 4;
+	  n_left_to_next -= 4;
 
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  /* if next0==next1==next_index then nothing special needs to be done */
 	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
 					   to_next, n_left_to_next,
-					   bi0, bi1, bi2, bi3,
+					   from[0], from[1], from[2], from[3],
 					   next0, next1, next2, next3);
+	  from += 4;
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 bi0;
-	  vlib_buffer_t *b0;
 	  u32 next0;
 	  u32 sw_if_index0;
 
 	  /* speculatively enqueue b0 to the current next frame */
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
+	  to_next[0] = from[0];
 	  to_next += 1;
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-
-	  if (do_trace && PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	  if (do_trace && PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      ethernet_header_t *h0 = vlib_buffer_get_current (b0);
-	      l2input_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	      ethernet_header_t *h0 = vlib_buffer_get_current (b[0]);
+	      l2input_trace_t *t =
+		vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
 	      t->sw_if_index = sw_if_index0;
 	      clib_memcpy_fast (t->src, h0->src_address, 6);
 	      clib_memcpy_fast (t->dst, h0->dst_address, 6);
+
 	    }
 
-	  classify_and_dispatch (msm, b0, &next0);
+	  classify_and_dispatch (msm, b[0], &next0);
+	  b += 1;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
-					   bi0, next0);
+					   from[0], next0);
+	  from += 1;
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
