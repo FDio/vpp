@@ -252,7 +252,7 @@ vlib_log_init (vlib_main_t * vm)
 
   vec_validate (lm->entries, lm->size);
   lm->log_class = vlib_log_register_class ("log", 0);
-  u8 *tmp = format (NULL, "%U %-10U %-10U ", format_time_float, 0, (f64) 0,
+  u8 *tmp = format (NULL, "%U %-10U %-10U ", format_time_float, NULL, (f64) 0,
 		    format_white_space, 255, format_white_space, 255);
   log_main.indent = vec_len (tmp);
   vec_free (tmp);
@@ -280,7 +280,7 @@ show_log (vlib_main_t * vm,
     {
       e = vec_elt_at_index (lm->entries, i);
       vlib_cli_output (vm, "%U %-10U %-14U %v",
-		       format_time_float, 0, e->timestamp + time_offset,
+		       format_time_float, NULL, e->timestamp + time_offset,
 		       format_vlib_log_level, e->level,
 		       format_vlib_log_class, e->class, e->string);
       i = (i + 1) % lm->size;

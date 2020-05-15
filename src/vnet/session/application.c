@@ -1352,8 +1352,8 @@ application_format_listeners (application_t * app, int verbose)
 
   if (!app)
     {
-      vlib_cli_output (vm, "%U", format_app_worker_listener, 0 /* header */ ,
-		       0, 0, verbose);
+      vlib_cli_output (vm, "%U", format_app_worker_listener,
+		       NULL /* header */ , 0, 0, verbose);
       return;
     }
 
