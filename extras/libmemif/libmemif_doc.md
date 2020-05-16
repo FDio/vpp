@@ -66,7 +66,7 @@ commands:
 	send <index> <tx> <ip> <mac> - send icmp
 ```
 
-Continue with @ref libmemif_example_setup which contains instructions on how to set up conenction between icmpr-epoll example app and VPP-memif.
+Continue with @ref libmemif_example_setup which contains instructions on how to set up connection between icmpr-epoll example app and VPP-memif.
 
 #### Next steps
 

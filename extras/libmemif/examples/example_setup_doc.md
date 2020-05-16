@@ -18,7 +18,7 @@ icmpr-epoll:
 ```
 conn 0 0
 ```
-Memif in slave mode will try to connect every 2 seconds. If connection establishment is successfull, a message will show.
+Memif in slave mode will try to connect every 2 seconds. If connection establishment is successful, a message will show.
 ```
 INFO: memif connected!
 ```
