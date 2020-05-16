@@ -128,7 +128,6 @@ typedef struct vlib_main_t
   /* Set e.g. in the SIGTERM signal handler, checked in a safe place... */
   volatile u32 main_loop_exit_now;
   clib_longjmp_t main_loop_exit;
-#define VLIB_MAIN_LOOP_EXIT_NONE 0
 #define VLIB_MAIN_LOOP_EXIT_PANIC 1
   /* Exit via CLI. */
 #define VLIB_MAIN_LOOP_EXIT_CLI 2
@@ -343,7 +342,7 @@ always_inline void
 vlib_panic_with_error (vlib_main_t * vm, clib_error_t * error)
 {
   vm->main_loop_error = error;
-  clib_longjmp (&vm->main_loop_exit, VLIB_MAIN_LOOP_EXIT_PANIC);
+  clib_longjmp (vm->main_loop_exit, VLIB_MAIN_LOOP_EXIT_PANIC);
 }
 
 #define vlib_panic_with_msg(vm,args...) \
@@ -386,7 +385,7 @@ vlib_increment_main_loop_counter (vlib_main_t * vm)
   vm->internal_node_last_vectors_per_main_loop = 0;
 
   if (PREDICT_FALSE (vm->main_loop_exit_now))
-    clib_longjmp (&vm->main_loop_exit, VLIB_MAIN_LOOP_EXIT_CLI);
+    clib_longjmp (vm->main_loop_exit, VLIB_MAIN_LOOP_EXIT_CLI);
 }
 
 always_inline u32

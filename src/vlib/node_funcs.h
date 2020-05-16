@@ -415,29 +415,24 @@ vlib_process_suspend_time_is_zero (f64 dt)
 /** Suspend a vlib cooperative multi-tasking thread for a period of time
     @param vm - vlib_main_t *
     @param dt - suspend interval in seconds
-    @returns VLIB_PROCESS_RESUME_LONGJMP_RESUME, routinely ignored
 */
 
-always_inline uword
+always_inline void
 vlib_process_suspend (vlib_main_t * vm, f64 dt)
 {
-  uword r;
   vlib_node_main_t *nm = &vm->node_main;
   vlib_process_t *p = vec_elt (nm->processes, nm->current_process_index);
 
   if (vlib_process_suspend_time_is_zero (dt))
-    return VLIB_PROCESS_RESUME_LONGJMP_RESUME;
+    return;
 
   p->flags |= VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK;
-  r = clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
-  if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
+  if (clib_setjmp (p->resume_longjmp) == 0)
     {
       /* expiration time in 10us ticks */
       p->resume_clock_interval = dt * 1e5;
-      clib_longjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
+      clib_longjmp (p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
     }
-
-  return r;
 }
 
 always_inline void
@@ -594,17 +589,13 @@ vlib_process_wait_for_event (vlib_main_t * vm)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_process_t *p;
-  uword r;
 
   p = vec_elt (nm->processes, nm->current_process_index);
   if (clib_bitmap_is_zero (p->non_empty_event_type_bitmap))
     {
       p->flags |= VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT;
-      r =
-	clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
-      if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
-	clib_longjmp (&p->return_longjmp,
-		      VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
+      if (clib_setjmp (p->resume_longjmp) == 0)
+	clib_longjmp (p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
     }
 
   return p->non_empty_event_type_bitmap;
@@ -617,18 +608,14 @@ vlib_process_wait_for_one_time_event (vlib_main_t * vm,
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_process_t *p;
-  uword r;
 
   p = vec_elt (nm->processes, nm->current_process_index);
   ASSERT (!pool_is_free_index (p->event_type_pool, with_type_index));
   while (!clib_bitmap_get (p->non_empty_event_type_bitmap, with_type_index))
     {
       p->flags |= VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT;
-      r =
-	clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
-      if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
-	clib_longjmp (&p->return_longjmp,
-		      VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
+      if (clib_setjmp (p->resume_longjmp) == 0)
+	clib_longjmp (p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
     }
 
   return vlib_process_get_events_helper (p, with_type_index, data_vector);
@@ -641,18 +628,15 @@ vlib_process_wait_for_event_with_type (vlib_main_t * vm,
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_process_t *p;
-  uword r, *h;
+  uword *h;
 
   p = vec_elt (nm->processes, nm->current_process_index);
   h = hash_get (p->event_type_index_by_type_opaque, with_type_opaque);
   while (!h || !clib_bitmap_get (p->non_empty_event_type_bitmap, h[0]))
     {
       p->flags |= VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT;
-      r =
-	clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
-      if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
-	clib_longjmp (&p->return_longjmp,
-		      VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
+      if (clib_setjmp (p->resume_longjmp) == 0)
+	clib_longjmp (p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
 
       /* See if unknown event type has been signaled now. */
       if (!h)
@@ -675,7 +659,6 @@ vlib_process_wait_for_event_or_clock (vlib_main_t * vm, f64 dt)
   vlib_node_main_t *nm = &vm->node_main;
   vlib_process_t *p;
   f64 wakeup_time;
-  uword r;
 
   p = vec_elt (nm->processes, nm->current_process_index);
 
@@ -689,11 +672,10 @@ vlib_process_wait_for_event_or_clock (vlib_main_t * vm, f64 dt)
   p->flags |= (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT
 	       | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK);
 
-  r = clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
-  if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
+  if (clib_setjmp (p->resume_longjmp) == 0)
     {
       p->resume_clock_interval = dt * 1e5;
-      clib_longjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
+      clib_longjmp (p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
     }
 
   /* Return amount of time still left to sleep.

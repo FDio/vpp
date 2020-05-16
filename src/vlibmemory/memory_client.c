@@ -69,7 +69,7 @@ rx_thread_fn (void *arg)
   q = vlibapi_get_main ()->vl_input_queue;
 
   /* So we can make the rx thread terminate cleanly */
-  if (setjmp (mm->rx_thread_jmpbuf) == 0)
+  if (clib_setjmp (mm->rx_thread_jmpbuf) == 0)
     {
       mm->rx_thread_jmpbuf_valid = 1;
       clib_mem_set_thread_index ();
@@ -84,7 +84,7 @@ vl_api_rx_thread_exit_t_handler (vl_api_rx_thread_exit_t * mp)
 {
   memory_client_main_t *mm = vlibapi_get_memory_client_main ();
   if (mm->rx_thread_jmpbuf_valid)
-    longjmp (mm->rx_thread_jmpbuf, 1);
+    clib_longjmp (mm->rx_thread_jmpbuf, 1);
 }
 
 static void

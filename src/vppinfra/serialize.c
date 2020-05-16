@@ -657,8 +657,8 @@ va_serialize (serialize_main_t * sm, va_list * va)
   m->recursion_level += 1;
   if (m->recursion_level == 1)
     {
-      uword r = clib_setjmp (&m->error_longjmp, 0);
-      error = uword_to_pointer (r, clib_error_t *);
+      if (clib_setjmp (m->error_longjmp))
+	error = m->error;
     }
 
   if (!error)

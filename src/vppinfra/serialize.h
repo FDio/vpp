@@ -106,7 +106,8 @@ typedef struct serialize_main_header_t
 always_inline void
 serialize_error (serialize_main_header_t * m, clib_error_t * error)
 {
-  clib_longjmp (&m->error_longjmp, pointer_to_uword (error));
+  m->error = error;
+  clib_longjmp (m->error_longjmp, 1);
 }
 
 #define serialize_error_return(m,args...)			\

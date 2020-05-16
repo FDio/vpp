@@ -13,22 +13,21 @@
  * limitations under the License.
  */
 
-#ifndef included_clib_longjmp_h
-#define included_clib_longjmp_h
-
 #include <setjmp.h>
 #include <vppinfra/types.h>
+#include <vppinfra/longjmp.h>
 
-typedef jmp_buf clib_longjmp_t;
+int
+clib_setjmp (clib_longjmp_t env)
+{
+  return setjmp (env);
+}
 
-int clib_setjmp (clib_longjmp_t);
-void clib_longjmp (clib_longjmp_t, int);
-
-/* Call function on given stack. */
-uword clib_calljmp (uword (*func) (uword func_arg),
-		    uword func_arg, void *stack);
-
-#endif /* included_clib_longjmp_h */
+void
+clib_longjmp (clib_longjmp_t env, int rv)
+{
+  longjmp (env, rv);
+}
 
 /*
  * fd.io coding-style-patch-verification: ON

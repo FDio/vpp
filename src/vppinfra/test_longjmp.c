@@ -48,14 +48,14 @@ static int verbose;
   if (verbose) { clib_warning(format, ## args); }
 
 static never_inline void
-f2 (clib_longjmp_t * env)
+f2 (clib_longjmp_t env)
 {
   i++;
   clib_longjmp (env, 1);
 }
 
 static never_inline void
-f1 (clib_longjmp_t * env)
+f1 (clib_longjmp_t env)
 {
   i++;
   f2 (env);
@@ -67,10 +67,10 @@ test_longjmp_main (unformat_input_t * input)
   clib_longjmp_t env;
 
   i = 0;
-  if (clib_setjmp (&env, 0) == 0)
+  if (clib_setjmp (env) == 0)
     {
       if_verbose ("calling long jumper %d", i);
-      f1 (&env);
+      f1 (env);
     }
   if_verbose ("back from long jump %d", i);
 

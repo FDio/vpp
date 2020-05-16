@@ -81,7 +81,7 @@ do_one_file (vat_main_t * vam)
   vam->input = &_input;
 
   /* Used by the "quit" command handler */
-  if (setjmp (vam->jump_buf) != 0)
+  if (clib_setjmp (vam->jump_buf) != 0)
     return;
 
   vam->jump_buf_set = 1;
