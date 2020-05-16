@@ -1503,41 +1503,64 @@ vlib_process_bootstrap (uword _a)
 
   ASSERT (vlib_process_stack_is_valid (p));
 
-  clib_longjmp (&p->return_longjmp, n);
+  p->return_n_vectors = n;
+  longjmp (p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_RETURN);
 
   return n;
 }
 
 /* Called in main stack. */
 static_always_inline uword
-vlib_process_startup (vlib_main_t * vm, vlib_process_t * p, vlib_frame_t * f)
+vlib_process_startup (vlib_main_t * vm, vlib_process_t * p, vlib_frame_t * f,
+		      int *is_suspend)
 {
   vlib_process_bootstrap_args_t a;
-  uword r;
+  uword r = 0;
 
   a.vm = vm;
   a.process = p;
   a.frame = f;
 
-  r = clib_setjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_RETURN);
-  if (r == VLIB_PROCESS_RETURN_LONGJMP_RETURN)
-    r = clib_calljmp (vlib_process_bootstrap, pointer_to_uword (&a),
-		      (void *) p->stack + (1 << p->log2_n_stack_bytes));
-
+  switch (setjmp (p->return_longjmp))
+    {
+    case 0:
+      r = clib_calljmp (vlib_process_bootstrap, pointer_to_uword (&a),
+			(void *) p->stack + (1 << p->log2_n_stack_bytes));
+      break;
+    case VLIB_PROCESS_RETURN_LONGJMP_SUSPEND:
+      *is_suspend = 1;
+      break;
+    case VLIB_PROCESS_RETURN_LONGJMP_RETURN:
+      return p->return_n_vectors;
+      break;
+    default:
+      ASSERT (0);
+    }
   return r;
 }
 
 static_always_inline uword
-vlib_process_resume (vlib_process_t * p)
+vlib_process_resume (vlib_process_t * p, int *is_suspend)
 {
-  uword r;
   p->flags &= ~(VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
 		| VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT
 		| VLIB_PROCESS_RESUME_PENDING);
-  r = clib_setjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_RETURN);
-  if (r == VLIB_PROCESS_RETURN_LONGJMP_RETURN)
-    clib_longjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_RESUME);
-  return r;
+
+  switch (setjmp (p->return_longjmp))
+    {
+    case 0:
+      longjmp (p->resume_longjmp, 1);
+      break;
+    case VLIB_PROCESS_RETURN_LONGJMP_SUSPEND:
+      *is_suspend = 1;
+      break;
+    case VLIB_PROCESS_RETURN_LONGJMP_RETURN:
+      return p->return_n_vectors;
+      break;
+    default:
+      ASSERT (0);
+    }
+  return 0;
 }
 
 static u64
@@ -1549,7 +1572,8 @@ dispatch_process (vlib_main_t * vm,
   vlib_node_t *node = vlib_get_node (vm, node_runtime->node_index);
   u32 old_process_index;
   u64 t;
-  uword n_vectors, is_suspend;
+  uword n_vectors;
+  int is_suspend = 0;
 
   if (node->state != VLIB_NODE_STATE_POLLING
       || (p->flags & (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
@@ -1566,12 +1590,10 @@ dispatch_process (vlib_main_t * vm,
   old_process_index = nm->current_process_index;
   nm->current_process_index = node->runtime_index;
 
-  n_vectors = vlib_process_startup (vm, p, f);
+  n_vectors = vlib_process_startup (vm, p, f, &is_suspend);
 
   nm->current_process_index = old_process_index;
 
-  ASSERT (n_vectors != VLIB_PROCESS_RETURN_LONGJMP_RETURN);
-  is_suspend = n_vectors == VLIB_PROCESS_RETURN_LONGJMP_SUSPEND;
   if (is_suspend)
     {
       vlib_pending_frame_t *pf;
@@ -1631,7 +1653,8 @@ dispatch_suspended_process (vlib_main_t * vm,
   vlib_frame_t *f;
   vlib_process_t *p;
   vlib_pending_frame_t *pf;
-  u64 t, n_vectors, is_suspend;
+  u64 t, n_vectors;
+  int is_suspend = 0;
 
   t = last_time_stamp;
 
@@ -1655,12 +1678,11 @@ dispatch_suspended_process (vlib_main_t * vm,
   /* Save away current process for suspend. */
   nm->current_process_index = node->runtime_index;
 
-  n_vectors = vlib_process_resume (p);
+  n_vectors = vlib_process_resume (p, &is_suspend);
   t = clib_cpu_time_now ();
 
   nm->current_process_index = ~0;
 
-  is_suspend = n_vectors == VLIB_PROCESS_RETURN_LONGJMP_SUSPEND;
   if (is_suspend)
     {
       /* Suspend it again. */
@@ -2219,9 +2241,9 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
       clib_error_report (sub_error);
   }
 
-  switch (clib_setjmp (&vm->main_loop_exit, VLIB_MAIN_LOOP_EXIT_NONE))
+  switch (setjmp (vm->main_loop_exit))
     {
-    case VLIB_MAIN_LOOP_EXIT_NONE:
+    case 0:
       vm->main_loop_exit_set = 1;
       break;
 

@@ -556,15 +556,16 @@ typedef struct
   vlib_node_runtime_t node_runtime;
 
   /* Where to longjmp when process is done. */
-  clib_longjmp_t return_longjmp;
+  jmp_buf return_longjmp;
 
-#define VLIB_PROCESS_RETURN_LONGJMP_RETURN ((uword) ~0 - 0)
-#define VLIB_PROCESS_RETURN_LONGJMP_SUSPEND ((uword) ~0 - 1)
+  /* Number of vectors when process is done. */
+  uword return_n_vectors;
+
+#define VLIB_PROCESS_RETURN_LONGJMP_SUSPEND (1)
+#define VLIB_PROCESS_RETURN_LONGJMP_RETURN (2)
 
   /* Where to longjmp to resume node after suspend. */
-  clib_longjmp_t resume_longjmp;
-#define VLIB_PROCESS_RESUME_LONGJMP_SUSPEND 0
-#define VLIB_PROCESS_RESUME_LONGJMP_RESUME  1
+  jmp_buf resume_longjmp;
 
   u16 flags;
 #define VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK (1 << 0)

@@ -42,54 +42,6 @@
 #endif
 
 #if defined(__x86_64__)
-	.global cdecl(clib_setjmp)
-	.align 4
-#ifndef __APPLE__
-	.type cdecl(clib_setjmp), @function
-#endif
-
-cdecl(clib_setjmp):
-	movq %rbx, 8*0(%rdi)
-	movq %rbp, 8*1(%rdi)
-	movq %r12, 8*2(%rdi)
-	movq %r13, 8*3(%rdi)
-	movq %r14, 8*4(%rdi)
-	movq %r15, 8*5(%rdi)
-
-	/* Save SP after return. */
-	leaq 8(%rsp), %rdx
-	movq %rdx, 8*6(%rdi)
-
-	/* Save PC we are returning to from stack frame. */
-	movq 0(%rsp), %rax
-	movq %rax, 8*7(%rdi)
-
-	/* Give back user's return value. */
-	movq %rsi, %rax
-	ret
-
-	.global cdecl(clib_longjmp)
-	.align 4
-#ifndef __APPLE__
-	.type cdecl(clib_longjmp), @function
-#endif
-cdecl(clib_longjmp):
-        /* Restore regs. */
-	movq 8*0(%rdi), %rbx
-	movq 8*1(%rdi), %rbp
-	movq 8*2(%rdi), %r12
-	movq 8*3(%rdi), %r13
-	movq 8*4(%rdi), %r14
-	movq 8*5(%rdi), %r15
-	movq 8*6(%rdi), %rsp
-	movq 8*7(%rdi), %rdx
-
-	/* Give back user's return value. */
-	movq %rsi, %rax
-
-	/* Away we go. */
-	jmpq *%rdx
-
 	.global cdecl(clib_calljmp)
 	.align 4
 #ifndef __APPLE__
@@ -131,49 +83,6 @@ cdecl(clib_calljmp):
 	jmpq *%rdx
 
 #elif defined(i386)
-	.global cdecl(clib_setjmp)
-	.align 4
-	.type cdecl(clib_setjmp), @function
-cdecl(clib_setjmp):
-	movl 4(%esp), %ecx
-
-	movl %ebp, 4*0(%ecx)
-	movl %ebx, 4*1(%ecx)
-	movl %edi, 4*2(%ecx)
-	movl %esi, 4*3(%ecx)
-
-	/* Save SP after return. */
-	leal 4(%esp), %edx
-	movl %edx, 4*4(%ecx)
-
-	/* Save PC we are returning to from stack frame. */
-	movl 0(%esp), %eax
-	movl %eax, 4*5(%ecx)
-
-	/* Give back user's return value. */
-	movl 8(%esp), %eax
-	ret
-
-	.global cdecl(clib_longjmp)
-	.align 4
-	.type cdecl(clib_longjmp), @function
-cdecl(clib_longjmp):
-	movl 4(%esp), %ecx
-
-	/* Give back user's return value. */
-	movl 8(%esp), %eax
-
-        /* Restore regs. */
-	movl 4*0(%ecx), %ebp
-	movl 4*1(%ecx), %ebx
-	movl 4*2(%ecx), %edi
-	movl 4*3(%ecx), %esi
-	movl 4*4(%ecx), %esp
-	movl 4*5(%ecx), %edx
-
-	/* Away we go. */
-	jmp *%edx
-
 	.global cdecl(clib_calljmp)
 	.align 4
 	.type cdecl(clib_calljmp), @function
