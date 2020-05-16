@@ -71,7 +71,7 @@ typedef enum
   MEMIF_ERR_MAXREG,		/*!< max region limit reached */
   MEMIF_ERR_MAXRING,		/*!< max ring limit reached */
   MEMIF_ERR_NO_INTFD,		/*!< missing interrupt fd */
-  MEMIF_ERR_DISCONNECT,		/*!< disconenct received */
+  MEMIF_ERR_DISCONNECT,		/*!< disconnect received */
   MEMIF_ERR_DISCONNECTED,	/*!< peer interface disconnected */
   MEMIF_ERR_UNKNOWN_MSG,	/*!< unknown message type */
   MEMIF_ERR_POLL_CANCEL,	/*!< memif_poll_event() was cancelled */
@@ -280,7 +280,7 @@ typedef enum
 		    Custom database does not create a default socket
 		    (see memif_per_thread_init).
 		    Memif connection is stored in the same database as the socket.
-    @param secret - otional parameter used as interface autenthication
+    @param secret - optional parameter used as interface authentication
     @param num_s2m_rings - number of slave to master rings
     @param num_m2s_rings - number of master to slave rings
     @param buffer_size - size of buffer in shared memory
@@ -344,11 +344,11 @@ typedef struct
 /** \brief Memif queue details
     @param region - region index
     @param qid - queue id
-    @param ring_size - size of ring buffer in sharem memory
+    @param ring_size - size of ring buffer in shared memory
     @param flags - ring flags
     @param head - ring head pointer
     @param tail - ring tail pointer
-    @param buffer_size - buffer size on sharem memory
+    @param buffer_size - buffer size on shared memory
 */
 typedef struct
 {
@@ -435,7 +435,7 @@ typedef struct
 */
 uint16_t memif_get_version ();
 
-/** \biref Memif get queue event file descriptor
+/** \brief Memif get queue event file descriptor
     @param conn - memif connection handle
     @param qid - queue id
     @param[out] fd - returns event file descriptor
@@ -465,7 +465,7 @@ int memif_set_rx_mode (memif_conn_handle_t conn, memif_rx_mode_t rx_mode,
 char *memif_strerror (int err_code);
 
 /** \brief Memif get details
-    @param conn - memif conenction handle
+    @param conn - memif connection handle
     @param md - pointer to memif details struct
     @param buf - buffer containing details strings
     @param buflen - length of buffer
@@ -478,7 +478,7 @@ int memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
 /** \brief Memif initialization
     @param on_control_fd_update - if control fd updates inform user to watch new fd
     @param app_name - application name (will be truncated to 32 chars)
-    @param memif_alloc - cutom memory allocator, NULL = default
+    @param memif_alloc - custom memory allocator, NULL = default
     @param memif_realloc - custom memory reallocation, NULL = default
     @param memif_free - custom memory free, NULL = default
 
@@ -503,7 +503,7 @@ int memif_init (memif_control_fd_update_t * on_control_fd_update,
     @param private_ctx - private context
     @param on_control_fd_update - if control fd updates inform user to watch new fd
     @param app_name - application name (will be truncated to 32 chars)
-    @param memif_alloc - cutom memory allocator, NULL = default
+    @param memif_alloc - custom memory allocator, NULL = default
     @param memif_realloc - custom memory reallocation, NULL = default
     @param memif_free - custom memory free, NULL = default
 
@@ -543,7 +543,7 @@ int memif_per_thread_cleanup (memif_per_thread_main_handle_t * pt_main);
     @param on_connect - inform user about connected status
     @param on_disconnect - inform user about disconnected status
     @param on_interrupt - informs user about interrupt, if set to null user will not be notified about interrupt, user can use memif_get_queue_efd call to get interrupt fd to poll for events
-    @param private_ctx - private contex passed back to user with callback
+    @param private_ctx - private context passed back to user with callback
 
     Creates memory interface.
 
@@ -553,7 +553,7 @@ int memif_per_thread_cleanup (memif_per_thread_main_handle_t * pt_main);
         On success new fd is passed to user with memif_control_fd_update_t.
 
     MASTER-MODE -
-        Create listener socket and pass fd to user with memif_cntrol_fd_update_t.
+        Create listener socket and pass fd to user with memif_control_fd_update_t.
         If this fd is passed to memif_control_fd_handler accept will be called and
         new fd will be passed to user with memif_control_fd_update_t.
 
@@ -566,11 +566,11 @@ int memif_create (memif_conn_handle_t * conn, memif_conn_args_t * args,
 		  memif_interrupt_t * on_interrupt, void *private_ctx);
 
 /** \brief Memif control file descriptor handler
-    @param fd - file descriptor on which the event occured
-    @param events - event type(s) that occured
+    @param fd - file descriptor on which the event occurred
+    @param events - event type(s) that occurred
 
-    If event occures on any control fd, call memif_control_fd_handler.
-    Internal - lib will "identify" fd (timerfd, lsitener, control) and handle event accordingly.
+    If event occurs on any control fd, call memif_control_fd_handler.
+    Internal - lib will "identify" fd (timerfd, listener, control) and handle event accordingly.
 
     FD-TYPE -
         TIMERFD -
@@ -587,8 +587,8 @@ int memif_control_fd_handler (int fd, uint8_t events);
 
 /** \brief Memif per thread control file descriptor handler
     @param pt_main - per thread main handle
-    @param fd - file descriptor on which the event occured
-    @param events - event type(s) that occured
+    @param fd - file descriptor on which the event occurred
+    @param events - event type(s) that occurred
 
     Per thread version of memif_control_fd_handler.
 
@@ -610,10 +610,10 @@ int memif_per_thread_control_fd_handler (memif_per_thread_main_handle_t
 int memif_delete (memif_conn_handle_t * conn);
 
 /** \brief Memif buffer enq tx
-    @param conn - memif conenction handle
-    @param qid - number indentifying queue
+    @param conn - memif connection handle
+    @param qid - number identifying queue
     @param bufs - memif buffers
-    @param count - number of memif buffers to enque
+    @param count - number of memif buffers to enqueue
     @param count_out - returns number of allocated buffers
 
     Slave is producer of buffers.
@@ -626,8 +626,8 @@ int memif_buffer_enq_tx (memif_conn_handle_t conn, uint16_t qid,
 			 uint16_t * count_out);
 
 /** \brief Memif buffer alloc
-    @param conn - memif conenction handle
-    @param qid - number indentifying queue
+    @param conn - memif connection handle
+    @param qid - number identifying queue
     @param bufs - memif buffers
     @param count - number of memif buffers to allocate
     @param count_out - returns number of allocated buffers
@@ -640,8 +640,8 @@ int memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
 			uint16_t * count_out, uint16_t size);
 
 /** \brief Memif refill ring
-    @param conn - memif conenction handle
-    @param qid - number indentifying queue
+    @param conn - memif connection handle
+    @param qid - number identifying queue
     @param count - number of buffers to be placed on ring
     @param headroom - offset the buffer by headroom
 
@@ -651,8 +651,8 @@ int memif_refill_queue (memif_conn_handle_t conn, uint16_t qid,
 			uint16_t count, uint16_t headroom);
 
 /** \brief Memif transmit buffer burst
-    @param conn - memif conenction handle
-    @param qid - number indentifying queue
+    @param conn - memif connection handle
+    @param qid - number identifying queue
     @param bufs - memif buffers
     @param count - number of memif buffers to transmit
     @param tx - returns number of transmitted buffers
@@ -663,8 +663,8 @@ int memif_tx_burst (memif_conn_handle_t conn, uint16_t qid,
 		    memif_buffer_t * bufs, uint16_t count, uint16_t * tx);
 
 /** \brief Memif receive buffer burst
-    @param conn - memif conenction handle
-    @param qid - number indentifying queue
+    @param conn - memif connection handle
+    @param qid - number identifying queue
     @param bufs - memif buffers
     @param count - number of memif buffers to receive
     @param rx - returns number of received buffers
@@ -702,9 +702,9 @@ int memif_per_thread_poll_event (memif_per_thread_main_handle_t pt_main,
 /** \brief Send signal to stop concurrently running memif_poll_event().
 
     The function, however, does not wait for memif_poll_event() to stop.
-    memif_poll_event() may still return simply because an event has occured
+    memif_poll_event() may still return simply because an event has occurred
     or the timeout has elapsed, but if called repeatedly in an infinite loop,
-    a canceled memif_poll_event() is guaranted to return MEMIF_ERR_POLL_CANCEL
+    a canceled memif_poll_event() is guaranteed to return MEMIF_ERR_POLL_CANCEL
     in the shortest possible time.
     This feature was not available in the first release.
     Use macro MEMIF_HAVE_CANCEL_POLL_EVENT to check if the feature is present.
@@ -762,7 +762,7 @@ int memif_request_connection (memif_conn_handle_t conn);
 
     The first time an interface is assigned a socket, its type is determined.
     For master role it's 'listener', for slave role it's 'client'. Each interface
-    requires socket of its respective type. Default socket is creted if no
+    requires socket of its respective type. Default socket is created if no
     socket handle is passed to memif_create(). It's private context is NULL.
     If all interfaces using this socket are deleted, the socket returns
     to its default state.
@@ -778,7 +778,7 @@ int memif_create_socket (memif_socket_handle_t * sock, const char *filename,
     @param filename - path to socket file
     @param private_ctx - private context
 
-    Per thread version of memif_create_sopcket.
+    Per thread version of memif_create_socket.
 
     \return memif_err_t
 */
@@ -801,7 +801,7 @@ int memif_delete_socket (memif_socket_handle_t * sock);
 
     Return constant pointer to socket filename.
 
-    \return cosnt char *
+    \return const char *
 */
 const char *memif_get_socket_filename (memif_socket_handle_t sock);
 
