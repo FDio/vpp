@@ -315,6 +315,7 @@ typedef struct session_listen_msg_
   ip46_address_t ip;
   u32 ckpair_index;
   u8 crypto_engine;
+  u8 flags;
 } __clib_packed session_listen_msg_t;
 
 STATIC_ASSERT (sizeof (session_listen_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
