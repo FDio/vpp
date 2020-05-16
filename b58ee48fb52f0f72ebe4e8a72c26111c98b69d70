@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bac84609_05211b39",
+        "filename": "src/plugins/gtpu/gtpu_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T03:39:12Z",
+      "side": 1,
+      "message": "Would you add \n@retval VNET_API_ERROR_NO_SUCH_FIB to the docstring in the .api?",
+      "range": {
+        "startLine": 135,
+        "startChar": 11,
+        "endLine": 135,
+        "endChar": 37
+      },
+      "revId": "b58ee48fb52f0f72ebe4e8a72c26111c98b69d70",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "920998d6_c179d3c6",
+        "filename": "src/plugins/gtpu/test/test_gtpu.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 477,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T03:39:12Z",
+      "side": 1,
+      "message": "These should be \"None\" to use the defaults.  Hardcoding the values makes future troubleshooting more difficult.",
+      "range": {
+        "startLine": 476,
+        "startChar": 45,
+        "endLine": 477,
+        "endChar": 73
+      },
+      "revId": "b58ee48fb52f0f72ebe4e8a72c26111c98b69d70",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
