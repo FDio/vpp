@@ -1,0 +1,303 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6250aef8_8ba19bc4",
+        "filename": "src/plugins/lacp/test/test_lacp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T01:27:26Z",
+      "side": 1,
+      "message": "Imports should be grouped in the following order:\n\n  Standard library imports.\n  Related third party imports.\n  Local application/library specific imports.\n  You should put a blank line between each group of imports.\n  (https://www.python.org/dev/peps/pep-0008/#imports)\n\nfrom scapy.contrib.lacp import LACP, SlowProtocol, MarkerProtocol\nfrom scapy.layers.l2 import Ether\nfrom vpp_papi import VppEnum, MACAddress\n\nfrom framework import VppTestCase, VppTestRunner\nfrom vpp_bond_interface import VppBondInterface\nfrom vpp_memif import remove_all_memif_vpp_config, VppSocketFilename, VppMemif\n\nThis makes the future changes to the imports more git friendly.",
+      "range": {
+        "startLine": 5,
+        "startChar": 0,
+        "endLine": 11,
+        "endChar": 40
+      },
+      "revId": "8071b79ed35b9a2981728202305d2bb495c5be28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "443fa8a0_441d77eb",
+        "filename": "src/plugins/lacp/test/test_lacp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T01:27:26Z",
+      "side": 1,
+      "message": "Remove",
+      "range": {
+        "startLine": 25,
+        "startChar": 14,
+        "endLine": 25,
+        "endChar": 29
+      },
+      "revId": "8071b79ed35b9a2981728202305d2bb495c5be28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "146f6f52_00e9eba1",
+        "filename": "src/plugins/lacp/test/test_lacp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T01:27:26Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 40,
+        "startChar": 14,
+        "endLine": 40,
+        "endChar": 30
+      },
+      "revId": "8071b79ed35b9a2981728202305d2bb495c5be28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "429806c7_168c6cc7",
+        "filename": "src/plugins/lacp/test/test_lacp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T01:27:26Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 43,
+        "startChar": 14,
+        "endLine": 43,
+        "endChar": 30
+      },
+      "revId": "8071b79ed35b9a2981728202305d2bb495c5be28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "095ac0cf_8cd0fcb9",
+        "filename": "src/plugins/lacp/test/test_lacp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T01:27:26Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 46,
+        "startChar": 14,
+        "endLine": 46,
+        "endChar": 30
+      },
+      "revId": "8071b79ed35b9a2981728202305d2bb495c5be28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "78321e57_d0d4b4e4",
+        "filename": "src/plugins/lacp/test/test_lacp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T01:27:26Z",
+      "side": 1,
+      "message": "sw_if_index\u003dbond0.sw_if_index",
+      "range": {
+        "startLine": 115,
+        "startChar": 50,
+        "endLine": 115,
+        "endChar": 67
+      },
+      "revId": "8071b79ed35b9a2981728202305d2bb495c5be28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c90688c2_d776ba71",
+        "filename": "src/plugins/lacp/test/test_lacp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T01:27:26Z",
+      "side": 1,
+      "message": "There is no reason to iterate through this.  We can do something like:\nshow_trace_max_100 \u003d self.vapi.ppcli(\"show trace max 100\")\nself.assertIn(\"Marker Information TLV:\", show_trace_max_100)",
+      "range": {
+        "startLine": 139,
+        "startChar": 0,
+        "endLine": 144,
+        "endChar": 34
+      },
+      "revId": "8071b79ed35b9a2981728202305d2bb495c5be28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1de57521_2a2a3fd0",
+        "filename": "src/plugins/lacp/test/test_lacp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T01:27:26Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 157,
+        "startChar": 14,
+        "endLine": 157,
+        "endChar": 27
+      },
+      "revId": "8071b79ed35b9a2981728202305d2bb495c5be28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c8fa9d55_b85387b5",
+        "filename": "src/plugins/lacp/test/test_lacp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T01:27:26Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 161,
+        "startChar": 14,
+        "endLine": 161,
+        "endChar": 27
+      },
+      "revId": "8071b79ed35b9a2981728202305d2bb495c5be28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b0ac420f_6b46f0d4",
+        "filename": "src/plugins/lacp/test/test_lacp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T01:27:26Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 164,
+        "startChar": 14,
+        "endLine": 164,
+        "endChar": 28
+      },
+      "revId": "8071b79ed35b9a2981728202305d2bb495c5be28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "52821766_051b4a14",
+        "filename": "src/plugins/lacp/test/test_lacp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T01:27:26Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 167,
+        "startChar": 14,
+        "endLine": 167,
+        "endChar": 28
+      },
+      "revId": "8071b79ed35b9a2981728202305d2bb495c5be28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7af6d4ed_e002c8f9",
+        "filename": "src/plugins/lacp/test/test_lacp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T01:27:26Z",
+      "side": 1,
+      "message": "This iterator along with the ones below go away if you implement sw_interface_bond_dump(sw_if_index\u003d)\nIt tends to be less work to implement the filter in the api than adding all the python iteration.",
+      "range": {
+        "startLine": 192,
+        "startChar": 12,
+        "endLine": 192,
+        "endChar": 30
+      },
+      "revId": "8071b79ed35b9a2981728202305d2bb495c5be28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "801c198d_549f90e3",
+        "filename": "src/plugins/lacp/test/test_lacp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T01:27:26Z",
+      "side": 1,
+      "message": "Should use assertEqual here and within other occurrences the file.  \nThis yields a completely unuseful error message that False is not True, that one then has to research.",
+      "range": {
+        "startLine": 305,
+        "startChar": 17,
+        "endLine": 305,
+        "endChar": 27
+      },
+      "revId": "8071b79ed35b9a2981728202305d2bb495c5be28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
