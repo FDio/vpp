@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0d568f56_51f97bb6",
+        "filename": "src/vnet/ip6-nd/ip6_nd_proxy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-16T02:34:10Z",
+      "side": 1,
+      "message": "maybe host-ip as it is \"ip\" in the api call?",
+      "range": {
+        "startLine": 116,
+        "startChar": 53,
+        "endLine": 116,
+        "endChar": 57
+      },
+      "revId": "ce2e60284115a113241519eb01361a5048a9d99f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
