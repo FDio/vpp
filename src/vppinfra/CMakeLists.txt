@@ -42,6 +42,7 @@ install(
 set(VPPINFRA_SRCS
   backtrace.c
   bihash_all_vector.c
+  calljmp.S
   cpu.c
   dlmalloc.c
   elf.c
@@ -52,7 +53,6 @@ set(VPPINFRA_SRCS
   graph.c
   hash.c
   heap.c
-  longjmp.S
   macros.c
   maplog.c
   mem_dlmalloc.c
