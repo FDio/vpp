@@ -160,6 +160,7 @@ typedef enum
   VPPCOM_ATTR_SET_TCP_USER_MSS,
   VPPCOM_ATTR_SET_SHUT,
   VPPCOM_ATTR_GET_SHUT,
+  VPPCOM_ATTR_SET_CONNECTED,
 } vppcom_attr_op_t;
 
 typedef struct _vcl_poll
