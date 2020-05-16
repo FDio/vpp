@@ -100,13 +100,14 @@ typedef struct serialize_main_header_t
   clib_error_t *error;
 
   /* Exit unwind point if error occurs. */
-  clib_longjmp_t error_longjmp;
+  jmp_buf error_longjmp;
 } serialize_main_header_t;
 
 always_inline void
 serialize_error (serialize_main_header_t * m, clib_error_t * error)
 {
-  clib_longjmp (&m->error_longjmp, pointer_to_uword (error));
+  m->error = error;
+  longjmp (m->error_longjmp, 1);
 }
 
 #define serialize_error_return(m,args...)			\
