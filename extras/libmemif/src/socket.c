@@ -316,7 +316,7 @@ memif_msg_enq_connected (memif_connection_t * c)
 }
 
 /* immediately send disconnect msg */
-    /* specifie protocol for disconnect msg err_code
+    /* specify protocol for disconnect msg err_code
        so that it will be compatible with VPP? (header/doc) */
 int
 memif_msg_send_disconnect (int fd, uint8_t * err_string, uint32_t err_code)

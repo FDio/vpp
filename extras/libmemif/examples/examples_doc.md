@@ -13,6 +13,6 @@ Current WORKDIR is set to root repository directory. Example apps can be run fro
 
 Example app | Description
 ------------|------------
-@ref extras/libmemif/examples/icmp_responder | Simplest implementaion. Event polling is handled by libmemif. Single memif conenction in slave mode is created (id 0). Use Ctrl + C to exit app. Memif receive mode: interrupt.
+@ref extras/libmemif/examples/icmp_responder | Simplest implementation. Event polling is handled by libmemif. Single memif conenction in slave mode is created (id 0). Use Ctrl + C to exit app. Memif receive mode: interrupt.
 @ref extras/libmemif/examples/icmp_responder-epoll (run in container by default) | Supports multiple connections and master mode. User can create/delete connections, set ip addresses, print connection information. @ref libmemif_example_setup_doc contains instructions on basic connection use cases setups. Memif receive mode: interrupt. App provides functionality to disable interrupts for specified queue/s for testing purposes. Polling mode is not implemented in this example.
 @ref extras/libmemif/examples/icmp_responder-mt) | Multi-thread example, very similar to icmpr-epoll. Packets are handled in threads assigned to specific queues. Slave mode only. Memif receive mode: polling (memif_rx_poll function), interrupt (memif_rx_interrupt function). Receive modes differ per queue.
