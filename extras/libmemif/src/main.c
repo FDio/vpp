@@ -110,7 +110,7 @@ const char *memif_errlist[ERRLIST_LEN] = {	/* MEMIF_ERR_SUCCESS */
   /* MEMIF_ERR_NOBUF */
   "Not enough memif buffers. There are unreceived data in shared memory.",
   /* MEMIF_ERR_NOBUF_DET */
-  "Not enough space for memif details in suplied buffer. String data might be malformed.",
+  "Not enough space for memif details in supplied buffer. String data might be malformed.",
   /* MEMIF_ERR_INT_WRITE */
   "Send interrupt error.",
   /* MEMIF_ERR_MFMSG */
@@ -122,7 +122,7 @@ const char *memif_errlist[ERRLIST_LEN] = {	/* MEMIF_ERR_SUCCESS */
   /* MEMIF_ERR_ID */
   "Unmatched interface id.",
   /* MEMIF_ERR_ACCSLAVE */
-  "Slave cannot accept connection reqest.",
+  "Slave cannot accept connection request.",
   /* MEMIF_ERR_ALRCONN */
   "Interface is already connected.",
   /* MEMIF_ERR_MODE */
@@ -281,7 +281,7 @@ memif_mod_epoll_fd (libmemif_main_t * lm, int fd, uint32_t events)
       DBG ("epoll_ctl: %s fd %d", strerror (errno), fd);
       return -1;
     }
-  DBG ("fd %d moddified on epoll", fd);
+  DBG ("fd %d modified on epoll", fd);
   return 0;
 }
 
@@ -1204,7 +1204,7 @@ memif_create (memif_conn_handle_t * c, memif_conn_args_t * args,
 
       conn->index = index;
 
-      /* try connectiong to master */
+      /* try connecting to master */
       err = memif_request_connection (conn);
       if ((err != MEMIF_ERR_SUCCESS) && (lm->disconn_slaves == 0))
 	{

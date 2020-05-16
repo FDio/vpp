@@ -18,7 +18,7 @@ control_fd_update (int fd, uint8_t events)
 err = memif_init (control_fd_update, APP_NAME, NULL, NULL);
 ```
    
-> If event occurres on any file descriptor returned by this callback, call memif\_control\_fd\_handler function. Since version 2.0, last two optional arguments are used to specify custom memory allocation.
+> If event occurs on any file descriptor returned by this callback, call memif\_control\_fd\_handler function. Since version 2.0, last two optional arguments are used to specify custom memory allocation.
 ```C
 memif_err = memif_control_fd_handler (evt.data.fd, events);
 ``` 
@@ -38,7 +38,7 @@ memif_err = memif_control_fd_handler (evt.data.fd, events);
 > Memif initialization function will initialize internal structures and create timer file descriptor, which will be used for sending periodic connection requests. Timer is disarmed if no memif interface is created.
  
 2. Creating interface
-   - Declare memif connction handle.
+   - Declare memif connection handle.
 ```C
 memif_conn_handle_t c;
 ```
