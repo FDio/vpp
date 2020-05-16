@@ -209,6 +209,8 @@ vcl_send_session_listen (vcl_worker_t * wrk, vcl_session_t * s)
   clib_memcpy_fast (&mp->ip, &s->transport.lcl_ip, sizeof (mp->ip));
   mp->port = s->transport.lcl_port;
   mp->proto = s->session_type;
+  if (s->flags & VCL_SESSION_F_CONNECTED)
+    mp->flags = TRANSPORT_CFG_F_CONNECTED;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
@@ -3592,6 +3594,11 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	*(int *) buffer = SHUT_RDWR;
       *buflen = sizeof (int);
       break;
+
+    case VPPCOM_ATTR_SET_CONNECTED:
+      session->flags |= VCL_SESSION_F_CONNECTED;
+      break;
+
     default:
       rv = VPPCOM_EINVAL;
       break;
