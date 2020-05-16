@@ -51,6 +51,7 @@ typedef enum
   VPPCOM_PROTO_UDP,
   VPPCOM_PROTO_NONE,
   VPPCOM_PROTO_TLS,
+  VPPCOM_PROTO_UDPC,
   VPPCOM_PROTO_QUIC,
 } vppcom_proto_t;
 

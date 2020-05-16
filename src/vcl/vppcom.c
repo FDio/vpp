@@ -209,6 +209,8 @@ vcl_send_session_listen (vcl_worker_t * wrk, vcl_session_t * s)
   clib_memcpy_fast (&mp->ip, &s->transport.lcl_ip, sizeof (mp->ip));
   mp->port = s->transport.lcl_port;
   mp->proto = s->session_type;
+  if (s->flags & VCL_SESSION_F_CONNECTED)
+    mp->flags = TRANSPORT_CFG_F_CONNECTED;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
@@ -1272,6 +1274,12 @@ vppcom_session_create (u8 proto, u8 is_nonblocking)
 
   if (is_nonblocking)
     VCL_SESS_ATTR_SET (session->attr, VCL_SESS_ATTR_NONBLOCK);
+
+  if (proto == VPPCOM_PROTO_UDPC)
+    {
+      session->session_type = VPPCOM_PROTO_UDP;
+      session->flags |= VCL_SESSION_F_CONNECTED;
+    }
 
   vcl_evt (VCL_EVT_CREATE, session, session_type, session->session_state,
 	   is_nonblocking, session_index);
