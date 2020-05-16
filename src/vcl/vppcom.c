@@ -1717,6 +1717,9 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
     {
       if (session->session_type != VPPCOM_PROTO_UDP)
 	return VPPCOM_EINVAL;
+      if (session->is_vep_session)
+	vppcom_epoll_ctl (session->vep.vep_sh, EPOLL_CTL_DEL,
+			  vcl_session_handle (session), 0);
       vcl_send_session_unlisten (wrk, session);
       session->session_state = STATE_CLOSED;
     }
