@@ -116,10 +116,77 @@ cdecl(clib_calljmp):
 
 #elif defined(__SPU__)
 
+#elif defined(__powerpc64__) && (_CALL_ELF == 2)
+
+	.abiversion 2
+	.section	".text"
+
+	.align 2
+	.p2align 4,,15
+	.globl cdecl(clib_calljmp)
+	.type	cdecl(clib_calljmp), @function
+cdecl(clib_calljmp):
+	.cfi_startproc
+.L.cdecl(clib_calljmp):
+0:	addis 2,12,.TOC.-.L.cdecl(clib_calljmp)@ha
+	addi 2,2,.TOC.-.L.cdecl(clib_calljmp)@l
+	.localentry	clib_calljmp,.-cdecl(clib_calljmp)
+
+	/* store link register into the stack frame */
+	mflr 0
+	std 0,16(1)
+
+	/* move stack pointer down for one frame */
+	stdu 1,-32(1)
+	.cfi_def_cfa_offset 32
+	.cfi_offset 65, 16
+
+	/* move func pointer to r12 */
+	mr 12,3
+
+	/* pass func_arg as first arg */
+	mr 3,4
+
+	/* store old stack pointer into the top of the new stack */
+	std 1,-8(5)
+
+	/* set new stack pointer to point at stack_addr - 256 */
+	addi 5,5,-256
+	mr 1,5
+
+	/* put function pointer into CTR register */
+	mtctr 12
+
+	/* store TOC pointer into stack frame */
+	std 2,24(1)
+
+	/* unconditional branch to counter register */
+	bctrl
+
+	/* load TOC pointer from stack frame */
+	ld 2,24(1)
+
+	/* go back to the start of the new stack */
+	addi 1,1,256
+
+	/* load old stack pointer */
+	ld 1,-8(1)
+
+	/* move stack pointer back to previous frame */
+	addi 1,1,32
+
+	/* restore link register from the stack frame */
+	.cfi_def_cfa_offset 0
+	ld 0,16(1)
+	mtlr 0
+	.cfi_restore 65
+	blr
+	.long 0
+	.byte 0,0,0,1,128,0,0,0
+	.cfi_endproc
+
 #elif defined(__powerpc64__)
-
 	.text
-
 
 	.globl cdecl(clib_calljmp)
 	.section	".opd","aw"
@@ -129,28 +196,49 @@ cdecl(clib_calljmp):
 	.previous
 	.type	cdecl(clib_calljmp), @function
 .L.cdecl(clib_calljmp):
+
+	/* store link register into the stack frame */
 	mflr 0
-	mr 9,3
 	std 0,16(1)
+
+	/* store function pointer into r9 */
+	mr 9,3
+
+	/* move stack pointer down for one frame */
 	stdu 1,-112(1)
-#APP
+	/* store old stack pointer into the top of the new stack */
 	std 1,-8(5)
+
+	/* set new stack pointer to point at stack_addr - 256 */
 	addi 5,5,-256
 	mr 1,5
-#NO_APP
+
 	ld 10,0(9)
+
+	/* store TOC pointer into stack */
 	std 2,40(1)
+
 	mr 3,4
 	mtctr 10
 	ld 11,16(9)
 	ld 2,8(9)
+
+	/* unconditional branch to counter register */
 	bctrl
+
+	/* load TOC pointer from stack */
 	ld 2,40(1)
-#APP
+
+	/* go back to the start of the new stack */
 	addi 1,1,256
+
+	/* load old stack pointer */
 	ld 1,-8(1)
-#NO_APP
+
+	/* move stack pointer back to previous frame */
 	addi 1,1,112
+
+	/* restore link register from the stack frame */
 	ld 0,16(1)
 	mtlr 0
 	blr
