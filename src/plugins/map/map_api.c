@@ -48,14 +48,14 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
 		       mp->ip6_prefix.len,
 		       (ip6_address_t *) & mp->ip6_src.address,
 		       mp->ip6_src.len, mp->ea_bits_len, mp->psid_offset,
-		       mp->psid_length, &index, ntohs (mp->mtu), flags,
-		       mp->tag);
+		       mp->psid_length, &index, mp->mtu, flags, mp->tag);
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_MAP_ADD_DOMAIN_REPLY,
+  REPLY_MACRO2_END(VL_API_MAP_ADD_DOMAIN_REPLY,
   ({
-    rmp->index = ntohl(index);
+    rmp->index = index;
   }));
+
   /* *INDENT-ON* */
 }
 
@@ -556,6 +556,9 @@ map_plugin_api_hookup (vlib_main_t * vm)
   map_main_t *mm = &map_main;
 
   mm->msg_id_base = setup_message_id_table ();
+
+  api_main_t *am = vlibapi_get_main ();
+  am->is_autoendian[mm->msg_id_base + VL_API_MAP_ADD_DOMAIN] = 1;
   return 0;
 }
 

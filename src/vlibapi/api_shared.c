@@ -485,6 +485,14 @@ msg_handler_internal (api_main_t * am,
 	      vl_msg_api_barrier_trace_context (am->msg_names[id]);
 	      vl_msg_api_barrier_sync ();
 	    }
+
+	  if (am->is_autoendian[id])
+	    {
+	      void (*endian_fp) (void *);
+	      endian_fp = am->msg_endian_handlers[id];
+	      (*endian_fp) (the_msg);
+	    }
+
 	  (*am->msg_handlers[id]) (the_msg);
 	  if (!am->is_mp_safe[id])
 	    vl_msg_api_barrier_release ();
@@ -605,6 +613,13 @@ vl_msg_api_handler_with_vm_node (api_main_t * am, svm_region_t * vlib_rp,
 
       if (PREDICT_FALSE (vl_msg_api_fuzz_hook != 0))
 	(*vl_msg_api_fuzz_hook) (id, the_msg);
+
+      if (am->is_autoendian[id])
+	{
+	  void (*endian_fp) (void *);
+	  endian_fp = am->msg_endian_handlers[id];
+	  (*endian_fp) (the_msg);
+	}
 
       (*handler) (the_msg, vm, node);
       if (is_private)
@@ -772,7 +787,8 @@ _(msg_endian_handlers)                          \
 _(msg_print_handlers)                           \
 _(api_trace_cfg)				\
 _(message_bounce)				\
-_(is_mp_safe)
+_(is_mp_safe)					\
+_(is_autoendian)
 
 void
 vl_msg_api_config (vl_msg_api_msg_config_t * c)
@@ -813,6 +829,7 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
   am->msg_print_handlers[c->id] = c->print;
   am->message_bounce[c->id] = c->message_bounce;
   am->is_mp_safe[c->id] = c->is_mp_safe;
+  am->is_autoendian[c->id] = c->is_autoendian;
 
   am->api_trace_cfg[c->id].size = c->size;
   am->api_trace_cfg[c->id].trace_enable = c->traced;
@@ -842,6 +859,7 @@ vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
   c->replay = 1;
   c->message_bounce = 0;
   c->is_mp_safe = 0;
+  c->is_autoendian = 0;
   vl_msg_api_config (c);
 }
 
