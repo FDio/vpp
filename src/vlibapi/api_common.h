@@ -132,6 +132,7 @@ typedef struct
   int replay;			/**< is this message to be replayed?  */
   int message_bounce;		/**< do not free message after processing */
   int is_mp_safe;		/**< worker thread barrier required?  */
+  int is_autoendian;		/**< endian conversion required?  */
 } vl_msg_api_msg_config_t;
 
 /** Message header structure */
@@ -181,11 +182,11 @@ void vl_msg_api_config (vl_msg_api_msg_config_t *);
 void vl_msg_api_set_cleanup_handler (int msg_id, void *fp);
 void vl_msg_api_queue_handler (svm_queue_t * q);
 
-void vl_msg_api_barrier_sync (void) __attribute__ ((weak));
-void vl_msg_api_barrier_release (void) __attribute__ ((weak));
+void vl_msg_api_barrier_sync (void) __attribute__((weak));
+void vl_msg_api_barrier_release (void) __attribute__((weak));
 #ifdef BARRIER_TRACING
 void vl_msg_api_barrier_trace_context (const char *context)
-  __attribute__ ((weak));
+  __attribute__((weak));
 #else
 #define vl_msg_api_barrier_trace_context(X)
 #endif
@@ -247,6 +248,9 @@ typedef struct
 
   /** Message is mp safe vector */
   u8 *is_mp_safe;
+
+  /** Message requires us to do endian conversion */
+  u8 *is_autoendian;
 
   /** Allocator ring vectors (in shared memory) */
   struct ring_alloc_ *arings;

@@ -64,6 +64,7 @@ class VPPAPILexer(object):
         'manual_endian': 'MANUAL_ENDIAN',
         'dont_trace': 'DONT_TRACE',
         'autoreply': 'AUTOREPLY',
+        'autoendian': 'AUTOENDIAN',
         'option': 'OPTION',
         'u8': 'U8',
         'u16': 'U16',
@@ -266,6 +267,7 @@ class Define():
         self.manual_print = False
         self.manual_endian = False
         self.autoreply = False
+        self.autoendian = False
         self.singular = False
         self.options = {}
         for f in flags:
@@ -277,6 +279,8 @@ class Define():
                 self.manual_endian = True
             elif f == 'autoreply':
                 self.autoreply = True
+            elif f == 'autoendian':
+                self.autoendian = True
 
         remove = []
         for b in block:
@@ -569,7 +573,8 @@ class VPPAPIParser(object):
                 | MANUAL_ENDIAN
                 | DONT_TRACE
                 | TYPEONLY
-                | AUTOREPLY'''
+                | AUTOREPLY
+                | AUTOENDIAN'''
         if len(p) == 1:
             return
         p[0] = p[1]
