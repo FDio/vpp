@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "29a20562_b61d19c5",
+        "filename": "RELEASE.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-05-18T16:52:09Z",
+      "side": 1,
+      "message": "I\u0027d add to this \"New fifo design/architecture\" (https://gerrit.fd.io/r/c/vpp/+/24086). It\u0027s a refactor so that\u0027s why it wasn\u0027t caught",
+      "range": {
+        "startLine": 141,
+        "startChar": 3,
+        "endLine": 141,
+        "endChar": 13
+      },
+      "revId": "d78e28023932f6e44134516bf56d3e9aaea21636",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7d318465_b720c66e",
+        "filename": "RELEASE.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-05-18T16:52:09Z",
+      "side": 1,
+      "message": "There are lots of \"improvement\" type of patches (for tls, udp and vcl as well). But not sure we\u0027d want to pollute this list with them ..",
+      "range": {
+        "startLine": 201,
+        "startChar": 4,
+        "endLine": 201,
+        "endChar": 7
+      },
+      "revId": "d78e28023932f6e44134516bf56d3e9aaea21636",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
