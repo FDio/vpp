@@ -30,7 +30,7 @@ import "vnet/interface_types.api";
     @param mtu - MTU. default 1280
     @param tag - A user field stored with the MAP
 */
-define map_add_domain
+autoendian define map_add_domain
 {
   u32 client_index;
   u32 context;

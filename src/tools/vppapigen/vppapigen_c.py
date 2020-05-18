@@ -394,6 +394,7 @@ def endianfun_array(o):
                                name=o.fieldname))
     return output
 
+no_endian_conversion = {'client_index': None}
 
 def endianfun_obj(o):
     output = ''
@@ -402,6 +403,9 @@ def endianfun_obj(o):
     elif o.type != 'Field':
         output += ('    s = format(s, "\\n{} {} {} (print not implemented");\n'
                    .format(o.type, o.fieldtype, o.fieldname))
+        return output
+    if o.fieldname in no_endian_conversion:
+        output += '    /* a->{n} = a->{n} (no-op) */\n'.format(n=o.fieldname)
         return output
     if o.fieldtype in endian_strings:
         output += ('    a->{name} = {format}(a->{name});\n'
@@ -594,6 +598,7 @@ def generate_include_types(s, module, stream):
 
 def generate_c_boilerplate(services, defines, file_crc, module, stream):
     write = stream.write
+    define_hash = {d.name:d for d in defines}
 
     hdr = '''\
 #define vl_endianfun		/* define message structures */
@@ -612,6 +617,7 @@ def generate_c_boilerplate(services, defines, file_crc, module, stream):
     write('static u16\n')
     write('setup_message_id_table (void) {\n')
     write('   api_main_t *am = my_api_main;\n')
+    write('   vl_msg_api_msg_config_t c;\n')
     write('   u16 msg_id_base = vl_msg_api_get_msg_ids ("{}_{crc:08x}", VL_MSG_FIRST_AVAILABLE);\n'
           .format(module, crc=file_crc))
 
@@ -621,11 +627,16 @@ def generate_c_boilerplate(services, defines, file_crc, module, stream):
               '                                VL_API_{ID} + msg_id_base);\n'
               .format(n=d.name, ID=d.name.upper(), crc=d.crc))
     for s in services:
-        write('   vl_msg_api_set_handlers(VL_API_{ID} + msg_id_base, "{n}",\n'
-              '                           vl_api_{n}_t_handler, vl_noop_handler,\n'
-              '                           vl_api_{n}_t_endian, vl_api_{n}_t_print,\n'
-              '                           sizeof(vl_api_{n}_t), 1);\n'
-              .format(n=s.caller, ID=s.caller.upper()))
+        d = define_hash[s.caller]
+        write('   c = (vl_msg_api_msg_config_t) {{.id = VL_API_{ID} + msg_id_base,\n'
+              '                                  .name = "{n}",\n'
+              '                                  .handler = vl_api_{n}_t_handler,\n'
+              '                                  .cleanup = vl_noop_handler,\n'
+              '                                  .endian = vl_api_{n}_t_endian,\n'
+              '                                  .print = vl_api_{n}_t_print,\n'
+              '                                  .is_autoendian = {autoendian}}};\n'
+              .format(n=s.caller, ID=s.caller.upper(), autoendian = 1 if d.autoendian else 0))
+        write('   vl_msg_api_config (&c);\n')
 
     write('   return msg_id_base;\n')
     write('}\n')
