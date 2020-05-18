@@ -21,7 +21,7 @@ parts:
       # For the dpdk plugin
       - libnuma1
     override-build: |
-      UNATTENDED=y make install-dep build-release
+      UNATTENDED=y make install-dep install-ext-deps build-release
     override-prime: |
       # Copy the build results into SNAPCRAFT_PRIME
       cd $SNAPCRAFT_PART_BUILD/build-root/install-vpp-native
@@ -49,7 +49,7 @@ apps:
     environment:
         "LD_LIBRARY_PATH": "$SNAP/vpp/lib"
 
-  svmtool:
-    command: vpp/bin/svmtool
+  g2:
+    command: vpp/bin/g2
     environment:
         "LD_LIBRARY_PATH": "$SNAP/vpp/lib"

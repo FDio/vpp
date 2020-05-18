@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -eu
 
 cd ../../build-root
@@ -8,4 +7,10 @@ make distclean > /dev/null 2>&1
 cd ../
 echo "construct source tarball..."
 tar -zcf extras/snap/vpp.tgz --exclude=extras/snap/vpp.tgz .
-exit 0
+
+echo "create the vpp snap"
+cd extras/snap
+
+SNAPCRAFT_BUILD_ENVIRONMENT_MEMORY=8G \
+SNAPCRAFT_BUILD_ENVIRONMENT_CPU=8 \
+   snapcraft --debug
