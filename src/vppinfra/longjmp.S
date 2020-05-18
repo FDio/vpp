@@ -209,19 +209,6 @@ cdecl(clib_calljmp):
 
 #elif defined(__powerpc64__)
 
-	.text
-
-#define _prologue(n)				\
-    .align 2 ;					\
-    .globl n, .##n ;				\
-    .section ".opd", "aw" ;			\
-    .align 3 ;					\
-n:  .quad .##n, .TOC.@tocbase, 0 ;		\
-    .previous ;					\
-    .size n, 24 ;				\
-    .type .##n, @function ;			\
-.##n:
-
 #define _foreach_14_31							\
 _ (14, 0)  _ (15, 1)  _ (16, 2)  _ (17, 3)  _ (18, 4)  _ (19, 5)	\
 _ (20, 6)  _ (21, 7)  _ (22, 8)  _ (23, 9)  _ (24, 10) _ (25, 11)	\
@@ -237,7 +224,53 @@ _ (26, 6) _ (27, 7) _ (28, 8) _ (29, 9) _ (30, 10) _ (31, 11)
 #define CLIB_POWERPC_ALTIVEC_N_REGS 0
 #endif
 
-_prologue (cdecl(clib_setjmp))
+#if _CALL_ELF == 2
+
+#define _prologue(n)				\
+	.globl n ;				\
+	.p2align 4 ;				\
+	.type n, @function ;			\
+n: ;						\
+.L##n##_begin: ;
+
+#define _gep_lep(n)				\
+.L##n##_gep: ;					\
+	addis 2, 12, .TOC.-.L##n##_gep@ha ;	\
+	addi 2, 2, .TOC.-.L##n##_gep@l ;	\
+.L##n##_lep: ;					\
+	.localentry n, .L##n##_lep-.L##n##_gep
+
+#else /* _CALL_ELF == 1 */
+
+#define _prologue(n)				\
+    .globl n ;					\
+    .p2align 4 ;				\
+    .type .##n, @function ;			\
+    .section ".opd", "aw" ,@progbits ;		\
+n: ;						\
+    .p2align 3 ;				\
+    .quad .L##n##_begin ;			\
+    .quad .TOC.@tocbase ;			\
+    .quad 0 ;					\
+    .text ;					\
+.L##n##_begin: ;
+
+#endif
+
+#define _epilogue(n)				\
+	.long   0 ;				\
+	.quad   0 ;				\
+.L##n##_end: ;					\
+	.size   n, .L##n##_end-.L##n##_begin
+
+#if _CALL_ELF == 2
+	.abiversion 2
+	.section        ".text"
+#else
+	.text
+#endif
+
+_prologue(clib_setjmp)
 	mflr 0
 	std 0, 8*0(3)
 	std 1, 8*1(3)
@@ -267,10 +300,10 @@ _prologue (cdecl(clib_setjmp))
 
 	/* Return value. */
 	mr 3, 4
-
 	blr
+_epilogue(clib_setjmp)
 
-_prologue (cdecl(clib_longjmp))
+_prologue(clib_longjmp)
 	ld 0, 8*0(3)
 	mtlr 0
 	ld 1, 8*1(3)
@@ -300,46 +333,59 @@ _prologue (cdecl(clib_longjmp))
 
 	/* Return value. */
 	mr 3, 4
-
 	blr
+_epilogue(clib_longjmp)
 
-	.globl cdecl(clib_calljmp)
-	.section	".opd","aw"
-	.align 3
-cdecl(clib_calljmp):
-	.quad	.L.cdecl(clib_calljmp),.TOC.@tocbase,0
-	.previous
-	.type	cdecl(clib_calljmp), @function
-.L.cdecl(clib_calljmp):
-	mflr 0
-	mr 9,3
-	std 0,16(1)
-	stdu 1,-112(1)
-#APP
-	std 1,-8(5)
-	addi 5,5,-256
-	mr 1,5
-#NO_APP
+#if _CALL_ELF == 2
+_prologue(clib_calljmp)
+_gep_lep(clib_calljmp)
+	mflr 0			/* get link register into r0 */
+	std 0,16(1)		/* store r0 into the stack frame */
+	stdu 1,-32(1)		/* move sp down for one frame */
+	mr 12,3			/* move func pointer to r12 */
+	mr 3,4			/* pass func_arg as first arg */
+	std 1,-8(5)		/* store old sp into the top of the new stack */
+	addi 5,5,-256		/* stack_addr =- 256 */
+	mr 1,5			/* set new sp */
+	mtctr 12		/* put function pointer into CTR register */
+	std 2,24(1)		/* store TOC pointer into stack frame */
+	bctrl			/* unconditional branch to counter register */
+	ld 2,24(1)		/* load TOC pointer from stack frame */
+	addi 1,1,256		/* go back to the start of the new stack */
+	ld 1,-8(1)		/* load old sp */
+	addi 1,1,32		/* move sp back to previous frame */
+	ld 0,16(1)		/* get old link reg value from the stack */
+	mtlr 0			/* restore link reg value */
+	blr
+_epilogue(clib_calljmp)
+
+#else /* v1 ABI */
+
+_prologue(clib_calljmp)
+	mflr 0			/* get link register into r0 */
+	mr 9,3			/* store function pointer into the r9 */
+	std 0,16(1)		/* store r0 into the stack frame */
+	stdu 1,-112(1)		/* move sp down for one frame */
+	std 1,-8(5)		/* store old sp into the top of the new stack */
+	addi 5,5,-256		/* stack_addr =- 256 */
+	mr 1,5			/* set new sp */
 	ld 10,0(9)
-	std 2,40(1)
+	std 2,40(1)		/* store TOC pointer into the stack */
 	mr 3,4
 	mtctr 10
 	ld 11,16(9)
 	ld 2,8(9)
-	bctrl
-	ld 2,40(1)
-#APP
-	addi 1,1,256
-	ld 1,-8(1)
-#NO_APP
-	addi 1,1,112
-	ld 0,16(1)
+	bctrl			/* unconditional branch to counter register */
+	ld 2,40(1)		/* load TOC pointer from the stack */
+	addi 1,1,256		/* go back to the start of the new stack */
+	ld 1,-8(1)		/* load the old sp */
+	addi 1,1,112		/* move sp back to previous frame */
+	ld 0,16(1)		/* restore link register from the stack frame */
 	mtlr 0
 	blr
-	.long 0
-	.byte 0,0,0,1,128,0,0,0
-	.size	cdecl(clib_calljmp),.-.L.cdecl(clib_calljmp)
+_epilogue(clib_calljmp)
 
+#endif
 #elif defined(__powerpc__)
 
 #define _foreach_14_31							\
