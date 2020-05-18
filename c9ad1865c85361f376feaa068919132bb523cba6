@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a4009db_17351909",
+        "filename": "src/plugins/srv6-mobile/mobile_plugin_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-18T18:35:48Z",
+      "side": 1,
+      "message": "(sp) functions",
+      "range": {
+        "startLine": 22,
+        "startChar": 25,
+        "endLine": 22,
+        "endChar": 35
+      },
+      "revId": "c9ad1865c85361f376feaa068919132bb523cba6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "98a490c3_72df1ee4",
+        "filename": "src/plugins/srv6-mobile/mobile_plugin_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-18T18:35:48Z",
+      "side": 1,
+      "message": "trailing whitespace",
+      "range": {
+        "startLine": 24,
+        "startChar": 26,
+        "endLine": 24,
+        "endChar": 28
+      },
+      "revId": "c9ad1865c85361f376feaa068919132bb523cba6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "45491eb8_7237bccd",
+        "filename": "src/plugins/srv6-mobile/mobile_plugin_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-18T18:35:48Z",
+      "side": 1,
+      "message": "Meaning is not clear",
+      "range": {
+        "startLine": 149,
+        "startChar": 0,
+        "endLine": 150,
+        "endChar": 173
+      },
+      "revId": "c9ad1865c85361f376feaa068919132bb523cba6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "688a051e_fd84a35d",
+        "filename": "src/plugins/srv6-mobile/mobile_plugin_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-18T18:35:48Z",
+      "side": 1,
+      "message": "encapsulated",
+      "range": {
+        "startLine": 150,
+        "startChar": 48,
+        "endLine": 150,
+        "endChar": 58
+      },
+      "revId": "c9ad1865c85361f376feaa068919132bb523cba6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "25680e3f_29fba1bb",
+        "filename": "src/plugins/srv6-mobile/mobile_plugin_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-18T18:35:48Z",
+      "side": 1,
+      "message": "instantiates",
+      "range": {
+        "startLine": 176,
+        "startChar": 22,
+        "endLine": 176,
+        "endChar": 34
+      },
+      "revId": "c9ad1865c85361f376feaa068919132bb523cba6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
