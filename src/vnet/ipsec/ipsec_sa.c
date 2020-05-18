@@ -378,6 +378,24 @@ ipsec_sa_del (ipsec_sa_t * sa)
 }
 
 void
+ipsec_sa_pin (u32 id, u32 thread_index)
+{
+   ipsec_main_t *im = &ipsec_main;
+  ipsec_sa_t *sa;
+  uword *p;
+
+  p = hash_get (im->sa_index_by_sa_id, id);
+
+  if (!p)
+    clib_warning("did not find sa with id %x", id);
+
+  sa = pool_elt_at_index (im->sad, p[0]);
+
+  sa->encrypt_thread_index = thread_index;
+  sa->decrypt_thread_index = thread_index;
+}
+
+void
 ipsec_sa_unlock (index_t sai)
 {
   ipsec_main_t *im = &ipsec_main;
