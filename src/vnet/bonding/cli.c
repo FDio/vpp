@@ -26,6 +26,7 @@ void
 bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
 {
   bond_main_t *bm = &bond_main;
+  vnet_main_t *vnm = vnet_get_main ();
   bond_if_t *bif;
   int i;
   uword p;
@@ -53,6 +54,15 @@ bond_disable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
 		bif->n_numa_slaves--;
 		ASSERT (bif->n_numa_slaves >= 0);
 	      }
+	  }
+	/* If that was the last active slave, set bond link state down */
+	if (!vec_len (bif->active_slaves))
+	  {
+	    vnet_hw_interface_flags_t flags;
+
+	    flags = vnet_hw_interface_get_flags (vnm, bif->hw_if_index);
+	    flags &= ~VNET_HW_INTERFACE_FLAG_LINK_UP;
+	    vnet_hw_interface_set_flags (vnm, bif->hw_if_index, flags);
 	  }
 	break;
       }
@@ -157,6 +167,16 @@ bond_enable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif)
     }
   else
     vec_add1 (bif->active_slaves, sif->sw_if_index);
+
+  /* If this was the first active slave, set bond link state up */
+  if (vec_len (bif->active_slaves) == 1)
+    {
+      vnet_hw_interface_flags_t flags;
+
+      flags = vnet_hw_interface_get_flags (vnm, bif->hw_if_index);
+      flags |= VNET_HW_INTERFACE_FLAG_LINK_UP;
+      vnet_hw_interface_set_flags (vnm, bif->hw_if_index, flags);
+    }
 
   sif->is_local_numa = (vm->numa_node == hw->numa_node) ? 1 : 0;
   if (bif->mode == BOND_MODE_ACTIVE_BACKUP)
@@ -468,9 +488,6 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
     }
   if (vlib_get_thread_main ()->n_vlib_mains > 1)
     clib_spinlock_init (&bif->lockp);
-
-  vnet_hw_interface_set_flags (vnm, bif->hw_if_index,
-			       VNET_HW_INTERFACE_FLAG_LINK_UP);
 
   hash_set (bm->bond_by_sw_if_index, bif->sw_if_index, bif->dev_instance);
 

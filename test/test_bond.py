@@ -8,7 +8,7 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from vpp_bond_interface import VppBondInterface
-from vpp_papi import MACAddress
+from vpp_papi import MACAddress, VppEnum
 
 
 class TestBondInterface(VppTestCase):
@@ -271,6 +271,63 @@ class TestBondInterface(VppTestCase):
         # verify BondEthernet0 is not in the dump
         if_dump = self.vapi.sw_interface_bond_dump()
         self.assertFalse(bond0.is_interface_config_in_dump(if_dump))
+
+    def test_bond_link(self):
+        """ Bond hw interface link state test """
+
+        # for convenience
+        bond_modes = VppEnum.vl_api_bond_mode_t
+        intf_flags = VppEnum.vl_api_if_status_flags_t
+
+        # create interface 1 (BondEthernet0)
+        self.logger.info("Create bond interface")
+        # use round-robin mode to avoid negotiation required by LACP
+        bond0 = VppBondInterface(self,
+                                 mode=bond_modes.BOND_API_MODE_ROUND_ROBIN)
+        bond0.add_vpp_config()
+
+        # initially admin state is down and link is down
+        bond0.assert_interface_state(0, 0)
+
+        # set bond admin up. confirm link down because no slaves are active
+        self.logger.info("set interface BondEthernet0 admin up")
+        bond0.admin_up()
+        bond0.assert_interface_state(intf_flags.IF_STATUS_API_FLAG_ADMIN_UP, 0)
+
+        # make sure slaves are down. enslave them to bond.
+        self.logger.info("set interface pg0 admin down")
+        self.pg0.admin_down()
+        self.logger.info("bond enslave interface pg0 to BondEthernet0")
+        bond0.enslave_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index,
+                                         is_passive=0,
+                                         is_long_timeout=0)
+        self.logger.info("set interface pg1 admin down")
+        self.pg1.admin_down()
+        self.logger.info("bond enslave interface pg1 to BondEthernet0")
+        bond0.enslave_vpp_bond_interface(sw_if_index=self.pg1.sw_if_index,
+                                         is_passive=0,
+                                         is_long_timeout=0)
+
+        # bring slaves up, confirm bond link is up
+        self.logger.info("set interface pg0 admin up")
+        self.pg0.admin_up()
+        self.logger.info("set interface pg1 admin up")
+        self.pg1.admin_up()
+        bond0.assert_interface_state(intf_flags.IF_STATUS_API_FLAG_ADMIN_UP,
+                                     intf_flags.IF_STATUS_API_FLAG_LINK_UP)
+
+        # detach pg0, pg1
+        self.logger.info("detach interface pg0")
+        bond0.detach_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index)
+        self.logger.info("detach interface pg1")
+        bond0.detach_vpp_bond_interface(sw_if_index=self.pg1.sw_if_index)
+
+        # link should be down now
+        bond0.assert_interface_state(intf_flags.IF_STATUS_API_FLAG_ADMIN_UP, 0)
+
+        # delete BondEthernet0
+        self.logger.info("Deleting BondEthernet0")
+        bond0.remove_vpp_config()
 
 
 if __name__ == '__main__':
