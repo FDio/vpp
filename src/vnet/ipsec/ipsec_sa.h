@@ -502,3 +502,6 @@ ipsec_sa_assign_thread (u32 thread_id)
  * eval: (c-set-style "gnu")
  * End:
  */
+
+void ipsec_sa_pin (u32 id, u32 thread_index);
+

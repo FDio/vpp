@@ -1509,6 +1509,7 @@ typedef struct
   u8 is_rekey;
   u32 old_remote_sa_id;
   u16 dst_port;
+  u32 desired_thread;
 } ikev2_add_ipsec_tunnel_args_t;
 
 static void
@@ -1573,6 +1574,9 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 			       (a->flags | IPSEC_SA_FLAG_IS_INBOUND), 0,
 			       a->salt_remote, &a->remote_ip,
 			       &a->local_ip, NULL, a->dst_port, a->dst_port);
+
+  ipsec_sa_pin (a->local_sa_id, a->desired_thread);
+  ipsec_sa_pin (a->remote_sa_id, a->desired_thread);
 
   rv |= ipsec_tun_protect_update (sw_if_index, NULL, a->local_sa_id, sas_in);
 }
@@ -1808,6 +1812,9 @@ ikev2_create_tunnel_interface (vlib_main_t * vm,
 
   a.sw_if_index = (sa->is_tun_itf_set ? sa->tun_itf : ~0);
   a.dst_port = sa->dst_port;
+
+  if (vlib_num_workers() != 0)
+        a.desired_thread = (sa->tun_itf % vlib_num_workers()) + 1;
 
   vl_api_rpc_call_main_thread (ikev2_add_tunnel_from_main,
 			       (u8 *) & a, sizeof (a));
