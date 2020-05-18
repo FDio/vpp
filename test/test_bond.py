@@ -272,6 +272,63 @@ class TestBondInterface(VppTestCase):
         if_dump = self.vapi.sw_interface_bond_dump()
         self.assertFalse(bond0.is_interface_config_in_dump(if_dump))
 
+    def test_bond_link(self):
+        """ Bond hw interface link state test """
+
+        # create interface 1 (BondEthernet0)
+        self.logger.info("Create bond interface")
+        # use round-robin mode to avoid negotiation required by LACP
+        bond0 = VppBondInterface(self, mode=1)
+        bond0.add_vpp_config()
+        self.logger.info("set interface BondEthernet0 admin up")
+        bond0.admin_up()
+        bond0.assert_interface_state(1, 2)
+
+        # link is initially up. set admin down so link changes to down also
+        self.logger.info("set interface BondEthernet0 admin down")
+        bond0.admin_down()
+        bond0.assert_interface_state(0, 0)
+
+        # set bond admin up, confirm link is down
+        self.logger.info("set interface BondEthernet0 admin up")
+        bond0.admin_up()
+        bond0.assert_interface_state(1, 0)
+
+        # make sure slaves are down. enslave them to bond.
+        self.logger.info("set interface pg0 admin down")
+        self.pg0.admin_down()
+        self.logger.info("bond enslave interface pg0 to BondEthernet0")
+        bond0.enslave_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index,
+                                         is_passive=0,
+                                         is_long_timeout=0)
+        self.logger.info("set interface pg1 admin down")
+        self.pg1.admin_down()
+        self.logger.info("bond enslave interface pg1 to BondEthernet0")
+        bond0.enslave_vpp_bond_interface(sw_if_index=self.pg1.sw_if_index,
+                                         is_passive=0,
+                                         is_long_timeout=0)
+
+        # bring slaves up, confirm bond link is up
+        self.logger.info("set interface pg0 admin up")
+        self.pg0.admin_up()
+        self.logger.info("set interface pg1 admin up")
+        self.pg1.admin_up()
+        self.logger.info(self.vapi.cli("show bond details"))
+        bond0.assert_interface_state(1, 2)
+
+        # detach pg0, pg1
+        self.logger.info("detach interface pg0")
+        bond0.detach_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index)
+        self.logger.info("detach interface pg1")
+        bond0.detach_vpp_bond_interface(sw_if_index=self.pg1.sw_if_index)
+
+        # link should be down now
+        bond0.assert_interface_state(1, 0)
+
+        # delete BondEthernet0
+        self.logger.info("Deleting BondEthernet0")
+        bond0.remove_vpp_config()
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
