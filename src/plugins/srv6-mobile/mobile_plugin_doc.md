@@ -3,7 +3,7 @@ SRv6 Mobile User Plane Plugins {#srv6_mobile_plugin_doc}
 
 # Introduction
 
-This plugin module can provide the stateless mobile user plane protocols translation between GTP-U and SRv6. The functions of the translation take advantage of SRv6 network programmability.
+This plugin module can provide the stateless mobile user plane protocols translation between GTP-U and SRv6. The plugin also provides FIB table lookup for an IPv4/IPv6 packet encapsulated in GTP-U. These plugin functions take advantage of SRv6 network programmability.
 
 [SRv6 Mobile User Plane](https://tools.ietf.org/html/draft-ietf-dmm-srv6-mobile-uplane) defines the user plane protocol using SRv6
 including following stateless translation functions:
@@ -18,6 +18,13 @@ including following stateless translation functions:
    SRv6 -> GTP-U over UDP/IPv6
 
 These functions benefit user plane(overlay) to be able to utilize data plane(underlay) networks properly. And also it benefits data plane to be able to handle user plane in routing paradigm.
+
+In addition to the above funcntions, the plugin supports following functions:
+
+- **T.M.GTP4.DT{4|6|46}:**  
+   FIB table lookup for IPv4/IP6 encapsulated in GTP-U over UDP/IPv4
+- **End.M.GTP6.DT{4|6|46}:**  
+   FIB table lookup for IPv4/IP6 encapsulated in GTP-U over UDP/IPv6
 
 Noted that the prefix of function names follow naming convention of SRv6 network programming. "T" means transit function, "End" means end function, "M" means Mobility specific function. The suffix "D" and "E" mean that "decapsulation" and "encapsulation" respectively.
 
@@ -136,6 +143,58 @@ For example, the below command configures the SID prefix 2001:db8::/64 with `end
 
 ```
 sr localsid prefix 2001:db8::/64 behavior end.m.gtp6.e
+```
+
+## FIB Table Lookup for Inner IPv4/IPv6 packet
+
+If you need to forward inner IP packet which is encapsuted outer IP and GTP-U headers based on specific fib table, configuring `gtp4.dt*` or `gtp6.dt*` helps you to do that.
+
+In case of the both outer and inner IP address families are IPv4, `t.m.gtp4.dt4` function supports GTP-U decapsulation and fib lookup for inner IPv4 with an associated steering policy and the following parameters:
+
+- SID: A SRv6 SID to represents the function
+- FIB: fib-table number for inner IPv4 packet lookup and forwarding
+
+The following command instantiates a new T.M.GTP4.DT4 function.
+
+```
+sr policy add bsid SID behavior t.m.gtp4.dt4 fib-table FIB
+```
+
+For example, the below commands configure D5:: as the SID instantiates `t.m.gtp4.dt4` function. A steering policy for packets destine to 172.20.0.1 binds to the SID.
+
+```
+sr steer l3 172.20.0.1/32 via bsid D5::
+sr policy add bsid D5:: behavior t.m.gtp4.dt4 fib-table 0
+```
+
+In addition, inner IPv6, or mix of IPv4 and IPv6 inner packet cases require the function to be configured with local-fib table.
+
+- LOCAL-FIB: fib-table number for lookup and forward GTP-U packet based on outer IP destination address
+
+This is inner IPv6 case specific. The reason is that GTP-U encapsulates link local IPv6 packet for NDP (Neighber Discovery Protocol). Outer GTP-U header should be kept until the packets reach to the node responsible for NDP handling. It is typically UPF(User Plane Function) node.
+
+The following command instantitate a new T.M.GTP4.DT6 function.
+
+```
+sr policy add bsid D5:: behavior t.m.gtp4.dt6 fib-table 0 local-fib-table LOCAL-FIB
+```
+
+Following example configures fib 0 for inner packet and fib 1 for outer GTP-U packet forwarding:
+
+```
+sr policy add bsid D5:: behavior t.m.gtp4.dt6 fib-table 0 local-fib-table 1
+```
+
+If you need to suport both IPv4 and IPv6 inner packet lookup with just one SID, you can configure `t.m.gtp4.dt46` function:
+
+```
+sr policy add bsid D5:: behavior t.m.gtp4.dt46 fib-table 0 local-fib-table 1
+```
+
+In case of GTP-U over IPv6 case, `end.m.gtp6.dt4`, `end.m.gtp6.dt6` and `end.m.gtp6.dt46` functions support inner IPv4, IPv6 and IPv4/IPv6 lookup and forwarding respectively. Specifiyng fib table for inner IP packet forwarding is required as same as GTP-U over IPv4 case, and local-fib table for inner IPv6 and IPv4/IPv6 cases as well.
+
+```
+sr localsid prefix D::/64 behavior end.m.gtp6.dt46 fib-table 0 local-fib-table 0
 ```
 
 To run some demo setup please refer to: @subpage srv6_mobile_runner_doc
