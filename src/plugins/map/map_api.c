@@ -48,14 +48,14 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
 		       mp->ip6_prefix.len,
 		       (ip6_address_t *) & mp->ip6_src.address,
 		       mp->ip6_src.len, mp->ea_bits_len, mp->psid_offset,
-		       mp->psid_length, &index, ntohs (mp->mtu), flags,
-		       mp->tag);
+		       mp->psid_length, &index, mp->mtu, flags, mp->tag);
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_MAP_ADD_DOMAIN_REPLY,
+  REPLY_MACRO2_END(VL_API_MAP_ADD_DOMAIN_REPLY,
   ({
-    rmp->index = ntohl(index);
+    rmp->index = index;
   }));
+
   /* *INDENT-ON* */
 }
 
@@ -248,8 +248,8 @@ map_param_set_fragmentation (bool inner, bool ignore_df)
 {
   map_main_t *mm = &map_main;
 
-  mm->frag_inner = ! !inner;
-  mm->frag_ignore_df = ! !ignore_df;
+  mm->frag_inner = !!inner;
+  mm->frag_ignore_df = !!ignore_df;
 
   return 0;
 }
@@ -300,7 +300,7 @@ map_param_set_icmp6 (u8 enable_unreachable)
 {
   map_main_t *mm = &map_main;
 
-  mm->icmp6_enabled = ! !enable_unreachable;
+  mm->icmp6_enabled = !!enable_unreachable;
 
   return 0;
 }
@@ -337,8 +337,8 @@ map_param_set_security_check (bool enable, bool fragments)
 {
   map_main_t *mm = &map_main;
 
-  mm->sec_check = ! !enable;
-  mm->sec_check_frag = ! !fragments;
+  mm->sec_check = !!enable;
+  mm->sec_check_frag = !!fragments;
 
   return 0;
 }
@@ -362,7 +362,7 @@ map_param_set_traffic_class (bool copy, u8 tc)
 {
   map_main_t *mm = &map_main;
 
-  mm->tc_copy = ! !copy;
+  mm->tc_copy = !!copy;
   mm->tc = tc;
 
   return 0;
@@ -455,7 +455,7 @@ map_if_enable_disable (bool is_enable, u32 sw_if_index, bool is_translation)
 			  sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  is_enable = ! !is_enable;
+  is_enable = !!is_enable;
 
   if (is_translation)
     {

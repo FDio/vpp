@@ -59,6 +59,26 @@ do {                                                                    \
     vl_api_send_msg (rp, (u8 *)rmp);                                    \
 } while(0);
 
+#define REPLY_MACRO2_END(t, body)                                       \
+do {                                                                    \
+    vl_api_registration_t *rp;                                          \
+    rv = vl_msg_api_pd_handler (mp, rv);                                \
+    rp = vl_api_client_index_to_registration (mp->client_index);        \
+    if (rp == 0)                                                        \
+      return;                                                           \
+                                                                        \
+    rmp = vl_msg_api_alloc (sizeof (*rmp));                             \
+    rmp->_vl_msg_id = t+(REPLY_MSG_ID_BASE);                            \
+    rmp->context = mp->context;                                         \
+    rmp->retval = rv;                                                   \
+    do {body;} while (0);                                               \
+    api_main_t *am = vlibapi_get_main ();				\
+    void (*endian_fp) (void *);						\
+    endian_fp = am->msg_endian_handlers[t];				\
+    (*endian_fp) (rmp);							\
+    vl_api_send_msg (rp, (u8 *)rmp);                                    \
+} while(0);
+
 #define REPLY_MACRO2_ZERO(t, body)                                      \
 do {                                                                    \
     vl_api_registration_t *rp;                                          \
