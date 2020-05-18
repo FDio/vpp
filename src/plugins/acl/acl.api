@@ -110,7 +110,7 @@ manual_print manual_endian define acl_add_replace
   string tag[64]; /* What gets in here gets out in the corresponding tag field when dumping the ACLs. */
   u32 count;
   vl_api_acl_rule_t r[count];
-  option vat_help = "<acl-idx> [<ipv4|ipv6>] <permit|permit+reflect|deny|action N> [src IP/plen] [dst IP/plen] [sport X-Y] [dport X-Y] [proto P] [tcpflags FL MASK], ... , ...";
+  option vat_help = "<acl-idx> <permit|permit+reflect|deny|action N> [src IP/plen] [dst IP/plen] [sport X-Y] [dport X-Y] [proto P] [tcpflags FL MASK], ... , ...";
 };
 
 /** \brief Reply to add/replace ACL
@@ -301,7 +301,7 @@ manual_endian manual_print define macip_acl_add_replace
   string tag[64];
   u32 count;
   vl_api_macip_acl_rule_t r[count];
-  option vat_help = "<acl-idx> [<ipv4|ipv6>] <permit|deny|action N> [count <count>] [src] ip <ipaddress/[plen]> mac <mac> mask <mac_mask>, ... , ...";
+  option vat_help = "<acl-idx> <permit|deny|action N> [count <count>] [src] ip <ipaddress/[plen]> mac <mac> mask <mac_mask>, ... , ...";
 };
 
 /** \brief Reply to add/replace MACIP ACL
