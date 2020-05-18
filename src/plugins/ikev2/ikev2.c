@@ -1,4 +1,4 @@
-/*
+./*
  * Copyright (c) 2015 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1509,7 +1509,38 @@ typedef struct
   u8 is_rekey;
   u32 old_remote_sa_id;
   u16 dst_port;
+  u32 desired_thread;
 } ikev2_add_ipsec_tunnel_args_t;
+
+#include <vnet/flow/flow.h>
+
+static void
+ikev2_redirect_flow (ikev2_add_ipsec_tunnel_args_t * a)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_flow_t flow;
+  u32 flow_index;
+  u32 hw_if_index;
+  int rv;
+
+  clib_memset (&flow, 0, sizeof (vnet_flow_t));
+  flow.index = ~0;
+  flow.type = VNET_FLOW_TYPE_IP4_N_TUPLE;
+  flow.actions = VNET_FLOW_ACTION_REDIRECT_TO_QUEUE;
+  flow.redirect_queue = a->desired_thread - 1;
+  clib_warning ("pinning to queue %u", flow->redirect_queue);
+  flow.ip4_n_tuple.protocol = 0;
+  flow.ip4_n_tuple.src_addr.addr = a->remote_ip.ip4;
+  flow.ip4_n_tuple.src_addr.mask.as_u32 = ~0;
+  flow.ip4_n_tuple.dst_addr.addr = a->local_ip.ip4;
+  flow.ip4_n_tuple.dst_addr.mask.as_u32 = ~0;
+  rv = vnet_flow_add (vnm, &flow, &flow_index);
+  clib_warning ("flow %u added: %d\n", flow_index, rv);
+  if (rv)
+     return;
+  rv = vnet_flow_enable (vnm, flow_index, 1);
+  clib_warning ("flow %u enabled: %d\n", flow_index, rv);
+}
 
 static void
 ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
@@ -1573,6 +1604,11 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 			       (a->flags | IPSEC_SA_FLAG_IS_INBOUND), 0,
 			       a->salt_remote, &a->remote_ip,
 			       &a->local_ip, NULL, a->dst_port, a->dst_port);
+
+  ipsec_sa_pin (a->local_sa_id, a->desired_thread);
+  ipsec_sa_pin (a->remote_sa_id, a->desired_thread);
+
+  ikev2_redirect_flow (a);
 
   rv |= ipsec_tun_protect_update (sw_if_index, NULL, a->local_sa_id, sas_in);
 }
@@ -1808,6 +1844,9 @@ ikev2_create_tunnel_interface (vlib_main_t * vm,
 
   a.sw_if_index = (sa->is_tun_itf_set ? sa->tun_itf : ~0);
   a.dst_port = sa->dst_port;
+
+  if (vlib_num_workers() != 0)
+        a.desired_thread = (sa->tun_itf % vlib_num_workers()) + 1;
 
   vl_api_rpc_call_main_thread (ikev2_add_tunnel_from_main,
 			       (u8 *) & a, sizeof (a));
