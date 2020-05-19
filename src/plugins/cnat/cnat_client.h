@@ -1,0 +1,229 @@
+/*
+ * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef __CNAT_CLIENT_H__
+#define __CNAT_CLIENT_H__
+
+#include <cnat/cnat_types.h>
+
+/**
+ * A client is a representation of an IP address behind the NAT.
+ * A client thus sends packet to a VIP.
+ * Clients are learned in the Data-plane when they send packets,
+ * but, since they make additions to the FIB they must be programmed
+ * in the main thread. They are aged out when they become idle.
+ *
+ * A client interposes in the FIB graph for the prefix corresponding
+ * to the client (e.g. client's-IP/32). As a result this client object
+ * is cloned as the interpose DPO. The clones are removed when the lock
+ * count drops to zero. The originals are removed when the client ages.
+ * At forwarding time the client preforms the reverse translation and
+ * then ships the packet to where the FIB would send it.
+ */
+typedef struct cnat_client_t_
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
+  /**
+   * the client's IP address
+   */
+  ip_address_t cc_ip;
+
+  /**
+   * How to send packets to this client post translation
+   */
+  dpo_id_t cc_parent;
+
+  /**
+   * the FIB entry this client sources
+   */
+  fib_node_index_t cc_fei;
+
+  /**
+   * number of DPO locks
+   */
+  u32 cc_locks;
+
+  /**
+   * Translations refcount for cleanup
+   */
+  u32 tr_refcnt;
+
+  /**
+   * Session refcount for cleanup
+   */
+  u32 session_refcnt;
+
+  /**
+   * Parent cnat_client index if cloned via interpose
+   * or own index if vanilla client.
+   * Used to get translations & update session_refcnt
+   */
+  index_t parent_cci;
+
+  /**
+   * Client flags
+   */
+  u8 flags;
+} cnat_client_t;
+
+extern u8 *format_cnat_client (u8 * s, va_list * args);
+extern void cnat_client_free_by_ip (ip46_address_t * addr, u8 af);
+
+extern cnat_client_t *cnat_client_pool;
+extern dpo_type_t cnat_client_dpo;
+
+#define CC_INDEX_INVALID ((u32)(~0))
+
+static_always_inline cnat_client_t *
+cnat_client_get (index_t i)
+{
+  return (pool_elt_at_index (cnat_client_pool, i));
+}
+
+typedef struct cnat_learn_arg_t_
+{
+  ip_address_t addr;
+} cnat_learn_arg_t;
+
+/**
+ * Remove a translation that references this VIP
+ */
+extern void cnat_client_remove_translation (index_t cci,
+					    u16 port, ip_protocol_t proto);
+
+/**
+ * Add a translation that references this VIP
+ */
+extern void cnat_client_add_translation (index_t cci,
+					 u16 port,
+					 ip_protocol_t proto, index_t cti);
+/**
+ * Called in the main thread by RPC from the workers to learn a
+ * new client
+ */
+extern void cnat_client_learn (const cnat_learn_arg_t * l);
+
+extern index_t cnat_client_add (const ip_address_t * ip, u8 flags);
+
+/**
+ * Purge all the clients
+ */
+extern int cnat_client_purge (void);
+
+/**
+ * CNat Client (dpo) flags
+ */
+typedef enum
+{
+  /* IP already present in the FIB, need to interpose dpo */
+  CNAT_FLAG_EXCLUSIVE = (1 << 1),
+  /* Prune this entry */
+  CNAT_FLAG_EXPIRES = (1 << 2),
+} cnat_entry_flag_t;
+
+
+extern void cnat_client_throttle_pool_process ();
+
+/**
+ * DB of clients
+ */
+typedef struct cnat_client_db_t_
+{
+  uword *crd_cip4;
+  uword *crd_cip6;
+  /* Pool of addresses that have been throttled
+     and need to be refcounted before calling
+     cnat_client_free_by_ip */
+  ip_address_t **throttle_pool;
+  clib_spinlock_t *throttle_pool_lock;
+} cnat_client_db_t;
+
+extern cnat_client_db_t cnat_client_db;
+
+/**
+ * Find a client from an IP4 address
+ */
+static_always_inline cnat_client_t *
+cnat_client_ip4_find (const ip4_address_t * ip)
+{
+  uword *p;
+
+  p = hash_get (cnat_client_db.crd_cip4, ip->as_u32);
+
+  if (p)
+    return (pool_elt_at_index (cnat_client_pool, p[0]));
+
+  return (NULL);
+}
+
+static_always_inline u32
+cnat_client_ip4_find_index (const ip4_address_t * ip)
+{
+  uword *p;
+
+  p = hash_get (cnat_client_db.crd_cip4, ip->as_u32);
+
+  if (p)
+    return p[0];
+
+  return -1;
+}
+
+/**
+ * Find a client from an IP6 address
+ */
+static_always_inline cnat_client_t *
+cnat_client_ip6_find (const ip6_address_t * ip)
+{
+  uword *p;
+
+  p = hash_get_mem (cnat_client_db.crd_cip6, ip);
+
+  if (p)
+    return (pool_elt_at_index (cnat_client_pool, p[0]));
+
+  return (NULL);
+}
+
+/**
+ * Add a session refcnt to this client
+ */
+static_always_inline u32
+cnat_client_cnt_session (cnat_client_t * cc)
+{
+  cnat_client_t *ccp = cnat_client_get (cc->parent_cci);
+  return clib_atomic_add_fetch (&ccp->session_refcnt, 1);
+}
+
+/**
+ * Del a session refcnt to this client
+ */
+static_always_inline u32
+cnat_client_uncnt_session (cnat_client_t * cc)
+{
+  cnat_client_t *ccp = cnat_client_get (cc->parent_cci);
+  return clib_atomic_sub_fetch (&ccp->session_refcnt, 1);
+}
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
+
+#endif
