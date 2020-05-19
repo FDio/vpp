@@ -80,6 +80,7 @@ typedef struct ldp_worker_ctx_
    * Epoll state
    */
   u8 epoll_wait_vcl;
+  u8 mq_epfd_added;
   int vcl_mq_epfd;
 
 } ldp_worker_ctx_t;
@@ -2344,17 +2345,132 @@ done:
   return rv;
 }
 
+static inline int
+ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
+			 int maxevents, int timeout, const sigset_t * sigmask)
+{
+  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
+  int libc_epfd, rv = 0, num_ev;
+  vls_handle_t ep_vlsh;
+
+  if ((errno = -ldp_init ()))
+    return -1;
+
+  if (PREDICT_FALSE (!events || (timeout < -1)))
+    {
+      errno = EFAULT;
+      return -1;
+    }
+
+  if (epfd == ldpw->vcl_mq_epfd)
+    return libc_epoll_pwait (epfd, events, maxevents, timeout, sigmask);
+
+  ep_vlsh = ldp_fd_to_vlsh (epfd);
+  if (PREDICT_FALSE (ep_vlsh == VLS_INVALID_HANDLE))
+    {
+      LDBG (0, "epfd %d: bad ep_vlsh %d!", epfd, ep_vlsh);
+      errno = EBADFD;
+      return -1;
+    }
+
+  libc_epfd = vls_attr (ep_vlsh, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
+  if (PREDICT_FALSE (!libc_epfd))
+    {
+      u32 size = sizeof (epfd);
+
+      LDBG (1, "epfd %d, vep_vlsh %d calling libc_epoll_create1: "
+	    "EPOLL_CLOEXEC", epfd, ep_vlsh);
+      libc_epfd = libc_epoll_create1 (EPOLL_CLOEXEC);
+      if (libc_epfd < 0)
+	{
+	  rv = libc_epfd;
+	  goto done;
+	}
+
+      rv = vls_attr (ep_vlsh, VPPCOM_ATTR_SET_LIBC_EPFD, &libc_epfd, &size);
+      if (rv < 0)
+	{
+	  errno = -rv;
+	  rv = -1;
+	  goto done;
+	}
+    }
+  if (PREDICT_FALSE (libc_epfd <= 0))
+    {
+      errno = -libc_epfd;
+      rv = -1;
+      goto done;
+    }
+
+  if (PREDICT_FALSE (!ldpw->mq_epfd_added))
+    {
+      struct epoll_event e = { 0 };
+      e.events = EPOLLIN;
+      e.data.fd = ldpw->vcl_mq_epfd;
+      if (libc_epoll_ctl (libc_epfd, EPOLL_CTL_ADD, ldpw->vcl_mq_epfd, &e) <
+	  0)
+	{
+	  LDBG (0, "epfd %d, add libc mq epoll fd %d to libc epoll fd %d",
+		epfd, ldpw->vcl_mq_epfd, libc_epfd);
+	  rv = -1;
+	  goto done;
+	}
+      ldpw->mq_epfd_added = 1;
+    }
+
+  rv = vls_epoll_wait (ep_vlsh, events, maxevents, 0);
+  if (rv > 0)
+    goto done;
+  else if (rv < 0)
+    {
+      errno = -rv;
+      rv = -1;
+      goto done;
+    }
+
+  rv = libc_epoll_pwait (libc_epfd, events, maxevents, timeout, sigmask);
+  if (rv <= 0)
+    goto done;
+  for (int i = 0; i < rv; i++)
+    {
+      if (events[i].data.fd == ldpw->vcl_mq_epfd)
+	{
+	  /* We should remove mq epoll fd from events. */
+	  rv--;
+	  if (i != rv)
+	    {
+	      events[i].events = events[rv].events;
+	      events[i].data.u64 = events[rv].data.u64;
+	    }
+	  num_ev = vls_epoll_wait (ep_vlsh, &events[rv], maxevents - rv, 0);
+	  if (PREDICT_TRUE (num_ev > 0))
+	    rv += num_ev;
+	  break;
+	}
+    }
+
+done:
+  return rv;
+}
+
 int
 epoll_pwait (int epfd, struct epoll_event *events,
 	     int maxevents, int timeout, const sigset_t * sigmask)
 {
-  return ldp_epoll_pwait (epfd, events, maxevents, timeout, sigmask);
+  if (vls_use_eventfd ())
+    return ldp_epoll_pwait_eventfd (epfd, events, maxevents, timeout,
+				    sigmask);
+  else
+    return ldp_epoll_pwait (epfd, events, maxevents, timeout, sigmask);
 }
 
 int
 epoll_wait (int epfd, struct epoll_event *events, int maxevents, int timeout)
 {
-  return ldp_epoll_pwait (epfd, events, maxevents, timeout, NULL);
+  if (vls_use_eventfd ())
+    return ldp_epoll_pwait_eventfd (epfd, events, maxevents, timeout, NULL);
+  else
+    return ldp_epoll_pwait (epfd, events, maxevents, timeout, NULL);
 }
 
 int
