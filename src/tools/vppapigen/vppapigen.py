@@ -753,8 +753,15 @@ class VPPAPI(object):
     def parse_filename(self, filename, debug=0):
         if self.revision:
             git_show = f'git show  {self.revision}:{filename}'
-            with Popen(git_show.split(), stdout=PIPE, encoding='utf-8') as git:
-                return self.parse_fd(git.stdout, None)
+            proc = Popen(git_show.split(), stdout=PIPE, encoding='utf-8')
+            try:
+                data, errs = proc.communicate()
+                if proc.returncode != 0:
+                    print(f'File not found: {self.revision}:{filename}', file=sys.stderr)
+                    sys.exit(2)
+                return self.parse_string(data, debug=debug)
+            except Exception as e:
+                sys.exit(3)
         else:
             try:
                 with open(filename, encoding='utf-8') as fd:

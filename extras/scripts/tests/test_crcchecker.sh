@@ -129,6 +129,17 @@ verify_check_patchset_fails
 # get rid of the "erroneous" commit in the previous test
 git reset --hard HEAD~1
 
+echo "TEST14: Verify we handle new .api file"
+cat >crccheck3.api <<EOL
+autoreply define foo
+{
+  bool bar;
+};
+EOL
+git add crccheck3.api
+git commit -m "a new message in new file";
+extras/scripts/crcchecker.py --check-patchset
+
 echo "TEST: All tests got the expected result, cleaning up."
 
 # done with all the tests - clean up
