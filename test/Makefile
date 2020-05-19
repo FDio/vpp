@@ -99,7 +99,7 @@ PYTHON_INTERP=$(PYTHON)
 endif
 
 PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
-PIP_VERSION=19.1.1
+PIP_VERSION=20.1.1
 PIP_TOOLS_VERSION=3.8.0   # Keep in sync with requirements.txt
 PYTHON_DEPENDS=requirements-$(PYTHON_VERSION).txt
 SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/python* -name site-packages)
