@@ -16,6 +16,24 @@
       "revId": "a5c3762fff1785493828f202247f24b60eaf495c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "553a60bf_582ecb59",
+        "filename": "test/test_bond.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-05-19T17:20:35Z",
+      "side": 1,
+      "message": "Thanks for your feedback. That\u0027s a good idea. I\u0027ll submit an updated patchset containing that change.",
+      "parentUuid": "06049826_43d57f20",
+      "revId": "a5c3762fff1785493828f202247f24b60eaf495c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
