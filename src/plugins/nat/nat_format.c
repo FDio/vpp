@@ -76,23 +76,19 @@ format_nat_addr_and_port_alloc_alg (u8 * s, va_list * args)
 u8 *
 format_snat_key (u8 * s, va_list * args)
 {
-  snat_session_key_t *key = va_arg (*args, snat_session_key_t *);
+  u64 key = va_arg (*args, u64);
+
+  ip4_address_t addr;
+  u16 port;
+  nat_protocol_t protocol;
+  u32 fib_index;
+
+  split_nat_key (key, &addr, &port, &fib_index, &protocol);
 
   s = format (s, "%U proto %U port %d fib %d",
-	      format_ip4_address, &key->addr,
-	      format_nat_protocol, key->protocol,
-	      clib_net_to_host_u16 (key->port), key->fib_index);
-  return s;
-}
-
-u8 *
-format_static_mapping_key (u8 * s, va_list * args)
-{
-  snat_session_key_t *key = va_arg (*args, snat_session_key_t *);
-
-  s = format (s, "%U proto %U port %d fib %d",
-	      format_ip4_address, &key->addr,
-	      format_nat_protocol, key->protocol, key->port, key->fib_index);
+	      format_ip4_address, &addr,
+	      format_nat_protocol, protocol,
+	      clib_net_to_host_u16 (port), fib_index);
   return s;
 }
 

@@ -674,7 +674,7 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
             if (now >= sess_timeout_time)
               timed_out++;
 
-            switch (s->in2out.protocol)
+            switch (s->nat_proto)
               {
               case NAT_PROTOCOL_ICMP:
                 icmp_sessions++;
@@ -720,7 +720,7 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
         if (now >= sess_timeout_time)
           timed_out++;
 
-        switch (s->in2out.protocol)
+        switch (s->nat_proto)
           {
           case NAT_PROTOCOL_ICMP:
             icmp_sessions++;
@@ -1071,7 +1071,8 @@ add_static_mapping_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  rv = snat_add_static_mapping (l_addr, e_addr, (u16) l_port, (u16) e_port,
+  rv = snat_add_static_mapping (l_addr, e_addr, clib_host_to_net_u16 (l_port),
+				clib_host_to_net_u16 (e_port),
 				vrf_id, addr_only, sw_if_index, proto, is_add,
 				twice_nat, out2in_only, 0, 0);
 
@@ -1155,9 +1156,10 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
 	}
     }
 
-  rv = snat_add_static_mapping (addr, addr, (u16) port, (u16) port,
-				vrf_id, addr_only, sw_if_index, proto, is_add,
-				0, 0, 0, 1);
+  rv =
+    snat_add_static_mapping (addr, addr, clib_host_to_net_u16 (port),
+			     clib_host_to_net_u16 (port), vrf_id, addr_only,
+			     sw_if_index, proto, is_add, 0, 0, 0, 1);
 
   switch (rv)
     {
@@ -1730,10 +1732,13 @@ nat44_del_session_command_fn (vlib_main_t * vm,
 
   if (is_ed)
     rv =
-      nat44_del_ed_session (sm, &addr, port, &eh_addr, eh_port,
+      nat44_del_ed_session (sm, &addr, clib_host_to_net_u16 (port), &eh_addr,
+			    clib_host_to_net_u16 (eh_port),
 			    nat_proto_to_ip_proto (proto), vrf_id, is_in);
   else
-    rv = nat44_del_session (sm, &addr, port, proto, vrf_id, is_in);
+    rv =
+      nat44_del_session (sm, &addr, clib_host_to_net_u16 (port), proto,
+			 vrf_id, is_in);
 
   switch (rv)
     {
