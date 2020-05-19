@@ -261,6 +261,17 @@ ip_address_from_46 (const ip46_address_t * nh,
   ip_addr_version (ip) = ip_address_family_from_fib_proto (fproto);
 }
 
+void
+ip_addr_to_fib_prefix (const ip_address_t * addr, fib_prefix_t * pfx)
+{
+  pfx->fp_proto = (AF_IP4 == addr->version ?
+		   FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
+  pfx->fp_len = (AF_IP4 == addr->version ? 32 : 128);
+  clib_memcpy (&pfx->fp_addr, &addr->ip, sizeof (pfx->fp_addr));
+  pfx->___fp___pad = 0;
+}
+
+
 static void
 ip_prefix_normalize_ip4 (ip4_address_t * ip4, u8 preflen)
 {
