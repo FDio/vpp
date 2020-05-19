@@ -104,7 +104,6 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 	  u32 next0 = NAT44_CLASSIFY_NEXT_IN2OUT;
 	  ip4_header_t *ip0;
 	  snat_address_t *ap;
-	  snat_session_key_t m_key0;
 	  clib_bihash_kv_8_8_t kv0, value0;
 
 	  /* speculatively enqueue b0 to the current next frame */
@@ -131,11 +130,7 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
 	    {
-	      m_key0.addr = ip0->dst_address;
-	      m_key0.port = 0;
-	      m_key0.protocol = 0;
-	      m_key0.fib_index = 0;
-	      kv0.key = m_key0.as_u64;
+	      init_nat_k (&kv0, ip0->dst_address, 0, 0, 0);
 	      /* try to classify the fragment based on IP header alone */
 	      if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external,
 					   &kv0, &value0))
@@ -145,10 +140,9 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 		    next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
 		  goto enqueue0;
 		}
-	      m_key0.port =
-		clib_net_to_host_u16 (vnet_buffer (b0)->ip.reass.l4_dst_port);
-	      m_key0.protocol = ip_proto_to_nat_proto (ip0->protocol);
-	      kv0.key = m_key0.as_u64;
+	      init_nat_k (&kv0, ip0->dst_address,
+			  vnet_buffer (b0)->ip.reass.l4_dst_port, 0,
+			  ip_proto_to_nat_proto (ip0->protocol));
 	      if (!clib_bihash_search_8_8
 		  (&sm->static_mapping_by_external, &kv0, &value0))
 		{
@@ -221,7 +215,6 @@ nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
 	  u32 next0 = NAT_NEXT_IN2OUT_CLASSIFY;
 	  ip4_header_t *ip0;
 	  snat_address_t *ap;
-	  snat_session_key_t m_key0;
 	  clib_bihash_kv_8_8_t kv0, value0;
 
 	  /* speculatively enqueue b0 to the current next frame */
@@ -248,11 +241,7 @@ nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
 	    {
-	      m_key0.addr = ip0->dst_address;
-	      m_key0.port = 0;
-	      m_key0.protocol = 0;
-	      m_key0.fib_index = 0;
-	      kv0.key = m_key0.as_u64;
+	      init_nat_k (&kv0, ip0->dst_address, 0, 0, 0);
 	      /* try to classify the fragment based on IP header alone */
 	      if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external,
 					   &kv0, &value0))
@@ -262,10 +251,9 @@ nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
 		    next0 = NAT_NEXT_OUT2IN_CLASSIFY;
 		  goto enqueue0;
 		}
-	      m_key0.port =
-		clib_net_to_host_u16 (vnet_buffer (b0)->ip.reass.l4_dst_port);
-	      m_key0.protocol = ip_proto_to_nat_proto (ip0->protocol);
-	      kv0.key = m_key0.as_u64;
+	      init_nat_k (&kv0, ip0->dst_address,
+			  vnet_buffer (b0)->ip.reass.l4_dst_port, 0,
+			  ip_proto_to_nat_proto (ip0->protocol));
 	      if (!clib_bihash_search_8_8
 		  (&sm->static_mapping_by_external, &kv0, &value0))
 		{
@@ -340,7 +328,6 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	  u32 sw_if_index0, rx_fib_index0;
 	  ip4_header_t *ip0;
 	  snat_address_t *ap;
-	  snat_session_key_t m_key0;
 	  clib_bihash_kv_8_8_t kv0, value0;
 	  clib_bihash_kv_16_8_t ed_kv0, ed_value0;
 
@@ -366,11 +353,11 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	      rx_fib_index0 =
 		fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
 						     sw_if_index0);
-	      make_ed_kv (&ip0->src_address, &ip0->dst_address,
-			  ip0->protocol, rx_fib_index0,
-			  vnet_buffer (b0)->ip.reass.l4_src_port,
-			  vnet_buffer (b0)->ip.reass.l4_dst_port, ~0, ~0,
-			  &ed_kv0);
+	      init_ed_k (&ed_kv0, ip0->src_address,
+			 vnet_buffer (b0)->ip.reass.l4_src_port,
+			 ip0->dst_address,
+			 vnet_buffer (b0)->ip.reass.l4_dst_port,
+			 rx_fib_index0, ip0->protocol);
 	      /* process whole packet */
 	      if (!clib_bihash_search_16_8
 		  (&tsm->in2out_ed, &ed_kv0, &ed_value0))
@@ -391,11 +378,7 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
 	    {
-	      m_key0.addr = ip0->dst_address;
-	      m_key0.port = 0;
-	      m_key0.protocol = 0;
-	      m_key0.fib_index = 0;
-	      kv0.key = m_key0.as_u64;
+	      init_nat_k (&kv0, ip0->dst_address, 0, 0, 0);
 	      /* try to classify the fragment based on IP header alone */
 	      if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external,
 					   &kv0, &value0))
@@ -405,10 +388,9 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 		    next0 = NAT_NEXT_OUT2IN_ED_FAST_PATH;
 		  goto enqueue0;
 		}
-	      m_key0.port =
-		clib_net_to_host_u16 (vnet_buffer (b0)->ip.reass.l4_dst_port);
-	      m_key0.protocol = ip_proto_to_nat_proto (ip0->protocol);
-	      kv0.key = m_key0.as_u64;
+	      init_nat_k (&kv0, ip0->dst_address,
+			  vnet_buffer (b0)->ip.reass.l4_dst_port, 0,
+			  ip_proto_to_nat_proto (ip0->protocol));
 	      if (!clib_bihash_search_8_8
 		  (&sm->static_mapping_by_external, &kv0, &value0))
 		{

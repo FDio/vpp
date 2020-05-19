@@ -95,17 +95,17 @@ format_nat_det_in2out_trace (u8 * s, va_list * args)
 u32
 icmp_match_in2out_det (snat_main_t * sm, vlib_node_runtime_t * node,
 		       u32 thread_index, vlib_buffer_t * b0,
-		       ip4_header_t * ip0, u8 * p_proto,
-		       snat_session_key_t * p_value, u8 * p_dont_translate,
-		       void *d, void *e)
+		       ip4_header_t * ip0, ip4_address_t * addr,
+		       u16 * port, u32 * fib_index,
+		       nat_protocol_t * proto, void *d, void *e,
+		       u8 * dont_translate)
 {
   vlib_main_t *vm = vlib_get_main ();
   icmp46_header_t *icmp0;
   u32 sw_if_index0;
   u32 rx_fib_index0;
-  u8 protocol;
+  nat_protocol_t protocol;
   snat_det_out_key_t key0;
-  u8 dont_translate = 0;
   u32 next0 = ~0;
   icmp_echo_header_t *echo0, *inner_echo0 = 0;
   ip4_header_t *inner_ip0;
@@ -117,6 +117,7 @@ icmp_match_in2out_det (snat_main_t * sm, vlib_node_runtime_t * node,
   snat_det_session_t *ses0 = 0;
   ip4_address_t in_addr;
   u16 in_port;
+  *dont_translate = 0;
 
   icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
   echo0 = (icmp_echo_header_t *) (icmp0 + 1);
@@ -164,7 +165,7 @@ icmp_match_in2out_det (snat_main_t * sm, vlib_node_runtime_t * node,
 						  IP_PROTOCOL_ICMP,
 						  rx_fib_index0)))
 	{
-	  dont_translate = 1;
+	  *dont_translate = 1;
 	  goto out;
 	}
       next0 = NAT_DET_IN2OUT_NEXT_DROP;
@@ -184,7 +185,7 @@ icmp_match_in2out_det (snat_main_t * sm, vlib_node_runtime_t * node,
 						  IP_PROTOCOL_ICMP,
 						  rx_fib_index0)))
 	{
-	  dont_translate = 1;
+	  *dont_translate = 1;
 	  goto out;
 	}
       if (icmp0->type != ICMP4_echo_request)
@@ -233,14 +234,13 @@ icmp_match_in2out_det (snat_main_t * sm, vlib_node_runtime_t * node,
   ses0->expire = now + sm->icmp_timeout;
 
 out:
-  *p_proto = protocol;
+  *proto = protocol;
   if (ses0)
     {
-      p_value->addr = new_addr0;
-      p_value->fib_index = sm->outside_fib_index;
-      p_value->port = ses0->out.out_port;
+      *addr = new_addr0;
+      *fib_index = sm->outside_fib_index;
+      *port = ses0->out.out_port;
     }
-  *p_dont_translate = dont_translate;
   if (d)
     *(snat_det_session_t **) d = ses0;
   if (e)
