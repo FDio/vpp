@@ -12675,15 +12675,28 @@ static void vl_api_sw_interface_vhost_user_details_t_handler_json
 static int
 api_sw_interface_vhost_user_dump (vat_main_t * vam)
 {
+  unformat_input_t *i = vam->input;
   vl_api_sw_interface_vhost_user_dump_t *mp;
   vl_api_control_ping_t *mp_ping;
   int ret;
+  u32 sw_if_index = ~0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else
+	break;
+    }
+
   print (vam->ofp,
 	 "Interface name            idx hdr_sz features server regions filename");
 
   /* Get list of vhost-user interfaces */
   M (SW_INTERFACE_VHOST_USER_DUMP, mp);
-  mp->sw_if_index = ntohl (~0);
+  mp->sw_if_index = ntohl (sw_if_index);
   S (mp);
 
   /* Use a control ping for synchronization */
@@ -20729,7 +20742,7 @@ _(modify_vhost_user_if,                                                 \
         "<intfc> | sw_if_index <nn> socket <filename>\n"                \
         "[server] [renumber <dev_instance>] [gso] [packed]")            \
 _(delete_vhost_user_if, "<intfc> | sw_if_index <nn>")                   \
-_(sw_interface_vhost_user_dump, "")                                     \
+_(sw_interface_vhost_user_dump, "<intfc> | sw_if_index <nn>")           \
 _(show_version, "")                                                     \
 _(show_threads, "")                                                     \
 _(vxlan_gpe_add_del_tunnel,                                             \
