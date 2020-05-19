@@ -34,6 +34,24 @@
       "revId": "a5c3762fff1785493828f202247f24b60eaf495c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f42a9970_febb8e1e",
+        "filename": "test/test_bond.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-05-19T19:25:27Z",
+      "side": 1,
+      "message": "Hi Steven,\nPatchset 2 uses an enum for the bond mode. I also changed the assertions which check interface flags to use enum values.\nThanks,\n-Matt",
+      "parentUuid": "553a60bf_582ecb59",
+      "revId": "a5c3762fff1785493828f202247f24b60eaf495c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
