@@ -1381,6 +1381,12 @@ vls_app_create (char *app_name)
   return VPPCOM_OK;
 }
 
+unsigned char
+vls_use_eventfd (void)
+{
+  return vcm->cfg.use_mq_eventfd;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
