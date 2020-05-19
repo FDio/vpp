@@ -670,6 +670,11 @@ I:	urpf
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/plugins/urpf
 
+Plugin - Calico
+I:	calico
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/calico
+
 VPP Config Tooling
 I:	vpp_config
 M:	John DeNisco <jdenisco@cisco.com>
