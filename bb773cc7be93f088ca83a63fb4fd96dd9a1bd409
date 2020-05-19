@@ -16,6 +16,24 @@
       "revId": "bb773cc7be93f088ca83a63fb4fd96dd9a1bd409",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "295944e5_a1c0dc09",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-05-19T23:04:52Z",
+      "side": 1,
+      "message": "I am inclined to remove the line in bond_create_if(). So hw state is up when admin state is up and at least 1 active slave. When admin state is up and no slave, the information can be viewed via the sw state.",
+      "parentUuid": "12e3575f_b6e58955",
+      "revId": "bb773cc7be93f088ca83a63fb4fd96dd9a1bd409",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
