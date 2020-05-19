@@ -1,0 +1,9 @@
+---
+name: Cloud NAT
+maintainer: Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+features:
+  - Destination based address/port translation
+
+description: ""
+state: production
+properties: [API, CLI, MULTITHREAD]

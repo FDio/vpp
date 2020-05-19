@@ -682,6 +682,12 @@ I:	urpf
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/plugins/urpf
 
+Plugin - CNat
+I:	cnat
+M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/cnat
+
 VPP Config Tooling
 I:	vpp_config
 M:	John DeNisco <jdenisco@cisco.com>

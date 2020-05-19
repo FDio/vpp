@@ -1,0 +1,431 @@
+/*
+ * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <vnet/fib/fib_table.h>
+#include <vnet/dpo/drop_dpo.h>
+
+#include <cnat/cnat_client.h>
+#include <cnat/cnat_translation.h>
+
+cnat_client_t *cnat_client_pool;
+
+cnat_client_db_t cnat_client_db;
+
+dpo_type_t cnat_client_dpo;
+
+static_always_inline u8
+cnat_client_is_clone (cnat_client_t * cc)
+{
+  return (FIB_NODE_INDEX_INVALID == cc->cc_fei);
+}
+
+static void
+cnat_client_db_remove (cnat_client_t * cc)
+{
+  if (ip_addr_version (&cc->cc_ip) == AF_IP4)
+    hash_unset (cnat_client_db.crd_cip4, ip_addr_v4 (&cc->cc_ip).as_u32);
+  else
+    hash_unset_mem_free (&cnat_client_db.crd_cip6, &ip_addr_v6 (&cc->cc_ip));
+}
+
+static void
+cnat_client_destroy (index_t cci)
+{
+  cnat_client_t *cc;
+
+  cc = cnat_client_get (cci);
+
+  ASSERT (!cnat_client_is_clone (cc));
+  if (!(cc->flags & CNAT_FLAG_EXCLUSIVE))
+    {
+      ASSERT (fib_entry_is_sourced (cc->cc_fei, cnat_fib_source));
+      fib_table_entry_delete_index (cc->cc_fei, cnat_fib_source);
+      ASSERT (!fib_entry_is_sourced (cc->cc_fei, cnat_fib_source));
+    }
+  cnat_client_db_remove (cc);
+  dpo_reset (&cc->cc_parent);
+  pool_put (cnat_client_pool, cc);
+}
+
+void
+cnat_client_free_by_ip (ip46_address_t * ip, u8 af)
+{
+  cnat_client_t *cc;
+  cc = (AF_IP4 == af ?
+	cnat_client_ip4_find (&ip->ip4) : cnat_client_ip6_find (&ip->ip6));
+  ASSERT (NULL != cc);
+  if ((0 == cnat_client_uncnt_session (cc))
+      && (cc->flags & CNAT_FLAG_EXPIRES))
+    cnat_client_destroy (cc - cnat_client_pool);
+}
+
+void
+cnat_client_throttle_pool_process ()
+{
+  /* This processes ips stored in the throttle pool
+     to update session refcounts
+     and should be called before cnat_client_free_by_ip */
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  cnat_client_t *cc;
+  int nthreads;
+  u32 *del_vec = NULL, *ai;
+  ip_address_t *addr;
+  nthreads = tm->n_threads + 1;
+  for (int i = 0; i < nthreads; i++)
+    {
+      vec_reset_length (del_vec);
+      clib_spinlock_lock (&cnat_client_db.throttle_pool_lock[i]);
+      /* *INDENT-OFF* */
+      pool_foreach(addr, cnat_client_db.throttle_pool[i], ({
+	cc = (AF_IP4 == addr->version ?
+	      cnat_client_ip4_find (&ip_addr_v4(addr)) :
+	      cnat_client_ip6_find (&ip_addr_v6(addr)));
+	/* Client might not already be created */
+	if (NULL != cc)
+	  {
+	    cnat_client_cnt_session (cc);
+	    vec_add1(del_vec, addr - cnat_client_db.throttle_pool[i]);
+	  }
+      }));
+      /* *INDENT-ON* */
+      vec_foreach (ai, del_vec)
+      {
+	/* Free session */
+	addr = pool_elt_at_index (cnat_client_db.throttle_pool[i], *ai);
+	pool_put (cnat_client_db.throttle_pool[i], addr);
+      }
+      clib_spinlock_unlock (&cnat_client_db.throttle_pool_lock[i]);
+    }
+}
+
+void
+cnat_client_add_translation (index_t cci, u16 port, ip_protocol_t proto,
+			     index_t cti)
+{
+  cnat_client_t *cc;
+  cnat_add_translation (cci, port, proto, cti);
+  cc = cnat_client_get (cci);
+  ASSERT (!(cc->flags & CNAT_FLAG_EXPIRES));
+  cc->tr_refcnt++;
+}
+
+void
+cnat_client_remove_translation (index_t cci, u16 port, ip_protocol_t proto)
+{
+  cnat_client_t *cc;
+  cnat_remove_translation (cci, port, proto);
+
+  cc = cnat_client_get (cci);
+  ASSERT (!(cc->flags & CNAT_FLAG_EXPIRES));
+  cc->tr_refcnt--;
+
+  if (0 == cc->tr_refcnt)
+    cnat_client_destroy (cci);
+}
+
+static void
+cnat_client_db_add (cnat_client_t * cc)
+{
+  index_t cci;
+
+  cci = cc - cnat_client_pool;
+
+  if (ip_addr_version (&cc->cc_ip) == AF_IP4)
+    hash_set (cnat_client_db.crd_cip4, ip_addr_v4 (&cc->cc_ip).as_u32, cci);
+  else
+    hash_set_mem_alloc (&cnat_client_db.crd_cip6,
+			&ip_addr_v6 (&cc->cc_ip), cci);
+}
+
+
+index_t
+cnat_client_add (const ip_address_t * ip, u8 flags)
+{
+  cnat_client_t *cc;
+  dpo_id_t tmp = DPO_INVALID;
+  fib_node_index_t fei;
+  dpo_proto_t dproto;
+  fib_prefix_t pfx;
+  index_t cci;
+  u32 fib_flags;
+
+  /* check again if we need this client */
+  cc = (AF_IP4 == ip->version ?
+	cnat_client_ip4_find (&ip->ip.ip4) :
+	cnat_client_ip6_find (&ip->ip.ip6));
+
+  if (NULL != cc)
+    return (cc - cnat_client_pool);
+
+
+  pool_get_aligned (cnat_client_pool, cc, CLIB_CACHE_LINE_BYTES);
+  cc->cc_locks = 1;
+  cci = cc - cnat_client_pool;
+  cc->parent_cci = cci;
+  cc->flags = flags;
+
+  ip_address_copy (&cc->cc_ip, ip);
+  cnat_client_db_add (cc);
+
+  ip_address_to_fib_prefix (&cc->cc_ip, &pfx);
+
+  dproto = fib_proto_to_dpo (pfx.fp_proto);
+  dpo_set (&tmp, cnat_client_dpo, dproto, cci);
+  dpo_stack (cnat_client_dpo, dproto, &cc->cc_parent, drop_dpo_get (dproto));
+
+  fib_flags = FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT;
+  fib_flags |= (flags & CNAT_FLAG_EXCLUSIVE) ?
+    FIB_ENTRY_FLAG_EXCLUSIVE : FIB_ENTRY_FLAG_INTERPOSE;
+
+  fei = fib_table_entry_special_dpo_add (CNAT_FIB_TABLE,
+					 &pfx, cnat_fib_source, fib_flags,
+					 &tmp);
+
+  cc = pool_elt_at_index (cnat_client_pool, cci);
+  cc->cc_fei = fei;
+
+  return (cci);
+}
+
+void
+cnat_client_learn (const cnat_learn_arg_t * l)
+{
+  /* RPC call to add a client from the dataplane */
+  index_t cci;
+  cnat_client_t *cc;
+  cci = cnat_client_add (&l->addr, CNAT_FLAG_EXPIRES);
+  cc = pool_elt_at_index (cnat_client_pool, cci);
+  cnat_client_cnt_session (cc);
+  /* Process throttled calls if any */
+  cnat_client_throttle_pool_process ();
+}
+
+/**
+ * Interpose a policy DPO
+ */
+static void
+cnat_client_dpo_interpose (const dpo_id_t * original,
+			   const dpo_id_t * parent, dpo_id_t * clone)
+{
+  cnat_client_t *cc, *cc_clone;
+
+  pool_get_zero (cnat_client_pool, cc_clone);
+  cc = cnat_client_get (original->dpoi_index);
+
+  cc_clone->cc_fei = FIB_NODE_INDEX_INVALID;
+  cc_clone->parent_cci = cc->parent_cci;
+  cc_clone->flags = cc->flags;
+  ip_address_copy (&cc_clone->cc_ip, &cc->cc_ip);
+
+  /* stack the clone on the FIB provided parent */
+  dpo_stack (cnat_client_dpo, original->dpoi_proto, &cc_clone->cc_parent,
+	     parent);
+
+  /* return the clone */
+  dpo_set (clone,
+	   cnat_client_dpo,
+	   original->dpoi_proto, cc_clone - cnat_client_pool);
+}
+
+int
+cnat_client_purge (void)
+{
+  /* purge all the clients */
+  void *ckey;
+  index_t cci, *ccip, *ccis = NULL;
+
+  /* *INDENT-OFF* */
+  hash_foreach (ckey, cci, cnat_client_db.crd_cip4,
+  ({
+    vec_add1(ccis, cci);
+  }));
+  hash_foreach_mem (ckey, cci, cnat_client_db.crd_cip6,
+  ({
+    vec_add1(ccis, cci);
+  }));
+  /* *INDENT-ON* */
+
+  vec_foreach (ccip, ccis) cnat_client_destroy (*ccip);
+
+  ASSERT (0 == hash_elts (cnat_client_db.crd_cip6));
+  ASSERT (0 == hash_elts (cnat_client_db.crd_cip4));
+  ASSERT (0 == pool_elts (cnat_client_pool));
+
+  vec_free (ccis);
+
+  return (0);
+}
+
+u8 *
+format_cnat_client (u8 * s, va_list * args)
+{
+  index_t cci = va_arg (*args, index_t);
+  u32 indent = va_arg (*args, u32);
+
+  cnat_client_t *cc = pool_elt_at_index (cnat_client_pool, cci);
+
+  s = format (s, "[%d] cnat-client:[%U] tr:%d sess:%d", cci,
+	      format_ip_address, &cc->cc_ip,
+	      cc->tr_refcnt, cc->session_refcnt);
+  if (cc->flags & CNAT_FLAG_EXPIRES)
+    s = format (s, " expires");
+
+  if (cc->flags & CNAT_FLAG_EXCLUSIVE)
+    s = format (s, " exclusive");
+
+  if (cnat_client_is_clone (cc))
+    s = format (s, "\n%Uclone of [%d]\n%U%U",
+		format_white_space, indent + 2, cc->parent_cci,
+		format_white_space, indent + 2,
+		format_dpo_id, &cc->cc_parent, indent + 4);
+
+  return (s);
+}
+
+
+static clib_error_t *
+cnat_client_show (vlib_main_t * vm,
+		  unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  index_t cci;
+
+  cci = INDEX_INVALID;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%d", &cci))
+	;
+      else
+	return (clib_error_return (0, "unknown input '%U'",
+				   format_unformat_error, input));
+    }
+
+  if (INDEX_INVALID == cci)
+    {
+      /* *INDENT-OFF* */
+      pool_foreach_index(cci, cnat_client_pool, ({
+        vlib_cli_output(vm, "%U", format_cnat_client, cci, 0);
+      }))
+      /* *INDENT-ON* */
+
+      vlib_cli_output (vm, "%d clients", pool_elts (cnat_client_pool));
+      vlib_cli_output (vm, "%d timestamps", pool_elts (cnat_timestamps));
+    }
+  else
+    {
+      vlib_cli_output (vm, "Invalid policy ID:%d", cci);
+    }
+
+  return (NULL);
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cnat_client_show_cmd_node, static) = {
+  .path = "show cnat client",
+  .function = cnat_client_show,
+  .short_help = "show cnat client",
+  .is_mp_safe = 1,
+};
+/* *INDENT-ON* */
+
+const static char *const cnat_client_dpo_ip4_nodes[] = {
+  "ip4-cnat-tx",
+  NULL,
+};
+
+const static char *const cnat_client_dpo_ip6_nodes[] = {
+  "ip6-cnat-tx",
+  NULL,
+};
+
+const static char *const *const cnat_client_dpo_nodes[DPO_PROTO_NUM] = {
+  [DPO_PROTO_IP4] = cnat_client_dpo_ip4_nodes,
+  [DPO_PROTO_IP6] = cnat_client_dpo_ip6_nodes,
+};
+
+static void
+cnat_client_dpo_lock (dpo_id_t * dpo)
+{
+  cnat_client_t *cc;
+
+  cc = cnat_client_get (dpo->dpoi_index);
+
+  cc->cc_locks++;
+}
+
+static void
+cnat_client_dpo_unlock (dpo_id_t * dpo)
+{
+  cnat_client_t *cc;
+
+  cc = cnat_client_get (dpo->dpoi_index);
+
+  cc->cc_locks--;
+
+  if (0 == cc->cc_locks)
+    {
+      ASSERT (cnat_client_is_clone (cc));
+      pool_put (cnat_client_pool, cc);
+    }
+}
+
+u8 *
+format_cnat_client_dpo (u8 * s, va_list * ap)
+{
+  index_t cci = va_arg (*ap, index_t);
+  u32 indent = va_arg (*ap, u32);
+
+  s = format (s, "%U", format_cnat_client, cci, indent);
+
+  return (s);
+}
+
+const static dpo_vft_t cnat_client_dpo_vft = {
+  .dv_lock = cnat_client_dpo_lock,
+  .dv_unlock = cnat_client_dpo_unlock,
+  .dv_format = format_cnat_client_dpo,
+  .dv_mk_interpose = cnat_client_dpo_interpose,
+};
+
+static clib_error_t *
+cnat_client_init (vlib_main_t * vm)
+{
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  int nthreads = tm->n_threads + 1;
+  int i;
+  cnat_client_dpo = dpo_register_new_type (&cnat_client_dpo_vft,
+					   cnat_client_dpo_nodes);
+
+  cnat_client_db.crd_cip6 = hash_create_mem (0,
+					     sizeof (ip6_address_t),
+					     sizeof (uword));
+
+  vec_validate (cnat_client_db.throttle_pool, nthreads);
+  vec_validate (cnat_client_db.throttle_pool_lock, nthreads);
+  for (i = 0; i < nthreads; i++)
+    clib_spinlock_init (&cnat_client_db.throttle_pool_lock[i]);
+
+  return (NULL);
+}
+
+VLIB_INIT_FUNCTION (cnat_client_init);
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
