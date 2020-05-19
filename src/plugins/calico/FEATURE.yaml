@@ -1,0 +1,9 @@
+---
+name: Calico
+maintainer: Neale Ranns <nranns@cisco.com>
+features:
+  - Calico Destination based address/port translation
+
+description: ""
+state: production
+properties: [API, CLI, MULTITHREAD]
