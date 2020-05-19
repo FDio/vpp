@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "06049826_43d57f20",
+        "filename": "test/test_bond.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-05-19T16:13:42Z",
+      "side": 1,
+      "message": "Now that we have enum for different modes. See bond.api. Please use enum to enhance readability.",
+      "revId": "a5c3762fff1785493828f202247f24b60eaf495c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
