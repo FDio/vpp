@@ -18,7 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
-#include <vppinfra/mpcap.h>
+#include <vnet/mpcap.h>
 #include <vnet/ethernet/ethernet.h>
 
 static mpcap_main_t test_mpcap_main = {
