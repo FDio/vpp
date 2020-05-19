@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3e8584a1_76f92701",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2421,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-05-19T15:36:21Z",
+      "side": 1,
+      "message": "Would this work with vls_epoll_wait() with 0 wait time?",
+      "range": {
+        "startLine": 2421,
+        "startChar": 7,
+        "endLine": 2421,
+        "endChar": 24
+      },
+      "revId": "5bee44e816246b945908108306b8743c0e132724",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
