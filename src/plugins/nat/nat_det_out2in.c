@@ -95,15 +95,15 @@ format_nat_det_out2in_trace (u8 * s, va_list * args)
 u32
 icmp_match_out2in_det (snat_main_t * sm, vlib_node_runtime_t * node,
 		       u32 thread_index, vlib_buffer_t * b0,
-		       ip4_header_t * ip0, u8 * p_proto,
-		       snat_session_key_t * p_value,
-		       u8 * p_dont_translate, void *d, void *e)
+		       ip4_header_t * ip0, ip4_address_t * addr,
+		       u16 * port, u32 * fib_index,
+		       nat_protocol_t * proto, void *d, void *e,
+		       u8 * dont_translate)
 {
   icmp46_header_t *icmp0;
   u32 sw_if_index0;
   u8 protocol;
   snat_det_out_key_t key0;
-  u8 dont_translate = 0;
   u32 next0 = ~0;
   icmp_echo_header_t *echo0, *inner_echo0 = 0;
   ip4_header_t *inner_ip0;
@@ -113,6 +113,7 @@ icmp_match_out2in_det (snat_main_t * sm, vlib_node_runtime_t * node,
   ip4_address_t new_addr0 = { {0} };
   snat_det_session_t *ses0 = 0;
   ip4_address_t out_addr;
+  *dont_translate = 0;
 
   icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
   echo0 = (icmp_echo_header_t *) (icmp0 + 1);
@@ -162,7 +163,7 @@ icmp_match_out2in_det (snat_main_t * sm, vlib_node_runtime_t * node,
       if (PREDICT_FALSE (is_interface_addr (sm, node, sw_if_index0,
 					    ip0->dst_address.as_u32)))
 	{
-	  dont_translate = 1;
+	  *dont_translate = 1;
 	  goto out;
 	}
       nat_log_info ("unknown dst address:  %U",
@@ -180,7 +181,7 @@ icmp_match_out2in_det (snat_main_t * sm, vlib_node_runtime_t * node,
       if (PREDICT_FALSE (is_interface_addr (sm, node, sw_if_index0,
 					    ip0->dst_address.as_u32)))
 	{
-	  dont_translate = 1;
+	  *dont_translate = 1;
 	  goto out;
 	}
       nat_log_info ("no match src %U:%d dst %U:%d for user %U",
@@ -207,14 +208,13 @@ icmp_match_out2in_det (snat_main_t * sm, vlib_node_runtime_t * node,
   goto out;
 
 out:
-  *p_proto = protocol;
+  *proto = protocol;
   if (ses0)
     {
-      p_value->addr = new_addr0;
-      p_value->fib_index = sm->inside_fib_index;
-      p_value->port = ses0->in_port;
+      *addr = new_addr0;
+      *fib_index = sm->inside_fib_index;
+      *port = ses0->in_port;
     }
-  *p_dont_translate = dont_translate;
   if (d)
     *(snat_det_session_t **) d = ses0;
   if (e)
