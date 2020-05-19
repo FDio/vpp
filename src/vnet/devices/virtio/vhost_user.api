@@ -115,7 +115,7 @@ define sw_interface_vhost_user_details
 };
 
 /** \brief Vhost-user interface dump request
-    @param sw_if_index - filter by sw_if_index UNIMPLEMENTED
+    @param sw_if_index - filter by sw_if_index
 */
 define sw_interface_vhost_user_dump
 {
