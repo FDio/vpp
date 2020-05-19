@@ -1,0 +1,20 @@
+---
+name: ACL Based Forwarding
+maintainer: Neale Ranns <nranns@cisco.com>
+features:
+  - 'Policy Based Routing'
+  - ACLs match traffic to be forwarded
+  - Each rule in the ACL has an associated 'path' which determines how the
+    traffic will be forwarded. This path is described as a FIB path, so anything
+    possible with basic L3 forwarding is possible with ABF (with the exception
+    of output MPLS labels)
+  - ACLs are grouped into a policy
+  - ACL priorities within the policy determine which traffic is preferentially
+    matched
+  - Policies are attached to interfaces.
+  - ABF runs as an input feature in the L3 path
+
+
+description: ""
+state: production
+properties: [API, CLI, MULTITHREAD]

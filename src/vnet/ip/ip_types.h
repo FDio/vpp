@@ -75,6 +75,8 @@ extern fib_protocol_t ip_address_to_46 (const ip_address_t * addr,
 					ip46_address_t * a);
 extern void ip_address_from_46 (const ip46_address_t * a,
 				fib_protocol_t fproto, ip_address_t * addr);
+extern void ip_addr_to_fib_prefix (const ip_address_t *addr,
+                                   fib_prefix_t *pfx);
 
 /* *INDENT-OFF* */
 typedef struct ip_prefix
