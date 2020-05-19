@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fabfdd81_30f151da",
+        "filename": "src/vpp/conf/startup.conf",
+        "patchSetId": 2
+      },
+      "lineNbr": 193,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-19T14:16:29Z",
+      "side": 1,
+      "message": "This is now separate as part of moving dslite to its own plugin, yes?\nsrc/plugins/nat/dslite/dslite.c:118\ndslite { ce }",
+      "range": {
+        "startLine": 192,
+        "startChar": 0,
+        "endLine": 193,
+        "endChar": 12
+      },
+      "revId": "b48ca6197263eda9df11377c8d85f6f193bebced",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
