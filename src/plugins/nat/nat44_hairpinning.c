@@ -93,7 +93,6 @@ is_hairpinning (snat_main_t * sm, ip4_address_t * dst_addr)
 {
   snat_address_t *ap;
   clib_bihash_kv_8_8_t kv, value;
-  snat_session_key_t m_key;
 
   /* *INDENT-OFF* */
   vec_foreach (ap, sm->addresses)
@@ -103,11 +102,7 @@ is_hairpinning (snat_main_t * sm, ip4_address_t * dst_addr)
     }
   /* *INDENT-ON* */
 
-  m_key.addr.as_u32 = dst_addr->as_u32;
-  m_key.fib_index = 0;
-  m_key.port = 0;
-  m_key.protocol = 0;
-  kv.key = m_key.as_u64;
+  init_nat_k (&kv, *dst_addr, 0, 0, 0);
   if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
     return 1;
 
@@ -121,26 +116,23 @@ snat_hairpinning (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  udp_header_t * udp0, tcp_header_t * tcp0, u32 proto0,
 		  int is_ed, int do_trace)
 {
-  snat_session_key_t key0, sm0;
   snat_session_t *s0;
   clib_bihash_kv_8_8_t kv0, value0;
   ip_csum_t sum0;
   u32 new_dst_addr0 = 0, old_dst_addr0, ti = 0, si = ~0;
   u16 new_dst_port0 = ~0, old_dst_port0;
   int rv;
-
-  key0.addr = ip0->dst_address;
-  key0.port = udp0->dst_port;
-  key0.protocol = proto0;
-  key0.fib_index = sm->outside_fib_index;
-  kv0.key = key0.as_u64;
-
+  ip4_address_t sm0_addr;
+  u16 sm0_port;
+  u32 sm0_fib_index;
   /* Check if destination is static mappings */
-  if (!snat_static_mapping_match (sm, key0, &sm0, 1, 0, 0, 0, 0, 0))
+  if (!snat_static_mapping_match
+      (sm, ip0->dst_address, udp0->dst_port, sm->outside_fib_index, proto0,
+       &sm0_addr, &sm0_port, &sm0_fib_index, 1, 0, 0, 0, 0, 0))
     {
-      new_dst_addr0 = sm0.addr.as_u32;
-      new_dst_port0 = sm0.port;
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = sm0.fib_index;
+      new_dst_addr0 = sm0_addr.as_u32;
+      new_dst_port0 = sm0_port;
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = sm0_fib_index;
     }
   /* or active session */
   else
@@ -155,17 +147,21 @@ snat_hairpinning (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (is_ed)
 	{
 	  clib_bihash_kv_16_8_t ed_kv, ed_value;
-	  make_ed_kv (&ip0->dst_address, &ip0->src_address,
-		      ip0->protocol, sm->outside_fib_index, udp0->dst_port,
-		      udp0->src_port, ~0, ~0, &ed_kv);
+	  init_ed_k (&ed_kv, ip0->dst_address, udp0->dst_port,
+		     ip0->src_address, udp0->src_port, sm->outside_fib_index,
+		     ip0->protocol);
 	  rv = clib_bihash_search_16_8 (&sm->out2in_ed, &ed_kv, &ed_value);
 	  ASSERT (ti == ed_value_get_thread_index (&ed_value));
 	  si = ed_value_get_session_index (&ed_value);
 	}
       else
 	{
-	  rv = clib_bihash_search_8_8 (&sm->per_thread_data[ti].out2in, &kv0,
-				       &value0);
+
+	  init_nat_k (&kv0, ip0->dst_address, udp0->dst_port,
+		      sm->outside_fib_index, proto0);
+	  rv =
+	    clib_bihash_search_8_8 (&sm->per_thread_data[ti].out2in, &kv0,
+				    &value0);
 	  si = value0.value;
 	}
       if (rv)
@@ -250,7 +246,6 @@ snat_icmp_hairpinning (snat_main_t * sm,
 		       vlib_buffer_t * b0,
 		       ip4_header_t * ip0, icmp46_header_t * icmp0, int is_ed)
 {
-  snat_session_key_t key0;
   clib_bihash_kv_8_8_t kv0, value0;
   u32 old_dst_addr0, new_dst_addr0;
   u32 old_addr0, new_addr0;
@@ -277,10 +272,9 @@ snat_icmp_hairpinning (snat_main_t * sm,
       if (is_ed)
 	{
 	  clib_bihash_kv_16_8_t ed_kv, ed_value;
-	  make_ed_kv (&ip0->dst_address, &ip0->src_address,
-		      inner_ip0->protocol, sm->outside_fib_index,
-		      l4_header->src_port, l4_header->dst_port, ~0, ~0,
-		      &ed_kv);
+	  init_ed_k (&ed_kv, ip0->dst_address, l4_header->src_port,
+		     ip0->src_address, l4_header->dst_port,
+		     sm->outside_fib_index, inner_ip0->protocol);
 	  if (clib_bihash_search_16_8 (&sm->out2in_ed, &ed_kv, &ed_value))
 	    return 1;
 	  ASSERT (ti == ed_value_get_thread_index (&ed_value));
@@ -288,13 +282,10 @@ snat_icmp_hairpinning (snat_main_t * sm,
 	}
       else
 	{
-	  key0.addr = ip0->dst_address;
-	  key0.port = l4_header->src_port;
-	  key0.protocol = protocol;
-	  key0.fib_index = sm->outside_fib_index;
-	  kv0.key = key0.as_u64;
-	  if (clib_bihash_search_8_8 (&sm->per_thread_data[ti].out2in, &kv0,
-				      &value0))
+	  init_nat_k (&kv0, ip0->dst_address, l4_header->src_port,
+		      sm->outside_fib_index, protocol);
+	  if (clib_bihash_search_8_8
+	      (&sm->per_thread_data[ti].out2in, &kv0, &value0))
 	    return 1;
 	  si = value0.value;
 	}
@@ -334,12 +325,7 @@ snat_icmp_hairpinning (snat_main_t * sm,
     }
   else
     {
-      key0.addr = ip0->dst_address;
-      key0.port = 0;
-      key0.protocol = 0;
-      key0.fib_index = sm->outside_fib_index;
-      kv0.key = key0.as_u64;
-
+      init_nat_k (&kv0, ip0->dst_address, 0, sm->outside_fib_index, 0);
       if (clib_bihash_search_8_8
 	  (&sm->static_mapping_by_external, &kv0, &value0))
 	{
@@ -347,11 +333,8 @@ snat_icmp_hairpinning (snat_main_t * sm,
 	    {
 	      icmp_echo_header_t *echo0 = (icmp_echo_header_t *) (icmp0 + 1);
 	      u16 icmp_id0 = echo0->identifier;
-	      key0.addr = ip0->dst_address;
-	      key0.port = icmp_id0;
-	      key0.protocol = NAT_PROTOCOL_ICMP;
-	      key0.fib_index = sm->outside_fib_index;
-	      kv0.key = key0.as_u64;
+	      init_nat_k (&kv0, ip0->dst_address, icmp_id0,
+			  sm->outside_fib_index, NAT_PROTOCOL_ICMP);
 	      if (sm->num_workers > 1)
 		ti =
 		  (clib_net_to_host_u16 (icmp_id0) -
@@ -412,7 +395,7 @@ nat_hairpinning_sm_unknown_proto (snat_main_t * sm,
   u32 old_addr, new_addr;
   ip_csum_t sum;
 
-  make_sm_kv (&kv, &ip->dst_address, 0, 0, 0);
+  init_nat_k (&kv, ip->dst_address, 0, 0, 0);
   if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
     return;
 
@@ -447,11 +430,11 @@ nat44_ed_hairpinning_unknown_proto (snat_main_t * sm,
     ti = sm->num_workers;
 
   old_addr = ip->dst_address.as_u32;
-  make_ed_kv (&ip->dst_address, &ip->src_address, ip->protocol,
-	      sm->outside_fib_index, 0, 0, ~0, ~0, &s_kv);
+  init_ed_k (&s_kv, ip->dst_address, 0, ip->src_address, 0,
+	     sm->outside_fib_index, ip->protocol);
   if (clib_bihash_search_16_8 (&sm->out2in_ed, &s_kv, &s_value))
     {
-      make_sm_kv (&kv, &ip->dst_address, 0, 0, 0);
+      init_nat_k (&kv, ip->dst_address, 0, 0, 0);
       if (clib_bihash_search_8_8
 	  (&sm->static_mapping_by_external, &kv, &value))
 	return;
