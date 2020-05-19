@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "12e3575f_b6e58955",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-05-19T21:36:04Z",
+      "side": 1,
+      "message": "Matthew, I look at the problem in more detail. It looks like the problem was due to inconsistent setting of the hw link up flags. When the bond interface is created, we always set it to link up in bond_create_if(). When the admin state is set to down, the cli code sets both the admin and hw link to down. When the admin state is changed to up again, we didn\u0027t set the hw link back to up because the check was failing in\n\nbond_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)\n{\n...\n  if (is_up \u0026\u0026 vec_len (bif-\u003eactive_slaves))\n    vnet_hw_interface_set_flags (vnm, bif-\u003ehw_if_index,\n\t\t\t\t VNET_HW_INTERFACE_FLAG_LINK_UP);\n\nWe should decide when the hw link is supposed to set to up based on one of these 2 rules.\n1. When admin state is up and at least one active slave exists\n2. When admin state is up regardless of whether it has active slave or not.\n\nWe were inconsistent before and that is why it causes problem.\n\nWith your suggested fix, we are still inconsistent. hw link is always up in the beginning as soon as the bond interface is created without any active slave. After the admin state is flipped to down and then up, it requires at least one active slave to set hw link to up. Should we stick to either rule #1 or rule #2. If we want to stick to rule #2, I think we need to remove the check vec_len in bond_interface_admin_up_down and there is no other changes are needed. If we want to stick to rule #1, I think we apply your changes and may want to remove the code to set hw link flag to up in bond_create_if(). Either way, I think bond_link test will need to revise to adapt to the new setting.\n\nWhat do you think which one is less risky?",
+      "revId": "bb773cc7be93f088ca83a63fb4fd96dd9a1bd409",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
