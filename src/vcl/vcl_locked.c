@@ -1113,6 +1113,22 @@ vls_epoll_wait (vls_handle_t ep_vlsh, struct epoll_event *events,
   return rv;
 }
 
+int
+vls_epoll_prewait (vls_handle_t ep_vlsh, struct epoll_event *events,
+		   int maxevents)
+{
+  vcl_locked_session_t *vls;
+  int rv;
+
+  if (!(vls = vls_get_w_dlock (ep_vlsh)))
+    return VPPCOM_EBADFD;
+  vls_mt_guard (0, VLS_MT_OP_XPOLL);
+  rv = vppcom_epoll_prewait (vls_to_sh_tu (vls), events, maxevents);
+  vls_mt_unguard ();
+  vls_get_and_unlock (ep_vlsh);
+  return rv;
+}
+
 static void
 vls_select_mp_checks (vcl_si_set * read_map)
 {
@@ -1379,6 +1395,12 @@ vls_app_create (char *app_name)
   vlsl->vls_wrk_index = vcl_get_worker_index ();
   vls_mt_locks_init ();
   return VPPCOM_OK;
+}
+
+unsigned char
+vls_use_eventfd (void)
+{
+  return vcm->cfg.use_mq_eventfd;
 }
 
 /*
