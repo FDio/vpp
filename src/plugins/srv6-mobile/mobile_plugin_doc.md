@@ -8,22 +8,22 @@ This plugin module can provide the stateless mobile user plane protocols transla
 [SRv6 Mobile User Plane](https://tools.ietf.org/html/draft-ietf-dmm-srv6-mobile-uplane) defines the user plane protocol using SRv6
 including following stateless translation functions:
 
-- **T.M.GTP4.D:**  
+- **T.M.GTP4.D:**
    GTP-U over UDP/IPv4 -> SRv6
-- **End.M.GTP4.E:**  
+- **End.M.GTP4.E:**
    SRv6 -> GTP-U over UDP/IPv4
-- **End.M.GTP6.D:**   
+- **End.M.GTP6.D:**
    GTP-U over UDP/IPv6 -> SRv6
-- **End.M.GTP6.E:**  
+- **End.M.GTP6.E:**
    SRv6 -> GTP-U over UDP/IPv6
 
 These functions benefit user plane(overlay) to be able to utilize data plane(underlay) networks properly. And also it benefits data plane to be able to handle user plane in routing paradigm.
 
-In addition to the above funcntions, the plugin supports following functions:
+In addition to the above functions, the plugin supports following functions:
 
-- **T.M.GTP4.DT{4|6|46}:**  
+- **T.M.GTP4.DT{4|6|46}:**
    FIB table lookup for IPv4/IP6 encapsulated in GTP-U over UDP/IPv4
-- **End.M.GTP6.DT{4|6|46}:**  
+- **End.M.GTP6.DT{4|6|46}:**
    FIB table lookup for IPv4/IP6 encapsulated in GTP-U over UDP/IPv6
 
 Noted that the prefix of function names follow naming convention of SRv6 network programming. "T" means transit function, "End" means end function, "M" means Mobility specific function. The suffix "D" and "E" mean that "decapsulation" and "encapsulation" respectively.
@@ -147,7 +147,7 @@ sr localsid prefix 2001:db8::/64 behavior end.m.gtp6.e
 
 ## FIB Table Lookup for Inner IPv4/IPv6 packet
 
-If you need to forward inner IP packet which is encapsuted outer IP and GTP-U headers based on specific fib table, configuring `gtp4.dt*` or `gtp6.dt*` helps you to do that.
+SRv6 Mobile functions of `t.m.gtp4.dt*` and `end.m.gtp6.dt*` support decapsulating outer IP/UDP/GTP-U headers and forwarding inner IP packet based on specific fib table.
 
 In case of the both outer and inner IP address families are IPv4, `t.m.gtp4.dt4` function supports GTP-U decapsulation and fib lookup for inner IPv4 with an associated steering policy and the following parameters:
 
@@ -173,7 +173,7 @@ In addition, inner IPv6, or mix of IPv4 and IPv6 inner packet cases require the 
 
 This is inner IPv6 case specific. The reason is that GTP-U encapsulates link local IPv6 packet for NDP (Neighber Discovery Protocol). Outer GTP-U header should be kept until the packets reach to the node responsible for NDP handling. It is typically UPF(User Plane Function) node.
 
-The following command instantitate a new T.M.GTP4.DT6 function.
+The following command instantiates a new T.M.GTP4.DT6 function.
 
 ```
 sr policy add bsid D5:: behavior t.m.gtp4.dt6 fib-table 0 local-fib-table LOCAL-FIB
