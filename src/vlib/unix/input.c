@@ -50,6 +50,8 @@
 
 #include <sys/epoll.h>
 
+extern vlib_node_registration_t linux_epoll_input_node;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -113,6 +115,9 @@ linux_epoll_file_update (clib_file_t * f, clib_file_update_type_t update_type)
 	  return;
 	}
       em->n_epoll_fds = 0;
+      vlib_node_set_state (vlib_mains[f->polling_thread_index],
+			   linux_epoll_input_node.index,
+			   VLIB_NODE_STATE_POLLING);
     }
 
   if (epoll_ctl (em->epoll_fd, op, f->file_descriptor, &e) < 0)
@@ -127,6 +132,9 @@ linux_epoll_file_update (clib_file_t * f, clib_file_update_type_t update_type)
     {
       close (em->epoll_fd);
       em->epoll_fd = -1;
+      vlib_node_set_state (vlib_mains[f->polling_thread_index],
+			   linux_epoll_input_node.index,
+			   VLIB_NODE_STATE_DISABLED);
     }
 }
 
@@ -367,12 +375,32 @@ linux_epoll_input (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (linux_epoll_input_node,static) = {
+VLIB_REGISTER_NODE (linux_epoll_input_node) = {
   .function = linux_epoll_input,
   .type = VLIB_NODE_TYPE_PRE_INPUT,
   .name = "unix-epoll-input",
+  .state = VLIB_NODE_STATE_DISABLED,
 };
 /* *INDENT-ON* */
+
+/*
+ * By default disable on all worker threads.
+ */
+clib_error_t *
+linux_epoll_input_worker_init (vlib_main_t * vm)
+{
+  linux_epoll_main_t *em = vec_elt_at_index (linux_epoll_mains,
+					     vm->thread_index);
+  if (em->epoll_fd == -1)
+    vlib_node_set_state (vm, linux_epoll_input_node.index,
+			 VLIB_NODE_STATE_DISABLED);
+  else
+    vlib_node_set_state (vm, linux_epoll_input_node.index,
+			 VLIB_NODE_STATE_POLLING);
+  return 0;
+}
+
+VLIB_WORKER_INIT_FUNCTION (linux_epoll_input_worker_init);
 
 clib_error_t *
 linux_epoll_input_init (vlib_main_t * vm)
@@ -395,6 +423,8 @@ linux_epoll_input_init (vlib_main_t * vm)
 	em->epoll_fd = epoll_create (1);
 	if (em->epoll_fd < 0)
 	  return clib_error_return_unix (0, "epoll_create");
+	vlib_node_set_state (vlib_mains[0], linux_epoll_input_node.index,
+			     VLIB_NODE_STATE_POLLING);
       }
     else
       em->epoll_fd = -1;
