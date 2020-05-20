@@ -90,6 +90,15 @@ do {                                                                    \
     vl_api_send_msg (rp, (u8 *)rmp);                                    \
 } while(0);
 
+#define REPLY_MACRO_DETAILS4(t, rp, context, body)			\
+do {                                                                    \
+    rmp = vl_msg_api_alloc (sizeof (*rmp));                             \
+    rmp->_vl_msg_id = htons((t)+(REPLY_MSG_ID_BASE));                   \
+    rmp->context = context;                                             \
+    do {body;} while (0);                                               \
+    vl_api_send_msg (rp, (u8 *)rmp);                                    \
+} while(0);
+
 #define REPLY_MACRO3(t, n, body)                                        \
 do {                                                                    \
     vl_api_registration_t *rp;                                          \
@@ -151,6 +160,33 @@ do {                                                                    \
     if (!is_error)                                                      \
       do {body;} while (0);                                             \
     vl_api_send_msg (rp, (u8 *)rmp);                                    \
+} while(0);
+
+#define REPLY_AND_DETAILS_MACRO(t, p, body)			\
+do {								\
+  vl_api_registration_t *rp;					\
+  rp = vl_api_client_index_to_registration (mp->client_index);	\
+  if (rp == 0)							\
+    return;							\
+  u32 cursor = clib_net_to_host_u32 (mp->cursor);		\
+  vlib_main_t *vm = vlib_get_main ();				\
+  f64 start = vlib_time_now (vm);				\
+  while (cursor != ~0) {					\
+    if (pool_is_free_index (p, cursor)) {			\
+      rv = VNET_API_ERROR_INVALID_VALUE;			\
+      break;							\
+    }								\
+    do {body;} while (0);					\
+    cursor = pool_next_index (p, cursor);			\
+    if (vl_api_process_may_suspend (vm, rp, start))	{	\
+      if (cursor != ~0)						\
+        rv = VNET_API_ERROR_EAGAIN;				\
+      break;							\
+    }								\
+  }								\
+  REPLY_MACRO2 (t, ({						\
+    rmp->cursor = clib_host_to_net_u32 (cursor);		\
+  }));								\
 } while(0);
 
 /* "trust, but verify" */
