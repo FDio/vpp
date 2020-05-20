@@ -392,6 +392,7 @@ slow_path_ed (snat_main_t * sm,
 	}
       key1.addr = allocated_addr;
       key1.port = allocated_port;
+      key1.fib_index = s->out2in.fib_index;
     }
   else
     {
@@ -436,6 +437,7 @@ slow_path_ed (snat_main_t * sm,
       s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
 
 
+      key1.fib_index = s->out2in.fib_index;
       make_ed_kv (&key1.addr, &r_addr, proto,
 		  s->out2in.fib_index, key1.port, r_port, thread_index,
 		  s - tsm->sessions, &out2in_ed_kv);
