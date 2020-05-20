@@ -94,6 +94,30 @@
       "revId": "5bee44e816246b945908108306b8743c0e132724",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "17c71d14_e0e299e8",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2421,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-05-20T15:34:08Z",
+      "side": 1,
+      "message": "No worries, there was nothing really wrong with the previous version. It\u0027s just a matter of reusing code as much as possible. \n\nThank you for pushing the patch! Nice feature!",
+      "parentUuid": "b953c3ed_48ed2c5f",
+      "range": {
+        "startLine": 2421,
+        "startChar": 7,
+        "endLine": 2421,
+        "endChar": 24
+      },
+      "revId": "5bee44e816246b945908108306b8743c0e132724",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
