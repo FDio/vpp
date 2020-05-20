@@ -276,10 +276,10 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 		    udp_header_t * udp, dhcp_header_t * dhcp)
 {
   dhcp_client_main_t *dcm = &dhcp_client_main;
-  vlib_main_t *vm = dcm->vlib_main;
+  vlib_main_t *vm = vlib_get_main();
   dhcp_client_t *c;
   uword *p;
-  f64 now = vlib_time_now (dcm->vlib_main);
+  f64 now = vlib_time_now (vm);
   u8 dhcp_message_type = 0;
   dhcp_option_t *o;
 
