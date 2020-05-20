@@ -100,6 +100,37 @@ class TestMAP(VppTestCase):
         self.assertEqual(rv[0].tag, tag,
                          "output produced incorrect tag value.")
 
+    def create_domains(self, ip4_pfx_str, ip6_pfx_str, ip6_src_str):
+        ip4_pfx = ipaddress.ip_network(ip4_pfx_str)
+        ip6_dst = ipaddress.ip_network(ip6_pfx_str)
+        mod = ip4_pfx.num_addresses / 1024
+        indicies = []
+        for i in range(ip4_pfx.num_addresses):
+            rv = self.vapi.map_add_domain(ip6_prefix=ip6_pfx_str,
+                                          ip4_prefix=str(ip4_pfx[i]) + "/32",
+                                          ip6_src=ip6_src_str)
+            indicies.append(rv.index)
+        return indicies
+
+    def test_api_map_domains_get(self):
+        # Create a bunch of domains
+        domains = self.create_domains('130.67.0.0/24', '2001::/32', '2001::1/128')
+        self.assertEqual(len(domains), 256)
+        d = []
+        cursor = 0
+        while True:
+            rv, details = self.vapi.map_domains_get(cursor=cursor)
+            d += details
+            if rv.retval == 0:
+                break
+            cursor = rv.cursor
+
+        self.assertEqual(len(d), 256)
+
+        # Clean up
+        for i in domains:
+            self.vapi.map_del_domain(index=i)
+
     def test_map_e_udp(self):
         """ MAP-E UDP"""
 
