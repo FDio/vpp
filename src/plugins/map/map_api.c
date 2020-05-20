@@ -86,14 +86,48 @@ vl_api_map_add_del_rule_t_handler (vl_api_map_add_del_rule_t * mp)
 }
 
 static void
+send_domain_details (u32 map_domain_index, vl_api_registration_t * rp,
+		     u32 context)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_domain_details_t *rmp;
+  map_domain_t *d = pool_elt_at_index (mm->domains, map_domain_index);
+
+  /* Make sure every field is initiated (or don't skip the clib_memset()) */
+  map_domain_extra_t *de =
+    vec_elt_at_index (mm->domain_extras, map_domain_index);
+  int tag_len = clib_min (ARRAY_LEN (rmp->tag), vec_len (de->tag) + 1);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO_DETAILS4(VL_API_MAP_DOMAIN_DETAILS, rp, context,
+  ({
+    rmp->domain_index = htonl (map_domain_index);
+    clib_memcpy (&rmp->ip6_prefix.address, &d->ip6_prefix,
+		 sizeof (rmp->ip6_prefix.address));
+    clib_memcpy (&rmp->ip4_prefix.address, &d->ip4_prefix,
+		 sizeof (rmp->ip4_prefix.address));
+    clib_memcpy (&rmp->ip6_src.address, &d->ip6_src,
+		 sizeof (rmp->ip6_src.address));
+    rmp->ip6_prefix.len = d->ip6_prefix_len;
+    rmp->ip4_prefix.len = d->ip4_prefix_len;
+    rmp->ip6_src.len = d->ip6_src_len;
+    rmp->ea_bits_len = d->ea_bits_len;
+    rmp->psid_offset = d->psid_offset;
+    rmp->psid_length = d->psid_length;
+    rmp->flags = d->flags;
+    rmp->mtu = htons (d->mtu);
+    memcpy (rmp->tag, de->tag, tag_len - 1);
+    rmp->tag[tag_len - 1] = '\0';
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
 vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
 {
-  vl_api_map_domain_details_t *rmp;
   map_main_t *mm = &map_main;
-  map_domain_t *d;
-  map_domain_extra_t *de;
+  int i;
   vl_api_registration_t *reg;
-  u32 map_domain_index;
 
   if (pool_elts (mm->domains) == 0)
     return;
@@ -103,33 +137,28 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach(d, mm->domains,
+  pool_foreach_index(i, mm->domains,
   ({
-    map_domain_index = d - mm->domains;
-    de = vec_elt_at_index(mm->domain_extras, map_domain_index);
-    int tag_len = clib_min(ARRAY_LEN(rmp->tag), vec_len(de->tag) + 1);
+    send_domain_details(i, reg, mp->context);
+  }));
+  /* *INDENT-ON* */
+}
 
-    /* Make sure every field is initiated (or don't skip the clib_memset()) */
-    rmp = vl_msg_api_alloc (sizeof (*rmp) + tag_len);
+static void
+vl_api_map_domains_get_t_handler (vl_api_map_domains_get_t * mp)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_domains_get_reply_t *rmp;
 
-    rmp->_vl_msg_id = htons(VL_API_MAP_DOMAIN_DETAILS + mm->msg_id_base);
-    rmp->context = mp->context;
-    rmp->domain_index = htonl(map_domain_index);
-    clib_memcpy(&rmp->ip6_prefix.address, &d->ip6_prefix, sizeof(rmp->ip6_prefix.address));
-    clib_memcpy(&rmp->ip4_prefix.address, &d->ip4_prefix, sizeof(rmp->ip4_prefix.address));
-    clib_memcpy(&rmp->ip6_src.address, &d->ip6_src, sizeof(rmp->ip6_src.address));
-    rmp->ip6_prefix.len = d->ip6_prefix_len;
-    rmp->ip4_prefix.len = d->ip4_prefix_len;
-    rmp->ip6_src.len = d->ip6_src_len;
-    rmp->ea_bits_len = d->ea_bits_len;
-    rmp->psid_offset = d->psid_offset;
-    rmp->psid_length = d->psid_length;
-    rmp->flags = d->flags;
-    rmp->mtu = htons(d->mtu);
-    memcpy(rmp->tag, de->tag, tag_len-1);
-    rmp->tag[tag_len-1] = '\0';
+  i32 rv = 0;
 
-    vl_api_send_msg (reg, (u8 *) rmp);
+  if (pool_elts (mm->domains) == 0)
+    return;
+
+  /* *INDENT-OFF* */
+  REPLY_AND_DETAILS_MACRO (VL_API_MAP_DOMAINS_GET_REPLY, mm->domains,
+  ({
+    send_domain_details (cursor, rp, mp->context);
   }));
   /* *INDENT-ON* */
 }

@@ -472,12 +472,7 @@ class VPPApiClient(object):
 
                 # Create function for client side messages.
                 if name in self.services:
-                    if 'stream' in self.services[name] and \
-                       self.services[name]['stream']:
-                        multipart = True
-                    else:
-                        multipart = False
-                    f = self.make_function(msg, i, multipart, do_async)
+                    f = self.make_function(msg, i, self.services[name], do_async)
                     setattr(self._api, name, FuncWrapper(f))
             else:
                 self.logger.debug(
@@ -644,7 +639,7 @@ class VPPApiClient(object):
                                                            n[1]['avg'], n[1]['max'])
         return s
 
-    def _call_vpp(self, i, msgdef, multipart, **kwargs):
+    def _call_vpp(self, i, msgdef, service, **kwargs):
         """Given a message, send the message and await a reply.
 
         msgdef - the message packing definition
@@ -686,10 +681,21 @@ class VPPApiClient(object):
 
         self.transport.write(b)
 
-        if multipart:
-            # Send a ping after the request - we use its response
-            # to detect that we have seen all results.
-            self._control_ping(context)
+        msgreply = service['reply']
+        stream = True if 'stream' in service else False
+        if stream:
+            if 'stream_msg' in service:
+                # New service['reply'] = _reply and service['stream_message'] = _details
+                stream_message = service['stream_msg']
+                modern =True
+            else:
+                # Old  service['reply'] = _details
+                stream_message = msgreply
+                msgreply = 'control_ping_reply'
+                modern = False
+                # Send a ping after the request - we use its response
+                # to detect that we have seen all results.
+                self._control_ping(context)
 
         # Block until we get a reply.
         rl = []
@@ -702,11 +708,14 @@ class VPPApiClient(object):
                 # Message being queued
                 self.message_queue.put_nowait(r)
                 continue
-
-            if not multipart:
+            if msgname != msgreply and (stream and (msgname != stream_message)):
+                print('REPLY MISMATCH', msgreply, msgname, stream_message, stream)
+            if not stream:
                 rl = r
                 break
-            if msgname == 'control_ping_reply':
+            if msgname == msgreply:
+                if modern: # Return both reply and list
+                    rl = r, rl
                 break
 
             rl.append(r)
@@ -847,6 +856,19 @@ class VPPApiClient(object):
                    self.logger, self.read_timeout, self.use_socket,
                    self.server_address)
 
+    def details_iter(self, f, **kwargs):
+        cursor = 0
+        while True:
+            kwargs['cursor'] = cursor
+            rv, details = f(**kwargs)
+            #
+            # Convert to yield from details when we only support python 3
+            #
+            for d in details:
+                yield d
+            if rv.retval == 0 or rv.retval != -165:
+                break
+            cursor = rv.cursor
 
 # Provide the old name for backward compatibility.
 VPP = VPPApiClient
