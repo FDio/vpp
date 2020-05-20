@@ -100,6 +100,48 @@ class TestMAP(VppTestCase):
         self.assertEqual(rv[0].tag, tag,
                          "output produced incorrect tag value.")
 
+    def create_domains(self, ip4_pfx_str, ip6_pfx_str, ip6_src_str):
+        ip4_pfx = ipaddress.ip_network(ip4_pfx_str)
+        ip6_dst = ipaddress.ip_network(ip6_pfx_str)
+        mod = ip4_pfx.num_addresses / 1024
+        indicies = []
+        for i in range(ip4_pfx.num_addresses):
+            rv = self.vapi.map_add_domain(ip6_prefix=ip6_pfx_str,
+                                          ip4_prefix=str(ip4_pfx[i]) + "/32",
+                                          ip6_src=ip6_src_str)
+            indicies.append(rv.index)
+        return indicies
+
+    def test_api_map_domains_get(self):
+        # Create a bunch of domains
+        domains = self.create_domains('130.67.0.0/24', '2001::/32',
+                                      '2001::1/128')
+        self.assertEqual(len(domains), 256)
+
+        d = []
+        cursor = 0
+
+        # Invalid cursor
+        rv, details = self.vapi.map_domains_get(cursor=1234)
+        self.assertEqual(rv.retval, -7)
+
+        # Delete a domain in the middle of walk
+        rv, details = self.vapi.map_domains_get(cursor=0)
+        self.assertEqual(rv.retval, -165)
+        self.vapi.map_del_domain(index=rv.cursor)
+        domains.remove(rv.cursor)
+
+        # Continue at point of deleted cursor
+        rv, details = self.vapi.map_domains_get(cursor=rv.cursor)
+        self.assertEqual(rv.retval, -165)
+
+        d = list(self.vapi.vpp.details_iter(self.vapi.map_domains_get))
+        self.assertEqual(len(d), 255)
+
+        # Clean up
+        for i in domains:
+            self.vapi.map_del_domain(index=i)
+
     def test_map_e_udp(self):
         """ MAP-E UDP"""
 
@@ -915,6 +957,7 @@ class TestMAP(VppTestCase):
         self.vapi.map_param_add_del_pre_resolve(ip4_nh_address="10.1.2.3",
                                                 ip6_nh_address="4001::1",
                                                 is_add=0)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
