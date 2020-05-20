@@ -2259,7 +2259,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 						adj1->ia_cfg_index);
 	  next[1] = next_index;
 	  if (is_midchain)
-	    vnet_calc_checksums_inline (vm, b[0], 1 /* is_ip4 */ ,
+	    vnet_calc_checksums_inline (vm, b[1], 1 /* is_ip4 */ ,
 					0 /* is_ip6 */ ,
 					0 /* with gso */ );
 	}
