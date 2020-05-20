@@ -46,6 +46,30 @@
       "revId": "5bee44e816246b945908108306b8743c0e132724",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "42c25fc7_7c274893",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2421,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-05-20T02:37:38Z",
+      "side": 1,
+      "message": "Actually, I\u0027m asking if we can replace vls_epoll_prewait with vls_epoll_wait(.., 0). The goal being to avoid redundant code. If the idea lower doesn\u0027t work we should pull prewait outside of wait. \n\nIf the return is non-zero, even if we have events in unhanded_evts_vector, we return to the app whatever was accumulated in events. Subsequently, on the next epoll_wait call, vls_epoll_wait(..,0) should consume everything that\u0027s in unhandled_evts_vector and check the eventfd. Because of the unhandled events, it will return to the app. \n\nFinally, next call to epoll_wait, vls_epoll_wait(.., 0) checks the eventfd with timeout 0 and let\u0027s assume returns no event. Consequently, we should hit the epoll lower (line 2425) and block there until either a libc fd or the mq get an event (or a timeout is hit)\n\nSo, as far as I can tell, we can replace vls_epoll_prewait with vls_epoll_wait with 0 timeout. Why can\u0027t vls_epoll_wait be called without an eventfd epoll notification?",
+      "parentUuid": "e4f4f917_5bc0b58a",
+      "range": {
+        "startLine": 2421,
+        "startChar": 7,
+        "endLine": 2421,
+        "endChar": 24
+      },
+      "revId": "5bee44e816246b945908108306b8743c0e132724",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
