@@ -23,6 +23,10 @@ typedef enum
   AES_KEY_128 = 0,
   AES_KEY_192 = 1,
   AES_KEY_256 = 2,
+  /* crypto async frame has key size in bytes */
+  AES_ASYNC_KEY_16 = 0,
+  AES_ASYNC_KEY_24 = 1,
+  AES_ASYNC_KEY_32 = 2,
 } aes_key_size_t;
 
 #define AES_KEY_ROUNDS(x)		(10 + x * 2)
