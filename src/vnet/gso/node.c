@@ -467,7 +467,8 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		      vlib_frame_t * frame,
 		      vnet_main_t * vnm,
 		      vnet_hw_interface_t * hi,
-		      int is_l2, int is_ip4, int is_ip6, int do_segmentation)
+		      int is_l2, int is_ip4, int is_ip6, int do_segmentation,
+		      int do_tx_offloads)
 {
   u32 *to_next;
   u32 next_index = node->cached_next_index;
@@ -479,6 +480,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
   vnet_interface_per_thread_data_t *ptd =
     vec_elt_at_index (im->per_thread_data, thread_index);
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  u32 or_flags = 0;
 
   vlib_get_buffers (vm, from, b, n_left_from);
 
@@ -512,6 +514,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 	    to_next[2] = bi2;
 	    to_next[3] = bi3;
 
+	    or_flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
 	    swif0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 	    swif1 = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
 	    swif2 = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
@@ -583,6 +586,28 @@ vnet_gso_node_inline (vlib_main_t * vm,
 						   is_ip4, is_ip6);
 	      }
 
+	    if (do_tx_offloads)
+	      {
+		u32 vnet_buffer_offload_flags =
+		  (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+		   VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
+		   VNET_BUFFER_F_OFFLOAD_IP_CKSUM);
+		if (or_flags & vnet_buffer_offload_flags)
+		  {
+		    if (b[0]->flags & vnet_buffer_offload_flags)
+		      vnet_gso_calc_checksums_inline
+			(vm, b[0], is_l2, is_ip4, is_ip6);
+		    if (b[1]->flags & vnet_buffer_offload_flags)
+		      vnet_gso_calc_checksums_inline
+			(vm, b[1], is_l2, is_ip4, is_ip6);
+		    if (b[2]->flags & vnet_buffer_offload_flags)
+		      vnet_gso_calc_checksums_inline
+			(vm, b[2], is_l2, is_ip4, is_ip6);
+		    if (b[3]->flags & vnet_buffer_offload_flags)
+		      vnet_gso_calc_checksums_inline
+			(vm, b[3], is_l2, is_ip4, is_ip6);
+		  }
+	      }
 	    from += 4;
 	    to_next += 4;
 	    n_left_to_next -= 4;
@@ -742,8 +767,16 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		  b += 1;
 		  continue;
 		}
+	      else if (do_tx_offloads)
+		{
+		  if (b[0]->flags &
+		      (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+		       VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
+		       VNET_BUFFER_F_OFFLOAD_IP_CKSUM))
+		    vnet_gso_calc_checksums_inline
+		      (vm, b[0], is_l2, is_ip4, is_ip6);
+		}
 	    }
-
 	  vnet_feature_next (&next0, b[0]);
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -773,11 +806,11 @@ vnet_gso_inline (vlib_main_t * vm,
       if (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
 	return vnet_gso_node_inline (vm, node, frame, vnm, hi,
 				     is_l2, is_ip4, is_ip6,
-				     /* do_segmentation */ 0);
+				     /* do_segmentation */ 0, 0);
       else
 	return vnet_gso_node_inline (vm, node, frame, vnm, hi,
 				     is_l2, is_ip4, is_ip6,
-				     /* do_segmentation */ 1);
+				     /* do_segmentation */ 1, 1);
     }
   return 0;
 }
