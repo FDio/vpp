@@ -321,9 +321,9 @@ validate_stream (pg_stream_t * s)
   if (s->max_packet_bytes < s->min_packet_bytes)
     return clib_error_create ("max-size < min-size");
 
-  u32 hdr_size = pg_edit_group_n_bytes (s, 0);
-  if (s->min_packet_bytes < hdr_size)
-    return clib_error_create ("min-size < total header size %d", hdr_size);
+  //u32 hdr_size = pg_edit_group_n_bytes (s, 0);
+  /* if (s->min_packet_bytes < hdr_size) */
+  /*   return clib_error_create ("min-size < total header size %d", hdr_size); */
   if (s->buffer_bytes == 0)
     return clib_error_create ("buffer-size must be positive");
 
