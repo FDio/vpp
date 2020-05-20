@@ -1179,8 +1179,166 @@ aes_gcm_key_exp (vnet_crypto_key_t * key, aes_key_size_t ks)
   return kd;
 }
 
-#define foreach_aes_gcm_handler_type _(128) _(192) _(256)
+static int
+crypto_native_frame_enqueue (vlib_main_t * vm,
+			     vnet_crypto_async_frame_t * frame)
+{
+  crypto_native_main_t *cm = &crypto_native_main;
+  crypto_native_per_thread_data_t *ptd =
+    vec_elt_at_index (cm->per_thread_data,
+		      vm->thread_index);
+  crypto_native_queue_t *q = ptd->queues[frame->op];
+  u64 head = q->head;
 
+  /* job is not taken from the queue if pointer is still set */
+  if (q->jobs[head & CRYPTO_NATIVE_QUEUE_MASK])
+    {
+      u32 n_elts = frame->n_elts, i;
+      for (i = 0; i < n_elts; i++)
+	frame->elts[i].status = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
+      frame->state = VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
+      return -1;
+    }
+
+  frame->state = VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED;
+  q->jobs[head & CRYPTO_NATIVE_QUEUE_MASK] = frame;
+  head += 1;
+  CLIB_MEMORY_STORE_BARRIER ();
+  q->head = head;
+
+  return 0;
+}
+
+static_always_inline vnet_crypto_async_frame_t *
+crypto_native_get_pending_frame (crypto_native_queue_t * q)
+{
+  vnet_crypto_async_frame_t *f;
+  u32 i;
+  u32 tail = q->tail;
+  u32 head = q->head;
+
+  for (i = tail; i < head; i++)
+    {
+      f = q->jobs[i & CRYPTO_NATIVE_QUEUE_MASK];
+      if (!f)
+	continue;
+      if (clib_atomic_bool_cmp_and_swap
+	  (&f->state, VNET_CRYPTO_FRAME_STATE_PENDING,
+	   VNET_CRYPTO_FRAME_STATE_WORK_IN_PROGRESS))
+	{
+	  return f;
+	}
+    }
+  return NULL;
+}
+
+static_always_inline vnet_crypto_async_frame_t *
+crypto_native_get_completed_frame (crypto_native_queue_t * q)
+{
+  vnet_crypto_async_frame_t *f = 0;
+  if (q->jobs[q->tail & CRYPTO_NATIVE_QUEUE_MASK]
+      && q->jobs[q->tail & CRYPTO_NATIVE_QUEUE_MASK]->state
+      >= VNET_CRYPTO_FRAME_STATE_SUCCESS)
+    {
+      u32 tail = q->tail;
+      CLIB_MEMORY_STORE_BARRIER ();
+      q->tail++;
+      f = q->jobs[tail & CRYPTO_NATIVE_QUEUE_MASK];
+      q->jobs[tail & CRYPTO_NATIVE_QUEUE_MASK] = 0;
+    }
+  return f;
+}
+
+static vnet_crypto_async_frame_t *
+crypto_native_frame_dequeue (vlib_main_t * vm, vnet_crypto_async_op_id_t opt,
+			     aes_key_size_t ks, u8 tag_len, u8 aad_len,
+			     u8 is_encrypt)
+{
+  crypto_native_main_t *cm = &crypto_native_main;
+  crypto_native_per_thread_data_t *ptd = 0;
+  crypto_native_queue_t *q = 0;
+  vnet_crypto_async_frame_t *f = 0;
+  vnet_crypto_async_frame_elt_t *fe;
+  aes_gcm_key_data_t *kd;
+  int rv;
+  u32 n_elts;
+  u32 *bi;
+  u8 state = VNET_CRYPTO_FRAME_STATE_SUCCESS;
+
+  /* *INDENT-OFF* */
+  vec_foreach (ptd, cm->per_thread_data)
+    {
+      q = ptd->queues[opt];
+      f = crypto_native_get_pending_frame (q);
+      if (f)
+	break;
+    }
+  /* *INDENT-ON* */
+
+  if (f)
+    {
+      n_elts = f->n_elts;
+      bi = f->buffer_indices;
+      fe = f->elts;
+
+      while (n_elts)
+	{
+	  /* native engine doesn't support chaining buffers yet */
+	  if (PREDICT_FALSE (fe->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS))
+	    {
+	      fe->status = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
+	      state = VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
+	    }
+	  else
+	    {
+	      vlib_buffer_t *b = vlib_get_buffer (vm, bi[0]);
+	      u8x16u *src = (u8x16u *) (b->data + fe->crypto_start_offset);
+	      kd = (aes_gcm_key_data_t *) cm->key_data[fe->key_index];
+
+	      rv = aes_gcm (src, src, (u8x16u *) fe->aad, (u8x16u *) fe->iv,
+			    (u8x16u *) fe->tag, fe->crypto_total_length,
+			    aad_len, tag_len, kd, AES_KEY_ROUNDS (ks),
+			    is_encrypt);
+
+	      fe->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+
+	      if (PREDICT_FALSE (rv < 1))
+		{
+		  fe->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
+		  state = VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
+		}
+
+	    }
+	  bi++;
+	  fe++;
+	  n_elts--;
+	}
+      f->state = state;
+    }
+
+  return
+    crypto_native_get_completed_frame (vec_elt_at_index
+				       (cm->per_thread_data,
+					vm->thread_index)->queues[opt]);
+}
+
+
+/* *INDENT-OFF* */
+#define _(n, s, k, t, a) 							\
+static vnet_crypto_async_frame_t* 						\
+crypto_native_frame_dequeue_GCM_##n##_TAG_##t##_AAD_##a##_enc			\
+(vlib_main_t *vm)								\
+{ return crypto_native_frame_dequeue(vm,					\
+    VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_ENC, AES_ASYNC_KEY_##k, t, a, 1); }	\
+static vnet_crypto_async_frame_t* 						\
+crypto_native_frame_dequeue_GCM_##n##_TAG_##t##_AAD_##a##_dec			\
+(vlib_main_t *vm)								\
+{ return crypto_native_frame_dequeue(vm, 					\
+    VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_DEC, AES_ASYNC_KEY_##k, t, a, 0); }
+foreach_crypto_aead_async_alg
+#undef _
+
+#define foreach_aes_gcm_handler_type _(128) _(192) _(256)
 #define _(x) \
 static u32 aes_ops_dec_aes_gcm_##x                                         \
 (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops)                      \
@@ -1193,6 +1351,7 @@ static void * aes_gcm_key_exp_##x (vnet_crypto_key_t *key)                 \
 
 foreach_aes_gcm_handler_type;
 #undef _
+/* *INDENT-ON* */
 
 clib_error_t *
 #ifdef __VAES__
@@ -1208,6 +1367,11 @@ crypto_native_aes_gcm_init_slm (vlib_main_t * vm)
 #endif
 {
   crypto_native_main_t *cm = &crypto_native_main;
+  crypto_native_per_thread_data_t *ptd;
+
+  u32 queue_size = CRYPTO_NATIVE_QUEUE_SIZE * sizeof (void *)
+    + sizeof (crypto_native_queue_t);
+
 
 #define _(x) \
   vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index, \
@@ -1219,6 +1383,31 @@ crypto_native_aes_gcm_init_slm (vlib_main_t * vm)
   cm->key_fn[VNET_CRYPTO_ALG_AES_##x##_GCM] = aes_gcm_key_exp_##x;
   foreach_aes_gcm_handler_type;
 #undef _
+
+#define _(n, s, k, t, a) 										\
+  vnet_crypto_register_async_handler (vm, cm->crypto_engine_index,					\
+				      VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_ENC,			\
+				      crypto_native_frame_enqueue,					\
+				      crypto_native_frame_dequeue_GCM_##n##_TAG_##t##_AAD_##a##_enc);	\
+  vnet_crypto_register_async_handler (vm, cm->crypto_engine_index,					\
+				      VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_DEC,			\
+				      crypto_native_frame_enqueue,					\
+				      crypto_native_frame_dequeue_GCM_##n##_TAG_##t##_AAD_##a##_dec);
+  foreach_crypto_aead_async_alg
+#undef _
+    vec_foreach (ptd, cm->per_thread_data)
+  {
+    u32 i;
+    for (i = 0; i < VNET_CRYPTO_ASYNC_OP_N_IDS; i++)
+      {
+	crypto_native_queue_t *q = clib_mem_alloc_aligned (queue_size,
+							   CLIB_CACHE_LINE_BYTES);
+	ASSERT (q != 0);
+	ptd->queues[i] = q;
+	clib_memset_u8 (q, 0, queue_size);
+      }
+  }
+
   return 0;
 }
 

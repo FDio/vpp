@@ -20,10 +20,22 @@
 
 typedef void *(crypto_native_key_fn_t) (vnet_crypto_key_t * key);
 
+#define CRYPTO_NATIVE_QUEUE_SIZE 64
+#define CRYPTO_NATIVE_QUEUE_MASK (CRYPTO_NATIVE_QUEUE_SIZE - 1)
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u32 head;
+  u32 tail;
+  vnet_crypto_async_frame_t *jobs[0];
+} crypto_native_queue_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u8x16 cbc_iv[4];
+  crypto_native_queue_t *queues[VNET_CRYPTO_ASYNC_OP_N_IDS];
 } crypto_native_per_thread_data_t;
 
 typedef struct

@@ -319,9 +319,10 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 #define VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED 0
-#define VNET_CRYPTO_FRAME_STATE_WORK_IN_PROGRESS 1
-#define VNET_CRYPTO_FRAME_STATE_SUCCESS 2
-#define VNET_CRYPTO_FRAME_STATE_ELT_ERROR 3
+#define VNET_CRYPTO_FRAME_STATE_PENDING 1	/* frame waiting to be processed */
+#define VNET_CRYPTO_FRAME_STATE_WORK_IN_PROGRESS 2
+#define VNET_CRYPTO_FRAME_STATE_SUCCESS 3
+#define VNET_CRYPTO_FRAME_STATE_ELT_ERROR 4
   u8 state;
   vnet_crypto_async_op_id_t op:8;
   u16 n_elts;
@@ -555,7 +556,7 @@ vnet_crypto_async_submit_open_frame (vlib_main_t * vm,
   if (PREDICT_TRUE (ret == 0))
     {
       vnet_crypto_async_frame_t *nf = 0;
-      frame->state = VNET_CRYPTO_FRAME_STATE_WORK_IN_PROGRESS;
+      frame->state = VNET_CRYPTO_FRAME_STATE_PENDING;
       pool_get_aligned (ct->frame_pool, nf, CLIB_CACHE_LINE_BYTES);
       if (CLIB_DEBUG > 0)
 	clib_memset (nf, 0xfe, sizeof (*nf));
