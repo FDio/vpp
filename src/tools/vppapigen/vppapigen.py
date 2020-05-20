@@ -176,10 +176,11 @@ def vla_is_last_check(name, block):
 
 
 class Service():
-    def __init__(self, caller, reply, events=None, stream=False):
+    def __init__(self, caller, reply, events=None, stream_message=None, stream=False):
         self.caller = caller
         self.reply = reply
         self.stream = stream
+        self.stream_message = stream_message
         self.events = [] if events is None else events
 
 
@@ -510,6 +511,10 @@ class VPPAPIParser(object):
             p[0] = Service(p[2], p[5], stream=True)
         else:
             p[0] = Service(p[2], p[4])
+
+    def p_service_statement2(self, p):
+        '''service_statement : RPC ID RETURNS ID STREAM ID ';' '''
+        p[0] = Service(p[2], p[4], stream_message=p[6], stream=True)
 
     def p_event_list(self, p):
         '''event_list : events
