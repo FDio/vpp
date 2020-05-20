@@ -23,6 +23,18 @@ else()
 endif()
 
 set(PRE_DATA_SIZE 128 CACHE STRING "Buffer headroom size.")
+
+if (CMAKE_BUILD_TYPE_UC STREQUAL "DEBUG")
+  set(_ss 16)
+else()
+  set(_ss 15)
+endif()
+set(VLIB_PROCESS_LOG2_STACK_SIZE
+ ${_ss}
+ CACHE
+ STRING "Process node default stack size (log2)"
+)
+
 configure_file(
   ${CMAKE_SOURCE_DIR}/vlib/config.h.in
   ${CMAKE_BINARY_DIR}/vlib/config.h
