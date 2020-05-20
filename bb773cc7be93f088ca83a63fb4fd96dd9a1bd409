@@ -34,6 +34,24 @@
       "revId": "bb773cc7be93f088ca83a63fb4fd96dd9a1bd409",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a2286ed2_2afcea85",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-05-20T15:15:32Z",
+      "side": 1,
+      "message": "Hi Steven,\n\nI agree with your assessment. The link state provides information that might be useful to a control-plane application (e.g. FRR) in determining that the bond interface is not actually fully operational. I will remove the statement in bond_create_if() which sets the link state to up and adjust the unit test accordingly.\n\nThanks,\n-Matt",
+      "parentUuid": "295944e5_a1c0dc09",
+      "revId": "bb773cc7be93f088ca83a63fb4fd96dd9a1bd409",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
