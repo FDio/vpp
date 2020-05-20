@@ -280,6 +280,34 @@ nat_ed_alloc_addr_and_port (snat_main_t * sm, u32 rx_fib_index,
   return 1;
 }
 
+static_always_inline u32
+nat_outside_fib_index_lookup (snat_main_t * sm, ip4_address_t addr)
+{
+  fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
+  nat_outside_fib_t *outside_fib;
+  fib_prefix_t pfx = {
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_len = 32,
+    .fp_addr = {.ip4.as_u32 = addr.as_u32,}
+    ,
+  };
+  // TODO: multiple vrfs none can resolve addr
+  /* *INDENT-OFF* */
+  vec_foreach (outside_fib, sm->outside_fibs)
+    {
+      fei = fib_table_lookup (outside_fib->fib_index, &pfx);
+      if (FIB_NODE_INDEX_INVALID != fei)
+        {
+          if (fib_entry_get_resolving_interface (fei) != ~0)
+            {
+              return outside_fib->fib_index;
+            }
+        }
+    }
+  /* *INDENT-ON* */
+  return ~0;
+}
+
 static u32
 slow_path_ed (snat_main_t * sm,
 	      vlib_buffer_t * b,
@@ -292,23 +320,19 @@ slow_path_ed (snat_main_t * sm,
 	      snat_session_t ** sessionp,
 	      vlib_node_runtime_t * node, u32 next, u32 thread_index, f64 now)
 {
-  snat_session_t *s = NULL;
-  snat_session_key_t key0, key1;
-  lb_nat_type_t lb = 0;
+
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-  u32 nat_proto = ip_proto_to_nat_proto (proto);
-  nat_outside_fib_t *outside_fib;
-  fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
   clib_bihash_kv_16_8_t out2in_ed_kv;
+  nat44_is_idle_session_ctx_t ctx;
+  snat_session_key_t key0, key1;
   ip4_address_t allocated_addr;
   u16 allocated_port;
+  u32 tx_fib_index;
   u8 identity_nat;
-  fib_prefix_t pfx = {
-    .fp_proto = FIB_PROTOCOL_IP4,
-    .fp_len = 32,
-    .fp_addr = {.ip4.as_u32 = r_addr.as_u32,},
-  };
-  nat44_is_idle_session_ctx_t ctx;
+
+  u32 nat_proto = ip_proto_to_nat_proto (proto);
+  snat_session_t *s = NULL;
+  lb_nat_type_t lb = 0;
 
   if (PREDICT_TRUE (nat_proto == NAT_PROTOCOL_TCP))
     {
@@ -321,7 +345,6 @@ slow_path_ed (snat_main_t * sm,
 	}
     }
 
-  // TODO: based on fib index do a lookup
   if (PREDICT_FALSE
       (nat44_ed_maximum_sessions_exceeded (sm, rx_fib_index, thread_index)))
     {
@@ -339,6 +362,7 @@ slow_path_ed (snat_main_t * sm,
   key1.protocol = key0.protocol = nat_proto;
   key0.fib_index = rx_fib_index;
   key1.fib_index = sm->outside_fib_index;
+  tx_fib_index = sm->outside_fib_index;
 
   /* First try to match static mapping by local address and port */
   if (snat_static_mapping_match
@@ -354,29 +378,17 @@ slow_path_ed (snat_main_t * sm,
       switch (vec_len (sm->outside_fibs))
 	{
 	case 0:
-	  s->out2in.fib_index = sm->outside_fib_index;
+	  tx_fib_index = sm->outside_fib_index;
 	  break;
 	case 1:
-	  s->out2in.fib_index = sm->outside_fibs[0].fib_index;
+	  tx_fib_index = sm->outside_fibs[0].fib_index;
 	  break;
 	default:
-          /* *INDENT-OFF* */
-          vec_foreach (outside_fib, sm->outside_fibs)
-          {
-            fei = fib_table_lookup (outside_fib->fib_index, &pfx);
-            if (FIB_NODE_INDEX_INVALID != fei)
-              {
-                if (fib_entry_get_resolving_interface (fei) != ~0)
-                  {
-                    s->out2in.fib_index = outside_fib->fib_index;
-                    break;
-                  }
-              }
-          }
-          /* *INDENT-ON* */
+	  tx_fib_index = nat_outside_fib_index_lookup (sm, r_addr);
 	  break;
 	}
 
+      s->out2in.fib_index = tx_fib_index;
       /* Try to create dynamic translation */
       if (nat_ed_alloc_addr_and_port (sm, rx_fib_index, nat_proto,
 				      thread_index, r_addr, r_port, proto,
@@ -410,31 +422,18 @@ slow_path_ed (snat_main_t * sm,
       switch (vec_len (sm->outside_fibs))
 	{
 	case 0:
-	  s->out2in.fib_index = sm->outside_fib_index;
+	  tx_fib_index = sm->outside_fib_index;
 	  break;
 	case 1:
-	  s->out2in.fib_index = sm->outside_fibs[0].fib_index;
+	  tx_fib_index = sm->outside_fibs[0].fib_index;
 	  break;
 	default:
-          /* *INDENT-OFF* */
-          vec_foreach (outside_fib, sm->outside_fibs)
-          {
-            fei = fib_table_lookup (outside_fib->fib_index, &pfx);
-            if (FIB_NODE_INDEX_INVALID != fei)
-              {
-                if (fib_entry_get_resolving_interface (fei) != ~0)
-                  {
-                    s->out2in.fib_index = outside_fib->fib_index;
-                    break;
-                  }
-              }
-          }
-          /* *INDENT-ON* */
+	  tx_fib_index = nat_outside_fib_index_lookup (sm, r_addr);
 	  break;
 	}
 
+      s->out2in.fib_index = tx_fib_index;
       s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
-
 
       make_ed_kv (&key1.addr, &r_addr, proto,
 		  s->out2in.fib_index, key1.port, r_port, thread_index,
@@ -452,6 +451,7 @@ slow_path_ed (snat_main_t * sm,
   s->ext_host_port = r_port;
   s->in2out = key0;
   s->out2in = key1;
+  s->out2in.fib_index = tx_fib_index;
   s->out2in.protocol = key0.protocol;
 
   clib_bihash_kv_16_8_t in2out_ed_kv;
@@ -768,15 +768,6 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
   u32 outside_fib_index = sm->outside_fib_index;
   int i;
   u8 is_sm = 0;
-  nat_outside_fib_t *outside_fib;
-  fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
-  fib_prefix_t pfx = {
-    .fp_proto = FIB_PROTOCOL_IP4,
-    .fp_len = 32,
-    .fp_addr = {
-		.ip4.as_u32 = ip->dst_address.as_u32,
-		},
-  };
 
   switch (vec_len (sm->outside_fibs))
     {
@@ -787,20 +778,7 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
       outside_fib_index = sm->outside_fibs[0].fib_index;
       break;
     default:
-      /* *INDENT-OFF* */
-      vec_foreach (outside_fib, sm->outside_fibs)
-        {
-	  fei = fib_table_lookup (outside_fib->fib_index, &pfx);
-	  if (FIB_NODE_INDEX_INVALID != fei)
-	    {
-	      if (fib_entry_get_resolving_interface (fei) != ~0)
-	        {
-		  outside_fib_index = outside_fib->fib_index;
-		  break;
-	        }
-	    }
-        }
-      /* *INDENT-ON* */
+      outside_fib_index = nat_outside_fib_index_lookup (sm, ip->dst_address);
       break;
     }
   old_addr = ip->src_address.as_u32;
