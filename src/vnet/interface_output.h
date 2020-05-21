@@ -91,26 +91,44 @@ vnet_calc_checksums_inline (vlib_main_t * vm, vlib_buffer_t * b,
 
   if (with_gso)
     {
+      i16 l3_hdr_offset, l4_hdr_offset;
+      gho_flag_t gho_f_ip4, gho_f_ip6;
       generic_header_offset_t gho = { 0 };
+
       vnet_generic_header_offset_parser (b, &gho, 1 /* l2 */ , is_ip4,
 					 is_ip6);
 
-      ASSERT (gho.gho_flags ^ (GHO_F_IP4 | GHO_F_IP6));
+      if (gho.gho_flags & GHO_F_OUTER_HDR)
+	{
+	  l3_hdr_offset = gho.outer_l3_hdr_offset;
+	  l4_hdr_offset = gho.outer_l4_hdr_offset;
+	  gho_f_ip4 = GHO_F_OUTER_IP4;
+	  gho_f_ip6 = GHO_F_OUTER_IP6;
 
-      vnet_get_inner_header (b, &gho);
+	  vnet_get_outer_header (b, &gho);
+	}
+      else
+	{
+	  l3_hdr_offset = gho.l3_hdr_offset;
+	  l4_hdr_offset = gho.l4_hdr_offset;
+	  gho_f_ip4 = GHO_F_IP4;
+	  gho_f_ip6 = GHO_F_IP6;
 
-      ip4 = (ip4_header_t *)
-	(vlib_buffer_get_current (b) + gho.l3_hdr_offset);
-      ip6 = (ip6_header_t *)
-	(vlib_buffer_get_current (b) + gho.l3_hdr_offset);
-      th = (tcp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
-      uh = (udp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
+	  vnet_get_inner_header (b, &gho);
+	}
 
-      if (gho.gho_flags & GHO_F_IP4)
+      ASSERT (gho.gho_flags ^ (gho_f_ip4 | gho_f_ip6));
+
+      ip4 = (ip4_header_t *) (vlib_buffer_get_current (b) + l3_hdr_offset);
+      ip6 = (ip6_header_t *) (vlib_buffer_get_current (b) + l3_hdr_offset);
+      th = (tcp_header_t *) (vlib_buffer_get_current (b) + l4_hdr_offset);
+      uh = (udp_header_t *) (vlib_buffer_get_current (b) + l4_hdr_offset);
+
+      if (gho.gho_flags & gho_f_ip4)
 	{
 	  vnet_calc_ip4_checksums (vm, b, ip4, th, uh);
 	}
-      else if (gho.gho_flags & GHO_F_IP6)
+      else if (gho.gho_flags & gho_f_ip6)
 	{
 	  vnet_calc_ip6_checksums (vm, b, ip6, th, uh);
 	}

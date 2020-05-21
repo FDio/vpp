@@ -7,6 +7,7 @@ from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether
 from scapy.layers.inet6 import IPv6, UDP
+from scapy.layers.inet6 import in6_chksum
 from scapy.layers.vxlan import VXLAN
 
 import util
@@ -80,7 +81,14 @@ class TestVxlan6(BridgeDomain, VppTestCase):
         # Verify UDP destination port is VXLAN 4789, source UDP port could be
         #  arbitrary.
         self.assertEqual(pkt[UDP].dport, type(self).dport)
-        # TODO: checksum check
+        # Verify UDP checksum
+        pkt_scapy = pkt.copy()
+        pkt_scapy[IPv6].chksum = 0
+        pkt_scapy[UDP].chksum = 0
+        chksum_scapy = in6_chksum(socket.IPPROTO_UDP,
+                                  pkt_scapy[IPv6],
+                                  raw(pkt_scapy[UDP]))
+        self.assertEqual(pkt[UDP].chksum, chksum_scapy)
         # Verify VNI
         self.assertEqual(pkt[VXLAN].vni, vni)
 
