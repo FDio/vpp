@@ -654,6 +654,8 @@ thread0 (uword arg)
   unformat_input_t input;
   int i;
 
+  vlib_process_finish_switch_stack (vm);
+
   unformat_init_command_line (&input, (char **) vm->argv);
   i = vlib_main (vm, &input);
   unformat_free (&input);
@@ -727,6 +729,7 @@ vlib_unix_main (int argc, char *argv[])
   __os_thread_index = 0;
   vm->thread_index = 0;
 
+  vlib_process_start_switch_stack (vm, 0);
   i = clib_calljmp (thread0, (uword) vm,
 		    (void *) (vlib_thread_stacks[0] +
 			      VLIB_THREAD_STACK_SIZE));

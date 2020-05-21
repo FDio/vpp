@@ -280,6 +280,10 @@ typedef struct vlib_main_t
   u32 buffer_alloc_success_seed;
   f64 buffer_alloc_success_rate;
 
+#ifdef CLIB_SANITIZE_ADDR
+  /* address sanitizer stack save */
+  void *asan_stack_save;
+#endif
 } vlib_main_t;
 
 /* Global main structure. */

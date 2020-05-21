@@ -111,7 +111,7 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
 
 option(VPP_ENABLE_SANITIZE_ADDR "Enable Address Sanitizer" OFF)
 if (VPP_ENABLE_SANITIZE_ADDR)
-  set(CMAKE_C_FLAGS "-fsanitize=address --param asan-stack=0 -DCLIB_SANITIZE_ADDR ${CMAKE_C_FLAGS}")
+  set(CMAKE_C_FLAGS "-fsanitize=address -DCLIB_SANITIZE_ADDR ${CMAKE_C_FLAGS}")
   set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address ${CMAKE_EXE_LINKER_FLAGS}")
   set(CMAKE_SHARED_LINKER_FLAGS "-fsanitize=address ${CMAKE_SHARED_LINKER_FLAGS}")
 endif (VPP_ENABLE_SANITIZE_ADDR)

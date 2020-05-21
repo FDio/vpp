@@ -581,6 +581,7 @@ vlib_worker_thread_bootstrap_fn (void *arg)
 
   __os_thread_index = w - vlib_worker_threads;
 
+  vlib_process_start_switch_stack (vlib_mains[__os_thread_index], 0);
   rv = (void *) clib_calljmp
     ((uword (*)(uword)) w->thread_function,
      (uword) arg, w->thread_stack + VLIB_THREAD_STACK_SIZE);
@@ -1776,6 +1777,8 @@ vlib_worker_thread_fn (void *arg)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *e;
+
+  vlib_process_finish_switch_stack (vm);
 
   ASSERT (vm->thread_index == vlib_get_thread_index ());
 

@@ -108,12 +108,14 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
   data = elf_get_section_contents (&em, section->index, 1);
   reg = (vlib_plugin_registration_t *) data;
 
+#ifndef CLIB_SANITIZE_ADDR
   if (vec_len (data) != sizeof (*reg))
     {
       PLUGIN_LOG_ERR ("vlib_plugin_registration size mismatch in plugin %s\n",
 		      (char *) pi->name);
       goto error;
     }
+#endif
 
   if (pm->plugins_default_disable)
     reg->default_disabled = 1;

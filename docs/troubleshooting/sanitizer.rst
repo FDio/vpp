@@ -6,7 +6,7 @@ Google Sanitizers
 
 VPP is instrumented to support `Google Sanitizers <https://github.com/google/sanitizers>`_.
 As of today, only `AddressSanitizer <https://github.com/google/sanitizers/wiki/AddressSanitizer>`_
-is supported, only for GCC and only for the heap.
+is supported, both for GCC and clang.
 
 AddressSanitizer
 ================
@@ -20,19 +20,19 @@ build option, so all VPP targets should be supported. For example:
 .. code-block:: console
 
     # build a debug image with ASan support:
-    $ make rebuild VPP_EXTRA_CMAKE_ARGS=-DVPP_ENABLE_SANITIZE_ADDR=ON CC=gcc-8
+    $ make rebuild VPP_EXTRA_CMAKE_ARGS=-DVPP_ENABLE_SANITIZE_ADDR=ON
     ....
 
     # build a release image with ASan support:
-    $ make rebuild-release VPP_EXTRA_CMAKE_ARGS=-DVPP_ENABLE_SANITIZE_ADDR=ON CC=gcc-8
+    $ make rebuild-release VPP_EXTRA_CMAKE_ARGS=-DVPP_ENABLE_SANITIZE_ADDR=ON
     ....
 
     # build packages in debug mode with ASan support:
-    $ make pkg-deb-debug VPP_EXTRA_CMAKE_ARGS=-DVPP_ENABLE_SANITIZE_ADDR=ON CC=gcc-8
+    $ make pkg-deb-debug VPP_EXTRA_CMAKE_ARGS=-DVPP_ENABLE_SANITIZE_ADDR=ON
     ....
 
     # run GBP plugin tests in debug mode with ASan
-    $ make test-debug TEST=test_gbp VPP_EXTRA_CMAKE_ARGS=-DVPP_ENABLE_SANITIZE_ADDR=ON CC=gcc-8
+    $ make test-debug TEST=test_gbp VPP_EXTRA_CMAKE_ARGS=-DVPP_ENABLE_SANITIZE_ADDR=ON
     ....
 
 Once VPP has been built with ASan support you can use it as usual including
