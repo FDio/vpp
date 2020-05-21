@@ -1496,6 +1496,8 @@ vlib_process_bootstrap (uword _a)
 
   vm = a->vm;
   p = a->process;
+  vlib_process_finish_switch_stack (vm);
+
   f = a->frame;
   node = &p->node_runtime;
 
@@ -1503,6 +1505,7 @@ vlib_process_bootstrap (uword _a)
 
   ASSERT (vlib_process_stack_is_valid (p));
 
+  vlib_process_start_switch_stack (vm, 0);
   clib_longjmp (&p->return_longjmp, n);
 
   return n;
@@ -1521,14 +1524,19 @@ vlib_process_startup (vlib_main_t * vm, vlib_process_t * p, vlib_frame_t * f)
 
   r = clib_setjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_RETURN);
   if (r == VLIB_PROCESS_RETURN_LONGJMP_RETURN)
-    r = clib_calljmp (vlib_process_bootstrap, pointer_to_uword (&a),
-		      (void *) p->stack + (1 << p->log2_n_stack_bytes));
+    {
+      vlib_process_start_switch_stack (vm, p);
+      r = clib_calljmp (vlib_process_bootstrap, pointer_to_uword (&a),
+			(void *) p->stack + (1 << p->log2_n_stack_bytes));
+    }
+  else
+    vlib_process_finish_switch_stack (vm);
 
   return r;
 }
 
 static_always_inline uword
-vlib_process_resume (vlib_process_t * p)
+vlib_process_resume (vlib_main_t * vm, vlib_process_t * p)
 {
   uword r;
   p->flags &= ~(VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
@@ -1536,7 +1544,12 @@ vlib_process_resume (vlib_process_t * p)
 		| VLIB_PROCESS_RESUME_PENDING);
   r = clib_setjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_RETURN);
   if (r == VLIB_PROCESS_RETURN_LONGJMP_RETURN)
-    clib_longjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_RESUME);
+    {
+      vlib_process_start_switch_stack (vm, p);
+      clib_longjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_RESUME);
+    }
+  else
+    vlib_process_finish_switch_stack (vm);
   return r;
 }
 
@@ -1655,7 +1668,7 @@ dispatch_suspended_process (vlib_main_t * vm,
   /* Save away current process for suspend. */
   nm->current_process_index = node->runtime_index;
 
-  n_vectors = vlib_process_resume (p);
+  n_vectors = vlib_process_resume (vm, p);
   t = clib_cpu_time_now ();
 
   nm->current_process_index = ~0;

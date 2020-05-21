@@ -1615,9 +1615,11 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   if (error)
     clib_error_report (error);
 
+#ifndef CLIB_SANITIZE_ADDR
   error = dpdk_cryptodev_init (vm);
   if (error)
     clib_error_report (error);
+#endif
 
   tm->worker_thread_release = 1;
 
