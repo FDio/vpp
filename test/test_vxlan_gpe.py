@@ -9,6 +9,7 @@ from template_bd import BridgeDomain
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
+from scapy.layers.inet import in4_chksum
 from scapy.layers.vxlan import VXLAN
 
 import util
@@ -80,6 +81,15 @@ class TestVxlanGpe(BridgeDomain, VppTestCase):
         # Verify UDP destination port is VXLAN-GPE 4790, source UDP port
         #  could be arbitrary.
         self.assertEqual(pkt[UDP].dport, type(self).dport)
+        # Verify UDP checksum
+        pkt_scapy = pkt.copy()
+        pkt_scapy[IP].chksum = 0
+        pkt_scapy[UDP].chksum = 0
+        chksum_scapy = in4_chksum(socket.IPPROTO_UDP,
+                                  pkt_scapy[IP],
+                                  raw(pkt_scapy[UDP]))
+        self.assertTrue(pkt[UDP].chksum == 0 or
+                        pkt[UDP].chksum == chksum_scapy)
         # Verify VNI
         self.assertEqual(pkt[VXLAN].vni, vni)
 
