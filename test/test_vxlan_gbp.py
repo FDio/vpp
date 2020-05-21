@@ -80,7 +80,8 @@ class TestVxlanGbp(VppTestCase):
         # Verify UDP destination port is VXLAN GBP 48879, source UDP port could
         # be arbitrary.
         self.assertEqual(pkt[UDP].dport, type(self).dport)
-        # TODO: checksum check
+        # Verify UDP checksum
+        self.assert_udp_checksum_valid(pkt)
         # Verify VNI
         # pkt.show()
         self.assertEqual(pkt[VXLAN].vni, vni)
