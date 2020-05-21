@@ -80,6 +80,8 @@ class TestVxlanGpe(BridgeDomain, VppTestCase):
         # Verify UDP destination port is VXLAN-GPE 4790, source UDP port
         #  could be arbitrary.
         self.assertEqual(pkt[UDP].dport, type(self).dport)
+        # Verify UDP checksum
+        self.assert_udp_checksum_valid(pkt)
         # Verify VNI
         self.assertEqual(pkt[VXLAN].vni, vni)
 

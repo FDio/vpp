@@ -376,7 +376,7 @@ vnet_generic_outer_header_parser_inline (vlib_buffer_t * b0,
   u16 ethertype = 0;
   u16 l2hdr_sz = 0;
 
-  ASSERT (is_ip4 ^ is_ip6);
+  ASSERT (!(is_ip4 && is_ip6));
 
   if (is_l2)
     {
