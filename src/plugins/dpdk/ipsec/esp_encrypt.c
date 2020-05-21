@@ -243,8 +243,6 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE (res_idx == (u16) ~ 0))
 		{
-		  clib_warning ("unsupported SA by thread index %u",
-				thread_idx);
 		  if (is_ip6)
 		    vlib_node_increment_counter (vm,
 						 dpdk_esp6_encrypt_node.index,
@@ -263,7 +261,6 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	      error = crypto_get_session (&session, sa_index0, res, cwm, 1);
 	      if (PREDICT_FALSE (error || !session))
 		{
-		  clib_warning ("failed to get crypto session");
 		  if (is_ip6)
 		    vlib_node_increment_counter (vm,
 						 dpdk_esp6_encrypt_node.index,
@@ -285,9 +282,6 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (esp_seq_advance (sa0)))
 	    {
-	      clib_warning
-		("sequence number counter has cycled SPI %u (0x%08x)",
-		 sa0->spi, sa0->spi);
 	      if (is_ip6)
 		vlib_node_increment_counter (vm,
 					     dpdk_esp6_encrypt_node.index,
