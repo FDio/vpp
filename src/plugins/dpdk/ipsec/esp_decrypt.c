@@ -194,8 +194,6 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE (res_idx == (u16) ~ 0))
 		{
-		  clib_warning ("unsupported SA by thread index %u",
-				thread_idx);
 		  if (is_ip6)
 		    vlib_node_increment_counter (vm,
 						 dpdk_esp6_decrypt_node.index,
@@ -214,7 +212,6 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	      error = crypto_get_session (&session, sa_index0, res, cwm, 0);
 	      if (PREDICT_FALSE (error || !session))
 		{
-		  clib_warning ("failed to get crypto session");
 		  if (is_ip6)
 		    vlib_node_increment_counter (vm,
 						 dpdk_esp6_decrypt_node.index,
@@ -238,7 +235,6 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	  if (ipsec_sa_anti_replay_check
 	      (sa0, clib_host_to_net_u32 (esp0->seq)))
 	    {
-	      clib_warning ("failed anti-replay check");
 	      if (is_ip6)
 		vlib_node_increment_counter (vm,
 					     dpdk_esp6_decrypt_node.index,
@@ -286,8 +282,6 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 
 	  if (payload_len & (cipher_alg->boundary - 1))
 	    {
-	      clib_warning ("payload %u not multiple of %d\n",
-			    payload_len, cipher_alg->boundary);
 	      if (is_ip6)
 		vlib_node_increment_counter (vm, dpdk_esp6_decrypt_node.index,
 					     ESP_DECRYPT_ERROR_BAD_LEN, 1);
