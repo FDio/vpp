@@ -376,8 +376,6 @@ vnet_generic_outer_header_parser_inline (vlib_buffer_t * b0,
   u16 ethertype = 0;
   u16 l2hdr_sz = 0;
 
-  ASSERT (is_ip4 ^ is_ip6);
-
   if (is_l2)
     {
       ethernet_header_t *eh =
@@ -397,6 +395,13 @@ vnet_generic_outer_header_parser_inline (vlib_buffer_t * b0,
 	      ethertype = clib_net_to_host_u16 (vlan->type);
 	      l2hdr_sz += sizeof (*vlan);
 	    }
+	}
+      if (PREDICT_FALSE (is_ip4 && is_ip6))
+	{
+	  if (ethertype == ETHERNET_TYPE_IP4)
+	    is_ip6 = 0;
+	  if (ethertype == ETHERNET_TYPE_IP6)
+	    is_ip4 = 0;
 	}
     }
   else
