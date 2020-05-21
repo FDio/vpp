@@ -6,7 +6,9 @@ from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether
-from scapy.layers.inet6 import IPv6, UDP
+from scapy.packet import Raw
+from scapy.layers.inet6 import IP, IPv6, UDP
+from scapy.layers.inet6 import in6_chksum
 from scapy.layers.vxlan import VXLAN
 
 import util
@@ -80,7 +82,13 @@ class TestVxlan6(BridgeDomain, VppTestCase):
         # Verify UDP destination port is VXLAN 4789, source UDP port could be
         #  arbitrary.
         self.assertEqual(pkt[UDP].dport, type(self).dport)
-        # TODO: checksum check
+        # Verify UDP checksum
+        pkt_scapy = pkt.copy()
+        pkt_scapy[UDP].chksum = 0
+        chksum_scapy = in6_chksum(socket.IPPROTO_UDP,
+                                  pkt_scapy[IPv6],
+                                  raw(pkt_scapy[UDP]))
+        self.assertEqual(pkt[UDP].chksum, chksum_scapy)
         # Verify VNI
         self.assertEqual(pkt[VXLAN].vni, vni)
 
@@ -189,6 +197,36 @@ class TestVxlan6(BridgeDomain, VppTestCase):
         self.logger.info(self.vapi.cli("show bridge-domain 2 detail"))
         self.logger.info(self.vapi.cli("show bridge-domain 3 detail"))
         self.logger.info(self.vapi.cli("show vxlan tunnel"))
+
+    def test_encap_fragmented_packet(self):
+        """ Encapsulation test send fragments from pg1
+        Verify receipt of encapsulated frames on pg0
+        """
+
+        frame = (Ether(src='00:00:00:00:00:02', dst='00:00:00:00:00:01') /
+                 IP(src='4.3.2.1', dst='1.2.3.4') /
+                 UDP(sport=20000, dport=10000) /
+                 Raw(b'\xa5' * 1000))
+
+        frags = util.fragment_rfc791(frame, 400)
+
+        self.pg1.add_stream(frags)
+
+        self.pg0.enable_capture()
+
+        self.pg_start()
+
+        out = self.pg0.get_capture(3)
+
+        payload = []
+        for pkt in out:
+            payload.append(self.decapsulate(pkt))
+            self.check_encapsulation(pkt, self.single_tunnel_vni)
+
+        reassembled = util.reassemble4(payload)
+
+        self.assertEqual(Ether(raw(frame))[UDP].chksum,
+                         reassembled[UDP].chksum)
 
 
 if __name__ == '__main__':
