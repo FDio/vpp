@@ -102,9 +102,9 @@ nat_add_del_ip4_pool_addrs (nat_ip4_pool_t * pool,
 }
 
 static_always_inline u16
-nat_random_port (u32 random_seed, u16 min, u16 max)
+nat_random_port (u32 * random_seed, u16 min, u16 max)
 {
-  return min + random_u32 (&random_seed) /
+  return min + random_u32 (random_seed) /
     (random_u32_max () / (max - min + 1) + 1);
 }
 
@@ -136,7 +136,7 @@ nat_alloc_ip4_addr_and_port_cb_default (nat_ip4_pool_t * pool,
                     { \
                       portnum = (port_per_thread * \
                         nat_thread_index) + \
-                        nat_random_port(pool->random_seed, 1, port_per_thread) + 1024; \
+                        nat_random_port(&pool->random_seed, 1, port_per_thread) + 1024; \
                       if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
                         continue; \
                       clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
@@ -171,7 +171,7 @@ nat_alloc_ip4_addr_and_port_cb_default (nat_ip4_pool_t * pool,
             { \
               portnum = (port_per_thread * \
                 nat_thread_index) + \
-                nat_random_port(pool->random_seed, 1, port_per_thread) + 1024; \
+                nat_random_port(&pool->random_seed, 1, port_per_thread) + 1024; \
               if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
                 continue; \
               clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
