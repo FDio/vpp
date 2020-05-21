@@ -1936,11 +1936,9 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	      /* before we paint on the next header, update the L4
 	       * checksums if required, since there's no offload on a tunnel */
 	      vnet_calc_checksums_inline (vm, p0, 0 /* is_ip4 */ ,
-					  1 /* is_ip6 */ ,
-					  0 /* with gso */ );
+					  1 /* is_ip6 */ );
 	      vnet_calc_checksums_inline (vm, p1, 0 /* is_ip4 */ ,
-					  1 /* is_ip6 */ ,
-					  0 /* with gso */ );
+					  1 /* is_ip6 */ );
 
 	      /* Guess we are only writing on ipv6 header. */
 	      vnet_rewrite_two_headers (adj0[0], adj1[0],
@@ -2036,8 +2034,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	  if (is_midchain)
 	    {
 	      vnet_calc_checksums_inline (vm, p0, 0 /* is_ip4 */ ,
-					  1 /* is_ip6 */ ,
-					  0 /* with gso */ );
+					  1 /* is_ip6 */ );
 
 	      /* Guess we are only writing on ip6 header. */
 	      vnet_rewrite_one_header (adj0[0], ip0, sizeof (ip6_header_t));

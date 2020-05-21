@@ -2241,8 +2241,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	  next[0] = next_index;
 	  if (is_midchain)
 	    vnet_calc_checksums_inline (vm, b[0], 1 /* is_ip4 */ ,
-					0 /* is_ip6 */ ,
-					0 /* with gso */ );
+					0 /* is_ip6 */ );
 	}
       else
 	{
@@ -2267,8 +2266,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	  next[1] = next_index;
 	  if (is_midchain)
 	    vnet_calc_checksums_inline (vm, b[1], 1 /* is_ip4 */ ,
-					0 /* is_ip6 */ ,
-					0 /* with gso */ );
+					0 /* is_ip6 */ );
 	}
       else
 	{
@@ -2419,8 +2417,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	  if (is_midchain)
 	    {
 	      vnet_calc_checksums_inline (vm, b[0], 1 /* is_ip4 */ ,
-					  0 /* is_ip6 */ ,
-					  0 /* with gso */ );
+					  0 /* is_ip6 */ );
 
 	      /* Guess we are only writing on ipv4 header. */
 	      vnet_rewrite_one_header (adj0[0], ip0, sizeof (ip4_header_t));
@@ -2527,8 +2524,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	    {
 	      /* this acts on the packet that is about to be encapped */
 	      vnet_calc_checksums_inline (vm, b[0], 1 /* is_ip4 */ ,
-					  0 /* is_ip6 */ ,
-					  0 /* with gso */ );
+					  0 /* is_ip6 */ );
 
 	      /* Guess we are only writing on ipv4 header. */
 	      vnet_rewrite_one_header (adj0[0], ip0, sizeof (ip4_header_t));
