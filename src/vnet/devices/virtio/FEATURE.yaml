@@ -2,13 +2,14 @@
 name: Virtio PCI Device
 maintainer: sykazmi@cisco.com sluong@cisco.com
 features:
-  - driver mode to emulate PCI interface presented to VPP from
+  - Driver mode to emulate PCI interface presented to VPP from
     the host interface.
-  - device mode to emulate vhost-user interface presented to VPP from the
+  - Device mode to emulate vhost-user interface presented to VPP from the
     guest VM.
-  - support multi-queue, GSO, checksum offload, indirect descriptor,
+  - Support multi-queue, GSO, checksum offload, indirect descriptor,
     jumbo frame, and packed ring.
-description: "Virtio v1.0 implementation"
+  - Support virtio 1.1 packed ring in vhost
+description: "Virtio implementation"
 missing:
   - API dump filtering by sw_if_index
 state: production
