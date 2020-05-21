@@ -1159,16 +1159,6 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  from++;
 	  n_left--;
 	  b0 = vlib_get_buffer (vm, bi0);
-	  if (pp->filter_classify_table_index != ~0)
-	    {
-	      classify_filter_result =
-		vnet_is_packet_traced_inline
-		(b0, pp->filter_classify_table_index, 0 /* full classify */ );
-	      if (classify_filter_result)
-		pcap_add_buffer (&pp->pcap_main, vm, bi0,
-				 pp->max_bytes_per_pkt);
-	      continue;
-	    }
 
 	  if (pp->pcap_sw_if_index == 0 ||
 	      pp->pcap_sw_if_index == vnet_buffer (b0)->sw_if_index[VLIB_RX])
@@ -1177,6 +1167,17 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      vnet_hw_interface_t *hi =
 		vnet_get_sup_hw_interface
 		(vnm, vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+	      if (pp->filter_classify_table_index != ~0)
+		{
+		  classify_filter_result =
+		    vnet_is_packet_traced_inline
+		    (b0, pp->filter_classify_table_index,
+		     0 /* full classify */ );
+		  if (classify_filter_result)
+		    pcap_add_buffer (&pp->pcap_main, vm, bi0,
+				     pp->max_bytes_per_pkt);
+		  continue;
+		}
 
 	      /* Capture pkt if not filtered, or if filter hits */
 	      if (hi->trace_classify_table_index == ~0 ||
