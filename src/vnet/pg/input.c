@@ -1530,10 +1530,9 @@ pg_input_trace (pg_main_t * pg,
 }
 
 static_always_inline void
-fill_gso_buffer_flags (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
-		       u32 packet_data_size)
+fill_offset_buffer_flags (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
+			  int gso_enabled, u32 gso_size)
 {
-
   for (int i = 0; i < n_buffers; i++)
     {
       vlib_buffer_t *b0 = vlib_get_buffer (vm, buffers[i]);
@@ -1586,7 +1585,8 @@ fill_gso_buffer_flags (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	     VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
 	     VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
 	}
-      if (l4_proto == IP_PROTOCOL_TCP)
+
+      if (gso_enabled && l4_proto == IP_PROTOCOL_TCP)
 	{
 	  b0->flags |= (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM | VNET_BUFFER_F_GSO);
 	  tcp_header_t *tcp = (tcp_header_t *) (vlib_buffer_get_current (b0) +
@@ -1595,9 +1595,9 @@ fill_gso_buffer_flags (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	  l4_hdr_sz = tcp_header_bytes (tcp);
 	  tcp->checksum = 0;
 	  vnet_buffer2 (b0)->gso_l4_hdr_sz = l4_hdr_sz;
-	  vnet_buffer2 (b0)->gso_size = packet_data_size;
+	  vnet_buffer2 (b0)->gso_size = gso_size;
 	}
-      else if (l4_proto == IP_PROTOCOL_UDP)
+      else if (gso_enabled && l4_proto == IP_PROTOCOL_UDP)
 	{
 	  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
 	  udp_header_t *udp = (udp_header_t *) (vlib_buffer_get_current (b0) +
@@ -1700,8 +1700,14 @@ pg_generate_packets (vlib_node_runtime_t * node,
 	    vnet_buffer (b)->feature_arc_index = feature_arc_index;
 	  }
 
-      if (pi->gso_enabled)
-	fill_gso_buffer_flags (vm, to_next, n_this_frame, pi->gso_size);
+      if (pi->gso_enabled ||
+	  (s->buffer_flags & (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+			      VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
+			      VNET_BUFFER_F_OFFLOAD_IP_CKSUM)))
+	{
+	  fill_offset_buffer_flags (vm, to_next, n_this_frame,
+				    pi->gso_enabled, pi->gso_size);
+	}
 
       n_trace = vlib_get_trace_count (vm, node);
       if (n_trace > 0)
