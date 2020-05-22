@@ -58,6 +58,7 @@ typedef struct _tcp_lookup_dispatch
   _(to_closing, u32, "timeout closing")				\
   _(tr_abort, u32, "timer retransmit abort")			\
   _(rst_unread, u32, "reset on close due to unread data")	\
+  _(no_buffer, u32, "out of buffers")				\
 
 typedef struct tcp_wrk_stats_
 {
