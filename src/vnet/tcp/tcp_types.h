@@ -313,6 +313,7 @@ typedef struct _tcp_connection
   u8 snd_wscale;		/**< Window scale to use when sending */
   u32 tsval_recent;		/**< Last timestamp received */
   u32 tsval_recent_age;		/**< When last updated tstamp_recent*/
+  u32 timestamp_delta;		/**< Offset for timestamp */
   tcp_options_t snd_opts;	/**< Tx options for connection */
   tcp_options_t rcv_opts;	/**< Rx options for connection */
 
@@ -380,7 +381,6 @@ typedef struct _tcp_connection
   f64 start_ts;		/**< Timestamp when connection initialized */
   u32 last_fib_check;	/**< Last time we checked fib route for peer */
   u16 mss;		/**< Our max seg size that includes options */
-  u32 timestamp_delta;	/**< Offset for timestamp */
   u32 ipv6_flow_label;	/**< flow label for ipv6 header */
 
 #define rst_state snd_wl1
