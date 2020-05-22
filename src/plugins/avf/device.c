@@ -49,12 +49,6 @@ const static char *virtchnl_event_names[] = {
 #undef _
 };
 
-const static char *virtchnl_link_speed_str[] = {
-#define _(v, n, s) [v] = s,
-  foreach_virtchnl_link_speed
-#undef _
-};
-
 static inline void
 avf_irq_0_disable (avf_device_t * ad)
 {
@@ -527,7 +521,8 @@ avf_op_get_vf_resources (vlib_main_t * vm, avf_device_t * ad,
   clib_error_t *err = 0;
   u32 bitmap = (VIRTCHNL_VF_OFFLOAD_L2 | VIRTCHNL_VF_OFFLOAD_RSS_PF |
 		VIRTCHNL_VF_OFFLOAD_WB_ON_ITR | VIRTCHNL_VF_OFFLOAD_VLAN |
-		VIRTCHNL_VF_OFFLOAD_RX_POLLING);
+		VIRTCHNL_VF_OFFLOAD_RX_POLLING |
+		VIRTCHNL_VF_CAP_ADV_LINK_SPEED);
 
   avf_log_debug (ad, "get_vf_reqources: bitmap 0x%x", bitmap);
   err = avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_VF_RESOURCES, &bitmap,
@@ -1027,38 +1022,45 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 		     virtchnl_event_names[e->event], e->event, e->severity);
       if (e->event == VIRTCHNL_EVENT_LINK_CHANGE)
 	{
-	  int link_up = e->event_data.link_event.link_status;
+	  int link_up;
 	  virtchnl_link_speed_t speed = e->event_data.link_event.link_speed;
 	  u32 flags = 0;
-	  u32 kbps = 0;
+	  u32 mbps = 0;
 
-	  avf_log_debug (ad, "event_link_change: status %d speed '%s' (%d)",
-			 link_up,
-			 speed < ARRAY_LEN (virtchnl_link_speed_str) ?
-			 virtchnl_link_speed_str[speed] : "unknown", speed);
+	  if (ad->feature_bitmap & VIRTCHNL_VF_CAP_ADV_LINK_SPEED)
+	    link_up = e->event_data.link_event_adv.link_status;
+	  else
+	    link_up = e->event_data.link_event.link_status;
+
+	  if (ad->feature_bitmap & VIRTCHNL_VF_CAP_ADV_LINK_SPEED)
+	    mbps = e->event_data.link_event_adv.link_speed;
+	  if (speed == VIRTCHNL_LINK_SPEED_40GB)
+	    mbps = 40000;
+	  else if (speed == VIRTCHNL_LINK_SPEED_25GB)
+	    mbps = 25000;
+	  else if (speed == VIRTCHNL_LINK_SPEED_10GB)
+	    mbps = 10000;
+	  else if (speed == VIRTCHNL_LINK_SPEED_5GB)
+	    mbps = 5000;
+	  else if (speed == VIRTCHNL_LINK_SPEED_2_5GB)
+	    mbps = 2500;
+	  else if (speed == VIRTCHNL_LINK_SPEED_1GB)
+	    mbps = 1000;
+	  else if (speed == VIRTCHNL_LINK_SPEED_100MB)
+	    mbps = 100;
+
+	  avf_log_debug (ad, "event_link_change: status %d speed %u mbps",
+			 link_up, mbps);
 
 	  if (link_up && (ad->flags & AVF_DEVICE_F_LINK_UP) == 0)
 	    {
 	      ad->flags |= AVF_DEVICE_F_LINK_UP;
 	      flags |= (VNET_HW_INTERFACE_FLAG_FULL_DUPLEX |
 			VNET_HW_INTERFACE_FLAG_LINK_UP);
-	      if (speed == VIRTCHNL_LINK_SPEED_40GB)
-		kbps = 40000000;
-	      else if (speed == VIRTCHNL_LINK_SPEED_25GB)
-		kbps = 25000000;
-	      else if (speed == VIRTCHNL_LINK_SPEED_10GB)
-		kbps = 10000000;
-	      else if (speed == VIRTCHNL_LINK_SPEED_5GB)
-		kbps = 5000000;
-	      else if (speed == VIRTCHNL_LINK_SPEED_2_5GB)
-		kbps = 2500000;
-	      else if (speed == VIRTCHNL_LINK_SPEED_1GB)
-		kbps = 1000000;
-	      else if (speed == VIRTCHNL_LINK_SPEED_100MB)
-		kbps = 100000;
 	      vnet_hw_interface_set_flags (vnm, ad->hw_if_index, flags);
-	      vnet_hw_interface_set_link_speed (vnm, ad->hw_if_index, kbps);
-	      ad->link_speed = speed;
+	      vnet_hw_interface_set_link_speed (vnm, ad->hw_if_index,
+						mbps * 1000);
+	      ad->link_speed = mbps;
 	    }
 	  else if (!link_up && (ad->flags & AVF_DEVICE_F_LINK_UP) != 0)
 	    {
@@ -1071,19 +1073,19 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 	      ELOG_TYPE_DECLARE (el) =
 		{
 		  .format = "avf[%d] link change: link_status %d "
-		    "link_speed %d",
-		  .format_args = "i4i1i1",
+		    "link_speed %d mbps",
+		  .format_args = "i4i1i4",
 		};
 	      struct
 		{
 		  u32 dev_instance;
 		  u8 link_status;
-		  u8 link_speed;
+		  u32 link_speed;
 		} *ed;
 	      ed = ELOG_DATA (&vm->elog_main, el);
               ed->dev_instance = ad->dev_instance;
 	      ed->link_status = link_up;
-	      ed->link_speed = speed;
+	      ed->link_speed = mbps;
 	    }
 	}
       else
