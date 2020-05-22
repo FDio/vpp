@@ -246,6 +246,15 @@ u8x64_mask_blend (u8x64 a, u8x64 b, u64 mask)
   return (u8x64) _mm512_mask_blend_epi8 (mask, (__m512i) a, (__m512i) b);
 }
 
+#define u32x8_gather_vec(vindex, base_addr, scale) \
+  (u32x8) _mm512_i64gather_epi32 ((__m512i) vindex, base_addr, scale)
+
+static_always_inline u16
+u32x16_mask_is_not_equal (u32x16 a, u32x16 b)
+{
+  return _mm512_cmpneq_epi32_mask ((__m512i) a, (__m512i) b);
+}
+
 static_always_inline void
 u32x16_transpose (u32x16 m[16])
 {
