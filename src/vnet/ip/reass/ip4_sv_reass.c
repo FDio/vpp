@@ -331,7 +331,7 @@ ip4_sv_reass_find_or_create (vlib_main_t * vm, ip4_sv_reass_main_t * rm,
 
   if (rt->reass_n >= rm->max_reass_n && rm->max_reass_n)
     {
-      reass = pool_elt_at_index (rt->pool, rt->lru_last);
+      reass = pool_elt_at_index (rt->pool, rt->lru_first);
       ip4_sv_reass_free (vm, rm, rt, reass);
     }
 
