@@ -357,10 +357,10 @@ vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  max = clib_min (n_left_to_next, count);
 	}
 #if defined(CLIB_HAVE_VEC512)
-      u16x32 next32 = CLIB_MEM_OVERFLOW_LOAD (u16x32_load_unaligned, nexts);
-      next32 = (next32 == u16x32_splat (next32[0]));
-      u64 bitmap = u16x32_msb_mask (next32);
-      n_enqueued = count_trailing_zeros (~bitmap);
+      u16x32 next_16x32 = u16x32_load_unaligned (nexts);
+      //4: OP := _MM_CMPINT_NE is used in u16x32_cmp_mask
+      u32 mmask = u16x32_cmp_mask (next_16x32, u16x32_splat (nexts[0]), 4);
+      n_enqueued = _tzcnt_u32 (mmask);
 #elif defined(CLIB_HAVE_VEC256)
       u16x16 next16 = CLIB_MEM_OVERFLOW_LOAD (u16x16_load_unaligned, nexts);
       next16 = (next16 == u16x16_splat (next16[0]));
