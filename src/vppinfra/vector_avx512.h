@@ -227,6 +227,30 @@ u8x64_mask_blend (u8x64 a, u8x64 b, u64 mask)
   return (u8x64) _mm512_mask_blend_epi8 (mask, (__m512i) a, (__m512i) b);
 }
 
+static_always_inline u32x8
+u32x16_gather (u64x8 vindex, void const *base_addr, int scale)
+{
+  return (u32x8) _mm512_i64gather_epi32 ((__m512i) vindex, base_addr, scale);
+}
+
+static_always_inline u64x8
+u64x8_gather (u64x8 vindex, void const *base_addr, int scale)
+{
+  return (u64x8) _mm512_i64gather_epi64 ((__m512i) vindex, base_addr, scale);
+}
+
+static_always_inline u32
+u16x32_cmp_mask (u16x32 a, u16x32 b, const int imm8)
+{
+  return _mm512_cmp_epi16_mask ((__m512i) a, (__m512i) b, imm8);
+}
+
+static_always_inline u16
+u32x16_cmp_mask (u32x16 a, u32x16 b, const int imm8)
+{
+  return _mm512_cmp_epi32_mask ((__m512i) a, (__m512i) b, imm8);
+}
+
 static_always_inline void
 u32x16_transpose (u32x16 m[16])
 {

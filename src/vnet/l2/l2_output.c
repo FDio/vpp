@@ -134,7 +134,7 @@ split_horizon_violation (vlib_node_runtime_t * node, u8 shg,
 static_always_inline void
 l2output_process_batch_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       l2_output_config_t * config,
-			       vlib_buffer_t ** b, i16 * cdo, u16 * next,
+			       vlib_buffer_t ** b, u16 * next,
 			       u32 n_left, int l2_efp, int l2_vtr, int l2_pbb,
 			       int shg_set, int update_feature_bitmap)
 {
@@ -148,10 +148,14 @@ l2output_process_batch_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       /* prefetch eth headers only if we need to touch them */
       if (l2_vtr || l2_pbb || shg_set)
 	{
-	  CLIB_PREFETCH (b[4]->data + cdo[4], CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (b[5]->data + cdo[5], CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (b[6]->data + cdo[6], CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (b[7]->data + cdo[7], CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (vlib_buffer_get_current (b[4]),
+			 CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (vlib_buffer_get_current (b[5]),
+			 CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (vlib_buffer_get_current (b[6]),
+			 CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (vlib_buffer_get_current (b[7]),
+			 CLIB_CACHE_LINE_BYTES, LOAD);
 	}
 
       if (update_feature_bitmap)
@@ -203,7 +207,6 @@ l2output_process_batch_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       n_left -= 4;
       b += 4;
       next += 4;
-      cdo += 4;
     }
 
   while (n_left)
@@ -266,7 +269,7 @@ l2output_set_buffer_error (vlib_buffer_t ** b, u32 n_left, vlib_error_t error)
 static_always_inline void
 l2output_process_batch (vlib_main_t * vm, vlib_node_runtime_t * node,
 			l2_output_config_t * config, vlib_buffer_t ** b,
-			i16 * cdo, u16 * next, u32 n_left, int l2_efp,
+			u16 * next, u32 n_left, int l2_efp,
 			int l2_vtr, int l2_pbb)
 {
   u32 feature_bitmap = config->feature_bitmap & ~L2OUTPUT_FEAT_OUTPUT;
@@ -274,17 +277,17 @@ l2output_process_batch (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       if ((l2_efp | l2_vtr | l2_pbb) == 0)
 	return;
-      l2output_process_batch_inline (vm, node, config, b, cdo, next, n_left,
+      l2output_process_batch_inline (vm, node, config, b, next, n_left,
 				     l2_efp, l2_vtr, l2_pbb, 0, 0);
     }
   else if (config->shg == 0)
-    l2output_process_batch_inline (vm, node, config, b, cdo, next, n_left,
+    l2output_process_batch_inline (vm, node, config, b, next, n_left,
 				   l2_efp, l2_vtr, l2_pbb, 0, 1);
   else if (feature_bitmap == 0)
-    l2output_process_batch_inline (vm, node, config, b, cdo, next, n_left,
+    l2output_process_batch_inline (vm, node, config, b, next, n_left,
 				   l2_efp, l2_vtr, l2_pbb, 1, 0);
   else
-    l2output_process_batch_inline (vm, node, config, b, cdo, next, n_left,
+    l2output_process_batch_inline (vm, node, config, b, next, n_left,
 				   l2_efp, l2_vtr, l2_pbb, 1, 1);
 }
 
@@ -297,7 +300,6 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE];
   u32 sw_if_indices[VLIB_FRAME_SIZE], *sw_if_index;
-  i16 cur_data_offsets[VLIB_FRAME_SIZE], *cdo;
   l2_output_config_t *config;
   u32 feature_bitmap;
 
@@ -307,9 +309,25 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
   vlib_get_buffers (vm, from, bufs, n_left);
   b = bufs;
   sw_if_index = sw_if_indices;
-  cdo = cur_data_offsets;
+#if defined(CLIB_HAVE_VEC512)
+  u64x8 vindex;
+  void const *base_addr;
+  int scale = 1;
+  u32x8 sw_if_index_vec;
 
   /* extract data from buffer metadata */
+  while (n_left >= 8)
+    {
+      vindex = u64x8_load_unaligned (b);
+      //offset of field sw_if_index[VLIB_TX] in vlib_buffer_t is passed to base_addr instead of base address.
+      sw_if_index_vec = u32x16_gather (vindex, base_addr =
+				       (void const *) 28, scale);
+      u32x8_store_unaligned (sw_if_index_vec, sw_if_index);
+      sw_if_index += 8;
+      n_left -= 8;
+      b += 8;
+    }
+#endif
   while (n_left >= 8)
     {
       /* Prefetch the buffer header for the N+2 loop iteration */
@@ -319,30 +337,23 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
       vlib_prefetch_buffer_header (b[7], LOAD);
 
       sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
-      cdo[0] = b[0]->current_data;
       sw_if_index[1] = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
-      cdo[1] = b[1]->current_data;
       sw_if_index[2] = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
-      cdo[2] = b[2]->current_data;
       sw_if_index[3] = vnet_buffer (b[3])->sw_if_index[VLIB_TX];
-      cdo[3] = b[3]->current_data;
 
       /* next */
       sw_if_index += 4;
       n_left -= 4;
       b += 4;
-      cdo += 4;
     }
   while (n_left)
     {
       sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
-      cdo[0] = b[0]->current_data;
 
       /* next */
       sw_if_index += 1;
       n_left -= 1;
       b += 1;
-      cdo += 1;
     }
 
   n_left = frame->n_vectors;
@@ -361,7 +372,6 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
 	}
 
       sw_if_index = sw_if_indices + off;
-      cdo = cur_data_offsets + off;
       next = nexts + off;
 
       count = clib_count_equal_u32 (sw_if_index, n_left);
@@ -388,24 +398,24 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
       if (config->out_vtr_flag && config->output_vtr.push_and_pop_bytes)
 	{
 	  if (feature_bitmap & L2OUTPUT_FEAT_EFP_FILTER)
-	    l2output_process_batch (vm, node, config, b, cdo, next, count,
+	    l2output_process_batch (vm, node, config, b, next, count,
 				    /* l2_efp */ 1,
 				    /* l2_vtr */ 1,
 				    /* l2_pbb */ 0);
 	  else
-	    l2output_process_batch (vm, node, config, b, cdo, next, count,
+	    l2output_process_batch (vm, node, config, b, next, count,
 				    /* l2_efp */ 0,
 				    /* l2_vtr */ 1,
 				    /* l2_pbb */ 0);
 	}
       else if (config->out_vtr_flag &&
 	       config->output_pbb_vtr.push_and_pop_bytes)
-	l2output_process_batch (vm, node, config, b, cdo, next, count,
+	l2output_process_batch (vm, node, config, b, next, count,
 				/* l2_efp */ 0,
 				/* l2_vtr */ 0,
 				/* l2_pbb */ 1);
       else
-	l2output_process_batch (vm, node, config, b, cdo, next, count,
+	l2output_process_batch (vm, node, config, b, next, count,
 				/* l2_efp */ 0,
 				/* l2_vtr */ 0,
 				/* l2_pbb */ 0);

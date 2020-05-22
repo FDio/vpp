@@ -529,8 +529,25 @@ clib_count_equal_u32 (u32 * data, uword max_count)
 
   count = 0;
   first = data[0];
-
-#if defined(CLIB_HAVE_VEC256)
+#if defined(CLIB_HAVE_VEC512)
+  u32x16 splat = u32x16_splat (first);
+  while (1)
+    {
+      u16 mask = u32x16_cmp_mask (u32x16_load_unaligned (data), splat, 4);
+      if (mask != 0)
+	{
+	  count += _tzcnt_u32 ((u32) mask);
+	  return clib_min (count, max_count);
+	}
+      else
+	{
+	  data += 16;
+	  count += 16;
+	}
+      if (count >= max_count)
+	return max_count;
+    }
+#elif defined(CLIB_HAVE_VEC256)
   u32x8 splat = u32x8_splat (first);
   while (1)
     {
