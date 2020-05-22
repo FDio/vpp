@@ -27,7 +27,7 @@
 #define AVF_MBOX_BUF_SZ 512
 #define AVF_RXQ_SZ 512
 #define AVF_TXQ_SZ 512
-#define AVF_ITR_INT 32
+#define AVF_ITR_INT 250
 
 #define PCI_VENDOR_ID_INTEL			0x8086
 #define PCI_DEVICE_ID_INTEL_AVF			0x1889
@@ -49,8 +49,15 @@ const static char *virtchnl_event_names[] = {
 #undef _
 };
 
+typedef enum
+{
+  AVF_IRQ_STATE_DISABLED,
+  AVF_IRQ_STATE_ENABLED,
+  AVF_IRQ_STATE_WB_ON_ITR,
+} avf_irq_state_t;
+
 static inline void
-avf_irq_0_disable (avf_device_t * ad)
+avf_irq_0_set_state (avf_device_t * ad, avf_irq_state_t state)
 {
   u32 dyn_ctl0 = 0, icr0_ena = 0;
 
@@ -59,45 +66,52 @@ avf_irq_0_disable (avf_device_t * ad)
   avf_reg_write (ad, AVFINT_ICR0_ENA1, icr0_ena);
   avf_reg_write (ad, AVFINT_DYN_CTL0, dyn_ctl0);
   avf_reg_flush (ad);
-}
 
-static inline void
-avf_irq_0_enable (avf_device_t * ad)
-{
-  u32 dyn_ctl0 = 0, icr0_ena = 0;
+  if (state == AVF_IRQ_STATE_DISABLED)
+    return;
+
+  dyn_ctl0 = 0;
+  icr0_ena = 0;
 
   icr0_ena |= (1 << 30);	/* [30] Admin Queue Enable */
 
   dyn_ctl0 |= (1 << 0);		/* [0] Interrupt Enable */
   dyn_ctl0 |= (1 << 1);		/* [1] Clear PBA */
-  //dyn_ctl0 |= (3 << 3);               /* [4:3] ITR Index, 11b = No ITR update */
+  dyn_ctl0 |= (2 << 3);		/* [4:3] ITR Index, 11b = No ITR update */
   dyn_ctl0 |= ((AVF_ITR_INT / 2) << 5);	/* [16:5] ITR Interval in 2us steps */
 
-  avf_irq_0_disable (ad);
   avf_reg_write (ad, AVFINT_ICR0_ENA1, icr0_ena);
   avf_reg_write (ad, AVFINT_DYN_CTL0, dyn_ctl0);
   avf_reg_flush (ad);
 }
 
 static inline void
-avf_irq_n_disable (avf_device_t * ad, u8 line)
+avf_irq_n_set_state (avf_device_t * ad, u8 line, avf_irq_state_t state)
 {
   u32 dyn_ctln = 0;
 
+  /* disable */
   avf_reg_write (ad, AVFINT_DYN_CTLN (line), dyn_ctln);
   avf_reg_flush (ad);
-}
 
-static inline void
-avf_irq_n_enable (avf_device_t * ad, u8 line)
-{
-  u32 dyn_ctln = 0;
+  if (state == AVF_IRQ_STATE_DISABLED)
+    return;
 
-  dyn_ctln |= (1 << 0);		/* [0] Interrupt Enable */
   dyn_ctln |= (1 << 1);		/* [1] Clear PBA */
-  dyn_ctln |= ((AVF_ITR_INT / 2) << 5);	/* [16:5] ITR Interval in 2us steps */
+  if (state == AVF_IRQ_STATE_WB_ON_ITR)
+    {
+      /* minimal ITR interval, use ITR1 */
+      dyn_ctln |= (1 << 3);	/* [4:3] ITR Index */
+      dyn_ctln |= ((32 / 2) << 5);	/* [16:5] ITR Interval in 2us steps */
+      dyn_ctln |= (1 << 30);	/* [30] Writeback on ITR */
+    }
+  else
+    {
+      /* configured ITR interval, use ITR0 */
+      dyn_ctln |= (1 << 0);	/* [0] Interrupt Enable */
+      dyn_ctln |= ((AVF_ITR_INT / 2) << 5);	/* [16:5] ITR Interval in 2us steps */
+    }
 
-  avf_irq_n_disable (ad, line);
   avf_reg_write (ad, AVFINT_DYN_CTLN (line), dyn_ctln);
   avf_reg_flush (ad);
 }
@@ -686,24 +700,29 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 clib_error_t *
 avf_op_config_irq_map (vlib_main_t * vm, avf_device_t * ad)
 {
-  int count = 1;
   int msg_len = sizeof (virtchnl_irq_map_info_t) +
-    count * sizeof (virtchnl_vector_map_t);
+    (ad->n_rx_irqs) * sizeof (virtchnl_vector_map_t);
   u8 msg[msg_len];
   virtchnl_irq_map_info_t *imi;
 
   clib_memset (msg, 0, msg_len);
   imi = (virtchnl_irq_map_info_t *) msg;
-  imi->num_vectors = count;
+  imi->num_vectors = ad->n_rx_irqs;
 
-  imi->vecmap[0].vector_id = 1;
-  imi->vecmap[0].vsi_id = ad->vsi_id;
-  imi->vecmap[0].rxq_map = (1 << ad->n_rx_queues) - 1;
-  imi->vecmap[0].txq_map = (1 << ad->n_tx_queues) - 1;
+  for (int i = 0; i < ad->n_rx_irqs; i++)
+    {
+      imi->vecmap[i].vector_id = i + 1;
+      imi->vecmap[i].vsi_id = ad->vsi_id;
+      if (ad->n_rx_irqs == ad->n_rx_queues)
+	imi->vecmap[i].rxq_map = 1 << i;
+      else
+	imi->vecmap[i].rxq_map = pow2_mask (ad->n_rx_queues);;
 
-  avf_log_debug (ad, "config_irq_map: vsi_id %u vector_id %u rxq_map %u",
-		 ad->vsi_id, imi->vecmap[0].vector_id,
-		 imi->vecmap[0].rxq_map);
+      avf_log_debug (ad, "config_irq_map[%u/%u]: vsi_id %u vector_id %u "
+		     "rxq_map %u", i, ad->n_rx_irqs - 1, ad->vsi_id,
+		     imi->vecmap[i].vector_id, imi->vecmap[i].rxq_map);
+    }
+
 
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_IRQ_MAP, msg, msg_len, 0,
 			 0);
@@ -872,7 +891,7 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   virtchnl_vf_resource_t res = { 0 };
   clib_error_t *error;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  int i;
+  int i, wb_on_itr;
 
   avf_adminq_init (vm, ad);
 
@@ -915,6 +934,7 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   ad->max_mtu = res.max_mtu;
   ad->rss_key_size = res.rss_key_size;
   ad->rss_lut_size = res.rss_lut_size;
+  wb_on_itr = (ad->feature_bitmap & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) != 0;
 
   clib_memcpy_fast (ad->hwaddr, res.vsi_res[0].default_mac_addr, 6);
 
@@ -946,6 +966,15 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
     if ((error = avf_txq_init (vm, ad, i, args->txq_size)))
       return error;
 
+  if (ad->max_vectors > ad->n_rx_queues)
+    {
+      ad->flags |= AVF_DEVICE_F_RX_INT;
+      ad->n_rx_irqs = args->rxq_num;
+    }
+  else
+    ad->n_rx_irqs = 1;
+
+
   if ((ad->feature_bitmap & VIRTCHNL_VF_OFFLOAD_RSS_PF) &&
       (error = avf_op_config_rss_lut (vm, ad)))
     return error;
@@ -960,9 +989,11 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   if ((error = avf_op_config_irq_map (vm, ad)))
     return error;
 
-  avf_irq_0_enable (ad);
-  for (i = 0; i < ad->n_rx_queues; i++)
-    avf_irq_n_enable (ad, i);
+  avf_irq_0_set_state (ad, AVF_IRQ_STATE_ENABLED);
+
+  for (i = 0; i < ad->n_rx_irqs; i++)
+    avf_irq_n_set_state (ad, i, wb_on_itr ? AVF_IRQ_STATE_WB_ON_ITR :
+			 AVF_IRQ_STATE_ENABLED);
 
   if ((error = avf_op_add_eth_addr (vm, ad, 1, ad->hwaddr)))
     return error;
@@ -1237,7 +1268,7 @@ avf_irq_0_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
       ed->icr0 = icr0;
     }
 
-  avf_irq_0_enable (ad);
+  avf_irq_0_set_state (ad, AVF_IRQ_STATE_ENABLED);
 
   /* bit 30 - Send/Receive Admin queue interrupt indication */
   if (icr0 & (1 << 30))
@@ -1252,8 +1283,6 @@ avf_irq_n_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
   avf_main_t *am = &avf_main;
   uword pd = vlib_pci_get_private_data (vm, h);
   avf_device_t *ad = pool_elt_at_index (am->devices, pd);
-  u16 qid;
-  int i;
 
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
@@ -1275,11 +1304,11 @@ avf_irq_n_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
       ed->line = line;
     }
 
-  qid = line - 1;
-  if (vec_len (ad->rxqs) > qid && ad->rxqs[qid].int_mode != 0)
-    vnet_device_input_set_interrupt_pending (vnm, ad->hw_if_index, qid);
-  for (i = 0; i < vec_len (ad->rxqs); i++)
-    avf_irq_n_enable (ad, i);
+  line--;
+
+  if (ad->flags & AVF_DEVICE_F_RX_INT && ad->rxqs[line].int_mode)
+    vnet_device_input_set_interrupt_pending (vnm, ad->hw_if_index, line);
+  avf_irq_n_set_state (ad, line, AVF_IRQ_STATE_ENABLED);
 }
 
 void
@@ -1392,17 +1421,6 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = vlib_pci_map_region (vm, h, 0, &ad->bar0)))
     goto error;
 
-  if ((error = vlib_pci_register_msix_handler (vm, h, 0, 1,
-					       &avf_irq_0_handler)))
-    goto error;
-
-  if ((error = vlib_pci_register_msix_handler (vm, h, 1, 1,
-					       &avf_irq_n_handler)))
-    goto error;
-
-  if ((error = vlib_pci_enable_msix_irq (vm, h, 0, 2)))
-    goto error;
-
   ad->atq = vlib_physmem_alloc_aligned_on_numa (vm, sizeof (avf_aq_desc_t) *
 						AVF_MBOX_LEN,
 						CLIB_CACHE_LINE_BYTES,
@@ -1455,13 +1473,24 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = vlib_pci_map_dma (vm, h, ad->arq_bufs)))
     goto error;
 
-  if ((error = vlib_pci_intr_enable (vm, h)))
-    goto error;
-
   if (vlib_pci_supports_virtual_addr_dma (vm, h))
     ad->flags |= AVF_DEVICE_F_VA_DMA;
 
   if ((error = avf_device_init (vm, am, ad, args)))
+    goto error;
+
+  if ((error = vlib_pci_register_msix_handler (vm, h, 0, 1,
+					       &avf_irq_0_handler)))
+    goto error;
+
+  if ((error = vlib_pci_register_msix_handler (vm, h, 1, ad->n_rx_irqs,
+					       &avf_irq_n_handler)))
+    goto error;
+
+  if ((error = vlib_pci_enable_msix_irq (vm, h, 0, ad->n_rx_irqs + 1)))
+    goto error;
+
+  if ((error = vlib_pci_intr_enable (vm, h)))
     goto error;
 
   /* create interface */
@@ -1532,9 +1561,24 @@ avf_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
   avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, qid);
 
   if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
-    rxq->int_mode = 0;
+    {
+      if (rxq->int_mode == 0)
+	return 0;
+      if (ad->feature_bitmap & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR)
+	avf_irq_n_set_state (ad, qid, AVF_IRQ_STATE_WB_ON_ITR);
+      else
+	avf_irq_n_set_state (ad, qid, AVF_IRQ_STATE_ENABLED);
+      rxq->int_mode = 0;
+    }
   else
-    rxq->int_mode = 1;
+    {
+      if (rxq->int_mode == 1)
+	return 0;
+      if (ad->n_rx_irqs != ad->n_rx_queues)
+	return clib_error_return (0, "not enough interrupt lines");
+      rxq->int_mode = 1;
+      avf_irq_n_set_state (ad, qid, AVF_IRQ_STATE_ENABLED);
+    }
 
   return 0;
 }
