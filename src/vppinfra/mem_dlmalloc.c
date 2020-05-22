@@ -20,7 +20,6 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/elf_clib.h>
 #include <vppinfra/sanitizer.h>
-#include <numaif.h>
 
 void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
 void *clib_per_numa_mheaps[CLIB_MAX_NUMAS];
