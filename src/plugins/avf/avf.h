@@ -70,7 +70,8 @@
   _(4, LINK_UP, "link-up") \
   _(5, SHARED_TXQ_LOCK, "shared-txq-lock") \
   _(6, ELOG, "elog") \
-  _(7, PROMISC, "promisc")
+  _(7, PROMISC, "promisc") \
+  _(8, RX_INT, "rx-interrupts")
 
 enum
 {
@@ -179,6 +180,7 @@ typedef struct
   u8 hwaddr[6];
   u16 num_queue_pairs;
   u16 max_vectors;
+  u16 n_rx_irqs;
   u16 max_mtu;
   u32 rss_key_size;
   u32 rss_lut_size;
