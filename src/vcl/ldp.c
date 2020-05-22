@@ -1524,6 +1524,69 @@ recv (int fd, void *buf, size_t n, int flags)
   return size;
 }
 
+static int
+ldp_vls_sendo (vls_handle_t vlsh, const void *buf, size_t n, int flags,
+	       __CONST_SOCKADDR_ARG addr, socklen_t addr_len)
+{
+  vppcom_endpt_t *ep = 0;
+  vppcom_endpt_t _ep;
+
+  if (addr)
+    {
+      ep = &_ep;
+      switch (addr->sa_family)
+	{
+	case AF_INET:
+	  ep->is_ip4 = VPPCOM_IS_IP4;
+	  ep->ip =
+	    (uint8_t *) & ((const struct sockaddr_in *) addr)->sin_addr;
+	  ep->port = (uint16_t) ((const struct sockaddr_in *) addr)->sin_port;
+	  break;
+
+	case AF_INET6:
+	  ep->is_ip4 = VPPCOM_IS_IP6;
+	  ep->ip =
+	    (uint8_t *) & ((const struct sockaddr_in6 *) addr)->sin6_addr;
+	  ep->port =
+	    (uint16_t) ((const struct sockaddr_in6 *) addr)->sin6_port;
+	  break;
+
+	default:
+	  return EAFNOSUPPORT;
+	}
+    }
+
+  return vls_sendto (vlsh, (void *) buf, n, flags, ep);
+}
+
+static int
+ldp_vls_recvfrom (vls_handle_t vlsh, void *__restrict buf, size_t n,
+		  int flags, __SOCKADDR_ARG addr,
+		  socklen_t * __restrict addr_len)
+{
+  u8 src_addr[sizeof (struct sockaddr_in6)];
+  vppcom_endpt_t ep;
+  ssize_t size;
+  int rv;
+
+  if (addr)
+    {
+      ep.ip = src_addr;
+      size = vls_recvfrom (vlsh, buf, n, flags, &ep);
+
+      if (size > 0)
+	{
+	  rv = ldp_copy_ep_to_sockaddr (addr, addr_len, &ep);
+	  if (rv < 0)
+	    size = rv;
+	}
+    }
+  else
+    size = vls_recvfrom (vlsh, buf, n, flags, NULL);
+
+  return size;
+}
+
 ssize_t
 sendto (int fd, const void *buf, size_t n, int flags,
 	__CONST_SOCKADDR_ARG addr, socklen_t addr_len)
@@ -1537,38 +1600,7 @@ sendto (int fd, const void *buf, size_t n, int flags,
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != INVALID_SESSION_ID)
     {
-      vppcom_endpt_t *ep = 0;
-      vppcom_endpt_t _ep;
-
-      if (addr)
-	{
-	  ep = &_ep;
-	  switch (addr->sa_family)
-	    {
-	    case AF_INET:
-	      ep->is_ip4 = VPPCOM_IS_IP4;
-	      ep->ip =
-		(uint8_t *) & ((const struct sockaddr_in *) addr)->sin_addr;
-	      ep->port =
-		(uint16_t) ((const struct sockaddr_in *) addr)->sin_port;
-	      break;
-
-	    case AF_INET6:
-	      ep->is_ip4 = VPPCOM_IS_IP6;
-	      ep->ip =
-		(uint8_t *) & ((const struct sockaddr_in6 *) addr)->sin6_addr;
-	      ep->port =
-		(uint16_t) ((const struct sockaddr_in6 *) addr)->sin6_port;
-	      break;
-
-	    default:
-	      errno = EAFNOSUPPORT;
-	      size = -1;
-	      goto done;
-	    }
-	}
-
-      size = vls_sendto (vlsh, (void *) buf, n, flags, ep);
+      size = ldp_vls_sendo (vlsh, buf, n, flags, addr, addr_len);
       if (size < 0)
 	{
 	  errno = -size;
@@ -1580,7 +1612,6 @@ sendto (int fd, const void *buf, size_t n, int flags,
       size = libc_sendto (fd, buf, n, flags, addr, addr_len);
     }
 
-done:
   return size;
 }
 
@@ -1588,33 +1619,16 @@ ssize_t
 recvfrom (int fd, void *__restrict buf, size_t n, int flags,
 	  __SOCKADDR_ARG addr, socklen_t * __restrict addr_len)
 {
-  vls_handle_t sid;
-  ssize_t size, rv;
+  vls_handle_t vlsh;
+  ssize_t size;
 
   if ((errno = -ldp_init ()))
     return -1;
 
-  sid = ldp_fd_to_vlsh (fd);
-  if (sid != VLS_INVALID_HANDLE)
+  vlsh = ldp_fd_to_vlsh (fd);
+  if (vlsh != VLS_INVALID_HANDLE)
     {
-      vppcom_endpt_t ep;
-      u8 src_addr[sizeof (struct sockaddr_in6)];
-
-      if (addr)
-	{
-	  ep.ip = src_addr;
-	  size = vls_recvfrom (sid, buf, n, flags, &ep);
-
-	  if (size > 0)
-	    {
-	      rv = ldp_copy_ep_to_sockaddr (addr, addr_len, &ep);
-	      if (rv < 0)
-		size = rv;
-	    }
-	}
-      else
-	size = vls_recvfrom (sid, buf, n, flags, NULL);
-
+      size = ldp_vls_recvfrom (vlsh, buf, n, flags, addr, addr_len);
       if (size < 0)
 	{
 	  errno = -size;
@@ -1630,7 +1644,7 @@ recvfrom (int fd, void *__restrict buf, size_t n, int flags,
 }
 
 ssize_t
-sendmsg (int fd, const struct msghdr * message, int flags)
+sendmsg (int fd, const struct msghdr * msg, int flags)
 {
   vls_handle_t vlsh;
   ssize_t size;
@@ -1641,13 +1655,35 @@ sendmsg (int fd, const struct msghdr * message, int flags)
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
-      LDBG (0, "LDP-TBD");
-      errno = ENOSYS;
-      size = -1;
+      struct iovec *iov = msg->msg_iov;
+      ssize_t total = 0;
+      int i, rv;
+
+      for (i = 0; i < msg->msg_iovlen; ++i)
+	{
+	  rv = ldp_vls_sendo (vlsh, iov[i].iov_base, iov[i].iov_len, flags,
+			      msg->msg_name, msg->msg_namelen);
+	  if (rv < 0)
+	    break;
+	  else
+	    {
+	      total += rv;
+	      if (rv < iov[i].iov_len)
+		break;
+	    }
+	}
+
+      if (rv < 0 && total == 0)
+	{
+	  errno = -rv;
+	  size = -1;
+	}
+      else
+	size = total;
     }
   else
     {
-      size = libc_sendmsg (fd, message, flags);
+      size = libc_sendmsg (fd, msg, flags);
     }
 
   return size;
@@ -1702,7 +1738,7 @@ sendmmsg (int fd, struct mmsghdr *vmessages, unsigned int vlen, int flags)
 #endif
 
 ssize_t
-recvmsg (int fd, struct msghdr * message, int flags)
+recvmsg (int fd, struct msghdr * msg, int flags)
 {
   vls_handle_t vlsh;
   ssize_t size;
@@ -1713,13 +1749,42 @@ recvmsg (int fd, struct msghdr * message, int flags)
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
-      LDBG (0, "LDP-TBD");
-      errno = ENOSYS;
-      size = -1;
+      struct iovec *iov = msg->msg_iov;
+      ssize_t max_deq, total = 0;
+      int i, rv;
+
+      max_deq = vls_attr (vlsh, VPPCOM_ATTR_GET_NREAD, 0, 0);
+      if (!max_deq)
+	return 0;
+
+      for (i = 0; i < msg->msg_iovlen; i++)
+	{
+	  rv = ldp_vls_recvfrom (vlsh, iov[i].iov_base, iov[i].iov_len, flags,
+				 (i == 0 ? msg->msg_name : NULL),
+				 (i == 0 ? &msg->msg_namelen : NULL));
+	  if (rv <= 0)
+	    break;
+	  else
+	    {
+	      total += rv;
+	      if (rv < iov[i].iov_len)
+		break;
+	    }
+	  if (total >= max_deq)
+	    break;
+	}
+
+      if (rv < 0 && total == 0)
+	{
+	  errno = -rv;
+	  size = -1;
+	}
+      else
+	size = total;
     }
   else
     {
-      size = libc_recvmsg (fd, message, flags);
+      size = libc_recvmsg (fd, msg, flags);
     }
 
   return size;
