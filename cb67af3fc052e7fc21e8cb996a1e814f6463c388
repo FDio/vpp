@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "79a18b37_adb39fe3",
+        "filename": "RELEASE.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 1920
+      },
+      "writtenOn": "2020-05-23T04:11:17Z",
+      "side": 1,
+      "message": "Obsoleted by ec9cb9668.",
+      "revId": "cb67af3fc052e7fc21e8cb996a1e814f6463c388",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
