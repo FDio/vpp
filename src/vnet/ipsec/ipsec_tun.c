@@ -23,6 +23,9 @@
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/teib/teib.h>
 
+#define IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
+#define IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE 512 << 20
+
 /**
  * The logger
  */
@@ -228,20 +231,41 @@ ipsec_tun_protect_rx_db_add (ipsec_main_t * im,
        */
       if (ip46_address_is_ip4 (&itp->itp_crypto.dst))
         {
-          ipsec4_tunnel_key_t key = {
-            .remote_ip = itp->itp_crypto.dst.ip4,
-            .spi = clib_host_to_net_u32 (sa->spi),
+          ipsec4_tunnel_kv_t key = {
+            .key = {
+              .remote_ip = itp->itp_crypto.dst.ip4,
+              .spi = clib_host_to_net_u32 (sa->spi),
+            },
+            .value = res,
           };
-          hash_set (im->tun4_protect_by_key, key.as_u64, res.as_u64);
+          clib_bihash_kv_8_8_t *bkey = (clib_bihash_kv_8_8_t*)&key;
+
+          if (!im->tun4_protect_by_key.nbuckets)
+              clib_bihash_init_8_8 (&im->tun4_protect_by_key,
+			"IPSec IPv4 tunnels",
+			IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS,
+			IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE);
+
+          clib_bihash_add_del_8_8 (&im->tun4_protect_by_key, bkey, 1);
           ipsec_tun_register_nodes(AF_IP4);
         }
       else
         {
-          ipsec6_tunnel_key_t key = {
-            .remote_ip = itp->itp_crypto.dst.ip6,
-            .spi = clib_host_to_net_u32 (sa->spi),
+          ipsec6_tunnel_kv_t key = {
+            .key = {
+              .remote_ip = itp->itp_crypto.dst.ip6,
+              .spi = clib_host_to_net_u32 (sa->spi),
+            },
+            .value = res,
           };
-          hash_set_mem_alloc (&im->tun6_protect_by_key, &key, res.as_u64);
+          clib_bihash_kv_24_8_t *bkey = (clib_bihash_kv_24_8_t*)&key;
+
+          if (!im->tun4_protect_by_key.nbuckets)
+            clib_bihash_init_24_8 (&im->tun6_protect_by_key,
+                                   "IPSec IPv6 tunnels",
+                                   IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS,
+                                   IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE);
+          clib_bihash_add_del_24_8 (&im->tun6_protect_by_key, bkey, 1);
           ipsec_tun_register_nodes(AF_IP6);
         }
   }))
@@ -330,25 +354,33 @@ ipsec_tun_protect_rx_db_remove (ipsec_main_t * im,
   ({
     if (ip46_address_is_ip4 (&itp->itp_crypto.dst))
       {
-        ipsec4_tunnel_key_t key = {
-          .remote_ip = itp->itp_crypto.dst.ip4,
-          .spi = clib_host_to_net_u32 (sa->spi),
-        };
-        if (hash_get(im->tun4_protect_by_key, key.as_u64))
-          {
-            hash_unset (im->tun4_protect_by_key, key.as_u64);
-            ipsec_tun_unregister_nodes(AF_IP4);
-          }
+          ipsec4_tunnel_kv_t key = {
+            .key = {
+              .remote_ip = itp->itp_crypto.dst.ip4,
+              .spi = clib_host_to_net_u32 (sa->spi),
+            },
+          };
+          clib_bihash_kv_8_8_t res, *bkey = (clib_bihash_kv_8_8_t*)&key;
+
+          if (!clib_bihash_search_8_8 (&im->tun4_protect_by_key, bkey, &res))
+            {
+              clib_bihash_add_del_8_8 (&im->tun4_protect_by_key, bkey, 0);
+              ipsec_tun_unregister_nodes(AF_IP4);
+            }
       }
     else
       {
-        ipsec6_tunnel_key_t key = {
-          .remote_ip = itp->itp_crypto.dst.ip6,
-          .spi = clib_host_to_net_u32 (sa->spi),
+        ipsec6_tunnel_kv_t key = {
+          .key = {
+            .remote_ip = itp->itp_crypto.dst.ip6,
+            .spi = clib_host_to_net_u32 (sa->spi),
+          },
         };
-        if (hash_get_mem(im->tun6_protect_by_key, &key))
+        clib_bihash_kv_24_8_t res, *bkey = (clib_bihash_kv_24_8_t*)&key;
+
+        if (!clib_bihash_search_24_8 (&im->tun6_protect_by_key, bkey, &res))
           {
-            hash_unset_mem_free (&im->tun6_protect_by_key, &key);
+            clib_bihash_add_del_24_8 (&im->tun6_protect_by_key, bkey, 0);
             ipsec_tun_unregister_nodes(AF_IP6);
           }
       }
@@ -933,6 +965,20 @@ const static teib_vft_t ipsec_tun_teib_vft = {
   .nv_deleted = ipsec_tun_teib_entry_deleted,
 };
 
+void
+ipsec_tun_table_init (ip_address_family_t af, uword table_size, u32 n_buckets)
+{
+  ipsec_main_t *im;
+
+  im = &ipsec_main;
+
+  if (AF_IP4 == af)
+    clib_bihash_init_8_8 (&im->tun4_protect_by_key,
+			  "IPSec IPv4 tunnels", n_buckets, table_size);
+  else
+    clib_bihash_init_24_8 (&im->tun6_protect_by_key,
+			   "IPSec IPv6 tunnels", n_buckets, table_size);
+}
 
 clib_error_t *
 ipsec_tunnel_protect_init (vlib_main_t * vm)
@@ -940,10 +986,14 @@ ipsec_tunnel_protect_init (vlib_main_t * vm)
   ipsec_main_t *im;
 
   im = &ipsec_main;
-  im->tun6_protect_by_key = hash_create_mem (0,
-					     sizeof (ipsec6_tunnel_key_t),
-					     sizeof (u64));
-  im->tun4_protect_by_key = hash_create (0, sizeof (u64));
+  clib_bihash_init_24_8 (&im->tun6_protect_by_key,
+			 "IPSec IPv6 tunnels",
+			 IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS,
+			 IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE);
+  clib_bihash_init_8_8 (&im->tun4_protect_by_key,
+			"IPSec IPv4 tunnels",
+			IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS,
+			IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE);
 
   /* set up feature nodes to drop outbound packets with no crypto alg set */
   im->esp4_no_crypto_tun_node_index =
@@ -967,6 +1017,62 @@ ipsec_tunnel_protect_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ipsec_tunnel_protect_init);
 
+static clib_error_t *
+ipsec_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  unformat_input_t sub_input;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "ip4 %U", unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  uword table_size = ~0;
+	  u32 n_buckets = ~0;
+
+	  while (unformat_check_input (&sub_input) != UNFORMAT_END_OF_INPUT)
+	    {
+	      if (unformat (&sub_input, "table-size %U", unformat_memory_size,
+			    &table_size))
+		;
+	      else if (unformat (&sub_input, "num-buckets %u", &n_buckets))
+		;
+	      else
+		return clib_error_return (0, "unknown input `%U'",
+					  format_unformat_error, &sub_input);
+	    }
+
+	  ipsec_tun_table_init (AF_IP4, table_size, n_buckets);
+	}
+      else if (unformat (input, "ip6 %U", unformat_vlib_cli_sub_input,
+			 &sub_input))
+	{
+	  uword table_size = ~0;
+	  u32 n_buckets = ~0;
+
+	  while (unformat_check_input (&sub_input) != UNFORMAT_END_OF_INPUT)
+	    {
+	      if (unformat (&sub_input, "table-size %U", unformat_memory_size,
+			    &table_size))
+		;
+	      else if (unformat (&sub_input, "num-buckets %u", &n_buckets))
+		;
+	      else
+		return clib_error_return (0, "unknown input `%U'",
+					  format_unformat_error, &sub_input);
+	    }
+
+	  ipsec_tun_table_init (AF_IP6, table_size, n_buckets);
+	}
+      else
+	return clib_error_return (0,
+				  "invalid heap-size parameter `%U'",
+				  format_unformat_error, input);
+    }
+
+  return 0;
+}
+
+VLIB_EARLY_CONFIG_FUNCTION (ipsec_config, "ipsec");
 
 /*
  * fd.io coding-style-patch-verification: ON
