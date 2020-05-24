@@ -55,6 +55,7 @@
 #include <vppinfra/bihash_template.c>
 #endif
 #include <vnet/ip/ip6_forward.h>
+#include <vnet/ipsec/ipsec_tun.h>
 #include <vnet/interface_output.h>
 
 /* Flag used by IOAM code. Classifier sets it pop-hop-by-hop checks it */
