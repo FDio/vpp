@@ -1037,6 +1037,28 @@ VLIB_CLI_COMMAND (ipsec_tun_protect_show_node, static) =
 };
 /* *INDENT-ON* */
 
+static int
+ipsec_tun_protect4_hash_show_one (clib_bihash_kv_8_8_t * kv, void *arg)
+{
+  ipsec4_tunnel_kv_t *ikv = (ipsec4_tunnel_kv_t *) kv;
+  vlib_main_t *vm = arg;
+
+  vlib_cli_output (vm, " %U", format_ipsec4_tunnel_kv, ikv);
+
+  return (BIHASH_WALK_CONTINUE);
+}
+
+static int
+ipsec_tun_protect6_hash_show_one (clib_bihash_kv_24_8_t * kv, void *arg)
+{
+  ipsec6_tunnel_kv_t *ikv = (ipsec6_tunnel_kv_t *) kv;
+  vlib_main_t *vm = arg;
+
+  vlib_cli_output (vm, " %U", format_ipsec6_tunnel_kv, ikv);
+
+  return (BIHASH_WALK_CONTINUE);
+}
+
 static clib_error_t *
 ipsec_tun_protect_hash_show (vlib_main_t * vm,
 			     unformat_input_t * input,
@@ -1045,33 +1067,15 @@ ipsec_tun_protect_hash_show (vlib_main_t * vm,
   ipsec_main_t *im = &ipsec_main;
 
   {
-    ipsec_tun_lkup_result_t value;
-    ipsec4_tunnel_key_t key;
-
     vlib_cli_output (vm, "IPv4:");
 
-    /* *INDENT-OFF* */
-    hash_foreach(key.as_u64, value.as_u64, im->tun4_protect_by_key,
-    ({
-      vlib_cli_output (vm, " %U", format_ipsec4_tunnel_key, &key);
-      vlib_cli_output (vm, "  tun:%d sa:%d", value.tun_index, value.sa_index);
-    }));
-    /* *INDENT-ON* */
-  }
-
-  {
-    ipsec_tun_lkup_result_t value;
-    ipsec6_tunnel_key_t *key;
+    clib_bihash_foreach_key_value_pair_8_8
+      (&im->tun4_protect_by_key, ipsec_tun_protect4_hash_show_one, vm);
 
     vlib_cli_output (vm, "IPv6:");
 
-    /* *INDENT-OFF* */
-    hash_foreach_mem(key, value.as_u64, im->tun6_protect_by_key,
-    ({
-      vlib_cli_output (vm, " %U", format_ipsec6_tunnel_key, key);
-      vlib_cli_output (vm, "  tun:%d sa:%d", value.tun_index, value.sa_index);
-    }));
-    /* *INDENT-ON* */
+    clib_bihash_foreach_key_value_pair_24_8
+      (&im->tun6_protect_by_key, ipsec_tun_protect6_hash_show_one, vm);
   }
 
   return NULL;

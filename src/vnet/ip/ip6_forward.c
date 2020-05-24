@@ -55,6 +55,7 @@
 #include <vppinfra/bihash_template.c>
 #endif
 #include <vnet/ip/ip6_forward.h>
+#include <vnet/ipsec/ipsec_tun.h>
 #include <vnet/interface_output.h>
 
 /* Flag used by IOAM code. Classifier sets it pop-hop-by-hop checks it */
@@ -3169,6 +3170,7 @@ static clib_error_t *
 ip6_config (vlib_main_t * vm, unformat_input_t * input)
 {
   ip6_main_t *im = &ip6_main;
+  unformat_input_t sub_input;
   uword heapsize = 0;
   u32 tmp;
   u32 nbuckets = 0;
@@ -3180,6 +3182,26 @@ ip6_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "heap-size %U",
 			 unformat_memory_size, &heapsize))
 	;
+      else if (unformat (input, "ipsec %U", unformat_vlib_cli_sub_input,
+			 &sub_input))
+	{
+	  uword table_size = ~0;
+	  u32 n_buckets = ~0;
+
+	  while (unformat_check_input (&sub_input) != UNFORMAT_END_OF_INPUT)
+	    {
+	      if (unformat (&sub_input, "table-size %U", unformat_memory_size,
+			    &table_size))
+		;
+	      else if (unformat (&sub_input, "num-buckets %u", &n_buckets))
+		;
+	      else
+		return clib_error_return (0, "unknown input `%U'",
+					  format_unformat_error, &sub_input);
+	    }
+
+	  ipsec_tun_table_init (AF_IP6, table_size, n_buckets);
+	}
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);

@@ -59,6 +59,7 @@
 #include <vnet/ip/ip4_forward.h>
 #include <vnet/interface_output.h>
 #include <vnet/classify/vnet_classify.h>
+#include <vnet/ipsec/ipsec_tun.h>
 
 /** @brief IPv4 lookup node.
     @node ip4-lookup
@@ -3091,6 +3092,7 @@ static clib_error_t *
 ip4_config (vlib_main_t * vm, unformat_input_t * input)
 {
   ip4_main_t *im = &ip4_main;
+  unformat_input_t sub_input;
   uword heapsize = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -3099,6 +3101,26 @@ ip4_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "mtrie-hugetlb %=", &im->mtrie_hugetlb, 1))
 	;
+      else if (unformat (input, "ipsec %U", unformat_vlib_cli_sub_input,
+			 &sub_input))
+	{
+	  uword table_size = ~0;
+	  u32 n_buckets = ~0;
+
+	  while (unformat_check_input (&sub_input) != UNFORMAT_END_OF_INPUT)
+	    {
+	      if (unformat (&sub_input, "table-size %U", unformat_memory_size,
+			    &table_size))
+		;
+	      else if (unformat (&sub_input, "num-buckets %u", &n_buckets))
+		;
+	      else
+		return clib_error_return (0, "unknown input `%U'",
+					  format_unformat_error, &sub_input);
+	    }
+
+	  ipsec_tun_table_init (AF_IP4, table_size, n_buckets);
+	}
       else
 	return clib_error_return (0,
 				  "invalid heap-size parameter `%U'",

@@ -396,27 +396,29 @@ format_ipsec_tun_protect (u8 * s, va_list * args)
 }
 
 u8 *
-format_ipsec4_tunnel_key (u8 * s, va_list * args)
+format_ipsec4_tunnel_kv (u8 * s, va_list * args)
 {
-  ipsec4_tunnel_key_t *key = va_arg (*args, ipsec4_tunnel_key_t *);
+  ipsec4_tunnel_kv_t *kv = va_arg (*args, ipsec4_tunnel_kv_t *);
 
-  s = format (s, "remote:%U spi:%u (0x%08x)",
-	      format_ip4_address, &key->remote_ip,
-	      clib_net_to_host_u32 (key->spi),
-	      clib_net_to_host_u32 (key->spi));
+  s = format (s, "remote:%U spi:%u (0x%08x) sa:%d tun:%d",
+	      format_ip4_address, &kv->key.remote_ip,
+	      clib_net_to_host_u32 (kv->key.spi),
+	      clib_net_to_host_u32 (kv->key.spi),
+	      kv->value.sa_index, kv->value.tun_index);
 
   return (s);
 }
 
 u8 *
-format_ipsec6_tunnel_key (u8 * s, va_list * args)
+format_ipsec6_tunnel_kv (u8 * s, va_list * args)
 {
-  ipsec6_tunnel_key_t *key = va_arg (*args, ipsec6_tunnel_key_t *);
+  ipsec6_tunnel_kv_t *kv = va_arg (*args, ipsec6_tunnel_kv_t *);
 
-  s = format (s, "remote:%U spi:%u (0x%08x)",
-	      format_ip6_address, &key->remote_ip,
-	      clib_net_to_host_u32 (key->spi),
-	      clib_net_to_host_u32 (key->spi));
+  s = format (s, "remote:%U spi:%u (0x%08x) sa:%d tun:%d",
+	      format_ip6_address, &kv->key.remote_ip,
+	      clib_net_to_host_u32 (kv->key.spi),
+	      clib_net_to_host_u32 (kv->key.spi),
+	      kv->value.sa_index, kv->value.tun_index);
 
   return (s);
 }
