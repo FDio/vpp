@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 from __future__ import print_function
-from cffi import FFI
 import time
+import vpp_papi.vpp_ffi as vpp_ffi
 
-ffi = FFI()
+ffi = vpp_ffi.VppFFI()
 ffi.cdef("""
 typedef uint64_t counter_t;
 typedef struct {
