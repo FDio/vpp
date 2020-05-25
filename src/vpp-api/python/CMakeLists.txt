@@ -17,6 +17,11 @@ else()
   find_package(Python3 COMPONENTS Interpreter)
 endif()
 
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/vpp_papi/vpp_ffi.py.in
+  ${CMAKE_CURRENT_SOURCE_DIR}/vpp_papi/vpp_ffi.py
+)
+
 if(PYTHONINTERP_FOUND)
   install(
     CODE "

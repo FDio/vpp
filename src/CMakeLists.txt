@@ -114,6 +114,13 @@ if (VPP_ENABLE_SANITIZE_ADDR)
   set(CMAKE_C_FLAGS "-fsanitize=address -DCLIB_SANITIZE_ADDR ${CMAKE_C_FLAGS}")
   set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address ${CMAKE_EXE_LINKER_FLAGS}")
   set(CMAKE_SHARED_LINKER_FLAGS "-fsanitize=address ${CMAKE_SHARED_LINKER_FLAGS}")
+  set(VPP_SANITIZE_PRELOAD "")
+  if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    # see src/vpp-api/python/vpp_papi/vpp_ffi.py.in
+    execute_process(COMMAND "${CMAKE_C_COMPILER}" "-print-file-name=libclang_rt.asan-x86_64.so"
+      OUTPUT_VARIABLE VPP_SANITIZE_PRELOAD)
+    string(STRIP ${VPP_SANITIZE_PRELOAD} VPP_SANITIZE_PRELOAD)
+  endif()
 endif (VPP_ENABLE_SANITIZE_ADDR)
 
 ##############################################################################

@@ -3,10 +3,9 @@
 # One for socket and one for shared memory.
 #
 
-from cffi import FFI
-import cffi
+import vpp_papi.vpp_ffi as vpp_ffi
 
-ffi = FFI()
+ffi = vpp_ffi.VppFFI()
 ffi.cdef("""
 typedef void (*vac_callback_t)(unsigned char * data, int len);
 typedef void (*vac_error_callback_t)(void *, unsigned char *, int);
@@ -73,7 +72,7 @@ class VppTransport(object):
         # Support legacy CFFI
         # from_buffer supported from 1.8.0
         (major, minor, patch) = [int(s) for s in
-                                 cffi.__version__.split('.', 3)]
+                                 vpp_ffi.__version__.split('.', 3)]
         if major >= 1 and minor >= 8:
             self.write = self._write_new_cffi
         else:
