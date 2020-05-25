@@ -1536,7 +1536,7 @@ static void
 ikev2_sa_auth_init (ikev2_sa_t * sa)
 {
   ikev2_main_t *km = &ikev2_main;
-  u8 *authmsg, *key_pad, *psk = 0, *auth = 0;
+  u8 *authmsg, *key_pad, *psk = 0;
   ikev2_sa_transform_t *tr_prf;
 
   tr_prf =
@@ -1556,8 +1556,6 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
   key_pad = format (0, "%s", IKEV2_KEY_PAD);
   authmsg = ikev2_sa_generate_authmsg (sa, 0);
   psk = ikev2_calc_prf (tr_prf, sa->i_auth.data, key_pad);
-  auth = ikev2_calc_prf (tr_prf, psk, authmsg);
-
 
   if (sa->i_auth.method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
     {
@@ -1572,7 +1570,6 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
 
   vec_free (psk);
   vec_free (key_pad);
-  vec_free (auth);
   vec_free (authmsg);
 }
 
