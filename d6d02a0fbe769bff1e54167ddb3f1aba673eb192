@@ -1,0 +1,146 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2be3e06a_77afadf1",
+        "filename": "src/vlib/buffer_node.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-05-25T09:37:29Z",
+      "side": 1,
+      "message": "Is there any significant performance difference with the original code?",
+      "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a81eb14f_c713286b",
+        "filename": "src/vlib/buffer_node.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-05-25T09:37:29Z",
+      "side": 1,
+      "message": "Will to replace 4 with an enum.",
+      "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dbe48928_818cbc3e",
+        "filename": "src/vlib/buffer_node.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 363,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-05-25T09:37:29Z",
+      "side": 1,
+      "message": "Use indirectly through count_trailing_zeros or similar.",
+      "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "808155d4_606a3a5f",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-05-25T09:37:29Z",
+      "side": 1,
+      "message": "you seem to have stripped all code related to current_data_offset?",
+      "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3e098135_bf95c4fe",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 536,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-05-25T09:37:29Z",
+      "side": 1,
+      "message": "as before, needs an enumeration instead of 4.",
+      "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9a5ec557_c779b40c",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 539,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-05-25T09:37:29Z",
+      "side": 1,
+      "message": "as before, use count_trailing_zeros or similar.",
+      "range": {
+        "startLine": 539,
+        "startChar": 0,
+        "endLine": 539,
+        "endChar": 1
+      },
+      "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "593ba7e9_ee243c2a",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-05-25T09:37:29Z",
+      "side": 1,
+      "message": "const int imm8 should be replaced with an enumeration.",
+      "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c241cc90_57160228",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-05-25T09:37:29Z",
+      "side": 1,
+      "message": "const int imm8 should be replaced with an enumeration.",
+      "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
