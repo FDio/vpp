@@ -966,13 +966,7 @@ add_device_vfio (vlib_main_t * vm, linux_pci_device_t * p,
       goto error;
     }
 
-  pci_log_debug (vm, p, "%s region_info index:%u size:0x%lx offset:0x%lx "
-		 "flags: %s%s%s(0x%x)", __func__,
-		 reg.index, reg.size, reg.offset,
-		 reg.flags & VFIO_REGION_INFO_FLAG_READ ? "rd " : "",
-		 reg.flags & VFIO_REGION_INFO_FLAG_WRITE ? "wr " : "",
-		 reg.flags & VFIO_REGION_INFO_FLAG_MMAP ? "mmap " : "",
-		 reg.flags);
+  pci_log_debug (vm, p, "%s %U", __func__, format_vfio_region_info, &reg);
 
   p->config_offset = reg.offset;
   p->config_fd = p->fd;
@@ -1087,23 +1081,28 @@ vlib_pci_region (vlib_main_t * vm, vlib_pci_dev_handle_t h, u32 bar, int *fd,
     }
   else if (p->type == LINUX_PCI_DEVICE_TYPE_VFIO)
     {
-      struct vfio_region_info reg = { 0 };
-      reg.argsz = sizeof (struct vfio_region_info);
-      reg.index = bar;
-      if (ioctl (p->fd, VFIO_DEVICE_GET_REGION_INFO, &reg) < 0)
+      struct vfio_region_info *r;
+      u32 sz = sizeof (struct vfio_region_info);
+    again:
+      r = clib_mem_alloc (sz);
+      clib_memset (r, 0, sz);
+      r->argsz = sz;
+      r->index = bar;
+      if (ioctl (p->fd, VFIO_DEVICE_GET_REGION_INFO, r) < 0)
 	return clib_error_return_unix (0, "ioctl(VFIO_DEVICE_GET_INFO) "
 				       "'%U'", format_vlib_pci_addr,
 				       &p->addr);
+      if (sz != r->argsz)
+	{
+	  sz = r->argsz;
+	  clib_mem_free (r);
+	  goto again;
+	}
       _fd = p->fd;
-      _size = reg.size;
-      _offset = reg.offset;
-      pci_log_debug (vm, p, "%s region_info index:%u size:0x%lx offset:0x%lx "
-		     "flags: %s%s%s(0x%x)", __func__,
-		     reg.index, reg.size, reg.offset,
-		     reg.flags & VFIO_REGION_INFO_FLAG_READ ? "rd " : "",
-		     reg.flags & VFIO_REGION_INFO_FLAG_WRITE ? "wr " : "",
-		     reg.flags & VFIO_REGION_INFO_FLAG_MMAP ? "mmap " : "",
-		     reg.flags);
+      _size = r->size;
+      _offset = r->offset;
+      pci_log_debug (vm, p, "%s %U", __func__, format_vfio_region_info, r);
+      clib_mem_free (r);
     }
   else
     ASSERT (0);

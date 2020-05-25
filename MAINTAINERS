@@ -60,12 +60,22 @@ M:	Dave Barach <dave@barachs.net>
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vlib/
 E:	src/vlib/buffer*.[ch]
+E:	src/vlib/pci/
+E:	src/vlib/linux/pci.[ch]
+E:	src/vlib/linux/vfio.[ch]
 
 Vector Library - Buffer Management
 I:	buffers
 M:	Damjan Marion <damarion@cisco.com>
 M:	Dave Barach <dave@barachs.net>
 F:	src/vlib/buffer*.[ch]
+
+Vector Library - PCI
+I:	pci
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/vlib/pci/
+F:	src/vlib/linux/pci.[ch]
+F:	src/vlib/linux/vfio.[ch]
 
 Binary API Libraries
 I:	api
