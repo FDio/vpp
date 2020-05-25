@@ -637,6 +637,32 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((sb->rxt_sacked == 300), "last rxt sacked bytes %d",
 	    sb->rxt_sacked);
 
+  /*
+   * Restart
+   */
+  scoreboard_clear (sb);
+  vec_reset_length (tc->rcv_opts.sacks);
+
+  /*
+   * Broken sacks:
+   * block.start > snd_nxt
+   * && block.start < blk.end
+   * && block.end <= snd_nxt
+   */
+  tc->flags = 0;
+  block.start = 2147483647;
+  block.end = 4294967295;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->snd_una = tc->snd_nxt = 1969067947;
+
+  tcp_rcv_sacks (tc, tc->snd_una);
+
+  /*
+   * Clear
+   */
+  scoreboard_clear (sb);
+  vec_reset_length (tc->rcv_opts.sacks);
+
   return 0;
 }
 
