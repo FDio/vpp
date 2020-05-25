@@ -99,14 +99,15 @@ PYTHON_INTERP=$(PYTHON)
 endif
 
 PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
-PIP_VERSION=19.1.1
-PIP_TOOLS_VERSION=3.8.0   # Keep in sync with requirements.txt
+PIP_VERSION=20.1.1
+# Keep in sync with requirements.txt
+PIP_TOOLS_VERSION=5.1.2
 PYTHON_DEPENDS=requirements-$(PYTHON_VERSION).txt
 SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/python* -name site-packages)
 BUILD_COV_DIR=$(TEST_BR)/coverage
 
-PIP_TOOLS_INSTALL_DONE=$(VENV_RUN_DIR)/pip-tools-install-$(PYTHON_VERSION).done
-PIP_INSTALL_DONE=$(VENV_RUN_DIR)/pip-install-$(PYTHON_VERSION).done
+PIP_TOOLS_INSTALL_DONE=$(VENV_RUN_DIR)/pip-tools-install-$(PYTHON_VERSION)-$(PIP_TOOLS_VERSION).done
+PIP_INSTALL_DONE=$(VENV_RUN_DIR)/pip-install-$(PYTHON_VERSION)-$(PIP_VERSION).done
 PIP_PATCH_DONE=$(VENV_RUN_DIR)/pip-patch-$(PYTHON_VERSION).done
 PAPI_INSTALL_DONE=$(VENV_RUN_DIR)/papi-install-$(PYTHON_VERSION).done
 PAPI_PYTHON_SRC_DIR=$(WS_ROOT)/src/vpp-api/python
