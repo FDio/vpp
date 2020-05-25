@@ -326,7 +326,9 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
     {
       if (seq_lt (blk->start, blk->end)
 	  && seq_gt (blk->start, tc->snd_una)
-	  && seq_gt (blk->start, ack) && seq_leq (blk->end, tc->snd_nxt))
+	  && seq_gt (blk->start, ack)
+	  && seq_lt (blk->start, tc->snd_nxt)
+	  && seq_leq (blk->end, tc->snd_nxt))
 	{
 	  blk++;
 	  continue;
