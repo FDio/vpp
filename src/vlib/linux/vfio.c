@@ -246,6 +246,62 @@ linux_vfio_init (vlib_main_t * vm)
   return 0;
 }
 
+u8 *
+format_vfio_region_info (u8 * s, va_list * args)
+{
+  struct vfio_region_info *r = va_arg (*args, struct vfio_region_info *);
+
+  s = format (s, "region_info index:%u size:0x%lx offset:0x%lx flags:",
+	      r->index, r->size, r->offset);
+
+  if (r->flags & VFIO_REGION_INFO_FLAG_READ)
+    s = format (s, " rd");
+
+  if (r->flags & VFIO_REGION_INFO_FLAG_WRITE)
+    s = format (s, " wr");
+
+  if (r->flags & VFIO_REGION_INFO_FLAG_MMAP)
+    s = format (s, " mmap");
+
+#ifdef VFIO_REGION_INFO_FLAG_CAPS
+  if (r->flags & VFIO_REGION_INFO_FLAG_CAPS)
+    s = format (s, " caps");
+#endif
+
+  s = format (s, " (0x%x)", r->flags);
+
+#ifdef VFIO_REGION_INFO_FLAG_CAPS
+  u32 cap_offset;
+
+  if ((r->flags & VFIO_REGION_INFO_FLAG_CAPS) == 0)
+    return s;
+
+  s = format (s, "\n caps:");
+  cap_offset = r->cap_offset;
+
+  do
+    {
+      struct vfio_info_cap_header *cap = (void *) r + cap_offset;
+#ifdef VFIO_REGION_INFO_CAP_SPARSE_MMAP
+      if (cap->id == VFIO_REGION_INFO_CAP_SPARSE_MMAP)
+	s = format (s, " sparse-mmap");
+#endif
+#ifdef VFIO_REGION_INFO_CAP_TYPE
+      if (cap->id == VFIO_REGION_INFO_CAP_TYPE)
+	s = format (s, " type");
+#endif
+#ifdef VFIO_REGION_INFO_CAP_MSIX_MAPPABLE
+      if (cap->id == VFIO_REGION_INFO_CAP_MSIX_MAPPABLE)
+	s = format (s, " msix-mappable");
+#endif
+      cap_offset = cap->next;
+    }
+  while (cap_offset);
+#endif
+
+  return s;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
