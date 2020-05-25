@@ -18,25 +18,23 @@
 #include <vnet/ethernet/arp_packet.h>
 #include <vnet/fib/fib_walk.h>
 
-#include <vppinfra/bihash_24_8.h>
-
 /*
  * Vector Hash tables of neighbour (traditional) adjacencies
  *  Key: interface(for the vector index), address (and its proto),
  *       link-type/ether-type.
  */
-static BVT(clib_bihash) **adj_nbr_tables[FIB_PROTOCOL_MAX];
+static uword **adj_nbr_tables[FIB_PROTOCOL_IP_MAX];
 
-// FIXME SIZE APPROPRIATELY. ASK DAVEB.
-#define ADJ_NBR_DEFAULT_HASH_NUM_BUCKETS (64 * 64)
-#define ADJ_NBR_DEFAULT_HASH_MEMORY_SIZE (32<<20)
-
+typedef struct adj_nbr_key_t_
+{
+    ip46_address_t ank_ip;
+    u64 ank_linkt;
+} adj_nbr_key_t;
 
 #define ADJ_NBR_SET_KEY(_key, _lt, _nh)         \
 {						\
-    _key.key[0] = (_nh)->as_u64[0];		\
-    _key.key[1] = (_nh)->as_u64[1];		\
-    _key.key[2] = (_lt);			\
+    ip46_address_copy(&(_key).ank_ip, (_nh));   \
+    _key.ank_linkt = (_lt);			\
 }
 
 #define ADJ_NBR_ITF_OK(_proto, _itf)			\
@@ -50,7 +48,7 @@ adj_nbr_insert (fib_protocol_t nh_proto,
 		u32 sw_if_index,
 		adj_index_t adj_index)
 {
-    BVT(clib_bihash_kv) kv;
+    adj_nbr_key_t kv;
 
     if (sw_if_index >= vec_len(adj_nbr_tables[nh_proto]))
     {
@@ -59,22 +57,13 @@ adj_nbr_insert (fib_protocol_t nh_proto,
     if (NULL == adj_nbr_tables[nh_proto][sw_if_index])
     {
 	adj_nbr_tables[nh_proto][sw_if_index] =
-	    clib_mem_alloc_aligned(sizeof(BVT(clib_bihash)),
-				   CLIB_CACHE_LINE_BYTES);
-	clib_memset(adj_nbr_tables[nh_proto][sw_if_index],
-	       0,
-	       sizeof(BVT(clib_bihash)));
-
-	BV(clib_bihash_init) (adj_nbr_tables[nh_proto][sw_if_index],
-			      "Adjacency Neighbour table",
-			      ADJ_NBR_DEFAULT_HASH_NUM_BUCKETS,
-			      ADJ_NBR_DEFAULT_HASH_MEMORY_SIZE);
+	    hash_create_mem(0, sizeof(adj_nbr_key_t), sizeof(adj_index_t));
     }
 
     ADJ_NBR_SET_KEY(kv, link_type, nh_addr);
-    kv.value = adj_index;
 
-    BV(clib_bihash_add_del) (adj_nbr_tables[nh_proto][sw_if_index], &kv, 1);
+    hash_set_mem_alloc (&adj_nbr_tables[nh_proto][sw_if_index],
+                        &kv, adj_index);
 }
 
 void
@@ -84,15 +73,19 @@ adj_nbr_remove (adj_index_t ai,
 		const ip46_address_t *nh_addr,
 		u32 sw_if_index)
 {
-    BVT(clib_bihash_kv) kv;
+    adj_nbr_key_t kv;
 
     if (!ADJ_NBR_ITF_OK(nh_proto, sw_if_index))
 	return;
 
     ADJ_NBR_SET_KEY(kv, link_type, nh_addr);
-    kv.value = ai;
 
-    BV(clib_bihash_add_del) (adj_nbr_tables[nh_proto][sw_if_index], &kv, 0);
+    hash_unset_mem_free(&adj_nbr_tables[nh_proto][sw_if_index], &kv);
+
+    if (0 == hash_elts(adj_nbr_tables[nh_proto][sw_if_index]))
+    {
+        hash_free(adj_nbr_tables[nh_proto][sw_if_index]);
+    }
 }
 
 adj_index_t
@@ -101,22 +94,21 @@ adj_nbr_find (fib_protocol_t nh_proto,
 	      const ip46_address_t *nh_addr,
 	      u32 sw_if_index)
 {
-    BVT(clib_bihash_kv) kv;
+    adj_nbr_key_t kv;
+    uword *p;
 
     ADJ_NBR_SET_KEY(kv, link_type, nh_addr);
 
     if (!ADJ_NBR_ITF_OK(nh_proto, sw_if_index))
 	return (ADJ_INDEX_INVALID);
 
-    if (BV(clib_bihash_search)(adj_nbr_tables[nh_proto][sw_if_index],
-			       &kv, &kv) < 0)
+    p = hash_get_mem(adj_nbr_tables[nh_proto][sw_if_index], &kv);
+
+    if (p)
     {
-	return (ADJ_INDEX_INVALID);
+	return (p[0]);
     }
-    else
-    {
-	return (kv.value);
-    }
+    return (ADJ_INDEX_INVALID);
 }
 
 static inline u32
@@ -533,27 +525,12 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
     adj_unlock(walk_ai);
 }
 
-typedef struct adj_db_count_ctx_t_ {
-    u64 count;
-} adj_db_count_ctx_t;
-
-static int
-adj_db_count (BVT(clib_bihash_kv) * kvp,
-	      void *arg)
-{
-    adj_db_count_ctx_t * ctx = arg;
-    ctx->count++;
-    return (BIHASH_WALK_CONTINUE);
-}
-
 u32
 adj_nbr_db_size (void)
 {
-    adj_db_count_ctx_t ctx = {
-	.count = 0,
-    };
     fib_protocol_t proto;
     u32 sw_if_index = 0;
+    u64 count = 0;
 
     for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
     {
@@ -561,54 +538,37 @@ adj_nbr_db_size (void)
 	{
 	    if (NULL != adj_nbr_tables[proto][sw_if_index])
 	    {
-		BV(clib_bihash_foreach_key_value_pair) (
-		    adj_nbr_tables[proto][sw_if_index],
-		    adj_db_count,
-		    &ctx);
+		count += hash_elts(adj_nbr_tables[proto][sw_if_index]);
 	    }
 	}
     }
-    return (ctx.count);
+    return (count);
 }
 
 /**
- * @brief Context for a walk of the adjacency neighbour DB
+ * @brief Walk all adjacencies on a link for a given next-hop protocol
  */
-typedef struct adj_walk_ctx_t_
-{
-    adj_walk_cb_t awc_cb;
-    void *awc_ctx;
-} adj_walk_ctx_t;
-
-static int
-adj_nbr_walk_cb (BVT(clib_bihash_kv) * kvp,
-		 void *arg)
-{
-    adj_walk_ctx_t *ctx = arg;
-
-    if (ADJ_WALK_RC_STOP == ctx->awc_cb(kvp->value, ctx->awc_ctx))
-        return (BIHASH_WALK_STOP);
-    return (BIHASH_WALK_CONTINUE);
-}
-
 void
 adj_nbr_walk (u32 sw_if_index,
 	      fib_protocol_t adj_nh_proto,
 	      adj_walk_cb_t cb,
 	      void *ctx)
 {
+    adj_nbr_key_t *key;
+    adj_index_t ai;
+
     if (!ADJ_NBR_ITF_OK(adj_nh_proto, sw_if_index))
 	return;
 
-    adj_walk_ctx_t awc = {
-	.awc_ctx = ctx,
-	.awc_cb = cb,
-    };
-
-    BV(clib_bihash_foreach_key_value_pair) (
-	adj_nbr_tables[adj_nh_proto][sw_if_index],
-	adj_nbr_walk_cb,
-	&awc);
+    if (adj_nbr_tables[adj_nh_proto][sw_if_index] ||
+        hash_elts(adj_nbr_tables[adj_nh_proto][sw_if_index]))
+    {
+        hash_foreach_mem (key, ai, adj_nbr_tables[adj_nh_proto][sw_if_index],
+        ({
+            ASSERT(key);
+            cb(ai, ctx);
+        }));
+    }
 }
 
 /**
