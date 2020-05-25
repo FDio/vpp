@@ -1,0 +1,23 @@
+# AddressSanitizer + python + dlopen = Here Be Dragons
+# ASan-instrumented DSO rely on ASan symbols being available at load-time
+# GCC is more flexible as it links ASan runtime to DSO, so it will be
+# automatically loaded the 1st time an instrumented DSO is loaded if needs
+# be, however Clang relies on the exe loading the DSO being linked to ASan
+# runtime and does not link ASan runtime to DSO.
+# Python is not compiled with ASan by default (and would require to use the
+# exact same toolchain as VPP anyway).
+# Load ASan runtime explicitely in this case before loading any ASan
+# instrumented VPP DSO
+# See https://github.com/google/sanitizers/issues/1086
+import cffi
+
+VPP_SANITIZE_PRELOAD = '@VPP_SANITIZE_PRELOAD@'
+
+__version__ = cffi.__version__
+
+
+def VppFFI():
+    ffi = cffi.FFI()
+    if VPP_SANITIZE_PRELOAD:
+        preload = ffi.dlopen(VPP_SANITIZE_PRELOAD, ffi.RTLD_GLOBAL)
+    return ffi

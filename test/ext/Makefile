@@ -13,6 +13,9 @@ VAPI_LIBS += -lsubunit
 endif
 
 FLAGS = -g -Wall -lstdc++ -pthread -I$(WS_ROOT)/src -I$(VPP_INSTALL_PATH)/vpp/include -I$(VAPI_BINDIR)
+ifeq ($(VPP_EXTRA_CMAKE_ARGS),-DVPP_ENABLE_SANITIZE_ADDR=ON)
+  FLAGS += -fsanitize=address
+endif
 CFLAGS = -std=gnu99 $(FLAGS)
 CPPFLAGS = -std=c++11 $(FLAGS) -I$(WS_ROOT)/extras/vom
 
