@@ -550,45 +550,16 @@ libc_eventfd (int count, int flags)
 int
 libc_vfcntl (int fd, int cmd, va_list ap)
 {
-  long int args[4];
-  int rc;
-  int i;
-
   swrap_bind_symbol_libc (fcntl);
-
-  for (i = 0; i < 4; i++)
-    {
-      args[i] = va_arg (ap, long int);
-    }
-
-  rc = swrap.libc.symbols._libc_fcntl.f (fd,
-					 cmd,
-					 args[0], args[1], args[2], args[3]);
-
-  return rc;
+  return swrap.libc.symbols._libc_fcntl.f (fd, cmd, va_arg (ap, long int));
 }
 
 #ifdef HAVE_FCNTL64
 int
 libc_vfcntl64 (int fd, int cmd, va_list ap)
 {
-  long int args[4];
-  int rc;
-  int i;
-
   swrap_bind_symbol_libc (fcntl64);
-
-  for (i = 0; i < 4; i++)
-    {
-      args[i] = va_arg (ap, long int);
-    }
-
-  rc = swrap.libc.symbols._libc_fcntl64.f (fd,
-					   cmd,
-					   args[0], args[1], args[2],
-					   args[3]);
-
-  return rc;
+  return swrap.libc.symbols._libc_fcntl64.f (fd, cmd, va_arg (ap, long int));
 }
 #endif
 
