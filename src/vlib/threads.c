@@ -1444,6 +1444,18 @@ vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t * vm)
   *vlib_worker_threads->wait_at_barrier = 0;
 }
 
+/**
+ * Return true if the wroker thread barrier is held
+ */
+u8
+vlib_worker_thread_barrier_held (void)
+{
+  if (vec_len (vlib_mains) < 2)
+    return (1);
+
+  return (*vlib_worker_threads->wait_at_barrier == 1);
+}
+
 void
 vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
 {
@@ -1645,6 +1657,41 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
   if (PREDICT_FALSE (vec_len (vm->barrier_perf_callbacks) != 0))
     clib_call_callbacks (vm->barrier_perf_callbacks, vm,
 			 vm->clib_time.last_cpu_time, 1 /* leave */ );
+}
+
+/**
+ * Wait until each of the workers has been once around the track
+ */
+void
+vlib_worker_wait_one_loop (void)
+{
+  ASSERT (vlib_get_thread_index () == 0);
+
+  if (vec_len (vlib_mains) < 2)
+    return;
+
+  if (vlib_worker_thread_barrier_held ())
+    return;
+
+  u32 *counts = 0;
+  u32 ii;
+
+  vec_validate (counts, vec_len (vlib_mains) - 1);
+
+  /* record the current loop counts */
+  vec_foreach_index (ii, vlib_mains)
+    counts[ii] = vlib_mains[ii]->main_loop_count;
+
+  /* spin until each changes, apart from the main thread, or we'd be
+   * a while */
+  for (ii = 1; ii < vec_len (counts); ii++)
+    {
+      while (counts[ii] == vlib_mains[ii]->main_loop_count)
+	CLIB_PAUSE ();
+    }
+
+  vec_free (counts);
+  return;
 }
 
 /*

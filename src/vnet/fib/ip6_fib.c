@@ -248,14 +248,29 @@ ip6_fib_table_lookup_exact_match (u32 fib_index,
 static void
 compute_prefix_lengths_in_search_order (ip6_fib_table_instance_t *table)
 {
+    u8 *old, *prefix_lengths_in_search_order = NULL;
     int i;
-    vec_reset_length (table->prefix_lengths_in_search_order);
+
+    /*
+     * build the list in a scratch space then cutover so the workers
+     * can continue uninterrupted.
+     */
+    old = table->prefix_lengths_in_search_order;
+
     /* Note: bitmap reversed so this is in fact a longest prefix match */
     clib_bitmap_foreach (i, table->non_empty_dst_address_length_bitmap,
     ({
 	int dst_address_length = 128 - i;
-	vec_add1(table->prefix_lengths_in_search_order, dst_address_length);
+	vec_add1(prefix_lengths_in_search_order, dst_address_length);
     }));
+
+    table->prefix_lengths_in_search_order = prefix_lengths_in_search_order;
+
+    /*
+     * let the workers go once round the track before we free the old set
+     */
+    vlib_worker_wait_one_loop();
+    vec_free(old);
 }
 
 void
@@ -311,12 +326,13 @@ ip6_fib_table_entry_insert (u32 fib_index,
 
     clib_bihash_add_del_24_8(&table->ip6_hash, &kv, 1);
 
-    table->dst_address_length_refcounts[len]++;
-
-    table->non_empty_dst_address_length_bitmap =
-        clib_bitmap_set (table->non_empty_dst_address_length_bitmap, 
-			 128 - len, 1);
-    compute_prefix_lengths_in_search_order (table);
+    if (0 == table->dst_address_length_refcounts[len]++)
+    {
+        table->non_empty_dst_address_length_bitmap =
+            clib_bitmap_set (table->non_empty_dst_address_length_bitmap,
+                             128 - len, 1);
+        compute_prefix_lengths_in_search_order (table);
+    }
 }
 
 u32 ip6_fib_table_fwding_lookup_with_if_index (ip6_main_t * im,
@@ -363,12 +379,13 @@ ip6_fib_table_fwding_dpo_update (u32 fib_index,
 
     clib_bihash_add_del_24_8(&table->ip6_hash, &kv, 1);
 
-    table->dst_address_length_refcounts[len]++;
-
-    table->non_empty_dst_address_length_bitmap =
-        clib_bitmap_set (table->non_empty_dst_address_length_bitmap, 
-			 128 - len, 1);
-    compute_prefix_lengths_in_search_order (table);
+    if (0 == table->dst_address_length_refcounts[len]++)
+    {
+        table->non_empty_dst_address_length_bitmap =
+            clib_bitmap_set (table->non_empty_dst_address_length_bitmap,
+                             128 - len, 1);
+        compute_prefix_lengths_in_search_order (table);
+    }
 }
 
 void
