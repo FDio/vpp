@@ -76,7 +76,8 @@ openssl_ops_enc_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
       int out_len = 0;
       int iv_len;
 
-      if (op->op == VNET_CRYPTO_OP_3DES_CBC_ENC)
+      if (op->op == VNET_CRYPTO_OP_3DES_CBC_ENC
+	  || op->op == VNET_CRYPTO_OP_DES_CBC_ENC)
 	iv_len = 8;
       else
 	iv_len = 16;
