@@ -1630,6 +1630,38 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 
 }
 
+/**
+ * Wait until each of the workers has been once around the track
+ */
+void
+vlib_worker_wait_one_loop (void)
+{
+  if (vec_len (vlib_mains) < 2)
+    return;
+
+  ASSERT (vlib_get_thread_index () == 0);
+
+  u32 *counts = 0;
+  u32 ii;
+
+  vec_validate (counts, vec_len (vlib_mains) - 1);
+
+  /* record the current loop counts */
+  vec_foreach_index (ii, vlib_mains)
+    counts[ii] = vlib_mains[ii]->main_loop_count;
+
+  /* spin until each changes, apart from the main thread, or we'd be
+   * a while */
+  for (ii = 1; ii < vec_len (counts); ii++)
+    {
+      while (counts[ii] == vlib_mains[ii]->main_loop_count)
+	CLIB_PAUSE ();
+    }
+
+  vec_free (counts);
+  return;
+}
+
 /*
  * Check the frame queue to see if any frames are available.
  * If so, pull the packets off the frames and put them to
