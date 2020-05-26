@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "5b5cfd1c_932444a1",
+        "filename": "src/vlib/buffer_node.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2020-05-26T03:06:25Z",
+      "side": 1,
+      "message": "No, this changes just looks easily readable.",
+      "parentUuid": "2be3e06a_77afadf1",
+      "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a81eb14f_c713286b",
         "filename": "src/vlib/buffer_node.h",
         "patchSetId": 4
@@ -33,6 +51,24 @@
       "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "778f3ad7_4bd86957",
+        "filename": "src/vlib/buffer_node.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2020-05-26T03:06:25Z",
+      "side": 1,
+      "message": "great suggestion, fix it later.",
+      "parentUuid": "a81eb14f_c713286b",
+      "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "0273a0b0_bd8e4bc3",
+        "filename": "src/vlib/buffer_node.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 363,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2020-05-26T03:06:25Z",
+      "side": 1,
+      "message": "How about no change to the existing this piece of code? My change mainly aims to make code easily readable here. No perf gain can be seen.",
+      "parentUuid": "dbe48928_818cbc3e",
+      "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "808155d4_606a3a5f",
         "filename": "src/vnet/l2/l2_output.c",
         "patchSetId": 4
@@ -67,6 +121,24 @@
       "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d14066cc_063a375e",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2020-05-26T03:06:25Z",
+      "side": 1,
+      "message": "yes, I chose to use vlib_buffer_get_current to access current_data only once in l2output_process_batch_inline. There are two reasons. \n1. Gathering current_data into cur_data_offsets[] array is bringing extra load/store overhead in l2output_node and no vector operation is used to accelerate it.\n2. I have tried leveraging u32x16_gather similar to the way that how to handle sw_if_index[] and compute vlib_buffer_get_current in vector way but because AVX512 does not support to gather 16bits current_data directly, some extra operations have to be introduced to extract it from 32bits data, no perf gain can be observed.",
+      "parentUuid": "808155d4_606a3a5f",
+      "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -110,6 +182,30 @@
     },
     {
       "key": {
+        "uuid": "f2fe5379_c26916d9",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 539,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2020-05-26T03:06:25Z",
+      "side": 1,
+      "message": "great.",
+      "parentUuid": "9a5ec557_c779b40c",
+      "range": {
+        "startLine": 539,
+        "startChar": 0,
+        "endLine": 539,
+        "endChar": 1
+      },
+      "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "593ba7e9_ee243c2a",
         "filename": "src/vppinfra/vector_avx512.h",
         "patchSetId": 4
@@ -127,6 +223,24 @@
     },
     {
       "key": {
+        "uuid": "3e30be63_c7c5be83",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2020-05-26T03:06:25Z",
+      "side": 1,
+      "message": "great.",
+      "parentUuid": "593ba7e9_ee243c2a",
+      "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c241cc90_57160228",
         "filename": "src/vppinfra/vector_avx512.h",
         "patchSetId": 4
@@ -141,6 +255,24 @@
       "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7ac0b72d_acacd8be",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2020-05-26T03:06:25Z",
+      "side": 1,
+      "message": "great.",
+      "parentUuid": "c241cc90_57160228",
+      "revId": "d6d02a0fbe769bff1e54167ddb3f1aba673eb192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
