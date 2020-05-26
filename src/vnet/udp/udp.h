@@ -281,6 +281,7 @@ format_function_t format_udp_header;
 format_function_t format_udp_rx_trace;
 format_function_t format_udp_connection;
 unformat_function_t unformat_udp_header;
+unformat_function_t unformat_udp_port;
 
 void udp_add_dst_port (udp_main_t * um, udp_dst_port_t dst_port,
 		       char *dst_port_name, u8 is_ip4);
