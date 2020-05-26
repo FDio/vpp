@@ -552,7 +552,8 @@ vcl_session_reset_handler (vcl_worker_t * wrk,
       return VCL_INVALID_SESSION_INDEX;
     }
 
-  session->session_state = STATE_DISCONNECT;
+  if (session->session_state != STATE_CLOSED)
+    session->session_state = STATE_DISCONNECT;
   VDBG (0, "reset session %u [0x%llx]", sid, reset_msg->handle);
   return sid;
 }
@@ -2778,7 +2779,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     {
     case SESSION_IO_EVT_RX:
       sid = e->session_index;
-      if (!(session = vcl_session_get (wrk, sid)))
+      session = vcl_session_get (wrk, sid);
+      if (vcl_session_is_closed (session))
 	break;
       vcl_fifo_rx_evt_valid_or_break (session);
       session_events = session->vep.ev.events;
@@ -2791,7 +2793,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       break;
     case SESSION_IO_EVT_TX:
       sid = e->session_index;
-      if (!(session = vcl_session_get (wrk, sid)))
+      session = vcl_session_get (wrk, sid);
+      if (vcl_session_is_closed (session))
 	break;
       session_events = session->vep.ev.events;
       if (!(EPOLLOUT & session_events))
@@ -2819,7 +2822,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       connected_msg = (session_connected_msg_t *) e->data;
       sid = vcl_session_connected_handler (wrk, connected_msg);
       /* Generate EPOLLOUT because there's no connected event */
-      if (!(session = vcl_session_get (wrk, sid)))
+      session = vcl_session_get (wrk, sid);
+      if (vcl_session_is_closed (session))
 	break;
       session_events = session->vep.ev.events;
       if (!(EPOLLOUT & session_events))
@@ -2833,7 +2837,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_CTRL_EVT_DISCONNECTED:
       disconnected_msg = (session_disconnected_msg_t *) e->data;
       session = vcl_session_disconnected_handler (wrk, disconnected_msg);
-      if (!session)
+      if (vcl_session_is_closed (session))
 	break;
       session_events = session->vep.ev.events;
       add_event = 1;
@@ -2842,7 +2846,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       break;
     case SESSION_CTRL_EVT_RESET:
       sid = vcl_session_reset_handler (wrk, (session_reset_msg_t *) e->data);
-      if (!(session = vcl_session_get (wrk, sid)))
+      session = vcl_session_get (wrk, sid);
+      if (vcl_session_is_closed (session))
 	break;
       session_events = session->vep.ev.events;
       add_event = 1;
