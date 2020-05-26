@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2f75c05f_f1e96244",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1618,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-05-26T12:50:26Z",
+      "side": 1,
+      "message": "The reported error is an issue with the stack management: it looks like we are missing something to enable stack checking with asan",
+      "revId": "92618d9e7fe177927590fb7100e46d65083af2c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
