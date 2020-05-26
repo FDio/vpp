@@ -486,7 +486,7 @@ set_ipfix_exporter_command_fn (vlib_main_t * vm,
 {
   flow_report_main_t *frm = &flow_report_main;
   ip4_address_t collector, src;
-  u16 collector_port = UDP_DST_PORT_ipfix;
+  u32 collector_port = UDP_DST_PORT_ipfix;
   u32 fib_id;
   u32 fib_index = ~0;
 
@@ -501,7 +501,11 @@ set_ipfix_exporter_command_fn (vlib_main_t * vm,
       if (unformat (input, "collector %U", unformat_ip4_address, &collector))
 	;
       else if (unformat (input, "port %u", &collector_port))
-	;
+	{
+	  if (collector_port == 0 || collector_port > 65535)
+	    return clib_error_return (0, "collector_port %d out of range",
+				      collector_port);
+	}
       else if (unformat (input, "src %U", unformat_ip4_address, &src))
 	;
       else if (unformat (input, "fib-id %u", &fib_id))
