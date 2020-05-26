@@ -394,7 +394,7 @@ class TestIpsec4MultiTunIfEsp(TemplateIpsec, IpsecTun4):
             self.assertEqual(c['packets'], 127)
 
     def test_tun_rr_44(self):
-        """ Round-robin packets acrros multiple interface """
+        """ Round-robin packets accros multiple interface """
         tx = []
         for p in self.multi_params:
             tx = tx + self.gen_encrypt_pkts(p, p.scapy_tun_sa, self.tun_if,
@@ -413,6 +413,22 @@ class TestIpsec4MultiTunIfEsp(TemplateIpsec, IpsecTun4):
 
         for rx, p in zip(rxs, self.multi_params):
             self.verify_encrypted(p, p.vpp_tun_sa, [rx])
+
+        # packets that don't match a tunnel
+        tx = []
+        for p in self.multi_params:
+            pkt = self.gen_encrypt_pkts(p, p.scapy_tun_sa, self.tun_if,
+                                        src=p.remote_tun_if_host,
+                                        dst=self.pg1.remote_ip4)
+            tx = tx + pkt
+            pkt_drop = copy.copy(pkt[0])
+            pkt_drop[IP].src = self.pg1.remote_ip4
+            del pkt_drop.chksum
+            pkt_drop = pkt_drop.__class__(bytes(pkt_drop))
+            tx.append(pkt_drop)
+            tx.append(pkt_drop)
+
+        self.send_and_expect(self.tun_if, tx, self.pg1, n_rx=len(tx)/3)
 
 
 class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
@@ -725,6 +741,41 @@ class TestIpsec6MultiTunIfEsp(TemplateIpsec, IpsecTun6):
             self.assertEqual(c['packets'], 127)
             c = p.tun_if.get_tx_stats()
             self.assertEqual(c['packets'], 127)
+
+    def test_tun_rr_66(self):
+        """ Round-robin packets accros multiple interface """
+        tx = []
+        for p in self.multi_params:
+            tx = tx + self.gen_encrypt_pkts6(p, p.scapy_tun_sa, self.tun_if,
+                                             src=p.remote_tun_if_host,
+                                             dst=self.pg1.remote_ip6)
+        rxs = self.send_and_expect(self.tun_if, tx, self.pg1)
+
+        for rx, p in zip(rxs, self.multi_params):
+            self.verify_decrypted6(p, [rx])
+
+        tx = []
+        for p in self.multi_params:
+            tx = tx + self.gen_pkts6(self.pg1, src=self.pg1.remote_ip6,
+                                     dst=p.remote_tun_if_host)
+        rxs = self.send_and_expect(self.pg1, tx, self.tun_if)
+
+        for rx, p in zip(rxs, self.multi_params):
+            self.verify_encrypted6(p, p.vpp_tun_sa, [rx])
+
+        # packets that don't match a tunnel
+        tx = []
+        for p in self.multi_params:
+            pkt = self.gen_encrypt_pkts6(p, p.scapy_tun_sa, self.tun_if,
+                                         src=p.remote_tun_if_host,
+                                         dst=self.pg1.remote_ip6)
+            tx = tx + pkt
+            pkt_drop = copy.copy(pkt[0])
+            pkt_drop[IPv6].src = self.pg1.remote_ip6
+            tx.append(pkt_drop)
+            tx.append(pkt_drop)
+
+        self.send_and_expect(self.tun_if, tx, self.pg1, n_rx=len(tx)/3)
 
 
 class TestIpsecGreTebIfEsp(TemplateIpsec,
