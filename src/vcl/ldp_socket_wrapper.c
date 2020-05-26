@@ -62,6 +62,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <fcntl.h>
 
 #include <vcl/ldp_socket_wrapper.h>
 
@@ -547,23 +548,67 @@ libc_eventfd (int count, int flags)
 }
 #endif
 
+#ifndef F_LINUX_SPECIFIC_BASE
+#define F_LINUX_SPECIFIC_BASE 1024
+#endif
+
+#ifndef F_GETRELEAE
+#define F_SETLEASE	(F_LINUX_SPECIFIC_BASE + 0)
+#define F_GETLEASE 	(F_LINUX_SPECIFIC_BASE + 1)
+#endif
+
+#ifndef F_NOTIFY
+#define F_NOTIFY	(F_LINUX_SPECIFIC_BASE+2)
+#endif
+
+#ifndef F_SETPIPE_SZ
+#define F_SETPIPE_SZ	(F_LINUX_SPECIFIC_BASE + 7)
+#define F_GETPIPE_SZ	(F_LINUX_SPECIFIC_BASE + 8)
+#endif
+
+#ifndef F_ADD_SEALS
+#define F_ADD_SEALS 	(F_LINUX_SPECIFIC_BASE + 9)
+#define F_GET_SEALS 	(F_LINUX_SPECIFIC_BASE + 10)
+#endif
+
+
+#ifndef F_SETSIG
+#define F_SETSIG	10
+#define F_GETSIG 	11
+#endif
+
 int
 libc_vfcntl (int fd, int cmd, va_list ap)
 {
-  long int args[4];
   int rc;
-  int i;
 
   swrap_bind_symbol_libc (fcntl);
 
-  for (i = 0; i < 4; i++)
-    {
-      args[i] = va_arg (ap, long int);
-    }
-
-  rc = swrap.libc.symbols._libc_fcntl.f (fd,
-					 cmd,
-					 args[0], args[1], args[2], args[3]);
+  switch (cmd)
+  {
+    case F_GETFD:
+    case F_GETFL:
+    case F_GETOWN:
+    case F_GETSIG:
+    case F_GETLEASE:
+    case F_GETPIPE_SZ:
+    case F_GET_SEALS:
+      rc = swrap.libc.symbols._libc_fcntl.f (fd, cmd);
+      break;
+    case F_SETFD:
+    case F_SETFL:
+    case F_SETOWN:
+    case F_SETSIG:
+    case F_SETLEASE:
+    case F_NOTIFY:
+    case F_SETPIPE_SZ:
+    case F_ADD_SEALS:
+      rc = swrap.libc.symbols._libc_fcntl.f (fd, cmd, va_arg(ap, int));
+      break;
+    default:
+      rc = -1;
+      break;
+  }
 
   return rc;
 }
@@ -572,22 +617,36 @@ libc_vfcntl (int fd, int cmd, va_list ap)
 int
 libc_vfcntl64 (int fd, int cmd, va_list ap)
 {
-  long int args[4];
-  int rc;
-  int i;
+  int arg, rc;
 
   swrap_bind_symbol_libc (fcntl64);
 
-  for (i = 0; i < 4; i++)
-    {
-      args[i] = va_arg (ap, long int);
-    }
-
-  rc = swrap.libc.symbols._libc_fcntl64.f (fd,
-					   cmd,
-					   args[0], args[1], args[2],
-					   args[3]);
-
+  switch (cmd)
+  {
+    case F_GETFD:
+    case F_GETFL:
+    case F_GETOWN:
+    case F_GETSIG:
+    case F_GETLEASE:
+    case F_GETPIPE_SZ:
+    case F_GET_SEALS:
+      rc = swrap.libc.symbols._libc_fcntl.f (fd, cmd);
+      break;
+    case F_SETFD:
+    case F_SETFL:
+    case F_SETOWN:
+    case F_SETSIG:
+    case F_SETLEASE:
+    case F_NOTIFY:
+    case F_SETPIPE_SZ:
+    case F_ADD_SEALS:
+      arg = va_arg(ap, int);
+      rc = swrap.libc.symbols._libc_fcntl.f (fd, cmd, arg);
+      break;
+    default:
+      rc = -1;
+      break;
+  }
   return rc;
 }
 #endif
