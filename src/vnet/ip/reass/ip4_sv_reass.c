@@ -451,7 +451,7 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  ip4_header_t *ip0 =
 	    (ip4_header_t *) u8_ptr_add (vlib_buffer_get_current (b0),
-					 is_output_feature *
+					 (is_output_feature ? 1 : 0) *
 					 vnet_buffer (b0)->
 					 ip.save_rewrite_length);
 	  if (!ip4_get_fragment_more (ip0) && !ip4_get_fragment_offset (ip0))
@@ -617,7 +617,7 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		to_next += 1;
 		n_left_to_next -= 1;
 		vnet_buffer (b0)->ip.reass.is_non_first_fragment =
-		  ! !ip4_get_fragment_offset (vlib_buffer_get_current (b0));
+		  ! !ip4_get_fragment_offset (ip0);
 		vnet_buffer (b0)->ip.reass.ip_proto = reass->ip_proto;
 		vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
 		  reass->icmp_type_or_tcp_flags;
