@@ -500,7 +500,7 @@ set_ipfix_exporter_command_fn (vlib_main_t * vm,
     {
       if (unformat (input, "collector %U", unformat_ip4_address, &collector))
 	;
-      else if (unformat (input, "port %u", &collector_port))
+      else if (unformat (input, "port %U", unformat_l3_port, &collector_port))
 	;
       else if (unformat (input, "src %U", unformat_ip4_address, &src))
 	;
