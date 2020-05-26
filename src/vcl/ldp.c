@@ -478,17 +478,11 @@ writev (int fd, const struct iovec * iov, int iovcnt)
   return size;
 }
 
-int
-fcntl (int fd, int cmd, ...)
+static int
+fcntl_internal (int fd, int cmd, va_list ap)
 {
   vls_handle_t vlsh;
   int rv = 0;
-  va_list ap;
-
-  if ((errno = -ldp_init ()))
-    return -1;
-
-  va_start (ap, cmd);
 
   vlsh = ldp_fd_to_vlsh (fd);
   LDBG (0, "fd %u vlsh %d, cmd %u", fd, vlsh, cmd);
@@ -534,6 +528,20 @@ fcntl (int fd, int cmd, ...)
 #endif
     }
 
+  return rv;
+}
+
+int
+fcntl (int fd, int cmd, ...)
+{
+  va_list ap;
+  int rv;
+
+  if ((errno = -ldp_init ()))
+    return -1;
+
+  va_start (ap, cmd);
+  rv = fcntl_internal (fd, cmd, ap);
   va_end (ap);
 
   return rv;
@@ -545,8 +553,11 @@ fcntl64 (int fd, int cmd, ...)
   va_list ap;
   int rv;
 
+  if ((errno = -ldp_init ()))
+    return -1;
+
   va_start (ap, cmd);
-  rv = fcntl (fd, cmd, ap);
+  rv = fcntl_internal (fd, cmd, ap);
   va_end (ap);
   return rv;
 }
