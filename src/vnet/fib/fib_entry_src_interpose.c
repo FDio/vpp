@@ -115,6 +115,20 @@ fib_entry_src_interpose_activate (fib_entry_src_t *src,
                  */
                 src->fes_pl = best_src->fes_pl;
             }
+            else
+            {
+                /*
+                 * the best source won't install so will use a drop
+                 */
+                dpo_proto_t dproto;
+
+                dproto = fib_proto_to_dpo(fib_entry->fe_prefix.fp_proto);
+
+                src->fes_pl =
+                    fib_path_list_create_special(dproto,
+                                                 FIB_PATH_LIST_FLAG_DROP,
+                                                 drop_dpo_get(dproto));
+            }
         }
         else
         {
