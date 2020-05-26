@@ -96,7 +96,7 @@ typedef struct vlib_main_t
   u64 cpu_time_main_loop_start;
 
   /* Incremented once for each main loop. */
-  u32 main_loop_count;
+  volatile u32 main_loop_count;
 
   /* Count of vectors processed this main loop. */
   u32 main_loop_vectors_processed;
