@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d6f1b8a3_151d4ef3",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 15
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-05-26T14:04:59Z",
+      "side": 1,
+      "message": "How does the client specify its queue size?\nPerhaps the _get API call needs a \"maximum number of details returned\" value?\nAlso, if the _get_reply returned \"status\" information including the total number of returnable items, the client could judge percentage done or make a single initial allocation, or judge chunk-sizing, etc.\nAnyway, just some ideas.",
+      "range": {
+        "startLine": 33,
+        "startChar": 76,
+        "endLine": 34,
+        "endChar": 7
+      },
+      "revId": "f5db3711b28db4e364ac01be8b124dd24d573782",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
