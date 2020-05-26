@@ -94,6 +94,44 @@ class TestGSO(VppTestCase):
                 i.unconfig_ip6()
                 i.admin_down()
 
+    #
+    # 0 1 2 3 4 5 6 7 8 9                             = 20 bytes
+    # 10 11 12 13 14 15 16 17 18 19
+    # 20 21 22 23 24 25 26 27 28 29
+    #  .  .  .  .  .  .  .  .  .  .
+    #  .  .  .  .  .  .  .  .  .  .
+    # 90 91 92 93 94 95 96 97 98 99 = 90 x 2 + 90     = 270 bytes
+    # 100 101 102 . . . . 999 = 900 x 3 + 900         = 3600 bytes
+    # 1000 1001 1002 . . . 9999 = 9000 x 4 + 9000     = 45000 bytes
+    # 10000 10001 10002 . . . 12717 = 2718 x 5 + 2718 = 16308 bytes
+    # --------------------------------------------------------------
+    # Total bytes                                     = 65200 bytes
+    #
+    def gen_payload(self, payload_len):
+       self.payload_len = payload_len
+       payload = ""
+       counter = 0
+       while len(payload) < payload_len:
+          tmp = "%u" % counter
+          if len(tmp) + len(payload) <= payload_len:
+             payload += tmp
+          else:
+             diff = payload_len - len(payload)
+             counter2 = 1
+             tmp2 = ""
+             while len(tmp2) < diff:
+                 tmp2 += "%u" % counter2
+                 counter2 += 1
+                 if len(tmp2)  == diff:
+                    break;
+                 tmp2 += " "
+             payload += tmp2
+          counter += 1
+          if len(payload) == payload_len:
+             break;
+          payload += " "
+       return payload
+
     def test_gso(self):
         """ GSO test """
         #
@@ -160,15 +198,19 @@ class TestGSO(VppTestCase):
         # and DF bit is set. GSO packet will be chunked into gso_size
         # data payload
         #
+        sent_payload = self.gen_payload(65200)
+        sent_payload_len = len(sent_payload)
         self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index)
         p42 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
                IP(src=self.pg2.remote_ip4, dst=self.pg0.remote_ip4,
-                  flags='DF') /
+                  flags='DF', len=(sent_payload_len + 20 + 20)) /
                TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+               Raw(sent_payload))
 
         rxs = self.send_and_expect(self.pg2, [p42], self.pg0, 45)
         size = 0
+        recv_payload = ""
+        encoding = 'utf-8'
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
@@ -176,20 +218,23 @@ class TestGSO(VppTestCase):
             self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
             self.assertEqual(rx[TCP].sport, 1234)
             self.assertEqual(rx[TCP].dport, 1234)
-
+            recv_payload += str(rx[Raw].load.decode(encoding))
         size = rxs[44][TCP].seq + rxs[44][IP].len - 20 - 20
-        self.assertEqual(size, 65200)
+        self.assertEqual(size, sent_payload_len)
+        self.assertEqual(sent_payload, recv_payload) 
 
         #
         # ipv6
         #
         p62 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
-               IPv6(src=self.pg2.remote_ip6, dst=self.pg0.remote_ip6) /
+               IPv6(src=self.pg2.remote_ip6, dst=self.pg0.remote_ip6,
+                    plen = sent_payload_len + 20) /
                TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+               Raw(sent_payload))
 
         rxs = self.send_and_expect(self.pg2, [p62], self.pg0, 45)
         size = 0
+        recv_payload = ""
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
@@ -197,9 +242,10 @@ class TestGSO(VppTestCase):
             self.assertEqual(rx[IPv6].dst, self.pg0.remote_ip6)
             self.assertEqual(rx[TCP].sport, 1234)
             self.assertEqual(rx[TCP].dport, 1234)
-
+            recv_payload += str(rx[Raw].load.decode(encoding))
         size = rxs[44][TCP].seq + rxs[44][IPv6].plen - 20
-        self.assertEqual(size, 65200)
+        self.assertEqual(size, sent_payload_len)
+        self.assertEqual(sent_payload, recv_payload)
 
         #
         # Send jumbo frame with gso enabled only on input interface
@@ -529,6 +575,39 @@ class TestGSO(VppTestCase):
             self.assertEqual(inner[IP].dst, "172.16.10.3")
             size += inner[IP].len - 20 - 20
         self.assertEqual(size, 65200)
+
+        encoding = 'utf-8'
+        for i in range(1, 65200):
+            sent_payload = self.gen_payload(i)
+            sent_payload_len = len(sent_payload)
+            p_i = (Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79") /
+                   IP(src=self.pg2.remote_ip4, dst="172.16.10.3",
+                      flags='DF', len=(sent_payload_len + 20 + 20)) /
+                   TCP(sport=1234, dport=1234, flags='A') /
+                   Raw(sent_payload))
+
+            n_rx = 0
+            if sent_payload_len % 1460 == 0:
+                n_rx = sent_payload_len / 1460
+            else:
+                n_rx = int(sent_payload_len / 1460) + 1
+            rxs = self.send_and_expect(self.pg2, [p_i], self.pg0, n_rx=n_rx)
+            recv_payload = ""
+            size = 0
+            for rx in rxs:
+                #rx.show()
+                self.assertEqual(rx[Ether].src, self.pg0.local_mac)
+                self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
+                self.assertEqual(rx[IP].src, self.pg0.local_ip4)
+                self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
+                self.assertEqual(rx[IP].proto, 4)  # ipencap
+                inner = rx[IP].payload
+                self.assertEqual(inner[IP].src, self.pg2.remote_ip4)
+                self.assertEqual(inner[IP].dst, "172.16.10.3")
+                size += inner[IP].len - 20 - 20
+                recv_payload += str(inner[Raw].load.decode(encoding))
+            self.assertEqual(size, sent_payload_len)
+            self.assertEqual(sent_payload, recv_payload)
 
         #
         # disable ipip4
