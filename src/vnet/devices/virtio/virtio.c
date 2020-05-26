@@ -55,7 +55,8 @@ call_read_ready (clib_file_t * uf)
 
   CLIB_UNUSED (ssize_t size) = read (uf->file_descriptor, &b, sizeof (b));
   if ((qid & 1) == 0)
-    vnet_device_input_set_interrupt_pending (vnm, vif->hw_if_index, qid);
+    vnet_device_input_set_interrupt_pending (vnm, vif->hw_if_index,
+					     RX_QUEUE_ACCESS (qid));
 
   return 0;
 }
