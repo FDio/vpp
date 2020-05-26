@@ -256,6 +256,7 @@ udp_get_dst_port_info (udp_main_t * um, udp_dst_port_t dst_port, u8 is_ip4)
 format_function_t format_udp_header;
 format_function_t format_udp_rx_trace;
 unformat_function_t unformat_udp_header;
+unformat_function_t unformat_udp_port;
 
 void udp_register_dst_port (vlib_main_t * vm,
 			    udp_dst_port_t dst_port,
