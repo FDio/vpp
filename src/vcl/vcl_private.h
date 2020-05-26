@@ -548,6 +548,12 @@ vcl_session_is_closing (vcl_session_t * s)
 	  || s->session_state == STATE_DISCONNECT);
 }
 
+static inline u8
+vcl_session_is_closed (vcl_session_t * s)
+{
+  return (!s || (s->session_state == STATE_CLOSED));
+}
+
 static inline int
 vcl_session_closing_error (vcl_session_t * s)
 {
