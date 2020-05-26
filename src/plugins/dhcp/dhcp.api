@@ -237,7 +237,7 @@ define dhcp_client_dump
  *  @param client - The configured client
  *  @param lease - The learned lease data
  */
-define dhcp_client_details
+manual_endian manual_print define dhcp_client_details
 {
   u32 context;
   vl_api_dhcp_client_t client;

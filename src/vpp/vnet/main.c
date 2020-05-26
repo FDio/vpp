@@ -73,7 +73,9 @@ vpp_find_plugin_path ()
 static void
 vpe_main_init (vlib_main_t * vm)
 {
+#if VPP_API_TEST_BUILTIN > 0
   void vat_plugin_hash_create (void);
+#endif
 
   if (CLIB_DEBUG > 0)
     vlib_unix_cli_set_prompt ("DBGvpp# ");
@@ -86,7 +88,9 @@ vpe_main_init (vlib_main_t * vm)
   /*
    * Create the binary api plugin hashes before loading plugins
    */
+#if VPP_API_TEST_BUILTIN > 0
   vat_plugin_hash_create ();
+#endif
 
   if (!vlib_plugin_path)
     vpp_find_plugin_path ();
