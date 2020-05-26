@@ -262,7 +262,7 @@ dhcp_client_lease_encode (vl_api_dhcp_lease_t * lease,
   size_t len;
   u8 i;
 
-  lease->is_ipv6 = 0;		// only support IPv6 clients
+  lease->is_ipv6 = 0;		// only support IPv4 clients
   lease->sw_if_index = ntohl (client->sw_if_index);
   lease->state = ntohl (client->state);
   len = clib_min (sizeof (lease->hostname) - 1, vec_len (client->hostname));

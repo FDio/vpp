@@ -16,6 +16,7 @@ add_vpp_library (vlibmemory
   memory_api.c
   memory_shared.c
   memory_client.c
+  socket_client.c
   socket_api.c
   vlib_api.c
   vlib_api_cli.c
