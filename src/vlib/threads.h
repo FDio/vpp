@@ -208,6 +208,10 @@ void vlib_worker_thread_barrier_sync_int (vlib_main_t * vm,
 void vlib_worker_thread_barrier_release (vlib_main_t * vm);
 void vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t * vm);
 void vlib_worker_thread_node_refork (void);
+/**
+ * Wait until each of the workers has been once around the track
+ */
+void vlib_worker_wait_one_loop (void);
 
 static_always_inline uword
 vlib_get_thread_index (void)
