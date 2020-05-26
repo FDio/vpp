@@ -2833,7 +2833,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_CTRL_EVT_DISCONNECTED:
       disconnected_msg = (session_disconnected_msg_t *) e->data;
       session = vcl_session_disconnected_handler (wrk, disconnected_msg);
-      if (!session)
+      if (!session || session->session_state == STATE_CLOSED)
 	break;
       session_events = session->vep.ev.events;
       add_event = 1;
