@@ -82,6 +82,23 @@ format_udp_header (u8 * s, va_list * args)
   return s;
 }
 
+uword
+unformat_udp_port (unformat_input_t * input, va_list * args)
+{
+  u16 *result = va_arg (*args, u16 *);
+  int port;
+
+  /* Numeric type. */
+  if (unformat (input, "0x%x", &port) || unformat (input, "%d", &port))
+    {
+      if (port <= 0 || port >= (1 << 16))
+	return 0;
+      *result = port;
+      return 1;
+    }
+  return 0;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
