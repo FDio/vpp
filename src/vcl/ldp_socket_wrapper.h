@@ -122,7 +122,9 @@ int libc_eventfd (int count, int flags);
 
 int libc_vfcntl (int fd, int cmd, va_list ap);
 
+#ifdef HAVE_FCNTL64
 int libc_vfcntl64 (int fd, int cmd, va_list ap);
+#endif
 
 int libc_vioctl (int fd, int cmd, va_list ap);
 
