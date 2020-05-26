@@ -24,12 +24,19 @@
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
+#undef always_inline
 #include <rte_bus_vdev.h>
 #include <rte_cryptodev.h>
 #include <rte_crypto_sym.h>
 #include <rte_crypto.h>
 #include <rte_cryptodev_pmd.h>
 #include <rte_config.h>
+
+#if CLIB_DEBUG > 0
+#define always_inline static inline
+#else
+#define always_inline static inline __attribute__ ((__always_inline__))
+#endif
 
 #define CRYPTODEV_NB_CRYPTO_OPS 1024
 #define CRYPTODEV_NB_SESSION    10240
