@@ -366,10 +366,41 @@ api_dhcp6_pd_send_client_message (vat_main_t * vam)
   return -1;
 }
 
+static void
+vl_api_dhcp_client_details_t_handler (vl_api_dhcp_client_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vl_api_dhcp_client_t *cp;
+  vl_api_dhcp_lease_t *lp;
+
+  cp = &mp->client;
+  lp = &mp->lease;
+
+  print (vam->ofp, "sw_if_index %d, id '%s'", ntohl (cp->sw_if_index),
+	 cp->id);
+
+  print (vam->ofp, "leased address %U, router address %U",
+	 format_ip4_address, &lp->host_address.un,
+	 format_ip4_address, &lp->router_address.un);
+}
+
 static int
 api_dhcp_client_dump (vat_main_t * vam)
 {
-  return -1;
+  vl_api_dhcp_plugin_control_ping_t *mp_ping;
+  vl_api_dhcp_client_dump_t *mp;
+  int ret;
+
+  M (DHCP_CLIENT_DUMP, mp);
+
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (DHCP_PLUGIN_CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
 }
 
 static int
@@ -395,8 +426,6 @@ api_dhcp_plugin_get_version (vat_main_t * vam)
 {
   return -1;
 }
-
-#define vl_api_dhcp_client_details_t_handler vl_noop_handler
 
 static void
   vl_api_dhcp_plugin_get_version_reply_t_handler
