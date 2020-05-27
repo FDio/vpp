@@ -493,6 +493,7 @@ snat_ipfix_header_create (flow_report_main_t * frm,
   u32 stream_index;
   ip4_header_t *ip;
   udp_header_t *udp;
+  vlib_main_t *vm = vlib_get_main ();
   
   stream_index = clib_atomic_fetch_or(&silm->stream_index, 0);
   stream = &frm->streams[stream_index];
@@ -521,7 +522,7 @@ snat_ipfix_header_create (flow_report_main_t * frm,
 
   h->export_time = clib_host_to_net_u32 ((u32)
 					 (((f64) frm->unix_time_0) +
-					  (vlib_time_now (frm->vlib_main) -
+					  (vlib_time_now (vm) -
 					   frm->vlib_time_0)));
 
   sequence_number = clib_atomic_fetch_add (&stream->sequence_number, 1);
