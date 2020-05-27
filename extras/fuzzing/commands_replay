@@ -1,0 +1,26 @@
+loop cre
+set int ip address loop0 11.22.33.1/24
+set int state loop0 up
+loop cre
+set int ip address loop1 11.22.34.1/24
+set int state loop1 up
+
+set ip neighbor loop1 11.22.34.44 03:00:11:22:34:44
+
+packet-generator new {
+    name s0
+    limit 100e6
+    maxframe 1
+    size 128-128
+    interface loop0
+    node ethernet-input
+    data { IP4: 1.2.3 -> dead.0000.0000
+           UDP: 11.22.33.44 -> 11.22.34.44
+                ttl 1
+           UDP: 1234 -> 2345
+           incrementing 114
+    }
+}
+
+pfuzz enable loop0 mode-replay
+packet-generator enable
