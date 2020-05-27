@@ -1,0 +1,68 @@
+diff --git a/afl-fuzz.c b/afl-fuzz.c
+index 01b4afe..3b1a8e4 100644
+--- a/afl-fuzz.c
++++ b/afl-fuzz.c
+@@ -128,6 +128,8 @@ static s32 out_fd,                    /* Persistent fd for out_file       */
+            dev_urandom_fd = -1,       /* Persistent fd for /dev/urandom   */
+            dev_null_fd = -1,          /* Persistent fd for /dev/null      */
+            fsrv_ctl_fd,               /* Fork server control pipe (write) */
++           log_out_fd,                /* fd for the target's stdout       */
++           log_err_fd,                /* fd for the target's stderr       */
+            fsrv_st_fd;                /* Fork server status pipe (read)   */
+ 
+ static s32 forksrv_pid,               /* PID of the fork server           */
+@@ -2035,8 +2037,21 @@ EXP_ST void init_forkserver(char** argv) {
+ 
+     setsid();
+ 
+-    dup2(dev_null_fd, 1);
+-    dup2(dev_null_fd, 2);
++    /* Redirect stdout and stderr of our target process to files,
++       instead of sending them into the void */
++    if (unlink("target.log.out") == -1 && errno != ENOENT)
++      PFATAL("unexpected failure removing target.log.out");
++
++    if (unlink("target.log.err") == -1 && errno != ENOENT)
++      PFATAL("unexpected failure removing target.log.err");
++
++    log_out_fd = open("target.log.out", O_CREAT | O_WRONLY | O_EXCL, 0666);
++    log_err_fd = open("target.log.err", O_CREAT | O_WRONLY | O_EXCL, 0666);
++    if (log_out_fd == -1 || log_err_fd == -1)
++      PFATAL("opening target.log.out or target.log.err failed");
++
++    dup2(log_out_fd, 1);
++    dup2(log_err_fd, 2);
+ 
+     if (out_file) {
+ 
+@@ -6948,6 +6963,16 @@ EXP_ST void check_binary(u8* fname) {
+ 
+     WARNF("AFL_PERSISTENT is no longer supported and may misbehave!");
+ 
++  } else {
++
++    /* Persistent mode isn't detected by simply inspecting VPP's binary,
++       as the signature is in a plugin which is
++       a shared library, but we use persistent mode anyway. */
++
++    WARNF("Persistent mode signature not detected, using it anyway");
++    setenv(PERSIST_ENV_VAR, "1", 1);
++    persistent_mode = 1;
++
+   }
+ 
+   if (memmem(f_data, f_len, DEFER_SIG, strlen(DEFER_SIG) + 1)) {
+diff --git a/llvm_mode/afl-llvm-rt.o.c b/llvm_mode/afl-llvm-rt.o.c
+index ed3a664..7febddc 100644
+--- a/llvm_mode/afl-llvm-rt.o.c
++++ b/llvm_mode/afl-llvm-rt.o.c
+@@ -202,7 +202,8 @@ int __afl_persistent_loop(unsigned int max_cnt) {
+ 
+     if (--cycle_cnt) {
+ 
+-      raise(SIGSTOP);
++      /* Send a SIGSTOP to all threads */
++      kill(getpid(), SIGSTOP);
+ 
+       __afl_area_ptr[0] = 1;
+       __afl_prev_loc = 0;
