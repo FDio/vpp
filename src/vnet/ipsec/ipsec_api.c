@@ -1005,13 +1005,6 @@ ipsec_api_hookup (vlib_main_t * vm)
 #undef _
 
   /*
-   * Adding and deleting SAs is MP safe since when they are added/delete
-   * no traffic is using them
-   */
-  am->is_mp_safe[VL_API_IPSEC_SAD_ENTRY_ADD_DEL] = 1;
-  am->is_mp_safe[VL_API_IPSEC_SAD_ENTRY_ADD_DEL_REPLY] = 1;
-
-  /*
    * Set up the (msg_name, crc, message-id) table
    */
   setup_message_id_table (am);
