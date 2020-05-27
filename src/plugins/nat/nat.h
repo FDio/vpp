@@ -1070,7 +1070,8 @@ void nat_hairpinning_sm_unknown_proto (snat_main_t * sm, vlib_buffer_t * b,
 				       ip4_header_t * ip);
 void nat44_ed_hairpinning_unknown_proto (snat_main_t * sm, vlib_buffer_t * b,
 					 ip4_header_t * ip);
-int snat_hairpinning (snat_main_t * sm, vlib_buffer_t * b0,
+int snat_hairpinning (vlib_main_t * vm, vlib_node_runtime_t * node,
+		      snat_main_t * sm, vlib_buffer_t * b0,
 		      ip4_header_t * ip0, udp_header_t * udp0,
 		      tcp_header_t * tcp0, u32 proto0, int is_ed);
 

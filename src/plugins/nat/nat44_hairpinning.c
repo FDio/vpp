@@ -56,6 +56,37 @@ static char *nat44_hairpin_error_strings[] = {
 #undef _
 };
 
+typedef struct
+{
+  ip4_address_t addr;
+  u16 port;
+  u32 fib_index;
+  u8 is_static;
+  u32 session_index;
+} nat_hairpin_trace_t;
+
+static u8 *
+format_nat_hairpin_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  nat_hairpin_trace_t *t = va_arg (*args, nat_hairpin_trace_t *);
+
+  s =
+    format (s, "new dst addr %U port %u fib-index %u", format_ip4_address,
+	    &t->addr.as_u32, clib_net_to_host_u16 (t->port), t->fib_index);
+  if (t->is_static)
+    {
+      s = format (s, " is-static-mapping");
+    }
+  else
+    {
+      s = format (s, " session-index %u", t->session_index);
+    }
+
+  return s;
+}
+
 extern vnet_feature_arc_registration_t vnet_feat_arc_ip4_local;
 
 static_always_inline int
@@ -86,11 +117,10 @@ is_hairpinning (snat_main_t * sm, ip4_address_t * dst_addr)
 
 #ifndef CLIB_MARCH_VARIANT
 int
-snat_hairpinning (snat_main_t * sm,
-		  vlib_buffer_t * b0,
-		  ip4_header_t * ip0,
-		  udp_header_t * udp0,
-		  tcp_header_t * tcp0, u32 proto0, int is_ed)
+snat_hairpinning (vlib_main_t * vm, vlib_node_runtime_t * node,
+		  snat_main_t * sm, vlib_buffer_t * b0, ip4_header_t * ip0,
+		  udp_header_t * udp0, tcp_header_t * tcp0, u32 proto0,
+		  int is_ed)
 {
   snat_session_key_t key0, sm0;
   snat_session_t *s0;
@@ -140,7 +170,10 @@ snat_hairpinning (snat_main_t * sm,
 	  si = value0.value;
 	}
       if (rv)
-	return 0;
+	{
+	  rv = 0;
+	  goto trace;
+	}
 
       s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
       new_dst_addr0 = s0->in2out.addr.as_u32;
@@ -187,9 +220,24 @@ snat_hairpinning (snat_main_t * sm,
 	      tcp0->checksum = ip_csum_fold (sum0);
 	    }
 	}
-      return 1;
+      rv = 1;
+      goto trace;
     }
-  return 0;
+  rv = 0;
+trace:
+  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+		     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+    {
+      nat_hairpin_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
+      t->addr.as_u32 = new_dst_addr0;
+      t->port = new_dst_port0;
+      t->fib_index = t->is_static = (s0 == NULL);
+      if (!t->is_static)
+	{
+	  t->session_index = si;
+	}
+    }
+  return rv;
 }
 #endif
 
@@ -479,7 +527,8 @@ nat44_hairpinning_fn_inline (vlib_main_t * vm,
 	  vnet_get_config_data (&cm->config_main, &b0->current_config_index,
 				&next0, 0);
 
-	  if (snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0, is_ed))
+	  if (snat_hairpinning
+	      (vm, node, sm, b0, ip0, udp0, tcp0, proto0, is_ed))
 	    next0 = NAT_HAIRPIN_NEXT_LOOKUP;
 
 	  pkts_processed += next0 != NAT_HAIRPIN_NEXT_DROP;
@@ -511,6 +560,7 @@ VLIB_REGISTER_NODE (nat44_hairpinning_node) = {
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = ARRAY_LEN(nat44_hairpin_error_strings),
+  .format_trace = format_nat_hairpin_trace,
   .error_strings = nat44_hairpin_error_strings,
   .n_next_nodes = NAT_HAIRPIN_N_NEXT,
   .next_nodes = {
@@ -534,6 +584,7 @@ VLIB_REGISTER_NODE (nat44_ed_hairpinning_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = ARRAY_LEN(nat44_hairpin_error_strings),
   .error_strings = nat44_hairpin_error_strings,
+  .format_trace = format_nat_hairpin_trace,
   .n_next_nodes = NAT_HAIRPIN_N_NEXT,
   .next_nodes = {
     [NAT_HAIRPIN_NEXT_DROP] = "error-drop",
@@ -595,7 +646,8 @@ snat_hairpin_dst_fn_inline (vlib_main_t * vm,
 		  udp_header_t *udp0 = ip4_next_header (ip0);
 		  tcp_header_t *tcp0 = (tcp_header_t *) udp0;
 
-		  snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0, is_ed);
+		  snat_hairpinning (vm, node, sm, b0, ip0, udp0, tcp0, proto0,
+				    is_ed);
 		}
 	      else if (proto0 == NAT_PROTOCOL_ICMP)
 		{
