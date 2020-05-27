@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "ebc6dcb0_918b73b2",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 226,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2020-05-27T16:06:42Z",
+      "side": 1,
+      "message": "This function identify_subunit() is called in slowpath of ethernet_input_inline() packet double loop where sw_if_index0/1 are different which means their hw_ifs are different as well.  Thus I don\u0027t think we can pass \"hi-flags \u0026 STATUS_L3\" as a constant to use inlining to avoid per packet check.  Please let me know if you have other suggestions.",
+      "parentUuid": "63c4cb5f_6732767c",
+      "revId": "5ba16b8ff0a001b7797d5e41ae5e9b24732c92dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bd242b4c_f0b58875",
         "filename": "src/vnet/ethernet/node.c",
         "patchSetId": 9
@@ -33,6 +51,24 @@
       "revId": "5ba16b8ff0a001b7797d5e41ae5e9b24732c92dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5dd7986b_0644d742",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1103,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2020-05-27T16:06:42Z",
+      "side": 1,
+      "message": "Will fix as suggested.",
+      "parentUuid": "bd242b4c_f0b58875",
+      "revId": "5ba16b8ff0a001b7797d5e41ae5e9b24732c92dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
