@@ -53,7 +53,7 @@ static inline void *BV (alloc_aligned) (BVT (clib_bihash) * h, uword nbytes)
       rv = mmap (base, alloc, PROT_READ | PROT_WRITE, mmap_flags_huge, -1, 0);
 
       /* fallback - maybe we are still able to allocate normal pages */
-      if (rv == MAP_FAILED)
+      if (rv == MAP_FAILED || mlock (base, alloc) != 0)
 	rv = mmap (base, alloc, PROT_READ | PROT_WRITE, mmap_flags, -1, 0);
 
       if (rv == MAP_FAILED)
