@@ -481,7 +481,7 @@ nat_template_rewrite_nat64_session (flow_report_main_t * frm,
 }
 
 static inline void
-snat_ipfix_header_create (flow_report_main_t * frm,
+snat_ipfix_header_create (u32 thread_index, flow_report_main_t * frm,
 			  vlib_buffer_t * b0, u32 * offset)
 {
   snat_ipfix_logging_main_t *silm = &snat_ipfix_logging_main;
@@ -493,6 +493,7 @@ snat_ipfix_header_create (flow_report_main_t * frm,
   u32 stream_index;
   ip4_header_t *ip;
   udp_header_t *udp;
+  vlib_main_t *vm = vlib_mains[thread_index];
   
   stream_index = clib_atomic_fetch_or(&silm->stream_index, 0);
   stream = &frm->streams[stream_index];
@@ -521,7 +522,7 @@ snat_ipfix_header_create (flow_report_main_t * frm,
 
   h->export_time = clib_host_to_net_u32 ((u32)
 					 (((f64) frm->unix_time_0) +
-					  (vlib_time_now (frm->vlib_main) -
+					  (vlib_time_now (vm) -
 					   frm->vlib_time_0)));
 
   sequence_number = clib_atomic_fetch_add (&stream->sequence_number, 1);
@@ -629,7 +630,7 @@ snat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (thread_index, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
@@ -728,7 +729,7 @@ snat_ipfix_logging_addr_exhausted (u32 thread_index, u32 pool_id, int do_flush)
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (thread_index, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
@@ -814,7 +815,7 @@ snat_ipfix_logging_max_entries_per_usr (u32 thread_index,
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (thread_index, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
@@ -905,7 +906,7 @@ nat_ipfix_logging_max_ses (u32 thread_index, u32 limit, int do_flush)
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (thread_index, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
@@ -993,7 +994,7 @@ nat_ipfix_logging_max_bib (u32 thread_index, u32 limit, int do_flush)
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (thread_index, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
@@ -1082,7 +1083,7 @@ nat_ipfix_logging_nat64_bibe (u32 thread_index, u8 nat_event,
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (thread_index, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
@@ -1185,7 +1186,7 @@ nat_ipfix_logging_nat64_ses (u32 thread_index, u8 nat_event,
     }
 
   if (PREDICT_FALSE (offset == 0))
-    snat_ipfix_header_create (frm, b0, &offset);
+    snat_ipfix_header_create (thread_index, frm, b0, &offset);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
