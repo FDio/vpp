@@ -43,6 +43,7 @@ typedef struct
   u32 next_index;
   u32 session_index;
   u32 is_slow_path;
+  u32 is_hairpinning;
 } snat_in2out_trace_t;
 
 /* packet trace format function */
@@ -58,6 +59,10 @@ format_snat_in2out_trace (u8 * s, va_list * args)
 
   s = format (s, "%s: sw_if_index %d, next index %d, session %d", tag,
 	      t->sw_if_index, t->next_index, t->session_index);
+  if (t->is_hairpinning)
+    {
+      s = format (s, ", with-hairpinning");
+    }
 
   return s;
 }
@@ -1776,6 +1781,7 @@ VLIB_NODE_FN (snat_in2out_fast_node) (vlib_main_t * vm,
   u32 pkts_processed = 0;
   snat_main_t *sm = &snat_main;
   u32 stats_node_index;
+  int is_hairpinning = 0;
 
   stats_node_index = sm->in2out_fast_node_index;
 
@@ -1923,7 +1929,9 @@ VLIB_NODE_FN (snat_in2out_fast_node) (vlib_main_t * vm,
 	    }
 
 	  /* Hairpinning */
-	  snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0, 0);
+	  snat_hairpinning (vm, node, sm, b0, ip0, udp0, tcp0, proto0, 0,
+			    0 /* do_trace */ );
+	  is_hairpinning = 1;
 
 	trace0:
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -1933,6 +1941,7 @@ VLIB_NODE_FN (snat_in2out_fast_node) (vlib_main_t * vm,
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sw_if_index = sw_if_index0;
 	      t->next_index = next0;
+	      t->is_hairpinning = is_hairpinning;
 	    }
 
 	  pkts_processed += next0 != SNAT_IN2OUT_NEXT_DROP;
