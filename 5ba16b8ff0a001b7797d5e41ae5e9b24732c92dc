@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "63c4cb5f_6732767c",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 226,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-05-27T14:16:44Z",
+      "side": 1,
+      "message": "repeating this check for every single packet seems to me like a bad idea.\nCan you just pass this value as constant so it is optimised out during inlining....",
+      "revId": "5ba16b8ff0a001b7797d5e41ae5e9b24732c92dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bd242b4c_f0b58875",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1103,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-05-27T14:16:44Z",
+      "side": 1,
+      "message": "This is second invocation of the same function with same parameters. As that one is inline function, it will likely produce duplicate code. Can you change the logic so it is called only oce...",
+      "revId": "5ba16b8ff0a001b7797d5e41ae5e9b24732c92dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
