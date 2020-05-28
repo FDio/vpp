@@ -30,6 +30,16 @@ DPDK_20.05_TARBALL_MD5_CKSUM := 7c6f3e7f7de2422775c4cba116012c4d
 DPDK_20.08_TARBALL_MD5_CKSUM := 64badd32cd6bc0761befc8f2402c2148
 MACHINE=$(shell uname -m)
 
+DPDK_USE_MESON?=y
+DPDK_MESON_ARGS = \
+	--default-library static \
+	--libdir lib \
+	--prefix $(I) \
+	-Dtests=false \
+	-Ddisable_drivers=event/\*,net/tap,net/af_xdp,net/bond,net/af_packet,baseband/\*,compress/\*
+DPDK_LIB_WHITELIST=eal,mbuf,pmd_*
+
+
 # replace dot with space, and if 3rd word exists we deal with stable dpdk rel
 ifeq ($(word 3,$(subst ., ,$(DPDK_VERSION))),)
 DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
@@ -286,18 +296,39 @@ endif
 .PHONY: dpdk-patch
 dpdk-patch: $(B)/.dpdk-patch.ok
 
+ifeq ($(DPDK_USE_MESON),y)
+$(B)/.dpdk-config.ok: $(B)/.dpdk-patch.ok
+	meson setup $(DPDK_MESON_ARGS) $(DPDK_SOURCE) $(B)/dpdk_build_dir
+	@touch $@
+else
 $(B)/.dpdk-config.ok: $(B)/.dpdk-patch.ok $(B)/custom-config
 	@make $(DPDK_MAKE_ARGS) config
 	@touch $@
+endif
 
 .PHONY: dpdk-config
 dpdk-config: $(B)/.dpdk-config.ok
 
+ifeq ($(DPDK_USE_MESON),y)
+$(B)/.dpdk-build.ok: dpdk-config $(DPDK_BUILD_DEPS)
+	@rm -f $(B)/.*.install.ok #deals with build-root/Makefile line 709
+	@meson install -C $(B)/dpdk_build_dir
+	cd $(I) && \
+	  mv lib all_libs && \
+	  mkdir lib && \
+	  mv all_libs/librte_{$(DPDK_LIB_WHITELIST)}.a lib && \
+	  rm -r all_libs
+	cd $(I)/lib && \
+	  _files=`ls` && \
+	  echo "GROUP ( $(notdir $(wildcard $(I)/lib/*.a)) )" > libdpdk.a
+	@touch $@
+else
 $(B)/.dpdk-build.ok: dpdk-config $(DPDK_BUILD_DEPS)
 	@if [ ! -e $(B)/.dpdk-config.ok ] ; then echo 'Please run "make config" first' && false ; fi
 	@rm -f $(B)/.*.install.ok #deals with build-root/Makefile line 709
 	@make $(DPDK_MAKE_ARGS) install
 	@touch $@
+endif
 
 .PHONY: dpdk-build
 dpdk-build: $(B)/.dpdk-build.ok
