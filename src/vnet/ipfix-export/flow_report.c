@@ -486,7 +486,7 @@ set_ipfix_exporter_command_fn (vlib_main_t * vm,
 {
   flow_report_main_t *frm = &flow_report_main;
   ip4_address_t collector, src;
-  u16 collector_port = UDP_DST_PORT_ipfix;
+  u32 collector_port = UDP_DST_PORT_ipfix;
   u32 fib_id;
   u32 fib_index = ~0;
 
