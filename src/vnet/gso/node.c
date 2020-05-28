@@ -651,6 +651,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		  generic_header_offset_t gho = { 0 };
 		  u32 n_bytes_b0 = vlib_buffer_length_in_chain (vm, b[0]);
 		  u32 n_tx_bytes = 0;
+		  u32 inner_is_ip6 = is_ip6;
 
 		  vnet_generic_header_offset_parser (b[0], &gho, is_l2,
 						     is_ip4, is_ip6);
@@ -672,12 +673,12 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		      vnet_get_inner_header (b[0], &gho);
 
 		      n_bytes_b0 -= gho.outer_hdr_sz;
-		      is_ip6 = (gho.gho_flags & GHO_F_IP6) != 0;
+		      inner_is_ip6 = (gho.gho_flags & GHO_F_IP6) != 0;
 		    }
 
 		  n_tx_bytes =
 		    tso_segment_buffer (vm, ptd, bi0, b[0], &gho, n_bytes_b0,
-					is_ip6);
+					inner_is_ip6);
 
 		  if (PREDICT_FALSE (n_tx_bytes == 0))
 		    {
