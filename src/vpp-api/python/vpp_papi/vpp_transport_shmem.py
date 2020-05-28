@@ -47,7 +47,7 @@ def vac_error_handler(arg, msg, msg_len):
     vpp_object.logger.warning("VPP API client:: %s", ffi.string(msg, msg_len))
 
 
-class VppTransportShmemIOError(IOError):
+class VppTransportShmemIOError(VPPIOError):
     """ exception communicating with vpp over shared memory """
 
     def __init__(self, rv, descr):

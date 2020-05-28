@@ -125,6 +125,7 @@ class VPPNotImplementedError(NotImplementedError):
 
 
 class VPPIOError(IOError):
+    # TODO: Do we need to separate VPPTransportIOError?
     pass
 
 
@@ -759,12 +760,25 @@ class VPPApiClient(object):
         self.transport.write(b)
         return context
 
+    def read_bytes_blocking(self, timeout=None):
+        """Get next received message from transport within timeout, not decoded.
+
+        TODO: On timeout, do we return b"" or None?
+
+        :param timeout: Do not spend more time than this.
+        :type timeout: float or None
+        :returns: Response message, or None if no message (within timeout).
+        :rtype: bytes
+        :raises VPPIOError: If transport is disconnected or other error.
+        """
+        return self.transport.read(timeout=timeout)
+
     def read_blocking(self, no_type_conversion=False, timeout=None):
         """Get next received message from transport within timeout, decoded.
 
-        Note that notifications have context zero
-        and are not put into receive queue (at least for socket transport),
-        use async_thread with registered callback for processing them.
+        Socket transport note: Notifications have context zero
+        and are not put into receive queue.
+        Use async_thread with registered callback for processing them.
 
         If no message appears in the queue within timeout, return None.
 
@@ -777,12 +791,14 @@ class VPPApiClient(object):
             context = r.context
 
         :param no_type_conversion: If false, type conversions are applied.
+        :param timeout: Do not spend more time than this.
         :type no_type_conversion: bool
+        :type timeout: float or None
         :returns: Decoded message, or None if no message (within timeout).
         :rtype: Whatever VPPType.unpack returns, depends on no_type_conversion.
-        :raises VppTransportShmemIOError if timed out.
+        :raises VppIOError: If transport is disconnected or other error.
         """
-        msg = self.transport.read(timeout=timeout)
+        msg = self.read_bytes_blocking(timeout=timeout)
         if not msg:
             return None
         return self.decode_incoming_msg(msg, no_type_conversion)
