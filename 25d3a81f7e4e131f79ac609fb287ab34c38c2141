@@ -22,6 +22,30 @@
       "revId": "25d3a81f7e4e131f79ac609fb287ab34c38c2141",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "61c15179_2ff400ca",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_transport_socket.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 264,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-05-28T13:14:31Z",
+      "side": 1,
+      "message": "As of patch set #3:\nTurned this into a protected method.\ntransport.read() now gets the message in a way appropriate to state of reader thread.\nAnd vpp_papi.read_bytes_blocking() is added to expose the raw bytes, so it works also for shmem transport.",
+      "parentUuid": "5aa35b81_86953218",
+      "range": {
+        "startLine": 264,
+        "startChar": 4,
+        "endLine": 264,
+        "endChar": 27
+      },
+      "revId": "25d3a81f7e4e131f79ac609fb287ab34c38c2141",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
