@@ -108,16 +108,54 @@ class TestGSO(VppTestCase):
             self.assertEqual(rx[ICMP].code, 4)  # "fragmentation-needed"
 
         #
+        # Send checksum offload frames
+        #
+        p40 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
+               IP(src=self.pg2.remote_ip4, dst=self.pg0.remote_ip4,
+                  flags='DF') /
+               TCP(sport=1234, dport=1234) /
+               Raw(b'\xa5' * 1460))
+
+        rxs = self.send_and_expect(self.pg2, 100*[p40], self.pg0)
+
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, self.pg0.local_mac)
+            self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
+            self.assertEqual(rx[IP].src, self.pg2.remote_ip4)
+            self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
+            payload_len = rx[IP].len - 20 - 20
+            self.assert_ip_checksum_valid(rx)
+            self.assert_tcp_checksum_valid(rx)
+            self.assertEqual(payload_len, len(rx[Raw]))
+
+        p60 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
+               IPv6(src=self.pg2.remote_ip6, dst=self.pg0.remote_ip6) /
+               TCP(sport=1234, dport=1234) /
+               Raw(b'\xa5' * 1440))
+
+        rxs = self.send_and_expect(self.pg2, 100*[p60], self.pg0)
+
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, self.pg0.local_mac)
+            self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
+            self.assertEqual(rx[IPv6].src, self.pg2.remote_ip6)
+            self.assertEqual(rx[IPv6].dst, self.pg0.remote_ip6)
+            payload_len = rx[IPv6].plen - 20
+            self.assert_tcp_checksum_valid(rx)
+            self.assertEqual(payload_len, len(rx[Raw]))
+
+        #
         # Send jumbo frame with gso enabled and DF bit is set
         # input and output interfaces support GSO
         #
+        self.vapi.feature_gso_enable_disable(self.pg3.sw_if_index)
         p41 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
                IP(src=self.pg2.remote_ip4, dst=self.pg3.remote_ip4,
                   flags='DF') /
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, [p41], self.pg3)
+        rxs = self.send_and_expect(self.pg2, 100*[p41], self.pg3, 100)
 
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg3.local_mac)
@@ -136,7 +174,7 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, [p61], self.pg3)
+        rxs = self.send_and_expect(self.pg2, 100*[p61], self.pg3, 100)
 
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg3.local_mac)
@@ -159,18 +197,21 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, [p42], self.pg0, 45)
+        rxs = self.send_and_expect(self.pg2, 5*[p42], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
             self.assertEqual(rx[IP].src, self.pg2.remote_ip4)
             self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
+            payload_len = rx[IP].len - 20 - 20  # len - 20 (IP4) - 20 (TCP)
+            self.assert_ip_checksum_valid(rx)
+            self.assert_tcp_checksum_valid(rx)
             self.assertEqual(rx[TCP].sport, 1234)
             self.assertEqual(rx[TCP].dport, 1234)
-
-        size = rxs[44][TCP].seq + rxs[44][IP].len - 20 - 20
-        self.assertEqual(size, 65200)
+            self.assertEqual(payload_len, len(rx[Raw]))
+            size += payload_len
+        self.assertEqual(size, 65200*5)
 
         #
         # ipv6
@@ -180,18 +221,20 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, [p62], self.pg0, 45)
+        rxs = self.send_and_expect(self.pg2, 5*[p62], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
             self.assertEqual(rx[IPv6].src, self.pg2.remote_ip6)
             self.assertEqual(rx[IPv6].dst, self.pg0.remote_ip6)
+            payload_len = rx[IPv6].plen - 20
+            self.assert_tcp_checksum_valid(rx)
             self.assertEqual(rx[TCP].sport, 1234)
             self.assertEqual(rx[TCP].dport, 1234)
-
-        size = rxs[44][TCP].seq + rxs[44][IPv6].plen - 20
-        self.assertEqual(size, 65200)
+            self.assertEqual(payload_len, len(rx[Raw]))
+            size += payload_len
+        self.assertEqual(size, 65200*5)
 
         #
         # Send jumbo frame with gso enabled only on input interface
@@ -205,16 +248,17 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, [p43], self.pg1, 119)
+        rxs = self.send_and_expect(self.pg2, 5*[p43], self.pg1, 5*119)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg1.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg1.remote_mac)
             self.assertEqual(rx[IP].src, self.pg2.remote_ip4)
             self.assertEqual(rx[IP].dst, self.pg1.remote_ip4)
+            self.assert_ip_checksum_valid(rx)
             size += rx[IP].len - 20
-        size -= 20  # TCP header
-        self.assertEqual(size, 65200)
+        size -= 20*5  # TCP header
+        self.assertEqual(size, 65200*5)
 
         #
         # IPv6
@@ -227,7 +271,7 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, [p63], self.pg2, 1)
+        rxs = self.send_and_expect(self.pg2, 5*[p63], self.pg2, 5)
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg2.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg2.remote_mac)
@@ -252,16 +296,19 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        self.pg1.enable_capture()
-        rxs = self.send_and_expect(self.pg4, [p44], self.pg1, 33)
+        rxs = self.send_and_expect(self.pg4, 5*[p44], self.pg1, 165)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg1.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg1.remote_mac)
             self.assertEqual(rx[IP].src, self.pg4.remote_ip4)
             self.assertEqual(rx[IP].dst, self.pg1.remote_ip4)
-        size = rxs[32][TCP].seq + rxs[32][IP].len - 20 - 20
-        self.assertEqual(size, 65200)
+            payload_len = rx[IP].len - 20 - 20  # len - 20 (IP4) - 20 (TCP)
+            self.assert_ip_checksum_valid(rx)
+            self.assert_tcp_checksum_valid(rx)
+            self.assertEqual(payload_len, len(rx[Raw]))
+            size += payload_len
+        self.assertEqual(size, 65200*5)
 
         #
         # IPv6
@@ -271,16 +318,18 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        self.pg1.enable_capture()
-        rxs = self.send_and_expect(self.pg4, [p64], self.pg1, 34)
+        rxs = self.send_and_expect(self.pg4, 5*[p64], self.pg1, 170)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg1.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg1.remote_mac)
             self.assertEqual(rx[IPv6].src, self.pg4.remote_ip6)
             self.assertEqual(rx[IPv6].dst, self.pg1.remote_ip6)
-        size = rxs[33][TCP].seq + rxs[33][IPv6].plen - 20
-        self.assertEqual(size, 65200)
+            payload_len = rx[IPv6].plen - 20
+            self.assert_tcp_checksum_valid(rx)
+            self.assertEqual(payload_len, len(rx[Raw]))
+            size += payload_len
+        self.assertEqual(size, 65200*5)
 
         self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index,
                                              enable_disable=0)
@@ -314,21 +363,28 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, [p45], self.pg0, 45)
+        rxs = self.send_and_expect(self.pg2, 5*[p45], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
             self.assertEqual(rx[IP].src, self.pg0.local_ip4)
             self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
+            self.assert_ip_checksum_valid(rx)
+            self.assert_udp_checksum_valid(rx)
             self.assertEqual(rx[VXLAN].vni, 10)
             inner = rx[VXLAN].payload
+            self.assertEqual(rx[IP].len - 20 - 8 - 8, len(inner))
             self.assertEqual(inner[Ether].src, self.pg2.remote_mac)
             self.assertEqual(inner[Ether].dst, "02:fe:60:1e:a2:79")
             self.assertEqual(inner[IP].src, self.pg2.remote_ip4)
             self.assertEqual(inner[IP].dst, "172.16.3.3")
-            size += inner[IP].len - 20 - 20
-        self.assertEqual(size, 65200)
+            self.assert_ip_checksum_valid(inner)
+            self.assert_tcp_checksum_valid(inner)
+            payload_len = inner[IP].len - 20 - 20
+            self.assertEqual(payload_len, len(inner[Raw]))
+            size += payload_len
+        self.assertEqual(size, 65200*5)
 
         #
         # IPv4/IPv6 - VXLAN
@@ -338,21 +394,27 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, [p65], self.pg0, 45)
+        rxs = self.send_and_expect(self.pg2, 5*[p65], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
             self.assertEqual(rx[IP].src, self.pg0.local_ip4)
             self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
+            self.assert_ip_checksum_valid(rx)
+            self.assert_udp_checksum_valid(rx)
             self.assertEqual(rx[VXLAN].vni, 10)
             inner = rx[VXLAN].payload
+            self.assertEqual(rx[IP].len - 20 - 8 - 8, len(inner))
             self.assertEqual(inner[Ether].src, self.pg2.remote_mac)
             self.assertEqual(inner[Ether].dst, "02:fe:60:1e:a2:79")
             self.assertEqual(inner[IPv6].src, self.pg2.remote_ip6)
             self.assertEqual(inner[IPv6].dst, "fd01:3::3")
-            size += inner[IPv6].plen - 20
-        self.assertEqual(size, 65200)
+            self.assert_tcp_checksum_valid(inner)
+            payload_len = inner[IPv6].plen - 20
+            self.assertEqual(payload_len, len(inner[Raw]))
+            size += payload_len
+        self.assertEqual(size, 65200*5)
 
         #
         # disable ipv4/vxlan
@@ -375,21 +437,27 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, [p46], self.pg0, 45)
+        rxs = self.send_and_expect(self.pg2, 5*[p46], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
             self.assertEqual(rx[IPv6].src, self.pg0.local_ip6)
             self.assertEqual(rx[IPv6].dst, self.pg0.remote_ip6)
+            self.assert_udp_checksum_valid(rx)
             self.assertEqual(rx[VXLAN].vni, 10)
             inner = rx[VXLAN].payload
+            self.assertEqual(rx[IPv6].plen - 8 - 8, len(inner))
             self.assertEqual(inner[Ether].src, self.pg2.remote_mac)
             self.assertEqual(inner[Ether].dst, "02:fe:60:1e:a2:79")
             self.assertEqual(inner[IP].src, self.pg2.remote_ip4)
             self.assertEqual(inner[IP].dst, "172.16.3.3")
-            size += inner[IP].len - 20 - 20
-        self.assertEqual(size, 65200)
+            self.assert_ip_checksum_valid(inner)
+            self.assert_tcp_checksum_valid(inner)
+            payload_len = inner[IP].len - 20 - 20
+            self.assertEqual(payload_len, len(inner[Raw]))
+            size += payload_len
+        self.assertEqual(size, 65200*5)
 
         #
         # IPv6/IPv6 - VXLAN
@@ -399,21 +467,26 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, [p66], self.pg0, 45)
+        rxs = self.send_and_expect(self.pg2, 5*[p66], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
             self.assertEqual(rx[IPv6].src, self.pg0.local_ip6)
             self.assertEqual(rx[IPv6].dst, self.pg0.remote_ip6)
+            self.assert_udp_checksum_valid(rx)
             self.assertEqual(rx[VXLAN].vni, 10)
             inner = rx[VXLAN].payload
+            self.assertEqual(rx[IPv6].plen - 8 - 8, len(inner))
             self.assertEqual(inner[Ether].src, self.pg2.remote_mac)
             self.assertEqual(inner[Ether].dst, "02:fe:60:1e:a2:79")
             self.assertEqual(inner[IPv6].src, self.pg2.remote_ip6)
             self.assertEqual(inner[IPv6].dst, "fd01:3::3")
-            size += inner[IPv6].plen - 20
-        self.assertEqual(size, 65200)
+            self.assert_tcp_checksum_valid(inner)
+            payload_len = inner[IPv6].plen - 20
+            self.assertEqual(payload_len, len(inner[Raw]))
+            size += payload_len
+        self.assertEqual(size, 65200*5)
 
         #
         # disable ipv4/vxlan
@@ -457,19 +530,25 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, [p47], self.pg0, 45)
+        rxs = self.send_and_expect(self.pg2, 5*[p47], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
             self.assertEqual(rx[IP].src, self.pg0.local_ip4)
             self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
+            self.assert_ip_checksum_valid(rx)
             self.assertEqual(rx[IP].proto, 4)  # ipencap
             inner = rx[IP].payload
+            self.assertEqual(rx[IP].len - 20, len(inner))
             self.assertEqual(inner[IP].src, self.pg2.remote_ip4)
             self.assertEqual(inner[IP].dst, "172.16.10.3")
-            size += inner[IP].len - 20 - 20
-        self.assertEqual(size, 65200)
+            self.assert_ip_checksum_valid(inner)
+            self.assert_tcp_checksum_valid(inner)
+            payload_len = inner[IP].len - 20 - 20
+            self.assertEqual(payload_len, len(inner[Raw]))
+            size += payload_len
+        self.assertEqual(size, 65200*5)
 
         self.ip6_via_ip4_tunnel = VppIpRoute(
                 self, "fd01:10::", 64,
@@ -485,19 +564,24 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, [p67], self.pg0, 45)
+        rxs = self.send_and_expect(self.pg2, 5*[p67], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
             self.assertEqual(rx[IP].src, self.pg0.local_ip4)
             self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
+            self.assert_ip_checksum_valid(rx)
             self.assertEqual(rx[IP].proto, 41)  # ipv6
             inner = rx[IP].payload
+            self.assertEqual(rx[IP].len - 20, len(inner))
             self.assertEqual(inner[IPv6].src, self.pg2.remote_ip6)
             self.assertEqual(inner[IPv6].dst, "fd01:10::3")
-            size += inner[IPv6].plen - 20
-        self.assertEqual(size, 65200)
+            self.assert_tcp_checksum_valid(inner)
+            payload_len = inner[IPv6].plen - 20
+            self.assertEqual(payload_len, len(inner[Raw]))
+            size += payload_len
+        self.assertEqual(size, 65200*5)
 
         #
         # Send jumbo frame with gso enabled only on input interface and
@@ -508,19 +592,25 @@ class TestGSO(VppTestCase):
                                              enable_disable=0)
         self.vapi.feature_gso_enable_disable(self.ipip4.sw_if_index)
 
-        rxs = self.send_and_expect(self.pg2, [p47], self.pg0, 45)
+        rxs = self.send_and_expect(self.pg2, 5*[p47], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
             self.assertEqual(rx[IP].src, self.pg0.local_ip4)
             self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
+            self.assert_ip_checksum_valid(rx)
             self.assertEqual(rx[IP].proto, 4)  # ipencap
             inner = rx[IP].payload
+            self.assertEqual(rx[IP].len - 20, len(inner))
             self.assertEqual(inner[IP].src, self.pg2.remote_ip4)
             self.assertEqual(inner[IP].dst, "172.16.10.3")
-            size += inner[IP].len - 20 - 20
-        self.assertEqual(size, 65200)
+            self.assert_ip_checksum_valid(inner)
+            self.assert_tcp_checksum_valid(inner)
+            payload_len = inner[IP].len - 20 - 20
+            self.assertEqual(payload_len, len(inner[Raw]))
+            size += payload_len
+        self.assertEqual(size, 65200*5)
 
         #
         # disable ipip4
@@ -557,7 +647,7 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, [p48], self.pg0, 45)
+        rxs = self.send_and_expect(self.pg2, 5*[p48], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
@@ -566,10 +656,15 @@ class TestGSO(VppTestCase):
             self.assertEqual(rx[IPv6].dst, self.pg0.remote_ip6)
             self.assertEqual(ipv6nh[rx[IPv6].nh], "IP")
             inner = rx[IPv6].payload
+            self.assertEqual(rx[IPv6].plen, len(inner))
             self.assertEqual(inner[IP].src, self.pg2.remote_ip4)
             self.assertEqual(inner[IP].dst, "172.16.10.3")
-            size += inner[IP].len - 20 - 20
-        self.assertEqual(size, 65200)
+            self.assert_ip_checksum_valid(inner)
+            self.assert_tcp_checksum_valid(inner)
+            payload_len = inner[IP].len - 20 - 20
+            self.assertEqual(payload_len, len(inner[Raw]))
+            size += payload_len
+        self.assertEqual(size, 65200*5)
 
         self.ip6_via_ip6_tunnel = VppIpRoute(
                 self, "fd01:10::", 64,
@@ -586,7 +681,7 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, [p68], self.pg0, 45)
+        rxs = self.send_and_expect(self.pg2, 5*[p68], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
@@ -595,10 +690,14 @@ class TestGSO(VppTestCase):
             self.assertEqual(rx[IPv6].dst, self.pg0.remote_ip6)
             self.assertEqual(ipv6nh[rx[IPv6].nh], "IPv6")
             inner = rx[IPv6].payload
+            self.assertEqual(rx[IPv6].plen, len(inner))
             self.assertEqual(inner[IPv6].src, self.pg2.remote_ip6)
             self.assertEqual(inner[IPv6].dst, "fd01:10::3")
-            size += inner[IPv6].plen - 20
-        self.assertEqual(size, 65200)
+            self.assert_tcp_checksum_valid(inner)
+            payload_len = inner[IPv6].plen - 20
+            self.assertEqual(payload_len, len(inner[Raw]))
+            size += payload_len
+        self.assertEqual(size, 65200*5)
 
         #
         # disable ipip6
