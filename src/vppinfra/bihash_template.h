@@ -96,6 +96,7 @@ typedef struct
     };
     u64 as_u64;
   };
+  u64 padding; 
 } BVT (clib_bihash_bucket);
 
 STATIC_ASSERT_SIZEOF (BVT (clib_bihash_bucket), sizeof (u64));
@@ -366,7 +367,9 @@ BV (clib_bihash_get_bucket) (BVT (clib_bihash) * h, u64 hash)
   uword offset;
   offset = (hash & (h->nbuckets - 1));
   offset = offset * (sizeof (BVT (clib_bihash_bucket))
-		     + (BIHASH_KVP_PER_PAGE * sizeof (BVT (clib_bihash_kv))));
+		     + (BIHASH_KVP_PER_PAGE * sizeof (BVT (clib_bihash_kv)))
+		     + BIHASH_ALIGN_BYTES);
+
   return ((BVT (clib_bihash_bucket) *) (((u8 *) h->buckets) + offset));
 #endif
 
@@ -438,11 +441,35 @@ static inline int BV (clib_bihash_search_inline)
   return BV (clib_bihash_search_inline_with_hash) (h, hash, key_result);
 }
 
+static inline void BV (clib_bihash_prefetch_relative_bucket)
+  (BVT (clib_bihash) * h, u64 hash, i64 npos)
+{
+  /* BV (clib_bihash_get_bucket) returns a bucket * */
+  CLIB_PREFETCH ( (void *)(((uword) BV (clib_bihash_get_bucket) (h, hash)) +
+			   ((sizeof ( BVT (clib_bihash_bucket) )
+			    + (BIHASH_KVP_PER_PAGE * sizeof ( BVT (clib_bihash_kv)))
+			    + BIHASH_ALIGN_BYTES)
+			    * npos)),
+		 BIHASH_BUCKET_PREFETCH_CACHE_LINES * CLIB_CACHE_LINE_BYTES,
+		 LOAD);
+}
+
 static inline void BV (clib_bihash_prefetch_bucket)
   (BVT (clib_bihash) * h, u64 hash)
 {
+  /* 2nd cl with ... 
+    (void *)(((u64) BV (clib_bihash_get_bucket) (h, hash)) + 64) */
   CLIB_PREFETCH (BV (clib_bihash_get_bucket) (h, hash),
 		 BIHASH_BUCKET_PREFETCH_CACHE_LINES * CLIB_CACHE_LINE_BYTES,
+		 LOAD);
+}
+
+static inline void BV (clib_bihash_prefetch_bucket_ex)
+  (BVT (clib_bihash) * h, u64 hash, u64 n, u64 off)
+{
+  /* 2nd cl with ...  */
+  CLIB_PREFETCH ((void *)(((u64) BV (clib_bihash_get_bucket) (h, hash)) + off),
+		 n * CLIB_CACHE_LINE_BYTES,
 		 LOAD);
 }
 

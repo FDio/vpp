@@ -80,8 +80,11 @@ static void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
   bucket_size = h->nbuckets * sizeof (h->buckets[0]);
 
   if (BIHASH_KVP_AT_BUCKET_LEVEL)
-    bucket_size +=
-      h->nbuckets * BIHASH_KVP_PER_PAGE * sizeof (BVT (clib_bihash_kv));
+    {
+      bucket_size += h->nbuckets * BIHASH_ALIGN_BYTES;
+      bucket_size +=
+	h->nbuckets * BIHASH_KVP_PER_PAGE * sizeof (BVT (clib_bihash_kv));
+    }
 
   h->buckets = BV (alloc_aligned) (h, bucket_size);
 
@@ -102,6 +105,7 @@ static void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
 
 	  /* Compute next bucket start address */
 	  b = (void *) (((uword) b) + sizeof (*b) +
+			BIHASH_ALIGN_BYTES + 
 			(BIHASH_KVP_PER_PAGE *
 			 sizeof (BVT (clib_bihash_kv))));
 	}
