@@ -2901,7 +2901,7 @@ unformat_nsh_address (unformat_input_t * input, va_list * args)
   return unformat (input, "SPI:%d SI:%d", &nsh->spi, &nsh->si);
 }
 
-u8 *
+static u8 *
 format_nsh_address_vat (u8 * s, va_list * args)
 {
   nsh_t *a = va_arg (*args, nsh_t *);
