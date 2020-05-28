@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "09df9e53_d00fb4be",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 397,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-05-28T16:42:59Z",
+      "side": 1,
+      "message": "Should it be obvious why this is not be converted? Because for me, it is not.\nMaybe we can define a separate type for such values (instead of hardcoding a specific field name)?",
+      "range": {
+        "startLine": 397,
+        "startChar": 25,
+        "endLine": 397,
+        "endChar": 37
+      },
+      "revId": "e796a18734fae0783a226c38550796260f0acfec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
