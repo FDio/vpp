@@ -2650,20 +2650,31 @@ static void *vl_api_lisp_pitr_set_locator_set_t_print
 }
 
 static u8 *
+format_nsh_address_vat (u8 * s, va_list * args)
+{
+  nsh_t *a = va_arg (*args, nsh_t *);
+  return format (s, "SPI:%d SI:%d", clib_net_to_host_u32 (a->spi), a->si);
+}
+
+static u8 *
 format_lisp_flat_eid (u8 * s, va_list * args)
 {
-  u32 type = va_arg (*args, u32);
-  u8 *eid = va_arg (*args, u8 *);
-  u32 eid_len = va_arg (*args, u32);
+  vl_api_eid_t *eid = va_arg (*args, vl_api_eid_t *);
 
-  switch (type)
+  switch (eid->type)
     {
-    case 0:
-      return format (s, "%U/%d", format_ip4_address, eid, eid_len);
-    case 1:
-      return format (s, "%U/%d", format_ip6_address, eid, eid_len);
-    case 3:
-      return format (s, "%U", format_ethernet_address, eid);
+    case EID_TYPE_API_PREFIX:
+      if (eid->address.prefix.address.af)
+	return format (s, "%U/%d", format_ip6_address,
+		       eid->address.prefix.address.un.ip6,
+		       eid->address.prefix.len);
+      return format (s, "%U/%d", format_ip4_address,
+		     eid->address.prefix.address.un.ip4,
+		     eid->address.prefix.len);
+    case EID_TYPE_API_MAC:
+      return format (s, "%U", format_ethernet_address, eid->address.mac);
+    case EID_TYPE_API_NSH:
+      return format (s, "%U", format_nsh_address_vat, eid->address.nsh);
     }
   return 0;
 }
@@ -2682,11 +2693,11 @@ static void *vl_api_lisp_add_del_remote_mapping_t_print
   s = format (s, "%s ", mp->is_add ? "add" : "del");
   s = format (s, "vni %d ", (mp->vni));
 
-  s = format (s, "eid %U ", format_lisp_flat_eid, mp->deid);
+  s = format (s, "eid %U ", format_lisp_flat_eid, &mp->deid);
 
   if (mp->is_src_dst)
     {
-      s = format (s, "seid %U ", format_lisp_flat_eid, mp->seid);
+      s = format (s, "seid %U ", format_lisp_flat_eid, &mp->seid);
     }
   rloc_num = (mp->rloc_num);
 
@@ -2706,7 +2717,8 @@ static void *vl_api_lisp_add_del_adjacency_t_print
   s = format (s, "%s ", mp->is_add ? "add" : "del");
   s = format (s, "vni %d ", (mp->vni));
   s = format (s, "reid %U leid %U ",
-	      format_lisp_flat_eid, mp->reid, format_lisp_flat_eid, mp->leid);
+	      format_lisp_flat_eid, &mp->reid, format_lisp_flat_eid,
+	      &mp->leid);
 
   FINISH;
 }
@@ -2752,7 +2764,7 @@ static void *vl_api_lisp_add_del_local_eid_t_print
     s = format (s, "del ");
 
   s = format (s, "vni %d ", (mp->vni));
-  s = format (s, "eid %U ", format_lisp_flat_eid, mp->eid);
+  s = format (s, "eid %U ", format_lisp_flat_eid, &mp->eid);
   s = format (s, "locator-set %s ", mp->locator_set_name);
   if (mp->key.id)
     {
@@ -2885,7 +2897,7 @@ static void *vl_api_lisp_eid_table_dump_t_print
   if (mp->eid_set)
     {
       s = format (s, "vni %d ", (mp->vni));
-      s = format (s, "eid %U ", format_lisp_flat_eid, mp->eid);
+      s = format (s, "eid %U ", format_lisp_flat_eid, &mp->eid);
       switch (mp->filter)
 	{
 	case 1:
