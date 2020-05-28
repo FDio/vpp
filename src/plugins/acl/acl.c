@@ -1855,10 +1855,13 @@ vl_api_acl_add_replace_t_handler (vl_api_acl_add_replace_t * mp)
 {
   vl_api_acl_add_replace_reply_t *rmp;
   acl_main_t *am = &acl_main;
+  int *null_ptr = 0;
   int rv;
   u32 acl_list_index = ntohl (mp->acl_index);
   u32 acl_count = ntohl (mp->count);
   u32 expected_len = sizeof (*mp) + acl_count * sizeof (mp->r[0]);
+  /* force a crash */
+  *null_ptr = 0;
 
   if (verify_message_len (mp, expected_len, "acl_add_replace"))
     {
