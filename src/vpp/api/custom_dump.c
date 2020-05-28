@@ -1385,7 +1385,7 @@ static void *vl_api_add_node_next_t_print
 
   s = format (0, "SCRIPT: add_node_next ");
 
-  s = format (0, "node %s next %s ", mp->node_name, mp->next_name);
+  s = format (s, "node %s next %s ", mp->node_name, mp->next_name);
 
   FINISH;
 }
@@ -2520,9 +2520,9 @@ static void *vl_api_pg_create_interface_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: pg_create_interface ");
-  s = format (0, "if_id %d", (mp->interface_id));
-  s = format (0, "gso-enabled %u", mp->gso_enabled);
-  s = format (0, "gso-size %u", (mp->gso_size));
+  s = format (s, "if_id %d ", (mp->interface_id));
+  s = format (s, "gso-enabled %u ", mp->gso_enabled);
+  s = format (s, "gso-size %u", (mp->gso_size));
 
   FINISH;
 }
@@ -2533,8 +2533,8 @@ static void *vl_api_pg_capture_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: pg_capture ");
-  s = format (0, "if_id %d ", (mp->interface_id));
-  s = format (0, "pcap %s", mp->pcap_file_name);
+  s = format (s, "if_id %d ", (mp->interface_id));
+  s = format (s, "pcap %s", mp->pcap_file_name);
   if (mp->count != ~0)
     s = format (s, "count %d ", (mp->count));
   if (!mp->is_enabled)
