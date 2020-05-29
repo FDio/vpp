@@ -132,6 +132,7 @@ uword clib_elf_symbol_by_name (char *name, clib_elf_symbol_t * result);
 uword clib_elf_symbol_by_address (uword address, clib_elf_symbol_t * result);
 
 format_function_t format_clib_elf_symbol, format_clib_elf_symbol_with_address;
+format_function_t format_clib_elf_backtrace;
 
 #endif /* included_clib_elf_self_h */
 
