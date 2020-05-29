@@ -3079,9 +3079,9 @@ vl_api_one_stats_details_t_handler_json (vl_api_one_stats_details_t * mp)
   node = vat_json_array_add (&vam->json_tree);
 
   vat_json_init_object (node);
-  deid = format (0, "%U", &format_lisp_eid_vat, mp->deid, 0, 0);
+  deid = format (0, "%U", format_lisp_eid_vat, &mp->deid, 0, 0);
 
-  seid = format (0, "%U", &format_lisp_eid_vat, mp->seid, 0, 0);
+  seid = format (0, "%U", format_lisp_eid_vat, &mp->seid, 0, 0);
 
   vec_add1 (deid, 0);
   vec_add1 (seid, 0);
