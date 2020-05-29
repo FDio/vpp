@@ -1118,10 +1118,11 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	    {
 	      if (!vnet_buffer (b0)->ip.reass.is_non_first_fragment)
 		{
+		  udp0->src_port = s0->out2in.port;
 		  if (PREDICT_FALSE (udp0->checksum))
 		    {
 		      old_port0 = vnet_buffer (b0)->ip.reass.l4_src_port;
-		      new_port0 = udp0->src_port = s0->out2in.port;
+		      new_port0 = udp0->src_port;
 		      sum0 = udp0->checksum;
 		      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t, dst_address	/* changed member */
 			);
@@ -1325,10 +1326,11 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	    {
 	      if (!vnet_buffer (b0)->ip.reass.is_non_first_fragment)
 		{
+		  udp1->src_port = s1->out2in.port;
 		  if (PREDICT_FALSE (udp1->checksum))
 		    {
 		      old_port1 = vnet_buffer (b1)->ip.reass.l4_src_port;
-		      new_port1 = udp1->src_port = s1->out2in.port;
+		      new_port1 = udp1->src_port;
 		      sum1 = udp1->checksum;
 		      sum1 = ip_csum_update (sum1, old_addr1, new_addr1, ip4_header_t, dst_address	/* changed member */
 			);
@@ -1567,10 +1569,11 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	    {
 	      if (!vnet_buffer (b0)->ip.reass.is_non_first_fragment)
 		{
+		  udp0->src_port = s0->out2in.port;
 		  if (PREDICT_FALSE (udp0->checksum))
 		    {
 		      old_port0 = vnet_buffer (b0)->ip.reass.l4_src_port;
-		      new_port0 = udp0->src_port = s0->out2in.port;
+		      new_port0 = udp0->src_port;
 		      sum0 = udp0->checksum;
 		      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t, dst_address	/* changed member */
 			);
