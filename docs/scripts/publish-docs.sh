@@ -59,6 +59,7 @@ else
     rm -fr $TARGET_DIR
     mkdir -p $TARGET_DIR
     VERSION=v$VPP_BRANCH
+    rm ./static/docs/vpp/latest
     ln -s $VERSION ./static/docs/vpp/latest
 fi
 
