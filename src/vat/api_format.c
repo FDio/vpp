@@ -2958,7 +2958,7 @@ vl_api_one_eid_table_details_t_handler (vl_api_one_eid_table_details_t * mp)
     s = format (0, "%d", clib_net_to_host_u32 (mp->locator_set_index));
 
   eid = format (0, "%U", format_lisp_eid_vat,
-		mp->deid, mp->seid, mp->is_src_dst);
+		&mp->deid, &mp->seid, mp->is_src_dst);
   vec_add1 (eid, 0);
 
   print (vam->ofp, "[%d] %-35s%-20s%-30s%-20d%-20d%-10d%-20s",
@@ -3007,7 +3007,7 @@ vl_api_one_eid_table_details_t_handler_json (vl_api_one_eid_table_details_t
   else
     {
       eid = format (0, "%U", format_lisp_eid_vat,
-		    mp->deid, mp->seid, mp->is_src_dst);
+		    &mp->deid, &mp->seid, mp->is_src_dst);
       vec_add1 (eid, 0);
       vat_json_object_add_string_copy (node, "eid", eid);
       vec_free (eid);
@@ -3031,9 +3031,9 @@ vl_api_one_stats_details_t_handler (vl_api_one_stats_details_t * mp)
   u8 *seid = 0, *deid = 0;
   ip46_address_t lloc, rloc;
 
-  deid = format (0, "%U", format_lisp_eid_vat, mp->deid, 0);
+  deid = format (0, "%U", format_lisp_eid_vat, &mp->deid, 0, 0);
 
-  seid = format (0, "%U", format_lisp_eid_vat, mp->seid, 0);
+  seid = format (0, "%U", format_lisp_eid_vat, &mp->seid, 0, 0);
 
   vec_add1 (deid, 0);
   vec_add1 (seid, 0);
@@ -3079,9 +3079,9 @@ vl_api_one_stats_details_t_handler_json (vl_api_one_stats_details_t * mp)
   node = vat_json_array_add (&vam->json_tree);
 
   vat_json_init_object (node);
-  deid = format (0, "%U", format_lisp_eid_vat, mp->deid, 0);
+  deid = format (0, "%U", &format_lisp_eid_vat, mp->deid, 0, 0);
 
-  seid = format (0, "%U", format_lisp_eid_vat, mp->seid, 0);
+  seid = format (0, "%U", &format_lisp_eid_vat, mp->seid, 0, 0);
 
   vec_add1 (deid, 0);
   vec_add1 (seid, 0);
