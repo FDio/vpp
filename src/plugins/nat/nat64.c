@@ -225,6 +225,7 @@ nat64_init (vlib_main_t * vm)
   nm->out2in_node_index = node->index;
 
   /* set session timeouts to default values */
+  // TODO: can be removed
   nm->udp_timeout = SNAT_UDP_TIMEOUT;
   nm->icmp_timeout = SNAT_ICMP_TIMEOUT;
   nm->tcp_trans_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;

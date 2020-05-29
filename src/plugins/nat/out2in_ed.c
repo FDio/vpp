@@ -959,7 +959,6 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next, pkts_processed = 0, stats_node_index;
   nat_next_t next_index;
   snat_main_t *sm = &snat_main;
-  // HERE
   f64 now = vlib_time_now (vm);
   u32 thread_index = vm->thread_index;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];

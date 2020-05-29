@@ -50,6 +50,14 @@
 
 typedef enum
 {
+  NAT_TYPE_NO,
+  NAT_TYPE_44,
+  NAT_TYPE_64,
+  NAT_TYPE_66
+} nat_type_t;
+
+typedef enum
+{
   NAT_NEXT_DROP,
   NAT_NEXT_ICMP_ERROR,
   NAT_NEXT_IN2OUT_ED_FAST_PATH,
@@ -617,7 +625,6 @@ typedef struct snat_main_s
   u32 ed_hairpin_dst_node_index;
   u32 ed_hairpin_src_node_index;
 
-
   /* Deterministic NAT mappings */
   snat_det_map_t *det_maps;
 
@@ -625,19 +632,24 @@ typedef struct snat_main_s
   u8 forwarding_enabled;
 
   /* Config parameters */
+  u8 out2in_dpo;
   u8 static_mapping_only;
   u8 static_mapping_connection_tracking;
+
   u8 deterministic;
-  u8 out2in_dpo;
   u8 endpoint_dependent;
+  u8 endpoint_independent;
 
   u32 translation_buckets;
-  uword translation_memory_size;
+  u32 translation_memory_size;
   u32 max_translations;
   u32 *max_translations_per_fib;
 
+  u32 static_mapping_buckets;
+  u32 static_mapping_memory_size;
+
   u32 user_buckets;
-  uword user_memory_size;
+  u32 user_memory_size;
   u32 max_translations_per_user;
 
   u32 outside_vrf_id;
@@ -658,6 +670,7 @@ typedef struct snat_main_s
   /* counters/gauges */
   vlib_simple_counter_main_t total_users;
   vlib_simple_counter_main_t total_sessions;
+  vlib_simple_counter_main_t created_sessions;
 
   /* API message ID base */
   u16 msg_id_base;

@@ -1417,6 +1417,7 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
 {
   snat_main_t *sm = &snat_main;
   unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index;
   int rv;
   int is_del = 0;
@@ -1433,7 +1434,7 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-		    sm->vnet_main, &sw_if_index))
+		    vnm, &sw_if_index))
 	;
       else if (unformat (line_input, "twice-nat"))
 	twice_nat = 1;
