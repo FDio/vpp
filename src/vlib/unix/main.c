@@ -160,22 +160,13 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
 
   if (fatal)
     {
-      syslog (LOG_ERR | LOG_DAEMON, "%s", syslog_msg);
-
       /* Address of callers: outer first, inner last. */
       uword callers[15];
       uword n_callers = clib_backtrace (callers, ARRAY_LEN (callers), 0);
-      int i;
-      for (i = 0; i < n_callers; i++)
-	{
-	  vec_reset_length (syslog_msg);
-
-	  syslog_msg =
-	    format (syslog_msg, "#%-2d 0x%016lx %U%c", i, callers[i],
-		    format_clib_elf_symbol_with_address, callers[i], 0);
-
-	  syslog (LOG_ERR | LOG_DAEMON, "%s", syslog_msg);
-	}
+      syslog_msg =
+	format (syslog_msg, "%U%c", format_clib_elf_backtrace, callers,
+		n_callers, 0);
+      syslog (LOG_ERR | LOG_DAEMON, "%s", syslog_msg);
 
       /* have to remove SIGABRT to avoid recursive - os_exit calling abort() */
       unsetup_signal_handlers (SIGABRT);

@@ -51,6 +51,8 @@
 #define VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA 16384
 #define VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA_UNPRIV 8192
 
+#define VLIB_BUFFER_TRACE_FREE 1
+
 #ifdef CLIB_HAVE_VEC128
 /* Assumptions by vlib_buffer_free_inline: */
 STATIC_ASSERT_FITS_IN (vlib_buffer_t, flags, 16);
@@ -349,13 +351,28 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
 
   is_free = expected_state == VLIB_BUFFER_KNOWN_ALLOCATED;
   b = buffers;
+
+  clib_spinlock_lock (&bm->buffer_known_hash_lockp);
+
+#ifdef VLIB_BUFFER_TRACE_FREE
+  uword v[8];
+  if (!bm->buffer_known_hash)
+    bm->buffer_known_hash = hash_create (bm->buffers_per_numa, sizeof (v));
+#endif
+
   for (i = 0; i < n_buffers; i++)
     {
       vlib_buffer_known_state_t known;
 
       bi = b[0];
       b += 1;
+
+#ifdef VLIB_BUFFER_TRACE_FREE
+      uword *p = hash_get (bm->buffer_known_hash, bi);
+      known = p ? p[0] : VLIB_BUFFER_UNKNOWN;
+#else
       known = vlib_buffer_is_known (vm, bi);
+#endif
 
       if (known == VLIB_BUFFER_UNKNOWN &&
 	  expected_state == VLIB_BUFFER_KNOWN_FREE)
@@ -363,15 +380,29 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
 
       if (known != expected_state)
 	{
-	  clib_panic ("%s %U buffer 0x%x", is_free ? "freeing" : "allocating",
-		      format_vlib_buffer_known_state, known, bi);
+	  u8 *s = format (0, "%s %U buffer 0x%x",
+			  is_free ? "freeing" : "allocating",
+			  format_vlib_buffer_known_state, known, bi);
+#ifdef VLIB_BUFFER_TRACE_FREE
+	  s =
+	    format (s, ". Previous backtrace:\n%U", format_clib_elf_backtrace,
+		    &p[1], (uword) 7);
+#endif
+	  clib_panic ("%v", s);
 	}
 
-      clib_spinlock_lock (&bm->buffer_known_hash_lockp);
-      hash_set (bm->buffer_known_hash, bi, is_free ? VLIB_BUFFER_KNOWN_FREE :
-		VLIB_BUFFER_KNOWN_ALLOCATED);
-      clib_spinlock_unlock (&bm->buffer_known_hash_lockp);
+      known = is_free ? VLIB_BUFFER_KNOWN_FREE : VLIB_BUFFER_KNOWN_ALLOCATED;
+#ifdef VLIB_BUFFER_TRACE_FREE
+      clib_memset_u64 (v, 0, 8);
+      v[0] = known;
+      clib_backtrace (&v[1], 7, 1);
+      _hash_set3 (bm->buffer_known_hash, bi, v, 0);
+#else
+      hash_set (bm->buffer_known_hash, bi, known);
+#endif
     }
+
+  clib_spinlock_unlock (&bm->buffer_known_hash_lockp);
 }
 
 void

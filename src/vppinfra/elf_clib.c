@@ -368,6 +368,21 @@ format_clib_elf_symbol_with_address (u8 * s, va_list * args)
   return s;
 }
 
+u8 *
+format_clib_elf_backtrace (u8 * s, va_list * args)
+{
+  uword *callers = va_arg (*args, uword *);
+  uword max_callers = va_arg (*args, uword);
+  uword i;
+
+  for (i = 0; i < max_callers; i++)
+    s =
+      format (s, "#%-2wu 0x%016lx %U\n", i, callers[i],
+	      format_clib_elf_symbol_with_address, callers[i]);
+
+  return s;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
