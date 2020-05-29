@@ -37,6 +37,7 @@ build option, so all VPP targets should be supported. For example:
 
 Once VPP has been built with ASan support you can use it as usual including
 under gdb:
+
 .. code-block:: console
 
     $ gdb --args $PWD/build-root/install-vpp_debug-native/vpp/bin/vpp "unix { interactive }"
