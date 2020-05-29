@@ -554,21 +554,28 @@ adj_nbr_walk (u32 sw_if_index,
 	      adj_walk_cb_t cb,
 	      void *ctx)
 {
+    adj_index_t ai, *ais, *aip;
     adj_nbr_key_t *key;
-    adj_index_t ai;
 
     if (!ADJ_NBR_ITF_OK(adj_nh_proto, sw_if_index))
 	return;
 
-    if (adj_nbr_tables[adj_nh_proto][sw_if_index] ||
-        hash_elts(adj_nbr_tables[adj_nh_proto][sw_if_index]))
+    ais = NULL;
+
+    /* elements may be removed from the table during the walk, so
+     * collect the set first then process them */
+    hash_foreach_mem (key, ai, adj_nbr_tables[adj_nh_proto][sw_if_index],
+    ({
+        vec_add1(ais, ai);
+    }));
+
+    vec_foreach(aip, ais)
     {
-        hash_foreach_mem (key, ai, adj_nbr_tables[adj_nh_proto][sw_if_index],
-        ({
-            ASSERT(key);
-            cb(ai, ctx);
-        }));
+        /* An adj may be deleted during the walk so check first */
+        if (!pool_is_free_index(adj_pool, *aip))
+            cb(*aip, ctx);
     }
+    vec_free(ais);
 }
 
 /**
