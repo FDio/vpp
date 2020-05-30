@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b1e01dc2_a82275db",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-30T00:45:38Z",
+      "side": 1,
+      "message": "self.assertIn(pkt[UDP].chksum, [0, chksum_scapy])\ngives AssertionError: 1234 not found in [0, 12345]\nas it is, it returns True is not False, which is not useful.",
+      "range": {
+        "startLine": 91,
+        "startChar": 0,
+        "endLine": 92,
+        "endChar": 56
+      },
+      "revId": "12920fd6111fcd3c501e7915727d9b254d051b48",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
