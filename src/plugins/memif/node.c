@@ -205,7 +205,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   ring_size = 1 << mq->log2_ring_size;
   mask = ring_size - 1;
 
-  /* asume that somebody will want to add ethernet header on the packet
+  /* assume that somebody will want to add ethernet header on the packet
      so start with IP header at offset 14 */
   start_offset = (mode == MEMIF_INTERFACE_MODE_IP) ? 14 : 0;
 

@@ -116,7 +116,7 @@ autoreply define memif_delete
 /** \brief Memory interface details structure
     @param context - sender context, to match reply w/ request
     @param socket_id - u32 used to identify the given socket filename
-    @param socket_filename - correpsonding NUL terminated socket filename
+    @param socket_filename - corresponding NUL terminated socket filename
 */
 define memif_socket_filename_details
 {

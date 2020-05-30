@@ -76,7 +76,7 @@ const char *memif_errlist[ERRLIST_LEN] = {	/* MEMIF_ERR_SUCCESS */
   /* MEMIF_ERR_CONNREFUSED */
   "Connection refused",
   /* MEMIF_ERR_ACCES */
-  "Permission to resoure denied.",
+  "Permission to resource denied.",
   /* MEMIF_ERR_NO_FILE */
   "Socket file does not exist",
   /* MEMIF_ERR_FILE_LIMIT */
@@ -94,7 +94,7 @@ const char *memif_errlist[ERRLIST_LEN] = {	/* MEMIF_ERR_SUCCESS */
   /* MEMIF_ERR_INVAL_ARG */
   "Invalid argument.",
   /* MEMIF_ERR_NOCONN */
-  "Memif connection handle does not point to existing conenction",
+  "Memif connection handle does not point to existing connection",
   /* MEMIF_ERR_CONN */
   "Memif connection handle points to existing connection",
   /* MEMIF_ERR_CB_FDUPDATE */

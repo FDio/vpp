@@ -95,7 +95,7 @@ uint8_t enable_log;
 typedef struct
 {
   uint16_t index;
-  /* memif conenction handle */
+  /* memif connection handle */
   memif_conn_handle_t conn;
   /* tx buffers */
   memif_buffer_t *tx_bufs;
@@ -104,7 +104,7 @@ typedef struct
   uint16_t tx_buf_num;
   /* rx buffers */
   memif_buffer_t *rx_bufs;
-  /* allcoated rx buffers counter */
+  /* allocated rx buffers counter */
   /* number of rx buffers pointing to shared memory */
   uint16_t rx_buf_num;
   /* interface ip address */
@@ -258,7 +258,7 @@ mod_epoll_fd (int fd, uint32_t events)
       DBG ("epoll_ctl: %s fd %d", strerror (errno), fd);
       return -1;
     }
-  DBG ("fd %d moddified on epoll", fd);
+  DBG ("fd %d modified on epoll", fd);
   return 0;
 }
 
@@ -328,7 +328,7 @@ icmpr_buffer_alloc (long index, long n, uint16_t * r, uint16_t i,
 {
   memif_connection_t *c = &memif_connection[index];
   int err;
-  /* set data pointer to shared memory and set buffer_len to shared mmeory buffer len */
+  /* set data pointer to shared memory and set buffer_len to shared memory buffer len */
   err = memif_buffer_alloc (c->conn, qid, c->tx_bufs + i, n, r, 128);
   if ((err != MEMIF_ERR_SUCCESS) && (err != MEMIF_ERR_NOBUF_RING))
     {
@@ -373,7 +373,7 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   int err = MEMIF_ERR_SUCCESS, ret_val;
   uint16_t rx = 0, tx = 0;
   int i = 0;			/* rx buffer iterator */
-  int j = 0;			/* tx bufferiterator */
+  int j = 0;			/* tx buffer iterator */
 
   /* loop while there are packets in shm */
   do
@@ -487,7 +487,7 @@ on_interrupt0 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
 	    }
 	  j = 0;
 
-	  /* process bufers */
+	  /* process buffers */
 	  while (tx)
 	    {
 	      while (tx > 2)
@@ -737,7 +737,7 @@ icmpr_memif_delete (long index)
   c->tx_buf_num = 0;
 
   int err;
-  /* disconenct then delete memif connection */
+  /* disconnect then delete memif connection */
   err = memif_delete (&c->conn);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_delete: %s", memif_strerror (err));
@@ -990,7 +990,7 @@ icmpr_send_proc (void *data)
     }
   timespec_get (&end, TIME_UTC);
   printf ("\n\n");
-  INFO ("Pakcet sequence finished!");
+  INFO ("Packet sequence finished!");
   INFO ("Seq len: %u", seq);
   uint64_t t1 = end.tv_sec - start.tv_sec;
   uint64_t t2;
@@ -1237,7 +1237,7 @@ poll_event (int timeout)
       if (evt.data.fd > 2)
 	{
 	  /* event of memif control fd */
-	  /* convert epolle events to memif events */
+	  /* convert epoll events to memif events */
 	  if (evt.events & EPOLLIN)
 	    events |= MEMIF_FD_EVENT_READ;
 	  if (evt.events & EPOLLOUT)
