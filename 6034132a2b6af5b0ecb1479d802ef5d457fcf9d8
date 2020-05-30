@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1d8d8ae1_0b6dcc8e",
+        "filename": "test/test_gro.py",
+        "patchSetId": 27
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-30T13:45:43Z",
+      "side": 1,
+      "message": "pep8 specifies that this belongs above line 10.",
+      "range": {
+        "startLine": 21,
+        "startChar": 0,
+        "endLine": 21,
+        "endChar": 47
+      },
+      "revId": "6034132a2b6af5b0ecb1479d802ef5d457fcf9d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "44dabce5_c564ce3e",
+        "filename": "test/test_gro.py",
+        "patchSetId": 27
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-30T13:45:43Z",
+      "side": 1,
+      "message": "What is the purpose of this?",
+      "range": {
+        "startLine": 31,
+        "startChar": 0,
+        "endLine": 33,
+        "endChar": 41
+      },
+      "revId": "6034132a2b6af5b0ecb1479d802ef5d457fcf9d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f2516e4d_b7116b56",
+        "filename": "test/test_gro.py",
+        "patchSetId": 27
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-30T13:45:43Z",
+      "side": 1,
+      "message": "setting sport \u003d\u003d dport masks possible transcription errors in the code under test.",
+      "range": {
+        "startLine": 79,
+        "startChar": 18,
+        "endLine": 79,
+        "endChar": 41
+      },
+      "revId": "6034132a2b6af5b0ecb1479d802ef5d457fcf9d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "96c189f5_319e1ae9",
+        "filename": "test/test_gro.py",
+        "patchSetId": 27
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-05-30T13:45:43Z",
+      "side": 1,
+      "message": "calculating i is unnecessary. self.assertEqual(i, n_packets) is unnecessary.  It is already incorporated in send_and_expect().",
+      "range": {
+        "startLine": 92,
+        "startChar": 25,
+        "endLine": 92,
+        "endChar": 26
+      },
+      "revId": "6034132a2b6af5b0ecb1479d802ef5d457fcf9d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
