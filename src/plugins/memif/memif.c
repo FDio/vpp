@@ -218,7 +218,7 @@ memif_int_fd_read_ready (clib_file_t * uf)
   size = read (uf->file_descriptor, &b, sizeof (b));
   if (size < 0)
     {
-      memif_log_debug (mif, "Failed to read form socket");
+      memif_log_debug (mif, "Failed to read from socket");
       return 0;
     }
 

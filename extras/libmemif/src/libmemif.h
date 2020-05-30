@@ -85,10 +85,10 @@ typedef enum
  * @{
  */
 
-/** user needs to set events that occured on fd and pass them to memif_control_fd_handler */
+/** user needs to set events that occurred on fd and pass them to memif_control_fd_handler */
 #define MEMIF_FD_EVENT_READ  (1 << 0)
 #define MEMIF_FD_EVENT_WRITE (1 << 1)
-/** inform libmemif that error occured on fd */
+/** inform libmemif that error occurred on fd */
 #define MEMIF_FD_EVENT_ERROR (1 << 2)
 /** if set, informs that fd is going to be closed (user may want to stop watching for events on this fd) */
 #define MEMIF_FD_EVENT_DEL   (1 << 3)
@@ -167,10 +167,10 @@ typedef int (memif_control_fd_update_t) (int fd, uint8_t events,
 typedef int (memif_connection_update_t) (memif_conn_handle_t conn,
 					 void *private_ctx);
 
-/** \brief Memif interrupt occured (callback function)
+/** \brief Memif interrupt occurred (callback function)
     @param conn - memif connection handle
     @param private_ctx - private context
-    @param qid - queue id on which interrupt occured
+    @param qid - queue id on which interrupt occurred
 
     Called when event is received on interrupt fd.
 */
@@ -244,7 +244,7 @@ void memif_register_external_region (memif_add_external_region_t * ar,
     @param gr - get external region addr callback
     @param dr - delete external region callback
     @param go - get external buffer offset callback (optional)
-*/
+
 void memif_per_thread_register_external_region (memif_per_thread_main_handle_t
 						pt_main,
 						memif_add_external_region_t *
@@ -256,7 +256,7 @@ void memif_per_thread_register_external_region (memif_per_thread_main_handle_t
 						memif_get_external_buffer_offset_t
 						* go);
 
-/** @} */
+ @} */
 
 /**
  * @defgroup ARGS_N_BUFS Connection arguments and buffers
@@ -688,7 +688,7 @@ int memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
 */
 int memif_poll_event (int timeout);
 
-/** \brief Memif poll event
+/** \brief Memif per thread poll event
     @param pt_main - per thread main handle
     @param timeout - timeout in seconds
 

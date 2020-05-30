@@ -363,7 +363,7 @@ memif_msg_receive_add_ring (memif_if_t * mif, memif_msg_t * msg, int fd)
       mif->run.num_m2s_rings = vec_len (mif->tx_queues);
     }
 
-  // clear previous cache data if interface reconncected
+  // clear previous cache data if interface reconnected
   clib_memset (mq, 0, sizeof (memif_queue_t));
   mq->int_fd = fd;
   mq->int_clib_file_index = ~0;

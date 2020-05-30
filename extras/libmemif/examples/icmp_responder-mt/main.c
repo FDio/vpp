@@ -94,7 +94,7 @@ typedef struct
 typedef struct
 {
   uint16_t index;
-  /* memif conenction handle */
+  /* memif connection handle */
   memif_conn_handle_t conn;
   /* interface ip address */
   uint8_t ip_addr[4];
@@ -241,7 +241,7 @@ mod_epoll_fd (int epfd, int fd, uint32_t events)
       DBG ("epoll_ctl: %s fd %d", strerror (errno), fd);
       return -1;
     }
-  DBG ("fd %d moddified on epoll", fd);
+  DBG ("fd %d modified on epoll", fd);
   return 0;
 }
 
@@ -548,7 +548,7 @@ on_disconnect (memif_conn_handle_t conn, void *private_ctx)
   memif_connection_t *c = &memif_connection[index];
   int i, ti;
   INFO ("memif disconnected!");
-  /* inform thread in polling mode about memif disconenction */
+  /* inform thread in polling mode about memif disconnection */
   c->pending_del = 1;
   for (i = 0; i < MAX_QUEUES; i++)
     {
@@ -649,7 +649,7 @@ icmpr_memif_delete (long index)
   memif_connection_t *c = &memif_connection[index];
 
   int err;
-  /* disconenct then delete memif connection */
+  /* disconnect then delete memif connection */
   err = memif_delete (&c->conn);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_delete: %s", memif_strerror (err));
@@ -845,7 +845,7 @@ poll_event (int timeout)
       if (evt.data.fd > 2)
 	{
 	  /* event of memif control fd */
-	  /* convert epolle events to memif events */
+	  /* convert epoll events to memif events */
 	  if (evt.events & EPOLLIN)
 	    events |= MEMIF_FD_EVENT_READ;
 	  if (evt.events & EPOLLOUT)
