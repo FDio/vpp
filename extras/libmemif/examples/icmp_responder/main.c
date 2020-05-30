@@ -193,7 +193,7 @@ int
 icmpr_memif_delete ()
 {
   int err;
-  /* disconenct then delete memif connection */
+  /* disconnect then delete memif connection */
   err = memif_delete (&(&memif_connection)->conn);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_delete: %s", memif_strerror (err));
@@ -224,7 +224,7 @@ icmpr_buffer_alloc (long n, uint16_t qid)
   memif_connection_t *c = &memif_connection;
   int err;
   uint16_t r;
-  /* set data pointer to shared memory and set buffer_len to shared mmeory buffer len */
+  /* set data pointer to shared memory and set buffer_len to shared memory buffer len */
   err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, n, &r, 0);
   if (err != MEMIF_ERR_SUCCESS)
     {

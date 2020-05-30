@@ -90,14 +90,14 @@ uint8_t enable_log;
 typedef struct
 {
   uint16_t index;
-  /* memif conenction handle */
+  /* memif connection handle */
   memif_conn_handle_t conn;
   /* buffers */
   memif_buffer_t *bufs;
   /* allocated tx buffers counter */
   /* number of tx buffers pointing to shared memory */
   uint16_t tx_buf_num;
-  /* allcoated rx buffers counter */
+  /* allocated rx buffers counter */
   /* number of rx buffers pointing to shared memory */
   uint16_t rx_buf_num;
   /* interface ip address */
@@ -250,7 +250,7 @@ mod_epoll_fd (int fd, uint32_t events)
       DBG ("epoll_ctl: %s fd %d", strerror (errno), fd);
       return -1;
     }
-  DBG ("fd %d moddified on epoll", fd);
+  DBG ("fd %d modified on epoll", fd);
   return 0;
 }
 
@@ -346,14 +346,14 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
 	  goto error;
 	}
 
-      /* process bufers in place */
+      /* process buffers in place */
       for (i = 0; i < rx; i++)
 	{
 	  resolve_packet2 ((void *) (c->bufs + i)->data,
 			   &(c->bufs + i)->len, c->ip_addr);
 	}
 
-      /* enque processed buffers to tx ring */
+      /* enqueue processed buffers to tx ring */
       err = memif_buffer_enq_tx (c->conn, qid, c->bufs, i, &tx);
       if ((err != MEMIF_ERR_SUCCESS) && (err != MEMIF_ERR_NOBUF_RING))
 	{
@@ -397,7 +397,7 @@ error:
   return 0;
 }
 
-/* add ethernet encap to packet in rx buffer then enqueue this buffer to tx and tranmit */
+/* add ethernet encap to packet in rx buffer then enqueue this buffer to tx and transmit */
 int
 on_interrupt0 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
 {
@@ -658,7 +658,7 @@ icmpr_memif_delete (long index)
   c->rx_buf_num = 0;
 
   int err;
-  /* disconenct then delete memif connection */
+  /* disconnect then delete memif connection */
   err = memif_delete (&c->conn);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_delete: %s", memif_strerror (err));
@@ -1181,7 +1181,7 @@ poll_event (int timeout)
       if (evt.data.fd > 2)
 	{
 	  /* event of memif control fd */
-	  /* convert epolle events to memif events */
+	  /* convert epoll events to memif events */
 	  if (evt.events & EPOLLIN)
 	    events |= MEMIF_FD_EVENT_READ;
 	  if (evt.events & EPOLLOUT)

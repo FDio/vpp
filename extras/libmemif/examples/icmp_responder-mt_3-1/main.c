@@ -123,7 +123,7 @@ mod_epoll_fd (int epfd, int fd, uint32_t events)
       DBG ("epoll_ctl: %s fd %d", strerror (errno), fd);
       return -1;
     }
-  DBG ("fd %d moddified on epoll", fd);
+  DBG ("fd %d modified on epoll", fd);
   return 0;
 }
 
@@ -334,7 +334,7 @@ icmpr_thread_fn (void *data)
       return NULL;
     }
 
-  /*  Create unique socket. Each thread requires uniqueue socket. Interfaces created
+  /*  Create unique socket. Each thread requires a unique socket. Interfaces created
    *  on the same thread can share one socket.
    */
   socket_filename[strlen (socket_filename)] = '0' + ptd->index;
