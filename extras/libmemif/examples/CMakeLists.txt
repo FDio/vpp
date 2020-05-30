@@ -13,6 +13,15 @@
 
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
+include(CheckFunctionExists)
+check_function_exists(memfd_create HAVE_MEMFD_CREATE)
+if(${HAVE_MEMFD_CREATE})
+  add_definitions(-DHAVE_MEMFD_CREATE)
+endif()
+
+find_package(Threads REQUIRED)
+include_directories(${CMAKE_THREADS_INCLUDE_DIRS})
+
 set(HEADERS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/icmp_responder)
 
 set(COMMON_SOURCE_FILES
