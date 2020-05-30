@@ -1,20 +1,28 @@
-FROM ubuntu:xenial
+FROM ubuntu:bionic
 
 RUN apt-get update && \
-	apt-get install -y git build-essential autoconf pkg-config libtool sudo check
+	apt-get install -y git build-essential autoconf pkg-config libtool sudo check cmake ninja-build
 RUN rm -rf /var/lib/apt/lists/*
+
 
 RUN mkdir /libmemif
 ADD . /libmemif
 WORKDIR /libmemif
 
-RUN ./bootstrap
-RUN ./configure
-RUN make
-RUN make install
+RUN mkdir build
+WORKDIR /libmemif/build
+RUN cmake -G Ninja  ../src
+RUN ninja
+RUN ninja install
+
+RUN cd ..
+RUN mkdir build_examples
+WORKDIR /libmemif/build_examples
+RUN cmake -G Ninja -B build_examples ../examples
+RUN ninja
 
 RUN mkdir /run/vpp
 
 RUN ulimit -c unlimited
 
-CMD ./.libs/icmpr-epoll
+CMD ./icmp_responder-epoll

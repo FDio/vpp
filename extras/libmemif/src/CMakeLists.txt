@@ -12,6 +12,7 @@
 # limitations under the License.
 
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
+include(CheckFunctionExists)
 
 set(HEADERS_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -31,6 +32,14 @@ list(APPEND MEMIF_SOURCES
 )
 
 include_directories(${HEADERS_DIR})
+if (NOT CMAKE_LIBRARY_OUTPUT_DIRECTORY)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY /usr/lib)
+endif ()
+
+check_function_exists(memfd_create HAVE_MEMFD_CREATE)
+if(${HAVE_MEMFD_CREATE})
+  add_definitions(-DHAVE_MEMFD_CREATE)
+endif()
 
 add_library(memif SHARED ${MEMIF_SOURCES})
 target_link_libraries(memif ${CMAKE_THREAD_LIBS_INIT})
