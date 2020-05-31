@@ -743,6 +743,14 @@ docs-clean:
 	@rm -rf $(DOCS_DIR)/_build
 	@rm -rf $(VENV_DIR)
 
+.PHONY: libmemif-install
+libmemif-install:
+	@make -C build-root PLATFORM=vpp TAG=vpp libmemif-install
+
+.PHONY: vom-install
+vom-install:
+	@make -C build-root PLATFORM=vpp TAG=vpp vom-install
+
 .PHONY: pkg-verify
 pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
 	$(call banner,"Building for PLATFORM=vpp using gcc")
