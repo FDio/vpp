@@ -325,6 +325,7 @@ typedef struct
    * the interface even if it is disconnected and reconnected.
    */
   i16 qid;
+  u32 queue_index;
 
   u16 used_wrap_counter;
   u16 avail_wrap_counter;

@@ -448,10 +448,9 @@ VLIB_NODE_FN (virtio_input_node) (vlib_main_t * vm,
 {
   u32 n_rx = 0;
   virtio_main_t *nm = &virtio_main;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
   vnet_device_and_queue_t *dq;
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
+  foreach_hw_if_rx_queue (dq, node)
   {
     virtio_if_t *vif;
     vif = vec_elt_at_index (nm->interfaces, dq->dev_instance);

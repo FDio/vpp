@@ -873,12 +873,11 @@ VLIB_NODE_FN (memif_input_node) (vlib_main_t * vm,
 {
   u32 n_rx = 0;
   memif_main_t *mm = &memif_main;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
   vnet_device_and_queue_t *dq;
   memif_interface_mode_t mode_ip = MEMIF_INTERFACE_MODE_IP;
   memif_interface_mode_t mode_eth = MEMIF_INTERFACE_MODE_ETHERNET;
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
+  foreach_hw_if_rx_queue (dq, node)
   {
     memif_if_t *mif;
     mif = vec_elt_at_index (mm->interfaces, dq->dev_instance);

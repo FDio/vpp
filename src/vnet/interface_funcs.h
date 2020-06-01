@@ -309,6 +309,19 @@ vnet_hw_interface_get_mtu (vnet_main_t * vnm, u32 hw_if_index)
   return hw->max_packet_bytes;
 }
 
+always_inline vnet_hw_if_rx_queue_t *
+vnet_hw_interface_get_rx_queue (vnet_main_t * vnm, u32 hw_if_index,
+				u16 queue_id)
+{
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  vnet_interface_main_t *im = &vnm->interface_main;
+  uword *p = hash_get (hw->rx_queue_index_by_rx_queue_id, queue_id);
+  if (p)
+    return pool_elt_at_index (im->hw_if_rx_queues, p[0]);
+  return 0;
+}
+
+
 always_inline u32
 vnet_sw_interface_get_mtu (vnet_main_t * vnm, u32 sw_if_index, vnet_mtu_t af)
 {
@@ -407,8 +420,7 @@ clib_error_t *set_hw_interface_change_rx_mode (vnet_main_t * vnm,
 					       u32 hw_if_index,
 					       u8 queue_id_valid,
 					       u32 queue_id,
-					       vnet_hw_interface_rx_mode
-					       mode);
+					       vnet_hw_if_rx_mode mode);
 
 /* Set rx-placement on the interface */
 clib_error_t *set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
@@ -433,7 +445,7 @@ void vnet_sw_interface_ip_directed_broadcast (vnet_main_t * vnm,
 
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;
-format_function_t format_vnet_hw_interface_rx_mode;
+format_function_t format_vnet_hw_if_rx_mode;
 format_function_t format_vnet_hw_if_index_name;
 format_function_t format_vnet_sw_interface;
 format_function_t format_vnet_sw_interface_name;
@@ -496,6 +508,78 @@ u8 *format_vnet_interface_output_trace (u8 * s, va_list * va);
 
 serialize_function_t serialize_vnet_interface_state,
   unserialize_vnet_interface_state;
+
+void vnet_hw_if_update_runtime_data (vnet_main_t * vnm, u32 hw_if_index);
+
+void vnet_hw_if_set_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
+			     vnet_hw_if_rx_mode mode);
+u32 vnet_hw_if_register_rx_queue (vnet_main_t * vnm, u32 hw_if_index,
+				  u32 queue_id, u32 thread_idnex);
+void vnet_hw_if_unregister_rx_queue (vnet_main_t * vnm, u32 queue_index);
+void vnet_hw_if_unregister_all_rx_queues (vnet_main_t * vnm, u32 hw_if_index);
+void vnet_hw_if_set_rx_queue_file_index (vnet_main_t * vnm, u32 queue_index,
+					 u32 file_index);
+void vnet_hw_if_set_rx_queue_thread_index (vnet_main_t * vnm, u32 queue_index,
+					   u32 thread_index);
+u32 vnet_hw_if_get_rx_queue_numa_node (vnet_main_t * vnm, u32 queue_index);
+u32 vnet_hw_if_get_rx_queue_thread_index (vnet_main_t * vnm, u32 queue_index);
+u32 vnet_hw_if_get_rx_queue_index_by_queue_id (vnet_main_t * vnm,
+					       u32 hw_if_index,
+					       u32 queue_index);
+
+void vnet_hw_if_set_input_node (vnet_main_t * vnm, u32 hw_if_index,
+				u32 node_index);
+void vnet_hw_if_set_rx_queue_mode (vnet_main_t * vnm, u32 queue_index,
+				   vnet_hw_if_rx_mode mode);
+vnet_hw_if_rx_mode vnet_hw_if_get_rx_queue_mode (vnet_main_t * vnm,
+						 u32 queue_index);
+
+static_always_inline vnet_hw_if_rx_queue_t *
+vnet_hw_if_get_rx_queue (vnet_main_t * vnm, u32 queue_index)
+{
+  vnet_interface_main_t *im = &vnm->interface_main;
+  if (pool_is_free_index (im->hw_if_rx_queues, queue_index))
+    return 0;
+  return pool_elt_at_index (im->hw_if_rx_queues, queue_index);
+}
+
+static_always_inline void
+vnet_hw_if_rx_queue_set_int_pending (vnet_main_t * vnm, u32 queue_index)
+{
+  vnet_hw_if_rx_queue_t *rxq = vnet_hw_if_get_rx_queue (vnm, queue_index);
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, rxq->hw_if_index);
+  vlib_main_t *vm = vlib_mains[rxq->thread_index];
+  u32 data = hi->dev_instance << 16 | rxq->queue_id;
+
+  vlib_node_set_interrupt_pending_with_data (vm, hi->input_node_index, data);
+}
+
+static_always_inline void
+__foreach_hw_if_rx_queue (vlib_node_runtime_t * node,
+			  vnet_device_and_queue_t ** first,
+			  vnet_device_and_queue_t ** end)
+{
+  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
+
+  if (PREDICT_FALSE (node->state == VLIB_NODE_STATE_INTERRUPT))
+    {
+      static __thread vnet_device_and_queue_t int_dq;
+      int_dq.dev_instance = node->interrupt_data >> 16;
+      int_dq.queue_id = node->interrupt_data & 0xFF;
+      *first = &int_dq;
+      *end = &int_dq + 1;
+      return;
+    }
+
+  *first = rt->devices_and_queues;
+  *end = vec_end (rt->devices_and_queues);
+  return;
+}
+
+#define foreach_hw_if_rx_queue(dq, n) \
+  typeof(dq) __first_dq, __end_dq; \
+  __foreach_hw_if_rx_queue (n, &__first_dq, &__end_dq); \
+  for (dq = __first_dq; dq < __end_dq; dq++)
 
 #endif /* included_vnet_interface_funcs_h */
 

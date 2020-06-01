@@ -1287,6 +1287,9 @@ avf_irq_n_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
   avf_main_t *am = &avf_main;
   uword pd = vlib_pci_get_private_data (vm, h);
   avf_device_t *ad = pool_elt_at_index (am->devices, pd);
+  avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, line - 1);
+
+  fformat (stderr, "rx irq %u on thread_index %u\n", line, vm->thread_index);
 
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
@@ -1310,8 +1313,8 @@ avf_irq_n_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 
   line--;
 
-  if (ad->flags & AVF_DEVICE_F_RX_INT && ad->rxqs[line].int_mode)
-    vnet_device_input_set_interrupt_pending (vnm, ad->hw_if_index, line);
+  if (ad->flags & AVF_DEVICE_F_RX_INT && rxq->int_mode)
+    vnet_hw_if_rx_queue_set_int_pending (vnm, rxq->queue_index);
   avf_irq_n_set_state (ad, line, AVF_IRQ_STATE_ENABLED);
 }
 
@@ -1325,7 +1328,6 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad)
   if (ad->hw_if_index)
     {
       vnet_hw_interface_set_flags (vnm, ad->hw_if_index, 0);
-      vnet_hw_interface_unassign_rx_thread (vnm, ad->hw_if_index, 0);
       ethernet_delete_interface (vnm, ad->hw_if_index);
     }
 
@@ -1517,11 +1519,20 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, ad->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
-  vnet_hw_interface_set_input_node (vnm, ad->hw_if_index,
-				    avf_input_node.index);
+  vnet_hw_if_set_input_node (vnm, ad->hw_if_index, avf_input_node.index);
 
   for (i = 0; i < ad->n_rx_queues; i++)
-    vnet_hw_interface_assign_rx_thread (vnm, ad->hw_if_index, i, ~0);
+    {
+      u32 qi = vnet_hw_if_register_rx_queue (vnm, ad->hw_if_index, i,
+					     VNET_HW_IF_RXQ_THREAD_ANY);
+      if (ad->flags & AVF_DEVICE_F_RX_INT)
+	{
+	  u32 fi;
+	  fi = vlib_pci_get_msix_file_index (vm, ad->pci_dev_handle, i + 1);
+	  vnet_hw_if_set_rx_queue_file_index (vnm, qi, fi);
+	}
+      ad->rxqs[i].queue_index = qi;
+    }
 
   if (pool_elts (am->devices) == 1)
     vlib_process_signal_event (vm, avf_process_node.index,
@@ -1564,14 +1575,14 @@ avf_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
 static clib_error_t *
 avf_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
-			      vnet_hw_interface_rx_mode mode)
+			      vnet_hw_if_rx_mode mode)
 {
   avf_main_t *am = &avf_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   avf_device_t *ad = pool_elt_at_index (am->devices, hw->dev_instance);
   avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, qid);
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+  if (mode == VNET_HW_IF_RX_MODE_POLLING)
     {
       if (rxq->int_mode == 0)
 	return 0;

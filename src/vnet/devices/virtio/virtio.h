@@ -117,6 +117,7 @@ typedef struct
   u8 buffer_pool_index;
   u16 size;
   u16 queue_id;
+  u32 queue_index;
 #define VRING_TX_OUT_OF_ORDER 1
   u16 flags;
   u32 *buffers;
@@ -215,7 +216,7 @@ clib_error_t *virtio_vring_free_rx (vlib_main_t * vm, virtio_if_t * vif,
 clib_error_t *virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif,
 				    u32 idx);
 void virtio_vring_set_numa_node (vlib_main_t * vm, virtio_if_t * vif,
-				 u32 idx);
+				 u32 idx, u32 queue_index);
 extern void virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring);
 extern void virtio_free_rx_buffers (vlib_main_t * vm, virtio_vring_t * vring);
 extern void virtio_set_net_hdr_size (virtio_if_t * vif);

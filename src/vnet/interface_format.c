@@ -97,17 +97,17 @@ format_vnet_sw_interface_flags (u8 * s, va_list * args)
 }
 
 u8 *
-format_vnet_hw_interface_rx_mode (u8 * s, va_list * args)
+format_vnet_hw_if_rx_mode (u8 * s, va_list * args)
 {
-  vnet_hw_interface_rx_mode mode = va_arg (*args, vnet_hw_interface_rx_mode);
+  vnet_hw_if_rx_mode mode = va_arg (*args, vnet_hw_if_rx_mode);
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+  if (mode == VNET_HW_IF_RX_MODE_POLLING)
     return format (s, "polling");
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_INTERRUPT)
+  if (mode == VNET_HW_IF_RX_MODE_INTERRUPT)
     return format (s, "interrupt");
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_ADAPTIVE)
+  if (mode == VNET_HW_IF_RX_MODE_ADAPTIVE)
     return format (s, "adaptive");
 
   return format (s, "unknown");
@@ -134,6 +134,7 @@ format_vnet_hw_interface_link_speed (u8 * s, va_list * args)
 u8 *
 format_vnet_hw_interface (u8 * s, va_list * args)
 {
+  vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = va_arg (*args, vnet_main_t *);
   vnet_hw_interface_t *hi = va_arg (*args, vnet_hw_interface_t *);
   vnet_hw_interface_class_t *hw_class;
@@ -171,6 +172,24 @@ format_vnet_hw_interface (u8 * s, va_list * args)
 
   s = format (s, "\n%ULink speed: %U", format_white_space, indent + 2,
 	      format_vnet_hw_interface_link_speed, hi->link_speed);
+
+  if (hi->rx_queue_indices)
+    {
+      s = format (s, "\n%UReceive queues (handled by %U node):",
+		  format_white_space, indent + 2, format_vlib_node_name, vm,
+		  hi->input_node_index);
+      for (int i = 0; i < vec_len (hi->rx_queue_indices); i++)
+	{
+	  vnet_hw_if_rx_queue_t *rxq;
+	  rxq = pool_elt_at_index (vnm->interface_main.hw_if_rx_queues,
+				   hi->rx_queue_indices[i]);
+	  s = format (s, "\n%Uqueue %u: thread %s (%u) mode %U",
+		      format_white_space, indent + 6, rxq->queue_id,
+		      vlib_worker_threads[rxq->thread_index].name,
+		      rxq->thread_index, format_vnet_hw_if_rx_mode,
+		      rxq->mode);
+	}
+    }
 
   if (verbose)
     {
