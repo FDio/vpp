@@ -456,7 +456,6 @@ VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd;
   uword n_rx_packets = 0;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
   vnet_device_and_queue_t *dq;
   u32 thread_index = node->thread_index;
 
@@ -464,7 +463,7 @@ VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
    * Poll all devices on this cpu for input/interrupts.
    */
   /* *INDENT-OFF* */
-  foreach_device_and_queue (dq, rt->devices_and_queues)
+  foreach_hw_if_rx_queue (dq, node)
     {
       xd = vec_elt_at_index(dm->devices, dq->dev_instance);
       n_rx_packets += dpdk_device_input (vm, dm, xd, node, thread_index,

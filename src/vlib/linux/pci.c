@@ -912,6 +912,17 @@ vlib_pci_enable_msix_irq (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 			VFIO_IRQ_SET_ACTION_TRIGGER, fds);
 }
 
+uword
+vlib_pci_get_msix_file_index (vlib_main_t * vm, vlib_pci_dev_handle_t h,
+			      u16 index)
+{
+  linux_pci_device_t *p = linux_pci_get_device (h);
+  linux_pci_irq_t *irq = vec_elt_at_index (p->msix_irqs, index);
+  if (irq->fd == -1)
+    return ~0;
+  return irq->clib_file_index;
+}
+
 clib_error_t *
 vlib_pci_disable_msix_irq (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 			   u16 start, u16 count)

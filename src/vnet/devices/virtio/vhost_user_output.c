@@ -1060,7 +1060,7 @@ done3:
 
 static __clib_unused clib_error_t *
 vhost_user_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index,
-				     u32 qid, vnet_hw_interface_rx_mode mode)
+				     u32 qid, vnet_hw_if_rx_mode mode)
 {
   vlib_main_t *vm = vnm->vlib_main;
   vnet_hw_interface_t *hif = vnet_get_hw_interface (vnm, hw_if_index);
@@ -1069,15 +1069,15 @@ vhost_user_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index,
     pool_elt_at_index (vum->vhost_user_interfaces, hif->dev_instance);
   vhost_user_vring_t *txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
 
-  if ((mode == VNET_HW_INTERFACE_RX_MODE_INTERRUPT) ||
-      (mode == VNET_HW_INTERFACE_RX_MODE_ADAPTIVE))
+  if ((mode == VNET_HW_IF_RX_MODE_INTERRUPT) ||
+      (mode == VNET_HW_IF_RX_MODE_ADAPTIVE))
     {
       if (txvq->kickfd_idx == ~0)
 	{
 	  // We cannot support interrupt mode if the driver opts out
 	  return clib_error_return (0, "Driver does not support interrupt");
 	}
-      if (txvq->mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+      if (txvq->mode == VNET_HW_IF_RX_MODE_POLLING)
 	{
 	  vum->ifq_count++;
 	  // Start the timer if this is the first encounter on interrupt
@@ -1089,11 +1089,10 @@ vhost_user_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index,
 				       VHOST_USER_EVENT_START_TIMER, 0);
 	}
     }
-  else if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+  else if (mode == VNET_HW_IF_RX_MODE_POLLING)
     {
-      if (((txvq->mode == VNET_HW_INTERFACE_RX_MODE_INTERRUPT) ||
-	   (txvq->mode == VNET_HW_INTERFACE_RX_MODE_ADAPTIVE)) &&
-	  vum->ifq_count)
+      if (((txvq->mode == VNET_HW_IF_RX_MODE_INTERRUPT) ||
+	   (txvq->mode == VNET_HW_IF_RX_MODE_ADAPTIVE)) && vum->ifq_count)
 	{
 	  vum->ifq_count--;
 	  // Stop the timer if there is no more interrupt interface/queue
@@ -1106,10 +1105,10 @@ vhost_user_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index,
     }
 
   txvq->mode = mode;
-  if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+  if (mode == VNET_HW_IF_RX_MODE_POLLING)
     txvq->used->flags = VRING_USED_F_NO_NOTIFY;
-  else if ((mode == VNET_HW_INTERFACE_RX_MODE_ADAPTIVE) ||
-	   (mode == VNET_HW_INTERFACE_RX_MODE_INTERRUPT))
+  else if ((mode == VNET_HW_IF_RX_MODE_ADAPTIVE) ||
+	   (mode == VNET_HW_IF_RX_MODE_INTERRUPT))
     txvq->used->flags = 0;
   else
     {

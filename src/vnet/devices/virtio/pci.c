@@ -321,10 +321,15 @@ virtio_pci_irq_queue_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h,
   virtio_main_t *vim = &virtio_main;
   uword pd = vlib_pci_get_private_data (vm, h);
   virtio_if_t *vif = pool_elt_at_index (vim->interfaces, pd);
-  line--;
-  u16 qid = line;
 
-  vnet_device_input_set_interrupt_pending (vnm, vif->hw_if_index, qid);
+  /*
+   * interrupts are mapped from MSIX line 1 for queue id 0,
+   * line 2 for queue id 1, and so on.
+   */
+  virtio_vring_t *vring =
+    vec_elt_at_index (vif->rxq_vrings, (line - 1));
+
+  vnet_hw_if_rx_queue_set_int_pending (vnm, vring->queue_index);
 }
 
 static void
@@ -1378,16 +1383,17 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
-  vnet_hw_interface_set_input_node (vnm, vif->hw_if_index,
-				    virtio_input_node.index);
+  vnet_hw_if_set_input_node (vnm, vif->hw_if_index, virtio_input_node.index);
   u32 i = 0;
   vec_foreach_index (i, vif->rxq_vrings)
   {
-    vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, i, ~0);
-    virtio_vring_set_numa_node (vm, vif, RX_QUEUE (i));
-    /* Set default rx mode to POLLING */
-    vnet_hw_interface_set_rx_mode (vnm, vif->hw_if_index, i,
-				   VNET_HW_INTERFACE_RX_MODE_POLLING);
+    virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, i);
+    u32 qi;
+
+    qi = vnet_hw_if_register_rx_queue (vnm, vif->hw_if_index, i,
+				       VNET_HW_IF_RXQ_THREAD_ANY);
+    virtio_vring_set_numa_node (vm, vif, RX_QUEUE (i), qi);
+    vring->queue_index = qi;
   }
   if (virtio_pci_is_link_up (vm, vif) & VIRTIO_NET_S_LINK_UP)
     {
@@ -1442,10 +1448,6 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
   if (vif->hw_if_index)
     {
       vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
-      vec_foreach_index (i, vif->rxq_vrings)
-      {
-	vnet_hw_interface_unassign_rx_thread (vnm, vif->hw_if_index, i);
-      }
       ethernet_delete_interface (vnm, vif->hw_if_index);
     }
 

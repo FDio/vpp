@@ -1006,7 +1006,7 @@ static void vl_api_sw_interface_set_rx_mode_t_handler
   vnet_sw_interface_t *si;
   clib_error_t *error;
   int rv = 0;
-  vnet_hw_interface_rx_mode rx_mode;
+  vnet_hw_if_rx_mode rx_mode;
 
   VALIDATE_SW_IF_INDEX (mp);
 
@@ -1017,12 +1017,11 @@ static void vl_api_sw_interface_set_rx_mode_t_handler
       goto bad_sw_if_index;
     }
 
-  rx_mode = (vnet_hw_interface_rx_mode) ntohl (mp->mode);
+  rx_mode = (vnet_hw_if_rx_mode) ntohl (mp->mode);
   error = set_hw_interface_change_rx_mode (vnm, si->hw_if_index,
 					   mp->queue_id_valid,
 					   ntohl (mp->queue_id),
-					   (vnet_hw_interface_rx_mode)
-					   rx_mode);
+					   (vnet_hw_if_rx_mode) rx_mode);
 
   if (error)
     {
@@ -1070,28 +1069,18 @@ static void vl_api_sw_interface_rx_placement_dump_t_handler
 
   if (sw_if_index == ~0)
     {
-      vnet_device_input_runtime_t *rt;
-      vnet_device_and_queue_t *dq;
-      vlib_node_t *pn = vlib_get_node_by_name (am->vlib_main,
-					       (u8 *) "device-input");
-      uword si;
-      int index = 0;
+      vnet_hw_interface_t *hi;
+      vnet_hw_if_rx_queue_t *rxq;
 
       /* *INDENT-OFF* */
-      foreach_vlib_main (({
-        clib_bitmap_foreach (si, pn->sibling_bitmap,
-        ({
-          rt = vlib_node_get_runtime_data (this_vlib_main, si);
-          vec_foreach (dq, rt->devices_and_queues)
-            {
-              vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm,
-                                                             dq->hw_if_index);
-              send_interface_rx_placement_details (am, reg, hw->sw_if_index, index,
-                                          dq->queue_id, dq->mode, mp->context);
-            }
-        }));
-        index++;
-      }));
+      pool_foreach (rxq, vnm->interface_main.hw_if_rx_queues,
+        {
+          hi = vnet_get_hw_interface (vnm, rxq->hw_if_index);
+          send_interface_rx_placement_details (am, reg, hi->sw_if_index,
+					       rxq->thread_index,
+					       rxq->queue_id, rxq->mode,
+					       mp->context);
+        });
       /* *INDENT-ON* */
     }
   else
@@ -1115,13 +1104,13 @@ static void vl_api_sw_interface_rx_placement_dump_t_handler
 
       vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, si->hw_if_index);
 
-      for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
+      for (i = 0; i < vec_len (hw->rx_queue_indices); i++)
 	{
+	  vnet_hw_if_rx_queue_t *rxq;
+	  rxq = vnet_hw_if_get_rx_queue (vnm, hw->rx_queue_indices[i]);
 	  send_interface_rx_placement_details (am, reg, hw->sw_if_index,
-					       hw->input_node_thread_index_by_queue
-					       [i], i,
-					       hw->rx_mode_by_queue[i],
-					       mp->context);
+					       rxq->thread_index, i,
+					       rxq->mode, mp->context);
 	}
     }
 
