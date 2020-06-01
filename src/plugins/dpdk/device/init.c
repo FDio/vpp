@@ -701,23 +701,25 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       sw = vnet_get_hw_sw_interface (dm->vnet_main, xd->hw_if_index);
       xd->sw_if_index = sw->sw_if_index;
-      vnet_hw_interface_set_input_node (dm->vnet_main, xd->hw_if_index,
-					dpdk_input_node.index);
+      vnet_hw_if_set_input_node (dm->vnet_main, xd->hw_if_index, dpdk_input_node.index);
 
       if (devconf->workers)
 	{
 	  int i;
 	  q = 0;
 	  clib_bitmap_foreach (i, devconf->workers, ({
-	    vnet_hw_interface_assign_rx_thread (dm->vnet_main, xd->hw_if_index, q++,
-					     vdm->first_worker_thread_index + i);
+            dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
+	    rxq->queue_index = vnet_hw_if_register_rx_queue
+	      (dm->vnet_main, xd->hw_if_index, q++,
+	       vdm->first_worker_thread_index + i);
 	  }));
 	}
       else
 	for (q = 0; q < xd->rx_q_used; q++)
 	  {
-	    vnet_hw_interface_assign_rx_thread (dm->vnet_main, xd->hw_if_index, q,	/* any */
-						~1);
+            dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
+	    rxq->queue_index = vnet_hw_if_register_rx_queue
+	      (dm->vnet_main, xd->hw_if_index, q, VNET_HW_IF_RXQ_THREAD_ANY);
 	  }
 
       /*Get vnet hardware interface */

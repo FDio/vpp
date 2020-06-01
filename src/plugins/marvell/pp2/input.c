@@ -357,10 +357,9 @@ mrvl_pp2_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 n_rx = 0;
   mrvl_pp2_main_t *ppm = &mrvl_pp2_main;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
   vnet_device_and_queue_t *dq;
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
+  foreach_hw_if_rx_queue (dq, node)
   {
     mrvl_pp2_if_t *ppif;
     ppif = vec_elt_at_index (ppm->interfaces, dq->dev_instance);

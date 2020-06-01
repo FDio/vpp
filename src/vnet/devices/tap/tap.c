@@ -730,15 +730,15 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     {
       hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
     }
-  vnet_hw_interface_set_input_node (vnm, vif->hw_if_index,
-				    virtio_input_node.index);
+  vnet_hw_if_set_input_node (vnm, vif->hw_if_index, virtio_input_node.index);
 
   for (i = 0; i < vif->num_rxqs; i++)
     {
-      vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, i, ~0);
-      vnet_hw_interface_set_rx_mode (vnm, vif->hw_if_index, i,
-				     VNET_HW_INTERFACE_RX_MODE_DEFAULT);
-      virtio_vring_set_numa_node (vm, vif, RX_QUEUE (i));
+      u32 qi = vnet_hw_if_register_rx_queue (vnm, vif->hw_if_index, i,
+					     VNET_HW_IF_RXQ_THREAD_ANY);
+      vnet_hw_if_set_rx_mode (vnm, vif->hw_if_index,
+			      VNET_HW_IF_RX_MODE_DEFAULT);
+      virtio_vring_set_numa_node (vm, vif, RX_QUEUE (i), qi);
     }
 
   vif->per_interface_next_index = ~0;
@@ -773,7 +773,6 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *mm = &virtio_main;
-  int i;
   virtio_if_t *vif;
   vnet_hw_interface_t *hw;
 
@@ -789,8 +788,6 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   /* bring down the interface */
   vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
   vnet_sw_interface_set_flags (vnm, vif->sw_if_index, 0);
-  for (i = 0; i < vif->num_rxqs; i++)
-    vnet_hw_interface_unassign_rx_thread (vnm, vif->hw_if_index, i);
 
   if (vif->type == VIRTIO_IF_TYPE_TAP)
     ethernet_delete_interface (vnm, vif->hw_if_index);

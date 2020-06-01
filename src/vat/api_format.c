@@ -5895,7 +5895,7 @@ api_sw_interface_set_rx_mode (vat_main_t * vam)
   int ret;
   u8 queue_id_valid = 0;
   u32 queue_id;
-  vnet_hw_interface_rx_mode mode = VNET_HW_INTERFACE_RX_MODE_UNKNOWN;
+  vnet_hw_if_rx_mode mode = VNET_HW_IF_RX_MODE_UNKNOWN;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5903,11 +5903,11 @@ api_sw_interface_set_rx_mode (vat_main_t * vam)
       if (unformat (i, "queue %d", &queue_id))
 	queue_id_valid = 1;
       else if (unformat (i, "polling"))
-	mode = VNET_HW_INTERFACE_RX_MODE_POLLING;
+	mode = VNET_HW_IF_RX_MODE_POLLING;
       else if (unformat (i, "interrupt"))
-	mode = VNET_HW_INTERFACE_RX_MODE_INTERRUPT;
+	mode = VNET_HW_IF_RX_MODE_INTERRUPT;
       else if (unformat (i, "adaptive"))
-	mode = VNET_HW_INTERFACE_RX_MODE_ADAPTIVE;
+	mode = VNET_HW_IF_RX_MODE_ADAPTIVE;
       else
 	if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
 	sw_if_index_set = 1;
@@ -5922,7 +5922,7 @@ api_sw_interface_set_rx_mode (vat_main_t * vam)
       errmsg ("missing interface name or sw_if_index");
       return -99;
     }
-  if (mode == VNET_HW_INTERFACE_RX_MODE_UNKNOWN)
+  if (mode == VNET_HW_IF_RX_MODE_UNKNOWN)
     {
       errmsg ("missing rx-mode");
       return -99;

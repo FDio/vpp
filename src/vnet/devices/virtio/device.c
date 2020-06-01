@@ -703,7 +703,7 @@ virtio_clear_hw_interface_counters (u32 instance)
 
 static clib_error_t *
 virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
-				 vnet_hw_interface_rx_mode mode)
+				 vnet_hw_if_rx_mode mode)
 {
   virtio_main_t *mm = &virtio_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
@@ -716,7 +716,7 @@ virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
       return clib_error_return (0, "interrupt mode is not supported");
     }
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+  if (mode == VNET_HW_IF_RX_MODE_POLLING)
     vring->avail->flags |= VIRTIO_RING_FLAG_MASK_INT;
   else
     vring->avail->flags &= ~VIRTIO_RING_FLAG_MASK_INT;
