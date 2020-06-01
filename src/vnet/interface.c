@@ -788,7 +788,7 @@ vnet_register_interface (vnet_main_t * vnm,
 
   hw_index = hw - im->hw_interfaces;
   hw->hw_if_index = hw_index;
-  hw->default_rx_mode = VNET_HW_INTERFACE_RX_MODE_POLLING;
+  hw->default_rx_mode = VNET_HW_IF_RX_MODE_POLLING;
 
   if (dev_class->format_device_name)
     hw->name = format (0, "%U", dev_class->format_device_name, dev_instance);
@@ -1039,9 +1039,9 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
   hash_unset_mem (im->hw_interface_by_name, hw->name);
   vec_free (hw->name);
   vec_free (hw->hw_address);
-  vec_free (hw->input_node_thread_index_by_queue);
   vec_free (hw->dq_runtime_index_by_queue);
-
+  hash_free (hw->rx_queue_index_by_rx_queue_id);
+  vec_free (hw->rx_queue_indices);
   pool_put (im->hw_interfaces, hw);
 }
 

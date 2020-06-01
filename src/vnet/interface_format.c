@@ -97,17 +97,17 @@ format_vnet_sw_interface_flags (u8 * s, va_list * args)
 }
 
 u8 *
-format_vnet_hw_interface_rx_mode (u8 * s, va_list * args)
+format_vnet_hw_if_rx_mode (u8 * s, va_list * args)
 {
-  vnet_hw_interface_rx_mode mode = va_arg (*args, vnet_hw_interface_rx_mode);
+  vnet_hw_if_rx_mode mode = va_arg (*args, vnet_hw_if_rx_mode);
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+  if (mode == VNET_HW_IF_RX_MODE_POLLING)
     return format (s, "polling");
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_INTERRUPT)
+  if (mode == VNET_HW_IF_RX_MODE_INTERRUPT)
     return format (s, "interrupt");
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_ADAPTIVE)
+  if (mode == VNET_HW_IF_RX_MODE_ADAPTIVE)
     return format (s, "adaptive");
 
   return format (s, "unknown");
