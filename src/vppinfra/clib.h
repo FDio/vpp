@@ -110,6 +110,8 @@
 #define static_always_inline static inline __attribute__ ((__always_inline__))
 #endif
 
+#define __clib_always_inline static inline __attribute__ ((__always_inline__))
+
 
 /* Reserved (unused) structure element with address offset between
    from and to. */
