@@ -2132,14 +2132,18 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 #if (CLIB_N_PREFETCHES >= 8)
   if (n_left_from >= 6)
     {
-      int i;
-      for (i = 2; i < 6; i++)
-	vlib_prefetch_buffer_header (bufs[i], LOAD);
+      vlib_prefetch_buffer_header (bufs[2], LOAD);
+      vlib_prefetch_buffer_header (bufs[3], LOAD);
+      vlib_prefetch_buffer_header (bufs[4], LOAD);
+      vlib_prefetch_buffer_header (bufs[5], LOAD);
+      CLIB_PREFETCH (bufs[2]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+      CLIB_PREFETCH (bufs[3]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+      CLIB_PREFETCH (bufs[4]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+      CLIB_PREFETCH (bufs[5]->data, CLIB_CACHE_LINE_BYTES, LOAD);
     }
-
   next = nexts;
   b = bufs;
-  while (n_left_from >= 8)
+  while (n_left_from >= 2)
     {
       const ip_adjacency_t *adj0, *adj1;
       ip4_header_t *ip0, *ip1;
@@ -2148,8 +2152,32 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       u32 tx_sw_if_index0, tx_sw_if_index1;
       u8 *p;
 
-      vlib_prefetch_buffer_header (b[6], LOAD);
-      vlib_prefetch_buffer_header (b[7], LOAD);
+      /* Prefetch next iteration */
+      if (PREDICT_TRUE (n_left_from >= 8))
+	{
+	  vlib_prefetch_buffer_header (b[6], LOAD);
+	  vlib_prefetch_buffer_header (b[7], LOAD);
+	  vlib_prefetch_buffer_data (b[4], LOAD);
+	  vlib_prefetch_buffer_data (b[5], LOAD);
+	}
+
+      if (PREDICT_TRUE (n_left_from >= 6))
+	{
+	  ip_adjacency_t *adj4, *adj5;
+	  u32 adj_index4, adj_index5;
+
+	  /* Prefetch adj->rewrite_header */
+	  adj_index4 = vnet_buffer (b[4])->ip.adj_index[VLIB_TX];
+	  adj_index5 = vnet_buffer (b[5])->ip.adj_index[VLIB_TX];
+	  adj4 = adj_get (adj_index4);
+	  adj5 = adj_get (adj_index5);
+	  p = (u8 *) adj4;
+	  CLIB_PREFETCH (p + CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES,
+			 LOAD);
+	  p = (u8 *) adj5;
+	  CLIB_PREFETCH (p + CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES,
+			 LOAD);
+	}
 
       adj_index0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
       adj_index1 = vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
@@ -2182,14 +2210,6 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       rw_len1 = adj1[0].rewrite_header.data_bytes;
       vnet_buffer (b[0])->ip.save_rewrite_length = rw_len0;
       vnet_buffer (b[1])->ip.save_rewrite_length = rw_len1;
-
-      p = vlib_buffer_get_current (b[2]);
-      CLIB_PREFETCH (p - CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES, STORE);
-      CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
-
-      p = vlib_buffer_get_current (b[3]);
-      CLIB_PREFETCH (p - CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES, STORE);
-      CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
 
       /* Check MTU of outgoing interface. */
       u16 ip0_len = clib_net_to_host_u16 (ip0->length);
@@ -2327,6 +2347,15 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       n_left_from -= 2;
     }
 #elif (CLIB_N_PREFETCHES >= 4)
+  if (n_left_from >= 4)
+    {
+      vlib_prefetch_buffer_header (bufs[1], LOAD);
+      vlib_prefetch_buffer_header (bufs[2], LOAD);
+      vlib_prefetch_buffer_header (bufs[3], LOAD);
+      CLIB_PREFETCH (bufs[1]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+      CLIB_PREFETCH (bufs[2]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+      CLIB_PREFETCH (bufs[3]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+    }
   next = nexts;
   b = bufs;
   while (n_left_from >= 1)
@@ -2338,18 +2367,20 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       u8 *p;
 
       /* Prefetch next iteration */
+      if (PREDICT_TRUE (n_left_from >= 5))
+	{
+	  vlib_prefetch_buffer_header (b[4], LOAD);
+	  vlib_prefetch_buffer_data (b[3], LOAD);
+	}
+
       if (PREDICT_TRUE (n_left_from >= 4))
 	{
-	  ip_adjacency_t *adj2;
-	  u32 adj_index2;
-
-	  vlib_prefetch_buffer_header (b[3], LOAD);
-	  vlib_prefetch_buffer_data (b[2], LOAD);
-
+	  ip_adjacency_t *adj3;
+	  u32 adj_index3;
 	  /* Prefetch adj->rewrite_header */
-	  adj_index2 = vnet_buffer (b[2])->ip.adj_index[VLIB_TX];
-	  adj2 = adj_get (adj_index2);
-	  p = (u8 *) adj2;
+	  adj_index3 = vnet_buffer (b[3])->ip.adj_index[VLIB_TX];
+	  adj3 = adj_get (adj_index3);
+	  p = (u8 *) adj3;
 	  CLIB_PREFETCH (p + CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES,
 			 LOAD);
 	}
