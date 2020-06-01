@@ -352,10 +352,9 @@ VLIB_NODE_FN (af_packet_input_node) (vlib_main_t * vm,
 {
   u32 n_rx_packets = 0;
   af_packet_main_t *apm = &af_packet_main;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
   vnet_device_and_queue_t *dq;
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
+  foreach_hw_if_rx_queue (dq, node)
   {
     af_packet_if_t *apif;
     apif = vec_elt_at_index (apm->interfaces, dq->dev_instance);

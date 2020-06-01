@@ -62,14 +62,14 @@ vmxnet3_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 
 static clib_error_t *
 vmxnet3_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
-				  vnet_hw_interface_rx_mode mode)
+				  vnet_hw_if_rx_mode mode)
 {
   vmxnet3_main_t *vmxm = &vmxnet3_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   vmxnet3_device_t *vd = pool_elt_at_index (vmxm->devices, hw->dev_instance);
   vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, qid);
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+  if (mode == VNET_HW_IF_RX_MODE_POLLING)
     rxq->int_mode = 0;
   else
     rxq->int_mode = 1;
@@ -530,10 +530,11 @@ vmxnet3_rxq_irq_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
   vmxnet3_main_t *vmxm = &vmxnet3_main;
   uword pd = vlib_pci_get_private_data (vm, h);
   vmxnet3_device_t *vd = pool_elt_at_index (vmxm->devices, pd);
+  vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, line);
   u16 qid = line;
 
-  if (vec_len (vd->rxqs) > qid && vd->rxqs[qid].int_mode != 0)
-    vnet_device_input_set_interrupt_pending (vnm, vd->hw_if_index, qid);
+  if (vec_len (vd->rxqs) > qid && rxq->int_mode != 0)
+    vnet_hw_if_rx_queue_set_int_pending (vnm, rxq->queue_index);
 }
 
 static void
@@ -798,20 +799,19 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
   if (vd->gso_enable)
     hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
 
-  vnet_hw_interface_set_input_node (vnm, vd->hw_if_index,
-				    vmxnet3_input_node.index);
+  vnet_hw_if_set_input_node (vnm, vd->hw_if_index, vmxnet3_input_node.index);
   /* Disable interrupts */
   vmxnet3_disable_interrupt (vd);
   vec_foreach_index (qid, vd->rxqs)
   {
     vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, qid);
-    u32 thread_index;
-    u32 numa_node;
+    u32 qi, numa_node;
 
-    vnet_hw_interface_assign_rx_thread (vnm, vd->hw_if_index, qid, ~0);
-    thread_index = vnet_get_device_input_thread_index (vnm, vd->hw_if_index,
-						       qid);
-    numa_node = vlib_mains[thread_index]->numa_node;
+    qi = vnet_hw_if_register_rx_queue (vnm, vd->hw_if_index, qid,
+				       VNET_HW_IF_RXQ_THREAD_ANY);
+
+    numa_node = vnet_hw_if_get_rx_queue_numa_node (vnm, qi);
+    rxq->queue_index = qi;
     rxq->buffer_pool_index =
       vlib_buffer_pool_get_default_for_numa (vm, numa_node);
     vmxnet3_rxq_refill_ring0 (vm, vd, rxq);
@@ -841,7 +841,7 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
   vnet_main_t *vnm = vnet_get_main ();
   vmxnet3_main_t *vmxm = &vmxnet3_main;
   u32 i, bi;
-  u16 desc_idx, qid;
+  u16 desc_idx;
 
   /* Quiesce the device */
   vmxnet3_reg_write (vd, 1, VMXNET3_REG_CMD, VMXNET3_CMD_QUIESCE_DEV);
@@ -852,8 +852,6 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
   if (vd->hw_if_index)
     {
       vnet_hw_interface_set_flags (vnm, vd->hw_if_index, 0);
-      vec_foreach_index (qid, vd->rxqs)
-	vnet_hw_interface_unassign_rx_thread (vnm, vd->hw_if_index, qid);
       ethernet_delete_interface (vnm, vd->hw_if_index);
     }
 

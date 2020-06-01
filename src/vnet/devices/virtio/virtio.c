@@ -49,14 +49,15 @@ call_read_ready (clib_file_t * uf)
   virtio_main_t *nm = &virtio_main;
   vnet_main_t *vnm = vnet_get_main ();
   u16 qid = uf->private_data & 0xFFFF;
-  virtio_if_t *vif =
-    vec_elt_at_index (nm->interfaces, uf->private_data >> 16);
+  virtio_if_t *vif = vec_elt_at_index (nm->interfaces,
+				       uf->private_data >> 16);
+  virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings,
+					    RX_QUEUE_ACCESS (qid));
   u64 b;
 
   CLIB_UNUSED (ssize_t size) = read (uf->file_descriptor, &b, sizeof (b));
   if ((qid & 1) == 0)
-    vnet_device_input_set_interrupt_pending (vnm, vif->hw_if_index,
-					     RX_QUEUE_ACCESS (qid));
+    vnet_hw_if_rx_queue_set_int_pending (vnm, vring->queue_index);
 
   return 0;
 }
@@ -222,19 +223,14 @@ virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
 }
 
 void
-virtio_vring_set_numa_node (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
+virtio_vring_set_numa_node (vlib_main_t * vm, virtio_if_t * vif, u32 idx,
+			    u32 queue_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  u32 thread_index;
   virtio_vring_t *vring =
     vec_elt_at_index (vif->rxq_vrings, RX_QUEUE_ACCESS (idx));
-  thread_index =
-    vnet_get_device_input_thread_index (vnm, vif->hw_if_index,
-					RX_QUEUE_ACCESS (idx));
-  vring->buffer_pool_index =
-    vlib_buffer_pool_get_default_for_numa (vm,
-					   vlib_mains
-					   [thread_index]->numa_node);
+  vring->buffer_pool_index = vlib_buffer_pool_get_default_for_numa
+    (vm, vnet_hw_if_get_rx_queue_numa_node (vnm, queue_index));
 }
 
 inline void

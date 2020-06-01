@@ -52,13 +52,26 @@ union ip46_address_t_;
 
 typedef enum
 {
-  VNET_HW_INTERFACE_RX_MODE_UNKNOWN,
-  VNET_HW_INTERFACE_RX_MODE_POLLING,
-  VNET_HW_INTERFACE_RX_MODE_INTERRUPT,
-  VNET_HW_INTERFACE_RX_MODE_ADAPTIVE,
-  VNET_HW_INTERFACE_RX_MODE_DEFAULT,
-  VNET_HW_INTERFACE_NUM_RX_MODES,
-} vnet_hw_interface_rx_mode;
+  VNET_HW_IF_RX_MODE_UNKNOWN,
+  VNET_HW_IF_RX_MODE_POLLING,
+  VNET_HW_IF_RX_MODE_INTERRUPT,
+  VNET_HW_IF_RX_MODE_ADAPTIVE,
+  VNET_HW_IF_RX_MODE_DEFAULT,
+  VNET_HW_IF_NUM_RX_MODES,
+} vnet_hw_if_rx_mode;
+
+typedef struct
+{
+  u32 dev_instance;
+  u16 queue_id;
+  vnet_hw_if_rx_mode mode:8;
+} vnet_device_and_queue_t;
+
+typedef struct
+{
+  vnet_device_and_queue_t *devices_and_queues;
+  vlib_node_state_t enabled_node_state;
+} vnet_device_input_runtime_t;
 
 /* Interface up/down callback. */
 typedef clib_error_t *(vnet_interface_function_t)
@@ -81,7 +94,7 @@ typedef clib_error_t *(vnet_interface_add_del_mac_address_function_t)
 /* Interface set rx mode callback. */
 typedef clib_error_t *(vnet_interface_set_rx_mode_function_t)
   (struct vnet_main_t * vnm, u32 if_index, u32 queue_id,
-   vnet_hw_interface_rx_mode mode);
+   vnet_hw_if_rx_mode mode);
 
 /* Interface set l2 mode callback. */
 typedef clib_error_t *(vnet_interface_set_l2_mode_function_t)
@@ -514,6 +527,26 @@ typedef enum vnet_hw_interface_flags_t_
   (VNET_HW_INTERFACE_FLAG_HALF_DUPLEX |		\
    VNET_HW_INTERFACE_FLAG_FULL_DUPLEX)
 
+typedef struct
+{
+  /* hw interface index */
+  u32 hw_if_index;
+
+  /* index of thread pollling this queue */
+  u32 thread_index;
+
+  /* file index of queue interrupt line */
+  u32 file_index;
+
+  /* hardware queue identifier */
+  u16 queue_id;
+
+  /* mode */
+  vnet_hw_if_rx_mode mode:8;
+#define VNET_HW_IF_RXQ_THREAD_ANY ~0
+#define VNET_HW_IF_RXQ_NO_RX_INTERRUPT ~0
+} vnet_hw_if_rx_queue_t;
+
 /* Hardware-interface.  This corresponds to a physical wire
    that packets flow over. */
 typedef struct vnet_hw_interface_t
@@ -588,15 +621,12 @@ typedef struct vnet_hw_interface_t
   /* Input node */
   u32 input_node_index;
 
-  /* input node cpu index by queue */
-  u32 *input_node_thread_index_by_queue;
+  /* vnet_hw_if_rx_mode by queue */
+  vnet_hw_if_rx_mode default_rx_mode;
 
-  /* vnet_hw_interface_rx_mode by queue */
-  u8 *rx_mode_by_queue;
-  vnet_hw_interface_rx_mode default_rx_mode;
-
-  /* device input device_and_queue runtime index */
-  uword *dq_runtime_index_by_queue;
+  /* rx queues */
+  u32 *rx_queue_indices;
+  uword *rx_queue_index_by_rx_queue_id;
 
   /* numa node that hardware device connects to */
   u8 numa_node;
@@ -842,6 +872,9 @@ typedef struct
 {
   /* Hardware interfaces. */
   vnet_hw_interface_t *hw_interfaces;
+
+  /* Hardware interface RX queues */
+  vnet_hw_if_rx_queue_t *hw_if_rx_queues;
 
   /* Hash table mapping HW interface name to index. */
   uword *hw_interface_by_name;

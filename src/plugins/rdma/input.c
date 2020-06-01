@@ -630,10 +630,9 @@ VLIB_NODE_FN (rdma_input_node) (vlib_main_t * vm,
 {
   u32 n_rx = 0;
   rdma_main_t *rm = &rdma_main;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
   vnet_device_and_queue_t *dq;
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
+  foreach_hw_if_rx_queue (dq, node)
   {
     rdma_device_t *rd;
     rd = vec_elt_at_index (rm->devices, dq->dev_instance);

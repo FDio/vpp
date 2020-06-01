@@ -440,15 +440,15 @@ done:
   return n_rx_packets;
 }
 
+
 VLIB_NODE_FN (avf_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       vlib_frame_t * frame)
 {
   u32 n_rx = 0;
   avf_main_t *am = &avf_main;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
   vnet_device_and_queue_t *dq;
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
+  foreach_hw_if_rx_queue (dq, node)
   {
     avf_device_t *ad;
     ad = vec_elt_at_index (am->devices, dq->dev_instance);
