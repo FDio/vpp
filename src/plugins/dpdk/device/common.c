@@ -116,11 +116,10 @@ dpdk_device_setup (dpdk_device_t * xd)
 			CLIB_CACHE_LINE_BYTES);
   for (j = 0; j < xd->rx_q_used; j++)
     {
-      uword tidx = vnet_get_device_input_thread_index (dm->vnet_main,
-						       xd->hw_if_index, j);
-      unsigned lcore = vlib_worker_threads[tidx].cpu_id;
-      u16 socket_id = rte_lcore_to_socket_id (lcore);
-      u8 bpidx = vlib_buffer_pool_get_default_for_numa (vm, socket_id);
+      u32 q, n;
+      q = vnet_hw_if_get_rx_queue_index_by_queue_id (vnm, xd->hw_if_index, j);
+      n = vnet_hw_if_get_rx_queue_numa_node (vnm, q);
+      u8 bpidx = vlib_buffer_pool_get_default_for_numa (vm, n);
       vlib_buffer_pool_t *bp = vlib_get_buffer_pool (vm, bpidx);
       struct rte_mempool *mp = dpdk_mempool_by_buffer_pool_index[bpidx];
 

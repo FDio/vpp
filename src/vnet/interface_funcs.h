@@ -309,6 +309,19 @@ vnet_hw_interface_get_mtu (vnet_main_t * vnm, u32 hw_if_index)
   return hw->max_packet_bytes;
 }
 
+always_inline vnet_hw_if_rx_queue_t *
+vnet_hw_interface_get_rx_queue (vnet_main_t * vnm, u32 hw_if_index,
+				u16 queue_id)
+{
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  vnet_interface_main_t *im = &vnm->interface_main;
+  uword *p = hash_get (hw->rx_queue_index_by_rx_queue_id, queue_id);
+  if (p)
+    return pool_elt_at_index (im->hw_if_rx_queues, p[0]);
+  return 0;
+}
+
+
 always_inline u32
 vnet_sw_interface_get_mtu (vnet_main_t * vnm, u32 sw_if_index, vnet_mtu_t af)
 {
@@ -407,8 +420,7 @@ clib_error_t *set_hw_interface_change_rx_mode (vnet_main_t * vnm,
 					       u32 hw_if_index,
 					       u8 queue_id_valid,
 					       u32 queue_id,
-					       vnet_hw_interface_rx_mode
-					       mode);
+					       vnet_hw_if_rx_mode mode);
 
 /* Set rx-placement on the interface */
 clib_error_t *set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
@@ -433,7 +445,7 @@ void vnet_sw_interface_ip_directed_broadcast (vnet_main_t * vnm,
 
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;
-format_function_t format_vnet_hw_interface_rx_mode;
+format_function_t format_vnet_hw_if_rx_mode;
 format_function_t format_vnet_hw_if_index_name;
 format_function_t format_vnet_sw_interface;
 format_function_t format_vnet_sw_interface_name;
