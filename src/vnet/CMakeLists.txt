@@ -35,6 +35,7 @@ list(APPEND VNET_SOURCES
   interface_cli.c
   interface_format.c
   interface_output.c
+  interface_rx_queue.c
   interface_stats.c
   misc.c
 )

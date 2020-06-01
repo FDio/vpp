@@ -1006,7 +1006,7 @@ static void vl_api_sw_interface_set_rx_mode_t_handler
   vnet_sw_interface_t *si;
   clib_error_t *error;
   int rv = 0;
-  vnet_hw_interface_rx_mode rx_mode;
+  vnet_hw_if_rx_mode rx_mode;
 
   VALIDATE_SW_IF_INDEX (mp);
 
@@ -1017,12 +1017,11 @@ static void vl_api_sw_interface_set_rx_mode_t_handler
       goto bad_sw_if_index;
     }
 
-  rx_mode = (vnet_hw_interface_rx_mode) ntohl (mp->mode);
+  rx_mode = (vnet_hw_if_rx_mode) ntohl (mp->mode);
   error = set_hw_interface_change_rx_mode (vnm, si->hw_if_index,
 					   mp->queue_id_valid,
 					   ntohl (mp->queue_id),
-					   (vnet_hw_interface_rx_mode)
-					   rx_mode);
+					   (vnet_hw_if_rx_mode) rx_mode);
 
   if (error)
     {
@@ -1070,6 +1069,7 @@ static void vl_api_sw_interface_rx_placement_dump_t_handler
 
   if (sw_if_index == ~0)
     {
+#if 0
       vnet_device_input_runtime_t *rt;
       vnet_device_and_queue_t *dq;
       vlib_node_t *pn = vlib_get_node_by_name (am->vlib_main,
@@ -1093,6 +1093,7 @@ static void vl_api_sw_interface_rx_placement_dump_t_handler
         index++;
       }));
       /* *INDENT-ON* */
+#endif
     }
   else
     {
@@ -1117,10 +1118,15 @@ static void vl_api_sw_interface_rx_placement_dump_t_handler
 
       for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
 	{
+	  vnet_hw_if_rx_queue_t *rxq;
+	  rxq = vnet_hw_interface_get_rx_queue (vnm, hw->sw_if_index, i);
 	  send_interface_rx_placement_details (am, reg, hw->sw_if_index,
-					       hw->input_node_thread_index_by_queue
-					       [i], i,
+					       rxq->thread_index, i,
+#if 0
 					       hw->rx_mode_by_queue[i],
+#else
+					       0,
+#endif
 					       mp->context);
 	}
     }
