@@ -198,7 +198,7 @@ ip46_post_icmp_reply_event (vlib_main_t * vm, uword cli_process_id, u32 bi0,
 			    int is_ip6)
 {
   vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
-  u64 nowts = clib_cpu_time_now ();
+  u64 nowts = unix_time_now_nsec ();
 
   /* Pass the timestamp to the cli_process thanks to the vnet_buffer unused metadata field */
 
@@ -783,7 +783,7 @@ ip46_fill_icmp_request_at (vlib_main_t * vm, int l4_offset, u16 seq_host,
 
   data_len =
     init_icmp46_echo_request (vm, b0, l4_offset, icmp46_echo, seq_host,
-			      id_host, clib_cpu_time_now (), data_len);
+			      id_host, unix_time_now_nsec (), data_len);
   return data_len;
 }
 
@@ -1073,9 +1073,8 @@ print_ip46_icmp_reply (vlib_main_t * vm, u32 bi0, int is_ip6)
   icmp46_echo_request_t *icmp_echo = (icmp46_echo_request_t *) (icmp + 1);
   u64 *dataplane_ts = (u64 *) & vnet_buffer (b0)->unused[0];
 
-  f64 clocks_per_second = ((f64) vm->clib_time.clocks_per_second);
   f64 rtt =
-    ((f64) (*dataplane_ts - icmp_echo->time_sent)) / clocks_per_second;
+    ((f64) (*dataplane_ts - icmp_echo->time_sent)) / 1e9;
 
   vlib_cli_output (vm,
 		   "%d bytes from %U: icmp_seq=%d ttl=%d time=%.4f ms",
