@@ -17,6 +17,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/interface_output.h>
 #include <vnet/vxlan-gbp/vxlan_gbp.h>
 #include <vnet/qos/qos_types.h>
 #include <vnet/adj/rewrite.h>
@@ -102,8 +103,17 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
     sizeof (ip4_vxlan_gbp_header_t) : sizeof (ip6_vxlan_gbp_header_t);
   u16 const l3_len = is_ip4 ? sizeof (ip4_header_t) : sizeof (ip6_header_t);
   u32 const csum_flags = is_ip4 ? VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
-    VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM :
-    VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+    VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
+    VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L4_HDR_OFFSET_VALID :
+    VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
+    VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
+  u32 const inner_packet_csum_offload_flags =
+    VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
+    VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+  u32 const inner_packet_removed_flags =
+    VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_IS_IP6 |
+    VNET_BUFFER_F_L2_HDR_OFFSET_VALID | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+    VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
 
   while (n_left_from > 0)
     {
@@ -135,6 +145,30 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 	  to_next += 2;
 	  n_left_to_next -= 2;
 	  n_left_from -= 2;
+
+	  u32 or_flags = b[0]->flags | b[1]->flags;
+	  if (csum_offload && (or_flags & inner_packet_csum_offload_flags))
+	    {
+	      /* Only calculate the non-GSO packet csum offload */
+	      if ((b[0]->flags & VNET_BUFFER_F_GSO) == 0)
+		{
+		  vnet_calc_checksums_inline (vm, b[0],
+					      b[0]->flags &
+					      VNET_BUFFER_F_IS_IP4,
+					      b[0]->flags &
+					      VNET_BUFFER_F_IS_IP6);
+		  b[0]->flags &= ~inner_packet_removed_flags;
+		}
+	      if ((b[1]->flags & VNET_BUFFER_F_GSO) == 0)
+		{
+		  vnet_calc_checksums_inline (vm, b[1],
+					      b[1]->flags &
+					      VNET_BUFFER_F_IS_IP4,
+					      b[1]->flags &
+					      VNET_BUFFER_F_IS_IP6);
+		  b[1]->flags &= ~inner_packet_removed_flags;
+		}
+	    }
 
 	  u32 flow_hash0 = vnet_l2_compute_flow_hash (b[0]);
 	  u32 flow_hash1 = vnet_l2_compute_flow_hash (b[1]);
@@ -352,6 +386,20 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 	  to_next += 1;
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
+
+	  if (csum_offload && (b[0]->flags & inner_packet_csum_offload_flags))
+	    {
+	      /* Only calculate the non-GSO packet csum offload */
+	      if ((b[0]->flags & VNET_BUFFER_F_GSO) == 0)
+		{
+		  vnet_calc_checksums_inline (vm, b[0],
+					      b[0]->flags &
+					      VNET_BUFFER_F_IS_IP4,
+					      b[0]->flags &
+					      VNET_BUFFER_F_IS_IP6);
+		  b[0]->flags &= ~inner_packet_removed_flags;
+		}
+	    }
 
 	  u32 flow_hash0 = vnet_l2_compute_flow_hash (b[0]);
 
