@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/interface_output.h>
 #include <vnet/vxlan/vxlan.h>
 #include <vnet/qos/qos_types.h>
 #include <vnet/adj/rewrite.h>
@@ -100,6 +101,10 @@ vxlan_encap_inline (vlib_main_t * vm,
   u32 const csum_flags = is_ip4 ? VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
     VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM :
     VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+  u32 const inner_packet_csum_offload_flags =
+    VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
+    VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+
   vlib_get_buffers (vm, from, bufs, n_left_from);
 
   while (n_left_from > 0)
@@ -131,6 +136,30 @@ vxlan_encap_inline (vlib_main_t * vm,
 	  vlib_buffer_t *b0 = b[0];
 	  vlib_buffer_t *b1 = b[1];
 	  b += 2;
+
+	  u32 or_flags = b0->flags | b1->flags;
+	  if (or_flags & inner_packet_csum_offload_flags)
+	    {
+	      /* Only calculate the non-GSO packet csum offload */
+	      if ((b0->flags & VNET_BUFFER_F_GSO) == 0)
+		{
+		  vnet_calc_checksums_inline (vm, b0,
+					      b0->flags &
+					      VNET_BUFFER_F_IS_IP4,
+					      b0->flags &
+					      VNET_BUFFER_F_IS_IP6,
+					      0 /* with gso */ );
+		}
+	      if ((b1->flags & VNET_BUFFER_F_GSO) == 0)
+		{
+		  vnet_calc_checksums_inline (vm, b1,
+					      b1->flags &
+					      VNET_BUFFER_F_IS_IP4,
+					      b1->flags &
+					      VNET_BUFFER_F_IS_IP6,
+					      0 /* with gso */ );
+		}
+	    }
 
 	  u32 flow_hash0 = vnet_l2_compute_flow_hash (b0);
 	  u32 flow_hash1 = vnet_l2_compute_flow_hash (b1);
@@ -341,6 +370,20 @@ vxlan_encap_inline (vlib_main_t * vm,
 
 	  vlib_buffer_t *b0 = b[0];
 	  b += 1;
+
+	  if (b0->flags & inner_packet_csum_offload_flags)
+	    {
+	      /* Only calculate the non-GSO packet csum offload */
+	      if ((b0->flags & VNET_BUFFER_F_GSO) == 0)
+		{
+		  vnet_calc_checksums_inline (vm, b0,
+					      b0->flags &
+					      VNET_BUFFER_F_IS_IP4,
+					      b0->flags &
+					      VNET_BUFFER_F_IS_IP6,
+					      0 /* with gso */ );
+		}
+	    }
 
 	  u32 flow_hash0 = vnet_l2_compute_flow_hash (b0);
 
