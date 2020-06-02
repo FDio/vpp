@@ -219,7 +219,88 @@ vnet_classify_hash_packet_inline (vnet_classify_table_t * t, u8 * h)
 
   ASSERT (t);
   mask = t->mask;
-#ifdef CLIB_HAVE_VEC128
+
+#if defined(CLIB_HAVE_VEC512)
+  union
+  {
+    u64x8u q8[2]; /* 2 x m512 */
+    u64x4u q4[4]; /* 4 x m256 */
+  } d52;
+
+  union
+  {
+    u64x4u q4[2]; /* 2 x m256 */
+    u64x2u q2[4]; /* 4 x m128 */
+  } d21;
+
+  union
+  {
+    u8 x16[2];
+    u16 x32;
+  } kmask;
+
+  u64x8u u64x8_idx;
+  u64x8u *mask512; 
+  u64x2u q2;
+
+  /* load the table mask */
+  mask512 = (u64x8u *) (t->mask);
+
+  /* mask which lanes are being operated on */
+  kmask.x32 = pow2_mask(t->match_n_vectors * 2);
+  kmask.x32 = kmask.x32 << (t->skip_n_vectors * 2);
+
+  /* The packet buffer (data) is typically cache aligned,
+   * masked load as we may not need the 2nd cache line, if mask is less than
+   * 80 bytes.
+   */
+  d52.q8[0] = u64x8_maskz_load_unaligned (kmask.x16[0], h);
+
+  /*
+   * kmasks are applied on  writeback, which means the 2nd load may
+   * still trigger a cache miss if kmask is set, the additional if statement
+   * mitigates this issue.
+   */
+
+  if (kmask.x16[1])
+    d52.q8[1] = u64x8_maskz_load_unaligned (kmask.x16[1], h + sizeof(u64x8));
+
+  /* if skip_n_vectors > 0, we can do everything in a single u64x8.
+   * in that case.
+   *   left shift values from data[1] to data[0]
+   *   shift 0s into data[1]
+   *   fix up the kmask to reflect the new structure.
+   */
+
+  if(t->skip_n_vectors)
+    {
+      kmask.x32 = kmask.x32 >> (t->skip_n_vectors * 2);
+      u64x8_idx =
+	((u64x8u) {0, 1, 2, 3, 4, 5, 6, 7})
+	+ u64x8_splat(t->skip_n_vectors * 2);
+
+      d52.q8[0] = u64x8_mask_permute (kmask.x16[0], d52.q8[0],
+				      u64x8_idx, d52.q8[1]);
+    }
+
+  d52.q8[0] = u64x8_maskz_and(kmask.x16[0], d52.q8[0], mask512[0]);
+
+  d21.q4[0] = d52.q4[0] ^ d52.q4[1];
+
+  q2 = d21.q2[0] ^ d21.q2[1];
+
+  if (kmask.x16[1])
+    {
+      d52.q8[1] = u64x8_maskz_and (kmask.x16[1], d52.q8[1], mask512[1]);
+
+      d21.q4[1] = d52.q4[2] ^ d52.q4[3];
+
+      q2 ^= d21.q2[2] ^ d21.q2[3];
+
+    }
+  xor_sum.as_u32x4  = (u32x4) q2;
+
+#elif defined(CLIB_HAVE_VEC128)
   u32x4u *data = (u32x4u *) h;
   xor_sum.as_u32x4 = data[0 + t->skip_n_vectors] & mask[0];
   switch (t->match_n_vectors)
@@ -360,12 +441,6 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
 				 u8 * h, u64 hash, f64 now)
 {
   vnet_classify_entry_t *v;
-  u32x4 *mask, *key;
-  union
-  {
-    u32x4 as_u32x4;
-    u64 as_u64[2];
-  } result __attribute__ ((aligned (sizeof (u32x4))));
   vnet_classify_bucket_t *b;
   u32 value_index;
   u32 bucket_index;
@@ -374,7 +449,6 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
 
   bucket_index = hash & (t->nbuckets - 1);
   b = &t->buckets[bucket_index];
-  mask = t->mask;
 
   if (b->offset == 0)
     return 0;
@@ -392,8 +466,129 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
 
   v = vnet_classify_entry_at_index (t, v, value_index);
 
-#ifdef CLIB_HAVE_VEC128
+#if defined(CLIB_HAVE_VEC512)
+  u64x8u data[2];
+  u64x8u *mask512, *key512;
+
+  union
+  {
+    u64x8u x8;
+    u64x4u x4[2];
+  } result64 __attribute__ ((aligned (sizeof (u64x8))));
+  //  u64x8u u64x8_0s;
+  u64x8u u64x8_idx __attribute((unused));
+  u8 kmask_result;
+
+  union
+  {
+    u8 x16[2];
+    u16 x32;
+  } kmask;
+
+  /*u64x8_0s = u64x8_splat(0);*/
+
+  kmask.x32 = pow2_mask(t->match_n_vectors * 2);
+  kmask.x32 = kmask.x32 << (t->skip_n_vectors * 2);
+
+  //mask512 = (u64x8u *) (t->mask - t->skip_n_vectors);
+  mask512 = (u64x8u *) (t->mask);
+
+  for (i = 0; i < limit; i++)
+    {
+      /*
+       * Key is currently not 64 byte aligned.
+       */
+      //key512 = (u64x8u *) (v->key - t->skip_n_vectors);
+      key512 = (u64x8u *) (v->key);
+
+      /* TODO
+       * Use mask instead of mask2 in permute.
+       * key and mask are not 64byte aligned ..
+       * Fix implementation of t->skip_n_vectors and kmask.
+       * Remove sse instruction for last 16bytes, use kmask instead, t->skip_n_vectors may make the last see meaningless.
+       */
+
+      /* The packet buffer (data) is typically cache aligned,
+       * masked load as we may not need the 2nd cache line, if mask is less than
+       * 80 bytes.
+       */
+
+      data[0] = u64x8_maskz_load_unaligned (kmask.x16[0], h);
+
+      /*
+       * kmasks are applied on register writeback, which means the 2nd load may
+       * still trigger a cache miss if kmask is set, the additional if statement
+       * mitigates this issue.
+       */
+
+      if (kmask.x16[1])
+	data[1] = u64x8_maskz_load_unaligned (kmask.x16[1], h + 64);
+
+      /* if skip_n_vectors > 0, we can do everything in a single u64x8.
+       * in that case.
+       *   left shift values from data[1] to data[0] (permute)
+       *   fix up the kmasks to reflect the new structure.
+       */
+
+      if(t->skip_n_vectors)
+	{
+	  kmask.x32 = kmask.x32 >> (t->skip_n_vectors * 2);
+	  u64x8_idx =
+	    ((u64x8u) {0, 1, 2, 3, 4, 5, 6, 7})
+	    + u64x8_splat(t->skip_n_vectors * 2);
+
+	  data[0] = u64x8_mask_permute (kmask.x16[0], data[0],
+					data[1],  u64x8_idx);
+	}
+      /*
+       * Combine the logical ((data and mask) xor key) using a truth table and
+       * tenary operation. Repeat for the full 80 bytes where necessary.
+       */
+
+      result64.x8 = _mm512_maskz_ternarylogic_epi64 (kmask.x16[0], data[0],
+						    mask512[0], key512[0], 0x6A);
+
+      kmask_result = _mm256_movemask_epi8 (result64.x4[0]);
+      kmask_result |= _mm256_movemask_epi8 (result64.x4[1]);
+
+      /* disable comparing the last 16 bytes for the moment */
+      /* kmask_result = _mm512_mask_cmpgt_epi64_mask (kmask.x16[0], result64x8,
+						   u64x8_0s);
+
+      if (kmask.x16[1])
+	{
+	  result64x8 = _mm512_maskz_ternarylogic_epi64 (kmask.x16[1],
+							data[1], mask512[1],
+							key512[1], 0x6A);
+
+	  kmask_result |= _mm512_mask_cmpgt_epi64_mask (kmask.x16[1],
+							result64x8, u64x8_0s);
+							}*/
+
+      kmask_result = kmask_result - 1;
+
+      if (kmask_result == 0xff)
+	{
+	  if (PREDICT_TRUE (now))
+	    {
+	      v->hits++;
+	      v->last_heard = now;
+	    }
+	  return (v);
+	}
+      v = vnet_classify_entry_at_index (t, v, 1);
+    }
+#elif defined(CLIB_HAVE_VEC128)
+  u32x4 *mask, *key;
+  union
+  {
+    u32x4 as_u32x4;
+    u64 as_u64[2];
+  } result __attribute__ ((aligned (sizeof (u32x4))));
   u32x4u *data = (u32x4u *) h;
+
+  mask = t->mask;
+
   for (i = 0; i < limit; i++)
     {
       key = v->key;
