@@ -192,7 +192,7 @@ send_ip_route_details (vpe_api_main_t * am,
   vl_api_ip_route_details_t *mp;
   const fib_prefix_t *pfx;
   vl_api_fib_path_t *fp;
-  int path_count;
+  u8 path_count;
 
   rpaths = NULL;
   pfx = fib_entry_get_prefix (fib_entry_index);
@@ -329,7 +329,7 @@ send_ip_mroute_details (vpe_api_main_t * am,
   vl_api_ip_mroute_details_t *mp;
   const mfib_prefix_t *pfx;
   vl_api_mfib_path_t *fp;
-  int path_count;
+  u8 path_count;
 
   rpaths = NULL;
   pfx = mfib_entry_get_prefix (mfib_entry_index);
@@ -347,7 +347,7 @@ send_ip_mroute_details (vpe_api_main_t * am,
   mp->route.table_id =
     htonl (mfib_table_get_table_id
 	   (mfib_entry_get_fib_index (mfib_entry_index), pfx->fp_proto));
-  mp->route.n_paths = htonl (path_count);
+  mp->route.n_paths = path_count;
   fp = mp->route.paths;
   vec_foreach (rpath, rpaths)
   {
@@ -584,7 +584,7 @@ vl_api_ip_route_lookup_t_handler (vl_api_ip_route_lookup_t * mp)
   vl_api_fib_path_t *fp;
   fib_node_index_t fib_entry_index;
   u32 fib_index;
-  int npaths = 0;
+  u8 npaths = 0;
   int rv;
 
   ip_prefix_decode (&mp->prefix, &lookup);
