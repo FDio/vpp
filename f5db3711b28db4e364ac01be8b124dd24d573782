@@ -22,6 +22,30 @@
       "revId": "f5db3711b28db4e364ac01be8b124dd24d573782",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "89966488_51f591e3",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 15
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-06-02T08:34:59Z",
+      "side": 1,
+      "message": "The size is determined by VPP. Depending on whatever parameters VPP deems necessary. client queue size is there, because that\u0027s the number of messages VPP can send without being blocked.",
+      "parentUuid": "d6f1b8a3_151d4ef3",
+      "range": {
+        "startLine": 33,
+        "startChar": 76,
+        "endLine": 34,
+        "endChar": 7
+      },
+      "revId": "f5db3711b28db4e364ac01be8b124dd24d573782",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
