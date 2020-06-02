@@ -210,7 +210,7 @@ send_ip_route_details (vpe_api_main_t * am,
   mp->route.table_id =
     htonl (fib_table_get_table_id
 	   (fib_entry_get_fib_index (fib_entry_index), pfx->fp_proto));
-  mp->route.n_paths = path_count;
+  mp->route.n_paths = htonl (path_count);
   mp->route.stats_index =
     htonl (fib_table_entry_get_stats_index
 	   (fib_entry_get_fib_index (fib_entry_index), pfx));
@@ -614,7 +614,7 @@ vl_api_ip_route_lookup_t_handler (vl_api_ip_route_lookup_t * mp)
       {
         ip_prefix_encode (pfx, &rmp->route.prefix);
         rmp->route.table_id = mp->table_id;
-        rmp->route.n_paths = npaths;
+        rmp->route.n_paths = htonl (npaths);
         rmp->route.stats_index = fib_table_entry_get_stats_index (fib_index, pfx);
         rmp->route.stats_index = htonl (rmp->route.stats_index);
 
