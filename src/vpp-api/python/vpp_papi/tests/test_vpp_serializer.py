@@ -4,6 +4,7 @@ import unittest
 from vpp_papi.vpp_serializer import VPPType, VPPEnumType
 from vpp_papi.vpp_serializer import VPPUnionType, VPPMessage
 from vpp_papi.vpp_serializer import VPPTypeAlias, VPPSerializerValueError
+from vpp_papi import MACAddress
 from socket import inet_pton, AF_INET, AF_INET6
 import logging
 import sys
@@ -555,6 +556,57 @@ class TestAddType(unittest.TestCase):
                                'bi_bytes': bibytes})
 
         self.assertEqual(len(b), 20)
+
+
+    def test_lisp(self):
+        VPPEnumType('vl_api_eid_type_t',
+                    [["EID_TYPE_API_PREFIX", 0],
+                     ["EID_TYPE_API_MAC", 1],
+                     ["EID_TYPE_API_NSH", 2],
+                     {"enumtype": "u32"}])
+
+        VPPTypeAlias('vl_api_mac_address_t', {'type': 'u8',
+                                              'length': 6})
+
+        VPPType('vl_api_nsh_t',
+                [["u32", "spi"],
+                 ["u8", "si"]])
+
+        VPPEnumType('vl_api_address_family_t', [["ADDRESS_IP4", 0],
+                                                ["ADDRESS_IP6", 1],
+                                                {"enumtype": "u32"}])
+        VPPTypeAlias('vl_api_ip4_address_t', {'type': 'u8',
+                                              'length': 4})
+        VPPTypeAlias('vl_api_ip6_address_t', {'type': 'u8',
+                                              'length': 16})
+        VPPUnionType('vl_api_address_union_t',
+                     [["vl_api_ip4_address_t", "ip4"],
+                      ["vl_api_ip6_address_t", "ip6"]])
+
+        VPPType('vl_api_address_t',
+                [['vl_api_address_family_t', 'af'],
+                 ['vl_api_address_union_t', 'un']])
+
+        VPPType('vl_api_prefix_t',
+                [['vl_api_address_t', 'address'],
+                 ['u8', 'len']])
+
+        VPPUnionType('vl_api_eid_address_t',
+                     [["vl_api_prefix_t", "prefix"],
+                      ["vl_api_mac_address_t", "mac"],
+                      ["vl_api_nsh_t", "nsh"]])
+
+        eid = VPPType('vl_api_eid_t',
+                      [["vl_api_eid_type_t", "type"],
+                       ["vl_api_eid_address_t", "address"]])
+
+        b = eid.pack({'type':1,
+                      'address': {
+                          'mac': MACAddress('aa:bb:cc:dd:ee:ff')}})
+        self.assertEqual(len(b), 25)
+        nt, size = eid.unpack(b)
+        self.assertEqual(str(nt.address.mac), 'aa:bb:cc:dd:ee:ff')
+        self.assertIsNone(nt.address.prefix)
 
 
 if __name__ == '__main__':
