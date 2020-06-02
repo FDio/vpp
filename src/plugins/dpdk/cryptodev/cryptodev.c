@@ -1263,7 +1263,7 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   numa_data = vec_elt_at_index (cmt->per_numa_data, numa);
 
   /* create session pool for the numa node */
-  name = format (0, "vcryptodev_sess_pool_%u", numa);
+  name = format (0, "vcryptodev_sess_pool_%u%c", numa, 0);
   mp = rte_cryptodev_sym_session_pool_create ((char *) name,
 					      CRYPTODEV_NB_SESSION,
 					      0, 0, 0, numa);
@@ -1277,7 +1277,7 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   numa_data->sess_pool = mp;
 
   /* create session private pool for the numa node */
-  name = format (0, "cryptodev_sess_pool_%u", numa);
+  name = format (0, "cryptodev_sess_pool_%u%c", numa, 0);
   mp = rte_mempool_create ((char *) name, CRYPTODEV_NB_SESSION, sess_sz, 0,
 			   0, NULL, NULL, NULL, NULL, numa, 0);
   if (!mp)
@@ -1292,7 +1292,7 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   numa_data->sess_priv_pool = mp;
 
   /* create cryptodev op pool */
-  name = format (0, "cryptodev_op_pool_%u", numa);
+  name = format (0, "cryptodev_op_pool_%u%c", numa, 0);
 
   mp = rte_mempool_create ((char *) name, n_cop_elts,
 			   sizeof (cryptodev_op_t), VLIB_FRAME_SIZE * 2,
@@ -1327,7 +1327,7 @@ dpdk_cryptodev_init (vlib_main_t * vm)
     {
       ptd = cmt->per_thread_data + i;
       cryptodev_assign_resource (ptd, 0, CRYPTODEV_RESOURCE_ASSIGN_AUTO);
-      name = format (0, "frames_ring_%u", i);
+      name = format (0, "frames_ring_%u%c", i, 0);
       ptd->ring = rte_ring_create((char *) name, CRYPTODEV_NB_CRYPTO_OPS,
                                   vm->numa_node, RING_F_SP_ENQ|RING_F_SC_DEQ);
       if (!ptd->ring)
