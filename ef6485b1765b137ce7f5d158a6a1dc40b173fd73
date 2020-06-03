@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "30cd641a_8e559e9a",
+        "filename": "src/vnet/interface_output.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2020-06-03T06:24:44Z",
+      "side": 1,
+      "message": "We cannot be sure there is always an outer header. May be the vnet_get_outer_header() call should return error if outer header does not exist?  Nevertheless, I do think it make sense to have separate VNET_BUFFER_F_OFFLOAD_OUTER... bits to distinguish between outer/inner header checksum offload need so even for tunnel packets, we don\u0027t do unnecessary checksum calculations here.  Otherwise, isn\u0027t it more reasonable to always do the outer header checksum only?  \nI still don\u0027t understand why we have interface_output_node_inline() calling this function always setting with_gso\u003d1 where we parse the header to find L3 and L4 headers again and then only do inner checksum in the original code?  Should with_gso value not be be tied to VNET_BUFFER_F_GSO bit which may indicate the l3/4_hdr_offset are not available so we need to parse the header?",
+      "range": {
+        "startLine": 143,
+        "startChar": 6,
+        "endLine": 143,
+        "endChar": 28
+      },
+      "revId": "ef6485b1765b137ce7f5d158a6a1dc40b173fd73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
