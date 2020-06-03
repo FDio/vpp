@@ -545,7 +545,7 @@ get_icmp_i2o_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
       proto = IP_PROTOCOL_ICMP;
       l_addr = &ip0->src_address;
       r_addr = &ip0->dst_address;
-      _l_port = vnet_buffer (b)->ip.reass.l4_src_port;	// TODO should this be src or dst?
+      _l_port = vnet_buffer (b)->ip.reass.l4_src_port;
       _r_port = 0;
     }
   else
@@ -613,7 +613,7 @@ get_icmp_o2i_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
       proto = IP_PROTOCOL_ICMP;
       l_addr = &ip0->dst_address;
       r_addr = &ip0->src_address;
-      _l_port = vnet_buffer (b)->ip.reass.l4_src_port;	// TODO should this be src or dst?
+      _l_port = vnet_buffer (b)->ip.reass.l4_src_port;
       _r_port = 0;
     }
   else

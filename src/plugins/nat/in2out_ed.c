@@ -1295,7 +1295,6 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  // move down
 	  make_ed_kv (&ip0->src_address, &ip0->dst_address,
 		      ip0->protocol, rx_fib_index0,
 		      vnet_buffer (b0)->ip.reass.l4_src_port,
