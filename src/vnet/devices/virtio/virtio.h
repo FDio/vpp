@@ -106,10 +106,10 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  clib_spinlock_t lockp;
   struct vring_desc *desc;
   struct vring_used *used;
   struct vring_avail *avail;
-  clib_spinlock_t lockp;
   u16 desc_in_use;
   u16 desc_next;
   int kick_fd;
@@ -119,10 +119,10 @@ typedef struct
   u16 queue_id;
 #define VRING_TX_OUT_OF_ORDER 1
   u16 flags;
-  u32 call_file_index;
   u32 *buffers;
   u16 last_used_idx;
   u16 last_kick_avail_idx;
+  u32 call_file_index;
 } virtio_vring_t;
 
 typedef union
@@ -140,34 +140,42 @@ typedef union
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u64 features;
   u32 flags;
-
-  u32 dev_instance;
-  u32 hw_if_index;
-  u32 sw_if_index;
-  u32 numa_node;
+  u32 per_interface_next_index;
+  u16 num_rxqs;
+  u16 num_txqs;
+  virtio_vring_t *rxq_vrings;
+  virtio_vring_t *txq_vrings;
+  int gso_enabled;
+  int csum_offload_enabled;
+  union
+  {
+    int *tap_fds;
+    u32 pci_dev_handle;
+    u32 msix_enabled;
+  };
   u16 virtio_net_hdr_sz;
   virtio_if_type_t type;
+
+  u32 hw_if_index;
+  u32 sw_if_index;
+
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   union
   {
     u32 id;
     pci_addr_t pci_addr;
   };
-  u32 per_interface_next_index;
   int *vhost_fds;
-  int *tap_fds;
-  u32 msix_enabled;
-  u32 pci_dev_handle;
-  virtio_vring_t *rxq_vrings;
-  virtio_vring_t *txq_vrings;
-  u64 features, remote_features;
+  u32 dev_instance;
+  u32 numa_node;
+  u64 remote_features;
 
   /* error */
   clib_error_t *error;
   u8 support_int_mode;		/* support interrupt mode */
   u16 max_queue_pairs;
-  u16 num_rxqs;
-  u16 num_txqs;
   u8 status;
   u8 mac_addr[6];
   u8 *host_if_name;
@@ -179,8 +187,6 @@ typedef struct
   ip6_address_t host_ip6_addr;
   u8 host_ip6_prefix_len;
   u32 host_mtu_size;
-  int gso_enabled;
-  int csum_offload_enabled;
   int ifindex;
   virtio_vring_t *cxq_vring;
 } virtio_if_t;
