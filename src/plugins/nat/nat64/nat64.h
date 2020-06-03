@@ -20,7 +20,7 @@
 #define __included_nat64_h__
 
 #include <nat/nat.h>
-#include <nat/nat64_db.h>
+#include "nat64_db.h"
 
 #define foreach_nat64_tcp_ses_state            \
   _(0, CLOSED, "closed")                       \
@@ -119,7 +119,8 @@ typedef struct
   u32 out2in_node_index;
 
   ip4_main_t *ip4_main;
-  snat_main_t *sm;
+
+  u16 msg_id_base;
 } nat64_main_t;
 
 extern nat64_main_t nat64_main;

@@ -20,7 +20,6 @@
 #include <nat/nat.h>
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_det.h>
-#include <nat/nat64.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat44/inlines.h>
 #include <nat/nat_affinity.h>
@@ -1994,54 +1993,21 @@ set_timeout_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "udp %u", &sm->udp_timeout))
-	{
-	  if (nat64_set_udp_timeout (sm->udp_timeout))
-	    {
-	      error = clib_error_return (0, "Invalid UDP timeout value");
-	      goto done;
-	    }
-	}
+	;
       else if (unformat (line_input, "tcp-established %u",
 			 &sm->tcp_established_timeout))
-	{
-	  if (nat64_set_tcp_timeouts
-	      (sm->tcp_transitory_timeout, sm->tcp_established_timeout))
-	    {
-	      error =
-		clib_error_return (0,
-				   "Invalid TCP established timeouts value");
-	      goto done;
-	    }
-	}
+	;
       else if (unformat (line_input, "tcp-transitory %u",
 			 &sm->tcp_transitory_timeout))
-	{
-	  if (nat64_set_tcp_timeouts
-	      (sm->tcp_transitory_timeout, sm->tcp_established_timeout))
-	    {
-	      error =
-		clib_error_return (0,
-				   "Invalid TCP transitory timeouts value");
-	      goto done;
-	    }
-	}
+	;
       else if (unformat (line_input, "icmp %u", &sm->icmp_timeout))
-	{
-	  if (nat64_set_icmp_timeout (sm->icmp_timeout))
-	    {
-	      error = clib_error_return (0, "Invalid ICMP timeout value");
-	      goto done;
-	    }
-	}
+	;
       else if (unformat (line_input, "reset"))
 	{
 	  sm->udp_timeout = SNAT_UDP_TIMEOUT;
 	  sm->tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
 	  sm->tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
 	  sm->icmp_timeout = SNAT_ICMP_TIMEOUT;
-	  nat64_set_udp_timeout (0);
-	  nat64_set_icmp_timeout (0);
-	  nat64_set_tcp_timeouts (0, 0);
 	}
       else
 	{

@@ -17,8 +17,8 @@
  * @brief NAT64 implementation
  */
 
-#include <nat/nat64.h>
-#include <nat/nat64_db.h>
+#include "nat64.h"
+#include "nat64_db.h"
 #include <nat/nat_inlines.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vppinfra/crc32.h>
@@ -248,7 +248,9 @@ nat64_init (vlib_main_t * vm)
   vlib_validate_simple_counter (&nm->total_sessions, 0);
   vlib_zero_simple_counter (&nm->total_sessions, 0);
 
-  return 0;
+  clib_error_t *nat64_plugin_api_hookup (vlib_main_t * vm);
+  clib_error_t *error = nat64_plugin_api_hookup (vm);
+  return error;
 }
 
 static void nat64_free_out_addr_and_port (struct nat64_db_s *db,
@@ -1264,6 +1266,12 @@ nat64_expire_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
   return 0;
 }
+#if REFACTOR
+  /* Init NAT64 */
+  error = nat64_init (vm);
+  if (error)
+    return error;
+#endif
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat64_expire_walk_node, static) = {
@@ -1280,3 +1288,213 @@ VLIB_REGISTER_NODE (nat64_expire_walk_node, static) = {
  * eval: (c-set-style "gnu")
  * End:
  */
+#if 0
+static clib_error_t *
+snat64_config (vlib_main_t * vm, unformat_input_t * input)
+{
+
+  nat64_main_t *nm = &nat64_main;
+
+  u32 nat64_bib_buckets = 1024;
+  u32 nat64_bib_memory_size = 128 << 20;
+
+  u32 nat64_st_buckets = 2048;
+  uword nat64_st_memory_size = 256 << 20;
+
+  // configurable timeouts
+  u32 udp_timeout = SNAT_UDP_TIMEOUT;
+  u32 icmp_timeout = SNAT_ICMP_TIMEOUT;
+  u32 tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
+  u32 tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (input, "translation hash buckets %d", &translation_buckets))
+	;
+      else if (unformat (input, "udp timeout %d", &udp_timeout))
+	;
+      else if (unformat (input, "icmp timeout %d", &icmp_timeout))
+	;
+      else if (unformat (input, "tcp transitory timeout %d",
+			 &tcp_transitory_timeout));
+      else if (unformat (input, "tcp established timeout %d",
+			 &tcp_established_timeout));
+      else if (unformat (input, "translation hash memory %d",
+			 &translation_memory_size));
+      else if (unformat (input, "user hash buckets %d", &user_buckets))
+	;
+      else if (unformat (input, "user hash memory %d", &user_memory_size))
+	;
+      else if (unformat (input, "max translations per user %d",
+			 &max_translations_per_user))
+	;
+      else if (unformat (input, "outside VRF id %d", &outside_vrf_id))
+	;
+      else if (unformat (input, "outside ip6 VRF id %d", &outside_ip6_vrf_id))
+	;
+      else if (unformat (input, "inside VRF id %d", &inside_vrf_id))
+	;
+      else if (unformat (input, "static mapping only"))
+	{
+	  static_mapping_only = 1;
+	  if (unformat (input, "connection tracking"))
+	    static_mapping_connection_tracking = 1;
+	}
+      else if (unformat (input, "deterministic"))
+	sm->deterministic = 1;
+      else if (unformat (input, "nat64 bib hash buckets %d",
+			 &nat64_bib_buckets))
+	;
+      else if (unformat (input, "nat64 bib hash memory %d",
+			 &nat64_bib_memory_size))
+	;
+      else
+	if (unformat (input, "nat64 st hash buckets %d", &nat64_st_buckets))
+	;
+      else if (unformat (input, "nat64 st hash memory %d",
+			 &nat64_st_memory_size))
+	;
+      else if (unformat (input, "out2in dpo"))
+	sm->out2in_dpo = 1;
+      //else if (unformat (input, "dslite ce"))
+      //dslite_set_ce (dm, 1);
+      else if (unformat (input, "endpoint-dependent"))
+	sm->endpoint_dependent = 1;
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, input);
+    }
+
+  if (sm->deterministic && sm->endpoint_dependent)
+    return clib_error_return (0,
+			      "deterministic and endpoint-dependent modes are mutually exclusive");
+
+  if (static_mapping_only && (sm->deterministic || sm->endpoint_dependent))
+    return clib_error_return (0,
+			      "static mapping only mode available only for simple nat");
+
+  if (sm->out2in_dpo && (sm->deterministic || sm->endpoint_dependent))
+    return clib_error_return (0,
+			      "out2in dpo mode available only for simple nat");
+
+  /* optionally configurable timeouts for testing purposes */
+  sm->udp_timeout = udp_timeout;
+  sm->tcp_transitory_timeout = tcp_transitory_timeout;
+  sm->tcp_established_timeout = tcp_established_timeout;
+  sm->icmp_timeout = icmp_timeout;
+
+  sm->user_buckets = user_buckets;
+  sm->user_memory_size = user_memory_size;
+
+  sm->translation_buckets = translation_buckets;
+  sm->translation_memory_size = translation_memory_size;
+  /* do not exceed load factor 10 */
+  sm->max_translations = 10 * translation_buckets;
+  vec_add1 (sm->max_translations_per_fib, sm->max_translations);
+
+  sm->max_translations_per_user = max_translations_per_user == ~0 ?
+    sm->max_translations : max_translations_per_user;
+
+  sm->outside_vrf_id = outside_vrf_id;
+  sm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
+							     outside_vrf_id,
+							     nat_fib_src_hi);
+  nm->outside_vrf_id = outside_ip6_vrf_id;
+  nm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
+							     outside_ip6_vrf_id,
+							     nat_fib_src_hi);
+  sm->inside_vrf_id = inside_vrf_id;
+  sm->inside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
+							    inside_vrf_id,
+							    nat_fib_src_hi);
+  sm->static_mapping_only = static_mapping_only;
+  sm->static_mapping_connection_tracking = static_mapping_connection_tracking;
+
+  nat64_set_hash (nat64_bib_buckets, nat64_bib_memory_size, nat64_st_buckets,
+		  nat64_st_memory_size);
+
+  if (sm->deterministic)
+    {
+      sm->in2out_node_index = snat_det_in2out_node.index;
+      sm->in2out_output_node_index = ~0;
+      sm->out2in_node_index = snat_det_out2in_node.index;
+      sm->icmp_match_in2out_cb = icmp_match_in2out_det;
+      sm->icmp_match_out2in_cb = icmp_match_out2in_det;
+    }
+  else
+    {
+      if (sm->endpoint_dependent)
+	{
+	  sm->worker_in2out_cb = nat44_ed_get_worker_in2out_cb;
+	  sm->worker_out2in_cb = nat44_ed_get_worker_out2in_cb;
+
+	  sm->in2out_node_index = nat44_ed_in2out_node.index;
+	  sm->in2out_output_node_index = nat44_ed_in2out_output_node.index;
+	  sm->out2in_node_index = nat44_ed_out2in_node.index;
+
+	  sm->icmp_match_in2out_cb = icmp_match_in2out_ed;
+	  sm->icmp_match_out2in_cb = icmp_match_out2in_ed;
+	  nat_affinity_init (vm);
+	  nat_ha_init (vm, nat_ha_sadd_ed_cb, nat_ha_sdel_ed_cb,
+		       nat_ha_sref_ed_cb);
+	  clib_bihash_init_16_8 (&sm->out2in_ed, "out2in-ed",
+				 translation_buckets,
+				 translation_memory_size);
+	  clib_bihash_set_kvp_format_fn_16_8 (&sm->out2in_ed,
+					      format_ed_session_kvp);
+	}
+      else
+	{
+	  sm->worker_in2out_cb = snat_get_worker_in2out_cb;
+	  sm->worker_out2in_cb = snat_get_worker_out2in_cb;
+
+	  sm->in2out_node_index = snat_in2out_node.index;
+	  sm->in2out_output_node_index = snat_in2out_output_node.index;
+	  sm->out2in_node_index = snat_out2in_node.index;
+
+	  sm->icmp_match_in2out_cb = icmp_match_in2out_slow;
+	  sm->icmp_match_out2in_cb = icmp_match_out2in_slow;
+	  nat_ha_init (vm, nat_ha_sadd_cb, nat_ha_sdel_cb, nat_ha_sref_cb);
+	}
+      if (!static_mapping_only ||
+	  (static_mapping_only && static_mapping_connection_tracking))
+	{
+          /* *INDENT-OFF* */
+          vec_foreach (tsm, sm->per_thread_data)
+            {
+              nat44_db_init (tsm);
+            }
+          /* *INDENT-ON* */
+	}
+      else
+	{
+	  sm->icmp_match_in2out_cb = icmp_match_in2out_fast;
+	  sm->icmp_match_out2in_cb = icmp_match_out2in_fast;
+	}
+      clib_bihash_init_8_8 (&sm->static_mapping_by_local,
+			    "static_mapping_by_local", static_mapping_buckets,
+			    static_mapping_memory_size);
+      clib_bihash_set_kvp_format_fn_8_8 (&sm->static_mapping_by_local,
+					 format_static_mapping_kvp);
+
+      clib_bihash_init_8_8 (&sm->static_mapping_by_external,
+			    "static_mapping_by_external",
+			    static_mapping_buckets,
+			    static_mapping_memory_size);
+      clib_bihash_set_kvp_format_fn_8_8 (&sm->static_mapping_by_external,
+					 format_static_mapping_kvp);
+    }
+
+  return 0;
+}
+#endif
+
+VLIB_INIT_FUNCTION (nat64_init);
+
+#include <vnet/plugin/plugin.h>
+#include <vpp/app/version.h>
+VLIB_PLUGIN_REGISTER() = {
+  .version = VPP_BUILD_VER,
+  .description = "NAT64",
+};

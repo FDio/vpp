@@ -23,7 +23,6 @@
 #include <nat/nat_dpo.h>
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_det.h>
-#include <nat/nat64.h>
 #include <nat/nat66.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat44/inlines.h>
@@ -2640,11 +2639,6 @@ snat_init (vlib_main_t * vm)
   /* Init IPFIX logging */
   snat_ipfix_logging_init (vm);
 
-  /* Init NAT64 */
-  error = nat64_init (vm);
-  if (error)
-    return error;
-
   nat66_init (vm);
 
   ip4_table_bind_callback_t cbt4 = {
@@ -3993,12 +3987,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   u32 static_mapping_buckets = 1024;
   uword static_mapping_memory_size = 64 << 20;
 
-  u32 nat64_bib_buckets = 1024;
-  u32 nat64_bib_memory_size = 128 << 20;
-
-  u32 nat64_st_buckets = 2048;
-  uword nat64_st_memory_size = 256 << 20;
-
   u32 user_buckets = 128;
   uword user_memory_size = 64 << 20;
   u32 translation_buckets = 1024;
@@ -4058,18 +4046,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 	}
       else if (unformat (input, "deterministic"))
 	sm->deterministic = 1;
-      else if (unformat (input, "nat64 bib hash buckets %d",
-			 &nat64_bib_buckets))
-	;
-      else if (unformat (input, "nat64 bib hash memory %d",
-			 &nat64_bib_memory_size))
-	;
-      else
-	if (unformat (input, "nat64 st hash buckets %d", &nat64_st_buckets))
-	;
-      else if (unformat (input, "nat64 st hash memory %d",
-			 &nat64_st_memory_size))
-	;
       else if (unformat (input, "out2in dpo"))
 	sm->out2in_dpo = 1;
       //else if (unformat (input, "dslite ce"))
@@ -4125,9 +4101,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 							    nat_fib_src_hi);
   sm->static_mapping_only = static_mapping_only;
   sm->static_mapping_connection_tracking = static_mapping_connection_tracking;
-
-  nat64_set_hash (nat64_bib_buckets, nat64_bib_memory_size, nat64_st_buckets,
-		  nat64_st_memory_size);
 
   if (sm->deterministic)
     {

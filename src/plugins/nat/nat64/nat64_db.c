@@ -16,7 +16,7 @@
  * @file
  * @brief NAT64 DB
  */
-#include <nat/nat64_db.h>
+#include "nat64_db.h"
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat_syslog.h>

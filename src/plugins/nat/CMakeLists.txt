@@ -38,11 +38,6 @@ add_vpp_plugin(nat
   nat44_handoff.c
   nat44_hairpinning.c
   nat44_classify.c
-  nat64.c
-  nat64_cli.c
-  nat64_in2out.c
-  nat64_out2in.c
-  nat64_db.c
   nat66.c
   nat66_cli.c
   nat66_in2out.c
@@ -58,8 +53,6 @@ add_vpp_plugin(nat
   nat44_classify.c
   nat44_hairpinning.c
   nat44_handoff.c
-  nat64_in2out.c
-  nat64_out2in.c
   nat66_in2out.c
   nat66_out2in.c
   nat_det_in2out.c
@@ -100,4 +93,22 @@ add_vpp_plugin(dslite
   dslite/dslite.api
 
   LINK_LIBRARIES nat
+)
+
+add_vpp_plugin(nat64
+  SOURCES
+  nat64/nat64.c
+  nat64/nat64_api.c
+  nat64/nat64_cli.c
+  nat64/nat64_syslog.c
+  nat64/nat64_in2out.c
+  nat64/nat64_out2in.c
+  nat64/nat64_db.c
+
+  MULTIARCH_SOURCES
+  nat64/nat64_in2out.c
+  nat64/nat64_out2in.c
+
+  API_FILES
+  nat64/nat64.api
 )

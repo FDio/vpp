@@ -383,6 +383,11 @@ I:      nat
 M:      Ole Troan <ot@cisco.com>
 F:      src/plugins/nat/
 
+Plugin - NAT64
+I:      nat64
+M:      Ole Troan <ot@cisco.com>
+F:      src/plugins/nat/nat64
+
 Plugin - AVF Device driver
 I:	avf
 M:	Damjan Marion <damarion@cisco.com>

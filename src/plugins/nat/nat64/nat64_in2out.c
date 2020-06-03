@@ -17,7 +17,7 @@
  * @brief NAT64 IPv6 to IPv4 translation (inside to outside network)
  */
 
-#include <nat/nat64.h>
+#include "nat64.h"
 #include <nat/nat_inlines.h>
 #include <vnet/ip/ip6_to_ip4.h>
 #include <vnet/fib/fib_table.h>
