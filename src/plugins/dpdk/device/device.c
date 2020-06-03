@@ -158,26 +158,18 @@ static_always_inline
 				struct rte_mbuf **mb, u32 n_left)
 {
   dpdk_main_t *dm = &dpdk_main;
+  dpdk_rx_queue_t *rxq;
   u32 n_retry;
   int n_sent = 0;
   int queue_id;
 
   n_retry = 16;
-  queue_id = vm->thread_index;
+  queue_id = vm->thread_index % xd->tx_q_used;
+  rxq = vec_elt_at_index (xd->rx_queues, queue_id);
 
   do
     {
-      /*
-       * This device only supports one TX queue,
-       * and we're running multi-threaded...
-       */
-      if (PREDICT_FALSE (xd->lockp != 0))
-	{
-	  queue_id = queue_id % xd->tx_q_used;
-	  while (clib_atomic_test_and_set (xd->lockp[queue_id]))
-	    /* zzzz */
-	    queue_id = (queue_id + 1) % xd->tx_q_used;
-	}
+      clib_spinlock_lock_if_init (&rxq->lock);
 
       if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
 	{
@@ -191,8 +183,7 @@ static_always_inline
 	  n_sent = 0;
 	}
 
-      if (PREDICT_FALSE (xd->lockp != 0))
-	clib_atomic_release (xd->lockp[queue_id]);
+      clib_spinlock_unlock_if_init (&rxq->lock);
 
       if (PREDICT_FALSE (n_sent < 0))
 	{
@@ -205,8 +196,6 @@ static_always_inline
 					 xd->hw_if_index)->tx_node_index;
 
 	  vlib_error_count (vm, node_index, DPDK_TX_FUNC_ERROR_BAD_RETVAL, 1);
-	  clib_warning ("rte_eth_tx_burst[%d]: error %d",
-			xd->port_id, n_sent);
 	  return n_left;	// untransmitted packets
 	}
       n_left -= n_sent;

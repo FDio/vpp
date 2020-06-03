@@ -287,6 +287,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 		   vlib_node_runtime_t * node, u32 thread_index, u16 queue_id)
 {
   uword n_rx_packets = 0, n_rx_bytes;
+  dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, queue_id);
   u32 n_left, n_trace;
   u32 *buffers;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
@@ -324,7 +325,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   bt->error = node->errors[DPDK_ERROR_NONE];
   /* as DPDK is allocating empty buffers from mempool provided before interface
      start for each queue, it is safe to store this in the template */
-  bt->buffer_pool_index = xd->buffer_pool_for_queue[queue_id];
+  bt->buffer_pool_index = rxq->buffer_pool_index;
   bt->ref_count = 1;
   vnet_buffer (bt)->feature_arc_index = 0;
   bt->current_config_index = 0;

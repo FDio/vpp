@@ -156,13 +156,16 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  volatile u32 **lockp;
+  clib_spinlock_t lock;
+  u8 buffer_pool_index;
+} dpdk_rx_queue_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
   /* Instance ID to access internal device array. */
-  dpdk_portid_t device_index;
-
-  /* DPDK device port number */
-  dpdk_portid_t port_id;
+  u32 device_index;
 
   u32 hw_if_index;
   u32 sw_if_index;
@@ -170,13 +173,20 @@ typedef struct
   /* next node index if we decide to steal the rx graph arc */
   u32 per_interface_next_index;
 
+  /* DPDK device port number */
+  dpdk_portid_t port_id;
   dpdk_pmd_t pmd:8;
   i8 cpu_socket;
 
   u16 flags;
 
-  u16 nb_tx_desc;
+  dpdk_rx_queue_t *rx_queues;
+  u16 tx_q_used;
+
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  u16 rx_q_used;
+  u16 nb_tx_desc;
+  u16 nb_rx_desc;
 
   u8 *name;
   u8 *interface_name_suffix;
@@ -185,11 +195,6 @@ typedef struct
   u16 num_subifs;
 
   /* PMD related */
-  u16 tx_q_used;
-  u16 rx_q_used;
-  u16 nb_rx_desc;
-  u16 *cpu_socket_id_by_queue;
-  u8 *buffer_pool_for_queue;
   struct rte_eth_conf port_conf;
   struct rte_eth_txconf tx_conf;
 
@@ -225,21 +230,6 @@ typedef struct
 
 #define DPDK_LINK_POLL_INTERVAL       (3.0)
 #define DPDK_MIN_LINK_POLL_INTERVAL   (0.001)	/* 1msec */
-
-typedef struct
-{
-  u32 device;
-  u16 queue_id;
-} dpdk_device_and_queue_t;
-
-#ifndef DPDK_HQOS_DBG_BYPASS
-#define DPDK_HQOS_DBG_BYPASS 0
-#endif
-
-#ifndef HQOS_FLUSH_COUNT_THRESHOLD
-#define HQOS_FLUSH_COUNT_THRESHOLD              100000
-#endif
-
 
 #define foreach_dpdk_device_config_item \
   _ (num_rx_queues) \

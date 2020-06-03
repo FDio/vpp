@@ -143,19 +143,6 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
   return old;
 }
 
-static void
-dpdk_device_lock_init (dpdk_device_t * xd)
-{
-  int q;
-  vec_validate (xd->lockp, xd->tx_q_used - 1);
-  for (q = 0; q < xd->tx_q_used; q++)
-    {
-      xd->lockp[q] = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
-					     CLIB_CACHE_LINE_BYTES);
-      clib_memset ((void *) xd->lockp[q], 0, CLIB_CACHE_LINE_BYTES);
-    }
-}
-
 static int
 dpdk_port_crc_strip_enabled (dpdk_device_t * xd)
 {
@@ -623,7 +610,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	rte_eth_macaddr_get (i, (void *) addr);
 
       if (xd->tx_q_used < tm->n_vlib_mains)
-	dpdk_device_lock_init (xd);
+        for (int q = 0; q < xd->tx_q_used; q++)
+	  {
+	    dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
+	    clib_spinlock_init (&rxq->lock);
+	  }
 
       xd->port_id = i;
       xd->device_index = xd - dm->devices;
