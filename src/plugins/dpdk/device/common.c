@@ -112,10 +112,11 @@ dpdk_device_setup (dpdk_device_t * xd)
 	dpdk_device_error (xd, "rte_eth_tx_queue_setup", rv);
     }
 
-  vec_validate_aligned (xd->buffer_pool_for_queue, xd->rx_q_used - 1,
+  vec_validate_aligned (xd->rx_queues, xd->rx_q_used - 1,
 			CLIB_CACHE_LINE_BYTES);
   for (j = 0; j < xd->rx_q_used; j++)
     {
+      dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, j);
       uword tidx = vnet_get_device_input_thread_index (dm->vnet_main,
 						       xd->hw_if_index, j);
       unsigned lcore = vlib_worker_threads[tidx].cpu_id;
@@ -132,7 +133,7 @@ dpdk_device_setup (dpdk_device_t * xd)
 	rv = rte_eth_rx_queue_setup (xd->port_id, j, xd->nb_rx_desc,
 				     SOCKET_ID_ANY, 0, mp);
 
-      xd->buffer_pool_for_queue[j] = bp->index;
+      rxq->buffer_pool_index = bp->index;
 
       if (rv < 0)
 	dpdk_device_error (xd, "rte_eth_rx_queue_setup", rv);
