@@ -80,7 +80,8 @@ format_virtio_input_trace (u8 * s, va_list * args)
 
 static_always_inline void
 virtio_refill_vring (vlib_main_t * vm, virtio_if_t * vif,
-		     virtio_vring_t * vring, const int hdr_sz)
+		     virtio_if_type_t type, virtio_vring_t * vring,
+		     const int hdr_sz)
 {
   u16 used, next, avail, n_slots;
   u16 sz = vring->size;
@@ -118,8 +119,8 @@ more:
       b->current_data -= hdr_sz;
       memset (vlib_buffer_get_current (b), 0, hdr_sz);
       d->addr =
-	((vif->type == VIRTIO_IF_TYPE_PCI) ? vlib_buffer_get_current_pa (vm,
-									 b) :
+	((type == VIRTIO_IF_TYPE_PCI) ? vlib_buffer_get_current_pa (vm,
+								    b) :
 	 pointer_to_uword (vlib_buffer_get_current (b)));
       d->len = vlib_buffer_get_default_data_size (vm) + hdr_sz;
       d->flags = VRING_DESC_F_WRITE;
@@ -146,10 +147,22 @@ virtio_needs_csum (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr,
 		   u8 * l4_proto, u8 * l4_hdr_sz, virtio_if_type_t type)
 {
   if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
-
     {
       u16 ethertype = 0, l2hdr_sz = 0;
-      if (type != VIRTIO_IF_TYPE_TUN)
+
+      if (type == VIRTIO_IF_TYPE_TUN)
+	{
+	  switch (b0->data[0] & 0xf0)
+	    {
+	    case 0x40:
+	      ethertype = ETHERNET_TYPE_IP4;
+	      break;
+	    case 0x60:
+	      ethertype = ETHERNET_TYPE_IP6;
+	      break;
+	    }
+	}
+      else
 	{
 	  ethernet_header_t *eh =
 	    (ethernet_header_t *) vlib_buffer_get_current (b0);
@@ -171,21 +184,10 @@ virtio_needs_csum (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr,
 		}
 	    }
 	}
-      else
-	{
-	  switch (b0->data[0] & 0xf0)
-	    {
-	    case 0x40:
-	      ethertype = ETHERNET_TYPE_IP4;
-	      break;
-	    case 0x60:
-	      ethertype = ETHERNET_TYPE_IP6;
-	      break;
-	    }
-	}
 
       vnet_buffer (b0)->l2_hdr_offset = 0;
       vnet_buffer (b0)->l3_hdr_offset = l2hdr_sz;
+
       if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
 	{
 	  ip4_header_t *ip4 =
@@ -252,9 +254,10 @@ fill_gso_buffer_flags (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr,
 }
 
 static_always_inline uword
-virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    vlib_frame_t * frame, virtio_if_t * vif, u16 qid,
-			    int gso_enabled, int checksum_offload_enabled)
+virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+				vlib_frame_t * frame, virtio_if_t * vif,
+				u16 qid, virtio_if_type_t type,
+				int gso_enabled, int checksum_offload_enabled)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index = vm->thread_index;
@@ -276,10 +279,14 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (n_left == 0)
     goto refill;
 
+  if (type == VIRTIO_IF_TYPE_TUN)
+    next_index = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
+
   while (n_left)
     {
       u32 n_left_to_next;
       u32 next0 = next_index;
+
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
       while (n_left && n_left_to_next)
@@ -302,7 +309,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
 	  if (checksum_offload_enabled)
-	    virtio_needs_csum (b0, hdr, &l4_proto, &l4_hdr_sz, vif->type);
+	    virtio_needs_csum (b0, hdr, &l4_proto, &l4_hdr_sz, type);
 
 	  if (gso_enabled)
 	    fill_gso_buffer_flags (b0, hdr, l4_proto, l4_hdr_sz);
@@ -338,7 +345,8 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  n_left--;
 		}
 	    }
-	  if (PREDICT_FALSE (vif->type == VIRTIO_IF_TYPE_TUN))
+
+	  if (type == VIRTIO_IF_TYPE_TUN)
 	    {
 	      switch (b0->data[0] & 0xf0)
 		{
@@ -354,12 +362,15 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	    }
 
-
 	  if (PREDICT_FALSE (vif->per_interface_next_index != ~0))
 	    next0 = vif->per_interface_next_index;
 
-	  /* redirect if feature path enabled */
-	  vnet_feature_start_device_input_x1 (vif->sw_if_index, &next0, b0);
+	  if (type != VIRTIO_IF_TYPE_TUN)
+	    {
+	      /* only for l2, redirect if feature path enabled */
+	      vnet_feature_start_device_input_x1 (vif->sw_if_index, &next0,
+						  b0);
+	    }
 
 	  /* trace */
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
@@ -403,9 +414,27 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				   n_rx_bytes);
 
 refill:
-  virtio_refill_vring (vm, vif, vring, hdr_sz);
+  virtio_refill_vring (vm, vif, type, vring, hdr_sz);
 
   return n_rx_packets;
+}
+
+static_always_inline uword
+virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+			    vlib_frame_t * frame, virtio_if_t * vif, u16 qid,
+			    virtio_if_type_t type)
+{
+
+  if (vif->gso_enabled)
+    return virtio_device_input_gso_inline (vm, node, frame, vif,
+					   qid, type, 1, 1);
+  else if (vif->csum_offload_enabled)
+    return virtio_device_input_gso_inline (vm, node, frame, vif,
+					   qid, type, 0, 1);
+  else
+    return virtio_device_input_gso_inline (vm, node, frame, vif,
+					   qid, type, 0, 0);
+  return 0;
 }
 
 VLIB_NODE_FN (virtio_input_node) (vlib_main_t * vm,
@@ -423,15 +452,18 @@ VLIB_NODE_FN (virtio_input_node) (vlib_main_t * vm,
     vif = vec_elt_at_index (nm->interfaces, dq->dev_instance);
     if (vif->flags & VIRTIO_IF_FLAG_ADMIN_UP)
       {
-	if (vif->gso_enabled)
+	if (vif->type == VIRTIO_IF_TYPE_TAP)
 	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
-					      dq->queue_id, 1, 1);
-	else if (vif->csum_offload_enabled)
+					      dq->queue_id,
+					      VIRTIO_IF_TYPE_TAP);
+	else if (vif->type == VIRTIO_IF_TYPE_PCI)
 	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
-					      dq->queue_id, 0, 1);
-	else
+					      dq->queue_id,
+					      VIRTIO_IF_TYPE_PCI);
+	else if (vif->type == VIRTIO_IF_TYPE_TUN)
 	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
-					      dq->queue_id, 0, 0);
+					      dq->queue_id,
+					      VIRTIO_IF_TYPE_TUN);
       }
   }
 
