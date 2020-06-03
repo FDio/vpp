@@ -22,6 +22,30 @@
       "revId": "ef6485b1765b137ce7f5d158a6a1dc40b173fd73",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8640da1f_326dfeea",
+        "filename": "src/vnet/interface_output.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 2123
+      },
+      "writtenOn": "2020-06-03T08:58:44Z",
+      "side": 1,
+      "message": "vnet_get_outer_header() will do nothing if there is no outer header and no functions will be called because if we don\u0027t have outer header we also don\u0027t have GHO_F_OUTER_IP4/6.\n\nI agree that it is better to calculate checksum only for outer packet here or add new _OUTER flag to buffer to don\u0027t calculate unnecessary checksums, but for this patch I want to have VXLAN IPv6 feature work without breaking other stuff. I think we can extend tunnel nodes with checksum offload calculation for inner packets like it is done here: https://gerrit.fd.io/r/c/vpp/+/27395 and then keep only outer header checksum calculation in interface_output node.\n\nI don\u0027t have full understanding of this `with_gso` flag. As I see before 1bd2c019eba5c893d634cc496bd6d54c00020d7e there were two versions of calc_checksums() function one in interface_output.c (with generic header offset calculation) and one without (used in ip4/6_forward.c). So I\u0027m not sure if this `with_gso` flag is really means that bufer has GSO enabled.\n\nPlease feel free to correct me if I missed something.",
+      "parentUuid": "30cd641a_8e559e9a",
+      "range": {
+        "startLine": 143,
+        "startChar": 6,
+        "endLine": 143,
+        "endChar": 28
+      },
+      "revId": "ef6485b1765b137ce7f5d158a6a1dc40b173fd73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }

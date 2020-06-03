@@ -22,6 +22,30 @@
       "revId": "12920fd6111fcd3c501e7915727d9b254d051b48",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c8e07d3a_d50a36e4",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 2123
+      },
+      "writtenOn": "2020-06-03T08:58:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b1e01dc2_a82275db",
+      "range": {
+        "startLine": 91,
+        "startChar": 0,
+        "endLine": 92,
+        "endChar": 56
+      },
+      "revId": "12920fd6111fcd3c501e7915727d9b254d051b48",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
