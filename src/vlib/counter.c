@@ -119,6 +119,44 @@ vlib_validate_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
 		       3 /*STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED */ );
 }
 
+int
+  vlib_validate_combined_counter_will_expand
+  (vlib_combined_counter_main_t * cm, u32 index)
+{
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  int i;
+  void *oldheap = vlib_stats_push_heap (cm->counters);
+
+  /* Possibly once in recorded history */
+  if (PREDICT_FALSE (vec_len (cm->counters) == 0))
+    {
+      vlib_stats_pop_heap (cm, oldheap, index,
+			   3 /*STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED */ );
+      return 1;
+    }
+
+  for (i = 0; i < tm->n_vlib_mains; i++)
+    {
+      /* Trivially OK, and proves that index >= vec_len(...) */
+      if (index < vec_len (cm->counters[i]))
+	continue;
+      if (_vec_resize_will_expand
+	  (cm->counters[i],
+	   index - vec_len (cm->counters[i]) /* length_increment */ ,
+	   sizeof (cm->counters[i]) /* data_bytes */ ,
+	   0 /* header_bytes */ ,
+	   CLIB_CACHE_LINE_BYTES /* data_alignment */ ))
+	{
+	  vlib_stats_pop_heap (cm, oldheap, index,
+			       3 /*STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED */ );
+	  return 1;
+	}
+    }
+  vlib_stats_pop_heap (cm, oldheap, index,
+		       3 /*STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED */ );
+  return 0;
+}
+
 void
 vlib_free_combined_counter (vlib_combined_counter_main_t * cm)
 {
