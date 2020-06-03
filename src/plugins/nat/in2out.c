@@ -35,6 +35,7 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
+#include <nat/lib/nat_inlines.h>
 
 typedef struct
 {
@@ -1109,7 +1110,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		  sum0 = ip_csum_update (sum0, old_port0, new_port0,
 					 ip4_header_t /* cheat */ ,
 					 length /* changed member */ );
-		  mss_clamping (sm, tcp0, &sum0);
+		  mss_clamping (sm->mss_clamping, tcp0, &sum0);
 		  tcp0->checksum = ip_csum_fold (sum0);
 		}
 	      tcp_packets++;
@@ -1317,7 +1318,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		  sum1 = ip_csum_update (sum1, old_port1, new_port1,
 					 ip4_header_t /* cheat */ ,
 					 length /* changed member */ );
-		  mss_clamping (sm, tcp1, &sum1);
+		  mss_clamping (sm->mss_clamping, tcp1, &sum1);
 		  tcp1->checksum = ip_csum_fold (sum1);
 		}
 	      tcp_packets++;
@@ -1560,7 +1561,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		  sum0 = ip_csum_update (sum0, old_port0, new_port0,
 					 ip4_header_t /* cheat */ ,
 					 length /* changed member */ );
-		  mss_clamping (sm, tcp0, &sum0);
+		  mss_clamping (sm->mss_clamping, tcp0, &sum0);
 		  tcp0->checksum = ip_csum_fold (sum0);
 		}
 	      tcp_packets++;
@@ -1885,7 +1886,7 @@ VLIB_NODE_FN (snat_in2out_fast_node) (vlib_main_t * vm,
 		  sum0 = ip_csum_update (sum0, old_port0, new_port0,
 					 ip4_header_t /* cheat */ ,
 					 length /* changed member */ );
-		  mss_clamping (sm, tcp0, &sum0);
+		  mss_clamping (sm->mss_clamping, tcp0, &sum0);
 		  tcp0->checksum = ip_csum_fold (sum0);
 		}
 	      else if (udp0->checksum)
@@ -1908,7 +1909,7 @@ VLIB_NODE_FN (snat_in2out_fast_node) (vlib_main_t * vm,
 		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
 					 ip4_header_t,
 					 dst_address /* changed member */ );
-		  mss_clamping (sm, tcp0, &sum0);
+		  mss_clamping (sm->mss_clamping, tcp0, &sum0);
 		  tcp0->checksum = ip_csum_fold (sum0);
 		}
 	      else if (udp0->checksum)

@@ -657,54 +657,6 @@ get_icmp_o2i_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
   return 0;
 }
 
-always_inline void
-mss_clamping (snat_main_t * sm, tcp_header_t * tcp, ip_csum_t * sum)
-{
-  u8 *data;
-  u8 opt_len, opts_len, kind;
-  u16 mss;
-
-  if (!(sm->mss_clamping && tcp_syn (tcp)))
-    return;
-
-  opts_len = (tcp_doff (tcp) << 2) - sizeof (tcp_header_t);
-  data = (u8 *) (tcp + 1);
-  for (; opts_len > 0; opts_len -= opt_len, data += opt_len)
-    {
-      kind = data[0];
-
-      if (kind == TCP_OPTION_EOL)
-	break;
-      else if (kind == TCP_OPTION_NOOP)
-	{
-	  opt_len = 1;
-	  continue;
-	}
-      else
-	{
-	  if (opts_len < 2)
-	    return;
-	  opt_len = data[1];
-
-	  if (opt_len < 2 || opt_len > opts_len)
-	    return;
-	}
-
-      if (kind == TCP_OPTION_MSS)
-	{
-	  mss = *(u16 *) (data + 2);
-	  if (clib_net_to_host_u16 (mss) > sm->mss_clamping)
-	    {
-	      *sum =
-		ip_csum_update (*sum, mss, sm->mss_value_net, ip4_header_t,
-				length);
-	      clib_memcpy_fast (data + 2, &sm->mss_value_net, 2);
-	    }
-	  return;
-	}
-    }
-}
-
 /**
  * @brief Check if packet should be translated
  *

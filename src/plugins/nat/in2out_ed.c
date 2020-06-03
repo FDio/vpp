@@ -32,6 +32,7 @@
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
 #include <nat/nat44/ed_inlines.h>
+#include <nat/lib/nat_inlines.h>
 
 static char *nat_in2out_ed_error_strings[] = {
 #define _(sym,string) string,
@@ -1096,7 +1097,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 		      tcp0->dst_port = s0->ext_host_port;
 		      ip0->dst_address.as_u32 = s0->ext_host_addr.as_u32;
 		    }
-		  mss_clamping (sm, tcp0, &sum0);
+		  mss_clamping (sm->mss_clamping, tcp0, &sum0);
 		  tcp0->checksum = ip_csum_fold (sum0);
 		}
 	      tcp_packets++;
@@ -1406,7 +1407,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 		      tcp0->dst_port = s0->ext_host_port;
 		      ip0->dst_address.as_u32 = s0->ext_host_addr.as_u32;
 		    }
-		  mss_clamping (sm, tcp0, &sum0);
+		  mss_clamping (sm->mss_clamping, tcp0, &sum0);
 		  tcp0->checksum = ip_csum_fold (sum0);
 		}
 	      tcp_packets++;

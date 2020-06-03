@@ -26,6 +26,7 @@
 #include <nat/nat.h>
 #include <nat/nat_det.h>
 #include <nat/nat_inlines.h>
+#include <nat/lib/nat_inlines.h>
 
 typedef struct
 {
@@ -438,7 +439,7 @@ VLIB_NODE_FN (snat_det_in2out_node) (vlib_main_t * vm,
 	      sum0 = ip_csum_update (sum0, old_port0, new_port0,
 				     ip4_header_t /* cheat */ ,
 				     length /* changed member */ );
-	      mss_clamping (sm, tcp0, &sum0);
+	      mss_clamping (sm->mss_clamping, tcp0, &sum0);
 	      tcp0->checksum = ip_csum_fold (sum0);
 	    }
 	  else
@@ -611,7 +612,7 @@ VLIB_NODE_FN (snat_det_in2out_node) (vlib_main_t * vm,
 	      sum1 = ip_csum_update (sum1, old_port1, new_port1,
 				     ip4_header_t /* cheat */ ,
 				     length /* changed member */ );
-	      mss_clamping (sm, tcp1, &sum1);
+	      mss_clamping (sm->mss_clamping, tcp1, &sum1);
 	      tcp1->checksum = ip_csum_fold (sum1);
 	    }
 	  else
@@ -820,7 +821,7 @@ VLIB_NODE_FN (snat_det_in2out_node) (vlib_main_t * vm,
 	      sum0 = ip_csum_update (sum0, old_port0, new_port0,
 				     ip4_header_t /* cheat */ ,
 				     length /* changed member */ );
-	      mss_clamping (sm, tcp0, &sum0);
+	      mss_clamping (sm->mss_clamping, tcp0, &sum0);
 	      tcp0->checksum = ip_csum_fold (sum0);
 	    }
 	  else

@@ -654,7 +654,6 @@ typedef struct snat_main_s
 
   /* TCP MSS clamping */
   u16 mss_clamping;
-  u16 mss_value_net;
 
   /* counters/gauges */
   vlib_simple_counter_main_t total_users;

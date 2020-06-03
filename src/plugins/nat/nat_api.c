@@ -495,10 +495,7 @@ vl_api_nat_set_mss_clamping_t_handler (vl_api_nat_set_mss_clamping_t * mp)
   int rv = 0;
 
   if (mp->enable)
-    {
-      sm->mss_clamping = ntohs (mp->mss_value);
-      sm->mss_value_net = mp->mss_value;
-    }
+    sm->mss_clamping = ntohs (mp->mss_value);
   else
     sm->mss_clamping = 0;
 

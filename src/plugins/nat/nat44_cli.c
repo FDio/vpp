@@ -358,10 +358,7 @@ nat_set_mss_clamping_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (unformat (line_input, "disable"))
 	sm->mss_clamping = 0;
       else if (unformat (line_input, "%d", &mss))
-	{
-	  sm->mss_clamping = (u16) mss;
-	  sm->mss_value_net = clib_host_to_net_u16 (sm->mss_clamping);
-	}
+	sm->mss_clamping = (u16) mss;
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
