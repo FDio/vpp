@@ -471,10 +471,6 @@ typedef struct vlib_node_runtime_t
 
   vlib_error_t *errors;			/**< Vector of errors for this node. */
 
-#if __SIZEOF_POINTER__ == 4
-  u8 pad[8];
-#endif
-
   u32 clocks_since_last_overflow;	/**< Number of clock cycles. */
 
   u32 max_clock;			/**< Maximum clock cycle for an
@@ -511,6 +507,10 @@ typedef struct vlib_node_runtime_t
   u16 flags;				/**< Copy of main node flags. */
 
   u16 state;				/**< Input node state. */
+
+  u32 interrupt_data;			/**< Data passed together with interrupt.
+					  Valid only when state is
+					  VLIB_NODE_STATE_INTERRUPT */
 
   u16 n_next_nodes;
 
@@ -676,6 +676,12 @@ vlib_timing_wheel_data_get_index (u32 d)
 
 typedef struct
 {
+  u32 node_runtime_index;
+  u32 data;
+} vlib_node_interrupt_t;
+
+typedef struct
+{
   /* Public nodes. */
   vlib_node_t **nodes;
 
@@ -690,7 +696,8 @@ typedef struct
   vlib_node_runtime_t *nodes_by_type[VLIB_N_NODE_TYPE];
 
   /* Node runtime indices for input nodes with pending interrupts. */
-  u32 *pending_interrupt_node_runtime_indices;
+  vlib_node_interrupt_t *pending_local_interrupts;
+  vlib_node_interrupt_t *pending_remote_interrupts;
   clib_spinlock_t pending_interrupt_lock;
 
   /* Input nodes are switched from/to interrupt to/from polling mode
