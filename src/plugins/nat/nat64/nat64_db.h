@@ -21,8 +21,14 @@
 
 #include <vppinfra/bihash_24_8.h>
 #include <vppinfra/bihash_48_8.h>
-#include <nat/nat.h>
+#include <vnet/ip/ip46_address.h>
+#include <nat/lib/lib.h>
 
+typedef struct
+{
+  u16 identifier;
+  u16 sequence;
+} icmp_echo_header_t;
 
 typedef struct
 {

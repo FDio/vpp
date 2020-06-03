@@ -35,7 +35,6 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
-#include <nat/lib/nat_inlines.h>
 
 typedef struct
 {

@@ -23,7 +23,6 @@
 #include <nat/nat_dpo.h>
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_det.h>
-#include <nat/nat64.h>
 #include <nat/nat66.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat44/inlines.h>
@@ -602,34 +601,6 @@ nat_session_alloc_or_recycle (snat_main_t * sm, snat_user_t * u,
   return s;
 }
 
-void
-snat_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
-			  int is_add)
-{
-  fib_prefix_t prefix = {
-    .fp_len = p_len,
-    .fp_proto = FIB_PROTOCOL_IP4,
-    .fp_addr = {
-		.ip4.as_u32 = addr->as_u32,
-		},
-  };
-  u32 fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
-
-  if (is_add)
-    fib_table_entry_update_one_path (fib_index,
-				     &prefix,
-				     nat_fib_src_low,
-				     (FIB_ENTRY_FLAG_CONNECTED |
-				      FIB_ENTRY_FLAG_LOCAL |
-				      FIB_ENTRY_FLAG_EXCLUSIVE),
-				     DPO_PROTO_IP4,
-				     NULL,
-				     sw_if_index,
-				     ~0, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
-  else
-    fib_table_entry_delete (fib_index, &prefix, nat_fib_src_low);
-}
-
 int
 snat_add_address (snat_main_t * sm, ip4_address_t * addr, u32 vrf_id,
 		  u8 twice_nat)
@@ -679,7 +650,7 @@ snat_add_address (snat_main_t * sm, ip4_address_t * addr, u32 vrf_id,
     if (nat_interface_is_inside(i) || sm->out2in_dpo)
       continue;
 
-    snat_add_del_addr_to_fib(addr, 32, i->sw_if_index, 1);
+    snat_add_del_addr_to_fib(addr, 32, i->sw_if_index, 1, nat_fib_src_low);
     break;
   }));
   pool_foreach (i, sm->output_feature_interfaces,
@@ -687,7 +658,7 @@ snat_add_address (snat_main_t * sm, ip4_address_t * addr, u32 vrf_id,
     if (nat_interface_is_inside(i) || sm->out2in_dpo)
       continue;
 
-    snat_add_del_addr_to_fib(addr, 32, i->sw_if_index, 1);
+    snat_add_del_addr_to_fib(addr, 32, i->sw_if_index, 1, nat_fib_src_low);
     break;
   }));
   /* *INDENT-ON* */
@@ -1276,7 +1247,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
     if (nat_interface_is_inside(interface) || sm->out2in_dpo)
       continue;
 
-    snat_add_del_addr_to_fib(&e_addr, 32, interface->sw_if_index, is_add);
+    snat_add_del_addr_to_fib(&e_addr, 32, interface->sw_if_index, is_add, nat_fib_src_low);
     break;
   }));
   pool_foreach (interface, sm->output_feature_interfaces,
@@ -1284,7 +1255,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
     if (nat_interface_is_inside(interface) || sm->out2in_dpo)
       continue;
 
-    snat_add_del_addr_to_fib(&e_addr, 32, interface->sw_if_index, is_add);
+    snat_add_del_addr_to_fib(&e_addr, 32, interface->sw_if_index, is_add, nat_fib_src_low);
     break;
   }));
   /* *INDENT-ON* */
@@ -1782,7 +1753,7 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
     if (nat_interface_is_inside(interface) || sm->out2in_dpo)
       continue;
 
-    snat_add_del_addr_to_fib(&addr, 32, interface->sw_if_index, 0);
+    snat_add_del_addr_to_fib(&addr, 32, interface->sw_if_index, 0, nat_fib_src_low);
     break;
   }));
   pool_foreach (interface, sm->output_feature_interfaces,
@@ -1790,7 +1761,7 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
     if (nat_interface_is_inside(interface) || sm->out2in_dpo)
       continue;
 
-    snat_add_del_addr_to_fib(&addr, 32, interface->sw_if_index, 0);
+    snat_add_del_addr_to_fib(&addr, 32, interface->sw_if_index, 0, nat_fib_src_low);
     break;
   }));
   /* *INDENT-ON* */
@@ -2044,19 +2015,19 @@ set_flags:
 fib:
   /* *INDENT-OFF* */
   vec_foreach (ap, sm->addresses)
-    snat_add_del_addr_to_fib(&ap->addr, 32, sw_if_index, !is_del);
+    snat_add_del_addr_to_fib(&ap->addr, 32, sw_if_index, !is_del, nat_fib_src_low);
 
   pool_foreach (m, sm->static_mappings,
   ({
     if (!(is_addr_only_static_mapping(m)) || (m->local_addr.as_u32 == m->external_addr.as_u32))
       continue;
 
-    snat_add_del_addr_to_fib(&m->external_addr, 32, sw_if_index, !is_del);
+    snat_add_del_addr_to_fib(&m->external_addr, 32, sw_if_index, !is_del, nat_fib_src_low);
   }));
 
   pool_foreach (dm, sm->det_maps,
   ({
-    snat_add_del_addr_to_fib(&dm->out_addr, dm->out_plen, sw_if_index, !is_del);
+    snat_add_del_addr_to_fib(&dm->out_addr, dm->out_plen, sw_if_index, !is_del, nat_fib_src_low);
   }));
   /* *INDENT-ON* */
 
@@ -2247,14 +2218,14 @@ fib:
 
   /* *INDENT-OFF* */
   vec_foreach (ap, sm->addresses)
-    snat_add_del_addr_to_fib(&ap->addr, 32, sw_if_index, !is_del);
+    snat_add_del_addr_to_fib(&ap->addr, 32, sw_if_index, !is_del, nat_fib_src_low);
 
   pool_foreach (m, sm->static_mappings,
   ({
     if (!((is_addr_only_static_mapping(m)))  || (m->local_addr.as_u32 == m->external_addr.as_u32))
       continue;
 
-    snat_add_del_addr_to_fib(&m->external_addr, 32, sw_if_index, !is_del);
+    snat_add_del_addr_to_fib(&m->external_addr, 32, sw_if_index, !is_del, nat_fib_src_low);
   }));
   /* *INDENT-ON* */
 
@@ -2592,11 +2563,6 @@ snat_init (vlib_main_t * vm)
 
   /* Init IPFIX logging */
   snat_ipfix_logging_init (vm);
-
-  /* Init NAT64 */
-  error = nat64_init (vm);
-  if (error)
-    return error;
 
   nat66_init (vm);
 
@@ -3919,12 +3885,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   u32 static_mapping_buckets = 1024;
   uword static_mapping_memory_size = 64 << 20;
 
-  u32 nat64_bib_buckets = 1024;
-  u32 nat64_bib_memory_size = 128 << 20;
-
-  u32 nat64_st_buckets = 2048;
-  uword nat64_st_memory_size = 256 << 20;
-
   u32 max_users_per_thread = 0;
   u32 user_memory_size = 0;
   u32 max_translations_per_thread = 0;
@@ -3986,18 +3946,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 	}
       else if (unformat (input, "deterministic"))
 	sm->deterministic = 1;
-      else if (unformat (input, "nat64 bib hash buckets %d",
-			 &nat64_bib_buckets))
-	;
-      else if (unformat (input, "nat64 bib hash memory %d",
-			 &nat64_bib_memory_size))
-	;
-      else
-	if (unformat (input, "nat64 st hash buckets %d", &nat64_st_buckets))
-	;
-      else if (unformat (input, "nat64 st hash memory %d",
-			 &nat64_st_memory_size))
-	;
       else if (unformat (input, "out2in dpo"))
 	sm->out2in_dpo = 1;
       else if (unformat (input, "endpoint-dependent"))
@@ -4085,9 +4033,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 							    nat_fib_src_hi);
   sm->static_mapping_only = static_mapping_only;
   sm->static_mapping_connection_tracking = static_mapping_connection_tracking;
-
-  nat64_set_hash (nat64_bib_buckets, nat64_bib_memory_size, nat64_st_buckets,
-		  nat64_st_memory_size);
 
   if (sm->deterministic)
     {

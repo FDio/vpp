@@ -32,7 +32,6 @@
 #include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
 #include <nat/nat44/ed_inlines.h>
-#include <nat/lib/nat_inlines.h>
 
 static char *nat_in2out_ed_error_strings[] = {
 #define _(sym,string) string,

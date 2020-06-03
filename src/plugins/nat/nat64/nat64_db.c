@@ -16,11 +16,11 @@
  * @file
  * @brief NAT64 DB
  */
-#include <nat/nat64_db.h>
+#include "nat64_db.h"
 #include <nat/nat_ipfix_logging.h>
-#include <nat/nat_inlines.h>
 #include <nat/nat_syslog.h>
 #include <vnet/fib/fib_table.h>
+#include <nat/lib/inlines.h>
 
 int
 nat64_db_init (nat64_db_t * db, u32 bib_buckets, uword bib_memory_size,

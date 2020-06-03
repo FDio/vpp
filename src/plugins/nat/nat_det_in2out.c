@@ -26,7 +26,6 @@
 #include <nat/nat.h>
 #include <nat/nat_det.h>
 #include <nat/nat_inlines.h>
-#include <nat/lib/nat_inlines.h>
 
 typedef struct
 {

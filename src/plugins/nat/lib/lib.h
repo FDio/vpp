@@ -19,6 +19,8 @@
 #ifndef included_nat_lib_h__
 #define included_nat_lib_h__
 
+#include <vnet/ip/ip4.h>
+
 #define foreach_nat_error                      \
   _ (VALUE_EXIST, -1, "Value already exists")  \
   _ (NO_SUCH_ENTRY, -2, "No such entry")       \
@@ -44,6 +46,32 @@ typedef enum
   foreach_nat_protocol
 #undef _
 } nat_protocol_t;
+
+typedef struct
+{
+  ip4_address_t addr;
+  u32 fib_index;
+/* *INDENT-OFF* */
+#define _(N, i, n, s) \
+  u16 busy_##n##_ports; \
+  u16 * busy_##n##_ports_per_thread; \
+  u32 busy_##n##_port_refcounts[65535];
+  foreach_nat_protocol
+#undef _
+/* *INDENT-ON* */
+} snat_address_t;
+
+/* NAT address and port allocation function */
+typedef int (nat_alloc_out_addr_and_port_function_t) (snat_address_t *
+						      addresses,
+						      u32 fib_index,
+						      u32 thread_index,
+						      nat_protocol_t proto,
+						      ip4_address_t * addr,
+						      u16 * port,
+						      u16 port_per_thread,
+						      u32 snat_thread_index);
+
 
 #endif /* included_nat_lib_h__ */
 /*

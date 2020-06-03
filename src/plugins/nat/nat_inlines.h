@@ -22,6 +22,7 @@
 #include <vnet/fib/ip4_fib.h>
 #include <nat/nat.h>
 #include <nat/nat_ha.h>
+#include <nat/lib/inlines.h>
 
 always_inline u64
 calc_nat_key (ip4_address_t addr, u16 port, u32 fib_index, u8 proto)
@@ -802,15 +803,6 @@ snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t * node,
     }
 
   return 1;
-}
-
-static inline void
-increment_v4_address (ip4_address_t * a)
-{
-  u32 v;
-
-  v = clib_net_to_host_u32 (a->as_u32) + 1;
-  a->as_u32 = clib_host_to_net_u32 (v);
 }
 
 static_always_inline u16

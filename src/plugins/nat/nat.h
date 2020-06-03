@@ -308,20 +308,6 @@ typedef struct
 
 typedef struct
 {
-  ip4_address_t addr;
-  u32 fib_index;
-/* *INDENT-OFF* */
-#define _(N, i, n, s) \
-  u16 busy_##n##_ports; \
-  u16 * busy_##n##_ports_per_thread; \
-  u32 busy_##n##_port_refcounts[65535];
-  foreach_nat_protocol
-#undef _
-/* *INDENT-ON* */
-} snat_address_t;
-
-typedef struct
-{
   u32 fib_index;
   u32 refcount;
 } nat_outside_fib_t;
@@ -505,18 +491,6 @@ typedef u32 (snat_get_worker_out2in_function_t) (vlib_buffer_t * b,
 						 ip4_header_t * ip,
 						 u32 rx_fib_index,
 						 u8 is_output);
-
-/* NAT address and port allocation function */
-typedef int (nat_alloc_out_addr_and_port_function_t) (snat_address_t *
-						      addresses,
-						      u32 fib_index,
-						      u32 thread_index,
-						      nat_protocol_t proto,
-						      ip4_address_t * addr,
-						      u16 * port,
-						      u16 port_per_thread,
-						      u32 snat_thread_index);
-
 
 typedef struct snat_main_s
 {
@@ -1415,21 +1389,6 @@ int snat_static_mapping_match (snat_main_t * sm,
 			       lb_nat_type_t * lb,
 			       ip4_address_t * ext_host_addr,
 			       u8 * is_identity_nat);
-
-/**
- * @brief Add/del NAT address to FIB.
- *
- * Add the external NAT address to the FIB as receive entries. This ensures
- * that VPP will reply to ARP for this address and we don't need to enable
- * proxy ARP on the outside interface.
- *
- * @param addr        IPv4 address
- * @param plen        address prefix length
- * @param sw_if_index software index of the outside interface
- * @param is_add      0 = delete, 1 = add.
- */
-void snat_add_del_addr_to_fib (ip4_address_t * addr,
-			       u8 p_len, u32 sw_if_index, int is_add);
 
 /*
  * Why is this here? Because we don't need to touch this layer to

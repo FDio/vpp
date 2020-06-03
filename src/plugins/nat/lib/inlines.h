@@ -15,8 +15,10 @@
 /**
  * @brief Common NAT inline functions
  */
-#ifndef included_nat_inlines_h__
-#define included_nat_inlines_h__
+#ifndef included_nat_lib_inlines_h
+#define included_nat_lib_inlines_h
+
+#include <vnet/fib/ip4_fib.h>
 
 always_inline nat_protocol_t
 ip_proto_to_nat_proto (u8 ip_proto)
@@ -64,8 +66,105 @@ icmp_type_is_error_message (u8 icmp_type)
     }
   return 0;
 }
+always_inline void
+mss_clamping (u16 mss_clamping, tcp_header_t * tcp, ip_csum_t * sum)
+{
+  u8 *data;
+  u8 opt_len, opts_len, kind;
+  u16 mss;
 
-#endif /* included_nat_inlines_h__ */
+  if (!(mss_clamping && tcp_syn (tcp)))
+    return;
+
+  opts_len = (tcp_doff (tcp) << 2) - sizeof (tcp_header_t);
+  data = (u8 *) (tcp + 1);
+  for (; opts_len > 0; opts_len -= opt_len, data += opt_len)
+    {
+      kind = data[0];
+
+      if (kind == TCP_OPTION_EOL)
+	break;
+      else if (kind == TCP_OPTION_NOOP)
+	{
+	  opt_len = 1;
+	  continue;
+	}
+      else
+	{
+	  if (opts_len < 2)
+	    return;
+	  opt_len = data[1];
+
+	  if (opt_len < 2 || opt_len > opts_len)
+	    return;
+	}
+
+      if (kind == TCP_OPTION_MSS)
+	{
+	  mss = *(u16 *) (data + 2);
+	  if (clib_net_to_host_u16 (mss) > mss_clamping)
+	    {
+	      u16 mss_value_net = clib_host_to_net_u16(mss_clamping);
+	      *sum =
+		ip_csum_update (*sum, mss, mss_value_net, ip4_header_t,
+				length);
+	      clib_memcpy_fast (data + 2, &mss_value_net, 2);
+	    }
+	  return;
+	}
+    }
+}
+
+/**
+ * @brief Add/del NAT address to FIB.
+ *
+ * Add the external NAT address to the FIB as receive entries. This ensures
+ * that VPP will reply to ARP for this address and we don't need to enable
+ * proxy ARP on the outside interface.
+ *
+ * @param addr        IPv4 address
+ * @param plen        address prefix length
+ * @param sw_if_index software index of the outside interface
+ * @param is_add      0 = delete, 1 = add.
+ */
+static inline void
+snat_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
+			  int is_add, fib_source_t fib_src)
+{
+  fib_prefix_t prefix = {
+    .fp_len = p_len,
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_addr = {
+		.ip4.as_u32 = addr->as_u32,
+		},
+  };
+  u32 fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
+
+  if (is_add)
+    fib_table_entry_update_one_path (fib_index,
+				     &prefix,
+				     fib_src,
+				     (FIB_ENTRY_FLAG_CONNECTED |
+				      FIB_ENTRY_FLAG_LOCAL |
+				      FIB_ENTRY_FLAG_EXCLUSIVE),
+				     DPO_PROTO_IP4,
+				     NULL,
+				     sw_if_index,
+				     ~0, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+  else
+    fib_table_entry_delete (fib_index, &prefix, fib_src);
+}
+
+static inline void
+increment_v4_address (ip4_address_t * a)
+{
+  u32 v;
+
+  v = clib_net_to_host_u32 (a->as_u32) + 1;
+  a->as_u32 = clib_host_to_net_u32 (v);
+}
+
+#endif /* included_nat_lib_inlines_h__ */
 /*
  * fd.io coding-style-patch-verification: ON
  *

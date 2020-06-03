@@ -19,8 +19,8 @@
 #ifndef __included_nat64_h__
 #define __included_nat64_h__
 
-#include <nat/nat.h>
-#include <nat/nat64_db.h>
+#include "nat64_db.h"
+#include <vnet/ip/ip4.h>
 
 #define foreach_nat64_tcp_ses_state            \
   _(0, CLOSED, "closed")                       \
@@ -67,8 +67,14 @@ typedef struct
 
 typedef struct
 {
+  u32 sw_if_index;
+  u8 flags;
+} nat64_interface_t;
+
+typedef struct
+{
   /** Interface pool */
-  snat_interface_t *interfaces;
+  nat64_interface_t *interfaces;
 
   /** Address pool vector */
   snat_address_t *addr_pool;
@@ -98,8 +104,11 @@ typedef struct
   /** values of various timeouts */
   u32 udp_timeout;
   u32 icmp_timeout;
+  // XXX FIX
   u32 tcp_trans_timeout;
   u32 tcp_est_timeout;
+  u32 tcp_transitory_timeout;
+  u32 tcp_established_timeout;
 
   /* Total count of interfaces enabled */
   u32 total_enabled_count;
@@ -119,7 +128,15 @@ typedef struct
   u32 out2in_node_index;
 
   ip4_main_t *ip4_main;
-  snat_main_t *sm;
+
+  u16 msg_id_base;
+  u16 mss_clamping;
+
+  u32 num_workers;
+  u32 first_worker_index;
+  u32 *workers;
+  u16 port_per_thread;
+  nat_alloc_out_addr_and_port_function_t *alloc_addr_and_port;
 } nat64_main_t;
 
 extern nat64_main_t nat64_main;
@@ -178,7 +195,7 @@ int nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add);
  * @brief Call back function when walking interfaces with NAT64 feature,
  * non-zero return value stop walk.
  */
-typedef int (*nat64_interface_walk_fn_t) (snat_interface_t * i, void *ctx);
+typedef int (*nat64_interface_walk_fn_t) (nat64_interface_t * i, void *ctx);
 
 /**
  * @brief Walk NAT64 interfaces.
@@ -379,6 +396,32 @@ u32 nat64_get_worker_in2out (ip6_address_t * addr);
  * @returns worker thread index.
  */
 u32 nat64_get_worker_out2in (vlib_buffer_t * b, ip4_header_t * ip);
+
+
+// XXX Cut and paste
+/* NAT API Configuration flags */
+#define foreach_nat_config_flag \
+  _(0x01, IS_TWICE_NAT)         \
+  _(0x02, IS_SELF_TWICE_NAT)    \
+  _(0x04, IS_OUT2IN_ONLY)       \
+  _(0x08, IS_ADDR_ONLY)         \
+  _(0x10, IS_OUTSIDE)           \
+  _(0x20, IS_INSIDE)            \
+  _(0x40, IS_STATIC)            \
+  _(0x80, IS_EXT_HOST_VALID)    \
+
+typedef enum nat_config_flags_t_
+{
+#define _(n,f) NAT_API_##f = n,
+  foreach_nat_config_flag
+#undef _
+} nat_config_flags_t;
+/* NAT interface flags */
+#define NAT_INTERFACE_FLAG_IS_INSIDE 1
+#define NAT_INTERFACE_FLAG_IS_OUTSIDE 2
+
+#define nat64_interface_is_inside(i) i->flags & NAT_INTERFACE_FLAG_IS_INSIDE
+#define nat64_interface_is_outside(i) i->flags & NAT_INTERFACE_FLAG_IS_OUTSIDE
 
 #endif /* __included_nat64_h__ */
 

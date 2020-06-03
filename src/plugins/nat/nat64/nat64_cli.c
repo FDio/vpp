@@ -17,10 +17,9 @@
  * @brief NAT64 CLI
  */
 
-#include <nat/nat64.h>
-#include <nat/nat.h>
-#include <nat/nat_inlines.h>
+#include "nat64.h"
 #include <vnet/fib/fib_table.h>
+#include <nat/lib/inlines.h>
 
 static clib_error_t *
 nat64_add_del_pool_addr_command_fn (vlib_main_t * vm,
@@ -250,7 +249,7 @@ done:
 }
 
 static int
-nat64_cli_interface_walk (snat_interface_t * i, void *ctx)
+nat64_cli_interface_walk (nat64_interface_t * i, void *ctx)
 {
   vlib_main_t *vm = ctx;
   vnet_main_t *vnm = vnet_get_main ();
@@ -926,3 +925,84 @@ VLIB_CLI_COMMAND (nat64_add_interface_address_command, static) = {
  * eval: (c-set-style "gnu")
  * End:
  */
+static clib_error_t *
+set_timeout_command_fn (vlib_main_t * vm,
+			unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+  nat64_main_t *nm = &nat64_main;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "udp %u", &nm->udp_timeout))
+	{
+	  if (nat64_set_udp_timeout (nm->udp_timeout))
+	    {
+	      error = clib_error_return (0, "Invalid UDP timeout value");
+	      goto done;
+	    }
+	}
+      else if (unformat (line_input, "tcp-established %u",
+			 &nm->tcp_established_timeout))
+	{
+	  if (nat64_set_tcp_timeouts
+	      (nm->tcp_transitory_timeout, nm->tcp_established_timeout))
+	    {
+	      error =
+		clib_error_return (0,
+				   "Invalid TCP established timeouts value");
+	      goto done;
+	    }
+	}
+      else if (unformat (line_input, "tcp-transitory %u",
+			 &nm->tcp_transitory_timeout))
+	{
+	  if (nat64_set_tcp_timeouts
+	      (nm->tcp_transitory_timeout, nm->tcp_established_timeout))
+	    {
+	      error =
+		clib_error_return (0,
+				   "Invalid TCP transitory timeouts value");
+	      goto done;
+	    }
+	}
+      else if (unformat (line_input, "icmp %u", &nm->icmp_timeout))
+	{
+	  if (nat64_set_icmp_timeout (nm->icmp_timeout))
+	    {
+	      error = clib_error_return (0, "Invalid ICMP timeout value");
+	      goto done;
+	    }
+	}
+      else if (unformat (line_input, "reset"))
+	{
+	  nm->udp_timeout = SNAT_UDP_TIMEOUT;
+	  nm->tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
+	  nm->tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
+	  nm->icmp_timeout = SNAT_ICMP_TIMEOUT;
+	  nat64_set_udp_timeout (0);
+	  nat64_set_icmp_timeout (0);
+	  nat64_set_tcp_timeouts (0, 0);
+	}
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+VLIB_CLI_COMMAND (set_timeout_command, static) =
+{
+.path = "set nat64 timeout",.function = set_timeout_command_fn,.short_help =
+    "set nat64 timeout [udp <sec> | tcp-established <sec> "
+    "tcp-transitory <sec> | icmp <sec> | reset]",};

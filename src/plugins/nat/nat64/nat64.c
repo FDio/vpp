@@ -17,9 +17,9 @@
  * @brief NAT64 implementation
  */
 
-#include <nat/nat64.h>
-#include <nat/nat64_db.h>
-#include <nat/nat_inlines.h>
+#include "nat64.h"
+#include "nat64_db.h"
+#include <nat/lib/inlines.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vppinfra/crc32.h>
 #include <vnet/ip/reass/ip4_sv_reass.h>
@@ -105,8 +105,7 @@ u32
 nat64_get_worker_in2out (ip6_address_t * addr)
 {
   nat64_main_t *nm = &nat64_main;
-  snat_main_t *sm = nm->sm;
-  u32 next_worker_index = nm->sm->first_worker_index;
+  u32 next_worker_index = nm->first_worker_index;
   u32 hash;
 
 #ifdef clib_crc32c_uses_intrinsics
@@ -116,10 +115,10 @@ nat64_get_worker_in2out (ip6_address_t * addr)
   hash = clib_xxhash (tmp);
 #endif
 
-  if (PREDICT_TRUE (is_pow2 (_vec_len (sm->workers))))
-    next_worker_index += sm->workers[hash & (_vec_len (sm->workers) - 1)];
+  if (PREDICT_TRUE (is_pow2 (_vec_len (nm->workers))))
+    next_worker_index += nm->workers[hash & (_vec_len (nm->workers) - 1)];
   else
-    next_worker_index += sm->workers[hash % _vec_len (sm->workers)];
+    next_worker_index += nm->workers[hash % _vec_len (nm->workers)];
 
   return next_worker_index;
 }
@@ -128,7 +127,6 @@ u32
 nat64_get_worker_out2in (vlib_buffer_t * b, ip4_header_t * ip)
 {
   nat64_main_t *nm = &nat64_main;
-  snat_main_t *sm = nm->sm;
   udp_header_t *udp;
   u16 port;
   u32 proto;
@@ -192,7 +190,7 @@ nat64_get_worker_out2in (vlib_buffer_t * b, ip4_header_t * ip)
   /* worker by outside port  (TCP/UDP) */
   port = clib_net_to_host_u16 (port);
   if (port > 1024)
-    return nm->sm->first_worker_index + ((port - 1024) / sm->port_per_thread);
+    return nm->first_worker_index + ((port - 1024) / nm->port_per_thread);
 
   return vlib_get_thread_index ();
 }
@@ -204,7 +202,6 @@ nat64_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   ip4_add_del_interface_address_callback_t cb4;
   ip4_main_t *im = &ip4_main;
-  nm->sm = &snat_main;
   vlib_node_t *node;
 
   vec_validate (nm->db, tm->n_vlib_mains - 1);
@@ -248,7 +245,9 @@ nat64_init (vlib_main_t * vm)
   vlib_validate_simple_counter (&nm->total_sessions, 0);
   vlib_zero_simple_counter (&nm->total_sessions, 0);
 
-  return 0;
+  clib_error_t *nat64_plugin_api_hookup (vlib_main_t * vm);
+  clib_error_t *error = nat64_plugin_api_hookup (vm);
+  return error;
 }
 
 static void nat64_free_out_addr_and_port (struct nat64_db_s *db,
@@ -283,7 +282,7 @@ nat64_add_del_pool_addr (u32 thread_index,
 {
   nat64_main_t *nm = &nat64_main;
   snat_address_t *a = 0;
-  snat_interface_t *interface;
+  nat64_interface_t *interface;
   int i;
   nat64_db_t *db;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -345,7 +344,7 @@ nat64_add_del_pool_addr (u32 thread_index,
     if (nat_interface_is_inside(interface))
       continue;
 
-    snat_add_del_addr_to_fib (addr, 32, interface->sw_if_index, is_add);
+    snat_add_del_addr_to_fib (addr, 32, interface->sw_if_index, is_add, nat64_fib_src_low);
     break;
   }));
   /* *INDENT-ON* */
@@ -415,7 +414,7 @@ nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
 {
   vlib_main_t *vm = vlib_get_main ();
   nat64_main_t *nm = &nat64_main;
-  snat_interface_t *interface = 0, *i;
+  nat64_interface_t *interface = 0, *i;
   snat_address_t *ap;
   const char *feature_name, *arc_name;
 
@@ -471,11 +470,11 @@ nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
     {
       /* *INDENT-OFF* */
       vec_foreach (ap, nm->addr_pool)
-        snat_add_del_addr_to_fib(&ap->addr, 32, sw_if_index, is_add);
+        snat_add_del_addr_to_fib(&ap->addr, 32, sw_if_index, is_add, nat64_fib_src_low);
       /* *INDENT-ON* */
     }
 
-  if (nm->sm->num_workers > 1)
+  if (nm->num_workers > 1)
     {
       feature_name =
 	is_inside ? "nat64-in2out-handoff" : "nat64-out2in-handoff";
@@ -512,7 +511,7 @@ void
 nat64_interfaces_walk (nat64_interface_walk_fn_t fn, void *ctx)
 {
   nat64_main_t *nm = &nat64_main;
-  snat_interface_t *i = 0;
+  nat64_interface_t *i = 0;
 
   /* *INDENT-OFF* */
   pool_foreach (i, nm->interfaces,
@@ -529,16 +528,15 @@ nat64_alloc_out_addr_and_port (u32 fib_index, nat_protocol_t proto,
 			       u32 thread_index)
 {
   nat64_main_t *nm = &nat64_main;
-  snat_main_t *sm = nm->sm;
   u32 worker_index = 0;
   int rv;
 
-  if (sm->num_workers > 1)
-    worker_index = thread_index - sm->first_worker_index;
+  if (nm->num_workers > 1)
+    worker_index = thread_index - nm->first_worker_index;
 
   rv =
-    sm->alloc_addr_and_port (nm->addr_pool, fib_index, thread_index,
-			     proto, addr, port, sm->port_per_thread,
+    nm->alloc_addr_and_port (nm->addr_pool, fib_index, thread_index,
+			     proto, addr, port, nm->port_per_thread,
 			     worker_index);
 
   return rv;
@@ -665,13 +663,13 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
   vlib_main_t *worker_vm;
   u32 *to_be_free = 0, *index;
 
-  if (nm->sm->num_workers > 1)
+  if (nm->num_workers > 1)
     {
       thread_index = nat64_get_worker_in2out (in_addr);
       db = &nm->db[thread_index];
     }
   else
-    db = &nm->db[nm->sm->num_workers];
+    db = &nm->db[nm->num_workers];
 
   addr.as_u64[0] = in_addr->as_u64[0];
   addr.as_u64[1] = in_addr->as_u64[1];
@@ -685,9 +683,9 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 	return VNET_API_ERROR_VALUE_EXIST;
 
       /* outside port must be assigned to same thread as internall address */
-      if ((out_port > 1024) && (nm->sm->num_workers > 1))
+      if ((out_port > 1024) && (nm->num_workers > 1))
 	{
-	  if (thread_index != ((out_port - 1024) / nm->sm->port_per_thread))
+	  if (thread_index != ((out_port - 1024) / nm->port_per_thread))
 	    return VNET_API_ERROR_INVALID_VALUE_2;
 	}
 
@@ -719,7 +717,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 	    }
 	  break;
 	}
-      if (!nm->sm->num_workers)
+      if (!nm->num_workers)
 	{
 	  bibe =
 	    nat64_db_bib_entry_create (thread_index, db, in_addr, out_addr,
@@ -738,7 +736,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
       if (!bibe)
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-      if (!nm->sm->num_workers)
+      if (!nm->num_workers)
 	{
 	  nat64_db_bib_entry_free (thread_index, db, bibe);
 	  vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
@@ -746,7 +744,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 	}
     }
 
-  if (nm->sm->num_workers)
+  if (nm->num_workers)
     {
       /* *INDENT-OFF* */
       pool_foreach (static_bib, nm->static_bibs,
@@ -1257,6 +1255,13 @@ nat64_expire_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
+#if REFACTOR
+  /* Init NAT64 */
+error = nat64_init (vm);
+if (error)
+  return error;
+#endif
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat64_expire_walk_node, static) = {
     .function = nat64_expire_walk_fn,
@@ -1272,3 +1277,210 @@ VLIB_REGISTER_NODE (nat64_expire_walk_node, static) = {
  * eval: (c-set-style "gnu")
  * End:
  */
+#if 0
+static clib_error_t *
+snat64_config (vlib_main_t * vm, unformat_input_t * input)
+{
+
+  nat64_main_t *nm = &nat64_main;
+
+  u32 nat64_bib_buckets = 1024;
+  u32 nat64_bib_memory_size = 128 << 20;
+
+  u32 nat64_st_buckets = 2048;
+  uword nat64_st_memory_size = 256 << 20;
+
+  // configurable timeouts
+  u32 udp_timeout = SNAT_UDP_TIMEOUT;
+  u32 icmp_timeout = SNAT_ICMP_TIMEOUT;
+  u32 tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
+  u32 tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (input, "translation hash buckets %d", &translation_buckets))
+	;
+      else if (unformat (input, "udp timeout %d", &udp_timeout))
+	;
+      else if (unformat (input, "icmp timeout %d", &icmp_timeout))
+	;
+      else if (unformat (input, "tcp transitory timeout %d",
+			 &tcp_transitory_timeout));
+      else if (unformat (input, "tcp established timeout %d",
+			 &tcp_established_timeout));
+      else if (unformat (input, "translation hash memory %d",
+			 &translation_memory_size));
+      else if (unformat (input, "user hash buckets %d", &user_buckets))
+	;
+      else if (unformat (input, "user hash memory %d", &user_memory_size))
+	;
+      else if (unformat (input, "max translations per user %d",
+			 &max_translations_per_user))
+	;
+      else if (unformat (input, "outside VRF id %d", &outside_vrf_id))
+	;
+      else if (unformat (input, "outside ip6 VRF id %d", &outside_ip6_vrf_id))
+	;
+      else if (unformat (input, "inside VRF id %d", &inside_vrf_id))
+	;
+      else if (unformat (input, "static mapping only"))
+	{
+	  static_mapping_only = 1;
+	  if (unformat (input, "connection tracking"))
+	    static_mapping_connection_tracking = 1;
+	}
+      else if (unformat (input, "nat64 bib hash buckets %d",
+			 &nat64_bib_buckets))
+	;
+      else if (unformat (input, "nat64 bib hash memory %d",
+			 &nat64_bib_memory_size))
+	;
+      else
+	if (unformat (input, "nat64 st hash buckets %d", &nat64_st_buckets))
+	;
+      else if (unformat (input, "nat64 st hash memory %d",
+			 &nat64_st_memory_size))
+	;
+      else if (unformat (input, "out2in dpo"))
+	sm->out2in_dpo = 1;
+      //else if (unformat (input, "dslite ce"))
+      //dslite_set_ce (dm, 1);
+      else if (unformat (input, "endpoint-dependent"))
+	sm->endpoint_dependent = 1;
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, input);
+    }
+
+  if (sm->deterministic && sm->endpoint_dependent)
+    return clib_error_return (0,
+			      "deterministic and endpoint-dependent modes are mutually exclusive");
+
+  if (static_mapping_only && (sm->deterministic || sm->endpoint_dependent))
+    return clib_error_return (0,
+			      "static mapping only mode available only for simple nat");
+
+  if (sm->out2in_dpo && (sm->deterministic || sm->endpoint_dependent))
+    return clib_error_return (0,
+			      "out2in dpo mode available only for simple nat");
+
+  /* optionally configurable timeouts for testing purposes */
+  sm->udp_timeout = udp_timeout;
+  sm->tcp_transitory_timeout = tcp_transitory_timeout;
+  sm->tcp_established_timeout = tcp_established_timeout;
+  sm->icmp_timeout = icmp_timeout;
+
+  sm->user_buckets = user_buckets;
+  sm->user_memory_size = user_memory_size;
+
+  sm->translation_buckets = translation_buckets;
+  sm->translation_memory_size = translation_memory_size;
+  /* do not exceed load factor 10 */
+  sm->max_translations = 10 * translation_buckets;
+  vec_add1 (sm->max_translations_per_fib, sm->max_translations);
+
+  sm->max_translations_per_user = max_translations_per_user == ~0 ?
+    sm->max_translations : max_translations_per_user;
+
+  sm->outside_vrf_id = outside_vrf_id;
+  sm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
+							     outside_vrf_id,
+							     nat_fib_src_hi);
+  nm->outside_vrf_id = outside_ip6_vrf_id;
+  nm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
+							     outside_ip6_vrf_id,
+							     nat_fib_src_hi);
+  sm->inside_vrf_id = inside_vrf_id;
+  sm->inside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
+							    inside_vrf_id,
+							    nat_fib_src_hi);
+  sm->static_mapping_only = static_mapping_only;
+  sm->static_mapping_connection_tracking = static_mapping_connection_tracking;
+
+  nat64_set_hash (nat64_bib_buckets, nat64_bib_memory_size, nat64_st_buckets,
+		  nat64_st_memory_size);
+
+  if (sm->deterministic)
+    {
+      sm->in2out_node_index = snat_det_in2out_node.index;
+      sm->in2out_output_node_index = ~0;
+      sm->out2in_node_index = snat_det_out2in_node.index;
+      sm->icmp_match_in2out_cb = icmp_match_in2out_det;
+      sm->icmp_match_out2in_cb = icmp_match_out2in_det;
+    }
+  else
+    {
+      if (sm->endpoint_dependent)
+	{
+	  sm->worker_in2out_cb = nat44_ed_get_worker_in2out_cb;
+	  sm->worker_out2in_cb = nat44_ed_get_worker_out2in_cb;
+
+	  sm->in2out_node_index = nat44_ed_in2out_node.index;
+	  sm->in2out_output_node_index = nat44_ed_in2out_output_node.index;
+	  sm->out2in_node_index = nat44_ed_out2in_node.index;
+
+	  sm->icmp_match_in2out_cb = icmp_match_in2out_ed;
+	  sm->icmp_match_out2in_cb = icmp_match_out2in_ed;
+	  nat_affinity_init (vm);
+	  nat_ha_init (vm, nat_ha_sadd_ed_cb, nat_ha_sdel_ed_cb,
+		       nat_ha_sref_ed_cb);
+	  clib_bihash_init_16_8 (&sm->out2in_ed, "out2in-ed",
+				 translation_buckets,
+				 translation_memory_size);
+	  clib_bihash_set_kvp_format_fn_16_8 (&sm->out2in_ed,
+					      format_ed_session_kvp);
+	}
+      else
+	{
+	  sm->worker_in2out_cb = snat_get_worker_in2out_cb;
+	  sm->worker_out2in_cb = snat_get_worker_out2in_cb;
+
+	  sm->in2out_node_index = snat_in2out_node.index;
+	  sm->in2out_output_node_index = snat_in2out_output_node.index;
+	  sm->out2in_node_index = snat_out2in_node.index;
+
+	  sm->icmp_match_in2out_cb = icmp_match_in2out_slow;
+	  sm->icmp_match_out2in_cb = icmp_match_out2in_slow;
+	  nat_ha_init (vm, nat_ha_sadd_cb, nat_ha_sdel_cb, nat_ha_sref_cb);
+	}
+      if (!static_mapping_only ||
+	  (static_mapping_only && static_mapping_connection_tracking))
+	{
+          /* *INDENT-OFF* */
+          vec_foreach (tsm, sm->per_thread_data)
+            {
+              nat44_db_init (tsm);
+            }
+          /* *INDENT-ON* */
+	}
+      else
+	{
+	  sm->icmp_match_in2out_cb = icmp_match_in2out_fast;
+	  sm->icmp_match_out2in_cb = icmp_match_out2in_fast;
+	}
+      clib_bihash_init_8_8 (&sm->static_mapping_by_local,
+			    "static_mapping_by_local", static_mapping_buckets,
+			    static_mapping_memory_size);
+      clib_bihash_set_kvp_format_fn_8_8 (&sm->static_mapping_by_local,
+					 format_static_mapping_kvp);
+
+      clib_bihash_init_8_8 (&sm->static_mapping_by_external,
+			    "static_mapping_by_external",
+			    static_mapping_buckets,
+			    static_mapping_memory_size);
+      clib_bihash_set_kvp_format_fn_8_8 (&sm->static_mapping_by_external,
+					 format_static_mapping_kvp);
+    }
+
+  return 0;
+}
+#endif
+
+VLIB_INIT_FUNCTION (nat64_init);
+
+#include <vnet/plugin/plugin.h>
+#include <vpp/app/version.h>
+VLIB_PLUGIN_REGISTER () =
+{
+.version = VPP_BUILD_VER,.description = "NAT64",};

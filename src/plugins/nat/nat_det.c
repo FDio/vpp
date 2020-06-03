@@ -20,7 +20,7 @@
  */
 
 #include <nat/nat_det.h>
-
+#include <nat/nat_inlines.h>
 
 /**
  * @brief Add/delete deterministic NAT mapping.
@@ -97,7 +97,7 @@ snat_det_add_map (snat_main_t * sm, ip4_address_t * in_addr, u8 in_plen,
     if (nat_interface_is_inside(i))
       continue;
 
-    snat_add_del_addr_to_fib(out_addr, out_plen, i->sw_if_index, is_add);
+    snat_add_del_addr_to_fib(out_addr, out_plen, i->sw_if_index, is_add, nat_fib_src_low);
     break;
   }));
   /* *INDENT-ON* */
