@@ -646,7 +646,6 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (sm->deterministic || !sm->endpoint_dependent)
     return clib_error_return (0, UNSUPPORTED_IN_DET_OR_NON_ED_MODE_STR);
 
-  // print session configuration values
   vlib_cli_output (vm, "max translations: %u", sm->max_translations);
   vlib_cli_output (vm, "max translations per user: %u",
 		   sm->max_translations_per_user);
@@ -1059,9 +1058,19 @@ add_static_mapping_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  if (!addr_only && !proto_set)
+  if (addr_only)
     {
-      error = clib_error_return (0, "missing protocol");
+      if (proto_set)
+	{
+	  error =
+	    clib_error_return (0,
+			       "address only mapping doesn't support protocol");
+	  goto done;
+	}
+    }
+  else if (!proto_set)
+    {
+      error = clib_error_return (0, "protocol is required");
       goto done;
     }
 
@@ -2543,16 +2552,19 @@ VLIB_CLI_COMMAND (nat44_show_interfaces_command, static) = {
  *  vpp# nat44 add static mapping tcp local 10.0.0.3 6303 external 4.4.4.4 3606
  * If not runnig "static mapping only" NAT plugin mode use before:
  *  vpp# nat44 add address 4.4.4.4
- * To create static mapping between local and external address use:
+ * To create address only static mapping between local and external address use:
  *  vpp# nat44 add static mapping local 10.0.0.3 external 4.4.4.4
+ * To create ICMP static mapping between local and external with ICMP echo
+ * identifier 10 use:
+ *  vpp# nat44 add static mapping icmp local 10.0.0.3 10 external 4.4.4.4 10
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (add_static_mapping_command, static) = {
   .path = "nat44 add static mapping",
   .function = add_static_mapping_command_fn,
   .short_help =
-    "nat44 add static mapping tcp|udp|icmp local <addr> [<port>] "
-    "external <addr> [<port>] [vrf <table-id>] [twice-nat|self-twice-nat] "
+    "nat44 add static mapping tcp|udp|icmp local <addr> [<port|icmp-echo-id>] "
+    "external <addr> [<port|icmp-echo-id>] [vrf <table-id>] [twice-nat|self-twice-nat] "
     "[out2in-only] [del]",
 };
 

@@ -280,7 +280,7 @@ static_always_inline
     {
       key0.protocol = NAT_PROTOCOL_ICMP;
       key0.addr = ip0->dst_address;
-      key0.port = vnet_buffer (b)->ip.reass.l4_src_port;	// TODO should this be dst port?
+      key0.port = vnet_buffer (b)->ip.reass.l4_src_port;
     }
   else
     {

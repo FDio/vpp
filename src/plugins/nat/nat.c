@@ -443,7 +443,6 @@ nat44_free_session_data (snat_main_t * sm, snat_session_t * s,
   if (snat_is_unk_proto_session (s))
     return;
 
-  // is this correct ?
   if (!is_ha)
     {
       snat_ipfix_logging_nat44_ses_delete (thread_index,
@@ -471,7 +470,6 @@ nat44_free_session_data (snat_main_t * sm, snat_session_t * s,
   if (snat_is_session_static (s))
     return;
 
-  // should be called for every dynamic session
   snat_free_outside_address_and_port (sm->addresses, thread_index,
 				      &s->out2in);
 }
@@ -2601,7 +2599,6 @@ snat_init (vlib_main_t * vm)
     {
       for (i = 0; i < sm->num_workers; i++)
 	bitmap = clib_bitmap_set (bitmap, i, 1);
-      // sets thread indexes for workes
       snat_set_workers (bitmap);
       clib_bitmap_free (bitmap);
     }
@@ -3976,7 +3973,6 @@ nat44_sessions_clear ()
       nat44_db_init (tsm);
 
       ti = tsm->snat_thread_index;
-      // clear per thread session counters
       vlib_set_simple_counter (&sm->total_users, ti, 0, 0);
       vlib_set_simple_counter (&sm->total_sessions, ti, 0, 0);
     }
@@ -4012,7 +4008,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   u8 static_mapping_only = 0;
   u8 static_mapping_connection_tracking = 0;
 
-  // configurable timeouts
   u32 udp_timeout = SNAT_UDP_TIMEOUT;
   u32 icmp_timeout = SNAT_ICMP_TIMEOUT;
   u32 tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
@@ -4072,8 +4067,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "out2in dpo"))
 	sm->out2in_dpo = 1;
-      //else if (unformat (input, "dslite ce"))
-      //dslite_set_ce (dm, 1);
       else if (unformat (input, "endpoint-dependent"))
 	sm->endpoint_dependent = 1;
       else
@@ -4556,8 +4549,6 @@ VLIB_REGISTER_NODE (nat_default_node) = {
   .next_nodes = {
     [NAT_NEXT_DROP] = "error-drop",
     [NAT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
-    //[NAT_NEXT_IN2OUT_PRE] = "nat-pre-in2out",
-    //[NAT_NEXT_OUT2IN_PRE] = "nat-pre-out2in",
     [NAT_NEXT_IN2OUT_ED_FAST_PATH] = "nat44-ed-in2out",
     [NAT_NEXT_IN2OUT_ED_SLOW_PATH] = "nat44-ed-in2out-slowpath",
     [NAT_NEXT_IN2OUT_ED_OUTPUT_SLOW_PATH] = "nat44-ed-in2out-output-slowpath",
