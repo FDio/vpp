@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f2b6a3f7_2d21dbf4",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1361,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-06-03T15:26:17Z",
+      "side": 1,
+      "message": "can we set profile_index to ~0 instead of using a separate field? ~0 is a common invalid index value widely used in vpp codebase",
+      "revId": "58f28194c245aac54fd6cec6c46bfdac3b2841b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "db2106c2_b2056568",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 3211,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-06-03T15:26:17Z",
+      "side": 1,
+      "message": "must check the returned value if allocation failed",
+      "revId": "58f28194c245aac54fd6cec6c46bfdac3b2841b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "18e766e1_d8aa110b",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 3239,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-06-03T15:26:17Z",
+      "side": 1,
+      "message": "you should iterate on a copy of sa-\u003echilds as ikev2_sa_del_child_sa()-\u003evec_del1() will modify sa-\u003echilds in the loop body",
+      "revId": "58f28194c245aac54fd6cec6c46bfdac3b2841b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "191a9234_1cc65ae4",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 3279,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-06-03T15:26:17Z",
+      "side": 1,
+      "message": "instead of free/allocate at each iteration, it would better to vec_reset() at each iteration and vec_free() outside of the loop body, at the end",
+      "revId": "58f28194c245aac54fd6cec6c46bfdac3b2841b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
