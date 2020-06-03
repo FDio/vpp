@@ -314,6 +314,9 @@ void vlib_free_simple_counter (vlib_simple_counter_main_t * cm);
 
 void vlib_validate_combined_counter (vlib_combined_counter_main_t * cm,
 				     u32 index);
+int vlib_validate_combined_counter_will_expand
+  (vlib_combined_counter_main_t * cm, u32 index);
+
 void vlib_free_combined_counter (vlib_combined_counter_main_t * cm);
 
 /** Obtain the number of simple or combined counters allocated.
