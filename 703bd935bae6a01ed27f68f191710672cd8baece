@@ -16,6 +16,24 @@
       "revId": "703bd935bae6a01ed27f68f191710672cd8baece",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8b084d7c_43230e90",
+        "filename": "src/vnet/ip/lookup.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 738,
+      "author": {
+        "id": 1899
+      },
+      "writtenOn": "2020-06-04T10:16:59Z",
+      "side": 1,
+      "message": "The payload_proto variable is declared as u32 here. My reasoning behind this change was that I assumed things were done correctly in vnet_ip_route_cmd() (higher up in lookup.c) which uses a u32 payload_proto variable in a similar way, so then I made changes in vnet_ip_mroute_cmd() so that payload_proto is set in the same way as in vnet_ip_route_cmd(). If there is something wrong with that, then I think the same problem exists in vnet_ip_route_cmd() also. Inside unformat_fib_route_path() payload_proto has the dpo_proto_t type. Looking at the fib_protocol_t enum type in fib_types.h it says FIB_PROTOCOL_IP4 \u003d DPO_PROTO_IP4 and so on, so it looks like it can be okay to assign a dpo_proto_t to a fib_protocol_t since the values are compatible.",
+      "parentUuid": "6691be26_537566f1",
+      "revId": "703bd935bae6a01ed27f68f191710672cd8baece",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
