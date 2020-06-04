@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "4c951427_29484fd2",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2020-06-04T17:31:04Z",
+      "side": 1,
+      "message": "I withdraw the prev comment about adding check for csum_offload. I wonder, however, is the check below for GSO bit correct?  If the GSO bit is set, would checksum always be updated by gso node, even if packet is not segmented?",
+      "parentUuid": "86c051f3_98de0b85",
+      "range": {
+        "startLine": 141,
+        "startChar": 18,
+        "endLine": 141,
+        "endChar": 49
+      },
+      "revId": "6215f390d5418c5aeec65a9122415975a06431ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ef0caf3c_d4e43ce2",
         "filename": "src/vnet/vxlan/encap.c",
         "patchSetId": 1
@@ -70,6 +94,24 @@
       "writtenOn": "2020-06-04T04:24:52Z",
       "side": 1,
       "message": "We should also include \"\u0026\u0026 csum_offload\" as another condition which means VXLAN encap will be setting up checksum offload related metadata to overwrite the ones already present for payload here.",
+      "revId": "6215f390d5418c5aeec65a9122415975a06431ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "faf71f41_794ea82f",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 374,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2020-06-04T17:31:04Z",
+      "side": 1,
+      "message": "I withdraw the prev comment about adding check for csum_offload. I wonder, however, is the check below for GSO bit correct?  If the GSO bit is set, would checksum always be updated by gso node, even if packet is not segmented?",
+      "parentUuid": "df90cc7d_1a46f7a2",
       "revId": "6215f390d5418c5aeec65a9122415975a06431ac",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
