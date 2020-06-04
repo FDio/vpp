@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "a1783ea9_e37a098a",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-06-04T18:06:35Z",
+      "side": 1,
+      "message": "GSO bit is only set for Jumbo Frames GSO packets (greater than MTU size). In correct functional configuration, these packets are always handled by either gso node for software based segmentation or HW TSO if NIC supports it. We don\u0027t need to calculate the checksums for those packets here.",
+      "parentUuid": "4c951427_29484fd2",
+      "range": {
+        "startLine": 141,
+        "startChar": 18,
+        "endLine": 141,
+        "endChar": 49
+      },
+      "revId": "6215f390d5418c5aeec65a9122415975a06431ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ef0caf3c_d4e43ce2",
         "filename": "src/vnet/vxlan/encap.c",
         "patchSetId": 1
@@ -112,6 +136,24 @@
       "side": 1,
       "message": "I withdraw the prev comment about adding check for csum_offload. I wonder, however, is the check below for GSO bit correct?  If the GSO bit is set, would checksum always be updated by gso node, even if packet is not segmented?",
       "parentUuid": "df90cc7d_1a46f7a2",
+      "revId": "6215f390d5418c5aeec65a9122415975a06431ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5c983896_603106c9",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 374,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-06-04T18:06:35Z",
+      "side": 1,
+      "message": "Yes. Same as my above comment!",
+      "parentUuid": "faf71f41_794ea82f",
       "revId": "6215f390d5418c5aeec65a9122415975a06431ac",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
