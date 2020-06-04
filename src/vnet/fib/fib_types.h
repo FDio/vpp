@@ -60,7 +60,7 @@ typedef enum fib_protocol_t_ {
 /**
  * Not part of the enum so it does not have to be handled in switch statements
  */
-#define FIB_PROTOCOL_NONE (FIB_PROTOCOL_MAX+1)
+#define FIB_PROTOCOL_NONE DPO_PROTO_NONE
 
 #define FOR_EACH_FIB_PROTOCOL(_item)    \
     for (_item = FIB_PROTOCOL_IP4;      \

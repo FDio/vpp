@@ -59,7 +59,7 @@ typedef u32 index_t;
  */
 typedef enum dpo_proto_t_
 {
-    DPO_PROTO_IP4 = 0,
+    DPO_PROTO_IP4 = 1,
     DPO_PROTO_IP6,
     DPO_PROTO_MPLS,
     DPO_PROTO_ETHERNET,
@@ -68,7 +68,7 @@ typedef enum dpo_proto_t_
 } __attribute__((packed)) dpo_proto_t;
 
 #define DPO_PROTO_NUM ((dpo_proto_t)(DPO_PROTO_NSH+1))
-#define DPO_PROTO_NONE ((dpo_proto_t)(DPO_PROTO_NUM+1))
+#define DPO_PROTO_NONE ((dpo_proto_t)0)
 
 #define DPO_PROTOS {		\
     [DPO_PROTO_IP4]  = "ip4",	\
