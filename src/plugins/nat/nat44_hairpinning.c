@@ -94,7 +94,7 @@ snat_hairpinning (snat_main_t * sm,
 		  tcp_header_t * tcp0, u32 proto0, int is_ed)
 {
   snat_session_key_t key0, sm0;
-  snat_session_t *s0;
+  snat_session_t *s0 = NULL;
   clib_bihash_kv_8_8_t kv0, value0;
   ip_csum_t sum0;
   u32 new_dst_addr0 = 0, old_dst_addr0, ti = 0, si;
