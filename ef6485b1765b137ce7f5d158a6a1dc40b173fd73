@@ -46,6 +46,30 @@
       "revId": "ef6485b1765b137ce7f5d158a6a1dc40b173fd73",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "97fbffe2_e8931dfa",
+        "filename": "src/vnet/interface_output.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2020-06-04T04:54:59Z",
+      "side": 1,
+      "message": "I actually think the correct fix would be for interface-output node to call this calc_checksums() function setting with_gso param to 0. The job for interface-output node is to handle one checksum calculation according to checksum offload meta data in vnet buffer, either via NIC HW checksum offload, if it is available, or call calc_checksum() here using the same metadata info.  This fix in combination of patch-27395, for which I also commented, would fix the VXLAN over IPv6 problem.  The current change here would cause inner checksum to be done twice, once by the change in patch-27395 and again here, which is really wasteful.\nI even wonder if there is a case this function should be called where with_gso parameter is set so we need to parse the packet header because what\u0027s in vnet buffer metadata for checksum offload is not correct?  If there is a case interface-output node would be in this situation, then the result of parsing the header should also be used for NIC HW offload which means packet parsing should not be done in this function which is only called because NIC HW offload is not available.",
+      "parentUuid": "8640da1f_326dfeea",
+      "range": {
+        "startLine": 143,
+        "startChar": 6,
+        "endLine": 143,
+        "endChar": 28
+      },
+      "revId": "ef6485b1765b137ce7f5d158a6a1dc40b173fd73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
