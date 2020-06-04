@@ -122,7 +122,7 @@ snat_hairpinning (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  int is_ed, int do_trace)
 {
   snat_session_key_t key0, sm0;
-  snat_session_t *s0;
+  snat_session_t *s0 = NULL;
   clib_bihash_kv_8_8_t kv0, value0;
   ip_csum_t sum0;
   u32 new_dst_addr0 = 0, old_dst_addr0, ti = 0, si = ~0;
