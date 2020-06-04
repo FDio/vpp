@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "68f99455_0e3a730d",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1438,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-06-04T14:30:01Z",
+      "side": 1,
+      "message": "typo",
+      "range": {
+        "startLine": 1438,
+        "startChar": 22,
+        "endLine": 1438,
+        "endChar": 28
+      },
+      "revId": "ce56f6a21c6c8d8c2569258feb9db3e1672dd945",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5abc8450_b7dc850f",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1444,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-06-04T14:30:01Z",
+      "side": 1,
+      "message": "parens unnecessary",
+      "range": {
+        "startLine": 1444,
+        "startChar": 11,
+        "endLine": 1444,
+        "endChar": 15
+      },
+      "revId": "ce56f6a21c6c8d8c2569258feb9db3e1672dd945",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
