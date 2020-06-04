@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "6d3eab13_6d07c6ae",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2020-06-04T18:14:22Z",
+      "side": 1,
+      "message": "Thinking about this a bit more, I realize we should still include \"\u0026\u0026 csum_offload\" here.  For IPv4 case, csum_offload is 0 and metadata is set to do inner checksum on interface-output.  This would be fine as the outer UDP checksum is 0 and IP4 header checksum is done here. So no update is needed on outer header. The problem only exist for IPv6 case when csum_offload is set to 1.  My question about checking GSO bit below remain standing.",
+      "parentUuid": "4c951427_29484fd2",
+      "range": {
+        "startLine": 141,
+        "startChar": 18,
+        "endLine": 141,
+        "endChar": 49
+      },
+      "revId": "6215f390d5418c5aeec65a9122415975a06431ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ef0caf3c_d4e43ce2",
         "filename": "src/vnet/vxlan/encap.c",
         "patchSetId": 1
@@ -153,6 +177,24 @@
       "writtenOn": "2020-06-04T18:06:35Z",
       "side": 1,
       "message": "Yes. Same as my above comment!",
+      "parentUuid": "faf71f41_794ea82f",
+      "revId": "6215f390d5418c5aeec65a9122415975a06431ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4d6a02bd_3c2e0fca",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 374,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2020-06-04T18:14:22Z",
+      "side": 1,
+      "message": "Thinking about this a bit more, I realize we should still include \"\u0026\u0026 csum_offload\" here.  For IPv4 case, csum_offload is 0 and metadata is set to do inner checksum on interface-output.  This would be fine as the outer UDP checksum is 0 and IP4 header checksum is done here. So no update is needed on outer header. The problem only exist for IPv6 case when csum_offload is set to 1.  My question about checking GSO bit below remain standing.",
       "parentUuid": "faf71f41_794ea82f",
       "revId": "6215f390d5418c5aeec65a9122415975a06431ac",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
