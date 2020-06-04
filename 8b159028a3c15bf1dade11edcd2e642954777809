@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3ddcf724_e90f5a27",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-06-04T13:12:25Z",
+      "side": 1,
+      "message": "please use a more meaningful title",
+      "revId": "8b159028a3c15bf1dade11edcd2e642954777809",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3b0d70ae_6449fa47",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 615,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-06-04T13:12:25Z",
+      "side": 1,
+      "message": "That should not happen - what about an ASSERT(0)?",
+      "revId": "8b159028a3c15bf1dade11edcd2e642954777809",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9d67ef4e_2abec77a",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-06-04T13:12:25Z",
+      "side": 1,
+      "message": "Any reason to move it there? It seems to just make the diff larger for no good reason",
+      "revId": "8b159028a3c15bf1dade11edcd2e642954777809",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d4cfa8df_ce85bb6a",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-06-04T13:12:25Z",
+      "side": 1,
+      "message": "\u0027type\u0027 is known at compile-time (it is the point of your patch), no need for PREDICT_FALSE()",
+      "revId": "8b159028a3c15bf1dade11edcd2e642954777809",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "810ef752_8f02b344",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-06-04T13:12:25Z",
+      "side": 1,
+      "message": "should be an \u0027else if\u0027? If vif-\u003eper_interface_next_index was set explicitely, we should not overwrite it.\nAlso type is compile-time constant, no need for PREDICT_FALSE",
+      "revId": "8b159028a3c15bf1dade11edcd2e642954777809",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
