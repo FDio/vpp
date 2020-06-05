@@ -42,6 +42,15 @@ enum nat_config_flags : u8
   NAT_IS_EXT_HOST_VALID = 0x80,
 };
 
+enum nat44_config_flags : u8
+{
+  NAT44_IS_ENDPOINT_INDEPENDENT = 0x00,
+  NAT44_IS_ENDPOINT_DEPENDENT = 0x01,
+  NAT44_IS_STATIC_MAPPING_ONLY = 0x02,
+  NAT44_IS_CONNECTION_TRACKING = 0x04,
+  NAT44_IS_OUT2IN_DPO = 0x08,
+};
+
 /** \brief Control ping from client to api server request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -80,7 +89,7 @@ define nat_show_config
     @param context - sender context, to match reply w/ request
     @param retval - return code for the request
     @param static_mapping_only - if true dynamic translations disabled
-    @param static_mapping_connection_tracking - if true create session data
+    @param connection_tracking - if true create session data for static mapping
     @param deterministic - if true deterministic mapping
     @param endpoint_dependent - if true endpoint-dependent mode
     @param out2in_dpo - if true out2in dpo mode
@@ -102,7 +111,7 @@ define nat_show_config_reply
   u32 context;
   i32 retval;
   bool static_mapping_only;
-  bool static_mapping_connection_tracking;
+  bool connection_tracking;
   bool deterministic;
   bool endpoint_dependent;
   bool out2in_dpo;
@@ -128,6 +137,38 @@ enum nat_log_level : u8
   NAT_LOG_NOTICE = 0x03,
   NAT_LOG_INFO = 0x04,
   NAT_LOG_DEBUG = 0x05,
+};
+
+/** \brief Enable/disable NAT44 plugin
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param users - maximum number of users (used in endpoint-independent)
+    @param user_buckets - overwrite hash allocation parameter
+    @param user_memory - overwrite hash allocation parameter
+    @param sessions - maximum number of sessions
+    @param session_buckets - overwrite hash allocation parameter
+    @param session_memory - overwrite hash allocation parameter
+    @param user_sessions - maximum number of sessions per user
+                          (only in endpoint-indpendent)
+    @param enable - true if enable, false if disable
+    @param flags - flag NAT_IS_ENDPOINT_INDEPENDENT,
+                  NAT_IS_ENDPOINT_DEPENDENT,
+                  NAT_IS_STATIC_MAPPING_ONLY,
+                  NAT_IS_CONNECTION_TRACKING,
+                  NAT_IS_OUT2IN_DPO
+*/
+autoreply define nat44_enable_disable {
+  u32 client_index;
+  u32 context;
+  u32 inside_vrf;
+  u32 outside_vrf;
+  u32 users;
+  u32 user_memory;
+  u32 sessions;
+  u32 session_memory;
+  u32 user_sessions;
+  bool enable;
+  vl_api_nat44_config_flags_t flags;
 };
 
 /** \brief Run nat44 garbage collection

@@ -43,23 +43,39 @@ format_affinity_kvp (u8 * s, va_list * args)
   return s;
 }
 
-clib_error_t *
-nat_affinity_init (vlib_main_t * vm)
+int
+nat_affinity_enable ()
 {
   nat_affinity_main_t *nam = &nat_affinity_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  clib_error_t *error = 0;
 
   if (tm->n_vlib_mains > 1)
     clib_spinlock_init (&nam->affinity_lock);
-
   clib_bihash_init_16_8 (&nam->affinity_hash, "nat-affinity",
 			 AFFINITY_HASH_BUCKETS, AFFINITY_HASH_MEMORY);
   clib_bihash_set_kvp_format_fn_16_8 (&nam->affinity_hash,
 				      format_affinity_kvp);
+  return 0;
+}
 
+int
+nat_affinity_disable ()
+{
+  nat_affinity_main_t *nam = &nat_affinity_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+
+  if (tm->n_vlib_mains > 1)
+    clib_spinlock_free (&nam->affinity_lock);
+  clib_bihash_free_16_8 (&nam->affinity_hash);
+
+  return 0;
+}
+
+clib_error_t *
+nat_affinity_init (vlib_main_t * vm)
+{
+  clib_error_t *error = 0;
   nam->vlib_main = vm;
-
   return error;
 }
 

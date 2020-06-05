@@ -471,8 +471,8 @@ static void vl_api_nat_show_config_reply_t_handler
       if (mp->static_mapping_only)
         {
           fformat (vam->ofp, "static mapping only");
-          if (mp->static_mapping_connection_tracking)
-            fformat (vam->ofp, " connection tracking");
+          if (mp->connection_tracking)
+            fformat (vam->ofp, " static mapping connection tracking");
           fformat (vam->ofp, "\n");
         }
     }
