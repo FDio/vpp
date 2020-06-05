@@ -63,15 +63,35 @@ ip_adjacency_t *
 adj_alloc (fib_protocol_t proto)
 {
     ip_adjacency_t *adj;
+    u8 need_barrier_sync = 0;
+    vlib_main_t *vm;
+    vm = vlib_get_main();
+
+    ASSERT (vm->thread_index == 0);
+
+    pool_get_aligned_will_expand (adj_pool, need_barrier_sync,
+                                  CLIB_CACHE_LINE_BYTES);
+    /* If the adj_pool will expand, stop the parade. */
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_sync (vm);
 
     pool_get_aligned(adj_pool, adj, CLIB_CACHE_LINE_BYTES);
 
     adj_poison(adj);
 
-    /* Make sure certain fields are always initialized. */
     /* Validate adjacency counters. */
+    if (need_barrier_sync == 0)
+    {
+        /* If the adj counter pool will expand, stop the parade */
+        need_barrier_sync = vlib_validate_combined_counter_will_expand
+            (&adjacency_counters, adj_get_index (adj));
+        if (need_barrier_sync)
+            vlib_worker_thread_barrier_sync (vm);
+    }
     vlib_validate_combined_counter(&adjacency_counters,
                                    adj_get_index(adj));
+
+    /* Make sure certain fields are always initialized. */
     vlib_zero_combined_counter(&adjacency_counters,
                                adj_get_index(adj));
     fib_node_init(&adj->ia_node,
@@ -88,6 +108,9 @@ adj_alloc (fib_protocol_t proto)
     /* lest it become a midchain in the future */
     clib_memset(&adj->sub_type.midchain.next_dpo, 0,
            sizeof(adj->sub_type.midchain.next_dpo));
+
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_release (vm);
 
     return (adj);
 }
