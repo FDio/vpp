@@ -310,35 +310,27 @@ nat_ha_resend_scan (f64 now, u32 thread_index)
 }
 
 void
-nat_ha_init (vlib_main_t * vm, nat_ha_sadd_cb_t sadd_cb,
-	     nat_ha_sdel_cb_t sdel_cb, nat_ha_sref_cb_t sref_cb)
+nat_ha_enable (nat_ha_sadd_cb_t sadd_cb,
+	       nat_ha_sdel_cb_t sdel_cb, nat_ha_sref_cb_t sref_cb)
 {
   nat_ha_main_t *ha = &nat_ha_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  vlib_thread_registration_t *tr;
-  uword *p;
 
-  ha->src_ip_address.as_u32 = 0;
-  ha->src_port = 0;
-  ha->dst_ip_address.as_u32 = 0;
-  ha->dst_port = 0;
-  ha->in_resync = 0;
-  ha->resync_ack_count = 0;
-  ha->resync_ack_missed = 0;
-  ha->vlib_main = vm;
   ha->sadd_cb = sadd_cb;
   ha->sdel_cb = sdel_cb;
   ha->sref_cb = sref_cb;
-  ha->num_workers = 0;
-  vec_validate (ha->per_thread_data, tm->n_vlib_mains - 1);
+}
+
+void
+nat_ha_init (vlib_main_t * vm, u32 num_workers, u32 num_threads)
+{
+  nat_ha_main_t *ha = &nat_ha_main;
+  clib_memset (ha, 0, sizeof (*ha));
+
+  ha->vlib_main = vm;
   ha->fq_index = ~0;
-  p = hash_get_mem (tm->thread_registrations_by_name, "workers");
-  if (p)
-    {
-      tr = (vlib_thread_registration_t *) p[0];
-      if (tr)
-	ha->num_workers = tr->count;
-    }
+
+  ha->num_workers = num_workers;
+  vec_validate (ha->per_thread_data, num_threads);
 
 #define _(N, s, v) ha->counters[v].name = s;          \
   ha->counters[v].stat_segment_name = "/nat44/ha/" s; \

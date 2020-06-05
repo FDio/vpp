@@ -37,12 +37,15 @@ typedef void (*nat_ha_sref_cb_t) (ip4_address_t * out_addr, u16 out_port,
 				  ip4_address_t * eh_addr, u16 eh_port,
 				  u8 proto, u32 fib_index, u32 total_pkts,
 				  u64 total_bytes, u32 thread_index);
+/**
+ * @brief Enable NAT HA, set callbacks
+ */
+void nat_ha_enable ();
 
 /**
  * @brief Initialize NAT HA
  */
-void nat_ha_init (vlib_main_t * vm, nat_ha_sadd_cb_t sadd_cb,
-		  nat_ha_sdel_cb_t sdel_cb, nat_ha_sref_cb_t sref_cb);
+void nat_ha_init (vlib_main_t * vm, u32 num_workers, u32 num_threads);
 
 /**
  * @brief Set HA listener (local settings)

@@ -106,7 +106,7 @@ typedef struct
   _(0x10, IS_OUTSIDE)           \
   _(0x20, IS_INSIDE)            \
   _(0x40, IS_STATIC)            \
-  _(0x80, IS_EXT_HOST_VALID)    \
+  _(0x80, IS_EXT_HOST_VALID)
 
 typedef enum nat_config_flags_t_
 {
@@ -114,6 +114,21 @@ typedef enum nat_config_flags_t_
   foreach_nat_config_flag
 #undef _
 } nat_config_flags_t;
+
+/* NAT44 API Configuration flags */
+#define foreach_nat44_config_flag  \
+  _(0x00, IS_ENDPOINT_INDEPENDENT) \
+  _(0x01, IS_ENDPOINT_DEPENDENT)   \
+  _(0x02, IS_STATIC_MAPPING_ONLY)  \
+  _(0x04, IS_CONNECTION_TRACKING)  \
+  _(0x08, IS_OUT2IN_DPO)
+
+typedef enum nat44_config_flags_t_
+{
+#define _(n,f) NAT44_API_##f = n,
+  foreach_nat44_config_flag
+#undef _
+} nat44_config_flags_t;
 
 /* External address and port allocation modes */
 #define foreach_nat_addr_and_port_alloc_alg \
@@ -232,6 +247,29 @@ typedef enum
 #define NAT_STATIC_MAPPING_FLAG_OUT2IN_ONLY  2
 #define NAT_STATIC_MAPPING_FLAG_IDENTITY_NAT 4
 #define NAT_STATIC_MAPPING_FLAG_LB           8
+
+typedef struct
+{
+  /* nat44 plugin features */
+  u8 static_mapping_only;
+  u8 connection_tracking;
+  u8 endpoint_dependent;
+  u8 out2in_dpo;
+
+  u32 inside_vrf;
+  u32 outside_vrf;
+
+  /* maximum number of users */
+  u32 users;
+  u32 user_memory;
+
+  /* maximum number of sessions */
+  u32 sessions;
+  u32 session_memory;
+
+  /* maximum number of ssessions per user */
+  u32 user_sessions;
+} nat44_config_t;
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
@@ -619,19 +657,20 @@ typedef struct snat_main_s
   u32 ed_hairpin_dst_node_index;
   u32 ed_hairpin_src_node_index;
 
-
   /* Deterministic NAT mappings */
   snat_det_map_t *det_maps;
 
   /* If forwarding is enabled */
   u8 forwarding_enabled;
 
-  /* Config parameters */
-  u8 static_mapping_only;
-  u8 static_mapping_connection_tracking;
-  u8 deterministic;
-  u8 out2in_dpo;
   u8 endpoint_dependent;
+
+  u8 out2in_dpo;
+  /* static mapping config */
+  u8 static_mapping_only;
+  u8 connection_tracking;
+
+  u8 deterministic;
 
   u32 translation_buckets;
   uword translation_memory_size;
@@ -648,7 +687,6 @@ typedef struct snat_main_s
   u32 inside_fib_index;
 
   /* values of various timeouts */
-  // proto timeouts
   u32 udp_timeout;
   u32 tcp_transitory_timeout;
   u32 tcp_established_timeout;
@@ -657,10 +695,11 @@ typedef struct snat_main_s
   /* TCP MSS clamping */
   u16 mss_clamping;
 
-  /* counters/gauges */
+  /* counters */
   vlib_simple_counter_main_t total_users;
   vlib_simple_counter_main_t total_sessions;
   vlib_simple_counter_main_t user_limit_reached;;
+  vlib_simple_counter_main_t created_sessions;
 
   /* API message ID base */
   u16 msg_id_base;
@@ -670,11 +709,15 @@ typedef struct snat_main_s
   /* logging level */
   u8 log_level;
 
+  /* nat44 plugin enabled */
+  u8 enabled;
+
   /* convenience */
-  vnet_main_t *vnet_main;
   ip4_main_t *ip4_main;
   ip_lookup_main_t *ip4_lookup_main;
   api_main_t *api_main;
+
+  vnet_main_t *vnet_main;
 } snat_main_t;
 
 typedef struct
@@ -1089,6 +1132,23 @@ int nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg);
 int nat44_o2i_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg);
 int nat44_i2o_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg);
 int nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg);
+
+
+/**
+ * @brief Enable NAT44 plugin
+ *
+ * @param c         nat44_config_t
+ *
+ * @return 0 on success, non-zero value otherwise
+ */
+int nat44_plugin_enable (nat44_config_t c);
+
+/**
+ * @brief Disable NAT44 plugin
+ *
+ * @return 0 on success, non-zero value otherwise
+ */
+int nat44_plugin_disable ();
 
 /**
  * @brief Add external address to NAT44 pool
