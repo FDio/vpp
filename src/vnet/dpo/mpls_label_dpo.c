@@ -39,8 +39,13 @@ static mpls_label_dpo_t *
 mpls_label_dpo_alloc (void)
 {
     mpls_label_dpo_t *mld;
+    vlib_main_t *vm;
+    u8 did_barrier_sync;
 
+    dpo_pool_barrier_sync (vm, mpls_label_dpo_pool, did_barrier_sync);
     pool_get_aligned(mpls_label_dpo_pool, mld, CLIB_CACHE_LINE_BYTES);
+    dpo_pool_barrier_release (vm, did_barrier_sync);
+
     clib_memset(mld, 0, sizeof(*mld));
 
     dpo_reset(&mld->mld_dpo);

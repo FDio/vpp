@@ -387,8 +387,13 @@ load_balance_map_alloc (const load_balance_path_t *paths)
 {
     load_balance_map_t *lbm;
     u32 ii;
+    vlib_main_t *vm;
+    u8 did_barrier_sync;
 
+    dpo_pool_barrier_sync (vm, load_balance_map_pool, did_barrier_sync);
     pool_get_aligned(load_balance_map_pool, lbm, CLIB_CACHE_LINE_BYTES);
+    dpo_pool_barrier_release (vm, did_barrier_sync);
+
     clib_memset(lbm, 0, sizeof(*lbm));
 
     vec_validate(lbm->lbm_paths, vec_len(paths)-1);

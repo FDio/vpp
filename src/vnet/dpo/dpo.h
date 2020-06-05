@@ -16,7 +16,7 @@
  * @brief
  * A Data-Path Object is an object that represents actions that are
  * applied to packets are they are switched through VPP's data-path.
- * 
+ *
  * The DPO can be considered to be like is a base class that is specialised
  * by other objects to provide concreate actions
  *
@@ -328,7 +328,7 @@ extern void dpo_stack(dpo_type_t child_type,
                       const dpo_id_t *parent_dpo);
 
 /**
- * @brief 
+ * @brief
  *  Set and stack a DPO.
  *  The DPO passed is set to the parent DPO and the necessary
  *  VLIB graph arcs are created, from the child_node passed.
@@ -341,7 +341,7 @@ extern void dpo_stack(dpo_type_t child_type,
  *
  * @param parent_dpo
  *  The parent DPO to stack onto.
- */ 
+ */
 extern void dpo_stack_from_node(u32 child_node,
                                 dpo_id_t *dpo,
                                 const dpo_id_t *parent);
@@ -443,7 +443,7 @@ typedef struct dpo_vft_t_
  *     (see above).
  *
  * @param type
- *  The type being registered. 
+ *  The type being registered.
  *
  * @param vft
  *  The virtual function table to register for the type.
@@ -497,4 +497,49 @@ dpo_get_next_node_by_type_and_proto (dpo_type_t   child_type,
                                      dpo_proto_t  child_proto,
                                      dpo_type_t   parent_type,
                                      dpo_proto_t  parent_proto);
+
+
+/**
+ * @brief Barrier sync if a dpo pool is about to expand
+ *
+ * @param VM (output)
+ *  vlib_main_t *, invariably &vlib_global_main
+ *
+ * @param P
+ *  pool pointer
+ *
+ * @param YESNO (output)
+ *  typically a u8, 1 => expand will occur, worker barrier held
+ *                  0 => no expand, barrier not held
+ *
+ * @return YESNO set
+ */
+
+#define dpo_pool_barrier_sync(VM,P,YESNO)                               \
+do {                                                                    \
+    pool_get_aligned_will_expand ((P), YESNO, CLIB_CACHE_LINE_BYTES);   \
+                                                                        \
+    if (YESNO)                                                          \
+    {                                                                   \
+        VM = vlib_get_main();                                           \
+        ASSERT ((VM)->thread_index == 0);                               \
+        vlib_worker_thread_barrier_sync((VM));                          \
+    }                                                                   \
+} while(0);
+
+/**
+ * @brief Release barrier sync after dpo pool expansion
+ *
+ * @param VM
+ *  vlib_main_t pointer, must be &vlib_global_main
+ *
+ * @param YESNO
+ *  typically a u8, 1 => release required
+ *                  0 => no release required
+ * @return none
+ */
+
+#define dpo_pool_barrier_release(VM,YESNO) \
+    if ((YESNO)) vlib_worker_thread_barrier_release((VM));
+
 #endif
