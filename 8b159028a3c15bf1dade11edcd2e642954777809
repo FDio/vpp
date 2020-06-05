@@ -36,6 +36,24 @@
     },
     {
       "key": {
+        "uuid": "4a6725e9_b08b8274",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 615,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-06-05T12:48:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3b0d70ae_6449fa47",
+      "revId": "8b159028a3c15bf1dade11edcd2e642954777809",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9d67ef4e_2abec77a",
         "filename": "src/vnet/devices/virtio/node.c",
         "patchSetId": 3
@@ -47,6 +65,24 @@
       "writtenOn": "2020-06-04T13:12:25Z",
       "side": 1,
       "message": "Any reason to move it there? It seems to just make the diff larger for no good reason",
+      "revId": "8b159028a3c15bf1dade11edcd2e642954777809",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dd63293a_57836cef",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-06-05T12:48:42Z",
+      "side": 1,
+      "message": "It doesn\u0027t change anything from functional perspective but I believe it is more readable :)",
+      "parentUuid": "9d67ef4e_2abec77a",
       "revId": "8b159028a3c15bf1dade11edcd2e642954777809",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -70,6 +106,24 @@
     },
     {
       "key": {
+        "uuid": "ca72e6cf_da61da42",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-06-05T12:48:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d4cfa8df_ce85bb6a",
+      "revId": "8b159028a3c15bf1dade11edcd2e642954777809",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "810ef752_8f02b344",
         "filename": "src/vnet/devices/virtio/node.c",
         "patchSetId": 3
@@ -84,6 +138,24 @@
       "revId": "8b159028a3c15bf1dade11edcd2e642954777809",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "69658417_58f8efa0",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-06-05T12:48:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "810ef752_8f02b344",
+      "revId": "8b159028a3c15bf1dade11edcd2e642954777809",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
