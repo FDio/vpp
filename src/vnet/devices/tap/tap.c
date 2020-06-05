@@ -179,7 +179,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     {
       vif->type = VIRTIO_IF_TYPE_TUN;
       ifr.ifr_flags |= IFF_TUN;
-      args->tap_flags &= ~(TAP_FLAG_GSO | TAP_FLAG_CSUM_OFFLOAD);
     }
   else
     {
@@ -808,9 +807,6 @@ tap_csum_offload_enable_disable (vlib_main_t * vm, u32 sw_if_index,
 
   vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
 
-  if (vif->type == VIRTIO_IF_TYPE_TUN)
-    return VNET_API_ERROR_UNIMPLEMENTED;
-
   const unsigned int csum_offload_on = TUN_F_CSUM;
   const unsigned int csum_offload_off = 0;
   unsigned int offload = enable_disable ? csum_offload_on : csum_offload_off;
@@ -867,9 +863,6 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
-
-  if (vif->type == VIRTIO_IF_TYPE_TUN)
-    return VNET_API_ERROR_UNIMPLEMENTED;
 
   const unsigned int gso_on = TUN_F_CSUM | TUN_F_TSO4 | TUN_F_TSO6;
   const unsigned int gso_off = 0;
