@@ -16,6 +16,40 @@
       "revId": "8c6cad640a8c3f85dd5031d96e11ae847823ff8a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e9b43161_2edb4562",
+        "filename": "src/plugins/calico/calico_node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-06-05T15:57:36Z",
+      "side": 1,
+      "message": "Single-loop seems reasonable.  I\u0027d suggest trying to prefetch buffer data and packet data. My guess is that prefetching 2 or 4 packets ahead will help performance.",
+      "revId": "8c6cad640a8c3f85dd5031d96e11ae847823ff8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "06c4ce76_b8a06a49",
+        "filename": "src/plugins/calico/calico_node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 461,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-06-05T15:57:36Z",
+      "side": 1,
+      "message": "Move the slow-path (session setup) code to a non-inline function, and call it here...",
+      "revId": "8c6cad640a8c3f85dd5031d96e11ae847823ff8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
