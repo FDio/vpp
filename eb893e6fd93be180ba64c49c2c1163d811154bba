@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7c1d9729_3a80b0ad",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 323,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-06-05T06:51:15Z",
+      "side": 1,
+      "message": "sw_if_index_vec \u003d u32x16_gather (vindex, offset, 1);",
+      "revId": "eb893e6fd93be180ba64c49c2c1163d811154bba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
