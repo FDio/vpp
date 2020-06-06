@@ -2611,7 +2611,6 @@ ikev2_set_initiator_proposals (vlib_main_t * vm, ikev2_sa_t * sa,
 	  {
 	    vec_add1 (proposal->transforms, *td);
 	    error = 0;
-	    break;
 	  }
       }
       if (error)
