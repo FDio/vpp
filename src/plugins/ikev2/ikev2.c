@@ -3009,7 +3009,7 @@ ikev2_set_initiator_proposals (vlib_main_t * vm, ikev2_sa_t * sa,
     }
 
   /* DH */
-  if (is_ike || ts->dh_type != IKEV2_TRANSFORM_DH_TYPE_NONE)
+  if (is_ike)
     {
       error = 1;
       vec_foreach (td, km->supported_transforms)
