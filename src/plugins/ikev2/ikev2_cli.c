@@ -355,27 +355,27 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
       else
 	if (unformat
 	    (line_input,
-	     "set %U esp-crypto-alg %U %u esp-integ-alg %U esp-dh %U",
+	     "set %U esp-crypto-alg %U %u esp-integ-alg %U",
 	     unformat_token, valid_chars, &name,
 	     unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1,
-	     unformat_ikev2_transform_integ_type, &integ_alg,
-	     unformat_ikev2_transform_dh_type, &dh_type))
+	     unformat_ikev2_transform_integ_type, &integ_alg))
 	{
 	  r =
 	    ikev2_set_profile_esp_transforms (vm, name, crypto_alg, integ_alg,
-					      dh_type, tmp1);
+					      IKEV2_TRANSFORM_DH_TYPE_NONE,
+                                              tmp1);
 	  goto done;
 	}
       else if (unformat
 	       (line_input,
-		"set %U esp-crypto-alg %U %u esp-dh %U",
+		"set %U esp-crypto-alg %U %u",
 		unformat_token, valid_chars, &name,
-		unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1,
-		unformat_ikev2_transform_dh_type, &dh_type))
+		unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1))
 	{
 	  r =
 	    ikev2_set_profile_esp_transforms (vm, name, crypto_alg, 0,
-					      dh_type, tmp1);
+					      IKEV2_TRANSFORM_DH_TYPE_NONE,
+                                              tmp1);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U sa-lifetime %lu %u %u %lu",
@@ -430,7 +430,7 @@ VLIB_CLI_COMMAND (ikev2_profile_add_del_command, static) = {
     "ikev2 profile set <id> responder <interface> <addr>\n"
     "ikev2 profile set <id> ike-crypto-alg <crypto alg> <key size> ike-integ-alg <integ alg> ike-dh <dh type>\n"
     "ikev2 profile set <id> esp-crypto-alg <crypto alg> <key size> "
-      "[esp-integ-alg <integ alg>] esp-dh <dh type>\n"
+      "[esp-integ-alg <integ alg>]\n"
     "ikev2 profile set <id> sa-lifetime <seconds> <jitter> <handover> <max bytes>",
     .function = ikev2_profile_add_del_command_fn,
 };
