@@ -554,6 +554,11 @@ show_mactime_command_fn (vlib_main_t * vm,
   vlib_counter_t allow, drop;
   ip_neighbor_t *ipn;
 
+  if (mm->feature_initialized == 0)
+    return clib_error_return
+      (0,
+       "Feature not initialized, suggest 'help mactime enable-disable'...");
+
   vec_reset_length (mm->arp_cache_copy);
   /* Walk all ip4 neighbours on all interfaces */
   ip_neighbor_walk (IP46_TYPE_IP4, ~0, mactime_ip_neighbor_copy, mm);
@@ -704,7 +709,9 @@ clear_mactime_command_fn (vlib_main_t * vm,
   mactime_main_t *mm = &mactime_main;
 
   if (mm->feature_initialized == 0)
-    return clib_error_return (0, "feature not enabled");
+    return clib_error_return
+      (0,
+       "Feature not initialized, suggest 'help mactime enable-disable'...");
 
   vlib_clear_combined_counters (&mm->allow_counters);
   vlib_clear_combined_counters (&mm->drop_counters);
