@@ -692,8 +692,12 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
   return 0;
 }
 
+/**
+ * returns the number of sent packets
+ * udp_saturated is set to 1 if the UDP TX fifo is full
+ */
 static int
-quic_send_packets (quic_ctx_t * ctx)
+quic_send_packets (quic_ctx_t * ctx, u8 * udp_saturated)
 {
   quic_main_t *qm = &quic_main;
   quicly_datagram_t *packets[QUIC_SEND_PACKET_VEC_SIZE];
@@ -701,7 +705,7 @@ quic_send_packets (quic_ctx_t * ctx)
   quicly_conn_t *conn;
   size_t num_packets, i, max_packets;
   quicly_packet_allocator_t *pa;
-  int err = 0;
+  int err = 0, sent_packets = 0;
   u32 thread_index = vlib_get_thread_index ();
 
   /* We have sctx, get qctx */
@@ -712,26 +716,26 @@ quic_send_packets (quic_ctx_t * ctx)
 
   udp_session = session_get_from_handle_if_valid (ctx->udp_session_handle);
   if (!udp_session)
-    goto quicly_error;
+    goto error;
 
   conn = ctx->conn;
 
   if (!conn)
     return 0;
 
-  /* TODO : quicly can assert it can send min_packets up to 2 */
-  if (quic_sendable_packet_count (udp_session) < 2)
-    goto stop_sending;
-
   pa = quic_get_quicly_ctx_from_ctx (ctx)->packet_allocator;
   do
     {
       max_packets = quic_sendable_packet_count (udp_session);
+      /* quicly can assume it has space for 2 packets */
       if (max_packets < 2)
-	break;
+	{
+	  *udp_saturated = 1;
+	  break;
+	}
       num_packets = max_packets;
       if ((err = quicly_send (conn, packets, &num_packets)))
-	goto quicly_error;
+	goto error;
 
       quic_crypto_batch_tx_packets (&qm->wrk_ctx
 				    [thread_index].crypto_context_batch);
@@ -740,27 +744,28 @@ quic_send_packets (quic_ctx_t * ctx)
 	{
 	  quic_crypto_finalize_send_packet (packets[i]);
 	  if ((err = quic_send_datagram (udp_session, packets[i])))
-	    goto quicly_error;
+	    goto error;
 
 	  pa->free_packet (pa, packets[i]);
 	}
+      sent_packets += num_packets;
     }
-  while (num_packets > 0 && num_packets == max_packets);
+  while (num_packets == max_packets);
 
-stop_sending:
-  quic_set_udp_tx_evt (udp_session);
+  if (sent_packets)
+    quic_set_udp_tx_evt (udp_session);
 
   QUIC_DBG (3, "%u[TX] %u[RX]", svm_fifo_max_dequeue (udp_session->tx_fifo),
 	    svm_fifo_max_dequeue (udp_session->rx_fifo));
   quic_update_timer (ctx);
-  return 0;
+  return sent_packets;
 
-quicly_error:
+error:
   if (err && err != QUICLY_ERROR_PACKET_IGNORED
       && err != QUICLY_ERROR_FREE_CONNECTION)
-    clib_warning ("Quic error '%U'.", quic_format_err, err);
+    QUIC_DBG (1, "Quic error '%U'.", quic_format_err, err);
   quic_connection_closed (ctx);
-  return 1;
+  return 0;
 }
 
 /* Quicly callbacks */
@@ -1948,10 +1953,11 @@ quic_custom_tx_callback (void *s, transport_send_params_t * sp)
 {
   session_t *stream_session = (session_t *) s;
   quic_stream_data_t *stream_data;
+  u8 is_stream_session = 1, udp_full = 0;
   quicly_stream_t *stream;
   quic_ctx_t *ctx;
+  int rv, sent_packets;
   u32 max_deq;
-  int rv;
 
   if (PREDICT_FALSE
       (stream_session->session_state >= SESSION_STATE_TRANSPORT_CLOSING))
@@ -1960,6 +1966,7 @@ quic_custom_tx_callback (void *s, transport_send_params_t * sp)
 		      stream_session->thread_index);
   if (PREDICT_FALSE (!quic_ctx_is_stream (ctx)))
     {
+      is_stream_session = 0;
       goto tx_end;		/* Most probably a reschedule */
     }
 
@@ -1969,9 +1976,10 @@ quic_custom_tx_callback (void *s, transport_send_params_t * sp)
   if (!quicly_sendstate_is_open (&stream->sendstate))
     {
       QUIC_ERR ("Warning: tried to send on closed stream");
-      return -1;
+      return 0;
     }
 
+  /* all the unacked data is in the stream session fifo */
   stream_data = (quic_stream_data_t *) stream->data;
   max_deq = svm_fifo_max_dequeue (stream_session->tx_fifo);
   QUIC_ASSERT (max_deq >= stream_data->app_tx_data_len);
@@ -1986,8 +1994,18 @@ quic_custom_tx_callback (void *s, transport_send_params_t * sp)
   QUIC_ASSERT (!rv);
 
 tx_end:
-  quic_send_packets (ctx);
-  return 0;
+  sent_packets = quic_send_packets (ctx, &udp_full);
+  if (is_stream_session)
+    {
+      /* never reschedule a stream session */
+      transport_connection_deschedule (&ctx->connection);
+      sp->flags |= TRANSPORT_SND_F_DESCHED;
+      return 0;
+    }
+  else if (udp_full)
+    /* actually the quic session */
+    stream_session->flags |= SESSION_F_CUSTOM_TX;
+  return sent_packets;
 }
 
 /*
