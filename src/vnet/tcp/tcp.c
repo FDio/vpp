@@ -720,6 +720,7 @@ tcp_connection_init_vars (tcp_connection_t * tc)
       || tcp_cfg.enable_tx_pacing)
     tcp_enable_pacing (tc);
 
+  tc->cfg_flags |= TCP_CFG_F_RATE_SAMPLE;
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_init (tc);
 
