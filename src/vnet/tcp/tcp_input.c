@@ -426,8 +426,6 @@ acceptable:
  * Note that although the original article, srtt and rttvar are scaled
  * to minimize round-off errors, here we don't. Instead, we rely on
  * better precision time measurements.
- *
- * TODO support us rtt resolution
  */
 static void
 tcp_estimate_rtt (tcp_connection_t * tc, u32 mrtt)
@@ -452,40 +450,61 @@ tcp_estimate_rtt (tcp_connection_t * tc, u32 mrtt)
     }
 }
 
+static inline void
+tcp_estimate_rtt_us (tcp_connection_t * tc, f64 mrtt)
+{
+  tc->mrtt_us = tc->mrtt_us + (mrtt - tc->mrtt_us) * 0.125;
+}
+
 /**
- * Update RTT estimate and RTO timer
+ * Update rtt estimate
  *
- * Measure RTT: We have two sources of RTT measurements: TSOPT and ACK
- * timing. Middle boxes are known to fiddle with TCP options so we
- * should give higher priority to ACK timing.
+ * We have potentially three sources of rtt measurements:
  *
- * This should be called only if previously sent bytes have been acked.
+ * TSOPT	difference between current and echoed timestamp. It has ms
+ * 	    	precision and can be computed per ack
+ * ACK timing	one sequence number is tracked per rtt with us (micro second)
+ * 		precision.
+ * rate sample	if enabled, all outstanding bytes are tracked with us
+ * 		precision. Every ack and sack are an rtt sample
  *
- * return 1 if valid rtt 0 otherwise
+ * Middle boxes are known to fiddle with TCP options so we give higher
+ * priority to ACK timing. However, if rate sampling is enabled, it takes
+ * precedence because it tracks all bytes sent and in recovery can detect
+ * if a sample has been retransmitted and therefore if Karn's rule applies.
  */
 static int
 tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
 {
   u32 mrtt = 0;
 
+  if (rs)
+    {
+      /* Accept rtt estimates only for samples that have not been
+       * retransmitted */
+      if (rs->flags & TCP_BTS_IS_RXT)
+	goto done;
+
+      mrtt = clib_max ((u32) rs->rtt_time * THZ, 1);
+      if (mrtt > 0 && mrtt <= TCP_RTT_MAX)
+	{
+	  tcp_estimate_rtt_us (tc, rs->rtt_time);
+	  goto estimate_rtt;
+	}
+      /* If sample is dubious try ack timing and tsopt if bytes were acked */
+      if (!tc->bytes_acked)
+	goto done;
+    }
+
   /* Karn's rule, part 1. Don't use retransmitted segments to estimate
    * RTT because they're ambiguous. */
   if (tcp_in_cong_recovery (tc))
-    {
-      /* Accept rtt estimates for samples that have not been retransmitted */
-      if ((tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-	  && !(rs->flags & TCP_BTS_IS_RXT))
-	{
-	  mrtt = rs->rtt_time * THZ;
-	  goto estimate_rtt;
-	}
-      goto done;
-    }
+    goto done;
 
   if (tc->rtt_ts && seq_geq (ack, tc->rtt_seq))
     {
       f64 sample = tcp_time_now_us (tc->c_thread_index) - tc->rtt_ts;
-      tc->mrtt_us = tc->mrtt_us + (sample - tc->mrtt_us) * 0.125;
+      tcp_estimate_rtt_us (tc, sample);
       mrtt = clib_max ((u32) (sample * THZ), 1);
       /* Allow measuring of a new RTT */
       tc->rtt_ts = 0;
@@ -499,11 +518,11 @@ tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
       mrtt = clib_max (now - tc->rcv_opts.tsecr, 1);
     }
 
-estimate_rtt:
-
   /* Ignore dubious measurements */
   if (mrtt == 0 || mrtt > TCP_RTT_MAX)
     goto done;
+
+estimate_rtt:
 
   tcp_estimate_rtt (tc, mrtt);
 
@@ -1046,12 +1065,22 @@ process_ack:
   tcp_validate_txf_size (tc, tc->bytes_acked);
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-    tcp_bt_sample_delivery_rate (tc, &rs);
-
-  if (tc->bytes_acked)
     {
-      tcp_program_dequeue (wrk, tc);
-      tcp_update_rtt (tc, &rs, vnet_buffer (b)->tcp.ack_number);
+      tcp_bt_sample_delivery_rate (tc, &rs);
+      if (tc->bytes_acked + tc->sack_sb.last_sacked_bytes)
+	{
+	  tcp_update_rtt (tc, &rs, vnet_buffer (b)->tcp.ack_number);
+	  if (tc->bytes_acked)
+	    tcp_program_dequeue (wrk, tc);
+	}
+    }
+  else
+    {
+      if (tc->bytes_acked)
+	{
+	  tcp_update_rtt (tc, 0, vnet_buffer (b)->tcp.ack_number);
+	  tcp_program_dequeue (wrk, tc);
+	}
     }
 
   TCP_EVT (TCP_EVT_ACK_RCVD, tc);
