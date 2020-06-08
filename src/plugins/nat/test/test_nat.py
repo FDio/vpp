@@ -1105,7 +1105,8 @@ class MethodHolder(VppTestCase):
         else:
             raise Exception("Unsupported protocol")
 
-    def frag_in_order(self, proto=IP_PROTOS.tcp, dont_translate=False):
+    def frag_in_order(self, proto=IP_PROTOS.tcp, dont_translate=False,
+                      same_port=False):
         layer = self.proto2layer(proto)
 
         if proto == IP_PROTOS.tcp:
@@ -1132,11 +1133,14 @@ class MethodHolder(VppTestCase):
         if proto != IP_PROTOS.icmp:
             if not dont_translate:
                 self.assertEqual(p[layer].dport, 20)
-                self.assertNotEqual(p[layer].sport, self.port_in)
+                if same_port:
+                    self.assertEqual(p[layer].sport, self.port_in)
+                else:
+                    self.assertNotEqual(p[layer].sport, self.port_in)
             else:
                 self.assertEqual(p[layer].sport, self.port_in)
         else:
-            if not dont_translate:
+            if not same_port and not dont_translate:
                 self.assertNotEqual(p[layer].id, self.port_in)
             else:
                 self.assertEqual(p[layer].id, self.port_in)
@@ -1220,7 +1224,7 @@ class MethodHolder(VppTestCase):
                 self.assertEqual(p[layer].id, self.port_in)
             self.assertEqual(data, p[Raw].load)
 
-    def reass_hairpinning(self, proto=IP_PROTOS.tcp):
+    def reass_hairpinning(self, proto=IP_PROTOS.tcp, same_port=False):
         layer = self.proto2layer(proto)
 
         if proto == IP_PROTOS.tcp:
@@ -1243,13 +1247,20 @@ class MethodHolder(VppTestCase):
                                         self.nat_addr,
                                         self.server.ip4)
         if proto != IP_PROTOS.icmp:
-            self.assertNotEqual(p[layer].sport, self.host_in_port)
+            if same_port:
+                self.assertEqual(p[layer].sport, self.host_in_port)
+            else:
+                self.assertNotEqual(p[layer].sport, self.host_in_port)
             self.assertEqual(p[layer].dport, self.server_in_port)
         else:
-            self.assertNotEqual(p[layer].id, self.host_in_port)
+            if same_port:
+                self.assertEqual(p[layer].id, self.host_in_port)
+            else:
+                self.assertNotEqual(p[layer].id, self.host_in_port)
         self.assertEqual(data, p[Raw].load)
 
-    def frag_out_of_order(self, proto=IP_PROTOS.tcp, dont_translate=False):
+    def frag_out_of_order(self, proto=IP_PROTOS.tcp, dont_translate=False,
+                          same_port=False):
         layer = self.proto2layer(proto)
 
         if proto == IP_PROTOS.tcp:
@@ -1278,11 +1289,14 @@ class MethodHolder(VppTestCase):
             if proto != IP_PROTOS.icmp:
                 if not dont_translate:
                     self.assertEqual(p[layer].dport, 20)
-                    self.assertNotEqual(p[layer].sport, self.port_in)
+                    if same_port:
+                        self.assertEqual(p[layer].sport, self.port_in)
+                    else:
+                        self.assertNotEqual(p[layer].sport, self.port_in)
                 else:
                     self.assertEqual(p[layer].sport, self.port_in)
             else:
-                if not dont_translate:
+                if not same_port and not dont_translate:
                     self.assertNotEqual(p[layer].id, self.port_in)
                 else:
                     self.assertEqual(p[layer].id, self.port_in)
@@ -4437,9 +4451,9 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.vapi.nat44_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
-        self.frag_in_order(proto=IP_PROTOS.tcp)
-        self.frag_in_order(proto=IP_PROTOS.udp)
-        self.frag_in_order(proto=IP_PROTOS.icmp)
+        self.frag_in_order(proto=IP_PROTOS.tcp, same_port=True)
+        self.frag_in_order(proto=IP_PROTOS.udp, same_port=True)
+        self.frag_in_order(proto=IP_PROTOS.icmp, same_port=True)
 
     def test_frag_in_order_dont_translate(self):
         """ NAT44 don't translate fragments arriving in order """
@@ -4463,9 +4477,9 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.vapi.nat44_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
-        self.frag_out_of_order(proto=IP_PROTOS.tcp)
-        self.frag_out_of_order(proto=IP_PROTOS.udp)
-        self.frag_out_of_order(proto=IP_PROTOS.icmp)
+        self.frag_out_of_order(proto=IP_PROTOS.tcp, same_port=True)
+        self.frag_out_of_order(proto=IP_PROTOS.udp, same_port=True)
+        self.frag_out_of_order(proto=IP_PROTOS.icmp, same_port=True)
 
     def test_frag_out_of_order_dont_translate(self):
         """ NAT44 don't translate fragments arriving out of order """
@@ -4593,9 +4607,9 @@ class TestNAT44EndpointDependent(MethodHolder):
                                       proto=IP_PROTOS.udp)
         self.nat44_add_static_mapping(self.server.ip4, self.nat_addr)
 
-        self.reass_hairpinning(proto=IP_PROTOS.tcp)
-        self.reass_hairpinning(proto=IP_PROTOS.udp)
-        self.reass_hairpinning(proto=IP_PROTOS.icmp)
+        self.reass_hairpinning(proto=IP_PROTOS.tcp, same_port=True)
+        self.reass_hairpinning(proto=IP_PROTOS.udp, same_port=True)
+        self.reass_hairpinning(proto=IP_PROTOS.icmp, same_port=True)
 
     def test_clear_sessions(self):
         """ NAT44 ED session clearing test """
@@ -4617,7 +4631,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
-        self.verify_capture_out(capture)
+        self.verify_capture_out(capture, same_port=True)
 
         sessions = self.statistics.get_counter('/nat44/total-sessions')
         self.assertTrue(sessions[0][0] > 0)
@@ -4664,7 +4678,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
-        self.verify_capture_out(capture)
+        self.verify_capture_out(capture, same_port=True)
 
         err = self.statistics.get_err_counter(
             '/err/nat44-ed-in2out-slowpath/TCP packets')
@@ -4752,7 +4766,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
-        self.verify_capture_out(capture)
+        self.verify_capture_out(capture, same_port=True)
 
         err_new = self.statistics.get_err_counter(
             '/err/nat44-ed-in2out-slowpath/out of ports')
@@ -4806,7 +4820,7 @@ class TestNAT44EndpointDependent(MethodHolder):
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
             capture = self.pg8.get_capture(len(pkts))
-            self.verify_capture_out(capture)
+            self.verify_capture_out(capture, same_port=True)
 
             err = self.statistics.get_err_counter(
                 '/err/nat44-ed-in2out-slowpath/TCP packets')
@@ -5555,13 +5569,13 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
-        self.verify_capture_out(capture)
+        self.verify_capture_out(capture, same_port=True)
         pkts = self.create_stream_in(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
-        self.verify_capture_out(capture)
+        self.verify_capture_out(capture, same_port=True)
 
         # from external network back to local network host
         pkts = self.create_stream_out(self.pg1)
@@ -5585,7 +5599,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
-        self.verify_capture_out(capture)
+        self.verify_capture_out(capture, same_port=True)
 
         pkts = self.create_stream_out(self.pg1)
         self.pg1.add_stream(pkts)
@@ -6595,7 +6609,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
-        self.verify_capture_out(capture)
+        self.verify_capture_out(capture, same_port=True)
 
         # out2in
         pkts = self.create_stream_out(self.pg1)
@@ -6627,7 +6641,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         pkts_in2out = self.create_stream_in(self.pg0, self.pg1)
         capture = self.send_and_expect(self.pg0, pkts_in2out, self.pg1,
                                        len(pkts_in2out))
-        self.verify_capture_out(capture)
+        self.verify_capture_out(capture, same_port=True)
 
         # send out2in again, with sessions created it should work now
         pkts_out2in = self.create_stream_out(self.pg1)
@@ -6657,7 +6671,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         # send in2out to generate ACL state (NAT state was created earlier)
         capture = self.send_and_expect(self.pg0, pkts_in2out, self.pg1,
                                        len(pkts_in2out))
-        self.verify_capture_out(capture)
+        self.verify_capture_out(capture, same_port=True)
 
         # send out2in again. ACL state exists so it should work now.
         # TCP packets with the syn flag set also need the ack flag
@@ -6762,7 +6776,7 @@ class TestNAT44EndpointDependent(MethodHolder):
             ip = p[IP]
             tcp = p[TCP]
             self.assertEqual(ip.src, self.nat_addr)
-            self.assertNotEqual(tcp.sport, 2345)
+            self.assertEqual(tcp.sport, 2345)
             self.assert_packet_checksums_valid(p)
             port = tcp.sport
         except:
