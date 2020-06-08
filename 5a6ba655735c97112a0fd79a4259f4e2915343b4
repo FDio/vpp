@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3f59059f_2fb16cf9",
+        "filename": "src/vnet/vxlan-gbp/encap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2020-06-08T15:33:59Z",
+      "side": 1,
+      "message": "After this function call, please clear both is_ip4 and is_ip4 bits from flags field, to let later VXLAN outer header checksum offload setup set the correct ip bit.  Please do this for all 3 instances here and also for vxlan/encap.c.",
+      "revId": "5a6ba655735c97112a0fd79a4259f4e2915343b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
