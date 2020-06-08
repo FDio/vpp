@@ -190,14 +190,6 @@ icmp_in2out_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   return next0;
 }
 
-static_always_inline u16
-snat_random_port (u16 min, u16 max)
-{
-  snat_main_t *sm = &snat_main;
-  return min + random_u32 (&sm->random_seed) /
-    (random_u32_max () / (max - min + 1) + 1);
-}
-
 static int
 nat_ed_alloc_addr_and_port (snat_main_t * sm, u32 rx_fib_index,
 			    u32 nat_proto, u32 thread_index,
@@ -221,15 +213,23 @@ nat_ed_alloc_addr_and_port (snat_main_t * sm, u32 rx_fib_index,
       switch (nat_proto)
 	{
 #define _(N, j, n, unused)                                                    \
-  case NAT_PROTOCOL_##N:                                                     \
+  case NAT_PROTOCOL_##N:                                                      \
     if (a->fib_index == rx_fib_index)                                         \
       {                                                                       \
-        u16 port = snat_random_port (1, port_per_thread);                     \
-        u16 attempts = port_per_thread;                                       \
-        while (attempts > 0)                                                  \
+        /* first try port suggested by caller */                              \
+        u16 port = *allocated_port;                                           \
+        portnum = clib_net_to_host_u16 (port);                                \
+        if (port <= port_thread_offset ||                                     \
+            port > port_thread_offset + port_per_thread)                      \
           {                                                                   \
-            --attempts;                                                       \
+            /* need to pick a different port, suggested port doesn't fit in   \
+             * this thread's port range */                                    \
+            port = snat_random_port (1, port_per_thread);                     \
             portnum = port_thread_offset + port;                              \
+          }                                                                   \
+        u16 attempts = port_per_thread;                                       \
+        do                                                                    \
+          {                                                                   \
             make_ed_kv (&a->addr, &r_addr, proto, s->out2in.fib_index,        \
                         clib_host_to_net_u16 (portnum), r_port, thread_index, \
                         s - tsm->sessions, out2in_ed_kv);                     \
@@ -245,7 +245,10 @@ nat_ed_alloc_addr_and_port (snat_main_t * sm, u32 rx_fib_index,
                 return 0;                                                     \
               }                                                               \
             port = (port + 1) % port_per_thread;                              \
+            portnum = port_thread_offset + port;                              \
+            --attempts;                                                       \
           }                                                                   \
+        while (attempts > 0);                                                 \
       }                                                                       \
     else if (a->fib_index == ~0)                                              \
       {                                                                       \
@@ -391,6 +394,7 @@ slow_path_ed (snat_main_t * sm,
 
       s->out2in.fib_index = tx_fib_index;
       /* Try to create dynamic translation */
+      allocated_port = l_port;
       if (nat_ed_alloc_addr_and_port (sm, rx_fib_index, nat_proto,
 				      thread_index, r_addr, r_port, proto,
 				      sm->port_per_thread,

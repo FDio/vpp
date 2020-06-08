@@ -2885,14 +2885,6 @@ end:
   return 0;
 }
 
-static_always_inline u16
-snat_random_port (u16 min, u16 max)
-{
-  snat_main_t *sm = &snat_main;
-  return min + random_u32 (&sm->random_seed) /
-    (random_u32_max () / (max - min + 1) + 1);
-}
-
 int
 snat_alloc_outside_address_and_port (snat_address_t * addresses,
 				     u32 fib_index,
