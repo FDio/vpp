@@ -191,27 +191,18 @@ icmp_in2out_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   return next0;
 }
 
-static_always_inline u16
-snat_random_port (u16 min, u16 max)
-{
-  snat_main_t *sm = &snat_main;
-  return min + random_u32 (&sm->random_seed) /
-    (random_u32_max () / (max - min + 1) + 1);
-}
-
 static int
 nat_ed_alloc_addr_and_port (snat_main_t * sm, u32 rx_fib_index,
 			    u32 nat_proto, u32 thread_index,
 			    ip4_address_t r_addr, u16 r_port, u8 proto,
 			    u16 port_per_thread, u32 snat_thread_index,
 			    snat_session_t * s,
-			    ip4_address_t * allocated_addr,
-			    u16 * allocated_port,
+			    ip4_address_t * outside_addr,
+			    u16 * outside_port,
 			    clib_bihash_kv_16_8_t * out2in_ed_kv)
 {
   int i;
   snat_address_t *a, *ga = 0;
-  u32 portnum;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
 
   const u16 port_thread_offset = (port_per_thread * snat_thread_index) + 1024;
@@ -225,29 +216,39 @@ nat_ed_alloc_addr_and_port (snat_main_t * sm, u32 rx_fib_index,
   case NAT_PROTOCOL_##N:                                                     \
     if (a->fib_index == rx_fib_index)                                        \
       {                                                                      \
-        u16 port = snat_random_port (1, port_per_thread);                    \
-        u16 attempts = port_per_thread;                                      \
-        while (attempts > 0)                                                 \
+        /* first try port suggested by caller */                             \
+        u16 port = clib_net_to_host_u16 (*outside_port);                   \
+        u16 port_offset = port - port_thread_offset;                         \
+        if (port <= port_thread_offset ||                                    \
+            port > port_thread_offset + port_per_thread)                     \
           {                                                                  \
-            --attempts;                                                      \
-            portnum = port_thread_offset + port;                             \
-            init_ed_kv (out2in_ed_kv, a->addr,                               \
-                        clib_host_to_net_u16 (portnum), r_addr, r_port,      \
-                        s->out2in.fib_index, proto, thread_index,            \
-                        s - tsm->sessions);                                  \
+            /* need to pick a different port, suggested port doesn't fit in  \
+             * this thread's port range */                                   \
+            port_offset = snat_random_port (1, port_per_thread);             \
+            port = port_thread_offset + port_offset;                         \
+          }                                                                  \
+        u16 attempts = port_per_thread;                                      \
+        do                                                                   \
+          {                                                                  \
+            init_ed_kv (out2in_ed_kv, a->addr, clib_host_to_net_u16 (port),  \
+                        r_addr, r_port, s->out2in.fib_index, proto,          \
+                        thread_index, s - tsm->sessions);                    \
             int rv = clib_bihash_add_del_16_8 (&sm->out2in_ed, out2in_ed_kv, \
                                                2 /* is_add */);              \
             if (0 == rv)                                                     \
               {                                                              \
-                ++a->busy_##n##_port_refcounts[portnum];                     \
+                ++a->busy_##n##_port_refcounts[port];                        \
                 a->busy_##n##_ports_per_thread[thread_index]++;              \
                 a->busy_##n##_ports++;                                       \
-                *allocated_addr = a->addr;                                   \
-                *allocated_port = clib_host_to_net_u16 (portnum);            \
+                *outside_addr = a->addr;                                   \
+                *outside_port = clib_host_to_net_u16 (port);               \
                 return 0;                                                    \
               }                                                              \
-            port = (port + 1) % port_per_thread;                             \
+            port_offset = (port_offset + 1) % port_per_thread;               \
+            port = port_thread_offset + port_offset;                         \
+            --attempts;                                                      \
           }                                                                  \
+        while (attempts > 0);                                                \
       }                                                                      \
     else if (a->fib_index == ~0)                                             \
       {                                                                      \
@@ -326,8 +327,8 @@ slow_path_ed (snat_main_t * sm,
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   clib_bihash_kv_16_8_t out2in_ed_kv;
   nat44_is_idle_session_ctx_t ctx;
-  ip4_address_t allocated_addr;
-  u16 allocated_port;
+  ip4_address_t outside_addr;
+  u16 outside_port;
   u8 identity_nat;
 
   u32 nat_proto = ip_proto_to_nat_proto (proto);
@@ -392,20 +393,21 @@ slow_path_ed (snat_main_t * sm,
 	}
 
       /* Try to create dynamic translation */
+      outside_port = l_port;	// suggest using local port to allocation function
       if (nat_ed_alloc_addr_and_port (sm, rx_fib_index, nat_proto,
 				      thread_index, r_addr, r_port, proto,
 				      sm->port_per_thread,
 				      tsm->snat_thread_index, s,
-				      &allocated_addr,
-				      &allocated_port, &out2in_ed_kv))
+				      &outside_addr,
+				      &outside_port, &out2in_ed_kv))
 	{
 	  nat_elog_notice ("addresses exhausted");
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_OUT_OF_PORTS];
 	  nat_ed_session_delete (sm, s, thread_index, 1);
 	  return NAT_NEXT_DROP;
 	}
-      s->out2in.addr = allocated_addr;
-      s->out2in.port = allocated_port;
+      s->out2in.addr = outside_addr;
+      s->out2in.port = outside_port;
     }
   else
     {
