@@ -121,6 +121,30 @@
     },
     {
       "key": {
+        "uuid": "73032316_39e43258",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-06-08T08:47:36Z",
+      "side": 1,
+      "message": "I have added the csum_offload condition. But, in my opinion, it will not work with current interface output node. When node calculates the inner header checksum, we also need to modify the checksum of outer header.",
+      "parentUuid": "ba68acdb_fe1636eb",
+      "range": {
+        "startLine": 141,
+        "startChar": 18,
+        "endLine": 141,
+        "endChar": 49
+      },
+      "revId": "6215f390d5418c5aeec65a9122415975a06431ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "0c8f2167_d7ba4496",
         "filename": "src/vnet/vxlan/encap.c",
         "patchSetId": 1
@@ -132,6 +156,30 @@
       "writtenOn": "2020-06-04T22:56:23Z",
       "side": 1,
       "message": "We should not use the flags bit here but use is_ip4, !is_ip4. The input parameter is_ip4 is passed as constant to help compiler inline more efficient code.  Same for all the other calls.  Also, patch-27195 is removing with-gso parameter.  I suppose we should merge it first and fix this here.",
+      "range": {
+        "startLine": 150,
+        "startChar": 11,
+        "endLine": 150,
+        "endChar": 31
+      },
+      "revId": "6215f390d5418c5aeec65a9122415975a06431ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7ca68724_43ace8f5",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-06-08T08:47:36Z",
+      "side": 1,
+      "message": "is_ip4 is for v4 based vxlan tunnel. It doesn\u0027t provide indication of inner header Protocol type.",
+      "parentUuid": "0c8f2167_d7ba4496",
       "range": {
         "startLine": 150,
         "startChar": 11,
@@ -261,6 +309,24 @@
       "side": 1,
       "message": "So GSO bit question is answered. Please consider the \"\u0026\u0026csum_offload\" part if you agree.",
       "parentUuid": "4d6a02bd_3c2e0fca",
+      "revId": "6215f390d5418c5aeec65a9122415975a06431ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a6668d9b_662e04f1",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 374,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-06-08T08:47:36Z",
+      "side": 1,
+      "message": "I have added the csum_offload condition. But, in my opinion, it will not work with current interface output node. When node calculates the inner header checksum, we also need to modify the checksum of outer header.",
+      "parentUuid": "e55a2a0e_2d53e742",
       "revId": "6215f390d5418c5aeec65a9122415975a06431ac",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
