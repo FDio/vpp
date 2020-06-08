@@ -572,6 +572,15 @@ vnet_is_packet_traced (vlib_buffer_t * b, u32 classify_table_index, int func)
   return 1;
 }
 
+void *
+vlib_add_trace (vlib_main_t * vm,
+		vlib_node_runtime_t * r, vlib_buffer_t * b, u32 n_data_bytes)
+{
+  return vlib_add_trace_inline (vm, r, b, n_data_bytes);
+}
+
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
