@@ -813,6 +813,21 @@ increment_v4_address (ip4_address_t * a)
   a->as_u32 = clib_host_to_net_u32 (v);
 }
 
+static_always_inline u16
+snat_random_port (u16 min, u16 max)
+{
+  snat_main_t *sm = &snat_main;
+  u32 rwide;
+  u16 r;
+
+  rwide = random_u32 (&sm->random_seed);
+  r = rwide & 0xFFFF;
+  if (r >= min && r <= max)
+    return r;
+
+  return min + (rwide % (max - min + 1));
+}
+
 #endif /* __included_nat_inlines_h__ */
 
 /*
