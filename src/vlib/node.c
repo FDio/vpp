@@ -446,7 +446,7 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 	clib_memset (p, 0, sizeof (p[0]));
 	p->log2_n_stack_bytes = log2_n_stack_bytes;
 
-	stack_bytes = 1 << log2_n_stack_bytes;
+	stack_bytes = 1ULL << log2_n_stack_bytes;
 	/* map stack size + 2 extra guard pages */
 	map = mmap (0, stack_bytes + page_size, PROT_READ | PROT_WRITE,
 		    mmap_flags, -1, 0);
