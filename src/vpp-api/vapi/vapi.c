@@ -221,6 +221,10 @@ vapi_msg_alloc (vapi_ctx_t ctx, size_t size)
       return NULL;
     }
   void *rv = vl_msg_api_alloc_or_null (size);
+  if (rv)
+    {
+      clib_memset (rv, 0, size);
+    }
   return rv;
 }
 
