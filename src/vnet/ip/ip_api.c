@@ -68,6 +68,7 @@
 #include <vnet/format_fns.h>
 
 #define foreach_ip_api_msg                                              \
+_(SW_INTERFACE_IP4_ENABLE_DISABLE, sw_interface_ip4_enable_disable)     \
 _(SW_INTERFACE_IP6_ENABLE_DISABLE, sw_interface_ip6_enable_disable)     \
 _(IP_TABLE_DUMP, ip_table_dump)                                         \
 _(IP_ROUTE_DUMP, ip_route_dump)                                         \
@@ -102,11 +103,28 @@ _(IP_REASSEMBLY_GET, ip_reassembly_get)                                 \
 _(IP_REASSEMBLY_ENABLE_DISABLE, ip_reassembly_enable_disable)           \
 _(IP_PUNT_REDIRECT_DUMP, ip_punt_redirect_dump)
 
+
+static void
+  vl_api_sw_interface_ip4_enable_disable_t_handler
+  (vl_api_sw_interface_ip4_enable_disable_t * mp)
+{
+  vl_api_sw_interface_ip6_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  ip4_sw_interface_enable_disable (ntohl (mp->sw_if_index), mp->enable);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY);
+}
+
 static void
   vl_api_sw_interface_ip6_enable_disable_t_handler
   (vl_api_sw_interface_ip6_enable_disable_t * mp)
 {
-  vl_api_sw_interface_ip6_enable_disable_reply_t *rmp;
+  vl_api_sw_interface_ip4_enable_disable_reply_t *rmp;
   int rv = 0;
 
   VALIDATE_SW_IF_INDEX (mp);
