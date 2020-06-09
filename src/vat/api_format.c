@@ -5061,6 +5061,7 @@ _(bier_route_add_del_reply)                             \
 _(bier_table_add_del_reply)                             \
 _(sw_interface_set_unnumbered_reply)                    \
 _(set_ip_flow_hash_reply)                               \
+_(sw_interface_ip4_enable_disable_reply)                \
 _(sw_interface_ip6_enable_disable_reply)                \
 _(l2_patch_add_del_reply)                               \
 _(sr_mpls_policy_add_reply)                             \
@@ -5253,6 +5254,8 @@ _(SW_INTERFACE_SET_UNNUMBERED_REPLY,                                    \
 _(CREATE_VLAN_SUBIF_REPLY, create_vlan_subif_reply)                     \
 _(CREATE_SUBIF_REPLY, create_subif_reply)                     		\
 _(SET_IP_FLOW_HASH_REPLY, set_ip_flow_hash_reply)                       \
+_(SW_INTERFACE_IP4_ENABLE_DISABLE_REPLY,                                \
+  sw_interface_ip4_enable_disable_reply)                                \
 _(SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY,                                \
   sw_interface_ip6_enable_disable_reply)                                \
 _(L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)                       \
@@ -9182,6 +9185,49 @@ api_set_ip_flow_hash (vat_main_t * vam)
   mp->reverse = reverse;
   mp->vrf_id = ntohl (vrf_id);
   mp->is_ipv6 = is_ipv6;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_sw_interface_ip4_enable_disable (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_ip4_enable_disable_t *mp;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  u8 enable = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "enable"))
+	enable = 1;
+      else if (unformat (i, "disable"))
+	enable = 0;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  M (SW_INTERFACE_IP4_ENABLE_DISABLE, mp);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->enable = enable;
 
   S (mp);
   W (ret);
@@ -20661,6 +20707,8 @@ _(ip_table_flush, "table <n> [ipv6]")                                   \
 _(ip_table_replace_end, "table <n> [ipv6]")                             \
 _(set_ip_flow_hash,                                                     \
   "vrf <n> [src] [dst] [sport] [dport] [proto] [reverse] [ipv6]")       \
+_(sw_interface_ip4_enable_disable,                                      \
+  "<intfc> | sw_if_index <id> enable | disable")                        \
 _(sw_interface_ip6_enable_disable,                                      \
   "<intfc> | sw_if_index <id> enable | disable")                        \
 _(l2_patch_add_del,                                                     \

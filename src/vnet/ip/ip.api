@@ -250,6 +250,20 @@ autoreply define set_ip_flow_hash
     @param sw_if_index - interface used to reach neighbor
     @param enable - if non-zero enable ip6 on interface, else disable
 */
+autoreply define sw_interface_ip4_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool enable;			/* set to true if enable */
+};
+
+/** \brief IPv6 interface enable / disable request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface used to reach neighbor
+    @param enable - if non-zero enable ip6 on interface, else disable
+*/
 autoreply define sw_interface_ip6_enable_disable
 {
   u32 client_index;
