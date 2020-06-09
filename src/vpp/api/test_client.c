@@ -532,6 +532,13 @@ static void
 }
 
 static void
+  vl_api_sw_interface_ip4_enable_disable_reply_t_handler
+  (vl_api_sw_interface_ip4_enable_disable_reply_t * mp)
+{
+  fformat (stdout, "ip4 enable/disable reply %d\n", ntohl (mp->retval));
+}
+
+static void
   vl_api_sw_interface_ip6_enable_disable_reply_t_handler
   (vl_api_sw_interface_ip6_enable_disable_reply_t * mp)
 {
@@ -613,6 +620,7 @@ _(DHCP_PROXY_SET_VSS_REPLY, dhcp_proxy_set_vss_reply)                   \
 _(SET_IP_FLOW_HASH_REPLY, set_ip_flow_hash_reply)                       \
 _(SW_INTERFACE_IP6ND_RA_CONFIG_REPLY, sw_interface_ip6nd_ra_config_reply) \
 _(SW_INTERFACE_IP6ND_RA_PREFIX_REPLY, sw_interface_ip6nd_ra_prefix_reply) \
+_(SW_INTERFACE_IP4_ENABLE_DISABLE_REPLY, sw_interface_ip4_enable_disable_reply) \
 _(SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY, sw_interface_ip6_enable_disable_reply) \
 _(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS_REPLY, sw_interface_ip6_set_link_local_address_reply) \
  _(CREATE_LOOPBACK_REPLY, create_loopback_reply)			\
@@ -1156,6 +1164,23 @@ ip6nd_ra_prefix (test_main_t * tm, int is_no)
 
 
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_IP6ND_RA_PREFIX);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+}
+
+void
+ip4_enable_disable (test_main_t * tm, int enable)
+{
+  vl_api_sw_interface_ip4_enable_disable_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+
+  mp->client_index = tm->my_client_index;
+  mp->context = 0xdeadbeef;
+  mp->sw_if_index = ntohl (5);
+  mp->enable = (enable == 1);;
+
+  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_IP4_ENABLE_DISABLE);
   vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
 }
 
