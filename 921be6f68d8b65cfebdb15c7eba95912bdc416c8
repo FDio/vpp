@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bc7fc4f9_975c0d1b",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-06-09T22:16:18Z",
+      "side": 1,
+      "message": "what needs python2-devel?",
+      "range": {
+        "startLine": 123,
+        "startChar": 16,
+        "endLine": 123,
+        "endChar": 29
+      },
+      "revId": "921be6f68d8b65cfebdb15c7eba95912bdc416c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
