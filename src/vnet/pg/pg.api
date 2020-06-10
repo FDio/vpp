@@ -26,7 +26,7 @@ import "vnet/interface_types.api";
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param interface_id - interface index
-    @param enable_gso - enable gso on this interface
+    @param gso_enabled - enable gso on this interface
     @param gso_size - gso size on this interface
 */
 define pg_create_interface
