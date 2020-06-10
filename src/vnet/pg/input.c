@@ -54,6 +54,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/udp/udp_packet.h>
 #include <vnet/devices/devices.h>
+#include <vnet/gso/gro_func.h>
 
 static int
 validate_buffer_data2 (vlib_buffer_t * b, pg_stream_t * s,
@@ -1639,6 +1640,9 @@ pg_generate_packets (vlib_node_runtime_t * node,
       vnet_get_config_data (&cm->config_main, &current_config_index,
 			    &next_index, 0);
     }
+
+  if (PREDICT_FALSE (pi->coalesce_enabled))
+    vnet_gro_flow_table_schedule_node_on_dispatcher (vm, pi->flow_table);
 
   while (n_packets_to_generate > 0)
     {
