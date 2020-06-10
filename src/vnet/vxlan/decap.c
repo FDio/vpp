@@ -579,15 +579,11 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	  /* Verify UDP checksum */
 	  if (PREDICT_FALSE (!good_udp0))
 	    {
-	      if ((flags0 & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED) == 0)
-		{
-		  if (is_ip4)
-		    flags0 = ip4_tcp_udp_validate_checksum (vm, b0);
-		  else
-		    flags0 = ip6_tcp_udp_icmp_validate_checksum (vm, b0);
-		  good_udp0 =
-		    (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
-		}
+	      if (is_ip4)
+		flags0 = ip4_tcp_udp_validate_checksum (vm, b0);
+	      else
+		flags0 = ip6_tcp_udp_icmp_validate_checksum (vm, b0);
+	      good_udp0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 	    }
 
 	  if (is_ip4)
@@ -657,15 +653,11 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	  /* Verify UDP checksum */
 	  if (PREDICT_FALSE (!good_udp1))
 	    {
-	      if ((flags1 & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED) == 0)
-		{
-		  if (is_ip4)
-		    flags1 = ip4_tcp_udp_validate_checksum (vm, b1);
-		  else
-		    flags1 = ip6_tcp_udp_icmp_validate_checksum (vm, b1);
-		  good_udp1 =
-		    (flags1 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
-		}
+	      if (is_ip4)
+		flags1 = ip4_tcp_udp_validate_checksum (vm, b1);
+	      else
+		flags1 = ip6_tcp_udp_icmp_validate_checksum (vm, b1);
+	      good_udp1 = (flags1 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 	    }
 
 	  if (is_ip4)
@@ -771,15 +763,11 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	  /* Verify UDP checksum */
 	  if (PREDICT_FALSE (!good_udp0))
 	    {
-	      if ((flags0 & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED) == 0)
-		{
-		  if (is_ip4)
-		    flags0 = ip4_tcp_udp_validate_checksum (vm, b0);
-		  else
-		    flags0 = ip6_tcp_udp_icmp_validate_checksum (vm, b0);
-		  good_udp0 =
-		    (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
-		}
+	      if (is_ip4)
+		flags0 = ip4_tcp_udp_validate_checksum (vm, b0);
+	      else
+		flags0 = ip6_tcp_udp_icmp_validate_checksum (vm, b0);
+	      good_udp0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 	    }
 
 	  if (is_ip4)
