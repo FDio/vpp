@@ -661,7 +661,7 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 {
   pg_main_t *pg = &pg_main;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u32 if_id, gso_enabled = 0, gso_size = 0;
+  u32 if_id, gso_enabled = 0, gso_size = 0, coalesce_enabled = 0;
   clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -681,6 +681,8 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 	      error = clib_error_create ("gso enabled but gso size missing");
 	      goto done;
 	    }
+	  if (unformat (line_input, "coalesce-enabled"))
+	    coalesce_enabled = 1;
 	}
       else
 	{
@@ -690,7 +692,8 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 	}
     }
 
-  pg_interface_add_or_get (pg, if_id, gso_enabled, gso_size);
+  pg_interface_add_or_get (pg, if_id, gso_enabled, gso_size,
+			   coalesce_enabled);
 
 done:
   unformat_free (line_input);
@@ -701,7 +704,8 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_pg_if_cmd, static) = {
   .path = "create packet-generator",
-  .short_help = "create packet-generator interface <interface name> [gso-enabled gso-size <size>]",
+  .short_help = "create packet-generator interface <interface name>"
+                " [gso-enabled gso-size <size> [coalesce-enabled]]",
   .function = create_pg_if_cmd_fn,
 };
 /* *INDENT-ON* */
