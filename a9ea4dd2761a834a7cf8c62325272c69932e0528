@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5e3660db_6b9909db",
+        "filename": "src/vnet/l2/l2_input.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 416,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2020-06-10T14:36:50Z",
+      "side": 1,
+      "message": "Can we move the following 4 lines to end of the loop, around \"b+\u003d1;\" to make the single loop code sequence consistent with the quad loop sequence, please?",
+      "range": {
+        "startLine": 416,
+        "startChar": 0,
+        "endLine": 416,
+        "endChar": 3
+      },
+      "revId": "a9ea4dd2761a834a7cf8c62325272c69932e0528",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
