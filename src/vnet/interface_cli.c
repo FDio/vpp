@@ -2046,7 +2046,7 @@ pcap_trace_command_fn (vlib_main_t * vm,
   int drop_enable = 0;
   int status = 0;
   int filter = 0;
-  u32 sw_if_index = ~0;
+  u32 sw_if_index = 0;		/* default: any interface */
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
