@@ -39,6 +39,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/icmp46_packet.h>
+#include <vnet/ethernet/packet.h>
 #include <vnet/ip/ip4.h>
 #include <vnet/ip/ip6.h>
 #include <vnet/udp/udp_packet.h>
@@ -603,8 +604,12 @@ VLIB_NODE_FN (vnet_per_buffer_interface_output_node) (vlib_main_t * vm,
 typedef struct vnet_error_trace_t_
 {
   u32 sw_if_index;
+  i8 details_valid;
+  u8 is_ip6;
+  u8 pad[2];
+  u16 mactype;
+  ip46_address_t src, dst;
 } vnet_error_trace_t;
-
 
 static u8 *
 format_vnet_error_trace (u8 * s, va_list * va)
@@ -613,9 +618,29 @@ format_vnet_error_trace (u8 * s, va_list * va)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   vnet_error_trace_t *t = va_arg (*va, vnet_error_trace_t *);
 
-  s = format (s, "rx:%U", format_vnet_sw_if_index_name,
-	      vnet_get_main (), t->sw_if_index);
-
+  /* Normal, non-catchup trace */
+  if (t->details_valid == 0)
+    {
+      s = format (s, "rx:%U", format_vnet_sw_if_index_name,
+		  vnet_get_main (), t->sw_if_index);
+    }
+  else if (t->details_valid == 1)
+    {
+      /* The trace capture code didn't understant the mactype */
+      s = format (s, "mactype 0x%4x (not decoded)", t->mactype);
+    }
+  else if (t->details_valid == 2)
+    {
+      /* Dump the src/dst addresses */
+      if (t->is_ip6 == 0)
+	s = format (s, "IP4: %U -> %U",
+		    format_ip4_address, &t->src.ip4,
+		    format_ip4_address, &t->dst.ip4);
+      else
+	s = format (s, "IP6: %U -> %U",
+		    format_ip6_address, &t->src.ip6,
+		    format_ip6_address, &t->dst.ip6);
+    }
   return s;
 }
 
@@ -646,13 +671,17 @@ interface_trace_buffers (vlib_main_t * vm,
 
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
-	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
+	  t0 = vlib_add_trace (vm, node, b0,
+			       STRUCT_OFFSET_OF (vnet_error_trace_t, pad));
 	  t0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  t0->details_valid = 0;
 	}
       if (b1->flags & VLIB_BUFFER_IS_TRACED)
 	{
-	  t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
+	  t1 = vlib_add_trace (vm, node, b1,
+			       STRUCT_OFFSET_OF (vnet_error_trace_t, pad));
 	  t1->sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+	  t1->details_valid = 0;
 	}
       buffers += 2;
       n_left -= 2;
@@ -670,8 +699,10 @@ interface_trace_buffers (vlib_main_t * vm,
 
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
-	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
+	  t0 = vlib_add_trace (vm, node, b0,
+			       STRUCT_OFFSET_OF (vnet_error_trace_t, pad));
 	  t0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  t0->details_valid = 0;
 	}
       buffers += 1;
       n_left -= 1;
@@ -685,6 +716,56 @@ typedef enum
   VNET_ERROR_N_DISPOSITION,
 } vnet_error_disposition_t;
 
+static void
+drop_catchup_trace (vlib_main_t * vm,
+		    vlib_node_runtime_t * node, vlib_buffer_t * b)
+{
+  /* Can we safely rewind the buffer? If not, fagedaboudit */
+  if (b->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID)
+    {
+      vnet_error_trace_t *t;
+      ip4_header_t *ip4;
+      ip6_header_t *ip6;
+      ethernet_header_t *eh;
+      i16 delta;
+
+      t = vlib_add_trace (vm, node, b, sizeof (*t));
+      delta = vnet_buffer (b)->l2_hdr_offset - b->current_data;
+      vlib_buffer_advance (b, delta);
+
+      eh = vlib_buffer_get_current (b);
+      /* Save mactype */
+      t->mactype = clib_net_to_host_u16 (eh->type);
+      t->details_valid = 1;
+      switch (t->mactype)
+	{
+	case ETHERNET_TYPE_IP4:
+	  ip4 = (void *) (eh + 1);
+	  t->details_valid = 2;
+	  t->is_ip6 = 0;
+	  t->src.ip4.as_u32 = ip4->src_address.as_u32;
+	  t->dst.ip4.as_u32 = ip4->dst_address.as_u32;
+	  break;
+
+	case ETHERNET_TYPE_IP6:
+	  ip6 = (void *) (eh + 1);
+	  t->details_valid = 2;
+	  t->is_ip6 = 1;
+	  clib_memcpy_fast (t->src.as_u8, ip6->src_address.as_u8,
+			    sizeof (ip6_address_t));
+	  clib_memcpy_fast (t->dst.as_u8, ip6->dst_address.as_u8,
+			    sizeof (ip6_address_t));
+	  break;
+
+	default:
+	  /* Dunno, do nothing, leave details_valid alone */
+	  break;
+	}
+      /* Restore current data (probably unnecessary) */
+      vlib_buffer_advance (b, -delta);
+    }
+}
+
 static_always_inline uword
 interface_drop_punt (vlib_main_t * vm,
 		     vlib_node_runtime_t * node,
@@ -696,6 +777,7 @@ interface_drop_punt (vlib_main_t * vm,
   u32 sw_if_indices[VLIB_FRAME_SIZE];
   vlib_simple_counter_main_t *cm;
   u16 nexts[VLIB_FRAME_SIZE];
+  u32 n_trace;
   vnet_main_t *vnm;
 
   vnm = vnet_get_main ();
@@ -706,6 +788,39 @@ interface_drop_punt (vlib_main_t * vm,
   sw_if_index = sw_if_indices;
 
   vlib_get_buffers (vm, from, bufs, n_left);
+
+  /* "trace add error-drop NNN?" */
+  if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node))))
+    {
+      /* If pkts aren't otherwise traced... */
+      if ((node->flags & VLIB_NODE_FLAG_TRACE) == 0)
+	{
+	  /* Trace them from here */
+	  node->flags |= VLIB_NODE_FLAG_TRACE;
+	  while (n_trace && n_left)
+	    {
+	      vlib_trace_buffer (vm, node, 0 /* next_index */ ,
+				 b[0], 0 /* follow chain */ );
+	      /*
+	       * Here we have a wireshark dissector problem.
+	       * Packets may be well-formed, or not. We
+	       * must not blow chunks in any case.
+	       *
+	       * Try to produce trace records which will help
+	       * folks understand what's going on.
+	       */
+	      drop_catchup_trace (vm, node, b[0]);
+
+	      n_trace--;
+	      n_left--;
+	      b++;
+	    }
+	}
+
+      vlib_set_trace_count (vm, node, n_trace);
+      b = bufs;
+      n_left = frame->n_vectors;
+    }
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     interface_trace_buffers (vm, node, frame);
@@ -947,6 +1062,7 @@ VLIB_REGISTER_NODE (interface_drop) = {
   .name = "error-drop",
   .vector_size = sizeof (u32),
   .format_trace = format_vnet_error_trace,
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .n_next_nodes = 1,
   .next_nodes = {
     [0] = "drop",
@@ -959,6 +1075,7 @@ VLIB_REGISTER_NODE (interface_punt) = {
   .name = "error-punt",
   .vector_size = sizeof (u32),
   .format_trace = format_vnet_error_trace,
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .n_next_nodes = 1,
   .next_nodes = {
     [0] = "punt",
