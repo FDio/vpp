@@ -5136,6 +5136,7 @@ _(flow_classify_set_interface_reply)                    \
 _(sw_interface_span_enable_disable_reply)               \
 _(pg_capture_reply)                                     \
 _(pg_enable_disable_reply)                              \
+_(pg_interface_enable_disable_coalesce_reply)           \
 _(ip_source_and_port_range_check_add_del_reply)         \
 _(ip_source_and_port_range_check_interface_add_del_reply)\
 _(delete_subif_reply)                                   \
@@ -5425,6 +5426,7 @@ _(GET_NEXT_INDEX_REPLY, get_next_index_reply)                           \
 _(PG_CREATE_INTERFACE_REPLY, pg_create_interface_reply)                 \
 _(PG_CAPTURE_REPLY, pg_capture_reply)                                   \
 _(PG_ENABLE_DISABLE_REPLY, pg_enable_disable_reply)                     \
+_(PG_INTERFACE_ENABLE_DISABLE_COALESCE_REPLY, pg_interface_enable_disable_coalesce_reply) \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                         \
  ip_source_and_port_range_check_add_del_reply)                          \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,               \
@@ -18595,6 +18597,44 @@ api_pg_enable_disable (vat_main_t * vam)
 }
 
 int
+api_pg_interface_enable_disable_coalesce (vat_main_t * vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_pg_interface_enable_disable_coalesce_t *mp;
+
+  u32 sw_if_index = ~0;
+  u8 enable = 1;
+  int ret;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (input, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (input, "disable"))
+	enable = 0;
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("Interface required but not specified");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (PG_INTERFACE_ENABLE_DISABLE_COALESCE, mp);
+  mp->context = 0;
+  mp->coalesce_enabled = enable;
+  mp->sw_if_index = htonl (sw_if_index);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+int
 api_ip_source_and_port_range_check_add_del (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
@@ -20929,6 +20969,7 @@ _(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
 _(pg_create_interface, "if_id <nn> [gso-enabled gso-size <size>]")      \
 _(pg_capture, "if_id <nnn> pcap <file_name> count <nnn> [disable]")     \
 _(pg_enable_disable, "[stream <id>] disable")                           \
+_(pg_interface_enable_disable_coalesce, "<intf> | sw_if_index <nn> enable | disable")  \
 _(ip_source_and_port_range_check_add_del,                               \
   "<ip-addr>/<mask> range <nn>-<nn> vrf <id>")                          \
 _(ip_source_and_port_range_check_interface_add_del,                     \
