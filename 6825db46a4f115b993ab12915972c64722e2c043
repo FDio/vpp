@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c4c430e0_e05d1145",
+        "filename": "src/vnet/l2/l2_input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2020-06-11T14:33:41Z",
+      "side": 1,
+      "message": "Can we fix this similar to https://gerrit.fd.io/r/c/vpp/+/26817 to avoid coverity warning, please?",
+      "revId": "6825db46a4f115b993ab12915972c64722e2c043",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
