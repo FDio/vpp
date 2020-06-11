@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3939bdd5_d572b51e",
+        "filename": "src/vnet/ip/ip4_mtrie.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 809,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-06-11T16:06:54Z",
+      "side": 1,
+      "message": "Maybe use clib_mem_vm_ext_alloc with CLIB_MEM_VM_F_HUGETLB flag?",
+      "range": {
+        "startLine": 809,
+        "startChar": 0,
+        "endLine": 809,
+        "endChar": 24
+      },
+      "revId": "44f9b4bd4b870f2c523028fcc26d2b5ef29408cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
