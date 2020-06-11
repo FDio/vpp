@@ -4122,8 +4122,10 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 	  nat_ha_init (vm, nat_ha_sadd_ed_cb, nat_ha_sdel_ed_cb,
 		       nat_ha_sref_ed_cb);
 	  clib_bihash_init_16_8 (&sm->out2in_ed, "out2in-ed",
+				 clib_max (1, sm->num_workers) *
 				 sm->translation_buckets,
-				 translation_memory_size);
+				 clib_max (1, sm->num_workers) *
+				 sm->translation_memory_size);
 	  clib_bihash_set_kvp_format_fn_16_8 (&sm->out2in_ed,
 					      format_ed_session_kvp);
 	}
