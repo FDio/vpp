@@ -886,6 +886,7 @@ vnet_register_interface (vnet_main_t * vnm,
       /* *INDENT-ON* */
 
       _vec_len (im->deleted_hw_interface_nodes) -= 1;
+      vlib_worker_thread_node_runtime_update ();
     }
   else
     {
