@@ -56,8 +56,8 @@ u8 * format_gtpu_encap_trace (u8 * s, va_list * args)
   gtpu_encap_trace_t * t
       = va_arg (*args, gtpu_encap_trace_t *);
 
-  s = format (s, "GTPU encap to gtpu_tunnel%d teid %d",
-	      t->tunnel_index, t->teid);
+  s = format (s, "GTPU encap to gtpu_tunnel%d tteid %d",
+	      t->tunnel_index, t->tteid);
   return s;
 }
 
@@ -95,11 +95,12 @@ format_gtpu_tunnel (u8 * s, va_list * args)
     is_ipv6 ? im6->fibs[t->encap_fib_index].ft_table_id :
     im4->fibs[t->encap_fib_index].ft_table_id;
 
-  s = format (s, "[%d] src %U dst %U teid %d encap-vrf-id %d sw-if-idx %d ",
+  s = format (s, "[%d] src %U dst %U teid %d tteid %d "
+	      "encap-vrf-id %d sw-if-idx %d ",
 	      t - ngm->tunnels,
 	      format_ip46_address, &t->src, IP46_TYPE_ANY,
 	      format_ip46_address, &t->dst, IP46_TYPE_ANY,
-	      t->teid,  encap_vrf_id, t->sw_if_index);
+	      t->teid, t->tteid, encap_vrf_id, t->sw_if_index);
 
   s = format (s, "encap-dpo-idx %d ", t->next_dpo.dpoi_index);
   s = format (s, "decap-next-%U ", format_decap_next, t->decap_next_index);
@@ -225,7 +226,8 @@ const static fib_node_vft_t gtpu_vft = {
 
 
 #define foreach_copy_field                      \
-_(teid)                                          \
+_(teid)                                         \
+_(tteid)                                        \
 _(mcast_sw_if_index)                            \
 _(encap_fib_index)                              \
 _(decap_next_index)                             \
@@ -286,7 +288,7 @@ ip_udp_gtpu_rewrite (gtpu_tunnel_t * t, bool is_ip6)
   /* GTPU header */
   gtpu->ver_flags = GTPU_V1_VER | GTPU_PT_GTP;
   gtpu->type = GTPU_TYPE_GTPU;
-  gtpu->teid = clib_host_to_net_u32 (t->teid);
+  gtpu->teid = clib_host_to_net_u32 (t->tteid);
 
   t->rewrite = r.rw;
   /* Now only support 8-byte gtpu header. TBD */
@@ -347,8 +349,8 @@ mcast_shared_remove (ip46_address_t * dst)
   hash_unset_mem_free (&gtpu_main.mcast_shared, dst);
 }
 
-int vnet_gtpu_add_del_tunnel
-  (vnet_gtpu_add_del_tunnel_args_t * a, u32 * sw_if_indexp)
+int vnet_gtpu_add_mod_del_tunnel
+  (vnet_gtpu_add_mod_del_tunnel_args_t * a, u32 * sw_if_indexp)
 {
   gtpu_main_t *gtm = &gtpu_main;
   gtpu_tunnel_t *t = 0;
@@ -373,7 +375,7 @@ int vnet_gtpu_add_del_tunnel
       p = hash_get_mem (gtm->gtpu6_tunnel_by_key, &key6);
     }
 
-  if (a->is_add)
+  if (a->opn == GTPU_ADD_TUNNEL)
     {
       l2input_main_t *l2im = &l2input_main;
 
@@ -394,6 +396,10 @@ int vnet_gtpu_add_del_tunnel
 #define _(x) t->x = a->x;
       foreach_copy_field;
 #undef _
+
+      /* default to same as local rx teid */
+      if (t->tteid == 0)
+	t->tteid = t->teid;
 
       ip_udp_gtpu_rewrite (t, is_ip6);
 
@@ -559,13 +565,23 @@ int vnet_gtpu_add_del_tunnel
     }
   else
     {
-      /* deleting a tunnel: tunnel must exist */
+      /* mod-tteid or deleting a tunnel: tunnel must exist */
       if (!p)
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
       t = pool_elt_at_index (gtm->tunnels, p[0]);
       sw_if_index = t->sw_if_index;
 
+      if (a->opn == GTPU_UPD_TTEID)
+	{
+	  if (a->tteid == 0)
+	    return VNET_API_ERROR_INVALID_VALUE;
+	  t->tteid = a->tteid;
+	  ip_udp_gtpu_rewrite (t, is_ip6);
+	  return 0;
+	}
+
+      /* delete tunnel */
       vnet_sw_interface_set_flags (vnm, t->sw_if_index, 0 /* down */ );
       vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, t->sw_if_index);
       si->flags |= VNET_SW_INTERFACE_FLAG_HIDDEN;
@@ -604,7 +620,7 @@ int vnet_gtpu_add_del_tunnel
   if (sw_if_indexp)
     *sw_if_indexp = sw_if_index;
 
-  if (a->is_add)
+  if (a->opn == GTPU_ADD_TUNNEL)
     {
       /* register udp ports */
       if (!is_ip6 && !udp_is_valid_dst_port (UDP_DST_PORT_GTPU, 1))
@@ -662,7 +678,7 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ip46_address_t src, dst;
-  u8 is_add = 1;
+  u8 opn = GTPU_ADD_TUNNEL;
   u8 src_set = 0;
   u8 dst_set = 0;
   u8 grp_set = 0;
@@ -671,10 +687,10 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
   u32 encap_fib_index = 0;
   u32 mcast_sw_if_index = ~0;
   u32 decap_next_index = GTPU_INPUT_NEXT_L2_INPUT;
-  u32 teid = 0;
+  u32 teid = 0, tteid = 0;
   u32 tmp;
   int rv;
-  vnet_gtpu_add_del_tunnel_args_t _a, *a = &_a;
+  vnet_gtpu_add_mod_del_tunnel_args_t _a, *a = &_a;
   u32 tunnel_sw_if_index;
   clib_error_t *error = NULL;
 
@@ -690,7 +706,7 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "del"))
 	{
-	  is_add = 0;
+	  opn = GTPU_DEL_TUNNEL;
 	}
       else if (unformat (line_input, "src %U",
 			 unformat_ip4_address, &src.ip4))
@@ -747,6 +763,10 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "teid %d", &teid))
 	;
+      else if (unformat (line_input, "tteid %d", &tteid))
+	;
+      else if (unformat (line_input, "upd-tteid %d", &tteid))
+	opn = GTPU_UPD_TTEID;
       else
 	{
 	  error = clib_error_return (0, "parse error: '%U'",
@@ -755,7 +775,13 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
 	}
     }
 
-  if (src_set == 0)
+  if (teid == 0)
+    {
+      error = clib_error_return (0, "tunnel teid specified");
+      goto done;
+    }
+
+  if (src_set == 0 && opn == GTPU_ADD_TUNNEL)
     {
       error = clib_error_return (0, "tunnel src address not specified");
       goto done;
@@ -805,18 +831,18 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
 
   clib_memset (a, 0, sizeof (*a));
 
-  a->is_add = is_add;
+  a->opn = opn;
 
 #define _(x) a->x = x;
   foreach_copy_field;
 #undef _
 
-  rv = vnet_gtpu_add_del_tunnel (a, &tunnel_sw_if_index);
+  rv = vnet_gtpu_add_mod_del_tunnel (a, &tunnel_sw_if_index);
 
   switch (rv)
     {
     case 0:
-      if (is_add)
+      if (opn == GTPU_ADD_TUNNEL)
 	vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name,
 			 vnet_get_main (), tunnel_sw_if_index);
       break;
@@ -827,6 +853,10 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
 
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       error = clib_error_return (0, "tunnel does not exist...");
+      goto done;
+
+    case VNET_API_ERROR_INVALID_VALUE:
+      error = clib_error_return (0, "tx teid not specified...");
       goto done;
 
     default:
@@ -844,30 +874,31 @@ done:
 /*?
  * Add or delete a GTPU Tunnel.
  *
- * GTPU provides the features needed to allow L2 bridge domains (BDs)
+ * GTPU can be used to transport Ethernet packets as its PDU type to
+ * provides allow L2 network or bridge domains (BDs)
  * to span multiple servers. This is done by building an L2 overlay on
  * top of an L3 network underlay using GTPU tunnels.
  *
- * This makes it possible for servers to be co-located in the same data
- * center or be separated geographically as long as they are reachable
- * through the underlay L3 network.
- *
- * You can refer to this kind of L2 overlay bridge domain as a GTPU
- * (Virtual eXtensible VLAN) segment.
+ * GTPU can also be used to transport IP packetes as its PDU type to
+ * allow IP forwarding over underlay network, e.g. between RAN and UPF
+ * for mobility deplyments.
  *
  * @cliexpar
  * Example of how to create a GTPU Tunnel:
- * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 teid 13 encap-vrf-id 7}
+ * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 teid 13 tteid 55 encap-vrf-id 7}
  * Example of how to delete a GTPU Tunnel:
- * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 teid 13 del}
+ * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 teid 13 encap-vrf-id 7 del}
+ * Example of how to update tx TEID of a GTPU Tunnel:
+ * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 encap-vrf-id 7 upd-tteid 55}
  ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_gtpu_tunnel_command, static) = {
   .path = "create gtpu tunnel",
   .short_help =
-  "create gtpu tunnel src <local-vtep-addr>"
-  " {dst <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} teid <nn>"
-  " [encap-vrf-id <nn>] [decap-next [l2|ip4|ip6|node <name>]] [del]",
+  "create gtpu tunnel src <local-tep-addr>"
+  " {dst <remote-tep-addr>|group <mcast-addr> <intf-name>}"
+  " teid <nn> [tteid <nn>] [encap-vrf-id <nn>]"
+  " [decap-next [l2|ip4|ip6|node <name>]] [del | upd-tteid <nn>]",
   .function = gtpu_add_del_tunnel_command_fn,
 };
 /* *INDENT-ON* */
@@ -899,7 +930,7 @@ show_gtpu_tunnel_command_fn (vlib_main_t * vm,
  * @cliexpar
  * Example of how to display the GTPU Tunnel entries:
  * @cliexstart{show gtpu tunnel}
- * [0] src 10.0.3.1 dst 10.0.3.3 teid 13 encap_fib_index 0 sw_if_index 5 decap_next l2
+ * [0] src 10.0.3.1 dst 10.0.3.3 teid 13 tx-teid 55 encap_fib_index 0 sw_if_index 5 decap_next l2
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
