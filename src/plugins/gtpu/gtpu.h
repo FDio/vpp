@@ -135,8 +135,9 @@ typedef struct
   /* FIB DPO for IP forwarding of gtpu encap packet */
   dpo_id_t next_dpo;
 
-  /* gtpu teid in HOST byte order */
+  /* gtpu local(rx) and remote(tx) TEIDs in HOST byte order */
   u32 teid;
+  u32 tteid;
 
   /* tunnel src and dst addresses */
   ip46_address_t src;
@@ -248,21 +249,25 @@ u8 *format_gtpu_encap_trace (u8 * s, va_list * args);
 
 typedef struct
 {
-  u8 is_add;
+  u8 opn;
+#define GTPU_DEL_TUNNEL 0
+#define GTPU_ADD_TUNNEL 1
+#define GTPU_UPD_TTEID  2
   ip46_address_t src, dst;
   u32 mcast_sw_if_index;
   u32 encap_fib_index;
   u32 decap_next_index;
-  u32 teid;
-} vnet_gtpu_add_del_tunnel_args_t;
+  u32 teid;			/* local  or rx teid */
+  u32 tteid;			/* remote or tx teid */
+} vnet_gtpu_add_mod_del_tunnel_args_t;
 
-int vnet_gtpu_add_del_tunnel
-  (vnet_gtpu_add_del_tunnel_args_t * a, u32 * sw_if_indexp);
+int vnet_gtpu_add_mod_del_tunnel
+  (vnet_gtpu_add_mod_del_tunnel_args_t * a, u32 * sw_if_indexp);
 
 typedef struct
 {
   u32 tunnel_index;
-  u32 teid;
+  u32 tteid;
 } gtpu_encap_trace_t;
 
 void vnet_int_gtpu_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable);
