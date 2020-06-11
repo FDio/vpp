@@ -410,7 +410,7 @@ VLIB_REGISTER_NODE (ip6_icmp_neighbor_advertisement_node,static) =
 
   .n_next_nodes = 1,
   .next_nodes = {
-    [0] = "ip6-drop",
+    [0] = "ip6-punt",
   },
 };
 /* *INDENT-ON* */
