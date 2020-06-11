@@ -116,25 +116,26 @@ static void vl_api_gtpu_add_del_tunnel_t_handler
 {
   vl_api_gtpu_add_del_tunnel_reply_t *rmp;
   int rv = 0;
-  ip4_main_t *im = &ip4_main;
   gtpu_main_t *gtm = &gtpu_main;
 
-  uword *p = hash_get (im->fib_index_by_table_id, ntohl (mp->encap_vrf_id));
-  if (!p)
+  vnet_gtpu_add_mod_del_tunnel_args_t a = {
+    .opn = mp->is_add ? GTPU_ADD_TUNNEL : GTPU_DEL_TUNNEL,
+    .mcast_sw_if_index = ntohl (mp->mcast_sw_if_index),
+    .decap_next_index = ntohl (mp->decap_next_index),
+    .teid = ntohl (mp->teid),
+    .tteid = ntohl (mp->tteid),
+  };
+  ip_address_decode (&mp->dst_address, &a.dst);
+  ip_address_decode (&mp->src_address, &a.src);
+
+  u8 is_ipv6 = !ip46_address_is_ip4 (&a.dst);
+  a.encap_fib_index = fib_table_find (fib_ip_proto (is_ipv6),
+				      ntohl (mp->encap_vrf_id));
+  if (a.encap_fib_index == ~0)
     {
       rv = VNET_API_ERROR_NO_SUCH_FIB;
       goto out;
     }
-
-  vnet_gtpu_add_del_tunnel_args_t a = {
-    .is_add = mp->is_add,
-    .mcast_sw_if_index = ntohl (mp->mcast_sw_if_index),
-    .encap_fib_index = p[0],
-    .decap_next_index = ntohl (mp->decap_next_index),
-    .teid = ntohl (mp->teid),
-  };
-  ip_address_decode (&mp->dst_address, &a.dst);
-  ip_address_decode (&mp->src_address, &a.src);
 
   /* Check src & dst are different */
   if (ip46_address_cmp (&a.dst, &a.src) == 0)
@@ -150,7 +151,7 @@ static void vl_api_gtpu_add_del_tunnel_t_handler
     }
 
   u32 sw_if_index = ~0;
-  rv = vnet_gtpu_add_del_tunnel (&a, &sw_if_index);
+  rv = vnet_gtpu_add_mod_del_tunnel (&a, &sw_if_index);
 
 out:
   /* *INDENT-OFF* */
@@ -159,6 +160,35 @@ out:
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
   /* *INDENT-ON* */
+}
+
+static void vl_api_gtpu_tunnel_update_tteid_t_handler
+  (vl_api_gtpu_tunnel_update_tteid_t * mp)
+{
+  vl_api_gtpu_tunnel_update_tteid_reply_t *rmp;
+  int rv = 0;
+  gtpu_main_t *gtm = &gtpu_main;
+
+  vnet_gtpu_add_mod_del_tunnel_args_t a = {
+    .opn = GTPU_UPD_TTEID,
+    .teid = ntohl (mp->teid),
+    .tteid = ntohl (mp->tteid),
+  };
+  ip_address_decode (&mp->dst_address, &a.dst);
+
+  u8 is_ipv6 = !ip46_address_is_ip4 (&a.dst);
+  a.encap_fib_index = fib_table_find (fib_ip_proto (is_ipv6),
+				      ntohl (mp->encap_vrf_id));
+  if (a.encap_fib_index == ~0)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_FIB;
+      goto out;
+    }
+
+  rv = vnet_gtpu_add_mod_del_tunnel (&a, 0);
+
+out:
+  REPLY_MACRO (VL_API_GTPU_TUNNEL_UPDATE_TTEID_REPLY);
 }
 
 static void send_gtpu_tunnel_details
@@ -184,6 +214,7 @@ static void send_gtpu_tunnel_details
     htonl (im4->fibs[t->encap_fib_index].ft_table_id);
   rmp->mcast_sw_if_index = htonl (t->mcast_sw_if_index);
   rmp->teid = htonl (t->teid);
+  rmp->tteid = htonl (t->tteid);
   rmp->decap_next_index = htonl (t->decap_next_index);
   rmp->sw_if_index = htonl (t->sw_if_index);
   rmp->context = context;

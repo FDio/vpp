@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "2.0.1";
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
 
-/** \brief Set or delete an GTPU tunnel
+/** \brief Create or delete a GTPU tunnel
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
@@ -26,7 +26,8 @@ import "vnet/ip/ip_types.api";
     @param mcast_sw_if_index - version, O-bit and C-bit (see nsh_packet.h)
     @param encap_vrf_id - fib identifier used for outgoing encapsulated packets
     @param decap_next_index - the index of the next node if success
-    @param teid - Local Tunnel Endpoint Identifier
+    @param teid - Local (rx) Tunnel Endpoint Identifier
+    @param tteid - Remote (tx) Tunnel Endpoint Identifier
 */
 define gtpu_add_del_tunnel
 {
@@ -39,7 +40,8 @@ define gtpu_add_del_tunnel
   u32 encap_vrf_id;
   u32 decap_next_index;
   u32 teid;
-  option vat_help = "src <ip-addr> { dst <ip-addr> | group <mcast-ip-addr> { <intfc> | mcast_sw_if_index <nn> } } teid <teid> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]";
+  u32 tteid;
+  option vat_help = "src <ip-addr> {dst <ip-addr> | group <mcast-ip-addr> {<intfc> | mcast_sw_if_index <nn>}} teid <nn> [tteid <nn>] [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]";
 };
 
 /** \brief reply for set or delete an GTPU tunnel
@@ -52,6 +54,25 @@ define gtpu_add_del_tunnel_reply
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Update GTPU tunnel TX TEID
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param dst_address - GTPU tunnel's destination address.
+    @param encap_vrf_id - fib identifier used for outgoing encapsulated packets
+    @param teid - Local (rx) Tunnel Endpoint Identifier
+    @param tteid - remote (tx) Tunnel Endpoint Identifier
+*/
+autoreply define gtpu_tunnel_update_tteid
+{
+  u32 client_index;
+  u32 context;
+  vl_api_address_t dst_address;
+  u32 encap_vrf_id;
+  u32 teid;
+  u32 tteid;
+  option vat_help = "dst <ip-addr> teid <nn> tteid <nn> [encap-vrf-id <nn>]";
 };
 
 /** \brief Dump GTPU tunnel
@@ -75,7 +96,8 @@ define gtpu_tunnel_dump
     @param mcast_sw_if_index - version, O-bit and C-bit (see nsh_packet.h)
     @param encap_vrf_id - fib identifier used for outgoing encapsulated packets
     @param decap_next_index - the index of the next node if success
-    @param teid - Local Tunnel Endpoint Identifier
+    @param teid - Local (rx) Tunnel Endpoint Identifier
+    @param tteid - Remote (tx) Tunnel Endpoint Identifier
 */
 define gtpu_tunnel_details
 {
@@ -87,6 +109,7 @@ define gtpu_tunnel_details
   u32 encap_vrf_id;
   u32 decap_next_index;
   u32 teid;
+  u32 tteid;
 };
 
 /** \brief Interface set gtpu-bypass request

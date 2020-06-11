@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <unistd.h>
 #include <vat/vat.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -245,7 +246,7 @@ api_gtpu_add_del_tunnel (vat_main_t * vam)
   u32 mcast_sw_if_index = ~0;
   u32 encap_vrf_id = 0;
   u32 decap_next_index = ~0;
-  u32 teid = 0;
+  u32 teid = 0, tteid = 0;
   int ret;
 
   /* Can't "universally zero init" (={0}) due to GCC bug 53119 */
@@ -316,6 +317,8 @@ api_gtpu_add_del_tunnel (vat_main_t * vam)
       ;
       else if (unformat (line_input, "teid %d", &teid))
       ;
+      else if (unformat (line_input, "tteid %d", &tteid))
+      ;
       else
       {
 	errmsg ("parse error '%U'", format_unformat_error, line_input);
@@ -323,7 +326,7 @@ api_gtpu_add_del_tunnel (vat_main_t * vam)
       }
     }
 
-  if (src_set == 0)
+  if (is_add && src_set == 0)
     {
       errmsg ("tunnel src address not specified");
       return -99;
@@ -367,7 +370,67 @@ api_gtpu_add_del_tunnel (vat_main_t * vam)
   mp->decap_next_index = ntohl (decap_next_index);
   mp->mcast_sw_if_index = ntohl (mcast_sw_if_index);
   mp->teid = ntohl (teid);
+  mp->tteid = ntohl (tteid);
   mp->is_add = is_add;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_gtpu_tunnel_update_tteid (vat_main_t * vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_gtpu_tunnel_update_tteid_t *mp;
+  ip46_address_t dst;
+  u8 ipv4_set = 0, ipv6_set = 0;
+  u8 dst_set = 0;
+  u32 encap_vrf_id = 0;
+  u32 teid = 0, tteid = 0;
+  int ret;
+
+  /* Can't "universally zero init" (={0}) due to GCC bug 53119 */
+  clib_memset (&dst, 0, sizeof dst);
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "dst %U", unformat_ip4_address, &dst.ip4))
+      {
+	ipv4_set = 1;
+	dst_set = 1;
+      }
+      else if (unformat (line_input, "dst %U", unformat_ip6_address, &dst.ip6))
+      {
+	ipv6_set = 1;
+	dst_set = 1;
+      }
+      else if (unformat (line_input, "encap-vrf-id %d", &encap_vrf_id))
+      ;
+      else if (unformat (line_input, "teid %d", &teid))
+      ;
+      else if (unformat (line_input, "tteid %d", &tteid))
+      ;
+      else
+      {
+	errmsg ("parse error '%U'", format_unformat_error, line_input);
+	return -99;
+      }
+    }
+
+  if (dst_set == 0)
+    {
+      errmsg ("tunnel dst address not specified");
+      return -99;
+    }
+
+  M (GTPU_TUNNEL_UPDATE_TTEID, mp);
+
+  ip_address_encode(&dst, ipv6_set ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
+		    &mp->dst_address);
+  mp->encap_vrf_id = ntohl (encap_vrf_id);
+  mp->teid = ntohl (teid);
+  mp->tteid = ntohl (tteid);
 
   S (mp);
   W (ret);
@@ -382,13 +445,14 @@ static void vl_api_gtpu_tunnel_details_t_handler
   ip46_address_t dst;
   ip_address_decode(&mp->dst_address, &dst);
   ip_address_decode(&mp->src_address, &src);
-  print (vam->ofp, "%11d%24U%24U%14d%18d%13d%19d",
-       ntohl (mp->sw_if_index),
-       format_ip46_address, &src, IP46_TYPE_ANY,
-       format_ip46_address, &dst, IP46_TYPE_ANY,
-       ntohl (mp->encap_vrf_id),
-       ntohl (mp->decap_next_index), ntohl (mp->teid),
-       ntohl (mp->mcast_sw_if_index));
+  print (vam->ofp, "%11d%24U%24U%14d%18d%13d%13d%19d",
+	 ntohl (mp->sw_if_index),
+	 format_ip46_address, &src, IP46_TYPE_ANY,
+	 format_ip46_address, &dst, IP46_TYPE_ANY,
+	 ntohl (mp->encap_vrf_id),
+	 ntohl (mp->decap_next_index),
+	 ntohl (mp->teid), ntohl (mp->tteid),
+	 ntohl (mp->mcast_sw_if_index));
 }
 
 static int
@@ -398,7 +462,6 @@ api_gtpu_tunnel_dump (vat_main_t * vam)
   vl_api_gtpu_tunnel_dump_t *mp;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
-  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -416,9 +479,10 @@ api_gtpu_tunnel_dump (vat_main_t * vam)
 
   if (!vam->json_output)
     {
-      print (vam->ofp, "%11s%24s%24s%14s%18s%13s%19s",
-	   "sw_if_index", "src_address", "dst_address",
-	   "encap_vrf_id", "decap_next_index", "teid", "mcast_sw_if_index");
+      print (vam->ofp, "%11s%24s%24s%14s%18s%13s%13s%19s",
+	     "sw_if_index", "src_address", "dst_address",
+	     "encap_vrf_id", "decap_next_index", "teid", "tteid",
+	     "mcast_sw_if_index");
     }
 
   /* Get list of gtpu-tunnel interfaces */
@@ -428,8 +492,11 @@ api_gtpu_tunnel_dump (vat_main_t * vam)
 
   S (mp);
 
-  W (ret);
-  return ret;
+  /* No status response for this API call.
+   * Wait 1 sec for any dump output before return to vat# */
+  sleep (1);
+  
+  return 0;
 }
 
 #include <gtpu/gtpu.api_test.c>
