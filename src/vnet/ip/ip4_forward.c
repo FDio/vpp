@@ -3097,10 +3097,13 @@ ip4_config (vlib_main_t * vm, unformat_input_t * input)
     {
       if (unformat (input, "heap-size %U", unformat_memory_size, &heapsize))
 	;
+      else if (unformat (input, "mtrie-hugetlb %=", &im->mtrie_hugetlb, 1))
+	;
       else
 	return clib_error_return (0,
 				  "invalid heap-size parameter `%U'",
 				  format_unformat_error, input);
+
     }
 
   im->mtrie_heap_size = heapsize;
