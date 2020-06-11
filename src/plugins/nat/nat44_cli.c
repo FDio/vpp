@@ -209,7 +209,7 @@ done:
 }
 
 static clib_error_t *
-nat44_show_hash_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
+nat44_show_hash_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			    vlib_cli_command_t * cmd)
 {
   snat_main_t *sm = &snat_main;
@@ -251,6 +251,17 @@ nat44_show_hash_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       vlib_cli_output (vm, "%U", format_bihash_16_8, &nam->affinity_hash,
 		       verbose);
+    }
+
+  vlib_cli_output (vm, "-------- hash table parameters --------\n");
+  vlib_cli_output (vm, "translation buckets: %u", sm->translation_buckets);
+  vlib_cli_output (vm, "translation memory size: %U",
+		   format_memory_size, sm->translation_memory_size);
+  if (!sm->endpoint_dependent)
+    {
+      vlib_cli_output (vm, "user buckets: %u", sm->user_buckets);
+      vlib_cli_output (vm, "user memory size: %U",
+		       format_memory_size, sm->user_memory_size);
     }
   return 0;
 }
@@ -2448,7 +2459,7 @@ VLIB_CLI_COMMAND (nat_ha_resync_command, static) = {
 VLIB_CLI_COMMAND (nat44_show_hash, static) = {
   .path = "show nat44 hash tables",
   .short_help = "show nat44 hash tables [detail|verbose]",
-  .function = nat44_show_hash_commnad_fn,
+  .function = nat44_show_hash_command_fn,
 };
 
 /*?
