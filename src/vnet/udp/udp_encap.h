@@ -68,14 +68,14 @@ typedef struct udp_encap_t_
   } __attribute__ ((packed)) ue_hdrs;
 
   /**
-   * Flags controlling fixup behaviour
-   */
-  udp_encap_fixup_flags_t ue_flags;
-
-  /**
    * The DPO used to forward to the next node in the VLIB graph
    */
   dpo_id_t ue_dpo;
+
+  /**
+   * Flags controlling fixup behaviour
+   */
+  udp_encap_fixup_flags_t ue_flags;
 
   /**
    * the protocol of the IP header imposed
