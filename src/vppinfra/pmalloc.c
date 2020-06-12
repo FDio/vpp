@@ -584,24 +584,6 @@ clib_pmalloc_free (clib_pmalloc_main_t * pm, void *va)
 }
 
 static u8 *
-format_log2_page_size (u8 * s, va_list * va)
-{
-  u32 log2_page_sz = va_arg (*va, u32);
-
-  if (log2_page_sz >= 30)
-    return format (s, "%uGB", 1 << (log2_page_sz - 30));
-
-  if (log2_page_sz >= 20)
-    return format (s, "%uMB", 1 << (log2_page_sz - 20));
-
-  if (log2_page_sz >= 10)
-    return format (s, "%uKB", 1 << (log2_page_sz - 10));
-
-  return format (s, "%uB", 1 << log2_page_sz);
-}
-
-
-static u8 *
 format_pmalloc_page (u8 * s, va_list * va)
 {
   clib_pmalloc_page_t *pp = va_arg (*va, clib_pmalloc_page_t *);

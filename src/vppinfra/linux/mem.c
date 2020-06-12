@@ -26,6 +26,7 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/mem.h>
+#include <vppinfra/pool.h>
 #include <vppinfra/time.h>
 #include <vppinfra/format.h>
 #include <vppinfra/clib_error.h>
@@ -47,10 +48,33 @@
 #endif
 
 
-uword
-clib_mem_get_page_size (void)
+void
+clib_mem_main_init ()
 {
-  return getpagesize ();
+  clib_mem_main_t *mm = &clib_mem_main;
+  uword page_size;
+  void *va;
+
+  page_size = sysconf (_SC_PAGESIZE);
+  mm->log2_page_sz = min_log2 (page_size);
+
+  va = mmap (0, page_size, PROT_READ | PROT_WRITE,
+	     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (va == MAP_FAILED)
+    return;
+
+  if (mlock (va, page_size))
+    goto done;
+
+  for (int i = 0; i < CLIB_MAX_NUMAS; i++)
+    {
+      int status;
+      if (move_pages (0, 1, &va, &i, &status, 0) == 0)
+	mm->numa_node_bitmap |= 1ULL << i;
+    }
+
+done:
+  munmap (va, page_size);
 }
 
 uword
@@ -93,6 +117,7 @@ clib_mem_get_fd_page_size (int fd)
   struct stat st = { 0 };
   if (fstat (fd, &st) == -1)
     return 0;
+
   return st.st_blksize;
 }
 
@@ -376,6 +401,89 @@ clib_mem_vm_reserve (uword start, uword size, u32 log2_page_sz)
   return (uword) p;
 }
 
+void *
+clib_mem_vm_map (void *base, uword size, char *fmt, ...)
+{
+  uword mmap_flags = MAP_PRIVATE | MAP_ANONYMOUS;
+  u8 log2_page_sz = clib_mem_get_log2_page_size ();
+  va_list va;
+
+  if (base)
+    mmap_flags |= MAP_FIXED;
+
+  size = round_pow2 (size, 1 << log2_page_sz);
+
+  base = mmap (base, size, PROT_READ | PROT_WRITE, mmap_flags, -1, 0);
+
+  if (base == MAP_FAILED)
+    return CLIB_VM_MAP_FAILED;
+
+  CLIB_MEM_UNPOISON (base, size);
+
+  va_start (va, fmt);
+  clib_mem_vm_map_register (base, log2_page_sz, size >> log2_page_sz,
+			    va_format (0, fmt, &va));
+  va_end (va);
+
+  return base;
+}
+
+void *
+clib_mem_vm_map_huge (void *base, uword size, u32 log2_page_sz, char *fmt,
+		      ...)
+{
+  int mmap_flags = (MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | MAP_LOCKED |
+		    (log2_page_sz << MAP_HUGE_SHIFT));
+  va_list va;
+
+  if (base)
+    mmap_flags |= MAP_FIXED;
+
+  base = mmap (base, size, PROT_READ | PROT_WRITE, mmap_flags, -1, 0);
+
+  if (base == MAP_FAILED || mlock (base, size) != 0)
+    return CLIB_VM_MAP_FAILED;
+
+  CLIB_MEM_UNPOISON (base, size);
+
+  va_start (va, fmt);
+  clib_mem_vm_map_register (base, log2_page_sz, size >> log2_page_sz,
+			    va_format (0, fmt, &va));
+  va_end (va);
+
+  return base;
+}
+
+void *
+clib_mem_vm_map_shared (void *base, uword size, int fd, uword offset,
+			char *fmt, ...)
+{
+  uword mmap_flags = MAP_SHARED;
+  u8 log2_page_sz = clib_mem_get_fd_log2_page_size (fd);
+  clib_mem_map_t *m;
+  va_list va;
+
+  if (base)
+    mmap_flags |= MAP_FIXED;
+
+  size = round_pow2 (size, 1 << log2_page_sz);
+
+  base = mmap (base, size, PROT_READ | PROT_WRITE, mmap_flags, fd, offset);
+
+  if (base == MAP_FAILED)
+    return CLIB_VM_MAP_FAILED;
+
+  CLIB_MEM_UNPOISON (base, size);
+
+  va_start (va, fmt);
+  m = clib_mem_vm_map_register (base, log2_page_sz, size >> log2_page_sz,
+				va_format (0, fmt, &va));
+  va_end (va);
+  m->fd = fd;
+
+  return base;
+}
+
 u64 *
 clib_mem_vm_get_paddr (void *mem, int log2_page_size, int n_pages)
 {
@@ -472,6 +580,52 @@ clib_mem_vm_ext_map (clib_mem_vm_map_t * a)
 done:
   return err;
 }
+
+void
+clib_mem_vm_unmap (void *addr, uword size)
+{
+  munmap (addr, size);
+}
+
+uword
+clib_mem_vm_get_numa_page_stats (void *base, uword n_pages, u8 log2_page_sz,
+				 clib_mem_vm_numa_page_stats_t * stats)
+{
+  int *status = 0;
+  void **ptr = 0;
+  uword page_size;
+
+  if (log2_page_sz == 0)
+    log2_page_sz = clib_mem_get_log2_page_size ();
+
+  page_size = 1 << log2_page_sz;
+
+  vec_validate (status, n_pages - 1);
+  vec_validate (ptr, n_pages - 1);
+
+  for (int i = 0; i < n_pages; i++)
+    ptr[i] = uword_to_pointer (base + i * page_size, void *);
+
+  clib_memset (stats, 0, sizeof (clib_mem_vm_numa_page_stats_t));
+
+  if (move_pages (0, n_pages, ptr, 0, status, 0) != 0)
+    return 0;
+
+  for (int i = 0; i < n_pages; i++)
+    {
+      if (status[i] >= 0 && status[i] < CLIB_MAX_NUMAS)
+	stats->n_pages_per_numa[status[i]]++;
+      else if (status[i] == -EFAULT)
+	stats->not_mapped++;
+      else
+	stats->unknown++;
+    }
+
+  vec_free (status);
+  vec_free (ptr);
+  return n_pages;
+}
+
 
 /*
  * fd.io coding-style-patch-verification: ON

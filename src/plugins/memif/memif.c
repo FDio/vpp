@@ -344,8 +344,9 @@ clib_error_t *
 memif_init_regions_and_queues (memif_if_t * mif)
 {
   vlib_main_t *vm = vlib_get_main ();
+  memif_socket_file_t *msf;
   memif_ring_t *ring = NULL;
-  int i, j;
+  int fd, i, j;
   u64 buffer_offset;
   memif_region_t *r;
   clib_mem_vm_alloc_t alloc = { 0 };
@@ -364,15 +365,20 @@ memif_init_regions_and_queues (memif_if_t * mif)
     r->region_size += mif->run.buffer_size * (1 << mif->run.log2_ring_size) *
       (mif->run.num_s2m_rings + mif->run.num_m2s_rings);
 
-  alloc.name = "memif region";
-  alloc.size = r->region_size;
-  alloc.flags = CLIB_MEM_VM_F_SHARED;
-
-  err = clib_mem_vm_ext_alloc (&alloc);
-  if (err)
+  if ((err = clib_mem_create_fd ("memif region", &fd)))
     goto error;
 
-  r->fd = alloc.fd;
+  msf = pool_elt_at_index (memif_main.socket_files, mif->socket_file_index);
+  r->shm = clib_mem_vm_map_shared (0, r->region_size, fd, 0, "memif%lu/%lu:0",
+				   msf->socket_id, mif->id);
+
+  if (r->shm == CLIB_VM_MAP_FAILED)
+    {
+      err = clib_error_return_unix (0, "memif shared region map failed");
+      goto error;
+    }
+
+  r->fd = fd;
   r->shm = alloc.addr;
 
   if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)

@@ -3092,12 +3092,14 @@ ip4_config (vlib_main_t * vm, unformat_input_t * input)
 {
   ip4_main_t *im = &ip4_main;
   uword heapsize = 0;
+  uword log2_page_size = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "heap-size %U", unformat_memory_size, &heapsize))
 	;
-      else if (unformat (input, "mtrie-hugetlb %=", &im->mtrie_hugetlb, 1))
+      else if (unformat (input, "page-size %U", unformat_log2_page_size,
+			 &log2_page_size))
 	;
       else
 	return clib_error_return (0,
@@ -3107,6 +3109,7 @@ ip4_config (vlib_main_t * vm, unformat_input_t * input)
     }
 
   im->mtrie_heap_size = heapsize;
+  im->mtrie_log2_page_size = log2_page_size;
 
   return 0;
 }

@@ -33,6 +33,10 @@
 #error BIHASH_TYPE not defined
 #endif
 
+#define __BIHASH_TYPE_STR(x) #x
+#define _BIHASH_TYPE_STR(x) __BIHASH_TYPE_STR(x)
+#define BIHASH_TYPE_STR _BIHASH_TYPE_STR(BIHASH_TYPE)
+
 #ifdef BIHASH_32_64_SVM
 #undef HAVE_MEMFD_CREATE
 #include <vppinfra/linux/syscall.h>
