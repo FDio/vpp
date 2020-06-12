@@ -1121,7 +1121,6 @@ vlib_pci_map_region_int (vlib_main_t * vm, vlib_pci_dev_handle_t h,
   linux_pci_device_t *p = linux_pci_get_device (h);
   int fd = -1;
   clib_error_t *error;
-  int flags = MAP_SHARED;
   u64 size = 0, offset = 0;
 
   pci_log_debug (vm, p, "map region %u to va %p", bar, addr);
@@ -1129,11 +1128,11 @@ vlib_pci_map_region_int (vlib_main_t * vm, vlib_pci_dev_handle_t h,
   if ((error = vlib_pci_region (vm, h, bar, &fd, &size, &offset)))
     return error;
 
-  if (p->type == LINUX_PCI_DEVICE_TYPE_UIO && addr != 0)
-    flags |= MAP_FIXED;
+  *result = clib_mem_vm_map_shared (addr, size, fd, offset, "PCI %U BAR%u",
+				    format_vlib_pci_addr,
+				    vlib_pci_get_addr (vm, p->handle), bar);
 
-  *result = mmap (addr, size, PROT_READ | PROT_WRITE, flags, fd, offset);
-  if (*result == (void *) -1)
+  if (*result == CLIB_MEM_VM_MAP_FAILED)
     {
       error = clib_error_return_unix (0, "mmap `BAR%u'", bar);
       if (p->type == LINUX_PCI_DEVICE_TYPE_UIO && (fd != -1))

@@ -245,9 +245,6 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
   clib_pmalloc_page_t *pp = 0;
   int status, rv, i, mmap_flags;
   void *va = MAP_FAILED;
-  int old_mpol = -1;
-  long unsigned int mask[16] = { 0 };
-  long unsigned int old_mask[16] = { 0 };
   uword size = (uword) n_pages << pm->def_log2_page_sz;
 
   clib_error_free (pm->error);
@@ -267,21 +264,12 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 	return 0;
     }
 
-  rv = get_mempolicy (&old_mpol, old_mask, sizeof (old_mask) * 8 + 1, 0, 0);
-  /* failure to get mempolicy means we can only proceed with numa 0 maps */
-  if (rv == -1 && numa_node != 0)
+  if (clib_mem_set_numa_affinity (numa_node, /* force */ 1))
     {
-      pm->error = clib_error_return_unix (0, "failed to get mempolicy");
-      return 0;
-    }
-
-  mask[0] = 1 << numa_node;
-  rv = set_mempolicy (MPOL_BIND, mask, sizeof (mask) * 8 + 1);
-  if (rv == -1 && numa_node != 0)
-    {
-      pm->error = clib_error_return_unix (0, "failed to set mempolicy for "
-					  "numa node %u", numa_node);
-      return 0;
+      pm->error = clib_error_return_unix (0, "failed to set numa affinity "
+					  "(%U)", format_clib_error,
+					  clib_mem_get_last_error ());
+      goto error;
     }
 
   mmap_flags = MAP_FIXED;
@@ -326,10 +314,11 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 
   clib_memset (va, 0, size);
 
-  rv = set_mempolicy (old_mpol, old_mask, sizeof (old_mask) * 8 + 1);
-  if (rv == -1 && numa_node != 0)
+  if (clib_mem_set_numa_affinity (CLIB_MEM_NUMA_DEFAULT, 0))
     {
-      pm->error = clib_error_return_unix (0, "failed to restore mempolicy");
+      pm->error = clib_error_return_unix (0, "failed to set default numa "
+					  "affinity (%U)", format_clib_error,
+					  clib_mem_get_last_error ());
       goto error;
     }
 
@@ -582,24 +571,6 @@ clib_pmalloc_free (clib_pmalloc_main_t * pm, void *va)
       pp->n_free_chunks--;
     }
 }
-
-static u8 *
-format_log2_page_size (u8 * s, va_list * va)
-{
-  u32 log2_page_sz = va_arg (*va, u32);
-
-  if (log2_page_sz >= 30)
-    return format (s, "%uGB", 1 << (log2_page_sz - 30));
-
-  if (log2_page_sz >= 20)
-    return format (s, "%uMB", 1 << (log2_page_sz - 20));
-
-  if (log2_page_sz >= 10)
-    return format (s, "%uKB", 1 << (log2_page_sz - 10));
-
-  return format (s, "%uB", 1 << log2_page_sz);
-}
-
 
 static u8 *
 format_pmalloc_page (u8 * s, va_list * va)

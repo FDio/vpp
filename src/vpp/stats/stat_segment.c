@@ -359,15 +359,18 @@ vlib_map_stat_segment_init (void)
 {
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header;
+  uword page_size = clib_mem_get_page_size ();
   void *oldheap;
   ssize_t memory_size;
   int mfd;
-  char *mem_name = "stat_segment_test";
+  char *mem_name = "stats segment";
   void *memaddr;
 
   memory_size = sm->memory_size;
   if (memory_size == 0)
     memory_size = STAT_SEGMENT_DEFAULT_SIZE;
+
+  memory_size = round_pow2 (memory_size, page_size);
 
   /* Create shared memory segment */
   if ((mfd = memfd_create (mem_name, 0)) < 0)
@@ -377,15 +380,14 @@ vlib_map_stat_segment_init (void)
   if ((ftruncate (mfd, memory_size)) == -1)
     return clib_error_return (0, "stat segment ftruncate failure");
 
-  if ((memaddr =
-       mmap (NULL, memory_size, PROT_READ | PROT_WRITE, MAP_SHARED, mfd,
-	     0)) == MAP_FAILED)
+  memaddr = clib_mem_vm_map_shared (0, memory_size, mfd, 0, mem_name);
+
+  if (memaddr == CLIB_MEM_VM_MAP_FAILED)
     return clib_error_return (0, "stat segment mmap failure");
 
   void *heap;
-  heap =
-    create_mspace_with_base (((u8 *) memaddr) + getpagesize (),
-			     memory_size - getpagesize (), 1 /* locked */ );
+  heap = create_mspace_with_base (((u8 *) memaddr) + page_size,
+				  memory_size - page_size, 1 /* locked */ );
   mspace_disable_expand (heap);
   sm->heap = heap;
   sm->memfd = mfd;

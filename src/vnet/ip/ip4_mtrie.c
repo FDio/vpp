@@ -797,51 +797,47 @@ format_ip4_fib_mtrie (u8 * s, va_list * va)
 static clib_error_t *
 ip4_mtrie_module_init (vlib_main_t * vm)
 {
+  u8 system_log2_page_size = clib_mem_get_log2_page_size ();
   CLIB_UNUSED (ip4_fib_mtrie_8_ply_t * p);
   ip4_main_t *im = &ip4_main;
   clib_error_t *error = NULL;
-  uword *old_heap;
+  uword size, *old_heap;
+  void *rv = CLIB_MEM_VM_MAP_FAILED;
 
   if (im->mtrie_heap_size == 0)
     im->mtrie_heap_size = IP4_FIB_DEFAULT_MTRIE_HEAP_SIZE;
 
-again:
-  if (im->mtrie_hugetlb)
+  if (im->mtrie_log2_page_size == 0)
+    im->mtrie_log2_page_size = system_log2_page_size;
+
+  if (im->mtrie_log2_page_size > system_log2_page_size)
     {
-      void *rv;
-      int mmap_flags, mmap_flags_huge;
-      uword htlb_pagesize = clib_mem_get_default_hugepage_size ();
-      if (htlb_pagesize == 0)
+      size = round_pow2 (im->mtrie_heap_size, 1 << im->mtrie_log2_page_size);
+      rv = clib_mem_vm_map_huge (0, size, im->mtrie_log2_page_size,
+				 "IPv4 mtrie");
+
+      if (rv == CLIB_MEM_VM_MAP_FAILED)
 	{
-	  clib_warning ("WARNING: htlb pagesize == 0");
-	  im->mtrie_hugetlb = 0;
-	  goto again;
+	  clib_warning ("ip4 mtrie map failed: not enough pages or page "
+			"size not supported?");
+	  im->mtrie_log2_page_size = system_log2_page_size;
 	}
-      /* Round the allocation request to an even number of huge pages */
-      im->mtrie_heap_size = (im->mtrie_heap_size + (htlb_pagesize - 1)) &
-	~(htlb_pagesize - 1);
-      mmap_flags = MAP_PRIVATE | MAP_ANONYMOUS;
-      mmap_flags_huge = (mmap_flags | MAP_HUGETLB | MAP_LOCKED |
-			 min_log2 (htlb_pagesize) << MAP_HUGE_SHIFT);
-      rv = mmap (0, im->mtrie_heap_size,
-		 PROT_READ | PROT_WRITE, mmap_flags_huge, -1, 0);
-      if (rv == MAP_FAILED)
-	{
-	  /* Failure when running as root should be logged... */
-	  if (geteuid () == 0)
-	    clib_warning ("ip4 mtrie htlb map failed: not enough pages?");
-	  im->mtrie_hugetlb = 0;
-	  goto again;
-	}
-      if (mlock (rv, im->mtrie_heap_size))
-	clib_warning ("WARNING: couldn't lock mtrie heap at %llx", rv);
-      im->mtrie_mheap = create_mspace_with_base (rv, im->mtrie_heap_size,
-						 1 /* locked */ );
+      else
+	im->mtrie_heap_size = size;
     }
-  else
+
+  if (rv == CLIB_MEM_VM_MAP_FAILED)
     {
-      im->mtrie_mheap = create_mspace (im->mtrie_heap_size, 1 /* locked */ );
+      size = round_pow2 (im->mtrie_heap_size, 1 << im->mtrie_log2_page_size);
+      rv = clib_mem_vm_map (0, size, "IPv4 mtrie");
+      if (rv == CLIB_MEM_VM_MAP_FAILED)
+	clib_error ("ip4 mtrie map failed");
+      else
+	im->mtrie_heap_size = size;
     }
+
+  im->mtrie_mheap = create_mspace_with_base (rv, im->mtrie_heap_size,
+					     1 /* locked */ );
 
   /* Burn one ply so index 0 is taken */
   old_heap = clib_mem_set_heap (ip4_main.mtrie_mheap);

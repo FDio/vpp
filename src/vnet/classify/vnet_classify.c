@@ -131,6 +131,7 @@ vnet_classify_new_table (vnet_classify_main_t * cm,
 {
   vnet_classify_table_t *t;
   void *oldheap;
+  void *vm;
 
   nbuckets = 1 << (max_log2 (nbuckets));
 
@@ -147,7 +148,9 @@ vnet_classify_new_table (vnet_classify_main_t * cm,
   t->skip_n_vectors = skip_n_vectors;
   t->entries_per_page = 2;
 
-  t->mheap = create_mspace (memory_size, 1 /* locked */ );
+  memory_size = round_pow2 (memory_size, clib_mem_get_page_size ());
+  vm = clib_mem_vm_map (0, memory_size, "classify table");
+  t->mheap = create_mspace_with_base (vm, memory_size, 1 /* locked */ );
   /* classifier requires the memory to be contiguous, so can not expand. */
   mspace_disable_expand (t->mheap);
 
@@ -164,6 +167,8 @@ vnet_classify_delete_table_index (vnet_classify_main_t * cm,
 				  u32 table_index, int del_chain)
 {
   vnet_classify_table_t *t;
+  char *va;
+  uword sz;
 
   /* Tolerate multiple frees, up to a point */
   if (pool_is_free_index (cm->tables, table_index))
@@ -176,6 +181,8 @@ vnet_classify_delete_table_index (vnet_classify_main_t * cm,
 
   vec_free (t->mask);
   vec_free (t->buckets);
+  mspace_get_address_and_size (t->mheap, &va, &sz);
+  clib_mem_vm_unmap (va, sz);
   destroy_mspace (t->mheap);
   pool_put (cm->tables, t);
 }

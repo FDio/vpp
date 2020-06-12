@@ -73,10 +73,9 @@ _pool_init_fixed (void **pool_ptr, u32 elt_size, u32 max_elts)
 
   /* mmap demand zero memory */
 
-  mmap_base = mmap (0, total_size, PROT_READ | PROT_WRITE,
-		    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  mmap_base = clib_mem_vm_map (0, total_size, "fixed pool");
 
-  if (mmap_base == MAP_FAILED)
+  if (mmap_base == CLIB_MEM_VM_MAP_FAILED)
     {
       clib_unix_warning ("mmap");
       *pool_ptr = 0;

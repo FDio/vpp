@@ -26,6 +26,7 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/mem.h>
+#include <vppinfra/pool.h>
 #include <vppinfra/time.h>
 #include <vppinfra/format.h>
 #include <vppinfra/clib_error.h>
@@ -47,10 +48,33 @@
 #endif
 
 
-uword
-clib_mem_get_page_size (void)
+void
+clib_mem_main_init ()
 {
-  return getpagesize ();
+  clib_mem_main_t *mm = &clib_mem_main;
+  uword page_size;
+  void *va;
+
+  page_size = sysconf (_SC_PAGESIZE);
+  mm->log2_page_sz = min_log2 (page_size);
+
+  va = mmap (0, page_size, PROT_READ | PROT_WRITE,
+	     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (va == MAP_FAILED)
+    return;
+
+  if (mlock (va, page_size))
+    goto done;
+
+  for (int i = 0; i < CLIB_MAX_NUMAS; i++)
+    {
+      int status;
+      if (move_pages (0, 1, &va, &i, &status, 0) == 0)
+	mm->numa_node_bitmap |= 1ULL << i;
+    }
+
+done:
+  munmap (va, page_size);
 }
 
 uword
@@ -93,6 +117,7 @@ clib_mem_get_fd_page_size (int fd)
   struct stat st = { 0 };
   if (fstat (fd, &st) == -1)
     return 0;
+
   return st.st_blksize;
 }
 
@@ -338,7 +363,7 @@ clib_mem_vm_ext_free (clib_mem_vm_alloc_t * a)
 {
   if (a != 0)
     {
-      clib_mem_vm_free (a->addr, 1ull << a->log2_page_size);
+      clib_mem_vm_unmap (a->addr, 1ull << a->log2_page_size);
       if (a->fd != -1)
 	close (a->fd);
     }
@@ -374,6 +399,89 @@ clib_mem_vm_reserve (uword start, uword size, u32 log2_page_sz)
   munmap (p + size, pagesize - off);
 
   return (uword) p;
+}
+
+void *
+clib_mem_vm_map (void *base, uword size, char *fmt, ...)
+{
+  uword mmap_flags = MAP_PRIVATE | MAP_ANONYMOUS;
+  u8 log2_page_sz = clib_mem_get_log2_page_size ();
+  va_list va;
+
+  if (base)
+    mmap_flags |= MAP_FIXED;
+
+  size = round_pow2 (size, 1 << log2_page_sz);
+
+  base = mmap (base, size, PROT_READ | PROT_WRITE, mmap_flags, -1, 0);
+
+  if (base == MAP_FAILED)
+    return CLIB_MEM_VM_MAP_FAILED;
+
+  CLIB_MEM_UNPOISON (base, size);
+
+  va_start (va, fmt);
+  clib_mem_vm_map_register (base, log2_page_sz, size >> log2_page_sz,
+			    va_format (0, fmt, &va));
+  va_end (va);
+
+  return base;
+}
+
+void *
+clib_mem_vm_map_huge (void *base, uword size, u32 log2_page_sz, char *fmt,
+		      ...)
+{
+  int mmap_flags = (MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | MAP_LOCKED |
+		    (log2_page_sz << MAP_HUGE_SHIFT));
+  va_list va;
+
+  if (base)
+    mmap_flags |= MAP_FIXED;
+
+  base = mmap (base, size, PROT_READ | PROT_WRITE, mmap_flags, -1, 0);
+
+  if (base == MAP_FAILED || mlock (base, size) != 0)
+    return CLIB_MEM_VM_MAP_FAILED;
+
+  CLIB_MEM_UNPOISON (base, size);
+
+  va_start (va, fmt);
+  clib_mem_vm_map_register (base, log2_page_sz, size >> log2_page_sz,
+			    va_format (0, fmt, &va));
+  va_end (va);
+
+  return base;
+}
+
+void *
+clib_mem_vm_map_shared (void *base, uword size, int fd, uword offset,
+			char *fmt, ...)
+{
+  uword mmap_flags = MAP_SHARED;
+  u8 log2_page_sz = clib_mem_get_fd_log2_page_size (fd);
+  clib_mem_vm_map_t *m;
+  va_list va;
+
+  if (base)
+    mmap_flags |= MAP_FIXED;
+
+  size = round_pow2 (size, 1 << log2_page_sz);
+
+  base = mmap (base, size, PROT_READ | PROT_WRITE, mmap_flags, fd, offset);
+
+  if (base == MAP_FAILED)
+    return CLIB_MEM_VM_MAP_FAILED;
+
+  CLIB_MEM_UNPOISON (base, size);
+
+  va_start (va, fmt);
+  m = clib_mem_vm_map_register (base, log2_page_sz, size >> log2_page_sz,
+				va_format (0, fmt, &va));
+  va_end (va);
+  m->fd = fd;
+
+  return base;
 }
 
 u64 *
@@ -415,62 +523,102 @@ done:
   return r;
 }
 
-clib_error_t *
-clib_mem_vm_ext_map (clib_mem_vm_map_t * a)
+int
+clib_mem_vm_unmap (void *addr, uword size)
 {
-  long unsigned int old_mask[16] = { 0 };
-  int mmap_flags = MAP_SHARED;
-  clib_error_t *err = 0;
-  int old_mpol = -1;
-  void *addr;
-  int rv;
+  clib_mem_main_t *mm = &clib_mem_main;
 
-  if (a->numa_node)
+  if (munmap (addr, size))
     {
-      rv = get_mempolicy (&old_mpol, old_mask, sizeof (old_mask) * 8 + 1, 0,
-			  0);
+      vec_reset_length (mm->error);
+      mm->error = clib_error_return_unix (mm->error, "clib_mem_vm_unmap");
+      return CLIB_MEM_ERROR;
+    }
 
-      if (rv == -1)
+  CLIB_MEM_POISON (addr, size);
+
+  return 0;
+}
+
+uword
+clib_mem_vm_get_numa_page_stats (void *base, uword n_pages, u8 log2_page_sz,
+				 clib_mem_vm_numa_page_stats_t * stats)
+{
+  int *status = 0;
+  void **ptr = 0;
+  uword page_size;
+
+  if (log2_page_sz == 0)
+    log2_page_sz = clib_mem_get_log2_page_size ();
+
+  page_size = 1 << log2_page_sz;
+
+  vec_validate (status, n_pages - 1);
+  vec_validate (ptr, n_pages - 1);
+
+  for (int i = 0; i < n_pages; i++)
+    ptr[i] = uword_to_pointer (base + i * page_size, void *);
+
+  clib_memset (stats, 0, sizeof (clib_mem_vm_numa_page_stats_t));
+
+  if (move_pages (0, n_pages, ptr, 0, status, 0) != 0)
+    return 0;
+
+  for (int i = 0; i < n_pages; i++)
+    {
+      if (status[i] >= 0 && status[i] < CLIB_MAX_NUMAS)
+	stats->n_pages_per_numa[status[i]]++;
+      else if (status[i] == -EFAULT)
+	stats->not_mapped++;
+      else
+	stats->unknown++;
+    }
+
+  vec_free (status);
+  vec_free (ptr);
+  return n_pages;
+}
+
+int
+clib_mem_set_numa_affinity (u8 numa_node, int force)
+{
+  clib_mem_main_t *mm = &clib_mem_main;
+  long unsigned int mask[16] = { 0 };
+  int mask_len = sizeof (mask) * 8 + 1;
+
+  /* no numa support */
+  if (mm->numa_node_bitmap == 0)
+    {
+      if (numa_node)
 	{
-	  err = clib_error_return_unix (0, "get_mempolicy");
-	  goto done;
+	  vec_reset_length (mm->error);
+	  mm->error = clib_error_return (mm->error, "%s: numa not supported",
+					 (char *) __func__);
+	  return CLIB_MEM_ERROR;
 	}
+      else
+	return 0;
     }
 
-  if (a->requested_va)
-    mmap_flags |= MAP_FIXED;
-
-  if (old_mpol != -1)
+  if (numa_node == CLIB_MEM_NUMA_DEFAULT)
     {
-      long unsigned int mask[16] = { 0 };
-      mask[0] = 1 << a->numa_node;
-      rv = set_mempolicy (MPOL_BIND, mask, sizeof (mask) * 8 + 1);
-      if (rv == -1)
-	{
-	  err = clib_error_return_unix (0, "set_mempolicy");
-	  goto done;
-	}
+      if (set_mempolicy (MPOL_DEFAULT, 0, 0))
+	goto error;
+      return 0;
     }
 
-  addr = (void *) mmap (uword_to_pointer (a->requested_va, void *), a->size,
-			PROT_READ | PROT_WRITE, mmap_flags, a->fd, 0);
+  mask[0] = 1 << numa_node;
 
-  if (addr == MAP_FAILED)
-    return clib_error_return_unix (0, "mmap");
+  if (set_mempolicy (force ? MPOL_BIND : MPOL_PREFERRED, mask, mask_len))
+    goto error;
 
-  /* re-apply old numa memory policy */
-  if (old_mpol != -1 &&
-      set_mempolicy (old_mpol, old_mask, sizeof (old_mask) * 8 + 1) == -1)
-    {
-      err = clib_error_return_unix (0, "set_mempolicy");
-      goto done;
-    }
+  vec_reset_length (mm->error);
+  return 0;
 
-  a->addr = addr;
-  CLIB_MEM_UNPOISON (addr, a->size);
-
-done:
-  return err;
+error:
+  vec_reset_length (mm->error);
+  mm->error = clib_error_return_unix (mm->error, (char *) __func__);
+  return CLIB_MEM_ERROR;
 }
 
 /*

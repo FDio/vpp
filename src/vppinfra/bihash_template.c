@@ -37,9 +37,6 @@ static inline void *BV (alloc_aligned) (BVT (clib_bihash) * h, uword nbytes)
     {
       void *base, *rv;
       uword alloc = alloc_arena_next (h) - alloc_arena_mapped (h);
-      int mmap_flags = MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS;
-      int mmap_flags_huge = (mmap_flags | MAP_HUGETLB | MAP_LOCKED |
-			     BIHASH_LOG2_HUGEPAGE_SIZE << MAP_HUGE_SHIFT);
 
       /* new allocation is 25% of existing one */
       if (alloc_arena_mapped (h) >> 2 > alloc)
@@ -50,11 +47,13 @@ static inline void *BV (alloc_aligned) (BVT (clib_bihash) * h, uword nbytes)
 
       base = (void *) (uword) (alloc_arena (h) + alloc_arena_mapped (h));
 
-      rv = mmap (base, alloc, PROT_READ | PROT_WRITE, mmap_flags_huge, -1, 0);
+      rv = clib_mem_vm_map_huge (base, alloc, BIHASH_LOG2_HUGEPAGE_SIZE,
+				 "bihash%s: %s", BIHASH_TYPE_STR, h->name);
 
       /* fallback - maybe we are still able to allocate normal pages */
-      if (rv == MAP_FAILED || mlock (base, alloc) != 0)
-	rv = mmap (base, alloc, PROT_READ | PROT_WRITE, mmap_flags, -1, 0);
+      if (rv == CLIB_MEM_VM_MAP_FAILED)
+	rv = clib_mem_vm_map (base, alloc, "bihash%s: %s", BIHASH_TYPE_STR,
+			      h->name);
 
       if (rv == MAP_FAILED)
 	os_out_of_memory ();
@@ -323,7 +322,8 @@ void BV (clib_bihash_free) (BVT (clib_bihash) * h)
   if (h->memfd > 0)
     (void) close (h->memfd);
 #endif
-  clib_mem_vm_free ((void *) (uword) (alloc_arena (h)), alloc_arena_size (h));
+  clib_mem_vm_unmap ((void *) (uword) (alloc_arena (h)),
+		     alloc_arena_size (h));
 never_initialized:
   clib_memset (h, 0, sizeof (*h));
   for (i = 0; i < vec_len (clib_all_bihashes); i++)

@@ -168,7 +168,7 @@ typedef struct ip4_main_t
   uword mtrie_heap_size;
 
   /** Use hugetlb pages for the Mtries */
-  int mtrie_hugetlb;
+  u8 mtrie_log2_page_size;
 
   /** The memory heap for the mtries */
   void *mtrie_mheap;
