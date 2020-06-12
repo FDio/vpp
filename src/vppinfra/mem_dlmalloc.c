@@ -18,6 +18,7 @@
 #include <vppinfra/os.h>
 #include <vppinfra/lock.h>
 #include <vppinfra/hash.h>
+#include <vppinfra/pool.h>
 #include <vppinfra/elf_clib.h>
 #include <vppinfra/sanitizer.h>
 
@@ -202,20 +203,29 @@ mheap_trace_main_free (mheap_trace_main_t * tm)
 static void *
 clib_mem_init_internal (void *memory, uword memory_size, int set_heap)
 {
+  clib_mem_main_t *mm = &clib_mem_main;
   u8 *heap;
+
+  mm->log2_page_sz = min_log2 (sysconf (_SC_PAGESIZE));
 
   if (memory)
     {
       heap = create_mspace_with_base (memory, memory_size, 1 /* locked */ );
       mspace_disable_expand (heap);
+      if (set_heap)
+	clib_mem_set_heap (heap);
     }
   else
-    heap = create_mspace (memory_size, 1 /* locked */ );
+    {
+      heap = create_mspace (memory_size, 1 /* locked */ );
+      if (set_heap)
+	clib_mem_set_heap (heap);
+      clib_mem_vm_map_register (heap, mm->log2_page_sz,
+				round_pow2 (memory_size, mm->log2_page_sz) >>
+				mm->log2_page_sz, format (0, "main heap"));
+    }
 
   CLIB_MEM_POISON (mspace_least_addr (heap), mspace_footprint (heap));
-
-  if (set_heap)
-    clib_mem_set_heap (heap);
 
   if (mheap_trace_main.lock == 0)
     clib_spinlock_init (&mheap_trace_main.lock);
@@ -226,6 +236,7 @@ clib_mem_init_internal (void *memory, uword memory_size, int set_heap)
 void *
 clib_mem_init (void *memory, uword memory_size)
 {
+  clib_mem_main_init ();
   return clib_mem_init_internal (memory, memory_size,
 				 1 /* do clib_mem_set_heap */ );
 }
@@ -233,6 +244,7 @@ clib_mem_init (void *memory, uword memory_size)
 void *
 clib_mem_init_thread_safe (void *memory, uword memory_size)
 {
+  clib_mem_main_init ();
   return clib_mem_init_internal (memory, memory_size,
 				 1 /* do clib_mem_set_heap */ );
 }
@@ -243,6 +255,8 @@ clib_mem_init_thread_safe_numa (void *memory, uword memory_size, u8 numa)
   clib_mem_vm_alloc_t alloc = { 0 };
   clib_error_t *err;
   void *heap;
+
+  clib_mem_main_init ();
 
   alloc.size = memory_size;
   alloc.flags = CLIB_MEM_VM_F_NUMA_FORCE;

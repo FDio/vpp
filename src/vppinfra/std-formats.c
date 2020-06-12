@@ -268,6 +268,59 @@ unformat_memory_size (unformat_input_t * input, va_list * va)
   return 1;
 }
 
+/* Unparse memory page size e.g. 4K, 2M */
+u8 *
+format_log2_page_size (u8 * s, va_list * va)
+{
+  u32 log2_page_sz = va_arg (*va, u32);
+
+  if (log2_page_sz >= 30)
+    return format (s, "%uG", 1 << (log2_page_sz - 30));
+
+  if (log2_page_sz >= 20)
+    return format (s, "%uM", 1 << (log2_page_sz - 20));
+
+  if (log2_page_sz >= 10)
+    return format (s, "%uK", 1 << (log2_page_sz - 10));
+
+  return format (s, "%u", 1 << log2_page_sz);
+}
+
+/* Parse memory page size e.g. 4K, 2M */
+uword
+unformat_log2_page_size (unformat_input_t * input, va_list * va)
+{
+  uword amount, shift, c;
+  uword *result = va_arg (*va, uword *);
+
+  if (!unformat (input, "%wd%_", &amount))
+    return 0;
+
+  c = unformat_get_input (input);
+  switch (c)
+    {
+    case 'k':
+    case 'K':
+      shift = 10;
+      break;
+    case 'm':
+    case 'M':
+      shift = 20;
+      break;
+    case 'g':
+    case 'G':
+      shift = 30;
+      break;
+    default:
+      shift = 0;
+      unformat_put_input (input);
+      break;
+    }
+
+  *result = min_log2 (amount) + shift;
+  return 1;
+}
+
 /* Format c identifier: e.g. a_name -> "a name".
    Works for both vector names and null terminated c strings. */
 u8 *

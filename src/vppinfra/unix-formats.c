@@ -964,7 +964,6 @@ unformat_unix_gid (unformat_input_t * input, va_list * args)
   return 0;
 }
 
-#define MAX_NUMNODES 16
 u8 *
 format_page_map (u8 * s, va_list * args)
 {
@@ -972,57 +971,30 @@ format_page_map (u8 * s, va_list * args)
   uword size = va_arg (*args, uword);
   uword page_size = clib_mem_get_page_size ();
   u32 indent = format_get_indent (s);
+  clib_mem_vm_numa_page_stats_t stats;
   uword n_pages = size / page_size;
-  uword pages_per_numa[MAX_NUMNODES] = { 0 };
-  uword pages_not_mapped = 0;
-  uword pages_unknown = 0;
-  int *status = 0;
-  void **ptr = 0;
   int i;
+
+  if (clib_mem_vm_get_numa_page_stats((void *) va, n_pages, 0, &stats) != n_pages)
+    return s;
 
   s = format (s, "virtual memory start 0x%llx, size %lluk, %u pages, "
 	      "page size %uk", va, size / 1024, n_pages, page_size / 1024);
 
-  vec_validate (status, n_pages - 1);
-  vec_validate (ptr, n_pages - 1);
-
-  for (i = 0; i < n_pages; i++)
-    ptr[i] = uword_to_pointer (va + i * page_size, void *);
-
-  if (move_pages (0, n_pages, ptr, 0, status, 0) != 0)
-    {
-      s = format (s, "\n%Upage information not available (errno %u)",
-		  format_white_space, indent + 2, errno);
-      goto done;
-    }
-
-  for (i = 0; i < n_pages; i++)
-    {
-      if (status[i] >= 0 && status[i] < MAX_NUMNODES)
-	pages_per_numa[status[i]]++;
-      else if (status[i] == -EFAULT)
-	pages_not_mapped++;
-      else
-	pages_unknown++;
-    }
-
-  for (i = 0; i < MAX_NUMNODES; i++)
-    if (pages_per_numa[i])
+  for (i = 0; i < CLIB_MAX_NUMAS; i++)
+    if (stats.n_pages_per_numa[i])
       s = format (s, "\n%Unuma %u: %d pages, %luk", format_white_space,
-		  indent + 2, i, pages_per_numa[i], pages_per_numa[i] *
-		  page_size / 1024);
+		  indent + 2, i, stats.n_pages_per_numa[i],
+		  stats.n_pages_per_numa[i] * page_size / 1024);
 
   s = format (s, "\n%Unot mapped: %u pages, %luk", format_white_space,
-	      indent + 2, pages_not_mapped, pages_not_mapped *
+	      indent + 2, stats.not_mapped, stats.not_mapped *
 	      page_size / 1024);
 
-  if (pages_unknown)
+  if (stats.unknown)
     s = format (s, "\n%Uunknown: %u pages, %luk", format_white_space,
-		indent + 2, pages_unknown, pages_unknown * page_size / 1024);
+		indent + 2, stats.unknown, stats.unknown * page_size / 1024);
 
-done:
-  vec_free (status);
-  vec_free (ptr);
   return s;
 }
 

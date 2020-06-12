@@ -52,44 +52,71 @@
 #include <vppinfra/sanitizer.h>
 
 #define CLIB_MAX_MHEAPS 256
-#define CLIB_MAX_NUMAS 8
+#define CLIB_MAX_NUMAS 16
+#define CLIB_VM_MAP_FAILED ((void *) ~0)
+
+typedef struct
+{
+  u8 *name;
+  uword base, n_pages;
+  u8 log2_page_sz;
+  int fd;
+} clib_mem_map_t;
+
+typedef struct
+{
+  /* pool of virtual memory maps */
+  clib_mem_map_t *vm_maps;
+
+  /* log2 system page size */
+  u8 log2_page_sz;
+
+  /* bitmap of available numa nodes */
+  u32 numa_node_bitmap;
+
+  /* per CPU heaps */
+  void *per_cpu_mheaps[CLIB_MAX_MHEAPS];
+
+  /* per NUMA heaps */
+  void *per_numa_mheaps[CLIB_MAX_NUMAS];
+} clib_mem_main_t;
+
+extern clib_mem_main_t clib_mem_main;
 
 /* Unspecified NUMA socket */
 #define VEC_NUMA_UNSPECIFIED (0xFF)
 
 /* Per CPU heaps. */
-extern void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
-extern void *clib_per_numa_mheaps[CLIB_MAX_NUMAS];
 
 always_inline void *
 clib_mem_get_per_cpu_heap (void)
 {
   int cpu = os_get_thread_index ();
-  return clib_per_cpu_mheaps[cpu];
+  return clib_mem_main.per_cpu_mheaps[cpu];
 }
 
 always_inline void *
 clib_mem_set_per_cpu_heap (u8 * new_heap)
 {
   int cpu = os_get_thread_index ();
-  void *old = clib_per_cpu_mheaps[cpu];
-  clib_per_cpu_mheaps[cpu] = new_heap;
+  void *old = clib_mem_main.per_cpu_mheaps[cpu];
+  clib_mem_main.per_cpu_mheaps[cpu] = new_heap;
   return old;
 }
 
 always_inline void *
 clib_mem_get_per_numa_heap (u32 numa_id)
 {
-  ASSERT (numa_id < ARRAY_LEN (clib_per_numa_mheaps));
-  return clib_per_numa_mheaps[numa_id];
+  ASSERT (numa_id < ARRAY_LEN (clib_mem_main.per_numa_mheaps));
+  return clib_mem_main.per_numa_mheaps[numa_id];
 }
 
 always_inline void *
 clib_mem_set_per_numa_heap (u8 * new_heap)
 {
   int numa = os_get_numa_index ();
-  void *old = clib_per_numa_mheaps[numa];
-  clib_per_numa_mheaps[numa] = new_heap;
+  void *old = clib_mem_main.per_numa_mheaps[numa];
+  clib_mem_main.per_numa_mheaps[numa] = new_heap;
   return old;
 }
 
@@ -104,9 +131,9 @@ clib_mem_set_thread_index (void)
   int i;
   if (__os_thread_index != 0)
     return;
-  for (i = 0; i < ARRAY_LEN (clib_per_cpu_mheaps); i++)
-    if (clib_atomic_bool_cmp_and_swap (&clib_per_cpu_mheaps[i],
-				       0, clib_per_cpu_mheaps[0]))
+  for (i = 0; i < ARRAY_LEN (clib_mem_main.per_cpu_mheaps); i++)
+    if (clib_atomic_bool_cmp_and_swap (&clib_mem_main.per_cpu_mheaps[i],
+				       0, clib_mem_main.per_cpu_mheaps[0]))
       {
 	os_set_thread_index (i);
 	break;
@@ -137,7 +164,7 @@ clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
     }
 
   cpu = os_get_thread_index ();
-  heap = clib_per_cpu_mheaps[cpu];
+  heap = clib_mem_main.per_cpu_mheaps[cpu];
 
   p = mspace_get_aligned (heap, size, align, align_offset);
 
@@ -270,14 +297,13 @@ clib_mem_set_heap (void *heap)
   return clib_mem_set_per_cpu_heap (heap);
 }
 
+void clib_mem_main_init ();
 void *clib_mem_init (void *heap, uword size);
 void *clib_mem_init_thread_safe (void *memory, uword memory_size);
 void *clib_mem_init_thread_safe_numa (void *memory, uword memory_size,
 				      u8 numa);
 
 void clib_mem_exit (void);
-
-uword clib_mem_get_page_size (void);
 
 void clib_mem_validate (void);
 
@@ -340,39 +366,7 @@ clib_mem_vm_free (void *addr, uword size)
   munmap (addr, size);
 }
 
-always_inline void *
-clib_mem_vm_unmap (void *addr, uword size)
-{
-  void *mmap_addr;
-  uword flags = MAP_PRIVATE | MAP_FIXED;
-
-  /* To unmap we "map" with no protection.  If we actually called
-     munmap then other callers could steal the address space.  By
-     changing to PROT_NONE the kernel can free up the pages which is
-     really what we want "unmap" to mean. */
-  mmap_addr = mmap (addr, size, PROT_NONE, flags, -1, 0);
-  if (mmap_addr == (void *) -1)
-    mmap_addr = 0;
-  else
-    CLIB_MEM_UNPOISON (mmap_addr, size);
-
-  return mmap_addr;
-}
-
-always_inline void *
-clib_mem_vm_map (void *addr, uword size)
-{
-  void *mmap_addr;
-  uword flags = MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS;
-
-  mmap_addr = mmap (addr, size, (PROT_READ | PROT_WRITE), flags, -1, 0);
-  if (mmap_addr == (void *) -1)
-    mmap_addr = 0;
-  else
-    CLIB_MEM_UNPOISON (mmap_addr, size);
-
-  return mmap_addr;
-}
+#define CLIB_VM_MAP_FAILED ((void *) ~0)
 
 typedef struct
 {
@@ -412,6 +406,12 @@ uword clib_mem_get_default_hugepage_size (void);
 int clib_mem_get_fd_log2_page_size (int fd);
 uword clib_mem_vm_reserve (uword start, uword size, u32 log2_page_sz);
 u64 *clib_mem_vm_get_paddr (void *mem, int log2_page_size, int n_pages);
+void *clib_mem_vm_map (void *addr, uword size, char *fmt, ...);
+void *clib_mem_vm_map_huge (void *start, uword size, u32 log2_page_sz,
+			    char *fmt, ...);
+void *clib_mem_vm_map_shared (void *start, uword size, int fd, uword offset,
+			      char *fmt, ...);
+void clib_mem_vm_unmap (void *addr, uword size);
 
 typedef struct
 {
@@ -422,11 +422,38 @@ typedef struct
   u8 numa_node;
 } clib_mem_vm_map_t;
 
+typedef struct
+{
+  uword n_pages_per_numa[CLIB_MAX_NUMAS];
+  uword not_mapped;
+  uword unknown;
+} clib_mem_vm_numa_page_stats_t;
+
+
 clib_error_t *clib_mem_vm_ext_map (clib_mem_vm_map_t * a);
 void clib_mem_vm_randomize_va (uword * requested_va, u32 log2_page_size);
 void mheap_trace (void *v, int enable);
 uword clib_mem_trace_enable_disable (uword enable);
 void clib_mem_trace (int enable);
+uword clib_mem_vm_get_numa_page_stats (void *base, uword n_pages,
+				       u8 log2_page_sz,
+				       clib_mem_vm_numa_page_stats_t * stats);
+clib_mem_map_t *clib_mem_vm_map_register (void *base, u8 log2_page_sz,
+					  uword n_pages, u8 * name);
+
+u8 *format_clib_mem_vm_maps (u8 *, va_list *);
+
+static_always_inline u8
+clib_mem_get_log2_page_size (void)
+{
+  return clib_mem_main.log2_page_sz;
+}
+
+static_always_inline uword
+clib_mem_get_page_size (void)
+{
+  return 1ULL << clib_mem_main.log2_page_sz;
+}
 
 #include <vppinfra/error.h>	/* clib_panic */
 
