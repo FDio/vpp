@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "6d2aef27_94165fd1",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-06-12T15:56:50Z",
+      "side": 1,
+      "message": "I am handling three different scenarios here:\n1) packet has the right sequence number as expected. Enqueue it to merge into bigger packet.\n2) Retransmitted packets usually have sequence number lesser than sequence number of buffered TCP packet. We retransmit such packet immediately. But keep the current buffered packet to continue the coalescing.\n3) From my experimentation, what I have seen is, from times to times, source sends TCP packets with PUSH flag. We don\u0027t buffer TCP packets with PUSH flag for coalescing. It causes gaps between sequence number of buffered TCP packet and sequence number of next packet without PUSH flag. In that case, we send the buffered packet and store the new packet for speculative reasons, as most of the times, next packet has expected sequence number and merge in case (1).\n\nStore buffers are flushed in any case within 10 microseconds.",
+      "parentUuid": "e327aae6_34e24177",
+      "revId": "17397d1511d5413f14f42338fb963506f91e0fb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d163a556_af39ea32",
         "filename": "src/vnet/pg/input.c",
         "patchSetId": 31
@@ -33,6 +51,24 @@
       "revId": "17397d1511d5413f14f42338fb963506f91e0fb9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "62ced413_f9de2b9f",
+        "filename": "src/vnet/pg/input.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 1595,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-06-12T15:56:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d163a556_af39ea32",
+      "revId": "17397d1511d5413f14f42338fb963506f91e0fb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
