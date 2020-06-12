@@ -1,0 +1,147 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "be3d7564_ffae9176",
+        "filename": "src/vnet/graph_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-06-12T07:18:17Z",
+      "side": 1,
+      "message": "Remove all of this and replace with includes of graph.api_enum.h and graph.api_types.h",
+      "revId": "8732fff5ca2f684f2cf8593ddf9d1bfafd603c9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "df6cb413_492a18db",
+        "filename": "src/vnet/graph_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-06-12T07:18:17Z",
+      "side": 1,
+      "message": "You couldn\u0027t use the endian agnostic handler variant instead?\nSee e796a18734fae0783a226c38550796260f0acfec",
+      "range": {
+        "startLine": 65,
+        "startChar": 0,
+        "endLine": 68,
+        "endChar": 31
+      },
+      "revId": "8732fff5ca2f684f2cf8593ddf9d1bfafd603c9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "52a95662_ce5a6d10",
+        "filename": "src/vnet/graph_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-06-12T07:18:17Z",
+      "side": 1,
+      "message": "Replace (almost all) with include of graph.api.c\nSee vnet/ipip/ipip_api.c for example.",
+      "range": {
+        "startLine": 162,
+        "startChar": 0,
+        "endLine": 192,
+        "endChar": 1
+      },
+      "revId": "8732fff5ca2f684f2cf8593ddf9d1bfafd603c9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0109d41c_da7c5a9d",
+        "filename": "src/vnet/pkt_trace.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-06-12T07:18:17Z",
+      "side": 1,
+      "message": "The string [] form does include length in the type itself.\nu32 log_size is not needed.",
+      "revId": "8732fff5ca2f684f2cf8593ddf9d1bfafd603c9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b35d0d75_8e6c1c7e",
+        "filename": "src/vnet/pkt_trace_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-06-12T07:18:17Z",
+      "side": 1,
+      "message": "Same comment as for the other _api.c file.",
+      "revId": "8732fff5ca2f684f2cf8593ddf9d1bfafd603c9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8547dabd_8c5351f7",
+        "filename": "src/vnet/pkt_trace_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 277,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-06-12T07:18:17Z",
+      "side": 1,
+      "message": "Here as well.",
+      "range": {
+        "startLine": 238,
+        "startChar": 0,
+        "endLine": 277,
+        "endChar": 1
+      },
+      "revId": "8732fff5ca2f684f2cf8593ddf9d1bfafd603c9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b085c867_5e42f1e1",
+        "filename": "src/vnet/vnet_all_api_h.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-06-12T07:18:17Z",
+      "side": 1,
+      "message": "Please don\u0027t add new includes here.\nAll modules now have dynamically assigned message id\u0027s.",
+      "range": {
+        "startLine": 76,
+        "startChar": 0,
+        "endLine": 77,
+        "endChar": 31
+      },
+      "revId": "8732fff5ca2f684f2cf8593ddf9d1bfafd603c9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
