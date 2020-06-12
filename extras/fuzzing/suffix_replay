@@ -1,0 +1,4 @@
+comment { To be appended to a "prefix_..." config file }
+
+pfuzz enable loop0 mode-replay
+packet-generator enable

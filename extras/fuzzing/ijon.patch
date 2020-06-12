@@ -1,0 +1,245 @@
+diff --git a/Makefile b/Makefile
+index 958636a..9ba28cd 100644
+--- a/Makefile
++++ b/Makefile
+@@ -157,3 +157,7 @@ publish: clean
+ 	cat docs/ChangeLog >~/www/afl/ChangeLog.txt
+ 	cat docs/QuickStartGuide.txt >~/www/afl/QuickStartGuide.txt
+ 	echo -n "$(VERSION)" >~/www/afl/version.txt
++
++.PHONY: tags
++tags:
++	ctags -e -o TAGS $(shell ls *.[ch] libdislocator/*.[ch] libtokencap/*.[ch] llvm_mode/*.[ch])
+diff --git a/afl-fuzz.c b/afl-fuzz.c
+index dfd86e8..9977981 100644
+--- a/afl-fuzz.c
++++ b/afl-fuzz.c
+@@ -125,14 +125,20 @@ EXP_ST u8  skip_deterministic,        /* Skip deterministic stages?       */
+            skip_requested,            /* Skip request, via SIGUSR1        */
+            run_over10m,               /* Run time over 10 minutes?        */
+            persistent_mode,           /* Running in persistent mode?      */
++           max_paths_given,           /* Max number of new paths given?   */
++           max_execs_given,           /* Max number of execs given?       */
+            fast_cal;                  /* Try to calibrate faster?         */
+ 
+ static s32 out_fd,                    /* Persistent fd for out_file       */
+            dev_urandom_fd = -1,       /* Persistent fd for /dev/urandom   */
+            dev_null_fd = -1,          /* Persistent fd for /dev/null      */
++           log_out_fd,                /* fd for the target's stdout       */
++           log_err_fd,                /* fd for the target's stderr       */
+            fsrv_ctl_fd,               /* Fork server control pipe (write) */
+            fsrv_st_fd;                /* Fork server status pipe (read)   */
+ 
++static FILE* stab_file;               /* where to write all found stabilities */
++
+ static s32 forksrv_pid,               /* PID of the fork server           */
+            child_pid = -1,            /* PID of the fuzzed program        */
+            out_dir_fd = -1;           /* FD of the lock file              */
+@@ -184,6 +190,8 @@ EXP_ST u64 total_crashes,             /* Total number of crashes          */
+            queue_cycle,               /* Queue round counter              */
+            cycles_wo_finds,           /* Cycles without any new paths     */
+            trim_execs,                /* Execs done to trim input files   */
++           max_paths,                 /* Stop after that many new paths   */
++           max_execs,                 /* Stop after that many execs       */
+            bytes_trim_in,             /* Bytes coming into the trimmer    */
+            bytes_trim_out,            /* Bytes coming outa the trimmer    */
+            blocks_eff_total,          /* Blocks subject to effector maps  */
+@@ -2043,8 +2051,21 @@ EXP_ST void init_forkserver(char** argv) {
+ 
+     setsid();
+ 
+-    dup2(dev_null_fd, 1);
+-    dup2(dev_null_fd, 2);
++    /* Redirect stdout and stderr of our target process to files,
++       instead of sending them into the void */
++    if (unlink("target.log.out") == -1 && errno != ENOENT)
++      PFATAL("unexpected failure removing target.log.out");
++
++    if (unlink("target.log.err") == -1 && errno != ENOENT)
++      PFATAL("unexpected failure removing target.log.err");
++
++    log_out_fd = open("target.log.out", O_CREAT | O_WRONLY | O_EXCL, 0666);
++    log_err_fd = open("target.log.err", O_CREAT | O_WRONLY | O_EXCL, 0666);
++    if (log_out_fd == -1 || log_err_fd == -1)
++      PFATAL("opening target.log.out or target.log.err failed");
++
++    dup2(log_out_fd, 1);
++    dup2(log_err_fd, 2);
+ 
+     if (out_file) {
+ 
+@@ -2425,6 +2446,8 @@ static u8 run_target(char** argv, u32 timeout) {
+   setitimer(ITIMER_REAL, &it, NULL);
+ 
+   total_execs++;
++  if (max_execs_given && total_execs == max_execs)
++    stop_soon = 2;
+ 
+   /* Any subsequent operations on trace_bits must not be moved by the
+      compiler below this point. Past this location, trace_bits[] behave
+@@ -3168,6 +3191,23 @@ static u8 save_if_interesting(char** argv, void* mem, u32 len, u8 fault) {
+ 
+     res = calibrate_case(argv, queue_top, mem, queue_cycle - 1, 0);
+ 
++    u32 t_bytes;
++    double stab_ratio;
++
++    /* coverage */
++    t_bytes = count_non_255_bytes(virgin_bits);
++
++    /* variable behavior (stability) */
++    var_byte_count = count_bytes(var_bytes);
++    if (t_bytes)
++      stab_ratio = 100 - ((double)var_byte_count) * 100 / t_bytes;
++    else
++      stab_ratio = 100;
++
++    if (fprintf(stab_file, "%u: %0.02f%%\n", queued_paths, stab_ratio) < 0)
++      PFATAL("failed writing to stab_file");
++
++
+     if (res == FAULT_ERROR)
+       FATAL("Unable to execute target application");
+ 
+@@ -3178,6 +3218,8 @@ static u8 save_if_interesting(char** argv, void* mem, u32 len, u8 fault) {
+ 
+     keeping = 1;
+ 
++    if (max_paths_given && queued_paths == max_paths)
++      stop_soon = 2;
+   }
+ 
+   switch (fault) {
+@@ -3926,9 +3968,11 @@ static void show_stats(void) {
+ 
+   /* Do some bitmap stats. */
+ 
++  /* coverage */
+   t_bytes = count_non_255_bytes(virgin_bits);
+   t_byte_ratio = ((double)t_bytes * 100) / MAP_SIZE;
+ 
++  /* variable behavior (stability) */
+   if (t_bytes) 
+     stab_ratio = 100 - ((double)var_byte_count) * 100 / t_bytes;
+   else
+@@ -7075,6 +7119,11 @@ EXP_ST void check_binary(u8* fname) {
+ 
+     WARNF("AFL_PERSISTENT is no longer supported and may misbehave!");
+ 
++  } else {
++
++    WARNF("Persistent mode signature not detected, using it anyway");
++    setenv(PERSIST_ENV_VAR, "1", 1);
++    persistent_mode = 1;
+   }
+ 
+   if (memmem(f_data, f_len, DEFER_SIG, strlen(DEFER_SIG) + 1)) {
+@@ -7826,6 +7875,20 @@ static void save_cmdline(u32 argc, char** argv) {
+ 
+ }
+ 
++static void init_custom_files() {
++  /* stab_file */
++  u8* fn = alloc_printf("%s/stabilities", out_dir);
++  s32 fd = open(fn, O_WRONLY | O_CREAT | O_TRUNC, 0600);
++
++  if (fd < 0) PFATAL("Unable to create '%s'", fn);
++
++  ck_free(fn);
++
++  stab_file = fdopen(fd, "w");
++
++  if (!stab_file) PFATAL("fdopen() failed");
++}
++
+ 
+ #ifndef AFL_LIB
+ 
+@@ -7851,7 +7914,7 @@ int main(int argc, char** argv) {
+   gettimeofday(&tv, &tz);
+   srandom(tv.tv_sec ^ tv.tv_usec ^ getpid());
+ 
+-  while ((opt = getopt(argc, argv, "+i:o:f:m:t:T:dnCB:S:M:x:Q")) > 0)
++  while ((opt = getopt(argc, argv, "+i:o:f:m:s:e:t:T:dnCB:S:M:x:Q")) > 0)
+ 
+     switch (opt) {
+ 
+@@ -7965,6 +8028,20 @@ int main(int argc, char** argv) {
+ 
+         break;
+ 
++      case 's': /* stop after some number of new paths found */
++        if (max_paths_given) FATAL("Multiple -s options not supported");
++        max_paths_given = 1;
++        if (sscanf(optarg, "%llu", &max_paths) < 1)
++          FATAL("bad syntax used for -s");
++        break;
++
++      case 'e': /* stop after some number of executions */
++        if (max_execs_given) FATAL("Multiple -e options not supported");
++        max_execs_given = 1;
++        if (sscanf(optarg, "%llu", &max_execs) < 1)
++          FATAL("bad syntax used for -e");
++        break;
++
+       case 'd': /* skip deterministic */
+ 
+         if (skip_deterministic) FATAL("Multiple -d options not supported");
+@@ -8087,6 +8164,7 @@ int main(int argc, char** argv) {
+   init_count_class16();
+ 
+   setup_dirs_fds();
++  init_custom_files();
+   ijon_state = new_ijon_min_state(max_dir);
+   read_testcases();
+   load_auto();
+diff --git a/llvm_mode/Makefile b/llvm_mode/Makefile
+index 71fe892..b3ee424 100644
+--- a/llvm_mode/Makefile
++++ b/llvm_mode/Makefile
+@@ -62,7 +62,7 @@ else
+   PROGS      = ../afl-clang-fast ../afl-llvm-rt.o ../afl-llvm-rt-32.o ../afl-llvm-rt-64.o #../compare-transform-pass.so ../split-compares-pass.so ../split-switches-pass.so
+ endif
+ 
+-all: test_deps $(PROGS) test_build all_done
++all: test_deps $(PROGS) # test_build all_done  # with instrumentation disabled by default, test_build fails
+ 
+ test_deps:
+ ifndef AFL_TRACE_PC
+diff --git a/llvm_mode/afl-llvm-rt.o.c b/llvm_mode/afl-llvm-rt.o.c
+index 61fd62e..d4194ec 100644
+--- a/llvm_mode/afl-llvm-rt.o.c
++++ b/llvm_mode/afl-llvm-rt.o.c
+@@ -66,7 +66,7 @@ shared_data_t* shared_data = NULL;
+ __thread u32 __afl_prev_loc;
+ __thread u32 __afl_state;
+ __thread u32 __afl_state_log;
+-__thread u32 __afl_mask = 0xffffffff;
++__thread u32 __afl_mask = 0x0;
+ 
+ void ijon_xor_state(uint32_t val){
+   __afl_state = (__afl_state^val)%MAP_SIZE;
+@@ -314,7 +314,7 @@ int __afl_persistent_loop(unsigned int max_cnt) {
+       __afl_area_ptr[0] = 1;
+       __afl_prev_loc = 0;
+       __afl_state = 0;
+-			__afl_mask = 0xffffffff;
++      __afl_mask = 0x0;
+       __afl_state_log = 0;
+     }
+ 
+@@ -328,12 +328,12 @@ int __afl_persistent_loop(unsigned int max_cnt) {
+ 
+     if (--cycle_cnt) {
+ 
+-      raise(SIGSTOP);
+ 
++      kill(getpid(), SIGSTOP);
+       __afl_area_ptr[0] = 1;
+       __afl_prev_loc = 0;
+       __afl_state = 0;
+-			__afl_mask = 0xffffffff;
++      __afl_mask = 0x0;
+       __afl_state_log = 0;
+ 
+       return 1;
