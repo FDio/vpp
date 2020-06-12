@@ -692,6 +692,12 @@ I:	bash
 M:	Dave Wallace <dwallacelf@gmail.com>
 F:	extras/bash/
 
+Plugin - AF_XDP driver
+I:	af_xdp
+M:	Benoît Ganne <bganne@cisco.com>
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/af_xdp/
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
