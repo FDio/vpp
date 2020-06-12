@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "ce9a0516_33453104",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-06-12T16:14:37Z",
+      "side": 1,
+      "message": "Ok I understand better the rationale, but I still see that as risky.\nAlso, are you not flushing all packets on PUSH? If you do not flush, could the receiver detect packet loss when there are none?\nI\u0027d really like Florin to comment on this.",
+      "parentUuid": "6d2aef27_94165fd1",
+      "revId": "17397d1511d5413f14f42338fb963506f91e0fb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d163a556_af39ea32",
         "filename": "src/vnet/pg/input.c",
         "patchSetId": 31
@@ -66,6 +84,24 @@
       "side": 1,
       "message": "Done",
       "parentUuid": "d163a556_af39ea32",
+      "revId": "17397d1511d5413f14f42338fb963506f91e0fb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f96b608a_2adc9a5a",
+        "filename": "src/vnet/pg/input.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 1595,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-06-12T16:14:37Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "62ced413_f9de2b9f",
       "revId": "17397d1511d5413f14f42338fb963506f91e0fb9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
