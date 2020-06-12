@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da9d9302_c5470c48",
+        "filename": "src/vppinfra/linux/mem.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 527,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-06-12T14:35:08Z",
+      "side": 1,
+      "message": "This is left out as \"custom allocations\" on purpose?",
+      "range": {
+        "startLine": 527,
+        "startChar": 0,
+        "endLine": 527,
+        "endChar": 19
+      },
+      "revId": "bf909dab80dde660143a560810d6c144bdafb61a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
