@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e327aae6_34e24177",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-06-12T14:38:15Z",
+      "side": 1,
+      "message": "I really thing this is wrong: if we receive an out-of-order segment (be it a retransmit or a future one), we should flush everything including and forget the flow. Otherwise we might delay network events (eg. packet loss) detection by the receiver.\nWe should have only 2 cases: buffer if it is exactly the segment we expect, or flush everything and forget the flow.\nDid you check with Florin?",
+      "revId": "17397d1511d5413f14f42338fb963506f91e0fb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d163a556_af39ea32",
+        "filename": "src/vnet/pg/input.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 1595,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-06-12T14:38:15Z",
+      "side": 1,
+      "message": "This looks like a completely unrelated bugfix? If so please use a separate patch, otherwise it makes backports hard",
+      "revId": "17397d1511d5413f14f42338fb963506f91e0fb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
