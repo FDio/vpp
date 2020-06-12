@@ -16,6 +16,24 @@
       "revId": "1a1fd2ee33589e13eb5304867f07a0cfc5de4810",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9bd5b22d_489bdfc6",
+        "filename": "MAINTAINERS",
+        "patchSetId": 5
+      },
+      "lineNbr": 509,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2020-06-12T16:57:17Z",
+      "side": 1,
+      "message": "I have changed the maintainer to myself in this case, if you do not mind.",
+      "parentUuid": "4b4ca700_5afd90e0",
+      "revId": "1a1fd2ee33589e13eb5304867f07a0cfc5de4810",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
