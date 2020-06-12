@@ -60,7 +60,7 @@ t##s##x##c##_splat (t##s x)						\
 { return (t##s##x##c) vdupq_n_##i (x); }				\
 \
 static_always_inline t##s##x##c						\
-t##s##x##c##_load_unaligned (void *p)					\
+t##s##x##c##_load_unaligned (const void *p)					\
 { return (t##s##x##c) vld1q_##i (p); }					\
 \
 static_always_inline void						\
