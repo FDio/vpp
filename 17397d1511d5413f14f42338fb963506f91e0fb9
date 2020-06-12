@@ -73,6 +73,24 @@
     },
     {
       "key": {
+        "uuid": "8ce585ed_31d04534",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-06-12T19:25:27Z",
+      "side": 1,
+      "message": "Hi guys! I agree with Ben\u0027s point that we should flush whenever out-of-order data is received because otherwise we\u0027ll be hiding loss and packet reordering feedback that should go back to the sender. That is, each out-of-order packet should elicit a dup-ack from the receiver which subsequently forces the congestion control algorithm on the sender to adapt to the network.  \n\nNow, the effect of that depends a lot on the scenario. I guess that worst case would be when a bottleneck queue/link starts reordering when it\u0027s close to full and the lack of feedback makes the sender completely overwhelm it. \n\nNot sure I would rely on rule mentioned in point 2) above. If the sender entered fast recovery, based on sack feedback, it could retransmit a lot of non-contiguous segments in an incremental fashion, i.e., from snd_una to snd_nxt. Those would just look like gaps to gro and should be delivered on the spot with anything else that\u0027s outstanding (acks help the sender cleanup its retransmit queue faster). \n\nTo make a long story short, probably I\u0027d deliver everything with a seq number \u003c max seq number seen on the connection on the spot. Since you don\u0027t track the max seq, I guess the next best thing would be to just deliver and flush the packet when something out-of-order is received. \n\nIn case you tested already, did you see a drop in throughput? That is, if some networks are known to misbehave and induce a lot of reordering, probably something like this would improve performance. But I don\u0027t know if we should be optimizing for them.",
+      "parentUuid": "2709bcb3_877d73bc",
+      "revId": "17397d1511d5413f14f42338fb963506f91e0fb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d163a556_af39ea32",
         "filename": "src/vnet/pg/input.c",
         "patchSetId": 31
