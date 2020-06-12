@@ -142,6 +142,30 @@
       "revId": "8732fff5ca2f684f2cf8593ddf9d1bfafd603c9e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5add486d_6d21d6ee",
+        "filename": "src/vnet/vnet_all_api_h.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-06-12T17:40:48Z",
+      "side": 1,
+      "message": "I don\u0027t know what you mean by \"module\".  These messages and code are not part of a plugin.\nThey are statically, linearly assigned msg ids, just like all the other vnet messages.\nIf you want VAT functions, then I have to add them in to the api_format.c file and have\nthem be part of the vnet message set.  Ask yourself: \"where are the IPIP VAT functions?\"\nAnd then ask \"Why aren\u0027t the ARP VAT and IPv6 ND functions actually included in the build?\"\nRemember, the api_format.c code gets compiled twice, once for vpp and once for vpp_api_test.\n\nOn the other hand, if you want to move all this graph and trace stuff out of vnet, and\nplace it in an actual plugin, then we can accomplish all this using dynamically assigned\nmessage ids.",
+      "parentUuid": "b085c867_5e42f1e1",
+      "range": {
+        "startLine": 76,
+        "startChar": 0,
+        "endLine": 77,
+        "endChar": 31
+      },
+      "revId": "8732fff5ca2f684f2cf8593ddf9d1bfafd603c9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
