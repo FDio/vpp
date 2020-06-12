@@ -37,7 +37,7 @@ t##s##x##c##_splat (t##s x)						\
 { return (t##s##x##c) _mm256_set1_##i (x); }				\
 \
 static_always_inline t##s##x##c						\
-t##s##x##c##_load_unaligned (void *p)					\
+t##s##x##c##_load_unaligned (const void *p)				\
 { return (t##s##x##c) _mm256_loadu_si256 (p); }				\
 \
 static_always_inline void						\
@@ -100,9 +100,6 @@ _(u32x4, u32x8)
 _(u64x2, u64x4)
 #undef _
 /* *INDENT-ON* */
-
-
-
 
 static_always_inline u32
 u8x32_msb_mask (u8x32 v)
