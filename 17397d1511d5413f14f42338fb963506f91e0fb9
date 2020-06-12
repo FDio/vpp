@@ -55,6 +55,24 @@
     },
     {
       "key": {
+        "uuid": "2709bcb3_877d73bc",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-06-12T16:37:05Z",
+      "side": 1,
+      "message": "GRO function does not parse the flow and sequence number of TCP packets with all flags except ACKs. The flag check is quite early in GRO code to minimize the cost for such packets. These packets are sent immediately.",
+      "parentUuid": "ce9a0516_33453104",
+      "revId": "17397d1511d5413f14f42338fb963506f91e0fb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d163a556_af39ea32",
         "filename": "src/vnet/pg/input.c",
         "patchSetId": 31
