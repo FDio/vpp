@@ -81,6 +81,7 @@ ifeq ($(OS_VERSION_ID),18.04)
 else ifeq ($(OS_VERSION_ID),20.04)
 	DEB_DEPENDS += python3-virtualenv
 	DEB_DEPENDS += libssl-dev
+	DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
 	LIBFFI=libffi7
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
 	DEB_DEPENDS += libssl-dev
