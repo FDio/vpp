@@ -35,7 +35,7 @@ t##s##x##c##_splat (t##s x)						\
 { return (t##s##x##c) _mm512_set1_##i (x); }				\
 \
 static_always_inline t##s##x##c						\
-t##s##x##c##_load_aligned (void *p)					\
+t##s##x##c##_load_aligned (const void *p)				\
 { return (t##s##x##c) _mm512_load_si512 (p); }				\
 \
 static_always_inline void						\
@@ -43,7 +43,7 @@ t##s##x##c##_store_aligned (t##s##x##c v, void *p)			\
 { _mm512_store_si512 ((__m512i *) p, (__m512i) v); }			\
 \
 static_always_inline t##s##x##c						\
-t##s##x##c##_load_unaligned (void *p)					\
+t##s##x##c##_load_unaligned (const void *p)					\
 { return (t##s##x##c) _mm512_loadu_si512 (p); }				\
 \
 static_always_inline void						\
@@ -76,6 +76,23 @@ t##s##x##c##_interleave_hi (t##s##x##c a, t##s##x##c b)                 \
 
 
 foreach_avx512_vec512i foreach_avx512_vec512u
+#undef _
+/* *INDENT-ON* */
+
+static_always_inline u32x8
+u64x8_reduce_to_u32x8 (u64x8 v)
+{
+  return (u32x8) _mm512_castsi512_si256 ((__m512i) v);
+}
+
+/* _extend_to_ */
+/* *INDENT-OFF* */
+#define _(f,t,i) \
+static_always_inline t							\
+f##_extend_to_##t (f x)							\
+{ return (t) _mm512_cvt##i ((__m256i) x); }
+
+_(u32x8, u64x8, epu32_epi64)
 #undef _
 /* *INDENT-ON* */
 
