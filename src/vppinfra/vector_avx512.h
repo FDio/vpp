@@ -79,6 +79,23 @@ foreach_avx512_vec512i foreach_avx512_vec512u
 #undef _
 /* *INDENT-ON* */
 
+static_always_inline u32x8
+u64x8_reduce_to_u32x8 (u64x8 v)
+{
+  return (u32x8) _mm512_castsi512_si256 ((__m512i) v);
+}
+
+/* _extend_to_ */
+/* *INDENT-OFF* */
+#define _(f,t,i) \
+static_always_inline t							\
+f##_extend_to_##t (f x)							\
+{ return (t) _mm512_cvt##i ((__m256i) x); }
+
+_(u32x8, u64x8, epu32_epi64)
+#undef _
+/* *INDENT-ON* */
+
 static_always_inline u32
 u16x32_msb_mask (u16x32 v)
 {
