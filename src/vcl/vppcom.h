@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -53,38 +53,6 @@ typedef enum
   VPPCOM_PROTO_TLS,
   VPPCOM_PROTO_QUIC,
 } vppcom_proto_t;
-
-static inline char *
-vppcom_proto_str (vppcom_proto_t proto)
-{
-  char *proto_str;
-
-  switch (proto)
-    {
-    case VPPCOM_PROTO_TCP:
-      proto_str = "TCP";
-      break;
-    case VPPCOM_PROTO_UDP:
-      proto_str = "UDP";
-      break;
-    case VPPCOM_PROTO_TLS:
-      proto_str = "TLS";
-      break;
-    case VPPCOM_PROTO_QUIC:
-      proto_str = "QUIC";
-      break;
-    default:
-      proto_str = "UNKNOWN";
-      break;
-    }
-  return proto_str;
-}
-
-static inline int
-vcl_proto_is_dgram (uint8_t proto)
-{
-  return proto == VPPCOM_PROTO_UDP;
-}
 
 typedef enum
 {
@@ -184,71 +152,8 @@ typedef unsigned long vcl_si_set;
 /*
  * VPPCOM Public API Functions
  */
-static inline const char *
-vppcom_retval_str (int retval)
-{
-  char *st;
 
-  switch (retval)
-    {
-    case VPPCOM_OK:
-      st = "VPPCOM_OK";
-      break;
-
-    case VPPCOM_EAGAIN:
-      st = "VPPCOM_EAGAIN";
-      break;
-
-    case VPPCOM_EFAULT:
-      st = "VPPCOM_EFAULT";
-      break;
-
-    case VPPCOM_ENOMEM:
-      st = "VPPCOM_ENOMEM";
-      break;
-
-    case VPPCOM_EINVAL:
-      st = "VPPCOM_EINVAL";
-      break;
-
-    case VPPCOM_EBADFD:
-      st = "VPPCOM_EBADFD";
-      break;
-
-    case VPPCOM_EAFNOSUPPORT:
-      st = "VPPCOM_EAFNOSUPPORT";
-      break;
-
-    case VPPCOM_ECONNABORTED:
-      st = "VPPCOM_ECONNABORTED";
-      break;
-
-    case VPPCOM_ECONNRESET:
-      st = "VPPCOM_ECONNRESET";
-      break;
-
-    case VPPCOM_ENOTCONN:
-      st = "VPPCOM_ENOTCONN";
-      break;
-
-    case VPPCOM_ECONNREFUSED:
-      st = "VPPCOM_ECONNREFUSED";
-      break;
-
-    case VPPCOM_ETIMEDOUT:
-      st = "VPPCOM_ETIMEDOUT";
-      break;
-
-    default:
-      st = "UNKNOWN_STATE";
-      break;
-    }
-
-  return st;
-}
-
-/* TBD: make these constructor/destructor function */
-extern int vppcom_app_create (char *app_name);
+extern int vppcom_app_create (const char *app_name);
 extern void vppcom_app_destroy (void);
 
 extern int vppcom_session_create (uint8_t proto, uint8_t is_nonblocking);
@@ -307,6 +212,9 @@ extern int vppcom_unformat_proto (uint8_t * proto, char *proto_str);
 extern int vppcom_session_is_connectable_listener (uint32_t session_handle);
 extern int vppcom_session_listener (uint32_t session_handle);
 extern int vppcom_session_n_accepted (uint32_t session_handle);
+
+extern const char *vppcom_proto_str (vppcom_proto_t proto);
+extern const char *vppcom_retval_str (int retval);
 
 /**
  * Request from application to register a new worker
