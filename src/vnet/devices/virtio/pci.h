@@ -229,6 +229,31 @@ typedef struct
   clib_error_t *error;
 } virtio_pci_create_if_args_t;
 
+/* no log version, called by data plane */
+static_always_inline void
+virtio_pci_reg_write_inline (virtio_if_t * vif, u32 addr, u32 val)
+{
+  *(volatile u32 *) ((u8 *) vif->bar + addr) = val;
+}
+
+static_always_inline void
+virtio_pci_reg_write (virtio_if_t * vif, u32 addr, u32 val)
+{
+  virtio_log_debug (vif, "reg wr addr 0x%x val 0x%x", addr, val);
+  virtio_pci_reg_write_inline (vif, addr, val);
+}
+
+static_always_inline u32
+virtio_pci_reg_read (virtio_if_t * vif, u32 addr)
+{
+  u32 val;
+
+  val = *(volatile u32 *) (vif->bar + addr);
+  virtio_log_debug (vif, "reg rd addr 0x%x val 0x%x", addr, val);
+
+  return val;
+}
+
 extern void debug_device_config_space (vlib_main_t * vm, virtio_if_t * vif);
 extern void device_status (vlib_main_t * vm, virtio_if_t * vif);
 void virtio_pci_create_if (vlib_main_t * vm,

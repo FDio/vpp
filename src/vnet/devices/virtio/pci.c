@@ -42,10 +42,10 @@
 static pci_device_id_t virtio_pci_device_ids[] = {
   {
    .vendor_id = PCI_VENDOR_ID_VIRTIO,
-   .device_id = PCI_DEVICE_ID_VIRTIO_NIC},
+   .device_id = PCI_DEVICE_ID_VIRTIO_NIC_MODERN},
   {
    .vendor_id = PCI_VENDOR_ID_VIRTIO,
-   .device_id = PCI_DEVICE_ID_VIRTIO_NIC_MODERN},
+   .device_id = PCI_DEVICE_ID_VIRTIO_NIC},
   {0},
 };
 
@@ -934,7 +934,7 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
 {
   clib_error_t *error = 0;
   struct virtio_pci_cap cap;
-  u8 pos, common_cfg = 0, notify_base = 0, dev_cfg = 0, isr = 0, pci_cfg = 0;
+  u8 pos, common_cfg = 0, notify = 0, dev_cfg = 0, isr = 0, pci_cfg = 0;
   vlib_pci_dev_handle_t h = vif->pci_dev_handle;
 
   if ((error = vlib_pci_read_config_u8 (vm, h, PCI_CAPABILITY_LIST, &pos)))
@@ -994,15 +994,37 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
       switch (cap.cfg_type)
 	{
 	case VIRTIO_PCI_CAP_COMMON_CFG:
+	  if (vif->bar_id == cap.bar)
+	    vif->common_base = vif->bar + cap.offset;
 	  common_cfg = 1;
 	  break;
 	case VIRTIO_PCI_CAP_NOTIFY_CFG:
-	  notify_base = 1;
+	  if ((error =
+	       vlib_pci_read_write_config (vm, h, VLIB_READ,
+					   pos + sizeof (cap),
+					   &vif->notify_off_multiplier,
+					   sizeof
+					   (vif->notify_off_multiplier))))
+	    {
+	      virtio_log_error (vif, "notify off multiplier is not given");
+	    }
+	  else
+	    {
+	      virtio_log_debug (vif, "notify off multiplier is %u",
+				vif->notify_off_multiplier);
+	      if (vif->bar_id == cap.bar)
+		vif->notify_base = vif->bar + cap.offset;
+	    }
+	  notify = 1;
 	  break;
 	case VIRTIO_PCI_CAP_DEVICE_CFG:
+	  if (vif->bar_id == cap.bar)
+	    vif->device_base = vif->bar + cap.offset;
 	  dev_cfg = 1;
 	  break;
 	case VIRTIO_PCI_CAP_ISR_CFG:
+	  if (vif->bar_id == cap.bar)
+	    vif->isr_base = vif->bar + cap.offset;
 	  isr = 1;
 	  break;
 	case VIRTIO_PCI_CAP_PCI_CFG:
@@ -1014,7 +1036,7 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
       pos = cap.cap_next;
     }
 
-  if (common_cfg == 0 || notify_base == 0 || dev_cfg == 0 || isr == 0)
+  if (common_cfg == 0 || notify == 0 || dev_cfg == 0 || isr == 0)
     {
       virtio_log_debug (vif, "legacy virtio pci device found");
       return error;
@@ -1242,6 +1264,23 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
     {
       virtio_log_error (vif, "error encountered on pci bus master enable");
       goto error;
+    }
+
+  for (u32 i = 0; i <= 5; i++)
+    {
+      void *bar[1];
+      if ((error = vlib_pci_map_region (vm, h, i, &bar[0])))
+	{
+	  virtio_log_debug (vif, "no pci map region for bar %u", i);
+	}
+      else
+	{
+	  virtio_log_debug (vif, "pci map region for bar %u at %p", i,
+			    bar[0]);
+	  vif->bar = bar[0];
+	  vif->bar_id = i;
+	  break;
+	}
     }
 
   if ((error = vlib_pci_io_region (vm, h, 0)))

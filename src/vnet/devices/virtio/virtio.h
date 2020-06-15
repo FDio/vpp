@@ -170,6 +170,7 @@ typedef struct
     u32 id;
     pci_addr_t pci_addr;
   };
+
   int *vhost_fds;
   u32 dev_instance;
   u32 numa_node;
@@ -181,16 +182,33 @@ typedef struct
   u16 max_queue_pairs;
   u8 status;
   u8 mac_addr[6];
-  u8 *host_if_name;
-  u8 *net_ns;
-  u8 *host_bridge;
-  u8 host_mac_addr[6];
-  ip4_address_t host_ip4_addr;
-  u8 host_ip4_prefix_len;
-  ip6_address_t host_ip6_addr;
-  u8 host_ip6_prefix_len;
-  u32 host_mtu_size;
-  int ifindex;
+  union
+  {
+    struct
+    {
+      u8 *host_if_name;
+      u8 *net_ns;
+      u8 *host_bridge;
+      u8 host_mac_addr[6];
+      ip4_address_t host_ip4_addr;
+      u8 host_ip4_prefix_len;
+      ip6_address_t host_ip6_addr;
+      u8 host_ip6_prefix_len;
+      u32 host_mtu_size;
+      int ifindex;
+    };
+    struct
+    {
+      void *bar;
+      void *common_base;
+      void *notify_base;
+      void *device_base;
+      void *isr_base;
+      u32 notify_off_multiplier;
+      u32 bar_id;
+      u32 pad[5];
+    };
+  };
   virtio_vring_t *cxq_vring;
 } virtio_if_t;
 
