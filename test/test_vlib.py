@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import unittest
-
+import pexpect
+import time
+import signal
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from framework import running_gcov_tests
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
@@ -185,6 +187,22 @@ class TestVlib(VppTestCase):
                     self.logger.info(cmd + " FAIL reply " + r.reply)
                 else:
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
+
+    @unittest.skipUnless(running_gcov_tests, "part of code coverage tests")
+    def test_vlib_main_unittest(self):
+        """ Private Binary API Segment Test (takes 70 seconds) """
+
+        vat_path = self.vpp_bin + '_api_test'
+        vat = pexpect.spawn(vat_path, ['socket-name', self.api_sock])
+        vat.expect("vat# ", timeout=10)
+        vat.sendline('sock_init_shm')
+        vat.expect("vat# ", timeout=10)
+        vat.sendline('sh api cli')
+        vat.kill(signal.SIGKILL)
+        vat.wait()
+        self.logger.info("vat terminated, 70 second wait for the Reaper")
+        time.sleep(70)
+        self.logger.info("Reaper should be complete...")
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
