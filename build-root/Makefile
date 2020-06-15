@@ -765,7 +765,7 @@ find_source_for_package =									\
       exit 1;											\
     fi ;											\
     $(call build_msg_fn,Fix file dates in $${g}/$(PACKAGE_SOURCE)) ;					\
-    (cd $${s} ; $(MU_BUILD_ROOT_DIR)/autowank --touch) ;					\
+    : the timestamp-adjustment script used to be invoked at this point ;			\
   fi ;												\
   s=`cd $${s} && pwd` ;										\
   $(call build_msg_fn,Source found in $${s})
