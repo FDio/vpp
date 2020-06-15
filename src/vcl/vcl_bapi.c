@@ -449,7 +449,7 @@ vppcom_init_error_string_table (void)
 }
 
 int
-vppcom_connect_to_vpp (char *app_name)
+vppcom_connect_to_vpp (const char *app_name)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vppcom_cfg_t *vcl_cfg = &vcm->cfg;
@@ -463,7 +463,8 @@ vppcom_connect_to_vpp (char *app_name)
     {
       if (vl_socket_client_connect2 (&wrk->bapi_sock_ctx,
 				     (char *) vcl_cfg->vpp_api_socket_name,
-				     app_name, 0 /* default rx/tx buffer */ ))
+				     (char *) app_name,
+				     0 /* default rx/tx buffer */ ))
 	{
 	  VERR ("app (%s) socket connect failed!", app_name);
 	  return VPPCOM_ECONNREFUSED;

@@ -587,6 +587,12 @@ vcl_ip_copy_to_ep (ip46_address_t * ip, vppcom_endpt_t * ep, u8 is_ip4)
     clib_memcpy_fast (ep->ip, &ip->ip6, sizeof (ip6_address_t));
 }
 
+static inline int
+vcl_proto_is_dgram (uint8_t proto)
+{
+  return proto == VPPCOM_PROTO_UDP;
+}
+
 /*
  * Helpers
  */
@@ -652,7 +658,7 @@ void vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,
 /*
  * VCL Binary API
  */
-int vppcom_connect_to_vpp (char *app_name);
+int vppcom_connect_to_vpp (const char *app_name);
 void vppcom_disconnect_from_vpp (void);
 void vppcom_init_error_string_table (void);
 void vppcom_send_session_enable_disable (u8 is_enable);

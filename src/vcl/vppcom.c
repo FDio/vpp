@@ -1162,7 +1162,7 @@ vppcom_app_exit (void)
  * VPPCOM Public API functions
  */
 int
-vppcom_app_create (char *app_name)
+vppcom_app_create (const char *app_name)
 {
   vppcom_cfg_t *vcl_cfg = &vcm->cfg;
   int rv;
@@ -3898,6 +3898,95 @@ vppcom_session_n_accepted (uint32_t session_handle)
   if (!session)
     return VPPCOM_EBADFD;
   return session->n_accepted_sessions;
+}
+
+const char *
+vppcom_proto_str (vppcom_proto_t proto)
+{
+  char const *proto_str;
+
+  switch (proto)
+    {
+    case VPPCOM_PROTO_TCP:
+      proto_str = "TCP";
+      break;
+    case VPPCOM_PROTO_UDP:
+      proto_str = "UDP";
+      break;
+    case VPPCOM_PROTO_TLS:
+      proto_str = "TLS";
+      break;
+    case VPPCOM_PROTO_QUIC:
+      proto_str = "QUIC";
+      break;
+    default:
+      proto_str = "UNKNOWN";
+      break;
+    }
+  return proto_str;
+}
+
+const char *
+vppcom_retval_str (int retval)
+{
+  char const *st;
+
+  switch (retval)
+    {
+    case VPPCOM_OK:
+      st = "VPPCOM_OK";
+      break;
+
+    case VPPCOM_EAGAIN:
+      st = "VPPCOM_EAGAIN";
+      break;
+
+    case VPPCOM_EFAULT:
+      st = "VPPCOM_EFAULT";
+      break;
+
+    case VPPCOM_ENOMEM:
+      st = "VPPCOM_ENOMEM";
+      break;
+
+    case VPPCOM_EINVAL:
+      st = "VPPCOM_EINVAL";
+      break;
+
+    case VPPCOM_EBADFD:
+      st = "VPPCOM_EBADFD";
+      break;
+
+    case VPPCOM_EAFNOSUPPORT:
+      st = "VPPCOM_EAFNOSUPPORT";
+      break;
+
+    case VPPCOM_ECONNABORTED:
+      st = "VPPCOM_ECONNABORTED";
+      break;
+
+    case VPPCOM_ECONNRESET:
+      st = "VPPCOM_ECONNRESET";
+      break;
+
+    case VPPCOM_ENOTCONN:
+      st = "VPPCOM_ENOTCONN";
+      break;
+
+    case VPPCOM_ECONNREFUSED:
+      st = "VPPCOM_ECONNREFUSED";
+      break;
+
+    case VPPCOM_ETIMEDOUT:
+      st = "VPPCOM_ETIMEDOUT";
+      break;
+
+    default:
+      st = "UNKNOWN_STATE";
+      break;
+    }
+
+  return st;
 }
 
 /*
