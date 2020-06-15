@@ -140,7 +140,10 @@ vrrp_vr_transition_intf (vrrp_vr_t * vr, vrrp_vr_state_t new_state)
 {
   vrrp_intf_t *intf;
   const char *arc_name = 0, *node_name = 0;
+  const char *mc_arc_name = 0, *mc_node_name = 0;
   u8 is_ipv6 = vrrp_vr_is_ipv6 (vr);
+  u32 *vr_index;
+  int n_master_accept = 0;
 
   /* only need to do something if entering or leaving master state */
   if ((vr->runtime.state != VRRP_VR_STATE_MASTER) &&
@@ -151,14 +154,19 @@ vrrp_vr_transition_intf (vrrp_vr_t * vr, vrrp_vr_state_t new_state)
     {
       arc_name = "ip6-local";
       node_name = "vrrp6-nd-input";
+      mc_arc_name = "ip6-multicast";
+      mc_node_name = "vrrp6-accept-owner-input";
     }
   else
     {
       arc_name = "arp";
       node_name = "vrrp4-arp-input";
+      mc_arc_name = "ip4-multicast";
+      mc_node_name = "vrrp4-accept-owner-input";
     }
 
   intf = vrrp_intf_get (vr->config.sw_if_index);
+
   if (new_state == VRRP_VR_STATE_MASTER)
     {
       intf->n_master_vrs[is_ipv6]++;
@@ -175,6 +183,30 @@ vrrp_vr_transition_intf (vrrp_vr_t * vr, vrrp_vr_state_t new_state)
       if (intf->n_master_vrs[is_ipv6])
 	intf->n_master_vrs[is_ipv6]--;
     }
+
+  /* accept mode enabled, count the other master VRs w/ accept mode on intf */
+  if (vrrp_vr_accept_mode_enabled (vr))
+    {
+      vec_foreach (vr_index, intf->vr_indices[is_ipv6])
+      {
+	vrrp_vr_t *intf_vr = vrrp_vr_lookup_index (*vr_index);
+
+	if (intf_vr == vr)
+	  continue;
+
+	if (vrrp_vr_accept_mode_enabled (intf_vr) &&
+	    (intf_vr->runtime.state == VRRP_VR_STATE_MASTER))
+	  n_master_accept++;
+      }
+
+      /* If no others, enable or disable the feature based on new state */
+      if (!n_master_accept)
+	vnet_feature_enable_disable (mc_arc_name, mc_node_name,
+				     vr->config.sw_if_index,
+				     (new_state == VRRP_VR_STATE_MASTER),
+				     NULL, 0);
+    }
+
 }
 
 /* If accept mode enabled, add/remove VR addresses from interface */
@@ -310,7 +342,7 @@ vrrp_vr_transition (vrrp_vr_t * vr, vrrp_vr_state_t new_state, void *data)
   /* add/delete virtual IP addrs if accept_mode is true */
   vrrp_vr_transition_addrs (vr, new_state);
 
-  /* enable/disable arp/ND input features if necessary */
+  /* enable/disable input features if necessary */
   vrrp_vr_transition_intf (vr, new_state);
 
   /* add/delete virtual MAC address on NIC if necessary */
