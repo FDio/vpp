@@ -1100,6 +1100,7 @@ list(APPEND VNET_SOURCES
   devices/virtio/format.c
   devices/virtio/node.c
   devices/virtio/pci.c
+  devices/virtio/virtio_pci_modern.c
   devices/virtio/vhost_user.c
   devices/virtio/vhost_user_input.c
   devices/virtio/vhost_user_output.c
@@ -1111,6 +1112,7 @@ list(APPEND VNET_SOURCES
 
 list(APPEND VNET_HEADERS
   devices/virtio/pci.h
+  devices/virtio/virtio_pci_modern.h
   devices/virtio/virtio.h
   devices/virtio/vhost_user.h
   devices/virtio/virtio_types_api.h

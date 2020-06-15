@@ -99,10 +99,21 @@ typedef enum
  * at the end of the avail ring. Host should ignore the avail->flags field. */ \
 /* The Host publishes the avail index for which it expects a kick \
  * at the end of the used ring. Guest should ignore the used->flags field. */ \
-  _ (VHOST_USER_F_PROTOCOL_FEATURES, 30)
+  _ (VHOST_USER_F_PROTOCOL_FEATURES, 30)                                      \
+  _ (VIRTIO_F_VERSION_1, 32)                                                  \
+  _ (VIRTIO_F_ACCESS_PLATFORM, 33)                                            \
+  _ (VIRTIO_F_RING_PACKED, 34)                                                \
+  _ (VIRTIO_F_IN_ORDER, 35)                                                   \
+  _ (VIRTIO_F_ORDER_PLATFORM, 36)                                             \
+  _ (VIRTIO_F_SR_IOV, 37)                                                     \
+  _ (VIRTIO_F_NOTIFICATION_DATA, 38)                                          \
+  _ (VIRTIO_NET_F_RSC_EXT, 61)                                                \
+  _ (VIRTIO_NET_F_STANDBY, 62)
 
 #define VIRTIO_NET_F_CTRL_GUEST_OFFLOADS 2
 #define VIRTIO_NET_F_MTU 3
+#define VIRTIO_F_RING_PACKED 34
+#define VIRTIO_F_IN_ORDER 35
 #define VIRTIO_NET_S_LINK_UP    1	/* Link is up */
 #define VIRTIO_NET_S_ANNOUNCE   2	/* Announcement is needed */
 
@@ -164,8 +175,8 @@ typedef struct
   /* About the whole device. */
   u32 device_feature_select;	/* read-write */
   u32 device_feature;		/* read-only */
-  u32 guest_feature_select;	/* read-write */
-  u32 guest_feature;		/* read-write */
+  u32 driver_feature_select;	/* read-write */
+  u32 driver_feature;		/* read-write */
   u16 msix_config;		/* read-write */
   u16 num_queues;		/* read-only */
   u8 device_status;		/* read-write */
@@ -177,12 +188,9 @@ typedef struct
   u16 queue_msix_vector;	/* read-write */
   u16 queue_enable;		/* read-write */
   u16 queue_notify_off;		/* read-only */
-  u32 queue_desc_lo;		/* read-write */
-  u32 queue_desc_hi;		/* read-write */
-  u32 queue_avail_lo;		/* read-write */
-  u32 queue_avail_hi;		/* read-write */
-  u32 queue_used_lo;		/* read-write */
-  u32 queue_used_hi;		/* read-write */
+  u64 queue_desc;		/* read-write */
+  u64 queue_driver;		/* read-write */
+  u64 queue_device;		/* read-write */
 } virtio_pci_common_cfg_t;
 
 typedef struct
@@ -214,6 +222,14 @@ typedef struct
   vring_used_elem_t ring[0];
   /* u16 avail_event; */
 } vring_used_t;
+
+typedef struct
+{
+  u8 mac[6];
+  u16 status;
+  u16 max_virtqueue_pairs;
+  u16 mtu;
+} virtio_net_config_t;
 
 typedef struct
 {
