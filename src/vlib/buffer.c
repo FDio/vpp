@@ -504,6 +504,13 @@ vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
   return copied;
 }
 
+static uword
+vlib_buffer_alloc_size (uword ext_hdr_size, uword data_size)
+{
+  return CLIB_CACHE_LINE_ROUND (ext_hdr_size + sizeof (vlib_buffer_t) +
+				data_size);
+}
+
 u8
 vlib_buffer_pool_create (vlib_main_t * vm, char *name, u32 data_size,
 			 u32 physmem_map_index)
@@ -559,7 +566,7 @@ vlib_buffer_pool_create (vlib_main_t * vm, char *name, u32 data_size,
   vec_validate_aligned (bp->threads, vec_len (vlib_mains) - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-  alloc_size = data_size + sizeof (vlib_buffer_t) + bm->ext_hdr_size;
+  alloc_size = vlib_buffer_alloc_size (bm->ext_hdr_size, data_size);
   n_alloc_per_page = (1ULL << m->log2_page_size) / alloc_size;
 
   /* preallocate buffer indices memory */
@@ -672,10 +679,9 @@ vlib_buffer_main_init_numa_node (struct vlib_main_t *vm, u32 numa_node,
   u32 physmem_map_index;
   uword n_pages, pagesize;
   u32 buffers_per_numa;
-  u32 buffer_size = CLIB_CACHE_LINE_ROUND (bm->ext_hdr_size +
-					   sizeof (vlib_buffer_t) +
-					   vlib_buffer_get_default_data_size
-					   (vm));
+  u32 buffer_size = vlib_buffer_alloc_size (bm->ext_hdr_size,
+					    vlib_buffer_get_default_data_size
+					    (vm));
   u8 *name;
 
   pagesize = clib_mem_get_default_hugepage_size ();
@@ -685,6 +691,16 @@ vlib_buffer_main_init_numa_node (struct vlib_main_t *vm, u32 numa_node,
     VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA;
 
 retry:
+
+  if (buffer_size > pagesize)
+    {
+      error =
+	clib_error_return (0,
+			   "buffer size (%llu) is greater than page size (%llu)",
+			   buffer_size, pagesize);
+      goto done;
+    }
+
   n_pages = (buffers_per_numa - 1) / (pagesize / buffer_size) + 1;
   error = vlib_physmem_shared_map_create (vm, (char *) name,
 					  n_pages * pagesize,
