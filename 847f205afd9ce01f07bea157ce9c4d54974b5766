@@ -1,0 +1,326 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4cd75206_b3cf6de4",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-06-15T17:51:37Z",
+      "side": 1,
+      "message": "Move to above \"from vpp_ike2\"",
+      "range": {
+        "startLine": 2,
+        "startChar": 0,
+        "endLine": 2,
+        "endChar": 48
+      },
+      "revId": "847f205afd9ce01f07bea157ce9c4d54974b5766",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "63f13e49_f51c9d89",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-06-15T17:51:37Z",
+      "side": 1,
+      "message": "Move to above \"from scapy.utils\"",
+      "range": {
+        "startLine": 3,
+        "startChar": 0,
+        "endLine": 4,
+        "endChar": 33
+      },
+      "revId": "847f205afd9ce01f07bea157ce9c4d54974b5766",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ff7fc202_5b68b103",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-06-15T17:51:37Z",
+      "side": 1,
+      "message": "child_sa or child_sa_list?",
+      "range": {
+        "startLine": 123,
+        "startChar": 13,
+        "endLine": 123,
+        "endChar": 19
+      },
+      "revId": "847f205afd9ce01f07bea157ce9c4d54974b5766",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a0cc98d9_d05163d6",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 353,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-06-15T17:51:37Z",
+      "side": 1,
+      "message": "RuntimeError or NotImplementedError or Sonar may complain",
+      "range": {
+        "startLine": 353,
+        "startChar": 18,
+        "endLine": 353,
+        "endChar": 27
+      },
+      "revId": "847f205afd9ce01f07bea157ce9c4d54974b5766",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7932726c_d927c27d",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 367,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-06-15T17:51:37Z",
+      "side": 1,
+      "message": "Why is this not part of the global imports?",
+      "range": {
+        "startLine": 367,
+        "startChar": 8,
+        "endLine": 367,
+        "endChar": 44
+      },
+      "revId": "847f205afd9ce01f07bea157ce9c4d54974b5766",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a4fe627c_e722eab9",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-06-15T17:51:37Z",
+      "side": 1,
+      "message": "Why is this not just set outside the class?  To avoid having to type cls.ikev2 or self.ikev2 or for pep8?",
+      "range": {
+        "startLine": 368,
+        "startChar": 7,
+        "endLine": 368,
+        "endChar": 35
+      },
+      "revId": "847f205afd9ce01f07bea157ce9c4d54974b5766",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "20d088e5_d43bd916",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 379,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-06-15T17:51:37Z",
+      "side": 1,
+      "message": "why isn\u0027t this with the global imports?",
+      "range": {
+        "startLine": 379,
+        "startChar": 8,
+        "endLine": 379,
+        "endChar": 45
+      },
+      "revId": "847f205afd9ce01f07bea157ce9c4d54974b5766",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d7ccd9d8_b6e75d25",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 510,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-06-15T17:51:37Z",
+      "side": 1,
+      "message": "bare except.  Catch AttributeError instead. (for .load missing)",
+      "range": {
+        "startLine": 510,
+        "startChar": 8,
+        "endLine": 510,
+        "endChar": 15
+      },
+      "revId": "847f205afd9ce01f07bea157ce9c4d54974b5766",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cd2686b6_c90b3b18",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 521,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-06-15T17:51:37Z",
+      "side": 1,
+      "message": "except KeyError",
+      "range": {
+        "startLine": 521,
+        "startChar": 8,
+        "endLine": 521,
+        "endChar": 15
+      },
+      "revId": "847f205afd9ce01f07bea157ce9c4d54974b5766",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5a72478c_14da6d91",
+        "filename": "test/vpp_ikev2.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-06-15T17:51:37Z",
+      "side": 1,
+      "message": "Is it better to handle the KeyError by passing in a default and returning v.get(key, default)?",
+      "range": {
+        "startLine": 9,
+        "startChar": 3,
+        "endLine": 9,
+        "endChar": 44
+      },
+      "revId": "847f205afd9ce01f07bea157ce9c4d54974b5766",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "11bd6578_10f22a54",
+        "filename": "test/vpp_ikev2.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-06-15T17:51:37Z",
+      "side": 1,
+      "message": "@staticmethod",
+      "range": {
+        "startLine": 9,
+        "startChar": 0,
+        "endLine": 9,
+        "endChar": 44
+      },
+      "revId": "847f205afd9ce01f07bea157ce9c4d54974b5766",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0c2aecce_2460b74a",
+        "filename": "test/vpp_ikev2.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-06-15T17:51:37Z",
+      "side": 1,
+      "message": "Same comment as above.",
+      "range": {
+        "startLine": 16,
+        "startChar": 4,
+        "endLine": 16,
+        "endChar": 40
+      },
+      "revId": "847f205afd9ce01f07bea157ce9c4d54974b5766",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cea63af1_2d77bb12",
+        "filename": "test/vpp_ikev2.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-06-15T17:51:37Z",
+      "side": 1,
+      "message": "Should this be False?",
+      "range": {
+        "startLine": 26,
+        "startChar": 37,
+        "endLine": 26,
+        "endChar": 45
+      },
+      "revId": "847f205afd9ce01f07bea157ce9c4d54974b5766",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fa5687e0_5e8f9186",
+        "filename": "test/vpp_ikev2.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-06-15T17:51:37Z",
+      "side": 1,
+      "message": "VppObject contract expects this to return a Bool. Please raise NotImplementedError or implement the needed logic to return the Bool.",
+      "range": {
+        "startLine": 98,
+        "startChar": 4,
+        "endLine": 99,
+        "endChar": 12
+      },
+      "revId": "847f205afd9ce01f07bea157ce9c4d54974b5766",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
