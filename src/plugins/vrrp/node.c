@@ -728,6 +728,354 @@ VLIB_REGISTER_NODE (vrrp6_input_node) =
   },
 };
 
+typedef struct
+{
+  u32 sw_if_index;
+  u8 is_ipv6;
+  ip46_address_t src, dst;
+} vrrp_accept_owner_trace_t;
+
+/* packet trace format function */
+static u8 *
+format_vrrp_accept_owner_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  vrrp_accept_owner_trace_t *t = va_arg (*args, vrrp_accept_owner_trace_t *);
+  int ip_ver = 4, ip_type = IP46_TYPE_IP4;
+
+  if (t->is_ipv6)
+    {
+      ip_ver = 6;
+      ip_type = IP46_TYPE_IP6;
+    }
+
+  s = format (s, "IPv%d sw_if_index %d %U -> %U",
+	      ip_ver, t->sw_if_index,
+	      format_ip46_address, &t->src, ip_type,
+	      format_ip46_address, &t->dst, ip_type);
+
+  return s;
+}
+
+#define foreach_vrrp_accept_owner_error				  \
+_(RECEIVED, "VRRP owner accept packets received")		  \
+_(PROCESSED, "VRRP owner accept advertisements processed")
+
+typedef enum
+{
+#define _(sym,str) VRRP_ACCEPT_OWNER_ERROR_##sym,
+  foreach_vrrp_accept_owner_error
+#undef _
+    VRRP_ACCEPT_OWNER_N_ERROR,
+} vrrp_accept_owner_error_t;
+
+static char *vrrp_accept_owner_error_strings[] = {
+#define _(sym,string) string,
+  foreach_vrrp_accept_owner_error
+#undef _
+};
+
+typedef enum
+{
+  VRRP_ACCEPT_OWNER_NEXT_PROCESS,
+  VRRP_ACCEPT_OWNER_N_NEXT,
+} vrrp_accept_owner_next_t;
+
+static_always_inline void
+vrrp_accept_owner_next_node (u32 sw_if_index, u8 vr_id, u8 is_ipv6,
+			     u32 *next_index, u32 *error)
+{
+  vrrp_vr_t *vr = vrrp_vr_lookup (sw_if_index, vr_id, is_ipv6);
+
+  if (vr && (vr->runtime.state == VRRP_VR_STATE_MASTER) &&
+      (vr->config.flags & VRRP_VR_ACCEPT))
+    {
+      *next_index = VRRP_ACCEPT_OWNER_NEXT_PROCESS;
+      *error = VRRP_ACCEPT_OWNER_ERROR_PROCESSED;
+    }
+}
+
+static_always_inline uword
+vrrp_accept_owner_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+				vlib_frame_t * frame, u8 is_ipv6)
+{
+  u32 n_left_from, *from, *to_next;
+  u32 next_index = node->cached_next_index;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from >= 2 && n_left_to_next >= 2)
+	{
+	  u32 bi0, bi1;
+	  vlib_buffer_t *b0, *b1;
+	  u32 next0, next1;
+	  u32 error0, error1;
+	  vrrp_header_t *vrrp0, *vrrp1;
+	  ip4_header_t *ip40, *ip41;
+	  ip6_header_t *ip60, *ip61;
+	  u32 sw_if_index0, sw_if_index1;
+
+	  bi0 = from[0];
+	  bi1 = from[1];
+
+	  to_next[0] = bi0;
+	  to_next[1] = bi1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  b1 = vlib_get_buffer (vm, bi1);
+
+	  /* most packets will follow feature arc */
+	  vnet_feature_next (&next0, b0);
+	  vnet_feature_next (&next1, b1);
+
+	  error0 = error1 = VRRP_ACCEPT_OWNER_ERROR_RECEIVED;
+
+	  sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
+	  sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_RX];
+
+	  /* find VRRP advertisements which should be sent to VRRP node */
+	  if (is_ipv6)
+	    {
+	      ip60 = vlib_buffer_get_current (b0);
+	      ip61 = vlib_buffer_get_current (b1);
+
+	      if (PREDICT_FALSE (ip60->protocol == IP_PROTOCOL_VRRP))
+		{
+		  vrrp0 = (vrrp_header_t *) (ip60 + 1);
+		  vrrp_accept_owner_next_node (sw_if_index0, vrrp0->vr_id,
+					       is_ipv6, &next0, &error0);
+		}
+	      if (PREDICT_FALSE (ip61->protocol == IP_PROTOCOL_VRRP))
+		{
+		  vrrp1 = (vrrp_header_t *) (ip61 + 1);
+		  vrrp_accept_owner_next_node (sw_if_index1, vrrp1->vr_id,
+					       is_ipv6, &next1, &error1);
+		}
+	    }
+	  else
+	    {
+	      ip40 = vlib_buffer_get_current (b0);
+	      ip41 = vlib_buffer_get_current (b1);
+
+	      if (PREDICT_FALSE (ip40->protocol == IP_PROTOCOL_VRRP))
+		{
+		  vrrp0 = (vrrp_header_t *) (ip40 + 1);
+		  vrrp_accept_owner_next_node (sw_if_index0, vrrp0->vr_id,
+					       is_ipv6, &next0, &error0);
+		}
+	      if (PREDICT_FALSE (ip41->protocol == IP_PROTOCOL_VRRP))
+		{
+		  vrrp1 = (vrrp_header_t *) (ip41 + 1);
+		  vrrp_accept_owner_next_node (sw_if_index1, vrrp1->vr_id,
+					       is_ipv6, &next1, &error1);
+		}
+	    }
+
+      	  b0->error = node->errors[error0];
+      	  b1->error = node->errors[error1];
+
+	  if (b0->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      vrrp_accept_owner_trace_t *t =
+		vlib_add_trace (vm, node, b0, sizeof (*t));
+
+	      t->sw_if_index = sw_if_index0;
+	      t->is_ipv6 = is_ipv6;
+	      if (is_ipv6)
+		{
+		  ip6_address_copy (&t->src.ip6, &ip60->src_address);
+		  ip6_address_copy (&t->dst.ip6, &ip60->dst_address);
+		}
+	      else
+		{
+		  t->src.ip4.as_u32 = ip40->src_address.as_u32;
+		  t->dst.ip4.as_u32 = ip40->dst_address.as_u32;
+		}
+	    }
+
+	  if (b1->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      vrrp_accept_owner_trace_t *t =
+		vlib_add_trace (vm, node, b1, sizeof (*t));
+
+	      t->sw_if_index = sw_if_index1;
+	      t->is_ipv6 = is_ipv6;
+	      if (is_ipv6)
+		{
+		  ip6_address_copy (&t->src.ip6, &ip61->src_address);
+		  ip6_address_copy (&t->dst.ip6, &ip61->dst_address);
+		}
+	      else
+		{
+		  t->src.ip4.as_u32 = ip41->src_address.as_u32;
+		  t->dst.ip4.as_u32 = ip41->dst_address.as_u32;
+		}
+	    }
+
+	  from += 2;
+	  n_left_from -= 2;
+	  to_next += 2;
+	  n_left_to_next -= 2;
+
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, bi1, next0, next1);
+	}
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  vlib_buffer_t *b0;
+	  u32 next0;
+	  u32 error0;
+	  vrrp_header_t *vrrp0;
+	  ip4_header_t *ip4;
+	  ip6_header_t *ip6;
+	  u32 sw_if_index0;
+
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+
+	  /* most packets will follow feature arc */
+	  vnet_feature_next (&next0, b0);
+
+	  error0 = VRRP_ACCEPT_OWNER_ERROR_RECEIVED;
+
+	  sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
+
+	  /* find VRRP advertisements which should be sent to VRRP node */
+	  if (is_ipv6)
+	    {
+	      ip6 = vlib_buffer_get_current (b0);
+
+	      if (PREDICT_FALSE (ip6->protocol == IP_PROTOCOL_VRRP))
+		{
+		  vrrp0 = (vrrp_header_t *) (ip6 + 1);
+		  vrrp_accept_owner_next_node (sw_if_index0, vrrp0->vr_id,
+					       is_ipv6, &next0, &error0);
+		}
+	    }
+	  else
+	    {
+	      ip4 = vlib_buffer_get_current (b0);
+
+	      if (PREDICT_FALSE (ip4->protocol == IP_PROTOCOL_VRRP))
+		{
+		  vrrp0 = (vrrp_header_t *) (ip4 + 1);
+		  vrrp_accept_owner_next_node (sw_if_index0, vrrp0->vr_id,
+					       is_ipv6, &next0, &error0);
+		}
+	    }
+
+      	  b0->error = node->errors[error0];
+
+	  if (b0->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      vrrp_accept_owner_trace_t *t =
+		vlib_add_trace (vm, node, b0, sizeof (*t));
+
+	      t->sw_if_index = sw_if_index0;
+	      t->is_ipv6 = is_ipv6;
+	      if (is_ipv6)
+		{
+		  ip6_address_copy (&t->src.ip6, &ip6->src_address);
+		  ip6_address_copy (&t->dst.ip6, &ip6->dst_address);
+		}
+	      else
+		{
+		  t->src.ip4.as_u32 = ip4->src_address.as_u32;
+		  t->dst.ip4.as_u32 = ip4->dst_address.as_u32;
+		}
+	    }
+
+	  from += 1;
+	  n_left_from -= 1;
+	  to_next += 1;
+	  n_left_to_next -= 1;
+
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  return frame->n_vectors;
+}
+
+VLIB_NODE_FN (vrrp4_accept_owner_input_node) (vlib_main_t * vm,
+					      vlib_node_runtime_t * node,
+					      vlib_frame_t * frame)
+{
+  return vrrp_accept_owner_input_inline (vm, node, frame, 0);
+}
+
+VLIB_REGISTER_NODE (vrrp4_accept_owner_input_node) =
+{
+  .name = "vrrp4-accept-owner-input",
+  .vector_size = sizeof (u32),
+  .format_trace = format_vrrp_accept_owner_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(vrrp_accept_owner_error_strings),
+  .error_strings = vrrp_accept_owner_error_strings,
+
+  .n_next_nodes = VRRP_ACCEPT_OWNER_N_NEXT,
+
+  .next_nodes = {
+        [VRRP_ACCEPT_OWNER_NEXT_PROCESS] = "vrrp4-input",
+  },
+};
+
+VNET_FEATURE_INIT (vrrp4_accept_owner_mc, static) =
+{
+  .arc_name = "ip4-multicast",
+  .node_name = "vrrp4-accept-owner-input",
+  .runs_before = VNET_FEATURES ("ip4-mfib-forward-lookup"),
+};
+
+VLIB_NODE_FN (vrrp6_accept_owner_input_node) (vlib_main_t * vm,
+					   vlib_node_runtime_t * node,
+					   vlib_frame_t * frame)
+{
+  return vrrp_accept_owner_input_inline (vm, node, frame, 1);
+}
+
+VLIB_REGISTER_NODE (vrrp6_accept_owner_input_node) =
+{
+  .name = "vrrp6-accept-owner-input",
+  .vector_size = sizeof (u32),
+  .format_trace = format_vrrp_accept_owner_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(vrrp_accept_owner_error_strings),
+  .error_strings = vrrp_accept_owner_error_strings,
+
+  .n_next_nodes = VRRP_ACCEPT_OWNER_N_NEXT,
+
+  .next_nodes = {
+        [VRRP_ACCEPT_OWNER_NEXT_PROCESS] = "vrrp6-input",
+  },
+};
+
+VNET_FEATURE_INIT (vrrp6_accept_owner_mc, static) =
+{
+  .arc_name = "ip4-multicast",
+  .node_name = "vrrp6-accept-owner-input",
+  .runs_before = VNET_FEATURES ("ip6-mfib-forward-lookup"),
+};
+
 static clib_error_t *
 vrrp_input_init (vlib_main_t *vm)
 {
