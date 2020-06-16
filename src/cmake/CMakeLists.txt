@@ -21,7 +21,7 @@ install(
   VPPConfig.cmake
 
   DESTINATION
-  lib/cmake/vpp
+  ${VPP_LIBRARY_DIR}/cmake/vpp
 
   COMPONENT vpp-dev
 )
