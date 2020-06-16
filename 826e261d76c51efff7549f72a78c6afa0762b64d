@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a1dbc988_f9c7d219",
+        "filename": "src/plugins/filter/filter_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 259
+      },
+      "writtenOn": "2020-06-16T22:05:44Z",
+      "side": 1,
+      "message": "\"style\"",
+      "revId": "826e261d76c51efff7549f72a78c6afa0762b64d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
