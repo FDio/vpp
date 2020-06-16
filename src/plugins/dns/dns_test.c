@@ -186,6 +186,12 @@ api_dns_resolve_name (vat_main_t * vam)
 	break;
     }
 
+  if (name == 0)
+    {
+      errmsg ("missing name to resolve");
+      return -99;
+    }
+
   if (vec_len (name) > 127)
     {
       errmsg ("name too long");

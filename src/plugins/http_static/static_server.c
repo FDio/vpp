@@ -933,7 +933,7 @@ state_sent_ok (session_t * s, http_session_t * hs,
 
   /* What kind of dog food are we serving? */
   suffix = (char *) (hs->path + vec_len (hs->path) - 1);
-  while (*suffix != '.')
+  while ((u8 *) suffix >= hs->path && *suffix != '.')
     suffix--;
   suffix++;
   http_type = "text/html";
