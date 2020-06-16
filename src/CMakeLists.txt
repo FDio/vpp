@@ -110,7 +110,7 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
 ##############################################################################
 
 option(VPP_ENABLE_SANITIZE_ADDR "Enable Address Sanitizer" OFF)
-set(VPP_SANITIZE_ADDR_ARGS
+set(VPP_SANITIZE_ADDR_OPTIONS
   "unmap_shadow_on_exit=1:disable_coredump=0:abort_on_error=1:detect_leaks=0"
   CACHE
   STRING "Address sanitizer arguments"
