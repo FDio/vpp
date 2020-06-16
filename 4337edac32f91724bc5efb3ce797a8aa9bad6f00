@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "c811edde_3a105720",
+        "filename": "src/vnet/graph_test.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-06-16T20:02:13Z",
+      "side": 1,
+      "message": "Moot point: vat plugin loader fixed.",
+      "parentUuid": "1904e8af_702d79b5",
+      "revId": "4337edac32f91724bc5efb3ce797a8aa9bad6f00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "17aa2387_0d507625",
         "filename": "src/vnet/pkt_trace_test.c",
         "patchSetId": 6
@@ -33,6 +51,24 @@
       "revId": "4337edac32f91724bc5efb3ce797a8aa9bad6f00",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bc10a86d_afcb3294",
+        "filename": "src/vnet/pkt_trace_test.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-06-16T20:02:13Z",
+      "side": 1,
+      "message": "Moot point: vat plugin loader fixed...",
+      "parentUuid": "17aa2387_0d507625",
+      "revId": "4337edac32f91724bc5efb3ce797a8aa9bad6f00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
