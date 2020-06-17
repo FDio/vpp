@@ -1,0 +1,57 @@
+---
+name: VPP infrastructure library
+maintainer:
+  - Dave Barach <dave@barachs.net>
+features:
+  - Abstract device driver ring support
+  - Address sanitizer support
+  - Altivec, Neon, MMX, AVX2, AVX512 SIMD vector unit support
+  - Atomic op support
+  - Backtrace support
+  - Bitmaps
+  - Bounded-index extensible hashing templates
+  - C11 safe-string support
+  - Cache control primitives, including prefetching
+  - C-dynamic arrays (vectors)
+  - Circular doubly-linked list support with a head sentinel
+  - Contiguous N x fixed block allocator
+  - CPU clock based timebase support
+  - Doubly-linked list support
+  - ELF file parser
+  - Endian-order support
+  - Error return / reporting support
+  - FIFO support
+  - Fundamental types, u8, u16, u32, and so on
+  - High-performance event logger
+  - High-performance memcpy support
+  - High-performance mmap-based circular log support
+  - High-performance timer-wheel templates
+  - Linux socket support
+  - Linux sysfs file parsing support
+  - Low-level CPU support
+  - Mapped pcap file support
+  - Memory allocator, "Doug Lea" malloc with a few tweaks
+  - Minimal overhead Linux system-call support
+  - Multi-architecture setjmp / longjmp support
+  - Numerous Unit tests
+  - Physical memory allocator support
+  - Pools, a high performance fixed block allocation scheme
+  - Red/black trees.
+  - Rigorously vetted linear congruential random numbers (32 and 64 bit)
+  - Serialization / unserialization support
+  - SHA256, SHA512 support
+  - Simple first-fit virtual space allocator
+  - Simple hashing support
+  - Simple macro expander
+  - Sparse vector support
+  - Spinlock support
+  - Time Range support
+  - Unix / Linux errno support
+  - Vector-based printf / scanf equivalents (format, unformat)
+  - Warshall's algorithm (positive transitive closure of a relation)
+  - XXhash support
+description: "VPP's foundation / infrastructure support library.
+             The library dates from 2000 and hardly changes anymore.
+             Heavily used across vpp, issues are not expected."
+state: production
+properties: [MULTITHREAD]

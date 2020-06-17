@@ -1,0 +1,18 @@
+---
+name: Caching DNS name resolver
+maintainer: Dave Barach <dave@barachs.net>
+features:
+  - Cache A and AAAA records from an upstream ipv4 DNS server
+  - Respond to ipv4 and ipv6 name resolution requests
+  - Supports cache sizes up to 64K concurrent entries
+  - Supports CNAME indirection
+  - Static cache entry creation, suitable for redirecting specific names
+  - Round robin upstream name lookups
+  - Binary API name lookup support
+  - Missing ipv6 upstream server support
+  - Perf/scale suitable for SOHO devices or other light-duty apps
+description: "A caching DNS name resolver suitable for optimizing
+             name resolution performance, and for overriding
+             gethostbyname() in an LD_PRELOAD library."
+state: development
+properties: [API, CLI, MULTITHREAD]

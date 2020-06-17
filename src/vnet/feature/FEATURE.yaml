@@ -1,0 +1,15 @@
+---
+name: Feature Arc Support
+maintainer:
+  - Dave Barach <dave@barachs.net>
+features:
+  - Feature arc registration
+  - Feature registration
+  - Flexible feature order constraint specification
+  - High-performance internal APIs to dispatch packets to the next feature node
+  - Topological feature sorting
+description: "Constraint-based feature arc configuration, internal
+             APIs to dispatch packets to the next configured feature.
+             A fundamental vpp forwarding graph extension mechanism."
+state: production
+properties: [API, CLI, MULTITHREAD]
