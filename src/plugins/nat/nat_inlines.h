@@ -105,120 +105,99 @@ nat_pre_node_fn_inline (vlib_main_t * vm,
 			vlib_node_runtime_t * node,
 			vlib_frame_t * frame, u32 def_next)
 {
-  u32 n_left_from, *from, *to_next;
-  u16 next_index;
+  u32 n_left_from, *from;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
 
-  while (n_left_from > 0)
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
+  vlib_get_buffers (vm, from, b, n_left_from);
+
+  while (n_left_from >= 2)
     {
-      u32 n_left_to_next;
+      u32 next0, next1;
+      u32 arc_next0, arc_next1;
+      vlib_buffer_t *b0, *b1;
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      b0 = *b;
+      b++;
+      b1 = *b;
+      b++;
 
-      while (n_left_from >= 4 && n_left_to_next >= 2)
+      /* Prefetch next iteration. */
+      if (PREDICT_TRUE (n_left_from >= 4))
 	{
-	  u32 next0, next1;
-	  u32 arc_next0, arc_next1;
-	  u32 bi0, bi1;
-	  vlib_buffer_t *b0, *b1;
+	  vlib_buffer_t *p2, *p3;
 
-	  /* Prefetch next iteration. */
-	  {
-	    vlib_buffer_t *p2, *p3;
+	  p2 = *b;
+	  p3 = *(b + 1);
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
+	  vlib_prefetch_buffer_header (p2, LOAD);
+	  vlib_prefetch_buffer_header (p3, LOAD);
 
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
-
-	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	  }
-
-	  /* speculatively enqueue b0 and b1 to the current next frame */
-	  to_next[0] = bi0 = from[0];
-	  to_next[1] = bi1 = from[1];
-	  from += 2;
-	  to_next += 2;
-	  n_left_from -= 2;
-	  n_left_to_next -= 2;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
-
-	  next0 = def_next;
-	  next1 = def_next;
-
-	  vnet_feature_next (&arc_next0, b0);
-	  vnet_feature_next (&arc_next1, b1);
-
-	  vnet_buffer2 (b0)->nat.arc_next = arc_next0;
-	  vnet_buffer2 (b1)->nat.arc_next = arc_next1;
-
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
-	    {
-	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
-		{
-		  nat_pre_trace_t *t =
-		    vlib_add_trace (vm, node, b0, sizeof (*t));
-		  t->next_index = next0;
-		  t->arc_next_index = arc_next0;
-		}
-	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
-		{
-		  nat_pre_trace_t *t =
-		    vlib_add_trace (vm, node, b0, sizeof (*t));
-		  t->next_index = next1;
-		  t->arc_next_index = arc_next1;
-		}
-	    }
-
-	  /* verify speculative enqueues, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, LOAD);
 	}
 
-      while (n_left_from > 0 && n_left_to_next > 0)
+      next0 = def_next;
+      next1 = def_next;
+
+      vnet_feature_next (&arc_next0, b0);
+      vnet_feature_next (&arc_next1, b1);
+
+      vnet_buffer2 (b0)->nat.arc_next = arc_next0;
+      vnet_buffer2 (b1)->nat.arc_next = arc_next1;
+
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	{
-	  u32 next0;
-	  u32 arc_next0;
-	  u32 bi0;
-	  vlib_buffer_t *b0;
-
-	  /* speculatively enqueue b0 to the current next frame */
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  next0 = def_next;
-	  vnet_feature_next (&arc_next0, b0);
-	  vnet_buffer2 (b0)->nat.arc_next = arc_next0;
-
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	    {
 	      nat_pre_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->next_index = next0;
 	      t->arc_next_index = arc_next0;
 	    }
-
-	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  if (b1->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      nat_pre_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
+	      t->next_index = next1;
+	      t->arc_next_index = arc_next1;
+	    }
 	}
 
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      n_left_from -= 2;
+      next[0] = next0;
+      next[1] = next1;
+      next += 2;
     }
+
+  while (n_left_from > 0)
+    {
+      u32 next0;
+      u32 arc_next0;
+      vlib_buffer_t *b0;
+
+      b0 = *b;
+      b++;
+
+      next0 = def_next;
+      vnet_feature_next (&arc_next0, b0);
+      vnet_buffer2 (b0)->nat.arc_next = arc_next0;
+
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+	  nat_pre_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
+	  t->next_index = next0;
+	  t->arc_next_index = arc_next0;
+	}
+
+      n_left_from--;
+      next[0] = next0;
+      next++;
+    }
+  vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
+			       frame->n_vectors);
 
   return frame->n_vectors;
 }
