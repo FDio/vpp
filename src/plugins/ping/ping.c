@@ -189,6 +189,16 @@ ip46_get_icmp_id_and_seq (vlib_main_t * vm, vlib_buffer_t * b0,
   return 1;
 }
 
+/* get the vlib_time_now() for the current thread */
+static f64
+mythread_vlib_time_now ()
+{
+  u32 thread_index = vlib_get_thread_index ();
+  vlib_main_t *vm = *vec_elt_at_index (vlib_mains, thread_index);
+  f64 now = vlib_time_now (vm);
+  return now;
+}
+
 /*
  * post the buffer to a given cli process node - the caller should forget bi0 after return.
  */
@@ -198,7 +208,7 @@ ip46_post_icmp_reply_event (vlib_main_t * vm, uword cli_process_id, u32 bi0,
 			    int is_ip6)
 {
   vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
-  u64 nowts = clib_cpu_time_now ();
+  f64 nowts = mythread_vlib_time_now ();
 
   /* Pass the timestamp to the cli_process thanks to the vnet_buffer unused metadata field */
 
@@ -206,7 +216,7 @@ ip46_post_icmp_reply_event (vlib_main_t * vm, uword cli_process_id, u32 bi0,
   STATIC_ASSERT (ARRAY_LEN (vnet_buffer (b0)->unused) *
 		 sizeof (vnet_buffer (b0)->unused[0]) > sizeof (nowts),
 		 "ping reply timestamp fits within remaining space of vnet_buffer unused data");
-  u64 *pnowts = (void *) &vnet_buffer (b0)->unused[0];
+  f64 *pnowts = (void *) &vnet_buffer (b0)->unused[0];
   *pnowts = nowts;
 
   u32 event_id = is_ip6 ? PING_RESPONSE_IP6 : PING_RESPONSE_IP4;
@@ -594,7 +604,7 @@ static u16
 init_icmp46_echo_request (vlib_main_t * vm, vlib_buffer_t * b0,
 			  int l4_header_offset,
 			  icmp46_echo_request_t * icmp46_echo, u16 seq_host,
-			  u16 id_host, u64 now, u16 data_len)
+			  u16 id_host, f64 now, u16 data_len)
 {
   int i;
 
@@ -783,7 +793,7 @@ ip46_fill_icmp_request_at (vlib_main_t * vm, int l4_offset, u16 seq_host,
 
   data_len =
     init_icmp46_echo_request (vm, b0, l4_offset, icmp46_echo, seq_host,
-			      id_host, clib_cpu_time_now (), data_len);
+			      id_host, mythread_vlib_time_now (), data_len);
   return data_len;
 }
 
@@ -1071,11 +1081,9 @@ print_ip46_icmp_reply (vlib_main_t * vm, u32 bi0, int is_ip6)
     }
   icmp46_header_t *icmp = vlib_buffer_get_current (b0) + l4_offset;
   icmp46_echo_request_t *icmp_echo = (icmp46_echo_request_t *) (icmp + 1);
-  u64 *dataplane_ts = (u64 *) & vnet_buffer (b0)->unused[0];
+  f64 *dataplane_ts = (f64 *) & vnet_buffer (b0)->unused[0];
 
-  f64 clocks_per_second = ((f64) vm->clib_time.clocks_per_second);
-  f64 rtt =
-    ((f64) (*dataplane_ts - icmp_echo->time_sent)) / clocks_per_second;
+  f64 rtt = *dataplane_ts - icmp_echo->time_sent;
 
   vlib_cli_output (vm,
 		   "%d bytes from %U: icmp_seq=%d ttl=%d time=%.4f ms",
