@@ -135,6 +135,8 @@ typedef struct
    * The tunnels sibling index on the FIB entry's dependency list.
    */
   u32 sibling_index;
+
+  u8 l3_mode;
 } geneve_tunnel_t;
 
 #define foreach_geneve_input_next        \
@@ -173,9 +175,6 @@ typedef struct
   /* mcast shared info */
   uword *mcast_shared;		/* keyed on mcast ip46 addr */
 
-  /* Free vlib hw_if_indices */
-  u32 *free_geneve_tunnel_hw_if_indices;
-
   /* Mapping from sw_if_index to tunnel index */
   u32 *tunnel_index_by_sw_if_index;
 
@@ -205,6 +204,7 @@ typedef struct
   u32 encap_fib_index;
   u32 decap_next_index;
   u32 vni;
+  u8 l3_mode;
 } vnet_geneve_add_del_tunnel_args_t;
 
 int vnet_geneve_add_del_tunnel
