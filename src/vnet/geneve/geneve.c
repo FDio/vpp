@@ -81,6 +81,7 @@ format_geneve_tunnel (u8 * s, va_list * args)
 
   s = format (s, "encap-dpo-idx %d ", t->next_dpo.dpoi_index);
   s = format (s, "decap-next-%U ", format_decap_next, t->decap_next_index);
+  s = format (s, "l3-mode %u ", t->l3_mode);
 
   if (PREDICT_FALSE (ip46_address_is_multicast (&t->remote)))
     s = format (s, "mcast-sw-if-idx %d ", t->mcast_sw_if_index);
@@ -105,12 +106,21 @@ geneve_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return /* no error */ 0;
 }
 
+static clib_error_t *
+geneve_mac_change (vnet_hw_interface_t * hi,
+		   const u8 * old_address, const u8 * mac_address)
+{
+  l2input_interface_mac_change (hi->sw_if_index, old_address, mac_address);
+  return (NULL);
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (geneve_device_class, static) = {
   .name = "GENEVE",
   .format_device_name = format_geneve_name,
   .format_tx_trace = format_geneve_encap_trace,
   .admin_up_down_function = geneve_interface_admin_up_down,
+  .mac_addr_change_function = geneve_mac_change,
 };
 /* *INDENT-ON* */
 
@@ -206,8 +216,9 @@ _(vni)                                          \
 _(mcast_sw_if_index)                            \
 _(encap_fib_index)                              \
 _(decap_next_index)                             \
-_(local)                                          \
-_(remote)
+_(local)                                        \
+_(remote)					\
+_(l3_mode)
 
 static int
 geneve_rewrite (geneve_tunnel_t * t, bool is_ip6)
@@ -400,38 +411,29 @@ int vnet_geneve_add_del_tunnel
 	hash_set (vxm->geneve4_tunnel_by_key, key4.as_u64, t - vxm->tunnels);
 
       vnet_hw_interface_t *hi;
-      if (vec_len (vxm->free_geneve_tunnel_hw_if_indices) > 0)
+      if (a->l3_mode)
 	{
-	  vnet_interface_main_t *im = &vnm->interface_main;
-	  hw_if_index = vxm->free_geneve_tunnel_hw_if_indices
-	    [vec_len (vxm->free_geneve_tunnel_hw_if_indices) - 1];
-	  _vec_len (vxm->free_geneve_tunnel_hw_if_indices) -= 1;
-
-	  hi = vnet_get_hw_interface (vnm, hw_if_index);
-	  hi->dev_instance = t - vxm->tunnels;
-	  hi->hw_instance = hi->dev_instance;
-
-	  /* clear old stats of freed tunnel before reuse */
-	  sw_if_index = hi->sw_if_index;
-	  vnet_interface_counter_lock (im);
-	  vlib_zero_combined_counter
-	    (&im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX],
-	     sw_if_index);
-	  vlib_zero_combined_counter (&im->combined_sw_if_counters
-				      [VNET_INTERFACE_COUNTER_RX],
-				      sw_if_index);
-	  vlib_zero_simple_counter (&im->sw_if_counters
-				    [VNET_INTERFACE_COUNTER_DROP],
-				    sw_if_index);
-	  vnet_interface_counter_unlock (im);
+	  u32 t_idx = t - vxm->tunnels;
+	  u8 address[6] =
+	    { 0xd0, 0x0b, 0xee, 0xd0, (u8) (t_idx >> 8), (u8) t_idx };
+	  clib_error_t *error =
+	    ethernet_register_interface (vnm, geneve_device_class.index,
+					 t_idx,
+					 address, &hw_if_index, 0);
+	  if (error)
+	    {
+	      clib_error_report (error);
+	      return VNET_API_ERROR_INVALID_REGISTRATION;
+	    }
 	}
       else
 	{
 	  hw_if_index = vnet_register_interface
 	    (vnm, geneve_device_class.index, t - vxm->tunnels,
 	     geneve_hw_class.index, t - vxm->tunnels);
-	  hi = vnet_get_hw_interface (vnm, hw_if_index);
 	}
+
+      hi = vnet_get_hw_interface (vnm, hw_if_index);
 
       /* Set geneve tunnel output node */
       u32 encap_index = !is_ip6 ?
@@ -564,7 +566,11 @@ int vnet_geneve_add_del_tunnel
       /* make sure tunnel is removed from l2 bd or xconnect */
       set_int_l2_mode (vxm->vlib_main, vnm, MODE_L3, t->sw_if_index, 0,
 		       L2_BD_PORT_TYPE_NORMAL, 0, 0);
-      vec_add1 (vxm->free_geneve_tunnel_hw_if_indices, t->hw_if_index);
+
+      if (t->l3_mode)
+	ethernet_delete_interface (vnm, t->hw_if_index);
+      else
+	vnet_delete_hw_interface (vnm, t->hw_if_index);
 
       vxm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;
 
@@ -651,6 +657,7 @@ geneve_add_del_tunnel_command_fn (vlib_main_t * vm,
   u8 grp_set = 0;
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
+  u8 l3_mode = 0;
   u32 encap_fib_index = 0;
   u32 mcast_sw_if_index = ~0;
   u32 decap_next_index = GENEVE_INPUT_NEXT_L2_INPUT;
@@ -735,6 +742,10 @@ geneve_add_del_tunnel_command_fn (vlib_main_t * vm,
 	      error = clib_error_return (0, "vni %d out of range", vni);
 	      goto done;
 	    }
+	}
+      else if (unformat (line_input, "l3-mode"))
+	{
+	  l3_mode = 1;
 	}
       else
 	{
@@ -864,7 +875,7 @@ VLIB_CLI_COMMAND (create_geneve_tunnel_command, static) = {
   .short_help =
   "create geneve tunnel local <local-vtep-addr>"
   " {remote <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} vni <nn>"
-  " [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [del]",
+  " [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [l3-mode] [del]",
   .function = geneve_add_del_tunnel_command_fn,
 };
 /* *INDENT-ON* */

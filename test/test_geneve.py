@@ -6,8 +6,8 @@ import unittest
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
 
-from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP
+from scapy.layers.l2 import Ether, ARP
+from scapy.layers.inet import IP, UDP, ICMP
 from scapy.contrib.geneve import GENEVE
 
 import util
@@ -233,6 +233,75 @@ class TestGeneve(BridgeDomain, VppTestCase):
         self.logger.info(self.vapi.cli("show bridge-domain 3 detail"))
         self.logger.info(self.vapi.cli("show geneve tunnel"))
 
+
+class TestGeneveL3(VppTestCase):
+    """ GENEVE L3 Test Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestGeneveL3, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(2))
+            cls.interfaces = list(cls.pg_interfaces)
+
+            for i in cls.interfaces:
+                i.admin_up()
+                i.config_ip4()
+                i.resolve_arp()
+        except Exception:
+            super(TestGeneveL3, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestGeneveL3, cls).tearDownClass()
+
+    def tearDown(self):
+        super(TestGeneveL3, self).tearDown()
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show geneve tunnel"))
+        self.logger.info(self.vapi.cli("show ip neighbor"))
+
+    def test_l3_packet(self):
+        vni = 1234
+        r = self.vapi.add_node_next(node_name="geneve4-input",
+                                    next_name="ethernet-input")
+        r = self.vapi.geneve_add_del_tunnel2(
+            is_add=1,
+            local_address=self.pg0.local_ip4,
+            remote_address=self.pg0.remote_ip4,
+            vni=vni,
+            l3_mode=1,
+            decap_next_index=r.node_index)
+
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=r.sw_if_index, prefix="10.0.0.1/24")
+
+        pkt = (Ether(src=self.pg0.remote_mac, dst="d0:0b:ee:d0:00:00") /
+               IP(src='10.0.0.2', dst='10.0.0.1') /
+               ICMP())
+
+        encap = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                 IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
+                 UDP(sport=6081, dport=6081, chksum=0) /
+                 GENEVE(vni=vni))
+
+        arp = (Ether(src=self.pg0.remote_mac, dst="d0:0b:ee:d0:00:00") /
+               ARP(op="is-at", hwsrc=self.pg0.remote_mac,
+                   hwdst="d0:0b:ee:d0:00:00", psrc="10.0.0.2",
+                   pdst="10.0.0.1"))
+
+        rx = self.send_and_expect(self.pg0, encap/pkt*1, self.pg0)
+        rx = self.send_and_assert_no_replies(self.pg0, encap/arp*1, self.pg0)
+        rx = self.send_and_expect(self.pg0, encap/pkt*1, self.pg0)
+        self.assertEqual(rx[0][ICMP].type, 0)  # echo reply
+
+        r = self.vapi.geneve_add_del_tunnel2(
+            is_add=0,
+            local_address=self.pg0.local_ip4,
+            remote_address=self.pg0.remote_ip4,
+            vni=vni)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
