@@ -1,0 +1,14 @@
+---
+name: Packet Tracer
+maintainer: Dave Barach <dave@barachs.net>
+features:
+  - pcap rx/tx/drop packet tracing
+  - vpp native (ascii) packet tracing
+  - graph dispatch engine pcap tracing
+  - classifier-based packet trace selection
+  - Per-interface packet trace  selection
+description: "Support for various kinds of packet trace and captures.
+             Very useful for understanding and replaying traffic
+             for debugging purposes."
+state: production
+properties: [API, CLI, MULTITHREAD]
