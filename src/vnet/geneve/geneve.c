@@ -105,12 +105,21 @@ geneve_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return /* no error */ 0;
 }
 
+static clib_error_t *
+geneve_mac_change (vnet_hw_interface_t * hi,
+		   const u8 * old_address, const u8 * mac_address)
+{
+  l2input_interface_mac_change (hi->sw_if_index, old_address, mac_address);
+  return (NULL);
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (geneve_device_class, static) = {
   .name = "GENEVE",
   .format_device_name = format_geneve_name,
   .format_tx_trace = format_geneve_encap_trace,
   .admin_up_down_function = geneve_interface_admin_up_down,
+  .mac_addr_change_function = geneve_mac_change,
 };
 /* *INDENT-ON* */
 
@@ -432,6 +441,9 @@ int vnet_geneve_add_del_tunnel
 	     geneve_hw_class.index, t - vxm->tunnels);
 	  hi = vnet_get_hw_interface (vnm, hw_if_index);
 	}
+
+      vec_validate (hi->hw_address,
+		    STRUCT_SIZE_OF (ethernet_header_t, src_address) - 1);
 
       /* Set geneve tunnel output node */
       u32 encap_index = !is_ip6 ?
