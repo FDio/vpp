@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "59f63295_7dbafa56",
+        "filename": "src/plugins/ping/ping.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-06-17T12:57:22Z",
+      "side": 1,
+      "message": "Unless I\u0027ve missed my guess, vlib_time_now(vm) would be sufficient. \n\nThe wrapper is useful in terms of making sure that\u0027s correct. Please try ASSERT(vm-\u003ethread_index \u003d\u003d vlib_get_thread_index()) and see if the wheels fall off.",
+      "revId": "fd197887c2430ba0c481da05b3929a3b4242ec12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
