@@ -1,0 +1,12 @@
+---
+name: G2 graphical event log viewer
+maintainer:
+  - Dave Barach <dave@barachs.net>
+features:
+  - Vppinfra elog.[ch] log viewer
+  - Scales to over 10e6 events, 10e4 tracks
+  - Automated anomaly detector
+  - View snapshots
+description: "A highly scalable graphical event log viewer, specifically
+             tailored to displaying src/vppinfra/elog.[ch] log files"
+state: production

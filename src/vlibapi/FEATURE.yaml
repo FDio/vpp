@@ -1,0 +1,14 @@
+---
+name: Binary API library
+maintainer:
+  - Dave Barach <dave@barachs.net>
+features:
+  - Event logging
+  - Message execution
+  - Message handler registration
+  - Message replay
+  - Message tracing
+  - Post-mortem message trace capture
+  - Platform-dependent message handler invocation
+description: "Transport-independent binary API message handling library"
+state: production

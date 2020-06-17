@@ -1,0 +1,13 @@
+---
+name: Binary API shared memory / socket transport library
+maintainer:
+  - Dave Barach <dave@barachs.net>
+features:
+  - Transport connection setup and teardown binary API message definitions
+  - Transport connection setup and teardown binary API message handlers
+  - Remote procedure call binary API support
+  - Debug CLI for binary api message trace dump and replay
+  - Command-line configuration of binary api tracing
+description: "Binary API message transport library"
+state: production
+properties: [API, CLI, MULTITHREAD]
