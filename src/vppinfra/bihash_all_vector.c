@@ -17,7 +17,7 @@
 
 /* Vector of all bihashes */
 void **clib_all_bihashes;
-static void **clib_all_bihash_heap;
+static void *clib_all_bihash_heap;
 
 void *
 clib_all_bihash_set_heap (void)
