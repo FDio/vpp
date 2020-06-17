@@ -1810,19 +1810,19 @@ classify_filter_command_fn (vlib_main_t * vm,
 
       for (i = 0; i < vec_len (set->table_indices); i++)
 	{
-	  t = pool_elt_at_index (cm->tables, i);
+	  t = pool_elt_at_index (cm->tables, set->table_indices[i]);
 	  /* classifier geometry mismatch, can't use this table */
 	  if (t->match_n_vectors != match || t->skip_n_vectors != skip)
 	    continue;
 	  /* Masks aren't congruent, can't use this table */
-	  if (vec_len (t->mask) != vec_len (mask))
+	  if (vec_len (t->mask) * sizeof(t->mask[0]) != vec_len (mask) * sizeof(mask[0]))
 	    continue;
 	  /* Masks aren't bit-for-bit identical, can't use this table */
 	  if (memcmp (t->mask, mask, vec_len (mask)))
 	    continue;
 
 	  /* Winner... */
-	  table_index = i;
+	  table_index = set->table_indices[i];
 	  goto found_table;
 	}
     }
