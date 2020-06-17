@@ -74,7 +74,7 @@ extern ping_main_t ping_main;
 typedef CLIB_PACKED (struct {
   u16 id;
   u16 seq;
-  u64 time_sent;
+  f64 time_sent;
   u8 data[0];
 }) icmp46_echo_request_t;
 
