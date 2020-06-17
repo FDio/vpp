@@ -58,7 +58,7 @@ schema = {
 
 def filelist_from_git_status():
     filelist = []
-    git_status = 'git status --porcelain */FEATURE.yaml'
+    git_status = 'git status --porcelain */FEATURE*.yaml'
     rv = run(git_status.split(), stdout=PIPE, stderr=PIPE)
     if rv.returncode != 0:
         sys.exit(rv.returncode)
@@ -71,7 +71,7 @@ def filelist_from_git_status():
 
 def filelist_from_git_ls():
     filelist = []
-    git_ls = 'git ls-files :(top)*/FEATURE.yaml'
+    git_ls = 'git ls-files :(top)*/FEATURE*.yaml'
     rv = run(git_ls.split(), stdout=PIPE, stderr=PIPE)
     if rv.returncode != 0:
         sys.exit(rv.returncode)
