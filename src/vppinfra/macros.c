@@ -1,9 +1,9 @@
 /*
-  macros.c - a simple macro expander
-
-  Copyright (c) 2010, 2014 Cisco and/or its affiliates.
-
-  * Licensed under the Apache License, Version 2.0 (the "License");
+ * macros.c - a simple macro expander
+ *
+ *  Copyright (c) 2010-2020 Cisco and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
  *
@@ -28,10 +28,10 @@ macro_isalnum (i8 c)
 }
 
 static i8 *
-builtin_eval (macro_main_t * mm, i8 * varname, i32 complain)
+builtin_eval (clib_macro_main_t * mm, i8 * varname, i32 complain)
 {
   uword *p;
-  i8 *(*fp) (macro_main_t *, i32);
+  i8 *(*fp) (clib_macro_main_t *, i32);
 
   p = hash_get_mem (mm->the_builtin_eval_hash, varname);
   if (p == 0)
@@ -41,7 +41,7 @@ builtin_eval (macro_main_t * mm, i8 * varname, i32 complain)
 }
 
 int
-clib_macro_unset (macro_main_t * mm, char *name)
+clib_macro_unset (clib_macro_main_t * mm, char *name)
 {
   hash_pair_t *p;
   u8 *key, *value;
@@ -61,7 +61,7 @@ clib_macro_unset (macro_main_t * mm, char *name)
 }
 
 int
-clib_macro_set_value (macro_main_t * mm, char *name, char *value)
+clib_macro_set_value (clib_macro_main_t * mm, char *name, char *value)
 {
   u8 *key_copy, *value_copy;
   int rv;
@@ -76,7 +76,7 @@ clib_macro_set_value (macro_main_t * mm, char *name, char *value)
 }
 
 i8 *
-clib_macro_get_value (macro_main_t * mm, char *name)
+clib_macro_get_value (clib_macro_main_t * mm, char *name)
 {
   uword *p;
 
@@ -92,7 +92,7 @@ clib_macro_get_value (macro_main_t * mm, char *name)
  * looks up $foobar in the variable table.
  */
 i8 *
-clib_macro_eval (macro_main_t * mm, i8 * s, i32 complain)
+clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain)
 {
   i8 *rv = 0;
   i8 *varname, *varvalue;
@@ -189,7 +189,7 @@ clib_macro_eval (macro_main_t * mm, i8 * s, i32 complain)
  * looks up $foobar in the variable table.
  */
 i8 *
-clib_macro_eval_dollar (macro_main_t * mm, i8 * s, i32 complain)
+clib_macro_eval_dollar (clib_macro_main_t * mm, i8 * s, i32 complain)
 {
   i8 *s2;
   i8 *rv;
@@ -201,14 +201,14 @@ clib_macro_eval_dollar (macro_main_t * mm, i8 * s, i32 complain)
 }
 
 void
-clib_macro_add_builtin (macro_main_t * mm, char *name, void *eval_fn)
+clib_macro_add_builtin (clib_macro_main_t * mm, char *name, void *eval_fn)
 {
   hash_set_mem (mm->the_builtin_eval_hash, name, (uword) eval_fn);
 }
 
 #ifdef CLIB_UNIX
 static i8 *
-eval_hostname (macro_main_t * mm, i32 complain)
+eval_hostname (clib_macro_main_t * mm, i32 complain)
 {
   char tmp[128];
   if (gethostname (tmp, sizeof (tmp)))
@@ -218,7 +218,7 @@ eval_hostname (macro_main_t * mm, i32 complain)
 #endif
 
 void
-clib_macro_init (macro_main_t * mm)
+clib_macro_init (clib_macro_main_t * mm)
 {
   if (mm->the_builtin_eval_hash != 0)
     {
@@ -235,7 +235,7 @@ clib_macro_init (macro_main_t * mm)
 }
 
 void
-clib_macro_free (macro_main_t * mm)
+clib_macro_free (clib_macro_main_t * mm)
 {
   hash_pair_t *p;
   u8 **strings_to_free = 0;
@@ -256,6 +256,62 @@ clib_macro_free (macro_main_t * mm)
   vec_free (strings_to_free);
   hash_free (mm->the_value_table_hash);
 }
+
+typedef struct
+{
+  u8 *name;
+  u8 *value;
+} name_sort_t;
+
+static int
+name_compare (void *a1, void *a2)
+{
+  name_sort_t *ns1 = a1;
+  name_sort_t *ns2 = a2;
+
+  return strcmp ((char *) ns1->name, (char *) ns2->name);
+}
+
+
+u8 *
+format_clib_macro_main (u8 * s, va_list * args)
+{
+  clib_macro_main_t *mm = va_arg (*args, clib_macro_main_t *);
+  int evaluate = va_arg (*args, int);
+  hash_pair_t *p;
+  name_sort_t *nses = 0, *ns;
+  int i;
+
+  /* *INDENT-OFF* */
+  hash_foreach_pair (p, mm->the_value_table_hash,
+  ({
+    vec_add2 (nses, ns, 1);
+    ns->name = (u8 *)(p->key);
+    ns->value = (u8 *)(p->value[0]);
+  }));
+  /* *INDENT-ON* */
+
+  if (vec_len (nses) == 0)
+    return s;
+
+  vec_sort_with_function (nses, name_compare);
+
+  for (i = 0; i < vec_len (nses); i++)
+    {
+      s = format (s, "%-20s", nses[i].name);
+      if (evaluate == 0)
+	s = format (s, "%s\n", nses[i].value);
+      else
+	{
+	  u8 *rv = (u8 *) clib_macro_eval_dollar (mm, (i8 *) nses[i].name,
+						  0 /* no complain */ );
+	  s = format (s, "%s\n", rv);
+	  vec_free (rv);
+	}
+    }
+  return s;
+}
+
 
 /*
  * fd.io coding-style-patch-verification: ON
