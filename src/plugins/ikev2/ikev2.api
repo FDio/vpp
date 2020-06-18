@@ -68,7 +68,6 @@ define ikev2_profile_details
 /** \brief IKEv2: Add/delete profile
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-
     @param name - IKEv2 profile name
     @param is_add - Add IKEv2 profile if non-zero, else delete
 */
@@ -80,12 +79,12 @@ autoreply define ikev2_profile_add_del
   string name[64];
   bool is_add;
   option vat_help = "name <profile_name> [del]";
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Set IKEv2 profile authentication method
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-
     @param name - IKEv2 profile name
     @param auth_method - IKEv2 authentication method (shared-key-mic/rsa-sig)
     @param is_hex - Authentication data in hex format if non-zero, else string
@@ -103,12 +102,12 @@ autoreply define ikev2_profile_set_auth
   u32 data_len;
   u8 data[data_len];
   option vat_help = "name <profile_name> auth_method <method> (auth_data 0x<data> | auth_data <data>)";
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Set IKEv2 profile local/remote identification
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-
     @param name - IKEv2 profile name
     @param is_local - Identification is local if non-zero, else remote
     @param id_type - Identification type
@@ -126,12 +125,12 @@ autoreply define ikev2_profile_set_id
   u32 data_len;
   u8 data[data_len];
   option vat_help = "name <profile_name> id_type <type> (id_data 0x<data> | id_data <data>) (local|remote)";
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Set IKEv2 profile traffic selector parameters
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-
     @param name - IKEv2 profile name
     @param is_local - Traffic selector is local if non-zero, else remote
     @param proto - Traffic selector IP protocol (if zero not relevant)
@@ -153,6 +152,7 @@ autoreply define ikev2_profile_set_ts
   u32 start_addr;
   u32 end_addr;
   option vat_help = "name <profile_name> protocol <proto> start_port <port> end_port <port> start_addr <ip4> end_addr <ip4> (local|remote)";
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Set IKEv2 local RSA private key
@@ -168,6 +168,7 @@ autoreply define ikev2_set_local_key
 
   string key_file[256];
   option vat_help = "file <absolute_file_path>";
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Set the tunnel interface which will be protected by IKE
@@ -184,12 +185,12 @@ autoreply define ikev2_set_tunnel_interface
   string name[64];
 
   vl_api_interface_index_t sw_if_index;
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Set IKEv2 responder interface and IP address
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-
     @param name - IKEv2 profile name
     @param sw_if_index - interface index
     @param address - interface address
@@ -203,18 +204,17 @@ autoreply define ikev2_set_responder
   vl_api_interface_index_t sw_if_index;
   vl_api_ip4_address_t address;
   option vat_help = "<profile_name> interface <interface> address <addr>";
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Set IKEv2 IKE transforms in SA_INIT proposal (RFC 7296)
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-
     @param name - IKEv2 profile name
     @param crypto_alg - encryption algorithm
     @param crypto_key_size - encryption key size
     @param integ_alg - integrity algorithm
     @param dh_group - Diffie-Hellman group
-    
 */
 autoreply define ikev2_set_ike_transforms
 {
@@ -227,18 +227,17 @@ autoreply define ikev2_set_ike_transforms
   u32 integ_alg;
   u32 dh_group;
   option vat_help = "<profile_name> <crypto alg> <key size> <integrity alg> <DH group>";
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Set IKEv2 ESP transforms in SA_INIT proposal (RFC 7296)
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-
     @param name - IKEv2 profile name
     @param crypto_alg - encryption algorithm
     @param crypto_key_size - encryption key size
     @param integ_alg - integrity algorithm
     @param dh_group - Diffie-Hellman group
-    
 */
 autoreply define ikev2_set_esp_transforms
 {
@@ -251,18 +250,17 @@ autoreply define ikev2_set_esp_transforms
   u32 integ_alg;
   u32 dh_group;
   option vat_help = "<profile_name> <crypto alg> <key size> <integrity alg> <DH group>";
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Set Child SA lifetime, limited by time and/or data
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-
     @param name - IKEv2 profile name
     @param lifetime - SA maximum life time in seconds (0 to disable)
     @param lifetime_jitter - Jitter added to prevent simultaneous rekeying
     @param handover - Hand over time
     @param lifetime_maxdata - SA maximum life time in bytes (0 to disable)
-    
 */
 autoreply define ikev2_set_sa_lifetime
 {
@@ -275,14 +273,13 @@ autoreply define ikev2_set_sa_lifetime
   u32 handover;
   u64 lifetime_maxdata;
   option vat_help = "<profile_name> <seconds> <jitter> <handover> <max bytes>";
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Initiate the SA_INIT exchange
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-
     @param name - IKEv2 profile name
-    
 */
 autoreply define ikev2_initiate_sa_init
 {
@@ -291,14 +288,13 @@ autoreply define ikev2_initiate_sa_init
 
   string name[64];
   option vat_help = "<profile_name>";
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Initiate the delete IKE SA exchange
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-
     @param ispi - IKE SA initiator SPI
-    
 */
 autoreply define ikev2_initiate_del_ike_sa
 {
@@ -307,14 +303,13 @@ autoreply define ikev2_initiate_del_ike_sa
 
   u64 ispi;
   option vat_help = "<ispi>";
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Initiate the delete Child SA exchange
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-
     @param ispi - Child SA initiator SPI
-    
 */
 autoreply define ikev2_initiate_del_child_sa
 {
@@ -323,14 +318,13 @@ autoreply define ikev2_initiate_del_child_sa
 
   u32 ispi;
   option vat_help = "<ispi>";
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Initiate the rekey Child SA exchange
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-
     @param ispi - Child SA initiator SPI
-    
 */
 autoreply define ikev2_initiate_rekey_child_sa
 {
@@ -339,6 +333,7 @@ autoreply define ikev2_initiate_rekey_child_sa
 
   u32 ispi;
   option vat_help = "<ispi>";
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Set UDP encapsulation
@@ -352,6 +347,7 @@ autoreply define ikev2_profile_set_udp_encap
   u32 context;
 
   string name[64];
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Set/unset custom ipsec-over-udp port
@@ -369,6 +365,7 @@ autoreply define ikev2_profile_set_ipsec_udp_port
   u8 is_set;
   u16 port;
   string name[64];
+  option status="in_progress";
 };
 
 /** \brief IKEv2: Set liveness parameters
@@ -384,6 +381,7 @@ autoreply define ikev2_profile_set_liveness
 
   u32 period;
   u32 max_retries;
+  option status="in_progress";
 };
 
 /*
