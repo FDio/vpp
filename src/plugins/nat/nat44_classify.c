@@ -84,7 +84,6 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
   nat44_classify_next_t next_index;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
-  u32 *fragments_to_drop = 0;
   u32 next_in2out = 0, next_out2in = 0;
 
   from = vlib_frame_vector_args (frame);
@@ -174,11 +173,6 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  nat_send_all_to_node (vm, fragments_to_drop, node, 0,
-			NAT44_CLASSIFY_NEXT_DROP);
-
-  vec_free (fragments_to_drop);
-
   vlib_node_increment_counter (vm, node->node_index,
 			       NAT44_CLASSIFY_ERROR_NEXT_IN2OUT, next_in2out);
   vlib_node_increment_counter (vm, node->node_index,
@@ -195,7 +189,6 @@ nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
   nat44_classify_next_t next_index;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
-  u32 *fragments_to_drop = 0;
   u32 next_in2out = 0, next_out2in = 0;
 
   from = vlib_frame_vector_args (frame);
@@ -285,10 +278,6 @@ nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  nat_send_all_to_node (vm, fragments_to_drop, node, 0, NAT_NEXT_DROP);
-
-  vec_free (fragments_to_drop);
-
   vlib_node_increment_counter (vm, node->node_index,
 			       NAT44_CLASSIFY_ERROR_NEXT_IN2OUT, next_in2out);
   vlib_node_increment_counter (vm, node->node_index,
@@ -307,7 +296,6 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
   snat_static_mapping_t *m;
   u32 thread_index = vm->thread_index;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-  u32 *fragments_to_drop = 0;
   u32 next_in2out = 0, next_out2in = 0;
 
   from = vlib_frame_vector_args (frame);
@@ -421,11 +409,6 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-
-  nat_send_all_to_node (vm, fragments_to_drop, node, 0,
-			NAT44_CLASSIFY_NEXT_DROP);
-
-  vec_free (fragments_to_drop);
 
   vlib_node_increment_counter (vm, node->node_index,
 			       NAT44_CLASSIFY_ERROR_NEXT_IN2OUT, next_in2out);
