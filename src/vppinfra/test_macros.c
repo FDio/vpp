@@ -16,12 +16,12 @@
 
 #include <vppinfra/macros.h>
 
-macro_main_t macro_main;
+clib_macro_main_t clib_macro_main;
 
 int
 test_macros_main (unformat_input_t * input)
 {
-  macro_main_t *mm = &macro_main;
+  clib_macro_main_t *mm = &clib_macro_main;
 
   clib_macro_init (mm);
 

@@ -158,7 +158,7 @@ typedef struct
   uword *help_by_name;
 
   /* macro table */
-  macro_main_t macro_main;
+  clib_macro_main_t macro_main;
 
   /* Errors by number */
   uword *error_string_by_error_number;

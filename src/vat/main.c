@@ -208,14 +208,14 @@ init_error_string_table (vat_main_t * vam)
 }
 
 static i8 *
-eval_current_file (macro_main_t * mm, i32 complain)
+eval_current_file (clib_macro_main_t * mm, i32 complain)
 {
   vat_main_t *vam = &vat_main;
   return ((i8 *) format (0, "%s%c", vam->current_file, 0));
 }
 
 static i8 *
-eval_current_line (macro_main_t * mm, i32 complain)
+eval_current_line (clib_macro_main_t * mm, i32 complain)
 {
   vat_main_t *vam = &vat_main;
   return ((i8 *) format (0, "%d%c", vam->input_line_number, 0));
