@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "33a91305_3ed31554",
+        "filename": "src/plugins/ping/ping.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1075,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2020-06-18T15:07:39Z",
+      "side": 1,
+      "message": "clib_memcpy_fast() is better than memcpy()",
+      "revId": "b5d6215ce0694231725f20b1414b14e6c930f9db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
