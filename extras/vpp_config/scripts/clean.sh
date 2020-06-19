@@ -59,7 +59,7 @@ case "$LSB" in
 	;;
 esac
 
-sudo -H pip uninstall vpp-config
+sudo -H pip3 uninstall vpp-config
 sudo rm *~
 sudo rm *.pyc
 sudo rm vpplib/*~
