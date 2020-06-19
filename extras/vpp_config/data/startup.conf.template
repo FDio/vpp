@@ -1,26 +1,42 @@
 
 unix {{
-{unix}
+  nodaemon
   log /var/log/vpp/vpp.log
   full-coredump
   cli-listen /run/vpp/cli.sock
+  gid vpp
 }}
 
 api-trace {{
+## This stanza controls binary API tracing. Unless there is a very strong reason,
+## please leave this feature enabled.
   on
+## Additional parameters:
+##
+## To set the number of binary API trace records in the circular buffer, configure nitems
+##
+## nitems <nnn>
+##
+## To save the api message table decode tables, configure a filename. Results in /tmp/<filename>
+## Very handy for understanding api message changes between versions, identifying missing
+## plugins, and so forth.
+##
+## save-api-table <filename>
+}}
+
+socksvr {{
+  default
 }}
 
 cpu {{
 {cpu}
-  # scheduler-policy fifo
-  # scheduler-priority 50
-
-        ## In the VPP there is one main thread and optionally the user can create worker(s)
+	## In the VPP there is one main thread and optionally the user can create worker(s)
 	## The main thread and worker thread(s) can be pinned to CPU core(s) manually or automatically
 
 	## Manual pinning of thread(s) to CPU core(s)
 
-	## Set logical CPU core where main thread runs
+	## Set logical CPU core where main thread runs, if main core is not set
+	## VPP will use core 1 if available
 	# main-core 1
 
 	## Set logical CPU core(s) where worker threads are running
@@ -50,10 +66,23 @@ cpu {{
 	# scheduler-priority 50
 }}
 
+buffers {{
+{buffers}
+
+	## Increase number of buffers allocated, needed only in scenarios with
+	## large number of interfaces and worker threads. Value is per numa node.
+	## Default is 16384 (8192 if running unpriviledged)
+	# buffers-per-numa 128000
+
+	## Size of buffer data area
+	## Default is 2048
+	# default data-size 2048
+}}
+
 dpdk {{
 {devices}
 
-        ## Change default settings for all interfaces
+	## Change default settings for all interfaces
 	# dev default {{
 		## Number of receive queues, enables RSS
 		## Default is 1
@@ -72,10 +101,29 @@ dpdk {{
 		## VLAN strip offload mode for interface
 		## Default is off
 		# vlan-strip-offload on
+
+		## TCP Segment Offload
+		## Default is off
+		## To enable TSO, 'enable-tcp-udp-checksum' must be set
+		# tso on
+
+		## Devargs
+                ## device specific init args
+                ## Default is NULL
+		# devargs safe-mode-support=1,pipeline-mode-support=1
 	# }}
 
 	## Whitelist specific interface by specifying PCI address
 	# dev 0000:02:00.0
+
+	## Blacklist specific device type by specifying PCI vendor:device
+        ## Whitelist entries take precedence
+	# blacklist 8086:10fb
+
+	## Set interface name
+	# dev 0000:02:00.1 {{
+	#	name eth0
+	# }}
 
 	## Whitelist specific interface by specifying PCI address and in
 	## addition specify custom parameters for this interface
@@ -83,51 +131,60 @@ dpdk {{
 	#	num-rx-queues 2
 	# }}
 
-	## Specify bonded interface and its slaves via PCI addresses
-	## 
-        ## Bonded interface in XOR load balance mode (mode 2) with L3 and L4 headers 
-	# vdev eth_bond0,mode=2,slave=0000:02:00.0,slave=0000:03:00.0,xmit_policy=l34
-	# vdev eth_bond1,mode=2,slave=0000:02:00.1,slave=0000:03:00.1,xmit_policy=l34
-	##
-	## Bonded interface in Active-Back up mode (mode 1)
-	# vdev eth_bond0,mode=1,slave=0000:02:00.0,slave=0000:03:00.0
-	# vdev eth_bond1,mode=1,slave=0000:02:00.1,slave=0000:03:00.1
-
-	## Change UIO driver used by VPP, Options are: igb_uio, vfio-pci
-	## and uio_pci_generic (default)
+	## Change UIO driver used by VPP, Options are: igb_uio, vfio-pci,
+	## uio_pci_generic or auto (default)
 	# uio-driver vfio-pci
 
 	## Disable multi-segment buffers, improves performance but
 	## disables Jumbo MTU support
 	# no-multi-seg
 
-	## Increase number of buffers allocated, needed only in scenarios with
-	## large number of interfaces and worker threads. Value is per CPU socket.
-	## Default is 16384
-	# num-mbufs 128000
-
 	## Change hugepages allocation per-socket, needed only if there is need for
 	## larger number of mbufs. Default is 256M on each detected CPU socket
 	# socket-mem 2048,2048
+
+	## Disables UDP / TCP TX checksum offload. Typically needed for use
+	## faster vector PMDs (together with no-multi-seg)
+	# no-tx-checksum-offload
+
+	## Enable UDP / TCP TX checksum offload
+	## This is the reversed option of 'no-tx-checksum-offload'
+	# enable-tcp-udp-checksum
 }}
 
-# Adjusting the plugin path depending on where the VPP plugins are:
-#plugins
-#{{
-#	path /home/bms/vpp/build-root/install-vpp-native/vpp/lib/vpp_plugins
+## node variant defaults
+#node {{
+
+## specify the preferred default variant
+#	default	{{ variant avx512 }}
+
+## specify the preferred variant, for a given node
+#	ip4-rewrite {{ variant avx2 }}
+
 #}}
 
-# Alternate syntax to choose plugin path
-#plugin_path /home/bms/vpp/build-root/install-vpp-native/vpp/lib/vpp_plugins
 
-#node-variants {{
-#	defaults {{
-#		avx512 100
-#	}}
-#	ip4-inacl {{
-#	avx2 100
-#		avx512 50
-#	}}
-#}}
+# plugins {{
+	## Adjusting the plugin path depending on where the VPP plugins are
+	#	path /ws/vpp/build-root/install-vpp-native/vpp/lib/vpp_plugins
+
+	## Disable all plugins by default and then selectively enable specific plugins
+	# plugin default {{ disable }}
+	# plugin dpdk_plugin.so {{ enable }}
+	# plugin acl_plugin.so {{ enable }}
+
+	## Enable all plugins by default and then selectively disable specific plugins
+	# plugin dpdk_plugin.so {{ disable }}
+	# plugin acl_plugin.so {{ disable }}
+# }}
+
+## Statistics Segment
+# statseg {{
+    # socket-name <filename>, name of the stats segment socket
+    #     defaults to /run/vpp/stats.sock
+    # size <nnn>[KMG], size of the stats segment, defaults to 32mb
+    # per-node-counters on | off, defaults to none
+    # update-interval <f64-seconds>, sets the segment scrape / update interval
+# }}
 
 {tcp}

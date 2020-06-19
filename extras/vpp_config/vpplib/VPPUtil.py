@@ -24,14 +24,14 @@ from collections import Counter
 import distro
 
 ubuntu_pkgs = {'release': ['vpp', 'vpp-plugin-core', 'vpp-plugin-dpdk', 'vpp-api-python', 'python3-vpp-api',
-                           'vpp-dbg', 'vpp-dev'],
+                           'vpp-dbg', 'vpp-dev', 'vpp-ext-deps'],
                'master': ['vpp', 'vpp-plugin-core', 'vpp-plugin-dpdk', 'vpp-api-python', 'python3-vpp-api',
-                          'vpp-dbg', 'vpp-dev']}
+                          'vpp-dbg', 'vpp-dev', 'vpp-ext-deps']}
 
 centos_pkgs = {'release': ['vpp', 'vpp-selinux-policy', 'vpp-plugins', 'vpp-api-lua',
-                           'vpp-api-python', 'vpp-debuginfo', 'vpp-devel', 'libvpp0'],
+                           'vpp-api-python', 'vpp-debuginfo', 'vpp-devel', 'libvpp0', 'vpp-ext-deps'],
                'master': ['vpp', 'vpp-selinux-policy', 'vpp-plugins', 'vpp-api-lua',
-                          'vpp-api-python', 'vpp-debuginfo', 'vpp-devel', 'libvpp0']}
+                          'vpp-api-python', 'vpp-debuginfo', 'vpp-devel', 'libvpp0', 'vpp-ext-deps']}
 
 
 class VPPUtil(object):

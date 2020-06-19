@@ -316,27 +316,6 @@ class AutoConfig(object):
             hpg.hugepages_dryrun_apply()
 
     @staticmethod
-    def _apply_vpp_unix(node):
-        """
-        Apply the VPP Unix config
-
-        :param node: Node dictionary with cpuinfo.
-        :type node: dict
-        """
-
-        unix = '  nodaemon\n'
-        if 'unix' not in node['vpp']:
-            return ''
-
-        unixv = node['vpp']['unix']
-        if 'interactive' in unixv:
-            interactive = unixv['interactive']
-            if interactive is True:
-                unix = '  interactive\n'
-
-        return unix.rstrip('\n')
-
-    @staticmethod
     def _apply_vpp_cpu(node):
         """
         Apply the VPP cpu config
@@ -382,7 +361,6 @@ class AutoConfig(object):
 
         devices = ''
         ports_per_numa = node['cpu']['ports_per_numa']
-        total_mbufs = node['cpu']['total_mbufs']
 
         for item in ports_per_numa.items():
             value = item[1]
@@ -417,12 +395,25 @@ class AutoConfig(object):
                     devices += '    num-tx-desc {}\n'.format(num_tx_desc)
                 devices += '  }'
 
+        return devices
+
+    @staticmethod
+    def _apply_buffers(node):
+        """
+        Apply VPP PCI Device configuration to vpp startup.
+
+        :param node: Node dictionary with cpuinfo.
+        :type node: dict
+        """
+        buffers = ''
+        total_mbufs = node['cpu']['total_mbufs']
+
         # If the total mbufs is not 0 or less than the default, set num-bufs
         logging.debug("Total mbufs: {}".format(total_mbufs))
         if total_mbufs != 0 and total_mbufs > 16384:
-            devices += '\n  num-mbufs {}'.format(total_mbufs)
+            buffers += '  buffers-per-numa {}'.format(total_mbufs)
 
-        return devices
+        return buffers
 
     @staticmethod
     def _calc_vpp_workers(node, vpp_workers, numa_node, other_cpus_end,
@@ -504,9 +495,7 @@ class AutoConfig(object):
         # Get the descriptor entries
         desc_entries = 1024
         ports_per_numa_value['rx_queues'] = rx_queues
-        total_mbufs = (((rx_queues * desc_entries) +
-                        (tx_queues * desc_entries)) *
-                       total_ports_per_numa)
+        total_mbufs = ((rx_queues * desc_entries) + (tx_queues * desc_entries)) * total_ports_per_numa
 
         return total_mbufs
 
@@ -554,8 +543,7 @@ class AutoConfig(object):
 
             # Get the number of cpus to skip, we never use the first cpu
             other_cpus_start = 1
-            other_cpus_end = other_cpus_start + \
-                node['cpu']['total_other_cpus'] - 1
+            other_cpus_end = other_cpus_start + node['cpu']['total_other_cpus'] - 1
             other_workers = None
             if other_cpus_end != 0:
                 other_workers = (other_cpus_start, other_cpus_end)
@@ -608,7 +596,7 @@ class AutoConfig(object):
     @staticmethod
     def _apply_vpp_tcp(node):
         """
-        Apply the VPP Unix config
+        Apply the tcp config
 
         :param node: Node dictionary with cpuinfo.
         :type node: dict
@@ -677,15 +665,14 @@ class AutoConfig(object):
             rootdir = node['rootdir']
             sfile = rootdir + node['vpp']['startup_config_file']
 
-            # Get the devices
+            # Get the buffers
             devices = self._apply_vpp_devices(node)
 
             # Get the CPU config
             cpu = self._apply_vpp_cpu(node)
 
-            # Get the unix config
-            unix = self._apply_vpp_unix(node)
-
+            # Get the buffer configuration
+            buffers = self._apply_buffers(node)
             # Get the TCP configuration, if any
             tcp = self._apply_vpp_tcp(node)
 
@@ -699,8 +686,8 @@ class AutoConfig(object):
             if ret != 0:
                 raise RuntimeError('Executing cat command failed to node {}'.
                                    format(node['host']))
-            startup = stdout.format(unix=unix,
-                                    cpu=cpu,
+            startup = stdout.format(cpu=cpu,
+                                    buffers=buffers,
                                     devices=devices,
                                     tcp=tcp)
 
@@ -966,8 +953,7 @@ class AutoConfig(object):
         max_other_cores = total_cpus - total_vpp_cpus
         if max_other_cores > 0:
             question = 'How many core(s) do you want to reserve for ' \
-                       'processes other than VPP? [0-{}][0]? '. \
-                       format(str(max_other_cores))
+                       'processes other than VPP? [0-{}][0]? '. format(str(max_other_cores))
             total_other_cpus = self._ask_user_range(question, 0, max_other_cores, 0)
             node['cpu']['total_other_cpus'] = total_other_cpus
 
@@ -1198,8 +1184,7 @@ class AutoConfig(object):
                         dvid = dit[0]
                         device = dit[1]
                         if 'unused' in device and len(
-                                device['unused']) != 0 and device['unused'][
-                                0] != '':
+                                device['unused']) != 0 and device['unused'][0] != '':
                             driver = device['unused'][0]
                             question = "Would you like to bind the driver {} for {} [y/N]? ".format(driver, dvid)
                             answer = self._ask_user_yn(question, 'n')
@@ -1233,8 +1218,7 @@ class AutoConfig(object):
                         dvid = dit[0]
                         device = dit[1]
                         if 'unused' in device and len(
-                                device['unused']) != 0 and device['unused'][
-                                0] != '':
+                                device['unused']) != 0 and device['unused'][0] != '':
                             driver = device['unused'][0]
                             logging.debug(
                                 'Binding device {} to driver {}'.format(
@@ -1274,8 +1258,7 @@ class AutoConfig(object):
             hugesize = int(size.split(' ')[0])
             # The max number of huge pages should be no more than
             # 70% of total free memory
-            maxpages = (int(memfree) * MAX_PERCENT_FOR_HUGE_PAGES // 100) // \
-                hugesize
+            maxpages = (int(memfree) * MAX_PERCENT_FOR_HUGE_PAGES // 100) // hugesize
             print("\nThere currently {} {} huge pages free.".format(
                 free, size))
             question = "Do you want to reconfigure the number of " \
@@ -1793,13 +1776,11 @@ class AutoConfig(object):
                 setintupstr = 'set interface state {} up\n'.format(
                     intf['name'])
 
-                content += vhoststr + setintdnstr + setintbrstr + \
-                    setvintbrstr + setintvststr + setintupstr
+                content += vhoststr + setintdnstr + setintbrstr + setvintbrstr + setintvststr + setintupstr
 
             # Write the content to the script
             rootdir = node['rootdir']
-            filename = rootdir + \
-                '/vpp/vpp-config/scripts/create_vms_and_connect_to_vpp'
+            filename = rootdir + '/vpp/vpp-config/scripts/create_vms_and_connect_to_vpp'
             with open(filename, 'w+') as sfile:
                 sfile.write(content)
 
@@ -1934,8 +1915,7 @@ class AutoConfig(object):
                 setintupstr = 'set interface state {} up\n'.format(
                     intf['name'])
 
-                content += vhoststr + setintdnstr + setintbrstr + \
-                    setvintbrstr + setintvststr + setintupstr
+                content += vhoststr + setintdnstr + setintbrstr + setvintbrstr + setintvststr + setintupstr
 
             # Write the content to the script
             rootdir = node['rootdir']
