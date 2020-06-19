@@ -11,4 +11,3 @@ nodes:
     type: DUT
     vpp:
       startup_config_file: /vpp/vpp-config/dryrun/vpp/startup.conf
-      unix: {interactive: false}
