@@ -41,6 +41,7 @@ dpdk_device_setup (dpdk_device_t * xd)
   dpdk_main_t *dm = &dpdk_main;
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->sw_if_index);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
   struct rte_eth_dev_info dev_info;
@@ -124,6 +125,9 @@ dpdk_device_setup (dpdk_device_t * xd)
       u8 bpidx = vlib_buffer_pool_get_default_for_numa (vm, socket_id);
       vlib_buffer_pool_t *bp = vlib_get_buffer_pool (vm, bpidx);
       struct rte_mempool *mp = dpdk_mempool_by_buffer_pool_index[bpidx];
+
+      if (xd->tx_q_used < tm->n_vlib_mains)
+	clib_spinlock_init (&rxq->lock);
 
       rv = rte_eth_rx_queue_setup (xd->port_id, j, xd->nb_rx_desc,
 				   xd->cpu_socket, 0, mp);
