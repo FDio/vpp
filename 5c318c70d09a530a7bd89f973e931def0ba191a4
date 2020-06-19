@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "126a2d3f_1902449a",
+        "filename": "extras/scripts/crcchecker.py",
+        "patchSetId": 16
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-06-19T09:52:32Z",
+      "side": 1,
+      "message": "Do we have a document listing commonly occurring errors?\n\nhttps://www.gnu.org/software/bash/manual/html_node/Exit-Status.html\nhttps://stackoverflow.com/questions/33129781/why-do-some-people-exit-1-rather-than-exit-1-on-error",
+      "range": {
+        "startLine": 28,
+        "startChar": 17,
+        "endLine": 28,
+        "endChar": 19
+      },
+      "revId": "5c318c70d09a530a7bd89f973e931def0ba191a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
