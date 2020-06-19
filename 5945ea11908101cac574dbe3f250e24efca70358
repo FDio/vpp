@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "53e563bc_82dba651",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 271,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-06-19T12:21:46Z",
+      "side": 1,
+      "message": "I see git commit checker requires another patch set, so you can use that to remove all the trailing whitespace.",
+      "range": {
+        "startLine": 271,
+        "startChar": 0,
+        "endLine": 271,
+        "endChar": 4
+      },
+      "revId": "5945ea11908101cac574dbe3f250e24efca70358",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
