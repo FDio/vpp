@@ -239,7 +239,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   while (n_left_from > 0)
     {
       u32 error0 = UDP_ERROR_ENQUEUED;
-      session_dgram_hdr_t hdr0;
+      session_dgram_hdr_t hdr0 = { 0 };
       udp_connection_t *uc0;
       session_t *s0;
 
