@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6f66198e_273a377b",
+        "filename": "src/plugins/nat/in2out.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 897,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-06-21T12:15:30Z",
+      "side": 1,
+      "message": "Do we have \"make test\" coverage of the dual loop?",
+      "revId": "18015775d109ed6b223852cd9a8e3bc397d14eed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "81f58b9c_89777d65",
+        "filename": "src/plugins/nat/in2out.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 898,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-06-21T12:15:30Z",
+      "side": 1,
+      "message": "Did you performance-test \"while(n_left_from \u003e\u003d2)... if (PREDICT_TRUE(n_left_from \u003e\u003d4)) {prefetch-block..}\"",
+      "revId": "18015775d109ed6b223852cd9a8e3bc397d14eed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
