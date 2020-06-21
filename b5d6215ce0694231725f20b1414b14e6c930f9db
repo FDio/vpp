@@ -16,6 +16,24 @@
       "revId": "b5d6215ce0694231725f20b1414b14e6c930f9db",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7ca627a5_92ed65cf",
+        "filename": "src/plugins/ping/ping.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1075,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-06-21T12:54:05Z",
+      "side": 1,
+      "message": "This routine calls vlib_cli_output - printf - so by definition it\u0027s not performance critical. \n\nclib_memcpy (...) is faster than memcpy (...) when large blocks of data are copied and when a simd vector unit is available. It is not faster than having the compiler inline a single load/store pair. Since sizeof(f64) is known at compile time - 8 - the proposed change won\u0027t help enough to bother with.",
+      "parentUuid": "33a91305_3ed31554",
+      "revId": "b5d6215ce0694231725f20b1414b14e6c930f9db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
