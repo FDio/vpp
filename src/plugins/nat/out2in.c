@@ -85,8 +85,7 @@ _(UDP_PACKETS, "UDP packets")                           \
 _(ICMP_PACKETS, "ICMP packets")                         \
 _(OTHER_PACKETS, "other protocol packets")              \
 _(FRAGMENTS, "fragments")                               \
-_(CACHED_FRAGMENTS, "cached fragments")                 \
-_(PROCESSED_FRAGMENTS, "processed fragments")
+_(CANNOT_CREATE_USER, "cannot create NAT user")
 
 typedef enum
 {
@@ -206,7 +205,7 @@ create_session_for_static_mapping (snat_main_t * sm,
   u = nat_user_get_or_create (sm, &i2o_addr, i2o_fib_index, thread_index);
   if (!u)
     {
-      nat_elog_warn ("create NAT user failed");
+      b0->error = node->errors[SNAT_OUT2IN_ERROR_CANNOT_CREATE_USER];
       return 0;
     }
 

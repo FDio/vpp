@@ -368,12 +368,7 @@ slow_path_ed (snat_main_t * sm,
        &sm_fib_index, 0, 0, 0, &lb, 0, &identity_nat))
     {
       s = nat_ed_session_alloc (sm, thread_index, now, proto);
-      if (!s)
-	{
-	  nat_elog_warn ("create NAT session failed");
-	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_USER_SESS_EXCEEDED];
-	  return NAT_NEXT_DROP;
-	}
+      ASSERT (s);
       s->in2out.addr = l_addr;
       s->in2out.port = l_port;
       s->nat_proto = nat_proto;
@@ -418,12 +413,7 @@ slow_path_ed (snat_main_t * sm,
 	  return next;
 	}
       s = nat_ed_session_alloc (sm, thread_index, now, proto);
-      if (!s)
-	{
-	  nat_elog_warn ("create NAT session failed");
-	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_USER_SESS_EXCEEDED];
-	  return NAT_NEXT_DROP;
-	}
+      ASSERT (s);
       s->out2in.addr = sm_addr;
       s->out2in.port = sm_port;
       s->in2out.addr = l_addr;
@@ -863,7 +853,7 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
       s = nat_ed_session_alloc (sm, thread_index, now, ip->protocol);
       if (!s)
 	{
-	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_USER_SESS_EXCEEDED];
+	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
 	  nat_elog_warn ("create NAT session failed");
 	  return 0;
 	}

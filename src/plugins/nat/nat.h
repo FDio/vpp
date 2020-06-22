@@ -154,18 +154,14 @@ _(IN2OUT_PACKETS, "good in2out packets processed")      \
 _(OUT_OF_PORTS, "out of ports")                         \
 _(BAD_ICMP_TYPE, "unsupported ICMP type")               \
 _(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
-_(MAX_USER_SESS_EXCEEDED, "max user sessions exceeded") \
 _(DROP_FRAGMENT, "drop fragment")                       \
-_(CANNOT_CREATE_USER, "cannot create NAT user")         \
 _(NON_SYN, "non-SYN packet try to create session")      \
 _(TCP_PACKETS, "TCP packets")                           \
 _(TCP_CLOSED, "drops due to TCP in transitory timeout") \
 _(UDP_PACKETS, "UDP packets")                           \
 _(ICMP_PACKETS, "ICMP packets")                         \
 _(OTHER_PACKETS, "other protocol packets")              \
-_(FRAGMENTS, "fragments")                               \
-_(CACHED_FRAGMENTS, "cached fragments")                 \
-_(PROCESSED_FRAGMENTS, "processed fragments")
+_(FRAGMENTS, "fragments")
 
 typedef enum
 {
@@ -191,9 +187,7 @@ _(TCP_CLOSED, "drops due to TCP in transitory timeout") \
 _(UDP_PACKETS, "UDP packets")                           \
 _(ICMP_PACKETS, "ICMP packets")                         \
 _(OTHER_PACKETS, "other protocol packets")              \
-_(FRAGMENTS, "fragments")                               \
-_(CACHED_FRAGMENTS, "cached fragments")                 \
-_(PROCESSED_FRAGMENTS, "processed fragments")
+_(FRAGMENTS, "fragments")
 
 typedef enum
 {

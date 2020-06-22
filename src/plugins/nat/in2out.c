@@ -94,8 +94,7 @@ _(UDP_PACKETS, "UDP packets")                           \
 _(ICMP_PACKETS, "ICMP packets")                         \
 _(OTHER_PACKETS, "other protocol packets")              \
 _(FRAGMENTS, "fragments")                               \
-_(CACHED_FRAGMENTS, "cached fragments")                 \
-_(PROCESSED_FRAGMENTS, "processed fragments")
+_(CANNOT_CREATE_USER, "cannot create NAT user")
 
 typedef enum
 {
@@ -312,7 +311,7 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
 			      thread_index);
   if (!u)
     {
-      nat_elog_warn ("create NAT user failed");
+      b0->error = node->errors[SNAT_IN2OUT_ERROR_CANNOT_CREATE_USER];
       return SNAT_IN2OUT_NEXT_DROP;
     }
 
