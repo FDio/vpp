@@ -81,7 +81,10 @@ void
 ip_copy (ip46_address_t * dst, ip46_address_t * src, u8 is_ip4)
 {
   if (is_ip4)
-    dst->ip4.as_u32 = src->ip4.as_u32;
+    {
+      ip46_address_mask_ip4 (dst);
+      dst->ip4.as_u32 = src->ip4.as_u32;
+    }
   else
     clib_memcpy_fast (&dst->ip6, &src->ip6, sizeof (ip6_address_t));
 }
@@ -90,7 +93,10 @@ void
 ip_set (ip46_address_t * dst, void *src, u8 is_ip4)
 {
   if (is_ip4)
-    dst->ip4.as_u32 = ((ip4_address_t *) src)->as_u32;
+    {
+      ip46_address_mask_ip4 (dst);
+      dst->ip4.as_u32 = ((ip4_address_t *) src)->as_u32;
+    }
   else
     clib_memcpy_fast (&dst->ip6, (ip6_address_t *) src,
 		      sizeof (ip6_address_t));
