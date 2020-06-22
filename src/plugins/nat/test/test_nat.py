@@ -1389,6 +1389,19 @@ class MethodHolder(VppTestCase):
 class TestNAT44(MethodHolder):
     """ NAT44 Test Cases """
 
+    max_translations = 10240
+    max_users = 10240
+
+    @classmethod
+    def setUpConstants(cls):
+        super(TestNAT44, cls).setUpConstants()
+        cls.vpp_cmdline.extend([
+            "nat", "{",
+            "max translations per thread %d" % cls.max_translations,
+            "max users per thread %d" % cls.max_users,
+            "}"
+        ])
+
     @classmethod
     def setUpClass(cls):
         super(TestNAT44, cls).setUpClass()
@@ -2785,8 +2798,7 @@ class TestNAT44(MethodHolder):
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
-        nat44_config = self.vapi.nat_show_config()
-        max_sessions = 10 * nat44_config.translation_buckets
+        max_sessions = self.max_translations
 
         pkts = []
         for i in range(0, max_sessions):
