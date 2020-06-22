@@ -92,11 +92,19 @@ clib_macro_get_value (clib_macro_main_t * mm, char *name)
  * looks up $foobar in the variable table.
  */
 i8 *
-clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain)
+clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain, u16 level,
+		 u16 max_level)
 {
   i8 *rv = 0;
   i8 *varname, *varvalue;
   i8 *ts;
+
+  if (level >= max_level)
+    {
+      if (complain)
+	clib_warning ("circular definition, level %d", level);
+      return (i8 *) format (0, " CIRCULAR ");
+    }
 
   while (*s)
     {
@@ -161,7 +169,8 @@ clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain)
 	  if (varvalue)
 	    {
 	      /* recursively evaluate */
-	      ts = clib_macro_eval (mm, varvalue, complain);
+	      ts = clib_macro_eval (mm, varvalue, complain, level + 1,
+				    max_level);
 	      vec_free (varvalue);
 	      /* add results to answer */
 	      vec_append (rv, ts);
@@ -195,7 +204,7 @@ clib_macro_eval_dollar (clib_macro_main_t * mm, i8 * s, i32 complain)
   i8 *rv;
 
   s2 = (i8 *) format (0, "$(%s)%c", s, 0);
-  rv = clib_macro_eval (mm, s2, complain);
+  rv = clib_macro_eval (mm, s2, complain, 0 /* level */ , 8 /* max_level */ );
   vec_free (s2);
   return (rv);
 }
