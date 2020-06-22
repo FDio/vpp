@@ -96,6 +96,8 @@ define nat_show_config
     @param nat64_bib_memory_size - memory size of NAT64 BIB hash
     @param nat64_st_buckets - number of NAT64 session table hash buckets
     @param nat64_st_memory_size - memory size of NAT64 session table hash
+    @param max_translations_per_thread - max translations per worker thread
+    @param max_users_per_thread - max users per worker thread
 */
 define nat_show_config_reply
 {
@@ -118,6 +120,8 @@ define nat_show_config_reply
   u64 nat64_bib_memory_size;
   u32 nat64_st_buckets;
   u64 nat64_st_memory_size;
+  u32 max_translations_per_thread;
+  u32 max_users_per_thread;
 };
 
 enum nat_log_level : u8

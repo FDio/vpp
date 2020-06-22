@@ -99,6 +99,7 @@ class MethodHolder(VppTestCase):
         self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
                                            src_port=self.ipfix_src_port,
                                            enable=0)
+
         self.ipfix_src_port = 4739
         self.ipfix_domain_id = 1
 
@@ -7246,6 +7247,10 @@ class TestNAT44EndpointDependent3(MethodHolder):
 
         cls.nat_addr = '10.0.0.3'
 
+        # ipfix values set so that clear_nat44() from MethodHolder works ...
+        cls.ipfix_src_port = 4739
+        cls.ipfix_domain_id = 1
+
         cls.create_pg_interfaces(range(2))
 
         for i in cls.pg_interfaces:
@@ -7263,6 +7268,12 @@ class TestNAT44EndpointDependent3(MethodHolder):
             sw_if_index=self.pg0.sw_if_index, flags=flags, is_add=1)
         self.vapi.nat44_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index, is_add=1)
+
+    def tearDown(self):
+        super(TestNAT44EndpointDependent3, self).tearDown()
+        if not self.vpp_dead:
+            self.clear_nat44()
+            self.vapi.cli("clear logging")
 
     @classmethod
     def tearDownClass(cls):
@@ -7299,6 +7310,12 @@ class TestNAT44EndpointDependent3(MethodHolder):
         out_if.get_capture(1)
 
         return tcp_port_out
+
+    def test_api(self):
+        """ API test - max translations per thread """
+        nat_config = self.vapi.nat_show_config()
+        self.assertEqual(self.max_translations,
+                         nat_config.max_translations_per_thread)
 
     def test_lru_cleanup(self):
         """ LRU cleanup algorithm """

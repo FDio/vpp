@@ -122,6 +122,8 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
     rmp->nat64_bib_memory_size = clib_net_to_host_u64(n64m->bib_memory_size);
     rmp->nat64_st_buckets = clib_net_to_host_u32(n64m->st_buckets);
     rmp->nat64_st_memory_size = clib_net_to_host_u64(n64m->st_memory_size);
+    rmp->max_translations_per_thread = clib_net_to_host_u32(sm->max_translations_per_thread);
+    rmp->max_users_per_thread = clib_net_to_host_u32(sm->max_users_per_thread);
   }));
   /* *INDENT-ON* */
 }
