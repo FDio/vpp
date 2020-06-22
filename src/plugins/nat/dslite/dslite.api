@@ -18,7 +18,7 @@ import "vnet/ip/ip_types.api";
 import "vnet/interface_types.api";
 
 /**
- * @file nat.api
+ * @file dslite.api
  * @brief VPP control-plane API messages.
  *
  * This file defines VPP control-plane API messages which are generally
