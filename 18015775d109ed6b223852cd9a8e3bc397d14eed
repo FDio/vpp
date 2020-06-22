@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "c8be5cf2_dec3afbb",
+        "filename": "src/plugins/nat/in2out.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 897,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2020-06-22T14:31:53Z",
+      "side": 1,
+      "message": "yes, putting an abort inside this loop breaks tests ...",
+      "parentUuid": "6f66198e_273a377b",
+      "revId": "18015775d109ed6b223852cd9a8e3bc397d14eed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "81f58b9c_89777d65",
         "filename": "src/plugins/nat/in2out.c",
         "patchSetId": 2
@@ -33,6 +51,24 @@
       "revId": "18015775d109ed6b223852cd9a8e3bc397d14eed",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ff63ebfb_e7254ba1",
+        "filename": "src/plugins/nat/in2out.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 898,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2020-06-22T14:31:53Z",
+      "side": 1,
+      "message": "your code performs better by about 1%, will update the loops to use it",
+      "parentUuid": "81f58b9c_89777d65",
+      "revId": "18015775d109ed6b223852cd9a8e3bc397d14eed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
