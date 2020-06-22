@@ -39,7 +39,8 @@ int clib_macro_set_value (clib_macro_main_t * mm, char *name, char *value);
 void clib_macro_add_builtin (clib_macro_main_t * mm, char *name,
 			     void *eval_fn);
 i8 *clib_macro_get_value (clib_macro_main_t * mm, char *name);
-i8 *clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain);
+i8 *clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain,
+		     u16 level, u16 max_level);
 i8 *clib_macro_eval_dollar (clib_macro_main_t * mm, i8 * s, i32 complain);
 void clib_macro_init (clib_macro_main_t * mm);
 void clib_macro_free (clib_macro_main_t * mm);

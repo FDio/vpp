@@ -540,6 +540,54 @@ certain cli command has the potential to hurt packet processing
 performance by running for too long, do the work incrementally in a
 process node. The client can wait.
 
+### Macro expansion
+
+The vpp debug CLI engine includes a recursive macro expander. This
+is quite useful for factoring out address and/or interface name
+specifics:
+
+```
+   define ip1 192.168.1.1/24
+   define ip2 192.168.2.1/24
+   define iface1 GigabitEthernet3/0/0
+   define iface2 loop1
+
+   set int ip address $iface1 $ip1
+   set int ip address $iface2 $(ip2)
+
+   undefine ip1
+   undefine ip2
+   undefine iface1
+   undefine iface2
+```
+
+Each socket (or telnet) debug CLI session has its own macro
+tables. All debug CLI sessions which use CLI_INBAND binary API
+messages share a single table.
+
+The macro expander recognizes circular defintions:
+
+```
+    define foo \$(bar)
+    define bar \$(mumble)
+    define mumble \$(foo)
+```
+
+At 8 levels of recursion, the macro expander throws up its hands and
+replies "CIRCULAR."
+
+### Macro-related debug CLI commands
+
+In addition to the "define" and "undefine" debug CLI commands, use
+"show macro [noevaluate]" to dump the macro table. The "echo" debug
+CLI command will evaluate and print its argument:
+
+```
+    vpp# define foo This\ Is\ Foo
+    vpp# echo $foo
+    This Is Foo
+```
+
 Handing off buffers between threads
 -----------------------------------
 

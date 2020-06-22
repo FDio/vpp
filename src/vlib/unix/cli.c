@@ -242,6 +242,8 @@ typedef struct
    */
   u8 cursor_direction;
 
+  /** Macro tables for this session */
+  clib_macro_main_t macro_main;
 } unix_cli_file_t;
 
 /** Resets the pager buffer and other data.
@@ -493,13 +495,31 @@ typedef struct
   /** List of new sessions */
   unix_cli_new_session_t *new_sessions;
 
-  /* Macro expander */
+  /** system default macro table */
   clib_macro_main_t macro_main;
 
 } unix_cli_main_t;
 
 /** CLI global state */
 static unix_cli_main_t unix_cli_main;
+
+/** Return the macro main / tables we should use for this session
+ */
+static clib_macro_main_t *
+get_macro_main (void)
+{
+  unix_cli_main_t *cm = &unix_cli_main;
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_process_t *cp = vlib_get_current_process (vm);
+  unix_cli_file_t *cf;
+
+  if (pool_is_free_index (cm->cli_file_pool, cp->output_function_arg))
+    return (&cm->macro_main);
+
+  cf = pool_elt_at_index (cm->cli_file_pool, cp->output_function_arg);
+
+  return (&cf->macro_main);
+}
 
 /**
  * @brief Search for a byte sequence in the action list.
@@ -2575,9 +2595,11 @@ more:
       vec_validate (cf->current_command, vec_len (cf->current_command));
       cf->current_command[vec_len (cf->current_command) - 1] = 0;
       /* The macro expander expects proper C-strings, not vectors */
-      expanded = (u8 *) clib_macro_eval (&cm->macro_main,
+      expanded = (u8 *) clib_macro_eval (&cf->macro_main,
 					 (i8 *) cf->current_command,
-					 1 /* complain */ );
+					 1 /* complain */ ,
+					 0 /* level */ ,
+					 8 /* max_level */ );
       /* Macro processor NULL terminates the return */
       _vec_len (expanded) -= 1;
       vec_reset_length (cf->current_command);
@@ -2689,6 +2711,7 @@ unix_cli_kill (unix_cli_main_t * cm, uword cli_file_index)
   clib_file_del (fm, uf);
 
   unix_cli_file_free (cf);
+  clib_macro_free (&cf->macro_main);
   pool_put (cm->cli_file_pool, cf);
 }
 
@@ -2906,6 +2929,7 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
 
   pool_get (cm->cli_file_pool, cf);
   clib_memset (cf, 0, sizeof (*cf));
+  clib_macro_init (&cf->macro_main);
 
   template.read_function = unix_cli_read_ready;
   template.write_function = unix_cli_write_ready;
@@ -3962,7 +3986,7 @@ define_cmd_fn (vlib_main_t * vm,
 {
   u8 *macro_name;
   unformat_input_t _line_input, *line_input = &_line_input;
-  unix_cli_main_t *cm = &unix_cli_main;
+  clib_macro_main_t *mm = get_macro_main ();
   clib_error_t *error;
 
   if (!unformat (input, "%s", &macro_name))
@@ -3980,8 +4004,7 @@ define_cmd_fn (vlib_main_t * vm,
     }
   /* the macro expander expects c-strings, not vectors... */
   vec_add1 (line_input->buffer, 0);
-  clib_macro_set_value (&cm->macro_main, (char *) macro_name,
-			(char *) line_input->buffer);
+  clib_macro_set_value (mm, (char *) macro_name, (char *) line_input->buffer);
   vec_free (macro_name);
   unformat_free (line_input);
   return 0;
@@ -4001,12 +4024,12 @@ undefine_cmd_fn (vlib_main_t * vm,
 		 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   u8 *macro_name;
-  unix_cli_main_t *cm = &unix_cli_main;
+  clib_macro_main_t *mm = get_macro_main ();
 
   if (!unformat (input, "%s", &macro_name))
     return clib_error_return (0, "missing variable name...");
 
-  if (clib_macro_unset (&cm->macro_main, (char *) macro_name))
+  if (clib_macro_unset (mm, (char *) macro_name))
     vlib_cli_output (vm, "%s wasn't set...", macro_name);
 
   vec_free (macro_name);
@@ -4025,7 +4048,7 @@ static clib_error_t *
 show_macro_cmd_fn (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  unix_cli_main_t *cm = &unix_cli_main;
+  clib_macro_main_t *mm = get_macro_main ();
   int evaluate = 1;
 
   if (unformat (input, "noevaluate %=", &evaluate, 0))
@@ -4033,8 +4056,7 @@ show_macro_cmd_fn (vlib_main_t * vm,
   else if (unformat (input, "noeval %=", &evaluate, 0))
     ;
 
-  vlib_cli_output (vm, "%U", format_clib_macro_main, &cm->macro_main,
-		   evaluate);
+  vlib_cli_output (vm, "%U", format_clib_macro_main, mm, evaluate);
   return 0;
 }
 
@@ -4055,6 +4077,7 @@ unix_cli_init (vlib_main_t * vm)
    * has not been started */
   cm->new_session_process_node_index = ~0;
   clib_macro_init (&cm->macro_main);
+
   return 0;
 }
 

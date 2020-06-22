@@ -108,7 +108,9 @@ do_one_file (vat_main_t * vam)
 
       this_cmd =
 	(u8 *) clib_macro_eval (&vam->macro_main, (i8 *) vam->inbuf,
-				1 /* complain */ );
+				1 /* complain */ ,
+				0 /* level */ ,
+				8 /* max_level */ );
 
       if (vam->exec_mode == 0)
 	{
