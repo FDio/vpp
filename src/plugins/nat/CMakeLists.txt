@@ -116,3 +116,22 @@ add_vpp_plugin(nat66
 
   LINK_LIBRARIES nat
 )
+
+add_vpp_plugin(det44
+  SOURCES
+  det44/det44.c
+  det44/det44_cli.c
+  det44/det44_api.c
+  det44/det44_in2out.c
+  det44/det44_out2in.c
+
+  MULTIARCH_SOURCES
+  det44/det44_in2out.c
+  det44/det44_out2in.c
+
+  API_FILES
+  det44/det44.api
+  nat_types.api
+
+  LINK_LIBRARIES nat
+)
