@@ -118,6 +118,8 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   struct rte_flow_item_tcp tcp[2] = { };
   struct rte_flow_item_gtp gtp[2] = { };
   struct rte_flow_item_l2tpv3oip l2tp[2] = { };
+  struct rte_flow_item_esp esp[2] = { };
+  struct rte_flow_item_ah ah[2] = { };
   struct rte_flow_action_mark mark = { 0 };
   struct rte_flow_action_queue queue = { 0 };
   struct rte_flow_action_rss rss = { 0 };
@@ -218,6 +220,48 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 	  item->mask = ip4 + 1;
 	}
       protocol = l2tp->protocol;
+    }
+  if (f->type == VNET_FLOW_TYPE_IP4_IPSEC_ESP)
+    {
+      vnet_flow_ip4_ipsec_esp_t *tesp = &f->ip4_ipsec_esp;
+      item->type = RTE_FLOW_ITEM_TYPE_IPV4;
+
+      if (!tesp->src_addr.mask.as_u32 && !tesp->dst_addr.mask.as_u32)
+	{
+	  item->spec = NULL;
+	  item->mask = NULL;
+	}
+      else
+	{
+	  ip4[0].hdr.src_addr = tesp->src_addr.addr.as_u32;
+	  ip4[1].hdr.src_addr = tesp->src_addr.mask.as_u32;
+	  ip4[0].hdr.dst_addr = tesp->dst_addr.addr.as_u32;
+	  ip4[1].hdr.dst_addr = tesp->dst_addr.mask.as_u32;
+	  item->spec = ip4;
+	  item->mask = ip4 + 1;
+	}
+      protocol = tesp->protocol;
+    }
+  else if (f->type == VNET_FLOW_TYPE_IP4_IPSEC_AH)
+    {
+      vnet_flow_ip4_ipsec_ah_t *tah = &f->ip4_ipsec_ah;
+      item->type = RTE_FLOW_ITEM_TYPE_IPV4;
+
+      if (!tah->src_addr.mask.as_u32 && !tah->dst_addr.mask.as_u32)
+	{
+	  item->spec = NULL;
+	  item->mask = NULL;
+	}
+      else
+	{
+	  ip4[0].hdr.src_addr = tah->src_addr.addr.as_u32;
+	  ip4[1].hdr.src_addr = tah->src_addr.mask.as_u32;
+	  ip4[0].hdr.dst_addr = tah->dst_addr.addr.as_u32;
+	  ip4[1].hdr.dst_addr = tah->dst_addr.mask.as_u32;
+	  item->spec = ip4;
+	  item->mask = ip4 + 1;
+	}
+      protocol = tah->protocol;
     }
   else if ((f->type == VNET_FLOW_TYPE_IP6_N_TUPLE) ||
 	   (f->type == VNET_FLOW_TYPE_IP6_GTPC) ||
@@ -344,6 +388,30 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 	  item->mask = tcp + 1;
 	}
     }
+  else if (protocol == IP_PROTOCOL_IPSEC_ESP)
+    {
+      vec_add2 (items, item, 1);
+      item->type = RTE_FLOW_ITEM_TYPE_ESP;
+
+      vnet_flow_ip4_ipsec_esp_t *tesp = &f->ip4_ipsec_esp;
+      esp[0].hdr.spi = clib_host_to_net_u32 (tesp->spi);
+      esp[1].hdr.spi = ~0;
+
+      item->spec = esp;
+      item->mask = esp + 1;
+    }
+  else if (protocol == IP_PROTOCOL_IPSEC_AH)
+    {
+      vec_add2 (items, item, 1);
+      item->type = RTE_FLOW_ITEM_TYPE_AH;
+
+      vnet_flow_ip4_ipsec_ah_t *tah = &f->ip4_ipsec_ah;
+      ah[0].spi = clib_host_to_net_u32 (tah->spi);
+      ah[1].spi = ~0;
+
+      item->spec = ah;
+      item->mask = ah + 1;
+    }
   else if (protocol == IP_PROTOCOL_RESERVED)
     {
       rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
@@ -363,6 +431,7 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
       item->spec = l2tp;
       item->mask = l2tp + 1;
     }
+
   if (f->type == VNET_FLOW_TYPE_IP4_VXLAN)
     {
       u32 vni = f->ip4_vxlan.vni;
@@ -768,6 +837,8 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
     case VNET_FLOW_TYPE_IP6_GTPU_IP4:
     case VNET_FLOW_TYPE_IP6_GTPU_IP6:
     case VNET_FLOW_TYPE_IP4_L2TPV3OIP:
+    case VNET_FLOW_TYPE_IP4_IPSEC_ESP:
+    case VNET_FLOW_TYPE_IP4_IPSEC_AH:
       if ((rv = dpdk_flow_add (xd, flow, fe)))
 	goto done;
       break;
