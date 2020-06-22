@@ -30,6 +30,7 @@ import "vnet/interface_types.api";
 */
 define abf_plugin_get_version
 {
+  option status="in_progress";
   u32 client_index;
   u32 context;
 };
@@ -41,6 +42,7 @@ define abf_plugin_get_version
 */
 define abf_plugin_get_version_reply
 {
+  option status="in_progress";
   u32 context;
   u32 major;
   u32 minor;
@@ -54,6 +56,7 @@ define abf_plugin_get_version_reply
  */
 typedef abf_policy
 {
+  option status="in_progress";
   u32 policy_id;
   u32 acl_index;
   u8 n_paths;
@@ -68,6 +71,7 @@ typedef abf_policy
  */
 autoreply define abf_policy_add_del
 {
+  option status="in_progress";
   u32 client_index;
   u32 context;
   bool is_add;
@@ -78,6 +82,7 @@ autoreply define abf_policy_add_del
  */
 define abf_policy_details
 {
+  option status="in_progress";
   u32 context;
   vl_api_abf_policy_t policy;
 };
@@ -86,6 +91,7 @@ define abf_policy_details
  */
 define abf_policy_dump
 {
+  option status="in_progress";
   u32 client_index;
   u32 context;
 };
@@ -99,6 +105,7 @@ define abf_policy_dump
 */
 typedef abf_itf_attach
 {
+  option status="in_progress";
   u32 policy_id;
   vl_api_interface_index_t sw_if_index;
   u32 priority;
@@ -109,6 +116,7 @@ typedef abf_itf_attach
  */
 autoreply define abf_itf_attach_add_del
 {
+  option status="in_progress";
   u32 client_index;
   u32 context;
   bool is_add;
@@ -119,6 +127,7 @@ autoreply define abf_itf_attach_add_del
  */
 define abf_itf_attach_details
 {
+  option status="in_progress";
   u32 context;
   vl_api_abf_itf_attach_t attach;
 };
@@ -127,6 +136,7 @@ define abf_itf_attach_details
  */
 define abf_itf_attach_dump
 {
+  option status="in_progress";
   u32 client_index;
   u32 context;
 };
