@@ -33,6 +33,8 @@
   _(IP6_N_TUPLE_TAGGED, ip6_n_tuple_tagged, "ipv6-n-tuple-tagged") \
   /* IP tunnel flow */ \
   _(IP4_L2TPV3OIP, ip4_l2tpv3oip, "ipv4-l2tpv3oip") \
+  _(IP4_IPSEC_ESP, ip4_ipsec_esp, "ipv4-ipsec-esp") \
+  _(IP4_IPSEC_AH, ip4_ipsec_ah, "ipv4-ipsec-ah") \
   /* L4 tunnel flow*/ \
   _(IP4_VXLAN, ip4_vxlan, "ipv4-vxlan") \
   _(IP6_VXLAN, ip6_vxlan, "ipv6-vxlan") \
@@ -81,6 +83,18 @@
   _fe(ip4_address_and_mask_t, dst_addr) \
   _fe(ip_protocol_t, protocol)          \
   _fe(u32, session_id)
+
+#define foreach_flow_entry_ip4_ipsec_esp \
+  _fe(ip4_address_and_mask_t, src_addr) \
+  _fe(ip4_address_and_mask_t, dst_addr) \
+  _fe(ip_protocol_t, protocol)          \
+  _fe(u32, spi)
+
+#define foreach_flow_entry_ip4_ipsec_ah \
+  _fe(ip4_address_and_mask_t, src_addr) \
+  _fe(ip4_address_and_mask_t, dst_addr) \
+  _fe(ip_protocol_t, protocol)          \
+  _fe(u32, spi)
 
 #define foreach_flow_entry_ip4_vxlan \
   _fe(ip4_address_t, src_addr) \
