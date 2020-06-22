@@ -400,14 +400,27 @@ echo_server_detach (void)
 static int
 echo_server_listen ()
 {
-  int rv;
+  i32 rv;
   echo_server_main_t *esm = &echo_server_main;
-  vnet_listen_args_t _a, *a = &_a;
-  clib_memset (a, 0, sizeof (*a));
-  a->app_index = esm->app_index;
-  a->uri = esm->server_uri;
-  rv = vnet_bind_uri (a);
-  esm->listener_handle = a->handle;
+  vnet_listen_args_t _args = {
+    .app_index = esm->app_index,
+    .sep_ext = {
+		.app_wrk_index = 0,
+		}
+  }, *args = &_args;
+
+  if ((rv = parse_uri (esm->server_uri, &args->sep_ext)))
+    {
+      return -1;
+    }
+
+  if (args->sep_ext.transport_proto == TRANSPORT_PROTO_UDP)
+    {
+      args->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
+    }
+
+  rv = vnet_listen (args);
+  esm->listener_handle = args->handle;
   return rv;
 }
 
