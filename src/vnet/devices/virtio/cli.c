@@ -229,7 +229,7 @@ show_virtio_pci_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       vif = pool_elt_at_index (vim->interfaces, hi->dev_instance);
       if (vif->type == VIRTIO_IF_TYPE_PCI)
-	debug_device_config_space (vm, vif);
+	vif->virtio_pci_func->device_debug_config_space (vm, vif);
     }
 
   virtio_show (vm, hw_if_indices, show_descr, VIRTIO_IF_TYPE_PCI);
