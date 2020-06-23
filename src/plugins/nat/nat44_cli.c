@@ -1528,8 +1528,13 @@ snat_det_map_command_fn (vlib_main_t * vm,
 	}
     }
 
-  rv = snat_det_add_map (sm, &in_addr, (u8) in_plen, &out_addr, (u8) out_plen,
-			 is_add);
+  if (in_plen > 32 || out_plen > 32)
+    {
+      error = clib_error_return (0, "network prefix length must be <= 32");
+      goto done;
+    }
+
+  rv = snat_det_add_map (sm, &in_addr, in_plen, &out_addr, out_plen, is_add);
 
   if (rv)
     {
