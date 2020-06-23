@@ -228,6 +228,9 @@ nl_route_process (vlib_main_t * vm,
 	}
       else
 	{
+
+	  vlib_worker_thread_barrier_sync (vm);
+
 	  uword *d;
 	  vec_foreach (d, event_data)
 	  {
@@ -243,6 +246,9 @@ nl_route_process (vlib_main_t * vm,
 		}
 	      }
 	  }
+
+	  vlib_worker_thread_barrier_release (vm);
+
 	}
 
       vec_reset_length (event_data);
