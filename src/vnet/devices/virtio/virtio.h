@@ -56,7 +56,31 @@
 /* The Host publishes the avail index for which it expects a kick \
  * at the end of the used ring. Guest should ignore the used->flags field. */ \
   _ (VHOST_USER_F_PROTOCOL_FEATURES, 30) \
-  _ (VIRTIO_F_VERSION_1, 32)
+  _ (VIRTIO_F_VERSION_1, 32)  /* v1.0 compliant. */           \
+  _ (VIRTIO_F_IOMMU_PLATFORM, 33) /*
+ * If clear - device has the IOMMU bypass quirk feature.
+ * If set - use platform tools to detect the IOMMU.
+ *
+ * Note the reverse polarity (compared to most other features),
+ * this is for compatibility with legacy systems.
+ */                                           \
+  _ (VIRTIO_F_RING_PACKED, 34) /* This feature indicates support for the packed virtqueue layout. */                                               \
+  _ (VIRTIO_F_IN_ORDER, 35) /* all buffers are used by the device in the same order in which they have been made available */                                                  \
+  _ (VIRTIO_F_ORDER_PLATFORM, 36) /*
+ * This feature indicates that memory accesses by the driver and the
+ * device are ordered in a way described by the platform.
+ */                                            \
+  _ (VIRTIO_F_SR_IOV, 37) /*
+ * Does the device support Single Root I/O Virtualization?
+ */                                                    \
+  _ (VIRTIO_F_NOTIFICATION_DATA, 38) /* the driver passes extra data (besides identifying the virtqueue) in its device notifications */                                         \
+  _ (VIRTIO_NET_F_HASH_REPORT, 57) /* Supports hash report */                 \
+  _ (VIRTIO_NET_F_RSS, 60)  /* Supports RSS RX steering */                    \
+  _ (VIRTIO_NET_F_RSC_EXT, 61)  /* extended coalescing info */                \
+  _ (VIRTIO_NET_F_STANDBY, 62)  /* Act as standby for another device
+			         * with the same MAC.
+			         */                                           \
+  _ (VIRTIO_NET_F_SPEED_DUPLEX, 63)	/* Device set linkspeed and duplex */
 
 #define foreach_virtio_if_flag		\
   _(0, ADMIN_UP, "admin-up")		\
@@ -163,6 +187,7 @@ typedef struct
     u32 id;
     pci_addr_t pci_addr;
   };
+
   int *vhost_fds;
   u32 dev_instance;
   u32 numa_node;
@@ -174,16 +199,34 @@ typedef struct
   u16 max_queue_pairs;
   u8 status;
   u8 mac_addr[6];
-  u8 *host_if_name;
-  u8 *net_ns;
-  u8 *host_bridge;
-  u8 host_mac_addr[6];
-  ip4_address_t host_ip4_addr;
-  u8 host_ip4_prefix_len;
-  ip6_address_t host_ip6_addr;
-  u8 host_ip6_prefix_len;
-  u32 host_mtu_size;
-  int ifindex;
+  union
+  {
+    struct
+    {
+      u8 *host_if_name;
+      u8 *net_ns;
+      u8 *host_bridge;
+      u8 host_mac_addr[6];
+      ip4_address_t host_ip4_addr;
+      u8 host_ip4_prefix_len;
+      ip6_address_t host_ip6_addr;
+      u8 host_ip6_prefix_len;
+      u32 host_mtu_size;
+      int ifindex;
+    };
+    struct
+    {
+      void *bar;
+      u16 common_offset;
+      u16 notify_offset;
+      u16 device_offset;
+      u16 isr_offset;
+      u32 notify_off_multiplier;
+      u32 bar_id;
+      u32 is_modern;
+      u32 pad[10];
+    };
+  };
   virtio_vring_t *cxq_vring;
   const virtio_pci_func_t *virtio_pci_func;
 } virtio_if_t;
