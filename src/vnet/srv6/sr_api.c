@@ -314,7 +314,7 @@ static void send_sr_policies_details
 
     api_sid_list->num_sids = vec_len (segment_list->segments);
     api_sid_list->weight = htonl (segment_list->weight);
-
+    slidx = 0;
     vec_foreach (segment, segment_list->segments)
     {
       ip6_address_encode (segment, api_sid_list->sids[slidx++]);
