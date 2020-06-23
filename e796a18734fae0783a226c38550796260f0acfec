@@ -22,6 +22,30 @@
       "revId": "e796a18734fae0783a226c38550796260f0acfec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d19c1636_c5f3095a",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 397,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-06-23T17:00:40Z",
+      "side": 1,
+      "message": "Alright, I found an explanation [0], although that is for \"context\", not \"client index\". Basically, some fields are \"u32\" only from client point of view, VPP treats them as \"u8[4]\" to save some cycles.\n\nIdeally, we should define a separate type for such values.\nBut I guess users do not need to know about the difference, and we can add comments to VPP code if the current barrier to entry is considered too high for new developers.\n\n[0] https://lists.fd.io/g/vpp-dev/message/16560",
+      "parentUuid": "09df9e53_d00fb4be",
+      "range": {
+        "startLine": 397,
+        "startChar": 25,
+        "endLine": 397,
+        "endChar": 37
+      },
+      "revId": "e796a18734fae0783a226c38550796260f0acfec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
