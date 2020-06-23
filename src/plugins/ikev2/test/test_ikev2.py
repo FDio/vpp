@@ -1,7 +1,9 @@
 import os
+from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, hmac
-from cryptography.hazmat.primitives.asymmetric import dh
+from cryptography.hazmat.primitives.asymmetric import dh, padding
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from cryptography.hazmat.primitives.ciphers import (
     Cipher,
     algorithms,
@@ -11,7 +13,7 @@ from scapy.layers.inet import IP, UDP, Ether
 from scapy.packet import raw, Raw
 from scapy.utils import long_converter
 from framework import VppTestCase, VppTestRunner
-from vpp_ikev2 import Profile, IDType
+from vpp_ikev2 import Profile, IDType, AuthMethod
 
 
 KEY_PAD = b"Key Pad for IKEv2"
@@ -100,9 +102,10 @@ class IKEv2SA(object):
     def __init__(self, test, is_initiator=True, spi=b'\x04' * 8,
                  i_id=None, r_id=None, id_type='fqdn', nonce=None,
                  auth_data=None, local_ts=None, remote_ts=None,
-                 auth_method='shared-key'):
+                 auth_method='shared-key', priv_key=None):
         self.dh_params = None
         self.test = test
+        self.priv_key = priv_key
         self.is_initiator = is_initiator
         nonce = nonce or os.urandom(32)
         self.auth_data = auth_data
@@ -248,8 +251,14 @@ class IKEv2SA(object):
     def auth_init(self):
         prf = self.ike_prf_alg.mod()
         authmsg = self.generate_authmsg(prf, raw(self.init_req_packet))
-        psk = self.calc_prf(prf, self.auth_data, KEY_PAD)
-        self.auth_data = self.calc_prf(prf, psk, authmsg)
+        if self.auth_method == 'shared-key':
+            psk = self.calc_prf(prf, self.auth_data, KEY_PAD)
+            self.auth_data = self.calc_prf(prf, psk, authmsg)
+        elif self.auth_method == 'rsa-sig':
+            self.auth_data = self.priv_key.sign(authmsg, padding.PKCS1v15(),
+                                                hashes.SHA1())
+        else:
+            raise TypeError('unknown auth method type!')
 
     def encrypt(self, data):
         data = self.ike_crypto_alg.pad(data)
@@ -360,14 +369,14 @@ class IKEv2SA(object):
         return self.crypto_attr(self.esp_crypto_key_len)
 
 
-class TestResponder(VppTestCase):
+class TemplateResponder(VppTestCase):
     """ responder test """
 
     @classmethod
     def setUpClass(cls):
         import scapy.contrib.ikev2 as _ikev2
         globals()['ikev2'] = _ikev2
-        super(TestResponder, cls).setUpClass()
+        super(TemplateResponder, cls).setUpClass()
         cls.create_pg_interfaces(range(2))
         for i in cls.pg_interfaces:
             i.admin_up()
@@ -376,32 +385,11 @@ class TestResponder(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
-        super(TestResponder, cls).tearDownClass()
+        super(TemplateResponder, cls).tearDownClass()
 
     def setUp(self):
-        super(TestResponder, self).setUp()
+        super(TemplateResponder, self).setUp()
         self.config_tc()
-
-    def config_tc(self):
-        self.p = Profile(self, 'pr1')
-        self.p.add_auth(method='shared-key', data=b'$3cr3tpa$$w0rd')
-        self.p.add_local_id(id_type='fqdn', data=b'vpp.home')
-        self.p.add_remote_id(id_type='fqdn', data=b'roadwarrior.example.com')
-        self.p.add_local_ts(start_addr=0x0a0a0a0, end_addr=0x0a0a0aff)
-        self.p.add_remote_ts(start_addr=0xa000000, end_addr=0xa0000ff)
-        self.p.add_vpp_config()
-
-        self.sa = IKEv2SA(self, i_id=self.p.remote_id['data'],
-                          r_id=self.p.local_id['data'],
-                          is_initiator=True, auth_data=self.p.auth['data'],
-                          id_type=self.p.local_id['id_type'],
-                          local_ts=self.p.remote_ts, remote_ts=self.p.local_ts)
-
-        self.sa.set_ike_props(crypto='AES-CBC', crypto_key_len=32,
-                              integ='HMAC-SHA1-96', prf='PRF_HMAC_SHA2_256',
-                              dh='2048MODPgr')
-        self.sa.set_esp_props(crypto='AES-CBC', crypto_key_len=32,
-                              integ='HMAC-SHA1-96')
         self.sa.generate_dh_data()
 
     def create_ike_msg(self, src_if, msg, sport=500, dport=500):
@@ -463,7 +451,8 @@ class TestResponder(VppTestCase):
                  ikev2.IKEv2_payload_IDr(next_payload='AUTH',
                  IDtype=self.sa.id_type, load=self.sa.r_id) /
                  ikev2.IKEv2_payload_AUTH(next_payload='SA',
-                 auth_type=2, load=self.sa.auth_data) /
+                 auth_type=AuthMethod.value(self.sa.auth_method),
+                 load=self.sa.auth_data) /
                  ikev2.IKEv2_payload_SA(next_payload='TSi', prop=props) /
                  ikev2.IKEv2_payload_TSi(next_payload='TSr',
                  number_of_TSs=len(tsi),
@@ -548,6 +537,66 @@ class TestResponder(VppTestCase):
         self.send_sa_init()
         self.send_sa_auth()
         self.verify_child_sas()
+
+
+class TestResponderPsk(TemplateResponder):
+    """ test ikev2 responder - pre shared key auth """
+    def config_tc(self):
+        self.p = Profile(self, 'pr1')
+        self.p.add_auth(method='shared-key', data=b'$3cr3tpa$$w0rd')
+        self.p.add_local_id(id_type='fqdn', data=b'vpp.home')
+        self.p.add_remote_id(id_type='fqdn', data=b'roadwarrior.example.com')
+        self.p.add_local_ts(start_addr=0x0a0a0a0, end_addr=0x0a0a0aff)
+        self.p.add_remote_ts(start_addr=0xa000000, end_addr=0xa0000ff)
+        self.p.add_vpp_config()
+
+        self.sa = IKEv2SA(self, i_id=self.p.remote_id['data'],
+                          r_id=self.p.local_id['data'],
+                          is_initiator=True, auth_data=self.p.auth['data'],
+                          id_type=self.p.local_id['id_type'],
+                          local_ts=self.p.remote_ts, remote_ts=self.p.local_ts)
+
+        self.sa.set_ike_props(crypto='AES-CBC', crypto_key_len=32,
+                              integ='HMAC-SHA1-96', prf='PRF_HMAC_SHA2_256',
+                              dh='2048MODPgr')
+        self.sa.set_esp_props(crypto='AES-CBC', crypto_key_len=32,
+                              integ='HMAC-SHA1-96')
+
+
+class TestResponderRsaSign(TemplateResponder):
+    """ test ikev2 responder - cert based auth """
+    def config_tc(self):
+        work_dir = os.getenv('BR') + '/../src/plugins/ikev2/test/certs/'
+        self.vapi.ikev2_set_local_key(key_file=work_dir + 'server-key.pem')
+
+        client_file = work_dir + 'client-cert.pem'
+        server_pem = open(work_dir + 'server-cert.pem').read()
+        client_priv = open(work_dir + 'client-key.pem').read()
+        client_priv = load_pem_private_key(str.encode(client_priv), None,
+                                           default_backend())
+        self.peer_cert = x509.load_pem_x509_certificate(str.encode(server_pem),
+                                                        default_backend())
+
+        self.p = Profile(self, 'pr1')
+        self.p.add_auth(method='rsa-sig', data=str.encode(client_file))
+        self.p.add_local_id(id_type='fqdn', data=b'vpp.home')
+        self.p.add_remote_id(id_type='fqdn', data=b'roadwarrior.example.com')
+        self.p.add_local_ts(start_addr=0x0a0a0a0, end_addr=0x0a0a0aff)
+        self.p.add_remote_ts(start_addr=0xa000000, end_addr=0xa0000ff)
+        self.p.add_vpp_config()
+
+        self.sa = IKEv2SA(self, i_id=self.p.remote_id['data'],
+                          r_id=self.p.local_id['data'],
+                          id_type=self.p.local_id['id_type'],
+                          is_initiator=True,
+                          priv_key=client_priv, auth_method='rsa-sig',
+                          local_ts=self.p.remote_ts, remote_ts=self.p.local_ts)
+
+        self.sa.set_ike_props(crypto='AES-CBC', crypto_key_len=32,
+                              integ='HMAC-SHA1-96', prf='PRF_HMAC_SHA2_256',
+                              dh='2048MODPgr')
+        self.sa.set_esp_props(crypto='AES-CBC', crypto_key_len=32,
+                              integ='HMAC-SHA1-96')
 
 
 if __name__ == '__main__':
