@@ -32,8 +32,9 @@ test_macros_main (unformat_input_t * input)
   clib_macro_set_value (mm, "bar", "bar");
 
   fformat (stdout, "evaluate: %s\n",
-	   clib_macro_eval (mm, (i8 *) "returns '$(foo)'",
-			    1 /* complain */ ));
+	   clib_macro_eval (mm, (i8 *) "returns '$(foo)'", 1 /* complain */ ,
+			    0 /* recursion_level */ ,
+			    8 /* max recursion level */ ));
 
   clib_macro_free (mm);
 

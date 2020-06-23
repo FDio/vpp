@@ -1,0 +1,100 @@
+# Copyright (c) 2020 Cisco and/or its affiliates.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+echo Loading vpp functions...\n
+
+echo Load vl
+# vl, aka vec_len (x)
+# The vector length is 8 bytes before the vector pointer
+define vl
+   echo vec_len ($arg0):
+   p/d ((u32 *)((u8 *)(($arg0))-8))[0]
+end
+document vl
+   Usage: vl <vector>
+   Prints the length of a vector
+end
+
+echo Load pe\n
+# pe, aka pool_elts; the number of elements in the vector, minus the
+# length of the free element vector. The free element vector is at
+# offset -40 from the user pointer
+define pe
+   echo pool_elts ($arg0):
+   p/d ((((u32 *)((u8 *)(($arg0))-8))[0]) - (((u32 *)((u8 *)(($arg0))-40))[0]))
+end
+document pe
+   Usage: pe <pool>
+   Prints the number of active elements in a pool
+end
+
+echo Load pifi\n
+# pifi, aka pool_is_free_index. Print 1 if the pool index is free, 0 if
+# it's in-use.
+#
+# If the index is less than the pool vector
+# length, see if the indicated bit in the indicated bitmap word is set.
+# Otherwise, the index is not in use
+#
+# If you wonder why you might want a gdb macro to work this out when looking
+# at a core file, just look at the expression...
+
+define pifi
+  echo pool_is_free_index ($arg0, $arg1)
+  p ($arg1 < (((u32 *)((u8 *)(($arg0))-8))[0])) ? (((1ULL<<(($arg1)%64)) & \
+    ((u64 **)(((u8 *)($arg0)-48)))[0][($arg1)/64]) !=0) : 1
+end
+document pifi
+  Usage: pifi <pool-pointer> <index>
+  Print 1 if a specific pool index is free (or out of range), 0 if it's in-use
+end
+
+echo Load node_name_from_index\n
+define node_name_from_index
+  p vlib_global_main.node_main.nodes[$arg0].name
+end
+document node_name_from_index
+  Usage: node_name_from_index <index>
+  Print node name given a node index (or node runtime index)
+end
+
+echo Load vnet_buffer_opaque\n
+define vnet_buffer_opaque
+  p ((vnet_buffer_opaque_t *)(&((vlib_buffer_t *)($arg0))->opaque[0]))[0]
+end
+document vnet_buffer_opaque
+  Usage: vnet_buffer_opaque <vlib_buffer_t pointer>
+  Print the vnet buffer opaque given a vlib_buffer_t
+end
+
+echo Load vnet_buffer_opaque2\n
+define vnet_buffer_opaque2
+  p ((vnet_buffer_opaque2_t *)(&((vlib_buffer_t *)($arg0))->opaque2[0]))[0]
+end
+document vnet_buffer_opaque2
+  Usage: vnet_buffer_opaque2 <vlib_buffer_t pointer>
+  Print the vnet buffer opaque2 given a vlib_buffer_t
+end
+
+echo Load bitmap_get\n
+define bitmap_get
+  echo bitmap get ($arg0, $arg1):
+  p ($arg1/64 < ((u32 *)((u8 *)($arg0)-8))[0]) ? (((1ULL<<(($arg1)%64)) & \
+    ((u64 *)(($arg0)))[($arg1)/64]) != 0) : 0
+end
+document bitmap_get
+  Usage: bitmap_get <bitmap> <index>
+  Print 1 if a specific bitmap index is set, 0 if it's not set or out of range
+end
+
+echo Done loading vpp functions...\n
