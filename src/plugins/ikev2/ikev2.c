@@ -3364,9 +3364,9 @@ ikev2_set_profile_auth (vlib_main_t * vm, u8 * name, u8 auth_method,
       vec_add1 (p->auth.data, 0);
       if (p->auth.key)
 	EVP_PKEY_free (p->auth.key);
-      p->auth.key = ikev2_load_cert_file (auth_data);
+      p->auth.key = ikev2_load_cert_file (p->auth.data);
       if (p->auth.key == NULL)
-	return clib_error_return (0, "load cert '%s' failed", auth_data);
+	return clib_error_return (0, "load cert '%s' failed", p->auth.data);
     }
 
   return 0;
