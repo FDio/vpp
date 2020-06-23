@@ -690,7 +690,7 @@ u64x2_gather (void *p0, void *p1)
 }
 
 static_always_inline u32x4
-u32x4_gather (void *p0, void *p1, void *p2, void *p3, void *p4)
+u32x4_gather (void *p0, void *p1, void *p2, void *p3)
 {
   u32x4 r = { *(u32 *) p0, *(u32 *) p1, *(u32 *) p2, *(u32 *) p3 };
   return r;
