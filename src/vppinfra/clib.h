@@ -100,6 +100,7 @@
 #define __clib_aligned(x) __attribute__ ((aligned(x)))
 #define __clib_section(s) __attribute__ ((section(s)))
 #define __clib_warn_unused_result __attribute__ ((warn_unused_result))
+#define __clib_cl_aligned __attribute__ ((aligned(CLIB_CACHE_LINE_BYTES)))
 
 #define never_inline __attribute__ ((__noinline__))
 

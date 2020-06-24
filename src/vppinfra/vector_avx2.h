@@ -313,6 +313,9 @@ u8x32_blend (u8x32 v1, u8x32 v2, u8x32 mask)
 #define u64x4_permute_lanes(a, b, m) \
   (u64x4) _mm256_permute2x128_si256 ((__m256i) a, (__m256i) b, m)
 
+#define u8x32_align_right(a, b, imm) \
+  (u8x32) _mm256_alignr_epi8 ((__m256i) a, (__m256i) b, imm)
+
 static_always_inline u32x8
 u32x8_min (u32x8 a, u32x8 b)
 {
@@ -376,6 +379,46 @@ u64x4_transpose (u64x4 a[8])
   a[2] = u64x4_permute_lanes (r[0], r[2], 0x31);
   a[3] = u64x4_permute_lanes (r[1], r[3], 0x31);
 }
+
+static_always_inline u32x8
+u32x8_broadcast (u32x8 v)
+{
+  return (u32x8) _mm256_broadcastd_epi32 ((__m128i) u32x8_extract_lo (v));
+}
+
+static_always_inline u64x4
+u64x4_broadcast (u64x4 v)
+{
+  return (u64x4) _mm256_broadcastq_epi64 ((__m128i) u64x4_extract_lo (v));
+}
+
+static_always_inline int
+u32x8_all_elts_equal (u32x8 v)
+{
+  return u32x8_is_equal (v, u32x8_broadcast (v));
+}
+
+static_always_inline int
+u64x4_all_elts_equal (u64x4 v)
+{
+  return u64x4_is_equal (v, u64x4_broadcast (v));
+}
+
+static_always_inline u64
+u32x8_sum_elts (u32x8 v)
+{
+  u64x4 r;
+  u32x8 zero = { };
+  r = (u64x4) u32x8_interleave_lo (v, zero);
+  r += (u64x4) u32x8_interleave_hi (v, zero);
+  r += (u64x4) u8x32_align_right ((u8x32) r, (u8x32) r, 8);
+  return r[0] + r[2];
+}
+
+#ifdef __AVX512F__
+#define u64x4_ternary_logic(a, b, c, d) \
+  (u64x4) _mm256_ternarylogic_epi32 ((__m256i) a, (__m256i) b, (__m256i) c, d)
+#endif
 
 #endif /* included_vector_avx2_h */
 
