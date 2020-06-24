@@ -188,18 +188,21 @@ typedef struct ip_lookup_main_t
 u8 *format_ip_flow_hash_config (u8 * s, va_list * args);
 
 
-always_inline void
+always_inline u32
 ip_lookup_set_buffer_fib_index (u32 * fib_index_by_sw_if_index,
 				vlib_buffer_t * b)
 {
-  /* *INDENT-OFF* */
-  vnet_buffer (b)->ip.fib_index =
-    vec_elt (fib_index_by_sw_if_index, vnet_buffer (b)->sw_if_index[VLIB_RX]);
-  vnet_buffer (b)->ip.fib_index =
-    ((vnet_buffer (b)->sw_if_index[VLIB_TX] ==  (u32) ~ 0) ?
-     vnet_buffer (b)->ip.fib_index :
-     vnet_buffer (b)->sw_if_index[VLIB_TX]);
-  /* *INDENT-ON* */
+  u32 rx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+  u32 tx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
+  u32 fib_index;
+
+  if (tx_sw_if_index == (u32) ~ 0)
+    fib_index = vec_elt (fib_index_by_sw_if_index, rx_sw_if_index);
+  else
+    fib_index = tx_sw_if_index;
+
+  vnet_buffer (b)->ip.fib_index = fib_index;
+  return fib_index;
 }
 
 typedef struct _vnet_ip_container_proxy_args
