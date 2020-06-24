@@ -229,7 +229,6 @@ virtio_needs_csum (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr,
 	  *l4_hdr_sz = sizeof (*udp);
 	}
     }
-
 }
 
 static_always_inline void
@@ -302,6 +301,7 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (hdr_sz == sizeof (struct virtio_net_hdr_v1))
 	    num_buffers = hdr->num_buffers;
 
+	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	  b0->current_data = 0;
 	  b0->current_length = len;
 
@@ -320,7 +320,6 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      vlib_buffer_t *pb, *cb;
 	      pb = b0;
 	      b0->total_length_not_including_first_buffer = 0;
-	      b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	      while (num_buffers > 1)
 		{
 		  last++;
