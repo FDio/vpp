@@ -95,8 +95,6 @@ PIP_INSTALL_DONE=$(TEST_RUN_DIR)/pip-install-$(PYTHON_VERSION).done
 PIP_PATCH_DONE=$(TEST_RUN_DIR)/pip-patch-$(PYTHON_VERSION).done
 PAPI_INSTALL_DONE=$(TEST_RUN_DIR)/papi-install-$(PYTHON_VERSION).done
 
-PAPI_INSTALL_FLAGS=$(PIP_INSTALL_DONE) $(PIP_PATCH_DONE) $(PAPI_INSTALL_DONE)
-
 $(PIP_TOOLS_INSTALL_DONE):
 	@rm -rf $(VENV_PATH)
 	@mkdir -p $(TEST_RUN_DIR)
@@ -108,12 +106,12 @@ $(PIP_TOOLS_INSTALL_DONE):
 		  $(PYTHON_INTERP) -m pip install pip-tools===$(PIP_TOOLS_VERSION)"
 	@touch $@
 
-$(PYTHON_DEPENDS): $(PIP_TOOLS_INSTALL_DONE) requirements.txt
+$(PYTHON_DEPENDS): requirements.txt
 	@bash -c "source $(VENV_PATH)/bin/activate && \
 		  CUSTOM_COMPILE_COMMAND='make test-refresh-deps (or update requirements.txt)' \
 		  $(PYTHON_INTERP) -m piptools compile -q --generate-hashes requirements.txt --output-file $@"
 
-$(PIP_INSTALL_DONE): $(PYTHON_DEPENDS)
+$(PIP_INSTALL_DONE): $(PIP_TOOLS_INSTALL_DONE) $(PYTHON_DEPENDS)
 	@bash -c "source $(VENV_PATH)/bin/activate && \
 		  $(PYTHON_INTERP) -m piptools sync $(PYTHON_DEPENDS)"
 	@touch $@
