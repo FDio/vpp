@@ -230,6 +230,70 @@ vlib_increment_combined_counter (vlib_combined_counter_main_t * cm,
   my_counters[index].bytes += n_bytes;
 }
 
+/** Increment a combined counters
+    @param cm - (vlib_combined_counter_main_t *) comined counter main pointer
+    @param thread_index - (u32) the current cpu index
+    @param indices  - (u32 *) array of counter indices to increment
+    @param byte_counts - (u32 *) array of byte counts
+    @param n_packets - (u64) number of elements in the arrays
+*/
+
+static_always_inline void
+vlib_increment_combined_counters (vlib_combined_counter_main_t * cm,
+				  u32 thread_index, u32 * indices,
+				  u32 * byte_counts, u64 n_packets)
+{
+  vlib_counter_t *my_counters = cm->counters[thread_index], *c;
+
+#ifdef CLIB_HAVE_VEC256
+  while (n_packets >= 8)
+    {
+      if (n_packets >= 16)
+	{
+	  clib_prefetch_load (my_counters + indices[8]);
+	  if (u32x8_all_elts_equal (u32x8_load_unaligned (indices + 8)) == 0)
+	    {
+	      clib_prefetch_load (my_counters + indices[9]);
+	      clib_prefetch_load (my_counters + indices[10]);
+	      clib_prefetch_load (my_counters + indices[11]);
+	      clib_prefetch_load (my_counters + indices[12]);
+	      clib_prefetch_load (my_counters + indices[13]);
+	      clib_prefetch_load (my_counters + indices[14]);
+	      clib_prefetch_load (my_counters + indices[15]);
+	    }
+	}
+
+      if (u32x8_all_elts_equal (*(u32x8u *) indices))
+	{
+	  c = my_counters + indices[0];
+	  c->packets += 8;
+	  c->bytes += u32x8_sum_elts (*(u32x8u *) byte_counts);
+	  indices += 8;
+	  byte_counts += 8;
+	  n_packets -= 8;
+	}
+      else
+	{
+	  c = my_counters + indices[0];
+	  c->packets += 1;
+	  c->bytes += byte_counts[0];
+	  indices += 1;
+	  byte_counts += 1;
+	  n_packets -= 1;
+	}
+    }
+#endif
+  while (n_packets)
+    {
+      c = my_counters + indices[0];
+      c->packets += 1;
+      c->bytes += byte_counts[0];
+      indices += 1;
+      byte_counts += 1;
+      n_packets -= 1;
+    }
+}
+
 /** Pre-fetch a per-thread combined counter for the given object index */
 always_inline void
 vlib_prefetch_combined_counter (const vlib_combined_counter_main_t * cm,
