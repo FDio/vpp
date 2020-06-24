@@ -1260,6 +1260,14 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
   vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
 			       frame->n_vectors);
 
+  // attempt to cleanup at the same rate as new sessions created
+  if (pool_elts (tsm->sessions) > tsm->last_lru_cleanup_n_sessions)
+    {
+      nat_lru_cleanup (sm, thread_index, now,
+		       pool_elts (tsm->sessions) -
+		       tsm->last_lru_cleanup_n_sessions);
+    }
+
   vlib_node_increment_counter (vm, stats_node_index,
 			       NAT_OUT2IN_ED_ERROR_OUT2IN_PACKETS,
 			       pkts_processed);
