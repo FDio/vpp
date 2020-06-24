@@ -466,6 +466,8 @@ typedef struct
   u32 udp_lru_head_index;
   u32 icmp_lru_head_index;
   u32 unk_proto_lru_head_index;
+  // number of sessions in the pool after last lru cleanup
+  u32 last_lru_cleanup_n_sessions;
 
   /* NAT thread index */
   u32 snat_thread_index;

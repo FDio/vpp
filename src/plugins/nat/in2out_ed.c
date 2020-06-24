@@ -349,14 +349,11 @@ slow_path_ed (snat_main_t * sm,
   if (PREDICT_FALSE
       (nat44_ed_maximum_sessions_exceeded (sm, rx_fib_index, thread_index)))
     {
-      if (!nat_lru_free_one (sm, thread_index, now))
-	{
-	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
-	  nat_ipfix_logging_max_sessions (thread_index,
-					  sm->max_translations_per_thread);
-	  nat_elog_notice ("maximum sessions exceeded");
-	  return NAT_NEXT_DROP;
-	}
+      b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
+      nat_ipfix_logging_max_sessions (thread_index,
+				      sm->max_translations_per_thread);
+      nat_elog_notice ("maximum sessions exceeded");
+      return NAT_NEXT_DROP;
     }
 
   ip4_address_t sm_addr;
@@ -1201,6 +1198,9 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
   vlib_get_buffers (vm, from, b, n_left_from);
+
+  // attempt to clear as many sessions as we are about to create from LRU list
+  nat_lru_cleanup (sm, thread_index, now, frame->n_vectors);
 
   while (n_left_from > 0)
     {

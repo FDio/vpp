@@ -71,55 +71,78 @@ nat_ed_session_delete (snat_main_t * sm, snat_session_t * ses,
 }
 
 static_always_inline int
-nat_lru_free_one_with_head (snat_main_t * sm, int thread_index,
-			    f64 now, u32 head_index)
+nat_lru_cleanup_with_head (snat_main_t * sm, u32 thread_index, f64 now,
+			   int n_sessions, u32 head_index)
 {
   snat_session_t *s = NULL;
   dlist_elt_t *oldest_elt;
   f64 sess_timeout_time;
   u32 oldest_index;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-  oldest_index = clib_dlist_remove_head (tsm->lru_pool, head_index);
-  if (~0 != oldest_index)
+  u32 n_cleared = 0;
+  while (n_cleared < n_sessions)
     {
-      oldest_elt = pool_elt_at_index (tsm->lru_pool, oldest_index);
-      s = pool_elt_at_index (tsm->sessions, oldest_elt->value);
-
-      sess_timeout_time =
-	s->last_heard + (f64) nat44_session_get_timeout (sm, s);
-      if (now >= sess_timeout_time
-	  || (s->tcp_closed_timestamp && now >= s->tcp_closed_timestamp))
+      oldest_index = clib_dlist_remove_head (tsm->lru_pool, head_index);
+      if (~0 != oldest_index)
 	{
-	  nat_free_session_data (sm, s, thread_index, 0);
-	  nat_ed_session_delete (sm, s, thread_index, 0);
-	  return 1;
+	  oldest_elt = pool_elt_at_index (tsm->lru_pool, oldest_index);
+	  s = pool_elt_at_index (tsm->sessions, oldest_elt->value);
+
+	  sess_timeout_time =
+	    s->last_heard + (f64) nat44_session_get_timeout (sm, s);
+	  if (now >= sess_timeout_time
+	      || (s->tcp_closed_timestamp && now >= s->tcp_closed_timestamp))
+	    {
+	      nat_free_session_data (sm, s, thread_index, 0);
+	      nat_ed_session_delete (sm, s, thread_index, 0);
+	      ++n_cleared;
+	    }
+	  else
+	    {
+	      clib_dlist_addhead (tsm->lru_pool, head_index, oldest_index);
+	      break;
+	    }
 	}
       else
 	{
-	  clib_dlist_addhead (tsm->lru_pool, head_index, oldest_index);
+	  break;
 	}
     }
-  return 0;
+  return n_cleared;
 }
 
-static_always_inline int
-nat_lru_free_one (snat_main_t * sm, int thread_index, f64 now)
+static_always_inline void
+nat_lru_cleanup (snat_main_t * sm, u32 thread_index, f64 now, int n_sessions)
 {
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-  int rc = 0;
-#define _(p)                                                       \
-  if ((rc = nat_lru_free_one_with_head (sm, thread_index, now,     \
-                                        tsm->p##_lru_head_index))) \
-    {                                                              \
-      return rc;                                                   \
+  n_sessions -=
+    nat_lru_cleanup_with_head (sm, thread_index, now, n_sessions,
+			       tsm->tcp_trans_lru_head_index);
+  if (n_sessions)
+    {
+      n_sessions -=
+	nat_lru_cleanup_with_head (sm, thread_index, now, n_sessions,
+				   tsm->udp_lru_head_index);
     }
-  _(tcp_trans);
-  _(udp);
-  _(unk_proto);
-  _(icmp);
-  _(tcp_estab);
-#undef _
-  return 0;
+  if (n_sessions)
+    {
+      n_sessions -=
+	nat_lru_cleanup_with_head (sm, thread_index, now, n_sessions,
+				   tsm->unk_proto_lru_head_index);
+    }
+  if (n_sessions)
+    {
+      n_sessions -=
+	nat_lru_cleanup_with_head (sm, thread_index, now, n_sessions,
+				   tsm->icmp_lru_head_index);
+    }
+  if (n_sessions)
+    {
+      n_sessions -=
+	nat_lru_cleanup_with_head (sm, thread_index, now, n_sessions,
+				   tsm->tcp_estab_lru_head_index);
+    }
+  tsm->last_lru_cleanup_n_sessions = pool_elts (tsm->sessions);
 }
 
 static_always_inline snat_session_t *
@@ -127,8 +150,6 @@ nat_ed_session_alloc (snat_main_t * sm, u32 thread_index, f64 now, u8 proto)
 {
   snat_session_t *s;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-
-  nat_lru_free_one (sm, thread_index, now);
 
   pool_get (tsm->sessions, s);
   clib_memset (s, 0, sizeof (*s));
