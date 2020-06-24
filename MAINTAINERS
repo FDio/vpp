@@ -429,6 +429,8 @@ Plugin - Internet Key Exchange (IKEv2) Protocol
 I:	ikev2
 M:	Damjan Marion <damarion@cisco.com>
 M:	Neale Ranns <nranns@cisco.com>
+M:	Filip Tehlar <ftehlar@cisco.com>
+M:	Benoît Ganne <bganne@cisco.com>
 F:	src/plugins/ikev2/
 
 Plugin - Internet Group Management Protocol (IGMP)

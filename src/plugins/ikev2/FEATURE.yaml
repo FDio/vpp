@@ -1,0 +1,17 @@
+---
+name: ikev2 plugin
+maintainer:
+  - Damjan Marion <damarion@cisco.com>
+  - Neale Ranns <nranns@cisco.com>
+  - Filip Tehlar <ftehlar@cisco.com>
+  - Benoît Ganne <bganne@cisco.com>
+features:
+  - RFC 7296 "Internet Key Exchange Protocol Version 2 (IKEv2)"
+  - NAT-T, ESN, PSK and public key authentication
+  - AES-CBC-128/192/256 and AES-GCM-16-128/192/256 encryption
+  - HMAC-SHA2-256/384/512 and HMAC-SHA1 pseudo-random functions
+  - HMAC-SHA2-256-128/384-192/512-256 integrity
+  - MODP and ECP Diffie-Hellman
+description: "Internet Key Exchange (IKEv2) Protocol plugin"
+state: experimental
+properties: [API, CLI, MULTITHREAD]
