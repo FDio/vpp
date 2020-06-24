@@ -116,8 +116,6 @@ PAPI_WIPE_DIST=$(WS_ROOT)/src/vpp-api/vapi/__pycache__ \
 	$(PAPI_PYTHON_SRC_DIR)/vpp_papi.egg-info \
 	$(PAPI_PYTHON_SRC_DIR)/vpp_papi/__pycache__
 
-PAPI_INSTALL_FLAGS=$(PIP_INSTALL_DONE) $(PIP_PATCH_DONE) $(PAPI_INSTALL_DONE)
-
 $(PIP_TOOLS_INSTALL_DONE):
 	@rm -rf $(VENV_PATH)
 	@mkdir -p $(VENV_RUN_DIR)
@@ -129,12 +127,12 @@ $(PIP_TOOLS_INSTALL_DONE):
 		  $(PYTHON_INTERP) -m pip install pip-tools===$(PIP_TOOLS_VERSION)"
 	@touch $@
 
-$(PYTHON_DEPENDS): $(PIP_TOOLS_INSTALL_DONE) requirements.txt
+$(PYTHON_DEPENDS): requirements.txt
 	@bash -c "source $(VENV_PATH)/bin/activate && \
 		  CUSTOM_COMPILE_COMMAND='make test-refresh-deps (or update requirements.txt)' \
 		  $(PYTHON_INTERP) -m piptools compile -q --generate-hashes requirements.txt --output-file $@"
 
-$(PIP_INSTALL_DONE): $(PYTHON_DEPENDS)
+$(PIP_INSTALL_DONE): $(PIP_TOOLS_INSTALL_DONE) $(PYTHON_DEPENDS)
 	@bash -c "source $(VENV_PATH)/bin/activate && \
 		  $(PYTHON_INTERP) -m piptools sync $(PYTHON_DEPENDS)"
 	@touch $@
@@ -146,7 +144,7 @@ $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 		echo Applying patch: $$(basename $$f) ; \
 		patch --forward -p1 -d $(SCAPY_SOURCE) < $$f ; \
 		retCode=$$?; \
-		[ $$retCode -gt 0 ] && exit $$retCode; \
+		[ $$retCode -gt 1 ] && exit $$retCode; \
 	done; \
 	touch $@
 
