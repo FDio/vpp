@@ -82,13 +82,20 @@ snat_det_add_map (snat_main_t * sm, ip4_address_t * in_addr, u8 in_plen,
 	  num_sessions = num_sessions * 1000 - 1;
 	}
 
+      u32 sharing_ratio = (1 << (32 - in_plen)) / (1 << (32 - out_plen));
+      if (!sharing_ratio)
+	{
+	  // avoid division by zero
+	  return VNET_API_ERROR_INVALID_VALUE;
+	}
+
       pool_get (sm->det_maps, det_map);
       clib_memset (det_map, 0, sizeof (*det_map));
       det_map->in_addr.as_u32 = in_cmp.as_u32;
       det_map->in_plen = in_plen;
       det_map->out_addr.as_u32 = out_cmp.as_u32;
       det_map->out_plen = out_plen;
-      det_map->sharing_ratio = (1 << (32 - in_plen)) / (1 << (32 - out_plen));
+      det_map->sharing_ratio = sharing_ratio;
       det_map->ports_per_host = (65535 - 1023) / det_map->sharing_ratio;
 
       vec_validate_init_empty (det_map->sessions, num_sessions,
