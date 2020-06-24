@@ -238,6 +238,12 @@ is_pow2 (uword x)
 }
 
 always_inline uword
+round_down_pow2 (uword x, uword pow2)
+{
+  return (x) & ~(pow2 - 1);
+}
+
+always_inline uword
 round_pow2 (uword x, uword pow2)
 {
   return (x + pow2 - 1) & ~(pow2 - 1);
