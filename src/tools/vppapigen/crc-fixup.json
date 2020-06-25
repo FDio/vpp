@@ -1,0 +1,836 @@
+{
+    "abf_policy_add_del": {
+        "3323138455": 3999725886
+    },
+    "abf_policy_details": {
+        "3074981796": 1734993156
+    },
+    "acl_add_replace": {
+        "3999018776": 481025707
+    },
+    "acl_details": {
+        "2512042720": 2056778268
+    },
+    "macip_acl_add": {
+        "3463428816": 3595107594
+    },
+    "macip_acl_add_replace": {
+        "709238228": 3812885159
+    },
+    "macip_acl_details": {
+        "655579993": 1472677935
+    },
+    "dhcp_proxy_config": {
+        "1079551625": 1734812430
+    },
+    "dhcp_client_config": {
+        "451941354": 2509996195
+    },
+    "dhcp_compl_event": {
+        "1430930661": 3909680413
+    },
+    "dhcp_client_details": {
+        "1012716170": 2899849050
+    },
+    "dhcp_proxy_details": {
+        "3703240000": 3457609796
+    },
+    "dhcp6_send_client_message": {
+        "4162987126": 4143009520
+    },
+    "dhcp6_pd_send_client_message": {
+        "926547341": 105622968
+    },
+    "dhcp6_reply_event": {
+        "2243408254": 2671442405
+    },
+    "dhcp6_pd_reply_event": {
+        "1585938473": 3409856043
+    },
+    "ip6_add_del_address_using_prefix": {
+        "964883210": 2604470752
+    },
+    "gbp_bridge_domain_add": {
+        "2442038273": 2220146655
+    },
+    "gbp_bridge_domain_details": {
+        "1372920809": 718083577
+    },
+    "gbp_route_domain_add": {
+        "541882849": 755695160
+    },
+    "gbp_route_domain_details": {
+        "2810969034": 2326860661
+    },
+    "gbp_endpoint_add": {
+        "2067462110": 2632019290
+    },
+    "gbp_endpoint_details": {
+        "2379807699": 145673056
+    },
+    "gbp_endpoint_group_add": {
+        "807264021": 2383364180
+    },
+    "gbp_endpoint_group_details": {
+        "2876364579": 2402822444
+    },
+    "gbp_subnet_add_del": {
+        "2826976384": 2290797109
+    },
+    "gbp_subnet_details": {
+        "3418737176": 1322795350
+    },
+    "gbp_contract_add_del": {
+        "2861393197": 1430136667
+    },
+    "gbp_contract_details": {
+        "1709097765": 706272110
+    },
+    "gbp_ext_itf_add_del": {
+        "1980158177": 317544192
+    },
+    "gbp_ext_itf_details": {
+        "1369193788": 1082803648
+    },
+    "gtpu_add_del_tunnel": {
+        "3398973995": 2593915942
+    },
+    "gtpu_tunnel_update_tteid": {
+        "2045982742": 2318250248
+    },
+    "gtpu_tunnel_details": {
+        "670315694": 1161154453
+    },
+    "igmp_listen": {
+        "430219038": 1066640666
+    },
+    "igmp_details": {
+        "955291945": 1391536777
+    },
+    "igmp_event": {
+        "2248053740": 3614011055
+    },
+    "igmp_group_prefix_set": {
+        "1528079822": 3572632261
+    },
+    "igmp_group_prefix_details": {
+        "631033217": 3283338534
+    },
+    "ikev2_set_responder": {
+        "3114945870": 4040416384
+    },
+    "vxlan_gpe_ioam_export_enable_disable": {
+        "3569839418": 3839159290
+    },
+    "ioam_export_ip6_enable_disable": {
+        "3569839418": 3839159290
+    },
+    "vxlan_gpe_ioam_vni_enable": {
+        "263937969": 2574344699
+    },
+    "vxlan_gpe_ioam_vni_disable": {
+        "263937969": 2574344699
+    },
+    "vxlan_gpe_ioam_transit_enable": {
+        "1027524183": 1430215547
+    },
+    "vxlan_gpe_ioam_transit_disable": {
+        "1027524183": 1430215547
+    },
+    "udp_ping_add_del": {
+        "4196804860": 3331502472
+    },
+    "l3xc_update": {
+        "3916082143": 126333395
+    },
+    "l3xc_details": {
+        "3160143954": 3572930087
+    },
+    "sw_interface_lacp_details": {
+        "3651681583": 1952112826
+    },
+    "lb_conf": {
+        "1456288353": 584955705
+    },
+    "lb_add_del_vip": {
+        "1873111495": 3512434140
+    },
+    "lb_add_del_as": {
+        "903292160": 2019723655
+    },
+    "lb_vip_dump": {
+        "1443957943": 3351032100
+    },
+    "lb_vip_details": {
+        "321514651": 150182893
+    },
+    "lb_as_details": {
+        "2367996574": 2621044238
+    },
+    "mactime_add_del_range": {
+        "3411470455": 270031087
+    },
+    "mactime_details": {
+        "3659903290": 1150426118
+    },
+    "map_add_domain": {
+        "614406492": 2052724937
+    },
+    "map_domain_details": {
+        "2037308240": 4229454301
+    },
+    "map_param_add_del_pre_resolve": {
+        "3672485635": 385911910
+    },
+    "map_param_get_reply": {
+        "640101520": 671686998
+    },
+    "memif_details": {
+        "3660906169": 3493342284
+    },
+    "dslite_add_del_pool_addr_range": {
+        "3727317762": 3293070714
+    },
+    "dslite_set_aftr_addr": {
+        "2025131999": 513105805
+    },
+    "dslite_get_aftr_addr_reply": {
+        "2384683150": 954404273
+    },
+    "dslite_set_b4_addr": {
+        "2025131999": 513105805
+    },
+    "dslite_get_b4_addr_reply": {
+        "2384683150": 954404273
+    },
+    "nat44_add_del_address_range": {
+        "1865121877": 3569833612
+    },
+    "nat44_address_details": {
+        "219933377": 1161890500
+    },
+    "nat44_add_del_static_mapping": {
+        "1525018686": 3781552187
+    },
+    "nat44_static_mapping_details": {
+        "113983666": 440614647
+    },
+    "nat44_add_del_identity_mapping": {
+        "49981986": 2383574079
+    },
+    "nat44_identity_mapping_details": {
+        "710058032": 919737169
+    },
+    "nat44_add_del_interface_addr": {
+        "1257066688": 4236464933
+    },
+    "nat44_interface_addr_details": {
+        "3836520906": 1047033108
+    },
+    "nat44_user_session_details": {
+        "754377069": 426114409
+    },
+    "nat44_add_del_lb_static_mapping": {
+        "1332276893": 1404192273
+    },
+    "nat44_lb_static_mapping_add_del_local": {
+        "2091152711": 688955729
+    },
+    "nat44_lb_static_mapping_details": {
+        "3982289014": 577223144
+    },
+    "nat44_del_session": {
+        "363184012": 1279902599
+    },
+    "nat_det_add_del_map": {
+        "290496912": 288349701
+    },
+    "nat_det_map_details": {
+        "2912017539": 2281705185
+    },
+    "nat_det_close_session_out": {
+        "4138883537": 3249982459
+    },
+    "nat_det_close_session_in": {
+        "1013506163": 168882020
+    },
+    "nat64_add_del_pool_addr_range": {
+        "2746828003": 555962099
+    },
+    "nat64_add_del_static_bib": {
+        "473976293": 2432361866
+    },
+    "nat64_bib_details": {
+        "1136410079": 1657295901
+    },
+    "nat64_st_details": {
+        "3711132141": 3346060832
+    },
+    "nat66_add_del_static_mapping": {
+        "1054379889": 4217693451
+    },
+    "nat66_static_mapping_details": {
+        "3745080651": 1549173832
+    },
+    "nsh_add_del_map": {
+        "168772272": 2307753341
+    },
+    "nsh_map_details": {
+        "804245321": 3008022689
+    },
+    "nsim_cross_connect_enable_disable": {
+        "2621353350": 385289183
+    },
+    "pppoe_add_del_session": {
+        "4143805854": 1185736787
+    },
+    "pppoe_session_details": {
+        "1267632714": 858507074
+    },
+    "stn_add_del_rule": {
+        "575434461": 1408717286
+    },
+    "stn_rules_details": {
+        "2769892774": 2968936556
+    },
+    "svs_route_add_del": {
+        "3835414076": 3550360060
+    },
+    "svs_details": {
+        "1652739413": 3092397412
+    },
+    "vmxnet3_details": {
+        "1780110488": 2191237205
+    },
+    "vrrp_vr_add_del": {
+        "3318683050": 1841608833
+    },
+    "vrrp_vr_details": {
+        "1189990077": 68352625
+    },
+    "vrrp_vr_set_peers": {
+        "549373727": 3131237675
+    },
+    "vrrp_vr_peer_details": {
+        "1033486600": 2883130462
+    },
+    "vrrp_vr_track_if_add_del": {
+        "3598578329": 863980452
+    },
+    "vrrp_vr_track_if_details": {
+        "1942187905": 2579286684
+    },
+    "proxy_arp_add_del": {
+        "404997095": 2236116157
+    },
+    "proxy_arp_details": {
+        "1536460403": 2452144464
+    },
+    "bfd_udp_get_echo_source_reply": {
+        "3822532257": 503369678
+    },
+    "bfd_udp_add": {
+        "2476528234": 2053968261
+    },
+    "bfd_udp_mod": {
+        "2436755589": 2017083382
+    },
+    "bfd_udp_del": {
+        "3702602377": 2157334861
+    },
+    "bfd_udp_session_details": {
+        "167456557": 1617247234
+    },
+    "bfd_udp_session_set_flags": {
+        "78953981": 3476109393
+    },
+    "bfd_udp_auth_activate": {
+        "570235867": 1228857580
+    },
+    "bfd_udp_auth_deactivate": {
+        "2584077024": 2576845874
+    },
+    "bier_route_add_del": {
+        "4244829162": 4070497440
+    },
+    "bier_route_details": {
+        "1074318062": 971926102
+    },
+    "bier_disp_entry_add_del": {
+        "2662862004": 1686316011
+    },
+    "bier_disp_entry_details": {
+        "2227312881": 3853531561
+    },
+    "bond_create": {
+        "4057715967": 1216887934
+    },
+    "bond_enslave": {
+        "3889252680": 124702631
+    },
+    "sw_interface_bond_details": {
+        "3145503387": 4126089478
+    },
+    "pipe_create_reply": {
+        "3083743500": 3569533619
+    },
+    "pipe_details": {
+        "3307960733": 1135349882
+    },
+    "tap_create_v2": {
+        "755852656": 1146631677
+    },
+    "sw_interface_tap_v2_details": {
+        "506145351": 3845920478
+    },
+    "sw_interface_vhost_user_details": {
+        "216931923": 2555579889
+    },
+    "virtio_pci_create": {
+        "423950555": 2851157772
+    },
+    "sw_interface_virtio_pci_details": {
+        "1823064423": 370704186
+    },
+    "p2p_ethernet_add": {
+        "916563676": 4005095191
+    },
+    "p2p_ethernet_del": {
+        "1660427404": 191021958
+    },
+    "geneve_add_del_tunnel": {
+        "2571393073": 2540082101
+    },
+    "geneve_tunnel_details": {
+        "1796664100": 3799918408
+    },
+    "gre_tunnel_add_del": {
+        "2726133527": 1862048802
+    },
+    "gre_tunnel_details": {
+        "608392243": 3931121
+    },
+    "sw_interface_set_flags": {
+        "4121870776": 1781221658
+    },
+    "sw_interface_event": {
+        "759010727": 4144625549
+    },
+    "sw_interface_details": {
+        "1814175687": 397844386
+    },
+    "sw_interface_add_del_address": {
+        "1415829307": 1476646340
+    },
+    "sw_interface_set_unnumbered": {
+        "357196857": 2475619131
+    },
+    "sw_interface_set_mac_address": {
+        "3308709867": 1791652970
+    },
+    "sw_interface_set_rx_mode": {
+        "2957843710": 2014272750
+    },
+    "sw_interface_rx_placement_details": {
+        "2655299534": 4141338660
+    },
+    "create_subif": {
+        "2030872405": 3409383523
+    },
+    "ip_neighbor_add_del": {
+        "101171799": 274012342
+    },
+    "ip_neighbor_dump": {
+        "3625428100": 3447919256
+    },
+    "ip_neighbor_details": {
+        "3801971184": 2265874617
+    },
+    "want_ip_neighbor_events": {
+        "1944521350": 439429232
+    },
+    "ip_neighbor_event": {
+        "3182465714": 2207461681
+    },
+    "ip_route_add_del": {
+        "3102539277": 3254747949
+    },
+    "ip_route_details": {
+        "3181966101": 3523193569
+    },
+    "ip_route_lookup": {
+        "1896703089": 3801637253
+    },
+    "ip_route_lookup_reply": {
+        "1569713099": 2929319566
+    },
+    "ip_mroute_add_del": {
+        "2245485299": 4133649687
+    },
+    "ip_mroute_details": {
+        "2570328645": 3251325764
+    },
+    "ip_address_details": {
+        "3995711383": 2971244357
+    },
+    "ip_unnumbered_details": {
+        "3428433218": 2853348483
+    },
+    "mfib_signal_details": {
+        "1867140347": 1681492634
+    },
+    "ip_punt_redirect": {
+        "1702950453": 2846185772
+    },
+    "ip_punt_redirect_details": {
+        "753886183": 958723539
+    },
+    "ip_container_proxy_add_del": {
+        "2113003505": 2434309952
+    },
+    "ip_container_proxy_details": {
+        "2819118371": 249848040
+    },
+    "ip_source_and_port_range_check_add_del": {
+        "2459985891": 2348578546
+    },
+    "sw_interface_ip6_set_link_local_address": {
+        "470872415": 691132922
+    },
+    "ip_reassembly_enable_disable": {
+        "3950483085": 2287764902
+    },
+    "set_punt": {
+        "2860766499": 2205783576
+    },
+    "punt_socket_register": {
+        "2502331583": 3368882426
+    },
+    "punt_socket_details": {
+        "3730264192": 501272181
+    },
+    "punt_socket_deregister": {
+        "2566689026": 2560902388
+    },
+    "sw_interface_ip6nd_ra_prefix": {
+        "2194414376": 3768088671
+    },
+    "ip6nd_proxy_add_del": {
+        "3269764742": 1071605337
+    },
+    "ip6nd_proxy_details": {
+        "817495882": 3546015999
+    },
+    "ip6_ra_event": {
+        "56934853": 1206439870
+    },
+    "set_ipfix_exporter": {
+        "1429260448": 1764249095
+    },
+    "ipfix_exporter_details": {
+        "233684964": 299922451
+    },
+    "ipip_add_tunnel": {
+        "717462005": 2849951693
+    },
+    "ipip_6rd_add_tunnel": {
+        "3119257699": 1458126016
+    },
+    "ipip_tunnel_details": {
+        "3541873486": 1394830709
+    },
+    "ipsec_spd_entry_add_del": {
+        "864777233": 2671266701
+    },
+    "ipsec_spd_details": {
+        "1477695394": 4062324624
+    },
+    "ipsec_sad_entry_add_del": {
+        "2875504070": 3101619044
+    },
+    "ipsec_tunnel_protect_update": {
+        "819327283": 339678557
+    },
+    "ipsec_tunnel_protect_del": {
+        "3441662256": 3721574966
+    },
+    "ipsec_tunnel_protect_details": {
+        "560347728": 2892792379
+    },
+    "ipsec_tunnel_if_add_del": {
+        "551769082": 722689640
+    },
+    "ipsec_sa_details": {
+        "878515367": 3003940673
+    },
+    "l2_xconnect_details": {
+        "1194027879": 3366611767
+    },
+    "l2_fib_table_details": {
+        "2756638392": 3906141298
+    },
+    "l2fib_add_del": {
+        "3990725767": 4070406508
+    },
+    "l2_macs_event": {
+        "1152974180": 783154315
+    },
+    "bridge_domain_details": {
+        "262473469": 2543801501
+    },
+    "l2_interface_pbb_tag_rewrite": {
+        "954729128": 1630468698
+    },
+    "l2_patch_add_del": {
+        "2717296371": 1378825285
+    },
+    "sw_interface_set_l2_xconnect": {
+        "1336052357": 447360443
+    },
+    "sw_interface_set_l2_bridge": {
+        "3496446739": 776486096
+    },
+    "bd_ip_mac_add_del": {
+        "39307369": 1596687586
+    },
+    "bd_ip_mac_details": {
+        "1415247978": 2771353668
+    },
+    "l2_arp_term_event": {
+        "1768153210": 2248110570
+    },
+    "l2tpv3_create_tunnel": {
+        "364826818": 1500025547
+    },
+    "sw_if_l2tpv3_tunnel_details": {
+        "1354271123": 497769598
+    },
+    "lisp_add_del_local_eid": {
+        "1314554786": 569734077
+    },
+    "lisp_add_del_map_server": {
+        "3457803053": 1704520316
+    },
+    "lisp_add_del_map_resolver": {
+        "3457803053": 1704520316
+    },
+    "lisp_use_petr": {
+        "3632118489": 2652117041
+    },
+    "show_lisp_use_petr_reply": {
+        "582591664": 3702360705
+    },
+    "lisp_add_del_remote_mapping": {
+        "1834776734": 4209569143
+    },
+    "lisp_add_del_adjacency": {
+        "752936694": 3479100257
+    },
+    "lisp_locator_details": {
+        "744624126": 3234120359
+    },
+    "lisp_eid_table_details": {
+        "472512402": 1271082554
+    },
+    "lisp_eid_table_dump": {
+        "1653893301": 3109664571
+    },
+    "lisp_adjacencies_get_reply": {
+        "2154977215": 1066908893
+    },
+    "lisp_map_resolver_details": {
+        "1048116311": 2191564267
+    },
+    "lisp_map_server_details": {
+        "1048116311": 2191564267
+    },
+    "one_add_del_local_eid": {
+        "1314554786": 569734077
+    },
+    "one_add_del_map_server": {
+        "3457803053": 1704520316
+    },
+    "one_add_del_map_resolver": {
+        "3457803053": 1704520316
+    },
+    "one_use_petr": {
+        "3632118489": 2652117041
+    },
+    "show_one_use_petr_reply": {
+        "2225091880": 283591846
+    },
+    "one_add_del_remote_mapping": {
+        "1834776734": 4209569143
+    },
+    "one_add_del_l2_arp_entry": {
+        "447080627": 857772152
+    },
+    "one_l2_arp_entries_get_reply": {
+        "2967281679": 2963569598
+    },
+    "one_add_del_ndp_entry": {
+        "260712572": 3512900143
+    },
+    "one_ndp_entries_get_reply": {
+        "1886493466": 198394209
+    },
+    "one_add_del_adjacency": {
+        "2659386130": 3834542846
+    },
+    "one_locator_details": {
+        "744624126": 3234120359
+    },
+    "one_eid_table_details": {
+        "472512402": 1271082554
+    },
+    "one_eid_table_dump": {
+        "3172532841": 2501185592
+    },
+    "one_adjacencies_get_reply": {
+        "140225417": 2834139557
+    },
+    "one_map_resolver_details": {
+        "1048116311": 2191564267
+    },
+    "one_map_server_details": {
+        "1048116311": 2191564267
+    },
+    "one_stats_details": {
+        "783763064": 4285461048
+    },
+    "gpe_add_del_fwd_entry": {
+        "4035212868": 3731748111
+    },
+    "gpe_fwd_entries_get_reply": {
+        "3297003638": 4193599259
+    },
+    "gpe_fwd_entry_path_details": {
+        "1212019994": 4001411482
+    },
+    "gpe_add_del_native_fwd_rpath": {
+        "1140624212": 2167251698
+    },
+    "gpe_native_fwd_rpaths_get_reply": {
+        "2048697762": 2044022457
+    },
+    "sw_interface_set_lldp": {
+        "1471134932": 3594956303
+    },
+    "mpls_ip_bind_unbind": {
+        "3344120626": 1210358311
+    },
+    "mpls_tunnel_add_del": {
+        "1144326849": 3850167837
+    },
+    "mpls_tunnel_details": {
+        "1460767459": 4089483918
+    },
+    "mpls_route_add_del": {
+        "2384272903": 876412756
+    },
+    "mpls_route_details": {
+        "2605728732": 3500947532
+    },
+    "policer_add_del": {
+        "724688184": 3415510894
+    },
+    "policer_details": {
+        "1926292040": 2755622938
+    },
+    "qos_store_enable_disable": {
+        "4088122507": 889660254
+    },
+    "qos_store_details": {
+        "1054911191": 59403592
+    },
+    "qos_record_enable_disable": {
+        "790252088": 632504200
+    },
+    "qos_record_details": {
+        "2753942739": 1230425309
+    },
+    "session_rule_add_del": {
+        "3834205218": 3810497603
+    },
+    "session_rules_details": {
+        "685185072": 810258928
+    },
+    "sw_interface_span_enable_disable": {
+        "601741675": 2898853537
+    },
+    "sw_interface_span_details": {
+        "2317412255": 89539580
+    },
+    "sr_mpls_steering_add_del": {
+        "1689059171": 2098924043
+    },
+    "sr_mpls_policy_assign_endpoint_color": {
+        "243186040": 1578916883
+    },
+    "sr_localsid_add_del": {
+        "1513538340": 653931273
+    },
+    "sr_policy_add": {
+        "1152160488": 3967413866
+    },
+    "sr_policy_mod": {
+        "3111892334": 3845234946
+    },
+    "sr_steering_add_del": {
+        "3832220175": 923917006
+    },
+    "sr_localsids_details": {
+        "781328825": 1785463397
+    },
+    "sr_policies_details": {
+        "3681546913": 132918675
+    },
+    "sr_steering_pol_details": {
+        "3557972169": 471787398
+    },
+    "syslog_set_sender": {
+        "3087080715": 3143897733
+    },
+    "syslog_get_sender_reply": {
+        "1112341070": 3554304172
+    },
+    "tcp_configure_src_addresses": {
+        "1743707661": 1258469702
+    },
+    "teib_entry_add_del": {
+        "2148978642": 1520477496
+    },
+    "teib_details": {
+        "2552160673": 3820397827
+    },
+    "udp_encap_add": {
+        "4148846769": 1641413704
+    },
+    "udp_encap_details": {
+        "2365299830": 2278041633
+    },
+    "vxlan_gbp_tunnel_add_del": {
+        "1819554855": 2357301606
+    },
+    "vxlan_gbp_tunnel_details": {
+        "1726565001": 497172502
+    },
+    "vxlan_gpe_add_del_tunnel": {
+        "2789585584": 2087560878
+    },
+    "vxlan_gpe_tunnel_details": {
+        "157875339": 1467032390
+    },
+    "vxlan_add_del_tunnel": {
+        "201972864": 2740832501
+    },
+    "vxlan_tunnel_details": {
+        "3281087665": 3884119823
+    },
+    "vxlan_offload_rx": {
+        "2630439047": 2309051979
+    },
+    "log_details": {
+        "64363712": 626534305
+    }
+}
