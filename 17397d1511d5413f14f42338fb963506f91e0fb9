@@ -109,6 +109,24 @@
     },
     {
       "key": {
+        "uuid": "bba8e7c7_d5d7e3cd",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-06-25T14:45:10Z",
+      "side": 1,
+      "message": "\u003e \u003e To make a long story short, probably I\u0027d deliver everything with a seq number \u003c max seq number seen on the connection on the spot. Since you don\u0027t track the max seq, I guess the next best thing would be to just deliver and flush the packet when something out-of-order is received. \n\u003e [Mohsin] Indeed, it is the case. MAX sequence number is always last buffered TCP packet in flow table. GRO tracks it.\n\nFC: That sounds reasonable. \n\n\u003e \n\u003e \u003e In case you tested already, did you see a drop in throughput? That is, if some networks are known to misbehave and induce a lot of reordering, probably something like this would improve performance. But I don\u0027t know if we should be optimizing for them.\n\u003e \n\u003e [Mohsin] Here (3) we need to know what should we do when we are processing current TCP packet in GRO and curr seq is greater than max seq number. It is also out-of-order case, because in between a TCP (PUSH | ACK) has been sent by sender to receiver which GRO didn\u0027t process.\n\u003e Currently, GRO flushes the buffered packet in this case and stores current packet which becomes new max sequence.\n\nFC: I assume that when a push was received, the whole queue was flushed (otherwise it should). If max_seq is entirely based on current packet (not a separate param) then gro can\u0027t know if the next packet is retransmission or not. So, for the duration of the retransmission, most probably it will end up holding the max_seq packet until the next one comes. In theory, holding the last packet in fast recovery is going to delay recovery on both ends. But assuming the queue is flushed every 10us, under load that would probably be equivalent to holding packets for 1 dispatch cycle.",
+      "parentUuid": "1b47279c_e6111078",
+      "revId": "17397d1511d5413f14f42338fb963506f91e0fb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d163a556_af39ea32",
         "filename": "src/vnet/pg/input.c",
         "patchSetId": 31
