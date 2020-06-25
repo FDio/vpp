@@ -9,6 +9,7 @@ import logging
 import binascii
 import os
 import sys
+import json
 from subprocess import Popen, PIPE
 
 assert sys.version_info >= (3, 6), \
@@ -932,17 +933,29 @@ def foldup_blocks(block, crc):
             t = global_types[b.fieldtype]
             try:
                 crc = crc_block_combine(t.block, crc)
-                return foldup_blocks(t.block, crc)
+                crc = foldup_blocks(t.block, crc)
             except AttributeError:
                 pass
     return crc
 
 
-def foldup_crcs(s):
+# keep the CRCs of the existing types of messages compatible with the
+# old "erroneous" way of calculating the CRC. For that - make a pointed
+# adjustment of the CRC function.
+# This is the purpose of the first element of the per-message dictionary.
+# The second element is there to avoid weakening the duplicate-detecting
+# properties of crc32. This way, if the new way of calculating the CRC
+# happens to collide with the old (buggy) way - we will still get
+# a different result and fail the comparison.
+def foldup_crcs(s, fixup_crc_dict):
     for f in s:
         f.crc = foldup_blocks(f.block,
                               binascii.crc32(f.crc) & 0xffffffff)
 
+        # fixup the CRCs to make the fix seamless
+        if f.name in fixup_crc_dict:
+            if f.crc in fixup_crc_dict.get(f.name):
+                f.crc = fixup_crc_dict.get(f.name).get(f.crc)
 
 #
 # Main
@@ -968,6 +981,8 @@ def main():
     cliparser.add_argument('--show-name', nargs=1)
     cliparser.add_argument('--git-revision',
                            help="Git revision to use for opening files")
+    cliparser.add_argument('--crc-fixup',
+                           help="JSON file of legacy CRC fixups")
     args = cliparser.parse_args()
 
     dirlist_add(args.includedir)
@@ -1012,7 +1027,13 @@ def main():
     s['Define'] = add_msg_id(s['Define'])
 
     # Fold up CRCs
-    foldup_crcs(s['Define'])
+    if args.crc_fixup:
+        crc_fixup_file = args.crc_fixup
+    else:
+        crc_fixup_file =  os.path.dirname(os.path.abspath(__file__)) + '/crc-fixup.json'
+    with open(crc_fixup_file, 'r') as fp:
+        crcs_fixup_dict = json.load(fp)
+    foldup_crcs(s['Define'], crcs_fixup_dict)
 
     #
     # Debug
