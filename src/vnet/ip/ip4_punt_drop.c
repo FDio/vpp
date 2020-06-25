@@ -337,10 +337,10 @@ ip4_punt_redirect_cmd (vlib_main_t * vm,
 		       vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  fib_route_path_t *rpaths = NULL, rpath;
-  dpo_proto_t payload_proto;
+  ip46_address_t nh = { 0 };
   clib_error_t *error = 0;
   u32 rx_sw_if_index = ~0;
+  u32 tx_sw_if_index = ~0;
   vnet_main_t *vnm;
   u8 is_add;
 
@@ -361,9 +361,13 @@ ip4_punt_redirect_cmd (vlib_main_t * vm,
       else if (unformat (line_input, "rx %U",
 			 unformat_vnet_sw_interface, vnm, &rx_sw_if_index))
 	;
+      else if (unformat (line_input, "via %U %U",
+			 unformat_ip4_address, unformat_vnet_sw_interface,
+			 &nh.ip4, vnm, &tx_sw_if_index))
+	;
       else if (unformat (line_input, "via %U",
-			 unformat_fib_route_path, &rpath, &payload_proto))
-	vec_add1 (rpaths, rpath);
+			 unformat_vnet_sw_interface, vnm, &tx_sw_if_index))
+	;
       else
 	{
 	  error = unformat_parse_error (line_input);
@@ -379,8 +383,7 @@ ip4_punt_redirect_cmd (vlib_main_t * vm,
 
   if (is_add)
     {
-      if (vec_len (rpaths))
-	ip4_punt_redirect_add_paths (rx_sw_if_index, rpaths);
+      ip4_punt_redirect_add (rx_sw_if_index, tx_sw_if_index, &nh);
     }
   else
     {
