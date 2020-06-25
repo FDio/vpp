@@ -4,4 +4,7 @@ set -e
 
 cd build-root
 rm -rf html
-lcov --capture --initial --directory . --output-file lcov.out
+# Remove all .gcda files
+lcov --zerocounters --directory .
+# Produce an info file containing zero coverage for all source files
+lcov --capture --initial --directory . --output-file zero.info
