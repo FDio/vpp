@@ -25,6 +25,7 @@ typedef srv6_sid_list
 {
   u8 num_sids;
   u32 weight;
+  u32 sl_index;
   vl_api_ip6_address_t sids[16];
 };
 
