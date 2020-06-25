@@ -6,7 +6,10 @@ cd build-root
 rm -rf html
 mkdir html
 lcov --no-checksum --directory . --capture --output-file out.info
-lcov --remove out.info \
+# Use all source code files for the denominator of the global percentages,
+# even if not all of them were loaded during the tests
+lcov --add-tracefile baseline.info --add-tracefile out.info --output-file total.info
+lcov --remove total.info \
        "/usr/include/*" "*/build-root/*" "/opt/*" "/usr/lib/*" \
        -o filtered.info
 genhtml filtered.info -o html
