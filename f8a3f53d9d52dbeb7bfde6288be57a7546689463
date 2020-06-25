@@ -22,6 +22,47 @@
       "revId": "f8a3f53d9d52dbeb7bfde6288be57a7546689463",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "478d4b3f_44bb1136",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-06-25T02:10:55Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "935a24b0_24f3e56c",
+      "range": {
+        "startLine": 126,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 57
+      },
+      "revId": "f8a3f53d9d52dbeb7bfde6288be57a7546689463",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9c4c087c_2ccbf953",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-06-25T02:10:55Z",
+      "side": 1,
+      "message": "I wonder why this is needed, and what causes such a condition.\nBy this special handling, the peer can send more than the RX fifo can enqueue.",
+      "revId": "f8a3f53d9d52dbeb7bfde6288be57a7546689463",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
