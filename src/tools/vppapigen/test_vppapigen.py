@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 import unittest
-from vppapigen import VPPAPI, Option, ParseError, Union
+from vppapigen import VPPAPI, Option, ParseError, Union, foldup_crcs, global_types
+import vppapigen
 
 # TODO
-# - test parsing of options, typedefs, enums, defines, CRC
+# - test parsing of options, typedefs, enums, defines
 # - test JSON, C output
 
 
@@ -139,6 +140,110 @@ class TestService(unittest.TestCase):
         self.assertEqual(s['Service'][0].caller, 'show_version')
         self.assertEqual(s['Service'][0].reply, 'show_version_reply')
 
+
+def get_crc(apistring, name):
+    vppapigen.global_types = {}
+    parser = vppapigen.VPPAPI()
+    r = parser.parse_string(apistring)
+    s = parser.process(r)
+    foldup_crcs(s['Define'])
+    d = [f for f in s['Define'] if f.name == name]
+    return d[0].crc
+
+
+class TestCRC(unittest.TestCase):
+    def test_crc(self):
+        test_string = '''
+         typedef list { u8 foo; };
+         autoreply define foo { u8 foo; vl_api_list_t l;};
+        '''
+        crc = get_crc(test_string, 'foo')
+
+        # modify underlaying type
+        test_string = '''
+         typedef list { u8 foo2; };
+         autoreply define foo { u8 foo;  vl_api_list_t l;};
+        '''
+        crc2 = get_crc(test_string, 'foo')
+        self.assertNotEqual(crc, crc2)
+
+        # two user-defined types
+        test_string = '''
+         typedef address { u8 foo2; };
+         typedef list { u8 foo2; vl_api_address_t add; };
+         autoreply define foo { u8 foo;  vl_api_list_t l;};
+        '''
+        crc3 = get_crc(test_string, 'foo')
+
+        test_string = '''
+         typedef address { u8 foo3; };
+         typedef list { u8 foo2; vl_api_address_t add; };
+         autoreply define foo { u8 foo;  vl_api_list_t l;};
+        '''
+        crc4 = get_crc(test_string, 'foo')
+        self.assertNotEqual(crc3, crc4)
+
+        test_string = '''
+         typedef address { u8 foo3; };
+         typedef list { u8 foo2; vl_api_address_t add; u8 foo3; };
+         autoreply define foo { u8 foo;  vl_api_list_t l;};
+        '''
+        crc5 = get_crc(test_string, 'foo')
+        self.assertNotEqual(crc4, crc5)
+
+        test_string = '''
+typedef ip6_address
+{
+  u8 foo;
+};
+typedef srv6_sid_list
+{
+  u8 num_sids;
+  u32 weight;
+  u32 sl_index;
+  vl_api_ip6_address_t sids[16];
+};
+autoreply define sr_policy_add
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip6_address_t bsid_addr;
+  u32 weight;
+  bool is_encap;
+  bool is_spray;
+  u32 fib_table;
+  vl_api_srv6_sid_list_t sids;
+};
+'''
+
+        crc = get_crc(test_string, 'sr_policy_add')
+
+        test_string = '''
+typedef ip6_address
+{
+  u8 foo;
+};
+typedef srv6_sid_list
+{
+  u8 num_sids;
+  u32 weight;
+  vl_api_ip6_address_t sids[16];
+};
+autoreply define sr_policy_add
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip6_address_t bsid_addr;
+  u32 weight;
+  bool is_encap;
+  bool is_spray;
+  u32 fib_table;
+  vl_api_srv6_sid_list_t sids;
+};
+'''
+        crc2 = get_crc(test_string, 'sr_policy_add')
+
+        self.assertNotEqual(crc, crc2)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

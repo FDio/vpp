@@ -932,7 +932,7 @@ def foldup_blocks(block, crc):
             t = global_types[b.fieldtype]
             try:
                 crc = crc_block_combine(t.block, crc)
-                return foldup_blocks(t.block, crc)
+                crc = foldup_blocks(t.block, crc)
             except AttributeError:
                 pass
     return crc
