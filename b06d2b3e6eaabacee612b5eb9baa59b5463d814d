@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bb160f97_0efb924a",
+        "filename": "src/plugins/ikev2/FEATURE.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-25T06:34:35Z",
+      "side": 1,
+      "message": "AES-GCM-16 128/192/256 is better here as both ikev2 plugin and ipsec layer support only 16 octets ICV",
+      "range": {
+        "startLine": 11,
+        "startChar": 28,
+        "endLine": 11,
+        "endChar": 47
+      },
+      "revId": "b06d2b3e6eaabacee612b5eb9baa59b5463d814d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
