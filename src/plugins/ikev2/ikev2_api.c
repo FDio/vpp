@@ -30,12 +30,137 @@
 #include <plugins/ikev2/ikev2.api_enum.h>
 #include <plugins/ikev2/ikev2.api_types.h>
 
+
+#define vl_endianfun		/* define message structures */
+#include <plugins/ikev2/ikev2_types.api.h>
+#undef vl_endianfun
+
 extern ikev2_main_t ikev2_main;
 
 #define IKEV2_PLUGIN_VERSION_MAJOR 1
 #define IKEV2_PLUGIN_VERSION_MINOR 0
 #define REPLY_MSG_ID_BASE ikev2_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
+
+static void
+cp_transforms (vl_api_ikev2_transforms_set_t * vl_api_ts,
+	       ikev2_transforms_set * ts)
+{
+  vl_api_ts->crypto_alg = ts->crypto_alg;
+  vl_api_ts->integ_alg = ts->integ_alg;
+  vl_api_ts->dh_type = ts->dh_type;
+  vl_api_ts->crypto_key_size = ts->crypto_key_size;
+}
+
+static void
+cp_id (vl_api_ikev2_id_t * vl_api_id, ikev2_id_t * id)
+{
+  if (!id->data)
+    return;
+
+  int size_data = 0;
+  vl_api_id->type = id->type;
+  size_data = sizeof (vl_api_id->data) - 1;	// size without zero ending character
+  if (vec_len (id->data) < size_data)
+    size_data = vec_len (id->data);
+
+  vl_api_id->data_len = size_data;
+  clib_memcpy (vl_api_id->data, id->data, size_data);
+}
+
+static void
+cp_ts (vl_api_ikev2_ts_t * vl_api_ts, ikev2_ts_t * ts)
+{
+  vl_api_ts->ts_type = ts->ts_type;
+  vl_api_ts->protocol_id = ts->protocol_id;
+  vl_api_ts->selector_len = ts->selector_len;
+  vl_api_ts->start_port = ts->start_port;
+  vl_api_ts->end_port = ts->end_port;
+  clib_memcpy (&vl_api_ts->start_addr, &ts->start_addr,
+	       sizeof (ip4_address_t));
+  clib_memcpy (&vl_api_ts->end_addr, &ts->end_addr, sizeof (ip4_address_t));
+}
+
+static void
+cp_auth (vl_api_ikev2_auth_t * vl_api_auth, ikev2_auth_t * auth)
+{
+  vl_api_auth->method = auth->method;
+  vl_api_auth->data_len = vec_len (auth->data);
+  vl_api_auth->hex = auth->hex;
+  clib_memcpy (&vl_api_auth->data, auth->data, vec_len (auth->data));
+}
+
+static void
+cp_responder (vl_api_ikev2_responder_t * vl_api_responder,
+	      ikev2_responder_t * responder)
+{
+  vl_api_responder->sw_if_index = responder->sw_if_index;
+  clib_memcpy (&vl_api_responder->ip4, &responder->ip4,
+	       sizeof (ip4_address_t));
+}
+
+static void
+send_profile (ikev2_profile_t * profile, vl_api_registration_t * reg,
+	      u32 context)
+{
+  vl_api_ikev2_profile_details_t *rmp = 0;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp) + vec_len (profile->auth.data));
+  clib_memset (rmp, 0, sizeof (*rmp) + vec_len (profile->auth.data));
+  ikev2_main_t *im = &ikev2_main;
+  rmp->_vl_msg_id = ntohs (VL_API_IKEV2_PROFILE_DETAILS + im->msg_id_base);
+  rmp->context = context;
+
+  int size_data = sizeof (rmp->profile.name) - 1;
+  if (vec_len (profile->name) < size_data)
+    size_data = vec_len (profile->name);
+  clib_memcpy (rmp->profile.name, profile->name, size_data);
+
+  cp_transforms (&rmp->profile.ike_ts, &profile->ike_ts);
+  cp_transforms (&rmp->profile.esp_ts, &profile->esp_ts);
+
+  cp_id (&rmp->profile.loc_id, &profile->loc_id);
+  cp_id (&rmp->profile.rem_id, &profile->rem_id);
+
+  cp_ts (&rmp->profile.rem_ts, &profile->rem_ts);
+  cp_ts (&rmp->profile.loc_ts, &profile->loc_ts);
+
+  cp_auth (&rmp->profile.auth, &profile->auth);
+
+  cp_responder (&rmp->profile.responder, &profile->responder);
+
+  rmp->profile.udp_encap = profile->udp_encap;
+  rmp->profile.tun_itf = profile->tun_itf;
+
+  rmp->profile.ipsec_over_udp_port = profile->ipsec_over_udp_port;
+
+  rmp->profile.lifetime = profile->lifetime;
+  rmp->profile.lifetime_maxdata = profile->lifetime_maxdata;
+  rmp->profile.lifetime_jitter = profile->lifetime_jitter;
+  rmp->profile.handover = profile->handover;
+
+  vl_api_ikev2_profile_t_endian (&rmp->profile);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_ikev2_profile_dump_t_handler (vl_api_ikev2_profile_dump_t * mp)
+{
+  ikev2_main_t *im = &ikev2_main;
+  ikev2_profile_t *profile;
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  /* *INDENT-OFF* */
+  pool_foreach (profile, im->profiles,
+  ({
+    send_profile (profile, reg, mp->context);
+  }));
+  /* *INDENT-ON* */
+}
 
 static void
 vl_api_ikev2_plugin_get_version_t_handler (vl_api_ikev2_plugin_get_version_t *

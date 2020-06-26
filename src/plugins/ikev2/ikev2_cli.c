@@ -509,11 +509,29 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
     if (~0 != p->tun_itf)
       vlib_cli_output(vm, "  protected tunnel %U",
                       format_vnet_sw_if_index_name, vnet_get_main(), p->tun_itf);
+    if (~0 != p->responder.sw_if_index)
+      vlib_cli_output(vm, "  responder %U %U",
+                      format_vnet_sw_if_index_name, vnet_get_main(), p->responder.sw_if_index,
+                      format_ip4_address, &p->responder.ip4);
     if (p->udp_encap)
       vlib_cli_output(vm, "  udp-encap");
 
     if (p->ipsec_over_udp_port != IPSEC_UDP_PORT_NONE)
       vlib_cli_output(vm, "  ipsec-over-udp port %d", p->ipsec_over_udp_port);
+
+    if (p->ike_ts.crypto_alg || p->ike_ts.integ_alg || p->ike_ts.dh_type || p->ike_ts.crypto_key_size)
+      vlib_cli_output(vm, "  ike-crypto-alg %U %u ike-integ-alg %U ike-dh %U",
+                    format_ikev2_transform_encr_type, p->ike_ts.crypto_alg, p->ike_ts.crypto_key_size,
+                    format_ikev2_transform_integ_type, p->ike_ts.integ_alg,
+                    format_ikev2_transform_dh_type, p->ike_ts.dh_type);
+
+    if (p->esp_ts.crypto_alg || p->esp_ts.integ_alg || p->esp_ts.dh_type)
+      vlib_cli_output(vm, "  esp-crypto-alg %U %u esp-integ-alg %U",
+                    format_ikev2_transform_encr_type, p->esp_ts.crypto_alg, p->esp_ts.crypto_key_size,
+                    format_ikev2_transform_integ_type, p->esp_ts.integ_alg);
+
+    vlib_cli_output(vm, "  lifetime %d jitter %d handover %d maxdata %d",
+                    p->lifetime, p->lifetime_jitter, p->handover, p->lifetime_maxdata);
   }));
   /* *INDENT-ON* */
 
