@@ -21,6 +21,7 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vppinfra/error.h>
+#include <vnet/ipsec/ipsec_sa.h>
 #include <plugins/ikev2/ikev2.h>
 
 #define __plugin_msg_base ikev2_test_main.msg_id_base
@@ -40,6 +41,38 @@ typedef struct
 
 ikev2_test_main_t ikev2_test_main;
 
+/* NOT YET IMPLEMENTED */
+static int
+api_ikev2_plugin_control_ping (vat_main_t * vam)
+{
+  return 0;
+}
+
+static void
+api_ikev2_send_control_ping (vat_main_t * vam)
+{
+  vl_api_ikev2_plugin_control_ping_t *mp_ping;
+
+  M (IKEV2_PLUGIN_CONTROL_PING, mp_ping);
+  S (mp_ping);
+}
+
+static void vl_api_ikev2_plugin_control_ping_reply_t_handler
+  (vl_api_ikev2_plugin_control_ping_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
 uword
 unformat_ikev2_auth_method (unformat_input_t * input, va_list * args)
 {
@@ -54,6 +87,40 @@ unformat_ikev2_auth_method (unformat_input_t * input, va_list * args)
   return 1;
 }
 
+u8 *
+format_ikev2_auth_method (u8 * s, va_list * args)
+{
+  u32 i = va_arg (*args, u32);
+  char *t = 0;
+  switch (i)
+    {
+#define _(v,f,str) case IKEV2_AUTH_METHOD_##f: t = str; break;
+      foreach_ikev2_auth_method
+#undef _
+    default:
+      return format (s, "unknown (%u)", i);
+    }
+  s = format (s, "%s", t);
+  return s;
+}
+
+u8 *
+format_ikev2_id_type (u8 * s, va_list * args)
+{
+  u32 i = va_arg (*args, u32);
+  char *t = 0;
+  switch (i)
+    {
+#define _(v,f,str) case IKEV2_ID_TYPE_##f: t = str; break;
+      foreach_ikev2_id_type
+#undef _
+    default:
+      return format (s, "unknown (%u)", i);
+    }
+  s = format (s, "%s", t);
+  return s;
+}
+
 uword
 unformat_ikev2_id_type (unformat_input_t * input, va_list * args)
 {
@@ -66,6 +133,114 @@ unformat_ikev2_id_type (unformat_input_t * input, va_list * args)
     else
     return 0;
   return 1;
+}
+
+static int
+api_ikev2_profile_dump (vat_main_t * vam)
+{
+  vl_api_ikev2_profile_dump_t *mp;
+  int ret;
+
+  /* Construct the API message */
+  M (IKEV2_PROFILE_DUMP, mp);
+
+  /* send it... */
+  S (mp);
+
+  /* Use control ping for synchronization */
+  api_ikev2_send_control_ping (vam);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static void vl_api_ikev2_profile_details_t_handler
+  (vl_api_ikev2_profile_details_t * mp)
+{
+  u8 *out = 0;
+  vat_main_t *vam = ikev2_test_main.vat_main;
+  vl_api_ikev2_profile_t *p = &mp->profile;
+
+  out = format (out, "profile %s\n", p->name);
+
+  if (p->auth.method)
+    {
+      if (p->auth.hex)
+	out = format (out, "  auth-method %U auth data 0x%U\n",
+		      format_ikev2_auth_method, p->auth.method,
+		      format_hex_bytes, p->auth.data, p->auth.data_len);
+      else
+	out = format (out, "  auth-method %U auth data %v\n",
+		      format_ikev2_auth_method, p->auth.method, format (0,
+									"%s",
+									p->auth.data));
+    }
+
+  if (p->loc_id.type)
+    {
+
+      if (p->loc_id.type == IKEV2_ID_TYPE_ID_IPV4_ADDR)
+	out = format (out, "  local id-type %U data %U\n",
+		      format_ikev2_id_type, p->loc_id.type,
+		      format_ip4_address, p->loc_id.data);
+      else if (p->loc_id.type == IKEV2_ID_TYPE_ID_KEY_ID)
+	out = format (out, "  local id-type %U data 0x%U\n",
+		      format_ikev2_id_type, p->loc_id.type,
+		      format_hex_bytes, p->loc_id.data,
+		      vec_len (p->loc_id.data));
+      else
+	out = format (out, "  local id-type %U data %v\n",
+		      format_ikev2_id_type, p->loc_id.type, p->loc_id.data);
+    }
+
+  if (p->rem_id.type)
+    {
+      if (p->rem_id.type == IKEV2_ID_TYPE_ID_IPV4_ADDR)
+	out = format (out, "  remote id-type %U data %U\n",
+		      format_ikev2_id_type, p->rem_id.type,
+		      format_ip4_address, p->rem_id.data);
+      else if (p->rem_id.type == IKEV2_ID_TYPE_ID_KEY_ID)
+	out = format (out, "  remote id-type %U data 0x%U\n",
+		      format_ikev2_id_type, p->rem_id.type,
+		      format_hex_bytes, p->rem_id.data,
+		      vec_len (p->rem_id.data));
+      else
+	out = format (out, "  remote id-type %U data %v\n",
+		      format_ikev2_id_type, p->rem_id.type, p->rem_id.data);
+    }
+
+  if (p->loc_ts.end_addr)
+    out = format (out, "  local traffic-selector addr %U - %U port %u - %u"
+		  " protocol %u\n",
+		  format_ip4_address, &p->loc_ts.start_addr,
+		  format_ip4_address, &p->loc_ts.end_addr,
+		  p->loc_ts.start_port, p->loc_ts.end_port,
+		  p->loc_ts.protocol_id);
+
+  if (p->rem_ts.end_addr)
+    out = format (out, "  remote traffic-selector addr %U - %U port %u - %u"
+		  " protocol %u\n",
+		  format_ip4_address, &p->rem_ts.start_addr,
+		  format_ip4_address, &p->rem_ts.end_addr,
+		  p->rem_ts.start_port, p->rem_ts.end_port,
+		  p->rem_ts.protocol_id);
+  if (~0 != p->tun_itf)
+    out = format (out, "  protected tunnel %d\n", p->tun_itf);
+  if (p->udp_encap)
+    out = format (out, "  udp-encap\n");
+
+  if (p->ipsec_over_udp_port != IPSEC_UDP_PORT_NONE)
+    out = format (out, "  ipsec-over-udp port %d\n", p->ipsec_over_udp_port);
+
+  out = format (out, "  lifetime %d jitter %d handover %d maxdata %d",
+		p->lifetime, p->lifetime_jitter, p->handover,
+		p->lifetime_maxdata);
+
+  clib_warning ("%s", out);
+  vec_free (out);
+
+  vam->result_ready = 1;
 }
 
 static int

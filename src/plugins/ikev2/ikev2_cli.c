@@ -514,6 +514,9 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
 
     if (p->ipsec_over_udp_port != IPSEC_UDP_PORT_NONE)
       vlib_cli_output(vm, "  ipsec-over-udp port %d", p->ipsec_over_udp_port);
+
+    vlib_cli_output(vm, "  lifetime %d jitter %d handover %d maxdata %d",
+                    p->lifetime, p->lifetime_jitter, p->handover, p->lifetime_maxdata);
   }));
   /* *INDENT-ON* */
 
