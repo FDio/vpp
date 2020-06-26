@@ -37,6 +37,78 @@ extern ikev2_main_t ikev2_main;
 #define REPLY_MSG_ID_BASE ikev2_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
+#define foreach_vpe_api_msg                             \
+_(IKEV2_PROFILE_DUMP, ikev2_profile_dump)                     \
+
+static void
+vl_api_ikev2_plugin_control_ping_t_handler (vl_api_ikev2_plugin_control_ping_t
+					    * mp)
+{
+  vl_api_ikev2_plugin_control_ping_reply_t *rmp;
+  int rv = 0;
+
+REPLY_MACRO (VL_API_IKEV2_PLUGIN_CONTROL_PING_REPLY)}
+
+static void
+send_profiles (ikev2_profile_t * profile, vl_api_registration_t * reg,
+	       u32 context)
+{
+  vl_api_ikev2_profile_details_t *rmp = 0;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
+  ikev2_main_t *im = &ikev2_main;
+  rmp->_vl_msg_id = ntohs (VL_API_IKEV2_PROFILE_DETAILS + im->msg_id_base);
+  rmp->context = context;
+  clib_memcpy (rmp->profile.name, profile->name, 64);
+  rmp->profile.ipsec_over_udp_port = profile->ipsec_over_udp_port;
+  rmp->profile.loc_id.type = profile->loc_id.type;
+  rmp->profile.rem_id.type = profile->rem_id.type;
+  rmp->profile.udp_encap = profile->udp_encap;
+  rmp->profile.tun_itf = profile->tun_itf;
+  rmp->profile.auth.method = profile->auth.method;
+  rmp->profile.auth.data_len = vec_len (profile->auth.data);
+  rmp->profile.auth.hex = profile->auth.hex;
+  rmp->profile.lifetime = profile->lifetime;
+  rmp->profile.lifetime_maxdata = profile->lifetime_maxdata;
+  rmp->profile.lifetime_jitter = profile->lifetime_jitter;
+  rmp->profile.handover = profile->handover;
+  clib_memcpy (&rmp->profile.loc_ts, &profile->loc_ts, sizeof (ikev2_ts_t));
+  clib_memcpy (&rmp->profile.rem_ts, &profile->rem_ts, sizeof (ikev2_ts_t));
+  clib_memcpy (&rmp->profile.auth.data, profile->auth.data,
+	       vec_len (profile->auth.data));
+
+  if (profile->loc_id.data)
+    {
+      clib_memcpy (rmp->profile.loc_id.data, profile->loc_id.data, 64);
+    }
+
+  if (profile->rem_id.data)
+    {
+      clib_memcpy (rmp->profile.rem_id.data, profile->rem_id.data, 64);
+    }
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_ikev2_profile_dump_t_handler (vl_api_ikev2_profile_dump_t * mp)
+{
+  ikev2_main_t *im = &ikev2_main;
+  ikev2_profile_t *profiles = im->profiles;
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  int i;
+
+  for (i = 0; i < pool_len (profiles); i++)
+    {
+      send_profiles (profiles + i, reg, mp->context);
+    }
+}
+
 static void
 vl_api_ikev2_plugin_get_version_t_handler (vl_api_ikev2_plugin_get_version_t *
 					   mp)
