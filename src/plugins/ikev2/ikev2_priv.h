@@ -344,7 +344,6 @@ typedef struct
 typedef struct
 {
   u8 *name;
-  u8 is_enabled;
 
   ikev2_auth_t auth;
   ikev2_id_t loc_id;
