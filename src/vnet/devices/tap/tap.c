@@ -456,16 +456,17 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
 	  goto error;
 	}
-    }
 
-  if (args->host_bridge)
-    {
-      args->error = vnet_netlink_set_link_master (vif->ifindex,
-						  (char *) args->host_bridge);
-      if (args->error)
+      if (args->host_bridge)
 	{
-	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
-	  goto error;
+	  args->error = vnet_netlink_set_link_master (vif->ifindex,
+						      (char *)
+						      args->host_bridge);
+	  if (args->error)
+	    {
+	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	      goto error;
+	    }
 	}
     }
 
@@ -665,10 +666,10 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	ethernet_mac_address_generate (args->mac_addr.bytes);
 
       clib_memcpy (vif->mac_addr, args->mac_addr.bytes, 6);
+      vif->host_bridge = format (0, "%s%c", args->host_bridge, 0);
     }
   vif->host_if_name = format (0, "%s%c", host_if_name, 0);
   vif->net_ns = format (0, "%s%c", args->host_namespace, 0);
-  vif->host_bridge = format (0, "%s%c", args->host_bridge, 0);
   vif->host_mtu_size = args->host_mtu_size;
   clib_memcpy (vif->host_mac_addr, args->host_mac_addr.bytes, 6);
   vif->host_ip4_prefix_len = args->host_ip4_prefix_len;
