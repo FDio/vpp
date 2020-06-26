@@ -24,6 +24,7 @@ add_vpp_plugin(ikev2
   ikev2_payload.c
 
   API_FILES
+  ikev2_types.api
   ikev2.api
 
   API_TEST_SOURCES
