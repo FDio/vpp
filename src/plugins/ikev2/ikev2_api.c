@@ -38,6 +38,90 @@ extern ikev2_main_t ikev2_main;
 #include <vlibapi/api_helper_macros.h>
 
 static void
+vl_api_ikev2_plugin_control_ping_t_handler (vl_api_ikev2_plugin_control_ping_t
+					    * mp)
+{
+  vl_api_ikev2_plugin_control_ping_reply_t *rmp;
+  int rv = 0;
+
+REPLY_MACRO (VL_API_IKEV2_PLUGIN_CONTROL_PING_REPLY)}
+
+static void
+send_profile (ikev2_profile_t * profile, vl_api_registration_t * reg,
+	      u32 context)
+{
+  vl_api_ikev2_profile_details_t *rmp = 0;
+  int size_data = 0;
+  rmp = vl_msg_api_alloc (sizeof (*rmp) + vec_len (profile->auth.data));
+  clib_memset (rmp, 0, sizeof (*rmp));
+  ikev2_main_t *im = &ikev2_main;
+  rmp->_vl_msg_id = ntohs (VL_API_IKEV2_PROFILE_DETAILS + im->msg_id_base);
+  rmp->context = context;
+
+  size_data = sizeof (rmp->profile.name);
+  if (size_data > vec_len (profile->name))
+    size_data = vec_len (profile->name);
+  clib_memcpy (rmp->profile.name, profile->name, size_data);
+
+  rmp->profile.ipsec_over_udp_port =
+    clib_host_to_net_u16 (profile->ipsec_over_udp_port);
+  rmp->profile.loc_id.type = profile->loc_id.type;
+  rmp->profile.rem_id.type = profile->rem_id.type;
+  rmp->profile.udp_encap = profile->udp_encap;
+  rmp->profile.tun_itf = profile->tun_itf;
+  rmp->profile.auth.method = profile->auth.method;
+  rmp->profile.auth.data_len = vec_len (profile->auth.data);
+  rmp->profile.auth.hex = profile->auth.hex;
+  rmp->profile.lifetime = clib_host_to_net_u64 (profile->lifetime);
+  rmp->profile.lifetime_maxdata =
+    clib_host_to_net_u64 (profile->lifetime_maxdata);
+  rmp->profile.lifetime_jitter =
+    clib_host_to_net_u32 (profile->lifetime_jitter);
+  rmp->profile.handover = clib_host_to_net_u32 (profile->handover);
+  clib_memcpy (&rmp->profile.loc_ts, &profile->loc_ts, sizeof (ikev2_ts_t));
+  clib_memcpy (&rmp->profile.rem_ts, &profile->rem_ts, sizeof (ikev2_ts_t));
+  clib_memcpy (&rmp->profile.auth.data, profile->auth.data,
+	       vec_len (profile->auth.data));
+
+  if (profile->loc_id.data)
+    {
+      size_data = sizeof (rmp->profile.loc_id.data) - 1;	// size without zero ending character
+      if (size_data > vec_len (profile->loc_id.data))
+	size_data = vec_len (profile->loc_id.data);
+
+      clib_memcpy (rmp->profile.loc_id.data, profile->loc_id.data, size_data);
+    }
+
+  if (profile->rem_id.data)
+    {
+      size_data = sizeof (rmp->profile.rem_id.data) - 1;	// size without zero ending character
+      if (size_data > vec_len (profile->rem_id.data))
+	size_data = vec_len (profile->rem_id.data);
+      clib_memcpy (rmp->profile.rem_id.data, profile->rem_id.data, size_data);
+    }
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_ikev2_profile_dump_t_handler (vl_api_ikev2_profile_dump_t * mp)
+{
+  ikev2_main_t *im = &ikev2_main;
+  ikev2_profile_t *profile;
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  /* *INDENT-OFF* */
+  pool_foreach (profile, im->profiles,
+  ({
+    send_profile (profile, reg, mp->context);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
 vl_api_ikev2_plugin_get_version_t_handler (vl_api_ikev2_plugin_get_version_t *
 					   mp)
 {
