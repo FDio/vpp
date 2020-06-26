@@ -69,10 +69,30 @@ format_virtio_device (u8 * s, va_list * args)
   return s;
 }
 
-static u8 *
-format_virtio_tx_trace (u8 * s, va_list * args)
+typedef struct
 {
-  s = format (s, "Unimplemented...");
+  u32 buffer_index;
+  u32 sw_if_index;
+  vlib_buffer_t buffer;
+  generic_header_offset_t gho;
+} virtio_tx_trace_t;
+
+static u8 *
+format_virtio_tx_trace (u8 * s, va_list * va)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
+  virtio_tx_trace_t *t = va_arg (*va, virtio_tx_trace_t *);
+  u32 indent = format_get_indent (s);
+
+  s = format (s, "%U ", format_generic_header_offset, &t->gho);
+  s = format (s, "%Ubuffer 0x%x: %U",
+	      format_white_space, indent,
+	      t->buffer_index, format_vnet_buffer, &t->buffer);
+
+  s = format (s, "\n%U%U", format_white_space, indent,
+	      format_ethernet_header_with_length, t->buffer.pre_data,
+	      sizeof (t->buffer.pre_data));
   return s;
 }
 
@@ -526,6 +546,44 @@ retry:
   while (n_left && free_desc_count)
     {
       u16 n_added = 0;
+      virtio_tx_trace_t *t;
+
+      vlib_buffer_t *b0 = vlib_get_buffer (vm, buffers[0]);
+      if (b0->flags & VLIB_BUFFER_IS_TRACED)
+	{
+	  t = vlib_add_trace (vm, node, b0, sizeof (t[0]));
+	  t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	  t->buffer_index = buffers[0];
+	  if (type == VIRTIO_IF_TYPE_TUN)
+	    {
+	      int is_ip4 = 0, is_ip6 = 0;
+
+	      switch (((u8 *) vlib_buffer_get_current (b0))[0] & 0xf0)
+		{
+		case 0x40:
+		  is_ip4 = 1;
+		  break;
+		case 0x60:
+		  is_ip6 = 1;
+		  break;
+		default:
+		  break;
+		}
+	      vnet_generic_header_offset_parser (b0, &t->gho, 0, is_ip4,
+						 is_ip6);
+	    }
+	  else
+	    vnet_generic_header_offset_parser (b0, &t->gho, 1,
+					       b0->flags &
+					       VNET_BUFFER_F_IS_IP4,
+					       b0->flags &
+					       VNET_BUFFER_F_IS_IP6);
+
+	  clib_memcpy_fast (&t->buffer, b0,
+			    sizeof (*b0) - sizeof (b0->pre_data));
+	  clib_memcpy_fast (t->buffer.pre_data, vlib_buffer_get_current (b0),
+			    sizeof (t->buffer.pre_data));
+	}
       n_added =
 	add_buffer_to_slot (vm, vif, type, vring, buffers[0], free_desc_count,
 			    avail, next, mask, do_gso, csum_offload,
