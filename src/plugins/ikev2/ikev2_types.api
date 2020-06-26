@@ -1,0 +1,79 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+import "vnet/ip/ip_types.api";
+
+
+typedef ikev2_id
+{
+  u8 type;
+  u8 data_len;
+  string data[64];
+};
+
+typedef ikev2_ts
+{
+  u8 ts_type;
+  u8 protocol_id;
+  u16 selector_len;
+  u16 start_port;
+  u16 end_port;
+  vl_api_ip4_address_t start_addr;
+  vl_api_ip4_address_t end_addr;
+};
+
+typedef ikev2_auth
+{
+  u8 method;
+  u8 hex;			/* hex encoding of the shared secret */
+  u32 data_len;
+  u8 data[data_len];
+};
+
+typedef ikev2_responder
+{
+  u32 sw_if_index;
+  vl_api_ip4_address_t ip4;
+};
+
+typedef ikev2_transforms_set
+{
+  u8 crypto_alg;
+  u8 integ_alg;
+  u8 dh_type;
+  u32 crypto_key_size;
+};
+
+typedef ikev2_profile
+{
+  string name[64];
+  vl_api_ikev2_id_t loc_id;
+  vl_api_ikev2_id_t rem_id;
+  vl_api_ikev2_ts_t loc_ts;
+  vl_api_ikev2_ts_t rem_ts;
+  vl_api_ikev2_responder_t responder;
+  vl_api_ikev2_transforms_set_t ike_ts;
+  vl_api_ikev2_transforms_set_t esp_ts;
+  u64 lifetime;
+  u64 lifetime_maxdata;
+  u32 lifetime_jitter;
+  u32 handover;
+  u16 ipsec_over_udp_port;
+  u32 tun_itf;
+  u8 udp_encap;
+  vl_api_ikev2_auth_t auth;
+};
