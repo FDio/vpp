@@ -69,12 +69,11 @@ vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
     return decap_bad_flags;
 
   /* Make sure VXLAN tunnel exist according to packet S/D IP, VRF, and VNI */
-  u32 dst = ip4_0->dst_address.as_u32;
-  u32 src = ip4_0->src_address.as_u32;
   vxlan4_tunnel_key_t key4 = {
-    .key[0] = ((u64) dst << 32) | src,
     .key[1] = ((u64) fib_index << 32) | vxlan0->vni_reserved,
   };
+  clib_memcpy_fast (&key4.key[0], &ip4_0->address_pair,
+		    sizeof (address_pair));
 
   if (PREDICT_TRUE
       (key4.key[0] == cache->key[0] && key4.key[1] == cache->key[1]))
@@ -97,6 +96,9 @@ vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
   /* try multicast */
   if (PREDICT_TRUE (!ip4_address_is_multicast (&ip4_0->dst_address)))
     return decap_not_found;
+
+  u32 dst = ip4_0->dst_address.as_u32;
+  u32 src = ip4_0->src_address.as_u32;
 
   /* search for mcast decap info by mcast address */
   key4.key[0] = dst;
