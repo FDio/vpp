@@ -1071,7 +1071,7 @@ VLIB_REGISTER_NODE (vrrp6_accept_owner_input_node) =
 
 VNET_FEATURE_INIT (vrrp6_accept_owner_mc, static) =
 {
-  .arc_name = "ip4-multicast",
+  .arc_name = "ip6-multicast",
   .node_name = "vrrp6-accept-owner-input",
   .runs_before = VNET_FEATURES ("ip6-mfib-forward-lookup"),
 };
