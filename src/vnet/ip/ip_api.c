@@ -812,7 +812,7 @@ add_del_route_t_handler (u8 is_multipath,
 			 const ip46_address_t * next_hop,
 			 u32 next_hop_id,
 			 u32 next_hop_sw_if_index,
-			 u8 next_hop_fib_index,
+			 u32 next_hop_fib_index,
 			 u16 next_hop_weight,
 			 u16 next_hop_preference,
 			 mpls_label_t next_hop_via_label,
@@ -1481,7 +1481,7 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
   ip_lookup_main_t *lm4 = &im4->lookup_main;
   ip_interface_address_t *ia = 0;
   u32 sw_if_index = ~0;
-  int rv __attribute__ ((unused)) = 0;
+  int rv __attribute__((unused)) = 0;
 
   VALIDATE_SW_IF_INDEX (mp);
 
@@ -1546,7 +1546,7 @@ vl_api_ip_unnumbered_dump_t_handler (vl_api_ip_unnumbered_dump_t * mp)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
-  int rv __attribute__ ((unused)) = 0;
+  int rv __attribute__((unused)) = 0;
   vpe_api_main_t *am = &vpe_api_main;
   vl_api_registration_t *reg;
   vnet_sw_interface_t *si;
@@ -3445,7 +3445,7 @@ vl_api_ip_punt_redirect_dump_t_handler (vl_api_ip_punt_redirect_dump_t * mp)
 {
   vl_api_registration_t *reg;
   u32 sw_if_index;
-  int rv __attribute__ ((unused)) = 0;
+  int rv __attribute__((unused)) = 0;
 
   sw_if_index = ntohl (mp->sw_if_index);
   reg = vl_api_client_index_to_registration (mp->client_index);
