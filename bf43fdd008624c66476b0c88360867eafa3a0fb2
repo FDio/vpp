@@ -1,0 +1,372 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8d9331dc_75bb4d3e",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "wrong description",
+      "range": {
+        "startLine": 69,
+        "startChar": 1,
+        "endLine": 69,
+        "endChar": 79
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fd47c639_b542f75d",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "add this line at the end of the message:\noption status\u003d\"in_progress\";",
+      "range": {
+        "startLine": 77,
+        "startChar": 0,
+        "endLine": 77,
+        "endChar": 2
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9197f2a0_a5326bad",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "wrong description",
+      "range": {
+        "startLine": 79,
+        "startChar": 0,
+        "endLine": 79,
+        "endChar": 52
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2c09edae_e4862b44",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "add this line at the end of the message:\noption status\u003d\"in_progress\";",
+      "range": {
+        "startLine": 87,
+        "startChar": 0,
+        "endLine": 87,
+        "endChar": 2
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "78f32c17_6a57810c",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "unused definition?",
+      "range": {
+        "startLine": 40,
+        "startChar": 8,
+        "endLine": 40,
+        "endChar": 27
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "492e903f_9fcfaa16",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "change endianness for every integer in this function, e.g\n\nrmp-\u003eprofile.ipsec_over_udp_port \u003d clib_host_to_net_u16(profile-\u003eipsec_over_udp_port);\n...",
+      "range": {
+        "startLine": 53,
+        "startChar": 0,
+        "endLine": 53,
+        "endChar": 13
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "49c46a6d_553a7f6d",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "vec_len(profile-\u003ename)",
+      "range": {
+        "startLine": 63,
+        "startChar": 48,
+        "endLine": 63,
+        "endChar": 51
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9800da0a_92add2ad",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "find the correct length using vec_len",
+      "range": {
+        "startLine": 83,
+        "startChar": 67,
+        "endLine": 83,
+        "endChar": 69
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "77243643_0cdb1fb1",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "find the correct length using vec_len",
+      "range": {
+        "startLine": 88,
+        "startChar": 67,
+        "endLine": 88,
+        "endChar": 69
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "07b713a4_e1dac2c5",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "this is incorrect, use pool_foreach for iteration",
+      "range": {
+        "startLine": 106,
+        "startChar": 2,
+        "endLine": 106,
+        "endChar": 43
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f027a93b_94ea5f24",
+        "filename": "src/plugins/ikev2/ikev2_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "better would be to define custom format_ikev2_id function",
+      "range": {
+        "startLine": 183,
+        "startChar": 6,
+        "endLine": 183,
+        "endChar": 55
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d058335c_fe22409e",
+        "filename": "src/plugins/ikev2/ikev2_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "same as below",
+      "range": {
+        "startLine": 191,
+        "startChar": 8,
+        "endLine": 191,
+        "endChar": 32
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "134f80ba_d5ff8a0c",
+        "filename": "src/plugins/ikev2/ikev2_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "this won\u0027t work as p-\u003erem_id.data is not a vector. try to get correct size from the type, or add length field to the message",
+      "range": {
+        "startLine": 210,
+        "startChar": 8,
+        "endLine": 210,
+        "endChar": 32
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6e0518ef_25f298de",
+        "filename": "src/plugins/ikev2/ikev2_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 246,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "use fformat instead of clib_warning",
+      "range": {
+        "startLine": 246,
+        "startChar": 2,
+        "endLine": 246,
+        "endChar": 15
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0a70dadc_15627876",
+        "filename": "src/plugins/ikev2/ikev2_types.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "type should be vl_api_ip4_address_t",
+      "range": {
+        "startLine": 35,
+        "startChar": 3,
+        "endLine": 36,
+        "endChar": 14
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3c887e78_106c6458",
+        "filename": "src/plugins/ikev2/ikev2_types.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-06-29T20:46:30Z",
+      "side": 1,
+      "message": "why commented out?",
+      "range": {
+        "startLine": 54,
+        "startChar": 0,
+        "endLine": 56,
+        "endChar": 33
+      },
+      "revId": "bf43fdd008624c66476b0c88360867eafa3a0fb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
