@@ -178,7 +178,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   if (args->tap_flags & TAP_FLAG_TUN)
     {
       vif->type = VIRTIO_IF_TYPE_TUN;
-      ifr.ifr_flags |= IFF_TUN;
+      ifr.ifr_flags |= IFF_TUN | IFF_POINTOPOINT;
     }
   else
     {
@@ -653,6 +653,11 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       virtio_log_debug (vif, "VHOST_SET_VRING_KICK fd %d index %u kick_fd %d",
 			fd, file.index, file.fd);
       _IOCTL (fd, VHOST_SET_VRING_KICK, &file);
+
+      file.fd = vring->err_fd;
+      virtio_log_debug (vif, "VHOST_SET_VRING_ERR fd %d index %u err_fd %d",
+			fd, file.index, file.fd);
+      _IOCTL (fd, VHOST_SET_VRING_ERR, &file);
 
       file.fd = vif->tap_fds[qp % vif->num_rxqs];
       virtio_log_debug (vif, "VHOST_NET_SET_BACKEND fd %d index %u tap_fd %d",

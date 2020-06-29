@@ -114,6 +114,7 @@ typedef struct
   u16 desc_next;
   int kick_fd;
   int call_fd;
+  int err_fd;
   u8 buffer_pool_index;
   u16 size;
   u16 queue_id;
@@ -123,6 +124,7 @@ typedef struct
   u16 last_used_idx;
   u16 last_kick_avail_idx;
   u32 call_file_index;
+  u32 err_file_index;
 } virtio_vring_t;
 
 typedef union

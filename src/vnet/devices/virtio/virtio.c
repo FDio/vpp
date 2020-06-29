@@ -61,12 +61,24 @@ call_read_ready (clib_file_t * uf)
   return 0;
 }
 
+static clib_error_t *
+call_tap_error_ready (clib_file_t * uf)
+{
+  virtio_main_t *nm = &virtio_main;
+  u16 qid = uf->private_data & 0xFFFF;
+  virtio_if_t *vif =
+    vec_elt_at_index (nm->interfaces, uf->private_data >> 16);
+
+  virtio_log_debug (vif, "error on vring %u", qid);
+  return 0;
+}
 
 clib_error_t *
 virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
 {
   virtio_vring_t *vring;
   clib_file_t t = { 0 };
+  clib_file_t e = { 0 };
   int i;
 
   if (!is_pow2 (sz))
@@ -122,8 +134,10 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   vring->size = sz;
   vring->call_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
   vring->kick_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
-  virtio_log_debug (vif, "vring %u size %u call_fd %d kick_fd %d", idx,
-		    vring->size, vring->call_fd, vring->kick_fd);
+  vring->err_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
+  virtio_log_debug (vif, "vring %u size %u call_fd %d kick_fd %d err_fd", idx,
+		    vring->size, vring->call_fd, vring->kick_fd,
+		    vring->err_fd);
 
   t.read_function = call_read_ready;
   t.file_descriptor = vring->call_fd;
@@ -131,6 +145,13 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   t.description = format (0, "%U vring %u", format_virtio_device_name,
 			  vif->dev_instance, idx);
   vring->call_file_index = clib_file_add (&file_main, &t);
+
+  e.error_function = call_tap_error_ready;
+  e.file_descriptor = vring->err_fd;
+  e.private_data = vif->dev_instance << 16 | idx;
+  e.description = format (0, "%U vring %u", format_virtio_device_name,
+			  vif->dev_instance, idx);
+  vring->err_file_index = clib_file_add (&file_main, &e);
 
   return 0;
 }
@@ -157,8 +178,10 @@ virtio_vring_free_rx (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
     vec_elt_at_index (vif->rxq_vrings, RX_QUEUE_ACCESS (idx));
 
   clib_file_del_by_index (&file_main, vring->call_file_index);
+  clib_file_del_by_index (&file_main, vring->err_file_index);
   close (vring->kick_fd);
   close (vring->call_fd);
+  close (vring->err_fd);
   if (vring->used)
     {
       virtio_free_rx_buffers (vm, vring);
@@ -205,8 +228,12 @@ virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
     vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS (idx));
 
   clib_file_del_by_index (&file_main, vring->call_file_index);
+  clib_file_del_by_index (&file_main, vring->err_file_index);
+
   close (vring->kick_fd);
   close (vring->call_fd);
+  close (vring->err_fd);
+
   if (vring->used)
     {
       virtio_free_used_desc (vm, vring);
