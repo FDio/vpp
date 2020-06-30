@@ -16,6 +16,7 @@
  */
 
 #include <vnet/ipsec/ipsec_tun.h>
+#include <vnet/ipsec/ipsec_itf.h>
 #include <vnet/ipsec/esp.h>
 #include <vnet/udp/udp.h>
 #include <vnet/adj/adj_delegate.h>
@@ -126,7 +127,8 @@ ipsec_tun_protect_from_const_base (const adj_delegate_t * ad)
 }
 
 static u32
-ipsec_tun_protect_get_adj_next (const ipsec_tun_protect_t * itp)
+ipsec_tun_protect_get_adj_next (vnet_link_t linkt,
+				const ipsec_tun_protect_t * itp)
 {
   ipsec_main_t *im;
   ipsec_sa_t *sa;
@@ -169,7 +171,7 @@ ipsec_tun_protect_add_adj (adj_index_t ai, const ipsec_tun_protect_t * itp)
     {
       ipsec_tun_protect_sa_by_adj_index[ai] = itp->itp_out_sa;
       adj_nbr_midchain_update_next_node
-	(ai, ipsec_tun_protect_get_adj_next (itp));
+	(ai, ipsec_tun_protect_get_adj_next (ai, itp));
     }
 }
 
@@ -248,6 +250,25 @@ ipsec_tun_protect_adj_add (adj_index_t ai, void *arg)
   adj_delegate_add (adj_get (ai), ipsec_tun_adj_delegate_type,
 		    itp - ipsec_tun_protect_pool);
   ipsec_tun_protect_add_adj (ai, itp);
+
+  if (itp->itp_flags & IPSEC_PROTECT_ITF)
+    {
+      ipsec_sa_t *sa;
+
+      sa = ipsec_sa_get (itp->itp_out_sa);
+
+      /* *INDENT-OFF* */
+      fib_prefix_t dst = {
+        .fp_len = (ipsec_sa_is_set_IS_TUNNEL_V6(sa) ? 128 : 32),
+        .fp_proto = (ipsec_sa_is_set_IS_TUNNEL_V6(sa)?
+                     FIB_PROTOCOL_IP6 :
+                     FIB_PROTOCOL_IP4),
+        .fp_addr = sa->tunnel_dst_addr,
+      };
+      /* *INDENT-ON* */
+
+      adj_midchain_delegate_stack (ai, 0, &dst);
+    }
 
   return (ADJ_WALK_RC_CONTINUE);
 }
@@ -349,8 +370,13 @@ ipsec_tun_protect_rx_db_remove (ipsec_main_t * im,
 static adj_walk_rc_t
 ipsec_tun_protect_adj_remove (adj_index_t ai, void *arg)
 {
+  ipsec_tun_protect_t *itp = arg;
+
   adj_delegate_remove (ai, ipsec_tun_adj_delegate_type);
   ipsec_tun_protect_add_adj (ai, NULL);
+
+  if (itp->itp_flags & IPSEC_PROTECT_ITF)
+    adj_midchain_delegate_unstack (ai);
 
   return (ADJ_WALK_RC_CONTINUE);
 }
@@ -404,8 +430,11 @@ ipsec_tun_protect_set_crypto_addr (ipsec_tun_protect_t * itp)
       {
         itp->itp_crypto.src = sa->tunnel_dst_addr;
         itp->itp_crypto.dst = sa->tunnel_src_addr;
-        ipsec_sa_set_IS_PROTECT (sa);
-        itp->itp_flags |= IPSEC_PROTECT_ENCAPED;
+        if (!(itp->itp_flags & IPSEC_PROTECT_ITF))
+          {
+            ipsec_sa_set_IS_PROTECT (sa);
+            itp->itp_flags |= IPSEC_PROTECT_ENCAPED;
+          }
       }
     else
       {
@@ -657,6 +686,7 @@ ipsec_tun_protect_update (u32 sw_if_index,
       pool_get_zero (ipsec_tun_protect_pool, itp);
 
       itp->itp_sw_if_index = sw_if_index;
+      itp->itp_ai = ADJ_INDEX_INVALID;
 
       itp->itp_n_sa_in = vec_len (sas_in);
       for (ii = 0; ii < itp->itp_n_sa_in; ii++)
@@ -673,7 +703,24 @@ ipsec_tun_protect_update (u32 sw_if_index,
       if (rv)
 	goto out;
 
-      if (ip46_address_is_zero (&itp->itp_tun.dst))
+      if (ip46_address_is_zero (&itp->itp_tun.src))
+	{
+	  /* must be one of thos pesky ipsec interfaces that has no encap.
+	   * the encap then MUST comefrom the tunnel mode SA.
+	   */
+	  ipsec_sa_t *sa;
+
+	  sa = ipsec_sa_get (itp->itp_out_sa);
+
+	  if (!ipsec_sa_is_set_IS_TUNNEL (sa))
+	    {
+	      rv = VNET_API_ERROR_INVALID_DST_ADDRESS;
+	      goto out;
+	    }
+
+	  itp->itp_flags |= IPSEC_PROTECT_ITF;
+	}
+      else if (ip46_address_is_zero (&itp->itp_tun.dst))
 	{
 	  /* tunnel has no destination address, presumably because it's p2mp
 	     in which case we use the nh that this is protection for */
@@ -690,7 +737,7 @@ ipsec_tun_protect_update (u32 sw_if_index,
 
       /*
        * add to the tunnel DB for ingress
-       *  - if the SA is in trasnport mode, then the packates will arrivw
+       *  - if the SA is in trasnport mode, then the packates will arrive
        *    with the IP src,dst of the protected tunnel, in which case we can
        *    simply strip the IP header and hand the payload to the protocol
        *    appropriate input handler
@@ -751,6 +798,9 @@ ipsec_tun_protect_del (u32 sw_if_index, const ip_address_t * nh)
 
   itp = ipsec_tun_protect_get (itpi);
   ipsec_tun_protect_unconfig (im, itp);
+
+  if (ADJ_INDEX_INVALID != itp->itp_ai)
+    adj_unlock (itp->itp_ai);
 
   clib_mem_free (itp->itp_key);
   pool_put (ipsec_tun_protect_pool, itp);
@@ -828,13 +878,7 @@ ipsec_tun_protect_adj_delegate_adj_created (adj_index_t ai)
   itpi = ipsec_tun_protect_find (adj->rewrite_header.sw_if_index, &ip);
 
   if (INDEX_INVALID != itpi)
-    {
-      const ipsec_tun_protect_t *itp;
-
-      itp = ipsec_tun_protect_get (itpi);
-      adj_delegate_add (adj_get (ai), ipsec_tun_adj_delegate_type, itpi);
-      ipsec_tun_protect_add_adj (ai, itp);
-    }
+    ipsec_tun_protect_adj_add (ai, ipsec_tun_protect_get (itpi));
 }
 
 static u8 *

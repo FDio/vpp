@@ -353,6 +353,21 @@ format_ipsec_tun_protect_index (u8 * s, va_list * args)
   return (format (s, "%U", format_ipsec_tun_protect, itp));
 }
 
+u8 *
+format_ipsec_tun_protect_flags (u8 * s, va_list * args)
+{
+  ipsec_protect_flags_t flags = va_arg (*args, int);
+
+  if (IPSEC_PROTECT_NONE == flags)
+    s = format (s, "none");
+#define _(a,b,c)                                \
+  else if (flags & IPSEC_PROTECT_##a)           \
+    s = format (s, "%s", c);                    \
+  foreach_ipsec_protect_flags
+#undef _
+
+  return (s);
+}
 
 u8 *
 format_ipsec_tun_protect (u8 * s, va_list * args)
@@ -360,8 +375,9 @@ format_ipsec_tun_protect (u8 * s, va_list * args)
   ipsec_tun_protect_t *itp = va_arg (*args, ipsec_tun_protect_t *);
   u32 sai;
 
-  s = format (s, "%U", format_vnet_sw_if_index_name,
-	      vnet_get_main (), itp->itp_sw_if_index);
+  s = format (s, "%U flags:[%U]", format_vnet_sw_if_index_name,
+	      vnet_get_main (), itp->itp_sw_if_index,
+	      format_ipsec_tun_protect_flags, itp->itp_flags);
   if (!ip_address_is_zero (itp->itp_key))
     s = format (s, ": %U", format_ip_address, itp->itp_key);
   s = format (s, "\n output-sa:");
