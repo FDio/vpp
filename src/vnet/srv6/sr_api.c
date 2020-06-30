@@ -311,7 +311,7 @@ static void send_sr_policies_details
     segment_list = pool_elt_at_index (sm->sid_lists, *sl_index);
 
     api_sid_list = &rmp->sid_lists[sl_index - t->segments_lists];
-
+    api_sid_list->sl_index = htonl (*sl_index);
     api_sid_list->num_sids = vec_len (segment_list->segments);
     api_sid_list->weight = htonl (segment_list->weight);
     slidx = 0;

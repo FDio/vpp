@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "0.0.1";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -25,6 +25,7 @@ typedef srv6_sid_list
 {
   u8 num_sids;
   u32 weight;
+  u32 sl_index;
   vl_api_ip6_address_t sids[16];
 };
 
