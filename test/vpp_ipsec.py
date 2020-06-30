@@ -1,6 +1,7 @@
 from vpp_object import VppObject
 from ipaddress import ip_address
 from vpp_papi import VppEnum
+from vpp_interface import VppInterface
 
 try:
     text_type = unicode
@@ -368,3 +369,41 @@ class VppIpsecTunProtect(VppObject):
                self.nh == str(b.tun.nh):
                 return True
         return False
+
+
+class VppIpsecInterface(VppInterface):
+    """
+    VPP IPSec interface
+    """
+
+    def __init__(self, test, mode=None):
+        super(VppIpsecInterface, self).__init__(test)
+
+        # only p2p mode is supported currently
+        self.mode = (VppEnum.vl_api_tunnel_mode_t.
+                     TUNNEL_API_MODE_P2P)
+
+    def add_vpp_config(self):
+        r = self.test.vapi.ipsec_itf_create(itf={
+            'user_instance': 0xffffffff,
+            'mode': self.mode,
+        })
+        self.set_sw_if_index(r.sw_if_index)
+        self.test.registry.register(self, self.test.logger)
+        return self
+
+    def remove_vpp_config(self):
+        self.test.vapi.ipsec_itf_delete(sw_if_index=self._sw_if_index)
+
+    def query_vpp_config(self):
+        ts = self.test.vapi.ipsec_itf_dump(sw_if_index=0xffffffff)
+        for t in ts:
+            if t.tunnel.sw_if_index == self._sw_if_index:
+                return True
+        return False
+
+    def __str__(self):
+        return self.object_id()
+
+    def object_id(self):
+        return "ipsec-%d" % self._sw_if_index
