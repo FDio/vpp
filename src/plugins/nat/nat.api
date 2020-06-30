@@ -120,6 +120,29 @@ define nat_show_config_reply
   u64 nat64_st_memory_size;
 };
 
+define nat_show_config_reply_v2
+{
+  u32 context;
+  i32 retval;
+  bool static_mapping_only;
+  bool static_mapping_connection_tracking;
+  bool deterministic;
+  bool endpoint_dependent;
+  bool out2in_dpo;
+  bool dslite_ce;
+  u32 translation_buckets;
+  u64 translation_memory_size;
+  u32 user_buckets;
+  u64 user_memory_size;
+  u32 max_translations_per_user;
+  u32 outside_vrf_id;
+  u32 inside_vrf_id;
+  u32 nat64_bib_buckets;
+  u64 nat64_bib_memory_size;
+  u32 nat64_st_buckets;
+  u64 nat64_st_memory_size;
+};
+
 enum nat_log_level : u8
 {
   NAT_LOG_NONE = 0x00,

@@ -95,7 +95,7 @@ vl_api_nat_control_ping_t_print (vl_api_nat_control_ping_t * mp, void *handle)
 static void
 vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
 {
-  vl_api_nat_show_config_reply_t *rmp;
+  vl_api_nat_show_config_reply_v2_t *rmp;
   snat_main_t *sm = &snat_main;
   //dslite_main_t *dm = &dslite_main;
   nat64_main_t *n64m = &nat64_main;
