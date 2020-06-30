@@ -181,6 +181,7 @@ typedef struct
   u32 host_mtu_size;
   int gso_enabled;
   int csum_offload_enabled;
+  u32 tap_flags;
   int ifindex;
   virtio_vring_t *cxq_vring;
 } virtio_if_t;
