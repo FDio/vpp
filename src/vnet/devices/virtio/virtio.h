@@ -179,8 +179,12 @@ typedef struct
   ip6_address_t host_ip6_addr;
   u8 host_ip6_prefix_len;
   u32 host_mtu_size;
+<<<<<<< HEAD   (d4b5fd tap: remove the bridge configurations for TUN interface)
   int gso_enabled;
   int csum_offload_enabled;
+=======
+  u32 tap_flags;
+>>>>>>> CHANGE (86f281 tap: fix dump for TUN interfaces)
   int ifindex;
   virtio_vring_t *cxq_vring;
 } virtio_if_t;
