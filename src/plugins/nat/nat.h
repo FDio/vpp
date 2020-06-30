@@ -628,7 +628,7 @@ typedef struct snat_main_s
   u8 endpoint_dependent;
 
   u32 translation_buckets;
-  uword translation_memory_size;
+  u32 translation_memory_size;
   u32 max_translations_per_thread;
   u32 *max_translations_per_fib;
   u32 max_users_per_thread;
