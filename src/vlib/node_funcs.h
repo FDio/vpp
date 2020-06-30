@@ -242,6 +242,7 @@ vlib_node_set_interrupt_pending_with_data (vlib_main_t * vm, u32 node_index,
       vec_add2 (nm->pending_remote_interrupts, i, 1);
       i->node_runtime_index = n->runtime_index;
       i->data = data;
+      *nm->pending_remote_interrupts_notify = 1;
       clib_spinlock_unlock (&nm->pending_interrupt_lock);
     }
 }
