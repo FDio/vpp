@@ -20,6 +20,7 @@ import "vnet/ipsec/ipsec_types.api";
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
 import "vnet/interface_types.api";
+import "vnet/tunnel/tunnel_types.api";
 
 /** \brief IPsec: Add/delete Security Policy Database
     @param client_index - opaque cookie to identify the sender
@@ -379,12 +380,60 @@ define ipsec_tunnel_if_add_del_reply {
   vl_api_interface_index_t sw_if_index;
 };
 
+typedef ipsec_itf
+{
+  u32 user_instance [default=0xffffffff];
+  vl_api_tunnel_mode_t mode;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Create an IPSec interface
+ */
+define ipsec_itf_create {
+  u32 client_index;
+  u32 context;
+  vl_api_ipsec_itf_t itf;
+};
+
+/** \brief Add IPsec interface interface response
+    @param context - sender context, to match reply w/ request
+    @param retval - return status
+    @param sw_if_index - sw_if_index of new interface (for successful add)
+*/
+define ipsec_itf_create_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
+autoreply define ipsec_itf_delete
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+define ipsec_itf_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+define ipsec_itf_details
+{
+  u32 context;
+  vl_api_ipsec_itf_t itf;
+};
+
 /** \brief Dump IPsec security association
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sa_id - optional ID of an SA to dump, if ~0 dump all SAs in SAD
 */
-define ipsec_sa_dump {
+define ipsec_sa_dump
+{
   u32 client_index;
   u32 context;
   u32 sa_id;

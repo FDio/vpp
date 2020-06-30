@@ -914,6 +914,7 @@ class IpsecTun4(object):
 
     def verify_tun_64(self, p, count=1):
         self.vapi.cli("clear errors")
+        self.vapi.cli("clear ipsec sa")
         try:
             send_pkts = self.gen_encrypt_pkts6(p, p.scapy_tun_sa, self.tun_if,
                                                src=p.remote_tun_if_host6,
@@ -1104,6 +1105,7 @@ class IpsecTun6(object):
     def verify_tun_46(self, p, count=1):
         """ ipsec 4o6 tunnel basic test """
         self.vapi.cli("clear errors")
+        self.vapi.cli("clear ipsec sa")
         try:
             send_pkts = self.gen_encrypt_pkts(p, p.scapy_tun_sa, self.tun_if,
                                               src=p.remote_tun_if_host4,
