@@ -249,7 +249,12 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 		while (nanosleep (&ts, &tsrem) < 0)
 		  ts = tsrem;
-		if (*vlib_worker_threads->wait_at_barrier)
+
+		clib_spinlock_lock (&nm->pending_interrupt_lock);
+		u32 pending_intr = vec_len (nm->pending_remote_interrupts);
+		clib_spinlock_unlock (&nm->pending_interrupt_lock);
+
+		if (pending_intr || *vlib_worker_threads->wait_at_barrier)
 		  goto done;
 	      }
 	  }
