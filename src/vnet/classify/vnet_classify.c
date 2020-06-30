@@ -1037,7 +1037,7 @@ unformat_ip6_mask (unformat_input_t * input, va_list * args)
 {
   u8 **maskp = va_arg (*args, u8 **);
   u8 *mask = 0;
-  u8 found_something = 0;
+  u8 found_something;
   ip6_header_t *ip;
   u32 ip_version_traffic_class_and_flow_label;
 
@@ -1069,6 +1069,10 @@ unformat_ip6_mask (unformat_input_t * input, va_list * args)
 	else
 	break;
     }
+
+  /* Account for "special" field names */
+  found_something = version + traffic_class + flow_label
+    + src_address + dst_address + protocol;
 
 #define _(a) found_something += a;
   foreach_ip6_proto_field;
