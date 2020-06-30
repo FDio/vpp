@@ -135,6 +135,24 @@
       "revId": "f8a3f53d9d52dbeb7bfde6288be57a7546689463",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7f94afcb_d3a99975",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-06-30T04:22:22Z",
+      "side": 1,
+      "message": "Let\u0027s see if I understand this. On line 128 we get that available_space \u003e mss, but then we find that available_space \u003e observed_wnd and round up the wnd? If yes, it\u0027s surprising because I\u0027m not sure what internal event makes us advertise more window than available space (given that line 126 tries to fix that)\n\nIn other words, once this is hit once, I see how it could be hit again, but what triggers the first entrance here? \n\nEither way, let\u0027s merge this patch as is if the results are good. Feel free to push the new patch. It somehow feels like we\u0027ll end up always retracting our window when we run out of fifo space and that is a bit worrisome.",
+      "parentUuid": "1f55d6ff_919b5b11",
+      "revId": "f8a3f53d9d52dbeb7bfde6288be57a7546689463",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
