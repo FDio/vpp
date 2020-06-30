@@ -249,7 +249,8 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 		while (nanosleep (&ts, &tsrem) < 0)
 		  ts = tsrem;
-		if (*vlib_worker_threads->wait_at_barrier)
+		if (*vlib_worker_threads->wait_at_barrier
+		    || *nm->pending_remote_interrupts_notify)
 		  goto done;
 	      }
 	  }

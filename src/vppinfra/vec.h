@@ -119,7 +119,7 @@ void *vec_resize_allocate_memory (void *v,
 #define _vec_resize_numa(V,L,DB,HB,A,S)					\
 ({									\
   __typeof__ ((V)) _V;							\
-  _V = _vec_resize_inline(V,L,DB,HB,clib_max((__alignof__((V)[0])),(A)),(S)); \
+  _V = _vec_resize_inline((void *)V,L,DB,HB,clib_max((__alignof__((V)[0])),(A)),(S)); \
   _V;									\
 })
 

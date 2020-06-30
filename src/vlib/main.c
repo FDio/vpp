@@ -1766,6 +1766,8 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   /* Pre-allocate interupt runtime indices and lock. */
   vec_alloc (nm->pending_local_interrupts, 32);
   vec_alloc (nm->pending_remote_interrupts, 32);
+  vec_alloc_aligned (nm->pending_remote_interrupts_notify, 1,
+		     CLIB_CACHE_LINE_BYTES);
   clib_spinlock_init (&nm->pending_interrupt_lock);
 
   /* Pre-allocate expired nodes. */
@@ -1857,7 +1859,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	cpu_time_now = dispatch_pending_interrupts (vm, nm, cpu_time_now);
 
       /* handle remote interruots */
-      if (_vec_len (nm->pending_remote_interrupts))
+      if (PREDICT_FALSE (_vec_len (nm->pending_remote_interrupts)))
 	{
 	  vlib_node_interrupt_t *in;
 
@@ -1868,6 +1870,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	  in = nm->pending_local_interrupts;
 	  nm->pending_local_interrupts = nm->pending_remote_interrupts;
 	  nm->pending_remote_interrupts = in;
+	  *nm->pending_remote_interrupts_notify = 0;
 	  clib_spinlock_unlock (&nm->pending_interrupt_lock);
 
 	  cpu_time_now = dispatch_pending_interrupts (vm, nm, cpu_time_now);
