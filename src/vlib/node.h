@@ -698,6 +698,7 @@ typedef struct
   /* Node runtime indices for input nodes with pending interrupts. */
   vlib_node_interrupt_t *pending_local_interrupts;
   vlib_node_interrupt_t *pending_remote_interrupts;
+  volatile u32 *pending_remote_interrupts_notify;
   clib_spinlock_t pending_interrupt_lock;
 
   /* Input nodes are switched from/to interrupt to/from polling mode
