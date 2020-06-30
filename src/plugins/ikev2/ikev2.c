@@ -1723,7 +1723,7 @@ ikev2_create_tunnel_interface (vlib_main_t * vm,
     {
       ip46_address_set_ip4 (&a.local_ip, &sa->iaddr);
       ip46_address_set_ip4 (&a.remote_ip, &sa->raddr);
-      proposals = child->i_proposals;
+      proposals = child->r_proposals;
       a.local_spi = child->r_proposals[0].spi;
       a.remote_spi = child->i_proposals[0].spi;
     }
@@ -1731,7 +1731,7 @@ ikev2_create_tunnel_interface (vlib_main_t * vm,
     {
       ip46_address_set_ip4 (&a.local_ip, &sa->raddr);
       ip46_address_set_ip4 (&a.remote_ip, &sa->iaddr);
-      proposals = child->r_proposals;
+      proposals = child->i_proposals;
       a.local_spi = child->i_proposals[0].spi;
       a.remote_spi = child->r_proposals[0].spi;
     }
