@@ -25,6 +25,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/ipsec/ipsec_types_api.h>
+#include <vnet/tunnel/tunnel_types_api.h>
 #include <vnet/fib/fib.h>
 #include <vnet/ipip/ipip.h>
 
@@ -33,6 +34,7 @@
 #if WITH_LIBSSL > 0
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_tun.h>
+#include <vnet/ipsec/ipsec_itf.h>
 #endif /* IPSEC */
 
 #define vl_typedefs		/* define message structures */
@@ -60,6 +62,9 @@ _(IPSEC_SA_DUMP, ipsec_sa_dump)                                 \
 _(IPSEC_SPDS_DUMP, ipsec_spds_dump)                             \
 _(IPSEC_SPD_DUMP, ipsec_spd_dump)                               \
 _(IPSEC_SPD_INTERFACE_DUMP, ipsec_spd_interface_dump)		\
+_(IPSEC_ITF_CREATE, ipsec_itf_create)                           \
+_(IPSEC_ITF_DELETE, ipsec_itf_delete)                           \
+_(IPSEC_ITF_DUMP, ipsec_itf_dump)                               \
 _(IPSEC_TUNNEL_IF_ADD_DEL, ipsec_tunnel_if_add_del)             \
 _(IPSEC_TUNNEL_IF_SET_SA, ipsec_tunnel_if_set_sa)               \
 _(IPSEC_SELECT_BACKEND, ipsec_select_backend)                   \
@@ -734,6 +739,43 @@ done:
     rmp->sw_if_index = htonl (sw_if_index);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+vl_api_ipsec_itf_create_t_handler (vl_api_ipsec_itf_create_t * mp)
+{
+  vl_api_ipsec_itf_create_reply_t *rmp;
+  tunnel_mode_t mode;
+  u32 sw_if_index = ~0;
+  int rv;
+
+  rv = tunnel_mode_decode (mp->itf.mode, &mode);
+
+  if (!rv)
+    rv = ipsec_itf_create (ntohl (mp->itf.user_instance), mode, &sw_if_index);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_IPSEC_ITF_CREATE_REPLY,
+  ({
+    rmp->sw_if_index = htonl (sw_if_index);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_ipsec_itf_delete_t_handler (vl_api_ipsec_itf_delete_t * mp)
+{
+  vl_api_ipsec_itf_delete_reply_t *rmp;
+  int rv;
+
+  rv = ipsec_itf_delete (ntohl (mp->sw_if_index));
+
+  REPLY_MACRO (VL_API_IPSEC_ITF_DELETE_REPLY);
+}
+
+static void
+vl_api_ipsec_itf_dump_t_handler (vl_api_ipsec_itf_dump_t * mp)
+{
 }
 
 typedef struct ipsec_sa_dump_match_ctx_t_

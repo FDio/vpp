@@ -581,6 +581,7 @@ list(APPEND VNET_SOURCES
   ipsec/ipsec_format.c
   ipsec/ipsec_handoff.c
   ipsec/ipsec_input.c
+  ipsec/ipsec_itf.c
   ipsec/ipsec_punt.c
   ipsec/ipsec_sa.c
   ipsec/ipsec_spd.c

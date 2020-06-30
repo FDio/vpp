@@ -47,11 +47,20 @@ typedef CLIB_PACKED(struct {
 extern u8 *format_ipsec4_tunnel_key (u8 * s, va_list * args);
 extern u8 *format_ipsec6_tunnel_key (u8 * s, va_list * args);
 
+#define foreach_ipsec_protect_flags \
+  _(L2, 1, "l2")                    \
+  _(ENCAPED, 2, "encapped")         \
+  _(ITF, 4, "itf")                  \
+
 typedef enum ipsec_protect_flags_t_
 {
-  IPSEC_PROTECT_L2 = (1 << 0),
-  IPSEC_PROTECT_ENCAPED = (1 << 1),
+  IPSEC_PROTECT_NONE = 0,
+#define _(a,b,c) IPSEC_PROTECT_##a = b,
+  foreach_ipsec_protect_flags
+#undef _
 } __clib_packed ipsec_protect_flags_t;
+
+extern u8 *format_ipsec_tun_protect_flags (u8 * s, va_list * args);
 
 typedef struct ipsec_ep_t_
 {
@@ -76,6 +85,7 @@ typedef struct ipsec_tun_protect_t_
   ipsec_ep_t itp_crypto;
 
   ipsec_protect_flags_t itp_flags;
+  adj_index_t itp_ai;
 
   ipsec_ep_t itp_tun;
 
