@@ -105,7 +105,7 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
   REPLY_MACRO2 (VL_API_NAT_SHOW_CONFIG_REPLY,
   ({
     rmp->translation_buckets = htonl (sm->translation_buckets);
-    rmp->translation_memory_size = clib_host_to_net_u64 (sm->translation_memory_size);
+    rmp->translation_memory_size = htonl (sm->translation_memory_size);
     rmp->user_buckets = htonl (sm->user_buckets);
     rmp->user_memory_size = clib_host_to_net_u64 (sm->user_memory_size);
     rmp->max_translations_per_user = htonl (sm->max_translations_per_user);
