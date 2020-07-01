@@ -43,10 +43,6 @@ add_vpp_plugin(nat
   nat64_in2out.c
   nat64_out2in.c
   nat64_db.c
-  nat66.c
-  nat66_cli.c
-  nat66_in2out.c
-  nat66_out2in.c
   nat_affinity.c
   nat_format.c
   nat_syslog.c
@@ -60,8 +56,6 @@ add_vpp_plugin(nat
   nat44_handoff.c
   nat64_in2out.c
   nat64_out2in.c
-  nat66_in2out.c
-  nat66_out2in.c
   nat_det_in2out.c
   nat_det_out2in.c
   out2in.c
@@ -69,6 +63,7 @@ add_vpp_plugin(nat
 
   API_FILES
   nat.api
+  nat_types.api
 
   API_TEST_SOURCES
   nat_test.c
@@ -98,6 +93,26 @@ add_vpp_plugin(dslite
 
   API_FILES
   dslite/dslite.api
+
+  LINK_LIBRARIES nat
+)
+
+add_vpp_plugin(nat66
+  SOURCES
+  nat_syslog.c
+  nat66/nat66.c
+  nat66/nat66_cli.c
+  nat66/nat66_api.c
+  nat66/nat66_in2out.c
+  nat66/nat66_out2in.c
+
+  MULTIARCH_SOURCES
+  nat66/nat66_in2out.c
+  nat66/nat66_out2in.c
+
+  API_FILES
+  nat66/nat66.api
+  nat_types.api
 
   LINK_LIBRARIES nat
 )
