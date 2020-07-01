@@ -110,6 +110,7 @@ RPM_DEPENDS += libuuid-devel
 RPM_DEPENDS += mbedtls-devel
 RPM_DEPENDS += ccache
 RPM_DEPENDS += xmlto
+RPM_DEPENDS += elfutils-libelf-devel
 
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
