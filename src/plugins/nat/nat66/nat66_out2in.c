@@ -14,10 +14,10 @@
  */
 /**
  * @file
- * @brief NAT66 inside to outside network translation
+ * @brief NAT66 outside to inside network translation
  */
 
-#include <nat/nat66.h>
+#include <nat/nat66/nat66.h>
 #include <vnet/ip/ip6_to_ip4.h>
 #include <vnet/fib/fib_table.h>
 
@@ -25,94 +25,54 @@ typedef struct
 {
   u32 sw_if_index;
   u32 next_index;
-} nat66_in2out_trace_t;
+} nat66_out2in_trace_t;
 
 static u8 *
-format_nat66_in2out_trace (u8 * s, va_list * args)
+format_nat66_out2in_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  nat66_in2out_trace_t *t = va_arg (*args, nat66_in2out_trace_t *);
+  nat66_out2in_trace_t *t = va_arg (*args, nat66_out2in_trace_t *);
 
   s =
-    format (s, "NAT66-in2out: sw_if_index %d, next index %d", t->sw_if_index,
+    format (s, "NAT66-out2in: sw_if_index %d, next index %d", t->sw_if_index,
 	    t->next_index);
 
   return s;
 }
 
-#define foreach_nat66_in2out_error                       \
-_(IN2OUT_PACKETS, "good in2out packets processed")       \
+#define foreach_nat66_out2in_error                       \
+_(OUT2IN_PACKETS, "good out2in packets processed")       \
 _(NO_TRANSLATION, "no translation")                      \
 _(UNKNOWN, "unknown")
 
 typedef enum
 {
-#define _(sym,str) NAT66_IN2OUT_ERROR_##sym,
-  foreach_nat66_in2out_error
+#define _(sym,str) NAT66_OUT2IN_ERROR_##sym,
+  foreach_nat66_out2in_error
 #undef _
-    NAT66_IN2OUT_N_ERROR,
-} nat66_in2out_error_t;
+    NAT66_OUT2IN_N_ERROR,
+} nat66_out2in_error_t;
 
-static char *nat66_in2out_error_strings[] = {
+static char *nat66_out2in_error_strings[] = {
 #define _(sym,string) string,
-  foreach_nat66_in2out_error
+  foreach_nat66_out2in_error
 #undef _
 };
 
 typedef enum
 {
-  NAT66_IN2OUT_NEXT_IP6_LOOKUP,
-  NAT66_IN2OUT_NEXT_DROP,
-  NAT66_IN2OUT_N_NEXT,
-} nat66_in2out_next_t;
+  NAT66_OUT2IN_NEXT_IP6_LOOKUP,
+  NAT66_OUT2IN_NEXT_DROP,
+  NAT66_OUT2IN_N_NEXT,
+} nat66_out2in_next_t;
 
-static inline u8
-nat66_not_translate (u32 rx_fib_index, ip6_address_t ip6_addr)
-{
-  nat66_main_t *nm = &nat66_main;
-  u32 sw_if_index;
-  snat_interface_t *i;
-  fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
-  fib_prefix_t pfx = {
-    .fp_proto = FIB_PROTOCOL_IP6,
-    .fp_len = 128,
-    .fp_addr = {
-		.ip6 = ip6_addr,
-		},
-  };
-
-  fei = fib_table_lookup (rx_fib_index, &pfx);
-  if (FIB_NODE_INDEX_INVALID == fei)
-    return 1;
-  sw_if_index = fib_entry_get_resolving_interface (fei);
-
-  if (sw_if_index == ~0)
-    {
-      fei = fib_table_lookup (nm->outside_fib_index, &pfx);
-      if (FIB_NODE_INDEX_INVALID == fei)
-	return 1;
-      sw_if_index = fib_entry_get_resolving_interface (fei);
-    }
-
-  /* *INDENT-OFF* */
-  pool_foreach (i, nm->interfaces,
-  ({
-    /* NAT packet aimed at outside interface */
-    if (nat_interface_is_outside (i) && sw_if_index == i->sw_if_index)
-      return 0;
-  }));
-  /* *INDENT-ON* */
-
-  return 1;
-}
-
-VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
+VLIB_NODE_FN (nat66_out2in_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
-  nat66_in2out_next_t next_index;
+  nat66_out2in_next_t next_index;
   u32 pkts_processed = 0;
   u32 thread_index = vm->thread_index;
   nat66_main_t *nm = &nat66_main;
@@ -131,7 +91,7 @@ VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
-	  u32 next0 = NAT66_IN2OUT_NEXT_IP6_LOOKUP;
+	  u32 next0 = NAT66_OUT2IN_NEXT_IP6_LOOKUP;
 	  ip6_header_t *ip60;
 	  u16 l4_offset0, frag_offset0;
 	  u8 l4_protocol0;
@@ -159,8 +119,8 @@ VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
 	       (vm, b0, ip60, b0->current_length, &l4_protocol0, &l4_offset0,
 		&frag_offset0)))
 	    {
-	      next0 = NAT66_IN2OUT_NEXT_DROP;
-	      b0->error = node->errors[NAT66_IN2OUT_ERROR_UNKNOWN];
+	      next0 = NAT66_OUT2IN_NEXT_DROP;
+	      b0->error = node->errors[NAT66_OUT2IN_ERROR_UNKNOWN];
 	      goto trace0;
 	    }
 
@@ -169,10 +129,7 @@ VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
 	    fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6,
 						 sw_if_index0);
 
-	  if (nat66_not_translate (fib_index0, ip60->dst_address))
-	    goto trace0;
-
-	  sm0 = nat66_static_mapping_get (&ip60->src_address, fib_index0, 1);
+	  sm0 = nat66_static_mapping_get (&ip60->dst_address, fib_index0, 0);
 	  if (PREDICT_FALSE (!sm0))
 	    {
 	      goto trace0;
@@ -196,15 +153,16 @@ VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
 	  else
 	    goto skip_csum0;
 
-	  csum0 = ip_csum_sub_even (*checksum0, ip60->src_address.as_u64[0]);
-	  csum0 = ip_csum_sub_even (csum0, ip60->src_address.as_u64[1]);
-	  csum0 = ip_csum_add_even (csum0, sm0->e_addr.as_u64[0]);
-	  csum0 = ip_csum_add_even (csum0, sm0->e_addr.as_u64[1]);
+	  csum0 = ip_csum_sub_even (*checksum0, ip60->dst_address.as_u64[0]);
+	  csum0 = ip_csum_sub_even (csum0, ip60->dst_address.as_u64[1]);
+	  csum0 = ip_csum_add_even (csum0, sm0->l_addr.as_u64[0]);
+	  csum0 = ip_csum_add_even (csum0, sm0->l_addr.as_u64[1]);
 	  *checksum0 = ip_csum_fold (csum0);
 
 	skip_csum0:
-	  ip60->src_address.as_u64[0] = sm0->e_addr.as_u64[0];
-	  ip60->src_address.as_u64[1] = sm0->e_addr.as_u64[1];
+	  ip60->dst_address.as_u64[0] = sm0->l_addr.as_u64[0];
+	  ip60->dst_address.as_u64[1] = sm0->l_addr.as_u64[1];
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sm0->fib_index;
 
 	  vlib_increment_combined_counter (&nm->session_counters,
 					   thread_index, sm0 - nm->sm, 1,
@@ -215,13 +173,13 @@ VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
-	      nat66_in2out_trace_t *t =
+	      nat66_out2in_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	      t->next_index = next0;
 	    }
 
-	  pkts_processed += next0 != NAT66_IN2OUT_NEXT_DROP;
+	  pkts_processed += next0 != NAT66_OUT2IN_NEXT_DROP;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -230,25 +188,25 @@ VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, nm->in2out_node_index,
-			       NAT66_IN2OUT_ERROR_IN2OUT_PACKETS,
+  vlib_node_increment_counter (vm, nm->out2in_node_index,
+			       NAT66_OUT2IN_ERROR_OUT2IN_PACKETS,
 			       pkts_processed);
   return frame->n_vectors;
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (nat66_in2out_node) = {
-  .name = "nat66-in2out",
+VLIB_REGISTER_NODE (nat66_out2in_node) = {
+  .name = "nat66-out2in",
   .vector_size = sizeof (u32),
-  .format_trace = format_nat66_in2out_trace,
+  .format_trace = format_nat66_out2in_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN (nat66_in2out_error_strings),
-  .error_strings = nat66_in2out_error_strings,
-  .n_next_nodes = NAT66_IN2OUT_N_NEXT,
+  .n_errors = ARRAY_LEN (nat66_out2in_error_strings),
+  .error_strings = nat66_out2in_error_strings,
+  .n_next_nodes = NAT66_OUT2IN_N_NEXT,
   /* edit / add dispositions here */
   .next_nodes = {
-    [NAT66_IN2OUT_NEXT_DROP] = "error-drop",
-    [NAT66_IN2OUT_NEXT_IP6_LOOKUP] = "ip6-lookup",
+    [NAT66_OUT2IN_NEXT_DROP] = "error-drop",
+    [NAT66_OUT2IN_NEXT_IP6_LOOKUP] = "ip6-lookup",
   },
 };
 /* *INDENT-ON* */

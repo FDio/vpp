@@ -16,6 +16,7 @@
 #include "vom/nat_static_cmds.hpp"
 
 DEFINE_VAPI_MSG_IDS_NAT_API_JSON;
+DEFINE_VAPI_MSG_IDS_NAT66_API_JSON;
 
 namespace VOM {
 namespace nat_static_cmds {

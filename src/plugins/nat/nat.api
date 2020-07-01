@@ -16,6 +16,7 @@
 option version = "5.2.0";
 import "vnet/ip/ip_types.api";
 import "vnet/interface_types.api";
+import "plugins/nat/nat_types.api";
 
 /**
  * @file nat.api
@@ -28,19 +29,6 @@ import "vnet/interface_types.api";
 /*
  * Common NAT plugin APIs
  */
-
-enum nat_config_flags : u8
-{
-  NAT_IS_NONE = 0x00,
-  NAT_IS_TWICE_NAT = 0x01,
-  NAT_IS_SELF_TWICE_NAT = 0x02,
-  NAT_IS_OUT2IN_ONLY = 0x04,
-  NAT_IS_ADDR_ONLY = 0x08,
-  NAT_IS_OUTSIDE = 0x10,
-  NAT_IS_INSIDE = 0x20,
-  NAT_IS_STATIC = 0x40,
-  NAT_IS_EXT_HOST_VALID = 0x80,
-};
 
 /** \brief Control ping from client to api server request
     @param client_index - opaque cookie to identify the sender
@@ -1397,87 +1385,4 @@ autoreply define nat64_add_del_interface_addr {
   u32 context;
   bool is_add;
   vl_api_interface_index_t sw_if_index;
-};
-
-/*
- * NAT66 APIs
- */
-/** \brief Enable/disable NAT66 feature on the interface
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_add - true if add, false if delete
-    @param flags - flag NAT_IS_INSIDE if interface is inside or
-                   interface is outside,
-    @param sw_if_index - software index of the interface
-*/
-autoreply define nat66_add_del_interface {
-  u32 client_index;
-  u32 context;
-  bool is_add;
-  vl_api_nat_config_flags_t flags;
-  vl_api_interface_index_t sw_if_index;
-};
-
-/** \brief Dump interfaces with NAT66 feature
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-*/
-define nat66_interface_dump {
-  u32 client_index;
-  u32 context;
-};
-
-/** \brief NAT66 interface details response
-    @param context - sender context, to match reply w/ request
-    @param flags - flag NAT_IS_INSIDE if interface is inside or
-                   interface is outside,
-    @param sw_if_index - software index of the interface
-*/
-define nat66_interface_details {
-  u32 context;
-  vl_api_nat_config_flags_t flags;
-  vl_api_interface_index_t sw_if_index;
-};
-
-/** \brief Add/delete 1:1 NAT66
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_add - true if add, false if delete
-    @param local_ip_address - local IPv6 address
-    @param external_ip_address - external IPv6 address
-    @param vrf_id - VRF id of tenant
-*/
-autoreply define nat66_add_del_static_mapping {
-  u32 client_index;
-  u32 context;
-  bool is_add;
-  vl_api_ip6_address_t local_ip_address;
-  vl_api_ip6_address_t external_ip_address;
-  u32 vrf_id;
-};
-
-/** \brief Dump NAT66 static mappings
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-*/
-define nat66_static_mapping_dump {
-  u32 client_index;
-  u32 context;
-};
-
-/** \brief NAT66 static mapping details response
-    @param context - sender context, to match reply w/ request
-    @param local_ip_address - local IPv6 address
-    @param external_ip_address - external IPv6 address
-    @param vrf_id - VRF id of tenant
-    @param total_bytes - count of bytes sent through static mapping
-    @param total_pkts - count of pakets sent through static mapping
-*/
-define nat66_static_mapping_details {
-  u32 context;
-  vl_api_ip6_address_t local_ip_address;
-  vl_api_ip6_address_t external_ip_address;
-  u32 vrf_id;
-  u64 total_bytes;
-  u64 total_pkts;
 };

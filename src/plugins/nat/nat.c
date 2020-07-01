@@ -24,7 +24,6 @@
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_det.h>
 #include <nat/nat64.h>
-#include <nat/nat66.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat44/inlines.h>
 #include <nat/nat_affinity.h>
@@ -2598,8 +2597,6 @@ snat_init (vlib_main_t * vm)
   if (error)
     return error;
 
-  nat66_init (vm);
-
   ip4_table_bind_callback_t cbt4 = {
     .function = snat_ip4_table_bind,
   };
@@ -3913,7 +3910,6 @@ static clib_error_t *
 snat_config (vlib_main_t * vm, unformat_input_t * input)
 {
   snat_main_t *sm = &snat_main;
-  nat66_main_t *nm = &nat66_main;
   snat_main_per_thread_data_t *tsm;
 
   u32 static_mapping_buckets = 1024;
@@ -4074,10 +4070,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   sm->outside_vrf_id = outside_vrf_id;
   sm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
 							     outside_vrf_id,
-							     nat_fib_src_hi);
-  nm->outside_vrf_id = outside_ip6_vrf_id;
-  nm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
-							     outside_ip6_vrf_id,
 							     nat_fib_src_hi);
   sm->inside_vrf_id = inside_vrf_id;
   sm->inside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
