@@ -49,8 +49,9 @@ GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
 #
 # We allow Darwin (MacOS) for docs generation; VPP build will still fail.
 ifneq ($(shell uname),Darwin)
-OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
-OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+OS_ID           = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+OS_VERSION_ID   = $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+OS_MAJOR_VER_ID = $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -c1)
 endif
 
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
@@ -117,7 +118,7 @@ ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += cmake
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
-else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
+else ifneq (, $(filter $(OS_ID)-$(OS_MAJOR_VER_ID), centos-8 rhel-8))
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += compat-openssl10
 	RPM_DEPENDS += python2-devel python36-devel python3-ply
@@ -314,7 +315,12 @@ endif
 	@sudo -E apt-get update
 	@sudo -E apt-get $(APT_ARGS) $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
 else ifneq ("$(wildcard /etc/redhat-release)","")
-ifeq ($(OS_ID),rhel)
+ifeq ($(OS_ID)-$(OS_MAJOR_VER_ID),rhel-8)
+	@sudo -E dnf install $(CONFIRM) https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+	@sudo -E dnf config-manager --enable codeready-builder-for-rhel-8-x86_64-rpms
+	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
+	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)
+else ifeq ($(OS_ID),rhel)
 	@sudo -E yum-config-manager --enable rhel-server-rhscl-7-rpms
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
