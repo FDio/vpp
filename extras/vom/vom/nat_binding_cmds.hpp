@@ -21,6 +21,7 @@
 #include "vom/rpc_cmd.hpp"
 
 #include <vapi/nat.api.vapi.hpp>
+#include <vapi/nat66.api.vapi.hpp>
 
 namespace VOM {
 namespace nat_binding_cmds {
@@ -253,8 +254,8 @@ private:
 
 /////
 /**
-* A functor class that binds a NAT configuration to an input interface
-*/
+ * A functor class that binds a NAT configuration to an input interface
+ */
 class bind_66_input_cmd
   : public rpc_cmd<HW::item<bool>, vapi::Nat66_add_del_interface>
 {

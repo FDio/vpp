@@ -17,8 +17,7 @@
  * @brief NAT66 CLI
  */
 
-#include <nat/nat66.h>
-#include <nat/nat.h>
+#include <nat/nat66/nat66.h>
 #include <vnet/fib/fib_table.h>
 
 static clib_error_t *
@@ -136,14 +135,14 @@ done:
 }
 
 static int
-nat66_cli_interface_walk (snat_interface_t * i, void *ctx)
+nat66_cli_interface_walk (nat66_interface_t * i, void *ctx)
 {
   vlib_main_t *vm = ctx;
   vnet_main_t *vnm = vnet_get_main ();
 
   vlib_cli_output (vm, " %U %s", format_vnet_sw_interface_name, vnm,
 		   vnet_get_sw_interface (vnm, i->sw_if_index),
-		   nat_interface_is_inside (i) ? "in" : "out");
+		   nat66_interface_is_inside (i) ? "in" : "out");
   return 0;
 }
 
