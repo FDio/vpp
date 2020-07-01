@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "10842aed_488c6cfa",
+        "filename": "src/vlib/main.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1862,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-07-01T15:35:15Z",
+      "side": 1,
+      "message": "PREDICT_FALSE(....)",
+      "revId": "a4b16a5e0bed444ce5448ccd619500e3812d6adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b3890279_d19366ee",
+        "filename": "src/vlib/node.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 701,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-07-01T15:35:15Z",
+      "side": 1,
+      "message": "volatile u32 *",
+      "revId": "a4b16a5e0bed444ce5448ccd619500e3812d6adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "809b7299_2ad20aa9",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-07-01T15:35:15Z",
+      "side": 1,
+      "message": "No need for the cast, please declare the variable as per my other comment",
+      "revId": "a4b16a5e0bed444ce5448ccd619500e3812d6adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
