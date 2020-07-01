@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba9bba2f_b51d7572",
+        "filename": "src/vnet/classify/vnet_classify.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1066,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-07-01T13:54:40Z",
+      "side": 1,
+      "message": "These three are not special, so lines 1068-1070 handle them.",
+      "range": {
+        "startLine": 1066,
+        "startChar": 6,
+        "endLine": 1066,
+        "endChar": 42
+      },
+      "revId": "126c88544103d3775252f741398111875f6a62d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
