@@ -60,7 +60,6 @@ BuildRequires: python3, python36-devel, python3-virtualenv
 BuildRequires: cmake
 %else
 %if 0%{rhel} >= 7
-Requires: epel-release
 Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils, python36
 Requires: boost-filesystem mbedtls libffi-devel
 BuildRequires: epel-release
@@ -150,7 +149,7 @@ This package contains the python bindings for the vpp api
 Summary: VPP api python3 bindings
 Group: Development/Libraries
 Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}, libffi-devel
-Requires: python-setuptools
+Requires: python3-setuptools
 
 %description api-python3
 This package contains the python3 bindings for the vpp api
