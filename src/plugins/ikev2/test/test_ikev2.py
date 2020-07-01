@@ -15,6 +15,7 @@ from scapy.packet import raw, Raw
 from scapy.utils import long_converter
 from framework import VppTestCase, VppTestRunner
 from vpp_ikev2 import Profile, IDType, AuthMethod
+from vpp_papi import VppEnum
 
 
 KEY_PAD = b"Key Pad for IKEv2"
@@ -34,7 +35,25 @@ DH = {
     670C354E 4ABC9804 F1746C08 CA18217C 32905E46 2E36CE3B
     E39E772C 180E8603 9B2783A2 EC07A28F B5C55DF0 6F4C52C9
     DE2BCBF6 95581718 3995497C EA956AE5 15D22618 98FA0510
-    15728E5A 8AACAA68 FFFFFFFF FFFFFFFF"""), 2, 256)
+    15728E5A 8AACAA68 FFFFFFFF FFFFFFFF"""), 2, 256),
+
+    '3072MODPgr': (long_converter("""
+    FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1
+    29024E08 8A67CC74 020BBEA6 3B139B22 514A0879 8E3404DD
+    EF9519B3 CD3A431B 302B0A6D F25F1437 4FE1356D 6D51C245
+    E485B576 625E7EC6 F44C42E9 A637ED6B 0BFF5CB6 F406B7ED
+    EE386BFB 5A899FA5 AE9F2411 7C4B1FE6 49286651 ECE45B3D
+    C2007CB8 A163BF05 98DA4836 1C55D39A 69163FA8 FD24CF5F
+    83655D23 DCA3AD96 1C62F356 208552BB 9ED52907 7096966D
+    670C354E 4ABC9804 F1746C08 CA18217C 32905E46 2E36CE3B
+    E39E772C 180E8603 9B2783A2 EC07A28F B5C55DF0 6F4C52C9
+    DE2BCBF6 95581718 3995497C EA956AE5 15D22618 98FA0510
+    15728E5A 8AAAC42D AD33170D 04507A33 A85521AB DF1CBA64
+    ECFB8504 58DBEF0A 8AEA7157 5D060C7D B3970F85 A6E1E4C7
+    ABF5AE8C DB0933D7 1E8C94E0 4A25619D CEE3D226 1AD2EE6B
+    F12FFA06 D98A0864 D8760273 3EC86A64 521F2B18 177B200C
+    BBE11757 7A615D6C 770988C0 BAD946E2 08E24FA0 74E5AB31
+    43DB5BFC E0FD108E 4B82D120 A93AD2CA FFFFFFFF FFFFFFFF"""), 2, 384)
 }
 
 
@@ -78,11 +97,16 @@ class AuthAlgo(object):
 CRYPTO_ALGOS = {
     'NULL': CryptoAlgo('NULL', cipher=None, mode=None),
     'AES-CBC': CryptoAlgo('AES-CBC', cipher=algorithms.AES, mode=modes.CBC),
+    'AES-GCM-16ICV': CryptoAlgo('AES-GCM-16ICV', cipher=algorithms.AES,
+                                mode=modes.GCM),
 }
 
 AUTH_ALGOS = {
     'NULL': AuthAlgo('NULL', mac=None, mod=None, key_len=0, trunc_len=0),
     'HMAC-SHA1-96': AuthAlgo('HMAC-SHA1-96', hmac.HMAC, hashes.SHA1, 20, 12),
+    'SHA2-256-128': AuthAlgo('SHA2-256-128', hmac.HMAC, hashes.SHA256, 32, 16),
+    'SHA2-384-192': AuthAlgo('SHA2-384-192', hmac.HMAC, hashes.SHA256, 48, 24),
+    'SHA2-512-256': AuthAlgo('SHA2-512-256', hmac.HMAC, hashes.SHA256, 64, 32),
 }
 
 PRF_ALGOS = {
@@ -169,23 +193,34 @@ class IKEv2SA(object):
         c = self.child_sas[0]
 
         encr_key_len = self.esp_crypto_key_len
-        integ_key_len = self.ike_integ_alg.key_len
+        integ_key_len = self.esp_integ_alg.key_len
+        salt_len = 0 if integ_key_len else 4
+
         l = (integ_key_len * 2 +
-             encr_key_len * 2)
+             encr_key_len * 2 +
+             salt_len * 2)
         keymat = self.calc_prfplus(prf, self.sk_d, s, l)
 
         pos = 0
         c.sk_ei = keymat[pos:pos+encr_key_len]
         pos += encr_key_len
 
-        c.sk_ai = keymat[pos:pos+integ_key_len]
-        pos += integ_key_len
+        if integ_key_len:
+            c.sk_ai = keymat[pos:pos+integ_key_len]
+            pos += integ_key_len
+        else:
+            c.salt_ei = keymat[pos:pos+salt_len]
+            pos += salt_len
 
         c.sk_er = keymat[pos:pos+encr_key_len]
         pos += encr_key_len
 
-        c.sk_ar = keymat[pos:pos+integ_key_len]
-        pos += integ_key_len
+        if integ_key_len:
+            c.sk_ar = keymat[pos:pos+integ_key_len]
+            pos += integ_key_len
+        else:
+            c.salt_er = keymat[pos:pos+salt_len]
+            pos += salt_len
 
     def calc_prfplus(self, prf, key, seed, length):
         r = b''
@@ -296,6 +331,17 @@ class IKEv2SA(object):
             return self.sk_er
         return self.sk_ei
 
+    def concat(self, alg, key_len):
+        return alg + '-' + str(key_len * 8)
+
+    @property
+    def vpp_ike_cypto_alg(self):
+        return self.concat(self.ike_crypto, self.ike_crypto_key_len)
+
+    @property
+    def vpp_esp_cypto_alg(self):
+        return self.concat(self.esp_crypto, self.esp_crypto_key_len)
+
     def verify_hmac(self, ikemsg):
         integ_trunc = self.ike_integ_alg.trunc_len
         exp_hmac = ikemsg[-integ_trunc:]
@@ -361,7 +407,7 @@ class IKEv2SA(object):
 
         if integ not in AUTH_ALGOS:
             raise TypeError('unsupported auth algo %r' % integ)
-        self.esp_integ = integ
+        self.esp_integ = None if integ == 'NULL' else integ
         self.esp_integ_alg = AUTH_ALGOS[integ]
 
     def crypto_attr(self, key_len):
@@ -384,7 +430,7 @@ class IKEv2SA(object):
 
 
 class TemplateResponder(VppTestCase):
-    """ responder test """
+    """ responder test template """
 
     @classmethod
     def setUpClass(cls):
@@ -579,6 +625,17 @@ class TemplateResponder(VppTestCase):
         sa1 = sas[1].entry
         c = self.sa.child_sas[0]
 
+        vpp_crypto_alg = self.vpp_enums[self.sa.vpp_esp_cypto_alg]
+        self.assertEqual(sa0.crypto_algorithm, vpp_crypto_alg)
+        self.assertEqual(sa1.crypto_algorithm, vpp_crypto_alg)
+
+        if self.sa.esp_integ is None:
+            vpp_integ_alg = 0
+        else:
+            vpp_integ_alg = self.vpp_enums[self.sa.esp_integ]
+        self.assertEqual(sa0.integrity_algorithm, vpp_integ_alg)
+        self.assertEqual(sa1.integrity_algorithm, vpp_integ_alg)
+
         # verify crypto keys
         self.assertEqual(sa0.crypto_key.length, len(c.sk_er))
         self.assertEqual(sa1.crypto_key.length, len(c.sk_ei))
@@ -586,10 +643,14 @@ class TemplateResponder(VppTestCase):
         self.assertEqual(sa1.crypto_key.data[:len(c.sk_ei)], c.sk_ei)
 
         # verify integ keys
-        self.assertEqual(sa0.integrity_key.length, len(c.sk_ar))
-        self.assertEqual(sa1.integrity_key.length, len(c.sk_ai))
-        self.assertEqual(sa0.integrity_key.data[:len(c.sk_ar)], c.sk_ar)
-        self.assertEqual(sa1.integrity_key.data[:len(c.sk_ai)], c.sk_ai)
+        if vpp_integ_alg:
+            self.assertEqual(sa0.integrity_key.length, len(c.sk_ar))
+            self.assertEqual(sa1.integrity_key.length, len(c.sk_ai))
+            self.assertEqual(sa0.integrity_key.data[:len(c.sk_ar)], c.sk_ar)
+            self.assertEqual(sa1.integrity_key.data[:len(c.sk_ai)], c.sk_ai)
+        else:
+            self.assertEqual(sa0.salt.to_bytes(4, 'little'), c.salt_er)
+            self.assertEqual(sa1.salt.to_bytes(4, 'little'), c.salt_ei)
 
     def test_responder(self):
         self.send_sa_init(self.sa.natt)
@@ -599,6 +660,21 @@ class TemplateResponder(VppTestCase):
 
 class Ikev2Params(object):
     def config_params(self, params={}):
+        ec = VppEnum.vl_api_ipsec_crypto_alg_t
+        ei = VppEnum.vl_api_ipsec_integ_alg_t
+        self.vpp_enums = {
+                'AES-CBC-128': ec.IPSEC_API_CRYPTO_ALG_AES_CBC_128,
+                'AES-CBC-192': ec.IPSEC_API_CRYPTO_ALG_AES_CBC_192,
+                'AES-CBC-256': ec.IPSEC_API_CRYPTO_ALG_AES_CBC_256,
+                'AES-GCM-16ICV-128':  ec.IPSEC_API_CRYPTO_ALG_AES_GCM_128,
+                'AES-GCM-16ICV-192':  ec.IPSEC_API_CRYPTO_ALG_AES_GCM_192,
+                'AES-GCM-16ICV-256':  ec.IPSEC_API_CRYPTO_ALG_AES_GCM_256,
+
+                'HMAC-SHA1-96': ei.IPSEC_API_INTEG_ALG_SHA1_96,
+                'SHA2-256-128': ei.IPSEC_API_INTEG_ALG_SHA_256_128,
+                'SHA2-384-192': ei.IPSEC_API_INTEG_ALG_SHA_384_192,
+                'SHA2-512-256': ei.IPSEC_API_INTEG_ALG_SHA_512_256}
+
         is_natt = 'natt' in params and params['natt'] or False
         self.p = Profile(self, 'pr1')
 
@@ -636,11 +712,23 @@ class Ikev2Params(object):
                           auth_data=auth_data,
                           local_ts=self.p.remote_ts, remote_ts=self.p.local_ts)
 
-        self.sa.set_ike_props(crypto='AES-CBC', crypto_key_len=32,
-                              integ='HMAC-SHA1-96', prf='PRF_HMAC_SHA2_256',
-                              dh='2048MODPgr')
-        self.sa.set_esp_props(crypto='AES-CBC', crypto_key_len=32,
-                              integ='HMAC-SHA1-96')
+        ike_crypto = ('AES-CBC', 32) if 'ike-crypto' not in params else\
+            params['ike-crypto']
+        ike_integ = 'HMAC-SHA1-96' if 'ike-integ' not in params else\
+            params['ike-integ']
+        ike_dh = '2048MODPgr' if 'ike-dh' not in params else params['ike-dh']
+
+        esp_crypto = ('AES-CBC', 32) if 'esp-crypto' not in params else\
+            params['esp-crypto']
+        esp_integ = 'HMAC-SHA1-96' if 'esp-integ' not in params else\
+            params['esp-integ']
+
+        self.sa.set_ike_props(
+                crypto=ike_crypto[0], crypto_key_len=ike_crypto[1],
+                integ=ike_integ, prf='PRF_HMAC_SHA2_256', dh=ike_dh)
+        self.sa.set_esp_props(
+                crypto=esp_crypto[0], crypto_key_len=esp_crypto[1],
+                integ=esp_integ)
 
 
 class TestResponderNATT(TemplateResponder, Ikev2Params):
@@ -665,6 +753,35 @@ class TestResponderRsaSign(TemplateResponder, Ikev2Params):
             'client-key': 'client-key.pem',
             'client-cert': 'client-cert.pem',
             'server-cert': 'server-cert.pem'})
+
+
+class Test_IKE_AES_CBC_128_SHA256_128_MODP2048_ESP_AES_CBC_192_SHA_384_192\
+        (TemplateResponder, Ikev2Params):
+    """
+    IKE:AES_CBC_128_SHA256_128,DH=modp2048 ESP:AES_CBC_192_SHA_384_192
+    """
+    def config_tc(self):
+        self.config_params({
+            'ike-crypto': ('AES-CBC', 16),
+            'ike-integ': 'SHA2-256-128',
+            'esp-crypto': ('AES-CBC', 24),
+            'esp-integ': 'SHA2-384-192',
+            'ike-dh': '2048MODPgr'})
+
+
+class TestAES_CBC_128_SHA256_128_MODP3072_ESP_AES_GCM_16\
+        (TemplateResponder, Ikev2Params):
+    """
+    IKE:AES_CBC_128_SHA256_128,DH=modp3072 ESP:AES_GCM_16
+    """
+    def config_tc(self):
+        self.config_params({
+            'ike-crypto': ('AES-CBC', 32),
+            'ike-integ': 'SHA2-256-128',
+            'esp-crypto': ('AES-GCM-16ICV', 32),
+            'esp-integ': 'NULL',
+            'ike-dh': '3072MODPgr'})
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
