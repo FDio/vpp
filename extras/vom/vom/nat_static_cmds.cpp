@@ -16,6 +16,7 @@
 #include "vom/nat_static_cmds.hpp"
 
 DEFINE_VAPI_MSG_IDS_NAT_API_JSON;
+DEFINE_VAPI_MSG_IDS_NAT66_API_JSON;
 
 namespace VOM {
 namespace nat_static_cmds {
@@ -28,8 +29,7 @@ create_44_cmd::create_44_cmd(HW::item<bool>& item,
   , m_id(id)
   , m_inside(inside)
   , m_outside(outside)
-{
-}
+{}
 
 bool
 create_44_cmd::operator==(const create_44_cmd& other) const
@@ -77,8 +77,7 @@ delete_44_cmd::delete_44_cmd(HW::item<bool>& item,
   , m_id(id)
   , m_inside(inside)
   , m_outside(outside)
-{
-}
+{}
 
 bool
 delete_44_cmd::operator==(const delete_44_cmd& other) const
@@ -153,8 +152,7 @@ create_66_cmd::create_66_cmd(HW::item<bool>& item,
   , m_id(id)
   , m_inside(inside)
   , m_outside(outside)
-{
-}
+{}
 
 bool
 create_66_cmd::operator==(const create_66_cmd& other) const
@@ -198,8 +196,7 @@ delete_66_cmd::delete_66_cmd(HW::item<bool>& item,
   , m_id(id)
   , m_inside(inside)
   , m_outside(outside)
-{
-}
+{}
 
 bool
 delete_66_cmd::operator==(const delete_66_cmd& other) const

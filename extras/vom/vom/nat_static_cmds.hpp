@@ -20,6 +20,7 @@
 #include "vom/dump_cmd.hpp"
 
 #include <vapi/nat.api.vapi.hpp>
+#include <vapi/nat66.api.vapi.hpp>
 
 namespace VOM {
 namespace nat_static_cmds {
