@@ -19,8 +19,8 @@
 #ifndef __included_nat66_h__
 #define __included_nat66_h__
 
+#include <vnet/ip/ip.h>
 #include <vppinfra/bihash_24_8.h>
-#include <nat/nat.h>
 
 typedef struct
 {
@@ -45,8 +45,18 @@ typedef struct
 
 typedef struct
 {
+  u32 sw_if_index;
+  u8 flags;
+} nat66_interface_t;
+#define NAT66_INTERFACE_FLAG_IS_INSIDE 1
+#define NAT66_INTERFACE_FLAG_IS_OUTSIDE 2
+#define nat66_interface_is_inside(i) i->flags & NAT66_INTERFACE_FLAG_IS_INSIDE
+#define nat66_interface_is_outside(i) i->flags & NAT66_INTERFACE_FLAG_IS_OUTSIDE
+
+typedef struct
+{
   /** Interface pool */
-  snat_interface_t *interfaces;
+  nat66_interface_t *interfaces;
   /** Static mapping pool */
   nat66_static_mapping_t *sm;
   /** Static mapping by local address lookup table */
@@ -61,14 +71,35 @@ typedef struct
 
   u32 outside_vrf_id;
   u32 outside_fib_index;
+
+  u16 msg_id_base;
+  u8 log_level;
 } nat66_main_t;
+
+#define nat66_elog(_level, _str)                         \
+do                                                       \
+  {                                                      \
+    nat66_main_t *nm = &nat66_main;                      \
+    if (PREDICT_FALSE (nm->log_level >= _level))         \
+      {                                                  \
+        ELOG_TYPE_DECLARE (e) =                          \
+          {                                              \
+            .format = "nat66-msg " _str,                 \
+            .format_args = "",                           \
+          };                                             \
+        ELOG_DATA (&vlib_global_main.elog_main, e);      \
+      }                                                  \
+  } while (0);
+
+#define nat66_elog_warn(nat_elog_str) \
+  nat66_elog(0x02, "[warning] " nat_elog_str)
+
 
 extern nat66_main_t nat66_main;
 extern vlib_node_registration_t nat66_in2out_node;
 extern vlib_node_registration_t nat66_out2in_node;
 
-void nat66_init (vlib_main_t * vm);
-typedef int (*nat66_interface_walk_fn_t) (snat_interface_t * i, void *ctx);
+typedef int (*nat66_interface_walk_fn_t) (nat66_interface_t * i, void *ctx);
 void nat66_interfaces_walk (nat66_interface_walk_fn_t fn, void *ctx);
 int nat66_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add);
 typedef int (*nat66_static_mapping_walk_fn_t) (nat66_static_mapping_t * sm,

@@ -21,6 +21,7 @@
 #include "vom/rpc_cmd.hpp"
 
 #include <vapi/nat.api.vapi.hpp>
+#include <vapi/nat66.api.vapi.hpp>
 
 namespace VOM {
 namespace nat_binding_cmds {
