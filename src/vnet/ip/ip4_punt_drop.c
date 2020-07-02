@@ -362,8 +362,8 @@ ip4_punt_redirect_cmd (vlib_main_t * vm,
 			 unformat_vnet_sw_interface, vnm, &rx_sw_if_index))
 	;
       else if (unformat (line_input, "via %U %U",
-			 unformat_ip4_address, unformat_vnet_sw_interface,
-			 &nh.ip4, vnm, &tx_sw_if_index))
+			 unformat_ip4_address, &nh.ip4,
+			 unformat_vnet_sw_interface, vnm, &tx_sw_if_index))
 	;
       else if (unformat (line_input, "via %U",
 			 unformat_vnet_sw_interface, vnm, &tx_sw_if_index))
