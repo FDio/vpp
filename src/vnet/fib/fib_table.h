@@ -960,7 +960,7 @@ extern u8 *format_fib_table_memory(u8 *s, va_list *args);
 /**
  * Debug function
  */
-#ifdef CLIB_DEBUG
+#if CLIB_DEBUG > 0
 extern void fib_table_assert_empty(const fib_table_t *fib_table);
 #endif
 

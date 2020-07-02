@@ -182,7 +182,7 @@ ip4_fib_table_destroy (u32 fib_index)
     /*
      * validate no more routes.
      */
-#ifdef CLIB_DEBUG
+#if CLIB_DEBUG > 0
     if (0 != fib_table->ft_total_route_counts)
         fib_table_assert_empty(fib_table);
 #endif
