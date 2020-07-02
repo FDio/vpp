@@ -22,6 +22,30 @@
       "revId": "90628f65567cd6e92a7b4417b61242c55e9996a4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bd049ead_41a637cc",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2020-07-02T14:42:07Z",
+      "side": 1,
+      "message": "Yeah, the only way I was able to sort the issue across the entire set was to change the entire numbering scheme to be universally YY.MM.DOT.PATCH~whatever - which is a much much bigger change since it also touches the *-release names, so I punted on it for now, since no-one really complained - seems too much disruption for what it is. (Also, would require way more testing, inc. RPM)",
+      "parentUuid": "4681d039_a245f6dc",
+      "range": {
+        "startLine": 12,
+        "startChar": 5,
+        "endLine": 12,
+        "endChar": 13
+      },
+      "revId": "90628f65567cd6e92a7b4417b61242c55e9996a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
