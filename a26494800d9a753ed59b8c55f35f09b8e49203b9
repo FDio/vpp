@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "49c15400_14d80c6a",
+        "filename": "src/plugins/calico/calico_vip.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-07-02T08:22:36Z",
+      "side": 1,
+      "message": "Gammar?",
+      "range": {
+        "startLine": 28,
+        "startChar": 3,
+        "endLine": 28,
+        "endChar": 30
+      },
+      "revId": "a26494800d9a753ed59b8c55f35f09b8e49203b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
