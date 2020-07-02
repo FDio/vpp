@@ -907,7 +907,7 @@ tcp_show_half_open (vlib_main_t * vm, u32 start, u32 end, u8 verbose)
   int max_index, i;
 
   n_elts = pool_elts (tm->half_open_connections);
-  max_index = pool_len (tm->half_open_connections) - 1;
+  max_index = clib_max (pool_len (tm->half_open_connections), 1) - 1;
   if (verbose && end == ~0 && n_elts > 50)
     {
       vlib_cli_output (vm, "Too many connections, use range <start> <end>");
@@ -966,7 +966,7 @@ show_tcp_half_open_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "range %u %u", &start, &end))
 	;
-      else if (unformat (line_input, "verbose %d"), &verbose)
+      else if (unformat (line_input, "verbose %d", &verbose))
 	;
       else if (unformat (line_input, "verbose"))
 	verbose = 1;
