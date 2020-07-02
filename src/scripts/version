@@ -20,7 +20,7 @@ cd "$path"
 if [ -f .version ]; then
     vstring=$(cat .version)
 else
-    vstring=$(git describe)
+    vstring=$(git describe --long)
     if [ $? != 0 ]; then
       exit 1
     fi
@@ -28,10 +28,22 @@ fi
 
 TAG=$(echo ${vstring} | cut -d- -f1 | sed -e 's/^v//')
 ADD=$(echo ${vstring} | cut -s -d- -f2)
+POINT=$(echo ${TAG} | cut -d. -f3)
+
+# if this is a "implicit zeroth" release (e.g. 19.08), check if we need to add ".0"
+# to fix the artifact versioning sorting
+if [ -z "${POINT}" ]; then
+    # verify that we are not:
+    # - directly on the XX.YY tag (then ADD will equal "0" by its construction)
+    # - not on any of the builds past "-rc[123]" but before releases - then ADD will be "rc[123]"
+    if [ "${ADD}" != "0" -a "${ADD}" != "rc0" -a "${ADD}" != "rc1" -a "${ADD}" != "rc2" ]; then
+	TAG="${TAG}.0"
+    fi
+fi
 
 git rev-parse 2> /dev/null
 if [ $? == 0 ]; then
-    CMT=$(git describe --dirty --match 'v*'| cut -s -d- -f3,4)
+    CMT=$(git describe --dirty --long --match 'v*'| cut -s -d- -f3,4)
 else
     CMT=$(echo ${vstring} | cut -s -d- -f3,4)
 fi
@@ -47,12 +59,12 @@ if [ "$1" = "rpm-version" ]; then
 fi
 
 if [ "$1" = "rpm-release" ]; then
-  [ -z "${ADD}" ] && echo release && exit
+  [ "${ADD}" = "0" ] && echo release && exit
   echo ${ADD}${CMTR:+~${CMTR}}${BLD}
   exit
 fi
 
-  if [ -n "${ADD}" ]; then
+  if [ "${ADD}" != "0" ]; then
     if [ "$1" = "rpm-string" ]; then
       echo ${TAG}-${ADD}${CMTR:+~${CMTR}}${BLD}
     else
