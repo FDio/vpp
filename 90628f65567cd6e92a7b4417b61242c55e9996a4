@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4681d039_a245f6dc",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-07-02T13:21:16Z",
+      "side": 1,
+      "message": "Looks good.\n*-release artifacts are still in wrong position, but they are in a different repo, so it is probably fine for now.",
+      "range": {
+        "startLine": 12,
+        "startChar": 5,
+        "endLine": 12,
+        "endChar": 13
+      },
+      "revId": "90628f65567cd6e92a7b4417b61242c55e9996a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
