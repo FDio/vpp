@@ -1713,7 +1713,7 @@ fib_entry_pool_size (void)
     return (pool_elts(fib_entry_pool));
 }
 
-#ifdef CLIB_DEBUG
+#if CLIB_DEBUG > 0
 void
 fib_table_assert_empty (const fib_table_t *fib_table)
 {
