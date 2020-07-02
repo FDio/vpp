@@ -2893,7 +2893,7 @@ nat_alloc_addr_and_port_default (snat_address_t * addresses,
                     { \
                       portnum = (port_per_thread * \
                         snat_thread_index) + \
-                        snat_random_port(1, port_per_thread) + 1024; \
+                        snat_random_port(0, port_per_thread - 1) + 1024; \
                       if (a->busy_##n##_port_refcounts[portnum]) \
                         continue; \
 		      --a->busy_##n##_port_refcounts[portnum]; \
@@ -2930,7 +2930,7 @@ nat_alloc_addr_and_port_default (snat_address_t * addresses,
             { \
               portnum = (port_per_thread * \
                 snat_thread_index) + \
-                snat_random_port(1, port_per_thread) + 1024; \
+                snat_random_port(0, port_per_thread - 1) + 1024; \
 	      if (a->busy_##n##_port_refcounts[portnum]) \
                 continue; \
 	      ++a->busy_##n##_port_refcounts[portnum]; \
