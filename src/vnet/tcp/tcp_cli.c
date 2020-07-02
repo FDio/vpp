@@ -897,6 +897,96 @@ VLIB_CLI_COMMAND (clear_tcp_stats_command, static) =
 };
 /* *INDENT-ON* */
 
+static void
+tcp_show_half_open (vlib_main_t * vm, u32 start, u32 end, u8 verbose)
+{
+  tcp_main_t *tm = &tcp_main;
+  tcp_connection_t *tc;
+  int max_index, i;
+
+  max_index = pool_len (tm->half_open_connections) - 1;
+  if (end == 0 && max_index > 20 && verbose)
+    {
+      vlib_cli_output (vm, "Too many connections, use range <start> <end>");
+      return;
+    }
+
+  if (!verbose)
+    {
+      vlib_cli_output (vm, "%u tcp half-open connections",
+		       pool_elts (tm->half_open_connections));
+      return;
+    }
+
+
+  for (i = start; i <= clib_min (end, max_index); i++)
+    {
+      if (pool_is_free_index (tm->half_open_connections, i))
+	continue;
+
+      tc = pool_elt_at_index (tm->half_open_connections, i);
+      vlib_cli_output (vm, "%U", format_tcp_connection, tc, verbose);
+    }
+
+  vlib_cli_output (vm, "%u tcp half-open connections",
+		   pool_elts (tm->half_open_connections));
+}
+
+static clib_error_t *
+show_tcp_half_open_fn (vlib_main_t * vm, unformat_input_t * input,
+		       vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 start, end, verbose = 0;
+  clib_error_t *error = 0;
+
+  session_cli_return_if_not_enabled ();
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    {
+      tcp_show_half_open (vm, 0, 0, 0);
+      return 0;
+    }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "range %u %u", &start, &end))
+	;
+      else if (unformat (line_input, "verbose"))
+	verbose = 1;
+      else if (unformat (line_input, "verbose %d"), &verbose)
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
+    }
+
+  if (start > end)
+    {
+      error = clib_error_return (0, "invalid range start: %u end: %u", start,
+				 end);
+      goto done;
+    }
+
+  tcp_show_half_open (vm, start, end, verbose);
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_tcp_half_open_command, static) =
+{
+  .path = "show tcp half-open",
+  .short_help = "show tcp half-open",
+  .function = show_tcp_half_open_fn,
+};
+/* *INDENT-ON* */
+
 uword
 unformat_tcp_cc_algo (unformat_input_t * input, va_list * va)
 {
