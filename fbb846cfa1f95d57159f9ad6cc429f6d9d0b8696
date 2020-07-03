@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "188b8257_2acf4ece",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-07-03T09:12:34Z",
+      "side": 0,
+      "message": "The call of round_down_pow2 at this position would lead the undesirable condition (available_space \u003c observed_wnd), so round_down_pow2 should not be applied here.",
+      "revId": "fbb846cfa1f95d57159f9ad6cc429f6d9d0b8696",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
