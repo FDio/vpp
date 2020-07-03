@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4279d92d_e409c905",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-03T11:14:28Z",
+      "side": 1,
+      "message": "this wants to be a function 😊\n\nalso define functions for each type we have (id_t, ts_t, responder_t..)",
+      "range": {
+        "startLine": 74,
+        "startChar": 0,
+        "endLine": 78,
+        "endChar": 59
+      },
+      "revId": "b65faa55f0991c75261c4e662fbedfa4b7db856e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "04fd180a_b3519261",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-03T11:14:28Z",
+      "side": 1,
+      "message": "host_to_net_u32",
+      "range": {
+        "startLine": 89,
+        "startChar": 3,
+        "endLine": 89,
+        "endChar": 42
+      },
+      "revId": "b65faa55f0991c75261c4e662fbedfa4b7db856e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bd21fc39_3e97fc2f",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-03T11:14:28Z",
+      "side": 1,
+      "message": "host_to_net_u32",
+      "range": {
+        "startLine": 135,
+        "startChar": 38,
+        "endLine": 135,
+        "endChar": 47
+      },
+      "revId": "b65faa55f0991c75261c4e662fbedfa4b7db856e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "20253816_d8800dfa",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-03T11:14:28Z",
+      "side": 1,
+      "message": "host_to_net_u32",
+      "range": {
+        "startLine": 144,
+        "startChar": 37,
+        "endLine": 144,
+        "endChar": 44
+      },
+      "revId": "b65faa55f0991c75261c4e662fbedfa4b7db856e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
