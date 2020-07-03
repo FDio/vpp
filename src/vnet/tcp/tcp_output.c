@@ -113,6 +113,7 @@ tcp_initial_window_to_advertise (tcp_connection_t * tc)
 static inline void
 tcp_update_rcv_wnd (tcp_connection_t * tc)
 {
+  u32 scl_factor = 1 << tc->rcv_wscale;
   u32 available_space, wnd;
   i32 observed_wnd;
 
@@ -121,11 +122,11 @@ tcp_update_rcv_wnd (tcp_connection_t * tc)
    */
   available_space = transport_max_rx_enqueue (&tc->connection);
 
-  /* Make sure we have a multiple of 1 << rcv_wscale. We round down to
-   * avoid advertising a window larger than what can be buffered */
-  available_space = round_down_pow2 (available_space, 1 << tc->rcv_wscale);
-
-  if (PREDICT_FALSE (available_space < tc->rcv_opts.mss))
+  /* Minimum rcv wnd to be advertised is round_pow (tc->rcv_opts.mss).
+   * If the available_space is smaller than it, set rcv_wnd = 0.
+   */
+  if (PREDICT_FALSE
+      (available_space < round_pow2 (tc->rcv_opts.mss, scl_factor)))
     {
       tc->rcv_wnd = 0;
       return;
@@ -140,12 +141,17 @@ tcp_update_rcv_wnd (tcp_connection_t * tc)
   /* Bad. Thou shalt not shrink */
   if (PREDICT_FALSE ((i32) available_space < observed_wnd))
     {
-      wnd = round_pow2 (clib_max (observed_wnd, 0), 1 << tc->rcv_wscale);
+      /* Advertising rcv wnd larger than actually acceptable */
+      wnd = round_pow2 (clib_max (observed_wnd, 0), scl_factor);
       TCP_EVT (TCP_EVT_RCV_WND_SHRUNK, tc, observed_wnd, available_space);
     }
   else
     {
-      wnd = available_space;
+      /* Make sure we have a multiple of 1 << rcv_wscale. We round down to
+       * avoid advertising a window larger than what can be buffered,
+       * but this is still larger than mss.
+       */
+      wnd = round_down_pow2 (available_space, scl_factor);
     }
 
   tc->rcv_wnd = clib_min (wnd, TCP_WND_MAX << tc->rcv_wscale);
