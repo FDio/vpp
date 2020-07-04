@@ -16,6 +16,24 @@
       "revId": "fbb846cfa1f95d57159f9ad6cc429f6d9d0b8696",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9d7ebe85_34b3162b",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-04T04:12:04Z",
+      "side": 0,
+      "message": "Under pressure we\u0027ll always have to move to a zero window when available_space \u003c mss, i.e., we have space but not enough space for a full packet. What do we gain by doing it later and checking twice if the available_space \u003c mss? Won\u0027t rounding down in the predict_false case solve the issue? \n\nThe way we split the code now, we have a first part computes the available window space, as a rcv_wnd multiple, and the second part decides what to do with it, i.e., advertise it as it is or if some error occurred and we\u0027re about to retract the previous window try to fix it. We won\u0027t be able to avoid retracting the window if 0 \u003c wnd \u003c mss (which is what happens also happens on line 148)",
+      "parentUuid": "188b8257_2acf4ece",
+      "revId": "fbb846cfa1f95d57159f9ad6cc429f6d9d0b8696",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
