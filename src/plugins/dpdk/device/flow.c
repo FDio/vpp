@@ -221,7 +221,7 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 	}
       protocol = l2tp->protocol;
     }
-  if (f->type == VNET_FLOW_TYPE_IP4_IPSEC_ESP)
+  else if (f->type == VNET_FLOW_TYPE_IP4_IPSEC_ESP)
     {
       vnet_flow_ip4_ipsec_esp_t *tesp = &f->ip4_ipsec_esp;
       item->type = RTE_FLOW_ITEM_TYPE_IPV4;
