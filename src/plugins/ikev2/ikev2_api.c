@@ -21,7 +21,7 @@
 #include <vlibmemory/api.h>
 #include <vnet/api_errno.h>
 #include <vpp/app/version.h>
-
+#include <vnet/ip/ip_types_api.h>
 #include <ikev2/ikev2.h>
 #include <ikev2/ikev2_priv.h>
 
@@ -43,12 +43,21 @@ extern ikev2_main_t ikev2_main;
 #include <vlibapi/api_helper_macros.h>
 
 static void
-cp_transforms (vl_api_ikev2_transforms_set_t * vl_api_ts,
-	       ikev2_transforms_set * ts)
+cp_ike_transforms (vl_api_ikev2_ike_transforms_t * vl_api_ts,
+		   ikev2_transforms_set * ts)
 {
   vl_api_ts->crypto_alg = ts->crypto_alg;
   vl_api_ts->integ_alg = ts->integ_alg;
-  vl_api_ts->dh_type = ts->dh_type;
+  vl_api_ts->dh_group = ts->dh_type;
+  vl_api_ts->crypto_key_size = ts->crypto_key_size;
+}
+
+static void
+cp_esp_transforms (vl_api_ikev2_esp_transforms_t * vl_api_ts,
+		   ikev2_transforms_set * ts)
+{
+  vl_api_ts->crypto_alg = ts->crypto_alg;
+  vl_api_ts->integ_alg = ts->integ_alg;
   vl_api_ts->crypto_key_size = ts->crypto_key_size;
 }
 
@@ -69,16 +78,14 @@ cp_id (vl_api_ikev2_id_t * vl_api_id, ikev2_id_t * id)
 }
 
 static void
-cp_ts (vl_api_ikev2_ts_t * vl_api_ts, ikev2_ts_t * ts)
+cp_ts (vl_api_ikev2_ts_t * vl_api_ts, ikev2_ts_t * ts, u8 is_local)
 {
-  vl_api_ts->ts_type = ts->ts_type;
+  vl_api_ts->is_local = is_local;
   vl_api_ts->protocol_id = ts->protocol_id;
-  vl_api_ts->selector_len = ts->selector_len;
   vl_api_ts->start_port = ts->start_port;
   vl_api_ts->end_port = ts->end_port;
-  clib_memcpy (&vl_api_ts->start_addr, &ts->start_addr,
-	       sizeof (ip4_address_t));
-  clib_memcpy (&vl_api_ts->end_addr, &ts->end_addr, sizeof (ip4_address_t));
+  ip4_address_encode (&ts->start_addr, vl_api_ts->start_addr);
+  ip4_address_encode (&ts->end_addr, vl_api_ts->end_addr);
 }
 
 static void
@@ -95,8 +102,7 @@ cp_responder (vl_api_ikev2_responder_t * vl_api_responder,
 	      ikev2_responder_t * responder)
 {
   vl_api_responder->sw_if_index = responder->sw_if_index;
-  clib_memcpy (&vl_api_responder->ip4, &responder->ip4,
-	       sizeof (ip4_address_t));
+  ip4_address_encode (&responder->ip4, vl_api_responder->ip4);
 }
 
 static void
@@ -116,14 +122,14 @@ send_profile (ikev2_profile_t * profile, vl_api_registration_t * reg,
     size_data = vec_len (profile->name);
   clib_memcpy (rmp->profile.name, profile->name, size_data);
 
-  cp_transforms (&rmp->profile.ike_ts, &profile->ike_ts);
-  cp_transforms (&rmp->profile.esp_ts, &profile->esp_ts);
+  cp_ike_transforms (&rmp->profile.ike_ts, &profile->ike_ts);
+  cp_esp_transforms (&rmp->profile.esp_ts, &profile->esp_ts);
 
   cp_id (&rmp->profile.loc_id, &profile->loc_id);
   cp_id (&rmp->profile.rem_id, &profile->rem_id);
 
-  cp_ts (&rmp->profile.rem_ts, &profile->rem_ts);
-  cp_ts (&rmp->profile.loc_ts, &profile->loc_ts);
+  cp_ts (&rmp->profile.rem_ts, &profile->rem_ts, 0 /* is_local */ );
+  cp_ts (&rmp->profile.loc_ts, &profile->loc_ts, 1 /* is_local */ );
 
   cp_auth (&rmp->profile.auth, &profile->auth);
 
@@ -297,7 +303,7 @@ static void
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
 
-  REPLY_MACRO (VL_API_IKEV2_PROFILE_SET_UDP_ENCAP);
+  REPLY_MACRO (VL_API_IKEV2_PROFILE_SET_UDP_ENCAP_REPLY);
 }
 
 static void
@@ -310,12 +316,14 @@ vl_api_ikev2_profile_set_ts_t_handler (vl_api_ikev2_profile_set_ts_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
   u8 *tmp = format (0, "%s", mp->name);
+  ip4_address_t start_addr, end_addr;
+  ip4_address_decode (mp->ts.start_addr, &start_addr);
+  ip4_address_decode (mp->ts.end_addr, &end_addr);
   error =
-    ikev2_set_profile_ts (vm, tmp, mp->proto,
-			  clib_net_to_host_u16 (mp->start_port),
-			  clib_net_to_host_u16 (mp->end_port),
-			  (ip4_address_t) mp->start_addr,
-			  (ip4_address_t) mp->end_addr, mp->is_local);
+    ikev2_set_profile_ts (vm, tmp, mp->ts.protocol_id,
+			  clib_net_to_host_u16 (mp->ts.start_port),
+			  clib_net_to_host_u16 (mp->ts.end_port),
+			  start_addr, end_addr, mp->ts.is_local);
   vec_free (tmp);
   if (error)
     rv = VNET_API_ERROR_UNSPECIFIED;
@@ -358,9 +366,10 @@ vl_api_ikev2_set_responder_t_handler (vl_api_ikev2_set_responder_t * mp)
 
   u8 *tmp = format (0, "%s", mp->name);
   ip4_address_t ip4;
-  clib_memcpy (&ip4, mp->address, sizeof (ip4));
+  ip4_address_decode (mp->responder.ip4, &ip4);
+  u32 sw_if_index = clib_net_to_host_u32 (mp->responder.sw_if_index);
 
-  error = ikev2_set_profile_responder (vm, tmp, ntohl (mp->sw_if_index), ip4);
+  error = ikev2_set_profile_responder (vm, tmp, sw_if_index, ip4);
   vec_free (tmp);
   if (error)
     rv = VNET_API_ERROR_UNSPECIFIED;
@@ -385,10 +394,10 @@ vl_api_ikev2_set_ike_transforms_t_handler (vl_api_ikev2_set_ike_transforms_t *
   u8 *tmp = format (0, "%s", mp->name);
 
   error =
-    ikev2_set_profile_ike_transforms (vm, tmp, ntohl (mp->crypto_alg),
-				      ntohl (mp->integ_alg),
-				      ntohl (mp->dh_group),
-				      ntohl (mp->crypto_key_size));
+    ikev2_set_profile_ike_transforms (vm, tmp, mp->tr.crypto_alg,
+				      mp->tr.integ_alg,
+				      mp->tr.dh_group,
+				      ntohl (mp->tr.crypto_key_size));
   vec_free (tmp);
   if (error)
     rv = VNET_API_ERROR_UNSPECIFIED;
@@ -413,10 +422,9 @@ vl_api_ikev2_set_esp_transforms_t_handler (vl_api_ikev2_set_esp_transforms_t *
   u8 *tmp = format (0, "%s", mp->name);
 
   error =
-    ikev2_set_profile_esp_transforms (vm, tmp, ntohl (mp->crypto_alg),
-				      ntohl (mp->integ_alg),
-				      ntohl (mp->dh_group),
-				      ntohl (mp->crypto_key_size));
+    ikev2_set_profile_esp_transforms (vm, tmp, mp->tr.crypto_alg,
+				      mp->tr.integ_alg,
+				      ntohl (mp->tr.crypto_key_size));
   vec_free (tmp);
   if (error)
     rv = VNET_API_ERROR_UNSPECIFIED;

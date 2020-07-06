@@ -395,8 +395,7 @@ clib_error_t *ikev2_set_profile_esp_transforms (vlib_main_t * vm, u8 * name,
 						crypto_alg,
 						ikev2_transform_integ_type_t
 						integ_alg,
-						ikev2_transform_dh_type_t
-						dh_type, u32 crypto_key_size);
+						u32 crypto_key_size);
 clib_error_t *ikev2_set_profile_sa_lifetime (vlib_main_t * vm, u8 * name,
 					     u64 lifetime, u32 jitter,
 					     u32 handover, u64 maxdata);

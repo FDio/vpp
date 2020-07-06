@@ -379,7 +379,6 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	{
 	  r =
 	    ikev2_set_profile_esp_transforms (vm, name, crypto_alg, integ_alg,
-					      IKEV2_TRANSFORM_DH_TYPE_NONE,
 					      tmp1);
 	  goto done;
 	}
@@ -390,9 +389,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 		unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1))
 	{
 	  r =
-	    ikev2_set_profile_esp_transforms (vm, name, crypto_alg, 0,
-					      IKEV2_TRANSFORM_DH_TYPE_NONE,
-					      tmp1);
+	    ikev2_set_profile_esp_transforms (vm, name, crypto_alg, 0, tmp1);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U sa-lifetime %lu %u %u %lu",

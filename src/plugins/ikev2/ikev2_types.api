@@ -16,7 +16,7 @@
 
 
 import "vnet/ip/ip_types.api";
-
+import "vnet/interface_types.api";
 
 typedef ikev2_id
 {
@@ -27,9 +27,8 @@ typedef ikev2_id
 
 typedef ikev2_ts
 {
-  u8 ts_type;
+  bool is_local;
   u8 protocol_id;
-  u16 selector_len;
   u16 start_port;
   u16 end_port;
   vl_api_ip4_address_t start_addr;
@@ -46,16 +45,23 @@ typedef ikev2_auth
 
 typedef ikev2_responder
 {
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   vl_api_ip4_address_t ip4;
 };
 
-typedef ikev2_transforms_set
+typedef ikev2_ike_transforms
 {
   u8 crypto_alg;
-  u8 integ_alg;
-  u8 dh_type;
   u32 crypto_key_size;
+  u8 integ_alg;
+  u8 dh_group;
+};
+
+typedef ikev2_esp_transforms
+{
+  u8 crypto_alg;
+  u32 crypto_key_size;
+  u8 integ_alg;
 };
 
 typedef ikev2_profile
@@ -66,14 +72,14 @@ typedef ikev2_profile
   vl_api_ikev2_ts_t loc_ts;
   vl_api_ikev2_ts_t rem_ts;
   vl_api_ikev2_responder_t responder;
-  vl_api_ikev2_transforms_set_t ike_ts;
-  vl_api_ikev2_transforms_set_t esp_ts;
+  vl_api_ikev2_ike_transforms_t ike_ts;
+  vl_api_ikev2_esp_transforms_t esp_ts;
   u64 lifetime;
   u64 lifetime_maxdata;
   u32 lifetime_jitter;
   u32 handover;
   u16 ipsec_over_udp_port;
   u32 tun_itf;
-  u8 udp_encap;
+  bool udp_encap;
   vl_api_ikev2_auth_t auth;
 };
