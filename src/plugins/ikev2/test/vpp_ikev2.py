@@ -98,4 +98,8 @@ class Profile(VppObject):
                                            **self.remote_ts)
 
     def query_vpp_config(self):
-        raise NotImplementedError()
+        res = self.vapi.ikev2_profile_dump()
+        for r in res:
+            if r.profile.name == self.profile_name:
+                return r.profile
+        return None

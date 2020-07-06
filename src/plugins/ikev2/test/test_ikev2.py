@@ -451,7 +451,13 @@ class TemplateResponder(VppTestCase):
         super(TemplateResponder, self).setUp()
         self.config_tc()
         self.p.add_vpp_config()
+        self.assertIsNotNone(self.p.query_vpp_config())
         self.sa.generate_dh_data()
+
+    def tearDown(self):
+        super(TemplateResponder, self).tearDown()
+        self.p.remove_vpp_config()
+        self.assertIsNone(self.p.query_vpp_config())
 
     def create_ike_msg(self, src_if, msg, sport=500, dport=500, natt=False):
         res = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
