@@ -584,6 +584,109 @@ done:
   return err;
 }
 
+static clib_error_t *
+dpdk_interface_set_rss_queues (struct vnet_main_t *vnm,
+			       struct vnet_hw_interface_t *hi,
+			       clib_bitmap_t * bitmap)
+{
+  dpdk_main_t *xm = &dpdk_main;
+  u32 hw_if_index = hi->hw_if_index;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  dpdk_device_t *xd = vec_elt_at_index (xm->devices, hw->dev_instance);
+  clib_error_t *err = 0;
+  struct rte_eth_rss_reta_entry64 *reta_conf = NULL;
+  struct rte_eth_dev_info dev_info;
+  u16 *reta = NULL;
+  u16 *valid_queue = NULL;
+  u16 valid_queue_count = 0;
+  uint32_t i, j;
+  uint32_t ret;
+
+  rte_eth_dev_info_get (xd->port_id, &dev_info);
+
+  /* parameter check */
+  if (clib_bitmap_count_set_bits (bitmap) == 0)
+    {
+      err = clib_error_return (0, "must assign at least one valid rss queue");
+      goto done;
+    }
+
+  if (clib_bitmap_count_set_bits (bitmap) > dev_info.nb_rx_queues)
+    {
+      err = clib_error_return (0, "too many rss queues");
+      goto done;
+    }
+
+  /* new RETA */
+  reta = clib_mem_alloc (dev_info.reta_size * sizeof (*reta));
+  if (reta == NULL)
+    {
+      err = clib_error_return (0, "clib_mem_alloc failed");
+      goto done;
+    }
+
+  clib_memset (reta, 0, dev_info.reta_size * sizeof (*reta));
+
+  valid_queue_count = 0;
+  /* *INDENT-OFF* */
+  clib_bitmap_foreach (i, bitmap, ({
+    if (i >= dev_info.nb_rx_queues)
+      {
+        err = clib_error_return (0, "illegal queue number");
+        goto done;
+      }
+    reta[valid_queue_count++] = i;
+  }));
+  /* *INDENT-ON* */
+
+  valid_queue = reta;
+  for (i = valid_queue_count, j = 0; i < dev_info.reta_size; i++, j++)
+    {
+      j = j % valid_queue_count;
+      reta[i] = valid_queue[j];
+    }
+
+  /* update reta table */
+  reta_conf =
+    (struct rte_eth_rss_reta_entry64 *) clib_mem_alloc (dev_info.reta_size /
+							RTE_RETA_GROUP_SIZE *
+							sizeof (*reta_conf));
+  if (reta_conf == NULL)
+    {
+      err = clib_error_return (0, "clib_mem_alloc failed");
+      goto done;
+    }
+
+  clib_memset (reta_conf, 0,
+	       dev_info.reta_size / RTE_RETA_GROUP_SIZE *
+	       sizeof (*reta_conf));
+
+  for (i = 0; i < dev_info.reta_size; i++)
+    {
+      uint32_t reta_id = i / RTE_RETA_GROUP_SIZE;
+      uint32_t reta_pos = i % RTE_RETA_GROUP_SIZE;
+
+      reta_conf[reta_id].mask = UINT64_MAX;
+      reta_conf[reta_id].reta[reta_pos] = reta[i];
+    }
+
+  ret =
+    rte_eth_dev_rss_reta_update (xd->port_id, reta_conf, dev_info.reta_size);
+  if (ret)
+    {
+      err = clib_error_return (0, "rte_eth_dev_rss_reta_update err %d", ret);
+      goto done;
+    }
+
+done:
+  if (reta)
+    clib_mem_free (reta);
+  if (reta_conf)
+    clib_mem_free (reta_conf);
+
+  return err;
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (dpdk_device_class) = {
   .name = "dpdk",
@@ -600,6 +703,7 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .mac_addr_add_del_function = dpdk_add_del_mac_address,
   .format_flow = format_dpdk_flow,
   .flow_ops_function = dpdk_flow_ops_fn,
+  .set_rss_queues_function = dpdk_interface_set_rss_queues,
 };
 /* *INDENT-ON* */
 
