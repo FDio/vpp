@@ -60,11 +60,12 @@ define nat_control_ping_reply
 */
 define nat_show_config
 {
+  option deprecated;
   u32 client_index;
   u32 context;
 };
 
-/** \brief Show NAT plugin startup config reply
+/** \brief DEPRECATED: Show NAT plugin startup config reply
     @param context - sender context, to match reply w/ request
     @param retval - return code for the request
     @param static_mapping_only - if true dynamic translations disabled
@@ -106,6 +107,64 @@ define nat_show_config_reply
   u64 nat64_bib_memory_size;
   u32 nat64_st_buckets;
   u64 nat64_st_memory_size;
+};
+
+/** \brief Show NAT plugin startup config
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat_show_config_2
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Show NAT plugin startup config reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param static_mapping_only - if true dynamic translations disabled
+    @param static_mapping_connection_tracking - if true create session data
+    @param deterministic - if true deterministic mapping
+    @param endpoint_dependent - if true endpoint-dependent mode
+    @param out2in_dpo - if true out2in dpo mode
+    @param dslite_ce - if true DS-Lite is CE/B4 element, if false AFTR elemet
+    @param translation_buckets - number of translation hash buckets
+    @param translation_memory_size - translation hash memory size
+    @param user_buckets - number of user hash buckets
+    @param user_memory_size - user hash memory size
+    @param max_translations_per_user - maximum number of translations per user
+    @param outside_vrf_id - outside VRF id
+    @param inside_vrf_id - default inside VRF id
+    @param nat64_bib_buckets - number of NAT64 BIB hash buckets
+    @param nat64_bib_memory_size - memory size of NAT64 BIB hash
+    @param nat64_st_buckets - number of NAT64 session table hash buckets
+    @param nat64_st_memory_size - memory size of NAT64 session table hash
+    @param max_translations_per_thread - max translations per worker thread
+    @param max_users_per_thread - max users per worker thread
+*/
+define nat_show_config_2_reply
+{
+  u32 context;
+  i32 retval;
+  bool static_mapping_only;
+  bool static_mapping_connection_tracking;
+  bool deterministic;
+  bool endpoint_dependent;
+  bool out2in_dpo;
+  bool dslite_ce;
+  u32 translation_buckets;
+  u64 translation_memory_size;
+  u32 user_buckets;
+  u64 user_memory_size;
+  u32 max_translations_per_user;
+  u32 outside_vrf_id;
+  u32 inside_vrf_id;
+  u32 nat64_bib_buckets;
+  u64 nat64_bib_memory_size;
+  u32 nat64_st_buckets;
+  u64 nat64_st_memory_size;
+  u32 max_translations_per_thread;
+  u32 max_users_per_thread;
 };
 
 enum nat_log_level : u8

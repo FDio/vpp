@@ -104,7 +104,10 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
   REPLY_MACRO2 (VL_API_NAT_SHOW_CONFIG_REPLY,
   ({
     rmp->translation_buckets = htonl (sm->translation_buckets);
-    rmp->translation_memory_size = clib_host_to_net_u64 (sm->translation_memory_size);
+    rmp->translation_memory_size = clib_host_to_net_u32 (
+		    sm->translation_memory_size > 0xffffffffULL
+		    ? 0xffffffffUL
+		    : (u32)sm->translation_memory_size);
     rmp->user_buckets = htonl (sm->user_buckets);
     rmp->user_memory_size = clib_host_to_net_u64 (sm->user_memory_size);
     rmp->max_translations_per_user = htonl (sm->max_translations_per_user);
@@ -131,6 +134,52 @@ vl_api_nat_show_config_t_print (vl_api_nat_show_config_t * mp, void *handle)
   u8 *s;
 
   s = format (0, "SCRIPT: nat_show_config ");
+
+  FINISH;
+}
+
+static void
+vl_api_nat_show_config_2_t_handler (vl_api_nat_show_config_2_t * mp)
+{
+  vl_api_nat_show_config_2_reply_t *rmp;
+  snat_main_t *sm = &snat_main;
+  //dslite_main_t *dm = &dslite_main;
+  nat64_main_t *n64m = &nat64_main;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_NAT_SHOW_CONFIG_2_REPLY,
+  ({
+    rmp->translation_buckets = htonl (sm->translation_buckets);
+    rmp->translation_memory_size = clib_host_to_net_u64 (sm->translation_memory_size);
+    rmp->user_buckets = htonl (sm->user_buckets);
+    rmp->user_memory_size = clib_host_to_net_u64 (sm->user_memory_size);
+    rmp->max_translations_per_user = htonl (sm->max_translations_per_user);
+    rmp->outside_vrf_id = htonl (sm->outside_vrf_id);
+    rmp->inside_vrf_id = htonl (sm->inside_vrf_id);
+    rmp->static_mapping_only = sm->static_mapping_only;
+    rmp->static_mapping_connection_tracking =
+      sm->static_mapping_connection_tracking;
+    rmp->deterministic = 0;
+    rmp->endpoint_dependent = sm->endpoint_dependent;
+    rmp->out2in_dpo = sm->out2in_dpo;
+    //rmp->dslite_ce = dm->is_ce;
+    rmp->nat64_bib_buckets = clib_net_to_host_u32(n64m->bib_buckets);
+    rmp->nat64_bib_memory_size = clib_net_to_host_u64(n64m->bib_memory_size);
+    rmp->nat64_st_buckets = clib_net_to_host_u32(n64m->st_buckets);
+    rmp->nat64_st_memory_size = clib_net_to_host_u64(n64m->st_memory_size);
+    rmp->max_translations_per_thread = clib_net_to_host_u32(sm->max_translations_per_thread);
+    rmp->max_users_per_thread = clib_net_to_host_u32(sm->max_users_per_thread);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void *
+vl_api_nat_show_config_2_t_print (vl_api_nat_show_config_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat_show_config_2 ");
 
   FINISH;
 }
@@ -2592,6 +2641,7 @@ static void *vl_api_nat64_add_del_interface_addr_t_print
 #define foreach_snat_plugin_api_msg                                     \
 _(NAT_CONTROL_PING, nat_control_ping)                                   \
 _(NAT_SHOW_CONFIG, nat_show_config)                                     \
+_(NAT_SHOW_CONFIG_2, nat_show_config_2)                                 \
 _(NAT_SET_WORKERS, nat_set_workers)                                     \
 _(NAT_WORKER_DUMP, nat_worker_dump)                                     \
 _(NAT44_DEL_USER, nat44_del_user)                                       \
