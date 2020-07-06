@@ -102,6 +102,7 @@ _(NAT44_ADD_DEL_STATIC_MAPPING_REPLY,                           \
 _(NAT_CONTROL_PING_REPLY, nat_control_ping_reply)               \
 _(NAT44_STATIC_MAPPING_DETAILS, nat44_static_mapping_details)   \
 _(NAT_SHOW_CONFIG_REPLY, nat_show_config_reply)                 \
+_(NAT_SHOW_CONFIG_2_REPLY, nat_show_config_2_reply)             \
 _(NAT44_ADDRESS_DETAILS, nat44_address_details)                 \
 _(NAT44_INTERFACE_DETAILS, nat44_interface_details)             \
 _(NAT_SET_WORKERS_REPLY, nat_set_workers_reply)                 \
@@ -467,6 +468,37 @@ static void vl_api_nat_show_config_reply_t_handler
   vam->result_ready = 1;
 }
 
+static void vl_api_nat_show_config_2_reply_t_handler
+  (vl_api_nat_show_config_2_reply_t *mp)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  vat_main_t *vam = sm->vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (retval >= 0)
+    {
+      fformat (vam->ofp, "translation hash buckets %d\n",
+               ntohl (mp->translation_buckets));
+      fformat (vam->ofp, "translation hash memory %d\n",
+               ntohl (mp->translation_memory_size));
+      fformat (vam->ofp, "user hash buckets %d\n", ntohl (mp->user_buckets));
+      fformat (vam->ofp, "user hash memory %d\n", ntohl (mp->user_memory_size));
+      fformat (vam->ofp, "max translations per user %d\n",
+               ntohl (mp->max_translations_per_user));
+      fformat (vam->ofp, "outside VRF id %d\n", ntohl (mp->outside_vrf_id));
+      fformat (vam->ofp, "inside VRF id %d\n", ntohl (mp->inside_vrf_id));
+      if (mp->static_mapping_only)
+        {
+          fformat (vam->ofp, "static mapping only");
+          if (mp->static_mapping_connection_tracking)
+            fformat (vam->ofp, " connection tracking");
+          fformat (vam->ofp, "\n");
+        }
+    }
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
 static int api_nat_show_config(vat_main_t * vam)
 {
   vl_api_nat_show_config_t * mp;
@@ -479,6 +511,23 @@ static int api_nat_show_config(vat_main_t * vam)
     }
 
   M(NAT_SHOW_CONFIG, mp);
+  S(mp);
+  W (ret);
+  return ret;
+}
+
+static int api_nat_show_config_2(vat_main_t * vam)
+{
+  vl_api_nat_show_config_2_t * mp;
+  int ret;
+
+  if (vam->json_output)
+    {
+      clib_warning ("JSON output not supported for nat_show_config_2");
+      return -99;
+    }
+
+  M(NAT_SHOW_CONFIG_2, mp);
   S(mp);
   W (ret);
   return ret;
@@ -904,6 +953,7 @@ _(nat44_add_del_static_mapping, "local_addr <ip>"                 \
 _(nat_set_workers, "<wokrers_bitmap>")                            \
 _(nat44_static_mapping_dump, "")                                  \
 _(nat_show_config, "")                                            \
+_(nat_show_config_2, "")                                          \
 _(nat44_address_dump, "")                                         \
 _(nat44_interface_dump, "")                                       \
 _(nat_worker_dump, "")                                            \

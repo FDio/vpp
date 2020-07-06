@@ -1386,6 +1386,49 @@ class MethodHolder(VppTestCase):
             self.assertEqual(data, p[Raw].load)
 
 
+class TestNATMisc(MethodHolder):
+    """ NAT misc Test Cases """
+
+    max_translations = 10240
+    max_users = 10240
+
+    @classmethod
+    def setUpConstants(cls):
+        super(TestNATMisc, cls).setUpConstants()
+        cls.vpp_cmdline.extend([
+            "nat", "{",
+            "max translations per thread %d" % cls.max_translations,
+            "max users per thread %d" % cls.max_users,
+            "}"
+        ])
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestNATMisc, cls).tearDownClass()
+
+    def test_show_config(self):
+        """ NAT config translation memory """
+
+        nat_config = self.vapi.nat_show_config()
+        mem = nat_config.translation_memory_size
+        self.assertTrue(mem > 0)
+        self.logger.info("max translation memory: %d" % mem)
+
+    def test_show_config_2(self):
+        """ NAT config2 translation memory """
+
+        nat_config = self.vapi.nat_show_config_2()
+        mem = nat_config.translation_memory_size
+        self.assertTrue(mem > 0)
+        self.logger.info("max translation memory: %d" % mem)
+
+    def test_show_max_translations(self):
+        """ API test - max translations per thread """
+        nat_config = self.vapi.nat_show_config_2()
+        self.assertEqual(self.max_translations,
+                         nat_config.max_translations_per_thread)
+
+
 class TestNAT44(MethodHolder):
     """ NAT44 Test Cases """
 
