@@ -453,6 +453,13 @@ typedef struct
 
   /* hash */
   uword *sa_by_rspi;
+
+  EVP_CIPHER_CTX *evp_ctx;
+  HMAC_CTX *hmac_ctx;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  HMAC_CTX _hmac_ctx;
+  EVP_CIPHER_CTX _evp_ctx;
+#endif
 } ikev2_main_per_thread_data_t;
 
 typedef struct

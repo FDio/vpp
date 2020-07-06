@@ -3989,10 +3989,22 @@ ikev2_init (vlib_main_t * vm)
 
   vec_validate_aligned (km->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
-  for (thread_id = 0; thread_id < tm->n_vlib_mains - 1; thread_id++)
+  for (thread_id = 0; thread_id < tm->n_vlib_mains; thread_id++)
     {
-      km->per_thread_data[thread_id].sa_by_rspi =
-	hash_create (0, sizeof (uword));
+      ikev2_main_per_thread_data_t *ptd =
+	vec_elt_at_index (km->per_thread_data, thread_id);
+
+      ptd->sa_by_rspi = hash_create (0, sizeof (uword));
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      ptd->evp_ctx = EVP_CIPHER_CTX_new ();
+      ptd->hmac_ctx = HMAC_CTX_new ();
+#else
+      EVP_CIPHER_CTX_init (&ptd->_evp_ctx);
+      ptd->evp_ctx = &ptd->_evp_ctx;
+      HMAC_CTX_init (&(ptd->_hmac_ctx));
+      ptd->hmac_ctx = &ptd->_hmac_ctx;
+#endif
     }
 
   km->sa_by_ispi = hash_create (0, sizeof (uword));
