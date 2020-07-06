@@ -256,28 +256,18 @@ static const char modp_dh_2048_256_generator[] =
 v8 *
 ikev2_calc_prf (ikev2_sa_transform_t * tr, v8 * key, v8 * data)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  HMAC_CTX *ctx;
-#else
-  HMAC_CTX ctx;
-#endif
+  ikev2_main_t *km = &ikev2_main;
+  u32 thread_index = vlib_get_thread_index ();
+  ikev2_main_per_thread_data_t *ptd =
+    vec_elt_at_index (km->per_thread_data, thread_index);
+  HMAC_CTX *ctx = ptd->hmac_ctx;
   v8 *prf;
   unsigned int len = 0;
 
   prf = vec_new (u8, tr->key_trunc);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  ctx = HMAC_CTX_new ();
   HMAC_Init_ex (ctx, key, vec_len (key), tr->md, NULL);
   HMAC_Update (ctx, data, vec_len (data));
   HMAC_Final (ctx, prf, &len);
-  HMAC_CTX_free (ctx);
-#else
-  HMAC_CTX_init (&ctx);
-  HMAC_Init_ex (&ctx, key, vec_len (key), tr->md, NULL);
-  HMAC_Update (&ctx, data, vec_len (data));
-  HMAC_Final (&ctx, prf, &len);
-  HMAC_CTX_cleanup (&ctx);
-#endif
   ASSERT (len == tr->key_trunc);
 
   return prf;
@@ -328,12 +318,12 @@ ikev2_calc_prfplus (ikev2_sa_transform_t * tr, u8 * key, u8 * seed, int len)
 v8 *
 ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
 {
+  ikev2_main_t *km = &ikev2_main;
+  u32 thread_index = vlib_get_thread_index ();
+  ikev2_main_per_thread_data_t *ptd =
+    vec_elt_at_index (km->per_thread_data, thread_index);
+  HMAC_CTX *ctx = ptd->hmac_ctx;
   v8 *r;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  HMAC_CTX *hctx;
-#else
-  HMAC_CTX hctx;
-#endif
   unsigned int l;
 
   ASSERT (tr->type == IKEV2_TRANSFORM_TYPE_INTEG);
@@ -350,20 +340,9 @@ ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
     }
 
   /* verify integrity of data */
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  hctx = HMAC_CTX_new ();
-  HMAC_Init_ex (hctx, key, vec_len (key), tr->md, NULL);
-  HMAC_Update (hctx, (const u8 *) data, len);
-  HMAC_Final (hctx, r, &l);
-  HMAC_CTX_free (hctx);
-#else
-  HMAC_CTX_init (&hctx);
-  HMAC_Init_ex (&hctx, key, vec_len (key), tr->md, NULL);
-  HMAC_Update (&hctx, (const u8 *) data, len);
-  HMAC_Final (&hctx, r, &l);
-  HMAC_CTX_cleanup (&hctx);
-#endif
-
+  HMAC_Init_ex (ctx, key, vec_len (key), tr->md, NULL);
+  HMAC_Update (ctx, (const u8 *) data, len);
+  HMAC_Final (ctx, r, &l);
   ASSERT (l == tr->key_len);
 
   return r;
@@ -372,12 +351,11 @@ ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
 v8 *
 ikev2_decrypt_data (ikev2_sa_t * sa, u8 * data, int len)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_CIPHER_CTX *ctx;
-#else
-  EVP_CIPHER_CTX ctx;
-#endif
-  v8 *r;
+  ikev2_main_t *km = &ikev2_main;
+  u32 thread_index = vlib_get_thread_index ();
+  ikev2_main_per_thread_data_t *ptd =
+    vec_elt_at_index (km->per_thread_data, thread_index);
+  EVP_CIPHER_CTX *ctx = ptd->evp_ctx;
   int out_len = 0, block_size;
   ikev2_sa_transform_t *tr_encr;
   u8 *key = sa->is_initiator ? sa->sk_er : sa->sk_ei;
@@ -393,42 +371,24 @@ ikev2_decrypt_data (ikev2_sa_t * sa, u8 * data, int len)
       return 0;
     }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  ctx = EVP_CIPHER_CTX_new ();
-#else
-  EVP_CIPHER_CTX_init (&ctx);
-#endif
-
-  r = vec_new (u8, len - block_size);
-
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  v8 *r = vec_new (u8, len - block_size);
   EVP_DecryptInit_ex (ctx, tr_encr->cipher, NULL, key, data);
   EVP_DecryptUpdate (ctx, r, &out_len, data + block_size, len - block_size);
   EVP_DecryptFinal_ex (ctx, r + out_len, &out_len);
-#else
-  EVP_DecryptInit_ex (&ctx, tr_encr->cipher, NULL, key, data);
-  EVP_DecryptUpdate (&ctx, r, &out_len, data + block_size, len - block_size);
-  EVP_DecryptFinal_ex (&ctx, r + out_len, &out_len);
-#endif
   /* remove padding */
   _vec_len (r) -= r[vec_len (r) - 1] + 1;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_CIPHER_CTX_free (ctx);
-#else
-  EVP_CIPHER_CTX_cleanup (&ctx);
-#endif
   return r;
 }
 
 int
 ikev2_encrypt_data (ikev2_sa_t * sa, v8 * src, u8 * dst)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_CIPHER_CTX *ctx;
-#else
-  EVP_CIPHER_CTX ctx;
-#endif
+  ikev2_main_t *km = &ikev2_main;
+  u32 thread_index = vlib_get_thread_index ();
+  ikev2_main_per_thread_data_t *ptd =
+    vec_elt_at_index (km->per_thread_data, thread_index);
+  EVP_CIPHER_CTX *ctx = ptd->evp_ctx;
   int out_len;
   int bs;
   ikev2_sa_transform_t *tr_encr;
@@ -441,17 +401,8 @@ ikev2_encrypt_data (ikev2_sa_t * sa, v8 * src, u8 * dst)
   /* generate IV */
   RAND_bytes (dst, bs);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  ctx = EVP_CIPHER_CTX_new ();
   EVP_EncryptInit_ex (ctx, tr_encr->cipher, NULL, key, dst /* dst */ );
   EVP_EncryptUpdate (ctx, dst + bs, &out_len, src, vec_len (src));
-  EVP_CIPHER_CTX_free (ctx);
-#else
-  EVP_CIPHER_CTX_init (&ctx);
-  EVP_EncryptInit_ex (&ctx, tr_encr->cipher, NULL, key, dst /* dst */ );
-  EVP_EncryptUpdate (&ctx, dst + bs, &out_len, src, vec_len (src));
-  EVP_CIPHER_CTX_cleanup (&ctx);
-#endif
 
   ASSERT (vec_len (src) == out_len);
 
