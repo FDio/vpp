@@ -584,6 +584,135 @@ done:
   return err;
 }
 
+static clib_error_t *
+dpdk_interface_rss_reta_query (struct vnet_main_t *vnm,
+			       struct vnet_hw_interface_t *hi, u16 * reta,
+			       u16 * reta_size, u16 * rx_queue_count)
+{
+  dpdk_main_t *xm = &dpdk_main;
+  u32 hw_if_index = hi->hw_if_index;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  dpdk_device_t *xd = vec_elt_at_index (xm->devices, hw->dev_instance);
+  clib_error_t *err = 0;
+
+  uint32_t i, ret;
+  struct rte_eth_rss_reta_entry64 *reta_conf = NULL;
+  struct rte_eth_dev_info dev_info;
+  u16 idx = 0, shift = 0;
+
+  rte_eth_dev_info_get (xd->port_id, &dev_info);
+  if (dev_info.device == 0)
+    {
+      err = clib_error_return (0, "DPDK bug: missing device info");
+      goto done;
+    }
+
+  *rx_queue_count = dev_info.nb_rx_queues;
+  *reta_size = dev_info.reta_size;
+
+  if (*reta_size > INTERFACE_MAX_LUT_SIZE)
+    {
+      err = clib_error_return (0, "LUT buff too small");
+      goto done;
+    }
+
+  reta_conf =
+    (struct rte_eth_rss_reta_entry64 *) clib_mem_alloc (*reta_size /
+							RTE_RETA_GROUP_SIZE *
+							sizeof (*reta_conf));
+  if (reta_conf == NULL)
+    {
+      err = clib_error_return (0, "clib_mem_alloc failed");
+      goto done;
+    }
+
+  clib_memset (reta, 0, *reta_size);
+  clib_memset (reta_conf, 0, sizeof (*reta_conf));
+
+  for (i = 0; i < *reta_size / RTE_RETA_GROUP_SIZE; i++)
+    {
+      reta_conf[i].mask = UINT64_MAX;
+    }
+
+  ret = rte_eth_dev_rss_reta_query (xd->port_id, reta_conf, *reta_size);
+  if (ret)
+    {
+      err = clib_error_return (0, "rte_eth_dev_rss_reta_query err %d", ret);
+      goto done;
+    }
+
+  for (i = 0; i < *reta_size; i++)
+    {
+      idx = i / RTE_RETA_GROUP_SIZE;
+      shift = i % RTE_RETA_GROUP_SIZE;
+      if (!(reta_conf[idx].mask & (1ULL << shift)))
+	continue;
+
+      reta[i] = reta_conf[idx].reta[shift];
+    }
+
+done:
+  if (reta_conf)
+    clib_mem_free (reta_conf);
+
+  return err;
+
+}
+
+static clib_error_t *
+dpdk_interface_rss_reta_update (struct vnet_main_t *vnm,
+				struct vnet_hw_interface_t *hi, u16 * reta,
+				u16 reta_size)
+{
+  dpdk_main_t *xm = &dpdk_main;
+  u32 hw_if_index = hi->hw_if_index;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  dpdk_device_t *xd = vec_elt_at_index (xm->devices, hw->dev_instance);
+  clib_error_t *err = 0;
+
+  uint32_t i, ret;
+  struct rte_eth_rss_reta_entry64 *reta_conf = NULL;
+  struct rte_eth_dev_info dev_info;
+
+  rte_eth_dev_info_get (xd->port_id, &dev_info);
+  reta_size = dev_info.reta_size;
+
+  if (dev_info.reta_size != reta_size)
+    {
+      err = clib_error_return (0, "reta size is not fit");
+      goto done;
+    }
+
+  reta_conf =
+    (struct rte_eth_rss_reta_entry64 *) clib_mem_alloc (reta_size /
+							RTE_RETA_GROUP_SIZE *
+							sizeof (*reta_conf));
+
+  /* new RETA */
+  for (i = 0; i < reta_size; i++)
+    {
+      uint32_t reta_id = i / RTE_RETA_GROUP_SIZE;
+      uint32_t reta_pos = i % RTE_RETA_GROUP_SIZE;
+
+      reta_conf[reta_id].mask = UINT64_MAX;
+      reta_conf[reta_id].reta[reta_pos] = reta[i];
+    }
+
+  /* RETA update */
+  ret = rte_eth_dev_rss_reta_update (xd->port_id, reta_conf, reta_size);
+  if (ret)
+    {
+      err = clib_error_return (0, "rte_eth_dev_rss_reta_update err %d", ret);
+      goto done;
+    }
+
+done:
+  if (reta_conf)
+    clib_mem_free (reta_conf);
+
+  return err;
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (dpdk_device_class) = {
   .name = "dpdk",
@@ -600,6 +729,8 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .mac_addr_add_del_function = dpdk_add_del_mac_address,
   .format_flow = format_dpdk_flow,
   .flow_ops_function = dpdk_flow_ops_fn,
+  .rss_reta_query_function = dpdk_interface_rss_reta_query,
+  .rss_reta_update_function = dpdk_interface_rss_reta_update,
 };
 /* *INDENT-ON* */
 

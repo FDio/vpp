@@ -130,7 +130,6 @@ format_vnet_hw_interface_link_speed (u8 * s, va_list * args)
   return format (s, "%u Kbps", link_speed);
 }
 
-
 u8 *
 format_vnet_hw_interface (u8 * s, va_list * args)
 {
