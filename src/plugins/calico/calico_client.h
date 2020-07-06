@@ -135,9 +135,7 @@ typedef enum
 } calico_entry_flag_t;
 
 
-/*
- * Data-Plane functions
- */
+extern void calico_client_throttle_pool_process ();
 
 /**
  * DB of clients
@@ -146,6 +144,10 @@ typedef struct calico_client_db_t_
 {
   uword *crd_cip4;
   uword *crd_cip6;
+  /* Pool of addresses that have been throttled
+     and need to be refcounted before calling
+     calico_client_free_by_ip */
+  ip_address_t **throttle_pool;
 } calico_client_db_t;
 
 extern calico_client_db_t calico_client_db;

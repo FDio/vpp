@@ -145,7 +145,6 @@ typedef walk_rc_t (*calico_translation_walk_cb_t) (index_t index, void *ctx);
 extern void calico_translation_walk (calico_translation_walk_cb_t cb,
 				     void *ctx);
 
-
 /*
  * Data plane functions
  */

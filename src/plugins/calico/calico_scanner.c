@@ -58,6 +58,7 @@ calico_scanner_process (vlib_main_t * vm,
 	  ASSERT (0);
 	}
 
+      calico_client_throttle_pool_process ();
       i = calico_session_scan (vm, start_time, i);
     }
   return 0;

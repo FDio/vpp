@@ -18,6 +18,42 @@
 calico_main_t calico_main;
 fib_source_t calico_fib_source;
 calico_timestamp_t *calico_timestamps;
+throttle_t calico_throttle;
+
+uword
+unformat_calico_ep (unformat_input_t * input, va_list * args)
+{
+  calico_endpoint_t *a = va_arg (*args, calico_endpoint_t *);
+  int port = 0;
+
+  clib_memset (a, 0, sizeof (*a));
+  if (unformat (input, "%U %d", unformat_ip_address, &a->ce_ip, &port))
+    ;
+  else if (unformat_user (input, unformat_ip_address, &a->ce_ip))
+    ;
+  else if (unformat (input, "%d", &port))
+    ;
+  else
+    return 0;
+  a->ce_port = (u16) port;
+  return 1;
+}
+
+uword
+unformat_calico_ep_tuple (unformat_input_t * input, va_list * args)
+{
+  calico_endpoint_tuple_t *a = va_arg (*args, calico_endpoint_tuple_t *);
+  if (unformat (input, "%U->%U", unformat_calico_ep, &a->src_ep,
+		unformat_calico_ep, &a->dst_ep))
+    ;
+  else if (unformat (input, "->%U", unformat_calico_ep, &a->dst_ep))
+    ;
+  else if (unformat (input, "%U->", unformat_calico_ep, &a->src_ep))
+    ;
+  else
+    return 0;
+  return 1;
+}
 
 u8 *
 format_calico_endpoint (u8 * s, va_list * args)
@@ -32,11 +68,17 @@ format_calico_endpoint (u8 * s, va_list * args)
 static clib_error_t *
 calico_types_init (vlib_main_t * vm)
 {
+  vlib_thread_main_t *tm = &vlib_thread_main;
+  u32 n_vlib_mains = tm->n_vlib_mains;
   calico_fib_source = fib_source_allocate ("calico",
 					   CALICO_FIB_SOURCE_PRIORITY,
 					   FIB_SOURCE_BH_SIMPLE);
 
   clib_rwlock_init (&calico_main.ts_lock);
+  clib_spinlock_init (&calico_main.src_ports_lock);
+  clib_bitmap_validate (calico_main.src_ports, UINT16_MAX);
+  throttle_init (&calico_throttle, n_vlib_mains, 1e-3);
+
   return (NULL);
 }
 

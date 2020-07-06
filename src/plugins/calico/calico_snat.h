@@ -49,7 +49,7 @@ calico_search_snat_prefix (ip46_address_t * addr, ip_address_family_t af)
       ip6_address_t *mask = &table->ip_masks[dst_address_length];
 
       ASSERT (dst_address_length >= 0 && dst_address_length <= 128);
-      // As lengths are decreasing, masks are increasingly specific.
+      /* As lengths are decreasing, masks are increasingly specific. */
       kv.key[0] &= mask->as_u64[0];
       kv.key[1] &= mask->as_u64[1];
       kv.key[2] = ((u64) af << 32) | dst_address_length;
