@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "247e1c86_43cda375",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 1831
+      },
+      "writtenOn": "2020-07-06T13:40:53Z",
+      "side": 1,
+      "message": "I don\u0027t know, maybe nothing. I was inspired by acl plugin, where it is the same implemented. In next patchset is used version from  src/vpp/api/vpe.api.",
+      "parentUuid": "99316dbe_df7f501d",
+      "revId": "a288d030bfa91f8821be6246acd7e91a24f97f11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d1909fd8_9bbf572d",
         "filename": "src/plugins/ikev2/ikev2_api.c",
         "patchSetId": 7
@@ -33,6 +51,24 @@
       "revId": "a288d030bfa91f8821be6246acd7e91a24f97f11",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "32922a1d_727eeb53",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 1831
+      },
+      "writtenOn": "2020-07-06T13:40:53Z",
+      "side": 1,
+      "message": "yes, it\u0027s better, I overlooked it.",
+      "parentUuid": "d1909fd8_9bbf572d",
+      "revId": "a288d030bfa91f8821be6246acd7e91a24f97f11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
