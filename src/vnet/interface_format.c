@@ -130,6 +130,26 @@ format_vnet_hw_interface_link_speed (u8 * s, va_list * args)
   return format (s, "%u Kbps", link_speed);
 }
 
+u8 *
+format_vnet_hw_interface_rss_queues (u8 * s, va_list * args)
+{
+  clib_bitmap_t *bitmap = va_arg (*args, clib_bitmap_t *);
+  int i;
+
+  if (bitmap == NULL)
+    return s;
+
+  if (bitmap)
+    {
+    /* *INDENT-OFF* */
+    clib_bitmap_foreach (i, bitmap, ({
+      s = format (s, "%u ", i);
+    }));
+    /* *INDENT-ON* */
+    }
+
+  return s;
+}
 
 u8 *
 format_vnet_hw_interface (u8 * s, va_list * args)
@@ -171,6 +191,12 @@ format_vnet_hw_interface (u8 * s, va_list * args)
 
   s = format (s, "\n%ULink speed: %U", format_white_space, indent + 2,
 	      format_vnet_hw_interface_link_speed, hi->link_speed);
+
+  if (hi->rss_queues)
+    {
+      s = format (s, "\n%URSS queues: %U", format_white_space, indent + 2,
+		  format_vnet_hw_interface_rss_queues, hi->rss_queues);
+    }
 
   if (verbose)
     {
