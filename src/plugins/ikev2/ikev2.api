@@ -132,12 +132,7 @@ autoreply define ikev2_profile_set_id
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param name - IKEv2 profile name
-    @param is_local - Traffic selector is local if non-zero, else remote
-    @param proto - Traffic selector IP protocol (if zero not relevant)
-    @param start_port - The smallest port number allowed by traffic selector
-    @param end_port - The largest port number allowed by traffic selector
-    @param start_addr - The smallest address included in traffic selector
-    @param end_addr - The largest address included in traffic selector
+    @param ts - traffic selector data
 */
 autoreply define ikev2_profile_set_ts
 {
@@ -145,12 +140,7 @@ autoreply define ikev2_profile_set_ts
   u32 context;
 
   string name[64];
-  bool is_local;
-  u8 proto;
-  u16 start_port;
-  u16 end_port;
-  u32 start_addr;
-  u32 end_addr;
+  vl_api_ikev2_ts_t ts;
   option vat_help = "name <profile_name> protocol <proto> start_port <port> end_port <port> start_addr <ip4> end_addr <ip4> (local|remote)";
   option status="in_progress";
 };
@@ -158,7 +148,6 @@ autoreply define ikev2_profile_set_ts
 /** \brief IKEv2: Set IKEv2 local RSA private key
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-
     @param key_file - Key file absolute path
 */
 autoreply define ikev2_set_local_key
@@ -192,8 +181,7 @@ autoreply define ikev2_set_tunnel_interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param name - IKEv2 profile name
-    @param sw_if_index - interface index
-    @param address - interface address
+    @param responder - responder data
 */
 autoreply define ikev2_set_responder
 {
@@ -201,8 +189,7 @@ autoreply define ikev2_set_responder
   u32 context;
 
   string name[64];
-  vl_api_interface_index_t sw_if_index;
-  vl_api_ip4_address_t address;
+  vl_api_ikev2_responder_t responder;
   option vat_help = "<profile_name> interface <interface> address <addr>";
   option status="in_progress";
 };
@@ -211,10 +198,7 @@ autoreply define ikev2_set_responder
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param name - IKEv2 profile name
-    @param crypto_alg - encryption algorithm
-    @param crypto_key_size - encryption key size
-    @param integ_alg - integrity algorithm
-    @param dh_group - Diffie-Hellman group
+    @param tr - IKE transforms
 */
 autoreply define ikev2_set_ike_transforms
 {
@@ -222,10 +206,7 @@ autoreply define ikev2_set_ike_transforms
   u32 context;
 
   string name[64];
-  u32 crypto_alg;
-  u32 crypto_key_size;
-  u32 integ_alg;
-  u32 dh_group;
+  vl_api_ikev2_ike_transforms_t tr;
   option vat_help = "<profile_name> <crypto alg> <key size> <integrity alg> <DH group>";
   option status="in_progress";
 };
@@ -234,10 +215,7 @@ autoreply define ikev2_set_ike_transforms
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param name - IKEv2 profile name
-    @param crypto_alg - encryption algorithm
-    @param crypto_key_size - encryption key size
-    @param integ_alg - integrity algorithm
-    @param dh_group - Diffie-Hellman group
+    @param tr - ESP transforms
 */
 autoreply define ikev2_set_esp_transforms
 {
@@ -245,11 +223,8 @@ autoreply define ikev2_set_esp_transforms
   u32 context;
 
   string name[64];
-  u32 crypto_alg;
-  u32 crypto_key_size;
-  u32 integ_alg;
-  u32 dh_group;
-  option vat_help = "<profile_name> <crypto alg> <key size> <integrity alg> <DH group>";
+  vl_api_ikev2_esp_transforms_t tr;
+  option vat_help = "<profile_name> <crypto alg> <key size> <integrity alg>";
   option status="in_progress";
 };
 

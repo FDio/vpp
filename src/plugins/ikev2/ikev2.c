@@ -3547,7 +3547,6 @@ clib_error_t *
 ikev2_set_profile_esp_transforms (vlib_main_t * vm, u8 * name,
 				  ikev2_transform_encr_type_t crypto_alg,
 				  ikev2_transform_integ_type_t integ_alg,
-				  ikev2_transform_dh_type_t dh_type,
 				  u32 crypto_key_size)
 {
   ikev2_profile_t *p;
@@ -3563,7 +3562,6 @@ ikev2_set_profile_esp_transforms (vlib_main_t * vm, u8 * name,
 
   p->esp_ts.crypto_alg = crypto_alg;
   p->esp_ts.integ_alg = integ_alg;
-  p->esp_ts.dh_type = dh_type;
   p->esp_ts.crypto_key_size = crypto_key_size;
   return 0;
 }
