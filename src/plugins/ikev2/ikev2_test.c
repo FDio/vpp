@@ -23,6 +23,7 @@
 #include <vppinfra/error.h>
 #include <vnet/ipsec/ipsec_sa.h>
 #include <plugins/ikev2/ikev2.h>
+#include <vnet/ip/ip_types_api.h>
 
 #define __plugin_msg_base ikev2_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
@@ -169,6 +170,7 @@ static void vl_api_ikev2_profile_details_t_handler
 {
   vat_main_t *vam = ikev2_test_main.vat_main;
   vl_api_ikev2_profile_t *p = &mp->profile;
+  ip4_address_t start_addr, end_addr;
 
   fformat (vam->ofp, "profile %s\n", p->name);
 
@@ -199,23 +201,23 @@ static void vl_api_ikev2_profile_details_t_handler
 	       format_ikev2_id_type_and_data, &p->rem_id);
     }
 
-  if (*((u32 *) & p->loc_ts.end_addr))
-    fformat (vam->ofp, "  local traffic-selector addr %U - %U port %u - %u"
-	     " protocol %u\n",
-	     format_ip4_address, &p->loc_ts.start_addr,
-	     format_ip4_address, &p->loc_ts.end_addr,
-	     clib_net_to_host_u16 (p->loc_ts.start_port),
-	     clib_net_to_host_u16 (p->loc_ts.end_port),
-	     p->loc_ts.protocol_id);
+  ip4_address_decode (p->loc_ts.start_addr, &start_addr);
+  ip4_address_decode (p->loc_ts.end_addr, &end_addr);
+  fformat (vam->ofp, "  local traffic-selector addr %U - %U port %u - %u"
+	   " protocol %u\n",
+	   format_ip4_address, &start_addr,
+	   format_ip4_address, &end_addr,
+	   clib_net_to_host_u16 (p->loc_ts.start_port),
+	   clib_net_to_host_u16 (p->loc_ts.end_port), p->loc_ts.protocol_id);
 
-  if (*((u32 *) & p->rem_ts.end_addr))
-    fformat (vam->ofp, "  remote traffic-selector addr %U - %U port %u - %u"
-	     " protocol %u\n",
-	     format_ip4_address, &p->rem_ts.start_addr,
-	     format_ip4_address, &p->rem_ts.end_addr,
-	     clib_net_to_host_u16 (p->rem_ts.start_port),
-	     clib_net_to_host_u16 (p->rem_ts.end_port),
-	     p->rem_ts.protocol_id);
+  ip4_address_decode (p->rem_ts.start_addr, &start_addr);
+  ip4_address_decode (p->rem_ts.end_addr, &end_addr);
+  fformat (vam->ofp, "  remote traffic-selector addr %U - %U port %u - %u"
+	   " protocol %u\n",
+	   format_ip4_address, &start_addr,
+	   format_ip4_address, &end_addr,
+	   clib_net_to_host_u16 (p->rem_ts.start_port),
+	   clib_net_to_host_u16 (p->rem_ts.end_port), p->rem_ts.protocol_id);
   u32 tun_itf = clib_net_to_host_u32 (p->tun_itf);
   if (~0 != tun_itf)
     fformat (vam->ofp, "  protected tunnel idx %d\n", tun_itf);
@@ -233,16 +235,16 @@ static void vl_api_ikev2_profile_details_t_handler
     fformat (vam->ofp, "  ipsec-over-udp port %d\n", ipsec_over_udp_port);
 
   u32 crypto_key_size = clib_net_to_host_u32 (p->ike_ts.crypto_key_size);
-  if (p->ike_ts.crypto_alg || p->ike_ts.integ_alg || p->ike_ts.dh_type
+  if (p->ike_ts.crypto_alg || p->ike_ts.integ_alg || p->ike_ts.dh_group
       || crypto_key_size)
     fformat (vam->ofp, "  ike-crypto-alg %U %u ike-integ-alg %U ike-dh %U\n",
 	     format_ikev2_transform_encr_type, p->ike_ts.crypto_alg,
 	     crypto_key_size, format_ikev2_transform_integ_type,
 	     p->ike_ts.integ_alg, format_ikev2_transform_dh_type,
-	     p->ike_ts.dh_type);
+	     p->ike_ts.dh_group);
 
   crypto_key_size = clib_net_to_host_u32 (p->esp_ts.crypto_key_size);
-  if (p->esp_ts.crypto_alg || p->esp_ts.integ_alg || p->esp_ts.dh_type)
+  if (p->esp_ts.crypto_alg || p->esp_ts.integ_alg)
     fformat (vam->ofp, "  esp-crypto-alg %U %u esp-integ-alg %U\n",
 	     format_ikev2_transform_encr_type, p->esp_ts.crypto_alg,
 	     crypto_key_size,
@@ -574,12 +576,12 @@ api_ikev2_profile_set_ts (vat_main_t * vam)
 
   M (IKEV2_PROFILE_SET_TS, mp);
 
-  mp->is_local = is_local;
-  mp->proto = (u8) proto;
-  mp->start_port = (u16) start_port;
-  mp->end_port = (u16) end_port;
-  mp->start_addr = start_addr.as_u32;
-  mp->end_addr = end_addr.as_u32;
+  mp->ts.is_local = is_local;
+  mp->ts.protocol_id = (u8) proto;
+  mp->ts.start_port = clib_host_to_net_u16 ((u16) start_port);
+  mp->ts.end_port = clib_host_to_net_u16 ((u16) end_port);
+  ip4_address_encode (&start_addr, mp->ts.start_addr);
+  ip4_address_encode (&end_addr, mp->ts.end_addr);
   clib_memcpy (mp->name, name, vec_len (name));
   vec_free (name);
 
@@ -720,8 +722,8 @@ api_ikev2_set_responder (vat_main_t * vam)
   clib_memcpy (mp->name, name, vec_len (name));
   vec_free (name);
 
-  mp->sw_if_index = sw_if_index;
-  clib_memcpy (mp->address, &address, sizeof (address));
+  mp->responder.sw_if_index = clib_host_to_net_u32 (sw_if_index);
+  ip4_address_encode (&address, mp->responder.ip4);
 
   S (mp);
   W (ret);
@@ -767,10 +769,10 @@ api_ikev2_set_ike_transforms (vat_main_t * vam)
 
   clib_memcpy (mp->name, name, vec_len (name));
   vec_free (name);
-  mp->crypto_alg = crypto_alg;
-  mp->crypto_key_size = crypto_key_size;
-  mp->integ_alg = integ_alg;
-  mp->dh_group = dh_group;
+  mp->tr.crypto_alg = crypto_alg;
+  mp->tr.crypto_key_size = clib_host_to_net_u32 (crypto_key_size);
+  mp->tr.integ_alg = integ_alg;
+  mp->tr.dh_group = dh_group;
 
   S (mp);
   W (ret);
@@ -785,14 +787,14 @@ api_ikev2_set_esp_transforms (vat_main_t * vam)
   vl_api_ikev2_set_esp_transforms_t *mp;
   int ret;
   u8 *name = 0;
-  u32 crypto_alg, crypto_key_size, integ_alg, dh_group;
+  u32 crypto_alg, crypto_key_size, integ_alg;
 
   const char *valid_chars = "a-zA-Z0-9_";
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (i, "%U %d %d %d %d", unformat_token, valid_chars, &name,
-		    &crypto_alg, &crypto_key_size, &integ_alg, &dh_group))
+      if (unformat (i, "%U %d %d %d", unformat_token, valid_chars, &name,
+		    &crypto_alg, &crypto_key_size, &integ_alg))
 	vec_add1 (name, 0);
       else
 	{
@@ -817,10 +819,9 @@ api_ikev2_set_esp_transforms (vat_main_t * vam)
 
   clib_memcpy (mp->name, name, vec_len (name));
   vec_free (name);
-  mp->crypto_alg = crypto_alg;
-  mp->crypto_key_size = crypto_key_size;
-  mp->integ_alg = integ_alg;
-  mp->dh_group = dh_group;
+  mp->tr.crypto_alg = crypto_alg;
+  mp->tr.crypto_key_size = clib_host_to_net_u32 (crypto_key_size);
+  mp->tr.integ_alg = integ_alg;
 
   S (mp);
   W (ret);
