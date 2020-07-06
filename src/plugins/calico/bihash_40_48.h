@@ -22,11 +22,11 @@
 #undef BIHASH_BUCKET_PREFETCH_CACHE_LINES
 
 #define BIHASH_TYPE _40_48
-#define BIHASH_KVP_PER_PAGE 4
-#define BIHASH_KVP_AT_BUCKET_LEVEL 0
+#define BIHASH_KVP_PER_PAGE 2
+#define BIHASH_KVP_AT_BUCKET_LEVEL 1
 /* instanciation isn't thread safe */
 #define BIHASH_LAZY_INSTANTIATE 0
-#define BIHASH_BUCKET_PREFETCH_CACHE_LINES 1
+#define BIHASH_BUCKET_PREFETCH_CACHE_LINES 2
 
 #ifndef __included_bihash_40_48_h__
 #define __included_bihash_40_48_h__

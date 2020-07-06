@@ -24,7 +24,7 @@
 #define CALICO_FIB_TABLE 0
 
 /* default lifetime of NAT sessions (seconds) */
-#define CALICO_DEFAULT_SESSION_MAX_AGE 30
+#define CALICO_DEFAULT_SESSION_MAX_AGE 3600
 /* lifetime of TCP conn NAT sessions after SYNACK (seconds) */
 #define CALICO_DEFAULT_TCP_MAX_AGE 3600
 /* lifetime of TCP conn NAT sessions after RST/FIN (seconds) */
@@ -94,6 +94,15 @@ typedef struct calico_timestamp_t_
   u16 refcnt;
 } calico_timestamp_t;
 
+typedef struct calico_tr_ctx_t_
+{
+  f64 now;
+  u64 seed;
+  u32 thread_index;
+  ip_address_family_t af;
+  u8 do_trace;
+} calico_tr_ctx_t;
+
 extern u8 *format_calico_endpoint (u8 * s, va_list * args);
 extern calico_timestamp_t *calico_timestamps;
 extern fib_source_t calico_fib_source;
@@ -117,6 +126,7 @@ calico_timestamp_new (f64 t)
 always_inline void
 calico_timestamp_update (u32 index, f64 t)
 {
+  return;
   clib_rwlock_reader_lock (&calico_main.ts_lock);
   calico_timestamp_t *ts = pool_elt_at_index (calico_timestamps, index);
   ts->last_seen = t;
