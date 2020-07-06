@@ -34,6 +34,24 @@
       "revId": "fbb846cfa1f95d57159f9ad6cc429f6d9d0b8696",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "79fec66d_36682491",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-07-06T01:06:30Z",
+      "side": 0,
+      "message": "Thanks for feedback.\n\nRegarding the duplicate check of (wnd \u003c mss), I have a better code. I will commit it soon.\n\nApart from that, I think the decision to be made here would be this : When (mss \u003c\u003d max_rx_enqueue \u0026\u0026 max_rx_enqueue \u003c round_pow2 (mss, 1 \u003c\u003c rcv_wscale)), e.g. (1448 \u003c\u003d max_rx_enqueue \u0026\u0026 max_rx_enqueue \u003c 2048), what is the desirable action?\n\nIn such a case, can we set tc-\u003ercv_wnd \u003d 0 and return? I thought it is OK because dequeueing fifo by TX would trigger window update later.\n\nOr is there a reason we need to set tc-\u003ercv_wnd \u003d round_pow2 (mss, 1 \u003c\u003c rcv_wscale)), which is larger than max_rx_enqueue?",
+      "parentUuid": "9d7ebe85_34b3162b",
+      "revId": "fbb846cfa1f95d57159f9ad6cc429f6d9d0b8696",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
