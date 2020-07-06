@@ -50,6 +50,8 @@ struct vnet_hw_interface_t;
 struct vnet_sw_interface_t;
 union ip46_address_t_;
 
+#define INTERFACE_MAX_LUT_SIZE (1024)
+
 typedef enum
 {
   VNET_HW_INTERFACE_RX_MODE_UNKNOWN,
@@ -87,6 +89,16 @@ typedef clib_error_t *(vnet_interface_set_rx_mode_function_t)
 typedef clib_error_t *(vnet_interface_set_l2_mode_function_t)
   (struct vnet_main_t * vnm, struct vnet_hw_interface_t * hi,
    i32 l2_if_adjust);
+
+/* Interface query rss reta. */
+typedef clib_error_t *(vnet_interface_reta_query_function_t)
+  (struct vnet_main_t * vnm, struct vnet_hw_interface_t * hi,
+   u16 *reta, u16 *reta_size, u16 *rx_queue_count);
+
+/* Interface update rss reta. */
+typedef clib_error_t *(vnet_interface_reta_update_function_t)
+  (struct vnet_main_t * vnm, struct vnet_hw_interface_t * hi,
+   u16 *reta, u16 reta_size);
 
 typedef enum
 {
@@ -273,6 +285,13 @@ typedef struct _vnet_device_class
 
   /* Function to add/delete additional MAC addresses */
   vnet_interface_add_del_mac_address_function_t *mac_addr_add_del_function;
+
+  /* Function to query rss reta from a specific port */
+  vnet_interface_reta_query_function_t *rss_reta_query_function;
+
+  /* Function to update rss reta */
+  vnet_interface_reta_update_function_t *rss_reta_update_function;
+
 } vnet_device_class_t;
 
 #ifndef CLIB_MARCH_VARIANT

@@ -1872,6 +1872,241 @@ VLIB_CLI_COMMAND (cmd_set_if_rx_placement,static) = {
 };
 /* *INDENT-ON* */
 
+clib_error_t *
+show_hw_interface_queue_connection (vlib_main_t * vm, u32 hw_if_index)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  clib_error_t *error = 0;
+  u16 reta[INTERFACE_MAX_LUT_SIZE];
+  u16 reta_size = 0, rx_queue_count = 0;
+  u8 *s = 0;
+  int i;
+  uword *bitmap = NULL;
+
+  error = vnet_hw_interface_rss_reta_query(vnm, hi, reta, &reta_size, &rx_queue_count);
+  if (error)
+    goto done;
+
+  bitmap = clib_bitmap_set_region(bitmap, 0, 1, rx_queue_count);
+  for (i = 0; i < reta_size; i++)
+  {
+    bitmap = clib_bitmap_set (bitmap, reta[i], 0);
+  }
+
+	if (clib_bitmap_count_set_bits(bitmap) > 0)
+	{
+	  s = format (s, "The following queues are disconnected from the interface:\n");
+
+    /* *INDENT-OFF* */
+    clib_bitmap_foreach (i, bitmap, ({
+      s = format (s, "%u ", i);
+    }));
+    /* *INDENT-ON* */
+	}
+	else
+	{
+	  s = format (s, "All the queues are connected to the interface\n");
+	}
+
+  vlib_cli_output(vm, "%v", s);
+
+done:
+  if (bitmap)
+    clib_bitmap_free (bitmap);
+
+  return (error);
+}
+
+static clib_error_t *
+show_interface_queue_connection_fn (vlib_main_t * vm, unformat_input_t * input,
+			    vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 hw_if_index = (u32) ~ 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+	;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  goto done;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (hw_if_index == (u32) ~ 0)
+    error = clib_error_return (0, "please specify valid interface name");
+  else
+    error = show_hw_interface_queue_connection (vm, hw_if_index);
+
+done:
+  return (error);
+}
+
+/*?
+ * This command is used to display the queue connections of
+ * the a given interface.
+ *
+ * @cliexpar
+ * Example of how to display queue connections of an interface:
+ * @cliexstart{show interface queue connection VirtualFunctionEthernet18/1/0}
+ * The following queues are disconnected from the interface:
+ * 1 2
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cmd_show_if_queue_connection,static) = {
+    .path = "show interface queue connection",
+    .short_help = "show interface queue connection <interface>",
+    .function = show_interface_queue_connection_fn,
+};
+/* *INDENT-ON* */
+
+clib_error_t *
+set_interface_disconnection_queues (vlib_main_t * vm, u32 hw_if_index, uword *bitmap)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  clib_error_t *error = 0;
+  u16 reta[INTERFACE_MAX_LUT_SIZE];
+  u16 *queues = NULL;
+  u16 reta_size = 0, rx_queue_count = 0, queue_number = 0;
+  u16 bitmap_len = 0;
+  int i, j;
+
+  bitmap_len = clib_bitmap_count_set_bits(bitmap);
+  /* no disconnection queues specified */
+  if (bitmap_len == (u16) ~0)
+    bitmap_len = 0;
+
+  error = vnet_hw_interface_rss_reta_query(vnm, hi, reta, &reta_size, &rx_queue_count);
+  if (error)
+  {
+    error = clib_error_return (0, "Failed to query rss reta");
+    goto done;
+  }
+
+  if (bitmap_len >= rx_queue_count)
+  {
+    error = clib_error_return (0, "Invalid queue bitmap is specified");
+    goto done;
+  }
+
+  queue_number = rx_queue_count - bitmap_len;
+  if (!queue_number)
+  {
+    error = clib_error_return (0, "Cannot disconnect all the queues from the interface");
+    goto done;
+  }
+
+  clib_memset (reta, 0, sizeof(reta));
+  queues = clib_mem_alloc(queue_number * sizeof(*queues));
+  clib_memset (queues, 0, (queue_number * sizeof(*queues)));
+
+  /* generate the new reta */
+  for (i = 0, j = 0; i < rx_queue_count; i++)
+  {
+    /* if not set */
+    if (clib_bitmap_get(bitmap, i) == 0)
+      queues[j++] = i;
+  }
+
+  for (i = 0; i < reta_size; i++)
+  {
+    reta[i] = queues[i % queue_number];
+  }
+
+  error = vnet_hw_interface_rss_reta_update(vnm, hi, reta, reta_size);
+  if (error)
+  {
+    error = clib_error_return(0, "Failed to set the disconnection queues\n");
+    goto done;
+  }
+
+done:
+  if (queues)
+    clib_mem_free(queues);
+
+  return (error);
+}
+
+static clib_error_t *
+set_interface_disconnection_queues_fn (vlib_main_t * vm, unformat_input_t * input,
+			    vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 hw_if_index = (u32) ~ 0;
+  uword *bitmap = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+	;
+	    else if (unformat (line_input, "lists %U", unformat_bitmap_list, &bitmap))
+	;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  goto done;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (hw_if_index == (u32) ~ 0)
+  {
+    error = clib_error_return (0, "please specify valid interface name");
+    goto done;
+  }
+
+  error = set_interface_disconnection_queues (vm, hw_if_index, bitmap);
+
+done:
+  if (bitmap)
+    clib_bitmap_free (bitmap);
+
+  return (error);
+}
+
+/*?
+ * This command is used to disconnect a set of the queues from a given interface
+ * Not all interfaces support this operation.
+ * To display the current queue connections, use the command
+ * '<em>show interface queue connection <interface></em>'.
+ *
+ * @cliexpar
+ * Example of how to disconnect queue 1,3 connections of an interface:
+ * @cliexstart{set interface disconnection queues VirtualFunctionEthernet18/1/0 lists 1,3}
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cmd_set_if_disconnection_queues,static) = {
+    .path = "set interface disconnection queues",
+    .short_help = "set interface disconnection queues <interface> [lists <queues-list>]",
+    .function = set_interface_disconnection_queues_fn,
+};
+/* *INDENT-ON* */
+
 static u8 *
 format_vnet_pcap (u8 * s, va_list * args)
 {
