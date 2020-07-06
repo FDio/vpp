@@ -367,7 +367,6 @@ typedef struct
 void dpdk_device_setup (dpdk_device_t * xd);
 void dpdk_device_start (dpdk_device_t * xd);
 void dpdk_device_stop (dpdk_device_t * xd);
-
 int dpdk_port_state_callback (dpdk_portid_t port_id,
 			      enum rte_eth_event_type type,
 			      void *param, void *ret_param);

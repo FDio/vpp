@@ -341,8 +341,6 @@ vnet_hw_interface_get_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
   return VNET_API_ERROR_INVALID_INTERFACE;
 }
 
-
-
 static clib_error_t *
 vnet_device_init (vlib_main_t * vm)
 {

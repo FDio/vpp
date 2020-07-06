@@ -1688,6 +1688,52 @@ default_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
     }
 }
 
+clib_error_t *
+vnet_hw_interface_rss_reta_update (vnet_main_t * vnm,
+				   vnet_hw_interface_t * hi, u16 * reta,
+				   u16 reta_size)
+{
+  clib_error_t *error = 0;
+  vnet_device_class_t *dev_class =
+    vnet_get_device_class (vnm, hi->dev_class_index);
+
+  if (dev_class)
+    {
+      error = dev_class->rss_reta_update_function (vnm, hi, reta, reta_size);
+    }
+  else
+    {
+      error = clib_error_return (0,
+				 "rss reta update is not supported on this interface");
+    }
+
+  return error;
+}
+
+clib_error_t *
+vnet_hw_interface_rss_reta_query (vnet_main_t * vnm,
+				  vnet_hw_interface_t * hi, u16 * reta,
+				  u16 * reta_size, u16 * rx_queue_count)
+{
+  clib_error_t *error = 0;
+  vnet_device_class_t *dev_class =
+    vnet_get_device_class (vnm, hi->dev_class_index);
+
+  if (dev_class)
+    {
+      error =
+	dev_class->rss_reta_query_function (vnm, hi, reta, reta_size,
+					    rx_queue_count);
+    }
+  else
+    {
+      error = clib_error_return (0,
+				 "rss reta query is not supported on this interface");
+    }
+
+  return error;
+}
+
 int collect_detailed_interface_stats_flag = 0;
 
 void
