@@ -139,7 +139,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   tap_main_t *tm = &tap_main;
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hw;
-  int i, j, num_vhost_queues;
+  int i, num_vhost_queues;
   int old_netns_fd = -1;
   struct ifreq ifr = {.ifr_flags = IFF_NO_PI | IFF_VNET_HDR };
   struct ifreq get_ifr = {.ifr_flags = 0 };
@@ -151,6 +151,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   int tfd = -1, qfd = -1, vfd = -1, nfd = -1;
   char *host_if_name = 0;
   unsigned int offload = 0;
+  int sndbuf = 0;
 
   if (args->id != ~0)
     {
@@ -179,11 +180,22 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     {
       vif->type = VIRTIO_IF_TYPE_TUN;
       ifr.ifr_flags |= IFF_TUN;
+
+      /*
+       * From kernel 4.20, xdp support has been added in tun_sendmsg.
+       * If sndbuf == INT_MAX, vhost batches the packet and processes
+       * them using xdp data path for tun driver. It assumes packets
+       * are ethernet frames (It needs to be fixed).
+       * To avoid xdp data path in tun driver, sndbuf value should
+       * be < INT_MAX.
+       */
+      sndbuf = INT_MAX - 1;
     }
   else
     {
       vif->type = VIRTIO_IF_TYPE_TAP;
       ifr.ifr_flags |= IFF_TAP;
+      sndbuf = INT_MAX;
     }
 
   vif->dev_instance = vif - vim->interfaces;
@@ -330,9 +342,9 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 		   vif->tap_fds[i], hdrsz);
       _IOCTL (vif->tap_fds[i], TUNSETVNETHDRSZ, &hdrsz);
 
-      j = INT_MAX;
-      tap_log_dbg (vif, "TUNSETSNDBUF: fd %d sndbuf %d", vif->tap_fds[i], j);
-      _IOCTL (vif->tap_fds[i], TUNSETSNDBUF, &j);
+      tap_log_dbg (vif, "TUNSETSNDBUF: fd %d sndbuf %d", vif->tap_fds[i],
+		   sndbuf);
+      _IOCTL (vif->tap_fds[i], TUNSETSNDBUF, &sndbuf);
 
       tap_log_dbg (vif, "TUNSETOFFLOAD: fd %d offload 0x%lx", vif->tap_fds[i],
 		   offload);
