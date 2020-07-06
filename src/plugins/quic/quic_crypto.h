@@ -31,19 +31,20 @@ void quic_crypto_decrypt_packet (quic_ctx_t * qctx,
 				 quic_rx_packet_ctx_t * pctx);
 void quic_crypto_batch_tx_packets (quic_crypto_batch_ctx_t * batch_ctx);
 void quic_crypto_batch_rx_packets (quic_crypto_batch_ctx_t * batch_ctx);
-void quic_crypto_finalize_send_packet (quicly_datagram_t * packet);
+void quic_crypto_finalize_send_packet (struct iovec *packet,
+				       quic_encrypt_cb_ctx * encrypt_cb_ctx);
 
 void
-quic_crypto_finalize_send_packet_cb (struct st_quicly_crypto_engine_t *engine,
-				     quicly_conn_t * conn,
-				     ptls_cipher_context_t * hp,
-				     ptls_aead_context_t * aead,
-				     quicly_datagram_t * packet,
-				     size_t first_byte_at,
-				     size_t payload_from, int coalesced);
-
-#endif /* __included_vpp_quic_crypto_h__ */
-
+quic_crypto_encrypt_packet_cb (struct st_quicly_crypto_engine_t
+			       *engine, quicly_conn_t * conn,
+			       ptls_cipher_context_t * hp,
+			       ptls_aead_context_t * aead,
+			       struct iovec *packet,
+			       size_t first_byte_at,
+			       size_t payload_from, uint64_t packet_number,
+			       int coalesced);
+#endif
+       /* __included_vpp_quic_crypto_h__ */
 /*
  * fd.io coding-style-patch-verification: ON
  *
