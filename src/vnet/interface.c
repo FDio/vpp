@@ -1692,6 +1692,48 @@ default_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
     }
 }
 
+clib_error_t *
+vnet_hw_interface_get_rss_queues (vnet_main_t * vnm,
+				  vnet_hw_interface_t * hi, uword ** bitmap)
+{
+  clib_error_t *error = 0;
+  vnet_device_class_t *dev_class =
+    vnet_get_device_class (vnm, hi->dev_class_index);
+
+  if (dev_class->get_rss_queues_function)
+    {
+      error = dev_class->get_rss_queues_function (vnm, hi, bitmap);
+    }
+  else
+    {
+      error = clib_error_return (0,
+				 "getting rss queues is not supported on this interface");
+    }
+
+  return error;
+}
+
+clib_error_t *
+vnet_hw_interface_set_rss_queues (vnet_main_t * vnm,
+				  vnet_hw_interface_t * hi, uword * bitmap)
+{
+  clib_error_t *error = 0;
+  vnet_device_class_t *dev_class =
+    vnet_get_device_class (vnm, hi->dev_class_index);
+
+  if (dev_class->set_rss_queues_function)
+    {
+      error = dev_class->set_rss_queues_function (vnm, hi, bitmap);
+    }
+  else
+    {
+      error = clib_error_return (0,
+				 "setting rss queues is not supported on this interface");
+    }
+
+  return error;
+}
+
 int collect_detailed_interface_stats_flag = 0;
 
 void

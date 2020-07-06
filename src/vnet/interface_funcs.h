@@ -431,6 +431,15 @@ int vnet_sw_interface_stats_collect_enable_disable (u32 sw_if_index,
 void vnet_sw_interface_ip_directed_broadcast (vnet_main_t * vnm,
 					      u32 sw_if_index, u8 enable);
 
+/* set/get interface rss queues */
+clib_error_t *vnet_hw_interface_get_rss_queues (vnet_main_t * vnm,
+						vnet_hw_interface_t * hi,
+						uword ** bitmap);
+
+clib_error_t *vnet_hw_interface_set_rss_queues (vnet_main_t * vnm,
+						vnet_hw_interface_t * hi,
+						uword * bitmap);
+
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;
 format_function_t format_vnet_hw_interface_rx_mode;

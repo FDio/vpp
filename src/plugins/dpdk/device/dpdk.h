@@ -260,6 +260,7 @@ typedef struct
     clib_bitmap_t * workers;
   u8 tso;
   u8 *devargs;
+  uword *rss_queues;
 
 #define DPDK_DEVICE_TSO_DEFAULT 0
 #define DPDK_DEVICE_TSO_OFF 1
@@ -373,7 +374,6 @@ typedef struct
 void dpdk_device_setup (dpdk_device_t * xd);
 void dpdk_device_start (dpdk_device_t * xd);
 void dpdk_device_stop (dpdk_device_t * xd);
-
 int dpdk_port_state_callback (dpdk_portid_t port_id,
 			      enum rte_eth_event_type type,
 			      void *param, void *ret_param);
