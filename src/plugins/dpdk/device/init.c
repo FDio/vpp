@@ -616,7 +616,6 @@ dpdk_lib_init (dpdk_main_t * dm)
       /* assign interface to input thread */
       int q;
 
-
       error = ethernet_register_interface
 	(dm->vnet_main, dpdk_device_class.index, xd->device_index,
 	 /* ethernet address */ addr,
@@ -759,10 +758,20 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       dpdk_device_setup (xd);
 
+      /* rss queues should be configured after dpdk_device_setup() */
+      if (devconf->rss_queues != NULL)
+        {
+          if (vnet_hw_interface_set_rss_queues
+              (vnet_get_main (), hi, devconf->rss_queues))
+          {
+            clib_warning ("%s: Failed to set rss queues", hi->name);
+          }
+        }
+
       if (vec_len (xd->errors))
-	dpdk_log_err ("setup failed for device %U. Errors:\n  %U",
-		      format_dpdk_device_name, i,
-		      format_dpdk_device_errors, xd);
+        dpdk_log_err ("setup failed for device %U. Errors:\n  %U",
+                      format_dpdk_device_name, i,
+                      format_dpdk_device_errors, xd);
 
       /*
        * A note on Cisco VIC (PMD_ENIC) and VLAN:
@@ -789,38 +798,39 @@ dpdk_lib_init (dpdk_main_t * dm)
        * otherwise in the startup config.
        */
 
-      vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
-      if (devconf->vlan_strip_offload == DPDK_DEVICE_VLAN_STRIP_ON)
-	{
-	  vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
-	  if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) >= 0)
-	    dpdk_log_info ("VLAN strip enabled for interface\n");
-	  else
-	    dpdk_log_warn ("VLAN strip cannot be supported by interface\n");
-	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
-	}
-      else
-	{
-	  if (vlan_off & ETH_VLAN_STRIP_OFFLOAD)
-	    {
-	      vlan_off &= ~ETH_VLAN_STRIP_OFFLOAD;
-	      if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) >= 0)
-		dpdk_log_warn ("set VLAN offload failed\n");
-	    }
-	  xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
-	}
+        vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
+        if (devconf->vlan_strip_offload == DPDK_DEVICE_VLAN_STRIP_ON)
+          {
+            vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
+            if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) >= 0)
+              dpdk_log_info ("VLAN strip enabled for interface\n");
+            else
+              dpdk_log_warn ("VLAN strip cannot be supported by interface\n");
+            xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+          }
+        else
+          {
+            if (vlan_off & ETH_VLAN_STRIP_OFFLOAD)
+              {
+        	vlan_off &= ~ETH_VLAN_STRIP_OFFLOAD;
+        	if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) >= 0)
+        	  dpdk_log_warn ("set VLAN offload failed\n");
+              }
+            xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
+          }
 
-      if (hi)
-	hi->max_packet_bytes = xd->port_conf.rxmode.max_rx_pkt_len
-	  - sizeof (ethernet_header_t);
-      else
-	dpdk_log_warn ("hi NULL");
+        if (hi)
+          hi->max_packet_bytes = xd->port_conf.rxmode.max_rx_pkt_len
+            - sizeof (ethernet_header_t);
+        else
+          dpdk_log_warn ("hi NULL");
 
-      if (dm->conf->no_multi_seg)
-	mtu = mtu > ETHER_MAX_LEN ? ETHER_MAX_LEN : mtu;
+        if (dm->conf->no_multi_seg)
+          mtu = mtu > ETHER_MAX_LEN ? ETHER_MAX_LEN : mtu;
 
-      rte_eth_dev_set_mtu (xd->port_id, mtu);
-    }
+        rte_eth_dev_set_mtu (xd->port_id, mtu);
+}
+
   /* *INDENT-ON* */
 
   return 0;
@@ -1093,6 +1103,9 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
 	  devconf->tso = DPDK_DEVICE_TSO_OFF;
 	}
       else if (unformat (input, "devargs %s", &devconf->devargs))
+	;
+      else if (unformat (input, "rss-queues %U",
+			 unformat_bitmap_list, &devconf->rss_queues))
 	;
       else
 	{
@@ -1415,6 +1428,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
 	/* copy tso config from default device */
 	_(devargs)
+
+	/* copy rss_queues config from default device */
+	_(rss_queues)
 
     /* add DPDK EAL whitelist/blacklist entry */
     if (num_whitelisted > 0 && devconf->is_blacklisted == 0)

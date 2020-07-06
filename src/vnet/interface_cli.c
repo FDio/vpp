@@ -1886,6 +1886,181 @@ VLIB_CLI_COMMAND (cmd_set_if_rx_placement,static) = {
 };
 /* *INDENT-ON* */
 
+clib_error_t *
+set_interface_rss_queues (vlib_main_t * vm, u32 hw_if_index, uword * bitmap)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+
+  return vnet_hw_interface_set_rss_queues (vnm, hi, bitmap);
+}
+
+static clib_error_t *
+set_interface_rss_queues_fn (vlib_main_t * vm,
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 hw_if_index = (u32) ~ 0;
+  uword *bitmap = NULL;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+	;
+      else
+	if (unformat (line_input, "list %U", unformat_bitmap_list, &bitmap))
+	;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  goto done;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (hw_if_index == (u32) ~ 0)
+    {
+      error = clib_error_return (0, "please specify valid interface name");
+      goto done;
+    }
+
+  if (bitmap == NULL)
+    {
+      error = clib_error_return (0, "please specify the valid rss queues");
+      goto done;
+    }
+
+  error = set_interface_rss_queues (vm, hw_if_index, bitmap);
+
+done:
+  if (bitmap)
+    clib_bitmap_free (bitmap);
+
+  return (error);
+}
+
+/*?
+ * This command is used to set the rss queues of a given interface
+ * Not all the interfaces support this operation.
+ * To display the current queue connections, use the command
+ * '<em>show interface rss queues <interface></em>'.
+ *
+ * @cliexpar
+ * Example of how to set the rss queues to 0,2-5,7 of an interface:
+ * @cliexstart{set interface rss queues VirtualFunctionEthernet18/1/0 list 0,2-5,7}
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cmd_set_interface_rss_queues,static) = {
+    .path = "set interface rss queues",
+    .short_help = "set interface rss queues <interface> <list <queue-list>>",
+    .function = set_interface_rss_queues_fn,
+};
+/* *INDENT-ON* */
+
+clib_error_t *
+show_hw_interface_rss_queues (vlib_main_t * vm, u32 hw_if_index)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  clib_error_t *error = 0;
+  u8 *s = 0;
+  uword *bitmap = NULL;
+  u16 i;
+
+  error = vnet_hw_interface_get_rss_queues (vnm, hi, &bitmap);
+  if (error)
+    {
+      error = clib_error_return (0, "Failed to get rss queues");
+      goto done;
+    }
+
+  s = format (s, "  rss qeues: ");
+  if (bitmap)
+    {
+    /* *INDENT-OFF* */
+    clib_bitmap_foreach (i, bitmap, ({
+      s = format (s, "%u ", i);
+    }));
+    /* *INDENT-ON* */
+    }
+
+  vlib_cli_output (vm, "%v", s);
+
+done:
+  if (bitmap)
+    clib_bitmap_free (bitmap);
+
+  vec_free (s);
+  return (error);
+}
+
+static clib_error_t *
+show_interface_rss_queues_fn (vlib_main_t * vm,
+			      unformat_input_t * input,
+			      vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 hw_if_index = (u32) ~ 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+	;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  goto done;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (hw_if_index == (u32) ~ 0)
+    error = clib_error_return (0, "please specify valid interface name");
+  else
+    error = show_hw_interface_rss_queues (vm, hw_if_index);
+
+done:
+  return (error);
+}
+
+/*?
+ * This command is used to display the rss queues of
+ * the a given interface.
+ *
+ * @cliexpar
+ * Example of how to display queue connections of an interface:
+ * @cliexstart{show interface rss queues VirtualFunctionEthernet18/1/0}
+ *   rss qeues: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cmd_show_interface_rss_queues,static) = {
+    .path = "show interface rss queues",
+    .short_help = "show interface rss queues <interface>",
+    .function = show_interface_rss_queues_fn,
+};
+/* *INDENT-ON* */
+
 static u8 *
 format_vnet_pcap (u8 * s, va_list * args)
 {

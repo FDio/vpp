@@ -88,6 +88,15 @@ typedef clib_error_t *(vnet_interface_set_l2_mode_function_t)
   (struct vnet_main_t * vnm, struct vnet_hw_interface_t * hi,
    i32 l2_if_adjust);
 
+/* Interface to get rss queues of the interface */
+typedef clib_error_t *(vnet_interface_rss_queue_get_t)
+  (struct vnet_main_t * vnm, struct vnet_hw_interface_t * hi,
+   uword ** bitmap);
+
+/* Interface to set rss queues of the interface */
+typedef clib_error_t *(vnet_interface_rss_queues_set_t)
+  (struct vnet_main_t * vnm, struct vnet_hw_interface_t * hi, uword * bitmap);
+
 typedef enum
 {
   VNET_FLOW_DEV_OP_ADD_FLOW,
@@ -273,6 +282,13 @@ typedef struct _vnet_device_class
 
   /* Function to add/delete additional MAC addresses */
   vnet_interface_add_del_mac_address_function_t *mac_addr_add_del_function;
+
+  /* Interface to get rss queues of the interface */
+  vnet_interface_rss_queue_get_t *get_rss_queues_function;
+
+  /* Interface to set rss queues of the interface */
+  vnet_interface_rss_queues_set_t *set_rss_queues_function;
+
 } vnet_device_class_t;
 
 #ifndef CLIB_MARCH_VARIANT
