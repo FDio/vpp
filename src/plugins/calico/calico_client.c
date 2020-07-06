@@ -74,6 +74,43 @@ calico_client_free_by_ip (ip46_address_t * ip, u8 af)
 }
 
 void
+calico_client_throttle_pool_process ()
+{
+  /* This processes ips stored in the throttle pool
+     to update session refcounts
+     and should be called before calico_client_free_by_ip */
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  calico_client_t *cc;
+  int nthreads;
+  u32 *del_vec = NULL, *ai;
+  ip_address_t *addr;
+  nthreads = tm->n_threads + 1;
+  for (int i = 0; i < nthreads; i++)
+    {
+      vec_reset_length (del_vec);
+      /* *INDENT-OFF* */
+      pool_foreach(addr, calico_client_db.throttle_pool[i], ({
+	cc = (AF_IP4 == addr->version ?
+	      calico_client_ip4_find (&ip_addr_v4(addr)) :
+	      calico_client_ip6_find (&ip_addr_v6(addr)));
+	/* Client might not already be created */
+	if (NULL != cc)
+	  {
+	    calico_client_cnt_session (cc);
+	    vec_add1(del_vec, addr - calico_client_db.throttle_pool[i]);
+	  }
+      }));
+      /* *INDENT-ON* */
+      vec_foreach (ai, del_vec)
+      {
+	/* Free session */
+	addr = pool_elt_at_index (calico_client_db.throttle_pool[i], *ai);
+	pool_put (calico_client_db.throttle_pool[i], addr);
+      }
+    }
+}
+
+void
 calico_client_add_translation (index_t cci, u16 port, ip_protocol_t proto,
 			       index_t cti)
 {
@@ -124,7 +161,7 @@ calico_client_add (const ip_address_t * ip, u8 flags)
   index_t cci;
   u32 fib_flags;
 
-  /* check again if we need this */
+  /* check again if we need this client */
   cc = (AF_IP4 == ip->version ?
 	calico_client_ip4_find (&ip->ip.ip4) :
 	calico_client_ip6_find (&ip->ip.ip6));
@@ -166,11 +203,14 @@ calico_client_add (const ip_address_t * ip, u8 flags)
 void
 calico_client_learn (const calico_learn_arg_t * l)
 {
+  /* RPC call to add a client from the dataplane */
   index_t cci;
   calico_client_t *cc;
   cci = calico_client_add (&l->addr, CALICO_FLAG_EXPIRES);
   cc = pool_elt_at_index (calico_client_pool, cci);
   calico_client_cnt_session (cc);
+  /* Process throttled calls if any */
+  calico_client_throttle_pool_process ();
 }
 
 /**
@@ -363,6 +403,8 @@ const static dpo_vft_t calico_client_dpo_vft = {
 static clib_error_t *
 calico_client_init (vlib_main_t * vm)
 {
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  u32 nthreads = tm->n_threads + 1;
   calico_client_dpo = dpo_register_new_type (&calico_client_dpo_vft,
 					     calico_client_dpo_nodes);
 
@@ -370,6 +412,7 @@ calico_client_init (vlib_main_t * vm)
 					       sizeof (ip6_address_t),
 					       sizeof (uword));
 
+  vec_validate (calico_client_db.throttle_pool, nthreads);
   return (NULL);
 }
 

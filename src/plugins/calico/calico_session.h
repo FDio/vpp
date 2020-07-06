@@ -16,9 +16,12 @@
 #ifndef __CALICO_SESSION_H__
 #define __CALICO_SESSION_H__
 
+#include <vnet/udp/udp.h>
+
 #include <calico/calico_types.h>
 #include <calico/calico_client.h>
 #include <calico/bihash_40_48.h>
+
 
 /**
  * A session represents the memory of a translation.
@@ -65,7 +68,7 @@ typedef struct calico_session_t_
     u8 __cs_pad[2];
   } key;
   /**
-   * this value sits in the same memory location a 'key' in the bihash kvp
+   * this value sits in the same memory location a 'value' in the bihash kvp
    */
   struct
   {
@@ -92,9 +95,15 @@ typedef struct calico_session_t_
      * Indicates a return path session that was source NATed
      * on the way in.
      */
-    u32 has_snat;
+    u32 flags;
   } value;
 } calico_session_t;
+
+typedef enum calico_session_flag_t_
+{
+  CALICO_SESSION_FLAG_HAS_SNAT = (1 << 0),
+  CALICO_SESSION_FLAG_NO_CLIENT = (1 << 1),
+} calico_session_flag_t;
 
 extern u8 *format_calico_session (u8 * s, va_list * args);
 

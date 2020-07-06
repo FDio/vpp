@@ -105,6 +105,22 @@ define calico_session_dump
   u32 context;
 };
 
+autoreply define calico_set_snat_addresses
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t snat_ip4;
+  vl_api_ip6_address_t snat_ip6;
+};
+
+autoreply define calico_add_del_snat_prefix
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  vl_api_prefix_t prefix;
+};
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

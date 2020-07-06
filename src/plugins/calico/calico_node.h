@@ -13,45 +13,38 @@
  * limitations under the License.
  */
 
+#ifndef __CALICO_NODE_H__
+#define __CALICO_NODE_H__
+
 #include <vlibmemory/api.h>
-#include <calico/calico_translation.h>
 #include <calico/calico_session.h>
 #include <calico/calico_client.h>
 
-#include <vnet/dpo/load_balance.h>
-#include <vnet/dpo/load_balance_map.h>
-#include <vnet/fib/ip4_fib.h>
+static char *calico_error_strings[] = {
+#define calico_error(n,s) s,
+#include <calico/calico_error.def>
+#undef calico_error
+};
 
-static throttle_t calico_throttle;
-
-typedef struct calico_translation_trace_t_
+typedef enum
 {
-  u32 found;
-  calico_session_t session;
-} calico_translation_trace_t;
+#define calico_error(n,s) CALICO_ERROR_##n,
+#include <calico/calico_error.def>
+#undef calico_error
+  CALICO_N_ERROR,
+} calico_error_t;
 
-typedef enum calico_translation_next_t_
-{
-  CALICO_TRANSLATION_NEXT_DROP,
-  CALICO_TRANSLATION_NEXT_LOOKUP,
-  CALICO_TRANSLATION_N_NEXT,
-} calico_translation_next_t;
+typedef uword (*calico_node_sub_t) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_buffer_t * b,
+				    calico_node_ctx_t * ctx, int rv,
+				    calico_session_t * session);
 
-static u8 *
-format_calico_translation_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  calico_translation_trace_t *t =
-    va_arg (*args, calico_translation_trace_t *);
+/**
+ * Inline translation functions
+ */
 
-  s =
-    format (s, "found:%d %U", t->found, format_calico_session, &t->session,
-	    1);
-  return s;
-}
-
-static inline u8
+static_always_inline u8
 has_ip6_address (ip6_address_t * a)
 {
   return ((0 != a->as_u64[0]) || (0 != a->as_u64[1]));
@@ -287,63 +280,57 @@ calico_translation_ip6 (const calico_session_t * session,
 }
 
 static_always_inline void
-calico_create_sessions (calico_client_t * cc,
-			const calico_translation_t * ct,
-			calico_tr_ctx_t * ctx,
-			ip4_header_t * ip4, ip6_header_t * ip6,
-			udp_header_t * udp0, clib_bihash_kv_40_48_t * bkey)
+calico_session_make_key (vlib_buffer_t * b, ip_address_family_t af,
+			 clib_bihash_kv_40_48_t * bkey)
 {
-  /* New flow, create the sessions */
-  const load_balance_t *lb0;
-  clib_bihash_kv_40_48_t rkey;
-  calico_session_t *rsession, *session;
-  calico_ep_trk_t *trk0;
-  u32 hash_c0, bucket0;
-  u8 has_snat = 0;
-  const dpo_id_t *dpo0;
-
-  lb0 = load_balance_get (ct->ct_lb.dpoi_index);
-
-  /* session table miss */
-  hash_c0 = (AF_IP4 == ctx->af ?
-	     ip4_compute_flow_hash (ip4, lb0->lb_hash_config) :
-	     ip6_compute_flow_hash (ip6, lb0->lb_hash_config));
-  bucket0 = hash_c0 & lb0->lb_n_buckets_minus_1;
-  dpo0 = load_balance_get_fwd_bucket (lb0, bucket0);
-
-  /* add the session */
-  session = (calico_session_t *) bkey;
-
-  trk0 = &ct->ct_paths[bucket0];
-
-  ip46_address_copy (&session->value.cs_ip[VLIB_TX],
-		     &trk0->ct_ep[VLIB_TX].ce_ip.ip);
-  if (ip_address_is_zero (&trk0->ct_ep[VLIB_RX].ce_ip))
+  udp_header_t *udp;
+  calico_session_t *session = (calico_session_t *) bkey;
+  if (AF_IP4 == af)
     {
-      if (AF_IP4 == ctx->af)
-	ip46_address_set_ip4 (&session->value.cs_ip[VLIB_RX],
-			      &ip4->src_address);
-      else
-	ip46_address_set_ip6 (&session->value.cs_ip[VLIB_RX],
-			      &ip6->src_address);
+      ip4_header_t *ip4;
+      ip4 = vlib_buffer_get_current (b);
+      udp = (udp_header_t *) (ip4 + 1);
+      session->key.cs_af = AF_IP4;
+      session->key.__cs_pad[0] = 0;
+      session->key.__cs_pad[1] = 0;
+
+      ip46_address_set_ip4 (&session->key.cs_ip[VLIB_TX], &ip4->dst_address);
+      ip46_address_set_ip4 (&session->key.cs_ip[VLIB_RX], &ip4->src_address);
+      session->key.cs_port[VLIB_RX] = udp->src_port;
+      session->key.cs_port[VLIB_TX] = udp->dst_port;
+      session->key.cs_proto = ip4->protocol;
     }
   else
     {
-      /* We source NAT with the translation */
-      has_snat = 1;
-      ip46_address_copy (&session->value.cs_ip[VLIB_RX],
-			 &trk0->ct_ep[VLIB_RX].ce_ip.ip);
+      ip6_header_t *ip6;
+      ip6 = vlib_buffer_get_current (b);
+      udp = (udp_header_t *) (ip6 + 1);
+      session->key.cs_af = AF_IP6;
+      session->key.__cs_pad[0] = 0;
+      session->key.__cs_pad[1] = 0;
+
+      ip46_address_set_ip6 (&session->key.cs_ip[VLIB_TX], &ip6->dst_address);
+      ip46_address_set_ip6 (&session->key.cs_ip[VLIB_RX], &ip6->src_address);
+      session->key.cs_port[VLIB_RX] = udp->src_port;
+      session->key.cs_port[VLIB_TX] = udp->dst_port;
+      session->key.cs_proto = ip6->protocol;
     }
-  session->value.cs_port[VLIB_TX] =
-    clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port);
-  session->value.cs_port[VLIB_RX] =
-    clib_host_to_net_u16 (trk0->ct_ep[VLIB_RX].ce_port);
-  if (!session->value.cs_port[VLIB_RX])
-    session->value.cs_port[VLIB_RX] = udp0->src_port;
-  session->value.cs_lbi = dpo0->dpoi_index;
-  session->value.has_snat = 0;
+}
+
+/**
+ * Create NAT sessions
+ */
+
+static_always_inline void
+calico_session_create (calico_session_t * session, calico_node_ctx_t * ctx,
+		       u8 rsession_flags)
+{
+  calico_client_t *cc;
+  clib_bihash_kv_40_48_t rkey;
+  calico_session_t *rsession;
+  clib_bihash_kv_40_48_t *bkey = (clib_bihash_kv_40_48_t *) session;
+
   session->value.cs_ts_index = calico_timestamp_new (ctx->now);
-  calico_client_cnt_session (cc);
 
   clib_bihash_add_del_40_48 (&calico_session_db, bkey, 1);
 
@@ -374,6 +361,14 @@ calico_create_sessions (calico_client_t * cc,
 	  vl_api_rpc_call_main_thread (calico_client_learn,
 				       (u8 *) & l, sizeof (l));
 	}
+      else
+	{
+	  /* Will still need to count those for session refcnt */
+	  ip_address_t *addr;
+	  pool_get (calico_client_db.throttle_pool[ctx->thread_index], addr);
+	  addr->version = ctx->af;
+	  ip46_address_copy (&addr->ip, &session->value.cs_ip[VLIB_RX]);
+	}
     }
   else
     {
@@ -396,7 +391,7 @@ calico_create_sessions (calico_client_t * cc,
   rsession->key.cs_af = ctx->af;
   rsession->value.cs_ts_index = session->value.cs_ts_index;
   rsession->value.cs_lbi = INDEX_INVALID;
-  rsession->value.has_snat = has_snat;
+  rsession->value.flags = rsession_flags;
   rsession->key.cs_port[VLIB_RX] = session->value.cs_port[VLIB_TX];
   rsession->key.cs_port[VLIB_TX] = session->value.cs_port[VLIB_RX];
   rsession->value.cs_port[VLIB_TX] = session->key.cs_port[VLIB_RX];
@@ -405,154 +400,12 @@ calico_create_sessions (calico_client_t * cc,
   clib_bihash_add_del_40_48 (&calico_session_db, &rkey, 1);
 }
 
-
-static_always_inline u16
-calico_translate_one (vlib_main_t * vm,
-		      vlib_node_runtime_t * node,
-		      vlib_buffer_t * b,
-		      calico_tr_ctx_t * ctx,
-		      int rv,
-		      clib_bihash_kv_40_48_t * bkey,
-		      clib_bihash_kv_40_48_t * bvalue)
-{
-  vlib_combined_counter_main_t *cm = &calico_translation_counters;
-  const calico_translation_t *ct;
-  ip4_header_t *ip4;
-  ip_protocol_t iproto;
-  ip6_header_t *ip6;
-  udp_header_t *udp0;
-  calico_session_t *session = NULL;
-  calico_client_t *cc;
-  u16 next0;
-  index_t cti;
-  if (AF_IP4 == ctx->af)
-    {
-      ip4 = vlib_buffer_get_current (b);
-      iproto = ip4->protocol;
-      udp0 = (udp_header_t *) (ip4 + 1);
-    }
-  else
-    {
-      ip6 = vlib_buffer_get_current (b);
-      iproto = ip6->protocol;
-      udp0 = (udp_header_t *) (ip6 + 1);
-    }
-
-  cc = calico_client_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
-  if (iproto != IP_PROTOCOL_UDP && iproto != IP_PROTOCOL_TCP)
-    {
-      /* Dont translate & follow the fib programming */
-      vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
-      return cc->cc_parent.dpoi_next_node;
-    }
-
-  ct = calico_find_translation (cc->parent_cci,
-				clib_host_to_net_u16 (udp0->dst_port),
-				iproto);
-
-  if (!rv)
-    {
-      /* session table hit */
-      session = (calico_session_t *) bvalue;
-      calico_timestamp_update (session->value.cs_ts_index, ctx->now);
-
-      if (NULL != ct)
-	{
-	  /* Translate & follow the translation given LB */
-	  next0 = ct->ct_lb.dpoi_next_node;
-	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = session->value.cs_lbi;
-	}
-      else if (session->value.has_snat)
-	{
-	  /* The return needs DNAT, so we need an additionnal
-	   * lookup after translation */
-	  next0 = CALICO_TRANSLATION_NEXT_LOOKUP;
-	}
-      else
-	{
-	  /* Translate & follow the fib programming */
-	  next0 = cc->cc_parent.dpoi_next_node;
-	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
-	}
-    }
-  else
-    {
-      if (NULL == ct)
-	{
-	  /* Dont translate & Follow the fib programming */
-	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
-	  return cc->cc_parent.dpoi_next_node;
-	}
-
-      calico_create_sessions (cc, ct, ctx, ip4, ip6, udp0, bkey);
-      session = (calico_session_t *) bkey;
-      next0 = ct->ct_lb.dpoi_next_node;
-      vnet_buffer (b)->ip.adj_index[VLIB_TX] = session->value.cs_lbi;
-      cti = ct - calico_translation_pool;
-
-      vlib_increment_combined_counter (cm, ctx->thread_index, cti, 1,
-				       vlib_buffer_length_in_chain (vm, b));
-    }
-
-  if (AF_IP4 == ctx->af)
-    calico_translation_ip4 (session, ip4, udp0);
-  else
-    calico_translation_ip6 (session, ip6, udp0);
-
-  if (PREDICT_FALSE (ctx->do_trace))
-    {
-      calico_translation_trace_t *t;
-
-      t = vlib_add_trace (vm, node, b, sizeof (*t));
-      t->found = !rv;
-      if (NULL != session)
-	clib_memcpy (&t->session, session, sizeof (t->session));
-    }
-
-  return next0;
-}
-
-static_always_inline void
-calico_compute_keys (vlib_buffer_t * b, ip_address_family_t af,
-		     calico_session_t * key)
-{
-  udp_header_t *udp;
-  if (AF_IP4 == af)
-    {
-      ip4_header_t *ip4;
-      ip4 = vlib_buffer_get_current (b);
-      udp = (udp_header_t *) (ip4 + 1);
-      key->key.cs_af = AF_IP4;
-      key->key.__cs_pad[0] = 0;
-      key->key.__cs_pad[1] = 0;
-
-      ip46_address_set_ip4 (&key->key.cs_ip[VLIB_TX], &ip4->dst_address);
-      ip46_address_set_ip4 (&key->key.cs_ip[VLIB_RX], &ip4->src_address);
-      key->key.cs_port[VLIB_RX] = udp->src_port;
-      key->key.cs_port[VLIB_TX] = udp->dst_port;
-      key->key.cs_proto = ip4->protocol;
-    }
-  else
-    {
-      ip6_header_t *ip6;
-      ip6 = vlib_buffer_get_current (b);
-      udp = (udp_header_t *) (ip6 + 1);
-      key->key.cs_af = AF_IP6;
-      key->key.__cs_pad[0] = 0;
-      key->key.__cs_pad[1] = 0;
-
-      ip46_address_set_ip6 (&key->key.cs_ip[VLIB_TX], &ip6->dst_address);
-      ip46_address_set_ip6 (&key->key.cs_ip[VLIB_RX], &ip6->src_address);
-      key->key.cs_port[VLIB_RX] = udp->src_port;
-      key->key.cs_port[VLIB_TX] = udp->dst_port;
-      key->key.cs_proto = ip6->protocol;
-    }
-}
-
 always_inline uword
-calico_vip_inline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_frame_t * frame, ip_address_family_t af, u8 do_trace)
+calico_node_inline (vlib_main_t * vm,
+		    vlib_node_runtime_t * node,
+		    vlib_frame_t * frame,
+		    calico_node_sub_t calico_sub,
+		    ip_address_family_t af, u8 do_trace)
 {
   u32 n_left, *from, thread_index;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
@@ -568,25 +421,20 @@ calico_vip_inline (vlib_main_t * vm,
   vlib_get_buffers (vm, from, bufs, n_left);
   now = vlib_time_now (vm);
   seed = throttle_seed (&calico_throttle, thread_index, vlib_time_now (vm));
-  calico_session_t *key[4];
+  calico_session_t *session[4];
   clib_bihash_kv_40_48_t bkey[4], bvalue[4];
   u64 hash[4];
   int rv[4];
 
-  calico_tr_ctx_t ctx = { now, seed, thread_index, af, do_trace };
-
-  key[3] = (calico_session_t *) & bkey[3];
-  key[2] = (calico_session_t *) & bkey[2];
-  key[1] = (calico_session_t *) & bkey[1];
-  key[0] = (calico_session_t *) & bkey[0];
+  calico_node_ctx_t ctx = { now, seed, thread_index, af, do_trace };
 
   if (n_left >= 8)
     {
       /* Kickstart our state */
-      calico_compute_keys (b[3], af, key[3]);
-      calico_compute_keys (b[2], af, key[2]);
-      calico_compute_keys (b[1], af, key[1]);
-      calico_compute_keys (b[0], af, key[0]);
+      calico_session_make_key (b[3], af, &bkey[3]);
+      calico_session_make_key (b[2], af, &bkey[2]);
+      calico_session_make_key (b[1], af, &bkey[1]);
+      calico_session_make_key (b[0], af, &bkey[0]);
 
       hash[3] = clib_bihash_hash_40_48 (&bkey[3]);
       hash[2] = clib_bihash_hash_40_48 (&bkey[2]);
@@ -608,36 +456,34 @@ calico_vip_inline (vlib_main_t * vm,
 	clib_bihash_search_inline_2_with_hash_40_48 (&calico_session_db,
 						     hash[3], &bkey[3],
 						     &bvalue[3]);
+      session[3] = (calico_session_t *) (rv[3] ? &bkey[3] : &bvalue[3]);
+      next[3] = calico_sub (vm, node, b[3], &ctx, rv[3], session[3]);
+
       rv[2] =
 	clib_bihash_search_inline_2_with_hash_40_48 (&calico_session_db,
 						     hash[2], &bkey[2],
 						     &bvalue[2]);
+      session[2] = (calico_session_t *) (rv[2] ? &bkey[2] : &bvalue[2]);
+      next[2] = calico_sub (vm, node, b[2], &ctx, rv[2], session[2]);
+
       rv[1] =
 	clib_bihash_search_inline_2_with_hash_40_48 (&calico_session_db,
 						     hash[1], &bkey[1],
 						     &bvalue[1]);
+      session[1] = (calico_session_t *) (rv[1] ? &bkey[1] : &bvalue[1]);
+      next[1] = calico_sub (vm, node, b[1], &ctx, rv[1], session[1]);
+
       rv[0] =
 	clib_bihash_search_inline_2_with_hash_40_48 (&calico_session_db,
 						     hash[0], &bkey[0],
 						     &bvalue[0]);
+      session[0] = (calico_session_t *) (rv[0] ? &bkey[0] : &bvalue[0]);
+      next[0] = calico_sub (vm, node, b[0], &ctx, rv[0], session[0]);
 
-      next[3] =
-	calico_translate_one (vm, node, b[3], &ctx, rv[3], &bkey[3],
-			      &bvalue[3]);
-      next[2] =
-	calico_translate_one (vm, node, b[2], &ctx, rv[2], &bkey[2],
-			      &bvalue[2]);
-      next[1] =
-	calico_translate_one (vm, node, b[1], &ctx, rv[1], &bkey[1],
-			      &bvalue[1]);
-      next[0] =
-	calico_translate_one (vm, node, b[0], &ctx, rv[0], &bkey[0],
-			      &bvalue[0]);
-
-      calico_compute_keys (b[3], af, key[3]);
-      calico_compute_keys (b[2], af, key[2]);
-      calico_compute_keys (b[1], af, key[1]);
-      calico_compute_keys (b[0], af, key[0]);
+      calico_session_make_key (b[7], af, &bkey[3]);
+      calico_session_make_key (b[6], af, &bkey[2]);
+      calico_session_make_key (b[5], af, &bkey[1]);
+      calico_session_make_key (b[4], af, &bkey[0]);
 
       hash[3] = clib_bihash_hash_40_48 (&bkey[3]);
       hash[2] = clib_bihash_hash_40_48 (&bkey[2]);
@@ -661,13 +507,12 @@ calico_vip_inline (vlib_main_t * vm,
 
   while (n_left > 0)
     {
-      calico_compute_keys (b[0], af, key[0]);
+      calico_session_make_key (b[0], af, &bkey[0]);
       rv[0] = clib_bihash_search_inline_2_40_48 (&calico_session_db,
 						 &bkey[0], &bvalue[0]);
 
-      next[0] =
-	calico_translate_one (vm, node, b[0], &ctx, rv[0], &bkey[0],
-			      &bvalue[0]);
+      session[0] = (calico_session_t *) (rv[0] ? &bkey[0] : &bvalue[0]);
+      next[0] = calico_sub (vm, node, b[0], &ctx, rv[0], session[0]);
 
       b++;
       next++;
@@ -679,68 +524,6 @@ calico_vip_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (calico_vip_ip4_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
-{
-  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
-    return calico_vip_inline (vm, node, frame, AF_IP4, 1 /* do_trace */ );
-  return calico_vip_inline (vm, node, frame, AF_IP4, 0 /* do_trace */ );
-}
-
-VLIB_NODE_FN (calico_vip_ip6_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
-{
-  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
-    return calico_vip_inline (vm, node, frame, AF_IP6, 1 /* do_trace */ );
-  return calico_vip_inline (vm, node, frame, AF_IP6, 0 /* do_trace */ );
-}
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (calico_vip_ip4_node) =
-{
-  .name = "ip4-calico-tx",
-  .vector_size = sizeof (u32),
-  .format_trace = format_calico_translation_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = 0,
-  .n_next_nodes = CALICO_TRANSLATION_N_NEXT,
-  .next_nodes =
-  {
-    [CALICO_TRANSLATION_NEXT_DROP] = "ip4-drop",
-    [CALICO_TRANSLATION_NEXT_LOOKUP] = "ip4-lookup",
-  }
-};
-VLIB_REGISTER_NODE (calico_vip_ip6_node) =
-{
-  .name = "ip6-calico-tx",
-  .vector_size = sizeof (u32),
-  .format_trace = format_calico_translation_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = 0,
-  .n_next_nodes = CALICO_TRANSLATION_N_NEXT,
-  .next_nodes =
-  {
-    [CALICO_TRANSLATION_NEXT_DROP] = "ip6-drop",
-    [CALICO_TRANSLATION_NEXT_LOOKUP] = "ip6-lookup",
-  }
-};
-/* *INDENT-OFF* */
-
-static clib_error_t *
-calico_node_init (vlib_main_t * vm)
-{
-  vlib_thread_main_t *tm = &vlib_thread_main;
-  u32 n_vlib_mains = tm->n_vlib_mains;
-
-  throttle_init (&calico_throttle, n_vlib_mains, 1e-3);
-
-  return (NULL);
-}
-
-VLIB_INIT_FUNCTION (calico_node_init);
-
 /*
  * fd.io coding-style-patch-verification: ON
  *
@@ -748,3 +531,5 @@ VLIB_INIT_FUNCTION (calico_node_init);
  * eval: (c-set-style "gnu")
  * End:
  */
+
+#endif

@@ -339,6 +339,57 @@ static const fib_node_vft_t calico_translation_vft = {
 };
 
 static clib_error_t *
+calico_translation_cli_add_del (vlib_main_t * vm,
+				unformat_input_t * input,
+				vlib_cli_command_t * cmd)
+{
+  u32 del_index = INDEX_INVALID;
+  ip_protocol_t proto = IP_PROTOCOL_TCP;
+  calico_endpoint_t vip;
+  u8 flags = CALICO_FLAG_EXCLUSIVE;
+  calico_endpoint_tuple_t tmp, *paths = NULL, *path;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "add"))
+	del_index = INDEX_INVALID;
+      else if (unformat (input, "del %d", &del_index))
+	;
+      else if (unformat (input, "proto %U", unformat_ip_protocol, &proto))
+	;
+      else if (unformat (input, "vip %U", unformat_calico_ep, &vip))
+	flags = CALICO_FLAG_EXCLUSIVE;
+      else if (unformat (input, "real %U", unformat_calico_ep, &vip))
+	flags = 0;
+      else if (unformat (input, "to %U", unformat_calico_ep_tuple, &tmp))
+	{
+	  pool_get (paths, path);
+	  clib_memcpy (path, &tmp, sizeof (calico_endpoint_tuple_t));
+	}
+      else
+	return (clib_error_return (0, "unknown input '%U'",
+				   format_unformat_error, input));
+    }
+
+  if (INDEX_INVALID == del_index)
+    calico_translation_update (&vip, proto, paths, flags);
+  else
+    calico_translation_delete (del_index);
+
+  pool_free (paths);
+  return (NULL);
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (calico_translation_cli_add_del_command, static) =
+{
+  .path = "calico translation",
+  .short_help = "calico translation [add|del] proto [TCP|UDP] [vip|real] [ip] [port] [to [ip] [port]->[ip] [port]]",
+  .function = calico_translation_cli_add_del,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
 calico_translation_init (vlib_main_t * vm)
 {
   calico_main_t *cm = &calico_main;

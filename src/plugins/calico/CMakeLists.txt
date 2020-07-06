@@ -14,13 +14,14 @@
 add_vpp_plugin(calico
   SOURCES
   calico_api.c
-  calico_cli.c
   calico_client.c
-  calico_node.c
+  calico_node_snat.c
+  calico_node_vip.c
   calico_scanner.c
   calico_session.c
   calico_translation.c
   calico_types.c
+  calico_snat.c
 
   API_FILES
   calico.api

@@ -187,9 +187,11 @@ calico_session_scan (vlib_main_t * vm, f64 start_time, int i)
 		  calico_timestamp_exp (session->value.cs_ts_index))
 		{
 		  /* age it */
-
-		  calico_client_free_by_ip (&session->key.cs_ip[VLIB_TX],
-					    session->key.cs_af);
+		  if (session->value.flags & CALICO_SESSION_FLAG_NO_CLIENT)
+		    calico_free_port (session->value.cs_port[VLIB_RX]);
+		  else
+		    calico_client_free_by_ip (&session->key.cs_ip[VLIB_TX],
+					      session->key.cs_af);
 		  calico_timestamp_free (session->value.cs_ts_index);
 		  BV (clib_bihash_add_del) (h, &v->kvp[k], 0);
 

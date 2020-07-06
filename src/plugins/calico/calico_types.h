@@ -19,6 +19,7 @@
 #include <vnet/fib/fib_node.h>
 #include <vnet/fib/fib_source.h>
 #include <vnet/ip/ip_types.h>
+#include <vnet/ip/ip.h>
 
 /* only in the default table for v4 and v6 */
 #define CALICO_FIB_TABLE 0
@@ -32,10 +33,12 @@
 #define CALICO_DEFAULT_SCANNER_TIMEOUT (1.0)
 
 #define CALICO_DEFAULT_SESSION_BUCKETS     1024
-#define CALICO_DEFAULT_SESSION_MEMORY     (1 << 20)
+#define CALICO_DEFAULT_TRANSLATION_BUCKETS 1024
+#define CALICO_DEFAULT_SNAT_BUCKETS        1024
 
-#define CALICO_DEFAULT_TRANSLATION_BUCKETS     1024
-#define CALICO_DEFAULT_TRANSLATION_MEMORY     (256 << 10)
+#define CALICO_DEFAULT_SESSION_MEMORY      (1 << 20)
+#define CALICO_DEFAULT_TRANSLATION_MEMORY  (256 << 10)
+#define CALICO_DEFAULT_SNAT_MEMORY         (64 << 20)
 
 /* This should be strictly lower than FIB_SOURCE_INTERFACE
  * from fib_source.h */
@@ -43,6 +46,8 @@
 
 /* Initial refcnt for timestamps (2 : session & rsession) */
 #define CALICO_TIMESTAMP_INIT_REFCNT 2
+
+#define MIN_SRC_PORT ((u16) 0xC000)
 
 typedef struct calico_endpoint_t_
 {
@@ -55,6 +60,25 @@ typedef struct calico_endpoint_tuple_t_
   calico_endpoint_t dst_ep;
   calico_endpoint_t src_ep;
 } calico_endpoint_tuple_t;
+
+
+
+typedef struct
+{
+  u32 dst_address_length_refcounts[129];
+  u16 *prefix_lengths_in_search_order;
+  uword *non_empty_dst_address_length_bitmap;
+} calico_snat_pfx_table_meta_t;
+
+typedef struct
+{
+  /* Stores (ip family, prefix & mask) */
+  clib_bihash_24_8_t ip_hash;
+  /* family dependant cache */
+  calico_snat_pfx_table_meta_t meta[2];
+  /* Precomputed ip masks (ip4 & ip6) */
+  ip6_address_t ip_masks[129];
+} calico_snat_pfx_table_t;
 
 typedef struct calico_main_
 {
@@ -70,6 +94,12 @@ typedef struct calico_main_
   /* Number of buckets of the  translation bihash */
   u32 translation_hash_buckets;
 
+  /* Memory size of the source NAT prefix bihash */
+  uword snat_hash_memory;
+
+  /* Number of buckets of the  source NAT prefix bihash */
+  u32 snat_hash_buckets;
+
   /* Timeout after which to clear sessions (in seconds) */
   u32 session_max_age;
 
@@ -82,6 +112,21 @@ typedef struct calico_main_
 
   /* Lock for the timestamp pool */
   clib_rwlock_t ts_lock;
+
+  /* Source ports bitmap for snat */
+  clib_bitmap_t *src_ports;
+
+  /* Lock for src_ports access */
+  clib_spinlock_t src_ports_lock;
+
+  /* Ip4 Address to use for source NATing */
+  ip4_address_t snat_ip4;
+
+  /* Ip6 Address to use for source NATing */
+  ip6_address_t snat_ip6;
+
+  /* Longest prefix Match table for source NATing */
+  calico_snat_pfx_table_t snat_pfx_table;
 } calico_main_t;
 
 typedef struct calico_timestamp_t_
@@ -94,10 +139,27 @@ typedef struct calico_timestamp_t_
   u16 refcnt;
 } calico_timestamp_t;
 
+typedef struct calico_node_ctx_t_
+{
+  f64 now;
+  u64 seed;
+  u32 thread_index;
+  ip_address_family_t af;
+  u8 do_trace;
+} calico_node_ctx_t;
+
 extern u8 *format_calico_endpoint (u8 * s, va_list * args);
+extern uword unformat_calico_ep_tuple (unformat_input_t * input,
+				       va_list * args);
+extern uword unformat_calico_ep (unformat_input_t * input, va_list * args);
 extern calico_timestamp_t *calico_timestamps;
 extern fib_source_t calico_fib_source;
 extern calico_main_t calico_main;
+extern throttle_t calico_throttle;
+
+/*
+  Dataplane functions
+*/
 
 always_inline u32
 calico_timestamp_new (f64 t)
@@ -117,6 +179,7 @@ calico_timestamp_new (f64 t)
 always_inline void
 calico_timestamp_update (u32 index, f64 t)
 {
+  return;
   clib_rwlock_reader_lock (&calico_main.ts_lock);
   calico_timestamp_t *ts = pool_elt_at_index (calico_timestamps, index);
   ts->last_seen = t;
@@ -155,6 +218,34 @@ calico_timestamp_free (u32 index)
   if (0 == clib_atomic_sub_fetch (&ts->refcnt, 1))
     pool_put (calico_timestamps, ts);
   clib_rwlock_writer_unlock (&calico_main.ts_lock);
+}
+
+always_inline void
+calico_free_port (u16 port)
+{
+  calico_main_t *cm = &calico_main;
+  clib_spinlock_lock (&cm->src_ports_lock);
+  clib_bitmap_set_no_check (cm->src_ports, port, 0);
+  clib_spinlock_unlock (&cm->src_ports_lock);
+}
+
+always_inline int
+calico_allocate_port (calico_main_t * cm, u16 * port)
+{
+  *port = clib_net_to_host_u16 (*port);
+  clib_spinlock_lock (&cm->src_ports_lock);
+  if (clib_bitmap_get_no_check (cm->src_ports, *port))
+    {
+      *port = clib_bitmap_next_clear (cm->src_ports, *port);
+      if (PREDICT_FALSE (*port >= UINT16_MAX))
+	*port = clib_bitmap_next_clear (cm->src_ports, MIN_SRC_PORT);
+      if (PREDICT_FALSE (*port >= UINT16_MAX))
+	return -1;
+    }
+  clib_bitmap_set_no_check (cm->src_ports, *port, 1);
+  *port = clib_host_to_net_u16 (*port);
+  clib_spinlock_unlock (&cm->src_ports_lock);
+  return 0;
 }
 
 /*

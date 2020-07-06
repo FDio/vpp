@@ -20,6 +20,7 @@
 #include <calico/calico_translation.h>
 #include <calico/calico_session.h>
 #include <calico/calico_client.h>
+#include <calico/calico_snat.h>
 
 #include <vnet/ip/ip_types_api.h>
 
@@ -252,9 +253,39 @@ vl_api_calico_session_purge_t_handler (vl_api_calico_session_purge_t * mp)
   int rv;
 
   rv = calico_session_purge ();
-  rv = calico_client_purge ();
+  rv |= calico_client_purge ();
 
   REPLY_MACRO (VL_API_CALICO_SESSION_PURGE_REPLY);
+}
+
+static void
+vl_api_calico_set_snat_addresses_t_handler (vl_api_calico_set_snat_addresses_t
+					    * mp)
+{
+  vl_api_calico_set_snat_addresses_reply_t *rmp;
+  int rv = 0;
+
+  ip4_address_decode (mp->snat_ip4, &calico_main.snat_ip4);
+  ip6_address_decode (mp->snat_ip6, &calico_main.snat_ip6);
+
+  REPLY_MACRO (VL_API_CALICO_SET_SNAT_ADDRESSES_REPLY);
+}
+
+static void
+  vl_api_calico_add_del_snat_prefix_t_handler
+  (vl_api_calico_add_del_snat_prefix_t * mp)
+{
+  vl_api_calico_add_del_snat_prefix_reply_t *rmp;
+  ip_prefix_t pfx;
+  int rv;
+
+  ip_prefix_decode2 (&mp->prefix, &pfx);
+  if (mp->is_add)
+    rv = calico_add_snat_prefix (&pfx);
+  else
+    rv = calico_del_snat_prefix (&pfx);
+
+  REPLY_MACRO (VL_API_CALICO_ADD_DEL_SNAT_PREFIX_REPLY);
 }
 
 #include <calico/calico.api.c>
