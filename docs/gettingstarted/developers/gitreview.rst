@@ -83,7 +83,22 @@ For example for a document with only patches you should add the tag **docs:**.
 .. code-block:: console
 
     $ git add <filename>
-    $ git commit -s -m "<*TAG*>: <*COMMIT_MESSAGE*>"
+    $ git commit -s
+
+The commit comment should have something like the following comment:
+
+.. code-block:: console
+
+   docs: A brief description of the commit
+
+   Type: Improvement (The type of commit this could be: Improvement, Fix or Feature)
+
+   A detailed description of the commit could go here.
+
+Push the patch for review.
+
+.. code-block:: console
+
     $ git review
 
 If you are creating a draft, meaning you do not want your changes reviewed yet, do the following:
