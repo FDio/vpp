@@ -125,12 +125,6 @@ tcp_update_rcv_wnd (tcp_connection_t * tc)
    * avoid advertising a window larger than what can be buffered */
   available_space = round_down_pow2 (available_space, 1 << tc->rcv_wscale);
 
-  if (PREDICT_FALSE (available_space < tc->rcv_opts.mss))
-    {
-      tc->rcv_wnd = 0;
-      return;
-    }
-
   /*
    * Use the above and what we know about what we've previously advertised
    * to compute the new window
@@ -140,13 +134,16 @@ tcp_update_rcv_wnd (tcp_connection_t * tc)
   /* Bad. Thou shalt not shrink */
   if (PREDICT_FALSE ((i32) available_space < observed_wnd))
     {
-      wnd = round_pow2 (clib_max (observed_wnd, 0), 1 << tc->rcv_wscale);
+      wnd = round_down_pow2 (clib_max (observed_wnd, 0), 1 << tc->rcv_wscale);
       TCP_EVT (TCP_EVT_RCV_WND_SHRUNK, tc, observed_wnd, available_space);
     }
   else
     {
       wnd = available_space;
     }
+
+  if (PREDICT_FALSE (wnd < tc->rcv_opts.mss))
+    wnd = 0;
 
   tc->rcv_wnd = clib_min (wnd, TCP_WND_MAX << tc->rcv_wscale);
 }
