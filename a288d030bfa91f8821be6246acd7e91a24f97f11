@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "99316dbe_df7f501d",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-06T12:15:04Z",
+      "side": 1,
+      "message": "what is the added value compared to src/vpp/api/vpe.api:control_ping ?",
+      "revId": "a288d030bfa91f8821be6246acd7e91a24f97f11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d1909fd8_9bbf572d",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-06T12:15:04Z",
+      "side": 1,
+      "message": "shouldn\u0027t be better to zero the whole buffer, ie clib_memset (rmp, 0, sizeof(*rmp)+vec_len(profile-\u003eauth.data)) ?",
+      "revId": "a288d030bfa91f8821be6246acd7e91a24f97f11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
