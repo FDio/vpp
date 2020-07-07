@@ -112,6 +112,8 @@ typedef struct
 
 format_function_t format_vlib_trace;
 
+void trace_apply_filter (struct vlib_main_t *vm);
+
 #endif /* included_vlib_trace_h */
 
 /*
