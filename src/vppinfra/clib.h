@@ -38,6 +38,7 @@
 #ifndef included_clib_h
 #define included_clib_h
 
+#include <stddef.h>
 #include <vppinfra/config.h>
 
 #ifdef  __x86_64__
@@ -66,8 +67,8 @@
 #define ARRAY_LEN(x)	(sizeof (x)/sizeof (x[0]))
 
 #define _STRUCT_FIELD(t,f) (((t *) 0)->f)
-#define STRUCT_OFFSET_OF(t,f) ((uword) & _STRUCT_FIELD (t, f))
-#define STRUCT_BIT_OFFSET_OF(t,f) (BITS(u8) * (uword) & _STRUCT_FIELD (t, f))
+#define STRUCT_OFFSET_OF(t,f) offsetof(t, f)
+#define STRUCT_BIT_OFFSET_OF(t,f) (BITS(u8) * STRUCT_OFFSET_OF (t, f))
 #define STRUCT_SIZE_OF(t,f)   (sizeof (_STRUCT_FIELD (t, f)))
 #define STRUCT_BITS_OF(t,f)   (BITS (_STRUCT_FIELD (t, f)))
 #define STRUCT_ARRAY_LEN(t,f) ARRAY_LEN (_STRUCT_FIELD (t, f))

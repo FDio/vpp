@@ -108,11 +108,7 @@ do {                                            \
 } while (0)
 #endif /* __COVERITY */
 
-#if defined(__clang__)
-#define STATIC_ASSERT(truth,...)
-#else
 #define STATIC_ASSERT(truth,...) _Static_assert(truth, __VA_ARGS__)
-#endif
 
 #define STATIC_ASSERT_SIZEOF(d, s) \
   STATIC_ASSERT (sizeof (d) == s, "Size of " #d " must be " # s " bytes")
