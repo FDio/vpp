@@ -158,18 +158,18 @@ static_always_inline
 				struct rte_mbuf **mb, u32 n_left)
 {
   dpdk_main_t *dm = &dpdk_main;
-  dpdk_rx_queue_t *rxq;
+  dpdk_tx_queue_t *txq;
   u32 n_retry;
   int n_sent = 0;
   int queue_id;
 
   n_retry = 16;
   queue_id = vm->thread_index % xd->tx_q_used;
-  rxq = vec_elt_at_index (xd->rx_queues, queue_id);
+  txq = vec_elt_at_index (xd->tx_queues, queue_id);
 
   do
     {
-      clib_spinlock_lock_if_init (&rxq->lock);
+      clib_spinlock_lock_if_init (&txq->lock);
 
       if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
 	{
@@ -183,7 +183,7 @@ static_always_inline
 	  n_sent = 0;
 	}
 
-      clib_spinlock_unlock_if_init (&rxq->lock);
+      clib_spinlock_unlock_if_init (&txq->lock);
 
       if (PREDICT_FALSE (n_sent < 0))
 	{

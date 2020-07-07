@@ -41,6 +41,7 @@ dpdk_device_setup (dpdk_device_t * xd)
   dpdk_main_t *dm = &dpdk_main;
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->sw_if_index);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
   struct rte_eth_dev_info dev_info;
@@ -95,7 +96,8 @@ dpdk_device_setup (dpdk_device_t * xd)
       goto error;
     }
 
-  /* Set up one TX-queue per worker thread */
+  vec_validate_aligned (xd->tx_queues, xd->tx_q_used - 1,
+			CLIB_CACHE_LINE_BYTES);
   for (j = 0; j < xd->tx_q_used; j++)
     {
       rv =
@@ -110,6 +112,9 @@ dpdk_device_setup (dpdk_device_t * xd)
 				  &xd->tx_conf);
       if (rv < 0)
 	dpdk_device_error (xd, "rte_eth_tx_queue_setup", rv);
+
+      if (xd->tx_q_used < tm->n_vlib_mains)
+	clib_spinlock_init (&vec_elt (xd->tx_queues, j).lock);
     }
 
   vec_validate_aligned (xd->rx_queues, xd->rx_q_used - 1,

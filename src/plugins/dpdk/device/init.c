@@ -609,13 +609,6 @@ dpdk_lib_init (dpdk_main_t * dm)
       else
 	rte_eth_macaddr_get (i, (void *) addr);
 
-      if (xd->tx_q_used < tm->n_vlib_mains)
-        for (int q = 0; q < xd->tx_q_used; q++)
-	  {
-	    dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
-	    clib_spinlock_init (&rxq->lock);
-	  }
-
       xd->port_id = i;
       xd->device_index = xd - dm->devices;
       xd->per_interface_next_index = ~0;

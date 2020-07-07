@@ -156,13 +156,21 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  clib_spinlock_t lock;
   u8 buffer_pool_index;
 } dpdk_rx_queue_t;
 
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  clib_spinlock_t lock;
+} dpdk_tx_queue_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
+  dpdk_rx_queue_t *rx_queues;
+  dpdk_tx_queue_t *tx_queues;
 
   /* Instance ID to access internal device array. */
   u32 device_index;
@@ -173,18 +181,16 @@ typedef struct
   /* next node index if we decide to steal the rx graph arc */
   u32 per_interface_next_index;
 
+  u16 rx_q_used;
+  u16 tx_q_used;
+  u16 flags;
+
   /* DPDK device port number */
   dpdk_portid_t port_id;
   dpdk_pmd_t pmd:8;
   i8 cpu_socket;
 
-  u16 flags;
-
-  dpdk_rx_queue_t *rx_queues;
-  u16 tx_q_used;
-
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
-  u16 rx_q_used;
   u16 nb_tx_desc;
   u16 nb_rx_desc;
 
