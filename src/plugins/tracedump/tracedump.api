@@ -1,0 +1,82 @@
+/*
+ * tracedump.api - streaming packet trace dump API
+ *
+ * Copyright (c) 2020 Cisco and/or its affiliates
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file tracedump.api
+ * @brief VPP control-plane API messages.
+ *
+ * This file defines VPP control-plane binary API messages which are generally
+ * called through a shared memory interface.
+ */
+
+/* Version and type recitations */
+
+option version = "0.1.0";
+
+service {
+    rpc trace_dump returns trace_dump_reply
+        stream trace_details;
+};
+
+define trace_dump {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+
+    /* Dispose of any cached data before we begin */
+    u8 clear_cache;
+
+    /* iterator positions, both ~0 to just clear the cache */
+    u32 thread_id;
+    u32 position;
+
+    /* Max number of replies per burst */
+    u32 max_records;
+};
+
+define trace_dump_reply {
+    u32 context;
+    i32 retval;
+    u32 last_thread_id;
+    u32 last_position;
+    u8 more_this_thread;
+    u8 more_threads;
+    u8 flush_only;
+    u8 done;
+};
+
+define trace_details {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+
+    /* Position in the cache of this record */
+    u32 thread_id;
+    u32 position;
+
+    /* More or not */
+    u8 more_this_thread;
+    u8 more_threads;
+    /* Needed when set ends in the middle of a batch */
+    u8 done;
+
+    string trace_data[];
+};
