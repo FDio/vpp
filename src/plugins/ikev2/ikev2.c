@@ -4120,6 +4120,7 @@ ikev2_mngr_process_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * csa,
 	  csa->time_to_expiration = 0;
 	  ikev2_delete_child_sa_internal (vm, sa, csa);
 	  res |= 1;
+	  return res;
 	}
     }
 
@@ -4161,8 +4162,10 @@ ikev2_mngr_process_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * csa,
 
       u32 *sas_in = NULL;
       vec_add1 (sas_in, csa->remote_sa_id);
+      vlib_worker_thread_barrier_sync (vm);
       ipsec_tun_protect_update (sw_if_index, NULL, csa->local_sa_id, sas_in);
       ipsec_sa_unlock_id (ikev2_flip_alternate_sa_bit (csa->remote_sa_id));
+      vlib_worker_thread_barrier_release (vm);
     }
 
   return res;
