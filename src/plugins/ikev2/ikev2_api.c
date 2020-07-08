@@ -32,6 +32,7 @@
 
 
 #define vl_endianfun		/* define message structures */
+#include <plugins/ikev2/ikev2.api.h>
 #include <plugins/ikev2/ikev2_types.api.h>
 #undef vl_endianfun
 
@@ -99,6 +100,21 @@ cp_responder (vl_api_ikev2_responder_t * vl_api_responder,
 	       sizeof (ip4_address_t));
 }
 
+void
+cp_sa_transofrm (vl_api_ikev2_sa_transform_t * vl_tr,
+		 ikev2_sa_transform_t * tr)
+{
+  vl_tr->transform_type = tr->type;
+  vl_tr->key_len = tr->key_len;
+  vl_tr->key_trunc = tr->key_trunc;
+  vl_tr->block_size = tr->block_size;
+  vl_tr->dh_group = tr->dh_group;
+  vl_tr->transform_type = tr->encr_type;
+  vl_tr->attrs_len = vec_len (tr->attrs);
+  if (vl_tr->attrs_len == 4)
+    clib_memcpy (vl_tr->attrs, tr->attrs, 4);
+}
+
 static void
 send_profile (ikev2_profile_t * profile, vl_api_registration_t * reg,
 	      u32 context)
@@ -160,6 +176,271 @@ vl_api_ikev2_profile_dump_t_handler (vl_api_ikev2_profile_dump_t * mp)
     send_profile (profile, reg, mp->context);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+send_sa (ikev2_sa_t * sa, vl_api_registration_t * reg, u32 context,
+	 u32 thread_index, u32 sa_index)
+{
+  vl_api_ikev2_sa_details_t *rmp = 0;
+  ikev2_sa_transform_t *tr;
+  rmp =
+    vl_msg_api_alloc (sizeof (*rmp) + vec_len (sa->i_nonce) +
+		      vec_len (sa->r_nonce));
+  clib_memset (rmp, 0, sizeof (*rmp));
+  ikev2_main_t *im = &ikev2_main;
+  rmp->_vl_msg_id = ntohs (VL_API_IKEV2_SA_DETAILS + im->msg_id_base);
+  rmp->context = context;
+
+  rmp->thread_index = thread_index;
+  rmp->sa_index = sa_index;
+  clib_memcpy (&rmp->sa.iaddr, &sa->iaddr, sizeof (rmp->sa.iaddr));
+  clib_memcpy (&rmp->sa.raddr, &sa->raddr, sizeof (rmp->sa.raddr));
+  rmp->sa.ispi = sa->ispi;
+  rmp->sa.rspi = sa->rspi;
+  rmp->sa.i_id.type = sa->i_id.type;
+  clib_memcpy (rmp->sa.i_id.data, sa->i_id.data, sizeof (rmp->sa.i_id.data));
+  rmp->sa.r_id.type = sa->r_id.type;
+  clib_memcpy (rmp->sa.r_id.data, sa->r_id.data, sizeof (rmp->sa.r_id.data));
+
+  tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
+  cp_sa_transofrm (&rmp->tr_encr, tr);
+
+  tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
+  cp_sa_transofrm (&rmp->tr_prf, tr);
+
+  tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
+  cp_sa_transofrm (&rmp->tr_integ, tr);
+
+  tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_DH);
+  cp_sa_transofrm (&rmp->tr_dh, tr);
+
+  rmp->sa.sk_d_len = vec_len (sa->sk_d);
+  clib_memcpy (&rmp->sa.sk_d, sa->sk_d, rmp->sa.sk_d_len);
+
+  rmp->sa.sk_ai_len = vec_len (sa->sk_ai);
+  clib_memcpy (&rmp->sa.sk_ai, sa->sk_ai, rmp->sa.sk_ai_len);
+
+  rmp->sa.sk_ar_len = vec_len (sa->sk_ar);
+  clib_memcpy (&rmp->sa.sk_ar, sa->sk_ar, rmp->sa.sk_ar_len);
+
+  rmp->sa.sk_ei_len = vec_len (sa->sk_ei);
+  clib_memcpy (&rmp->sa.sk_ei, sa->sk_ei, rmp->sa.sk_ei_len);
+
+  rmp->sa.sk_er_len = vec_len (sa->sk_er);
+  clib_memcpy (&rmp->sa.sk_er, sa->sk_er, rmp->sa.sk_er_len);
+
+  rmp->sa.sk_pi_len = vec_len (sa->sk_pi);
+  clib_memcpy (&rmp->sa.sk_pi, sa->sk_pi, rmp->sa.sk_pi_len);
+
+  rmp->sa.sk_pr_len = vec_len (sa->sk_pr);
+  clib_memcpy (&rmp->sa.sk_pr, sa->sk_pr, rmp->sa.sk_pr_len);
+
+  vl_api_ikev2_sa_t_endian (&rmp->sa);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_ikev2_sa_dump_t_handler (vl_api_ikev2_sa_dump_t * mp)
+{
+  vl_api_ikev2_sa_dump_t_endian (mp);
+  ikev2_main_t *km = &ikev2_main;
+  ikev2_main_per_thread_data_t *tkm;
+  ikev2_sa_t *sa;
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  vec_foreach (tkm, km->per_thread_data)
+  {
+    /* *INDENT-OFF* */
+    pool_foreach (sa, tkm->sas,
+    ({
+      send_sa (sa, reg, mp->context, tkm - km->per_thread_data, sa - tkm->sas);
+    }));
+    /* *INDENT-ON* */
+  }
+}
+
+
+static void
+send_child (ikev2_child_sa_t * child, vl_api_registration_t * reg,
+	    u32 context, u32 child_sa_index)
+{
+  vl_api_ikev2_child_sa_details_t *rmp = 0;
+  ikev2_sa_transform_t *tr;
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
+  ikev2_main_t *im = &ikev2_main;
+  rmp->_vl_msg_id = ntohs (VL_API_IKEV2_CHILD_SA_DETAILS + im->msg_id_base);
+  rmp->context = context;
+  rmp->child_sa_index = child_sa_index;
+  rmp->child_sa.i_proposals_spi =
+    child->i_proposals ? child->i_proposals[0].spi : 0;
+  rmp->child_sa.r_proposals_spi =
+    child->r_proposals ? child->r_proposals[0].spi : 0;
+
+  tr =
+    ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
+  cp_sa_transofrm (&rmp->tr_encr, tr);
+
+  tr =
+    ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
+  cp_sa_transofrm (&rmp->tr_integ, tr);
+
+  tr =
+    ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_ESN);
+  cp_sa_transofrm (&rmp->tr_esn, tr);
+
+  rmp->child_sa.sk_ei_len = vec_len (child->sk_ei);
+  clib_memcpy (&rmp->child_sa.sk_ei, child->sk_ei, rmp->child_sa.sk_ei_len);
+
+  rmp->child_sa.sk_er_len = vec_len (child->sk_er);
+  clib_memcpy (&rmp->child_sa.sk_er, child->sk_er, rmp->child_sa.sk_er_len);
+
+  if (vec_len (child->sk_ai))
+    {
+      rmp->child_sa.sk_ai_len = vec_len (child->sk_ai);
+      clib_memcpy (&rmp->child_sa.sk_ai, child->sk_ai,
+		   rmp->child_sa.sk_ai_len);
+
+      rmp->child_sa.sk_ar_len = vec_len (child->sk_ar);
+      clib_memcpy (&rmp->child_sa.sk_ar, child->sk_ar,
+		   rmp->child_sa.sk_ar_len);
+    }
+
+  vl_api_ikev2_child_sa_t_endian (&rmp->child_sa);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_ikev2_child_sa_dump_t_handler (vl_api_ikev2_child_sa_dump_t * mp)
+{
+  vl_api_ikev2_child_sa_dump_t_endian (mp);
+  ikev2_main_t *im = &ikev2_main;
+  ikev2_main_per_thread_data_t *tkm;
+  ikev2_sa_t *sa;
+  ikev2_child_sa_t *child;
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  if (vec_len (im->per_thread_data) <= mp->thread_index)
+    return;
+
+  tkm = vec_elt_at_index (im->per_thread_data, mp->thread_index);
+
+  if (pool_len (tkm->sas) <= mp->sa_index
+      || pool_is_free_index (tkm->sas, mp->sa_index))
+    return;
+
+  sa = pool_elt_at_index (tkm->sas, mp->sa_index);
+
+  vec_foreach (child, sa->childs)
+  {
+    u32 child_sa_index = child - sa->childs;
+    send_child (child, reg, mp->context, child_sa_index);
+  }
+}
+
+static void
+send_ts (ikev2_ts_t * ts, vl_api_registration_t * reg, u32 context)
+{
+  vl_api_ikev2_traffic_selector_details_t *rmp = 0;
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
+  ikev2_main_t *im = &ikev2_main;
+  rmp->_vl_msg_id =
+    ntohs (VL_API_IKEV2_TRAFFIC_SELECTOR_DETAILS + im->msg_id_base);
+  rmp->context = context;
+
+  cp_ts (&rmp->ts, ts);
+
+  vl_api_ikev2_ts_t_endian (&rmp->ts);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+  vl_api_ikev2_traffic_selector_dump_t_handler
+  (vl_api_ikev2_traffic_selector_dump_t * mp)
+{
+  vl_api_ikev2_traffic_selector_dump_t_endian (mp);
+  ikev2_main_t *im = &ikev2_main;
+  ikev2_main_per_thread_data_t *tkm;
+  ikev2_sa_t *sa;
+  ikev2_child_sa_t *child;
+  ikev2_ts_t *ts;
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  if (vec_len (im->per_thread_data) <= mp->thread_index)
+    return;
+
+  tkm = vec_elt_at_index (im->per_thread_data, mp->thread_index);
+
+  if (pool_len (tkm->sas) <= mp->sa_index
+      || pool_is_free_index (tkm->sas, mp->sa_index))
+    return;
+
+  sa = pool_elt_at_index (tkm->sas, mp->sa_index);
+
+  if (vec_len (sa->childs) <= mp->child_sa_index)
+    return;
+
+  child = vec_elt_at_index (sa->childs, mp->child_sa_index);
+
+  vec_foreach (ts, mp->is_initiator ? child->tsi : child->tsr)
+  {
+    send_ts (ts, reg, mp->context);
+  }
+}
+
+static void
+send_nonce (u8 * nonce, vl_api_registration_t * reg, u32 context)
+{
+  vl_api_ikev2_nonce_get_reply_t *rmp = 0;
+  int data_len = vec_len (nonce);
+  rmp = vl_msg_api_alloc (sizeof (*rmp) + data_len);
+  clib_memset (rmp, 0, sizeof (*rmp) + data_len);
+  ikev2_main_t *im = &ikev2_main;
+  rmp->_vl_msg_id = ntohs (VL_API_IKEV2_NONCE_GET_REPLY + im->msg_id_base);
+  rmp->context = context;
+  rmp->data_len = clib_host_to_net_u32 (data_len);
+  clib_memcpy (rmp->nonce, nonce, data_len);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_ikev2_nonce_get_t_handler (vl_api_ikev2_nonce_get_t * mp)
+{
+  vl_api_ikev2_nonce_get_t_endian (mp);
+  ikev2_main_t *im = &ikev2_main;
+  ikev2_main_per_thread_data_t *tkm;
+  ikev2_sa_t *sa;
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  if (vec_len (im->per_thread_data) <= mp->thread_index)
+    return;
+
+  tkm = vec_elt_at_index (im->per_thread_data, mp->thread_index);
+
+  if (pool_len (tkm->sas) <= mp->sa_index
+      || pool_is_free_index (tkm->sas, mp->sa_index))
+    return;
+
+  sa = pool_elt_at_index (tkm->sas, mp->sa_index);
+  send_nonce (mp->is_initiator ? sa->i_nonce : sa->r_nonce, reg, mp->context);
 }
 
 static void
