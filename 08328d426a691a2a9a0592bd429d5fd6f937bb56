@@ -22,6 +22,30 @@
       "revId": "08328d426a691a2a9a0592bd429d5fd6f937bb56",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1e3e20b6_47699aef",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-08T12:05:39Z",
+      "side": 1,
+      "message": "Correct, but this is the purpose of clib_spinlock_lock_if_init():\nstatic_always_inline void\nclib_spinlock_lock_if_init (clib_spinlock_t * p)\n{\n  if (PREDICT_FALSE (*p !\u003d 0))\n    clib_spinlock_lock (p);\n}",
+      "parentUuid": "faf07696_2e75a1cb",
+      "range": {
+        "startLine": 172,
+        "startChar": 6,
+        "endLine": 172,
+        "endChar": 32
+      },
+      "revId": "08328d426a691a2a9a0592bd429d5fd6f937bb56",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
