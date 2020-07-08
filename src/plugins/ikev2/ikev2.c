@@ -149,9 +149,8 @@ ikev2_select_proposal (ikev2_sa_proposal_t * proposals,
   if (prot_id == IKEV2_PROTOCOL_IKE)
     {
       mandatory_bitmap = (1 << IKEV2_TRANSFORM_TYPE_ENCR) |
-	(1 << IKEV2_TRANSFORM_TYPE_PRF) |
-	(1 << IKEV2_TRANSFORM_TYPE_INTEG) | (1 << IKEV2_TRANSFORM_TYPE_DH);
-      optional_bitmap = mandatory_bitmap;
+	(1 << IKEV2_TRANSFORM_TYPE_PRF) | (1 << IKEV2_TRANSFORM_TYPE_DH);
+      optional_bitmap = mandatory_bitmap | (1 << IKEV2_TRANSFORM_TYPE_INTEG);
     }
   else if (prot_id == IKEV2_PROTOCOL_ESP)
     {
@@ -459,7 +458,7 @@ ikev2_calc_keys (ikev2_sa_t * sa)
   /* calculate SKEYSEED = prf(Ni | Nr, g^ir) */
   u8 *skeyseed = 0;
   u8 *s = 0;
-  u16 integ_key_len = 0;
+  u16 integ_key_len = 0, salt_len = 0;
   ikev2_sa_transform_t *tr_encr, *tr_prf, *tr_integ;
   tr_encr =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
@@ -470,6 +469,8 @@ ikev2_calc_keys (ikev2_sa_t * sa)
 
   if (tr_integ)
     integ_key_len = tr_integ->key_len;
+  else
+    salt_len = sizeof (u32);
 
   vec_append (s, sa->i_nonce);
   vec_append (s, sa->r_nonce);
@@ -487,7 +488,8 @@ ikev2_calc_keys (ikev2_sa_t * sa)
   int len = tr_prf->key_trunc +	/* SK_d */
     integ_key_len * 2 +		/* SK_ai, SK_ar */
     tr_encr->key_len * 2 +	/* SK_ei, SK_er */
-    tr_prf->key_len * 2;	/* SK_pi, SK_pr */
+    tr_prf->key_len * 2 +	/* SK_pi, SK_pr */
+    salt_len * 2;
 
   keymat = ikev2_calc_prfplus (tr_prf, skeyseed, s, len);
   vec_free (skeyseed);
@@ -514,14 +516,14 @@ ikev2_calc_keys (ikev2_sa_t * sa)
     }
 
   /* SK_ei */
-  sa->sk_ei = vec_new (u8, tr_encr->key_len);
-  clib_memcpy_fast (sa->sk_ei, keymat + pos, tr_encr->key_len);
-  pos += tr_encr->key_len;
+  sa->sk_ei = vec_new (u8, tr_encr->key_len + salt_len);
+  clib_memcpy_fast (sa->sk_ei, keymat + pos, tr_encr->key_len + salt_len);
+  pos += tr_encr->key_len + salt_len;
 
   /* SK_er */
-  sa->sk_er = vec_new (u8, tr_encr->key_len);
-  clib_memcpy_fast (sa->sk_er, keymat + pos, tr_encr->key_len);
-  pos += tr_encr->key_len;
+  sa->sk_er = vec_new (u8, tr_encr->key_len + salt_len);
+  clib_memcpy_fast (sa->sk_er, keymat + pos, tr_encr->key_len + salt_len);
+  pos += tr_encr->key_len + salt_len;
 
   /* SK_pi */
   sa->sk_pi = vec_new (u8, tr_prf->key_len);
@@ -833,17 +835,22 @@ ikev2_process_sa_init_resp (vlib_main_t * vm, ikev2_sa_t * sa,
 static u8 *
 ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike, u8 * payload)
 {
+  ikev2_main_per_thread_data_t *ptd = ikev2_get_per_thread_data ();
   int p = 0;
-  u8 last_payload = 0;
+  u8 last_payload = 0, *plaintext = 0;
   u8 *hmac = 0;
   u32 len = clib_net_to_host_u32 (ike->length);
   ike_payload_header_t *ikep = 0;
   u32 plen = 0;
   ikev2_sa_transform_t *tr_integ;
+  ikev2_sa_transform_t *tr_encr;
   tr_integ =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
+  tr_encr =
+    ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
+  int is_aead = tr_encr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16;
 
-  if (!sa->sk_ar || !sa->sk_ai)
+  if ((!sa->sk_ar || !sa->sk_ai) && !is_aead)
     return 0;
 
   while (p < len &&
@@ -880,21 +887,45 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike, u8 * payload)
       return 0;
     }
 
-  hmac =
-    ikev2_calc_integr (tr_integ, sa->is_initiator ? sa->sk_ar : sa->sk_ai,
-		       (u8 *) ike, len - tr_integ->key_trunc);
-
-  plen = plen - sizeof (*ikep) - tr_integ->key_trunc;
-
-  if (memcmp (hmac, &ikep->payload[plen], tr_integ->key_trunc))
+  if (is_aead)
     {
-      ikev2_elog_error ("message integrity check failed");
-      vec_free (hmac);
-      return 0;
-    }
-  vec_free (hmac);
+      if (plen < sizeof (*ikep) + IKEV2_GCM_ICV_SIZE)
+	return 0;
 
-  return ikev2_decrypt_data (sa, ikep->payload, plen);
+      plen -= sizeof (*ikep) + IKEV2_GCM_ICV_SIZE;
+      u8 *aad = (u8 *) ike;
+      u32 aad_len = ikep->payload - aad;
+      u8 *tag = ikep->payload + plen;
+
+      plaintext = ikev2_decrypt_aead_data (ptd, sa, tr_encr, ikep->payload,
+					   plen, aad, aad_len, tag);
+    }
+  else
+    {
+      if (len < tr_integ->key_trunc)
+	return 0;
+
+      hmac =
+	ikev2_calc_integr (tr_integ, sa->is_initiator ? sa->sk_ar : sa->sk_ai,
+			   (u8 *) ike, len - tr_integ->key_trunc);
+
+      if (plen < sizeof (*ikep) + tr_integ->key_trunc)
+	return 0;
+
+      plen = plen - sizeof (*ikep) - tr_integ->key_trunc;
+
+      if (memcmp (hmac, &ikep->payload[plen], tr_integ->key_trunc))
+	{
+	  ikev2_elog_error ("message integrity check failed");
+	  vec_free (hmac);
+	  return 0;
+	}
+      vec_free (hmac);
+
+      plaintext = ikev2_decrypt_data (ptd, sa, tr_encr, ikep->payload, plen);
+    }
+
+  return plaintext;
 }
 
 static_always_inline int
@@ -2296,7 +2327,7 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user,
     }
   else
     {
-
+      ikev2_main_per_thread_data_t *ptd = ikev2_get_per_thread_data ();
       ikev2_payload_chain_add_padding (chain, tr_encr->block_size);
 
       /* SK payload */
@@ -2304,24 +2335,40 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user,
       ph = (ike_payload_header_t *) & ike->payload[0];
       ph->nextpayload = chain->first_payload_type;
       ph->flags = 0;
-      int enc_len = ikev2_encrypt_data (sa, chain->data, ph->payload);
-      plen += enc_len;
+      int is_aead =
+	tr_encr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16;
+      int iv_len = is_aead ? IKEV2_GCM_IV_SIZE : tr_encr->block_size;
+      plen += vec_len (chain->data) + iv_len;
 
-      /* add space for hmac */
-      plen += tr_integ->key_trunc;
+      /* add space for hmac/tag */
+      if (tr_integ)
+	plen += tr_integ->key_trunc;
+      else
+	plen += IKEV2_GCM_ICV_SIZE;
       tlen += plen;
 
       /* payload and total length */
       ph->length = clib_host_to_net_u16 (plen);
       ike->length = clib_host_to_net_u32 (tlen);
 
-      /* calc integrity data for whole packet except hash itself */
-      integ =
-	ikev2_calc_integr (tr_integ, sa->is_initiator ? sa->sk_ai : sa->sk_ar,
-			   (u8 *) ike, tlen - tr_integ->key_trunc);
-
-      clib_memcpy_fast (ike->payload + tlen - tr_integ->key_trunc -
-			sizeof (*ike), integ, tr_integ->key_trunc);
+      if (is_aead)
+	{
+	  ikev2_encrypt_aead_data (ptd, sa, tr_encr, chain->data,
+				   ph->payload, (u8 *) ike,
+				   sizeof (*ike) + sizeof (*ph),
+				   ph->payload + plen - sizeof (*ph) -
+				   IKEV2_GCM_ICV_SIZE);
+	}
+      else
+	{
+	  ikev2_encrypt_data (ptd, sa, tr_encr, chain->data, ph->payload);
+	  integ =
+	    ikev2_calc_integr (tr_integ,
+			       sa->is_initiator ? sa->sk_ai : sa->sk_ar,
+			       (u8 *) ike, tlen - tr_integ->key_trunc);
+	  clib_memcpy_fast (ike->payload + tlen - tr_integ->key_trunc -
+			    sizeof (*ike), integ, tr_integ->key_trunc);
+	}
 
       /* store whole IKE payload - needed for retransmit */
       vec_free (sa->last_res_packet_data);
@@ -2988,7 +3035,7 @@ ikev2_set_initiator_proposals (vlib_main_t * vm, ikev2_sa_t * sa,
       return r;
     }
 
-  if (is_ike || IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16 != ts->crypto_alg)
+  if (IKEV2_TRANSFORM_INTEG_TYPE_NONE != ts->integ_alg)
     {
       /* Integrity */
       error = 1;

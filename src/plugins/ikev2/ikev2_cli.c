@@ -88,9 +88,12 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
 
       vlib_cli_output(vm, "  SK_d    %U",
                       format_hex_bytes, sa->sk_d,  vec_len(sa->sk_d));
-      vlib_cli_output(vm, "  SK_a  i:%U\n        r:%U",
-                      format_hex_bytes, sa->sk_ai, vec_len(sa->sk_ai),
-                      format_hex_bytes, sa->sk_ar, vec_len(sa->sk_ar));
+      if (sa->sk_ai)
+        {
+          vlib_cli_output(vm, "  SK_a  i:%U\n        r:%U",
+                          format_hex_bytes, sa->sk_ai, vec_len(sa->sk_ai),
+                          format_hex_bytes, sa->sk_ar, vec_len(sa->sk_ar));
+        }
       vlib_cli_output(vm, "  SK_e  i:%U\n        r:%U",
                       format_hex_bytes, sa->sk_ei, vec_len(sa->sk_ei),
                       format_hex_bytes, sa->sk_er, vec_len(sa->sk_er));
@@ -349,6 +352,20 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	{
 	  r =
 	    ikev2_set_profile_ike_transforms (vm, name, crypto_alg, integ_alg,
+					      dh_type, tmp1);
+	  goto done;
+	}
+      else
+	if (unformat
+	    (line_input,
+	     "set %U ike-crypto-alg %U %u ike-dh %U",
+	     unformat_token, valid_chars, &name,
+	     unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1,
+	     unformat_ikev2_transform_dh_type, &dh_type))
+	{
+	  r =
+	    ikev2_set_profile_ike_transforms (vm, name, crypto_alg,
+					      IKEV2_TRANSFORM_INTEG_TYPE_NONE,
 					      dh_type, tmp1);
 	  goto done;
 	}
