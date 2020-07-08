@@ -64,6 +64,145 @@ define ikev2_profile_details
   option status="in_progress";
 };
 
+/** \brief Dump all sa
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ikev2_sa_dump
+{
+  u32 client_index;
+  u32 context;
+
+  option status = "in_progress";
+};
+
+/** \brief Details about all sa
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+
+    @param sa - sa element with encapsulated other attributes
+*/
+
+define ikev2_sa_details
+{
+  u32 context;
+  i32 retval;
+
+  vl_api_ikev2_sa_t sa;
+  option status = "in_progress";
+};
+
+/** \brief Dump specific child
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param thread_index - index of specific thread
+    @param sa_index - index of specific sa of specific thread
+*/
+define ikev2_child_sa_dump
+{
+  u32 client_index;
+  u32 context;
+
+  u32 thread_index;
+  u32 sa_index;
+  option vat_help = "thread_index <index> sa_index <index>";
+  option status = "in_progress";
+};
+
+/** \brief Dump specific sa child
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+
+    @param child_sa - specific sa child element with encapsulated other attributes
+*/
+
+define ikev2_child_sa_details
+{
+  u32 context;
+  i32 retval;
+
+  vl_api_ikev2_child_sa_t child_sa;
+  option status = "in_progress";
+};
+
+/** \brief get specific nonce
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param is_initiator - specify type initiator|responder of nonce
+    @param thread_index - index of specific thread
+    @param sa_index - index of specific sa of specific thread
+*/
+
+define ikev2_nonce_get
+{
+  u32 client_index;
+  u32 context;
+
+  bool is_initiator;
+  u32 thread_index;
+  u32 sa_index;
+  option vat_help = "initiator|responder thread_index <index> sa_index <index>";
+  option status = "in_progress";
+};
+
+/** \brief reply on specific nonce
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+
+    @param data_len - lenth of bytes of nonce
+    @param nonce - data of specific nonce
+*/
+
+define ikev2_nonce_get_reply
+{
+  u32 context;
+  i32 retval;
+
+  u32 data_len;
+  u8 nonce[data_len];
+  option status = "in_progress";
+};
+
+/** \brief dump specific traffic selector
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param is_initiator - specify type initiator|responder of nonce
+    @param thread_index - index of specific thread
+    @param sa_index - index of specific sa of specific thread
+    @param child_sa_index - index of specific sa child of specific sa
+*/
+
+define ikev2_traffic_selector_dump
+{
+  u32 client_index;
+  u32 context;
+
+  bool is_initiator;
+  u32 thread_index;
+  u32 sa_index;
+  u32 child_sa_index;
+  option vat_help = "initiator|responder thread_index <index> sa_index <index> child_sa_index <index>";
+  option status = "in_progress";
+};
+
+/** \brief details on specific traffic selector
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+
+    @param ts - specific traffic selector
+*/
+
+define ikev2_traffic_selector_details
+{
+  u32 context;
+  i32 retval;
+
+  vl_api_ikev2_ts_t ts;
+  option status = "in_progress";
+};
 
 /** \brief IKEv2: Add/delete profile
     @param client_index - opaque cookie to identify the sender
