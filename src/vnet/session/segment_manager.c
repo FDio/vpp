@@ -194,7 +194,7 @@ segment_manager_del_segment (segment_manager_t * sm, fifo_segment_t * fs)
     {
       clib_valloc_free (&smm->va_allocator, fs->ssvm.requested_va);
 
-      if (sm->app_wrk_index != SEGMENT_MANAGER_INVALID_APP_INDEX)
+      if (!segment_manager_app_detached (sm))
 	{
 	  app_worker_t *app_wrk;
 	  u64 segment_handle;

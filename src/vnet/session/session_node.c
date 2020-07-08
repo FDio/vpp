@@ -49,9 +49,7 @@ session_mq_listen_handler (void *data)
 
   clib_memset (a, 0, sizeof (*a));
   a->sep.is_ip4 = mp->is_ip4;
-  clib_memcpy_fast (&a->sep.ip, &mp->ip, sizeof (mp->ip));
-  if (mp->is_ip4)
-    ip46_address_mask_ip4 (&a->sep.ip);
+  ip_copy (&a->sep.ip, &mp->ip, mp->is_ip4);
   a->sep.port = mp->port;
   a->sep.fib_index = mp->vrf;
   a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;

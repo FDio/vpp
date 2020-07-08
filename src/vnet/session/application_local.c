@@ -86,6 +86,7 @@ ct_session_endpoint (session_t * ll, session_endpoint_t * sep)
   sep->transport_proto = ct->actual_tp;
   sep->port = ct->c_lcl_port;
   sep->is_ip4 = ct->c_is_ip4;
+  ip_copy (&sep->ip, &ct->c_lcl_ip, ct->c_is_ip4);
 }
 
 int
