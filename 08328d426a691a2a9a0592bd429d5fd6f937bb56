@@ -46,6 +46,30 @@
       "revId": "08328d426a691a2a9a0592bd429d5fd6f937bb56",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "26394bf2_923ee332",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-07-08T13:08:08Z",
+      "side": 1,
+      "message": "Ah, ok. Uninitialized lock acts as a marker to not use locking.\nIt works, because vec_validate_aligned zeroes the content, so tx_queues is created with *p\u003d\u003d0.",
+      "parentUuid": "1e3e20b6_47699aef",
+      "range": {
+        "startLine": 172,
+        "startChar": 6,
+        "endLine": 172,
+        "endChar": 32
+      },
+      "revId": "08328d426a691a2a9a0592bd429d5fd6f937bb56",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
