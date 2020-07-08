@@ -112,6 +112,48 @@ vtep4_check (vtep_table_t * t, vlib_buffer_t * b0, ip4_header_t * ip40,
   return VTEP_CHECK_PASS;
 }
 
+typedef struct
+{
+  vtep4_key_t vtep4_cache[8];
+  int idx;
+} vtep4_cache_t;
+
+always_inline u8
+vtep4_check_vector (vtep_table_t * t, vlib_buffer_t * b0, ip4_header_t * ip40,
+		    vtep4_key_t * last_k4, vtep4_cache_t * vtep4_u512)
+{
+  vtep4_key_t k4;
+  k4.addr.as_u32 = ip40->dst_address.as_u32;
+  k4.fib_index = vlib_buffer_get_ip4_fib_index (b0);
+
+  if (PREDICT_TRUE (k4.as_u64 == last_k4->as_u64))
+    return VTEP_CHECK_PASS_UNCHANGED;
+
+#ifdef CLIB_HAVE_VEC512
+  u64x8 k4_u64x8 = u64x8_splat (k4.as_u64);
+  u64x8 cache = u64x8_load_aligned (vtep4_u512->vtep4_cache);
+  u8 result = u64x8_cmpeq_mask (cache, k4_u64x8);
+  if (PREDICT_TRUE (result != 0))
+    {
+      k4.as_u64 =
+	vtep4_u512->vtep4_cache[count_trailing_zeros (result)].as_u64;
+      return VTEP_CHECK_PASS_UNCHANGED;
+    }
+#endif
+
+  if (PREDICT_FALSE (!hash_get (t->vtep4, k4.as_u64)))
+    return VTEP_CHECK_FAIL;
+
+  last_k4->as_u64 = k4.as_u64;
+
+#ifdef CLIB_HAVE_VEC512
+  vtep4_u512->vtep4_cache[vtep4_u512->idx].as_u64 = k4.as_u64;
+  vtep4_u512->idx = (vtep4_u512->idx + 1) & 0x7;
+#endif
+
+  return VTEP_CHECK_PASS;
+}
+
 always_inline u8
 vtep6_check (vtep_table_t * t, vlib_buffer_t * b0, ip6_header_t * ip60,
 	     vtep6_key_t * last_k6)

@@ -458,10 +458,18 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 				   matching a local VTEP address */
   vtep6_key_t last_vtep6;	/* last IPv6 address / fib index
 				   matching a local VTEP address */
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+
+#ifdef CLIB_HAVE_VEC512
+  vtep4_cache_t vtep4_u512;
+  clib_memset (&vtep4_u512, 0, sizeof (vtep4_u512));
+#endif
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
+
+  vlib_get_buffers (vm, from, bufs, n_left_from);
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip4_forward_next_trace (vm, node, frame, VLIB_TX);
@@ -489,16 +497,11 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t *p2, *p3;
+	    vlib_prefetch_buffer_header (b[2], LOAD);
+	    vlib_prefetch_buffer_header (b[3], LOAD);
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
-
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
-
-	    CLIB_PREFETCH (p2->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[2]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[3]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
 	  bi0 = to_next[0] = from[0];
@@ -508,8 +511,9 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	  to_next += 2;
 	  n_left_to_next -= 2;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
+	  b0 = b[0];
+	  b1 = b[1];
+	  b += 2;
 	  if (is_ip4)
 	    {
 	      ip40 = vlib_buffer_get_current (b0);
@@ -553,7 +557,12 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	  /* Validate DIP against VTEPs */
 	  if (is_ip4)
 	    {
+#ifdef CLIB_HAVE_VEC512
+	      if (!vtep4_check_vector
+		  (&vxm->vtep_table, b0, ip40, &last_vtep4, &vtep4_u512))
+#else
 	      if (!vtep4_check (&vxm->vtep_table, b0, ip40, &last_vtep4))
+#endif
 		goto exit0;	/* no local VTEP for VXLAN packet */
 	    }
 	  else
@@ -627,7 +636,12 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	  /* Validate DIP against VTEPs */
 	  if (is_ip4)
 	    {
+#ifdef CLIB_HAVE_VEC512
+	      if (!vtep4_check_vector
+		  (&vxm->vtep_table, b1, ip41, &last_vtep4, &vtep4_u512))
+#else
 	      if (!vtep4_check (&vxm->vtep_table, b1, ip41, &last_vtep4))
+#endif
 		goto exit1;	/* no local VTEP for VXLAN packet */
 	    }
 	  else
@@ -707,7 +721,8 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	  to_next += 1;
 	  n_left_to_next -= 1;
 
-	  b0 = vlib_get_buffer (vm, bi0);
+	  b0 = b[0];
+	  b++;
 	  if (is_ip4)
 	    ip40 = vlib_buffer_get_current (b0);
 	  else
@@ -737,7 +752,12 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	  /* Validate DIP against VTEPs */
 	  if (is_ip4)
 	    {
+#ifdef CLIB_HAVE_VEC512
+	      if (!vtep4_check_vector
+		  (&vxm->vtep_table, b0, ip40, &last_vtep4, &vtep4_u512))
+#else
 	      if (!vtep4_check (&vxm->vtep_table, b0, ip40, &last_vtep4))
+#endif
 		goto exit;	/* no local VTEP for VXLAN packet */
 	    }
 	  else
