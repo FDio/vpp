@@ -1,6 +1,6 @@
 /* Hey Emacs use -*- mode: C -*- */
 /*
- * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Copyright (c) 2015-2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -64,6 +64,129 @@ define ikev2_profile_details
   option status="in_progress";
 };
 
+/** \brief Dump all SAs
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ikev2_sa_dump
+{
+  u32 client_index;
+  u32 context;
+
+  option status = "in_progress";
+};
+
+/** \brief Details about IKE SA
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param sa - SA data
+*/
+define ikev2_sa_details
+{
+  u32 context;
+  i32 retval;
+
+  vl_api_ikev2_sa_t sa;
+  option status = "in_progress";
+};
+
+/** \brief Dump child SA of specific SA
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sa_index - index of specific sa
+*/
+define ikev2_child_sa_dump
+{
+  u32 client_index;
+  u32 context;
+
+  u32 sa_index;
+  option vat_help = "sa_index <index>";
+  option status = "in_progress";
+};
+
+/** \brief Child SA details
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param child_sa - child SA data
+*/
+define ikev2_child_sa_details
+{
+  u32 context;
+  i32 retval;
+
+  vl_api_ikev2_child_sa_t child_sa;
+  option status = "in_progress";
+};
+
+/** \brief get specific nonce
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_initiator - specify type initiator|responder of nonce
+    @param sa_index - index of specific sa
+*/
+define ikev2_nonce_get
+{
+  u32 client_index;
+  u32 context;
+
+  bool is_initiator;
+  u32 sa_index;
+  option vat_help = "initiator|responder sa_index <index>";
+  option status = "in_progress";
+};
+
+/** \brief reply on specific nonce
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param data_len - nonce length
+    @param nonce - nonce data
+*/
+
+define ikev2_nonce_get_reply
+{
+  u32 context;
+  i32 retval;
+
+  u32 data_len;
+  u8 nonce[data_len];
+  option status = "in_progress";
+};
+
+/** \brief dump traffic selectors
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_initiator - specify type initiator|responder of nonce
+    @param sa_index - index of specific sa
+    @param child_sa_index - index of specific sa child of specific sa
+*/
+
+define ikev2_traffic_selector_dump
+{
+  u32 client_index;
+  u32 context;
+
+  bool is_initiator;
+  u32 sa_index;
+  u32 child_sa_index;
+  option vat_help = "initiator|responder sa_index <index> child_sa_index <index>";
+  option status = "in_progress";
+};
+
+/** \brief details on specific traffic selector
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param ts - traffic selector data
+*/
+
+define ikev2_traffic_selector_details
+{
+  u32 context;
+  i32 retval;
+
+  vl_api_ikev2_ts_t ts;
+  option status = "in_progress";
+};
 
 /** \brief IKEv2: Add/delete profile
     @param client_index - opaque cookie to identify the sender
