@@ -311,6 +311,48 @@ VLIB_CLI_COMMAND (show_crypto_async_handlers_command, static) =
 
 
 static clib_error_t *
+show_crypto_async_status_command_fn (vlib_main_t * vm,
+				     unformat_input_t * input,
+				     vlib_cli_command_t * cmd)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  u32 skip_master = vlib_num_workers () > 0;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  unformat_input_t _line_input, *line_input = &_line_input;
+  int i;
+
+  if (unformat_user (input, unformat_line_input, line_input))
+    unformat_free (line_input);
+
+  vlib_cli_output (vm, "Crypto async dispatch mode: %s",
+		   cm->dispatch_mode ==
+		   VNET_CRYPTO_ASYNC_DISPATCH_POLLING ? "POLLING" :
+		   "INTERRUPT");
+
+  for (i = skip_master; i < tm->n_vlib_mains; i++)
+    {
+      vlib_node_state_t state =
+	vlib_node_get_state (vlib_mains[i], cm->crypto_node_index);
+      if (state == VLIB_NODE_STATE_POLLING)
+	vlib_cli_output (vm, "threadId: %-6d POLLING", i);
+      if (state == VLIB_NODE_STATE_INTERRUPT)
+	vlib_cli_output (vm, "threadId: %-6d INTERRUPT", i);
+      if (state == VLIB_NODE_STATE_DISABLED)
+	vlib_cli_output (vm, "threadId: %-6d DISABLED", i);
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_crypto_async_status_command, static) =
+{
+  .path = "show crypto async status",
+  .short_help = "show crypto async status",
+  .function = show_crypto_async_status_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
 set_crypto_async_handler_command_fn (vlib_main_t * vm,
 				     unformat_input_t * input,
 				     vlib_cli_command_t * cmd)
@@ -393,6 +435,37 @@ VLIB_CLI_COMMAND (set_crypto_async_handler_command, static) =
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+set_crypto_async_dispatch_polling_command_fn (vlib_main_t * vm,
+					      unformat_input_t * input,
+					      vlib_cli_command_t * cmd)
+{
+  vnet_crypto_set_async_dispatch_mode (VNET_CRYPTO_ASYNC_DISPATCH_POLLING);
+  return 0;
+}
+
+static clib_error_t *
+set_crypto_async_dispatch_interrupt_command_fn (vlib_main_t * vm,
+						unformat_input_t * input,
+						vlib_cli_command_t * cmd)
+{
+  vnet_crypto_set_async_dispatch_mode (VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_crypto_async_dispatch_polling_command, static) =
+{
+  .path = "set crypto async dispatch polling",
+  .short_help = "set crypto async dispatch polling|interrupt",
+  .function = set_crypto_async_dispatch_polling_command_fn,
+};
+VLIB_CLI_COMMAND (set_crypto_async_dispatch_interrupt_command, static) =
+{
+  .path = "set crypto async dispatch interrupt",
+  .short_help = "set crypto async dispatch polling|interrupt",
+  .function = set_crypto_async_dispatch_interrupt_command_fn,
+};
 /*
  * fd.io coding-style-patch-verification: ON
  *
