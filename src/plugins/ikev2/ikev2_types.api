@@ -77,3 +77,74 @@ typedef ikev2_profile
   u8 udp_encap;
   vl_api_ikev2_auth_t auth;
 };
+
+typedef ikev2_sa_transform
+{
+  u8 transform_type;
+  u16 transform_id;
+  u16 key_len;
+  u16 key_trunc;
+  u16 block_size;
+  u8 dh_group;
+};
+
+typedef ikev2_child_sa
+{
+  u32 i_spi;
+  u32 r_spi;
+  u8 sk_d[64];
+  u8 sk_d_len;
+  u8 sk_ai[64];
+  u8 sk_ai_len;
+  u8 sk_ar[64];
+  u8 sk_ar_len;
+  u8 sk_ei[64];
+  u8 sk_ei_len;
+  u8 sk_er[64];
+  u8 sk_er_len;
+  u8 sk_pi[64];
+  u8 sk_pi_len;
+  u8 sk_pr[64];
+  u8 sk_pr_len;
+
+  vl_api_ikev2_sa_transform_t tr_encr;
+  vl_api_ikev2_sa_transform_t tr_integ;
+  vl_api_ikev2_sa_transform_t tr_esn;
+  u32 child_sa_index;
+};
+
+typedef ikev2_sa
+{
+  vl_api_ip4_address_t  iaddr;
+  vl_api_ip4_address_t  raddr;
+  u64 ispi;
+  u64 rspi;
+
+  /* keys */
+  u8 sk_d[64];
+  u8 sk_d_len;
+  u8 sk_ai[64];
+  u8 sk_ai_len;
+  u8 sk_ar[64];
+  u8 sk_ar_len;
+  u8 sk_ei[64];
+  u8 sk_ei_len;
+  u8 sk_er[64];
+  u8 sk_er_len;
+  u8 sk_pi[64];
+  u8 sk_pi_len;
+  u8 sk_pr[64];
+  u8 sk_pr_len;
+
+  /* ID */
+  vl_api_ikev2_id_t i_id;
+  vl_api_ikev2_id_t r_id;
+
+  u32 thread_index;
+  u32 sa_index;
+
+  vl_api_ikev2_sa_transform_t tr_encr;
+  vl_api_ikev2_sa_transform_t tr_prf;
+  vl_api_ikev2_sa_transform_t tr_integ;
+  vl_api_ikev2_sa_transform_t tr_dh;
+};
