@@ -706,7 +706,8 @@ cryptodev_get_ring_head (struct rte_ring * ring)
 }
 
 static_always_inline vnet_crypto_async_frame_t *
-cryptodev_frame_dequeue (vlib_main_t * vm)
+cryptodev_frame_dequeue (vlib_main_t * vm, u32 * nb_elts_processed,
+			 u32 * enqueue_thread_idx)
 {
   cryptodev_main_t *cmt = &cryptodev_main;
   cryptodev_numa_data_t *numa = cmt->per_numa_data + vm->numa_node;
@@ -768,7 +769,8 @@ cryptodev_frame_dequeue (vlib_main_t * vm)
     VNET_CRYPTO_FRAME_STATE_SUCCESS : VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
 
   rte_mempool_put_bulk (numa->cop_pool, (void **) cet->cops, frame->n_elts);
-
+  *nb_elts_processed = frame->n_elts;
+  *enqueue_thread_idx = frame->enqueue_thread_index;
   return frame;
 }
 

@@ -446,18 +446,20 @@ vnet_crypto_key_add_linked (vlib_main_t * vm,
 clib_error_t *
 crypto_dispatch_enable_disable (int is_enable)
 {
-  vlib_main_t *vm = vlib_get_main ();
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "crypto-dispatch");
   vnet_crypto_main_t *cm = &crypto_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
   u32 skip_master = vlib_num_workers () > 0, i;
-  u32 state_change = 0;
-  vlib_node_state_t state;
+  vlib_node_state_t state = VLIB_NODE_STATE_DISABLED;
+  u8 state_change = 0;
 
+  CLIB_MEMORY_STORE_BARRIER ();
   if (is_enable && cm->async_refcnt > 0)
     {
       state_change = 1;
-      state = VLIB_NODE_STATE_POLLING;
+      state =
+	cm->dispatch_mode ==
+	VNET_CRYPTO_ASYNC_DISPATCH_POLLING ? VLIB_NODE_STATE_POLLING :
+	VLIB_NODE_STATE_INTERRUPT;
     }
 
   if (!is_enable && cm->async_refcnt == 0)
@@ -468,8 +470,11 @@ crypto_dispatch_enable_disable (int is_enable)
 
   if (state_change)
     for (i = skip_master; i < tm->n_vlib_mains; i++)
-      vlib_node_set_state (vlib_mains[i], node->index, state);
-
+      {
+	if (state !=
+	    vlib_node_get_state (vlib_mains[i], cm->crypto_node_index))
+	  vlib_node_set_state (vlib_mains[i], cm->crypto_node_index, state);
+      }
   return 0;
 }
 
@@ -553,20 +558,20 @@ vnet_crypto_register_post_node (vlib_main_t * vm, char *post_node_name)
 void
 vnet_crypto_request_async_mode (int is_enable)
 {
-  vlib_main_t *vm = vlib_get_main ();
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "crypto-dispatch");
   vnet_crypto_main_t *cm = &crypto_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
   u32 skip_master = vlib_num_workers () > 0, i;
-  u32 state_change = 0;
-  vlib_node_state_t state;
+  vlib_node_state_t state = VLIB_NODE_STATE_DISABLED;
+  u8 state_change = 0;
 
+  CLIB_MEMORY_STORE_BARRIER ();
   if (is_enable && cm->async_refcnt == 0)
     {
       state_change = 1;
-      state = VLIB_NODE_STATE_POLLING;
+      state =
+	cm->dispatch_mode == VNET_CRYPTO_ASYNC_DISPATCH_POLLING ?
+	VLIB_NODE_STATE_POLLING : VLIB_NODE_STATE_INTERRUPT;
     }
-
   if (!is_enable && cm->async_refcnt == 1)
     {
       state_change = 1;
@@ -575,12 +580,50 @@ vnet_crypto_request_async_mode (int is_enable)
 
   if (state_change)
     for (i = skip_master; i < tm->n_vlib_mains; i++)
-      vlib_node_set_state (vlib_mains[i], node->index, state);
+      {
+	if (state !=
+	    vlib_node_get_state (vlib_mains[i], cm->crypto_node_index))
+	  vlib_node_set_state (vlib_mains[i], cm->crypto_node_index, state);
+      }
 
   if (is_enable)
     cm->async_refcnt += 1;
   else if (cm->async_refcnt > 0)
     cm->async_refcnt -= 1;
+}
+
+void
+vnet_crypto_set_async_dispatch_mode (u8 mode)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  u32 skip_master = vlib_num_workers () > 0, i;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  vlib_node_state_t state = VLIB_NODE_STATE_DISABLED;
+
+  CLIB_MEMORY_STORE_BARRIER ();
+  cm->dispatch_mode = mode;
+  if (mode == VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT)
+    {
+      state =
+	cm->async_refcnt == 0 ?
+	VLIB_NODE_STATE_DISABLED : VLIB_NODE_STATE_INTERRUPT;
+    }
+  else if (mode == VNET_CRYPTO_ASYNC_DISPATCH_POLLING)
+    {
+      state =
+	cm->async_refcnt == 0 ?
+	VLIB_NODE_STATE_DISABLED : VLIB_NODE_STATE_POLLING;
+    }
+
+  for (i = skip_master; i < tm->n_vlib_mains; i++)
+    {
+      if (state != vlib_node_get_state (vlib_mains[i], cm->crypto_node_index))
+	vlib_node_set_state (vlib_mains[i], cm->crypto_node_index, state);
+    }
+  clib_warning ("Switching dispatch mode might not work is some situations.");
+  clib_warning
+    ("Use 'show crypto async status' to verify that the nodes' states were set");
+  clib_warning ("and if not, set 'crypto async dispatch' mode again.");
 }
 
 int
@@ -663,6 +706,8 @@ vnet_crypto_init (vlib_main_t * vm)
   vnet_crypto_main_t *cm = &crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_crypto_thread_t *ct = 0;
+
+  cm->dispatch_mode = VNET_CRYPTO_ASYNC_DISPATCH_POLLING;
   cm->engine_index_by_name = hash_create_string ( /* size */ 0,
 						 sizeof (uword));
   cm->alg_index_by_name = hash_create_string (0, sizeof (uword));
@@ -705,7 +750,10 @@ vnet_crypto_init (vlib_main_t * vm)
 			       s);
     foreach_crypto_link_async_alg
 #undef _
-    return 0;
+    cm->crypto_node_index =
+    vlib_get_node_by_name (vm, (u8 *) "crypto-dispatch")->index;
+
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (vnet_crypto_init);
