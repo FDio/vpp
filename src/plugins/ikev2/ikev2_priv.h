@@ -521,8 +521,18 @@ u8 *ikev2_calc_prfplus (ikev2_sa_transform_t * tr, u8 * key, u8 * seed,
 			int len);
 v8 *ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data,
 		       int len);
-v8 *ikev2_decrypt_data (ikev2_sa_t * sa, u8 * data, int len);
-int ikev2_encrypt_data (ikev2_sa_t * sa, v8 * src, u8 * dst);
+v8 *ikev2_decrypt_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
+			ikev2_sa_transform_t * tr_encr, u8 * data, int len);
+int ikev2_encrypt_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
+			ikev2_sa_transform_t * tr_encr, v8 * src, u8 * dst);
+int ikev2_encrypt_aead_data (ikev2_main_per_thread_data_t * ptd,
+			     ikev2_sa_t * sa, ikev2_sa_transform_t * tr_encr,
+			     v8 * src, u8 * dst, u8 * aad,
+			     u32 aad_len, u8 * tag);
+u8 *ikev2_decrypt_aead_data (ikev2_main_per_thread_data_t * ptd,
+			     ikev2_sa_t * sa, ikev2_sa_transform_t * tr_encr,
+			     u8 * data, int data_len, u8 * aad, u32 aad_len,
+			     u8 * tag);
 void ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t);
 void ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t);
 int ikev2_verify_sign (EVP_PKEY * pkey, u8 * sigbuf, u8 * data);
@@ -567,6 +577,13 @@ ikev2_ts_t *ikev2_parse_ts_payload (ike_payload_header_t * ikep);
 ikev2_delete_t *ikev2_parse_delete_payload (ike_payload_header_t * ikep);
 ikev2_notify_t *ikev2_parse_notify_payload (ike_payload_header_t * ikep);
 int ikev2_set_log_level (ikev2_log_level_t log_level);
+
+static_always_inline ikev2_main_per_thread_data_t *
+ikev2_get_per_thread_data ()
+{
+  u32 thread_index = vlib_get_thread_index ();
+  return vec_elt_at_index (ikev2_main.per_thread_data, thread_index);
+}
 #endif /* __included_ikev2_priv_h__ */
 
 
