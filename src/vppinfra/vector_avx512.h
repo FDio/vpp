@@ -246,6 +246,12 @@ u8x64_mask_blend (u8x64 a, u8x64 b, u64 mask)
   return (u8x64) _mm512_mask_blend_epi8 (mask, (__m512i) a, (__m512i) b);
 }
 
+static_always_inline u8
+u64x8_cmpeq_mask (u64x8 a, u64x8 b)
+{
+  return _mm512_cmpeq_epu64_mask ((__m512i) a, (__m512i) b);
+}
+
 static_always_inline void
 u32x16_transpose (u32x16 m[16])
 {
