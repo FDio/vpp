@@ -25,6 +25,11 @@
 #define IKEV2_PORT_NATT   4500
 #define IKEV2_KEY_PAD "Key Pad for IKEv2"
 
+#define GCM_ICV_SIZE 16
+#define GCM_NONCE_SIZE 12
+#define GCM_SALT_SIZE 4
+#define GCM_IV_SIZE (GCM_NONCE_SIZE - GCM_SALT_SIZE)
+
 typedef u8 v8;
 
 /* *INDENT-OFF* */
