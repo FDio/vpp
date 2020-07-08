@@ -128,28 +128,37 @@ calico_ip4_translate_l3 (ip4_header_t * ip4,
 }
 
 static_always_inline void
-calico_tcp_update_session_lifetime (tcp_header_t * tcp, u32 index)
+calico_tcp_update_session_lifetime (tcp_header_t * tcp,
+				    const calico_session_t * session,
+				    u32 thread_index, f64 now)
 {
   calico_main_t *cm = &calico_main;
   if (PREDICT_FALSE (tcp_fin (tcp)))
     {
-      calico_timestamp_set_lifetime (index, CALICO_DEFAULT_TCP_RST_TIMEOUT);
+      calico_timestamp_set_lifetime (session->value.cs_ts_index,
+				     CALICO_DEFAULT_TCP_RST_TIMEOUT);
+      calico_log_session (session, CALICO_SESSION_FIN, thread_index, now);
     }
 
   if (PREDICT_FALSE (tcp_rst (tcp)))
     {
-      calico_timestamp_set_lifetime (index, CALICO_DEFAULT_TCP_RST_TIMEOUT);
+      calico_timestamp_set_lifetime (session->value.cs_ts_index,
+				     CALICO_DEFAULT_TCP_RST_TIMEOUT);
+      calico_log_session (session, CALICO_SESSION_RST, thread_index, now);
     }
 
   if (PREDICT_FALSE (tcp_syn (tcp) && tcp_ack (tcp)))
     {
-      calico_timestamp_set_lifetime (index, cm->tcp_max_age);
+      calico_timestamp_set_lifetime (session->value.cs_ts_index,
+				     cm->tcp_max_age);
+      calico_log_session (session, CALICO_SESSION_SYNACK, thread_index, now);
     }
 }
 
 static_always_inline void
 calico_translation_ip4 (const calico_session_t * session,
-			ip4_header_t * ip4, udp_header_t * udp)
+			ip4_header_t * ip4, udp_header_t * udp,
+			u32 thread_index, f64 now)
 {
   tcp_header_t *tcp = (tcp_header_t *) udp;
   ip4_address_t new_addr[VLIB_N_DIR];
@@ -170,7 +179,7 @@ calico_translation_ip4 (const calico_session_t * session,
 	  udp->dst_port = new_port[VLIB_TX];
 	  udp->src_port = new_port[VLIB_RX];
 	}
-      calico_tcp_update_session_lifetime (tcp, session->value.cs_ts_index);
+      calico_tcp_update_session_lifetime (tcp, session, thread_index, now);
     }
   else if (ip4->protocol == IP_PROTOCOL_UDP)
     {
@@ -248,7 +257,8 @@ calico_ip6_translate_l4 (ip6_header_t * ip6, udp_header_t * udp,
 
 static_always_inline void
 calico_translation_ip6 (const calico_session_t * session,
-			ip6_header_t * ip6, udp_header_t * udp)
+			ip6_header_t * ip6, udp_header_t * udp,
+			u32 thread_index, f64 now)
 {
   tcp_header_t *tcp = (tcp_header_t *) udp;
   ip6_address_t new_addr[VLIB_N_DIR];
@@ -269,7 +279,7 @@ calico_translation_ip6 (const calico_session_t * session,
 	  udp->dst_port = new_port[VLIB_TX];
 	  udp->src_port = new_port[VLIB_RX];
 	}
-      calico_tcp_update_session_lifetime (tcp, session->value.cs_ts_index);
+      calico_tcp_update_session_lifetime (tcp, session, thread_index, now);
     }
   else if (ip6->protocol == IP_PROTOCOL_UDP)
     {
@@ -477,6 +487,8 @@ calico_vip_inline (vlib_main_t * vm,
 	  calico_client_cnt_session (cc);
 
 	  clib_bihash_add_del_40_48 (&calico_session_db, &bkey, 1);
+	  calico_log_session (session, CALICO_SESSION_CREATE, thread_index,
+			      now);
 
 	  /* is this the first time we've seen this source address */
 	  cc = (AF_IP4 == af ?
@@ -534,7 +546,8 @@ calico_vip_inline (vlib_main_t * vm,
 	  rsession->value.cs_port[VLIB_RX] = session->key.cs_port[VLIB_TX];
 
 	  clib_bihash_add_del_40_48 (&calico_session_db, &rkey, 1);
-
+	  calico_log_session (rsession, CALICO_SESSION_CREATE, thread_index,
+			      now);
 
 	  next[0] = ct->ct_lb.dpoi_next_node;
 	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = session->value.cs_lbi;
@@ -547,9 +560,9 @@ calico_vip_inline (vlib_main_t * vm,
 
 
       if (AF_IP4 == af)
-	calico_translation_ip4 (session, ip4, udp0);
+	calico_translation_ip4 (session, ip4, udp0, thread_index, now);
       else
-	calico_translation_ip6 (session, ip6, udp0);
+	calico_translation_ip6 (session, ip6, udp0, thread_index, now);
 
     trace:
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))

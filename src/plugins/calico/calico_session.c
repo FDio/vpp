@@ -21,6 +21,7 @@
 
 
 clib_bihash_40_48_t calico_session_db;
+calico_session_evt_t **calico_session_evt_pool;
 
 
 typedef struct calico_session_walk_ctx_t_
@@ -191,6 +192,8 @@ calico_session_scan (vlib_main_t * vm, f64 start_time, int i)
 		  calico_client_free_by_ip (&session->key.cs_ip[VLIB_TX],
 					    session->key.cs_af);
 		  calico_timestamp_free (session->value.cs_ts_index);
+		  calico_log_session (session, CALICO_SESSION_EXP, 0,
+				      vlib_time_now (vm));
 		  BV (clib_bihash_add_del) (h, &v->kvp[k], 0);
 
 		  /*
@@ -211,10 +214,122 @@ calico_session_scan (vlib_main_t * vm, f64 start_time, int i)
   return (0);
 }
 
+static u8 *
+format_calico_evt_type (u8 * s, va_list * args)
+{
+  u32 etype = va_arg (*args, u32);
+  switch (etype)
+    {
+    case CALICO_SESSION_CREATE:
+      s = format (s, "create");
+      break;
+    case CALICO_SESSION_SYNACK:
+      s = format (s, "synack");
+      break;
+    case CALICO_SESSION_FIN:
+      s = format (s, "fin");
+      break;
+    case CALICO_SESSION_RST:
+      s = format (s, "rst");
+      break;
+    case CALICO_SESSION_EXP:
+      s = format (s, "exp");
+      break;
+    default:
+      s = format (s, "UNKNOWN");
+      break;
+    }
+  return s;
+}
+
+void
+calico_log_session (const calico_session_t * session,
+		    calico_session_evt_type_t etype, u32 thread_index,
+		    f64 now)
+{
+  calico_session_evt_t *evt;
+  pool_get (calico_session_evt_pool[thread_index], evt);
+  ip46_address_copy (&evt->in_ip[VLIB_RX], &session->key.cs_ip[VLIB_RX]);
+  ip46_address_copy (&evt->in_ip[VLIB_TX], &session->key.cs_ip[VLIB_TX]);
+  evt->in_port[VLIB_RX] = session->key.cs_port[VLIB_RX];
+  evt->in_port[VLIB_TX] = session->key.cs_port[VLIB_TX];
+  ip46_address_copy (&evt->out_ip[VLIB_RX], &session->value.cs_ip[VLIB_RX]);
+  ip46_address_copy (&evt->out_ip[VLIB_TX], &session->value.cs_ip[VLIB_TX]);
+  evt->out_port[VLIB_RX] = session->value.cs_port[VLIB_RX];
+  evt->out_port[VLIB_TX] = session->value.cs_port[VLIB_TX];
+  evt->is_rsession = (session->value.cs_lbi == INDEX_INVALID);
+  evt->evt_type = etype;
+  evt->ts = now;
+}
+
+static u8 *
+format_calico_evt (u8 * s, va_list * args)
+{
+  calico_session_evt_t *evt = va_arg (*args, calico_session_evt_t *);
+  s = format (s, "%.6f %U %U;%d->%U;%d => %U;%d->%U;%d %s",
+	      evt->ts,
+	      format_calico_evt_type, evt->evt_type,
+	      format_ip46_address, &evt->in_ip[VLIB_RX], IP46_TYPE_ANY,
+	      evt->in_port[VLIB_RX],
+	      format_ip46_address, &evt->in_ip[VLIB_TX], IP46_TYPE_ANY,
+	      evt->in_port[VLIB_TX],
+	      format_ip46_address, &evt->out_ip[VLIB_RX], IP46_TYPE_ANY,
+	      evt->out_port[VLIB_RX],
+	      format_ip46_address, &evt->out_ip[VLIB_TX], IP46_TYPE_ANY,
+	      evt->out_port[VLIB_TX], evt->is_rsession ? "(r)" : "");
+  return s;
+}
+
+static clib_error_t *
+calico_session_log (vlib_main_t * vm,
+		    unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  u32 num_threads, i;
+  num_threads = 1 /* main thread */  + vtm->n_threads;
+  calico_session_evt_t *evt;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	;
+      else
+	return (clib_error_return (0, "unknown input '%U'",
+				   format_unformat_error, input));
+    }
+
+  for (i = 0; i < num_threads; i++)
+    {
+      vlib_cli_output (vm, "Thread %d", i);
+      vec_foreach (evt, calico_session_evt_pool[i])
+      {
+	vlib_cli_output (vm, "%U", format_calico_evt, evt);
+      }
+    }
+
+
+  return (NULL);
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (calico_session_log_cmd_node, static) = {
+  .path = "show calico log",
+  .function = calico_session_log,
+  .short_help = "show calico log",
+  .is_mp_safe = 1,
+};
+/* *INDENT-ON* */
+
+
 static clib_error_t *
 calico_session_init (vlib_main_t * vm)
 {
   calico_main_t *cm = &calico_main;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  u32 num_threads;
+  num_threads = 1 /* main thread */  + vtm->n_threads;
+  vec_validate (calico_session_evt_pool, num_threads - 1);
+
   BV (clib_bihash_init) (&calico_session_db,
 			 "Calico Session DB", cm->session_hash_buckets,
 			 cm->session_hash_memory);

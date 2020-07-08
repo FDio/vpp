@@ -98,6 +98,32 @@ typedef struct calico_session_t_
 
 extern u8 *format_calico_session (u8 * s, va_list * args);
 
+typedef enum
+{
+  CALICO_SESSION_CREATE,
+  CALICO_SESSION_SYNACK,
+  CALICO_SESSION_FIN,
+  CALICO_SESSION_RST,
+  CALICO_SESSION_EXP,
+} calico_session_evt_type_t;
+
+typedef struct calico_session_evt_t_
+{
+  ip46_address_t in_ip[VLIB_N_DIR];
+  ip46_address_t out_ip[VLIB_N_DIR];
+  f64 ts;
+  u16 in_port[VLIB_N_DIR];
+  u16 out_port[VLIB_N_DIR];
+  u8 evt_type;
+  u8 is_rsession;
+} calico_session_evt_t;
+
+extern calico_session_evt_t **calico_session_evt_pool;
+
+extern void calico_log_session (const calico_session_t * session,
+				calico_session_evt_type_t etype,
+				u32 thread_index, f64 now);
+
 /**
  * Ensure the session object correctly overlays the bihash key/value pair
  */
