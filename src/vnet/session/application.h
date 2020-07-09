@@ -127,6 +127,9 @@ typedef struct application_
   char quic_iv[17];
   u8 quic_iv_set;
 
+  /** app cookie */
+  u64 app_cookie;
+
 } application_t;
 
 typedef struct app_main_

@@ -529,6 +529,7 @@ application_alloc_and_init (app_init_args_t * a)
   app->ns_index = options[APP_OPTIONS_NAMESPACE];
   app->proxied_transports = options[APP_OPTIONS_PROXY_TRANSPORT];
   app->name = vec_dup (a->name);
+  app->app_cookie = options[APP_OPTIONS_COOKIE];
 
   /* If no scope enabled, default to global */
   if (!application_has_global_scope (app)

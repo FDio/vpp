@@ -571,7 +571,7 @@ active_open_attach (void)
   a->session_cb_vft = &active_open_clients;
   a->name = format (0, "proxy-active-open");
 
-  options[APP_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
+  options[APP_OPTIONS_COOKIE] = 0x12345678;
   options[APP_OPTIONS_SEGMENT_SIZE] = 512 << 20;
   options[APP_OPTIONS_RX_FIFO_SIZE] = pm->fifo_size;
   options[APP_OPTIONS_TX_FIFO_SIZE] = pm->fifo_size;

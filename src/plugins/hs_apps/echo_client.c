@@ -659,7 +659,7 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   if (ecm->private_segment_size)
     segment_size = ecm->private_segment_size;
 
-  options[APP_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
+  options[APP_OPTIONS_COOKIE] = 0x12345678;
   options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
   options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
   options[APP_OPTIONS_RX_FIFO_SIZE] = ecm->fifo_size;
