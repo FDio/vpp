@@ -51,6 +51,18 @@ CLIB_MEM_POISON_LEN (void *src, size_t oldlen, size_t newlen)
 
 #endif /* CLIB_SANITIZE_ADDR */
 
+/*
+ * clang tends to force alignment of all sections when compiling for address
+ * sanitizer. This confuse VPP plugin infra, prevent clang to do that
+ * On the contrary, GCC does not support this kind of attribute on sections
+ * sigh.
+ */
+#ifdef __clang__
+#define CLIB_NOSANITIZE_PLUGIN_REG_SECTION      CLIB_NOSANITIZE_ADDR
+#else
+#define CLIB_NOSANITIZE_PLUGIN_REG_SECTION
+#endif
+
 #endif /* _included_clib_sanitizer_h */
 
 /*
