@@ -424,6 +424,30 @@
       "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6cdd70be_5d77d92e",
+        "filename": "src/plugins/ikev2/ikev2_types.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:51Z",
+      "side": 1,
+      "message": "*enum",
+      "parentUuid": "30d99de3_ddcb3559",
+      "range": {
+        "startLine": 83,
+        "startChar": 0,
+        "endLine": 84,
+        "endChar": 20
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
