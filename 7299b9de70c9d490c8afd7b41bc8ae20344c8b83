@@ -1,0 +1,429 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "322ed9a2_f678b8d3",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "add option status\u003d\"in_progress\"; in every message",
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ca8265b8_fe8c6148",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "this API has no parameters",
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bcc85846_61ae770d",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "thread_index and sa_index are missing",
+      "range": {
+        "startLine": 88,
+        "startChar": 7,
+        "endLine": 88,
+        "endChar": 23
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "154aee53_2ef157ef",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "we can\u0027t specify child_sa_index because we don\u0027t know it. The reason for ikev2_child_sa_dump is to get that information",
+      "range": {
+        "startLine": 109,
+        "startChar": 2,
+        "endLine": 109,
+        "endChar": 21
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c7a275e9_3edb06b2",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "child_sa_index is missing",
+      "range": {
+        "startLine": 124,
+        "startChar": 7,
+        "endLine": 124,
+        "endChar": 29
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "34357fb2_b133655e",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "child_sa",
+      "range": {
+        "startLine": 130,
+        "startChar": 26,
+        "endLine": 130,
+        "endChar": 31
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c19bffb6_f80ba37e",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "setting thread_index is missing",
+      "range": {
+        "startLine": 181,
+        "startChar": 0,
+        "endLine": 181,
+        "endChar": 7
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f13d868c_4430b18a",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 319,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "endianess",
+      "range": {
+        "startLine": 319,
+        "startChar": 39,
+        "endLine": 319,
+        "endChar": 55
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bdb99775_3344aad9",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 322,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "vec_elt_at_index",
+      "range": {
+        "startLine": 322,
+        "startChar": 2,
+        "endLine": 322,
+        "endChar": 47
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "83350a55_f35cacc3",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 324,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "we also need to check whether the index is free with pool_is_free_index",
+      "range": {
+        "startLine": 324,
+        "startChar": 6,
+        "endLine": 324,
+        "endChar": 41
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "775f61de_baa3c44c",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 327,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "sa \u003d pool_elt_at_index(tkm-\u003esas, clib_net_to_host_u32 (mp-\u003esa_index)",
+      "range": {
+        "startLine": 327,
+        "startChar": 2,
+        "endLine": 327,
+        "endChar": 31
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "542b9e41_a93bce47",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "vec_elt_at_index + endianess",
+      "range": {
+        "startLine": 332,
+        "startChar": 2,
+        "endLine": 332,
+        "endChar": 41
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "27379fc6_a244ed9c",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "sizeof + data_len",
+      "range": {
+        "startLine": 395,
+        "startChar": 24,
+        "endLine": 395,
+        "endChar": 36
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2ae43395_bcfe0c25",
+        "filename": "src/plugins/ikev2/ikev2_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 344,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 344,
+        "startChar": 2,
+        "endLine": 344,
+        "endChar": 58
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c2eb631d_7089b443",
+        "filename": "src/plugins/ikev2/ikev2_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 401,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "usually the value ~0 is used for indicating \u0027not set\u0027: u32 thread_index \u003d ~0;",
+      "range": {
+        "startLine": 399,
+        "startChar": 0,
+        "endLine": 401,
+        "endChar": 26
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ce304d7b_e2c63c3b",
+        "filename": "src/plugins/ikev2/ikev2_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 438,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 438,
+        "startChar": 1,
+        "endLine": 438,
+        "endChar": 58
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e8c564c2_59738121",
+        "filename": "src/plugins/ikev2/ikev2_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 524,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 524,
+        "startChar": 2,
+        "endLine": 524,
+        "endChar": 58
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d9397c87_5f8ed024",
+        "filename": "src/plugins/ikev2/ikev2_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 604,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 604,
+        "startChar": 2,
+        "endLine": 604,
+        "endChar": 58
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "30d99de3_ddcb3559",
+        "filename": "src/plugins/ikev2/ikev2_types.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T08:56:15Z",
+      "side": 1,
+      "message": "these should be unum types",
+      "range": {
+        "startLine": 83,
+        "startChar": 0,
+        "endLine": 84,
+        "endChar": 20
+      },
+      "revId": "7299b9de70c9d490c8afd7b41bc8ae20344c8b83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
