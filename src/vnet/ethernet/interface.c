@@ -115,8 +115,7 @@ ethernet_build_rewrite (vnet_main_t * vnm,
       if (PREDICT_FALSE (!is_p2p))
 	{
 	  // Check for encaps that are not supported for L3 interfaces
-	  if (!(sub_sw->sub.eth.flags.exact_match) ||
-	      (sub_sw->sub.eth.flags.default_sub) ||
+	  if ((sub_sw->sub.eth.flags.default_sub) ||
 	      (sub_sw->sub.eth.flags.outer_vlan_id_any) ||
 	      (sub_sw->sub.eth.flags.inner_vlan_id_any))
 	    {
