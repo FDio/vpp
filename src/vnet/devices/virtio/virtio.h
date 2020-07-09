@@ -201,7 +201,9 @@ typedef struct
       u32 notify_off_multiplier;
       u32 bar_id;
       u32 is_modern;
-      u32 pad[10];
+      u16 msix_table_size;
+      u16 pad_as_u16;
+      u32 pad[9];
     };
   };
   virtio_vring_t *cxq_vring;
