@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ccb725e8_5f345411",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 4075,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-09T12:35:02Z",
+      "side": 1,
+      "message": "I think we need return res; here as csa is freed up already and it\u0027s accessed later in the code. Also that code is irrelevant, as the child_sa and the associated tunnel is going to be removed",
+      "range": {
+        "startLine": 4075,
+        "startChar": 0,
+        "endLine": 4075,
+        "endChar": 12
+      },
+      "revId": "59f6caea63af2473c717d297473a25656db56d1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
