@@ -16,6 +16,24 @@
       "revId": "f7dfee988a38f5f3d19077e6c26e82d94db2f8e6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "76b14e9b_8fc64f1c",
+        "filename": "src/vnet/ip/vtep.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2020-07-10T01:13:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e0bd16f7_f8f4b0fb",
+      "revId": "f7dfee988a38f5f3d19077e6c26e82d94db2f8e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
