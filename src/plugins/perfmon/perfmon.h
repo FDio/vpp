@@ -78,6 +78,32 @@ typedef struct
 
 typedef struct
 {
+  u64 ticks[2];
+  u64 vectors;
+} perfmon_counters_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
+  /* Current counters */
+  u64 c[2];
+
+  /* Current perf_event file descriptors, per thread */
+  int pm_fds[2];
+
+  /* mmap base of mapped struct perf_event_mmap_page */
+  u8 *perf_event_pages[2];
+
+  u32 rdpmc_indices[2];
+
+  /* vector of counters by node index */
+  perfmon_counters_t *counters;
+
+} perfmon_thread_t;
+
+typedef struct
+{
   /* API message ID base */
   u16 msg_id_base;
 
@@ -112,16 +138,14 @@ typedef struct
   /* Current event (index) being collected */
   u32 current_event;
   int n_active;
-  u32 **rdpmc_indices;
-  /* mmap base / size of (mapped) struct perf_event_mmap_page */
-  u8 ***perf_event_pages;
+  /* mmap size of (mapped) struct perf_event_mmap_page */
   u32 page_size;
-
-  /* Current perf_event file descriptors, per thread */
-  int **pm_fds;
 
   /* thread bitmap */
   uword *thread_bitmap;
+
+  /* per-thread data */
+  perfmon_thread_t **threads;
 
   /* Logging */
   vlib_log_class_t log_class;
@@ -136,6 +160,8 @@ extern perfmon_main_t perfmon_main;
 
 extern vlib_node_registration_t perfmon_periodic_node;
 uword *perfmon_parse_table (perfmon_main_t * pm, char *path, char *filename);
+
+uword unformat_processor_event (unformat_input_t * input, va_list * args);
 
 /* Periodic function events */
 #define PERFMON_START 1

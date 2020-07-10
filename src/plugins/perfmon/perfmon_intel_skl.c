@@ -88,6 +88,7 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0x0D},
    .umask = 0x01,
+   .anyt = 1,
    .event_name = "int_misc.recovery_cycles_any",
    },
   {
@@ -103,6 +104,8 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0x0E},
    .umask = 0x01,
+   .cmask = 1,
+   .inv = 1,
    .event_name = "uops_issued.stall_cycles",
    },
   {
@@ -233,6 +236,7 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0x3C},
    .umask = 0x00,
+   .anyt = 1,
    .event_name = "cpu_clk_unhalted.thread_p_any",
    },
   {
@@ -248,6 +252,7 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0x3C},
    .umask = 0x01,
+   .anyt = 1,
    .event_name = "cpu_clk_thread_unhalted.ref_xclk_any",
    },
   {
@@ -268,6 +273,7 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0x48},
    .umask = 0x01,
+   .cmask = 1,
    .event_name = "l1d_pend_miss.pending",
    },
   {
@@ -304,6 +310,12 @@ static perfmon_intel_pmc_event_t event_table[] = {
    .event_code = {0x49},
    .umask = 0x0E,
    .event_name = "dtlb_store_misses.walk_completed",
+   },
+  {
+   .event_code = {0x49},
+   .umask = 0x10,
+   .cmask = 1,
+   .event_name = "dtlb_store_misses.walk_active",
    },
   {
    .event_code = {0x49},
@@ -403,6 +415,8 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0x5E},
    .umask = 0x01,
+   .cmask = 1,
+   .inv = 1,
    .event_name = "rs_events.empty_end",
    },
   {
@@ -413,6 +427,7 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0x60},
    .umask = 0x01,
+   .cmask = 1,
    .event_name = "offcore_requests_outstanding.cycles_with_demand_data_rd",
    },
   {
@@ -423,6 +438,7 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0x60},
    .umask = 0x02,
+   .cmask = 1,
    .event_name = "offcore_requests_outstanding.cycles_with_demand_code_rd",
    },
   {
@@ -433,6 +449,7 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0x60},
    .umask = 0x04,
+   .cmask = 1,
    .event_name = "offcore_requests_outstanding.cycles_with_demand_rfo",
    },
   {
@@ -443,6 +460,7 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0x60},
    .umask = 0x08,
+   .cmask = 1,
    .event_name = "offcore_requests_outstanding.cycles_with_data_rd",
    },
   {
@@ -458,6 +476,7 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0x79},
    .umask = 0x04,
+   .cmask = 1,
    .event_name = "idq.mite_cycles",
    },
   {
@@ -468,6 +487,7 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0x79},
    .umask = 0x08,
+   .cmask = 1,
    .event_name = "idq.dsb_cycles",
    },
   {
@@ -478,11 +498,13 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0x79},
    .umask = 0x18,
+   .cmask = 4,
    .event_name = "idq.all_dsb_cycles_4_uops",
    },
   {
    .event_code = {0x79},
    .umask = 0x18,
+   .cmask = 1,
    .event_name = "idq.all_dsb_cycles_any_uops",
    },
   {
@@ -503,11 +525,13 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0x79},
    .umask = 0x30,
+   .cmask = 1,
    .event_name = "idq.ms_cycles",
    },
   {
    .event_code = {0x79},
    .umask = 0x30,
+   .edge = 1,
    .event_name = "idq.ms_switches",
    },
   {
@@ -588,26 +612,32 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0x9C},
    .umask = 0x01,
+   .cmask = 4,
    .event_name = "idq_uops_not_delivered.cycles_0_uops_deliv.core",
    },
   {
    .event_code = {0x9C},
    .umask = 0x01,
+   .cmask = 3,
    .event_name = "idq_uops_not_delivered.cycles_le_1_uop_deliv.core",
    },
   {
    .event_code = {0x9C},
    .umask = 0x01,
+   .cmask = 4,
    .event_name = "idq_uops_not_delivered.cycles_le_2_uop_deliv.core",
    },
   {
    .event_code = {0x9C},
    .umask = 0x01,
+   .cmask = 1,
    .event_name = "idq_uops_not_delivered.cycles_le_3_uop_deliv.core",
    },
   {
    .event_code = {0x9C},
    .umask = 0x01,
+   .cmask = 1,
+   .inv = 1,
    .event_name = "idq_uops_not_delivered.cycles_fe_was_ok",
    },
   {
@@ -663,36 +693,43 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0xA3},
    .umask = 0x01,
+   .cmask = 1,
    .event_name = "cycle_activity.cycles_l2_miss",
    },
   {
    .event_code = {0xA3},
    .umask = 0x04,
+   .cmask = 4,
    .event_name = "cycle_activity.stalls_total",
    },
   {
    .event_code = {0xA3},
    .umask = 0x05,
+   .cmask = 5,
    .event_name = "cycle_activity.stalls_l2_miss",
    },
   {
    .event_code = {0xA3},
    .umask = 0x08,
+   .cmask = 8,
    .event_name = "cycle_activity.cycles_l1d_miss",
    },
   {
    .event_code = {0xA3},
    .umask = 0x0C,
+   .cmask = 12,
    .event_name = "cycle_activity.stalls_l1d_miss",
    },
   {
    .event_code = {0xA3},
    .umask = 0x10,
+   .cmask = 16,
    .event_name = "cycle_activity.cycles_mem_any",
    },
   {
    .event_code = {0xA3},
    .umask = 0x14,
+   .cmask = 20,
    .event_name = "cycle_activity.stalls_mem_any",
    },
   {
@@ -733,11 +770,13 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0xA8},
    .umask = 0x01,
+   .cmask = 1,
    .event_name = "lsd.cycles_active",
    },
   {
    .event_code = {0xA8},
    .umask = 0x01,
+   .cmask = 4,
    .event_name = "lsd.cycles_4_uops",
    },
   {
@@ -788,26 +827,32 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0xB1},
    .umask = 0x01,
+   .cmask = 1,
+   .inv = 1,
    .event_name = "uops_executed.stall_cycles",
    },
   {
    .event_code = {0xB1},
    .umask = 0x01,
+   .cmask = 1,
    .event_name = "uops_executed.cycles_ge_1_uop_exec",
    },
   {
    .event_code = {0xB1},
    .umask = 0x01,
+   .cmask = 2,
    .event_name = "uops_executed.cycles_ge_2_uops_exec",
    },
   {
    .event_code = {0xB1},
    .umask = 0x01,
+   .cmask = 3,
    .event_name = "uops_executed.cycles_ge_3_uops_exec",
    },
   {
    .event_code = {0xB1},
    .umask = 0x01,
+   .cmask = 4,
    .event_name = "uops_executed.cycles_ge_4_uops_exec",
    },
   {
@@ -818,26 +863,32 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0xB1},
    .umask = 0x02,
+   .cmask = 1,
    .event_name = "uops_executed.core_cycles_ge_1",
    },
   {
    .event_code = {0xB1},
    .umask = 0x02,
+   .cmask = 2,
    .event_name = "uops_executed.core_cycles_ge_2",
    },
   {
    .event_code = {0xB1},
    .umask = 0x02,
+   .cmask = 3,
    .event_name = "uops_executed.core_cycles_ge_3",
    },
   {
    .event_code = {0xB1},
    .umask = 0x02,
+   .cmask = 4,
    .event_name = "uops_executed.core_cycles_ge_4",
    },
   {
    .event_code = {0xB1},
    .umask = 0x02,
+   .cmask = 1,
+   .inv = 1,
    .event_name = "uops_executed.core_cycles_none",
    },
   {
@@ -873,6 +924,7 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0xC0},
    .umask = 0x01,
+   .cmask = 10,
    .event_name = "inst_retired.total_cycles_ps",
    },
   {
@@ -883,16 +935,22 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0xC2},
    .umask = 0x02,
+   .cmask = 1,
+   .inv = 1,
    .event_name = "uops_retired.stall_cycles",
    },
   {
    .event_code = {0xC2},
    .umask = 0x02,
+   .cmask = 10,
+   .inv = 1,
    .event_name = "uops_retired.total_cycles",
    },
   {
    .event_code = {0xC3},
    .umask = 0x01,
+   .cmask = 1,
+   .edge = 1,
    .event_name = "machine_clears.count",
    },
   {
@@ -1083,6 +1141,7 @@ static perfmon_intel_pmc_event_t event_table[] = {
   {
    .event_code = {0xCA},
    .umask = 0x1E,
+   .cmask = 1,
    .event_name = "fp_assist.any",
    },
   {

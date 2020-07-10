@@ -317,6 +317,19 @@ static void __vlib_rm_config_function_##x (void)                \
     _error;							\
   })
 
+#define vlib_call_main_loop_enter_function(vm, x)			\
+  ({									\
+    extern vlib_init_function_t * VLIB_MAIN_LOOP_ENTER_FUNCTION_SYMBOL (x); \
+    vlib_init_function_t * _f = VLIB_MAIN_LOOP_ENTER_FUNCTION_SYMBOL (x); \
+    clib_error_t * _error = 0;						\
+    if (! hash_get (vm->init_functions_called, _f))			\
+      {									\
+	hash_set1 (vm->init_functions_called, _f);			\
+	_error = _f (vm);						\
+      }									\
+    _error;								\
+  })
+
 /* External functions. */
 clib_error_t *vlib_call_all_init_functions (struct vlib_main_t *vm);
 clib_error_t *vlib_call_all_config_functions (struct vlib_main_t *vm,

@@ -39,6 +39,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
+#include <vppinfra/callback.h>
 #include <vppinfra/cpu.h>
 #include <vppinfra/elog.h>
 #include <unistd.h>
@@ -563,10 +564,16 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 
 	      if (!c->is_mp_safe)
 		vlib_worker_thread_barrier_sync (vm);
+	      if (PREDICT_FALSE (vec_len (cm->perf_counter_cbs) != 0))
+		clib_call_callbacks (cm->perf_counter_cbs, cm,
+				     c - cm->commands, 0 /* before */ );
 
 	      c->hit_counter++;
 	      c_error = c->function (vm, si, c);
 
+	      if (PREDICT_FALSE (vec_len (cm->perf_counter_cbs) != 0))
+		clib_call_callbacks (cm->perf_counter_cbs, cm,
+				     c - cm->commands, 1 /* after */ );
 	      if (!c->is_mp_safe)
 		vlib_worker_thread_barrier_release (vm);
 

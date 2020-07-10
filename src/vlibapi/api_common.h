@@ -224,7 +224,7 @@ typedef struct
 } api_version_t;
 
 /** API main structure, used by both vpp and binary API clients */
-typedef struct
+typedef struct api_main_t
 {
   /** Message handler vector  */
   void (**msg_handlers) (void *);
@@ -373,6 +373,12 @@ typedef struct
   /** event log */
   elog_main_t *elog_main;
   int elog_trace_api_messages;
+
+  /** performance counter callback **/
+  void (**perf_counter_cbs)
+    (struct api_main_t *, u32 id, int before_or_after);
+  void (**perf_counter_cbs_tmp)
+    (struct api_main_t *, u32 id, int before_or_after);
 
 } api_main_t;
 

@@ -16,6 +16,7 @@
 #define included_vlib_threads_h
 
 #include <vlib/main.h>
+#include <vppinfra/callback.h>
 #include <linux/sched.h>
 
 extern vlib_main_t **vlib_mains;
@@ -400,6 +401,10 @@ vlib_worker_thread_barrier_check (void)
       u32 thread_index = vm->thread_index;
       f64 t = vlib_time_now (vm);
 
+      if (PREDICT_FALSE (vec_len (vm->barrier_perf_callbacks) != 0))
+	clib_call_callbacks (vm->barrier_perf_callbacks, vm,
+			     vm->clib_time.last_cpu_time, 0 /* enter */ );
+
       if (PREDICT_FALSE (vlib_worker_threads->barrier_elog_enabled))
 	{
 	  vlib_worker_thread_t *w = vlib_worker_threads + thread_index;
@@ -498,6 +503,10 @@ vlib_worker_thread_barrier_check (void)
 	  ed->thread_index = thread_index;
 	  ed->duration = (int) (1000000.0 * t);
 	}
+
+      if (PREDICT_FALSE (vec_len (vm->barrier_perf_callbacks) != 0))
+	clib_call_callbacks (vm->barrier_perf_callbacks, vm,
+			     vm->clib_time.last_cpu_time, 1 /* leave */ );
     }
 }
 

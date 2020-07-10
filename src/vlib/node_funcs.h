@@ -201,6 +201,12 @@ vlib_node_set_state (vlib_main_t * vm, u32 node_index,
       nm->input_node_counts_by_state[new_state] += 1;
     }
 
+  if (PREDICT_FALSE (r->state == VLIB_NODE_STATE_DISABLED))
+    {
+      clib_callback_data_call (&vm->vlib_node_runtime_perf_callbacks, vm,
+			       r, 0, 0, 0, 2 /* reset */ );
+    }
+
   n->state = new_state;
   r->state = new_state;
 }
