@@ -62,8 +62,8 @@ quic_format_err (u8 * s, va_list * args)
     case QUICLY_TRANSPORT_ERROR_INTERNAL:
       s = format (s, "QUICLY_TRANSPORT_ERROR_INTERNAL");
       break;
-    case QUICLY_TRANSPORT_ERROR_SERVER_BUSY:
-      s = format (s, "QUICLY_TRANSPORT_ERROR_SERVER_BUSY");
+    case QUICLY_TRANSPORT_ERROR_CONNECTION_REFUSED:
+      s = format (s, "QUICLY_TRANSPORT_ERROR_CONNECTION_REFUSED");
       break;
     case QUICLY_TRANSPORT_ERROR_FLOW_CONTROL:
       s = format (s, "QUICLY_TRANSPORT_ERROR_FLOW_CONTROL");
