@@ -872,6 +872,8 @@ vnet_register_interface (vnet_main_t * vnm,
       foreach_vlib_main ({
         nrt = vlib_node_get_runtime (this_vlib_main, hw->output_node_index);
         nrt->function = node->function;
+	vlib_node_runtime_perf_counter (this_vlib_main, nrt, 0, 0, 0,
+					VLIB_NODE_RUNTIME_PERF_RESET);
       });
       /* *INDENT-ON* */
 
@@ -882,6 +884,8 @@ vnet_register_interface (vnet_main_t * vnm,
       foreach_vlib_main ({
         nrt = vlib_node_get_runtime (this_vlib_main, hw->tx_node_index);
         nrt->function = node->function;
+	vlib_node_runtime_perf_counter (this_vlib_main, nrt, 0, 0, 0,
+					VLIB_NODE_RUNTIME_PERF_RESET);
       });
       /* *INDENT-ON* */
 

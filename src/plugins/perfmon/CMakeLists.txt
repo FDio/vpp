@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(perfmon
+add_vpp_library (perfcore
   SOURCES
   perfmon.c
   perfmon_periodic.c
@@ -32,6 +32,22 @@ add_vpp_plugin(perfmon
   perfmon_intel_wsm_ep_dp.c
   perfmon_intel_wsm_ep_sp.c
   perfmon_intel_wsm_ex.c
+
+  INSTALL_HEADERS
+  perfmon.h
+
+  LINK_LIBRARIES
+  vppinfra
+  vlib
+  vnet
+)
+
+add_vpp_plugin(perfmon
+  SOURCES
+  perfmon_plugin.c
+
+  LINK_LIBRARIES
+  perfcore
 )
 
 option(VPP_BUILD_MAPFILE_TOOL "Build perfmon mapfile utility." OFF)

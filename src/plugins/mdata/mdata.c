@@ -21,6 +21,7 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
+#include <vppinfra/callback_data.h>
 #include <vpp/app/version.h>
 #include <stdbool.h>
 
@@ -42,9 +43,8 @@ static mdata_t mdata_none;
     before_or_after: 0 => before, 1=> after
 */
 static void
-mdata_trace_callback (vlib_main_t * vm, u64 * c0, u64 * c1,
-		      vlib_node_runtime_t * node,
-		      vlib_frame_t * frame, int before_or_after)
+mdata_trace_callback (vlib_node_runtime_perf_callback_data_t * data,
+		      vlib_node_runtime_perf_callback_args_t * args)
 {
   int i;
   mdata_main_t *mm = &mdata_main;
@@ -53,6 +53,12 @@ mdata_trace_callback (vlib_main_t * vm, u64 * c0, u64 * c1,
   u32 n_left_from;
   mdata_t *before, *modifies;
   u8 *after;
+  vlib_main_t *vm = args->vm;
+  vlib_frame_t *frame = args->frame;
+  vlib_node_runtime_t *node = args->node;
+
+  if (PREDICT_FALSE (args->call_type == VLIB_NODE_RUNTIME_PERF_RESET))
+    return;
 
   /* Input nodes don't have frames, etc. */
   if (frame == 0)
@@ -68,7 +74,7 @@ mdata_trace_callback (vlib_main_t * vm, u64 * c0, u64 * c1,
   vlib_get_buffers (vm, from, bufs, n_left_from);
   b = bufs;
 
-  if (before_or_after == 1 /* after */ )
+  if (args->call_type == VLIB_NODE_RUNTIME_PERF_AFTER)
     goto after_pass;
 
   /* Resize the per-thread "before" vector to cover the current frame */
@@ -152,11 +158,9 @@ mdata_enable_disable (mdata_main_t * mmp, int enable_disable)
       if (vlib_mains[i] == 0)
 	continue;
 
-      clib_callback_enable_disable
-	(vlib_mains[i]->vlib_node_runtime_perf_counter_cbs,
-	 vlib_mains[i]->vlib_node_runtime_perf_counter_cb_tmp,
-	 vlib_mains[i]->worker_thread_main_loop_callback_lock,
-	 (void *) mdata_trace_callback, enable_disable);
+      clib_callback_data_enable_disable
+	(&vlib_mains[i]->vlib_node_runtime_perf_callbacks,
+	 mdata_trace_callback, enable_disable);
     }
 
   return rv;

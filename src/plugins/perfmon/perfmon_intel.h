@@ -25,6 +25,10 @@ typedef struct
 {
   u8 event_code[2];
   u8 umask;
+  u8 cmask;
+  u8 inv;
+  u8 anyt;
+  u8 edge;
   char *event_name;
 } perfmon_intel_pmc_event_t;
 

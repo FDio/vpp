@@ -33,52 +33,65 @@ perf_event_open (struct perf_event_attr *hw_event, pid_t pid, int cpu,
 }
 
 static void
-read_current_perf_counters (vlib_main_t * vm, u64 * c0, u64 * c1,
-			    vlib_node_runtime_t * node,
-			    vlib_frame_t * frame, int before_or_after)
+read_current_perf_counters (vlib_node_runtime_perf_callback_data_t * data,
+			    vlib_node_runtime_perf_callback_args_t * args)
 {
   int i;
-  u64 *cc;
   perfmon_main_t *pm = &perfmon_main;
-  uword my_thread_index = vm->thread_index;
+  perfmon_thread_t *pt = data->u[0].v;
+  u64 c[2] = { 0, 0 };
+  u64 *cc;
 
-  *c0 = *c1 = 0;
+  if (PREDICT_FALSE (args->call_type == VLIB_NODE_RUNTIME_PERF_RESET))
+    return;
+
+  if (args->call_type == VLIB_NODE_RUNTIME_PERF_BEFORE)
+    cc = pt->c;
+  else
+    cc = c;
 
   for (i = 0; i < pm->n_active; i++)
     {
-      cc = (i == 0) ? c0 : c1;
-      if (pm->rdpmc_indices[i][my_thread_index] != ~0)
-	*cc = clib_rdpmc ((int) pm->rdpmc_indices[i][my_thread_index]);
+      if (pt->rdpmc_indices[i] != ~0)
+	cc[i] = clib_rdpmc ((int) pt->rdpmc_indices[i]);
       else
 	{
 	  u64 sw_value;
 	  int read_result;
-	  if ((read_result = read (pm->pm_fds[i][my_thread_index], &sw_value,
-				   sizeof (sw_value)) != sizeof (sw_value)))
+	  if ((read_result = read (pt->pm_fds[i], &sw_value,
+				   sizeof (sw_value))) != sizeof (sw_value))
 	    {
 	      clib_unix_warning
 		("counter read returned %d, expected %d",
 		 read_result, sizeof (sw_value));
-	      clib_callback_enable_disable
-		(vm->vlib_node_runtime_perf_counter_cbs,
-		 vm->vlib_node_runtime_perf_counter_cb_tmp,
-		 vm->worker_thread_main_loop_callback_lock,
+	      clib_callback_data_enable_disable
+		(&args->vm->vlib_node_runtime_perf_callbacks,
 		 read_current_perf_counters, 0 /* enable */ );
 	      return;
 	    }
-	  *cc = sw_value;
+	  cc[i] = sw_value;
 	}
+    }
+
+  if (args->call_type == VLIB_NODE_RUNTIME_PERF_AFTER)
+    {
+      u32 node_index = args->node->node_index;
+      vec_validate (pt->counters, node_index);
+      pt->counters[node_index].ticks[0] += c[0] - pt->c[0];
+      pt->counters[node_index].ticks[1] += c[1] - pt->c[1];
+      pt->counters[node_index].vectors += args->packets;
     }
 }
 
 static void
 clear_counters (perfmon_main_t * pm)
 {
-  int i, j;
+  int j;
   vlib_main_t *vm = pm->vlib_main;
   vlib_main_t *stat_vm;
-  vlib_node_main_t *nm;
-  vlib_node_t *n;
+  perfmon_thread_t *pt;
+  u32 len;
+
 
   vlib_worker_thread_barrier_sync (vm);
 
@@ -88,26 +101,12 @@ clear_counters (perfmon_main_t * pm)
       if (stat_vm == 0)
 	continue;
 
-      nm = &stat_vm->node_main;
+      pt = pm->threads[j];
+      len = vec_len (pt->counters);
+      if (!len)
+	continue;
 
-      /* Clear the node runtime perfmon counters */
-      for (i = 0; i < vec_len (nm->nodes); i++)
-	{
-	  n = nm->nodes[i];
-	  vlib_node_sync_stats (stat_vm, n);
-	}
-
-      /* And clear the node perfmon counters */
-      for (i = 0; i < vec_len (nm->nodes); i++)
-	{
-	  n = nm->nodes[i];
-	  n->stats_total.perf_counter0_ticks = 0;
-	  n->stats_total.perf_counter1_ticks = 0;
-	  n->stats_total.perf_counter_vectors = 0;
-	  n->stats_last_clear.perf_counter0_ticks = 0;
-	  n->stats_last_clear.perf_counter1_ticks = 0;
-	  n->stats_last_clear.perf_counter_vectors = 0;
-	}
+      clib_memset (pt->counters, 0, len * sizeof (pt->counters[0]));
     }
   vlib_worker_thread_barrier_release (vm);
 }
@@ -121,19 +120,20 @@ enable_current_events (perfmon_main_t * pm)
   perfmon_event_config_t *c;
   vlib_main_t *vm = vlib_get_main ();
   u32 my_thread_index = vm->thread_index;
+  perfmon_thread_t *pt = pm->threads[my_thread_index];
   u32 index;
   int i, limit = 1;
   int cpu;
+  vlib_node_runtime_perf_callback_data_t cbdata = { 0 };
+  cbdata.fp = read_current_perf_counters;
+  cbdata.u[0].v = pt;
+  cbdata.u[1].v = vm;
 
   if ((pm->current_event + 1) < vec_len (pm->single_events_to_collect))
     limit = 2;
 
   for (i = 0; i < limit; i++)
     {
-      vec_validate (pm->pm_fds[i], vec_len (vlib_mains) - 1);
-      vec_validate (pm->perf_event_pages[i], vec_len (vlib_mains) - 1);
-      vec_validate (pm->rdpmc_indices[i], vec_len (vlib_mains) - 1);
-
       c = vec_elt_at_index (pm->single_events_to_collect,
 			    pm->current_event + i);
 
@@ -184,8 +184,8 @@ enable_current_events (perfmon_main_t * pm)
       if (ioctl (fd, PERF_EVENT_IOC_ENABLE, 0) < 0)
 	clib_unix_warning ("enable ioctl");
 
-      pm->perf_event_pages[i][my_thread_index] = (void *) p;
-      pm->pm_fds[i][my_thread_index] = fd;
+      pt->perf_event_pages[i] = (void *) p;
+      pt->pm_fds[i] = fd;
     }
 
   /*
@@ -194,9 +194,7 @@ enable_current_events (perfmon_main_t * pm)
    */
   for (i = 0; i < limit; i++)
     {
-      p =
-	(struct perf_event_mmap_page *)
-	pm->perf_event_pages[i][my_thread_index];
+      p = (struct perf_event_mmap_page *) pt->perf_event_pages[i];
 
       /*
        * Software event counters - and others not capable of being
@@ -208,16 +206,12 @@ enable_current_events (perfmon_main_t * pm)
       else
 	index = p->index - 1;
 
-      pm->rdpmc_indices[i][my_thread_index] = index;
+      pt->rdpmc_indices[i] = index;
     }
 
   pm->n_active = i;
   /* Enable the main loop counter snapshot mechanism */
-  clib_callback_enable_disable
-    (vm->vlib_node_runtime_perf_counter_cbs,
-     vm->vlib_node_runtime_perf_counter_cb_tmp,
-     vm->worker_thread_main_loop_callback_lock,
-     read_current_perf_counters, 1 /* enable */ );
+  clib_callback_data_add (&vm->vlib_node_runtime_perf_callbacks, cbdata);
 }
 
 static void
@@ -225,35 +219,30 @@ disable_events (perfmon_main_t * pm)
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 my_thread_index = vm->thread_index;
+  perfmon_thread_t *pt = pm->threads[my_thread_index];
   int i;
 
   /* Stop main loop collection */
-  clib_callback_enable_disable
-    (vm->vlib_node_runtime_perf_counter_cbs,
-     vm->vlib_node_runtime_perf_counter_cb_tmp,
-     vm->worker_thread_main_loop_callback_lock,
-     read_current_perf_counters, 0 /* enable */ );
+  clib_callback_data_remove (&vm->vlib_node_runtime_perf_callbacks,
+			     read_current_perf_counters);
 
   for (i = 0; i < pm->n_active; i++)
     {
-      if (pm->pm_fds[i][my_thread_index] == 0)
+      if (pt->pm_fds[i] == 0)
 	continue;
 
-      if (ioctl (pm->pm_fds[i][my_thread_index], PERF_EVENT_IOC_DISABLE, 0) <
-	  0)
+      if (ioctl (pt->pm_fds[i], PERF_EVENT_IOC_DISABLE, 0) < 0)
 	clib_unix_warning ("disable ioctl");
 
-      if (pm->perf_event_pages[i][my_thread_index])
+      if (pt->perf_event_pages[i])
 	{
-	  if (munmap (pm->perf_event_pages[i][my_thread_index],
-		      pm->page_size) < 0)
+	  if (munmap (pt->perf_event_pages[i], pm->page_size) < 0)
 	    clib_unix_warning ("munmap");
-	  pm->perf_event_pages[i][my_thread_index] = 0;
+	  pt->perf_event_pages[i] = 0;
 	}
 
-      (void) close (pm->pm_fds[i][my_thread_index]);
-      pm->pm_fds[i][my_thread_index] = 0;
-
+      (void) close (pt->pm_fds[i]);
+      pt->pm_fds[i] = 0;
     }
 }
 
@@ -265,7 +254,7 @@ worker_thread_start_event (vlib_main_t * vm)
   clib_callback_enable_disable (vm->worker_thread_main_loop_callbacks,
 				vm->worker_thread_main_loop_callback_tmp,
 				vm->worker_thread_main_loop_callback_lock,
-				worker_thread_start_event, 0 /* enable */ );
+				worker_thread_start_event, 0 /* disable */ );
   enable_current_events (pm);
 }
 
@@ -276,7 +265,7 @@ worker_thread_stop_event (vlib_main_t * vm)
   clib_callback_enable_disable (vm->worker_thread_main_loop_callbacks,
 				vm->worker_thread_main_loop_callback_tmp,
 				vm->worker_thread_main_loop_callback_lock,
-				worker_thread_stop_event, 0 /* enable */ );
+				worker_thread_stop_event, 0 /* disable */ );
   disable_events (pm);
 }
 
@@ -329,14 +318,15 @@ scrape_and_clear_counters (perfmon_main_t * pm)
   vlib_main_t *vm = pm->vlib_main;
   vlib_main_t *stat_vm;
   vlib_node_main_t *nm;
-  vlib_node_t ***node_dups = 0;
-  vlib_node_t **nodes;
-  vlib_node_t *n;
+  perfmon_counters_t *ctr;
+  perfmon_counters_t *ctrs;
+  perfmon_counters_t **ctr_dups = 0;
+  perfmon_thread_t *pt;
   perfmon_capture_t *c;
   perfmon_event_config_t *current_event;
   uword *p;
   u8 *counter_name;
-  u64 vectors_this_counter;
+  u32 len;
 
   /* snapshoot the nodes, including pm counters */
   vlib_worker_thread_barrier_sync (vm);
@@ -347,31 +337,16 @@ scrape_and_clear_counters (perfmon_main_t * pm)
       if (stat_vm == 0)
 	continue;
 
-      nm = &stat_vm->node_main;
-
-      for (i = 0; i < vec_len (nm->nodes); i++)
+      pt = pm->threads[j];
+      len = vec_len (pt->counters);
+      ctrs = 0;
+      if (len)
 	{
-	  n = nm->nodes[i];
-	  vlib_node_sync_stats (stat_vm, n);
+	  vec_validate (ctrs, len - 1);
+	  clib_memcpy (ctrs, pt->counters, len * sizeof (pt->counters[0]));
+	  clib_memset (pt->counters, 0, len * sizeof (pt->counters[0]));
 	}
-
-      nodes = 0;
-      vec_validate (nodes, vec_len (nm->nodes) - 1);
-      vec_add1 (node_dups, nodes);
-
-      /* Snapshoot and clear the per-node perfmon counters */
-      for (i = 0; i < vec_len (nm->nodes); i++)
-	{
-	  n = nm->nodes[i];
-	  nodes[i] = clib_mem_alloc (sizeof (*n));
-	  clib_memcpy_fast (nodes[i], n, sizeof (*n));
-	  n->stats_total.perf_counter0_ticks = 0;
-	  n->stats_total.perf_counter1_ticks = 0;
-	  n->stats_total.perf_counter_vectors = 0;
-	  n->stats_last_clear.perf_counter0_ticks = 0;
-	  n->stats_last_clear.perf_counter1_ticks = 0;
-	  n->stats_last_clear.perf_counter_vectors = 0;
-	}
+      vec_add1 (ctr_dups, ctrs);
     }
 
   vlib_worker_thread_barrier_release (vm);
@@ -382,22 +357,21 @@ scrape_and_clear_counters (perfmon_main_t * pm)
       if (stat_vm == 0)
 	continue;
 
-      nodes = node_dups[j];
+      pt = pm->threads[j];
+      ctrs = ctr_dups[j];
 
-      for (i = 0; i < vec_len (nodes); i++)
+      for (i = 0; i < vec_len (ctrs); i++)
 	{
 	  u8 *capture_name;
 
-	  n = nodes[i];
+	  ctr = &ctrs[i];
+	  nm = &stat_vm->node_main;
 
-	  if (n->stats_total.perf_counter0_ticks == 0 &&
-	      n->stats_total.perf_counter1_ticks == 0)
-	    goto skip_this_node;
+	  if (ctr->ticks[0] == 0 && ctr->ticks[1] == 0)
+	    continue;
 
 	  for (k = 0; k < 2; k++)
 	    {
-	      u64 counter_value, counter_last_clear;
-
 	      /*
 	       * We collect 2 counters at once, except for the
 	       * last counter when the user asks for an odd number of
@@ -407,20 +381,7 @@ scrape_and_clear_counters (perfmon_main_t * pm)
 		  >= vec_len (pm->single_events_to_collect))
 		break;
 
-	      if (k == 0)
-		{
-		  counter_value = n->stats_total.perf_counter0_ticks;
-		  counter_last_clear =
-		    n->stats_last_clear.perf_counter0_ticks;
-		}
-	      else
-		{
-		  counter_value = n->stats_total.perf_counter1_ticks;
-		  counter_last_clear =
-		    n->stats_last_clear.perf_counter1_ticks;
-		}
-
-	      capture_name = format (0, "t%d-%v%c", j, n->name, 0);
+	      capture_name = format (0, "t%d-%v%c", j, nm->nodes[i]->name, 0);
 
 	      p = hash_get_mem (pm->capture_by_thread_and_node_name,
 				capture_name);
@@ -443,20 +404,15 @@ scrape_and_clear_counters (perfmon_main_t * pm)
 	      current_event = pm->single_events_to_collect
 		+ pm->current_event + k;
 	      counter_name = (u8 *) current_event->name;
-	      vectors_this_counter = n->stats_total.perf_counter_vectors -
-		n->stats_last_clear.perf_counter_vectors;
 
 	      vec_add1 (c->counter_names, counter_name);
-	      vec_add1 (c->counter_values,
-			counter_value - counter_last_clear);
-	      vec_add1 (c->vectors_this_counter, vectors_this_counter);
+	      vec_add1 (c->counter_values, ctr->ticks[k]);
+	      vec_add1 (c->vectors_this_counter, ctr->vectors);
 	    }
-	skip_this_node:
-	  clib_mem_free (n);
 	}
-      vec_free (nodes);
+      vec_free (ctrs);
     }
-  vec_free (node_dups);
+  vec_free (ctr_dups);
 }
 
 static void
@@ -492,9 +448,8 @@ handle_timeout (vlib_main_t * vm, perfmon_main_t * pm, f64 now)
       for (i = 1; i < vec_len (vlib_mains); i++)
 	{
 	  /* Has the worker actually stopped collecting data? */
-	  while (clib_callback_is_set
-		 (vlib_mains[i]->worker_thread_main_loop_callbacks,
-		  vlib_mains[i]->worker_thread_main_loop_callback_lock,
+	  while (clib_callback_data_is_set
+		 (&vm->vlib_node_runtime_perf_callbacks,
 		  read_current_perf_counters))
 	    {
 	      if (vlib_time_now (vm) > deadman)
@@ -528,7 +483,7 @@ handle_timeout (vlib_main_t * vm, perfmon_main_t * pm, f64 now)
 	  (vlib_mains[i]->worker_thread_main_loop_callbacks,
 	   vlib_mains[i]->worker_thread_main_loop_callback_tmp,
 	   vlib_mains[i]->worker_thread_main_loop_callback_lock,
-	   worker_thread_start_event, 1 /* enable */ );
+	   worker_thread_start_event, 0 /* disable */ );
     }
 }
 
