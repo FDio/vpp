@@ -435,6 +435,211 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
 
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
+  b = bufs;
+
+  /* optimistic case first - no fragments */
+  while (n_left_from >= 2)
+    {
+      vlib_buffer_t *b0, *b1;
+      u32 next0, next1;
+      b0 = *b;
+      b++;
+      b1 = *b;
+      b++;
+
+      /* Prefetch next iteration. */
+      if (PREDICT_TRUE (n_left_from >= 4))
+	{
+	  vlib_buffer_t *p2, *p3;
+
+	  p2 = *b;
+	  p3 = *(b + 1);
+
+	  vlib_prefetch_buffer_header (p2, LOAD);
+	  vlib_prefetch_buffer_header (p3, LOAD);
+
+	  CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	}
+
+      ip4_header_t *ip0 =
+	(ip4_header_t *) u8_ptr_add (vlib_buffer_get_current (b0),
+				     (is_output_feature ? 1 : 0) *
+				     vnet_buffer (b0)->
+				     ip.save_rewrite_length);
+      ip4_header_t *ip1 =
+	(ip4_header_t *) u8_ptr_add (vlib_buffer_get_current (b1),
+				     (is_output_feature ? 1 : 0) *
+				     vnet_buffer (b1)->
+				     ip.save_rewrite_length);
+      if (PREDICT_FALSE
+	  (ip4_get_fragment_more (ip0) || ip4_get_fragment_offset (ip0))
+	  || (ip4_get_fragment_more (ip1) || ip4_get_fragment_offset (ip1)))
+	{
+	  // fragment found, go slow path
+	  b -= 2;
+	  if (b - bufs > 0)
+	    {
+	      vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
+					   b - bufs);
+	    }
+	  goto slow_path;
+	}
+      if (is_feature)
+	{
+	  vnet_feature_next (&next0, b0);
+	}
+      else
+	{
+	  next0 = is_custom ? vnet_buffer (b0)->ip.reass.next_index :
+	    IP4_SV_REASSEMBLY_NEXT_INPUT;
+	}
+      vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
+      vnet_buffer (b0)->ip.reass.ip_proto = ip0->protocol;
+      if (IP_PROTOCOL_TCP == ip0->protocol)
+	{
+	  vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
+	    ((tcp_header_t *) (ip0 + 1))->flags;
+	  vnet_buffer (b0)->ip.reass.tcp_ack_number =
+	    ((tcp_header_t *) (ip0 + 1))->ack_number;
+	  vnet_buffer (b0)->ip.reass.tcp_seq_number =
+	    ((tcp_header_t *) (ip0 + 1))->seq_number;
+	}
+      else if (IP_PROTOCOL_ICMP == ip0->protocol)
+	{
+	  vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
+	    ((icmp46_header_t *) (ip0 + 1))->type;
+	}
+      vnet_buffer (b0)->ip.reass.l4_src_port = ip4_get_port (ip0, 1);
+      vnet_buffer (b0)->ip.reass.l4_dst_port = ip4_get_port (ip0, 0);
+      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  ip4_sv_reass_add_trace (vm, node, rm, NULL, from[(b - 2) - bufs],
+				  REASS_PASSTHROUGH,
+				  vnet_buffer (b0)->ip.reass.ip_proto,
+				  vnet_buffer (b0)->ip.reass.l4_src_port,
+				  vnet_buffer (b0)->ip.reass.l4_dst_port);
+	}
+      if (is_feature)
+	{
+	  vnet_feature_next (&next1, b1);
+	}
+      else
+	{
+	  next1 = is_custom ? vnet_buffer (b1)->ip.reass.next_index :
+	    IP4_SV_REASSEMBLY_NEXT_INPUT;
+	}
+      vnet_buffer (b1)->ip.reass.is_non_first_fragment = 0;
+      vnet_buffer (b1)->ip.reass.ip_proto = ip1->protocol;
+      if (IP_PROTOCOL_TCP == ip1->protocol)
+	{
+	  vnet_buffer (b1)->ip.reass.icmp_type_or_tcp_flags =
+	    ((tcp_header_t *) (ip1 + 1))->flags;
+	  vnet_buffer (b1)->ip.reass.tcp_ack_number =
+	    ((tcp_header_t *) (ip1 + 1))->ack_number;
+	  vnet_buffer (b1)->ip.reass.tcp_seq_number =
+	    ((tcp_header_t *) (ip1 + 1))->seq_number;
+	}
+      else if (IP_PROTOCOL_ICMP == ip1->protocol)
+	{
+	  vnet_buffer (b1)->ip.reass.icmp_type_or_tcp_flags =
+	    ((icmp46_header_t *) (ip1 + 1))->type;
+	}
+      vnet_buffer (b1)->ip.reass.l4_src_port = ip4_get_port (ip1, 1);
+      vnet_buffer (b1)->ip.reass.l4_dst_port = ip4_get_port (ip1, 0);
+      if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  ip4_sv_reass_add_trace (vm, node, rm, NULL, from[(b - 1) - bufs],
+				  REASS_PASSTHROUGH,
+				  vnet_buffer (b1)->ip.reass.ip_proto,
+				  vnet_buffer (b1)->ip.reass.l4_src_port,
+				  vnet_buffer (b1)->ip.reass.l4_dst_port);
+	}
+
+      n_left_from -= 2;
+      next[0] = next0;
+      next[1] = next1;
+      next += 2;
+    }
+
+  while (n_left_from > 0)
+    {
+      vlib_buffer_t *b0;
+      u32 next0;
+      b0 = *b;
+      b++;
+
+      ip4_header_t *ip0 =
+	(ip4_header_t *) u8_ptr_add (vlib_buffer_get_current (b0),
+				     (is_output_feature ? 1 : 0) *
+				     vnet_buffer (b0)->
+				     ip.save_rewrite_length);
+      if (PREDICT_FALSE
+	  (ip4_get_fragment_more (ip0) || ip4_get_fragment_offset (ip0)))
+	{
+	  // fragment found, go slow path
+	  b -= 1;
+	  if (b - bufs > 0)
+	    {
+	      vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
+					   b - bufs);
+	    }
+	  goto slow_path;
+	}
+      if (is_feature)
+	{
+	  vnet_feature_next (&next0, b0);
+	}
+      else
+	{
+	  next0 =
+	    is_custom ? vnet_buffer (b0)->ip.
+	    reass.next_index : IP4_SV_REASSEMBLY_NEXT_INPUT;
+	}
+      vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
+      vnet_buffer (b0)->ip.reass.ip_proto = ip0->protocol;
+      if (IP_PROTOCOL_TCP == ip0->protocol)
+	{
+	  vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
+	    ((tcp_header_t *) (ip0 + 1))->flags;
+	  vnet_buffer (b0)->ip.reass.tcp_ack_number =
+	    ((tcp_header_t *) (ip0 + 1))->ack_number;
+	  vnet_buffer (b0)->ip.reass.tcp_seq_number =
+	    ((tcp_header_t *) (ip0 + 1))->seq_number;
+	}
+      else if (IP_PROTOCOL_ICMP == ip0->protocol)
+	{
+	  vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
+	    ((icmp46_header_t *) (ip0 + 1))->type;
+	}
+      vnet_buffer (b0)->ip.reass.l4_src_port = ip4_get_port (ip0, 1);
+      vnet_buffer (b0)->ip.reass.l4_dst_port = ip4_get_port (ip0, 0);
+      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  ip4_sv_reass_add_trace (vm, node, rm, NULL, from[(b - 1) - bufs],
+				  REASS_PASSTHROUGH,
+				  vnet_buffer (b0)->ip.reass.ip_proto,
+				  vnet_buffer (b0)->ip.reass.l4_src_port,
+				  vnet_buffer (b0)->ip.reass.l4_dst_port);
+	}
+
+      n_left_from -= 1;
+      next[0] = next0;
+      next += 1;
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
+			       frame->n_vectors);
+
+  goto done;
+
+slow_path:
+
+  from += b - bufs;
+
   while (n_left_from > 0)
     {
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
@@ -669,6 +874,7 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
+done:
   clib_spinlock_unlock (&rt->lock);
   return frame->n_vectors;
 }

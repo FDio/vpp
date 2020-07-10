@@ -670,6 +670,72 @@ class TestIPv4SVReassembly(VppTestCase):
             self.assertEqual(sent[IP].dst, recvd[IP].dst)
             self.assertEqual(sent[Raw].payload, recvd[Raw].payload)
 
+    def send_mixed_and_verify_capture(self, traffic):
+        stream = []
+        for t in traffic:
+            for c in range(t['count']):
+                stream.append(
+                    (Ether(dst=self.src_if.local_mac,
+                           src=self.src_if.remote_mac) /
+                     IP(id=self.counter,
+                        flags=t['flags'],
+                        src=self.src_if.remote_ip4,
+                        dst=self.dst_if.remote_ip4) /
+                     UDP(sport=1234, dport=5678) /
+                     Raw("abcdef")))
+                self.counter = self.counter + 1
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(stream)
+        self.pg_start()
+        self.logger.debug(self.vapi.ppcli("show ip4-sv-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show buffers"))
+        self.logger.debug(self.vapi.ppcli("show trace"))
+        self.dst_if.get_capture(len(stream))
+
+    def test_mixed(self):
+        """ mixed traffic correctly passes through SVR """
+        self.counter = 1
+
+        self.send_mixed_and_verify_capture([{'count': 1, 'flags': ''}])
+        self.send_mixed_and_verify_capture([{'count': 2, 'flags': ''}])
+        self.send_mixed_and_verify_capture([{'count': 3, 'flags': ''}])
+        self.send_mixed_and_verify_capture([{'count': 8, 'flags': ''}])
+        self.send_mixed_and_verify_capture([{'count': 257, 'flags': ''}])
+
+        self.send_mixed_and_verify_capture([{'count': 1, 'flags': 'MF'}])
+        self.send_mixed_and_verify_capture([{'count': 2, 'flags': 'MF'}])
+        self.send_mixed_and_verify_capture([{'count': 3, 'flags': 'MF'}])
+        self.send_mixed_and_verify_capture([{'count': 8, 'flags': 'MF'}])
+        self.send_mixed_and_verify_capture([{'count': 257, 'flags': 'MF'}])
+
+        self.send_mixed_and_verify_capture(
+            [{'count': 1, 'flags': ''}, {'count': 1, 'flags': 'MF'}])
+        self.send_mixed_and_verify_capture(
+            [{'count': 2, 'flags': ''}, {'count': 2, 'flags': 'MF'}])
+        self.send_mixed_and_verify_capture(
+            [{'count': 3, 'flags': ''}, {'count': 3, 'flags': 'MF'}])
+        self.send_mixed_and_verify_capture(
+            [{'count': 8, 'flags': ''}, {'count': 8, 'flags': 'MF'}])
+        self.send_mixed_and_verify_capture(
+            [{'count': 129, 'flags': ''}, {'count': 129, 'flags': 'MF'}])
+
+        self.send_mixed_and_verify_capture(
+            [{'count': 1, 'flags': ''}, {'count': 1, 'flags': 'MF'},
+             {'count': 1, 'flags': ''}, {'count': 1, 'flags': 'MF'}])
+        self.send_mixed_and_verify_capture(
+            [{'count': 2, 'flags': ''}, {'count': 2, 'flags': 'MF'},
+             {'count': 2, 'flags': ''}, {'count': 2, 'flags': 'MF'}])
+        self.send_mixed_and_verify_capture(
+            [{'count': 3, 'flags': ''}, {'count': 3, 'flags': 'MF'},
+             {'count': 3, 'flags': ''}, {'count': 3, 'flags': 'MF'}])
+        self.send_mixed_and_verify_capture(
+            [{'count': 8, 'flags': ''}, {'count': 8, 'flags': 'MF'},
+             {'count': 8, 'flags': ''}, {'count': 8, 'flags': 'MF'}])
+        self.send_mixed_and_verify_capture(
+            [{'count': 65, 'flags': ''}, {'count': 65, 'flags': 'MF'},
+             {'count': 65, 'flags': ''}, {'count': 65, 'flags': 'MF'}])
+
 
 class TestIPv4MWReassembly(VppTestCase):
     """ IPv4 Reassembly (multiple workers) """
