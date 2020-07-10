@@ -132,7 +132,7 @@ typedef struct vlib_cli_command_t
 
 typedef void (vlib_cli_output_function_t) (uword arg,
 					   u8 * buffer, uword buffer_bytes);
-typedef struct
+typedef struct vlib_cli_main_t
 {
   /* Vector of all known commands. */
   vlib_cli_command_t *commands;
@@ -146,6 +146,12 @@ typedef struct
   /* index vector, to sort commands, etc. */
   u32 *sort_vector;
 
+
+  /* performance counter callback */
+  void (**perf_counter_cbs)
+    (struct vlib_cli_main_t *, u32 id, int before_or_after);
+  void (**perf_counter_cbs_tmp)
+    (struct vlib_cli_main_t *, u32 id, int before_or_after);
 } vlib_cli_main_t;
 
 #ifndef CLIB_MARCH_VARIANT

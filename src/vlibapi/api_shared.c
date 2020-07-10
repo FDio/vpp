@@ -30,6 +30,7 @@
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
 #include <vppinfra/elog.h>
+#include <vppinfra/callback.h>
 
 /* *INDENT-OFF* */
 api_main_t api_global_main =
@@ -493,7 +494,15 @@ msg_handler_internal (api_main_t * am,
 	      (*endian_fp) (the_msg);
 	    }
 
+	  if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
+	    clib_call_callbacks (am->perf_counter_cbs, am, id,
+				 0 /* before */ );
+
 	  (*am->msg_handlers[id]) (the_msg);
+
+	  if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
+	    clib_call_callbacks (am->perf_counter_cbs, am, id,
+				 1 /* after */ );
 	  if (!am->is_mp_safe[id])
 	    vl_msg_api_barrier_release ();
 	}
@@ -620,8 +629,13 @@ vl_msg_api_handler_with_vm_node (api_main_t * am, svm_region_t * vlib_rp,
 	  endian_fp = am->msg_endian_handlers[id];
 	  (*endian_fp) (the_msg);
 	}
+      if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
+	clib_call_callbacks (am->perf_counter_cbs, am, id, 0 /* before */ );
 
       (*handler) (the_msg, vm, node);
+
+      if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
+	clib_call_callbacks (am->perf_counter_cbs, am, id, 1 /* after */ );
       if (is_private)
 	{
 	  am->vlib_rp = old_vlib_rp;

@@ -70,12 +70,11 @@ do {                                                    \
    * Note: fp exists to shut up gcc-6, which            \
    * produces a warning not seen with gcc-7 or 8        \
    */                                                   \
-  void (*fp)(void *a1, ...);                            \
+  typeof (h) h_ = (h);                                  \
   int i;                                                \
-  for (i = 0; i < vec_len (h); i++)                     \
+  for (i = 0; i < vec_len (h_); i++)                    \
     {                                                   \
-      fp = (void *)(h[i]);                              \
-      (*fp) (__VA_ARGS__);                              \
+      (h_[i]) (__VA_ARGS__);                            \
     }                                                   \
  } while (0);
 
