@@ -16,7 +16,6 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/plugin/plugin.h>
 #include <perfmon/perfmon.h>
 #include <perfmon/perfmon_intel.h>
 
@@ -98,6 +97,7 @@ perfmon_init (vlib_main_t * vm)
   u32 cpuid;
   u8 model, stepping;
   perfmon_intel_pmc_event_t *ev;
+  int i;
 
   pm->vlib_main = vm;
   pm->vnet_main = vnet_get_main ();
@@ -109,9 +109,17 @@ perfmon_init (vlib_main_t * vm)
 
   /* Default data collection interval */
   pm->timeout_interval = 2.0;	/* seconds */
-  vec_validate (pm->pm_fds, 1);
-  vec_validate (pm->perf_event_pages, 1);
-  vec_validate (pm->rdpmc_indices, 1);
+
+  vec_validate (pm->threads, vlib_get_thread_main ()->n_vlib_mains - 1);
+  for (i = 0; i < vec_len (pm->threads); i++)
+    {
+      perfmon_thread_t *pt = clib_mem_alloc_aligned
+	(sizeof (perfmon_thread_t), CLIB_CACHE_LINE_BYTES);
+      clib_memset (pt, 0, sizeof (*pt));
+      pm->threads[i] = pt;
+      pt->pm_fds[0] = -1;
+      pt->pm_fds[1] = -1;
+    }
   pm->page_size = getpagesize ();
 
   pm->perfmon_table = 0;
@@ -147,18 +155,7 @@ perfmon_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (perfmon_init);
 
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
-  .version = VPP_BUILD_VER,
-  .description = "Performance Monitor",
-#if !defined(__x86_64__)
-  .default_disabled = 1,
-#endif
-};
-/* *INDENT-ON* */
-
-static uword
+uword
 unformat_processor_event (unformat_input_t * input, va_list * args)
 {
   perfmon_main_t *pm = va_arg (*args, perfmon_main_t *);
@@ -185,6 +182,10 @@ unformat_processor_event (unformat_input_t * input, va_list * args)
 
   pe_config |= pm->perfmon_table[idx].event_code[0];
   pe_config |= pm->perfmon_table[idx].umask << 8;
+  pe_config |= pm->perfmon_table[idx].edge << 18;
+  pe_config |= pm->perfmon_table[idx].anyt << 21;
+  pe_config |= pm->perfmon_table[idx].inv << 23;
+  pe_config |= pm->perfmon_table[idx].cmask << 24;
 
   ep->name = (char *) hp->key;
   ep->pe_type = PERF_TYPE_RAW;

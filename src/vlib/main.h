@@ -40,6 +40,7 @@
 #ifndef included_vlib_main_h
 #define included_vlib_main_h
 
+#include <vppinfra/callback_data.h>
 #include <vppinfra/elog.h>
 #include <vppinfra/format.h>
 #include <vppinfra/longjmp.h>
@@ -80,6 +81,42 @@ typedef struct
   u32 trace_filter_set_index;
 } vlib_trace_filter_t;
 
+typedef enum
+{
+  VLIB_NODE_RUNTIME_PERF_BEFORE,
+  VLIB_NODE_RUNTIME_PERF_AFTER,
+  VLIB_NODE_RUNTIME_PERF_RESET,
+} vlib_node_runtime_perf_call_type_t;
+
+typedef struct
+{
+  struct vlib_main_t *vm;
+  vlib_node_runtime_t *node;
+  vlib_frame_t *frame;
+  uword packets;
+  u64 cpu_time_now;
+  vlib_node_runtime_perf_call_type_t call_type;
+} vlib_node_runtime_perf_callback_args_t;
+
+struct vlib_node_runtime_perf_callback_data_t;
+
+typedef void (*vlib_node_runtime_perf_callback_fp_t)
+  (struct vlib_node_runtime_perf_callback_data_t * data,
+   vlib_node_runtime_perf_callback_args_t * args);
+
+typedef struct vlib_node_runtime_perf_callback_data_t
+{
+  vlib_node_runtime_perf_callback_fp_t fp;
+  union
+  {
+    void *v;
+    u64 u;
+  } u[3];
+} vlib_node_runtime_perf_callback_data_t;
+
+clib_callback_data_typedef (vlib_node_runtime_perf_callback_set_t,
+			    vlib_node_runtime_perf_callback_data_t);
+
 typedef struct vlib_main_t
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -112,14 +149,8 @@ typedef struct vlib_main_t
   u32 internal_node_last_vectors_per_main_loop;
 
   /* Main loop hw / sw performance counters */
-  void (**vlib_node_runtime_perf_counter_cbs) (struct vlib_main_t *,
-					       u64 *, u64 *,
-					       vlib_node_runtime_t *,
-					       vlib_frame_t *, int);
-  void (**vlib_node_runtime_perf_counter_cb_tmp) (struct vlib_main_t *,
-						  u64 *, u64 *,
-						  vlib_node_runtime_t *,
-						  vlib_frame_t *, int);
+  vlib_node_runtime_perf_callback_set_t vlib_node_runtime_perf_callbacks;
+
   /* Every so often we switch to the next counter. */
 #define VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE 7
 
@@ -234,9 +265,10 @@ typedef struct vlib_main_t
   u8 **argv;
 
   /* Top of (worker) dispatch loop callback */
-  void (**volatile worker_thread_main_loop_callbacks) (struct vlib_main_t *);
+  void (**volatile worker_thread_main_loop_callbacks)
+    (struct vlib_main_t *, u64 t);
   void (**volatile worker_thread_main_loop_callback_tmp)
-    (struct vlib_main_t *);
+    (struct vlib_main_t *, u64 t);
   clib_spinlock_t worker_thread_main_loop_callback_lock;
 
   /* debugging */
@@ -267,6 +299,12 @@ typedef struct vlib_main_t
 
   /* Earliest barrier can be closed again */
   f64 barrier_no_close_before;
+
+  /* Barrier counter callback */
+  void (**volatile barrier_perf_callbacks)
+    (struct vlib_main_t *, u64 t, int leave);
+  void (**volatile barrier_perf_callbacks_tmp)
+    (struct vlib_main_t *, u64 t, int leave);
 
   /* Need to check the frame queues */
   volatile uword check_frame_queues;
@@ -397,6 +435,27 @@ always_inline u32
 vlib_last_vectors_per_main_loop (vlib_main_t * vm)
 {
   return vm->internal_node_last_vectors_per_main_loop;
+}
+
+always_inline void
+vlib_node_runtime_perf_counter (vlib_main_t * vm, vlib_node_runtime_t * node,
+				vlib_frame_t * frame, uword n, u64 t,
+				vlib_node_runtime_perf_call_type_t call_type)
+{
+  vlib_node_runtime_perf_callback_data_t *v =
+    clib_callback_data_check_and_get (&vm->vlib_node_runtime_perf_callbacks);
+  if (vec_len (v))
+    {
+      vlib_node_runtime_perf_callback_args_t args = {
+	.vm = vm,
+	.node = node,
+	.frame = frame,
+	.packets = n,
+	.cpu_time_now = t,
+	.call_type = call_type,
+      };
+      clib_callback_data_call_vec (v, &args);
+    }
 }
 
 always_inline void vlib_set_queue_signal_callback

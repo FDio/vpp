@@ -102,6 +102,7 @@ set(VPPINFRA_HEADERS
   byte_order.h
   cache.h
   callback.h
+  callback_data.h
   clib_error.h
   clib.h
   cpu.h
