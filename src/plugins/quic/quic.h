@@ -212,23 +212,26 @@ typedef struct quic_crypto_context_data_
 
 typedef struct quic_encrypt_cb_ctx_
 {
-  quicly_datagram_t *packet;
+  ptls_iovec_t *packet;
   struct quic_finalize_send_packet_cb_ctx_
   {
     size_t payload_from;
     size_t first_byte_at;
     ptls_cipher_context_t *hp;
+    uint8_t hp_crypto_io[16];
+    uint8_t aead_iv[16];
   } snd_ctx[QUIC_MAX_COALESCED_PACKET];
   size_t snd_ctx_count;
 } quic_encrypt_cb_ctx;
 
 typedef struct quic_crypto_batch_ctx_
 {
-  vnet_crypto_op_t aead_crypto_tx_packets_ops[QUIC_SEND_MAX_BATCH_PACKETS],
-    aead_crypto_rx_packets_ops[QUIC_RCV_MAX_BATCH_PACKETS];
+  quic_encrypt_cb_ctx crypto_tx_packet_ctx[QUIC_SEND_MAX_BATCH_PACKETS];
+  vnet_crypto_op_t aead_crypto_tx_packets_ops[QUIC_SEND_MAX_BATCH_PACKETS];
+  vnet_crypto_op_t hp_crypto_tx_packets_ops[QUIC_SEND_MAX_BATCH_PACKETS];
+  vnet_crypto_op_t aead_crypto_rx_packets_ops[QUIC_RCV_MAX_BATCH_PACKETS];
   size_t nb_tx_packets, nb_rx_packets;
 } quic_crypto_batch_ctx_t;
-
 typedef struct quic_worker_ctx_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
