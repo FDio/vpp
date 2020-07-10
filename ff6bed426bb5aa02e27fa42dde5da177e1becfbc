@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a1be5a63_98200b9c",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1786,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2020-07-10T13:05:41Z",
+      "side": 1,
+      "message": "This looks like accidentally duplicated code ;-)",
+      "revId": "ff6bed426bb5aa02e27fa42dde5da177e1becfbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9300cec1_9c5deea3",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2020-07-10T13:05:41Z",
+      "side": 1,
+      "message": "This should remain 1280 by default",
+      "revId": "ff6bed426bb5aa02e27fa42dde5da177e1becfbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "47ea0597_60ac4a15",
+        "filename": "src/plugins/quic/quic_crypto.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2020-07-10T13:05:41Z",
+      "side": 1,
+      "message": "This looks unused now",
+      "revId": "ff6bed426bb5aa02e27fa42dde5da177e1becfbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
