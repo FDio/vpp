@@ -127,12 +127,11 @@ format_ip6_address_and_mask (u8 * s, va_list * args)
     return format (s, "any");
 
   if (am->mask.as_u64[0] == ~0 && am->mask.as_u64[1] == ~0)
-    return format (s, "%U", format_ip4_address, &am->addr);
+    return format (s, "%U", format_ip6_address, &am->addr);
 
   return format (s, "%U/%U", format_ip6_address, &am->addr,
-		 format_ip4_address, &am->mask);
+		 format_ip6_address, &am->mask);
 }
-
 
 /* Parse an IP6 address. */
 uword
