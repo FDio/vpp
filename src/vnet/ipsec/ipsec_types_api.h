@@ -31,4 +31,5 @@ extern ipsec_sa_flags_t ipsec_sa_flags_decode (vl_api_ipsec_sad_flags_t in);
 extern vl_api_ipsec_sad_flags_t ipsec_sad_flags_encode (const ipsec_sa_t *
 							sa);
 
+extern void *ipsec_tfs_config_decode (const u8 *s, u16 slen);
 #endif

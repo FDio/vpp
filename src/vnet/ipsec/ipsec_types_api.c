@@ -5,6 +5,7 @@
 
 #include <vnet/ipsec/ipsec_types_api.h>
 #include <vlibapi/api_types.h>
+#include <vnet/ipsec/iptfs/ipsec_iptfs_calls.h>
 
 int
 ipsec_proto_decode (vl_api_ipsec_proto_t in, ipsec_protocol_t * out)
@@ -166,4 +167,18 @@ ipsec_sad_flags_encode (const ipsec_sa_t * sa)
     flags |= IPSEC_API_SAD_FLAG_ASYNC;
 
   return clib_host_to_net_u32 (flags);
+}
+
+void *
+ipsec_tfs_config_decode (const u8 *s, u16 slen)
+{
+  unformat_input_t uf;
+  void *tfs_config = NULL;
+
+  /* clib_warning ("%s: (%u) %*s", __FUNCTION__, slen, slen, s); */
+
+  unformat_init_string (&uf, (char *) s, slen);
+  unformat (&uf, "%U", unformat_iptfs_config, &tfs_config);
+  unformat_free (&uf);
+  return tfs_config;
 }

@@ -33,11 +33,11 @@ typedef enum
     ESP_DECRYPT_N_NEXT,
 } esp_decrypt_next_t;
 
-#define foreach_esp_decrypt_post_next                                         \
-  _ (DROP, "error-drop")                                                      \
-  _ (IP4_INPUT, "ip4-input-no-checksum")                                      \
-  _ (IP6_INPUT, "ip6-input")                                                  \
-  _ (MPLS_INPUT, "mpls-input")                                                \
+#define foreach_esp_decrypt_post_next                                                              \
+  _ (DROP, "error-drop")                                                                           \
+  _ (IP4_INPUT, "ip4-input-no-checksum")                                                           \
+  _ (IP6_INPUT, "ip6-input")                                                                       \
+  _ (MPLS_INPUT, "mpls-input")                                                                     \
   _ (L2_INPUT, "l2-input")
 
 #define _(v, s) ESP_DECRYPT_POST_NEXT_##v,
@@ -762,6 +762,37 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node, const u16 *
 	  b->current_data = current_data + adv;
 	  b->current_length = current_length - adv;
 	  esp_remove_tail (vm, b, lb, tail);
+
+	  if (IP_PROTOCOL_AGGFRAG == next_header)
+	    {
+	      /*
+	       * Asynchronous crypto overlays the pd structure on the
+	       * buffer opaque structure. Although it carries some of
+	       * the same fields, they are not in the same positions
+	       * as the vnet buffer opaque union ipsec fields.
+	       *
+	       * IPTFS needs the 64-bit extended sequence number and
+	       * the SA index, so we restore those two fields in the
+	       * vnet buffer opaque union ipsec fields.
+	       *
+	       * Ensure these fields are set for both sync and async.
+	       *
+	       * New plan (260916):
+	       * Decrypt path IPTFS always gets these fields from
+	       * esp_post_data (b)->decrypt_data.* (which is in the
+	       * vnet buffer's opaque area).
+	       *
+	       * These fields are already set in the async case.
+	       * For sync case, we copy from the (stack-based) pd
+	       * into esp_post_data (b)->decrypt_data.*
+	       */
+	      if (!is_async)
+		{
+		  esp_post_data (b)->decrypt_data.seq_hi = pd->seq_hi;
+		  esp_post_data (b)->decrypt_data.seq = pd->seq;
+		  esp_post_data (b)->decrypt_data.sa_index = pd->sa_index;
+		}
+	    }
 	}
       else
 	{
@@ -1113,6 +1144,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  tr->seq = pd->seq;
 	  tr->sa_seq64 = irt->seq64;
 	  tr->pkt_seq_hi = pd->seq_hi;
+	  tr->next = sync_next[0];
 	}
 
       /* next */
@@ -1176,6 +1208,7 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 	  tr->seq = pd->seq;
 	  tr->sa_seq64 = irt->seq64;
 	  tr->pkt_seq_hi = pd->seq_hi;
+	  tr->next = next[0];
 	}
 
       n_left--;

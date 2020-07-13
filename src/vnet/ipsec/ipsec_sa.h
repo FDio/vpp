@@ -60,7 +60,7 @@ typedef enum
     IPSEC_INTEG_N_ALG,
 } __clib_packed ipsec_integ_alg_t;
 
-typedef enum
+typedef enum __attribute__ ((__packed__))
 {
   IPSEC_PROTOCOL_AH = 0,
   IPSEC_PROTOCOL_ESP = 1
@@ -206,6 +206,7 @@ typedef struct ipsec_sa_outb_rt_t_
   u16 ipsec6_output_next_index;
   u32 salt;
   u8 is_hmac_only;
+  u8 is_tfs : 1;
   ipsec_sa_outb_rt_cached_t cached;
   u64 seq64;
   dpo_id_t dpo;
@@ -246,6 +247,7 @@ typedef struct
   vnet_crypto_ctx_t *ctx;
 
   /* else u8 packed */
+  bool is_tfs;
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
 
@@ -286,6 +288,10 @@ foreach_ipsec_sa_flags
   }
     foreach_ipsec_sa_flags
 #undef _
+
+#define ipsec_sa_is_IPTFS(sa)		      ((sa)->is_tfs)
+#define ipsec_sa_index_is_IPTFS(im, sa_index) ((sa_index) != ~0 && ipsec_sa_get (sa_index)->is_tfs)
+
       /**
        * @brief
        * SA packet & bytes counters
@@ -298,12 +304,14 @@ __clib_export extern void ipsec_mk_key (ipsec_key_t *key, const u8 *data, u8 len
 extern int ipsec_sa_update (u32 id, u16 src_port, u16 dst_port,
 			    const tunnel_t *tun, bool is_tun);
 extern void ipsec_sa_update_runtime (ipsec_sa_t *sa);
-__clib_export extern int
-ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto, ipsec_crypto_alg_t crypto_alg,
-		       const ipsec_key_t *ck, ipsec_integ_alg_t integ_alg, const ipsec_key_t *ik,
-		       ipsec_sa_flags_t flags, u32 salt, u16 src_port, u16 dst_port,
-		       u32 anti_replay_window_size, const tunnel_t *tun, u32 *sa_out_index);
-extern int ipsec_sa_bind (u32 id, u32 worker, bool bind);
+__clib_export extern int ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
+						ipsec_crypto_alg_t crypto_alg,
+						const ipsec_key_t *ck, ipsec_integ_alg_t integ_alg,
+						const ipsec_key_t *ik, ipsec_sa_flags_t flags,
+						void *tfs_config, u32 salt, u16 src_port,
+						u16 dst_port, u32 anti_replay_window_size,
+						const tunnel_t *tun, u32 *sa_out_index);
+__clib_export extern int ipsec_sa_bind (u32 id, u32 worker, bool bind);
 __clib_export extern index_t ipsec_sa_find_and_lock (u32 id);
 __clib_export extern int ipsec_sa_unlock_id (u32 id);
 __clib_export extern void ipsec_sa_unlock (index_t sai);
@@ -317,7 +325,7 @@ extern void ipsec_sa_walk (ipsec_sa_walk_cb_t cd, void *ctx);
 extern u8 *format_ipsec_replay_window (u8 *s, va_list *args);
 extern u8 *format_ipsec_crypto_alg (u8 *s, va_list *args);
 extern u8 *format_ipsec_integ_alg (u8 *s, va_list *args);
-extern u8 *format_ipsec_sa (u8 *s, va_list *args);
+__clib_export extern u8 *format_ipsec_sa (u8 *s, va_list *args);
 extern u8 *format_ipsec_key (u8 *s, va_list *args);
 extern uword unformat_ipsec_crypto_alg (unformat_input_t *input,
 					va_list *args);
@@ -732,7 +740,6 @@ ipsec_sa_anti_replay_advance (ipsec_sa_inb_rt_t *irt,
   return n_lost;
 }
 
-
 /*
  * Makes choice for thread_id should be assigned.
  *  if input ~0, gets random worker_id based on unix_time_now_nsec
@@ -740,8 +747,7 @@ ipsec_sa_anti_replay_advance (ipsec_sa_inb_rt_t *irt,
 always_inline u16
 ipsec_sa_assign_thread (u16 thread_id)
 {
-  return ((thread_id) ? thread_id
-	  : (unix_time_now_nsec () % vlib_num_workers ()) + 1);
+  return ((thread_id) ? thread_id : (unix_time_now_nsec () % vlib_num_workers ()) + 1);
 }
 
 #endif /* __IPSEC_SPD_SA_H__ */

@@ -4,6 +4,7 @@
  */
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/iptfs/ipsec_iptfs_calls.h>
 
 /**
  * @brief
@@ -181,6 +182,25 @@ ipsec_spd_ip4_tun_protect_cache_rebuild (ipsec_spd_t *spd)
   spd->ip4_inbound_tun_protect_policies = matches;
 }
 
+/*
+ * SA must be valid when this function is called; on delete, that means
+ * this function should be called before ipsec_sa_unlock()
+ */
+static void
+ipsec_add_del_policy_tfs (ipsec_policy_t *policy, int is_add)
+{
+  if (is_add)
+    {
+      if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
+	iptfs_add_del_policy (policy->sa_index, true);
+    }
+  else
+    {
+      if (INDEX_INVALID != policy->sa_index)
+	iptfs_add_del_policy (policy->sa_index, false);
+    }
+}
+
 int
 ipsec_add_del_policy (vlib_main_t * vm,
 		      ipsec_policy_t * policy, int is_add, u32 * stat_index)
@@ -266,6 +286,8 @@ ipsec_add_del_policy (vlib_main_t * vm,
 	ipsec_spd_ip4_tun_protect_cache_rebuild (spd);
 
       *stat_index = policy_index;
+
+      ipsec_add_del_policy_tfs (policy, true);
     }
   else
     {
@@ -305,7 +327,14 @@ ipsec_add_del_policy (vlib_main_t * vm,
 	    ipsec_spd_ip4_range_cache_rebuild (spd, policy->type);
 	    if (policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT)
 		ipsec_spd_ip4_tun_protect_cache_rebuild (spd);
-	    ipsec_sa_unlock (vp->sa_index);
+	    if (vp->policy != IPSEC_POLICY_ACTION_PROTECT)
+	      ASSERT (INDEX_INVALID == vp->sa_index);
+	    else
+	      {
+		ASSERT (INDEX_INVALID != vp->sa_index);
+		ipsec_add_del_policy_tfs (vp, false);
+		ipsec_sa_unlock (vp->sa_index);
+	      }
 	    pool_put (im->policies, vp);
 	    break;
 	  }
@@ -715,6 +744,8 @@ ipsec_fp_ip4_add_policy (ipsec_main_t *im, ipsec_spd_fp_t *fp_spd,
   mte->refcount++;
   clib_memcpy (vp, policy, sizeof (*vp));
 
+  ipsec_add_del_policy_tfs (policy, true);
+
   return 0;
 
 error:
@@ -826,6 +857,8 @@ ipsec_fp_ip6_add_policy (ipsec_main_t *im, ipsec_spd_fp_t *fp_spd,
   mte->refcount++;
   clib_memcpy (vp, policy, sizeof (*vp));
 
+  ipsec_add_del_policy_tfs (policy, true);
+
   return 0;
 
 error:
@@ -890,6 +923,7 @@ ipsec_fp_ip6_del_policy (ipsec_main_t *im, ipsec_spd_fp_t *fp_spd,
 	    }
 
 	  ipsec_fp_release_mask_type (im, vp->fp_mask_type_id);
+	  ipsec_add_del_policy_tfs (vp, false);
 	  ipsec_sa_unlock (vp->sa_index);
 	  pool_put (im->policies, vp);
 	  return 0;
@@ -953,6 +987,7 @@ ipsec_fp_ip4_del_policy (ipsec_main_t *im, ipsec_spd_fp_t *fp_spd,
 		}
 	    }
 	  ipsec_fp_release_mask_type (im, vp->fp_mask_type_id);
+	  ipsec_add_del_policy_tfs (vp, false);
 	  ipsec_sa_unlock (vp->sa_index);
 	  pool_put (im->policies, vp);
 	  return 0;

@@ -147,6 +147,10 @@ typedef struct
   u32 ah6_encrypt_next_index;
   u32 ah6_decrypt_next_index;
 
+  /* TFS backend */
+  u32 tfs_encap_node_index;
+  u32 tfs_encap_next_index;
+
   /* per-thread data */
   ipsec_per_thread_data_t *ptd;
 
@@ -212,6 +216,7 @@ typedef struct
   u32 pkt_seq_hi;
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
+  u16 next;
 } esp_decrypt_trace_t;
 
 typedef struct
@@ -329,9 +334,12 @@ __clib_export void ipsec_set_async_mode (u32 is_enabled);
 __clib_export extern void ipsec_register_udp_port (u16 udp_port, u8 is_ip4);
 __clib_export extern void ipsec_unregister_udp_port (u16 udp_port, u8 is_ip4);
 
-extern clib_error_t *ipsec_register_next_header (vlib_main_t *vm,
-						 u8 next_header,
-						 const char *next_node);
+__clib_export extern clib_error_t *ipsec_register_next_header (vlib_main_t *vm, u8 next_header,
+							       const char *next_node);
+
+__clib_export extern void ipsec_add_node (vlib_main_t *vm, const char *node_name,
+					  const char *prev_node_name, u32 *out_node_index,
+					  u32 *out_next_index);
 
 #include <vnet/ipsec/ipsec_funcs.h>
 
