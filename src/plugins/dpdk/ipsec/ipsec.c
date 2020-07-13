@@ -1009,9 +1009,8 @@ dpdk_ipsec_enable_disable (int is_enable)
   return 0;
 }
 
-static uword
-dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		    vlib_frame_t * f)
+static clib_error_t *
+dpdk_ipsec_main_init (vlib_main_t * vm)
 {
   ipsec_main_t *im = &ipsec_main;
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
@@ -1084,14 +1083,7 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (dpdk_ipsec_process_node,static) = {
-    .function = dpdk_ipsec_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "dpdk-ipsec-process",
-    .process_log2_n_stack_bytes = 17,
-};
-/* *INDENT-ON* */
+VLIB_MAIN_LOOP_ENTER_FUNCTION (dpdk_ipsec_main_init);
 
 /*
  * fd.io coding-style-patch-verification: ON
