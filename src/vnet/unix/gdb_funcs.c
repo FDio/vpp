@@ -67,6 +67,20 @@ pe (void *v)
 }
 
 /**
+ * @brief GDB callable function: ph - call pool_header - get pool header.
+ *
+ * @param *p - void - address of pool
+ *
+ * @return pool_header_t
+ *
+ */
+pool_header_t *
+ph (void *p)
+{
+  return pool_header (p);
+}
+
+/**
  * @brief GDB callable function: pifi - call pool_is_free_index - is passed index free?
  *
  * @param *p - void - address of pool
@@ -288,7 +302,10 @@ show_gdb_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "vb(b) returns vnet_buffer(b) [opaque]");
   vlib_cli_output (vm, "vb2(b) returns vnet_buffer2(b) [opaque2]");
   vlib_cli_output (vm, "vbi(b) returns b index");
+  vlib_cli_output (vm,
+		   "vgb(bi) returns vlib_get_buffer(vlib_get_main(), bi)");
   vlib_cli_output (vm, "pe(p) returns pool_elts(p)");
+  vlib_cli_output (vm, "ph(p) returns pool_header(p)");
   vlib_cli_output (vm, "pifi(p, i) returns pool_is_free_index(p, i)");
   vlib_cli_output (vm, "gdb_show_errors(0|1) dumps error counters");
   vlib_cli_output (vm, "gdb_show_session dumps session counters");
@@ -308,6 +325,12 @@ VLIB_CLI_COMMAND (show_gdb_funcs_command, static) = {
   .function = show_gdb_command_fn,
 };
 /* *INDENT-ON* */
+
+vlib_buffer_t *
+vgb (u32 bi)
+{
+  return vlib_get_buffer (vlib_get_main (), bi);
+}
 
 vnet_buffer_opaque_t *
 vb (void *vb_arg)
