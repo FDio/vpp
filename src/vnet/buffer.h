@@ -14,34 +14,33 @@
  * Flags that are set in the high order bits of ((vlib_buffer*)b)->flags
  *
  */
-#define foreach_vnet_buffer_flag                                              \
-  _ (1, L4_CHECKSUM_COMPUTED, "l4-cksum-computed", 1)                         \
-  _ (2, L4_CHECKSUM_CORRECT, "l4-cksum-correct", 1)                           \
-  _ (3, VLAN_2_DEEP, "vlan-2-deep", 1)                                        \
-  _ (4, VLAN_1_DEEP, "vlan-1-deep", 1)                                        \
-  _ (5, SPAN_CLONE, "span-clone", 1)                                          \
-  _ (6, LOOP_COUNTER_VALID, "loop-counter-valid", 0)                          \
-  _ (7, LOCALLY_ORIGINATED, "local", 1)                                       \
-  _ (8, IS_IP4, "ip4", 1)                                                     \
-  _ (9, IS_IP6, "ip6", 1)                                                     \
-  _ (10, OFFLOAD, "offload", 0)                                               \
-  _ (11, IS_NATED, "natted", 1)                                               \
-  _ (12, L2_HDR_OFFSET_VALID, "l2_hdr_offset_valid", 0)                       \
-  _ (13, L3_HDR_OFFSET_VALID, "l3_hdr_offset_valid", 0)                       \
-  _ (14, L4_HDR_OFFSET_VALID, "l4_hdr_offset_valid", 0)                       \
-  _ (15, FLOW_REPORT, "flow-report", 1)                                       \
-  _ (16, IS_DVR, "dvr", 1)                                                    \
-  _ (17, QOS_DATA_VALID, "qos-data-valid", 0)                                 \
-  _ (18, GSO, "gso", 0)                                                       \
-  _ (19, AVAIL1, "avail1", 1)                                                 \
-  _ (20, AVAIL2, "avail2", 1)                                                 \
-  _ (21, AVAIL3, "avail3", 1)                                                 \
-  _ (22, AVAIL4, "avail4", 1)                                                 \
-  _ (23, AVAIL5, "avail5", 1)                                                 \
-  _ (24, AVAIL6, "avail6", 1)                                                 \
-  _ (25, AVAIL7, "avail7", 1)                                                 \
-  _ (26, AVAIL8, "avail8", 1)                                                 \
-  _ (27, AVAIL9, "avail9", 1)
+#define foreach_vnet_buffer_flag                                                                   \
+  _ (1, L4_CHECKSUM_COMPUTED, "l4-cksum-computed", 1)                                              \
+  _ (2, L4_CHECKSUM_CORRECT, "l4-cksum-correct", 1)                                                \
+  _ (3, VLAN_2_DEEP, "vlan-2-deep", 1)                                                             \
+  _ (4, VLAN_1_DEEP, "vlan-1-deep", 1)                                                             \
+  _ (5, SPAN_CLONE, "span-clone", 1)                                                               \
+  _ (6, LOOP_COUNTER_VALID, "loop-counter-valid", 0)                                               \
+  _ (7, LOCALLY_ORIGINATED, "local", 1)                                                            \
+  _ (8, IS_IP4, "ip4", 1)                                                                          \
+  _ (9, IS_IP6, "ip6", 1)                                                                          \
+  _ (10, OFFLOAD, "offload", 0)                                                                    \
+  _ (11, IS_NATED, "natted", 1)                                                                    \
+  _ (12, L2_HDR_OFFSET_VALID, "l2_hdr_offset_valid", 0)                                            \
+  _ (13, L3_HDR_OFFSET_VALID, "l3_hdr_offset_valid", 0)                                            \
+  _ (14, L4_HDR_OFFSET_VALID, "l4_hdr_offset_valid", 0)                                            \
+  _ (15, FLOW_REPORT, "flow-report", 1)                                                            \
+  _ (16, IS_DVR, "dvr", 1)                                                                         \
+  _ (17, QOS_DATA_VALID, "qos-data-valid", 0)                                                      \
+  _ (18, GSO, "gso", 0)                                                                            \
+  _ (19, IPTFS_REUSED_USER, "iptfs-reused-user", 1)                                                \
+  _ (20, AVAIL1, "avail1", 1)                                                                      \
+  _ (21, AVAIL2, "avail2", 1)                                                                      \
+  _ (22, AVAIL3, "avail3", 1)                                                                      \
+  _ (23, AVAIL4, "avail4", 1)                                                                      \
+  _ (24, AVAIL5, "avail5", 1)                                                                      \
+  _ (25, AVAIL6, "avail6", 1)                                                                      \
+  _ (26, AVAIL7, "avail7", 1)
 
 /*
  * Please allocate the FIRST available bit, redefine
@@ -49,10 +48,9 @@
  * VNET_BUFFER_FLAGS_ALL_AVAIL definition.
  */
 
-#define VNET_BUFFER_FLAGS_ALL_AVAIL                                           \
-  (VNET_BUFFER_F_AVAIL1 | VNET_BUFFER_F_AVAIL2 | VNET_BUFFER_F_AVAIL3 |       \
-   VNET_BUFFER_F_AVAIL4 | VNET_BUFFER_F_AVAIL5 | VNET_BUFFER_F_AVAIL6 |       \
-   VNET_BUFFER_F_AVAIL7 | VNET_BUFFER_F_AVAIL8 | VNET_BUFFER_F_AVAIL9)
+#define VNET_BUFFER_FLAGS_ALL_AVAIL                                                                \
+  (VNET_BUFFER_F_AVAIL1 | VNET_BUFFER_F_AVAIL2 | VNET_BUFFER_F_AVAIL3 | VNET_BUFFER_F_AVAIL4 |     \
+   VNET_BUFFER_F_AVAIL5 | VNET_BUFFER_F_AVAIL6 | VNET_BUFFER_F_AVAIL7)
 
 #define VNET_BUFFER_FLAGS_VLAN_BITS \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)
@@ -306,10 +304,17 @@ typedef struct
     struct
     {
       /* don't overlap the adjcencies nor flow-hash */
-      u32 __pad[3];
+      /*
+       * order matters here, we don't want to clobber ip adj data with
+       * sad_index on output path as we may need to send ICMP unreach.
+       * On input path (where we set iptfs_esp_seq) we do not send ICMP.
+       */
+      u64 iptfs_esp_seq;
+      u32 __pad;
       u32 sad_index;
       u32 protect_index;
       clib_thread_index_t thread_index;
+      u16 tfs_actual_data; /* track amount of real data in packet */
     } ipsec;
 
     /* MAP */

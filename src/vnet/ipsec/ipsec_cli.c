@@ -12,6 +12,7 @@
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_tun.h>
+#include <vnet/ipsec/ipsec_itf.h>
 
 static clib_error_t *
 set_interface_spd_command_fn (vlib_main_t * vm,
@@ -72,6 +73,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 			     unformat_input_t * input,
 			     vlib_cli_command_t * cmd)
 {
+  ipsec_main_t *im = &ipsec_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
@@ -87,11 +89,15 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   int is_add, rv;
   u32 m_args = 0;
   tunnel_t tun = {};
+  ipsec_sa_tfs_type_t tfs_type;
+  void *tfs_config = 0;
+  u32 originator = 0;
 
   salt = 0;
   error = NULL;
   is_add = 0;
   flags = IPSEC_SA_FLAG_NONE;
+  tfs_type = 0;
   proto = IPSEC_PROTOCOL_ESP;
   anti_replay_window_size = 0;
   integ_alg = IPSEC_INTEG_ALG_NONE;
@@ -155,6 +161,12 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	flags |= IPSEC_SA_FLAG_UDP_ENCAP;
       else if (unformat (line_input, "async"))
 	flags |= IPSEC_SA_FLAG_IS_ASYNC;
+      else if (unformat (line_input, "originator %u", &originator))
+	;
+      else if (im->tfs_unformat_config_cb &&
+	       unformat (line_input, "tfs %U %U", unformat_ipsec_sa_tfs_type, &tfs_type,
+			 im->tfs_unformat_config_cb, &tfs_config))
+	;
       else
 	{
 	  error = clib_error_return (0, "parse error: '%U'",
@@ -176,10 +188,9 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	  error = clib_error_return (0, "missing spi");
 	  goto done;
 	}
-      rv =
-	ipsec_sa_add_and_lock (id, spi, proto, crypto_alg, &ck, integ_alg, &ik,
-			       flags, clib_host_to_net_u32 (salt), udp_src,
-			       udp_dst, anti_replay_window_size, &tun, &sai);
+      rv = ipsec_sa_add_and_lock (id, spi, proto, crypto_alg, &ck, integ_alg, &ik, flags,
+				  originator, tfs_type, tfs_config, clib_host_to_net_u32 (salt),
+				  udp_src, udp_dst, anti_replay_window_size, &tun, &sai);
     }
   else
     {
@@ -190,6 +201,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
     error = clib_error_return (0, "failed: %d", rv);
 
 done:
+  vec_free (tfs_config);
   unformat_free (line_input);
 
   return error;
@@ -276,6 +288,7 @@ ipsec_spd_add_del_command_fn (vlib_main_t * vm,
   u32 spd_id = ~0;
   int is_add = ~0;
   clib_error_t *error = NULL;
+  u32 originator = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -286,6 +299,8 @@ ipsec_spd_add_del_command_fn (vlib_main_t * vm,
 	is_add = 1;
       else if (unformat (line_input, "del"))
 	is_add = 0;
+      else if (unformat (line_input, "originator %u", &originator))
+	;
       else if (unformat (line_input, "%u", &spd_id))
 	;
       else
@@ -302,7 +317,7 @@ ipsec_spd_add_del_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  ipsec_add_del_spd (vm, spd_id, is_add);
+  ipsec_add_del_spd (vm, spd_id, originator, is_add);
 
 done:
   unformat_free (line_input);
@@ -606,15 +621,15 @@ clear_ipsec_sa_command_fn (vlib_main_t * vm,
 }
 
 VLIB_CLI_COMMAND (show_ipsec_sa_command, static) = {
-    .path = "show ipsec sa",
-    .short_help = "show ipsec sa [index]",
-    .function = show_ipsec_sa_command_fn,
+  .path = "show ipsec sa",
+  .short_help = "show ipsec sa [index] [detail]",
+  .function = show_ipsec_sa_command_fn,
 };
 
 VLIB_CLI_COMMAND (clear_ipsec_sa_command, static) = {
-    .path = "clear ipsec sa",
-    .short_help = "clear ipsec sa [index]",
-    .function = clear_ipsec_sa_command_fn,
+  .path = "clear ipsec sa",
+  .short_help = "clear ipsec sa [index] [detail]",
+  .function = clear_ipsec_sa_command_fn,
 };
 
 static clib_error_t *

@@ -7,7 +7,7 @@
 #include <vnet/ipsec/ipsec_io.h>
 
 int
-ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
+ipsec_add_del_spd (vlib_main_t *vm, u32 spd_id, u32 originator, int is_add)
 {
   ipsec_main_t *im = &ipsec_main;
   ipsec_spd_t *spd = 0;
@@ -109,6 +109,7 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
       clib_memset (spd, 0, sizeof (*spd));
       spd_index = spd - im->spds;
       spd->id = spd_id;
+      spd->originator = originator;
       hash_set (im->spd_index_by_spd_id, spd_id, spd_index);
 
       fp_spd = &spd->fp_spd;

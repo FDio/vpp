@@ -266,6 +266,9 @@ ipsec_add_del_policy (vlib_main_t * vm,
 	ipsec_spd_ip4_tun_protect_cache_rebuild (spd);
 
       *stat_index = policy_index;
+
+      if (policy->policy == IPSEC_POLICY_ACTION_PROTECT && im->tfs_add_del_policy_cb)
+	(*im->tfs_add_del_policy_cb) (policy->sa_index, true);
     }
   else
     {
@@ -305,7 +308,15 @@ ipsec_add_del_policy (vlib_main_t * vm,
 	    ipsec_spd_ip4_range_cache_rebuild (spd, policy->type);
 	    if (policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT)
 		ipsec_spd_ip4_tun_protect_cache_rebuild (spd);
-	    ipsec_sa_unlock (vp->sa_index);
+	    if (vp->policy != IPSEC_POLICY_ACTION_PROTECT)
+	      ASSERT (INDEX_INVALID == vp->sa_index);
+	    else
+	      {
+		ASSERT (INDEX_INVALID != vp->sa_index);
+		if (im->tfs_add_del_policy_cb)
+		  (*im->tfs_add_del_policy_cb) (vp->sa_index, false);
+		ipsec_sa_unlock (vp->sa_index);
+	      }
 	    pool_put (im->policies, vp);
 	    break;
 	  }

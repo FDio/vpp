@@ -11,6 +11,7 @@
 #include <vnet/fib/fib_entry_track.h>
 #include <vnet/ipsec/ipsec_tun.h>
 #include <vnet/ipsec/ipsec.api_enum.h>
+#include <vppinfra/time.h>
 
 /**
  * @brief
@@ -695,6 +696,7 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa, const ipsec_sa_crypto_integ_map_t *m)
       ort->tunnel_flags = sa->tunnel.t_encap_decap_flags;
       ort->cached.need_tunnel_fixup = (ort->tunnel_flags != 0);
       ort->t_dscp = sa->tunnel.t_dscp;
+      ort->is_tfs = ipsec_sa_is_IPTFS (sa);
       ipsec_sa_outb_refresh_op_tmpl (ort);
 
       ASSERT (ort->cached.cipher_iv_size <= ESP_MAX_IV_SIZE);
@@ -849,12 +851,11 @@ ipsec_sa_update (u32 id, u16 src_port, u16 dst_port, const tunnel_t *tun,
 }
 
 int
-ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
-		       ipsec_crypto_alg_t crypto_alg, const ipsec_key_t *ck,
-		       ipsec_integ_alg_t integ_alg, const ipsec_key_t *ik,
-		       ipsec_sa_flags_t flags, u32 salt, u16 src_port,
-		       u16 dst_port, u32 anti_replay_window_size,
-		       const tunnel_t *tun, u32 *sa_out_index)
+ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto, ipsec_crypto_alg_t crypto_alg,
+		       const ipsec_key_t *ck, ipsec_integ_alg_t integ_alg, const ipsec_key_t *ik,
+		       ipsec_sa_flags_t flags, u32 originator, ipsec_sa_tfs_type_t _tfs_type,
+		       void *tfs_config, u32 salt, u16 src_port, u16 dst_port,
+		       u32 anti_replay_window_size, const tunnel_t *tun, u32 *sa_out_index)
 {
   vlib_main_t *vm = vlib_get_main ();
   ipsec_main_t *im = &ipsec_main;
@@ -872,6 +873,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   u64 rand[2];
   uword *p;
   int rv;
+  bool tfs_allocated = false;
 
   p = hash_get (im->sa_index_by_sa_id, id);
   if (p)
@@ -921,12 +923,13 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
     .anti_replay_window_size = anti_replay_window_size,
   };
 
-  *ort = (ipsec_sa_outb_rt_t){
+  *ort = (ipsec_sa_outb_rt_t) {
     .thread_index = thread_index,
     .ipsec4_output_next_index =
       proto == IPSEC_PROTOCOL_ESP ? im->esp4_encrypt_next_index : im->ah4_encrypt_next_index,
     .ipsec6_output_next_index =
       proto == IPSEC_PROTOCOL_ESP ? im->esp6_encrypt_next_index : im->ah6_encrypt_next_index,
+    .tfs_encap_next_index = im->tfs_encap_node_index,
   };
 
   clib_pcg64i_srandom_r (&ort->iv_prng, rand[0], rand[1]);
@@ -951,6 +954,9 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   sa->ctx = 0;
   sa->crypto_alg = crypto_alg;
   sa->integ_alg = integ_alg;
+  sa->originator = originator;
+  sa->tfs_type = _tfs_type;
+  sa->created_time_ns = unix_time_now_nsec ();
 
   if (integ_alg != IPSEC_INTEG_ALG_NONE)
     {
@@ -1050,11 +1056,48 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 
   ipsec_sa_init_runtime (sa, m);
 
+  /*
+   * TFS block START
+   *
+   * TFS configuration init relies on the runtime blocks being set,
+   * so we do this at the end after ipsec_sa_init_runtime().
+   */
+  clib_error_t *err;
+  if (sa->tfs_type != IPSEC_SA_TFS_TYPE_NO_TFS)
+    {
+      if (!im->tfs_check_support_cb || (err = im->tfs_check_support_cb (sa, tfs_config)))
+	{
+	  clib_warning ("No TFS support");
+	  rv = VNET_API_ERROR_UNIMPLEMENTED;
+	  goto fail;
+	}
+      /* tfs_check_support_cb may update tfs_type in the SA to disable it */
+      if (sa->tfs_type != _tfs_type)
+	clib_warning ("TFS disabled outbound due to no config");
+    }
+
+  if (sa->tfs_type != IPSEC_SA_TFS_TYPE_NO_TFS)
+    {
+      if (im->tfs_add_del_sa_cb)
+	err = im->tfs_add_del_sa_cb (sa_index, tfs_config, 1);
+      if (err)
+	{
+	  rv = VNET_API_ERROR_SYSCALL_ERROR_1;
+	  goto fail;
+	}
+      tfs_allocated = true;
+    }
+  /*
+   * TFS block END
+   */
+
   return (0);
 
 fail:
   if (sa->ctx)
     vnet_crypto_ctx_destroy (vm, sa->ctx);
+  if (tfs_allocated && im->tfs_add_del_sa_cb)
+    (void) im->tfs_add_del_sa_cb (sa_index, NULL, 0);
   clib_mem_free (irt);
   clib_mem_free (ort);
   im->inb_sa_runtimes[sa_index] = 0;
@@ -1085,6 +1128,9 @@ ipsec_sa_del (ipsec_sa_t * sa)
   if (ipsec_sa_is_set_UDP_ENCAP (sa) && ipsec_sa_is_set_IS_INBOUND (sa))
     ipsec_unregister_udp_port (sa->udp_dst_port,
 			       !ipsec_sa_is_set_IS_TUNNEL_V6 (sa));
+
+  if (im->tfs_add_del_sa_cb)
+    (void) im->tfs_add_del_sa_cb (sa_index, NULL, 0);
 
   if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     dpo_reset (&ort->dpo);
