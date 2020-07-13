@@ -5,6 +5,7 @@
 
 #include <vnet/ipsec/ipsec_types_api.h>
 #include <vlibapi/api_types.h>
+#include <vnet/ipsec/iptfs/ipsec_iptfs_calls.h>
 
 int
 ipsec_proto_decode (vl_api_ipsec_proto_t in, ipsec_protocol_t * out)
@@ -166,4 +167,55 @@ ipsec_sad_flags_encode (const ipsec_sa_t * sa)
     flags |= IPSEC_API_SAD_FLAG_ASYNC;
 
   return clib_host_to_net_u32 (flags);
+}
+
+void *
+ipsec_tfs_config_decode (const u8 *s, u16 slen)
+{
+  unformat_input_t uf;
+  void *tfs_config = NULL;
+
+  /* clib_warning ("%s: (%u) %*s", __FUNCTION__, slen, slen, s); */
+
+  unformat_init_string (&uf, (char *) s, slen);
+  unformat (&uf, "%U", unformat_iptfs_config, &tfs_config);
+  unformat_free (&uf);
+  return tfs_config;
+}
+
+vl_api_ipsec_sad_tfs_type_t
+ipsec_sad_tfs_type_encode (ipsec_sa_tfs_type_t tfs_type)
+{
+  vl_api_ipsec_sad_tfs_type_t rt = IPSEC_API_SAD_TFS_TYPE_NONE;
+  switch (tfs_type)
+    {
+    case IPSEC_SA_TFS_TYPE_NO_TFS:
+      rt = IPSEC_API_SAD_TFS_TYPE_NONE;
+      break;
+    case IPSEC_SA_TFS_TYPE_IPTFS_CC:
+      rt = IPSEC_API_SAD_TFS_TYPE_IPTFS_CC;
+      break;
+    case IPSEC_SA_TFS_TYPE_IPTFS_NOCC:
+      rt = IPSEC_API_SAD_TFS_TYPE_IPTFS_NOCC;
+      break;
+    case IPSEC_SA_TFS_N_TYPES:
+      ASSERT (0);
+    }
+  return clib_host_to_net_u32 (rt);
+}
+
+ipsec_sa_tfs_type_t
+ipsec_sad_tfs_type_decode (vl_api_ipsec_sad_tfs_type_t at)
+{
+  at = clib_net_to_host_u32 (at);
+  switch (at)
+    {
+    case IPSEC_API_SAD_TFS_TYPE_NONE:
+      return IPSEC_SA_TFS_TYPE_NO_TFS;
+    case IPSEC_API_SAD_TFS_TYPE_IPTFS_CC:
+      return IPSEC_SA_TFS_TYPE_IPTFS_CC;
+    case IPSEC_API_SAD_TFS_TYPE_IPTFS_NOCC:
+      return IPSEC_SA_TFS_TYPE_IPTFS_NOCC;
+    }
+  return IPSEC_SA_TFS_TYPE_NO_TFS;
 }

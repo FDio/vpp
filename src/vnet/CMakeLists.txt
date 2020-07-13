@@ -577,6 +577,41 @@ list(APPEND VNET_HEADERS
 )
 
 ##############################################################################
+# IPSec IPTFS
+##############################################################################
+list(APPEND VNET_SOURCES
+  ipsec/iptfs/deferred.c
+  ipsec/iptfs/iptfs_api.c
+  ipsec/iptfs/iptfs_decap.c
+  ipsec/iptfs/iptfs_decap_reorder.c
+  ipsec/iptfs/iptfs_encap.c
+  ipsec/iptfs/iptfs_format.c
+  ipsec/iptfs/ipsec_iptfs.c
+  ipsec/iptfs/iptfs_output.c
+  ipsec/iptfs/iptfs_pacer.c
+  ipsec/iptfs/iptfs_zpool.c
+)
+
+list(APPEND VNET_MULTIARCH_SOURCES
+  ipsec/iptfs/iptfs_decap.c
+  ipsec/iptfs/iptfs_decap_reorder.c
+  ipsec/iptfs/iptfs_encap.c
+  ipsec/iptfs/iptfs_output.c
+  ipsec/iptfs/iptfs_pacer.c
+  ipsec/iptfs/iptfs_zpool.c
+)
+
+list(APPEND VNET_API_FILES ipsec/iptfs/iptfs.api)
+
+list(APPEND VNET_HEADERS
+  ipsec/iptfs/deferred.h
+  ipsec/iptfs/ipsec_iptfs.h
+  ipsec/iptfs/ipsec_iptfs_calls.h
+  ipsec/iptfs/iptfs_sring.h
+  ipsec/iptfs/iptfs_all_api_h.h
+)
+
+##############################################################################
 # Layer 4 protocol: tcp
 ##############################################################################
 list(APPEND VNET_SOURCES
