@@ -167,3 +167,55 @@ ipsec_sad_flags_encode (const ipsec_sa_t * sa)
 
   return clib_host_to_net_u32 (flags);
 }
+
+void *
+ipsec_tfs_config_decode (const u8 *s, u16 slen)
+{
+  ipsec_main_t *im = &ipsec_main;
+  unformat_input_t uf;
+  void *tfs_config = NULL;
+
+  if (!im->tfs_unformat_config_cb)
+    return NULL;
+
+  /* clib_warning ("%s: (%u) %*s", __FUNCTION__, slen, slen, s); */
+
+  unformat_init_string (&uf, (char *) s, slen);
+  unformat (&uf, "%U", im->tfs_unformat_config_cb, &tfs_config);
+  unformat_free (&uf);
+  return tfs_config;
+}
+
+vl_api_ipsec_sad_tfs_type_t
+ipsec_sad_tfs_type_encode (ipsec_sa_tfs_type_t tfs_type)
+{
+  switch (tfs_type)
+    {
+    case IPSEC_SA_TFS_TYPE_NO_TFS:
+      return IPSEC_API_SAD_TFS_TYPE_NONE;
+    case IPSEC_SA_TFS_TYPE_IPTFS_CC:
+      return IPSEC_API_SAD_TFS_TYPE_IPTFS_CC;
+    case IPSEC_SA_TFS_TYPE_IPTFS_NOCC:
+      return IPSEC_API_SAD_TFS_TYPE_IPTFS_NOCC;
+    case IPSEC_SA_TFS_N_TYPES:
+      ASSERT (0);
+    }
+  /* make compiler happy */
+  return IPSEC_API_SAD_TFS_TYPE_NONE;
+}
+
+ipsec_sa_tfs_type_t
+ipsec_sad_tfs_type_decode (vl_api_ipsec_sad_tfs_type_t at)
+{
+  at = clib_net_to_host_u32 (at);
+  switch (at)
+    {
+    case IPSEC_API_SAD_TFS_TYPE_NONE:
+      return IPSEC_SA_TFS_TYPE_NO_TFS;
+    case IPSEC_API_SAD_TFS_TYPE_IPTFS_CC:
+      return IPSEC_SA_TFS_TYPE_IPTFS_CC;
+    case IPSEC_API_SAD_TFS_TYPE_IPTFS_NOCC:
+      return IPSEC_SA_TFS_TYPE_IPTFS_NOCC;
+    }
+  return IPSEC_SA_TFS_TYPE_NO_TFS;
+}
