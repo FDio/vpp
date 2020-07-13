@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "65bacc0e_f7a37e7a",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-13T19:03:36Z",
+      "side": 1,
+      "message": "This now involves a spinlock and a hashtable lookup. That will most certainly have an effect on performance for multi-process applications. We\u0027ll have to avoid this if !vls_mt_supported()",
+      "range": {
+        "startLine": 317,
+        "startChar": 2,
+        "endLine": 317,
+        "endChar": 76
+      },
+      "revId": "67823c70d98af091b920d989c1aed1ae43daa82d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d2e97d9d_49898643",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 872,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-13T19:03:36Z",
+      "side": 1,
+      "message": "Same issue here.",
+      "range": {
+        "startLine": 872,
+        "startChar": 0,
+        "endLine": 872,
+        "endChar": 36
+      },
+      "revId": "67823c70d98af091b920d989c1aed1ae43daa82d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
