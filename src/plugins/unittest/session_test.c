@@ -429,12 +429,16 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
   session_endpoint_t client_sep = SESSION_ENDPOINT_NULL;
   session_endpoint_t intf_sep = SESSION_ENDPOINT_NULL;
-  u8 *ns_id = format (0, "appns1");
+  u8 *ns_id, *server_name, *client_name;
   app_namespace_t *app_ns;
   application_t *server;
   session_t *s;
   u64 handle;
   int error = 0;
+
+  ns_id = format (0, "appns1");
+  server_name = format (0, "session_test");
+  client_name = format (0, "session_test_client");
 
   server_sep.is_ip4 = 1;
   server_sep.port = dummy_port;
@@ -448,7 +452,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &dummy_session_cbs,
-    .name = format (0, "session_test"),
+    .name = server_name,
   };
 
   vnet_listen_args_t bind_args = {
@@ -588,6 +592,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
    * Try client connect with 1) local scope 2) global scope
    */
   options[APP_OPTIONS_FLAGS] &= ~APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+  attach_args.name = client_name;
   attach_args.api_client_index = dummy_client_api_index;
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "client attachment should work");
@@ -641,6 +646,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   options[APP_OPTIONS_FLAGS] &= ~APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
   attach_args.api_client_index = dummy_server_api_index;
+  attach_args.name = server_name;
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "app attachment should work");
   server_index = attach_args.app_index;
@@ -675,6 +681,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
   attach_args.namespace_id = 0;
   attach_args.api_client_index = dummy_client_api_index;
+  attach_args.name = client_name;
   vnet_application_attach (&attach_args);
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error != 0), "client connect should return error code");
@@ -709,6 +716,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   options[APP_OPTIONS_NAMESPACE_SECRET] = dummy_secret;
   attach_args.namespace_id = ns_id;
   attach_args.api_client_index = dummy_server_api_index;
+  attach_args.name = server_name;
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "server attachment should work");
   server_index = attach_args.app_index;
@@ -735,7 +743,8 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Cleanup
    */
-  vec_free (attach_args.name);
+  vec_free (server_name);
+  vec_free (client_name);
   vec_free (ns_id);
   session_delete_loopback (sw_if_index);
   return 0;
@@ -1490,6 +1499,8 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 
   attach_args.namespace_id = ns_id;
   attach_args.api_client_index = dummy_server_api_index;
+  vec_free (attach_args.name);
+  attach_args.name = format (0, "server_test2");
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "server2 attached");
   server_index2 = attach_args.app_index;
