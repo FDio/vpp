@@ -720,7 +720,7 @@ alloc_check:
     }
   else
     {
-      clib_warning ("Can't add new seg and no space to allocate fifos!");
+      SESSION_DBG ("Can't add new seg and no space to allocate fifos!");
       return SESSION_E_SEG_NO_SPACE;
     }
 }
