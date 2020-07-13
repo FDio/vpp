@@ -218,6 +218,7 @@ typedef struct vppcom_cfg_t_
   u8 *vpp_api_socket_name;
   u8 *vpp_api_chroot;
   u32 tls_engine;
+  u8 mt_supported;
 } vppcom_cfg_t;
 
 void vppcom_cfg (vppcom_cfg_t * vcl_cfg);
@@ -307,6 +308,10 @@ typedef struct vcl_worker_
   socket_client_main_t bapi_sock_ctx;
   memory_client_main_t bapi_shm_ctx;
   api_main_t bapi_api_ctx;
+
+  /** vcl needs next epoll_create to go to libc_epoll */
+  u8 vcl_needs_real_epoll;
+  volatile int rpc_done;
 } vcl_worker_t;
 
 typedef void (vcl_rpc_fn_t) (void *args);
@@ -659,7 +664,7 @@ vcl_session_vpp_evt_q (vcl_worker_t * wrk, vcl_session_t * s)
 
 void vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,
 				     u32 wrk_index);
-void vcl_send_worker_rpc (u32 dst_wrk_index, void *data, u32 data_len);
+int vcl_send_worker_rpc (u32 dst_wrk_index, void *data, u32 data_len);
 
 /*
  * VCL Binary API

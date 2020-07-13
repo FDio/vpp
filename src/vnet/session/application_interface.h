@@ -531,7 +531,7 @@ typedef struct session_app_wrk_rpc_msg_
 {
   u32 client_index;	/**< app client index */
   u32 wrk_index;	/**< dst worker index */
-  u8 data[252];		/**< rpc data */
+  u8 data[64];		/**< rpc data */
 } __clib_packed session_app_wrk_rpc_msg_t;
 
 typedef struct app_session_event_
