@@ -56,6 +56,7 @@ _(SR_SET_ENCAP_SOURCE, sr_set_encap_source)             \
 _(SR_SET_ENCAP_HOP_LIMIT, sr_set_encap_hop_limit)       \
 _(SR_LOCALSIDS_DUMP, sr_localsids_dump)                 \
 _(SR_POLICIES_DUMP, sr_policies_dump)                   \
+_(SR_POLICIES_WITH_SL_INDEX_DUMP, sr_policies_with_sl_index_dump) \
 _(SR_STEERING_POL_DUMP, sr_steering_pol_dump)
 
 static void vl_api_sr_localsid_add_del_t_handler
@@ -340,6 +341,74 @@ vl_api_sr_policies_dump_t_handler (vl_api_sr_policies_dump_t * mp)
   pool_foreach (t, sm->sr_policies,
   ({
     send_sr_policies_details(t, reg, mp->context);
+  }));
+  /* *INDENT-ON* */
+}
+
+
+
+static void send_sr_policies_details_with_sl_index
+  (ip6_sr_policy_t * t, vl_api_registration_t * reg, u32 context)
+{
+  vl_api_sr_policies_with_sl_index_details_t *rmp;
+  ip6_sr_main_t *sm = &sr_main;
+
+  u32 *sl_index, slidx = 0;
+  ip6_sr_sl_t *segment_list = 0;
+  ip6_address_t *segment;
+  vl_api_srv6_sid_list_with_sl_index_t *api_sid_list;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp) +
+			  vec_len (t->segments_lists) *
+			  sizeof (vl_api_srv6_sid_list_with_sl_index_t));
+  clib_memset (rmp, 0,
+	       (sizeof (*rmp) +
+		vec_len (t->segments_lists) *
+		sizeof (vl_api_srv6_sid_list_with_sl_index_t)));
+
+  rmp->_vl_msg_id = ntohs (VL_API_SR_POLICIES_WITH_SL_INDEX_DETAILS);
+  ip6_address_encode (&t->bsid, rmp->bsid);
+  rmp->is_encap = t->is_encap;
+  rmp->is_spray = t->type;
+  rmp->fib_table = htonl (t->fib_table);
+  rmp->num_sid_lists = vec_len (t->segments_lists);
+
+  /* Fill in all the segments lists */
+  vec_foreach (sl_index, t->segments_lists)
+  {
+    segment_list = pool_elt_at_index (sm->sid_lists, *sl_index);
+
+    api_sid_list = &rmp->sid_lists[sl_index - t->segments_lists];
+    api_sid_list->sl_index = htonl (*sl_index);
+    api_sid_list->num_sids = vec_len (segment_list->segments);
+    api_sid_list->weight = htonl (segment_list->weight);
+    slidx = 0;
+    vec_foreach (segment, segment_list->segments)
+    {
+      ip6_address_encode (segment, api_sid_list->sids[slidx++]);
+    }
+  }
+
+  rmp->context = context;
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+  vl_api_sr_policies_with_sl_index_dump_t_handler
+  (vl_api_sr_policies_with_sl_index_dump_t * mp)
+{
+  vl_api_registration_t *reg;
+  ip6_sr_main_t *sm = &sr_main;
+  ip6_sr_policy_t *t;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  /* *INDENT-OFF* */
+  pool_foreach (t, sm->sr_policies,
+  ({
+    send_sr_policies_details_with_sl_index(t, reg, mp->context);
   }));
   /* *INDENT-ON* */
 }

@@ -28,6 +28,14 @@ typedef srv6_sid_list
   vl_api_ip6_address_t sids[16];
 };
 
+typedef srv6_sid_list_with_sl_index
+{
+  u8 num_sids;
+  u32 weight;
+  u32 sl_index;
+  vl_api_ip6_address_t sids[16];
+};
+
 /** \brief IPv6 SR LocalSID add/del request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -197,6 +205,7 @@ define sr_policies_dump
   u32 context;
 };
 
+
 define sr_policies_details
 {
   u32 context;
@@ -206,6 +215,30 @@ define sr_policies_details
   u32 fib_table;
   u8 num_sid_lists;
   vl_api_srv6_sid_list_t sid_lists[num_sid_lists];
+};
+
+/** \brief Dump the list of SR policies along with actual segment list index on VPP
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define sr_policies_with_sl_index_dump
+{
+  u32 client_index;
+  u32 context;
+  option status="in_progress";
+};
+
+
+define sr_policies_with_sl_index_details
+{
+  u32 context;
+  vl_api_ip6_address_t bsid;
+  bool is_spray;
+  bool is_encap;
+  u32 fib_table;
+  u8 num_sid_lists;
+  vl_api_srv6_sid_list_with_sl_index_t sid_lists[num_sid_lists];
+  option status="in_progress";
 };
 
 /** \brief Dump the steering policies
