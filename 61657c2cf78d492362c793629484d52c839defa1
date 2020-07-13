@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d0cec215_21f1c710",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-13T10:38:56Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 188,
+        "startChar": 38,
+        "endLine": 189,
+        "endChar": 29
+      },
+      "revId": "61657c2cf78d492362c793629484d52c839defa1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "34dc8580_ce959310",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-13T10:38:56Z",
+      "side": 1,
+      "message": "send_child_sa",
+      "range": {
+        "startLine": 269,
+        "startChar": 0,
+        "endLine": 269,
+        "endChar": 10
+      },
+      "revId": "61657c2cf78d492362c793629484d52c839defa1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "00963686_e45ab5a5",
+        "filename": "src/plugins/ikev2/ikev2_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-13T10:38:56Z",
+      "side": 1,
+      "message": "can we just set the values and do the endian conversuon at the end with corresponding *_t_endian function?",
+      "range": {
+        "startLine": 505,
+        "startChar": 0,
+        "endLine": 508,
+        "endChar": 61
+      },
+      "revId": "61657c2cf78d492362c793629484d52c839defa1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c412d277_0a204487",
+        "filename": "src/plugins/ikev2/ikev2_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 581,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-13T10:38:56Z",
+      "side": 1,
+      "message": "as above",
+      "range": {
+        "startLine": 580,
+        "startChar": 0,
+        "endLine": 581,
+        "endChar": 37
+      },
+      "revId": "61657c2cf78d492362c793629484d52c839defa1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

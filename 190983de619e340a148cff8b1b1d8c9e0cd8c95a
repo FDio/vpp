@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3fd4498f_3baa4da6",
+        "filename": "src/plugins/ikev2/ikev2_types.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-07-13T10:38:56Z",
+      "side": 0,
+      "message": "avoid formating changes",
+      "revId": "190983de619e340a148cff8b1b1d8c9e0cd8c95a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
