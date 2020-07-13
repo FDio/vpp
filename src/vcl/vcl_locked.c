@@ -31,6 +31,9 @@ typedef struct vcl_locked_session_
   u32 worker_index;
   u32 vls_index;
   u32 shared_data_index;
+  /** VCL session owned by different workers because of migration */
+  u32 orig_worker_index;
+  uword *worker_index_to_session_index;
 } vcl_locked_session_t;
 
 typedef struct vls_worker_
@@ -67,7 +70,10 @@ vls_main_t *vlsm;
 static inline u32
 vls_get_worker_index (void)
 {
-  return vcl_get_worker_index ();
+  if (vls_mt_supported ())
+    return vlsl->vls_wrk_index;
+  else
+    return vcl_get_worker_index ();
 }
 
 static u32
@@ -128,28 +134,28 @@ vls_shared_data_pool_runlock (void)
 static inline void
 vls_table_rlock (void)
 {
-  if (vlsl->vls_mt_n_threads > 1)
+  if (vlsl->vls_mt_n_threads > 1 || vls_mt_supported ())
     clib_rwlock_reader_lock (&vlsm->vls_table_lock);
 }
 
 static inline void
 vls_table_runlock (void)
 {
-  if (vlsl->vls_mt_n_threads > 1)
+  if (vlsl->vls_mt_n_threads > 1 || vls_mt_supported ())
     clib_rwlock_reader_unlock (&vlsm->vls_table_lock);
 }
 
 static inline void
 vls_table_wlock (void)
 {
-  if (vlsl->vls_mt_n_threads > 1)
+  if (vlsl->vls_mt_n_threads > 1 || vls_mt_supported ())
     clib_rwlock_writer_lock (&vlsm->vls_table_lock);
 }
 
 static inline void
 vls_table_wunlock (void)
 {
-  if (vlsl->vls_mt_n_threads > 1)
+  if (vlsl->vls_mt_n_threads > 1 || vls_mt_supported ())
     clib_rwlock_writer_unlock (&vlsm->vls_table_lock);
 }
 
@@ -170,8 +176,13 @@ typedef enum
 static void
 vls_mt_add (void)
 {
-  vlsl->vls_mt_n_threads += 1;
-  vcl_set_worker_index (vlsl->vls_wrk_index);
+  if (vls_mt_supported ())
+    vls_worker_register ();
+  else
+    {
+      vlsl->vls_mt_n_threads += 1;
+      vcl_set_worker_index (vlsl->vls_wrk_index);
+    }
 }
 
 static inline void
@@ -214,15 +225,80 @@ vls_is_shared (vcl_locked_session_t * vls)
 static inline void
 vls_lock (vcl_locked_session_t * vls)
 {
-  if ((vlsl->vls_mt_n_threads > 1) || vls_is_shared (vls))
+  if ((vlsl->vls_mt_n_threads > 1) || vls_is_shared (vls) ||
+      vls_mt_supported ())
     clib_spinlock_lock (&vls->lock);
 }
 
 static inline void
 vls_unlock (vcl_locked_session_t * vls)
 {
-  if ((vlsl->vls_mt_n_threads > 1) || vls_is_shared (vls))
+  if ((vlsl->vls_mt_n_threads > 1) || vls_is_shared (vls) ||
+      vls_mt_supported ())
     clib_spinlock_unlock (&vls->lock);
+}
+
+static void
+vls_session_migrate (vcl_locked_session_t * vls)
+{
+  u32 wrk_index = vcl_get_worker_index ();
+  u32 src_sid;
+  vcl_session_t *src_session;
+  uword *p;
+
+  if (PREDICT_TRUE (vls->worker_index == wrk_index))
+    return;
+
+  ASSERT (vls_mt_supported ());
+  if ((p = hash_get (vls->worker_index_to_session_index, wrk_index)))
+    {
+      vls->worker_index = wrk_index;
+      vls->session_index = (u32) p[0];
+      return;
+    }
+
+  /* migrate from orignal vls */
+  p = hash_get (vls->worker_index_to_session_index, vls->orig_worker_index);
+  src_sid = (u32) p[0];
+  src_session = vcl_session_get (vcl_worker_get (vls->orig_worker_index),
+				 src_sid);
+  if (PREDICT_FALSE (!src_session))
+    {
+      VERR
+	("failed to get session with worker_index (%u) and session_index (%u)",
+	 vls->orig_worker_index, src_sid);
+      ASSERT (0);
+      return;
+    }
+
+  if (PREDICT_TRUE (src_session->is_vep ||
+		    src_session->session_state == STATE_CLOSED))
+    {
+      if (PREDICT_FALSE (src_session->is_vep &&
+			 src_session->vep.next_sh != ~0))
+	{
+	  VERR ("can't migrate nonempty epoll session");
+	  ASSERT (0);
+	  return;
+	}
+
+      vcl_session_t *session = vcl_session_alloc (vcl_worker_get (wrk_index));
+      u32 sid = session->session_index;
+      clib_memcpy_fast (session, src_session, sizeof (vcl_session_t));
+      session->session_index = sid;
+      vls->worker_index = wrk_index;
+      vls->session_index = sid;
+      hash_set (vls->worker_index_to_session_index, wrk_index, sid);
+      VDBG (1, "migrate session of worker (session): %u (%u) -> %u (%u)",
+	    vls->orig_worker_index, src_sid, wrk_index, sid);
+    }
+  else
+    {
+      VERR ("migrate NOT supported, session_status (%u)",
+	    src_session->session_state);
+      ASSERT (0);
+      return;
+    }
 }
 
 static inline vcl_session_handle_t
@@ -281,11 +357,13 @@ vls_alloc (vcl_session_handle_t sh)
 
   pool_get_zero (wrk->vls_pool, vls);
   vls->session_index = vppcom_session_index (sh);
-  vls->worker_index = vppcom_session_worker (sh);
+  vls->worker_index = vls->orig_worker_index = vppcom_session_worker (sh);
   vls->vls_index = vls - wrk->vls_pool;
   vls->shared_data_index = ~0;
   hash_set (wrk->session_index_to_vlsh_table, vls->session_index,
 	    vls->vls_index);
+  hash_set (vls->worker_index_to_session_index, vls->worker_index,
+	    vls->session_index);
   clib_spinlock_init (&vls->lock);
 
   vls_table_wunlock ();
@@ -537,7 +615,8 @@ vls_unshare_session (vcl_locked_session_t * vls, vcl_worker_t * wrk)
   u32 n_subscribers;
   vcl_session_t *s;
 
-  ASSERT (vls->shared_data_index != ~0);
+  if (vls->shared_data_index == ~0)
+    return 0;
 
   s = vcl_session_get (wrk, vls->session_index);
   if (s->session_state == STATE_LISTEN)
@@ -772,6 +851,8 @@ vls_mt_rel_locks (int locks_acq)
   int _locks_acq = 0;					\
   if (PREDICT_FALSE (vcl_get_worker_index () == ~0))	\
     vls_mt_add ();					\
+  if (_vls)						\
+    vls_session_migrate (_vls);				\
   if (PREDICT_FALSE (vlsl->vls_mt_n_threads > 1))	\
     vls_mt_acq_locks (_vls, _op, &_locks_acq);		\
 
@@ -869,6 +950,7 @@ vls_attr (vls_handle_t vlsh, uint32_t op, void *buffer, uint32_t * buflen)
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
+  vls_session_migrate (vls);
   rv = vppcom_session_attr (vls_to_sh_tu (vls), op, buffer, buflen);
   vls_get_and_unlock (vlsh);
   return rv;
@@ -923,6 +1005,9 @@ vls_mp_checks (vcl_locked_session_t * vls, int is_add)
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vcl_session_t *s;
   u32 owner_wrk;
+
+  if (vls_mt_supported ())
+    return;
 
   s = vcl_session_get (wrk, vls->session_index);
   switch (s->session_state)
@@ -1000,6 +1085,28 @@ vls_create (uint8_t proto, uint8_t is_nonblocking)
   return vlsh;
 }
 
+static void
+vls_migrate_session_close (vcl_locked_session_t * vls)
+{
+  u32 session_index, wrk_index;
+
+  /* *INDENT-OFF* */
+  hash_foreach (wrk_index, session_index, vls->worker_index_to_session_index,
+    ({
+      if (vcl_get_worker_index () != wrk_index)
+	{
+	  vcl_worker_t *wrk = vcl_worker_get (wrk_index);
+	  u32 session_handle = wrk_index << 24 | session_index;
+	  vcl_session_t *session = vcl_session_get_w_handle (wrk,
+							     session_handle);
+	  if (session)
+	    vcl_session_cleanup (wrk, session, session_handle,
+				  1 /* do_disconnect */ );
+	}
+    }));
+  /* *INDENT-ON* */
+}
+
 int
 vls_close (vls_handle_t vlsh)
 {
@@ -1015,12 +1122,15 @@ vls_close (vls_handle_t vlsh)
       return VPPCOM_EBADFD;
     }
 
-  vls_mt_guard (0, VLS_MT_OP_SPOOL);
+  vls_mt_guard (vls, VLS_MT_OP_SPOOL);
 
   if (vls_is_shared (vls))
     rv = vls_unshare_session (vls, vcl_worker_get_current ());
   else
     rv = vppcom_session_close (vls_to_sh (vls));
+
+  vls_migrate_session_close (vls);
+  hash_free (vls->worker_index_to_session_index);
 
   vls_free (vls);
   vls_mt_unguard ();
@@ -1077,6 +1187,7 @@ vls_epoll_ctl (vls_handle_t ep_vlsh, int op, vls_handle_t vlsh,
   vls_table_rlock ();
   ep_vls = vls_get_and_lock (ep_vlsh);
   vls = vls_get_and_lock (vlsh);
+  vls_session_migrate (ep_vls);
   ep_sh = vls_to_sh (ep_vls);
   sh = vls_to_sh (vls);
 
@@ -1385,6 +1496,31 @@ unsigned char
 vls_use_eventfd (void)
 {
   return vcm->cfg.use_mq_eventfd;
+}
+
+unsigned char
+vls_mt_supported (void)
+{
+  return vcm->cfg.mt_supported;
+}
+
+int
+vls_use_real_epoll (void)
+{
+  if (vcl_get_worker_index () == ~0)
+    return 0;
+
+  return vcl_worker_get_current ()->vcl_needs_real_epoll;
+}
+
+void
+vls_worker_register (void)
+{
+  if (vppcom_worker_register () != VPPCOM_OK)
+    {
+      VERR ("failed to register worker");
+      return;
+    }
 }
 
 /*
