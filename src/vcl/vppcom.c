@@ -351,13 +351,14 @@ vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
-void
+int
 vcl_send_worker_rpc (u32 dst_wrk_index, void *data, u32 data_len)
 {
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
   session_app_wrk_rpc_msg_t *mp;
   vcl_worker_t *dst_wrk, *wrk;
   svm_msg_q_t *mq;
+  int ret = -1;
 
   if (data_len > sizeof (mp->data))
     goto done;
@@ -376,9 +377,11 @@ vcl_send_worker_rpc (u32 dst_wrk_index, void *data, u32 data_len)
   mp->wrk_index = dst_wrk->vpp_wrk_index;
   clib_memcpy (mp->data, data, data_len);
   app_send_ctrl_evt_to_vpp (mq, app_evt);
+  ret = 0;
 
 done:
   clib_spinlock_unlock (&vcm->workers_lock);
+  return ret;
 }
 
 static u32
@@ -902,7 +905,7 @@ vcl_worker_rpc_handler (vcl_worker_t * wrk, void *data)
   if (!vcm->wrk_rpc_fn)
     return;
 
-  (vcm->wrk_rpc_fn) (data);
+  (vcm->wrk_rpc_fn) (((session_app_wrk_rpc_msg_t *) data)->data);
 }
 
 static int
@@ -962,7 +965,7 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
     case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
       vcl_session_app_del_segment_handler (wrk, e->data);
       break;
-    case SESSION_CTRL_EVT_RPC:
+    case SESSION_CTRL_EVT_APP_WRK_RPC:
       vcl_worker_rpc_handler (wrk, e->data);
       break;
     default:
@@ -2301,7 +2304,7 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
       vcl_session_app_del_segment_handler (wrk, e->data);
       break;
-    case SESSION_CTRL_EVT_RPC:
+    case SESSION_CTRL_EVT_APP_WRK_RPC:
       vcl_worker_rpc_handler (wrk, e->data);
       break;
     default:
@@ -2920,7 +2923,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
       vcl_session_app_del_segment_handler (wrk, e->data);
       break;
-    case SESSION_CTRL_EVT_RPC:
+    case SESSION_CTRL_EVT_APP_WRK_RPC:
       vcl_worker_rpc_handler (wrk, e->data);
       break;
     default:
