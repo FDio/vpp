@@ -336,6 +336,7 @@ format_vlib_node_stats (u8 * s, va_list * va)
   vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   vlib_node_t *n = va_arg (*va, vlib_node_t *);
   int max = va_arg (*va, int);
+  int use_time = va_arg (*va, int);
   f64 v;
   u8 *ns;
   u8 *misc_info = 0;
@@ -348,15 +349,27 @@ format_vlib_node_stats (u8 * s, va_list * va)
   if (!n)
     {
       if (max)
-	s = format (s,
-		    "%=30s%=17s%=16s%=16s%=16s%=16s",
-		    "Name", "Max Node Clocks", "Vectors at Max",
-		    "Max Clocks", "Avg Clocks", "Avg Vectors/Call");
+	{
+	  if (use_time)
+	    s = format (s, "%=30s%=17s%=16s%=16s%=16s%=16s", "Name",
+			"Max Node Clocks", "Vectors at Max", "Max Clocks",
+			"Avg Time (ns)", "Avg Vectors/Call");
+	  else
+	    s = format (s, "%=30s%=17s%=16s%=16s%=16s%=16s", "Name",
+			"Max Node Clocks", "Vectors at Max", "Max Clocks",
+			"Avg Clocks", "Avg Vectors/Call");
+	}
       else
-	s = format (s,
-		    "%=30s%=12s%=16s%=16s%=16s%=16s%=16s",
-		    "Name", "State", "Calls", "Vectors", "Suspends",
-		    "Clocks", "Vectors/Call");
+	{
+	  if (use_time)
+	    s = format (s, "%=30s%=12s%=16s%=16s%=16s%=16s%=16s", "Name",
+			"State", "Calls", "Vectors", "Suspends", "Packet-Time",
+			"Vectors/Call");
+	  else
+	    s = format (s, "%=30s%=12s%=16s%=16s%=16s%=16s%=16s", "Name",
+			"State", "Calls", "Vectors", "Suspends",
+			"Packet-Clocks", "Vectors/Call");
+	}
       return s;
     }
 
@@ -374,6 +387,10 @@ format_vlib_node_stats (u8 * s, va_list * va)
     maxcn = 0.0;
 
   /* Clocks per packet, per call or per suspend. */
+
+  if (use_time)
+    l *= 1e9 * vm->clib_time.seconds_per_clock;
+
   x = 0;
   if (p > 0)
     x = (f64) l / (f64) p;
@@ -434,8 +451,8 @@ show_node_runtime (vlib_main_t * vm,
     {
       n = vlib_get_node (vm, node_index);
       vlib_node_sync_stats (vm, n);
-      vlib_cli_output (vm, "%U\n", format_vlib_node_stats, vm, 0, 0);
-      vlib_cli_output (vm, "%U\n", format_vlib_node_stats, vm, n, 0);
+      vlib_cli_output (vm, "%U\n", format_vlib_node_stats, vm, 0, 0, 0);
+      vlib_cli_output (vm, "%U\n", format_vlib_node_stats, vm, n, 0, 0);
     }
   else
     {
@@ -447,8 +464,11 @@ show_node_runtime (vlib_main_t * vm,
       int brief = 1;
       int summary = 0;
       int max = 0;
+      int use_time = 0;
       vlib_main_t **stat_vms = 0, *stat_vm;
 
+      if (unformat (input, "time") || unformat (input, "t"))
+	use_time = 1;
       /* Suppress nodes with zero calls since last clear */
       if (unformat (input, "brief") || unformat (input, "b"))
 	brief = 1;
@@ -554,8 +574,8 @@ show_node_runtime (vlib_main_t * vm,
 
 	  if (summary == 0)
 	    {
-	      vlib_cli_output (vm, "%U", format_vlib_node_stats, stat_vm,
-			       0, max);
+	      vlib_cli_output (vm, "%U", format_vlib_node_stats, stat_vm, 0,
+			       max, use_time);
 	      for (i = 0; i < vec_len (nodes); i++)
 		{
 		  c =
@@ -567,7 +587,7 @@ show_node_runtime (vlib_main_t * vm,
 		  if (c || d || !brief)
 		    {
 		      vlib_cli_output (vm, "%U", format_vlib_node_stats,
-				       stat_vm, nodes[i], max);
+				       stat_vm, nodes[i], max, use_time);
 		    }
 		}
 	    }
@@ -583,7 +603,7 @@ show_node_runtime (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (show_node_runtime_command, static) = {
   .path = "show runtime",
-  .short_help = "Show packet processing runtime",
+  .short_help = "show runtime [time] [verbose] [max] [summary]",
   .function = show_node_runtime,
   .is_mp_safe = 1,
 };
