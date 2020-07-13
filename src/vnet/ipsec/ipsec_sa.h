@@ -60,7 +60,20 @@ typedef enum
     IPSEC_INTEG_N_ALG,
 } __clib_packed ipsec_integ_alg_t;
 
-typedef enum
+#define foreach_ipsec_sa_tfs_type                                                                  \
+  _ (0, NO_TFS, "no")                                                                              \
+  _ (1, IPTFS_CC, "iptfs-cc")                                                                      \
+  _ (2, IPTFS_NOCC, "iptfs-nocc")
+
+typedef enum __attribute__ ((__packed__))
+{
+#define _(v, f, str) IPSEC_SA_TFS_TYPE_##f = v,
+  foreach_ipsec_sa_tfs_type
+#undef _
+    IPSEC_SA_TFS_N_TYPES,
+} __clib_packed ipsec_sa_tfs_type_t;
+
+typedef enum __attribute__ ((__packed__))
 {
   IPSEC_PROTOCOL_AH = 0,
   IPSEC_PROTOCOL_ESP = 1
@@ -204,8 +217,10 @@ typedef struct ipsec_sa_outb_rt_t_
   clib_thread_index_t thread_index;
   u16 ipsec4_output_next_index;
   u16 ipsec6_output_next_index;
+  u16 tfs_encap_next_index;
   u32 salt;
   u8 is_hmac_only;
+  u8 is_tfs : 1;
   ipsec_sa_outb_rt_cached_t cached;
   u64 seq64;
   dpo_id_t dpo;
@@ -239,13 +254,16 @@ typedef struct
   /* Elements with u64 size multiples */
   tunnel_t tunnel;
   fib_node_t node;
+  u64 created_time_ns;
 
   /* elements with u32 size */
   u32 id;
   u32 stat_index;
   vnet_crypto_ctx_t *ctx;
+  u32 originator;
 
   /* else u8 packed */
+  ipsec_sa_tfs_type_t tfs_type;
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
 
@@ -261,7 +279,7 @@ STATIC_ASSERT (ESP_MAX_BLOCK_SIZE < (1 << 5), "esp alignment overflow");
  * Ensure that the IPsec data does not overlap with the IP data in
  * the buffer meta data
  */
-STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ipsec.sad_index) ==
+STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ipsec.sad_index) >=
 		 STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.save_protocol),
 	       "IPSec data is overlapping with IP data");
 
@@ -286,6 +304,11 @@ foreach_ipsec_sa_flags
   }
     foreach_ipsec_sa_flags
 #undef _
+/* needs to change if we have different TFS types */
+#define ipsec_sa_is_IPTFS(sa) ((sa)->tfs_type != IPSEC_SA_TFS_TYPE_NO_TFS)
+#define ipsec_sa_index_is_IPTFS(im, sa_index)                                                      \
+  ((sa_index) != ~0 && ipsec_sa_get (sa_index)->tfs_type != IPSEC_SA_TFS_TYPE_NO_TFS)
+
   /**
    * @brief
    * SA packet & bytes counters
@@ -298,11 +321,13 @@ extern void ipsec_mk_key (ipsec_key_t *key, const u8 *data, u8 len);
 extern int ipsec_sa_update (u32 id, u16 src_port, u16 dst_port,
 			    const tunnel_t *tun, bool is_tun);
 extern void ipsec_sa_update_runtime (ipsec_sa_t *sa);
-extern int ipsec_sa_add_and_lock (
-  u32 id, u32 spi, ipsec_protocol_t proto, ipsec_crypto_alg_t crypto_alg,
-  const ipsec_key_t *ck, ipsec_integ_alg_t integ_alg, const ipsec_key_t *ik,
-  ipsec_sa_flags_t flags, u32 salt, u16 src_port, u16 dst_port,
-  u32 anti_replay_window_size, const tunnel_t *tun, u32 *sa_out_index);
+extern int ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
+				  ipsec_crypto_alg_t crypto_alg, const ipsec_key_t *ck,
+				  ipsec_integ_alg_t integ_alg, const ipsec_key_t *ik,
+				  ipsec_sa_flags_t flags, u32 originator,
+				  ipsec_sa_tfs_type_t tfs_type, void *tfs_config, u32 salt,
+				  u16 src_port, u16 dst_port, u32 anti_replay_window_size,
+				  const tunnel_t *tun, u32 *sa_out_index);
 extern int ipsec_sa_bind (u32 id, u32 worker, bool bind);
 extern index_t ipsec_sa_find_and_lock (u32 id);
 extern int ipsec_sa_unlock_id (u32 id);
@@ -319,6 +344,7 @@ extern u8 *format_ipsec_crypto_alg (u8 *s, va_list *args);
 extern u8 *format_ipsec_integ_alg (u8 *s, va_list *args);
 extern u8 *format_ipsec_sa (u8 *s, va_list *args);
 extern u8 *format_ipsec_key (u8 *s, va_list *args);
+extern u8 *format_ipsec_sa_tfs_type (u8 *s, va_list *args);
 extern uword unformat_ipsec_crypto_alg (unformat_input_t *input,
 					va_list *args);
 extern uword unformat_ipsec_integ_alg (unformat_input_t *input, va_list *args);
@@ -326,6 +352,8 @@ extern uword unformat_ipsec_key (unformat_input_t *input, va_list *args);
 
 #define IPSEC_UDP_PORT_NONE ((u16) ~0)
 
+extern uword unformat_ipsec_sa_tfs (unformat_input_t *input, va_list *args);
+extern uword unformat_ipsec_sa_tfs_type (unformat_input_t *input, va_list *args);
 always_inline u64
 ipsec_sa_anti_replay_get_64b_window (const ipsec_sa_inb_rt_t *irt)
 {
@@ -732,7 +760,6 @@ ipsec_sa_anti_replay_advance (ipsec_sa_inb_rt_t *irt,
   return n_lost;
 }
 
-
 /*
  * Makes choice for thread_id should be assigned.
  *  if input ~0, gets random worker_id based on unix_time_now_nsec
@@ -740,8 +767,7 @@ ipsec_sa_anti_replay_advance (ipsec_sa_inb_rt_t *irt,
 always_inline u16
 ipsec_sa_assign_thread (u16 thread_id)
 {
-  return ((thread_id) ? thread_id
-	  : (unix_time_now_nsec () % vlib_num_workers ()) + 1);
+  return ((thread_id) ? thread_id : (unix_time_now_nsec () % vlib_num_workers ()) + 1);
 }
 
 #endif /* __IPSEC_SPD_SA_H__ */
