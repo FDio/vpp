@@ -943,6 +943,19 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
       ip_csum_t sum0;
 
       b0 = *b;
+      b++;
+
+      /* Prefetch next iteration. */
+      if (PREDICT_TRUE (n_left_from >= 2))
+	{
+	  vlib_buffer_t *p2;
+
+	  p2 = *b;
+
+	  vlib_prefetch_buffer_header (p2, LOAD);
+
+	  CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	}
 
       if (is_output_feature)
 	{
@@ -1158,7 +1171,6 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 
       n_left_from--;
       next++;
-      b++;
     }
 
   vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
