@@ -2223,7 +2223,7 @@ epoll_create1 (int flags)
   if ((errno = -ldp_init ()))
     return -1;
 
-  if (ldp->vcl_needs_real_epoll)
+  if (ldp->vcl_needs_real_epoll || vls_use_real_epoll ())
     {
       /* Make sure workers have been allocated */
       if (!ldp->workers)
@@ -2425,7 +2425,7 @@ static inline int
 ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
 			 int maxevents, int timeout, const sigset_t * sigmask)
 {
-  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
+  ldp_worker_ctx_t *ldpw;
   int libc_epfd, rv = 0, num_ev;
   vls_handle_t ep_vlsh;
 
@@ -2438,6 +2438,11 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
       return -1;
     }
 
+  if (vls_mt_supported ())
+    if (PREDICT_FALSE (vppcom_worker_index () == ~0))
+      vls_worker_register ();
+
+  ldpw = ldp_worker_get_current ();
   if (epfd == ldpw->vcl_mq_epfd)
     return libc_epoll_pwait (epfd, events, maxevents, timeout, sigmask);
 
@@ -2497,7 +2502,7 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
   rv = vls_epoll_wait (ep_vlsh, events, maxevents, 0);
   if (rv > 0)
     goto done;
-  else if (rv < 0)
+  else if (PREDICT_FALSE (rv < 0))
     {
       errno = -rv;
       rv = -1;
