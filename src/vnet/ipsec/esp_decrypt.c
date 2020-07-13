@@ -33,11 +33,11 @@ typedef enum
     ESP_DECRYPT_N_NEXT,
 } esp_decrypt_next_t;
 
-#define foreach_esp_decrypt_post_next                                         \
-  _ (DROP, "error-drop")                                                      \
-  _ (IP4_INPUT, "ip4-input-no-checksum")                                      \
-  _ (IP6_INPUT, "ip6-input")                                                  \
-  _ (MPLS_INPUT, "mpls-input")                                                \
+#define foreach_esp_decrypt_post_next                                                              \
+  _ (DROP, "error-drop")                                                                           \
+  _ (IP4_INPUT, "ip4-input-no-checksum")                                                           \
+  _ (IP6_INPUT, "ip6-input")                                                                       \
+  _ (MPLS_INPUT, "mpls-input")                                                                     \
   _ (L2_INPUT, "l2-input")
 
 #define _(v, s) ESP_DECRYPT_POST_NEXT_##v,
@@ -762,6 +762,25 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node, const u16 *
 	  b->current_data = current_data + adv;
 	  b->current_length = current_length - adv;
 	  esp_remove_tail (vm, b, lb, tail);
+
+	  if (is_async && (IP_PROTOCOL_AGGFRAG == next_header))
+	    {
+	      /*
+	       * Asynchronous crypto overlays the pd structure on the
+	       * buffer opaque structure. Although it carries some of
+	       * the same fields, they are not in the same positions
+	       * as the vnet buffer opaque union ipsec fields.
+	       *
+	       * IPTFS needs the 64-bit extended sequence number and
+	       * the SA index, so we restore those two fields in the
+	       * vnet buffer opaque union ipsec fields.
+	       */
+	      u64 iptfs_esp_seq = ((u64) pd->seq_hi << 32) | pd->seq;
+	      u32 sad_index = pd->sa_index;
+
+	      vnet_buffer (b)->ipsec.sad_index = sad_index;
+	      vnet_buffer (b)->ipsec.iptfs_esp_seq = iptfs_esp_seq;
+	    }
 	}
       else
 	{
@@ -959,6 +978,12 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       anti_replay_result = ipsec_sa_anti_replay_and_sn_advance (
 	irt, pd->seq, ~0, false, &pd->seq_hi);
 
+      /* For some reason GCM is zeroing this value out */
+      {
+	if (ipsec_sa_is_IPTFS (ipsec_sa_get (current_sa_index)))
+	  vnet_buffer (b[0])->ipsec.iptfs_esp_seq = ((u64) pd->seq_hi << 32) | pd->seq;
+      }
+
       if (anti_replay_result)
 	{
 	  err = ESP_DECRYPT_ERROR_REPLAY;
@@ -1113,6 +1138,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  tr->seq = pd->seq;
 	  tr->sa_seq64 = irt->seq64;
 	  tr->pkt_seq_hi = pd->seq_hi;
+	  tr->next = sync_next[0];
 	}
 
       /* next */
@@ -1176,6 +1202,7 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 	  tr->seq = pd->seq;
 	  tr->sa_seq64 = irt->seq64;
 	  tr->pkt_seq_hi = pd->seq_hi;
+	  tr->next = next[0];
 	}
 
       n_left--;

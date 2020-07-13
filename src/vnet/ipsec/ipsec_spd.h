@@ -107,12 +107,13 @@ typedef struct
   ipsec_policy_ip4_match4_t *ip4_policies[IPSEC_SPD_POLICY_N_TYPES];
   ipsec_tun_protect4_t *ip4_inbound_tun_protect_policies;
   ipsec_spd_fp_t fp_spd;
+  u32 originator;
 } ipsec_spd_t;
 
 /**
  * @brief Add/Delete a SPD
  */
-extern int ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add);
+extern int ipsec_add_del_spd (vlib_main_t *vm, u32 spd_id, u32 originator, int is_add);
 
 /**
  * @brief Bind/attach a SPD to an interface

@@ -2315,18 +2315,17 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
       vec_add1 (sas_in, a->old_remote_sa_id);
     }
 
-  rv = ipsec_sa_add_and_lock (a->local_sa_id, a->local_spi, IPSEC_PROTOCOL_ESP,
-			      a->encr_type, &a->loc_ckey, a->integ_type,
-			      &a->loc_ikey, a->flags, a->salt_local,
-			      a->src_port, a->dst_port, 0, &tun_out, NULL);
+  rv = ipsec_sa_add_and_lock (a->local_sa_id, a->local_spi, IPSEC_PROTOCOL_ESP, a->encr_type,
+			      &a->loc_ckey, a->integ_type, &a->loc_ikey, a->flags, 0,
+			      IPSEC_SA_TFS_TYPE_NO_TFS, NULL, a->salt_local, a->src_port,
+			      a->dst_port, 0, &tun_out, NULL);
   if (rv)
     goto err0;
 
   rv = ipsec_sa_add_and_lock (
-    a->remote_sa_id, a->remote_spi, IPSEC_PROTOCOL_ESP, a->encr_type,
-    &a->rem_ckey, a->integ_type, &a->rem_ikey,
-    (a->flags | IPSEC_SA_FLAG_IS_INBOUND), a->salt_remote,
-    a->ipsec_over_udp_port, a->ipsec_over_udp_port, 0, &tun_in, NULL);
+    a->remote_sa_id, a->remote_spi, IPSEC_PROTOCOL_ESP, a->encr_type, &a->rem_ckey, a->integ_type,
+    &a->rem_ikey, (a->flags | IPSEC_SA_FLAG_IS_INBOUND), 0, IPSEC_SA_TFS_TYPE_NO_TFS, NULL,
+    a->salt_remote, a->ipsec_over_udp_port, a->ipsec_over_udp_port, 0, &tun_in, NULL);
   if (rv)
     goto err1;
 

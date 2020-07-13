@@ -24,6 +24,19 @@
 #define IPSEC_FP_IP4_HASHES_POOL_SIZE 128
 #define IPSEC_FP_IP6_HASHES_POOL_SIZE 128
 
+/*
+ * TFS-specific callbacks
+ */
+typedef clib_error_t *(*add_del_policy_cb_t) (u32 sa_index, u8 is_add);
+typedef clib_error_t *(*tfs_add_del_sa_cb_t) (u32 sa_index, void *tfs_config, u8 is_add);
+typedef clib_error_t *(*tfs_check_support_cb_t) (ipsec_sa_t *sa, void *tfs_config);
+typedef uword (*unformat_tfs_config_cb_t) (unformat_input_t *, va_list *);
+typedef u8 *(*format_tfs_config_cb_t) (u8 *, va_list *);
+typedef u8 *(*format_tfs_data_cb_t) (u8 *, va_list *);
+typedef void (*tfs_tunnel_feature_set_cb_t) (void *, u8);
+typedef void (*tfs_encrypt_debug_cb_t) (vlib_main_t *vm, ipsec_sa_t *sa, void *esphdr,
+					vlib_buffer_t *srcb, vlib_buffer_t *dstb);
+
 typedef struct
 {
   u64 key[2];
@@ -119,6 +132,7 @@ typedef struct
   ipsec4_flow_cache_bucket_t *ipsec4_in_spd_hash_tbl;
   clib_bihash_8_16_t tun4_protect_by_key;
   clib_bihash_24_16_t tun6_protect_by_key;
+  uword *originator_by_client_index;
 
   /* node indices */
   u32 error_drop_node_index;
@@ -146,6 +160,19 @@ typedef struct
   u32 esp6_decrypt_tun_next_index;
   u32 ah6_encrypt_next_index;
   u32 ah6_decrypt_next_index;
+
+  /* TFS backend */
+  u32 tfs_encap_node_index;
+
+  tfs_check_support_cb_t tfs_check_support_cb;
+  format_tfs_config_cb_t tfs_format_config_cb;
+  format_tfs_data_cb_t tfs_format_data_cb;
+  unformat_tfs_config_cb_t tfs_unformat_config_cb;
+
+  tfs_add_del_sa_cb_t tfs_add_del_sa_cb;
+  add_del_policy_cb_t tfs_add_del_policy_cb;
+  tfs_tunnel_feature_set_cb_t tfs_tunnel_feature_set_cb;
+  tfs_encrypt_debug_cb_t tfs_encrypt_debug_cb;
 
   /* per-thread data */
   ipsec_per_thread_data_t *ptd;
@@ -212,6 +239,7 @@ typedef struct
   u32 pkt_seq_hi;
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
+  u16 next;
 } esp_decrypt_trace_t;
 
 typedef struct

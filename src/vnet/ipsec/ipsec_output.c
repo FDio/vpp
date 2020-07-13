@@ -158,7 +158,10 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ipsec_sa_outb_rt_t *ort = ipsec_sa_get_outb_rt_by_index (p0->sa_index);
 	      nc_protect++;
-	      next[0] = is_ipv6 ? ort->ipsec6_output_next_index : ort->ipsec4_output_next_index;
+	      if (ort->is_tfs)
+		next[0] = ort->tfs_encap_next_index;
+	      else
+		next[0] = is_ipv6 ? ort->ipsec6_output_next_index : ort->ipsec4_output_next_index;
 	      vnet_buffer (b[0])->ipsec.sad_index = p0->sa_index;
 	      ipsec_output_fix_offloads (vm, b, l3hdr, l4hdr, is_ipv6);
 	      vlib_buffer_advance (b[0], iph_offset);
