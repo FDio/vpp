@@ -217,7 +217,9 @@ vcl_worker_alloc_and_init ()
   wrk->mqs_epfd = -1;
   if (vcm->cfg.use_mq_eventfd)
     {
+      wrk->vcl_needs_real_epoll = 1;
       wrk->mqs_epfd = epoll_create (1);
+      wrk->vcl_needs_real_epoll = 0;
       if (wrk->mqs_epfd < 0)
 	{
 	  clib_unix_warning ("epoll_create() returned");
