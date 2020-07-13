@@ -135,9 +135,9 @@ test_ipsec_spd_outbound_perf_command_fn (vlib_main_t *vm,
 
   vlib_cli_output (vm, "Create env:");
   /* creating a new SA */
-  rv = ipsec_sa_add_and_lock (sa_id, spi, proto, crypto_alg, &ck, integ_alg,
-			      &ik, sa_flags, clib_host_to_net_u32 (salt),
-			      udp_src, udp_dst, 0, &tun, &sai);
+  rv = ipsec_sa_add_and_lock (sa_id, spi, proto, crypto_alg, &ck, integ_alg, &ik, sa_flags,
+			      IPSEC_SA_TFS_TYPE_NO_TFS, NULL, clib_host_to_net_u32 (salt), udp_src,
+			      udp_dst, 0, &tun, &sai);
   if (rv)
     {
       err = clib_error_return (0, "create sa failure");

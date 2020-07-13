@@ -317,6 +317,10 @@ ipsec_tun_protect_tx_db_add (ipsec_tun_protect_t * itp)
       if (INDEX_INVALID == idi->id_itp)
 	{
 	  ipsec_tun_setup_tx_nodes (itp->itp_sw_if_index, itp);
+
+	  if (ipsec_sa_index_is_IPTFS (&ipsec_main, itp->itp_out_sa) &&
+	      ipsec_main.tfs_tunnel_feature_set_cb)
+	    ipsec_main.tfs_tunnel_feature_set_cb (itp, true);
 	}
       idi->id_itp = itp - ipsec_tun_protect_pool;
 
@@ -421,6 +425,11 @@ ipsec_tun_protect_tx_db_remove (ipsec_tun_protect_t * itp)
   if (vnet_sw_interface_is_p2p (vnet_get_main (), itp->itp_sw_if_index))
     {
       ipsec_itf_reset_tx_nodes (itp->itp_sw_if_index);
+
+      if (ipsec_sa_index_is_IPTFS (&ipsec_main, itp->itp_out_sa) &&
+	  ipsec_main.tfs_tunnel_feature_set_cb)
+	ipsec_main.tfs_tunnel_feature_set_cb (itp, false);
+
       idi->id_itp = INDEX_INVALID;
 
       FOR_EACH_FIB_IP_PROTOCOL (nh_proto)

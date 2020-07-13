@@ -20,6 +20,7 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_tun.h>
 #include <vnet/ipsec/ipsec_itf.h>
+#include <vnet/ipsec/ipsec_sa.h>
 
 #include <vnet/format_fns.h>
 #include <vnet/ipsec/ipsec.api_enum.h>
@@ -386,10 +387,10 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
   ip_address_decode2 (&mp->entry.tunnel_src, &tun.t_src);
   ip_address_decode2 (&mp->entry.tunnel_dst, &tun.t_dst);
 
-  rv = ipsec_sa_add_and_lock (
-    id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
-    mp->entry.salt, htons (mp->entry.udp_src_port),
-    htons (mp->entry.udp_dst_port), 0, &tun, &sa_index);
+  rv = ipsec_sa_add_and_lock (id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
+			      IPSEC_SA_TFS_TYPE_NO_TFS, NULL, mp->entry.salt,
+			      htons (mp->entry.udp_src_port), htons (mp->entry.udp_dst_port), 0,
+			      &tun, &sa_index);
 
 out:
   REPLY_MACRO2 (VL_API_IPSEC_SAD_ENTRY_ADD_DEL_REPLY,
@@ -458,10 +459,10 @@ static void vl_api_ipsec_sad_entry_add_del_v2_t_handler
   ip_address_decode2 (&mp->entry.tunnel_src, &tun.t_src);
   ip_address_decode2 (&mp->entry.tunnel_dst, &tun.t_dst);
 
-  rv = ipsec_sa_add_and_lock (
-    id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
-    mp->entry.salt, htons (mp->entry.udp_src_port),
-    htons (mp->entry.udp_dst_port), 0, &tun, &sa_index);
+  rv = ipsec_sa_add_and_lock (id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
+			      IPSEC_SA_TFS_TYPE_NO_TFS, NULL, mp->entry.salt,
+			      htons (mp->entry.udp_src_port), htons (mp->entry.udp_dst_port), 0,
+			      &tun, &sa_index);
 
 out:
   REPLY_MACRO2 (VL_API_IPSEC_SAD_ENTRY_ADD_DEL_V2_REPLY,
@@ -515,9 +516,8 @@ ipsec_sad_entry_add_v3 (const vl_api_ipsec_sad_entry_v3_t *entry,
   ipsec_key_decode (&entry->integrity_key, &integ_key);
 
   return ipsec_sa_add_and_lock (
-    id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
-    entry->salt, htons (entry->udp_src_port), htons (entry->udp_dst_port), 0,
-    &tun, sa_index);
+    id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags, IPSEC_SA_TFS_TYPE_NO_TFS,
+    NULL, entry->salt, htons (entry->udp_src_port), htons (entry->udp_dst_port), 0, &tun, sa_index);
 }
 
 static void
@@ -587,21 +587,69 @@ ipsec_sad_entry_add_v4 (const vl_api_ipsec_sad_entry_v4_t *entry,
   ipsec_key_decode (&entry->crypto_key, &crypto_key);
   ipsec_key_decode (&entry->integrity_key, &integ_key);
 
-  return ipsec_sa_add_and_lock (
-    id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
-    entry->salt, htons (entry->udp_src_port), htons (entry->udp_dst_port),
-    ntohl (entry->anti_replay_window_size), &tun, sa_index);
+  return ipsec_sa_add_and_lock (id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key,
+				flags, IPSEC_SA_TFS_TYPE_NO_TFS, NULL, entry->salt,
+				htons (entry->udp_src_port), htons (entry->udp_dst_port),
+				ntohl (entry->anti_replay_window_size), &tun, sa_index);
 }
 
-static void
-vl_api_ipsec_sad_entry_del_t_handler (vl_api_ipsec_sad_entry_del_t *mp)
+static int
+ipsec_sad_entry_add_v5 (const vl_api_ipsec_sad_entry_add_v3_t *mp, u32 *sa_index)
 {
-  vl_api_ipsec_sad_entry_del_reply_t *rmp;
+  ipsec_key_t crypto_key, integ_key;
+  ipsec_crypto_alg_t crypto_alg;
+  ipsec_integ_alg_t integ_alg;
+  ipsec_protocol_t proto;
+  ipsec_sa_flags_t flags;
+  u32 id, spi;
+  tunnel_t tun = { 0 };
   int rv;
+  const vl_api_ipsec_sad_entry_v5_t *entry = &mp->entry;
 
-  rv = ipsec_sa_unlock_id (ntohl (mp->id));
+  id = ntohl (entry->sad_id);
+  spi = ntohl (entry->spi);
 
-  REPLY_MACRO (VL_API_IPSEC_SAD_ENTRY_DEL_REPLY);
+  rv = ipsec_proto_decode (entry->protocol, &proto);
+
+  if (rv)
+    return rv;
+
+  rv = ipsec_crypto_algo_decode (entry->crypto_algorithm, &crypto_alg);
+
+  if (rv)
+    return rv;
+
+  rv = ipsec_integ_algo_decode (entry->integrity_algorithm, &integ_alg);
+
+  if (rv)
+    return rv;
+
+  flags = ipsec_sa_flags_decode (entry->flags);
+
+  if (flags & IPSEC_SA_FLAG_IS_TUNNEL)
+    {
+      rv = tunnel_decode (&entry->tunnel, &tun);
+
+      if (rv)
+	return rv;
+    }
+
+  ipsec_key_decode (&entry->crypto_key, &crypto_key);
+  ipsec_key_decode (&entry->integrity_key, &integ_key);
+
+  ipsec_sa_tfs_type_t tfs_type = ipsec_sad_tfs_type_decode (mp->entry.tfs_type);
+  u16 config_len = ntohs (mp->entry.tfs_config_len);
+  if (config_len > sizeof (mp->entry.tfs_config))
+    return VNET_API_ERROR_INVALID_ARGUMENT;
+  void *tfs_config = ipsec_tfs_config_decode (mp->entry.tfs_config, config_len);
+
+  rv = ipsec_sa_add_and_lock (id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
+			      tfs_type, tfs_config, entry->salt, htons (entry->udp_src_port),
+			      htons (entry->udp_dst_port), ntohl (entry->anti_replay_window_size),
+			      &tun, sa_index);
+
+  vec_free (tfs_config);
+  return rv;
 }
 
 static void
@@ -628,6 +676,29 @@ vl_api_ipsec_sad_entry_add_v2_t_handler (vl_api_ipsec_sad_entry_add_v2_t *mp)
 
   REPLY_MACRO2 (VL_API_IPSEC_SAD_ENTRY_ADD_V2_REPLY,
 		{ rmp->stat_index = htonl (sa_index); });
+}
+
+static void
+vl_api_ipsec_sad_entry_add_v3_t_handler (vl_api_ipsec_sad_entry_add_v3_t *mp)
+{
+  vl_api_ipsec_sad_entry_add_reply_t *rmp;
+  u32 sa_index = ~0;
+  int rv;
+
+  rv = ipsec_sad_entry_add_v5 (mp, &sa_index);
+
+  REPLY_MACRO2 (VL_API_IPSEC_SAD_ENTRY_ADD_V3_REPLY, { rmp->stat_index = htonl (sa_index); });
+}
+
+static void
+vl_api_ipsec_sad_entry_del_t_handler (vl_api_ipsec_sad_entry_del_t *mp)
+{
+  vl_api_ipsec_sad_entry_del_reply_t *rmp;
+  int rv;
+
+  rv = ipsec_sa_unlock_id (ntohl (mp->id));
+
+  REPLY_MACRO (VL_API_IPSEC_SAD_ENTRY_DEL_REPLY);
 }
 
 static void
@@ -1383,6 +1454,103 @@ vl_api_ipsec_sa_v5_dump_t_handler (vl_api_ipsec_sa_v5_dump_t *mp)
   };
 
   ipsec_sa_walk (send_ipsec_sa_v5_details, &ctx);
+}
+
+static walk_rc_t
+send_ipsec_sa_v6_details (ipsec_sa_t *sa, void *arg)
+{
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_sa_inb_rt_t *irt = ipsec_sa_get_inb_rt (sa);
+  ipsec_sa_outb_rt_t *ort = ipsec_sa_get_outb_rt (sa);
+  ipsec_dump_walk_ctx_t *ctx = arg;
+  vl_api_ipsec_sa_v6_details_t *mp;
+  u32 thread_index = 0;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_IPSEC_SA_V6_DETAILS);
+  mp->context = ctx->context;
+
+  mp->entry.sad_id = htonl (sa->id);
+  mp->entry.spi = htonl (sa->spi);
+  ipsec_proto_encode (sa->protocol, &mp->entry.protocol);
+
+  ipsec_crypto_algo_encode (sa->crypto_alg, &mp->entry.crypto_algorithm);
+  ipsec_key_encode (&sa->crypto_key, &mp->entry.crypto_key);
+
+  ipsec_integ_algo_encode (sa->integ_alg, &mp->entry.integrity_algorithm);
+  ipsec_key_encode (&sa->integ_key, &mp->entry.integrity_key);
+
+  mp->entry.flags = ipsec_sad_flags_encode (sa);
+  mp->entry.salt = clib_host_to_net_u32 (sa->salt);
+
+  if (ipsec_sa_is_set_IS_PROTECT (sa))
+    {
+      ipsec_sa_dump_match_ctx_t ctx = {
+	.sai = sa - im->sa_pool,
+	.sw_if_index = ~0,
+      };
+      ipsec_tun_protect_walk (ipsec_sa_dump_match_sa, &ctx);
+
+      mp->sw_if_index = htonl (ctx.sw_if_index);
+    }
+  else
+    mp->sw_if_index = ~0;
+
+  if (ipsec_sa_is_set_IS_TUNNEL (sa))
+    tunnel_encode (&sa->tunnel, &mp->entry.tunnel);
+
+  if (ipsec_sa_is_set_UDP_ENCAP (sa))
+    {
+      mp->entry.udp_src_port = clib_host_to_net_u16 (sa->udp_src_port);
+      mp->entry.udp_dst_port = clib_host_to_net_u16 (sa->udp_dst_port);
+    }
+
+  mp->seq_outbound = clib_host_to_net_u64 (ipsec_sa_get_outb_seq (sa));
+  mp->last_seq_inbound = clib_host_to_net_u64 (ipsec_sa_get_inb_seq (sa));
+
+  if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) && irt)
+    mp->replay_window = clib_host_to_net_u64 (ipsec_sa_anti_replay_get_64b_window (irt));
+
+  mp->entry.tfs_type = ipsec_sad_tfs_type_encode (sa->tfs_type);
+  if (im->tfs_format_config_cb && ipsec_sa_is_IPTFS (sa))
+    {
+      u8 *s = format (NULL, "%U", im->tfs_format_config_cb, sa - im->sa_pool);
+
+      u16 config_len = clib_min (sizeof (mp->entry.tfs_config), vec_len (s));
+      mp->entry.tfs_config_len = htons (config_len);
+      clib_memcpy_fast (mp->entry.tfs_config, s, config_len);
+      vec_free (s);
+    }
+
+  if (ort)
+    thread_index = ort->thread_index;
+  else if (irt)
+    thread_index = irt->thread_index;
+
+  mp->thread_index = clib_host_to_net_u32 (thread_index);
+  mp->stat_index = clib_host_to_net_u32 (sa->stat_index);
+
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+  return (WALK_CONTINUE);
+}
+
+static void
+vl_api_ipsec_sa_v6_dump_t_handler (vl_api_ipsec_sa_v5_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  ipsec_dump_walk_ctx_t ctx = {
+    .reg = reg,
+    .context = mp->context,
+  };
+
+  ipsec_sa_walk (send_ipsec_sa_v6_details, &ctx);
 }
 
 static void
