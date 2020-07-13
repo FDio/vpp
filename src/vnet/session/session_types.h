@@ -384,6 +384,7 @@ typedef enum
   _(APP_DEL_SEGMENT, app_del_segment)				\
   _(MIGRATED, migrated)						\
   _(CLEANUP, cleanup)						\
+  _(APP_WRK_RPC, app_wrk_rpc)					\
 
 /* Deprecated and will be removed. Use types above */
 #define FIFO_EVENT_APP_RX SESSION_IO_EVT_RX
