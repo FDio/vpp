@@ -458,6 +458,38 @@ format_ipsec_sa_flags (u8 * s, va_list * args)
 }
 
 u8 *
+format_ipsec_sa_tfs_type (u8 *s, va_list *args)
+{
+  ipsec_sa_tfs_type_t i = va_arg (*args, u32);
+  char *t = 0;
+  switch (i)
+    {
+#define _(v, f, str)                                                                               \
+  case IPSEC_SA_TFS_TYPE_##f:                                                                      \
+    t = str;                                                                                       \
+    break;
+      foreach_ipsec_sa_tfs_type
+#undef _
+	default : return format (s, "unknown (%u)", i);
+    }
+  s = format (s, "%s", t);
+  return s;
+}
+
+uword
+unformat_ipsec_sa_tfs_type (unformat_input_t *input, va_list *args)
+{
+  ipsec_sa_tfs_type_t *r = va_arg (*args, ipsec_sa_tfs_type_t *);
+  if (0)
+    ;
+#define _(v, f, str) else if (unformat (input, str)) *r = IPSEC_SA_TFS_TYPE_##f;
+  foreach_ipsec_sa_tfs_type
+#undef _
+    else return 0;
+  return 1;
+}
+
+u8 *
 format_ipsec_sa (u8 * s, va_list * args)
 {
   ipsec_main_t *im = &ipsec_main;
@@ -479,9 +511,11 @@ format_ipsec_sa (u8 * s, va_list * args)
   irt = ipsec_sa_get_inb_rt (sa);
   ort = ipsec_sa_get_outb_rt (sa);
 
-  s = format (s, "[%d] sa %u (0x%x) spi %u (0x%08x) protocol:%s flags:[%U]",
-	      sai, sa->id, sa->id, sa->spi, sa->spi,
-	      sa->protocol ? "esp" : "ah", format_ipsec_sa_flags, sa->flags);
+  s = format (s, "[%d] sa %u (0x%x) spi %u (0x%08x) mode %s%s%s protocol:%s flags:[%U]", sai,
+	      sa->id, sa->id, sa->spi, sa->spi, sa->tfs_type ? "tfs " : "",
+	      ipsec_sa_is_set_IS_TUNNEL (sa) ? "tunnel" : "transport",
+	      ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ? "-ip6" : "", sa->protocol ? "esp" : "ah",
+	      format_ipsec_sa_flags, sa->flags);
 
   if (!(flags & IPSEC_FORMAT_DETAIL))
     goto done;
@@ -516,6 +550,16 @@ format_ipsec_sa (u8 * s, va_list * args)
     s = format (s, " key [redacted]");
   s =
     format (s, "\n   UDP:[src:%d dst:%d]", sa->udp_src_port, sa->udp_dst_port);
+
+  if (!sa->tfs_type)
+    s = format (s, "\n   no tfs configured");
+  else
+    {
+      if (im->tfs_format_config_cb)
+	s = format (s, "\n   tfs config: %U", im->tfs_format_config_cb, sai);
+      if (im->tfs_format_data_cb)
+	s = format (s, "\n   tfs data: %U", im->tfs_format_data_cb, sai);
+    }
 
   vlib_get_combined_counter (&ipsec_sa_counters, sai, &counts);
   s = format (s, "\n   tx/rx:[packets:%Ld bytes:%Ld]", counts.packets,
@@ -637,13 +681,22 @@ format_ipsec_itf (u8 * s, va_list * a)
 u8 *
 format_esp_decrypt_trace (u8 *s, va_list *args)
 {
-  vlib_main_t *vm __clib_unused = va_arg (*args, vlib_main_t *);
-  vlib_node_t *node __clib_unused = va_arg (*args, vlib_node_t *);
+  vlib_main_t *vm = va_arg (*args, vlib_main_t *);
+  vlib_node_t *node = va_arg (*args, vlib_node_t *);
   esp_decrypt_trace_t *t = va_arg (*args, esp_decrypt_trace_t *);
 
   s = format (s, "esp: crypto %U integrity %U pkt-seq %d sa-seq %lu pkt-seq-hi %u",
 	      format_ipsec_crypto_alg, t->crypto_alg, format_ipsec_integ_alg, t->integ_alg, t->seq,
 	      t->sa_seq64, t->pkt_seq_hi);
+
+  s = format (s, " next %u", t->next);
+  if (t->next < vec_len (node->next_nodes))
+    {
+      vlib_node_t *nnode;
+
+      nnode = vlib_get_node (vm, node->next_nodes[t->next]);
+      s = format (s, " (%s)", nnode->name);
+    }
   return s;
 }
 
