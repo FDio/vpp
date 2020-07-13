@@ -685,6 +685,8 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  else
 		    ASSERT (0);
 		}
+	      else if (ipsec_sa_is_IPTFS (ipsec_sa_get (current_sa_index)))
+		*next_hdr_ptr = IP_PROTOCOL_AGGFRAG;
 	      else if (VNET_LINK_IP6 == lt)
 		*next_hdr_ptr = IP_PROTOCOL_IPV6;
 	      else if (VNET_LINK_IP4 == lt)
@@ -729,6 +731,8 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  else
 		    ASSERT (0);
 		}
+	      else if (ipsec_sa_is_IPTFS (ipsec_sa_get (current_sa_index)))
+		*next_hdr_ptr = IP_PROTOCOL_AGGFRAG;
 	      else if (VNET_LINK_IP6 == lt)
 		*next_hdr_ptr = IP_PROTOCOL_IPV6;
 	      else if (VNET_LINK_IP4 == lt)

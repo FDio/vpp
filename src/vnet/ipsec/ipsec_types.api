@@ -85,6 +85,16 @@ enum ipsec_sad_flags
   IPSEC_API_SAD_FLAG_ASYNC = 0x80 [backwards_compatible],
 };
 
+/*
+ * default on-the-wire size of ENUMs is 4 bytes
+ */
+enum ipsec_sad_tfs_type
+{
+  IPSEC_API_SAD_TFS_TYPE_NONE = 0,
+  IPSEC_API_SAD_TFS_TYPE_IPTFS_CC,
+  IPSEC_API_SAD_TFS_TYPE_IPTFS_NOCC,
+};
+
 enum ipsec_proto
 {
   IPSEC_API_PROTO_ESP = 50,
@@ -327,6 +337,53 @@ typedef ipsec_sad_entry_v4
   u16 udp_dst_port [default=4500];
 
   u32 anti_replay_window_size [default=64];
+};
+
+/** \brief IPsec: Security Association Database entry
+    @param sad_id - sad id
+    @param spi - security parameter index
+    @param protocol - 0 = AH, 1 = ESP
+    @param crypto_algorithm - a supported crypto algorithm
+    @param crypto_key - crypto keying material
+    @param integrity_algorithm - one of the supported algorithms
+    @param integrity_key - integrity keying material
+    @param flags - SA flags (see ipsec_sad_flags above)
+    @param tunnel - tunnel description (see vnet/tunnel/tunnel_types.api)
+    @param salt - for use with counter mode ciphers
+    @param udp_src_port - If using UDP Encapsulation, use this source port for
+                          TX. It is ignored for RX.
+    @param udp_dst_port - If using UDP Encapsulation, use this destination port
+                          for TX. Expect traffic on this port for RX.
+    @param anti_replay_window_size - AR window size to use. The supplied value is round up to the nearest power of 2.
+    @param tfs_type
+    @param tfs_config_len
+    @param tfs_config
+ */
+typedef ipsec_sad_entry_v5
+{
+  u32 sad_id;
+  u32 spi;
+
+  vl_api_ipsec_proto_t protocol;
+
+  vl_api_ipsec_crypto_alg_t crypto_algorithm;
+  vl_api_key_t crypto_key;
+
+  vl_api_ipsec_integ_alg_t integrity_algorithm;
+  vl_api_key_t integrity_key;
+
+  vl_api_ipsec_sad_flags_t flags;
+
+  vl_api_tunnel_t tunnel;
+
+  u32 salt;
+  u16 udp_src_port [default=4500];
+  u16 udp_dst_port [default=4500];
+
+  u32 anti_replay_window_size [default=64];
+  vl_api_ipsec_sad_tfs_type_t tfs_type;
+  u16 tfs_config_len;
+  u8 tfs_config[256];
 };
 
 /*
