@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f4d88cd5_eeb93062",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1756,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-13T15:57:58Z",
+      "side": 1,
+      "message": "Actually the hash is a vector hash, so it needs to be hash_create_vec(). Please update the patch and rebase on top of https://gerrit.fd.io/r/c/vpp/+/27878 to avoid unit test failures.",
+      "range": {
+        "startLine": 1756,
+        "startChar": 25,
+        "endLine": 1756,
+        "endChar": 43
+      },
+      "revId": "29cb79a5e4c0848e1413f25b0b141125349d4d8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
