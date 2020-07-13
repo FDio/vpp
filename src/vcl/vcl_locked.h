@@ -51,6 +51,9 @@ vcl_session_handle_t vlsh_to_session_index (vls_handle_t vlsh);
 vls_handle_t vls_session_index_to_vlsh (uint32_t session_index);
 int vls_app_create (char *app_name);
 unsigned char vls_use_eventfd (void);
+unsigned char vls_mt_supported (void);
+int vls_use_real_epoll (void);
+void vls_worker_register (void);
 
 #endif /* SRC_VCL_VCL_LOCKED_H_ */
 
