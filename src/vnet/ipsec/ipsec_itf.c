@@ -63,6 +63,7 @@ ipsec_itf_adj_stack (adj_index_t ai, u32 sai)
 
   hw = vnet_get_sup_hw_interface (vnet_get_main (), adj_get_sw_if_index (ai));
 
+  /* sai could be invalid at this point? */
   if (hw->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)
     {
       const ipsec_sa_t *sa;

@@ -74,10 +74,9 @@ ipsec_register_next_header (vlib_main_t *vm, u8 next_header,
   return 0;
 }
 
-static void
-ipsec_add_node (vlib_main_t * vm, const char *node_name,
-		const char *prev_node_name, u32 * out_node_index,
-		u32 * out_next_index)
+void
+ipsec_add_node (vlib_main_t *vm, const char *node_name, const char *prev_node_name,
+		u32 *out_node_index, u32 *out_next_index)
 {
   vlib_node_t *prev_node, *node;
   prev_node = vlib_get_node_by_name (vm, (u8 *) prev_node_name);
