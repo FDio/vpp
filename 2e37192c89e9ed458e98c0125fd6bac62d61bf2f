@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "f3b073c9_c90cfb6d",
+        "filename": "src/plugins/tracedump/tracedump.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-07-14T13:32:14Z",
+      "side": 1,
+      "message": "Yes, exactly so. I\u0027m planning to add a callback / registration to the api client cleanup path. That probably handles the most common situation. We could also add a timeout process to the plugin. I\u0027m not sure it would be warranted. Let\u0027s discuss...",
+      "parentUuid": "7451c40b_a8b7b0a4",
+      "range": {
+        "startLine": 2,
+        "startChar": 0,
+        "endLine": 2,
+        "endChar": 44
+      },
+      "revId": "2e37192c89e9ed458e98c0125fd6bac62d61bf2f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d09123fd_ef2711f2",
         "filename": "src/plugins/tracedump/tracedump.c",
         "patchSetId": 6
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "2de4f2ce_32443bce",
+        "filename": "src/plugins/tracedump/tracedump.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-07-14T13:32:14Z",
+      "side": 1,
+      "message": "To explicitly clear the cache - and do nothing else - set iterator_thread_id \u003d ~0 and iterator_position \u003d ~0",
+      "parentUuid": "d09123fd_ef2711f2",
+      "range": {
+        "startLine": 95,
+        "startChar": 0,
+        "endLine": 95,
+        "endChar": 22
+      },
+      "revId": "2e37192c89e9ed458e98c0125fd6bac62d61bf2f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "19eb9c37_09e15b40",
         "filename": "src/plugins/tracedump/tracedump.c",
         "patchSetId": 6
@@ -59,6 +107,30 @@
       "writtenOn": "2020-07-09T16:10:16Z",
       "side": 1,
       "message": "Dave,\nAre we going to extend this API you have written with some of the \"set filter\" API calls\nthat I had in my patch?  That is, where is this trace filter coming from? Is it still being\nguided by a non-zero count per graph node?",
+      "range": {
+        "startLine": 122,
+        "startChar": 0,
+        "endLine": 122,
+        "endChar": 43
+      },
+      "revId": "2e37192c89e9ed458e98c0125fd6bac62d61bf2f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e4fd4621_3c6a6125",
+        "filename": "src/plugins/tracedump/tracedump.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-07-14T13:32:14Z",
+      "side": 1,
+      "message": "Sure, once we finish this round...",
+      "parentUuid": "19eb9c37_09e15b40",
       "range": {
         "startLine": 122,
         "startChar": 0,
