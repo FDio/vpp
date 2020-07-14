@@ -45,7 +45,7 @@ typedef enum
 #define foreach_esp_encrypt_error                   \
  _(RX_PKTS, "ESP pkts received")                    \
  _(SEQ_CYCLED, "Sequence number cycled")            \
- _(ENQ_FAIL, "Enqueue failed to crypto device")     \
+ _(ENQ_FAIL, "Enqueue encrypt failed (queue full)")     \
  _(DISCARD, "Not enough crypto operations, discarding frame")  \
  _(SESSION, "Failed to get crypto session")         \
  _(NOSUP, "Cipher/Auth not supported")

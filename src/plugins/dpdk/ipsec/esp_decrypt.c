@@ -44,7 +44,7 @@ typedef enum
  _(DECRYPTION_FAILED, "ESP decryption failed")   \
  _(REPLAY, "SA replayed packet")	         \
  _(NOT_IP, "Not IP packet (dropped)")	         \
- _(ENQ_FAIL, "Enqueue failed (buffer full)")     \
+ _(ENQ_FAIL, "Enqueue decrypt failed (queue full)")     \
  _(DISCARD, "Not enough crypto operations, discarding frame")  \
  _(BAD_LEN, "Invalid ciphertext length")         \
  _(SESSION, "Failed to get crypto session")      \
