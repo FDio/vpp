@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Cisco and/or its affiliates.
+# Copyright (c) 2018-2020 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -105,24 +105,11 @@ list(APPEND VNET_API_FILES
 )
 
 ##############################################################################
-# Cop - junk filter
+# Binary API compatibility until vpp 20.12, see the ADL plugin...
 ##############################################################################
+
 list(APPEND VNET_SOURCES
-  cop/cop.c
-  cop/node1.c
-  cop/ip4_whitelist.c
-  cop/ip6_whitelist.c
   cop/cop_api.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  cop/node1.c
-  cop/ip4_whitelist.c
-  cop/ip6_whitelist.c
-)
-
-list(APPEND VNET_HEADERS
-  cop/cop.h
 )
 
 list(APPEND VNET_API_FILES cop/cop.api)

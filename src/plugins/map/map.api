@@ -112,7 +112,7 @@ define map_domains_get_reply
 
 define map_domain_dump
 {
-  option deprecated="v20.12";
+  option deprecated="v21.01";
   u32 client_index;
   u32 context;
 };
@@ -162,7 +162,7 @@ define map_rule_details
 /** \brief Enable or disable a MAP interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param sw_if_index - 
+    @param sw_if_index -
     @param is_enable - 0=disable, 1=enable interface
     @param is_translation -  0=encapsulation, 1=translation
 */

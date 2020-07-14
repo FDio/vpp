@@ -1,0 +1,62 @@
+set term pag off
+
+loop create
+set int ip address loop0 192.168.1.1/24
+set int ip6 table loop0 0
+set int ip address loop0 2001:db01::1/64
+set int state loop0 up
+
+packet-generator new {
+    name ip4
+    limit 100
+    rate 0
+    size 128-128
+    interface loop0
+    node adl-input
+    data { IP4: 1.2.40 -> 3cfd.fed0.b6c8
+           UDP: 192.168.1.2-192.168.1.10 -> 192.168.2.1
+           UDP: 1234 -> 2345
+           incrementing 114
+    }
+}
+
+packet-generator new {
+    name ip6-allow
+    limit 50
+    rate 0
+    size 128-128
+    interface loop0
+    node adl-input
+    data { IP6: 1.2.40 -> 3cfd.fed0.b6c8
+           UDP: 2001:db01::2 -> 2001:db01::1
+           UDP: 1234 -> 2345
+           incrementing 80
+    }
+}
+
+packet-generator new {
+    name ip6-drop
+    limit 50
+    rate 0
+    size 128-128
+    interface loop0
+    node adl-input
+    data { IP6: 1.2.40 -> 3cfd.fed0.b6c8
+           UDP: 2001:db01::3 -> 2001:db01::1
+           UDP: 1234 -> 2345
+           incrementing 80
+    }
+}
+
+ip table 1
+ip route add 192.168.2.1/32 via drop
+ip route add table 1 192.168.1.2/32 via local
+
+ip6 table 1
+ip route add 2001:db01::1/128 via drop
+ip route add table 1 2001:db01::2/128 via local
+
+comment { bin adl_interface_enable_disable loop0 }
+comment { bin adl_allowlist_enable_disable loop0 fib-id 1 ip4 ip6 }
+uncomment {bin cop_interface_enable_disable loop0 }
+uncomment {bin cop_whitelist_enable_disable loop0 fib-id 1 ip4 ip6 }
