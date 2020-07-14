@@ -43,7 +43,6 @@
 #include <vnet/mpls/mpls.h>
 #include <vnet/ipsec/ipsec.h>
 #include <inttypes.h>
-#include <vnet/cop/cop.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip_source_and_port_range_check.h>
 #include <vnet/policer/xlate.h>
