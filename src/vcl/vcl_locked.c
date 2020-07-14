@@ -38,6 +38,8 @@ typedef struct vls_worker_
   vcl_locked_session_t *vls_pool;
   uword *session_index_to_vlsh_table;
   u32 wrk_index;
+  /** vcl needs next epoll_create to go to libc_epoll */
+  u8 vcl_needs_real_epoll;
 } vls_worker_t;
 
 typedef struct vls_local_
@@ -269,6 +271,28 @@ vls_worker_get (u32 wrk_index)
   if (pool_is_free_index (vlsm->workers, wrk_index))
     return 0;
   return pool_elt_at_index (vlsm->workers, wrk_index);
+}
+
+static void
+vls_set_real_epoll (void)
+{
+  if (vcl_get_worker_index () == ~0)
+    return;
+  if (vls_mt_supported ())
+    vcl_worker_get_current ()->vcl_needs_real_epoll = 1;
+  else
+    vls_worker_get_current ()->vcl_needs_real_epoll = 1;
+}
+
+static void
+vls_unset_real_epoll (void)
+{
+  if (vcl_get_worker_index () == ~0)
+    return;
+  if (vls_mt_supported ())
+    vcl_worker_get_current ()->vcl_needs_real_epoll = 0;
+  else
+    vls_worker_get_current ()->vcl_needs_real_epoll = 0;
 }
 
 static vls_handle_t
@@ -1298,8 +1322,10 @@ vls_app_fork_child_handler (void)
    * Allocate worker vcl
    */
   vcl_set_worker_index (~0);
+  vls_set_real_epoll ();
   if (!vcl_worker_alloc_and_init ())
     VERR ("couldn't allocate new worker");
+  vls_unset_real_epoll ();
 
   /*
    * Attach to binary api
@@ -1385,6 +1411,23 @@ unsigned char
 vls_use_eventfd (void)
 {
   return vcm->cfg.use_mq_eventfd;
+}
+
+unsigned char
+vls_mt_supported (void)
+{
+  return vcm->cfg.mt_supported;
+}
+
+int
+vls_use_real_epoll (void)
+{
+  if (vcl_get_worker_index () == ~0)
+    return 0;
+  if (vls_mt_supported ())
+    return vcl_worker_get_current ()->vcl_needs_real_epoll;
+  else
+    return vls_worker_get_current ()->vcl_needs_real_epoll;
 }
 
 /*

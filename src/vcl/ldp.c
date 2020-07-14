@@ -2223,7 +2223,7 @@ epoll_create1 (int flags)
   if ((errno = -ldp_init ()))
     return -1;
 
-  if (ldp->vcl_needs_real_epoll)
+  if (ldp->vcl_needs_real_epoll || vls_use_real_epoll ())
     {
       /* Make sure workers have been allocated */
       if (!ldp->workers)
