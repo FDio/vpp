@@ -105,24 +105,11 @@ list(APPEND VNET_API_FILES
 )
 
 ##############################################################################
-# Cop - junk filter
+# Binary API compatibility until vpp 20.12, see the ADL plugin...
 ##############################################################################
+
 list(APPEND VNET_SOURCES
-  cop/cop.c
-  cop/node1.c
-  cop/ip4_whitelist.c
-  cop/ip6_whitelist.c
   cop/cop_api.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  cop/node1.c
-  cop/ip4_whitelist.c
-  cop/ip6_whitelist.c
-)
-
-list(APPEND VNET_HEADERS
-  cop/cop.h
 )
 
 list(APPEND VNET_API_FILES cop/cop.api)

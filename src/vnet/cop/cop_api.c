@@ -2,7 +2,7 @@
  *------------------------------------------------------------------
  * cop_api.c - cop api
  *
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016,2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -22,7 +22,6 @@
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
-#include <vnet/cop/cop.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -46,6 +45,36 @@
 _(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable)   \
 _(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)
 
+typedef struct
+{
+  u32 sw_if_index;
+  u8 ip4;
+  u8 ip6;
+  u8 default_cop;
+  u32 fib_id;
+} cop_whitelist_enable_disable_args_t;
+
+/*
+ * This API will be deprecated in vpp 20.12.
+ *
+ * Continue to support it for the moment if the "adl" plugin
+ * is loaded...
+ */
+static int default_interface_enable_disable_callback
+  (u32 sw_if_index, int enable_disable)
+{
+  return VNET_API_ERROR_UNIMPLEMENTED;
+}
+
+static int (*interface_enable_disable_callback) (u32, int) =
+  default_interface_enable_disable_callback;
+
+void
+register_vl_api_cop_interface_enable_disable_callback (void *cb)
+{
+  interface_enable_disable_callback = cb;
+}
+
 static void vl_api_cop_interface_enable_disable_t_handler
   (vl_api_cop_interface_enable_disable_t * mp)
 {
@@ -58,11 +87,34 @@ static void vl_api_cop_interface_enable_disable_t_handler
 
   enable_disable = (int) mp->enable_disable;
 
-  rv = cop_interface_enable_disable (sw_if_index, enable_disable);
+  rv = (*interface_enable_disable_callback) (sw_if_index, enable_disable);
 
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_COP_INTERFACE_ENABLE_DISABLE_REPLY);
+}
+
+/*
+ * This API will be deprecated in vpp 20.12.
+ *
+ * Continue to support it for the moment if the "adl" plugin
+ * is loaded...
+ */
+
+static int default_whitelist_enable_disable_callback
+  (cop_whitelist_enable_disable_args_t * a)
+{
+  return VNET_API_ERROR_UNIMPLEMENTED;
+}
+
+static int (*whitelist_enable_disable_callback)
+  (cop_whitelist_enable_disable_args_t * a) =
+  default_whitelist_enable_disable_callback;
+
+void
+register_vl_api_cop_whitelist_enable_disable_callback (void *cb)
+{
+  whitelist_enable_disable_callback = cb;
 }
 
 static void vl_api_cop_whitelist_enable_disable_t_handler
@@ -81,7 +133,7 @@ static void vl_api_cop_whitelist_enable_disable_t_handler
   a->default_cop = mp->default_cop;
   a->fib_id = ntohl (mp->fib_id);
 
-  rv = cop_whitelist_enable_disable (a);
+  rv = (*whitelist_enable_disable_callback) (a);
 
   BAD_SW_IF_INDEX_LABEL;
 
