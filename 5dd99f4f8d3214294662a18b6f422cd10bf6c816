@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0fad2f26_420a7a66",
+        "filename": "src/vnet/ip/ip6_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-14T14:34:53Z",
+      "side": 1,
+      "message": "This looks like it should be converted to length but I see we do the same for v4, so I guess it\u0027s fine for now",
+      "range": {
+        "startLine": 133,
+        "startChar": 3,
+        "endLine": 133,
+        "endChar": 32
+      },
+      "revId": "5dd99f4f8d3214294662a18b6f422cd10bf6c816",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
