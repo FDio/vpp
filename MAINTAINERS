@@ -190,11 +190,6 @@ M:	Damjan Marion <damarion@cisco.com>
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/vnet/crypto/
 
-VNET COP
-I:	cop
-M:	Dave Barach <dave@barachs.net>
-F:	src/vnet/cop/
-
 VNET TEIB
 I:	teib
 M:	Neale Ranns <nranns@cisco.com>
@@ -362,6 +357,11 @@ Plugin - Access Control List (ACL) Based Forwarding
 I:	abf
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/plugins/abf/
+
+Plugin - Allow / Deny List
+I:	adl
+M:	Dave Barach <dave@barachs.net>
+F:	src/plugins/adl/
 
 Plugin - Simple DNS name resolver
 I:	dns
