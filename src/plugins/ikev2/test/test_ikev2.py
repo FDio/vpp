@@ -702,8 +702,8 @@ class Ikev2Params(object):
 
         self.p.add_local_id(id_type='fqdn', data=b'vpp.home')
         self.p.add_remote_id(id_type='fqdn', data=b'roadwarrior.example.com')
-        self.p.add_local_ts(start_addr=0x0a0a0a0, end_addr=0x0a0a0aff)
-        self.p.add_remote_ts(start_addr=0xa000000, end_addr=0xa0000ff)
+        self.p.add_local_ts(start_addr='10.10.10.0', end_addr='10.10.10.255')
+        self.p.add_remote_ts(start_addr='10.0.0.0', end_addr='10.0.0.255')
 
         self.sa = IKEv2SA(self, i_id=self.p.remote_id['data'],
                           r_id=self.p.local_id['data'],
