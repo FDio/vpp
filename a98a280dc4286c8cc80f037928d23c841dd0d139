@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "be5293b7_853e73ab",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1327,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-14T14:53:20Z",
+      "side": 1,
+      "message": "This could be wrapped in vls wrk-\u003eneed_real_epoll set and unset",
+      "range": {
+        "startLine": 1327,
+        "startChar": 2,
+        "endLine": 1327,
+        "endChar": 34
+      },
+      "revId": "a98a280dc4286c8cc80f037928d23c841dd0d139",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bd52056f_5d43f5ed",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1396,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-14T14:53:20Z",
+      "side": 1,
+      "message": "Given that only one vcl worker per vls worker can be registered at a time, this could be checke on the vls worker instead of the vcl worker.",
+      "range": {
+        "startLine": 1396,
+        "startChar": 9,
+        "endLine": 1396,
+        "endChar": 34
+      },
+      "revId": "a98a280dc4286c8cc80f037928d23c841dd0d139",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
