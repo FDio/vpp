@@ -23,6 +23,7 @@
 #include <vppinfra/error.h>
 #include <vnet/ipsec/ipsec_sa.h>
 #include <plugins/ikev2/ikev2.h>
+#include <vnet/ip/ip_types_api.h>
 
 #define __plugin_msg_base ikev2_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
@@ -169,6 +170,7 @@ static void vl_api_ikev2_profile_details_t_handler
 {
   vat_main_t *vam = ikev2_test_main.vat_main;
   vl_api_ikev2_profile_t *p = &mp->profile;
+  ip4_address_t start_addr, end_addr;
 
   fformat (vam->ofp, "profile %s\n", p->name);
 
@@ -199,23 +201,23 @@ static void vl_api_ikev2_profile_details_t_handler
 	       format_ikev2_id_type_and_data, &p->rem_id);
     }
 
-  if (*((u32 *) & p->loc_ts.end_addr))
-    fformat (vam->ofp, "  local traffic-selector addr %U - %U port %u - %u"
-	     " protocol %u\n",
-	     format_ip4_address, &p->loc_ts.start_addr,
-	     format_ip4_address, &p->loc_ts.end_addr,
-	     clib_net_to_host_u16 (p->loc_ts.start_port),
-	     clib_net_to_host_u16 (p->loc_ts.end_port),
-	     p->loc_ts.protocol_id);
+  ip4_address_decode (p->loc_ts.start_addr, &start_addr);
+  ip4_address_decode (p->loc_ts.end_addr, &end_addr);
+  fformat (vam->ofp, "  local traffic-selector addr %U - %U port %u - %u"
+	   " protocol %u\n",
+	   format_ip4_address, &start_addr,
+	   format_ip4_address, &end_addr,
+	   clib_net_to_host_u16 (p->loc_ts.start_port),
+	   clib_net_to_host_u16 (p->loc_ts.end_port), p->loc_ts.protocol_id);
 
-  if (*((u32 *) & p->rem_ts.end_addr))
-    fformat (vam->ofp, "  remote traffic-selector addr %U - %U port %u - %u"
-	     " protocol %u\n",
-	     format_ip4_address, &p->rem_ts.start_addr,
-	     format_ip4_address, &p->rem_ts.end_addr,
-	     clib_net_to_host_u16 (p->rem_ts.start_port),
-	     clib_net_to_host_u16 (p->rem_ts.end_port),
-	     p->rem_ts.protocol_id);
+  ip4_address_decode (p->rem_ts.start_addr, &start_addr);
+  ip4_address_decode (p->rem_ts.end_addr, &end_addr);
+  fformat (vam->ofp, "  remote traffic-selector addr %U - %U port %u - %u"
+	   " protocol %u\n",
+	   format_ip4_address, &start_addr,
+	   format_ip4_address, &end_addr,
+	   clib_net_to_host_u16 (p->rem_ts.start_port),
+	   clib_net_to_host_u16 (p->rem_ts.end_port), p->rem_ts.protocol_id);
   u32 tun_itf = clib_net_to_host_u32 (p->tun_itf);
   if (~0 != tun_itf)
     fformat (vam->ofp, "  protected tunnel idx %d\n", tun_itf);
@@ -576,10 +578,10 @@ api_ikev2_profile_set_ts (vat_main_t * vam)
 
   mp->is_local = is_local;
   mp->proto = (u8) proto;
-  mp->start_port = (u16) start_port;
-  mp->end_port = (u16) end_port;
-  mp->start_addr = start_addr.as_u32;
-  mp->end_addr = end_addr.as_u32;
+  mp->start_port = clib_host_to_net_u16 (start_port);
+  mp->end_port = clib_host_to_net_u16 (end_port);
+  ip4_address_encode (&start_addr, mp->start_addr);
+  ip4_address_encode (&end_addr, mp->end_addr);
   clib_memcpy (mp->name, name, vec_len (name));
   vec_free (name);
 

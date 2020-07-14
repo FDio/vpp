@@ -21,7 +21,7 @@
 #include <vlibmemory/api.h>
 #include <vnet/api_errno.h>
 #include <vpp/app/version.h>
-
+#include <vnet/ip/ip_types_api.h>
 #include <ikev2/ikev2.h>
 #include <ikev2/ikev2_priv.h>
 
@@ -76,9 +76,8 @@ cp_ts (vl_api_ikev2_ts_t * vl_api_ts, ikev2_ts_t * ts)
   vl_api_ts->selector_len = ts->selector_len;
   vl_api_ts->start_port = ts->start_port;
   vl_api_ts->end_port = ts->end_port;
-  clib_memcpy (&vl_api_ts->start_addr, &ts->start_addr,
-	       sizeof (ip4_address_t));
-  clib_memcpy (&vl_api_ts->end_addr, &ts->end_addr, sizeof (ip4_address_t));
+  ip4_address_encode (&ts->start_addr, vl_api_ts->start_addr);
+  ip4_address_encode (&ts->end_addr, vl_api_ts->end_addr);
 }
 
 static void
@@ -310,12 +309,14 @@ vl_api_ikev2_profile_set_ts_t_handler (vl_api_ikev2_profile_set_ts_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
   u8 *tmp = format (0, "%s", mp->name);
+  ip4_address_t start_addr, end_addr;
+  ip4_address_decode (mp->start_addr, &start_addr);
+  ip4_address_decode (mp->end_addr, &end_addr);
   error =
     ikev2_set_profile_ts (vm, tmp, mp->proto,
 			  clib_net_to_host_u16 (mp->start_port),
 			  clib_net_to_host_u16 (mp->end_port),
-			  (ip4_address_t) mp->start_addr,
-			  (ip4_address_t) mp->end_addr, mp->is_local);
+			  start_addr, end_addr, mp->is_local);
   vec_free (tmp);
   if (error)
     rv = VNET_API_ERROR_UNSPECIFIED;
