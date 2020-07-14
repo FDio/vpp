@@ -136,6 +136,8 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
   n_left_from = from_frame->n_vectors;
   thread_index = vm->thread_index;
 
+  next_index = ESP_ENCRYPT_NEXT_DROP;
+
   ret = crypto_alloc_ops (numa, ops, n_left_from);
   if (ret)
     {
@@ -145,11 +147,21 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
       else
 	vlib_node_increment_counter (vm, dpdk_esp4_encrypt_node.index,
 				     ESP_ENCRYPT_ERROR_DISCARD, 1);
-      /* Discard whole frame */
+      while (n_left_from > 0)
+	{
+	  u32 n_left_to_next;
+	  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+	  while (n_left_from > 0 && n_left_to_next > 0)
+	    {
+	      to_next[0] = *from++;
+	      n_left_from--;
+	      to_next++;
+	      n_left_to_next--;
+	    }
+	  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+	}
       return n_left_from;
     }
-
-  next_index = ESP_ENCRYPT_NEXT_DROP;
 
   while (n_left_from > 0)
     {
