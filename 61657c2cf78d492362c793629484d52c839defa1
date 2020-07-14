@@ -119,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "b58bd135_a2c9bf4d",
+        "filename": "src/plugins/ikev2/ikev2_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 1831
+      },
+      "writtenOn": "2020-07-14T09:07:37Z",
+      "side": 1,
+      "message": "We discussed that isn\u0027t possible, because after endian conversion of whole variable mp will be convert also context and _vl_msg_id. After conversions of _vl_msg_id will be problem with right interpreting of handler number.",
+      "parentUuid": "00963686_e45ab5a5",
+      "range": {
+        "startLine": 505,
+        "startChar": 0,
+        "endLine": 508,
+        "endChar": 61
+      },
+      "revId": "61657c2cf78d492362c793629484d52c839defa1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c412d277_0a204487",
         "filename": "src/plugins/ikev2/ikev2_test.c",
         "patchSetId": 2
@@ -139,6 +163,30 @@
       "revId": "61657c2cf78d492362c793629484d52c839defa1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aa06fff3_eedb987d",
+        "filename": "src/plugins/ikev2/ikev2_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 581,
+      "author": {
+        "id": 1831
+      },
+      "writtenOn": "2020-07-14T09:07:37Z",
+      "side": 1,
+      "message": "We discussed that isn\u0027t possible, because after endian conversion of whole variable mp will be convert also context and _vl_msg_id. After conversions of _vl_msg_id will be problem with right interpreting of handler number.",
+      "parentUuid": "c412d277_0a204487",
+      "range": {
+        "startLine": 580,
+        "startChar": 0,
+        "endLine": 581,
+        "endChar": 37
+      },
+      "revId": "61657c2cf78d492362c793629484d52c839defa1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
