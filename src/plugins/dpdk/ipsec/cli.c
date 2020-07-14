@@ -28,7 +28,7 @@ format_crypto_resource (u8 * s, va_list * args)
   crypto_resource_t *res = vec_elt_at_index (dcm->resource, res_idx);
 
 
-  s = format (s, "%U thr_id %3d qp %2u enc_inflight %u, dec_inflights %u\n",
+  s = format (s, "%U thr_id %3d qp %2u dec_inflight %u, enc_inflights %u\n",
 	      format_white_space, indent, (i16) res->thread_idx,
 	      res->qp_id, res->inflights[0], res->inflights[1]);
 
