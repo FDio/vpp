@@ -307,6 +307,9 @@ typedef struct vcl_worker_
   socket_client_main_t bapi_sock_ctx;
   memory_client_main_t bapi_shm_ctx;
   api_main_t bapi_api_ctx;
+
+  /** vcl needs next epoll_create to go to libc_epoll */
+  u8 vcl_needs_real_epoll;
 } vcl_worker_t;
 
 typedef struct vppcom_main_t_

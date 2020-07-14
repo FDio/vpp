@@ -1387,6 +1387,15 @@ vls_use_eventfd (void)
   return vcm->cfg.use_mq_eventfd;
 }
 
+int
+vls_use_real_epoll (void)
+{
+  if (vcl_get_worker_index () == ~0)
+    return 0;
+
+  return vcl_worker_get_current ()->vcl_needs_real_epoll;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
