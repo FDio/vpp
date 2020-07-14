@@ -46,7 +46,7 @@ typedef enum
  _(RX_PKTS, "ESP pkts received")                    \
  _(SEQ_CYCLED, "Sequence number cycled")            \
  _(ENQ_FAIL, "Enqueue encrypt failed (queue full)")     \
- _(DISCARD, "Not enough crypto operations, discarding frame")  \
+ _(DISCARD, "Not enough crypto operations")         \
  _(SESSION, "Failed to get crypto session")         \
  _(NOSUP, "Cipher/Auth not supported")
 
@@ -141,11 +141,12 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
     {
       if (is_ip6)
 	vlib_node_increment_counter (vm, dpdk_esp6_encrypt_node.index,
-				     ESP_ENCRYPT_ERROR_DISCARD, 1);
+				     ESP_ENCRYPT_ERROR_DISCARD, n_left_from);
       else
 	vlib_node_increment_counter (vm, dpdk_esp4_encrypt_node.index,
-				     ESP_ENCRYPT_ERROR_DISCARD, 1);
+				     ESP_ENCRYPT_ERROR_DISCARD, n_left_from);
       /* Discard whole frame */
+      vlib_buffer_free (vm, from, n_left_from);
       return n_left_from;
     }
 
