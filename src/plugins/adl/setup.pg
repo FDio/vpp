@@ -1,0 +1,28 @@
+set term pag off
+
+loop create
+set int ip address loop0 192.168.1.1/24
+set int state loop0 up
+
+packet-generator new {
+    name ip4
+    limit 100
+    rate 0
+    size 128-128
+    interface loop0
+    node adl-input
+    data { IP4: 1.2.40 -> 3cfd.fed0.b6c8
+           UDP: 192.168.1.2-192.168.1.10 -> 192.168.2.1
+           UDP: 1234 -> 2345
+           incrementing 114
+    }
+}
+
+ip table 1
+ip route add 192.168.2.1/32 via drop
+ip route add table 1 192.168.1.2/32 via local
+
+bin adl_interface_enable_disable pg0
+bin adl_allowlist_enable_disable pg0 fib-id 1 ip4
+
+trace add pg-input 100

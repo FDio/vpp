@@ -1,0 +1,11 @@
+---
+name: ADL
+maintainer: Dave Barach <dave@barachs.net>
+features:
+  - v4, v6 non-default FIB src-address lookup
+  - Drop packets which don't hit a receive adjacency
+  - Not widely used
+
+description: "A very simple / fast source-address allow/deny list feature"
+state: experimental
+properties: [API, CLI, MULTITHREAD]
