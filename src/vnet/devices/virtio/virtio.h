@@ -166,8 +166,12 @@ typedef struct
   clib_error_t *error;
   u8 support_int_mode;		/* support interrupt mode */
   u16 max_queue_pairs;
+<<<<<<< HEAD   (bc6942 sr: fix for SID index across segment lists within a sr polic)
   u16 num_rxqs;
   u16 num_txqs;
+=======
+  u16 msix_table_size;
+>>>>>>> CHANGE (8046fd virtio: fix the msix for multiqueue)
   u8 status;
   u8 mac_addr[6];
   u8 *host_if_name;
