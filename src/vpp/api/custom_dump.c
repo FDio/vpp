@@ -695,12 +695,12 @@ static void *vl_api_bond_delete_t_print
   FINISH;
 }
 
-static void *vl_api_bond_enslave_t_print
-  (vl_api_bond_enslave_t * mp, void *handle)
+static void *vl_api_bond_add_member_t_print
+  (vl_api_bond_add_member_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: bond_enslave ");
+  s = format (0, "SCRIPT: bond_add_member ");
   s = format (s, "bond_sw_if_index %u ", (mp->bond_sw_if_index));
   s = format (s, "sw_if_index %u ", (mp->sw_if_index));
   if (mp->is_passive)
@@ -723,33 +723,35 @@ static void *vl_api_sw_interface_set_bond_weight_t_print
   FINISH;
 }
 
-static void *vl_api_bond_detach_slave_t_print
-  (vl_api_bond_detach_slave_t * mp, void *handle)
+static void *vl_api_bond_detach_member_t_print
+  (vl_api_bond_detach_member_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: bond_detach_slave ");
+  s = format (0, "SCRIPT: bond_detach_member ");
   s = format (s, "sw_if_index %d ", (mp->sw_if_index));
 
   FINISH;
 }
 
-static void *vl_api_sw_interface_bond_dump_t_print
-  (vl_api_sw_interface_bond_dump_t * mp, void *handle)
+static void *vl_api_sw_bond_interface_dump_t_print
+  (vl_api_sw_bond_interface_dump_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: sw_interface_bond_dump ");
+  s = format (0, "SCRIPT: sw_bond_interface_dump ");
+  if (mp->sw_if_index != ~0)
+    s = format (s, "sw_if_index %d ", (mp->sw_if_index));
 
   FINISH;
 }
 
-static void *vl_api_sw_interface_slave_dump_t_print
-  (vl_api_sw_interface_slave_dump_t * mp, void *handle)
+static void *vl_api_sw_member_interface_dump_t_print
+  (vl_api_sw_member_interface_dump_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: sw_interface_slave_dump ");
+  s = format (0, "SCRIPT: sw_member_interface_dump ");
   s = format (s, "sw_if_index %d ", (mp->sw_if_index));
 
   FINISH;
@@ -3543,11 +3545,11 @@ _(SW_INTERFACE_SET_VXLAN_BYPASS, sw_interface_set_vxlan_bypass)         \
 _(SW_INTERFACE_SET_GENEVE_BYPASS, sw_interface_set_geneve_bypass)       \
 _(BOND_CREATE, bond_create)                                             \
 _(BOND_DELETE, bond_delete)                                             \
-_(BOND_ENSLAVE, bond_enslave)                                           \
-_(BOND_DETACH_SLAVE, bond_detach_slave)                                 \
+_(BOND_ADD_MEMBER, bond_add_member)                                     \
+_(BOND_DETACH_MEMBER, bond_detach_member)                               \
 _(SW_INTERFACE_SET_BOND_WEIGHT, sw_interface_set_bond_weight)           \
-_(SW_INTERFACE_SLAVE_DUMP, sw_interface_slave_dump)                     \
-_(SW_INTERFACE_BOND_DUMP, sw_interface_bond_dump)                       \
+_(SW_MEMBER_INTERFACE_DUMP, sw_member_interface_dump)                   \
+_(SW_BOND_INTERFACE_DUMP, sw_bond_interface_dump)                       \
 _(SW_INTERFACE_RX_PLACEMENT_DUMP, sw_interface_rx_placement_dump)       \
 _(TAP_CREATE_V2, tap_create_v2)                                         \
 _(TAP_DELETE_V2, tap_delete_v2)                                         \

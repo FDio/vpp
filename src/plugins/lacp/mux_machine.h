@@ -53,7 +53,7 @@ int lacp_mux_action_detached (void *p1, void *p2);
 int lacp_mux_action_attached (void *p1, void *p2);
 int lacp_mux_action_waiting (void *p1, void *p2);
 int lacp_mux_action_collecting_distributing (void *p1, void *p2);
-void lacp_mux_debug_func (slave_if_t * sif, int event, int state,
+void lacp_mux_debug_func (member_if_t * mif, int event, int state,
 			  lacp_fsm_state_t * transition);
 
 #define LACP_ACTION_DETACHED LACP_ACTION_ROUTINE(lacp_mux_action_detached)
@@ -63,10 +63,10 @@ void lacp_mux_debug_func (slave_if_t * sif, int event, int state,
   LACP_ACTION_ROUTINE(lacp_mux_action_collecting_distributing)
 
 static inline void
-lacp_start_wait_while_timer (vlib_main_t * vm, slave_if_t * sif,
+lacp_start_wait_while_timer (vlib_main_t * vm, member_if_t * mif,
 			     u8 expiration)
 {
-  sif->wait_while_timer = vlib_time_now (vm) + expiration;
+  mif->wait_while_timer = vlib_time_now (vm) + expiration;
 }
 
 #endif /* __LACP_MUX_MACHINE_H__ */
