@@ -34,6 +34,24 @@
       "revId": "6eea91b712115db764820d230089ba419d00073d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fb0b8e68_49fee382",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-07-15T12:45:27Z",
+      "side": 1,
+      "message": "We have MSIX from 0 to 0x7FF. In case of MSIX table size \u003e 1, MSIX 0 is always map to configuration. We have queues from 0 to N and MSIX from 1 to N + 1. So for correct mapping between MSIX and queue interrupts, you will see line++ and line-- in queue handler.",
+      "parentUuid": "b2d77856_ea6fa566",
+      "revId": "6eea91b712115db764820d230089ba419d00073d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
