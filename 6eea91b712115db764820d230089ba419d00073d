@@ -16,6 +16,24 @@
       "revId": "6eea91b712115db764820d230089ba419d00073d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "59c1eb8e_aa5a221a",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-15T12:42:19Z",
+      "side": 1,
+      "message": "My bad, the equivalent code should be\nfor (; line \u003c vif-\u003enum_rxqs; line +\u003d 2)\n    virtio_pci_irq_queue_handler (vm, h, line + 1);",
+      "parentUuid": "b2d77856_ea6fa566",
+      "revId": "6eea91b712115db764820d230089ba419d00073d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
