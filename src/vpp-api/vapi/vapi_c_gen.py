@@ -940,7 +940,11 @@ def gen_json_unified_header(parser, logger, j, io, name):
     print("")
     print(
         "#define DEFINE_VAPI_MSG_IDS_%s\\"
-        % f.replace(".", "_").replace("/", "_").replace("-", "_").upper()
+        % f.replace(".", "_")
+        .replace("/", "_")
+        .replace("-", "_")
+        .replace("+", "_")
+        .upper()
     )
     print(
         "\\\n".join(
