@@ -83,52 +83,6 @@ typedef struct
   ip4_address_t addr, mask;
 } ip4_address_and_mask_t;
 
-/* If address is a valid netmask, return length of mask. */
-always_inline uword
-ip4_address_netmask_length (const ip4_address_t * a)
-{
-  uword result = 0;
-  uword i;
-  for (i = 0; i < ARRAY_LEN (a->as_u8); i++)
-    {
-      switch (a->as_u8[i])
-	{
-	case 0xff:
-	  result += 8;
-	  break;
-	case 0xfe:
-	  result += 7;
-	  goto done;
-	case 0xfc:
-	  result += 6;
-	  goto done;
-	case 0xf8:
-	  result += 5;
-	  goto done;
-	case 0xf0:
-	  result += 4;
-	  goto done;
-	case 0xe0:
-	  result += 3;
-	  goto done;
-	case 0xc0:
-	  result += 2;
-	  goto done;
-	case 0x80:
-	  result += 1;
-	  goto done;
-	case 0x00:
-	  result += 0;
-	  goto done;
-	default:
-	  /* Not a valid netmask mask. */
-	  return ~0;
-	}
-    }
-done:
-  return result;
-}
-
 typedef union
 {
   struct
@@ -246,22 +200,61 @@ ip4_next_header (ip4_header_t * i)
 always_inline u16
 ip4_header_checksum (ip4_header_t * i)
 {
-  u16 save, csum;
-  ip_csum_t sum;
+  u16 *iphdr = (u16 *) i;
+  u32 sum = 0;
+  int option_len = (i->ip_version_and_header_length & 0xf) - 5;
 
-  save = i->checksum;
-  i->checksum = 0;
-  sum = ip_incremental_checksum (0, i, ip4_header_bytes (i));
-  csum = ~ip_csum_fold (sum);
+  sum += clib_net_to_host_u16 (iphdr[0]);
+  sum += clib_net_to_host_u16 (iphdr[1]);
+  sum += clib_net_to_host_u16 (iphdr[2]);
+  sum += clib_net_to_host_u16 (iphdr[3]);
+  sum += clib_net_to_host_u16 (iphdr[4]);
 
-  i->checksum = save;
+  sum += clib_net_to_host_u16 (iphdr[6]);
+  sum += clib_net_to_host_u16 (iphdr[7]);
+  sum += clib_net_to_host_u16 (iphdr[8]);
+  sum += clib_net_to_host_u16 (iphdr[9]);
 
-  /* Make checksum agree for special case where either
-     0 or 0xffff would give same 1s complement sum. */
-  if (csum == 0 && save == 0xffff)
-    csum = save;
+  if (PREDICT_FALSE (option_len > 0))
+    switch (option_len)
+      {
+      case 10:
+	sum += clib_net_to_host_u16 (iphdr[28]);
+	sum += clib_net_to_host_u16 (iphdr[29]);
+      case 9:
+	sum += clib_net_to_host_u16 (iphdr[26]);
+	sum += clib_net_to_host_u16 (iphdr[27]);
+      case 8:
+	sum += clib_net_to_host_u16 (iphdr[24]);
+	sum += clib_net_to_host_u16 (iphdr[25]);
+      case 7:
+	sum += clib_net_to_host_u16 (iphdr[22]);
+	sum += clib_net_to_host_u16 (iphdr[23]);
+      case 6:
+	sum += clib_net_to_host_u16 (iphdr[20]);
+	sum += clib_net_to_host_u16 (iphdr[21]);
+      case 5:
+	sum += clib_net_to_host_u16 (iphdr[18]);
+	sum += clib_net_to_host_u16 (iphdr[19]);
+      case 4:
+	sum += clib_net_to_host_u16 (iphdr[16]);
+	sum += clib_net_to_host_u16 (iphdr[17]);
+      case 3:
+	sum += clib_net_to_host_u16 (iphdr[14]);
+	sum += clib_net_to_host_u16 (iphdr[15]);
+      case 2:
+	sum += clib_net_to_host_u16 (iphdr[12]);
+	sum += clib_net_to_host_u16 (iphdr[13]);
+      case 1:
+	sum += clib_net_to_host_u16 (iphdr[10]);
+	sum += clib_net_to_host_u16 (iphdr[11]);
+      default:
+	break;
+      }
 
-  return csum;
+  sum = ((u16) sum) + (sum >> 16);
+  sum = ((u16) sum) + (sum >> 16);
+  return clib_host_to_net_u16 (~((u16) sum));
 }
 
 always_inline void
