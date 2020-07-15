@@ -75,10 +75,10 @@ int
 lacp_ptx_action_no_periodic (void *p1, void *p2)
 {
   vlib_main_t *vm = p1;
-  slave_if_t *sif = p2;
+  member_if_t *mif = p2;
 
-  lacp_stop_timer (&sif->periodic_timer);
-  lacp_ptx_post_short_timeout_event (vm, sif);
+  lacp_stop_timer (&mif->periodic_timer);
+  lacp_ptx_post_short_timeout_event (vm, mif);
   return 0;
 }
 
@@ -86,26 +86,26 @@ int
 lacp_ptx_action_slow_periodic (void *p1, void *p2)
 {
   vlib_main_t *vm = p1;
-  slave_if_t *sif = p2;
+  member_if_t *mif = p2;
   u8 timer_expired;
 
-  if (!(sif->partner.state & LACP_STATE_LACP_ACTIVITY) &&
-      !(sif->actor.state & LACP_STATE_LACP_ACTIVITY))
-    lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			   LACP_PTX_EVENT_NO_PERIODIC, &sif->ptx_state);
+  if (!(mif->partner.state & LACP_STATE_LACP_ACTIVITY) &&
+      !(mif->actor.state & LACP_STATE_LACP_ACTIVITY))
+    lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
+			   LACP_PTX_EVENT_NO_PERIODIC, &mif->ptx_state);
   else
     {
-      if (lacp_timer_is_running (sif->periodic_timer) &&
-	  lacp_timer_is_expired (vm, sif->periodic_timer))
+      if (lacp_timer_is_running (mif->periodic_timer) &&
+	  lacp_timer_is_expired (vm, mif->periodic_timer))
 	timer_expired = 1;
       else
 	timer_expired = 0;
 
-      lacp_schedule_periodic_timer (vm, sif);
+      lacp_schedule_periodic_timer (vm, mif);
 
-      if (timer_expired || (sif->partner.state & LACP_STATE_LACP_TIMEOUT))
-	lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			       LACP_PTX_EVENT_TIMER_EXPIRED, &sif->ptx_state);
+      if (timer_expired || (mif->partner.state & LACP_STATE_LACP_TIMEOUT))
+	lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
+			       LACP_PTX_EVENT_TIMER_EXPIRED, &mif->ptx_state);
     }
 
   return 0;
@@ -115,30 +115,30 @@ int
 lacp_ptx_action_fast_periodic (void *p1, void *p2)
 {
   vlib_main_t *vm = p1;
-  slave_if_t *sif = p2;
+  member_if_t *mif = p2;
   u8 timer_expired;
 
-  if (!(sif->partner.state & LACP_STATE_LACP_ACTIVITY) &&
-      !(sif->actor.state & LACP_STATE_LACP_ACTIVITY))
-    lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			   LACP_PTX_EVENT_NO_PERIODIC, &sif->ptx_state);
+  if (!(mif->partner.state & LACP_STATE_LACP_ACTIVITY) &&
+      !(mif->actor.state & LACP_STATE_LACP_ACTIVITY))
+    lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
+			   LACP_PTX_EVENT_NO_PERIODIC, &mif->ptx_state);
   else
     {
-      if (lacp_timer_is_running (sif->periodic_timer) &&
-	  lacp_timer_is_expired (vm, sif->periodic_timer))
+      if (lacp_timer_is_running (mif->periodic_timer) &&
+	  lacp_timer_is_expired (vm, mif->periodic_timer))
 	timer_expired = 1;
       else
 	timer_expired = 0;
 
-      lacp_start_periodic_timer (vm, sif, LACP_FAST_PERIODIC_TIMER);
+      lacp_start_periodic_timer (vm, mif, LACP_FAST_PERIODIC_TIMER);
 
       if (timer_expired)
-	lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			       LACP_PTX_EVENT_TIMER_EXPIRED, &sif->ptx_state);
+	lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
+			       LACP_PTX_EVENT_TIMER_EXPIRED, &mif->ptx_state);
 
-      if (!(sif->partner.state & LACP_STATE_LACP_TIMEOUT))
-	lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			       LACP_PTX_EVENT_LONG_TIMEOUT, &sif->ptx_state);
+      if (!(mif->partner.state & LACP_STATE_LACP_TIMEOUT))
+	lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
+			       LACP_PTX_EVENT_LONG_TIMEOUT, &mif->ptx_state);
     }
 
   return 0;
@@ -148,23 +148,23 @@ int
 lacp_ptx_action_timer_expired (void *p1, void *p2)
 {
   vlib_main_t *vm = p1;
-  slave_if_t *sif = p2;
+  member_if_t *mif = p2;
 
-  if (!(sif->partner.state & LACP_STATE_LACP_ACTIVITY) &&
-      !(sif->actor.state & LACP_STATE_LACP_ACTIVITY))
-    lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			   LACP_PTX_EVENT_NO_PERIODIC, &sif->ptx_state);
+  if (!(mif->partner.state & LACP_STATE_LACP_ACTIVITY) &&
+      !(mif->actor.state & LACP_STATE_LACP_ACTIVITY))
+    lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
+			   LACP_PTX_EVENT_NO_PERIODIC, &mif->ptx_state);
   else
     {
-      sif->ntt = 1;
-      lacp_machine_dispatch (&lacp_tx_machine, vm, sif, LACP_TX_EVENT_NTT,
-			     &sif->tx_state);
-      if (sif->partner.state & LACP_STATE_LACP_TIMEOUT)
-	lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			       LACP_PTX_EVENT_SHORT_TIMEOUT, &sif->ptx_state);
+      mif->ntt = 1;
+      lacp_machine_dispatch (&lacp_tx_machine, vm, mif, LACP_TX_EVENT_NTT,
+			     &mif->tx_state);
+      if (mif->partner.state & LACP_STATE_LACP_TIMEOUT)
+	lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
+			       LACP_PTX_EVENT_SHORT_TIMEOUT, &mif->ptx_state);
       else
-	lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			       LACP_PTX_EVENT_LONG_TIMEOUT, &sif->ptx_state);
+	lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
+			       LACP_PTX_EVENT_LONG_TIMEOUT, &mif->ptx_state);
     }
 
   return 0;
@@ -191,7 +191,7 @@ format_ptx_event (u8 * s, va_list * args)
 }
 
 void
-lacp_ptx_debug_func (slave_if_t * sif, int event, int state,
+lacp_ptx_debug_func (member_if_t * mif, int event, int state,
 		     lacp_fsm_state_t * transition)
 {
   vlib_worker_thread_t *w = vlib_worker_threads + os_get_thread_index ();
@@ -211,16 +211,16 @@ lacp_ptx_debug_func (slave_if_t * sif, int event, int state,
   ed->event =
     elog_string (&vlib_global_main.elog_main, "%U-PTX: %U, %U->%U%c",
 		 format_vnet_sw_if_index_name, vnet_get_main (),
-		 sif->sw_if_index, format_ptx_event, event,
+		 mif->sw_if_index, format_ptx_event, event,
 		 format_ptx_sm_state, state, format_ptx_sm_state,
 		 transition->next_state, 0);
 }
 
 void
-lacp_init_ptx_machine (vlib_main_t * vm, slave_if_t * sif)
+lacp_init_ptx_machine (vlib_main_t * vm, member_if_t * mif)
 {
-  lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			 LACP_PTX_EVENT_NO_PERIODIC, &sif->ptx_state);
+  lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
+			 LACP_PTX_EVENT_NO_PERIODIC, &mif->ptx_state);
 }
 
 /*

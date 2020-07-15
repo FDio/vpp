@@ -29,20 +29,20 @@ lacp_main_t lacp_main;
  * Generate lacp pdu
  */
 static void
-lacp_fill_pdu (lacp_pdu_t * lacpdu, slave_if_t * sif)
+lacp_fill_pdu (lacp_pdu_t * lacpdu, member_if_t * mif)
 {
   /* Actor TLV */
-  lacpdu->actor.port_info = sif->actor;
+  lacpdu->actor.port_info = mif->actor;
 
   /* Partner TLV */
-  lacpdu->partner.port_info = sif->partner;
+  lacpdu->partner.port_info = mif->partner;
 }
 
 /*
  * send a lacp pkt on an ethernet interface
  */
 static void
-lacp_send_ethernet_lacp_pdu (vlib_main_t * vm, slave_if_t * sif)
+lacp_send_ethernet_lacp_pdu (vlib_main_t * vm, member_if_t * mif)
 {
   lacp_main_t *lm = &lacp_main;
   u32 *to_next;
@@ -58,18 +58,18 @@ lacp_send_ethernet_lacp_pdu (vlib_main_t * vm, slave_if_t * sif)
    * into the buffer by the packet template mechanism
    */
   h0 = vlib_packet_template_get_packet
-    (vm, &lm->packet_templates[sif->packet_template_index], &bi0);
+    (vm, &lm->packet_templates[mif->packet_template_index], &bi0);
 
   if (!h0)
     return;
 
   /* Add the interface's ethernet source address */
-  hw = vnet_get_sup_hw_interface (vnm, sif->sw_if_index);
+  hw = vnet_get_sup_hw_interface (vnm, mif->sw_if_index);
 
   clib_memcpy (h0->ethernet.src_address, hw->hw_address,
 	       vec_len (hw->hw_address));
 
-  lacp_fill_pdu (&h0->lacp, sif);
+  lacp_fill_pdu (&h0->lacp, mif);
 
   /* Set the outbound packet length */
   b0 = vlib_get_buffer (vm, bi0);
@@ -89,44 +89,44 @@ lacp_send_ethernet_lacp_pdu (vlib_main_t * vm, slave_if_t * sif)
 
   vlib_put_frame_to_node (vm, hw->output_node_index, f);
 
-  sif->last_lacpdu_sent_time = vlib_time_now (vm);
-  sif->pdu_sent++;
+  mif->last_lacpdu_sent_time = vlib_time_now (vm);
+  mif->pdu_sent++;
 }
 
 /*
  * Decide which lacp packet template to use
  */
 static int
-lacp_pick_packet_template (slave_if_t * sif)
+lacp_pick_packet_template (member_if_t * mif)
 {
-  sif->packet_template_index = LACP_PACKET_TEMPLATE_ETHERNET;
+  mif->packet_template_index = LACP_PACKET_TEMPLATE_ETHERNET;
 
   return 0;
 }
 
 void
-lacp_send_lacp_pdu (vlib_main_t * vm, slave_if_t * sif)
+lacp_send_lacp_pdu (vlib_main_t * vm, member_if_t * mif)
 {
-  if ((sif->mode != BOND_MODE_LACP) || (sif->port_enabled == 0))
+  if ((mif->mode != BOND_MODE_LACP) || (mif->port_enabled == 0))
     {
-      lacp_stop_timer (&sif->periodic_timer);
+      lacp_stop_timer (&mif->periodic_timer);
       return;
     }
 
-  if (sif->packet_template_index == (u8) ~ 0)
+  if (mif->packet_template_index == (u8) ~ 0)
     {
       /* If we don't know how to talk to this peer, don't try again */
-      if (lacp_pick_packet_template (sif))
+      if (lacp_pick_packet_template (mif))
 	{
-	  lacp_stop_timer (&sif->periodic_timer);
+	  lacp_stop_timer (&mif->periodic_timer);
 	  return;
 	}
     }
 
-  switch (sif->packet_template_index)
+  switch (mif->packet_template_index)
     {
     case LACP_PACKET_TEMPLATE_ETHERNET:
-      lacp_send_ethernet_lacp_pdu (vm, sif);
+      lacp_send_ethernet_lacp_pdu (vm, mif);
       break;
 
     default:
@@ -138,51 +138,51 @@ void
 lacp_periodic (vlib_main_t * vm)
 {
   bond_main_t *bm = &bond_main;
-  slave_if_t *sif;
+  member_if_t *mif;
   bond_if_t *bif;
   u8 actor_state, partner_state;
 
   /* *INDENT-OFF* */
-  pool_foreach (sif, bm->neighbors,
+  pool_foreach (mif, bm->neighbors,
   ({
-    if (sif->port_enabled == 0)
+    if (mif->port_enabled == 0)
       continue;
 
-    actor_state = sif->actor.state;
-    partner_state = sif->partner.state;
-    if (lacp_timer_is_running (sif->current_while_timer) &&
-	lacp_timer_is_expired (vm, sif->current_while_timer))
+    actor_state = mif->actor.state;
+    partner_state = mif->partner.state;
+    if (lacp_timer_is_running (mif->current_while_timer) &&
+	lacp_timer_is_expired (vm, mif->current_while_timer))
       {
-        lacp_machine_dispatch (&lacp_rx_machine, vm, sif,
-			       LACP_RX_EVENT_TIMER_EXPIRED, &sif->rx_state);
+        lacp_machine_dispatch (&lacp_rx_machine, vm, mif,
+			       LACP_RX_EVENT_TIMER_EXPIRED, &mif->rx_state);
       }
 
-    if (lacp_timer_is_running (sif->periodic_timer) &&
-	lacp_timer_is_expired (vm, sif->periodic_timer))
+    if (lacp_timer_is_running (mif->periodic_timer) &&
+	lacp_timer_is_expired (vm, mif->periodic_timer))
       {
-        lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			       LACP_PTX_EVENT_TIMER_EXPIRED, &sif->ptx_state);
+        lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
+			       LACP_PTX_EVENT_TIMER_EXPIRED, &mif->ptx_state);
       }
-    if (lacp_timer_is_running (sif->wait_while_timer) &&
-	lacp_timer_is_expired (vm, sif->wait_while_timer))
+    if (lacp_timer_is_running (mif->wait_while_timer) &&
+	lacp_timer_is_expired (vm, mif->wait_while_timer))
       {
-	sif->ready_n = 1;
-        lacp_stop_timer (&sif->wait_while_timer);
-        lacp_selection_logic (vm, sif);
+	mif->ready_n = 1;
+        lacp_stop_timer (&mif->wait_while_timer);
+        lacp_selection_logic (vm, mif);
       }
-    if (actor_state != sif->actor.state)
+    if (actor_state != mif->actor.state)
       {
-	bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
+	bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
 	stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
-					[sif->sw_if_index].actor_state,
-					sif->actor.state);
+					[mif->sw_if_index].actor_state,
+					mif->actor.state);
       }
-    if (partner_state != sif->partner.state)
+    if (partner_state != mif->partner.state)
       {
-	bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
+	bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
 	stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
-					[sif->sw_if_index].partner_state,
-					sif->partner.state);
+					[mif->sw_if_index].partner_state,
+					mif->partner.state);
       }
   }));
   /* *INDENT-ON* */
@@ -190,7 +190,7 @@ lacp_periodic (vlib_main_t * vm)
 
 static void
 lacp_interface_enable_disable (vlib_main_t * vm, bond_if_t * bif,
-			       slave_if_t * sif, u8 enable)
+			       member_if_t * mif, u8 enable)
 {
   lacp_main_t *lm = &lacp_main;
   uword port_number;
@@ -202,8 +202,8 @@ lacp_interface_enable_disable (vlib_main_t * vm, bond_if_t * bif,
       bif->port_number_bitmap = clib_bitmap_set (bif->port_number_bitmap,
 						 port_number, 1);
       // bitmap starts at 0. Our port number starts at 1.
-      lacp_init_neighbor (sif, bif->hw_address, port_number + 1, sif->group);
-      lacp_init_state_machines (vm, sif);
+      lacp_init_neighbor (mif, bif->hw_address, port_number + 1, mif->group);
+      lacp_init_state_machines (vm, mif);
       lm->lacp_int++;
       if (lm->lacp_int == 1)
 	{
@@ -315,77 +315,77 @@ lacp_periodic_init (vlib_main_t * vm)
 
 int
 lacp_machine_dispatch (lacp_machine_t * machine, vlib_main_t * vm,
-		       slave_if_t * sif, int event, int *state)
+		       member_if_t * mif, int event, int *state)
 {
   lacp_fsm_state_t *transition;
   int rc = 0;
 
   transition = &machine->tables[*state].state_table[event];
-  LACP_DBG2 (sif, event, *state, machine, transition);
+  LACP_DBG2 (mif, event, *state, machine, transition);
   *state = transition->next_state;
   if (transition->action)
-    rc = (*transition->action) ((void *) vm, (void *) sif);
+    rc = (*transition->action) ((void *) vm, (void *) mif);
 
   return rc;
 }
 
 void
-lacp_init_neighbor (slave_if_t * sif, u8 * hw_address, u16 port_number,
+lacp_init_neighbor (member_if_t * mif, u8 * hw_address, u16 port_number,
 		    u32 group)
 {
-  lacp_stop_timer (&sif->wait_while_timer);
-  lacp_stop_timer (&sif->current_while_timer);
-  lacp_stop_timer (&sif->actor_churn_timer);
-  lacp_stop_timer (&sif->partner_churn_timer);
-  lacp_stop_timer (&sif->periodic_timer);
-  lacp_stop_timer (&sif->last_lacpdu_sent_time);
-  lacp_stop_timer (&sif->last_lacpdu_recd_time);
-  lacp_stop_timer (&sif->last_marker_pdu_sent_time);
-  lacp_stop_timer (&sif->last_marker_pdu_recd_time);
-  sif->lacp_enabled = 1;
-  sif->loopback_port = 0;
-  sif->ready = 0;
-  sif->ready_n = 0;
-  sif->port_moved = 0;
-  sif->ntt = 0;
-  sif->selected = LACP_PORT_UNSELECTED;
-  sif->actor.state = LACP_STATE_AGGREGATION;
-  if (sif->ttl_in_seconds == LACP_SHORT_TIMOUT_TIME)
-    sif->actor.state |= LACP_STATE_LACP_TIMEOUT;
-  if (sif->is_passive == 0)
-    sif->actor.state |= LACP_STATE_LACP_ACTIVITY;
-  clib_memcpy (sif->actor.system, hw_address, 6);
-  sif->actor.system_priority = htons (LACP_DEFAULT_SYSTEM_PRIORITY);
-  sif->actor.key = htons (group);
-  sif->actor.port_number = htons (port_number);
-  sif->actor.port_priority = htons (LACP_DEFAULT_PORT_PRIORITY);
+  lacp_stop_timer (&mif->wait_while_timer);
+  lacp_stop_timer (&mif->current_while_timer);
+  lacp_stop_timer (&mif->actor_churn_timer);
+  lacp_stop_timer (&mif->partner_churn_timer);
+  lacp_stop_timer (&mif->periodic_timer);
+  lacp_stop_timer (&mif->last_lacpdu_sent_time);
+  lacp_stop_timer (&mif->last_lacpdu_recd_time);
+  lacp_stop_timer (&mif->last_marker_pdu_sent_time);
+  lacp_stop_timer (&mif->last_marker_pdu_recd_time);
+  mif->lacp_enabled = 1;
+  mif->loopback_port = 0;
+  mif->ready = 0;
+  mif->ready_n = 0;
+  mif->port_moved = 0;
+  mif->ntt = 0;
+  mif->selected = LACP_PORT_UNSELECTED;
+  mif->actor.state = LACP_STATE_AGGREGATION;
+  if (mif->ttl_in_seconds == LACP_SHORT_TIMOUT_TIME)
+    mif->actor.state |= LACP_STATE_LACP_TIMEOUT;
+  if (mif->is_passive == 0)
+    mif->actor.state |= LACP_STATE_LACP_ACTIVITY;
+  clib_memcpy (mif->actor.system, hw_address, 6);
+  mif->actor.system_priority = htons (LACP_DEFAULT_SYSTEM_PRIORITY);
+  mif->actor.key = htons (group);
+  mif->actor.port_number = htons (port_number);
+  mif->actor.port_priority = htons (LACP_DEFAULT_PORT_PRIORITY);
 
-  sif->partner.system_priority = htons (LACP_DEFAULT_SYSTEM_PRIORITY);
-  sif->partner.key = htons (group);
-  sif->partner.port_number = htons (port_number);
-  sif->partner.port_priority = htons (LACP_DEFAULT_PORT_PRIORITY);
-  sif->partner.state = 0;
+  mif->partner.system_priority = htons (LACP_DEFAULT_SYSTEM_PRIORITY);
+  mif->partner.key = htons (group);
+  mif->partner.port_number = htons (port_number);
+  mif->partner.port_priority = htons (LACP_DEFAULT_PORT_PRIORITY);
+  mif->partner.state = 0;
 
-  sif->actor_admin = sif->actor;
-  sif->partner_admin = sif->partner;
+  mif->actor_admin = mif->actor;
+  mif->partner_admin = mif->partner;
 }
 
 void
-lacp_init_state_machines (vlib_main_t * vm, slave_if_t * sif)
+lacp_init_state_machines (vlib_main_t * vm, member_if_t * mif)
 {
   bond_main_t *bm = &bond_main;
-  bond_if_t *bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
+  bond_if_t *bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
 
-  lacp_init_tx_machine (vm, sif);
-  lacp_init_mux_machine (vm, sif);
-  lacp_init_ptx_machine (vm, sif);
-  lacp_init_rx_machine (vm, sif);
+  lacp_init_tx_machine (vm, mif);
+  lacp_init_mux_machine (vm, mif);
+  lacp_init_ptx_machine (vm, mif);
+  lacp_init_rx_machine (vm, mif);
   stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
-				  [sif->sw_if_index].actor_state,
-				  sif->actor.state);
+				  [mif->sw_if_index].actor_state,
+				  mif->actor.state);
   stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
-				  [sif->sw_if_index].partner_state,
-				  sif->partner.state);
+				  [mif->sw_if_index].partner_state,
+				  mif->partner.state);
 }
 
 VLIB_INIT_FUNCTION (lacp_periodic_init);
@@ -394,24 +394,24 @@ static clib_error_t *
 lacp_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 {
   lacp_main_t *lm = &lacp_main;
-  slave_if_t *sif;
+  member_if_t *mif;
   vlib_main_t *vm = lm->vlib_main;
 
-  sif = bond_get_slave_by_sw_if_index (sw_if_index);
-  if (sif)
+  mif = bond_get_member_by_sw_if_index (sw_if_index);
+  if (mif)
     {
-      if (sif->lacp_enabled == 0)
+      if (mif->lacp_enabled == 0)
 	return 0;
 
       /* port_enabled is both admin up and hw link up */
-      sif->port_enabled = ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) &&
+      mif->port_enabled = ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) &&
 			   vnet_sw_interface_is_link_up (vnm, sw_if_index));
-      if (sif->port_enabled == 0)
+      if (mif->port_enabled == 0)
 	{
-	  lacp_init_neighbor (sif, sif->actor_admin.system,
-			      ntohs (sif->actor_admin.port_number),
-			      ntohs (sif->actor_admin.key));
-	  lacp_init_state_machines (vm, sif);
+	  lacp_init_neighbor (mif, mif->actor_admin.system,
+			      ntohs (mif->actor_admin.port_number),
+			      ntohs (mif->actor_admin.key));
+	  lacp_init_state_machines (vm, mif);
 	}
     }
 
@@ -424,27 +424,27 @@ static clib_error_t *
 lacp_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 {
   lacp_main_t *lm = &lacp_main;
-  slave_if_t *sif;
+  member_if_t *mif;
   vnet_sw_interface_t *sw;
   vlib_main_t *vm = lm->vlib_main;
 
   sw = vnet_get_hw_sw_interface (vnm, hw_if_index);
-  sif = bond_get_slave_by_sw_if_index (sw->sw_if_index);
-  if (sif)
+  mif = bond_get_member_by_sw_if_index (sw->sw_if_index);
+  if (mif)
     {
-      if (sif->lacp_enabled == 0)
+      if (mif->lacp_enabled == 0)
 	return 0;
 
       /* port_enabled is both admin up and hw link up */
-      sif->port_enabled = ((flags & VNET_HW_INTERFACE_FLAG_LINK_UP) &&
+      mif->port_enabled = ((flags & VNET_HW_INTERFACE_FLAG_LINK_UP) &&
 			   vnet_sw_interface_is_admin_up (vnm,
 							  sw->sw_if_index));
-      if (sif->port_enabled == 0)
+      if (mif->port_enabled == 0)
 	{
-	  lacp_init_neighbor (sif, sif->actor_admin.system,
-			      ntohs (sif->actor_admin.port_number),
-			      ntohs (sif->actor_admin.key));
-	  lacp_init_state_machines (vm, sif);
+	  lacp_init_neighbor (mif, mif->actor_admin.system,
+			      ntohs (mif->actor_admin.port_number),
+			      ntohs (mif->actor_admin.key));
+	  lacp_init_state_machines (vm, mif);
 	}
     }
 
