@@ -179,6 +179,7 @@ typedef struct
   clib_error_t *error;
   u8 support_int_mode;		/* support interrupt mode */
   u16 max_queue_pairs;
+  u16 msix_table_size;
   u8 status;
   u8 mac_addr[6];
   u8 *host_if_name;
