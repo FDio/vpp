@@ -70,6 +70,24 @@
       "revId": "6eea91b712115db764820d230089ba419d00073d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3d7358ba_42930cdc",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-07-15T13:11:55Z",
+      "side": 1,
+      "message": "Correct! We only need to allocate for RXQs. We don\u0027t need TX interrupts.\nFunction virtio_pci_irq_queue_handler only handles interrupt for RXQs and qid is queue index of correct RXQ.",
+      "parentUuid": "4480e1d5_afd13abb",
+      "revId": "6eea91b712115db764820d230089ba419d00073d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
