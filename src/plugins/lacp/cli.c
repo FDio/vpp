@@ -22,44 +22,44 @@ lacp_dump_ifs (lacp_interface_details_t ** out_lacpifs)
 {
   vnet_main_t *vnm = vnet_get_main ();
   bond_main_t *bm = &bond_main;
-  slave_if_t *sif;
+  member_if_t *mif;
   bond_if_t *bif;
   vnet_hw_interface_t *hi;
   lacp_interface_details_t *r_lacpifs = NULL;
   lacp_interface_details_t *lacpif = NULL;
 
   /* *INDENT-OFF* */
-  pool_foreach (sif, bm->neighbors,
-    if (sif->lacp_enabled == 0)
+  pool_foreach (mif, bm->neighbors,
+    if (mif->lacp_enabled == 0)
       continue;
     vec_add2(r_lacpifs, lacpif, 1);
     clib_memset (lacpif, 0, sizeof (*lacpif));
-    lacpif->sw_if_index = sif->sw_if_index;
-    hi = vnet_get_hw_interface (vnm, sif->hw_if_index);
+    lacpif->sw_if_index = mif->sw_if_index;
+    hi = vnet_get_hw_interface (vnm, mif->hw_if_index);
     clib_memcpy(lacpif->interface_name, hi->name,
                 MIN (ARRAY_LEN (lacpif->interface_name) - 1,
                      strlen ((const char *) hi->name)));
-    bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
+    bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
     hi = vnet_get_hw_interface (vnm, bif->hw_if_index);
     clib_memcpy(lacpif->bond_interface_name, hi->name,
                 MIN (ARRAY_LEN (lacpif->bond_interface_name) - 1,
                      strlen ((const char *) hi->name)));
-    clib_memcpy (lacpif->actor_system, sif->actor.system, 6);
-    lacpif->actor_system_priority = sif->actor.system_priority;
-    lacpif->actor_key = sif->actor.key;
-    lacpif->actor_port_priority = sif->actor.port_priority;
-    lacpif->actor_port_number = sif->actor.port_number;
-    lacpif->actor_state = sif->actor.state;
-    clib_memcpy (lacpif->partner_system, sif->partner.system, 6);
-    lacpif->partner_system_priority = sif->partner.system_priority;
-    lacpif->partner_key = sif->partner.key;
-    lacpif->partner_port_priority = sif->partner.port_priority;
-    lacpif->partner_port_number = sif->partner.port_number;
-    lacpif->partner_state = sif->partner.state;
-    lacpif->rx_state = sif->rx_state;
-    lacpif->tx_state = sif->tx_state;
-    lacpif->ptx_state = sif->ptx_state;
-    lacpif->mux_state = sif->mux_state;
+    clib_memcpy (lacpif->actor_system, mif->actor.system, 6);
+    lacpif->actor_system_priority = mif->actor.system_priority;
+    lacpif->actor_key = mif->actor.key;
+    lacpif->actor_port_priority = mif->actor.port_priority;
+    lacpif->actor_port_number = mif->actor.port_number;
+    lacpif->actor_state = mif->actor.state;
+    clib_memcpy (lacpif->partner_system, mif->partner.system, 6);
+    lacpif->partner_system_priority = mif->partner.system_priority;
+    lacpif->partner_key = mif->partner.key;
+    lacpif->partner_port_priority = mif->partner.port_priority;
+    lacpif->partner_port_number = mif->partner.port_number;
+    lacpif->partner_state = mif->partner.state;
+    lacpif->rx_state = mif->rx_state;
+    lacpif->tx_state = mif->tx_state;
+    lacpif->ptx_state = mif->ptx_state;
+    lacpif->mux_state = mif->mux_state;
   );
   /* *INDENT-ON* */
 
@@ -72,7 +72,7 @@ static void
 show_lacp (vlib_main_t * vm, u32 * sw_if_indices)
 {
   int i;
-  slave_if_t *sif;
+  member_if_t *mif;
   bond_if_t *bif;
 
   if (!sw_if_indices)
@@ -87,56 +87,56 @@ show_lacp (vlib_main_t * vm, u32 * sw_if_indices)
 
   for (i = 0; i < vec_len (sw_if_indices); i++)
     {
-      sif = bond_get_slave_by_sw_if_index (sw_if_indices[i]);
-      if (!sif || (sif->lacp_enabled == 0))
+      mif = bond_get_member_by_sw_if_index (sw_if_indices[i]);
+      if (!mif || (mif->lacp_enabled == 0))
 	continue;
-      bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
+      bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
       vlib_cli_output (vm,
 		       "%-25U %-12d %-16U %3x %3x %3x %3x %3x %3x %3x %3x "
 		       "%4x %3x %3x %3x %3x %3x %3x %3x",
 		       format_vnet_sw_if_index_name, vnet_get_main (),
-		       sif->sw_if_index, sif->sw_if_index,
+		       mif->sw_if_index, mif->sw_if_index,
 		       format_vnet_sw_if_index_name, vnet_get_main (),
-		       bif->sw_if_index, lacp_bit_test (sif->actor.state, 7),
-		       lacp_bit_test (sif->actor.state, 6),
-		       lacp_bit_test (sif->actor.state, 5),
-		       lacp_bit_test (sif->actor.state, 4),
-		       lacp_bit_test (sif->actor.state, 3),
-		       lacp_bit_test (sif->actor.state, 2),
-		       lacp_bit_test (sif->actor.state, 1),
-		       lacp_bit_test (sif->actor.state, 0),
-		       lacp_bit_test (sif->partner.state, 7),
-		       lacp_bit_test (sif->partner.state, 6),
-		       lacp_bit_test (sif->partner.state, 5),
-		       lacp_bit_test (sif->partner.state, 4),
-		       lacp_bit_test (sif->partner.state, 3),
-		       lacp_bit_test (sif->partner.state, 2),
-		       lacp_bit_test (sif->partner.state, 1),
-		       lacp_bit_test (sif->partner.state, 0));
+		       bif->sw_if_index, lacp_bit_test (mif->actor.state, 7),
+		       lacp_bit_test (mif->actor.state, 6),
+		       lacp_bit_test (mif->actor.state, 5),
+		       lacp_bit_test (mif->actor.state, 4),
+		       lacp_bit_test (mif->actor.state, 3),
+		       lacp_bit_test (mif->actor.state, 2),
+		       lacp_bit_test (mif->actor.state, 1),
+		       lacp_bit_test (mif->actor.state, 0),
+		       lacp_bit_test (mif->partner.state, 7),
+		       lacp_bit_test (mif->partner.state, 6),
+		       lacp_bit_test (mif->partner.state, 5),
+		       lacp_bit_test (mif->partner.state, 4),
+		       lacp_bit_test (mif->partner.state, 3),
+		       lacp_bit_test (mif->partner.state, 2),
+		       lacp_bit_test (mif->partner.state, 1),
+		       lacp_bit_test (mif->partner.state, 0));
       vlib_cli_output (vm,
 		       "  LAG ID: "
 		       "[(%04x,%02x-%02x-%02x-%02x-%02x-%02x,%04x,%04x,%04x), "
 		       "(%04x,%02x-%02x-%02x-%02x-%02x-%02x,%04x,%04x,%04x)]",
-		       ntohs (sif->actor.system_priority),
-		       sif->actor.system[0], sif->actor.system[1],
-		       sif->actor.system[2], sif->actor.system[3],
-		       sif->actor.system[4], sif->actor.system[5],
-		       ntohs (sif->actor.key),
-		       ntohs (sif->actor.port_priority),
-		       ntohs (sif->actor.port_number),
-		       ntohs (sif->partner.system_priority),
-		       sif->partner.system[0], sif->partner.system[1],
-		       sif->partner.system[2], sif->partner.system[3],
-		       sif->partner.system[4], sif->partner.system[5],
-		       ntohs (sif->partner.key),
-		       ntohs (sif->partner.port_priority),
-		       ntohs (sif->partner.port_number));
+		       ntohs (mif->actor.system_priority),
+		       mif->actor.system[0], mif->actor.system[1],
+		       mif->actor.system[2], mif->actor.system[3],
+		       mif->actor.system[4], mif->actor.system[5],
+		       ntohs (mif->actor.key),
+		       ntohs (mif->actor.port_priority),
+		       ntohs (mif->actor.port_number),
+		       ntohs (mif->partner.system_priority),
+		       mif->partner.system[0], mif->partner.system[1],
+		       mif->partner.system[2], mif->partner.system[3],
+		       mif->partner.system[4], mif->partner.system[5],
+		       ntohs (mif->partner.key),
+		       ntohs (mif->partner.port_priority),
+		       ntohs (mif->partner.port_number));
       vlib_cli_output (vm,
 		       "  RX-state: %U, TX-state: %U, "
 		       "MUX-state: %U, PTX-state: %U",
-		       format_rx_sm_state, sif->rx_state, format_tx_sm_state,
-		       sif->tx_state, format_mux_sm_state, sif->mux_state,
-		       format_ptx_sm_state, sif->ptx_state);
+		       format_rx_sm_state, mif->rx_state, format_tx_sm_state,
+		       mif->tx_state, format_mux_sm_state, mif->mux_state,
+		       format_ptx_sm_state, mif->ptx_state);
     }
 }
 
@@ -144,7 +144,7 @@ static void
 show_lacp_details (vlib_main_t * vm, u32 * sw_if_indices)
 {
   lacp_main_t *lm = &lacp_main;
-  slave_if_t *sif;
+  member_if_t *mif;
   lacp_state_struct *state_entry;
   int i;
   f64 now;
@@ -156,56 +156,56 @@ show_lacp_details (vlib_main_t * vm, u32 * sw_if_indices)
   now = vlib_time_now (vm);
   for (i = 0; i < vec_len (sw_if_indices); i++)
     {
-      sif = bond_get_slave_by_sw_if_index (sw_if_indices[i]);
-      if (!sif || (sif->lacp_enabled == 0))
+      mif = bond_get_member_by_sw_if_index (sw_if_indices[i]);
+      if (!mif || (mif->lacp_enabled == 0))
 	continue;
       vlib_cli_output (vm, "  %U", format_vnet_sw_if_index_name,
-		       vnet_get_main (), sif->sw_if_index);
+		       vnet_get_main (), mif->sw_if_index);
       vlib_cli_output (vm, "    Good LACP PDUs received: %llu",
-		       sif->pdu_received);
+		       mif->pdu_received);
       vlib_cli_output (vm, "    Bad LACP PDUs received: %llu",
-		       sif->bad_pdu_received);
-      vlib_cli_output (vm, "    LACP PDUs sent: %llu", sif->pdu_sent);
-      if (lacp_timer_is_running (sif->last_lacpdu_recd_time))
+		       mif->bad_pdu_received);
+      vlib_cli_output (vm, "    LACP PDUs sent: %llu", mif->pdu_sent);
+      if (lacp_timer_is_running (mif->last_lacpdu_recd_time))
 	vlib_cli_output (vm,
 			 "    last LACP PDU received: %10.2f seconds ago",
-			 now - sif->last_lacpdu_recd_time);
-      if (lacp_timer_is_running (sif->last_lacpdu_sent_time))
+			 now - mif->last_lacpdu_recd_time);
+      if (lacp_timer_is_running (mif->last_lacpdu_sent_time))
 	vlib_cli_output (vm, "    last LACP PDU sent: %10.2f seconds ago",
-			 now - sif->last_lacpdu_sent_time);
+			 now - mif->last_lacpdu_sent_time);
       vlib_cli_output (vm, "    Good Marker PDUs received: %llu",
-		       sif->marker_pdu_received);
+		       mif->marker_pdu_received);
       vlib_cli_output (vm, "    Bad Marker PDUs received: %llu",
-		       sif->marker_bad_pdu_received);
-      if (lacp_timer_is_running (sif->last_marker_pdu_recd_time))
+		       mif->marker_bad_pdu_received);
+      if (lacp_timer_is_running (mif->last_marker_pdu_recd_time))
 	vlib_cli_output (vm,
 			 "    last Marker PDU received: %10.2f seconds ago",
-			 now - sif->last_marker_pdu_recd_time);
-      if (lacp_timer_is_running (sif->last_marker_pdu_sent_time))
+			 now - mif->last_marker_pdu_recd_time);
+      if (lacp_timer_is_running (mif->last_marker_pdu_sent_time))
 	vlib_cli_output (vm, "    last Marker PDU sent: %10.2f seconds ago",
-			 now - sif->last_marker_pdu_sent_time);
-      vlib_cli_output (vm, "    debug: %d", sif->debug);
-      vlib_cli_output (vm, "    loopback port: %d", sif->loopback_port);
-      vlib_cli_output (vm, "    port_enabled: %d", sif->port_enabled);
-      vlib_cli_output (vm, "    port moved: %d", sif->port_moved);
-      vlib_cli_output (vm, "    ready_n: %d", sif->ready_n);
-      vlib_cli_output (vm, "    ready: %d", sif->ready);
+			 now - mif->last_marker_pdu_sent_time);
+      vlib_cli_output (vm, "    debug: %d", mif->debug);
+      vlib_cli_output (vm, "    loopback port: %d", mif->loopback_port);
+      vlib_cli_output (vm, "    port_enabled: %d", mif->port_enabled);
+      vlib_cli_output (vm, "    port moved: %d", mif->port_moved);
+      vlib_cli_output (vm, "    ready_n: %d", mif->ready_n);
+      vlib_cli_output (vm, "    ready: %d", mif->ready);
       vlib_cli_output (vm, "    Actor");
       vlib_cli_output (vm, "      system: %U",
-		       format_ethernet_address, sif->actor.system);
+		       format_ethernet_address, mif->actor.system);
       vlib_cli_output (vm, "      system priority: %u",
-		       ntohs (sif->actor.system_priority));
-      vlib_cli_output (vm, "      key: %u", ntohs (sif->actor.key));
+		       ntohs (mif->actor.system_priority));
+      vlib_cli_output (vm, "      key: %u", ntohs (mif->actor.key));
       vlib_cli_output (vm, "      port priority: %u",
-		       ntohs (sif->actor.port_priority));
+		       ntohs (mif->actor.port_priority));
       vlib_cli_output (vm, "      port number: %u",
-		       ntohs (sif->actor.port_number));
-      vlib_cli_output (vm, "      state: 0x%x", sif->actor.state);
+		       ntohs (mif->actor.port_number));
+      vlib_cli_output (vm, "      state: 0x%x", mif->actor.state);
 
       state_entry = (lacp_state_struct *) & lacp_state_array;
       while (state_entry->str)
 	{
-	  if (sif->actor.state & (1 << state_entry->bit))
+	  if (mif->actor.state & (1 << state_entry->bit))
 	    vlib_cli_output (vm, "        %s (%d)", state_entry->str,
 			     state_entry->bit);
 	  state_entry++;
@@ -213,48 +213,48 @@ show_lacp_details (vlib_main_t * vm, u32 * sw_if_indices)
 
       vlib_cli_output (vm, "    Partner");
       vlib_cli_output (vm, "      system: %U",
-		       format_ethernet_address, sif->partner.system);
+		       format_ethernet_address, mif->partner.system);
       vlib_cli_output (vm, "      system priority: %u",
-		       ntohs (sif->partner.system_priority));
-      vlib_cli_output (vm, "      key: %u", ntohs (sif->partner.key));
+		       ntohs (mif->partner.system_priority));
+      vlib_cli_output (vm, "      key: %u", ntohs (mif->partner.key));
       vlib_cli_output (vm, "      port priority: %u",
-		       ntohs (sif->partner.port_priority));
+		       ntohs (mif->partner.port_priority));
       vlib_cli_output (vm, "      port number: %u",
-		       ntohs (sif->partner.port_number));
-      vlib_cli_output (vm, "      state: 0x%x", sif->partner.state);
+		       ntohs (mif->partner.port_number));
+      vlib_cli_output (vm, "      state: 0x%x", mif->partner.state);
 
       state_entry = (lacp_state_struct *) & lacp_state_array;
       while (state_entry->str)
 	{
-	  if (sif->partner.state & (1 << state_entry->bit))
+	  if (mif->partner.state & (1 << state_entry->bit))
 	    vlib_cli_output (vm, "        %s (%d)", state_entry->str,
 			     state_entry->bit);
 	  state_entry++;
 	}
 
-      if (!lacp_timer_is_running (sif->wait_while_timer))
+      if (!lacp_timer_is_running (mif->wait_while_timer))
 	vlib_cli_output (vm, "      wait while timer: not running");
       else
 	vlib_cli_output (vm, "      wait while timer: %10.2f seconds",
-			 sif->wait_while_timer - now);
-      if (!lacp_timer_is_running (sif->current_while_timer))
+			 mif->wait_while_timer - now);
+      if (!lacp_timer_is_running (mif->current_while_timer))
 	vlib_cli_output (vm, "      current while timer: not running");
       else
 	vlib_cli_output (vm, "      current while timer: %10.2f seconds",
-			 sif->current_while_timer - now);
-      if (!lacp_timer_is_running (sif->periodic_timer))
+			 mif->current_while_timer - now);
+      if (!lacp_timer_is_running (mif->periodic_timer))
 	vlib_cli_output (vm, "      periodic timer: not running");
       else
 	vlib_cli_output (vm, "      periodic timer: %10.2f seconds",
-			 sif->periodic_timer - now);
+			 mif->periodic_timer - now);
       vlib_cli_output (vm, "    RX-state: %U", format_rx_sm_state,
-		       sif->rx_state);
+		       mif->rx_state);
       vlib_cli_output (vm, "    TX-state: %U", format_tx_sm_state,
-		       sif->tx_state);
+		       mif->tx_state);
       vlib_cli_output (vm, "    MUX-state: %U", format_mux_sm_state,
-		       sif->mux_state);
+		       mif->mux_state);
       vlib_cli_output (vm, "    PTX-state: %U", format_ptx_sm_state,
-		       sif->ptx_state);
+		       mif->ptx_state);
       vlib_cli_output (vm, "\n");
     }
 }
@@ -265,7 +265,7 @@ show_lacp_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   bond_main_t *bm = &bond_main;
   vnet_main_t *vnm = &vnet_main;
-  slave_if_t *sif;
+  member_if_t *mif;
   clib_error_t *error = 0;
   u8 details = 0;
   u32 sw_if_index, *sw_if_indices = 0;
@@ -275,13 +275,13 @@ show_lacp_fn (vlib_main_t * vm, unformat_input_t * input,
       if (unformat
 	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
 	{
-	  sif = bond_get_slave_by_sw_if_index (sw_if_index);
-	  if (!sif)
+	  mif = bond_get_member_by_sw_if_index (sw_if_index);
+	  if (!mif)
 	    {
-	      error = clib_error_return (0, "interface is not enslaved");
+	      error = clib_error_return (0, "interface is not a member");
 	      goto done;
 	    }
-	  vec_add1 (sw_if_indices, sif->sw_if_index);
+	  vec_add1 (sw_if_indices, mif->sw_if_index);
 	}
       else if (unformat (input, "details"))
 	details = 1;
@@ -295,8 +295,8 @@ show_lacp_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (vec_len (sw_if_indices) == 0)
     {
-      pool_foreach (sif, bm->neighbors,
-		    vec_add1 (sw_if_indices, sif->sw_if_index);
+      pool_foreach (mif, bm->neighbors,
+		    vec_add1 (sw_if_indices, mif->sw_if_index);
 	);
     }
 
@@ -329,7 +329,7 @@ debug_lacp_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 onoff = 0;
   u8 input_found = 0;
   u32 sw_if_index = ~0;
-  slave_if_t *sif;
+  member_if_t *mif;
   vnet_main_t *vnm = vnet_get_main ();
 
   /* Get a line of input. */
@@ -370,10 +370,11 @@ debug_lacp_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (sw_if_index != ~0)
     {
-      sif = bond_get_slave_by_sw_if_index (sw_if_index);
-      if (!sif)
-	return (clib_error_return (0, "Please enslave the interface first"));
-      sif->debug = onoff;
+      mif = bond_get_member_by_sw_if_index (sw_if_index);
+      if (!mif)
+	return (clib_error_return
+		(0, "Please add the member interface first"));
+      mif->debug = onoff;
     }
   else
     lm->debug = onoff;

@@ -146,15 +146,15 @@ int lacp_dump_ifs (lacp_interface_details_t ** out_bondids);
 lacp_error_t lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0);
 void lacp_periodic (vlib_main_t * vm);
 u8 *lacp_input_format_trace (u8 * s, va_list * args);
-void lacp_init_neighbor (slave_if_t * sif, u8 * hw_address,
+void lacp_init_neighbor (member_if_t * mif, u8 * hw_address,
 			 u16 port_number, u32 group);
-void lacp_init_state_machines (vlib_main_t * vm, slave_if_t * sif);
-void lacp_init_rx_machine (vlib_main_t * vm, slave_if_t * sif);
-void lacp_init_tx_machine (vlib_main_t * vm, slave_if_t * sif);
-void lacp_init_ptx_machine (vlib_main_t * vm, slave_if_t * sif);
-void lacp_init_mux_machine (vlib_main_t * vm, slave_if_t * sif);
-void lacp_selection_logic (vlib_main_t * vm, slave_if_t * sif);
-void lacp_send_lacp_pdu (vlib_main_t * vm, slave_if_t * sif);
+void lacp_init_state_machines (vlib_main_t * vm, member_if_t * mif);
+void lacp_init_rx_machine (vlib_main_t * vm, member_if_t * mif);
+void lacp_init_tx_machine (vlib_main_t * vm, member_if_t * mif);
+void lacp_init_ptx_machine (vlib_main_t * vm, member_if_t * mif);
+void lacp_init_mux_machine (vlib_main_t * vm, member_if_t * mif);
+void lacp_selection_logic (vlib_main_t * vm, member_if_t * mif);
+void lacp_send_lacp_pdu (vlib_main_t * vm, member_if_t * mif);
 
 static inline void
 lacp_stop_timer (f64 * timer)

@@ -80,39 +80,39 @@ lacp_machine_t lacp_mux_machine = {
 };
 
 static void
-lacp_detach_mux_from_aggregator (vlib_main_t * vm, slave_if_t * sif)
+lacp_detach_mux_from_aggregator (vlib_main_t * vm, member_if_t * mif)
 {
-  sif->actor.state &= ~LACP_STATE_SYNCHRONIZATION;
-  sif->ready = 0;
-  sif->ready_n = 0;
+  mif->actor.state &= ~LACP_STATE_SYNCHRONIZATION;
+  mif->ready = 0;
+  mif->ready_n = 0;
 }
 
 static void
-lacp_attach_mux_to_aggregator (vlib_main_t * vm, slave_if_t * sif)
+lacp_attach_mux_to_aggregator (vlib_main_t * vm, member_if_t * mif)
 {
-  sif->actor.state |= LACP_STATE_SYNCHRONIZATION;
+  mif->actor.state |= LACP_STATE_SYNCHRONIZATION;
 }
 
 int
 lacp_mux_action_detached (void *p1, void *p2)
 {
   vlib_main_t *vm = p1;
-  slave_if_t *sif = p2;
+  member_if_t *mif = p2;
 
-  lacp_detach_mux_from_aggregator (vm, sif);
-  sif->actor.state &= ~LACP_STATE_COLLECTING;
-  bond_disable_collecting_distributing (vm, sif);
-  sif->actor.state &= ~LACP_STATE_DISTRIBUTING;
-  sif->ntt = 1;
-  lacp_start_periodic_timer (vm, sif, 0);
+  lacp_detach_mux_from_aggregator (vm, mif);
+  mif->actor.state &= ~LACP_STATE_COLLECTING;
+  bond_disable_collecting_distributing (vm, mif);
+  mif->actor.state &= ~LACP_STATE_DISTRIBUTING;
+  mif->ntt = 1;
+  lacp_start_periodic_timer (vm, mif, 0);
 
-  if (sif->selected == LACP_PORT_SELECTED)
-    lacp_machine_dispatch (&lacp_mux_machine, vm, sif,
-			   LACP_MUX_EVENT_SELECTED, &sif->mux_state);
+  if (mif->selected == LACP_PORT_SELECTED)
+    lacp_machine_dispatch (&lacp_mux_machine, vm, mif,
+			   LACP_MUX_EVENT_SELECTED, &mif->mux_state);
 
-  if (sif->selected == LACP_PORT_STANDBY)
-    lacp_machine_dispatch (&lacp_mux_machine, vm, sif, LACP_MUX_EVENT_STANDBY,
-			   &sif->mux_state);
+  if (mif->selected == LACP_PORT_STANDBY)
+    lacp_machine_dispatch (&lacp_mux_machine, vm, mif, LACP_MUX_EVENT_STANDBY,
+			   &mif->mux_state);
 
   return 0;
 }
@@ -121,24 +121,24 @@ int
 lacp_mux_action_attached (void *p1, void *p2)
 {
   vlib_main_t *vm = p1;
-  slave_if_t *sif = p2;
+  member_if_t *mif = p2;
 
-  lacp_attach_mux_to_aggregator (vm, sif);
-  sif->actor.state &= ~LACP_STATE_COLLECTING;
-  bond_disable_collecting_distributing (vm, sif);
-  sif->actor.state &= ~LACP_STATE_DISTRIBUTING;
-  sif->ntt = 1;
-  lacp_start_periodic_timer (vm, sif, 0);
+  lacp_attach_mux_to_aggregator (vm, mif);
+  mif->actor.state &= ~LACP_STATE_COLLECTING;
+  bond_disable_collecting_distributing (vm, mif);
+  mif->actor.state &= ~LACP_STATE_DISTRIBUTING;
+  mif->ntt = 1;
+  lacp_start_periodic_timer (vm, mif, 0);
 
-  if ((sif->selected == LACP_PORT_UNSELECTED) ||
-      (sif->selected == LACP_PORT_STANDBY))
-    lacp_machine_dispatch (&lacp_mux_machine, vm, sif,
-			   LACP_MUX_EVENT_UNSELECTED, &sif->mux_state);
+  if ((mif->selected == LACP_PORT_UNSELECTED) ||
+      (mif->selected == LACP_PORT_STANDBY))
+    lacp_machine_dispatch (&lacp_mux_machine, vm, mif,
+			   LACP_MUX_EVENT_UNSELECTED, &mif->mux_state);
 
-  if ((sif->selected == LACP_PORT_SELECTED) &&
-      (sif->partner.state & LACP_STATE_SYNCHRONIZATION))
-    lacp_machine_dispatch (&lacp_mux_machine, vm, sif, LACP_MUX_EVENT_SYNC,
-			   &sif->mux_state);
+  if ((mif->selected == LACP_PORT_SELECTED) &&
+      (mif->partner.state & LACP_STATE_SYNCHRONIZATION))
+    lacp_machine_dispatch (&lacp_mux_machine, vm, mif, LACP_MUX_EVENT_SYNC,
+			   &mif->mux_state);
   return 0;
 }
 
@@ -146,18 +146,18 @@ int
 lacp_mux_action_waiting (void *p1, void *p2)
 {
   vlib_main_t *vm = p1;
-  slave_if_t *sif = p2;
+  member_if_t *mif = p2;
 
-  if (!lacp_timer_is_running (sif->wait_while_timer))
-    lacp_start_wait_while_timer (vm, sif, LACP_AGGREGATE_WAIT_TIME);
+  if (!lacp_timer_is_running (mif->wait_while_timer))
+    lacp_start_wait_while_timer (vm, mif, LACP_AGGREGATE_WAIT_TIME);
 
-  if ((sif->selected == LACP_PORT_SELECTED) && sif->ready)
-    lacp_machine_dispatch (&lacp_mux_machine, vm, sif,
-			   LACP_MUX_EVENT_READY, &sif->mux_state);
+  if ((mif->selected == LACP_PORT_SELECTED) && mif->ready)
+    lacp_machine_dispatch (&lacp_mux_machine, vm, mif,
+			   LACP_MUX_EVENT_READY, &mif->mux_state);
 
-  if (sif->selected == LACP_PORT_UNSELECTED)
-    lacp_machine_dispatch (&lacp_mux_machine, vm, sif,
-			   LACP_MUX_EVENT_UNSELECTED, &sif->mux_state);
+  if (mif->selected == LACP_PORT_UNSELECTED)
+    lacp_machine_dispatch (&lacp_mux_machine, vm, mif,
+			   LACP_MUX_EVENT_UNSELECTED, &mif->mux_state);
 
   return 0;
 }
@@ -166,18 +166,18 @@ int
 lacp_mux_action_collecting_distributing (void *p1, void *p2)
 {
   vlib_main_t *vm = p1;
-  slave_if_t *sif = p2;
+  member_if_t *mif = p2;
 
-  sif->actor.state |= LACP_STATE_SYNCHRONIZATION | LACP_STATE_COLLECTING |
+  mif->actor.state |= LACP_STATE_SYNCHRONIZATION | LACP_STATE_COLLECTING |
     LACP_STATE_DISTRIBUTING;
-  bond_enable_collecting_distributing (vm, sif);
-  sif->ntt = 1;
-  lacp_start_periodic_timer (vm, sif, 0);
-  if ((sif->selected == LACP_PORT_UNSELECTED) ||
-      (sif->selected == LACP_PORT_STANDBY) ||
-      !(sif->partner.state & LACP_STATE_SYNCHRONIZATION))
-    lacp_machine_dispatch (&lacp_mux_machine, vm, sif,
-			   LACP_MUX_EVENT_UNSELECTED, &sif->mux_state);
+  bond_enable_collecting_distributing (vm, mif);
+  mif->ntt = 1;
+  lacp_start_periodic_timer (vm, mif, 0);
+  if ((mif->selected == LACP_PORT_UNSELECTED) ||
+      (mif->selected == LACP_PORT_STANDBY) ||
+      !(mif->partner.state & LACP_STATE_SYNCHRONIZATION))
+    lacp_machine_dispatch (&lacp_mux_machine, vm, mif,
+			   LACP_MUX_EVENT_UNSELECTED, &mif->mux_state);
 
 
   return 0;
@@ -204,7 +204,7 @@ format_mux_event (u8 * s, va_list * args)
 }
 
 void
-lacp_mux_debug_func (slave_if_t * sif, int event, int state,
+lacp_mux_debug_func (member_if_t * mif, int event, int state,
 		     lacp_fsm_state_t * transition)
 {
   vlib_worker_thread_t *w = vlib_worker_threads + os_get_thread_index ();
@@ -224,16 +224,16 @@ lacp_mux_debug_func (slave_if_t * sif, int event, int state,
   ed->event =
     elog_string (&vlib_global_main.elog_main, "%U-MUX: %U, %U->%U%c",
 		 format_vnet_sw_if_index_name, vnet_get_main (),
-		 sif->sw_if_index, format_mux_event, event,
+		 mif->sw_if_index, format_mux_event, event,
 		 format_mux_sm_state, state, format_mux_sm_state,
 		 transition->next_state, 0);
 }
 
 void
-lacp_init_mux_machine (vlib_main_t * vm, slave_if_t * sif)
+lacp_init_mux_machine (vlib_main_t * vm, member_if_t * mif)
 {
-  lacp_machine_dispatch (&lacp_mux_machine, vm, sif, LACP_MUX_EVENT_BEGIN,
-			 &sif->mux_state);
+  lacp_machine_dispatch (&lacp_mux_machine, vm, mif, LACP_MUX_EVENT_BEGIN,
+			 &mif->mux_state);
 }
 
 /*

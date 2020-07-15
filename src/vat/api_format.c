@@ -1931,7 +1931,7 @@ static void vl_api_bond_delete_reply_t_handler_json
 }
 
 static void
-vl_api_bond_enslave_reply_t_handler (vl_api_bond_enslave_reply_t * mp)
+vl_api_bond_add_member_reply_t_handler (vl_api_bond_add_member_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   i32 retval = ntohl (mp->retval);
@@ -1947,8 +1947,8 @@ vl_api_bond_enslave_reply_t_handler (vl_api_bond_enslave_reply_t * mp)
     }
 }
 
-static void vl_api_bond_enslave_reply_t_handler_json
-  (vl_api_bond_enslave_reply_t * mp)
+static void vl_api_bond_add_member_reply_t_handler_json
+  (vl_api_bond_add_member_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t node;
@@ -1964,8 +1964,8 @@ static void vl_api_bond_enslave_reply_t_handler_json
 }
 
 static void
-vl_api_bond_detach_slave_reply_t_handler (vl_api_bond_detach_slave_reply_t *
-					  mp)
+vl_api_bond_detach_member_reply_t_handler (vl_api_bond_detach_member_reply_t *
+					   mp)
 {
   vat_main_t *vam = &vat_main;
   i32 retval = ntohl (mp->retval);
@@ -1981,8 +1981,8 @@ vl_api_bond_detach_slave_reply_t_handler (vl_api_bond_detach_slave_reply_t *
     }
 }
 
-static void vl_api_bond_detach_slave_reply_t_handler_json
-  (vl_api_bond_detach_slave_reply_t * mp)
+static void vl_api_bond_detach_member_reply_t_handler_json
+  (vl_api_bond_detach_member_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t node;
@@ -2040,8 +2040,8 @@ api_sw_interface_set_bond_weight (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_sw_interface_bond_details_t_handler
-  (vl_api_sw_interface_bond_details_t * mp)
+static void vl_api_sw_bond_interface_details_t_handler
+  (vl_api_sw_bond_interface_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
 
@@ -2049,11 +2049,11 @@ static void vl_api_sw_interface_bond_details_t_handler
 	 "%-16s %-12d %-12U %-13U %-14u %-14u",
 	 mp->interface_name, ntohl (mp->sw_if_index),
 	 format_bond_mode, ntohl (mp->mode), format_bond_load_balance,
-	 ntohl (mp->lb), ntohl (mp->active_slaves), ntohl (mp->slaves));
+	 ntohl (mp->lb), ntohl (mp->active_members), ntohl (mp->members));
 }
 
-static void vl_api_sw_interface_bond_details_t_handler_json
-  (vl_api_sw_interface_bond_details_t * mp)
+static void vl_api_sw_bond_interface_details_t_handler_json
+  (vl_api_sw_bond_interface_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node = NULL;
@@ -2071,24 +2071,38 @@ static void vl_api_sw_interface_bond_details_t_handler_json
 				   mp->interface_name);
   vat_json_object_add_uint (node, "mode", ntohl (mp->mode));
   vat_json_object_add_uint (node, "load_balance", ntohl (mp->lb));
-  vat_json_object_add_uint (node, "active_slaves", ntohl (mp->active_slaves));
-  vat_json_object_add_uint (node, "slaves", ntohl (mp->slaves));
+  vat_json_object_add_uint (node, "active_members",
+			    ntohl (mp->active_members));
+  vat_json_object_add_uint (node, "members", ntohl (mp->members));
 }
 
 static int
-api_sw_interface_bond_dump (vat_main_t * vam)
+api_sw_bond_interface_dump (vat_main_t * vam)
 {
-  vl_api_sw_interface_bond_dump_t *mp;
+  unformat_input_t *i = vam->input;
+  vl_api_sw_bond_interface_dump_t *mp;
   vl_api_control_ping_t *mp_ping;
   int ret;
+  u32 sw_if_index = ~0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else
+	break;
+    }
 
   print (vam->ofp,
 	 "\n%-16s %-12s %-12s %-13s %-14s %-14s",
 	 "interface name", "sw_if_index", "mode", "load balance",
-	 "active slaves", "slaves");
+	 "active members", "members");
 
   /* Get list of bond interfaces */
-  M (SW_INTERFACE_BOND_DUMP, mp);
+  M (SW_BOND_INTERFACE_DUMP, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
   S (mp);
 
   /* Use a control ping for synchronization */
@@ -2099,8 +2113,8 @@ api_sw_interface_bond_dump (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_sw_interface_slave_details_t_handler
-  (vl_api_sw_interface_slave_details_t * mp)
+static void vl_api_sw_member_interface_details_t_handler
+  (vl_api_sw_member_interface_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
 
@@ -2110,8 +2124,8 @@ static void vl_api_sw_interface_slave_details_t_handler
 	 ntohl (mp->weight), mp->is_local_numa);
 }
 
-static void vl_api_sw_interface_slave_details_t_handler_json
-  (vl_api_sw_interface_slave_details_t * mp)
+static void vl_api_sw_member_interface_details_t_handler_json
+  (vl_api_sw_member_interface_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node = NULL;
@@ -2134,10 +2148,10 @@ static void vl_api_sw_interface_slave_details_t_handler_json
 }
 
 static int
-api_sw_interface_slave_dump (vat_main_t * vam)
+api_sw_member_interface_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  vl_api_sw_interface_slave_dump_t *mp;
+  vl_api_sw_member_interface_dump_t *mp;
   vl_api_control_ping_t *mp_ping;
   u32 sw_if_index = ~0;
   u8 sw_if_index_set = 0;
@@ -2162,11 +2176,11 @@ api_sw_interface_slave_dump (vat_main_t * vam)
 
   print (vam->ofp,
 	 "\n%-25s %-12s %-7s %-12s %-10s %-10s",
-	 "slave interface name", "sw_if_index", "passive", "long_timeout",
+	 "member interface name", "sw_if_index", "passive", "long_timeout",
 	 "weight", "local numa");
 
   /* Get list of bond interfaces */
-  M (SW_INTERFACE_SLAVE_DUMP, mp);
+  M (SW_MEMBER_INTERFACE_DUMP, mp);
   mp->sw_if_index = ntohl (sw_if_index);
   S (mp);
 
@@ -5231,11 +5245,11 @@ _(VIRTIO_PCI_DELETE_REPLY, virtio_pci_delete_reply)			\
 _(SW_INTERFACE_VIRTIO_PCI_DETAILS, sw_interface_virtio_pci_details)     \
 _(BOND_CREATE_REPLY, bond_create_reply)	   			        \
 _(BOND_DELETE_REPLY, bond_delete_reply)			  	        \
-_(BOND_ENSLAVE_REPLY, bond_enslave_reply)				\
-_(BOND_DETACH_SLAVE_REPLY, bond_detach_slave_reply)			\
+_(BOND_ADD_MEMBER_REPLY, bond_add_member_reply)				\
+_(BOND_DETACH_MEMBER_REPLY, bond_detach_member_reply)			\
 _(SW_INTERFACE_SET_BOND_WEIGHT_REPLY, sw_interface_set_bond_weight_reply) \
-_(SW_INTERFACE_BOND_DETAILS, sw_interface_bond_details)                 \
-_(SW_INTERFACE_SLAVE_DETAILS, sw_interface_slave_details)               \
+_(SW_BOND_INTERFACE_DETAILS, sw_bond_interface_details)                 \
+_(SW_MEMBER_INTERFACE_DETAILS, sw_member_interface_details)               \
 _(IP_ROUTE_ADD_DEL_REPLY, ip_route_add_del_reply)			\
 _(IP_TABLE_ADD_DEL_REPLY, ip_table_add_del_reply)			\
 _(IP_TABLE_REPLACE_BEGIN_REPLY, ip_table_replace_begin_reply)           \
@@ -7748,10 +7762,10 @@ api_bond_delete (vat_main_t * vam)
 }
 
 static int
-api_bond_enslave (vat_main_t * vam)
+api_bond_add_member (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  vl_api_bond_enslave_t *mp;
+  vl_api_bond_add_member_t *mp;
   u32 bond_sw_if_index;
   int ret;
   u8 is_passive;
@@ -7782,12 +7796,12 @@ api_bond_enslave (vat_main_t * vam)
     }
   if (sw_if_index_is_set == 0)
     {
-      errmsg ("Missing slave sw_if_index. ");
+      errmsg ("Missing member sw_if_index. ");
       return -99;
     }
 
   /* Construct the API message */
-  M (BOND_ENSLAVE, mp);
+  M (BOND_ADD_MEMBER, mp);
 
   mp->bond_sw_if_index = ntohl (bond_sw_if_index);
   mp->sw_if_index = ntohl (sw_if_index);
@@ -7803,10 +7817,10 @@ api_bond_enslave (vat_main_t * vam)
 }
 
 static int
-api_bond_detach_slave (vat_main_t * vam)
+api_bond_detach_member (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  vl_api_bond_detach_slave_t *mp;
+  vl_api_bond_detach_member_t *mp;
   u32 sw_if_index = ~0;
   u8 sw_if_index_set = 0;
   int ret;
@@ -7829,7 +7843,7 @@ api_bond_detach_slave (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (BOND_DETACH_SLAVE, mp);
+  M (BOND_DETACH_MEMBER, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
 
@@ -20619,13 +20633,13 @@ _(bond_create,                                                          \
   "[id <if-id>]")							\
 _(bond_delete,                                                          \
   "<vpp-if-name> | sw_if_index <id>")                                   \
-_(bond_enslave,                                                         \
+_(bond_add_member,                                                      \
   "sw_if_index <n> bond <sw_if_index> [is_passive] [is_long_timeout]")  \
-_(bond_detach_slave,                                                    \
+_(bond_detach_member,                                                   \
   "sw_if_index <n>")							\
  _(sw_interface_set_bond_weight, "<intfc> | sw_if_index <nn> weight <value>") \
-_(sw_interface_bond_dump, "")                                           \
-_(sw_interface_slave_dump,                                              \
+ _(sw_bond_interface_dump, "<intfc> | sw_if_index <nn>")		\
+ _(sw_member_interface_dump,						\
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(ip_table_add_del,                                                     \
   "table <n> [ipv6] [add | del]\n")                                     \

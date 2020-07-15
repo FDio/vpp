@@ -59,7 +59,7 @@ int lacp_rx_action_expired (void *, void *);
 int lacp_rx_action_lacp_disabled (void *, void *);
 int lacp_rx_action_defaulted (void *, void *);
 int lacp_rx_action_current (void *, void *);
-void lacp_rx_debug_func (slave_if_t * sif, int event, int state,
+void lacp_rx_debug_func (member_if_t * mif, int event, int state,
 			 lacp_fsm_state_t * transition);
 
 #define LACP_ACTION_INITIALIZE \
@@ -74,10 +74,10 @@ void lacp_rx_debug_func (slave_if_t * sif, int event, int state,
 #define LACP_ACTION_CURRENT LACP_ACTION_ROUTINE(lacp_rx_action_current)
 
 static inline void
-lacp_start_current_while_timer (vlib_main_t * vm, slave_if_t * sif,
+lacp_start_current_while_timer (vlib_main_t * vm, member_if_t * mif,
 				u8 expiration)
 {
-  sif->current_while_timer = vlib_time_now (vm) + expiration;
+  mif->current_while_timer = vlib_time_now (vm) + expiration;
 }
 
 #endif /* __LACP_RX_MACHINE_H__ */
