@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4b1188a7_7f01ff52",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 841,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-15T12:34:09Z",
+      "side": 1,
+      "message": "do we blindly trust ike-\u003elength here or did we already check it regarding to the received packet length (eg. vlib_buffer-\u003ecurrent_length)",
+      "revId": "2a64fafbd3a753c2ac5daf208f8ac4ab50e66547",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8c2cc81a_1e73127d",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 859,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-15T12:34:09Z",
+      "side": 1,
+      "message": "do we blindly trust ikep-\u003elength here or did we already check it regarding to the received packet length (eg. vlib_buffer-\u003ecurrent_length)",
+      "revId": "2a64fafbd3a753c2ac5daf208f8ac4ab50e66547",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "59474c18_de10e7e8",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 889,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-15T12:34:09Z",
+      "side": 1,
+      "message": "VPP codestyle favours variable declaration at the the beginning of the function or block, please move variables declaration.",
+      "revId": "2a64fafbd3a753c2ac5daf208f8ac4ab50e66547",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "14969da2_6ea98293",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 891,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-15T12:34:09Z",
+      "side": 1,
+      "message": "any reason for not using ikev2_get_per_thread_data () ?",
+      "revId": "2a64fafbd3a753c2ac5daf208f8ac4ab50e66547",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "98b34cdc_03913ec9",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 896,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-15T12:34:09Z",
+      "side": 1,
+      "message": "shouldn\u0027t we check that plen \u003e\u003d sizeof(*ikep)+GCM_ICV_SIZE ? We seem to only check that plen \u003e\u003d sizeof(*ikep) above",
+      "revId": "2a64fafbd3a753c2ac5daf208f8ac4ab50e66547",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "99e59cd0_03d28e7a",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 908,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-15T12:34:09Z",
+      "side": 1,
+      "message": "are we sure len \u003e\u003d tr_integ-\u003ekey_trunc?",
+      "revId": "2a64fafbd3a753c2ac5daf208f8ac4ab50e66547",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7c1a482d_672d1c28",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 910,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-15T12:34:09Z",
+      "side": 1,
+      "message": "same, we should check that plen is big enough",
+      "revId": "2a64fafbd3a753c2ac5daf208f8ac4ab50e66547",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a3fffdfa_9ca212d8",
+        "filename": "src/plugins/ikev2/ikev2.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-15T12:34:09Z",
+      "side": 1,
+      "message": "This should be prefixed with IKEV2_ to avoid name clash, eg. IKEV2_GCM_ICV_SIZE",
+      "revId": "2a64fafbd3a753c2ac5daf208f8ac4ab50e66547",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
