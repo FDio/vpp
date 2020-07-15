@@ -650,6 +650,14 @@ u32x4_hadd (u32x4 v1, u32x4 v2)
   return (u32x4) _mm_hadd_epi32 ((__m128i) v1, (__m128i) v2);
 }
 
+static_always_inline u32 __clib_unused
+u32x4_sum_elts (u32x4 sum4)
+{
+  sum4 += (u32x4) u8x16_align_right (sum4, sum4, 8);
+  sum4 += (u32x4) u8x16_align_right (sum4, sum4, 4);
+  return sum4[0];
+}
+
 static_always_inline u8x16
 u8x16_shuffle (u8x16 v, u8x16 m)
 {
@@ -755,6 +763,14 @@ u8x16_xor3 (u8x16 a, u8x16 b, u8x16 c)
 #endif
   return a ^ b ^ c;
 }
+
+#ifdef __AVX512F__
+static_always_inline u8x16
+u8x16_mask_load (u8x16 a, void *p, u16 mask)
+{
+  return (u8x16) _mm_mask_loadu_epi8 ((__m128i) a, mask, p);
+}
+#endif
 
 #endif /* included_vector_sse2_h */
 

@@ -192,6 +192,25 @@ u8x64_reflect_u8x16 (u8x64 x)
 }
 
 static_always_inline u8x64
+u8x64_shuffle (u8x64 v, u8x64 m)
+{
+  return (u8x64) _mm512_shuffle_epi8 ((__m512i) v, (__m512i) m);
+}
+
+#define u8x64_align_right(a, b, imm) \
+  (u8x64) _mm512_alignr_epi8 ((__m512i) a, (__m512i) b, imm)
+
+static_always_inline u32
+u32x16_sum_elts (u32x16 sum16)
+{
+  u32x8 sum8;
+  sum16 += (u32x16) u8x64_align_right (sum16, sum16, 8);
+  sum16 += (u32x16) u8x64_align_right (sum16, sum16, 4);
+  sum8 = u32x16_extract_hi (sum16) + u32x16_extract_lo (sum16);
+  return sum8[0] + sum8[4];
+}
+
+static_always_inline u8x64
 u8x64_mask_load (u8x64 a, void *p, u64 mask)
 {
   return (u8x64) _mm512_mask_loadu_epi8 ((__m512i) a, mask, p);
