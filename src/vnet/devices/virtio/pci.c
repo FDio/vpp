@@ -314,19 +314,22 @@ virtio_pci_is_link_up (vlib_main_t * vm, virtio_if_t * vif)
 }
 
 static void
-virtio_pci_irq_0_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
+virtio_pci_irq_queue_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h,
+			      u16 line)
 {
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *vim = &virtio_main;
   uword pd = vlib_pci_get_private_data (vm, h);
   virtio_if_t *vif = pool_elt_at_index (vim->interfaces, pd);
+  line--;
   u16 qid = line;
 
   vnet_device_input_set_interrupt_pending (vnm, vif->hw_if_index, qid);
 }
 
 static void
-virtio_pci_irq_1_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
+virtio_pci_irq_config_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h,
+			       u16 line)
 {
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *vim = &virtio_main;
@@ -363,10 +366,13 @@ virtio_pci_irq_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h)
    * been made by the device which requires servicing.
    */
   if (isr & VIRTIO_PCI_ISR_INTR)
-    virtio_pci_irq_0_handler (vm, h, line);
+    {
+      for (; line < vif->num_rxqs; line++)
+	virtio_pci_irq_queue_handler (vm, h, (line + 1));
+    }
 
   if (isr & VIRTIO_PCI_ISR_CONFIG)
-    virtio_pci_irq_1_handler (vm, h, line);
+    virtio_pci_irq_config_handler (vm, h, line);
 }
 
 inline void
@@ -973,11 +979,13 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
 	    {
 	      virtio_log_debug (vif, "msix interrupt enabled");
 	      vif->msix_enabled = VIRTIO_MSIX_ENABLED;
+	      vif->msix_table_size = table_size;
 	    }
 	  else
 	    {
 	      virtio_log_debug (vif, "msix interrupt disabled");
 	      vif->msix_enabled = VIRTIO_MSIX_DISABLED;
+	      vif->msix_table_size = 0;
 	    }
 	}
 
@@ -1173,12 +1181,32 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
    */
   if (vif->msix_enabled == VIRTIO_MSIX_ENABLED)
     {
-      if (virtio_pci_legacy_set_config_irq (vm, vif, 1) ==
+      int i, j;
+      if (virtio_pci_legacy_set_config_irq (vm, vif, 0) ==
 	  VIRTIO_MSI_NO_VECTOR)
-	virtio_log_warning (vif, "config vector 1 is not set");
-      if (virtio_pci_legacy_set_queue_irq (vm, vif, 0, 0) ==
-	  VIRTIO_MSI_NO_VECTOR)
-	virtio_log_warning (vif, "queue vector 0 is not set");
+	{
+	  virtio_log_warning (vif, "config vector 0 is not set");
+	}
+      else
+	{
+	  virtio_log_debug (vif, "config msix vector is set at 0");
+	}
+      for (i = 0, j = 1; i < vif->max_queue_pairs; i++)
+	{
+	  if (virtio_pci_legacy_set_queue_irq (vm, vif, j, RX_QUEUE (i)) ==
+	      VIRTIO_MSI_NO_VECTOR)
+	    {
+	      virtio_log_warning (vif, "queue (%u) vector is not set at %u",
+				  RX_QUEUE (i), j);
+	    }
+	  else
+	    {
+	      virtio_log_debug (vif, "%s (%u) %s %u", "queue",
+				RX_QUEUE (i), "msix vector is set at", j);
+	    }
+	  if ((j + 1) < vif->msix_table_size)
+	    j++;
+	}
     }
 
   /*
@@ -1198,6 +1226,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   virtio_if_t *vif;
   vlib_pci_dev_handle_t h;
   clib_error_t *error = 0;
+  u32 interrupt_count = 0;
 
   /* *INDENT-OFF* */
   pool_foreach (vif, vim->interfaces, ({
@@ -1250,18 +1279,21 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
       goto error;
     }
 
-  if (vlib_pci_get_num_msix_interrupts (vm, h) > 1)
+  interrupt_count = vlib_pci_get_num_msix_interrupts (vm, h);
+  if (interrupt_count > 1)
     {
       if ((error = vlib_pci_register_msix_handler (vm, h, 0, 1,
-						   &virtio_pci_irq_0_handler)))
+						   &virtio_pci_irq_config_handler)))
 	{
 	  args->rv = VNET_API_ERROR_INVALID_REGISTRATION;
 	  virtio_log_error (vif,
 			    "error encountered on pci register msix handler 0");
 	  goto error;
 	}
-      if ((error = vlib_pci_register_msix_handler (vm, h, 1, 1,
-						   &virtio_pci_irq_1_handler)))
+
+      if ((error =
+	   vlib_pci_register_msix_handler (vm, h, 1, (interrupt_count - 1),
+					   &virtio_pci_irq_queue_handler)))
 	{
 	  args->rv = VNET_API_ERROR_INVALID_REGISTRATION;
 	  virtio_log_error (vif,
@@ -1269,7 +1301,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 	  goto error;
 	}
 
-      if ((error = vlib_pci_enable_msix_irq (vm, h, 0, 2)))
+      if ((error = vlib_pci_enable_msix_irq (vm, h, 0, interrupt_count)))
 	{
 	  virtio_log_error (vif, "error encountered on pci enable msix irq");
 	  goto error;
@@ -1277,7 +1309,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
       vif->support_int_mode = 1;
       virtio_log_debug (vif, "device supports msix interrupts");
     }
-  else if (vlib_pci_get_num_msix_interrupts (vm, h) == 1)
+  else if (interrupt_count == 1)
     {
       /*
        * if msix table-size is 1, fall back to intX.
