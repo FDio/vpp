@@ -136,40 +136,40 @@ bond_sw_if_idx_rewrite (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 static inline void
 bond_update_next (vlib_main_t * vm, vlib_node_runtime_t * node,
-		  u32 * last_slave_sw_if_index, u32 slave_sw_if_index,
+		  u32 * last_member_sw_if_index, u32 member_sw_if_index,
 		  u32 * bond_sw_if_index, vlib_buffer_t * b,
 		  u32 * next_index, vlib_error_t * error)
 {
-  slave_if_t *sif;
+  member_if_t *mif;
   bond_if_t *bif;
 
   *next_index = BOND_INPUT_NEXT_DROP;
   *error = 0;
 
-  if (PREDICT_TRUE (*last_slave_sw_if_index == slave_sw_if_index))
+  if (PREDICT_TRUE (*last_member_sw_if_index == member_sw_if_index))
     goto next;
 
-  *last_slave_sw_if_index = slave_sw_if_index;
+  *last_member_sw_if_index = member_sw_if_index;
 
-  sif = bond_get_slave_by_sw_if_index (slave_sw_if_index);
-  ALWAYS_ASSERT (sif);
+  mif = bond_get_member_by_sw_if_index (member_sw_if_index);
+  ALWAYS_ASSERT (mif);
 
-  bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
+  bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
 
   ALWAYS_ASSERT (bif);
-  ASSERT (vec_len (bif->slaves));
+  ASSERT (vec_len (bif->members));
 
   if (PREDICT_FALSE (bif->admin_up == 0))
     {
-      *bond_sw_if_index = slave_sw_if_index;
+      *bond_sw_if_index = member_sw_if_index;
       *error = node->errors[BOND_INPUT_ERROR_IF_DOWN];
     }
 
   if (PREDICT_FALSE ((bif->mode == BOND_MODE_ACTIVE_BACKUP) &&
-		     vec_len (bif->active_slaves) &&
-		     (slave_sw_if_index != bif->active_slaves[0])))
+		     vec_len (bif->active_members) &&
+		     (member_sw_if_index != bif->active_members[0])))
     {
-      *bond_sw_if_index = slave_sw_if_index;
+      *bond_sw_if_index = member_sw_if_index;
       *error = node->errors[BOND_INPUT_ERROR_PASSIVE_IF];
       return;
     }
@@ -202,7 +202,7 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u32 sw_if_indices[VLIB_FRAME_SIZE], *sw_if_index;
   u16 nexts[VLIB_FRAME_SIZE], *next;
-  u32 last_slave_sw_if_index = ~0;
+  u32 last_member_sw_if_index = ~0;
   u32 bond_sw_if_index = 0;
   vlib_error_t error = 0;
   u32 next_index = 0;
@@ -242,17 +242,17 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
       sw_if_index[2] = vnet_buffer (b[2])->sw_if_index[VLIB_RX];
       sw_if_index[3] = vnet_buffer (b[3])->sw_if_index[VLIB_RX];
 
-      x |= sw_if_index[0] ^ last_slave_sw_if_index;
-      x |= sw_if_index[1] ^ last_slave_sw_if_index;
-      x |= sw_if_index[2] ^ last_slave_sw_if_index;
-      x |= sw_if_index[3] ^ last_slave_sw_if_index;
+      x |= sw_if_index[0] ^ last_member_sw_if_index;
+      x |= sw_if_index[1] ^ last_member_sw_if_index;
+      x |= sw_if_index[2] ^ last_member_sw_if_index;
+      x |= sw_if_index[3] ^ last_member_sw_if_index;
 
       if (PREDICT_TRUE (x == 0))
 	{
 	  /*
 	   * Optimize to call update_next only if there is a feature arc
 	   * after bond-input. Test feature count greater than 1 because
-	   * bond-input itself is a feature arc for this slave interface.
+	   * bond-input itself is a feature arc for this member interface.
 	   */
 	  ASSERT ((vnet_buffer (b[0])->feature_arc_index ==
 		   vnet_buffer (b[1])->feature_arc_index) &&
@@ -262,7 +262,7 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 		   vnet_buffer (b[3])->feature_arc_index));
 	  if (PREDICT_FALSE (vnet_get_feature_count
 			     (vnet_buffer (b[0])->feature_arc_index,
-			      last_slave_sw_if_index) > 1))
+			      last_member_sw_if_index) > 1))
 	    bond_update_next_x4 (b[0], b[1], b[2], b[3]);
 
 	  next[0] = next[1] = next[2] = next[3] = next_index;
@@ -287,8 +287,9 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 	}
       else
 	{
-	  bond_update_next (vm, node, &last_slave_sw_if_index, sw_if_index[0],
-			    &bond_sw_if_index, b[0], &next_index, &error);
+	  bond_update_next (vm, node, &last_member_sw_if_index,
+			    sw_if_index[0], &bond_sw_if_index, b[0],
+			    &next_index, &error);
 	  next[0] = next_index;
 	  if (next_index == BOND_INPUT_NEXT_DROP)
 	    b[0]->error = error;
@@ -296,8 +297,9 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 	    bond_sw_if_idx_rewrite (vm, node, b[0], bond_sw_if_index,
 				    &n_rx_packets, &n_rx_bytes);
 
-	  bond_update_next (vm, node, &last_slave_sw_if_index, sw_if_index[1],
-			    &bond_sw_if_index, b[1], &next_index, &error);
+	  bond_update_next (vm, node, &last_member_sw_if_index,
+			    sw_if_index[1], &bond_sw_if_index, b[1],
+			    &next_index, &error);
 	  next[1] = next_index;
 	  if (next_index == BOND_INPUT_NEXT_DROP)
 	    b[1]->error = error;
@@ -305,8 +307,9 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 	    bond_sw_if_idx_rewrite (vm, node, b[1], bond_sw_if_index,
 				    &n_rx_packets, &n_rx_bytes);
 
-	  bond_update_next (vm, node, &last_slave_sw_if_index, sw_if_index[2],
-			    &bond_sw_if_index, b[2], &next_index, &error);
+	  bond_update_next (vm, node, &last_member_sw_if_index,
+			    sw_if_index[2], &bond_sw_if_index, b[2],
+			    &next_index, &error);
 	  next[2] = next_index;
 	  if (next_index == BOND_INPUT_NEXT_DROP)
 	    b[2]->error = error;
@@ -314,8 +317,9 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 	    bond_sw_if_idx_rewrite (vm, node, b[2], bond_sw_if_index,
 				    &n_rx_packets, &n_rx_bytes);
 
-	  bond_update_next (vm, node, &last_slave_sw_if_index, sw_if_index[3],
-			    &bond_sw_if_index, b[3], &next_index, &error);
+	  bond_update_next (vm, node, &last_member_sw_if_index,
+			    sw_if_index[3], &bond_sw_if_index, b[3],
+			    &next_index, &error);
 	  next[3] = next_index;
 	  if (next_index == BOND_INPUT_NEXT_DROP)
 	    b[3]->error = error;
@@ -339,7 +343,7 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
   while (n_left)
     {
       sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
-      bond_update_next (vm, node, &last_slave_sw_if_index, sw_if_index[0],
+      bond_update_next (vm, node, &last_member_sw_if_index, sw_if_index[0],
 			&bond_sw_if_index, b[0], &next_index, &error);
       next[0] = next_index;
       if (next_index == BOND_INPUT_NEXT_DROP)
@@ -430,22 +434,22 @@ static clib_error_t *
 bond_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 {
   bond_main_t *bm = &bond_main;
-  slave_if_t *sif;
+  member_if_t *mif;
   vlib_main_t *vm = bm->vlib_main;
 
-  sif = bond_get_slave_by_sw_if_index (sw_if_index);
-  if (sif)
+  mif = bond_get_member_by_sw_if_index (sw_if_index);
+  if (mif)
     {
-      if (sif->lacp_enabled)
+      if (mif->lacp_enabled)
 	return 0;
 
       /* port_enabled is both admin up and hw link up */
-      sif->port_enabled = ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) &&
+      mif->port_enabled = ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) &&
 			   vnet_sw_interface_is_link_up (vnm, sw_if_index));
-      if (sif->port_enabled == 0)
-	bond_disable_collecting_distributing (vm, sif);
+      if (mif->port_enabled == 0)
+	bond_disable_collecting_distributing (vm, mif);
       else
-	bond_enable_collecting_distributing (vm, sif);
+	bond_enable_collecting_distributing (vm, mif);
     }
 
   return 0;
@@ -457,25 +461,25 @@ static clib_error_t *
 bond_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 {
   bond_main_t *bm = &bond_main;
-  slave_if_t *sif;
+  member_if_t *mif;
   vnet_sw_interface_t *sw;
   vlib_main_t *vm = bm->vlib_main;
 
   sw = vnet_get_hw_sw_interface (vnm, hw_if_index);
-  sif = bond_get_slave_by_sw_if_index (sw->sw_if_index);
-  if (sif)
+  mif = bond_get_member_by_sw_if_index (sw->sw_if_index);
+  if (mif)
     {
-      if (sif->lacp_enabled)
+      if (mif->lacp_enabled)
 	return 0;
 
       /* port_enabled is both admin up and hw link up */
-      sif->port_enabled = ((flags & VNET_HW_INTERFACE_FLAG_LINK_UP) &&
+      mif->port_enabled = ((flags & VNET_HW_INTERFACE_FLAG_LINK_UP) &&
 			   vnet_sw_interface_is_admin_up (vnm,
 							  sw->sw_if_index));
-      if (sif->port_enabled == 0)
-	bond_disable_collecting_distributing (vm, sif);
+      if (mif->port_enabled == 0)
+	bond_disable_collecting_distributing (vm, mif);
       else
-	bond_enable_collecting_distributing (vm, sif);
+	bond_enable_collecting_distributing (vm, mif);
     }
 
   return 0;

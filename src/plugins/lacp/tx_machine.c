@@ -39,22 +39,22 @@ int
 lacp_tx_action_transmit (void *p1, void *p2)
 {
   vlib_main_t *vm = p1;
-  slave_if_t *sif = p2;
+  member_if_t *mif = p2;
   f64 now = vlib_time_now (vm);
 
-  if (!lacp_timer_is_running (sif->periodic_timer))
+  if (!lacp_timer_is_running (mif->periodic_timer))
     return 0;
 
   // No more than 3 LACPDUs per fast interval
-  if (now <= (sif->last_lacpdu_sent_time + 0.333))
+  if (now <= (mif->last_lacpdu_sent_time + 0.333))
     return 0;
 
-  if (sif->ntt)
+  if (mif->ntt)
     {
-      lacp_send_lacp_pdu (vm, sif);
-      lacp_schedule_periodic_timer (vm, sif);
+      lacp_send_lacp_pdu (vm, mif);
+      lacp_schedule_periodic_timer (vm, mif);
     }
-  sif->ntt = 0;
+  mif->ntt = 0;
 
   return 0;
 }
@@ -80,7 +80,7 @@ format_tx_event (u8 * s, va_list * args)
 }
 
 void
-lacp_tx_debug_func (slave_if_t * sif, int event, int state,
+lacp_tx_debug_func (member_if_t * mif, int event, int state,
 		    lacp_fsm_state_t * transition)
 {
   vlib_worker_thread_t *w = vlib_worker_threads + os_get_thread_index ();
@@ -99,16 +99,16 @@ lacp_tx_debug_func (slave_if_t * sif, int event, int state,
   ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
   ed->event = elog_string (&vlib_global_main.elog_main, "%U-TX: %U, %U->%U%c",
 			   format_vnet_sw_if_index_name, vnet_get_main (),
-			   sif->sw_if_index, format_tx_event, event,
+			   mif->sw_if_index, format_tx_event, event,
 			   format_tx_sm_state, state, format_tx_sm_state,
 			   transition->next_state, 0);
 }
 
 void
-lacp_init_tx_machine (vlib_main_t * vm, slave_if_t * sif)
+lacp_init_tx_machine (vlib_main_t * vm, member_if_t * mif)
 {
-  lacp_machine_dispatch (&lacp_tx_machine, vm, sif, LACP_TX_EVENT_BEGIN,
-			 &sif->tx_state);
+  lacp_machine_dispatch (&lacp_tx_machine, vm, mif, LACP_TX_EVENT_BEGIN,
+			 &mif->tx_state);
 }
 
 /*

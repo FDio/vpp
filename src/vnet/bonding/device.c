@@ -29,7 +29,7 @@
 #define foreach_bond_tx_error     \
   _(NONE, "no error")             \
   _(IF_DOWN, "interface down")    \
-  _(NO_SLAVE, "no slave")
+  _(NO_MEMBER, "no member")
 
 typedef enum
 {
@@ -85,29 +85,29 @@ bond_set_l2_mode_function (vnet_main_t * vnm,
 {
   bond_if_t *bif;
   u32 *sw_if_index;
-  struct vnet_hw_interface_t *sif_hw;
+  struct vnet_hw_interface_t *mif_hw;
 
-  bif = bond_get_master_by_sw_if_index (bif_hw->sw_if_index);
+  bif = bond_get_bond_if_by_sw_if_index (bif_hw->sw_if_index);
   if (!bif)
     return 0;
 
   if ((bif_hw->l2_if_count == 1) && (l2_if_adjust == 1))
     {
       /* Just added first L2 interface on this port */
-      vec_foreach (sw_if_index, bif->slaves)
+      vec_foreach (sw_if_index, bif->members)
       {
-	sif_hw = vnet_get_sup_hw_interface (vnm, *sw_if_index);
-	ethernet_set_flags (vnm, sif_hw->hw_if_index,
+	mif_hw = vnet_get_sup_hw_interface (vnm, *sw_if_index);
+	ethernet_set_flags (vnm, mif_hw->hw_if_index,
 			    ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
       }
     }
   else if ((bif_hw->l2_if_count == 0) && (l2_if_adjust == -1))
     {
       /* Just removed last L2 subinterface on this port */
-      vec_foreach (sw_if_index, bif->slaves)
+      vec_foreach (sw_if_index, bif->members)
       {
-	sif_hw = vnet_get_sup_hw_interface (vnm, *sw_if_index);
-	ethernet_set_flags (vnm, sif_hw->hw_if_index,
+	mif_hw = vnet_get_sup_hw_interface (vnm, *sw_if_index);
+	ethernet_set_flags (vnm, mif_hw->hw_if_index,
 			    /*ETHERNET_INTERFACE_FLAG_DEFAULT_L3 */ 0);
       }
     }
@@ -132,7 +132,7 @@ bond_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   bond_if_t *bif = pool_elt_at_index (bm->interfaces, hif->dev_instance);
 
   bif->admin_up = is_up;
-  if (is_up && vec_len (bif->active_slaves))
+  if (is_up && vec_len (bif->active_members))
     vnet_hw_interface_set_flags (vnm, bif->hw_if_index,
 				 VNET_HW_INTERFACE_FLAG_LINK_UP);
   return 0;
@@ -149,17 +149,18 @@ bond_add_del_mac_address (vnet_hw_interface_t * hi, const u8 * address,
   int i;
 
 
-  bif = bond_get_master_by_sw_if_index (hi->sw_if_index);
+  bif = bond_get_bond_if_by_sw_if_index (hi->sw_if_index);
   if (!bif)
     {
-      return clib_error_return (0, "No bond master found for sw_if_index %u",
+      return clib_error_return (0,
+				"No bond interface found for sw_if_index %u",
 				hi->sw_if_index);
     }
 
-  /* Add/del address on each slave hw intf, they control the hardware */
-  vec_foreach_index (i, bif->slaves)
+  /* Add/del address on each member hw intf, they control the hardware */
+  vec_foreach_index (i, bif->members)
   {
-    s_hi = vnet_get_sup_hw_interface (vnm, vec_elt (bif->slaves, i));
+    s_hi = vnet_get_sup_hw_interface (vnm, vec_elt (bif->members, i));
     error = vnet_hw_interface_add_del_mac_address (vnm, s_hi->hw_if_index,
 						   address, is_add);
 
@@ -170,7 +171,7 @@ bond_add_del_mac_address (vnet_hw_interface_t * hi, const u8 * address,
 	/* undo any that were completed before the failure */
 	for (j = i - 1; j > -1; j--)
 	  {
-	    s_hi = vnet_get_sup_hw_interface (vnm, vec_elt (bif->slaves, j));
+	    s_hi = vnet_get_sup_hw_interface (vnm, vec_elt (bif->members, j));
 	    vnet_hw_interface_add_del_mac_address (vnm, s_hi->hw_if_index,
 						   address, !(is_add));
 	  }
@@ -191,7 +192,7 @@ bond_tx_add_to_queue (bond_per_thread_data_t * ptd, u32 port, u32 bi)
 
 static_always_inline u32
 bond_lb_broadcast (vlib_main_t * vm,
-		   bond_if_t * bif, vlib_buffer_t * b0, uword n_slaves)
+		   bond_if_t * bif, vlib_buffer_t * b0, uword n_members)
 {
   bond_main_t *bm = &bond_main;
   vlib_buffer_t *c0;
@@ -201,9 +202,9 @@ bond_lb_broadcast (vlib_main_t * vm,
   bond_per_thread_data_t *ptd = vec_elt_at_index (bm->per_thread_data,
 						  thread_index);
 
-  for (port = 1; port < n_slaves; port++)
+  for (port = 1; port < n_members; port++)
     {
-      sw_if_index = *vec_elt_at_index (bif->active_slaves, port);
+      sw_if_index = *vec_elt_at_index (bif->active_members, port);
       c0 = vlib_buffer_copy (vm, b0);
       if (PREDICT_TRUE (c0 != 0))
 	{
@@ -387,10 +388,10 @@ bond_lb_l34 (vlib_buffer_t * b0)
 }
 
 static_always_inline u32
-bond_lb_round_robin (bond_if_t * bif, vlib_buffer_t * b0, uword n_slaves)
+bond_lb_round_robin (bond_if_t * bif, vlib_buffer_t * b0, uword n_members)
 {
   bif->lb_rr_last_index++;
-  if (bif->lb_rr_last_index >= n_slaves)
+  if (bif->lb_rr_last_index >= n_members)
     bif->lb_rr_last_index = 0;
 
   return bif->lb_rr_last_index;
@@ -398,7 +399,7 @@ bond_lb_round_robin (bond_if_t * bif, vlib_buffer_t * b0, uword n_slaves)
 
 static_always_inline void
 bond_tx_inline (vlib_main_t * vm, bond_if_t * bif, vlib_buffer_t ** b,
-		u32 * h, u32 n_left, uword n_slaves, u32 lb_alg)
+		u32 * h, u32 n_left, uword n_members, u32 lb_alg)
 {
   while (n_left >= 4)
     {
@@ -446,17 +447,17 @@ bond_tx_inline (vlib_main_t * vm, bond_if_t * bif, vlib_buffer_t ** b,
 	}
       else if (lb_alg == BOND_LB_RR)
 	{
-	  h[0] = bond_lb_round_robin (bif, b[0], n_slaves);
-	  h[1] = bond_lb_round_robin (bif, b[1], n_slaves);
-	  h[2] = bond_lb_round_robin (bif, b[2], n_slaves);
-	  h[3] = bond_lb_round_robin (bif, b[3], n_slaves);
+	  h[0] = bond_lb_round_robin (bif, b[0], n_members);
+	  h[1] = bond_lb_round_robin (bif, b[1], n_members);
+	  h[2] = bond_lb_round_robin (bif, b[2], n_members);
+	  h[3] = bond_lb_round_robin (bif, b[3], n_members);
 	}
       else if (lb_alg == BOND_LB_BC)
 	{
-	  h[0] = bond_lb_broadcast (vm, bif, b[0], n_slaves);
-	  h[1] = bond_lb_broadcast (vm, bif, b[1], n_slaves);
-	  h[2] = bond_lb_broadcast (vm, bif, b[2], n_slaves);
-	  h[3] = bond_lb_broadcast (vm, bif, b[3], n_slaves);
+	  h[0] = bond_lb_broadcast (vm, bif, b[0], n_members);
+	  h[1] = bond_lb_broadcast (vm, bif, b[1], n_members);
+	  h[2] = bond_lb_broadcast (vm, bif, b[2], n_members);
+	  h[3] = bond_lb_broadcast (vm, bif, b[3], n_members);
 	}
       else
 	{
@@ -479,9 +480,9 @@ bond_tx_inline (vlib_main_t * vm, bond_if_t * bif, vlib_buffer_t ** b,
       else if (bif->lb == BOND_LB_L23)
 	h[0] = bond_lb_l23 (b[0]);
       else if (bif->lb == BOND_LB_RR)
-	h[0] = bond_lb_round_robin (bif, b[0], n_slaves);
+	h[0] = bond_lb_round_robin (bif, b[0], n_members);
       else if (bif->lb == BOND_LB_BC)
-	h[0] = bond_lb_broadcast (vm, bif, b[0], n_slaves);
+	h[0] = bond_lb_broadcast (vm, bif, b[0], n_members);
       else
 	{
 	  ASSERT (0);
@@ -494,9 +495,10 @@ bond_tx_inline (vlib_main_t * vm, bond_if_t * bif, vlib_buffer_t ** b,
 }
 
 static_always_inline void
-bond_hash_to_port (u32 * h, u32 n_left, u32 n_slaves, int use_modulo_shortcut)
+bond_hash_to_port (u32 * h, u32 n_left, u32 n_members,
+		   int use_modulo_shortcut)
 {
-  u32 mask = n_slaves - 1;
+  u32 mask = n_members - 1;
 
 #ifdef CLIB_HAVE_VEC256
   /* only lower 16 bits of hash due to single precision fp arithmetic */
@@ -510,7 +512,7 @@ bond_hash_to_port (u32 * h, u32 n_left, u32 n_slaves, int use_modulo_shortcut)
   else
     {
       mask8 = u32x8_splat (0xffff);
-      sc8u = u32x8_splat (n_slaves);
+      sc8u = u32x8_splat (n_members);
       sc8f = f32x8_from_u32x8 (sc8u);
     }
 
@@ -543,10 +545,10 @@ bond_hash_to_port (u32 * h, u32 n_left, u32 n_slaves, int use_modulo_shortcut)
 	}
       else
 	{
-	  h[0] %= n_slaves;
-	  h[1] %= n_slaves;
-	  h[2] %= n_slaves;
-	  h[3] %= n_slaves;
+	  h[0] %= n_members;
+	  h[1] %= n_members;
+	  h[2] %= n_members;
+	  h[3] %= n_members;
 	}
       n_left -= 4;
       h += 4;
@@ -556,7 +558,7 @@ bond_hash_to_port (u32 * h, u32 n_left, u32 n_slaves, int use_modulo_shortcut)
       if (use_modulo_shortcut)
 	h[0] &= mask;
       else
-	h[0] %= n_slaves;
+	h[0] %= n_members;
       n_left -= 1;
       h += 1;
     }
@@ -598,10 +600,10 @@ bond_update_sw_if_index (bond_per_thread_data_t * ptd, bond_if_t * bif,
 	{
 	  u32 sw_if_index[4];
 
-	  sw_if_index[0] = *vec_elt_at_index (bif->active_slaves, h[0]);
-	  sw_if_index[1] = *vec_elt_at_index (bif->active_slaves, h[1]);
-	  sw_if_index[2] = *vec_elt_at_index (bif->active_slaves, h[2]);
-	  sw_if_index[3] = *vec_elt_at_index (bif->active_slaves, h[3]);
+	  sw_if_index[0] = *vec_elt_at_index (bif->active_members, h[0]);
+	  sw_if_index[1] = *vec_elt_at_index (bif->active_members, h[1]);
+	  sw_if_index[2] = *vec_elt_at_index (bif->active_members, h[2]);
+	  sw_if_index[3] = *vec_elt_at_index (bif->active_members, h[3]);
 
 	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] = sw_if_index[0];
 	  vnet_buffer (b[1])->sw_if_index[VLIB_TX] = sw_if_index[1];
@@ -628,7 +630,7 @@ bond_update_sw_if_index (bond_per_thread_data_t * ptd, bond_if_t * bif,
 	}
       else
 	{
-	  u32 sw_if_index0 = *vec_elt_at_index (bif->active_slaves, h[0]);
+	  u32 sw_if_index0 = *vec_elt_at_index (bif->active_members, h[0]);
 
 	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] = sw_if_index0;
 	  bond_tx_add_to_queue (ptd, h[0], bi[0]);
@@ -661,11 +663,12 @@ bond_tx_trace (vlib_main_t * vm, vlib_node_runtime_t * node, bond_if_t * bif,
       t0->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
       if (!h)
 	{
-	  t0->bond_sw_if_index = *vec_elt_at_index (bif->active_slaves, 0);
+	  t0->bond_sw_if_index = *vec_elt_at_index (bif->active_members, 0);
 	}
       else
 	{
-	  t0->bond_sw_if_index = *vec_elt_at_index (bif->active_slaves, h[0]);
+	  t0->bond_sw_if_index =
+	    *vec_elt_at_index (bif->active_members, h[0]);
 	  h++;
 	}
       b++;
@@ -681,7 +684,7 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
   bond_main_t *bm = &bond_main;
   u16 thread_index = vm->thread_index;
   bond_if_t *bif = pool_elt_at_index (bm->interfaces, rund->dev_instance);
-  uword n_slaves;
+  uword n_members;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
   u32 *from = vlib_frame_vector_args (frame);
   u32 n_left = frame->n_vectors;
@@ -703,15 +706,15 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
       return frame->n_vectors;
     }
 
-  n_slaves = vec_len (bif->active_slaves);
-  if (PREDICT_FALSE (n_slaves == 0))
+  n_members = vec_len (bif->active_members);
+  if (PREDICT_FALSE (n_members == 0))
     {
       vlib_buffer_free (vm, vlib_frame_vector_args (frame), frame->n_vectors);
       vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters +
 				     VNET_INTERFACE_COUNTER_DROP,
 				     thread_index, bif->sw_if_index,
 				     frame->n_vectors);
-      vlib_error_count (vm, node->node_index, BOND_TX_ERROR_NO_SLAVE,
+      vlib_error_count (vm, node->node_index, BOND_TX_ERROR_NO_MEMBER,
 			frame->n_vectors);
       return frame->n_vectors;
     }
@@ -719,9 +722,9 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
   vlib_get_buffers (vm, from, bufs, n_left);
 
   /* active-backup mode, ship everything to first sw if index */
-  if ((bif->lb == BOND_LB_AB) || PREDICT_FALSE (n_slaves == 1))
+  if ((bif->lb == BOND_LB_AB) || PREDICT_FALSE (n_members == 1))
     {
-      sw_if_index = *vec_elt_at_index (bif->active_slaves, 0);
+      sw_if_index = *vec_elt_at_index (bif->active_members, 0);
 
       bond_tx_trace (vm, node, bif, bufs, frame->n_vectors, 0);
       bond_update_sw_if_index (ptd, bif, from, bufs, &sw_if_index, n_left,
@@ -731,37 +734,37 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
 
   if (bif->lb == BOND_LB_BC)
     {
-      sw_if_index = *vec_elt_at_index (bif->active_slaves, 0);
+      sw_if_index = *vec_elt_at_index (bif->active_members, 0);
 
-      bond_tx_inline (vm, bif, bufs, hashes, n_left, n_slaves, BOND_LB_BC);
+      bond_tx_inline (vm, bif, bufs, hashes, n_left, n_members, BOND_LB_BC);
       bond_tx_trace (vm, node, bif, bufs, frame->n_vectors, 0);
       bond_update_sw_if_index (ptd, bif, from, bufs, &sw_if_index, n_left,
 			       /* single_sw_if_index */ 1);
       goto done;
     }
 
-  /* if have at least one slave on local numa node, only slaves on local numa
+  /* if have at least one member on local numa node, only members on local numa
      node will transmit pkts when bif->local_numa_only is enabled */
-  if (bif->n_numa_slaves >= 1)
-    n_slaves = bif->n_numa_slaves;
+  if (bif->n_numa_members >= 1)
+    n_members = bif->n_numa_members;
 
   if (bif->lb == BOND_LB_L2)
-    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_slaves, BOND_LB_L2);
+    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_members, BOND_LB_L2);
   else if (bif->lb == BOND_LB_L34)
-    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_slaves, BOND_LB_L34);
+    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_members, BOND_LB_L34);
   else if (bif->lb == BOND_LB_L23)
-    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_slaves, BOND_LB_L23);
+    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_members, BOND_LB_L23);
   else if (bif->lb == BOND_LB_RR)
-    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_slaves, BOND_LB_RR);
+    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_members, BOND_LB_RR);
   else
     ASSERT (0);
 
   /* calculate port out of hash */
   h = hashes;
-  if (BOND_MODULO_SHORTCUT (n_slaves))
-    bond_hash_to_port (h, frame->n_vectors, n_slaves, 1);
+  if (BOND_MODULO_SHORTCUT (n_members))
+    bond_hash_to_port (h, frame->n_vectors, n_members, 1);
   else
-    bond_hash_to_port (h, frame->n_vectors, n_slaves, 0);
+    bond_hash_to_port (h, frame->n_vectors, n_members, 0);
 
   bond_tx_trace (vm, node, bif, bufs, frame->n_vectors, h);
 
@@ -769,12 +772,12 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
 			   /* single_sw_if_index */ 0);
 
 done:
-  for (p = 0; p < n_slaves; p++)
+  for (p = 0; p < n_members; p++)
     {
       vlib_frame_t *f;
       u32 *to_next;
 
-      sw_if_index = *vec_elt_at_index (bif->active_slaves, p);
+      sw_if_index = *vec_elt_at_index (bif->active_members, p);
       if (PREDICT_TRUE (ptd->per_port_queue[p].n_buffers))
 	{
 	  f = vnet_get_frame_to_sw_interface (vnm, sw_if_index);
@@ -852,23 +855,23 @@ VNET_DEVICE_CLASS (bond_dev_class) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-bond_slave_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
+bond_member_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 {
   bond_main_t *bm = &bond_main;
-  slave_if_t *sif;
-  bond_detach_slave_args_t args = { 0 };
+  member_if_t *mif;
+  bond_detach_member_args_t args = { 0 };
 
   if (is_add)
     return 0;
-  sif = bond_get_slave_by_sw_if_index (sw_if_index);
-  if (!sif)
+  mif = bond_get_member_by_sw_if_index (sw_if_index);
+  if (!mif)
     return 0;
-  args.slave = sw_if_index;
-  bond_detach_slave (bm->vlib_main, &args);
+  args.member = sw_if_index;
+  bond_detach_member (bm->vlib_main, &args);
   return args.error;
 }
 
-VNET_SW_INTERFACE_ADD_DEL_FUNCTION (bond_slave_interface_add_del);
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION (bond_member_interface_add_del);
 
 /*
  * fd.io coding-style-patch-verification: ON

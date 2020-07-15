@@ -92,8 +92,8 @@ typedef struct
 
 typedef struct
 {
-  /* slave's sw_if_index */
-  u32 slave;
+  /* member's sw_if_index */
+  u32 member;
   /* bond's sw_if_index */
   u32 group;
   u8 is_passive;
@@ -101,15 +101,15 @@ typedef struct
   /* return */
   int rv;
   clib_error_t *error;
-} bond_enslave_args_t;
+} bond_add_member_args_t;
 
 typedef struct
 {
-  u32 slave;
+  u32 member;
   /* return */
   int rv;
   clib_error_t *error;
-} bond_detach_slave_args_t;
+} bond_detach_member_args_t;
 
 typedef struct
 {
@@ -126,14 +126,14 @@ typedef struct
   u32 sw_if_index;
   u32 id;
   u8 interface_name[64];
-  u8 mode;
-  u8 lb;
+  u32 mode;
+  u32 lb;
   u8 numa_only;
-  u32 active_slaves;
-  u32 slaves;
+  u32 active_members;
+  u32 members;
 } bond_interface_details_t;
 
-/** slave interface details struct */
+/** member interface details struct */
 typedef struct
 {
   u32 sw_if_index;
@@ -142,8 +142,8 @@ typedef struct
   u8 is_long_timeout;
   u8 is_local_numa;
   u32 weight;
-  u32 active_slaves;
-} slave_interface_details_t;
+  u32 active_members;
+} member_interface_details_t;
 
 typedef CLIB_PACKED (struct
 		     {
@@ -171,7 +171,7 @@ typedef struct
   u8 mode;
   u8 lb;
 
-  /* the last slave index for the rr lb */
+  /* the last member index for the rr lb */
   u32 lb_rr_last_index;
 
   /* Real device instance in interface vector */
@@ -183,24 +183,24 @@ typedef struct
   u32 hw_if_index;
   u32 sw_if_index;
 
-  /* Configured slaves */
-  u32 *slaves;
+  /* Configured members */
+  u32 *members;
 
-  /* Slaves that are in DISTRIBUTING state */
-  u32 *active_slaves;
+  /* Members that are in DISTRIBUTING state */
+  u32 *active_members;
 
   lacp_port_info_t partner;
   lacp_port_info_t actor;
   u8 individual_aggregator;
 
-  /* If the flag numa_only is set, it means that only slaves
+  /* If the flag numa_only is set, it means that only members
      on local numa node works for lacp mode if have at least one,
      otherwise it works as usual. */
   u8 numa_only;
   u8 gso;
 
-  /* How many slaves on local numa node are there in lacp mode? */
-  word n_numa_slaves;
+  /* How many members on local numa node are there in lacp mode? */
+  word n_numa_members;
 
   u32 group;
   uword *port_number_bitmap;
@@ -345,12 +345,12 @@ typedef struct
   /* pdu sent */
   u64 marker_pdu_sent;
 
-  /* slave is numa node */
+  /* member is numa node */
   u8 is_local_numa;
-} slave_if_t;
+} member_if_t;
 
 typedef void (*lacp_enable_disable_func) (vlib_main_t * vm, bond_if_t * bif,
-					  slave_if_t * sif, u8 enable);
+					  member_if_t * mif, u8 enable);
 
 typedef struct
 {
@@ -366,8 +366,8 @@ typedef struct
   /* record used interface IDs */
   uword *id_used;
 
-  /* pool of slave interfaces */
-  slave_if_t *neighbors;
+  /* pool of member interfaces */
+  member_if_t *neighbors;
 
   /* rapidly find a bond by vlib software interface index */
   uword *bond_by_sw_if_index;
@@ -381,7 +381,7 @@ typedef struct
 
   lacp_enable_disable_func lacp_enable_disable;
 
-  uword *slave_by_sw_if_index;
+  uword *member_by_sw_if_index;
 
   bond_per_thread_data_t *per_thread_data;
 
@@ -398,7 +398,7 @@ typedef struct
 
 typedef u32 (*load_balance_func) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node, bond_if_t * bif,
-				  vlib_buffer_t * b0, uword slave_count);
+				  vlib_buffer_t * b0, uword member_count);
 
 typedef struct
 {
@@ -411,19 +411,20 @@ extern vnet_device_class_t bond_dev_class;
 extern bond_main_t bond_main;
 
 void bond_disable_collecting_distributing (vlib_main_t * vm,
-					   slave_if_t * sif);
-void bond_enable_collecting_distributing (vlib_main_t * vm, slave_if_t * sif);
+					   member_if_t * mif);
+void bond_enable_collecting_distributing (vlib_main_t * vm,
+					  member_if_t * mif);
 u8 *format_bond_interface_name (u8 * s, va_list * args);
 
 void bond_set_intf_weight (vlib_main_t * vm,
 			   bond_set_intf_weight_args_t * args);
 void bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args);
 int bond_delete_if (vlib_main_t * vm, u32 sw_if_index);
-void bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args);
-void bond_detach_slave (vlib_main_t * vm, bond_detach_slave_args_t * args);
+void bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args);
+void bond_detach_member (vlib_main_t * vm, bond_detach_member_args_t * args);
 int bond_dump_ifs (bond_interface_details_t ** out_bondids);
-int bond_dump_slave_ifs (slave_interface_details_t ** out_slaveids,
-			 u32 bond_sw_if_index);
+int bond_dump_member_ifs (member_interface_details_t ** out_memberids,
+			  u32 bond_sw_if_index);
 
 static inline uword
 unformat_bond_mode (unformat_input_t * input, va_list * args)
@@ -499,7 +500,7 @@ bond_register_callback (lacp_enable_disable_func func)
 }
 
 static inline bond_if_t *
-bond_get_master_by_sw_if_index (u32 sw_if_index)
+bond_get_bond_if_by_sw_if_index (u32 sw_if_index)
 {
   bond_main_t *bm = &bond_main;
   uword *p;
@@ -513,28 +514,28 @@ bond_get_master_by_sw_if_index (u32 sw_if_index)
 }
 
 static inline bond_if_t *
-bond_get_master_by_dev_instance (u32 dev_instance)
+bond_get_bond_if_by_dev_instance (u32 dev_instance)
 {
   bond_main_t *bm = &bond_main;
 
   return pool_elt_at_index (bm->interfaces, dev_instance);
 }
 
-static inline slave_if_t *
-bond_get_slave_by_sw_if_index (u32 sw_if_index)
+static inline member_if_t *
+bond_get_member_by_sw_if_index (u32 sw_if_index)
 {
   bond_main_t *bm = &bond_main;
-  slave_if_t *sif = 0;
+  member_if_t *mif = 0;
   uword p;
 
-  if (sw_if_index < vec_len (bm->slave_by_sw_if_index))
+  if (sw_if_index < vec_len (bm->member_by_sw_if_index))
     {
-      p = bm->slave_by_sw_if_index[sw_if_index];
+      p = bm->member_by_sw_if_index[sw_if_index];
       if (p)
-	sif = pool_elt_at_index (bm->neighbors, p >> 1);
+	mif = pool_elt_at_index (bm->neighbors, p >> 1);
     }
 
-  return sif;
+  return mif;
 }
 
 #endif /* __included_vnet_bonding_node_h__ */
