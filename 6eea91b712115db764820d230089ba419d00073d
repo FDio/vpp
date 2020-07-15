@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b2d77856_ea6fa566",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-15T12:40:14Z",
+      "side": 1,
+      "message": "Is this ++line intended? We then do a weird line-- in the handler.\nDoes it mean we allocate 1 MSI-X for every 2 RX queue? Shouldn\u0027t it be 1 MSI-X per RX queue instead?\nIf it is correct anyway, shouldn\u0027t it be something like:\nfor (; line \u003c vif-\u003enum_rxqs; line +\u003d 2)\n    virtio_pci_irq_queue_handler (vm, h, line);\nThat way we can drop the weird line-- in the handler, and makes it clear we increment line 2-by-2.",
+      "revId": "6eea91b712115db764820d230089ba419d00073d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
