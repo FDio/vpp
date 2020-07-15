@@ -29,7 +29,7 @@ typedef struct
   int next_state;
 } lacp_fsm_state_t;
 
-typedef void (*debug_func) (slave_if_t * sif, int event, int state,
+typedef void (*debug_func) (member_if_t * mif, int event, int state,
 			    lacp_fsm_state_t * transition);
 
 typedef struct
@@ -44,7 +44,7 @@ typedef struct
 } lacp_machine_t;
 
 extern int lacp_machine_dispatch (lacp_machine_t * machine, vlib_main_t * vm,
-				  slave_if_t * sif, int event, int *state);
+				  member_if_t * mif, int event, int *state);
 
 #endif /* __LACP_MACHINE_H__ */
 

@@ -31,8 +31,8 @@ define sw_interface_lacp_dump
 };
 
 /** \brief Reply for lacp dump request
-    @param sw_if_index - software index of slave interface
-    @param interface_name - name of slave interface
+    @param sw_if_index - software index of member interface
+    @param interface_name - name of member interface
     @param rx_state - rx machine state
     @param tx_state - tx machine state
     @param mux_state - mux machine state
