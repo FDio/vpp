@@ -51,7 +51,7 @@ int lacp_ptx_action_no_periodic (void *p1, void *p2);
 int lacp_ptx_action_slow_periodic (void *p1, void *p2);
 int lacp_ptx_action_fast_periodic (void *p1, void *p2);
 int lacp_ptx_action_timer_expired (void *p1, void *p2);
-void lacp_ptx_debug_func (slave_if_t * sif, int event, int state,
+void lacp_ptx_debug_func (member_if_t * mif, int event, int state,
 			  lacp_fsm_state_t * transition);
 
 #define LACP_ACTION_NO_PERIODIC \
@@ -64,36 +64,36 @@ void lacp_ptx_debug_func (slave_if_t * sif, int event, int state,
   LACP_ACTION_ROUTINE(lacp_ptx_action_timer_expired)
 
 static inline void
-lacp_start_periodic_timer (vlib_main_t * vm, slave_if_t * sif, u8 expiration)
+lacp_start_periodic_timer (vlib_main_t * vm, member_if_t * mif, u8 expiration)
 {
-  sif->periodic_timer = vlib_time_now (vm) + expiration;
+  mif->periodic_timer = vlib_time_now (vm) + expiration;
 }
 
 static inline void
-lacp_schedule_periodic_timer (vlib_main_t * vm, slave_if_t * sif)
+lacp_schedule_periodic_timer (vlib_main_t * vm, member_if_t * mif)
 {
   // do fast rate if partner is in short timeout or
   // we are not yet synchronized
-  if ((sif->partner.state & LACP_STATE_LACP_TIMEOUT) ||
-      (((sif->actor.state & (LACP_STATE_SYNCHRONIZATION |
+  if ((mif->partner.state & LACP_STATE_LACP_TIMEOUT) ||
+      (((mif->actor.state & (LACP_STATE_SYNCHRONIZATION |
 			     LACP_STATE_COLLECTING |
 			     LACP_STATE_DISTRIBUTING)) !=
 	(LACP_STATE_SYNCHRONIZATION | LACP_STATE_COLLECTING |
 	 LACP_STATE_DISTRIBUTING))
-       && (sif->partner.state & LACP_STATE_AGGREGATION)))
-    lacp_start_periodic_timer (vm, sif, LACP_FAST_PERIODIC_TIMER);
+       && (mif->partner.state & LACP_STATE_AGGREGATION)))
+    lacp_start_periodic_timer (vm, mif, LACP_FAST_PERIODIC_TIMER);
   else
-    lacp_start_periodic_timer (vm, sif, LACP_SLOW_PERIODIC_TIMER);
+    lacp_start_periodic_timer (vm, mif, LACP_SLOW_PERIODIC_TIMER);
 }
 
 static inline void
-lacp_ptx_post_short_timeout_event (vlib_main_t * vm, slave_if_t * sif)
+lacp_ptx_post_short_timeout_event (vlib_main_t * vm, member_if_t * mif)
 {
-  if (sif->lacp_enabled && sif->port_enabled &&
-      ((sif->partner.state & LACP_STATE_LACP_ACTIVITY) ||
-       (sif->actor.state & LACP_STATE_LACP_ACTIVITY)))
-    lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
-			   LACP_PTX_EVENT_SHORT_TIMEOUT, &sif->ptx_state);
+  if (mif->lacp_enabled && mif->port_enabled &&
+      ((mif->partner.state & LACP_STATE_LACP_ACTIVITY) ||
+       (mif->actor.state & LACP_STATE_LACP_ACTIVITY)))
+    lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
+			   LACP_PTX_EVENT_SHORT_TIMEOUT, &mif->ptx_state);
 }
 
 #endif /* __LACP_PTX_MACHINE_H__ */

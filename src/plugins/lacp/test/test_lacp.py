@@ -105,21 +105,21 @@ class TestMarker(VppTestCase):
         bond1.add_vpp_config()
         bond1.admin_up()
 
-        bond0.enslave_vpp_bond_interface(sw_if_index=memif1.sw_if_index)
-        bond1.enslave_vpp_bond_interface(sw_if_index=memif11.sw_if_index)
+        bond0.add_member_vpp_bond_interface(sw_if_index=memif1.sw_if_index)
+        bond1.add_member_vpp_bond_interface(sw_if_index=memif11.sw_if_index)
 
         # wait for memif protocol exchange and hardware carrier to come up
         self.assertEqual(memif1.wait_for_link_up(10), True)
         self.assertEqual(memif11.wait_for_link_up(10), True)
 
         # verify memif1 in bond0
-        intfs = self.vapi.sw_interface_slave_dump(
+        intfs = self.vapi.sw_member_interface_dump(
             sw_if_index=bond0.sw_if_index)
         for intf in intfs:
             self.assertEqual(intf.sw_if_index, memif1.sw_if_index)
 
         # verify memif11 in bond1
-        intfs = self.vapi.sw_interface_slave_dump(
+        intfs = self.vapi.sw_member_interface_dump(
             sw_if_index=bond1.sw_if_index)
         for intf in intfs:
             self.assertEqual(intf.sw_if_index, memif11.sw_if_index)
@@ -134,7 +134,7 @@ class TestMarker(VppTestCase):
                                  requester_system=bond_mac,
                                  requester_transaction_id=1))
 
-        bond1.enslave_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index)
+        bond1.add_member_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index)
         self.pg0.add_stream(marker)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -185,19 +185,19 @@ class TestLACP(VppTestCase):
             if timeout <= 0:
                 return 0
 
-    def wait_for_slave_detach(self, bond, timeout, count, step=1):
+    def wait_for_member_detach(self, bond, timeout, count, step=1):
         while 1:
-            intfs = self.vapi.sw_interface_bond_dump()
+            intfs = self.vapi.sw_bond_interface_dump(
+                sw_if_index=bond.sw_if_index)
             for intf in intfs:
-                if (bond.sw_if_index == intf.sw_if_index):
-                    if ((intf.slaves == count) and
-                            (intf.active_slaves == count)):
-                        return 1
-                    else:
-                        self.sleep(1)
-                        timeout -= step
-                        if (timeouut <= 0):
-                            return 0
+                if ((intf.members == count) and
+                        (intf.active_members == count)):
+                    return 1
+                else:
+                    self.sleep(1)
+                    timeout -= step
+                    if (timeouut <= 0):
+                        return 0
 
     def test_lacp_connect(self):
         """ LACP protocol connect test """
@@ -284,13 +284,13 @@ class TestLACP(VppTestCase):
         bond1.add_vpp_config()
         bond1.admin_up()
 
-        # enslave memif1 and memif2 to bond0
-        bond0.enslave_vpp_bond_interface(sw_if_index=memif1.sw_if_index)
-        bond0.enslave_vpp_bond_interface(sw_if_index=memif2.sw_if_index)
+        # add member memif1 and memif2 to bond0
+        bond0.add_member_vpp_bond_interface(sw_if_index=memif1.sw_if_index)
+        bond0.add_member_vpp_bond_interface(sw_if_index=memif2.sw_if_index)
 
-        # enslave memif11 and memif12 to bond1
-        bond1.enslave_vpp_bond_interface(sw_if_index=memif11.sw_if_index)
-        bond1.enslave_vpp_bond_interface(sw_if_index=memif12.sw_if_index)
+        # add member memif11 and memif12 to bond1
+        bond1.add_member_vpp_bond_interface(sw_if_index=memif11.sw_if_index)
+        bond1.add_member_vpp_bond_interface(sw_if_index=memif12.sw_if_index)
 
         # wait for memif protocol exchange and hardware carrier to come up
         self.assertEqual(memif1.wait_for_link_up(10), True)
@@ -299,14 +299,14 @@ class TestLACP(VppTestCase):
         self.assertEqual(memif12.wait_for_link_up(10), True)
 
         # verify memif1 and memif2 in bond0
-        intfs = self.vapi.sw_interface_slave_dump(
+        intfs = self.vapi.sw_member_interface_dump(
             sw_if_index=bond0.sw_if_index)
         for intf in intfs:
             self.assertIn(
                 intf.sw_if_index, (memif1.sw_if_index, memif2.sw_if_index))
 
         # verify memif11 and memif12 in bond1
-        intfs = self.vapi.sw_interface_slave_dump(
+        intfs = self.vapi.sw_member_interface_dump(
             sw_if_index=bond1.sw_if_index)
         for intf in intfs:
             self.assertIn(
@@ -324,37 +324,37 @@ class TestLACP(VppTestCase):
             self.assertEqual(
                 intf.partner_state, LACP_COLLECTION_AND_DISTRIBUTION_STATE)
 
-        intfs = self.vapi.sw_interface_bond_dump()
+        intfs = self.vapi.sw_bond_interface_dump(sw_if_index=0xFFFFFFFF)
         for intf in intfs:
-            self.assertEqual(intf.slaves, 2)
-            self.assertEqual(intf.active_slaves, 2)
+            self.assertEqual(intf.members, 2)
+            self.assertEqual(intf.active_members, 2)
             self.assertEqual(
                 intf.mode, VppEnum.vl_api_bond_mode_t.BOND_API_MODE_LACP)
 
         self.logger.info(self.vapi.ppcli("show lacp"))
         self.logger.info(self.vapi.ppcli("show lacp details"))
 
-        # detach slave memif1
+        # detach member memif1
         bond0.detach_vpp_bond_interface(sw_if_index=memif1.sw_if_index)
 
-        self.wait_for_slave_detach(bond0, timeout=10, count=1)
-        intfs = self.vapi.sw_interface_bond_dump()
+        self.wait_for_member_detach(bond0, timeout=10, count=1)
+        intfs = self.vapi.sw_bond_interface_dump(
+            sw_if_index=bond0.sw_if_index)
         for intf in intfs:
-            if (bond0.sw_if_index == intf.sw_if_index):
-                self.assertEqual(intf.slaves, 1)
-                self.assertEqual(intf.active_slaves, 1)
-                self.assertEqual(
-                    intf.mode, VppEnum.vl_api_bond_mode_t.BOND_API_MODE_LACP)
+            self.assertEqual(intf.members, 1)
+            self.assertEqual(intf.active_members, 1)
+            self.assertEqual(
+                intf.mode, VppEnum.vl_api_bond_mode_t.BOND_API_MODE_LACP)
 
-        # detach slave memif2
+        # detach member memif2
         bond0.detach_vpp_bond_interface(sw_if_index=memif2.sw_if_index)
-        self.wait_for_slave_detach(bond0, timeout=10, count=0)
+        self.wait_for_member_detach(bond0, timeout=10, count=0)
 
-        intfs = self.vapi.sw_interface_bond_dump()
+        intfs = self.vapi.sw_bond_interface_dump(
+            sw_if_index=bond0.sw_if_index)
         for intf in intfs:
-            if (bond0.sw_if_index == intf.sw_if_index):
-                self.assertEqual(intf.slaves, 0)
-                self.assertEqual(intf.active_slaves, 0)
+            self.assertEqual(intf.members, 0)
+            self.assertEqual(intf.active_members, 0)
 
         bond0.remove_vpp_config()
         bond1.remove_vpp_config()

@@ -43,7 +43,7 @@ typedef enum
 extern lacp_machine_t lacp_tx_machine;
 
 int lacp_tx_action_transmit (void *p1, void *p2);
-void lacp_tx_debug_func (slave_if_t * sif, int event, int state,
+void lacp_tx_debug_func (member_if_t * mif, int event, int state,
 			 lacp_fsm_state_t * transition);
 
 #define LACP_ACTION_TRANSMIT LACP_ACTION_ROUTINE(lacp_tx_action_transmit)

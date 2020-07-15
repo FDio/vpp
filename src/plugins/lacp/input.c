@@ -19,9 +19,9 @@
 #include <vpp/stats/stat_segment.h>
 
 static int
-lacp_packet_scan (vlib_main_t * vm, slave_if_t * sif)
+lacp_packet_scan (vlib_main_t * vm, member_if_t * mif)
 {
-  lacp_pdu_t *lacpdu = (lacp_pdu_t *) sif->last_rx_pkt;
+  lacp_pdu_t *lacpdu = (lacp_pdu_t *) mif->last_rx_pkt;
 
   if (lacpdu->subtype != LACP_SUBTYPE)
     return LACP_ERROR_UNSUPPORTED;
@@ -36,33 +36,33 @@ lacp_packet_scan (vlib_main_t * vm, slave_if_t * sif)
       (lacpdu->terminator.tlv_length != 0))
     return (LACP_ERROR_BAD_TLV);
 
-  lacp_machine_dispatch (&lacp_rx_machine, vm, sif,
-			 LACP_RX_EVENT_PDU_RECEIVED, &sif->rx_state);
+  lacp_machine_dispatch (&lacp_rx_machine, vm, mif,
+			 LACP_RX_EVENT_PDU_RECEIVED, &mif->rx_state);
 
   return LACP_ERROR_NONE;
 }
 
 static void
-marker_fill_pdu (marker_pdu_t * marker, slave_if_t * sif)
+marker_fill_pdu (marker_pdu_t * marker, member_if_t * mif)
 {
-  marker_pdu_t *pkt = (marker_pdu_t *) sif->last_marker_pkt;
+  marker_pdu_t *pkt = (marker_pdu_t *) mif->last_marker_pkt;
 
   marker->marker_info = pkt->marker_info;
   marker->marker_info.tlv_type = MARKER_RESPONSE_INFORMATION;
 }
 
 void
-marker_fill_request_pdu (marker_pdu_t * marker, slave_if_t * sif)
+marker_fill_request_pdu (marker_pdu_t * marker, member_if_t * mif)
 {
   marker->marker_info.tlv_type = MARKER_INFORMATION;
-  marker->marker_info.requester_port = sif->actor.port_number;
-  clib_memcpy (marker->marker_info.requester_system, sif->actor.system, 6);
-  marker->marker_info.requester_transaction_id = sif->marker_tx_id;
-  sif->marker_tx_id++;
+  marker->marker_info.requester_port = mif->actor.port_number;
+  clib_memcpy (marker->marker_info.requester_system, mif->actor.system, 6);
+  marker->marker_info.requester_transaction_id = mif->marker_tx_id;
+  mif->marker_tx_id++;
 }
 
 static void
-send_ethernet_marker_response_pdu (vlib_main_t * vm, slave_if_t * sif)
+send_ethernet_marker_response_pdu (vlib_main_t * vm, member_if_t * mif)
 {
   lacp_main_t *lm = &lacp_main;
   u32 *to_next;
@@ -78,18 +78,18 @@ send_ethernet_marker_response_pdu (vlib_main_t * vm, slave_if_t * sif)
    * into the buffer by the packet template mechanism
    */
   h0 = vlib_packet_template_get_packet
-    (vm, &lm->marker_packet_templates[sif->packet_template_index], &bi0);
+    (vm, &lm->marker_packet_templates[mif->packet_template_index], &bi0);
 
   if (!h0)
     return;
 
   /* Add the interface's ethernet source address */
-  hw = vnet_get_sup_hw_interface (vnm, sif->sw_if_index);
+  hw = vnet_get_sup_hw_interface (vnm, mif->sw_if_index);
 
   clib_memcpy (h0->ethernet.src_address, hw->hw_address,
 	       vec_len (hw->hw_address));
 
-  marker_fill_pdu (&h0->marker, sif);
+  marker_fill_pdu (&h0->marker, mif);
 
   /* Set the outbound packet length */
   b0 = vlib_get_buffer (vm, bi0);
@@ -108,14 +108,14 @@ send_ethernet_marker_response_pdu (vlib_main_t * vm, slave_if_t * sif)
   f->n_vectors = 1;
 
   vlib_put_frame_to_node (vm, hw->output_node_index, f);
-  sif->last_marker_pdu_sent_time = vlib_time_now (vm);
-  sif->marker_pdu_sent++;
+  mif->last_marker_pdu_sent_time = vlib_time_now (vm);
+  mif->marker_pdu_sent++;
 }
 
 static int
-handle_marker_protocol (vlib_main_t * vm, slave_if_t * sif)
+handle_marker_protocol (vlib_main_t * vm, member_if_t * mif)
 {
-  marker_pdu_t *marker = (marker_pdu_t *) sif->last_marker_pkt;
+  marker_pdu_t *marker = (marker_pdu_t *) mif->last_marker_pkt;
 
   /*
    * According to the spec, no checking on the version number and tlv types.
@@ -125,7 +125,7 @@ handle_marker_protocol (vlib_main_t * vm, slave_if_t * sif)
       (marker->terminator.tlv_length != 0))
     return (LACP_ERROR_BAD_TLV);
 
-  send_ethernet_marker_response_pdu (vm, sif);
+  send_ethernet_marker_response_pdu (vm, mif);
 
   return LACP_ERROR_NONE;
 }
@@ -137,16 +137,16 @@ lacp_error_t
 lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
 {
   bond_main_t *bm = &bond_main;
-  slave_if_t *sif;
+  member_if_t *mif;
   uword nbytes;
   lacp_error_t e;
   marker_pdu_t *marker;
   uword last_packet_signature;
   bond_if_t *bif;
 
-  sif =
-    bond_get_slave_by_sw_if_index (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
-  if ((sif == 0) || (sif->mode != BOND_MODE_LACP))
+  mif =
+    bond_get_member_by_sw_if_index (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+  if ((mif == 0) || (mif->mode != BOND_MODE_LACP))
     {
       return LACP_ERROR_DISABLED;
     }
@@ -155,20 +155,20 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
   marker = (marker_pdu_t *) (b0->data + b0->current_data);
   if (marker->subtype == MARKER_SUBTYPE)
     {
-      sif->last_marker_pdu_recd_time = vlib_time_now (vm);
-      if (sif->last_marker_pkt)
-	_vec_len (sif->last_marker_pkt) = 0;
-      vec_validate (sif->last_marker_pkt,
+      mif->last_marker_pdu_recd_time = vlib_time_now (vm);
+      if (mif->last_marker_pkt)
+	_vec_len (mif->last_marker_pkt) = 0;
+      vec_validate (mif->last_marker_pkt,
 		    vlib_buffer_length_in_chain (vm, b0) - 1);
-      nbytes = vlib_buffer_contents (vm, bi0, sif->last_marker_pkt);
-      ASSERT (nbytes <= vec_len (sif->last_marker_pkt));
+      nbytes = vlib_buffer_contents (vm, bi0, mif->last_marker_pkt);
+      ASSERT (nbytes <= vec_len (mif->last_marker_pkt));
       if (nbytes < sizeof (lacp_pdu_t))
 	{
-	  sif->marker_bad_pdu_received++;
+	  mif->marker_bad_pdu_received++;
 	  return LACP_ERROR_TOO_SMALL;
 	}
-      e = handle_marker_protocol (vm, sif);
-      sif->marker_pdu_received++;
+      e = handle_marker_protocol (vm, mif);
+      mif->marker_pdu_received++;
       return e;
     }
 
@@ -177,57 +177,57 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
    * the per-neighbor rx buffer. Reset its apparent length to zero
    * and reuse it.
    */
-  if (sif->last_rx_pkt)
-    _vec_len (sif->last_rx_pkt) = 0;
+  if (mif->last_rx_pkt)
+    _vec_len (mif->last_rx_pkt) = 0;
 
   /*
    * Make sure the per-neighbor rx buffer is big enough to hold
    * the data we're about to copy
    */
-  vec_validate (sif->last_rx_pkt, vlib_buffer_length_in_chain (vm, b0) - 1);
+  vec_validate (mif->last_rx_pkt, vlib_buffer_length_in_chain (vm, b0) - 1);
 
   /*
    * Coalesce / copy the buffer chain into the per-neighbor
    * rx buffer
    */
-  nbytes = vlib_buffer_contents (vm, bi0, sif->last_rx_pkt);
-  ASSERT (nbytes <= vec_len (sif->last_rx_pkt));
+  nbytes = vlib_buffer_contents (vm, bi0, mif->last_rx_pkt);
+  ASSERT (nbytes <= vec_len (mif->last_rx_pkt));
 
-  sif->last_lacpdu_recd_time = vlib_time_now (vm);
+  mif->last_lacpdu_recd_time = vlib_time_now (vm);
   if (nbytes < sizeof (lacp_pdu_t))
     {
-      sif->bad_pdu_received++;
+      mif->bad_pdu_received++;
       return LACP_ERROR_TOO_SMALL;
     }
 
   last_packet_signature =
-    hash_memory (sif->last_rx_pkt, vec_len (sif->last_rx_pkt), 0xd00b);
+    hash_memory (mif->last_rx_pkt, vec_len (mif->last_rx_pkt), 0xd00b);
 
-  if (sif->last_packet_signature_valid &&
-      (sif->last_packet_signature == last_packet_signature) &&
-      ((sif->actor.state & LACP_STEADY_STATE) == LACP_STEADY_STATE))
+  if (mif->last_packet_signature_valid &&
+      (mif->last_packet_signature == last_packet_signature) &&
+      ((mif->actor.state & LACP_STEADY_STATE) == LACP_STEADY_STATE))
     {
-      lacp_start_current_while_timer (vm, sif, sif->ttl_in_seconds);
+      lacp_start_current_while_timer (vm, mif, mif->ttl_in_seconds);
       e = LACP_ERROR_CACHE_HIT;
     }
   else
     {
       /* Actually scan the packet */
-      e = lacp_packet_scan (vm, sif);
-      bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
+      e = lacp_packet_scan (vm, mif);
+      bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
       stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
-				      [sif->sw_if_index].actor_state,
-				      sif->actor.state);
+				      [mif->sw_if_index].actor_state,
+				      mif->actor.state);
       stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
-				      [sif->sw_if_index].partner_state,
-				      sif->partner.state);
-      sif->last_packet_signature_valid = 1;
-      sif->last_packet_signature = last_packet_signature;
+				      [mif->sw_if_index].partner_state,
+				      mif->partner.state);
+      mif->last_packet_signature_valid = 1;
+      mif->last_packet_signature = last_packet_signature;
     }
-  sif->pdu_received++;
+  mif->pdu_received++;
 
-  if (sif->last_rx_pkt)
-    _vec_len (sif->last_rx_pkt) = 0;
+  if (mif->last_rx_pkt)
+    _vec_len (mif->last_rx_pkt) = 0;
 
   return e;
 }
