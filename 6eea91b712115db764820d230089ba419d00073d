@@ -52,6 +52,24 @@
       "revId": "6eea91b712115db764820d230089ba419d00073d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4480e1d5_afd13abb",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-15T12:52:59Z",
+      "side": 1,
+      "message": "Then you only allocate MSI for half the RXq because of the line \u003c vif-\u003enum_rxqs?",
+      "parentUuid": "fb0b8e68_49fee382",
+      "revId": "6eea91b712115db764820d230089ba419d00073d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
