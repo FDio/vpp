@@ -27,18 +27,18 @@ class VppBondInterface(VppInterface):
     def remove_vpp_config(self):
         self.test.vapi.bond_delete(self.sw_if_index)
 
-    def enslave_vpp_bond_interface(self,
-                                   sw_if_index,
-                                   is_passive=0,
-                                   is_long_timeout=0):
-        self.test.vapi.bond_enslave(sw_if_index,
-                                    self.sw_if_index,
-                                    is_passive,
-                                    is_long_timeout)
+    def add_member_vpp_bond_interface(self,
+                                      sw_if_index,
+                                      is_passive=0,
+                                      is_long_timeout=0):
+        self.test.vapi.bond_add_member(sw_if_index,
+                                       self.sw_if_index,
+                                       is_passive,
+                                       is_long_timeout)
 
     def detach_vpp_bond_interface(self,
                                   sw_if_index):
-        self.test.vapi.bond_detach_slave(sw_if_index)
+        self.test.vapi.bond_detach_member(sw_if_index)
 
     def is_interface_config_in_dump(self, dump):
         for i in dump:
