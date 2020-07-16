@@ -1,0 +1,234 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0d70ebef_4ea78b91",
+        "filename": "src/plugins/adl/CMakeLists.txt",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-07-16T16:49:53Z",
+      "side": 1,
+      "message": "2020 Cisco and/or its affiliates.",
+      "range": {
+        "startLine": 2,
+        "startChar": 16,
+        "endLine": 2,
+        "endChar": 50
+      },
+      "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d3d7821c_73a8ee0a",
+        "filename": "src/plugins/adl/adl.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-07-16T16:49:53Z",
+      "side": 1,
+      "message": "2020\n\nA long time ago, I had been instructed to use the existing nomenclature (\u003cstart year\u003e[-\u003ccurrent year\u003e][,\u003ccurrent year\u003e]).  I have had feedback on CSIT commits that only \u003ccurrent year\u003e is current practice which is how CSIT file copyright year is accepted.  IANAL, so either is fine with me.\n\nFWIW, CSIT has a copyright year checker [0] that will accept either nomenclature.  Let me know if you think its worth adding to the VPP checkstyle target.\n\n[0] https://git.fd.io/csit/tree/resources/libraries/bash/entry/check/copyright_year.sh",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 26
+      },
+      "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "966287a7_77821c71",
+        "filename": "src/plugins/adl/adl.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-07-16T16:49:53Z",
+      "side": 1,
+      "message": "See previous comment about copyright year format.",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 26
+      },
+      "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "039c8ac2_287ea2a8",
+        "filename": "src/plugins/adl/adl.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-07-16T16:49:53Z",
+      "side": 1,
+      "message": "2020",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "031a37ad_16dba7b9",
+        "filename": "src/plugins/adl/ip6_allowlist.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-07-16T16:49:53Z",
+      "side": 1,
+      "message": "2020",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8cb045d5_106a4543",
+        "filename": "src/plugins/adl/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-07-16T16:49:53Z",
+      "side": 1,
+      "message": "2020",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8d18a8fa_b3e8be16",
+        "filename": "src/plugins/map/map.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-07-16T16:49:53Z",
+      "side": 1,
+      "message": "2020",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5d804550_3a1e4fff",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-07-16T16:49:53Z",
+      "side": 1,
+      "message": "2020",
+      "range": {
+        "startLine": 5,
+        "startChar": 17,
+        "endLine": 5,
+        "endChar": 26
+      },
+      "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4a7297ac_c10c382d",
+        "filename": "src/vnet/CMakeLists.txt",
+        "patchSetId": 6
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-07-16T16:49:53Z",
+      "side": 1,
+      "message": "2020",
+      "range": {
+        "startLine": 1,
+        "startChar": 16,
+        "endLine": 1,
+        "endChar": 20
+      },
+      "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "94cda059_072cbcd2",
+        "filename": "src/vnet/cop/cop.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-07-16T16:49:53Z",
+      "side": 1,
+      "message": "2020",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 26
+      },
+      "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
