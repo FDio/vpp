@@ -339,7 +339,7 @@ gre46_fixup (vlib_main_t * vm,
    * at the midchain node */
   ip0->ip6.payload_length =
     clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
-			  sizeof (*ip0));
+			  sizeof (ip0->ip6));
   tunnel_encap_fixup_4o6 (flags, (ip4_header_t *) (ip0 + 1), &ip0->ip6);
 }
 
@@ -357,7 +357,7 @@ gre66_fixup (vlib_main_t * vm,
    * at the midchain node */
   ip0->ip6.payload_length =
     clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
-			  sizeof (*ip0));
+			  sizeof (ip0->ip6));
   tunnel_encap_fixup_6o6 (flags, (ip6_header_t *) (ip0 + 1), &ip0->ip6);
 }
 
@@ -365,15 +365,15 @@ static void
 grex6_fixup (vlib_main_t * vm,
 	     const ip_adjacency_t * adj, vlib_buffer_t * b0, const void *data)
 {
-  ip6_header_t *ip0;
+  ip6_and_gre_header_t *ip0;
 
   ip0 = vlib_buffer_get_current (b0);
 
   /* Fixup the payload length field in the GRE tunnel encap that was applied
    * at the midchain node */
-  ip0->payload_length =
+  ip0->ip6.payload_length =
     clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
-			  sizeof (*ip0));
+			  sizeof (ip0->ip6));
 }
 
 /**
