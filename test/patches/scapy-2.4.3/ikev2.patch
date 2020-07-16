@@ -1,0 +1,24 @@
+diff --git a/scapy/contrib/ikev2.py b/scapy/contrib/ikev2.py
+index 60b20480..a071ffc7 100644
+--- a/scapy/contrib/ikev2.py
++++ b/scapy/contrib/ikev2.py
+@@ -608,13 +608,16 @@ class IKEv2_payload_TSr(IKEv2_class):
+ 
+ 
+ class IKEv2_payload_Delete(IKEv2_class):
+-    name = "IKEv2 Vendor ID"
++    name = "IKEv2 delete payload"
+     overload_fields = {IKEv2: {"next_payload": 42}}
+     fields_desc = [
+         ByteEnumField("next_payload", None, IKEv2_payload_type),
+         ByteField("res", 0),
+-        FieldLenField("length", None, "vendorID", "H", adjust=lambda pkt, x:x + 4),  # noqa: E501
+-        StrLenField("vendorID", "", length_from=lambda x:x.length - 4),
++        FieldLenField("length", None, "SPIs", "H", adjust=lambda pkt, x:x + 8),  # noqa: E501
++        ByteEnumField("proto", 1, {1: "IKEv2", 2: "AH", 3: "ESP"}),
++        ByteField("SPIsize", 0),
++        ShortField("SPInum", 0),
++        StrLenField("SPIs", "", length_from=lambda x: x.length - 8),
+     ]
+ 
+ 
