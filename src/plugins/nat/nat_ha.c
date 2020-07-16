@@ -691,6 +691,16 @@ nat_ha_sadd (ip4_address_t * in_addr, u16 in_port, ip4_address_t * out_addr,
 	     ip4_address_t * ehn_addr, u16 ehn_port, u8 proto, u32 fib_index,
 	     u16 flags, u32 thread_index, u8 is_resync)
 {
+#ifdef USE_BPF_TRACE
+  DTRACE_PROBE8 (vpp, vnet_nat_session_update_probe, 0 /* create */ ,
+		 thread_index,
+		 (u32) fib_index,
+		 (u32) proto,
+		 htonl (in_addr->as_u32),
+		 (u32) (htons (in_port)),
+		 htonl (out_addr->as_u32), (u32) (htons (out_port)));
+#endif
+
   nat_ha_event_t event;
 
   skip_if_disabled ();

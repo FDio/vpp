@@ -41,6 +41,7 @@
 #define included_vlib_counter_h
 
 #include <vlib/counter_types.h>
+#include <vlib/bpf_tracer.h>
 
 /** \file
 
@@ -82,6 +83,10 @@ vlib_increment_simple_counter (vlib_simple_counter_main_t * cm,
 
   my_counters = cm->counters[thread_index];
   my_counters[index] += increment;
+#ifdef USE_BPF_TRACE
+  DTRACE_PROBE3 (vpp, vlib_increment_simple_counters_probe, cm->name, index,
+		 my_counters[index]);
+#endif
 }
 
 /** Set a simple counter
@@ -228,6 +233,13 @@ vlib_increment_combined_counter (vlib_combined_counter_main_t * cm,
 
   my_counters[index].packets += n_packets;
   my_counters[index].bytes += n_bytes;
+
+#ifdef USE_BPF_TRACE
+  DTRACE_PROBE2 (vpp, vlib_increment_combined_counters_packets_probe, index,
+		 my_counters[index].packets);
+  DTRACE_PROBE2 (vpp, vlib_increment_combined_counters_bytes_probe, index,
+		 my_counters[index].bytes);
+#endif
 }
 
 /** Pre-fetch a per-thread combined counter for the given object index */

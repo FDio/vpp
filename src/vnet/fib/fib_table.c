@@ -632,7 +632,23 @@ fib_table_entry_path_add2 (u32 fib_index,
             fib_table_source_count_inc(fib_table, source);
         }
     }
-
+#ifdef USE_BPF_TRACE
+    for (ii = 0; ii < vec_len(rpaths); ii++)
+        {
+        DTRACE_PROBE6(vpp, vnet_ip_route_probe,
+            0 /*is_del*/,
+            FIB_PROTOCOL_IP6 == prefix->fp_proto /* is_ip6 */,
+            fib_index,
+            (FIB_PROTOCOL_IP4 == prefix->fp_proto) ?
+            prefix->fp_addr.ip4.as_u8 :
+            prefix->fp_addr.ip6.as_u8,
+            (u32)prefix->fp_len,
+            (FIB_PROTOCOL_IP4 == prefix->fp_proto) ?
+            rpaths[ii].frp_addr.ip4.as_u8 :
+            rpaths[ii].frp_addr.ip6.as_u8
+            );
+        }
+#endif
     return (fib_entry_index);
 }
 
@@ -651,7 +667,6 @@ fib_table_entry_path_remove2 (u32 fib_index,
     fib_node_index_t fib_entry_index;
     fib_route_path_t *rpath;
     fib_table_t *fib_table;
-
     fib_table = fib_table_get(fib_index, prefix->fp_proto);
     fib_entry_index = fib_table_lookup_exact_match_i(fib_table, prefix);
 
@@ -716,6 +731,24 @@ fib_table_entry_path_remove2 (u32 fib_index,
 
 	fib_entry_unlock(fib_entry_index);
     }
+#ifdef USE_BPF_TRACE
+    u32 ii;
+    for (ii = 0; ii < vec_len(rpaths); ii++)
+        {
+        DTRACE_PROBE6(vpp, vnet_ip_route_probe,
+            1 /*is_del*/,
+            FIB_PROTOCOL_IP6 == prefix->fp_proto /* is_ip6 */,
+            fib_index,
+            (FIB_PROTOCOL_IP4 == prefix->fp_proto) ?
+            prefix->fp_addr.ip4.as_u8 :
+            prefix->fp_addr.ip6.as_u8,
+            (u32)prefix->fp_len,
+            (FIB_PROTOCOL_IP4 == prefix->fp_proto) ?
+            rpaths[ii].frp_addr.ip4.as_u8 :
+            rpaths[ii].frp_addr.ip6.as_u8
+            );
+        }
+#endif
 }
 
 void

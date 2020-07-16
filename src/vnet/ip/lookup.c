@@ -284,6 +284,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
       if (is_del && 0 == vec_len (rpaths))
 	{
 	  fib_table_entry_delete (fib_index, &prefixs[i], FIB_SOURCE_CLI);
+	  // TODO ... DTRACE_PROBE for DPO ???
 	}
       else if (!is_del && 1 == vec_len (dpos))
 	{
@@ -293,6 +294,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 					   FIB_ENTRY_FLAG_EXCLUSIVE,
 					   &dpos[0]);
 	  dpo_reset (&dpos[0]);
+	  // TODO ... DTRACE_PROBE for DPO ???
 	}
       else if (vec_len (dpos) > 0)
 	{

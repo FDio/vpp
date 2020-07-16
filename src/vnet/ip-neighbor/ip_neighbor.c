@@ -16,7 +16,10 @@
  */
 
 #include <vppinfra/llist.h>
-
+#include <vlib/bpf_tracer.h>
+#ifdef USE_BPF_TRACE
+#include <arpa/inet.h>
+#endif
 #include <vnet/ip-neighbor/ip_neighbor.h>
 #include <vnet/ip-neighbor/ip4_neighbor.h>
 #include <vnet/ip-neighbor/ip6_neighbor.h>
@@ -545,6 +548,13 @@ check_customers:
 				 fib_proto_to_link (fproto),
 				 &ipn->ipn_key->ipnk_ip,
 				 ipn->ipn_key->ipnk_sw_if_index);
+#ifdef USE_BPF_TRACE
+  DTRACE_PROBE6 (vpp, vnet_ip_neighbor_probe,
+		 0 /* is_del */ , type != IP46_TYPE_IP4 /* is_ipv6 */ ,
+		 sw_if_index,
+		 (type == IP46_TYPE_IP4) ? ip->ip4.as_u8 : ip->ip6.as_u8,
+		 mac->bytes, (u32) flags);
+#endif
   return 0;
 }
 
@@ -572,7 +582,13 @@ ip_neighbor_del (const ip46_address_t * ip, ip46_type_t type, u32 sw_if_index)
     return (VNET_API_ERROR_NO_SUCH_ENTRY);
 
   ip_neighbor_free (ipn);
-
+#ifdef USE_BPF_TRACE
+  DTRACE_PROBE6 (vpp, vnet_ip_neighbor_probe,
+		 1 /* is_del */ , type != IP46_TYPE_IP4 /* is_ipv6 */ ,
+		 sw_if_index,
+		 (type == IP46_TYPE_IP4) ? ip->ip4.as_u8 : ip->ip6.as_u8,
+		 ipn->ipn_mac.bytes, ipn->ipn_flags);
+#endif
   return (0);
 }
 
