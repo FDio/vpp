@@ -28,7 +28,6 @@
 
 typedef void (timer_expiration_handler) (tcp_connection_t * tc);
 
-extern timer_expiration_handler tcp_timer_delack_handler;
 extern timer_expiration_handler tcp_timer_retransmit_handler;
 extern timer_expiration_handler tcp_timer_persist_handler;
 extern timer_expiration_handler tcp_timer_retransmit_syn_handler;

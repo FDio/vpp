@@ -62,7 +62,6 @@ typedef enum _tcp_state
 /** TCP timers */
 #define foreach_tcp_timer               \
   _(RETRANSMIT, "RETRANSMIT")           \
-  _(DELACK, "DELAYED ACK")              \
   _(PERSIST, "PERSIST")                 \
   _(WAITCLOSE, "WAIT CLOSE")            \
   _(RETRANSMIT_SYN, "RETRANSMIT SYN")   \
@@ -281,6 +280,7 @@ typedef struct _tcp_connection
   u8 cfg_flags;			/**< Connection configuration flags */
   u16 flags;			/**< Connection flags (see tcp_conn_flags_e) */
   u32 timers[TCP_N_TIMERS];	/**< Timer handles into timer wheel */
+  u32 pending_timers;		/**< List of pending timers */
 
   u64 segs_in;		/** RFC4022/4898 tcpHCInSegs/tcpEStatsPerfSegsIn */
   u64 bytes_in;		/** RFC4898 tcpEStatsPerfHCDataOctetsIn */
