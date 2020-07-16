@@ -45,13 +45,14 @@ typedef CLIB_PACKED (struct {
 /* *INDENT-ON* */
 
 /* *INDENT-OFF* */
-typedef CLIB_PACKED (struct
-		     {
-		     u8 nextpayload;
-		     u8 flags;
-		     u16 length;
-		     u16 dh_group;
-		     u8 reserved[2]; u8 payload[0];}) ike_ke_payload_header_t;
+typedef CLIB_PACKED (struct {
+  u8 nextpayload;
+  u8 flags;
+  u16 length;
+  u16 dh_group;
+  u8 reserved[2];
+  u8 payload[0];
+}) ike_ke_payload_header_t;
 /* *INDENT-ON* */
 
 /* *INDENT-OFF* */
