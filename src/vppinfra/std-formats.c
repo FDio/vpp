@@ -281,7 +281,7 @@ format_c_identifier (u8 * s, va_list * va)
     l = vec_len (id);
 
   if (id)
-    for (i = 0; id[i] != 0 && i < l; i++)
+    for (i = 0; i < l && id[i] != 0; i++)
       {
 	u8 c = id[i];
 
