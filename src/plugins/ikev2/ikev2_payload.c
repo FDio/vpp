@@ -327,22 +327,27 @@ ikev2_payload_chain_add_padding (ikev2_payload_chain_t * c, int bs)
 }
 
 ikev2_sa_proposal_t *
-ikev2_parse_sa_payload (ike_payload_header_t * ikep)
+ikev2_parse_sa_payload (ike_payload_header_t * ikep, u32 rlen)
 {
   ikev2_sa_proposal_t *v = 0;
   ikev2_sa_proposal_t *proposal;
   ikev2_sa_transform_t *transform;
 
   u32 plen = clib_net_to_host_u16 (ikep->length);
-
   ike_sa_proposal_data_t *sap;
   int proposal_ptr = 0;
 
+  if (sizeof (*ikep) > rlen)
+    return 0;
+
+  rlen -= sizeof (*ikep);
   do
     {
+      if (proposal_ptr + sizeof (*sap) > rlen)
+        goto data_corrupted;
+
       sap = (ike_sa_proposal_data_t *) & ikep->payload[proposal_ptr];
-      int i;
-      int transform_ptr;
+      int i, transform_ptr;
 
       /* IKE proposal should not have SPI */
       if (sap->protocol_id == IKEV2_PROTOCOL_IKE && sap->spi_size != 0)
@@ -353,6 +358,8 @@ ikev2_parse_sa_payload (ike_payload_header_t * ikep)
 	goto data_corrupted;
 
       transform_ptr = proposal_ptr + sizeof (*sap) + sap->spi_size;
+      if (transform_ptr > rlen)
+        goto data_corrupted;
 
       vec_add2 (v, proposal, 1);
       proposal->proposal_num = sap->proposal_num;
@@ -366,7 +373,9 @@ ikev2_parse_sa_payload (ike_payload_header_t * ikep)
       for (i = 0; i < sap->num_transforms; i++)
 	{
 	  ike_sa_transform_data_t *tr =
-	    (ike_sa_transform_data_t *) & ikep->payload[transform_ptr];
+            (ike_sa_transform_data_t *) & ikep->payload[transform_ptr];
+          if (transform_ptr + sizeof (*tr) > rlen)
+            goto data_corrupted;
 	  u16 tlen = clib_net_to_host_u16 (tr->transform_len);
 
 	  if (tlen < sizeof (*tr))
@@ -376,9 +385,11 @@ ikev2_parse_sa_payload (ike_payload_header_t * ikep)
 
 	  transform->type = tr->transform_type;
 	  transform->transform_id = clib_net_to_host_u16 (tr->transform_id);
+          if (transform_ptr + tlen > rlen)
+            goto data_corrupted;
 	  if (tlen > sizeof (*tr))
 	    vec_add (transform->attrs, tr->attributes, tlen - sizeof (*tr));
-	  transform_ptr += tlen;
+          transform_ptr += tlen;
 	}
 
       proposal_ptr += clib_net_to_host_u16 (sap->proposal_len);
@@ -398,11 +409,17 @@ data_corrupted:
 }
 
 ikev2_ts_t *
-ikev2_parse_ts_payload (ike_payload_header_t * ikep)
+ikev2_parse_ts_payload (ike_payload_header_t * ikep, u32 rlen)
 {
   ike_ts_payload_header_t *tsp = (ike_ts_payload_header_t *) ikep;
   ikev2_ts_t *r = 0, *ts;
   u8 i;
+
+  if (sizeof (*tsp) > rlen)
+    return 0;
+
+  if (sizeof (*tsp) + tsp->num_ts * sizeof (ikev2_ts_payload_entry_t) > rlen)
+    return 0;
 
   for (i = 0; i < tsp->num_ts; i++)
     {
@@ -425,12 +442,15 @@ ikev2_parse_ts_payload (ike_payload_header_t * ikep)
 }
 
 ikev2_notify_t *
-ikev2_parse_notify_payload (ike_payload_header_t * ikep)
+ikev2_parse_notify_payload (ike_payload_header_t * ikep, u32 rlen)
 {
   ike_notify_payload_header_t *n = (ike_notify_payload_header_t *) ikep;
-  u32 plen = clib_net_to_host_u16 (ikep->length);
+  u32 plen = clib_net_to_host_u16 (n->length);
   ikev2_notify_t *r = 0;
   u32 spi;
+
+  if (sizeof (*n) > rlen)
+    return 0;
 
   r = vec_new (ikev2_notify_t, 1);
   r->msg_type = clib_net_to_host_u16 (n->msg_type);
@@ -438,6 +458,9 @@ ikev2_parse_notify_payload (ike_payload_header_t * ikep)
 
   if (n->spi_size == 4)
     {
+      if (sizeof (spi) + sizeof (*n) > rlen)
+        goto cleanup;
+
       clib_memcpy (&spi, n->payload, n->spi_size);
       r->spi = clib_net_to_host_u32 (spi);
     }
@@ -448,15 +471,22 @@ ikev2_parse_notify_payload (ike_payload_header_t * ikep)
   else
     {
       clib_warning ("invalid SPI Size %d", n->spi_size);
+      goto cleanup;
     }
 
   if (plen > (sizeof (*n) + n->spi_size))
     {
-      vec_add (r->data, n->payload + n->spi_size,
-	       plen - sizeof (*n) - n->spi_size);
-    }
+      if (plen <= sizeof (*n) + n->spi_size)
+        goto cleanup;
 
+      u32 data_len = plen - sizeof (*n) - n->spi_size;
+      vec_add (r->data, n->payload + n->spi_size, data_len);
+    }
   return r;
+
+cleanup:
+  vec_free (r);
+  return 0;
 }
 
 void
@@ -467,13 +497,16 @@ ikev2_parse_vendor_payload (ike_payload_header_t * ikep)
 }
 
 ikev2_delete_t *
-ikev2_parse_delete_payload (ike_payload_header_t * ikep)
+ikev2_parse_delete_payload (ike_payload_header_t * ikep, u32 rlen)
 {
-  ike_delete_payload_header_t *d = (ike_delete_payload_header_t *) ikep;
+  ike_delete_payload_header_t * d = (ike_delete_payload_header_t *) ikep;
   ikev2_delete_t *r = 0, *del;
-  u16 num_of_spi = clib_net_to_host_u16 (d->num_of_spi);
-  u16 i = 0;
+  u16 i, num_of_spi;
 
+  if (rlen < sizeof (*d))
+    return 0;
+
+  num_of_spi = clib_net_to_host_u16 (d->num_of_spi);
   if (d->protocol_id == IKEV2_PROTOCOL_IKE)
     {
       r = vec_new (ikev2_delete_t, 1);
@@ -481,11 +514,14 @@ ikev2_parse_delete_payload (ike_payload_header_t * ikep)
     }
   else
     {
-      r = vec_new (ikev2_delete_t, num_of_spi);
-      vec_foreach (del, r)
+      if (sizeof (*d) + num_of_spi * sizeof (u32) > rlen)
+        return 0;
+
+      for (i = 0; i < num_of_spi; i++)
       {
-	del->protocol_id = d->protocol_id;
-	del->spi = clib_net_to_host_u32 (d->spi[i++]);
+        vec_add2 (r, del, 1);
+        del->protocol_id = d->protocol_id;
+	del->spi = clib_net_to_host_u32 (d->spi[i]);
       }
     }
 
