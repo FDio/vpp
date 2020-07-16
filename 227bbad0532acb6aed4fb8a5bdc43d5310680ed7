@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "62faeb07_f8cbe281",
+        "filename": "src/plugins/adl/CMakeLists.txt",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-07-16T19:45:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0d70ebef_4ea78b91",
+      "range": {
+        "startLine": 2,
+        "startChar": 16,
+        "endLine": 2,
+        "endChar": 50
+      },
+      "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d3d7821c_73a8ee0a",
         "filename": "src/plugins/adl/adl.api",
         "patchSetId": 6
@@ -45,6 +69,30 @@
       "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "02c79f64_4407eef5",
+        "filename": "src/plugins/adl/adl.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-07-16T19:45:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d3d7821c_73a8ee0a",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 26
+      },
+      "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "7f4b162e_e5cd4103",
+        "filename": "src/plugins/adl/adl.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-07-16T19:45:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "966287a7_77821c71",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 26
+      },
+      "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "039c8ac2_287ea2a8",
         "filename": "src/plugins/adl/adl.h",
         "patchSetId": 6
@@ -94,6 +166,30 @@
     },
     {
       "key": {
+        "uuid": "349262a2_00c64792",
+        "filename": "src/plugins/adl/adl.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-07-16T19:45:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "039c8ac2_287ea2a8",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "031a37ad_16dba7b9",
         "filename": "src/plugins/adl/ip6_allowlist.c",
         "patchSetId": 6
@@ -114,6 +210,30 @@
       "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3cc3789a_3be65eef",
+        "filename": "src/plugins/adl/ip6_allowlist.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-07-16T19:45:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "031a37ad_16dba7b9",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "227bbad0532acb6aed4fb8a5bdc43d5310680ed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
