@@ -69,15 +69,15 @@ typedef enum
 #undef _
 } virtio_if_flag_t;
 
-#define VIRTIO_NUM_RX_DESC 256
-#define VIRTIO_NUM_TX_DESC 256
-
 #define VIRTIO_FEATURE(X) (1ULL << X)
 
 #define TX_QUEUE(X) ((X*2) + 1)
 #define RX_QUEUE(X) (X*2)
 #define TX_QUEUE_ACCESS(X) (X/2)
 #define RX_QUEUE_ACCESS(X) (X/2)
+
+#define VIRTIO_NUM_RX_DESC 256
+#define VIRTIO_NUM_TX_DESC 256
 
 #define foreach_virtio_if_types \
   _ (TAP, 0)                    \
@@ -91,15 +91,6 @@ typedef enum
 #undef _
     VIRTIO_IF_N_TYPES = (1 << 3),
 } virtio_if_type_t;
-
-
-typedef struct
-{
-  u8 mac[6];
-  u16 status;
-  u16 max_virtqueue_pairs;
-  u16 mtu;
-} virtio_net_config_t;
 
 #define VIRTIO_RING_FLAG_MASK_INT 1
 
@@ -136,6 +127,8 @@ typedef union
   };
   u32 as_u32;
 } pci_addr_t;
+
+typedef struct _virtio_pci_func virtio_pci_func_t;
 
 typedef struct
 {
@@ -194,6 +187,7 @@ typedef struct
   u32 tap_flags;
   int ifindex;
   virtio_vring_t *cxq_vring;
+  const virtio_pci_func_t *virtio_pci_func;
 } virtio_if_t;
 
 typedef struct
@@ -240,7 +234,6 @@ virtio_kick (vlib_main_t * vm, virtio_vring_t * vring, virtio_if_t * vif)
       vring->last_kick_avail_idx = vring->avail->idx;
     }
 }
-
 
 #define virtio_log_debug(vif, f, ...)				\
 {								\
