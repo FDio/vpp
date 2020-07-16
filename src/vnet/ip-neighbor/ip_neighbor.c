@@ -141,6 +141,8 @@ ip_neighbor_list_remove (ip_neighbor_t * ipn)
       elt = pool_elt_at_index (ip_neighbor_elt_pool, ipn->ipn_elt);
 
       clib_llist_remove (ip_neighbor_elt_pool, ipne_anchor, elt);
+
+      ipn->ipn_elt = ~0;
     }
 }
 
@@ -492,6 +494,17 @@ ip_neighbor_add (const ip46_address_t * ip,
 	  return -2;
 	}
 
+      /* A dynamic entry can become static, but not vice-versa.
+       * i.e. since if it was programmed by the CP then it must
+       * be removed by the CP */
+      if ((flags & IP_NEIGHBOR_FLAG_STATIC) &&
+	  !(ipn->ipn_flags & IP_NEIGHBOR_FLAG_STATIC))
+	{
+	  ip_neighbor_list_remove (ipn);
+	  ipn->ipn_flags |= IP_NEIGHBOR_FLAG_STATIC;
+	  ipn->ipn_flags &= ~IP_NEIGHBOR_FLAG_DYNAMIC;
+	}
+
       /*
        * prevent a DoS attack from the data-plane that
        * spams us with no-op updates to the MAC address
@@ -503,17 +516,6 @@ ip_neighbor_add (const ip46_address_t * ip,
 	}
 
       mac_address_copy (&ipn->ipn_mac, mac);
-
-      /* A dynamic entry can become static, but not vice-versa.
-       * i.e. since if it was programmed by the CP then it must
-       * be removed by the CP */
-      if ((flags & IP_NEIGHBOR_FLAG_STATIC) &&
-	  !(ipn->ipn_flags & IP_NEIGHBOR_FLAG_STATIC))
-	{
-	  ip_neighbor_list_remove (ipn);
-	  ipn->ipn_flags |= IP_NEIGHBOR_FLAG_STATIC;
-	  ipn->ipn_flags &= ~IP_NEIGHBOR_FLAG_DYNAMIC;
-	}
     }
   else
     {
