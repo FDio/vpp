@@ -349,10 +349,11 @@ ikev2_init_gcm_nonce (u8 * nonce, u8 * salt, u8 * iv)
   clib_memcpy (nonce + IKEV2_GCM_SALT_SIZE, iv, IKEV2_GCM_IV_SIZE);
 }
 
-u8 *
+int
 ikev2_decrypt_aead_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
 			 ikev2_sa_transform_t * tr_encr, u8 * data,
-			 int data_len, u8 * aad, u32 aad_len, u8 * tag)
+			 int data_len, u8 * aad, u32 aad_len, u8 * tag,
+			 u32 * out_len)
 {
   EVP_CIPHER_CTX *ctx = ptd->evp_ctx;
   int len = 0;
@@ -369,34 +370,33 @@ ikev2_decrypt_aead_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
 
   data += IKEV2_GCM_IV_SIZE;
   data_len -= IKEV2_GCM_IV_SIZE;
-  v8 *r = vec_new (u8, data_len);
 
   EVP_DecryptInit_ex (ctx, tr_encr->cipher, 0, 0, 0);
   EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_IVLEN, 12, 0);
   EVP_DecryptInit_ex (ctx, 0, 0, key, nonce);
   EVP_DecryptUpdate (ctx, 0, &len, aad, aad_len);
-  EVP_DecryptUpdate (ctx, r, &len, data, data_len);
+  EVP_DecryptUpdate (ctx, data, &len, data, data_len);
   EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_TAG, IKEV2_GCM_ICV_SIZE, tag);
 
-  if (EVP_DecryptFinal_ex (ctx, r + len, &len) > 0)
+  if (EVP_DecryptFinal_ex (ctx, data + len, &len) > 0)
     {
-      /* remove padding */
-      _vec_len (r) -= r[vec_len (r) - 1] + 1;
-      return r;
+      *out_len = data_len - data[data_len - 1] - 1;
+      return 1;
     }
 
-  vec_free (r);
   return 0;
 }
 
-v8 *
+int
 ikev2_decrypt_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
-		    ikev2_sa_transform_t * tr_encr, u8 * data, int len)
+		    ikev2_sa_transform_t * tr_encr, u8 * data, int len,
+		    u32 * out_len)
 {
   EVP_CIPHER_CTX *ctx = ptd->evp_ctx;
-  int out_len = 0, block_size;
+  int tmp_len = 0, block_size;
   u8 *key = sa->is_initiator ? sa->sk_er : sa->sk_ei;
   block_size = tr_encr->block_size;
+  u8 *iv = data;
 
   /* check if data is multiplier of cipher block size */
   if (len % block_size)
@@ -404,15 +404,20 @@ ikev2_decrypt_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
       ikev2_elog_error ("wrong data length");
       return 0;
     }
+  data += block_size;
+  len -= block_size;
 
-  v8 *r = vec_new (u8, len - block_size);
-  EVP_DecryptInit_ex (ctx, tr_encr->cipher, NULL, key, data);
-  EVP_DecryptUpdate (ctx, r, &out_len, data + block_size, len - block_size);
-  EVP_DecryptFinal_ex (ctx, r + out_len, &out_len);
-  /* remove padding */
-  _vec_len (r) -= r[vec_len (r) - 1] + 1;
+  EVP_DecryptInit_ex (ctx, tr_encr->cipher, NULL, key, iv);
+  EVP_CIPHER_CTX_set_padding (ctx, 0);
+  EVP_DecryptUpdate (ctx, data, &tmp_len, data, len);
 
-  return r;
+  if (EVP_DecryptFinal_ex (ctx, data + tmp_len, &tmp_len) > 0)
+    {
+      *out_len = len - data[len - 1] - 1;
+      return 1;
+    }
+
+  return 0;
 }
 
 int
@@ -424,6 +429,8 @@ ikev2_encrypt_aead_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
   int out_len = 0, len = 0;
   u8 nonce[IKEV2_GCM_NONCE_SIZE];
   u8 *key = sa->is_initiator ? sa->sk_ei : sa->sk_er;
+  if (!key)
+    return 0;
 
   /* generate IV; its length must be 8 octets for aes-gcm (rfc5282) */
   RAND_bytes (dst, IKEV2_GCM_IV_SIZE);
@@ -452,6 +459,8 @@ ikev2_encrypt_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
   int out_len = 0, len = 0;
   int bs = tr_encr->block_size;
   u8 *key = sa->is_initiator ? sa->sk_ei : sa->sk_er;
+  if (!key)
+    return 0;
 
   /* generate IV */
   u8 *iv = dst;
