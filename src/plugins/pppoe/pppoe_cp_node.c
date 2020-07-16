@@ -237,6 +237,9 @@ VLIB_REGISTER_NODE (pppoe_cp_dispatch_node) = {
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
 
+  .n_errors = PPPOE_N_ERROR,
+  .error_strings = pppoe_error_strings,
+
   .n_next_nodes = PPPOE_CP_N_NEXT,
   .next_nodes = {
 #define _(s,n) [PPPOE_CP_NEXT_##s] = n,

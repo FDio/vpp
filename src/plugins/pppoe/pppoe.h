@@ -94,6 +94,7 @@ typedef enum
   PPPOE_N_ERROR,
 } pppoe_input_error_t;
 
+extern char *pppoe_error_strings[];
 
 #define MTU 1500
 #define MTU_BUFFERS ((MTU + vlib_buffer_get_default_data_size(vm) - 1) / vlib_buffer_get_default_data_size(vm))
