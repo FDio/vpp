@@ -42,7 +42,6 @@ format_nat66_in2out_trace (u8 * s, va_list * args)
 }
 
 #define foreach_nat66_in2out_error                       \
-_(IN2OUT_PACKETS, "good in2out packets processed")       \
 _(NO_TRANSLATION, "no translation")                      \
 _(UNKNOWN, "unknown")
 
@@ -113,7 +112,6 @@ VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
 {
   u32 n_left_from, *from, *to_next;
   nat66_in2out_next_t next_index;
-  u32 pkts_processed = 0;
   u32 thread_index = vm->thread_index;
   nat66_main_t *nm = &nat66_main;
 
@@ -221,7 +219,11 @@ VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
 	      t->next_index = next0;
 	    }
 
-	  pkts_processed += next0 != NAT66_IN2OUT_NEXT_DROP;
+	  if (next0 != NAT66_IN2OUT_NEXT_DROP)
+	    {
+	      vlib_increment_simple_counter (&nm->in2out_packets,
+					     thread_index, sw_if_index0, 1);
+	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -230,9 +232,6 @@ VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, nm->in2out_node_index,
-			       NAT66_IN2OUT_ERROR_IN2OUT_PACKETS,
-			       pkts_processed);
   return frame->n_vectors;
 }
 
