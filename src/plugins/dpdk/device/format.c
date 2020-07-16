@@ -710,12 +710,10 @@ format_dpdk_device (u8 * s, va_list * args)
           xstat = vec_elt_at_index(xd->xstats, i);
           if (verbose == 2 || (verbose && xstat->value))
             {
-              /* format_c_identifier doesn't like c strings inside vector */
-              u8 * name = format(0,"%s", xstat_names[i].name);
               xs = format(xs, "\n%U%-38U%16Lu",
                           format_white_space, indent + 4,
-                          format_c_identifier, name, xstat->value);
-              vec_free(name);
+                          format_c_identifier, xstat_names[i].name,
+                          xstat->value);
             }
         }
       /* *INDENT-ON* */
