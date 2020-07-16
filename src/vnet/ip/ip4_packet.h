@@ -200,61 +200,101 @@ ip4_next_header (ip4_header_t * i)
 always_inline u16
 ip4_header_checksum (ip4_header_t * i)
 {
-  u16 *iphdr = (u16 *) i;
-  u32 sum = 0;
   int option_len = (i->ip_version_and_header_length & 0xf) - 5;
+  uword sum = 0;
+#if uword_bits == 64
+  u32 *iphdr = (u32 *) i;
 
-  sum += clib_net_to_host_u16 (iphdr[0]);
-  sum += clib_net_to_host_u16 (iphdr[1]);
-  sum += clib_net_to_host_u16 (iphdr[2]);
-  sum += clib_net_to_host_u16 (iphdr[3]);
-  sum += clib_net_to_host_u16 (iphdr[4]);
-
-  sum += clib_net_to_host_u16 (iphdr[6]);
-  sum += clib_net_to_host_u16 (iphdr[7]);
-  sum += clib_net_to_host_u16 (iphdr[8]);
-  sum += clib_net_to_host_u16 (iphdr[9]);
+  sum += iphdr[0];
+  sum += iphdr[1];
+  sum += *(u16 *) (iphdr + 2);
+  /* skip checksum */
+  sum += iphdr[3];
+  sum += iphdr[4];
 
   if (PREDICT_FALSE (option_len > 0))
     switch (option_len)
       {
       case 10:
-	sum += clib_net_to_host_u16 (iphdr[28]);
-	sum += clib_net_to_host_u16 (iphdr[29]);
+	sum += iphdr[14];
       case 9:
-	sum += clib_net_to_host_u16 (iphdr[26]);
-	sum += clib_net_to_host_u16 (iphdr[27]);
+	sum += iphdr[13];
       case 8:
-	sum += clib_net_to_host_u16 (iphdr[24]);
-	sum += clib_net_to_host_u16 (iphdr[25]);
+	sum += iphdr[12];
       case 7:
-	sum += clib_net_to_host_u16 (iphdr[22]);
-	sum += clib_net_to_host_u16 (iphdr[23]);
+	sum += iphdr[11];
       case 6:
-	sum += clib_net_to_host_u16 (iphdr[20]);
-	sum += clib_net_to_host_u16 (iphdr[21]);
+	sum += iphdr[10];
       case 5:
-	sum += clib_net_to_host_u16 (iphdr[18]);
-	sum += clib_net_to_host_u16 (iphdr[19]);
+	sum += iphdr[9];
       case 4:
-	sum += clib_net_to_host_u16 (iphdr[16]);
-	sum += clib_net_to_host_u16 (iphdr[17]);
+	sum += iphdr[8];
       case 3:
-	sum += clib_net_to_host_u16 (iphdr[14]);
-	sum += clib_net_to_host_u16 (iphdr[15]);
+	sum += iphdr[7];
       case 2:
-	sum += clib_net_to_host_u16 (iphdr[12]);
-	sum += clib_net_to_host_u16 (iphdr[13]);
+	sum += iphdr[6];
       case 1:
-	sum += clib_net_to_host_u16 (iphdr[10]);
-	sum += clib_net_to_host_u16 (iphdr[11]);
+	sum += iphdr[5];
       default:
 	break;
       }
 
+  sum = ((u32) sum) + (sum >> 32);
+#else
+  u16 *iphdr = (u16 *) i;
+
+  sum += iphdr[0];
+  sum += iphdr[1];
+  sum += iphdr[2];
+  sum += iphdr[3];
+  sum += iphdr[4];
+  /* skip checksum */
+  sum += iphdr[6];
+  sum += iphdr[7];
+  sum += iphdr[8];
+  sum += iphdr[9];
+
+  if (PREDICT_FALSE (option_len > 0))
+    switch (option_len)
+      {
+      case 10:
+	sum += iphdr[28];
+	sum += iphdr[29];
+      case 9:
+	sum += iphdr[26];
+	sum += iphdr[27];
+      case 8:
+	sum += iphdr[24];
+	sum += iphdr[25];
+      case 7:
+	sum += iphdr[22];
+	sum += iphdr[23];
+      case 6:
+	sum += iphdr[20];
+	sum += iphdr[21];
+      case 5:
+	sum += iphdr[18];
+	sum += iphdr[19];
+      case 4:
+	sum += iphdr[16];
+	sum += iphdr[17];
+      case 3:
+	sum += iphdr[14];
+	sum += iphdr[15];
+      case 2:
+	sum += iphdr[12];
+	sum += iphdr[13];
+      case 1:
+	sum += iphdr[10];
+	sum += iphdr[11];
+      default:
+	break;
+      }
+#endif
+
   sum = ((u16) sum) + (sum >> 16);
   sum = ((u16) sum) + (sum >> 16);
-  return clib_host_to_net_u16 (~((u16) sum));
+  return ~((u16) sum);
 }
 
 always_inline void
