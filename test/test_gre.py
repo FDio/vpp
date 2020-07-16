@@ -244,6 +244,7 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.src, tunnel_src)
                 self.assertEqual(rx_ip.dst, tunnel_dst)
                 self.assertEqual(rx_ip.tos, tos)
+                self.assertEqual(rx_ip.len, len(rx_ip))
 
                 rx_gre = rx[GRE]
                 rx_ip = rx_gre[IP]
@@ -278,6 +279,9 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.tc, tc)
 
                 rx_gre = GRE(scapy.compat.raw(rx_ip[IPv6].payload))
+
+                self.assertEqual(rx_ip.plen, len(rx_gre))
+
                 rx_ip = rx_gre[IPv6]
 
                 self.assertEqual(rx_ip.src, tx_ip.src)
@@ -304,6 +308,9 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.dst, tunnel_dst)
 
                 rx_gre = GRE(scapy.compat.raw(rx_ip[IPv6].payload))
+
+                self.assertEqual(rx_ip.plen, len(rx_gre))
+
                 tx_ip = tx[IP]
                 rx_ip = rx_gre[IP]
 
@@ -329,6 +336,7 @@ class TestGRE(VppTestCase):
 
                 self.assertEqual(rx_ip.src, tunnel_src)
                 self.assertEqual(rx_ip.dst, tunnel_dst)
+                self.assertEqual(rx_ip.len, len(rx_ip))
 
                 rx_gre = GRE(scapy.compat.raw(rx_ip[IP].payload))
                 rx_ip = rx_gre[IPv6]
@@ -356,6 +364,7 @@ class TestGRE(VppTestCase):
 
                 self.assertEqual(rx_ip.src, tunnel_src)
                 self.assertEqual(rx_ip.dst, tunnel_dst)
+                self.assertEqual(rx_ip.len, len(rx_ip))
 
                 rx_gre = rx[GRE]
                 rx_l2 = rx_gre[Ether]
