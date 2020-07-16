@@ -1064,7 +1064,6 @@ tcp_timer_waitclose_handler (tcp_connection_t * tc)
 static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] =
 {
     tcp_timer_retransmit_handler,
-    tcp_timer_delack_handler,
     tcp_timer_persist_handler,
     tcp_timer_waitclose_handler,
     tcp_timer_retransmit_syn_handler,
@@ -1095,6 +1094,13 @@ tcp_dispatch_pending_timers (tcp_worker_ctx_t * wrk)
 
       if (PREDICT_FALSE (!tc))
 	continue;
+
+      /* Skip if the timer is not pending. Probably it was reset while
+       * wating for dispatch */
+      if (PREDICT_FALSE (!(tc->pending_timers & (1 << timer_id))))
+	continue;
+
+      tc->pending_timers &= ~(1 << timer_id);
 
       /* Skip timer if it was rearmed while pending dispatch */
       if (PREDICT_FALSE (tc->timers[timer_id] != TCP_TIMER_HANDLE_INVALID))
@@ -1241,6 +1247,7 @@ tcp_expired_timers_dispatch (u32 * expired_timers)
       TCP_EVT (TCP_EVT_TIMER_POP, connection_index, timer_id);
 
       tc->timers[timer_id] = TCP_TIMER_HANDLE_INVALID;
+      tc->pending_timers |= (1 << timer_id);
     }
 
   clib_fifo_add (wrk->pending_timers, expired_timers, n_expired);

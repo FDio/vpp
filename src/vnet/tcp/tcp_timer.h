@@ -31,6 +31,7 @@ always_inline void
 tcp_timer_reset (tcp_timer_wheel_t * tw, tcp_connection_t * tc, u8 timer_id)
 {
   ASSERT (tc->c_thread_index == vlib_get_thread_index ());
+  tc->pending_timers &= ~(1 << timer_id);
   if (tc->timers[timer_id] == TCP_TIMER_HANDLE_INVALID)
     return;
 
