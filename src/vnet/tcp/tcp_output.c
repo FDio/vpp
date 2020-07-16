@@ -1064,17 +1064,6 @@ tcp_program_retransmit (tcp_connection_t * tc)
 }
 
 /**
- * Delayed ack timer handler
- *
- * Sends delayed ACK when timer expires
- */
-void
-tcp_timer_delack_handler (tcp_connection_t * tc)
-{
-  tcp_send_ack (tc);
-}
-
-/**
  * Send window update ack
  *
  * Ensures that it will be sent only once, after a zero rwnd has been

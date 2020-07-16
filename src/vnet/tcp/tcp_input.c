@@ -1263,26 +1263,6 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
   return TCP_ERROR_ENQUEUED_OOO;
 }
 
-/**
- * Check if ACK could be delayed. If ack can be delayed, it should return
- * true for a full frame. If we're always acking return 0.
- */
-always_inline int
-tcp_can_delack (tcp_connection_t * tc)
-{
-  /* Send ack if ... */
-  if (TCP_ALWAYS_ACK
-      /* just sent a rcv wnd 0
-         || (tc->flags & TCP_CONN_SENT_RCV_WND0) != 0 */
-      /* constrained to send ack */
-      || (tc->flags & TCP_CONN_SNDACK) != 0
-      /* we're almost out of tx wnd */
-      || tcp_available_cc_snd_space (tc) < 4 * tc->snd_mss)
-    return 0;
-
-  return 1;
-}
-
 static int
 tcp_buffer_discard_bytes (vlib_buffer_t * b, u32 n_bytes_to_drop)
 {
@@ -1371,14 +1351,6 @@ in_order:
   /* In order data, enqueue. Fifo figures out by itself if any out-of-order
    * segments can be enqueued after fifo tail offset changes. */
   error = tcp_session_enqueue_data (tc, b, n_data_bytes);
-  if (tcp_can_delack (tc))
-    {
-      if (!tcp_timer_is_active (tc, TCP_TIMER_DELACK))
-	tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_DELACK,
-		       tcp_cfg.delack_time);
-      goto done;
-    }
-
   tcp_program_ack (tc);
 
 done:
