@@ -49,17 +49,8 @@ format_nat64_in2out_trace (u8 * s, va_list * args)
 
 #define foreach_nat64_in2out_error                       \
 _(UNSUPPORTED_PROTOCOL, "unsupported protocol")          \
-_(IN2OUT_PACKETS, "good in2out packets processed")       \
 _(NO_TRANSLATION, "no translation")                      \
-_(UNKNOWN, "unknown")                                    \
-_(DROP_FRAGMENT, "drop fragment")                        \
-_(TCP_PACKETS, "TCP packets")                            \
-_(UDP_PACKETS, "UDP packets")                            \
-_(ICMP_PACKETS, "ICMP packets")                          \
-_(OTHER_PACKETS, "other protocol packets")               \
-_(FRAGMENTS, "fragments")                                \
-_(CACHED_FRAGMENTS, "cached fragments")                  \
-_(PROCESSED_FRAGMENTS, "processed fragments")
+_(UNKNOWN, "unknown")
 
 
 typedef enum
@@ -1045,16 +1036,8 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 n_left_from, *from, *to_next;
   nat64_in2out_next_t next_index;
-  u32 pkts_processed = 0;
-  u32 stats_node_index;
   u32 thread_index = vm->thread_index;
   nat64_main_t *nm = &nat64_main;
-
-  u32 tcp_packets = 0, udp_packets = 0, icmp_packets = 0, other_packets =
-    0, fragments = 0;
-
-  stats_node_index =
-    is_slow_path ? nm->in2out_slowpath_node_index : nm->in2out_node_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -1119,7 +1102,9 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_OTHER))
 		{
-		  other_packets++;
+		  vlib_increment_simple_counter (&nm->counters.in2out.other,
+						 thread_index, sw_if_index0,
+						 1);
 		  if (is_hairpinning (&ip60->dst_address))
 		    {
 		      next0 = NAT64_IN2OUT_NEXT_IP6_LOOKUP;
@@ -1156,7 +1141,8 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (proto0 == NAT_PROTOCOL_ICMP)
 	    {
-	      icmp_packets++;
+	      vlib_increment_simple_counter (&nm->counters.in2out.icmp,
+					     thread_index, sw_if_index0, 1);
 	      if (is_hairpinning (&ip60->dst_address))
 		{
 		  next0 = NAT64_IN2OUT_NEXT_IP6_LOOKUP;
@@ -1182,9 +1168,11 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else if (proto0 == NAT_PROTOCOL_TCP || proto0 == NAT_PROTOCOL_UDP)
 	    {
 	      if (proto0 == NAT_PROTOCOL_TCP)
-		tcp_packets++;
+		vlib_increment_simple_counter (&nm->counters.in2out.tcp,
+					       thread_index, sw_if_index0, 1);
 	      else
-		udp_packets++;
+		vlib_increment_simple_counter (&nm->counters.in2out.udp,
+					       thread_index, sw_if_index0, 1);
 
 	      if (is_hairpinning (&ip60->dst_address))
 		{
@@ -1219,7 +1207,12 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      t->is_slow_path = is_slow_path;
 	    }
 
-	  pkts_processed += next0 == NAT64_IN2OUT_NEXT_IP4_LOOKUP;
+	  if (next0 == NAT64_IN2OUT_NEXT_DROP)
+	    {
+	      vlib_increment_simple_counter (&nm->counters.in2out.drops,
+					     thread_index, sw_if_index0, 1);
+	    }
+
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -1227,20 +1220,6 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, stats_node_index,
-			       NAT64_IN2OUT_ERROR_IN2OUT_PACKETS,
-			       pkts_processed);
-  vlib_node_increment_counter (vm, stats_node_index,
-			       NAT64_IN2OUT_ERROR_TCP_PACKETS, tcp_packets);
-  vlib_node_increment_counter (vm, stats_node_index,
-			       NAT64_IN2OUT_ERROR_UDP_PACKETS, udp_packets);
-  vlib_node_increment_counter (vm, stats_node_index,
-			       NAT64_IN2OUT_ERROR_ICMP_PACKETS, icmp_packets);
-  vlib_node_increment_counter (vm, stats_node_index,
-			       NAT64_IN2OUT_ERROR_OTHER_PACKETS,
-			       other_packets);
-  vlib_node_increment_counter (vm, stats_node_index,
-			       NAT64_IN2OUT_ERROR_FRAGMENTS, fragments);
 
   return frame->n_vectors;
 }

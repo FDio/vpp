@@ -70,7 +70,20 @@ nat66_init (vlib_main_t * vm)
 					FIB_SOURCE_PRIORITY_HI,
 					FIB_SOURCE_BH_SIMPLE);
 
+  nm->in2out_packets.name = "in2out";
+  nm->in2out_packets.stat_segment_name = "/nat64/in2out";
+  nm->out2in_packets.name = "out2in";
+  nm->out2in_packets.stat_segment_name = "/nat64/out2in";
   return nat66_plugin_api_hookup (vm);
+}
+
+static void
+nat66_validate_counters (nat66_main_t * nm, u32 sw_if_index)
+{
+  vlib_validate_simple_counter (&nm->in2out_packets, sw_if_index);
+  vlib_zero_simple_counter (&nm->in2out_packets, sw_if_index);
+  vlib_validate_simple_counter (&nm->out2in_packets, sw_if_index);
+  vlib_zero_simple_counter (&nm->out2in_packets, sw_if_index);
 }
 
 int
@@ -101,6 +114,7 @@ nat66_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add)
       interface->flags =
 	is_inside ? NAT66_INTERFACE_FLAG_IS_INSIDE :
 	NAT66_INTERFACE_FLAG_IS_OUTSIDE;
+      nat66_validate_counters (nm, sw_if_index);
     }
   else
     {
