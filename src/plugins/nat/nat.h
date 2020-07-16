@@ -150,18 +150,11 @@ typedef enum
 
 #define foreach_nat_in2out_ed_error                     \
 _(UNSUPPORTED_PROTOCOL, "unsupported protocol")         \
-_(IN2OUT_PACKETS, "good in2out packets processed")      \
 _(OUT_OF_PORTS, "out of ports")                         \
 _(BAD_ICMP_TYPE, "unsupported ICMP type")               \
 _(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
-_(DROP_FRAGMENT, "drop fragment")                       \
 _(NON_SYN, "non-SYN packet try to create session")      \
-_(TCP_PACKETS, "TCP packets")                           \
-_(TCP_CLOSED, "drops due to TCP in transitory timeout") \
-_(UDP_PACKETS, "UDP packets")                           \
-_(ICMP_PACKETS, "ICMP packets")                         \
-_(OTHER_PACKETS, "other protocol packets")              \
-_(FRAGMENTS, "fragments")
+_(TCP_CLOSED, "drops due to TCP in transitory timeout")
 
 typedef enum
 {
@@ -173,21 +166,14 @@ typedef enum
 
 #define foreach_nat_out2in_ed_error                     \
 _(UNSUPPORTED_PROTOCOL, "unsupported protocol")         \
-_(OUT2IN_PACKETS, "good out2in packets processed")      \
 _(OUT_OF_PORTS, "out of ports")                         \
 _(BAD_ICMP_TYPE, "unsupported ICMP type")               \
 _(NO_TRANSLATION, "no translation")                     \
 _(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
 _(MAX_USER_SESS_EXCEEDED, "max user sessions exceeded") \
-_(DROP_FRAGMENT, "drop fragment")                       \
 _(CANNOT_CREATE_USER, "cannot create NAT user")         \
 _(NON_SYN, "non-SYN packet try to create session")      \
-_(TCP_PACKETS, "TCP packets")                           \
-_(TCP_CLOSED, "drops due to TCP in transitory timeout") \
-_(UDP_PACKETS, "UDP packets")                           \
-_(ICMP_PACKETS, "ICMP packets")                         \
-_(OTHER_PACKETS, "other protocol packets")              \
-_(FRAGMENTS, "fragments")
+_(TCP_CLOSED, "drops due to TCP in transitory timeout")
 
 typedef enum
 {
@@ -511,6 +497,7 @@ typedef int (nat_alloc_out_addr_and_port_function_t) (snat_address_t *
 						      u16 port_per_thread,
 						      u32 snat_thread_index);
 
+#define foreach_nat_counter _ (tcp) _ (udp) _ (icmp) _ (other) _ (drops)
 
 typedef struct snat_main_s
 {
@@ -654,7 +641,58 @@ typedef struct snat_main_s
   /* counters/gauges */
   vlib_simple_counter_main_t total_users;
   vlib_simple_counter_main_t total_sessions;
-  vlib_simple_counter_main_t user_limit_reached;;
+  vlib_simple_counter_main_t user_limit_reached;
+
+#define _(x) vlib_simple_counter_main_t x;
+  struct
+  {
+    struct
+    {
+      struct
+      {
+	foreach_nat_counter;
+      } in2out;
+
+      struct
+      {
+	foreach_nat_counter;
+      } out2in;
+
+      struct
+      {
+	foreach_nat_counter;
+      } in2out_ed;
+
+      struct
+      {
+	foreach_nat_counter;
+      } out2in_ed;
+    } fastpath;
+
+    struct
+    {
+      struct
+      {
+	foreach_nat_counter;
+      } in2out;
+
+      struct
+      {
+	foreach_nat_counter;
+      } out2in;
+
+      struct
+      {
+	foreach_nat_counter;
+      } in2out_ed;
+
+      struct
+      {
+	foreach_nat_counter;
+      } out2in_ed;
+    } slowpath;
+  } counters;
+#undef _
 
   /* API message ID base */
   u16 msg_id_base;
@@ -1443,6 +1481,7 @@ typedef struct
 } tcp_udp_header_t;
 
 u8 *format_user_kvp (u8 * s, va_list * args);
+
 #endif /* __included_nat_h__ */
 /*
  * fd.io coding-style-patch-verification: ON

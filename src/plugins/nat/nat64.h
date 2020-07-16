@@ -120,6 +120,22 @@ typedef struct
 
   ip4_main_t *ip4_main;
   snat_main_t *sm;
+
+#define _(x) vlib_simple_counter_main_t x;
+  struct
+  {
+    struct
+    {
+      foreach_nat_counter;
+    } in2out;
+
+    struct
+    {
+      foreach_nat_counter;
+    } out2in;
+  } counters;
+#undef _
+
 } nat64_main_t;
 
 extern nat64_main_t nat64_main;

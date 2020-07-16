@@ -1797,6 +1797,38 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
   return 0;
 }
 
+static void
+nat_validate_counters (snat_main_t * sm, u32 sw_if_index)
+{
+#define _(x)                                                                  \
+  vlib_validate_simple_counter (&sm->counters.fastpath.in2out.x,              \
+                                sw_if_index);                                 \
+  vlib_zero_simple_counter (&sm->counters.fastpath.in2out.x, sw_if_index);    \
+  vlib_validate_simple_counter (&sm->counters.fastpath.out2in.x,              \
+                                sw_if_index);                                 \
+  vlib_zero_simple_counter (&sm->counters.fastpath.out2in.x, sw_if_index);    \
+  vlib_validate_simple_counter (&sm->counters.slowpath.in2out.x,              \
+                                sw_if_index);                                 \
+  vlib_zero_simple_counter (&sm->counters.slowpath.in2out.x, sw_if_index);    \
+  vlib_validate_simple_counter (&sm->counters.slowpath.out2in.x,              \
+                                sw_if_index);                                 \
+  vlib_zero_simple_counter (&sm->counters.slowpath.out2in.x, sw_if_index);    \
+  vlib_validate_simple_counter (&sm->counters.fastpath.in2out_ed.x,           \
+                                sw_if_index);                                 \
+  vlib_zero_simple_counter (&sm->counters.fastpath.in2out_ed.x, sw_if_index); \
+  vlib_validate_simple_counter (&sm->counters.fastpath.out2in_ed.x,           \
+                                sw_if_index);                                 \
+  vlib_zero_simple_counter (&sm->counters.fastpath.out2in_ed.x, sw_if_index); \
+  vlib_validate_simple_counter (&sm->counters.slowpath.in2out_ed.x,           \
+                                sw_if_index);                                 \
+  vlib_zero_simple_counter (&sm->counters.slowpath.in2out_ed.x, sw_if_index); \
+  vlib_validate_simple_counter (&sm->counters.slowpath.out2in_ed.x,           \
+                                sw_if_index);                                 \
+  vlib_zero_simple_counter (&sm->counters.slowpath.out2in_ed.x, sw_if_index);
+  foreach_nat_counter;
+#undef _
+}
+
 int
 snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
 {
@@ -2013,6 +2045,8 @@ feature_set:
   pool_get (sm->interfaces, i);
   i->sw_if_index = sw_if_index;
   i->flags = 0;
+  nat_validate_counters (sm, sw_if_index);
+
   vnet_feature_enable_disable ("ip4-unicast", feature_name, sw_if_index, 1, 0,
 			       0);
 
@@ -2234,6 +2268,7 @@ fq:
   pool_get (sm->output_feature_interfaces, i);
   i->sw_if_index = sw_if_index;
   i->flags = 0;
+  nat_validate_counters (sm, sw_if_index);
   if (is_inside)
     i->flags |= NAT_INTERFACE_FLAG_IS_INSIDE;
   else
@@ -2588,6 +2623,34 @@ snat_init (vlib_main_t * vm)
   sm->user_limit_reached.stat_segment_name = "/nat44/user-limit-reached";
   vlib_validate_simple_counter (&sm->user_limit_reached, 0);
   vlib_zero_simple_counter (&sm->user_limit_reached, 0);
+
+#define _(x)                                            \
+  sm->counters.fastpath.in2out.x.name = #x;             \
+  sm->counters.fastpath.in2out.x.stat_segment_name =    \
+      "/nat44/in2out/fastpath/" #x;                     \
+  sm->counters.slowpath.in2out.x.name = #x;             \
+  sm->counters.slowpath.in2out.x.stat_segment_name =    \
+      "/nat44/in2out/slowpath/" #x;                     \
+  sm->counters.fastpath.out2in.x.name = #x;             \
+  sm->counters.fastpath.out2in.x.stat_segment_name =    \
+      "/nat44/out2in/fastpath/" #x;                     \
+  sm->counters.slowpath.out2in.x.name = #x;             \
+  sm->counters.slowpath.out2in.x.stat_segment_name =    \
+      "/nat44/out2in/slowpath/" #x;                     \
+  sm->counters.fastpath.in2out_ed.x.name = #x;          \
+  sm->counters.fastpath.in2out_ed.x.stat_segment_name = \
+      "/nat44/ed/in2out/fastpath/" #x;                  \
+  sm->counters.slowpath.in2out_ed.x.name = #x;          \
+  sm->counters.slowpath.in2out_ed.x.stat_segment_name = \
+      "/nat44/ed/in2out/slowpath/" #x;                  \
+  sm->counters.fastpath.out2in_ed.x.name = #x;          \
+  sm->counters.fastpath.out2in_ed.x.stat_segment_name = \
+      "/nat44/ed/out2in/fastpath/" #x;                  \
+  sm->counters.slowpath.out2in_ed.x.name = #x;          \
+  sm->counters.slowpath.out2in_ed.x.stat_segment_name = \
+      "/nat44/ed/out2in/slowpath/" #x;
+  foreach_nat_counter;
+#undef _
 
   /* Init IPFIX logging */
   snat_ipfix_logging_init (vm);

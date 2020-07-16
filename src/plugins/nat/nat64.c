@@ -248,6 +248,13 @@ nat64_init (vlib_main_t * vm)
   vlib_validate_simple_counter (&nm->total_sessions, 0);
   vlib_zero_simple_counter (&nm->total_sessions, 0);
 
+#define _(x)                                                     \
+  nm->counters.in2out.x.name = #x;                               \
+  nm->counters.in2out.x.stat_segment_name = "/nat64/in2out/" #x; \
+  nm->counters.out2in.x.name = #x;                               \
+  nm->counters.out2in.x.stat_segment_name = "/nat64/out2in/" #x;
+  foreach_nat_counter;
+#undef _
   return 0;
 }
 
@@ -410,6 +417,18 @@ nat64_add_interface_address (u32 sw_if_index, int is_add)
   return 0;
 }
 
+static void
+nat64_validate_counters (nat64_main_t * nm, u32 sw_if_index)
+{
+#define _(x)                                                          \
+  vlib_validate_simple_counter (&nm->counters.in2out.x, sw_if_index); \
+  vlib_zero_simple_counter (&nm->counters.in2out.x, sw_if_index);     \
+  vlib_validate_simple_counter (&nm->counters.out2in.x, sw_if_index); \
+  vlib_zero_simple_counter (&nm->counters.out2in.x, sw_if_index);
+  foreach_nat_counter;
+#undef _
+}
+
 int
 nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
 {
@@ -439,6 +458,7 @@ nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
       pool_get (nm->interfaces, interface);
       interface->sw_if_index = sw_if_index;
       interface->flags = 0;
+      nat64_validate_counters (nm, sw_if_index);
     set_flags:
       if (is_inside)
 	interface->flags |= NAT_INTERFACE_FLAG_IS_INSIDE;
