@@ -155,6 +155,15 @@ typedef u32 u32x _vector_size (8);
 typedef u64 u64x _vector_size (8);
 #endif
 
+/* universal inlines */
+#define _(t, s, c) \
+static_always_inline t##s##x##c                                         \
+t##s##x##c##_zero ()                                                    \
+{ return (t##s##x##c) {}; }                                             \
+
+foreach_vec
+#undef _
+
 #undef _vector_size
 
 #define VECTOR_WORD_TYPE(t) t##x
