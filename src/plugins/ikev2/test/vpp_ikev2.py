@@ -115,19 +115,19 @@ class Profile(VppObject):
                                            **self.remote_id)
         if hasattr(self, 'local_ts'):
             self.vapi.ikev2_profile_set_ts(name=self.profile_name,
-                                           ts={**self.local_ts})
+                                           ts=self.local_ts)
 
         if hasattr(self, 'remote_ts'):
             self.vapi.ikev2_profile_set_ts(name=self.profile_name,
-                                           ts={**self.remote_ts})
+                                           ts=self.remote_ts)
 
         if hasattr(self, 'responder'):
             self.vapi.ikev2_set_responder(name=self.profile_name,
-                                          responder={**self.responder})
+                                          responder=self.responder)
 
         if hasattr(self, 'ike_transforms'):
             self.vapi.ikev2_set_ike_transforms(name=self.profile_name,
-                                               tr={**self.ike_transforms})
+                                               tr=self.ike_transforms)
 
         if hasattr(self, 'esp_transforms'):
             self.vapi.ikev2_set_esp_transforms(name=self.profile_name,
