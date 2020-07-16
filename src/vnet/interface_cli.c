@@ -1763,6 +1763,12 @@ set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
 
   vnet_hw_interface_assign_rx_thread (vnm, hw_if_index, queue_id,
 				      thread_index);
+
+#ifdef USE_BPF_TRACE
+  DTRACE_PROBE3 (vpp, vnet_set_hw_interface_rx_placement_probe, hw_if_index,
+		 thread_index, queue_id);
+#endif
+
   vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
 
   return (error);

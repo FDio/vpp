@@ -222,7 +222,11 @@ process_drop_punt (vlib_main_t * vm,
 
       c_index = counter_index (vm, error[0]);
       em->counters[c_index] += count;
-
+#ifdef USE_BPF_TRACE
+      DTRACE_PROBE3 (vpp, vlib_error_count_probe,
+		     em->error_strings_heap[c_index], c_index,
+		     em->counters[c_index]);
+#endif
       vlib_error_elog_count (vm, c_index, count);
     }
 

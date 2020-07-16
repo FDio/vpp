@@ -41,6 +41,7 @@
 #define included_vlib_error_funcs_h
 
 #include <vlib/node_funcs.h>
+#include <vlib/bpf_tracer.h>
 
 always_inline void
 vlib_error_elog_count (vlib_main_t * vm, uword counter, uword increment)
@@ -65,7 +66,10 @@ vlib_error_count (vlib_main_t * vm, uword node_index,
 
   ASSERT (counter < vec_len (em->counters));
   em->counters[counter] += increment;
-
+#ifdef USE_BPF_TRACE
+  DTRACE_PROBE3 (vpp, vlib_error_count_probe, em->error_strings_heap[counter],
+		 counter, em->counters[counter]);
+#endif
   vlib_error_elog_count (vm, counter, increment);
 }
 

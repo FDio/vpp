@@ -591,6 +591,38 @@ vlib_node_runtime_sync_stats (vlib_main_t * vm,
   r->perf_counter0_ticks_since_last_overflow = 0ULL;
   r->perf_counter1_ticks_since_last_overflow = 0ULL;
   r->perf_counter_vectors_since_last_overflow = 0ULL;
+
+#ifdef USE_BPF_TRACE
+  u64 clocks = n->stats_total.clocks - n->stats_last_clear.clocks;
+  u64 calls = n->stats_total.calls - n->stats_last_clear.calls;
+  u64 vectors = n->stats_total.vectors - n->stats_last_clear.vectors;
+  u64 suspends = n->stats_total.suspends - n->stats_last_clear.suspends;
+  u64 vectorspercall = (calls > 0) ? ((double) vectors / (double) calls) : 0;
+  f64 clocksperx = 0.;
+  f64 maxc = (f64) n->stats_total.max_clock;
+  u32 maxn = n->stats_total.max_clock_n;
+  f64 maxcn =
+    (n->stats_total.max_clock_n) ? (f64) n->stats_total.max_clock /
+    (f64) maxn : 0.0;
+
+  // Clocks per packet, per call or per suspend.
+  clocksperx = 0;
+  if (vectors > 0)
+    clocksperx = (f64) clocks / (f64) vectors;
+  else if (calls > 0)
+    clocksperx = (f64) clocks / (f64) calls;
+  else if (suspends > 0)
+    clocksperx = (f64) clocks / (f64) suspends;
+
+  DTRACE_PROBE10 (vpp, vlib_node_runtime_sync_stats_probe, n->name, r->node_index, calls,	// Calls
+		  vectors,	// Vectors
+		  suspends,	// Suspends
+		  clocksperx,	// Clocks
+		  vectorspercall,	// Vectors/Call
+		  maxcn,	// Max Node Clocks
+		  maxn,		// Vectors at Max
+		  maxc);	// Max Clocks
+#endif
 }
 
 always_inline void __attribute__ ((unused))

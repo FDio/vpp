@@ -97,6 +97,7 @@ add_vpp_library(vlib
   unix/util.c
   vmbus/vmbus.c
   ${VMBUS_SOURCE}
+  bpf_tracer.c
 
   MULTIARCH_SOURCES
   drop.c
