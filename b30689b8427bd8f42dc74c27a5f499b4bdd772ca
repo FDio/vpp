@@ -70,6 +70,53 @@
       "revId": "b30689b8427bd8f42dc74c27a5f499b4bdd772ca",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2a1655bf_fae7a712",
+        "filename": "src/plugins/tlspicotls/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-16T18:51:32Z",
+      "side": 1,
+      "message": "Oh joy :-)\n\nBut what exactly is the issue? When you update quicly and the install-ext-deps, won\u0027t tlspicotls link against the right picotls *.a files?",
+      "parentUuid": "f3333d27_35a822ff",
+      "range": {
+        "startLine": 5,
+        "startChar": 4,
+        "endLine": 5,
+        "endChar": 27
+      },
+      "revId": "b30689b8427bd8f42dc74c27a5f499b4bdd772ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "06eb9b3b_f42142c4",
+        "filename": "src/plugins/tlspicotls/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-16T18:51:32Z",
+      "side": 1,
+      "message": "There seem to be some formatting issues here",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 31,
+        "endChar": 13
+      },
+      "revId": "b30689b8427bd8f42dc74c27a5f499b4bdd772ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
