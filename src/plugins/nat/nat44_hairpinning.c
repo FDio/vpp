@@ -39,23 +39,6 @@ typedef enum
   NAT_HAIRPIN_N_NEXT,
 } nat_hairpin_next_t;
 
-#define foreach_nat44_hairpin_error                       \
-_(PROCESSED, "NAT44 hairpinning packets processed")
-
-typedef enum
-{
-#define _(sym,str) NAT44_HAIRPIN_ERROR_##sym,
-  foreach_nat44_hairpin_error
-#undef _
-    NAT44_HAIRPIN_N_ERROR,
-} nat44_hairpin_error_t;
-
-static char *nat44_hairpin_error_strings[] = {
-#define _(sym,string) string,
-  foreach_nat44_hairpin_error
-#undef _
-};
-
 typedef struct
 {
   ip4_address_t addr;
@@ -465,16 +448,13 @@ nat44_hairpinning_fn_inline (vlib_main_t * vm,
 			     vlib_node_runtime_t * node,
 			     vlib_frame_t * frame, int is_ed)
 {
-  u32 n_left_from, *from, *to_next, stats_node_index;
+  u32 n_left_from, *from, *to_next;
   nat_hairpin_next_t next_index;
-  u32 pkts_processed = 0;
   snat_main_t *sm = &snat_main;
   vnet_feature_main_t *fm = &feature_main;
   u8 arc_index = vnet_feat_arc_ip4_local.feature_arc_index;
   vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc_index];
 
-  stats_node_index = is_ed ? sm->ed_hairpinning_node_index :
-    sm->hairpinning_node_index;
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
@@ -494,6 +474,7 @@ nat44_hairpinning_fn_inline (vlib_main_t * vm,
 	  u32 proto0;
 	  udp_header_t *udp0;
 	  tcp_header_t *tcp0;
+	  u32 sw_if_index0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -507,6 +488,7 @@ nat44_hairpinning_fn_inline (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (b0);
 	  udp0 = ip4_next_header (ip0);
 	  tcp0 = (tcp_header_t *) udp0;
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
 	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
 
@@ -518,7 +500,12 @@ nat44_hairpinning_fn_inline (vlib_main_t * vm,
 	       1 /* do_trace */ ))
 	    next0 = NAT_HAIRPIN_NEXT_LOOKUP;
 
-	  pkts_processed += next0 != NAT_HAIRPIN_NEXT_DROP;
+	  if (next0 != NAT_HAIRPIN_NEXT_DROP)
+	    {
+	      vlib_increment_simple_counter (&sm->counters.hairpinning,
+					     vm->thread_index, sw_if_index0,
+					     1);
+	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -529,8 +516,6 @@ nat44_hairpinning_fn_inline (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, stats_node_index,
-			       NAT44_HAIRPIN_ERROR_PROCESSED, pkts_processed);
   return frame->n_vectors;
 }
 
@@ -546,9 +531,7 @@ VLIB_REGISTER_NODE (nat44_hairpinning_node) = {
   .name = "nat44-hairpinning",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(nat44_hairpin_error_strings),
   .format_trace = format_nat_hairpin_trace,
-  .error_strings = nat44_hairpin_error_strings,
   .n_next_nodes = NAT_HAIRPIN_N_NEXT,
   .next_nodes = {
     [NAT_HAIRPIN_NEXT_DROP] = "error-drop",
@@ -569,8 +552,6 @@ VLIB_REGISTER_NODE (nat44_ed_hairpinning_node) = {
   .name = "nat44-ed-hairpinning",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(nat44_hairpin_error_strings),
-  .error_strings = nat44_hairpin_error_strings,
   .format_trace = format_nat_hairpin_trace,
   .n_next_nodes = NAT_HAIRPIN_N_NEXT,
   .next_nodes = {
@@ -585,13 +566,9 @@ snat_hairpin_dst_fn_inline (vlib_main_t * vm,
 			    vlib_node_runtime_t * node,
 			    vlib_frame_t * frame, int is_ed)
 {
-  u32 n_left_from, *from, *to_next, stats_node_index;
+  u32 n_left_from, *from, *to_next;
   nat_hairpin_next_t next_index;
-  u32 pkts_processed = 0;
   snat_main_t *sm = &snat_main;
-
-  stats_node_index = is_ed ? sm->ed_hairpin_dst_node_index :
-    sm->hairpin_dst_node_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -610,6 +587,7 @@ snat_hairpin_dst_fn_inline (vlib_main_t * vm,
 	  u32 next0;
 	  ip4_header_t *ip0;
 	  u32 proto0;
+	  u32 sw_if_index0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -622,6 +600,7 @@ snat_hairpin_dst_fn_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  next0 = NAT_HAIRPIN_NEXT_LOOKUP;
 	  ip0 = vlib_buffer_get_current (b0);
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
 	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
 
@@ -653,7 +632,13 @@ snat_hairpin_dst_fn_inline (vlib_main_t * vm,
 	      vnet_buffer (b0)->snat.flags = SNAT_FLAG_HAIRPINNING;
 	    }
 
-	  pkts_processed += next0 != NAT_HAIRPIN_NEXT_DROP;
+
+	  if (next0 != NAT_HAIRPIN_NEXT_DROP)
+	    {
+	      vlib_increment_simple_counter (&sm->counters.hairpinning,
+					     vm->thread_index, sw_if_index0,
+					     1);
+	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -664,8 +649,6 @@ snat_hairpin_dst_fn_inline (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, stats_node_index,
-			       NAT44_HAIRPIN_ERROR_PROCESSED, pkts_processed);
   return frame->n_vectors;
 }
 
@@ -681,9 +664,7 @@ VLIB_REGISTER_NODE (snat_hairpin_dst_node) = {
   .name = "nat44-hairpin-dst",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(nat44_hairpin_error_strings),
   .format_trace = format_nat_hairpin_trace,
-  .error_strings = nat44_hairpin_error_strings,
   .n_next_nodes = NAT_HAIRPIN_N_NEXT,
   .next_nodes = {
     [NAT_HAIRPIN_NEXT_DROP] = "error-drop",
@@ -704,9 +685,7 @@ VLIB_REGISTER_NODE (nat44_ed_hairpin_dst_node) = {
   .name = "nat44-ed-hairpin-dst",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(nat44_hairpin_error_strings),
   .format_trace = format_nat_hairpin_trace,
-  .error_strings = nat44_hairpin_error_strings,
   .n_next_nodes = NAT_HAIRPIN_N_NEXT,
   .next_nodes = {
     [NAT_HAIRPIN_NEXT_DROP] = "error-drop",
@@ -720,13 +699,9 @@ snat_hairpin_src_fn_inline (vlib_main_t * vm,
 			    vlib_node_runtime_t * node,
 			    vlib_frame_t * frame, int is_ed)
 {
-  u32 n_left_from, *from, *to_next, stats_node_index;
+  u32 n_left_from, *from, *to_next;
   snat_hairpin_src_next_t next_index;
-  u32 pkts_processed = 0;
   snat_main_t *sm = &snat_main;
-
-  stats_node_index = is_ed ? sm->ed_hairpin_src_node_index :
-    sm->hairpin_src_node_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -777,7 +752,12 @@ snat_hairpin_src_fn_inline (vlib_main_t * vm,
           }));
           /* *INDENT-ON* */
 
-	  pkts_processed += next0 != SNAT_HAIRPIN_SRC_NEXT_DROP;
+	  if (next0 != SNAT_HAIRPIN_SRC_NEXT_DROP)
+	    {
+	      vlib_increment_simple_counter (&sm->counters.hairpinning,
+					     vm->thread_index, sw_if_index0,
+					     1);
+	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -788,8 +768,6 @@ snat_hairpin_src_fn_inline (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, stats_node_index,
-			       NAT44_HAIRPIN_ERROR_PROCESSED, pkts_processed);
   return frame->n_vectors;
 }
 
@@ -805,8 +783,6 @@ VLIB_REGISTER_NODE (snat_hairpin_src_node) = {
   .name = "nat44-hairpin-src",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(nat44_hairpin_error_strings),
-  .error_strings = nat44_hairpin_error_strings,
   .n_next_nodes = SNAT_HAIRPIN_SRC_N_NEXT,
   .next_nodes = {
      [SNAT_HAIRPIN_SRC_NEXT_DROP] = "error-drop",
@@ -829,8 +805,6 @@ VLIB_REGISTER_NODE (nat44_ed_hairpin_src_node) = {
   .name = "nat44-ed-hairpin-src",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(nat44_hairpin_error_strings),
-  .error_strings = nat44_hairpin_error_strings,
   .n_next_nodes = SNAT_HAIRPIN_SRC_N_NEXT,
   .next_nodes = {
      [SNAT_HAIRPIN_SRC_NEXT_DROP] = "error-drop",

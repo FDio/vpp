@@ -74,6 +74,9 @@ typedef struct
 
   u16 msg_id_base;
   u8 log_level;
+
+  vlib_simple_counter_main_t in2out_packets;
+  vlib_simple_counter_main_t out2in_packets;;
 } nat66_main_t;
 
 #define nat66_elog(_level, _str)                         \

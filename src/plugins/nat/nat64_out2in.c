@@ -45,18 +45,8 @@ format_nat64_out2in_trace (u8 * s, va_list * args)
 
 #define foreach_nat64_out2in_error                       \
 _(UNSUPPORTED_PROTOCOL, "unsupported protocol")          \
-_(OUT2IN_PACKETS, "good out2in packets processed")       \
 _(NO_TRANSLATION, "no translation")                      \
-_(UNKNOWN, "unknown")                                    \
-_(DROP_FRAGMENT, "drop fragment")                        \
-_(TCP_PACKETS, "TCP packets")                            \
-_(UDP_PACKETS, "UDP packets")                            \
-_(ICMP_PACKETS, "ICMP packets")                          \
-_(OTHER_PACKETS, "other protocol packets")               \
-_(FRAGMENTS, "fragments")                                \
-_(CACHED_FRAGMENTS, "cached fragments")                  \
-_(PROCESSED_FRAGMENTS, "processed fragments")
-
+_(UNKNOWN, "unknown")
 
 typedef enum
 {
@@ -534,10 +524,7 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next;
   nat64_out2in_next_t next_index;
   nat64_main_t *nm = &nat64_main;
-  u32 pkts_processed = 0;
   u32 thread_index = vm->thread_index;
-  u32 tcp_packets = 0, udp_packets = 0, icmp_packets = 0, other_packets =
-    0, fragments = 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -557,6 +544,7 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
 	  u32 proto0;
 	  nat64_out2in_set_ctx_t ctx0;
 	  udp_header_t *udp0;
+	  u32 sw_if_index0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -576,7 +564,7 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
 	  next0 = NAT64_OUT2IN_NEXT_IP6_LOOKUP;
 
 	  proto0 = ip_proto_to_nat_proto (ip40->protocol);
-
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_OTHER))
 	    {
 	      if (nat64_out2in_unk_proto (vm, b0, &ctx0))
@@ -584,13 +572,15 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
 		  next0 = NAT64_OUT2IN_NEXT_DROP;
 		  b0->error = node->errors[NAT64_OUT2IN_ERROR_NO_TRANSLATION];
 		}
-	      other_packets++;
+	      vlib_increment_simple_counter (&nm->counters.out2in.other,
+					     thread_index, sw_if_index0, 1);
 	      goto trace0;
 	    }
 
 	  if (proto0 == NAT_PROTOCOL_ICMP)
 	    {
-	      icmp_packets++;
+	      vlib_increment_simple_counter (&nm->counters.out2in.icmp,
+					     thread_index, sw_if_index0, 1);
 	      if (icmp_to_icmp6
 		  (b0, nat64_out2in_icmp_set_cb, &ctx0,
 		   nat64_out2in_inner_icmp_set_cb, &ctx0))
@@ -603,9 +593,11 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
 	  else
 	    {
 	      if (proto0 == NAT_PROTOCOL_TCP)
-		tcp_packets++;
+		vlib_increment_simple_counter (&nm->counters.out2in.tcp,
+					       thread_index, sw_if_index0, 1);
 	      else
-		udp_packets++;
+		vlib_increment_simple_counter (&nm->counters.out2in.udp,
+					       thread_index, sw_if_index0, 1);
 
 	      if (nat64_out2in_tcp_udp (vm, b0, &ctx0))
 		{
@@ -637,7 +629,11 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
 	      t->next_index = next0;
 	    }
 
-	  pkts_processed += next0 == NAT64_OUT2IN_NEXT_IP6_LOOKUP;
+	  if (next0 == NAT64_OUT2IN_NEXT_DROP)
+	    {
+	      vlib_increment_simple_counter (&nm->counters.out2in.drops,
+					     thread_index, sw_if_index0, 1);
+	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -645,21 +641,6 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, nm->out2in_node_index,
-			       NAT64_OUT2IN_ERROR_OUT2IN_PACKETS,
-			       pkts_processed);
-  vlib_node_increment_counter (vm, nm->out2in_node_index,
-			       NAT64_OUT2IN_ERROR_TCP_PACKETS, tcp_packets);
-  vlib_node_increment_counter (vm, nm->out2in_node_index,
-			       NAT64_OUT2IN_ERROR_UDP_PACKETS, udp_packets);
-  vlib_node_increment_counter (vm, nm->out2in_node_index,
-			       NAT64_OUT2IN_ERROR_ICMP_PACKETS, icmp_packets);
-  vlib_node_increment_counter (vm, nm->out2in_node_index,
-			       NAT64_OUT2IN_ERROR_OTHER_PACKETS,
-			       other_packets);
-  vlib_node_increment_counter (vm, nm->out2in_node_index,
-			       NAT64_OUT2IN_ERROR_FRAGMENTS, fragments);
-
   return frame->n_vectors;
 }
 
