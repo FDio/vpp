@@ -599,6 +599,9 @@ virtio_negotiate_features (vlib_main_t * vm, virtio_if_t * vif,
     | VIRTIO_FEATURE (VIRTIO_F_ANY_LAYOUT)
     | VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC);
 
+  if (vif->is_modern)
+    supported_features |= VIRTIO_FEATURE (VIRTIO_F_VERSION_1);
+
   if (req_features == 0)
     {
       req_features = supported_features;
@@ -649,21 +652,21 @@ virtio_pci_reset_device (vlib_main_t * vm, virtio_if_t * vif)
    * Read the status and verify it
    */
   status = vif->virtio_pci_func->get_status (vm, vif);
-  if (!
-      ((status & VIRTIO_CONFIG_STATUS_ACK)
-       && (status & VIRTIO_CONFIG_STATUS_DRIVER)))
+  if ((status & VIRTIO_CONFIG_STATUS_ACK)
+      && (status & VIRTIO_CONFIG_STATUS_DRIVER))
+    vif->status = status;
+  else
     return -1;
-  vif->status = status;
 
   return 0;
 }
 
 clib_error_t *
-virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
+virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif, void **bar)
 {
   clib_error_t *error = 0;
   struct virtio_pci_cap cap;
-  u8 pos, common_cfg = 0, notify_base = 0, dev_cfg = 0, isr = 0, pci_cfg = 0;
+  u8 pos, common_cfg = 0, notify = 0, dev_cfg = 0, isr = 0, pci_cfg = 0;
   vlib_pci_dev_handle_t h = vif->pci_dev_handle;
 
   if ((error = vlib_pci_read_config_u8 (vm, h, PCI_CAPABILITY_LIST, &pos)))
@@ -722,18 +725,40 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
       virtio_log_debug (vif,
 			"[%4x] cfg type: %u, bar: %u, offset: %04x, len: %u",
 			pos, cap.cfg_type, cap.bar, cap.offset, cap.length);
+
+      vif->bar = bar[cap.bar];
+      vif->bar_id = cap.bar;
+
       switch (cap.cfg_type)
 	{
 	case VIRTIO_PCI_CAP_COMMON_CFG:
+	  vif->common_offset = cap.offset;
 	  common_cfg = 1;
 	  break;
 	case VIRTIO_PCI_CAP_NOTIFY_CFG:
-	  notify_base = 1;
+	  if ((error =
+	       vlib_pci_read_write_config (vm, h, VLIB_READ,
+					   pos + sizeof (cap),
+					   &vif->notify_off_multiplier,
+					   sizeof
+					   (vif->notify_off_multiplier))))
+	    {
+	      virtio_log_error (vif, "notify off multiplier is not given");
+	    }
+	  else
+	    {
+	      virtio_log_debug (vif, "notify off multiplier is %u",
+				vif->notify_off_multiplier);
+	      vif->notify_offset = cap.offset;
+	      notify = 1;
+	    }
 	  break;
 	case VIRTIO_PCI_CAP_DEVICE_CFG:
+	  vif->device_offset = cap.offset;
 	  dev_cfg = 1;
 	  break;
 	case VIRTIO_PCI_CAP_ISR_CFG:
+	  vif->isr_offset = cap.offset;
 	  isr = 1;
 	  break;
 	case VIRTIO_PCI_CAP_PCI_CFG:
@@ -745,16 +770,18 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
       pos = cap.cap_next;
     }
 
-  vif->virtio_pci_func = &virtio_pci_legacy_func;
-
-  if (common_cfg == 0 || notify_base == 0 || dev_cfg == 0 || isr == 0)
+  if (common_cfg == 0 || notify == 0 || dev_cfg == 0 || isr == 0)
     {
+      vif->virtio_pci_func = &virtio_pci_legacy_func;
       virtio_log_debug (vif, "legacy virtio pci device found");
       return error;
     }
 
+  vif->is_modern = 1;
+  vif->virtio_pci_func = &virtio_pci_modern_func;
+
   if (!pci_cfg)
-    clib_error_return (error, "modern virtio pci device found");
+    virtio_log_debug (vif, "modern virtio pci device found");
 
   virtio_log_debug (vif, "transitional virtio pci device found");
   return error;
@@ -762,24 +789,24 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
 
 static clib_error_t *
 virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
-			virtio_pci_create_if_args_t * args)
+			virtio_pci_create_if_args_t * args, void **bar)
 {
   clib_error_t *error = 0;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u8 status = 0;
 
-  if ((error = virtio_pci_read_caps (vm, vif)))
+  if ((error = virtio_pci_read_caps (vm, vif, bar)))
     {
       args->rv = VNET_API_ERROR_UNSUPPORTED;
       virtio_log_error (vif, "Device is not supported");
-      clib_error_return (error, "Device is not supported");
+      return clib_error_return (error, "Device is not supported");
     }
 
   if (virtio_pci_reset_device (vm, vif) < 0)
     {
       args->rv = VNET_API_ERROR_INIT_FAILED;
       virtio_log_error (vif, "Failed to reset the device");
-      clib_error_return (error, "Failed to reset the device");
+      return clib_error_return (error, "Failed to reset the device");
     }
   /*
    * read device features and negotiate (user) requested features
@@ -809,7 +836,8 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
       args->rv = VNET_API_ERROR_UNSUPPORTED;
       virtio_log_error (vif,
 			"error encountered: Device doesn't support requested features");
-      clib_error_return (error, "Device doesn't support requested features");
+      return clib_error_return (error,
+				"Device doesn't support requested features");
     }
   vif->status = status;
 
@@ -1014,6 +1042,21 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
       goto error;
     }
 
+  void *bar[6];
+  for (u32 i = 0; i <= 5; i++)
+    {
+
+      if ((error = vlib_pci_map_region (vm, h, i, &bar[i])))
+	{
+	  virtio_log_debug (vif, "no pci map region for bar %u", i);
+	}
+      else
+	{
+	  virtio_log_debug (vif, "pci map region for bar %u at %p", i,
+			    bar[i]);
+	}
+    }
+
   if ((error = vlib_pci_io_region (vm, h, 0)))
     {
       virtio_log_error (vif, "error encountered on pci io region");
@@ -1081,7 +1124,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
       goto error;
     }
 
-  if ((error = virtio_pci_device_init (vm, vif, args)))
+  if ((error = virtio_pci_device_init (vm, vif, args, bar)))
     {
       virtio_log_error (vif, "error encountered on device init");
       goto error;
