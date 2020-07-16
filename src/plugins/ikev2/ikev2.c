@@ -71,7 +71,9 @@ _(IKE_SA_INIT_IGNORE, "IKE_SA_INIT ignore (IKE SA already auth)") \
 _(IKE_REQ_RETRANSMIT, "IKE request retransmit") \
 _(IKE_REQ_IGNORE, "IKE request ignore (old msgid)") \
 _(NOT_IKEV2, "Non IKEv2 packets received") \
-_(BAD_LENGTH, "Bad packet length")
+_(BAD_LENGTH, "Bad packet length") \
+_(MALFORMED_PACKET, "Malformed packet") \
+_(NO_BUFF_SPACE, "No buffer space")
 
 typedef enum
 {
@@ -626,11 +628,32 @@ ikev2_compute_nat_sha1 (u64 ispi, u64 rspi, u32 ip, u16 port)
   return res;
 }
 
-static void
-ikev2_process_sa_init_req (vlib_main_t * vm, ikev2_sa_t * sa,
-			   ike_header_t * ike, udp_header_t * udp, u32 len)
+static_always_inline ike_payload_header_t *
+ikev2_buffer_header_check (vlib_buffer_t * b)
 {
-  int p = 0;
+  ike_payload_header_t *p;
+
+  if (!vlib_buffer_has_space (b, sizeof (*p)))
+    return 0;
+
+  p = vlib_buffer_get_current (b);
+  u16 plen = clib_net_to_host_u16 (p->length);
+
+  if (plen < sizeof (*p))
+    return 0;
+
+  if (!vlib_buffer_has_space (b, plen))
+    return 0;
+
+  return p;
+}
+
+static int
+ikev2_process_sa_init_req (vlib_buffer_t * b, vlib_main_t * vm,
+			   ikev2_sa_t * sa, ike_header_t * ike,
+			   udp_header_t * udp, u32 len)
+{
+  u8 *data;
   u8 payload = ike->nextpayload;
 
   ikev2_elog_exchange ("ispi %lx rspi %lx IKE_INIT request received "
@@ -644,34 +667,42 @@ ikev2_process_sa_init_req (vlib_main_t * vm, ikev2_sa_t * sa,
   vec_free (sa->last_sa_init_req_packet_data);
   vec_add (sa->last_sa_init_req_packet_data, ike, len);
 
-  while (p < len && payload != IKEV2_PAYLOAD_NONE)
+  while (payload != IKEV2_PAYLOAD_NONE)
     {
-      ike_payload_header_t *ikep = (ike_payload_header_t *) & ike->payload[p];
+      ike_payload_header_t *ikep = ikev2_buffer_header_check (b);
+      if (!ikep)
+	return 0;
       u32 plen = clib_net_to_host_u16 (ikep->length);
-
-      if (plen < sizeof (ike_payload_header_t))
-	return;
 
       if (payload == IKEV2_PAYLOAD_SA)
 	{
 	  ikev2_sa_free_proposal_vector (&sa->i_proposals);
-	  sa->i_proposals = ikev2_parse_sa_payload (ikep);
+	  sa->i_proposals = ikev2_parse_sa_payload (b);
 	}
       else if (payload == IKEV2_PAYLOAD_KE)
 	{
-	  ike_ke_payload_header_t *ke = (ike_ke_payload_header_t *) ikep;
+	  ike_ke_payload_header_t *ke = vlib_buffer_pull (b, sizeof (*ke));
+	  if (!ke)
+	    return 0;
 	  sa->dh_group = clib_net_to_host_u16 (ke->dh_group);
 	  vec_free (sa->i_dh_data);
-	  vec_add (sa->i_dh_data, ke->payload, plen - sizeof (*ke));
+	  data = vlib_buffer_pull (b, plen - sizeof (*ke));
+	  if (!data)
+	    return 0;
+	  vec_add (sa->i_dh_data, data, plen - sizeof (*ke));
 	}
       else if (payload == IKEV2_PAYLOAD_NONCE)
 	{
+	  vlib_buffer_pull (b, sizeof (*ikep));
 	  vec_free (sa->i_nonce);
-	  vec_add (sa->i_nonce, ikep->payload, plen - sizeof (*ikep));
+	  data = vlib_buffer_pull (b, plen - sizeof (*ikep));
+	  if (!data)
+	    return 0;
+	  vec_add (sa->i_nonce, data, plen - sizeof (*ikep));
 	}
       else if (payload == IKEV2_PAYLOAD_NOTIFY)
 	{
-	  ikev2_notify_t *n = ikev2_parse_notify_payload (ikep);
+	  ikev2_notify_t *n = ikev2_parse_notify_payload (b);
 	  if (n->msg_type == IKEV2_NOTIFY_MSG_NAT_DETECTION_SOURCE_IP)
 	    {
 	      u8 *src_sha =
@@ -707,7 +738,7 @@ ikev2_process_sa_init_req (vlib_main_t * vm, ikev2_sa_t * sa,
 	}
       else if (payload == IKEV2_PAYLOAD_VENDOR)
 	{
-	  ikev2_parse_vendor_payload (ikep);
+	  ikev2_parse_vendor_payload (b);
 	}
       else
 	{
@@ -717,23 +748,25 @@ ikev2_process_sa_init_req (vlib_main_t * vm, ikev2_sa_t * sa,
 	    {
 	      ikev2_set_state (sa, IKEV2_STATE_NOTIFY_AND_DELETE);
 	      sa->unsupported_cp = payload;
-	      return;
+	      return 0;
 	    }
 	}
 
       payload = ikep->nextpayload;
-      p += plen;
     }
 
   ikev2_set_state (sa, IKEV2_STATE_SA_INIT);
+  return 1;
 }
 
 static void
-ikev2_process_sa_init_resp (vlib_main_t * vm, ikev2_sa_t * sa,
-			    ike_header_t * ike, udp_header_t * udp, u32 len)
+ikev2_process_sa_init_resp (vlib_buffer_t * b, vlib_main_t * vm,
+			    ikev2_sa_t * sa, ike_header_t * ike,
+			    udp_header_t * udp, u32 len)
 {
-  int p = 0;
+  u8 *data;
   u8 payload = ike->nextpayload;
+  ike_payload_header_t *ikep;
 
   sa->ispi = clib_net_to_host_u64 (ike->ispi);
   sa->rspi = clib_net_to_host_u64 (ike->rspi);
@@ -746,9 +779,12 @@ ikev2_process_sa_init_resp (vlib_main_t * vm, ikev2_sa_t * sa,
   vec_free (sa->last_sa_init_res_packet_data);
   vec_add (sa->last_sa_init_res_packet_data, ike, len);
 
-  while (p < len && payload != IKEV2_PAYLOAD_NONE)
+  while (payload != IKEV2_PAYLOAD_NONE)
     {
-      ike_payload_header_t *ikep = (ike_payload_header_t *) & ike->payload[p];
+      if (!vlib_buffer_has_space (b, sizeof (*ikep)))
+	return;
+
+      ikep = vlib_buffer_get_current (b);
       u32 plen = clib_net_to_host_u16 (ikep->length);
 
       if (plen < sizeof (ike_payload_header_t))
@@ -757,7 +793,7 @@ ikev2_process_sa_init_resp (vlib_main_t * vm, ikev2_sa_t * sa,
       if (payload == IKEV2_PAYLOAD_SA)
 	{
 	  ikev2_sa_free_proposal_vector (&sa->r_proposals);
-	  sa->r_proposals = ikev2_parse_sa_payload (ikep);
+	  sa->r_proposals = ikev2_parse_sa_payload (b);
 	  if (sa->r_proposals)
 	    {
 	      ikev2_set_state (sa, IKEV2_STATE_SA_INIT);
@@ -767,19 +803,28 @@ ikev2_process_sa_init_resp (vlib_main_t * vm, ikev2_sa_t * sa,
 	}
       else if (payload == IKEV2_PAYLOAD_KE)
 	{
-	  ike_ke_payload_header_t *ke = (ike_ke_payload_header_t *) ikep;
+	  ike_ke_payload_header_t *ke = vlib_buffer_pull (b, sizeof (*ke));
+	  if (!ke)
+	    return;
 	  sa->dh_group = clib_net_to_host_u16 (ke->dh_group);
 	  vec_free (sa->r_dh_data);
-	  vec_add (sa->r_dh_data, ke->payload, plen - sizeof (*ke));
+	  data = vlib_buffer_pull (b, plen - sizeof (*ke));
+	  if (!data)
+	    return;
+	  vec_add (sa->r_dh_data, data, plen - sizeof (*ke));
 	}
       else if (payload == IKEV2_PAYLOAD_NONCE)
 	{
+	  vlib_buffer_pull (b, sizeof (*ikep));
 	  vec_free (sa->r_nonce);
-	  vec_add (sa->r_nonce, ikep->payload, plen - sizeof (*ikep));
+	  data = vlib_buffer_pull (b, plen - sizeof (*ikep));
+	  if (!data)
+	    return;
+	  vec_add (sa->r_nonce, data, plen - sizeof (*ikep));
 	}
       else if (payload == IKEV2_PAYLOAD_NOTIFY)
 	{
-	  ikev2_notify_t *n = ikev2_parse_notify_payload (ikep);
+	  ikev2_notify_t *n = ikev2_parse_notify_payload (b);
 	  if (n->msg_type == IKEV2_NOTIFY_MSG_NAT_DETECTION_SOURCE_IP)
 	    {
 	      u8 *src_sha = ikev2_compute_nat_sha1 (ike->ispi,
@@ -813,7 +858,7 @@ ikev2_process_sa_init_resp (vlib_main_t * vm, ikev2_sa_t * sa,
 	}
       else if (payload == IKEV2_PAYLOAD_VENDOR)
 	{
-	  ikev2_parse_vendor_payload (ikep);
+	  ikev2_parse_vendor_payload (b);
 	}
       else
 	{
@@ -828,17 +873,16 @@ ikev2_process_sa_init_resp (vlib_main_t * vm, ikev2_sa_t * sa,
 	}
 
       payload = ikep->nextpayload;
-      p += plen;
     }
 }
 
-static u8 *
-ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike, u8 * payload,
-			  u32 len)
+static int
+ikev2_decrypt_sk_payload (vlib_buffer_t * b, ikev2_sa_t * sa,
+			  ike_header_t * ike, u8 * payload, u32 len)
 {
   ikev2_main_per_thread_data_t *ptd = ikev2_get_per_thread_data ();
-  int p = 0;
-  u8 last_payload = 0, *plaintext = 0;
+  u8 last_payload = 0;
+  int res = 0;
   u8 *hmac = 0;
   ike_payload_header_t *ikep = 0;
   u32 plen = 0;
@@ -853,13 +897,18 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike, u8 * payload,
   if ((!sa->sk_ar || !sa->sk_ai) && !is_aead)
     return 0;
 
-  while (p < len &&
-	 *payload != IKEV2_PAYLOAD_NONE && last_payload != IKEV2_PAYLOAD_SK)
+  while (*payload != IKEV2_PAYLOAD_NONE && last_payload != IKEV2_PAYLOAD_SK)
     {
-      ikep = (ike_payload_header_t *) & ike->payload[p];
-      plen = clib_net_to_host_u16 (ikep->length);
+      if (!vlib_buffer_has_space (b, sizeof (*ikep)))
+	return 0;
 
+      ikep = vlib_buffer_get_current (b);
+      plen = clib_net_to_host_u16 (ikep->length);
       if (plen < sizeof (*ikep))
+	return 0;
+
+      ikep = vlib_buffer_pull (b, plen);
+      if (!ikep)
 	return 0;
 
       if (*payload == IKEV2_PAYLOAD_SK)
@@ -878,8 +927,8 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike, u8 * payload,
 	}
 
       *payload = ikep->nextpayload;
-      p += plen;
     }
+  vlib_buffer_advance (b, -(word) plen + sizeof (*ikep));
 
   if (last_payload != IKEV2_PAYLOAD_SK)
     {
@@ -897,8 +946,9 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike, u8 * payload,
       u32 aad_len = ikep->payload - aad;
       u8 *tag = ikep->payload + plen;
 
-      plaintext = ikev2_decrypt_aead_data (ptd, sa, tr_encr, ikep->payload,
-					   plen, aad, aad_len, tag);
+      res = ikev2_decrypt_aead_data (ptd, sa, tr_encr, ikep->payload,
+				     plen, aad, aad_len, tag);
+      vlib_buffer_advance (b, IKEV2_GCM_IV_SIZE);
     }
   else
     {
@@ -922,10 +972,11 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike, u8 * payload,
 	}
       vec_free (hmac);
 
-      plaintext = ikev2_decrypt_data (ptd, sa, tr_encr, ikep->payload, plen);
+      res = ikev2_decrypt_data (ptd, sa, tr_encr, ikep->payload, plen);
+      vlib_buffer_advance (b, tr_encr->block_size);
     }
 
-  return plaintext;
+  return res;
 }
 
 static_always_inline int
@@ -981,16 +1032,35 @@ ikev2_initial_contact_cleanup (ikev2_sa_t * sa)
   sa->initial_contact = 0;
 }
 
-static void
-ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa, ike_header_t * ike,
-			u32 len)
+static int
+ikev2_parse_id_payload (vlib_buffer_t * b, ikev2_id_t * sa_id)
+{
+  ike_id_payload_header_t *id = vlib_buffer_pull (b, sizeof (*id));
+  if (!id)
+    return 0;
+
+  u16 plen = clib_net_to_host_u16 (id->length);
+
+  sa_id->type = id->id_type;
+  vec_free (sa_id->data);
+  u8 *data = vlib_buffer_pull (b, plen - sizeof (*id));
+  if (!data)
+    return 0;
+  vec_add (sa_id->data, data, plen - sizeof (*id));
+
+  return 1;
+}
+
+static int
+ikev2_process_auth_req (vlib_buffer_t * b, vlib_main_t * vm, ikev2_sa_t * sa,
+			ike_header_t * ike, u32 len)
 {
   ikev2_child_sa_t *first_child_sa;
-  int p = 0;
+  int res;
   u8 payload = ike->nextpayload;
-  u8 *plaintext = 0;
   ike_payload_header_t *ikep;
   u32 plen;
+  u8 *data;
 
   ikev2_elog_exchange ("ispi %lx rspi %lx EXCHANGE_IKE_AUTH received "
 		       "from %d.%d.%d.%d", clib_host_to_net_u64 (ike->ispi),
@@ -1000,13 +1070,17 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa, ike_header_t * ike,
 
   ikev2_calc_keys (sa);
 
-  plaintext = ikev2_decrypt_sk_payload (sa, ike, &payload, len);
+  /* decrypt payload and set buffer's current data to decrypted data */
+  res = ikev2_decrypt_sk_payload (b, sa, ike, &payload, len);
 
-  if (!plaintext)
+  if (!res)
     {
       if (sa->unsupported_cp)
-	ikev2_set_state (sa, IKEV2_STATE_NOTIFY_AND_DELETE);
-      goto cleanup_and_exit;
+	{
+	  ikev2_set_state (sa, IKEV2_STATE_NOTIFY_AND_DELETE);
+	  return 0;
+	}
+      goto malformed;
     }
 
   /* select or create 1st child SA */
@@ -1020,66 +1094,63 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa, ike_header_t * ike,
       vec_add2 (sa->childs, first_child_sa, 1);
     }
 
-
   /* process encrypted payload */
-  p = 0;
-  while (p < vec_len (plaintext) && payload != IKEV2_PAYLOAD_NONE)
+  while (payload != IKEV2_PAYLOAD_NONE)
     {
-      ikep = (ike_payload_header_t *) & plaintext[p];
-      plen = clib_net_to_host_u16 (ikep->length);
-
-      if (plen < sizeof (ike_payload_header_t))
-	goto cleanup_and_exit;
+      ikep = ikev2_buffer_header_check (b);
+      if (!ikep)
+	goto malformed;
 
       if (payload == IKEV2_PAYLOAD_SA)	/* 33 */
 	{
 	  if (sa->is_initiator)
 	    {
 	      ikev2_sa_free_proposal_vector (&first_child_sa->r_proposals);
-	      first_child_sa->r_proposals = ikev2_parse_sa_payload (ikep);
+	      first_child_sa->r_proposals = ikev2_parse_sa_payload (b);
 	    }
 	  else
 	    {
 	      ikev2_sa_free_proposal_vector (&first_child_sa->i_proposals);
-	      first_child_sa->i_proposals = ikev2_parse_sa_payload (ikep);
+	      first_child_sa->i_proposals = ikev2_parse_sa_payload (b);
 	    }
 	}
       else if (payload == IKEV2_PAYLOAD_IDI)	/* 35 */
 	{
-	  ike_id_payload_header_t *id = (ike_id_payload_header_t *) ikep;
-
-	  sa->i_id.type = id->id_type;
-	  vec_free (sa->i_id.data);
-	  vec_add (sa->i_id.data, id->payload, plen - sizeof (*id));
+	  if (!ikev2_parse_id_payload (b, &sa->i_id))
+	    goto malformed;
 	}
       else if (payload == IKEV2_PAYLOAD_IDR)	/* 36 */
 	{
-	  ike_id_payload_header_t *id = (ike_id_payload_header_t *) ikep;
-
-	  sa->r_id.type = id->id_type;
-	  vec_free (sa->r_id.data);
-	  vec_add (sa->r_id.data, id->payload, plen - sizeof (*id));
+	  if (!ikev2_parse_id_payload (b, &sa->r_id))
+	    goto malformed;
 	}
       else if (payload == IKEV2_PAYLOAD_AUTH)	/* 39 */
 	{
-	  ike_auth_payload_header_t *a = (ike_auth_payload_header_t *) ikep;
+	  ike_auth_payload_header_t *a = vlib_buffer_pull (b, sizeof (*a));
+	  if (!a)
+	    goto malformed;
+
+	  plen = clib_net_to_host_u16 (a->length);
+	  data = vlib_buffer_pull (b, plen - sizeof (*a));
+	  if (!data)
+	    goto malformed;
 
 	  if (sa->is_initiator)
 	    {
 	      sa->r_auth.method = a->auth_method;
 	      vec_free (sa->r_auth.data);
-	      vec_add (sa->r_auth.data, a->payload, plen - sizeof (*a));
+	      vec_add (sa->r_auth.data, data, plen - sizeof (*a));
 	    }
 	  else
 	    {
 	      sa->i_auth.method = a->auth_method;
 	      vec_free (sa->i_auth.data);
-	      vec_add (sa->i_auth.data, a->payload, plen - sizeof (*a));
+	      vec_add (sa->i_auth.data, data, plen - sizeof (*a));
 	    }
 	}
       else if (payload == IKEV2_PAYLOAD_NOTIFY)	/* 41 */
 	{
-	  ikev2_notify_t *n = ikev2_parse_notify_payload (ikep);
+	  ikev2_notify_t *n = ikev2_parse_notify_payload (b);
 	  if (n->msg_type == IKEV2_NOTIFY_MSG_INITIAL_CONTACT)
 	    {
 	      sa->initial_contact = 1;
@@ -1088,17 +1159,17 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa, ike_header_t * ike,
 	}
       else if (payload == IKEV2_PAYLOAD_VENDOR)	/* 43 */
 	{
-	  ikev2_parse_vendor_payload (ikep);
+	  ikev2_parse_vendor_payload (b);
 	}
       else if (payload == IKEV2_PAYLOAD_TSI)	/* 44 */
 	{
 	  vec_free (first_child_sa->tsi);
-	  first_child_sa->tsi = ikev2_parse_ts_payload (ikep);
+	  first_child_sa->tsi = ikev2_parse_ts_payload (b);
 	}
       else if (payload == IKEV2_PAYLOAD_TSR)	/* 45 */
 	{
 	  vec_free (first_child_sa->tsr);
-	  first_child_sa->tsr = ikev2_parse_ts_payload (ikep);
+	  first_child_sa->tsr = ikev2_parse_ts_payload (b);
 	}
       else
 	{
@@ -1109,62 +1180,61 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa, ike_header_t * ike,
 	    {
 	      ikev2_set_state (sa, IKEV2_STATE_NOTIFY_AND_DELETE);
 	      sa->unsupported_cp = payload;
-	      return;
+	      return 0;
 	    }
 	}
 
       payload = ikep->nextpayload;
-      p += plen;
     }
 
-cleanup_and_exit:
-  vec_free (plaintext);
+  return res;
+
+malformed:
+  ikev2_set_state (sa, IKEV2_STATE_DELETED);
+  return 0;
 }
 
-static void
-ikev2_process_informational_req (vlib_main_t * vm, ikev2_sa_t * sa,
-				 ike_header_t * ike, u32 len)
+static int
+ikev2_process_informational_req (vlib_buffer_t * b, vlib_main_t * vm,
+				 ikev2_sa_t * sa, ike_header_t * ike, u32 len)
 {
-  int p = 0;
   u8 payload = ike->nextpayload;
-  u8 *plaintext = 0;
   ike_payload_header_t *ikep;
-  u32 plen;
+  int res;
 
   sa->liveness_retries = 0;
   ikev2_elog_exchange ("ispi %lx rspi %lx INFORMATIONAL received "
 		       "from %d.%d.%d.%d", clib_host_to_net_u64 (ike->ispi),
 		       clib_host_to_net_u64 (ike->rspi), sa->iaddr.as_u32);
 
-  plaintext = ikev2_decrypt_sk_payload (sa, ike, &payload, len);
+  res = ikev2_decrypt_sk_payload (b, sa, ike, &payload, len);
 
-  if (!plaintext)
-    goto cleanup_and_exit;
+  if (!res)
+    return 0;
 
   /* process encrypted payload */
-  p = 0;
-  while (p < vec_len (plaintext) && payload != IKEV2_PAYLOAD_NONE)
+  while (payload != IKEV2_PAYLOAD_NONE)
     {
-      ikep = (ike_payload_header_t *) & plaintext[p];
-      plen = clib_net_to_host_u16 (ikep->length);
-
-      if (plen < sizeof (ike_payload_header_t))
-	goto cleanup_and_exit;
+      ikep = ikev2_buffer_header_check (b);
+      if (!ikep)
+	return 0;
 
       if (payload == IKEV2_PAYLOAD_NOTIFY)	/* 41 */
 	{
-	  ikev2_notify_t *n = ikev2_parse_notify_payload (ikep);
+	  ikev2_notify_t *n = ikev2_parse_notify_payload (b);
+	  if (!n)
+	    return 0;
 	  if (n->msg_type == IKEV2_NOTIFY_MSG_AUTHENTICATION_FAILED)
 	    ikev2_set_state (sa, IKEV2_STATE_AUTH_FAILED);
 	  vec_free (n);
 	}
       else if (payload == IKEV2_PAYLOAD_DELETE)	/* 42 */
 	{
-	  sa->del = ikev2_parse_delete_payload (ikep);
+	  sa->del = ikev2_parse_delete_payload (b);
 	}
       else if (payload == IKEV2_PAYLOAD_VENDOR)	/* 43 */
 	{
-	  ikev2_parse_vendor_payload (ikep);
+	  ikev2_parse_vendor_payload (b);
 	}
       else
 	{
@@ -1173,30 +1243,24 @@ ikev2_process_informational_req (vlib_main_t * vm, ikev2_sa_t * sa,
 	  if (ikep->flags & IKEV2_PAYLOAD_FLAG_CRITICAL)
 	    {
 	      sa->unsupported_cp = payload;
-	      return;
+	      return 0;
 	    }
 	}
-
       payload = ikep->nextpayload;
-      p += plen;
     }
-
-cleanup_and_exit:
-  vec_free (plaintext);
+  return 1;
 }
 
-static void
-ikev2_process_create_child_sa_req (vlib_main_t * vm, ikev2_sa_t * sa,
-				   ike_header_t * ike, u32 len)
+static int
+ikev2_process_create_child_sa_req (vlib_buffer_t * b, vlib_main_t * vm,
+				   ikev2_sa_t * sa, ike_header_t * ike,
+				   u32 len)
 {
-  int p = 0;
   u8 payload = ike->nextpayload;
-  u8 *plaintext = 0;
   u8 rekeying = 0;
   u8 nonce[IKEV2_NONCE_SIZE];
 
   ike_payload_header_t *ikep;
-  u32 plen;
   ikev2_notify_t *n = 0;
   ikev2_ts_t *tsi = 0;
   ikev2_ts_t *tsr = 0;
@@ -1207,28 +1271,26 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm, ikev2_sa_t * sa,
 		       "from %d.%d.%d.%d", clib_host_to_net_u64 (ike->ispi),
 		       clib_host_to_net_u64 (ike->rspi), sa->raddr.as_u32);
 
-  plaintext = ikev2_decrypt_sk_payload (sa, ike, &payload, len);
+  int res = ikev2_decrypt_sk_payload (b, sa, ike, &payload, len);
 
-  if (!plaintext)
+  if (!res)
     goto cleanup_and_exit;
 
   /* process encrypted payload */
-  p = 0;
-  while (p < vec_len (plaintext) && payload != IKEV2_PAYLOAD_NONE)
+  while (payload != IKEV2_PAYLOAD_NONE)
     {
-      ikep = (ike_payload_header_t *) & plaintext[p];
-      plen = clib_net_to_host_u16 (ikep->length);
-
-      if (plen < sizeof (ike_payload_header_t))
+      ikep = ikev2_buffer_header_check (b);
+      if (!ikep)
 	goto cleanup_and_exit;
+      u16 plen = clib_net_to_host_u16 (ikep->length);
 
-      else if (payload == IKEV2_PAYLOAD_SA)
+      if (payload == IKEV2_PAYLOAD_SA)
 	{
-	  proposal = ikev2_parse_sa_payload (ikep);
+	  proposal = ikev2_parse_sa_payload (b);
 	}
       else if (payload == IKEV2_PAYLOAD_NOTIFY)
 	{
-	  n = ikev2_parse_notify_payload (ikep);
+	  n = ikev2_parse_notify_payload (b);
 	  if (n->msg_type == IKEV2_NOTIFY_MSG_REKEY_SA)
 	    {
 	      rekeying = 1;
@@ -1236,23 +1298,30 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm, ikev2_sa_t * sa,
 	}
       else if (payload == IKEV2_PAYLOAD_DELETE)
 	{
-	  sa->del = ikev2_parse_delete_payload (ikep);
+	  sa->del = ikev2_parse_delete_payload (b);
 	}
       else if (payload == IKEV2_PAYLOAD_VENDOR)
 	{
-	  ikev2_parse_vendor_payload (ikep);
+	  ikev2_parse_vendor_payload (b);
 	}
       else if (payload == IKEV2_PAYLOAD_NONCE)
 	{
-	  clib_memcpy_fast (nonce, ikep->payload, plen - sizeof (*ikep));
+	  vlib_buffer_pull (b, sizeof (*ikep));
+	  u32 size = plen - sizeof (*ikep);
+	  if (size > IKEV2_NONCE_SIZE)
+	    return 0;
+	  u8 *data = vlib_buffer_pull (b, size);
+	  if (!data)
+	    return 0;
+	  clib_memcpy_fast (nonce, data, size);
 	}
       else if (payload == IKEV2_PAYLOAD_TSI)
 	{
-	  tsi = ikev2_parse_ts_payload (ikep);
+	  tsi = ikev2_parse_ts_payload (b);
 	}
       else if (payload == IKEV2_PAYLOAD_TSR)
 	{
-	  tsr = ikev2_parse_ts_payload (ikep);
+	  tsr = ikev2_parse_ts_payload (b);
 	}
       else
 	{
@@ -1264,9 +1333,7 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm, ikev2_sa_t * sa,
 	      goto cleanup_and_exit;
 	    }
 	}
-
       payload = ikep->nextpayload;
-      p += plen;
     }
 
   if (sa->is_initiator && proposal->protocol_id == IKEV2_PROTOCOL_ESP)
@@ -1313,11 +1380,13 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm, ikev2_sa_t * sa,
       vec_free (sa->r_nonce);
       sa->r_nonce = vec_new (u8, IKEV2_NONCE_SIZE);
       RAND_bytes ((u8 *) sa->r_nonce, IKEV2_NONCE_SIZE);
+      vec_free (n);
     }
+  return 1;
 
 cleanup_and_exit:
-  vec_free (plaintext);
   vec_free (n);
+  return 0;
 }
 
 static u8 *
@@ -2061,13 +2130,18 @@ ikev2_delete_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 }
 
 static u32
-ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user,
-			udp_header_t * udp)
+ikev2_generate_message (vlib_buffer_t * b, ikev2_sa_t * sa,
+			ike_header_t * ike, void *user, udp_header_t * udp)
 {
+  ikev2_main_t *km = &ikev2_main;
+  u16 buffer_data_size = vlib_buffer_get_default_data_size (km->vlib_main);
   v8 *integ = 0;
   ike_payload_header_t *ph;
   u16 plen;
   u32 tlen = 0;
+
+  ASSERT (b->current_length == 0 ||
+	  b->current_length == sizeof (ikev2_non_esp_marker));
 
   ikev2_sa_transform_t *tr_encr, *tr_integ;
   tr_encr =
@@ -2320,6 +2394,13 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user,
       tlen += vec_len (chain->data);
       ike->nextpayload = chain->first_payload_type;
       ike->length = clib_host_to_net_u32 (tlen);
+
+      if (tlen + b->current_length + b->current_data > buffer_data_size)
+	{
+	  tlen = ~0;
+	  goto done;
+	}
+
       clib_memcpy_fast (ike->payload, chain->data, vec_len (chain->data));
 
       /* store whole IKE payload - needed for PSK auth */
@@ -2348,21 +2429,36 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user,
 	plen += IKEV2_GCM_ICV_SIZE;
       tlen += plen;
 
+      if (tlen + b->current_length + b->current_data > buffer_data_size)
+	{
+	  tlen = ~0;
+	  goto done;
+	}
+
       /* payload and total length */
       ph->length = clib_host_to_net_u16 (plen);
       ike->length = clib_host_to_net_u32 (tlen);
 
       if (is_aead)
 	{
-	  ikev2_encrypt_aead_data (ptd, sa, tr_encr, chain->data,
-				   ph->payload, (u8 *) ike,
-				   sizeof (*ike) + sizeof (*ph),
-				   ph->payload + plen - sizeof (*ph) -
-				   IKEV2_GCM_ICV_SIZE);
+	  if (!ikev2_encrypt_aead_data (ptd, sa, tr_encr, chain->data,
+					ph->payload, (u8 *) ike,
+					sizeof (*ike) + sizeof (*ph),
+					ph->payload + plen - sizeof (*ph) -
+					IKEV2_GCM_ICV_SIZE))
+	    {
+	      tlen = ~0;
+	      goto done;
+	    }
 	}
       else
 	{
-	  ikev2_encrypt_data (ptd, sa, tr_encr, chain->data, ph->payload);
+	  if (!ikev2_encrypt_data
+	      (ptd, sa, tr_encr, chain->data, ph->payload))
+	    {
+	      tlen = ~0;
+	      goto done;
+	    }
 	  integ =
 	    ikev2_calc_integr (tr_integ,
 			       sa->is_initiator ? sa->sk_ai : sa->sk_ar,
@@ -2376,6 +2472,8 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user,
       vec_add (sa->last_res_packet_data, ike, tlen);
     }
 
+  b->current_length = tlen;
+
 done:
   ikev2_payload_destroy_chain (chain);
   vec_free (integ);
@@ -2383,12 +2481,13 @@ done:
 }
 
 static u32
-ikev2_retransmit_sa_init (ike_header_t * ike,
-			  ip4_address_t iaddr, ip4_address_t raddr, u32 rlen)
+ikev2_retransmit_sa_init (vlib_buffer_t * b, ike_header_t * ike,
+			  ip4_address_t iaddr, ip4_address_t raddr)
 {
   ikev2_main_t *km = &ikev2_main;
   ikev2_sa_t *sa;
   u32 thread_index = vlib_get_thread_index ();
+  u32 rlen = b->current_length;
 
   /* *INDENT-OFF* */
   pool_foreach (sa, km->per_thread_data[thread_index].sas, ({
@@ -2402,9 +2501,11 @@ ikev2_retransmit_sa_init (ike_header_t * ike,
         while (p < rlen && payload!= IKEV2_PAYLOAD_NONE) {
           ike_payload_header_t * ikep = (ike_payload_header_t *) &ike->payload[p];
           u32 plen = clib_net_to_host_u16(ikep->length);
+          if (plen > p + sizeof (*ike))
+            return ~0;
 
           if (plen < sizeof(ike_payload_header_t))
-            return -1;
+            return ~0;
 
           if (payload == IKEV2_PAYLOAD_NONCE)
             {
@@ -2455,7 +2556,7 @@ ikev2_retransmit_sa_init (ike_header_t * ike,
 }
 
 static u32
-ikev2_retransmit_resp (ikev2_sa_t * sa, ike_header_t * ike, u32 rlen)
+ikev2_retransmit_resp (ikev2_sa_t * sa, ike_header_t * ike)
 {
   u32 msg_id = clib_net_to_host_u32 (ike->msgid);
 
@@ -2520,6 +2621,13 @@ ikev2_del_sa_init (u64 ispi)
 			       sizeof (ispi));
 }
 
+static_always_inline void
+ikev2_reset_buffer (vlib_buffer_t * b, i16 data, int esp_marker)
+{
+  b->current_data = data;
+  b->current_length = esp_marker ? sizeof (ikev2_non_esp_marker) : 0;
+}
+
 static uword
 ikev2_node_fn (vlib_main_t * vm,
 	       vlib_node_runtime_t * node, vlib_frame_t * frame)
@@ -2528,6 +2636,7 @@ ikev2_node_fn (vlib_main_t * vm,
   ikev2_next_t next_index;
   ikev2_main_t *km = &ikev2_main;
   u32 thread_index = vlib_get_thread_index ();
+  int res;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -2544,12 +2653,12 @@ ikev2_node_fn (vlib_main_t * vm,
 	  u32 bi0;
 	  vlib_buffer_t *b0;
 	  u32 next0 = IKEV2_NEXT_ERROR_DROP;
-	  u32 sw_if_index0;
 	  ip4_header_t *ip40;
 	  udp_header_t *udp0;
 	  ike_header_t *ike0;
 	  ikev2_sa_t *sa0 = 0;
 	  ikev2_sa_t sa;	/* temporary store for SA */
+	  i16 ike0_data;
 	  u32 rlen, slen = 0;
 	  int is_req = 0, has_non_esp_marker = 0;
 
@@ -2565,33 +2674,38 @@ ikev2_node_fn (vlib_main_t * vm,
 
 	  if (b0->punt_reason == ipsec_punt_reason[IPSEC_PUNT_IP4_SPI_UDP_0])
 	    {
-	      u8 *ptr = vlib_buffer_get_current (b0);
-	      ip40 = (ip4_header_t *) ptr;
-	      ptr += sizeof (*ip40);
-	      udp0 = (udp_header_t *) ptr;
-	      ptr += sizeof (*udp0);
-	      ike0 = (ike_header_t *) ptr;
+	      if (0 == (ip40 = vlib_buffer_pull (b0, sizeof (*ip40))))
+		goto dispatch0;
+	      if (0 == (udp0 = vlib_buffer_pull (b0, sizeof (*udp0))))
+		goto dispatch0;
+	      ike0 = vlib_buffer_get_current (b0);
 	    }
 	  else
 	    {
-	      ike0 = vlib_buffer_get_current (b0);
-	      vlib_buffer_advance (b0, -sizeof (*udp0));
-	      udp0 = vlib_buffer_get_current (b0);
-	      vlib_buffer_advance (b0, -sizeof (*ip40));
-	      ip40 = vlib_buffer_get_current (b0);
+	      u8 *p = vlib_buffer_get_current (b0);
+	      ike0 = (ike_header_t *) p;
+	      p -= sizeof (*udp0);
+	      udp0 = (udp_header_t *) p;
+	      p -= sizeof (*ip40);
+	      ip40 = (ip4_header_t *) p;
 	    }
 
-	  rlen = b0->current_length - sizeof (*ip40) - sizeof (*udp0);
+	  rlen = b0->current_length;
 
 	  /* check for non-esp marker */
 	  if (*((u32 *) ike0) == 0)
 	    {
-	      ike0 =
-		(ike_header_t *) ((u8 *) ike0 +
-				  sizeof (ikev2_non_esp_marker));
+	      if (!vlib_buffer_pull (b0, sizeof (u32)))
+		goto dispatch0;
+
 	      rlen -= sizeof (ikev2_non_esp_marker);
 	      has_non_esp_marker = 1;
 	    }
+	  ike0_data = b0->current_data;
+
+	  ike0 = vlib_buffer_pull (b0, sizeof (*ike0));
+	  if (!ike0)
+	    goto dispatch0;
 
 	  if (clib_net_to_host_u32 (ike0->length) != rlen)
 	    {
@@ -2621,8 +2735,8 @@ ikev2_node_fn (vlib_main_t * vm,
 		      sa0->dst_port = clib_net_to_host_u16 (udp0->src_port);
 
 		      slen =
-			ikev2_retransmit_sa_init (ike0, sa0->iaddr,
-						  sa0->raddr, rlen);
+			ikev2_retransmit_sa_init (b0, ike0, sa0->iaddr,
+						  sa0->raddr);
 		      if (slen)
 			{
 			  vlib_node_increment_counter (vm, ikev2_node.index,
@@ -2635,7 +2749,12 @@ ikev2_node_fn (vlib_main_t * vm,
 			  goto dispatch0;
 			}
 
-		      ikev2_process_sa_init_req (vm, sa0, ike0, udp0, rlen);
+		      res = ikev2_process_sa_init_req (b0, vm, sa0,
+						       ike0, udp0, rlen);
+		      if (!res)
+			vlib_node_increment_counter (vm, ikev2_node.index,
+						     IKEV2_ERROR_MALFORMED_PACKET,
+						     1);
 
 		      if (sa0->state == IKEV2_STATE_SA_INIT)
 			{
@@ -2649,7 +2768,14 @@ ikev2_node_fn (vlib_main_t * vm,
 		      if (sa0->state == IKEV2_STATE_SA_INIT
 			  || sa0->state == IKEV2_STATE_NOTIFY_AND_DELETE)
 			{
-			  slen = ikev2_generate_message (sa0, ike0, 0, udp0);
+			  ikev2_reset_buffer (b0, ike0_data,
+					      has_non_esp_marker);
+			  slen =
+			    ikev2_generate_message (b0, sa0, ike0, 0, udp0);
+			  if (~0 == slen)
+			    vlib_node_increment_counter (vm, ikev2_node.index,
+							 IKEV2_ERROR_NO_BUFF_SPACE,
+							 1);
 			}
 
 		      if (sa0->state == IKEV2_STATE_SA_INIT)
@@ -2675,7 +2801,7 @@ ikev2_node_fn (vlib_main_t * vm,
 		{
 		  sa0->raddr.as_u32 = ip40->src_address.as_u32;
 		  sa0->iaddr.as_u32 = ip40->dst_address.as_u32;
-		  ikev2_process_sa_init_resp (vm, sa0, ike0, udp0, rlen);
+		  ikev2_process_sa_init_resp (b0, vm, sa0, ike0, udp0, rlen);
 
 		  if (sa0->state == IKEV2_STATE_SA_INIT)
 		    {
@@ -2693,8 +2819,16 @@ ikev2_node_fn (vlib_main_t * vm,
 			      ikev2_complete_sa_data (sa0, sai);
 			      ikev2_calc_keys (sa0);
 			      ikev2_sa_auth_init (sa0);
+			      ikev2_reset_buffer (b0, ike0_data,
+						  has_non_esp_marker);
 			      slen =
-				ikev2_generate_message (sa0, ike0, 0, udp0);
+				ikev2_generate_message (b0, sa0, ike0, 0,
+							udp0);
+			      if (~0 == slen)
+				vlib_node_increment_counter (vm,
+							     ikev2_node.index,
+							     IKEV2_ERROR_NO_BUFF_SPACE,
+							     1);
 			    }
 			  else
 			    {
@@ -2730,7 +2864,7 @@ ikev2_node_fn (vlib_main_t * vm,
 		    pool_elt_at_index (km->per_thread_data[thread_index].sas,
 				       p[0]);
 
-		  slen = ikev2_retransmit_resp (sa0, ike0, rlen);
+		  slen = ikev2_retransmit_resp (sa0, ike0);
 		  if (slen)
 		    {
 		      vlib_node_increment_counter (vm, ikev2_node.index,
@@ -2744,8 +2878,13 @@ ikev2_node_fn (vlib_main_t * vm,
 		    }
 
 		  sa0->dst_port = clib_net_to_host_u16 (udp0->src_port);
-		  ikev2_process_auth_req (vm, sa0, ike0, rlen);
-		  ikev2_sa_auth (sa0);
+		  res = ikev2_process_auth_req (b0, vm, sa0, ike0, rlen);
+		  if (res)
+		    ikev2_sa_auth (sa0);
+		  else
+		    vlib_node_increment_counter (vm, ikev2_node.index,
+						 IKEV2_ERROR_MALFORMED_PACKET,
+						 1);
 		  if (sa0->state == IKEV2_STATE_AUTHENTICATED)
 		    {
 		      ikev2_initial_contact_cleanup (sa0);
@@ -2762,7 +2901,12 @@ ikev2_node_fn (vlib_main_t * vm,
 		    }
 		  else
 		    {
-		      slen = ikev2_generate_message (sa0, ike0, 0, udp0);
+		      ikev2_reset_buffer (b0, ike0_data, has_non_esp_marker);
+		      slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
+		      if (~0 == slen)
+			vlib_node_increment_counter (vm, ikev2_node.index,
+						     IKEV2_ERROR_NO_BUFF_SPACE,
+						     1);
 		    }
 		}
 	    }
@@ -2777,7 +2921,7 @@ ikev2_node_fn (vlib_main_t * vm,
 		    pool_elt_at_index (km->per_thread_data[thread_index].sas,
 				       p[0]);
 
-		  slen = ikev2_retransmit_resp (sa0, ike0, rlen);
+		  slen = ikev2_retransmit_resp (sa0, ike0);
 		  if (slen)
 		    {
 		      vlib_node_increment_counter (vm, ikev2_node.index,
@@ -2790,7 +2934,17 @@ ikev2_node_fn (vlib_main_t * vm,
 		      goto dispatch0;
 		    }
 
-		  ikev2_process_informational_req (vm, sa0, ike0, rlen);
+		  res = ikev2_process_informational_req (b0, vm, sa0,
+							 ike0, rlen);
+		  if (!res)
+		    {
+		      vlib_node_increment_counter (vm, ikev2_node.index,
+						   IKEV2_ERROR_MALFORMED_PACKET,
+						   1);
+		      slen = ~0;
+		      goto dispatch0;
+		    }
+
 		  if (sa0->del)
 		    {
 		      if (sa0->del[0].protocol_id != IKEV2_PROTOCOL_IKE)
@@ -2824,8 +2978,13 @@ ikev2_node_fn (vlib_main_t * vm,
 		    }
 		  if (!(ike0->flags & IKEV2_HDR_FLAG_RESPONSE))
 		    {
+		      ikev2_reset_buffer (b0, ike0_data, has_non_esp_marker);
 		      ike0->flags |= IKEV2_HDR_FLAG_RESPONSE;
-		      slen = ikev2_generate_message (sa0, ike0, 0, udp0);
+		      slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
+		      if (~0 == slen)
+			vlib_node_increment_counter (vm, ikev2_node.index,
+						     IKEV2_ERROR_NO_BUFF_SPACE,
+						     1);
 		    }
 		}
 	    }
@@ -2840,7 +2999,7 @@ ikev2_node_fn (vlib_main_t * vm,
 		    pool_elt_at_index (km->per_thread_data[thread_index].sas,
 				       p[0]);
 
-		  slen = ikev2_retransmit_resp (sa0, ike0, rlen);
+		  slen = ikev2_retransmit_resp (sa0, ike0);
 		  if (slen)
 		    {
 		      vlib_node_increment_counter (vm, ikev2_node.index,
@@ -2853,7 +3012,17 @@ ikev2_node_fn (vlib_main_t * vm,
 		      goto dispatch0;
 		    }
 
-		  ikev2_process_create_child_sa_req (vm, sa0, ike0, rlen);
+		  res = ikev2_process_create_child_sa_req (b0, vm, sa0,
+							   ike0, rlen);
+		  if (!res)
+		    {
+		      vlib_node_increment_counter (vm, ikev2_node.index,
+						   IKEV2_ERROR_MALFORMED_PACKET,
+						   1);
+		      slen = ~0;
+		      goto dispatch0;
+		    }
+
 		  if (sa0->rekey)
 		    {
 		      if (sa0->rekey[0].protocol_id != IKEV2_PROTOCOL_IKE)
@@ -2878,7 +3047,14 @@ ikev2_node_fn (vlib_main_t * vm,
 			}
 		      else
 			{
-			  slen = ikev2_generate_message (sa0, ike0, 0, udp0);
+			  ikev2_reset_buffer (b0, ike0_data,
+					      has_non_esp_marker);
+			  slen =
+			    ikev2_generate_message (b0, sa0, ike0, 0, udp0);
+			  if (~0 == slen)
+			    vlib_node_increment_counter (vm, ikev2_node.index,
+							 IKEV2_ERROR_NO_BUFF_SPACE,
+							 1);
 			}
 		    }
 		}
@@ -2930,11 +3106,15 @@ ikev2_node_fn (vlib_main_t * vm,
 		  udp0->src_port = tp;
 		}
 
+	      /* rewind buffer */
+	      if (has_non_esp_marker)
+		vlib_buffer_advance (b0, -sizeof (ikev2_non_esp_marker));
+	      vlib_buffer_advance (b0, -sizeof (*udp0));
+	      vlib_buffer_advance (b0, -sizeof (*ip40));
+
 	      udp0->length =
 		clib_host_to_net_u16 (slen + sizeof (udp_header_t));
 	      udp0->checksum = 0;
-	      b0->current_length =
-		slen + sizeof (ip4_header_t) + sizeof (udp_header_t);
 	      ip40->length = clib_host_to_net_u16 (b0->current_length);
 	      ip40->checksum = ip4_header_checksum (ip40);
 	    }
@@ -2949,13 +3129,12 @@ ikev2_node_fn (vlib_main_t * vm,
 
 	      ikev2_delete_sa (sa0);
 	    }
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
+
 	      ikev2_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->sw_if_index = sw_if_index0;
+	      t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	      t->next_index = next0;
 	    }
 
@@ -3179,16 +3358,15 @@ ikev2_send_ike (vlib_main_t * vm, ip4_address_t * src, ip4_address_t * dst,
 }
 
 static u32
-ikev2_get_new_ike_header_buff (vlib_main_t * vm, ike_header_t ** ike)
+ikev2_get_new_ike_header_buff (vlib_main_t * vm, vlib_buffer_t ** b)
 {
   u32 bi0;
   if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
     {
-      *ike = 0;
+      *b = 0;
       return 0;
     }
-  vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
-  *ike = vlib_buffer_get_current (b0);
+  *b = vlib_get_buffer (vm, bi0);
   return bi0;
 }
 
@@ -3263,19 +3441,21 @@ ikev2_initiate_delete_ike_sa_internal (vlib_main_t * vm,
 {
   ikev2_main_t *km = &ikev2_main;
   ip4_address_t *src, *dst;
+  vlib_buffer_t *b0;
 
   /* Create the Initiator notification for IKE SA removal */
   ike_header_t *ike0;
   u32 bi0 = 0;
   int len;
 
-  bi0 = ikev2_get_new_ike_header_buff (vm, &ike0);
+  bi0 = ikev2_get_new_ike_header_buff (vm, &b0);
   if (!bi0)
     {
       ikev2_log_error ("buffer alloc failure");
       return;
     }
 
+  ike0 = vlib_buffer_get_current (b0);
   ike0->exchange = IKEV2_EXCHANGE_INFORMATIONAL;
   ike0->ispi = clib_host_to_net_u64 (sa->ispi);
   ike0->rspi = clib_host_to_net_u64 (sa->rspi);
@@ -3284,7 +3464,9 @@ ikev2_initiate_delete_ike_sa_internal (vlib_main_t * vm,
   sa->del->spi = sa->ispi;
   ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id + 1);
   sa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
-  len = ikev2_generate_message (sa, ike0, 0, 0);
+  len = ikev2_generate_message (b0, sa, ike0, 0, 0);
+  if (~0 == len)
+    return;
 
   if (sa->is_initiator)
     {
@@ -3677,6 +3859,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
 
   /* Create the Initiator Request */
   {
+    vlib_buffer_t *b0;
     ike_header_t *ike0;
     u32 bi0 = 0;
     ip_lookup_main_t *lm = &im->lookup_main;
@@ -3690,13 +3873,14 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
       pool_elt_at_index (lm->if_address_pool, if_add_index0);
     ip4_address_t *if_ip = ip_interface_address_get_address (lm, if_add);
 
-    bi0 = ikev2_get_new_ike_header_buff (vm, &ike0);
+    bi0 = ikev2_get_new_ike_header_buff (vm, &b0);
     if (!bi0)
       {
 	char *errmsg = "buffer alloc failure";
 	ikev2_log_error (errmsg);
 	return clib_error_return (0, errmsg);
       }
+    ike0 = vlib_buffer_get_current (b0);
 
     /* Prepare the SA and the IKE payload */
     ikev2_sa_t sa;
@@ -3769,6 +3953,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     len += vec_len (chain->data);
     ike0->nextpayload = chain->first_payload_type;
     ike0->length = clib_host_to_net_u32 (len);
+
     clib_memcpy_fast (ike0->payload, chain->data, vec_len (chain->data));
     ikev2_payload_destroy_chain (chain);
 
@@ -3824,15 +4009,17 @@ ikev2_delete_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   ikev2_main_t *km = &ikev2_main;
   ike_header_t *ike0;
   u32 bi0 = 0;
+  vlib_buffer_t *b0;
   int len;
 
-  bi0 = ikev2_get_new_ike_header_buff (vm, &ike0);
+  bi0 = ikev2_get_new_ike_header_buff (vm, &b0);
   if (!bi0)
     {
       ikev2_log_error ("buffer alloc failure");
       return;
     }
 
+  ike0 = vlib_buffer_get_current (b0);
   ike0->exchange = IKEV2_EXCHANGE_INFORMATIONAL;
   ike0->ispi = clib_host_to_net_u64 (sa->ispi);
   ike0->rspi = clib_host_to_net_u64 (sa->rspi);
@@ -3841,7 +4028,10 @@ ikev2_delete_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   sa->del->spi = csa->i_proposals->spi;
   ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id + 1);
   sa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
-  len = ikev2_generate_message (sa, ike0, 0, 0);
+  len = ikev2_generate_message (b0, sa, ike0, 0, 0);
+  if (~0 == len)
+    return;
+
   if (sa->natt)
     len = ikev2_insert_non_esp_marker (ike0, len);
   ikev2_send_ike (vm, &sa->iaddr, &sa->raddr, bi0, len,
@@ -3935,16 +4125,18 @@ ikev2_rekey_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
 {
   /* Create the Initiator request for create child SA */
   ike_header_t *ike0;
+  vlib_buffer_t *b0;
   u32 bi0 = 0;
   int len;
 
-  bi0 = ikev2_get_new_ike_header_buff (vm, &ike0);
+  bi0 = ikev2_get_new_ike_header_buff (vm, &b0);
   if (!bi0)
     {
       ikev2_log_error ("buffer alloc failure");
       return;
     }
 
+  ike0 = vlib_buffer_get_current (b0);
   ike0->version = IKE_VERSION_2;
   ike0->flags = IKEV2_HDR_FLAG_INITIATOR;
   ike0->exchange = IKEV2_EXCHANGE_CREATE_CHILD_SA;
@@ -3961,7 +4153,10 @@ ikev2_rekey_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   RAND_bytes ((u8 *) & proposals[0].spi, sizeof (proposals[0].spi));
   rekey->spi = proposals[0].spi;
   rekey->ispi = csa->i_proposals->spi;
-  len = ikev2_generate_message (sa, ike0, proposals, 0);
+  len = ikev2_generate_message (b0, sa, ike0, proposals, 0);
+  if (~0 == len)
+    return;
+
   if (sa->natt)
     len = ikev2_insert_non_esp_marker (ike0, len);
   ikev2_send_ike (vm, &sa->iaddr, &sa->raddr, bi0, len,
@@ -4272,23 +4467,28 @@ ikev2_send_informational_request (ikev2_sa_t * sa)
   ikev2_main_t *km = &ikev2_main;
   ip4_address_t *src, *dst;
   ike_header_t *ike0;
+  vlib_buffer_t *b0;
   u32 bi0 = 0;
   u16 dp;
   int len;
 
-  bi0 = ikev2_get_new_ike_header_buff (km->vlib_main, &ike0);
+  bi0 = ikev2_get_new_ike_header_buff (km->vlib_main, &b0);
   if (!bi0)
     {
       ikev2_log_error ("buffer alloc failure");
       return;
     }
 
+  ike0 = vlib_buffer_get_current (b0);
   ike0->exchange = IKEV2_EXCHANGE_INFORMATIONAL;
   ike0->ispi = clib_host_to_net_u64 (sa->ispi);
   ike0->rspi = clib_host_to_net_u64 (sa->rspi);
   ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id + 1);
   sa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
-  len = ikev2_generate_message (sa, ike0, 0, 0);
+  len = ikev2_generate_message (b0, sa, ike0, 0, 0);
+  if (~0 == len)
+    return;
+
   if (sa->natt)
     len = ikev2_insert_non_esp_marker (ike0, len);
 

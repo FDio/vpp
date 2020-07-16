@@ -397,9 +397,9 @@ vlib_buffer_get_trace_index (vlib_buffer_t * b)
  * @return      pointer to start of buffer (current data)
  */
 always_inline void *
-vlib_buffer_pull (vlib_buffer_t * b, u8 size)
+vlib_buffer_pull (vlib_buffer_t * b, word size)
 {
-  if (b->current_length + VLIB_BUFFER_PRE_DATA_SIZE < size)
+  if (b->current_length < size)
     return 0;
 
   void *data = vlib_buffer_get_current (b);
