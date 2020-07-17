@@ -472,17 +472,18 @@ clib_count_equal_u64 (u64 * data, uword max_count)
   uword count;
   u64 first;
 
-  if (max_count == 1)
-    return 1;
+  if (max_count <= 1)
+    return max_count;
   if (data[0] != data[1])
     return 1;
 
-  count = 0;
   first = data[0];
+  data += 2;
+  count = 2;
 
 #if defined(CLIB_HAVE_VEC256)
   u64x4 splat = u64x4_splat (first);
-  while (1)
+  while (count + 4 <= max_count)
     {
       u64 bmp;
       bmp = u8x32_msb_mask ((u8x32) (u64x4_load_unaligned (data) == splat));
@@ -494,13 +495,8 @@ clib_count_equal_u64 (u64 * data, uword max_count)
 
       data += 4;
       count += 4;
-
-      if (count >= max_count)
-	return max_count;
     }
 #endif
-  count += 2;
-  data += 2;
   while (count + 3 < max_count &&
 	 ((data[0] ^ first) | (data[1] ^ first) |
 	  (data[2] ^ first) | (data[3] ^ first)) == 0)
@@ -522,17 +518,18 @@ clib_count_equal_u32 (u32 * data, uword max_count)
   uword count;
   u32 first;
 
-  if (max_count == 1)
-    return 1;
+  if (max_count <= 1)
+    return max_count;
   if (data[0] != data[1])
     return 1;
 
-  count = 0;
   first = data[0];
+  data += 2;
+  count = 2;
 
 #if defined(CLIB_HAVE_VEC256)
   u32x8 splat = u32x8_splat (first);
-  while (1)
+  while (count + 8 <= max_count)
     {
       u64 bmp;
       bmp = u8x32_msb_mask ((u8x32) (u32x8_load_unaligned (data) == splat));
@@ -544,13 +541,10 @@ clib_count_equal_u32 (u32 * data, uword max_count)
 
       data += 8;
       count += 8;
-
-      if (count >= max_count)
-	return max_count;
     }
 #elif defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_MSB_MASK)
   u32x4 splat = u32x4_splat (first);
-  while (1)
+  while (count + 4 <= max_count)
     {
       u64 bmp;
       bmp = u8x16_msb_mask ((u8x16) (u32x4_load_unaligned (data) == splat));
@@ -562,13 +556,8 @@ clib_count_equal_u32 (u32 * data, uword max_count)
 
       data += 4;
       count += 4;
-
-      if (count >= max_count)
-	return max_count;
     }
 #endif
-  count += 2;
-  data += 2;
   while (count + 3 < max_count &&
 	 ((data[0] ^ first) | (data[1] ^ first) |
 	  (data[2] ^ first) | (data[3] ^ first)) == 0)
