@@ -527,6 +527,13 @@ typedef struct session_cleanup_msg_
   u8 type;
 } __clib_packed session_cleanup_msg_t;
 
+typedef struct session_app_wrk_rpc_msg_
+{
+  u32 client_index;	/**< app client index */
+  u32 wrk_index;	/**< dst worker index */
+  u8 data[252];		/**< rpc data */
+} __clib_packed session_app_wrk_rpc_msg_t;
+
 typedef struct app_session_event_
 {
   svm_msg_q_msg_t msg;
