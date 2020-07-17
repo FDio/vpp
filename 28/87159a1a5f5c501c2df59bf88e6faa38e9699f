@@ -1,0 +1,8 @@
+Code-Review+1: Hongjun Ni <hongjun.ni@intel.com>
+Code-Review+2: Benoît Ganne <bganne@cisco.com>
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Submitted-by: Benoît Ganne <bganne@cisco.com>
+Submitted-at: Fri, 17 Jul 2020 07:09:45 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/27946
+Project: vpp
+Branch: refs/heads/master
