@@ -144,6 +144,12 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "tunnel-dst %U",
 			 unformat_ip46_address, &tun_dst, IP46_TYPE_ANY))
 	;
+      else if (unformat (line_input, "inbound"))
+	flags |= IPSEC_SA_FLAG_IS_INBOUND;
+      else if (unformat (line_input, "use-anti-replay"))
+	flags |= IPSEC_SA_FLAG_USE_ANTI_REPLAY;
+      else if (unformat (line_input, "use-esn"))
+	flags |= IPSEC_SA_FLAG_USE_ESN;
       else if (unformat (line_input, "udp-encap"))
 	flags |= IPSEC_SA_FLAG_UDP_ENCAP;
       else
@@ -152,6 +158,12 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 				     format_unformat_error, line_input);
 	  goto done;
 	}
+    }
+  if ((flags & IPSEC_SA_FLAG_IS_INBOUND)
+      && !(flags & IPSEC_SA_FLAG_IS_TUNNEL))
+    {
+      error = clib_error_return (0, "inbound specified on non-tunnel SA");
+      goto done;
     }
 
   if (!(m_args & 1))
