@@ -334,7 +334,7 @@ mpls_tunnel_restack (mpls_tunnel_t *mt)
     }
     else
     {
-        FOR_EACH_FIB_PROTOCOL(proto)
+        FOR_EACH_FIB_IP_PROTOCOL(proto)
         {
             adj_nbr_walk(mt->mt_sw_if_index,
                          proto,
