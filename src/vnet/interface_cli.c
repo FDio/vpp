@@ -1982,7 +1982,7 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
 	    stem = format (stem, "tx");
 	  if (a->drop_enable)
 	    stem = format (stem, "drop");
-	  a->filename = format (0, "/tmp/%s.pcap%c", stem, 0);
+	  a->filename = format (0, "/tmp/%v.pcap%c", stem, 0);
 	  vec_free (stem);
 	}
 
