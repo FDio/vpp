@@ -1,0 +1,34 @@
+set term pag off
+
+packet-generator new {
+    name worker0
+    worker 0
+    limit 12
+    rate 1.2e7
+    size 128-128
+    interface local0
+    node ethernet-input
+    data { IP4: 1.2.40 -> 3cfd.fed0.b6c8
+           UDP: 192.168.40.1 - 192.168.40.100 -> 192.168.50.10
+           UDP: 1234 -> 2345
+           incrementing 114
+    }
+}
+
+packet-generator new {
+    name worker1
+    worker 1
+    limit 12
+    rate 1.2e7
+    size 128-128
+    interface local0
+    node ethernet-input
+    data { IP4: 1.2.4 -> 3cfd.fed0.b6c9
+           UDP: 192.168.41.1 - 192.168.41.100 -> 192.168.51.10
+           UDP: 1234 -> 2345
+           incrementing 114
+    }
+}
+
+trace add pg-input 20
+pa en

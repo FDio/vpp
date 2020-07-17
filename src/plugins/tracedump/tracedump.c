@@ -61,6 +61,23 @@ toss_client_cache (tracedump_main_t * tdmp, u32 client_index,
   tdmp->traces[client_index] = client_trace_cache;
 }
 
+static clib_error_t *
+tracedump_cache_reaper (u32 client_index)
+{
+  tracedump_main_t *tdmp = &tracedump_main;
+  vlib_trace_header_t ***client_trace_cache;
+
+  /* Its likely that we won't have a cache entry */
+  if (client_index >= vec_len (tdmp->traces))
+    return 0;
+
+  client_trace_cache = tdmp->traces[client_index];
+  toss_client_cache (tdmp, client_index, client_trace_cache);
+  return 0;
+}
+
+VL_MSG_API_REAPER_FUNCTION (tracedump_cache_reaper);
+
 /* API message handler */
 static void
 vl_api_trace_dump_t_handler (vl_api_trace_dump_t * mp)
