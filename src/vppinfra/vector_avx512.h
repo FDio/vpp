@@ -203,11 +203,7 @@ u8x64_shuffle (u8x64 v, u8x64 m)
 static_always_inline u32
 u32x16_sum_elts (u32x16 sum16)
 {
-  u32x8 sum8;
-  sum16 += (u32x16) u8x64_align_right (sum16, sum16, 8);
-  sum16 += (u32x16) u8x64_align_right (sum16, sum16, 4);
-  sum8 = u32x16_extract_hi (sum16) + u32x16_extract_lo (sum16);
-  return sum8[0] + sum8[4];
+  return _mm512_reduce_add_epi32 ((__m512i) sum16);
 }
 
 static_always_inline u8x64
