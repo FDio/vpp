@@ -508,6 +508,7 @@ test_clib_strncmp (vlib_main_t * vm, unformat_input_t * input)
 
   /* unterminated s1 */
   s1[s1len] = 0x1;
+  CLIB_MEM_UNPOISON (s1, CLIB_STRING_MACRO_MAX);
   indicator = clib_strncmp (s1, "Every moment is a fresh beginning",
 			    sizeof ("every moment is a fresh beginning") - 1);
   if (indicator != 0)
@@ -1592,6 +1593,7 @@ test_clib_strstr (vlib_main_t * vm, unformat_input_t * input)
 
   /* unterminated s1 and s2 */
   memset_s (s1, ARRAY_LEN (s1), 0xfe, ARRAY_LEN (s1));
+  CLIB_MEM_UNPOISON (s1, CLIB_STRING_MACRO_MAX);
   sub = clib_strstr (s1, s1);
   if (sub == 0)
     return -1;
