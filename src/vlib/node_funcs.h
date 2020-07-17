@@ -47,6 +47,7 @@
 
 #include <vppinfra/fifo.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
+#include <vlib/bpf_tracer.h>
 
 #ifdef CLIB_SANITIZE_ADDR
 #include <sanitizer/asan_interface.h>
@@ -1228,6 +1229,11 @@ vlib_node_increment_counter (vlib_main_t * vm, u32 node_index,
   vlib_error_main_t *em = &vm->error_main;
   u32 node_counter_base_index = n->error_heap_index;
   em->counters[node_counter_base_index + counter_index] += increment;
+#ifdef USE_BPF_TRACE
+  DTRACE_PROBE2 (vpp, vlib_node_counter_probe,
+		 node_counter_base_index + counter_index,
+		 em->counters[node_counter_base_index + counter_index]);
+#endif
 }
 
 /** @brief Create a vlib process

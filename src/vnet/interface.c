@@ -490,6 +490,17 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
   si->flags &= ~mask;
   si->flags |= flags;
 
+#ifdef USE_BPF_TRACE
+  u8 *intf_name = 0;
+  intf_name =
+    format (intf_name, "%U", format_vnet_sw_interface_name, vnm, si,
+	    si->sw_if_index);
+  DTRACE_PROBE3 (vpp, vnet_sw_interface_state_probe, si->sw_if_index,
+		 (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? 1 : 0,
+		 intf_name);
+  vec_free (intf_name);
+#endif
+
 done:
   return error;
 }

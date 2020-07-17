@@ -22,6 +22,7 @@
 #include <vnet/fib/ip4_fib.h>
 #include <nat/nat.h>
 #include <nat/nat_ha.h>
+#include <vlib/bpf_tracer.h>
 
 always_inline u64
 calc_nat_key (ip4_address_t addr, u16 port, u32 fib_index, u8 proto)
@@ -307,6 +308,17 @@ nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
 
       nat44_delete_user_with_no_session (sm, u, thread_index);
     }
+
+#ifdef USE_BPF_TRACE
+  DTRACE_PROBE8 (vpp, vnet_nat_session_update_probe, 2 /* delete */ ,
+		 thread_index,
+		 (u32) (ses->in2out.fib_index),
+		 (u32) (ses->nat_proto),
+		 htonl (ses->in2out.addr.as_u32),
+		 (u32) (htons (ses->in2out.port)),
+		 htonl (ses->out2in.addr.as_u32),
+		 (u32) (htons (ses->out2in.port)));
+#endif
 }
 
 /** \brief Set TCP session state.
@@ -321,6 +333,11 @@ nat44_set_tcp_session_state_i2o (snat_main_t * sm, f64 now,
   u8 tcp_flags = vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags;
   u32 tcp_ack_number = vnet_buffer (b)->ip.reass.tcp_ack_number;
   u32 tcp_seq_number = vnet_buffer (b)->ip.reass.tcp_seq_number;
+#ifdef USE_BPF_TRACE
+  u8 old_state = ses->state;
+  bool is_add = false;
+#endif
+
   if ((ses->state == 0) && (tcp_flags & TCP_FLAG_RST))
     ses->state = NAT44_SES_RST;
   if ((ses->state == NAT44_SES_RST) && !(tcp_flags & TCP_FLAG_RST))
@@ -329,7 +346,12 @@ nat44_set_tcp_session_state_i2o (snat_main_t * sm, f64 now,
       (ses->state & NAT44_SES_O2I_SYN))
     ses->state = 0;
   if (tcp_flags & TCP_FLAG_SYN)
-    ses->state |= NAT44_SES_I2O_SYN;
+    {
+      ses->state |= NAT44_SES_I2O_SYN;
+#ifdef USE_BPF_TRACE
+      is_add = true;
+#endif
+    }
   if (tcp_flags & TCP_FLAG_FIN)
     {
       ses->i2o_fin_seq = clib_net_to_host_u32 (tcp_seq_number);
@@ -359,6 +381,21 @@ nat44_set_tcp_session_state_i2o (snat_main_t * sm, f64 now,
     }
   clib_dlist_remove (tsm->lru_pool, ses->lru_index);
   clib_dlist_addtail (tsm->lru_pool, ses->lru_head_index, ses->lru_index);
+
+#ifdef USE_BPF_TRACE
+  if (old_state != ses->state)
+    {
+      DTRACE_PROBE8 (vpp, vnet_nat_session_update_probe,
+		     (is_add) ? 0 : 1 /* create / update */ ,
+		     thread_index,
+		     (u32) (ses->in2out.fib_index),
+		     (u32) (ses->nat_proto),
+		     htonl (ses->in2out.addr.as_u32),
+		     (u32) (htons (ses->in2out.port)),
+		     htonl (ses->out2in.addr.as_u32),
+		     (u32) (htons (ses->out2in.port)));
+    }
+#endif
   return 0;
 }
 

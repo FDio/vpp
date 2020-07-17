@@ -86,7 +86,11 @@ ip_interface_address_add (ip_lookup_main_t * lm,
     (hi != ~0) ? hi : ai;
 
   *result_if_address_index = ai;
-
+#ifdef USE_BPF_TRACE
+  DTRACE_PROBE5 (vpp, vnet_ip_address_probe,
+		 0 /* is_del */ , lm->is_ip6, sw_if_index, (u8 *) addr_fib,
+		 address_length);
+#endif
   return (NULL);
 }
 
@@ -133,6 +137,11 @@ ip_interface_address_del (ip_lookup_main_t * lm,
   mhash_unset (&lm->address_to_if_address_index, addr_fib,
 	       /* old_value */ 0);
   pool_put (lm->if_address_pool, a);
+#ifdef USE_BPF_TRACE
+  DTRACE_PROBE5 (vpp, vnet_ip_address_probe,
+		 1 /* is_del */ , lm->is_ip6, sw_if_index, (u8 *) addr_fib,
+		 address_length);
+#endif
   return NULL;
 }
 

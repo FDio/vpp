@@ -303,7 +303,13 @@ vnet_hw_interface_set_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
       rt->enabled_node_state = enabled_node_state;
       if (vlib_node_get_state (vm, hw->input_node_index) !=
 	  VLIB_NODE_STATE_DISABLED)
-	vlib_node_set_state (vm, hw->input_node_index, enabled_node_state);
+	{
+	  vlib_node_set_state (vm, hw->input_node_index, enabled_node_state);
+#ifdef USE_BPF_TRACE
+	  DTRACE_PROBE2 (vpp, vnet_hw_interface_set_rx_mode_probe,
+			 hw_if_index, (u32) enabled_node_state);
+#endif
+	}
     }
 
   return 0;
