@@ -331,11 +331,16 @@ vnet_config_add_feature (vlib_main_t * vm,
   f->feature_index = feature_index;
   f->node_index = node_index;
 
-  n_feature_config_u32s =
-    round_pow2 (n_feature_config_bytes,
-		sizeof (f->feature_config[0])) /
-    sizeof (f->feature_config[0]);
-  vec_add (f->feature_config, feature_config, n_feature_config_u32s);
+  if (n_feature_config_bytes)
+    {
+      n_feature_config_u32s =
+	round_pow2 (n_feature_config_bytes,
+		    sizeof (f->feature_config[0])) /
+	sizeof (f->feature_config[0]);
+      vec_validate (f->feature_config, n_feature_config_u32s - 1);
+      clib_memcpy_fast (f->feature_config, feature_config,
+			n_feature_config_bytes);
+    }
 
   /* Sort (prioritize) features. */
   if (vec_len (new_features) > 1)
