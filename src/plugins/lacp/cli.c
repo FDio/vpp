@@ -38,12 +38,12 @@ lacp_dump_ifs (lacp_interface_details_t ** out_lacpifs)
     hi = vnet_get_hw_interface (vnm, sif->hw_if_index);
     clib_memcpy(lacpif->interface_name, hi->name,
                 MIN (ARRAY_LEN (lacpif->interface_name) - 1,
-                     strlen ((const char *) hi->name)));
+                     vec_len (hi->name)));
     bif = bond_get_master_by_dev_instance (sif->bif_dev_instance);
     hi = vnet_get_hw_interface (vnm, bif->hw_if_index);
     clib_memcpy(lacpif->bond_interface_name, hi->name,
                 MIN (ARRAY_LEN (lacpif->bond_interface_name) - 1,
-                     strlen ((const char *) hi->name)));
+                     vec_len (hi->name)));
     clib_memcpy (lacpif->actor_system, sif->actor.system, 6);
     lacpif->actor_system_priority = sif->actor.system_priority;
     lacpif->actor_key = sif->actor.key;
