@@ -472,8 +472,8 @@ clib_count_equal_u64 (u64 * data, uword max_count)
   uword count;
   u64 first;
 
-  if (max_count == 1)
-    return 1;
+  if (max_count <= 1)
+    return max_count;
   if (data[0] != data[1])
     return 1;
 
@@ -482,23 +482,20 @@ clib_count_equal_u64 (u64 * data, uword max_count)
 
 #if defined(CLIB_HAVE_VEC256)
   u64x4 splat = u64x4_splat (first);
-  while (1)
+  while (count + 3 < max_count)
     {
       u64 bmp;
       bmp = u8x32_msb_mask ((u8x32) (u64x4_load_unaligned (data) == splat));
       if (bmp != 0xffffffff)
 	{
 	  count += count_trailing_zeros (~bmp) / 8;
-	  return clib_min (count, max_count);
+	  return count;
 	}
 
       data += 4;
       count += 4;
-
-      if (count >= max_count)
-	return max_count;
     }
-#endif
+#else
   count += 2;
   data += 2;
   while (count + 3 < max_count &&
@@ -508,6 +505,7 @@ clib_count_equal_u64 (u64 * data, uword max_count)
       data += 4;
       count += 4;
     }
+#endif
   while (count < max_count && (data[0] == first))
     {
       data += 1;
@@ -522,8 +520,8 @@ clib_count_equal_u32 (u32 * data, uword max_count)
   uword count;
   u32 first;
 
-  if (max_count == 1)
-    return 1;
+  if (max_count <= 1)
+    return max_count;
   if (data[0] != data[1])
     return 1;
 
@@ -532,41 +530,35 @@ clib_count_equal_u32 (u32 * data, uword max_count)
 
 #if defined(CLIB_HAVE_VEC256)
   u32x8 splat = u32x8_splat (first);
-  while (1)
+  while (count + 7 < max_count)
     {
       u64 bmp;
       bmp = u8x32_msb_mask ((u8x32) (u32x8_load_unaligned (data) == splat));
       if (bmp != 0xffffffff)
 	{
 	  count += count_trailing_zeros (~bmp) / 4;
-	  return clib_min (count, max_count);
+	  return count;
 	}
 
       data += 8;
       count += 8;
-
-      if (count >= max_count)
-	return max_count;
     }
 #elif defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_MSB_MASK)
   u32x4 splat = u32x4_splat (first);
-  while (1)
+  while (count + 3 < max_count)
     {
       u64 bmp;
       bmp = u8x16_msb_mask ((u8x16) (u32x4_load_unaligned (data) == splat));
       if (bmp != 0xffff)
 	{
 	  count += count_trailing_zeros (~bmp) / 4;
-	  return clib_min (count, max_count);
+	  return count;
 	}
 
       data += 4;
       count += 4;
-
-      if (count >= max_count)
-	return max_count;
     }
-#endif
+#else
   count += 2;
   data += 2;
   while (count + 3 < max_count &&
@@ -576,6 +568,7 @@ clib_count_equal_u32 (u32 * data, uword max_count)
       data += 4;
       count += 4;
     }
+#endif
   while (count < max_count && (data[0] == first))
     {
       data += 1;
@@ -590,8 +583,8 @@ clib_count_equal_u16 (u16 * data, uword max_count)
   uword count;
   u16 first;
 
-  if (max_count == 1)
-    return 1;
+  if (max_count <= 1)
+    return max_count;
   if (data[0] != data[1])
     return 1;
 
@@ -600,41 +593,35 @@ clib_count_equal_u16 (u16 * data, uword max_count)
 
 #if defined(CLIB_HAVE_VEC256)
   u16x16 splat = u16x16_splat (first);
-  while (1)
+  while (count + 15 < max_count)
     {
       u64 bmp;
       bmp = u8x32_msb_mask ((u8x32) (u16x16_load_unaligned (data) == splat));
       if (bmp != 0xffffffff)
 	{
 	  count += count_trailing_zeros (~bmp) / 2;
-	  return clib_min (count, max_count);
+	  return count;
 	}
 
       data += 16;
       count += 16;
-
-      if (count >= max_count)
-	return max_count;
     }
 #elif defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_MSB_MASK)
   u16x8 splat = u16x8_splat (first);
-  while (1)
+  while (count + 7 < max_count)
     {
       u64 bmp;
       bmp = u8x16_msb_mask ((u8x16) (u16x8_load_unaligned (data) == splat));
       if (bmp != 0xffff)
 	{
 	  count += count_trailing_zeros (~bmp) / 2;
-	  return clib_min (count, max_count);
+	  return count;
 	}
 
       data += 8;
       count += 8;
-
-      if (count >= max_count)
-	return max_count;
     }
-#endif
+#else
   count += 2;
   data += 2;
   while (count + 3 < max_count &&
@@ -644,6 +631,7 @@ clib_count_equal_u16 (u16 * data, uword max_count)
       data += 4;
       count += 4;
     }
+#endif
   while (count < max_count && (data[0] == first))
     {
       data += 1;
@@ -658,8 +646,8 @@ clib_count_equal_u8 (u8 * data, uword max_count)
   uword count;
   u8 first;
 
-  if (max_count == 1)
-    return 1;
+  if (max_count <= 1)
+    return max_count;
   if (data[0] != data[1])
     return 1;
 
@@ -668,41 +656,35 @@ clib_count_equal_u8 (u8 * data, uword max_count)
 
 #if defined(CLIB_HAVE_VEC256)
   u8x32 splat = u8x32_splat (first);
-  while (1)
+  while (count + 31 < max_count)
     {
       u64 bmp;
       bmp = u8x32_msb_mask ((u8x32) (u8x32_load_unaligned (data) == splat));
       if (bmp != 0xffffffff)
 	{
 	  count += count_trailing_zeros (~bmp);
-	  return clib_min (count, max_count);
+	  return max_count;
 	}
 
       data += 32;
       count += 32;
-
-      if (count >= max_count)
-	return max_count;
     }
 #elif defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_MSB_MASK)
   u8x16 splat = u8x16_splat (first);
-  while (1)
+  while (count + 15 < max_count)
     {
       u64 bmp;
       bmp = u8x16_msb_mask ((u8x16) (u8x16_load_unaligned (data) == splat));
       if (bmp != 0xffff)
 	{
 	  count += count_trailing_zeros (~bmp);
-	  return clib_min (count, max_count);
+	  return count;
 	}
 
       data += 16;
       count += 16;
-
-      if (count >= max_count)
-	return max_count;
     }
-#endif
+#else
   count += 2;
   data += 2;
   while (count + 3 < max_count &&
@@ -712,6 +694,7 @@ clib_count_equal_u8 (u8 * data, uword max_count)
       data += 4;
       count += 4;
     }
+#endif
   while (count < max_count && (data[0] == first))
     {
       data += 1;
