@@ -309,6 +309,8 @@ typedef struct vcl_worker_
   api_main_t bapi_api_ctx;
 } vcl_worker_t;
 
+typedef void (vcl_rpc_fn_t) (void *args);
+
 typedef struct vppcom_main_t_
 {
   u8 is_init;
@@ -356,6 +358,8 @@ typedef struct vppcom_main_t_
 
   /* VNET_API_ERROR_FOO -> "Foo" hash table */
   uword *error_string_by_error_number;
+
+  vcl_rpc_fn_t *wrk_rpc_fn;
 
 } vppcom_main_t;
 
@@ -655,6 +659,8 @@ vcl_session_vpp_evt_q (vcl_worker_t * wrk, vcl_session_t * s)
 
 void vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,
 				     u32 wrk_index);
+void vcl_send_worker_rpc (u32 dst_wrk_index, void *data, u32 data_len);
+
 /*
  * VCL Binary API
  */
