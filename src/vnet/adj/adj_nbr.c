@@ -41,6 +41,19 @@ typedef struct adj_nbr_key_t_
     (((_itf) < vec_len(adj_nbr_tables[_proto])) &&	\
      (NULL != adj_nbr_tables[_proto][sw_if_index]))
 
+#define ADJ_NBR_ASSERT_NH_PROTO(nh_proto, err)          \
+  do {                                                  \
+      ASSERT (nh_proto < FIB_PROTOCOL_IP_MAX);          \
+      const fib_protocol_t nh_proto__ = (nh_proto);     \
+      if (nh_proto__ >= FIB_PROTOCOL_IP_MAX)            \
+        {                                               \
+          clib_warning ("BUG: protocol %d > %d\n",      \
+                        (int)nh_proto__,                \
+                        FIB_PROTOCOL_IP_MAX);           \
+          return err;                                   \
+        }                                               \
+  } while (0)
+
 static void
 adj_nbr_insert (fib_protocol_t nh_proto,
 		vnet_link_t link_type,
@@ -49,6 +62,8 @@ adj_nbr_insert (fib_protocol_t nh_proto,
 		adj_index_t adj_index)
 {
     adj_nbr_key_t kv;
+
+    ADJ_NBR_ASSERT_NH_PROTO (nh_proto,);
 
     if (sw_if_index >= vec_len(adj_nbr_tables[nh_proto]))
     {
@@ -75,6 +90,8 @@ adj_nbr_remove (adj_index_t ai,
 {
     adj_nbr_key_t kv;
 
+    ADJ_NBR_ASSERT_NH_PROTO (nh_proto,);
+
     if (!ADJ_NBR_ITF_OK(nh_proto, sw_if_index))
 	return;
 
@@ -96,6 +113,8 @@ adj_nbr_find (fib_protocol_t nh_proto,
 {
     adj_nbr_key_t kv;
     uword *p;
+
+    ADJ_NBR_ASSERT_NH_PROTO (nh_proto, ADJ_INDEX_INVALID);
 
     ADJ_NBR_SET_KEY(kv, link_type, nh_addr);
 
@@ -557,6 +576,8 @@ adj_nbr_walk (u32 sw_if_index,
     adj_index_t ai, *ais, *aip;
     adj_nbr_key_t *key;
 
+    ADJ_NBR_ASSERT_NH_PROTO (adj_nh_proto,);
+
     if (!ADJ_NBR_ITF_OK(adj_nh_proto, sw_if_index))
 	return;
 
@@ -645,6 +666,8 @@ adj_nbr_walk_nh (u32 sw_if_index,
 		 adj_walk_cb_t cb,
 		 void *ctx)
 {
+    ADJ_NBR_ASSERT_NH_PROTO (adj_nh_proto,);
+
     if (!ADJ_NBR_ITF_OK(adj_nh_proto, sw_if_index))
 	return;
 
