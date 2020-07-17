@@ -328,7 +328,7 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vnet_main_t *vnm = vnet_get_main ();
   ip6_sr_main_t *sm = &sr_main;
   u32 sw_if_index = (u32) ~ 0, vlan_index = (u32) ~ 0, fib_index = 0;
-  u16 prefix_len = 0;
+  int prefix_len = 0;
   int is_del = 0;
   int end_psp = 0;
   ip6_address_t resulting_address;
