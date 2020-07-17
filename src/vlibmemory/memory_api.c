@@ -231,7 +231,7 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   vl_msg_api_send_shmem (q, (u8 *) & rp);
 }
 
-int
+void
 vl_api_call_reaper_functions (u32 client_index)
 {
   clib_error_t *error = 0;
@@ -245,7 +245,6 @@ vl_api_call_reaper_functions (u32 client_index)
 	clib_error_report (error);
       i = i->next_init_function;
     }
-  return 0;
 }
 
 /*
@@ -263,8 +262,7 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
 
   handle = mp->index;
 
-  if (vl_api_call_reaper_functions (handle))
-    return;
+  vl_api_call_reaper_functions (handle);
 
   epoch = vl_msg_api_handle_get_epoch (handle);
   client_index = vl_msg_api_handle_get_index (handle);
@@ -616,7 +614,7 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 
 	      handle = vl_msg_api_handle_from_index_and_epoch
 		(dead_indices[i], shm->application_restarts);
-	      (void) vl_api_call_reaper_functions (handle);
+	      vl_api_call_reaper_functions (handle);
 	    }
 	}
 
