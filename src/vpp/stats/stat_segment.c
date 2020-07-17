@@ -295,20 +295,28 @@ stat_validate_counter_vector (stat_segment_directory_entry_t * ep, u32 max)
 {
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
-  counter_t **counters = 0;
+  counter_t **counters =
+    ep->offset ? stat_segment_pointer (shared_header, ep->offset) : 0;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i;
   u64 *offset_vector = 0;
 
   vec_validate_aligned (counters, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
+  ep->offset = stat_segment_offset (shared_header, counters);
+
   for (i = 0; i < tm->n_vlib_mains; i++)
     {
       vec_validate_aligned (counters[i], max, CLIB_CACHE_LINE_BYTES);
       vec_add1 (offset_vector,
 		stat_segment_offset (shared_header, counters[i]));
     }
-  ep->offset = stat_segment_offset (shared_header, counters);
+
+  if (ep->offset_vector)
+    {
+      u64 *p = stat_segment_pointer (sm->shared_header, ep->offset_vector);
+      vec_free (p);
+    }
   ep->offset_vector = stat_segment_offset (shared_header, offset_vector);
 }
 
