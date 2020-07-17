@@ -23,7 +23,7 @@
  *  Key: interface(for the vector index), address (and its proto),
  *       link-type/ether-type.
  */
-static uword **adj_nbr_tables[FIB_PROTOCOL_IP_MAX];
+static uword **adj_nbr_tables[FIB_PROTOCOL_MAX];
 
 typedef struct adj_nbr_key_t_
 {
