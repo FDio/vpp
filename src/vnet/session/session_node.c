@@ -490,6 +490,33 @@ session_mq_worker_update_handler (void *data)
     app_worker_close_notify (app_wrk, s);
 }
 
+static void
+session_mq_app_wrk_rpc_handler (void *data)
+{
+  session_app_wrk_rpc_msg_t *mp = (session_app_wrk_rpc_msg_t *) data;
+  svm_msg_q_msg_t _msg, *msg = &_msg;
+  session_app_wrk_rpc_msg_t *rmp;
+  app_worker_t *app_wrk;
+  session_event_t *evt;
+  application_t *app;
+
+  app = application_lookup (mp->client_index);
+  if (!app)
+    return;
+
+  app_wrk = application_get_worker (app, mp->wrk_index);
+
+  svm_msg_q_lock_and_alloc_msg_w_ring (app_wrk->event_queue,
+				       SESSION_MQ_CTRL_EVT_RING, SVM_Q_WAIT,
+				       msg);
+  evt = svm_msg_q_msg_data (app_wrk->event_queue, msg);
+  clib_memset (evt, 0, sizeof (*evt));
+  evt->event_type = SESSION_CTRL_EVT_APP_WRK_RPC;
+  rmp = (session_app_wrk_rpc_msg_t *) evt->data;
+  clib_memcpy (rmp->data, mp->data, sizeof (mp->data));
+  svm_msg_q_add_and_unlock (app_wrk->event_queue, msg);
+}
+
 vlib_node_registration_t session_queue_node;
 
 typedef struct
@@ -1225,6 +1252,9 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
       break;
     case SESSION_CTRL_EVT_APP_DETACH:
       app_mq_detach_handler (session_evt_ctrl_data (wrk, elt));
+      break;
+    case SESSION_CTRL_EVT_APP_WRK_RPC:
+      session_mq_app_wrk_rpc_handler (session_evt_ctrl_data (wrk, elt));
       break;
     default:
       clib_warning ("unhandled event type %d", e->event_type);

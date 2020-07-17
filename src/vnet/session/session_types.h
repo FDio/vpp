@@ -358,6 +358,7 @@ typedef enum
   SESSION_CTRL_EVT_APP_DEL_SEGMENT,
   SESSION_CTRL_EVT_MIGRATED,
   SESSION_CTRL_EVT_CLEANUP,
+  SESSION_CTRL_EVT_APP_WRK_RPC,
 } session_evt_type_t;
 
 #define foreach_session_ctrl_evt				\

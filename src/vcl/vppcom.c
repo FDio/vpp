@@ -351,6 +351,36 @@ vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
+void
+vcl_send_worker_rpc (u32 dst_wrk_index, void *data, u32 data_len)
+{
+  app_session_evt_t _app_evt, *app_evt = &_app_evt;
+  session_app_wrk_rpc_msg_t *mp;
+  vcl_worker_t *dst_wrk, *wrk;
+  svm_msg_q_t *mq;
+
+  if (data_len > sizeof (mp->data))
+    goto done;
+
+  clib_spinlock_lock (&vcm->workers_lock);
+
+  dst_wrk = vcl_worker_get_if_valid (dst_wrk_index);
+  if (!dst_wrk)
+    goto done;
+
+  wrk = vcl_worker_get_current ();
+  mq = vcl_worker_ctrl_mq (wrk);
+  app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_APP_WRK_RPC);
+  mp = (session_app_wrk_rpc_msg_t *) app_evt->evt->data;
+  mp->client_index = wrk->my_client_index;
+  mp->wrk_index = dst_wrk->vpp_wrk_index;
+  clib_memcpy (mp->data, data, data_len);
+  app_send_ctrl_evt_to_vpp (mq, app_evt);
+
+done:
+  clib_spinlock_unlock (&vcm->workers_lock);
+}
+
 static u32
 vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
 			      u32 ls_index)
@@ -866,6 +896,15 @@ vcl_session_app_del_segment_handler (vcl_worker_t * wrk, void *data)
   VDBG (1, "Unmapped segment: %d", msg->segment_handle);
 }
 
+static void
+vcl_worker_rpc_handler (vcl_worker_t * wrk, void *data)
+{
+  if (!vcm->wrk_rpc_fn)
+    return;
+
+  (vcm->wrk_rpc_fn) (data);
+}
+
 static int
 vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
 {
@@ -922,6 +961,9 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
       break;
     case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
       vcl_session_app_del_segment_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_RPC:
+      vcl_worker_rpc_handler (wrk, e->data);
       break;
     default:
       clib_warning ("unhandled %u", e->event_type);
@@ -2259,6 +2301,9 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
       vcl_session_app_del_segment_handler (wrk, e->data);
       break;
+    case SESSION_CTRL_EVT_RPC:
+      vcl_worker_rpc_handler (wrk, e->data);
+      break;
     default:
       clib_warning ("unhandled: %u", e->event_type);
       break;
@@ -2874,6 +2919,9 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       break;
     case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
       vcl_session_app_del_segment_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_RPC:
+      vcl_worker_rpc_handler (wrk, e->data);
       break;
     default:
       VDBG (0, "unhandled: %u", e->event_type);
