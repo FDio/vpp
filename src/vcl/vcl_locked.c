@@ -38,6 +38,7 @@ typedef struct vls_worker_
   vcl_locked_session_t *vls_pool;
   uword *session_index_to_vlsh_table;
   u32 wrk_index;
+  volatile int rpc_done;
 } vls_worker_t;
 
 typedef struct vls_local_
@@ -63,6 +64,24 @@ typedef struct vls_main_
 } vls_main_t;
 
 vls_main_t *vlsm;
+
+typedef enum vls_rpc_msg_type_
+{
+  VLS_RPC_CLONE_AND_SHARE,
+} vls_rpc_msg_type_e;
+
+typedef struct vls_rpc_msg_
+{
+  u8 type;
+  u8 data[0];
+} vls_rpc_msg_t;
+
+typedef struct vls_clone_and_share_msg_
+{
+  u32 origin_vls_wrk;		/**< worker that initiated the rpc */
+  u32 vls_index;		/**< vls to be shared */
+  u32 origin_vcl_index;		/**< vcl index to clone into */
+} vls_clone_and_share_msg_t;
 
 static inline u32
 vls_get_worker_index (void)
@@ -614,51 +633,50 @@ done:
 }
 
 void
-vls_share_session (vcl_locked_session_t * vls, vls_worker_t * vls_wrk,
-		   vls_worker_t * vls_parent_wrk, vcl_worker_t * vcl_wrk)
+vls_init_share_session (vls_worker_t * vls_wrk, vcl_locked_session_t * vls)
 {
-  vcl_locked_session_t *parent_vls;
+  vls_shared_data_t *vls_shd;
+
+  u32 vls_shd_index = vls_shared_data_alloc ();
+
+  vls_shared_data_pool_rlock ();
+
+  vls_shd = vls_shared_data_get (vls_shd_index);
+  vls_shd->owner_wrk_index = vls_wrk->wrk_index;
+  vls->shared_data_index = vls_shd_index;
+  vec_add1 (vls_shd->workers_subscribed, vls_wrk->wrk_index);
+
+  vls_shared_data_pool_runlock ();
+}
+
+void
+vls_share_session (vls_worker_t * vls_wrk, vcl_locked_session_t * vls)
+{
+  vcl_worker_t *vcl_wrk = vcl_worker_get (vls_wrk->wrk_index);
   vls_shared_data_t *vls_shd;
   vcl_session_t *s;
 
   s = vcl_session_get (vcl_wrk, vls->session_index);
   if (!s)
     {
-      clib_warning ("wrk %u parent %u session %u vls %u NOT AVAILABLE",
-		    vcl_wrk->wrk_index, vls_parent_wrk->wrk_index,
-		    vls->session_index, vls->vls_index);
+      clib_warning ("wrk %u session %u vls %u NOT AVAILABLE",
+		    vcl_wrk->wrk_index, vls->session_index, vls->vls_index);
       return;
     }
+
+  ASSERT (vls->shared_data_index != ~0);
 
   /* Reinit session lock */
   clib_spinlock_init (&vls->lock);
 
-  if (vls->shared_data_index != ~0)
-    {
-      vls_shared_data_pool_rlock ();
-      vls_shd = vls_shared_data_get (vls->shared_data_index);
-    }
-  else
-    {
-      u32 vls_shd_index = vls_shared_data_alloc ();
+  vls_shared_data_pool_rlock ();
 
-      vls_shared_data_pool_rlock ();
-
-      vls_shd = vls_shared_data_get (vls_shd_index);
-      vls_shd->owner_wrk_index = vls_parent_wrk->wrk_index;
-      vls->shared_data_index = vls_shd_index;
-
-      /* Update parent shared data */
-      parent_vls = vls_session_get (vls_parent_wrk, vls->vls_index);
-      parent_vls->shared_data_index = vls_shd_index;
-      vec_add1 (vls_shd->workers_subscribed, vls_parent_wrk->wrk_index);
-    }
+  vls_shd = vls_shared_data_get (vls->shared_data_index);
 
   clib_spinlock_lock (&vls_shd->lock);
-
   vec_add1 (vls_shd->workers_subscribed, vls_wrk->wrk_index);
-
   clib_spinlock_unlock (&vls_shd->lock);
+
   vls_shared_data_pool_runlock ();
 
   if (s->rx_fifo)
@@ -675,12 +693,18 @@ vls_share_session (vcl_locked_session_t * vls, vls_worker_t * vls_wrk,
 static void
 vls_share_sessions (vls_worker_t * vls_parent_wrk, vls_worker_t * vls_wrk)
 {
-  vcl_worker_t *vcl_wrk = vcl_worker_get (vls_wrk->wrk_index);
-  vcl_locked_session_t *vls;
+  vcl_locked_session_t *vls, *parent_vls;
 
   /* *INDENT-OFF* */
   pool_foreach (vls, vls_wrk->vls_pool, ({
-    vls_share_session (vls, vls_wrk, vls_parent_wrk, vcl_wrk);
+    /* Initialize sharing on parent session */
+    if (vls->shared_data_index == ~0)
+      {
+	parent_vls = vls_session_get (vls_parent_wrk, vls->vls_index);
+	vls_init_share_session (vls_parent_wrk, parent_vls);
+	vls->shared_data_index = parent_vls->shared_data_index;
+      }
+    vls_share_session (vls_wrk, vls);
   }));
   /* *INDENT-ON* */
 }
@@ -1358,6 +1382,61 @@ vls_app_exit (void)
   vls_worker_free (wrk);
 }
 
+static void
+vls_clone_and_share_rpc_handler (void *args)
+{
+  vls_clone_and_share_msg_t *msg = (vls_clone_and_share_msg_t *) args;
+  vls_worker_t *wrk = vls_worker_get_current (), *dst_wrk;
+  vcl_locked_session_t *vls;
+  vcl_session_t *s, *dst_s;
+
+  vls = vls_session_get (wrk, msg->vls_index);
+  vls_init_share_session (wrk, vls);
+
+  s = vcl_session_get (vcl_worker_get_current (), vls->session_index);
+  dst_s = vcl_session_get (vcl_worker_get (msg->origin_vls_wrk),
+			   msg->origin_vcl_index);
+  clib_memcpy (dst_s, s, sizeof (*s));
+
+  dst_wrk = vls_worker_get (msg->origin_vls_wrk);
+  dst_wrk->rpc_done = 1;
+}
+
+void
+vls_rpc_handler (void *args)
+{
+  vls_rpc_msg_t *msg = (vls_rpc_msg_t *) args;
+  switch (msg->type)
+    {
+    case VLS_RPC_CLONE_AND_SHARE:
+      vls_clone_and_share_rpc_handler (msg->data);
+      break;
+    default:
+      break;
+    }
+}
+
+void
+vls_send_clone_and_share_rpc (vls_worker_t * wrk, vcl_locked_session_t * vls,
+			      u32 dst_wrk_index, u32 dst_vls_index)
+{
+  u8 data[sizeof (u8) + sizeof (vls_clone_and_share_msg_t)];
+  vls_clone_and_share_msg_t *msg;
+  vls_rpc_msg_t *rpc;
+
+  rpc = (vls_rpc_msg_t *) & data;
+  rpc->type = VLS_RPC_CLONE_AND_SHARE;
+  msg = (vls_clone_and_share_msg_t *) & rpc->data;
+  msg->origin_vls_wrk = wrk->wrk_index;
+  msg->origin_vcl_index = vls->session_index;
+  msg->vls_index = dst_vls_index;
+
+  wrk->rpc_done = 0;
+  vcl_send_worker_rpc (dst_wrk_index, rpc, sizeof (rpc));
+  while (!wrk->rpc_done)
+    ;
+}
+
 int
 vls_app_create (char *app_name)
 {
@@ -1378,6 +1457,7 @@ vls_app_create (char *app_name)
   vls_worker_alloc ();
   vlsl->vls_wrk_index = vcl_get_worker_index ();
   vls_mt_locks_init ();
+  vcm->wrk_rpc_fn = vls_rpc_handler;
   return VPPCOM_OK;
 }
 
