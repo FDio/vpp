@@ -308,7 +308,23 @@ stat_validate_counter_vector (stat_segment_directory_entry_t * ep, u32 max)
       vec_add1 (offset_vector,
 		stat_segment_offset (shared_header, counters[i]));
     }
+
+  if (ep->offset)
+    {
+      counter_t **cpu = stat_segment_pointer (sm->shared_header, ep->offset);
+      for (i = 0; i < vec_len (cpu); i++)
+	{
+	  vec_free (cpu[i]);
+	}
+      vec_free (cpu);
+    }
   ep->offset = stat_segment_offset (shared_header, counters);
+
+  if (ep->offset_vector)
+    {
+      u64 *p = stat_segment_pointer (sm->shared_header, ep->offset_vector);
+      vec_free (p);
+    }
   ep->offset_vector = stat_segment_offset (shared_header, offset_vector);
 }
 
