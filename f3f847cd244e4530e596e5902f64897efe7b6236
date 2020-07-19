@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2400d6a8_ba2e5d13",
+        "filename": "src/plugins/crypto_native/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-07-19T13:57:09Z",
+      "side": 1,
+      "message": "I am not huge fan of clib_warning in the code. We should either use vlib_log* or just return silently which is for this use case perfectly fine.",
+      "revId": "f3f847cd244e4530e596e5902f64897efe7b6236",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
