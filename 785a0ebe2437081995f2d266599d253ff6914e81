@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "891a389c_d5ff8ef5",
+        "filename": "src/vnet/ip/vtep.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2020-07-20T06:32:09Z",
+      "side": 1,
+      "message": "Ok, How about renaming vtep4_check_vector? will add generic code in order that any vendor can extend their code based on the function if needed. AVX512 code just runs on the machine supporting this instruction set.",
+      "parentUuid": "0134303d_757f7204",
+      "revId": "785a0ebe2437081995f2d266599d253ff6914e81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "22048d35_828b465e",
         "filename": "src/vnet/ip/vtep.h",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2020-07-19T14:00:06Z",
       "side": 1,
       "message": "use count_trailing_zeros()",
+      "revId": "785a0ebe2437081995f2d266599d253ff6914e81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "51c021eb_b4583cf7",
+        "filename": "src/vnet/ip/vtep.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2020-07-20T06:32:09Z",
+      "side": 1,
+      "message": "great. will fix it later.",
+      "parentUuid": "22048d35_828b465e",
       "revId": "785a0ebe2437081995f2d266599d253ff6914e81",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
