@@ -859,15 +859,15 @@ sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
   else if (operation == 2)	/* Delete SR List from an existing SR policy */
     {
       /* Check that currently there are more than one SID list */
-      if (vec_len (sr_policy->segments_lists) == 1)
+      if (vec_len (sr_policy->segments_lists) <= 1)
 	return -21;
 
       /* Check that the SR list does exist and is assigned to the sr policy */
       vec_foreach (sl_index_iterate, sr_policy->segments_lists)
 	if (*sl_index_iterate == sl_index)
 	break;
-
-      if (*sl_index_iterate != sl_index)
+      /* If sl_index is not found, sl_index_iterate is out of bounds */
+      if (sl_index_iterate >= vec_end (sr_policy->segments_lists))
 	return -22;
 
       /* Remove the lucky SR list that is being kicked out */
