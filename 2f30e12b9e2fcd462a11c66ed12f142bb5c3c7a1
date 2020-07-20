@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "16e77409_345bc459",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-20T17:19:28Z",
+      "side": 1,
+      "message": "typo, should be \u0027transform\u0027",
+      "revId": "2f30e12b9e2fcd462a11c66ed12f142bb5c3c7a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
