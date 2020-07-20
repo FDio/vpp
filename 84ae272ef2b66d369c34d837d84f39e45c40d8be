@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a7986d1a_29259493",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1438,
+      "author": {
+        "id": 259
+      },
+      "writtenOn": "2020-07-20T05:47:18Z",
+      "side": 1,
+      "message": "worker thread, not wroker thread.",
+      "revId": "84ae272ef2b66d369c34d837d84f39e45c40d8be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
