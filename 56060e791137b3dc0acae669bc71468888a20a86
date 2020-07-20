@@ -16,6 +16,24 @@
       "revId": "56060e791137b3dc0acae669bc71468888a20a86",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5453e4ca_95e19ec0",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 481,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-20T17:10:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5954f3b2_7ff97345",
+      "revId": "56060e791137b3dc0acae669bc71468888a20a86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
