@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b551efb2_ee08fa8e",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 350,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-21T03:32:47Z",
+      "side": 1,
+      "message": "Additional hash table lookup for all vls to sh conversions.",
+      "range": {
+        "startLine": 350,
+        "startChar": 40,
+        "endLine": 350,
+        "endChar": 76
+      },
+      "revId": "66484a867f26e54b27f60ccd8d12681e6b29f642",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dc6d2ccf_a752313b",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 905,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-21T03:32:47Z",
+      "side": 1,
+      "message": "Hash table lookup for all operations",
+      "range": {
+        "startLine": 904,
+        "startChar": 2,
+        "endLine": 905,
+        "endChar": 36
+      },
+      "revId": "66484a867f26e54b27f60ccd8d12681e6b29f642",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
