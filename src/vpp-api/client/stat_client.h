@@ -88,6 +88,13 @@ typedef struct
   uint64_t epoch;
 } stat_segment_access_t;
 
+static inline void *
+stat_segment_adjust (stat_client_main_t * sm, void *data)
+{
+  return (void *) ((char *) sm->shared_header +
+		   ((char *) data - (char *) sm->shared_header->base));
+}
+
 static inline void
 stat_segment_access_start (stat_segment_access_t * sa,
 			   stat_client_main_t * sm)
@@ -96,9 +103,10 @@ stat_segment_access_start (stat_segment_access_t * sa,
   sa->epoch = shared_header->epoch;
   while (shared_header->in_progress != 0)
     ;
-  sm->directory_vector = (stat_segment_directory_entry_t *)
-    stat_segment_pointer (sm->shared_header,
-			  sm->shared_header->directory_offset);
+  sm->directory_vector =
+    (stat_segment_directory_entry_t *) stat_segment_adjust (sm,
+							    (void *)
+							    sm->shared_header->directory_vector);
 }
 
 static inline bool
@@ -110,7 +118,6 @@ stat_segment_access_end (stat_segment_access_t * sa, stat_client_main_t * sm)
     return false;
   return true;
 }
-
 
 #endif /* included_stat_client_h */
 

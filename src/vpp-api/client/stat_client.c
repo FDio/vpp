@@ -85,8 +85,8 @@ static stat_segment_directory_entry_t *
 get_stat_vector_r (stat_client_main_t * sm)
 {
   ASSERT (sm->shared_header);
-  return stat_segment_pointer (sm->shared_header,
-			       sm->shared_header->directory_offset);
+  return stat_segment_adjust (sm,
+			      (void *) sm->shared_header->directory_vector);
 }
 
 int
@@ -142,7 +142,7 @@ stat_segment_connect_r (const char *socket_name, stat_client_main_t * sm)
   sm->memory_size = st.st_size;
   sm->shared_header = memaddr;
   sm->directory_vector =
-    stat_segment_pointer (memaddr, sm->shared_header->directory_offset);
+    stat_segment_adjust (sm, (void *) sm->shared_header->directory_vector);
 
   return 0;
 }
@@ -198,7 +198,7 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
   int i;
   vlib_counter_t **combined_c;	/* Combined counter */
   counter_t **simple_c;		/* Simple counter */
-  uint64_t *offset_vector;
+  uint64_t *error_vector;
 
   assert (sm->shared_header);
 
@@ -211,67 +211,47 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
       break;
 
     case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
-      if (ep->offset == 0)
-	return result;
-      simple_c = stat_segment_pointer (sm->shared_header, ep->offset);
+      simple_c = stat_segment_adjust (sm, ep->data);
       result.simple_counter_vec = vec_dup (simple_c);
-      offset_vector =
-	stat_segment_pointer (sm->shared_header, ep->offset_vector);
       for (i = 0; i < vec_len (simple_c); i++)
 	{
-	  counter_t *cb =
-	    stat_segment_pointer (sm->shared_header, offset_vector[i]);
+	  counter_t *cb = stat_segment_adjust (sm, simple_c[i]);
 	  result.simple_counter_vec[i] = vec_dup (cb);
 	}
       break;
 
     case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
-      if (ep->offset == 0)
-	return result;
-      combined_c = stat_segment_pointer (sm->shared_header, ep->offset);
+      combined_c = stat_segment_adjust (sm, ep->data);
       result.combined_counter_vec = vec_dup (combined_c);
-      offset_vector =
-	stat_segment_pointer (sm->shared_header, ep->offset_vector);
       for (i = 0; i < vec_len (combined_c); i++)
 	{
-	  vlib_counter_t *cb =
-	    stat_segment_pointer (sm->shared_header, offset_vector[i]);
+	  vlib_counter_t *cb = stat_segment_adjust (sm, combined_c[i]);
 	  result.combined_counter_vec[i] = vec_dup (cb);
 	}
       break;
 
     case STAT_DIR_TYPE_ERROR_INDEX:
       /* Gather errors from all threads into a vector */
-      offset_vector = stat_segment_pointer (sm->shared_header,
-					    sm->shared_header->error_offset);
-      vec_validate (result.error_vector, vec_len (offset_vector) - 1);
-      for (i = 0; i < vec_len (offset_vector); i++)
+      error_vector =
+	stat_segment_adjust (sm, (void *) sm->shared_header->error_vector);
+      vec_validate (result.error_vector, vec_len (error_vector) - 1);
+      for (i = 0; i < vec_len (error_vector); i++)
 	{
-	  counter_t *cb =
-	    stat_segment_pointer (sm->shared_header, offset_vector[i]);
+	  counter_t *cb = stat_segment_adjust (sm, (void *) error_vector[i]);
 	  result.error_vector[i] = cb[ep->index];
 	}
       break;
 
     case STAT_DIR_TYPE_NAME_VECTOR:
-      if (ep->offset == 0)
-	return result;
-      uint8_t **name_vector =
-	stat_segment_pointer (sm->shared_header, ep->offset);
-      result.name_vector = vec_dup (name_vector);
-      offset_vector =
-	stat_segment_pointer (sm->shared_header, ep->offset_vector);
-      for (i = 0; i < vec_len (name_vector); i++)
-	{
-	  if (offset_vector[i])
-	    {
-	      u8 *name =
-		stat_segment_pointer (sm->shared_header, offset_vector[i]);
-	      result.name_vector[i] = vec_dup (name);
-	    }
-	  else
-	    result.name_vector[i] = 0;
-	}
+      {
+	uint8_t **name_vector = stat_segment_adjust (sm, ep->data);
+	result.name_vector = vec_dup (name_vector);
+	for (i = 0; i < vec_len (name_vector); i++)
+	  {
+	    u8 *name = stat_segment_adjust (sm, name_vector[i]);
+	    result.name_vector[i] = vec_dup (name);
+	  }
+      }
       break;
 
     case STAT_DIR_TYPE_EMPTY:
