@@ -463,8 +463,13 @@ static_always_inline void vnet_interface_pcap_tx_trace
 	  classify_filter_result =
 	    vnet_is_packet_traced_inline
 	    (b0, pp->filter_classify_table_index, 0 /* full classify */ );
-	  if (classify_filter_result)
-	    pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
+	  if (classify_filter_result &&
+	      ((b0->flags & VNET_BUFFER_F_PCAP_TXTRACE) == 0))
+	    {
+	      pcap_add_buffer (&pp->pcap_main, vm, bi0,
+			       pp->max_bytes_per_pkt);
+	      b0->flags |= VNET_BUFFER_F_PCAP_TXTRACE;
+	    }
 	  continue;
 	}
 
@@ -480,7 +485,14 @@ static_always_inline void vnet_interface_pcap_tx_trace
 	  if (hi->trace_classify_table_index == ~0 ||
 	      vnet_is_packet_traced_inline
 	      (b0, hi->trace_classify_table_index, 0 /* full classify */ ))
-	    pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
+	    {
+	      if ((b0->flags & VNET_BUFFER_F_PCAP_TXTRACE) == 0)
+		{
+		  pcap_add_buffer (&pp->pcap_main, vm, bi0,
+				   pp->max_bytes_per_pkt);
+		  b0->flags |= VNET_BUFFER_F_PCAP_TXTRACE;
+		}
+	    }
 	}
     }
 }
