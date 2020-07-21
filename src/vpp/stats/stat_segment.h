@@ -62,15 +62,9 @@ typedef enum
 #define STAT_SEGMENT_DEFAULT_SIZE	(32<<20)
 
 /* Shared segment memory layout version */
-#define STAT_SEGMENT_VERSION		1
+#define STAT_SEGMENT_VERSION		2
 
 #define STAT_SEGMENT_INDEX_INVALID	UINT32_MAX
-
-static inline uint64_t
-stat_segment_offset (void *start, void *data)
-{
-  return (char *) data - (char *) start;
-}
 
 typedef void (*stat_segment_update_fn)(stat_segment_directory_entry_t * e, u32 i);
 
@@ -88,7 +82,7 @@ typedef struct
   /* statistics segment */
   uword *directory_vector_by_name;
   stat_segment_directory_entry_t *directory_vector;
-  u64 *error_vector;
+  volatile u64 **error_vector;
   u8 **interfaces;
   u8 **nodes;
 

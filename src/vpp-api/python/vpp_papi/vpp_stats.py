@@ -25,11 +25,10 @@ typedef struct
 {
   stat_directory_type_t type;
   union {
-    uint64_t offset;
     uint64_t index;
     uint64_t value;
+    uint64_t *data;
   };
-  uint64_t offset_vector;
   char name[128]; // TODO change this to pointer to "somewhere"
 } stat_segment_directory_entry_t;
 
@@ -50,11 +49,11 @@ typedef struct
 typedef struct
 {
   uint64_t version;
+  void *base;
   uint64_t epoch;
   uint64_t in_progress;
-  uint64_t directory_offset;
-  uint64_t error_offset;
-  uint64_t stats_offset;
+  stat_segment_directory_entry_t *directory_vector;
+  uint64_t **error_vector;
 } stat_segment_shared_header_t;
 
 typedef struct

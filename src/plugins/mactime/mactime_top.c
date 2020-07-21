@@ -1,7 +1,6 @@
 #include <vppinfra/time.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/pool.h>
-#include <vpp/stats/stat_segment.h>
 #include <vpp-api/client/stat_client.h>
 #include <vppinfra/vec.h>
 #include <mactime/mactime_device.h>
@@ -11,9 +10,9 @@
 #include <vnet/api_errno.h>
 #include <svm/queue.h>
 
-/* define message IDs */
-#include <mactime/mactime.api_enum.h>
+#include <vnet/format_fns.h>
 #include <mactime/mactime.api_types.h>
+#include <mactime/mactime.api_enum.h>
 
 typedef struct
 {
@@ -108,14 +107,18 @@ vl_api_mactime_details_t_handler (vl_api_mactime_details_t * mp)
 }
 
 #define vl_print(handle, ...) fformat(handle, __VA_ARGS__)
+#define vl_endianfun		/* define message structures */
+#include <mactime/mactime.api.h>
+#undef vl_endianfun
 
-#define vl_endianfun
+/* instantiate all the print functions we know about */
 #define vl_printfun
+#include <mactime/mactime.api.h>
+#undef vl_printfun
+
 #define vl_api_version(n,v) static u32 api_version = v;
 #include <mactime/mactime.api.h>
 #undef vl_api_version
-#undef vl_printfun
-#undef vl_endianfun
 
 static int
 connect_to_vpp (char *name)
@@ -137,7 +140,7 @@ connect_to_vpp (char *name)
 
   vec_free (msg_base_lookup_name);
 
-  if (mm->msg_id_base == ~0)
+  if (mm->msg_id_base == (u16) ~ 0)
     return -1;
 
 #define _(N,n)                                                  \
@@ -183,7 +186,6 @@ scrape_stats_segment (mt_main_t * mm)
 {
   vlib_counter_t **counters_by_thread;
   vlib_counter_t *counters;
-  u64 *offset_vector;
   mactime_device_t *dev;
   stat_segment_access_t sa;
   stat_client_main_t *sm = mm->stat_client_main;
@@ -217,8 +219,7 @@ again1:
   stat_segment_access_start (&sa, sm);
 
   ep = vec_elt_at_index (sm->directory_vector, mm->ls_result1[0]);
-  counters_by_thread = stat_segment_pointer (sm->shared_header, ep->offset);
-  offset_vector = stat_segment_pointer (sm->shared_header, ep->offset_vector);
+  counters_by_thread = stat_segment_adjust (sm, ep->data);
 
   for (i = 0; i < vec_len (pool_indices); i++)
     {
@@ -230,8 +231,7 @@ again1:
 
       for (j = 0; j < vec_len (counters_by_thread); j++)
 	{
-	  counters = stat_segment_pointer (sm->shared_header,
-					   offset_vector[j]);
+	  counters = stat_segment_adjust (sm, counters_by_thread[j]);
 	  mm->allow_counters[index].packets += counters[index].packets;
 	  mm->allow_counters[index].bytes += counters[index].bytes;
 	}
@@ -252,8 +252,7 @@ again2:
   stat_segment_access_start (&sa, sm);
 
   ep = vec_elt_at_index (sm->directory_vector, mm->ls_result2[0]);
-  counters_by_thread = stat_segment_pointer (sm->shared_header, ep->offset);
-  offset_vector = stat_segment_pointer (sm->shared_header, ep->offset_vector);
+  counters_by_thread = stat_segment_adjust (sm, ep->data);
 
   for (i = 0; i < vec_len (pool_indices); i++)
     {
@@ -265,8 +264,7 @@ again2:
 
       for (j = 0; j < vec_len (counters_by_thread); j++)
 	{
-	  counters = stat_segment_pointer (sm->shared_header,
-					   offset_vector[j]);
+	  counters = stat_segment_adjust (sm, counters_by_thread[j]);
 	  mm->drop_counters[index].packets += counters[index].packets;
 	  mm->drop_counters[index].bytes += counters[index].bytes;
 	}
