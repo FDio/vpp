@@ -101,6 +101,13 @@ _time_now_nsec (void)
   return 1e9 * ts.tv_sec + ts.tv_nsec;
 }
 
+static inline void *
+stat_segment_adjust (stat_client_main_t * sm, void *data)
+{
+  return (void *) ((char *) sm->shared_header +
+		   ((char *) data - (char *) sm->shared_header->base));
+}
+
 static inline int
 stat_segment_access_start (stat_segment_access_t * sa,
 			   stat_client_main_t * sm)
@@ -120,9 +127,10 @@ stat_segment_access_start (stat_segment_access_t * sa,
       while (shared_header->in_progress != 0)
 	;
     }
-  sm->directory_vector = (stat_segment_directory_entry_t *)
-    stat_segment_pointer (sm->shared_header,
-			  sm->shared_header->directory_offset);
+  sm->directory_vector =
+    (stat_segment_directory_entry_t *) stat_segment_adjust (sm,
+							    (void *)
+							    sm->shared_header->directory_vector);
   if (sm->timeout)
     return _time_now_nsec () < max_time ? 0 : -1;
   return 0;
@@ -146,7 +154,6 @@ stat_segment_access_end (stat_segment_access_t * sa, stat_client_main_t * sm)
     return false;
   return true;
 }
-
 
 #endif /* included_stat_client_h */
 
