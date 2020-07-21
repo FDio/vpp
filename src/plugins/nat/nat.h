@@ -68,21 +68,6 @@ typedef struct
   u32 arc_next_index;
 } nat_pre_trace_t;
 
-/* deterministic session outside key */
-typedef struct
-{
-  union
-  {
-    struct
-    {
-      ip4_address_t ext_host_addr;
-      u16 ext_host_port;
-      u16 out_port;
-    };
-    u64 as_u64;
-  };
-} snat_det_out_key_t;
-
 /* user (internal host) key */
 typedef struct
 {
@@ -319,36 +304,6 @@ typedef struct
   u32 fib_index;
   u32 refcount;
 } nat_outside_fib_t;
-
-typedef struct
-{
-  /* Inside network port */
-  u16 in_port;
-  /* Outside network address and port */
-  snat_det_out_key_t out;
-  /* Session state */
-  u8 state;
-  /* Expire timeout */
-  u32 expire;
-} snat_det_session_t;
-
-typedef struct
-{
-  /* inside IP address range */
-  ip4_address_t in_addr;
-  u8 in_plen;
-  /* outside IP address range */
-  ip4_address_t out_addr;
-  u8 out_plen;
-  /* inside IP addresses / outside IP addresses */
-  u32 sharing_ratio;
-  /* number of ports available to internal host */
-  u16 ports_per_host;
-  /* session counter */
-  u32 ses_num;
-  /* vector of sessions */
-  snat_det_session_t *sessions;
-} snat_det_map_t;
 
 typedef struct
 {
@@ -603,8 +558,6 @@ typedef struct snat_main_s
   u32 out2in_fast_node_index;
   u32 ed_out2in_node_index;
   u32 ed_out2in_slowpath_node_index;
-  u32 det_in2out_node_index;
-  u32 det_out2in_node_index;
 
   u32 hairpinning_node_index;
   u32 hairpin_dst_node_index;
@@ -613,17 +566,12 @@ typedef struct snat_main_s
   u32 ed_hairpin_dst_node_index;
   u32 ed_hairpin_src_node_index;
 
-
-  /* Deterministic NAT mappings */
-  snat_det_map_t *det_maps;
-
   /* If forwarding is enabled */
   u8 forwarding_enabled;
 
   /* Config parameters */
   u8 static_mapping_only;
   u8 static_mapping_connection_tracking;
-  u8 deterministic;
   u8 out2in_dpo;
   u8 endpoint_dependent;
 
@@ -696,8 +644,6 @@ extern vlib_node_registration_t snat_out2in_node;
 extern vlib_node_registration_t snat_in2out_worker_handoff_node;
 extern vlib_node_registration_t snat_in2out_output_worker_handoff_node;
 extern vlib_node_registration_t snat_out2in_worker_handoff_node;
-extern vlib_node_registration_t snat_det_in2out_node;
-extern vlib_node_registration_t snat_det_out2in_node;
 extern vlib_node_registration_t nat44_ed_in2out_node;
 extern vlib_node_registration_t nat44_ed_in2out_output_node;
 extern vlib_node_registration_t nat44_ed_out2in_node;
@@ -710,7 +656,6 @@ format_function_t format_snat_user;
 format_function_t format_snat_static_mapping;
 format_function_t format_snat_static_map_to_resolve;
 format_function_t format_snat_session;
-format_function_t format_det_map_ses;
 format_function_t format_snat_key;
 format_function_t format_static_mapping_key;
 format_function_t format_nat_protocol;
@@ -1027,20 +972,6 @@ u32 icmp_match_out2in_slow (snat_main_t * sm, vlib_node_runtime_t * node,
 			    u16 * port, u32 * fib_index,
 			    nat_protocol_t * proto, void *d, void *e,
 			    u8 * dont_translate);
-
-/* ICMP deterministic NAT session match functions */
-u32 icmp_match_out2in_det (snat_main_t * sm, vlib_node_runtime_t * node,
-			   u32 thread_index, vlib_buffer_t * b0,
-			   ip4_header_t * ip0, ip4_address_t * addr,
-			   u16 * port, u32 * fib_index,
-			   nat_protocol_t * proto, void *d, void *e,
-			   u8 * dont_translate);
-u32 icmp_match_in2out_det (snat_main_t * sm, vlib_node_runtime_t * node,
-			   u32 thread_index, vlib_buffer_t * b0,
-			   ip4_header_t * ip0, ip4_address_t * addr,
-			   u16 * port, u32 * fib_index,
-			   nat_protocol_t * proto, void *d, void *e,
-			   u8 * dont_translate);
 
 /* ICMP endpoint-dependent session match functions */
 u32 icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
