@@ -15,7 +15,7 @@ features:
       - Endpoint dependent NAT
       - TCP MSS clamping
       - Local bypass (DHCP)
-  - CGN - deterministic NAT
+  - DET44 - deterministic NAT (CGN)
   - NAT64
   - NAT66
   - DS-lite

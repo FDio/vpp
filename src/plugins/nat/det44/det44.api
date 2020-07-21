@@ -1,0 +1,469 @@
+/*
+ * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+import "vnet/ip/ip_types.api";
+import "vnet/interface_types.api";
+import "plugins/nat/nat_types.api";
+
+/**
+ * @file det44.api
+ * @brief VPP control-plane API messages.
+ *
+ * This file defines VPP control-plane API messages which are generally
+ * called through a shared memory interface.
+ */
+
+/** \brief Enable/disable DET44 plugin
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param inside_vrf - inside VRF id
+    @param outside_vrf - outside VRF id
+    @param enable - true if enable, false if disable
+*/
+autoreply define det44_plugin_enable_disable {
+  u32 client_index;
+  u32 context;
+  u32 inside_vrf;
+  u32 outside_vrf;
+  bool enable;
+  vl_api_interface_index_t sw_if_index;
+  option status="in_progress";
+};
+
+/** \brief Enable/disable DET44 feature on the interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param is_inside - true if interface is inside, false if outside
+    @param sw_if_index - software index of the interface
+*/
+autoreply define det44_interface_add_del_feature {
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  bool is_inside;
+  vl_api_interface_index_t sw_if_index;
+  option status="in_progress";
+};
+
+/** \brief Dump interfaces with DET44 feature
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define det44_interface_dump {
+  u32 client_index;
+  u32 context;
+  option status="in_progress";
+};
+
+/** \brief DET44 interface details response
+    @param context - sender context, to match reply w/ request
+    @param is_inside - true if interface is inside, false if outside
+    @param sw_if_index - software index of the interface
+*/
+define det44_interface_details {
+  u32 context;
+  bool is_inside;
+  bool is_outside;
+  vl_api_interface_index_t sw_if_index;
+  option status="in_progress";
+};
+
+/** \brief Add/delete DET44 mapping
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param in_addr - inside IPv4 address
+    @param in_plen - inside IPv4 address prefix length
+    @param out_addr - outside IPv4 address
+    @param out_plen - outside IPv4 address prefix length
+*/
+autoreply define det44_add_del_map {
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_ip4_address_t in_addr;
+  u8 in_plen;
+  vl_api_ip4_address_t out_addr;
+  u8 out_plen;
+};
+
+/** \brief Get outside address and port range from inside address
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param in_addr - inside IP address
+*/
+define det44_forward {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t in_addr;
+};
+
+/** \brief Get outside address and port range from inside address
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param out_port_lo - outside port range start
+    @param out_port_hi - outside port range end
+    @param out_addr - outside IPv4 address
+*/
+define det44_forward_reply {
+  u32 context;
+  i32 retval;
+  u16 out_port_lo;
+  u16 out_port_hi;
+  vl_api_ip4_address_t out_addr;
+};
+
+/** \brief Get inside address from outside address and port
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param out_port - outside port
+    @param out_addr - outside IPv4 address
+*/
+define det44_reverse {
+  u32 client_index;
+  u32 context;
+  u16 out_port;
+  vl_api_ip4_address_t out_addr;
+};
+
+/** \brief Get inside address from outside address and port reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param in_addr - inside IP address
+*/
+define det44_reverse_reply {
+  u32 context;
+  i32 retval;
+  vl_api_ip4_address_t in_addr;
+};
+
+/** \brief Dump DET44 mappings
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define det44_map_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief DET44 users response
+    @param context - sender context, to match reply w/ request
+    @param in_addr - inside IPv4 address
+    @param in_plen - inside IPv4 address prefix length
+    @param out_addr - outside IPv4 address
+    @param out_plen - outside IPv4 address prefix length
+    @param sharing_ratio - outside to inside address sharing ratio
+    @param ports_per_host - number of ports available to a host
+    @param ses_num - number of sessions belonging to this mapping
+*/
+define det44_map_details {
+  u32 context;
+  vl_api_ip4_address_t in_addr;
+  u8 in_plen;
+  vl_api_ip4_address_t out_addr;
+  u8 out_plen;
+  u32 sharing_ratio;
+  u16 ports_per_host;
+  u32 ses_num;
+};
+
+/** \brief Close DET44 session by outside address and port
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param out_addr - outside IPv4 address
+    @param out_port - outside port
+    @param ext_addr - external host IPv4 address
+    @param ext_port - external host port
+*/
+autoreply define det44_close_session_out {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t out_addr;
+  u16 out_port;
+  vl_api_ip4_address_t ext_addr;
+  u16 ext_port;
+};
+
+/** \brief Close DET44 session by inside address and port
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param in_addr - inside IP address
+    @param in_port - inside port
+    @param ext_addr - external host IP address
+    @param ext_port - external host port
+*/
+autoreply define det44_close_session_in {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t in_addr;
+  u16 in_port;
+  vl_api_ip4_address_t ext_addr;
+  u16 ext_port;
+};
+
+/** \brief Dump DET44 sessions
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param user_addr - address of an inside user whose sessions to dump
+*/
+define det44_session_dump {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t user_addr;
+};
+
+/** \brief DET44 sessions reply
+    @param context - sender context, to match reply w/ request
+    @param in_port - inside port
+    @param ext_addr - external host IPv4 address
+    @param ext_port - external host port
+    @param out_port - outside port
+    @param state - session state
+    @param expire - session expiration timestamp
+*/
+define det44_session_details {
+  u32 context;
+  u16 in_port;
+  vl_api_ip4_address_t ext_addr;
+  u16 ext_port;
+  u16 out_port;
+  u8 state;
+  u32 expire;
+};
+
+/** \brief Set values of timeouts for DET44 sessions (seconds)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param udp - UDP timeout (default 300sec)
+    @param tcp_established - TCP established timeout (default 7440sec)
+    @param tcp_transitory - TCP transitory timeout (default 240sec)
+    @param icmp - ICMP timeout (default 60sec)
+*/
+autoreply define det44_set_timeouts {
+  u32 client_index;
+  u32 context;
+  u32 udp;
+  u32 tcp_established;
+  u32 tcp_transitory;
+  u32 icmp;
+  option status="in_progress";
+};
+
+/** \brief Get values of timeouts for DET44 sessions (seconds)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define det44_get_timeouts {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get values of timeouts for DET44 sessions reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param udp - UDP timeout
+    @param tcp_established - TCP established timeout
+    @param tcp_transitory - TCP transitory timeout
+    @param icmp - ICMP timeout
+*/
+define det44_get_timeouts_reply {
+  u32 context;
+  i32 retval;
+  u32 udp;
+  u32 tcp_established;
+  u32 tcp_transitory;
+  u32 icmp;
+  option status="in_progress";
+};
+
+/*
+ * Obsolete deterministic API to be removed
+ */
+
+/** \brief Add/delete NAT deterministic mapping
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param in_addr - inside IPv4 address
+    @param in_plen - inside IPv4 address prefix length
+    @param out_addr - outside IPv4 address
+    @param out_plen - outside IPv4 address prefix length
+*/
+autoreply define nat_det_add_del_map {
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_ip4_address_t in_addr;
+  u8 in_plen;
+  vl_api_ip4_address_t out_addr;
+  u8 out_plen;
+  option status="deprecated";
+};
+
+/** \brief Get outside address and port range from inside address
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param in_addr - inside IP address
+*/
+define nat_det_forward {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t in_addr;
+  option status="deprecated";
+};
+
+/** \brief Get outside address and port range from inside address
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param out_port_lo - outside port range start
+    @param out_port_hi - outside port range end
+    @param out_addr - outside IPv4 address
+*/
+define nat_det_forward_reply {
+  u32 context;
+  i32 retval;
+  u16 out_port_lo;
+  u16 out_port_hi;
+  vl_api_ip4_address_t out_addr;
+  option status="deprecated";
+};
+
+/** \brief Get inside address from outside address and port
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param out_port - outside port
+    @param out_addr - outside IPv4 address
+*/
+define nat_det_reverse {
+  u32 client_index;
+  u32 context;
+  u16 out_port;
+  vl_api_ip4_address_t out_addr;
+  option status="deprecated";
+};
+
+/** \brief Get inside address from outside address and port reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param in_addr - inside IP address
+*/
+define nat_det_reverse_reply {
+  u32 context;
+  i32 retval;
+  vl_api_ip4_address_t in_addr;
+  option status="deprecated";
+};
+
+/** \brief Dump NAT deterministic mappings
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat_det_map_dump {
+  u32 client_index;
+  u32 context;
+  option status="deprecated";
+};
+
+/** \brief NAT users response
+    @param context - sender context, to match reply w/ request
+    @param in_addr - inside IPv4 address
+    @param in_plen - inside IPv4 address prefix length
+    @param out_addr - outside IPv4 address
+    @param out_plen - outside IPv4 address prefix length
+    @param sharing_ratio - outside to inside address sharing ratio
+    @param ports_per_host - number of ports available to a host
+    @param ses_num - number of sessions belonging to this mapping
+*/
+define nat_det_map_details {
+  u32 context;
+  vl_api_ip4_address_t in_addr;
+  u8 in_plen;
+  vl_api_ip4_address_t out_addr;
+  u8 out_plen;
+  u32 sharing_ratio;
+  u16 ports_per_host;
+  u32 ses_num;
+  option status="deprecated";
+};
+
+/** \brief Close deterministic NAT session by outside address and port
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param out_addr - outside IPv4 address
+    @param out_port - outside port
+    @param ext_addr - external host IPv4 address
+    @param ext_port - external host port
+*/
+autoreply define nat_det_close_session_out {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t out_addr;
+  u16 out_port;
+  vl_api_ip4_address_t ext_addr;
+  u16 ext_port;
+  option status="deprecated";
+};
+
+/** \brief Close deterministic NAT session by inside address and port
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param in_addr - inside IP address
+    @param in_port - inside port
+    @param ext_addr - external host IP address
+    @param ext_port - external host port
+*/
+autoreply define nat_det_close_session_in {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t in_addr;
+  u16 in_port;
+  vl_api_ip4_address_t ext_addr;
+  u16 ext_port;
+  option status="deprecated";
+};
+
+/** \brief Dump determinstic NAT sessions
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param user_addr - address of an inside user whose sessions to dump
+*/
+define nat_det_session_dump {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t user_addr;
+  option status="deprecated";
+};
+
+/** \brief Deterministic NAT sessions reply
+    @param context - sender context, to match reply w/ request
+    @param in_port - inside port
+    @param ext_addr - external host IPv4 address
+    @param ext_port - external host port
+    @param out_port - outside NAT port
+    @param state - session state
+    @param expire - session expiration timestamp
+*/
+define nat_det_session_details {
+  u32 context;
+  u16 in_port;
+  vl_api_ip4_address_t ext_addr;
+  u16 ext_port;
+  u16 out_port;
+  u8 state;
+  u32 expire;
+  option status="deprecated";
+};

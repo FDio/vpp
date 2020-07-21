@@ -100,7 +100,7 @@ nat44_user_del (ip4_address_t * addr, u32 fib_index)
   snat_user_key_t user_key;
   clib_bihash_kv_8_8_t kv, value;
 
-  if (sm->deterministic || sm->endpoint_dependent)
+  if (sm->endpoint_dependent)
     return rv;
 
   user_key.addr.as_u32 = addr->as_u32;

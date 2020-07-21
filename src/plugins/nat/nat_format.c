@@ -19,7 +19,6 @@
 
 #include <nat/nat.h>
 #include <nat/nat_inlines.h>
-#include <nat/nat_det.h>
 
 uword
 unformat_nat_protocol (unformat_input_t * input, va_list * args)
@@ -293,39 +292,6 @@ format_snat_static_map_to_resolve (u8 * s, va_list * args)
 		format_ip4_address, &m->l_addr, m->l_port,
 		format_vnet_sw_if_index_name, vnm, m->sw_if_index,
 		m->e_port, m->vrf_id);
-
-  return s;
-}
-
-u8 *
-format_det_map_ses (u8 * s, va_list * args)
-{
-  snat_det_map_t *det_map = va_arg (*args, snat_det_map_t *);
-  ip4_address_t in_addr, out_addr;
-  u32 in_offset, out_offset;
-  snat_det_session_t *ses = va_arg (*args, snat_det_session_t *);
-  u32 *i = va_arg (*args, u32 *);
-
-  u32 user_index = *i / SNAT_DET_SES_PER_USER;
-  in_addr.as_u32 =
-    clib_host_to_net_u32 (clib_net_to_host_u32 (det_map->in_addr.as_u32) +
-			  user_index);
-  in_offset =
-    clib_net_to_host_u32 (in_addr.as_u32) -
-    clib_net_to_host_u32 (det_map->in_addr.as_u32);
-  out_offset = in_offset / det_map->sharing_ratio;
-  out_addr.as_u32 =
-    clib_host_to_net_u32 (clib_net_to_host_u32 (det_map->out_addr.as_u32) +
-			  out_offset);
-  s =
-    format (s,
-	    "in %U:%d out %U:%d external host %U:%d state: %U expire: %d\n",
-	    format_ip4_address, &in_addr, clib_net_to_host_u16 (ses->in_port),
-	    format_ip4_address, &out_addr,
-	    clib_net_to_host_u16 (ses->out.out_port), format_ip4_address,
-	    &ses->out.ext_host_addr,
-	    clib_net_to_host_u16 (ses->out.ext_host_port),
-	    format_snat_session_state, ses->state, ses->expire);
 
   return s;
 }

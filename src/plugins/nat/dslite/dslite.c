@@ -267,9 +267,13 @@ format_dslite_ce_trace (u8 * s, va_list * args)
 
 VLIB_INIT_FUNCTION (dslite_init);
 
+/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =
 {
-.version = VPP_BUILD_VER,.description = "Dual-Stack Lite",};
+  .version = VPP_BUILD_VER,
+  .description = "Dual-Stack Lite",
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

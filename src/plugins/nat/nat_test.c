@@ -1,4 +1,3 @@
-
 /*
  * nat.c - skeleton vpp-api-test plug-in
  *
@@ -69,16 +68,13 @@ _(nat44_add_del_static_mapping_reply)            \
 _(nat_set_workers_reply)                         \
 _(nat44_add_del_interface_addr_reply)            \
 _(nat_ipfix_enable_disable_reply)                \
-_(nat_det_add_del_map_reply)                     \
-_(nat_set_timeouts_reply)                        \
-_(nat_det_close_session_out_reply)               \
-_(nat_det_close_session_in_reply)
+_(nat_set_timeouts_reply)
 
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
     (vl_api_##n##_t * mp)                               \
     {                                                   \
-        vat_main_t * vam = snat_test_main.vat_main;   \
+        vat_main_t * vam = snat_test_main.vat_main;     \
         i32 retval = ntohl(mp->retval);                 \
         if (vam->async_mode) {                          \
             vam->async_errors += (retval < 0);          \
@@ -117,17 +113,8 @@ _(NAT_IPFIX_ENABLE_DISABLE_REPLY,                               \
   nat_ipfix_enable_disable_reply)                               \
 _(NAT44_USER_DETAILS, nat44_user_details)                       \
 _(NAT44_USER_SESSION_DETAILS, nat44_user_session_details)       \
-_(NAT_DET_ADD_DEL_MAP_REPLY, nat_det_add_del_map_reply)         \
-_(NAT_DET_FORWARD_REPLY, nat_det_forward_reply)                 \
-_(NAT_DET_REVERSE_REPLY, nat_det_reverse_reply)                 \
-_(NAT_DET_MAP_DETAILS, nat_det_map_details)                     \
 _(NAT_SET_TIMEOUTS_REPLY, nat_set_timeouts_reply)               \
-_(NAT_GET_TIMEOUTS_REPLY, nat_get_timeouts_reply)               \
-_(NAT_DET_CLOSE_SESSION_OUT_REPLY,                              \
-  nat_det_close_session_out_reply)                              \
-_(NAT_DET_CLOSE_SESSION_IN_REPLY,                               \
-  nat_det_close_session_in_reply)                               \
-_(NAT_DET_SESSION_DETAILS, nat_det_session_details)
+_(NAT_GET_TIMEOUTS_REPLY, nat_get_timeouts_reply)
 
 static int api_nat44_add_del_address_range (vat_main_t * vam)
 {
@@ -827,159 +814,6 @@ static int api_nat44_user_dump(vat_main_t * vam)
   return ret;
 }
 
-static int api_nat_det_add_del_map (vat_main_t * vam)
-{
-  unformat_input_t * i = vam->input;
-  vl_api_nat_det_add_del_map_t * mp;
-  ip4_address_t in_addr, out_addr;
-  u32 in_plen, out_plen;
-  u8 is_add = 1;
-  int ret;
-
-  if (unformat (i, "in %U/%d out %U/%d",
-                unformat_ip4_address, &in_addr, &in_plen,
-                unformat_ip4_address, &out_addr, &out_plen))
-    ;
-  else if (unformat (i, "del"))
-    is_add = 0;
-  else
-    {
-      clib_warning("unknown input '%U'", format_unformat_error, i);
-      return -99;
-    }
-
-  M(NAT_DET_ADD_DEL_MAP, mp);
-  clib_memcpy(mp->in_addr, &in_addr, 4);
-  mp->in_plen = in_plen;
-  clib_memcpy(mp->out_addr, &out_addr, 4);
-  mp->out_plen = out_plen;
-  mp->is_add = is_add;
-
-  S(mp);
-  W (ret);
-  return ret;
-}
-
-static void vl_api_nat_det_forward_reply_t_handler
-  (vl_api_nat_det_forward_reply_t *mp)
-{
-  snat_test_main_t * sm = &snat_test_main;
-  vat_main_t *vam = sm->vat_main;
-  i32 retval = ntohl(mp->retval);
-
-  if (retval >= 0)
-  {
-    fformat (vam->ofp, "outside address %U", format_ip4_address, &mp->out_addr);
-    fformat (vam->ofp, " outside port range start %d", ntohs(mp->out_port_lo));
-    fformat (vam->ofp, " outside port range end %d\n", ntohs(mp->out_port_hi));
-  }
-
-  vam->retval = retval;
-  vam->result_ready = 1;
-}
-
-static int api_nat_det_forward (vat_main_t * vam)
-{
-  unformat_input_t * i = vam->input;
-  vl_api_nat_det_forward_t * mp;
-  ip4_address_t in_addr;
-  int ret;
-
-  if (unformat (i, "%U", unformat_ip4_address, &in_addr))
-    ;
-  else
-    {
-      clib_warning("unknown input '%U'", format_unformat_error, i);
-      return -99;
-    }
-
-  M(NAT_DET_FORWARD, mp);
-  clib_memcpy(mp->in_addr, &in_addr, 4);
-
-  S(mp);
-  W(ret);
-  return ret;
-}
-
-static void vl_api_nat_det_reverse_reply_t_handler
-  (vl_api_nat_det_reverse_reply_t *mp)
-{
-  snat_test_main_t * sm = &snat_test_main;
-  vat_main_t *vam = sm->vat_main;
-  i32 retval = ntohl(mp->retval);
-
-  if (retval >= 0)
-  {
-    fformat (vam->ofp, "inside address %U\n", format_ip4_address, &mp->in_addr);
-  }
-
-  vam->retval = retval;
-  vam->result_ready = 1;
-}
-
-static int api_nat_det_reverse (vat_main_t * vam)
-{
-  unformat_input_t * i = vam->input;
-  vl_api_nat_det_reverse_t * mp;
-  ip4_address_t out_addr;
-  u32 out_port;
-  int ret;
-
-  if (unformat (i, "%U %d", unformat_ip4_address, &out_addr, &out_port))
-    ;
-  else
-    {
-      clib_warning("unknown input '%U'", format_unformat_error, i);
-      return -99;
-    }
-
-  M(NAT_DET_REVERSE, mp);
-  clib_memcpy(mp->out_addr, &out_addr, 4);
-  mp->out_port = htons((u16)out_port);
-
-  S(mp);
-  W(ret);
-  return ret;
-}
-
-static void vl_api_nat_det_map_details_t_handler
-  (vl_api_nat_det_map_details_t *mp)
-{
-  snat_test_main_t * sm = &snat_test_main;
-  vat_main_t *vam = sm->vat_main;
-
-  fformat (vam->ofp, "Deterministic S-NAT mapping in %U/%d out %U/%d "
-                     "ports per host %d sharing ratio %d "
-                     "number of sessions %d",
-           format_ip4_address, mp->in_addr, mp->in_plen,
-           format_ip4_address, mp->out_addr, mp->out_plen,
-           ntohs(mp->ports_per_host), ntohl(mp->sharing_ratio),
-           ntohl(mp->ses_num));
-}
-
-static int api_nat_det_map_dump(vat_main_t * vam)
-{
-  vl_api_nat_det_map_dump_t * mp;
-  vl_api_nat_control_ping_t *mp_ping;
-  int ret;
-
-  if (vam->json_output)
-    {
-      clib_warning ("JSON output not supported for nat_det_map_dump");
-      return -99;
-    }
-
-  M(NAT_DET_MAP_DUMP, mp);
-  S(mp);
-
-  /* Use a control ping for synchronization */
-  M(NAT_CONTROL_PING, mp_ping);
-  S(mp_ping);
-
-  W (ret);
-  return ret;
-}
-
 static int api_nat_set_timeouts (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
@@ -1052,110 +886,6 @@ static int api_nat_get_timeouts(vat_main_t * vam)
   return ret;
 }
 
-static int api_nat_det_close_session_out (vat_main_t * vam)
-{
-  unformat_input_t * i = vam->input;
-  vl_api_nat_det_close_session_out_t * mp;
-  ip4_address_t out_addr, ext_addr;
-  u32 out_port, ext_port;
-  int ret;
-
-  if (unformat (i, "%U:%d %U:%d",
-                unformat_ip4_address, &out_addr, &out_port,
-                unformat_ip4_address, &ext_addr, &ext_port))
-    ;
-  else
-    {
-      clib_warning("unknown input '%U'", format_unformat_error, i);
-      return -99;
-    }
-
-  M(NAT_DET_CLOSE_SESSION_OUT, mp);
-  clib_memcpy(mp->out_addr, &out_addr, 4);
-  mp->out_port = ntohs((u16)out_port);
-  clib_memcpy(mp->ext_addr, &ext_addr, 4);
-  mp->ext_port = ntohs((u16)ext_port);
-
-  S(mp);
-  W (ret);
-  return ret;
-}
-
-static int api_nat_det_close_session_in (vat_main_t * vam)
-{
-  unformat_input_t * i = vam->input;
-  vl_api_nat_det_close_session_in_t * mp;
-  ip4_address_t in_addr, ext_addr;
-  u32 in_port, ext_port;
-  int ret;
-
-  if (unformat (i, "%U:%d %U:%d",
-                unformat_ip4_address, &in_addr, &in_port,
-                unformat_ip4_address, &ext_addr, &ext_port))
-    ;
-  else
-    {
-      clib_warning("unknown input '%U'", format_unformat_error, i);
-      return -99;
-    }
-
-  M(NAT_DET_CLOSE_SESSION_IN, mp);
-  clib_memcpy(mp->in_addr, &in_addr, 4);
-  mp->in_port = ntohs((u16)in_port);
-  clib_memcpy(mp->ext_addr, &ext_addr, 4);
-  mp->ext_port = ntohs((u16)ext_port);
-
-  S(mp);
-  W (ret);
-  return ret;
-}
-
-static void vl_api_nat_det_session_details_t_handler
-  (vl_api_nat_det_session_details_t *mp)
-{
-  snat_test_main_t * sm = &snat_test_main;
-  vat_main_t *vam = sm->vat_main;
-
-  fformat(vam->ofp, "deterministic session, external host address %U, "
-                    "external host port %d, outer port %d, inside port %d",
-          format_ip4_address, mp->ext_addr, mp->ext_port,
-          mp->out_port, mp->in_port);
-}
-
-static int api_nat_det_session_dump(vat_main_t * vam)
-{
-  unformat_input_t* i = vam->input;
-  vl_api_nat_det_session_dump_t * mp;
-  vl_api_nat_control_ping_t *mp_ping;
-  ip4_address_t user_addr;
-  int ret;
-
-  if (vam->json_output)
-    {
-      clib_warning ("JSON output not supported for nat_det_session_dump");
-      return -99;
-    }
-
-  if (unformat (i, "user_addr %U", unformat_ip4_address, &user_addr))
-    ;
-  else
-    {
-      clib_warning ("unknown input '%U'", format_unformat_error, i);
-      return -99;
-    }
-
-  M(NAT_DET_SESSION_DUMP, mp);
-  clib_memcpy (&mp->user_addr, &user_addr, 4);
-  S(mp);
-
-  /* Use a control ping for synchronization */
-  M(NAT_CONTROL_PING, mp_ping);
-  S(mp_ping);
-
-  W (ret);
-  return ret;
-}
-
 /*
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
@@ -1184,19 +914,9 @@ _(nat_ipfix_enable_disable, "[domain <id>] [src_port <n>] "       \
   "[disable]")                                                    \
 _(nat44_user_dump, "")                                            \
 _(nat44_user_session_dump, "ip_address <ip> vrf_id <table-id>")   \
-_(nat_det_add_del_map, "in <in_addr>/<in_plen> out "              \
-  "<out_addr>/<out_plen> [del]")                                  \
-_(nat_det_forward, "<in_addr>")                                   \
-_(nat_det_reverse, "<out_addr> <out_port>")                       \
-_(nat_det_map_dump, "")                                           \
 _(nat_set_timeouts, "[udp <sec> | tcp_established <sec> | "       \
   "tcp_transitory <sec> | icmp <sec>]")                           \
-_(nat_get_timeouts, "")                                           \
-_(nat_det_close_session_out, "<out_addr>:<out_port> "             \
-  "<ext_addr>:<ext_port>")                                        \
-_(nat_det_close_session_in, "<in_addr>:<in_port> "                \
-  "<out_addr>:<out_port>")                                        \
-_(nat_det_session_dump, "ip_address <user_addr>")
+_(nat_get_timeouts, "")
 
 static void
 snat_vat_api_hookup (vat_main_t *vam)
