@@ -19,7 +19,6 @@
 
 #include <nat/nat.h>
 #include <nat/nat_ipfix_logging.h>
-#include <nat/nat_det.h>
 #include <nat/nat64.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat44/inlines.h>
@@ -27,30 +26,19 @@
 #include <vnet/fib/fib_table.h>
 #include <nat/nat_ha.h>
 
-
-#define UNSUPPORTED_IN_DET_OR_ED_MODE_STR \
-  "This command is unsupported in deterministic or endpoint dependent mode"
-#define UNSUPPORTED_IN_DET_OR_NON_ED_MODE_STR \
-  "This command is unsupported in deterministic or non endpoint dependent mode"
-#define UNSUPPORTED_IN_DET_MODE_STR \
-  "This command is unsupported in deterministic mode"
+#define UNSUPPORTED_IN_ED_MODE_STR \
+  "This command is unsupported in endpoint dependent mode"
 #define SUPPORTED_ONLY_IN_ED_MODE_STR \
   "This command is supported only in endpoint dependent mode"
-#define SUPPORTED_ONLY_IN_DET_MODE_STR \
-  "This command is supported only in deterministic mode"
 
 static clib_error_t *
 set_workers_command_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  snat_main_t *sm = &snat_main;
   uword *bitmap = 0;
   int rv = 0;
   clib_error_t *error = 0;
-
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -103,9 +91,6 @@ nat_show_workers_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   snat_main_t *sm = &snat_main;
   u32 *worker;
-
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
 
   if (sm->num_workers > 1)
     {
@@ -272,12 +257,8 @@ nat44_set_alloc_addr_and_port_alg_command_fn (vlib_main_t * vm,
 					      vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  snat_main_t *sm = &snat_main;
   clib_error_t *error = 0;
   u32 psid, psid_offset, psid_length, port_start, port_end;
-
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -327,9 +308,6 @@ nat44_show_alloc_addr_and_port_alg_command_fn (vlib_main_t * vm,
 					       vlib_cli_command_t * cmd)
 {
   snat_main_t *sm = &snat_main;
-
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
 
   vlib_cli_output (vm, "NAT address and port: %U",
 		   format_nat_addr_and_port_alloc_alg,
@@ -550,9 +528,6 @@ add_address_command_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
   u8 twice_nat = 0;
 
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
-
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -651,8 +626,8 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
   snat_main_t *sm = &snat_main;
   snat_session_t *s;
 
-  if (sm->deterministic || !sm->endpoint_dependent)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_OR_NON_ED_MODE_STR);
+  if (!sm->endpoint_dependent)
+    return clib_error_return (0, SUPPORTED_ONLY_IN_ED_MODE_STR);
 
   vlib_cli_output (vm, "max translations per thread: %u",
 		   sm->max_translations_per_thread);
@@ -812,9 +787,6 @@ nat44_show_addresses_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   snat_main_t *sm = &snat_main;
   snat_address_t *ap;
-
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
 
   vlib_cli_output (vm, "NAT44 pool addresses:");
   /* *INDENT-OFF* */
@@ -998,7 +970,6 @@ add_static_mapping_command_fn (vlib_main_t * vm,
 			       vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  snat_main_t *sm = &snat_main;
   clib_error_t *error = 0;
   ip4_address_t l_addr, e_addr;
   u32 l_port = 0, e_port = 0, vrf_id = ~0;
@@ -1011,9 +982,6 @@ add_static_mapping_command_fn (vlib_main_t * vm,
   u8 proto_set = 0;
   twice_nat_type_t twice_nat = TWICE_NAT_DISABLED;
   u8 out2in_only = 0;
-
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1126,7 +1094,6 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
 				 vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  snat_main_t *sm = &snat_main;
   clib_error_t *error = 0;
   ip4_address_t addr;
   u32 port = 0, vrf_id = ~0;
@@ -1136,9 +1103,6 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
   vnet_main_t *vnm = vnet_get_main ();
   int rv;
   nat_protocol_t proto;
-
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
 
   addr.as_u32 = 0;
 
@@ -1206,7 +1170,6 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
 				  vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  snat_main_t *sm = &snat_main;
   clib_error_t *error = 0;
   ip4_address_t l_addr, e_addr;
   u32 l_port = 0, e_port = 0, vrf_id = 0, probability = 0, affinity = 0;
@@ -1217,9 +1180,6 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
   nat44_lb_addr_port_t *locals = 0, local;
   twice_nat_type_t twice_nat = TWICE_NAT_DISABLED;
   u8 out2in_only = 0;
-
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1321,7 +1281,6 @@ add_lb_backend_command_fn (vlib_main_t * vm,
 			   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  snat_main_t *sm = &snat_main;
   clib_error_t *error = 0;
   ip4_address_t l_addr, e_addr;
   u32 l_port = 0, e_port = 0, vrf_id = 0, probability = 0;
@@ -1329,9 +1288,6 @@ add_lb_backend_command_fn (vlib_main_t * vm,
   int rv;
   nat_protocol_t proto;
   u8 proto_set = 0;
-
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1417,9 +1373,6 @@ nat44_show_static_mappings_command_fn (vlib_main_t * vm,
   snat_static_mapping_t *m;
   snat_static_map_resolve_t *rp;
 
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
-
   vlib_cli_output (vm, "NAT44 static mappings:");
   /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings,
@@ -1445,9 +1398,6 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
   int is_del = 0;
   clib_error_t *error = 0;
   u8 twice_nat = 0;
-
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1498,9 +1448,6 @@ nat44_show_interface_address_command_fn (vlib_main_t * vm,
   vnet_main_t *vnm = vnet_get_main ();
   u32 *sw_if_index;
 
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
-
   /* *INDENT-OFF* */
   vlib_cli_output (vm, "NAT44 pool address interfaces:");
   vec_foreach (sw_if_index, sm->auto_add_sw_if_indices)
@@ -1531,9 +1478,6 @@ nat44_show_sessions_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   int detail = 0;
   int i = 0;
-
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
 
   if (!unformat_user (input, unformat_line_input, line_input))
     goto print;
@@ -1592,14 +1536,10 @@ nat44_set_session_limit_command_fn (vlib_main_t * vm,
 				    unformat_input_t * input,
 				    vlib_cli_command_t * cmd)
 {
-  snat_main_t *sm = &snat_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
 
   u32 session_limit = 0, vrf_id = 0;
-
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1641,8 +1581,8 @@ nat44_del_user_command_fn (vlib_main_t * vm,
   u32 fib_index = 0;
   int rv;
 
-  if (sm->deterministic || sm->endpoint_dependent)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_OR_ED_MODE_STR);
+  if (sm->endpoint_dependent)
+    return clib_error_return (0, UNSUPPORTED_IN_ED_MODE_STR);
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1680,12 +1620,7 @@ nat44_clear_sessions_command_fn (vlib_main_t * vm,
 				 unformat_input_t * input,
 				 vlib_cli_command_t * cmd)
 {
-  snat_main_t *sm = &snat_main;
   clib_error_t *error = 0;
-
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
-
   nat44_sessions_clear ();
   return error;
 }
@@ -1703,9 +1638,6 @@ nat44_del_session_command_fn (vlib_main_t * vm,
   u32 port = 0, eh_port = 0, vrf_id = sm->outside_vrf_id;
   nat_protocol_t proto;
   int rv;
-
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1779,9 +1711,6 @@ snat_forwarding_set_command_fn (vlib_main_t * vm,
   u8 forwarding_enable_set = 0;
   clib_error_t *error = 0;
 
-  if (sm->deterministic)
-    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
-
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "'enable' or 'disable' expected");
@@ -1813,193 +1742,6 @@ snat_forwarding_set_command_fn (vlib_main_t * vm,
     }
 
   sm->forwarding_enabled = forwarding_enable;
-
-done:
-  unformat_free (line_input);
-
-  return error;
-}
-
-static clib_error_t *
-snat_det_map_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  snat_main_t *sm = &snat_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  ip4_address_t in_addr, out_addr;
-  u32 in_plen, out_plen;
-  int is_add = 1, rv;
-  clib_error_t *error = 0;
-
-  if (!sm->deterministic)
-    return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat
-	  (line_input, "in %U/%u", unformat_ip4_address, &in_addr, &in_plen))
-	;
-      else
-	if (unformat
-	    (line_input, "out %U/%u", unformat_ip4_address, &out_addr,
-	     &out_plen))
-	;
-      else if (unformat (line_input, "del"))
-	is_add = 0;
-      else
-	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
-  if (in_plen > 32 || out_plen > 32)
-    {
-      error = clib_error_return (0, "network prefix length must be <= 32");
-      goto done;
-    }
-
-  rv = snat_det_add_map (sm, &in_addr, in_plen, &out_addr, out_plen, is_add);
-
-  if (rv)
-    {
-      error = clib_error_return (0, "snat_det_add_map return %d", rv);
-      goto done;
-    }
-
-done:
-  unformat_free (line_input);
-
-  return error;
-}
-
-static clib_error_t *
-nat44_det_show_mappings_command_fn (vlib_main_t * vm,
-				    unformat_input_t * input,
-				    vlib_cli_command_t * cmd)
-{
-  snat_main_t *sm = &snat_main;
-  snat_det_map_t *dm;
-
-  if (!sm->deterministic)
-    return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
-
-  vlib_cli_output (vm, "NAT44 deterministic mappings:");
-  /* *INDENT-OFF* */
-  pool_foreach (dm, sm->det_maps,
-  ({
-    vlib_cli_output (vm, " in %U/%d out %U/%d\n",
-                     format_ip4_address, &dm->in_addr, dm->in_plen,
-                     format_ip4_address, &dm->out_addr, dm->out_plen);
-    vlib_cli_output (vm, "  outside address sharing ratio: %d\n",
-                     dm->sharing_ratio);
-    vlib_cli_output (vm, "  number of ports per inside host: %d\n",
-                     dm->ports_per_host);
-    vlib_cli_output (vm, "  sessions number: %d\n", dm->ses_num);
-  }));
-  /* *INDENT-ON* */
-
-  return 0;
-}
-
-static clib_error_t *
-snat_det_forward_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
-{
-  snat_main_t *sm = &snat_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  ip4_address_t in_addr, out_addr;
-  u16 lo_port;
-  snat_det_map_t *dm;
-  clib_error_t *error = 0;
-
-  if (!sm->deterministic)
-    return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%U", unformat_ip4_address, &in_addr))
-	;
-      else
-	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
-  dm = snat_det_map_by_user (sm, &in_addr);
-  if (!dm)
-    vlib_cli_output (vm, "no match");
-  else
-    {
-      snat_det_forward (dm, &in_addr, &out_addr, &lo_port);
-      vlib_cli_output (vm, "%U:<%d-%d>", format_ip4_address, &out_addr,
-		       lo_port, lo_port + dm->ports_per_host - 1);
-    }
-
-done:
-  unformat_free (line_input);
-
-  return error;
-}
-
-static clib_error_t *
-snat_det_reverse_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
-{
-  snat_main_t *sm = &snat_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  ip4_address_t in_addr, out_addr;
-  u32 out_port;
-  snat_det_map_t *dm;
-  clib_error_t *error = 0;
-
-  if (!sm->deterministic)
-    return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat
-	  (line_input, "%U:%d", unformat_ip4_address, &out_addr, &out_port))
-	;
-      else
-	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
-  if (out_port < 1024 || out_port > 65535)
-    {
-      error = clib_error_return (0, "wrong port, must be <1024-65535>");
-      goto done;
-    }
-
-  dm = snat_det_map_by_out (sm, &out_addr);
-  if (!dm)
-    vlib_cli_output (vm, "no match");
-  else
-    {
-      snat_det_reverse (dm, &out_addr, (u16) out_port, &in_addr);
-      vlib_cli_output (vm, "%U", format_ip4_address, &in_addr);
-    }
 
 done:
   unformat_free (line_input);
@@ -2100,150 +1842,6 @@ nat_show_timeouts_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-static clib_error_t *
-nat44_det_show_sessions_command_fn (vlib_main_t * vm,
-				    unformat_input_t * input,
-				    vlib_cli_command_t * cmd)
-{
-  snat_main_t *sm = &snat_main;
-  snat_det_map_t *dm;
-  snat_det_session_t *ses;
-  int i;
-
-  if (!sm->deterministic)
-    return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
-
-  vlib_cli_output (vm, "NAT44 deterministic sessions:");
-  /* *INDENT-OFF* */
-  pool_foreach (dm, sm->det_maps,
-  ({
-    vec_foreach_index (i, dm->sessions)
-      {
-        ses = vec_elt_at_index (dm->sessions, i);
-        if (ses->in_port)
-          vlib_cli_output (vm, "  %U", format_det_map_ses, dm, ses, &i);
-      }
-  }));
-  /* *INDENT-ON* */
-  return 0;
-}
-
-static clib_error_t *
-snat_det_close_session_out_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
-{
-  snat_main_t *sm = &snat_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  ip4_address_t out_addr, ext_addr, in_addr;
-  u32 out_port, ext_port;
-  snat_det_map_t *dm;
-  snat_det_session_t *ses;
-  snat_det_out_key_t key;
-  clib_error_t *error = 0;
-
-  if (!sm->deterministic)
-    return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%U:%d %U:%d",
-		    unformat_ip4_address, &out_addr, &out_port,
-		    unformat_ip4_address, &ext_addr, &ext_port))
-	;
-      else
-	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
-  unformat_free (line_input);
-
-  dm = snat_det_map_by_out (sm, &out_addr);
-  if (!dm)
-    vlib_cli_output (vm, "no match");
-  else
-    {
-      snat_det_reverse (dm, &ext_addr, (u16) out_port, &in_addr);
-      key.ext_host_addr = out_addr;
-      key.ext_host_port = ntohs ((u16) ext_port);
-      key.out_port = ntohs ((u16) out_port);
-      ses = snat_det_get_ses_by_out (dm, &out_addr, key.as_u64);
-      if (!ses)
-	vlib_cli_output (vm, "no match");
-      else
-	snat_det_ses_close (dm, ses);
-    }
-
-done:
-  unformat_free (line_input);
-
-  return error;
-}
-
-static clib_error_t *
-snat_det_close_session_in_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
-{
-  snat_main_t *sm = &snat_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  ip4_address_t in_addr, ext_addr;
-  u32 in_port, ext_port;
-  snat_det_map_t *dm;
-  snat_det_session_t *ses;
-  snat_det_out_key_t key;
-  clib_error_t *error = 0;
-
-  if (!sm->deterministic)
-    return clib_error_return (0, SUPPORTED_ONLY_IN_DET_MODE_STR);
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%U:%d %U:%d",
-		    unformat_ip4_address, &in_addr, &in_port,
-		    unformat_ip4_address, &ext_addr, &ext_port))
-	;
-      else
-	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
-  unformat_free (line_input);
-
-  dm = snat_det_map_by_user (sm, &in_addr);
-  if (!dm)
-    vlib_cli_output (vm, "no match");
-  else
-    {
-      key.ext_host_addr = ext_addr;
-      key.ext_host_port = ntohs ((u16) ext_port);
-      ses =
-	snat_det_find_ses_by_in (dm, &in_addr, ntohs ((u16) in_port), key);
-      if (!ses)
-	vlib_cli_output (vm, "no match");
-      else
-	snat_det_ses_close (dm, ses);
-    }
-
-done:
-  unformat_free (line_input);
-
-  return error;
-}
 /* *INDENT-OFF* */
 
 /*?
@@ -2281,7 +1879,7 @@ VLIB_CLI_COMMAND (nat_show_workers_command, static) = {
  * Set values of timeouts for NAT sessions (in seconds), use:
  *  vpp# set nat timeout udp 120 tcp-established 7500 tcp-transitory 250 icmp 90
  * To reset default values use:
- *  vpp# set nat44 deterministic timeout reset
+ *  vpp# set nat timeout reset
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (set_timeout_command, static) = {
@@ -2778,119 +2376,6 @@ VLIB_CLI_COMMAND (snat_forwarding_set_command, static) = {
   .path = "nat44 forwarding",
   .short_help = "nat44 forwarding enable|disable",
   .function = snat_forwarding_set_command_fn,
-};
-
-/*?
- * @cliexpar
- * @cliexstart{nat44 deterministic add}
- * Create bijective mapping of inside address to outside address and port range
- * pairs, with the purpose of enabling deterministic NAT to reduce logging in
- * CGN deployments.
- * To create deterministic mapping between inside network 10.0.0.0/18 and
- * outside network 1.1.1.0/30 use:
- * # vpp# nat44 deterministic add in 10.0.0.0/18 out 1.1.1.0/30
- * @cliexend
-?*/
-VLIB_CLI_COMMAND (snat_det_map_command, static) = {
-    .path = "nat44 deterministic add",
-    .short_help = "nat44 deterministic add in <addr>/<plen> out <addr>/<plen> [del]",
-    .function = snat_det_map_command_fn,
-};
-
-/*?
- * @cliexpar
- * @cliexpstart{show nat44 deterministic mappings}
- * Show NAT44 deterministic mappings
- * vpp# show nat44 deterministic mappings
- * NAT44 deterministic mappings:
- *  in 10.0.0.0/24 out 1.1.1.1/32
- *   outside address sharing ratio: 256
- *   number of ports per inside host: 252
- *   sessions number: 0
- * @cliexend
-?*/
-VLIB_CLI_COMMAND (nat44_det_show_mappings_command, static) = {
-    .path = "show nat44 deterministic mappings",
-    .short_help = "show nat44 deterministic mappings",
-    .function = nat44_det_show_mappings_command_fn,
-};
-
-/*?
- * @cliexpar
- * @cliexstart{nat44 deterministic forward}
- * Return outside address and port range from inside address for deterministic
- * NAT.
- * To obtain outside address and port of inside host use:
- *  vpp# nat44 deterministic forward 10.0.0.2
- *  1.1.1.0:<1054-1068>
- * @cliexend
-?*/
-VLIB_CLI_COMMAND (snat_det_forward_command, static) = {
-    .path = "nat44 deterministic forward",
-    .short_help = "nat44 deterministic forward <addr>",
-    .function = snat_det_forward_command_fn,
-};
-
-/*?
- * @cliexpar
- * @cliexstart{nat44 deterministic reverse}
- * Return inside address from outside address and port for deterministic NAT.
- * To obtain inside host address from outside address and port use:
- *  #vpp nat44 deterministic reverse 1.1.1.1:1276
- *  10.0.16.16
- * @cliexend
-?*/
-VLIB_CLI_COMMAND (snat_det_reverse_command, static) = {
-    .path = "nat44 deterministic reverse",
-    .short_help = "nat44 deterministic reverse <addr>:<port>",
-    .function = snat_det_reverse_command_fn,
-};
-
-/*?
- * @cliexpar
- * @cliexstart{show nat44 deterministic sessions}
- * Show NAT44 deterministic sessions.
- * vpp# show nat44 deterministic sessions
- * NAT44 deterministic sessions:
- *   in 10.0.0.3:3005 out 1.1.1.2:1146 external host 172.16.1.2:3006 state: udp-active expire: 306
- *   in 10.0.0.3:3000 out 1.1.1.2:1141 external host 172.16.1.2:3001 state: udp-active expire: 306
- *   in 10.0.0.4:3005 out 1.1.1.2:1177 external host 172.16.1.2:3006 state: udp-active expire: 306
- * @cliexend
-?*/
-VLIB_CLI_COMMAND (nat44_det_show_sessions_command, static) = {
-  .path = "show nat44 deterministic sessions",
-  .short_help = "show nat44 deterministic sessions",
-  .function = nat44_det_show_sessions_command_fn,
-};
-
-/*?
- * @cliexpar
- * @cliexstart{nat44 deterministic close session out}
- * Close session using outside ip address and port
- * and external ip address and port, use:
- *  vpp# nat44 deterministic close session out 1.1.1.1:1276 2.2.2.2:2387
- * @cliexend
-?*/
-VLIB_CLI_COMMAND (snat_det_close_sesion_out_command, static) = {
-  .path = "nat44 deterministic close session out",
-  .short_help = "nat44 deterministic close session out "
-                "<out_addr>:<out_port> <ext_addr>:<ext_port>",
-  .function = snat_det_close_session_out_fn,
-};
-
-/*?
- * @cliexpar
- * @cliexstart{nat44 deterministic close session in}
- * Close session using inside ip address and port
- * and external ip address and port, use:
- *  vpp# nat44 deterministic close session in 3.3.3.3:3487 2.2.2.2:2387
- * @cliexend
-?*/
-VLIB_CLI_COMMAND (snat_det_close_session_in_command, static) = {
-  .path = "nat44 deterministic close session in",
-  .short_help = "nat44 deterministic close session in "
-                "<in_addr>:<in_port> <ext_addr>:<ext_port>",
-  .function = snat_det_close_session_in_fn,
 };
 
 /* *INDENT-ON* */

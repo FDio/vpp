@@ -458,28 +458,6 @@ VLIB_REGISTER_NODE (nat44_ed_classify_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FN (nat44_det_classify_node) (vlib_main_t * vm,
-					vlib_node_runtime_t * node,
-					vlib_frame_t * frame)
-{
-  return nat44_classify_node_fn_inline (vm, node, frame);
-}
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (nat44_det_classify_node) = {
-  .name = "nat44-det-classify",
-  .vector_size = sizeof (u32),
-  .format_trace = format_nat44_classify_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_next_nodes = NAT44_CLASSIFY_N_NEXT,
-  .next_nodes = {
-    [NAT44_CLASSIFY_NEXT_IN2OUT] = "nat44-det-in2out",
-    [NAT44_CLASSIFY_NEXT_OUT2IN] = "nat44-det-out2in",
-    [NAT44_CLASSIFY_NEXT_DROP] = "error-drop",
-  },
-};
-/* *INDENT-ON* */
-
 VLIB_NODE_FN (nat44_handoff_classify_node) (vlib_main_t * vm,
 					    vlib_node_runtime_t * node,
 					    vlib_frame_t * frame)

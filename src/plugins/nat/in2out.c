@@ -796,8 +796,7 @@ icmp_in2out (snat_main_t * sm,
 
   if (vnet_buffer (b0)->sw_if_index[VLIB_TX] == ~0)
     {
-      if (sm->deterministic ||
-	  0 != snat_icmp_hairpinning (sm, b0, ip0, icmp0,
+      if (0 != snat_icmp_hairpinning (sm, b0, ip0, icmp0,
 				      sm->endpoint_dependent))
 	vnet_buffer (b0)->sw_if_index[VLIB_TX] = fib_index;
     }
