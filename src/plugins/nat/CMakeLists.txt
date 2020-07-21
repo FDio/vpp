@@ -30,9 +30,6 @@ add_vpp_plugin(nat
   out2in.c
   out2in_ed.c
   nat_ipfix_logging.c
-  nat_det.c
-  nat_det_in2out.c
-  nat_det_out2in.c
   nat_dpo.c
   nat44_cli.c
   nat44_handoff.c
@@ -56,8 +53,6 @@ add_vpp_plugin(nat
   nat44_handoff.c
   nat64_in2out.c
   nat64_out2in.c
-  nat_det_in2out.c
-  nat_det_out2in.c
   out2in.c
   out2in_ed.c
 
@@ -112,6 +107,25 @@ add_vpp_plugin(nat66
 
   API_FILES
   nat66/nat66.api
+  nat_types.api
+
+  LINK_LIBRARIES nat
+)
+
+add_vpp_plugin(det44
+  SOURCES
+  det44/det44.c
+  det44/det44_cli.c
+  det44/det44_api.c
+  det44/det44_in2out.c
+  det44/det44_out2in.c
+
+  MULTIARCH_SOURCES
+  det44/det44_in2out.c
+  det44/det44_out2in.c
+
+  API_FILES
+  det44/det44.api
   nat_types.api
 
   LINK_LIBRARIES nat

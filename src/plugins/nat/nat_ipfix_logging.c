@@ -1528,83 +1528,78 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
   a.src_port = src_port ? src_port : UDP_DST_PORT_ipfix;
   a.flow_data_callback = data_callback;
 
-  if (sm->deterministic)
+  /* TODO: ipfix needs to be separated from NAT base plugin
+  a.rewrite_callback = snat_template_rewrite_max_entries_per_usr;
+  rv = vnet_flow_report_add_del (frm, &a, NULL);
+  if (rv)
+    {
+      nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
+      return -1;
+    }
+  */
+  a.rewrite_callback = snat_template_rewrite_nat44_session;
+
+  rv = vnet_flow_report_add_del (frm, &a, NULL);
+  if (rv)
+    {
+      nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
+      return -1;
+    }
+
+  a.rewrite_callback = snat_template_rewrite_addr_exhausted;
+
+  rv = vnet_flow_report_add_del (frm, &a, NULL);
+  if (rv)
+    {
+      nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
+      return -1;
+    }
+
+  a.rewrite_callback = nat_template_rewrite_max_sessions;
+
+  rv = vnet_flow_report_add_del (frm, &a, NULL);
+  if (rv)
+    {
+      nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
+      return -1;
+    }
+
+  a.rewrite_callback = nat_template_rewrite_max_bibs;
+
+  rv = vnet_flow_report_add_del (frm, &a, NULL);
+  if (rv)
+    {
+      nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
+      return -1;
+    }
+
+  a.rewrite_callback = nat_template_rewrite_nat64_bib;
+
+  rv = vnet_flow_report_add_del (frm, &a, NULL);
+  if (rv)
+    {
+      nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
+      return -1;
+    }
+
+  a.rewrite_callback = nat_template_rewrite_nat64_session;
+
+  rv = vnet_flow_report_add_del (frm, &a, NULL);
+  if (rv)
+    {
+      nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
+      return -1;
+    }
+
+  if (sm->endpoint_dependent)
     {
       a.rewrite_callback = snat_template_rewrite_max_entries_per_usr;
 
       rv = vnet_flow_report_add_del (frm, &a, NULL);
       if (rv)
-	{
-	  nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
-	  return -1;
-	}
-    }
-  else
-    {
-      a.rewrite_callback = snat_template_rewrite_nat44_session;
-
-      rv = vnet_flow_report_add_del (frm, &a, NULL);
-      if (rv)
-	{
-	  nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
-	  return -1;
-	}
-
-      a.rewrite_callback = snat_template_rewrite_addr_exhausted;
-
-      rv = vnet_flow_report_add_del (frm, &a, NULL);
-      if (rv)
-	{
-	  nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
-	  return -1;
-	}
-
-      a.rewrite_callback = nat_template_rewrite_max_sessions;
-
-      rv = vnet_flow_report_add_del (frm, &a, NULL);
-      if (rv)
-	{
-	  nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
-	  return -1;
-	}
-
-      a.rewrite_callback = nat_template_rewrite_max_bibs;
-
-      rv = vnet_flow_report_add_del (frm, &a, NULL);
-      if (rv)
-	{
-	  nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
-	  return -1;
-	}
-
-      a.rewrite_callback = nat_template_rewrite_nat64_bib;
-
-      rv = vnet_flow_report_add_del (frm, &a, NULL);
-      if (rv)
-	{
-	  nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
-	  return -1;
-	}
-
-      a.rewrite_callback = nat_template_rewrite_nat64_session;
-
-      rv = vnet_flow_report_add_del (frm, &a, NULL);
-      if (rv)
-	{
-	  nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
-	  return -1;
-	}
-
-      if (sm->endpoint_dependent)
         {
-          a.rewrite_callback = snat_template_rewrite_max_entries_per_usr;
-
-          rv = vnet_flow_report_add_del (frm, &a, NULL);
-          if (rv)
-            {
-              nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
-              return -1;
-            }
+          nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
+          return -1;
         }
     }
 
