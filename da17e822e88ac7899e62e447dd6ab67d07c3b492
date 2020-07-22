@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "06ab884c_a69f14cd",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-07-22T11:07:15Z",
+      "side": 1,
+      "message": "Yes, fixed!",
+      "parentUuid": "d547ab6f_a3706d9e",
+      "range": {
+        "startLine": 62,
+        "startChar": 6,
+        "endLine": 62,
+        "endChar": 23
+      },
+      "revId": "da17e822e88ac7899e62e447dd6ab67d07c3b492",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "fec2595d_f1647ef6",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 3
@@ -36,6 +60,30 @@
       "writtenOn": "2020-07-22T04:08:38Z",
       "side": 1,
       "message": "I wonder if just testing for vls-\u003emt_n_threads \u003e 1 is not enough.",
+      "range": {
+        "startLine": 138,
+        "startChar": 6,
+        "endLine": 138,
+        "endChar": 55
+      },
+      "revId": "da17e822e88ac7899e62e447dd6ab67d07c3b492",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c24d10a6_aa0ebd9e",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-07-22T11:07:15Z",
+      "side": 1,
+      "message": "Now, vls worker is global, and vls allocation/free should be protected for all vcl workers.",
+      "parentUuid": "fec2595d_f1647ef6",
       "range": {
         "startLine": 138,
         "startChar": 6,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "26cdb07b_4d5458f2",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-07-22T11:07:15Z",
+      "side": 1,
+      "message": "OK, add ASSERT here.",
+      "parentUuid": "90d9091c_1f533d4c",
+      "range": {
+        "startLine": 250,
+        "startChar": 2,
+        "endLine": 250,
+        "endChar": 52
+      },
+      "revId": "da17e822e88ac7899e62e447dd6ab67d07c3b492",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ba05861b_abeb6a9d",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 3
@@ -82,6 +154,30 @@
       "writtenOn": "2020-07-22T04:08:38Z",
       "side": 1,
       "message": "This looks like trouble, because it\u0027s peeking from one worker\u0027s pool into another\u0027s. We need this https://gerrit.fd.io/r/c/vpp/+/27955/3/src/vcl/vcl_locked.c#1423 for the clone that happens lower.",
+      "range": {
+        "startLine": 264,
+        "startChar": 0,
+        "endLine": 265,
+        "endChar": 14
+      },
+      "revId": "da17e822e88ac7899e62e447dd6ab67d07c3b492",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "53982222_112e3601",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-07-22T11:07:15Z",
+      "side": 1,
+      "message": "Outside, we own vls-\u003elock and share the same vls with original vcl worker‘s session, so it should be safe enough I think.",
+      "parentUuid": "ba05861b_abeb6a9d",
       "range": {
         "startLine": 264,
         "startChar": 0,
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "f141a80b_b05a7802",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 954,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-07-22T11:07:15Z",
+      "side": 1,
+      "message": "Fixed!",
+      "parentUuid": "e4dd9b7b_520dbd70",
+      "range": {
+        "startLine": 951,
+        "startChar": 0,
+        "endLine": 954,
+        "endChar": 15
+      },
+      "revId": "da17e822e88ac7899e62e447dd6ab67d07c3b492",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8590405d_de0ab624",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 3
@@ -128,6 +248,30 @@
       "writtenOn": "2020-07-22T04:08:38Z",
       "side": 1,
       "message": "I think this needs to be vls_mt_supported(). Meaning, we don\u0027t need to concern ourselves with sharing the mq and session pool if all threads are actually vcl workers.",
+      "range": {
+        "startLine": 1015,
+        "startChar": 0,
+        "endLine": 1016,
+        "endChar": 11
+      },
+      "revId": "da17e822e88ac7899e62e447dd6ab67d07c3b492",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "62baaf56_f3911aa8",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1016,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-07-22T11:07:15Z",
+      "side": 1,
+      "message": "Fixed!",
+      "parentUuid": "8590405d_de0ab624",
       "range": {
         "startLine": 1015,
         "startChar": 0,
@@ -163,6 +307,30 @@
     },
     {
       "key": {
+        "uuid": "575dabc6_75ba9bd4",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1120,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-07-22T11:07:15Z",
+      "side": 1,
+      "message": "Fixed!",
+      "parentUuid": "a85dcc1f_7b55cca6",
+      "range": {
+        "startLine": 1116,
+        "startChar": 0,
+        "endLine": 1120,
+        "endChar": 19
+      },
+      "revId": "da17e822e88ac7899e62e447dd6ab67d07c3b492",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8e23f4f7_64d6d67a",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 3
@@ -174,6 +342,30 @@
       "writtenOn": "2020-07-22T04:08:38Z",
       "side": 1,
       "message": "Shouldn\u0027t this be just vls_mt_add()?",
+      "range": {
+        "startLine": 1136,
+        "startChar": 5,
+        "endLine": 1139,
+        "endChar": 15
+      },
+      "revId": "da17e822e88ac7899e62e447dd6ab67d07c3b492",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "16273180_09f87efa",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1139,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-07-22T11:07:15Z",
+      "side": 1,
+      "message": "Fixed!",
+      "parentUuid": "8e23f4f7_64d6d67a",
       "range": {
         "startLine": 1136,
         "startChar": 5,
