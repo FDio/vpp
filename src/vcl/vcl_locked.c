@@ -36,6 +36,7 @@ typedef struct vcl_locked_session_
 typedef struct vls_worker_
 {
   vcl_locked_session_t *vls_pool;
+  clib_rwlock_t pool_lock;
   uword *session_index_to_vlsh_table;
   u32 wrk_index;
   volatile int rpc_done;
@@ -57,7 +58,6 @@ static vls_process_local_t *vlsl = &vls_local;
 typedef struct vls_main_
 {
   vls_worker_t *workers;
-  clib_rwlock_t vls_table_lock;
   /** Pool of data shared by sessions owned by different workers */
   vls_shared_data_t *shared_data_pool;
   clib_rwlock_t shared_data_lock;
@@ -87,6 +87,12 @@ static inline u32
 vls_get_worker_index (void)
 {
   return vcl_get_worker_index ();
+}
+
+static vls_worker_t *
+vls_worker_get_current (void)
+{
+  return pool_elt_at_index (vlsm->workers, vls_get_worker_index ());
 }
 
 static u32
@@ -145,31 +151,43 @@ vls_shared_data_pool_runlock (void)
 }
 
 static inline void
-vls_table_rlock (void)
+vls_mt_pool_rlock (void)
 {
   if (vlsl->vls_mt_n_threads > 1)
-    clib_rwlock_reader_lock (&vlsm->vls_table_lock);
+    {
+      vls_worker_t *wrk = vls_worker_get_current ();
+      clib_rwlock_reader_lock (&wrk->pool_lock);
+    }
 }
 
 static inline void
-vls_table_runlock (void)
+vls_mt_pool_runlock (void)
 {
   if (vlsl->vls_mt_n_threads > 1)
-    clib_rwlock_reader_unlock (&vlsm->vls_table_lock);
+    {
+      vls_worker_t *wrk = vls_worker_get_current ();
+      clib_rwlock_reader_unlock (&wrk->pool_lock);
+    }
 }
 
 static inline void
-vls_table_wlock (void)
+vls_mt_pool_wlock (void)
 {
   if (vlsl->vls_mt_n_threads > 1)
-    clib_rwlock_writer_lock (&vlsm->vls_table_lock);
+    {
+      vls_worker_t *wrk = vls_worker_get_current ();
+      clib_rwlock_writer_lock (&wrk->pool_lock);
+    }
 }
 
 static inline void
-vls_table_wunlock (void)
+vls_mt_pool_wunlock (void)
 {
   if (vlsl->vls_mt_n_threads > 1)
-    clib_rwlock_writer_unlock (&vlsm->vls_table_lock);
+    {
+      vls_worker_t *wrk = vls_worker_get_current ();
+      clib_rwlock_writer_unlock (&wrk->pool_lock);
+    }
 }
 
 typedef enum
@@ -255,14 +273,8 @@ vls_to_sh_tu (vcl_locked_session_t * vls)
 {
   vcl_session_handle_t sh;
   sh = vls_to_sh (vls);
-  vls_table_runlock ();
+  vls_mt_pool_runlock ();
   return sh;
-}
-
-static vls_worker_t *
-vls_worker_get_current (void)
-{
-  return pool_elt_at_index (vlsm->workers, vls_get_worker_index ());
 }
 
 static void
@@ -272,6 +284,7 @@ vls_worker_alloc (void)
 
   pool_get_zero (vlsm->workers, wrk);
   wrk->wrk_index = vcl_get_worker_index ();
+  clib_rwlock_init (&wrk->pool_lock);
 }
 
 static void
@@ -296,7 +309,7 @@ vls_alloc (vcl_session_handle_t sh)
   vls_worker_t *wrk = vls_worker_get_current ();
   vcl_locked_session_t *vls;
 
-  vls_table_wlock ();
+  vls_mt_pool_wlock ();
 
   pool_get_zero (wrk->vls_pool, vls);
   vls->session_index = vppcom_session_index (sh);
@@ -307,7 +320,7 @@ vls_alloc (vcl_session_handle_t sh)
 	    vls->vls_index);
   clib_spinlock_init (&vls->lock);
 
-  vls_table_wunlock ();
+  vls_mt_pool_wunlock ();
   return vls->vls_index;
 }
 
@@ -347,10 +360,10 @@ static vcl_locked_session_t *
 vls_get_w_dlock (vls_handle_t vlsh)
 {
   vcl_locked_session_t *vls;
-  vls_table_rlock ();
+  vls_mt_pool_rlock ();
   vls = vls_get_and_lock (vlsh);
   if (!vls)
-    vls_table_runlock ();
+    vls_mt_pool_runlock ();
   return vls;
 }
 
@@ -358,17 +371,17 @@ static inline void
 vls_get_and_unlock (vls_handle_t vlsh)
 {
   vcl_locked_session_t *vls;
-  vls_table_rlock ();
+  vls_mt_pool_rlock ();
   vls = vls_get (vlsh);
   vls_unlock (vls);
-  vls_table_runlock ();
+  vls_mt_pool_runlock ();
 }
 
 static inline void
 vls_dunlock (vcl_locked_session_t * vls)
 {
   vls_unlock (vls);
-  vls_table_runlock ();
+  vls_mt_pool_runlock ();
 }
 
 static vcl_locked_session_t *
@@ -415,9 +428,9 @@ vls_session_index_to_vlsh (uint32_t session_index)
 {
   vls_handle_t vlsh;
 
-  vls_table_rlock ();
+  vls_mt_pool_rlock ();
   vlsh = vls_si_to_vlsh (session_index);
-  vls_table_runlock ();
+  vls_mt_pool_runlock ();
 
   return vlsh;
 }
@@ -1030,12 +1043,12 @@ vls_close (vls_handle_t vlsh)
   vcl_locked_session_t *vls;
   int rv;
 
-  vls_table_wlock ();
+  vls_mt_pool_wlock ();
 
   vls = vls_get_and_lock (vlsh);
   if (!vls)
     {
-      vls_table_wunlock ();
+      vls_mt_pool_wunlock ();
       return VPPCOM_EBADFD;
     }
 
@@ -1049,7 +1062,7 @@ vls_close (vls_handle_t vlsh)
   vls_free (vls);
   vls_mt_unguard ();
 
-  vls_table_wunlock ();
+  vls_mt_pool_wunlock ();
 
   return rv;
 }
@@ -1098,7 +1111,7 @@ vls_epoll_ctl (vls_handle_t ep_vlsh, int op, vls_handle_t vlsh,
   vcl_session_handle_t ep_sh, sh;
   int rv;
 
-  vls_table_rlock ();
+  vls_mt_pool_rlock ();
   ep_vls = vls_get_and_lock (ep_vlsh);
   vls = vls_get_and_lock (vlsh);
   ep_sh = vls_to_sh (ep_vls);
@@ -1107,16 +1120,16 @@ vls_epoll_ctl (vls_handle_t ep_vlsh, int op, vls_handle_t vlsh,
   if (PREDICT_FALSE (!vlsl->epoll_mp_check))
     vls_epoll_ctl_mp_checks (vls, op);
 
-  vls_table_runlock ();
+  vls_mt_pool_runlock ();
 
   rv = vppcom_epoll_ctl (ep_sh, op, sh, event);
 
-  vls_table_rlock ();
+  vls_mt_pool_rlock ();
   ep_vls = vls_get (ep_vlsh);
   vls = vls_get (vlsh);
   vls_unlock (vls);
   vls_unlock (ep_vls);
-  vls_table_runlock ();
+  vls_mt_pool_runlock ();
   return rv;
 }
 
@@ -1450,7 +1463,6 @@ vls_app_create (char *app_name)
 
   vlsm = clib_mem_alloc (sizeof (vls_main_t));
   clib_memset (vlsm, 0, sizeof (*vlsm));
-  clib_rwlock_init (&vlsm->vls_table_lock);
   clib_rwlock_init (&vlsm->shared_data_lock);
   pool_alloc (vlsm->workers, vcm->cfg.max_workers);
 
