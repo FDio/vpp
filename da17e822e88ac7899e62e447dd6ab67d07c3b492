@@ -96,6 +96,30 @@
     },
     {
       "key": {
+        "uuid": "5f2dcc51_48194f5c",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-22T17:00:20Z",
+      "side": 1,
+      "message": "As long as we increment vls_mt_n_threads whenever adding a new worker, the two tests should be  identical. We don\u0027t want to increment vls_mt_n_threads?",
+      "parentUuid": "c24d10a6_aa0ebd9e",
+      "range": {
+        "startLine": 138,
+        "startChar": 6,
+        "endLine": 138,
+        "endChar": 55
+      },
+      "revId": "da17e822e88ac7899e62e447dd6ab67d07c3b492",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "90d9091c_1f533d4c",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 3
@@ -143,6 +167,30 @@
     },
     {
       "key": {
+        "uuid": "a7c9040f_25e762ac",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-22T17:00:20Z",
+      "side": 1,
+      "message": "I was thinking that if we reach this point when vls_mt_supported() is false to just return.",
+      "parentUuid": "26cdb07b_4d5458f2",
+      "range": {
+        "startLine": 250,
+        "startChar": 2,
+        "endLine": 250,
+        "endChar": 52
+      },
+      "revId": "da17e822e88ac7899e62e447dd6ab67d07c3b492",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ba05861b_abeb6a9d",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 3
@@ -178,6 +226,30 @@
       "side": 1,
       "message": "Outside, we own vls-\u003elock and share the same vls with original vcl worker‘s session, so it should be safe enough I think.",
       "parentUuid": "ba05861b_abeb6a9d",
+      "range": {
+        "startLine": 264,
+        "startChar": 0,
+        "endLine": 265,
+        "endChar": 14
+      },
+      "revId": "da17e822e88ac7899e62e447dd6ab67d07c3b492",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0dca8a56_50459a00",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-22T17:00:20Z",
+      "side": 1,
+      "message": "That\u0027s the lock for a a session. The problem here is the fact one thread/vcl worker A is trying to read into the pool of another thread/vcl worker B. While that is happening, thread B could be reallocating the underlying vcl session pool (could happen when it accepts a new session for instance). That means A is probably copying a dangling reference that could already be corrupted. Pools are also not thread safe, so if B changes the underlying bitmap while A is trying to do a pool_elt_at_index(), results could be unexpected.",
+      "parentUuid": "53982222_112e3601",
       "range": {
         "startLine": 264,
         "startChar": 0,
