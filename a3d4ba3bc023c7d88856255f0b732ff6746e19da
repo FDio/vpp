@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eb5390c1_34bccd0b",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1101,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-22T17:19:10Z",
+      "side": 1,
+      "message": "Same story here with respect to touching another thread\u0027s session pool. RPCs are the only solution that comes to mind ..",
+      "range": {
+        "startLine": 1098,
+        "startChar": 0,
+        "endLine": 1101,
+        "endChar": 28
+      },
+      "revId": "a3d4ba3bc023c7d88856255f0b732ff6746e19da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "09627082_e8f35e2b",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1104,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-22T17:19:10Z",
+      "side": 1,
+      "message": "Hm, I suspect that only the \"owner\" vcl worker should do a full disconnect. The rest should just cleanup their \"copies\".",
+      "range": {
+        "startLine": 1102,
+        "startChar": 0,
+        "endLine": 1104,
+        "endChar": 30
+      },
+      "revId": "a3d4ba3bc023c7d88856255f0b732ff6746e19da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
