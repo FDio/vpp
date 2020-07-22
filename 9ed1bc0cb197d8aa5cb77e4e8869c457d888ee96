@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a9b5f5af_2db84083",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 365,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-07-22T08:18:07Z",
+      "side": 1,
+      "message": "bool",
+      "range": {
+        "startLine": 365,
+        "startChar": 4,
+        "endLine": 365,
+        "endChar": 6
+      },
+      "revId": "9ed1bc0cb197d8aa5cb77e4e8869c457d888ee96",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
