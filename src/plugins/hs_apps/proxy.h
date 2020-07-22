@@ -31,8 +31,11 @@ typedef struct
   svm_fifo_t *server_rx_fifo;
   svm_fifo_t *server_tx_fifo;
 
-  u64 vpp_server_handle;
-  u64 vpp_active_open_handle;
+  session_handle_t vpp_server_handle;
+  session_handle_t vpp_active_open_handle;
+  volatile int active_open_establishing;
+  volatile int po_disconnected;
+  volatile int ao_disconnected;
 } proxy_session_t;
 
 typedef struct
