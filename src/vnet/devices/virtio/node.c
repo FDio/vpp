@@ -35,6 +35,7 @@
 
 
 #define foreach_virtio_input_error \
+  _(BUFFER_ALLOC, "buffer alloc error") \
   _(UNKNOWN, "unknown")
 
 typedef enum
@@ -81,9 +82,9 @@ format_virtio_input_trace (u8 * s, va_list * args)
 static_always_inline void
 virtio_refill_vring (vlib_main_t * vm, virtio_if_t * vif,
 		     virtio_if_type_t type, virtio_vring_t * vring,
-		     const int hdr_sz)
+		     const int hdr_sz, u32 node_index)
 {
-  u16 used, next, avail, n_slots;
+  u16 used, next, avail, n_slots, n_refill;
   u16 sz = vring->size;
   u16 mask = sz - 1;
 
@@ -94,17 +95,22 @@ more:
     return;
 
   /* deliver free buffers in chunks of 64 */
-  n_slots = clib_min (sz - used, 64);
+  n_refill = clib_min (sz - used, 64);
 
   next = vring->desc_next;
   avail = vring->avail->idx;
   n_slots =
     vlib_buffer_alloc_to_ring_from_pool (vm, vring->buffers, next,
-					 vring->size, n_slots,
+					 vring->size, n_refill,
 					 vring->buffer_pool_index);
 
-  if (n_slots == 0)
-    return;
+  if (PREDICT_FALSE (n_slots != n_refill))
+    {
+      vlib_error_count (vm, node_index,
+			VIRTIO_INPUT_ERROR_BUFFER_ALLOC, n_refill - n_slots);
+      if (n_slots == 0)
+	return;
+    }
 
   while (n_slots)
     {
@@ -413,7 +419,7 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				   n_rx_bytes);
 
 refill:
-  virtio_refill_vring (vm, vif, type, vring, hdr_sz);
+  virtio_refill_vring (vm, vif, type, vring, hdr_sz, node->node_index);
 
   return n_rx_packets;
 }
