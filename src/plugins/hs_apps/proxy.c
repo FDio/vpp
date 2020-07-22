@@ -61,82 +61,111 @@ proxy_call_main_thread (vnet_connect_args_t * a)
     }
 }
 
+static proxy_session_t *
+proxy_get_active_open (proxy_main_t * pm, session_handle_t handle)
+{
+  proxy_session_t *ps = 0;
+  uword *p;
+
+  p = hash_get (pm->proxy_session_by_active_open_handle, handle);
+  if (p)
+    ps = pool_elt_at_index (pm->sessions, p[0]);
+  return ps;
+}
+
+static proxy_session_t *
+proxy_get_passive_open (proxy_main_t * pm, session_handle_t handle)
+{
+  proxy_session_t *ps = 0;
+  uword *p;
+
+  p = hash_get (pm->proxy_session_by_server_handle, handle);
+  if (p)
+    ps = pool_elt_at_index (pm->sessions, p[0]);
+  return ps;
+}
+
 static void
-delete_proxy_session (session_t * s, int is_active_open)
+proxy_try_close_session (session_t * s, int is_active_open)
 {
   proxy_main_t *pm = &proxy_main;
   proxy_session_t *ps = 0;
   vnet_disconnect_args_t _a, *a = &_a;
-  session_t *active_open_session = 0;
-  session_t *server_session = 0;
-  uword *p;
-  u64 handle;
-
-  clib_spinlock_lock_if_init (&pm->sessions_lock);
+  session_handle_t handle;
 
   handle = session_handle (s);
 
+  clib_spinlock_lock_if_init (&pm->sessions_lock);
+
   if (is_active_open)
     {
-      p = hash_get (pm->proxy_session_by_active_open_handle, handle);
-      if (p == 0)
+      ps = proxy_get_active_open (pm, handle);
+      ASSERT (ps != 0);
+
+      if (ps->vpp_server_handle != SESSION_INVALID_HANDLE)
 	{
-	  clib_warning ("proxy session for %s handle %lld (%llx) AWOL",
-			is_active_open ? "active open" : "server",
-			handle, handle);
-	}
-      else if (!pool_is_free_index (pm->sessions, p[0]))
-	{
-	  active_open_session = s;
-	  ps = pool_elt_at_index (pm->sessions, p[0]);
-	  if (ps->vpp_server_handle != ~0)
-	    server_session = session_get_from_handle (ps->vpp_server_handle);
+	  a->handle = ps->vpp_server_handle;
+	  a->app_index = pm->server_app_index;
+	  vnet_disconnect_session (a);
 	}
     }
   else
     {
-      p = hash_get (pm->proxy_session_by_server_handle, handle);
-      if (p == 0)
+      ps = proxy_get_passive_open (pm, handle);
+      ASSERT (ps != 0);
+
+      if (ps->vpp_active_open_handle != SESSION_INVALID_HANDLE)
 	{
-	  clib_warning ("proxy session for %s handle %lld (%llx) AWOL",
-			is_active_open ? "active open" : "server",
-			handle, handle);
-	}
-      else if (!pool_is_free_index (pm->sessions, p[0]))
-	{
-	  server_session = s;
-	  ps = pool_elt_at_index (pm->sessions, p[0]);
-	  if (ps->vpp_active_open_handle != ~0)
-	    active_open_session = session_get_from_handle
-	      (ps->vpp_active_open_handle);
+	  a->handle = ps->vpp_active_open_handle;
+	  a->app_index = pm->active_open_app_index;
+	  vnet_disconnect_session (a);
 	}
     }
+  clib_spinlock_unlock_if_init (&pm->sessions_lock);
+}
 
-  if (ps)
+static void
+proxy_session_free (proxy_session_t * ps)
+{
+  proxy_main_t *pm = &proxy_main;
+  if (CLIB_DEBUG > 0)
+    clib_memset (ps, 0xFE, sizeof (*ps));
+  pool_put (pm->sessions, ps);
+}
+
+static void
+proxy_try_delete_session (session_t * s, u8 is_active_open)
+{
+  proxy_main_t *pm = &proxy_main;
+  proxy_session_t *ps = 0;
+  session_handle_t handle;
+
+  handle = session_handle (s);
+
+  clib_spinlock_lock_if_init (&pm->sessions_lock);
+
+  if (is_active_open)
     {
-      if (CLIB_DEBUG > 0)
-	clib_memset (ps, 0xFE, sizeof (*ps));
-      pool_put (pm->sessions, ps);
-    }
+      ps = proxy_get_active_open (pm, handle);
+      ASSERT (ps != 0);
 
-  if (active_open_session)
+      ps->vpp_active_open_handle = SESSION_INVALID_HANDLE;
+      hash_unset (pm->proxy_session_by_active_open_handle, handle);
+
+      if (ps->vpp_server_handle == SESSION_INVALID_HANDLE)
+	proxy_session_free (ps);
+    }
+  else
     {
-      a->handle = session_handle (active_open_session);
-      a->app_index = pm->active_open_app_index;
-      hash_unset (pm->proxy_session_by_active_open_handle,
-		  session_handle (active_open_session));
-      vnet_disconnect_session (a);
-    }
+      ps = proxy_get_passive_open (pm, handle);
+      ASSERT (ps != 0);
 
-  if (server_session)
-    {
-      a->handle = session_handle (server_session);
-      a->app_index = pm->server_app_index;
-      hash_unset (pm->proxy_session_by_server_handle,
-		  session_handle (server_session));
-      vnet_disconnect_session (a);
-    }
+      ps->vpp_server_handle = SESSION_INVALID_HANDLE;
+      hash_unset (pm->proxy_session_by_server_handle, handle);
 
+      if (ps->vpp_active_open_handle == SESSION_INVALID_HANDLE)
+	proxy_session_free (ps);
+    }
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
 }
 
@@ -199,14 +228,14 @@ proxy_accept_callback (session_t * s)
 static void
 proxy_disconnect_callback (session_t * s)
 {
-  delete_proxy_session (s, 0 /* is_active_open */ );
+  proxy_try_close_session (s, 0 /* is_active_open */ );
 }
 
 static void
 proxy_reset_callback (session_t * s)
 {
   clib_warning ("Reset session %U", format_session, s, 2);
-  delete_proxy_session (s, 0 /* is_active_open */ );
+  proxy_try_close_session (s, 0 /* is_active_open */ );
 }
 
 static int
@@ -350,6 +379,15 @@ proxy_tx_callback (session_t * proxy_s)
   return 0;
 }
 
+static void
+proxy_cleanup_callback (session_t * s, session_cleanup_ntf_t ntf)
+{
+  if (ntf == SESSION_CLEANUP_TRANSPORT)
+    return;
+
+  proxy_try_delete_session (s, 0 /* is_active_open */ );
+}
+
 static session_cb_vft_t proxy_session_cb_vft = {
   .session_accept_callback = proxy_accept_callback,
   .session_disconnect_callback = proxy_disconnect_callback,
@@ -358,6 +396,7 @@ static session_cb_vft_t proxy_session_cb_vft = {
   .builtin_app_rx_callback = proxy_rx_callback,
   .builtin_app_tx_callback = proxy_tx_callback,
   .session_reset_callback = proxy_reset_callback,
+  .session_cleanup_callback = proxy_cleanup_callback,
   .fifo_tuning_callback = common_fifo_tuning_callback
 };
 
@@ -422,7 +461,7 @@ active_open_connected_callback (u32 app_index, u32 opaque,
 static void
 active_open_reset_callback (session_t * s)
 {
-  delete_proxy_session (s, 1 /* is_active_open */ );
+  proxy_try_close_session (s, 1 /* is_active_open */ );
 }
 
 static int
@@ -434,7 +473,7 @@ active_open_create_callback (session_t * s)
 static void
 active_open_disconnect_callback (session_t * s)
 {
-  delete_proxy_session (s, 1 /* is_active_open */ );
+  proxy_try_close_session (s, 1 /* is_active_open */ );
 }
 
 static int
@@ -505,12 +544,22 @@ active_open_tx_callback (session_t * ao_s)
   return 0;
 }
 
+static void
+active_open_cleanup_callback (session_t * s, session_cleanup_ntf_t ntf)
+{
+  if (ntf == SESSION_CLEANUP_TRANSPORT)
+    return;
+
+  proxy_try_delete_session (s, 1 /* is_active_open */ );
+}
+
 /* *INDENT-OFF* */
 static session_cb_vft_t active_open_clients = {
   .session_reset_callback = active_open_reset_callback,
   .session_connected_callback = active_open_connected_callback,
   .session_accept_callback = active_open_create_callback,
   .session_disconnect_callback = active_open_disconnect_callback,
+  .session_cleanup_callback = active_open_cleanup_callback,
   .builtin_app_rx_callback = active_open_rx_callback,
   .builtin_app_tx_callback = active_open_tx_callback,
   .fifo_tuning_callback = common_fifo_tuning_callback
