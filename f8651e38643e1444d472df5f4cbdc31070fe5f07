@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "846779a5_185f666e",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-22T09:32:56Z",
+      "side": 1,
+      "message": "that should be an error log level not debug, and we should increase an error counter and/or set the interface in error state",
+      "revId": "f8651e38643e1444d472df5f4cbdc31070fe5f07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
