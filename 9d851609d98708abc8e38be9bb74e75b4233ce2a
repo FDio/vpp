@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d2e8a220_69de274b",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 802,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-22T08:14:35Z",
+      "side": 1,
+      "message": "we should probably have that as a separate patch because there are other occurences of missing \u0027return\u0027 cf. virtio_pci_read_caps()",
+      "revId": "9d851609d98708abc8e38be9bb74e75b4233ce2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f5b28706_4d41f42a",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 809,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-22T08:14:35Z",
+      "side": 1,
+      "message": "same, should be in a patch fixes all occurences",
+      "revId": "9d851609d98708abc8e38be9bb74e75b4233ce2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "62975a8d_fbd4bc0d",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 839,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-22T08:14:35Z",
+      "side": 1,
+      "message": "same, should be in a patch fixing all occurences",
+      "revId": "9d851609d98708abc8e38be9bb74e75b4233ce2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "033152ad_116142db",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-22T08:14:35Z",
+      "side": 1,
+      "message": "why are those entries seem duplicated in pci.h? can we avoid this duplication?",
+      "revId": "9d851609d98708abc8e38be9bb74e75b4233ce2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "15e99c61_aab83605",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 179,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-22T08:14:35Z",
+      "side": 1,
+      "message": "please sort fields by size to avoid padding",
+      "revId": "9d851609d98708abc8e38be9bb74e75b4233ce2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8f670c01_e681d8c0",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-07-22T08:14:35Z",
+      "side": 1,
+      "message": "pad is not needed here",
+      "revId": "9d851609d98708abc8e38be9bb74e75b4233ce2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
