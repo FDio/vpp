@@ -151,6 +151,8 @@ typedef struct
   u32 per_interface_next_index;
 
   u32 dev_instance;
+  /* Unique instance number of this device structure */
+  u32 instance;
   u32 sw_if_index;
   u32 hw_if_index;
   vlib_pci_dev_handle_t pci_dev_handle;
@@ -227,6 +229,9 @@ typedef struct
   avf_per_thread_data_t *per_thread_data;
 
   vlib_log_class_t log_class;
+
+  /* unique instance counter for device */
+  u32 instance;
 } avf_main_t;
 
 extern avf_main_t avf_main;
