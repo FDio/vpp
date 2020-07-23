@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "386f7c9c_f875782e",
+        "filename": "src/vnet/tcp/tcp_timer.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 2267
+      },
+      "writtenOn": "2020-07-23T11:34:26Z",
+      "side": 1,
+      "message": "There\u0027s an error here. This line should be before `if` above, otherwise the reset will not happen for the timers that are already pending.\nThis solves the problem for me:\nhttps://github.com/travelping/vpp/commit/04512323f311ceebfda351672372033b567d37ca",
+      "revId": "a3e1a19a7145f9466ef55d90f9296cc362d1b1f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
