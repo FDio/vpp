@@ -116,20 +116,47 @@ avf_irq_n_set_state (avf_device_t * ad, u8 line, avf_irq_state_t state)
   avf_reg_flush (ad);
 }
 
+static clib_error_t *
+avf_suspend (vlib_main_t * vm, u32 suspend_time, avf_main_t * am,
+	     avf_device_t ** adp)
+{
+  avf_device_t *ad;
+  u32 dev_instance, unique_id;
+
+  dev_instance = (*adp)->dev_instance;
+  unique_id = (*adp)->unique_id;
+
+  vlib_process_suspend (vm, suspend_time);
+
+  if (pool_is_free_index (am->devices, dev_instance))
+    goto err;
+
+  ad = am->devices + dev_instance;
+  if (ad->unique_id != unique_id)
+    goto err;
+
+  *adp = ad;
+  return 0;
+
+err:
+  *adp = 0;
+  return clib_error_return (0, "device no longer exists");
+}
 
 clib_error_t *
-avf_aq_desc_enq (vlib_main_t * vm, avf_device_t * ad, avf_aq_desc_t * dt,
+avf_aq_desc_enq (vlib_main_t * vm, avf_device_t ** adp, avf_aq_desc_t * dt,
 		 void *data, int len)
 {
+  avf_device_t *ad = *adp;
+  avf_main_t *am = &avf_main;
   clib_error_t *err = 0;
   avf_aq_desc_t *d, dc;
   f64 t0, suspend_time = AVF_AQ_ENQ_SUSPEND_TIME;
 
   d = &ad->atq[ad->atq_next_slot];
+
   clib_memcpy_fast (d, dt, sizeof (avf_aq_desc_t));
   d->flags |= AVF_AQ_F_RD | AVF_AQ_F_SI;
-  if (len)
-    d->datalen = len;
   if (len)
     {
       u64 pa;
@@ -139,21 +166,27 @@ avf_aq_desc_enq (vlib_main_t * vm, avf_device_t * ad, avf_aq_desc_t * dt,
       clib_memcpy_fast (ad->atq_bufs + ad->atq_next_slot * AVF_MBOX_BUF_SZ,
 			data, len);
       d->flags |= AVF_AQ_F_BUF;
+      d->datalen = len;
     }
 
   if (ad->flags & AVF_DEVICE_F_ELOG)
     clib_memcpy_fast (&dc, d, sizeof (avf_aq_desc_t));
 
-  CLIB_MEMORY_BARRIER ();
+  CLIB_MEMORY_STORE_BARRIER ();
   ad->atq_next_slot = (ad->atq_next_slot + 1) % AVF_MBOX_LEN;
   avf_reg_write (ad, AVF_ATQT, ad->atq_next_slot);
   avf_reg_flush (ad);
 
   t0 = vlib_time_now (vm);
-retry:
-  vlib_process_suspend (vm, suspend_time);
 
-  if (((d->flags & AVF_AQ_F_DD) == 0) || ((d->flags & AVF_AQ_F_CMP) == 0))
+retry:
+  /* wait for command completion */
+  err = avf_suspend (vm, suspend_time, am, &ad);
+  if (err)
+    goto err0;
+
+  if ((*(volatile u16 *) &d->flags & (AVF_AQ_F_DD | AVF_AQ_F_CMP)) !=
+      (AVF_AQ_F_DD | AVF_AQ_F_CMP))
     {
       f64 t = vlib_time_now (vm) - t0;
       if (t > AVF_AQ_ENQ_MAX_WAIT_TIME)
@@ -161,7 +194,7 @@ retry:
 	  avf_log_err (ad, "aq_desc_enq failed (timeout %.3fs)", t);
 	  err = clib_error_return (0, "adminq enqueue timeout [opcode 0x%x]",
 				   d->opcode);
-	  goto done;
+	  goto err1;
 	}
       suspend_time *= 2;
       goto retry;
@@ -169,10 +202,13 @@ retry:
 
   clib_memcpy_fast (dt, d, sizeof (avf_aq_desc_t));
   if (d->flags & AVF_AQ_F_ERR)
-    return clib_error_return (0, "adminq enqueue error [opcode 0x%x, retval "
-			      "%d]", d->opcode, d->retval);
+    {
+      err = clib_error_return (0, "adminq enqueue error [opcode 0x%x, retval "
+			       "%d]", d->opcode, d->retval);
+      goto err1;
+    }
 
-done:
+err1:
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
       /* *INDENT-OFF* */
@@ -201,37 +237,8 @@ done:
       /* *INDENT-ON* */
     }
 
-  return err;
-}
-
-clib_error_t *
-avf_cmd_rx_ctl_reg_write (vlib_main_t * vm, avf_device_t * ad, u32 reg,
-			  u32 val)
-{
-  clib_error_t *err;
-  avf_aq_desc_t d = {.opcode = 0x207,.param1 = reg,.param3 = val };
-  err = avf_aq_desc_enq (vm, ad, &d, 0, 0);
-
-  if (ad->flags & AVF_DEVICE_F_ELOG)
-    {
-      /* *INDENT-OFF* */
-      ELOG_TYPE_DECLARE (el) =
-	{
-	  .format = "avf[%d] rx ctl reg write: reg 0x%x val 0x%x ",
-	  .format_args = "i4i4i4",
-	};
-      struct
-	{
-	  u32 dev_instance;
-	  u32 reg;
-	  u32 val;
-	} *ed;
-      ed = ELOG_DATA (&vm->elog_main, el);
-      ed->dev_instance = ad->dev_instance;
-      ed->reg = reg;
-      ed->val = val;
-      /* *INDENT-ON* */
-    }
+err0:
+  *adp = ad;
   return err;
 }
 
@@ -389,56 +396,106 @@ avf_adminq_init (vlib_main_t * vm, avf_device_t * ad)
   ad->arq_next_slot = 0;
 }
 
+static void
+avf_arq_tail_update (avf_device_t * ad)
+{
+  avf_arq_slot_init (ad, ad->arq_next_slot);
+  avf_reg_write (ad, AVF_ARQT, ad->arq_next_slot);
+  avf_reg_flush (ad);
+  ad->arq_next_slot = (ad->arq_next_slot + 1) % AVF_MBOX_LEN;
+}
+
 clib_error_t *
-avf_send_to_pf (vlib_main_t * vm, avf_device_t * ad, virtchnl_ops_t op,
+avf_send_to_pf (vlib_main_t * vm, avf_device_t ** adp, virtchnl_ops_t op,
 		void *in, int in_len, void *out, int out_len)
 {
+  avf_device_t *ad = *adp;
+  avf_main_t *am = &avf_main;
   clib_error_t *err;
   avf_aq_desc_t *d, dt = {.opcode = 0x801,.v_opcode = op };
-  u32 head;
+  u16 arq_sw_slot;
   f64 t0, suspend_time = AVF_SEND_TO_PF_SUSPEND_TIME;
+
+  /* the Admin Receive Queue (ARQ) is designed to be single producer/single
+   * consumer, but we might have several suspended processes waiting for
+   * completion - hence a kind of multiple consumers.
+   * They are not executing concurently because of cooperative multi-tasking
+   * inside vpp main thread, however we still need to make sure they consume
+   * completion in the same order the commands were submitted otherwise a
+   * completion for a command might be consumed as completion for another
+   * command.
+   * To enforce it, we maintain "software" head and tail pointers, so that
+   * processes wait for their turn. This is similar to how ticket-lock is
+   * enforcing order. */
+  arq_sw_slot = ad->arq_sw_tail;
+  ad->arq_sw_tail++;
 
   /* suppress interrupt in the next adminq receive slot
      as we are going to wait for response
-     we only need interrupts when event is received */
+     we only need interrupts when event is received
+     Note that this slot might still be used by the PF to
+     send an event */
   d = &ad->arq[ad->arq_next_slot];
   d->flags |= AVF_AQ_F_SI;
 
-  if ((err = avf_aq_desc_enq (vm, ad, &dt, in, in_len)))
-    return err;
+  if ((err = avf_aq_desc_enq (vm, &ad, &dt, in, in_len)))
+    goto err0;
+
+  /* wait for our turn... */
+  while (arq_sw_slot != ad->arq_sw_head)
+    {
+      err =
+	avf_suspend (vm,
+		     (u16) (arq_sw_slot - ad->arq_sw_head)
+		     * AVF_SEND_TO_PF_SUSPEND_TIME, am, &ad);
+      if (err)
+	goto err1;
+      /* reload descriptor as our predecessor might have moved it */
+      d = &ad->arq[ad->arq_next_slot];
+    }
 
   t0 = vlib_time_now (vm);
-retry:
-  head = avf_get_u32 (ad->bar0, AVF_ARQH);
 
-  if (ad->arq_next_slot == head)
+retry:
+  /* wait for completion */
+  if ((*(volatile u16 *) &d->flags & AVF_AQ_F_DD) == 0)
     {
       f64 t = vlib_time_now (vm) - t0;
       if (t > AVF_SEND_TO_PF_MAX_WAIT_TIME)
 	{
-	  avf_log_err (ad, "send_to_pf failed (timeout %.3fs)", t);
-	  return clib_error_return (0, "timeout");
+	  avf_log_debug (ad, "send_to_pf failed (timeout %.3fs)", t);
+	  err = clib_error_return (0, "timeout");
+	  goto err1;
 	}
-      vlib_process_suspend (vm, suspend_time);
+
+      err = avf_suspend (vm, suspend_time, am, &ad);
+      if (err)
+	goto err1;
+
       suspend_time *= 2;
       goto retry;
     }
 
-  d = &ad->arq[ad->arq_next_slot];
-
   if (d->v_opcode == VIRTCHNL_OP_EVENT)
     {
+      /* an event arrived - not our reponse. Save it and try again */
       void *buf = ad->arq_bufs + ad->arq_next_slot * AVF_MBOX_BUF_SZ;
       virtchnl_pf_event_t *e;
 
       if ((d->datalen != sizeof (virtchnl_pf_event_t)) ||
 	  ((d->flags & AVF_AQ_F_BUF) == 0))
-	return clib_error_return (0, "event message error");
+	{
+	  err = clib_error_return (0, "event message error");
+	  goto err2;
+	}
 
       vec_add2 (ad->events, e, 1);
       clib_memcpy_fast (e, buf, sizeof (virtchnl_pf_event_t));
-      avf_arq_slot_init (ad, ad->arq_next_slot);
-      ad->arq_next_slot++;
+
+      /* move tail and try again */
+      avf_arq_tail_update (ad);
+      /* use next descriptor */
+      d = &ad->arq[ad->arq_next_slot];
       /* reset timer */
       t0 = vlib_time_now (vm);
       suspend_time = AVF_SEND_TO_PF_SUSPEND_TIME;
@@ -452,14 +509,14 @@ retry:
 			   "unexpected message receiver [v_opcode = %u, "
 			   "expected %u, v_retval %d]", d->v_opcode, op,
 			   d->v_retval);
-      goto done;
+      goto err2;
     }
 
   if (d->v_retval)
     {
       err = clib_error_return (0, "error [v_opcode = %u, v_retval %d]",
 			       d->v_opcode, d->v_retval);
-      goto done;
+      goto err2;
     }
 
   if (d->flags & AVF_AQ_F_BUF)
@@ -468,13 +525,7 @@ retry:
       clib_memcpy_fast (out, buf, out_len);
     }
 
-  avf_arq_slot_init (ad, ad->arq_next_slot);
-  avf_reg_write (ad, AVF_ARQT, ad->arq_next_slot);
-  avf_reg_flush (ad);
-  ad->arq_next_slot = (ad->arq_next_slot + 1) % AVF_MBOX_LEN;
-
-done:
-
+err2:
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
       /* *INDENT-OFF* */
@@ -503,6 +554,14 @@ done:
       ed->v_retval = d->v_retval;
       /* *INDENT-ON* */
     }
+
+err1:
+  if (ad)
+    avf_arq_tail_update (ad);
+err0:
+  if (ad)
+    ad->arq_sw_head++;
+  *adp = ad;
   return err;
 }
 
@@ -518,7 +577,7 @@ avf_op_version (vlib_main_t * vm, avf_device_t * ad,
 
   avf_log_debug (ad, "version: major %u minor %u", myver.major, myver.minor);
 
-  err = avf_send_to_pf (vm, ad, VIRTCHNL_OP_VERSION, &myver,
+  err = avf_send_to_pf (vm, &ad, VIRTCHNL_OP_VERSION, &myver,
 			sizeof (virtchnl_version_info_t), ver,
 			sizeof (virtchnl_version_info_t));
 
@@ -539,7 +598,7 @@ avf_op_get_vf_resources (vlib_main_t * vm, avf_device_t * ad,
 		VIRTCHNL_VF_CAP_ADV_LINK_SPEED);
 
   avf_log_debug (ad, "get_vf_reqources: bitmap 0x%x", bitmap);
-  err = avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_VF_RESOURCES, &bitmap,
+  err = avf_send_to_pf (vm, &ad, VIRTCHNL_OP_GET_VF_RESOURCES, &bitmap,
 			sizeof (u32), res, sizeof (virtchnl_vf_resource_t));
 
   if (err == 0)
@@ -585,7 +644,7 @@ avf_op_config_rss_lut (vlib_main_t * vm, avf_device_t * ad)
 		 rl->vsi_id, rl->lut_entries, format_hex_bytes_no_wrap,
 		 rl->lut, rl->lut_entries);
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_RSS_LUT, msg, msg_len, 0,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_CONFIG_RSS_LUT, msg, msg_len, 0,
 			 0);
 }
 
@@ -609,7 +668,7 @@ avf_op_config_rss_key (vlib_main_t * vm, avf_device_t * ad)
 		 rk->vsi_id, rk->key_len, format_hex_bytes_no_wrap, rk->key,
 		 rk->key_len);
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_RSS_KEY, msg, msg_len, 0,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_CONFIG_RSS_KEY, msg, msg_len, 0,
 			 0);
 }
 
@@ -618,7 +677,7 @@ avf_op_disable_vlan_stripping (vlib_main_t * vm, avf_device_t * ad)
 {
   avf_log_debug (ad, "disable_vlan_stripping");
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_DISABLE_VLAN_STRIPPING, 0, 0, 0,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_DISABLE_VLAN_STRIPPING, 0, 0, 0,
 			 0);
 }
 
@@ -636,7 +695,7 @@ avf_config_promisc_mode (vlib_main_t * vm, avf_device_t * ad, int is_enable)
 		 pi.flags & FLAG_VF_UNICAST_PROMISC ? "on" : "off",
 		 pi.flags & FLAG_VF_MULTICAST_PROMISC ? "on" : "off");
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE, &pi,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE, &pi,
 			 sizeof (virtchnl_promisc_info_t), 0, 0);
 }
 
@@ -693,7 +752,7 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 		     txq->dma_ring_addr);
     }
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_VSI_QUEUES, msg, msg_len,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_CONFIG_VSI_QUEUES, msg, msg_len,
 			 0, 0);
 }
 
@@ -724,7 +783,7 @@ avf_op_config_irq_map (vlib_main_t * vm, avf_device_t * ad)
     }
 
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_IRQ_MAP, msg, msg_len, 0,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_CONFIG_IRQ_MAP, msg, msg_len, 0,
 			 0);
 }
 
@@ -752,7 +811,7 @@ avf_op_add_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count, u8 * macs)
       avf_log_debug (ad, "add_eth_addr[%u]: %U", i,
 		     format_ethernet_address, &al->list[i].addr);
     }
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_ADD_ETH_ADDR, msg, msg_len, 0,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_ADD_ETH_ADDR, msg, msg_len, 0,
 			 0);
 }
 
@@ -778,27 +837,34 @@ avf_op_enable_queues (vlib_main_t * vm, avf_device_t * ad, u32 rx, u32 tx)
 	}
       i++;
     }
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_ENABLE_QUEUES, &qs,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_ENABLE_QUEUES, &qs,
 			 sizeof (virtchnl_queue_select_t), 0, 0);
 }
 
 clib_error_t *
-avf_op_get_stats (vlib_main_t * vm, avf_device_t * ad,
-		  virtchnl_eth_stats_t * es)
+avf_op_get_stats (vlib_main_t * vm, avf_device_t ** adp)
 {
-  virtchnl_queue_select_t qs = { 0 };
-  qs.vsi_id = ad->vsi_id;
+  virtchnl_queue_select_t qs = {.vsi_id = (*adp)->vsi_id };
+  virtchnl_eth_stats_t es;
+  clib_error_t *error;
 
-  avf_log_debug (ad, "get_stats: vsi_id %u", ad->vsi_id);
+  avf_log_debug (*adp, "get_stats: vsi_id %u", qs.vsi_id);
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_STATS,
-			 &qs, sizeof (virtchnl_queue_select_t),
-			 es, sizeof (virtchnl_eth_stats_t));
+  error =
+    avf_send_to_pf (vm, adp, VIRTCHNL_OP_GET_STATS, &qs, sizeof (qs), &es,
+		    sizeof (es));
+
+  if (!error)
+    clib_memcpy_fast (&(*adp)->eth_stats, &es, sizeof (es));
+
+  return error;
 }
 
 clib_error_t *
-avf_device_reset (vlib_main_t * vm, avf_device_t * ad)
+avf_device_reset (vlib_main_t * vm, avf_device_t ** adp)
 {
+  avf_device_t *ad = *adp;
+  avf_main_t *am = &avf_main;
   avf_aq_desc_t d = { 0 };
   clib_error_t *error;
   u32 rstat;
@@ -808,35 +874,47 @@ avf_device_reset (vlib_main_t * vm, avf_device_t * ad)
 
   d.opcode = 0x801;
   d.v_opcode = VIRTCHNL_OP_RESET_VF;
-  if ((error = avf_aq_desc_enq (vm, ad, &d, 0, 0)))
-    return error;
+  if ((error = avf_aq_desc_enq (vm, &ad, &d, 0, 0)))
+    goto done;
 
   t0 = vlib_time_now (vm);
+
 retry:
-  vlib_process_suspend (vm, suspend_time);
-
-  rstat = avf_get_u32 (ad->bar0, AVFGEN_RSTAT);
-
-  if (rstat == 2 || rstat == 3)
-    {
-      avf_log_debug (ad, "reset completed in %.3fs", t);
-      return 0;
-    }
+  error = avf_suspend (vm, suspend_time, am, &ad);
+  if (error)
+    goto done;
 
   t = vlib_time_now (vm) - t0;
-  if (t > AVF_RESET_MAX_WAIT_TIME)
+
+  rstat = avf_reg_read (ad, AVFGEN_RSTAT);
+  switch (virtchnl_vfr_state (rstat))
     {
-      avf_log_err (ad, "reset failed (timeout %.3fs)", t);
-      return clib_error_return (0, "reset failed (timeout)");
+    case VIRTCHNL_VFR_VFACTIVE:	/* fallthrough */
+    case VIRTCHNL_VFR_HW_UNDER_RESET:
+      avf_log_debug (ad, "reset completed in %.3fs", t);
+      break;
+    default:
+      if (t > AVF_RESET_MAX_WAIT_TIME)
+	{
+	  avf_log_err (ad, "reset failed (timeout %.3fs)", t);
+	  error = clib_error_return (0, "reset failed (timeout)");
+	  break;
+	}
+      suspend_time *= 2;
+      goto retry;
     }
 
-  suspend_time *= 2;
-  goto retry;
+done:
+  *adp = ad;
+  return error;
 }
 
 clib_error_t *
-avf_request_queues (vlib_main_t * vm, avf_device_t * ad, u16 num_queue_pairs)
+avf_request_queues (vlib_main_t * vm, avf_device_t ** adp,
+		    u16 num_queue_pairs)
 {
+  avf_device_t *ad = *adp;
+  avf_main_t *am = &avf_main;
   virtchnl_vf_res_request_t res_req = { 0 };
   clib_error_t *error;
   u32 rstat;
@@ -846,41 +924,49 @@ avf_request_queues (vlib_main_t * vm, avf_device_t * ad, u16 num_queue_pairs)
 
   avf_log_debug (ad, "request_queues: num_queue_pairs %u", num_queue_pairs);
 
-  error = avf_send_to_pf (vm, ad, VIRTCHNL_OP_REQUEST_QUEUES, &res_req,
+  error = avf_send_to_pf (vm, adp, VIRTCHNL_OP_REQUEST_QUEUES, &res_req,
 			  sizeof (virtchnl_vf_res_request_t), &res_req,
 			  sizeof (virtchnl_vf_res_request_t));
-
   /*
    * if PF responds, the request failed
    * else PF initializes restart and avf_send_to_pf returns an error
    */
   if (!error)
     {
-      return clib_error_return (0, "requested more than %u queue pairs",
-				res_req.num_queue_pairs);
+      error = clib_error_return (0, "requested more than %u queue pairs",
+				 res_req.num_queue_pairs);
+      goto done;
     }
 
   t0 = vlib_time_now (vm);
+
 retry:
-  vlib_process_suspend (vm, suspend_time);
-  t = vlib_time_now (vm) - t0;
-
-  rstat = avf_get_u32 (ad->bar0, AVFGEN_RSTAT);
-
-  if ((rstat == VIRTCHNL_VFR_COMPLETED) || (rstat == VIRTCHNL_VFR_VFACTIVE))
+  error = avf_suspend (vm, suspend_time, am, &ad);
+  if (error)
     goto done;
 
-  if (t > AVF_RESET_MAX_WAIT_TIME)
+  t = vlib_time_now (vm) - t0;
+
+  rstat = avf_reg_read (ad, AVFGEN_RSTAT);
+  switch (virtchnl_vfr_state (rstat))
     {
-      avf_log_err (ad, "request queues failed (timeout %.3f seconds)", t);
-      return clib_error_return (0, "request queues failed (timeout)");
+    case VIRTCHNL_VFR_COMPLETED:	/* fallthrough */
+    case VIRTCHNL_VFR_VFACTIVE:
+      break;
+    default:
+      if (t > AVF_RESET_MAX_WAIT_TIME)
+	{
+	  avf_log_err (ad, "request queues failed (timeout %.3f seconds)", t);
+	  error = clib_error_return (0, "request queues failed (timeout)");
+	  break;
+	}
+      suspend_time *= 2;
+      goto retry;
     }
 
-  suspend_time *= 2;
-  goto retry;
-
 done:
-  return NULL;
+  *adp = ad;
+  return error;
 }
 
 clib_error_t *
@@ -895,13 +981,13 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
 
   avf_adminq_init (vm, ad);
 
-  if ((error = avf_request_queues (vm, ad, clib_max (tm->n_vlib_mains,
-						     args->rxq_num))))
+  if ((error = avf_request_queues (vm, &ad, clib_max (tm->n_vlib_mains,
+						      args->rxq_num))))
     {
       /* we failed to get more queues, but still we want to proceed */
       clib_error_free (error);
 
-      if ((error = avf_device_reset (vm, ad)))
+      if ((error = avf_device_reset (vm, &ad)))
 	return error;
     }
 
@@ -1023,11 +1109,11 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
   ASSERT (ad->error == 0);
 
   /* do not process device in reset state */
-  r = avf_get_u32 (ad->bar0, AVFGEN_RSTAT);
-  if (r != VIRTCHNL_VFR_VFACTIVE)
+  r = avf_reg_read (ad, AVFGEN_RSTAT);
+  if (virtchnl_vfr_state (r) != VIRTCHNL_VFR_VFACTIVE)
     return;
 
-  r = avf_get_u32 (ad->bar0, AVF_ARQLEN);
+  r = avf_reg_read (ad, AVF_ARQLEN);
   if ((r & 0xf0000000) != (1ULL << 31))
     {
       ad->error = clib_error_return (0, "arq not enabled, arqlen = 0x%x", r);
@@ -1035,7 +1121,7 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
       goto error;
     }
 
-  r = avf_get_u32 (ad->bar0, AVF_ATQLEN);
+  r = avf_reg_read (ad, AVF_ATQLEN);
   if ((r & 0xf0000000) != (1ULL << 31))
     {
       ad->error = clib_error_return (0, "atq not enabled, atqlen = 0x%x", r);
@@ -1044,7 +1130,10 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
     }
 
   if (is_irq == 0)
-    avf_op_get_stats (vm, ad, &ad->eth_stats);
+    {
+      if (avf_op_get_stats (vm, &ad))
+	return;
+    }
 
   /* *INDENT-OFF* */
   vec_foreach (e, ad->events)
@@ -1224,8 +1313,10 @@ avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	}
 
       /* *INDENT-OFF* */
-      pool_foreach (ad, am->devices,
+      u32 i;
+      pool_foreach_index (i, am->devices,
         {
+	  ad = pool_elt_at_index (am->devices, i);
 	  avf_process_one_device (vm, ad, irq);
         });
       /* *INDENT-ON* */
@@ -1397,6 +1488,8 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 
   pool_get (am->devices, ad);
   ad->dev_instance = ad - am->devices;
+  ad->unique_id = am->unique_id;
+  am->unique_id++;
   ad->per_interface_next_index = ~0;
   ad->name = vec_dup (args->name);
 
@@ -1620,10 +1713,10 @@ static char *avf_tx_func_error_strings[] = {
 };
 
 static void
-avf_clear_hw_interface_counters (u32 instance)
+avf_clear_hw_interface_counters (u32 dev_instance)
 {
   avf_main_t *am = &avf_main;
-  avf_device_t *ad = vec_elt_at_index (am->devices, instance);
+  avf_device_t *ad = pool_elt_at_index (am->devices, dev_instance);
   clib_memcpy_fast (&ad->last_cleared_eth_stats,
 		    &ad->eth_stats, sizeof (ad->eth_stats));
 }

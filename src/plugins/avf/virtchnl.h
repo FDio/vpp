@@ -154,9 +154,11 @@ typedef enum
 typedef enum
 {
   VIRTCHNL_VFR_INPROGRESS = 0,
-  VIRTCHNL_VFR_COMPLETED,
-  VIRTCHNL_VFR_VFACTIVE,
+  VIRTCHNL_VFR_COMPLETED = 1,
+  VIRTCHNL_VFR_VFACTIVE = 2,
+  VIRTCHNL_VFR_HW_UNDER_RESET = 3,
 } virtchnl_vfr_states_t;
+#define virtchnl_vfr_state(r)  ((r) & 0x3)
 
 typedef struct
 {

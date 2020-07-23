@@ -49,17 +49,17 @@
 
 #define avf_log_err(dev, f, ...)                        \
   vlib_log (VLIB_LOG_LEVEL_ERR, avf_main.log_class, "%U: " f, \
-            format_vlib_pci_addr, &dev->pci_addr, \
+            format_vlib_pci_addr, &(dev)->pci_addr, \
             ## __VA_ARGS__)
 
 #define avf_log_warn(dev, f, ...)                        \
   vlib_log (VLIB_LOG_LEVEL_WARNING, avf_main.log_class, "%U: " f, \
-            format_vlib_pci_addr, &dev->pci_addr, \
+            format_vlib_pci_addr, &(dev)->pci_addr, \
             ## __VA_ARGS__)
 
 #define avf_log_debug(dev, f, ...)                        \
   vlib_log (VLIB_LOG_LEVEL_DEBUG, avf_main.log_class, "%U: " f, \
-            format_vlib_pci_addr, &dev->pci_addr, \
+            format_vlib_pci_addr, &(dev)->pci_addr, \
             ## __VA_ARGS__)
 
 #define foreach_avf_device_flags \
@@ -151,6 +151,8 @@ typedef struct
   u32 per_interface_next_index;
 
   u32 dev_instance;
+  /* Unique instance number of this device structure */
+  u32 unique_id;
   u32 sw_if_index;
   u32 hw_if_index;
   vlib_pci_dev_handle_t pci_dev_handle;
@@ -173,6 +175,8 @@ typedef struct
   u64 arq_bufs_pa;
   u16 atq_next_slot;
   u16 arq_next_slot;
+  u16 arq_sw_head;
+  u16 arq_sw_tail;
   virtchnl_pf_event_t *events;
 
   u16 vsi_id;
@@ -227,6 +231,9 @@ typedef struct
   avf_per_thread_data_t *per_thread_data;
 
   vlib_log_class_t log_class;
+
+  /* unique instance counter for device */
+  u32 unique_id;
 } avf_main_t;
 
 extern avf_main_t avf_main;
