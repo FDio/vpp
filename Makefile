@@ -124,6 +124,11 @@ endif
 # +ganglia-devel if building the ganglia plugin
 
 RPM_DEPENDS += chrpath libffi-devel rpm-build
+
+RPM_DEPENDS_DEBUG  = glibc-debuginfo e2fsprogs-debuginfo
+RPM_DEPENDS_DEBUG += krb5-debuginfo openssl-debuginfo
+RPM_DEPENDS_DEBUG += zlib-debuginfo nss-softokn-debuginfo
+RPM_DEPENDS_DEBUG += yum-plugin-auto-update-debug-info
 # lowercase- replace spaces with dashes.
 SUSE_NAME= $(shell grep '^NAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | sed -e 's/ /-/' | awk '{print tolower($$0)}')
 SUSE_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
@@ -308,7 +313,7 @@ else ifeq ($(OS_ID),centos)
 	@sudo -E yum install $(CONFIRM) centos-release-scl-rh epel-release
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
-	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs mbedtls-devel zlib
+	@sudo -E yum install $(CONFIRM) --enablerepo=base-debuginfo $(RPM_DEPENDS_DEBUG)
 else ifeq ($(OS_ID),fedora)
 	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)
