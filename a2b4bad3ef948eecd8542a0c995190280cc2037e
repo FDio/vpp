@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "968f3b28_a7a91067",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 367,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-07-23T09:23:26Z",
+      "side": 1,
+      "message": "I guess this should be \"mq \u003d vcl_worker_ctrl_mq (dst_wrk);\" ? But VPP will crash in session_event_dispatch_ctrl because callback function e-\u003erpc_args.fp is not defined.\n(gdb) bt\n#0  0x0000000000000000 in ?? ()\n#1  0x00007f41cf08a577 in session_event_dispatch_ctrl (wrk\u003d0x7f418e7b6840, elt\u003d0x7f418e19d06c) at /home/wanghanlin/vpp-dev/src/vnet/session/session_node.c:1180\n#2  0x00007f41cf08b968 in session_queue_node_fn (vm\u003d0x7f418e6944c0, node\u003d0x7f418ee26a80, frame\u003d0x0) at /home/wanghanlin/vpp-dev/src/vnet/session/session_node.c:1410\n#3  0x00007f41ce2438bf in dispatch_node (vm\u003d0x7f418e6944c0, node\u003d0x7f418ee26a80, type\u003dVLIB_NODE_TYPE_INPUT, dispatch_state\u003dVLIB_NODE_STATE_POLLING, frame\u003d0x0, last_time_stamp\u003d60421731307253210)\n    at /home/wanghanlin/vpp-dev/src/vlib/main.c:1235\n#4  0x00007f41ce245e65 in vlib_main_or_worker_loop (vm\u003d0x7f418e6944c0, is_main\u003d0) at /home/wanghanlin/vpp-dev/src/vlib/main.c:1848\n#5  0x00007f41ce246ad8 in vlib_worker_loop (vm\u003d0x7f418e6944c0) at /home/wanghanlin/vpp-dev/src/vlib/main.c:2017\n#6  0x00007f41ce287513 in vlib_worker_thread_fn (arg\u003d0x7f418ccef100) at /home/wanghanlin/vpp-dev/src/vlib/threads.c:1798\n#7  0x00007f41cd6cc9e4 in clib_calljmp () at /home/wanghanlin/vpp-dev/src/vppinfra/longjmp.S:123\n#8  0x00007f41225fdcf0 in ?? ()\n#9  0x00007f41ce2815ad in vlib_worker_thread_bootstrap_fn (arg\u003d0x7f418ccef100) at /home/wanghanlin/vpp-dev/src/vlib/threads.c:585\nBacktrace stopped: previous frame inner to this frame (corrupt stack?)\n\nIf \"mq \u003d dst_wrk-\u003eapp_event_queue;\" is correct, then we just send it to dst_wrk directly, bypass VPP? But message still can\u0027t be sent because of signal failure.\n\nsvm_queue_send_signal_inline:129: signal write on 38 returned -1: Invalid argument (errno 22)\n--38 is the dst_wrk eventfd that received message from VPP, maybe we should use another produced eventfd?  \n\n(gdb) bt\n#0  svm_queue_send_signal_inline (q\u003d0x2140258d0, is_prod\u003d1 \u0027\\001\u0027) at /home/wanghanlin/vpp-dev/src/svm/queue.c:129\n#1  0x00007ffff685a40e in svm_queue_add_raw (q\u003d0x2140258d0, elem\u003d0x7fffe452b2b0 \"\\001\") at /home/wanghanlin/vpp-dev/src/svm/queue.c:239\n#2  0x00007ffff685410f in svm_msg_q_add_and_unlock (mq\u003d0x2140258c0, msg\u003d0x7fffe452b2b0) at /home/wanghanlin/vpp-dev/src/svm/message_queue.c:226\n#3  0x00007ffff6cac04f in app_send_ctrl_evt_to_vpp (mq\u003d0x2140258c0, app_evt\u003d0x7fffe452b2b0) at /home/wanghanlin/vpp-dev/src/vnet/session/application_interface.h:551\n#4  0x00007ffff6cae522 in vcl_send_worker_rpc (dst_wrk_index\u003d0, data\u003d0x7fffe452b300, data_len\u003d21) at /home/wanghanlin/vpp-dev/src/vcl/vppcom.c:370\n#5  0x00007ffff6ce1f29 in vls_send_clone_and_share_rpc (wrk\u003d0x7fffe65970e8, vls\u003d0x7fffe65e2638, session_index\u003d0, dst_wrk_index\u003d0, dst_vls_index\u003d0, dst_session_index\u003d0)\n    at /home/wanghanlin/vpp-dev/src/vcl/vcl_locked.c:1573",
+      "range": {
+        "startLine": 367,
+        "startChar": 2,
+        "endLine": 367,
+        "endChar": 32
+      },
+      "revId": "a2b4bad3ef948eecd8542a0c995190280cc2037e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
