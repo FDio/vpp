@@ -22,6 +22,30 @@
       "revId": "a2b4bad3ef948eecd8542a0c995190280cc2037e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "da4722e3_473defc0",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 367,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-23T14:22:49Z",
+      "side": 1,
+      "message": "The goal was the second option, i.e., try to bypass vpp and keep this local between the workers. \n\nThat should work with mutex/condvar notifications, but obviously I forgot about the eventfd. So it does seem we\u0027ll have to rpc through vpp unless we add another signaling mechanism. The latter has the potential to overcomplicate event handling in polling loops so, for starters, will try the former. Will try to update the patch asap.",
+      "parentUuid": "968f3b28_a7a91067",
+      "range": {
+        "startLine": 367,
+        "startChar": 2,
+        "endLine": 367,
+        "endChar": 32
+      },
+      "revId": "a2b4bad3ef948eecd8542a0c995190280cc2037e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
