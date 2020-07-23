@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1284360d_10afaf09",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 945,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-07-23T12:34:35Z",
+      "side": 1,
+      "message": "... is no longer there from patch set #3 on.",
+      "range": {
+        "startLine": 945,
+        "startChar": 2,
+        "endLine": 945,
+        "endChar": 20
+      },
+      "revId": "9f84e70c6dba7b7e9b532af40bdbf688d416862a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
