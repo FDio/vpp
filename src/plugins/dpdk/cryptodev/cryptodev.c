@@ -1182,8 +1182,22 @@ cryptodev_create_device (vlib_main_t *vm, u32 n_queues)
 }
 
 static int
+cryptodev_cmp (void *v1, void *v2)
+{
+  cryptodev_inst_t *a1 = v1;
+  cryptodev_inst_t *a2 = v2;
+
+  if (a1->dev_id > a2->dev_id)
+    return 1;
+  if (a1->dev_id < a2->dev_id)
+    return -1;
+  return 0;
+}
+
+static int
 cryptodev_probe (vlib_main_t *vm, u32 n_workers)
 {
+  cryptodev_main_t *cmt = &cryptodev_main;
   u32 n_queues = cryptodev_count_queue (vm->numa_node);
   u32 i;
   int ret;
@@ -1203,6 +1217,8 @@ cryptodev_probe (vlib_main_t *vm, u32 n_workers)
       if (ret)
 	return ret;
     }
+
+  vec_sort_with_function(cmt->cryptodev_inst, cryptodev_cmp);
 
   return 0;
 }
