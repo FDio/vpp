@@ -118,9 +118,11 @@ avf_irq_n_set_state (avf_device_t * ad, u8 line, avf_irq_state_t state)
 
 
 clib_error_t *
-avf_aq_desc_enq (vlib_main_t * vm, avf_device_t * ad, avf_aq_desc_t * dt,
+avf_aq_desc_enq (vlib_main_t * vm, avf_device_t ** adp, avf_aq_desc_t * dt,
 		 void *data, int len)
 {
+  avf_device_t *ad = *adp;
+  avf_main_t *am = &avf_main;
   clib_error_t *err = 0;
   avf_aq_desc_t *d, dc;
   f64 t0, suspend_time = AVF_AQ_ENQ_SUSPEND_TIME;
@@ -150,8 +152,22 @@ avf_aq_desc_enq (vlib_main_t * vm, avf_device_t * ad, avf_aq_desc_t * dt,
   avf_reg_flush (ad);
 
   t0 = vlib_time_now (vm);
+
+  u32 dev_instance = ad->dev_instance;
+  u32 instance = ad->instance;
 retry:
   vlib_process_suspend (vm, suspend_time);
+  ad = *adp = am->devices + dev_instance;
+  if (pool_is_free (am->devices, ad))
+    {
+      err = clib_error_return (0, "device is deleted after suspemd");
+      goto done;
+    }
+  if (ad->instance != instance)
+    {
+      err = clib_error_return (0, "new device is created after suspemd");
+      goto done;
+    }
 
   if (((d->flags & AVF_AQ_F_DD) == 0) || ((d->flags & AVF_AQ_F_CMP) == 0))
     {
@@ -210,7 +226,6 @@ avf_cmd_rx_ctl_reg_write (vlib_main_t * vm, avf_device_t * ad, u32 reg,
 {
   clib_error_t *err;
   avf_aq_desc_t d = {.opcode = 0x207,.param1 = reg,.param3 = val };
-  err = avf_aq_desc_enq (vm, ad, &d, 0, 0);
 
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
@@ -232,6 +247,8 @@ avf_cmd_rx_ctl_reg_write (vlib_main_t * vm, avf_device_t * ad, u32 reg,
       ed->val = val;
       /* *INDENT-ON* */
     }
+  err = avf_aq_desc_enq (vm, &ad, &d, 0, 0);
+
   return err;
 }
 
@@ -390,9 +407,11 @@ avf_adminq_init (vlib_main_t * vm, avf_device_t * ad)
 }
 
 clib_error_t *
-avf_send_to_pf (vlib_main_t * vm, avf_device_t * ad, virtchnl_ops_t op,
+avf_send_to_pf (vlib_main_t * vm, avf_device_t ** adp, virtchnl_ops_t op,
 		void *in, int in_len, void *out, int out_len)
 {
+  avf_device_t *ad = *adp;
+  avf_main_t *am = &avf_main;
   clib_error_t *err;
   avf_aq_desc_t *d, dt = {.opcode = 0x801,.v_opcode = op };
   u32 head;
@@ -404,10 +423,12 @@ avf_send_to_pf (vlib_main_t * vm, avf_device_t * ad, virtchnl_ops_t op,
   d = &ad->arq[ad->arq_next_slot];
   d->flags |= AVF_AQ_F_SI;
 
-  if ((err = avf_aq_desc_enq (vm, ad, &dt, in, in_len)))
+  if ((err = avf_aq_desc_enq (vm, adp, &dt, in, in_len)))
     return err;
 
   t0 = vlib_time_now (vm);
+  u32 dev_instance = ad->dev_instance;
+  u32 instance = ad->instance;
 retry:
   head = avf_get_u32 (ad->bar0, AVF_ARQH);
 
@@ -420,6 +441,11 @@ retry:
 	  return clib_error_return (0, "timeout");
 	}
       vlib_process_suspend (vm, suspend_time);
+      ad = *adp = am->devices + dev_instance;
+      if (pool_is_free (am->devices, ad))
+	return clib_error_return (0, "device is deleted");
+      if (ad->instance != instance)
+	return clib_error_return (0, "new device is created after suspemd");
       suspend_time *= 2;
       goto retry;
     }
@@ -518,7 +544,7 @@ avf_op_version (vlib_main_t * vm, avf_device_t * ad,
 
   avf_log_debug (ad, "version: major %u minor %u", myver.major, myver.minor);
 
-  err = avf_send_to_pf (vm, ad, VIRTCHNL_OP_VERSION, &myver,
+  err = avf_send_to_pf (vm, &ad, VIRTCHNL_OP_VERSION, &myver,
 			sizeof (virtchnl_version_info_t), ver,
 			sizeof (virtchnl_version_info_t));
 
@@ -539,7 +565,7 @@ avf_op_get_vf_resources (vlib_main_t * vm, avf_device_t * ad,
 		VIRTCHNL_VF_CAP_ADV_LINK_SPEED);
 
   avf_log_debug (ad, "get_vf_reqources: bitmap 0x%x", bitmap);
-  err = avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_VF_RESOURCES, &bitmap,
+  err = avf_send_to_pf (vm, &ad, VIRTCHNL_OP_GET_VF_RESOURCES, &bitmap,
 			sizeof (u32), res, sizeof (virtchnl_vf_resource_t));
 
   if (err == 0)
@@ -585,7 +611,7 @@ avf_op_config_rss_lut (vlib_main_t * vm, avf_device_t * ad)
 		 rl->vsi_id, rl->lut_entries, format_hex_bytes_no_wrap,
 		 rl->lut, rl->lut_entries);
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_RSS_LUT, msg, msg_len, 0,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_CONFIG_RSS_LUT, msg, msg_len, 0,
 			 0);
 }
 
@@ -609,7 +635,7 @@ avf_op_config_rss_key (vlib_main_t * vm, avf_device_t * ad)
 		 rk->vsi_id, rk->key_len, format_hex_bytes_no_wrap, rk->key,
 		 rk->key_len);
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_RSS_KEY, msg, msg_len, 0,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_CONFIG_RSS_KEY, msg, msg_len, 0,
 			 0);
 }
 
@@ -618,7 +644,7 @@ avf_op_disable_vlan_stripping (vlib_main_t * vm, avf_device_t * ad)
 {
   avf_log_debug (ad, "disable_vlan_stripping");
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_DISABLE_VLAN_STRIPPING, 0, 0, 0,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_DISABLE_VLAN_STRIPPING, 0, 0, 0,
 			 0);
 }
 
@@ -636,7 +662,7 @@ avf_config_promisc_mode (vlib_main_t * vm, avf_device_t * ad, int is_enable)
 		 pi.flags & FLAG_VF_UNICAST_PROMISC ? "on" : "off",
 		 pi.flags & FLAG_VF_MULTICAST_PROMISC ? "on" : "off");
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE, &pi,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE, &pi,
 			 sizeof (virtchnl_promisc_info_t), 0, 0);
 }
 
@@ -693,7 +719,7 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 		     txq->dma_ring_addr);
     }
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_VSI_QUEUES, msg, msg_len,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_CONFIG_VSI_QUEUES, msg, msg_len,
 			 0, 0);
 }
 
@@ -724,7 +750,7 @@ avf_op_config_irq_map (vlib_main_t * vm, avf_device_t * ad)
     }
 
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_IRQ_MAP, msg, msg_len, 0,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_CONFIG_IRQ_MAP, msg, msg_len, 0,
 			 0);
 }
 
@@ -752,7 +778,7 @@ avf_op_add_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count, u8 * macs)
       avf_log_debug (ad, "add_eth_addr[%u]: %U", i,
 		     format_ethernet_address, &al->list[i].addr);
     }
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_ADD_ETH_ADDR, msg, msg_len, 0,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_ADD_ETH_ADDR, msg, msg_len, 0,
 			 0);
 }
 
@@ -778,27 +804,30 @@ avf_op_enable_queues (vlib_main_t * vm, avf_device_t * ad, u32 rx, u32 tx)
 	}
       i++;
     }
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_ENABLE_QUEUES, &qs,
+  return avf_send_to_pf (vm, &ad, VIRTCHNL_OP_ENABLE_QUEUES, &qs,
 			 sizeof (virtchnl_queue_select_t), 0, 0);
 }
 
 clib_error_t *
-avf_op_get_stats (vlib_main_t * vm, avf_device_t * ad,
+avf_op_get_stats (vlib_main_t * vm, avf_device_t ** adp,
 		  virtchnl_eth_stats_t * es)
 {
+  avf_device_t *ad = *adp;
   virtchnl_queue_select_t qs = { 0 };
   qs.vsi_id = ad->vsi_id;
 
   avf_log_debug (ad, "get_stats: vsi_id %u", ad->vsi_id);
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_STATS,
+  return avf_send_to_pf (vm, adp, VIRTCHNL_OP_GET_STATS,
 			 &qs, sizeof (virtchnl_queue_select_t),
 			 es, sizeof (virtchnl_eth_stats_t));
 }
 
 clib_error_t *
-avf_device_reset (vlib_main_t * vm, avf_device_t * ad)
+avf_device_reset (vlib_main_t * vm, avf_device_t ** adp)
 {
+  avf_device_t *ad = *adp;
+  avf_main_t *am = &avf_main;
   avf_aq_desc_t d = { 0 };
   clib_error_t *error;
   u32 rstat;
@@ -808,12 +837,20 @@ avf_device_reset (vlib_main_t * vm, avf_device_t * ad)
 
   d.opcode = 0x801;
   d.v_opcode = VIRTCHNL_OP_RESET_VF;
-  if ((error = avf_aq_desc_enq (vm, ad, &d, 0, 0)))
+  if ((error = avf_aq_desc_enq (vm, &ad, &d, 0, 0)))
     return error;
 
   t0 = vlib_time_now (vm);
+
+  u32 dev_instance = ad->dev_instance;
+  u32 instance = ad->instance;
 retry:
   vlib_process_suspend (vm, suspend_time);
+  ad = *adp = am->devices + dev_instance;
+  if (pool_is_free (am->devices, ad))
+    return clib_error_return (0, "device is deleted after suspemd");
+  if (ad->instance != instance)
+    return clib_error_return (0, "new device is created after suspemd");
 
   rstat = avf_get_u32 (ad->bar0, AVFGEN_RSTAT);
 
@@ -835,8 +872,11 @@ retry:
 }
 
 clib_error_t *
-avf_request_queues (vlib_main_t * vm, avf_device_t * ad, u16 num_queue_pairs)
+avf_request_queues (vlib_main_t * vm, avf_device_t ** adp,
+		    u16 num_queue_pairs)
 {
+  avf_device_t *ad = *adp;
+  avf_main_t *am = &avf_main;
   virtchnl_vf_res_request_t res_req = { 0 };
   clib_error_t *error;
   u32 rstat;
@@ -846,10 +886,9 @@ avf_request_queues (vlib_main_t * vm, avf_device_t * ad, u16 num_queue_pairs)
 
   avf_log_debug (ad, "request_queues: num_queue_pairs %u", num_queue_pairs);
 
-  error = avf_send_to_pf (vm, ad, VIRTCHNL_OP_REQUEST_QUEUES, &res_req,
+  error = avf_send_to_pf (vm, adp, VIRTCHNL_OP_REQUEST_QUEUES, &res_req,
 			  sizeof (virtchnl_vf_res_request_t), &res_req,
 			  sizeof (virtchnl_vf_res_request_t));
-
   /*
    * if PF responds, the request failed
    * else PF initializes restart and avf_send_to_pf returns an error
@@ -861,8 +900,19 @@ avf_request_queues (vlib_main_t * vm, avf_device_t * ad, u16 num_queue_pairs)
     }
 
   t0 = vlib_time_now (vm);
+  u32 dev_instance = ad->dev_instance;
+  u32 instance = ad->instance;
 retry:
   vlib_process_suspend (vm, suspend_time);
+  /* reload ad after suspend */
+  ad = *adp = am->devices + dev_instance;
+  /* ad is deleted */
+  if (pool_is_free (am->devices, ad))
+    return clib_error_return (0, "device is deleted after suspemd");
+  /* ad is moved due to pool expand */
+  if (ad->instance != instance)
+    return clib_error_return (0, "new device is created after suspemd");
+
   t = vlib_time_now (vm) - t0;
 
   rstat = avf_get_u32 (ad->bar0, AVFGEN_RSTAT);
@@ -895,13 +945,13 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
 
   avf_adminq_init (vm, ad);
 
-  if ((error = avf_request_queues (vm, ad, clib_max (tm->n_vlib_mains,
-						     args->rxq_num))))
+  if ((error = avf_request_queues (vm, &ad, clib_max (tm->n_vlib_mains,
+						      args->rxq_num))))
     {
       /* we failed to get more queues, but still we want to proceed */
       clib_error_free (error);
 
-      if ((error = avf_device_reset (vm, ad)))
+      if ((error = avf_device_reset (vm, &ad)))
 	return error;
     }
 
@@ -1044,7 +1094,10 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
     }
 
   if (is_irq == 0)
-    avf_op_get_stats (vm, ad, &ad->eth_stats);
+    {
+      if (avf_op_get_stats (vm, &ad, &ad->eth_stats))
+	return;
+    }
 
   /* *INDENT-OFF* */
   vec_foreach (e, ad->events)
@@ -1224,8 +1277,10 @@ avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	}
 
       /* *INDENT-OFF* */
-      pool_foreach (ad, am->devices,
+      u32 i;
+      pool_foreach_index (i, am->devices,
         {
+	  ad = pool_elt_at_index (am->devices, i);
 	  avf_process_one_device (vm, ad, irq);
         });
       /* *INDENT-ON* */
@@ -1397,6 +1452,8 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 
   pool_get (am->devices, ad);
   ad->dev_instance = ad - am->devices;
+  ad->instance = am->instance;
+  am->instance++;
   ad->per_interface_next_index = ~0;
   ad->name = vec_dup (args->name);
 
