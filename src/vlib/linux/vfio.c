@@ -185,8 +185,9 @@ linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp,
   int fd;
 
   *is_noiommu = 0;
-  s = format (s, "/sys/bus/pci/devices/%U/iommu_group", format_vlib_pci_addr,
-	      addr);
+  s =
+    format (s, "/sys/bus/pci/devices/%U/iommu_group%c", format_vlib_pci_addr,
+	    addr, 0);
   tmpstr = clib_sysfs_link_to_name ((char *) s);
   if (tmpstr)
     {
@@ -201,8 +202,8 @@ linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp,
     }
   vec_reset_length (s);
 
-  s = format (s, "/sys/bus/pci/devices/%U/iommu_group/name",
-	      format_vlib_pci_addr, addr);
+  s = format (s, "/sys/bus/pci/devices/%U/iommu_group/name%c",
+	      format_vlib_pci_addr, addr, 0);
   err = clib_sysfs_read ((char *) s, "%s", &tmpstr);
   if (err == 0)
     {
