@@ -989,6 +989,33 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
   return 0;
 }
 
+/*
+ * Set host tap/tun interface carrier state so it will appear to host
+ * applications that the interface's link state changed.
+ */
+int
+tap_set_carrier (u32 hw_if_index, u32 carrier_up)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  virtio_main_t *mm = &virtio_main;
+  virtio_if_t *vif;
+  int *fd, ret = 0;
+
+  vif = pool_elt_at_index (mm->interfaces, hi->dev_instance);
+  vec_foreach (fd, vif->tap_fds)
+  {
+    ret = ioctl (*fd, TUNSETCARRIER, &carrier_up);
+    if (ret < 0)
+      {
+	clib_warning ("ioctl (TUNSETCARRIER) returned %d", ret);
+	break;
+      }
+  }
+
+  return ret;
+}
+
 static clib_error_t *
 tap_mtu_config (vlib_main_t * vm, unformat_input_t * input)
 {
