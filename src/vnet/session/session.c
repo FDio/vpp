@@ -812,8 +812,11 @@ session_stream_connect_notify (transport_connection_t * tc,
 
   if (app_worker_connect_notify (app_wrk, s, SESSION_E_NONE, opaque))
     {
+      session_lookup_del_connection (tc);
+      /* Avoid notifying app about rejected session cleanup */
       s = session_get (new_si, new_ti);
-      session_free_w_fifos (s);
+      segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+      session_free (s);
       return -1;
     }
 
