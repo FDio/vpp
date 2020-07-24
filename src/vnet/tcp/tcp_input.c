@@ -701,6 +701,25 @@ tcp_cc_init_congestion (tcp_connection_t * tc)
 }
 
 static void
+tcp_cc_congestion_clear (tcp_connection_t * tc)
+{
+  sack_scoreboard_hole_t *hole;
+
+  tc->rxt_delivered = 0;
+  tc->snd_rxt_bytes = 0;
+  tc->snd_rxt_ts = 0;
+  tc->prr_delivered = 0;
+  tc->rtt_ts = 0;
+  tc->flags &= ~TCP_CONN_RXT_PENDING;
+
+  hole = scoreboard_first_hole (&tc->sack_sb);
+  if (hole && hole->start == tc->snd_una && hole->end == tc->snd_nxt)
+    scoreboard_clear (&tc->sack_sb);
+
+  tcp_cong_recovery_off (tc);
+}
+
+static void
 tcp_cc_congestion_undo (tcp_connection_t * tc)
 {
   tc->cwnd = tc->prev_cwnd;
@@ -708,6 +727,17 @@ tcp_cc_congestion_undo (tcp_connection_t * tc)
   tcp_cc_undo_recovery (tc);
   ASSERT (tc->rto_boff == 0);
   TCP_EVT (TCP_EVT_CC_EVT, tc, 5);
+}
+
+/**
+ * Last segment has timestamp older than our last retransmit
+ */
+static inline u8
+tcp_cc_last_is_delayed (tcp_connection_t * tc)
+{
+  return (tc->snd_rxt_ts
+	  && tcp_opts_tstamp (&tc->rcv_opts)
+	  && timestamp_lt (tc->rcv_opts.tsecr, tc->snd_rxt_ts));
 }
 
 static inline u8
@@ -764,7 +794,6 @@ tcp_should_fastrecover (tcp_connection_t * tc, u8 has_sack)
 static int
 tcp_cc_recover (tcp_connection_t * tc)
 {
-  sack_scoreboard_hole_t *hole;
   u8 is_spurious = 0;
 
   ASSERT (tcp_in_cong_recovery (tc));
@@ -787,23 +816,14 @@ tcp_cc_recover (tcp_connection_t * tc)
       return is_spurious;
     }
 
-  tc->rxt_delivered = 0;
-  tc->snd_rxt_bytes = 0;
-  tc->snd_rxt_ts = 0;
-  tc->prr_delivered = 0;
-  tc->rtt_ts = 0;
-  tc->flags &= ~TCP_CONN_RXT_PENDING;
-
-  hole = scoreboard_first_hole (&tc->sack_sb);
-  if (hole && hole->start == tc->snd_una && hole->end == tc->snd_nxt)
-    scoreboard_clear (&tc->sack_sb);
-
   if (!tcp_in_recovery (tc) && !is_spurious)
     tcp_cc_recovered (tc);
 
-  tcp_fastrecovery_off (tc);
-  tcp_fastrecovery_first_off (tc);
-  tcp_recovery_off (tc);
+  tcp_cc_congestion_clear (tc);
+
+//  tcp_fastrecovery_off (tc);
+//  tcp_fastrecovery_first_off (tc);
+//  tcp_recovery_off (tc);
   TCP_EVT (TCP_EVT_CC_EVT, tc, 3);
 
   ASSERT (tc->rto_boff == 0);
@@ -832,6 +852,18 @@ tcp_cc_update (tcp_connection_t * tc, tcp_rate_sample_t * rs)
       (seq_leq (tc->snd_congestion, tc->snd_una - tc->bytes_acked)
        && seq_gt (tc->snd_congestion, tc->snd_una)))
     tc->snd_congestion = tc->snd_una - 1;
+}
+
+static int
+tcp_try_undo_partial_ack (tcp_connection_t * tc)
+{
+  if (tcp_cc_last_is_delayed (tc))
+    {
+      tcp_cc_congestion_undo (tc);
+      tcp_cc_congestion_clear (tc);
+      return 1;
+    }
+  return 0;
 }
 
 /**
@@ -928,17 +960,23 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       return;
     }
 
-  tcp_program_retransmit (tc);
-
   /*
    * Notify cc of the event
    */
 
   if (!tc->bytes_acked)
     {
+      tcp_program_retransmit (tc);
       tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
       return;
     }
+
+  /* Network could be reordering. If partial ack was not triggered by our
+   * retransmits, exit fast recovery */
+  if (tcp_try_undo_partial_ack (tc))
+    return;
+
+  tcp_program_retransmit (tc);
 
   /* RFC6675: If the incoming ACK is a cumulative acknowledgment,
    * reset dupacks to 0. Also needed if in congestion recovery */
