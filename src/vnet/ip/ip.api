@@ -170,6 +170,32 @@ define ip_route_add_del_reply
   u32 stats_index;
 };
 
+/** \brief Add / del route request, version 2
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_multipath - Set to 1 if these paths will be added/removed
+                          to/from the existing set, or 0 to replace
+			  the existing set.
+                          is_add=0 & is_multipath=0 implies delete all paths
+    @param reply - set to 1 if vpp should reply, 0 otherwise
+    @param is_add - Are the paths being added or removed
+*/
+define ip_route_add_del2
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  bool is_multipath;
+  bool reply;
+  vl_api_ip_route_t route;
+};
+
+define ip_route_add_del2_reply
+{
+  u32 context;
+  i32 retval;
+};
+
 /** \brief Dump IP routes from a table
     @param client_index - opaque cookie to identify the sender
     @param table - The table from which to dump routes (ony ID an AF are needed)

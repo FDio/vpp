@@ -82,6 +82,7 @@ _(IP_TABLE_REPLACE_BEGIN, ip_table_replace_begin)                       \
 _(IP_TABLE_REPLACE_END, ip_table_replace_end)                           \
 _(IP_TABLE_FLUSH, ip_table_flush)                                       \
 _(IP_ROUTE_ADD_DEL, ip_route_add_del)                                   \
+_(IP_ROUTE_ADD_DEL2, ip_route_add_del2)                                 \
 _(IP_ROUTE_LOOKUP, ip_route_lookup)                                     \
 _(IP_TABLE_ADD_DEL, ip_table_add_del)                                   \
 _(IP_PUNT_POLICE, ip_punt_police)                                       \
@@ -557,6 +558,51 @@ out:
   return (rv);
 }
 
+static int
+ip_route_add_del2_t_handler (vl_api_ip_route_add_del2_t * mp)
+{
+  fib_route_path_t *rpaths = NULL, *rpath;
+  fib_entry_flag_t entry_flags;
+  vl_api_fib_path_t *apath;
+  fib_prefix_t pfx;
+  u32 fib_index;
+  int rv, ii;
+
+  entry_flags = FIB_ENTRY_FLAG_NONE;
+  ip_prefix_decode (&mp->route.prefix, &pfx);
+
+  rv = fib_api_table_id_decode (pfx.fp_proto,
+				ntohl (mp->route.table_id), &fib_index);
+  if (0 != rv)
+    goto out;
+
+  if (0 != mp->route.n_paths)
+    vec_validate (rpaths, mp->route.n_paths - 1);
+
+  for (ii = 0; ii < mp->route.n_paths; ii++)
+    {
+      apath = &mp->route.paths[ii];
+      rpath = &rpaths[ii];
+
+      rv = fib_api_path_decode (apath, rpath);
+
+      if ((rpath->frp_flags & FIB_ROUTE_PATH_LOCAL) &&
+	  (~0 == rpath->frp_sw_if_index))
+	entry_flags |= (FIB_ENTRY_FLAG_CONNECTED | FIB_ENTRY_FLAG_LOCAL);
+
+      if (0 != rv)
+	goto out;
+    }
+
+  rv = fib_api_route_add_del (mp->is_add,
+			      mp->is_multipath,
+			      fib_index, &pfx, entry_flags, rpaths);
+out:
+  vec_free (rpaths);
+  return (rv);
+}
+
+
 void
 vl_api_ip_route_add_del_t_handler (vl_api_ip_route_add_del_t * mp)
 {
@@ -573,6 +619,20 @@ vl_api_ip_route_add_del_t_handler (vl_api_ip_route_add_del_t * mp)
   }))
   /* *INDENT-ON* */
 }
+
+void
+vl_api_ip_route_add_del2_t_handler (vl_api_ip_route_add_del2_t * mp)
+{
+  vl_api_ip_route_add_del2_reply_t *rmp;
+  int rv;
+
+  rv = ip_route_add_del2_t_handler (mp);
+
+  /* Reply only on error, or if the client asked for a reply */
+  if (rv == 0 && mp->reply == 0)
+    return;
+
+REPLY_MACRO (VL_API_IP_ROUTE_ADD_DEL2_REPLY)}
 
 void
 vl_api_ip_route_lookup_t_handler (vl_api_ip_route_lookup_t * mp)
