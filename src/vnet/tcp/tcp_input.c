@@ -2640,9 +2640,10 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       child->tx_fifo_size = transport_tx_fifo_size (&child->connection);
 
-      tcp_send_synack (child);
-
+      /* This initializes elog track, must be done before synack */
       TCP_EVT (TCP_EVT_SYN_RCVD, child, 1);
+
+      tcp_send_synack (child);
 
     done:
 
