@@ -66,16 +66,15 @@ compare_interface_names (void *a1, void *a2)
 static clib_error_t *
 show_or_clear_hw_interfaces (vlib_main_t * vm,
 			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+			     vlib_cli_command_t * cmd, int is_show)
 {
   clib_error_t *error = 0;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_hw_interface_t *hi;
   u32 hw_if_index, *hw_if_indices = 0;
-  int i, verbose = -1, is_show, show_bond = 0;
+  int i, verbose = -1, show_bond = 0;
 
-  is_show = strstr (cmd->path, "show") != 0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       /* See if user wants to show a specific interface. */
@@ -169,6 +168,21 @@ done:
   return error;
 }
 
+static clib_error_t *
+show_hw_interfaces (vlib_main_t * vm,
+		    unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  return show_or_clear_hw_interfaces (vm, input, cmd, 1 /* is_show */ );
+}
+
+static clib_error_t *
+clear_hw_interfaces (vlib_main_t * vm,
+		     unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  return show_or_clear_hw_interfaces (vm, input, cmd, 0 /* is_show */ );
+}
+
+
 /*?
  * Display more detailed information about all or a list of given interfaces.
  * The verboseness of the output can be controlled by the following optional
@@ -230,7 +244,7 @@ VLIB_CLI_COMMAND (show_hw_interfaces_command, static) = {
   .path = "show hardware-interfaces",
   .short_help = "show hardware-interfaces [brief|verbose|detail] [bond] "
     "[<interface> [<interface> [..]]] [<sw_idx> [<sw_idx> [..]]]",
-  .function = show_or_clear_hw_interfaces,
+  .function = show_hw_interfaces,
 };
 /* *INDENT-ON* */
 
@@ -251,7 +265,7 @@ VLIB_CLI_COMMAND (clear_hw_interface_counters_command, static) = {
   .path = "clear hardware-interfaces",
   .short_help = "clear hardware-interfaces "
     "[<interface> [<interface> [..]]] [<sw_idx> [<sw_idx> [..]]]",
-  .function = show_or_clear_hw_interfaces,
+  .function = clear_hw_interfaces,
 };
 /* *INDENT-ON* */
 
