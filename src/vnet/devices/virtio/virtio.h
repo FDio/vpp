@@ -169,6 +169,7 @@ typedef struct
       ip4_address_t host_ip4_addr;
       u8 host_ip4_prefix_len;
       u8 host_ip6_prefix_len;
+      u8 host_carrier_up;	/* host tun/tap driver link carrier state */
     };
     struct			/* native virtio */
     {
