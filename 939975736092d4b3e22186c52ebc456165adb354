@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "67791d8f_3758c618",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 319,
+      "author": {
+        "id": 807
+      },
+      "writtenOn": "2020-07-25T20:48:59Z",
+      "side": 1,
+      "message": "Yeah true. But RHEL 8 doesn\u0027t officially carry epel-release RPM... I am thinking probably you can just discard the change in this file, and only keep the spec file change for this patch. Most people will probably just use CentOS 8 instead. What do you think?",
+      "parentUuid": "be724506_6c75053a",
+      "range": {
+        "startLine": 319,
+        "startChar": 33,
+        "endLine": 319,
+        "endChar": 103
+      },
+      "revId": "939975736092d4b3e22186c52ebc456165adb354",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a8bf708f_84b4a0a7",
         "filename": "Makefile",
         "patchSetId": 2
