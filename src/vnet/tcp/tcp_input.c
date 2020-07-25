@@ -258,6 +258,8 @@ static int
 tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
 		      vlib_buffer_t * b0, tcp_header_t * th0, u32 * error0)
 {
+  u8 skip_ts_update = 0;
+
   /* We could get a burst of RSTs interleaved with acks */
   if (PREDICT_FALSE (tc0->state == TCP_STATE_CLOSED))
     {
@@ -280,6 +282,13 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
 
   if (PREDICT_FALSE (tcp_segment_check_paws (tc0)))
     {
+      if (!timestamp_lt (tc0->rcv_opts.tsval + 100, tc0->tsval_recent))
+	{
+	  skip_ts_update = 1;
+	  goto continue_processing;
+	}
+//	clib_warning ("reordering %u", tc0->tsval_recent - tc0->rcv_opts.tsval);
+
       *error0 = TCP_ERROR_PAWS;
       TCP_EVT (TCP_EVT_PAWS_FAIL, tc0, vnet_buffer (b0)->tcp.seq_number,
 	       vnet_buffer (b0)->tcp.seq_end);
@@ -302,6 +311,8 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
 	  TCP_EVT (TCP_EVT_DUPACK_SENT, tc0, vnet_buffer (b0)->tcp);
 	  goto error;
 	}
+    continue_processing:
+      ;
     }
 
   /* 1st: check sequence number */
@@ -388,8 +399,9 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
     }
 
   /* If segment in window, save timestamp */
-  tcp_update_timestamp (tc0, vnet_buffer (b0)->tcp.seq_number,
-			vnet_buffer (b0)->tcp.seq_end);
+  if (PREDICT_TRUE (!skip_ts_update))
+    tcp_update_timestamp (tc0, vnet_buffer (b0)->tcp.seq_number,
+                          vnet_buffer (b0)->tcp.seq_end);
   return 0;
 
 error:
@@ -495,6 +507,7 @@ tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
   if (tc->rtt_ts && seq_geq (ack, tc->rtt_seq))
     {
       f64 sample = tcp_time_now_us (tc->c_thread_index) - tc->rtt_ts;
+//      clib_warning ("sample %.4f cong %u seq %u", sample, tcp_in_cong_recovery(tc), tc->rtt_seq);
       tcp_estimate_rtt_us (tc, sample);
       mrtt = clib_max ((u32) (sample * THZ), 1);
       /* Allow measuring of a new RTT */
@@ -682,6 +695,7 @@ tcp_cc_init_congestion (tcp_connection_t * tc)
   tc->prev_ssthresh = tc->ssthresh;
   tc->prev_cwnd = tc->cwnd;
 
+  tc->rtt_ts = 0;
   tc->snd_rxt_ts = tcp_tstamp (tc);
   tcp_cc_congestion (tc);
 
@@ -852,8 +866,12 @@ tcp_cc_update (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 static int
 tcp_try_undo_partial_ack (tcp_connection_t * tc)
 {
+  if (tc->sack_sb.lost_bytes == 0)
+    clib_warning ("no lost bytes");
+
   if (tcp_cc_last_is_delayed (tc))
     {
+      clib_warning ("undo partial ack");
       tcp_cc_congestion_undo (tc);
       tcp_cc_congestion_clear (tc);
       return 1;
@@ -966,6 +984,13 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       return;
     }
 
+  static int first = 0;
+  if (first < 3)
+    {
+      first++;
+      clib_warning ("%U", format_tcp_connection, tc, 2);
+    }
+
   /* Network could be reordering. If partial ack was not triggered by our
    * retransmits, exit fast recovery */
   if (tcp_try_undo_partial_ack (tc))
@@ -986,13 +1011,17 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 static void
 tcp_handle_old_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
-  if (!tcp_in_cong_recovery (tc))
-    return;
+//  clib_warning ("in cong recovery");
 
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     tcp_rcv_sacks (tc, tc->snd_una);
 
   tc->bytes_acked = 0;
+
+  if (!tcp_in_cong_recovery (tc))
+    return;
+
+  tcp_update_rtt (tc, rs, tc->snd_una);
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_sample_delivery_rate (tc, rs);
