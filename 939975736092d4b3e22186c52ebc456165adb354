@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "be724506_6c75053a",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 319,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-07-25T16:27:54Z",
+      "side": 1,
+      "message": "Why is this pulling code from a specific URL?\nThis is likely to be fragile when running in the LF CI jenkins jobs on a per patch basis if/when dl.fedoreaproject.org cannot be reached.",
+      "range": {
+        "startLine": 319,
+        "startChar": 33,
+        "endLine": 319,
+        "endChar": 103
+      },
+      "revId": "939975736092d4b3e22186c52ebc456165adb354",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a8bf708f_84b4a0a7",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 322,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-07-25T16:27:54Z",
+      "side": 1,
+      "message": "There is a lot of replication of these install commands across all of the fedora/rhel/centos variants.  Please combine the common ones to reduce the replication of common commands.",
+      "range": {
+        "startLine": 321,
+        "startChar": 1,
+        "endLine": 322,
+        "endChar": 47
+      },
+      "revId": "939975736092d4b3e22186c52ebc456165adb354",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
