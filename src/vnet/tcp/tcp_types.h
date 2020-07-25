@@ -40,6 +40,8 @@
 #define TCP_IW_N_SEGMENTS 	10
 #define TCP_ALWAYS_ACK		1	/**< On/off delayed acks */
 #define TCP_USE_SACKS		1	/**< Disable only for testing */
+#define TCP_TS_REORDER_WND	100	/**< Max ts delay/reorder accepted.
+					     Assumes ms tstamp resolution */
 
 /** TCP FSM state definitions as per RFC793. */
 #define foreach_tcp_fsm_state   \
