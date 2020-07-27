@@ -2630,6 +2630,13 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       tcp_connection_init_vars (child);
       child->rto = TCP_RTO_MIN;
 
+      /*
+       * This initializes elog track, must be done before synack.
+       * We also do it before possible tcp_connection_cleanup() as it
+       * generates TCP_EVT_DELETE event.
+       */
+      TCP_EVT (TCP_EVT_SYN_RCVD, child, 1);
+
       if (session_stream_accept (&child->connection, lc->c_s_index,
 				 lc->c_thread_index, 0 /* notify */ ))
 	{
@@ -2639,9 +2646,6 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       child->tx_fifo_size = transport_tx_fifo_size (&child->connection);
-
-      /* This initializes elog track, must be done before synack */
-      TCP_EVT (TCP_EVT_SYN_RCVD, child, 1);
 
       tcp_send_synack (child);
 
