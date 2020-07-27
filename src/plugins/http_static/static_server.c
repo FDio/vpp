@@ -246,26 +246,8 @@ http_static_server_detach_cache_entry (http_session_t * hs)
   vec_free (hs->path);
 }
 
-/** \brief clean up a session
- */
-
-static void
-http_static_server_session_cleanup (http_session_t * hs)
-{
-  if (!hs)
-    return;
-
-  http_static_server_detach_cache_entry (hs);
-
-  http_static_server_session_lookup_del (hs->thread_index,
-					 hs->vpp_session_index);
-  vec_free (hs->rx_buf);
-  http_static_server_session_free (hs);
-}
-
 /** \brief Disconnect a session
  */
-
 static void
 http_static_server_session_disconnect (http_session_t * hs)
 {
@@ -535,7 +517,7 @@ static void
 close_session (http_session_t * hs)
 {
   http_static_server_session_disconnect (hs);
-  http_static_server_session_cleanup (hs);
+//  http_static_server_session_cleanup (hs);
 }
 
 /** \brief Register a builtin GET or POST handler
@@ -803,7 +785,7 @@ find_end:
 	  dp = pool_elt_at_index (hsm->cache_pool, kv.value);
 	  hs->data = dp->data;
 	  /* Update the cache entry, mark it in-use */
-	  lru_update (hsm, dp, vlib_time_now (hsm->vlib_main));
+	  lru_update (hsm, dp, vlib_time_now (vlib_get_main ()));
 	  hs->cache_pool_index = dp - hsm->cache_pool;
 	  dp->inuse++;
 	  if (hsm->debug_level > 1)
@@ -875,7 +857,7 @@ find_end:
 	  if (hsm->debug_level > 1)
 	    clib_warning ("index %d refcnt now %d", hs->cache_pool_index,
 			  dp->inuse);
-	  lru_add (hsm, dp, vlib_time_now (hsm->vlib_main));
+	  lru_add (hsm, dp, vlib_time_now (vlib_get_main ()));
 	  kv.key = (u64) vec_dup (hs->path);
 	  kv.value = dp - hsm->cache_pool;
 	  /* Add to the lookup table */
@@ -1082,14 +1064,6 @@ http_static_server_session_disconnect_callback (session_t * s)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
-  http_session_t *hs;
-
-  http_static_server_sessions_writer_lock ();
-
-  hs = http_static_server_session_lookup (s->thread_index, s->session_index);
-  http_static_server_session_cleanup (hs);
-
-  http_static_server_sessions_writer_unlock ();
 
   a->handle = session_handle (s);
   a->app_index = hsm->app_index;
@@ -1104,14 +1078,6 @@ http_static_server_session_reset_callback (session_t * s)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
-  http_session_t *hs;
-
-  http_static_server_sessions_writer_lock ();
-
-  hs = http_static_server_session_lookup (s->thread_index, s->session_index);
-  http_static_server_session_cleanup (hs);
-
-  http_static_server_sessions_writer_unlock ();
 
   a->handle = session_handle (s);
   a->app_index = hsm->app_index;
@@ -1134,6 +1100,30 @@ http_static_server_add_segment_callback (u32 client_index, u64 segment_handle)
   return -1;
 }
 
+static void
+http_static_session_cleanup (session_t * s, session_cleanup_ntf_t ntf)
+{
+  http_session_t *hs;
+
+  if (ntf == SESSION_CLEANUP_TRANSPORT)
+    return;
+
+  http_static_server_sessions_writer_lock ();
+
+  hs = http_static_server_session_lookup (s->thread_index, s->session_index);
+  if (!hs)
+    goto done;
+
+  http_static_server_detach_cache_entry (hs);
+  http_static_server_session_lookup_del (hs->thread_index,
+					 hs->vpp_session_index);
+  vec_free (hs->rx_buf);
+  http_static_server_session_free (hs);
+
+done:
+  http_static_server_sessions_writer_unlock ();
+}
+
 /** \brief Session-layer virtual function table
  */
 static session_cb_vft_t http_static_server_session_cb_vft = {
@@ -1144,7 +1134,8 @@ static session_cb_vft_t http_static_server_session_cb_vft = {
   .add_segment_callback = http_static_server_add_segment_callback,
   .builtin_app_rx_callback = http_static_server_rx_callback,
   .builtin_app_tx_callback = http_static_server_tx_callback,
-  .session_reset_callback = http_static_server_session_reset_callback
+  .session_reset_callback = http_static_server_session_reset_callback,
+  .session_cleanup_callback = http_static_session_cleanup,
 };
 
 static int
@@ -1214,7 +1205,7 @@ http_static_server_listen ()
 }
 
 static void
-http_static_server_session_cleanup_cb (void *hs_handlep)
+http_static_server_session_close_cb (void *hs_handlep)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   http_session_t *hs;
@@ -1230,7 +1221,7 @@ http_static_server_session_cleanup_cb (void *hs_handlep)
     return;
   hs->timer_handle = ~0;
   http_static_server_session_disconnect (hs);
-  http_static_server_session_cleanup (hs);
+//  http_static_server_session_cleanup (hs);
 }
 
 /** \brief Expired session timer-wheel callback
@@ -1246,7 +1237,7 @@ http_expired_timers_dispatch (u32 * expired_timers)
       /* Get session handle. The first bit is the timer id */
       hs_handle = expired_timers[i] & 0x7FFFFFFF;
       session_send_rpc_evt_to_thread (hs_handle >> 24,
-				      http_static_server_session_cleanup_cb,
+				      http_static_server_session_close_cb,
 				      uword_to_pointer (hs_handle, void *));
     }
 }
