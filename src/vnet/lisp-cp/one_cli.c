@@ -1369,54 +1369,44 @@ VLIB_CLI_COMMAND (one_cp_enable_disable_xtr_mode_command) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-lisp_enable_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+one_enable_command_fn (vlib_main_t * vm, unformat_input_t * input,
+		       vlib_cli_command_t * cmd)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_enabled = 0;
-  u8 is_set = 0;
-  clib_error_t *error = NULL;
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "parse error: '%U'", format_unformat_error,
+			      input);
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "expected enable | disable");
+  vnet_lisp_enable_disable (1);
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "enable"))
-	{
-	  is_set = 1;
-	  is_enabled = 1;
-	}
-      else if (unformat (line_input, "disable"))
-	is_set = 1;
-      else
-	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
-  if (!is_set)
-    {
-      error = clib_error_return (0, "state not set");
-      goto done;
-    }
-
-  vnet_lisp_enable_disable (is_enabled);
-
-done:
-  unformat_free (line_input);
-
-  return error;
+  return 0;
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (one_cp_enable_disable_command) = {
-    .path = "one",
-    .short_help = "one [enable|disable]",
-    .function = lisp_enable_disable_command_fn,
+VLIB_CLI_COMMAND (one_cp_enable_command) = {
+    .path = "one enable",
+    .short_help = "one enable",
+    .function = one_enable_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+one_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			vlib_cli_command_t * cmd)
+{
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "parse error: '%U'", format_unformat_error,
+			      input);
+
+  vnet_lisp_enable_disable (0);
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (one_cp_disable_command) = {
+    .path = "one disable",
+    .short_help = "one disable",
+    .function = one_disable_command_fn,
 };
 /* *INDENT-ON* */
 
