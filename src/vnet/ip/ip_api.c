@@ -46,6 +46,7 @@
 #include <vnet/ip/reass/ip4_full_reass.h>
 #include <vnet/ip/reass/ip6_sv_reass.h>
 #include <vnet/ip/reass/ip6_full_reass.h>
+#include <vnet/ip/ip_table.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -452,10 +453,37 @@ vl_api_ip_punt_redirect_t_handler (vl_api_ip_punt_redirect_t * mp,
   REPLY_MACRO (VL_API_IP_PUNT_REDIRECT_REPLY);
 }
 
+static clib_error_t *
+call_elf_section_ip_table_callbacks (vnet_main_t * vnm, u32 table_id,
+				     u32 flags,
+				     _vnet_ip_table_function_list_elt_t **
+				     elts)
+{
+  _vnet_ip_table_function_list_elt_t *elt;
+  vnet_ip_table_function_priority_t prio;
+  clib_error_t *error = 0;
+
+  for (prio = VNET_IP_TABLE_FUNC_PRIORITY_LOW;
+       prio <= VNET_IP_TABLE_FUNC_PRIORITY_HIGH; prio++)
+    {
+      elt = elts[prio];
+
+      while (elt)
+	{
+	  error = elt->fp (vnm, table_id, flags);
+	  if (error)
+	    return error;
+	  elt = elt->next_ip_table_function;
+	}
+    }
+  return error;
+}
+
 void
 ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api)
 {
   u32 fib_index, mfib_index;
+  vnet_main_t *vnm = vnet_get_main ();
 
   /*
    * ignore action on the default table - this is always present
@@ -473,6 +501,10 @@ ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api)
        */
       fib_index = fib_table_find (fproto, table_id);
       mfib_index = mfib_table_find (fproto, table_id);
+
+      if ((~0 != fib_index) || (~0 != mfib_index))
+	call_elf_section_ip_table_callbacks (vnm, table_id, 0 /* is_add */ ,
+					     vnm->ip_table_add_del_functions);
 
       if (~0 != fib_index)
 	{
@@ -635,6 +667,7 @@ ip_table_create (fib_protocol_t fproto,
 		 u32 table_id, u8 is_api, const u8 * name)
 {
   u32 fib_index, mfib_index;
+  vnet_main_t *vnm = vnet_get_main ();
 
   /*
    * ignore action on the default table - this is always present
@@ -667,6 +700,10 @@ ip_table_create (fib_protocol_t fproto,
 						      MFIB_SOURCE_API :
 						      MFIB_SOURCE_CLI), name);
 	}
+
+      if ((~0 == fib_index) || (~0 == mfib_index))
+	call_elf_section_ip_table_callbacks (vnm, table_id, 1 /* is_add */ ,
+					     vnm->ip_table_add_del_functions);
     }
 }
 

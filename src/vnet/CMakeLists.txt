@@ -489,6 +489,7 @@ list(APPEND VNET_HEADERS
   ip/ip6_hop_by_hop_packet.h
   ip/ip6_packet.h
   ip/ip.h
+  ip/ip_table.h
   ip/ip_interface.h
   ip/ip_packet.h
   ip/ip_source_and_port_range_check.h
