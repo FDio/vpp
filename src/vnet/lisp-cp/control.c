@@ -2083,14 +2083,9 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
 	      ls->name = vec_dup (a->name);
 
 	      if (!lcm->locator_set_index_by_name)
-		lcm->locator_set_index_by_name = hash_create_vec (
-								   /* size */
-								   0,
-								   sizeof
-								   (ls->name
-								    [0]),
-								   sizeof
-								   (uword));
+		lcm->locator_set_index_by_name =
+		  hash_create_vec ( /* size */ 0, sizeof (ls->name[0]),
+				   sizeof (uword));
 	      hash_set_mem (lcm->locator_set_index_by_name, ls->name,
 			    ls_index);
 

@@ -1179,6 +1179,7 @@ lisp_add_del_locator_set_command_fn (vlib_main_t * vm,
 	}
     }
 
+  vec_terminate_c_string (locator_set_name);
   a->name = locator_set_name;
   a->locators = locators;
   a->is_add = is_add;
