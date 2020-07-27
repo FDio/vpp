@@ -1114,9 +1114,13 @@ vnet_vxlan_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
 	    .buffer_advance = sizeof (ethernet_header_t),
 	    .type = VNET_FLOW_TYPE_IP4_VXLAN,
 	    .ip4_vxlan = {
-			  .src_addr = t->dst.ip4,
-			  .dst_addr = t->src.ip4,
-			  .dst_port = UDP_DST_PORT_vxlan,
+			  .protocol.prot = IP_PROTOCOL_UDP,
+			  .src_addr.addr = t->dst.ip4,
+			  .dst_addr.addr = t->src.ip4,
+			  .src_addr.mask.as_u32 = ~0,
+			  .dst_addr.mask.as_u32 = ~0,
+			  .dst_port.port = UDP_DST_PORT_vxlan,
+			  .dst_port.mask = 0xFF,
 			  .vni = t->vni,
 			  }
 	    ,
