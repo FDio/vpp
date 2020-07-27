@@ -5153,7 +5153,8 @@ _(tcp_configure_src_addresses_reply)			\
 _(session_rule_add_del_reply)				\
 _(ip_container_proxy_add_del_reply)                     \
 _(output_acl_set_interface_reply)                       \
-_(qos_record_enable_disable_reply)
+_(qos_record_enable_disable_reply)			\
+_(flow_add_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -5450,7 +5451,8 @@ _(SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)		\
 _(SESSION_RULES_DETAILS, session_rules_details)				\
 _(IP_CONTAINER_PROXY_ADD_DEL_REPLY, ip_container_proxy_add_del_reply)	\
 _(OUTPUT_ACL_SET_INTERFACE_REPLY, output_acl_set_interface_reply)       \
-_(QOS_RECORD_ENABLE_DISABLE_REPLY, qos_record_enable_disable_reply)
+_(QOS_RECORD_ENABLE_DISABLE_REPLY, qos_record_enable_disable_reply)		\
+_(FLOW_ADD_REPLY, flow_add_reply)   \
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_EVENT, sw_interface_event)

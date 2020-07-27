@@ -73,6 +73,7 @@ enum ip_proto : u8 {
   IP_API_PROTO_ICMP6 = 58,
   IP_API_PROTO_EIGRP = 88,
   IP_API_PROTO_OSPF = 89,
+  IP_API_PROTO_L2TP = 115,
   IP_API_PROTO_SCTP = 132,
   IP_API_PROTO_RESERVED = 255,
 };
@@ -90,6 +91,18 @@ manual_print typedef address {
 manual_print typedef prefix {
   vl_api_address_t address;
   u8 len;
+};
+
+typedef ip4_address_and_mask
+{
+  vl_api_ip4_address_t addr;
+  vl_api_ip4_address_t mask;
+};
+
+typedef ip6_address_and_mask
+{
+  vl_api_ip6_address_t addr;
+  vl_api_ip6_address_t mask;
 };
 
 typedef mprefix {
