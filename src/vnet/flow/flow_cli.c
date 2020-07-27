@@ -12,11 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <stddef.h>
 
 #include <vnet/vnet.h>
 #include <vnet/devices/devices.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ethernet/packet.h>
 #include <vnet/flow/flow.h>
 
 static format_function_t format_flow;
@@ -58,6 +60,40 @@ format_ip_port_and_mask (u8 * s, va_list * args)
     return format (s, "%u", pm->port);
 
   return format (s, "%u/0x%x", pm->port, pm->mask);
+}
+
+uword
+unformat_ip_protocol_and_mask (unformat_input_t * input, va_list * args)
+{
+  ip_prot_and_mask_t *pm = va_arg (*args, ip_prot_and_mask_t *);
+  u32 prot = 0, mask = 0;
+
+  if (unformat (input, "any"))
+    ;
+  else if (unformat (input, "%U", unformat_ip_protocol, &prot))
+    mask = 0xFF;
+  else if (unformat (input, "%u", &prot))
+    mask = 0xFF;
+  else
+    return 0;
+
+  if (prot > 0XFF || mask > 0xFF)
+    return 0;
+
+  pm->prot = prot;
+  pm->mask = mask;
+  return 1;
+}
+
+u8 *
+format_ip_protocol_and_mask (u8 * s, va_list * args)
+{
+  ip_prot_and_mask_t *pm = va_arg (*args, ip_prot_and_mask_t *);
+
+  if (pm->prot == 0 && pm->mask == 0)
+    return format (s, "any");
+
+  return format (s, "%U", format_ip_protocol, pm->prot);
 }
 
 u8 *
@@ -112,6 +148,38 @@ format_flow_enabled_hw (u8 * s, va_list * args)
   s = format (s, "%v", t);
   vec_free (t);
   return s;
+}
+
+u8 *
+format_rss_function (u8 * s, va_list * args)
+{
+  vnet_rss_function_t func = va_arg (*args, vnet_rss_function_t);
+
+  if (0)
+    ;
+#undef _
+#define _(f, n) \
+      else if (func == VNET_RSS_FUNC_##f) \
+        return format (s, n);
+
+  foreach_rss_function
+#undef _
+    return format (s, "unknown");
+}
+
+u8 *
+format_rss_types (u8 * s, va_list * args)
+{
+  u64 type = va_arg (*args, u64);
+
+#undef _
+#define _(a,b,c)     \
+  if (type & (1UL<<a)) \
+    s = format (s, "%s ", c);
+
+  foreach_flow_rss_types
+#undef _
+    return s;
 }
 
 static const char *flow_type_strings[] = { 0,
@@ -274,37 +342,40 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
     FLOW_ENABLE,
     FLOW_DISABLE
   } action = FLOW_UNKNOWN_ACTION;
+  enum
+  {
+    FLOW_UNKNOWN_CLASS,
+    FLOW_ETHERNET_CLASS,
+    FLOW_IPV4_CLASS,
+    FLOW_IPV6_CLASS,
+  } flow_class = FLOW_UNKNOWN_CLASS;
+
   u32 hw_if_index = ~0, flow_index = ~0;
   int rv;
-  u32 prot = 0, teid = 0, session_id = 0, spi = 0;
-  vnet_flow_type_t type = VNET_FLOW_TYPE_IP4_N_TUPLE;
-  bool is_gtpc_set = false;
-  bool is_gtpu_set = false;
-  bool is_l2tpv3oip_set = false;
-  bool is_ipsec_esp_set = false, is_ipsec_ah_set = false;
-  vnet_flow_type_t outer_type = VNET_FLOW_TYPE_UNKNOWN;
-  vnet_flow_type_t inner_type = VNET_FLOW_TYPE_UNKNOWN;
-  bool outer_ip4_set = false, inner_ip4_set = false;
-  bool outer_ip6_set = false, inner_ip6_set = false;
+  u32 teid = 0, session_id = 0, spi = 0;
+  u16 vni = 0;
+  vnet_flow_type_t type = VNET_FLOW_TYPE_UNKNOWN;
   ip4_address_and_mask_t ip4s = { };
   ip4_address_and_mask_t ip4d = { };
-  ip4_address_and_mask_t inner_ip4s = { };
-  ip4_address_and_mask_t inner_ip4d = { };
   ip6_address_and_mask_t ip6s = { };
   ip6_address_and_mask_t ip6d = { };
-  ip6_address_and_mask_t inner_ip6s = { };
-  ip6_address_and_mask_t inner_ip6d = { };
   ip_port_and_mask_t sport = { };
   ip_port_and_mask_t dport = { };
+  ip_prot_and_mask_t protocol = { };
   u16 eth_type;
-  bool ethernet_set = false;
+  bool tcp_udp_port_set = false;
+  bool gtpc_set = false;
+  bool gtpu_set = false;
+  bool vni_set = false;
+  bool l2tpv3oip_set = false;
+  bool ipsec_esp_set = false, ipsec_ah_set = false;
   u8 *rss_type[3] = { };
   u8 *type_str = NULL;
 
   clib_memset (&flow, 0, sizeof (vnet_flow_t));
   flow.index = ~0;
   flow.actions = 0;
-  flow.ip4_n_tuple.protocol = ~0;
+
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
@@ -320,56 +391,47 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	action = FLOW_DISABLE;
       else if (unformat (line_input, "eth-type %U",
 			 unformat_ethernet_type_host_byte_order, &eth_type))
-	ethernet_set = true;
+	flow_class = FLOW_ETHERNET_CLASS;
       else if (unformat (line_input, "src-ip %U",
 			 unformat_ip4_address_and_mask, &ip4s))
-	outer_ip4_set = true;
+	flow_class = FLOW_IPV4_CLASS;
       else if (unformat (line_input, "dst-ip %U",
 			 unformat_ip4_address_and_mask, &ip4d))
-	outer_ip4_set = true;
+	flow_class = FLOW_IPV4_CLASS;
       else if (unformat (line_input, "ip6-src-ip %U",
 			 unformat_ip6_address_and_mask, &ip6s))
-	outer_ip6_set = true;
+	flow_class = FLOW_IPV6_CLASS;
       else if (unformat (line_input, "ip6-dst-ip %U",
 			 unformat_ip6_address_and_mask, &ip6d))
-	outer_ip6_set = true;
-      else if (unformat (line_input, "inner-src-ip %U",
-			 unformat_ip4_address_and_mask, &inner_ip4s))
-	inner_ip4_set = true;
-      else if (unformat (line_input, "inner-dst-ip %U",
-			 unformat_ip4_address_and_mask, &inner_ip4d))
-	inner_ip4_set = true;
-      else if (unformat (line_input, "inner-ip6-src-ip %U",
-			 unformat_ip6_address_and_mask, &inner_ip6s))
-	inner_ip6_set = true;
-      else if (unformat (line_input, "inner-ip6-dst-ip %U",
-			 unformat_ip6_address_and_mask, &inner_ip6d))
-	inner_ip6_set = true;
+	flow_class = FLOW_IPV6_CLASS;
       else if (unformat (line_input, "src-port %U", unformat_ip_port_and_mask,
 			 &sport))
-	;
+	tcp_udp_port_set = true;
       else if (unformat (line_input, "dst-port %U", unformat_ip_port_and_mask,
 			 &dport))
-	;
-      else if (unformat (line_input, "proto %U", unformat_ip_protocol, &prot))
-	;
-      else if (unformat (line_input, "proto %u", &prot))
+	tcp_udp_port_set = true;
+      else
+	if (unformat
+	    (line_input, "proto %U", unformat_ip_protocol_and_mask,
+	     &protocol))
 	;
       else if (unformat (line_input, "gtpc teid %u", &teid))
-	is_gtpc_set = true;
+	gtpc_set = true;
       else if (unformat (line_input, "gtpu teid %u", &teid))
-	is_gtpu_set = true;
+	gtpu_set = true;
+      else if (unformat (line_input, "vxlan vni %u", &vni))
+	vni_set = true;
       else if (unformat (line_input, "session id %u", &session_id))
 	{
-	  if (prot == IP_PROTOCOL_L2TP)
-	    is_l2tpv3oip_set = true;
+	  if (protocol.prot == IP_PROTOCOL_L2TP)
+	    l2tpv3oip_set = true;
 	}
       else if (unformat (line_input, "spi %u", &spi))
 	{
-	  if (prot == IP_PROTOCOL_IPSEC_ESP)
-	    is_ipsec_esp_set = true;
-	  else if (prot == IP_PROTOCOL_IPSEC_AH)
-	    is_ipsec_ah_set = true;
+	  if (protocol.prot == IP_PROTOCOL_IPSEC_ESP)
+	    ipsec_esp_set = true;
+	  else if (protocol.prot == IP_PROTOCOL_IPSEC_AH)
+	    ipsec_ah_set = true;
 	}
       else if (unformat (line_input, "index %u", &flow_index))
 	;
@@ -391,9 +453,9 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	  if (0)
 	    ;
 #undef _
-#define _(f, s)                                 \
-        else if (unformat (line_input, s)) \
-          flow.rss_fun = VNET_RSS_FUNC_##f;
+#define _(f, s) \
+      else if (unformat (line_input, s)) \
+      flow.rss_fun = VNET_RSS_FUNC_##f;
 
 	  foreach_rss_function
 #undef _
@@ -415,30 +477,29 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	  if (unformat (line_input, "%s use %s and %s",
 			&rss_type[0], &rss_type[1], &rss_type[2]))
 	    ;
-	  else
-	    if (unformat
-		(line_input, "%s use %s", &rss_type[0], &rss_type[1]))
+	  else if (unformat
+		   (line_input, "%s use %s", &rss_type[0], &rss_type[1]))
 	    ;
 	  else if (unformat (line_input, "%s", &rss_type[0]))
 	    ;
 
 #undef _
 #define _(a,b,c)     \
-        else if (!clib_strcmp(c, (const char *)type_str)) \
-          flow.rss_types |= (1ULL<<a);
+      else if (!clib_strcmp(c, (const char *)type_str)) \
+        flow.rss_types |= (1ULL<<a);
 
 #define check_rss_types(_str)     \
-        if (_str != NULL) {\
-          type_str = _str;\
-          if (0) \
-	          ; \
-          foreach_flow_rss_types \
-          else \
-          { \
-            return clib_error_return (0, "parse error: '%U'", \
-              format_unformat_error, line_input); \
-          } \
-        }
+      if (_str != NULL) {\
+        type_str = _str;\
+        if (0) \
+          ; \
+        foreach_flow_rss_types \
+        else \
+        { \
+          return clib_error_return (0, "parse error: '%U'", \
+          format_unformat_error, line_input); \
+        } \
+      }
 
 	  check_rss_types (rss_type[0])
 	    check_rss_types (rss_type[1]) check_rss_types (rss_type[2])
@@ -469,200 +530,141 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	return clib_error_return (0, "Please specify at least one action");
 
       /* Adjust the flow type */
-      if (ethernet_set == true)
-	outer_type = VNET_FLOW_TYPE_ETHERNET;
-      if (outer_ip4_set == true)
-	outer_type = VNET_FLOW_TYPE_IP4_N_TUPLE;
-      else if (outer_ip6_set == true)
-	outer_type = VNET_FLOW_TYPE_IP6_N_TUPLE;
-      if (inner_ip4_set == true)
-	inner_type = VNET_FLOW_TYPE_IP4_N_TUPLE;
-      else if (inner_ip6_set == true)
-	inner_type = VNET_FLOW_TYPE_IP6_N_TUPLE;
-
-      if (outer_type == VNET_FLOW_TYPE_UNKNOWN)
-	return clib_error_return (0, "Please specify a supported flow type");
-
-      if (outer_type == VNET_FLOW_TYPE_ETHERNET)
-	type = VNET_FLOW_TYPE_ETHERNET;
-      else if (outer_type == VNET_FLOW_TYPE_IP4_N_TUPLE)
+      switch (flow_class)
 	{
-	  type = VNET_FLOW_TYPE_IP4_N_TUPLE;
+	case FLOW_ETHERNET_CLASS:
+	  type = VNET_FLOW_TYPE_ETHERNET;
+	  break;
 
-	  if (inner_type == VNET_FLOW_TYPE_UNKNOWN)
+	case FLOW_IPV4_CLASS:
+	  if (gtpc_set)
 	    {
-	      if (is_gtpc_set)
-		type = VNET_FLOW_TYPE_IP4_GTPC;
-	      else if (is_gtpu_set)
-		type = VNET_FLOW_TYPE_IP4_GTPU;
-	      else if (is_l2tpv3oip_set)
-		type = VNET_FLOW_TYPE_IP4_L2TPV3OIP;
-	      else if (is_ipsec_esp_set)
-		type = VNET_FLOW_TYPE_IP4_IPSEC_ESP;
-	      else if (is_ipsec_ah_set)
-		type = VNET_FLOW_TYPE_IP4_IPSEC_AH;
+	      type = VNET_FLOW_TYPE_IP4_GTPC;
+	      protocol.prot = IP_PROTOCOL_UDP;
 	    }
-	  else if (inner_type == VNET_FLOW_TYPE_IP4_N_TUPLE)
+	  else if (gtpu_set)
 	    {
-	      if (is_gtpu_set)
-		type = VNET_FLOW_TYPE_IP4_GTPU_IP4;
+	      type = VNET_FLOW_TYPE_IP4_GTPU;
+	      protocol.prot = IP_PROTOCOL_UDP;
 	    }
-	  else if (inner_type == VNET_FLOW_TYPE_IP6_N_TUPLE)
+	  else if (vni_set)
 	    {
-	      if (is_gtpu_set)
-		type = VNET_FLOW_TYPE_IP4_GTPU_IP6;
+	      type = VNET_FLOW_TYPE_IP4_VXLAN;
+	      protocol.prot = IP_PROTOCOL_UDP;
 	    }
-	}
-      else if (outer_type == VNET_FLOW_TYPE_IP6_N_TUPLE)
-	{
-	  type = VNET_FLOW_TYPE_IP6_N_TUPLE;
+	  else if (l2tpv3oip_set)
+	    type = VNET_FLOW_TYPE_IP4_L2TPV3OIP;
+	  else if (ipsec_esp_set)
+	    type = VNET_FLOW_TYPE_IP4_IPSEC_ESP;
+	  else if (ipsec_ah_set)
+	    type = VNET_FLOW_TYPE_IP4_IPSEC_AH;
+	  else if (tcp_udp_port_set)
+	    type = VNET_FLOW_TYPE_IP4_N_TUPLE;
+	  else
+	    type = VNET_FLOW_TYPE_IP4;
+	  break;
+	case FLOW_IPV6_CLASS:
+	  if (tcp_udp_port_set)
+	    type = VNET_FLOW_TYPE_IP6_N_TUPLE;
+	  else if (vni_set)
+	    type = VNET_FLOW_TYPE_IP6_VXLAN;
+	  else
+	    type = VNET_FLOW_TYPE_IP6;
+	  break;
 
-	  if (inner_type == VNET_FLOW_TYPE_UNKNOWN)
-	    {
-	      if (is_gtpc_set)
-		type = VNET_FLOW_TYPE_IP6_GTPC;
-	      else if (is_gtpu_set)
-		type = VNET_FLOW_TYPE_IP6_GTPU;
-	    }
-	  else if (inner_type == VNET_FLOW_TYPE_IP4_N_TUPLE)
-	    {
-	      if (is_gtpu_set)
-		type = VNET_FLOW_TYPE_IP6_GTPU_IP4;
-	    }
-	  else if (inner_type == VNET_FLOW_TYPE_IP6_N_TUPLE)
-	    {
-	      if (is_gtpu_set)
-		type = VNET_FLOW_TYPE_IP6_GTPU_IP6;
-	    }
+	default:
+	  return clib_error_return (0,
+				    "Please specify a supported flow type");
 	}
 
-      //assign specific field values per flow type
-      switch (type)
+      /* Assign specific field values per flow type */
+      if (flow_class == FLOW_ETHERNET_CLASS)
 	{
-	case VNET_FLOW_TYPE_ETHERNET:
-	  memset (&flow.ethernet, 0, sizeof (flow.ethernet));
 	  flow.ethernet.eth_hdr.type = eth_type;
-	  break;
-	case VNET_FLOW_TYPE_IP4_L2TPV3OIP:
-	  clib_memcpy (&flow.ip4_l2tpv3oip.src_addr, &ip4s,
-		       sizeof (ip4_address_and_mask_t));
-	  clib_memcpy (&flow.ip4_l2tpv3oip.dst_addr, &ip4d,
-		       sizeof (ip4_address_and_mask_t));
-	  flow.ip4_l2tpv3oip.protocol = prot;
-	  flow.ip4_l2tpv3oip.session_id = session_id;
-	  break;
-	case VNET_FLOW_TYPE_IP4_IPSEC_ESP:
-	  clib_memcpy (&flow.ip4_ipsec_esp.src_addr, &ip4s,
-		       sizeof (ip4_address_and_mask_t));
-	  clib_memcpy (&flow.ip4_ipsec_esp.dst_addr, &ip4d,
-		       sizeof (ip4_address_and_mask_t));
-	  flow.ip4_ipsec_esp.protocol = prot;
-	  flow.ip4_ipsec_esp.spi = spi;
-	  break;
-	case VNET_FLOW_TYPE_IP4_IPSEC_AH:
-	  clib_memcpy (&flow.ip4_ipsec_ah.src_addr, &ip4s,
-		       sizeof (ip4_address_and_mask_t));
-	  clib_memcpy (&flow.ip4_ipsec_ah.dst_addr, &ip4d,
-		       sizeof (ip4_address_and_mask_t));
-	  flow.ip4_ipsec_ah.protocol = prot;
-	  flow.ip4_ipsec_ah.spi = spi;
-	  break;
-	case VNET_FLOW_TYPE_IP4_N_TUPLE:
-	case VNET_FLOW_TYPE_IP4_GTPC:
-	case VNET_FLOW_TYPE_IP4_GTPU:
-	case VNET_FLOW_TYPE_IP4_GTPU_IP4:
-	case VNET_FLOW_TYPE_IP4_GTPU_IP6:
-	  clib_memcpy (&flow.ip4_n_tuple.src_addr, &ip4s,
-		       sizeof (ip4_address_and_mask_t));
-	  clib_memcpy (&flow.ip4_n_tuple.dst_addr, &ip4d,
-		       sizeof (ip4_address_and_mask_t));
-	  clib_memcpy (&flow.ip4_n_tuple.src_port, &sport,
-		       sizeof (ip_port_and_mask_t));
-	  clib_memcpy (&flow.ip4_n_tuple.dst_port, &dport,
-		       sizeof (ip_port_and_mask_t));
-	  flow.ip4_n_tuple.protocol = prot;
+	}
+      else if (flow_class == FLOW_IPV4_CLASS)
+	{
+	  vnet_flow_ip4_t *ip4_ptr = &flow.ip4;
 
-	  if (type == VNET_FLOW_TYPE_IP4_GTPC)
-	    flow.ip4_gtpc.teid = teid;
-	  else if (type == VNET_FLOW_TYPE_IP4_GTPU)
-	    flow.ip4_gtpu.teid = teid;
-	  else if (type == VNET_FLOW_TYPE_IP4_GTPU_IP4)
+	  clib_memcpy (&ip4_ptr->src_addr, &ip4s,
+		       sizeof (ip4_address_and_mask_t));
+	  clib_memcpy (&ip4_ptr->dst_addr, &ip4d,
+		       sizeof (ip4_address_and_mask_t));
+	  ip4_ptr->protocol.prot = protocol.prot;
+
+	  /* In this cli, we use the protocol.mask only when the flow type is
+	   * VNET_FLOW_TYPE_IP4/IP6. For other cases, the IP protocol is just
+	   * used to identify the next layer type: e.g. UDP/TCP or IPSEC_ESP
+	   */
+	  if (type == VNET_FLOW_TYPE_IP4)
+	    ip4_ptr->protocol.mask = protocol.mask;
+
+	  switch (protocol.prot)
 	    {
-	      flow.ip4_gtpu_ip4.teid = teid;
-	      clib_memcpy (&flow.ip4_gtpu_ip4.inner_src_addr, &inner_ip4s,
-			   sizeof (ip4_address_and_mask_t));
-	      clib_memcpy (&flow.ip4_gtpu_ip4.inner_dst_addr, &inner_ip4d,
-			   sizeof (ip4_address_and_mask_t));
-	    }
-	  else if (type == VNET_FLOW_TYPE_IP4_GTPU_IP6)
-	    {
-	      flow.ip4_gtpu_ip6.teid = teid;
-	      clib_memcpy (&flow.ip4_gtpu_ip6.inner_src_addr, &inner_ip6s,
-			   sizeof (ip6_address_and_mask_t));
-	      clib_memcpy (&flow.ip4_gtpu_ip6.inner_dst_addr, &inner_ip6d,
-			   sizeof (ip6_address_and_mask_t));
-	    }
+	      /* ip4-n-tuple */
+	    case IP_PROTOCOL_TCP:
+	    case IP_PROTOCOL_UDP:
+	      flow.ip4_n_tuple.src_port = sport;
+	      flow.ip4_n_tuple.dst_port = dport;
 
-	  if (flow.ip4_n_tuple.protocol == (ip_protocol_t) ~ 0)
-	    return clib_error_return (0, "Please specify ip protocol");
-	  if ((type != VNET_FLOW_TYPE_IP4_N_TUPLE) &&
-	      (flow.ip4_n_tuple.protocol != IP_PROTOCOL_UDP))
-	    return clib_error_return (0,
-				      "For GTP related flow, ip protocol must be UDP");
-	  break;
+	      if (type == VNET_FLOW_TYPE_IP4_GTPC)
+		flow.ip4_gtpc.teid = teid;
+	      else if (type == VNET_FLOW_TYPE_IP4_GTPU)
+		flow.ip4_gtpu.teid = teid;
+	      else if (type == VNET_FLOW_TYPE_IP4_VXLAN)
+		flow.ip4_vxlan.vni = vni;
+	      break;
+	    case IP_PROTOCOL_L2TP:
+	      flow.ip4_l2tpv3oip.session_id = session_id;
+	      break;
+	    case IP_PROTOCOL_IPSEC_ESP:
+	      flow.ip4_ipsec_esp.spi = spi;
+	      break;
+	    case IP_PROTOCOL_IPSEC_AH:
+	      flow.ip4_ipsec_esp.spi = spi;
+	      break;
+	    default:
+	      break;
+	    }
+	}
+      else if (flow_class == FLOW_IPV6_CLASS)
+	{
+	  vnet_flow_ip6_t *ip6_ptr = &flow.ip6;
 
-	case VNET_FLOW_TYPE_IP6_N_TUPLE:
-	case VNET_FLOW_TYPE_IP6_GTPC:
-	case VNET_FLOW_TYPE_IP6_GTPU:
-	case VNET_FLOW_TYPE_IP6_GTPU_IP4:
-	case VNET_FLOW_TYPE_IP6_GTPU_IP6:
 	  clib_memcpy (&flow.ip6_n_tuple.src_addr, &ip6s,
 		       sizeof (ip6_address_and_mask_t));
 	  clib_memcpy (&flow.ip6_n_tuple.dst_addr, &ip6d,
 		       sizeof (ip6_address_and_mask_t));
-	  clib_memcpy (&flow.ip6_n_tuple.src_port, &sport,
-		       sizeof (ip_port_and_mask_t));
-	  clib_memcpy (&flow.ip6_n_tuple.dst_port, &dport,
-		       sizeof (ip_port_and_mask_t));
-	  flow.ip6_n_tuple.protocol = prot;
 
-	  if (type == VNET_FLOW_TYPE_IP6_GTPC)
-	    flow.ip6_gtpc.teid = teid;
-	  else if (type == VNET_FLOW_TYPE_IP6_GTPU)
-	    flow.ip6_gtpu.teid = teid;
-	  else if (type == VNET_FLOW_TYPE_IP6_GTPU_IP4)
+	  ip6_ptr->protocol.prot = protocol.prot;
+
+	  /* In this cli, we use the protocol.mask only when the flow type is
+	   * VNET_FLOW_TYPE_IP4/IP6. For other cases, the IP protocol is just
+	   * used to identify the next layer type: e.g. UDP/TCP or IPSEC_ESP
+	   */
+	  if (type == VNET_FLOW_TYPE_IP6)
+	    ip6_ptr->protocol.mask = protocol.mask;
+
+	  switch (protocol.prot)
 	    {
-	      flow.ip6_gtpu_ip4.teid = teid;
-	      clib_memcpy (&flow.ip6_gtpu_ip4.inner_src_addr, &inner_ip4s,
-			   sizeof (ip4_address_and_mask_t));
-	      clib_memcpy (&flow.ip6_gtpu_ip4.inner_dst_addr, &inner_ip4d,
-			   sizeof (ip4_address_and_mask_t));
-	    }
-	  else if (type == VNET_FLOW_TYPE_IP6_GTPU_IP6)
-	    {
-	      flow.ip6_gtpu_ip6.teid = teid;
-	      clib_memcpy (&flow.ip6_gtpu_ip6.inner_src_addr, &inner_ip6s,
-			   sizeof (ip6_address_and_mask_t));
-	      clib_memcpy (&flow.ip6_gtpu_ip6.inner_dst_addr, &inner_ip6d,
-			   sizeof (ip6_address_and_mask_t));
-	    }
+	      /* ip6-n-tuple */
+	    case IP_PROTOCOL_TCP:
+	    case IP_PROTOCOL_UDP:
+	      flow.ip6_n_tuple.src_port = sport;
+	      flow.ip6_n_tuple.dst_port = dport;
 
-	  if (flow.ip6_n_tuple.protocol == (ip_protocol_t) ~ 0)
-	    return clib_error_return (0, "Please specify ip protocol");
-	  if ((type != VNET_FLOW_TYPE_IP6_N_TUPLE) &&
-	      (flow.ip6_n_tuple.protocol != IP_PROTOCOL_UDP))
-	    return clib_error_return (0,
-				      "For GTP related flow, ip protocol must be UDP");
-	  break;
-
-	default:
-	  break;
+	      if (type == VNET_FLOW_TYPE_IP6_VXLAN)
+		flow.ip6_vxlan.vni = vni;
+	      break;
+	    default:
+	      break;
+	    }
 	}
 
       flow.type = type;
       rv = vnet_flow_add (vnm, &flow, &flow_index);
       if (!rv)
-	printf ("flow %u added\n", flow_index);
+	vlib_cli_output (vm, "flow %u added", flow_index);
 
       break;
     case FLOW_DEL:
@@ -681,19 +683,26 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 
   if (rv < 0)
     return clib_error_return (0, "flow error: %U", format_flow_error, rv);
+
   return 0;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_flow_command, static) = {
     .path = "test flow",
-    .short_help = "test flow add [src-ip <ip-addr/mask>] [dst-ip "
-      "<ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] "
-      "[proto <ip-proto>",
+    .short_help = "test flow [add|del|enable|disable] [index <id>] "
+        "[src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] "
+        "[ip6-src-ip <ip-addr/mask>] [ip6-dst-ip <ip-addr/mask>] "
+        "[src-port <port/mask>] [dst-port <port/mask>] "
+        "[proto <ip-proto>] "
+        "[gtpc teid <teid>] [gtpu teid <teid>] [vxlan <vni>] "
+        "[session id <session>] [spi <spi>]"
+        "[next-node <node>] [mark <id>] [buffer-advance <len>] "
+        "[redirect-to-queue <queue>] [drop] "
+        "[rss function <name>] [rss types <flow type>]",
     .function = test_flow,
 };
 /* *INDENT-ON* */
-
 
 static u8 *
 format_flow_match_element (u8 * s, va_list * args)
@@ -710,6 +719,16 @@ format_flow_match_element (u8 * s, va_list * args)
   if (strncmp (type, "u32", 3) == 0)
     return format (s, "%d", *(u32 *) ptr);
 
+  if (strncmp (type, "ethernet_header_t", 13) == 0)
+    {
+      ethernet_max_header_t m;
+      memset (&m, 0, sizeof (m));
+      m.ethernet = *(ethernet_header_t *) ptr;
+      /* convert the ethernet type to net order */
+      m.ethernet.type = clib_host_to_net_u16 (m.ethernet.type);
+      return format (s, "%U", format_ethernet_header, &m);
+    }
+
   if (strncmp (type, "ip4_address_t", 13) == 0)
     return format (s, "%U", format_ip4_address, ptr);
 
@@ -722,8 +741,8 @@ format_flow_match_element (u8 * s, va_list * args)
   if (strncmp (type, "ip6_address_and_mask_t", 13) == 0)
     return format (s, "%U", format_ip6_address_and_mask, ptr);
 
-  if (strncmp (type, "ip_protocol_t", 13) == 0)
-    return format (s, "%U", format_ip_protocol, *(ip_protocol_t *) ptr);
+  if (strncmp (type, "ip_prot_and_mask_t", 13) == 0)
+    return format (s, "%U", format_ip_protocol_and_mask, ptr);
 
   if (strncmp (type, "ip_port_and_mask_t", 18) == 0)
     return format (s, "%U", format_ip_port_and_mask, ptr);
@@ -777,8 +796,15 @@ format_flow (u8 * s, va_list * args)
   s = format (s, "\n%Uaction: %U", format_white_space, indent + 2,
 	      format_flow_actions, f->actions);
 
+  if (f->actions & VNET_FLOW_ACTION_DROP)
+    t = format (t, "%sdrop", t ? ", " : "");
+
   if (f->actions & VNET_FLOW_ACTION_MARK)
     t = format (t, "%smark %u", t ? ", " : "", f->mark_flow_id);
+
+  if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_QUEUE)
+    t =
+      format (t, "%sredirect-to-queue %u", t ? ", " : "", f->redirect_queue);
 
   if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_NODE)
     t = format (t, "%snext-node %U", t ? ", " : "",
@@ -786,6 +812,14 @@ format_flow (u8 * s, va_list * args)
 
   if (f->actions & VNET_FLOW_ACTION_BUFFER_ADVANCE)
     t = format (t, "%sbuffer-advance %d", t ? ", " : "", f->buffer_advance);
+
+  if (f->actions & VNET_FLOW_ACTION_RSS)
+    {
+      t = format (t, "%srss function %U", t ? ", " : "",
+		  format_rss_function, f->rss_fun);
+      t = format (t, "%srss types %U", t ? ", " : "",
+		  format_rss_types, f->rss_types);
+    }
 
   if (t)
     {

@@ -66,6 +66,14 @@ ipv6_addr_and_mask_convert (vl_api_ip6_address_and_mask_t * vl_api_addr,
 }
 
 static inline void
+protocol_and_mask_convert (vl_api_ip_prot_and_mask_t * vl_api_protocol,
+			   ip_prot_and_mask_t * vnet_protocol)
+{
+  vnet_protocol->prot = (ip_protocol_t) vl_api_protocol->prot;
+  vnet_protocol->mask = vl_api_protocol->mask;
+}
+
+static inline void
 port_and_mask_convert (vl_api_ip_port_and_mask_t * vl_api_port,
 		       ip_port_and_mask_t * vnet_port)
 {
@@ -79,11 +87,10 @@ ipv4_n_tuple_flow_convert (vl_api_flow_ip4_n_tuple_t * vl_api_flow,
 {
   ipv4_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
   ipv4_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
+  protocol_and_mask_convert (&vl_api_flow->protocol, &f->protocol);
 
   port_and_mask_convert (&vl_api_flow->src_port, &f->src_port);
   port_and_mask_convert (&vl_api_flow->dst_port, &f->dst_port);
-
-  f->protocol = (ip_protocol_t) vl_api_flow->protocol;
 }
 
 static void
@@ -92,11 +99,10 @@ ipv6_n_tuple_flow_convert (vl_api_flow_ip6_n_tuple_t * vl_api_flow,
 {
   ipv6_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
   ipv6_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
+  protocol_and_mask_convert (&vl_api_flow->protocol, &f->protocol);
 
   port_and_mask_convert (&vl_api_flow->src_port, &f->src_port);
   port_and_mask_convert (&vl_api_flow->dst_port, &f->dst_port);
-
-  f->protocol = (ip_protocol_t) vl_api_flow->protocol;
 }
 
 static inline void
@@ -124,7 +130,7 @@ ipv4_l2tpv3oip_flow_convert (vl_api_flow_ip4_l2tpv3oip_t * vl_api_flow,
   ipv4_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
   ipv4_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
 
-  f->protocol = (ip_protocol_t) vl_api_flow->protocol;
+  protocol_and_mask_convert (&vl_api_flow->protocol, &f->protocol);
   f->session_id = ntohl (vl_api_flow->session_id);
 }
 
@@ -135,7 +141,7 @@ ipv4_ipsec_esp_flow_convert (vl_api_flow_ip4_ipsec_esp_t * vl_api_flow,
   ipv4_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
   ipv4_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
 
-  f->protocol = (ip_protocol_t) vl_api_flow->protocol;
+  protocol_and_mask_convert (&vl_api_flow->protocol, &f->protocol);
   f->spi = ntohl (vl_api_flow->spi);
 }
 
@@ -146,7 +152,7 @@ ipv4_ipsec_ah_flow_convert (vl_api_flow_ip4_ipsec_ah_t * vl_api_flow,
   ipv4_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
   ipv4_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
 
-  f->protocol = (ip_protocol_t) vl_api_flow->protocol;
+  protocol_and_mask_convert (&vl_api_flow->protocol, &f->protocol);
   f->spi = ntohl (vl_api_flow->spi);
 }
 
@@ -160,7 +166,7 @@ ipv4_gtpu_flow_convert (vl_api_flow_ip4_gtpu_t * vl_api_flow,
   port_and_mask_convert (&vl_api_flow->src_port, &f->src_port);
   port_and_mask_convert (&vl_api_flow->dst_port, &f->dst_port);
 
-  f->protocol = (ip_protocol_t) vl_api_flow->protocol;
+  protocol_and_mask_convert (&vl_api_flow->protocol, &f->protocol);
   f->teid = ntohl (vl_api_flow->teid);
 }
 
@@ -174,7 +180,7 @@ ipv4_gtpc_flow_convert (vl_api_flow_ip4_gtpc_t * vl_api_flow,
   port_and_mask_convert (&vl_api_flow->src_port, &f->src_port);
   port_and_mask_convert (&vl_api_flow->dst_port, &f->dst_port);
 
-  f->protocol = (ip_protocol_t) vl_api_flow->protocol;
+  protocol_and_mask_convert (&vl_api_flow->protocol, &f->protocol);
   f->teid = ntohl (vl_api_flow->teid);
 }
 
@@ -235,12 +241,10 @@ vl_api_flow_add_t_handler (vl_api_flow_add_t * mp)
       rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
       goto out;
       break;
-
     }
 
   rv = vnet_flow_add (vnm, &flow, &flow_index);
 
-  goto out;
 out:
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_FLOW_ADD_REPLY,
