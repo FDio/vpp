@@ -49,7 +49,8 @@ import "vpp/api/vpe_types.api";
  * DHCP APIs: see ... /src/vnet/dhcp/{dhcp.api, dhcp_api.c}
  * COP APIs: see ... /src/vnet/cop/{cop.api, cop_api.c}
  * POLICER APIs: see ... /src/vnet/policer/{policer.api, policer_api.c}
- * BIER APIs: see ... /src/vnet/policer/{bier.api, bier_api.c}
+ * BIER APIs: see ... /src/vnet/policer/{bier.api, bier_api.c}.
+ * flow APIs: see .../vnet/vnet/flow/{flow.api, flow_api.c}
  */
 
 /** \brief Control ping from client to api server request

@@ -1,0 +1,25 @@
+---
+name: Flow infrastructure
+maintainer: Damjan Marion <damarion@cisco.com>
+features:
+  - Four APIs are provided - flow_add, flow_del, flow_enable and flow_disable
+  - The below flow types are currently supported:
+      - FLOW_TYPE_IP4_N_TUPLE,
+      - FLOW_TYPE_IP6_N_TUPLE,
+      - FLOW_TYPE_IP4_N_TUPLE_TAGGED,
+      - FLOW_TYPE_IP6_N_TUPLE_TAGGED,
+      - FLOW_TYPE_IP4_L2TPV3OIP,
+      - FLOW_TYPE_IP4_IPSEC_ESP,
+      - FLOW_TYPE_IP4_IPSEC_AH,
+      - FLOW_TYPE_IP4_GTPC,
+      - FLOW_TYPE_IP4_GTPU
+  - The below flow actions can be specified for the flows:
+      - FLOW_ACTION_COUNT,
+      - FLOW_ACTION_MARK,
+      - FLOW_ACTION_BUFFER_ADVANCE,
+      - FLOW_ACTION_REDIRECT_TO_NODE,
+      - FLOW_ACTION_REDIRECT_TO_QUEUE,
+      - FLOW_ACTION_DROP
+description: "Flow infrastructure to provide hardware offload capabilities"
+state: development
+properties: [API, CLI]
