@@ -14,20 +14,22 @@
  * limitations under the License.
  */
 
-option version = "0.0.1";
+option version = "0.0.2";
 import "vnet/ethernet/ethernet_types.api";
 import "vnet/ip/ip_types.api";
 
 enum flow_type
 {
   FLOW_TYPE_ETHERNET = 1,
+  FLOW_TYPE_IP4,
+  FLOW_TYPE_IP6,
+  FLOW_TYPE_IP4_L2TPV3OIP,
+  FLOW_TYPE_IP4_IPSEC_ESP,
+  FLOW_TYPE_IP4_IPSEC_AH,
   FLOW_TYPE_IP4_N_TUPLE,
   FLOW_TYPE_IP6_N_TUPLE,
   FLOW_TYPE_IP4_N_TUPLE_TAGGED,
   FLOW_TYPE_IP6_N_TUPLE_TAGGED,
-  FLOW_TYPE_IP4_L2TPV3OIP,
-  FLOW_TYPE_IP4_IPSEC_ESP,
-  FLOW_TYPE_IP4_IPSEC_AH,
   FLOW_TYPE_IP4_VXLAN,
   FLOW_TYPE_IP6_VXLAN,
   FLOW_TYPE_IP4_GTPC,
@@ -50,6 +52,12 @@ typedef ip_port_and_mask
   u16 mask;
 };
 
+typedef ip_prot_and_mask
+{
+  vl_api_ip_proto_t prot;
+  u8 mask;
+};
+
 typedef flow_ethernet
 {
   i32 foo;
@@ -58,14 +66,30 @@ typedef flow_ethernet
   u16 type;
 };
 
+typedef flow_ip4
+{
+  i32 foo;
+  vl_api_ip4_address_and_mask_t src_addr;
+  vl_api_ip4_address_and_mask_t dst_addr;
+  vl_api_ip_prot_and_mask_t protocol;
+};
+
+typedef flow_ip6
+{
+  i32 foo;
+  vl_api_ip6_address_and_mask_t src_addr;
+  vl_api_ip6_address_and_mask_t dst_addr;
+  vl_api_ip_prot_and_mask_t protocol;
+};
+
 typedef flow_ip4_n_tuple
 {
   i32 foo;
   vl_api_ip4_address_and_mask_t src_addr;
   vl_api_ip4_address_and_mask_t dst_addr;
+  vl_api_ip_prot_and_mask_t protocol;
   vl_api_ip_port_and_mask_t src_port;
   vl_api_ip_port_and_mask_t dst_port;
-  vl_api_ip_proto_t protocol;
 };
 
 typedef flow_ip6_n_tuple
@@ -73,9 +97,9 @@ typedef flow_ip6_n_tuple
   i32 foo;
   vl_api_ip6_address_and_mask_t src_addr;
   vl_api_ip6_address_and_mask_t dst_addr;
+  vl_api_ip_prot_and_mask_t protocol;
   vl_api_ip_port_and_mask_t src_port;
   vl_api_ip_port_and_mask_t dst_port;
-  vl_api_ip_proto_t protocol;
 };
 
 typedef flow_ip4_n_tuple_tagged
@@ -83,9 +107,9 @@ typedef flow_ip4_n_tuple_tagged
   i32 foo;
   vl_api_ip4_address_and_mask_t src_addr;
   vl_api_ip4_address_and_mask_t dst_addr;
+  vl_api_ip_prot_and_mask_t protocol;
   vl_api_ip_port_and_mask_t src_port;
   vl_api_ip_port_and_mask_t dst_port;
-  vl_api_ip_proto_t protocol;
 };
 
 typedef flow_ip6_n_tuple_tagged
@@ -93,9 +117,9 @@ typedef flow_ip6_n_tuple_tagged
   i32 foo;
   vl_api_ip6_address_and_mask_t src_addr;
   vl_api_ip6_address_and_mask_t dst_addr;
+  vl_api_ip_prot_and_mask_t protocol;
   vl_api_ip_port_and_mask_t src_port;
   vl_api_ip_port_and_mask_t dst_port;
-  vl_api_ip_proto_t protocol;
 };
 
 typedef flow_ip4_l2tpv3oip
@@ -103,9 +127,7 @@ typedef flow_ip4_l2tpv3oip
   i32 foo;
   vl_api_ip4_address_and_mask_t src_addr;
   vl_api_ip4_address_and_mask_t dst_addr;
-  vl_api_ip_port_and_mask_t src_port;
-  vl_api_ip_port_and_mask_t dst_port;
-  vl_api_ip_proto_t protocol;
+  vl_api_ip_prot_and_mask_t protocol;
   u32 session_id;
 };
 
@@ -114,9 +136,7 @@ typedef flow_ip4_ipsec_esp
   i32 foo;
   vl_api_ip4_address_and_mask_t src_addr;
   vl_api_ip4_address_and_mask_t dst_addr;
-  vl_api_ip_port_and_mask_t src_port;
-  vl_api_ip_port_and_mask_t dst_port;
-  vl_api_ip_proto_t protocol;
+  vl_api_ip_prot_and_mask_t protocol;
   u32 spi;
 };
 
@@ -125,27 +145,29 @@ typedef flow_ip4_ipsec_ah
   i32 foo;
   vl_api_ip4_address_and_mask_t src_addr;
   vl_api_ip4_address_and_mask_t dst_addr;
-  vl_api_ip_port_and_mask_t src_port;
-  vl_api_ip_port_and_mask_t dst_port;
-  vl_api_ip_proto_t protocol;
+  vl_api_ip_prot_and_mask_t protocol;
   u32 spi;
 };
 
 typedef flow_ip4_vxlan
 {
   i32 foo;
-  vl_api_ip4_address_t src_addr;
-  vl_api_ip4_address_t dst_addr;
-  u16 dst_port;
+  vl_api_ip4_address_and_mask_t src_addr;
+  vl_api_ip4_address_and_mask_t dst_addr;
+  vl_api_ip_prot_and_mask_t protocol;
+  vl_api_ip_port_and_mask_t src_port;
+  vl_api_ip_port_and_mask_t dst_port;
   u16 vni;
 };
 
 typedef flow_ip6_vxlan
 {
   i32 foo;
-  vl_api_ip6_address_t src_addr;
-  vl_api_ip6_address_t dst_addr;
-  u16 dst_port;
+  vl_api_ip6_address_and_mask_t src_addr;
+  vl_api_ip6_address_and_mask_t dst_addr;
+  vl_api_ip_prot_and_mask_t protocol;
+  vl_api_ip_port_and_mask_t src_port;
+  vl_api_ip_port_and_mask_t dst_port;
   u16 vni;
 };
 
@@ -154,9 +176,9 @@ typedef flow_ip4_gtpc
   i32 foo;
   vl_api_ip4_address_and_mask_t src_addr;
   vl_api_ip4_address_and_mask_t dst_addr;
+  vl_api_ip_prot_and_mask_t protocol;
   vl_api_ip_port_and_mask_t src_port;
   vl_api_ip_port_and_mask_t dst_port;
-  vl_api_ip_proto_t protocol;
   u32 teid;
 };
 
@@ -165,22 +187,24 @@ typedef flow_ip4_gtpu
   i32 foo;
   vl_api_ip4_address_and_mask_t src_addr;
   vl_api_ip4_address_and_mask_t dst_addr;
+  vl_api_ip_prot_and_mask_t protocol;
   vl_api_ip_port_and_mask_t src_port;
   vl_api_ip_port_and_mask_t dst_port;
-  vl_api_ip_proto_t protocol;
   u32 teid;
 };
 
 union flow
 {
   vl_api_flow_ethernet_t ethernet;
+  vl_api_flow_ip4_t ip4;
+  vl_api_flow_ip6_t ip6;
+  vl_api_flow_ip4_l2tpv3oip_t ip4_l2tpv3oip;
+  vl_api_flow_ip4_ipsec_esp_t ip4_ipsec_esp;
+  vl_api_flow_ip4_ipsec_ah_t ip4_ipsec_ah;
   vl_api_flow_ip4_n_tuple_t ip4_n_tuple;
   vl_api_flow_ip6_n_tuple_t ip6_n_tuple;
   vl_api_flow_ip4_n_tuple_tagged_t ip4_n_tuple_tagged;
   vl_api_flow_ip6_n_tuple_tagged_t ip6_n_tuple_tagged;
-  vl_api_flow_ip4_l2tpv3oip_t ip4_l2tpv3oip;
-  vl_api_flow_ip4_ipsec_esp_t ip4_ipsec_esp;
-  vl_api_flow_ip4_ipsec_ah_t ip4_ipsec_ah;
   vl_api_flow_ip4_vxlan_t ip4_vxlan;
   vl_api_flow_ip6_vxlan_t ip6_vxlan;
   vl_api_flow_ip4_gtpc_t ip4_gtpc;
