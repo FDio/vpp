@@ -29,6 +29,7 @@ list(APPEND VNET_SOURCES
   devices/netlink.c
   flow/flow.c
   flow/flow_cli.c
+  flow/flow_api.c
   handoff.c
   interface.c
   interface_api.c
@@ -77,6 +78,8 @@ list(APPEND VNET_API_FILES
   interface.api
   interface_types.api
   ip/ip_types.api
+  flow/flow_types.api
+  flow/flow.api
 )
 
 ##############################################################################
