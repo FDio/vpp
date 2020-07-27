@@ -40,6 +40,8 @@
 #ifndef included_vnet_vnet_h
 #define included_vnet_vnet_h
 
+#include <stddef.h>
+
 #include <vppinfra/types.h>
 
 #include <vppinfra/pcap.h>

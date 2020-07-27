@@ -92,6 +92,18 @@ manual_print typedef prefix {
   u8 len;
 };
 
+typedef ip4_address_and_mask
+{
+  vl_api_ip4_address_t addr;
+  vl_api_ip4_address_t mask;
+};
+
+typedef ip6_address_and_mask
+{
+  vl_api_ip6_address_t addr;
+  vl_api_ip6_address_t mask;
+};
+
 typedef mprefix {
   vl_api_address_family_t af;
   u16 grp_address_length;
