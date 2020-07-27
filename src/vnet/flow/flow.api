@@ -1,0 +1,94 @@
+/*
+ * Copyright (c) 2020 Intel and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
+import "vnet/flow/flow_types.api";
+
+/** \brief flow add request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param flow - flow rule
+*/
+define flow_add
+{
+  u32 client_index;
+  u32 context;
+  vl_api_vat_flow_t flow;
+  option vat_help = "test flow add [src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] [proto <ip-proto>]";
+};
+
+/** \brief reply for adding flow
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param flow_index - flow index, can be used for flow del/enable/disable
+*/
+define flow_add_reply
+{
+  u32 context;
+  i32 retval;
+  u32 flow_index;
+};
+
+/** \brief flow del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param flow_index - flow index
+*/
+autoreply define flow_del
+{
+  u32 client_index;
+  u32 context;
+  u32 flow_index;
+  option vat_help = "test flow del index <index>";
+};
+
+/** \brief flow enable request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param flow_index - flow index
+	@param hw_if_index - hardware interface index
+*/
+autoreply define flow_enable
+{
+  u32 client_index;
+  u32 context;
+  u32 flow_index;
+  u32 hw_if_index;
+  option vat_help = "test flow enable index <index> <interface name>";
+};
+
+/** \brief flow disable request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param flow_index - flow index
+	@param hw_if_index - hardware interface index
+*/
+autoreply define flow_disable
+{
+  u32 client_index;
+  u32 context;
+  u32 flow_index;
+  u32 hw_if_index;
+  option vat_help = "test flow disable index <index> <interface name>";
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
