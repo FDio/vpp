@@ -193,17 +193,6 @@ http_server_session_timer_stop (http_session_t * hs)
 }
 
 static void
-http_server_session_cleanup (http_session_t * hs)
-{
-  if (!hs)
-    return;
-  http_server_session_lookup_del (hs->thread_index, hs->vpp_session_index);
-  vec_free (hs->rx_buf);
-  http_server_session_timer_stop (hs);
-  http_server_session_free (hs);
-}
-
-static void
 http_server_session_disconnect (http_session_t * hs)
 {
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -605,7 +594,6 @@ send_data:
 
 close_session:
   http_server_session_disconnect (hs);
-  http_server_session_cleanup (hs);
   return 0;
 
 postpone:
@@ -651,16 +639,6 @@ http_server_session_disconnect_callback (session_t * s)
 {
   http_server_main_t *hsm = &http_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
-  http_session_t *hs;
-
-  if (!hsm->is_static)
-    http_server_sessions_writer_lock ();
-
-  hs = http_server_session_lookup (s->thread_index, s->session_index);
-  http_server_session_cleanup (hs);
-
-  if (!hsm->is_static)
-    http_server_sessions_writer_unlock ();
 
   a->handle = session_handle (s);
   a->app_index = hsm->app_index;
@@ -672,16 +650,6 @@ http_server_session_reset_callback (session_t * s)
 {
   http_server_main_t *hsm = &http_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
-  http_session_t *hs;
-
-  if (!hsm->is_static)
-    http_server_sessions_writer_lock ();
-
-  hs = http_server_session_lookup (s->thread_index, s->session_index);
-  http_server_session_cleanup (hs);
-
-  if (!hsm->is_static)
-    http_server_sessions_writer_unlock ();
 
   a->handle = session_handle (s);
   a->app_index = hsm->app_index;
@@ -703,13 +671,41 @@ http_server_add_segment_callback (u32 client_index, u64 segment_handle)
   return -1;
 }
 
+static void
+http_server_cleanup_callback (session_t * s, session_cleanup_ntf_t ntf)
+{
+  http_server_main_t *hsm = &http_server_main;
+  http_session_t *hs;
+
+  if (ntf == SESSION_CLEANUP_TRANSPORT)
+    return;
+
+  if (!hsm->is_static)
+    http_server_sessions_writer_lock ();
+
+  hs = http_server_session_lookup (s->thread_index, s->session_index);
+  if (!hs)
+    goto done;
+
+  http_server_session_lookup_del (hs->thread_index, hs->vpp_session_index);
+  vec_free (hs->rx_buf);
+  http_server_session_timer_stop (hs);
+  http_server_session_free (hs);
+
+done:
+
+  if (!hsm->is_static)
+    http_server_sessions_writer_unlock ();
+}
+
 static session_cb_vft_t http_server_session_cb_vft = {
   .session_accept_callback = http_server_session_accept_callback,
   .session_disconnect_callback = http_server_session_disconnect_callback,
   .session_connected_callback = http_server_session_connected_callback,
   .add_segment_callback = http_server_add_segment_callback,
   .builtin_app_rx_callback = http_server_rx_callback,
-  .session_reset_callback = http_server_session_reset_callback
+  .session_reset_callback = http_server_session_reset_callback,
+  .session_cleanup_callback = http_server_cleanup_callback,
 };
 
 static int
@@ -778,7 +774,7 @@ http_server_listen ()
 }
 
 static void
-http_server_session_cleanup_cb (void *hs_handlep)
+http_server_session_close_cb (void *hs_handlep)
 {
   http_session_t *hs;
   uword hs_handle;
@@ -788,7 +784,6 @@ http_server_session_cleanup_cb (void *hs_handlep)
     return;
   hs->timer_handle = ~0;
   http_server_session_disconnect (hs);
-  http_server_session_cleanup (hs);
 }
 
 static void
@@ -802,7 +797,7 @@ http_expired_timers_dispatch (u32 * expired_timers)
       /* Get session handle. The first bit is the timer id */
       hs_handle = expired_timers[i] & 0x7FFFFFFF;
       session_send_rpc_evt_to_thread (hs_handle >> 24,
-				      http_server_session_cleanup_cb,
+				      http_server_session_close_cb,
 				      uword_to_pointer (hs_handle, void *));
     }
 }
