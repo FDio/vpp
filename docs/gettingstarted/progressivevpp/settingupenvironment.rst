@@ -5,8 +5,8 @@ Setting up your environment
 
 All of these exercises are designed to be performed on an Ubuntu 16.04 (Xenial) box.
 
-* If you have an Ubuntu 16.04 box on which you have sudo or root access, you can feel free to use that.
-* If you do not, a Vagrantfile is provided to setup a basic Ubuntu 16.04 box for you in the the steps below.
+* If you have an Ubuntu 18.04 box on which you have sudo or root access, you can feel free to use that.
+* If you do not, a Vagrantfile is provided to setup a basic Ubuntu 18.04 box for you in the the steps below.
 
 Install Virtual Box and Vagrant
 -------------------------------
@@ -33,7 +33,7 @@ Create a file called **Vagrantfile** with the following contents:
     
     Vagrant.configure(2) do |config|
     
-      config.vm.box = "puppetlabs/ubuntu-16.04-64-nocm"
+      config.vm.box = "bento/ubuntu-18.04"
       config.vm.box_check_update = false
     
       vmcpu=(ENV['VPP_VAGRANT_VMCPU'] || 2)
@@ -77,8 +77,9 @@ After setting up Vagrant, use these commands on your Vagrant directory to boot t
 
     $ vagrant up
     $ vagrant ssh
-    $ sudo apt-get update
-    $ sudo reboot -n
+    $ sudo bash
+    # apt-get update
+    # reboot -n
     $ # Wait for the VM to reboot
     $ vagrant ssh
 
@@ -89,22 +90,30 @@ Now that the VM is updated, we will install the VPP packages.
 
 For more on installing VPP please refer to :ref:`installingVPP`.
 
-For this tutorial we need to install VPP by modifying the file
+For this tutorial we will install VPP by modifying the file
 **/etc/apt/sources.list.d/99fd.io.list**.
 
-Write this file with the following contents:
+We write this file with the following contents:
 
 .. code-block:: console
 
-   deb [trusted=yes] https://nexus.fd.io/content/repositories/fd.io.ubuntu.xenial.main/ ./
+   $ sudo bash
+   # echo "deb [trusted=yes] https://packagecloud.io/fdio/release/ubuntu bionic main" > /etc/apt/sources.list.d/99fd.io.list
+   #
+
+Get the key.
+
+.. code-block:: console
+
+   # curl -L https://packagecloud.io/fdio/release/gpgkey | sudo apt-key add -
+   #
 
 Then execute the following commands.
 
 .. code-block:: console
 
-   $ sudo bash
    # apt-get update
-   # apt-get install vpp-lib vpp vpp-plugins
+   # apt-get install vpp vpp-plugin-core vpp-plugin-dpdk
    #
 
 Stop VPP for this tutorial. We will be creating our own instances of VPP.
