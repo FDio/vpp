@@ -38,6 +38,7 @@
 
 #include "fa_node.h"
 #include "public_inlines.h"
+#include "acl_caiop.h"
 
 acl_main_t acl_main;
 
@@ -718,8 +719,11 @@ acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
 	}
     }
   /* ensure ACL processing is enabled/disabled as needed */
+  int feature_enable =
+    is_acl_caiop_enabled_on_sw_if_index (sw_if_index, is_input)
+    || (vec_len (vec_acl_list_index) > 0);
   acl_interface_inout_enable_disable (am, sw_if_index, is_input,
-				      vec_len (vec_acl_list_index) > 0);
+				      feature_enable);
 
 done:
   clib_bitmap_free (change_acl_bitmap);
@@ -3332,6 +3336,10 @@ acl_plugin_show_sessions (acl_main_t * am,
 		   ((f64) am->fa_current_cleaner_timer_wait_interval) *
 		   1000.0 / (f64) vm->clib_time.clocks_per_second);
   vlib_cli_output (vm, "Reclassify sessions: %d", am->reclassify_sessions);
+  vlib_cli_output (vm, "Custom access input policies: %d",
+		   am->custom_access_input_policies_count);
+  vlib_cli_output (vm, "Custom access output policies: %d",
+		   am->custom_access_output_policies_count);
 }
 
 static clib_error_t *
@@ -3646,6 +3654,8 @@ acl_init (vlib_main_t * vm)
     ACL_FA_CONN_TABLE_DEFAULT_HASH_MEMORY_SIZE;
   am->fa_conn_table_max_entries = ACL_FA_CONN_TABLE_DEFAULT_MAX_ENTRIES;
   am->reclassify_sessions = 0;
+  am->custom_access_input_policies_count = 0;
+  am->custom_access_output_policies_count = 0;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   am->fa_min_deleted_sessions_per_interval =
