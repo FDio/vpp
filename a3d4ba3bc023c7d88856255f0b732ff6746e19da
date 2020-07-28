@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "c92881fe_29b40818",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1101,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-07-28T11:01:26Z",
+      "side": 1,
+      "message": "Fixed!",
+      "parentUuid": "eb5390c1_34bccd0b",
+      "range": {
+        "startLine": 1098,
+        "startChar": 0,
+        "endLine": 1101,
+        "endChar": 28
+      },
+      "revId": "a3d4ba3bc023c7d88856255f0b732ff6746e19da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "09627082_e8f35e2b",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 4

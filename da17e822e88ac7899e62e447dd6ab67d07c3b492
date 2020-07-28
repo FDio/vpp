@@ -120,6 +120,30 @@
     },
     {
       "key": {
+        "uuid": "5c386367_68519e05",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-07-28T11:01:26Z",
+      "side": 1,
+      "message": "Fixed!",
+      "parentUuid": "5f2dcc51_48194f5c",
+      "range": {
+        "startLine": 138,
+        "startChar": 6,
+        "endLine": 138,
+        "endChar": 55
+      },
+      "revId": "da17e822e88ac7899e62e447dd6ab67d07c3b492",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "90d9091c_1f533d4c",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 3
@@ -191,6 +215,30 @@
     },
     {
       "key": {
+        "uuid": "63a673c9_9d004914",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-07-28T11:01:26Z",
+      "side": 1,
+      "message": "Fixed!",
+      "parentUuid": "a7c9040f_25e762ac",
+      "range": {
+        "startLine": 250,
+        "startChar": 2,
+        "endLine": 250,
+        "endChar": 52
+      },
+      "revId": "da17e822e88ac7899e62e447dd6ab67d07c3b492",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ba05861b_abeb6a9d",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 3
@@ -250,6 +298,30 @@
       "side": 1,
       "message": "That\u0027s the lock for a a session. The problem here is the fact one thread/vcl worker A is trying to read into the pool of another thread/vcl worker B. While that is happening, thread B could be reallocating the underlying vcl session pool (could happen when it accepts a new session for instance). That means A is probably copying a dangling reference that could already be corrupted. Pools are also not thread safe, so if B changes the underlying bitmap while A is trying to do a pool_elt_at_index(), results could be unexpected.",
       "parentUuid": "53982222_112e3601",
+      "range": {
+        "startLine": 264,
+        "startChar": 0,
+        "endLine": 265,
+        "endChar": 14
+      },
+      "revId": "da17e822e88ac7899e62e447dd6ab67d07c3b492",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "210a712d_0d4d1ac8",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-07-28T11:01:26Z",
+      "side": 1,
+      "message": "Fixed!",
+      "parentUuid": "0dca8a56_50459a00",
       "range": {
         "startLine": 264,
         "startChar": 0,
