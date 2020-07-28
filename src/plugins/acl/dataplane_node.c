@@ -25,6 +25,7 @@
 
 #include <plugins/acl/fa_node.h>
 #include <plugins/acl/acl.h>
+#include <plugins/acl/acl_caiop.h>
 #include <plugins/acl/lookup_context.h>
 #include <plugins/acl/public_inlines.h>
 #include <plugins/acl/session_inlines.h>
@@ -318,13 +319,12 @@ acl_fa_node_common_prepare_fn (vlib_main_t * vm,
     }
 }
 
-
 always_inline uword
-acl_fa_inner_node_fn (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame,
-		      int is_ip6, int is_input, int is_l2_path,
-		      int with_stateful_datapath, int node_trace_on,
-		      int reclassify_sessions)
+acl_fa_inner_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vlib_frame_t *frame, int is_ip6, int is_input,
+		      int is_l2_path, int with_stateful_datapath,
+		      int node_trace_on, int reclassify_sessions,
+		      const int do_custom_access_policies)
 {
   u32 n_left;
   u32 pkts_exist_session = 0;
@@ -465,39 +465,85 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 
 	  if (acl_check_needed)
 	    {
-	      if (is_input)
-		lc_index0 = am->input_lc_index_by_sw_if_index[sw_if_index[0]];
-	      else
-		lc_index0 =
-		  am->output_lc_index_by_sw_if_index[sw_if_index[0]];
-
-	      action = 0;	/* deny by default */
-	      int is_match = acl_plugin_match_5tuple_inline (am, lc_index0,
-							     (fa_5tuple_opaque_t *) & fa_5tuple[0], is_ip6,
-							     &action,
-							     &match_acl_pos,
-							     &match_acl_in_index,
-							     &match_rule_index,
-							     &trace_bitmap);
-	      if (PREDICT_FALSE
-		  (is_match && am->interface_acl_counters_enabled))
+	      if (do_custom_access_policies)
 		{
-		  u32 buf_len = vlib_buffer_length_in_chain (vm, b[0]);
-		  vlib_increment_combined_counter (am->combined_acl_counters +
-						   saved_matched_acl_index,
-						   thread_index,
-						   saved_matched_ace_index,
-						   saved_packet_count,
-						   saved_byte_count);
-		  saved_matched_acl_index = match_acl_in_index;
-		  saved_matched_ace_index = match_rule_index;
-		  saved_packet_count = 1;
-		  saved_byte_count = buf_len;
-		  /* prefetch the counter that we are going to increment */
-		  vlib_prefetch_combined_counter (am->combined_acl_counters +
-						  saved_matched_acl_index,
-						  thread_index,
-						  saved_matched_ace_index);
+		  if (is_acl_caiop_enabled_on_sw_if_index (sw_if_index[0],
+							   is_input))
+		    {
+		      acl_plugin_private_caiop_match_5tuple_func_t
+			*caiop_match_vec,
+			*pf;
+
+		      if (is_input)
+			{
+			  caiop_match_vec =
+			    vec_elt (am->caip_match_func_by_sw_if_index,
+				     sw_if_index[0]);
+			}
+		      else
+			{
+			  caiop_match_vec =
+			    vec_elt (am->caop_match_func_by_sw_if_index,
+				     sw_if_index[0]);
+			}
+		      vec_foreach (pf, caiop_match_vec)
+			{
+			  int is_match =
+			    (*pf) (am, sw_if_index[0], is_input,
+				   (fa_5tuple_opaque_t *) &fa_5tuple[0],
+				   is_ip6, &action, &trace_bitmap);
+			  if (is_match)
+			    {
+			      acl_check_needed = 0;
+			      break;
+			    }
+			}
+		      /* If no match in policy but no ACL configured, bypass
+		       * the ACL check, else it will crash */
+		      if (acl_check_needed)
+			{
+			  if (is_input)
+			    acl_check_needed =
+			      vec_len (am->input_lc_index_by_sw_if_index) >
+			      sw_if_index[0];
+			  else
+			    acl_check_needed =
+			      vec_len (am->output_lc_index_by_sw_if_index) >
+			      sw_if_index[0];
+			}
+		    }
+		}
+	      if (acl_check_needed)
+		{
+		  if (is_input)
+		    lc_index0 =
+		      am->input_lc_index_by_sw_if_index[sw_if_index[0]];
+		  else
+		    lc_index0 =
+		      am->output_lc_index_by_sw_if_index[sw_if_index[0]];
+
+		  action = 0; /* deny by default */
+		  int is_match = acl_plugin_match_5tuple_inline (
+		    am, lc_index0, (fa_5tuple_opaque_t *) &fa_5tuple[0],
+		    is_ip6, &action, &match_acl_pos, &match_acl_in_index,
+		    &match_rule_index, &trace_bitmap);
+		  if (PREDICT_FALSE (is_match &&
+				     am->interface_acl_counters_enabled))
+		    {
+		      u32 buf_len = vlib_buffer_length_in_chain (vm, b[0]);
+		      vlib_increment_combined_counter (
+			am->combined_acl_counters + saved_matched_acl_index,
+			thread_index, saved_matched_ace_index,
+			saved_packet_count, saved_byte_count);
+		      saved_matched_acl_index = match_acl_in_index;
+		      saved_matched_ace_index = match_rule_index;
+		      saved_packet_count = 1;
+		      saved_byte_count = buf_len;
+		      /* prefetch the counter that we are going to increment */
+		      vlib_prefetch_combined_counter (
+			am->combined_acl_counters + saved_matched_acl_index,
+			thread_index, saved_matched_ace_index);
+		    }
 		}
 
 	      b[0]->error = error_node->errors[action];
@@ -582,11 +628,10 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
    * if we were had an acl match then we have a counter to increment.
    * else it is all zeroes, so this will be harmless.
    */
-  vlib_increment_combined_counter (am->combined_acl_counters +
-				   saved_matched_acl_index,
-				   thread_index,
-				   saved_matched_ace_index,
-				   saved_packet_count, saved_byte_count);
+  if (am->combined_acl_counters && saved_packet_count)
+    vlib_increment_combined_counter (
+      am->combined_acl_counters + saved_matched_acl_index, thread_index,
+      saved_matched_ace_index, saved_packet_count, saved_byte_count);
 
   vlib_node_increment_counter (vm, node->node_index,
 			       ACL_FA_ERROR_ACL_CHECK, frame->n_vectors);
@@ -602,10 +647,10 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 }
 
 always_inline uword
-acl_fa_outer_node_fn (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame,
-		      int is_ip6, int is_input, int is_l2_path,
-		      int do_stateful_datapath)
+acl_fa_outer_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vlib_frame_t *frame, int is_ip6, int is_input,
+		      int is_l2_path, int do_stateful_datapath,
+		      int do_custom_access_policies)
 {
   acl_main_t *am = &acl_main;
 
@@ -615,25 +660,24 @@ acl_fa_outer_node_fn (vlib_main_t * vm,
   if (am->reclassify_sessions)
     {
       if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-	return acl_fa_inner_node_fn (vm, node, frame, is_ip6, is_input,
-				     is_l2_path, do_stateful_datapath,
-				     1 /* trace */ ,
-				     1 /* reclassify */ );
+	return acl_fa_inner_node_fn (
+	  vm, node, frame, is_ip6, is_input, is_l2_path, do_stateful_datapath,
+	  1 /* trace */, 1 /* reclassify */, do_custom_access_policies);
       else
-	return acl_fa_inner_node_fn (vm, node, frame, is_ip6, is_input,
-				     is_l2_path, do_stateful_datapath, 0,
-				     1 /* reclassify */ );
+	return acl_fa_inner_node_fn (
+	  vm, node, frame, is_ip6, is_input, is_l2_path, do_stateful_datapath,
+	  0, 1 /* reclassify */, do_custom_access_policies);
     }
   else
     {
       if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-	return acl_fa_inner_node_fn (vm, node, frame, is_ip6, is_input,
-				     is_l2_path, do_stateful_datapath,
-				     1 /* trace */ ,
-				     0);
+	return acl_fa_inner_node_fn (
+	  vm, node, frame, is_ip6, is_input, is_l2_path, do_stateful_datapath,
+	  1 /* trace */, 0, do_custom_access_policies);
       else
 	return acl_fa_inner_node_fn (vm, node, frame, is_ip6, is_input,
-				     is_l2_path, do_stateful_datapath, 0, 0);
+				     is_l2_path, do_stateful_datapath, 0, 0,
+				     do_custom_access_policies);
     }
 }
 
@@ -646,13 +690,35 @@ acl_fa_node_fn (vlib_main_t * vm,
   acl_main_t *am = &acl_main;
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[vm->thread_index];
   uword rv;
-
-  if (am->fa_sessions_hash_is_initialized)
-    rv = acl_fa_outer_node_fn (vm, node, frame, is_ip6, is_input,
-			       is_l2_path, 1);
+  int do_custom_access_policies = 0;
+  if (is_input)
+    {
+      do_custom_access_policies = (am->custom_access_input_policies_count > 0);
+    }
   else
-    rv = acl_fa_outer_node_fn (vm, node, frame, is_ip6, is_input,
-			       is_l2_path, 0);
+    {
+      do_custom_access_policies =
+	(am->custom_access_output_policies_count > 0);
+    }
+
+  if (do_custom_access_policies)
+    {
+      if (am->fa_sessions_hash_is_initialized)
+	rv = acl_fa_outer_node_fn (vm, node, frame, is_ip6, is_input,
+				   is_l2_path, 1, 1);
+      else
+	rv = acl_fa_outer_node_fn (vm, node, frame, is_ip6, is_input,
+				   is_l2_path, 0, 1);
+    }
+  else
+    {
+      if (am->fa_sessions_hash_is_initialized)
+	rv = acl_fa_outer_node_fn (vm, node, frame, is_ip6, is_input,
+				   is_l2_path, 1, 0);
+      else
+	rv = acl_fa_outer_node_fn (vm, node, frame, is_ip6, is_input,
+				   is_l2_path, 0, 0);
+    }
 
   vlib_buffer_enqueue_to_next (vm, node, vlib_frame_vector_args (frame),
 			       pw->nexts, frame->n_vectors);

@@ -20,6 +20,8 @@ add_vpp_plugin(acl
   dataplane_node.c
   dataplane_node_nonip.c
 
+  acl_caiop.c
+
   MULTIARCH_SOURCES
   dataplane_node.c
   dataplane_node_nonip.c
