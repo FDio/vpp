@@ -437,7 +437,6 @@ active_open_connected_callback (u32 app_index, u32 opaque,
   if (err)
     {
       clib_warning ("connection %d failed!", opaque);
-      ASSERT (0);
       return 0;
     }
 
