@@ -1,0 +1,193 @@
+/*
+ * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+    This file defines the vpp control-plane API messages
+    used to configure Calico policies
+*/
+
+option version = "0.1.0";
+import "vnet/ip/ip_types.api";
+import "vnet/fib/fib_types.api";
+
+enum ipset_type : u8 {
+  IP = 0,           /* Each member is an IP address */
+  IP_AND_PORT = 1,  /* Each member is "<IP>,(tcp|udp):port" (3-tuple) */
+  NET = 2,          /* Each member is a CIDR */
+};
+
+typedef three_tuple {
+  vl_api_address_t address;
+  u8 l4_proto;
+  u16 port;
+};
+
+union ipset_member {
+  vl_api_address_t address;
+  vl_api_prefix_t prefix;
+  vl_api_three_tuple_t tuple;
+};
+
+define ipset_create
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ipset_type_t type;
+};
+
+define ipset_create_reply
+{
+  u32 context;
+  u32 set_id;
+};
+
+autoreply define ipset_add_del_members
+{
+  u32 client_index;
+  u32 context;
+  u32 set_id;
+  u8 is_add;
+  u32 len;
+  vl_api_ipset_member_t members[len];
+};
+
+autoreply define ipset_delete
+{
+  u32 client_index;
+  u32 context;
+  u32 set_id;
+};
+
+enum rule_action : u8 {
+  ALLOW = 0,  // Go to next rule
+  DENY,       // Drop / reject packet
+  LOG,        // Ignored for now
+  PASS,       // Skip remaining rules
+};
+
+enum entry_type : u8 {
+  cidr = 0,     // simple prefix
+  port_range,
+  port_ip_set,  // Points to an ip + proto + port set
+  ip_set,       // Points to an ip only set
+};
+
+typedef port_range {
+  u16 start;
+  u16 end;    // Inclusive, for a single port start==end
+};
+
+union entry_data {
+  vl_api_prefix_t cidr;
+  vl_api_port_range_t port_range;
+  u32 set_id;                     // Used for port_ip sets and ip only sets
+};
+
+// A rule contains several such entries, each belong to a category
+// categories are: [not_]{src,dst}_{cidr,port_range,port_ip_set,ip_set}
+// (defined byt the 3 first fields in the rule_entry)
+// A rule matches a packet iff:
+// - for every "not" category, the source / destination do not match any entry
+// - for every positive match category, the source / destination matches at
+// least one entry in each category EXCEPT for port ranges and port+ip sets,
+// where the packet only needs to match one entry in either category
+typedef rule_entry {
+  u8 is_src;
+  u8 is_not;
+  vl_api_entry_type_t type;
+  vl_api_entry_data_t data;
+};
+
+typedef rule {
+  vl_api_rule_action_t action;
+  vl_api_address_family_t af;   // v4 or v6 rule
+
+  u8 is_l4_proto;     // Boolean, if set rule matches if proto is l4_proto
+  u8 is_not_l4_proto; // Boolean, if set rule matches if proto is not l4_proto
+  u8 l4_proto;
+
+  u8 is_icmp_type;
+  u8 is_not_icmp_type;
+  u8 icmp_type;
+  u8 is_icmp_code;      // Only valid if is_icmp_type is set
+  u8 is_not_icmp_code;  // Only valid if is_not_icmp_type is set
+  u8 icmp_code;
+
+  u32 num_entries;
+  vl_api_rule_entry_t matches[num_entries]; // List of other criteria
+};
+
+define rule_create {
+  u32 client_index;
+  u32 context;
+  vl_api_rule_t rule;
+};
+
+autoreply define rule_update {
+  u32 client_index;
+  u32 context;
+  u32 rule_id;
+  vl_api_rule_t rule;
+};
+
+define rule_create_reply {
+  u32 context;
+  u32 rule_id;
+};
+
+autoreply define rule_delete {
+  u32 client_index;
+  u32 context;
+  u32 rule_id;
+};
+
+typedef policy_item {
+  u8 is_inbound; // 0 for outbound, 1 for is_inbound
+  u32 rule_id;
+};
+
+define policy_create {
+  u32 client_index;
+  u32 context;
+  u32 num_items;
+  vl_api_policy_item_t rules[num_items];
+};
+
+define policy_create_reply {
+  u32 context;
+  u32 policy_id;
+};
+
+autoreply define policy_update {
+  u32 client_index;
+  u32 context;
+  u32 policy_id;
+  u32 num_items;
+  vl_api_policy_item_t rules[num_items];
+};
+
+autoreply define policy_delete {
+  u32 client_index;
+  u32 context;
+  u32 policy_id;
+};
+
+autoreply define configure_policies {
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 num_policies;
+  u32 policy_ids[num_policies];
+};
