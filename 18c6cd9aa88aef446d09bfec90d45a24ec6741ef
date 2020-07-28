@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a63dac7c_73101b4c",
+        "filename": "src/plugins/hs_apps/proxy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-07-28T16:21:24Z",
+      "side": 0,
+      "message": "Now I regret not putting a comment here :-)\n\nWe need to properly handle the failure and do cleanup as well. The assert was there just as a reminder. Could you take care of the cleanup as well?",
+      "range": {
+        "startLine": 440,
+        "startChar": 6,
+        "endLine": 440,
+        "endChar": 17
+      },
+      "revId": "18c6cd9aa88aef446d09bfec90d45a24ec6741ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
