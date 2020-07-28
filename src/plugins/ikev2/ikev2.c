@@ -537,6 +537,7 @@ ikev2_calc_keys (ikev2_sa_t * sa)
   pos += tr_prf->key_len;
 
   vec_free (keymat);
+  sa->keys_generated = 1;
 }
 
 static void
@@ -4313,7 +4314,7 @@ ikev2_mngr_process_responder_sas (ikev2_sa_t * sa)
   ikev2_main_t *km = &ikev2_main;
   vlib_main_t *vm = km->vlib_main;
 
-  if (!sa->sk_ai || !sa->sk_ar)
+  if (!sa->keys_generated)
     return 0;
 
   if (sa->liveness_retries >= km->liveness_max_retries)

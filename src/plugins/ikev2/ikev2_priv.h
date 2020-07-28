@@ -441,6 +441,7 @@ typedef struct
 
   /* is NAT traversal mode */
   u8 natt;
+  u8 keys_generated;
 } ikev2_sa_t;
 
 
