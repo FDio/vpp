@@ -3,12 +3,13 @@
 import socket
 import unittest
 
-from framework import VppTestCase, VppTestRunner
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
+
+from framework import VppTestCase, VppTestRunner
 from vpp_bond_interface import VppBondInterface
-from vpp_papi import MACAddress
+from vpp_papi import MACAddress, VppEnum
 
 
 class TestBondInterface(VppTestCase):
@@ -274,6 +275,40 @@ class TestBondInterface(VppTestCase):
         if_dump = self.vapi.sw_bond_interface_dump(
             sw_if_index=bond0.sw_if_index)
         self.assertFalse(bond0.is_interface_config_in_dump(if_dump))
+
+    def test_bond_link(self):
+        """ Bond hw interface link state test """
+
+        # for convenience
+        bond_modes = VppEnum.vl_api_bond_mode_t
+        intf_flags = VppEnum.vl_api_if_status_flags_t
+
+        # create interface 1 (BondEthernet0)
+        self.logger.info("Create bond interface")
+        # use round-robin mode to avoid negotiation required by LACP
+        bond0 = VppBondInterface(self,
+                                 mode=bond_modes.BOND_API_MODE_ROUND_ROBIN)
+        bond0.add_vpp_config()
+
+        # set bond admin up.
+        self.logger.info("set interface BondEthernet0 admin up")
+        bond0.admin_up()
+        # confirm link up
+        bond0.assert_interface_state(intf_flags.IF_STATUS_API_FLAG_ADMIN_UP,
+                                     intf_flags.IF_STATUS_API_FLAG_LINK_UP)
+
+        # toggle bond admin state
+        self.logger.info("toggle interface BondEthernet0")
+        bond0.admin_down()
+        bond0.admin_up()
+
+        # confirm link is still up
+        bond0.assert_interface_state(intf_flags.IF_STATUS_API_FLAG_ADMIN_UP,
+                                     intf_flags.IF_STATUS_API_FLAG_LINK_UP)
+
+        # delete BondEthernet0
+        self.logger.info("Deleting BondEthernet0")
+        bond0.remove_vpp_config()
 
 
 if __name__ == '__main__':
