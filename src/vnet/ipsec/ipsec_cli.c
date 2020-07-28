@@ -89,6 +89,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   u32 id, spi, salt, sai;
   u16 udp_src, udp_dst;
   int is_add, rv;
+  u32 m_args = 0;
 
   salt = 0;
   error = NULL;
@@ -105,11 +106,17 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "add %u", &id))
-	is_add = 1;
+	{
+	  is_add = 1;
+	  m_args |= 1 << 0;
+	}
       else if (unformat (line_input, "del %u", &id))
-	is_add = 0;
+	{
+	  is_add = 0;
+	  m_args |= 1 << 0;
+	}
       else if (unformat (line_input, "spi %u", &spi))
-	;
+	m_args |= 1 << 1;
       else if (unformat (line_input, "salt 0x%x", &salt))
 	;
       else if (unformat (line_input, "esp"))
@@ -147,13 +154,28 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	}
     }
 
+  if (!(m_args & 1))
+    {
+      error = clib_error_return (0, "missing id");
+      goto done;
+    }
+
   if (is_add)
-    rv = ipsec_sa_add_and_lock (id, spi, proto, crypto_alg,
-				&ck, integ_alg, &ik, flags,
-				0, clib_host_to_net_u32 (salt),
-				&tun_src, &tun_dst, &sai, udp_src, udp_dst);
+    {
+      if (!(m_args & 2))
+	{
+	  error = clib_error_return (0, "missing spi");
+	  goto done;
+	}
+      rv = ipsec_sa_add_and_lock (id, spi, proto, crypto_alg,
+				  &ck, integ_alg, &ik, flags,
+				  0, clib_host_to_net_u32 (salt),
+				  &tun_src, &tun_dst, &sai, udp_src, udp_dst);
+    }
   else
-    rv = ipsec_sa_unlock_id (id);
+    {
+      rv = ipsec_sa_unlock_id (id);
+    }
 
   if (rv)
     error = clib_error_return (0, "failed");
@@ -756,10 +778,10 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
   ipsec_crypto_alg_t crypto_alg = IPSEC_CRYPTO_ALG_NONE;
   ipsec_integ_alg_t integ_alg = IPSEC_INTEG_ALG_NONE;
   ipsec_sa_flags_t flags;
-  u32 local_spi, remote_spi, salt, table_id, fib_index;
+  u32 local_spi, remote_spi, salt = 0, table_id, fib_index;
   u32 instance = ~0;
   int rv;
-  u32 num_m_args = 0;
+  u32 m_args = 0;
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
   u8 is_add = 1;
@@ -783,7 +805,7 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 	   IP46_TYPE_ANY))
 	{
 	  ip46_address_is_ip4 (&local_ip) ? (ipv4_set = 1) : (ipv6_set = 1);
-	  num_m_args++;
+	  m_args |= 1 << 0;
 	}
       else
 	if (unformat
@@ -791,12 +813,12 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 	     IP46_TYPE_ANY))
 	{
 	  ip46_address_is_ip4 (&remote_ip) ? (ipv4_set = 1) : (ipv6_set = 1);
-	  num_m_args++;
+	  m_args |= 1 << 1;
 	}
       else if (unformat (line_input, "local-spi %u", &local_spi))
-	num_m_args++;
+	m_args |= 1 << 2;
       else if (unformat (line_input, "remote-spi %u", &remote_spi))
-	num_m_args++;
+	m_args |= 1 << 3;
       else if (unformat (line_input, "salt 0x%x", &salt))
 	;
       else if (unformat (line_input, "udp-encap"))
@@ -843,7 +865,7 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 	}
     }
 
-  if (num_m_args < 4)
+  if (0xf != m_args)
     {
       error = clib_error_return (0, "mandatory argument(s) missing");
       goto done;
