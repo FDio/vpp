@@ -14,6 +14,7 @@
  */
 
 #include <plugins/acl/acl.h>
+#include <plugins/acl/acl_caiop.h>
 #include <plugins/acl/fa_node.h>
 #include <vlib/unix/plugin.h>
 #include <plugins/acl/public_inlines.h>
@@ -282,7 +283,6 @@ void acl_plugin_lookup_context_notify_acl_change(u32 acl_num)
   }
 }
 
-
 /* Fill the 5-tuple from the packet */
 
 static void acl_plugin_fill_5tuple (u32 lc_index, vlib_buffer_t * b0, int is_ip6, int is_input,
@@ -302,6 +302,13 @@ static int acl_plugin_match_5tuple (u32 lc_index,
   return acl_plugin_match_5tuple_inline (&acl_main, lc_index, pkt_5tuple, is_ip6, r_action, r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
 }
 
+/* This is an experimental method, subject to change or disappear */
+static int
+acl_plugin_wip_add_del_custom_access_io_policy (int is_add, u32 sw_if_index,
+						int is_input, void *func)
+{
+  return acl_caiop_add_del (is_add, sw_if_index, is_input, func);
+}
 
 void
 acl_plugin_show_lookup_user (u32 user_index)
