@@ -11,26 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(acl
+add_vpp_plugin(calico_policy
   SOURCES
-  acl.c
-  hash_lookup.c
-  lookup_context.c
-  sess_mgmt_node.c
-  dataplane_node.c
-
-  acl_caiop.c
-
-  MULTIARCH_SOURCES
-  dataplane_node.c
+  calico_policy.c
 
   API_FILES
-  acl.api
-  acl_types.api
-
-  API_TEST_SOURCES
-  acl_test.c
-
-  INSTALL_HEADERS
-  manual_fns.h
+  calico_policy.api
 )
