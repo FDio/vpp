@@ -113,6 +113,15 @@ typedef struct
   u8 from_tm;
 } ace_mask_type_entry_t;
 
+
+/* This is a private experimental type, subject to change */
+typedef int
+(*acl_plugin_private_caiop_match_5tuple_func_t)(void *p_acl_main, u32 sw_if_index, u32 is_inbound,
+                                           fa_5tuple_opaque_t * pkt_5tuple,
+                                           int is_ip6, u8 * r_action,
+                                           u32 * trace_bitmap);
+
+
 typedef struct {
   /* API message ID base */
   u16 msg_id_base;
@@ -168,7 +177,16 @@ typedef struct {
   /* whether we need to take the epoch of the session into account */
   int reclassify_sessions;
 
+  /* activation of dataplane for custom policies  when > 0 */
+  int custom_access_input_policies_count;
+  int custom_access_output_policies_count;
+  /* bitmaps when set the processing is enabled on the interface */
+  uword *caip_on_sw_if_index;
+  uword *caop_on_sw_if_index;
 
+  /* CAIOP match function vectors by sw_if_index */
+  acl_plugin_private_caiop_match_5tuple_func_t **caip_match_func_by_sw_if_index;
+  acl_plugin_private_caiop_match_5tuple_func_t **caop_match_func_by_sw_if_index;
 
   /* Total count of interface+direction pairs enabled */
   u32 fa_total_enabled_count;
