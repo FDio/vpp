@@ -50,6 +50,9 @@ typedef struct
   /* API message ID base */
   u16 msg_id_base;
 
+  /* output feature arc index */
+  u16 arc_index;
+
   /* Two interfaces, cross-connected with delay */
   u32 sw_if_index0, sw_if_index1;
   u32 output_next_index0, output_next_index1;
@@ -68,6 +71,7 @@ typedef struct
   f64 bandwidth;
   f64 packet_size;
   f64 drop_fraction;
+  f64 reorder_fraction;
   u32 poll_main_thread;
 
   u64 mmap_size;
