@@ -488,6 +488,10 @@ typedef void (*vnet_feature_update_cb_t) (u32 sw_if_index,
 
 extern void vnet_feature_register (vnet_feature_update_cb_t cb, void *data);
 
+int
+vnet_feature_is_enabled (const char *arc_name, const char *feature_node_name,
+			 u32 sw_if_index);
+
 #endif /* included_feature_h */
 
 /*

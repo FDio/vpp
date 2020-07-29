@@ -15,7 +15,6 @@
 
 #include <vnet/feature/feature.h>
 
-
 vnet_feature_main_t feature_main;
 
 typedef struct vnet_feature_upd_registration_t_
@@ -320,6 +319,62 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
 						 feature_config,
 						 n_feature_config_bytes);
 }
+
+int
+vnet_feature_is_enabled (const char *arc_name, const char *feature_node_name,
+			 u32 sw_if_index)
+{
+  vnet_feature_main_t *fm = &feature_main;
+  vnet_feature_config_main_t *cm;
+  vnet_config_main_t *ccm;
+  vnet_config_t *current_config;
+  vnet_config_feature_t *f;
+  u32 feature_index;
+  u32 ci;
+  u8 arc_index;
+  u32 *p;
+
+  arc_index = vnet_get_feature_arc_index (arc_name);
+
+  /* No such arc? */
+  if (arc_index == (u8) ~ 0)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  feature_index = vnet_get_feature_index (arc_index, feature_node_name);
+
+  /* No such feature? */
+  if (feature_index == (u32) ~ 0)
+    return VNET_API_ERROR_INVALID_VALUE_2;
+
+  cm = &fm->feature_config_mains[arc_index];
+
+  if (sw_if_index < vec_len (cm->config_index_by_sw_if_index))
+    ci = vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
+  else
+    /* sw_if_index out of range, certainly not enabled */
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+
+  /* No features were ever configured? */
+  if (ci == ~0)
+    return 0;
+
+  ccm = &cm->config_main;
+
+  p = heap_elt_at_index (ccm->config_string_heap, ci);
+
+  current_config = pool_elt_at_index (ccm->config_pool, p[-1]);
+
+  /* Find feature with the required index */
+  vec_foreach (f, current_config->features)
+  {
+    if (f->feature_index == feature_index)
+      /* Feature was enabled */
+      return 1;
+  }
+  /* feature wasn't enabled */
+  return 0;
+}
+
 
 u32
 vnet_feature_modify_end_node (u8 arc_index,
