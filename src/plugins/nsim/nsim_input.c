@@ -72,23 +72,51 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   nsim_main_t *nsm = &nsim_main;
   u32 my_thread_index = vm->thread_index;
-  nsim_wheel_t *wp = nsm->wheel_by_thread[my_thread_index];
+  nsim_wheel_t *wp = nsm->wheel_by_thread[my_thread_index], *rwp;
   f64 now = vlib_time_now (vm);
   uword n_tx_packets = 0;
-  u32 bi0, next0;
-  u32 *to_next;
-  u32 next_index;
-  u32 n_left_to_next;
+  u32 bi0, next0, *to_next, next_index, n_left_to_next;
   nsim_wheel_entry_t *ep;
+
+  rwp = nsm->reordered_wheel[my_thread_index];
+
+  /* Reordered packets are flushed without delay */
+  u32 froms[VLIB_FRAME_SIZE], *from;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
+
+  from = froms;
+  next = nexts;
+  while (rwp->cursize)
+    {
+      ep = rwp->entries + rwp->head;
+      from[0] = ep->buffer_index;
+      next[0] = ep->output_next_index;
+
+      rwp->head++;
+      if (rwp->head == rwp->wheel_size)
+	rwp->head = 0;
+      rwp->cursize--;
+
+      from += 1;
+      next += 1;
+      n_tx_packets++;
+
+      if (n_tx_packets % VLIB_FRAME_SIZE == 0)
+	{
+	  vlib_buffer_enqueue_to_next (vm, node, from, nexts, n_tx_packets);
+	  from = froms;
+	  next = nexts;
+	}
+    }
 
   /* Nothing on the scheduler wheel? */
   if (wp->cursize == 0)
-    return 0;
+    goto done;
 
   /* First entry on the wheel isn't expired? */
   ep = wp->entries + wp->head;
   if (ep->tx_time > now)
-    return n_tx_packets;
+    goto done;
 
   next_index = node->cached_next_index;
 
@@ -148,6 +176,9 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (ep->tx_time > now)
 	break;
     }
+
+done:
+
   vlib_node_increment_counter (vm, node->node_index,
 			       NSIM_TX_ERROR_TRANSMITTED, n_tx_packets);
   return n_tx_packets;
