@@ -45,10 +45,43 @@ typedef struct
     CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } nsim_wheel_t;
 
+typedef struct nsim_node_ctx
+{
+  vnet_feature_config_main_t *fcm;
+  f64 expires;
+  u32 *drop;
+  u32 *reord;
+  u16 *reord_nexts;
+  u8 *action;
+  u64 n_buffered;
+  u64 n_loss;
+} nsim_node_ctx_t;
+
+#define foreach_nsm_action			\
+  _(DROP, "Packet loss")			\
+  _(REORDER, "Packet reorder")
+
+enum nsm_action_bit
+{
+#define _(sym, str) NSIM_ACTION_##sym##_BIT,
+  foreach_nsm_action
+#undef _
+};
+
+typedef enum nsm_action
+{
+#define _(sym, str) NSIM_ACTION_##sym = 1 << NSIM_ACTION_##sym##_BIT,
+  foreach_nsm_action
+#undef _
+} nsm_action_e;
+
 typedef struct
 {
   /* API message ID base */
   u16 msg_id_base;
+
+  /* output feature arc index */
+  u16 arc_index;
 
   /* Two interfaces, cross-connected with delay */
   u32 sw_if_index0, sw_if_index1;
@@ -68,6 +101,7 @@ typedef struct
   f64 bandwidth;
   f64 packet_size;
   f64 drop_fraction;
+  f64 reorder_fraction;
   u32 poll_main_thread;
 
   u64 mmap_size;
