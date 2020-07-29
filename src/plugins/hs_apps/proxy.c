@@ -434,21 +434,28 @@ active_open_connected_callback (u32 app_index, u32 opaque,
   proxy_session_t *ps;
   u8 thread_index = vlib_get_thread_index ();
 
-  if (err)
-    {
-      clib_warning ("connection %d failed!", opaque);
-      ASSERT (0);
-      return 0;
-    }
-
   /*
    * Setup proxy session handle.
    */
   clib_spinlock_lock_if_init (&pm->sessions_lock);
 
   ps = pool_elt_at_index (pm->sessions, opaque);
-  ps->vpp_active_open_handle = session_handle (s);
-  ps->active_open_establishing = 0;
+
+  /* Connection failed */
+  if (err)
+    {
+      vnet_disconnect_args_t _a, *a = &_a;
+
+      a->handle = ps->vpp_server_handle;
+      a->app_index = pm->server_app_index;
+      vnet_disconnect_session (a);
+      ps->po_disconnected = 1;
+    }
+  else
+    {
+      ps->vpp_active_open_handle = session_handle (s);
+      ps->active_open_establishing = 0;
+    }
 
   /* Passive open session was already closed! */
   if (ps->po_disconnected)
