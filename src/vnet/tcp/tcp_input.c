@@ -215,6 +215,7 @@ tcp_rcv_rst (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
       break;
     case TCP_STATE_SYN_SENT:
       /* Do not program ntf because the connection is half-open */
+      tc->rst_state = tc->state;
       tcp_handle_rst (tc);
       break;
     case TCP_STATE_ESTABLISHED:
