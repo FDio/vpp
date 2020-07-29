@@ -72,6 +72,7 @@ autoreply define nsim_configure
   u32 average_packet_size;
   u64 bandwidth_in_bits_per_second;
   u32 packets_per_drop;
+  u32 packets_per_reorder;
   option vat_help = "delay <time> bandwidth <bw> [packet-size <nn>] [packets-per-drop <nnnn>]";
 };
 
