@@ -366,6 +366,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  && devconf->num_tx_queues < xd->tx_q_used)
 	xd->tx_q_used = clib_min (xd->tx_q_used, devconf->num_tx_queues);
 
+      vec_validate_aligned (xd->tx_queues, xd->tx_q_used - 1,
+			    CLIB_CACHE_LINE_BYTES);
+
       if (devconf->num_rx_queues > 1
 	  && dev_info.max_rx_queues >= devconf->num_rx_queues)
 	{
@@ -389,6 +392,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 	}
       else
 	xd->rx_q_used = 1;
+
+      vec_validate_aligned (xd->rx_queues, xd->rx_q_used - 1,
+			    CLIB_CACHE_LINE_BYTES);
 
       xd->flags |= DPDK_DEVICE_FLAG_PMD;
 
