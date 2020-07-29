@@ -63,11 +63,15 @@ typedef struct
   /* Per-thread scheduler wheels */
   nsim_wheel_t **wheel_by_thread;
 
+  /** Per-thread wheels of reordered buffers  */
+  nsim_wheel_t **reordered_wheel;
+
   /* Config parameters */
   f64 delay;
   f64 bandwidth;
   f64 packet_size;
   f64 drop_fraction;
+  f64 reorder_rate;
   u32 poll_main_thread;
 
   u64 mmap_size;

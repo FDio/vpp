@@ -126,15 +126,37 @@ nsim_output_feature_enable_disable (nsim_main_t * nsm, u32 sw_if_index,
   return rv;
 }
 
+static nsim_wheel_t *
+nsim_wheel_alloc (nsim_main_t * nsm, u32 wheel_slots)
+{
+  u32 pagesize = getpagesize ();
+  nsim_wheel_t *wp;
+
+  nsm->mmap_size = sizeof (nsim_wheel_t)
+    + wheel_slots * sizeof (nsim_wheel_entry_t);
+
+  nsm->mmap_size += pagesize - 1;
+  nsm->mmap_size &= ~(pagesize - 1);
+
+  wp = clib_mem_vm_alloc (nsm->mmap_size);
+  ASSERT (wp != 0);
+  wp->wheel_size = wheel_slots;
+  wp->cursize = 0;
+  wp->head = 0;
+  wp->tail = 0;
+  wp->entries = (void *) (wp + 1);
+
+  return wp;
+}
+
 static int
 nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
 		f64 drop_fraction)
 {
   u64 total_buffer_size_in_bytes, per_worker_buffer_size;
-  u64 wheel_slots_per_worker;
+  u64 wheel_slots_per_wrk;
   int i;
   int num_workers = vlib_num_workers ();
-  u32 pagesize = getpagesize ();
   vlib_main_t *vm = nsm->vlib_main;
 
   if (bandwidth == 0.0)
@@ -151,14 +173,16 @@ nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
     {
       for (i = 0; i < vec_len (nsm->wheel_by_thread); i++)
 	{
-	  nsim_wheel_t *wp = nsm->wheel_by_thread[i];
-	  munmap (wp, nsm->mmap_size);
+	  clib_mem_vm_free (nsm->wheel_by_thread[i], nsm->mmap_size);
+	  clib_mem_vm_free (nsm->reordered_wheel[i], nsm->mmap_size);
 	  nsm->wheel_by_thread[i] = 0;
+	  nsm->reordered_wheel[i] = 0;
 	}
     }
 
   nsm->delay = delay;
   nsm->drop_fraction = drop_fraction;
+  nsm->reorder_rate = 0.005;
 
   /* delay in seconds, bandwidth in bits/sec */
   total_buffer_size_in_bytes = ((delay * bandwidth) / 8.0) + 0.5;
@@ -172,35 +196,22 @@ nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
   else
     per_worker_buffer_size = total_buffer_size_in_bytes;
 
-  wheel_slots_per_worker = per_worker_buffer_size / packet_size;
-  wheel_slots_per_worker++;
+  wheel_slots_per_wrk = per_worker_buffer_size / packet_size;
+  wheel_slots_per_wrk++;
 
   /* Save these for the show command */
   nsm->bandwidth = bandwidth;
   nsm->packet_size = packet_size;
 
   vec_validate (nsm->wheel_by_thread, num_workers);
+  vec_validate (nsm->reordered_wheel, num_workers);
 
   /* Initialize the output scheduler wheels */
   i = (!nsm->poll_main_thread && num_workers) ? 1 : 0;
   for (; i < num_workers + 1; i++)
     {
-      nsim_wheel_t *wp;
-
-      nsm->mmap_size = sizeof (nsim_wheel_t)
-	+ wheel_slots_per_worker * sizeof (nsim_wheel_entry_t);
-
-      nsm->mmap_size += pagesize - 1;
-      nsm->mmap_size &= ~(pagesize - 1);
-
-      wp = clib_mem_vm_alloc (nsm->mmap_size);
-      ASSERT (wp != 0);
-      wp->wheel_size = wheel_slots_per_worker;
-      wp->cursize = 0;
-      wp->head = 0;
-      wp->tail = 0;
-      wp->entries = (void *) (wp + 1);
-      nsm->wheel_by_thread[i] = wp;
+      nsm->wheel_by_thread[i] = nsim_wheel_alloc (nsm, wheel_slots_per_wrk);
+      nsm->reordered_wheel[i] = nsim_wheel_alloc (nsm, wheel_slots_per_wrk);
     }
 
   vlib_worker_thread_barrier_sync (vm);
