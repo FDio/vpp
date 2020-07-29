@@ -3,7 +3,7 @@
  * @brief VPP control-plane API messages for the network delay simulator
  */
 
-option version = "2.1.1";
+option version = "2.2.1";
 import "vnet/interface_types.api";
 
 /** \brief enable / disable the network delay simulation cross-connect
@@ -72,6 +72,7 @@ autoreply define nsim_configure
   u32 average_packet_size;
   u64 bandwidth_in_bits_per_second;
   u32 packets_per_drop;
+  u32 packets_per_reorder;
   option vat_help = "delay <time> bandwidth <bw> [packet-size <nn>] [packets-per-drop <nnnn>]";
 };
 
