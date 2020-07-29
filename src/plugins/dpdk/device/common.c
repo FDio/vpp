@@ -96,8 +96,6 @@ dpdk_device_setup (dpdk_device_t * xd)
       goto error;
     }
 
-  vec_validate_aligned (xd->tx_queues, xd->tx_q_used - 1,
-			CLIB_CACHE_LINE_BYTES);
   for (j = 0; j < xd->tx_q_used; j++)
     {
       rv =
@@ -117,8 +115,6 @@ dpdk_device_setup (dpdk_device_t * xd)
 	clib_spinlock_init (&vec_elt (xd->tx_queues, j).lock);
     }
 
-  vec_validate_aligned (xd->rx_queues, xd->rx_q_used - 1,
-			CLIB_CACHE_LINE_BYTES);
   for (j = 0; j < xd->rx_q_used; j++)
     {
       dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, j);
