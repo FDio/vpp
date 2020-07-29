@@ -172,7 +172,7 @@ api_nsim_configure (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   f64 delay = 0.0, bandwidth = 0.0;
   f64 packet_size = 1500.0;
-  u32 packets_per_drop = 0;
+  u32 packets_per_drop = 0, packets_per_reorder;
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -184,6 +184,8 @@ api_nsim_configure (vat_main_t * vam)
       else if (unformat (i, "packet-size %f", &packet_size))
 	;
       else if (unformat (i, "packets-per-drop %u", &packets_per_drop))
+	;
+      else if (unformat (i, "packets-per-reorder %u", &packets_per_reorder))
 	;
       else
 	break;
@@ -205,6 +207,7 @@ api_nsim_configure (vat_main_t * vam)
   mp->bandwidth_in_bits_per_second =
     clib_host_to_net_u64 (mp->bandwidth_in_bits_per_second);
   mp->packets_per_drop = ntohl (packets_per_drop);
+  mp->packets_per_reorder = ntohl (packets_per_reorder);
 
   /* send it... */
   S (mp);
