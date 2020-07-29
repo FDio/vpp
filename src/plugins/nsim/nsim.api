@@ -3,7 +3,7 @@
  * @brief VPP control-plane API messages for the network delay simulator
  */
 
-option version = "2.1.1";
+option version = "2.2.1";
 import "vnet/interface_types.api";
 
 /** \brief enable / disable the network delay simulation cross-connect
@@ -61,6 +61,7 @@ autoreply define nsim_output_feature_enable_disable
 */
 autoreply define nsim_configure
 {
+  option deprecated="v21.01";
   /* Client identifier, set from api_main.my_client_index */
   u32 client_index;
   
@@ -75,4 +76,27 @@ autoreply define nsim_configure
   option vat_help = "delay <time> bandwidth <bw> [packet-size <nn>] [packets-per-drop <nnnn>]";
 };
 
+/** \brief configure the network delay simulation cross-connect
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param delay_in_usec - microseconds of link delay to simulate
+    @param average_packet_size - average packet size for wheel sizing
+    @param bandwidth_in_bits_per_second - bps for wheel sizing
+*/
+autoreply define nsim_configure2
+{
+  /* Client identifier, set from api_main.my_client_index */
+  u32 client_index;
+  
+  /* Arbitrary context, so client can match reply to request */
+  u32 context;
+
+  /* Configuration parameters */
+  u32 delay_in_usec;
+  u32 average_packet_size;
+  u64 bandwidth_in_bits_per_second;
+  u32 packets_per_drop;
+  u32 packets_per_reorder;
+  option vat_help = "delay <time> bandwidth <bw> [packet-size <nn>] [packets-per-drop <nnnn>]";
+};
 

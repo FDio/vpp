@@ -214,6 +214,58 @@ api_nsim_configure (vat_main_t * vam)
   return ret;
 }
 
+static int
+api_nsim_configure2 (vat_main_t * vam)
+{
+  vl_api_nsim_configure2_t *mp;
+  unformat_input_t *i = vam->input;
+  f64 delay = 0.0, bandwidth = 0.0;
+  f64 packet_size = 1500.0;
+  u32 packets_per_drop = 0, packets_per_reorder;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "delay %U", unformat_delay, &delay))
+	;
+      else if (unformat (i, "bandwidth %U", unformat_bandwidth, &bandwidth))
+	;
+      else if (unformat (i, "packet-size %f", &packet_size))
+	;
+      else if (unformat (i, "packets-per-drop %u", &packets_per_drop))
+	;
+      else if (unformat (i, "packets-per-reorder %u", &packets_per_reorder))
+	;
+      else
+	break;
+    }
+
+  if (delay == 0.0 || bandwidth == 0.0)
+    {
+      errmsg ("must specify delay and bandwidth");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (NSIM_CONFIGURE2, mp);
+  mp->delay_in_usec = (u32) (delay * 1e6);
+  mp->delay_in_usec = ntohl (mp->delay_in_usec);
+  mp->average_packet_size = (u32) (packet_size);
+  mp->average_packet_size = ntohl (mp->average_packet_size);
+  mp->bandwidth_in_bits_per_second = (u64) (bandwidth);
+  mp->bandwidth_in_bits_per_second =
+    clib_host_to_net_u64 (mp->bandwidth_in_bits_per_second);
+  mp->packets_per_drop = ntohl (packets_per_drop);
+  mp->packets_per_reorder = ntohl (packets_per_reorder);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
 #include <nsim/nsim.api_test.c>
 
 /*
