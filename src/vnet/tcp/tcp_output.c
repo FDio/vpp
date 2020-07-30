@@ -1290,6 +1290,7 @@ tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
   tc->rtt_ts = 0;
   tc->cwnd_acc_bytes = 0;
   tc->tr_occurences += 1;
+  tc->sack_sb.reorder = TCP_DUPACK_THRESHOLD;
   tcp_recovery_on (tc);
 }
 
