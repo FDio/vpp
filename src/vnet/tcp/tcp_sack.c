@@ -125,8 +125,13 @@ scoreboard_update_bytes (sack_scoreboard_t * sb, u32 ack, u32 snd_mss)
       blks = 1;
     }
 
-  while (sacked < (TCP_DUPACK_THRESHOLD - 1) * snd_mss
-	 && blks < TCP_DUPACK_THRESHOLD)
+  /* DupThresh discontiguous SACKed sequences have arrived above
+     'SeqNum' or more than (DupThresh - 1) * SMSS bytes with sequence
+     numbers greater than 'SeqNum' have been SACKed. */
+
+//  while (sacked < (TCP_DUPACK_THRESHOLD - 1) * snd_mss
+//       && blks < TCP_DUPACK_THRESHOLD)
+  while (sacked <= (sb->reorder - 1) * snd_mss)
     {
       if (right->is_lost)
 	sb->lost_bytes += scoreboard_hole_bytes (right);
@@ -251,6 +256,7 @@ scoreboard_init (sack_scoreboard_t * sb)
   sb->head = TCP_INVALID_SACK_HOLE_INDEX;
   sb->tail = TCP_INVALID_SACK_HOLE_INDEX;
   sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
+  sb->reorder = 3;
 }
 
 void
@@ -270,6 +276,7 @@ scoreboard_clear (sack_scoreboard_t * sb)
   sb->last_lost_bytes = 0;
   sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
   sb->is_reneging = 0;
+  sb->reorder = 3;
 }
 
 void
@@ -396,6 +403,14 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
     }
   else
     {
+      hole = scoreboard_first_hole (sb);
+      if (!hole->is_lost && seq_lt (hole->start, ack))
+	{
+	  u32 reord =
+	    clib_min ((sb->high_sacked - hole->start) / tc->snd_mss, 300);
+	  sb->reorder = clib_max (sb->reorder, reord);
+	}
+
       /* If we have holes but snd_nxt is beyond the last hole, update
        * last hole end or add new hole after high sacked */
       hole = scoreboard_last_hole (sb);
