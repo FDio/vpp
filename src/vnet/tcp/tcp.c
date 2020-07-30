@@ -925,17 +925,21 @@ tcp_snd_space_inline (tcp_connection_t * tc)
    * to force the peer to send enough dupacks to start retransmitting as
    * per Limited Transmit (RFC3042)
    */
-  if (PREDICT_FALSE (tc->rcv_dupacks != 0 || tc->sack_sb.sacked_bytes))
+  if (PREDICT_FALSE (tc->rcv_dupacks || tc->sack_sb.sacked_bytes))
     {
-      if (tc->limited_transmit != tc->snd_nxt
-	  && (seq_lt (tc->limited_transmit, tc->snd_nxt - 2 * tc->snd_mss)
-	      || seq_gt (tc->limited_transmit, tc->snd_nxt)))
+      int snt_limited, n_pkts;
+
+      n_pkts = tcp_opts_sack_permitted (&tc->rcv_opts)
+	? tc->sack_sb.reorder : 2;
+
+      if ((seq_lt (tc->limited_transmit, tc->snd_nxt - n_pkts * tc->snd_mss)
+	   || seq_gt (tc->limited_transmit, tc->snd_nxt)))
 	tc->limited_transmit = tc->snd_nxt;
 
       ASSERT (seq_leq (tc->limited_transmit, tc->snd_nxt));
 
-      int snt_limited = tc->snd_nxt - tc->limited_transmit;
-      snd_space = clib_max ((int) 2 * tc->snd_mss - snt_limited, 0);
+      snt_limited = tc->snd_nxt - tc->limited_transmit;
+      snd_space = clib_max (n_pkts * tc->snd_mss - snt_limited, 0);
     }
   return tcp_round_snd_space (tc, snd_space);
 }
