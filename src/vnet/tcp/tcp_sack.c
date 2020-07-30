@@ -88,14 +88,26 @@ scoreboard_insert_hole (sack_scoreboard_t * sb, u32 prev_index,
 }
 
 always_inline void
-scoreboard_update_sacked_rxt (sack_scoreboard_t * sb, u32 start, u32 end,
-			      u8 has_rxt)
+scoreboard_update_sacked (sack_scoreboard_t * sb, u32 start, u32 end,
+			  u8 has_rxt, u16 snd_mss)
 {
   if (!has_rxt || seq_geq (start, sb->high_rxt))
-    return;
+    {
+      /* Sequence was not retransmitted but it was sacked. Estimate reorder
+       * only if not in congestion recovery */
+      if (!has_rxt && seq_lt (start, sb->high_sacked))
+	{
+	  u32 reord = (sb->high_sacked - start + snd_mss - 1) / snd_mss;
+	  reord = clib_min (reord, TCP_MAX_SACK_REORDER);
+	  sb->reorder = clib_max (sb->reorder, reord);
+	}
+//      sb->high_sacked = seq_max (end, sb->high_sacked);
+      return;
+    }
 
   sb->rxt_sacked +=
     seq_lt (end, sb->high_rxt) ? (end - start) : (sb->high_rxt - start);
+//  sb->high_sacked = seq_max (end, sb->high_sacked);
 }
 
 always_inline void
@@ -125,8 +137,12 @@ scoreboard_update_bytes (sack_scoreboard_t * sb, u32 ack, u32 snd_mss)
       blks = 1;
     }
 
-  while (sacked < (TCP_DUPACK_THRESHOLD - 1) * snd_mss
-	 && blks < TCP_DUPACK_THRESHOLD)
+  /* As per RFC 6675 a seq is lost if:
+   *  DupThresh discontiguous SACKed sequences have arrived above
+   *  'SeqNum' or more than (DupThresh - 1) * SMSS bytes with sequence
+   *  numbers greater than 'SeqNum' have been SACKed.
+   */
+  while (sacked <= (sb->reorder - 1) * snd_mss && blks < sb->reorder)
     {
       if (right->is_lost)
 	sb->lost_bytes += scoreboard_hole_bytes (right);
@@ -251,6 +267,7 @@ scoreboard_init (sack_scoreboard_t * sb)
   sb->head = TCP_INVALID_SACK_HOLE_INDEX;
   sb->tail = TCP_INVALID_SACK_HOLE_INDEX;
   sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
+  sb->reorder = TCP_DUPACK_THRESHOLD;
 }
 
 void
@@ -270,6 +287,7 @@ scoreboard_clear (sack_scoreboard_t * sb)
   sb->last_lost_bytes = 0;
   sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
   sb->is_reneging = 0;
+  sb->reorder = TCP_DUPACK_THRESHOLD;
 }
 
 void
@@ -307,7 +325,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   sack_scoreboard_hole_t *hole, *next_hole;
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t *blk, *rcv_sacks;
-  u32 blk_index = 0, i, j;
+  u32 blk_index = 0, i, j, high_sacked;
   u8 has_rxt;
 
   sb->last_sacked_bytes = 0;
@@ -391,8 +409,9 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	  hole = scoreboard_insert_hole (sb, TCP_INVALID_SACK_HOLE_INDEX,
 					 tc->snd_una, tc->snd_nxt);
 	  sb->tail = scoreboard_hole_index (sb, hole);
+	  sb->high_sacked = tc->snd_una;
 	}
-      sb->high_sacked = rcv_sacks[vec_len (rcv_sacks) - 1].end;
+      high_sacked = rcv_sacks[vec_len (rcv_sacks) - 1].end;
     }
   else
     {
@@ -412,11 +431,11 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 				      tc->snd_nxt);
 	    }
 	}
-
       /* Keep track of max byte sacked for when the last hole
        * is acked */
-      sb->high_sacked = seq_max (rcv_sacks[vec_len (rcv_sacks) - 1].end,
-				 sb->high_sacked);
+//      sb->high_sacked = seq_max (sb->high_sacked, ack);
+      high_sacked = seq_max (rcv_sacks[vec_len (rcv_sacks) - 1].end,
+			     sb->high_sacked);
     }
 
   /* Walk the holes with the SACK blocks */
@@ -442,7 +461,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	      /* If covered by ack, compute delivered bytes */
 	      if (blk->end == ack)
 		{
-		  u32 sacked = next_hole ? next_hole->start : sb->high_sacked;
+		  u32 sacked = next_hole ? next_hole->start :
+		    seq_max (sb->high_sacked, hole->end);
 		  if (PREDICT_FALSE (seq_lt (ack, sacked)))
 		    {
 		      sb->last_bytes_delivered += ack - hole->end;
@@ -454,8 +474,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 		      sb->is_reneging = 0;
 		    }
 		}
-	      scoreboard_update_sacked_rxt (sb, hole->start, hole->end,
-					    has_rxt);
+	      scoreboard_update_sacked (sb, hole->start, hole->end,
+					has_rxt, tc->snd_mss);
 	      scoreboard_remove_hole (sb, hole);
 	      hole = next_hole;
 	    }
@@ -464,8 +484,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	    {
 	      if (seq_gt (blk->end, hole->start))
 		{
-		  scoreboard_update_sacked_rxt (sb, hole->start, blk->end,
-						has_rxt);
+		  scoreboard_update_sacked (sb, hole->start, blk->end,
+					    has_rxt, tc->snd_mss);
 		  hole->start = blk->end;
 		}
 	      blk_index++;
@@ -482,23 +502,25 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	      /* Pool might've moved */
 	      hole = scoreboard_get_hole (sb, hole_index);
 	      hole->end = blk->start;
+	      next_hole->is_lost = hole->is_lost;
 
-	      scoreboard_update_sacked_rxt (sb, blk->start, blk->end,
-					    has_rxt);
+	      scoreboard_update_sacked (sb, blk->start, blk->end,
+					has_rxt, tc->snd_mss);
 
 	      blk_index++;
 	      ASSERT (hole->next == scoreboard_hole_index (sb, next_hole));
 	    }
 	  else if (seq_lt (blk->start, hole->end))
 	    {
-	      scoreboard_update_sacked_rxt (sb, blk->start, hole->end,
-					    has_rxt);
+	      scoreboard_update_sacked (sb, blk->start, hole->end,
+					has_rxt, tc->snd_mss);
 	      hole->end = blk->start;
 	    }
 	  hole = scoreboard_next_hole (sb, hole);
 	}
     }
 
+  sb->high_sacked = high_sacked;
   scoreboard_update_bytes (sb, ack, tc->snd_mss);
 
   ASSERT (sb->last_sacked_bytes <= sb->sacked_bytes || tcp_in_recovery (tc));
