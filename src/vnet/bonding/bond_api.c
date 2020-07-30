@@ -46,6 +46,7 @@
 
 #define foreach_bond_api_msg                     \
 _(BOND_CREATE, bond_create)                      \
+_(BOND_CREATE2, bond_create2)			 \
 _(BOND_DELETE, bond_delete)                      \
 _(BOND_ENSLAVE, bond_enslave)                    \
 _(BOND_ADD_MEMBER, bond_add_member)                    \
@@ -96,6 +97,39 @@ vl_api_bond_create_t_handler (vl_api_bond_create_t * mp)
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_BOND_CREATE_REPLY,
+  ({
+    rmp->sw_if_index = ntohl (ap->sw_if_index);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_bond_create2_t_handler (vl_api_bond_create2_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vl_api_bond_create2_reply_t *rmp;
+  bond_create_if_args_t _a, *ap = &_a;
+
+  clib_memset (ap, 0, sizeof (*ap));
+
+  ap->id = ntohl (mp->id);
+
+  if (mp->use_custom_mac)
+    {
+      mac_address_decode (mp->mac_address, (mac_address_t *) ap->hw_addr);
+      ap->hw_addr_set = 1;
+    }
+
+  ap->mode = ntohl (mp->mode);
+  ap->lb = ntohl (mp->lb);
+  ap->numa_only = mp->numa_only;
+  ap->gso = mp->enable_gso;
+  bond_create_if (vm, ap);
+
+  int rv = ap->rv;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_BOND_CREATE2_REPLY,
   ({
     rmp->sw_if_index = ntohl (ap->sw_if_index);
   }));
