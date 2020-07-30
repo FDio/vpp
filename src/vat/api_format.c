@@ -1897,6 +1897,41 @@ static void vl_api_bond_create_reply_t_handler_json
 }
 
 static void
+vl_api_bond_create2_reply_t_handler (vl_api_bond_create2_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->sw_if_index = ntohl (mp->sw_if_index);
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_bond_create2_reply_t_handler_json
+  (vl_api_bond_create2_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void
 vl_api_bond_delete_reply_t_handler (vl_api_bond_delete_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
@@ -5243,6 +5278,7 @@ _(VIRTIO_PCI_CREATE_REPLY, virtio_pci_create_reply)			\
 _(VIRTIO_PCI_DELETE_REPLY, virtio_pci_delete_reply)			\
 _(SW_INTERFACE_VIRTIO_PCI_DETAILS, sw_interface_virtio_pci_details)     \
 _(BOND_CREATE_REPLY, bond_create_reply)	   			        \
+_(BOND_CREATE2_REPLY, bond_create2_reply)				\
 _(BOND_DELETE_REPLY, bond_delete_reply)			  	        \
 _(BOND_ADD_MEMBER_REPLY, bond_add_member_reply)				\
 _(BOND_DETACH_MEMBER_REPLY, bond_detach_member_reply)			\
@@ -7709,6 +7745,73 @@ api_bond_create (vat_main_t * vam)
   mp->lb = htonl (lb);
   mp->id = htonl (id);
   mp->numa_only = numa_only;
+
+  if (custom_mac)
+    clib_memcpy (mp->mac_address, mac_address, 6);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_bond_create2 (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_bond_create2_t *mp;
+  u8 mac_address[6];
+  u8 custom_mac = 0;
+  int ret;
+  u8 mode;
+  u8 lb;
+  u8 mode_is_set = 0;
+  u32 id = ~0;
+  u8 numa_only = 0;
+  u8 gso = 0;
+
+  clib_memset (mac_address, 0, sizeof (mac_address));
+  lb = BOND_LB_L2;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "mode %U", unformat_bond_mode, &mode))
+	mode_is_set = 1;
+      else if (((mode == BOND_MODE_LACP) || (mode == BOND_MODE_XOR))
+	       && unformat (i, "lb %U", unformat_bond_load_balance, &lb))
+	;
+      else if (unformat (i, "hw-addr %U", unformat_ethernet_address,
+			 mac_address))
+	custom_mac = 1;
+      else if (unformat (i, "numa-only"))
+	numa_only = 1;
+      else if (unformat (i, "gso"))
+	gso = 1;
+      else if (unformat (i, "id %u", &id))
+	;
+      else
+	break;
+    }
+
+  if (mode_is_set == 0)
+    {
+      errmsg ("Missing bond mode. ");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (BOND_CREATE2, mp);
+
+  mp->use_custom_mac = custom_mac;
+
+  mp->mode = htonl (mode);
+  mp->lb = htonl (lb);
+  mp->id = htonl (id);
+  mp->numa_only = numa_only;
+  mp->enable_gso = gso;
 
   if (custom_mac)
     clib_memcpy (mp->mac_address, mac_address, 6);
@@ -20630,6 +20733,10 @@ _(bond_create,                                                          \
   "[hw-addr <mac-addr>] {round-robin | active-backup | "                \
   "broadcast | {lacp | xor} [load-balance { l2 | l23 | l34 }]} "        \
   "[id <if-id>]")							\
+_(bond_create2,                                                         \
+  "[hw-addr <mac-addr>] {mode round-robin | active-backup | "           \
+  "broadcast | {lacp | xor} [load-balance { l2 | l23 | l34 }]} "        \
+  "[id <if-id>] [gso]")							\
 _(bond_delete,                                                          \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(bond_add_member,                                                      \
