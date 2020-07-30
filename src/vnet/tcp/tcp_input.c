@@ -755,13 +755,13 @@ tcp_cc_is_spurious_retransmit (tcp_connection_t * tc)
   return (tcp_cc_is_spurious_timeout_rxt (tc));
 }
 
-static inline u8
-tcp_should_fastrecover_sack (tcp_connection_t * tc)
-{
-  return (tc->sack_sb.lost_bytes
-	  || ((TCP_DUPACK_THRESHOLD - 1) * tc->snd_mss
-	      < tc->sack_sb.sacked_bytes));
-}
+//static inline u8
+//tcp_should_fastrecover_sack (tcp_connection_t * tc)
+//{
+//  return (tc->sack_sb.lost_bytes
+//	  || ((TCP_DUPACK_THRESHOLD - 1) * tc->snd_mss
+//	      < tc->sack_sb.sacked_bytes));
+//}
 
 static inline u8
 tcp_should_fastrecover (tcp_connection_t * tc, u8 has_sack)
@@ -787,8 +787,9 @@ tcp_should_fastrecover (tcp_connection_t * tc, u8 has_sack)
 	  return 0;
 	}
     }
-  return ((tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
-	  || tcp_should_fastrecover_sack (tc));
+  return tc->sack_sb.lost_bytes;
+//  return ((tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
+//	  || tcp_should_fastrecover_sack (tc));
 }
 
 static int
@@ -859,8 +860,26 @@ tcp_try_undo_partial_ack (tcp_connection_t * tc)
 {
   if (tcp_cc_last_is_delayed (tc))
     {
+      sack_scoreboard_t *sb = &tc->sack_sb;
+      clib_warning ("reordering %u sacked %u",
+                    (sb->high_sacked - tc->snd_una) / tc->snd_mss,
+                    sb->sacked_bytes);
+      if (sb->sacked_bytes)
+	{
+	  sb->reorder = clib_min(
+	      (sb->high_sacked - tc->snd_una) / tc->snd_mss, 300);
+	  sack_scoreboard_hole_t *hole = scoreboard_first_hole (sb);
+	  while (hole)
+	    {
+	      hole->is_lost = 0;
+	      hole = scoreboard_next_hole (sb, hole);
+	    }
+	}
+      tc->rcv_dupacks = 0;
       tcp_cc_congestion_undo (tc);
       tcp_cc_congestion_clear (tc);
+      if (!tc->burst_acked)
+	clib_warning ("WEIRD\n%U", format_tcp_connection, tc, 2);
       return 1;
     }
   return 0;
@@ -892,6 +911,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 
       if (tcp_should_fastrecover (tc, has_sack))
 	{
+//	  clib_warning("%U", format_tcp_connection, tc, 2);
 	  tcp_cc_init_congestion (tc);
 
 	  if (has_sack)
