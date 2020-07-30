@@ -182,6 +182,7 @@ typedef struct _sack_scoreboard
   u32 last_lost_bytes;			/**< Number of bytes last lost */
   u32 cur_rxt_hole;			/**< Retransmitting from this hole */
   u8 is_reneging;
+  u32 reorder;
 
 #if TCP_SCOREBOARD_TRACE
   scoreboard_trace_elt_t *trace;

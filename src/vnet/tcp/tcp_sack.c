@@ -125,8 +125,9 @@ scoreboard_update_bytes (sack_scoreboard_t * sb, u32 ack, u32 snd_mss)
       blks = 1;
     }
 
-  while (sacked < (TCP_DUPACK_THRESHOLD - 1) * snd_mss
-	 && blks < TCP_DUPACK_THRESHOLD)
+//  while (sacked < (TCP_DUPACK_THRESHOLD - 1) * snd_mss
+//	 && blks < TCP_DUPACK_THRESHOLD)
+  while (sacked <= (sb->reorder - 1) * snd_mss)
     {
       if (right->is_lost)
 	sb->lost_bytes += scoreboard_hole_bytes (right);
@@ -251,6 +252,7 @@ scoreboard_init (sack_scoreboard_t * sb)
   sb->head = TCP_INVALID_SACK_HOLE_INDEX;
   sb->tail = TCP_INVALID_SACK_HOLE_INDEX;
   sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
+  sb->reorder = 3;
 }
 
 void
