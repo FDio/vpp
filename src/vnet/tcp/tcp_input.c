@@ -689,7 +689,7 @@ tcp_cc_init_congestion (tcp_connection_t * tc)
    * three segments that have left the network and should've been
    * buffered at the receiver XXX */
   if (!tcp_opts_sack_permitted (&tc->rcv_opts))
-    tc->cwnd += 3 * tc->snd_mss;
+    tc->cwnd += TCP_DUPACK_THRESHOLD * tc->snd_mss;
 
   tc->fr_occurences += 1;
   TCP_EVT (TCP_EVT_CC_EVT, tc, 4);
@@ -721,14 +721,6 @@ tcp_cc_is_spurious_retransmit (tcp_connection_t * tc)
 }
 
 static inline u8
-tcp_should_fastrecover_sack (tcp_connection_t * tc)
-{
-  return (tc->sack_sb.lost_bytes
-	  || ((TCP_DUPACK_THRESHOLD - 1) * tc->snd_mss
-	      < tc->sack_sb.sacked_bytes));
-}
-
-static inline u8
 tcp_should_fastrecover (tcp_connection_t * tc, u8 has_sack)
 {
   if (!has_sack)
@@ -752,8 +744,7 @@ tcp_should_fastrecover (tcp_connection_t * tc, u8 has_sack)
 	  return 0;
 	}
     }
-  return ((tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
-	  || tcp_should_fastrecover_sack (tc));
+  return tc->sack_sb.lost_bytes || tc->rcv_dupacks >= tc->sack_sb.reorder;
 }
 
 static int
