@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "959edf4c_42330a8a",
+        "filename": "src/plugins/nsim/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-07-30T11:29:50Z",
+      "side": 1,
+      "message": "You might as well do this for the entire frame outside of the x4, and x1 loops. Memset the is_drop and is_reord arrays to zero, Skip the rest if both drop_fraction and reorder_fraction are zero, etc.",
+      "revId": "40e2d56c3f9f79631c735b4d3b859a028c446e52",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
