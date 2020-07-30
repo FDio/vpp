@@ -63,12 +63,13 @@ class TestBondInterface(VppTestCase):
         #        self.logger.info("create bond")
         bond0_mac = "02:fe:38:30:59:3c"
         mac = MACAddress(bond0_mac).packed
-        bond0 = VppBondInterface(self,
-                                 mode=3,
-                                 lb=1,
-                                 numa_only=0,
-                                 use_custom_mac=1,
-                                 mac_address=mac)
+        bond0 = VppBondInterface(
+            self,
+            mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_XOR,
+            lb=VppEnum.vl_api_bond_lb_algo_t.BOND_API_LB_ALGO_L34,
+            numa_only=0,
+            use_custom_mac=1,
+            mac_address=mac)
         bond0.add_vpp_config()
         bond0.admin_up()
         self.vapi.sw_interface_add_del_address(
@@ -169,7 +170,10 @@ class TestBondInterface(VppTestCase):
 
         # create interface (BondEthernet0) and set bond mode to LACP
         self.logger.info("create bond")
-        bond0 = VppBondInterface(self, mode=5)
+        bond0 = VppBondInterface(
+            self,
+            mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_LACP,
+            enable_gso=0)
         bond0.add_vpp_config()
         bond0.admin_up()
 
@@ -222,12 +226,14 @@ class TestBondInterface(VppTestCase):
         self.logger.info("Bond add interfaces")
 
         # create interface 1 (BondEthernet0)
-        bond0 = VppBondInterface(self, mode=5)
+        bond0 = VppBondInterface(
+            self, mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_LACP)
         bond0.add_vpp_config()
         bond0.admin_up()
 
         # create interface 2 (BondEthernet1)
-        bond1 = VppBondInterface(self, mode=3)
+        bond1 = VppBondInterface(
+            self, mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_XOR)
         bond1.add_vpp_config()
         bond1.admin_up()
 

@@ -55,6 +55,7 @@ enum bond_lb_algo
 */
 define bond_create
 {
+  option deprecated="20.06";
   u32 client_index;
   u32 context;
   u32 id [default=0xFFFFFFFF];
@@ -71,6 +72,42 @@ define bond_create
     @param sw_if_index - software index allocated for the new tap interface
 */
 define bond_create_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Initialize a new bond interface with the given paramters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mode - mode, required (1=round-robin, 2=active-backup, 3=xor, 4=broadcast, 5=lacp)
+    @param lb - load balance, optional (0=l2, 1=l34, 2=l23) valid for xor and lacp modes. Otherwise ignored (default=l2)
+    @param numa_only - if numa_only is set, pkts will be transmitted by LAG members on local numa node only if have at least one, otherwise it works as usual.
+    @param enable_gso - enable gso support (default 0)
+    @param use_custom_mac - if set, mac_address is valid
+    @param mac_address - mac addr to assign to the interface if use_custom_mac is set
+    @param id - if non-~0, specifies a custom interface ID (default=0xFFFFFFFF)
+*/
+define bond_create2
+{
+  u32 client_index;
+  u32 context;
+  vl_api_bond_mode_t mode;
+  vl_api_bond_lb_algo_t lb;
+  bool numa_only;
+  bool enable_gso;
+  bool use_custom_mac;
+  vl_api_mac_address_t mac_address;
+  u32 id [default=0xFFFFFFFF];
+};
+
+/** \brief Reply for bond create2 reply
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param sw_if_index - software index allocated for the new tap interface
+*/
+define bond_create2_reply
 {
   u32 context;
   i32 retval;
