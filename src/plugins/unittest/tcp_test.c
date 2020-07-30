@@ -505,7 +505,9 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 	    sb->last_sacked_bytes);
   TCP_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
+  /* Hole should be split in 2 lost holes that add up to 300 */
   TCP_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
+  TCP_TEST ((sb->reorder == 7), "reorder %u", sb->reorder);
 
   /*
    * Ack [100 300] in two steps
@@ -590,7 +592,9 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 	    sb->last_sacked_bytes);
   TCP_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
-  TCP_TEST ((sb->lost_bytes == 200), "lost bytes %u", sb->lost_bytes);
+  /* No bytes lost because of reorder */
+  TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
+  TCP_TEST ((sb->reorder == 7), "reorder %u", sb->reorder);
   TCP_TEST ((!sb->is_reneging), "is not reneging");
 
   /*
