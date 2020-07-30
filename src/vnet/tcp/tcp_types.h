@@ -151,6 +151,7 @@ typedef enum tcp_connection_flag_
 #define TCP_SCOREBOARD_TRACE (0)
 #define TCP_MAX_SACK_BLOCKS 255	/**< Max number of SACK blocks stored */
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
+#define TCP_MAX_SACK_REORDER 300
 
 typedef struct _scoreboard_trace_elt
 {
@@ -185,7 +186,8 @@ typedef struct _sack_scoreboard
   u32 lost_bytes;			/**< Bytes lost as per RFC6675 */
   u32 last_lost_bytes;			/**< Number of bytes last lost */
   u32 cur_rxt_hole;			/**< Retransmitting from this hole */
-  u8 is_reneging;
+  u32 reorder;				/**< Estimate of segment reordering */
+  u8 is_reneging;			/**< Flag set if peer is reneging*/
 
 #if TCP_SCOREBOARD_TRACE
   scoreboard_trace_elt_t *trace;

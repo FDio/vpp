@@ -341,9 +341,10 @@ format_tcp_scoreboard (u8 * s, va_list * args)
 	      " rxt_sacked %u\n",
 	      sb->sacked_bytes, sb->last_sacked_bytes, sb->lost_bytes,
 	      sb->last_lost_bytes, sb->rxt_sacked);
-  s = format (s, "%Ulast_delivered %u high_sacked %u is_reneging %u\n",
+  s = format (s, "%Ulast_delivered %u high_sacked %u is_reneging %u",
 	      format_white_space, indent, sb->last_bytes_delivered,
 	      sb->high_sacked - tc->iss, sb->is_reneging);
+  s = format (s, " reorder %u\n", sb->reorder);
   s = format (s, "%Ucur_rxt_hole %u high_rxt %u rescue_rxt %u",
 	      format_white_space, indent, sb->cur_rxt_hole,
 	      sb->high_rxt - tc->iss, sb->rescue_rxt - tc->iss);
