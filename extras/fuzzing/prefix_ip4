@@ -1,0 +1,25 @@
+create packet-generator interface pg0
+set int ip address pg0 11.22.33.1/24
+set int state pg0 up
+create packet-generator interface pg1
+set int ip address pg1 11.22.34.1/24
+set int state pg1 up
+
+set ip neighbor pg1 11.22.34.44 03:00:11:22:34:44
+
+packet-generator new {
+    name s0
+    limit -1
+    maxframe 1
+    size 128-128
+    interface pg0
+    node ethernet-input
+    data { IP4: 1.2.3 -> dead.0000.0000
+           UDP: 11.22.33.44 -> 11.22.34.44
+                ttl 1
+           UDP: 1234 -> 2345
+           incrementing 114
+    }
+}
+
+comment { To be suffixed here with a "suffix_..." file }
