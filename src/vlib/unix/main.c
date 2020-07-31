@@ -214,6 +214,7 @@ setup_signal_handlers (unix_main_t * um)
 	case SIGUSR1:
 	case SIGUSR2:
 	case SIGPROF:
+	case SIGCONT:
 	  continue;
 
 	  /* ignore SIGPIPE, SIGCHLD */

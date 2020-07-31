@@ -12,9 +12,9 @@ ifneq ($(filter centos opensuse opensuse-tumbleweed opensuse-leap,$(OS_ID)),$(OS
 VAPI_LIBS += -lsubunit
 endif
 
-FLAGS = -g -Wall -lstdc++ -pthread -I$(WS_ROOT)/src -I$(VPP_INSTALL_PATH)/vpp/include -I$(VAPI_BINDIR)
+FLAGS = -g -Wall -pthread -I$(WS_ROOT)/src -I$(VPP_INSTALL_PATH)/vpp/include -I$(VAPI_BINDIR)
 CFLAGS = -std=gnu99 $(FLAGS)
-CPPFLAGS = -std=c++11 $(FLAGS) -I$(WS_ROOT)/extras/vom
+CPPFLAGS = -std=c++11 $(FLAGS) -I$(WS_ROOT)/extras/vom -lstdc++
 
 $(VAPI_BINDIR):
 	@mkdir -p $(VAPI_BINDIR)

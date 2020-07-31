@@ -1,6 +1,6 @@
 
 /*
- * oddbuf.h - awkward chained buffer geometry test tool
+ * pfuzz.h - helper plugin for fuzzing VPP
  *
  * Copyright (c) 2019 by Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,8 +27,8 @@
 #include <vppinfra/error.h>
 
 #define foreach_pfuzz_mode                      \
-_(HEADER, "header")                             \
-_(BODY, "body")
+_(FUZZ, "fuzz")				\
+_(REPLAY, "replay")
 
 
 typedef enum
@@ -45,8 +45,10 @@ typedef struct
 
   /* config parameters */
   u8 mode;
-
-  /* Random seed */
+  /* the file descriptor from which to replay data */
+  i32 replay_fd;
+  u8 use_blackbox;
+  /* random seed */
   u32 seed;
 
   /* convenience */

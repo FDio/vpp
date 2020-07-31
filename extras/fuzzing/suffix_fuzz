@@ -1,0 +1,4 @@
+comment { To be appended to a "prefix_..." config file }
+
+pfuzz enable pg0
+packet-generator enable
