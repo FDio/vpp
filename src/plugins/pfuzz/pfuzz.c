@@ -1,5 +1,5 @@
 /*
- * pfuzz.c - awkward chained buffer geometry test tool
+ * pfuzz.c - helper plugin for fuzzing VPP
  *
  * Copyright (c) 2019 by Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,13 @@
 
 #define REPLY_MSG_ID_BASE pm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
+
+#include <sys/random.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+/* Environment variable to set to use blackbox fuzzing instead of greybox */
+#define BLACKBOX_ENV_VAR "PFUZZ_USE_BLACKBOX"
 
 pfuzz_main_t pfuzz_main;
 
@@ -67,6 +74,7 @@ pfuzz_enable_disable_command_fn (vlib_main_t * vm,
   int enable_disable = 1;
 
   int rv;
+  u8 *replay_path = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -75,6 +83,10 @@ pfuzz_enable_disable_command_fn (vlib_main_t * vm,
       else if (unformat (input, "%U", unformat_vnet_sw_interface,
 			 pm->vnet_main, &sw_if_index))
 	;
+      else if (unformat (input, "replay %s", &replay_path))
+	pm->mode = PFUZZ_MODE_REPLAY;
+      else if (unformat (input, "mode-replay"))
+	pm->mode = PFUZZ_MODE_REPLAY;
       else
 	break;
     }
@@ -82,25 +94,40 @@ pfuzz_enable_disable_command_fn (vlib_main_t * vm,
   if (sw_if_index == ~0)
     return clib_error_return (0, "Please specify an interface...");
 
-  rv = pfuzz_enable_disable (pm, sw_if_index, enable_disable);
-
-  switch (rv)
+  if (replay_path)
     {
-    case 0:
-      break;
+      if (pm->replay_fd != 0)
+	close (pm->replay_fd);
+      pm->replay_fd = open ((char *) replay_path, O_RDONLY);
+      if (pm->replay_fd == -1)
+	return clib_error_return_unix (0,
+				       "failed opening specified replay file");
+      vec_free (replay_path);
+    }
 
-    case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-      return clib_error_return
-	(0, "Invalid interface, only works on physical ports");
-      break;
+  else
+    {
+      rv = pfuzz_enable_disable (pm, sw_if_index, enable_disable);
 
-    case VNET_API_ERROR_UNIMPLEMENTED:
-      return clib_error_return (0,
-				"Device driver doesn't support redirection");
-      break;
+      switch (rv)
+	{
+	case 0:
+	  break;
 
-    default:
-      return clib_error_return (0, "pfuzz_enable_disable returned %d", rv);
+	case VNET_API_ERROR_INVALID_SW_IF_INDEX:
+	  return clib_error_return
+	    (0, "Invalid interface, only works on physical ports");
+	  break;
+
+	case VNET_API_ERROR_UNIMPLEMENTED:
+	  return clib_error_return (0,
+				    "Device driver doesn't support redirection");
+	  break;
+
+	default:
+	  return clib_error_return (0, "pfuzz_enable_disable returned %d",
+				    rv);
+	}
     }
   return 0;
 }
@@ -110,7 +137,7 @@ VLIB_CLI_COMMAND (pfuzz_enable_disable_command, static) =
 {
   .path = "pfuzz enable-disable",
   .short_help =
-  "pfuzz enable-disable <interface-name> [disable]",
+  "pfuzz enable-disable <interface-name> [disable] [mode-replay] [replay <path>]",
   .function = pfuzz_enable_disable_command_fn,
 };
 /* *INDENT-ON* */
@@ -147,9 +174,17 @@ pfuzz_init (vlib_main_t * vm)
   pm->msg_id_base = setup_message_id_table ();
 
   /* Basic setup */
-  pm->seed = 0xdeaddabe;
-  pm->mode = PFUZZ_MODE_HEADER;
+  pm->replay_fd = 0;
+  pm->mode = PFUZZ_MODE_FUZZ;
 
+  pm->use_blackbox = getenv (BLACKBOX_ENV_VAR) ? 1 : 0;
+
+  u32 seed;
+  if (getrandom (&seed, sizeof (seed), 0) != sizeof (seed))
+    {
+      /* TODO error message */
+    }
+  pm->seed = seed;
   return error;
 }
 
@@ -172,61 +207,6 @@ VLIB_PLUGIN_REGISTER () =
   .default_disabled = 1,
 };
 /* *INDENT-ON* */
-
-
-static uword
-unformat_pfuzz_mode (unformat_input_t * input, va_list * args)
-{
-  u8 *result = va_arg (*args, u8 *);
-
-#define _(n,s) if (unformat (input, s)) {*result = PFUZZ_MODE_##n; return 1;}
-  foreach_pfuzz_mode;
-#undef _
-  return 0;
-}
-
-static clib_error_t *
-pfuzz_config_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  pfuzz_main_t *pm = &pfuzz_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *error = 0;
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "seed %u", &pm->seed))
-	;
-      else if (unformat (line_input, "mode %U",
-			 unformat_pfuzz_mode, &pm->mode))
-	;
-      else
-	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
-	  break;
-	}
-    }
-
-  unformat_free (line_input);
-  return error;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (pfuzz_config_command, static) =
-{
-  .path = "pfuzz configure",
-  .short_help =
-  "pfuzz configure [mode header|body] [seed nnn]",
-  .function = pfuzz_config_command_fn,
-};
-/* *INDENT-ON* */
-
-
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -1,0 +1,30 @@
+create packet-generator interface pg0
+set int ip address pg0 11.22.33.1/24
+set int state pg0 up
+create packet-generator interface pg1
+set int ip address pg1 11.22.34.1/24
+set int state pg1 up
+
+ikev2 profile add pr1
+ikev2 profile set pr1 auth shared-key-mic string Vpp123
+ikev2 profile set pr1 id local fqdn vpp.home
+ikev2 profile set pr1 id remote fqdn roadwarrior.vpn.example.com
+ikev2 profile set pr1 traffic-selector local ip-range 192.168.5.0 - 192.168.5.255 port-range 0 - 65535 protocol 0
+ikev2 profile set pr1 traffic-selector remote ip-range 192.168.3.0 - 192.168.3.255 port-range 0 - 65535 protocol 0
+
+packet-generator new {
+    name s0
+    limit -1
+    maxframe 1
+    size 128-128
+    interface pg0
+    node ethernet-input
+    data { IP4: 1.2.3 -> dead.0000.0000
+           UDP: 11.22.33.44 -> 11.22.34.1
+                ttl 1
+           UDP: 500 -> 500
+           incrementing 114
+    }
+}
+
+comment { To be suffixed here with a "suffix_..." file }
