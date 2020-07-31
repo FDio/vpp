@@ -206,8 +206,8 @@ format_tcp_vars (u8 * s, va_list * args)
 	      tcp_time_now () - tc->tsval_recent_age);
   s = format (s, " snd_mss %u\n", tc->snd_mss);
   s = format (s, " rto %u rto_boff %u srtt %u us %.3f rttvar %u rtt_ts %.4f",
-	      tc->rto, tc->rto_boff, tc->srtt, tc->mrtt_us * 1000, tc->rttvar,
-	      tc->rtt_ts);
+	      tc->rto / 1000, tc->rto_boff, tc->srtt / 1000,
+	      tc->mrtt_us * 1e3, tc->rttvar, tc->rtt_ts);
   s = format (s, " rtt_seq %u\n", tc->rtt_seq - tc->iss);
   s = format (s, " next_node %u opaque 0x%x fib_index %u\n",
 	      tc->next_node_index, tc->next_node_opaque, tc->c_fib_index);

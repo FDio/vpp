@@ -681,7 +681,7 @@ tcp_init_snd_vars (tcp_connection_t * tc)
   tc->snd_una = tc->iss;
   tc->snd_nxt = tc->iss + 1;
   tc->snd_una_max = tc->snd_nxt;
-  tc->srtt = 100;		/* 100 ms */
+  tc->srtt = 1e5;		/* 100 ms */
 
   if (!tcp_cfg.csum_offload)
     tc->cfg_flags |= TCP_CFG_F_NO_CSUM_OFFLOAD;
@@ -1360,11 +1360,6 @@ tcp_main_enable (vlib_main_t * vm)
   if (tcp_cfg.preallocated_half_open_connections)
     pool_init_fixed (tm->half_open_connections,
 		     tcp_cfg.preallocated_half_open_connections);
-
-  /* Initialize clocks per tick for TCP timestamp. Used to compute
-   * monotonically increasing timestamps. */
-  tm->tstamp_ticks_per_clock = vm->clib_time.seconds_per_clock
-    / TCP_TSTAMP_RESOLUTION;
 
   if (num_threads > 1)
     {
