@@ -426,14 +426,16 @@ acceptable:
  *
  * Note that although the original article, srtt and rttvar are scaled
  * to minimize round-off errors, here we don't. Instead, we rely on
- * better precision time measurements.
+ * better precision time measurements, i.e., mrtt must be provided as us
+ * multiple. Note that timestamps are measured as ms multiples so they
+ * must be converted before calling this function.
  */
 static void
 tcp_estimate_rtt (tcp_connection_t * tc, u32 mrtt)
 {
   int err, diff;
 
-  if (tc->srtt != 0)
+  if (PREDICT_TRUE (tc->srtt != 0))
     {
       err = mrtt - tc->srtt;
 
@@ -506,8 +508,8 @@ tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
    * seq_lt (tc->snd_una, ack). This is a condition for calling update_rtt */
   else if (tcp_opts_tstamp (&tc->rcv_opts) && tc->rcv_opts.tsecr)
     {
-      u32 now = tcp_tstamp (tc);
-      mrtt = clib_max (now - tc->rcv_opts.tsecr, 1);
+      mrtt = clib_max (tcp_tstamp (tc) - tc->rcv_opts.tsecr, 1);
+      mrtt *= TCP_TSTP_TO_HZ;
     }
 
 estimate_rtt:
@@ -543,8 +545,8 @@ tcp_estimate_initial_rtt (tcp_connection_t * tc)
     }
   else
     {
-      mrtt = tcp_time_now_w_thread (thread_index) - tc->rcv_opts.tsecr;
-      mrtt = clib_max (mrtt, 1);
+      mrtt = tcp_tstamp (tc) - tc->rcv_opts.tsecr;
+      mrtt = clib_max (mrtt, 1) * TCP_TSTP_TO_HZ;
       /* Due to retransmits we don't know the initial mrtt */
       if (tc->rto_boff && mrtt > 1 * THZ)
 	mrtt = 1 * THZ;
