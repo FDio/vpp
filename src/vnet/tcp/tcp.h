@@ -91,7 +91,7 @@ typedef struct tcp_worker_ctx_
   /** convenience pointer to this thread's vlib main */
   vlib_main_t *vm;
 
-  /** worker time */
+  /** Time measured in @ref TCP_TSTAMP_TICK ticks used for time stamps */
   u32 time_now;
 
   /* Max timers to be handled per dispatch loop */
@@ -208,8 +208,6 @@ typedef struct _tcp_main
 
   /* Pool of listeners. */
   tcp_connection_t *listener_pool;
-
-  f64 tstamp_ticks_per_clock;
 
   /** vlib buffer size */
   u32 bytes_per_buffer;
