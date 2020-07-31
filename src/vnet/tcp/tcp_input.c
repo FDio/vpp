@@ -429,19 +429,24 @@ acceptable:
  * better precision time measurements.
  */
 static void
-tcp_estimate_rtt (tcp_connection_t * tc, u32 mrtt)
+tcp_estimate_rtt (tcp_connection_t * tc, clib_us_time_t mrtt)
 {
-  int err, diff;
+//  int err, diff;
 
   if (tc->srtt != 0)
     {
-      err = mrtt - tc->srtt;
+      int err = (int) mrtt - tc->srtt;
+//      tc->srtt = (u64) (((f64) (u64) tc->srtt) * 0.875 + ((f64) (u64) mrtt) * 0.125);
+      tc->srtt = tc->srtt + err * 0.125;
+      tc->rttvar = tc->rttvar + (clib_abs (err) - (int) tc->rttvar) * 0.25;
+      if (tc->srtt > 200e3)
+	os_panic ();
 
       /* XXX Drop in RTT results in RTTVAR increase and bigger RTO.
        * The increase should be bound */
-      tc->srtt = clib_max ((int) tc->srtt + (err >> 3), 1);
-      diff = (clib_abs (err) - (int) tc->rttvar) >> 2;
-      tc->rttvar = clib_max ((int) tc->rttvar + diff, 1);
+//      tc->srtt = clib_max ((int) tc->srtt + (err >> 3), 1);
+//      diff = (clib_abs (err) - (int) tc->rttvar) >> 2;
+//      tc->rttvar = clib_max ((int) tc->rttvar + diff, 1);
     }
   else
     {
@@ -478,6 +483,7 @@ static int
 tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
 {
   u32 mrtt = 0;
+//  static u64 vsmall = 0, small = 0, large = 0, ts_samples = 0;
 
   /* Karn's rule, part 1. Don't use retransmitted segments to estimate
    * RTT because they're ambiguous. */
@@ -500,6 +506,9 @@ tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
       mrtt = clib_max ((u32) (sample * THZ), 1);
       /* Allow measuring of a new RTT */
       tc->rtt_ts = 0;
+//      ts_samples ++;
+//      clib_warning("ts sample %.4f %u vsmall %lu small %lu large %lu ts %lu srtt %u", sample,
+//                   mrtt, vsmall, small, large, ts_samples, tc->srtt);
     }
   /* As per RFC7323 TSecr can be used for RTTM only if the segment advances
    * snd_una, i.e., the left side of the send window:
@@ -508,6 +517,17 @@ tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
     {
       u32 now = tcp_tstamp (tc);
       mrtt = clib_max (now - tc->rcv_opts.tsecr, 1);
+//      if (mrtt < 17 && mrtt > 2)
+//        {
+//        small++;
+//        clib_warning("small sample %u vsmall %lu, small %lu large %lu ts %lu", mrtt,
+//                     vsmall, small, large, ts_samples);
+//        }
+//      else if (mrtt >= 17)
+//      large ++;
+//      else
+//      vsmall ++;
+      mrtt *= 1e3;
     }
 
 estimate_rtt:
@@ -543,8 +563,8 @@ tcp_estimate_initial_rtt (tcp_connection_t * tc)
     }
   else
     {
-      mrtt = tcp_time_now_w_thread (thread_index) - tc->rcv_opts.tsecr;
-      mrtt = clib_max (mrtt, 1);
+      mrtt = tcp_tstamp (tc) - tc->rcv_opts.tsecr;
+      mrtt = clib_max (mrtt, 1) * 1e3;
       /* Due to retransmits we don't know the initial mrtt */
       if (tc->rto_boff && mrtt > 1 * THZ)
 	mrtt = 1 * THZ;
@@ -755,8 +775,8 @@ tcp_cc_is_spurious_retransmit (tcp_connection_t * tc)
 //tcp_should_fastrecover_sack (tcp_connection_t * tc)
 //{
 //  return (tc->sack_sb.lost_bytes
-//	  || ((TCP_DUPACK_THRESHOLD - 1) * tc->snd_mss
-//	      < tc->sack_sb.sacked_bytes));
+//        || ((TCP_DUPACK_THRESHOLD - 1) * tc->snd_mss
+//            < tc->sack_sb.sacked_bytes));
 //}
 
 static inline u8
@@ -785,7 +805,7 @@ tcp_should_fastrecover (tcp_connection_t * tc, u8 has_sack)
     }
   return tc->sack_sb.lost_bytes;
 //  return ((tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
-//	  || tcp_should_fastrecover_sack (tc));
+//        || tcp_should_fastrecover_sack (tc));
 }
 
 static int
@@ -858,12 +878,12 @@ tcp_try_undo_partial_ack (tcp_connection_t * tc)
     {
       sack_scoreboard_t *sb = &tc->sack_sb;
       clib_warning ("reordering %u sacked %u",
-                    (sb->high_sacked - tc->snd_una) / tc->snd_mss,
-                    sb->sacked_bytes);
+		    (sb->high_sacked - tc->snd_una) / tc->snd_mss,
+		    sb->sacked_bytes);
       if (sb->sacked_bytes)
 	{
-	  sb->reorder = clib_min(
-	      (sb->high_sacked - tc->snd_una) / tc->snd_mss, 300);
+	  sb->reorder = clib_min ((sb->high_sacked -
+				   tc->snd_una) / tc->snd_mss, 300);
 	  sack_scoreboard_hole_t *hole = scoreboard_first_hole (sb);
 	  while (hole)
 	    {
@@ -907,7 +927,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 
       if (tcp_should_fastrecover (tc, has_sack))
 	{
-//	  clib_warning("%U", format_tcp_connection, tc, 2);
+//        clib_warning("%U", format_tcp_connection, tc, 2);
 	  tcp_cc_init_congestion (tc);
 
 	  if (has_sack)
@@ -1119,6 +1139,7 @@ process_ack:
 
   if (tc->bytes_acked + tc->sack_sb.last_sacked_bytes)
     {
+      tcp_set_time_now (wrk);
       tcp_update_rtt (tc, &rs, vnet_buffer (b)->tcp.ack_number);
       if (tc->bytes_acked)
 	tcp_program_dequeue (wrk, tc);

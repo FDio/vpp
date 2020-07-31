@@ -218,8 +218,11 @@ tcp_time_now_us (u32 thread_index)
 always_inline u32
 tcp_set_time_now (tcp_worker_ctx_t * wrk)
 {
-  tcp_main_t *tm = &tcp_main;
-  wrk->time_now = (u64) (clib_cpu_time_now () * tm->tstamp_ticks_per_clock);
+//  tcp_main_t *tm = &tcp_main;
+//  wrk->time_now = (u64) (clib_cpu_time_now () * tm->tstamp_ticks_per_clock);
+  wrk->time_now = (u64) (vlib_time_now (wrk->vm) * 1000.0);
+  if (wrk->time_now == 0)
+    clib_warning ("zero time?");
   return wrk->time_now;
 }
 
@@ -374,7 +377,7 @@ tcp_init_w_buffer (tcp_connection_t * tc, vlib_buffer_t * b, u8 is_ip4)
 always_inline void
 tcp_update_rto (tcp_connection_t * tc)
 {
-  tc->rto = clib_min (tc->srtt + (tc->rttvar << 2), TCP_RTO_MAX);
+  tc->rto = clib_min (tc->srtt * 1e-3 + (tc->rttvar << 2), TCP_RTO_MAX);
   tc->rto = clib_max (tc->rto, TCP_RTO_MIN);
 }
 
