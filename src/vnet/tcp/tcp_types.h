@@ -22,10 +22,14 @@
 #include <vnet/session/transport.h>
 #include <vppinfra/tw_timer_16t_2w_512sl.h>
 
-#define TCP_TICK 0.001			/**< TCP tick period (s) */
-#define THZ (u32) (1/TCP_TICK)		/**< TCP tick frequency */
-#define TCP_TSTAMP_RESOLUTION TCP_TICK	/**< Time stamp resolution */
-#define TCP_PAWS_IDLE 24 * 24 * 60 * 60 * THZ /**< 24 days */
+#define TCP_TICK 0.000001			/**< TCP tick period (s) */
+#define THZ (u32) (1/TCP_TICK)			/**< TCP tick frequency */
+
+#define TCP_TSTP_TICK 0.001			/**< Timestamp tick (s) */
+#define TCP_TSTP_HZ (u32) (1/TCP_TSTP_TICK)	/**< Timestamp freq */
+#define TCP_PAWS_IDLE (24 * 86400 * TCP_TSTP_HZ)/**< 24 days */
+#define TCP_TSTP_TO_HZ (u32) (TCP_TSTP_TICK * THZ)
+
 #define TCP_FIB_RECHECK_PERIOD	1 * THZ	/**< Recheck every 1s */
 #define TCP_MAX_OPTION_SPACE 40
 #define TCP_CC_DATA_SZ 24
@@ -355,7 +359,7 @@ typedef struct _tcp_connection
   /* RTT and RTO */
   u32 rto;		/**< Retransmission timeout */
   u32 rto_boff;		/**< Index for RTO backoff */
-  u32 srtt;		/**< Smoothed RTT */
+  u32 srtt;		/**< Smoothed RTT measured in @ref TCP_TICK */
   u32 rttvar;		/**< Smoothed mean RTT difference. Approximates variance */
   u32 rtt_seq;		/**< Sequence number for tracked ACK */
   f64 rtt_ts;		/**< Timestamp for tracked ACK */
