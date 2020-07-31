@@ -71,15 +71,9 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		   vlib_frame_t * f, int is_trace)
 {
   nsim_main_t *nsm = &nsim_main;
-  u32 my_thread_index = vm->thread_index;
-  nsim_wheel_t *wp = nsm->wheel_by_thread[my_thread_index];
-  f64 now = vlib_time_now (vm);
-  uword n_tx_packets = 0;
-  u32 bi0, next0;
-  u32 *to_next;
-  u32 next_index;
-  u32 n_left_to_next;
+  nsim_wheel_t *wp = nsm->wheel_by_thread[vm->thread_index];
   nsim_wheel_entry_t *ep;
+  f64 now;
 
   /* Nothing on the scheduler wheel? */
   if (wp->cursize == 0)
@@ -87,67 +81,37 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   /* First entry on the wheel isn't expired? */
   ep = wp->entries + wp->head;
+  now = vlib_time_now (vm);
   if (ep->tx_time > now)
-    return n_tx_packets;
+    return 0;
 
-  next_index = node->cached_next_index;
+  u32 n_burst = clib_min (wp->cursize, NSIM_MAX_TX_BURST), n_tx_packets = 0;
+  u32 froms[NSIM_MAX_TX_BURST], *from;
+  u16 nexts[NSIM_MAX_TX_BURST], *next;
 
-  /* Be aware: this is not the usual coding pattern */
-  while (wp->cursize && ep->tx_time <= now)
+  from = froms;
+  next = nexts;
+  while (n_tx_packets < n_burst && ep->tx_time <= now)
     {
-      vlib_buffer_t *b0;
+      /* prefetch one line / 2 entries ahead */
+      if ((((uword) ep) & (CLIB_CACHE_LINE_BYTES - 1)) == 0)
+	CLIB_PREFETCH ((ep + 2), CLIB_CACHE_LINE_BYTES, LOAD);
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      ep = wp->entries + wp->head;
+      from[0] = ep->buffer_index;
+      next[0] = ep->output_next_index;
 
-      while (n_left_to_next > 0)
-	{
-	  /* prefetch one line / 2 entries ahead */
-	  if ((((uword) ep) & (CLIB_CACHE_LINE_BYTES - 1)) == 0)
-	    CLIB_PREFETCH ((ep + 2), CLIB_CACHE_LINE_BYTES, LOAD);
-	  /* Pick up buffer from the wheel */
-	  bi0 = ep->buffer_index;
+      wp->head++;
+      if (wp->head == wp->wheel_size)
+	wp->head = 0;
 
-	  to_next[0] = bi0;
-	  to_next += 1;
-	  n_left_to_next -= 1;
-
-	  next0 = ep->output_next_index;
-
-	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
-	  /* Advance to the next ring entry */
-	  wp->head++;
-	  if (wp->head == wp->wheel_size)
-	    wp->head = 0;
-	  wp->cursize--;
-	  ep = wp->entries + wp->head;
-	  n_tx_packets++;
-
-	  if (is_trace)
-	    {
-	      b0 = vlib_get_buffer (vm, bi0);
-	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
-		{
-		  nsim_tx_trace_t *t =
-		    vlib_add_trace (vm, node, b0, sizeof (*t));
-		  t->expired = now;
-		  t->next_index = next0;
-		}
-	    }
-
-	  /* Out of ring entries? */
-	  if (PREDICT_FALSE (wp->cursize == 0))
-	    break;
-	}
-
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-
-      /* If the current entry hasn't expired, we're done */
-      if (ep->tx_time > now)
-	break;
+      from += 1;
+      next += 1;
+      n_tx_packets++;
     }
+
+  wp->cursize -= n_tx_packets;
+  vlib_buffer_enqueue_to_next (vm, node, froms, nexts, n_tx_packets);
   vlib_node_increment_counter (vm, node->node_index,
 			       NSIM_TX_ERROR_TRANSMITTED, n_tx_packets);
   return n_tx_packets;

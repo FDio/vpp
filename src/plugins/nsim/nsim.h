@@ -25,6 +25,8 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 
+#define NSIM_MAX_TX_BURST 32	/**< max packets in a tx burst */
+
 typedef struct
 {
   f64 tx_time;
