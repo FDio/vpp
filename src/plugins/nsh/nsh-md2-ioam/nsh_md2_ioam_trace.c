@@ -124,7 +124,7 @@ format_ioam_data_list_element (u8 * s, va_list * args)
       elt++;
     }
 
-  if (trace_type & BIT_ING_INTERFACE && trace_type & BIT_ING_INTERFACE)
+  if (trace_type & BIT_ING_INTERFACE)
     {
       u32 ingress_host_byte_order = clib_net_to_host_u32 (*elt);
       s = format (s, "ingress 0x%x egress 0x%x ",
