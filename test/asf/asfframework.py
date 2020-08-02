@@ -382,6 +382,9 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
             coredump_size,
             "runtime-dir",
             cls.tempdir,
+            "cli-listen ",
+            cls.get_cli_sock_path(),
+            " ",
             "}",
             "api-trace",
             "{",
@@ -575,6 +578,9 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
     @classmethod
     def get_api_sock_path(cls):
         return "%s/api.sock" % cls.tempdir
+
+    def get_cli_sock_path(cls):
+        return "%s/cli.sock" % cls.tempdir
 
     @classmethod
     def get_memif_sock_path(cls):
