@@ -2795,7 +2795,7 @@ vnet_send_dns4_reply (dns_main_t * dm, dns_pending_request_t * pr,
   u8 *reply;
   vl_api_dns_resolve_name_reply_t _rnr, *rnr = &_rnr;
   vl_api_dns_resolve_ip_reply_t _rir, *rir = &_rir;
-  u32 ttl, tmp;
+  u32 ttl = 64, tmp;
   u32 qp_offset;
   dns_query_t *qp;
   dns_rr_t *rr;
