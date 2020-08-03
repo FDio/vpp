@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fe571b00_bb93f02d",
+        "filename": "src/vnet/bonding/bond.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-08-03T11:54:06Z",
+      "side": 1,
+      "message": "When was this API marked deprecated? I\u0027m guessing that the earliest possible release to actually remove it will be vpp-21.01, which should be coded like so:\n\noption deprecated\u003d\"v21.01\";",
+      "revId": "b8239d9623512fb235db794d9b53c00f83983a3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
