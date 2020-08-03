@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eb661f9d_c4e1104b",
+        "filename": "src/plugins/pfuzz/pfuzz.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-08-03T08:58:13Z",
+      "side": 1,
+      "message": "pfuzz",
+      "range": {
+        "startLine": 2,
+        "startChar": 3,
+        "endLine": 2,
+        "endChar": 9
+      },
+      "revId": "f0ee92684078b4340fae89f34ce34dd8578d5074",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8be12076_fe4632f7",
+        "filename": "src/plugins/pfuzz/pfuzz_test.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-08-03T08:58:13Z",
+      "side": 1,
+      "message": "The file content is identical to src/plugins/oddbuf/oddbuf_test.c\nI expected a test for pfuzz, not for oddbuf.",
+      "revId": "f0ee92684078b4340fae89f34ce34dd8578d5074",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
