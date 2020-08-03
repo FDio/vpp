@@ -393,14 +393,6 @@ make_session_hash_xN (int vector_sz, acl_main_t * am, int is_ip6,
       acl_fa_make_session_hash (am, is_ip6, sw_if_index[ii], &fa_5tuple[ii]);
 }
 
-always_inline void
-prefetch_session_entry (acl_main_t * am, fa_full_session_id_t f_sess_id)
-{
-  fa_session_t *sess = get_session_ptr_no_check (am, f_sess_id.thread_index,
-						 f_sess_id.session_index);
-  CLIB_PREFETCH (sess, 2 * CLIB_CACHE_LINE_BYTES, STORE);
-}
-
 always_inline u8
 process_established_session (vlib_main_t * vm, acl_main_t * am,
 			     u32 counter_node_index, int is_input, u64 now,
@@ -591,12 +583,7 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
    *    3) worker session record
    */
 
-  fa_full_session_id_t f_sess_id_next = {.as_u64 = ~0ULL };
-
-  /* find the "next" session so we can kickstart the pipeline */
-  if (with_stateful_datapath)
-    acl_fa_find_session_with_hash (am, is_ip6, sw_if_index[0], hash[0],
-				   &fa_5tuple[0], &f_sess_id_next.as_u64);
+  fa_full_session_id_t f_sess_id;
 
   n_left = frame->n_vectors;
   while (n_left > 0)
@@ -614,73 +601,43 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 
       if (with_stateful_datapath)
 	{
-	  fa_full_session_id_t f_sess_id = f_sess_id_next;
-	  switch (n_left)
+	  acl_fa_find_session_with_hash (am, is_ip6, sw_if_index[0],
+					 hash[0], &fa_5tuple[0],
+					 &f_sess_id.as_u64);
+	  if (f_sess_id.as_u64 != ~0ULL)
 	    {
-	    default:
-	      acl_fa_prefetch_session_bucket_for_hash (am, is_ip6, hash[5]);
-	      /* fallthrough */
-	    case 5:
-	    case 4:
-	      acl_fa_prefetch_session_data_for_hash (am, is_ip6, hash[3]);
-	      /* fallthrough */
-	    case 3:
-	    case 2:
-	      acl_fa_find_session_with_hash (am, is_ip6, sw_if_index[1],
-					     hash[1], &fa_5tuple[1],
-					     &f_sess_id_next.as_u64);
-	      if (f_sess_id_next.as_u64 != ~0ULL)
+	      if (node_trace_on)
 		{
-		  prefetch_session_entry (am, f_sess_id_next);
+		  trace_bitmap |= 0x80000000;
 		}
-	      /* fallthrough */
-	    case 1:
-	      if (f_sess_id.as_u64 != ~0ULL)
+	      ASSERT (f_sess_id.thread_index < vec_len (vlib_mains));
+	      b[0]->error = no_error_existing_session;
+	      acl_check_needed = 0;
+	      pkts_exist_session += 1;
+	      action =
+		process_established_session (vm, am, node->node_index,
+					     is_input, now, f_sess_id,
+					     &sw_if_index[0],
+					     &fa_5tuple[0],
+					     b[0]->current_length,
+					     node_trace_on, &trace_bitmap);
+
+	      /* expose the session id to the tracer */
+	      if (node_trace_on)
 		{
-		  if (node_trace_on)
-		    {
-		      trace_bitmap |= 0x80000000;
-		    }
-		  ASSERT (f_sess_id.thread_index < vec_len (vlib_mains));
-		  b[0]->error = no_error_existing_session;
-		  acl_check_needed = 0;
-		  pkts_exist_session += 1;
-		  action =
-		    process_established_session (vm, am, node->node_index,
-						 is_input, now, f_sess_id,
-						 &sw_if_index[0],
-						 &fa_5tuple[0],
-						 b[0]->current_length,
-						 node_trace_on,
-						 &trace_bitmap);
+		  match_rule_index = f_sess_id.session_index;
+		}
 
-		  /* expose the session id to the tracer */
-		  if (node_trace_on)
+	      if (reclassify_sessions)
+		{
+		  if (PREDICT_FALSE
+		      (stale_session_deleted
+		       (am, is_input, pw, now, sw_if_index[0], f_sess_id)))
 		    {
-		      match_rule_index = f_sess_id.session_index;
-		    }
-
-		  if (reclassify_sessions)
-		    {
-		      if (PREDICT_FALSE
-			  (stale_session_deleted
-			   (am, is_input, pw, now, sw_if_index[0],
-			    f_sess_id)))
+		      acl_check_needed = 1;
+		      if (node_trace_on)
 			{
-			  acl_check_needed = 1;
-			  if (node_trace_on)
-			    {
-			      trace_bitmap |= 0x40000000;
-			    }
-			  /*
-			   * If we have just deleted the session, and the next
-			   * buffer is the same 5-tuple, that session prediction
-			   * is wrong, correct it.
-			   */
-			  if ((f_sess_id_next.as_u64 != ~0ULL)
-			      && 0 == memcmp (&fa_5tuple[1], &fa_5tuple[0],
-					      sizeof (fa_5tuple[1])))
-			    f_sess_id_next.as_u64 = ~0ULL;
+			  trace_bitmap |= 0x40000000;
 			}
 		    }
 		}
@@ -740,7 +697,7 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 		      u16 current_policy_epoch =
 			get_current_policy_epoch (am, is_input,
 						  sw_if_index[0]);
-		      fa_full_session_id_t f_sess_id =
+		      fa_full_session_id_t f_session_id =
 			acl_fa_add_session (am, is_input, is_ip6,
 					    sw_if_index[0],
 					    now, &fa_5tuple[0],
@@ -750,21 +707,13 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 		      process_established_session (vm, am,
 						   node->node_index,
 						   is_input, now,
-						   f_sess_id,
+						   f_session_id,
 						   &sw_if_index[0],
 						   &fa_5tuple[0],
 						   b[0]->current_length,
 						   node_trace_on,
 						   &trace_bitmap);
 		      pkts_new_session++;
-		      /*
-		       * If the next 5tuple is the same and we just added the session,
-		       * the f_sess_id_next can not be ~0. Correct it.
-		       */
-		      if ((f_sess_id_next.as_u64 == ~0ULL)
-			  && 0 == memcmp (&fa_5tuple[1], &fa_5tuple[0],
-					  sizeof (fa_5tuple[1])))
-			f_sess_id_next = f_sess_id;
 		    }
 		  else
 		    {
