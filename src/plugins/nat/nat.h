@@ -230,6 +230,20 @@ typedef enum
 /* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
+  // number of sessions in this vrf
+  u32 ses_count;
+
+  u32 rx_fib_index;
+  u32 tx_fib_index;
+
+  // is this vrf expired
+  u8 expired;
+}) per_vrf_sessions_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+typedef CLIB_PACKED(struct
+{
   /* Outside network tuple */
   struct
   {
@@ -287,9 +301,12 @@ typedef CLIB_PACKED(struct
 
   /* user index */
   u32 user_index;
+
+  /* per vrf sessions */
+  per_vrf_sessions_t *per_vrf_sessions;
+
 }) snat_session_t;
 /* *INDENT-ON* */
-
 
 typedef struct
 {
@@ -313,6 +330,12 @@ typedef struct
 #undef _
 /* *INDENT-ON* */
 } snat_address_t;
+
+typedef struct
+{
+  u32 fib_index;
+  u32 ref_count;
+} nat_fib_t;
 
 typedef struct
 {
@@ -473,6 +496,8 @@ typedef struct
   /* real thread index */
   u32 thread_index;
 
+  per_vrf_sessions_t *per_vrf_sessions_vec;
+
 } snat_main_per_thread_data_t;
 
 struct snat_main_s;
@@ -558,6 +583,9 @@ typedef struct snat_main_s
   /* Port range parameters */
   u16 start_port;
   u16 end_port;
+
+  /* vector of fibs */
+  nat_fib_t *fibs;
 
   /* vector of outside fibs */
   nat_outside_fib_t *outside_fibs;
@@ -1378,6 +1406,8 @@ int snat_alloc_outside_address_and_port (snat_address_t * addresses,
 					 u16 * port,
 					 u16 port_per_thread,
 					 u32 snat_thread_index);
+
+void expire_per_vrf_sessions (u32 fib_index);
 
 /**
  * @brief Match NAT44 static mapping.

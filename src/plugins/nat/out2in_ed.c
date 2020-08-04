@@ -784,8 +784,10 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	    }
 	}
 
+      // lookup for session
       if (clib_bihash_search_16_8 (&sm->out2in_ed, &kv0, &value0))
 	{
+	  // session does not exist go slow path
 	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	  goto trace0;
 	}
@@ -795,10 +797,24 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 			   ed_value_get_session_index (&value0));
 
     skip_lookup:
+
+      if (PREDICT_FALSE (per_vrf_sessions_is_expired (s0)))
+	{
+	  per_vrf_sessions_unregister_session (s0);
+
+	  // session is closed, go slow path
+	  nat_free_session_data (sm, s0, thread_index, 0);
+	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
+	  goto trace0;
+	}
+
       if (s0->tcp_closed_timestamp)
 	{
 	  if (now >= s0->tcp_closed_timestamp)
 	    {
+	      per_vrf_sessions_unregister_session (s0);
+
 	      // session is closed, go slow path
 	      next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	    }
@@ -817,13 +833,14 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	s0->last_heard + (f64) nat44_session_get_timeout (sm, s0);
       if (now >= sess_timeout_time)
 	{
+	  per_vrf_sessions_unregister_session (s0);
+
 	  // session is closed, go slow path
 	  nat_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
 	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	  goto trace0;
 	}
-      //
 
       old_addr0 = ip0->dst_address.as_u32;
       new_addr0 = ip0->dst_address.as_u32 = s0->in2out.addr.as_u32;
@@ -1066,6 +1083,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	    pool_elt_at_index (tsm->sessions,
 			       ed_value_get_session_index (&value0));
 
+	  // TODO:
 	  if (s0->tcp_closed_timestamp && now >= s0->tcp_closed_timestamp)
 	    {
 	      nat_free_session_data (sm, s0, thread_index, 0);

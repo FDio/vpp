@@ -777,6 +777,95 @@ snat_random_port (u16 min, u16 max)
   return min + (rwide % (max - min + 1));
 }
 
+// slow path
+static_always_inline void
+per_vrf_sessions_cleanup (u32 thread_index)
+{
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm =
+    vec_elt_at_index (sm->per_thread_data, thread_index);
+  per_vrf_sessions_t *per_vrf_sessions;
+  u32 *to_free = 0, *i;
+
+  vec_foreach (per_vrf_sessions, tsm->per_vrf_sessions_vec)
+  {
+    if (per_vrf_sessions->expired)
+      {
+	if (per_vrf_sessions->ses_count == 0)
+	  {
+	    vec_add1 (to_free, per_vrf_sessions - tsm->per_vrf_sessions_vec);
+	  }
+      }
+  }
+
+  if (vec_len (to_free))
+    {
+      vec_foreach (i, to_free)
+      {
+	vec_del1 (tsm->per_vrf_sessions_vec, *i);
+      }
+    }
+
+  vec_free (to_free);
+}
+
+// slow path
+static_always_inline void
+per_vrf_sessions_register_session (snat_session_t * s, u32 thread_index)
+{
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm =
+    vec_elt_at_index (sm->per_thread_data, thread_index);
+  per_vrf_sessions_t *per_vrf_sessions;
+
+  per_vrf_sessions_cleanup (thread_index);
+
+  // first be sure this session was unregistered from per vrf or is new
+  ASSERT (s->per_vrf_sessions == 0);
+
+  vec_foreach (per_vrf_sessions, tsm->per_vrf_sessions_vec)
+  {
+    // ignore already expired registrations
+    if (per_vrf_sessions->expired)
+      continue;
+
+    if ((s->in2out.fib_index == per_vrf_sessions->rx_fib_index) &&
+	(s->out2in.fib_index == per_vrf_sessions->tx_fib_index))
+      {
+	goto done;
+      }
+  }
+
+  // create a new registration
+  vec_add2 (tsm->per_vrf_sessions_vec, per_vrf_sessions, 1);
+  clib_memset (per_vrf_sessions, 0, sizeof (*per_vrf_sessions));
+  per_vrf_sessions->rx_fib_index = s->in2out.fib_index;
+  per_vrf_sessions->tx_fib_index = s->out2in.fib_index;
+
+done:
+  s->per_vrf_sessions = per_vrf_sessions;
+  per_vrf_sessions->ses_count++;
+}
+
+// fast path
+static_always_inline void
+per_vrf_sessions_unregister_session (snat_session_t * s)
+{
+  ASSERT (s->per_vrf_sessions != 0);
+  ASSERT (s->per_vrf_sessions->ses_count != 0);
+  s->per_vrf_sessions->ses_count--;
+  s->per_vrf_sessions = 0;
+}
+
+// fast path
+static_always_inline u8
+per_vrf_sessions_is_expired (snat_session_t * s)
+{
+  ASSERT (s->per_vrf_sessions != 0);
+  return s->per_vrf_sessions->expired;
+}
+
+
 #endif /* __included_nat_inlines_h__ */
 
 /*

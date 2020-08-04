@@ -488,6 +488,8 @@ slow_path_ed (snat_main_t * sm,
 	       &s->ext_host_nat_addr, s->ext_host_nat_port,
 	       s->nat_proto, s->in2out.fib_index, s->flags, thread_index, 0);
 
+  per_vrf_sessions_register_session (s, thread_index);
+
   return next;
 }
 
@@ -905,6 +907,8 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
   if (vnet_buffer (b)->sw_if_index[VLIB_TX] == ~0)
     vnet_buffer (b)->sw_if_index[VLIB_TX] = outside_fib_index;
 
+  per_vrf_sessions_register_session (s, thread_index);
+
   return s;
 }
 
@@ -1028,10 +1032,23 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 	pool_elt_at_index (tsm->sessions,
 			   ed_value_get_session_index (&value0));
 
+      if (PREDICT_FALSE (per_vrf_sessions_is_expired (s0)))
+	{
+	  per_vrf_sessions_unregister_session (s0);
+
+	  // session is closed, go slow path
+	  nat_free_session_data (sm, s0, thread_index, 0);
+	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
+	  goto trace0;
+	}
+
       if (s0->tcp_closed_timestamp)
 	{
 	  if (now >= s0->tcp_closed_timestamp)
 	    {
+	      per_vrf_sessions_unregister_session (s0);
+
 	      // session is closed, go slow path
 	      next[0] = def_slow;
 	    }
@@ -1050,6 +1067,8 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 	s0->last_heard + (f64) nat44_session_get_timeout (sm, s0);
       if (now >= sess_timeout_time)
 	{
+	  per_vrf_sessions_unregister_session (s0);
+
 	  nat_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
 	  // session is closed, go slow path
@@ -1294,6 +1313,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	    pool_elt_at_index (tsm->sessions,
 			       ed_value_get_session_index (&value0));
 
+	  // TODO: consider adding expired vrf check here
 	  if (s0->tcp_closed_timestamp && now >= s0->tcp_closed_timestamp)
 	    {
 	      nat_free_session_data (sm, s0, thread_index, 0);
