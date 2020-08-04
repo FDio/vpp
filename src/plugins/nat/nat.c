@@ -189,6 +189,11 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
   snat_main_per_thread_data_t *tsm =
     vec_elt_at_index (sm->per_thread_data, thread_index);
 
+  if (is_ed_session (s))
+    {
+      per_vrf_sessions_unregister_session (s, thread_index);
+    }
+
   if (is_fwd_bypass_session (s))
     {
       if (snat_is_unk_proto_session (s))
@@ -1814,6 +1819,65 @@ nat_validate_counters (snat_main_t * sm, u32 sw_if_index)
   vlib_zero_simple_counter (&sm->counters.hairpinning, sw_if_index);
 }
 
+void
+expire_per_vrf_sessions (u32 fib_index)
+{
+  per_vrf_sessions_t *per_vrf_sessions;
+  snat_main_per_thread_data_t *tsm;
+  snat_main_t *sm = &snat_main;
+
+  /* *INDENT-OFF* */
+  vec_foreach (tsm, sm->per_thread_data)
+    {
+      vec_foreach (per_vrf_sessions, tsm->per_vrf_sessions_vec)
+        {
+          if ((per_vrf_sessions->rx_fib_index == fib_index) ||
+              (per_vrf_sessions->tx_fib_index == fib_index))
+            {
+              per_vrf_sessions->expired = 1;
+            }
+        }
+    }
+  /* *INDENT-ON* */
+}
+
+void
+update_per_vrf_sessions_vec (u32 fib_index, int is_del)
+{
+  snat_main_t *sm = &snat_main;
+  nat_fib_t *fib;
+
+  // we don't care if it is outside/inside fib
+  // we just care about their ref_count
+  // if it reaches 0 sessions should expire
+  // because the fib isn't valid for NAT anymore
+
+  vec_foreach (fib, sm->fibs)
+  {
+    if (fib->fib_index == fib_index)
+      {
+	if (is_del)
+	  {
+	    fib->ref_count--;
+	    if (!fib->ref_count)
+	      {
+		vec_del1 (sm->fibs, fib - sm->fibs);
+		expire_per_vrf_sessions (fib_index);
+	      }
+	    return;
+	  }
+	else
+	  fib->ref_count++;
+      }
+  }
+  if (!is_del)
+    {
+      vec_add2 (sm->fibs, fib, 1);
+      fib->ref_count = 1;
+      fib->fib_index = fib_index;
+    }
+}
+
 int
 snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
 {
@@ -1861,6 +1925,9 @@ snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
     sm->fq_out2in_index =
       vlib_frame_queue_main_init (sm->out2in_node_index, NAT_FQ_NELTS);
 
+  if (sm->endpoint_dependent)
+    update_per_vrf_sessions_vec (fib_index, is_del);
+
   if (!is_inside)
     {
       /* *INDENT-OFF* */
@@ -1887,6 +1954,7 @@ snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
 	  outside_fib->fib_index = fib_index;
 	}
     }
+
 feature_set:
   /* *INDENT-OFF* */
   pool_foreach (i, sm->interfaces,
@@ -2073,7 +2141,6 @@ snat_interface_add_del_output_feature (u32 sw_if_index,
   u32 fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
 						       sw_if_index);
 
-
   if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
     return VNET_API_ERROR_UNSUPPORTED;
 
@@ -2084,6 +2151,9 @@ snat_interface_add_del_output_feature (u32 sw_if_index,
       return VNET_API_ERROR_VALUE_EXIST;
   }));
   /* *INDENT-ON* */
+
+  if (sm->endpoint_dependent)
+    update_per_vrf_sessions_vec (fib_index, is_del);
 
   if (!is_inside)
     {
@@ -2438,6 +2508,33 @@ test_key_calc_split ()
   ASSERT (proto == proto3);
   ASSERT (fib_index == fib_index2);
 }
+
+static clib_error_t *
+nat_ip_table_add_del (vnet_main_t * vnm, u32 table_id, u32 is_add)
+{
+  snat_main_t *sm = &snat_main;
+  u32 fib_index;
+
+  if (sm->endpoint_dependent)
+    {
+      // TODO: consider removing all NAT interfaces
+
+      if (!is_add)
+	{
+	  fib_index = ip4_fib_index_from_table_id (table_id);
+	  if (fib_index != ~0)
+	    expire_per_vrf_sessions (fib_index);
+	}
+    }
+
+  // TODO: remove
+  nat_log_err ("nat_ip_table_add_del %u %s", table_id,
+	       is_add ? "add" : "del");
+  return 0;
+}
+
+VNET_IP_TABLE_ADD_DEL_FUNCTION (nat_ip_table_add_del);
+
 
 static clib_error_t *
 snat_init (vlib_main_t * vm)
@@ -3853,6 +3950,7 @@ nat44_db_init (snat_main_per_thread_data_t * tsm)
 			     sm->translation_memory_size);
       clib_bihash_set_kvp_format_fn_16_8 (&tsm->in2out_ed,
 					  format_ed_session_kvp);
+
     }
   else
     {
@@ -3884,6 +3982,7 @@ nat44_db_free (snat_main_per_thread_data_t * tsm)
   if (sm->endpoint_dependent)
     {
       clib_bihash_free_16_8 (&tsm->in2out_ed);
+      vec_free (tsm->per_vrf_sessions_vec);
     }
   else
     {
