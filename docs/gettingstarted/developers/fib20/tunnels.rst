@@ -10,7 +10,7 @@ beforehand, so the recursive switch can be avoided if the packet can follow the
 already constructed data-plane graph for the tunnel's destination. This process
 of joining to DP graphs together is termed *stacking*.
   
-.. figure:: /_images/fib20fig2.png
+.. figure:: /_images/fib20fig11.png
 
 Figure 11: Tunnel control plane object diagram
 
