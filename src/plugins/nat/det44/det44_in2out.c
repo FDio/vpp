@@ -403,8 +403,7 @@ VLIB_NODE_FN (det44_in2out_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * frame)
 {
-  u32 n_left_from, *from, *to_next;
-  det44_in2out_next_t next_index;
+  u32 n_left_from, *from;
   u32 pkts_processed = 0;
   det44_main_t *dm = &det44_main;
   u32 now = (u32) vlib_time_now (vm);
@@ -412,626 +411,599 @@ VLIB_NODE_FN (det44_in2out_node) (vlib_main_t * vm,
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
 
-  while (n_left_from > 0)
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
+  vlib_get_buffers (vm, from, b, n_left_from);
+
+  while (n_left_from >= 2)
     {
-      u32 n_left_to_next;
+      vlib_buffer_t *b0, *b1;
+      u32 next0, next1;
+      u32 sw_if_index0, sw_if_index1;
+      ip4_header_t *ip0, *ip1;
+      ip_csum_t sum0, sum1;
+      ip4_address_t new_addr0, old_addr0, new_addr1, old_addr1;
+      u16 old_port0, new_port0, lo_port0, i0;
+      u16 old_port1, new_port1, lo_port1, i1;
+      udp_header_t *udp0, *udp1;
+      tcp_header_t *tcp0, *tcp1;
+      u32 proto0, proto1;
+      snat_det_out_key_t key0, key1;
+      snat_det_map_t *mp0, *mp1;
+      snat_det_session_t *ses0 = 0, *ses1 = 0;
+      u32 rx_fib_index0, rx_fib_index1;
+      icmp46_header_t *icmp0, *icmp1;
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      b0 = *b;
+      b++;
+      b1 = *b;
+      b++;
 
-      while (n_left_from >= 4 && n_left_to_next >= 2)
+      /* Prefetch next iteration. */
+      if (PREDICT_TRUE (n_left_from >= 4))
 	{
-	  u32 bi0, bi1;
-	  vlib_buffer_t *b0, *b1;
-	  u32 next0, next1;
-	  u32 sw_if_index0, sw_if_index1;
-	  ip4_header_t *ip0, *ip1;
-	  ip_csum_t sum0, sum1;
-	  ip4_address_t new_addr0, old_addr0, new_addr1, old_addr1;
-	  u16 old_port0, new_port0, lo_port0, i0;
-	  u16 old_port1, new_port1, lo_port1, i1;
-	  udp_header_t *udp0, *udp1;
-	  tcp_header_t *tcp0, *tcp1;
-	  u32 proto0, proto1;
-	  snat_det_out_key_t key0, key1;
-	  snat_det_map_t *mp0, *mp1;
-	  snat_det_session_t *ses0 = 0, *ses1 = 0;
-	  u32 rx_fib_index0, rx_fib_index1;
-	  icmp46_header_t *icmp0, *icmp1;
+	  vlib_buffer_t *p2, *p3;
 
-	  /* Prefetch next iteration. */
-	  {
-	    vlib_buffer_t *p2, *p3;
+	  p2 = *b;
+	  p3 = *(b + 1);
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
+	  vlib_prefetch_buffer_header (p2, LOAD);
+	  vlib_prefetch_buffer_header (p3, LOAD);
 
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
+	  CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	}
 
-	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	  }
+      next0 = DET44_IN2OUT_NEXT_LOOKUP;
+      next1 = DET44_IN2OUT_NEXT_LOOKUP;
 
-	  /* speculatively enqueue b0 and b1 to the current next frame */
-	  to_next[0] = bi0 = from[0];
-	  to_next[1] = bi1 = from[1];
-	  from += 2;
-	  to_next += 2;
-	  n_left_from -= 2;
-	  n_left_to_next -= 2;
+      ip0 = vlib_buffer_get_current (b0);
+      udp0 = ip4_next_header (ip0);
+      tcp0 = (tcp_header_t *) udp0;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
+      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-	  next0 = DET44_IN2OUT_NEXT_LOOKUP;
-	  next1 = DET44_IN2OUT_NEXT_LOOKUP;
+      if (PREDICT_FALSE (ip0->ttl == 1))
+	{
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	  icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
+				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
+				       0);
+	  next0 = DET44_IN2OUT_NEXT_ICMP_ERROR;
+	  goto trace0;
+	}
 
-	  ip0 = vlib_buffer_get_current (b0);
-	  udp0 = ip4_next_header (ip0);
-	  tcp0 = (tcp_header_t *) udp0;
+      proto0 = ip_proto_to_nat_proto (ip0->protocol);
 
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+      if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
+	{
+	  rx_fib_index0 =
+	    ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
+	  icmp0 = (icmp46_header_t *) udp0;
 
-	  if (PREDICT_FALSE (ip0->ttl == 1))
+	  // TODO:
+	  next0 = det44_icmp_in2out (b0, ip0, icmp0, sw_if_index0,
+				     rx_fib_index0, node, next0,
+				     thread_index, &ses0, &mp0);
+	  goto trace0;
+	}
+
+      mp0 = snat_det_map_by_user (&ip0->src_address);
+      if (PREDICT_FALSE (!mp0))
+	{
+	  det44_log_info ("no match for internal host %U",
+			  format_ip4_address, &ip0->src_address);
+	  next0 = DET44_IN2OUT_NEXT_DROP;
+	  b0->error = node->errors[DET44_IN2OUT_ERROR_NO_TRANSLATION];
+	  goto trace0;
+	}
+
+      snat_det_forward (mp0, &ip0->src_address, &new_addr0, &lo_port0);
+
+      key0.ext_host_addr = ip0->dst_address;
+      key0.ext_host_port = tcp0->dst;
+
+      ses0 =
+	snat_det_find_ses_by_in (mp0, &ip0->src_address, tcp0->src, key0);
+      if (PREDICT_FALSE (!ses0))
+	{
+	  for (i0 = 0; i0 < mp0->ports_per_host; i0++)
 	    {
+	      key0.out_port = clib_host_to_net_u16 (lo_port0 +
+						    ((i0 +
+						      clib_net_to_host_u16
+						      (tcp0->src)) %
+						     mp0->ports_per_host));
+
+	      if (snat_det_get_ses_by_out
+		  (mp0, &ip0->src_address, key0.as_u64))
+		continue;
+
+	      ses0 =
+		snat_det_ses_create (thread_index, mp0, &ip0->src_address,
+				     tcp0->src, &key0);
+	      break;
+	    }
+	  if (PREDICT_FALSE (!ses0))
+	    {
+	      /* too many sessions for user, send ICMP error packet */
 	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	      icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
-					   ICMP4_time_exceeded_ttl_exceeded_in_transit,
+	      icmp4_error_set_vnet_buffer (b0,
+					   ICMP4_destination_unreachable,
+					   ICMP4_destination_unreachable_destination_unreachable_host,
 					   0);
 	      next0 = DET44_IN2OUT_NEXT_ICMP_ERROR;
 	      goto trace0;
 	    }
+	}
 
-	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
+      old_port0 = udp0->src_port;
+      udp0->src_port = new_port0 = ses0->out.out_port;
 
-	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
-	    {
-	      rx_fib_index0 =
-		ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
-	      icmp0 = (icmp46_header_t *) udp0;
+      old_addr0.as_u32 = ip0->src_address.as_u32;
+      ip0->src_address.as_u32 = new_addr0.as_u32;
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = dm->outside_fib_index;
 
-	      // TODO:
-	      next0 = det44_icmp_in2out (b0, ip0, icmp0, sw_if_index0,
-					 rx_fib_index0, node, next0,
-					 thread_index, &ses0, &mp0);
-	      goto trace0;
-	    }
+      sum0 = ip0->checksum;
+      sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
+			     ip4_header_t, src_address /* changed member */ );
+      ip0->checksum = ip_csum_fold (sum0);
 
-	  mp0 = snat_det_map_by_user (&ip0->src_address);
-	  if (PREDICT_FALSE (!mp0))
-	    {
-	      det44_log_info ("no match for internal host %U",
-			      format_ip4_address, &ip0->src_address);
-	      next0 = DET44_IN2OUT_NEXT_DROP;
-	      b0->error = node->errors[DET44_IN2OUT_ERROR_NO_TRANSLATION];
-	      goto trace0;
-	    }
+      if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
+	{
+	  if (tcp0->flags & TCP_FLAG_SYN)
+	    ses0->state = DET44_SESSION_TCP_SYN_SENT;
+	  else if (tcp0->flags & TCP_FLAG_ACK
+		   && ses0->state == DET44_SESSION_TCP_SYN_SENT)
+	    ses0->state = DET44_SESSION_TCP_ESTABLISHED;
+	  else if (tcp0->flags & TCP_FLAG_FIN
+		   && ses0->state == DET44_SESSION_TCP_ESTABLISHED)
+	    ses0->state = DET44_SESSION_TCP_FIN_WAIT;
+	  else if (tcp0->flags & TCP_FLAG_ACK
+		   && ses0->state == DET44_SESSION_TCP_FIN_WAIT)
+	    snat_det_ses_close (mp0, ses0);
+	  else if (tcp0->flags & TCP_FLAG_FIN
+		   && ses0->state == DET44_SESSION_TCP_CLOSE_WAIT)
+	    ses0->state = DET44_SESSION_TCP_LAST_ACK;
+	  else if (tcp0->flags == 0 && ses0->state == DET44_SESSION_UNKNOWN)
+	    ses0->state = DET44_SESSION_TCP_ESTABLISHED;
 
-	  snat_det_forward (mp0, &ip0->src_address, &new_addr0, &lo_port0);
-
-	  key0.ext_host_addr = ip0->dst_address;
-	  key0.ext_host_port = tcp0->dst;
-
-	  ses0 =
-	    snat_det_find_ses_by_in (mp0, &ip0->src_address, tcp0->src, key0);
-	  if (PREDICT_FALSE (!ses0))
-	    {
-	      for (i0 = 0; i0 < mp0->ports_per_host; i0++)
-		{
-		  key0.out_port = clib_host_to_net_u16 (lo_port0 +
-							((i0 +
-							  clib_net_to_host_u16
-							  (tcp0->src)) %
-							 mp0->
-							 ports_per_host));
-
-		  if (snat_det_get_ses_by_out
-		      (mp0, &ip0->src_address, key0.as_u64))
-		    continue;
-
-		  ses0 =
-		    snat_det_ses_create (thread_index, mp0, &ip0->src_address,
-					 tcp0->src, &key0);
-		  break;
-		}
-	      if (PREDICT_FALSE (!ses0))
-		{
-		  /* too many sessions for user, send ICMP error packet */
-		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-		  icmp4_error_set_vnet_buffer (b0,
-					       ICMP4_destination_unreachable,
-					       ICMP4_destination_unreachable_destination_unreachable_host,
-					       0);
-		  next0 = DET44_IN2OUT_NEXT_ICMP_ERROR;
-		  goto trace0;
-		}
-	    }
-
-	  old_port0 = udp0->src_port;
-	  udp0->src_port = new_port0 = ses0->out.out_port;
-
-	  old_addr0.as_u32 = ip0->src_address.as_u32;
-	  ip0->src_address.as_u32 = new_addr0.as_u32;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = dm->outside_fib_index;
-
-	  sum0 = ip0->checksum;
+	  sum0 = tcp0->checksum;
 	  sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
 				 ip4_header_t,
-				 src_address /* changed member */ );
-	  ip0->checksum = ip_csum_fold (sum0);
+				 dst_address /* changed member */ );
+	  sum0 = ip_csum_update (sum0, old_port0, new_port0,
+				 ip4_header_t /* cheat */ ,
+				 length /* changed member */ );
+	  mss_clamping (dm->mss_clamping, tcp0, &sum0);
+	  tcp0->checksum = ip_csum_fold (sum0);
+	}
+      else
+	{
+	  ses0->state = DET44_SESSION_UDP_ACTIVE;
 
-	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
+	  if (PREDICT_FALSE (udp0->checksum))
 	    {
-	      if (tcp0->flags & TCP_FLAG_SYN)
-		ses0->state = DET44_SESSION_TCP_SYN_SENT;
-	      else if (tcp0->flags & TCP_FLAG_ACK
-		       && ses0->state == DET44_SESSION_TCP_SYN_SENT)
-		ses0->state = DET44_SESSION_TCP_ESTABLISHED;
-	      else if (tcp0->flags & TCP_FLAG_FIN
-		       && ses0->state == DET44_SESSION_TCP_ESTABLISHED)
-		ses0->state = DET44_SESSION_TCP_FIN_WAIT;
-	      else if (tcp0->flags & TCP_FLAG_ACK
-		       && ses0->state == DET44_SESSION_TCP_FIN_WAIT)
-		snat_det_ses_close (mp0, ses0);
-	      else if (tcp0->flags & TCP_FLAG_FIN
-		       && ses0->state == DET44_SESSION_TCP_CLOSE_WAIT)
-		ses0->state = DET44_SESSION_TCP_LAST_ACK;
-	      else if (tcp0->flags == 0
-		       && ses0->state == DET44_SESSION_UNKNOWN)
-		ses0->state = DET44_SESSION_TCP_ESTABLISHED;
-
-	      sum0 = tcp0->checksum;
-	      sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
-	      sum0 = ip_csum_update (sum0, old_port0, new_port0,
-				     ip4_header_t /* cheat */ ,
-				     length /* changed member */ );
-	      mss_clamping (dm->mss_clamping, tcp0, &sum0);
-	      tcp0->checksum = ip_csum_fold (sum0);
+	      sum0 = udp0->checksum;
+	      sum0 =
+		ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
+				ip4_header_t,
+				dst_address /* changed member */ );
+	      sum0 =
+		ip_csum_update (sum0, old_port0, new_port0,
+				ip4_header_t /* cheat */ ,
+				length /* changed member */ );
+	      udp0->checksum = ip_csum_fold (sum0);
 	    }
-	  else
-	    {
-	      ses0->state = DET44_SESSION_UDP_ACTIVE;
+	}
 
-	      if (PREDICT_FALSE (udp0->checksum))
-		{
-		  sum0 = udp0->checksum;
-		  sum0 =
-		    ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
-				    ip4_header_t,
-				    dst_address /* changed member */ );
-		  sum0 =
-		    ip_csum_update (sum0, old_port0, new_port0,
-				    ip4_header_t /* cheat */ ,
-				    length /* changed member */ );
-		  udp0->checksum = ip_csum_fold (sum0);
-		}
-	    }
+      switch (ses0->state)
+	{
+	case DET44_SESSION_UDP_ACTIVE:
+	  ses0->expire = now + dm->timeouts.udp;
+	  break;
+	case DET44_SESSION_TCP_SYN_SENT:
+	case DET44_SESSION_TCP_FIN_WAIT:
+	case DET44_SESSION_TCP_CLOSE_WAIT:
+	case DET44_SESSION_TCP_LAST_ACK:
+	  ses0->expire = now + dm->timeouts.tcp.transitory;
+	  break;
+	case DET44_SESSION_TCP_ESTABLISHED:
+	  ses0->expire = now + dm->timeouts.tcp.established;
+	  break;
+	}
 
-	  switch (ses0->state)
+    trace0:
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+	  det44_in2out_trace_t *t =
+	    vlib_add_trace (vm, node, b0, sizeof (*t));
+	  t->sw_if_index = sw_if_index0;
+	  t->next_index = next0;
+	  t->session_index = ~0;
+	  if (ses0)
+	    t->session_index = ses0 - mp0->sessions;
+	}
+
+      pkts_processed += next0 != DET44_IN2OUT_NEXT_DROP;
+
+      ip1 = vlib_buffer_get_current (b1);
+      udp1 = ip4_next_header (ip1);
+      tcp1 = (tcp_header_t *) udp1;
+
+      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+
+      if (PREDICT_FALSE (ip1->ttl == 1))
+	{
+	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	  icmp4_error_set_vnet_buffer (b1, ICMP4_time_exceeded,
+				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
+				       0);
+	  next1 = DET44_IN2OUT_NEXT_ICMP_ERROR;
+	  goto trace1;
+	}
+
+      proto1 = ip_proto_to_nat_proto (ip1->protocol);
+
+      if (PREDICT_FALSE (proto1 == NAT_PROTOCOL_ICMP))
+	{
+	  rx_fib_index1 =
+	    ip4_fib_table_get_index_for_sw_if_index (sw_if_index1);
+	  icmp1 = (icmp46_header_t *) udp1;
+
+	  next1 = det44_icmp_in2out (b1, ip1, icmp1, sw_if_index1,
+				     rx_fib_index1, node, next1,
+				     thread_index, &ses1, &mp1);
+	  goto trace1;
+	}
+
+      mp1 = snat_det_map_by_user (&ip1->src_address);
+      if (PREDICT_FALSE (!mp1))
+	{
+	  det44_log_info ("no match for internal host %U",
+			  format_ip4_address, &ip0->src_address);
+	  next1 = DET44_IN2OUT_NEXT_DROP;
+	  b1->error = node->errors[DET44_IN2OUT_ERROR_NO_TRANSLATION];
+	  goto trace1;
+	}
+
+      snat_det_forward (mp1, &ip1->src_address, &new_addr1, &lo_port1);
+
+      key1.ext_host_addr = ip1->dst_address;
+      key1.ext_host_port = tcp1->dst;
+
+      ses1 =
+	snat_det_find_ses_by_in (mp1, &ip1->src_address, tcp1->src, key1);
+      if (PREDICT_FALSE (!ses1))
+	{
+	  for (i1 = 0; i1 < mp1->ports_per_host; i1++)
 	    {
-	    case DET44_SESSION_UDP_ACTIVE:
-	      ses0->expire = now + dm->timeouts.udp;
+	      key1.out_port = clib_host_to_net_u16 (lo_port1 +
+						    ((i1 +
+						      clib_net_to_host_u16
+						      (tcp1->src)) %
+						     mp1->ports_per_host));
+
+	      if (snat_det_get_ses_by_out
+		  (mp1, &ip1->src_address, key1.as_u64))
+		continue;
+
+	      ses1 =
+		snat_det_ses_create (thread_index, mp1, &ip1->src_address,
+				     tcp1->src, &key1);
 	      break;
-	    case DET44_SESSION_TCP_SYN_SENT:
-	    case DET44_SESSION_TCP_FIN_WAIT:
-	    case DET44_SESSION_TCP_CLOSE_WAIT:
-	    case DET44_SESSION_TCP_LAST_ACK:
-	      ses0->expire = now + dm->timeouts.tcp.transitory;
-	      break;
-	    case DET44_SESSION_TCP_ESTABLISHED:
-	      ses0->expire = now + dm->timeouts.tcp.established;
-	      break;
 	    }
-
-	trace0:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE (!ses1))
 	    {
-	      det44_in2out_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->sw_if_index = sw_if_index0;
-	      t->next_index = next0;
-	      t->session_index = ~0;
-	      if (ses0)
-		t->session_index = ses0 - mp0->sessions;
-	    }
-
-	  pkts_processed += next0 != DET44_IN2OUT_NEXT_DROP;
-
-	  ip1 = vlib_buffer_get_current (b1);
-	  udp1 = ip4_next_header (ip1);
-	  tcp1 = (tcp_header_t *) udp1;
-
-	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
-
-	  if (PREDICT_FALSE (ip1->ttl == 1))
-	    {
+	      /* too many sessions for user, send ICMP error packet */
 	      vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	      icmp4_error_set_vnet_buffer (b1, ICMP4_time_exceeded,
-					   ICMP4_time_exceeded_ttl_exceeded_in_transit,
+	      icmp4_error_set_vnet_buffer (b1,
+					   ICMP4_destination_unreachable,
+					   ICMP4_destination_unreachable_destination_unreachable_host,
 					   0);
 	      next1 = DET44_IN2OUT_NEXT_ICMP_ERROR;
 	      goto trace1;
 	    }
-
-	  proto1 = ip_proto_to_nat_proto (ip1->protocol);
-
-	  if (PREDICT_FALSE (proto1 == NAT_PROTOCOL_ICMP))
-	    {
-	      rx_fib_index1 =
-		ip4_fib_table_get_index_for_sw_if_index (sw_if_index1);
-	      icmp1 = (icmp46_header_t *) udp1;
-
-	      next1 = det44_icmp_in2out (b1, ip1, icmp1, sw_if_index1,
-					 rx_fib_index1, node, next1,
-					 thread_index, &ses1, &mp1);
-	      goto trace1;
-	    }
-
-	  mp1 = snat_det_map_by_user (&ip1->src_address);
-	  if (PREDICT_FALSE (!mp1))
-	    {
-	      det44_log_info ("no match for internal host %U",
-			      format_ip4_address, &ip0->src_address);
-	      next1 = DET44_IN2OUT_NEXT_DROP;
-	      b1->error = node->errors[DET44_IN2OUT_ERROR_NO_TRANSLATION];
-	      goto trace1;
-	    }
-
-	  snat_det_forward (mp1, &ip1->src_address, &new_addr1, &lo_port1);
-
-	  key1.ext_host_addr = ip1->dst_address;
-	  key1.ext_host_port = tcp1->dst;
-
-	  ses1 =
-	    snat_det_find_ses_by_in (mp1, &ip1->src_address, tcp1->src, key1);
-	  if (PREDICT_FALSE (!ses1))
-	    {
-	      for (i1 = 0; i1 < mp1->ports_per_host; i1++)
-		{
-		  key1.out_port = clib_host_to_net_u16 (lo_port1 +
-							((i1 +
-							  clib_net_to_host_u16
-							  (tcp1->src)) %
-							 mp1->
-							 ports_per_host));
-
-		  if (snat_det_get_ses_by_out
-		      (mp1, &ip1->src_address, key1.as_u64))
-		    continue;
-
-		  ses1 =
-		    snat_det_ses_create (thread_index, mp1, &ip1->src_address,
-					 tcp1->src, &key1);
-		  break;
-		}
-	      if (PREDICT_FALSE (!ses1))
-		{
-		  /* too many sessions for user, send ICMP error packet */
-		  vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-		  icmp4_error_set_vnet_buffer (b1,
-					       ICMP4_destination_unreachable,
-					       ICMP4_destination_unreachable_destination_unreachable_host,
-					       0);
-		  next1 = DET44_IN2OUT_NEXT_ICMP_ERROR;
-		  goto trace1;
-		}
-	    }
-
-	  old_port1 = udp1->src_port;
-	  udp1->src_port = new_port1 = ses1->out.out_port;
-
-	  old_addr1.as_u32 = ip1->src_address.as_u32;
-	  ip1->src_address.as_u32 = new_addr1.as_u32;
-	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = dm->outside_fib_index;
-
-	  sum1 = ip1->checksum;
-	  sum1 = ip_csum_update (sum1, old_addr1.as_u32, new_addr1.as_u32,
-				 ip4_header_t,
-				 src_address /* changed member */ );
-	  ip1->checksum = ip_csum_fold (sum1);
-
-	  if (PREDICT_TRUE (proto1 == NAT_PROTOCOL_TCP))
-	    {
-	      if (tcp1->flags & TCP_FLAG_SYN)
-		ses1->state = DET44_SESSION_TCP_SYN_SENT;
-	      else if (tcp1->flags & TCP_FLAG_ACK
-		       && ses1->state == DET44_SESSION_TCP_SYN_SENT)
-		ses1->state = DET44_SESSION_TCP_ESTABLISHED;
-	      else if (tcp1->flags & TCP_FLAG_FIN
-		       && ses1->state == DET44_SESSION_TCP_ESTABLISHED)
-		ses1->state = DET44_SESSION_TCP_FIN_WAIT;
-	      else if (tcp1->flags & TCP_FLAG_ACK
-		       && ses1->state == DET44_SESSION_TCP_FIN_WAIT)
-		snat_det_ses_close (mp1, ses1);
-	      else if (tcp1->flags & TCP_FLAG_FIN
-		       && ses1->state == DET44_SESSION_TCP_CLOSE_WAIT)
-		ses1->state = DET44_SESSION_TCP_LAST_ACK;
-	      else if (tcp1->flags == 0
-		       && ses1->state == DET44_SESSION_UNKNOWN)
-		ses1->state = DET44_SESSION_TCP_ESTABLISHED;
-
-	      sum1 = tcp1->checksum;
-	      sum1 = ip_csum_update (sum1, old_addr1.as_u32, new_addr1.as_u32,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
-	      sum1 = ip_csum_update (sum1, old_port1, new_port1,
-				     ip4_header_t /* cheat */ ,
-				     length /* changed member */ );
-	      mss_clamping (dm->mss_clamping, tcp1, &sum1);
-	      tcp1->checksum = ip_csum_fold (sum1);
-	    }
-	  else
-	    {
-	      ses1->state = DET44_SESSION_UDP_ACTIVE;
-
-	      if (PREDICT_FALSE (udp1->checksum))
-		{
-		  sum1 = udp1->checksum;
-		  sum1 =
-		    ip_csum_update (sum1, old_addr1.as_u32, new_addr1.as_u32,
-				    ip4_header_t,
-				    dst_address /* changed member */ );
-		  sum1 =
-		    ip_csum_update (sum1, old_port1, new_port1,
-				    ip4_header_t /* cheat */ ,
-				    length /* changed member */ );
-		  udp1->checksum = ip_csum_fold (sum1);
-		}
-	    }
-
-	  switch (ses1->state)
-	    {
-	    case DET44_SESSION_UDP_ACTIVE:
-	      ses1->expire = now + dm->timeouts.udp;
-	      break;
-	    case DET44_SESSION_TCP_SYN_SENT:
-	    case DET44_SESSION_TCP_FIN_WAIT:
-	    case DET44_SESSION_TCP_CLOSE_WAIT:
-	    case DET44_SESSION_TCP_LAST_ACK:
-	      ses1->expire = now + dm->timeouts.tcp.transitory;
-	      break;
-	    case DET44_SESSION_TCP_ESTABLISHED:
-	      ses1->expire = now + dm->timeouts.tcp.established;
-	      break;
-	    }
-
-	trace1:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b1->flags & VLIB_BUFFER_IS_TRACED)))
-	    {
-	      det44_in2out_trace_t *t =
-		vlib_add_trace (vm, node, b1, sizeof (*t));
-	      t->sw_if_index = sw_if_index1;
-	      t->next_index = next1;
-	      t->session_index = ~0;
-	      if (ses1)
-		t->session_index = ses1 - mp1->sessions;
-	    }
-
-	  pkts_processed += next1 != DET44_IN2OUT_NEXT_DROP;
-
-	  /* verify speculative enqueues, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
 	}
 
-      while (n_left_from > 0 && n_left_to_next > 0)
+      old_port1 = udp1->src_port;
+      udp1->src_port = new_port1 = ses1->out.out_port;
+
+      old_addr1.as_u32 = ip1->src_address.as_u32;
+      ip1->src_address.as_u32 = new_addr1.as_u32;
+      vnet_buffer (b1)->sw_if_index[VLIB_TX] = dm->outside_fib_index;
+
+      sum1 = ip1->checksum;
+      sum1 = ip_csum_update (sum1, old_addr1.as_u32, new_addr1.as_u32,
+			     ip4_header_t, src_address /* changed member */ );
+      ip1->checksum = ip_csum_fold (sum1);
+
+      if (PREDICT_TRUE (proto1 == NAT_PROTOCOL_TCP))
 	{
-	  u32 bi0;
-	  vlib_buffer_t *b0;
-	  u32 next0;
-	  u32 sw_if_index0;
-	  ip4_header_t *ip0;
-	  ip_csum_t sum0;
-	  ip4_address_t new_addr0, old_addr0;
-	  u16 old_port0, new_port0, lo_port0, i0;
-	  udp_header_t *udp0;
-	  tcp_header_t *tcp0;
-	  u32 proto0;
-	  snat_det_out_key_t key0;
-	  snat_det_map_t *mp0;
-	  snat_det_session_t *ses0 = 0;
-	  u32 rx_fib_index0;
-	  icmp46_header_t *icmp0;
+	  if (tcp1->flags & TCP_FLAG_SYN)
+	    ses1->state = DET44_SESSION_TCP_SYN_SENT;
+	  else if (tcp1->flags & TCP_FLAG_ACK
+		   && ses1->state == DET44_SESSION_TCP_SYN_SENT)
+	    ses1->state = DET44_SESSION_TCP_ESTABLISHED;
+	  else if (tcp1->flags & TCP_FLAG_FIN
+		   && ses1->state == DET44_SESSION_TCP_ESTABLISHED)
+	    ses1->state = DET44_SESSION_TCP_FIN_WAIT;
+	  else if (tcp1->flags & TCP_FLAG_ACK
+		   && ses1->state == DET44_SESSION_TCP_FIN_WAIT)
+	    snat_det_ses_close (mp1, ses1);
+	  else if (tcp1->flags & TCP_FLAG_FIN
+		   && ses1->state == DET44_SESSION_TCP_CLOSE_WAIT)
+	    ses1->state = DET44_SESSION_TCP_LAST_ACK;
+	  else if (tcp1->flags == 0 && ses1->state == DET44_SESSION_UNKNOWN)
+	    ses1->state = DET44_SESSION_TCP_ESTABLISHED;
 
-	  /* speculatively enqueue b0 to the current next frame */
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
+	  sum1 = tcp1->checksum;
+	  sum1 = ip_csum_update (sum1, old_addr1.as_u32, new_addr1.as_u32,
+				 ip4_header_t,
+				 dst_address /* changed member */ );
+	  sum1 = ip_csum_update (sum1, old_port1, new_port1,
+				 ip4_header_t /* cheat */ ,
+				 length /* changed member */ );
+	  mss_clamping (dm->mss_clamping, tcp1, &sum1);
+	  tcp1->checksum = ip_csum_fold (sum1);
+	}
+      else
+	{
+	  ses1->state = DET44_SESSION_UDP_ACTIVE;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  next0 = DET44_IN2OUT_NEXT_LOOKUP;
-
-	  ip0 = vlib_buffer_get_current (b0);
-	  udp0 = ip4_next_header (ip0);
-	  tcp0 = (tcp_header_t *) udp0;
-
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-
-	  if (PREDICT_FALSE (ip0->ttl == 1))
+	  if (PREDICT_FALSE (udp1->checksum))
 	    {
+	      sum1 = udp1->checksum;
+	      sum1 =
+		ip_csum_update (sum1, old_addr1.as_u32, new_addr1.as_u32,
+				ip4_header_t,
+				dst_address /* changed member */ );
+	      sum1 =
+		ip_csum_update (sum1, old_port1, new_port1,
+				ip4_header_t /* cheat */ ,
+				length /* changed member */ );
+	      udp1->checksum = ip_csum_fold (sum1);
+	    }
+	}
+
+      switch (ses1->state)
+	{
+	case DET44_SESSION_UDP_ACTIVE:
+	  ses1->expire = now + dm->timeouts.udp;
+	  break;
+	case DET44_SESSION_TCP_SYN_SENT:
+	case DET44_SESSION_TCP_FIN_WAIT:
+	case DET44_SESSION_TCP_CLOSE_WAIT:
+	case DET44_SESSION_TCP_LAST_ACK:
+	  ses1->expire = now + dm->timeouts.tcp.transitory;
+	  break;
+	case DET44_SESSION_TCP_ESTABLISHED:
+	  ses1->expire = now + dm->timeouts.tcp.established;
+	  break;
+	}
+
+    trace1:
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			 && (b1->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+	  det44_in2out_trace_t *t =
+	    vlib_add_trace (vm, node, b1, sizeof (*t));
+	  t->sw_if_index = sw_if_index1;
+	  t->next_index = next1;
+	  t->session_index = ~0;
+	  if (ses1)
+	    t->session_index = ses1 - mp1->sessions;
+	}
+
+      pkts_processed += next1 != DET44_IN2OUT_NEXT_DROP;
+
+      n_left_from -= 2;
+      next[0] = next0;
+      next[1] = next1;
+      next += 2;
+    }
+
+  while (n_left_from > 0)
+    {
+      vlib_buffer_t *b0;
+      u32 next0;
+      u32 sw_if_index0;
+      ip4_header_t *ip0;
+      ip_csum_t sum0;
+      ip4_address_t new_addr0, old_addr0;
+      u16 old_port0, new_port0, lo_port0, i0;
+      udp_header_t *udp0;
+      tcp_header_t *tcp0;
+      u32 proto0;
+      snat_det_out_key_t key0;
+      snat_det_map_t *mp0;
+      snat_det_session_t *ses0 = 0;
+      u32 rx_fib_index0;
+      icmp46_header_t *icmp0;
+
+      b0 = *b;
+      b++;
+      next0 = DET44_IN2OUT_NEXT_LOOKUP;
+
+      ip0 = vlib_buffer_get_current (b0);
+      udp0 = ip4_next_header (ip0);
+      tcp0 = (tcp_header_t *) udp0;
+
+      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+
+      if (PREDICT_FALSE (ip0->ttl == 1))
+	{
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	  icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
+				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
+				       0);
+	  next0 = DET44_IN2OUT_NEXT_ICMP_ERROR;
+	  goto trace00;
+	}
+
+      proto0 = ip_proto_to_nat_proto (ip0->protocol);
+
+      if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
+	{
+	  rx_fib_index0 =
+	    ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
+	  icmp0 = (icmp46_header_t *) udp0;
+
+	  next0 = det44_icmp_in2out (b0, ip0, icmp0, sw_if_index0,
+				     rx_fib_index0, node, next0,
+				     thread_index, &ses0, &mp0);
+	  goto trace00;
+	}
+
+      mp0 = snat_det_map_by_user (&ip0->src_address);
+      if (PREDICT_FALSE (!mp0))
+	{
+	  det44_log_info ("no match for internal host %U",
+			  format_ip4_address, &ip0->src_address);
+	  next0 = DET44_IN2OUT_NEXT_DROP;
+	  b0->error = node->errors[DET44_IN2OUT_ERROR_NO_TRANSLATION];
+	  goto trace00;
+	}
+
+      snat_det_forward (mp0, &ip0->src_address, &new_addr0, &lo_port0);
+
+      key0.ext_host_addr = ip0->dst_address;
+      key0.ext_host_port = tcp0->dst;
+
+      ses0 =
+	snat_det_find_ses_by_in (mp0, &ip0->src_address, tcp0->src, key0);
+      if (PREDICT_FALSE (!ses0))
+	{
+	  for (i0 = 0; i0 < mp0->ports_per_host; i0++)
+	    {
+	      key0.out_port = clib_host_to_net_u16 (lo_port0 +
+						    ((i0 +
+						      clib_net_to_host_u16
+						      (tcp0->src)) %
+						     mp0->ports_per_host));
+
+	      if (snat_det_get_ses_by_out
+		  (mp0, &ip0->src_address, key0.as_u64))
+		continue;
+
+	      ses0 =
+		snat_det_ses_create (thread_index, mp0, &ip0->src_address,
+				     tcp0->src, &key0);
+	      break;
+	    }
+	  if (PREDICT_FALSE (!ses0))
+	    {
+	      /* too many sessions for user, send ICMP error packet */
 	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	      icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
-					   ICMP4_time_exceeded_ttl_exceeded_in_transit,
+	      icmp4_error_set_vnet_buffer (b0,
+					   ICMP4_destination_unreachable,
+					   ICMP4_destination_unreachable_destination_unreachable_host,
 					   0);
 	      next0 = DET44_IN2OUT_NEXT_ICMP_ERROR;
 	      goto trace00;
 	    }
-
-	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
-
-	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
-	    {
-	      rx_fib_index0 =
-		ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
-	      icmp0 = (icmp46_header_t *) udp0;
-
-	      next0 = det44_icmp_in2out (b0, ip0, icmp0, sw_if_index0,
-					 rx_fib_index0, node, next0,
-					 thread_index, &ses0, &mp0);
-	      goto trace00;
-	    }
-
-	  mp0 = snat_det_map_by_user (&ip0->src_address);
-	  if (PREDICT_FALSE (!mp0))
-	    {
-	      det44_log_info ("no match for internal host %U",
-			      format_ip4_address, &ip0->src_address);
-	      next0 = DET44_IN2OUT_NEXT_DROP;
-	      b0->error = node->errors[DET44_IN2OUT_ERROR_NO_TRANSLATION];
-	      goto trace00;
-	    }
-
-	  snat_det_forward (mp0, &ip0->src_address, &new_addr0, &lo_port0);
-
-	  key0.ext_host_addr = ip0->dst_address;
-	  key0.ext_host_port = tcp0->dst;
-
-	  ses0 =
-	    snat_det_find_ses_by_in (mp0, &ip0->src_address, tcp0->src, key0);
-	  if (PREDICT_FALSE (!ses0))
-	    {
-	      for (i0 = 0; i0 < mp0->ports_per_host; i0++)
-		{
-		  key0.out_port = clib_host_to_net_u16 (lo_port0 +
-							((i0 +
-							  clib_net_to_host_u16
-							  (tcp0->src)) %
-							 mp0->
-							 ports_per_host));
-
-		  if (snat_det_get_ses_by_out
-		      (mp0, &ip0->src_address, key0.as_u64))
-		    continue;
-
-		  ses0 =
-		    snat_det_ses_create (thread_index, mp0, &ip0->src_address,
-					 tcp0->src, &key0);
-		  break;
-		}
-	      if (PREDICT_FALSE (!ses0))
-		{
-		  /* too many sessions for user, send ICMP error packet */
-		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-		  icmp4_error_set_vnet_buffer (b0,
-					       ICMP4_destination_unreachable,
-					       ICMP4_destination_unreachable_destination_unreachable_host,
-					       0);
-		  next0 = DET44_IN2OUT_NEXT_ICMP_ERROR;
-		  goto trace00;
-		}
-	    }
-
-	  old_port0 = udp0->src_port;
-	  udp0->src_port = new_port0 = ses0->out.out_port;
-
-	  old_addr0.as_u32 = ip0->src_address.as_u32;
-	  ip0->src_address.as_u32 = new_addr0.as_u32;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = dm->outside_fib_index;
-
-	  sum0 = ip0->checksum;
-	  sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
-				 ip4_header_t,
-				 src_address /* changed member */ );
-	  ip0->checksum = ip_csum_fold (sum0);
-
-	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
-	    {
-	      if (tcp0->flags & TCP_FLAG_SYN)
-		ses0->state = DET44_SESSION_TCP_SYN_SENT;
-	      else if (tcp0->flags & TCP_FLAG_ACK
-		       && ses0->state == DET44_SESSION_TCP_SYN_SENT)
-		ses0->state = DET44_SESSION_TCP_ESTABLISHED;
-	      else if (tcp0->flags & TCP_FLAG_FIN
-		       && ses0->state == DET44_SESSION_TCP_ESTABLISHED)
-		ses0->state = DET44_SESSION_TCP_FIN_WAIT;
-	      else if (tcp0->flags & TCP_FLAG_ACK
-		       && ses0->state == DET44_SESSION_TCP_FIN_WAIT)
-		snat_det_ses_close (mp0, ses0);
-	      else if (tcp0->flags & TCP_FLAG_FIN
-		       && ses0->state == DET44_SESSION_TCP_CLOSE_WAIT)
-		ses0->state = DET44_SESSION_TCP_LAST_ACK;
-	      else if (tcp0->flags == 0
-		       && ses0->state == DET44_SESSION_UNKNOWN)
-		ses0->state = DET44_SESSION_TCP_ESTABLISHED;
-
-	      sum0 = tcp0->checksum;
-	      sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
-	      sum0 = ip_csum_update (sum0, old_port0, new_port0,
-				     ip4_header_t /* cheat */ ,
-				     length /* changed member */ );
-	      mss_clamping (dm->mss_clamping, tcp0, &sum0);
-	      tcp0->checksum = ip_csum_fold (sum0);
-	    }
-	  else
-	    {
-	      ses0->state = DET44_SESSION_UDP_ACTIVE;
-
-	      if (PREDICT_FALSE (udp0->checksum))
-		{
-		  sum0 = udp0->checksum;
-		  sum0 =
-		    ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
-				    ip4_header_t,
-				    dst_address /* changed member */ );
-		  sum0 =
-		    ip_csum_update (sum0, old_port0, new_port0,
-				    ip4_header_t /* cheat */ ,
-				    length /* changed member */ );
-		  udp0->checksum = ip_csum_fold (sum0);
-		}
-	    }
-
-	  switch (ses0->state)
-	    {
-	    case DET44_SESSION_UDP_ACTIVE:
-	      ses0->expire = now + dm->timeouts.udp;
-	      break;
-	    case DET44_SESSION_TCP_SYN_SENT:
-	    case DET44_SESSION_TCP_FIN_WAIT:
-	    case DET44_SESSION_TCP_CLOSE_WAIT:
-	    case DET44_SESSION_TCP_LAST_ACK:
-	      ses0->expire = now + dm->timeouts.tcp.transitory;
-	      break;
-	    case DET44_SESSION_TCP_ESTABLISHED:
-	      ses0->expire = now + dm->timeouts.tcp.established;
-	      break;
-	    }
-
-	trace00:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
-	    {
-	      det44_in2out_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->sw_if_index = sw_if_index0;
-	      t->next_index = next0;
-	      t->session_index = ~0;
-	      if (ses0)
-		t->session_index = ses0 - mp0->sessions;
-	    }
-
-	  pkts_processed += next0 != DET44_IN2OUT_NEXT_DROP;
-
-	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
 	}
 
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      old_port0 = udp0->src_port;
+      udp0->src_port = new_port0 = ses0->out.out_port;
+
+      old_addr0.as_u32 = ip0->src_address.as_u32;
+      ip0->src_address.as_u32 = new_addr0.as_u32;
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = dm->outside_fib_index;
+
+      sum0 = ip0->checksum;
+      sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
+			     ip4_header_t, src_address /* changed member */ );
+      ip0->checksum = ip_csum_fold (sum0);
+
+      if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
+	{
+	  if (tcp0->flags & TCP_FLAG_SYN)
+	    ses0->state = DET44_SESSION_TCP_SYN_SENT;
+	  else if (tcp0->flags & TCP_FLAG_ACK
+		   && ses0->state == DET44_SESSION_TCP_SYN_SENT)
+	    ses0->state = DET44_SESSION_TCP_ESTABLISHED;
+	  else if (tcp0->flags & TCP_FLAG_FIN
+		   && ses0->state == DET44_SESSION_TCP_ESTABLISHED)
+	    ses0->state = DET44_SESSION_TCP_FIN_WAIT;
+	  else if (tcp0->flags & TCP_FLAG_ACK
+		   && ses0->state == DET44_SESSION_TCP_FIN_WAIT)
+	    snat_det_ses_close (mp0, ses0);
+	  else if (tcp0->flags & TCP_FLAG_FIN
+		   && ses0->state == DET44_SESSION_TCP_CLOSE_WAIT)
+	    ses0->state = DET44_SESSION_TCP_LAST_ACK;
+	  else if (tcp0->flags == 0 && ses0->state == DET44_SESSION_UNKNOWN)
+	    ses0->state = DET44_SESSION_TCP_ESTABLISHED;
+
+	  sum0 = tcp0->checksum;
+	  sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
+				 ip4_header_t,
+				 dst_address /* changed member */ );
+	  sum0 = ip_csum_update (sum0, old_port0, new_port0,
+				 ip4_header_t /* cheat */ ,
+				 length /* changed member */ );
+	  mss_clamping (dm->mss_clamping, tcp0, &sum0);
+	  tcp0->checksum = ip_csum_fold (sum0);
+	}
+      else
+	{
+	  ses0->state = DET44_SESSION_UDP_ACTIVE;
+
+	  if (PREDICT_FALSE (udp0->checksum))
+	    {
+	      sum0 = udp0->checksum;
+	      sum0 =
+		ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
+				ip4_header_t,
+				dst_address /* changed member */ );
+	      sum0 =
+		ip_csum_update (sum0, old_port0, new_port0,
+				ip4_header_t /* cheat */ ,
+				length /* changed member */ );
+	      udp0->checksum = ip_csum_fold (sum0);
+	    }
+	}
+
+      switch (ses0->state)
+	{
+	case DET44_SESSION_UDP_ACTIVE:
+	  ses0->expire = now + dm->timeouts.udp;
+	  break;
+	case DET44_SESSION_TCP_SYN_SENT:
+	case DET44_SESSION_TCP_FIN_WAIT:
+	case DET44_SESSION_TCP_CLOSE_WAIT:
+	case DET44_SESSION_TCP_LAST_ACK:
+	  ses0->expire = now + dm->timeouts.tcp.transitory;
+	  break;
+	case DET44_SESSION_TCP_ESTABLISHED:
+	  ses0->expire = now + dm->timeouts.tcp.established;
+	  break;
+	}
+
+    trace00:
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+	  det44_in2out_trace_t *t =
+	    vlib_add_trace (vm, node, b0, sizeof (*t));
+	  t->sw_if_index = sw_if_index0;
+	  t->next_index = next0;
+	  t->session_index = ~0;
+	  if (ses0)
+	    t->session_index = ses0 - mp0->sessions;
+	}
+
+      pkts_processed += next0 != DET44_IN2OUT_NEXT_DROP;
+
+      n_left_from--;
+      next[0] = next0;
+      next++;
     }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
+			       frame->n_vectors);
 
   vlib_node_increment_counter (vm, dm->in2out_node_index,
 			       DET44_IN2OUT_ERROR_IN2OUT_PACKETS,
