@@ -757,7 +757,8 @@ vcl_session_cleanup_handler (vcl_worker_t * wrk, void *data)
       /* Transport was cleaned up before we confirmed close. Probably the
        * app is still waiting for some data that cannot be delivered.
        * Confirm close to make sure everything is cleaned up */
-      if (session->session_state == STATE_VPP_CLOSING)
+      if (session->session_state == STATE_VPP_CLOSING
+	  || session->session_state == STATE_DISCONNECT)
 	vcl_session_cleanup (wrk, session, vcl_session_handle (session),
 			     1 /* do_disconnect */ );
       return;
