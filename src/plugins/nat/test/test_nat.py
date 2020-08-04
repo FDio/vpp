@@ -6703,16 +6703,16 @@ class TestNAT44EndpointDependent(MethodHolder):
             is_add=1)
         self.vapi.nat44_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
-            flags=flags, is_add=1)
+            is_add=1, flags=flags)
         self.vapi.nat44_interface_add_del_output_feature(
-            is_add=1,
-            sw_if_index=self.pg1.sw_if_index)
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1)
         self.vapi.nat44_interface_add_del_feature(
             sw_if_index=self.pg5.sw_if_index,
             is_add=1)
         self.vapi.nat44_interface_add_del_feature(
             sw_if_index=self.pg5.sw_if_index,
-            flags=flags, is_add=1)
+            is_add=1, flags=flags)
         self.vapi.nat44_interface_add_del_feature(
             sw_if_index=self.pg6.sw_if_index,
             is_add=1)
@@ -7220,6 +7220,7 @@ class TestNAT44EndpointDependent(MethodHolder):
             self.vapi.cli("clear logging")
 
     def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show errors"))
         self.logger.info(self.vapi.cli("show nat44 addresses"))
         self.logger.info(self.vapi.cli("show nat44 interfaces"))
         self.logger.info(self.vapi.cli("show nat44 static mappings"))
@@ -7227,6 +7228,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.logger.info(self.vapi.cli("show nat44 sessions detail"))
         self.logger.info(self.vapi.cli("show nat44 hash tables detail"))
         self.logger.info(self.vapi.cli("show nat timeouts"))
+        self.logger.info(self.vapi.cli("debug nat44 fib registration"))
 
 
 class TestNAT44EndpointDependent3(MethodHolder):
