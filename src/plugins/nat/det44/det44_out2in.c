@@ -368,469 +368,446 @@ VLIB_NODE_FN (det44_out2in_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * frame)
 {
-  u32 n_left_from, *from, *to_next;
-  det44_out2in_next_t next_index;
+  u32 n_left_from, *from;
   u32 pkts_processed = 0;
   det44_main_t *dm = &det44_main;
   u32 thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
 
-  while (n_left_from > 0)
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
+  vlib_get_buffers (vm, from, b, n_left_from);
+
+  while (n_left_from >= 2)
     {
-      u32 n_left_to_next;
+      vlib_buffer_t *b0, *b1;
+      u32 next0 = DET44_OUT2IN_NEXT_LOOKUP;
+      u32 next1 = DET44_OUT2IN_NEXT_LOOKUP;
+      u32 sw_if_index0, sw_if_index1;
+      ip4_header_t *ip0, *ip1;
+      ip_csum_t sum0, sum1;
+      ip4_address_t new_addr0, old_addr0, new_addr1, old_addr1;
+      u16 new_port0, old_port0, old_port1, new_port1;
+      udp_header_t *udp0, *udp1;
+      tcp_header_t *tcp0, *tcp1;
+      u32 proto0, proto1;
+      snat_det_out_key_t key0, key1;
+      snat_det_map_t *mp0, *mp1;
+      snat_det_session_t *ses0 = 0, *ses1 = 0;
+      u32 rx_fib_index0, rx_fib_index1;
+      icmp46_header_t *icmp0, *icmp1;
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      b0 = *b;
+      b++;
+      b1 = *b;
+      b++;
 
-      while (n_left_from >= 4 && n_left_to_next >= 2)
+      /* Prefetch next iteration. */
+      if (PREDICT_TRUE (n_left_from >= 4))
 	{
-	  u32 bi0, bi1;
-	  vlib_buffer_t *b0, *b1;
-	  u32 next0 = DET44_OUT2IN_NEXT_LOOKUP;
-	  u32 next1 = DET44_OUT2IN_NEXT_LOOKUP;
-	  u32 sw_if_index0, sw_if_index1;
-	  ip4_header_t *ip0, *ip1;
-	  ip_csum_t sum0, sum1;
-	  ip4_address_t new_addr0, old_addr0, new_addr1, old_addr1;
-	  u16 new_port0, old_port0, old_port1, new_port1;
-	  udp_header_t *udp0, *udp1;
-	  tcp_header_t *tcp0, *tcp1;
-	  u32 proto0, proto1;
-	  snat_det_out_key_t key0, key1;
-	  snat_det_map_t *mp0, *mp1;
-	  snat_det_session_t *ses0 = 0, *ses1 = 0;
-	  u32 rx_fib_index0, rx_fib_index1;
-	  icmp46_header_t *icmp0, *icmp1;
+	  vlib_buffer_t *p2, *p3;
 
-	  /* Prefetch next iteration. */
-	  {
-	    vlib_buffer_t *p2, *p3;
+	  p2 = *b;
+	  p3 = *(b + 1);
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
+	  vlib_prefetch_buffer_header (p2, LOAD);
+	  vlib_prefetch_buffer_header (p3, LOAD);
 
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
+	  CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	}
 
-	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	  }
 
-	  /* speculatively enqueue b0 and b1 to the current next frame */
-	  to_next[0] = bi0 = from[0];
-	  to_next[1] = bi1 = from[1];
-	  from += 2;
-	  to_next += 2;
-	  n_left_from -= 2;
-	  n_left_to_next -= 2;
+      ip0 = vlib_buffer_get_current (b0);
+      udp0 = ip4_next_header (ip0);
+      tcp0 = (tcp_header_t *) udp0;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
+      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-	  ip0 = vlib_buffer_get_current (b0);
-	  udp0 = ip4_next_header (ip0);
-	  tcp0 = (tcp_header_t *) udp0;
+      if (PREDICT_FALSE (ip0->ttl == 1))
+	{
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	  icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
+				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
+				       0);
+	  next0 = DET44_OUT2IN_NEXT_ICMP_ERROR;
+	  goto trace0;
+	}
 
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+      proto0 = ip_proto_to_nat_proto (ip0->protocol);
 
-	  if (PREDICT_FALSE (ip0->ttl == 1))
-	    {
-	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	      icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
-					   ICMP4_time_exceeded_ttl_exceeded_in_transit,
-					   0);
-	      next0 = DET44_OUT2IN_NEXT_ICMP_ERROR;
-	      goto trace0;
-	    }
+      if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
+	{
+	  rx_fib_index0 =
+	    ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
+	  icmp0 = (icmp46_header_t *) udp0;
 
-	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
+	  next0 = det44_icmp_out2in (b0, ip0, icmp0, sw_if_index0,
+				     rx_fib_index0, node, next0,
+				     thread_index, &ses0, &mp0);
+	  goto trace0;
+	}
 
-	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
-	    {
-	      rx_fib_index0 =
-		ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
-	      icmp0 = (icmp46_header_t *) udp0;
+      key0.ext_host_addr = ip0->src_address;
+      key0.ext_host_port = tcp0->src;
+      key0.out_port = tcp0->dst;
 
-	      next0 = det44_icmp_out2in (b0, ip0, icmp0, sw_if_index0,
-					 rx_fib_index0, node, next0,
-					 thread_index, &ses0, &mp0);
-	      goto trace0;
-	    }
+      mp0 = snat_det_map_by_out (&ip0->dst_address);
+      if (PREDICT_FALSE (!mp0))
+	{
+	  det44_log_info ("unknown dst address:  %U",
+			  format_ip4_address, &ip0->dst_address);
+	  next0 = DET44_OUT2IN_NEXT_DROP;
+	  b0->error = node->errors[DET44_OUT2IN_ERROR_NO_TRANSLATION];
+	  goto trace0;
+	}
 
-	  key0.ext_host_addr = ip0->src_address;
-	  key0.ext_host_port = tcp0->src;
-	  key0.out_port = tcp0->dst;
+      snat_det_reverse (mp0, &ip0->dst_address,
+			clib_net_to_host_u16 (tcp0->dst), &new_addr0);
 
-	  mp0 = snat_det_map_by_out (&ip0->dst_address);
-	  if (PREDICT_FALSE (!mp0))
-	    {
-	      det44_log_info ("unknown dst address:  %U",
-			      format_ip4_address, &ip0->dst_address);
-	      next0 = DET44_OUT2IN_NEXT_DROP;
-	      b0->error = node->errors[DET44_OUT2IN_ERROR_NO_TRANSLATION];
-	      goto trace0;
-	    }
+      ses0 = snat_det_get_ses_by_out (mp0, &new_addr0, key0.as_u64);
+      if (PREDICT_FALSE (!ses0))
+	{
+	  det44_log_info ("no match src %U:%d dst %U:%d for user %U",
+			  format_ip4_address, &ip0->src_address,
+			  clib_net_to_host_u16 (tcp0->src),
+			  format_ip4_address, &ip0->dst_address,
+			  clib_net_to_host_u16 (tcp0->dst),
+			  format_ip4_address, &new_addr0);
+	  next0 = DET44_OUT2IN_NEXT_DROP;
+	  b0->error = node->errors[DET44_OUT2IN_ERROR_NO_TRANSLATION];
+	  goto trace0;
+	}
+      old_port0 = udp0->dst_port;
+      udp0->dst_port = new_port0 = ses0->in_port;
 
-	  snat_det_reverse (mp0, &ip0->dst_address,
-			    clib_net_to_host_u16 (tcp0->dst), &new_addr0);
+      old_addr0 = ip0->dst_address;
+      ip0->dst_address = new_addr0;
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = dm->inside_fib_index;
 
-	  ses0 = snat_det_get_ses_by_out (mp0, &new_addr0, key0.as_u64);
-	  if (PREDICT_FALSE (!ses0))
-	    {
-	      det44_log_info ("no match src %U:%d dst %U:%d for user %U",
-			      format_ip4_address, &ip0->src_address,
-			      clib_net_to_host_u16 (tcp0->src),
-			      format_ip4_address, &ip0->dst_address,
-			      clib_net_to_host_u16 (tcp0->dst),
-			      format_ip4_address, &new_addr0);
-	      next0 = DET44_OUT2IN_NEXT_DROP;
-	      b0->error = node->errors[DET44_OUT2IN_ERROR_NO_TRANSLATION];
-	      goto trace0;
-	    }
-	  old_port0 = udp0->dst_port;
-	  udp0->dst_port = new_port0 = ses0->in_port;
+      sum0 = ip0->checksum;
+      sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
+			     ip4_header_t, dst_address /* changed member */ );
+      ip0->checksum = ip_csum_fold (sum0);
 
-	  old_addr0 = ip0->dst_address;
-	  ip0->dst_address = new_addr0;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = dm->inside_fib_index;
+      if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
+	{
+	  if (tcp0->flags & TCP_FLAG_FIN
+	      && ses0->state == DET44_SESSION_TCP_ESTABLISHED)
+	    ses0->state = DET44_SESSION_TCP_CLOSE_WAIT;
+	  else if (tcp0->flags & TCP_FLAG_ACK
+		   && ses0->state == DET44_SESSION_TCP_LAST_ACK)
+	    snat_det_ses_close (mp0, ses0);
 
-	  sum0 = ip0->checksum;
+	  sum0 = tcp0->checksum;
 	  sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
 				 ip4_header_t,
 				 dst_address /* changed member */ );
-	  ip0->checksum = ip_csum_fold (sum0);
+	  sum0 = ip_csum_update (sum0, old_port0, new_port0,
+				 ip4_header_t /* cheat */ ,
+				 length /* changed member */ );
+	  tcp0->checksum = ip_csum_fold (sum0);
+	}
+      else if (udp0->checksum)
+	{
+	  sum0 = udp0->checksum;
+	  sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
+				 ip4_header_t,
+				 dst_address /* changed member */ );
+	  sum0 = ip_csum_update (sum0, old_port0, new_port0,
+				 ip4_header_t /* cheat */ ,
+				 length /* changed member */ );
+	  udp0->checksum = ip_csum_fold (sum0);
+	}
 
-	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
-	    {
-	      if (tcp0->flags & TCP_FLAG_FIN
-		  && ses0->state == DET44_SESSION_TCP_ESTABLISHED)
-		ses0->state = DET44_SESSION_TCP_CLOSE_WAIT;
-	      else if (tcp0->flags & TCP_FLAG_ACK
-		       && ses0->state == DET44_SESSION_TCP_LAST_ACK)
-		snat_det_ses_close (mp0, ses0);
+    trace0:
 
-	      sum0 = tcp0->checksum;
-	      sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
-	      sum0 = ip_csum_update (sum0, old_port0, new_port0,
-				     ip4_header_t /* cheat */ ,
-				     length /* changed member */ );
-	      tcp0->checksum = ip_csum_fold (sum0);
-	    }
-	  else if (udp0->checksum)
-	    {
-	      sum0 = udp0->checksum;
-	      sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
-	      sum0 = ip_csum_update (sum0, old_port0, new_port0,
-				     ip4_header_t /* cheat */ ,
-				     length /* changed member */ );
-	      udp0->checksum = ip_csum_fold (sum0);
-	    }
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+	  det44_out2in_trace_t *t =
+	    vlib_add_trace (vm, node, b0, sizeof (*t));
+	  t->sw_if_index = sw_if_index0;
+	  t->next_index = next0;
+	  t->session_index = ~0;
+	  if (ses0)
+	    t->session_index = ses0 - mp0->sessions;
+	}
 
-	trace0:
+      pkts_processed += next0 != DET44_OUT2IN_NEXT_DROP;
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
-	    {
-	      det44_out2in_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->sw_if_index = sw_if_index0;
-	      t->next_index = next0;
-	      t->session_index = ~0;
-	      if (ses0)
-		t->session_index = ses0 - mp0->sessions;
-	    }
+      ip1 = vlib_buffer_get_current (b1);
+      udp1 = ip4_next_header (ip1);
+      tcp1 = (tcp_header_t *) udp1;
 
-	  pkts_processed += next0 != DET44_OUT2IN_NEXT_DROP;
+      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
 
-	  b1 = vlib_get_buffer (vm, bi1);
+      if (PREDICT_FALSE (ip1->ttl == 1))
+	{
+	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	  icmp4_error_set_vnet_buffer (b1, ICMP4_time_exceeded,
+				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
+				       0);
+	  next1 = DET44_OUT2IN_NEXT_ICMP_ERROR;
+	  goto trace1;
+	}
 
-	  ip1 = vlib_buffer_get_current (b1);
-	  udp1 = ip4_next_header (ip1);
-	  tcp1 = (tcp_header_t *) udp1;
+      proto1 = ip_proto_to_nat_proto (ip1->protocol);
 
-	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+      if (PREDICT_FALSE (proto1 == NAT_PROTOCOL_ICMP))
+	{
+	  rx_fib_index1 =
+	    ip4_fib_table_get_index_for_sw_if_index (sw_if_index1);
+	  icmp1 = (icmp46_header_t *) udp1;
 
-	  if (PREDICT_FALSE (ip1->ttl == 1))
-	    {
-	      vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	      icmp4_error_set_vnet_buffer (b1, ICMP4_time_exceeded,
-					   ICMP4_time_exceeded_ttl_exceeded_in_transit,
-					   0);
-	      next1 = DET44_OUT2IN_NEXT_ICMP_ERROR;
-	      goto trace1;
-	    }
+	  next1 = det44_icmp_out2in (b1, ip1, icmp1, sw_if_index1,
+				     rx_fib_index1, node, next1,
+				     thread_index, &ses1, &mp1);
+	  goto trace1;
+	}
 
-	  proto1 = ip_proto_to_nat_proto (ip1->protocol);
+      key1.ext_host_addr = ip1->src_address;
+      key1.ext_host_port = tcp1->src;
+      key1.out_port = tcp1->dst;
 
-	  if (PREDICT_FALSE (proto1 == NAT_PROTOCOL_ICMP))
-	    {
-	      rx_fib_index1 =
-		ip4_fib_table_get_index_for_sw_if_index (sw_if_index1);
-	      icmp1 = (icmp46_header_t *) udp1;
+      mp1 = snat_det_map_by_out (&ip1->dst_address);
+      if (PREDICT_FALSE (!mp1))
+	{
+	  det44_log_info ("unknown dst address:  %U",
+			  format_ip4_address, &ip1->dst_address);
+	  next1 = DET44_OUT2IN_NEXT_DROP;
+	  b1->error = node->errors[DET44_OUT2IN_ERROR_NO_TRANSLATION];
+	  goto trace1;
+	}
 
-	      next1 = det44_icmp_out2in (b1, ip1, icmp1, sw_if_index1,
-					 rx_fib_index1, node, next1,
-					 thread_index, &ses1, &mp1);
-	      goto trace1;
-	    }
+      snat_det_reverse (mp1, &ip1->dst_address,
+			clib_net_to_host_u16 (tcp1->dst), &new_addr1);
 
-	  key1.ext_host_addr = ip1->src_address;
-	  key1.ext_host_port = tcp1->src;
-	  key1.out_port = tcp1->dst;
+      ses1 = snat_det_get_ses_by_out (mp1, &new_addr1, key1.as_u64);
+      if (PREDICT_FALSE (!ses1))
+	{
+	  det44_log_info ("no match src %U:%d dst %U:%d for user %U",
+			  format_ip4_address, &ip1->src_address,
+			  clib_net_to_host_u16 (tcp1->src),
+			  format_ip4_address, &ip1->dst_address,
+			  clib_net_to_host_u16 (tcp1->dst),
+			  format_ip4_address, &new_addr1);
+	  next1 = DET44_OUT2IN_NEXT_DROP;
+	  b1->error = node->errors[DET44_OUT2IN_ERROR_NO_TRANSLATION];
+	  goto trace1;
+	}
+      old_port1 = udp1->dst_port;
+      udp1->dst_port = new_port1 = ses1->in_port;
 
-	  mp1 = snat_det_map_by_out (&ip1->dst_address);
-	  if (PREDICT_FALSE (!mp1))
-	    {
-	      det44_log_info ("unknown dst address:  %U",
-			      format_ip4_address, &ip1->dst_address);
-	      next1 = DET44_OUT2IN_NEXT_DROP;
-	      b1->error = node->errors[DET44_OUT2IN_ERROR_NO_TRANSLATION];
-	      goto trace1;
-	    }
+      old_addr1 = ip1->dst_address;
+      ip1->dst_address = new_addr1;
+      vnet_buffer (b1)->sw_if_index[VLIB_TX] = dm->inside_fib_index;
 
-	  snat_det_reverse (mp1, &ip1->dst_address,
-			    clib_net_to_host_u16 (tcp1->dst), &new_addr1);
+      sum1 = ip1->checksum;
+      sum1 = ip_csum_update (sum1, old_addr1.as_u32, new_addr1.as_u32,
+			     ip4_header_t, dst_address /* changed member */ );
+      ip1->checksum = ip_csum_fold (sum1);
 
-	  ses1 = snat_det_get_ses_by_out (mp1, &new_addr1, key1.as_u64);
-	  if (PREDICT_FALSE (!ses1))
-	    {
-	      det44_log_info ("no match src %U:%d dst %U:%d for user %U",
-			      format_ip4_address, &ip1->src_address,
-			      clib_net_to_host_u16 (tcp1->src),
-			      format_ip4_address, &ip1->dst_address,
-			      clib_net_to_host_u16 (tcp1->dst),
-			      format_ip4_address, &new_addr1);
-	      next1 = DET44_OUT2IN_NEXT_DROP;
-	      b1->error = node->errors[DET44_OUT2IN_ERROR_NO_TRANSLATION];
-	      goto trace1;
-	    }
-	  old_port1 = udp1->dst_port;
-	  udp1->dst_port = new_port1 = ses1->in_port;
+      if (PREDICT_TRUE (proto1 == NAT_PROTOCOL_TCP))
+	{
+	  if (tcp1->flags & TCP_FLAG_FIN
+	      && ses1->state == DET44_SESSION_TCP_ESTABLISHED)
+	    ses1->state = DET44_SESSION_TCP_CLOSE_WAIT;
+	  else if (tcp1->flags & TCP_FLAG_ACK
+		   && ses1->state == DET44_SESSION_TCP_LAST_ACK)
+	    snat_det_ses_close (mp1, ses1);
 
-	  old_addr1 = ip1->dst_address;
-	  ip1->dst_address = new_addr1;
-	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = dm->inside_fib_index;
-
-	  sum1 = ip1->checksum;
+	  sum1 = tcp1->checksum;
 	  sum1 = ip_csum_update (sum1, old_addr1.as_u32, new_addr1.as_u32,
 				 ip4_header_t,
 				 dst_address /* changed member */ );
-	  ip1->checksum = ip_csum_fold (sum1);
-
-	  if (PREDICT_TRUE (proto1 == NAT_PROTOCOL_TCP))
-	    {
-	      if (tcp1->flags & TCP_FLAG_FIN
-		  && ses1->state == DET44_SESSION_TCP_ESTABLISHED)
-		ses1->state = DET44_SESSION_TCP_CLOSE_WAIT;
-	      else if (tcp1->flags & TCP_FLAG_ACK
-		       && ses1->state == DET44_SESSION_TCP_LAST_ACK)
-		snat_det_ses_close (mp1, ses1);
-
-	      sum1 = tcp1->checksum;
-	      sum1 = ip_csum_update (sum1, old_addr1.as_u32, new_addr1.as_u32,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
-	      sum1 = ip_csum_update (sum1, old_port1, new_port1,
-				     ip4_header_t /* cheat */ ,
-				     length /* changed member */ );
-	      tcp1->checksum = ip_csum_fold (sum1);
-	    }
-	  else if (udp1->checksum)
-	    {
-	      sum1 = udp1->checksum;
-	      sum1 = ip_csum_update (sum1, old_addr1.as_u32, new_addr1.as_u32,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
-	      sum1 = ip_csum_update (sum1, old_port1, new_port1,
-				     ip4_header_t /* cheat */ ,
-				     length /* changed member */ );
-	      udp1->checksum = ip_csum_fold (sum1);
-	    }
-
-	trace1:
-
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b1->flags & VLIB_BUFFER_IS_TRACED)))
-	    {
-	      det44_out2in_trace_t *t =
-		vlib_add_trace (vm, node, b1, sizeof (*t));
-	      t->sw_if_index = sw_if_index1;
-	      t->next_index = next1;
-	      t->session_index = ~0;
-	      if (ses1)
-		t->session_index = ses1 - mp1->sessions;
-	    }
-
-	  pkts_processed += next1 != DET44_OUT2IN_NEXT_DROP;
-
-	  /* verify speculative enqueues, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  sum1 = ip_csum_update (sum1, old_port1, new_port1,
+				 ip4_header_t /* cheat */ ,
+				 length /* changed member */ );
+	  tcp1->checksum = ip_csum_fold (sum1);
+	}
+      else if (udp1->checksum)
+	{
+	  sum1 = udp1->checksum;
+	  sum1 = ip_csum_update (sum1, old_addr1.as_u32, new_addr1.as_u32,
+				 ip4_header_t,
+				 dst_address /* changed member */ );
+	  sum1 = ip_csum_update (sum1, old_port1, new_port1,
+				 ip4_header_t /* cheat */ ,
+				 length /* changed member */ );
+	  udp1->checksum = ip_csum_fold (sum1);
 	}
 
-      while (n_left_from > 0 && n_left_to_next > 0)
+    trace1:
+
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			 && (b1->flags & VLIB_BUFFER_IS_TRACED)))
 	{
-	  u32 bi0;
-	  vlib_buffer_t *b0;
-	  u32 next0 = DET44_OUT2IN_NEXT_LOOKUP;
-	  u32 sw_if_index0;
-	  ip4_header_t *ip0;
-	  ip_csum_t sum0;
-	  ip4_address_t new_addr0, old_addr0;
-	  u16 new_port0, old_port0;
-	  udp_header_t *udp0;
-	  tcp_header_t *tcp0;
-	  u32 proto0;
-	  snat_det_out_key_t key0;
-	  snat_det_map_t *mp0;
-	  snat_det_session_t *ses0 = 0;
-	  u32 rx_fib_index0;
-	  icmp46_header_t *icmp0;
+	  det44_out2in_trace_t *t =
+	    vlib_add_trace (vm, node, b1, sizeof (*t));
+	  t->sw_if_index = sw_if_index1;
+	  t->next_index = next1;
+	  t->session_index = ~0;
+	  if (ses1)
+	    t->session_index = ses1 - mp1->sessions;
+	}
 
-	  /* speculatively enqueue b0 to the current next frame */
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
+      pkts_processed += next1 != DET44_OUT2IN_NEXT_DROP;
 
-	  b0 = vlib_get_buffer (vm, bi0);
+      n_left_from -= 2;
+      next[0] = next0;
+      next[1] = next1;
+      next += 2;
+    }
 
-	  ip0 = vlib_buffer_get_current (b0);
-	  udp0 = ip4_next_header (ip0);
-	  tcp0 = (tcp_header_t *) udp0;
+  while (n_left_from > 0)
+    {
+      vlib_buffer_t *b0;
+      u32 next0 = DET44_OUT2IN_NEXT_LOOKUP;
+      u32 sw_if_index0;
+      ip4_header_t *ip0;
+      ip_csum_t sum0;
+      ip4_address_t new_addr0, old_addr0;
+      u16 new_port0, old_port0;
+      udp_header_t *udp0;
+      tcp_header_t *tcp0;
+      u32 proto0;
+      snat_det_out_key_t key0;
+      snat_det_map_t *mp0;
+      snat_det_session_t *ses0 = 0;
+      u32 rx_fib_index0;
+      icmp46_header_t *icmp0;
 
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+      b0 = *b;
+      b++;
 
-	  if (PREDICT_FALSE (ip0->ttl == 1))
-	    {
-	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	      icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
-					   ICMP4_time_exceeded_ttl_exceeded_in_transit,
-					   0);
-	      next0 = DET44_OUT2IN_NEXT_ICMP_ERROR;
-	      goto trace00;
-	    }
+      ip0 = vlib_buffer_get_current (b0);
+      udp0 = ip4_next_header (ip0);
+      tcp0 = (tcp_header_t *) udp0;
 
-	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
+      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
-	    {
-	      rx_fib_index0 =
-		ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
-	      icmp0 = (icmp46_header_t *) udp0;
+      if (PREDICT_FALSE (ip0->ttl == 1))
+	{
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	  icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
+				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
+				       0);
+	  next0 = DET44_OUT2IN_NEXT_ICMP_ERROR;
+	  goto trace00;
+	}
 
-	      next0 = det44_icmp_out2in (b0, ip0, icmp0, sw_if_index0,
-					 rx_fib_index0, node, next0,
-					 thread_index, &ses0, &mp0);
-	      goto trace00;
-	    }
+      proto0 = ip_proto_to_nat_proto (ip0->protocol);
 
-	  key0.ext_host_addr = ip0->src_address;
-	  key0.ext_host_port = tcp0->src;
-	  key0.out_port = tcp0->dst;
+      if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
+	{
+	  rx_fib_index0 =
+	    ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
+	  icmp0 = (icmp46_header_t *) udp0;
 
-	  mp0 = snat_det_map_by_out (&ip0->dst_address);
-	  if (PREDICT_FALSE (!mp0))
-	    {
-	      det44_log_info ("unknown dst address:  %U",
-			      format_ip4_address, &ip0->dst_address);
-	      next0 = DET44_OUT2IN_NEXT_DROP;
-	      b0->error = node->errors[DET44_OUT2IN_ERROR_NO_TRANSLATION];
-	      goto trace00;
-	    }
+	  next0 = det44_icmp_out2in (b0, ip0, icmp0, sw_if_index0,
+				     rx_fib_index0, node, next0,
+				     thread_index, &ses0, &mp0);
+	  goto trace00;
+	}
 
-	  snat_det_reverse (mp0, &ip0->dst_address,
-			    clib_net_to_host_u16 (tcp0->dst), &new_addr0);
+      key0.ext_host_addr = ip0->src_address;
+      key0.ext_host_port = tcp0->src;
+      key0.out_port = tcp0->dst;
 
-	  ses0 = snat_det_get_ses_by_out (mp0, &new_addr0, key0.as_u64);
-	  if (PREDICT_FALSE (!ses0))
-	    {
-	      det44_log_info ("no match src %U:%d dst %U:%d for user %U",
-			      format_ip4_address, &ip0->src_address,
-			      clib_net_to_host_u16 (tcp0->src),
-			      format_ip4_address, &ip0->dst_address,
-			      clib_net_to_host_u16 (tcp0->dst),
-			      format_ip4_address, &new_addr0);
-	      next0 = DET44_OUT2IN_NEXT_DROP;
-	      b0->error = node->errors[DET44_OUT2IN_ERROR_NO_TRANSLATION];
-	      goto trace00;
-	    }
-	  old_port0 = udp0->dst_port;
-	  udp0->dst_port = new_port0 = ses0->in_port;
+      mp0 = snat_det_map_by_out (&ip0->dst_address);
+      if (PREDICT_FALSE (!mp0))
+	{
+	  det44_log_info ("unknown dst address:  %U",
+			  format_ip4_address, &ip0->dst_address);
+	  next0 = DET44_OUT2IN_NEXT_DROP;
+	  b0->error = node->errors[DET44_OUT2IN_ERROR_NO_TRANSLATION];
+	  goto trace00;
+	}
 
-	  old_addr0 = ip0->dst_address;
-	  ip0->dst_address = new_addr0;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = dm->inside_fib_index;
+      snat_det_reverse (mp0, &ip0->dst_address,
+			clib_net_to_host_u16 (tcp0->dst), &new_addr0);
 
-	  sum0 = ip0->checksum;
+      ses0 = snat_det_get_ses_by_out (mp0, &new_addr0, key0.as_u64);
+      if (PREDICT_FALSE (!ses0))
+	{
+	  det44_log_info ("no match src %U:%d dst %U:%d for user %U",
+			  format_ip4_address, &ip0->src_address,
+			  clib_net_to_host_u16 (tcp0->src),
+			  format_ip4_address, &ip0->dst_address,
+			  clib_net_to_host_u16 (tcp0->dst),
+			  format_ip4_address, &new_addr0);
+	  next0 = DET44_OUT2IN_NEXT_DROP;
+	  b0->error = node->errors[DET44_OUT2IN_ERROR_NO_TRANSLATION];
+	  goto trace00;
+	}
+      old_port0 = udp0->dst_port;
+      udp0->dst_port = new_port0 = ses0->in_port;
+
+      old_addr0 = ip0->dst_address;
+      ip0->dst_address = new_addr0;
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = dm->inside_fib_index;
+
+      sum0 = ip0->checksum;
+      sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
+			     ip4_header_t, dst_address /* changed member */ );
+      ip0->checksum = ip_csum_fold (sum0);
+
+      if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
+	{
+	  if (tcp0->flags & TCP_FLAG_FIN
+	      && ses0->state == DET44_SESSION_TCP_ESTABLISHED)
+	    ses0->state = DET44_SESSION_TCP_CLOSE_WAIT;
+	  else if (tcp0->flags & TCP_FLAG_ACK
+		   && ses0->state == DET44_SESSION_TCP_LAST_ACK)
+	    snat_det_ses_close (mp0, ses0);
+
+	  sum0 = tcp0->checksum;
 	  sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
 				 ip4_header_t,
 				 dst_address /* changed member */ );
-	  ip0->checksum = ip_csum_fold (sum0);
-
-	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
-	    {
-	      if (tcp0->flags & TCP_FLAG_FIN
-		  && ses0->state == DET44_SESSION_TCP_ESTABLISHED)
-		ses0->state = DET44_SESSION_TCP_CLOSE_WAIT;
-	      else if (tcp0->flags & TCP_FLAG_ACK
-		       && ses0->state == DET44_SESSION_TCP_LAST_ACK)
-		snat_det_ses_close (mp0, ses0);
-
-	      sum0 = tcp0->checksum;
-	      sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
-	      sum0 = ip_csum_update (sum0, old_port0, new_port0,
-				     ip4_header_t /* cheat */ ,
-				     length /* changed member */ );
-	      tcp0->checksum = ip_csum_fold (sum0);
-	    }
-	  else if (udp0->checksum)
-	    {
-	      sum0 = udp0->checksum;
-	      sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
-	      sum0 = ip_csum_update (sum0, old_port0, new_port0,
-				     ip4_header_t /* cheat */ ,
-				     length /* changed member */ );
-	      udp0->checksum = ip_csum_fold (sum0);
-	    }
-
-	trace00:
-
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
-	    {
-	      det44_out2in_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->sw_if_index = sw_if_index0;
-	      t->next_index = next0;
-	      t->session_index = ~0;
-	      if (ses0)
-		t->session_index = ses0 - mp0->sessions;
-	    }
-
-	  pkts_processed += next0 != DET44_OUT2IN_NEXT_DROP;
-
-	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  sum0 = ip_csum_update (sum0, old_port0, new_port0,
+				 ip4_header_t /* cheat */ ,
+				 length /* changed member */ );
+	  tcp0->checksum = ip_csum_fold (sum0);
+	}
+      else if (udp0->checksum)
+	{
+	  sum0 = udp0->checksum;
+	  sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
+				 ip4_header_t,
+				 dst_address /* changed member */ );
+	  sum0 = ip_csum_update (sum0, old_port0, new_port0,
+				 ip4_header_t /* cheat */ ,
+				 length /* changed member */ );
+	  udp0->checksum = ip_csum_fold (sum0);
 	}
 
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    trace00:
+
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+	  det44_out2in_trace_t *t =
+	    vlib_add_trace (vm, node, b0, sizeof (*t));
+	  t->sw_if_index = sw_if_index0;
+	  t->next_index = next0;
+	  t->session_index = ~0;
+	  if (ses0)
+	    t->session_index = ses0 - mp0->sessions;
+	}
+
+      pkts_processed += next0 != DET44_OUT2IN_NEXT_DROP;
+
+      n_left_from--;
+      next[0] = next0;
+      next++;
     }
+  vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
+			       frame->n_vectors);
+
 
   vlib_node_increment_counter (vm, dm->out2in_node_index,
 			       DET44_OUT2IN_ERROR_OUT2IN_PACKETS,
