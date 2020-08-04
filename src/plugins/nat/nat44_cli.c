@@ -2244,7 +2244,78 @@ done:
 
   return error;
 }
+
+static clib_error_t *
+nat44_debug_fib_expire_command_fn (vlib_main_t * vm,
+				   unformat_input_t * input,
+				   vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+  u32 fib = ~0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%u", &fib))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+  expire_per_vrf_sessions (fib);
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+static clib_error_t *
+nat44_debug_fib_registration_command_fn (vlib_main_t * vm,
+					 unformat_input_t * input,
+					 vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm;
+  per_vrf_sessions_t *per_vrf_sessions;
+
+  vlib_cli_output (vm, "VRF registration debug:");
+  vec_foreach (tsm, sm->per_thread_data)
+  {
+    vlib_cli_output (vm, "thread %u:", tsm->thread_index);
+    vec_foreach (per_vrf_sessions, tsm->per_vrf_sessions_vec)
+    {
+      vlib_cli_output (vm, "rx fib %u tx fib %u ses count %u %s",
+		       per_vrf_sessions->rx_fib_index,
+		       per_vrf_sessions->tx_fib_index,
+		       per_vrf_sessions->ses_count,
+		       per_vrf_sessions->expired ? "expired" : "");
+    }
+  }
+  return 0;
+}
 /* *INDENT-OFF* */
+
+/*?
+?*/
+VLIB_CLI_COMMAND (nat44_debug_fib_expire_command, static) = {
+  .path = "debug nat44 fib expire",
+  .short_help = "debug nat44 fib expire <fib-index>",
+  .function = nat44_debug_fib_expire_command_fn,
+};
+
+/*?
+?*/
+VLIB_CLI_COMMAND (nat44_debug_fib_registration_command, static) = {
+  .path = "debug nat44 fib registration",
+  .short_help = "debug nat44 fib registration",
+  .function = nat44_debug_fib_registration_command_fn,
+};
 
 /*?
  * @cliexpar
