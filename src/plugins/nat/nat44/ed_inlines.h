@@ -141,4 +141,115 @@ nat_ed_session_alloc (snat_main_t * sm, u32 thread_index, f64 now, u8 proto)
   return s;
 }
 
+// slow path
+static_always_inline void
+per_vrf_sessions_cleanup (u32 thread_index)
+{
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm =
+    vec_elt_at_index (sm->per_thread_data, thread_index);
+  per_vrf_sessions_t *per_vrf_sessions;
+  u32 *to_free = 0, *i;
+
+  vec_foreach (per_vrf_sessions, tsm->per_vrf_sessions_vec)
+  {
+    if (per_vrf_sessions->expired)
+      {
+	if (per_vrf_sessions->ses_count == 0)
+	  {
+	    vec_add1 (to_free, per_vrf_sessions - tsm->per_vrf_sessions_vec);
+	  }
+      }
+  }
+
+  if (vec_len (to_free))
+    {
+      vec_foreach (i, to_free)
+      {
+	vec_del1 (tsm->per_vrf_sessions_vec, *i);
+      }
+    }
+
+  vec_free (to_free);
+}
+
+// slow path
+static_always_inline void
+per_vrf_sessions_register_session (snat_session_t * s, u32 thread_index)
+{
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm =
+    vec_elt_at_index (sm->per_thread_data, thread_index);
+  per_vrf_sessions_t *per_vrf_sessions;
+
+  per_vrf_sessions_cleanup (thread_index);
+
+  // s->per_vrf_sessions_index == ~0 ... reuse of old session
+
+  vec_foreach (per_vrf_sessions, tsm->per_vrf_sessions_vec)
+  {
+    // ignore already expired registrations
+    if (per_vrf_sessions->expired)
+      continue;
+
+    if ((s->in2out.fib_index == per_vrf_sessions->rx_fib_index) &&
+	(s->out2in.fib_index == per_vrf_sessions->tx_fib_index))
+      {
+	goto done;
+      }
+    if ((s->in2out.fib_index == per_vrf_sessions->tx_fib_index) &&
+	(s->out2in.fib_index == per_vrf_sessions->rx_fib_index))
+      {
+	goto done;
+      }
+  }
+
+  // create a new registration
+  vec_add2 (tsm->per_vrf_sessions_vec, per_vrf_sessions, 1);
+  clib_memset (per_vrf_sessions, 0, sizeof (*per_vrf_sessions));
+
+  per_vrf_sessions->rx_fib_index = s->in2out.fib_index;
+  per_vrf_sessions->tx_fib_index = s->out2in.fib_index;
+
+done:
+  s->per_vrf_sessions_index = per_vrf_sessions - tsm->per_vrf_sessions_vec;
+  per_vrf_sessions->ses_count++;
+}
+
+// fast path
+static_always_inline void
+per_vrf_sessions_unregister_session (snat_session_t * s, u32 thread_index)
+{
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm;
+  per_vrf_sessions_t *per_vrf_sessions;
+
+  ASSERT (s->per_vrf_sessions_index != ~0);
+  
+  tsm = vec_elt_at_index (sm->per_thread_data, thread_index);
+  per_vrf_sessions = vec_elt_at_index (tsm->per_vrf_sessions_vec,
+                                       s->per_vrf_sessions_index);
+
+  ASSERT (per_vrf_sessions->ses_count != 0);
+
+  per_vrf_sessions->ses_count--;
+  s->per_vrf_sessions_index = ~0;
+}
+
+// fast path
+static_always_inline u8
+per_vrf_sessions_is_expired (snat_session_t * s, u32 thread_index)
+{
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm;
+  per_vrf_sessions_t *per_vrf_sessions;
+
+  ASSERT (s->per_vrf_sessions_index != ~0);
+
+  tsm = vec_elt_at_index (sm->per_thread_data, thread_index);
+  per_vrf_sessions = vec_elt_at_index (tsm->per_vrf_sessions_vec,
+                                       s->per_vrf_sessions_index);
+  return per_vrf_sessions->expired;
+}
+
 #endif

@@ -488,6 +488,8 @@ slow_path_ed (snat_main_t * sm,
 	       &s->ext_host_nat_addr, s->ext_host_nat_port,
 	       s->nat_proto, s->in2out.fib_index, s->flags, thread_index, 0);
 
+  per_vrf_sessions_register_session (s, thread_index);
+
   return next;
 }
 
@@ -886,6 +888,8 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
 		  s - tsm->sessions);
       if (clib_bihash_add_del_16_8 (&sm->out2in_ed, &s_kv, 1))
 	nat_elog_notice ("out2in key add failed");
+
+      per_vrf_sessions_register_session (s, thread_index);
     }
 
   /* Update IP checksum */
@@ -1024,11 +1028,20 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 	pool_elt_at_index (tsm->sessions,
 			   ed_value_get_session_index (&value0));
 
+      if (PREDICT_FALSE (per_vrf_sessions_is_expired (s0, thread_index)))
+	{
+	  // session is closed, go slow path
+	  nat_free_session_data (sm, s0, thread_index, 0);
+	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
+	  goto trace0;
+	}
+
       if (s0->tcp_closed_timestamp)
 	{
 	  if (now >= s0->tcp_closed_timestamp)
 	    {
-	      // session is closed, go slow path
+	      // session is closed, go slow path, freed in slow path
 	      next[0] = def_slow;
 	    }
 	  else
