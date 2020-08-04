@@ -54,6 +54,12 @@ ip6_neighbor_probe (vlib_main_t * vm,
   if (!h0)
     return NULL;;
 
+  /* if the interface has been disabled for ip6, later steps to retrieve
+   * an adjacency will result in a segv.
+   */
+  if (!ip6_link_is_enabled (adj->rewrite_header.sw_if_index))
+    return NULL;
+
   b0 = vlib_get_buffer (vm, bi0);
 
   hw_if0 = vnet_get_sup_hw_interface (vnm, adj->rewrite_header.sw_if_index);
