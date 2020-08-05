@@ -1,0 +1,120 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "0.1.0";
+
+/**
+ * @brief API trace type
+ */
+enum api_trace_type : u8
+{
+  API_TRACE_TX,
+  API_TRACE_RX,
+};
+
+/** \brief API trace save
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param filename - save the api trace to this file
+*/
+autoreply define api_trace_save
+{
+  u32 client_index;
+  u32 context;
+
+  string filename[];
+
+  option vat_help = "[filename]";
+};
+
+/** \brief API trace replay
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param first_index - first index
+    @param last_index - last index
+    @param filename - api trace file
+*/
+autoreply define api_trace_replay
+{
+  u32 client_index;
+  u32 context;
+
+  u32 first_index [default=0];
+  u32 last_index [default=0xFFFFFFFF];
+  string filename[];
+
+  option vat_help = "[filename]";
+};
+
+/** \brief API trace enable disable
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enabled - enable if true else disable
+    @param which - API trace type <API_TRACE_RX|API_TRACE_TX>
+*/
+autoreply define api_trace_enable_disable
+{
+  u32 client_index;
+  u32 context;
+
+  bool enabled [default=true];
+  vl_api_api_trace_type_t type [default=1];
+
+  option vat_help = "[enabled <true|false>] [type <API_TRACE_TX|API_TRACE_RX>]";
+};
+
+/** \brief API trace dump
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param which - API trace type <API_TRACE_RX|API_TRACE_TX>
+*/
+define api_trace_status
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_api_trace_type_t type [default=1];
+
+  option vat_help = "[type <API_TRACE_TX|API_TRACE_RX>]";
+};
+
+define api_trace_status_reply
+{
+  u32 context;
+  i32 retval;
+
+  u32 traces;
+  u32 nitems;
+  bool enabled;
+  bool wrapped;
+
+  string trace_name[32];
+};
+
+/** \brief API trace free
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param which - API trace type <API_TRACE_RX|API_TRACE_TX>
+*/
+autoreply define api_trace_free
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_api_trace_type_t type [default=1];
+
+  option vat_help = "[type <API_TRACE_TX|API_TRACE_RX>]";
+};
