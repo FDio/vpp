@@ -2967,7 +2967,7 @@ vppcom_epoll_wait_condvar (vcl_worker_t * wrk, struct epoll_event *events,
 	continue;
 
       now = clib_time_now (&wrk->clib_time);
-      wait -= now - start;
+      wait -= (now - start) * 1e3;
       start = now;
     }
   while (wait > 0);
