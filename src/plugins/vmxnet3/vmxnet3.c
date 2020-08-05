@@ -452,9 +452,18 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
     }
 
   /* GSO is only supported for version >= 3 */
-  if (args->enable_gso && (vd->version >= 3))
+  if (args->enable_gso)
     {
-      vd->gso_enable = 1;
+      if (vd->version >= 3)
+	vd->gso_enable = 1;
+      else
+	{
+	  error =
+	    clib_error_return (0,
+			       "GSO is not supported because hardware version"
+			       " is %u. It must be >= 3", vd->version);
+	  return error;
+	}
     }
 
   vmxnet3_reg_write (vd, 1, VMXNET3_REG_CMD, VMXNET3_CMD_GET_LINK);
@@ -741,6 +750,10 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
       vmxnet3_log_error (vd,
 			 "No sufficient interrupt lines (%u) for rx queues",
 			 num_intr);
+      error =
+	clib_error_return (0,
+			   "No sufficient interrupt lines (%u) for rx queues",
+			   num_intr);
       goto error;
     }
   if ((error = vlib_pci_register_msix_handler (vm, h, 0, vd->num_rx_queues,

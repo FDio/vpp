@@ -65,6 +65,9 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 
   vmxnet3_create_if (vm, &args);
+  if (args.error == 0)
+    vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name,
+		     vnet_get_main (), args.sw_if_index);
 
   return args.error;
 }
