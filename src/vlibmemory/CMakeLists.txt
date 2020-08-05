@@ -20,6 +20,7 @@ add_vpp_library (vlibmemory
   socket_api.c
   vlib_api.c
   vlib_api_cli.c
+  vlib_api_api.c
   ../vlibapi/api_shared.c
   ../vlibapi/node_serialize.c
 
@@ -35,6 +36,7 @@ add_vpp_library (vlibmemory
 
   API_FILES
   memclnt.api
+  vlib_api.api
 
   LINK_LIBRARIES vppinfra svm vlib
 )
