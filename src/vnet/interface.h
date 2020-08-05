@@ -906,6 +906,8 @@ typedef struct
   u8 rx_enable;
   u8 tx_enable;
   u8 drop_enable;
+  u8 preallocate_data;
+  u8 free_data;
   u32 sw_if_index;
   int filter;
 } vnet_pcap_dispatch_trace_args_t;
