@@ -380,6 +380,8 @@ typedef struct api_main_t
   void (**perf_counter_cbs_tmp)
     (struct api_main_t *, u32 id, int before_or_after);
 
+  /* API message ID base */
+  u16 msg_id_base;
 } api_main_t;
 
 extern __thread api_main_t *my_api_main;
