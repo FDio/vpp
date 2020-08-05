@@ -230,12 +230,14 @@ always_inline vrrp_vr_t *
 vrrp_vr_lookup (u32 sw_if_index, u8 vr_id, u8 is_ipv6)
 {
   vrrp_main_t *vmp = &vrrp_main;
-  vrrp_vr_key_t key = {
-    .sw_if_index = sw_if_index,
-    .vr_id = vr_id,
-    .is_ipv6 = (is_ipv6 != 0),
-  };
+  vrrp_vr_key_t key;
   uword *p;
+
+  clib_memset (&key, 0, sizeof (key));
+
+  key.sw_if_index = sw_if_index;
+  key.vr_id = vr_id;
+  key.is_ipv6 = (is_ipv6 != 0);
 
   p = mhash_get (&vmp->vr_index_by_key, &key);
   if (p)
