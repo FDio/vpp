@@ -20,7 +20,7 @@
  * be 100% reliable (write can fail). It also needs to recycle
  * old entries in a lazy way.
  *
- * This hash table is the most dummy hash table you can do.
+ * This hash table is the most trivial hash table you can do.
  * Fixed total size, fixed bucket size.
  * Advantage is that it could be very efficient (maybe).
  *

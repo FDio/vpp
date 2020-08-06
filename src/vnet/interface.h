@@ -450,7 +450,7 @@ typedef struct _vnet_hw_interface_class
 } vnet_hw_interface_class_t;
 
 /**
- * @brief Return a complete, zero-length (aka dummy) rewrite
+ * @brief Return a complete, zero-length (aka placeholder) rewrite
  */
 extern u8 *default_build_rewrite (struct vnet_main_t *vnm,
 				  u32 sw_if_index,

@@ -40,7 +40,7 @@
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
 
-u8 *vnet_trace_dummy;
+u8 *vnet_trace_placeholder;
 
 /* Helper function for nodes which only trace buffer data. */
 void
@@ -374,8 +374,9 @@ cli_add_trace_buffer (vlib_main_t * vm,
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  if (vnet_trace_dummy == 0)
-    vec_validate_aligned (vnet_trace_dummy, 2048, CLIB_CACHE_LINE_BYTES);
+  if (vnet_trace_placeholder == 0)
+    vec_validate_aligned (vnet_trace_placeholder, 2048,
+			  CLIB_CACHE_LINE_BYTES);
 
   while (unformat_check_input (line_input) != (uword) UNFORMAT_END_OF_INPUT)
     {
@@ -554,7 +555,7 @@ VLIB_CLI_COMMAND (clear_trace_cli,static) = {
 };
 /* *INDENT-ON* */
 
-/* Dummy function to get us linked in. */
+/* Placeholder function to get us linked in. */
 void
 vlib_trace_cli_reference (void)
 {

@@ -159,7 +159,7 @@ typedef struct lisp_gpe_main
 
   gpe_encap_mode_t encap_mode;
 
-  u8 *dummy_stats_pool;
+  u8 *placeholder_stats_pool;
   uword *lisp_stats_index_by_key;
   vlib_combined_counter_main_t counters;
 

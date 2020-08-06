@@ -30,64 +30,64 @@
 
 #define SEGMENT_MANAGER_GET_INDEX_FROM_HANDLE(x) (x >> 32)
 
-/* dummy callback functions */
+/* placeholder callback functions */
 static void
-dummy_session_reset_callback (session_t * s)
+placeholder_session_reset_callback (session_t * s)
 {
   clib_warning ("called...");
 }
 
 static int
-dummy_session_connected_callback (u32 app_index, u32 api_context,
-				  session_t * s, session_error_t err)
-{
-  clib_warning ("called...");
-  return 0;
-}
-
-static int
-dummy_add_segment_callback (u32 client_index, u64 segment_handle)
+placeholder_session_connected_callback (u32 app_index, u32 api_context,
+					session_t * s, session_error_t err)
 {
   clib_warning ("called...");
   return 0;
 }
 
 static int
-dummy_del_segment_callback (u32 client_index, u64 segment_handle)
+placeholder_add_segment_callback (u32 client_index, u64 segment_handle)
+{
+  clib_warning ("called...");
+  return 0;
+}
+
+static int
+placeholder_del_segment_callback (u32 client_index, u64 segment_handle)
 {
   clib_warning ("called...");
   return 0;
 }
 
 static void
-dummy_session_disconnect_callback (session_t * s)
+placeholder_session_disconnect_callback (session_t * s)
 {
   clib_warning ("called...");
 }
 
 static int
-dummy_session_accept_callback (session_t * s)
+placeholder_session_accept_callback (session_t * s)
 {
   clib_warning ("called...");
   return 0;
 }
 
 static int
-dummy_server_rx_callback (session_t * s)
+placeholder_server_rx_callback (session_t * s)
 {
   clib_warning ("called...");
   return -1;
 }
 
 /* *INDENT-OFF* */
-static session_cb_vft_t dummy_session_cbs = {
-  .session_reset_callback = dummy_session_reset_callback,
-  .session_connected_callback = dummy_session_connected_callback,
-  .session_accept_callback = dummy_session_accept_callback,
-  .session_disconnect_callback = dummy_session_disconnect_callback,
-  .builtin_app_rx_callback = dummy_server_rx_callback,
-  .add_segment_callback = dummy_add_segment_callback,
-  .del_segment_callback = dummy_del_segment_callback,
+static session_cb_vft_t placeholder_session_cbs = {
+  .session_reset_callback = placeholder_session_reset_callback,
+  .session_connected_callback = placeholder_session_connected_callback,
+  .session_accept_callback = placeholder_session_accept_callback,
+  .session_disconnect_callback = placeholder_session_disconnect_callback,
+  .builtin_app_rx_callback = placeholder_server_rx_callback,
+  .add_segment_callback = placeholder_add_segment_callback,
+  .del_segment_callback = placeholder_del_segment_callback,
 };
 /* *INDENT-ON* */
 
@@ -128,7 +128,7 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
     .api_client_index = ~0,
     .options = options,
     .namespace_id = 0,
-    .session_cb_vft = &dummy_session_cbs,
+    .session_cb_vft = &placeholder_session_cbs,
     .name = format (0, "segment_manager_test_pressure_1"),
   };
 
@@ -292,7 +292,7 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
     .api_client_index = ~0,
     .options = options,
     .namespace_id = 0,
-    .session_cb_vft = &dummy_session_cbs,
+    .session_cb_vft = &placeholder_session_cbs,
     .name = format (0, "segment_manager_test_pressure_1"),
   };
 
@@ -422,7 +422,7 @@ segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
     .api_client_index = ~0,
     .options = options,
     .namespace_id = 0,
-    .session_cb_vft = &dummy_session_cbs,
+    .session_cb_vft = &placeholder_session_cbs,
     .name = format (0, "segment_manager_test_pressure_1"),
   };
 
@@ -542,7 +542,7 @@ segment_manager_test_fifo_ops (vlib_main_t * vm, unformat_input_t * input)
     .api_client_index = ~0,
     .options = options,
     .namespace_id = 0,
-    .session_cb_vft = &dummy_session_cbs,
+    .session_cb_vft = &placeholder_session_cbs,
     .name = format (0, "segment_manager_test_pressure_1"),
   };
 
@@ -714,7 +714,7 @@ segment_manager_test_prealloc_hdrs (vlib_main_t * vm,
     .api_client_index = ~0,
     .options = options,
     .namespace_id = 0,
-    .session_cb_vft = &dummy_session_cbs,
+    .session_cb_vft = &placeholder_session_cbs,
     .name = format (0, "segment_manager_prealloc_hdrs"),
   };
 
@@ -810,4 +810,3 @@ VLIB_CLI_COMMAND (tcp_test_command, static) =
  * eval: (c-set-style "gnu")
  * End:
  */
-

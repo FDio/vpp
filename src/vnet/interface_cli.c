@@ -1992,7 +1992,8 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
 
       pm->pcap_data = save_pcap_data;
 
-      vec_validate_aligned (vnet_trace_dummy, 2048, CLIB_CACHE_LINE_BYTES);
+      vec_validate_aligned (vnet_trace_placeholder, 2048,
+			    CLIB_CACHE_LINE_BYTES);
       if (pm->lock == 0)
 	clib_spinlock_init (&(pm->lock));
 

@@ -783,8 +783,8 @@ boolean read_event_definitions (char *filename)
     return(TRUE);
 }
 
-static event_def_t dummy_event;
-static char dummy_string[32];
+static event_def_t placeholder_event;
+static char placeholder_string[32];
 
 /****************************************************************************
 * find_event_definition
@@ -797,7 +797,7 @@ event_def_t *find_event_definition (ulong code)
     event_def_t *edp;
 
     if (g_neventdefs == 0)
-        goto use_dummy;
+        goto use_placeholder;
 
     bottom = g_neventdefs-1;
     top = 0;
@@ -811,13 +811,13 @@ event_def_t *find_event_definition (ulong code)
             return(edp);
 
         if (top >= bottom) {
-        use_dummy:
-            edp = &dummy_event;
+        use_placeholder:
+            edp = &placeholder_event;
             edp->selected = TRUE;
             edp->event = code;
             edp->format = "0x%x";
-            snprintf (dummy_string, sizeof(dummy_string), "E%lu", code);
-            edp->name = &dummy_string[0];
+            snprintf (placeholder_string, sizeof(placeholder_string), "E%lu", code);
+            edp->name = &placeholder_string[0];
             return(edp);
         }
 

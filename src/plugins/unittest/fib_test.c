@@ -93,7 +93,7 @@ static u8 * format_test_interface_name (u8 * s, va_list * args)
   return format (s, "test-eth%d", dev_instance);
 }
 
-static uword dummy_interface_tx (vlib_main_t * vm,
+static uword placeholder_interface_tx (vlib_main_t * vm,
                                  vlib_node_runtime_t * node,
                                  vlib_frame_t * frame)
 {
@@ -115,7 +115,7 @@ test_interface_admin_up_down (vnet_main_t * vnm,
 VNET_DEVICE_CLASS (test_interface_device_class,static) = {
     .name = "Test interface",
     .format_device_name = format_test_interface_name,
-    .tx_function = dummy_interface_tx,
+    .tx_function = placeholder_interface_tx,
     .admin_up_down_function = test_interface_admin_up_down,
 };
 
@@ -455,7 +455,7 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 			   "bucket %d stacks on %U",
 			   bucket,
 			   format_dpo_type, dpo->dpoi_type);
-	    
+
 		mld = mpls_label_dpo_get(dpo->dpoi_index);
                 hdr = clib_net_to_host_u32(mld->mld_hdr[0].label_exp_s_ttl);
 
@@ -6688,7 +6688,7 @@ fib_test_label (void)
                                           l1600,
                                           FIB_ROUTE_PATH_FLAG_NONE);
 
-    FIB_TEST(!fib_test_validate_entry(fei, 
+    FIB_TEST(!fib_test_validate_entry(fei,
                                       FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
                                       1,
                                       &l1600_eos_o_1_1_1_1),

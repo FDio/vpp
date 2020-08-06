@@ -21,11 +21,11 @@
 extern vlib_node_registration_t adj_nsh_midchain_node;
 extern vlib_node_registration_t adj_nsh_rewrite_node;
 
-typedef struct _nsh_main_dummy
+typedef struct _nsh_main_placeholder
 {
   u8 output_feature_arc_index;
-} nsh_main_dummy_t;
+} nsh_main_placeholder_t;
 
-extern nsh_main_dummy_t nsh_main_dummy;
+extern nsh_main_placeholder_t nsh_main_placeholder;
 
 #endif

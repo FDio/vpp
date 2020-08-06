@@ -229,7 +229,7 @@ l2bd_init (vlib_main_t * vm)
   bd_main_t *bdm = &bd_main;
   bdm->bd_index_by_bd_id = hash_create (0, sizeof (uword));
   /*
-   * create a dummy bd with bd_id of 0 and bd_index of 0 with feature set
+   * create a placeholder bd with bd_id of 0 and bd_index of 0 with feature set
    * to packet drop only. Thus, packets received from any L2 interface with
    * uninitialized bd_index of 0 can be dropped safely.
    */

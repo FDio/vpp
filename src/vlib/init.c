@@ -377,7 +377,7 @@ vlib_call_init_exit_functions_no_sort (vlib_main_t * vm,
 clib_error_t *
 vlib_call_all_init_functions (vlib_main_t * vm)
 {
-  /* Call dummy functions to make sure purely static modules are
+  /* Call placeholder functions to make sure purely static modules are
      linked in. */
 #define _(f) vlib_##f##_reference ();
   foreach_vlib_module_reference;

@@ -185,7 +185,7 @@ lb_node_get_hash (lb_main_t *lbm, vlib_buffer_t *p, u8 is_input_v4,
 
   if (per_port_vip)
     {
-      /* For per-port-vip case, ip lookup stores dummy index */
+      /* For per-port-vip case, ip lookup stores placeholder index */
       key.vip_prefix_index = *vip_idx;
     }
 
@@ -1067,7 +1067,7 @@ VLIB_REGISTER_NODE (lb4_gre6_node) =
     .error_strings = lb_error_strings,
     .n_next_nodes = LB_N_NEXT,
     .next_nodes =
-        { [LB_NEXT_DROP] = "error-drop" }, 
+        { [LB_NEXT_DROP] = "error-drop" },
   };
 
 VLIB_REGISTER_NODE (lb4_gre4_node) =
@@ -1278,4 +1278,3 @@ VLIB_REGISTER_NODE (lb_nat6_in2out_node) =
           [LB_NAT6_IN2OUT_NEXT_LOOKUP] = "ip6-lookup",
       },
   };
-

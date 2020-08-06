@@ -73,7 +73,7 @@ typedef enum
 {
   HANDOFF_TRACE_NEXT_DROP,
   HANDOFF_TRACE_N_NEXT,
-} tdummy_next_t;
+} tplaceholder_next_t;
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (handoff_trace_node, static) =

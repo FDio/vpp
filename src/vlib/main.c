@@ -1304,7 +1304,7 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_frame_t *f;
-  vlib_next_frame_t *nf, nf_dummy;
+  vlib_next_frame_t *nf, nf_placeholder;
   vlib_node_runtime_t *n;
   vlib_frame_t *restore_frame;
   vlib_pending_frame_t *p;
@@ -1318,8 +1318,8 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
   f = vlib_get_frame (vm, p->frame);
   if (p->next_frame_index == VLIB_PENDING_FRAME_NO_NEXT_FRAME)
     {
-      /* No next frame: so use dummy on stack. */
-      nf = &nf_dummy;
+      /* No next frame: so use placeholder on stack. */
+      nf = &nf_placeholder;
       nf->flags = f->frame_flags & VLIB_NODE_FLAG_TRACE;
       nf->frame = NULL;
     }
@@ -2029,7 +2029,7 @@ vlib_main_configure (vlib_main_t * vm, unformat_input_t * input)
 VLIB_EARLY_CONFIG_FUNCTION (vlib_main_configure, "vlib");
 
 static void
-dummy_queue_signal_callback (vlib_main_t * vm)
+placeholder_queue_signal_callback (vlib_main_t * vm)
 {
 }
 
@@ -2075,7 +2075,7 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   clib_error_t *volatile error;
   vlib_node_main_t *nm = &vm->node_main;
 
-  vm->queue_signal_callback = dummy_queue_signal_callback;
+  vm->queue_signal_callback = placeholder_queue_signal_callback;
 
   /* Turn on event log. */
   if (!vm->elog_main.event_ring_size)
@@ -2307,7 +2307,8 @@ vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t * a)
       vec_free (pm->pcap_data);
       memset (pm, 0, sizeof (*pm));
 
-      vec_validate_aligned (vnet_trace_dummy, 2048, CLIB_CACHE_LINE_BYTES);
+      vec_validate_aligned (vnet_trace_placeholder, 2048,
+			    CLIB_CACHE_LINE_BYTES);
       if (pm->lock == 0)
 	clib_spinlock_init (&(pm->lock));
 

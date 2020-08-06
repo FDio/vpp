@@ -45,7 +45,7 @@
     fformat(stderr,  _comment "\n",  ##_args);			\
 
 void
-dummy_session_reset_callback (session_t * s)
+placeholder_session_reset_callback (session_t * s)
 {
   clib_warning ("called...");
 }
@@ -53,8 +53,8 @@ dummy_session_reset_callback (session_t * s)
 volatile u32 connected_session_index = ~0;
 volatile u32 connected_session_thread = ~0;
 int
-dummy_session_connected_callback (u32 app_index, u32 api_context,
-				  session_t * s, session_error_t err)
+placeholder_session_connected_callback (u32 app_index, u32 api_context,
+					session_t * s, session_error_t err)
 {
   if (s)
     {
@@ -64,36 +64,36 @@ dummy_session_connected_callback (u32 app_index, u32 api_context,
   return 0;
 }
 
-static u32 dummy_segment_count;
+static u32 placeholder_segment_count;
 
 int
-dummy_add_segment_callback (u32 client_index, u64 segment_handle)
+placeholder_add_segment_callback (u32 client_index, u64 segment_handle)
 {
-  dummy_segment_count = 1;
+  placeholder_segment_count = 1;
   return 0;
 }
 
 int
-dummy_del_segment_callback (u32 client_index, u64 segment_handle)
+placeholder_del_segment_callback (u32 client_index, u64 segment_handle)
 {
-  dummy_segment_count = 0;
+  placeholder_segment_count = 0;
   return 0;
 }
 
 void
-dummy_session_disconnect_callback (session_t * s)
+placeholder_session_disconnect_callback (session_t * s)
 {
   clib_warning ("called...");
 }
 
-static u32 dummy_accept;
+static u32 placeholder_accept;
 volatile u32 accepted_session_index;
 volatile u32 accepted_session_thread;
 
 int
-dummy_session_accept_callback (session_t * s)
+placeholder_session_accept_callback (session_t * s)
 {
-  dummy_accept = 1;
+  placeholder_accept = 1;
   accepted_session_index = s->session_index;
   accepted_session_thread = s->thread_index;
   s->session_state = SESSION_STATE_READY;
@@ -101,21 +101,21 @@ dummy_session_accept_callback (session_t * s)
 }
 
 int
-dummy_server_rx_callback (session_t * s)
+placeholder_server_rx_callback (session_t * s)
 {
   clib_warning ("called...");
   return -1;
 }
 
 /* *INDENT-OFF* */
-static session_cb_vft_t dummy_session_cbs = {
-  .session_reset_callback = dummy_session_reset_callback,
-  .session_connected_callback = dummy_session_connected_callback,
-  .session_accept_callback = dummy_session_accept_callback,
-  .session_disconnect_callback = dummy_session_disconnect_callback,
-  .builtin_app_rx_callback = dummy_server_rx_callback,
-  .add_segment_callback = dummy_add_segment_callback,
-  .del_segment_callback = dummy_del_segment_callback,
+static session_cb_vft_t placeholder_session_cbs = {
+  .session_reset_callback = placeholder_session_reset_callback,
+  .session_connected_callback = placeholder_session_connected_callback,
+  .session_accept_callback = placeholder_session_accept_callback,
+  .session_disconnect_callback = placeholder_session_disconnect_callback,
+  .builtin_app_rx_callback = placeholder_server_rx_callback,
+  .add_segment_callback = placeholder_add_segment_callback,
+  .del_segment_callback = placeholder_del_segment_callback,
 };
 /* *INDENT-ON* */
 
@@ -178,7 +178,7 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
     .api_client_index = ~0,
     .options = options,
     .namespace_id = 0,
-    .session_cb_vft = &dummy_session_cbs,
+    .session_cb_vft = &placeholder_session_cbs,
     .name = format (0, "session_test"),
   };
 
@@ -278,8 +278,8 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
 {
   session_endpoint_cfg_t client_sep = SESSION_ENDPOINT_CFG_NULL;
   u32 server_index, client_index, sw_if_index[2], tries = 0;
-  u64 options[APP_OPTIONS_N_OPTIONS], dummy_secret = 1234;
-  u16 dummy_server_port = 1234, dummy_client_port = 5678;
+  u64 options[APP_OPTIONS_N_OPTIONS], placeholder_secret = 1234;
+  u16 placeholder_server_port = 1234, placeholder_client_port = 5678;
   session_endpoint_cfg_t server_sep = SESSION_ENDPOINT_CFG_NULL;
   ip4_address_t intf_addr[3];
   transport_connection_t *tc;
@@ -307,7 +307,7 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   appns_id = format (0, "appns1");
   vnet_app_namespace_add_del_args_t ns_args = {
     .ns_id = appns_id,
-    .secret = dummy_secret,
+    .secret = placeholder_secret,
     .sw_if_index = sw_if_index[1],
     .ip4_fib_id = 0,
     .is_add = 1
@@ -326,7 +326,7 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
     .api_client_index = ~0,
     .options = options,
     .namespace_id = 0,
-    .session_cb_vft = &dummy_session_cbs,
+    .session_cb_vft = &placeholder_session_cbs,
     .name = format (0, "session_test_client"),
   };
 
@@ -337,7 +337,7 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
 
   attach_args.name = format (0, "session_test_server");
   attach_args.namespace_id = appns_id;
-  attach_args.options[APP_OPTIONS_NAMESPACE_SECRET] = dummy_secret;
+  attach_args.options[APP_OPTIONS_NAMESPACE_SECRET] = placeholder_secret;
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "server app attached: %U", format_clib_error,
 		error);
@@ -345,7 +345,7 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   server_index = attach_args.app_index;
 
   server_sep.is_ip4 = 1;
-  server_sep.port = dummy_server_port;
+  server_sep.port = placeholder_server_port;
   vnet_listen_args_t bind_args = {
     .sep_ext = server_sep,
     .app_index = server_index,
@@ -358,10 +358,10 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
    */
   client_sep.is_ip4 = 1;
   client_sep.ip.ip4.as_u32 = clib_host_to_net_u32 (0x02020202);
-  client_sep.port = dummy_server_port;
+  client_sep.port = placeholder_server_port;
   client_sep.peer.is_ip4 = 1;
   client_sep.peer.ip.ip4.as_u32 = clib_host_to_net_u32 (0x01010101);
-  client_sep.peer.port = dummy_client_port;
+  client_sep.peer.port = placeholder_client_port;
   client_sep.transport_proto = TRANSPORT_PROTO_TCP;
 
   vnet_connect_args_t connect_args = {
@@ -387,7 +387,8 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((tc != 0), "transport should exist");
   SESSION_TEST ((memcmp (&tc->lcl_ip, &client_sep.peer.ip,
 			 sizeof (tc->lcl_ip)) == 0), "ips should be equal");
-  SESSION_TEST ((tc->lcl_port == dummy_client_port), "ports should be equal");
+  SESSION_TEST ((tc->lcl_port == placeholder_client_port),
+		"ports should be equal");
 
   /* These sessions, because of the way they're established are pinned to
    * main thread, even when we have workers and we avoid polling main thread,
@@ -421,11 +422,11 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
 static int
 session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 {
-  u64 options[APP_OPTIONS_N_OPTIONS], dummy_secret = 1234;
+  u64 options[APP_OPTIONS_N_OPTIONS], placeholder_secret = 1234;
   u32 server_index, server_st_index, server_local_st_index;
-  u32 dummy_port = 1234, client_index, server_wrk_index;
-  u32 dummy_api_context = 4321, dummy_client_api_index = ~0;
-  u32 dummy_server_api_index = ~0, sw_if_index = 0;
+  u32 placeholder_port = 1234, client_index, server_wrk_index;
+  u32 placeholder_api_context = 4321, placeholder_client_api_index = ~0;
+  u32 placeholder_server_api_index = ~0, sw_if_index = 0;
   session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
   session_endpoint_t client_sep = SESSION_ENDPOINT_NULL;
   session_endpoint_t intf_sep = SESSION_ENDPOINT_NULL;
@@ -441,9 +442,9 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   client_name = format (0, "session_test_client");
 
   server_sep.is_ip4 = 1;
-  server_sep.port = dummy_port;
+  server_sep.port = placeholder_port;
   client_sep.is_ip4 = 1;
-  client_sep.port = dummy_port;
+  client_sep.port = placeholder_port;
   clib_memset (options, 0, sizeof (options));
 
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
@@ -451,7 +452,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
     .api_client_index = ~0,
     .options = options,
     .namespace_id = 0,
-    .session_cb_vft = &dummy_session_cbs,
+    .session_cb_vft = &placeholder_session_cbs,
     .name = server_name,
   };
 
@@ -482,7 +483,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 
   intf_sep.ip.ip4 = intf_addr;
   intf_sep.is_ip4 = 1;
-  intf_sep.port = dummy_port;
+  intf_sep.port = placeholder_port;
 
   /*
    * Insert namespace and lookup
@@ -490,7 +491,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 
   vnet_app_namespace_add_del_args_t ns_args = {
     .ns_id = ns_id,
-    .secret = dummy_secret,
+    .secret = placeholder_secret,
     .sw_if_index = APP_NAMESPACE_INVALID_INDEX,
     .is_add = 1
   };
@@ -499,8 +500,8 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 
   app_ns = app_namespace_get_from_id (ns_id);
   SESSION_TEST ((app_ns != 0), "should find ns %v status", ns_id);
-  SESSION_TEST ((app_ns->ns_secret == dummy_secret), "secret should be %d",
-		dummy_secret);
+  SESSION_TEST ((app_ns->ns_secret == placeholder_secret),
+		"secret should be %d", placeholder_secret);
   SESSION_TEST ((app_ns->sw_if_index == APP_NAMESPACE_INVALID_INDEX),
 		"sw_if_index should be invalid");
 
@@ -510,9 +511,9 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
-  options[APP_OPTIONS_NAMESPACE_SECRET] = dummy_secret - 1;
+  options[APP_OPTIONS_NAMESPACE_SECRET] = placeholder_secret - 1;
   attach_args.namespace_id = ns_id;
-  attach_args.api_client_index = dummy_server_api_index;
+  attach_args.api_client_index = placeholder_server_api_index;
 
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error != 0), "app attachment should fail");
@@ -526,7 +527,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   options[APP_OPTIONS_FLAGS] &= ~APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
   options[APP_OPTIONS_NAMESPACE_SECRET] = 0;
   attach_args.namespace_id = 0;
-  attach_args.api_client_index = dummy_server_api_index;
+  attach_args.api_client_index = placeholder_server_api_index;
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "server attachment should work");
   server_index = attach_args.app_index;
@@ -564,9 +565,9 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
    */
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
-  options[APP_OPTIONS_NAMESPACE_SECRET] = dummy_secret;
+  options[APP_OPTIONS_NAMESPACE_SECRET] = placeholder_secret;
   attach_args.namespace_id = ns_id;
-  attach_args.api_client_index = dummy_server_api_index;
+  attach_args.api_client_index = placeholder_server_api_index;
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "server attachment should work");
   server_index = attach_args.app_index;
@@ -593,30 +594,31 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
    */
   options[APP_OPTIONS_FLAGS] &= ~APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   attach_args.name = client_name;
-  attach_args.api_client_index = dummy_client_api_index;
+  attach_args.api_client_index = placeholder_client_api_index;
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "client attachment should work");
   client_index = attach_args.app_index;
-  connect_args.api_context = dummy_api_context;
+  connect_args.api_context = placeholder_api_context;
   connect_args.app_index = client_index;
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error != 0), "client connect should return error code");
   SESSION_TEST ((error == SESSION_E_INVALID_RMT_IP),
 		"error code should be invalid value (zero ip)");
-  SESSION_TEST ((dummy_segment_count == 0),
+  SESSION_TEST ((placeholder_segment_count == 0),
 		"shouldn't have received request to map new segment");
   connect_args.sep.ip.ip4.as_u8[0] = 127;
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error == 0), "client connect should not return error code");
-  SESSION_TEST ((dummy_segment_count == 1),
+  SESSION_TEST ((placeholder_segment_count == 1),
 		"should've received request to map new segment");
-  SESSION_TEST ((dummy_accept == 1), "should've received accept request");
+  SESSION_TEST ((placeholder_accept == 1),
+		"should've received accept request");
   detach_args.app_index = client_index;
   vnet_application_detach (&detach_args);
 
   options[APP_OPTIONS_FLAGS] &= ~APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
-  attach_args.api_client_index = dummy_client_api_index;
+  attach_args.api_client_index = placeholder_client_api_index;
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "client attachment should work");
   error = vnet_connect (&connect_args);
@@ -645,7 +647,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 
   options[APP_OPTIONS_FLAGS] &= ~APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
-  attach_args.api_client_index = dummy_server_api_index;
+  attach_args.api_client_index = placeholder_server_api_index;
   attach_args.name = server_name;
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "app attachment should work");
@@ -680,7 +682,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   options[APP_OPTIONS_FLAGS] &= ~APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
   attach_args.namespace_id = 0;
-  attach_args.api_client_index = dummy_client_api_index;
+  attach_args.api_client_index = placeholder_client_api_index;
   attach_args.name = client_name;
   vnet_application_attach (&attach_args);
   error = vnet_connect (&connect_args);
@@ -713,9 +715,9 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
    */
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
-  options[APP_OPTIONS_NAMESPACE_SECRET] = dummy_secret;
+  options[APP_OPTIONS_NAMESPACE_SECRET] = placeholder_secret;
   attach_args.namespace_id = ns_id;
-  attach_args.api_client_index = dummy_server_api_index;
+  attach_args.api_client_index = placeholder_server_api_index;
   attach_args.name = server_name;
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "server attachment should work");
@@ -1025,9 +1027,9 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   u64 options[APP_OPTIONS_N_OPTIONS];
   u16 lcl_port = 1234, rmt_port = 4321;
   u32 server_index, server_index2;
-  u32 dummy_server_api_index = ~0;
+  u32 placeholder_server_api_index = ~0;
   transport_connection_t *tc;
-  u32 dummy_port = 1111;
+  u32 placeholder_port = 1111;
   u8 is_filtered = 0, *ns_id = format (0, "appns1");
   session_t *listener, *s;
   app_namespace_t *default_ns = app_namespace_get_default ();
@@ -1051,14 +1053,14 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
     }
 
   server_sep.is_ip4 = 1;
-  server_sep.port = dummy_port;
+  server_sep.port = placeholder_port;
   clib_memset (options, 0, sizeof (options));
 
   vnet_app_attach_args_t attach_args = {
     .api_client_index = ~0,
     .options = options,
     .namespace_id = 0,
-    .session_cb_vft = &dummy_session_cbs,
+    .session_cb_vft = &placeholder_session_cbs,
     .name = format (0, "session_test"),
   };
 
@@ -1074,7 +1076,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
   attach_args.namespace_id = 0;
-  attach_args.api_client_index = dummy_server_api_index;
+  attach_args.api_client_index = placeholder_server_api_index;
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "server attached");
   server_index = attach_args.app_index;
@@ -1498,7 +1500,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   app_ns = app_namespace_get_from_id (ns_id);
 
   attach_args.namespace_id = ns_id;
-  attach_args.api_client_index = dummy_server_api_index;
+  attach_args.api_client_index = placeholder_server_api_index;
   vec_free (attach_args.name);
   attach_args.name = format (0, "server_test2");
   error = vnet_application_attach (&attach_args);
@@ -1588,7 +1590,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   char *show_local_listeners = "sh app ns table default";
   unformat_input_t tmp_input;
   u32 server_index, app_index;
-  u32 dummy_server_api_index = ~0, sw_if_index = 0;
+  u32 placeholder_server_api_index = ~0, sw_if_index = 0;
   u8 is_filtered = 0;
   session_t *s;
   transport_connection_t *tc;
@@ -1645,11 +1647,11 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
     .api_client_index = ~0,
     .options = options,
     .namespace_id = 0,
-    .session_cb_vft = &dummy_session_cbs,
+    .session_cb_vft = &placeholder_session_cbs,
     .name = format (0, "session_test"),
   };
 
-  attach_args.api_client_index = dummy_server_api_index;
+  attach_args.api_client_index = placeholder_server_api_index;
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "server attachment should work");
   server_index = attach_args.app_index;
@@ -1802,7 +1804,7 @@ session_test_mq_speed (vlib_main_t * vm, unformat_input_t * input)
     .api_client_index = api_index,
     .options = options,
     .namespace_id = 0,
-    .session_cb_vft = &dummy_session_cbs,
+    .session_cb_vft = &placeholder_session_cbs,
     .name = format (0, "session_mq_test"),
   };
   error = vnet_application_attach (&attach_args);

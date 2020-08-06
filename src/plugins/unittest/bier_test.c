@@ -82,7 +82,7 @@ static u8 * format_test_interface_name (u8 * s, va_list * args)
   return format (s, "test-eth%d", dev_instance);
 }
 
-static uword dummy_interface_tx (vlib_main_t * vm,
+static uword placeholder_interface_tx (vlib_main_t * vm,
                                  vlib_node_runtime_t * node,
                                  vlib_frame_t * frame)
 {
@@ -93,7 +93,7 @@ static uword dummy_interface_tx (vlib_main_t * vm,
 VNET_DEVICE_CLASS (test_interface_device_class,static) = {
   .name = "Test interface",
   .format_device_name = format_test_interface_name,
-  .tx_function = dummy_interface_tx,
+  .tx_function = placeholder_interface_tx,
 };
 
 static u8 *hw_address;

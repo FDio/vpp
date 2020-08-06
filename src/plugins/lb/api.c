@@ -242,7 +242,7 @@ vl_api_lb_vip_dump_t_handler
 
   /* construct vip list */
   pool_foreach(vip, lbm->vips, {
-      /* Hide dummy VIP */
+      /* Hide placeholder VIP */
       if (vip != lbm->vips) {
         msg_size = sizeof (*rmp);
         rmp = vl_msg_api_alloc (msg_size);
@@ -281,7 +281,7 @@ static void send_lb_as_details
   lb_as_t *as;
 
   pool_foreach(as_index, vip->as_indexes, {
-      /* Hide dummy As for specific VIP */
+      /* Hide placeholder As for specific VIP */
       if (*as_index != 0) {
         as = &lbm->ass[*as_index];
         msg_size = sizeof (*rmp);

@@ -235,7 +235,7 @@ nsh_input_map (vlib_main_t * vm,
 	  uword *p0, *p1;
 	  nsh_proxy_session_t *proxy0, *proxy1;
 	  u32 sw_if_index0 = 0, sw_if_index1 = 0;
-	  ethernet_header_t dummy_eth0, dummy_eth1;
+	  ethernet_header_t placeholder_eth0, placeholder_eth1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -290,17 +290,19 @@ nsh_input_map (vlib_main_t * vm,
 	    }
 	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
 	    {
-	      /* Push dummy Eth header */
-	      char dummy_dst_address[6] =
+	      /* Push placeholder Eth header */
+	      char placeholder_dst_address[6] =
 		{ 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 };
-	      char dummy_src_address[6] =
+	      char placeholder_src_address[6] =
 		{ 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc };
-	      clib_memcpy_fast (dummy_eth0.dst_address, dummy_dst_address, 6);
-	      clib_memcpy_fast (dummy_eth0.src_address, dummy_src_address, 6);
-	      dummy_eth0.type = 0x0800;
+	      clib_memcpy_fast (placeholder_eth0.dst_address,
+				placeholder_dst_address, 6);
+	      clib_memcpy_fast (placeholder_eth0.src_address,
+				placeholder_src_address, 6);
+	      placeholder_eth0.type = 0x0800;
 	      vlib_buffer_advance (b0, -(word) sizeof (ethernet_header_t));
 	      hdr0 = vlib_buffer_get_current (b0);
-	      clib_memcpy_fast (hdr0, &dummy_eth0,
+	      clib_memcpy_fast (hdr0, &placeholder_eth0,
 				(word) sizeof (ethernet_header_t));
 
 	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
@@ -459,17 +461,19 @@ nsh_input_map (vlib_main_t * vm,
 	    }
 	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
 	    {
-	      /* Push dummy Eth header */
-	      char dummy_dst_address[6] =
+	      /* Push placeholder Eth header */
+	      char placeholder_dst_address[6] =
 		{ 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 };
-	      char dummy_src_address[6] =
+	      char placeholder_src_address[6] =
 		{ 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc };
-	      clib_memcpy_fast (dummy_eth1.dst_address, dummy_dst_address, 6);
-	      clib_memcpy_fast (dummy_eth1.src_address, dummy_src_address, 6);
-	      dummy_eth1.type = 0x0800;
+	      clib_memcpy_fast (placeholder_eth1.dst_address,
+				placeholder_dst_address, 6);
+	      clib_memcpy_fast (placeholder_eth1.src_address,
+				placeholder_src_address, 6);
+	      placeholder_eth1.type = 0x0800;
 	      vlib_buffer_advance (b1, -(word) sizeof (ethernet_header_t));
 	      hdr1 = vlib_buffer_get_current (b1);
-	      clib_memcpy_fast (hdr1, &dummy_eth1,
+	      clib_memcpy_fast (hdr1, &placeholder_eth1,
 				(word) sizeof (ethernet_header_t));
 
 	      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
@@ -631,7 +635,7 @@ nsh_input_map (vlib_main_t * vm,
 	  uword *p0;
 	  nsh_proxy_session_t *proxy0 = 0;
 	  u32 sw_if_index0 = 0;
-	  ethernet_header_t dummy_eth0;
+	  ethernet_header_t placeholder_eth0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -665,17 +669,19 @@ nsh_input_map (vlib_main_t * vm,
 	    }
 	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
 	    {
-	      /* Push dummy Eth header */
-	      char dummy_dst_address[6] =
+	      /* Push placeholder Eth header */
+	      char placeholder_dst_address[6] =
 		{ 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 };
-	      char dummy_src_address[6] =
+	      char placeholder_src_address[6] =
 		{ 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc };
-	      clib_memcpy_fast (dummy_eth0.dst_address, dummy_dst_address, 6);
-	      clib_memcpy_fast (dummy_eth0.src_address, dummy_src_address, 6);
-	      dummy_eth0.type = 0x0800;
+	      clib_memcpy_fast (placeholder_eth0.dst_address,
+				placeholder_dst_address, 6);
+	      clib_memcpy_fast (placeholder_eth0.src_address,
+				placeholder_src_address, 6);
+	      placeholder_eth0.type = 0x0800;
 	      vlib_buffer_advance (b0, -(word) sizeof (ethernet_header_t));
 	      hdr0 = vlib_buffer_get_current (b0);
-	      clib_memcpy_fast (hdr0, &dummy_eth0,
+	      clib_memcpy_fast (hdr0, &placeholder_eth0,
 				(word) sizeof (ethernet_header_t));
 
 	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];

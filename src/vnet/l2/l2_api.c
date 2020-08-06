@@ -544,7 +544,7 @@ vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t * mp)
     {
       l2_bridge_domain_t *bd_config =
 	l2input_bd_config_from_index (l2im, bd_index);
-      /* skip dummy bd_id 0 */
+      /* skip placeholder bd_id 0 */
       if (bd_config && (bd_config->bd_id > 0))
 	send_bridge_domain_details (l2im, reg, bd_config,
 				    vec_len (bd_config->members),

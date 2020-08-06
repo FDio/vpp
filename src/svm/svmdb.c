@@ -198,7 +198,7 @@ svmdb_local_add_del_notification (svmdb_client_t * client,
   void *oldheap;
   hash_pair_t *hp;
   svmdb_shm_hdr_t *shm;
-  u8 *dummy_value = 0;
+  u8 *placeholder_value = 0;
   svmdb_value_t *value;
   svmdb_notify_t *np;
   int i;
@@ -216,7 +216,7 @@ svmdb_local_add_del_notification (svmdb_client_t * client,
   if (hp == 0)
     {
       local_set_variable_nolock (client, a->nspace, (u8 *) a->var,
-				 dummy_value, a->elsize);
+				 placeholder_value, a->elsize);
       /* might have moved */
       h = shm->namespaces[a->nspace];
       hp = hash_get_pair_mem (h, a->var);

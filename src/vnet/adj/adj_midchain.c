@@ -327,7 +327,7 @@ adj_midchain_get_feature_arc_index_for_link_type (const ip_adjacency_t *adj)
 	}
     case VNET_LINK_NSH:
         {
-          arc = nsh_main_dummy.output_feature_arc_index;
+          arc = nsh_main_placeholder.output_feature_arc_index;
           break;
         }
     case VNET_LINK_ARP:

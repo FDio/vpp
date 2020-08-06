@@ -324,7 +324,7 @@ typedef struct
   u32 prealloc_fifo_pairs;
   u64 rx_buf_size;
   u64 tx_buf_size;
-  data_source_t data_source;	/* Use no/dummy/mirrored data */
+  data_source_t data_source;	/* Use no/placeholder/mirrored data */
   u8 send_stream_disconnects;	/* actively send disconnect */
   u8 output_json;		/* Output stats as JSON */
   volatile u8 wait_for_gdb;	/* Wait for gdb to attach */

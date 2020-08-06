@@ -1360,12 +1360,12 @@ ixge_rx_queue_no_wrap (ixge_main_t * xm,
   u32 n_packets = 0;
   u32 n_bytes = 0;
   u32 n_trace = vlib_get_trace_count (vm, node);
-  vlib_buffer_t *b_last, b_dummy;
+  vlib_buffer_t *b_last, b_placeholder;
 
   ASSERT (start_descriptor_index + n_descriptors <= dq->n_descriptors);
   d = &dq->descriptors[start_descriptor_index];
 
-  b_last = bi_last != ~0 ? vlib_get_buffer (vm, bi_last) : &b_dummy;
+  b_last = bi_last != ~0 ? vlib_get_buffer (vm, bi_last) : &b_placeholder;
   next_index = dq->rx.next_index;
 
   if (n_trace > 0)

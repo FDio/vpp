@@ -473,7 +473,7 @@ vnet_lisp_gpe_add_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
   const lisp_gpe_adjacency_t *ladj;
   lisp_fwd_path_t *path;
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
-  u8 *dummy_elt;
+  u8 *placeholder_elt;
   lisp_gpe_fwd_entry_t *lfe;
   lisp_gpe_fwd_entry_key_t fe_key;
   lisp_stats_key_t key;
@@ -495,14 +495,16 @@ vnet_lisp_gpe_add_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
     key.tunnel_index = ladj->tunnel_index;
     lisp_stats_key_t *key_copy = clib_mem_alloc (sizeof (*key_copy));
     memcpy (key_copy, &key, sizeof (*key_copy));
-    pool_get (lgm->dummy_stats_pool, dummy_elt);
+    pool_get (lgm->placeholder_stats_pool, placeholder_elt);
     hash_set_mem (lgm->lisp_stats_index_by_key, key_copy,
-		  dummy_elt - lgm->dummy_stats_pool);
+		  placeholder_elt - lgm->placeholder_stats_pool);
 
     vlib_validate_combined_counter (&lgm->counters,
-				    dummy_elt - lgm->dummy_stats_pool);
+				    placeholder_elt -
+				    lgm->placeholder_stats_pool);
     vlib_zero_combined_counter (&lgm->counters,
-				dummy_elt - lgm->dummy_stats_pool);
+				placeholder_elt -
+				lgm->placeholder_stats_pool);
   }
 }
 
@@ -1314,12 +1316,12 @@ lisp_del_adj_stats (lisp_gpe_main_t * lgm, u32 fwd_entry_index, u32 ti)
   p = hash_get_mem (lgm->lisp_stats_index_by_key, &key);
   if (p)
     {
-      s = pool_elt_at_index (lgm->dummy_stats_pool, p[0]);
+      s = pool_elt_at_index (lgm->placeholder_stats_pool, p[0]);
       hp = hash_get_pair (lgm->lisp_stats_index_by_key, &key);
       key_copy = (void *) (hp->key);
       hash_unset_mem (lgm->lisp_stats_index_by_key, &key);
       clib_mem_free (key_copy);
-      pool_put (lgm->dummy_stats_pool, s);
+      pool_put (lgm->placeholder_stats_pool, s);
     }
 }
 

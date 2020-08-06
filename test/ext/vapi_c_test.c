@@ -414,8 +414,8 @@ START_TEST (test_show_version_1)
   size_t size;
   rv = vapi_recv (ctx, (void *) &resp, &size, 0, 0);
   ck_assert_int_eq (VAPI_OK, rv);
-  int dummy;
-  show_version_cb (NULL, &dummy, VAPI_OK, true, &resp->payload);
+  int placeholder;
+  show_version_cb (NULL, &placeholder, VAPI_OK, true, &resp->payload);
   vapi_msg_free (ctx, resp);
 }
 

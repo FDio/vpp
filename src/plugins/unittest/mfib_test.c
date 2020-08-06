@@ -75,7 +75,7 @@ static u8 * format_test_interface_name (u8 * s, va_list * args)
   return format (s, "test-eth%d", dev_instance);
 }
 
-static uword dummy_interface_tx (vlib_main_t * vm,
+static uword placeholder_interface_tx (vlib_main_t * vm,
                                  vlib_node_runtime_t * node,
                                  vlib_frame_t * frame)
 {
@@ -97,7 +97,7 @@ test_interface_admin_up_down (vnet_main_t * vnm,
 VNET_DEVICE_CLASS (test_interface_device_class,static) = {
   .name = "Test interface",
   .format_device_name = format_test_interface_name,
-  .tx_function = dummy_interface_tx,
+  .tx_function = placeholder_interface_tx,
   .admin_up_down_function = test_interface_admin_up_down,
 };
 
@@ -804,7 +804,7 @@ mfib_test_i (fib_protocol_t PROTO,
     MFIB_TEST_NS(!mfib_test_entry_no_itf(mfei, tm->hw[3]->sw_if_index));
 
     /*
-     * remove 
+     * remove
      */
     /* mfib_table_entry_path_remove(fib_index, */
     /*                              pfx_s_g, */
@@ -824,7 +824,7 @@ mfib_test_i (fib_protocol_t PROTO,
     /* MFIB_TEST_NS(!mfib_test_entry_no_itf(mfei, tm->hw[3]->sw_if_index)); */
 
     /*
-     * remove the last path and the accpeting only interface, 
+     * remove the last path and the accpeting only interface,
      * the entry still has flags so it remains
      */
     vec_reset_length(two_paths);

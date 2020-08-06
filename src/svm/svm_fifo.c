@@ -1403,7 +1403,7 @@ svm_fifo_replay (u8 * s, svm_fifo_t * f, u8 no_read, u8 verbose)
   u8 *data = 0;
   svm_fifo_trace_elem_t *trace;
   u32 offset;
-  svm_fifo_t *dummy_fifo;
+  svm_fifo_t *placeholder_fifo;
 
   if (!f)
     return s;
@@ -1416,7 +1416,7 @@ svm_fifo_replay (u8 * s, svm_fifo_t * f, u8 no_read, u8 verbose)
   trace_len = 0;
 #endif
 
-  dummy_fifo = svm_fifo_alloc (f->size);
+  placeholder_fifo = svm_fifo_alloc (f->size);
   svm_fifo_init (f, f->size);
   clib_memset (f->head_chunk->data, 0xFF, f->size);
   vec_validate (data, f->size);
@@ -1431,26 +1431,26 @@ svm_fifo_replay (u8 * s, svm_fifo_t * f, u8 no_read, u8 verbose)
 	  if (verbose)
 	    s = format (s, "adding [%u, %u]:", trace[i].offset,
 			(trace[i].offset + trace[i].len));
-	  svm_fifo_enqueue_with_offset (dummy_fifo, trace[i].offset,
+	  svm_fifo_enqueue_with_offset (placeholder_fifo, trace[i].offset,
 					trace[i].len, &data[offset]);
 	}
       else if (trace[i].action == 2)
 	{
 	  if (verbose)
 	    s = format (s, "adding [%u, %u]:", 0, trace[i].len);
-	  svm_fifo_enqueue (dummy_fifo, trace[i].len, &data[offset]);
+	  svm_fifo_enqueue (placeholder_fifo, trace[i].len, &data[offset]);
 	}
       else if (!no_read)
 	{
 	  if (verbose)
 	    s = format (s, "read: %u", trace[i].len);
-	  svm_fifo_dequeue_drop (dummy_fifo, trace[i].len);
+	  svm_fifo_dequeue_drop (placeholder_fifo, trace[i].len);
 	}
       if (verbose)
-	s = format (s, "%U", format_svm_fifo, dummy_fifo, 1);
+	s = format (s, "%U", format_svm_fifo, placeholder_fifo, 1);
     }
 
-  s = format (s, "result: %U", format_svm_fifo, dummy_fifo, 1);
+  s = format (s, "result: %U", format_svm_fifo, placeholder_fifo, 1);
 
   return s;
 }

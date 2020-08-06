@@ -819,7 +819,7 @@ static int toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
     int x, y;
     GdkRectangle *rp;
     GdkRectangle hit_rect;
-    GdkRectangle dummy;
+    GdkRectangle placeholder;
     event_t *ep;
     event_def_t *edp;
     char tmpbuf [1024];
@@ -888,7 +888,7 @@ static int toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
             /* Figure out the dimensions of the detail box */
             format_popbox_string(tmpbuf, sizeof(tmpbuf), ep, edp);
             rp = tbox(tmpbuf, x, y - vp->pop_offset, TBOX_GETRECT_BOXED);
-            if (gdk_rectangle_intersect(rp, &hit_rect, &dummy)) {
+            if (gdk_rectangle_intersect(rp, &hit_rect, &placeholder)) {
                 ep->flags &= ~EVENT_FLAG_SELECT;
                 view1_display_when_idle();
                 return 0;
@@ -900,7 +900,7 @@ static int toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
         /* Figure out the dimensions of the regular box */
         rp = tbox(tmpbuf, x, y, TBOX_GETRECT_EVENT);
 
-        if (gdk_rectangle_intersect(rp, &hit_rect, &dummy)) {
+        if (gdk_rectangle_intersect(rp, &hit_rect, &placeholder)) {
             /* we hit the rectangle. */
             if (ep->flags & EVENT_FLAG_SELECT) {
                 ep->flags &= ~EVENT_FLAG_SELECT;

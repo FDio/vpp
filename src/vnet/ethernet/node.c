@@ -1942,14 +1942,14 @@ static clib_error_t *
 ethernet_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 {
   subint_config_t *subint;
-  u32 dummy_flags;
-  u32 dummy_unsup;
+  u32 placeholder_flags;
+  u32 placeholder_unsup;
   clib_error_t *error = 0;
 
   // Find the config for this subinterface
   subint =
-    ethernet_sw_interface_get_config (vnm, sw_if_index, &dummy_flags,
-				      &dummy_unsup);
+    ethernet_sw_interface_get_config (vnm, sw_if_index, &placeholder_flags,
+				      &placeholder_unsup);
 
   if (subint == 0)
     {
@@ -1973,8 +1973,8 @@ void
 ethernet_sw_interface_set_l2_mode (vnet_main_t * vnm, u32 sw_if_index, u32 l2)
 {
   subint_config_t *subint;
-  u32 dummy_flags;
-  u32 dummy_unsup;
+  u32 placeholder_flags;
+  u32 placeholder_unsup;
   int is_port;
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);
 
@@ -1982,8 +1982,8 @@ ethernet_sw_interface_set_l2_mode (vnet_main_t * vnm, u32 sw_if_index, u32 l2)
 
   // Find the config for this subinterface
   subint =
-    ethernet_sw_interface_get_config (vnm, sw_if_index, &dummy_flags,
-				      &dummy_unsup);
+    ethernet_sw_interface_get_config (vnm, sw_if_index, &placeholder_flags,
+				      &placeholder_unsup);
 
   if (subint == 0)
     {
@@ -2023,13 +2023,13 @@ ethernet_sw_interface_set_l2_mode_noport (vnet_main_t * vnm,
 					  u32 sw_if_index, u32 l2)
 {
   subint_config_t *subint;
-  u32 dummy_flags;
-  u32 dummy_unsup;
+  u32 placeholder_flags;
+  u32 placeholder_unsup;
 
   /* Find the config for this subinterface */
   subint =
-    ethernet_sw_interface_get_config (vnm, sw_if_index, &dummy_flags,
-				      &dummy_unsup);
+    ethernet_sw_interface_get_config (vnm, sw_if_index, &placeholder_flags,
+				      &placeholder_unsup);
 
   if (subint == 0)
     {

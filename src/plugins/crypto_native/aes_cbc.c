@@ -237,9 +237,9 @@ aes_ops_enc_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
   crypto_native_per_thread_data_t *ptd =
     vec_elt_at_index (cm->per_thread_data, vm->thread_index);
   int rounds = AES_KEY_ROUNDS (ks);
-  u8 dummy[8192];
+  u8 placeholder[8192];
   u32 i, j, count, n_left = n_ops;
-  u32xN dummy_mask = { };
+  u32xN placeholder_mask = { };
   u32xN len = { };
   vnet_crypto_key_index_t key_index[N];
   u8 *src[N] = { };
@@ -262,10 +262,10 @@ more:
       {
 	if (n_left == 0)
 	  {
-	    /* no more work to enqueue, so we are enqueueing dummy buffer */
-	    src[i] = dst[i] = dummy;
-	    len[i] = sizeof (dummy);
-	    dummy_mask[i] = 0;
+	    /* no more work to enqueue, so we are enqueueing placeholder buffer */
+	    src[i] = dst[i] = placeholder;
+	    len[i] = sizeof (placeholder);
+	    placeholder_mask[i] = 0;
 	  }
 	else
 	  {
@@ -287,7 +287,7 @@ more:
 	    src[i] = ops[0]->src;
 	    dst[i] = ops[0]->dst;
 	    len[i] = ops[0]->len;
-	    dummy_mask[i] = ~0;
+	    placeholder_mask[i] = ~0;
 	    if (key_index[i] != ops[0]->key_index)
 	      {
 		aes_cbc_key_data_t *kd;
@@ -396,7 +396,7 @@ more:
   if (n_left > 0)
     goto more;
 
-  if (!u32xN_is_all_zero (len & dummy_mask))
+  if (!u32xN_is_all_zero (len & placeholder_mask))
     goto more;
 
   return n_ops;

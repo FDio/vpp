@@ -18,7 +18,7 @@
 #include <vnet/ip/ip.h>
 
 #ifndef CLIB_MARCH_VARIANT
-nsh_main_dummy_t nsh_main_dummy;
+nsh_main_placeholder_t nsh_main_placeholder;
 #endif /* CLIB_MARCH_VARIANT */
 
 /**
@@ -124,7 +124,7 @@ adj_nsh_rewrite_inline (vlib_main_t * vm,
                  * Follow the feature ARC. this will result eventually in
                  * the midchain-tx node
                  */
-                vnet_feature_arc_start (nsh_main_dummy.output_feature_arc_index,
+                vnet_feature_arc_start (nsh_main_placeholder.output_feature_arc_index,
                                         tx_sw_if_index0, &next0, p0);
             }
             else
@@ -195,7 +195,7 @@ VNET_FEATURE_ARC_INIT (nsh_output, static) =
 {
   .arc_name  = "nsh-output",
   .start_nodes = VNET_FEATURES ("adj-nsh-midchain"),
-  .arc_index_ptr = &nsh_main_dummy.output_feature_arc_index,
+  .arc_index_ptr = &nsh_main_placeholder.output_feature_arc_index,
 };
 
 VNET_FEATURE_INIT (nsh_tx_drop, static) =

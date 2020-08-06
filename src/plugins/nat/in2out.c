@@ -136,13 +136,13 @@ snat_not_translate (snat_main_t * sm, vlib_node_runtime_t * node,
 			      &value0))
     {
       /* or is static mappings */
-      ip4_address_t dummy_addr;
-      u16 dummy_port;
-      u32 dummy_fib_index;
+      ip4_address_t placeholder_addr;
+      u16 placeholder_port;
+      u32 placeholder_fib_index;
       if (!snat_static_mapping_match
 	  (sm, ip0->dst_address, udp0->dst_port, sm->outside_fib_index,
-	   proto0, &dummy_addr, &dummy_port, &dummy_fib_index, 1, 0, 0, 0, 0,
-	   0))
+	   proto0, &placeholder_addr, &placeholder_port,
+	   &placeholder_fib_index, 1, 0, 0, 0, 0, 0))
 	return 0;
     }
   else

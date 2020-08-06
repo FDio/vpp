@@ -266,10 +266,10 @@ nsh_md2_register_option (u16 class,
                       u8 * trace (u8 * s,
                                   nsh_tlv_header_t * opt));
 
-typedef struct _nsh_main_dummy
+typedef struct _nsh_main_placeholder
 {
   u8 output_feature_arc_index;
-} nsh_main_dummy_t;
+} nsh_main_placeholder_t;
 
 int
 nsh_add_del_map (nsh_add_del_map_args_t * a, u32 * map_indexp);
