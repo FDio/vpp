@@ -73,9 +73,9 @@ test_bihash_vec64 (test_main_t * tm)
   h = &tm->hash;
 
 #if BIHASH_32_64_SVM
-  BV (clib_bihash_master_init_svm) (h, "test", user_buckets,
-				    0x30000000 /* base_addr */ ,
-				    user_memory_size);
+  BV (clib_bihash_initiator_init_svm) (h, "test", user_buckets,
+				       0x30000000 /* base_addr */ ,
+				       user_memory_size);
 #else
   BV (clib_bihash_init) (h, "test", user_buckets, user_memory_size);
 #endif
@@ -123,9 +123,9 @@ test_bihash_stale_overwrite (test_main_t * tm)
   h = &tm->hash;
 
 #if BIHASH_32_64_SVM
-  BV (clib_bihash_master_init_svm) (h, "test", tm->nbuckets,
-				    0x30000000 /* base_addr */ ,
-				    tm->hash_memory_size);
+  BV (clib_bihash_initiator_init_svm) (h, "test", tm->nbuckets,
+				       0x30000000 /* base_addr */ ,
+				       tm->hash_memory_size);
 #else
   BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
 #endif
@@ -208,9 +208,9 @@ test_bihash_threads (test_main_t * tm)
   h = &tm->hash;
 
 #if BIHASH_32_64_SVM
-  BV (clib_bihash_master_init_svm) (h, "test", tm->nbuckets,
-				    0x30000000 /* base_addr */ ,
-				    tm->hash_memory_size);
+  BV (clib_bihash_initiator_init_svm) (h, "test", tm->nbuckets,
+				       0x30000000 /* base_addr */ ,
+				       tm->hash_memory_size);
 #else
   BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
 #endif
@@ -262,9 +262,9 @@ test_bihash (test_main_t * tm)
   h = &tm->hash;
 
 #if BIHASH_32_64_SVM
-  BV (clib_bihash_master_init_svm) (h, "test", tm->nbuckets,
-				    0x30000000 /* base_addr */ ,
-				    tm->hash_memory_size);
+  BV (clib_bihash_initiator_init_svm) (h, "test", tm->nbuckets,
+				       0x30000000 /* base_addr */ ,
+				       tm->hash_memory_size);
 #else
   BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
 #endif
