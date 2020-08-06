@@ -3081,8 +3081,10 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
     case VPPCOM_ATTR_GET_FLAGS:
       if (PREDICT_TRUE (buffer && buflen && (*buflen >= sizeof (*flags))))
 	{
-	  *flags = O_RDWR | (VCL_SESS_ATTR_TEST (session->attr,
-						 VCL_SESS_ATTR_NONBLOCK));
+	  *flags =
+	    O_RDWR |
+	    (VCL_SESS_ATTR_TEST (session->attr, VCL_SESS_ATTR_NONBLOCK) ?
+	     O_NONBLOCK : 0);
 	  *buflen = sizeof (*flags);
 	  VDBG (2, "VPPCOM_ATTR_GET_FLAGS: sh %u, flags = 0x%08x, "
 		"is_nonblocking = %u", session_handle, *flags,
