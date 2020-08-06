@@ -305,9 +305,9 @@ void BV (clib_bihash_init)
 void BV (clib_bihash_init2) (BVT (clib_bihash_init2_args) * a);
 
 #if BIHASH_32_64_SVM
-void BV (clib_bihash_master_init_svm)
+void BV (clib_bihash_initiator_init_svm)
   (BVT (clib_bihash) * h, char *name, u32 nbuckets, u64 memory_size);
-void BV (clib_bihash_slave_init_svm)
+void BV (clib_bihash_responder_init_svm)
   (BVT (clib_bihash) * h, char *name, int fd);
 #endif
 
