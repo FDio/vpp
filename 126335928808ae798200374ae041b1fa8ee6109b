@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d57d366e_308606d4",
+        "filename": "src/vpp-api/python/CMakeLists.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-07T16:00:39Z",
+      "side": 1,
+      "message": "From Christian Hopps \u003cchopps@chopps.org\u003e: \n\u003e If I clear the runner (gitlab) cache it causes a full rebuild, and then I\n\u003e don\u0027t see the problem.\n\u003e Shouldn\u0027t the generated file be going under build-root? I ask b/c it\u0027s\n\u003e showing up in git status now. Maybe this also affects the cmake\n\u003e dependency?",
+      "revId": "126335928808ae798200374ae041b1fa8ee6109b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
