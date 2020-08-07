@@ -43,6 +43,7 @@
 #include <vnet/ip/ip_packet.h>	/* for ip_csum_t */
 #include <vnet/tcp/tcp_packet.h>	/* for tcp_header_t */
 #include <vppinfra/byte_order.h>	/* for clib_net_to_host_u16 */
+#include <vppinfra/warnings.h>	/* for WARN_OFF/WARN_ON macro */
 
 /* IP4 address which can be accessed either as 4 bytes
    or as a 32-bit number. */
@@ -197,6 +198,13 @@ ip4_next_header (ip4_header_t * i)
   return (void *) i + ip4_header_bytes (i);
 }
 
+/* Turn off array bounds check due to ip4_header_t
+   option field operations. */
+
+/* *INDENT-OFF* */
+WARN_OFF(array-bounds)
+/* *INDENT-ON* */
+
 always_inline u16
 ip4_header_checksum (ip4_header_t * i)
 {
@@ -296,6 +304,10 @@ ip4_header_checksum (ip4_header_t * i)
   sum = ((u16) sum) + (sum >> 16);
   return ~((u16) sum);
 }
+
+/* *INDENT-OFF* */
+WARN_ON(array-bounds)
+/* *INDENT-ON* */
 
 always_inline void
 ip4_header_set_dscp (ip4_header_t * ip4, ip_dscp_t dscp)
