@@ -113,12 +113,15 @@ vl_api_bond_add_member_t_handler (vl_api_bond_add_member_t * mp)
   clib_memset (ap, 0, sizeof (*ap));
 
   ap->group = ntohl (mp->bond_sw_if_index);
+  VALIDATE_SW_IF_INDEX (mp);
   ap->member = ntohl (mp->sw_if_index);
   ap->is_passive = mp->is_passive;
   ap->is_long_timeout = mp->is_long_timeout;
 
   bond_add_member (vm, ap);
+  rv = ap->rv;
 
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_BOND_ADD_MEMBER_REPLY);
 }
 
@@ -133,12 +136,15 @@ vl_api_bond_enslave_t_handler (vl_api_bond_enslave_t * mp)
   clib_memset (ap, 0, sizeof (*ap));
 
   ap->group = ntohl (mp->bond_sw_if_index);
+  VALIDATE_SW_IF_INDEX (mp);
   ap->member = ntohl (mp->sw_if_index);
   ap->is_passive = mp->is_passive;
   ap->is_long_timeout = mp->is_long_timeout;
 
   bond_add_member (vm, ap);
+  rv = ap->rv;
 
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_BOND_ENSLAVE_REPLY);
 }
 
@@ -157,6 +163,7 @@ static void
   ap->weight = ntohl (mp->weight);
 
   bond_set_intf_weight (vm, ap);
+  rv = ap->rv;
 
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_BOND_WEIGHT_REPLY);
 }
@@ -173,6 +180,7 @@ vl_api_bond_detach_slave_t_handler (vl_api_bond_detach_slave_t * mp)
 
   ap->member = ntohl (mp->sw_if_index);
   bond_detach_member (vm, ap);
+  rv = ap->rv;
 
   REPLY_MACRO (VL_API_BOND_DETACH_SLAVE_REPLY);
 }
@@ -189,6 +197,7 @@ vl_api_bond_detach_member_t_handler (vl_api_bond_detach_member_t * mp)
 
   ap->member = ntohl (mp->sw_if_index);
   bond_detach_member (vm, ap);
+  rv = ap->rv;
 
   REPLY_MACRO (VL_API_BOND_DETACH_MEMBER_REPLY);
 }
