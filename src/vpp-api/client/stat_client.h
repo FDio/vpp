@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <vlib/counter_types.h>
+#include <vppinfra/time.h>
 #include <stdbool.h>
 #include <vpp/stats/stat_segment_shared.h>
 
@@ -99,6 +100,28 @@ stat_segment_access_start (stat_segment_access_t * sa,
   sm->directory_vector = (stat_segment_directory_entry_t *)
     stat_segment_pointer (sm->shared_header,
 			  sm->shared_header->directory_offset);
+}
+
+/*
+ * Returns 0 on success, -1 on failure (timeout)
+ * timeout is maximum number of nano seconds to wait.
+ */
+static inline int
+stat_segment_access_start_timedwait (stat_segment_access_t * sa,
+				     stat_client_main_t * sm,
+				     uint64_t timeout)
+{
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
+  sa->epoch = shared_header->epoch;
+
+
+  u64 max_time = unix_time_now_nsec () + timeout;
+  while (shared_header->in_progress != 0 && unix_time_now_nsec () < max_time)
+    ;
+  sm->directory_vector = (stat_segment_directory_entry_t *)
+    stat_segment_pointer (sm->shared_header,
+			  sm->shared_header->directory_offset);
+  return unix_time_now_nsec () < max_time ? 0 : -1;
 }
 
 static inline bool
