@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <vlib/counter_types.h>
+#include <vppinfra/time.h>
 #include <stdbool.h>
 #include <vpp/stats/stat_segment_shared.h>
 
@@ -51,6 +52,7 @@ typedef struct
   stat_segment_shared_header_t *shared_header;
   stat_segment_directory_entry_t *directory_vector;
   ssize_t memory_size;
+  uint64_t timeout;
 } stat_client_main_t;
 
 extern stat_client_main_t stat_client_main;
@@ -88,17 +90,44 @@ typedef struct
   uint64_t epoch;
 } stat_segment_access_t;
 
-static inline void
+/*
+ * Returns 0 on success, -1 on failure (timeout)
+ */
+static inline int
 stat_segment_access_start (stat_segment_access_t * sa,
 			   stat_client_main_t * sm)
 {
   stat_segment_shared_header_t *shared_header = sm->shared_header;
+  u64 max_time;
+
   sa->epoch = shared_header->epoch;
-  while (shared_header->in_progress != 0)
-    ;
+  if (sm->timeout)
+    {
+      max_time = unix_time_now_nsec () + sm->timeout;
+      while (shared_header->in_progress != 0 &&
+	     unix_time_now_nsec () < max_time)
+	;
+    }
+  else
+    {
+      while (shared_header->in_progress != 0)
+	;
+    }
   sm->directory_vector = (stat_segment_directory_entry_t *)
     stat_segment_pointer (sm->shared_header,
 			  sm->shared_header->directory_offset);
+  if (sm->timeout)
+    return unix_time_now_nsec () < max_time ? 0 : -1;
+  return 0;
+}
+
+/*
+ * set maximum number of nano seconds to wait for in_progress state
+ */
+static inline void
+stat_segment_set_timeout_nsec (stat_client_main_t * sm, u64 timeout)
+{
+  sm->timeout = timeout;
 }
 
 static inline bool

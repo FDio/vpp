@@ -177,7 +177,8 @@ stat_segment_heartbeat_r (stat_client_main_t * sm)
   /* Has directory been update? */
   if (sm->shared_header->epoch != sm->current_epoch)
     return 0;
-  stat_segment_access_start (&sa, sm);
+  if (stat_segment_access_start (&sa, sm))
+    return 0;
   ep = vec_elt_at_index (sm->directory_vector, STAT_COUNTER_HEARTBEAT);
   if (!stat_segment_access_end (&sa, sm))
     return 0.0;
@@ -336,7 +337,8 @@ stat_segment_ls_r (uint8_t ** patterns, stat_client_main_t * sm)
 	}
     }
 
-  stat_segment_access_start (&sa, sm);
+  if (stat_segment_access_start (&sa, sm))
+    return 0;
 
   stat_segment_directory_entry_t *counter_vec = get_stat_vector_r (sm);
   for (j = 0; j < vec_len (counter_vec); j++)
@@ -389,7 +391,9 @@ stat_segment_dump_r (uint32_t * stats, stat_client_main_t * sm)
   if (sm->shared_header->epoch != sm->current_epoch)
     return 0;
 
-  stat_segment_access_start (&sa, sm);
+  if (stat_segment_access_start (&sa, sm))
+    return 0;
+
   for (i = 0; i < vec_len (stats); i++)
     {
       /* Collect counter */
@@ -444,7 +448,8 @@ stat_segment_dump_entry_r (uint32_t index, stat_client_main_t * sm)
   stat_segment_data_t *res = 0;
   stat_segment_access_t sa;
 
-  stat_segment_access_start (&sa, sm);
+  if (stat_segment_access_start (&sa, sm))
+    return 0;
 
   /* Collect counter */
   ep = vec_elt_at_index (sm->directory_vector, index);
@@ -472,7 +477,8 @@ stat_segment_index_to_name_r (uint32_t index, stat_client_main_t * sm)
   /* Has directory been update? */
   if (sm->shared_header->epoch != sm->current_epoch)
     return 0;
-  stat_segment_access_start (&sa, sm);
+  if (stat_segment_access_start (&sa, sm))
+    return 0;
   vec = get_stat_vector_r (sm);
   ep = vec_elt_at_index (vec, index);
   if (!stat_segment_access_end (&sa, sm))
