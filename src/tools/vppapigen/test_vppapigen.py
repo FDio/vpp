@@ -124,6 +124,16 @@ class TestDefine(unittest.TestCase):
         with self.assertRaises(ParseError):
             self.parser.parse_string(test_string)
 
+    def test_options(self):
+        test_string = '''
+          define foo { option deprecated; u8 foo; };
+          define foo_reply {u32 context; i32 retval; };
+        '''
+        r = self.parser.parse_string(test_string)
+        self.assertIsNotNone(r)
+        s = self.parser.process(r)
+        self.assertIsNotNone(s)
+
 
 class TestService(unittest.TestCase):
     @classmethod
