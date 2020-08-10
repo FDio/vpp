@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "d37eb9cb_590d2602",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 642,
+      "author": {
+        "id": 1282
+      },
+      "writtenOn": "2020-08-10T09:46:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "35ff5c62_1fe0dd62",
+      "range": {
+        "startLine": 642,
+        "startChar": 0,
+        "endLine": 642,
+        "endChar": 30
+      },
+      "revId": "380c47278f0383296e77dc0251ebb47bfbac02f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "58405190_6a524dda",
         "filename": "src/vnet/interface.api",
         "patchSetId": 6
@@ -93,6 +117,30 @@
       "revId": "380c47278f0383296e77dc0251ebb47bfbac02f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a8df3d12_1470295b",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 1282
+      },
+      "writtenOn": "2020-08-10T09:46:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "aa32f44b_0d251259",
+      "range": {
+        "startLine": 247,
+        "startChar": 6,
+        "endLine": 247,
+        "endChar": 21
+      },
+      "revId": "380c47278f0383296e77dc0251ebb47bfbac02f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
