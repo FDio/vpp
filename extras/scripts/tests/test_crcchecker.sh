@@ -59,7 +59,7 @@ cat >crccheck.api <<EOL
 option version="1.0.0";
 autoreply define crccheck
 {
-  option deprecated="v20.11";
+  option deprecated;
   bool foo;
 };
 EOL
