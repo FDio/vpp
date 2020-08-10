@@ -301,8 +301,16 @@ stat_segment_data_free (stat_segment_data_t * res)
 	    vec_free (res[i].combined_counter_vec[j]);
 	  vec_free (res[i].combined_counter_vec);
 	  break;
+	case STAT_DIR_TYPE_NAME_VECTOR:
+	  for (j = 0; j < vec_len (res[i].name_vector); j++)
+	    vec_free (res[i].name_vector[j]);
+	  vec_free (res[i].name_vector);
+	  break;
+	case STAT_DIR_TYPE_ERROR_INDEX:
+	  vec_free (res[i].error_vector);
+	  break;
 	default:
-	  ;
+	  assert (0);
 	}
       free (res[i].name);
     }

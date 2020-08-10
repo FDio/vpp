@@ -29,5 +29,10 @@ add_vpp_headers(vpp-api
   client/stat_client.h
 )
 
+add_vpp_executable(test_vppapiclient
+  SOURCES client/test.c
+  LINK_LIBRARIES vppinfra pthread vppapiclient
+)
+
 add_subdirectory(vapi)
 add_subdirectory(python)
