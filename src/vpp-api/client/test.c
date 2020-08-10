@@ -1,6 +1,6 @@
 /*
  *------------------------------------------------------------------
- * test.c
+ * test.c -- VPP API/Stats tests
  * 
  * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +18,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/mman.h>
@@ -25,18 +26,16 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-#include <time.h>       /* time_t, time (for timestamp in second) */
-#include <sys/timeb.h>  /* ftime, timeb (for timestamp in millisecond) */
-#include <sys/time.h>   /* gettimeofday, timeval (for timestamp in microsecond) */
 
 #include <vnet/vnet.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
-
+#include <vppinfra/time.h>
 #include <vpp/api/vpe_msg_enum.h>
 #include <signal.h>
 #include "vppapiclient.h"
+#include "stat_client.h"
 
 #define vl_typedefs             /* define message structures */
 #include <vpp/api/vpe_all_api_h.h> 
@@ -65,7 +64,6 @@ volatile u16 result_msg_id;
 void
 wrap_vac_callback (unsigned char *data, int len)
 {
-  //printf("Callback %d\n", len);
   result_ready = 1;
   result_msg_id = ntohs(*((u16 *)data));
 }
@@ -97,16 +95,8 @@ test_messages (void)
     printf("Connect failed: %d\n", rv);
     exit(rv);
   }
-  struct timeb timer_msec;
-  long long int timestamp_msec_start; /* timestamp in millisecond. */
-  if (!ftime(&timer_msec)) {
-    timestamp_msec_start = ((long long int) timer_msec.time) * 1000ll + 
-      (long long int) timer_msec.millitm;
-  }
-  else {
-    timestamp_msec_start = -1;
-  }
 
+  double timestamp_start = unix_time_now_nsec() * 1e-6;
  
   /*
    * Test vpe_api_write and vpe_api_read to send and recv message for an
@@ -136,23 +126,70 @@ test_messages (void)
     while (result_msg_id != VL_API_CONTROL_PING_REPLY);
   }
 
-  long long int timestamp_msec_end; /* timestamp in millisecond. */
-  if (!ftime(&timer_msec)) {
-    timestamp_msec_end = ((long long int) timer_msec.time) * 1000ll + 
-      (long long int) timer_msec.millitm;
-  }
-  else {
-    timestamp_msec_end = -1;
-  }
-  
-  printf("Took %lld msec, %lld msgs/msec \n", (timestamp_msec_end - timestamp_msec_start),
-	 no_msgs/(timestamp_msec_end - timestamp_msec_start));
+  double timestamp_end = unix_time_now_nsec() * 1e-6;
+  printf("\nTook %.2f msec, %.0f msgs/msec \n", (timestamp_end - timestamp_start),
+	 no_msgs/(timestamp_end - timestamp_start));
   printf("Exiting...\n");
   vac_disconnect();
 }
 
+static void
+test_stats (void)
+{
+  clib_mem_trace_enable_disable(1);
+  clib_mem_trace (1);
+
+  int rv = stat_segment_connect (STAT_SEGMENT_SOCKET_FILE);
+  assert(rv == 0);
+
+  u32 *dir;
+  int i, j, k;
+  stat_segment_data_t *res;
+  u8 **pattern = 0;
+  vec_add1(pattern, (u8 *)"/if/names");
+  vec_add1(pattern, (u8 *)"/err");
+
+  dir = stat_segment_ls ((u8 **)pattern);
+
+  res = stat_segment_dump (dir);
+  for (i = 0; i < vec_len (res); i++) {
+    switch (res[i].type) {
+    case STAT_DIR_TYPE_NAME_VECTOR:
+      if (res[i].name_vector == 0)
+	continue;
+      for (k = 0; k < vec_len (res[i].name_vector); k++)
+	if (res[i].name_vector[k])
+	  fformat (stdout, "[%d]: %s %s\n", k, res[i].name_vector[k],
+		   res[i].name);
+      break;
+    case STAT_DIR_TYPE_ERROR_INDEX:
+      for (j = 0; j < vec_len (res[i].error_vector); j++)
+	fformat (stdout, "%llu %s\n", res[i].error_vector[j],
+		 res[i].name);
+      break;
+    default:
+      assert(0);
+    }
+  }
+  stat_segment_data_free (res);
+  stat_segment_disconnect();
+
+  vec_free(pattern);
+  vec_free(dir);
+
+  (void) clib_mem_trace_enable_disable (0);
+  u8 *leak_report = format (0, "%U", format_mheap, clib_mem_get_heap (),
+                            1 /* verbose, i.e. print leaks */ );
+  printf("%s", leak_report);
+  vec_free (leak_report);
+  clib_mem_trace (0);
+}
+
 int main (int argc, char ** argv)
 {
+  clib_mem_init (0, 3ULL << 30);
+  test_stats();
+
   int i;
 
   for (i = 0; i < 1000; i++) {
