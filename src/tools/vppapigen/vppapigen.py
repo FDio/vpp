@@ -350,7 +350,7 @@ class Import():
 
 
 class Option():
-    def __init__(self, option, value):
+    def __init__(self, option, value=None):
         self.type = 'Option'
         self.option = option
         self.value = value
@@ -686,8 +686,12 @@ class VPPAPIParser(object):
         p[0] = Array(p[1], p[2], p[4])
 
     def p_option(self, p):
-        '''option : OPTION ID '=' assignee ';' '''
-        p[0] = Option(p[2], p[4])
+        '''option : OPTION ID '=' assignee ';'
+                  | OPTION ID ';' '''
+        if len(p) == 4:
+            p[0] = Option(p[2])
+        else:
+            p[0] = Option(p[2], p[4])
 
     def p_assignee(self, p):
         '''assignee : NUM
