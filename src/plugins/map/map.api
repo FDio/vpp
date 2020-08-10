@@ -112,7 +112,7 @@ define map_domains_get_reply
 
 define map_domain_dump
 {
-  option deprecated="v21.01";
+  option deprecated;
   u32 client_index;
   u32 context;
 };
