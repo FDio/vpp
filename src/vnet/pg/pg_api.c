@@ -44,7 +44,8 @@
 #define foreach_pg_api_msg                                              \
 _(PG_CREATE_INTERFACE, pg_create_interface)                             \
 _(PG_CAPTURE, pg_capture)                                               \
-_(PG_ENABLE_DISABLE, pg_enable_disable)
+_(PG_ENABLE_DISABLE, pg_enable_disable)                                 \
+_(PG_INTERFACE_ENABLE_DISABLE_COALESCE, pg_interface_enable_disable_coalesce)
 
 static void
 vl_api_pg_create_interface_t_handler (vl_api_pg_create_interface_t * mp)
@@ -55,7 +56,7 @@ vl_api_pg_create_interface_t_handler (vl_api_pg_create_interface_t * mp)
   pg_main_t *pg = &pg_main;
   u32 pg_if_id = pg_interface_add_or_get (pg, ntohl (mp->interface_id),
 					  mp->gso_enabled,
-					  ntohl (mp->gso_size));
+					  ntohl (mp->gso_size), 0);
   pg_interface_t *pi = pool_elt_at_index (pg->interfaces, pg_if_id);
 
   /* *INDENT-OFF* */
@@ -64,6 +65,41 @@ vl_api_pg_create_interface_t_handler (vl_api_pg_create_interface_t * mp)
     rmp->sw_if_index = ntohl(pi->sw_if_index);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+  vl_api_pg_interface_enable_disable_coalesce_t_handler
+  (vl_api_pg_interface_enable_disable_coalesce_t * mp)
+{
+  vl_api_pg_interface_enable_disable_coalesce_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  pg_main_t *pg = &pg_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hw =
+    vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
+
+  if (hw)
+    {
+      pg_interface_t *pi =
+	pool_elt_at_index (pg->interfaces, hw->dev_instance);
+      if (pi->gso_enabled)
+	pg_interface_enable_disable_coalesce (pi, mp->coalesce_enabled,
+					      hw->tx_node_index);
+      else
+	rv = VNET_API_ERROR_CANNOT_ENABLE_DISABLE_FEATURE;
+    }
+  else
+    {
+      rv = VNET_API_ERROR_NO_MATCHING_INTERFACE;
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_PG_INTERFACE_ENABLE_DISABLE_COALESCE_REPLY);
 }
 
 static void
