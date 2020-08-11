@@ -1001,6 +1001,8 @@ list(APPEND VNET_SOURCES
 )
 
 list(APPEND VNET_HEADERS
+  gso/gro.h
+  gso/gro_func.h
   gso/hdr_offset_parser.h
   gso/gso.h
 )

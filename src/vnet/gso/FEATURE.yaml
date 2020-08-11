@@ -8,6 +8,8 @@ features:
   - GSO for IP-IP tunnel
   - GSO for IPSec tunnel  
   - Provide inline function to get header offsets
+  - Basic GRO support
+  - Implements flow table support
 description: "Generic Segmentation Offload"
 missing:
   - Thorough Testing, GRE, Geneve
