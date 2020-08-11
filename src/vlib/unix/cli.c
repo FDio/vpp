@@ -92,7 +92,7 @@
 
 /** Maximum depth into a byte stream from which to compile a Telnet
  * protocol message. This is a safety measure. */
-#define UNIX_CLI_MAX_DEPTH_TELNET 24
+#define UNIX_CLI_MAX_DEPTH_TELNET 32
 
 /** Maximum terminal width we will accept */
 #define UNIX_CLI_MAX_TERMINAL_WIDTH 512
