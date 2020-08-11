@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4ef79eb7_a3ee5784",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-08-11T14:25:49Z",
+      "side": 1,
+      "message": "This one needs to be changed as well (I guess this is the reason for the build fail)",
+      "range": {
+        "startLine": 110,
+        "startChar": 6,
+        "endLine": 110,
+        "endChar": 22
+      },
+      "revId": "26844b77ec96b4fc0ff01b0bdbb8d8356a766c73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
