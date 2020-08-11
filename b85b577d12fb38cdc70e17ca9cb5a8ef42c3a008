@@ -1,0 +1,211 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8f9cfa7f_4739b4d5",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-08-11T01:38:20Z",
+      "side": 1,
+      "message": "owner_vcl_wrk_index maybe?",
+      "range": {
+        "startLine": 35,
+        "startChar": 6,
+        "endLine": 35,
+        "endChar": 23
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8ea29607_7c6cbf53",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-08-11T01:38:20Z",
+      "side": 1,
+      "message": "vcl_wrk_index_to_session_index?",
+      "range": {
+        "startLine": 36,
+        "startChar": 9,
+        "endLine": 36,
+        "endChar": 38
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3dc17c7f_fe9e36eb",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-08-11T01:38:20Z",
+      "side": 1,
+      "message": "I think we can always return this because vls_mt_add() calls \"vcl_set_worker_index (vlsl-\u003evls_wrk_index)\". In other words, when we run multiple threads, the process global variable vlsl-\u003evls_wrk_index will always hold the vls worker index because we\u0027re enforcing one vls worker/process (hope this won\u0027t turn out to be a problem).",
+      "range": {
+        "startLine": 111,
+        "startChar": 4,
+        "endLine": 111,
+        "endChar": 31
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7fb1e9ce_84eafac3",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-08-11T01:38:20Z",
+      "side": 1,
+      "message": "Maybe rename to vls_register_vcl_worker(), to avoid confusion, i.e., this won\u0027t register the vls worker but instead will register a vcl worker.",
+      "range": {
+        "startLine": 218,
+        "startChar": 4,
+        "endLine": 218,
+        "endChar": 23
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5761a9d6_2aa169de",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 848,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-08-11T01:38:20Z",
+      "side": 1,
+      "message": "Do we hit this often in practice?",
+      "range": {
+        "startLine": 843,
+        "startChar": 0,
+        "endLine": 848,
+        "endChar": 5
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "037966f7_59e3f915",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 888,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-08-11T01:38:20Z",
+      "side": 1,
+      "message": "Thanks for these. Hope nobody does this ...",
+      "range": {
+        "startLine": 873,
+        "startChar": 0,
+        "endLine": 888,
+        "endChar": 5
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8f29bb8a_40390dec",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 895,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-08-11T01:38:20Z",
+      "side": 1,
+      "message": "Could you convert this into PREDICT_FALSE (vls_mt_supported () \u0026\u0026 vls-\u003eworker_index !\u003d vcl_get_worker_index ()) to avoid too many calls to vls_session_migrate. Probably the compiler won\u0027t inline the function in all the places, so this may help a bit",
+      "range": {
+        "startLine": 895,
+        "startChar": 6,
+        "endLine": 895,
+        "endChar": 10
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "be768a1e_db5152df",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1523,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-08-11T01:38:20Z",
+      "side": 1,
+      "message": "I guess this is not needed if mt shared and mp shared sessions use different infras. I\u0027m still torn by that, but let\u0027s leave it for another time.",
+      "range": {
+        "startLine": 1522,
+        "startChar": 0,
+        "endLine": 1523,
+        "endChar": 38
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e9c48e0c_08801382",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1660,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-08-11T01:38:20Z",
+      "side": 1,
+      "message": "Should we maybe call this vls_mt_wrk_supported, i.e., multi-thread worker supported, as opposed to multi-thread where we don\u0027t differentiate workers?\n\nWe should also be clear in the conf docs that we only recommend this mode only if \"typically\" only one thread interacts with the session.",
+      "range": {
+        "startLine": 1660,
+        "startChar": 0,
+        "endLine": 1660,
+        "endChar": 16
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
