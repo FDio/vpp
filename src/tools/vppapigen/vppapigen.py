@@ -130,7 +130,6 @@ class VPPAPILexer(object):
                                                  hex(ord(t.value[0])),
                                                  self.filename,
                                                  t.lexer.lineno))
-        t.lexer.skip(1)
 
     # Define a rule so we can track line numbers
     def t_newline(self, t):
