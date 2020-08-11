@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "92c852ad_06aec1ea",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-08-11T13:27:18Z",
+      "side": 1,
+      "message": "Fixed!",
+      "parentUuid": "8f9cfa7f_4739b4d5",
+      "range": {
+        "startLine": 35,
+        "startChar": 6,
+        "endLine": 35,
+        "endChar": 23
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8ea29607_7c6cbf53",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 6
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "f59e3247_a76f8342",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-08-11T13:27:18Z",
+      "side": 1,
+      "message": "Fixed!",
+      "parentUuid": "8ea29607_7c6cbf53",
+      "range": {
+        "startLine": 36,
+        "startChar": 9,
+        "endLine": 36,
+        "endChar": 38
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3dc17c7f_fe9e36eb",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 6
@@ -59,6 +107,30 @@
       "writtenOn": "2020-08-11T01:38:20Z",
       "side": 1,
       "message": "I think we can always return this because vls_mt_add() calls \"vcl_set_worker_index (vlsl-\u003evls_wrk_index)\". In other words, when we run multiple threads, the process global variable vlsl-\u003evls_wrk_index will always hold the vls worker index because we\u0027re enforcing one vls worker/process (hope this won\u0027t turn out to be a problem).",
+      "range": {
+        "startLine": 111,
+        "startChar": 4,
+        "endLine": 111,
+        "endChar": 31
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7b83fe76_e53660a7",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-08-11T13:27:18Z",
+      "side": 1,
+      "message": "I tried, but sshd will fail.",
+      "parentUuid": "3dc17c7f_fe9e36eb",
       "range": {
         "startLine": 111,
         "startChar": 4,
@@ -94,6 +166,30 @@
     },
     {
       "key": {
+        "uuid": "4c1f18c9_890fd0de",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-08-11T13:27:18Z",
+      "side": 1,
+      "message": "Fixed!",
+      "parentUuid": "7fb1e9ce_84eafac3",
+      "range": {
+        "startLine": 218,
+        "startChar": 4,
+        "endLine": 218,
+        "endChar": 23
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5761a9d6_2aa169de",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 6
@@ -114,6 +210,30 @@
       "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7af5fd53_a5a9a9e3",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 848,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-08-11T13:27:18Z",
+      "side": 1,
+      "message": "No, this only hit before accepting connection.",
+      "parentUuid": "5761a9d6_2aa169de",
+      "range": {
+        "startLine": 843,
+        "startChar": 0,
+        "endLine": 848,
+        "endChar": 5
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -163,6 +283,30 @@
     },
     {
       "key": {
+        "uuid": "ead9e6be_6dc63716",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 895,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-08-11T13:27:18Z",
+      "side": 1,
+      "message": "Fixed!",
+      "parentUuid": "8f29bb8a_40390dec",
+      "range": {
+        "startLine": 895,
+        "startChar": 6,
+        "endLine": 895,
+        "endChar": 10
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "be768a1e_db5152df",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 6
@@ -206,6 +350,30 @@
       "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "80d232d6_c3e211db",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1660,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-08-11T13:27:18Z",
+      "side": 1,
+      "message": "Fixed!",
+      "parentUuid": "e9c48e0c_08801382",
+      "range": {
+        "startLine": 1660,
+        "startChar": 0,
+        "endLine": 1660,
+        "endChar": 16
+      },
+      "revId": "b85b577d12fb38cdc70e17ca9cb5a8ef42c3a008",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
