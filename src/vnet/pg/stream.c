@@ -178,9 +178,26 @@ pg_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
   return 0;
 }
 
+void
+pg_interface_enable_disable_coalesce (pg_interface_t * pi, u8 enable,
+				      u32 tx_node_index)
+{
+  if (enable)
+    {
+      gro_flow_table_init (&pi->flow_table, 1 /* is_l2 */ ,
+			   tx_node_index);
+      pi->coalesce_enabled = 1;
+    }
+  else
+    {
+      pi->coalesce_enabled = 0;
+      gro_flow_table_free (pi->flow_table);
+    }
+}
+
 u32
 pg_interface_add_or_get (pg_main_t * pg, uword if_id, u8 gso_enabled,
-			 u32 gso_size)
+			 u32 gso_size, u8 coalesce_enabled)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
@@ -219,6 +236,10 @@ pg_interface_add_or_get (pg_main_t * pg, uword if_id, u8 gso_enabled,
 	  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
 	  pi->gso_enabled = 1;
 	  pi->gso_size = gso_size;
+	  if (coalesce_enabled)
+	    {
+	      pg_interface_enable_disable_coalesce (pi, 1, hi->tx_node_index);
+	    }
 	}
       pi->sw_if_index = hi->sw_if_index;
 
@@ -454,7 +475,7 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
   /* Find an interface to use. */
   s->pg_if_index =
     pg_interface_add_or_get (pg, s->if_id, 0 /* gso_enabled */ ,
-			     0 /* gso_size */ );
+			     0 /* gso_size */ , 0 /* coalesce_enabled */ );
 
   if (s->sw_if_index[VLIB_RX] == ~0)
     {

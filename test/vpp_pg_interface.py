@@ -58,6 +58,13 @@ class VppPGInterface(VppInterface):
         return self._gso_size
 
     @property
+    def coalesce_is_enabled(self):
+        """coalesce enabled on packet-generator interface"""
+        if self._coalesce_enabled == 0:
+            return "coalesce-disabled"
+        return "coalesce-enabled"
+
+    @property
     def out_path(self):
         """pcap file path - captured packets"""
         return self._out_path
@@ -113,6 +120,7 @@ class VppPGInterface(VppInterface):
         self._pg_index = pg_index
         self._gso_enabled = gso
         self._gso_size = gso_size
+        self._coalesce_enabled = 0
         self._out_file = "pg%u_out.pcap" % self.pg_index
         self._out_path = self.test.tempdir + "/" + self._out_file
         self._in_file = "pg%u_in.pcap" % self.pg_index
@@ -159,6 +167,18 @@ class VppPGInterface(VppInterface):
 
     def disable_capture(self):
         self.test.vapi.cli("%s disable" % self.capture_cli)
+
+    def coalesce_enable(self):
+        """ Enable packet coalesce on this packet-generator interface"""
+        self._coalesce_enabled = 1
+        self.test.vapi.pg_interface_enable_disable_coalesce(self.sw_if_index,
+                                                            1)
+
+    def coalesce_disable(self):
+        """ Disable packet coalesce on this packet-generator interface"""
+        self._coalesce_enabled = 0
+        self.test.vapi.pg_interface_enable_disable_coalesce(self.sw_if_index,
+                                                            0)
 
     def add_stream(self, pkts, nb_replays=None, worker=None):
         """
