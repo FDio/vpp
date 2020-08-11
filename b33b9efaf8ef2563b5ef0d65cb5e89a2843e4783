@@ -1,0 +1,107 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "58976d7d_a69bb40f",
+        "filename": "src/plugins/tmc/tmc.api",
+        "patchSetId": 8
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-08-11T08:39:48Z",
+      "side": 1,
+      "message": "How do you configure IPv4 on RX and IPv6 on TX?\nCall twice? Can you figure out a way to combine in one call?\nMake direction a flags enum?",
+      "range": {
+        "startLine": 28,
+        "startChar": 0,
+        "endLine": 35,
+        "endChar": 2
+      },
+      "revId": "b33b9efaf8ef2563b5ef0d65cb5e89a2843e4783",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6a7d7c3c_effbac1f",
+        "filename": "src/plugins/tmc/tmc.api",
+        "patchSetId": 8
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-08-11T08:39:48Z",
+      "side": 1,
+      "message": "Change to the new dump/details API with cursor and a filter for sw_if_index?",
+      "revId": "b33b9efaf8ef2563b5ef0d65cb5e89a2843e4783",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d6246aec_cc8ab103",
+        "filename": "src/plugins/tmc/tmc.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-08-11T08:39:48Z",
+      "side": 1,
+      "message": "Why are these pointers?",
+      "range": {
+        "startLine": 29,
+        "startChar": 1,
+        "endLine": 35,
+        "endChar": 19
+      },
+      "revId": "b33b9efaf8ef2563b5ef0d65cb5e89a2843e4783",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "33ae9085_b36eb229",
+        "filename": "src/plugins/tmc/tmc_all_api_h.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-08-11T08:39:48Z",
+      "side": 1,
+      "message": "Remove file?",
+      "revId": "b33b9efaf8ef2563b5ef0d65cb5e89a2843e4783",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d89d9b43_3ad1c567",
+        "filename": "src/plugins/tmc/tmc_node.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-08-11T08:39:48Z",
+      "side": 1,
+      "message": "How do you deal with the cases where TCP doesn\u0027t follow the IP header?",
+      "range": {
+        "startLine": 81,
+        "startChar": 1,
+        "endLine": 81,
+        "endChar": 23
+      },
+      "revId": "b33b9efaf8ef2563b5ef0d65cb5e89a2843e4783",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
