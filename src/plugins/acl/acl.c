@@ -782,6 +782,8 @@ acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
    */
   vec_validate_init_empty ((*pinout_lc_index_by_sw_if_index), sw_if_index,
 			   ~0);
+  /* lookup context creation is to be done in global heap */
+  void *oldheap = clib_mem_set_heap (am->vlib_main->heap_base);
   if (vec_len (vec_acl_list_index) > 0)
     {
       u32 lc_index = (*pinout_lc_index_by_sw_if_index)[sw_if_index];
@@ -802,6 +804,7 @@ acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
 	  (*pinout_lc_index_by_sw_if_index)[sw_if_index] = ~0;
 	}
     }
+  clib_mem_set_heap (oldheap);
 
   /* ensure ACL processing is enabled/disabled as needed */
   acl_interface_inout_enable_disable (am, sw_if_index, is_input,
