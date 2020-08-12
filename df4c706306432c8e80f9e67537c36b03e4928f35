@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1c2f30ed_0cf61286",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1030,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-08-12T07:09:08Z",
+      "side": 1,
+      "message": "Shoud add vls_mt_guard before vppcom_session_bind? Although we have not encountered this situation.",
+      "range": {
+        "startLine": 1030,
+        "startChar": 2,
+        "endLine": 1030,
+        "endChar": 52
+      },
+      "revId": "df4c706306432c8e80f9e67537c36b03e4928f35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
