@@ -218,7 +218,7 @@ typedef struct vppcom_cfg_t_
   u8 *vpp_api_socket_name;
   u8 *vpp_api_chroot;
   u32 tls_engine;
-  u8 mt_supported;
+  u8 mt_wrk_supported;
 } vppcom_cfg_t;
 
 void vppcom_cfg (vppcom_cfg_t * vcl_cfg);
