@@ -498,10 +498,11 @@ vppcom_cfg_read_file (char *conf_fname)
 	      VCFG_DBG (0, "VCL<%d>: configured tls-engine %u (0x%x)",
 			getpid (), vcl_cfg->tls_engine, vcl_cfg->tls_engine);
 	    }
-	  else if (unformat (line_input, "multi-thread"))
+	  else if (unformat (line_input, "multi-thread-workers"))
 	    {
-	      vcl_cfg->mt_supported = 1;
-	      VCFG_DBG (0, "VCL<%d>: configured with multithread", getpid ());
+	      vcl_cfg->mt_wrk_supported = 1;
+	      VCFG_DBG (0, "VCL<%d>: configured with multithread workers",
+			getpid ());
 	    }
 	  else if (unformat (line_input, "}"))
 	    {
