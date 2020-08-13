@@ -36,6 +36,24 @@
     },
     {
       "key": {
+        "uuid": "9f4ab605_af2b2c1e",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-08-13T16:26:30Z",
+      "side": 1,
+      "message": "It is inside the functions for accuracy and readability purpose.\nSecondly, is_tineout function is called from device tx while set timeout function is called from device input node.",
+      "parentUuid": "ecdc9aea_a55a6499",
+      "revId": "3dbf0253e82b5d6dc2004b901f92b95676c3701e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "6cfaddf5_3e44e90f",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 1
@@ -47,6 +65,24 @@
       "writtenOn": "2020-08-13T08:17:47Z",
       "side": 1,
       "message": "can we pass vlib_time_now() as parameter it only need to be called once for both is_timeout() and set_timeout() above?",
+      "revId": "3dbf0253e82b5d6dc2004b901f92b95676c3701e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5b723848_f55ff2cb",
+        "filename": "src/vnet/gso/gro.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-08-13T16:26:30Z",
+      "side": 1,
+      "message": "It is inside the functions for accuracy and readability purpose.",
+      "parentUuid": "6cfaddf5_3e44e90f",
       "revId": "3dbf0253e82b5d6dc2004b901f92b95676c3701e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -70,6 +106,24 @@
     },
     {
       "key": {
+        "uuid": "15c53e81_be270e10",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 425,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-08-13T16:26:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6d8cbcf0_f9d6dda9",
+      "revId": "3dbf0253e82b5d6dc2004b901f92b95676c3701e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c9ad9b28_0d876178",
         "filename": "src/vnet/gso/gro_func.h",
         "patchSetId": 1
@@ -84,6 +138,24 @@
       "revId": "3dbf0253e82b5d6dc2004b901f92b95676c3701e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "97a9f530_20ba25fd",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 545,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-08-13T16:26:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c9ad9b28_0d876178",
+      "revId": "3dbf0253e82b5d6dc2004b901f92b95676c3701e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
