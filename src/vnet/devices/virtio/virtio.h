@@ -22,6 +22,7 @@
 #include <linux/virtio_net.h>
 #include <linux/virtio_pci.h>
 #include <linux/virtio_ring.h>
+#include <vnet/gso/gro.h>
 
 #define foreach_virtio_net_features      \
   _ (VIRTIO_NET_F_CSUM, 0)	/* Host handles pkts w/ partial csum */ \
@@ -123,6 +124,7 @@ typedef struct
   u16 last_used_idx;
   u16 last_kick_avail_idx;
   u32 call_file_index;
+  gro_flow_table_t *flow_table;
 } virtio_vring_t;
 
 typedef union
@@ -165,6 +167,7 @@ typedef struct
   u32 sw_if_index;
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  int packet_coalesce;
   union
   {
     u32 id;
@@ -221,6 +224,7 @@ extern void virtio_free_rx_buffers (vlib_main_t * vm, virtio_vring_t * vring);
 extern void virtio_set_net_hdr_size (virtio_if_t * vif);
 extern void virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
 			 u32 type);
+extern void virtio_set_packet_coalesce (virtio_if_t * vif);
 extern void virtio_pci_legacy_notify_queue (vlib_main_t * vm,
 					    virtio_if_t * vif, u16 queue_id);
 format_function_t format_virtio_device_name;
