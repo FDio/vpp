@@ -1941,7 +1941,17 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
     n_read = app_recv_stream_raw (rx_fifo, buf, n, 0, peek);
 
   if (svm_fifo_is_empty_cons (rx_fifo))
-    svm_fifo_unset_event (s->rx_fifo);
+    {
+      svm_fifo_unset_event (s->rx_fifo);
+      if (!svm_fifo_is_empty_cons (rx_fifo)
+	  && svm_fifo_set_event (s->rx_fifo) && is_nonblocking)
+	{
+	  session_event_t *e;
+	  vec_add2 (wrk->unhandled_evts_vector, e, 1);
+	  e->event_type = SESSION_IO_EVT_RX;
+	  e->session_index = s->session_index;
+	}
+    }
 
   /* Cut-through sessions might request tx notifications on rx fifos */
   if (PREDICT_FALSE (rx_fifo->want_deq_ntf))
