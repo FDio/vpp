@@ -1953,8 +1953,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 	}
     }
 
-  /* Cut-through sessions might request tx notifications on rx fifos */
-  if (PREDICT_FALSE (rx_fifo->want_deq_ntf))
+  if (PREDICT_FALSE (svm_fifo_needs_deq_ntf (rx_fifo, n_read)))
     {
       app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo->master_session_index,
 			      SESSION_IO_EVT_RX, SVM_Q_WAIT);
@@ -2691,8 +2690,11 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       vep_session->vep.next_sh = session_handle;
 
       if (session->tx_fifo)
-	svm_fifo_add_want_deq_ntf (session->tx_fifo,
-				   SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
+	{
+	  u8 is_ct = vcl_session_is_ct (session);
+	  svm_fifo_t *txf = is_ct ? session->ct_tx_fifo : session->tx_fifo;
+	  svm_fifo_add_want_deq_ntf (txf, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
+	}
 
       /* Generate EPOLLOUT if tx fifo not full */
       if ((event->events & EPOLLOUT) &&
