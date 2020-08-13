@@ -818,6 +818,7 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
   vring->used = vr.used;
   vring->queue_id = queue_num;
   vring->avail->flags = VIRTIO_RING_FLAG_MASK_INT;
+  vring->flow_table = 0;
 
   ASSERT (vring->buffers == 0);
   vec_validate_aligned (vring->buffers, queue_size, CLIB_CACHE_LINE_BYTES);
