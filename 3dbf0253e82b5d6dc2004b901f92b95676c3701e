@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "79d28a3b_29436a8b",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-13T08:18:36Z",
+      "side": 1,
+      "message": "I think we said we should use \u0027gso\u0027 tag to avoid having a new tag",
+      "revId": "3dbf0253e82b5d6dc2004b901f92b95676c3701e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ecdc9aea_a55a6499",
         "filename": "src/vnet/gso/gro.h",
         "patchSetId": 1
