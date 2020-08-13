@@ -2207,7 +2207,7 @@ if (PREDICT_FALSE (svm_fifo_is_empty (_s->rx_fifo)))			\
       }									\
     else if (svm_fifo_is_empty (_s->ct_rx_fifo))			\
       {									\
-	svm_fifo_unset_event (_s->ct_rx_fifo);				\
+	svm_fifo_unset_event (_s->rx_fifo); /* rx evts on actual fifo*/	\
 	if (svm_fifo_is_empty (_s->ct_rx_fifo))				\
 	  break;							\
       }									\
