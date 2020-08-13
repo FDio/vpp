@@ -1943,12 +1943,11 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   if (svm_fifo_is_empty_cons (rx_fifo))
     svm_fifo_unset_event (s->rx_fifo);
 
-  /* Cut-through sessions might request tx notifications on rx fifos */
-  if (PREDICT_FALSE (rx_fifo->want_deq_ntf))
+  if (PREDICT_FALSE (svm_fifo_needs_deq_ntf (rx_fifo, n_read)))
     {
+      svm_fifo_clear_deq_ntf (rx_fifo);
       app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo->master_session_index,
 			      SESSION_IO_EVT_RX, SVM_Q_WAIT);
-      svm_fifo_reset_has_deq_ntf (s->rx_fifo);
     }
 
   VDBG (2, "session %u[0x%llx]: read %d bytes from (%p)", s->session_index,
@@ -2613,8 +2612,9 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vcl_session_t *vep_session;
-  vcl_session_t *session;
   int rv = VPPCOM_OK;
+  vcl_session_t *s;
+  svm_fifo_t *txf;
 
   if (vep_handle == session_handle)
     {
@@ -2637,13 +2637,13 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
   ASSERT (vep_session->vep.vep_sh == ~0);
   ASSERT (vep_session->vep.prev_sh == ~0);
 
-  session = vcl_session_get_w_handle (wrk, session_handle);
-  if (PREDICT_FALSE (!session))
+  s = vcl_session_get_w_handle (wrk, session_handle);
+  if (PREDICT_FALSE (!s))
     {
       VDBG (0, "Invalid session_handle (%u)!", session_handle);
       return VPPCOM_EBADFD;
     }
-  if (PREDICT_FALSE (session->is_vep))
+  if (PREDICT_FALSE (s->is_vep))
     {
       VDBG (0, "session_handle (%u) is a vep!", vep_handle);
       return VPPCOM_EINVAL;
@@ -2671,39 +2671,38 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	  ASSERT (next_session->vep.prev_sh == vep_handle);
 	  next_session->vep.prev_sh = session_handle;
 	}
-      session->vep.next_sh = vep_session->vep.next_sh;
-      session->vep.prev_sh = vep_handle;
-      session->vep.vep_sh = vep_handle;
-      session->vep.et_mask = VEP_DEFAULT_ET_MASK;
-      session->vep.ev = *event;
-      session->is_vep = 0;
-      session->is_vep_session = 1;
+      s->vep.next_sh = vep_session->vep.next_sh;
+      s->vep.prev_sh = vep_handle;
+      s->vep.vep_sh = vep_handle;
+      s->vep.et_mask = VEP_DEFAULT_ET_MASK;
+      s->vep.ev = *event;
+      s->is_vep = 0;
+      s->is_vep_session = 1;
       vep_session->vep.next_sh = session_handle;
 
-      if (session->tx_fifo)
-	svm_fifo_add_want_deq_ntf (session->tx_fifo,
-				   SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
+      txf = vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo;
+      if (txf && (event->events & EPOLLOUT))
+	svm_fifo_add_want_deq_ntf (txf, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
 
       /* Generate EPOLLOUT if tx fifo not full */
-      if ((event->events & EPOLLOUT) &&
-	  (vcl_session_write_ready (session) > 0))
+      if ((event->events & EPOLLOUT) && (vcl_session_write_ready (s) > 0))
 	{
 	  session_event_t e = { 0 };
 	  e.event_type = SESSION_IO_EVT_TX;
-	  e.session_index = session->session_index;
+	  e.session_index = s->session_index;
 	  vec_add1 (wrk->unhandled_evts_vector, e);
 	}
       /* Generate EPOLLIN if rx fifo has data */
-      if ((event->events & EPOLLIN) && (vcl_session_read_ready (session) > 0))
+      if ((event->events & EPOLLIN) && (vcl_session_read_ready (s) > 0))
 	{
 	  session_event_t e = { 0 };
 	  e.event_type = SESSION_IO_EVT_RX;
-	  e.session_index = session->session_index;
+	  e.session_index = s->session_index;
 	  vec_add1 (wrk->unhandled_evts_vector, e);
 	}
       VDBG (1, "EPOLL_CTL_ADD: vep_sh %u, sh %u, events 0x%x, data 0x%llx!",
 	    vep_handle, session_handle, event->events, event->data.u64);
-      vcl_evt (VCL_EVT_EPOLL_CTLADD, session, event->events, event->data.u64);
+      vcl_evt (VCL_EVT_EPOLL_CTLADD, s, event->events, event->data.u64);
       break;
 
     case EPOLL_CTL_MOD:
@@ -2713,92 +2712,97 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	  rv = VPPCOM_EINVAL;
 	  goto done;
 	}
-      else if (PREDICT_FALSE (!session->is_vep_session))
+      else if (PREDICT_FALSE (!s->is_vep_session))
 	{
 	  VDBG (0, "sh %u EPOLL_CTL_MOD: not a vep session!", session_handle);
 	  rv = VPPCOM_EINVAL;
 	  goto done;
 	}
-      else if (PREDICT_FALSE (session->vep.vep_sh != vep_handle))
+      else if (PREDICT_FALSE (s->vep.vep_sh != vep_handle))
 	{
 	  VDBG (0, "EPOLL_CTL_MOD: sh %u vep_sh (%u) != vep_sh (%u)!",
-		session_handle, session->vep.vep_sh, vep_handle);
+		session_handle, s->vep.vep_sh, vep_handle);
 	  rv = VPPCOM_EINVAL;
 	  goto done;
 	}
 
       /* Generate EPOLLOUT when tx_fifo/ct_tx_fifo not full */
       if ((event->events & EPOLLOUT) &&
-	  !(session->vep.ev.events & EPOLLOUT) &&
-	  (vcl_session_write_ready (session) > 0))
+	  !(s->vep.ev.events & EPOLLOUT) && (vcl_session_write_ready (s) > 0))
 	{
 	  session_event_t e = { 0 };
 	  e.event_type = SESSION_IO_EVT_TX;
-	  e.session_index = session->session_index;
+	  e.session_index = s->session_index;
 	  vec_add1 (wrk->unhandled_evts_vector, e);
 	}
-      session->vep.et_mask = VEP_DEFAULT_ET_MASK;
-      session->vep.ev = *event;
+      s->vep.et_mask = VEP_DEFAULT_ET_MASK;
+      s->vep.ev = *event;
+      txf = vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo;
+      if (event->events & EPOLLOUT)
+	svm_fifo_add_want_deq_ntf (txf, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
+      else
+	svm_fifo_del_want_deq_ntf (txf, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
       VDBG (1, "EPOLL_CTL_MOD: vep_sh %u, sh %u, events 0x%x, data 0x%llx!",
 	    vep_handle, session_handle, event->events, event->data.u64);
       break;
 
     case EPOLL_CTL_DEL:
-      if (PREDICT_FALSE (!session->is_vep_session))
+      if (PREDICT_FALSE (!s->is_vep_session))
 	{
 	  VDBG (0, "EPOLL_CTL_DEL: %u not a vep session!", session_handle);
 	  rv = VPPCOM_EINVAL;
 	  goto done;
 	}
-      else if (PREDICT_FALSE (session->vep.vep_sh != vep_handle))
+      else if (PREDICT_FALSE (s->vep.vep_sh != vep_handle))
 	{
 	  VDBG (0, "EPOLL_CTL_DEL: sh %u vep_sh (%u) != vep_sh (%u)!",
-		session_handle, session->vep.vep_sh, vep_handle);
+		session_handle, s->vep.vep_sh, vep_handle);
 	  rv = VPPCOM_EINVAL;
 	  goto done;
 	}
 
-      if (session->vep.prev_sh == vep_handle)
-	vep_session->vep.next_sh = session->vep.next_sh;
+      if (s->vep.prev_sh == vep_handle)
+	vep_session->vep.next_sh = s->vep.next_sh;
       else
 	{
 	  vcl_session_t *prev_session;
-	  prev_session = vcl_session_get_w_handle (wrk, session->vep.prev_sh);
+	  prev_session = vcl_session_get_w_handle (wrk, s->vep.prev_sh);
 	  if (PREDICT_FALSE (!prev_session))
 	    {
 	      VDBG (0, "EPOLL_CTL_DEL: Invalid prev_sh (%u) on sh (%u)!",
-		    session->vep.prev_sh, session_handle);
+		    s->vep.prev_sh, session_handle);
 	      return VPPCOM_EBADFD;
 	    }
 	  ASSERT (prev_session->vep.next_sh == session_handle);
-	  prev_session->vep.next_sh = session->vep.next_sh;
+	  prev_session->vep.next_sh = s->vep.next_sh;
 	}
-      if (session->vep.next_sh != ~0)
+      if (s->vep.next_sh != ~0)
 	{
 	  vcl_session_t *next_session;
-	  next_session = vcl_session_get_w_handle (wrk, session->vep.next_sh);
+	  next_session = vcl_session_get_w_handle (wrk, s->vep.next_sh);
 	  if (PREDICT_FALSE (!next_session))
 	    {
 	      VDBG (0, "EPOLL_CTL_DEL: Invalid next_sh (%u) on sh (%u)!",
-		    session->vep.next_sh, session_handle);
+		    s->vep.next_sh, session_handle);
 	      return VPPCOM_EBADFD;
 	    }
 	  ASSERT (next_session->vep.prev_sh == session_handle);
-	  next_session->vep.prev_sh = session->vep.prev_sh;
+	  next_session->vep.prev_sh = s->vep.prev_sh;
 	}
 
-      memset (&session->vep, 0, sizeof (session->vep));
-      session->vep.next_sh = ~0;
-      session->vep.prev_sh = ~0;
-      session->vep.vep_sh = ~0;
-      session->is_vep_session = 0;
+      memset (&s->vep, 0, sizeof (s->vep));
+      s->vep.next_sh = ~0;
+      s->vep.prev_sh = ~0;
+      s->vep.vep_sh = ~0;
+      s->is_vep_session = 0;
 
-      if (session->tx_fifo)
-	svm_fifo_del_want_deq_ntf (session->tx_fifo, SVM_FIFO_NO_DEQ_NOTIF);
+      txf = vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo;
+      if (txf)
+	svm_fifo_del_want_deq_ntf (txf, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
 
       VDBG (1, "EPOLL_CTL_DEL: vep_idx %u, sh %u!", vep_handle,
 	    session_handle);
-      vcl_evt (VCL_EVT_EPOLL_CTLDEL, session, vep_sh);
+      vcl_evt (VCL_EVT_EPOLL_CTLDEL, s, vep_sh);
       break;
 
     default:
@@ -2850,7 +2854,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       add_event = 1;
       events[*num_ev].events |= EPOLLOUT;
       session_evt_data = session->vep.ev.data.u64;
-      svm_fifo_reset_has_deq_ntf (session->tx_fifo);
+      svm_fifo_reset_has_deq_ntf (vcl_session_is_ct (session) ?
+				  session->ct_tx_fifo : session->tx_fifo);
       break;
     case SESSION_CTRL_EVT_ACCEPTED:
       session = vcl_session_accepted (wrk,
