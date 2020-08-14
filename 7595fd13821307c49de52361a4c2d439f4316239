@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "84f68549_2666376a",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 529,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-08-14T10:30:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3eb45120_8a834a38",
+      "revId": "7595fd13821307c49de52361a4c2d439f4316239",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "35a41ff5_06a28bf8",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2020-08-14T09:48:31Z",
       "side": 1,
       "message": "can we make it a separate patch?",
+      "revId": "7595fd13821307c49de52361a4c2d439f4316239",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dbc59914_47d2e067",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 561,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-08-14T10:30:06Z",
+      "side": 1,
+      "message": "I don\u0027t see any modifications here.",
+      "parentUuid": "35a41ff5_06a28bf8",
       "revId": "7595fd13821307c49de52361a4c2d439f4316239",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
