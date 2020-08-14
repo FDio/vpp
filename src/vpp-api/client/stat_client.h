@@ -90,9 +90,6 @@ typedef struct
   uint64_t epoch;
 } stat_segment_access_t;
 
-/*
- * Returns 0 on success, -1 on failure (timeout)
- */
 static inline uint64_t
 _time_now_nsec (void)
 {
@@ -108,6 +105,9 @@ stat_segment_adjust (stat_client_main_t * sm, void *data)
 		   ((char *) data - (char *) sm->shared_header->base));
 }
 
+/*
+ * Returns 0 on success, -1 on failure (timeout)
+ */
 static inline int
 stat_segment_access_start (stat_segment_access_t * sa,
 			   stat_client_main_t * sm)
