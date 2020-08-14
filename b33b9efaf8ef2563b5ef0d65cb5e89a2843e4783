@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "6973ec84_56d2c9c7",
+        "filename": "src/plugins/tmc/tmc.api",
+        "patchSetId": 8
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2020-08-14T14:54:22Z",
+      "side": 1,
+      "message": "I have combined the calls in a single one as you suggested, and added the enum.",
+      "parentUuid": "58976d7d_a69bb40f",
+      "range": {
+        "startLine": 28,
+        "startChar": 0,
+        "endLine": 35,
+        "endChar": 2
+      },
+      "revId": "b33b9efaf8ef2563b5ef0d65cb5e89a2843e4783",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6a7d7c3c_effbac1f",
         "filename": "src/plugins/tmc/tmc.api",
         "patchSetId": 8
@@ -42,6 +66,24 @@
     },
     {
       "key": {
+        "uuid": "0e36f98f_7cc5941d",
+        "filename": "src/plugins/tmc/tmc.api",
+        "patchSetId": 8
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2020-08-14T14:54:22Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6a7d7c3c_effbac1f",
+      "revId": "b33b9efaf8ef2563b5ef0d65cb5e89a2843e4783",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d6246aec_cc8ab103",
         "filename": "src/plugins/tmc/tmc.h",
         "patchSetId": 8
@@ -53,6 +95,30 @@
       "writtenOn": "2020-08-11T08:39:48Z",
       "side": 1,
       "message": "Why are these pointers?",
+      "range": {
+        "startLine": 29,
+        "startChar": 1,
+        "endLine": 35,
+        "endChar": 19
+      },
+      "revId": "b33b9efaf8ef2563b5ef0d65cb5e89a2843e4783",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aa9feb69_79ce143b",
+        "filename": "src/plugins/tmc/tmc.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2020-08-14T14:54:22Z",
+      "side": 1,
+      "message": "These are vectors, the mss value and the direction flag are configurable per sw interface.",
+      "parentUuid": "d6246aec_cc8ab103",
       "range": {
         "startLine": 29,
         "startChar": 1,
@@ -82,6 +148,24 @@
     },
     {
       "key": {
+        "uuid": "0af058b6_a7e094da",
+        "filename": "src/plugins/tmc/tmc_all_api_h.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2020-08-14T14:54:22Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "33ae9085_b36eb229",
+      "revId": "b33b9efaf8ef2563b5ef0d65cb5e89a2843e4783",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d89d9b43_3ad1c567",
         "filename": "src/plugins/tmc/tmc_node.c",
         "patchSetId": 8
@@ -102,6 +186,30 @@
       "revId": "b33b9efaf8ef2563b5ef0d65cb5e89a2843e4783",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "10a55745_f5754938",
+        "filename": "src/plugins/tmc/tmc_node.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2020-08-14T14:54:22Z",
+      "side": 1,
+      "message": "I guess you meant the variable IP header length because of options. Good catch, thank you. It should be addressed now in the caller. This function is not executed for anything else than TCP.",
+      "parentUuid": "d89d9b43_3ad1c567",
+      "range": {
+        "startLine": 81,
+        "startChar": 1,
+        "endLine": 81,
+        "endChar": 23
+      },
+      "revId": "b33b9efaf8ef2563b5ef0d65cb5e89a2843e4783",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
