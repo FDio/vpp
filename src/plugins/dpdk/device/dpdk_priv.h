@@ -37,7 +37,6 @@ _(coremask, c)                                  \
 _(nchannels, n)                                 \
 
 #define foreach_eal_single_hyphen_arg           \
-_(blacklist, b)                                 \
 _(mem-alloc-request, m)                         \
 _(force-ranks, r)
 
