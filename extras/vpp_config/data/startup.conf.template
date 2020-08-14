@@ -156,10 +156,10 @@ dpdk {{
 #node {{
 
 ## specify the preferred default variant
-#	default	{{ variant avx512 }}
+#	default	{{ variant icl }}
 
 ## specify the preferred variant, for a given node
-#	ip4-rewrite {{ variant avx2 }}
+#	ip4-rewrite {{ variant skx }}
 
 #}}
 
