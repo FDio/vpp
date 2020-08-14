@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "f3e2f287_e39e4f57",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 529,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-14T11:00:32Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "84f68549_2666376a",
+      "revId": "7595fd13821307c49de52361a4c2d439f4316239",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "35a41ff5_06a28bf8",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 3
@@ -69,6 +87,24 @@
       "revId": "7595fd13821307c49de52361a4c2d439f4316239",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a8e80506_9f45c632",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 561,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-14T11:00:32Z",
+      "side": 1,
+      "message": "Ack\nFor some reason it shows this part as new when doing the diff between patchset 2 and 3...",
+      "parentUuid": "dbc59914_47d2e067",
+      "revId": "7595fd13821307c49de52361a4c2d439f4316239",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
