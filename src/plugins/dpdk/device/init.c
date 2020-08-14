@@ -1168,7 +1168,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   u8 file_prefix = 0;
   u8 *socket_mem = 0;
   u8 *huge_dir_path = 0;
-  u32 vendor, device;
+  u32 vendor, device, domain, bus, func;
 
   huge_dir_path =
     format (0, "%s/hugepages%c", vlib_unix_get_runtime_dir (), 0);
@@ -1239,6 +1239,15 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  no_pci = 1;
 	  tmp = format (0, "--no-pci%c", 0);
+	  vec_add1 (conf->eal_init_args, tmp);
+	}
+      else
+	if (unformat
+	    (input, "blacklist %x:%x:%x.%x", &domain, &bus, &device, &func))
+	{
+	  tmp =
+	    format (0, "-b %04x:%02x:%02x.%x%c", domain, bus, device, func,
+		    0);
 	  vec_add1 (conf->eal_init_args, tmp);
 	}
       else if (unformat (input, "blacklist %x:%x", &vendor, &device))
