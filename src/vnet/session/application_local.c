@@ -115,6 +115,7 @@ ct_session_connect_notify (session_t * ss)
 		    sct->client_wrk);
       segment_manager_segment_reader_unlock (sm);
       session_close (ss);
+      goto error;
     }
   else
     {
@@ -143,15 +144,20 @@ ct_session_connect_notify (session_t * ss)
   /* This will allocate fifos for the session. They won't be used for
    * exchanging data but they will be used to close the connection if
    * the segment manager/worker is freed */
-  if (app_worker_init_connected (client_wrk, cs))
+  if ((err = app_worker_init_connected (client_wrk, cs)))
     {
       session_close (ss);
-      return -1;
+      session_free (cs);
+      goto error;
     }
+
+  cs->session_state = SESSION_STATE_CONNECTING;
 
   if (app_worker_connect_notify (client_wrk, cs, err, sct->client_opaque))
     {
       session_close (ss);
+      segment_manager_dealloc_fifos (cs->rx_fifo, cs->tx_fifo);
+      session_free (cs);
       return -1;
     }
 
@@ -159,6 +165,10 @@ ct_session_connect_notify (session_t * ss)
   cs->session_state = SESSION_STATE_READY;
 
   return 0;
+
+error:
+  app_worker_connect_notify (client_wrk, 0, err, sct->client_opaque);
+  return -1;
 }
 
 static int
@@ -475,6 +485,9 @@ ct_custom_tx (void *session, transport_send_params_t * sp)
   session_t *s = (session_t *) session;
   if (session_has_transport (s))
     return 0;
+  /* As all other sessions, cut-throughs are scheduled by vpp for tx so let
+   * the scheduler's custom tx logic decide when to deschedule, i.e., after
+   * fifo is emptied. This ensures that blocking */
   return ct_session_tx (s);
 }
 
