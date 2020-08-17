@@ -326,19 +326,17 @@ ikev2_sa_free_all_vec (ikev2_sa_t * sa)
 }
 
 static void
-ikev2_delete_sa (ikev2_sa_t * sa)
+ikev2_delete_sa (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa)
 {
-  ikev2_main_t *km = &ikev2_main;
-  u32 thread_index = vlib_get_thread_index ();
   uword *p;
 
   ikev2_sa_free_all_vec (sa);
 
-  p = hash_get (km->per_thread_data[thread_index].sa_by_rspi, sa->rspi);
+  p = hash_get (ptd->sa_by_rspi, sa->rspi);
   if (p)
     {
-      hash_unset (km->per_thread_data[thread_index].sa_by_rspi, sa->rspi);
-      pool_put (km->per_thread_data[thread_index].sas, sa);
+      hash_unset (ptd->sa_by_rspi, sa->rspi);
+      pool_put (ptd->sas, sa);
     }
 }
 
@@ -995,40 +993,56 @@ ikev2_is_id_equal (ikev2_id_t * i1, ikev2_id_t * i2)
 }
 
 static void
-ikev2_initial_contact_cleanup (ikev2_sa_t * sa)
+ikev2_initial_contact_cleanup_internal (ikev2_main_per_thread_data_t * ptd,
+					ikev2_sa_t * sa)
 {
   ikev2_main_t *km = &ikev2_main;
   ikev2_sa_t *tmp;
   u32 i, *delete = 0;
   ikev2_child_sa_t *c;
-  u32 thread_index = vlib_get_thread_index ();
-
-  if (!sa->initial_contact)
-    return;
 
   /* find old IKE SAs with the same authenticated identity */
   /* *INDENT-OFF* */
-  pool_foreach (tmp, km->per_thread_data[thread_index].sas, ({
-        if (!ikev2_is_id_equal (&tmp->i_id, &sa->i_id)
-            || !ikev2_is_id_equal(&tmp->r_id, &sa->r_id))
-          continue;
+  pool_foreach (tmp, ptd->sas, ({
+    if (!ikev2_is_id_equal (&tmp->i_id, &sa->i_id)
+        || !ikev2_is_id_equal (&tmp->r_id, &sa->r_id))
+      continue;
 
-        if (sa->rspi != tmp->rspi)
-          vec_add1(delete, tmp - km->per_thread_data[thread_index].sas);
+    if (sa->rspi != tmp->rspi)
+      vec_add1 (delete, tmp - ptd->sas);
   }));
   /* *INDENT-ON* */
 
   for (i = 0; i < vec_len (delete); i++)
     {
-      tmp =
-	pool_elt_at_index (km->per_thread_data[thread_index].sas, delete[i]);
-      vec_foreach (c,
-		   tmp->childs) ikev2_delete_tunnel_interface (km->vnet_main,
-							       tmp, c);
-      ikev2_delete_sa (tmp);
+      tmp = pool_elt_at_index (ptd->sas, delete[i]);
+      vec_foreach (c, tmp->childs)
+      {
+	ikev2_delete_tunnel_interface (km->vnet_main, tmp, c);
+      }
+      ikev2_delete_sa (ptd, tmp);
     }
-
   vec_free (delete);
+}
+
+static void
+ikev2_initial_contact_cleanup (ikev2_main_per_thread_data_t * ptd,
+			       ikev2_sa_t * sa)
+{
+  ikev2_main_t *km = &ikev2_main;
+
+  if (!sa->initial_contact)
+    return;
+
+  if (ptd)
+    {
+      ikev2_initial_contact_cleanup_internal (ptd, sa);
+    }
+  else
+    {
+      vec_foreach (ptd, km->per_thread_data)
+	ikev2_initial_contact_cleanup_internal (ptd, sa);
+    }
   sa->initial_contact = 0;
 }
 
@@ -2855,7 +2869,7 @@ ikev2_node_fn (vlib_main_t * vm,
 					     IKEV2_ERROR_MALFORMED_PACKET, 1);
 	      if (sa0->state == IKEV2_STATE_AUTHENTICATED)
 		{
-		  ikev2_initial_contact_cleanup (sa0);
+		  ikev2_initial_contact_cleanup (ptd, sa0);
 		  ikev2_sa_match_ts (sa0);
 		  if (sa0->state != IKEV2_STATE_TS_UNACCEPTABLE)
 		    ikev2_create_tunnel_interface (vm, sa0,
@@ -3082,7 +3096,7 @@ ikev2_node_fn (vlib_main_t * vm,
 	  vec_foreach (c, sa0->childs)
 	    ikev2_delete_tunnel_interface (km->vnet_main, sa0, c);
 
-	  ikev2_delete_sa (sa0);
+	  ikev2_delete_sa (ptd, sa0);
 	}
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
@@ -3936,7 +3950,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     vec_add (sa.childs[0].tsi, &p->loc_ts, 1);
     vec_add (sa.childs[0].tsr, &p->rem_ts, 1);
 
-    ikev2_initial_contact_cleanup (&sa);
+    ikev2_initial_contact_cleanup (0, &sa);
 
     /* add SA to the pool */
     ikev2_sa_t *sa0 = 0;
