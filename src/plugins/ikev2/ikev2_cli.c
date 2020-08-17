@@ -46,131 +46,205 @@ format_ikev2_id_type_and_data (u8 * s, va_list * args)
   return s;
 }
 
+static u8 *
+format_ikev2_traffic_selector (u8 * s, va_list * va)
+{
+  ikev2_ts_t *ts = va_arg (*va, ikev2_ts_t *);
+  u32 index = va_arg (*va, u32);
+
+  s = format (s, "%u type %u protocol_id %u addr "
+	      "%U - %U port %u - %u\n",
+	      index, ts->ts_type, ts->protocol_id,
+	      format_ip4_address, &ts->start_addr,
+	      format_ip4_address, &ts->end_addr,
+	      clib_net_to_host_u16 (ts->start_port),
+	      clib_net_to_host_u16 (ts->end_port));
+  return s;
+}
+
+static u8 *
+format_ikev2_child_sa (u8 * s, va_list * va)
+{
+  ikev2_child_sa_t *child = va_arg (*va, ikev2_child_sa_t *);
+  u32 index = va_arg (*va, u32);
+  ikev2_ts_t *ts;
+  ikev2_sa_transform_t *tr;
+  u8 *c = 0;
+
+  u32 indent = format_get_indent (s);
+  indent += 1;
+
+  s = format (s, "child sa %u:", index);
+
+  tr = ikev2_sa_get_td_for_type (child->r_proposals,
+				 IKEV2_TRANSFORM_TYPE_ENCR);
+  c = format (c, "%U ", format_ikev2_sa_transform, tr);
+
+  tr = ikev2_sa_get_td_for_type (child->r_proposals,
+				 IKEV2_TRANSFORM_TYPE_INTEG);
+  c = format (c, "%U ", format_ikev2_sa_transform, tr);
+
+  tr = ikev2_sa_get_td_for_type (child->r_proposals,
+				 IKEV2_TRANSFORM_TYPE_ESN);
+  c = format (c, "%U ", format_ikev2_sa_transform, tr);
+
+  s = format (s, "%v\n", c);
+  vec_free (c);
+
+  s = format (s, "%Uspi(i) %lx spi(r) %lx\n", format_white_space, indent,
+	      child->i_proposals ? child->i_proposals[0].spi : 0,
+	      child->r_proposals ? child->r_proposals[0].spi : 0);
+
+  s = format (s, "%USK_e  i:%U\n%Ur:%U\n",
+	      format_white_space, indent,
+	      format_hex_bytes, child->sk_ei, vec_len (child->sk_ei),
+	      format_white_space, indent + 6,
+	      format_hex_bytes, child->sk_er, vec_len (child->sk_er));
+  if (child->sk_ai)
+    {
+      s = format (s, "%USK_a  i:%U\n%Ur:%U\n",
+		  format_white_space, indent,
+		  format_hex_bytes, child->sk_ai, vec_len (child->sk_ai),
+		  format_white_space, indent + 6,
+		  format_hex_bytes, child->sk_ar, vec_len (child->sk_ar));
+    }
+  s = format (s, "%Utraffic selectors (i):", format_white_space, indent);
+  vec_foreach (ts, child->tsi)
+    s = format (s, "%U", format_ikev2_traffic_selector, ts, ts - child->tsi);
+  s = format (s, "%Utraffic selectors (r):", format_white_space, indent);
+  vec_foreach (ts, child->tsr)
+    s = format (s, "%U", format_ikev2_traffic_selector, ts, ts - child->tsr);
+  return s;
+}
+
+static u8 *
+format_ikev2_sa (u8 * s, va_list * va)
+{
+  ikev2_sa_t *sa = va_arg (*va, ikev2_sa_t *);
+  int details = va_arg (*va, int);
+  ikev2_sa_transform_t *tr;
+  ikev2_child_sa_t *child;
+  u32 indent = 1;
+
+  s = format (s, "iip %U ispi %lx rip %U rspi %lx",
+	      format_ip4_address, &sa->iaddr, sa->ispi,
+	      format_ip4_address, &sa->raddr, sa->rspi);
+  if (!details)
+    return s;
+
+  s = format (s, "\n%U", format_white_space, indent);
+
+  tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
+  s = format (s, "%U ", format_ikev2_sa_transform, tr);
+
+  tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
+  s = format (s, "%U ", format_ikev2_sa_transform, tr);
+
+  tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
+  s = format (s, "%U ", format_ikev2_sa_transform, tr);
+
+  tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_DH);
+  s = format (s, "%U", format_ikev2_sa_transform, tr);
+
+  s = format (s, "\n%U", format_white_space, indent);
+
+  s = format (s, "nonce i:%U\n%Ur:%U\n",
+	      format_hex_bytes, sa->i_nonce, vec_len (sa->i_nonce),
+	      format_white_space, indent + 6,
+	      format_hex_bytes, sa->r_nonce, vec_len (sa->r_nonce));
+
+  s = format (s, "%USK_d    %U\n", format_white_space, indent,
+	      format_hex_bytes, sa->sk_d, vec_len (sa->sk_d));
+  if (sa->sk_ai)
+    {
+      s = format (s, "%USK_a  i:%U\n%Ur:%U\n",
+		  format_white_space, indent,
+		  format_hex_bytes, sa->sk_ai, vec_len (sa->sk_ai),
+		  format_white_space, indent + 6,
+		  format_hex_bytes, sa->sk_ar, vec_len (sa->sk_ar));
+    }
+  s = format (s, "%USK_e  i:%U\n%Ur:%U\n",
+	      format_white_space, indent,
+	      format_hex_bytes, sa->sk_ei, vec_len (sa->sk_ei),
+	      format_white_space, indent + 6,
+	      format_hex_bytes, sa->sk_er, vec_len (sa->sk_er));
+  s = format (s, "%USK_p  i:%U\n%Ur:%U\n",
+	      format_white_space, indent,
+	      format_hex_bytes, sa->sk_pi, vec_len (sa->sk_pi),
+	      format_white_space, indent + 6,
+	      format_hex_bytes, sa->sk_pr, vec_len (sa->sk_pr));
+
+  s = format (s, "%Uidentifier (i) %U\n",
+	      format_white_space, indent,
+	      format_ikev2_id_type_and_data, &sa->i_id);
+  s = format (s, "%Uidentifier (r) %U\n",
+	      format_white_space, indent,
+	      format_ikev2_id_type_and_data, &sa->r_id);
+
+  vec_foreach (child, sa->childs)
+  {
+    s = format (s, "%U%U", format_white_space, indent + 2,
+		format_ikev2_child_sa, child, child - sa->childs);
+  }
+
+  return s;
+}
 
 static clib_error_t *
 show_ikev2_sa_command_fn (vlib_main_t * vm,
 			  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   ikev2_main_t *km = &ikev2_main;
   ikev2_main_per_thread_data_t *tkm;
   ikev2_sa_t *sa;
-  ikev2_ts_t *ts;
-  ikev2_child_sa_t *child;
-  ikev2_sa_transform_t *tr;
+  u64 rspi;
+  u8 *s = 0;
+  int details = 0, show_one = 0;
+
+  if (unformat_user (input, unformat_line_input, line_input))
+    {
+      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+	{
+	  if (unformat (line_input, "rspi %lx", &rspi))
+	    {
+	      show_one = 1;
+	    }
+	  else if (unformat (line_input, "details"))
+	    details = 1;
+	  else
+	    break;
+	}
+      unformat_free (line_input);
+    }
 
   vec_foreach (tkm, km->per_thread_data)
   {
     /* *INDENT-OFF* */
     pool_foreach (sa, tkm->sas, ({
-      u8 * s = 0;
-      vlib_cli_output(vm, " iip %U ispi %lx rip %U rspi %lx",
-                      format_ip4_address, &sa->iaddr, sa->ispi,
-                      format_ip4_address, &sa->raddr, sa->rspi);
-
-       tr = ikev2_sa_get_td_for_type(sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
-       s = format(s, "%U ", format_ikev2_sa_transform, tr);
-
-       tr = ikev2_sa_get_td_for_type(sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
-       s = format(s, "%U ", format_ikev2_sa_transform, tr);
-
-       tr = ikev2_sa_get_td_for_type(sa->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
-       s = format(s, "%U ", format_ikev2_sa_transform, tr);
-
-       tr = ikev2_sa_get_td_for_type(sa->r_proposals, IKEV2_TRANSFORM_TYPE_DH);
-       s = format(s, "%U ", format_ikev2_sa_transform, tr);
-
-      vlib_cli_output(vm, " %v", s);
-      vec_free(s);
-
-      vlib_cli_output(vm, "  nonce i:%U\n        r:%U",
-                      format_hex_bytes, sa->i_nonce,  vec_len(sa->i_nonce),
-                      format_hex_bytes, sa->r_nonce,  vec_len(sa->r_nonce));
-
-      vlib_cli_output(vm, "  SK_d    %U",
-                      format_hex_bytes, sa->sk_d,  vec_len(sa->sk_d));
-      if (sa->sk_ai)
+      if (show_one)
         {
-          vlib_cli_output(vm, "  SK_a  i:%U\n        r:%U",
-                          format_hex_bytes, sa->sk_ai, vec_len(sa->sk_ai),
-                          format_hex_bytes, sa->sk_ar, vec_len(sa->sk_ar));
-        }
-      vlib_cli_output(vm, "  SK_e  i:%U\n        r:%U",
-                      format_hex_bytes, sa->sk_ei, vec_len(sa->sk_ei),
-                      format_hex_bytes, sa->sk_er, vec_len(sa->sk_er));
-      vlib_cli_output(vm, "  SK_p  i:%U\n        r:%U",
-                      format_hex_bytes, sa->sk_pi, vec_len(sa->sk_pi),
-                      format_hex_bytes, sa->sk_pr, vec_len(sa->sk_pr));
-
-      vlib_cli_output(vm, "  identifier (i) %U",
-                      format_ikev2_id_type_and_data, &sa->i_id);
-      vlib_cli_output(vm, "  identifier (r) %U",
-                      format_ikev2_id_type_and_data, &sa->r_id);
-
-      vec_foreach(child, sa->childs)
-        {
-          vlib_cli_output(vm, "  child sa %u:", child - sa->childs);
-
-          tr = ikev2_sa_get_td_for_type(child->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
-          s = format(s, "%U ", format_ikev2_sa_transform, tr);
-
-          tr = ikev2_sa_get_td_for_type(child->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
-          s = format(s, "%U ", format_ikev2_sa_transform, tr);
-
-          tr = ikev2_sa_get_td_for_type(child->r_proposals, IKEV2_TRANSFORM_TYPE_ESN);
-          s = format(s, "%U ", format_ikev2_sa_transform, tr);
-
-          vlib_cli_output(vm, "    %v", s);
-          vec_free(s);
-
-          vlib_cli_output(vm, "    spi(i) %lx spi(r) %lx",
-                          child->i_proposals ? child->i_proposals[0].spi : 0,
-                          child->r_proposals ? child->r_proposals[0].spi : 0);
-
-          vlib_cli_output(vm, "    SK_e  i:%U\n          r:%U",
-                          format_hex_bytes, child->sk_ei, vec_len(child->sk_ei),
-                          format_hex_bytes, child->sk_er, vec_len(child->sk_er));
-          if (child->sk_ai)
+          if (sa->rspi == rspi)
             {
-              vlib_cli_output(vm, "    SK_a  i:%U\n          r:%U",
-                              format_hex_bytes, child->sk_ai, vec_len(child->sk_ai),
-                              format_hex_bytes, child->sk_ar, vec_len(child->sk_ar));
-              vlib_cli_output(vm, "    traffic selectors (i):");
-            }
-          vec_foreach(ts, child->tsi)
-            {
-              vlib_cli_output(vm, "      %u type %u protocol_id %u addr "
-                              "%U - %U port %u - %u",
-                              ts - child->tsi,
-                              ts->ts_type, ts->protocol_id,
-                              format_ip4_address, &ts->start_addr,
-                              format_ip4_address, &ts->end_addr,
-                              clib_net_to_host_u16( ts->start_port),
-                              clib_net_to_host_u16( ts->end_port));
-            }
-          vlib_cli_output(vm, "    traffic selectors (r):");
-          vec_foreach(ts, child->tsr)
-            {
-              vlib_cli_output(vm, "      %u type %u protocol_id %u addr "
-                              "%U - %U port %u - %u",
-                              ts - child->tsr,
-                              ts->ts_type, ts->protocol_id,
-                              format_ip4_address, &ts->start_addr,
-                              format_ip4_address, &ts->end_addr,
-                              clib_net_to_host_u16( ts->start_port),
-                              clib_net_to_host_u16( ts->end_port));
+              s = format (s, "%U\n", format_ikev2_sa, sa, 1);
+              break;
             }
         }
-      vlib_cli_output(vm, "");
+      else
+        s = format (s, "%U\n", format_ikev2_sa, sa, details);
     }));
     /* *INDENT-ON* */
   }
+
+  vlib_cli_output (vm, "%v", s);
+  vec_free (s);
   return 0;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ikev2_sa_command, static) = {
     .path = "show ikev2 sa",
-    .short_help = "show ikev2 sa",
+    .short_help = "show ikev2 sa [rspi <rspi>] [details]",
     .function = show_ikev2_sa_command_fn,
 };
 /* *INDENT-ON* */
