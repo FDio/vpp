@@ -388,7 +388,7 @@ static inline int BV (clib_bihash_search_inline_with_hash)
   /* *INDENT-ON* */
 
 #if BIHASH_LAZY_INSTANTIATE
-  if (PREDICT_FALSE (alloc_arena (h) == 0))
+  if (PREDICT_FALSE (!h->instantiated || alloc_arena (h) == 0))
     return -1;
 #endif
 
@@ -453,7 +453,7 @@ static inline void BV (clib_bihash_prefetch_data)
   BVT (clib_bihash_bucket) * b;
 
 #if BIHASH_LAZY_INSTANTIATE
-  if (PREDICT_FALSE (alloc_arena (h) == 0))
+  if (PREDICT_FALSE (!h->instantiated || alloc_arena (h) == 0))
     return;
 #endif
 
@@ -489,7 +489,7 @@ static inline int BV (clib_bihash_search_inline_2_with_hash)
   ASSERT (valuep);
 
 #if BIHASH_LAZY_INSTANTIATE
-  if (PREDICT_FALSE (alloc_arena (h) == 0))
+  if (PREDICT_FALSE (!h->instantiated || alloc_arena (h) == 0))
     return -1;
 #endif
 

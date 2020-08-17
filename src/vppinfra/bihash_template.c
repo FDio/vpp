@@ -893,7 +893,7 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
   s = format (s, "Hash table %s\n", h->name ? h->name : (u8 *) "(unnamed)");
 
 #if BIHASH_LAZY_INSTANTIATE
-  if (PREDICT_FALSE (alloc_arena (h) == 0))
+  if (PREDICT_FALSE (!h->instantiated || alloc_arena (h) == 0))
     return format (s, "[empty, uninitialized]");
 #endif
 
@@ -994,7 +994,7 @@ void BV (clib_bihash_foreach_key_value_pair)
 
 
 #if BIHASH_LAZY_INSTANTIATE
-  if (PREDICT_FALSE (alloc_arena (h) == 0))
+  if (PREDICT_FALSE (!h->instantiated || alloc_arena (h) == 0))
     return;
 #endif
 
