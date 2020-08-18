@@ -121,14 +121,22 @@ format_snat_session (u8 * s, va_list * args)
       s = format (s, "  i2o %U proto %u fib %u\n",
 		  format_ip4_address, &sess->in2out.addr,
 		  sess->in2out.port, sess->in2out.fib_index);
-      s = format (s, "    o2i %U proto %u fib %u\n",
+      s = format (s, "  o2i %U proto %u fib %u\n",
 		  format_ip4_address, &sess->out2in.addr,
 		  sess->out2in.port, sess->out2in.fib_index);
     }
   else
     {
-      s = format (s, "  i2o %U\n", format_snat_key, &sess->in2out);
-      s = format (s, "    o2i %U\n", format_snat_key, &sess->out2in);
+      s = format (s, "  i2o %U proto %U port %d fib %d\n",
+		  format_ip4_address, &sess->in2out.addr,
+		  format_nat_protocol, sess->nat_proto,
+		  clib_net_to_host_u16 (sess->in2out.port),
+		  sess->in2out.fib_index);
+      s = format (s, "  o2i %U proto %U port %d fib %d\n",
+		  format_ip4_address, &sess->out2in.addr,
+		  format_nat_protocol, sess->nat_proto,
+		  clib_net_to_host_u16 (sess->out2in.port),
+		  sess->out2in.fib_index);
     }
   if (is_ed_session (sess) || is_fwd_bypass_session (sess))
     {
