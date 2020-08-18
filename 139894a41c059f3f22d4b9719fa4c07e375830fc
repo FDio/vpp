@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "2d6bf8ad_981de70d",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-18T11:52:13Z",
+      "side": 1,
+      "message": "There is only one avf_process but we can have a command enqueued to the PF through a cli/api while avf_process is waiting for completion.\nBeside that, from my testing it seems we can also have several cli command in flight on the same device (hence same PF), it looks like the cli returns as soon as we put it to sleep.",
+      "parentUuid": "ca81276a_360a6343",
+      "revId": "139894a41c059f3f22d4b9719fa4c07e375830fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d255fe79_c04bacc5",
         "filename": "/COMMIT_MSG",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2020-08-18T10:57:59Z",
       "side": 1,
       "message": "This looks messy. What is wrong with simply adding pool_get_by_index right after each vlib_process_suspend call?",
+      "revId": "139894a41c059f3f22d4b9719fa4c07e375830fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e57ea3f2_0fd9c5b9",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-18T11:52:13Z",
+      "side": 1,
+      "message": "the index in the pool can (and will be because of the feelist) reused.",
+      "parentUuid": "d255fe79_c04bacc5",
       "revId": "139894a41c059f3f22d4b9719fa4c07e375830fc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
