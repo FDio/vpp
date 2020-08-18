@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4923cd02_16c5feef",
+        "filename": "MAINTAINERS",
+        "patchSetId": 12
+      },
+      "lineNbr": 512,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-08-18T10:42:06Z",
+      "side": 1,
+      "message": "what about mss-clamp instead, tmc hardly rings a bell",
+      "revId": "b32ce8d98339b2a0d1c222136b14b2c3d338f9cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
