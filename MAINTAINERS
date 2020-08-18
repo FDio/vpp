@@ -682,6 +682,11 @@ I:	urpf
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/plugins/urpf
 
+Plugin - Wireguard
+I:	wg
+M:	Artem Glazychev <artem.glazychev@xored.com>
+F:	src/plugins/wg
+
 VPP Config Tooling
 I:	vpp_config
 M:	John DeNisco <jdenisco@cisco.com>
