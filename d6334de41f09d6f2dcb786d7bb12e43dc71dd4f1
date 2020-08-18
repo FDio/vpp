@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "21ade0bc_0e6281e3",
+        "filename": "src/plugins/wg/wg.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-08-18T22:01:25Z",
+      "side": 1,
+      "message": "Might be best not to declare the API product-ready at this point. Perhaps \"0.1.0\" would be a better choice. Ask Ole Troan.",
+      "revId": "d6334de41f09d6f2dcb786d7bb12e43dc71dd4f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "cb3dab01_acb0ab8b",
         "filename": "src/plugins/wg/wg.c",
         "patchSetId": 1
