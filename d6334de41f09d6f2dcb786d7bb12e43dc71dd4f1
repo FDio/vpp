@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cb3dab01_acb0ab8b",
+        "filename": "src/plugins/wg/wg.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-08-18T21:58:24Z",
+      "side": 1,
+      "message": "/* *INDENT-OFF* */ ... /* *INDENT-ON* */ and reformat the pool_foreach so it doesn\u0027t look like this",
+      "revId": "d6334de41f09d6f2dcb786d7bb12e43dc71dd4f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2f6d12f8_34bd7e66",
+        "filename": "src/plugins/wg/wg.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-08-18T21:58:24Z",
+      "side": 1,
+      "message": "fix indent",
+      "revId": "d6334de41f09d6f2dcb786d7bb12e43dc71dd4f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "62b9421d_2b118671",
+        "filename": "src/plugins/wg/wg.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-08-18T21:58:24Z",
+      "side": 1,
+      "message": "fix indent",
+      "revId": "d6334de41f09d6f2dcb786d7bb12e43dc71dd4f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
