@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ca81276a_360a6343",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-08-18T10:57:59Z",
+      "side": 1,
+      "message": "I\u0027m not getting this. We have just one avf-process in vpp, and each interface have own adminq for commniaction with PF.",
+      "revId": "139894a41c059f3f22d4b9719fa4c07e375830fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d255fe79_c04bacc5",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-08-18T10:57:59Z",
+      "side": 1,
+      "message": "This looks messy. What is wrong with simply adding pool_get_by_index right after each vlib_process_suspend call?",
+      "revId": "139894a41c059f3f22d4b9719fa4c07e375830fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
