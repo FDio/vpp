@@ -67,6 +67,23 @@
       "revId": "d6334de41f09d6f2dcb786d7bb12e43dc71dd4f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "eb73c020_ac936852",
+        "filename": "src/plugins/wg/wg_timer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 264,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-08-18T22:03:15Z",
+      "side": 1,
+      "message": "Is this the correct wheel / nTimers setup for this use-case? Do you need 16 timers per object / what\u0027s the maximum duration, etc.?",
+      "revId": "d6334de41f09d6f2dcb786d7bb12e43dc71dd4f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
