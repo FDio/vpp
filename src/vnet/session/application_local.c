@@ -488,6 +488,8 @@ ct_app_rx_evt (transport_connection_t * tc)
   if (!peer_ct)
     return -1;
   ps = session_get (peer_ct->c_s_index, peer_ct->c_thread_index);
+  if (peer_ct->is_client)
+    svm_fifo_clear_deq_ntf (peer_ct->client_tx_fifo);
   return session_dequeue_notify (ps);
 }
 
