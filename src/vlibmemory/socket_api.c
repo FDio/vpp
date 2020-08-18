@@ -541,7 +541,8 @@ vl_sock_api_send_fd_msg (int socket_fd, int fds[], int n_fds)
   cmsg->cmsg_type = SCM_RIGHTS;
   clib_memcpy_fast (CMSG_DATA (cmsg), fds, sizeof (int) * n_fds);
 
-  rv = sendmsg (socket_fd, &mh, 0);
+  while ((rv = sendmsg (socket_fd, &mh, 0)) == EAGAIN)
+    ;
   if (rv < 0)
     return clib_error_return_unix (0, "sendmsg");
   return 0;
