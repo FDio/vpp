@@ -1,0 +1,207 @@
+/*
+ * Copyright (c) 2020 Doc.ai and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
+
+/** \brief Set device
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param private_key - private key of this device
+    @param port - port of this device
+*/
+autoreply define wg_set_device
+{
+  u32 client_index;
+  u32 context;
+
+  u8 private_key[45];
+  u16 port;
+};
+
+/** \brief Remove device
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define wg_remove_device
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Dump device
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define wg_device_dump {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief Dump device response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param is_inited - is device set flag
+    @param private_key - device private key
+    @param port - device port
+*/
+define wg_device_details {
+    u32 context;
+    i32 retval;
+
+    bool is_inited;
+    u8 private_key[45];
+    u16 port;
+};
+
+/** \brief Create new peer
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param public_key - public key of destination peer
+    @param port - destination port
+    @param endpoint - destination ip4
+    @param allowed_ip - allowed incoming ip4 tunnel
+    @param tun_sw_if_index - tunnel interface
+    @param persistent_keepalive - keepalive packet timeout
+*/
+autoreply define wg_set_peer
+{
+  u32 client_index;
+  u32 context;
+
+  u8 public_key[45];
+  u16 port;
+  vl_api_ip4_address_t endpoint;
+  vl_api_ip4_address_t allowed_ip;
+  vl_api_interface_index_t tun_sw_if_index;
+  u16 persistent_keepalive;
+};
+
+/** \brief Remove peer by public_key
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param public_key
+*/
+autoreply define wg_remove_peer
+{
+  u32 client_index;
+  u32 context;
+
+  u8 public_key[45];
+};
+
+/** \brief Dump all peers
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define wg_peers_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Dump peers response
+    @param context - sender context, to match reply w/ request
+    @param is_dead - is peer valid yet
+    @param public_key - peer public_key
+    @param ip4_address - ip4 endpoint address
+*/
+define wg_peers_details {
+  u32 context;
+
+  bool is_dead;
+  u8 public_key[45];
+  vl_api_ip4_address_t ip4_address;
+};
+
+
+/** \brief Generate private_key request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define wg_genkey
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Generate private_key response
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param private_key - generated key
+*/
+define wg_genkey_reply
+{
+  u32 context;
+  i32 retval;
+
+  u8 private_key[45];
+};
+
+/** \brief Generate public_key from private_key request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param private_key
+*/
+define wg_pubkey
+{
+  u32 client_index;
+  u32 context;
+
+  u8 private_key[45];
+};
+
+/** \brief Generate public_key from private_key response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param public_key - key from private_key
+*/
+define wg_pubkey_reply
+{
+  u32 context;
+  i32 retval;
+
+  u8 public_key[45];
+};
+
+/** \brief Get peers count request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define wg_peers_count
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get peers count response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param count - current peers count
+*/
+define wg_peers_count_reply
+{
+  u32 context;
+  i32 retval;
+
+  u64 count;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
