@@ -140,6 +140,7 @@ vec_aligned_header_end (void *v, uword header_bytes, uword align)
 */
 
 #define vec_len(v)	((v) ? _vec_len(v) : 0)
+u32 vec_len_not_inline (void *v);
 
 /** \brief Vector's NUMA id (lvalue-capable)
 

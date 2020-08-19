@@ -140,6 +140,18 @@ clib_mem_is_vec_h (void *v, uword header_bytes)
   return clib_mem_is_heap_object (vec_header (v, header_bytes));
 }
 
+u32
+vec_len_not_inline (void *v)
+{
+  return vec_len (v);
+}
+
+void
+vec_free_not_inline (void *v)
+{
+  vec_free (v);
+}
+
 /** \cond */
 
 #ifdef TEST

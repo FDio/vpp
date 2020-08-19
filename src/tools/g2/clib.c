@@ -141,7 +141,7 @@ int read_clib_file(char *clib_file)
 
         delta = ep->time - starttime;
 
-        add_clib_event (delta, ep->track, ep->type + 1, i);
+        add_clib_event (delta, ep->track, ep->event_type + 1, i);
     }
 
     cpel_event_finalize();

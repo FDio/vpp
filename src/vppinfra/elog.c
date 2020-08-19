@@ -302,7 +302,7 @@ format_elog_event (u8 * s, va_list * va)
   void *d = (u8 *) e->data;
   char arg_format[64];
 
-  t = vec_elt_at_index (em->event_types, e->type);
+  t = vec_elt_at_index (em->event_types, e->event_type);
 
   f = t->format;
   a = t->format_args;
@@ -420,8 +420,8 @@ format_elog_track (u8 * s, va_list * args)
   {
     if (e->track != track_index)
       continue;
-    s = format (s, "%U%18.9f: %U\n", format_white_space, indent, e->time + dt,
-		format_elog_event, em, e);
+    s = format (s, "%U%18.9f: %U\n", format_white_space, indent,
+		e->time + dt, format_elog_event, em, e);
   }
   vec_free (es);
   return s;
@@ -732,10 +732,11 @@ elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag,
   /* Across all (copied) src events... */
   for (e = dst->events + l; e < vec_end (dst->events); e++)
     {
-      elog_event_type_t *t = vec_elt_at_index (src->event_types, e->type);
+      elog_event_type_t *t =
+	vec_elt_at_index (src->event_types, e->event_type);
 
       /* Remap type from src -> dst. */
-      e->type = find_or_create_type (dst, t);
+      e->event_type = find_or_create_type (dst, t);
 
       /* Remap string table offsets for 'T' format args */
       maybe_fix_string_table_offset (e, t,
@@ -847,11 +848,11 @@ serialize_elog_event (serialize_main_t * m, va_list * va)
 {
   elog_main_t *em = va_arg (*va, elog_main_t *);
   elog_event_t *e = va_arg (*va, elog_event_t *);
-  elog_event_type_t *t = vec_elt_at_index (em->event_types, e->type);
+  elog_event_type_t *t = vec_elt_at_index (em->event_types, e->event_type);
   u8 *d = e->data;
   u8 *p = (u8 *) t->format_args;
 
-  serialize_integer (m, e->type, sizeof (e->type));
+  serialize_integer (m, e->event_type, sizeof (e->event_type));
   serialize_integer (m, e->track, sizeof (e->track));
   serialize (m, serialize_f64, e->time);
 
@@ -914,18 +915,18 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
   {
     u16 tmp[2];
 
-    unserialize_integer (m, &tmp[0], sizeof (e->type));
+    unserialize_integer (m, &tmp[0], sizeof (e->event_type));
     unserialize_integer (m, &tmp[1], sizeof (e->track));
 
-    e->type = tmp[0];
+    e->event_type = tmp[0];
     e->track = tmp[1];
 
     /* Make sure it fits. */
-    ASSERT (e->type == tmp[0]);
+    ASSERT (e->event_type == tmp[0]);
     ASSERT (e->track == tmp[1]);
   }
 
-  t = vec_elt_at_index (em->event_types, e->type);
+  t = vec_elt_at_index (em->event_types, e->event_type);
 
   unserialize (m, unserialize_f64, &e->time);
 
@@ -1157,6 +1158,39 @@ unserialize_elog_main (serialize_main_t * m, va_list * va)
       unserialize (m, unserialize_elog_event, em, e);
   }
 }
+
+#ifdef CLIB_UNIX
+clib_error_t *
+elog_write_file_not_inline (elog_main_t * em, char *clib_file, int flush_ring)
+{
+  serialize_main_t m;
+  clib_error_t *error;
+
+  error = serialize_open_clib_file (&m, clib_file);
+  if (error)
+    return error;
+  error = serialize (&m, serialize_elog_main, em, flush_ring);
+  if (!error)
+    serialize_close (&m);
+  return error;
+}
+
+clib_error_t *
+elog_read_file_not_inline (elog_main_t * em, char *clib_file)
+{
+  serialize_main_t m;
+  clib_error_t *error;
+
+  error = unserialize_open_clib_file (&m, clib_file);
+  if (error)
+    return error;
+  error = unserialize (&m, unserialize_elog_main, em);
+  if (!error)
+    unserialize_close (&m);
+  return error;
+}
+#endif /* CLIB_UNIX */
+
 
 /*
  * fd.io coding-style-patch-verification: ON

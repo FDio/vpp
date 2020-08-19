@@ -68,7 +68,7 @@ typedef struct
   };
 
   /** Event type index. */
-  u16 type;
+  u16 event_type;
 
   /** Track for this event.  Tracks allow events to be sorted and
      displayed by track.  Think of 2 dimensional display with time and
@@ -324,7 +324,7 @@ elog_event_data_inline (elog_main_t * em,
   e = vec_elt_at_index (em->event_ring, ei);
 
   e->time_cycles = cpu_time;
-  e->type = type_index;
+  e->event_type = type_index;
   e->track = track_index;
 
   /* Return user data for caller to fill in. */
@@ -543,6 +543,9 @@ elog_write_file (elog_main_t * em, char *clib_file, int flush_ring)
   return error;
 }
 
+clib_error_t *elog_write_file_not_inline (elog_main_t * em, char *clib_file,
+					  int flush_ring);
+
 always_inline clib_error_t *
 elog_read_file (elog_main_t * em, char *clib_file)
 {
@@ -557,6 +560,8 @@ elog_read_file (elog_main_t * em, char *clib_file)
     unserialize_close (&m);
   return error;
 }
+
+clib_error_t *elog_read_file_not_inline (elog_main_t * em, char *clib_file);
 
 #endif /* CLIB_UNIX */
 

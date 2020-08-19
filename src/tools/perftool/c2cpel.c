@@ -1,4 +1,4 @@
-/* 
+/*
  *------------------------------------------------------------------
  * Copyright (c) 2006-2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -72,7 +72,7 @@ void convert_clib_file(char *clib_file)
 
         /* Seconds since start of log */
         delta = e->time - starttime;
-        
+
         /* u64 nanoseconds since start of log */
         timestamp = delta * 1e9;
 
@@ -81,11 +81,11 @@ void convert_clib_file(char *clib_file)
         /* allocate an event instance */
         vec_add2(the_events, ep, 1);
         ep->timestamp = timestamp;
-        
-        /* convert string event code to a real number */
-        t = vec_elt_at_index (em->event_types, e->type);
 
-        /* 
+        /* convert string event code to a real number */
+        t = vec_elt_at_index (em->event_types, e->event_type);
+
+        /*
          * Construct a reasonable event name.
          * Truncate the format string at the first whitespace break
          * or printf format character.
@@ -189,14 +189,14 @@ int main (int argc, char **argv)
         continue;
 
     usage:
-        fformat(stderr, 
+        fformat(stderr,
                 "c2cpel [--input-file] <filename> --output-file <filename>\n");
         exit(1);
     }
 
     if (vec_len(inputfiles) == 0 || outputfile == 0)
         goto usage;
-        
+
     if (vec_len(inputfiles) > 1)
         goto usage;
 
@@ -211,12 +211,12 @@ int main (int argc, char **argv)
         clib_unix_warning ("couldn't create %s", outputfile);
         exit (1);
     }
-    
+
     alpha_sort_tracks();
     fixup_event_tracks();
 
     /*
-     * Four sections: string-table, event definitions, track defs, events. 
+     * Four sections: string-table, event definitions, track defs, events.
      */
     if (!write_cpel_header(ofp, 4)) {
         clib_warning ("Error writing cpel header to %s...\n", outputfile);
@@ -246,7 +246,7 @@ int main (int argc, char **argv)
         clib_warning ("Error writing events to %s...\n", outputfile);
         unlink(outputfile);
         exit(1);
-        
+
     }
     fclose(ofp);
     exit (0);

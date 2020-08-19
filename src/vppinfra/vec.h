@@ -379,6 +379,8 @@ do {						\
 */
 #define vec_free(V) vec_free_h(V,0)
 
+void vec_free_not_inline (void *v);
+
 /**\brief Free vector user header (syntactic sugar)
    @param h vector header
    @void
