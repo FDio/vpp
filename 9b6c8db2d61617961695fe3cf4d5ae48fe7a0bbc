@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1884b7b4_a289f7db",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 864,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-19T16:17:47Z",
+      "side": 1,
+      "message": "I think you need to update error here because it can be moved (reallocated) in clib_error_return():\nerror \u003d clib_error_return (error, ...)",
+      "revId": "9b6c8db2d61617961695fe3cf4d5ae48fe7a0bbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1d5e0486_aa2b49a4",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 894,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-19T16:17:47Z",
+      "side": 1,
+      "message": "error \u003d clib_error_return (error, ...)",
+      "revId": "9b6c8db2d61617961695fe3cf4d5ae48fe7a0bbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
