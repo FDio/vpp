@@ -227,7 +227,7 @@ dpdk_lib_init (dpdk_main_t * dm)
   if (CLIB_DEBUG > 0)
     dpdk_log_notice ("DPDK drivers found %d ports...", nports);
 
-  if (dm->conf->enable_tcp_udp_checksum)
+  if (!dm->conf->enable_tcp_udp_checksum)
     dm->buffer_flags_template &= ~(VNET_BUFFER_F_L4_CHECKSUM_CORRECT
 				   | VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
 
