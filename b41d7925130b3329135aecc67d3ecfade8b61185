@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f87ffd3d_b225f745",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1036,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-19T13:11:38Z",
+      "side": 1,
+      "message": "Here is an example for my general comment about vlib_buffer_pull(). This could be rewritten such as:\n\nstatic int\nikev2_parse_id_payload (const ike_id_payload_header_t *ike_id, const int rlen, ikev2_id_t *sa_id)\n{\n  u16 plen \u003d clib_net_to_host_u16 (ike_id-\u003elength));\n  if (plen \u003c sizeof (*ike_id) || rlen \u003c plen)\n    return 0;\n  vec_add (sa_id-\u003edata, ike_id-\u003epayload, plen - sizeof (ike_id));\n}\n\nNote that my test is a little bit more strict than the original one, because it takes care of the case where plen \u003c sizeof (*ike_id) ie the length field is lying/corrupted",
+      "revId": "b41d7925130b3329135aecc67d3ecfade8b61185",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2aeb6205_b486c149",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1129,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-19T13:11:38Z",
+      "side": 1,
+      "message": "ikev2_parse_auth_payload() would be good",
+      "revId": "b41d7925130b3329135aecc67d3ecfade8b61185",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d5ba93d7_77c67197",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1309,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-19T13:11:38Z",
+      "side": 1,
+      "message": "maybe add ikev2_parse_nonce_payload() instead?",
+      "revId": "b41d7925130b3329135aecc67d3ecfade8b61185",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
