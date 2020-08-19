@@ -728,6 +728,11 @@ M:	neale@graphiant.com
 M:	Matthew Smith <mgsmith@netgate.com>
 F:	src/plugins/linux-cp/
 
+Plugin - Calico policies
+I:	capo
+M:	Aloys Augustin <aloaugus@cisco.com>
+F:	src/plugins/capo/
+
 THE REST
 I:	misc
 M:	vpp-dev Mailing List <vpp-dev@fd.io>
