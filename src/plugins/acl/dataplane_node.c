@@ -500,8 +500,7 @@ acl_fa_inner_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 			}
 		    }
 		}
-	      if (acl_check_needed &&
-		  vec_len (am->input_lc_index_by_sw_if_index) > sw_if_index[0])
+	      if (0)
 		{
 		  if (is_input)
 		    lc_index0 =

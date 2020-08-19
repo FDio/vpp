@@ -519,6 +519,11 @@ acl_clear_sessions (acl_main_t * am, u32 sw_if_index)
 			     sw_if_index);
 }
 
+void
+acl_plugin_wip_clear_sessions (u32 sw_if_index)
+{
+   acl_clear_sessions (&acl_main, sw_if_index);
+}
 
 static int
 acl_interface_in_enable_disable (acl_main_t * am, u32 sw_if_index,
