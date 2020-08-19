@@ -718,6 +718,11 @@ I:	geneve
 M:	community vpp-dev@lists.fd.io
 F:	src/plugins/geneve/
 
+Plugin - Calico policies
+I:	capo
+M:	Aloys Augustin <aloaugus@cisco.com>
+F:	src/plugins/capo/
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>

@@ -506,7 +506,7 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 		      }
 		    }
 		}
-	      if (acl_check_needed && vec_len(am->input_lc_index_by_sw_if_index) > sw_if_index[0])
+	      if (0)
 		{
 		  if (is_input)
 		    lc_index0 =
@@ -628,10 +628,10 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
    */
   if (am->combined_acl_counters && saved_packet_count)
     vlib_increment_combined_counter (am->combined_acl_counters +
-				   saved_matched_acl_index,
-				   thread_index,
-				   saved_matched_ace_index,
-				   saved_packet_count, saved_byte_count);
+				     saved_matched_acl_index,
+				     thread_index,
+				     saved_matched_ace_index,
+				     saved_packet_count, saved_byte_count);
 
   vlib_node_increment_counter (vm, node->node_index,
 			       ACL_FA_ERROR_ACL_CHECK, frame->n_vectors);
