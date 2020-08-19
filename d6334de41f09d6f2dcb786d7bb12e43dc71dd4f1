@@ -84,6 +84,24 @@
       "revId": "d6334de41f09d6f2dcb786d7bb12e43dc71dd4f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "33216d8c_97ada03b",
+        "filename": "src/plugins/wg/wg_timer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 264,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2020-08-19T13:03:46Z",
+      "side": 1,
+      "message": "I think correct. Given 10 ms granularity, max duration is about 10 min. 10 * 60 * 100 \u003d 60000. Therefore i used 2-wheel 512-slots.\nEach peer has 5 timers, therefore 16t. Am I thinking right?",
+      "parentUuid": "eb73c020_ac936852",
+      "revId": "d6334de41f09d6f2dcb786d7bb12e43dc71dd4f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
