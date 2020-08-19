@@ -16,6 +16,9 @@
 #ifndef included_acl_exported_types_h
 #define included_acl_exported_types_h
 
+#include <vppinfra/types.h>
+#include <vlib/buffer.h>
+
 /* 
  * The overlay struct matching an internal type. Contents/size may change. 
  * During the compile of the ACL plugin it is checked to have the same size
@@ -81,6 +84,8 @@ typedef int (*acl_plugin_match_5tuple_fn_t) (u32 lc_index,
 typedef int (*acl_plugin_wip_add_del_custom_access_io_policy_fn_t) (
   int is_add, u32 sw_if_index, int is_input, void *func);
 
+typedef void (*acl_plugin_wip_clear_sessions_fn_t) (u32 sw_if_index);
+
 #define foreach_acl_plugin_exported_method_name                               \
   _ (acl_exists)                                                              \
   _ (register_user_module)                                                    \
@@ -88,6 +93,7 @@ typedef int (*acl_plugin_wip_add_del_custom_access_io_policy_fn_t) (
   _ (put_lookup_context_index)                                                \
   _ (set_acl_vec_for_context)                                                 \
   _ (wip_add_del_custom_access_io_policy)                                     \
+  _ (wip_clear_sessions)                                                      \
   _ (fill_5tuple)                                                             \
   _ (match_5tuple)
 

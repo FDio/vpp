@@ -397,5 +397,5 @@ int acl_interface_inout_enable_disable (acl_main_t *am, u32 sw_if_index,
 int is_acl_enabled_on_sw_if_index (u32 sw_if_index, int is_input);
 void aclp_post_session_change_request(acl_main_t *am, u32 target_thread, u32 target_session, acl_fa_sess_req_t request_type);
 void aclp_swap_wip_and_pending_session_change_requests(acl_main_t *am, u32 target_thread);
-
+void acl_plugin_wip_clear_sessions (u32 sw_if_index);
 #endif
