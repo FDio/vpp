@@ -590,6 +590,9 @@ typedef struct snat_main_s
   u8 out2in_dpo;
   u8 endpoint_dependent;
 
+  /* Is translation memory size calculated or user defined */
+  u8 translation_memory_size_set;
+
   u32 translation_buckets;
   uword translation_memory_size;
   u32 max_translations_per_thread;
@@ -1267,6 +1270,14 @@ void nat_free_session_data (snat_main_t * sm, snat_session_t * s,
  */
 int nat44_set_session_limit (u32 session_limit, u32 vrf_id);
 
+/**
+ * @brief Update NAT44 session limit flushing all data (session limit, vrf id)
+ *
+ * @param session_limit Session limit
+ * @param vrf_id        VRF id
+ * @return 0 on success, non-zero value otherwise
+ */
+int nat44_update_session_limit (u32 session_limit, u32 vrf_id);
 /**
  * @brief Free NAT44 ED session data (lookup keys, external address port)
  *

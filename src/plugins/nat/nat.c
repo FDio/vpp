@@ -313,25 +313,6 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
 				      s->nat_proto);
 }
 
-int
-nat44_set_session_limit (u32 session_limit, u32 vrf_id)
-{
-  snat_main_t *sm = &snat_main;
-  u32 fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
-  u32 len = vec_len (sm->max_translations_per_fib);
-
-  if (len <= fib_index)
-    {
-      vec_validate (sm->max_translations_per_fib, fib_index + 1);
-
-      for (; len < vec_len (sm->max_translations_per_fib); len++)
-	sm->max_translations_per_fib[len] = sm->max_translations_per_thread;
-    }
-
-  sm->max_translations_per_fib[fib_index] = session_limit;
-  return 0;
-}
-
 void
 nat44_free_session_data (snat_main_t * sm, snat_session_t * s,
 			 u32 thread_index, u8 is_ha)
@@ -3909,6 +3890,62 @@ nat_calc_bihash_memory (u32 n_buckets, uword kv_size)
   return n_buckets * (8 + kv_size * 4);
 }
 
+u32
+nat44_get_max_session_limit ()
+{
+  snat_main_t *sm = &snat_main;
+  u32 max_limit = 0, len = 0;
+
+  for (; len < vec_len (sm->max_translations_per_fib); len++)
+    {
+      if (max_limit < sm->max_translations_per_fib[len])
+	max_limit = sm->max_translations_per_fib[len];
+    }
+  return max_limit;
+}
+
+int
+nat44_set_session_limit (u32 session_limit, u32 vrf_id)
+{
+  snat_main_t *sm = &snat_main;
+  u32 fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
+  u32 len = vec_len (sm->max_translations_per_fib);
+
+  if (len <= fib_index)
+    {
+      vec_validate (sm->max_translations_per_fib, fib_index + 1);
+
+      for (; len < vec_len (sm->max_translations_per_fib); len++)
+	sm->max_translations_per_fib[len] = sm->max_translations_per_thread;
+    }
+
+  sm->max_translations_per_fib[fib_index] = session_limit;
+  return 0;
+}
+
+int
+nat44_update_session_limit (u32 session_limit, u32 vrf_id)
+{
+  snat_main_t *sm = &snat_main;
+
+  if (nat44_set_session_limit (session_limit, vrf_id))
+    return 1;
+  sm->max_translations_per_thread = nat44_get_max_session_limit ();
+
+  sm->translation_buckets =
+    nat_calc_bihash_buckets (sm->max_translations_per_thread);
+
+  if (!sm->translation_memory_size_set)
+    {
+      sm->translation_memory_size =
+	nat_calc_bihash_memory (sm->translation_buckets,
+				sizeof (clib_bihash_16_8_t));
+    }
+
+  nat44_sessions_clear ();
+  return 0;
+}
+
 void
 nat44_db_init (snat_main_per_thread_data_t * tsm)
 {
@@ -4157,6 +4194,8 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
       // translation buckets 1024
       max_translations_per_thread = 10 * 1024;
     }
+  sm->translation_memory_size_set = translation_memory_size != 0;
+
   sm->max_translations_per_thread = max_translations_per_thread;
   sm->translation_buckets =
     nat_calc_bihash_buckets (sm->max_translations_per_thread);
