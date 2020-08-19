@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ee67fb53_1564bd7a",
+        "filename": "src/plugins/ikev2/ikev2_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-19T15:14:46Z",
+      "side": 1,
+      "message": "you should use format_get_indent() / format_white_space() instead of manual indentation",
+      "revId": "df27b1d8f5edbf1640c503d0e586e407aa8dbed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f2d47826_f0db2a10",
+        "filename": "src/plugins/ikev2/ikev2_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-19T15:14:46Z",
+      "side": 1,
+      "message": "Please get a line of input: this allows to work in scripts too.\n\nunformat_input_t _line_input, *line_input \u003d \u0026_line_input;\nif (!unformat_user (input, unformat_line_input, line_input))\n  return 0;\nwhile (unformat_check_input (line_input) !\u003d UNFORMAT_END_OF_INPUT)\n  {\n     ...",
+      "revId": "df27b1d8f5edbf1640c503d0e586e407aa8dbed7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
