@@ -618,6 +618,37 @@ done:
   return error;
 }
 
+static void
+nat44_show_lru_summary (vlib_main_t * vm, snat_main_per_thread_data_t * tsm,
+			u64 now, u64 sess_timeout_time)
+{
+  snat_main_t *sm = &snat_main;
+  dlist_elt_t *oldest_elt;
+  snat_session_t *s;
+  u32 oldest_index;
+
+#define _(n, d)                                                          \
+  oldest_index =                                                         \
+      clib_dlist_remove_head (tsm->lru_pool, tsm->n##_lru_head_index);   \
+  if (~0 != oldest_index)                                                \
+    {                                                                    \
+      oldest_elt = pool_elt_at_index (tsm->lru_pool, oldest_index);      \
+      s = pool_elt_at_index (tsm->sessions, oldest_elt->value);          \
+      sess_timeout_time =                                                \
+          s->last_heard + (f64)nat44_session_get_timeout (sm, s);        \
+      vlib_cli_output (vm, d " LRU min session timeout %llu (now %llu)", \
+                       sess_timeout_time, now);                          \
+      clib_dlist_addhead (tsm->lru_pool, tsm->n##_lru_head_index,        \
+                          oldest_index);                                 \
+    }
+  _(tcp_estab, "established tcp");
+  _(tcp_trans, "transitory tcp");
+  _(udp, "udp");
+  _(unk_proto, "unknown protocol");
+  _(icmp, "icmp");
+#undef _
+}
+
 static clib_error_t *
 nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			       vlib_cli_command_t * cmd)
@@ -628,11 +659,6 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (!sm->endpoint_dependent)
     return clib_error_return (0, SUPPORTED_ONLY_IN_ED_MODE_STR);
-
-  vlib_cli_output (vm, "max translations per thread: %u",
-		   sm->max_translations_per_thread);
-  vlib_cli_output (vm, "max translations per user: %u",
-		   sm->max_translations_per_user);
 
   u32 count = 0;
 
@@ -648,6 +674,12 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u32 transitory_wait_closed = 0;
   u32 transitory_closed = 0;
   u32 established = 0;
+
+  u32 fib;
+
+  for (fib = 0; fib < vec_len (sm->max_translations_per_fib); fib++)
+    vlib_cli_output (vm, "max translations per thread: %u fib %u",
+		     sm->max_translations_per_fib[fib], fib);
 
   if (sm->num_workers > 1)
     {
@@ -692,6 +724,7 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
                 break;
               }
           }));
+          nat44_show_lru_summary (vm, tsm, now, sess_timeout_time);
           count += pool_elts (tsm->sessions);
         }
       /* *INDENT-ON* */
@@ -739,32 +772,8 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
           }
       }));
       /* *INDENT-ON* */
+      nat44_show_lru_summary (vm, tsm, now, sess_timeout_time);
       count = pool_elts (tsm->sessions);
-      if (sm->endpoint_dependent)
-	{
-	  dlist_elt_t *oldest_elt;
-	  u32 oldest_index;
-#define _(n, d)                                                          \
-  oldest_index =                                                         \
-      clib_dlist_remove_head (tsm->lru_pool, tsm->n##_lru_head_index);   \
-  if (~0 != oldest_index)                                                \
-    {                                                                    \
-      oldest_elt = pool_elt_at_index (tsm->lru_pool, oldest_index);      \
-      s = pool_elt_at_index (tsm->sessions, oldest_elt->value);          \
-      sess_timeout_time =                                                \
-          s->last_heard + (f64)nat44_session_get_timeout (sm, s);        \
-      vlib_cli_output (vm, d " LRU min session timeout %llu (now %llu)", \
-                       sess_timeout_time, now);                          \
-      clib_dlist_addhead (tsm->lru_pool, tsm->n##_lru_head_index,        \
-                          oldest_index);                                 \
-    }
-	  _(tcp_estab, "established tcp");
-	  _(tcp_trans, "transitory tcp");
-	  _(udp, "udp");
-	  _(unk_proto, "unknown protocol");
-	  _(icmp, "icmp");
-#undef _
-	}
     }
 
   vlib_cli_output (vm, "total timed out sessions: %u", timed_out);
@@ -1561,7 +1570,7 @@ nat44_set_session_limit_command_fn (vlib_main_t * vm,
 
   if (!session_limit)
     error = clib_error_return (0, "missing value of session limit");
-  else if (nat44_set_session_limit (session_limit, vrf_id))
+  else if (nat44_update_session_limit (session_limit, vrf_id))
     error = clib_error_return (0, "nat44_set_session_limit failed");
 
 done:
