@@ -37,8 +37,7 @@ format_ip_neighbor_key (u8 * s, va_list * va)
 
   return (format (s, "[%U, %U]",
 		  format_vnet_sw_if_index_name, vnet_get_main (),
-		  key->ipnk_sw_if_index,
-		  format_ip46_address, &key->ipnk_ip, key->ipnk_type));
+		  key->ipnk_sw_if_index, format_ip_address, &key->ipnk_ip));
 }
 
 u8 *
@@ -62,7 +61,7 @@ format_ip_neighbor (u8 * s, va_list * va)
   return (format (s, "%=12U%=40U%=6U%=20U%U",
 		  format_vlib_time, vlib_get_main (),
 		  ipn->ipn_time_last_updated,
-		  format_ip46_address, &ipn->ipn_key->ipnk_ip, IP46_TYPE_ANY,
+		  format_ip_address, &ipn->ipn_key->ipnk_ip,
 		  format_ip_neighbor_flags, ipn->ipn_flags,
 		  format_mac_address_t, &ipn->ipn_mac,
 		  format_vnet_sw_if_index_name, vnet_get_main (),

@@ -285,6 +285,19 @@ ip_address_to_fib_prefix (const ip_address_t * addr, fib_prefix_t * prefix)
   prefix->___fp___pad = 0;
 }
 
+void
+ip_address_increment (ip_address_t * ip)
+{
+  ip46_address_increment ((ip_addr_version (ip) == AF_IP4 ?
+			   IP46_TYPE_IP4 : IP46_TYPE_IP6), &ip_addr_46 (ip));
+}
+
+void
+ip_address_reset (ip_address_t * ip)
+{
+  clib_memset (ip, 0, sizeof (*ip));
+}
+
 static void
 ip_prefix_normalize_ip4 (ip4_address_t * ip4, u8 preflen)
 {

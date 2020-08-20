@@ -955,7 +955,10 @@ format_ip6_forward_next_trace (u8 * s, va_list * args)
   ip6_forward_next_trace_t *t = va_arg (*args, ip6_forward_next_trace_t *);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "%U%U",
+  s = format (s, "%Ufib:%d adj:%d flow:%d",
+	      format_white_space, indent,
+	      t->fib_index, t->adj_index, t->flow_hash);
+  s = format (s, "\n%U%U",
 	      format_white_space, indent,
 	      format_ip6_header, t->packet_data, sizeof (t->packet_data));
   return s;

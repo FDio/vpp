@@ -189,12 +189,16 @@ always_inline u32
 arp_learn (u32 sw_if_index,
 	   const ethernet_arp_ip4_over_ethernet_address_t * addr)
 {
+  /* *INDENT-OFF* */
   ip_neighbor_learn_t l = {
-    .ip.ip4 = addr->ip4,
-    .type = IP46_TYPE_IP4,
+    .ip = {
+      .ip.ip4 = addr->ip4,
+      .version = AF_IP4,
+    },
     .mac = addr->mac,
     .sw_if_index = sw_if_index,
   };
+  /* *INDENT-ON* */
 
   ip_neighbor_learn_dp (&l);
 
@@ -912,7 +916,7 @@ ethernet_arp_init (vlib_main_t * vm)
     vec_add1 (im->enable_disable_interface_callbacks, cb);
   }
 
-  ip_neighbor_register (IP46_TYPE_IP4, &arp_vft);
+  ip_neighbor_register (AF_IP4, &arp_vft);
 
   return 0;
 }

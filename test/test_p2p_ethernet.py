@@ -190,6 +190,7 @@ class P2PEthernetIPV6(VppTestCase):
         """standard routing without p2p subinterfaces"""
         self.logger.info("FFP_TEST_START_0001")
 
+        self.pg0.config_ip6()
         route_8000 = VppIpRoute(self, "8000::", 64,
                                 [VppRoutePath(self.pg0.remote_ip6,
                                               self.pg0.sw_if_index)])
@@ -202,6 +203,7 @@ class P2PEthernetIPV6(VppTestCase):
                          Raw(b'\xa5' * 100))]
         self.send_packets(self.pg1, self.pg0)
 
+        self.pg0.unconfig_ip6()
         self.logger.info("FFP_TEST_FINISH_0001")
 
     def test_ip6_rx_p2p_subif(self):
@@ -273,8 +275,10 @@ class P2PEthernetIPV6(VppTestCase):
         """send packet via p2p subinterface"""
         self.logger.info("FFP_TEST_START_0005")
 
+        self.pg0.config_ip6()
+
         route_8000 = VppIpRoute(self, "8000::", 64,
-                                [VppRoutePath(self.pg0.remote_ip6,
+                                [VppRoutePath(self.pg0.remote_hosts[0].ip6,
                                               self.pg0.sw_if_index)])
         route_8000.add_vpp_config()
         route_8001 = VppIpRoute(self, "8001::", 64,
@@ -301,6 +305,7 @@ class P2PEthernetIPV6(VppTestCase):
         route_8001.remove_vpp_config()
         route_8002.remove_vpp_config()
 
+        self.pg0.unconfig_ip6()
         self.logger.info("FFP_TEST_FINISH_0005")
 
     def test_ip6_tx_p2p_subif_drop(self):
