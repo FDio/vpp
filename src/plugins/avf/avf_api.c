@@ -66,7 +66,6 @@ vl_api_avf_delete_t_handler (vl_api_avf_delete_t * mp)
   vnet_main_t *vnm = vnet_get_main ();
   avf_main_t *am = &avf_main;
   vl_api_avf_delete_reply_t *rmp;
-  avf_device_t *ad;
   vnet_hw_interface_t *hw;
   int rv = 0;
 
@@ -79,9 +78,8 @@ vl_api_avf_delete_t_handler (vl_api_avf_delete_t * mp)
       goto reply;
     }
 
-  ad = pool_elt_at_index (am->devices, hw->dev_instance);
-
-  avf_delete_if (vm, ad);
+  vlib_process_signal_event (vm, avf_process_node.index,
+			     AVF_PROCESS_EVENT_DELETE_IF, hw->dev_instance);
 
 reply:
   REPLY_MACRO (VL_API_AVF_DELETE_REPLY + am->msg_id_base);
@@ -93,6 +91,9 @@ static clib_error_t *
 avf_plugin_api_hookup (vlib_main_t * vm)
 {
   avf_main_t *avm = &avf_main;
+  api_main_t *am = vlibapi_get_main ();
+
+  am->is_mp_safe[VL_API_AVF_DELETE] = 1;
 
   /* ask for a correctly-sized block of API message decode slots */
   avm->msg_id_base = setup_message_id_table ();
