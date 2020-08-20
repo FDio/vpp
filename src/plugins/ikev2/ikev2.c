@@ -3686,6 +3686,16 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     /* Get own iface IP */
     if_add_index0 =
       lm->if_address_pool_index_by_sw_if_index[p->responder.sw_if_index];
+
+    if (pool_is_free_index (lm->if_address_pool, if_add_index0))
+      {
+	r =
+	  clib_error_return (0, "interface  %U hasn't any ip address",
+			     format_vnet_sw_if_index_name, vnet_get_main (),
+			     p->responder.sw_if_index);
+	return r;
+      }
+
     ip_interface_address_t *if_add =
       pool_elt_at_index (lm->if_address_pool, if_add_index0);
     ip4_address_t *if_ip = ip_interface_address_get_address (lm, if_add);
