@@ -3659,6 +3659,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
   clib_error_t *r;
   ip4_main_t *im = &ip4_main;
   ikev2_main_t *km = &ikev2_main;
+  int valid_ip = 0;
 
   p = ikev2_profile_index_by_name (name);
 
@@ -3681,14 +3682,23 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     u32 bi0 = 0;
     ip_lookup_main_t *lm = &im->lookup_main;
     u32 if_add_index0;
+    ip4_address_t no_ip = {
+      .as_u32 = 0,
+    };
+    ip4_address_t *if_ip = &no_ip;
     int len = sizeof (ike_header_t);
 
     /* Get own iface IP */
     if_add_index0 =
       lm->if_address_pool_index_by_sw_if_index[p->responder.sw_if_index];
-    ip_interface_address_t *if_add =
-      pool_elt_at_index (lm->if_address_pool, if_add_index0);
-    ip4_address_t *if_ip = ip_interface_address_get_address (lm, if_add);
+
+    if (!pool_is_free_index (lm->if_address_pool, if_add_index0))
+      {
+	valid_ip = 1;
+	ip_interface_address_t *if_add =
+	  pool_elt_at_index (lm->if_address_pool, if_add_index0);
+	if_ip = ip_interface_address_get_address (lm, if_add);
+      }
 
     bi0 = ikev2_get_new_ike_header_buff (vm, &ike0);
     if (!bi0)
@@ -3805,13 +3815,25 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     clib_memcpy_fast (sa0, &sa, sizeof (*sa0));
     hash_set (km->sa_by_ispi, sa0->ispi, sa0 - km->sais);
 
-    ikev2_send_ike (vm, if_ip, &p->responder.ip4, bi0, len,
-		    IKEV2_PORT, sa.dst_port, sa.sw_if_index);
+    if (valid_ip)
+      {
+	ikev2_send_ike (vm, if_ip, &p->responder.ip4, bi0, len,
+			IKEV2_PORT, sa.dst_port, sa.sw_if_index);
 
-    ikev2_elog_exchange ("ispi %lx rspi %lx IKEV2_EXCHANGE_SA_INIT sent to "
-			 "%d.%d.%d.%d", clib_host_to_net_u64 (sa0->ispi), 0,
-			 p->responder.ip4.as_u32);
+	ikev2_elog_exchange
+	  ("ispi %lx rspi %lx IKEV2_EXCHANGE_SA_INIT sent to " "%d.%d.%d.%d",
+	   clib_host_to_net_u64 (sa0->ispi), 0, p->responder.ip4.as_u32);
+      }
   }
+
+  if (!valid_ip)
+    {
+      r =
+	clib_error_return (0, "interface  %U hasn't any ip address",
+			   format_vnet_sw_if_index_name, vnet_get_main (),
+			   p->responder.sw_if_index);
+      return r;
+    }
 
   return 0;
 }
@@ -4331,6 +4353,25 @@ ikev2_mngr_process_responder_sas (ikev2_sa_t * sa)
   return 0;
 }
 
+static_always_inline int
+ikev2_is_time_retry_ip (ikev2_sa_t * sa)
+{
+  ikev2_main_t *km = &ikev2_main;
+  vlib_main_t *vm = km->vlib_main;
+
+  if (sa->liveness_retries >= km->liveness_max_retries)
+    return 1;
+
+  f64 now = vlib_time_now (vm);
+
+  if (sa->liveness_period_check < now)
+    {
+      sa->liveness_retries++;
+      sa->liveness_period_check = now + km->liveness_period;
+    }
+  return 0;
+}
+
 static uword
 ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		       vlib_frame_t * f)
@@ -4400,6 +4441,34 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	}
 	vec_free (to_be_deleted);
       }
+
+      ikev2_sa_t *sai;
+      /* *INDENT-OFF* */
+      pool_foreach (sai, km->sais,
+      ({
+        if(!sai->iaddr.as_u32 && sai->is_initiator &&
+            ikev2_is_time_retry_ip (sai))
+          {
+            p = pool_elt_at_index (km->profiles, sai->profile_index);
+
+            if (p)
+              {
+                ip_lookup_main_t *lm = &ip4_main.lookup_main;
+                u32 if_add_index0 =
+                  lm->if_address_pool_index_by_sw_if_index[p->responder.sw_if_index];
+
+                if (!pool_is_free_index (lm->if_address_pool, if_add_index0))
+                  {
+                    ip_interface_address_t *if_add =
+                      pool_elt_at_index (lm->if_address_pool, if_add_index0);
+                    ip4_address_t *if_ip =
+                      ip_interface_address_get_address (lm, if_add);
+                    sai->iaddr.as_u32 = if_ip->as_u32;
+                  }
+              }
+          }
+      }));
+      /* *INDENT-ON* */
 
       /* process ipsec sas */
       ipsec_sa_t *sa;
