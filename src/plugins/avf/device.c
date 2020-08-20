@@ -35,6 +35,7 @@
 #define PCI_DEVICE_ID_INTEL_X722_VF		0x37cd
 
 avf_main_t avf_main;
+void avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier);
 
 static pci_device_id_t avf_pci_device_ids[] = {
   {.vendor_id = PCI_VENDOR_ID_INTEL,.device_id = PCI_DEVICE_ID_INTEL_AVF},
@@ -1202,7 +1203,6 @@ avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	vlib_process_wait_for_event (vm);
 
       event_type = vlib_process_get_events (vm, &event_data);
-      vec_reset_length (event_data);
       irq = 0;
 
       switch (event_type)
@@ -1213,15 +1213,26 @@ avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	case AVF_PROCESS_EVENT_START:
 	  enabled = 1;
 	  break;
-	case AVF_PROCESS_EVENT_STOP:
-	  enabled = 0;
-	  continue;
+	case AVF_PROCESS_EVENT_DELETE_IF:
+	  for (int i = 0; i < vec_len (event_data); i++)
+	    {
+	      ad = pool_elt_at_index (am->devices, event_data[i]);
+	      avf_delete_if (vm, ad, /* with_barrier */ 1);
+	    }
+	  if (pool_elts (am->devices) < 1)
+	    enabled = 0;
+	  break;
 	case AVF_PROCESS_EVENT_AQ_INT:
 	  irq = 1;
 	  break;
 	default:
 	  ASSERT (0);
 	}
+
+      vec_reset_length (event_data);
+
+      if (enabled == 0)
+	continue;
 
       /* *INDENT-OFF* */
       pool_foreach (ad, am->devices,
@@ -1235,7 +1246,7 @@ avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (avf_process_node, static)  = {
+VLIB_REGISTER_NODE (avf_process_node)  = {
   .function = avf_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "avf-process",
@@ -1316,17 +1327,23 @@ avf_irq_n_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 }
 
 void
-avf_delete_if (vlib_main_t * vm, avf_device_t * ad)
+avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier)
 {
   vnet_main_t *vnm = vnet_get_main ();
   avf_main_t *am = &avf_main;
   int i;
 
+  ad->flags &= ~AVF_DEVICE_F_ADMIN_UP;
+
   if (ad->hw_if_index)
     {
+      if (with_barrier)
+	vlib_worker_thread_barrier_sync (vm);
       vnet_hw_interface_set_flags (vnm, ad->hw_if_index, 0);
       vnet_hw_interface_unassign_rx_thread (vnm, ad->hw_if_index, 0);
       ethernet_delete_interface (vnm, ad->hw_if_index);
+      if (with_barrier)
+	vlib_worker_thread_barrier_release (vm);
     }
 
   vlib_pci_device_close (vm, ad->pci_dev_handle);
@@ -1530,7 +1547,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   return;
 
 error:
-  avf_delete_if (vm, ad);
+  avf_delete_if (vm, ad, /* with_barrier */ 0);
   args->rv = VNET_API_ERROR_INVALID_INTERFACE;
   args->error = clib_error_return (error, "pci-addr %U",
 				   format_vlib_pci_addr, &args->addr);

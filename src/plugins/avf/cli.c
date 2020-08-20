@@ -84,8 +84,6 @@ avf_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
   vnet_hw_interface_t *hw;
-  avf_main_t *am = &avf_main;
-  avf_device_t *ad;
   vnet_main_t *vnm = vnet_get_main ();
 
   /* Get a line of input. */
@@ -113,9 +111,8 @@ avf_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (hw == NULL || avf_device_class.index != hw->dev_class_index)
     return clib_error_return (0, "not an AVF interface");
 
-  ad = pool_elt_at_index (am->devices, hw->dev_instance);
-
-  avf_delete_if (vm, ad);
+  vlib_process_signal_event (vm, avf_process_node.index,
+			     AVF_PROCESS_EVENT_DELETE_IF, hw->dev_instance);
 
   return 0;
 }
@@ -126,6 +123,7 @@ VLIB_CLI_COMMAND (avf_delete_command, static) = {
   .short_help = "delete interface avf "
     "{<interface> | sw_if_index <sw_idx>}",
   .function = avf_delete_command_fn,
+  .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
