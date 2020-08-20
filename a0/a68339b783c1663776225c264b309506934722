@@ -1,0 +1,7 @@
+Code-Review+2: Benoît Ganne <bganne@cisco.com>
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Submitted-by: Benoît Ganne <bganne@cisco.com>
+Submitted-at: Thu, 20 Aug 2020 09:33:23 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/27649
+Project: vpp
+Branch: refs/heads/master
