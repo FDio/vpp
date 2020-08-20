@@ -591,6 +591,8 @@ static void *vl_api_tap_create_v2_t_print
     s = format (s, "tun ");
   if ((mp->tap_flags) & 32)
     s = format (s, "gro-coalesce-enabled ");
+  if ((mp->tap_flags) & 64)
+    s = format (s, "packed ");
   FINISH;
 }
 
