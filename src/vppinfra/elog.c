@@ -427,6 +427,15 @@ format_elog_track (u8 * s, va_list * args)
   return s;
 }
 
+char *
+format_one_elog_event (void *em_arg, void *ep_arg)
+{
+  elog_main_t *em = (elog_main_t *) em_arg;
+  elog_event_t *ep = (elog_event_t *) ep_arg;
+
+  return (char *) format (0, "%U", format_elog_event, em, ep);
+}
+
 void
 elog_time_now (elog_time_stamp_t * et)
 {
