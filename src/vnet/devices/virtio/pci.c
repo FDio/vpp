@@ -727,8 +727,13 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif, void **bar)
 			"[%4x] cfg type: %u, bar: %u, offset: %04x, len: %u",
 			pos, cap.cfg_type, cap.bar, cap.offset, cap.length);
 
-      vif->bar = bar[cap.bar];
-      vif->bar_id = cap.bar;
+      if (cap.bar >= 1 && cap.bar <= 5)
+	{
+	  vif->bar = bar[cap.bar];
+	  vif->bar_id = cap.bar;
+	}
+      else
+	return clib_error_return (error, "invalid bar %u", cap.bar);
 
       switch (cap.cfg_type)
 	{
