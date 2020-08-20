@@ -3259,7 +3259,7 @@ ikev2_unregister_udp_port (ikev2_profile_t * p)
 static void
 ikev2_initiate_delete_ike_sa_internal (vlib_main_t * vm,
 				       ikev2_main_per_thread_data_t * tkm,
-				       ikev2_sa_t * sa)
+				       ikev2_sa_t * sa, u8 send_notification)
 {
   ikev2_main_t *km = &ikev2_main;
   ip4_address_t *src, *dst;
@@ -3269,36 +3269,43 @@ ikev2_initiate_delete_ike_sa_internal (vlib_main_t * vm,
   u32 bi0 = 0;
   int len;
 
-  bi0 = ikev2_get_new_ike_header_buff (vm, &ike0);
-  if (!bi0)
+  if (send_notification)
     {
-      ikev2_log_error ("buffer alloc failure");
-      return;
-    }
+      bi0 = ikev2_get_new_ike_header_buff (vm, &ike0);
+      if (!bi0)
+	{
+	  ikev2_log_error ("buffer alloc failure");
+	  return;
+	}
 
-  ike0->exchange = IKEV2_EXCHANGE_INFORMATIONAL;
-  ike0->ispi = clib_host_to_net_u64 (sa->ispi);
-  ike0->rspi = clib_host_to_net_u64 (sa->rspi);
+      ike0->exchange = IKEV2_EXCHANGE_INFORMATIONAL;
+      ike0->ispi = clib_host_to_net_u64 (sa->ispi);
+      ike0->rspi = clib_host_to_net_u64 (sa->rspi);
+    }
   vec_resize (sa->del, 1);
   sa->del->protocol_id = IKEV2_PROTOCOL_IKE;
   sa->del->spi = sa->ispi;
-  ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id + 1);
-  sa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
-  len = ikev2_generate_message (sa, ike0, 0, 0);
 
-  if (sa->is_initiator)
+  if (send_notification)
     {
-      src = &sa->iaddr;
-      dst = &sa->raddr;
-    }
-  else
-    {
-      dst = &sa->iaddr;
-      src = &sa->raddr;
-    }
+      ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id + 1);
+      sa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
+      len = ikev2_generate_message (sa, ike0, 0, 0);
 
-  ikev2_send_ike (vm, src, dst, bi0, len,
-		  ikev2_get_port (sa), sa->dst_port, 0);
+      if (sa->is_initiator)
+	{
+	  src = &sa->iaddr;
+	  dst = &sa->raddr;
+	}
+      else
+	{
+	  dst = &sa->iaddr;
+	  src = &sa->raddr;
+	}
+
+      ikev2_send_ike (vm, src, dst, bi0, len,
+		      ikev2_get_port (sa), sa->dst_port, 0);
+    }
 
   /* delete local SA */
   ikev2_child_sa_t *c;
@@ -3336,7 +3343,7 @@ ikev2_cleanup_profile_sessions (ikev2_main_t * km, ikev2_profile_t * p)
     vec_foreach (sai, del_sai)
     {
       sa = pool_elt_at_index (tkm->sas, sai[0]);
-      ikev2_initiate_delete_ike_sa_internal (km->vlib_main, tkm, sa);
+      ikev2_initiate_delete_ike_sa_internal (km->vlib_main, tkm, sa, 1);
     }
 
     vec_reset_length (del_sai);
@@ -3657,8 +3664,8 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
 {
   ikev2_profile_t *p;
   clib_error_t *r;
-  ip4_main_t *im = &ip4_main;
   ikev2_main_t *km = &ikev2_main;
+  int valid_ip = 1;
 
   p = ikev2_profile_index_by_name (name);
 
@@ -3678,17 +3685,24 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
   /* Create the Initiator Request */
   {
     ike_header_t *ike0;
+    ip4_address_t *if_ip;
     u32 bi0 = 0;
-    ip_lookup_main_t *lm = &im->lookup_main;
-    u32 if_add_index0;
+    ip4_address_t no_ip = {
+      .as_u32 = 0,
+    };
+
     int len = sizeof (ike_header_t);
 
     /* Get own iface IP */
-    if_add_index0 =
-      lm->if_address_pool_index_by_sw_if_index[p->responder.sw_if_index];
-    ip_interface_address_t *if_add =
-      pool_elt_at_index (lm->if_address_pool, if_add_index0);
-    ip4_address_t *if_ip = ip_interface_address_get_address (lm, if_add);
+
+    if_ip =
+      ip4_interface_first_address (&ip4_main, p->responder.sw_if_index, 0);
+
+    if (!if_ip)
+      {
+	valid_ip = 0;
+	if_ip = &no_ip;
+      }
 
     bi0 = ikev2_get_new_ike_header_buff (vm, &ike0);
     if (!bi0)
@@ -3805,13 +3819,25 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     clib_memcpy_fast (sa0, &sa, sizeof (*sa0));
     hash_set (km->sa_by_ispi, sa0->ispi, sa0 - km->sais);
 
-    ikev2_send_ike (vm, if_ip, &p->responder.ip4, bi0, len,
-		    IKEV2_PORT, sa.dst_port, sa.sw_if_index);
+    if (valid_ip)
+      {
+	ikev2_send_ike (vm, if_ip, &p->responder.ip4, bi0, len,
+			IKEV2_PORT, sa.dst_port, sa.sw_if_index);
 
-    ikev2_elog_exchange ("ispi %lx rspi %lx IKEV2_EXCHANGE_SA_INIT sent to "
-			 "%d.%d.%d.%d", clib_host_to_net_u64 (sa0->ispi), 0,
-			 p->responder.ip4.as_u32);
+	ikev2_elog_exchange
+	  ("ispi %lx rspi %lx IKEV2_EXCHANGE_SA_INIT sent to " "%d.%d.%d.%d",
+	   clib_host_to_net_u64 (sa0->ispi), 0, p->responder.ip4.as_u32);
+      }
   }
+
+  if (!valid_ip)
+    {
+      r =
+	clib_error_return (0, "interface  %U hasn't any ip address",
+			   format_vnet_sw_if_index_name, vnet_get_main (),
+			   p->responder.sw_if_index);
+      return r;
+    }
 
   return 0;
 }
@@ -3925,7 +3951,7 @@ ikev2_initiate_delete_ike_sa (vlib_main_t * vm, u64 ispi)
       return r;
     }
 
-  ikev2_initiate_delete_ike_sa_internal (vm, ftkm, fsa);
+  ikev2_initiate_delete_ike_sa_internal (vm, ftkm, fsa, 1);
   return 0;
 }
 
@@ -4008,6 +4034,79 @@ ikev2_initiate_rekey_child_sa (vlib_main_t * vm, u32 ispi)
 
   return 0;
 }
+
+static int
+ikev2_sa_sw_if_match (ikev2_sa_t * sa, u32 sw_if_index)
+{
+  if (sa->sw_if_index == sw_if_index && sa->is_initiator)
+    return 1;
+  else
+    return 0;
+}
+
+void
+ikev2_sa_del (ikev2_profile_t * p, u32 sw_if_index)
+{
+  ikev2_sa_t *sa, **sap;
+  u64 *ispi_vec = 0;
+  ikev2_sa_t **sa_vec = 0;
+  u64 *ispi;
+  ikev2_main_t *km = &ikev2_main;
+  ikev2_main_per_thread_data_t *tkm;
+  p->responder.sw_if_index = ~0;
+
+  vec_foreach (tkm, km->per_thread_data)
+  {
+  /* *INDENT-OFF* */
+    pool_foreach (sa, tkm->sas, ({
+      if(ikev2_sa_sw_if_match (sa, sw_if_index))
+        vec_add1 (sa_vec, sa);
+    }));
+  /* *INDENT-ON* */
+
+    vec_foreach (sap, sa_vec)
+    {
+      ikev2_initiate_delete_ike_sa_internal (km->vlib_main, tkm, *sap, 0);
+    }
+    vec_reset_length (sa_vec);
+  }
+  vec_free (sa_vec);
+
+  /* *INDENT-OFF* */
+  pool_foreach (sa, km->sais, ({
+    if(ikev2_sa_sw_if_match (sa, sw_if_index))
+      vec_add1 (ispi_vec, sa->ispi);
+  }));
+  /* *INDENT-ON* */
+
+  vec_foreach (ispi, ispi_vec)
+  {
+    ikev2_del_sa_init_from_main (ispi);
+  }
+
+  vec_free (ispi_vec);
+}
+
+static clib_error_t *
+ikev2_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
+{
+  ikev2_main_t *km = &ikev2_main;
+  ikev2_profile_t *p;
+
+  if (is_add)
+    return 0;
+
+  /* *INDENT-OFF* */
+  pool_foreach (p, km->profiles, ({
+    if(p->responder.sw_if_index == sw_if_index)
+      ikev2_sa_del(p, sw_if_index);
+  }));
+  /* *INDENT-ON* */
+
+  return 0;
+}
+
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ikev2_sw_interface_add_del);
 
 clib_error_t *
 ikev2_init (vlib_main_t * vm)
@@ -4241,11 +4340,16 @@ ikev2_process_pending_sa_init (ikev2_main_t * km)
   u32 sai;
   u64 ispi;
   ikev2_sa_t *sa;
+  ip4_address_t *if_ip;
 
   /* *INDENT-OFF* */
   hash_foreach (ispi, sai, km->sa_by_ispi,
   ({
+    if (!km->sais || pool_is_free_index (km->sais, sai))
+      continue;
+
     sa = pool_elt_at_index (km->sais, sai);
+
     if (sa->init_response_received)
       continue;
 
@@ -4260,6 +4364,22 @@ ikev2_process_pending_sa_init (ikev2_main_t * km)
     ikev2_send_ike (km->vlib_main, &sa->iaddr, &sa->raddr, bi0,
         vec_len (sa->last_sa_init_req_packet_data),
         ikev2_get_port (sa), IKEV2_PORT, sa->sw_if_index);
+
+    if(sa->iaddr.as_u32 || !sa->is_initiator)
+        continue;
+
+    ikev2_profile_t *p = pool_elt_at_index (km->profiles, sa->profile_index);
+    if (p)
+      {
+        if_ip = ip4_interface_first_address (&ip4_main,
+            p->responder.sw_if_index, 0);
+
+        if (if_ip)
+          {
+            sa->iaddr.as_u32 = if_ip->as_u32;
+            ikev2_generate_sa_init_data (sa);
+          }
+      }
   }));
   /* *INDENT-ON* */
 }
