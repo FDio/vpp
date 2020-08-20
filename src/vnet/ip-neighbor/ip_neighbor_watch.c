@@ -114,15 +114,13 @@ ip_neighbor_watch_cmp (const ip_neighbor_watcher_t * w1,
 }
 
 void
-ip_neighbor_watch (const ip46_address_t * ip,
-		   ip46_type_t type,
+ip_neighbor_watch (const ip_address_t * ip,
 		   u32 sw_if_index,
                    const ip_neighbor_watcher_t * watch)
 {
   ip_neighbor_key_t key = {
     .ipnk_ip = *ip,
     .ipnk_sw_if_index = (sw_if_index == 0 ? ~0 : sw_if_index),
-    .ipnk_type = type,
   };
   ip_neighbor_watcher_t *ipws = NULL;
   uword *p;
@@ -145,15 +143,13 @@ ip_neighbor_watch (const ip46_address_t * ip,
 }
 
 void
-ip_neighbor_unwatch (const ip46_address_t * ip,
-		     ip46_type_t type,
+ip_neighbor_unwatch (const ip_address_t * ip,
 		     u32 sw_if_index,
                      const ip_neighbor_watcher_t * watch)
 {
   ip_neighbor_key_t key = {
     .ipnk_ip = *ip,
     .ipnk_sw_if_index = (sw_if_index == 0 ? ~0 : sw_if_index),
-    .ipnk_type = type,
   };
   ip_neighbor_watcher_t *ipws = NULL;
   uword *p;
@@ -211,7 +207,7 @@ ip_neighbor_publish (index_t ipni)
     ip_neighbor_signal ((ip_neighbor_watcher_t*) p[0], ipni);
   }
 
-  ip46_address_reset (&key.ipnk_ip);
+  ip_address_reset (&key.ipnk_ip);
   p = mhash_get (&ipnw_db.ipnwdb_hash, &key);
 
   if (p) {

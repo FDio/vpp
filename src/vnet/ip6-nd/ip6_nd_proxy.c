@@ -52,7 +52,11 @@ ip6_nd_proxy_add_del (u32 sw_if_index, const ip6_address_t * addr, u8 is_del)
 				   sw_if_index,
 				   ~0, 1, FIB_ROUTE_PATH_FLAG_NONE);
       /* flush the ND cache of this address if it's there */
-      ip_neighbor_del (&nh, IP46_TYPE_IP6, sw_if_index);
+      ip_address_t ip = {
+	.ip = nh,
+	.version = AF_IP6,
+      };
+      ip_neighbor_del (&ip, sw_if_index);
     }
   else
     {

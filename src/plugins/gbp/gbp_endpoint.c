@@ -30,6 +30,8 @@
 #include <vnet/l2/l2_fib.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/ip-neighbor/ip_neighbor.h>
+#include <vnet/ip-neighbor/ip4_neighbor.h>
+#include <vnet/ip-neighbor/ip6_neighbor.h>
 #include <vnet/fib/fib_walk.h>
 #include <vnet/vxlan-gbp/vxlan_gbp.h>
 
@@ -768,11 +770,16 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 	  {
 	    gbp_endpoint_add_itf (gbp_itf_get_sw_if_index (gef->gef_itf),
 				  gei);
-	    ip_neighbor_advertise (vlib_get_main (),
-				   (FIB_PROTOCOL_IP4 == pfx->fp_proto ?
-				    IP46_TYPE_IP4 :
-				    IP46_TYPE_IP6),
-				   &pfx->fp_addr, gg->gg_uplink_sw_if_index);
+	    if (FIB_PROTOCOL_IP4 == pfx->fp_proto)
+	      ip4_neighbor_advertise (vlib_get_main (),
+				      vnet_get_main (),
+				      gg->gg_uplink_sw_if_index,
+				      &pfx->fp_addr.ip4);
+	    else
+	      ip6_neighbor_advertise (vlib_get_main (),
+				      vnet_get_main (),
+				      gg->gg_uplink_sw_if_index,
+				      &pfx->fp_addr.ip6);
 	  }
       }
   }

@@ -368,11 +368,15 @@ icmp6_router_solicitation (vlib_main_t * vm,
 	  if (PREDICT_TRUE (error0 == ICMP6_ERROR_NONE && o0 != 0 &&
 			    !is_unspecified && !is_link_local))
 	    {
+              /* *INDENT-OFF* */
 	      ip_neighbor_learn_t learn = {
-		.type = IP46_TYPE_IP6,
 		.sw_if_index = sw_if_index0,
-		.ip.ip6 = ip0->src_address,
+		.ip = {
+                  .ip.ip6 = ip0->src_address,
+                  .version = AF_IP6,
+                },
 	      };
+              /* *INDENT-ON* */
 	      memcpy (&learn.mac, o0->ethernet_address, sizeof (learn.mac));
 	      ip_neighbor_learn_dp (&learn);
 	    }
