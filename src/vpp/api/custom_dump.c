@@ -579,17 +579,17 @@ static void *vl_api_tap_create_v2_t_print
     s = format (s, "rx-ring-size %u ", (mp->rx_ring_sz));
   if (mp->host_mtu_set)
     s = format (s, "host-mtu-size %u ", (mp->host_mtu_size));
-  if ((mp->tap_flags) & 0x1)
+  if ((mp->tap_flags) & 1)
     s = format (s, "gso-enabled ");
-  if ((mp->tap_flags) & 0x2)
+  if ((mp->tap_flags) & 2)
     s = format (s, "csum-offload-enabled ");
-  if ((mp->tap_flags) & 0x4)
+  if ((mp->tap_flags) & 4)
     s = format (s, "persist ");
-  if ((mp->tap_flags) & 0x8)
+  if ((mp->tap_flags) & 8)
     s = format (s, "attach ");
-  if ((mp->tap_flags) & 0x16)
+  if ((mp->tap_flags) & 16)
     s = format (s, "tun ");
-  if ((mp->tap_flags) & 0x32)
+  if ((mp->tap_flags) & 32)
     s = format (s, "gro-coalesce-enabled ");
   FINISH;
 }
