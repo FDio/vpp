@@ -113,8 +113,10 @@ virtio_pci_legacy_set_guest_features (vlib_main_t * vm, virtio_if_t * vif,
       clib_warning ("only 32 bit features are allowed for legacy virtio!");
     }
   u32 features = 0;
+  u32 gf = (u32) guest_features;
+
   vlib_pci_write_io_u32 (vm, vif->pci_dev_handle, VIRTIO_PCI_GUEST_FEATURES,
-			 (u32 *) & guest_features);
+			 &gf);
   vlib_pci_read_io_u32 (vm, vif->pci_dev_handle, VIRTIO_PCI_GUEST_FEATURES,
 			&features);
   if (features != (u32) guest_features)
@@ -178,14 +180,13 @@ virtio_pci_legacy_setup_queue (vlib_main_t * vm, virtio_if_t * vif,
 			       u16 queue_id, void *p)
 {
   u64 addr = vlib_physmem_get_pa (vm, p) >> VIRTIO_PCI_QUEUE_ADDR_SHIFT;
-  u32 addr2 = 0;
+  u32 addr2 = 0, a = (u32) addr;
   vlib_pci_write_io_u16 (vm, vif->pci_dev_handle, VIRTIO_PCI_QUEUE_SEL,
 			 &queue_id);
-  vlib_pci_write_io_u32 (vm, vif->pci_dev_handle, VIRTIO_PCI_QUEUE_PFN,
-			 (u32 *) & addr);
+  vlib_pci_write_io_u32 (vm, vif->pci_dev_handle, VIRTIO_PCI_QUEUE_PFN, &a);
   vlib_pci_read_io_u32 (vm, vif->pci_dev_handle, VIRTIO_PCI_QUEUE_PFN,
 			&addr2);
-  if ((u32) addr == addr2)
+  if (addr == addr2)
     return 0;
 
   clib_warning ("legacy queue setup failed!");
