@@ -113,8 +113,10 @@ virtio_pci_legacy_set_guest_features (vlib_main_t * vm, virtio_if_t * vif,
       clib_warning ("only 32 bit features are allowed for legacy virtio!");
     }
   u32 features = 0;
+  u32 gf = (u32) guest_features;
+
   vlib_pci_write_io_u32 (vm, vif->pci_dev_handle, VIRTIO_PCI_GUEST_FEATURES,
-			 (u32 *) & guest_features);
+			 &gf);
   vlib_pci_read_io_u32 (vm, vif->pci_dev_handle, VIRTIO_PCI_GUEST_FEATURES,
 			&features);
   if (features != (u32) guest_features)
