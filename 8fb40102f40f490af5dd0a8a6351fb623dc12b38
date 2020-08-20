@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "90c88c33_bd449966",
+        "filename": "src/vpp/api/custom_dump.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 582,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-20T14:08:03Z",
+      "side": 1,
+      "message": "why not use TAP_FLAG_GSO, TAP_FLAG_GRO_COALESCE etc instead of numerical value?",
+      "revId": "8fb40102f40f490af5dd0a8a6351fb623dc12b38",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
