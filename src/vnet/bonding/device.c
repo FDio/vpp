@@ -25,6 +25,8 @@
 #include <vppinfra/lb_hash_hash.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip-neighbor/ip_neighbor.h>
+#include <vnet/ip-neighbor/ip4_neighbor.h>
+#include <vnet/ip-neighbor/ip6_neighbor.h>
 
 #define foreach_bond_tx_error     \
   _(NONE, "no error")             \
@@ -798,7 +800,8 @@ bond_active_interface_switch_cb (vnet_main_t * vnm, u32 sw_if_index,
 {
   bond_main_t *bm = &bond_main;
 
-  ip_neighbor_advertise (bm->vlib_main, IP46_TYPE_BOTH, NULL, sw_if_index);
+  ip4_neighbor_advertise (bm->vlib_main, bm->vnet_main, sw_if_index, NULL);
+  ip6_neighbor_advertise (bm->vlib_main, bm->vnet_main, sw_if_index, NULL);
 
   return (WALK_CONTINUE);
 }

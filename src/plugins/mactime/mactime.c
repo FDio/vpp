@@ -561,7 +561,7 @@ show_mactime_command_fn (vlib_main_t * vm,
 
   vec_reset_length (mm->arp_cache_copy);
   /* Walk all ip4 neighbours on all interfaces */
-  ip_neighbor_walk (IP46_TYPE_IP4, ~0, mactime_ip_neighbor_copy, mm);
+  ip_neighbor_walk (AF_IP4, ~0, mactime_ip_neighbor_copy, mm);
 
   now = clib_timebase_now (&mm->timebase);
 

@@ -18,7 +18,7 @@
 #ifndef __INCLUDE_IP_NEIGHBOR_TYPES_H__
 #define __INCLUDE_IP_NEIGHBOR_TYPES_H__
 
-#include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip_types.h>
 #include <vnet/ethernet/mac_address.h>
 #include <vnet/fib/fib_types.h>
 
@@ -62,10 +62,10 @@ extern u8 *format_ip_neighbor_watcher (u8 * s, va_list * args);
 
 typedef struct ip_neighbor_key_t_
 {
-  ip46_address_t ipnk_ip;
-  ip46_type_t ipnk_type;
+  ip_address_t ipnk_ip;
+  u8 __pad[3];
   u32 ipnk_sw_if_index;
-} ip_neighbor_key_t;
+} __clib_packed ip_neighbor_key_t;
 
 /**
  * A representation of an IP neighbour/peer
@@ -110,8 +110,7 @@ extern ip_neighbor_t *ip_neighbor_get (index_t ipni);
 
 typedef struct ip_neighbor_learn_t_
 {
-  ip46_address_t ip;
-  ip46_type_t type;
+  ip_address_t ip;
   mac_address_t mac;
   u32 sw_if_index;
 } ip_neighbor_learn_t;

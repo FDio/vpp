@@ -20,12 +20,10 @@
 
 #include <vnet/ip-neighbor/ip_neighbor_types.h>
 
-extern void ip_neighbor_watch (const ip46_address_t * ip,
-			       ip46_type_t type,
+extern void ip_neighbor_watch (const ip_address_t * ip,
 			       u32 sw_if_index,
 			       const ip_neighbor_watcher_t * watch);
-extern void ip_neighbor_unwatch (const ip46_address_t * ip,
-				 ip46_type_t type,
+extern void ip_neighbor_unwatch (const ip_address_t * ip,
 				 u32 sw_if_index,
 				 const ip_neighbor_watcher_t * watch);
 

@@ -204,6 +204,8 @@ class ARPTestCase(VppTestCase):
         dyn_arp.add_vpp_config()
         self.assertTrue(dyn_arp.query_vpp_config())
 
+        self.logger.info(self.vapi.cli("show ip neighbor-watcher"))
+
         # this matches all of the listnerers
         es = [self.vapi.wait_for_event(1, "ip_neighbor_event")
               for i in range(3)]
