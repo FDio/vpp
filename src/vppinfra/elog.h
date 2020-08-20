@@ -562,6 +562,7 @@ elog_read_file (elog_main_t * em, char *clib_file)
 }
 
 clib_error_t *elog_read_file_not_inline (elog_main_t * em, char *clib_file);
+char *format_one_elog_event (void *em_arg, void *ep_arg);
 
 #endif /* CLIB_UNIX */
 
