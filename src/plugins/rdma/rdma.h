@@ -43,6 +43,9 @@ enum
 #define MLX5_ETH_L2_INLINE_HEADER_SIZE  18
 #endif
 
+#define RDMA_DEVICE_FROM_RXQ(rxq) ((rdma_device_t *) (rxq)->cq->cq_context)
+#define RDMA_RXQ_FROM_CLIB_FILE_PRIVATE(f) uword_to_pointer((f)->private_data, rdma_rxq_t *)
+#define RDMA_RXQ_TO_CLIB_FILE_PRIVATE(r) pointer_to_uword((r))
 typedef struct
 {
   CLIB_ALIGN_MARK (align0, MLX5_SEND_WQE_BB);
@@ -87,6 +90,7 @@ typedef struct
   u32 cqn;
   u32 wqe_cnt;
   u32 wq_stride;
+  u32 comp_event_clib_file_index;
 } rdma_rxq_t;
 
 typedef struct
