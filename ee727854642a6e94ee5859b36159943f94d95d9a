@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dc81ae04_54f3b081",
+        "filename": "src/vnet/devices/virtio/virtio_pci_legacy.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-21T13:20:17Z",
+      "side": 1,
+      "message": "I think we should not cast addr to u32 here. The test should be:\nif (addr \u003d\u003d addr2)\nThat way, if we lost high bits because of the cast, we can detect and report an error. Thoughts?",
+      "revId": "ee727854642a6e94ee5859b36159943f94d95d9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
