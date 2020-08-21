@@ -43,6 +43,8 @@ enum
 #define MLX5_ETH_L2_INLINE_HEADER_SIZE  18
 #endif
 
+#define RDMA_INT_REARM_ON_WORKER
+
 typedef struct
 {
   CLIB_ALIGN_MARK (align0, MLX5_SEND_WQE_BB);
@@ -84,9 +86,12 @@ typedef struct
   mlx5dv_rwq_t *wqes;
   volatile u32 *wq_db;
   volatile u32 *cq_db;
+  volatile u64 *cq_db_uar;
   u32 cqn;
   u32 wqe_cnt;
   u32 wq_stride;
+  u32 comp_event_clib_file_index;
+  u8 cmd_sn;
 } rdma_rxq_t;
 
 typedef struct
@@ -256,6 +261,51 @@ typedef enum
 #undef _
     RDMA_TX_N_ERROR,
 } rdma_tx_func_error_t;
+
+always_inline void
+rdma_rxq_arm_notifications_ibv (rdma_device_t * dev, u16 qid)
+{
+  rdma_rxq_t *rxq = vec_elt_at_index (dev->rxqs, qid);
+#ifndef RDMA_INT_REARM_ON_WORKER
+  vlib_main_t *vm = vlib_get_main ();
+#endif
+#ifndef RDMA_INT_REARM_ON_WORKER
+  vlib_worker_thread_barrier_sync (vm);
+#endif
+  ibv_req_notify_cq (rxq->cq, 0);
+#ifndef RDMA_INT_REARM_ON_WORKER
+  vlib_worker_thread_barrier_release (vm);
+#endif
+}
+
+always_inline void
+rdma_rxq_arm_notifications_dv (rdma_device_t * dev, u16 qid)
+{
+#ifndef RDMA_INT_REARM_ON_WORKER
+  vlib_main_t *vm = vlib_get_main ();
+#endif
+  rdma_rxq_t *rxq = vec_elt_at_index (dev->rxqs, qid);
+  volatile u32 *arm_cq_db_rec = rxq->cq_db + 1;
+  volatile u64 *cq_db_uar = rxq->cq_db_uar;
+  u64 val_reg;
+#ifndef RDMA_INT_REARM_ON_WORKER
+  vlib_worker_thread_barrier_sync (vm);
+#endif
+  u32 ci = rxq->cq_ci & 0xffffff;
+  u16 sn = (rxq->cmd_sn++) & 3;
+  u32 val = (sn << 28) | ci;
+  arm_cq_db_rec[0] = clib_host_to_net_u32 (val);
+  val_reg = val;
+  val_reg <<= 32;
+  val_reg |= rxq->cqn;
+  CLIB_MEMORY_STORE_BARRIER ();
+  cq_db_uar[0] = clib_host_to_net_u64 (val_reg);
+#ifndef RDMA_INT_REARM_ON_WORKER
+  vlib_worker_thread_barrier_release (vm);
+#else
+  CLIB_MEMORY_STORE_BARRIER ();
+#endif
+}
 
 #endif /* _RDMA_H_ */
 

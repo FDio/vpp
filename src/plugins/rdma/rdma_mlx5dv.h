@@ -35,6 +35,9 @@
 #define CQE_FLAG_L3_HDR_TYPE_IP6	2
 #define CQE_FLAG_IP_EXT_OPTS		1
 
+/* UAR Page Format */
+#define UAR_CQ_DB_OFFSET 0x20
+
 typedef struct
 {
   struct

@@ -53,7 +53,7 @@ ibv_set_recv_wr_and_sge (struct ibv_recv_wr *w, struct ibv_sge *s, u64 va,
   w[0].num_sge = 1;
 }
 
-static_always_inline void
+static_always_inline u32
 rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
 			  rdma_rxq_t * rxq, int is_mlx5dv)
 {
@@ -71,7 +71,7 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
 
   /* do not bother to allocate if too small */
   if (n_alloc < 16)
-    return;
+    return 0;
 
   /* avoid wrap-around logic in core loop */
   n_alloc = clib_min (n_alloc, rxq->size - slot);
@@ -88,7 +88,7 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
 	{
 	  if (n)
 	    vlib_buffer_free_from_ring (vm, rxq->bufs, slot, rxq->size, n);
-	  return;
+	  return 0;
 	}
 
       /* partial allocation, round and return rest */
@@ -133,7 +133,7 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
       CLIB_MEMORY_STORE_BARRIER ();
       rxq->tail += n_alloc;
       rxq->wq_db[MLX5_RCV_DBR] = clib_host_to_net_u32 (rxq->tail);
-      return;
+      return n_alloc;
     }
 
   while (n >= 8)
@@ -172,6 +172,7 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
     }
 
   rxq->tail += n;
+  return n;
 }
 
 static_always_inline void
@@ -479,7 +480,7 @@ done:
 static_always_inline uword
 rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  vlib_frame_t * frame, rdma_device_t * rd, u16 qid,
-			  int use_mlx5dv)
+			  int use_mlx5dv, vnet_hw_interface_rx_mode mode)
 {
   rdma_main_t *rm = &rdma_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -618,6 +619,16 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
      VNET_INTERFACE_COUNTER_RX, vm->thread_index,
      rd->hw_if_index, n_rx_packets, n_rx_bytes);
 
+#ifdef RDMA_INT_REARM_ON_WORKER
+  if (PREDICT_FALSE (mode != VNET_HW_INTERFACE_RX_MODE_POLLING))
+    {
+      if (use_mlx5dv)
+	rdma_rxq_arm_notifications_dv (rd, qid);
+      else
+	rdma_rxq_arm_notifications_ibv (rd, qid);
+    }
+#endif
+
 refill:
   rdma_device_input_refill (vm, rd, rxq, use_mlx5dv);
 
@@ -644,12 +655,17 @@ VLIB_NODE_FN (rdma_input_node) (vlib_main_t * vm,
       continue;
 
     if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
-      n_rx += rdma_device_input_inline (vm, node, frame, rd, dq->queue_id, 1);
+      n_rx +=
+	rdma_device_input_inline (vm, node, frame, rd, dq->queue_id, 1,
+				  dq->mode);
     else
-      n_rx += rdma_device_input_inline (vm, node, frame, rd, dq->queue_id, 0);
+      n_rx +=
+	rdma_device_input_inline (vm, node, frame, rd, dq->queue_id, 0,
+				  dq->mode);
   }
   return n_rx;
 }
+
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (rdma_input_node) = {
