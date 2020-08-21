@@ -87,6 +87,7 @@ typedef struct
   u32 cqn;
   u32 wqe_cnt;
   u32 wq_stride;
+  u32 comp_event_clib_file_index;
 } rdma_rxq_t;
 
 typedef struct
