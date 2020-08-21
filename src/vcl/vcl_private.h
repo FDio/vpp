@@ -404,6 +404,13 @@ vcl_session_get (vcl_worker_t * wrk, u32 session_index)
 }
 
 static inline vcl_session_handle_t
+vcl_session_handle_from_wrk_session_index (u32 session_index, u32 wrk_index)
+{
+  ASSERT (session_index < 2 << 24);
+  return (wrk_index << 24 | session_index);
+}
+
+static inline vcl_session_handle_t
 vcl_session_handle_from_index (u32 session_index)
 {
   ASSERT (session_index < 2 << 24);
