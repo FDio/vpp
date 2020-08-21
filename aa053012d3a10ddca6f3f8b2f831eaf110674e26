@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a6b8ce8_2cd60181",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 442,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-08-21T05:11:42Z",
+      "side": 1,
+      "message": "vcl_wrk_index only to avoid confusion",
+      "range": {
+        "startLine": 442,
+        "startChar": 42,
+        "endLine": 442,
+        "endChar": 51
+      },
+      "revId": "aa053012d3a10ddca6f3f8b2f831eaf110674e26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
