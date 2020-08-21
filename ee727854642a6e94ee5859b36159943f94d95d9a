@@ -16,6 +16,24 @@
       "revId": "ee727854642a6e94ee5859b36159943f94d95d9a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "edcedf3d_9584a2fd",
+        "filename": "src/vnet/devices/virtio/virtio_pci_legacy.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-08-21T13:35:03Z",
+      "side": 1,
+      "message": "This test is specifically for device, if address of vring is set correctly in the device. We are only interested in 32 bits address and need to test that.",
+      "parentUuid": "dc81ae04_54f3b081",
+      "revId": "ee727854642a6e94ee5859b36159943f94d95d9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
