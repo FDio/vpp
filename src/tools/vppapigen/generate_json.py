@@ -31,6 +31,7 @@ output_dir_map = {
     'plugins': 'plugins',
     'vlibmemory': 'core',
     'vnet': 'core',
+    'vlib': 'core',
     'vpp': 'core',
 }
 
