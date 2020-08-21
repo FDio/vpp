@@ -64,7 +64,7 @@ rdma_rxq_init_flow (const rdma_device_t * rd, struct ibv_qp *qp,
   {
     struct ibv_flow_attr attr;
     struct ibv_flow_spec_eth spec_eth;
-  } __attribute__ ((packed)) fa;
+  } __attribute__((packed)) fa;
 
   memset (&fa, 0, sizeof (fa));
   fa.attr.num_of_specs = 1;
@@ -336,6 +336,13 @@ rdma_async_event_cleanup (rdma_device_t * rd)
   clib_file_del_by_index (&file_main, rd->async_event_clib_file_index);
 }
 
+static void
+rdma_rxq_comp_event_cleanup (rdma_device_t * rd, u16 qid)
+{
+  rdma_rxq_t *rxq = vec_elt_at_index (rd->rxqs, qid);
+  clib_file_del_by_index (&file_main, rxq->comp_event_clib_file_index);
+}
+
 static clib_error_t *
 rdma_register_interface (vnet_main_t * vnm, rdma_device_t * rd)
 {
@@ -385,8 +392,10 @@ rdma_dev_cleanup (rdma_device_t * rd)
   }
   vec_foreach (rxq, rd->rxqs)
   {
+    struct ibv_comp_channel *comp_channel = rxq->cq->channel;
     _(ibv_destroy_wq, rxq->wq);
     _(ibv_destroy_cq, rxq->cq);
+    _(ibv_destroy_comp_channel, comp_channel);
   }
   _(ibv_destroy_rwq_ind_table, rd->rx_rwq_ind_tbl);
   _(ibv_destroy_qp, rd->rx_qp);
@@ -404,6 +413,92 @@ rdma_dev_cleanup (rdma_device_t * rd)
 }
 
 static clib_error_t *
+rdma_rxq_comp_event_error_ready (clib_file_t * f)
+{
+  rdma_main_t *rm = &rdma_main;
+  u16 qid = f->private_data & 0xffff;
+  uword dev_index = f->private_data >> 16;
+  rdma_device_t *rd = pool_elt_at_index (rm->devices, dev_index);
+  return clib_error_return (0,
+			    "RDMA: %s: completion event error for queue %d",
+			    rd->name, qid);
+}
+
+static clib_error_t *
+rdma_rxq_comp_event_read_ready (clib_file_t * f)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  rdma_main_t *rm = &rdma_main;
+  u16 qid = f->private_data & 0xffff;
+  uword dev_index = f->private_data >> 16;
+  rdma_device_t *rd = pool_elt_at_index (rm->devices, dev_index);
+  rdma_rxq_t *rxq = vec_elt_at_index (rd->rxqs, qid);
+  vnet_hw_interface_rx_mode mode;
+  if (vnet_hw_interface_get_rx_mode (vnm, rd->hw_if_index, qid, &mode) < 0)
+    return clib_error_return_unix (0, "read failed for completion channel");
+  struct ibv_comp_channel *channel = rxq->cq->channel;
+  struct ibv_cq *cq;
+  void *cq_ctx;
+  struct ib_uverbs_comp_event_desc e;
+  int ret;
+  if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+    {
+      ret = read (f->file_descriptor, &e, sizeof (e));
+      if (ret < sizeof (e))
+	return clib_error_return_unix (0,
+				       "read failed for completion channel");
+#ifndef RDMA_INT_REARM_ON_WORKER
+      if (mode != VNET_HW_INTERFACE_RX_MODE_POLLING)
+	rdma_rxq_arm_notifications_dv (rd, qid);
+#endif
+    }
+  else
+    {
+      ret = ibv_get_cq_event (channel, &cq, &cq_ctx);
+      if (ret < 0)
+	return clib_error_return_unix (0, "ibv_get_cq_event failed");
+#ifndef RDMA_INT_REARM_ON_WORKER
+      if (mode != VNET_HW_INTERFACE_RX_MODE_POLLING)
+	rdma_rxq_arm_notifications_ibv (rd, qid);
+#endif
+    }
+
+  vnet_device_input_set_interrupt_pending (vnm, rd->hw_if_index, qid);
+  ibv_ack_cq_events (rxq->cq, 1);
+
+  return 0;
+}
+
+static clib_error_t *
+rdma_rxq_comp_event_init (rdma_device_t * rd, u16 qid)
+{
+  clib_file_t t = { 0 };
+  rdma_rxq_t *rxq = vec_elt_at_index (rd->rxqs, qid);
+  rdma_main_t *rm = &rdma_main;
+  int ret;
+
+  /* make RDMA completion channel fd non-blocking */
+  ret = fcntl (rxq->cq->channel->fd, F_GETFL);
+  if (ret < 0)
+    return clib_error_return_unix (0, "fcntl(F_GETFL) failed");
+
+  ret = fcntl (rxq->cq->channel->fd, F_SETFL, ret | O_NONBLOCK);
+  if (ret < 0)
+    return clib_error_return_unix (0, "fcntl(F_SETFL, O_NONBLOCK) failed");
+
+  /* register RDMA completion fd */
+  t.read_function = rdma_rxq_comp_event_read_ready;
+  t.file_descriptor = rxq->cq->channel->fd;
+  t.error_function = rdma_rxq_comp_event_error_ready;
+  t.private_data = (qid & 0xffff) | ((rd - rm->devices) << 16);
+  t.description =
+    format (0, "%v completion event for queue %d", rd->name, qid);
+
+  rxq->comp_event_clib_file_index = clib_file_add (&file_main, &t);
+  return 0;
+}
+
+static clib_error_t *
 rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 {
   rdma_rxq_t *rxq;
@@ -411,13 +506,21 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   struct ibv_cq_init_attr_ex cqa = { };
   struct ibv_wq_attr wqa;
   struct ibv_cq_ex *cqex;
+  struct ibv_comp_channel *comp_channel;
 
   vec_validate_aligned (rd->rxqs, qid, CLIB_CACHE_LINE_BYTES);
   rxq = vec_elt_at_index (rd->rxqs, qid);
   rxq->size = n_desc;
   vec_validate_aligned (rxq->bufs, n_desc - 1, CLIB_CACHE_LINE_BYTES);
 
+  comp_channel = ibv_create_comp_channel (rd->ctx);
+  if (!comp_channel)
+    {
+      return clib_error_return_unix (0, "Create completion channel failed");
+    }
+
   cqa.cqe = n_desc;
+  cqa.channel = comp_channel;
   if (rd->flags & RDMA_DEVICE_F_MLX5DV)
     {
       struct mlx5dv_cq_init_attr dvcq = { };
@@ -472,7 +575,8 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
       rxq->cqes = (mlx5dv_cqe_t *) dv_cq.buf;
       rxq->cq_db = (volatile u32 *) dv_cq.dbrec;
       rxq->cqn = dv_cq.cqn;
-
+      rxq->cq_db_uar = (volatile u64 *) (dv_cq.cq_uar + UAR_CQ_DB_OFFSET);
+      rxq->cmd_sn = 0;
       rxq->wqes = (mlx5dv_rwq_t *) dv_rwq.buf;
       rxq->wq_db = (volatile u32 *) dv_rwq.dbrec;
       rxq->wq_stride = dv_rwq.stride;
@@ -488,7 +592,7 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 	rxq->cqes[i].opcode_cqefmt_se_owner = 0xff;
     }
 
-  return 0;
+  return rdma_rxq_comp_event_init (rd, qid);
 }
 
 static clib_error_t *
@@ -832,15 +936,24 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
   vnet_sw_interface_t *sw = vnet_get_hw_sw_interface (vnm, rd->hw_if_index);
   args->sw_if_index = rd->sw_if_index = sw->sw_if_index;
-  /*
-   * FIXME: add support for interrupt mode
-   * vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, rd->hw_if_index);
-   * hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
-   */
+
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, rd->hw_if_index);
+  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
+
   vnet_hw_interface_set_input_node (vnm, rd->hw_if_index,
 				    rdma_input_node.index);
   vec_foreach_index (qid, rd->rxqs)
+  {
     vnet_hw_interface_assign_rx_thread (vnm, rd->hw_if_index, qid, ~0);
+    int rv = vnet_hw_interface_set_rx_mode (vnm, rd->hw_if_index, qid,
+					    VNET_HW_INTERFACE_RX_MODE_DEFAULT);
+    if (rv)
+      {
+	args->error =
+	  clib_error_return (0, "vnet_hw_interface_set_rx_mode failed");
+	goto err3;
+      }
+  }
 
   vec_free (s);
   return;
@@ -861,6 +974,9 @@ void
 rdma_delete_if (vlib_main_t * vm, rdma_device_t * rd)
 {
   rdma_async_event_cleanup (rd);
+  u16 qid;
+  vec_foreach_index (qid, rd->rxqs) rdma_rxq_comp_event_cleanup (rd, qid);
+
   rdma_unregister_interface (vnet_get_main (), rd);
   rdma_dev_cleanup (rd);
 }
@@ -903,6 +1019,27 @@ rdma_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
     vlib_node_add_next (vlib_get_main (), rdma_input_node.index, node_index);
 }
 
+static clib_error_t *
+rdma_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
+			       vnet_hw_interface_rx_mode mode)
+{
+  rdma_main_t *rm = &rdma_main;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  rdma_device_t *rd = pool_elt_at_index (rm->devices, hw->dev_instance);
+  //rdma_rxq_t *rxq = vec_elt_at_index (rd->rxqs, qid);
+  vnet_hw_interface_rx_mode old_mode;
+  vnet_hw_interface_get_rx_mode (vnm, hw_if_index, qid, &old_mode);
+  if (old_mode == VNET_HW_INTERFACE_RX_MODE_POLLING
+      && mode != VNET_HW_INTERFACE_RX_MODE_POLLING)
+    {
+      if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+	rdma_rxq_arm_notifications_dv (rd, qid);
+      else
+	rdma_rxq_arm_notifications_ibv (rd, qid);
+    }
+  return 0;
+}
+
 static char *rdma_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_rdma_tx_func_error
@@ -920,6 +1057,7 @@ VNET_DEVICE_CLASS (rdma_device_class) =
   .tx_function_n_errors = RDMA_TX_N_ERROR,
   .tx_function_error_strings = rdma_tx_func_error_strings,
   .mac_addr_change_function = rdma_mac_change,
+  .rx_mode_change_function = rdma_interface_rx_mode_change
 };
 /* *INDENT-ON* */
 
