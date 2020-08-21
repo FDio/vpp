@@ -39,7 +39,7 @@ typedef struct vcl_locked_session_
 typedef struct vls_worker_
 {
   vcl_locked_session_t *vls_pool;
-  uword *session_index_to_vlsh_table;
+  uword *session_handle_to_vlsh_table;
   u32 wrk_index;
 } vls_worker_t;
 
@@ -308,7 +308,7 @@ vls_worker_alloc (void)
 static void
 vls_worker_free (vls_worker_t * wrk)
 {
-  hash_free (wrk->session_index_to_vlsh_table);
+  hash_free (wrk->session_handle_to_vlsh_table);
   pool_free (wrk->vls_pool);
   pool_put (vlsm->workers, wrk);
 }
@@ -334,8 +334,7 @@ vls_alloc (vcl_session_handle_t sh)
   vls->worker_index = vppcom_session_worker (sh);
   vls->vls_index = vls - wrk->vls_pool;
   vls->shared_data_index = ~0;
-  hash_set (wrk->session_index_to_vlsh_table, vls->session_index,
-	    vls->vls_index);
+  hash_set (wrk->session_handle_to_vlsh_table, sh, vls->vls_index);
   if (vls_mt_wrk_supported ())
     {
       hash_set (vls->vcl_wrk_index_to_session_index, vls->worker_index,
@@ -363,7 +362,8 @@ vls_free (vcl_locked_session_t * vls)
   vls_worker_t *wrk = vls_worker_get_current ();
 
   ASSERT (vls != 0);
-  hash_unset (wrk->session_index_to_vlsh_table, vls->session_index);
+  hash_unset (wrk->session_handle_to_vlsh_table,
+	      vcl_session_handle_from_index (vls->session_index));
   clib_spinlock_free (&vls->lock);
   pool_put (wrk->vls_pool, vls);
 }
@@ -439,11 +439,13 @@ vlsh_to_session_index (vls_handle_t vlsh)
 }
 
 vls_handle_t
-vls_si_to_vlsh (u32 session_index)
+vls_si_wi_to_vlsh (u32 session_index, u32 vcl_wrk_index)
 {
   vls_worker_t *wrk = vls_worker_get_current ();
   uword *vlshp;
-  vlshp = hash_get (wrk->session_index_to_vlsh_table, session_index);
+  vlshp = hash_get (wrk->session_handle_to_vlsh_table,
+		    vcl_session_handle_from_wrk_session_index (session_index,
+							       vcl_wrk_index));
   return vlshp ? *vlshp : VLS_INVALID_HANDLE;
 }
 
@@ -453,7 +455,7 @@ vls_session_index_to_vlsh (uint32_t session_index)
   vls_handle_t vlsh;
 
   vls_mt_table_rlock ();
-  vlsh = vls_si_to_vlsh (session_index);
+  vlsh = vls_si_wi_to_vlsh (session_index, vcl_get_worker_index ());
   vls_mt_table_runlock ();
 
   return vlsh;
@@ -765,8 +767,8 @@ vls_worker_copy_on_fork (vcl_worker_t * parent_wrk)
    * init vls worker
    */
   vls_parent_wrk = vls_worker_get (parent_wrk->wrk_index);
-  vls_wrk->session_index_to_vlsh_table =
-    hash_dup (vls_parent_wrk->session_index_to_vlsh_table);
+  vls_wrk->session_handle_to_vlsh_table =
+    hash_dup (vls_parent_wrk->session_handle_to_vlsh_table);
   vls_wrk->vls_pool = pool_dup (vls_parent_wrk->vls_pool);
 
   vls_share_sessions (vls_parent_wrk, vls_wrk);
@@ -1368,7 +1370,7 @@ vls_unshare_vcl_worker_sessions (vcl_worker_t * wrk)
 
   /* *INDENT-OFF* */
   pool_foreach (s, wrk->sessions, ({
-    vls = vls_get (vls_si_to_vlsh (s->session_index));
+    vls = vls_get (vls_si_wi_to_vlsh (s->session_index, wrk->wrk_index));
     if (vls && (is_current || vls_is_shared_by_wrk (vls, current_wrk)))
       vls_unshare_session (vls, wrk);
   }));
