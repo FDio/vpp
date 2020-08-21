@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "38ac9e0d_1132ec6d",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 582,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-08-21T16:01:21Z",
+      "side": 1,
+      "message": "why not just\nreturn rdma_rxq_comp_event_init (rd, qid);",
+      "revId": "70c7cac16b2da31acd3c047a723bb883462d8bb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
