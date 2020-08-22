@@ -531,6 +531,10 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
   if (wrk->listen_fd < 0)
     vtfail ("vppcom_session_create()", wrk->listen_fd);
 
+  if (vsm->cfg.proto == VPPCOM_PROTO_UDP)
+    {
+      vppcom_session_attr (wrk->listen_fd, VPPCOM_ATTR_SET_CONNECTED, 0, 0);
+    }
 
   if (vsm->cfg.proto == VPPCOM_PROTO_TLS
       || vsm->cfg.proto == VPPCOM_PROTO_QUIC)
