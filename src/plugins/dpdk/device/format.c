@@ -710,9 +710,9 @@ format_dpdk_device (u8 * s, va_list * args)
           xstat = vec_elt_at_index(xd->xstats, i);
           if (verbose == 2 || (verbose && xstat->value))
             {
-              xs = format(xs, "\n%U%-38U%16Lu",
+              xs = format(xs, "\n%U%-38s%16Lu",
                           format_white_space, indent + 4,
-                          format_c_identifier, xstat_names[i].name,
+                          xstat_names[i].name,
                           xstat->value);
             }
         }
