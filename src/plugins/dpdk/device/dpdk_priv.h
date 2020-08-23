@@ -73,13 +73,29 @@ dpdk_get_xstats (dpdk_device_t * xd)
   _vec_len (xd->xstats) = len;
 }
 
+#define DPDK_UPDATE_COUNTER(vnm, tidx, xd, stat, cnt)                         \
+  do                                                                          \
+    {                                                                         \
+      u64 _v = (xd)->stats.stat;                                              \
+      u64 _lv = (xd)->last_stats.stat;                                        \
+      if (PREDICT_FALSE (_v != _lv))                                          \
+        {                                                                     \
+          if (PREDICT_FALSE (_v < _lv))                                       \
+            dpdk_log_warn ("%v: %s counter decreased (before %lu after %lu)", \
+                           xd->name, #stat, _lv, _v);                         \
+          else                                                                \
+            vlib_increment_simple_counter (                                   \
+                vec_elt_at_index ((vnm)->interface_main.sw_if_counters, cnt), \
+                (tidx), (xd)->sw_if_index, _v - _lv);                         \
+        }                                                                     \
+    }                                                                         \
+  while (0)
+
 static inline void
 dpdk_update_counters (dpdk_device_t * xd, f64 now)
 {
-  vlib_simple_counter_main_t *cm;
   vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index = vlib_get_thread_index ();
-  u64 rxerrors, last_rxerrors;
 
   /* only update counters for PMD interfaces */
   if ((xd->flags & DPDK_DEVICE_FLAG_PMD) == 0)
@@ -90,37 +106,12 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
   rte_eth_stats_get (xd->port_id, &xd->stats);
 
   /* maybe bump interface rx no buffer counter */
-  if (PREDICT_FALSE (xd->stats.rx_nombuf != xd->last_stats.rx_nombuf))
-    {
-      cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
-			     VNET_INTERFACE_COUNTER_RX_NO_BUF);
-
-      vlib_increment_simple_counter (cm, thread_index, xd->sw_if_index,
-				     xd->stats.rx_nombuf -
-				     xd->last_stats.rx_nombuf);
-    }
-
-  /* missed pkt counter */
-  if (PREDICT_FALSE (xd->stats.imissed != xd->last_stats.imissed))
-    {
-      cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
-			     VNET_INTERFACE_COUNTER_RX_MISS);
-
-      vlib_increment_simple_counter (cm, thread_index, xd->sw_if_index,
-				     xd->stats.imissed -
-				     xd->last_stats.imissed);
-    }
-  rxerrors = xd->stats.ierrors;
-  last_rxerrors = xd->last_stats.ierrors;
-
-  if (PREDICT_FALSE (rxerrors != last_rxerrors))
-    {
-      cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
-			     VNET_INTERFACE_COUNTER_RX_ERROR);
-
-      vlib_increment_simple_counter (cm, thread_index, xd->sw_if_index,
-				     rxerrors - last_rxerrors);
-    }
+  DPDK_UPDATE_COUNTER (vnm, thread_index, xd, rx_nombuf,
+		       VNET_INTERFACE_COUNTER_RX_NO_BUF);
+  DPDK_UPDATE_COUNTER (vnm, thread_index, xd, imissed,
+		       VNET_INTERFACE_COUNTER_RX_MISS);
+  DPDK_UPDATE_COUNTER (vnm, thread_index, xd, ierrors,
+		       VNET_INTERFACE_COUNTER_RX_ERROR);
 
   dpdk_get_xstats (xd);
 }
