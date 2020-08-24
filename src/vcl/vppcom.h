@@ -246,6 +246,7 @@ extern void vppcom_worker_index_set (int);
  * notifications.
  */
 extern int vppcom_worker_mqs_epfd (void);
+extern int vppcom_worker_has_unhandled (void);
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus
