@@ -3946,6 +3946,13 @@ vppcom_worker_mqs_epfd (void)
 }
 
 int
+vppcom_worker_n_unhandled_evts (void)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  return vec_len (wrk->unhandled_evts_vector);
+}
+
+int
 vppcom_session_is_connectable_listener (uint32_t session_handle)
 {
   vcl_session_t *session;

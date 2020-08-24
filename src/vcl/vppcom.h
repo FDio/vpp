@@ -247,6 +247,11 @@ extern void vppcom_worker_index_set (int);
  */
 extern int vppcom_worker_mqs_epfd (void);
 
+/**
+ * Returns current worker's number of unhandled events
+ */
+extern int vppcom_worker_n_unhandled_evts (void);
+
 /* *INDENT-OFF* */
 #ifdef __cplusplus
 }
