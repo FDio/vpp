@@ -83,10 +83,15 @@ typedef enum
 /* The Host publishes the avail index for which it expects a kick \
  * at the end of the used ring. Guest should ignore the used->flags field. */ \
   _ (VHOST_USER_F_PROTOCOL_FEATURES, 30)                                      \
-  _ (VIRTIO_F_VERSION_1, 32)                                                  \
+  _ (VIRTIO_F_VERSION_1, 32)  /* v1.0 compliant. */           \
+  _ (VIRTIO_F_IOMMU_PLATFORM, 33) \
+  _ (VIRTIO_F_RING_PACKED, 34) \
+  _ (VIRTIO_F_IN_ORDER, 35)
 
 #define VIRTIO_NET_F_CTRL_GUEST_OFFLOADS 2
 #define VIRTIO_NET_F_MTU 3
+#define VIRTIO_F_IN_ORDER 35
+
 #define VIRTIO_NET_S_LINK_UP    1	/* Link is up */
 #define VIRTIO_NET_S_ANNOUNCE   2	/* Announcement is needed */
 
@@ -253,6 +258,7 @@ typedef struct
   u64 features;
   u8 gso_enabled;
   u8 checksum_offload_enabled;
+  u8 is_packed;
   clib_error_t *error;
 } virtio_pci_create_if_args_t;
 

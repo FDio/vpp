@@ -30,6 +30,7 @@
 
 #include <linux/if_arp.h>
 #include <linux/if_tun.h>
+#include <linux/virtio_net.h>
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -40,7 +41,6 @@
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 
-#include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/virtio/vhost_user.h>
 #include <vnet/devices/virtio/vhost_user_inline.h>
 
