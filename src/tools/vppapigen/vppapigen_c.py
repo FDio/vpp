@@ -644,6 +644,19 @@ def generate_c_boilerplate(services, defines, file_crc, module, stream):
               '                                  .is_autoendian = 0}};\n'
               .format(n=s.caller, ID=s.caller.upper()))
         write('   vl_msg_api_config (&c);\n')
+        try:
+            d = define_hash[s.reply]
+            write('   c = (vl_msg_api_msg_config_t) {{.id = VL_API_{ID} + msg_id_base,\n'
+                  '                                  .name = "{n}",\n'
+                  '                                  .handler = 0,\n'
+                  '                                  .cleanup = vl_noop_handler,\n'
+                  '                                  .endian = vl_api_{n}_t_endian,\n'
+                  '                                  .print = vl_api_{n}_t_print,\n'
+                  '                                  .is_autoendian = 0}};\n'
+                  .format(n=s.reply, ID=s.reply.upper()))
+            write('   vl_msg_api_config (&c);\n')
+        except KeyError:
+            pass
 
     write('   return msg_id_base;\n')
     write('}\n')

@@ -264,7 +264,7 @@ typedef dhcp_server
 /** \brief Tell client about a DHCP completion event
     @param client_index - opaque cookie to identify the sender
 */
-manual_endian manual_print define dhcp_proxy_details
+define dhcp_proxy_details
 {
   u32 context;
   u32 rx_vrf_id;

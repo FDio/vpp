@@ -142,9 +142,6 @@ api_dhcp_proxy_config (vat_main_t * vam)
   return ret;
 }
 
-#define vl_api_dhcp_proxy_details_t_endian vl_noop_handler
-#define vl_api_dhcp_proxy_details_t_print vl_noop_handler
-
 static void
 vl_api_dhcp_proxy_details_t_handler (vl_api_dhcp_proxy_details_t * mp)
 {
