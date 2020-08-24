@@ -58,6 +58,15 @@
  * at the end of the used ring. Guest should ignore the used->flags field. */ \
   _ (VHOST_USER_F_PROTOCOL_FEATURES, 30) \
   _ (VIRTIO_F_VERSION_1, 32)  /* v1.0 compliant. */           \
+  _ (VIRTIO_F_IOMMU_PLATFORM, 33) \
+  _ (VIRTIO_F_RING_PACKED, 34) \
+  _ (VIRTIO_F_IN_ORDER, 35)  /* all buffers are used by the device in the */ \
+                         /* same order in which they have been made available */ \
+  _ (VIRTIO_F_ORDER_PLATFORM, 36) /* memory accesses by the driver and the */ \
+                      /* device are ordered in a way described by the platfor */ \
+  _ (VIRTIO_F_NOTIFICATION_DATA, 38) /* the driver passes extra data (besides */ \
+                      /* identifying the virtqueue) in its device notifications. */ \
+  _ (VIRTIO_NET_F_SPEED_DUPLEX, 63)	/* Device set linkspeed and duplex */
 
 #define foreach_virtio_if_flag		\
   _(0, ADMIN_UP, "admin-up")		\
@@ -95,13 +104,48 @@ typedef enum
 
 #define VIRTIO_RING_FLAG_MASK_INT 1
 
+#define VIRTQ_DESC_F_AVAIL             (1 << 7)
+#define VIRTQ_DESC_F_USED              (1 << 15)
+
+#define VRING_EVENT_F_ENABLE            0x0
+#define VRING_EVENT_F_DISABLE           0x1
+#define VRING_EVENT_F_DESC              0x2
+
+typedef CLIB_PACKED (struct
+		     {
+		     u64 addr;	// packet data buffer address
+		     u32 len;	// packet data buffer size
+		     u16 id;	// buffer id
+		     u16 flags;	// flags
+		     }) vring_packed_desc_t;
+
+STATIC_ASSERT_SIZEOF (vring_packed_desc_t, 16);
+
+typedef CLIB_PACKED (struct
+		     {
+		     u16 off_wrap;
+		     u16 flags;
+		     }) vring_desc_event_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   clib_spinlock_t lockp;
-  struct vring_desc *desc;
-  struct vring_used *used;
-  struct vring_avail *avail;
+  union
+  {
+    struct vring_desc *desc;
+    vring_packed_desc_t *packed_desc;
+  };
+  union
+  {
+    struct vring_used *used;
+    vring_desc_event_t *device_event;
+  };
+  union
+  {
+    struct vring_avail *avail;
+    vring_desc_event_t *driver_event;
+  };
   u16 desc_in_use;
   u16 desc_next;
   int kick_fd;
@@ -115,6 +159,8 @@ typedef struct
   u16 last_used_idx;
   u16 last_kick_avail_idx;
   u32 call_file_index;
+  u16 used_wrap_counter;
+  u16 avail_wrap_counter;
   gro_flow_table_t *flow_table;
 } virtio_vring_t;
 
@@ -206,6 +252,7 @@ typedef struct
     };
   };
   const virtio_pci_func_t *virtio_pci_func;
+  int is_packed;
 } virtio_if_t;
 
 typedef struct
