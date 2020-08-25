@@ -1788,7 +1788,10 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
   vcl_send_session_connect (wrk, session);
 
   if (VCL_SESS_ATTR_TEST (session->attr, VCL_SESS_ATTR_NONBLOCK))
-    return VPPCOM_EINPROGRESS;
+    {
+      session->session_state = STATE_CONNECT;
+      return VPPCOM_EINPROGRESS;
+    }
 
   /*
    * Wait for reply from vpp if blocking
