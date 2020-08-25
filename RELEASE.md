@@ -1,5 +1,6 @@
 # Release Notes    {#release_notes}
 
+* @subpage release_notes_19083
 * @subpage release_notes_19082
 * @subpage release_notes_19081
 * @subpage release_notes_1908
@@ -24,6 +25,14 @@
 * @subpage release_notes_1701
 * @subpage release_notes_1609
 * @subpage release_notes_1606
+
+@page release_notes_19083 Release notes for VPP 19.08.3
+
+This is bug fix release.
+
+For the full list of fixed issues please refer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1908)
 
 @page release_notes_19082 Release notes for VPP 19.08.2
 
