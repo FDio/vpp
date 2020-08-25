@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d83639ed_d3488662",
+        "filename": "src/vnet/ip/ip4_packet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-08-25T13:47:24Z",
+      "side": 1,
+      "message": "AFAICT, the /* *INDENT-OFF* */ WARN_OFF(xxx) /* *INDENT-ON* */ sequence can be replaced by\n\nWARN_OFF(xxx);   // Note the trailing semicolon\n\nPlease check, and if possible remove the indent brackets - before people start blindly copying them...",
+      "revId": "cf2f8eafa81a174ad3cfb7d0eb57a0d832a84dd5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
