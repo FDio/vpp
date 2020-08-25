@@ -327,8 +327,10 @@ clib_cpu_part ()
   return part;
 }
 
-#define AARCH64_CPU_IMPLEMENTER_THUNERDERX2 0x43
-#define AARCH64_CPU_PART_THUNERDERX2        0x0af
+#define AARCH64_CPU_IMPLEMENTER_CAVIUM      0x43
+#define AARCH64_CPU_PART_THUNDERX2          0x0af
+#define AARCH64_CPU_PART_OCTEONTX2T96       0x0b2
+#define AARCH64_CPU_PART_OCTEONTX2T98       0x0b1
 #define AARCH64_CPU_IMPLEMENTER_QDF24XX     0x51
 #define AARCH64_CPU_PART_QDF24XX            0xc00
 #define AARCH64_CPU_IMPLEMENTER_CORTEXA72   0x41
@@ -337,10 +339,20 @@ clib_cpu_part ()
 #define AARCH64_CPU_PART_NEOVERSEN1         0xd0c
 
 static inline int
+clib_cpu_march_priority_octeontx2 ()
+{
+  if ((AARCH64_CPU_IMPLEMENTER_CAVIUM == clib_cpu_implementer ()) &&
+      ((AARCH64_CPU_PART_OCTEONTX2T96 == clib_cpu_part ())
+       || AARCH64_CPU_PART_OCTEONTX2T98 == clib_cpu_part ()))
+    return 20;
+  return -1;
+}
+
+static inline int
 clib_cpu_march_priority_thunderx2t99 ()
 {
-  if ((AARCH64_CPU_IMPLEMENTER_THUNERDERX2 == clib_cpu_implementer ()) &&
-      (AARCH64_CPU_PART_THUNERDERX2 == clib_cpu_part ()))
+  if ((AARCH64_CPU_IMPLEMENTER_CAVIUM == clib_cpu_implementer ()) &&
+      (AARCH64_CPU_PART_THUNDERX2 == clib_cpu_part ()))
     return 20;
   return -1;
 }
