@@ -1265,6 +1265,10 @@ esp_decrypt_inline (vlib_main_t * vm,
 			 CLIB_CACHE_LINE_BYTES * 2, LOAD);
 	}
 
+      /* save the sa_index as GRE_teb post_crypto changes L2 opaque */
+      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
+
       if (next[0] >= ESP_DECRYPT_N_NEXT)
 	esp_decrypt_post_crypto (vm, node, pd, pd2, b[0], next, is_ip6,
 				 is_tun, 0);
@@ -1274,8 +1278,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	{
 	  esp_decrypt_trace_t *tr;
 	  tr = vlib_add_trace (vm, node, b[0], sizeof (*tr));
-	  sa0 = pool_elt_at_index (im->sad,
-				   vnet_buffer (b[0])->ipsec.sad_index);
+	  sa0 = pool_elt_at_index (im->sad, current_sa_index);
 	  tr->crypto_alg = sa0->crypto_alg;
 	  tr->integ_alg = sa0->integ_alg;
 	  tr->seq = pd->seq;
