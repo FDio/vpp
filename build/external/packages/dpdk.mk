@@ -21,13 +21,13 @@ DPDK_MLX5_PMD                ?= n
 DPDK_TAP_PMD                 ?= n
 DPDK_FAILSAFE_PMD            ?= n
 
-DPDK_VERSION                 ?= 20.05
+DPDK_VERSION                 ?= 20.08
 DPDK_BASE_URL                ?= http://fast.dpdk.org/rel
 DPDK_TARBALL                 := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL                 := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
 DPDK_18.11_TARBALL_MD5_CKSUM := 04b86f4a77f4f81a7fbd26467dd2ea9f
-DPDK_20.02_TARBALL_MD5_CKSUM := e20171462d6b2252dfbae1de8c45ba10
 DPDK_20.05_TARBALL_MD5_CKSUM := 7c6f3e7f7de2422775c4cba116012c4d
+DPDK_20.08_TARBALL_MD5_CKSUM := 64badd32cd6bc0761befc8f2402c2148
 MACHINE=$(shell uname -m)
 
 # replace dot with space, and if 3rd word exists we deal with stable dpdk rel
@@ -166,6 +166,7 @@ DPDK_MAKE_ARGS := -C $(DPDK_SOURCE) -j $(JOBS) \
 	EXTRA_LDFLAGS="$(DPDK_EXTRA_LDFLAGS)" \
 	CPU_CFLAGS="$(DPDK_CPU_CFLAGS)" \
 	DESTDIR=$(I) \
+	MAKE_PAUSE=n \
         $(DPDK_MAKE_EXTRA_ARGS)
 
 define set
