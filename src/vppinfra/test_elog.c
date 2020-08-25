@@ -42,6 +42,60 @@
 #include <vppinfra/serialize.h>
 #include <vppinfra/unix.h>
 
+void
+g2_test_pattern (elog_main_t * em, int g2_test, char *dump_file)
+{
+  int i, j;
+  clib_error_t *error;
+  elog_track_t *tracks = 0;
+
+  elog_init (em, 100000);
+  elog_enable_disable (em, 1 /* enable */ );
+
+  for (i = 0; i < 100; i++)
+    {
+      elog_track_t *t;
+      vec_validate (tracks, i);
+      t = tracks + i;
+      t->name = (char *) format (0, "Track %3d", i + 1);
+      elog_track_register (em, t);
+    }
+
+  for (i = 0; i < 100; i++)
+    {
+      for (j = 0; j < 100; j++)
+	{
+	  ELOG_TYPE_DECLARE (e) =
+	  {
+	  .format = "0: t%d event %d",.format_args = "i4i4",};
+	  ELOG_TYPE_DECLARE (e2) =
+	  {
+	  .format = "1: t%d event %d",.format_args = "i4i4",};
+
+	  struct
+	  {
+	    int track, event;
+	  } *ed;
+
+	  ed = ELOG_TRACK_DATA (em, e, tracks[j]);
+	  ed->track = j + 1;
+	  ed->event = i;
+	  ed = ELOG_TRACK_DATA (em, e2, tracks[j]);
+	  ed->track = j + 1;
+	  ed->event = i;
+	}
+    }
+
+  if (dump_file == 0)
+    dump_file = "/tmp/g2_test.elog";
+
+  error = elog_write_file (em, dump_file, 1 /* flush ring */ );
+
+  if (error)
+    clib_error_report (error);
+}
+
+
 int
 test_elog_main (unformat_input_t * input)
 {
@@ -54,6 +108,7 @@ test_elog_main (unformat_input_t * input)
   u8 *tag, **tags;
   f64 align_tweak;
   f64 *align_tweaks;
+  int g2_test;
 
   n_iter = 100;
   max_events = 100000;
@@ -65,6 +120,7 @@ test_elog_main (unformat_input_t * input)
   tags = 0;
   align_tweaks = 0;
   min_sample_time = 2;
+  g2_test = 0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "iter %d", &n_iter))
@@ -88,12 +144,20 @@ test_elog_main (unformat_input_t * input)
 	;
       else if (unformat (input, "align-tweak %f", &align_tweak))
 	vec_add1 (align_tweaks, align_tweak);
+      else if (unformat (input, "g2-test %=", &g2_test, 1))
+	;
       else
 	{
 	  error = clib_error_create ("unknown input `%U'\n",
 				     format_unformat_error, input);
 	  goto done;
 	}
+    }
+
+  if (g2_test)
+    {
+      g2_test_pattern (em, g2_test, dump_file);
+      return (0);
     }
 
 #ifdef CLIB_UNIX
