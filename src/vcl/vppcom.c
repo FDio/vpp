@@ -530,7 +530,13 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   clib_memcpy_fast (&session->transport.lcl_ip, &mp->lcl.ip,
 		    sizeof (session->transport.lcl_ip));
   session->transport.lcl_port = mp->lcl.port;
-  session->session_state = STATE_CONNECT;
+
+  /* Application closed session before connect reply */
+  if (VCL_SESS_ATTR_TEST (session->attr, VCL_SESS_ATTR_NONBLOCK)
+      && session->session_state == STATE_CLOSED)
+    vcl_send_session_disconnect (wrk, session);
+  else
+    session->session_state = STATE_CONNECT;
 
   /* Add it to lookup table */
   vcl_session_table_add_vpp_handle (wrk, mp->handle, session_index);
@@ -1172,6 +1178,11 @@ vppcom_session_disconnect (u32 session_handle)
     }
   else
     {
+      /* Session doesn't have an event queue yet. Probably a non-blocking
+       * connect. Wait for the reply */
+      if (PREDICT_FALSE (!session->vpp_evt_q))
+	return VPPCOM_OK;
+
       VDBG (1, "session %u [0x%llx]: sending disconnect...",
 	    session->session_index, vpp_handle);
       vcl_send_session_disconnect (wrk, session);
@@ -1788,7 +1799,10 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
   vcl_send_session_connect (wrk, session);
 
   if (VCL_SESS_ATTR_TEST (session->attr, VCL_SESS_ATTR_NONBLOCK))
-    return VPPCOM_EINPROGRESS;
+    {
+      session->session_state = STATE_CONNECT;
+      return VPPCOM_EINPROGRESS;
+    }
 
   /*
    * Wait for reply from vpp if blocking
