@@ -16,6 +16,7 @@
 #include <vlibmemory/api.h>
 #include <cnat/cnat_node.h>
 #include <cnat/cnat_snat.h>
+#include <cnat/cnat_inline.h>
 
 typedef enum cnat_snat_next_
 {
