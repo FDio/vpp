@@ -699,6 +699,12 @@ I:	wireguard
 M:	Artem Glazychev <artem.glazychev@xored.com>
 F:	src/plugins/wireguard
 
+Plugin - Calico
+I:	calico
+M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+M:	Aloys Augustin <aloaugus@cisco.com>
+F:	src/plugins/calico
+
 VPP Config Tooling
 I:	vpp_config
 M:	John DeNisco <jdenisco@cisco.com>
