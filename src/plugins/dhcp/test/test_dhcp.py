@@ -36,6 +36,10 @@ class TestDHCP(VppTestCase):
     """ DHCP Test Case """
 
     @classmethod
+    def force_solo(cls):
+        return True
+
+    @classmethod
     def setUpClass(cls):
         super(TestDHCP, cls).setUpClass()
 
