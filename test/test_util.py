@@ -7,6 +7,12 @@ from vpp_papi import mac_pton, mac_ntop
 
 
 class TestUtil (unittest.TestCase):
+
+    @classmethod
+    def force_solo(cls):
+        """ if the test case class is timing-sensitive - return true """
+        return False
+
     """ MAC to binary and back """
     def test_mac_to_binary(self):
         mac = 'aa:bb:cc:dd:ee:ff'
