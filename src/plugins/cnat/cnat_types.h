@@ -94,6 +94,14 @@ typedef struct
   ip6_address_t ip_masks[129];
 } cnat_snat_pfx_table_t;
 
+typedef struct cnat_session_t_ cnat_session_t;
+typedef struct cnat_node_ctx_t_ cnat_node_ctx_t;
+/* function to use to decide whether to snat connections in the output
+   feature */
+typedef void (*cnat_snat_policy_t) (vlib_main_t *vm, vlib_buffer_t *b,
+				    cnat_session_t *session,
+				    cnat_node_ctx_t *ctx, u8 *do_snat);
+
 typedef struct cnat_main_
 {
   /* Memory size of the session bihash */
@@ -144,6 +152,9 @@ typedef struct cnat_main_
 
   /* Enable or Disable the scanner on startup */
   u8 default_scanner_state;
+
+  /* SNAT policy for the output feature node */
+  cnat_snat_policy_t snat_policy;
 } cnat_main_t;
 
 typedef struct cnat_timestamp_t_
@@ -156,13 +167,13 @@ typedef struct cnat_timestamp_t_
   u16 refcnt;
 } cnat_timestamp_t;
 
-typedef struct cnat_node_ctx_
+struct cnat_node_ctx_t_
 {
   f64 now;
   u32 thread_index;
   ip_address_family_t af;
   u8 do_trace;
-} cnat_node_ctx_t;
+};
 
 cnat_main_t *cnat_get_main ();
 extern u8 *format_cnat_endpoint (u8 * s, va_list * args);

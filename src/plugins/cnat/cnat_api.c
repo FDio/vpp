@@ -21,6 +21,7 @@
 #include <cnat/cnat_session.h>
 #include <cnat/cnat_client.h>
 #include <cnat/cnat_snat.h>
+#include <cnat/cnat_k8s_snat_policy.h>
 
 #include <vnet/ip/ip_types_api.h>
 
@@ -333,6 +334,74 @@ static void
     rv = cnat_del_snat_prefix (&pfx);
 
   REPLY_MACRO (VL_API_CNAT_ADD_DEL_SNAT_PREFIX_REPLY);
+}
+
+static void
+vl_api_cnat_set_snat_policy_t_handler (vl_api_cnat_set_snat_policy_t *mp)
+{
+  vl_api_cnat_set_snat_policy_reply_t *rmp;
+  int rv = 0;
+  vl_api_cnat_snat_policies_t policy = clib_net_to_host_u32 (mp->policy);
+  switch (policy)
+    {
+    case CNAT_SNAT_POLICY_NONE:
+      cnat_set_snat_policy (NULL);
+      break;
+    case CNAT_SNAT_POLICY_K8S:
+      cnat_set_snat_policy (cnat_k8s_snat_policy);
+      break;
+    default:
+      rv = 1;
+    }
+
+  REPLY_MACRO (VL_API_CNAT_SET_SNAT_POLICY_REPLY);
+}
+
+static void
+vl_api_cnat_k8s_enable_disable_interface_snat_t_handler (
+  vl_api_cnat_k8s_enable_disable_interface_snat_t *mp)
+{
+  vl_api_cnat_k8s_enable_disable_interface_snat_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = cnat_k8s_enable_disable_snat (ntohl (mp->sw_if_index), mp->is_ip6,
+				     mp->is_enable);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_CNAT_K8S_ENABLE_DISABLE_INTERFACE_SNAT_REPLY);
+}
+
+static void
+vl_api_cnat_k8s_register_pod_interface_t_handler (
+  vl_api_cnat_k8s_register_pod_interface_t *mp)
+{
+  vl_api_cnat_k8s_register_pod_interface_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = cnat_k8s_register_pod_interface (ntohl (mp->sw_if_index), mp->is_add);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_CNAT_K8S_REGISTER_POD_INTERFACE_REPLY);
+}
+
+static void
+vl_api_cnat_k8s_add_del_pod_cidr_t_handler (
+  vl_api_cnat_k8s_add_del_pod_cidr_t *mp)
+{
+  vl_api_cnat_k8s_add_del_pod_cidr_reply_t *rmp;
+  ip_prefix_t pfx;
+  int rv;
+
+  ip_prefix_decode2 (&mp->prefix, &pfx);
+  rv = cnat_k8s_add_del_pod_cidr (&pfx, mp->is_add);
+
+  REPLY_MACRO (VL_API_CNAT_K8S_ADD_DEL_POD_CIDR_REPLY);
 }
 
 #include <cnat/cnat.api.c>
