@@ -688,6 +688,12 @@ M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/plugins/cnat
 
+Plugin - Calico
+I:	calico
+M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+M:	Aloys Augustin <aloaugus@cisco.com>
+F:	src/plugins/calico
+
 VPP Config Tooling
 I:	vpp_config
 M:	John DeNisco <jdenisco@cisco.com>
