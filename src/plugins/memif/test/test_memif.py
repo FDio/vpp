@@ -17,6 +17,10 @@ class TestMemif(VppTestCase):
     """ Memif Test Case """
 
     @classmethod
+    def force_solo(cls):
+        return True
+
+    @classmethod
     def setUpClass(cls):
         # fork new process before client connects to VPP
         cls.remote_test = RemoteClass(RemoteVppTestCase)

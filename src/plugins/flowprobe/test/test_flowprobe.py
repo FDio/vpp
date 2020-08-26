@@ -347,6 +347,10 @@ class Flowprobe(MethodHolder):
     """Template verification, timer tests"""
 
     @classmethod
+    def force_solo(cls):
+        return True
+
+    @classmethod
     def setUpClass(cls):
         super(Flowprobe, cls).setUpClass()
 
