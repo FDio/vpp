@@ -94,6 +94,30 @@
       "revId": "b6302b6e1e16cb1b6cfd98f97bc9941a423a6fc5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "16bd23e6_9e2a3435",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 1692
+      },
+      "writtenOn": "2020-08-26T06:39:54Z",
+      "side": 1,
+      "message": "Hi Florin,\nYes you are right, we need Damjan\u0027s expertise here.\n\nI\u0027m not quite clear about the legacy behavior. But from the description in this link https://my-vpp-docs.readthedocs.io/en/latest/gettingstarted/users/configuring/startup.html, I thought this flag is used to enable the NIC RX checksum ability:\n\"\n    enable-tcp-udp-checksum\n    Enables UDP/TCP RX checksum offload.\n\"\nThat\u0027s why I thought the code is incorrect.\n@Damjan could you help to review my code to confirm whether it is breaking the legacy behavior?\n\n\nAnd, for TX checksum offload, I think we need to use option \"no-tx-checksum-offload\" rather than \"enable-tcp-udp-checksum\". Here\u0027s the description from the above link:\n\"\n    no-tx-checksum-offload\n    Disables UDP/TCP TX checksum offload. Typically needed for use faster vector PMDs (together with no-multi-seg).\n\"",
+      "parentUuid": "90556db8_605ee793",
+      "range": {
+        "startLine": 348,
+        "startChar": 3,
+        "endLine": 348,
+        "endChar": 44
+      },
+      "revId": "b6302b6e1e16cb1b6cfd98f97bc9941a423a6fc5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
