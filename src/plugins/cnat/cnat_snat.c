@@ -16,6 +16,69 @@
 #include <vnet/ip/ip.h>
 #include <cnat/cnat_snat.h>
 #include <cnat/cnat_translation.h>
+#include <cnat/cnat_k8s_snat_policy.h>
+
+void
+cnat_set_snat_policy (cnat_snat_policy_t fp)
+{
+  cnat_main.snat_policy = fp;
+}
+
+
+static clib_error_t *
+cnat_snat_policy_cmd (vlib_main_t * vm,
+		      unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  cnat_snat_policy_t fp = NULL;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "none"))
+	;
+      else if (unformat (input, "k8s"))
+	fp = cnat_k8s_snat_policy;
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, input);
+    }
+
+  cnat_set_snat_policy (fp);
+  return NULL;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cnat_snat_policy_command, static) =
+{
+  .path = "cnat set snat policy",
+  .short_help = "cnat set snat policy {none,k8s}",
+  .function = cnat_snat_policy_cmd,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_cnat_snat_policy_cmd (vlib_main_t * vm,
+			   unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  u8 *s = format (NULL, "snat policy: ");
+  if (cnat_main.snat_policy == NULL)
+    s = format (s, "none");
+  else if (cnat_main.snat_policy == cnat_k8s_snat_policy)
+    s = format (s, "k8s");
+  else
+    s = format (s, "unknown (%x)", cnat_main.snat_policy);
+
+  vlib_cli_output (vm, (char *) s);
+  return NULL;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_cnat_snat_policy_command, static) =
+{
+  .path = "show cnat snat policy",
+  .short_help = "show cnat snat policy",
+  .function = show_cnat_snat_policy_cmd,
+};
+/* *INDENT-ON* */
 
 static void
 cnat_compute_prefix_lengths_in_search_order (cnat_snat_pfx_table_t *
@@ -295,8 +358,8 @@ VLIB_CLI_COMMAND (cnat_show_snat_command, static) =
 static clib_error_t *
 cnat_snat_init (vlib_main_t * vm)
 {
-  cnat_snat_pfx_table_t *table = &cnat_main.snat_pfx_table;
   cnat_main_t *cm = &cnat_main;
+  cnat_snat_pfx_table_t *table = &cm->snat_pfx_table;
   int i;
   for (i = 0; i < ARRAY_LEN (table->ip_masks); i++)
     {
