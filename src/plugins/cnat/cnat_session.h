@@ -35,7 +35,7 @@
  * pool for this object. If there were a pool, one would need to be
  * concerned about what worker is using it.
  */
-typedef struct cnat_session_t_
+struct cnat_session_
 {
   /**
    * this key sits in the same memory location a 'key' in the bihash kvp
@@ -97,7 +97,7 @@ typedef struct cnat_session_t_
      */
     u32 flags;
   } value;
-} cnat_session_t;
+};
 
 typedef enum cnat_session_flag_t_
 {

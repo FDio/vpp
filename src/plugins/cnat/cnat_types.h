@@ -80,7 +80,35 @@ typedef struct
   ip6_address_t ip_masks[129];
 } cnat_snat_pfx_table_t;
 
-typedef struct cnat_main_
+typedef struct cnat_main_ cnat_main_t;
+typedef struct cnat_session_ cnat_session_t;
+typedef struct cnat_translation_ cnat_translation_t;
+typedef struct cnat_node_ctx_ cnat_node_ctx_t;
+
+
+typedef enum cnat_source_policy_errors_
+{
+  CNAT_SOURCE_ERROR_EXHAUSTED_PORTS,
+  CNAT_SOURCE_N_ERRORS,
+} cnat_source_policy_errors_t;
+
+typedef
+cnat_source_policy_errors_t (*cnat_vip_source_policy_t) (cnat_session_t *
+							 session,
+							 vlib_buffer_t * b,
+							 ip4_header_t * ip4,
+							 ip6_header_t * ip6,
+							 udp_header_t * udp0,
+							 u32 rsession_flags,
+							 const
+							 cnat_translation_t *
+							 ct,
+							 cnat_node_ctx_t *
+							 ctx,
+							 cnat_main_t * cm,
+							 vlib_main_t * vm);
+
+struct cnat_main_
 {
   /* Memory size of the session bihash */
   uword session_hash_memory;
@@ -110,6 +138,9 @@ typedef struct cnat_main_
   /* delay in seconds between two scans of session/clients tables */
   f64 scanner_timeout;
 
+  /* function to use to compute source (IP, port) for a new session to a vip */
+  cnat_vip_source_policy_t vip_source_policy;
+
   /* Lock for the timestamp pool */
   clib_rwlock_t ts_lock;
 
@@ -127,7 +158,7 @@ typedef struct cnat_main_
 
   /* Longest prefix Match table for source NATing */
   cnat_snat_pfx_table_t snat_pfx_table;
-} cnat_main_t;
+};
 
 typedef struct cnat_timestamp_t_
 {
@@ -139,14 +170,14 @@ typedef struct cnat_timestamp_t_
   u16 refcnt;
 } cnat_timestamp_t;
 
-typedef struct cnat_node_ctx_t_
+struct cnat_node_ctx_
 {
   f64 now;
   u64 seed;
   u32 thread_index;
   ip_address_family_t af;
   u8 do_trace;
-} cnat_node_ctx_t;
+};
 
 extern u8 *format_cnat_endpoint (u8 * s, va_list * args);
 extern uword unformat_cnat_ep_tuple (unformat_input_t * input,

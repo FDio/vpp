@@ -14,6 +14,7 @@
  */
 
 #include <cnat/cnat_types.h>
+#include <cnat/cnat_node_vip.h>
 
 cnat_main_t cnat_main;
 fib_source_t cnat_fib_source;
@@ -102,6 +103,7 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
   cm->scanner_timeout = CNAT_DEFAULT_SCANNER_TIMEOUT;
   cm->session_max_age = CNAT_DEFAULT_SESSION_MAX_AGE;
   cm->tcp_max_age = CNAT_DEFAULT_TCP_MAX_AGE;
+  cm->vip_source_policy = cnat_vip_default_source_policy;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {

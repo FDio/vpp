@@ -60,7 +60,7 @@ typedef enum cnat_translation_flag_t_
  * A Translation represents the translation of a VEP to one of a set
  * of real server addresses
  */
-typedef struct cnat_translation_t_
+struct cnat_translation_
 {
   /**
    * Linkage into the FIB graph
@@ -96,7 +96,7 @@ typedef struct cnat_translation_t_
    * Translation flags
    */
   u8 flags;
-} cnat_translation_t;
+};
 
 extern cnat_translation_t *cnat_translation_pool;
 
