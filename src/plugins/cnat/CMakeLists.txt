@@ -24,6 +24,7 @@ add_vpp_plugin(cnat
   cnat_snat.c
   cnat_src_policy.c
   cnat_feature.c
+  cnat_k8s_snat_policy.c
 
   API_FILES
   cnat.api
