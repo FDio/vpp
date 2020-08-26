@@ -224,6 +224,9 @@ ct_init_local_session (app_worker_t * client_wrk, app_worker_t * server_wrk,
   ls->rx_fifo->segment_index = seg_index;
   ls->tx_fifo->segment_index = seg_index;
 
+  ls->rx_fifo->min_alloc = round_rx_fifo_sz / 2;
+  ls->tx_fifo->min_alloc = round_tx_fifo_sz / 2;
+
   segment_handle = segment_manager_segment_handle (sm, seg);
   if ((rv = app_worker_add_segment_notify (server_wrk, segment_handle)))
     {
