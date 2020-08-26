@@ -70,6 +70,30 @@
       "revId": "b6302b6e1e16cb1b6cfd98f97bc9941a423a6fc5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "90556db8_605ee793",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-08-26T06:05:14Z",
+      "side": 1,
+      "message": "Hi Chenmin, \n\nWe\u0027ll need Damjan to take a look at this to confirm we\u0027re not breaking legacy behavior and to keep me straight. I believe default behavior (today) is to ignore for-us checksums entirely, so that\u0027s why we have the \"enable_tcp_udp_checksum\" flag. If we are to maintain that, point 0 above is invalidated. Nonetheless, the fix should be as simple as to re-add the flags to the template if the nic capabilities includes rx checksum offloading. \n\nThis will leave us with two modes of operation 1) incoming checksum checking disabled (not sure if this is needed) 2) the one you described above with the small fix I just described\n\nOn tx, we offload checksums only if \"enable_tcp_udp_checksum\" is on and the nic supports it.",
+      "parentUuid": "4887c865_9199ec38",
+      "range": {
+        "startLine": 348,
+        "startChar": 3,
+        "endLine": 348,
+        "endChar": 44
+      },
+      "revId": "b6302b6e1e16cb1b6cfd98f97bc9941a423a6fc5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
