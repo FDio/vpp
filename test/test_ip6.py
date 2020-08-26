@@ -165,6 +165,10 @@ class TestIPv6(TestIPv6ND):
     """ IPv6 Test Case """
 
     @classmethod
+    def force_solo(cls):
+        return True
+
+    @classmethod
     def setUpClass(cls):
         super(TestIPv6, cls).setUpClass()
 

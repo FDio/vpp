@@ -121,6 +121,10 @@ class TestSvmFifoUnitTests(VppTestCase):
     """ SVM Fifo Unit Tests Case """
 
     @classmethod
+    def force_solo(cls):
+        return True
+
+    @classmethod
     def setUpClass(cls):
         super(TestSvmFifoUnitTests, cls).setUpClass()
 
