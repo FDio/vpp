@@ -299,6 +299,11 @@ class VppTestCase(unittest.TestCase):
             return 0
 
     @classmethod
+    def force_solo(cls):
+        """ if the test case class is timing-sensitive - return true """
+        return False
+
+    @classmethod
     def instance(cls):
         """Return the instance of this testcase"""
         return cls.test_instance
