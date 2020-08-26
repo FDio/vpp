@@ -16,6 +16,7 @@
 #include <vlibmemory/api.h>
 #include <cnat/cnat_node.h>
 #include <cnat/cnat_snat.h>
+#include <cnat/cnat_inline.h>
 
 typedef enum cnat_snat_next_
 {
@@ -220,13 +221,13 @@ VLIB_REGISTER_NODE (cnat_snat_ip6_node) =
 /* *INDENT-ON* */
 
 
-VNET_FEATURE_INIT (cnat_snat_ip4_node, static) =
-{
-.arc_name = "ip4-unicast",.node_name = "ip4-cnat-snat",};
+VNET_FEATURE_INIT (cnat_snat_ip4_node, static) = {
+  .arc_name = "ip4-unicast",.node_name = "ip4-cnat-snat",
+};
 
-VNET_FEATURE_INIT (cnat_snat_ip6_node, static) =
-{
-.arc_name = "ip6-unicast",.node_name = "ip6-cnat-snat",};
+VNET_FEATURE_INIT (cnat_snat_ip6_node, static) = {
+  .arc_name = "ip6-unicast",.node_name = "ip6-cnat-snat",
+};
 
 /*
  * fd.io coding-style-patch-verification: ON
