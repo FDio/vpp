@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "872a6c0e_3cb3678f",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-08-26T01:42:19Z",
+      "side": 1,
+      "message": "If the nic has the capability, shouldn\u0027t we be adding the VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT back to the template(see line 230 [1])? The new logic you\u0027ve added will then clear the correct flag if the nic reports the a bad checksum.\n\n[1] https://gerrit.fd.io/r/c/vpp/+/26480/5/src/plugins/dpdk/device/init.c#230",
+      "range": {
+        "startLine": 348,
+        "startChar": 3,
+        "endLine": 348,
+        "endChar": 44
+      },
+      "revId": "b6302b6e1e16cb1b6cfd98f97bc9941a423a6fc5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
