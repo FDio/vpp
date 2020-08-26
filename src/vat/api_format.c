@@ -7390,6 +7390,10 @@ api_tap_create_v2 (vat_main_t * vam)
 	tap_flags |= TAP_API_FLAG_TUN;
       else if (unformat (i, "gro-coalesce"))
 	tap_flags |= TAP_API_FLAG_GRO_COALESCE;
+      else if (unformat (i, "packed"))
+	tap_flags |= TAP_API_FLAG_PACKED;
+      else if (unformat (i, "in-order"))
+	tap_flags |= TAP_API_FLAG_IN_ORDER;
       else
 	break;
     }
@@ -20659,7 +20663,7 @@ _(l2_flags,                                                             \
 _(bridge_flags,                                                         \
   "bd_id <bridge-domain-id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
 _(tap_create_v2,                                                        \
-  "id <num> [hw-addr <mac-addr>] [host-if-name <name>] [host-ns <name>] [num-rx-queues <num>] [rx-ring-size <num>] [tx-ring-size <num>] [host-bridge <name>] [host-mac-addr <mac-addr>] [host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6addr/mask>] [host-mtu-size <mtu>] [gso | no-gso | csum-offload | gro-coalesce] [persist] [attach] [tun]") \
+  "id <num> [hw-addr <mac-addr>] [host-if-name <name>] [host-ns <name>] [num-rx-queues <num>] [rx-ring-size <num>] [tx-ring-size <num>] [host-bridge <name>] [host-mac-addr <mac-addr>] [host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6addr/mask>] [host-mtu-size <mtu>] [gso | no-gso | csum-offload | gro-coalesce] [persist] [attach] [tun] [packed] [in-order]") \
 _(tap_delete_v2,                                                        \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_v2_dump, "")                                         \

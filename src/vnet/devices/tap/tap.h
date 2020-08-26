@@ -28,7 +28,9 @@
   _ (PERSIST, 2)             \
   _ (ATTACH, 3)              \
   _ (TUN, 4)                 \
-  _ (GRO_COALESCE, 5)
+  _ (GRO_COALESCE, 5)        \
+  _ (PACKED, 6)              \
+  _ (IN_ORDER, 7)
 
 typedef enum
 {
