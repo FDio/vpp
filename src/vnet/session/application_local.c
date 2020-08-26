@@ -587,11 +587,14 @@ ct_session_tx (session_t * s)
   ct = (ct_connection_t *) session_get_transport (s);
   peer_ct = ct_connection_get (ct->peer_index);
   if (!peer_ct)
-    return -1;
+    return 0;
   peer_s = session_get (peer_ct->c_s_index, 0);
   if (peer_s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return 0;
-  return session_enqueue_notify (peer_s);
+  session_enqueue_notify (peer_s);
+  /* The scheduler uses packet count as a means of upper bounding the amount
+   * of work per dispatch. So make it look like we have sent something */
+  return 1;
 }
 
 static clib_error_t *
