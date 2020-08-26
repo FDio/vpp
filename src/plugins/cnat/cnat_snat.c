@@ -102,7 +102,7 @@ cnat_del_snat_prefix (ip_prefix_t * pfx)
   return 0;
 }
 
-int
+__clib_export int
 cnat_search_snat_prefix (ip46_address_t * addr, ip_address_family_t af)
 {
   /* Returns 0 if addr matches any of the listed prefixes */
