@@ -13,15 +13,31 @@
  * limitations under the License.
  */
 
-#ifndef __CNAT_SNAT_H__
-#define __CNAT_SNAT_H__
+#ifndef __CNAT_NODE_VIP_H__
+#define __CNAT_NODE_VIP_H__
+
+#include <vnet/udp/udp.h>
 
 #include <cnat/cnat_types.h>
 
-extern int cnat_add_snat_prefix (ip_prefix_t * pfx);
-extern int cnat_del_snat_prefix (ip_prefix_t * pfx);
-
-int cnat_search_snat_prefix (ip46_address_t * addr, ip_address_family_t af);
+cnat_source_policy_errors_t cnat_vip_default_source_policy (cnat_session_t *
+							    session,
+							    vlib_buffer_t * b,
+							    ip4_header_t *
+							    ip4,
+							    ip6_header_t *
+							    ip6,
+							    udp_header_t *
+							    udp0,
+							    u32 *
+							    rsession_flags,
+							    const
+							    cnat_translation_t
+							    * ct,
+							    cnat_node_ctx_t *
+							    ctx,
+							    cnat_main_t * cm,
+							    vlib_main_t * vm);
 
 /*
  * fd.io coding-style-patch-verification: ON

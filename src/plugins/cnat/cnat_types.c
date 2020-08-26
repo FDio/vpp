@@ -14,6 +14,7 @@
  */
 
 #include <cnat/cnat_types.h>
+#include <cnat/cnat_node_vip.h>
 
 cnat_main_t cnat_main;
 fib_source_t cnat_fib_source;
@@ -25,6 +26,27 @@ char *cnat_error_strings[] = {
 #include <cnat/cnat_error.def>
 #undef cnat_error
 };
+
+int
+cnat_allocate_port (cnat_main_t * cm, u16 * port)
+{
+  *port = clib_net_to_host_u16 (*port);
+  if (*port == 0)
+    *port = MIN_SRC_PORT;
+  clib_spinlock_lock (&cm->src_ports_lock);
+  if (clib_bitmap_get_no_check (cm->src_ports, *port))
+    {
+      *port = clib_bitmap_next_clear (cm->src_ports, *port);
+      if (PREDICT_FALSE (*port >= UINT16_MAX))
+	*port = clib_bitmap_next_clear (cm->src_ports, MIN_SRC_PORT);
+      if (PREDICT_FALSE (*port >= UINT16_MAX))
+	return -1;
+    }
+  clib_bitmap_set_no_check (cm->src_ports, *port, 1);
+  *port = clib_host_to_net_u16 (*port);
+  clib_spinlock_unlock (&cm->src_ports_lock);
+  return 0;
+}
 
 uword
 unformat_cnat_ep (unformat_input_t * input, va_list * args)
@@ -102,6 +124,7 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
   cm->scanner_timeout = CNAT_DEFAULT_SCANNER_TIMEOUT;
   cm->session_max_age = CNAT_DEFAULT_SESSION_MAX_AGE;
   cm->tcp_max_age = CNAT_DEFAULT_TCP_MAX_AGE;
+  cm->vip_source_policy = cnat_vip_default_source_policy;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -135,6 +158,12 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
     }
 
   return 0;
+}
+
+cnat_main_t *
+cnat_get_main ()
+{
+  return &cnat_main;
 }
 
 VLIB_EARLY_CONFIG_FUNCTION (cnat_config, "cnat");

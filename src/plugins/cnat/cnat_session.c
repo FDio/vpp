@@ -15,6 +15,7 @@
 
 #include <vnet/ip/ip.h>
 #include <cnat/cnat_session.h>
+#include <cnat/cnat_inline.h>
 
 #include <vppinfra/bihash_template.h>
 #include <vppinfra/bihash_template.c>

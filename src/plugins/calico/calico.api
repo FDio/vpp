@@ -1,5 +1,6 @@
+/* Hey Emacs use -*- mode: C -*- */
 /*
- * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,15 +14,21 @@
  * limitations under the License.
  */
 
-#ifndef __CNAT_SNAT_H__
-#define __CNAT_SNAT_H__
+/** \file
+    This file defines the vpp control-plane API messages
+    used to control the Calico  plugin
+*/
 
-#include <cnat/cnat_types.h>
+import "vnet/interface_types.api";
 
-extern int cnat_add_snat_prefix (ip_prefix_t * pfx);
-extern int cnat_del_snat_prefix (ip_prefix_t * pfx);
-
-int cnat_search_snat_prefix (ip46_address_t * addr, ip_address_family_t af);
+autoreply define calico_enable_disable_interface_snat
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool is_ip6;
+  bool is_enable;
+};
 
 /*
  * fd.io coding-style-patch-verification: ON
@@ -30,5 +37,3 @@ int cnat_search_snat_prefix (ip46_address_t * addr, ip_address_family_t af);
  * eval: (c-set-style "gnu")
  * End:
  */
-
-#endif
