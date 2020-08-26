@@ -17,6 +17,8 @@
 #include <cnat/cnat_snat.h>
 #include <cnat/cnat_translation.h>
 
+cnat_snat_main_t cnat_snat_main;
+
 static void
 cnat_compute_prefix_lengths_in_search_order (cnat_snat_pfx_table_t *
 					     table, ip_address_family_t af)
@@ -37,7 +39,7 @@ int
 cnat_add_snat_prefix (ip_prefix_t * pfx)
 {
   /* All packets destined to this prefix won't be source-NAT-ed */
-  cnat_snat_pfx_table_t *table = &cnat_main.snat_pfx_table;
+  cnat_snat_pfx_table_t *table = &cnat_snat_main.snat_pfx_table;
   clib_bihash_kv_24_8_t kv;
   ip6_address_t *mask;
   u64 af = ip_prefix_version (pfx);;
@@ -67,7 +69,7 @@ cnat_add_snat_prefix (ip_prefix_t * pfx)
 int
 cnat_del_snat_prefix (ip_prefix_t * pfx)
 {
-  cnat_snat_pfx_table_t *table = &cnat_main.snat_pfx_table;
+  cnat_snat_pfx_table_t *table = &cnat_snat_main.snat_pfx_table;
   clib_bihash_kv_24_8_t kv, val;
   ip6_address_t *mask;
   u64 af = ip_prefix_version (pfx);;
@@ -106,7 +108,7 @@ int
 cnat_search_snat_prefix (ip46_address_t * addr, ip_address_family_t af)
 {
   /* Returns 0 if addr matches any of the listed prefixes */
-  cnat_snat_pfx_table_t *table = &cnat_main.snat_pfx_table;
+  cnat_snat_pfx_table_t *table = &cnat_snat_main.snat_pfx_table;
   clib_bihash_kv_24_8_t kv, val;
   int i, n_p, rv;
   n_p = vec_len (table->meta[af].prefix_lengths_in_search_order);
@@ -177,6 +179,95 @@ cnat_set_snat (ip4_address_t * ip4, ip6_address_t * ip6, u32 sw_if_index)
   cnat_translation_watch_addr (INDEX_INVALID, 0, &cnat_main.snat_ip6,
 			       CNAT_RESOLV_ADDR_SNAT);
 }
+
+int
+cnat_enable_disable_interface_snat (u32 sw_if_index, ip_address_family_t af,
+				    u8 enable)
+{
+  cnat_snat_main_t *csm = &cnat_snat_main;
+  vnet_feature_registration_t *reg;
+  char *arc_name, *feature_name;
+  clib_error_t *err;
+  int rv;
+
+  if (AF_IP6 == af)
+    {
+      arc_name = "ip6-unicast";
+      feature_name = "ip6-cnat-snat";
+    }
+  else
+    {
+      arc_name = "ip4-unicast";
+      feature_name = "ip4-cnat-snat";
+    }
+
+  reg = vnet_get_feature_reg (arc_name, feature_name);
+  if (!reg)
+    return VNET_API_ERROR_FEATURE_DISABLED;
+  if (reg->enable_disable_cb)
+    {
+      err = reg->enable_disable_cb (sw_if_index, enable);
+      if (err)
+	return VNET_API_ERROR_UNSPECIFIED;
+    }
+  rv = vnet_feature_enable_disable (arc_name, feature_name, sw_if_index,
+				    enable, 0, 0);
+  if (rv)
+    return rv;
+
+  clib_bitmap_set (csm->snat_interfaces_bm[af], sw_if_index, enable);
+  return 0;
+}
+
+static clib_error_t *
+cnat_snat_interface_cli (vlib_main_t * vm,
+			 unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  ip_address_family_t af = AF_IP4;
+  u32 sw_if_index = ~0;
+  int is_enable = 1;
+  int rv;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "disable"))
+	is_enable = 0;
+      else if (unformat (input, "ip6"))
+	af = AF_IP6;
+      else
+	if (unformat
+	    (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, input);
+    }
+
+  if (sw_if_index == ~0)
+    return clib_error_return (0, "Interface not specified");
+
+  vlib_cli_output (vm, "Calico snat: %s %U %U",
+		   is_enable ? "enable" : "disable",
+		   format_vnet_sw_if_index_name, vnm, sw_if_index,
+		   format_ip_address_family, af);
+
+  rv = cnat_enable_disable_interface_snat (sw_if_index, af, is_enable);
+
+  if (rv)
+    return clib_error_return (0, "Error %d", rv);
+
+  return NULL;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cnat_snat_interface_cli_fn, static) =
+{
+  .path = "cnat snat interface",
+  .short_help = "cnat snat interface [disable] [ip6] sw_if_index",
+  .function = cnat_snat_interface_cli,
+};
+/* *INDENT-ON* */
 
 static clib_error_t *
 cnat_set_snat_cli (vlib_main_t * vm,
@@ -274,12 +365,30 @@ static clib_error_t *
 cnat_show_snat (vlib_main_t * vm,
 		unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  cnat_snat_pfx_table_t *table = &cnat_main.snat_pfx_table;
+  cnat_snat_main_t *csm = &cnat_snat_main;
+  cnat_snat_pfx_table_t *table = &csm->snat_pfx_table;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 idx;
+
   vlib_cli_output (vm, "Source NAT\nip4: %U\nip6: %U\n",
 		   format_cnat_endpoint, &cnat_main.snat_ip4,
 		   format_cnat_endpoint, &cnat_main.snat_ip6);
   vlib_cli_output (vm, "Prefixes:\n%U\n",
 		   format_bihash_24_8, &table->ip_hash, 1);
+
+  vlib_cli_output (vm, "Interfaces with IPv4 SNAT enabled:");
+  /* *INDENT-OFF* */
+  clib_bitmap_foreach (idx, csm->snat_interfaces_bm[AF_IP4], {
+    vlib_cli_output (vm, "%U", format_vnet_sw_if_index_name, vnm, idx);
+  });
+  /* *INDENT-ON* */
+
+  vlib_cli_output (vm, "Interfaces with IPv6 SNAT enabled:");
+  /* *INDENT-OFF* */
+  clib_bitmap_foreach (idx, csm->snat_interfaces_bm[AF_IP6], {
+    vlib_cli_output (vm, "%U", format_vnet_sw_if_index_name, vnm, idx);
+  });
+/* *INDENT-ON* */
   return (NULL);
 }
 
@@ -295,8 +404,9 @@ VLIB_CLI_COMMAND (cnat_show_snat_command, static) =
 static clib_error_t *
 cnat_snat_init (vlib_main_t * vm)
 {
-  cnat_snat_pfx_table_t *table = &cnat_main.snat_pfx_table;
+  cnat_snat_main_t *csm = &cnat_snat_main;
   cnat_main_t *cm = &cnat_main;
+  cnat_snat_pfx_table_t *table = &csm->snat_pfx_table;
   int i;
   for (i = 0; i < ARRAY_LEN (table->ip_masks); i++)
     {
@@ -317,6 +427,8 @@ cnat_snat_init (vlib_main_t * vm)
   clib_bihash_set_kvp_format_fn_24_8 (&table->ip_hash,
 				      format_cnat_snat_prefix);
 
+  clib_bitmap_validate (csm->snat_interfaces_bm[AF_IP4], 4096);
+  clib_bitmap_validate (csm->snat_interfaces_bm[AF_IP6], 4096);
   return (NULL);
 }
 

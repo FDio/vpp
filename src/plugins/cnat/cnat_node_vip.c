@@ -196,9 +196,13 @@ cnat_vip_node_fn (vlib_main_t * vm,
       session->value.ct_index = ct - cnat_translation_pool;
       session->value.cs_lbi = dpo0->dpoi_index;
 
-      rv = cspm->vip_policy (vm, b, session, &rsession_flags, ct, ctx);
+      rv = cspm->src_policies[cspm->active_src_policy] (vm, b, session,
+							&rsession_flags, ct,
+							ctx);
       if (CNAT_SOURCE_ERROR_USE_DEFAULT == rv)
-	rv = cspm->default_policy (vm, b, session, &rsession_flags, ct, ctx);
+	rv = cspm->src_policies[CNAT_SRC_POLICY_DEFAULT] (vm, b, session,
+							  &rsession_flags, ct,
+							  ctx);
       if (rv)
 	{
 	  if (CNAT_SOURCE_ERROR_EXHAUSTED_PORTS == rv)

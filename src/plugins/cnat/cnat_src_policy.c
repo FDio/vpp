@@ -18,13 +18,72 @@
 
 #include <cnat/cnat_session.h>
 #include <cnat/cnat_translation.h>
+#include <cnat/cnat_snat.h>
 
 cnat_src_policy_main_t cnat_src_policy_main;
 
-void
-cnat_register_vip_src_policy (cnat_vip_source_policy_t fp)
+cnat_source_policy_errors_t
+cnat_vip_calico_source_policy (vlib_main_t * vm,
+			       vlib_buffer_t * b,
+			       cnat_session_t * session,
+			       u32 * rsession_flags,
+			       const cnat_translation_t * ct,
+			       cnat_node_ctx_t * ctx)
 {
-  cnat_src_policy_main.vip_policy = fp;
+  ip_protocol_t iproto;
+  udp_header_t *udp0;
+  ip4_header_t *ip4;
+  ip6_header_t *ip6;
+  u32 input_if = UINT32_MAX;
+  cnat_main_t *cm = cnat_get_main ();
+  u16 sport = UINT16_MAX;
+  int rv = 0;
+
+  if (AF_IP4 == ctx->af)
+    {
+      ip4 = vlib_buffer_get_current (b);
+      iproto = ip4->protocol;
+      udp0 = (udp_header_t *) (ip4 + 1);
+    }
+  else
+    {
+      ip6 = vlib_buffer_get_current (b);
+      iproto = ip6->protocol;
+      udp0 = (udp_header_t *) (ip6 + 1);
+    }
+
+  input_if = vnet_buffer (b)->sw_if_index[VLIB_RX];
+  if (!clib_bitmap_get (cnat_snat_main.snat_interfaces_bm[ctx->af], input_if))
+    goto no_snat;
+
+  rv = cnat_search_snat_prefix (&session->value.cs_ip[VLIB_TX], ctx->af);
+  if (!rv)
+    /* Destination is in the prefixes that don't require snat */
+    goto no_snat;
+
+  /* Port allocation, first try to use the original port, allocate one
+     if it is already used */
+  sport = udp0->src_port;
+  rv = cnat_allocate_port (&sport, iproto);
+  if (rv)
+    return CNAT_SOURCE_ERROR_EXHAUSTED_PORTS;
+
+  session->value.cs_port[VLIB_RX] = sport;
+  session->value.flags |=
+    CNAT_SESSION_FLAG_NO_CLIENT | CNAT_SESSION_FLAG_ALLOC_PORT;
+  *rsession_flags |= CNAT_SESSION_FLAG_HAS_SNAT;
+
+  /* Session config for source address update */
+  if (AF_IP6 == ctx->af)
+    ip46_address_set_ip6 (&session->value.cs_ip[VLIB_RX],
+			  &ip_addr_v6 (&cm->snat_ip6.ce_ip));
+  else
+    ip46_address_set_ip4 (&session->value.cs_ip[VLIB_RX],
+			  &ip_addr_v4 (&cm->snat_ip4.ce_ip));
+  return 0;
+
+no_snat:
+  return CNAT_SOURCE_ERROR_USE_DEFAULT;
 }
 
 cnat_source_policy_errors_t
@@ -134,8 +193,10 @@ static clib_error_t *
 cnat_src_policy_init (vlib_main_t * vm)
 {
   cnat_src_policy_main_t *cspm = &cnat_src_policy_main;
-  cspm->vip_policy = cnat_vip_default_source_policy;
-  cspm->default_policy = cnat_vip_default_source_policy;
+  cspm->active_src_policy = CNAT_SRC_POLICY_DEFAULT;
+  cspm->src_policies[CNAT_SRC_POLICY_DEFAULT] =
+    cnat_vip_default_source_policy;
+  cspm->src_policies[CNAT_SRC_POLICY_CALICO] = cnat_vip_calico_source_policy;
 
   vec_validate (cspm->src_ports, CNAT_N_SPORT_PROTO);
   for (int i = 0; i < CNAT_N_SPORT_PROTO; i++)
@@ -145,7 +206,14 @@ cnat_src_policy_init (vlib_main_t * vm)
     }
   /* Inject cleanup callback */
   cnat_free_port_cb = cnat_free_port;
+
   return (NULL);
+}
+
+void
+cnat_set_vip_src_policy (cnat_src_policy_type_t typ)
+{
+  cnat_src_policy_main.active_src_policy = typ;
 }
 
 VLIB_INIT_FUNCTION (cnat_src_policy_init);

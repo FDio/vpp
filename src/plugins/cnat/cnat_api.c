@@ -21,6 +21,7 @@
 #include <cnat/cnat_session.h>
 #include <cnat/cnat_client.h>
 #include <cnat/cnat_snat.h>
+#include <cnat/cnat_src_policy.h>
 
 #include <vnet/ip/ip_types_api.h>
 
@@ -332,6 +333,44 @@ static void
     rv = cnat_del_snat_prefix (&pfx);
 
   REPLY_MACRO (VL_API_CNAT_ADD_DEL_SNAT_PREFIX_REPLY);
+}
+
+static void
+vl_api_cnat_set_vip_src_policy_t_handler (vl_api_cnat_set_vip_src_policy_t *
+					  mp)
+{
+  vl_api_cnat_set_vip_src_policy_reply_t *rmp;
+  cnat_src_policy_type_t typ;
+  int rv = 0;
+
+  typ = (cnat_src_policy_type_t) mp->src_policy;
+  cnat_set_vip_src_policy (typ);
+
+  REPLY_MACRO (VL_API_CNAT_SET_VIP_SRC_POLICY_REPLY);
+}
+
+static void
+  vl_api_cnat_enable_disable_interface_snat_t_handler
+  (vl_api_cnat_enable_disable_interface_snat_t * mp)
+{
+  vl_api_cnat_enable_disable_interface_snat_reply_t *rmp;
+  u32 sw_if_index;
+  ip_address_family_t af;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);;
+
+  rv = ip_address_family_decode (mp->if_af, &af);
+  if (rv)
+    goto bad_sw_if_index;
+
+  rv = cnat_enable_disable_interface_snat (sw_if_index, af, mp->is_enable);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_CNAT_ENABLE_DISABLE_INTERFACE_SNAT_REPLY);
 }
 
 #include <cnat/cnat.api.c>

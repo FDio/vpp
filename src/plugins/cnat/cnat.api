@@ -150,6 +150,28 @@ autoreply define cnat_add_del_snat_prefix
   vl_api_prefix_t prefix;
 };
 
+autoreply define cnat_enable_disable_interface_snat
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_address_family_t if_af;
+  bool is_enable;
+};
+
+enum cnat_src_policy_type:u8
+{
+  CNAT_SOURCE_POLICY_DEFAULT = 0,
+  CNAT_SOURCE_POLICY_CALICO = 1,
+};
+
+autoreply define cnat_set_vip_src_policy
+{
+  u32 client_index;
+  u32 context;
+  vl_api_cnat_src_policy_type_t src_policy;
+};
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

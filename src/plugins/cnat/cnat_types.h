@@ -77,23 +77,6 @@ typedef struct
   u16 sequence;
 } cnat_echo_header_t;
 
-typedef struct
-{
-  u32 dst_address_length_refcounts[129];
-  u16 *prefix_lengths_in_search_order;
-  uword *non_empty_dst_address_length_bitmap;
-} cnat_snat_pfx_table_meta_t;
-
-typedef struct
-{
-  /* Stores (ip family, prefix & mask) */
-  clib_bihash_24_8_t ip_hash;
-  /* family dependant cache */
-  cnat_snat_pfx_table_meta_t meta[2];
-  /* Precomputed ip masks (ip4 & ip6) */
-  ip6_address_t ip_masks[129];
-} cnat_snat_pfx_table_t;
-
 typedef struct cnat_main_
 {
   /* Memory size of the session bihash */
@@ -132,9 +115,6 @@ typedef struct cnat_main_
 
   /* Ip6 Address to use for source NATing */
   cnat_endpoint_t snat_ip6;
-
-  /* Longest prefix Match table for source NATing */
-  cnat_snat_pfx_table_t snat_pfx_table;
 
   /* Index of the scanner process node */
   uword scanner_node_index;

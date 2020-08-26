@@ -30,6 +30,13 @@ typedef enum
   CNAT_N_SPORT_PROTO
 } cnat_sport_proto_t;
 
+typedef enum
+{
+  CNAT_SRC_POLICY_DEFAULT = 0,
+  CNAT_SRC_POLICY_CALICO,
+  CNAT_N_SRC_POLICIES
+} cnat_src_policy_type_t;
+
 typedef enum cnat_source_policy_errors_
 {
   CNAT_SOURCE_ERROR_EXHAUSTED_PORTS = 1,
@@ -53,8 +60,8 @@ typedef cnat_source_policy_errors_t (*cnat_vip_source_policy_t)
 
 typedef struct cnat_src_policy_main_
 {
-  cnat_vip_source_policy_t vip_policy;
-  cnat_vip_source_policy_t default_policy;
+  cnat_src_policy_type_t active_src_policy;
+  cnat_vip_source_policy_t src_policies[CNAT_N_SRC_POLICIES];
 
   /* Per proto source ports allocator for snat */
   cnat_src_port_allocator_t *src_ports;
@@ -62,9 +69,26 @@ typedef struct cnat_src_policy_main_
 
 extern cnat_src_policy_main_t cnat_src_policy_main;
 
-void cnat_register_vip_src_policy (cnat_vip_source_policy_t fp);
+/**
+ * Set the current VIP source policy
+ */
+void cnat_set_vip_src_policy (cnat_src_policy_type_t typ);
+
+/**
+ * Allocate a new port for protocol
+ */
 int cnat_allocate_port (u16 * port, ip_protocol_t iproto);
+
+/**
+ * Put back protocol port to pool
+ */
 void cnat_free_port (u16 port, ip_protocol_t iproto);
+
+/**
+ * Enable snat & src_policy for given interface & address family
+ */
+int cnat_enable_disable_interface_snat (u32 sw_if_index,
+					ip_address_family_t af, u8 enable);
 
 /*
  * fd.io coding-style-patch-verification: ON
