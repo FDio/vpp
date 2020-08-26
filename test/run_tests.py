@@ -324,6 +324,8 @@ def process_finished_testsuite(wrapped_testcase_suite,
 
 def run_forked(testcase_suites):
     wrapped_testcase_suites = set()
+    moody_testcase_suites = []
+    total_test_runners = 0
 
     # suites are unhashable, need to use list
     results = []
@@ -331,14 +333,32 @@ def run_forked(testcase_suites):
     finished_unread_testcases = set()
     manager = StreamQueueManager()
     manager.start()
-    for i in range(concurrent_tests):
+    total_test_runners = 0
+    while total_test_runners < concurrent_tests:
         if testcase_suites:
-            wrapped_testcase_suite = TestCaseWrapper(testcase_suites.pop(0),
+            a_suite = testcase_suites.pop(0)
+            if a_suite.is_moody:
+                moody_testcase_suites.append(a_suite)
+                continue
+            wrapped_testcase_suite = TestCaseWrapper(a_suite,
                                                      manager)
             wrapped_testcase_suites.add(wrapped_testcase_suite)
             unread_testcases.add(wrapped_testcase_suite)
+            total_test_runners = total_test_runners + 1
         else:
             break
+
+    while total_test_runners < 1 and moody_testcase_suites:
+        if moody_testcase_suites:
+            a_suite = moody_testcase_suites.pop(0)
+            wrapped_testcase_suite = TestCaseWrapper(a_suite,
+                                                     manager)
+            wrapped_testcase_suites.add(wrapped_testcase_suite)
+            unread_testcases.add(wrapped_testcase_suite)
+            total_test_runners = total_test_runners + 1
+        else:
+            break
+
 
     read_from_testcases = threading.Event()
     read_from_testcases.set()
@@ -350,6 +370,8 @@ def run_forked(testcase_suites):
 
     failed_wrapped_testcases = set()
     stop_run = False
+
+    sys.stderr.write("Total runners: " + str(total_test_runners)+ "\n")
 
     try:
         while wrapped_testcase_suites:
@@ -448,14 +470,32 @@ def run_forked(testcase_suites):
                 wrapped_testcase_suites.remove(finished_testcase)
                 finished_unread_testcases.add(finished_testcase)
                 finished_testcase.stdouterr_queue.put(None)
+                total_test_runners = total_test_runners - 1
                 if stop_run:
                     while testcase_suites:
                         results.append(TestResult(testcase_suites.pop(0)))
                 elif testcase_suites:
-                    new_testcase = TestCaseWrapper(testcase_suites.pop(0),
+                    a_testcase = testcase_suites.pop(0)
+                    while a_testcase and a_testcase.is_moody:
+                        moody_testcase_suites.append(a_testcase)
+                        if testcase_suites:
+                            a_testcase = testcase_suites.pop(0)
+                        else:
+                            a_testcase = None
+                    if a_testcase:
+                        new_testcase = TestCaseWrapper(a_testcase,
                                                    manager)
-                    wrapped_testcase_suites.add(new_testcase)
-                    unread_testcases.add(new_testcase)
+                        wrapped_testcase_suites.add(new_testcase)
+                        total_test_runners = total_test_runners + 1
+                        unread_testcases.add(new_testcase)
+                else:
+                    if moody_testcase_suites and total_test_runners == 0:
+                        a_testcase = moody_testcase_suites.pop(0)
+                        new_testcase = TestCaseWrapper(a_testcase,
+                                                   manager)
+                        wrapped_testcase_suites.add(new_testcase)
+                        total_test_runners = total_test_runners + 1
+                        unread_testcases.add(new_testcase)
             time.sleep(0.1)
     except Exception:
         for wrapped_testcase_suite in wrapped_testcase_suites:
@@ -484,7 +524,10 @@ class SplitToSuitesCallback:
             self.suite_name = file_name + cls.__name__
             if self.suite_name not in self.suites:
                 self.suites[self.suite_name] = unittest.TestSuite()
+                self.suites[self.suite_name].is_moody = False
             self.suites[self.suite_name].addTest(test_method)
+            if test_method.is_moody():
+                self.suites[self.suite_name].is_moody = True
 
         else:
             self.filtered.addTest(test_method)

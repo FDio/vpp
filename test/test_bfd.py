@@ -686,6 +686,14 @@ class BFD4TestCase(VppTestCase):
     test_session = None
 
     @classmethod
+    def is_moody(cls):
+        return True
+
+    @classmethod
+    def is_moody(cls):
+        return True
+
+    @classmethod
     def setUpClass(cls):
         super(BFD4TestCase, cls).setUpClass()
         cls.vapi.cli("set log class bfd level debug")
@@ -1494,6 +1502,10 @@ class BFD6TestCase(VppTestCase):
     test_session = None
 
     @classmethod
+    def is_moody(cls):
+        return True
+
+    @classmethod
     def setUpClass(cls):
         super(BFD6TestCase, cls).setUpClass()
         cls.vapi.cli("set log class bfd level debug")
@@ -1705,6 +1717,10 @@ class BFDFIBTestCase(VppTestCase):
     test_session = None
 
     @classmethod
+    def is_moody(cls):
+        return True
+
+    @classmethod
     def setUpClass(cls):
         super(BFDFIBTestCase, cls).setUpClass()
 
@@ -1810,6 +1826,7 @@ class BFDTunTestCase(VppTestCase):
     vpp_session = None
     test_session = None
 
+
     @classmethod
     def setUpClass(cls):
         super(BFDTunTestCase, cls).setUpClass()
@@ -1891,6 +1908,10 @@ class BFDSHA1TestCase(VppTestCase):
     vpp_clock_offset = None
     vpp_session = None
     test_session = None
+
+    @classmethod
+    def is_moody(cls):
+        return True
 
     @classmethod
     def setUpClass(cls):
@@ -2123,6 +2144,10 @@ class BFDAuthOnOffTestCase(VppTestCase):
     test_session = None
 
     @classmethod
+    def is_moody(cls):
+        return True
+
+    @classmethod
     def setUpClass(cls):
         super(BFDAuthOnOffTestCase, cls).setUpClass()
         cls.vapi.cli("set log class bfd level debug")
@@ -2330,6 +2355,11 @@ class BFDAuthOnOffTestCase(VppTestCase):
 class BFDCLITestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (CLI) """
     pg0 = None
+
+    @classmethod
+    def is_moody(cls):
+        return True
+
 
     @classmethod
     def setUpClass(cls):

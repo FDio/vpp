@@ -299,6 +299,11 @@ class VppTestCase(unittest.TestCase):
             return 0
 
     @classmethod
+    def is_moody(cls):
+        """ Return whether the test class is 'moody' with respect to timing - override per class """
+        return False
+
+    @classmethod
     def instance(cls):
         """Return the instance of this testcase"""
         return cls.test_instance
