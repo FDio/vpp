@@ -16,6 +16,62 @@
 #include <vnet/ip/ip.h>
 #include <cnat/cnat_snat.h>
 #include <cnat/cnat_translation.h>
+#include <cnat/cnat_k8s_snat_policy.h>
+
+void
+cnat_set_snat_policy (cnat_snat_policy_t fp)
+{
+  cnat_main.snat_policy = fp;
+}
+
+static clib_error_t *
+cnat_snat_policy_cmd (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
+{
+  cnat_snat_policy_t fp = NULL;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "none"))
+	;
+      else if (unformat (input, "k8s"))
+	fp = cnat_k8s_snat_policy;
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, input);
+    }
+
+  cnat_set_snat_policy (fp);
+  return NULL;
+}
+
+VLIB_CLI_COMMAND (cnat_snat_policy_command, static) = {
+  .path = "cnat set snat policy",
+  .short_help = "cnat set snat policy {none,k8s}",
+  .function = cnat_snat_policy_cmd,
+};
+
+static clib_error_t *
+show_cnat_snat_policy_cmd (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
+{
+  u8 *s = format (NULL, "snat policy: ");
+  if (cnat_main.snat_policy == NULL)
+    s = format (s, "none");
+  else if (cnat_main.snat_policy == cnat_k8s_snat_policy)
+    s = format (s, "k8s");
+  else
+    s = format (s, "unknown (%x)", cnat_main.snat_policy);
+
+  vlib_cli_output (vm, (char *) s);
+  return NULL;
+}
+
+VLIB_CLI_COMMAND (show_cnat_snat_policy_command, static) = {
+  .path = "show cnat snat policy",
+  .short_help = "show cnat snat policy",
+  .function = show_cnat_snat_policy_cmd,
+};
 
 static void
 cnat_compute_prefix_lengths_in_search_order (cnat_snat_pfx_table_t *
@@ -24,13 +80,11 @@ cnat_compute_prefix_lengths_in_search_order (cnat_snat_pfx_table_t *
   int i;
   vec_reset_length (table->meta[af].prefix_lengths_in_search_order);
   /* Note: bitmap reversed so this is in fact a longest prefix match */
-  /* *INDENT-OFF* */
   clib_bitmap_foreach (i, table->meta[af].non_empty_dst_address_length_bitmap)
      {
       int dst_address_length = 128 - i;
       vec_add1 (table->meta[af].prefix_lengths_in_search_order, dst_address_length);
     }
-  /* *INDENT-ON* */
 }
 
 int
@@ -220,14 +274,12 @@ done:
   return (e);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cnat_set_snat_command, static) =
 {
   .path = "cnat snat with",
   .short_help = "cnat snat with [<ip4-address>][<ip6-address>][sw_if_index]",
   .function = cnat_set_snat_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 cnat_snat_exclude (vlib_main_t * vm,
@@ -261,14 +313,12 @@ cnat_snat_exclude (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cnat_snat_exclude_command, static) =
 {
   .path = "cnat snat exclude",
   .short_help = "cnat snat exclude [ip]",
   .function = cnat_snat_exclude,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 cnat_show_snat (vlib_main_t * vm,
@@ -283,20 +333,18 @@ cnat_show_snat (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cnat_show_snat_command, static) =
 {
   .path = "show cnat snat",
   .short_help = "show cnat snat",
   .function = cnat_show_snat,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 cnat_snat_init (vlib_main_t * vm)
 {
-  cnat_snat_pfx_table_t *table = &cnat_main.snat_pfx_table;
   cnat_main_t *cm = &cnat_main;
+  cnat_snat_pfx_table_t *table = &cm->snat_pfx_table;
   int i;
   for (i = 0; i < ARRAY_LEN (table->ip_masks); i++)
     {

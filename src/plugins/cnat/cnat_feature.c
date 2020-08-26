@@ -22,6 +22,9 @@
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/load_balance_map.h>
 
+#include <vnet/ip/ip4_inlines.h>
+#include <vnet/ip/ip6_inlines.h>
+
 typedef enum cnat_feature_next_
 {
   CNAT_FEATURE_NEXT_DROP,
@@ -262,7 +265,6 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 			vlib_buffer_t *b, cnat_node_ctx_t *ctx,
 			int session_not_found, cnat_session_t *session)
 {
-  cnat_src_policy_main_t *cspm = &cnat_src_policy_main;
   cnat_main_t *cm = &cnat_main;
   ip4_header_t *ip4 = NULL;
   ip_protocol_t iproto;
@@ -300,12 +302,12 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       /* session table hit */
       cnat_timestamp_update (session->value.cs_ts_index, ctx->now);
     }
-  else if (!cspm->snat_policy)
+  else if (!cm->snat_policy)
     goto trace;
   else
     {
       /* TODO: handle errors? */
-      cspm->snat_policy (vm, b, session, ctx, &do_snat);
+      cm->snat_policy (vm, b, session, ctx, &do_snat);
       if (do_snat != 1)
 	goto trace;
 
