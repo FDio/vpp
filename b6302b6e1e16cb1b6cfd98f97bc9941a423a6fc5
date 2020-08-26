@@ -46,6 +46,30 @@
       "revId": "b6302b6e1e16cb1b6cfd98f97bc9941a423a6fc5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4887c865_9199ec38",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 1692
+      },
+      "writtenOn": "2020-08-26T05:49:04Z",
+      "side": 1,
+      "message": "\u003e Hi Florin,\n\u003e \n\u003e Yes, you are right. I have another patch to fix this issue, I\u0027ll add you as reviewer.\n\u003e I think the correct logic should be:\n\u003e \n\u003e 0. set the default VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT flags in template if enable_tcp_udp_checksum is enabled.\n\u003e \n\u003e 1. If the NIC reports the pkt as good, then we do nothing(as the flags are already set)\n\u003e \n\u003e 2. If the NIC reports the pkt as bad, then we only set the flag VNET_BUFFER_F_L4_CHECKSUM_COMPUTED(clear the VNET_BUFFER_F_L4_CHECKSUM_CORRECT flag).\n\u003e \n\u003e 3. In both cases 2 \u0026 3, VPP does not need to calculate the checksum again. Please see the logic in ip4_local_check_l4_csum(). \n\u003e \n\u003e 4. If we don\u0027t enable enable_tcp_udp_checksum, then clear flags VNET_BUFFER_F_L4_CHECKSUM_COMPUTED and VNET_BUFFER_F_L4_CHECKSUM_CORRECT in the template, and let the software to check the L4 checksum. See logic in ip4_local_l4_csum_validate().\n\u003e \n\u003e 5. I think line #230 is doing the opposite - it clears the flags in template when \u0027enable_tcp_udp_checksum\u0027 is enabled.\n\u003e    Earlier I asked this question in the community but didn\u0027t get a clear feedback. I prepared a separate patch to fix this bug.\n\nhttps://gerrit.fd.io/r/c/vpp/+/28584  dpdk: fix a L4 checksum initial flags issue",
+      "parentUuid": "1c85e52b_e0106e10",
+      "range": {
+        "startLine": 348,
+        "startChar": 3,
+        "endLine": 348,
+        "endChar": 44
+      },
+      "revId": "b6302b6e1e16cb1b6cfd98f97bc9941a423a6fc5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
