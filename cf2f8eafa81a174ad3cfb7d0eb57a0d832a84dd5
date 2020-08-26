@@ -16,6 +16,24 @@
       "revId": "cf2f8eafa81a174ad3cfb7d0eb57a0d832a84dd5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f91f8491_81beefdb",
+        "filename": "src/vnet/ip/ip4_packet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 1964
+      },
+      "writtenOn": "2020-08-26T08:59:40Z",
+      "side": 1,
+      "message": "Hi Dave, thanks for your comments. I checked the definition for WARN_ON/WARN_OFF macro and tried your method but \u0027WARN_ON(xxx);\u0027 didn\u0027t pass \u0027make checkstyle\u0027 verification. So we probably still need the indent brackets here to let WARN_ON/WARN_OFF macro pass the indent check. Below is the my test result.\n\nsnowball@net-arm-thunderx2-03:~/tasks/fix_gcc_10/vpp$ git diff\ndiff --git a/src/vnet/ip/ip4_packet.h b/src/vnet/ip/ip4_packet.h\nindex fee0c8cbc..2aff9b152 100644\n--- a/src/vnet/ip/ip4_packet.h\n+++ b/src/vnet/ip/ip4_packet.h\n@@ -43,6 +43,7 @@\n #include \u003cvnet/ip/ip_packet.h\u003e /* for ip_csum_t */\n #include \u003cvnet/tcp/tcp_packet.h\u003e       /* for tcp_header_t */\n #include \u003cvppinfra/byte_order.h\u003e       /* for clib_net_to_host_u16 */\n+#include \u003cvppinfra/warnings.h\u003e\n\n /* IP4 address which can be accessed either as 4 bytes\n    or as a 32-bit number. */\n@@ -197,6 +198,7 @@ ip4_next_header (ip4_header_t * i)\n   return (void *) i + ip4_header_bytes (i);\n }\n\n+WARN_OFF(array-bounds);\n always_inline u16\n ip4_header_checksum (ip4_header_t * i)\n {\n@@ -296,6 +298,7 @@ ip4_header_checksum (ip4_header_t * i)\n   sum \u003d ((u16) sum) + (sum \u003e\u003e 16);\n   return ~((u16) sum);\n }\n+WARN_ON(array-bounds);\n\n always_inline void\n ip4_header_set_dscp (ip4_header_t * ip4, ip_dscp_t dscp)\n\nsnowball@net-arm-thunderx2-03:~/tasks/fix_gcc_10/vpp$ sudo make checkstyle\nGNU indent 2.2.11\nclang-format version 6.0.0-1ubuntu2 (tags/RELEASE_600/final)\nOn branch master\nYour branch is up to date with \u0027origin/master\u0027.\n\nChanges not staged for commit:\n  (use \"git add \u003cfile\u003e...\" to update what will be committed)\n  (use \"git restore \u003cfile\u003e...\" to discard changes in working directory)\n        modified:   src/vnet/ip/ip4_packet.h\n\nno changes added to commit (use \"git add\" and/or \"git commit -a\")\nFiles src/vnet/ip/ip4_packet.h and src/vnet/ip/ip4_packet.h.out2 differ\n\nCheckstyle failed for src/vnet/ip/ip4_packet.h.\nRun indent (twice!) as shown to fix the problem:\nindent build-root/scripts/../../src/vnet/ip/ip4_packet.h\nindent build-root/scripts/../../src/vnet/ip/ip4_packet.h\n*******************************************************************\n* VPP CHECKSTYLE FAILED\n* CONSULT FAILURE LOG ABOVE\n* NOTE: Running \u0027build-root/scripts/checkstyle.sh --fix\u0027 *MAY* fix the issue\n*******************************************************************\nMakefile:675: recipe for target \u0027checkstyle\u0027 failed\nmake: *** [checkstyle] Error 1",
+      "parentUuid": "d83639ed_d3488662",
+      "revId": "cf2f8eafa81a174ad3cfb7d0eb57a0d832a84dd5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
