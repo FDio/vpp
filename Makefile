@@ -130,7 +130,7 @@ else
 	RPM_DEPENDS += python36-ply  # for vppapigen
 	RPM_DEPENDS += python3-devel python3-pip
 	RPM_DEPENDS += python-virtualenv python36-jsonschema
-	RPM_DEPENDS += devtoolset-9
+	RPM_DEPENDS += devtoolset-9 devtoolset-9-libasan-devel
 	RPM_DEPENDS += cmake3
 	RPM_DEPENDS_GROUPS = 'Development Tools'
 endif
@@ -290,7 +290,7 @@ ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 	exit 0
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@for i in $(RPM_DEPENDS) ; do \
-	    RPM=$$(basename -s .rpm "$${i##*/}" | cut -d- -f1,2,3)  ;	\
+	    RPM=$$(basename -s .rpm "$${i##*/}" | cut -d- -f1,2,3,4)  ;	\
 	    MISSING+=$$(rpm -q $$RPM | grep "^package")	   ;    \
 	done							   ;	\
 	if [ -n "$$MISSING" ] ; then \
