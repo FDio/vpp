@@ -964,7 +964,11 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 
       if (is_output_feature)
 	{
-	  vnet_feature_next (&vnet_buffer2 (b0)->nat.arc_next, b0);
+	  /* Handoff node already set arc_next. */
+	  if (sm->num_workers <= 1)
+	    {
+	      vnet_feature_next (&vnet_buffer2 (b0)->nat.arc_next, b0);
+	    }
 	  iph_offset0 = vnet_buffer (b0)->ip.reass.save_rewrite_length;
 	}
 
