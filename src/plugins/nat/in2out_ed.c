@@ -964,7 +964,6 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 
       if (is_output_feature)
 	{
-	  vnet_feature_next (&vnet_buffer2 (b0)->nat.arc_next, b0);
 	  iph_offset0 = vnet_buffer (b0)->ip.reass.save_rewrite_length;
 	}
 
@@ -1586,9 +1585,25 @@ VLIB_NODE_FN (nat_pre_in2out_node)
 				 NAT_NEXT_IN2OUT_ED_FAST_PATH);
 }
 
+VLIB_NODE_FN (nat_pre_in2out_output_node)
+  (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return nat_pre_node_fn_inline (vm, node, frame,
+				 NAT_NEXT_IN2OUT_ED_OUTPUT_FAST_PATH);
+}
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat_pre_in2out_node) = {
   .name = "nat-pre-in2out",
+  .vector_size = sizeof (u32),
+  .sibling_of = "nat-default",
+  .format_trace = format_nat_pre_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = 0,
+};
+
+VLIB_REGISTER_NODE (nat_pre_in2out_output_node) = {
+  .name = "nat-pre-in2out-output",
   .vector_size = sizeof (u32),
   .sibling_of = "nat-default",
   .format_trace = format_nat_pre_trace,

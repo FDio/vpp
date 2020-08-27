@@ -142,6 +142,12 @@ VNET_FEATURE_INIT (ip4_snat_hairpin_src, static) = {
   .node_name = "nat44-hairpin-src",
   .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa","ip4-sv-reassembly-output-feature"),
 };
+VNET_FEATURE_INIT (nat_pre_in2out_output, static) = {
+  .arc_name = "ip4-output",
+  .node_name = "nat-pre-in2out-output",
+  .runs_after = VNET_FEATURES ("ip4-sv-reassembly-output-feature"),
+  .runs_before = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
+};
 VNET_FEATURE_INIT (ip4_nat44_ed_in2out_output, static) = {
   .arc_name = "ip4-output",
   .node_name = "nat44-ed-in2out-output",
@@ -2249,7 +2255,7 @@ feature_set:
 	    return rv;
 	  vnet_feature_enable_disable ("ip4-unicast", "nat-pre-out2in",
 				       sw_if_index, !is_del, 0, 0);
-	  vnet_feature_enable_disable ("ip4-output", "nat44-ed-in2out-output",
+	  vnet_feature_enable_disable ("ip4-output", "nat-pre-in2out-output",
 				       sw_if_index, !is_del, 0, 0);
 	}
       else
@@ -4662,6 +4668,7 @@ VLIB_REGISTER_NODE (nat_default_node) = {
     [NAT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
     [NAT_NEXT_IN2OUT_ED_FAST_PATH] = "nat44-ed-in2out",
     [NAT_NEXT_IN2OUT_ED_SLOW_PATH] = "nat44-ed-in2out-slowpath",
+    [NAT_NEXT_IN2OUT_ED_OUTPUT_FAST_PATH] = "nat44-ed-in2out-output",
     [NAT_NEXT_IN2OUT_ED_OUTPUT_SLOW_PATH] = "nat44-ed-in2out-output-slowpath",
     [NAT_NEXT_OUT2IN_ED_FAST_PATH] = "nat44-ed-out2in",
     [NAT_NEXT_OUT2IN_ED_SLOW_PATH] = "nat44-ed-out2in-slowpath",
