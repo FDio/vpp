@@ -81,7 +81,7 @@ dpdk_set_mac_address (vnet_hw_interface_t * hi,
   else
     {
       vec_reset_length (xd->default_mac_address);
-      vec_add (xd->default_mac_address, address, sizeof (address));
+      vec_add (xd->default_mac_address, address, sizeof (mac_address_t));
       return NULL;
     }
 }
