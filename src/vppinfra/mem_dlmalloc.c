@@ -237,6 +237,23 @@ clib_mem_init_thread_safe (void *memory, uword memory_size)
 				 1 /* do clib_mem_set_heap */ );
 }
 
+void
+clib_mem_destroy_mspace (void *mspace)
+{
+  mheap_trace_main_t *tm = &mheap_trace_main;
+
+  if (tm->enabled && mspace == tm->current_traced_mheap)
+    tm->enabled = 0;
+
+  destroy_mspace (mspace);
+}
+
+void
+clib_mem_destroy (void)
+{
+  clib_mem_destroy_mspace (clib_mem_get_heap ());
+}
+
 void *
 clib_mem_init_thread_safe_numa (void *memory, uword memory_size, u8 numa)
 {
