@@ -412,6 +412,8 @@ uword clib_mem_get_default_hugepage_size (void);
 int clib_mem_get_fd_log2_page_size (int fd);
 uword clib_mem_vm_reserve (uword start, uword size, u32 log2_page_sz);
 u64 *clib_mem_vm_get_paddr (void *mem, int log2_page_size, int n_pages);
+void clib_mem_destroy_mspace (void *mspace);
+void clib_mem_destroy (void);
 
 typedef struct
 {
