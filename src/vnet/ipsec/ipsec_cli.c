@@ -855,7 +855,7 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "del"))
 	is_add = 0;
-      else if (unformat (line_input, "nh &U", unformat_ip_address, &nh))
+      else if (unformat (line_input, "nh %U", unformat_ip_address, &nh))
 	;
       else
 	{
