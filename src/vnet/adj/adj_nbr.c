@@ -39,7 +39,7 @@ typedef struct adj_nbr_key_t_
 
 #define ADJ_NBR_ITF_OK(_proto, _itf)			\
     (((_itf) < vec_len(adj_nbr_tables[_proto])) &&	\
-     (NULL != adj_nbr_tables[_proto][sw_if_index]))
+     (NULL != adj_nbr_tables[_proto][(_itf)]))
 
 #define ADJ_NBR_ASSERT_NH_PROTO(nh_proto, err)          \
   do {                                                  \
