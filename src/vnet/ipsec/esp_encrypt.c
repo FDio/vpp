@@ -412,7 +412,7 @@ esp_prepare_sync_op (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
 	  op->aad_len = esp_aad_fill (op->aad, esp, sa0);
 
 	  op->tag = payload + op->len;
-	  op->tag_len = 16;
+	  op->tag_len = icv_sz;
 
 	  u64 *iv = (u64 *) (payload - iv_sz);
 	  nonce->salt = sa0->salt;

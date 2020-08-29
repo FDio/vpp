@@ -586,7 +586,7 @@ esp_decrypt_prepare_sync_op (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  clib_memcpy_fast (op->iv, &sa0->salt, sizeof (sa0->salt));
 
 	  op->tag = payload + len;
-	  op->tag_len = 16;
+	  op->tag_len = icv_sz;
 	}
       op->src = op->dst = payload += iv_sz;
       op->len = len - iv_sz;
