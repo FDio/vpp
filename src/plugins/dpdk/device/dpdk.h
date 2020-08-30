@@ -280,6 +280,11 @@ typedef struct
   /* Required config parameters */
   u8 coremask_set_manually;
   u8 nchannels_set_manually;
+
+  /* Used when DPDK_USE_PMD_COMPAT_POOL_OPS macro defined */
+  i16 dpdk_mempool_refill_deplete_sz;
+  /* Used when DPDK_USE_PMD_COMPAT_POOL_OPS macro defined */
+  u16 num_mbufs;
   u32 coremask;
   u32 nchannels;
   u32 num_crypto_mbufs;
@@ -313,6 +318,22 @@ typedef struct
   u16 etype[DPDK_RX_BURST_SZ];
   u16 flags[DPDK_RX_BURST_SZ];
   vlib_buffer_t buffer_template;
+
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  /* This cacheline is used only for those PMDs using DPDK mempool ops instead
+   * of default: "vpp". i.e when DPDK_USE_PMD_COMPAT_POOL_OPS defined
+   */
+  /*flag to determine whether to perform refill/deplete in fast path */
+  int fp_refill_deplete_enable;
+
+  /*current refill/deplete count per pool */
+  i16 *refill_deplete_count_per_pool;
+
+  /*Initialized value to be compared against during refill */
+  i16 *default_refill_count_per_pool;
+
+  /*Initialized value to be compared against during deplete */
+  i16 *default_deplete_count_per_pool;
 } dpdk_per_thread_data_t;
 
 typedef struct
