@@ -190,6 +190,52 @@ nat44_o2i_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
 }
 #endif
 
+// allocate exact address based on preference
+static_always_inline int
+nat_alloc_addr_and_port_exact (snat_address_t * a,
+			       u32 thread_index,
+			       nat_protocol_t proto,
+			       ip4_address_t * addr,
+			       u16 * port,
+			       u16 port_per_thread, u32 snat_thread_index)
+{
+  u32 portnum;
+
+  switch (proto)
+    {
+#define _(N, j, n, s) \
+    case NAT_PROTOCOL_##N: \
+      if (a->busy_##n##_ports_per_thread[thread_index] < port_per_thread) \
+        { \
+          while (1) \
+            { \
+              portnum = (port_per_thread * \
+                snat_thread_index) + \
+                snat_random_port(0, port_per_thread - 1) + 1024; \
+              if (a->busy_##n##_port_refcounts[portnum]) \
+                continue; \
+	      --a->busy_##n##_port_refcounts[portnum]; \
+              a->busy_##n##_ports_per_thread[thread_index]++; \
+              a->busy_##n##_ports++; \
+              *addr = a->addr; \
+              *port = clib_host_to_net_u16(portnum); \
+              return 0; \
+            } \
+        } \
+      break;
+      foreach_nat_protocol
+#undef _
+    default:
+      nat_elog_info ("unknown protocol");
+      return 1;
+    }
+
+  /* Totally out of translations to use... */
+  snat_ipfix_logging_addresses_exhausted (thread_index, 0);
+  return 1;
+}
+
+
 static snat_session_t *
 create_session_for_static_mapping_ed (snat_main_t * sm,
 				      vlib_buffer_t * b,
@@ -204,7 +250,8 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
 				      u32 rx_fib_index,
 				      u32 thread_index,
 				      twice_nat_type_t twice_nat,
-				      lb_nat_type_t lb_nat, f64 now)
+				      lb_nat_type_t lb_nat, f64 now,
+                                      snat_static_mapping_t *mapping)
 {
   snat_session_t *s;
   ip4_header_t *ip;
@@ -261,13 +308,46 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
   if (twice_nat == TWICE_NAT || (twice_nat == TWICE_NAT_SELF &&
 				 ip->src_address.as_u32 == i2o_addr.as_u32))
     {
-      if (snat_alloc_outside_address_and_port (sm->twice_nat_addresses, 0,
-					       thread_index,
-					       nat_proto,
-					       &s->ext_host_nat_addr,
-					       &s->ext_host_nat_port,
-					       sm->port_per_thread,
-					       tsm->snat_thread_index))
+      int rc = 0;
+      snat_address_t *filter = 0;
+
+      // if exact address is specified use this address
+      if (is_exact_address(mapping))
+        {
+          snat_address_t *ap;
+          vec_foreach (ap, sm->twice_nat_addresses)
+            {
+              if (mapping->pool_addr.as_u32 == ap->addr.as_u32)
+                {
+                  filter = ap;
+                  break;
+                }
+            }
+        }
+
+      if (filter)
+        {
+          rc = nat_alloc_addr_and_port_exact (filter,
+					      thread_index,
+					      nat_proto,
+					      &s->ext_host_nat_addr,
+					      &s->ext_host_nat_port,
+					      sm->port_per_thread,
+					      tsm->snat_thread_index);
+          s->flags |= SNAT_SESSION_FLAG_EXACT_ADDRESS;
+        }
+      else
+        {
+          rc = snat_alloc_outside_address_and_port (sm->twice_nat_addresses, 0,
+					            thread_index,
+					            nat_proto,
+					            &s->ext_host_nat_addr,
+					            &s->ext_host_nat_port,
+					            sm->port_per_thread,
+					            tsm->snat_thread_index);
+        }
+
+      if (rc)
 	{
 	  b->error = node->errors[NAT_OUT2IN_ED_ERROR_OUT_OF_PORTS];
 	  nat_ed_session_delete (sm, s, thread_index, 1);
@@ -275,6 +355,7 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
 	    nat_elog_notice ("out2in-ed key del failed");
 	  return 0;
 	}
+
       s->flags |= SNAT_SESSION_FLAG_TWICE_NAT;
       init_ed_kv (&kv, i2o_addr, i2o_port, s->ext_host_nat_addr,
 		  s->ext_host_nat_port, i2o_fib_index, ip->protocol,
@@ -459,6 +540,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
   u16 sm_port;
   u32 sm_fib_index;
   *dont_translate = 0;
+  snat_static_mapping_t *m;
 
   sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
   rx_fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
@@ -477,7 +559,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
       if (snat_static_mapping_match
 	  (sm, ip->dst_address, l_port, rx_fib_index,
 	   ip_proto_to_nat_proto (ip->protocol), &sm_addr, &sm_port,
-	   &sm_fib_index, 1, &is_addr_only, 0, 0, 0, &identity_nat))
+	   &sm_fib_index, 1, &is_addr_only, 0, 0, 0, &identity_nat, &m))
 	{
 	  if (!sm->forwarding_enabled)
 	    {
@@ -533,7 +615,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 					      l_port, rx_fib_index, *proto,
 					      node, rx_fib_index,
 					      thread_index, 0, 0,
-					      vlib_time_now (vm));
+					      vlib_time_now (vm), m);
 
       if (!s)
 	{
@@ -978,6 +1060,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
   f64 now = vlib_time_now (vm);
   u32 thread_index = vm->thread_index;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  snat_static_mapping_t *m;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -1087,7 +1170,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	      (sm, ip0->dst_address,
 	       vnet_buffer (b0)->ip.reass.l4_dst_port, rx_fib_index0,
 	       proto0, &sm_addr, &sm_port, &sm_fib_index, 1, 0,
-	       &twice_nat0, &lb_nat0, &ip0->src_address, &identity_nat0))
+	       &twice_nat0, &lb_nat0, &ip0->src_address, &identity_nat0, &m))
 	    {
 	      /*
 	       * Send DHCP packets to the ipv4 stack, or we won't
@@ -1138,6 +1221,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
+          // TODO:
 	  /* Create session initiated by host from external network */
 	  s0 = create_session_for_static_mapping_ed (sm, b0,
 						     sm_addr, sm_port,
@@ -1148,7 +1232,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 						     rx_fib_index0, proto0,
 						     node, rx_fib_index0,
 						     thread_index, twice_nat0,
-						     lb_nat0, now);
+						     lb_nat0, now, m);
 	  if (!s0)
 	    {
 	      next[0] = NAT_NEXT_DROP;

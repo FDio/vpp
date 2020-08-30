@@ -187,16 +187,18 @@ typedef enum
 #define SNAT_SESSION_FLAG_FWD_BYPASS           32
 #define SNAT_SESSION_FLAG_AFFINITY             64
 #define SNAT_SESSION_FLAG_OUTPUT_FEATURE       128
+#define SNAT_SESSION_FLAG_EXACT_ADDRESS        256
 
 /* NAT interface flags */
 #define NAT_INTERFACE_FLAG_IS_INSIDE 1
 #define NAT_INTERFACE_FLAG_IS_OUTSIDE 2
 
 /* Static mapping flags */
-#define NAT_STATIC_MAPPING_FLAG_ADDR_ONLY    1
-#define NAT_STATIC_MAPPING_FLAG_OUT2IN_ONLY  2
-#define NAT_STATIC_MAPPING_FLAG_IDENTITY_NAT 4
-#define NAT_STATIC_MAPPING_FLAG_LB           8
+#define NAT_STATIC_MAPPING_FLAG_ADDR_ONLY      1
+#define NAT_STATIC_MAPPING_FLAG_OUT2IN_ONLY    2
+#define NAT_STATIC_MAPPING_FLAG_IDENTITY_NAT   4
+#define NAT_STATIC_MAPPING_FLAG_LB             8
+#define NAT_STATIC_MAPPING_FLAG_EXACT_ADDRESS  16
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
@@ -350,6 +352,8 @@ typedef enum
 
 typedef struct
 {
+  /* prefered pool address */
+  ip4_address_t pool_addr;
   /* local IP address */
   ip4_address_t local_addr;
   /* external IP address */
@@ -388,6 +392,7 @@ typedef struct
 typedef struct
 {
   ip4_address_t l_addr;
+  ip4_address_t pool_addr;
   u16 l_port;
   u16 e_port;
   u32 sw_if_index;
@@ -399,6 +404,7 @@ typedef struct
   int is_add;
   int out2in_only;
   int identity_nat;
+  int exact;
   u8 *tag;
 } snat_static_map_resolve_t;
 
@@ -776,6 +782,12 @@ unformat_function_t unformat_nat_protocol;
 */
 #define is_affinity_sessions(s) (s->flags & SNAT_SESSION_FLAG_AFFINITY)
 
+/** \brief Check if exact pool address should be used.
+    @param s SNAT session
+    @return 1 if exact pool address or 0
+*/
+#define is_exact_address_session(s) (s->flags & SNAT_SESSION_FLAG_EXACT_ADDRESS)
+
 /** \brief Check if NAT interface is inside.
     @param i NAT interface
     @return 1 if inside interface
@@ -817,6 +829,12 @@ unformat_function_t unformat_nat_protocol;
     @return 1 if load-balancing
 */
 #define is_lb_static_mapping(sm) (sm->flags & NAT_STATIC_MAPPING_FLAG_LB)
+
+/** \brief Check if exact pool address should be used.
+    @param s SNAT session
+    @return 1 if exact pool address or 0
+*/
+#define is_exact_address(s) (s->flags & NAT_STATIC_MAPPING_FLAG_EXACT_ADDRESS)
 
 /** \brief Check if client initiating TCP connection (received SYN from client)
     @param t TCP header
@@ -1138,6 +1156,8 @@ void nat44_add_del_address_dpo (ip4_address_t addr, u8 is_add);
  * @param out2in_only  if 1 rule match only out2in direction
  * @param tag          opaque string tag
  * @param identity_nat identity NAT
+ * @param pool_addr    pool IPv4 address
+ * @param exact        1 = exact pool address
  *
  * @return 0 on success, non-zero value otherwise
  */
@@ -1146,7 +1166,8 @@ int snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 			     int addr_only, u32 sw_if_index,
 			     nat_protocol_t proto, int is_add,
 			     twice_nat_type_t twice_nat, u8 out2in_only,
-			     u8 * tag, u8 identity_nat);
+			     u8 * tag, u8 identity_nat,
+                             ip4_address_t pool_addr, int exact);
 
 /**
  * @brief Add/delete static mapping with load-balancing (multiple backends)
@@ -1394,16 +1415,18 @@ void expire_per_vrf_sessions (u32 fib_index);
 /**
  * @brief Match NAT44 static mapping.
  *
- * @param key           address and port to match
- * @param addr          external/local address of the matched mapping
- * @param port          port of the matched mapping
- * @param fib_index     fib index of the matched mapping
- * @param by_external   if 0 match by local address otherwise match by external
- *                      address
- * @param is_addr_only  1 if matched mapping is address only
- * @param twice_nat     matched mapping is twice NAT type
- * @param lb            1 if matched mapping is load-balanced
- * @param ext_host_addr external host address
+ * @param key             address and port to match
+ * @param addr            external/local address of the matched mapping
+ * @param port            port of the matched mapping
+ * @param fib_index       fib index of the matched mapping
+ * @param by_external     if 0 match by local address otherwise match by external
+ *                        address
+ * @param is_addr_only    1 if matched mapping is address only
+ * @param twice_nat       matched mapping is twice NAT type
+ * @param lb              1 if matched mapping is load-balanced
+ * @param ext_host_addr   external host address
+ * @param is_identity_nat 1 if indentity mapping
+ * @param out             if !=0 set to pointer of the mapping structure
  *
  * @returns 0 if match found otherwise 1.
  */
@@ -1420,7 +1443,8 @@ int snat_static_mapping_match (snat_main_t * sm,
 			       twice_nat_type_t * twice_nat,
 			       lb_nat_type_t * lb,
 			       ip4_address_t * ext_host_addr,
-			       u8 * is_identity_nat);
+			       u8 * is_identity_nat,
+                               snat_static_mapping_t **out);
 
 /**
  * @brief Add/del NAT address to FIB.
