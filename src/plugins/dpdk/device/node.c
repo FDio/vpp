@@ -282,9 +282,24 @@ dpdk_process_flow_offload (dpdk_device_t * xd, dpdk_per_thread_data_t * ptd,
     }
 }
 
+static_always_inline void
+dpdk_mempool_update_current_refill_count (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  int thread_index,
+					  dpdk_per_thread_data_t * ptd,
+					  uword n_rx_packets,
+					  u8 buffer_pool_index)
+{
+  /*Buffer pools can be created at runtime outside plugin. To be handled */
+  ASSERT (buffer_pool_index < vec_len (ptd->refill_deplete_count_per_pool));
+
+  ptd->refill_deplete_count_per_pool[buffer_pool_index] += n_rx_packets;
+}
+
 static_always_inline u32
 dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
-		   vlib_node_runtime_t * node, u32 thread_index, u16 queue_id)
+		   vlib_node_runtime_t * node, u32 thread_index, u16 queue_id,
+		   int mempool_refill_enable)
 {
   uword n_rx_packets = 0, n_rx_bytes;
   dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, queue_id);
@@ -319,6 +334,13 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 
   if (n_rx_packets == 0)
     return 0;
+
+  if (mempool_refill_enable)
+    {
+      dpdk_mempool_update_current_refill_count (vm, node, thread_index, ptd,
+						n_rx_packets,
+						rxq->buffer_pool_index);
+    }
 
   /* Update buffer template */
   vnet_buffer (bt)->sw_if_index[VLIB_RX] = xd->sw_if_index;
@@ -450,6 +472,88 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   return n_rx_packets;
 }
 
+#ifdef DPDK_USE_PMD_COMPAT_POOL_OPS
+/* Perform refill of buffers for buffer_pool_index.
+ * @para @paramm
+ */
+static_always_inline u32
+dpdk_mempool_refill (vlib_main_t * vm,
+		     u32
+		     buffer_pool_index,
+		     i16 n_buffers_to_refill, u32 * bi, void **buffers)
+{
+  struct rte_mempool *mp =
+    dpdk_mempool_by_buffer_pool_index[buffer_pool_index];
+
+  ASSERT (mp);
+
+  ASSERT (n_buffers_to_refill);
+
+  n_buffers_to_refill =
+    vlib_buffer_alloc_from_pool (vm, bi,
+				 n_buffers_to_refill, buffer_pool_index);
+
+  if (PREDICT_TRUE (n_buffers_to_refill > 0))
+    {
+      vlib_get_buffers_with_offset (vm, bi,
+				    buffers,
+				    n_buffers_to_refill,
+				    -(i32) (sizeof (struct rte_mbuf)));
+
+      rte_mempool_put_bulk (mp, buffers, n_buffers_to_refill);
+
+      return (n_buffers_to_refill);
+    }
+  return 0;
+}
+
+/** \brief Scan per thread counter `refill_deplete_per_count` per VLIB buffer
+     pool for any refill of buffers required from VLIB buffer pool to rte_mempool
+
+     @param vm   vlib_main_t corresponding to the current thread
+     @param node vlib_node_runtime_t, not used
+     @param dm   dpdk_main_t dpdk_main
+     @param thread_index  thread index
+
+     If per thread `current
+     counter`,dm->per_thread_data->refill_deplete_count_per_pool, corresponding to
+     a VLIB buffer pool is greater than configured number of `default refill value`,
+     dm->per_thread_data->default_refill_count_per_pool, then dpdk mempool
+     corresponding to VLIB pool is refilled by buffers equivalent to`default
+     refill value`. `current counter` is also decrement by same default refill
+     value
+*/
+static_always_inline void
+dpdk_mempools_refill_from_vlib (vlib_main_t * vm, vlib_node_runtime_t * node,
+				dpdk_main_t * dm, u32 thread_index)
+{
+  dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data,
+						  thread_index);
+  vlib_buffer_pool_t *bp;
+
+  if (ptd->fp_refill_deplete_enable)
+    {
+      vec_foreach (bp, vm->buffer_main->buffer_pools)
+      {
+	/*TBD: Use SIMD for faster comparison */
+	if (ptd->refill_deplete_count_per_pool[bp->index] >=
+	    ptd->default_refill_count_per_pool[bp->index])
+	  {
+	    ASSERT (bp->index < vec_len (ptd->default_refill_count_per_pool));
+	    ASSERT (bp->index < vec_len (ptd->refill_deplete_count_per_pool));
+
+	    /*Reuse ptd->buffers and ptd->mbufs */
+	    ptd->refill_deplete_count_per_pool[bp->index] -=
+	      dpdk_mempool_refill (vm, bp->index,
+				   ptd->
+				   default_refill_count_per_pool[bp->index],
+				   ptd->buffers, (void **) ptd->mbufs);
+	  }
+      }
+    }
+}
+#endif
+
 VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 				vlib_frame_t * f)
 {
@@ -460,6 +564,8 @@ VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   vnet_device_and_queue_t *dq;
   u32 thread_index = node->thread_index;
 
+#ifdef DPDK_USE_PMD_COMPAT_POOL_OPS
+  dpdk_mempools_refill_from_vlib (vm, node, dm, thread_index);
   /*
    * Poll all devices on this cpu for input/interrupts.
    */
@@ -468,9 +574,20 @@ VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       xd = vec_elt_at_index(dm->devices, dq->dev_instance);
       n_rx_packets += dpdk_device_input (vm, dm, xd, node, thread_index,
-					 dq->queue_id);
+					 dq->queue_id, 1);
     }
   /* *INDENT-ON* */
+#else
+  /* *INDENT-OFF* */
+  foreach_device_and_queue (dq, rt->devices_and_queues)
+    {
+      xd = vec_elt_at_index(dm->devices, dq->dev_instance);
+      n_rx_packets += dpdk_device_input (vm, dm, xd, node, thread_index,
+					 dq->queue_id, 0);
+    }
+  /* *INDENT-ON* */
+#endif
+
   return n_rx_packets;
 }
 

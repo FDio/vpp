@@ -112,7 +112,8 @@ dpdk_tx_trace_buffer (dpdk_main_t * dm, vlib_node_runtime_t * node,
 
 static_always_inline void
 dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
-			int maybe_multiseg)
+			int maybe_multiseg, int mempool_deplete_enable,
+			dpdk_per_thread_data_t * ptd)
 {
   struct rte_mbuf *mb, *first_mb, *last_mb;
   last_mb = first_mb = mb = rte_mbuf_from_vlib_buffer (b);
@@ -140,10 +141,19 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
       mb->pkt_len = b->current_length;
       mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + b->current_data;
       first_mb->nb_segs++;
-      if (PREDICT_FALSE (b->ref_count > 1))
+      if (PREDICT_FALSE (!mempool_deplete_enable && (b->ref_count > 1)))
 	mb->pool =
 	  dpdk_no_cache_mempool_by_buffer_pool_index[b->buffer_pool_index];
     }
+  /*
+   * * Update current refill_deplete count per VLIB pool for each buffer.
+   * * Decrement to be done per VLIB as it may belong to different buffer pool.
+   * * It's ok to decrement count for every VLIB upfront, even if some of them
+   *   may fail to be transmitted via rte_eth_tx_burst. As packets which are not
+   *   transmitted are freed to rte_mempool.
+   */
+  if (mempool_deplete_enable)
+    ptd->refill_deplete_count_per_pool[b->buffer_pool_index] -= 1;
 }
 
 /*
@@ -254,14 +264,93 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
     rte_net_intel_cksum_flags_prepare (mb, ol_flags);
 }
 
-/*
+static_always_inline u32
+dpdk_mempool_deplete (vlib_main_t * vm, u32 buffer_pool_index,
+		      i16 n_buffers_to_deplete, u32 * bi, void **buffers)
+{
+  struct rte_mempool *mp =
+    dpdk_mempool_by_buffer_pool_index[buffer_pool_index];
+
+  if (PREDICT_TRUE (mp && n_buffers_to_deplete))
+    {
+
+      if (PREDICT_FALSE
+	  (rte_mempool_get_bulk (mp, buffers, n_buffers_to_deplete)))
+	{
+	  dpdk_log_err ("rte_mempool_get_bulk failed for mp: %0xlx", mp);
+	  return 0;
+	}
+
+      vlib_get_buffer_indices_with_offset (vm, buffers, bi,
+					   n_buffers_to_deplete,
+					   sizeof (struct rte_mbuf));
+      vlib_buffer_free (vm, bi, n_buffers_to_deplete);
+      return n_buffers_to_deplete;
+    }
+  return 0;
+}
+
+
+/** \brief Scan per thread counter `refill_deplete_per_count` per VLIB buffer
+     pool for any deplete of buffers required from rte_mempool to VLIB buffer pool
+
+    @param vm   vlib_main_t corresponding to the current thread
+    @param node vlib_node_runtime_t, not used
+    @param dm   dpdk_main_t dpdk_main
+    @param thread_index  thread index
+
+    If per thread `current
+    counter`,dm->per_thread_data->refill_deplete_count_per_pool, corresponding to
+    a VLIB buffer pool is lesser than configured number of `default deplete
+    value`, dm->per_thread_data->default_deplete_count_per_pool, then dpdk
+    mempool corresponding to VLIB buffer pool is depleted by buffers equivalent
+    to`default deplete value`. `current counter` is also increment by same
+    default deplete value
+*/
+static_always_inline void
+dpdk_mempools_deplete_to_vlib (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       dpdk_main_t * dm, int thread_index)
+{
+  dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data,
+						  thread_index);
+  vlib_buffer_pool_t *bp;
+
+  /*TBD: Use SIMD for faster comparison */
+  vec_foreach (bp, vm->buffer_main->buffer_pools)
+  {
+    if (ptd->refill_deplete_count_per_pool[bp->index] <=
+	ptd->default_deplete_count_per_pool[bp->index])
+      {
+
+	ASSERT (bp->index < vec_len (ptd->default_deplete_count_per_pool));
+	ASSERT (bp->index < vec_len (ptd->refill_deplete_count_per_pool));
+
+	/*Reuse ptd->buffers and ptd->mbufs */
+	ptd->refill_deplete_count_per_pool[bp->index] +=
+	  dpdk_mempool_deplete (vm, bp->index,
+				ptd->default_refill_count_per_pool[bp->index],
+				ptd->buffers, (void **) ptd->mbufs);
+      }
+  }
+}
+
+/**
  * Transmits the packets on the frame to the interface associated with the
  * node. It first copies packets on the frame to a per-thread arrays
  * containing the rte_mbuf pointers.
+ *
+ * @param vm    vlib_main_t corresponding to the current thread
+ * @param node  vlib_node_runtime_t
+ * @param frame vlib_frame_t, it contains packets to transmit
+ * @param ptd   dpdk_per_thread_data
+ * @param mempool_deplete_enable Constant variable to enable mempool depletion
+ *                               functionality
  */
-VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
-					     vlib_node_runtime_t * node,
-					     vlib_frame_t * f)
+static_always_inline u32
+dpdk_device_output (vlib_main_t * vm,
+		    vlib_node_runtime_t * node,
+		    vlib_frame_t * f, dpdk_per_thread_data_t * ptd, const int
+		    mempool_deplete_enable)
 {
   dpdk_main_t *dm = &dpdk_main;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
@@ -271,8 +360,6 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
   u32 thread_index = vm->thread_index;
   int queue_id = thread_index;
   u32 tx_pkts = 0, all_or_flags = 0;
-  dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data,
-						  thread_index);
   struct rte_mbuf **mb;
   vlib_buffer_t *b[4];
 
@@ -311,17 +398,17 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
 
       if (or_flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
-	  dpdk_validate_rte_mbuf (vm, b[0], 1);
-	  dpdk_validate_rte_mbuf (vm, b[1], 1);
-	  dpdk_validate_rte_mbuf (vm, b[2], 1);
-	  dpdk_validate_rte_mbuf (vm, b[3], 1);
+	  dpdk_validate_rte_mbuf (vm, b[0], 1, mempool_deplete_enable, ptd);
+	  dpdk_validate_rte_mbuf (vm, b[1], 1, mempool_deplete_enable, ptd);
+	  dpdk_validate_rte_mbuf (vm, b[2], 1, mempool_deplete_enable, ptd);
+	  dpdk_validate_rte_mbuf (vm, b[3], 1, mempool_deplete_enable, ptd);
 	}
       else
 	{
-	  dpdk_validate_rte_mbuf (vm, b[0], 0);
-	  dpdk_validate_rte_mbuf (vm, b[1], 0);
-	  dpdk_validate_rte_mbuf (vm, b[2], 0);
-	  dpdk_validate_rte_mbuf (vm, b[3], 0);
+	  dpdk_validate_rte_mbuf (vm, b[0], 0, mempool_deplete_enable, ptd);
+	  dpdk_validate_rte_mbuf (vm, b[1], 0, mempool_deplete_enable, ptd);
+	  dpdk_validate_rte_mbuf (vm, b[2], 0, mempool_deplete_enable, ptd);
+	  dpdk_validate_rte_mbuf (vm, b[3], 0, mempool_deplete_enable, ptd);
 	}
 
       if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD) &&
@@ -375,13 +462,13 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
 
       if (or_flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
-	  dpdk_validate_rte_mbuf (vm, b[0], 1);
-	  dpdk_validate_rte_mbuf (vm, b[1], 1);
+	  dpdk_validate_rte_mbuf (vm, b[0], 1, mempool_deplete_enable, ptd);
+	  dpdk_validate_rte_mbuf (vm, b[1], 1, mempool_deplete_enable, ptd);
 	}
       else
 	{
-	  dpdk_validate_rte_mbuf (vm, b[0], 0);
-	  dpdk_validate_rte_mbuf (vm, b[1], 0);
+	  dpdk_validate_rte_mbuf (vm, b[0], 0, mempool_deplete_enable, ptd);
+	  dpdk_validate_rte_mbuf (vm, b[1], 0, mempool_deplete_enable, ptd);
 	}
 
       if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD) &&
@@ -413,7 +500,7 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
       all_or_flags |= b[0]->flags;
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
 
-      dpdk_validate_rte_mbuf (vm, b[0], 1);
+      dpdk_validate_rte_mbuf (vm, b[0], 1, mempool_deplete_enable, ptd);
       dpdk_buffer_tx_offload (xd, b[0], mb[0]);
 
       if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
@@ -449,8 +536,43 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
 	  rte_pktmbuf_free (ptd->mbufs[n_packets - n_left - 1]);
       }
   }
+  if (mempool_deplete_enable)
+    dpdk_mempools_deplete_to_vlib (vm, node, dm, thread_index);
 
   return tx_pkts;
+}
+
+/** @brief DPDK output node
+ *  @node <interface>-tx node
+ *
+ * Calls dpdk_device_output(...) function indicating whether DPDK mempool
+ * deplete is required or not.
+ *
+ * If DPDK_USE_PMD_COMPAT_POOL_OPS is undefined, DPDK mempool depletetion is
+ * disabled
+ *
+ * If DPDK_USE_PMD_COMPAT_POOL_OPS is defined, DPDK mempool depletetion is
+ * enabled depending upon the undlerlying PMD compatibility checked during
+ * dpdk_buffer_pools_create(...) function
+ *
+ * @param vm    vlib_main_t corresponding to the current thread
+ * @param node  vlib_node_runtime_t
+ * @param frame vlib_frame_t, it contains packets to transmit
+ */
+VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
+					     vlib_node_runtime_t * node,
+					     vlib_frame_t * f)
+{
+  dpdk_per_thread_data_t *ptd = vec_elt_at_index (dpdk_main.per_thread_data,
+						  vm->thread_index);
+#ifdef DPDK_USE_PMD_COMPAT_POOL_OPS
+  if (ptd->fp_refill_deplete_enable)
+    return (dpdk_device_output (vm, node, f, ptd, 1));
+  else
+    return (dpdk_device_output (vm, node, f, ptd, 0));
+#else
+  return (dpdk_device_output (vm, node, f, ptd, 0));
+#endif
 }
 
 static void
