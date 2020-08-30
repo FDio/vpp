@@ -21,9 +21,15 @@
 
 extern struct rte_mempool **dpdk_mempool_by_buffer_pool_index;
 extern struct rte_mempool **dpdk_no_cache_mempool_by_buffer_pool_index;
+extern u8 dpdk_is_mempool_ops_used;
 
-clib_error_t *dpdk_buffer_pools_create (vlib_main_t * vm);
+clib_error_t *dpdk_buffer_pools_create (vlib_main_t * vm, char *, u32);
 
+clib_error_t *dpdk_buffer_pool_init (vlib_main_t * vm,
+				     vlib_buffer_pool_t * bp,
+				     const char *cache_ops_name,
+				     const char *non_cache_ops_name,
+				     int use_dpdk_ops, u32 nmbufs);
 #endif /* include_dpdk_buffer_h */
 
 /** @endcond */
