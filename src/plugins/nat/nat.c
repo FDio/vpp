@@ -692,7 +692,8 @@ snat_add_static_mapping_when_resolved (snat_main_t * sm,
 				       nat_protocol_t proto,
 				       int addr_only, int is_add, u8 * tag,
 				       int twice_nat, int out2in_only,
-				       int identity_nat)
+				       int identity_nat,
+				       ip4_address_t pool_addr, int exact)
 {
   snat_static_map_resolve_t *rp;
 
@@ -709,6 +710,8 @@ snat_add_static_mapping_when_resolved (snat_main_t * sm,
   rp->out2in_only = out2in_only;
   rp->identity_nat = identity_nat;
   rp->tag = vec_dup (tag);
+  rp->pool_addr = pool_addr;
+  rp->exact = exact;
 }
 
 static u32
@@ -829,7 +832,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 			 u16 l_port, u16 e_port, u32 vrf_id, int addr_only,
 			 u32 sw_if_index, nat_protocol_t proto, int is_add,
 			 twice_nat_type_t twice_nat, u8 out2in_only, u8 * tag,
-			 u8 identity_nat)
+			 u8 identity_nat, ip4_address_t pool_addr, int exact)
 {
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
@@ -891,7 +894,8 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 
 	  snat_add_static_mapping_when_resolved
 	    (sm, l_addr, l_port, sw_if_index, e_port, vrf_id, proto,
-	     addr_only, is_add, tag, twice_nat, out2in_only, identity_nat);
+	     addr_only, is_add, tag, twice_nat, out2in_only,
+	     identity_nat, pool_addr, exact);
 
 	  /* DHCP resolution required? */
 	  if (first_int_addr == 0)
@@ -1046,6 +1050,13 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
       m->local_addr = l_addr;
       m->external_addr = e_addr;
       m->twice_nat = twice_nat;
+
+      if (twice_nat == TWICE_NAT && exact)
+	{
+	  m->flags |= NAT_STATIC_MAPPING_FLAG_EXACT_ADDRESS;
+	  m->pool_addr = pool_addr;
+	}
+
       if (out2in_only)
 	m->flags |= NAT_STATIC_MAPPING_FLAG_OUT2IN_ONLY;
       if (addr_only)
@@ -1673,15 +1684,21 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
 
   if (delete_sm)
     {
+      ip4_address_t pool_addr = { 0 };
       /* *INDENT-OFF* */
       pool_foreach (m, sm->static_mappings,
       ({
           if (m->external_addr.as_u32 == addr.as_u32)
             (void) snat_add_static_mapping (m->local_addr, m->external_addr,
                                             m->local_port, m->external_port,
-                                            m->vrf_id, is_addr_only_static_mapping(m), ~0,
-                                            m->proto, 0, m->twice_nat,
-                                            is_out2in_only_static_mapping(m), m->tag, is_identity_static_mapping(m));
+                                            m->vrf_id,
+                                            is_addr_only_static_mapping(m), ~0,
+                                            m->proto, 0 /* is_add */,
+                                            m->twice_nat,
+                                            is_out2in_only_static_mapping(m),
+                                            m->tag,
+                                            is_identity_static_mapping(m),
+                                            pool_addr, 0);
       }));
       /* *INDENT-ON* */
     }
@@ -2801,7 +2818,7 @@ snat_static_mapping_match (snat_main_t * sm,
 			   u8 * is_addr_only,
 			   twice_nat_type_t * twice_nat,
 			   lb_nat_type_t * lb, ip4_address_t * ext_host_addr,
-			   u8 * is_identity_nat)
+			   u8 * is_identity_nat, snat_static_mapping_t ** out)
 {
   clib_bihash_kv_8_8_t kv, value;
   snat_static_mapping_t *m;
@@ -2942,6 +2959,9 @@ end:
 
   if (PREDICT_FALSE (is_identity_nat != 0))
     *is_identity_nat = is_identity_static_mapping (m);
+
+  if (out != 0)
+    *out = m;
 
   return 0;
 }
@@ -4358,7 +4378,8 @@ match:
 				rp->vrf_id,
 				rp->addr_only, ~0 /* sw_if_index */ ,
 				rp->proto, !is_delete, rp->twice_nat,
-				rp->out2in_only, rp->tag, rp->identity_nat);
+				rp->out2in_only, rp->tag, rp->identity_nat,
+				rp->pool_addr, rp->exact);
   if (rv)
     nat_elog_notice_X1 ("snat_add_static_mapping returned %d", "i4", rv);
 }
@@ -4429,7 +4450,8 @@ match:
 					    rp->proto,
 					    rp->is_add, rp->twice_nat,
 					    rp->out2in_only, rp->tag,
-					    rp->identity_nat);
+					    rp->identity_nat,
+					    rp->pool_addr, rp->exact);
 	      if (rv)
 		nat_elog_notice_X1 ("snat_add_static_mapping returned %d",
 				    "i4", rv);

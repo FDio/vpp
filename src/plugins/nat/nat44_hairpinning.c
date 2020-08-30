@@ -111,7 +111,7 @@ snat_hairpinning (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* Check if destination is static mappings */
   if (!snat_static_mapping_match
       (sm, ip0->dst_address, udp0->dst_port, sm->outside_fib_index, proto0,
-       &sm0_addr, &sm0_port, &sm0_fib_index, 1, 0, 0, 0, 0, 0))
+       &sm0_addr, &sm0_port, &sm0_fib_index, 1, 0, 0, 0, 0, 0, 0))
     {
       new_dst_addr0 = sm0_addr.as_u32;
       new_dst_port0 = sm0_port;

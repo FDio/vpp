@@ -1056,7 +1056,7 @@ static void
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat44_add_del_static_mapping_reply_t *rmp;
-  ip4_address_t local_addr, external_addr;
+  ip4_address_t local_addr, external_addr, pool_addr = { 0 };
   u16 local_port = 0, external_port = 0;
   u32 vrf_id, external_sw_if_index;
   twice_nat_type_t twice_nat = TWICE_NAT_DISABLED;
@@ -1090,10 +1090,59 @@ static void
 				mp->flags & NAT_API_IS_ADDR_ONLY,
 				external_sw_if_index, proto,
 				mp->is_add, twice_nat,
-				mp->flags & NAT_API_IS_OUT2IN_ONLY, tag, 0);
+				mp->flags & NAT_API_IS_OUT2IN_ONLY, tag, 0,
+				pool_addr, 0);
   vec_free (tag);
 
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_STATIC_MAPPING_REPLY);
+}
+
+static void
+  vl_api_nat44_add_del_static_mapping_v2_t_handler
+  (vl_api_nat44_add_del_static_mapping_v2_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat44_add_del_static_mapping_v2_reply_t *rmp;
+  ip4_address_t local_addr, external_addr, pool_addr;
+  u16 local_port = 0, external_port = 0;
+  u32 vrf_id, external_sw_if_index;
+  twice_nat_type_t twice_nat = TWICE_NAT_DISABLED;
+  int rv = 0;
+  nat_protocol_t proto;
+  u8 *tag = 0;
+
+  memcpy (&pool_addr.as_u8, mp->pool_ip_address, 4);
+  memcpy (&local_addr.as_u8, mp->local_ip_address, 4);
+  memcpy (&external_addr.as_u8, mp->external_ip_address, 4);
+
+  if (!(mp->flags & NAT_API_IS_ADDR_ONLY))
+    {
+      local_port = mp->local_port;
+      external_port = mp->external_port;
+    }
+
+  vrf_id = clib_net_to_host_u32 (mp->vrf_id);
+  external_sw_if_index = clib_net_to_host_u32 (mp->external_sw_if_index);
+  proto = ip_proto_to_nat_proto (mp->protocol);
+
+  if (mp->flags & NAT_API_IS_TWICE_NAT)
+    twice_nat = TWICE_NAT;
+  else if (mp->flags & NAT_API_IS_SELF_TWICE_NAT)
+    twice_nat = TWICE_NAT_SELF;
+  mp->tag[sizeof (mp->tag) - 1] = 0;
+  tag = format (0, "%s", mp->tag);
+  vec_terminate_c_string (tag);
+
+  rv = snat_add_static_mapping (local_addr, external_addr, local_port,
+				external_port, vrf_id,
+				mp->flags & NAT_API_IS_ADDR_ONLY,
+				external_sw_if_index, proto,
+				mp->is_add, twice_nat,
+				mp->flags & NAT_API_IS_OUT2IN_ONLY, tag, 0,
+				pool_addr, mp->match_pool);
+  vec_free (tag);
+
+  REPLY_MACRO (VL_API_NAT44_ADD_DEL_STATIC_MAPPING_V2_REPLY);
 }
 
 static void *vl_api_nat44_add_del_static_mapping_t_print
@@ -1122,6 +1171,39 @@ static void *vl_api_nat44_add_del_static_mapping_t_print
   if (mp->external_sw_if_index != ~0)
     s = format (s, "external_sw_if_index %d",
 		clib_net_to_host_u32 (mp->external_sw_if_index));
+  FINISH;
+}
+
+static void *vl_api_nat44_add_del_static_mapping_v2_t_print
+  (vl_api_nat44_add_del_static_mapping_v2_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat44_add_del_static_mapping_v2 ");
+  s = format (s, "protocol %d local_addr %U external_addr %U ",
+	      mp->protocol,
+	      format_ip4_address, mp->local_ip_address,
+	      format_ip4_address, mp->external_ip_address);
+
+  if (!(mp->flags & NAT_API_IS_ADDR_ONLY))
+    s = format (s, "local_port %d external_port %d ",
+		clib_net_to_host_u16 (mp->local_port),
+		clib_net_to_host_u16 (mp->external_port));
+
+  s = format (s, "twice_nat %d out2in_only %d ",
+	      mp->flags & NAT_API_IS_TWICE_NAT,
+	      mp->flags & NAT_API_IS_OUT2IN_ONLY);
+
+  if (mp->vrf_id != ~0)
+    s = format (s, "vrf %d", clib_net_to_host_u32 (mp->vrf_id));
+
+  if (mp->external_sw_if_index != ~0)
+    s = format (s, "external_sw_if_index %d",
+		clib_net_to_host_u32 (mp->external_sw_if_index));
+  if (mp->match_pool)
+    s = format (s, "match pool address %U",
+		format_ip4_address, mp->pool_ip_address);
+
   FINISH;
 }
 
@@ -1252,7 +1334,7 @@ static void
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat44_add_del_identity_mapping_reply_t *rmp;
-  ip4_address_t addr;
+  ip4_address_t addr, pool_addr = { 0 };
   u16 port = 0;
   u32 vrf_id, sw_if_index;
   int rv = 0;
@@ -1277,7 +1359,7 @@ static void
   rv =
     snat_add_static_mapping (addr, addr, port, port, vrf_id,
 			     mp->flags & NAT_API_IS_ADDR_ONLY, sw_if_index,
-			     proto, mp->is_add, 0, 0, tag, 1);
+			     proto, mp->is_add, 0, 0, tag, 1, pool_addr, 0);
   vec_free (tag);
 
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_IDENTITY_MAPPING_REPLY);
@@ -1998,7 +2080,7 @@ vl_api_nat44_del_session_t_print (vl_api_nat44_del_session_t * mp,
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: nat44_add_del_static_mapping ");
+  s = format (0, "SCRIPT: nat44_add_del_session ");
   s = format (s, "addr %U port %d protocol %d vrf_id %d is_in %d",
 	      format_ip4_address, mp->address,
 	      clib_net_to_host_u16 (mp->port),
@@ -2613,6 +2695,7 @@ _(NAT_HA_RESYNC, nat_ha_resync)                                         \
 _(NAT44_ADD_DEL_ADDRESS_RANGE, nat44_add_del_address_range)             \
 _(NAT44_INTERFACE_ADD_DEL_FEATURE, nat44_interface_add_del_feature)     \
 _(NAT44_ADD_DEL_STATIC_MAPPING, nat44_add_del_static_mapping)           \
+_(NAT44_ADD_DEL_STATIC_MAPPING_V2, nat44_add_del_static_mapping_v2)     \
 _(NAT44_ADD_DEL_IDENTITY_MAPPING, nat44_add_del_identity_mapping)       \
 _(NAT44_STATIC_MAPPING_DUMP, nat44_static_mapping_dump)                 \
 _(NAT44_IDENTITY_MAPPING_DUMP, nat44_identity_mapping_dump)             \

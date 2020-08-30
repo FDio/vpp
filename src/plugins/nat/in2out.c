@@ -135,7 +135,7 @@ snat_not_translate (snat_main_t * sm, vlib_node_runtime_t * node,
       if (!snat_static_mapping_match
 	  (sm, ip0->dst_address, udp0->dst_port, sm->outside_fib_index,
 	   proto0, &placeholder_addr, &placeholder_port,
-	   &placeholder_fib_index, 1, 0, 0, 0, 0, 0))
+	   &placeholder_fib_index, 1, 0, 0, 0, 0, 0, 0))
 	return 0;
     }
   else
@@ -274,7 +274,7 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   /* First try to match static mapping by local address and port */
   if (snat_static_mapping_match
       (sm, i2o_addr, i2o_port, rx_fib_index0, nat_proto, &sm_addr,
-       &sm_port, &sm_fib_index, 0, 0, 0, 0, 0, &identity_nat))
+       &sm_port, &sm_fib_index, 0, 0, 0, 0, 0, &identity_nat, 0))
     {
       /* Try to create dynamic translation */
       if (snat_alloc_outside_address_and_port (sm->addresses, rx_fib_index0,
@@ -599,7 +599,7 @@ icmp_match_in2out_fast (snat_main_t * sm, vlib_node_runtime_t * node,
 
   if (snat_static_mapping_match
       (sm, *addr, *port, *fib_index, *proto, &sm_addr, &sm_port,
-       &sm_fib_index, 0, &is_addr_only, 0, 0, 0, 0))
+       &sm_fib_index, 0, &is_addr_only, 0, 0, 0, 0, 0))
     {
       if (PREDICT_FALSE (snat_not_translate_fast (sm, node, sw_if_index0, ip0,
 						  IP_PROTOCOL_ICMP,
@@ -1842,7 +1842,7 @@ VLIB_NODE_FN (snat_in2out_fast_node) (vlib_main_t * vm,
 
 	  if (snat_static_mapping_match
 	      (sm, ip0->src_address, udp0->src_port, rx_fib_index0, proto0,
-	       &sm0_addr, &sm0_port, &sm0_fib_index, 0, 0, 0, 0, 0, 0))
+	       &sm0_addr, &sm0_port, &sm0_fib_index, 0, 0, 0, 0, 0, 0, 0))
 	    {
 	      b0->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
 	      next0 = SNAT_IN2OUT_NEXT_DROP;
