@@ -370,7 +370,7 @@ slow_path_ed (snat_main_t * sm,
   /* First try to match static mapping by local address and port */
   if (snat_static_mapping_match
       (sm, l_addr, l_port, rx_fib_index, nat_proto, &sm_addr, &sm_port,
-       &sm_fib_index, 0, 0, 0, &lb, 0, &identity_nat))
+       &sm_fib_index, 0, 0, 0, &lb, 0, &identity_nat, 0))
     {
       s = nat_ed_session_alloc (sm, thread_index, now, proto);
       ASSERT (s);
@@ -514,7 +514,7 @@ nat44_ed_not_translate (snat_main_t * sm, vlib_node_runtime_t * node,
       if (!snat_static_mapping_match
 	  (sm, ip->dst_address, udp->dst_port, sm->outside_fib_index, proto,
 	   &placeholder_addr, &placeholder_port, &placeholder_fib_index, 1, 0,
-	   0, 0, 0, 0))
+	   0, 0, 0, 0, 0))
 	return 0;
     }
   else

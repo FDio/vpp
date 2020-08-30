@@ -359,7 +359,7 @@ icmp_match_out2in_slow (snat_main_t * sm, vlib_node_runtime_t * node,
       if (snat_static_mapping_match
 	  (sm, *addr, *port, *fib_index, *proto,
 	   &mapping_addr, &mapping_port, &mapping_fib_index, 1, &is_addr_only,
-	   0, 0, 0, &identity_nat))
+	   0, 0, 0, &identity_nat, 0))
 	{
 	  if (!sm->forwarding_enabled)
 	    {
@@ -485,7 +485,7 @@ icmp_match_out2in_fast (snat_main_t * sm, vlib_node_runtime_t * node,
     }
   if (snat_static_mapping_match
       (sm, addr, port, rx_fib_index0, *proto, mapping_addr, mapping_port,
-       mapping_fib_index, 1, &is_addr_only, 0, 0, 0, 0))
+       mapping_fib_index, 1, &is_addr_only, 0, 0, 0, 0, 0))
     {
       /* Don't NAT packet aimed at the intfc address */
       if (is_interface_addr (sm, node, sw_if_index0, ip0->dst_address.as_u32))
@@ -835,7 +835,7 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	      (sm, ip0->dst_address,
 	       vnet_buffer (b0)->ip.reass.l4_dst_port, rx_fib_index0,
 	       proto0, &sm_addr0, &sm_port0, &sm_fib_index0, 1, 0, 0, 0,
-	       0, &identity_nat0))
+	       0, &identity_nat0, 0))
 	    {
 	      /*
 	       * Send DHCP packets to the ipv4 stack, or we won't
@@ -1017,7 +1017,7 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	      (sm, ip1->dst_address,
 	       vnet_buffer (b1)->ip.reass.l4_dst_port, proto1,
 	       rx_fib_index1, &sm_addr1, &sm_port1, &sm_fib_index1, 1, 0,
-	       0, 0, 0, &identity_nat1))
+	       0, 0, 0, &identity_nat1, 0))
 	    {
 	      /*
 	       * Send DHCP packets to the ipv4 stack, or we won't
@@ -1236,7 +1236,7 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	      (sm, ip0->dst_address,
 	       vnet_buffer (b0)->ip.reass.l4_dst_port, rx_fib_index0,
 	       proto0, &sm_addr0, &sm_port0, &sm_fib_index0, 1, 0, 0, 0,
-	       0, &identity_nat0))
+	       0, &identity_nat0, 0))
 	    {
 	      /*
 	       * Send DHCP packets to the ipv4 stack, or we won't
@@ -1462,7 +1462,7 @@ VLIB_NODE_FN (snat_out2in_fast_node) (vlib_main_t * vm,
 
       if (snat_static_mapping_match
 	  (sm, ip0->dst_address, udp0->dst_port, rx_fib_index0, proto0,
-	   &sm_addr0, &sm_port0, &sm_fib_index0, 1, 0, 0, 0, 0, 0))
+	   &sm_addr0, &sm_port0, &sm_fib_index0, 1, 0, 0, 0, 0, 0, 0))
 	{
 	  b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
 	  goto trace00;
