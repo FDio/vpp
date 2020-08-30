@@ -16,6 +16,7 @@ DPDK_CACHE_LINE_SIZE         ?= 64
 DPDK_DOWNLOAD_DIR            ?= $(DL_CACHE_DIR)
 DPDK_DEBUG                   ?= n
 DPDK_AARCH64_GENERIC         ?= y
+DPDK_OCTEONTX2_PMD           ?= n
 DPDK_MLX4_PMD                ?= n
 DPDK_MLX5_PMD                ?= n
 DPDK_TAP_PMD                 ?= n
@@ -84,6 +85,8 @@ CPU_PART_ARM_CORTEX_A73         = 0xd09
 CPU_PART_CAVIUM_THUNDERX        = 0x0a1
 CPU_PART_CAVIUM_THUNDERX_81XX   = 0x0a2
 CPU_PART_CAVIUM_THUNDERX_83XX   = 0x0a3
+CPU_PART_CAVIUM_OCTEONTX2_98XX  = 0x0b1
+CPU_PART_CAVIUM_OCTEONTX2_96XX  = 0x0b2
 
 MIDR_IMPLEMENTER=$(shell awk '/implementer/ {print $$4;exit}' /proc/cpuinfo)
 MIDR_PARTNUM=$(shell awk '/part/ {print $$4;exit}' /proc/cpuinfo)
@@ -113,7 +116,15 @@ DPDK_TARGET           = arm64-thunderx-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          = thunderx
 DPDK_CACHE_LINE_SIZE := 128
 else
+ifneq (,$(findstring $(MIDR_PARTNUM),$(CPU_PART_CAVIUM_OCTEONTX2_98XX) \
+	$(CPU_PART_CAVIUM_OCTEONTX2_96XX)))
+DPDK_TARGET           = arm64-octeontx2-linuxapp-$(DPDK_CC)
+DPDK_MACHINE          = octeontx2
+DPDK_CACHE_LINE_SIZE := 128
+DPDK_OCTEONTX2_PMD   := y
+else
 $(warning Unknown Cavium CPU)
+endif
 endif
 endif
 
@@ -194,6 +205,10 @@ $(B)/custom-config: $(B)/.dpdk-patch.ok Makefile
 	$(call set,RTE_LIBRTE_PMD_QAT_SYM,y)
 	$(call set,RTE_LIBRTE_PMD_AESNI_MB,$(AESNI))
 	$(call set,RTE_LIBRTE_PMD_AESNI_GCM,$(AESNI))
+	$(call set,RTE_LIBRTE_OCTEONTX2_PMD,$(DPDK_OCTEONTX2_PMD))
+	$(call set,RTE_LIBRTE_OCTEONTX2_MEMPOOL,$(DPDK_OCTEONTX2_PMD))
+	$(call set,RTE_LIBRTE_PMD_OCTEONTX2_EVENTDEV,n)
+	$(call set,RTE_LIBRTE_OCTEONTX2_BAREMETAL_AF_IF_CGX,n)
 	$(call set,RTE_LIBRTE_MLX4_PMD,$(DPDK_MLX4_PMD))
 	$(call set,RTE_LIBRTE_MLX5_PMD,$(DPDK_MLX5_PMD))
 	$(call set,RTE_LIBRTE_BNXT_PMD,y)

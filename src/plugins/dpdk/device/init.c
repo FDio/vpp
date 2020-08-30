@@ -543,6 +543,17 @@ dpdk_lib_init (dpdk_main_t * dm)
 		}
 	      break;
 
+	    case VNET_DPDK_PMD_OCTEONTX2:
+	     xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
+
+		if (dm->conf->no_tx_checksum_offload == 0)
+		{
+	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD;
+		}
+		break;
+
 	    case VNET_DPDK_PMD_ENA:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
 	      xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_SCATTER;
@@ -985,10 +996,10 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
     /* Amazon Elastic Network Adapter */
     else if (d->vendor_id == 0x1d0f && d->device_id >= 0xec20 && d->device_id <= 0xec21)
       ;
-    /* cavium Network Adapter only */
+    /* Marvell Network Adapter only */
     else if (d->vendor_id == 0x177d && d->device_id == 0x9712)
       ;
-    /* Cavium FastlinQ QL41000 Series */
+    /* Marvell FastlinQ QL41000 Series */
     else if (d->vendor_id == 0x1077 && d->device_id >= 0x8070 && d->device_id <= 0x8090)
       ;
     /* Mellanox CX3, CX3VF */
