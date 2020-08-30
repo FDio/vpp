@@ -208,7 +208,10 @@ dpdk_lib_init (dpdk_main_t * dm)
   clib_error_t *error;
   vlib_main_t *vm = vlib_get_main ();
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+  dpdk_config_main_t *conf = &dpdk_config_main;
+  vlib_buffer_main_t *bm = vm->buffer_main;
   vnet_device_main_t *vdm = &vnet_device_main;
+  dpdk_per_thread_data_t *ptd;
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hi;
   dpdk_device_t *xd;
@@ -236,10 +239,54 @@ dpdk_lib_init (dpdk_main_t * dm)
 			CLIB_CACHE_LINE_BYTES);
   for (i = 0; i < tm->n_vlib_mains; i++)
     {
-      dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data, i);
+      ptd = vec_elt_at_index (dm->per_thread_data, i);
       clib_memset (&ptd->buffer_template, 0, sizeof (vlib_buffer_t));
       ptd->buffer_template.flags = dm->buffer_flags_template;
       vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+      ptd->fp_refill_deplete_enable = 0;
+      /*Enable refill/deplete only when
+       * 1. rte_mempools are using dpdk based PMD mempool_ops
+       * 2. Valid refill_deplete_sz from startup.conf
+       * 3. Buffer pools are already created
+       */
+      if (dpdk_is_mempool_ops_used && conf->dpdk_mempool_refill_deplete_sz &&
+	  vec_len (bm->buffer_pools))
+	{
+	  ptd->fp_refill_deplete_enable = 1;
+
+	  vec_validate_init_empty_aligned (ptd->default_refill_count_per_pool,
+					   vec_len (bm->buffer_pools),
+					   max_pow2
+					   (conf->dpdk_mempool_refill_deplete_sz),
+					   CLIB_CACHE_LINE_BYTES);
+
+	  vec_validate_init_empty_aligned
+	    (ptd->default_deplete_count_per_pool, vec_len (bm->buffer_pools),
+	     -(max_pow2 (conf->dpdk_mempool_refill_deplete_sz)),
+	     CLIB_CACHE_LINE_BYTES);
+
+	  vec_validate_init_empty_aligned (ptd->refill_deplete_count_per_pool,
+					   vec_len (bm->buffer_pools), 0,
+					   CLIB_CACHE_LINE_BYTES);
+
+	}
+    }
+  ptd = vec_elt_at_index (dm->per_thread_data, 0);
+  if (ptd->fp_refill_deplete_enable)
+    {
+      i16 ref = 0, dep = 0, len = 0;
+
+      dpdk_log_notice
+	("Mempool Refill/Deplete enabled with count: %d for %d pools",
+	 conf->dpdk_mempool_refill_deplete_sz, vec_len (bm->buffer_pools));
+      len = vec_len (ptd->default_refill_count_per_pool);
+      ref = (len) ? ptd->default_refill_count_per_pool[0] : 0;
+
+      len = vec_len (ptd->default_deplete_count_per_pool);
+      dep = (len) ? ptd->default_deplete_count_per_pool[0] : 0;
+
+      dpdk_log_notice ("Actual Mempool Refill: %d, Deplete: %d count", ref,
+		       dep);
     }
 
   /* *INDENT-OFF* */
@@ -1156,6 +1203,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   clib_error_t *error = 0;
   dpdk_config_main_t *conf = &dpdk_config_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+  char mempool_ops_name[RTE_MEMPOOL_OPS_NAMESIZE];
   dpdk_device_config_t *devconf;
   vlib_pci_addr_t pci_addr;
   unformat_input_t sub_input;
@@ -1174,6 +1222,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     format (0, "%s/hugepages%c", vlib_unix_get_runtime_dir (), 0);
 
   conf->device_config_index_by_pci_addr = hash_create (0, sizeof (uword));
+
+  /*Valid only if DPDK_USE_PMD_COMPAT_POOL_OPS macro defined */
+  conf->dpdk_mempool_refill_deplete_sz = VLIB_FRAME_SIZE;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1228,8 +1279,13 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	}
       else if (unformat (input, "num-mem-channels %d", &conf->nchannels))
 	conf->nchannels_set_manually = 0;
-      else if (unformat (input, "num-crypto-mbufs %d",
-			 &conf->num_crypto_mbufs))
+      else if (unformat (input, "mempool-refill-burst-size %d",
+			 &conf->dpdk_mempool_refill_deplete_sz))
+	;
+      else if (unformat (input, "num-mbufs %d", &conf->num_mbufs))
+	;
+      else
+	if (unformat (input, "num-crypto-mbufs %d", &conf->num_crypto_mbufs))
 	;
       else if (unformat (input, "uio-driver %s", &conf->uio_driver_name))
 	;
@@ -1502,9 +1558,14 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   if (ret < 0)
     return clib_error_return (0, "rte_eal_init returned %d", ret);
 
+  if (!conf->num_mbufs)
+    conf->num_mbufs = 8192;
   /* main thread 1st */
-  if ((error = dpdk_buffer_pools_create (vm)))
+  if ((error = dpdk_buffer_pools_create (vm, (char *) mempool_ops_name,
+					 conf->num_mbufs)))
     return error;
+
+  dpdk_log_notice ("DPDK Mempool ops being used: %s", mempool_ops_name);
 
 done:
   return error;
