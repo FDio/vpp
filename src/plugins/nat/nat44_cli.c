@@ -980,13 +980,11 @@ add_static_mapping_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
-  ip4_address_t l_addr, e_addr;
+  ip4_address_t l_addr, e_addr, exact_addr;
   u32 l_port = 0, e_port = 0, vrf_id = ~0;
-  int is_add = 1;
-  int addr_only = 1;
+  int is_add = 1, addr_only = 1, rv, exact = 0;
   u32 sw_if_index = ~0;
   vnet_main_t *vnm = vnet_get_main ();
-  int rv;
   nat_protocol_t proto = NAT_PROTOCOL_OTHER;
   u8 proto_set = 0;
   twice_nat_type_t twice_nat = TWICE_NAT_DISABLED;
@@ -1014,10 +1012,12 @@ add_static_mapping_command_fn (vlib_main_t * vm,
 			 unformat_vnet_sw_interface, vnm, &sw_if_index,
 			 &e_port))
 	addr_only = 0;
-
       else if (unformat (line_input, "external %U",
 			 unformat_vnet_sw_interface, vnm, &sw_if_index))
 	;
+      else if (unformat (line_input, "exact %U", unformat_ip4_address,
+			 &exact_addr))
+	exact = 1;
       else if (unformat (line_input, "vrf %u", &vrf_id))
 	;
       else if (unformat (line_input, "%U", unformat_nat_protocol, &proto))
@@ -1063,7 +1063,7 @@ add_static_mapping_command_fn (vlib_main_t * vm,
   rv = snat_add_static_mapping (l_addr, e_addr, clib_host_to_net_u16 (l_port),
 				clib_host_to_net_u16 (e_port),
 				vrf_id, addr_only, sw_if_index, proto, is_add,
-				twice_nat, out2in_only, 0, 0);
+				twice_nat, out2in_only, 0, 0, exact_addr, exact);
 
   switch (rv)
     {
@@ -1104,7 +1104,7 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
-  ip4_address_t addr;
+  ip4_address_t addr, pool_addr = { 0 };
   u32 port = 0, vrf_id = ~0;
   int is_add = 1;
   int addr_only = 1;
@@ -1144,7 +1144,7 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
   rv =
     snat_add_static_mapping (addr, addr, clib_host_to_net_u16 (port),
 			     clib_host_to_net_u16 (port), vrf_id, addr_only,
-			     sw_if_index, proto, is_add, 0, 0, 0, 1);
+			     sw_if_index, proto, is_add, 0, 0, 0, 1, pool_addr, 0);
 
   switch (rv)
     {
@@ -2254,6 +2254,8 @@ VLIB_CLI_COMMAND (nat44_show_interfaces_command, static) = {
  * To create ICMP static mapping between local and external with ICMP echo
  * identifier 10 use:
  *  vpp# nat44 add static mapping icmp local 10.0.0.3 10 external 4.4.4.4 10
+ * To force use of specific pool address, vrf independent
+ *  vpp# nat44 add static mapping local 10.0.0.2 1234 external 10.0.2.2 1234 twice-nat exact 10.0.1.2
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (add_static_mapping_command, static) = {
@@ -2262,7 +2264,7 @@ VLIB_CLI_COMMAND (add_static_mapping_command, static) = {
   .short_help =
     "nat44 add static mapping tcp|udp|icmp local <addr> [<port|icmp-echo-id>] "
     "external <addr> [<port|icmp-echo-id>] [vrf <table-id>] [twice-nat|self-twice-nat] "
-    "[out2in-only] [del]",
+    "[out2in-only] [exact <pool-addr>] [del]",
 };
 
 /*?
