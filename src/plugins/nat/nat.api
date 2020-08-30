@@ -684,6 +684,47 @@ autoreply define nat44_add_del_static_mapping {
   string tag[64];
 };
 
+/** \brief Add/delete NAT44 static mapping
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param match_pool - true if use specific pool_ip_address
+    @param flags - flag NAT_IS_ADDR_ONLY if address only mapping,
+                   flag nat_is_twice_nat if nat address range for external hosts,
+                   flag NAT_IS_SELF_TWICE_NAT if translate external host address
+                   and port whenever external host address equals local
+                   address of internal host,
+                   flag NAT_IS_OUT2IN_ONLY if rule match only out2in direction
+    @param pool_ip_address - pool IPv4 address to match with pool
+    @param local_ip_address - local IPv4 address
+    @param external_ip_address - external IPv4 address
+    @param protocol - IP protocol, used only if addr_only=0
+    @param local_port - local port number, used only if addr_only=0
+    @param external_port - external port number, used only if addr_only=0
+    @param external_sw_if_index - external interface (if set
+                                  external_ip_address is ignored, ~0 means not
+                                  used)
+    @param vfr_id - VRF ID
+    @param tag - opaque string tag
+*/
+autoreply define nat44_add_del_static_mapping_v2 {
+  option status="in_progress";
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  bool match_pool;
+  vl_api_nat_config_flags_t flags;
+  vl_api_ip4_address_t pool_ip_address;
+  vl_api_ip4_address_t local_ip_address;
+  vl_api_ip4_address_t external_ip_address;
+  u8 protocol;
+  u16 local_port;
+  u16 external_port;
+  vl_api_interface_index_t external_sw_if_index;
+  u32 vrf_id;
+  string tag[64];
+};
+
 /** \brief Dump NAT44 static mappings
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
