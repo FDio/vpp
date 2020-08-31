@@ -92,7 +92,7 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
 	}
 
       /* partial allocation, round and return rest */
-      n_free = n - (n & 7);
+      n_free = n & 7;
       n -= n_free;
       if (n_free)
 	vlib_buffer_free_from_ring (vm, rxq->bufs, (slot + n) & mask,
