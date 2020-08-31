@@ -316,7 +316,11 @@ format_dpdk_device_type (u8 * s, va_list * args)
       break;
 
     case VNET_DPDK_PMD_THUNDERX:
-      dev_type = "Cavium ThunderX";
+      dev_type = "Marvell ThunderX";
+      break;
+
+    case VNET_DPDK_PMD_OCTEONTX2:
+      dev_type = "Marvell OCTEONTX2";
       break;
 
     case VNET_DPDK_PMD_VHOST_ETHER:
@@ -332,11 +336,11 @@ format_dpdk_device_type (u8 * s, va_list * args)
       break;
 
     case VNET_DPDK_PMD_LIOVF_ETHER:
-      dev_type = "Cavium Lio VF";
+      dev_type = "Marvell Lio VF";
       break;
 
     case VNET_DPDK_PMD_QEDE:
-      dev_type = "Cavium QLogic FastLinQ QL4xxxx";
+      dev_type = "Marvell QLogic FastLinQ QL4xxxx";
       break;
 
     case VNET_DPDK_PMD_NETVSC:
