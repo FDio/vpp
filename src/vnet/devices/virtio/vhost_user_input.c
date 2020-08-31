@@ -39,7 +39,6 @@
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 
-#include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/virtio/vhost_user.h>
 #include <vnet/devices/virtio/vhost_user_inline.h>
 
@@ -108,18 +107,18 @@ vhost_user_rx_trace (vhost_trace_t * t,
   t->qid = qid;
 
   hdr_desc = &txvq->desc[desc_current];
-  if (txvq->desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT)
+  if (txvq->desc[desc_current].flags & VRING_DESC_F_INDIRECT)
     {
       t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_INDIRECT;
       /* Header is the first here */
       hdr_desc = map_guest_mem (vui, txvq->desc[desc_current].addr, &hint);
     }
-  if (txvq->desc[desc_current].flags & VIRTQ_DESC_F_NEXT)
+  if (txvq->desc[desc_current].flags & VRING_DESC_F_NEXT)
     {
       t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_SIMPLE_CHAINED;
     }
-  if (!(txvq->desc[desc_current].flags & VIRTQ_DESC_F_NEXT) &&
-      !(txvq->desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT))
+  if (!(txvq->desc[desc_current].flags & VRING_DESC_F_NEXT) &&
+      !(txvq->desc[desc_current].flags & VRING_DESC_F_INDIRECT))
     {
       t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_SINGLE_DESC;
     }
@@ -560,7 +559,7 @@ vhost_user_if_input (vlib_main_t * vm,
       /* This depends on the setup but is very consistent
        * So I think the CPU branch predictor will make a pretty good job
        * at optimizing the decision. */
-      if (txvq->desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT)
+      if (txvq->desc[desc_current].flags & VRING_DESC_F_INDIRECT)
 	{
 	  desc_table = map_guest_mem (vui, txvq->desc[desc_current].addr,
 				      &map_hint);
@@ -591,7 +590,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	  if (hdr->hdr.flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
 	    {
 	      if ((desc_data_offset == desc_table[desc_current].len) &&
-		  (desc_table[desc_current].flags & VIRTQ_DESC_F_NEXT))
+		  (desc_table[desc_current].flags & VRING_DESC_F_NEXT))
 		{
 		  current = desc_table[desc_current].next;
 		  b_data = map_guest_mem (vui, desc_table[current].addr,
@@ -617,7 +616,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	  if (desc_data_offset == desc_table[desc_current].len)
 	    {
 	      if (PREDICT_FALSE (desc_table[desc_current].flags &
-				 VIRTQ_DESC_F_NEXT))
+				 VRING_DESC_F_NEXT))
 		{
 		  desc_current = desc_table[desc_current].next;
 		  desc_data_offset = 0;
@@ -776,10 +775,10 @@ vhost_user_mark_desc_consumed (vhost_user_intf_t * vui,
     {
       if (txvq->used_wrap_counter)
 	desc_table[(desc_head + desc_idx) & mask].flags |=
-	  (VIRTQ_DESC_F_AVAIL | VIRTQ_DESC_F_USED);
+	  (VRING_DESC_F_AVAIL | VRING_DESC_F_USED);
       else
 	desc_table[(desc_head + desc_idx) & mask].flags &=
-	  ~(VIRTQ_DESC_F_AVAIL | VIRTQ_DESC_F_USED);
+	  ~(VRING_DESC_F_AVAIL | VRING_DESC_F_USED);
       vhost_user_advance_last_used_idx (txvq);
     }
 }
@@ -799,18 +798,18 @@ vhost_user_rx_trace_packed (vhost_trace_t * t, vhost_user_intf_t * vui,
   t->qid = qid;
 
   hdr_desc = &txvq->packed_desc[desc_current];
-  if (txvq->packed_desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT)
+  if (txvq->packed_desc[desc_current].flags & VRING_DESC_F_INDIRECT)
     {
       t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_INDIRECT;
       /* Header is the first here */
       hdr_desc = map_guest_mem (vui, txvq->packed_desc[desc_current].addr,
 				&hint);
     }
-  if (txvq->packed_desc[desc_current].flags & VIRTQ_DESC_F_NEXT)
+  if (txvq->packed_desc[desc_current].flags & VRING_DESC_F_NEXT)
     t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_SIMPLE_CHAINED;
 
-  if (!(txvq->packed_desc[desc_current].flags & VIRTQ_DESC_F_NEXT) &&
-      !(txvq->packed_desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT))
+  if (!(txvq->packed_desc[desc_current].flags & VRING_DESC_F_NEXT) &&
+      !(txvq->packed_desc[desc_current].flags & VRING_DESC_F_INDIRECT))
     t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_SINGLE_DESC;
 
   t->first_desc_len = hdr_desc ? hdr_desc->len : 0;
@@ -1018,7 +1017,7 @@ vhost_user_compute_chained_desc_len (vhost_user_intf_t * vui,
   u32 desc_len = 0;
   u16 mask = txvq->qsz_mask;
 
-  while (desc_table[*current].flags & VIRTQ_DESC_F_NEXT)
+  while (desc_table[*current].flags & VRING_DESC_F_NEXT)
     {
       desc_len += desc_table[*current].len;
       (*n_left)++;
@@ -1177,7 +1176,7 @@ vhost_user_if_input_packed (vlib_main_t * vm, vhost_user_main_t * vum,
   while (vhost_user_packed_desc_available (txvq, current) &&
 	 (n_left < VLIB_FRAME_SIZE))
     {
-      if (desc_table[current].flags & VIRTQ_DESC_F_INDIRECT)
+      if (desc_table[current].flags & VRING_DESC_F_INDIRECT)
 	{
 	  buffers_required +=
 	    vhost_user_compute_indirect_desc_len (vui, txvq, buffer_data_size,
@@ -1244,7 +1243,7 @@ vhost_user_if_input_packed (vlib_main_t * vm, vhost_user_main_t * vum,
       desc_data_offset = vui->virtio_net_hdr_sz;
       n_descs_to_process = 1;
 
-      if (desc_table[desc_idx].flags & VIRTQ_DESC_F_INDIRECT)
+      if (desc_table[desc_idx].flags & VRING_DESC_F_INDIRECT)
 	{
 	  n_descs = desc_table[desc_idx].len >> 4;
 	  desc_table = map_guest_mem (vui, desc_table[desc_idx].addr,
@@ -1298,7 +1297,7 @@ vhost_user_if_input_packed (vlib_main_t * vm, vhost_user_main_t * vum,
 	   * loop. So count how many descriptors in the chain.
 	   */
 	  n_descs_to_process = 1;
-	  while (desc_table[desc_idx].flags & VIRTQ_DESC_F_NEXT)
+	  while (desc_table[desc_idx].flags & VRING_DESC_F_NEXT)
 	    {
 	      vhost_user_assemble_packet (desc_table, &desc_idx, b_head,
 					  &b_current, &next, &b, &bi_current,
@@ -1431,7 +1430,7 @@ VLIB_NODE_FN (vhost_user_input_node) (vlib_main_t * vm,
 	  pool_elt_at_index (vum->vhost_user_interfaces, dq->dev_instance);
 	if (vhost_user_is_packed_ring_supported (vui))
 	  {
-	    if (vui->features & (1ULL << FEAT_VIRTIO_NET_F_CSUM))
+	    if (vui->features & VIRTIO_FEATURE (VIRTIO_NET_F_CSUM))
 	      n_rx_packets += vhost_user_if_input_packed (vm, vum, vui,
 							  dq->queue_id, node,
 							  dq->mode, 1);
@@ -1442,7 +1441,7 @@ VLIB_NODE_FN (vhost_user_input_node) (vlib_main_t * vm,
 	  }
 	else
 	  {
-	    if (vui->features & (1ULL << FEAT_VIRTIO_NET_F_CSUM))
+	    if (vui->features & VIRTIO_FEATURE (VIRTIO_NET_F_CSUM))
 	      n_rx_packets += vhost_user_if_input (vm, vum, vui, dq->queue_id,
 						   node, dq->mode, 1);
 	    else

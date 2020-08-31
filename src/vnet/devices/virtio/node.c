@@ -59,7 +59,7 @@ typedef struct
   u32 hw_if_index;
   u16 ring;
   u16 len;
-  struct virtio_net_hdr_v1 hdr;
+  virtio_net_hdr_v1_t hdr;
 } virtio_input_trace_t;
 
 static u8 *
@@ -115,7 +115,7 @@ more:
 
   while (n_slots)
     {
-      struct vring_desc *d = &vring->desc[next];;
+      vring_desc_t *d = &vring->desc[next];;
       vlib_buffer_t *b = vlib_get_buffer (vm, vring->buffers[next]);
       /*
        * current_data may not be initialized with 0 and may contain
@@ -141,7 +141,7 @@ more:
   vring->desc_next = next;
   vring->desc_in_use = used;
 
-  if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0)
+  if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0)
     {
       virtio_kick (vm, vring, vif);
     }
@@ -149,7 +149,7 @@ more:
 }
 
 static_always_inline void
-virtio_needs_csum (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr,
+virtio_needs_csum (vlib_buffer_t * b0, virtio_net_hdr_v1_t * hdr,
 		   u8 * l4_proto, u8 * l4_hdr_sz, virtio_if_type_t type)
 {
   if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
@@ -239,7 +239,7 @@ virtio_needs_csum (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr,
 }
 
 static_always_inline void
-fill_gso_buffer_flags (vlib_buffer_t * b0, struct virtio_net_hdr_v1 *hdr,
+fill_gso_buffer_flags (vlib_buffer_t * b0, virtio_net_hdr_v1_t * hdr,
 		       u8 l4_proto, u8 l4_hdr_sz)
 {
   if (hdr->gso_type == VIRTIO_NET_HDR_GSO_TCPV4)
@@ -285,7 +285,7 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 						       txq_vring->flow_table);
     }
 
-  if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0 &&
+  if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0 &&
       vring->last_kick_avail_idx != vring->avail->idx)
     virtio_kick (vm, vring, vif);
 
@@ -306,14 +306,14 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u8 l4_proto = 0, l4_hdr_sz = 0;
 	  u16 num_buffers = 1;
-	  struct vring_used_elem *e = &vring->used->ring[last & mask];
-	  struct virtio_net_hdr_v1 *hdr;
+	  vring_used_elem_t *e = &vring->used->ring[last & mask];
+	  virtio_net_hdr_v1_t *hdr;
 	  u16 slot = e->id;
 	  u16 len = e->len - hdr_sz;
 	  u32 bi0 = vring->buffers[slot];
 	  vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
 	  hdr = vlib_buffer_get_current (b0);
-	  if (hdr_sz == sizeof (struct virtio_net_hdr_v1))
+	  if (hdr_sz == sizeof (virtio_net_hdr_v1_t))
 	    num_buffers = hdr->num_buffers;
 
 	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;

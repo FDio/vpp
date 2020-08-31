@@ -14,43 +14,26 @@
  */
 #ifndef __VIRTIO_VHOST_USER_H__
 #define __VIRTIO_VHOST_USER_H__
+
+#include <vnet/devices/virtio/virtio_std.h>
+#include <vnet/devices/virtio/vhost_std.h>
+
 /* vhost-user data structures */
 
 #define VHOST_MEMORY_MAX_NREGIONS       8
 #define VHOST_USER_MSG_HDR_SZ           12
-#define VHOST_VRING_MAX_SIZE            32768
 #define VHOST_VRING_MAX_N               16	//8TX + 8RX
 #define VHOST_VRING_IDX_RX(qid)         (2*qid)
 #define VHOST_VRING_IDX_TX(qid)         (2*qid + 1)
 
 #define VHOST_USER_VRING_NOFD_MASK      0x100
-#define VIRTQ_DESC_F_NEXT               1
-#define VIRTQ_DESC_F_WRITE              2
-#define VIRTQ_DESC_F_INDIRECT           4
-
-#define VIRTQ_DESC_F_AVAIL	        (1 << 7)
-#define VIRTQ_DESC_F_USED	        (1 << 15)
-
-#define VRING_EVENT_F_ENABLE            0x0
-#define VRING_EVENT_F_DISABLE           0x1
-#define VRING_EVENT_F_DESC              0x2
 
 #define VHOST_USER_PROTOCOL_F_MQ   0
 #define VHOST_USER_PROTOCOL_F_LOG_SHMFD	1
 #define VHOST_VRING_F_LOG 0
 
-#define VHOST_USER_F_PROTOCOL_FEATURES  30
 #define VHOST_USER_PROTOCOL_FEATURES   ((1ULL << VHOST_USER_PROTOCOL_F_MQ) |	\
 					(1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD))
-
-/* If multiqueue is provided by host, then we support it. */
-#define VIRTIO_NET_CTRL_MQ   4
-#define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET        0
-#define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MIN        1
-#define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX        0x8000
-
-#define VRING_USED_F_NO_NOTIFY  1
-#define VRING_AVAIL_F_NO_INTERRUPT 1
 
 #define vu_log_debug(dev, f, ...) \
 {                                                                             \
@@ -91,46 +74,17 @@ typedef enum
 #undef _
 } virtio_trace_flag_t;
 
-#define foreach_virtio_net_feature      \
- _ (VIRTIO_NET_F_CSUM, 0)		\
- _ (VIRTIO_NET_F_GUEST_CSUM, 1)		\
- _ (VIRTIO_NET_F_GUEST_TSO4, 7)         \
- _ (VIRTIO_NET_F_GUEST_TSO6, 8)         \
- _ (VIRTIO_NET_F_GUEST_UFO, 10)         \
- _ (VIRTIO_NET_F_HOST_TSO4, 11)         \
- _ (VIRTIO_NET_F_HOST_TSO6, 12)         \
- _ (VIRTIO_NET_F_HOST_UFO, 14)          \
- _ (VIRTIO_NET_F_MRG_RXBUF, 15)         \
- _ (VIRTIO_NET_F_CTRL_VQ, 17)           \
- _ (VIRTIO_NET_F_GUEST_ANNOUNCE, 21)    \
- _ (VIRTIO_NET_F_MQ, 22)                \
- _ (VHOST_F_LOG_ALL, 26)                \
- _ (VIRTIO_F_ANY_LAYOUT, 27)            \
- _ (VIRTIO_F_INDIRECT_DESC, 28)         \
- _ (VIRTIO_F_EVENT_IDX, 29)		\
- _ (VHOST_USER_F_PROTOCOL_FEATURES, 30) \
- _ (VIRTIO_F_VERSION_1, 32)             \
- _ (VIRTIO_F_RING_PACKED, 34)           \
- _ (VIRTIO_F_IN_ORDER, 35)
-
-typedef enum
-{
-#define _(f,n) FEAT_##f = (n),
-  foreach_virtio_net_feature
-#undef _
-} virtio_net_feature_t;
-
 #define FEATURE_VIRTIO_NET_F_HOST_TSO_FEATURE_BITS \
-  ((1ULL << FEAT_VIRTIO_NET_F_CSUM) |		   \
-   (1ULL << FEAT_VIRTIO_NET_F_HOST_UFO) |	   \
-   (1ULL << FEAT_VIRTIO_NET_F_HOST_TSO4) |	   \
-   (1ULL << FEAT_VIRTIO_NET_F_HOST_TSO6))
+  (VIRTIO_FEATURE (VIRTIO_NET_F_CSUM) |		   \
+   VIRTIO_FEATURE (VIRTIO_NET_F_HOST_UFO) |	   \
+   VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO4) |	   \
+   VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO6))
 
 #define FEATURE_VIRTIO_NET_F_GUEST_TSO_FEATURE_BITS \
-  ((1ULL << FEAT_VIRTIO_NET_F_GUEST_CSUM) |	    \
-   (1ULL << FEAT_VIRTIO_NET_F_GUEST_UFO) |	    \
-   (1ULL << FEAT_VIRTIO_NET_F_GUEST_TSO4) |	    \
-   (1ULL << FEAT_VIRTIO_NET_F_GUEST_TSO6))
+  (VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_CSUM) |	    \
+   VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_UFO) |	    \
+   VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO4) |	    \
+   VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO6))
 
 #define FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS \
   (FEATURE_VIRTIO_NET_F_HOST_TSO_FEATURE_BITS |		 \
@@ -165,23 +119,6 @@ typedef struct vhost_user_memory
   vhost_user_memory_region_t regions[VHOST_MEMORY_MAX_NREGIONS];
 } __attribute ((packed)) vhost_user_memory_t;
 
-typedef struct
-{
-  u32 index, num;
-} __attribute ((packed)) vhost_vring_state_t;
-
-typedef struct
-{
-  u32 index, flags;
-  u64 desc_user_addr, used_user_addr, avail_user_addr, log_guest_addr;
-} __attribute ((packed)) vhost_vring_addr_t;
-
-typedef struct vhost_user_log
-{
-  u64 size;
-  u64 offset;
-} __attribute ((packed)) vhost_user_log_t;
-
 typedef enum vhost_user_req
 {
   VHOST_USER_NONE = 0,
@@ -205,64 +142,6 @@ typedef enum vhost_user_req
   VHOST_USER_SET_VRING_ENABLE = 18,
   VHOST_USER_MAX
 } vhost_user_req_t;
-
-// vring_desc I/O buffer descriptor
-typedef struct
-{
-  uint64_t addr;  // packet data buffer address
-  uint32_t len;   // packet data buffer size
-  uint16_t flags; // (see below)
-  uint16_t next;  // optional index next descriptor in chain
-} __attribute ((packed)) vring_desc_t;
-
-typedef struct
-{
-  uint16_t flags;
-  volatile uint16_t idx;
-  uint16_t ring[VHOST_VRING_MAX_SIZE];
-} __attribute ((packed)) vring_avail_t;
-
-typedef struct
-{
-  uint16_t flags;
-  uint16_t idx;
-  struct /* vring_used_elem */
-    {
-      uint32_t id;
-      uint32_t len;
-    } ring[VHOST_VRING_MAX_SIZE];
-} __attribute ((packed)) vring_used_t;
-
-typedef CLIB_PACKED (struct
-{
-  u64 addr;			// packet data buffer address
-  u32 len;			// packet data buffer size
-  u16 id;			// buffer id
-  u16 flags;			// flags
-}) vring_packed_desc_t;
-
-STATIC_ASSERT_SIZEOF (vring_packed_desc_t, 16);
-
-typedef CLIB_PACKED (struct
-{
-  u16 off_wrap;
-  u16 flags;
-}) vring_desc_event_t;
-
-typedef struct
-{
-  u8 flags;
-  u8 gso_type;
-  u16 hdr_len;
-  u16 gso_size;
-  u16 csum_start;
-  u16 csum_offset;
-} __attribute ((packed)) virtio_net_hdr_t;
-
-typedef struct  {
-  virtio_net_hdr_t hdr;
-  u16 num_buffers;
-} __attribute ((packed)) virtio_net_hdr_mrg_rxbuf_t;
 
 typedef struct vhost_user_msg {
   vhost_user_req_t request;
