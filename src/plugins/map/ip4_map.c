@@ -97,7 +97,7 @@ ip4_map_decrement_ttl (ip4_header_t * ip, u8 * error)
   *error = ttl <= 0 ? IP4_ERROR_TIME_EXPIRED : *error;
 
   /* Verify checksum. */
-  ASSERT (ip->checksum == ip4_header_checksum (ip));
+  ASSERT (ip4_header_checksum_is_valid (ip));
 }
 
 static u32

@@ -259,7 +259,7 @@ This function creates the packet header for an ipfix data packet
       	udp->checksum = 0xffff;
           }
 
-        ASSERT (ip->checksum == ip4_header_checksum (ip));
+        ASSERT (ip4_header_checksum_is_valid (ip));
 
         vlib_put_frame_to_node (vm, ip4_lookup_node.index, f);
       }  
