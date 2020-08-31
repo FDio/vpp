@@ -1,0 +1,12 @@
+---
+name: Wireguard protocol
+maintainer: Artem Glazychev <artem.glazychev@xored.com>
+features:
+  - "based on wireguard-openbsd implementation: https://git.zx2c4.com/wireguard-openbsd"
+  - creating secure VPN-tunnel
+description: "Wireguard protocol implementation"
+state: development
+properties: [API, CLI]
+missing:
+  - IPv6 support
+  - DoS protection as in the original protocol
