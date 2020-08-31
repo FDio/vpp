@@ -474,8 +474,8 @@ ip4_icmp_echo_request (vlib_main_t * vm,
 	  ip0->checksum = ip_csum_fold (sum0);
 	  ip1->checksum = ip_csum_fold (sum1);
 
-	  ASSERT (ip0->checksum == ip4_header_checksum (ip0));
-	  ASSERT (ip1->checksum == ip4_header_checksum (ip1));
+	  ASSERT (ip4_header_checksum_is_valid (ip0));
+	  ASSERT (ip4_header_checksum_is_valid (ip1));
 
 	  p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  p1->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
@@ -531,7 +531,7 @@ ip4_icmp_echo_request (vlib_main_t * vm,
 
 	  ip0->checksum = ip_csum_fold (sum0);
 
-	  ASSERT (ip0->checksum == ip4_header_checksum (ip0));
+	  ASSERT (ip4_header_checksum_is_valid (ip0));
 
 	  p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	}

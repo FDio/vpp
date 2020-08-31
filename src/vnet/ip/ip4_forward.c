@@ -2063,7 +2063,7 @@ ip4_ttl_inc (vlib_buffer_t * b, ip4_header_t * ip)
   ttl += 1;
   ip->ttl = ttl;
 
-  ASSERT (ip->checksum == ip4_header_checksum (ip));
+  ASSERT (ip4_header_checksum_is_valid (ip));
 }
 
 /* Decrement TTL & update checksum.
@@ -2104,7 +2104,7 @@ ip4_ttl_and_checksum_check (vlib_buffer_t * b, ip4_header_t * ip, u16 * next,
     }
 
   /* Verify checksum. */
-  ASSERT ((ip->checksum == ip4_header_checksum (ip)) ||
+  ASSERT (ip4_header_checksum_is_valid (ip) ||
 	  (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM));
 }
 

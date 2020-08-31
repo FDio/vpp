@@ -90,8 +90,8 @@ compute_length_and_or_checksum (vlib_main_t * vm,
 	  ip0->checksum = ~ip_csum_fold (sum0);
 	  ip1->checksum = ~ip_csum_fold (sum1);
 
-	  ASSERT (ip0->checksum == ip4_header_checksum (ip0));
-	  ASSERT (ip1->checksum == ip4_header_checksum (ip1));
+	  ASSERT (ip4_header_checksum_is_valid (ip0));
+	  ASSERT (ip4_header_checksum_is_valid (ip1));
 	}
     }
 
@@ -123,7 +123,7 @@ compute_length_and_or_checksum (vlib_main_t * vm,
 	  ip4_partial_header_checksum_x1 (ip0, sum0);
 	  ip0->checksum = ~ip_csum_fold (sum0);
 
-	  ASSERT (ip0->checksum == ip4_header_checksum (ip0));
+	  ASSERT (ip4_header_checksum_is_valid (ip0));
 	}
     }
 }

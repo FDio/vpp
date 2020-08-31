@@ -567,7 +567,7 @@ snat_ipfix_send (u32 thread_index, flow_report_main_t * frm,
 	udp->checksum = 0xffff;
     }
 
-  ASSERT (ip->checksum == ip4_header_checksum (ip));
+  ASSERT (ip4_header_checksum_is_valid (ip));
 
   vlib_put_frame_to_node (vm, ip4_lookup_node.index, f);
 }
