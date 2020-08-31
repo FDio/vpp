@@ -142,11 +142,6 @@ class VPPAPILexer(object):
     t_ignore = ' \t'
 
 
-def crc_block_combine(block, crc):
-    s = str(block).encode()
-    return binascii.crc32(s, crc) & 0xffffffff
-
-
 def vla_is_last_check(name, block):
     vla = False
     for i, b in enumerate(block):
@@ -227,7 +222,12 @@ class Using():
         else:
             a = {'type': alias.fieldtype}
         self.alias = a
-        self.crc = str(alias).encode()
+        #
+        # Should have been:
+        #  self.crc = str(alias).encode()
+        # but to be backwards compatible use the block ([])
+        #
+        self.crc = str(self.block).encode()
         global_type_add(name, self)
 
     def __repr__(self):
@@ -303,15 +303,27 @@ class Enum():
         self.vla = False
 
         count = 0
-        for i, b in enumerate(block):
-            if type(b) is list:
-                count = b[1]
+        block2 = []
+        block3 = []
+        bc_set = False
+
+        for b in block:
+            if 'value' in b:
+                count = b['value']
             else:
                 count += 1
-                block[i] = [b, count]
-
-        self.block = block
-        self.crc = str(block).encode()
+            block2.append([b['id'], count])
+            try:
+                if b['option']['backwards_compatible']:
+                    pass
+                bc_set = True
+            except KeyError:
+                block3.append([b['id'], count])
+                if bc_set:
+                    raise ValueError("Backward compatible enum must be last {!r} {!r}"
+                                     .format(name, b['id']))
+        self.block = block2
+        self.crc = str(block3).encode()
         global_type_add(name, self)
 
     def __repr__(self):
@@ -621,11 +633,19 @@ class VPPAPIParser(object):
 
     def p_enum_statement(self, p):
         '''enum_statement : ID '=' NUM ','
-                          | ID ',' '''
-        if len(p) == 5:
-            p[0] = [p[1], p[3]]
+                          | ID ','
+                          | ID '[' field_options ']' ','
+                          | ID '=' NUM '[' field_options ']' ',' '''
+        if len(p) == 3:
+            p[0] = {'id': p[1]}
+        elif len(p) == 5:
+            p[0] = {'id': p[1], 'value': p[3]}
+        elif len(p) == 6:
+            p[0] = {'id': p[1], 'option': p[3]}
+        elif len(p) == 8:
+            p[0] = {'id': p[1], 'value': p[3], 'option': p[5]}
         else:
-            p[0] = p[1]
+            self._parse_error('ERROR', self._token_coord(p, 1))
 
     def p_field_options(self, p):
         '''field_options : field_option
@@ -934,7 +954,7 @@ def foldup_blocks(block, crc):
             # Recursively
             t = global_types[b.fieldtype]
             try:
-                crc = crc_block_combine(t.block, crc)
+                crc = binascii.crc32(t.crc, crc) & 0xffffffff
                 crc = foldup_blocks(t.block, crc)
             except AttributeError:
                 pass
