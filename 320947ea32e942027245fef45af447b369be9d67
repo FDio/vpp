@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fb45da04_ca349f89",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-08-31T17:26:46Z",
+      "side": 1,
+      "message": "fix wrong mac address length",
+      "revId": "320947ea32e942027245fef45af447b369be9d67",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "56a80bcc_ef7ebfe9",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-08-31T17:26:46Z",
+      "side": 1,
+      "message": "sizeof (mac_address_t)",
+      "revId": "320947ea32e942027245fef45af447b369be9d67",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
