@@ -598,7 +598,7 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
 	udp->checksum = 0xffff;
     }
 
-  ASSERT (ip->checksum == ip4_header_checksum (ip));
+  ASSERT (ip4_header_checksum_is_valid (ip));
 
   /* Find or allocate a frame */
   f = fm->context[which].frames_per_worker[my_cpu_number];

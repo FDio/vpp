@@ -321,7 +321,7 @@ ipfix_classify_send_flows (flow_report_main_t * frm,
 			udp->checksum = 0xffff;
 		    }
 
-		  ASSERT (ip->checksum == ip4_header_checksum (ip));
+		  ASSERT (ip4_header_checksum_is_valid (ip));
 
 		  to_next[0] = bi0;
 		  f->n_vectors++;
@@ -376,7 +376,7 @@ flush:
 	    udp->checksum = 0xffff;
 	}
 
-      ASSERT (ip->checksum == ip4_header_checksum (ip));
+      ASSERT (ip4_header_checksum_is_valid (ip));
 
       to_next[0] = bi0;
       f->n_vectors++;
