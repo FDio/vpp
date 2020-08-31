@@ -568,6 +568,7 @@ list(APPEND VNET_SOURCES
   crypto/crypto.c
   crypto/format.c
   crypto/node.c
+  crypto/crypto_api.c
 )
 
 list(APPEND VNET_HEADERS
@@ -575,6 +576,8 @@ list(APPEND VNET_HEADERS
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES crypto/node.c)
+
+list(APPEND VNET_API_FILES crypto/crypto.api)
 
 ##############################################################################
 # Layer 3 protocol: IPSec

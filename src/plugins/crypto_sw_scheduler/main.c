@@ -659,6 +659,8 @@ crypto_sw_scheduler_init (vlib_main_t * vm)
   vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
 				    crypto_sw_scheduler_key_handler);
 
+  crypto_sw_scheduler_api_init (vm);
+
   /* *INDENT-OFF* */
 #define _(n, s, k, t, a)                                                      \
   vnet_crypto_register_async_handler (                                        \

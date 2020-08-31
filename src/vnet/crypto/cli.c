@@ -435,11 +435,21 @@ VLIB_CLI_COMMAND (set_crypto_async_handler_command, static) =
 };
 /* *INDENT-ON* */
 
+static inline void
+print_crypto_async_dispatch_warning ()
+{
+  clib_warning ("Switching dispatch mode might not work is some situations.");
+  clib_warning
+    ("Use 'show crypto async status' to verify that the nodes' states were set");
+  clib_warning ("and if not, set 'crypto async dispatch' mode again.");
+}
+
 static clib_error_t *
 set_crypto_async_dispatch_polling_command_fn (vlib_main_t * vm,
 					      unformat_input_t * input,
 					      vlib_cli_command_t * cmd)
 {
+  print_crypto_async_dispatch_warning ();
   vnet_crypto_set_async_dispatch_mode (VNET_CRYPTO_ASYNC_DISPATCH_POLLING);
   return 0;
 }
@@ -449,6 +459,7 @@ set_crypto_async_dispatch_interrupt_command_fn (vlib_main_t * vm,
 						unformat_input_t * input,
 						vlib_cli_command_t * cmd)
 {
+  print_crypto_async_dispatch_warning ();
   vnet_crypto_set_async_dispatch_mode (VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT);
   return 0;
 }

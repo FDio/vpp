@@ -207,7 +207,6 @@ typedef enum
 } vnet_crypto_op_id_t;
 /* *INDENT-ON* */
 
-
 typedef enum
 {
   CRYPTO_OP_SIMPLE,

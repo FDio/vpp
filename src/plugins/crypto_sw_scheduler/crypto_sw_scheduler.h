@@ -50,6 +50,10 @@ typedef struct
 
 extern crypto_sw_scheduler_main_t crypto_sw_scheduler_main;
 
+extern int crypto_sw_scheduler_set_worker_crypto (u32 worker_idx, u8 enabled);
+
+extern clib_error_t *crypto_sw_scheduler_api_init (vlib_main_t * vm);
+
 #endif // __crypto_native_h__
 
 /*
