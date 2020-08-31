@@ -14,4 +14,8 @@
 add_vpp_plugin(crypto_sw_scheduler
   SOURCES
   main.c
+  api.c
+
+  API_FILES
+  crypto_sw_scheduler.api
 )

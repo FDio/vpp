@@ -620,10 +620,6 @@ vnet_crypto_set_async_dispatch_mode (u8 mode)
       if (state != vlib_node_get_state (vlib_mains[i], cm->crypto_node_index))
 	vlib_node_set_state (vlib_mains[i], cm->crypto_node_index, state);
     }
-  clib_warning ("Switching dispatch mode might not work is some situations.");
-  clib_warning
-    ("Use 'show crypto async status' to verify that the nodes' states were set");
-  clib_warning ("and if not, set 'crypto async dispatch' mode again.");
 }
 
 int

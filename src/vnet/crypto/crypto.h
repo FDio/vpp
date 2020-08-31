@@ -17,6 +17,7 @@
 #define included_vnet_crypto_crypto_h
 
 #include <vlib/vlib.h>
+#include <vnet/crypto/crypto.api_types.h>
 
 #define VNET_CRYPTO_FRAME_SIZE 64
 
@@ -204,13 +205,7 @@ typedef enum
 } vnet_crypto_op_id_t;
 /* *INDENT-ON* */
 
-
-typedef enum
-{
-  CRYPTO_OP_SIMPLE,
-  CRYPTO_OP_CHAINED,
-  CRYPTO_OP_BOTH,
-} crypto_op_class_type_t;
+typedef vl_api_crypto_op_class_type_t crypto_op_class_type_t;
 
 typedef struct
 {
