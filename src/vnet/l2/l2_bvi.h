@@ -28,6 +28,27 @@
 #define TO_BVI_ERR_BAD_MAC   1
 #define TO_BVI_ERR_ETHERTYPE 2
 
+static_always_inline u32
+l2_to_bvi_dmac_check (vnet_hw_interface_t * hi, u8 * dmac,
+		      ethernet_interface_t * ei, u8 have_sec_dmac)
+{
+  mac_address_t *sec_addr;
+
+  if (ethernet_mac_address_equal (dmac, hi->hw_address))
+    return TO_BVI_ERR_OK;
+
+  if (have_sec_dmac)
+    {
+      vec_foreach (sec_addr, ei->secondary_addrs)
+      {
+	if (ethernet_mac_address_equal (dmac, (u8 *) sec_addr))
+	  return TO_BVI_ERR_OK;
+      }
+    }
+
+  return TO_BVI_ERR_BAD_MAC;
+}
+
 /**
  * Send a packet from L2 processing to L3 via the BVI interface.
  * Set next0 to the proper L3 input node.
@@ -40,14 +61,26 @@ l2_to_bvi (vlib_main_t * vlib_main,
 	   vlib_buffer_t * b0,
 	   u32 bvi_sw_if_index, next_by_ethertype_t * l3_next, u16 * next0)
 {
+  ethernet_main_t *em = &ethernet_main;
+
   /* Perform L3 my-mac filter */
   ethernet_header_t *e0 = vlib_buffer_get_current (b0);
   if (!ethernet_address_cast (e0->dst_address))
     {
       vnet_hw_interface_t *hi =
 	vnet_get_sup_hw_interface (vnet_main, bvi_sw_if_index);
-      if (!ethernet_mac_address_equal (e0->dst_address, hi->hw_address))
-	return TO_BVI_ERR_BAD_MAC;
+      ethernet_interface_t *ei = ethernet_get_interface (em, hi->hw_if_index);
+      u32 rv;
+
+      if (PREDICT_FALSE (vec_len (ei->secondary_addrs) > 0))
+	rv = l2_to_bvi_dmac_check (hi, e0->dst_address, ei,
+				   1 /* have_sec_dmac */ );
+      else
+	rv = l2_to_bvi_dmac_check (hi, e0->dst_address, ei,
+				   0 /* have_sec_dmac */ );
+
+      if (rv != TO_BVI_ERR_OK)
+	return rv;
     }
 
   /* Save L2 header position which may be changed due to packet replication */
