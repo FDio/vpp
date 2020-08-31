@@ -927,6 +927,81 @@ def dirlist_get():
     return dirlist
 
 
+# from: https://stackoverflow.com/questions/35259527/using-zlib-crc32-combine-in-python
+def crc32_combine(crc1, crc2, len2):
+    """Explanation algorithm: https://stackoverflow.com/a/23126768/654160
+    crc32(crc32(0, seq1, len1), seq2, len2) == crc32_combine(
+        crc32(0, seq1, len1), crc32(0, seq2, len2), len2)"""
+    # degenerate case (also disallow negative lengths)
+    if len2 <= 0:
+        return crc1
+
+    # put operator for one zero bit in odd
+    # CRC-32 polynomial, 1, 2, 4, 8, ..., 1073741824
+    odd = [0xedb88320] + [1 << i for i in range(0, 31)]
+    even = [0] * 32
+
+    def matrix_times(matrix, vector):
+        number_sum = 0
+        matrix_index = 0
+        while vector != 0:
+            if vector & 1:
+                number_sum ^= matrix[matrix_index]
+            vector = vector >> 1 & 0x7FFFFFFF
+            matrix_index += 1
+        return number_sum
+
+    # put operator for two zero bits in even - gf2_matrix_square(even, odd)
+    even[:] = [matrix_times(odd, odd[n]) for n in range(0, 32)]
+
+    # put operator for four zero bits in odd
+    odd[:] = [matrix_times(even, even[n]) for n in range(0, 32)]
+
+    # apply len2 zeros to crc1 (first square will put the operator for one
+    # zero byte, eight zero bits, in even)
+    while len2 != 0:
+        # apply zeros operator for this bit of len2
+        even[:] = [matrix_times(odd, odd[n]) for n in range(0, 32)]
+        if len2 & 1:
+            crc1 = matrix_times(even, crc1)
+        len2 >>= 1
+
+        # if no more bits set, then done
+        if len2 == 0:
+            break
+
+        # another iteration of the loop with odd and even swapped
+        odd[:] = [matrix_times(even, even[n]) for n in range(0, 32)]
+        if len2 & 1:
+            crc1 = matrix_times(odd, crc1)
+        len2 >>= 1
+
+        # if no more bits set, then done
+    # return combined crc
+    crc1 ^= crc2
+    return crc1
+
+def combine_fixup_crc(b, t, crc_a):
+    s = str(t.block).encode()
+    zs = bytearray(len(s))
+    crc_b = binascii.crc32(s) & 0xffffffff
+    crc_az = binascii.crc32(zs, crc_a) & 0xffffffff 
+
+    crc_ab1 = crc_block_combine(t.block, crc_a)
+    crc_ab2 = crc32_combine(crc_a, crc_b, len(s))
+    sys.stderr.write("X %s = %x %x\n" % (b.fieldtype, crc_ab1, crc_ab2))
+    if crc_ab1 != crc_ab2:
+        raise "Bad CRCs combining"
+
+    # FIXME: this needs to come from parser for the type ('options' of sorts)
+    if b.fieldtype == "vl_api_gbp_endpoint_flags_t":
+        if crc_b == 0x407575c1:
+            crc_b = 0x34ff62fb
+            delta_len = 40
+            sys.stderr.write("V: %s\n" %s)
+            crc_ab1 = crc32_combine(crc_a, crc_b, len(s)-delta_len)
+    return crc_ab1
+
 def foldup_blocks(block, crc):
     for b in block:
         # Look up CRC in user defined types
@@ -934,10 +1009,15 @@ def foldup_blocks(block, crc):
             # Recursively
             t = global_types[b.fieldtype]
             try:
-                crc = crc_block_combine(t.block, crc)
+                # crc = crc_block_combine(t.block, crc)
+                crc = combine_fixup_crc(b, t, crc)
                 crc = foldup_blocks(t.block, crc)
             except AttributeError:
                 pass
+    if crc == 0x407575c1:
+        raise "Error"
+    if crc == 0x34ff62fb:
+        raise "Error2"
     return crc
 
 
@@ -1241,6 +1321,10 @@ def foldup_crcs(s):
         if f.name in fixup_crc_dict:
             if f.crc in fixup_crc_dict.get(f.name):
                 f.crc = fixup_crc_dict.get(f.name).get(f.crc)
+        if f.name == "vl_api_gbp_endpoint_flags_t":
+            raise "Error"
+            if f.crc == 0x407575c1:
+                f.crc = 0x34ff62fb
 
 #
 # Main
