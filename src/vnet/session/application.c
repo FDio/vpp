@@ -1476,7 +1476,7 @@ format_application (u8 * s, va_list * args)
   props = application_segment_manager_properties (app);
   if (!verbose)
     {
-      s = format (s, "%-10u%-20v%-40s", app->app_index, app_name,
+      s = format (s, "%-10u%-20v%-40v", app->app_index, app_name,
 		  app_ns_name);
       return s;
     }
