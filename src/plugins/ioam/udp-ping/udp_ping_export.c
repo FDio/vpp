@@ -152,7 +152,7 @@ udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
 		  if (udp->checksum == 0)
 		    udp->checksum = 0xffff;
 
-		  ASSERT (ip->checksum == ip4_header_checksum (ip));
+		  ASSERT (ip4_header_checksum_is_valid (ip));
 
 		  to_next[0] = bi0;
 		  f->n_vectors++;
@@ -203,7 +203,7 @@ udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
       if (udp->checksum == 0)
 	udp->checksum = 0xffff;
 
-      ASSERT (ip->checksum == ip4_header_checksum (ip));
+      ASSERT (ip4_header_checksum_is_valid (ip));
 
       to_next[0] = bi0;
       f->n_vectors++;
