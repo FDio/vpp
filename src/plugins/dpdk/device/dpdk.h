@@ -60,6 +60,7 @@ extern vlib_node_registration_t admin_up_down_process_node;
 
 #define foreach_dpdk_pmd          \
   _ ("net_thunderx", THUNDERX)    \
+  _ ("net_octeontx2", OCTEONTX2)  \
   _ ("net_e1000_em", E1000EM)     \
   _ ("net_e1000_igb", IGB)        \
   _ ("net_e1000_igb_vf", IGBVF)   \
