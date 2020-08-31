@@ -65,10 +65,10 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
   u8 *mac_p = NULL;
 
   if (mp->disable_mrg_rxbuf)
-    disabled_features = (1ULL << FEAT_VIRTIO_NET_F_MRG_RXBUF);
+    disabled_features = VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF);
 
   if (mp->disable_indirect_desc)
-    disabled_features |= (1ULL << FEAT_VIRTIO_F_INDIRECT_DESC);
+    disabled_features |= VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC);
 
   /*
    * GSO and PACKED are not supported by feature mask via binary API. We
@@ -76,7 +76,7 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
    * explicitly via enable_gso and enable_packed argument
    */
   disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS |
-    (1ULL << FEAT_VIRTIO_F_RING_PACKED);
+    VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
   features &= ~disabled_features;
 
   if (mp->use_custom_mac)
@@ -129,7 +129,7 @@ vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t * mp)
    * explicitly via enable_gso and enable_packed argument
    */
   disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS |
-    (1ULL << FEAT_VIRTIO_F_RING_PACKED);
+    VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
   features &= ~disabled_features;
 
   rv = vhost_user_modify_if (vnm, vm, (char *) mp->sock_filename,
