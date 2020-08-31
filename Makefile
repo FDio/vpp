@@ -334,6 +334,7 @@ else ifeq ($(OS_ID),centos)
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E yum install $(CONFIRM) --enablerepo=base-debuginfo $(RPM_DEPENDS_DEBUG)
+	@sudo -E yum install $(CONFIRM) openssl11
 else ifeq ($(OS_ID),fedora)
 	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)

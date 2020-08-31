@@ -48,6 +48,7 @@ static openssl_per_thread_data_t *per_thread_data = 0;
   _(cbc, AES_128_CTR, EVP_aes_128_ctr) \
   _(cbc, AES_192_CTR, EVP_aes_192_ctr) \
   _(cbc, AES_256_CTR, EVP_aes_256_ctr) \
+  _(chacha20_poly1305, CHACHA20_POLY1305, EVP_chacha20_poly1305) \
 
 #define foreach_openssl_hmac_op \
   _(MD5, EVP_md5) \
@@ -268,6 +269,22 @@ openssl_ops_dec_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 	}
     }
   return n_ops - n_fail;
+}
+
+static_always_inline u32
+openssl_ops_enc_chacha20_poly1305 (vlib_main_t * vm, vnet_crypto_op_t * ops[],
+				   vnet_crypto_op_chunk_t * chunks, u32 n_ops,
+				   const EVP_CIPHER * cipher)
+{
+  return openssl_ops_enc_gcm (vm, ops, chunks, n_ops, cipher);
+}
+
+static_always_inline u32
+openssl_ops_dec_chacha20_poly1305 (vlib_main_t * vm, vnet_crypto_op_t * ops[],
+				   vnet_crypto_op_chunk_t * chunks, u32 n_ops,
+				   const EVP_CIPHER * cipher)
+{
+  return openssl_ops_dec_gcm (vm, ops, chunks, n_ops, cipher);
 }
 
 static_always_inline u32
