@@ -230,6 +230,66 @@ fib_prefix_is_cover (const fib_prefix_t *p1,
     return (0);
 }
 
+bool
+fib_prefix_is_cover_addr_46 (const fib_prefix_t *p1,
+                             const ip46_address_t *ip46)
+{
+    switch (p1->fp_proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	return (ip4_destination_matches_route(&ip4_main,
+					      &p1->fp_addr.ip4,
+					      &ip46->ip4,
+					      p1->fp_len) != 0);
+    case FIB_PROTOCOL_IP6:
+	return (ip6_destination_matches_route(&ip6_main,
+					      &p1->fp_addr.ip6,
+					      &ip46->ip6,
+					      p1->fp_len) != 0);
+    case FIB_PROTOCOL_MPLS:
+	break;
+    }
+    return (false);
+}
+
+bool
+fib_prefix_is_cover_addr_4 (const fib_prefix_t *p1,
+                            const ip4_address_t *ip4)
+{
+    switch (p1->fp_proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	return (ip4_destination_matches_route(&ip4_main,
+					      &p1->fp_addr.ip4,
+					      ip4,
+					      p1->fp_len) != 0);
+    case FIB_PROTOCOL_IP6:
+        return (false);
+    case FIB_PROTOCOL_MPLS:
+	break;
+    }
+    return (false);
+}
+
+bool
+fib_prefix_is_cover_addr_6 (const fib_prefix_t *p1,
+                            const ip6_address_t *ip6)
+{
+    switch (p1->fp_proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	return (false);
+    case FIB_PROTOCOL_IP6:
+	return (ip6_destination_matches_route(&ip6_main,
+					      &p1->fp_addr.ip6,
+					      ip6,
+					      p1->fp_len) != 0);
+    case FIB_PROTOCOL_MPLS:
+	break;
+    }
+    return (false);
+}
+
 u8
 fib_prefix_get_host_length (fib_protocol_t proto)
 {

@@ -260,6 +260,12 @@ extern void fib_prefix_copy(fib_prefix_t *dst,
  */
 extern int fib_prefix_is_cover(const fib_prefix_t *p1,
 			       const fib_prefix_t *p2);
+extern bool fib_prefix_is_cover_addr_46(const fib_prefix_t *p1,
+                                        const ip46_address_t *ip46);
+extern bool fib_prefix_is_cover_addr_4(const fib_prefix_t *p1,
+                                       const ip4_address_t *ip46);
+extern bool fib_prefix_is_cover_addr_6(const fib_prefix_t *p1,
+                                       const ip6_address_t *ip46);
 
 /**
  * \brief Return true is the prefix is a host prefix
