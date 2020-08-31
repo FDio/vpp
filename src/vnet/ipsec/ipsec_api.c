@@ -71,7 +71,8 @@ _(IPSEC_SELECT_BACKEND, ipsec_select_backend)                   \
 _(IPSEC_BACKEND_DUMP, ipsec_backend_dump)                       \
 _(IPSEC_TUNNEL_PROTECT_UPDATE, ipsec_tunnel_protect_update)     \
 _(IPSEC_TUNNEL_PROTECT_DEL, ipsec_tunnel_protect_del)           \
-_(IPSEC_TUNNEL_PROTECT_DUMP, ipsec_tunnel_protect_dump)
+_(IPSEC_TUNNEL_PROTECT_DUMP, ipsec_tunnel_protect_dump)         \
+_(IPSEC_SET_ASYNC_MODE, ipsec_set_async_mode)
 
 static void
 vl_api_ipsec_spd_add_del_t_handler (vl_api_ipsec_spd_add_del_t * mp)
@@ -1010,6 +1011,20 @@ vl_api_ipsec_select_backend_t_handler (vl_api_ipsec_select_backend_t * mp)
 #endif
 done:
   REPLY_MACRO (VL_API_IPSEC_SELECT_BACKEND_REPLY);
+}
+
+static void
+vl_api_ipsec_set_async_mode_t_handler (vl_api_ipsec_set_async_mode_t * mp)
+{
+  vl_api_ipsec_set_async_mode_reply_t *rmp;
+  int async_enable = 0;
+  int rv = 0;
+
+  async_enable = mp->async_enable;
+  vnet_crypto_request_async_mode (async_enable);
+  ipsec_set_async_mode (async_enable);
+
+  REPLY_MACRO (VL_API_IPSEC_SET_ASYNC_MODE_REPLY);
 }
 
 /*
