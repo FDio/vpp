@@ -36,6 +36,7 @@ typedef struct
 
 static openssl_per_thread_data_t *per_thread_data = 0;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 #define foreach_openssl_evp_op \
   _(cbc, DES_CBC, EVP_des_cbc) \
   _(cbc, 3DES_CBC, EVP_des_ede3_cbc) \
@@ -48,6 +49,21 @@ static openssl_per_thread_data_t *per_thread_data = 0;
   _(cbc, AES_128_CTR, EVP_aes_128_ctr) \
   _(cbc, AES_192_CTR, EVP_aes_192_ctr) \
   _(cbc, AES_256_CTR, EVP_aes_256_ctr) \
+  _(chacha20_poly1305, CHACHA20_POLY1305, EVP_chacha20_poly1305)
+#else
+#define foreach_openssl_evp_op \
+  _(cbc, DES_CBC, EVP_des_cbc) \
+  _(cbc, 3DES_CBC, EVP_des_ede3_cbc) \
+  _(cbc, AES_128_CBC, EVP_aes_128_cbc) \
+  _(cbc, AES_192_CBC, EVP_aes_192_cbc) \
+  _(cbc, AES_256_CBC, EVP_aes_256_cbc) \
+  _(gcm, AES_128_GCM, EVP_aes_128_gcm) \
+  _(gcm, AES_192_GCM, EVP_aes_192_gcm) \
+  _(gcm, AES_256_GCM, EVP_aes_256_gcm) \
+  _(cbc, AES_128_CTR, EVP_aes_128_ctr) \
+  _(cbc, AES_192_CTR, EVP_aes_192_ctr) \
+  _(cbc, AES_256_CTR, EVP_aes_256_ctr)
+#endif
 
 #define foreach_openssl_hmac_op \
   _(MD5, EVP_md5) \
@@ -269,6 +285,24 @@ openssl_ops_dec_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[],
     }
   return n_ops - n_fail;
 }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+static_always_inline u32
+openssl_ops_enc_chacha20_poly1305 (vlib_main_t * vm, vnet_crypto_op_t * ops[],
+				   vnet_crypto_op_chunk_t * chunks, u32 n_ops,
+				   const EVP_CIPHER * cipher)
+{
+  return openssl_ops_enc_gcm (vm, ops, chunks, n_ops, cipher);
+}
+
+static_always_inline u32
+openssl_ops_dec_chacha20_poly1305 (vlib_main_t * vm, vnet_crypto_op_t * ops[],
+				   vnet_crypto_op_chunk_t * chunks, u32 n_ops,
+				   const EVP_CIPHER * cipher)
+{
+  return openssl_ops_dec_gcm (vm, ops, chunks, n_ops, cipher);
+}
+#endif
 
 static_always_inline u32
 openssl_ops_hmac (vlib_main_t * vm, vnet_crypto_op_t * ops[],
