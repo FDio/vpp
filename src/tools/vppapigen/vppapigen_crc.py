@@ -1,5 +1,6 @@
 # CRC generation
 import json
+import binascii
 
 #
 # Plugin entry point
