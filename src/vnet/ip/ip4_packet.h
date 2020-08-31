@@ -205,8 +205,8 @@ ip4_next_header (ip4_header_t * i)
 WARN_OFF(array-bounds)
 /* *INDENT-ON* */
 
-always_inline u16
-ip4_header_checksum (ip4_header_t * i)
+static_always_inline u16
+ip4_header_checksum_inline (ip4_header_t * i, int with_checksum)
 {
   int option_len = (i->ip_version_and_header_length & 0xf) - 5;
   uword sum = 0;
@@ -215,7 +215,7 @@ ip4_header_checksum (ip4_header_t * i)
 
   sum += iphdr[0];
   sum += iphdr[1];
-  sum += *(u16 *) (iphdr + 2);
+  sum += with_checksum ? iphdr[2] : *(u16 *) (iphdr + 2);
   /* skip checksum */
   sum += iphdr[3];
   sum += iphdr[4];
@@ -256,7 +256,8 @@ ip4_header_checksum (ip4_header_t * i)
   sum += iphdr[2];
   sum += iphdr[3];
   sum += iphdr[4];
-  /* skip checksum */
+  if (with_checksum)
+    sum += iphdr[5];
   sum += iphdr[6];
   sum += iphdr[7];
   sum += iphdr[8];
@@ -308,6 +309,12 @@ ip4_header_checksum (ip4_header_t * i)
 /* *INDENT-OFF* */
 WARN_ON(array-bounds)
 /* *INDENT-ON* */
+
+always_inline u16
+ip4_header_checksum (ip4_header_t * i)
+{
+  return ip4_header_checksum_inline (i, /* with_checksum */ 0);
+}
 
 always_inline void
 ip4_header_set_dscp (ip4_header_t * ip4, ip_dscp_t dscp)
@@ -376,7 +383,7 @@ ip4_header_get_df (const ip4_header_t * ip4)
 static inline uword
 ip4_header_checksum_is_valid (ip4_header_t * i)
 {
-  return i->checksum == ip4_header_checksum (i);
+  return ip4_header_checksum_inline (i, /* with_checksum */ 1) == 0;
 }
 
 #define ip4_partial_header_checksum_x1(ip0,sum0)			\
