@@ -1,0 +1,207 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2020 Doc.ai and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "0.1.0";
+
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
+
+/** \brief Create wireguard interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param private_key - private key of this device
+    @param port - port of this device
+*/
+typedef wireguard_itf
+{
+  u32 user_instance [default=0xffffffff];
+  vl_api_interface_index_t sw_if_index;
+  u8 private_key[45];
+  u16 port;
+};
+
+/** \brief Create an Wireguard interface
+ */
+define wireguard_itf_create {
+  u32 client_index;
+  u32 context;
+  vl_api_wireguard_itf_t itf;
+};
+
+/** \brief Add Wireguard interface interface response
+    @param context - sender context, to match reply w/ request
+    @param retval - return status
+    @param sw_if_index - sw_if_index of new interface (for successful add)
+*/
+define wireguard_itf_create_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
+autoreply define wireguard_itf_delete
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+define wireguard_itf_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+define wireguard_itf_details
+{
+  u32 context;
+  vl_api_wireguard_itf_t itf;
+};
+
+enum wireguard_peer_flags : u8
+{
+  WIREGUARD_PEER_STATUS_DEAD = 0x1,
+};
+
+/** \brief Create new peer
+    @param public_key - public key of destination peer
+    @param port - destination port
+    @param table_id - The IP table in which 'endpoint' is reachable
+    @param endpoint - destination ip
+    @param allowed_ip - allowed incoming ip tunnel
+    @param tun_sw_if_index - tunnel interface
+    @param persistent_keepalive - keepalive packet timeout
+*/
+typedef wireguard_peer
+{
+  u8 public_key[45];
+  u16 port;
+  u16 persistent_keepalive;
+  u32 table_id;
+  vl_api_address_t endpoint;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_wireguard_peer_flags_t flags;
+  u8 n_allowed_ips;
+  vl_api_address_t allowed_ips[n_allowed_ips];
+};
+
+/** \brief Create new peer
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param peer - peer to create
+*/
+define wireguard_peer_add
+{
+  u32 client_index;
+  u32 context;
+  vl_api_wireguard_peer_t peer;
+};
+define wireguard_peer_add_reply
+{
+  u32 context;
+  i32 retval;
+  u32 peer_index;
+};
+
+/** \brief Remove peer by public_key
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param public_key
+*/
+autoreply define wireguard_peer_remove
+{
+  u32 client_index;
+  u32 context;
+  u32 peer_index;
+};
+
+/** \brief Dump all peers
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define wireguard_peers_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Dump peers response
+    @param context - sender context, to match reply w/ request
+    @param is_dead - is peer valid yet
+    @param public_key - peer public_key
+    @param ip4_address - ip4 endpoint address
+*/
+define wireguard_peers_details {
+  u32 context;
+  vl_api_wireguard_peer_t peer;
+};
+
+
+/** \brief Generate private_key request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define wireguard_genkey
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Generate private_key response
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param private_key - generated key
+*/
+define wireguard_genkey_reply
+{
+  u32 context;
+  i32 retval;
+
+  u8 private_key[45];
+};
+
+/** \brief Generate public_key from private_key request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param private_key
+*/
+define wireguard_pubkey
+{
+  u32 client_index;
+  u32 context;
+
+  u8 private_key[45];
+};
+
+/** \brief Generate public_key from private_key response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param public_key - key from private_key
+*/
+define wireguard_pubkey_reply
+{
+  u32 context;
+  i32 retval;
+
+  u8 public_key[45];
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

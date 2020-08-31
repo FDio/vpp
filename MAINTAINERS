@@ -688,6 +688,11 @@ M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/plugins/cnat
 
+Plugin - Wireguard
+I:	wireguard
+M:	Artem Glazychev <artem.glazychev@xored.com>
+F:	src/plugins/wireguard
+
 VPP Config Tooling
 I:	vpp_config
 M:	John DeNisco <jdenisco@cisco.com>

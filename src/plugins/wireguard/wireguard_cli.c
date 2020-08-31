@@ -1,0 +1,334 @@
+/*
+ * Copyright (c) 2020 Doc.ai and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <wireguard/wireguard.h>
+#include <wireguard/wireguard_key.h>
+
+static u8 *
+format_device (u8 * s, va_list * va)
+{
+  wg_main_t *wmp = va_arg (*va, wg_main_t *);
+  u8 key_64[NOISE_KEY_LEN_BASE64];
+
+  if (!wmp->is_inited)
+    return s;
+
+  key_to_base64 (wmp->local.l_private, NOISE_PUBLIC_KEY_LEN, key_64);
+
+  s = format (s, "Device private-key: %s\n", key_64);
+  s = format (s, "Device port: %u\n", wmp->port_src);
+  s = format (s, "Peers count: %u\n", pool_elts (wmp->peers));
+
+  return s;
+}
+
+static u8 *
+format_peers (u8 * s, va_list * va)
+{
+  wg_main_t *wmp = va_arg (*va, wg_main_t *);
+  wg_peer_t *peer;
+
+  if (!wmp->is_inited)
+    return s;
+
+  s = format (s,
+	      "%=45s %=15s %=6s %=15s %=15s %=10s\n",
+	      "Public key", "Endpoint", "Port", "Allowed IP",
+	      "Tun_sw_if_index", "Keepalive");
+
+  /* *INDENT-OFF* */
+  pool_foreach (peer, wmp->peers,
+  ({
+    u8 key_64[NOISE_KEY_LEN_BASE64];
+    key_to_base64 (peer->remote.r_public, NOISE_PUBLIC_KEY_LEN, key_64);
+    s = format (s, "%=45s %=15U %=6u %=15U %=15u %=10u\n",
+              key_64,
+              format_ip4_address, &peer->ip4_address,
+              peer->port,
+              format_ip4_address, &peer->allowed_ip,
+              peer->tun_sw_if_index,
+              peer->persistent_keepalive_interval);
+  }));
+  /* *INDENT-ON* */
+  return s;
+}
+
+static clib_error_t *
+wg_set_peer_command_fn (vlib_main_t * vm,
+			unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  clib_error_t *error = NULL;
+  unformat_input_t _line_input, *line_input = &_line_input;
+
+  u8 *public_key_64 = 0;
+  ip_address_t allowed_ip;
+  ip_address_t ip;
+  u32 portDst = 0, table_id = 0;
+  u32 persistent_keepalive = 0;
+  u32 tun_sw_if_index = ~0;
+  u32 peer_index;
+  int rv;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "peer"))
+	{
+	  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+	    {
+	      if (unformat (line_input, "public-key %s", &public_key_64))
+		;
+	      else
+		if (unformat
+		    (line_input, "endpoint %U", unformat_ip_address, &ip))
+		;
+	      else if (unformat (line_input, "table-id %d", &table_id))
+		;
+	      else if (unformat (line_input, "dst-port %d", &portDst))
+		;
+	      else if (unformat
+		       (line_input, "persistent-keepalive %d",
+			&persistent_keepalive))
+		;
+	      else if (unformat
+		       (line_input, "allowed-ip %U", unformat_ip_address,
+			&allowed_ip))
+		;
+	      else
+		{
+		  error = clib_error_return (0, "Input error");
+		  goto done;
+		}
+	    }
+	}
+      else if (unformat (line_input, "%U",
+			 unformat_vnet_sw_interface, vnm, &tun_sw_if_index))
+	;
+      else
+	{
+	  error = clib_error_return (0, "Input error");
+	  goto done;
+	}
+    }
+
+  if (AF_IP6 == ip_addr_version (&ip) ||
+      AF_IP6 == ip_addr_version (&allowed_ip))
+    rv = VNET_API_ERROR_INVALID_PROTOCOL;
+  else
+    rv = wg_peer_add (tun_sw_if_index, public_key_64,
+		      table_id,
+		      ip_addr_v4 (&ip),
+		      ip_addr_v4 (&allowed_ip),
+		      portDst, persistent_keepalive, &peer_index);
+
+  switch (rv)
+    {
+    case VNET_API_ERROR_KEY_LENGTH:
+      error = clib_error_return (0, "Error parsing public key");
+      break;
+    case VNET_API_ERROR_ENTRY_ALREADY_EXISTS:
+      error = clib_error_return (0, "Peer already exist");
+      break;
+    case VNET_API_ERROR_INVALID_SW_IF_INDEX:
+      error = clib_error_return (0, "Tunnel is not specified");
+      break;
+    case VNET_API_ERROR_LIMIT_EXCEEDED:
+      error = clib_error_return (0, "Max peers limit");
+      break;
+    case VNET_API_ERROR_INIT_FAILED:
+      error = clib_error_return (0, "wg device parameters is not set");
+      break;
+    case VNET_API_ERROR_INVALID_PROTOCOL:
+      error = clib_error_return (0, "ipv6 not supported yet");
+      break;
+    }
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (wg_set_peer_command, static) =
+{
+  .path = "set interface wireguard",
+  .short_help =
+  "set interface wireguard <wg_int> peer public-key <pub_key_other>"
+  "endpoint <ip4_dst> allowed-ip <ip4_tun>"
+  "dst-port [port_dst] persistent-keepalive [keepalive_interval]",
+  .function = wg_set_peer_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+wg_remove_peer_command_fn (vlib_main_t * vm,
+			   unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = NULL;
+  wg_main_t *wmp = &wg_main;
+  u32 peer_index;
+  int rv;
+
+  unformat_input_t _line_input, *line_input = &_line_input;
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  if (unformat (line_input, "%d", &peer_index))
+    ;
+  else
+    {
+      error = clib_error_return (0, "Input error");
+      goto done;
+    }
+
+  rv = wg_peer_remove (wmp, peer_index);
+
+  switch (rv)
+    {
+    case VNET_API_ERROR_KEY_LENGTH:
+      error = clib_error_return (0, "Error parsing public key");
+      break;
+    }
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (wg_remove_peer_command, static) =
+{
+  .path = "wg remove peer",
+  .short_help =
+  "wg remove peer <index>",
+  .function = wg_remove_peer_command_fn,
+};
+/* *INDENT-ON* */
+
+
+static clib_error_t *
+wg_genkey_command_fn (vlib_main_t * vm,
+		      unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = NULL;
+  u8 secret[NOISE_PUBLIC_KEY_LEN];
+  u8 secret_64[NOISE_KEY_LEN_BASE64];
+
+
+  curve25519_gen_secret (secret);
+  key_to_base64 (secret, NOISE_PUBLIC_KEY_LEN, secret_64);
+  vlib_cli_output (vm, "%s", secret_64);
+
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (wg_genkey_command, static) =
+{
+  .path = "wg genkey ",
+  .short_help =
+  "wg genkey",
+  .function = wg_genkey_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+wg_pubkey_command_fn (vlib_main_t * vm,
+		      unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = NULL;
+
+  u8 *secret_64 = 0;
+  u8 secret[NOISE_PUBLIC_KEY_LEN];
+  u8 public[NOISE_PUBLIC_KEY_LEN];
+  u8 public_64[NOISE_KEY_LEN_BASE64];
+
+  unformat_input_t _line_input, *line_input = &_line_input;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  if (unformat (line_input, "%s", &secret_64))
+    {
+      if (!(key_from_base64 (secret_64, NOISE_KEY_LEN_BASE64, secret)))
+	{
+	  error = clib_error_return (0, "Error parsing private key");
+	  goto done;
+	}
+    }
+  else
+    {
+      error = clib_error_return (0, "Input error");
+      goto done;
+    }
+
+  if (!curve25519_gen_public (public, secret))
+    {
+      error = clib_error_return (0, "Error generating public key");
+      return error;
+    }
+
+  key_to_base64 (public, NOISE_PUBLIC_KEY_LEN, public_64);
+  vlib_cli_output (vm, "%s", public_64);
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (wg_pubkey_command, static) =
+{
+  .path = "wg pubkey ",
+  .short_help =
+  "wg pubkey",
+  .function = wg_pubkey_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+wg_show_info_command_fn (vlib_main_t * vm,
+			 unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  wg_main_t *wmp = &wg_main;
+
+  vlib_cli_output (vm, "%U", format_device, wmp);
+  vlib_cli_output (vm, "%U", format_peers, wmp);
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (wg_show_info_command, static) =
+{
+  .path = "show wg",
+  .short_help =
+  "show wg",
+  .function = wg_show_info_command_fn,
+};
+/* *INDENT-ON* */
+
+
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
