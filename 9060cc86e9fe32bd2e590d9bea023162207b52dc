@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "503897e2_f69f3cfa",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-08-31T12:46:29Z",
+      "side": 1,
+      "message": "crypto-openssl",
+      "revId": "9060cc86e9fe32bd2e590d9bea023162207b52dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4f2555b5_b441ba3f",
+        "filename": "src/plugins/crypto_openssl/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-08-31T12:46:29Z",
+      "side": 1,
+      "message": "replace \"gcm\" with \"chacha20_poly1305\"",
+      "revId": "9060cc86e9fe32bd2e590d9bea023162207b52dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
