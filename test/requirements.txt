@@ -19,3 +19,4 @@ objgraph                                # MIT
 pympler                                 # Apache-2.0
 sphinx<3.0.0                            # BSD,  sphinx 3.0.0 crashes with a traceback
 sphinx-rtd-theme                        # MIT
+noiseprotocol                           # MIT

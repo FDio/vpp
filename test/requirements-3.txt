@@ -74,7 +74,7 @@ cryptography==2.9.2 \
     --hash=sha256:daf54a4b07d67ad437ff239c8a4080cfd1cc7213df57d33c97de7b4738048d5e \
     --hash=sha256:e993468c859d084d5579e2ebee101de8f5a27ce8e2159959b6673b418fd8c785 \
     --hash=sha256:f118a95c7480f5be0df8afeb9a11bd199aa20afab7a96bcf20409b411a3a85f0 \
-    # via -r requirements.txt
+    # via -r requirements.txt, noiseprotocol
 deprecation==2.1.0 \
     --hash=sha256:72b3bde64e5d778694b0cf68178aed03d15e15477116add3fb773e581f9518ff \
     --hash=sha256:a10811591210e1fb0e768a8c25517cabeabcba6f0bf96564f8ff45189f90b14a \
@@ -149,6 +149,9 @@ mccabe==0.6.1 \
     --hash=sha256:ab8a6258860da4b6677da4bd2fe5dc2c659cff31b3ee4f7f5d64e79735b80d42 \
     --hash=sha256:dd8d182285a0fe56bace7f45b5e7d1a6ebcbf524e8f3bd87eb0f125271b8831f \
     # via flake8
+noiseprotocol==0.3.1 \
+    --hash=sha256:2e1a603a38439636cf0ffd8b3e8b12cee27d368a28b41be7dbe568b2abb23111 \
+    # via -r requirements.txt
 objgraph==3.4.1 \
     --hash=sha256:10d50116d1a66934d143a07308a5b3b3edcc021e1457f66ff792584166cae7cd \
     --hash=sha256:bf29512d7f8b457b53fa0722ea59f516abb8abc59b78f97f0ef81394a0c615a7 \
