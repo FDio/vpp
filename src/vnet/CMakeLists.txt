@@ -1111,8 +1111,10 @@ list(APPEND VNET_SOURCES
 list(APPEND VNET_HEADERS
   devices/virtio/pci.h
   devices/virtio/virtio.h
+  devices/virtio/virtio_std.h
   devices/virtio/virtio_pci_legacy.h
   devices/virtio/virtio_pci_modern.h
+  devices/virtio/vhost_std.h
   devices/virtio/vhost_user.h
   devices/virtio/virtio_types_api.h
 )
@@ -1145,7 +1147,9 @@ list(APPEND VNET_HEADERS
   devices/tap/tap.h
 )
 
-list(APPEND VNET_API_FILES devices/tap/tapv2.api)
+list(APPEND VNET_API_FILES
+  devices/tap/tapv2.api
+)
 
 ##############################################################################
 # tap interface (with virtio backend)

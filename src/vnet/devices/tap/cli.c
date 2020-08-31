@@ -25,8 +25,6 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/format.h>
-#include <linux/virtio_net.h>
-#include <linux/vhost.h>
 #include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/tap/tap.h>
 

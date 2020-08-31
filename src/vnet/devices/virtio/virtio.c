@@ -21,8 +21,6 @@
 #include <net/if.h>
 #include <linux/if_tun.h>
 #include <sys/ioctl.h>
-#include <linux/virtio_net.h>
-#include <linux/vhost.h>
 #include <sys/eventfd.h>
 
 #include <vlib/vlib.h>
@@ -93,19 +91,19 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
 			    CLIB_CACHE_LINE_BYTES);
       vring = vec_elt_at_index (vif->rxq_vrings, RX_QUEUE_ACCESS (idx));
     }
-  i = sizeof (struct vring_desc) * sz;
+  i = sizeof (vring_desc_t) * sz;
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
   vring->desc = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
   clib_memset (vring->desc, 0, i);
 
-  i = sizeof (struct vring_avail) + sz * sizeof (vring->avail->ring[0]);
+  i = sizeof (vring_avail_t) + sz * sizeof (vring->avail->ring[0]);
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
   vring->avail = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
   clib_memset (vring->avail, 0, i);
   // tell kernel that we don't need interrupt
-  vring->avail->flags = VIRTIO_RING_FLAG_MASK_INT;
+  vring->avail->flags = VRING_AVAIL_F_NO_INTERRUPT;
 
-  i = sizeof (struct vring_used) + sz * sizeof (struct vring_used_elem);
+  i = sizeof (vring_used_t) + sz * sizeof (vring_used_elem_t);
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
   vring->used = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
   clib_memset (vring->used, 0, i);
@@ -186,7 +184,7 @@ virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring)
 
   while (n_left)
     {
-      struct vring_used_elem *e = &vring->used->ring[last & mask];
+      vring_used_elem_t *e = &vring->used->ring[last & mask];
       u16 slot = e->id;
 
       vlib_buffer_free (vm, &vring->buffers[slot], 1);
@@ -257,9 +255,9 @@ virtio_set_net_hdr_size (virtio_if_t * vif)
 {
   if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF) ||
       vif->features & VIRTIO_FEATURE (VIRTIO_F_VERSION_1))
-    vif->virtio_net_hdr_sz = sizeof (struct virtio_net_hdr_v1);
+    vif->virtio_net_hdr_sz = sizeof (virtio_net_hdr_v1_t);
   else
-    vif->virtio_net_hdr_sz = sizeof (struct virtio_net_hdr);
+    vif->virtio_net_hdr_sz = sizeof (virtio_net_hdr_t);
 }
 
 inline void
@@ -402,7 +400,7 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 			     "  ===== ================== ===== ====== ===== ==================\n");
 	    for (j = 0; j < vring->size; j++)
 	      {
-		struct vring_desc *desc = &vring->desc[j];
+		vring_desc_t *desc = &vring->desc[j];
 		vlib_cli_output (vm,
 				 "  %-5d 0x%016lx %-5d 0x%04x %-5d 0x%016lx\n",
 				 j, desc->addr,
@@ -442,7 +440,7 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 			     "  ===== ================== ===== ====== ===== ==================\n");
 	    for (j = 0; j < vring->size; j++)
 	      {
-		struct vring_desc *desc = &vring->desc[j];
+		vring_desc_t *desc = &vring->desc[j];
 		vlib_cli_output (vm,
 				 "  %-5d 0x%016lx %-5d 0x%04x %-5d 0x%016lx\n",
 				 j, desc->addr,
@@ -478,7 +476,7 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 			       "  ===== ================== ===== ====== ===== ==================\n");
 	      for (j = 0; j < vring->size; j++)
 		{
-		  struct vring_desc *desc = &vring->desc[j];
+		  vring_desc_t *desc = &vring->desc[j];
 		  vlib_cli_output (vm,
 				   "  %-5d 0x%016lx %-5d 0x%04x %-5d 0x%016lx\n",
 				   j, desc->addr,

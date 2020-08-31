@@ -138,7 +138,7 @@ virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring,
 
   while (n_left)
     {
-      struct vring_used_elem *e = &vring->used->ring[last & mask];
+      vring_used_elem_t *e = &vring->used->ring[last & mask];
       u16 slot, n_buffers;
       slot = n_buffers = e->id;
 
@@ -147,7 +147,7 @@ virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring,
 	  n_left--;
 	  last++;
 	  n_buffers++;
-	  struct vring_desc *d = &vring->desc[e->id];
+	  vring_desc_t *d = &vring->desc[e->id];
 	  u16 next;
 	  while (d->flags & VRING_DESC_F_NEXT)
 	    {
@@ -189,8 +189,7 @@ virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring,
 }
 
 static_always_inline void
-set_checksum_offsets (vlib_buffer_t * b, struct virtio_net_hdr_v1 *hdr,
-		      int is_l2)
+set_checksum_offsets (vlib_buffer_t * b, virtio_net_hdr_v1_t * hdr, int is_l2)
 {
   if (b->flags & VNET_BUFFER_F_IS_IP4)
     {
@@ -237,7 +236,7 @@ set_checksum_offsets (vlib_buffer_t * b, struct virtio_net_hdr_v1 *hdr,
 }
 
 static_always_inline void
-set_gso_offsets (vlib_buffer_t * b, struct virtio_net_hdr_v1 *hdr, int is_l2)
+set_gso_offsets (vlib_buffer_t * b, virtio_net_hdr_v1_t * hdr, int is_l2)
 {
   if (b->flags & VNET_BUFFER_F_IS_IP4)
     {
@@ -283,10 +282,10 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
 {
   u16 n_added = 0;
   int hdr_sz = vif->virtio_net_hdr_sz;
-  struct vring_desc *d;
+  vring_desc_t *d;
   d = &vring->desc[next];
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-  struct virtio_net_hdr_v1 *hdr = vlib_buffer_get_current (b) - hdr_sz;
+  virtio_net_hdr_v1_t *hdr = vlib_buffer_get_current (b) - hdr_sz;
   int is_l2 = (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_PCI));
 
   clib_memset (hdr, 0, hdr_sz);
@@ -348,8 +347,8 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
       indirect_desc->next_buffer = bi;
       bi = indirect_buffer;
 
-      struct vring_desc *id =
-	(struct vring_desc *) vlib_buffer_get_current (indirect_desc);
+      vring_desc_t *id =
+	(vring_desc_t *) vlib_buffer_get_current (indirect_desc);
       u32 count = 1;
       if (type == VIRTIO_IF_TYPE_PCI)
 	{
@@ -405,7 +404,7 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
 	}
       id->flags = 0;
       id->next = 0;
-      d->len = count * sizeof (struct vring_desc);
+      d->len = count * sizeof (vring_desc_t);
       d->flags = VRING_DESC_F_INDIRECT;
     }
   else if (type == VIRTIO_IF_TYPE_PCI)
@@ -518,7 +517,7 @@ virtio_interface_tx_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   clib_spinlock_lock_if_init (&vring->lockp);
 
-  if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0 &&
+  if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0 &&
       (vring->last_kick_avail_idx != vring->avail->idx))
     virtio_kick (vm, vring, vif);
 
@@ -620,7 +619,7 @@ retry:
       vring->avail->idx = avail;
       vring->desc_next = next;
       vring->desc_in_use = used;
-      if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0)
+      if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0)
 	virtio_kick (vm, vring, vif);
     }
 
@@ -724,7 +723,7 @@ virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
 
   if (vif->type == VIRTIO_IF_TYPE_PCI && !(vif->support_int_mode))
     {
-      vring->avail->flags |= VIRTIO_RING_FLAG_MASK_INT;
+      vring->avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
       return clib_error_return (0, "interrupt mode is not supported");
     }
 
@@ -732,12 +731,12 @@ virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
     {
       /* only enable packet coalesce in poll mode */
       gro_flow_table_set_is_enable (vring->flow_table, 1);
-      vring->avail->flags |= VIRTIO_RING_FLAG_MASK_INT;
+      vring->avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
     }
   else
     {
       gro_flow_table_set_is_enable (vring->flow_table, 0);
-      vring->avail->flags &= ~VIRTIO_RING_FLAG_MASK_INT;
+      vring->avail->flags &= ~VRING_AVAIL_F_NO_INTERRUPT;
     }
 
   return 0;

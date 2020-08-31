@@ -194,20 +194,13 @@ device_status (vlib_main_t * vm, virtio_if_t * vif)
     }
 }
 
-struct virtio_ctrl_msg
-{
-  struct virtio_net_ctrl_hdr ctrl;
-  virtio_net_ctrl_ack status;
-  u8 data[1024];
-};
-
 static int
 virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
-			  struct virtio_ctrl_msg *data, u32 len)
+			  virtio_ctrl_msg_t * data, u32 len)
 {
   virtio_vring_t *vring = vif->cxq_vring;
-  virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
-  struct virtio_ctrl_msg result;
+  virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
+  virtio_ctrl_msg_t result;
   u32 buffer_index;
   vlib_buffer_t *b;
   u16 used, next, avail;
@@ -217,7 +210,7 @@ virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
   used = vring->desc_in_use;
   next = vring->desc_next;
   avail = vring->avail->idx;
-  struct vring_desc *d = &vring->desc[next];
+  vring_desc_t *d = &vring->desc[next];
 
   if (vlib_buffer_alloc (vm, &buffer_index, 1))
     b = vlib_get_buffer (vm, buffer_index);
@@ -228,11 +221,10 @@ virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
    * previous offset.
    */
   b->current_data = 0;
-  clib_memcpy (vlib_buffer_get_current (b), data,
-	       sizeof (struct virtio_ctrl_msg));
+  clib_memcpy (vlib_buffer_get_current (b), data, sizeof (virtio_ctrl_msg_t));
   d->flags = VRING_DESC_F_NEXT;
   d->addr = vlib_buffer_get_current_pa (vm, b);
-  d->len = sizeof (struct virtio_net_ctrl_hdr);
+  d->len = sizeof (virtio_net_ctrl_hdr_t);
   vring->avail->ring[avail & mask] = next;
   avail++;
   next = (next + 1) & mask;
@@ -242,7 +234,7 @@ virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
   d = &vring->desc[next];
   d->flags = VRING_DESC_F_NEXT;
   d->addr = vlib_buffer_get_current_pa (vm, b) +
-    STRUCT_OFFSET_OF (struct virtio_ctrl_msg, data);
+    STRUCT_OFFSET_OF (virtio_ctrl_msg_t, data);
   d->len = len;
   next = (next + 1) & mask;
   d->next = next;
@@ -251,7 +243,7 @@ virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
   d = &vring->desc[next];
   d->flags = VRING_DESC_F_WRITE;
   d->addr = vlib_buffer_get_current_pa (vm, b) +
-    STRUCT_OFFSET_OF (struct virtio_ctrl_msg, status);
+    STRUCT_OFFSET_OF (virtio_ctrl_msg_t, status);
   d->len = sizeof (data->status);
   next = (next + 1) & mask;
   used++;
@@ -271,7 +263,7 @@ virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
 
   while (n_left)
     {
-      struct vring_used_elem *e = &vring->used->ring[last & mask];
+      vring_used_elem_t *e = &vring->used->ring[last & mask];
       u16 slot = e->id;
 
       d = &vring->desc[slot];
@@ -290,7 +282,7 @@ virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
 
   CLIB_MEMORY_BARRIER ();
   clib_memcpy (&result, vlib_buffer_get_current (b),
-	       sizeof (struct virtio_ctrl_msg));
+	       sizeof (virtio_ctrl_msg_t));
   virtio_log_debug (vif, "ctrl-queue: status %u", result.status);
   status = result.status;
   vlib_buffer_free (vm, &buffer_index, 1);
@@ -300,8 +292,8 @@ virtio_pci_send_ctrl_msg (vlib_main_t * vm, virtio_if_t * vif,
 static int
 virtio_pci_disable_offload (vlib_main_t * vm, virtio_if_t * vif)
 {
-  struct virtio_ctrl_msg offload_hdr;
-  virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
+  virtio_ctrl_msg_t offload_hdr;
+  virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
 
   offload_hdr.ctrl.class = VIRTIO_NET_CTRL_GUEST_OFFLOADS;
   offload_hdr.ctrl.cmd = VIRTIO_NET_CTRL_GUEST_OFFLOADS_SET;
@@ -320,8 +312,8 @@ virtio_pci_disable_offload (vlib_main_t * vm, virtio_if_t * vif)
 static int
 virtio_pci_enable_checksum_offload (vlib_main_t * vm, virtio_if_t * vif)
 {
-  struct virtio_ctrl_msg csum_offload_hdr;
-  virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
+  virtio_ctrl_msg_t csum_offload_hdr;
+  virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
 
   csum_offload_hdr.ctrl.class = VIRTIO_NET_CTRL_GUEST_OFFLOADS;
   csum_offload_hdr.ctrl.cmd = VIRTIO_NET_CTRL_GUEST_OFFLOADS_SET;
@@ -341,8 +333,8 @@ virtio_pci_enable_checksum_offload (vlib_main_t * vm, virtio_if_t * vif)
 static int
 virtio_pci_enable_gso (vlib_main_t * vm, virtio_if_t * vif)
 {
-  struct virtio_ctrl_msg gso_hdr;
-  virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
+  virtio_ctrl_msg_t gso_hdr;
+  virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
 
   gso_hdr.ctrl.class = VIRTIO_NET_CTRL_GUEST_OFFLOADS;
   gso_hdr.ctrl.cmd = VIRTIO_NET_CTRL_GUEST_OFFLOADS_SET;
@@ -424,8 +416,8 @@ static int
 virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
 			      u16 num_queues)
 {
-  struct virtio_ctrl_msg mq_hdr;
-  virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
+  virtio_ctrl_msg_t mq_hdr;
+  virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
 
   mq_hdr.ctrl.class = VIRTIO_NET_CTRL_MQ;
   mq_hdr.ctrl.cmd = VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET;
@@ -454,7 +446,7 @@ virtio_pci_control_vring_init (vlib_main_t * vm, virtio_if_t * vif,
   clib_error_t *error = 0;
   u16 queue_size = 0;
   virtio_vring_t *vring;
-  struct vring vr;
+  vring_t vr;
   u32 i = 0;
   void *ptr = NULL;
 
@@ -505,7 +497,7 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
   clib_error_t *error = 0;
   u16 queue_size = 0;
   virtio_vring_t *vring;
-  struct vring vr;
+  vring_t vr;
   u32 i = 0;
   void *ptr = NULL;
 
@@ -666,7 +658,7 @@ clib_error_t *
 virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif, void **bar)
 {
   clib_error_t *error = 0;
-  struct virtio_pci_cap cap;
+  virtio_pci_cap_t cap;
   u8 pos, common_cfg = 0, notify = 0, dev_cfg = 0, isr = 0, pci_cfg = 0;
   vlib_pci_dev_handle_t h = vif->pci_dev_handle;
 

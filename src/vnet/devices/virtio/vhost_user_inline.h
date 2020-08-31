@@ -176,7 +176,7 @@ vhost_user_log_dirty_pages_2 (vhost_user_intf_t * vui,
 			      u64 addr, u64 len, u8 is_host_address)
 {
   if (PREDICT_TRUE (vui->log_base_addr == 0
-		    || !(vui->features & (1 << FEAT_VHOST_F_LOG_ALL))))
+		    || !(vui->features & VIRTIO_FEATURE (VHOST_F_LOG_ALL))))
     {
       return;
     }
@@ -296,7 +296,7 @@ vhost_user_update_gso_interface_count (vhost_user_intf_t * vui, u8 add)
 static_always_inline u8
 vhost_user_packed_desc_available (vhost_user_vring_t * vring, u16 idx)
 {
-  return (((vring->packed_desc[idx].flags & VIRTQ_DESC_F_AVAIL) ==
+  return (((vring->packed_desc[idx].flags & VRING_DESC_F_AVAIL) ==
 	   vring->avail_wrap_counter));
 }
 
@@ -305,7 +305,7 @@ vhost_user_advance_last_avail_idx (vhost_user_vring_t * vring)
 {
   vring->last_avail_idx++;
   if (PREDICT_FALSE ((vring->last_avail_idx & vring->qsz_mask) == 0))
-    vring->avail_wrap_counter ^= VIRTQ_DESC_F_AVAIL;
+    vring->avail_wrap_counter ^= VRING_DESC_F_AVAIL;
 }
 
 static_always_inline void
@@ -319,7 +319,7 @@ vhost_user_advance_last_avail_table_idx (vhost_user_intf_t * vui,
 
       /* pick up the slot of the next avail idx */
       while (desc_table[vring->last_avail_idx & vring->qsz_mask].flags &
-	     VIRTQ_DESC_F_NEXT)
+	     VRING_DESC_F_NEXT)
 	vhost_user_advance_last_avail_idx (vring);
     }
 
@@ -330,7 +330,7 @@ static_always_inline void
 vhost_user_undo_advanced_last_avail_idx (vhost_user_vring_t * vring)
 {
   if (PREDICT_FALSE ((vring->last_avail_idx & vring->qsz_mask) == 0))
-    vring->avail_wrap_counter ^= VIRTQ_DESC_F_AVAIL;
+    vring->avail_wrap_counter ^= VRING_DESC_F_AVAIL;
   vring->last_avail_idx--;
 }
 
@@ -368,7 +368,7 @@ vhost_user_advance_last_used_idx (vhost_user_vring_t * vring)
 static_always_inline u64
 vhost_user_is_packed_ring_supported (vhost_user_intf_t * vui)
 {
-  return (vui->features & (1ULL << FEAT_VIRTIO_F_RING_PACKED));
+  return (vui->features & VIRTIO_FEATURE (VIRTIO_F_RING_PACKED));
 }
 
 #endif

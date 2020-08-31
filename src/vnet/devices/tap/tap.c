@@ -22,8 +22,6 @@
 #include <net/if.h>
 #include <linux/if_tun.h>
 #include <sys/ioctl.h>
-#include <linux/virtio_net.h>
-#include <linux/vhost.h>
 #include <sys/eventfd.h>
 #include <net/if_arp.h>
 #include <sched.h>
@@ -144,7 +142,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   struct ifreq ifr = {.ifr_flags = IFF_NO_PI | IFF_VNET_HDR };
   struct ifreq get_ifr = {.ifr_flags = 0 };
   size_t hdrsz;
-  struct vhost_memory *vhost_mem = 0;
+  vhost_memory_t *vhost_mem = 0;
   virtio_if_t *vif = 0;
   clib_error_t *err = 0;
   unsigned int tap_features;
@@ -268,7 +266,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   else
     ifr.ifr_flags |= IFF_MULTI_QUEUE;
 
-  hdrsz = sizeof (struct virtio_net_hdr_v1);
+  hdrsz = sizeof (virtio_net_hdr_v1_t);
   if (args->tap_flags & TAP_FLAG_GSO)
     {
       offload = TUN_F_CSUM | TUN_F_TSO4 | TUN_F_TSO6;
@@ -588,7 +586,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     }
 
   /* setup features and memtable */
-  i = sizeof (struct vhost_memory) + sizeof (struct vhost_memory_region);
+  i = sizeof (vhost_memory_t) + sizeof (vhost_memory_region_t);
   vhost_mem = clib_mem_alloc (i);
   clib_memset (vhost_mem, 0, i);
   vhost_mem->nregions = 1;
@@ -618,9 +616,9 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   /* finish initializing queue pair */
   for (i = 0; i < num_vhost_queues * 2; i++)
     {
-      struct vhost_vring_addr addr = { 0 };
-      struct vhost_vring_state state = { 0 };
-      struct vhost_vring_file file = { 0 };
+      vhost_vring_addr_t addr = { 0 };
+      vhost_vring_state_t state = { 0 };
+      vhost_vring_file_t file = { 0 };
       virtio_vring_t *vring;
       u16 qp = i >> 1;
       int fd = vif->vhost_fds[qp];

@@ -267,7 +267,7 @@ static u8
 virtio_pci_modern_setup_queue (vlib_main_t * vm, virtio_if_t * vif,
 			       u16 queue_id, void *p)
 {
-  struct vring vr;
+  vring_t vr;
   u16 queue_size = 0;
 
   virtio_pci_modern_set_queue_select (vif, queue_id);
