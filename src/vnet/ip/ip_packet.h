@@ -176,10 +176,10 @@ ip_csum (void *data, u16 n_left)
       v1 = u16x16_byte_swap (v1);
       v2 = u16x16_byte_swap (v2);
 #endif
-      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_lo (v1));
-      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_hi (v1));
-      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_lo (v2));
-      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_hi (v2));
+      sum8 += u32x8_from_u16x8 (u16x16_extract_lo (v1));
+      sum8 += u32x8_from_u16x8 (u16x16_extract_hi (v1));
+      sum8 += u32x8_from_u16x8 (u16x16_extract_lo (v2));
+      sum8 += u32x8_from_u16x8 (u16x16_extract_hi (v2));
       n_left -= 32;
       data += 64;
     }
@@ -191,8 +191,8 @@ ip_csum (void *data, u16 n_left)
       v1 = u16x16_byte_swap (v1);
 #endif
       v1 = u16x16_byte_swap (u16x16_load_unaligned (data));
-      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_lo (v1));
-      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_hi (v1));
+      sum8 += u32x8_from_u16x8 (u16x16_extract_lo (v1));
+      sum8 += u32x8_from_u16x8 (u16x16_extract_hi (v1));
       n_left -= 16;
       data += 32;
     }
@@ -204,8 +204,8 @@ ip_csum (void *data, u16 n_left)
       v1 = u16x16_byte_swap (v1);
 #endif
       v1 = u16x16_mask_last (v1, 16 - n_left);
-      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_lo (v1));
-      sum8 += u16x8_extend_to_u32x8 (u16x16_extract_hi (v1));
+      sum8 += u32x8_from_u16x8 (u16x16_extract_lo (v1));
+      sum8 += u32x8_from_u16x8 (u16x16_extract_hi (v1));
     }
 
   sum8 = u32x8_hadd (sum8, zero);

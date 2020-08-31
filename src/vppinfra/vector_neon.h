@@ -122,13 +122,13 @@ u32x4_hadd (u32x4 v1, u32x4 v2)
 }
 
 static_always_inline u64x2
-u32x4_extend_to_u64x2 (u32x4 v)
+u64x2_from_u32x4 (u32x4 v)
 {
   return vmovl_u32 (vget_low_u32 (v));
 }
 
 static_always_inline u64x2
-u32x4_extend_to_u64x2_high (u32x4 v)
+u64x2_from_u32x4_high (u32x4 v)
 {
   return vmovl_high_u32 (v);
 }

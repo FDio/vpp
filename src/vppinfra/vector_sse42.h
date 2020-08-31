@@ -676,11 +676,11 @@ u32x4_shuffle (u32x4 v, const int a, const int b, const int c, const int d)
 #endif
 }
 
-/* _extend_to_ */
+/* _from_ */
 /* *INDENT-OFF* */
 #define _(f,t,i) \
 static_always_inline t							\
-f##_extend_to_##t (f x)							\
+t##_from_##f (f x)							\
 { return (t) _mm_cvt##i ((__m128i) x); }
 
 _(u8x16, u16x8, epu8_epi16)
