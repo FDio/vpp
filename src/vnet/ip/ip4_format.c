@@ -151,7 +151,7 @@ format_ip4_header (u8 * s, va_list * args)
   /* Check and report invalid checksums. */
   {
     u16 c = ip4_header_checksum (ip);
-    if (c != ip->checksum)
+    if (!ip4_header_checksum_is_valid__ (ip, c))
       s = format (s, " (should be 0x%04x)", clib_net_to_host_u16 (c));
   }
 

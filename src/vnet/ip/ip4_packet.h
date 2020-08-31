@@ -198,7 +198,7 @@ ip4_next_header (ip4_header_t * i)
 }
 
 always_inline u16
-ip4_header_checksum (ip4_header_t * i)
+ip4_header_checksum (const ip4_header_t * i)
 {
   int option_len = (i->ip_version_and_header_length & 0xf) - 5;
   uword sum = 0;
@@ -361,10 +361,22 @@ ip4_header_get_df (const ip4_header_t * ip4)
 	      clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT)));
 }
 
-static inline uword
-ip4_header_checksum_is_valid (ip4_header_t * i)
+static_always_inline int
+ip4_header_checksum_is_valid__ (const ip4_header_t * i, const u16 csum)
 {
-  return i->checksum == ip4_header_checksum (i);
+  /*
+   * 1's complement notation has two representations for the number zero:
+   * normal zero (0x0000) and negative zero (0xffff). They should be treating
+   * as equal.
+   */
+  return (csum == i->checksum) | (0 == csum && 0xffff == i->checksum);
+}
+
+static_always_inline int
+ip4_header_checksum_is_valid (const ip4_header_t * i)
+{
+  const u16 csum = ip4_header_checksum (i);
+  return ip4_header_checksum_is_valid__ (i, csum);
 }
 
 #define ip4_partial_header_checksum_x1(ip0,sum0)			\
