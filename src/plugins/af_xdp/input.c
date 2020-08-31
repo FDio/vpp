@@ -146,8 +146,8 @@ wrap_around:
   while (n >= 8)
     {
 #ifdef CLIB_HAVE_VEC256
-      u64x4 b0 = u32x4_extend_to_u64x4 (*(u32x4u *) (bi + 0));
-      u64x4 b1 = u32x4_extend_to_u64x4 (*(u32x4u *) (bi + 4));
+      u64x4 b0 = u64x4_from_u32x4 (*(u32x4u *) (bi + 0));
+      u64x4 b1 = u64x4_from_u32x4 (*(u32x4u *) (bi + 4));
       *(u64x4u *) (fill + 0) = bi2addr (b0);
       *(u64x4u *) (fill + 4) = bi2addr (b1);
 #else

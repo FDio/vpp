@@ -110,11 +110,11 @@ u8x32_msb_mask (u8x32 v)
   return _mm256_movemask_epi8 ((__m256i) v);
 }
 
-/* _extend_to_ */
+/* _from_ */
 /* *INDENT-OFF* */
 #define _(f,t,i) \
 static_always_inline t							\
-f##_extend_to_##t (f x)							\
+t##_from_##f (f x)							\
 { return (t) _mm256_cvt##i ((__m128i) x); }
 
 _(u16x8, u32x8, epu16_epi32)
