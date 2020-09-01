@@ -1219,7 +1219,8 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
   if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
     vif->virtio_pci_func->del_queue (vm, vif, vif->max_queue_pairs * 2);
 
-  vif->virtio_pci_func->device_reset (vm, vif);
+  if (vif->virtio_pci_func)
+    vif->virtio_pci_func->device_reset (vm, vif);
 
   if (vif->hw_if_index)
     {
