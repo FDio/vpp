@@ -16,6 +16,24 @@
       "revId": "44e12805ecaf6fe882c4350eaa1ef1f43fff32f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "64b548f7_72f4aa80",
+        "filename": "src/plugins/cnat/test/test_cnat.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 463,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2020-09-01T15:42:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4606b85a_7d3c28ab",
+      "revId": "44e12805ecaf6fe882c4350eaa1ef1f43fff32f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
