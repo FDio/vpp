@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "658ecb43_fd2be463",
+        "filename": "src/plugins/wg/README.md",
+        "patchSetId": 10
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-01T15:29:01Z",
+      "side": 1,
+      "message": "sed -i -e \u0027s/[[:space:]]*$//\u0027 src/plugins/wg/README.md\n\naka. remove trailing whitespace",
+      "revId": "0a314ff884bc840557af37ee5670c7f8c35e6e6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
