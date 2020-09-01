@@ -108,7 +108,7 @@ af_xdp_device_input_refill (vlib_main_t * vm,
   const u32 mask = size - 1;
   u32 bis[VLIB_FRAME_SIZE], *bi = bis;
   u32 n_alloc, n, n_wrap;
-  u32 idx;
+  u32 idx = 0;
 
   ASSERT (mask == rxq->fq.mask);
 
