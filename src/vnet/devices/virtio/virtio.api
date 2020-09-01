@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "3.0.0";
 
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -32,6 +32,7 @@ import "vlib/pci/pci_types.api";
 */
 define virtio_pci_create
 {
+  option deprecated="21.01";
   u32 client_index;
   u32 context;
   vl_api_pci_address_t pci_addr;
@@ -48,6 +49,47 @@ define virtio_pci_create
     @param sw_if_index - software index allocated for the new virtio pci interface
 */
 define virtio_pci_create_reply
+{
+  option deprecated="21.01";
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
+enum virtio_flags {
+        VIRTIO_API_FLAG_GSO = 1, /* enable gso on the interface */
+        VIRTIO_API_FLAG_CSUM_OFFLOAD = 2, /* enable checksum offload without gso on the interface */
+        VIRTIO_API_FLAG_GRO_COALESCE = 4, /* enable packet coalescing on tx side, provided gso enabled */
+        VIRTIO_API_FLAG_PACKED = 8, /* enable packed ring support, provided it is available from backend */
+        VIRTIO_API_FLAG_IN_ORDER = 16, /* enable in order support, provided it is available from backend */
+};
+
+/** \brief Initialize a new virtio pci interface with the given parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pci_addr - pci address
+    @param use_random_mac - let the system generate a unique mac address
+    @param mac_address - mac addr to assign to the interface if use_random not set
+    @param virtio_flags - feature flags to enable
+    @param features - the virtio features which driver should negotiate with device
+*/
+define create_virtio_pci
+{
+  u32 client_index;
+  u32 context;
+  vl_api_pci_address_t pci_addr;
+  bool use_random_mac;
+  vl_api_mac_address_t mac_address;
+  vl_api_virtio_flags_t virtio_flags;
+  u64 features;
+};
+
+/** \brief Reply for virtio pci create reply
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param sw_if_index - software index allocated for the new virtio pci interface
+*/
+define create_virtio_pci_reply
 {
   u32 context;
   i32 retval;

@@ -242,6 +242,20 @@ typedef struct _virtio_pci_func
   void (*device_debug_config_space) (vlib_main_t * vm, virtio_if_t * vif);
 } virtio_pci_func_t;
 
+#define foreach_virtio_flags  \
+  _ (GSO, 0)                  \
+  _ (CSUM_OFFLOAD, 1)         \
+  _ (GRO_COALESCE, 2)         \
+  _ (PACKED, 3)               \
+  _ (IN_ORDER, 4)
+
+typedef enum
+{
+#define _(a, b) VIRTIO_FLAG_##a = (1 << b),
+  foreach_virtio_flags
+#undef _
+} virtio_flag_t;
+
 typedef struct
 {
   u32 addr;
@@ -253,6 +267,7 @@ typedef struct
   u64 features;
   u8 gso_enabled;
   u8 checksum_offload_enabled;
+  u32 virtio_flags;
   clib_error_t *error;
 } virtio_pci_create_if_args_t;
 
