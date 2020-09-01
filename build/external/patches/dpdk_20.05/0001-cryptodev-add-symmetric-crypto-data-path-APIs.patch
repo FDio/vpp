@@ -1,0 +1,1608 @@
+From 7c1721d344e7fe0625fafb9c287c303c5dc98f39 Mon Sep 17 00:00:00 2001
+From: Fan Zhang <roy.fan.zhang@intel.com>
+Date: Mon, 27 Jul 2020 14:14:24 +0100
+Subject: [PATCH] cryptodev: add symmetric crypto data-path APIs
+
+This patch adds data-path APIs for enqueue and dequeue operations to
+cryptodev. The APIs support flexible user-define enqueue and dequeue
+behaviors and operation modes. The QAT PMD is also updated to
+support this feature.
+
+Signed-off-by: Fan Zhang <roy.fan.zhang@intel.com>
+Signed-off-by: Piotr Bronowski <piotrx.bronowski@intel.com>
+---
+ drivers/common/qat/Makefile                   |   1 +
+ drivers/crypto/qat/meson.build                |   1 +
+ drivers/crypto/qat/qat_sym.h                  |  13 +
+ drivers/crypto/qat/qat_sym_hw_dp.c            | 926 ++++++++++++++++++
+ drivers/crypto/qat/qat_sym_pmd.c              |   9 +-
+ lib/librte_cryptodev/rte_crypto.h             |   9 +
+ lib/librte_cryptodev/rte_crypto_sym.h         |  44 +-
+ lib/librte_cryptodev/rte_cryptodev.c          |  46 +
+ lib/librte_cryptodev/rte_cryptodev.h          | 336 ++++++-
+ lib/librte_cryptodev/rte_cryptodev_pmd.h      |  36 +-
+ .../rte_cryptodev_version.map                 |  10 +
+ 11 files changed, 1420 insertions(+), 11 deletions(-)
+ create mode 100644 drivers/crypto/qat/qat_sym_hw_dp.c
+
+diff --git a/drivers/common/qat/Makefile b/drivers/common/qat/Makefile
+index 28bd5668f..f6988d884 100644
+--- a/drivers/common/qat/Makefile
++++ b/drivers/common/qat/Makefile
+@@ -39,6 +39,7 @@ ifeq ($(CONFIG_RTE_LIBRTE_PMD_QAT_SYM),y)
+ 	SRCS-y += qat_sym.c
+ 	SRCS-y += qat_sym_session.c
+ 	SRCS-y += qat_sym_pmd.c
++	SRCS-y += qat_sym_hw_dp.c
+ 	build_qat = yes
+ endif
+ endif
+diff --git a/drivers/crypto/qat/meson.build b/drivers/crypto/qat/meson.build
+index fc65923a7..3b3da2c3b 100644
+--- a/drivers/crypto/qat/meson.build
++++ b/drivers/crypto/qat/meson.build
+@@ -13,6 +13,7 @@ if dep.found()
+ 	qat_sources += files('qat_sym_pmd.c',
+ 			     'qat_sym.c',
+ 			     'qat_sym_session.c',
++			     'qat_sym_hw_dp.c',
+ 			     'qat_asym_pmd.c',
+ 			     'qat_asym.c')
+ 	qat_ext_deps += dep
+diff --git a/drivers/crypto/qat/qat_sym.h b/drivers/crypto/qat/qat_sym.h
+index bc6426c32..503b9f49a 100644
+--- a/drivers/crypto/qat/qat_sym.h
++++ b/drivers/crypto/qat/qat_sym.h
+@@ -164,11 +164,24 @@ qat_sym_process_response(void **op, uint8_t *resp)
+ 	}
+ 	*op = (void *)rx_op;
+ }
++
++int
++qat_sym_dp_configure_service_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
++	struct rte_crypto_dp_service_ctx *service_ctx,
++	enum rte_crypto_dp_service service_type,
++	enum rte_crypto_op_sess_type sess_type,
++	union rte_cryptodev_session_ctx session_ctx,
++	uint8_t is_update);
++
++int
++qat_sym_get_service_ctx_size(struct rte_cryptodev *dev);
++
+ #else
+ 
+ static inline void
+ qat_sym_process_response(void **op __rte_unused, uint8_t *resp __rte_unused)
+ {
+ }
++
+ #endif
+ #endif /* _QAT_SYM_H_ */
+diff --git a/drivers/crypto/qat/qat_sym_hw_dp.c b/drivers/crypto/qat/qat_sym_hw_dp.c
+new file mode 100644
+index 000000000..0da3a8d42
+--- /dev/null
++++ b/drivers/crypto/qat/qat_sym_hw_dp.c
+@@ -0,0 +1,926 @@
++/* SPDX-License-Identifier: BSD-3-Clause
++ * Copyright(c) 2020 Intel Corporation
++ */
++
++#include <rte_cryptodev_pmd.h>
++
++#include "adf_transport_access_macros.h"
++#include "icp_qat_fw.h"
++#include "icp_qat_fw_la.h"
++
++#include "qat_sym.h"
++#include "qat_sym_pmd.h"
++#include "qat_sym_session.h"
++#include "qat_qp.h"
++
++struct qat_sym_dp_service_ctx {
++	struct qat_sym_session *session;
++	uint32_t tail;
++	uint32_t head;
++};
++
++static __rte_always_inline int32_t
++qat_sym_dp_get_data(struct qat_qp *qp, struct icp_qat_fw_la_bulk_req *req,
++		struct rte_crypto_vec *data, uint16_t n_data_vecs)
++{
++	struct qat_queue *tx_queue;
++	struct qat_sym_op_cookie *cookie;
++	struct qat_sgl *list;
++	uint32_t i;
++	uint32_t total_len;
++
++	if (likely(n_data_vecs == 1)) {
++		req->comn_mid.src_data_addr = req->comn_mid.dest_data_addr =
++			data[0].iova;
++		req->comn_mid.src_length = req->comn_mid.dst_length =
++			data[0].len;
++		return data[0].len;
++	}
++
++	if (n_data_vecs == 0 || n_data_vecs > QAT_SYM_SGL_MAX_NUMBER)
++		return -1;
++
++	total_len = 0;
++	tx_queue = &qp->tx_q;
++
++	ICP_QAT_FW_COMN_PTR_TYPE_SET(req->comn_hdr.comn_req_flags,
++			QAT_COMN_PTR_TYPE_SGL);
++	cookie = qp->op_cookies[tx_queue->tail >> tx_queue->trailz];
++	list = (struct qat_sgl *)&cookie->qat_sgl_src;
++
++	for (i = 0; i < n_data_vecs; i++) {
++		list->buffers[i].len = data[i].len;
++		list->buffers[i].resrvd = 0;
++		list->buffers[i].addr = data[i].iova;
++		if (total_len + data[i].len > UINT32_MAX) {
++			QAT_DP_LOG(ERR, "Message too long");
++			return -1;
++		}
++		total_len += data[i].len;
++	}
++
++	list->num_bufs = i;
++	req->comn_mid.src_data_addr = req->comn_mid.dest_data_addr =
++			cookie->qat_sgl_src_phys_addr;
++	req->comn_mid.src_length = req->comn_mid.dst_length = 0;
++	return total_len;
++}
++
++static __rte_always_inline void
++set_cipher_iv(struct icp_qat_fw_la_cipher_req_params *cipher_param,
++		struct rte_crypto_data *iv, uint32_t iv_len,
++		struct icp_qat_fw_la_bulk_req *qat_req)
++{
++	/* copy IV into request if it fits */
++	if (iv_len <= sizeof(cipher_param->u.cipher_IV_array))
++		rte_memcpy(cipher_param->u.cipher_IV_array, iv->base, iv_len);
++	else {
++		ICP_QAT_FW_LA_CIPH_IV_FLD_FLAG_SET(
++				qat_req->comn_hdr.serv_specif_flags,
++				ICP_QAT_FW_CIPH_IV_64BIT_PTR);
++		cipher_param->u.s.cipher_IV_ptr = iv->iova;
++	}
++}
++
++#define QAT_SYM_DP_IS_RESP_SUCCESS(resp) \
++	(ICP_QAT_FW_COMN_STATUS_FLAG_OK == \
++	ICP_QAT_FW_COMN_RESP_CRYPTO_STAT_GET(resp->comn_hdr.comn_status))
++
++static __rte_always_inline void
++qat_sym_dp_fill_vec_status(int32_t *sta, int status, uint32_t n)
++{
++	uint32_t i;
++
++	for (i = 0; i < n; i++)
++		sta[i] = status;
++}
++
++static __rte_always_inline void
++submit_one_aead_job(struct qat_sym_session *ctx,
++	struct icp_qat_fw_la_bulk_req *req, struct rte_crypto_data *iv_vec,
++	struct rte_crypto_data *digest_vec, struct rte_crypto_data *aad_vec,
++	union rte_crypto_sym_ofs ofs, uint32_t data_len)
++{
++	struct icp_qat_fw_la_cipher_req_params *cipher_param =
++		(void *)&req->serv_specif_rqpars;
++	struct icp_qat_fw_la_auth_req_params *auth_param =
++		(void *)((uint8_t *)&req->serv_specif_rqpars +
++		ICP_QAT_FW_HASH_REQUEST_PARAMETERS_OFFSET);
++	uint8_t *aad_data;
++	uint8_t aad_ccm_real_len;
++	uint8_t aad_len_field_sz;
++	uint32_t msg_len_be;
++	rte_iova_t aad_iova = 0;
++	uint8_t q;
++
++	switch (ctx->qat_hash_alg) {
++	case ICP_QAT_HW_AUTH_ALGO_GALOIS_128:
++	case ICP_QAT_HW_AUTH_ALGO_GALOIS_64:
++		ICP_QAT_FW_LA_GCM_IV_LEN_FLAG_SET(
++			req->comn_hdr.serv_specif_flags,
++				ICP_QAT_FW_LA_GCM_IV_LEN_12_OCTETS);
++		rte_memcpy_generic(cipher_param->u.cipher_IV_array,
++				iv_vec->base, ctx->cipher_iv.length);
++		aad_iova = aad_vec->iova;
++		break;
++	case ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC:
++		aad_data = aad_vec->base;
++		aad_iova = aad_vec->iova;
++		aad_ccm_real_len = 0;
++		aad_len_field_sz = 0;
++		msg_len_be = rte_bswap32((uint32_t)data_len -
++				ofs.ofs.cipher.head);
++
++		if (ctx->aad_len > ICP_QAT_HW_CCM_AAD_DATA_OFFSET) {
++			aad_len_field_sz = ICP_QAT_HW_CCM_AAD_LEN_INFO;
++			aad_ccm_real_len = ctx->aad_len -
++				ICP_QAT_HW_CCM_AAD_B0_LEN -
++				ICP_QAT_HW_CCM_AAD_LEN_INFO;
++		} else {
++			aad_data = iv_vec->base;
++			aad_iova = iv_vec->iova;
++		}
++
++		q = ICP_QAT_HW_CCM_NQ_CONST - ctx->cipher_iv.length;
++		aad_data[0] = ICP_QAT_HW_CCM_BUILD_B0_FLAGS(
++			aad_len_field_sz, ctx->digest_length, q);
++		if (q > ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE) {
++			memcpy(aad_data	+ ctx->cipher_iv.length +
++				ICP_QAT_HW_CCM_NONCE_OFFSET + (q -
++				ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE),
++				(uint8_t *)&msg_len_be,
++				ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE);
++		} else {
++			memcpy(aad_data	+ ctx->cipher_iv.length +
++				ICP_QAT_HW_CCM_NONCE_OFFSET,
++				(uint8_t *)&msg_len_be +
++				(ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE
++				- q), q);
++		}
++
++		if (aad_len_field_sz > 0) {
++			*(uint16_t *)&aad_data[ICP_QAT_HW_CCM_AAD_B0_LEN] =
++				rte_bswap16(aad_ccm_real_len);
++
++			if ((aad_ccm_real_len + aad_len_field_sz)
++				% ICP_QAT_HW_CCM_AAD_B0_LEN) {
++				uint8_t pad_len = 0;
++				uint8_t pad_idx = 0;
++
++				pad_len = ICP_QAT_HW_CCM_AAD_B0_LEN -
++					((aad_ccm_real_len +
++					aad_len_field_sz) %
++					ICP_QAT_HW_CCM_AAD_B0_LEN);
++				pad_idx = ICP_QAT_HW_CCM_AAD_B0_LEN +
++					aad_ccm_real_len +
++					aad_len_field_sz;
++				memset(&aad_data[pad_idx], 0, pad_len);
++			}
++
++			rte_memcpy(((uint8_t *)cipher_param->u.cipher_IV_array)
++				+ ICP_QAT_HW_CCM_NONCE_OFFSET,
++				(uint8_t *)iv_vec->base +
++				ICP_QAT_HW_CCM_NONCE_OFFSET,
++				ctx->cipher_iv.length);
++			*(uint8_t *)&cipher_param->u.cipher_IV_array[0] =
++				q - ICP_QAT_HW_CCM_NONCE_OFFSET;
++
++			rte_memcpy((uint8_t *)aad_vec->base +
++				ICP_QAT_HW_CCM_NONCE_OFFSET,
++				(uint8_t *)iv_vec->base +
++				ICP_QAT_HW_CCM_NONCE_OFFSET,
++				ctx->cipher_iv.length);
++		}
++		break;
++	default:
++		break;
++	}
++
++	cipher_param->cipher_offset = ofs.ofs.cipher.head;
++	cipher_param->cipher_length = data_len - ofs.ofs.cipher.head
++	    - ofs.ofs.cipher.tail;
++	auth_param->auth_off = ofs.ofs.cipher.head;
++	auth_param->auth_len = data_len - ofs.ofs.cipher.head
++	    - ofs.ofs.cipher.tail;
++	auth_param->auth_res_addr = digest_vec->iova;
++	auth_param->u1.aad_adr = aad_iova;
++
++	if (ctx->is_single_pass) {
++		cipher_param->spc_aad_addr = aad_iova;
++		cipher_param->spc_auth_res_addr = digest_vec->iova;
++	}
++}
++
++static __rte_always_inline int
++qat_sym_dp_submit_single_aead(void *qp_data, uint8_t *service_data,
++	struct rte_crypto_vec *data, uint16_t n_data_vecs,
++	union rte_crypto_sym_ofs ofs, struct rte_crypto_data *iv_vec,
++	struct rte_crypto_data *digest_vec, struct rte_crypto_data *aad_vec,
++	void *opaque)
++{
++	struct qat_qp *qp = qp_data;
++	struct qat_sym_dp_service_ctx *service_ctx = (void *)service_data;
++	struct qat_queue *tx_queue = &qp->tx_q;
++	struct qat_sym_session *ctx = service_ctx->session;
++	struct icp_qat_fw_la_bulk_req *req;
++	int32_t data_len;
++	uint32_t tail = service_ctx->tail;
++
++	req = (struct icp_qat_fw_la_bulk_req *)(
++		(uint8_t *)tx_queue->base_addr + tail);
++	tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
++	rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
++	rte_prefetch0((uint8_t *)tx_queue->base_addr + tail);
++	data_len = qat_sym_dp_get_data(qp, req, data, n_data_vecs);
++	if (unlikely(data_len < 0))
++		return -1;
++	req->comn_mid.opaque_data = (uint64_t)opaque;
++
++	submit_one_aead_job(ctx, req, iv_vec, digest_vec, aad_vec, ofs,
++		(uint32_t)data_len);
++
++	service_ctx->tail = tail;
++
++	return 0;
++}
++
++static __rte_always_inline uint32_t
++qat_sym_dp_submit_aead_jobs(void *qp_data, uint8_t *service_data,
++	struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs ofs,
++	void **opaque)
++{
++	struct qat_qp *qp = qp_data;
++	struct qat_sym_dp_service_ctx *service_ctx = (void *)service_data;
++	struct qat_queue *tx_queue = &qp->tx_q;
++	struct qat_sym_session *ctx = service_ctx->session;
++	uint32_t i;
++	uint32_t tail;
++	struct icp_qat_fw_la_bulk_req *req;
++	int32_t data_len;
++
++	if (unlikely(qp->enqueued - qp->dequeued + vec->num >=
++			qp->max_inflights)) {
++		qat_sym_dp_fill_vec_status(vec->status, -1, vec->num);
++		return 0;
++	}
++
++	tail = service_ctx->tail;
++
++	for (i = 0; i < vec->num; i++) {
++		req  = (struct icp_qat_fw_la_bulk_req *)(
++			(uint8_t *)tx_queue->base_addr + tail);
++		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
++
++		data_len = qat_sym_dp_get_data(qp, req, vec->sgl[i].vec,
++			vec->sgl[i].num) - ofs.ofs.cipher.head -
++			ofs.ofs.cipher.tail;
++		if (unlikely(data_len < 0))
++			break;
++		req->comn_mid.opaque_data = (uint64_t)opaque[i];
++		submit_one_aead_job(ctx, req, vec->iv_vec + i,
++			vec->digest_vec + i, vec->aad_vec + i, ofs,
++			(uint32_t)data_len);
++		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
++	}
++
++	if (unlikely(i < vec->num))
++		qat_sym_dp_fill_vec_status(vec->status + i, -1, vec->num - i);
++
++	service_ctx->tail = tail;
++	return i;
++}
++
++static __rte_always_inline void
++submit_one_cipher_job(struct qat_sym_session *ctx,
++	struct icp_qat_fw_la_bulk_req *req, struct rte_crypto_data *iv_vec,
++	union rte_crypto_sym_ofs ofs, uint32_t data_len)
++{
++	struct icp_qat_fw_la_cipher_req_params *cipher_param;
++
++	cipher_param = (void *)&req->serv_specif_rqpars;
++
++	/* cipher IV */
++	set_cipher_iv(cipher_param, iv_vec, ctx->cipher_iv.length, req);
++	cipher_param->cipher_offset = ofs.ofs.cipher.head;
++	cipher_param->cipher_length = data_len - ofs.ofs.cipher.head
++	    - ofs.ofs.cipher.tail;
++}
++
++static __rte_always_inline int
++qat_sym_dp_submit_single_cipher(void *qp_data, uint8_t *service_data,
++	struct rte_crypto_vec *data, uint16_t n_data_vecs,
++	union rte_crypto_sym_ofs ofs, struct rte_crypto_data *iv_vec,
++	__rte_unused struct rte_crypto_data *digest_vec,
++	__rte_unused struct rte_crypto_data *aad_vec,
++	void *opaque)
++{
++	struct qat_qp *qp = qp_data;
++	struct qat_sym_dp_service_ctx *service_ctx = (void *)service_data;
++	struct qat_queue *tx_queue = &qp->tx_q;
++	struct qat_sym_session *ctx = service_ctx->session;
++	struct icp_qat_fw_la_bulk_req *req;
++	int32_t data_len;
++	uint32_t tail = service_ctx->tail;
++
++	req = (struct icp_qat_fw_la_bulk_req *)(
++		(uint8_t *)tx_queue->base_addr + tail);
++	tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
++	rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
++	rte_prefetch0((uint8_t *)tx_queue->base_addr + tail);
++	data_len = qat_sym_dp_get_data(qp, req, data, n_data_vecs);
++	if (unlikely(data_len < 0))
++		return -1;
++	req->comn_mid.opaque_data = (uint64_t)opaque;
++
++	submit_one_cipher_job(ctx, req, iv_vec, ofs, (uint32_t)data_len);
++
++	service_ctx->tail = tail;
++
++	return 0;
++}
++
++static __rte_always_inline uint32_t
++qat_sym_dp_submit_cipher_jobs(void *qp_data, uint8_t *service_data,
++	struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs ofs,
++	void **opaque)
++{
++	struct qat_qp *qp = qp_data;
++	struct qat_sym_dp_service_ctx *service_ctx = (void *)service_data;
++	struct qat_queue *tx_queue = &qp->tx_q;
++	struct qat_sym_session *ctx = service_ctx->session;
++	uint32_t i;
++	uint32_t tail;
++	struct icp_qat_fw_la_bulk_req *req;
++	int32_t data_len;
++
++	if (unlikely(qp->enqueued - qp->dequeued + vec->num >=
++			qp->max_inflights)) {
++		qat_sym_dp_fill_vec_status(vec->status, -1, vec->num);
++		return 0;
++	}
++
++	tail = service_ctx->tail;
++
++	for (i = 0; i < vec->num; i++) {
++		req  = (struct icp_qat_fw_la_bulk_req *)(
++			(uint8_t *)tx_queue->base_addr + tail);
++		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
++
++		data_len = qat_sym_dp_get_data(qp, req, vec->sgl[i].vec,
++			vec->sgl[i].num) - ofs.ofs.cipher.head -
++			ofs.ofs.cipher.tail;
++		if (unlikely(data_len < 0))
++			break;
++		req->comn_mid.opaque_data = (uint64_t)opaque[i];
++		submit_one_cipher_job(ctx, req, vec->iv_vec + i, ofs,
++			(uint32_t)data_len);
++		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
++	}
++
++	if (unlikely(i < vec->num))
++		qat_sym_dp_fill_vec_status(vec->status + i, -1, vec->num - i);
++
++	service_ctx->tail = tail;
++	return i;
++}
++
++static __rte_always_inline void
++submit_one_auth_job(struct qat_sym_session *ctx,
++	struct icp_qat_fw_la_bulk_req *req, struct rte_crypto_data *iv_vec,
++	struct rte_crypto_data *digest_vec, union rte_crypto_sym_ofs ofs,
++	uint32_t data_len)
++{
++	struct icp_qat_fw_la_cipher_req_params *cipher_param;
++	struct icp_qat_fw_la_auth_req_params *auth_param;
++
++	cipher_param = (void *)&req->serv_specif_rqpars;
++	auth_param = (void *)((uint8_t *)cipher_param +
++			ICP_QAT_FW_HASH_REQUEST_PARAMETERS_OFFSET);
++
++	auth_param->auth_off = ofs.ofs.auth.head;
++	auth_param->auth_len = data_len - ofs.ofs.auth.head - ofs.ofs.auth.tail;
++	auth_param->auth_res_addr = digest_vec->iova;
++
++	switch (ctx->qat_hash_alg) {
++	case ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2:
++	case ICP_QAT_HW_AUTH_ALGO_KASUMI_F9:
++	case ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3:
++		auth_param->u1.aad_adr = iv_vec->iova;
++		break;
++	case ICP_QAT_HW_AUTH_ALGO_GALOIS_128:
++	case ICP_QAT_HW_AUTH_ALGO_GALOIS_64:
++		ICP_QAT_FW_LA_GCM_IV_LEN_FLAG_SET(
++			req->comn_hdr.serv_specif_flags,
++				ICP_QAT_FW_LA_GCM_IV_LEN_12_OCTETS);
++		rte_memcpy_generic(cipher_param->u.cipher_IV_array,
++				iv_vec->base, ctx->cipher_iv.length);
++		break;
++	default:
++		break;
++	}
++}
++
++static __rte_always_inline int
++qat_sym_dp_submit_single_auth(void *qp_data, uint8_t *service_data,
++	struct rte_crypto_vec *data, uint16_t n_data_vecs,
++	union rte_crypto_sym_ofs ofs, struct rte_crypto_data *iv_vec,
++	struct rte_crypto_data *digest_vec,
++	__rte_unused struct rte_crypto_data *aad_vec,
++	void *opaque)
++{
++	struct qat_qp *qp = qp_data;
++	struct qat_sym_dp_service_ctx *service_ctx = (void *)service_data;
++	struct qat_queue *tx_queue = &qp->tx_q;
++	struct qat_sym_session *ctx = service_ctx->session;
++	struct icp_qat_fw_la_bulk_req *req;
++	int32_t data_len;
++	uint32_t tail = service_ctx->tail;
++
++	req = (struct icp_qat_fw_la_bulk_req *)(
++		(uint8_t *)tx_queue->base_addr + tail);
++	tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
++	rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
++	rte_prefetch0((uint8_t *)tx_queue->base_addr + tail);
++	data_len = qat_sym_dp_get_data(qp, req, data, n_data_vecs);
++	if (unlikely(data_len < 0))
++		return -1;
++	req->comn_mid.opaque_data = (uint64_t)opaque;
++
++	submit_one_auth_job(ctx, req, iv_vec, digest_vec, ofs,
++			(uint32_t)data_len);
++
++	service_ctx->tail = tail;
++
++	return 0;
++}
++
++static __rte_always_inline uint32_t
++qat_sym_dp_submit_auth_jobs(void *qp_data, uint8_t *service_data,
++	struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs ofs,
++	void **opaque)
++{
++	struct qat_qp *qp = qp_data;
++	struct qat_sym_dp_service_ctx *service_ctx = (void *)service_data;
++	struct qat_queue *tx_queue = &qp->tx_q;
++	struct qat_sym_session *ctx = service_ctx->session;
++	uint32_t i;
++	uint32_t tail;
++	struct icp_qat_fw_la_bulk_req *req;
++	int32_t data_len;
++
++	if (unlikely(qp->enqueued - qp->dequeued + vec->num >=
++			qp->max_inflights)) {
++		qat_sym_dp_fill_vec_status(vec->status, -1, vec->num);
++		return 0;
++	}
++
++	tail = service_ctx->tail;
++
++	for (i = 0; i < vec->num; i++) {
++		req  = (struct icp_qat_fw_la_bulk_req *)(
++			(uint8_t *)tx_queue->base_addr + tail);
++		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
++
++		data_len = qat_sym_dp_get_data(qp, req, vec->sgl[i].vec,
++			vec->sgl[i].num) - ofs.ofs.cipher.head -
++			ofs.ofs.cipher.tail;
++		if (unlikely(data_len < 0))
++			break;
++		req->comn_mid.opaque_data = (uint64_t)opaque[i];
++		submit_one_auth_job(ctx, req, vec->iv_vec + i,
++			vec->digest_vec + i, ofs, (uint32_t)data_len);
++		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
++	}
++
++	if (unlikely(i < vec->num))
++		qat_sym_dp_fill_vec_status(vec->status + i, -1, vec->num - i);
++
++	service_ctx->tail = tail;
++	return i;
++}
++
++static __rte_always_inline void
++submit_one_chain_job(struct qat_sym_session *ctx,
++	struct icp_qat_fw_la_bulk_req *req, struct rte_crypto_vec *data,
++	uint16_t n_data_vecs, struct rte_crypto_data *iv_vec,
++	struct rte_crypto_data *digest_vec, union rte_crypto_sym_ofs ofs,
++	uint32_t data_len)
++{
++	struct icp_qat_fw_la_cipher_req_params *cipher_param;
++	struct icp_qat_fw_la_auth_req_params *auth_param;
++	rte_iova_t auth_iova_end;
++	int32_t cipher_len, auth_len;
++
++	cipher_param = (void *)&req->serv_specif_rqpars;
++	auth_param = (void *)((uint8_t *)cipher_param +
++			ICP_QAT_FW_HASH_REQUEST_PARAMETERS_OFFSET);
++
++	cipher_len = data_len - ofs.ofs.cipher.head -
++			ofs.ofs.cipher.tail;
++	auth_len = data_len - ofs.ofs.auth.head - ofs.ofs.auth.tail;
++
++	assert(cipher_len > 0 && auth_len > 0);
++
++	cipher_param->cipher_offset = ofs.ofs.cipher.head;
++	cipher_param->cipher_length = cipher_len;
++	set_cipher_iv(cipher_param, iv_vec, ctx->cipher_iv.length, req);
++
++	auth_param->auth_off = ofs.ofs.auth.head;
++	auth_param->auth_len = auth_len;
++	auth_param->auth_res_addr = digest_vec->iova;
++
++	switch (ctx->qat_hash_alg) {
++	case ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2:
++	case ICP_QAT_HW_AUTH_ALGO_KASUMI_F9:
++	case ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3:
++		auth_param->u1.aad_adr = iv_vec->iova;
++
++		if (unlikely(n_data_vecs > 1)) {
++			int auth_end_get = 0, i = n_data_vecs - 1;
++			struct rte_crypto_vec *cvec = &data[i];
++			uint32_t len;
++
++			len = data_len - ofs.ofs.auth.tail;
++
++			while (i >= 0 && len > 0) {
++				if (cvec->len >= len) {
++					auth_iova_end = cvec->iova +
++						(cvec->len - len);
++					len = 0;
++					auth_end_get = 1;
++					break;
++				}
++				len -= cvec->len;
++				i--;
++				cvec--;
++			}
++
++			assert(auth_end_get != 0);
++		} else
++			auth_iova_end = digest_vec->iova +
++				ctx->digest_length;
++
++		/* Then check if digest-encrypted conditions are met */
++		if ((auth_param->auth_off + auth_param->auth_len <
++				cipher_param->cipher_offset +
++				cipher_param->cipher_length) &&
++				(digest_vec->iova == auth_iova_end)) {
++			/* Handle partial digest encryption */
++			if (cipher_param->cipher_offset +
++					cipher_param->cipher_length <
++					auth_param->auth_off +
++					auth_param->auth_len +
++					ctx->digest_length)
++				req->comn_mid.dst_length =
++					req->comn_mid.src_length =
++					auth_param->auth_off +
++					auth_param->auth_len +
++					ctx->digest_length;
++			struct icp_qat_fw_comn_req_hdr *header =
++				&req->comn_hdr;
++			ICP_QAT_FW_LA_DIGEST_IN_BUFFER_SET(
++				header->serv_specif_flags,
++				ICP_QAT_FW_LA_DIGEST_IN_BUFFER);
++		}
++		break;
++	case ICP_QAT_HW_AUTH_ALGO_GALOIS_128:
++	case ICP_QAT_HW_AUTH_ALGO_GALOIS_64:
++		break;
++	default:
++		break;
++	}
++}
++
++static __rte_always_inline int
++qat_sym_dp_submit_single_chain(void *qp_data, uint8_t *service_data,
++	struct rte_crypto_vec *data, uint16_t n_data_vecs,
++	union rte_crypto_sym_ofs ofs, struct rte_crypto_data *iv_vec,
++	struct rte_crypto_data *digest_vec,
++	__rte_unused struct rte_crypto_data *aad_vec,
++	void *opaque)
++{
++	struct qat_qp *qp = qp_data;
++	struct qat_sym_dp_service_ctx *service_ctx = (void *)service_data;
++	struct qat_queue *tx_queue = &qp->tx_q;
++	struct qat_sym_session *ctx = service_ctx->session;
++	struct icp_qat_fw_la_bulk_req *req;
++	int32_t data_len;
++	uint32_t tail = service_ctx->tail;
++
++	req = (struct icp_qat_fw_la_bulk_req *)(
++		(uint8_t *)tx_queue->base_addr + tail);
++	tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
++	rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
++	rte_prefetch0((uint8_t *)tx_queue->base_addr + tail);
++	data_len = qat_sym_dp_get_data(qp, req, data, n_data_vecs);
++	if (unlikely(data_len < 0))
++		return -1;
++	req->comn_mid.opaque_data = (uint64_t)opaque;
++
++	submit_one_chain_job(ctx, req, data, n_data_vecs, iv_vec, digest_vec,
++		ofs, (uint32_t)data_len);
++
++	service_ctx->tail = tail;
++
++	return 0;
++}
++
++static __rte_always_inline uint32_t
++qat_sym_dp_submit_chain_jobs(void *qp_data, uint8_t *service_data,
++	struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs ofs,
++	void **opaque)
++{
++	struct qat_qp *qp = qp_data;
++	struct qat_sym_dp_service_ctx *service_ctx = (void *)service_data;
++	struct qat_queue *tx_queue = &qp->tx_q;
++	struct qat_sym_session *ctx = service_ctx->session;
++	uint32_t i;
++	uint32_t tail;
++	struct icp_qat_fw_la_bulk_req *req;
++	int32_t data_len;
++
++	if (unlikely(qp->enqueued - qp->dequeued + vec->num >=
++			qp->max_inflights)) {
++		qat_sym_dp_fill_vec_status(vec->status, -1, vec->num);
++		return 0;
++	}
++
++	tail = service_ctx->tail;
++
++	for (i = 0; i < vec->num; i++) {
++		req  = (struct icp_qat_fw_la_bulk_req *)(
++			(uint8_t *)tx_queue->base_addr + tail);
++		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
++
++		data_len = qat_sym_dp_get_data(qp, req, vec->sgl[i].vec,
++			vec->sgl[i].num) - ofs.ofs.cipher.head -
++			ofs.ofs.cipher.tail;
++		if (unlikely(data_len < 0))
++			break;
++		req->comn_mid.opaque_data = (uint64_t)opaque[i];
++		submit_one_chain_job(ctx, req, vec->sgl[i].vec, vec->sgl[i].num,
++			vec->iv_vec + i, vec->digest_vec + i, ofs,
++			(uint32_t)data_len);
++		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
++	}
++
++	if (unlikely(i < vec->num))
++		qat_sym_dp_fill_vec_status(vec->status + i, -1, vec->num - i);
++
++	service_ctx->tail = tail;
++	return i;
++}
++
++static __rte_always_inline uint32_t
++qat_sym_dp_dequeue(void *qp_data, uint8_t *service_data,
++	rte_cryptodev_get_dequeue_count_t get_dequeue_count,
++	rte_cryptodev_post_dequeue_t post_dequeue,
++	void **out_opaque, uint8_t is_opaque_array,
++	uint32_t *n_success_jobs)
++{
++	struct qat_qp *qp = qp_data;
++	struct qat_sym_dp_service_ctx *service_ctx = (void *)service_data;
++	struct qat_queue *rx_queue = &qp->rx_q;
++	struct icp_qat_fw_comn_resp *resp;
++	void *resp_opaque;
++	uint32_t i, n, inflight;
++	uint32_t head;
++	uint8_t status;
++
++	*n_success_jobs = 0;
++	head = service_ctx->head;
++
++	inflight = qp->enqueued - qp->dequeued;
++	if (unlikely(inflight == 0))
++		return 0;
++
++	resp = (struct icp_qat_fw_comn_resp *)((uint8_t *)rx_queue->base_addr +
++			head);
++	/* no operation ready */
++	if (unlikely(*(uint32_t *)resp == ADF_RING_EMPTY_SIG))
++		return 0;
++
++	resp_opaque = (void *)(uintptr_t)resp->opaque_data;
++	/* get the dequeue count */
++	n = get_dequeue_count(resp_opaque);
++	if (unlikely(n == 0))
++		return 0;
++
++	out_opaque[0] = resp_opaque;
++	status = QAT_SYM_DP_IS_RESP_SUCCESS(resp);
++	post_dequeue(resp_opaque, 0, status);
++	*n_success_jobs += status;
++
++	head = (head + rx_queue->msg_size) & rx_queue->modulo_mask;
++
++	/* we already finished dequeue when n == 1 */
++	if (unlikely(n == 1)) {
++		i = 1;
++		goto end_deq;
++	}
++
++	if (is_opaque_array) {
++		for (i = 1; i < n; i++) {
++			resp = (struct icp_qat_fw_comn_resp *)(
++				(uint8_t *)rx_queue->base_addr + head);
++			if (unlikely(*(uint32_t *)resp ==
++					ADF_RING_EMPTY_SIG))
++				goto end_deq;
++			out_opaque[i] = (void *)(uintptr_t)
++					resp->opaque_data;
++			status = QAT_SYM_DP_IS_RESP_SUCCESS(resp);
++			*n_success_jobs += status;
++			post_dequeue(out_opaque[i], i, status);
++			head = (head + rx_queue->msg_size) &
++					rx_queue->modulo_mask;
++		}
++
++		goto end_deq;
++	}
++
++	/* opaque is not array */
++	for (i = 1; i < n; i++) {
++		resp = (struct icp_qat_fw_comn_resp *)(
++			(uint8_t *)rx_queue->base_addr + head);
++		status = QAT_SYM_DP_IS_RESP_SUCCESS(resp);
++		if (unlikely(*(uint32_t *)resp == ADF_RING_EMPTY_SIG))
++			goto end_deq;
++		head = (head + rx_queue->msg_size) &
++				rx_queue->modulo_mask;
++		post_dequeue(resp_opaque, i, status);
++		*n_success_jobs += status;
++	}
++
++end_deq:
++	service_ctx->head = head;
++	return i;
++}
++
++static __rte_always_inline int
++qat_sym_dp_dequeue_single_job(void *qp_data, uint8_t *service_data,
++		void **out_opaque)
++{
++	struct qat_qp *qp = qp_data;
++	struct qat_sym_dp_service_ctx *service_ctx = (void *)service_data;
++	struct qat_queue *rx_queue = &qp->rx_q;
++
++	register struct icp_qat_fw_comn_resp *resp;
++
++	resp = (struct icp_qat_fw_comn_resp *)((uint8_t *)rx_queue->base_addr +
++			service_ctx->head);
++
++	if (unlikely(*(uint32_t *)resp == ADF_RING_EMPTY_SIG))
++		return -1;
++
++	*out_opaque = (void *)(uintptr_t)resp->opaque_data;
++
++	service_ctx->head = (service_ctx->head + rx_queue->msg_size) &
++			rx_queue->modulo_mask;
++
++	return QAT_SYM_DP_IS_RESP_SUCCESS(resp);
++}
++
++static __rte_always_inline void
++qat_sym_dp_kick_tail(void *qp_data, uint8_t *service_data, uint32_t n)
++{
++	struct qat_qp *qp = qp_data;
++	struct qat_queue *tx_queue = &qp->tx_q;
++	struct qat_sym_dp_service_ctx *service_ctx = (void *)service_data;
++
++	qp->enqueued += n;
++	qp->stats.enqueued_count += n;
++
++	assert(service_ctx->tail == ((tx_queue->tail + tx_queue->msg_size * n) &
++			tx_queue->modulo_mask));
++
++	tx_queue->tail = service_ctx->tail;
++
++	WRITE_CSR_RING_TAIL(qp->mmap_bar_addr,
++			tx_queue->hw_bundle_number,
++			tx_queue->hw_queue_number, tx_queue->tail);
++	tx_queue->csr_tail = tx_queue->tail;
++}
++
++static __rte_always_inline void
++qat_sym_dp_update_head(void *qp_data, uint8_t *service_data, uint32_t n)
++{
++	struct qat_qp *qp = qp_data;
++	struct qat_queue *rx_queue = &qp->rx_q;
++	struct qat_sym_dp_service_ctx *service_ctx = (void *)service_data;
++
++	assert(service_ctx->head == ((rx_queue->head + rx_queue->msg_size * n) &
++			rx_queue->modulo_mask));
++
++	rx_queue->head = service_ctx->head;
++	rx_queue->nb_processed_responses += n;
++	qp->dequeued += n;
++	qp->stats.dequeued_count += n;
++	if (rx_queue->nb_processed_responses > QAT_CSR_HEAD_WRITE_THRESH) {
++		uint32_t old_head, new_head;
++		uint32_t max_head;
++
++		old_head = rx_queue->csr_head;
++		new_head = rx_queue->head;
++		max_head = qp->nb_descriptors * rx_queue->msg_size;
++
++		/* write out free descriptors */
++		void *cur_desc = (uint8_t *)rx_queue->base_addr + old_head;
++
++		if (new_head < old_head) {
++			memset(cur_desc, ADF_RING_EMPTY_SIG_BYTE,
++					max_head - old_head);
++			memset(rx_queue->base_addr, ADF_RING_EMPTY_SIG_BYTE,
++					new_head);
++		} else {
++			memset(cur_desc, ADF_RING_EMPTY_SIG_BYTE, new_head -
++					old_head);
++		}
++		rx_queue->nb_processed_responses = 0;
++		rx_queue->csr_head = new_head;
++
++		/* write current head to CSR */
++		WRITE_CSR_RING_HEAD(qp->mmap_bar_addr,
++			rx_queue->hw_bundle_number, rx_queue->hw_queue_number,
++			new_head);
++	}
++}
++
++int
++qat_sym_dp_configure_service_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
++	struct rte_crypto_dp_service_ctx *service_ctx,
++	enum rte_crypto_dp_service service_type,
++	enum rte_crypto_op_sess_type sess_type,
++	union rte_cryptodev_session_ctx session_ctx,
++	uint8_t is_update)
++{
++	struct qat_qp *qp;
++	struct qat_sym_session *ctx;
++	struct qat_sym_dp_service_ctx *dp_ctx;
++
++	if (service_ctx == NULL || session_ctx.crypto_sess == NULL ||
++			sess_type != RTE_CRYPTO_OP_WITH_SESSION)
++		return -EINVAL;
++
++	qp = dev->data->queue_pairs[qp_id];
++	ctx = (struct qat_sym_session *)get_sym_session_private_data(
++			session_ctx.crypto_sess, cryptodev_qat_driver_id);
++	dp_ctx = (struct qat_sym_dp_service_ctx *)
++			service_ctx->drv_service_data;
++
++	if (!is_update) {
++		memset(service_ctx, 0, sizeof(*service_ctx) +
++				sizeof(struct qat_sym_dp_service_ctx));
++		service_ctx->qp_data = dev->data->queue_pairs[qp_id];
++		dp_ctx->tail = qp->tx_q.tail;
++		dp_ctx->head = qp->rx_q.head;
++	}
++
++	dp_ctx->session = ctx;
++
++	service_ctx->submit_done = qat_sym_dp_kick_tail;
++	service_ctx->dequeue_opaque = qat_sym_dp_dequeue;
++	service_ctx->dequeue_single = qat_sym_dp_dequeue_single_job;
++	service_ctx->dequeue_done = qat_sym_dp_update_head;
++
++	if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_HASH_CIPHER ||
++			ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER_HASH) {
++		/* AES-GCM or AES-CCM */
++		if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
++			ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_64 ||
++			(ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_AES128
++			&& ctx->qat_mode == ICP_QAT_HW_CIPHER_CTR_MODE
++			&& ctx->qat_hash_alg ==
++					ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC)) {
++			if (service_type != RTE_CRYPTO_DP_SYM_AEAD)
++				return -1;
++			service_ctx->submit_vec = qat_sym_dp_submit_aead_jobs;
++			service_ctx->submit_single_job =
++					qat_sym_dp_submit_single_aead;
++		} else {
++			if (service_type != RTE_CRYPTO_DP_SYM_CHAIN)
++				return -1;
++			service_ctx->submit_vec = qat_sym_dp_submit_chain_jobs;
++			service_ctx->submit_single_job =
++					qat_sym_dp_submit_single_chain;
++		}
++	} else if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_AUTH) {
++		if (service_type != RTE_CRYPTO_DP_SYM_AUTH_ONLY)
++			return -1;
++		service_ctx->submit_vec = qat_sym_dp_submit_auth_jobs;
++		service_ctx->submit_single_job = qat_sym_dp_submit_single_auth;
++	} else if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER) {
++		if (service_type != RTE_CRYPTO_DP_SYM_CIPHER_ONLY)
++			return -1;
++		service_ctx->submit_vec = qat_sym_dp_submit_cipher_jobs;
++		service_ctx->submit_single_job =
++			qat_sym_dp_submit_single_cipher;
++	}
++
++	return 0;
++}
++
++int
++qat_sym_get_service_ctx_size(__rte_unused struct rte_cryptodev *dev)
++{
++	return sizeof(struct qat_sym_dp_service_ctx);
++}
+diff --git a/drivers/crypto/qat/qat_sym_pmd.c b/drivers/crypto/qat/qat_sym_pmd.c
+index e887c880f..796f0ce36 100644
+--- a/drivers/crypto/qat/qat_sym_pmd.c
++++ b/drivers/crypto/qat/qat_sym_pmd.c
+@@ -234,7 +234,11 @@ static struct rte_cryptodev_ops crypto_qat_ops = {
+ 		/* Crypto related operations */
+ 		.sym_session_get_size	= qat_sym_session_get_private_size,
+ 		.sym_session_configure	= qat_sym_session_configure,
+-		.sym_session_clear	= qat_sym_session_clear
++		.sym_session_clear	= qat_sym_session_clear,
++
++		/* Data plane service related operations */
++		.get_drv_ctx_size = qat_sym_get_service_ctx_size,
++		.configure_service = qat_sym_dp_configure_service_ctx,
+ };
+ 
+ static uint16_t
+@@ -308,7 +312,8 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
+ 			RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
+ 			RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT |
+ 			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
+-			RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED;
++			RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED |
++			RTE_CRYPTODEV_FF_DATA_PLANE_SERVICE;
+ 
+ 	internals = cryptodev->data->dev_private;
+ 	internals->qat_dev = qat_pci_dev;
+diff --git a/lib/librte_cryptodev/rte_crypto.h b/lib/librte_cryptodev/rte_crypto.h
+index fd5ef3a87..f009be9af 100644
+--- a/lib/librte_cryptodev/rte_crypto.h
++++ b/lib/librte_cryptodev/rte_crypto.h
+@@ -438,6 +438,15 @@ rte_crypto_op_attach_asym_session(struct rte_crypto_op *op,
+ 	return 0;
+ }
+ 
++/** Crypto data-path service types */
++enum rte_crypto_dp_service {
++	RTE_CRYPTO_DP_SYM_CIPHER_ONLY = 0,
++	RTE_CRYPTO_DP_SYM_AUTH_ONLY,
++	RTE_CRYPTO_DP_SYM_CHAIN,
++	RTE_CRYPTO_DP_SYM_AEAD,
++	RTE_CRYPTO_DP_N_SERVICE
++};
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/lib/librte_cryptodev/rte_crypto_sym.h b/lib/librte_cryptodev/rte_crypto_sym.h
+index da961a19d..3e0e4e9dc 100644
+--- a/lib/librte_cryptodev/rte_crypto_sym.h
++++ b/lib/librte_cryptodev/rte_crypto_sym.h
+@@ -50,6 +50,18 @@ struct rte_crypto_sgl {
+ 	uint32_t num;
+ };
+ 
++/**
++ * Crypto IO Data without length info.
++ * Supposed to be used to pass input/output data buffers with lengths
++ * defined when creating crypto session.
++ */
++struct rte_crypto_data {
++	/** virtual address of the data buffer */
++	void *base;
++	/** IOVA of the data buffer */
++	rte_iova_t iova;
++};
++
+ /**
+  * Synchronous operation descriptor.
+  * Supposed to be used with CPU crypto API call.
+@@ -57,12 +69,32 @@ struct rte_crypto_sgl {
+ struct rte_crypto_sym_vec {
+ 	/** array of SGL vectors */
+ 	struct rte_crypto_sgl *sgl;
+-	/** array of pointers to IV */
+-	void **iv;
+-	/** array of pointers to AAD */
+-	void **aad;
+-	/** array of pointers to digest */
+-	void **digest;
++
++	union {
++
++		/* Supposed to be used with CPU crypto API call. */
++		struct {
++			/** array of pointers to IV */
++			void **iv;
++			/** array of pointers to AAD */
++			void **aad;
++			/** array of pointers to digest */
++			void **digest;
++		};
++
++		/* Supposed to be used with rte_cryptodev_dp_sym_submit_vec()
++		 * call.
++		 */
++		struct {
++			/** vector to IV */
++			struct rte_crypto_data *iv_vec;
++			/** vecor to AAD */
++			struct rte_crypto_data *aad_vec;
++			/** vector to Digest */
++			struct rte_crypto_data *digest_vec;
++		};
++	};
++
+ 	/**
+ 	 * array of statuses for each operation:
+ 	 *  - 0 on success
+diff --git a/lib/librte_cryptodev/rte_cryptodev.c b/lib/librte_cryptodev/rte_cryptodev.c
+index e37b83afd..7a632aae4 100644
+--- a/lib/librte_cryptodev/rte_cryptodev.c
++++ b/lib/librte_cryptodev/rte_cryptodev.c
+@@ -1838,6 +1838,52 @@ rte_cryptodev_sym_cpu_crypto_process(uint8_t dev_id,
+ 	return dev->dev_ops->sym_cpu_process(dev, sess, ofs, vec);
+ }
+ 
++int32_t
++rte_cryptodev_get_dp_service_ctx_data_size(uint8_t dev_id)
++{
++	struct rte_cryptodev *dev;
++	int32_t size = sizeof(struct rte_crypto_dp_service_ctx);
++	int32_t priv_size;
++
++	if (!rte_cryptodev_pmd_is_valid_dev(dev_id))
++		return -1;
++
++	dev = rte_cryptodev_pmd_get_dev(dev_id);
++
++	if (*dev->dev_ops->get_drv_ctx_size == NULL ||
++		!(dev->feature_flags & RTE_CRYPTODEV_FF_DATA_PLANE_SERVICE)) {
++		return -1;
++	}
++
++	priv_size = (*dev->dev_ops->get_drv_ctx_size)(dev);
++	if (priv_size < 0)
++		return -1;
++
++	return RTE_ALIGN_CEIL((size + priv_size), 8);
++}
++
++int
++rte_cryptodev_dp_configure_service(uint8_t dev_id, uint16_t qp_id,
++	enum rte_crypto_dp_service service_type,
++	enum rte_crypto_op_sess_type sess_type,
++	union rte_cryptodev_session_ctx session_ctx,
++	struct rte_crypto_dp_service_ctx *ctx, uint8_t is_update)
++{
++	struct rte_cryptodev *dev;
++
++	if (!rte_cryptodev_pmd_is_valid_dev(dev_id))
++		return -1;
++
++	dev = rte_cryptodev_pmd_get_dev(dev_id);
++	if (dev->data->queue_pairs[qp_id] == NULL ||
++		!(dev->feature_flags & RTE_CRYPTODEV_FF_DATA_PLANE_SERVICE)
++		|| dev->dev_ops->configure_service == NULL)
++		return -1;
++
++	return (*dev->dev_ops->configure_service)(dev, qp_id, ctx,
++		service_type, sess_type, session_ctx, is_update);
++}
++
+ /** Initialise rte_crypto_op mempool element */
+ static void
+ rte_crypto_op_init(struct rte_mempool *mempool,
+diff --git a/lib/librte_cryptodev/rte_cryptodev.h b/lib/librte_cryptodev/rte_cryptodev.h
+index 4aaee7330..3f52f7678 100644
+--- a/lib/librte_cryptodev/rte_cryptodev.h
++++ b/lib/librte_cryptodev/rte_cryptodev.h
+@@ -466,7 +466,8 @@ rte_cryptodev_asym_get_xform_enum(enum rte_crypto_asym_xform_type *xform_enum,
+ /**< Support symmetric session-less operations */
+ #define RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA		(1ULL << 23)
+ /**< Support operations on data which is not byte aligned */
+-
++#define RTE_CRYPTODEV_FF_DATA_PLANE_SERVICE		(1ULL << 24)
++/**< Support accelerated specific raw data as input */
+ 
+ /**
+  * Get the name of a crypto device feature flag
+@@ -1334,6 +1335,339 @@ rte_cryptodev_sym_cpu_crypto_process(uint8_t dev_id,
+ 	struct rte_cryptodev_sym_session *sess, union rte_crypto_sym_ofs ofs,
+ 	struct rte_crypto_sym_vec *vec);
+ 
++/**
++ * Get the size of the data-path service context for all registered drivers.
++ *
++ * @param	dev_id		The device identifier.
++ *
++ * @return
++ *   - If the device supports data-path service, return the context size.
++ *   - If the device does not support the data-plane service, return -1.
++ */
++__rte_experimental
++int32_t
++rte_cryptodev_get_dp_service_ctx_data_size(uint8_t dev_id);
++
++/**
++ * Union of different crypto session types, including sessionless
++ */
++union rte_cryptodev_session_ctx {
++	struct rte_cryptodev_sym_session *crypto_sess;
++	struct rte_crypto_sym_xform *xform;
++	struct rte_security_session *sec_sess;
++};
++
++/**
++ * Submit a data vector into device queue but the driver will not start
++ * processing until rte_cryptodev_dp_sym_submit_vec() is called.
++ *
++ * @param	qp		Driver specific queue pair data.
++ * @param	service_data	Driver specific service data.
++ * @param	vec		The array of job vectors.
++ * @param	ofs		Start and stop offsets for auth and cipher
++ *				operations.
++ * @param	opaque		The array of opaque data for dequeue.
++ * @return
++ *   - The number of jobs successfully submitted.
++ */
++typedef uint32_t (*cryptodev_dp_sym_submit_vec_t)(
++	void *qp, uint8_t *service_data, struct rte_crypto_sym_vec *vec,
++	union rte_crypto_sym_ofs ofs, void **opaque);
++
++/**
++ * Submit single job into device queue but the driver will not start
++ * processing until rte_cryptodev_dp_sym_submit_vec() is called.
++ *
++ * @param	qp		Driver specific queue pair data.
++ * @param	service_data	Driver specific service data.
++ * @param	data		The buffer vector.
++ * @param	n_data_vecs	Number of buffer vectors.
++ * @param	ofs		Start and stop offsets for auth and cipher
++ *				operations.
++ * @param	iv		IV data.
++ * @param	digest		Digest data.
++ * @param	aad		AAD data.
++ * @param	opaque		The array of opaque data for dequeue.
++ * @return
++ *   - On success return 0.
++ *   - On failure return negative integer.
++ */
++typedef int (*cryptodev_dp_submit_single_job_t)(
++	void *qp_data, uint8_t *service_data, struct rte_crypto_vec *data,
++	uint16_t n_data_vecs, union rte_crypto_sym_ofs ofs,
++	struct rte_crypto_data *iv, struct rte_crypto_data *digest,
++	struct rte_crypto_data *aad, void *opaque);
++
++/**
++ * Inform the queue pair to start processing or finish dequeuing all
++ * submitted/dequeued jobs.
++ *
++ * @param	qp		Driver specific queue pair data.
++ * @param	service_data	Driver specific service data.
++ * @param	n		The total number of submitted jobs.
++ */
++typedef void (*cryptodev_dp_sym_opeartion_done_t)(void *qp,
++		uint8_t *service_data, uint32_t n);
++
++/**
++ * Typedef that the user provided to get the dequeue count. User may use it to
++ * return a fixed number or the number parsed from the opaque data stored in
++ * the first processed job.
++ *
++ * @param	opaque		Dequeued opaque data.
++ **/
++typedef uint32_t (*rte_cryptodev_get_dequeue_count_t)(void *opaque);
++
++/**
++ * Typedef that the user provided to deal with post dequeue operation, such
++ * as filling status.
++ *
++ * @param	opaque		Dequeued opaque data. In case
++ *				RTE_CRYPTO_HW_DP_FF_GET_OPAQUE_ARRAY bit is
++ *				set, this value will be the opaque data stored
++ *				in the specific processed jobs referenced by
++ *				index, otherwise it will be the opaque data
++ *				stored in the first processed job in the burst.
++ * @param	index		Index number of the processed job.
++ * @param	is_op_success	Driver filled operation status.
++ **/
++typedef void (*rte_cryptodev_post_dequeue_t)(void *opaque, uint32_t index,
++		uint8_t is_op_success);
++
++/**
++ * Dequeue symmetric crypto processing of user provided data.
++ *
++ * @param	qp			Driver specific queue pair data.
++ * @param	service_data		Driver specific service data.
++ * @param	get_dequeue_count	User provided callback function to
++ *					obtain dequeue count.
++ * @param	post_dequeue		User provided callback function to
++ *					post-process a dequeued operation.
++ * @param	out_opaque		Opaque pointer array to be retrieve from
++ *					device queue. In case of
++ *					*is_opaque_array* is set there should
++ *					be enough room to store all opaque data.
++ * @param	is_opaque_array		Set 1 if every dequeued job will be
++ *					written the opaque data into
++ *					*out_opaque* array.
++ * @param	n_success_jobs		Driver written value to specific the
++ *					total successful operations count.
++ *
++ * @return
++ *  - Returns number of dequeued packets.
++ */
++typedef uint32_t (*cryptodev_dp_sym_dequeue_t)(void *qp, uint8_t *service_data,
++	rte_cryptodev_get_dequeue_count_t get_dequeue_count,
++	rte_cryptodev_post_dequeue_t post_dequeue,
++	void **out_opaque, uint8_t is_opaque_array,
++	uint32_t *n_success_jobs);
++
++/**
++ * Dequeue symmetric crypto processing of user provided data.
++ *
++ * @param	qp			Driver specific queue pair data.
++ * @param	service_data		Driver specific service data.
++ * @param	out_opaque		Opaque pointer to be retrieve from
++ *					device queue. The driver shall support
++ *					NULL input of this parameter.
++ *
++ * @return
++ *   - 1 if the job is dequeued and the operation is a success.
++ *   - 0 if the job is dequeued but the operation is failed.
++ *   - -1 if no job is dequeued.
++ */
++typedef int (*cryptodev_dp_sym_dequeue_single_job_t)(
++		void *qp, uint8_t *service_data, void **out_opaque);
++
++/**
++ * Context data for asynchronous crypto process.
++ */
++struct rte_crypto_dp_service_ctx {
++	void *qp_data;
++
++	union {
++		/* Supposed to be used for symmetric crypto service */
++		struct {
++			cryptodev_dp_submit_single_job_t submit_single_job;
++			cryptodev_dp_sym_submit_vec_t submit_vec;
++			cryptodev_dp_sym_opeartion_done_t submit_done;
++			cryptodev_dp_sym_dequeue_t dequeue_opaque;
++			cryptodev_dp_sym_dequeue_single_job_t dequeue_single;
++			cryptodev_dp_sym_opeartion_done_t dequeue_done;
++		};
++	};
++
++	/* Driver specific service data */
++	uint8_t drv_service_data[];
++};
++
++/**
++ * Initialize one DP service, should be called before submitting job(s).
++ * Calling this function for the first time the user should unset is_update
++ * parameter and the driver will fill necessary operation data into ctx buffer.
++ * Only when rte_cryptodev_dp_submit_done() is called the data stored in
++ * the ctx buffer will not be effective.
++ *
++ * @param	dev_id		The device identifier.
++ * @param	qp_id		The index of the queue pair from which to
++ *				retrieve processed packets. The value must be
++ *				in the range [0, nb_queue_pair - 1] previously
++ *				supplied to rte_cryptodev_configure().
++ * @param	service_type	Type of the service requested.
++ * @param	sess_type	session type.
++ * @param	session_ctx	Session context data.
++ * @param	ctx		The data-path service context data.
++ * @param	is_update	Set 1 if ctx is pre-initialized but need
++ *				update to different service type or session,
++ *				but the rest driver data remains the same.
++ *				buffer will always be one.
++ * @return
++ *   - On success return 0.
++ *   - On failure return negative integer.
++ */
++__rte_experimental
++int
++rte_cryptodev_dp_configure_service(uint8_t dev_id, uint16_t qp_id,
++	enum rte_crypto_dp_service service_type,
++	enum rte_crypto_op_sess_type sess_type,
++	union rte_cryptodev_session_ctx session_ctx,
++	struct rte_crypto_dp_service_ctx *ctx, uint8_t is_update);
++
++/**
++ * Submit single job into device queue but the driver will not start
++ * processing until rte_cryptodev_dp_sym_submit_vec() is called.
++ *
++ * @param	ctx		The initialized data-path service context data.
++ * @param	data		The buffer vector.
++ * @param	n_data_vecs	Number of buffer vectors.
++ * @param	ofs		Start and stop offsets for auth and cipher
++ *				operations.
++ * @param	iv		IV data.
++ * @param	digest		Digest data.
++ * @param	aad		AAD data.
++ * @param	opaque		The array of opaque data for dequeue.
++ * @return
++ *   - On success return 0.
++ *   - On failure return negative integer.
++ */
++__rte_experimental
++static __rte_always_inline int
++rte_cryptodev_dp_submit_single_job(struct rte_crypto_dp_service_ctx *ctx,
++		struct rte_crypto_vec *data, uint16_t n_data_vecs,
++		union rte_crypto_sym_ofs ofs,
++		struct rte_crypto_data *iv, struct rte_crypto_data *digest,
++		struct rte_crypto_data *aad, void *opaque)
++{
++	return (*ctx->submit_single_job)(ctx->qp_data, ctx->drv_service_data,
++		data, n_data_vecs, ofs, iv, digest, aad, opaque);
++}
++
++/**
++ * Submit a data vector into device queue but the driver will not start
++ * processing until rte_cryptodev_dp_sym_submit_vec() is called.
++ *
++ * @param	ctx	The initialized data-path service context data.
++ * @param	vec	The array of job vectors.
++ * @param	ofs	Start and stop offsets for auth and cipher operations.
++ * @param	opaque	The array of opaque data for dequeue.
++ * @return
++ *   - The number of jobs successfully submitted.
++ */
++__rte_experimental
++static __rte_always_inline uint32_t
++rte_cryptodev_dp_sym_submit_vec(struct rte_crypto_dp_service_ctx *ctx,
++	struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs ofs,
++	void **opaque)
++{
++	return (*ctx->submit_vec)(ctx->qp_data, ctx->drv_service_data, vec,
++			ofs, opaque);
++}
++
++/**
++ * Kick the queue pair to start processing all submitted jobs from last
++ * rte_cryptodev_init_dp_service() call.
++ *
++ * @param	ctx	The initialized data-path service context data.
++ * @param	n		The total number of submitted jobs.
++ */
++__rte_experimental
++static __rte_always_inline void
++rte_cryptodev_dp_submit_done(struct rte_crypto_dp_service_ctx *ctx, uint32_t n)
++{
++	(*ctx->submit_done)(ctx->qp_data, ctx->drv_service_data, n);
++}
++
++/**
++ * Dequeue symmetric crypto processing of user provided data.
++ *
++ * @param	ctx			The initialized data-path service
++ *					context data.
++ * @param	get_dequeue_count	User provided callback function to
++ *					obtain dequeue count.
++ * @param	post_dequeue		User provided callback function to
++ *					post-process a dequeued operation.
++ * @param	out_opaque		Opaque pointer array to be retrieve from
++ *					device queue. In case of
++ *					*is_opaque_array* is set there should
++ *					be enough room to store all opaque data.
++ * @param	is_opaque_array		Set 1 if every dequeued job will be
++ *					written the opaque data into
++ *					*out_opaque* array.
++ * @param	n_success_jobs		Driver written value to specific the
++ *					total successful operations count.
++ *
++ * @return
++ *   - Returns number of dequeued packets.
++ */
++__rte_experimental
++static __rte_always_inline uint32_t
++rte_cryptodev_dp_sym_dequeue(struct rte_crypto_dp_service_ctx *ctx,
++	rte_cryptodev_get_dequeue_count_t get_dequeue_count,
++	rte_cryptodev_post_dequeue_t post_dequeue,
++	void **out_opaque, uint8_t is_opaque_array,
++	uint32_t *n_success_jobs)
++{
++	return (*ctx->dequeue_opaque)(ctx->qp_data, ctx->drv_service_data,
++		get_dequeue_count, post_dequeue, out_opaque, is_opaque_array,
++		n_success_jobs);
++}
++
++/**
++ * Dequeue Single symmetric crypto processing of user provided data.
++ *
++ * @param	ctx			The initialized data-path service
++ *					context data.
++ * @param	out_opaque		Opaque pointer to be retrieve from
++ *					device queue. The driver shall support
++ *					NULL input of this parameter.
++ *
++ * @return
++ *   - 1 if the job is dequeued and the operation is a success.
++ *   - 0 if the job is dequeued but the operation is failed.
++ *   - -1 if no job is dequeued.
++ */
++__rte_experimental
++static __rte_always_inline int
++rte_cryptodev_dp_sym_dequeue_single_job(struct rte_crypto_dp_service_ctx *ctx,
++		void **out_opaque)
++{
++	return (*ctx->dequeue_single)(ctx->qp_data, ctx->drv_service_data,
++		out_opaque);
++}
++
++/**
++ * Inform the queue pair dequeue jobs finished.
++ *
++ * @param	ctx	The initialized data-path service context data.
++ * @param	n		The total number of submitted jobs.
++ */
++__rte_experimental
++static __rte_always_inline void
++rte_cryptodev_dp_dequeue_done(struct rte_crypto_dp_service_ctx *ctx, uint32_t n)
++{
++	(*ctx->dequeue_done)(ctx->qp_data, ctx->drv_service_data, n);
++}
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/lib/librte_cryptodev/rte_cryptodev_pmd.h b/lib/librte_cryptodev/rte_cryptodev_pmd.h
+index 81975d72b..9904267d7 100644
+--- a/lib/librte_cryptodev/rte_cryptodev_pmd.h
++++ b/lib/librte_cryptodev/rte_cryptodev_pmd.h
+@@ -316,6 +316,30 @@ typedef uint32_t (*cryptodev_sym_cpu_crypto_process_t)
+ 	(struct rte_cryptodev *dev, struct rte_cryptodev_sym_session *sess,
+ 	union rte_crypto_sym_ofs ofs, struct rte_crypto_sym_vec *vec);
+ 
++typedef int (*cryptodev_dp_get_service_ctx_size_t)(
++	struct rte_cryptodev *dev);
++
++/**
++ * Typedef that the driver provided to update data-path service.
++ *
++ * @param	ctx		The data-path service context data.
++ * @param	service_type	Type of the service requested.
++ * @param	sess_type	session type.
++ * @param	session_ctx	Session context data.
++ * @param	is_update	Set 1 if ctx is pre-initialized but need
++ *				update to different service type or session,
++ *				but the rest driver data remains the same.
++ *				buffer will always be one.
++ * @return
++ *   - On success return 0.
++ *   - On failure return negative integer.
++ */
++typedef int (*cryptodev_dp_configure_service_t)(
++	struct rte_cryptodev *dev, uint16_t qp_id,
++	struct rte_crypto_dp_service_ctx *ctx,
++	enum rte_crypto_dp_service service_type,
++	enum rte_crypto_op_sess_type sess_type,
++	union rte_cryptodev_session_ctx session_ctx, uint8_t is_update);
+ 
+ /** Crypto device operations function pointer table */
+ struct rte_cryptodev_ops {
+@@ -348,8 +372,16 @@ struct rte_cryptodev_ops {
+ 	/**< Clear a Crypto sessions private data. */
+ 	cryptodev_asym_free_session_t asym_session_clear;
+ 	/**< Clear a Crypto sessions private data. */
+-	cryptodev_sym_cpu_crypto_process_t sym_cpu_process;
+-	/**< process input data synchronously (cpu-crypto). */
++	union {
++		cryptodev_sym_cpu_crypto_process_t sym_cpu_process;
++		/**< process input data synchronously (cpu-crypto). */
++		struct {
++			cryptodev_dp_get_service_ctx_size_t get_drv_ctx_size;
++			/**< Get data path service context data size. */
++			cryptodev_dp_configure_service_t configure_service;
++			/**< Initialize crypto service ctx data. */
++		};
++	};
+ };
+ 
+ 
+diff --git a/lib/librte_cryptodev/rte_cryptodev_version.map b/lib/librte_cryptodev/rte_cryptodev_version.map
+index 07a2d2f02..4ab134a7c 100644
+--- a/lib/librte_cryptodev/rte_cryptodev_version.map
++++ b/lib/librte_cryptodev/rte_cryptodev_version.map
+@@ -103,4 +103,14 @@ EXPERIMENTAL {
+ 	__rte_cryptodev_trace_asym_session_clear;
+ 	__rte_cryptodev_trace_dequeue_burst;
+ 	__rte_cryptodev_trace_enqueue_burst;
++	rte_cryptodev_get_qp_status;
++
++	rte_cryptodev_dp_configure_service;
++	rte_cryptodev_get_dp_service_ctx_data_size;
++	rte_cryptodev_dp_submit_single_job;
++	rte_cryptodev_dp_sym_submit_vec;
++	rte_cryptodev_dp_submit_done;
++	rte_cryptodev_dp_sym_dequeue;
++	rte_cryptodev_dp_sym_dequeue_single_job;
++	rte_cryptodev_dp_dequeue_done;
+ };
+-- 
+2.17.1
+
