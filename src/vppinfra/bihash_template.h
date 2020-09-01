@@ -368,9 +368,9 @@ BV (clib_bihash_get_bucket) (BVT (clib_bihash) * h, u64 hash)
   offset = offset * (sizeof (BVT (clib_bihash_bucket))
 		     + (BIHASH_KVP_PER_PAGE * sizeof (BVT (clib_bihash_kv))));
   return ((BVT (clib_bihash_bucket) *) (((u8 *) h->buckets) + offset));
-#endif
-
+#else
   return h->buckets + (hash & (h->nbuckets - 1));
+#endif
 }
 
 static inline int BV (clib_bihash_search_inline_with_hash)
