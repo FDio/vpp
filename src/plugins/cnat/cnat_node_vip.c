@@ -72,9 +72,9 @@ cnat_vip_inline (vlib_main_t * vm,
   vlib_combined_counter_main_t *cntm = &cnat_translation_counters;
   cnat_main_t *cm = &cnat_main;
   const cnat_translation_t *ct = NULL;
-  ip4_header_t *ip4;
+  ip4_header_t *ip4 = NULL;
   ip_protocol_t iproto;
-  ip6_header_t *ip6;
+  ip6_header_t *ip6 = NULL;
   udp_header_t *udp0;
   cnat_client_t *cc;
   u16 next0;
