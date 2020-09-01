@@ -71,88 +71,66 @@ vnet_crypto_async_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
   tr->op = op_id;
 }
 
-static_always_inline u32
-crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vnet_crypto_thread_t * ct,
-		      vnet_crypto_frame_dequeue_t * hdl,
-		      u32 n_cache, u32 * n_total)
-{
-  vnet_crypto_async_frame_t *cf = (hdl) (vm);
-
-  while (cf)
-    {
-      vec_validate (ct->buffer_indice, n_cache + cf->n_elts);
-      vec_validate (ct->nexts, n_cache + cf->n_elts);
-      clib_memcpy_fast (ct->buffer_indice + n_cache, cf->buffer_indices,
-			sizeof (u32) * cf->n_elts);
-      if (cf->state == VNET_CRYPTO_FRAME_STATE_SUCCESS)
-	{
-	  clib_memcpy_fast (ct->nexts + n_cache, cf->next_node_index,
-			    sizeof (u16) * cf->n_elts);
-	}
-      else
-	{
-	  u32 i;
-	  for (i = 0; i < cf->n_elts; i++)
-	    {
-	      if (cf->elts[i].status != VNET_CRYPTO_OP_STATUS_COMPLETED)
-		{
-		  ct->nexts[i + n_cache] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
-		  vlib_node_increment_counter (vm, node->node_index,
-					       cf->elts[i].status, 1);
-		}
-	      else
-		ct->nexts[i + n_cache] = cf->next_node_index[i];
-	    }
-	}
-      n_cache += cf->n_elts;
-      *n_total += cf->n_elts;
-      if (n_cache >= VLIB_FRAME_SIZE)
-	{
-	  vlib_buffer_enqueue_to_next (vm, node, ct->buffer_indice, ct->nexts,
-				       n_cache);
-	  n_cache = 0;
-	}
-
-      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-	{
-	  u32 i;
-
-	  for (i = 0; i < cf->n_elts; i++)
-	    {
-	      vlib_buffer_t *b = vlib_get_buffer (vm, cf->buffer_indices[i]);
-	      if (b->flags & VLIB_BUFFER_IS_TRACED)
-		vnet_crypto_async_add_trace (vm, node, b, cf->op,
-					     cf->elts[i].status);
-	    }
-	}
-      vnet_crypto_async_free_frame (vm, cf);
-      cf = (hdl) (vm);
-    }
-
-  return n_cache;
-}
-
 VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
 				     vlib_node_runtime_t * node,
 				     vlib_frame_t * frame)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_thread_t *ct = cm->threads + vm->thread_index;
-  u32 n_dispatched = 0, n_cache = 0;
-  u32 index;
+  vnet_crypto_async_frame_t *cf;
+  u32 n_cache = 0;
+  u32 opt;
 
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (index, cm->async_active_ids, ({
-    n_cache = crypto_dequeue_frame (vm, node, ct, cm->dequeue_handlers[index],
-				    n_cache, &n_dispatched);
-  }));
+  clib_bitmap_foreach (opt, cm->async_active_ids, ({
+      while (n_cache < VLIB_FRAME_SIZE && (cf = cm->dequeue_handlers[opt] (vm)))
+	{
+	  clib_memcpy_fast (ct->buffer_indice + n_cache, cf->buffer_indices,
+			sizeof (u32) * cf->n_elts);
+	  if (cf->state == VNET_CRYPTO_FRAME_STATE_SUCCESS)
+	    {
+	      clib_memcpy_fast (ct->nexts + n_cache, cf->next_node_index,
+				sizeof (u16) * cf->n_elts);
+	    }
+	  else
+	    {
+	      u32 i;
+	      for (i = 0; i < cf->n_elts; i++)
+		{
+		  if (cf->elts[i].status != VNET_CRYPTO_OP_STATUS_COMPLETED)
+		    {
+		      ct->nexts[i + n_cache] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
+		      vlib_node_increment_counter (vm, node->node_index,
+						   cf->elts[i].status, 1);
+		    }
+		  else
+		    ct->nexts[i + n_cache] = cf->next_node_index[i];
+		}
+	    }
+
+	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+	    {
+	      u32 i;
+
+	      for (i = 0; i < cf->n_elts; i++)
+		{
+		  vlib_buffer_t *b = vlib_get_buffer (vm, cf->buffer_indices[i]);
+		  if (b->flags & VLIB_BUFFER_IS_TRACED)
+		    vnet_crypto_async_add_trace (vm, node, b, cf->op,
+						 cf->elts[i].status);
+		}
+	    }
+	  n_cache += cf->n_elts;
+	  vnet_crypto_async_free_frame (vm, cf);
+	}
+    }));
   /* *INDENT-ON* */
+
   if (n_cache)
     vlib_buffer_enqueue_to_next (vm, node, ct->buffer_indice, ct->nexts,
 				 n_cache);
 
-  return n_dispatched;
+  return n_cache;
 }
 
 /* *INDENT-OFF* */
