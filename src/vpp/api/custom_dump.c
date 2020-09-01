@@ -643,6 +643,35 @@ __clib_unused
 }
 
 __clib_unused
+  static void *vl_api_virtio_pci_create_v2_t_print
+  (vl_api_virtio_pci_create_v2_t * mp, void *handle)
+{
+  u8 *s;
+  u8 null_mac[6];
+
+  clib_memset (null_mac, 0, sizeof (null_mac));
+
+  s = format (0, "SCRIPT: virtio_pci_create_v2 ");
+  s = format (s, "pci_addr %U ", format_vlib_pci_addr, (mp->pci_addr));
+  if (memcmp (mp->mac_address, null_mac, 6))
+    s = format (s, "mac-address %U ",
+		format_ethernet_address, mp->mac_address);
+  if (mp->features)
+    s = format (s, "features 0x%llx ", clib_net_to_host_u64 (mp->features));
+  if (mp->virtio_flags & VIRTIO_API_FLAG_GSO)
+    s = format (s, "gso-enabled ");
+  if (mp->virtio_flags & VIRTIO_API_FLAG_CSUM_OFFLOAD)
+    s = format (s, "checksum_offload_enabled ");
+  if ((mp->virtio_flags) & VIRTIO_API_FLAG_GRO_COALESCE)
+    s = format (s, "gro-coalesce-enabled ");
+  if ((mp->virtio_flags) & VIRTIO_API_FLAG_PACKED)
+    s = format (s, "packed ");
+  if ((mp->virtio_flags) & VIRTIO_API_FLAG_IN_ORDER)
+    s = format (s, "in-order ");
+  FINISH;
+}
+
+__clib_unused
   static void *vl_api_virtio_pci_delete_t_print
   (vl_api_virtio_pci_delete_t * mp, void *handle)
 {
