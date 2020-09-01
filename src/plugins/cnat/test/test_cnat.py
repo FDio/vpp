@@ -460,7 +460,7 @@ class TestCNatSourceNAT(VppTestCase):
             i.admin_down()
         super(TestCNatSourceNAT, self).tearDown()
 
-    def cnat_create_translation(self, srcNatAddr, interface, isV6=False):
+    def cnat_set_snat_addresse(self, srcNatAddr, interface, isV6=False):
         t1 = VppCNATSourceNat(self, srcNatAddr)
         t1.add_vpp_config()
         cnat_arc_name = "ip6-unicast" if isV6 else "ip4-unicast"
@@ -487,7 +487,7 @@ class TestCNatSourceNAT(VppTestCase):
         self.pg1.configure_ipv6_neighbors()
 
         self.vapi.cli("test cnat scanner on")
-        t1 = self.cnat_create_translation(srcNatAddr, self.pg0)
+        t1 = self.cnat_set_snat_addresse(srcNatAddr, self.pg0, isV6)
 
         for nbr, remote_host in enumerate(self.pg1.remote_hosts):
             # from pods to outside network
@@ -582,10 +582,10 @@ class TestCNatSourceNAT(VppTestCase):
                     rx[ip_class].src,
                     srcNatAddr)
 
-    # def test_cnat6_sourcenat(self):
-    #     # """ CNat Source Nat ipv6 """
-    #     self.cnat_test_sourcenat(self.pg2.remote_hosts[0].ip6, TCP, True)
-    #     self.cnat_test_sourcenat(self.pg2.remote_hosts[0].ip6, UDP, True)
+    def test_cnat6_sourcenat(self):
+        # """ CNat Source Nat ipv6 """
+        self.cnat_test_sourcenat(self.pg2.remote_hosts[0].ip6, TCP, True)
+        self.cnat_test_sourcenat(self.pg2.remote_hosts[0].ip6, UDP, True)
 
     def test_cnat4_sourcenat(self):
         # """ CNat Source Nat ipv4 """
