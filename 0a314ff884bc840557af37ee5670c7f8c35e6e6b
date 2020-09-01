@@ -16,6 +16,108 @@
       "revId": "0a314ff884bc840557af37ee5670c7f8c35e6e6b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5edaa64c_3bbb30b0",
+        "filename": "src/plugins/wg/wg_input.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-01T18:02:10Z",
+      "side": 1,
+      "message": "switch statements are inefficient in fastpath, suggest if...else with PREDICT_TRUE for most common case (MESSAGE_DATA first).",
+      "revId": "0a314ff884bc840557af37ee5670c7f8c35e6e6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ee0f2e69_ed89e563",
+        "filename": "src/plugins/wg/wg_input.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 277,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-01T18:02:10Z",
+      "side": 1,
+      "message": "You should avoid function calls in dataplane node for perf reasonds. consider using inline functions instead.",
+      "revId": "0a314ff884bc840557af37ee5670c7f8c35e6e6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "20543f2a_b2a5e933",
+        "filename": "src/plugins/wg/wg_input.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 278,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-01T18:02:10Z",
+      "side": 1,
+      "message": "consider using 1 entry cache, if result of lookup for packet 1 is X, there is good probability that packet 2 will be similar one and lookup result will be the same.",
+      "revId": "0a314ff884bc840557af37ee5670c7f8c35e6e6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "410aea29_d1dfe962",
+        "filename": "src/plugins/wg/wg_input.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-01T18:02:10Z",
+      "side": 1,
+      "message": "pool_elt_at_index always gives you a non-null pointer so this check is not needed (there is ASSERT in debug image if something goes wrong here (i.e. pool elt is not valid))",
+      "revId": "0a314ff884bc840557af37ee5670c7f8c35e6e6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b902142b_ced8dc2d",
+        "filename": "src/plugins/wg/wg_input.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 292,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-01T18:02:10Z",
+      "side": 1,
+      "message": "this is really bad idea, it is expensive operation and you should not do it per packet. If you need temporary storage area, just allocate per-thread tmp storage area on startup.",
+      "revId": "0a314ff884bc840557af37ee5670c7f8c35e6e6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "00e08033_6cc62b96",
+        "filename": "src/plugins/wg/wg_input.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-01T18:02:10Z",
+      "side": 1,
+      "message": "You probably want to use clib_memcpy_fast here....",
+      "revId": "0a314ff884bc840557af37ee5670c7f8c35e6e6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
