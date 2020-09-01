@@ -198,7 +198,6 @@ cnat_timestamp_inc_refcnt (u32 index)
 always_inline void
 cnat_timestamp_update (u32 index, f64 t)
 {
-  return;
   clib_rwlock_reader_lock (&cnat_main.ts_lock);
   cnat_timestamp_t *ts = pool_elt_at_index (cnat_timestamps, index);
   ts->last_seen = t;
