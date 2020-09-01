@@ -673,7 +673,8 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif, void **bar)
   if ((error = vlib_pci_read_config_u8 (vm, h, PCI_CAPABILITY_LIST, &pos)))
     {
       virtio_log_error (vif, "error in reading capabilty list position");
-      clib_error_return (error, "error in reading capabilty list position");
+      return clib_error_return (error,
+				"error in reading capabilty list position");
     }
   while (pos)
     {
@@ -683,8 +684,9 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif, void **bar)
 	{
 	  virtio_log_error (vif, "%s [%2x]",
 			    "error in reading the capability at", pos);
-	  clib_error_return (error,
-			     "error in reading the capability at [%2x]", pos);
+	  return clib_error_return (error,
+				    "error in reading the capability at [%2x]",
+				    pos);
 	}
 
       if (cap.cap_vndr == PCI_CAP_ID_MSIX)
@@ -694,9 +696,9 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif, void **bar)
 	  if ((error =
 	       vlib_pci_read_write_config (vm, h, VLIB_READ, pos + 2, &flags,
 					   sizeof (flags))))
-	    clib_error_return (error,
-			       "error in reading the capability at [%2x]",
-			       pos + 2);
+	    return clib_error_return (error,
+				      "error in reading the capability at [%2x]",
+				      pos + 2);
 
 	  table_size = flags & table_size_mask;
 	  virtio_log_debug (vif, "flags:0x%x %s 0x%x", flags,
@@ -805,14 +807,14 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
     {
       args->rv = VNET_API_ERROR_UNSUPPORTED;
       virtio_log_error (vif, "Device is not supported");
-      clib_error_return (error, "Device is not supported");
+      return clib_error_return (error, "Device is not supported");
     }
 
   if (virtio_pci_reset_device (vm, vif) < 0)
     {
       args->rv = VNET_API_ERROR_INIT_FAILED;
       virtio_log_error (vif, "Failed to reset the device");
-      clib_error_return (error, "Failed to reset the device");
+      return clib_error_return (error, "Failed to reset the device");
     }
   /*
    * read device features and negotiate (user) requested features
@@ -842,7 +844,8 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
       args->rv = VNET_API_ERROR_UNSUPPORTED;
       virtio_log_error (vif,
 			"error encountered: Device doesn't support requested features");
-      clib_error_return (error, "Device doesn't support requested features");
+      return clib_error_return (error,
+				"Device doesn't support requested features");
     }
   vif->status = status;
 
