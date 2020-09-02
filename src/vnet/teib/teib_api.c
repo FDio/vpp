@@ -39,19 +39,26 @@ static void
 vl_api_teib_entry_add_del_t_handler (vl_api_teib_entry_add_del_t * mp)
 {
   vl_api_teib_entry_add_del_reply_t *rmp;
-  ip46_address_t peer, nh;
+  ip46_address_t nh;
+  ip_address_t peer;
   int rv;
 
   VALIDATE_SW_IF_INDEX ((&mp->entry));
 
-  ip_address_decode (&mp->entry.peer, &peer);
+  ip_address_decode2 (&mp->entry.peer, &peer);
   ip_address_decode (&mp->entry.nh, &nh);
 
   if (mp->is_add)
-    rv = teib_entry_add (ntohl (mp->entry.sw_if_index), &peer,
-			 ntohl (mp->entry.nh_table_id), &nh);
+    rv = teib_entry_add (ntohl (mp->entry.sw_if_index),
+			 ip_address_family_to_fib_proto (ip_addr_version
+							 (&peer)),
+			 &ip_addr_46 (&peer), ntohl (mp->entry.nh_table_id),
+			 &nh);
   else
-    rv = teib_entry_del (ntohl (mp->entry.sw_if_index), &peer);
+    rv = teib_entry_del (ntohl (mp->entry.sw_if_index),
+			 ip_address_family_to_fib_proto (ip_addr_version
+							 (&peer)),
+			 &ip_addr_46 (&peer));
 
   BAD_SW_IF_INDEX_LABEL;
 

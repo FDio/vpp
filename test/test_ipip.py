@@ -45,7 +45,7 @@ class TestIPIP(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(TestIPIP, cls).setUpClass()
-        cls.create_pg_interfaces(range(2))
+        cls.create_pg_interfaces(range(3))
         cls.interfaces = list(cls.pg_interfaces)
 
     @classmethod
@@ -54,8 +54,14 @@ class TestIPIP(VppTestCase):
 
     def setUp(self):
         super(TestIPIP, self).setUp()
+        self.table = VppIpTable(self, 1, register=False)
+        self.table.add_vpp_config()
+
         for i in self.interfaces:
             i.admin_up()
+
+        self.pg2.set_table_ip4(self.table.table_id)
+        for i in self.interfaces:
             i.config_ip4()
             i.config_ip6()
             i.disable_ipv6_ra()
@@ -68,7 +74,10 @@ class TestIPIP(VppTestCase):
             for i in self.pg_interfaces:
                 i.unconfig_ip4()
                 i.unconfig_ip6()
+                i.set_table_ip4(0)
                 i.admin_down()
+
+        self.table.remove_vpp_config()
 
     def validate(self, rx, expected):
         self.assertEqual(rx, expected.__class__(expected))
@@ -475,7 +484,7 @@ class TestIPIP(VppTestCase):
     def test_mipip4(self):
         """ p2mp IPv4 tunnel Tests """
 
-        for itf in self.pg_interfaces:
+        for itf in self.pg_interfaces[:2]:
             #
             # one underlay nh for each overlay/tunnel peer
             #
@@ -579,8 +588,44 @@ class TestIPIP(VppTestCase):
                     self.assertEqual(rx[IP].dst, itf._remote_hosts[ii].ip4)
                 rx = self.send_and_expect(self.pg0, tx_i, self.pg0)
 
+                #
+                # we can also send to the peer's address
+                #
+                inner = (IP(dst=teib.peer, src="5.5.5.5") /
+                         UDP(sport=1234, dport=1234) /
+                         Raw(b'0x44' * 100))
+                tx_e = [(Ether(dst=self.pg0.local_mac,
+                               src=self.pg0.remote_mac) /
+                         inner) for x in range(63)]
+
+                rxs = self.send_and_expect(self.pg0, tx_e, itf)
+
+            #
+            # with all of the peers in place, swap the ip-table of
+            # the ipip interface
+            #
+            table = VppIpTable(self, 2)
+            table.add_vpp_config()
+
+            ipip_if.unconfig_ip4()
+            ipip_if.set_table_ip4(self.table.table_id)
+            ipip_if.config_ip4()
+
+            #
+            # we should still be able to reach the peers from the new table
+            #
+            inner = (IP(dst=teib.peer, src="5.5.5.5") /
+                     UDP(sport=1234, dport=1234) /
+                     Raw(b'0x44' * 100))
+            tx_e = [(Ether(dst=self.pg0.local_mac,
+                           src=self.pg0.remote_mac) /
+                     inner) for x in range(63)]
+
+            rxs = self.send_and_expect(self.pg2, tx_e, itf)
+
             ipip_if.admin_down()
             ipip_if.unconfig_ip4()
+            ipip_if.set_table_ip4(0)
 
 
 class TestIPIP6(VppTestCase):

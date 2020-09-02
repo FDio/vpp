@@ -718,7 +718,9 @@ ipsec_tun_protect_update (u32 sw_if_index,
 	  ip_address_to_46 (nh, &peer);
 
 	  ipsec_tun_protect_update_from_teib
-	    (itp, teib_entry_find (sw_if_index, &peer));
+	    (itp, teib_entry_find (sw_if_index,
+				   ip_address_family_to_fib_proto
+				   (ip_addr_version (nh)), &peer));
 	}
 
       if (is_l2)
