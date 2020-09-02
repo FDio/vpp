@@ -144,11 +144,7 @@ vrrp_vr_transition_intf (vrrp_vr_t * vr, vrrp_vr_state_t new_state)
   u8 is_ipv6 = vrrp_vr_is_ipv6 (vr);
   u32 *vr_index;
   int n_master_accept = 0;
-
-  /* only need to do something if entering or leaving master state */
-  if ((vr->runtime.state != VRRP_VR_STATE_MASTER) &&
-      (new_state != VRRP_VR_STATE_MASTER))
-    return;
+  int n_started = 0;
 
   if (is_ipv6)
     {
@@ -167,46 +163,53 @@ vrrp_vr_transition_intf (vrrp_vr_t * vr, vrrp_vr_state_t new_state)
 
   intf = vrrp_intf_get (vr->config.sw_if_index);
 
-  if (new_state == VRRP_VR_STATE_MASTER)
+  /* Check other VRs on this intf to see if features need to be toggled */
+  vec_foreach (vr_index, intf->vr_indices[is_ipv6])
+  {
+    vrrp_vr_t *intf_vr = vrrp_vr_lookup_index (*vr_index);
+
+    if (intf_vr == vr)
+      continue;
+
+    if (intf_vr->runtime.state == VRRP_VR_STATE_INIT)
+      continue;
+
+    n_started++;
+
+    if ((intf_vr->runtime.state == VRRP_VR_STATE_MASTER) &&
+	vrrp_vr_accept_mode_enabled (intf_vr))
+      n_master_accept++;
+  }
+
+  /* If entering/leaving init state, start/stop ARP or ND feature if no other
+   * VRs are active on the interface.
+   */
+  if (((vr->runtime.state == VRRP_VR_STATE_INIT) ||
+       (new_state == VRRP_VR_STATE_INIT)) && (n_started == 0))
+    vnet_feature_enable_disable (arc_name, node_name,
+				 vr->config.sw_if_index,
+				 (new_state != VRRP_VR_STATE_INIT), NULL, 0);
+
+  /* Special housekeeping when entering/leaving master mode */
+  if ((vr->runtime.state == VRRP_VR_STATE_MASTER) ||
+      (new_state == VRRP_VR_STATE_MASTER))
     {
-      intf->n_master_vrs[is_ipv6]++;
-      if (intf->n_master_vrs[is_ipv6] == 1)
-	vnet_feature_enable_disable (arc_name, node_name,
-				     vr->config.sw_if_index, 1, NULL, 0);
-    }
-  else
-    {
-      if (intf->n_master_vrs[is_ipv6] == 1)
-	vnet_feature_enable_disable (arc_name, node_name,
-				     vr->config.sw_if_index, 0, NULL, 0);
-      /* If the count were already 0, leave it at 0 */
-      if (intf->n_master_vrs[is_ipv6])
+      /* Maintain count of master state VRs on interface */
+      if (new_state == VRRP_VR_STATE_MASTER)
+	intf->n_master_vrs[is_ipv6]++;
+      else if (intf->n_master_vrs[is_ipv6] > 0)
 	intf->n_master_vrs[is_ipv6]--;
-    }
 
-  /* accept mode enabled, count the other master VRs w/ accept mode on intf */
-  if (vrrp_vr_accept_mode_enabled (vr))
-    {
-      vec_foreach (vr_index, intf->vr_indices[is_ipv6])
-      {
-	vrrp_vr_t *intf_vr = vrrp_vr_lookup_index (*vr_index);
-
-	if (intf_vr == vr)
-	  continue;
-
-	if (vrrp_vr_accept_mode_enabled (intf_vr) &&
-	    (intf_vr->runtime.state == VRRP_VR_STATE_MASTER))
-	  n_master_accept++;
-      }
-
-      /* If no others, enable or disable the feature based on new state */
-      if (!n_master_accept)
+      /* If accept mode is enabled and no other master on intf has accept
+       * mode enabled, enable/disable feature node to avoid spurious drops by
+       * spoofing check.
+       */
+      if (vrrp_vr_accept_mode_enabled (vr) && !n_master_accept)
 	vnet_feature_enable_disable (mc_arc_name, mc_node_name,
 				     vr->config.sw_if_index,
 				     (new_state == VRRP_VR_STATE_MASTER),
 				     NULL, 0);
     }
-
 }
 
 /* If accept mode enabled, add/remove VR addresses from interface */
