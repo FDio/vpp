@@ -89,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "4b7833ee_2d7b3df2",
+        "filename": "src/plugins/wireguard/wireguard_send.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2020-09-02T17:45:21Z",
+      "side": 1,
+      "message": "I uploaded new patchset where is use tunnel associated table. I don\u0027t know why, but if i create tunnel through memif interfaces it doesn\u0027t work.",
+      "parentUuid": "bc4932bd_a567c92a",
+      "revId": "4abd5b2fac783d64113379d5515979862bd914ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c27634c7_184545e4",
         "filename": "src/plugins/wireguard/wireguard_send.c",
         "patchSetId": 13
