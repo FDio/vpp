@@ -93,8 +93,12 @@ p2p_ethernet_add_del (vlib_main_t * vm, u32 parent_if_index,
 	  clib_memcpy (template.p2p.client_mac, client_mac,
 		       sizeof (template.p2p.client_mac));
 
-	  if (vnet_create_sw_interface (vnm, &template, &p2pe_sw_if_index))
-	    return VNET_API_ERROR_SUBIF_CREATE_FAILED;
+	  if ((error =
+	       vnet_create_sw_interface (vnm, &template, &p2pe_sw_if_index)))
+	    {
+	      clib_error_report (error);
+	      return VNET_API_ERROR_SUBIF_CREATE_FAILED;
+	    }
 
 	  /* Allocate counters for this interface. */
 	  {

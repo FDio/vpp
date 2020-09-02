@@ -1050,6 +1050,7 @@ vnet_create_sub_interface (u32 sw_if_index, u32 id,
   vnet_hw_interface_t *hi;
   u64 sup_and_sub_key = ((u64) (sw_if_index) << 32) | (u64) id;
   vnet_sw_interface_t template;
+  clib_error_t *error;
   uword *p;
   u64 *kp;
 
@@ -1070,8 +1071,11 @@ vnet_create_sub_interface (u32 sw_if_index, u32 id,
   template.sub.eth.outer_vlan_id = outer_vlan_id;
   template.sub.eth.inner_vlan_id = inner_vlan_id;
 
-  if (vnet_create_sw_interface (vnm, &template, sub_sw_if_index))
-    return (VNET_API_ERROR_UNSPECIFIED);
+  if ((error = vnet_create_sw_interface (vnm, &template, sub_sw_if_index)))
+    {
+      clib_error_report (error);
+      return (VNET_API_ERROR_UNSPECIFIED);
+    }
 
   kp = clib_mem_alloc (sizeof (*kp));
   *kp = sup_and_sub_key;
