@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2842594c_af283d40",
+        "filename": "src/vnet/devices/virtio/virtio.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-02T08:01:33Z",
+      "side": 1,
+      "message": "do we really want to expose this to users in API? I understand the motivation on cli for testing/debug but I am less inclined to expose it through API",
+      "revId": "b162c6357537fbcfa4c31f8dc60b84a22e479d2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3e82cee5_063194d5",
+        "filename": "src/vnet/devices/virtio/virtio.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-02T08:01:33Z",
+      "side": 1,
+      "message": "the create_virtio_pci vs virtio_pci_create is confusing, can we use eg. virtio_pci_create_v2 instead?",
+      "revId": "b162c6357537fbcfa4c31f8dc60b84a22e479d2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
