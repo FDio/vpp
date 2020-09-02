@@ -217,16 +217,20 @@ unserialize_vnet_interface_state (serialize_main_t * m, va_list * va)
 
   vec_unserialize (m, &sts, unserialize_vec_vnet_sw_hw_interface_state);
   vec_foreach (st, sts)
-    vnet_sw_interface_set_flags_helper (vnm, st->sw_hw_if_index, st->flags,
-					/* no distribute */ 0);
+  {
+    _clib_error_report (vnet_sw_interface_set_flags_helper
+			(vnm, st->sw_hw_if_index, st->flags,
+			 /* no distribute */ 0));
+  }
   vec_free (sts);
 
   vec_unserialize (m, &sts, unserialize_vec_vnet_sw_hw_interface_state);
   vec_foreach (st, sts)
   {
-    vnet_hw_interface_set_flags_helper
-      (vnm, st->sw_hw_if_index, vnet_sw_interface_flags_to_hw (st->flags),
-       /* no distribute */ 0);
+    _clib_error_report (vnet_hw_interface_set_flags_helper
+			(vnm, st->sw_hw_if_index,
+			 vnet_sw_interface_flags_to_hw (st->flags),
+			 /* no distribute */ 0));
   }
   vec_free (sts);
 }
@@ -313,7 +317,8 @@ vnet_hw_interface_set_flags_helper (vnet_main_t * vnm, u32 hw_if_index,
 
   /* Call hardware interface add/del callbacks. */
   if (is_create)
-    call_hw_interface_add_del_callbacks (vnm, hw_if_index, is_create);
+    _clib_error_report (call_hw_interface_add_del_callbacks
+			(vnm, hw_if_index, is_create));
 
   /* Already in the desired state? */
   if (!is_create && (hi->flags & mask) == flags)
@@ -480,10 +485,10 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 	  /* Admin down implies link down. */
 	  if (!(flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
 	      && (hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP))
-	    vnet_hw_interface_set_flags_helper (vnm, si->hw_if_index,
-						hi->flags &
-						~VNET_HW_INTERFACE_FLAG_LINK_UP,
-						helper_flags);
+	    error = vnet_hw_interface_set_flags_helper (vnm, si->hw_if_index,
+							hi->flags &
+							~VNET_HW_INTERFACE_FLAG_LINK_UP,
+							helper_flags);
 	}
     }
 
@@ -520,7 +525,8 @@ vnet_sw_interface_admin_up (vnet_main_t * vnm, u32 sw_if_index)
   if (!(flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
     {
       flags |= VNET_SW_INTERFACE_FLAG_ADMIN_UP;
-      vnet_sw_interface_set_flags (vnm, sw_if_index, flags);
+      _clib_error_report (vnet_sw_interface_set_flags
+			  (vnm, sw_if_index, flags));
     }
 }
 
@@ -532,7 +538,8 @@ vnet_sw_interface_admin_down (vnet_main_t * vnm, u32 sw_if_index)
   if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
     {
       flags &= ~(VNET_SW_INTERFACE_FLAG_ADMIN_UP);
-      vnet_sw_interface_set_flags (vnm, sw_if_index, flags);
+      _clib_error_report (vnet_sw_interface_set_flags
+			  (vnm, sw_if_index, flags));
     }
 }
 
@@ -652,9 +659,11 @@ vnet_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
 
   /* Bring down interface in case it is up. */
   if (sw->flags != 0)
-    vnet_sw_interface_set_flags (vnm, sw_if_index, /* flags */ 0);
+    _clib_error_report (vnet_sw_interface_set_flags
+			(vnm, sw_if_index, /* flags */ 0));
 
-  call_sw_interface_add_del_callbacks (vnm, sw_if_index, /* is_create */ 0);
+  _clib_error_report (call_sw_interface_add_del_callbacks
+		      (vnm, sw_if_index, /* is_create */ 0));
 
   pool_put (im->sw_interfaces, sw);
 }
@@ -970,10 +979,12 @@ vnet_register_interface (vnet_main_t * vnm,
 
 no_output_nodes:
   /* Call all up/down callbacks with zero flags when interface is created. */
-  vnet_sw_interface_set_flags_helper (vnm, hw->sw_if_index, /* flags */ 0,
-				      VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE);
-  vnet_hw_interface_set_flags_helper (vnm, hw_index, /* flags */ 0,
-				      VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE);
+  _clib_error_report (vnet_sw_interface_set_flags_helper
+		      (vnm, hw->sw_if_index, /* flags */ 0,
+		       VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE));
+  _clib_error_report (vnet_hw_interface_set_flags_helper
+		      (vnm, hw_index, /* flags */ 0,
+		       VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE));
   vec_free (tx_node_name);
   vec_free (output_node_name);
 
@@ -990,10 +1001,12 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
 							  hw->dev_class_index);
   /* If it is up, mark it down. */
   if (hw->flags != 0)
-    vnet_hw_interface_set_flags (vnm, hw_if_index, /* flags */ 0);
+    _clib_error_report (vnet_hw_interface_set_flags
+			(vnm, hw_if_index, /* flags */ 0));
 
   /* Call delete callbacks. */
-  call_hw_interface_add_del_callbacks (vnm, hw_if_index, /* is_create */ 0);
+  _clib_error_report (call_hw_interface_add_del_callbacks
+		      (vnm, hw_if_index, /* is_create */ 0));
 
   /* Delete any sub-interfaces. */
   {
