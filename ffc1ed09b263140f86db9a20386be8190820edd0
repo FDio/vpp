@@ -16,6 +16,24 @@
       "revId": "ffc1ed09b263140f86db9a20386be8190820edd0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f1c16164_03ab0855",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2020-09-02T09:37:42Z",
+      "side": 1,
+      "message": "rpm name \u0027devtoolset-9-libasan-devel\u0027 will be changed to \u0027devtoolset-9-libasan\u0027 by \u0027cut -d -f1,2,3\u0027, so have to add 4th field for \u0027cut\u0027.",
+      "parentUuid": "ef015083_47215f7e",
+      "revId": "ffc1ed09b263140f86db9a20386be8190820edd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
