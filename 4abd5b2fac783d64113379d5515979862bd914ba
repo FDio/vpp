@@ -71,6 +71,24 @@
     },
     {
       "key": {
+        "uuid": "bc4932bd_a567c92a",
+        "filename": "src/plugins/wireguard/wireguard_send.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-09-02T15:03:39Z",
+      "side": 1,
+      "message": "you should specify it when creating the peer.\nit would be rather odd though if different peers on the same interface used different tables. an ipip tunnel has an associated table, maybe you can use that one.",
+      "parentUuid": "90ef2713_b5e95d80",
+      "revId": "4abd5b2fac783d64113379d5515979862bd914ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c27634c7_184545e4",
         "filename": "src/plugins/wireguard/wireguard_send.c",
         "patchSetId": 13
@@ -100,6 +118,24 @@
       "side": 1,
       "message": "In my implementation there is no wg_send node. If it is needed to send a packet (like handshake or keepalive) i enqueue it directly to lookup_node. How should I bump an error counter? lookup_node\u0027s counter?",
       "parentUuid": "c27634c7_184545e4",
+      "revId": "4abd5b2fac783d64113379d5515979862bd914ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "20ac6d94_46e6669c",
+        "filename": "src/plugins/wireguard/wireguard_send.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-09-02T15:03:39Z",
+      "side": 1,
+      "message": "you call those send functions in wg_input and wg_tun_output node, bump error counters there.",
+      "parentUuid": "51bea2b1_928f6dd5",
       "revId": "4abd5b2fac783d64113379d5515979862bd914ba",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
