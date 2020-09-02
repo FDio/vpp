@@ -334,11 +334,18 @@ vrrp_arp_nd_next (vlib_buffer_t * b, u32 * next_index, u32 * vr_index,
   if (*vr_index == ~0)
     return;
 
-  /* only reply if the VR is in the master state */
   vr = vrrp_vr_lookup_index (*vr_index);
   if (!vr || vr->runtime.state != VRRP_VR_STATE_MASTER)
-    return;
+    {
+      /* RFC 5798 - section 6.4.2 - Backup "MUST NOT respond" to ARP/ND.
+       * So we must drop the request rather than allowing it to continue
+       * on the feature arc.
+       */
+      *next_index = VRRP_ARP_INPUT_NEXT_DROP;
+      return;
+    }
 
+  /* RFC 5798 section 6.4.3: Master "MUST respond" to ARP/ND. */
   eth = ethernet_buffer_get_header (b);
   rewrite = ethernet_build_rewrite (vnm, sw_if_index, link_type,
 				    eth->src_address);
