@@ -3092,11 +3092,6 @@ static const char *policy_strs[] = {
   "PROTECT",
 };
 
-static const char *proto_strs[] = {
-  "ESP",
-  "AH",
-};
-
 static const char *algo_strs[] = {
   "NONE",
   "AES_CBC_128",
@@ -3202,11 +3197,13 @@ static void *vl_api_ipsec_sad_entry_add_del_t_print
 
   ep = (vl_api_ipsec_sad_entry_t *) & mp->entry;
 
-  s = format (0, "SCRIPT: ipsec_sad_entry_add_del is_add ", mp->is_add);
+  s = format (0, "SCRIPT: ipsec_sad_entry_add_del is_add %d ", mp->is_add);
 
   tmp = (ep->protocol);
-  if (tmp < ARRAY_LEN (proto_strs))
-    protocol_str = proto_strs[tmp];
+  if (tmp == IPSEC_API_PROTO_ESP)
+    protocol_str = "ESP";
+  else if (tmp == IPSEC_API_PROTO_AH)
+    protocol_str = "AH";
 
   tmp = (ep->crypto_algorithm);
   if (tmp < ARRAY_LEN (algo_strs))
