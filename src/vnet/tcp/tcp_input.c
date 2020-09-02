@@ -164,7 +164,7 @@ tcp_handle_rst (tcp_connection_t * tc)
       tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_SYN_SENT:
-      session_stream_connect_notify (&tc->connection, 1 /* fail */ );
+      session_stream_connect_notify (&tc->connection, SESSION_E_REFUSED);
       tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_ESTABLISHED:
