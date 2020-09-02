@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a31ece1b_41adf842",
+        "filename": "src/plugins/wireguard/wireguard.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-09-02T11:10:02Z",
+      "side": 1,
+      "message": "don\u0027t delete the tunnel, it was not created by you.",
+      "revId": "4abd5b2fac783d64113379d5515979862bd914ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5c94bfe9_806f43d4",
+        "filename": "src/plugins/wireguard/wireguard_send.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-09-02T11:10:02Z",
+      "side": 1,
+      "message": "there are more efficient ways of doing this, but we can defer that for a later patch.",
+      "revId": "4abd5b2fac783d64113379d5515979862bd914ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "673a8533_e18ddb7f",
+        "filename": "src/plugins/wireguard/wireguard_send.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-09-02T11:10:02Z",
+      "side": 1,
+      "message": "you can (and so should) calculate and cache both the fib_index and sw_if_index when the peer is created.",
+      "revId": "4abd5b2fac783d64113379d5515979862bd914ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c27634c7_184545e4",
+        "filename": "src/plugins/wireguard/wireguard_send.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-09-02T11:10:02Z",
+      "side": 1,
+      "message": "no CLI output from the data-plane. bump an error counter instead. please change this before we merge.",
+      "revId": "4abd5b2fac783d64113379d5515979862bd914ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
