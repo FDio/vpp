@@ -53,6 +53,24 @@
     },
     {
       "key": {
+        "uuid": "90ef2713_b5e95d80",
+        "filename": "src/plugins/wireguard/wireguard_send.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2020-09-02T13:54:44Z",
+      "side": 1,
+      "message": "Is it normal, that table_id will 0? Or user should to specify it while creating peer?",
+      "parentUuid": "673a8533_e18ddb7f",
+      "revId": "4abd5b2fac783d64113379d5515979862bd914ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c27634c7_184545e4",
         "filename": "src/plugins/wireguard/wireguard_send.c",
         "patchSetId": 13
@@ -64,6 +82,24 @@
       "writtenOn": "2020-09-02T11:10:02Z",
       "side": 1,
       "message": "no CLI output from the data-plane. bump an error counter instead. please change this before we merge.",
+      "revId": "4abd5b2fac783d64113379d5515979862bd914ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "51bea2b1_928f6dd5",
+        "filename": "src/plugins/wireguard/wireguard_send.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2020-09-02T13:54:44Z",
+      "side": 1,
+      "message": "In my implementation there is no wg_send node. If it is needed to send a packet (like handshake or keepalive) i enqueue it directly to lookup_node. How should I bump an error counter? lookup_node\u0027s counter?",
+      "parentUuid": "c27634c7_184545e4",
       "revId": "4abd5b2fac783d64113379d5515979862bd914ba",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
