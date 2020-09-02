@@ -69,6 +69,24 @@
       "revId": "ac78b57088227d3563d4278aaf2301d3cd06a949",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b0095916_46859747",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 774,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-02T16:30:39Z",
+      "side": 1,
+      "message": "I didn\u0027t ment to remove show command, but actually, we can simply add single line in \"show hardware-\" output. I will prefer that it is not handled by format_device. It can be just part of show hardware common output....",
+      "parentUuid": "6fe664d1_1ae64804",
+      "revId": "ac78b57088227d3563d4278aaf2301d3cd06a949",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
