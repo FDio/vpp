@@ -793,8 +793,8 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
     return VNET_API_ERROR_INVALID_INTERFACE;
 
   /* bring down the interface */
-  vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
-  vnet_sw_interface_set_flags (vnm, vif->sw_if_index, 0);
+  clib_error_report (vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0));
+  clib_error_report (vnet_sw_interface_set_flags (vnm, vif->sw_if_index, 0));
   for (i = 0; i < vif->num_rxqs; i++)
     vnet_hw_interface_unassign_rx_thread (vnm, vif->hw_if_index, i);
 

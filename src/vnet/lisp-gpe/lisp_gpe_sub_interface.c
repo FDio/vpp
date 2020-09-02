@@ -123,6 +123,7 @@ lisp_gpe_sub_interface_find_or_create_and_lock (const ip_address_t * lrloc,
 						u32 overlay_table_id, u32 vni)
 {
   lisp_gpe_sub_interface_t *l3s;
+  clib_error_t *error;
   index_t l3si;
 
   l3si = lisp_gpe_sub_interface_db_find (lrloc, vni);
@@ -145,10 +146,13 @@ lisp_gpe_sub_interface_find_or_create_and_lock (const ip_address_t * lrloc,
 	.sub.id = lisp_gpe_sub_interface_id++,
       };
 
-      if (NULL != vnet_create_sw_interface (vnet_get_main (),
-					    &sub_itf_template,
-					    &sub_sw_if_index))
-	return (INDEX_INVALID);
+      if (NULL != (error = vnet_create_sw_interface (vnet_get_main (),
+						     &sub_itf_template,
+						     &sub_sw_if_index)))
+	{
+	  clib_error_report (error);
+	  return (INDEX_INVALID);
+	}
 
       pool_get (lisp_gpe_sub_interface_pool, l3s);
       clib_memset (l3s, 0, sizeof (*l3s));
