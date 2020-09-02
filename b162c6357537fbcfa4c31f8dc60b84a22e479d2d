@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "7926920d_447d22a2",
+        "filename": "src/vnet/devices/virtio/virtio.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-02T09:19:41Z",
+      "side": 1,
+      "message": "Yes, user can choose set of features they want to enable/disable. CSIT is testing by enabling/disabling different features using API.",
+      "parentUuid": "2842594c_af283d40",
+      "revId": "b162c6357537fbcfa4c31f8dc60b84a22e479d2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "3e82cee5_063194d5",
         "filename": "src/vnet/devices/virtio/virtio.api",
         "patchSetId": 1
@@ -33,6 +51,24 @@
       "revId": "b162c6357537fbcfa4c31f8dc60b84a22e479d2d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "75a15dd8_be9194a4",
+        "filename": "src/vnet/devices/virtio/virtio.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-02T09:19:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3e82cee5_063194d5",
+      "revId": "b162c6357537fbcfa4c31f8dc60b84a22e479d2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
