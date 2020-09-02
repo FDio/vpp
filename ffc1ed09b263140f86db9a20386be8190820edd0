@@ -34,6 +34,24 @@
       "revId": "ffc1ed09b263140f86db9a20386be8190820edd0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5fc566fa_bfdb78af",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-02T10:02:39Z",
+      "side": 1,
+      "message": "ok thanks, hard to decipher the bash magic :)",
+      "parentUuid": "f1c16164_03ab0855",
+      "revId": "ffc1ed09b263140f86db9a20386be8190820edd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
