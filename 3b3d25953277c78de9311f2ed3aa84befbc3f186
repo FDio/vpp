@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "57a0f06a_3c9d918d",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-02T12:43:30Z",
+      "side": 1,
+      "message": "clib_prefetch_load (vlib_buffer_get_current (b[4])); would be shorter....",
+      "revId": "3b3d25953277c78de9311f2ed3aa84befbc3f186",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "233f4a0a_efd20db0",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-02T12:43:30Z",
+      "side": 1,
+      "message": "Why don\u0027t you prefetch here?",
+      "revId": "3b3d25953277c78de9311f2ed3aa84befbc3f186",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "33d6d41b_fd693304",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 531,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-02T12:43:30Z",
+      "side": 1,
+      "message": "This should be submitted as different patch.",
+      "revId": "3b3d25953277c78de9311f2ed3aa84befbc3f186",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fa55bc62_bbb79570",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-02T12:43:30Z",
+      "side": 1,
+      "message": "function is called u32x8_gather..... but it returns u32x8.\nPlease rename it to\n\n#define u32x8_gather_vec(vindex, base_addr, scale) \\\n  (u32x8) _mm512_i64gather_epi32 ((__m512i) vindex, base_addr, scale)",
+      "revId": "3b3d25953277c78de9311f2ed3aa84befbc3f186",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5c650e26_c2f73e0d",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-02T12:43:30Z",
+      "side": 1,
+      "message": "defining function for each scale value doesn\u0027t make sense. I understand that compiler complains because it is IMM, but you can use macro instead like at few other places in this file....",
+      "revId": "3b3d25953277c78de9311f2ed3aa84befbc3f186",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7c940c3c_fde505f2",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-02T12:43:30Z",
+      "side": 1,
+      "message": "u32x6_mask_is_not_equal",
+      "revId": "3b3d25953277c78de9311f2ed3aa84befbc3f186",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
