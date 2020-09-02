@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4b993c4e_4717e6a8",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 658,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-02T12:12:48Z",
+      "side": 1,
+      "message": "uword * -\u003e clib_bitmap_t *",
+      "revId": "ac78b57088227d3563d4278aaf2301d3cd06a949",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c1c3952d_f1859935",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 774,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-02T12:12:48Z",
+      "side": 1,
+      "message": "Can we simply store \"clib_bitmap_t *rss_queues;\" in vnet_hw_interface_t and avoid having this callback?",
+      "revId": "ac78b57088227d3563d4278aaf2301d3cd06a949",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
