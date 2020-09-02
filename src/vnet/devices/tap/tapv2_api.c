@@ -126,6 +126,25 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
       ap->host_mtu_set = 1;
     }
 
+  STATIC_ASSERT (((int) TAP_API_FLAG_GSO == (int) TAP_FLAG_GSO),
+		 "tap gso api flag mismatch");
+  STATIC_ASSERT (((int) TAP_API_FLAG_CSUM_OFFLOAD ==
+		  (int) TAP_FLAG_CSUM_OFFLOAD),
+		 "tap checksum offload api flag mismatch");
+  STATIC_ASSERT (((int) TAP_API_FLAG_PERSIST == (int) TAP_FLAG_PERSIST),
+		 "tap persist api flag mismatch");
+  STATIC_ASSERT (((int) TAP_API_FLAG_ATTACH == (int) TAP_FLAG_ATTACH),
+		 "tap attach api flag mismatch");
+  STATIC_ASSERT (((int) TAP_API_FLAG_TUN == (int) TAP_FLAG_TUN),
+		 "tap tun api flag mismatch");
+  STATIC_ASSERT (((int) TAP_API_FLAG_GRO_COALESCE ==
+		  (int) TAP_FLAG_GRO_COALESCE),
+		 "tap gro coalesce api flag mismatch");
+  STATIC_ASSERT (((int) TAP_API_FLAG_PACKED == (int) TAP_FLAG_PACKED),
+		 "tap packed api flag mismatch");
+  STATIC_ASSERT (((int) TAP_API_FLAG_IN_ORDER ==
+		  (int) TAP_FLAG_IN_ORDER), "tap in-order api flag mismatch");
+
   ap->tap_flags = ntohl (mp->tap_flags);
 
   tap_create_if (vm, ap);
