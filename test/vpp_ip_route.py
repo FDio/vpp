@@ -188,16 +188,19 @@ class VppIpTable(VppObject):
     def __init__(self,
                  test,
                  table_id,
-                 is_ip6=0):
+                 is_ip6=0,
+                 register=True):
         self._test = test
         self.table_id = table_id
         self.is_ip6 = is_ip6
+        self.register = register
 
     def add_vpp_config(self):
         self._test.vapi.ip_table_add_del(is_add=1,
                                          table={'is_ip6': self.is_ip6,
                                                 'table_id': self.table_id})
-        self._test.registry.register(self, self._test.logger)
+        if self.register:
+            self._test.registry.register(self, self._test.logger)
         return self
 
     def remove_vpp_config(self):
