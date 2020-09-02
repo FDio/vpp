@@ -19,6 +19,57 @@
     },
     {
       "key": {
+        "uuid": "667dd99e_ce11b073",
+        "filename": "src/plugins/wg/test/test_wg.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-09-02T07:13:13Z",
+      "side": 1,
+      "message": "we don\u0027t use the CLI in unit tests. this would be better written:\n        t \u003d VppIpIpTunInterface(self, self.pg0,\n                                       self.pg0.remote_ip4,\n                                       self.pg2.remote_ip4)\n        t.add_vpp_config()\n        t.admin_up()\n        t.config_ip4()",
+      "revId": "0a314ff884bc840557af37ee5670c7f8c35e6e6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d97da4a4_c8f7cac7",
+        "filename": "src/plugins/wg/test/test_wg.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-09-02T07:13:13Z",
+      "side": 1,
+      "message": "does this API exist only for testing purposes? A control plane should know how many peers it has added.\nif it\u0027s just for testing you can count with\n  peers_count \u003d len(self.vapi.wg_peers_dump())",
+      "revId": "0a314ff884bc840557af37ee5670c7f8c35e6e6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "de505f64_02adc9fe",
+        "filename": "src/plugins/wg/test/test_wg.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-09-02T07:13:13Z",
+      "side": 1,
+      "message": "there are no tests here for any packets, signalling nor data. you really should add some otherwise this code is subject to breakage without you knowing and you\u0027ll be running your manual tests daily for years 😊\ni see scapy has wireguard:\n  https://scapy.readthedocs.io/en/latest/api/scapy.contrib.wireguard.html#\nwe can bump the scapy version we use to make it available.",
+      "revId": "0a314ff884bc840557af37ee5670c7f8c35e6e6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "5edaa64c_3bbb30b0",
         "filename": "src/plugins/wg/wg_input.c",
         "patchSetId": 10
