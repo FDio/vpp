@@ -773,6 +773,7 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
 	return VNET_API_ERROR_INVALID_VALUE;
 
       application_api_table_del (app_wrk->api_client_index);
+      session_api_del_client (app_wrk->api_client_index);
       app_worker_free (app_wrk);
       app_worker_map_free (app, wrk_map);
       if (application_n_workers (app) == 0)
@@ -845,16 +846,20 @@ vnet_application_attach (vnet_app_attach_args_t * a)
   if (app)
     return VNET_API_ERROR_APP_ALREADY_ATTACHED;
 
-  if (a->api_client_index != APP_INVALID_INDEX)
+  /* Socket api sets the name and validates namespace prior to attach */
+  if (!a->use_sock_api)
     {
-      app_name = app_name_from_api_index (a->api_client_index);
-      a->name = app_name;
-    }
+      if (a->api_client_index != APP_INVALID_INDEX)
+	{
+	  app_name = app_name_from_api_index (a->api_client_index);
+	  a->name = app_name;
+	}
 
-  secret = a->options[APP_OPTIONS_NAMESPACE_SECRET];
-  if ((rv = app_validate_namespace (a->namespace_id, secret, &app_ns_index)))
-    return rv;
-  a->options[APP_OPTIONS_NAMESPACE] = app_ns_index;
+      secret = a->options[APP_OPTIONS_NAMESPACE_SECRET];
+      if ((rv = app_validate_namespace (a->namespace_id, secret, &app_ns_index)))
+	return rv;
+      a->options[APP_OPTIONS_NAMESPACE] = app_ns_index;
+    }
 
   if ((rv = application_alloc_and_init ((app_init_args_t *) a)))
     return rv;
