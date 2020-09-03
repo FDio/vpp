@@ -63,6 +63,7 @@ uint8_t **stat_segment_string_vector (uint8_t ** string_vector,
 				      const char *string);
 int stat_segment_vec_len (void *vec);
 void stat_segment_vec_free (void *vec);
+void stat_segment_set_timeout_nsec (uint64_t timeout);
 uint32_t *stat_segment_ls_r (uint8_t ** patterns, stat_client_main_t * sm);
 uint32_t *stat_segment_ls (uint8_t ** pattern);
 stat_segment_data_t *stat_segment_dump_r (uint32_t * stats,
