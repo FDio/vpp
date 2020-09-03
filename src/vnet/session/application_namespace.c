@@ -105,6 +105,9 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
       app_ns->ip6_fib_index =
 	fib_table_find (FIB_PROTOCOL_IP6, a->ip6_fib_id);
       session_lookup_set_tables_appns (app_ns);
+
+      /* Add socket for namespace */
+      session_api_add_ns_socket (app_ns);
     }
   else
     {
