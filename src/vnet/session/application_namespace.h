@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vppinfra/socket.h>
 #include <vnet/vnet.h>
 #include <vnet/session/session_table.h>
 
@@ -48,6 +49,16 @@ typedef struct _app_namespace
    * Application namespace id
    */
   u8 *ns_id;
+
+  /**
+   * Name of socket applications can use to attach to session layer
+   */
+  u8 *sock_name;
+
+  /**
+   * Pool of active application sockets
+   */
+  clib_socket_t *app_sockets;
 } app_namespace_t;
 
 typedef struct _vnet_app_namespace_add_del_args
@@ -79,6 +90,71 @@ app_namespace_get_default (void)
 {
   return app_namespace_get (0);
 }
+
+typedef struct app_ns_api_handle_
+{
+  union
+  {
+    struct
+    {
+      /** app_ns index for files and app_index for sockets */
+      u32 l_index;
+      /** socket index for files and clib file index for sockets */
+      u32 u_index;
+    };
+    uword as_uword;
+  };
+#define aah_app_ns_index l_index
+#define aah_app_wrk_index l_index
+#define aah_sock_index u_index
+#define aah_file_index u_index
+} __attribute__ ((aligned (sizeof (uword)))) app_ns_api_handle_t;
+
+STATIC_ASSERT (sizeof (app_ns_api_handle_t) == sizeof (uword), "not uword");
+
+static inline clib_socket_t *
+appns_sapi_alloc_socket (app_namespace_t * app_ns)
+{
+  clib_socket_t *cs;
+  pool_get_zero (app_ns->app_sockets, cs);
+  return cs;
+}
+
+static inline clib_socket_t *
+appns_sapi_get_socket (app_namespace_t * app_ns, u32 sock_index)
+{
+  if (pool_is_free_index (app_ns->app_sockets, sock_index))
+    return 0;
+  return pool_elt_at_index (app_ns->app_sockets, sock_index);
+}
+
+static inline void
+appns_sapi_free_socket (app_namespace_t * app_ns, clib_socket_t * cs)
+{
+  pool_put (app_ns->app_sockets, cs);
+}
+
+static inline u32
+appns_sapi_socket_index (app_namespace_t * app_ns, clib_socket_t * cs)
+{
+  return (cs - app_ns->app_sockets);
+}
+
+static inline u32
+appns_sapi_socket_handle (app_namespace_t * app_ns, clib_socket_t * cs)
+{
+  return app_namespace_index (app_ns) << 16 | (cs - app_ns->app_sockets);
+}
+
+static inline u32
+appns_sapi_handle_sock_index (u32 sapi_sock_handle)
+{
+  return sapi_sock_handle & 0xffff;
+}
+
+int appns_sapi_add_ns_socket (app_namespace_t * app_ns);
+u8 appns_sapi_enabled (void);
+void appns_sapi_enable (void);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_NAMESPACE_H_ */
 

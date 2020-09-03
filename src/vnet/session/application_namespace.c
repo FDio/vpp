@@ -14,9 +14,12 @@
  */
 
 #include <vnet/session/application_namespace.h>
+#include <vnet/session/application.h>
 #include <vnet/session/session_table.h>
 #include <vnet/session/session.h>
 #include <vnet/fib/fib_table.h>
+#include <vppinfra/file.h>
+#include <vlib/unix/unix.h>
 
 /**
  * Hash table of application namespaces by app ns ids
@@ -27,6 +30,8 @@ uword *app_namespace_lookup_table;
  * Pool of application namespaces
  */
 static app_namespace_t *app_namespace_pool;
+
+static u8 app_sapi_enabled;
 
 app_namespace_t *
 app_namespace_get (u32 index)
@@ -105,6 +110,10 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
       app_ns->ip6_fib_index =
 	fib_table_find (FIB_PROTOCOL_IP6, a->ip6_fib_id);
       session_lookup_set_tables_appns (app_ns);
+
+      /* Add socket for namespace */
+      if (app_sapi_enabled)
+	appns_sapi_add_ns_socket (app_ns);
     }
   else
     {
@@ -149,6 +158,18 @@ session_table_t *
 app_namespace_get_local_table (app_namespace_t * app_ns)
 {
   return session_table_get (app_ns->local_table_index);
+}
+
+void
+appns_sapi_enable (void)
+{
+  app_sapi_enabled = 1;
+}
+
+u8
+appns_sapi_enabled (void)
+{
+  return app_sapi_enabled;
 }
 
 void
@@ -253,14 +274,52 @@ format_app_namespace (u8 * s, va_list * args)
   return s;
 }
 
+static void
+app_namespace_show_api (vlib_main_t * vm, app_namespace_t * app_ns)
+{
+  app_ns_api_handle_t *handle;
+  app_worker_t *app_wrk;
+  clib_socket_t *cs;
+  clib_file_t *cf;
+
+  if (!app_sapi_enabled)
+    {
+      vlib_cli_output (vm, "app socket api not enabled!");
+      return;
+    }
+
+  vlib_cli_output (vm, "socket: %v\n", app_ns->sock_name);
+
+  if (!pool_elts (app_ns->app_sockets))
+    return;
+
+  vlib_cli_output (vm, "%12s%12s%5s", "app index", "wrk index", "fd");
+
+
+  /* *INDENT-OFF* */
+  pool_foreach (cs, app_ns->app_sockets, ({
+    handle = (app_ns_api_handle_t *) &cs->private_data;
+    cf = clib_file_get (&file_main, handle->aah_file_index);
+    if (handle->aah_app_wrk_index == APP_INVALID_INDEX)
+      {
+	vlib_cli_output (vm, "%12d%12d%5u", -1, -1, cf->file_descriptor);
+	continue;
+      }
+    app_wrk = app_worker_get (handle->aah_app_wrk_index);
+    vlib_cli_output (vm, "%12d%12d%5u", app_wrk->app_index,
+                     app_wrk->wrk_map_index, cf->file_descriptor);
+  }));
+  /* *INDENT-ON* */
+}
+
 static clib_error_t *
 show_app_ns_fn (vlib_main_t * vm, unformat_input_t * main_input,
 		vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
+  u8 *ns_id, do_table = 0, had_input = 1, do_api = 0;
   app_namespace_t *app_ns;
   session_table_t *st;
-  u8 *ns_id, do_table = 0, had_input = 1;
 
   session_cli_return_if_not_enabled ();
 
@@ -274,6 +333,8 @@ show_app_ns_fn (vlib_main_t * vm, unformat_input_t * main_input,
     {
       if (unformat (line_input, "table %_%v%_", &ns_id))
 	do_table = 1;
+      else if (unformat (line_input, "api-clients"))
+	do_api = 1;
       else
 	{
 	  vlib_cli_output (vm, "unknown input [%U]", format_unformat_error,
@@ -282,6 +343,17 @@ show_app_ns_fn (vlib_main_t * vm, unformat_input_t * main_input,
 	}
     }
 
+  if (do_api)
+    {
+      if (!do_table)
+	{
+	  vlib_cli_output (vm, "must specify a table for api");
+	  goto done;
+	}
+      app_ns = app_namespace_get_from_id (ns_id);
+      app_namespace_show_api (vm, app_ns);
+      goto done;
+    }
   if (do_table)
     {
       app_ns = app_namespace_get_from_id (ns_id);
@@ -321,7 +393,7 @@ done:
 VLIB_CLI_COMMAND (show_app_ns_command, static) =
 {
   .path = "show app ns",
-  .short_help = "show app ns",
+  .short_help = "show app ns [table <id> [api-clients]]",
   .function = show_app_ns_fn,
 };
 /* *INDENT-ON* */
