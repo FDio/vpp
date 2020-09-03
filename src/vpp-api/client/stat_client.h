@@ -140,8 +140,9 @@ stat_segment_access_start (stat_segment_access_t * sa,
  * set maximum number of nano seconds to wait for in_progress state
  */
 static inline void
-stat_segment_set_timeout_nsec (stat_client_main_t * sm, uint64_t timeout)
+stat_segment_set_timeout_nsec (uint64_t timeout)
 {
+  stat_client_main_t *sm = &stat_client_main;
   sm->timeout = timeout;
 }
 
