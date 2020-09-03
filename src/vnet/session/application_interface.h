@@ -81,6 +81,7 @@ typedef struct session_cb_vft_
   _(u8 *, namespace_id)				\
   _(session_cb_vft_t *, session_cb_vft)		\
   _(u32, app_index)				\
+  _(u8, use_sock_api)				\
 
 typedef struct _vnet_app_attach_args_t
 {
@@ -773,6 +774,74 @@ format_session_error (u8 * s, va_list * args)
     s = format (s, "invalid session err %u", -error);
   return s;
 }
+
+/*
+ * Socket API messages
+ */
+
+typedef enum app_sapi_msg_type
+{
+  APP_SAPI_MSG_TYPE_NONE,
+  APP_SAPI_MSG_TYPE_ATTACH,
+  APP_SAPI_MSG_TYPE_ATTACH_REPLY,
+  APP_SAPI_MSG_TYPE_ADD_DEL_WORKER,
+  APP_SAPI_MSG_TYPE_ADD_DEL_WORKER_REPLY,
+  APP_SAPI_MSG_TYPE_SEND_FDS,
+} __clib_packed app_sapi_msg_type_e;
+
+typedef struct app_sapi_attach_msg_
+{
+  u8 name[64];
+  u64 options[18];
+} __clib_packed app_sapi_attach_msg_t;
+
+STATIC_ASSERT (sizeof (u64) * APP_OPTIONS_N_OPTIONS <=
+	       sizeof (((app_sapi_attach_msg_t *) 0)->options),
+	       "Out of options, fix message definition");
+
+typedef struct app_sapi_attach_reply_msg_
+{
+  i32 retval;
+  u32 app_index;
+  u64 app_mq;
+  u64 vpp_ctrl_mq;
+  u64 segment_handle;
+  u32 api_client_handle;
+  u8 vpp_ctrl_mq_thread;
+  u8 n_fds;
+  u8 fd_flags;
+} __clib_packed app_sapi_attach_reply_msg_t;
+
+typedef struct app_sapi_worker_add_del_msg_
+{
+  u32 app_index;
+  u32 wrk_index;
+  u8 is_add;
+} __clib_packed app_sapi_worker_add_del_msg_t;
+
+typedef struct app_sapi_worker_add_del_reply_msg_
+{
+  i32 retval;
+  u32 wrk_index;
+  u64 app_event_queue_address;
+  u64 segment_handle;
+  u8 n_fds;
+  u8 fd_flags;
+  u8 is_add;
+} __clib_packed app_sapi_worker_add_del_reply_msg_t;
+
+typedef struct app_sapi_msg_
+{
+  app_sapi_msg_type_e type;
+  union
+  {
+    app_sapi_attach_msg_t attach;
+    app_sapi_attach_reply_msg_t attach_reply;
+    app_sapi_worker_add_del_msg_t worker_add_del;
+    app_sapi_worker_add_del_reply_msg_t worker_add_del_reply;
+  };
+} __clib_packed app_sapi_msg_t;
+
 #endif /* __included_uri_h__ */
 
 /*
