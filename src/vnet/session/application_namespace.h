@@ -19,6 +19,11 @@
 #ifndef SRC_VNET_SESSION_APPLICATION_NAMESPACE_H_
 #define SRC_VNET_SESSION_APPLICATION_NAMESPACE_H_
 
+typedef struct app_ns_registration_
+{
+
+} app_ns_registration_t;
+
 typedef struct _app_namespace
 {
   /**
@@ -48,6 +53,8 @@ typedef struct _app_namespace
    * Application namespace id
    */
   u8 *ns_id;
+
+  clib_socket_t *app_sockets;
 } app_namespace_t;
 
 typedef struct _vnet_app_namespace_add_del_args
@@ -80,6 +87,42 @@ app_namespace_get_default (void)
   return app_namespace_get (0);
 }
 
+typedef struct app_ns_api_handle {
+  /** lower index: app_ns index for files and app_index for sockets */
+  u32 l_index;
+  /** upper index: socket index for files and clib file index for sockets */
+  u32 u_index;
+#define aah_app_ns_index l_index
+#define aah_app_index l_index
+#define aah_sock_index u_index
+#define aah_file_index u_index
+} __clib_packed app_ns_api_handle_t ;
+
+static inline u32
+app_ns_api_socket_handle_ns_index (u64 app_ns_api_handle)
+{
+  return app_ns_api_handle >> 32;
+}
+
+static inline u64
+app_namespace_api_socket_handle (app_namespace_t * app_ns, clib_socket_t *cs)
+{
+  return app_namespace_index (app_ns) << 32 | (cs - app_ns->app_sockets);
+}
+
+static inline clib_socket_t *
+app_namespace_get_api_socket (app_namespace_t *app_ns, u32 sock_index)
+{
+  if (pool_if_free_index (app_ns->app_sockets, sock_index))
+    return 0;
+  return pool_elt_at_index (app_ns->app_sockets, sock_index);
+}
+
+static inline u32
+app_socket_api_client_index (app_namespace_t *app_ns, clib_socket_t *cs)
+{
+  return app_namespace_index (app_ns) << 16 | (cs - app_ns->app_sockets);
+}
 #endif /* SRC_VNET_SESSION_APPLICATION_NAMESPACE_H_ */
 
 /*

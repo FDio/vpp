@@ -13,18 +13,57 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vlibmemory/api.h>
-#include <vnet/session/application.h>
-#include <vnet/session/application_interface.h>
-#include <vnet/session/application_local.h>
-#include <vnet/session/session_rules_table.h>
-#include <vnet/session/session_table.h>
-#include <vnet/session/session.h>
+#include <secure/_string.h>
+#include <sys/_endian.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
-#include <vnet/ip/ip_types_api.h>
-
-#include <vnet/vnet_msg_enum.h>
+#include "../../svm/fifo_segment.h"
+#include "../../svm/fifo_types.h"
+#include "../../svm/message_queue.h"
+#include "../../svm/queue.h"
+#include "../../svm/ssvm.h"
+#include "../../svm/svm_fifo.h"
+#include "../../vlib/global_funcs.h"
+#include "../../vlib/main.h"
+#include "../../vlib/threads.h"
+#include "../../vlib/unix/unix.h"
+#include "../../vlibapi/api.h"
+#include "../../vlibapi/api_common.h"
+#include "../../vlibapi/api_types.h"
+#include "../../vlibmemory/api.h"
+#include "../../vlibmemory/memory_api.h"
+#include "../../vlibmemory/memory_shared.h"
+#include "../../vppinfra/byte_order.h"
+#include "../../vppinfra/clib_error.h"
+#include "../../vppinfra/error.h"
+#include "../../vppinfra/error_bootstrap.h"
+#include "../../vppinfra/file.h"
+#include "../../vppinfra/format.h"
+#include "../../vppinfra/memcpy_sse3.h"
+#include "../../vppinfra/pool.h"
+#include "../../vppinfra/socket.h"
+#include "../../vppinfra/string.h"
+#include "../../vppinfra/types.h"
+#include "../../vppinfra/vec.h"
+#include "../../vppinfra/vec_bootstrap.h"
+#include "../api_errno.h"
+#include "../fib/fib_types.h"
+#include "../ip/ip.h"
+#include "../ip/ip_types.h"
+#include "../ip/ip_types_api.h"
+#include "application.h"
+#include "application_interface.h"
+#include "application_local.h"
+#include "application_namespace.h"
+#include "mma_template.h"
+#include "segment_manager.h"
+#include "session.h"
+#include "session_lookup.h"
+#include "session_rules_table.h"
+#include "session_table.h"
+#include "session_types.h"
+#include "transport_types.h"
 
 #define vl_typedefs		/* define message structures */
 #include <vnet/vnet_all_api_h.h>
@@ -1207,6 +1246,337 @@ session_api_hookup (vlib_main_t * vm)
 }
 
 VLIB_API_INIT_FUNCTION (session_api_hookup);
+
+void
+session_api_attach_handler (app_namespace_t *app_ns, clib_socket_t *cs,
+                            app_api_attach_msg_t *mp)
+{
+  int rv = 0, fds[SESSION_N_FD_TYPE], n_fds = 0;
+  ssvm_private_t *evt_q_segment;
+  vnet_app_attach_args_t _a, *a = &_a;
+  app_api_attach_reply_msg_t rmp = {0};
+  u8 fd_flags = 0, ctrl_thread;
+  svm_msg_q_t *ctrl_mq;
+
+  /* Make sure name is null terminated */
+  mp->name[63] = 0;
+
+  clib_memset (a, 0, sizeof (*a));
+  a->api_client_index = app_socket_api_client_index (app_ns, cs);
+  a->name = format (0, "%s", (char *) mp->name);
+  a->options = mp->options;
+  a->session_cb_vft = &session_mq_cb_vft;
+  a->use_sock_api = 1;
+
+  // FIX we're now passing namespace index not ID
+//  a->namespace_id = app_ns->ns_id;
+  a->options[APP_OPTIONS_NAMESPACE] = app_namespace_index (app_ns);
+
+  if ((rv = vnet_application_attach (a)))
+    {
+      clib_warning ("attach returned: %d", rv);
+      goto done;
+    }
+
+  /* Send event queues segment */
+  if ((evt_q_segment = session_main_get_evt_q_segment ()))
+    {
+      fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
+      fds[n_fds] = evt_q_segment->fd;
+      n_fds += 1;
+    }
+  /* Send fifo segment fd if needed */
+  if (ssvm_type (a->segment) == SSVM_SEGMENT_MEMFD)
+    {
+      fd_flags |= SESSION_FD_F_MEMFD_SEGMENT;
+      fds[n_fds] = a->segment->fd;
+      n_fds += 1;
+    }
+  if (a->options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
+    {
+      fd_flags |= SESSION_FD_F_MQ_EVENTFD;
+      fds[n_fds] = svm_msg_q_get_producer_eventfd (a->app_evt_q);
+      n_fds += 1;
+    }
+
+done:
+
+  rmp.retval = rv;
+  if (!rv)
+    {
+      ctrl_thread = vlib_num_workers () ? 1 : 0;
+      ctrl_mq = session_main_get_vpp_event_queue (ctrl_thread);
+      rmp->app_index = a->app_index;
+      rmp->app_mq = pointer_to_uword (a->app_evt_q);
+      rmp->vpp_ctrl_mq = pointer_to_uword (ctrl_mq);
+      rmp->vpp_ctrl_mq_thread = ctrl_thread;
+      rmp->n_fds = n_fds;
+      rmp->fd_flags = fd_flags;
+      /* No segment name and size since we only support memfds
+       * in this configuration */
+      rmp->segment_handle = a->segment_handle;
+
+      /* Update app index for socket */
+      ((app_ns_api_handle_t) cs->private_data).aah_app_index = a->app_index;
+    }
+
+  clib_socket_sendmsg (cs, rmp, sizeof (rmp), fds, n_fds);
+  vec_free (a->name);
+}
+
+void
+session_api_add_del_worker_handler (app_namespace_t *app_ns, clib_socket_t *cs,
+                                    app_api_add_del_worker_msg_t *mp)
+{
+  int rv = 0, fds[SESSION_N_FD_TYPE], n_fds = 0;
+  app_api_add_del_worker_reply_msg_t *rmp;
+  application_t *app;
+  u8 fd_flags = 0;
+
+  app = application_get_if_valid (mp->app_index);
+  if (!app)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+
+  vnet_app_worker_add_del_args_t args = {
+    .app_index = app->app_index,
+    .wrk_map_index = mp->wrk_index,
+    .api_client_index = app_socket_api_client_index (app_ns, cs),
+    .is_add = mp->is_add
+  };
+  rv = vnet_app_worker_add_del (&args);
+  if (rv)
+    {
+      clib_warning ("app worker add/del returned: %d", rv);
+      goto done;
+    }
+
+  if (!mp->is_add)
+    goto done;
+
+  /* Send fifo segment fd if needed */
+  if (ssvm_type (args.segment) == SSVM_SEGMENT_MEMFD)
+    {
+      fd_flags |= SESSION_FD_F_MEMFD_SEGMENT;
+      fds[n_fds] = args.segment->fd;
+      n_fds += 1;
+    }
+  if (application_segment_manager_properties (app)->use_mq_eventfd)
+    {
+      fd_flags |= SESSION_FD_F_MQ_EVENTFD;
+      fds[n_fds] = svm_msg_q_get_producer_eventfd (args.evt_q);
+      n_fds += 1;
+    }
+
+done:
+
+  rmp->retval = rv;
+  rmp->is_add = mp->is_add;
+  rmp->wrk_index = args.wrk_map_index;
+  rmp->segment_handle = args.segment_handle;
+  if (!rv && mp->is_add)
+    {
+      /* No segment name and size. This supports only memfds */
+      rmp->app_event_queue_address = pointer_to_uword (args.evt_q);
+      rmp->n_fds = n_fds;
+      rmp->fd_flags = fd_flags;
+
+      /* Update app index for socket */
+      ((app_ns_api_handle_t) cs->private_data).aah_app_index = app->app_index;
+    }
+
+  clib_socket_sendmsg (cs, rmp, sizeof (rmp), fds, n_fds);
+}
+
+clib_error_t *
+session_api_sock_read_ready (clib_file_t * cf)
+{
+  app_ns_api_handle_t handle = cf->private_data;
+  app_api_msg_t msg = { 0 };
+  app_namespace_t *app_ns;
+  clib_socket_t *cs;
+  u32 app_index;
+  clib_error_t *err = 0;
+  int fd = -1;
+
+  app_ns = app_namespace_get (handle.aah_app_ns_index);
+  cs = app_namespace_get_api_socket (app_ns, handle.aah_sock_index);
+  if (!cs)
+    {
+      err = clib_error_return (0, "no socket %u", handle.aah_sock_index);
+      goto error;
+    }
+
+  handle = cs->private_data;
+
+  /* Only the attach/add worker messages should be received here */
+  if (handle.aah_app_index != APP_INVALID_INDEX)
+    {
+      err = clib_error_return (0, "unexpected app %u message",
+                               handle.aah_app_index);
+      goto error;
+    }
+
+  err = clib_socket_recvmsg (cs, &msg, sizeof (msg), &fd, 1);
+  if (err)
+    goto error;
+
+  switch (msg.type)
+  {
+    case APP_API_MSG_TYPE_ATTACH:
+      session_api_attach_handler (app_ns, cs, &msg.attach);
+      break;
+    case APP_API_MSG_TYPE_ADD_DEL_WORKER:
+      session_api_add_del_worker_handler (app_ns, cs, &msg.attach);
+      break;
+    default:
+      err = clib_error_return (0, "app %u unknown message type: %u",
+                               handle.aah_app_index, msg.type);
+      break;
+  }
+
+error:
+  return err;
+}
+
+clib_error_t *
+session_api_sock_write_ready (clib_file_t * cf)
+{
+  app_ns_api_handle_t handle = cf->private_data;
+  clib_warning ("called for app ns %u", handle.aah_app_ns_index);
+  return 0;
+}
+
+clib_error_t *
+session_api_sock_error (clib_file_t * cf)
+{
+  app_ns_api_handle_t handle = cf->private_data;
+  vnet_app_detach_args_t _a = { 0 }, *a = &_a;
+  app_namespace_t *app_ns;
+  clib_socket_t *cs;
+
+  app_ns = app_namespace_get (handle.aah_app_ns_index);
+  cs = app_namespace_get_api_socket (app_ns, handle->aah_sock_index);
+  if (!cs)
+    return 0;
+
+  /* Cleanup everything because app closed socket or crashed */
+  handle = cs->private_data;
+  a->app_index = handle.aah_app_index;
+  a->api_client_index = app_socket_api_client_index (app_ns, cs);
+  vnet_application_detach (a);
+  return 0;
+}
+
+clib_error_t*
+session_api_sock_accept_ready (clib_file_t *scf)
+{
+  app_ns_api_handle_t handle = scf->private_data;
+  app_namespace_t *app_ns;
+  clib_file_t cf = { 0 };
+  clib_error_t *err = 0;
+  clib_socket_t *ccs, *scs;
+
+  /* Listener files point to namespace */
+  app_ns = app_namespace_get (handle.aah_app_ns_index);
+  scs = app_namespace_get_api_socket (app_ns, handle->aah_sock_index);
+  if (!scs)
+    return clib_error_return (0, "no listener");
+
+  /*
+   * Initialize
+   */
+  pool_get_zero (app_ns->app_sockets, ccs);
+  err = clib_socket_accept (scs, ccs);
+  if (err)
+    goto error;
+
+  cf.read_function = session_api_sock_read_ready;
+  cf.write_function = session_api_sock_write_ready;
+  cf.error_function = session_api_sock_error;
+  cf.file_descriptor = ccs->fd;
+//  cf.private_data = ns_index << 32 | (cs - app_ns->app_sockets);
+  /* File points to app namespace and socket */
+  handle.aah_sock_index = ccs - app_ns->app_sockets;
+  cf.private_data = handle;
+  cf.description = format (0, "session api conn %s", filename);
+
+  /* Poll until we get an attach message. Socket points to file and
+   * application that owns the socket */
+  handle.aah_app_index = APP_INVALID_INDEX;
+  handle.aah_file_index = clib_file_add (&file_main, &cf);
+  ccs->private_data = handle;
+
+  return err;
+
+error:
+  pool_put (app_ns->app_sockets, ccs);
+  return err;
+}
+
+void
+session_api_del_client (u32 api_handle)
+{
+  app_namespace_t *app_ns = app_namespace_get (api_handle >> 16);
+  u16 sock_index = api_handle & 0xffff;
+  app_ns_api_handle_t handle;
+  clib_socket_t *cs;
+  clib_file_t *cf;
+
+  cs = app_namespace_get_api_socket (app_ns, sock_index);
+  if (!cs)
+    return;
+
+  handle = cs->private_data;
+  cf = clib_file_get (&file_main, handle.aah_file_index);
+  clib_file_del (&file_main, cf);
+
+  pool_put (app_ns->app_sockets, sock_index);
+}
+
+int
+session_api_add_ns_socket (app_namespace_t *app_ns)
+{
+  app_ns_api_handle_t handle;
+  clib_file_t cf = { 0 };
+  struct stat file_stat;
+  clib_socket_t *s;
+
+  /*
+   * Create and initialize socket to listen on
+   */
+  pool_get_zero (app_ns->app_sockets, s);
+  s->config = (char *) filename;
+  s->flags = CLIB_SOCKET_F_IS_SERVER |
+	CLIB_SOCKET_F_ALLOW_GROUP_WRITE |
+	CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_PASSCRED;
+
+  if (clib_socket_init (s))
+    return -1;
+
+  if (stat ((char*) filename, &file_stat) == -1)
+    return -1;
+
+  /*
+   * Start polling it
+   */
+  cf.read_function = session_api_sock_accept_ready;
+  cf.file_descriptor = s->fd;
+  /* File points to namespace */
+//  app_ns_api_handle_t listener_handle = {app_namespace_index (app_ns), 0};
+//  cf.private_data = listener_handle;
+  handle.aah_app_ns_index = app_namespace_index (app_ns);
+  handle.aah_sock_index = s - app_ns->app_sockets;
+  cf.private_data = handle;
+  cf.description = format (0, "session api listener %s", filename);
+
+  /* Socket points to clib file index */
+  s->private_data = clib_file_add (&file_main, &cf);
+
+  return 0;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
