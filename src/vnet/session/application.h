@@ -115,6 +115,9 @@ typedef struct application_
   /** Namespace the application belongs to */
   u32 ns_index;
 
+  /** app api socket index */
+  u32 app_api_socket_index;
+
   u16 proxied_transports;
 
   /** Pool of listeners for the app */
