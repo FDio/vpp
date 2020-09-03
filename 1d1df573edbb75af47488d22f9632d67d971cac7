@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "766f9537_d358989a",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-03T22:48:59Z",
+      "side": 1,
+      "message": "dpdk -\u003e dpdk-ipsec",
+      "revId": "1d1df573edbb75af47488d22f9632d67d971cac7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
