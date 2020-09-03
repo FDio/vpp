@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c646c677_ab98d6b9",
+        "filename": "src/plugins/dpdk/device/dpdk_priv.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-03T22:39:46Z",
+      "side": 1,
+      "message": "What is the purpose of this?\n\nif it is important, then it should be logged with vlib_log infra. If it is not important then it should not be there....",
+      "revId": "efd4bcca9ccaad6902978d65d5bb19463d58c16d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
