@@ -2172,7 +2172,9 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
     app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->master_session_index,
 			    et, SVM_Q_WAIT);
 
-  ASSERT (n_write > 0);
+  /* The underlying fifo segment can run out of memory */
+  if (PREDICT_FALSE (n_write < 0))
+    return VPPCOM_EAGAIN;
 
   VDBG (2, "session %u [0x%llx]: wrote %d bytes", s->session_index,
 	s->vpp_handle, n_write);
