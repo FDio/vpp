@@ -126,7 +126,6 @@ static_always_inline void
 virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring,
 			      uword node_index)
 {
-  u16 used = vring->desc_in_use;
   u16 sz = vring->size;
   u16 mask = sz - 1;
   u16 last = vring->last_used_idx;
@@ -162,13 +161,13 @@ virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring,
       vlib_buffer_free_from_ring (vm, vring->buffers, slot,
 				  sz, (n_buffers - slot));
       virtio_memset_ring_u32 (vring->buffers, slot, sz, (n_buffers - slot));
-      used -= (n_buffers - slot);
+      vring->desc_in_use -= (n_buffers - slot);
 
       if (n_left > 0)
 	{
 	  vlib_buffer_free (vm, &vring->buffers[e->id], 1);
 	  vring->buffers[e->id] = ~0;
-	  used--;
+	  vring->desc_in_use--;
 	  last++;
 	  n_left--;
 	  out_of_order_count++;
@@ -184,7 +183,6 @@ virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring,
     vlib_error_count (vm, node_index, VIRTIO_TX_ERROR_OUT_OF_ORDER,
 		      out_of_order_count);
 
-  vring->desc_in_use = used;
   vring->last_used_idx = last;
 }
 
@@ -272,6 +270,95 @@ set_gso_offsets (vlib_buffer_t * b, struct virtio_net_hdr_v1 *hdr, int is_l2)
       hdr->csum_start = gho.l4_hdr_offset;	// 0x36;
       hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
     }
+}
+
+static_always_inline u16
+add_buffer_to_slot_pci (vlib_main_t * vm, virtio_if_t * vif,
+			virtio_vring_t * vring,
+			u32 * bi, u16 n_buffers,
+			u16 avail, u16 next, u16 mask, int do_gso,
+			int csum_offload, uword node_index)
+{
+  u32 indirect_buffer = 0, count = 1;
+  u16 n_added = 0, i = 0;
+  int hdr_sz = vif->virtio_net_hdr_sz;
+  vlib_buffer_t *b;
+  struct virtio_net_hdr_v1 *hdr;
+  struct vring_desc *d = &vring->desc[next];
+  struct vring_desc *id;
+
+  if (PREDICT_FALSE (vlib_buffer_alloc (vm, &indirect_buffer, 1) == 0))
+    {
+      virtio_interface_drop_inline (vm, node_index, bi, n_buffers,
+				    VIRTIO_TX_ERROR_INDIRECT_DESC_ALLOC_FAILED);
+      return n_added;
+    }
+
+  vlib_buffer_t *indirect_desc = vlib_get_buffer (vm, indirect_buffer);
+  indirect_desc->current_data = -16;
+  indirect_desc->flags |= VLIB_BUFFER_NEXT_PRESENT;
+  indirect_desc->next_buffer = bi[0];
+
+  id = (struct vring_desc *) vlib_buffer_get_current (indirect_desc);
+  d->addr = vlib_physmem_get_pa (vm, id);
+
+  n_buffers = clib_min (n_buffers, 128);
+
+  for (i = 0; i < n_buffers; i++)
+    {
+      b = vlib_get_buffer (vm, bi[i]);
+      if (i + 1 < n_buffers)
+	{
+	  b->flags |= VLIB_BUFFER_NEXT_PRESENT;
+	  b->next_buffer = bi[i + 1];
+	}
+
+      hdr = vlib_buffer_get_current (b) - hdr_sz;
+
+      clib_memset (hdr, 0, hdr_sz);
+
+      if (b->flags & (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+		      VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
+	{
+	  if (csum_offload)
+	    set_checksum_offsets (b, hdr, 1);
+	}
+
+      id->addr = vlib_buffer_get_current_pa (vm, b) - hdr_sz;
+
+      /*
+       * If VIRTIO_F_ANY_LAYOUT is not negotiated, then virtio_net_hdr
+       * should be presented in separate descriptor and data will start
+       * from next descriptor.
+       */
+      if (PREDICT_TRUE (vif->features & VIRTIO_FEATURE (VIRTIO_F_ANY_LAYOUT)))
+	id->len = b->current_length + hdr_sz;
+      else
+	{
+	  id->len = hdr_sz;
+	  id->flags = VRING_DESC_F_NEXT;
+	  id->next = count;
+	  count++;
+	  id++;
+	  id->addr = vlib_buffer_get_current_pa (vm, b);
+	  id->len = b->current_length;
+	}
+      id->flags = 0;
+      id->next = count;
+      count++;
+      id++;
+      n_added++;
+    }
+  id--;
+  count--;
+  id->flags = 0;
+  id->next = 0;
+  d->len = count * sizeof (struct vring_desc);
+  d->flags = VRING_DESC_F_INDIRECT;
+
+  vring->buffers[next] = indirect_buffer;
+  vring->avail->ring[avail & mask] = next;
+  return n_added;
 }
 
 static_always_inline u16
@@ -512,7 +599,7 @@ virtio_interface_tx_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 used, next, avail;
   u16 sz = vring->size;
   u16 mask = sz - 1;
-  u16 retry_count = 2;
+  u16 retry_count = 1000;
   u32 *buffers = vlib_frame_vector_args (frame);
   u32 to[GRO_TO_VECTOR_SIZE (n_left)];
 
@@ -592,26 +679,51 @@ retry:
 	  clib_memcpy_fast (t->buffer.pre_data, vlib_buffer_get_current (b0),
 			    sizeof (t->buffer.pre_data));
 	}
-      n_added =
-	add_buffer_to_slot (vm, vif, type, vring, buffers[0], free_desc_count,
-			    avail, next, mask, do_gso, csum_offload,
-			    node->node_index);
 
-      if (PREDICT_FALSE (n_added == 0))
+
+      if (type == VIRTIO_IF_TYPE_PCI)
 	{
+	  n_added = add_buffer_to_slot_pci (vm, vif, vring,
+					    buffers, n_left, avail, next,
+					    mask, do_gso, csum_offload,
+					    node->node_index);
+	  if (PREDICT_FALSE (n_added == 0))
+	    {
+	      buffers += n_left;
+	      n_left = 0;
+	      break;
+	    }
+	  avail++;
+	  next = (next + 1) & mask;
+	  used++;
+	  buffers += n_added;
+	  n_left -= n_added;
+	  free_desc_count--;
+	}
+      else
+	{
+	  n_added =
+	    add_buffer_to_slot (vm, vif, type, vring, buffers[0],
+				free_desc_count, avail, next, mask, do_gso,
+				csum_offload, node->node_index);
+
+
+	  if (PREDICT_FALSE (n_added == 0))
+	    {
+	      buffers++;
+	      n_left--;
+	      continue;
+	    }
+	  else if (PREDICT_FALSE (n_added > free_desc_count))
+	    break;
+
+	  avail++;
+	  next = (next + n_added) & mask;
+	  used += n_added;
 	  buffers++;
 	  n_left--;
-	  continue;
+	  free_desc_count -= n_added;
 	}
-      else if (PREDICT_FALSE (n_added > free_desc_count))
-	break;
-
-      avail++;
-      next = (next + n_added) & mask;
-      used += n_added;
-      buffers++;
-      n_left--;
-      free_desc_count -= n_added;
     }
 
   if (n_left != frame->n_vectors)
