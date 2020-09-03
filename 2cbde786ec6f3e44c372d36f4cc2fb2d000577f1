@@ -16,6 +16,24 @@
       "revId": "2cbde786ec6f3e44c372d36f4cc2fb2d000577f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "475414d4_2c176453",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2020-09-03T09:05:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4b3c03e7_d82dca88",
+      "revId": "2cbde786ec6f3e44c372d36f4cc2fb2d000577f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
