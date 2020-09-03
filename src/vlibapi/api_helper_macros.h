@@ -122,7 +122,7 @@ do {                                                                    \
     if (rp == 0)                                                        \
       return;                                                           \
                                                                         \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                             \
+    rmp = vl_msg_api_alloc_zero (sizeof (*rmp));                        \
     rmp->_vl_msg_id = htons((t)+(REPLY_MSG_ID_BASE));                   \
     rmp->context = mp->context;                                         \
     do {body;} while (0);                                               \

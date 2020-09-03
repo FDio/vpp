@@ -855,7 +855,7 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "del"))
 	is_add = 0;
-      else if (unformat (line_input, "nh &U", unformat_ip_address, &nh))
+      else if (unformat (line_input, "nh %U", unformat_ip_address, &nh))
 	;
       else
 	{
@@ -892,7 +892,7 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 	ipip_add_tunnel (ipv6_set ? IPIP_TRANSPORT_IP6 : IPIP_TRANSPORT_IP4,
 			 instance, &local_ip, &remote_ip, fib_index,
 			 TUNNEL_ENCAP_DECAP_FLAG_NONE, IP_DSCP_CS0,
-			 TUNNEL_MODE_P2P, &sw_if_index);
+			 TUNNEL_MODE_P2P, &sw_if_index, NULL);
       rv |=
 	ipsec_sa_add_and_lock (ipsec_tun_mk_local_sa_id (sw_if_index),
 			       local_spi, IPSEC_PROTOCOL_ESP, crypto_alg,

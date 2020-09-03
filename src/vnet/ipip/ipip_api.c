@@ -76,13 +76,15 @@ vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
     }
   else
     {
+      u8 *name = format (NULL, "%s", mp->tunnel.name);
       rv = ipip_add_tunnel ((itype[0] == IP46_TYPE_IP6 ?
 			     IPIP_TRANSPORT_IP6 :
 			     IPIP_TRANSPORT_IP4),
 			    ntohl (mp->tunnel.instance), &src, &dst,
 			    fib_index, flags,
 			    ip_dscp_decode (mp->tunnel.dscp), mode,
-			    &sw_if_index);
+			    &sw_if_index, name);
+      vec_free (name);
     }
 
 out:
@@ -127,6 +129,10 @@ send_ipip_tunnel_details (ipip_tunnel_t * t, vl_api_ipip_tunnel_dump_t * mp)
     rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
     rmp->tunnel.dscp = ip_dscp_encode(t->dscp);
     rmp->tunnel.flags = tunnel_encap_decap_flags_encode(t->flags);
+    clib_memcpy(rmp->tunnel.name,
+                t->user_name,
+                clib_min((sizeof(rmp->tunnel.name) - 1),
+                         vec_len(t->user_name)));
   }));
     /* *INDENT-ON* */
 }

@@ -395,6 +395,9 @@ format_ipip_tunnel_name (u8 * s, va_list * args)
     return format (s, "<improperly-referenced>");
 
   t = pool_elt_at_index (gm->tunnels, dev_instance);
+
+  if (NULL != t->user_name)
+    return format (s, "%v%d", t->user_name, t->user_instance);
   return format (s, "ipip%d", t->user_instance);
 }
 
@@ -653,7 +656,8 @@ int
 ipip_add_tunnel (ipip_transport_t transport,
 		 u32 instance, ip46_address_t * src, ip46_address_t * dst,
 		 u32 fib_index, tunnel_encap_decap_flags_t flags,
-		 ip_dscp_t dscp, tunnel_mode_t tmode, u32 * sw_if_indexp)
+		 ip_dscp_t dscp, tunnel_mode_t tmode, u32 * sw_if_indexp,
+		 const u8 * name)
 {
   ipip_main_t *gm = &ipip_main;
   vnet_main_t *vnm = gm->vnet_main;
@@ -696,6 +700,8 @@ ipip_add_tunnel (ipip_transport_t transport,
 
   t->dev_instance = t_idx;	/* actual */
   t->user_instance = u_idx;	/* name */
+  if (name && name[0])
+    t->user_name = format (NULL, "%v", name);
 
   hw_if_index = vnet_register_interface (vnm, ipip_device_class.index, t_idx,
 					 (mode == IPIP_MODE_P2P ?
@@ -776,6 +782,7 @@ ipip_del_tunnel (u32 sw_if_index)
   gm->tunnel_index_by_sw_if_index[sw_if_index] = ~0;
   vnet_delete_hw_interface (vnm, t->hw_if_index);
   hash_unset (gm->instance_used, t->user_instance);
+  vec_free (t->user_name);
 
   ipip_mk_key (t, &key);
   ipip_tunnel_db_remove (t, &key);

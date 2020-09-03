@@ -21,7 +21,7 @@ IPIP tests.
 
 
 def ipip_add_tunnel(test, src, dst, table_id=0, dscp=0x0,
-                    flags=0):
+                    flags=0, name=""):
     """ Add a IPIP tunnel """
     return test.vapi.ipip_add_tunnel(
         tunnel={
@@ -30,7 +30,8 @@ def ipip_add_tunnel(test, src, dst, table_id=0, dscp=0x0,
             'table_id': table_id,
             'instance': 0xffffffff,
             'dscp': dscp,
-            'flags': flags
+            'flags': flags,
+            'name': name,
         }
     )
 
@@ -1107,6 +1108,18 @@ class TestIPIP6(VppTestCase):
         """ ipip create / delete interface test """
         rv = ipip_add_tunnel(self, '1.2.3.4', '2.3.4.5')
         sw_if_index = rv.sw_if_index
+        tuns = self.vapi.ipip_tunnel_dump(sw_if_index=sw_if_index)
+        self.assertEqual(tuns[0].tunnel.name, "")
+        ints = self.vapi.sw_interface_dump(sw_if_index=sw_if_index)
+        self.assertEqual(ints[0].interface_name, "ipip1")
+        self.vapi.ipip_del_tunnel(sw_if_index)
+
+        rv = ipip_add_tunnel(self, '1.2.3.4', '2.3.4.5', name="uluru")
+        sw_if_index = rv.sw_if_index
+        tuns = self.vapi.ipip_tunnel_dump(sw_if_index=sw_if_index)
+        self.assertEqual(tuns[0].tunnel.name, "uluru")
+        ints = self.vapi.sw_interface_dump(sw_if_index=sw_if_index)
+        self.assertEqual(ints[0].interface_name, "uluru1")
         self.vapi.ipip_del_tunnel(sw_if_index)
 
     def test_ipip_vrf_create(self):

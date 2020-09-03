@@ -657,7 +657,7 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
 			    &local_ip,
 			    &remote_ip, fib_index,
 			    TUNNEL_ENCAP_DECAP_FLAG_NONE, IP_DSCP_CS0,
-			    TUNNEL_MODE_P2P, &sw_if_index);
+			    TUNNEL_MODE_P2P, &sw_if_index, NULL);
 
       if (rv)
 	goto done;

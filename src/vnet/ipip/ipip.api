@@ -49,7 +49,7 @@
  *
  */
 
-option version = "2.0.1";
+option version = "2.0.2";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -70,6 +70,7 @@ typedef ipip_tunnel
   vl_api_tunnel_mode_t mode;
   vl_api_ip_dscp_t dscp; /* DSCP value for the tunnel encap,
                             ignored if ECNAP_COPY_DSCP flag is set */
+  string name[64];
 };
 
 /**
