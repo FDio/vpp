@@ -82,6 +82,24 @@ port_and_mask_convert (vl_api_ip_port_and_mask_t * vl_api_port,
 }
 
 static inline void
+ipv4_flow_convert (vl_api_flow_ip4_t * vl_api_flow, vnet_flow_ip4_t * f)
+{
+  ipv4_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
+  ipv4_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
+
+  protocol_and_mask_convert (&vl_api_flow->protocol, &f->protocol);
+}
+
+static void
+ipv6_flow_convert (vl_api_flow_ip6_t * vl_api_flow, vnet_flow_ip6_t * f)
+{
+  ipv6_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
+  ipv6_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
+
+  protocol_and_mask_convert (&vl_api_flow->protocol, &f->protocol);
+}
+
+static inline void
 ipv4_n_tuple_flow_convert (vl_api_flow_ip4_n_tuple_t * vl_api_flow,
 			   vnet_flow_ip4_n_tuple_t * f)
 {
@@ -157,6 +175,34 @@ ipv4_ipsec_ah_flow_convert (vl_api_flow_ip4_ipsec_ah_t * vl_api_flow,
 }
 
 static inline void
+ipv4_vxlan_flow_convert (vl_api_flow_ip4_vxlan_t * vl_api_flow,
+			 vnet_flow_ip4_vxlan_t * f)
+{
+  ipv4_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
+  ipv4_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
+  protocol_and_mask_convert (&vl_api_flow->protocol, &f->protocol);
+
+  port_and_mask_convert (&vl_api_flow->src_port, &f->src_port);
+  port_and_mask_convert (&vl_api_flow->dst_port, &f->dst_port);
+
+  f->vni = ntohs (vl_api_flow->vni);
+}
+
+static inline void
+ipv6_vxlan_flow_convert (vl_api_flow_ip6_vxlan_t * vl_api_flow,
+			 vnet_flow_ip6_vxlan_t * f)
+{
+  ipv6_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
+  ipv6_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
+  protocol_and_mask_convert (&vl_api_flow->protocol, &f->protocol);
+
+  port_and_mask_convert (&vl_api_flow->src_port, &f->src_port);
+  port_and_mask_convert (&vl_api_flow->dst_port, &f->dst_port);
+
+  f->vni = ntohs (vl_api_flow->vni);
+}
+
+static inline void
 ipv4_gtpu_flow_convert (vl_api_flow_ip4_gtpu_t * vl_api_flow,
 			vnet_flow_ip4_gtpu_t * f)
 {
@@ -206,6 +252,12 @@ vl_api_flow_add_t_handler (vl_api_flow_add_t * mp)
 
   switch (flow.type)
     {
+    case VNET_FLOW_TYPE_IP4:
+      ipv4_flow_convert (&f->flow.ip4, &flow.ip4);
+      break;
+    case VNET_FLOW_TYPE_IP6:
+      ipv6_flow_convert (&f->flow.ip6, &flow.ip6);
+      break;
     case VNET_FLOW_TYPE_IP4_N_TUPLE:
       ipv4_n_tuple_flow_convert (&f->flow.ip4_n_tuple, &flow.ip4_n_tuple);
       break;
@@ -230,6 +282,12 @@ vl_api_flow_add_t_handler (vl_api_flow_add_t * mp)
       break;
     case VNET_FLOW_TYPE_IP4_IPSEC_AH:
       ipv4_ipsec_ah_flow_convert (&f->flow.ip4_ipsec_ah, &flow.ip4_ipsec_ah);
+      break;
+    case VNET_FLOW_TYPE_IP4_VXLAN:
+      ipv4_vxlan_flow_convert (&f->flow.ip4_vxlan, &flow.ip4_vxlan);
+      break;
+    case VNET_FLOW_TYPE_IP6_VXLAN:
+      ipv6_vxlan_flow_convert (&f->flow.ip6_vxlan, &flow.ip6_vxlan);
       break;
     case VNET_FLOW_TYPE_IP4_GTPU:
       ipv4_gtpu_flow_convert (&f->flow.ip4_gtpu, &flow.ip4_gtpu);
