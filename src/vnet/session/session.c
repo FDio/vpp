@@ -1904,6 +1904,8 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "enable"))
 	smm->session_enable_asap = 1;
+      else if (unformat (input, "use-app-socket-api"))
+	app_namespace_enable_socket_api ();
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
