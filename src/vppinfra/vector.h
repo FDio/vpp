@@ -75,6 +75,11 @@
 #define CLIB_HAVE_VEC64
 #endif
 
+/* scalable vector size */
+#if defined (__aarch64__) && defined(__ARM_FEATURE_SVE)
+#define CLIB_HAVE_VEC_SCALABLE
+#endif
+
 #define _vector_size(n) __attribute__ ((vector_size (n)))
 #define _vector_size_unaligned(n) __attribute__ ((vector_size (n),  __aligned__ (1)))
 
@@ -190,6 +195,13 @@ foreach_vec
 
 #if defined (__aarch64__)
 #include <vppinfra/vector_neon.h>
+#ifdef __ARM_FEATURE_SVE
+#include <arm_sve.h>
+#endif
+#endif
+
+#if defined (__aarch64__) && defined(__ARM_FEATURE_SVE)
+#include <vppinfra/vector_sve.h>
 #endif
 
 #if (defined(CLIB_HAVE_VEC128) || defined(CLIB_HAVE_VEC64))
