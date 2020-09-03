@@ -773,6 +773,75 @@ format_session_error (u8 * s, va_list * args)
     s = format (s, "invalid session err %u", -error);
   return s;
 }
+
+/*
+ * Socket API messages
+ */
+
+typedef enum app_api_msg_type
+{
+  APP_API_MSG_TYPE_NONE = 0,
+  APP_API_MSG_TYPE_ATTACH = 1,
+  APP_API_MSG_TYPE_ATTACH_REPLY = 2,
+  APP_API_MSG_TYPE_ADD_DEL_WORKER = 3,
+  APP_API_MSG_TYPE_ADD_DEL_WORKER_REPLY = 4,
+} __clib_packed app_api_msg_type_e;
+
+typedef struct app_api_attach_msg_
+{
+  u8 name[64];
+  u64 options[18];
+} __clib_packed app_api_attach_msg_t;
+
+STATIC_ASSERT (sizeof (u64) * APP_OPTIONS_N_OPTIONS <=
+		 sizeof (((app_api_attach_msg_t *)0)->options),
+		 "Out of options, fix message definition");
+
+typedef struct app_api_attach_reply_msg_
+{
+  i32 retval;
+  u64 app_mq;
+  u64 vpp_ctrl_mq;
+  u8 vpp_ctrl_mq_thread;
+  u32 app_index;
+  u8 n_fds;
+  u8 fd_flags;
+//  u32 segment_size;
+  u64 segment_handle;
+//  u8 segment_name[64];
+} __clib_packed app_api_attach_reply_msg_t;
+
+typedef struct app_api_add_worker_msg_
+{
+  u32 app_index;
+  u32 wrk_index;
+  u8 is_add;
+} __clib_packed app_api_add_del_worker_msg_t;
+
+typedef struct app_api_add_del_worker_reply_msg_
+{
+  i32 retval;
+  u32 wrk_index;
+  u64 app_event_queue_address;
+  u8 n_fds;
+  u8 fd_flags;
+  u64 segment_handle;
+  bool is_add;
+  vl_api_string_t segment_name;
+} __clib_packed app_api_add_del_worker_reply_msg_t;
+
+typedef struct
+{
+  app_api_msg_type_e type;
+  union
+  {
+    app_api_attach_msg_t attach;
+    app_api_attach_reply_msg_t attach_reply;
+    app_api_add_del_worker_msg_t add_del_worker;
+    app_api_add_del_worker_msg_t add_del_worker_reply;
+  };
+} __clib_packed app_api_msg_t;
+
 #endif /* __included_uri_h__ */
 
 /*
