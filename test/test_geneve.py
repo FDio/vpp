@@ -273,7 +273,7 @@ class TestGeneveL3(VppTestCase):
             remote_address=self.pg0.remote_ip4,
             vni=vni,
             l3_mode=1,
-            decap_next_index=r.node_index)
+            decap_next_index=r.next_index)
 
         self.vapi.sw_interface_add_del_address(
             sw_if_index=r.sw_if_index, prefix="10.0.0.1/24")
