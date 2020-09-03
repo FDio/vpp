@@ -4,6 +4,8 @@ maintainer: Damjan Marion <damarion@cisco.com>
 features:
   - Four APIs are provided - flow_add, flow_del, flow_enable and flow_disable
   - The below flow types are currently supported:
+      - FLOW_TYPE_IP4,
+      - FLOW_TYPE_IP6,
       - FLOW_TYPE_IP4_N_TUPLE,
       - FLOW_TYPE_IP6_N_TUPLE,
       - FLOW_TYPE_IP4_N_TUPLE_TAGGED,
@@ -11,6 +13,8 @@ features:
       - FLOW_TYPE_IP4_L2TPV3OIP,
       - FLOW_TYPE_IP4_IPSEC_ESP,
       - FLOW_TYPE_IP4_IPSEC_AH,
+      - FLOW_TYPE_IP4_VXLAN,
+      - FLOW_TYPE_IP6_VXLAN,
       - FLOW_TYPE_IP4_GTPC,
       - FLOW_TYPE_IP4_GTPU
   - The below flow actions can be specified for the flows:
