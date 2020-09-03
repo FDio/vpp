@@ -145,6 +145,19 @@ stat_segment_set_timeout_nsec (stat_client_main_t * sm, uint64_t timeout)
   sm->timeout = timeout;
 }
 
+/*
+ * set maximum number of nano seconds to wait for in_progress state
+ * this function can be called directly by module using shared stat
+ * segment
+ */
+static inline void
+stat_segment_set_timeout (uint64_t timeout)
+{
+  stat_client_main_t *sm = &stat_client_main;
+  stat_segment_set_timeout_nsec (sm, timeout);
+}
+
+
 static inline bool
 stat_segment_access_end (stat_segment_access_t * sa, stat_client_main_t * sm)
 {
