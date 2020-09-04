@@ -119,11 +119,17 @@ static clib_error_t *
 cnat_set_snat (vlib_main_t * vm,
 	       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *e = 0;
   ip_address_t addr;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_ip_address, &addr))
+      if (unformat (line_input, "%U", unformat_ip_address, &addr))
 	{
 	  if (ip_addr_version (&addr) == AF_IP4)
 	    clib_memcpy (&cnat_main.snat_ip4, &ip_addr_v4 (&addr),
@@ -133,18 +139,24 @@ cnat_set_snat (vlib_main_t * vm,
 			 sizeof (ip6_address_t));
 	}
       else
-	return (clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, input));
+	{
+	  e = clib_error_return (0, "unknown input '%U'",
+				 format_unformat_error, input);
+	  goto done;
+	}
     }
 
-  return (NULL);
+done:
+  unformat_free (line_input);
+
+  return (e);
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cnat_set_snat_command, static) =
 {
   .path = "cnat snat with",
-  .short_help = "cnat snat with [ip]",
+  .short_help = "cnat snat with [<ip4-address>][<ip6-address>]",
   .function = cnat_set_snat,
 };
 /* *INDENT-ON* */
