@@ -645,6 +645,8 @@ __clib_unused
     s = format (s, "packed ");
   if ((mp->virtio_flags) & VIRTIO_API_FLAG_IN_ORDER)
     s = format (s, "in-order ");
+  if ((mp->virtio_flags) & VIRTIO_API_FLAG_BUFFERING)
+    s = format (s, "buffering ");
   FINISH;
 }
 

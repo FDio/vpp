@@ -279,11 +279,14 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 last = vring->last_used_idx;
   u16 n_left = vring->used->idx - last;
 
-  if (vif->packet_coalesce
-      && clib_spinlock_trylock_if_init (&txq_vring->lockp))
+  if (clib_spinlock_trylock_if_init (&txq_vring->lockp))
     {
-      vnet_gro_flow_table_schedule_node_on_dispatcher (vm,
-						       txq_vring->flow_table);
+      if (vif->packet_coalesce)
+	vnet_gro_flow_table_schedule_node_on_dispatcher (vm,
+							 txq_vring->flow_table);
+      else if (vif->packet_buffering)
+	virtio_vring_buffering_schedule_node_on_dispatcher (vm,
+							    txq_vring->buffering);
       clib_spinlock_unlock_if_init (&txq_vring->lockp);
     }
 

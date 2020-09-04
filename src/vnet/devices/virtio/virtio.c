@@ -216,6 +216,7 @@ virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
     clib_mem_free (vring->avail);
   vec_free (vring->buffers);
   gro_flow_table_free (vring->flow_table);
+  virtio_vring_buffering_free (vm, vring->buffering);
   clib_spinlock_free (&vring->lockp);
   return 0;
 }
@@ -233,6 +234,28 @@ virtio_set_packet_coalesce (virtio_if_t * vif)
 			 vif->type & (VIRTIO_IF_TYPE_TAP |
 				      VIRTIO_IF_TYPE_PCI), hw->tx_node_index);
   }
+}
+
+clib_error_t *
+virtio_set_packet_buffering (virtio_if_t * vif, u16 buffering_size)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
+  virtio_vring_t *vring;
+  clib_error_t *error = 0;
+  vif->packet_buffering = 1;
+
+  vec_foreach (vring, vif->txq_vrings)
+  {
+    if ((error =
+	 virtio_vring_buffering_init (&vring->buffering, hw->tx_node_index,
+				      buffering_size)))
+      {
+	break;
+      }
+  }
+
+  return error;
 }
 
 void
@@ -335,6 +358,7 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
       vlib_cli_output (vm, "  gso-enabled %d", vif->gso_enabled);
       vlib_cli_output (vm, "  csum-enabled %d", vif->csum_offload_enabled);
       vlib_cli_output (vm, "  packet-coalesce %d", vif->packet_coalesce);
+      vlib_cli_output (vm, "  packet-buffering %d", vif->packet_buffering);
       if (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_PCI))
 	vlib_cli_output (vm, "  Mac Address: %U", format_ethernet_address,
 			 vif->mac_addr);
@@ -431,6 +455,11 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	  {
 	    vlib_cli_output (vm, "    %U", gro_flow_table_format,
 			     vring->flow_table);
+	  }
+	if (vif->packet_buffering)
+	  {
+	    vlib_cli_output (vm, "    %U", virtio_vring_buffering_format,
+			     vring->buffering);
 	  }
 	if (show_descr)
 	  {
