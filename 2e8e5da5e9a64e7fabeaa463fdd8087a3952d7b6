@@ -16,6 +16,24 @@
       "revId": "2e8e5da5e9a64e7fabeaa463fdd8087a3952d7b6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "afff641c_f9daa9a1",
+        "filename": "src/plugins/dpdk/ipsec/esp_encrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 1770
+      },
+      "writtenOn": "2020-09-04T11:24:31Z",
+      "side": 1,
+      "message": "Resubmitted using method (a)",
+      "parentUuid": "ffb05200_975dbd68",
+      "revId": "2e8e5da5e9a64e7fabeaa463fdd8087a3952d7b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
