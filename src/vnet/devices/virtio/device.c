@@ -508,7 +508,7 @@ virtio_interface_tx_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   virtio_vring_t *vring;
   u16 qid = vm->thread_index % vif->num_txqs;
   vring = vec_elt_at_index (vif->txq_vrings, qid);
-  u16 used, next, avail;
+  u16 used, next, avail, n_buffers = 0, n_buffers_left = 0;
   u16 sz = vring->size;
   u16 mask = sz - 1;
   u16 retry_count = 2;
@@ -549,7 +549,74 @@ retry:
     }
   else
     free_desc_count = sz - used;
+  if (vif->packet_buffering)
+    {
+      n_buffers = n_buffers_left = virtio_vring_n_buffers (&vring->buffering);
 
+      while (n_buffers_left && free_desc_count)
+	{
+	  u16 n_added = 0;
+	  virtio_tx_trace_t *t;
+
+	  u32 bi = virtio_vring_buffering_read_packet (&vring->buffering);
+	  if (bi == ~0)
+	    break;
+	  vlib_buffer_t *b0 = vlib_get_buffer (vm, bi);
+	  if (b0->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      t = vlib_add_trace (vm, node, b0, sizeof (t[0]));
+	      t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	      t->buffer_index = buffers[0];
+	      if (type == VIRTIO_IF_TYPE_TUN)
+		{
+		  int is_ip4 = 0, is_ip6 = 0;
+
+		  switch (((u8 *) vlib_buffer_get_current (b0))[0] & 0xf0)
+		    {
+		    case 0x40:
+		      is_ip4 = 1;
+		      break;
+		    case 0x60:
+		      is_ip6 = 1;
+		      break;
+		    default:
+		      break;
+		    }
+		  vnet_generic_header_offset_parser (b0, &t->gho, 0, is_ip4,
+						     is_ip6);
+		}
+	      else
+		vnet_generic_header_offset_parser (b0, &t->gho, 1,
+						   b0->flags &
+						   VNET_BUFFER_F_IS_IP4,
+						   b0->flags &
+						   VNET_BUFFER_F_IS_IP6);
+
+	      clib_memcpy_fast (&t->buffer, b0,
+				sizeof (*b0) - sizeof (b0->pre_data));
+	      clib_memcpy_fast (t->buffer.pre_data,
+				vlib_buffer_get_current (b0),
+				sizeof (t->buffer.pre_data));
+	    }
+	  n_added =
+	    add_buffer_to_slot (vm, vif, type, vring, bi, free_desc_count,
+				avail, next, mask, do_gso, csum_offload,
+				node->node_index);
+	  if (PREDICT_FALSE (n_added == 0))
+	    {
+	      n_buffers_left--;
+	      continue;
+	    }
+	  else if (PREDICT_FALSE (n_added > free_desc_count))
+	    break;
+
+	  avail++;
+	  next = (next + n_added) & mask;
+	  used += n_added;
+	  n_buffers_left--;
+	  free_desc_count -= n_added;
+	}
+    }
   while (n_left && free_desc_count)
     {
       u16 n_added = 0;
@@ -613,7 +680,7 @@ retry:
       free_desc_count -= n_added;
     }
 
-  if (n_left != frame->n_vectors)
+  if (n_left != frame->n_vectors || n_buffers != n_buffers_left)
     {
       CLIB_MEMORY_STORE_BARRIER ();
       vring->avail->idx = avail;
@@ -628,9 +695,19 @@ retry:
       if (retry_count--)
 	goto retry;
 
-      virtio_interface_drop_inline (vm, node->node_index,
-				    buffers, n_left,
-				    VIRTIO_TX_ERROR_NO_FREE_SLOTS);
+      if (vif->packet_buffering)
+	{
+
+	  u16 n_buffered =
+	    virtio_vring_buffering_store_packet (&vring->buffering, buffers,
+						 n_left);
+	  buffers += n_buffered;
+	  n_left -= n_buffered;
+	}
+      if (n_left)
+	virtio_interface_drop_inline (vm, node->node_index,
+				      buffers, n_left,
+				      VIRTIO_TX_ERROR_NO_FREE_SLOTS);
     }
 
   clib_spinlock_unlock_if_init (&vring->lockp);

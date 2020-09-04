@@ -234,6 +234,7 @@ typedef struct
   u64 features;
   u8 gso_enabled;
   u8 checksum_offload_enabled;
+  u8 is_buffering;
   u32 virtio_flags;
   clib_error_t *error;
 } virtio_pci_create_if_args_t;

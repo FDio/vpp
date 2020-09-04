@@ -56,6 +56,80 @@ typedef enum
 
 #define VIRTIO_RING_FLAG_MASK_INT 1
 
+
+#define VIRTIO_BUFFERING_SIZE 1024
+typedef struct
+{
+  u32 buffers[VIRTIO_BUFFERING_SIZE];
+  u16 free_size;
+  u16 start;
+  u16 end;
+} vritio_vring_buffering_t;
+
+static_always_inline u8
+virtio_vring_buffering_is_empty (vritio_vring_buffering_t * buffering)
+{
+  if (buffering->free_size == VIRTIO_BUFFERING_SIZE)
+    return 1;
+  return 0;
+}
+
+static_always_inline u8
+virtio_vring_buffering_is_full (vritio_vring_buffering_t * buffering)
+{
+  if (buffering->free_size == 0)
+    return 1;
+  return 0;
+}
+
+static_always_inline u16
+virtio_vring_n_buffers (vritio_vring_buffering_t * buffering)
+{
+  return (VIRTIO_BUFFERING_SIZE - buffering->free_size);
+}
+
+static_always_inline void
+virtio_vring_buffering_a_packet (vritio_vring_buffering_t * buffering,
+				 u32 bi0)
+{
+  u16 mask = VIRTIO_BUFFERING_SIZE - 1;
+  buffering->buffers[buffering->end] = bi0;
+  buffering->end = (buffering->end + 1) & mask;
+  buffering->free_size--;
+}
+
+
+static_always_inline u16
+virtio_vring_buffering_store_packet (vritio_vring_buffering_t * buffering,
+				     u32 * bi, u16 n_store)
+{
+  u16 free_size = buffering->free_size;
+
+  if (virtio_vring_buffering_is_full (buffering))
+    return 0;
+
+  u16 n_s = clib_min (n_store, free_size);
+
+  for (u32 i = 0; i < n_s; i++)
+    virtio_vring_buffering_a_packet (buffering, bi[i]);
+  return n_s;
+}
+
+static_always_inline u32
+virtio_vring_buffering_read_packet (vritio_vring_buffering_t * buffering)
+{
+  u32 bi = ~0;
+  u16 mask = VIRTIO_BUFFERING_SIZE - 1;
+  if (virtio_vring_buffering_is_empty (buffering))
+    return bi;
+
+  bi = buffering->buffers[buffering->start];
+  buffering->buffers[buffering->start] = ~0;
+  buffering->start = (buffering->start + 1) & mask;
+  buffering->free_size++;
+  return bi;
+}
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -76,6 +150,7 @@ typedef struct
   u16 last_used_idx;
   u16 last_kick_avail_idx;
   u32 call_file_index;
+  vritio_vring_buffering_t buffering;
   gro_flow_table_t *flow_table;
 } virtio_vring_t;
 
@@ -123,6 +198,7 @@ typedef struct
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   int packet_coalesce;
+  int packet_buffering;
   u32 dev_instance;
   u32 numa_node;
   u64 remote_features;

@@ -550,6 +550,9 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
       virtio_log_debug (vif, "tx-queue: number %u, size %u", queue_num,
 			queue_size);
       clib_memset_u32 (vring->buffers, ~0, queue_size);
+      vring->buffering.free_size = VIRTIO_BUFFERING_SIZE;
+      vring->buffering.start = 0;
+      vring->buffering.end = 0;
     }
   else
     {
@@ -1181,6 +1184,9 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
       if (virtio_pci_enable_multiqueue (vm, vif, vif->max_queue_pairs))
 	virtio_log_warning (vif, "multiqueue is not set");
     }
+
+  if (args->is_buffering)
+    vif->packet_buffering = 1;
   return;
 
 error:
