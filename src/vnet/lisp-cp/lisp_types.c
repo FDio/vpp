@@ -41,7 +41,7 @@ serdes_fct write_fcts[GID_ADDR_TYPES] =
 };
 
 cast_fct cast_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_cast, lcaf_cast, mac_cast, sd_cast, nsh_cast, 0 /* arp */ ,
+  { ip_prefix_cast, lcaf_cast, mac_cast, sd_cast, nsh_cast, mac_cast /* arp */ ,
   no_addr_cast
 };
 
@@ -51,7 +51,7 @@ addr_len_fct addr_len_fcts[GID_ADDR_TYPES] =
 };
 
 copy_fct copy_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_copy, lcaf_copy, mac_copy, sd_copy, nsh_copy, 0 /* arp */ ,
+  { ip_prefix_copy, lcaf_copy, mac_copy, sd_copy, nsh_copy, mac_copy /* arp */ ,
   no_addr_copy
 };
 
@@ -201,6 +201,8 @@ format_gid_address (u8 * s, va_list * args)
       return format (s, "[%d] %U", gid_address_vni (a), format_mac_address,
 		     &gid_address_mac (a));
     case GID_ADDR_ARP:
+      return format (s, "[%d] %U", gid_address_vni (a), format_mac_address,
+		     &gid_address_mac (a));
     case GID_ADDR_NDP:
       return format (s, "[%d, %U]", gid_address_arp_ndp_bd (a),
 		     format_ip_address, &gid_address_arp_ndp_ip (a));

@@ -3320,6 +3320,11 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 	  gid_address_arp_bd (dst) = lisp_get_bd_from_buffer_eth (b);
 	  clib_memcpy (&gid_address_arp_ip4 (dst),
 		       &ah->ip4_over_ethernet[1].ip4, 4);
+
+	  /* following are needed to display eid info in packet trace */
+	  mac_copy (&gid_address_mac (dst), eh->dst_address);
+	  vni = lisp_get_vni_from_buffer_eth (lcm, b);
+	  gid_address_vni (dst) = vni;
 	}
       else
 	{
