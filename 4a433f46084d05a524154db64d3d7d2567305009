@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "194ffe80_6eb821c4",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1029,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-04T04:03:55Z",
+      "side": 0,
+      "message": "If you change this to rb_tree_is_init (\u0026f-\u003eooo_deq_lookup) ? 1 : 0, isn\u0027t the problem solved? That way we get to keep the optimized versions of f_unlink_chunks, i.e., less ifs.",
+      "range": {
+        "startLine": 1029,
+        "startChar": 29,
+        "endLine": 1029,
+        "endChar": 30
+      },
+      "revId": "4a433f46084d05a524154db64d3d7d2567305009",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
