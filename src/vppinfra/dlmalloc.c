@@ -4123,12 +4123,15 @@ int mspace_is_heap_object (mspace msp, void *p)
   msegment *this_seg;
   char *pp, *base;
   mstate ms;
+  char *object_header;
+  unsigned *wwp;                /* "where's Waldo" pointer */
 
   ms = (mstate)msp;
 
   this_seg = &ms->seg;
   pp = (char *) p;
 
+  /* Pointer in known segment? */
   while (this_seg)
     {
       base = this_seg->base;
@@ -4137,8 +4140,21 @@ int mspace_is_heap_object (mspace msp, void *p)
       this_seg = this_seg->next;
     }
 
-  if (pp > ms->least_addr && pp <= ms->least_addr + ms->footprint)
-    return 1;
+  /* Pointer in original large chunk? */
+  if (pp < ms->least_addr || pp >= ms->least_addr + ms->footprint)
+     return 0;
+
+  /* Dig up the dlmalloc object header */
+  wwp = (unsigned *)p;
+  wwp--;
+
+  object_header = (char *)wwp;
+  object_header -= *wwp;
+
+  /* See if the object appears to be in use */
+  mchunkptr chunkp = mem2chunk(object_header);
+  if (is_inuse(chunkp))
+    return(1);
 
   return 0;
 }
