@@ -122,7 +122,7 @@ vlib_dump_frame_ownership (void)
 	    owned_runtime = vec_elt_at_index (nm->nodes_by_type[0],
 					      nf->node_runtime_index);
 	    fformat (stderr,
-		     "%s next index %d owns enqueue rights to %s\n",
+		     "%v next index %d owns enqueue rights to %v\n",
 		     nm->nodes[this_node_runtime->node_index]->name,
 		     index - first_nf_index,
 		     nm->nodes[owned_runtime->node_index]->name);
@@ -152,7 +152,7 @@ vlib_runtime_index_to_node_name (u32 index)
       return;
     }
 
-  fformat (stderr, "node runtime index %d name %s\n", index,
+  fformat (stderr, "node runtime index %d name %v\n", index,
 	   nm->nodes[index]->name);
 }
 
