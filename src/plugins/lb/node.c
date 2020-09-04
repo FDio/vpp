@@ -435,7 +435,6 @@ lb_node_fn (vlib_main_t * vm,
           else if (encap_type == LB_ENCAP_TYPE_L3DSR) /* encap L3DSR*/
             {
               ip4_header_t *ip40;
-              tcp_header_t *th0;
               ip_csum_t csum;
               u32 old_dst, new_dst;
               u8 old_tos, new_tos;
@@ -459,9 +458,20 @@ lb_node_fn (vlib_main_t * vm,
               ip40->checksum = ip_csum_fold (csum);
 
               /* Recomputing L4 checksum after dst-IP modifying */
-              th0 = ip4_next_header (ip40);
-              th0->checksum = 0;
-              th0->checksum = ip4_tcp_udp_compute_checksum (vm, p0, ip40);
+              if (ip40->protocol == IP_PROTOCOL_TCP)
+                {
+                  tcp_header_t *th0;
+                  th0 = ip4_next_header (ip40);
+                  th0->checksum = 0;
+                  th0->checksum = ip4_tcp_udp_compute_checksum (vm, p0, ip40);
+                }
+              else if (ip40->protocol == IP_PROTOCOL_UDP)
+                {
+                  udp_header_t *uh0;
+                  uh0 = ip4_next_header (ip40);
+                  uh0->checksum = 0;
+                  uh0->checksum = ip4_tcp_udp_compute_checksum (vm, p0, ip40);
+                }
             }
           else if ((encap_type == LB_ENCAP_TYPE_NAT4)
               || (encap_type == LB_ENCAP_TYPE_NAT6))
