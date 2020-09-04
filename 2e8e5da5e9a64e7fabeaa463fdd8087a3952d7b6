@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ffb05200_975dbd68",
+        "filename": "src/plugins/dpdk/ipsec/esp_encrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2020-09-04T09:33:13Z",
+      "side": 1,
+      "message": "You could use \u0027vlib_buffer_enqueue_to_single_next\u0027 to enqueue all packets at once to the \u0027error-drop\u0027 node.\n\nThat being said, IMHO there is no benefit to send the packets to \u0027error-drop\u0027 without setting an error, you might as well just free the buffers.\n\nTo keep per packet error count you could:\na) Increase the above DISCARD counters by the numbers of packets being dropped and then free.\nb) Set each buffer error and enqueue to \u0027error-drop\u0027.",
+      "revId": "2e8e5da5e9a64e7fabeaa463fdd8087a3952d7b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
