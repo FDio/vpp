@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "bcb8c01b_3dbd5420",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2020-09-04T06:53:04Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "57a0f06a_3c9d918d",
+      "revId": "3b3d25953277c78de9311f2ed3aa84befbc3f186",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "233f4a0a_efd20db0",
         "filename": "src/vnet/l2/l2_output.c",
         "patchSetId": 10
@@ -33,6 +51,24 @@
       "revId": "3b3d25953277c78de9311f2ed3aa84befbc3f186",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "695b51f1_cba3c44b",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2020-09-04T06:53:04Z",
+      "side": 1,
+      "message": "Hi,Damjan,if we add prefetch, this node will send more cycle than before and the vector rates will decrease a little",
+      "parentUuid": "233f4a0a_efd20db0",
+      "revId": "3b3d25953277c78de9311f2ed3aa84befbc3f186",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "7b69097e_a2b757bd",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 531,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2020-09-04T06:53:04Z",
+      "side": 1,
+      "message": "Done, removed",
+      "parentUuid": "33d6d41b_fd693304",
+      "revId": "3b3d25953277c78de9311f2ed3aa84befbc3f186",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa55bc62_bbb79570",
         "filename": "src/vppinfra/vector_avx512.h",
         "patchSetId": 10
@@ -67,6 +121,24 @@
       "revId": "3b3d25953277c78de9311f2ed3aa84befbc3f186",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e35a3927_5ba94516",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2020-09-04T06:53:04Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa55bc62_bbb79570",
+      "revId": "3b3d25953277c78de9311f2ed3aa84befbc3f186",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "72bb7eb5_3ccea65e",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2020-09-04T06:53:04Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5c650e26_c2f73e0d",
+      "revId": "3b3d25953277c78de9311f2ed3aa84befbc3f186",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7c940c3c_fde505f2",
         "filename": "src/vppinfra/vector_avx512.h",
         "patchSetId": 10
@@ -101,6 +191,24 @@
       "revId": "3b3d25953277c78de9311f2ed3aa84befbc3f186",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0aaf2606_f84ec700",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2020-09-04T06:53:04Z",
+      "side": 1,
+      "message": "Done,change to u32x16_mask_is_not_equal",
+      "parentUuid": "7c940c3c_fde505f2",
+      "revId": "3b3d25953277c78de9311f2ed3aa84befbc3f186",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
