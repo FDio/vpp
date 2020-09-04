@@ -1111,6 +1111,7 @@ list(APPEND VNET_SOURCES
 list(APPEND VNET_HEADERS
   devices/virtio/pci.h
   devices/virtio/virtio.h
+  devices/virtio/virtio_buffering.h
   devices/virtio/virtio_std.h
   devices/virtio/virtio_pci_legacy.h
   devices/virtio/virtio_pci_modern.h

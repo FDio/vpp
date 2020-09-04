@@ -7669,6 +7669,8 @@ api_virtio_pci_create_v2 (vat_main_t * vam)
 	virtio_flags |= VIRTIO_API_FLAG_PACKED;
       else if (unformat (i, "in-order"))
 	virtio_flags |= VIRTIO_API_FLAG_IN_ORDER;
+      else if (unformat (i, "buffering"))
+	virtio_flags |= VIRTIO_API_FLAG_BUFFERING;
       else
 	break;
     }
@@ -20811,7 +20813,7 @@ _(tap_delete_v2,                                                        \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_v2_dump, "")                                         \
 _(virtio_pci_create_v2,                                                    \
-  "pci-addr <pci-address> [use_random_mac | hw-addr <mac-addr>] [features <hex-value>] [gso-enabled [gro-coalesce] | csum-offload-enabled] [packed] [in-order]") \
+  "pci-addr <pci-address> [use_random_mac | hw-addr <mac-addr>] [features <hex-value>] [gso-enabled [gro-coalesce] | csum-offload-enabled] [packed] [in-order] [buffering]") \
 _(virtio_pci_delete,                                                    \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_virtio_pci_dump, "")                                     \

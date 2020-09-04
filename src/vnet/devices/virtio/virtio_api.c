@@ -126,15 +126,18 @@ vl_api_virtio_pci_create_v2_t_handler (vl_api_virtio_pci_create_v2_t * mp)
   STATIC_ASSERT (((int) VIRTIO_API_FLAG_IN_ORDER ==
 		  (int) VIRTIO_FLAG_IN_ORDER),
 		 "virtio in-order api flag mismatch");
+  STATIC_ASSERT (((int) VIRTIO_API_FLAG_BUFFERING ==
+		  (int) VIRTIO_FLAG_BUFFERING),
+		 "virtio buffering api flag mismatch");
 
   ap->virtio_flags = clib_net_to_host_u32 (mp->virtio_flags);
   ap->features = clib_net_to_host_u64 (mp->features);
 
-  if (ap->virtio_flags & VIRTIO_FLAG_GSO)
+  if (ap->virtio_flags & VIRTIO_API_FLAG_GSO)
     ap->gso_enabled = 1;
   else
     ap->gso_enabled = 0;
-  if (ap->virtio_flags & VIRTIO_FLAG_CSUM_OFFLOAD)
+  if (ap->virtio_flags & VIRTIO_API_FLAG_CSUM_OFFLOAD)
     ap->checksum_offload_enabled = 1;
   else
     ap->checksum_offload_enabled = 0;
