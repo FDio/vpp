@@ -507,8 +507,14 @@ vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
 static uword
 vlib_buffer_alloc_size (uword ext_hdr_size, uword data_size)
 {
-  return CLIB_CACHE_LINE_ROUND (ext_hdr_size + sizeof (vlib_buffer_t) +
-				data_size);
+  uword alloc_size = ext_hdr_size + sizeof (vlib_buffer_t) + data_size;
+  alloc_size = CLIB_CACHE_LINE_ROUND (alloc_size);
+
+  /* in case when we have even number of cachelines, we add one more for
+   * better cache occupancy */
+  alloc_size |= CLIB_CACHE_LINE_BYTES;
+
+  return alloc_size;
 }
 
 u8
