@@ -127,6 +127,15 @@ virtio_pci_irq_config_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h,
   uword pd = vlib_pci_get_private_data (vm, h);
   virtio_if_t *vif = pool_elt_at_index (vim->interfaces, pd);
 
+  u8 status = vif->virtio_pci_func->get_status (vm, vif);
+
+  if (status & VIRTIO_CONFIG_STATUS_DEVICE_NEEDS_RESET)
+    {
+      virtio_log_error (vif, "status: DEVICE_NEEDS_RESET");
+      vlib_cli_output (vm, "error: DEVICE_NEEDS_RESET");
+      return;
+    }
+
   if (virtio_pci_is_link_up (vm, vif) & VIRTIO_NET_S_LINK_UP)
     {
       vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;
@@ -550,6 +559,9 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
       virtio_log_debug (vif, "tx-queue: number %u, size %u", queue_num,
 			queue_size);
       clib_memset_u32 (vring->buffers, ~0, queue_size);
+      vring->buffering.free_size = VIRTIO_BUFFERING_SIZE;
+      vring->buffering.start = 0;
+      vring->buffering.end = 0;
     }
   else
     {
@@ -1180,6 +1192,12 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
     {
       if (virtio_pci_enable_multiqueue (vm, vif, vif->max_queue_pairs))
 	virtio_log_warning (vif, "multiqueue is not set");
+    }
+
+  if ((args->gso_enabled) && (args->is_gro_coalesce))
+    {
+      vif->packet_coalesce = 1;
+      virtio_set_packet_coalesce (vif);
     }
   return;
 
