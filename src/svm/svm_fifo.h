@@ -295,7 +295,7 @@ void svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len);
  * Overwrite fifo head with new data
  *
  * This should be typically used by dgram transport protocols that need
- * to update the dgram header after dequeueing a chunk of data. It assumes
+ * to update the dgram header after dequeuing a chunk of data. It assumes
  * that the dgram header is at most spread over two chunks.
  *
  * @param f		fifo
@@ -307,7 +307,9 @@ void svm_fifo_overwrite_head (svm_fifo_t * f, u8 * src, u32 len);
  * Dequeue data from fifo
  *
  * Data is dequeued to consumer provided buffer and head is atomically
- * updated.
+ * updated. This should not be used in combination with ooo lookups. If
+ * ooo peeking of data is needed in combination with dequeuing use @ref
+ * svm_fifo_dequeue_drop.
  *
  * @param f		fifo
  * @param len		length of data to dequeue

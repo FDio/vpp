@@ -1024,6 +1024,10 @@ svm_fifo_dequeue (svm_fifo_t * f, u32 len, u8 * dst)
   svm_fifo_copy_from_chunk (f, f->head_chunk, head, dst, len, &f->head_chunk);
   head = head + len;
 
+  /* In order dequeues are not supported in combination with ooo peeking.
+   * Use svm_fifo_dequeue_drop instead. */
+  ASSERT (!rb_tree_is_init (&f->ooo_deq_lookup));
+
   if (f_pos_geq (head, f_chunk_end (f->start_chunk)))
     fsh_collect_chunks (f->fs_hdr, f->slice_index,
 			f_unlink_chunks (f, head, 0));
