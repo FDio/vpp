@@ -22,6 +22,7 @@ The Developers section covers the following areas:
    running_vpp
    gdb_examples
    add_plugin
+   add_plugin_goapi
    gitreview
    softwarearchitecture
    infrastructure
@@ -41,3 +42,4 @@ The Developers section covers the following areas:
    punt
    quic_plugin
    cross_compile_macos.rst
+   VPPAPI.md
