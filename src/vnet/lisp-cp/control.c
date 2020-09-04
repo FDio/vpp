@@ -3552,7 +3552,11 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 							   sizeof (*tr));
 
 	      clib_memset (tr, 0, sizeof (*tr));
-	      gid_address_copy (&tr->dst_eid, &dst);
+	      if ((gid_address_type (&dst) == GID_ADDR_NDP) ||
+		  (gid_address_type (&dst) == GID_ADDR_ARP))
+		clib_memcpy (&tr->dst_eid, &dst, sizeof (gid_address_t));
+	      else
+		gid_address_copy (&tr->dst_eid, &dst);
 	      ip_address_copy (&tr->map_resolver_ip,
 			       &lcm->active_map_resolver);
 	    }
