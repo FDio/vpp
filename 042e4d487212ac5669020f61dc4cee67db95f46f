@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f2a73b7f_7696184a",
+        "filename": "src/plugins/tracedump/graph.api",
+        "patchSetId": 11
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-09-04T14:29:20Z",
+      "side": 1,
+      "message": "It makes sense to either add the chunk size as a parameter, derive it from the current state of the vpp-\u003eclient binary api queue (for a shared memory connection), or to figure out what it should be for a socket connection",
+      "revId": "042e4d487212ac5669020f61dc4cee67db95f46f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3ef355a8_3219e4df",
+        "filename": "src/plugins/tracedump/graph_api.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 215,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-09-04T14:29:20Z",
+      "side": 1,
+      "message": "This value should be derived from the binary API queue state, set by API message parameter, or set to a suitable value for a socket connection",
+      "revId": "042e4d487212ac5669020f61dc4cee67db95f46f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
