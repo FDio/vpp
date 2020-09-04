@@ -552,6 +552,9 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
       virtio_log_debug (vif, "tx-queue: number %u, size %u", queue_num,
 			queue_size);
       clib_memset_u32 (vring->buffers, ~0, queue_size);
+      vring->buffering.free_size = VIRTIO_BUFFERING_SIZE;
+      vring->buffering.start = 0;
+      vring->buffering.end = 0;
     }
   else
     {
@@ -1154,6 +1157,12 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
+
+  if (args->is_buffering)
+    {
+      vif->packet_buffering = 1;
+      virtio_set_packet_buffering (vif);
+    }
   vnet_hw_interface_set_input_node (vnm, vif->hw_if_index,
 				    virtio_input_node.index);
   u32 i = 0;
