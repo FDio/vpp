@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3b2286ee_ebe73890",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3327,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-04T15:01:19Z",
+      "side": 1,
+      "message": "The eid is filled in above as an ARP request. Why would we overwrite it? Note that only one can be stored in the gid address because underneath they\u0027re a union.\n\nThe trace probably crashes because ARPs doesn\u0027t have helper functions, i.e., copy, cast etc., so just fix those. If you just want to avoid the crash, use the ones for NDP, albeit they\u0027ll do nothing so you\u0027ll have less info in the trace.",
+      "range": {
+        "startLine": 3324,
+        "startChar": 0,
+        "endLine": 3327,
+        "endChar": 31
+      },
+      "revId": "308b2148325ec269599f54ff1c23bca4c84d7ac8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5ea7243b_dc18e1ac",
+        "filename": "src/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-04T15:01:19Z",
+      "side": 1,
+      "message": "ARP should be formatted as NDP. Why would we want to format the mac in case of an ARP?",
+      "range": {
+        "startLine": 204,
+        "startChar": 0,
+        "endLine": 205,
+        "endChar": 29
+      },
+      "revId": "308b2148325ec269599f54ff1c23bca4c84d7ac8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
