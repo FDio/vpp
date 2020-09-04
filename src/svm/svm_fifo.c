@@ -952,22 +952,24 @@ svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len)
 }
 
 always_inline svm_fifo_chunk_t *
-f_unlink_chunks (svm_fifo_t * f, u32 end_pos, u8 maybe_ooo)
+f_unlink_chunks (svm_fifo_t * f, u32 end_pos)
 {
   svm_fifo_chunk_t *start, *prev = 0, *c;
-  rb_tree_t *rt;
+  rb_tree_t *rt = 0;
   rb_node_t *n;
 
-  ASSERT (!f_chunk_includes_pos (f->start_chunk, end_pos));
+  if (rb_tree_is_init (&f->ooo_deq_lookup))
+    {
+      rt = &f->ooo_deq_lookup;
+    }
 
-  if (maybe_ooo)
-    rt = &f->ooo_deq_lookup;
+  ASSERT (!f_chunk_includes_pos (f->start_chunk, end_pos));
 
   c = f->start_chunk;
 
   do
     {
-      if (maybe_ooo && c->deq_rb_index != RBTREE_TNIL_INDEX)
+      if (rt != 0 && c->deq_rb_index != RBTREE_TNIL_INDEX)
 	{
 	  n = rb_node (rt, c->deq_rb_index);
 	  ASSERT (n == f_find_node_rbtree (rt, c->start_byte));
@@ -981,7 +983,7 @@ f_unlink_chunks (svm_fifo_t * f, u32 end_pos, u8 maybe_ooo)
     }
   while (!f_chunk_includes_pos (c, end_pos));
 
-  if (maybe_ooo)
+  if (rt != 0)
     {
       if (f->ooo_deq && f_pos_lt (f->ooo_deq->start_byte, f_chunk_end (c)))
 	f->ooo_deq = 0;
@@ -1025,8 +1027,7 @@ svm_fifo_dequeue (svm_fifo_t * f, u32 len, u8 * dst)
   head = head + len;
 
   if (f_pos_geq (head, f_chunk_end (f->start_chunk)))
-    fsh_collect_chunks (f->fs_hdr, f->slice_index,
-			f_unlink_chunks (f, head, 0));
+    fsh_collect_chunks (f->fs_hdr, f->slice_index, f_unlink_chunks (f, head));
 
   /* store-rel: consumer owned index (paired with load-acq in producer) */
   clib_atomic_store_rel_n (&f->head, head);
@@ -1080,7 +1081,7 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len)
   if (f_pos_geq (head, f_chunk_end (f->start_chunk)))
     {
       fsh_collect_chunks (f->fs_hdr, f->slice_index,
-			  f_unlink_chunks (f, head, 1));
+			  f_unlink_chunks (f, head));
       f->head_chunk =
 	f_chunk_includes_pos (f->start_chunk, head) ? f->start_chunk : 0;
     }
@@ -1108,8 +1109,7 @@ svm_fifo_dequeue_drop_all (svm_fifo_t * f)
   f->head_chunk = f_lookup_clear_deq_chunks (f, f->head_chunk, tail);
 
   if (f_pos_geq (tail, f_chunk_end (f->start_chunk)))
-    fsh_collect_chunks (f->fs_hdr, f->slice_index,
-			f_unlink_chunks (f, tail, 0));
+    fsh_collect_chunks (f->fs_hdr, f->slice_index, f_unlink_chunks (f, tail));
 
   /* store-rel: consumer owned index (paired with load-acq in producer) */
   clib_atomic_store_rel_n (&f->head, tail);
