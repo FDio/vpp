@@ -41,7 +41,7 @@ serdes_fct write_fcts[GID_ADDR_TYPES] =
 };
 
 cast_fct cast_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_cast, lcaf_cast, mac_cast, sd_cast, nsh_cast, 0 /* arp */ ,
+  { ip_prefix_cast, lcaf_cast, mac_cast, sd_cast, nsh_cast, no_addr_cast,
   no_addr_cast
 };
 
@@ -51,7 +51,7 @@ addr_len_fct addr_len_fcts[GID_ADDR_TYPES] =
 };
 
 copy_fct copy_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_copy, lcaf_copy, mac_copy, sd_copy, nsh_copy, 0 /* arp */ ,
+  { ip_prefix_copy, lcaf_copy, mac_copy, sd_copy, nsh_copy, no_addr_copy,
   no_addr_copy
 };
 
