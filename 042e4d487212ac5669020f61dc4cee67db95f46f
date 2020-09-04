@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "e0fad4c6_34425d96",
+        "filename": "src/plugins/tracedump/graph.api",
+        "patchSetId": 11
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-09-04T15:10:00Z",
+      "side": 1,
+      "message": "Happy to add a chunk size parameter here...",
+      "parentUuid": "f2a73b7f_7696184a",
+      "revId": "042e4d487212ac5669020f61dc4cee67db95f46f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "3ef355a8_3219e4df",
         "filename": "src/plugins/tracedump/graph_api.c",
         "patchSetId": 11
@@ -30,6 +48,24 @@
       "writtenOn": "2020-09-04T14:29:20Z",
       "side": 1,
       "message": "This value should be derived from the binary API queue state, set by API message parameter, or set to a suitable value for a socket connection",
+      "revId": "042e4d487212ac5669020f61dc4cee67db95f46f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f2fe434c_b29e6e49",
+        "filename": "src/plugins/tracedump/graph_api.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 215,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-09-04T15:10:00Z",
+      "side": 1,
+      "message": "I don\u0027t know how to compute a good value based on either the API queue state, or the socket connection.  Advice?",
+      "parentUuid": "3ef355a8_3219e4df",
       "revId": "042e4d487212ac5669020f61dc4cee67db95f46f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
