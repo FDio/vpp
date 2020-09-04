@@ -1596,9 +1596,12 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   /*
-   * Dequeue just a part of data
+   * Dequeue just a part of data. Because we're tracking ooo data, we can't
+   * call dequeue. Therefore, first peek and then dequeue drop
    */
-  rv = svm_fifo_dequeue (f, fifo_inc, data_buf);
+  rv = svm_fifo_peek (f, 0, fifo_inc, data_buf);
+  SFIFO_TEST (rv == fifo_inc, "should dequeue all data");
+  rv = svm_fifo_dequeue_drop (f, fifo_inc);
   SFIFO_TEST (rv == fifo_inc, "should dequeue all data");
   rv = svm_fifo_n_chunks (f);
   SFIFO_TEST (rv == 1, "should have %u chunks has %u", 1, rv);
@@ -1624,10 +1627,11 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (c->length == 4096, "end chunk length should be %u", 4096);
 
   /*
-   * Dequeue all
+   * Dequeue all. Don't call dequeue see above
    */
-  rv = svm_fifo_dequeue (f, fifo_size, data_buf + fifo_inc);
+  rv = svm_fifo_peek (f, 0, fifo_size, data_buf + fifo_inc);
   SFIFO_TEST (rv == fifo_size, "should dequeue all data");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   rv = compare_data (data_buf, test_data, 0, vec_len (test_data),
 		     (u32 *) & i);
@@ -1635,6 +1639,10 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", i, data_buf[i],
 		     test_data[i]);
   SFIFO_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
+
+  rv = svm_fifo_dequeue_drop (f, fifo_size);
+  SFIFO_TEST (rv == fifo_size, "should dequeue all data");
+
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
   /* fifo does not end on chunk boundary because of the - 100 */
   SFIFO_TEST (f->head_chunk != 0, "should have head chunk");
@@ -1711,7 +1719,10 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Dequeue all
    */
-  rv = svm_fifo_dequeue (f, fifo_size, data_buf);
+
+  /* Because we're tracking ooo data, we can't call dequeue. Therefore,
+   * first peek and then dequeue drop */
+  rv = svm_fifo_peek (f, 0, fifo_size, data_buf);
   SFIFO_TEST (rv == fifo_size, "should dequeue all data");
 
   rv = compare_data (data_buf, test_data, 0, vec_len (test_data),
@@ -1721,6 +1732,11 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 		     test_data[i]);
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
   SFIFO_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
+
+
+  rv = svm_fifo_dequeue_drop (f, fifo_size);
+  SFIFO_TEST ((rv == fifo_size), "all bytes should be dropped %u", rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
   SFIFO_TEST (f->ooo_deq == 0, "should have no ooo deq chunk");
   rv = svm_fifo_n_chunks (f);
   SFIFO_TEST (rv == 1, "should have %u chunks has %u", 1, rv);
