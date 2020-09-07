@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "82dc33ce_77f0fce7",
+        "filename": "src/plugins/wireguard/wireguard.api",
+        "patchSetId": 26
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-07T07:04:45Z",
+      "side": 1,
+      "message": "itf -\u003e interface please",
+      "revId": "912f1038c327ed2e55f116ce8d119f9528f53292",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
