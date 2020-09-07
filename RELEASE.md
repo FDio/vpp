@@ -1,8 +1,10 @@
 # Release Notes    {#release_notes}
 
 * @subpage release_notes_2009
+* @subpage release_notes_20051
 * @subpage release_notes_2005
 * @subpage release_notes_2001
+* @subpage release_notes_19083
 * @subpage release_notes_19082
 * @subpage release_notes_19081
 * @subpage release_notes_1908
@@ -28,9 +30,17 @@
 * @subpage release_notes_1609
 * @subpage release_notes_1606
 
-@page release_notes_2005 Release notes for VPP 20.09
+@page release_notes_2009 Release notes for VPP 20.09
 
 TBD
+
+@page release_notes_20051 Release notes for VPP 20.05.1
+
+This is bug fix release.
+
+For the full list of fixed issues please refer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/2005)
 
 @page release_notes_2005 Release notes for VPP 20.05
 
@@ -2074,6 +2084,14 @@ Found 493 api message signature differences
 | [e71748291](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291) | vppapigen: remove support for legacy typedefs |
 | [a47a5f20a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a47a5f20a) | api papi: add alias for timestamp(datetime)/timedelta |
 | [3cf9e67f5](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3cf9e67f5) | api: add vl_api_version_t type |
+
+@page release_notes_19083 Release notes for VPP 19.08.3
+
+This is bug fix release.
+
+For the full list of fixed issues please refer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1908)
 
 @page release_notes_19082 Release notes for VPP 19.08.2
 
@@ -6770,15 +6788,6 @@ For the full list of issues please reffer to fd.io [JIRA](https://jira.fd.io).
 For the full list of fixed issues please reffer to:
 - fd.io [JIRA](https://jira.fd.io)
 - git [commit log](https://git.fd.io/vpp/log/?h=stable/1704)
-
-
-@page release_notes_17011 Release notes for VPP 17.01.1
-
-This is bug fix release.
-
-For the full list of fixed issues please reffer to:
-- fd.io [JIRA](https://jira.fd.io)
-- git [commit log](https://git.fd.io/vpp/log/?h=stable/1701)
 
 
 @page release_notes_17011 Release notes for VPP 17.01.1
