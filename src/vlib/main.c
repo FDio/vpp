@@ -1677,27 +1677,6 @@ vl_api_send_pending_rpc_requests (vlib_main_t * vm)
 {
 }
 
-static_always_inline u64
-dispatch_pending_interrupts (vlib_main_t * vm, vlib_node_main_t * nm,
-			     u64 cpu_time_now)
-{
-  vlib_node_runtime_t *n;
-
-  for (int i = 0; i < _vec_len (nm->pending_local_interrupts); i++)
-    {
-      vlib_node_interrupt_t *in;
-      in = vec_elt_at_index (nm->pending_local_interrupts, i);
-      n = vec_elt_at_index (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
-			    in->node_runtime_index);
-      n->interrupt_data = in->data;
-      cpu_time_now = dispatch_node (vm, n, VLIB_NODE_TYPE_INPUT,
-				    VLIB_NODE_STATE_INTERRUPT, /* frame */ 0,
-				    cpu_time_now);
-    }
-  vec_reset_length (nm->pending_local_interrupts);
-  return cpu_time_now;
-}
-
 static_always_inline void
 vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 {
@@ -1724,13 +1703,6 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
     }
   else
     cpu_time_now = clib_cpu_time_now ();
-
-  /* Pre-allocate interupt runtime indices and lock. */
-  vec_alloc (nm->pending_local_interrupts, 32);
-  vec_alloc (nm->pending_remote_interrupts, 32);
-  vec_alloc_aligned (nm->pending_remote_interrupts_notify, 1,
-		     CLIB_CACHE_LINE_BYTES);
-  clib_spinlock_init (&nm->pending_interrupt_lock);
 
   /* Pre-allocate expired nodes. */
   if (!nm->polling_threshold_vector_length)
@@ -1810,36 +1782,23 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 
       /* Next process input nodes. */
       vec_foreach (n, nm->nodes_by_type[VLIB_NODE_TYPE_INPUT])
-	cpu_time_now = dispatch_node (vm, n,
-				      VLIB_NODE_TYPE_INPUT,
-				      VLIB_NODE_STATE_POLLING,
-				      /* frame */ 0,
-				      cpu_time_now);
+        {
+          if (PREDICT_FALSE(VLIB_NODE_STATE_INTERRUPT == n->state && clib_atomic_swap_acq_n (n->node_interrupt_pending, 0)))
+            cpu_time_now = dispatch_node (vm, n,
+                                          VLIB_NODE_TYPE_INPUT,
+                                          VLIB_NODE_STATE_INTERRUPT,
+                                          /* frame */ 0,
+                                          cpu_time_now);
+          else
+            cpu_time_now = dispatch_node (vm, n,
+                                          VLIB_NODE_TYPE_INPUT,
+                                          VLIB_NODE_STATE_POLLING,
+                                          /* frame */ 0,
+                                          cpu_time_now);
+        }
 
       if (PREDICT_TRUE (is_main && vm->queue_signal_pending == 0))
 	vm->queue_signal_callback (vm);
-
-      /* handle local interruots */
-      if (_vec_len (nm->pending_local_interrupts))
-	cpu_time_now = dispatch_pending_interrupts (vm, nm, cpu_time_now);
-
-      /* handle remote interruots */
-      if (PREDICT_FALSE (_vec_len (nm->pending_remote_interrupts)))
-	{
-	  vlib_node_interrupt_t *in;
-
-	  /* at this point it is known that
-	   * vec_len (nm->pending_local_interrupts) is zero so we quickly swap
-	   * local and remote vector under the spinlock */
-	  clib_spinlock_lock (&nm->pending_interrupt_lock);
-	  in = nm->pending_local_interrupts;
-	  nm->pending_local_interrupts = nm->pending_remote_interrupts;
-	  nm->pending_remote_interrupts = in;
-	  *nm->pending_remote_interrupts_notify = 0;
-	  clib_spinlock_unlock (&nm->pending_interrupt_lock);
-
-	  cpu_time_now = dispatch_pending_interrupts (vm, nm, cpu_time_now);
-	}
 
       /* Input nodes may have added work to the pending vector.
          Process pending vector until there is nothing left.

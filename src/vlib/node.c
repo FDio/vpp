@@ -458,7 +458,10 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
       }
 
     if (n->type == VLIB_NODE_TYPE_INPUT)
-      nm->input_node_counts_by_state[n->state] += 1;
+      {
+        nm->input_node_counts_by_state[n->state] += 1;
+        vec_validate_aligned (rt->node_interrupt_pending, 1, CLIB_CACHE_LINE_BYTES);
+      }
 
     rt->function = n->function;
     rt->flags = n->flags;
