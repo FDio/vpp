@@ -4190,9 +4190,7 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 
   if (0 == max_translations_per_thread)
     {
-      // default value based on legacy setting of load factor 10 * default
-      // translation buckets 1024
-      max_translations_per_thread = 10 * 1024;
+      max_translations_per_thread = 63 * 1024;
     }
   sm->translation_memory_size_set = translation_memory_size != 0;
 
