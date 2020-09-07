@@ -540,10 +540,10 @@ sw_scheduler_show_workers (vlib_main_t * vm, unformat_input_t * input,
 			   vlib_cli_command_t * cmd)
 {
   crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
-  u32 i;
+  u32 i, skip_master = vlib_num_workers () > 0;
 
   vlib_cli_output (vm, "%-7s%-20s%-8s", "ID", "Name", "Crypto");
-  for (i = vlib_num_workers () >= 0; i < vlib_thread_main.n_vlib_mains; i++)
+  for (i = skip_master; i < vlib_thread_main.n_vlib_mains; i++)
     {
       vlib_cli_output (vm, "%-7d%-20s%-8s", vlib_get_worker_index (i),
 		       (vlib_worker_threads + i)->name,
