@@ -9,7 +9,7 @@ from cryptography.hazmat.primitives.ciphers import (
     algorithms,
     modes,
 )
-from ipaddress import IPv4Address
+from ipaddress import IPv4Address, IPv6Address, ip_address
 from scapy.layers.ipsec import ESP
 from scapy.layers.inet import IP, UDP, Ether
 from scapy.packet import raw, Raw
@@ -18,6 +18,10 @@ from framework import VppTestCase, VppTestRunner
 from vpp_ikev2 import Profile, IDType, AuthMethod
 from vpp_papi import VppEnum
 
+try:
+    text_type = unicode
+except NameError:
+    text_type = str
 
 KEY_PAD = b"Key Pad for IKEv2"
 SALT_SIZE = 4
@@ -416,18 +420,25 @@ class IKEv2SA(object):
             ct = ep.load[:-integ_trunc]
             return self.decrypt(ct)
 
-    def generate_ts(self):
+    def build_ts_addr(self, ts, version):
+        return {'starting_address_v' + version: ts['start_addr'],
+                'ending_address_v' + version: ts['end_addr']}
+
+    def generate_ts(self, is_ip4):
         c = self.child_sas[0]
-        ts1 = ikev2.IPv4TrafficSelector(
-                IP_protocol_ID=0,
-                start_port=0,
-                end_port=0xffff,
-                starting_address_v4=c.local_ts['start_addr'],
-                ending_address_v4=c.local_ts['end_addr'])
-        ts2 = ikev2.IPv4TrafficSelector(
-                IP_protocol_ID=0,
-                starting_address_v4=c.remote_ts['start_addr'],
-                ending_address_v4=c.remote_ts['end_addr'])
+        ts_data = {'IP_protocol_ID': 0,
+                   'start_port': 0,
+                   'end_port': 0xffff}
+        if is_ip4:
+            ts_data.update(self.build_ts_addr(c.local_ts, '4'))
+            ts1 = ikev2.IPv4TrafficSelector(**ts_data)
+            ts_data.update(self.build_ts_addr(c.remote_ts, '4'))
+            ts2 = ikev2.IPv4TrafficSelector(**ts_data)
+        else:
+            ts_data.update(self.build_ts_addr(c.local_ts, '6'))
+            ts1 = ikev2.IPv6TrafficSelector(**ts_data)
+            ts_data.update(self.build_ts_addr(c.remote_ts, '6'))
+            ts2 = ikev2.IPv6TrafficSelector(**ts_data)
         return ([ts1], [ts2])
 
     def set_ike_props(self, crypto, crypto_key_len, integ, prf, dh):
@@ -642,7 +653,7 @@ class TemplateResponder(VppTestCase):
         props = (ikev2.IKEv2_payload_Proposal(proposal=1, proto='ESP',
                  SPIsize=4, SPI=os.urandom(4), trans_nb=4, trans=trans))
 
-        tsi, tsr = self.sa.generate_ts()
+        tsi, tsr = self.sa.generate_ts(self.p.ts_is_ip4)
         plain = (ikev2.IKEv2_payload_IDi(next_payload='IDr',
                  IDtype=self.sa.id_type, load=self.sa.i_id) /
                  ikev2.IKEv2_payload_IDr(next_payload='AUTH',
@@ -806,7 +817,7 @@ class TemplateResponder(VppTestCase):
         self.verify_keymat(csa.keys, c, 'sk_ei')
         self.verify_keymat(csa.keys, c, 'sk_er')
 
-        tsi, tsr = self.sa.generate_ts()
+        tsi, tsr = self.sa.generate_ts(self.p.ts_is_ip4)
         tsi = tsi[0]
         tsr = tsr[0]
         r = self.vapi.ikev2_traffic_selector_dump(
@@ -838,10 +849,17 @@ class TemplateResponder(VppTestCase):
             self.assertTrue(api_ts.is_local)
         else:
             self.assertFalse(api_ts.is_local)
-        self.assertEqual(api_ts.start_addr,
-                         IPv4Address(ts.starting_address_v4))
-        self.assertEqual(api_ts.end_addr,
-                         IPv4Address(ts.ending_address_v4))
+
+        if self.p.ts_is_ip4:
+            self.assertEqual(api_ts.start_addr,
+                             IPv4Address(ts.starting_address_v4))
+            self.assertEqual(api_ts.end_addr,
+                             IPv4Address(ts.ending_address_v4))
+        else:
+            self.assertEqual(api_ts.start_addr,
+                             IPv6Address(ts.starting_address_v6))
+            self.assertEqual(api_ts.end_addr,
+                             IPv6Address(ts.ending_address_v6))
         self.assertEqual(api_ts.start_port, ts.start_port)
         self.assertEqual(api_ts.end_port, ts.end_port)
         self.assertEqual(api_ts.protocol_id, ts.IP_protocol_ID)
@@ -897,8 +915,12 @@ class Ikev2Params(object):
 
         self.p.add_local_id(id_type='fqdn', data=b'vpp.home')
         self.p.add_remote_id(id_type='fqdn', data=b'roadwarrior.example.com')
-        self.p.add_local_ts(start_addr='10.10.10.0', end_addr='10.10.10.255')
-        self.p.add_remote_ts(start_addr='10.0.0.0', end_addr='10.0.0.255')
+        loc_ts = {'start_addr': '10.10.10.0', 'end_addr': '10.10.10.255'} if\
+            'loc_ts' not in params else params['loc_ts']
+        rem_ts = {'start_addr': '10.0.0.0', 'end_addr': '10.0.0.255'} if\
+            'rem_ts' not in params else params['rem_ts']
+        self.p.add_local_ts(**loc_ts)
+        self.p.add_remote_ts(**rem_ts)
 
         self.sa = IKEv2SA(self, i_id=self.p.remote_id['data'],
                           r_id=self.p.local_id['data'],
@@ -964,14 +986,14 @@ class TestApi(VppTestCase):
 
     def test_profile_api(self):
         """ test profile dump API """
-        loc_ts = {
+        loc_ts4 = {
                     'proto': 8,
                     'start_port': 1,
                     'end_port': 19,
                     'start_addr': '3.3.3.2',
                     'end_addr': '3.3.3.3',
                 }
-        rem_ts = {
+        rem_ts4 = {
                     'proto': 9,
                     'start_port': 10,
                     'end_port': 119,
@@ -979,13 +1001,28 @@ class TestApi(VppTestCase):
                     'end_addr': '2.3.4.6',
                 }
 
+        loc_ts6 = {
+                    'proto': 8,
+                    'start_port': 1,
+                    'end_port': 19,
+                    'start_addr': 'ab::1',
+                    'end_addr': 'ab::4',
+                }
+        rem_ts6 = {
+                    'proto': 9,
+                    'start_port': 10,
+                    'end_port': 119,
+                    'start_addr': 'cd::12',
+                    'end_addr': 'cd::13',
+                }
+
         conf = {
             'p1': {
                 'name': 'p1',
                 'loc_id': ('fqdn', b'vpp.home'),
                 'rem_id': ('fqdn', b'roadwarrior.example.com'),
-                'loc_ts': loc_ts,
-                'rem_ts': rem_ts,
+                'loc_ts': loc_ts4,
+                'rem_ts': rem_ts4,
                 'responder': {'sw_if_index': 0, 'ip4': '5.6.7.8'},
                 'ike_ts': {
                         'crypto_alg': 20,
@@ -1009,8 +1046,8 @@ class TestApi(VppTestCase):
                 'name': 'p2',
                 'loc_id': ('ip4-addr', b'192.168.2.1'),
                 'rem_id': ('ip4-addr', b'192.168.2.2'),
-                'loc_ts': loc_ts,
-                'rem_ts': rem_ts,
+                'loc_ts': loc_ts6,
+                'rem_ts': rem_ts6,
                 'responder': {'sw_if_index': 4, 'ip4': '5.6.7.99'},
                 'ike_ts': {
                         'crypto_alg': 12,
@@ -1042,8 +1079,10 @@ class TestApi(VppTestCase):
         self.assertEqual(api_ts.protocol_id, cfg_ts['proto'])
         self.assertEqual(api_ts.start_port, cfg_ts['start_port'])
         self.assertEqual(api_ts.end_port, cfg_ts['end_port'])
-        self.assertEqual(api_ts.start_addr, IPv4Address(cfg_ts['start_addr']))
-        self.assertEqual(api_ts.end_addr, IPv4Address(cfg_ts['end_addr']))
+        self.assertEqual(api_ts.start_addr,
+                         ip_address(text_type(cfg_ts['start_addr'])))
+        self.assertEqual(api_ts.end_addr,
+                         ip_address(text_type(cfg_ts['end_addr'])))
 
     def verify_responder(self, api_r, cfg_r):
         self.assertEqual(api_r.sw_if_index, cfg_r['sw_if_index'])
@@ -1152,7 +1191,11 @@ class Test_IKE_AES_GCM_16_256(TemplateResponder, Ikev2Params):
         self.config_params({
             'ike-crypto': ('AES-GCM-16ICV', 32),
             'ike-integ': 'NULL',
-            'ike-dh': '2048MODPgr'})
+            'ike-dh': '2048MODPgr',
+            'loc_ts': {'start_addr': 'ab:cd::0',
+                       'end_addr': 'ab:cd::10'},
+            'rem_ts': {'start_addr': '11::0',
+                       'end_addr': '11::100'}})
 
 
 class TestMalformedMessages(TemplateResponder, Ikev2Params):
