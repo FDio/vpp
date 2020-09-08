@@ -1072,42 +1072,6 @@ vcl_flush_mq_events (void)
 }
 
 static int
-vppcom_app_session_enable (void)
-{
-  int rv;
-
-  if (vcm->app_state != STATE_APP_ENABLED)
-    {
-      vppcom_send_session_enable_disable (1 /* is_enabled == TRUE */ );
-      rv = vcl_wait_for_app_state_change (STATE_APP_ENABLED);
-      if (PREDICT_FALSE (rv))
-	{
-	  VDBG (0, "application session enable timed out! returning %d (%s)",
-		rv, vppcom_retval_str (rv));
-	  return rv;
-	}
-    }
-  return VPPCOM_OK;
-}
-
-static int
-vppcom_app_attach (void)
-{
-  int rv;
-
-  vppcom_app_send_attach ();
-  rv = vcl_wait_for_app_state_change (STATE_APP_ATTACHED);
-  if (PREDICT_FALSE (rv))
-    {
-      VDBG (0, "application attach timed out! returning %d (%s)", rv,
-	    vppcom_retval_str (rv));
-      return rv;
-    }
-
-  return VPPCOM_OK;
-}
-
-static int
 vppcom_session_unbind (u32 session_handle)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
@@ -1236,41 +1200,25 @@ vppcom_app_create (const char *app_name)
   vcm->main_cpu = pthread_self ();
   vcm->main_pid = getpid ();
   vcm->app_name = format (0, "%s", app_name);
-  vppcom_init_error_string_table ();
   fifo_segment_main_init (&vcm->segment_main, vcl_cfg->segment_baseva,
 			  20 /* timeout in secs */ );
   pool_alloc (vcm->workers, vcl_cfg->max_workers);
   clib_spinlock_init (&vcm->workers_lock);
   clib_rwlock_init (&vcm->segment_table_lock);
   atexit (vppcom_app_exit);
+  vcl_elog_init (vcm);
 
   /* Allocate default worker */
   vcl_worker_alloc_and_init ();
 
-  /* API hookup and connect to VPP */
-  vcl_elog_init (vcm);
   vcm->app_state = STATE_APP_START;
-  rv = vppcom_connect_to_vpp (app_name);
-  if (rv)
-    {
-      VERR ("couldn't connect to VPP!");
-      return rv;
-    }
-  VDBG (0, "sending session enable");
-  rv = vppcom_app_session_enable ();
-  if (rv)
-    {
-      VERR ("vppcom_app_session_enable() failed!");
-      return rv;
-    }
 
-  VDBG (0, "sending app attach");
-  rv = vppcom_app_attach ();
-  if (rv)
-    {
-      VERR ("vppcom_app_attach() failed!");
-      return rv;
-    }
+  /* API hookup and connect to VPP */
+  if ((rv = vcl_bapi_init ()))
+    return rv;
+
+  if ((rv = vcl_bapi_attach ()))
+    return rv;
 
   VDBG (0, "app_name '%s', my_client_index %d (0x%x)", app_name,
 	vcm->workers[0].my_client_index, vcm->workers[0].my_client_index);
@@ -1300,7 +1248,7 @@ vppcom_app_destroy (void)
   /* *INDENT-ON* */
 
   vcl_send_app_detach (current_wrk);
-  vppcom_disconnect_from_vpp ();
+  vcl_bapi_disconnect_from_vpp ();
   vcl_worker_cleanup (current_wrk, 0 /* notify vpp */ );
 
   vcl_elog_stop (vcm);
@@ -1533,52 +1481,6 @@ vppcom_session_listen (uint32_t listen_sh, uint32_t q_len)
       return rv;
     }
 
-  return VPPCOM_OK;
-}
-
-int
-vppcom_session_tls_add_cert (uint32_t session_handle, char *cert,
-			     uint32_t cert_len)
-{
-
-  vcl_worker_t *wrk = vcl_worker_get_current ();
-  vcl_session_t *session = 0;
-
-  session = vcl_session_get_w_handle (wrk, session_handle);
-  if (!session)
-    return VPPCOM_EBADFD;
-
-  if (cert_len == 0 || cert_len == ~0)
-    return VPPCOM_EBADFD;
-
-  /*
-   * Send listen request to vpp and wait for reply
-   */
-  vppcom_send_application_tls_cert_add (session, cert, cert_len);
-  vcm->app_state = STATE_APP_ADDING_TLS_DATA;
-  vcl_wait_for_app_state_change (STATE_APP_READY);
-  return VPPCOM_OK;
-
-}
-
-int
-vppcom_session_tls_add_key (uint32_t session_handle, char *key,
-			    uint32_t key_len)
-{
-
-  vcl_worker_t *wrk = vcl_worker_get_current ();
-  vcl_session_t *session = 0;
-
-  session = vcl_session_get_w_handle (wrk, session_handle);
-  if (!session)
-    return VPPCOM_EBADFD;
-
-  if (key_len == 0 || key_len == ~0)
-    return VPPCOM_EBADFD;
-
-  vppcom_send_application_tls_key_add (session, key, key_len);
-  vcm->app_state = STATE_APP_ADDING_TLS_DATA;
-  vcl_wait_for_app_state_change (STATE_APP_READY);
   return VPPCOM_OK;
 }
 
@@ -3895,20 +3797,10 @@ vppcom_session_worker (vcl_session_handle_t session_handle)
 int
 vppcom_worker_register (void)
 {
-  vcl_worker_t *wrk;
-  u8 *wrk_name = 0;
-  int rv;
-
   if (!vcl_worker_alloc_and_init ())
     return VPPCOM_EEXIST;
 
-  wrk = vcl_worker_get_current ();
-  wrk_name = format (0, "%s-wrk-%u", vcm->app_name, wrk->wrk_index);
-
-  rv = vppcom_connect_to_vpp ((char *) wrk_name);
-  vec_free (wrk_name);
-
-  if (rv)
+  if (vcl_bapi_connect_to_vpp ())
     return VPPCOM_EFAULT;
 
   if (vcl_worker_register_with_vpp ())
