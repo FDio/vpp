@@ -166,7 +166,7 @@ vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp)
 
       /* Disconnect the binary api */
       if (vec_len (vcm->workers) == 1)
-	vppcom_disconnect_from_vpp ();
+	vcl_bapi_disconnect_from_vpp ();
       else
 	vl_client_send_disconnect (1 /* vpp should cleanup */ );
     }

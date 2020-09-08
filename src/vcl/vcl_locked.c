@@ -1491,44 +1491,57 @@ static void
 vls_app_fork_child_handler (void)
 {
   vcl_worker_t *parent_wrk;
-  int rv, parent_wrk_index;
-  u8 *child_name;
+  int parent_wrk_index;
+//  u8 *child_name;
 
   parent_wrk_index = vcl_get_worker_index ();
   VDBG (0, "initializing forked child %u with parent wrk %u", getpid (),
 	parent_wrk_index);
 
   /*
-   * Allocate worker vcl
+   * Clear old state
    */
   vcl_set_worker_index (~0);
-  if (!vcl_worker_alloc_and_init ())
-    VERR ("couldn't allocate new worker");
+  vcl_cleanup_bapi ();
+  vcl_bapi_hookup ();
+  vcm->app_state = STATE_APP_START;
 
   /*
-   * Attach to binary api
+   * Allocate and register vcl worker with vpp
    */
-  child_name = format (0, "%v-child-%u%c", vcm->app_name, getpid (), 0);
-  vcl_cleanup_bapi ();
-  vppcom_api_hookup ();
-  vcm->app_state = STATE_APP_START;
-  rv = vppcom_connect_to_vpp ((char *) child_name);
-  vec_free (child_name);
-  if (rv)
+  if (vppcom_worker_register ())
     {
-      VERR ("couldn't connect to VPP!");
+      VERR ("couldn't register new worker!");
       return;
     }
 
-  /*
-   * Allocate/initialize vls worker
-   */
-  vls_worker_alloc ();
+//  /*
+//   * Allocate worker vcl
+//   */
+//  if (!vcl_worker_alloc_and_init ())
+//    VERR ("couldn't allocate new worker");
+//
+//  /*
+//   * Attach to binary api
+//   */
+//  child_name = format (0, "%v-child-%u%c", vcm->app_name, getpid (), 0);
+//  rv = vppcom_connect_to_vpp ((char *) child_name);
+//  vec_free (child_name);
+//  if (rv)
+//    {
+//      VERR ("couldn't connect to VPP!");
+//      return;
+//    }
+//
+//  /*
+//   * Register worker with vpp
+//   */
+//  vcl_worker_register_with_vpp ();
 
   /*
-   * Register worker with vpp and share sessions
+   * Allocate/initialize vls worker and share sessions
    */
-  vcl_worker_register_with_vpp ();
+  vls_worker_alloc ();
   parent_wrk = vcl_worker_get (parent_wrk_index);
   vls_worker_copy_on_fork (parent_wrk);
   parent_wrk->forked_child = vcl_get_worker_index ();
