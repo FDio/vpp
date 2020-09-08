@@ -1,3 +1,4 @@
+from ipaddress import IPv4Address, AddressValueError
 from vpp_object import VppObject
 from vpp_papi import VppEnum
 
@@ -12,7 +13,8 @@ class AuthMethod:
 
 class IDType:
     v = {'ip4-addr': 1,
-         'fqdn': 2}
+         'fqdn': 2,
+         'ip6-addr': 5}
 
     @staticmethod
     def value(key): return IDType.v[key]
@@ -52,7 +54,8 @@ class Profile(VppObject):
                           'is_local': False}
 
     def add_local_ts(self, start_addr, end_addr, start_port=0, end_port=0xffff,
-                     proto=0):
+                     proto=0, is_ip4=True):
+        self.ts_is_ip4 = is_ip4
         self.local_ts = {'is_local': True,
                          'protocol_id': proto,
                          'start_port': start_port,
@@ -62,6 +65,12 @@ class Profile(VppObject):
 
     def add_remote_ts(self, start_addr, end_addr, start_port=0,
                       end_port=0xffff, proto=0):
+        try:
+            IPv4Address(start_addr)
+            is_ip4 = True
+        except AddressValueError:
+            is_ip4 = False
+        self.ts_is_ip4 = is_ip4
         self.remote_ts = {'is_local': False,
                           'protocol_id': proto,
                           'start_port': start_port,
