@@ -225,7 +225,7 @@ vlib_node_get_state (vlib_main_t * vm, u32 node_index)
 
 always_inline void
 vlib_node_set_interrupt_pending_with_data (vlib_main_t * vm, u32 node_index,
-					   u32 data)
+					   u32 data, u8 unique)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n = vec_elt (nm->nodes, node_index);
@@ -235,6 +235,14 @@ vlib_node_set_interrupt_pending_with_data (vlib_main_t * vm, u32 node_index,
   if (vm == vlib_get_main ())
     {
       /* local thread */
+      if (unique)
+	{
+	  vec_foreach (i, nm->pending_local_interrupts)
+	  {
+	    if (n->runtime_index == i->node_runtime_index)
+	      return;
+	  }
+	}
       vec_add2 (nm->pending_local_interrupts, i, 1);
       i->node_runtime_index = n->runtime_index;
       i->data = data;
@@ -243,6 +251,17 @@ vlib_node_set_interrupt_pending_with_data (vlib_main_t * vm, u32 node_index,
     {
       /* remote thread */
       clib_spinlock_lock (&nm->pending_interrupt_lock);
+      if (unique)
+	{
+	  vec_foreach (i, nm->pending_remote_interrupts)
+	  {
+	    if (n->runtime_index == i->node_runtime_index)
+	      {
+		clib_spinlock_unlock (&nm->pending_interrupt_lock);
+		return;
+	      }
+	  }
+	}
       vec_add2 (nm->pending_remote_interrupts, i, 1);
       i->node_runtime_index = n->runtime_index;
       i->data = data;
@@ -254,7 +273,13 @@ vlib_node_set_interrupt_pending_with_data (vlib_main_t * vm, u32 node_index,
 always_inline void
 vlib_node_set_interrupt_pending (vlib_main_t * vm, u32 node_index)
 {
-  vlib_node_set_interrupt_pending_with_data (vm, node_index, 0);
+  vlib_node_set_interrupt_pending_with_data (vm, node_index, 0, 0);
+}
+
+always_inline void
+vlib_node_set_interrupt_pending_unique (vlib_main_t * vm, u32 node_index)
+{
+  vlib_node_set_interrupt_pending_with_data (vm, node_index, 0, 1);
 }
 
 always_inline vlib_process_t *
