@@ -264,7 +264,7 @@ autoreply define ikev2_profile_set_ts
 
   string name[64];
   vl_api_ikev2_ts_t ts;
-  option vat_help = "name <profile_name> protocol <proto> start_port <port> end_port <port> start_addr <ip4> end_addr <ip4> (local|remote)";
+  option vat_help = "name <profile_name> protocol <proto> start_port <port> end_port <port> start_addr <ip> end_addr <ip> (local|remote)";
   option status="in_progress";
 };
 
