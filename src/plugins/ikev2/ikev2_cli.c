@@ -64,8 +64,8 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
     pool_foreach (sa, tkm->sas, ({
       u8 * s = 0;
       vlib_cli_output(vm, " iip %U ispi %lx rip %U rspi %lx",
-                      format_ip4_address, &sa->iaddr, sa->ispi,
-                      format_ip4_address, &sa->raddr, sa->rspi);
+                      format_ip_address, &sa->iaddr, sa->ispi,
+                      format_ip_address, &sa->raddr, sa->rspi);
 
        tr = ikev2_sa_get_td_for_type(sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
        s = format(s, "%U ", format_ikev2_sa_transform, tr);
@@ -142,8 +142,8 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
                               "%U - %U port %u - %u",
                               ts - child->tsi,
                               ts->ts_type, ts->protocol_id,
-                              format_ip4_address, &ts->start_addr,
-                              format_ip4_address, &ts->end_addr,
+                              format_ip_address, &ts->start_addr,
+                              format_ip_address, &ts->end_addr,
                               clib_net_to_host_u16( ts->start_port),
                               clib_net_to_host_u16( ts->end_port));
             }
@@ -154,8 +154,8 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
                               "%U - %U port %u - %u",
                               ts - child->tsr,
                               ts->ts_type, ts->protocol_id,
-                              format_ip4_address, &ts->start_addr,
-                              format_ip4_address, &ts->end_addr,
+                              format_ip_address, &ts->start_addr,
+                              format_ip_address, &ts->end_addr,
                               clib_net_to_host_u16( ts->start_port),
                               clib_net_to_host_u16( ts->end_port));
             }
@@ -188,11 +188,9 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
   u8 *data = 0;
   u32 tmp1, tmp2, tmp3;
   u64 tmp4, tmp5;
-  ip4_address_t ip4;
-  ip4_address_t end_addr;
+  ip_address_t ip, end_addr;
   u32 responder_sw_if_index = (u32) ~ 0;
   u32 tun_sw_if_index = (u32) ~ 0;
-  ip4_address_t responder_ip4;
   ikev2_transform_encr_type_t crypto_alg;
   ikev2_transform_integ_type_t integ_alg;
   ikev2_transform_dh_type_t dh_type;
@@ -246,10 +244,10 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "set %U id local %U %U",
 			 unformat_token, valid_chars, &name,
 			 unformat_ikev2_id_type, &id_type,
-			 unformat_ip4_address, &ip4))
+			 unformat_ip_address, &ip))
 	{
-	  data = vec_new (u8, 4);
-	  clib_memcpy (data, ip4.as_u8, 4);
+	  data = vec_new (u8, ip_address_size (&ip));
+	  clib_memcpy (data, ip_addr_bytes (&ip), ip_address_size (&ip));
 	  r =
 	    ikev2_set_profile_id (vm, name, (u8) id_type, data, /*local */ 1);
 	  goto done;
@@ -274,10 +272,10 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "set %U id remote %U %U",
 			 unformat_token, valid_chars, &name,
 			 unformat_ikev2_id_type, &id_type,
-			 unformat_ip4_address, &ip4))
+			 unformat_ip_address, &ip))
 	{
-	  data = vec_new (u8, 4);
-	  clib_memcpy (data, ip4.as_u8, 4);
+	  data = vec_new (u8, ip_address_size (&ip));
+	  clib_memcpy (data, ip_addr_bytes (&ip), ip_address_size (&ip));
 	  r = ikev2_set_profile_id (vm, name, (u8) id_type, data,	/*remote */
 				    0);
 	  goto done;
@@ -302,36 +300,32 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "set %U traffic-selector local "
 			 "ip-range %U - %U port-range %u - %u protocol %u",
 			 unformat_token, valid_chars, &name,
-			 unformat_ip4_address, &ip4,
-			 unformat_ip4_address, &end_addr,
-			 &tmp1, &tmp2, &tmp3))
+			 unformat_ip_address, &ip,
+			 unformat_ip_address, &end_addr, &tmp1, &tmp2, &tmp3))
 	{
 	  r =
 	    ikev2_set_profile_ts (vm, name, (u8) tmp3, (u16) tmp1, (u16) tmp2,
-				  ip4, end_addr, /*local */ 1);
+				  ip, end_addr, /*local */ 1);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U traffic-selector remote "
 			 "ip-range %U - %U port-range %u - %u protocol %u",
 			 unformat_token, valid_chars, &name,
-			 unformat_ip4_address, &ip4,
-			 unformat_ip4_address, &end_addr,
-			 &tmp1, &tmp2, &tmp3))
+			 unformat_ip_address, &ip,
+			 unformat_ip_address, &end_addr, &tmp1, &tmp2, &tmp3))
 	{
 	  r =
 	    ikev2_set_profile_ts (vm, name, (u8) tmp3, (u16) tmp1, (u16) tmp2,
-				  ip4, end_addr, /*remote */ 0);
+				  ip, end_addr, /*remote */ 0);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U responder %U %U",
 			 unformat_token, valid_chars, &name,
 			 unformat_vnet_sw_interface, vnm,
-			 &responder_sw_if_index, unformat_ip4_address,
-			 &responder_ip4))
+			 &responder_sw_if_index, unformat_ip_address, &ip))
 	{
 	  r =
-	    ikev2_set_profile_responder (vm, name, responder_sw_if_index,
-					 responder_ip4);
+	    ikev2_set_profile_responder (vm, name, responder_sw_if_index, ip);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U tunnel %U",
@@ -478,7 +472,7 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
         if (p->loc_id.type == IKEV2_ID_TYPE_ID_IPV4_ADDR)
           vlib_cli_output(vm, "  local id-type %U data %U",
                           format_ikev2_id_type, p->loc_id.type,
-                          format_ip4_address, p->loc_id.data);
+                          format_ip_address, p->loc_id.data);
         else if (p->loc_id.type == IKEV2_ID_TYPE_ID_KEY_ID)
           vlib_cli_output(vm, "  local id-type %U data 0x%U",
                           format_ikev2_id_type, p->loc_id.type,
@@ -494,7 +488,7 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
         if (p->rem_id.type == IKEV2_ID_TYPE_ID_IPV4_ADDR)
           vlib_cli_output(vm, "  remote id-type %U data %U",
                           format_ikev2_id_type, p->rem_id.type,
-                          format_ip4_address, p->rem_id.data);
+                          format_ip_address, p->rem_id.data);
         else if (p->rem_id.type == IKEV2_ID_TYPE_ID_KEY_ID)
           vlib_cli_output(vm, "  remote id-type %U data 0x%U",
                           format_ikev2_id_type, p->rem_id.type,
@@ -505,19 +499,19 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
                           format_ikev2_id_type, p->rem_id.type, p->rem_id.data);
       }
 
-    if (p->loc_ts.end_addr.as_u32)
+    if (!ip_address_is_zero (&p->loc_ts.start_addr))
       vlib_cli_output(vm, "  local traffic-selector addr %U - %U port %u - %u"
                       " protocol %u",
-                      format_ip4_address, &p->loc_ts.start_addr,
-                      format_ip4_address, &p->loc_ts.end_addr,
+                      format_ip_address, &p->loc_ts.start_addr,
+                      format_ip_address, &p->loc_ts.end_addr,
                       p->loc_ts.start_port, p->loc_ts.end_port,
                       p->loc_ts.protocol_id);
 
-    if (p->rem_ts.end_addr.as_u32)
+    if (!ip_address_is_zero (&p->rem_ts.start_addr))
       vlib_cli_output(vm, "  remote traffic-selector addr %U - %U port %u - %u"
                       " protocol %u",
-                      format_ip4_address, &p->rem_ts.start_addr,
-                      format_ip4_address, &p->rem_ts.end_addr,
+                      format_ip_address, &p->rem_ts.start_addr,
+                      format_ip_address, &p->rem_ts.end_addr,
                       p->rem_ts.start_port, p->rem_ts.end_port,
                       p->rem_ts.protocol_id);
     if (~0 != p->tun_itf)
@@ -526,7 +520,7 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
     if (~0 != p->responder.sw_if_index)
       vlib_cli_output(vm, "  responder %U %U",
                       format_vnet_sw_if_index_name, vnet_get_main(), p->responder.sw_if_index,
-                      format_ip4_address, &p->responder.ip4);
+                      format_ip_address, &p->responder.addr);
     if (p->udp_encap)
       vlib_cli_output(vm, "  udp-encap");
 
