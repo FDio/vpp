@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bc45e77b_bcffb52c",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1962,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-08T14:20:15Z",
+      "side": 1,
+      "message": "Could you provide more detail with respect to what you\u0027re trying to solve here?\n\nWe should not generate unhandled events indiscriminately.",
+      "range": {
+        "startLine": 1960,
+        "startChar": 0,
+        "endLine": 1962,
+        "endChar": 38
+      },
+      "revId": "89df10d5a816dc7c3cf402f424d041c899b23651",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
