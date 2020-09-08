@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "241ed22a_9723dfcc",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-08T15:09:38Z",
+      "side": 1,
+      "message": "title should use a feature name listed in MAINTAINERS or FEATURES.yaml and should be limited to 50 char\neg.\nvlib: force input node interrupts to be unique",
+      "revId": "1ed46402abd106e47c5be52015275ae06cfde29b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
