@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ce2bf5f7_f23f0797",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1129,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-08T14:37:13Z",
+      "side": 1,
+      "message": "Creating kernel fds for all sessions that we instantiate doesn\u0027t look good. VCL/session allows localhost connects but both applications must use VCL. \n\nIf you\u0027re trying to support localhost connections when one of the applications uses LDP but the other doesn\u0027t, the only option I can think of is to add a flag and if it\u0027s on, force localhost connect/binds through the kernel.",
+      "range": {
+        "startLine": 1115,
+        "startChar": 0,
+        "endLine": 1129,
+        "endChar": 6
+      },
+      "revId": "dfff50e841aa55829878c938228e1b32a1d53177",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
