@@ -382,10 +382,24 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 			 "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
 			 vring->size, vring->last_used_idx, vring->desc_next,
 			 vring->desc_in_use);
-	vlib_cli_output (vm,
-			 "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
-			 vring->avail->flags, vring->avail->idx,
-			 vring->used->flags, vring->used->idx);
+	if (vif->is_packed)
+	  {
+	    vlib_cli_output (vm,
+			     "    driver_event.flags 0x%x driver_event.off_wrap %d device_event.flags 0x%x device_event.off_wrap %d",
+			     vring->driver_event->flags,
+			     vring->driver_event->off_wrap,
+			     vring->device_event->flags,
+			     vring->device_event->off_wrap);
+	    vlib_cli_output (vm,
+			     "    avail wrap counter %d, used wrap counter %d",
+			     vring->avail_wrap_counter,
+			     vring->used_wrap_counter);
+	  }
+	else
+	  vlib_cli_output (vm,
+			   "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
+			   vring->avail->flags, vring->avail->idx,
+			   vring->used->flags, vring->used->idx);
 	if (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_TUN))
 	  {
 	    vlib_cli_output (vm, "    kickfd %d, callfd %d", vring->kick_fd,
@@ -395,17 +409,29 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	  {
 	    vlib_cli_output (vm, "\n  descriptor table:\n");
 	    vlib_cli_output (vm,
-			     "   id          addr         len  flags  next      user_addr\n");
+			     "   id          addr         len  flags  next/id      user_addr\n");
 	    vlib_cli_output (vm,
-			     "  ===== ================== ===== ====== ===== ==================\n");
+			     "  ===== ================== ===== ====== ======= ==================\n");
 	    for (j = 0; j < vring->size; j++)
 	      {
-		vring_desc_t *desc = &vring->desc[j];
-		vlib_cli_output (vm,
-				 "  %-5d 0x%016lx %-5d 0x%04x %-5d 0x%016lx\n",
-				 j, desc->addr,
-				 desc->len,
-				 desc->flags, desc->next, desc->addr);
+		if (vif->is_packed)
+		  {
+		    vring_packed_desc_t *desc = &vring->packed_desc[j];
+		    vlib_cli_output (vm,
+				     "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n",
+				     j, desc->addr,
+				     desc->len,
+				     desc->flags, desc->id, desc->addr);
+		  }
+		else
+		  {
+		    vring_desc_t *desc = &vring->desc[j];
+		    vlib_cli_output (vm,
+				     "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n",
+				     j, desc->addr,
+				     desc->len,
+				     desc->flags, desc->next, desc->addr);
+		  }
 	      }
 	  }
       }
@@ -417,10 +443,24 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 			 "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
 			 vring->size, vring->last_used_idx, vring->desc_next,
 			 vring->desc_in_use);
-	vlib_cli_output (vm,
-			 "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
-			 vring->avail->flags, vring->avail->idx,
-			 vring->used->flags, vring->used->idx);
+	if (vif->is_packed)
+	  {
+	    vlib_cli_output (vm,
+			     "    driver_event.flags 0x%x driver_event.off_wrap %d device_event.flags 0x%x device_event.off_wrap %d",
+			     vring->driver_event->flags,
+			     vring->driver_event->off_wrap,
+			     vring->device_event->flags,
+			     vring->device_event->off_wrap);
+	    vlib_cli_output (vm,
+			     "    avail wrap counter %d, used wrap counter %d",
+			     vring->avail_wrap_counter,
+			     vring->used_wrap_counter);
+	  }
+	else
+	  vlib_cli_output (vm,
+			   "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
+			   vring->avail->flags, vring->avail->idx,
+			   vring->used->flags, vring->used->idx);
 	if (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_TUN))
 	  {
 	    vlib_cli_output (vm, "    kickfd %d, callfd %d", vring->kick_fd,
@@ -435,17 +475,29 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	  {
 	    vlib_cli_output (vm, "\n  descriptor table:\n");
 	    vlib_cli_output (vm,
-			     "   id          addr         len  flags  next      user_addr\n");
+			     "   id          addr         len  flags  next/id      user_addr\n");
 	    vlib_cli_output (vm,
-			     "  ===== ================== ===== ====== ===== ==================\n");
+			     "  ===== ================== ===== ====== ======== ==================\n");
 	    for (j = 0; j < vring->size; j++)
 	      {
-		vring_desc_t *desc = &vring->desc[j];
-		vlib_cli_output (vm,
-				 "  %-5d 0x%016lx %-5d 0x%04x %-5d 0x%016lx\n",
-				 j, desc->addr,
-				 desc->len,
-				 desc->flags, desc->next, desc->addr);
+		if (vif->is_packed)
+		  {
+		    vring_packed_desc_t *desc = &vring->packed_desc[j];
+		    vlib_cli_output (vm,
+				     "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n",
+				     j, desc->addr,
+				     desc->len,
+				     desc->flags, desc->id, desc->addr);
+		  }
+		else
+		  {
+		    vring_desc_t *desc = &vring->desc[j];
+		    vlib_cli_output (vm,
+				     "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n",
+				     j, desc->addr,
+				     desc->len,
+				     desc->flags, desc->next, desc->addr);
+		  }
 	      }
 	  }
       }
@@ -458,10 +510,26 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 			   "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
 			   vring->size, vring->last_used_idx,
 			   vring->desc_next, vring->desc_in_use);
-	  vlib_cli_output (vm,
-			   "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
-			   vring->avail->flags, vring->avail->idx,
-			   vring->used->flags, vring->used->idx);
+	  if (vif->is_packed)
+	    {
+	      vlib_cli_output (vm,
+			       "    driver_event.flags 0x%x driver_event.off_wrap %d device_event.flags 0x%x device_event.off_wrap %d",
+			       vring->driver_event->flags,
+			       vring->driver_event->off_wrap,
+			       vring->device_event->flags,
+			       vring->device_event->off_wrap);
+	      vlib_cli_output (vm,
+			       "    avail wrap counter %d, used wrap counter %d",
+			       vring->avail_wrap_counter,
+			       vring->used_wrap_counter);
+	    }
+	  else
+	    {
+	      vlib_cli_output (vm,
+			       "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
+			       vring->avail->flags, vring->avail->idx,
+			       vring->used->flags, vring->used->idx);
+	    }
 	  if (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_TUN))
 	    {
 	      vlib_cli_output (vm, "    kickfd %d, callfd %d", vring->kick_fd,
@@ -471,17 +539,29 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	    {
 	      vlib_cli_output (vm, "\n  descriptor table:\n");
 	      vlib_cli_output (vm,
-			       "   id          addr         len  flags  next      user_addr\n");
+			       "   id          addr         len  flags  next/id      user_addr\n");
 	      vlib_cli_output (vm,
-			       "  ===== ================== ===== ====== ===== ==================\n");
+			       "  ===== ================== ===== ====== ======== ==================\n");
 	      for (j = 0; j < vring->size; j++)
 		{
-		  vring_desc_t *desc = &vring->desc[j];
-		  vlib_cli_output (vm,
-				   "  %-5d 0x%016lx %-5d 0x%04x %-5d 0x%016lx\n",
-				   j, desc->addr,
-				   desc->len,
-				   desc->flags, desc->next, desc->addr);
+		  if (vif->is_packed)
+		    {
+		      vring_packed_desc_t *desc = &vring->packed_desc[j];
+		      vlib_cli_output (vm,
+				       "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n",
+				       j, desc->addr,
+				       desc->len,
+				       desc->flags, desc->id, desc->addr);
+		    }
+		  else
+		    {
+		      vring_desc_t *desc = &vring->desc[j];
+		      vlib_cli_output (vm,
+				       "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n",
+				       j, desc->addr,
+				       desc->len,
+				       desc->flags, desc->next, desc->addr);
+		    }
 		}
 	    }
 	}

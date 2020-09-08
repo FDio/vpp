@@ -60,9 +60,21 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   clib_spinlock_t lockp;
-  vring_desc_t *desc;
-  vring_used_t *used;
-  vring_avail_t *avail;
+  union
+  {
+    vring_desc_t *desc;
+    vring_packed_desc_t *packed_desc;
+  };
+  union
+  {
+    vring_used_t *used;
+    vring_desc_event_t *device_event;
+  };
+  union
+  {
+    vring_avail_t *avail;
+    vring_desc_event_t *driver_event;
+  };
   u16 desc_in_use;
   u16 desc_next;
   int kick_fd;
@@ -76,6 +88,8 @@ typedef struct
   u16 last_used_idx;
   u16 last_kick_avail_idx;
   u32 call_file_index;
+  u16 used_wrap_counter;
+  u16 avail_wrap_counter;
   gro_flow_table_t *flow_table;
 } virtio_vring_t;
 
@@ -175,6 +189,7 @@ typedef struct
     };
   };
   const virtio_pci_func_t *virtio_pci_func;
+  int is_packed;
 } virtio_if_t;
 
 typedef struct
