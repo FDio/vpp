@@ -294,22 +294,54 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
 {
   u32 n_left, *from;
   l2output_main_t *msm = &l2output_main;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE];
-  u32 sw_if_indices[VLIB_FRAME_SIZE], *sw_if_index;
-  i16 cur_data_offsets[VLIB_FRAME_SIZE], *cdo;
+  u32 sw_if_indices[VLIB_FRAME_SIZE], *sw_if_index = sw_if_indices;
+  i16 cur_data_offsets[VLIB_FRAME_SIZE], *cdo = cur_data_offsets;
   l2_output_config_t *config;
   u32 feature_bitmap;
 
   from = vlib_frame_vector_args (frame);
   n_left = frame->n_vectors;	/* number of packets to process */
-
   vlib_get_buffers (vm, from, bufs, n_left);
-  b = bufs;
-  sw_if_index = sw_if_indices;
-  cdo = cur_data_offsets;
+
+#if defined(CLIB_HAVE_VEC512)
+  u64x8 vindex;
+  void const *offset =
+    (void const *) (STRUCT_OFFSET_OF (vlib_buffer_t, opaque) +
+		    STRUCT_OFFSET_OF (vnet_buffer_opaque_t,
+				      sw_if_index[VLIB_TX]));
+  u32x8 sw_if_index_vec;
 
   /* extract data from buffer metadata */
+  while (n_left >= 16)
+    { 
+      vlib_prefetch_buffer_header (b[8], LOAD);
+      vlib_prefetch_buffer_header (b[9], LOAD);
+      vlib_prefetch_buffer_header (b[10], LOAD);
+      vlib_prefetch_buffer_header (b[11], LOAD);
+      vlib_prefetch_buffer_header (b[12], LOAD);
+      vlib_prefetch_buffer_header (b[13], LOAD);
+      vlib_prefetch_buffer_header (b[14], LOAD);
+      vlib_prefetch_buffer_header (b[15], LOAD);
+      
+      cdo[0] = b[0]->current_data;
+      cdo[1] = b[1]->current_data;
+      cdo[2] = b[2]->current_data;
+      cdo[3] = b[3]->current_data;
+      cdo[4] = b[4]->current_data;
+      cdo[5] = b[5]->current_data;
+      cdo[6] = b[6]->current_data;
+      cdo[7] = b[7]->current_data;
+
+      vindex = u64x8_load_unaligned (b);
+      sw_if_index_vec = u32x8_gather_vec (vindex, offset, 1);
+      u32x8_store_unaligned (sw_if_index_vec, sw_if_index);
+      sw_if_index += 8;
+      n_left -= 8;
+      b += 8;
+    }
+#else
   while (n_left >= 8)
     {
       /* Prefetch the buffer header for the N+2 loop iteration */
@@ -333,6 +365,7 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
       b += 4;
       cdo += 4;
     }
+#endif
   while (n_left)
     {
       sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
