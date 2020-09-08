@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "2bbfe17c_acd4439d",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3327,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-08T15:56:21Z",
+      "side": 1,
+      "message": "\u003e \u003e The eid is filled in above as an ARP request. Why would we overwrite it? Note that only one can be stored in the gid address because underneath they\u0027re a union.\n\u003e \u003e \n\u003e \n\u003e I am not overwriting it. I am just filling in the info that I think ought to be displayed in the packet trace. I could be wrong, of course. But please note that in our case the eids are mac addresses and not IP or nsh and so on. That\u0027s why I chose to fill in the mac address in the dst eid. In addition, the packet trace needs this info, ie, vni and dst eid, to be displayed against the lisp-cp-lookup-l2 graph node and that seems to indicate mac rather than anything else in the dst eid field.\n\nThe issue here is that by construction lisp eids of type ARP store the IP address. Note the memcpy above and how in gid_address_t we have a union of mac and arp_ndp.\n\nIf the control plane has a mapping for the IP that\u0027s being ARPed, it will reply to it, otherwise the packet is dropped. Broadcast packets are not handled. \n\n\u003e Here\u0027s the packet trace without the fix:\n\u003e \n\u003e \n\u003e 00:02:27:661310: lisp-cp-lookup-l2\n\u003e   LISP-CP-LOOKUP: map-resolver: 0.0.0.0 destination eid [0, 0.0.0.0]\n\u003e \n\u003e \n\u003e With my fix, it displays the vni and dst eid which is a mac address:\n\u003e \n\u003e \n\u003e 00:00:44:504894: lisp-cp-lookup-l2\n\u003e   LISP-CP-LOOKUP: map-resolver: 0.0.0.0 destination eid [999] ff:ff:ff:ff:ff:ff\n\nRight, but that\u0027s not enough/much more info, i.e., broadcast in vni 999. So if more info is needed, we should add helper functions for ARP/NDP eids. \n\n\u003e \n\u003e \n\u003e \u003e The trace probably crashes because ARPs doesn\u0027t have helper functions, i.e., copy, cast etc., so just fix those. If you just want to avoid the crash, use the ones for NDP, albeit they\u0027ll do nothing so you\u0027ll have less info in the trace.\n\u003e \n\u003e Initially, I planned to fix just the crash by supplying the cast/copy for arp case but felt it would be nice to display the correct vni and dst eid too. I can still do that for sure.\n\nInstead of vni we have bd (bridge domain, which we already fill in) in the arp. I guess in ARP requests the interesting part is the ip not the mac.",
+      "parentUuid": "fa976e17_fbfff26a",
+      "range": {
+        "startLine": 3324,
+        "startChar": 0,
+        "endLine": 3327,
+        "endChar": 31
+      },
+      "revId": "308b2148325ec269599f54ff1c23bca4c84d7ac8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "5ea7243b_dc18e1ac",
         "filename": "src/vnet/lisp-cp/lisp_types.c",
         "patchSetId": 1
@@ -84,6 +108,30 @@
       "side": 1,
       "message": "\u003e ARP should be formatted as NDP. Why would we want to format the mac in case of an ARP?\n\nAs I mentioned in the other comment, the reason I did it is because the graph node in question is lisp-cp-lookup-l2 and the dst eid is a mac address and not an IP address.\n\nI may be wrong but then I think the NDP formatting might be wrong if it is with lisp-cp-lookup-l2?",
       "parentUuid": "5ea7243b_dc18e1ac",
+      "range": {
+        "startLine": 204,
+        "startChar": 0,
+        "endLine": 205,
+        "endChar": 29
+      },
+      "revId": "308b2148325ec269599f54ff1c23bca4c84d7ac8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f770f48b_b10bba85",
+        "filename": "src/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-08T15:56:21Z",
+      "side": 1,
+      "message": "EIDs are indeed macs for l2 but ARPs are broadcast packets so the mac doesn\u0027t carry that much info. That\u0027s why in case of ARP/NDP we don\u0027t use mac type eids, instead, they\u0027re IPs.",
+      "parentUuid": "5cb470e6_7d696c38",
       "range": {
         "startLine": 204,
         "startChar": 0,
