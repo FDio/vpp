@@ -141,6 +141,30 @@
       "revId": "308b2148325ec269599f54ff1c23bca4c84d7ac8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7027ff99_7e38f175",
+        "filename": "src/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2020-09-08T16:49:01Z",
+      "side": 1,
+      "message": "\u003e EIDs are indeed macs for l2 but ARPs are broadcast packets so the mac doesn\u0027t carry that much info. That\u0027s why in case of ARP/NDP we don\u0027t use mac type eids, instead, they\u0027re IPs.\n\nAh, this makes sense. So what do you suggest? Just fix the crash and get rid of the rest. Or, fix the crash and print the BD+IP in the trace? The BD is the VNI btw.",
+      "parentUuid": "f770f48b_b10bba85",
+      "range": {
+        "startLine": 204,
+        "startChar": 0,
+        "endLine": 205,
+        "endChar": 29
+      },
+      "revId": "308b2148325ec269599f54ff1c23bca4c84d7ac8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
