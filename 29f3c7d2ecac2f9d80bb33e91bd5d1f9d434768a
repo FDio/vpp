@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "278888c2_f47dc3bc",
+        "filename": "src/plugins/cnat/cnat.api",
+        "patchSetId": 27
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-09-08T12:20:04Z",
+      "side": 1,
+      "message": "bool?",
+      "range": {
+        "startLine": 48,
+        "startChar": 2,
+        "endLine": 48,
+        "endChar": 4
+      },
+      "revId": "29f3c7d2ecac2f9d80bb33e91bd5d1f9d434768a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "74663be5_d6fbd0ff",
+        "filename": "src/plugins/cnat/cnat.api",
+        "patchSetId": 27
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-09-08T12:20:04Z",
+      "side": 1,
+      "message": "vl_api_cnat_translation_flags_t?",
+      "range": {
+        "startLine": 49,
+        "startChar": 2,
+        "endLine": 49,
+        "endChar": 4
+      },
+      "revId": "29f3c7d2ecac2f9d80bb33e91bd5d1f9d434768a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
