@@ -165,6 +165,30 @@
       "revId": "308b2148325ec269599f54ff1c23bca4c84d7ac8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "40723bd4_4c7aec38",
+        "filename": "src/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-08T17:24:58Z",
+      "side": 1,
+      "message": "I you can afford the time, best option would probably be to add arp/ndp helper copy, cast etc. functions. That would naturally solve the issue. \n\nThe other quick solution would be to clib_memcpy instead of gid_address_copy for ARP and NDP on the trace branch.",
+      "parentUuid": "7027ff99_7e38f175",
+      "range": {
+        "startLine": 204,
+        "startChar": 0,
+        "endLine": 205,
+        "endChar": 29
+      },
+      "revId": "308b2148325ec269599f54ff1c23bca4c84d7ac8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
