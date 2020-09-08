@@ -98,8 +98,8 @@ cp_ts (vl_api_ikev2_ts_t * vl_api_ts, ikev2_ts_t * ts, u8 is_local)
   vl_api_ts->protocol_id = ts->protocol_id;
   vl_api_ts->start_port = ts->start_port;
   vl_api_ts->end_port = ts->end_port;
-  ip4_address_encode (&ts->start_addr, vl_api_ts->start_addr);
-  ip4_address_encode (&ts->end_addr, vl_api_ts->end_addr);
+  ip_address_encode2 (&ts->start_addr, &vl_api_ts->start_addr);
+  ip_address_encode2 (&ts->end_addr, &vl_api_ts->end_addr);
 }
 
 static void
@@ -593,9 +593,9 @@ vl_api_ikev2_profile_set_ts_t_handler (vl_api_ikev2_profile_set_ts_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
   u8 *tmp = format (0, "%s", mp->name);
-  ip4_address_t start_addr, end_addr;
-  ip4_address_decode (mp->ts.start_addr, &start_addr);
-  ip4_address_decode (mp->ts.end_addr, &end_addr);
+  ip_address_t start_addr, end_addr;
+  ip_address_decode2 (&mp->ts.start_addr, &start_addr);
+  ip_address_decode2 (&mp->ts.end_addr, &end_addr);
   error =
     ikev2_set_profile_ts (vm, tmp, mp->ts.protocol_id,
 			  clib_net_to_host_u16 (mp->ts.start_port),

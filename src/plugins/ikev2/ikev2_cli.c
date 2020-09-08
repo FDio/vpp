@@ -142,8 +142,8 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
                               "%U - %U port %u - %u",
                               ts - child->tsi,
                               ts->ts_type, ts->protocol_id,
-                              format_ip4_address, &ts->start_addr,
-                              format_ip4_address, &ts->end_addr,
+                              format_ip_address, &ts->start_addr,
+                              format_ip_address, &ts->end_addr,
                               clib_net_to_host_u16( ts->start_port),
                               clib_net_to_host_u16( ts->end_port));
             }
@@ -154,8 +154,8 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
                               "%U - %U port %u - %u",
                               ts - child->tsr,
                               ts->ts_type, ts->protocol_id,
-                              format_ip4_address, &ts->start_addr,
-                              format_ip4_address, &ts->end_addr,
+                              format_ip_address, &ts->start_addr,
+                              format_ip_address, &ts->end_addr,
                               clib_net_to_host_u16( ts->start_port),
                               clib_net_to_host_u16( ts->end_port));
             }
@@ -188,8 +188,9 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
   u8 *data = 0;
   u32 tmp1, tmp2, tmp3;
   u64 tmp4, tmp5;
+  ip_address_t ip;
   ip4_address_t ip4;
-  ip4_address_t end_addr;
+  ip_address_t end_addr;
   u32 responder_sw_if_index = (u32) ~ 0;
   u32 tun_sw_if_index = (u32) ~ 0;
   ip4_address_t responder_ip4;
@@ -302,25 +303,23 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "set %U traffic-selector local "
 			 "ip-range %U - %U port-range %u - %u protocol %u",
 			 unformat_token, valid_chars, &name,
-			 unformat_ip4_address, &ip4,
-			 unformat_ip4_address, &end_addr,
-			 &tmp1, &tmp2, &tmp3))
+			 unformat_ip_address, &ip,
+			 unformat_ip_address, &end_addr, &tmp1, &tmp2, &tmp3))
 	{
 	  r =
 	    ikev2_set_profile_ts (vm, name, (u8) tmp3, (u16) tmp1, (u16) tmp2,
-				  ip4, end_addr, /*local */ 1);
+				  ip, end_addr, /*local */ 1);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U traffic-selector remote "
 			 "ip-range %U - %U port-range %u - %u protocol %u",
 			 unformat_token, valid_chars, &name,
-			 unformat_ip4_address, &ip4,
-			 unformat_ip4_address, &end_addr,
-			 &tmp1, &tmp2, &tmp3))
+			 unformat_ip_address, &ip,
+			 unformat_ip_address, &end_addr, &tmp1, &tmp2, &tmp3))
 	{
 	  r =
 	    ikev2_set_profile_ts (vm, name, (u8) tmp3, (u16) tmp1, (u16) tmp2,
-				  ip4, end_addr, /*remote */ 0);
+				  ip, end_addr, /*remote */ 0);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U responder %U %U",
@@ -505,19 +504,19 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
                           format_ikev2_id_type, p->rem_id.type, p->rem_id.data);
       }
 
-    if (p->loc_ts.end_addr.as_u32)
+    if (!ip_address_is_zero (&p->loc_ts.start_addr))
       vlib_cli_output(vm, "  local traffic-selector addr %U - %U port %u - %u"
                       " protocol %u",
-                      format_ip4_address, &p->loc_ts.start_addr,
-                      format_ip4_address, &p->loc_ts.end_addr,
+                      format_ip_address, &p->loc_ts.start_addr,
+                      format_ip_address, &p->loc_ts.end_addr,
                       p->loc_ts.start_port, p->loc_ts.end_port,
                       p->loc_ts.protocol_id);
 
-    if (p->rem_ts.end_addr.as_u32)
+    if (!ip_address_is_zero (&p->rem_ts.start_addr))
       vlib_cli_output(vm, "  remote traffic-selector addr %U - %U port %u - %u"
                       " protocol %u",
-                      format_ip4_address, &p->rem_ts.start_addr,
-                      format_ip4_address, &p->rem_ts.end_addr,
+                      format_ip_address, &p->rem_ts.start_addr,
+                      format_ip_address, &p->rem_ts.end_addr,
                       p->rem_ts.start_port, p->rem_ts.end_port,
                       p->rem_ts.protocol_id);
     if (~0 != p->tun_itf)

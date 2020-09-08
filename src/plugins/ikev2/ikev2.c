@@ -263,7 +263,7 @@ ikev2_sa_free_proposal_vector (ikev2_sa_proposal_t ** v)
     vec_free (p->transforms);
   }
   vec_free (*v);
-};
+}
 
 static void
 ikev2_sa_free_child_sa (ikev2_child_sa_t * c)
@@ -1468,8 +1468,8 @@ ikev2_ts_cmp (ikev2_ts_t * ts1, ikev2_ts_t * ts2)
 {
   if (ts1->ts_type == ts2->ts_type && ts1->protocol_id == ts2->protocol_id &&
       ts1->start_port == ts2->start_port && ts1->end_port == ts2->end_port &&
-      ts1->start_addr.as_u32 == ts2->start_addr.as_u32 &&
-      ts1->end_addr.as_u32 == ts2->end_addr.as_u32)
+      !ip_address_cmp (&ts1->start_addr, &ts2->start_addr) &&
+      !ip_address_cmp (&ts1->end_addr, &ts2->end_addr))
     return 1;
 
   return 0;
@@ -3590,8 +3590,8 @@ ikev2_set_profile_id (vlib_main_t * vm, u8 * name, u8 id_type, u8 * data,
 
 clib_error_t *
 ikev2_set_profile_ts (vlib_main_t * vm, u8 * name, u8 protocol_id,
-		      u16 start_port, u16 end_port, ip4_address_t start_addr,
-		      ip4_address_t end_addr, int is_local)
+		      u16 start_port, u16 end_port, ip_address_t start_addr,
+		      ip_address_t end_addr, int is_local)
 {
   ikev2_profile_t *p;
   clib_error_t *r;
@@ -3604,23 +3604,32 @@ ikev2_set_profile_ts (vlib_main_t * vm, u8 * name, u8 protocol_id,
       return r;
     }
 
+  if (ip_addr_version (&start_addr) != ip_addr_version (&end_addr))
+    return clib_error_return (0, "IP address version mismatch!");
+
   if (is_local)
     {
-      p->loc_ts.start_addr.as_u32 = start_addr.as_u32;
-      p->loc_ts.end_addr.as_u32 = end_addr.as_u32;
+      ip_address_copy (&p->loc_ts.start_addr, &start_addr);
+      ip_address_copy (&p->loc_ts.end_addr, &end_addr);
       p->loc_ts.start_port = start_port;
       p->loc_ts.end_port = end_port;
       p->loc_ts.protocol_id = protocol_id;
-      p->loc_ts.ts_type = 7;
+      if (ip_addr_version (&start_addr) == AF_IP4)
+	p->loc_ts.ts_type = TS_IPV4_ADDR_RANGE;
+      else
+	p->loc_ts.ts_type = TS_IPV6_ADDR_RANGE;
     }
   else
     {
-      p->rem_ts.start_addr.as_u32 = start_addr.as_u32;
-      p->rem_ts.end_addr.as_u32 = end_addr.as_u32;
+      ip_address_copy (&p->rem_ts.start_addr, &start_addr);
+      ip_address_copy (&p->rem_ts.end_addr, &end_addr);
       p->rem_ts.start_port = start_port;
       p->rem_ts.end_port = end_port;
       p->rem_ts.protocol_id = protocol_id;
-      p->rem_ts.ts_type = 7;
+      if (ip_addr_version (&start_addr) == AF_IP4)
+	p->rem_ts.ts_type = TS_IPV4_ADDR_RANGE;
+      else
+	p->rem_ts.ts_type = TS_IPV6_ADDR_RANGE;
     }
 
   return 0;

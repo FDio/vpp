@@ -369,6 +369,12 @@ typedef enum
 #undef _
 } ikev2_id_type_t;
 
+typedef enum
+{
+  TS_IPV4_ADDR_RANGE = 7,
+  TS_IPV6_ADDR_RANGE = 8,
+} ikev2_traffic_selector_type_t;
+
 clib_error_t *ikev2_init (vlib_main_t * vm);
 clib_error_t *ikev2_set_local_key (vlib_main_t * vm, u8 * file);
 clib_error_t *ikev2_add_del_profile (vlib_main_t * vm, u8 * name, int is_add);
@@ -379,8 +385,8 @@ clib_error_t *ikev2_set_profile_id (vlib_main_t * vm, u8 * name,
 				    u8 id_type, u8 * data, int is_local);
 clib_error_t *ikev2_set_profile_ts (vlib_main_t * vm, u8 * name,
 				    u8 protocol_id, u16 start_port,
-				    u16 end_port, ip4_address_t start_addr,
-				    ip4_address_t end_addr, int is_local);
+				    u16 end_port, ip_address_t start_addr,
+				    ip_address_t end_addr, int is_local);
 clib_error_t *ikev2_set_profile_responder (vlib_main_t * vm, u8 * name,
 					   u32 sw_if_index,
 					   ip4_address_t ip4);
