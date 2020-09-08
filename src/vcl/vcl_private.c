@@ -157,19 +157,7 @@ vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp)
 {
   clib_spinlock_lock (&vcm->workers_lock);
   if (notify_vpp)
-    {
-      /* Notify vpp that the worker is going away */
-      if (wrk->wrk_index == vcl_get_worker_index ())
-	vcl_send_app_worker_add_del (0 /* is_add */ );
-      else
-	vcl_send_child_worker_del (wrk);
-
-      /* Disconnect the binary api */
-      if (vec_len (vcm->workers) == 1)
-	vppcom_disconnect_from_vpp ();
-      else
-	vl_client_send_disconnect (1 /* vpp should cleanup */ );
-    }
+    vcl_bapi_app_worker_del (wrk);
 
   if (wrk->mqs_epfd > 0)
     close (wrk->mqs_epfd);
@@ -248,8 +236,7 @@ vcl_worker_register_with_vpp (void)
   clib_spinlock_lock (&vcm->workers_lock);
 
   vcm->app_state = STATE_APP_ADDING_WORKER;
-  vcl_send_app_worker_add_del (1 /* is_add */ );
-  if (vcl_wait_for_app_state_change (STATE_APP_READY))
+  if (vcl_bapi_app_worker_add ())
     {
       VDBG (0, "failed to add worker to vpp");
       return -1;
@@ -290,21 +277,6 @@ svm_msg_q_t *
 vcl_worker_ctrl_mq (vcl_worker_t * wrk)
 {
   return wrk->ctrl_mq;
-}
-
-void
-vcl_cleanup_bapi (void)
-{
-  socket_client_main_t *scm = &socket_client_main;
-  api_main_t *am = vlibapi_get_main ();
-
-  am->my_client_index = ~0;
-  am->my_registration = 0;
-  am->vl_input_queue = 0;
-  am->msg_index_by_name_and_crc = 0;
-  scm->socket_fd = 0;
-
-  vl_client_api_unmap ();
 }
 
 int

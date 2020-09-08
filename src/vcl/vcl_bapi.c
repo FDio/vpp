@@ -267,8 +267,8 @@ _(APPLICATION_TLS_CERT_ADD_REPLY, application_tls_cert_add_reply)  	\
 _(APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)  	\
 _(APP_WORKER_ADD_DEL_REPLY, app_worker_add_del_reply)			\
 
-void
-vppcom_api_hookup (void)
+static void
+vcl_bapi_hookup (void)
 {
 #define _(N, n)                                                	\
     vl_msg_api_set_handlers(VL_API_##N, #n,                    	\
@@ -284,8 +284,8 @@ vppcom_api_hookup (void)
 /*
  * VPP-API message functions
  */
-void
-vppcom_send_session_enable_disable (u8 is_enable)
+static void
+vcl_bapi_send_session_enable_disable (u8 is_enable)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_session_enable_disable_t *bmp;
@@ -300,7 +300,7 @@ vppcom_send_session_enable_disable (u8 is_enable)
 }
 
 void
-vppcom_app_send_attach (void)
+vcl_bapi_send_attach (void)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   u8 tls_engine = CRYPTO_ENGINE_OPENSSL;
@@ -343,7 +343,7 @@ vppcom_app_send_attach (void)
 }
 
 void
-vppcom_app_send_detach (void)
+vcl_bapi_send_detach (void)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_application_detach_t *bmp;
@@ -356,8 +356,8 @@ vppcom_app_send_detach (void)
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
 }
 
-void
-vcl_send_app_worker_add_del (u8 is_add)
+static void
+vcl_bapi_send_app_worker_add_del (u8 is_add)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_app_worker_add_del_t *mp;
@@ -376,8 +376,8 @@ vcl_send_app_worker_add_del (u8 is_add)
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & mp);
 }
 
-void
-vcl_send_child_worker_del (vcl_worker_t * child_wrk)
+static void
+vcl_bapi_send_child_worker_del (vcl_worker_t * child_wrk)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_app_worker_add_del_t *mp;
@@ -396,8 +396,8 @@ vcl_send_child_worker_del (vcl_worker_t * child_wrk)
 }
 
 void
-vppcom_send_application_tls_cert_add (vcl_session_t * session, char *cert,
-				      u32 cert_len)
+vcl_bapi_send_application_tls_cert_add (vcl_session_t * session, char *cert,
+					u32 cert_len)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_application_tls_cert_add_t *cert_mp;
@@ -413,8 +413,8 @@ vppcom_send_application_tls_cert_add (vcl_session_t * session, char *cert,
 }
 
 void
-vppcom_send_application_tls_key_add (vcl_session_t * session, char *key,
-				     u32 key_len)
+vcl_bapi_send_application_tls_key_add (vcl_session_t * session, char *key,
+				       u32 key_len)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_application_tls_key_add_t *key_mp;
@@ -430,14 +430,14 @@ vppcom_send_application_tls_key_add (vcl_session_t * session, char *key,
 }
 
 u32
-vcl_max_nsid_len (void)
+vcl_bapi_max_nsid_len (void)
 {
   vl_api_app_attach_t *mp;
   return (sizeof (mp->namespace_id) - 1);
 }
 
-void
-vppcom_init_error_string_table (void)
+static void
+vcl_bapi_init_error_string_table (void)
 {
   vcm->error_string_by_error_number = hash_create (0, sizeof (uword));
 
@@ -448,50 +448,77 @@ vppcom_init_error_string_table (void)
   hash_set (vcm->error_string_by_error_number, 99, "Misc");
 }
 
+static void
+vcl_bapi_cleanup (void)
+{
+  socket_client_main_t *scm = &socket_client_main;
+  api_main_t *am = vlibapi_get_main ();
+
+  am->my_client_index = ~0;
+  am->my_registration = 0;
+  am->vl_input_queue = 0;
+  am->msg_index_by_name_and_crc = 0;
+  scm->socket_fd = 0;
+
+  vl_client_api_unmap ();
+}
+
 int
-vppcom_connect_to_vpp (const char *app_name)
+vcl_bapi_connect_to_vpp (void)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vppcom_cfg_t *vcl_cfg = &vcm->cfg;
+  int rv = VPPCOM_OK;
   api_main_t *am;
+  u8 *wrk_name;
+
+  wrk_name = format (0, "%s-wrk-%u%c", vcm->app_name, wrk->wrk_index, 0);
+
+  /* Make sure api is cleaned up in case this is a connect from a
+   * forked worker */
+  vcl_bapi_cleanup ();
 
   vlibapi_set_main (&wrk->bapi_api_ctx);
   vlibapi_set_memory_client_main (&wrk->bapi_shm_ctx);
-  vppcom_api_hookup ();
+  vcl_bapi_hookup ();
 
-  if (vcl_cfg->vpp_api_socket_name)
+  if (vcl_cfg->vpp_bapi_socket_name)
     {
       if (vl_socket_client_connect2 (&wrk->bapi_sock_ctx,
-				     (char *) vcl_cfg->vpp_api_socket_name,
-				     (char *) app_name,
+				     (char *) vcl_cfg->vpp_bapi_socket_name,
+				     (char *) wrk_name,
 				     0 /* default rx/tx buffer */ ))
 	{
-	  VERR ("app (%s) socket connect failed!", app_name);
-	  return VPPCOM_ECONNREFUSED;
+	  VERR ("app (%s) socket connect failed!", wrk_name);
+	  rv = VPPCOM_ECONNREFUSED;
+	  goto error;
 	}
 
       if (vl_socket_client_init_shm2 (&wrk->bapi_sock_ctx, 0,
 				      1 /* want_pthread */ ))
 	{
-	  VERR ("app (%s) init shm failed!", app_name);
-	  return VPPCOM_ECONNREFUSED;
+	  VERR ("app (%s) init shm failed!", wrk_name);
+	  rv = VPPCOM_ECONNREFUSED;
+	  goto error;
 	}
     }
   else
     {
-      if (!vcl_cfg->vpp_api_filename)
-	vcl_cfg->vpp_api_filename = format (0, "/vpe-api%c", 0);
+      if (!vcl_cfg->vpp_bapi_filename)
+	vcl_cfg->vpp_bapi_filename = format (0, "/vpe-api%c", 0);
 
-      vl_set_memory_root_path ((char *) vcl_cfg->vpp_api_chroot);
+      vl_set_memory_root_path ((char *) vcl_cfg->vpp_bapi_chroot);
 
       VDBG (0, "app (%s) connecting to VPP api (%s)...",
-	    app_name, vcl_cfg->vpp_api_filename);
+	    wrk_name, vcl_cfg->vpp_bapi_filename);
 
-      if (vl_client_connect_to_vlib ((char *) vcl_cfg->vpp_api_filename,
-				     app_name, vcm->cfg.vpp_api_q_length) < 0)
+      if (vl_client_connect_to_vlib ((char *) vcl_cfg->vpp_bapi_filename,
+				     (char *) wrk_name,
+				     vcm->cfg.vpp_api_q_length) < 0)
 	{
-	  VERR ("app (%s) connect failed!", app_name);
-	  return VPPCOM_ECONNREFUSED;
+	  VERR ("app (%s) connect failed!", wrk_name);
+	  rv = VPPCOM_ECONNREFUSED;
+	  goto error;
 	}
     }
 
@@ -500,21 +527,108 @@ vppcom_connect_to_vpp (const char *app_name)
   wrk->my_client_index = (u32) am->my_client_index;
   wrk->wrk_state = STATE_APP_CONN_VPP;
 
-  VDBG (0, "app (%s) is connected to VPP!", app_name);
+  VDBG (0, "app (%s) is connected to VPP!", wrk_name);
   vcl_evt (VCL_EVT_INIT, vcm);
-  return VPPCOM_OK;
+
+error:
+  vec_free (wrk_name);
+  return rv;
 }
 
 void
-vppcom_disconnect_from_vpp (void)
+vcl_bapi_disconnect_from_vpp (void)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vppcom_cfg_t *vcl_cfg = &vcm->cfg;
 
-  if (vcl_cfg->vpp_api_socket_name)
+  if (vcl_cfg->vpp_bapi_socket_name)
     vl_socket_client_disconnect2 (&wrk->bapi_sock_ctx);
   else
     vl_client_disconnect_from_vlib ();
+}
+
+static int
+vcl_bapi_session_enable (void)
+{
+  int rv;
+
+  if (vcm->app_state != STATE_APP_ENABLED)
+    {
+      vcl_bapi_send_session_enable_disable (1 /* is_enabled == TRUE */ );
+      rv = vcl_wait_for_app_state_change (STATE_APP_ENABLED);
+      if (PREDICT_FALSE (rv))
+	{
+	  VDBG (0, "application session enable timed out! returning %d (%s)",
+		rv, vppcom_retval_str (rv));
+	  return rv;
+	}
+    }
+  return VPPCOM_OK;
+}
+
+int
+vcl_bapi_init (void)
+{
+  int rv;
+
+  vcl_bapi_init_error_string_table ();
+  rv = vcl_bapi_connect_to_vpp ();
+  if (rv)
+    {
+      VERR ("couldn't connect to VPP!");
+      return rv;
+    }
+  VDBG (0, "sending session enable");
+  rv = vcl_bapi_session_enable ();
+  if (rv)
+    {
+      VERR ("vppcom_app_session_enable() failed!");
+      return rv;
+    }
+
+  return 0;
+}
+
+int
+vcl_bapi_attach (void)
+{
+  int rv;
+
+  vcl_bapi_send_attach ();
+  rv = vcl_wait_for_app_state_change (STATE_APP_ATTACHED);
+  if (PREDICT_FALSE (rv))
+    {
+      VDBG (0, "application attach timed out! returning %d (%s)", rv,
+	    vppcom_retval_str (rv));
+      return rv;
+    }
+
+  return 0;
+}
+
+int
+vcl_bapi_app_worker_add (void)
+{
+  vcl_bapi_send_app_worker_add_del (1 /* is_add */ );
+  if (vcl_wait_for_app_state_change (STATE_APP_READY))
+    return -1;
+  return 0;
+}
+
+void
+vcl_bapi_app_worker_del (vcl_worker_t * wrk)
+{
+  /* Notify vpp that the worker is going away */
+  if (wrk->wrk_index == vcl_get_worker_index ())
+    vcl_bapi_send_app_worker_add_del (0 /* is_add */ );
+  else
+    vcl_bapi_send_child_worker_del (wrk);
+
+  /* Disconnect the binary api */
+  if (vec_len (vcm->workers) == 1)
+    vcl_bapi_disconnect_from_vpp ();
+  else
+    vl_client_send_disconnect (1 /* vpp should cleanup */ );
 }
 
 /*
