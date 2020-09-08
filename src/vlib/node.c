@@ -47,7 +47,17 @@ vlib_get_node_by_name (vlib_main_t * vm, u8 * name)
   vlib_node_main_t *nm = &vm->node_main;
   uword *p;
   u8 *key = name;
-  key = format (0, "%s", key);
+  /*
+   * We store node names as non-NULL terminated vectors in nm->node_by_name
+   * This creates interesting situations as we must be ready to accept:
+   *  - non-NULL terminated vectors
+   *  - NULL-terminated vectors
+   *  - NULL-terminated C strings
+   * In the last 2 cases we must ignore the terminating NULL
+   */
+  if (!clib_mem_is_vec (name)
+      || (vec_len (name) > 0 && name[vec_len (name) - 1] == 0))
+    key = format (0, "%s", name);
   p = hash_get (nm->node_by_name, key);
   if (key != name)
     vec_free (key);
