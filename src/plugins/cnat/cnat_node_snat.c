@@ -81,7 +81,8 @@ cnat_snat_inline (vlib_main_t * vm,
   vnet_feature_next (&arc_next0, b);
   next0 = arc_next0;
 
-  if (iproto != IP_PROTOCOL_UDP && iproto != IP_PROTOCOL_TCP)
+  if (iproto != IP_PROTOCOL_UDP && iproto != IP_PROTOCOL_TCP
+      && iproto != IP_PROTOCOL_ICMP && iproto != IP_PROTOCOL_ICMP6)
     {
       /* Dont translate */
       goto trace;

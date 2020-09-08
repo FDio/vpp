@@ -26,6 +26,42 @@ typedef uword (*cnat_node_sub_t) (vlib_main_t * vm,
 				  cnat_node_ctx_t * ctx, int rv,
 				  cnat_session_t * session);
 
+static_always_inline u8
+icmp_type_is_error_message (u8 icmp_type)
+{
+  switch (icmp_type)
+    {
+    case ICMP4_destination_unreachable:
+    case ICMP4_time_exceeded:
+    case ICMP4_parameter_problem:
+    case ICMP4_source_quench:
+    case ICMP4_redirect:
+    case ICMP4_alternate_host_address:
+      return 1;
+    }
+  return 0;
+}
+
+static_always_inline u8
+icmp6_type_is_error_message (u8 icmp_type)
+{
+  switch (icmp_type)
+    {
+    case ICMP6_destination_unreachable:
+    case ICMP6_time_exceeded:
+    case ICMP6_parameter_problem:
+      return 1;
+    }
+  return 0;
+}
+
+static_always_inline u8
+cmp_ip6_address (const ip6_address_t * a1, const ip6_address_t * a2)
+{
+  return ((a1->as_u64[0] == a2->as_u64[0])
+	  && (a1->as_u64[1] == a2->as_u64[1]));
+}
+
 /**
  * Inline translation functions
  */
@@ -38,44 +74,52 @@ has_ip6_address (ip6_address_t * a)
 
 static_always_inline void
 cnat_ip4_translate_l4 (ip4_header_t * ip4, udp_header_t * udp,
-		       u16 * checksum,
+		       ip_csum_t * sum,
 		       ip4_address_t new_addr[VLIB_N_DIR],
 		       u16 new_port[VLIB_N_DIR])
 {
   u16 old_port[VLIB_N_DIR];
   ip4_address_t old_addr[VLIB_N_DIR];
-  ip_csum_t sum;
+
+  /* Fastpath no checksum */
+  if (PREDICT_TRUE (0 == *sum))
+    {
+      udp->dst_port = new_port[VLIB_TX];
+      udp->src_port = new_port[VLIB_RX];
+      return;
+    }
 
   old_port[VLIB_TX] = udp->dst_port;
   old_port[VLIB_RX] = udp->src_port;
   old_addr[VLIB_TX] = ip4->dst_address;
   old_addr[VLIB_RX] = ip4->src_address;
 
-  sum = *checksum;
   if (new_addr[VLIB_TX].as_u32)
-    sum =
-      ip_csum_update (sum, old_addr[VLIB_TX].as_u32, new_addr[VLIB_TX].as_u32,
-		      ip4_header_t, dst_address);
+    {
+      *sum =
+	ip_csum_update (*sum, old_addr[VLIB_TX].as_u32,
+			new_addr[VLIB_TX].as_u32, ip4_header_t, dst_address);
+    }
   if (new_port[VLIB_TX])
     {
       udp->dst_port = new_port[VLIB_TX];
-      sum = ip_csum_update (sum, old_port[VLIB_TX], new_port[VLIB_TX],
-			    ip4_header_t /* cheat */ ,
-			    length /* changed member */ );
+      *sum = ip_csum_update (*sum, old_port[VLIB_TX], new_port[VLIB_TX],
+			     ip4_header_t /* cheat */ ,
+			     length /* changed member */ );
     }
   if (new_addr[VLIB_RX].as_u32)
-    sum =
-      ip_csum_update (sum, old_addr[VLIB_RX].as_u32, new_addr[VLIB_RX].as_u32,
-		      ip4_header_t, src_address);
-
+    {
+      *sum =
+	ip_csum_update (*sum, old_addr[VLIB_RX].as_u32,
+			new_addr[VLIB_RX].as_u32, ip4_header_t, src_address);
+    }
   if (new_port[VLIB_RX])
     {
       udp->src_port = new_port[VLIB_RX];
-      sum = ip_csum_update (sum, old_port[VLIB_RX], new_port[VLIB_RX],
-			    ip4_header_t /* cheat */ ,
-			    length /* changed member */ );
+      *sum = ip_csum_update (*sum, old_port[VLIB_RX], new_port[VLIB_RX],
+			     ip4_header_t /* cheat */ ,
+			     length /* changed member */ );
     }
-  *checksum = ip_csum_fold (sum);
 }
 
 static_always_inline void
@@ -126,6 +170,94 @@ cnat_tcp_update_session_lifetime (tcp_header_t * tcp, u32 index)
 }
 
 static_always_inline void
+cnat_translation_icmp4 (ip4_header_t * outer_ip4, udp_header_t * outer_udp,
+			ip4_address_t outer_new_addr[VLIB_N_DIR],
+			u16 outer_new_port[VLIB_N_DIR], u8 snat_outer_ip)
+{
+  icmp46_header_t *icmp = (icmp46_header_t *) outer_udp;
+  ip4_address_t new_addr[VLIB_N_DIR];
+  ip4_address_t old_addr[VLIB_N_DIR];
+  u16 new_port[VLIB_N_DIR];
+  u16 old_port[VLIB_N_DIR];
+  ip_csum_t sum, old_ip_sum, inner_l4_sum, inner_l4_old_sum;
+
+  if (!icmp_type_is_error_message (icmp->type))
+    return;
+
+  ip4_header_t *ip4 = (ip4_header_t *) (icmp + 2);
+  udp_header_t *udp = (udp_header_t *) (ip4 + 1);
+  tcp_header_t *tcp = (tcp_header_t *) udp;
+
+  /* Swap inner ports */
+  new_addr[VLIB_TX] = outer_new_addr[VLIB_RX];
+  new_addr[VLIB_RX] = outer_new_addr[VLIB_TX];
+  new_port[VLIB_TX] = outer_new_port[VLIB_RX];
+  new_port[VLIB_RX] = outer_new_port[VLIB_TX];
+
+  old_addr[VLIB_TX] = ip4->dst_address;
+  old_addr[VLIB_RX] = ip4->src_address;
+  old_port[VLIB_RX] = udp->src_port;
+  old_port[VLIB_TX] = udp->dst_port;
+
+  sum = icmp->checksum;
+  old_ip_sum = ip4->checksum;
+
+  /* translate outer ip. */
+  if (!snat_outer_ip)
+    outer_new_addr[VLIB_RX] = outer_ip4->src_address;
+  cnat_ip4_translate_l3 (outer_ip4, outer_new_addr);
+
+  if (ip4->protocol == IP_PROTOCOL_TCP)
+    {
+      inner_l4_old_sum = inner_l4_sum = tcp->checksum;
+      cnat_ip4_translate_l4 (ip4, udp, &inner_l4_sum, new_addr, new_port);
+      tcp->checksum = ip_csum_fold (inner_l4_sum);
+    }
+  else if (ip4->protocol == IP_PROTOCOL_UDP)
+    {
+      inner_l4_old_sum = inner_l4_sum = udp->checksum;
+      cnat_ip4_translate_l4 (ip4, udp, &inner_l4_sum, new_addr, new_port);
+      udp->checksum = ip_csum_fold (inner_l4_sum);
+    }
+  else
+    return;
+
+  /* UDP/TCP checksum changed */
+  sum = ip_csum_update (sum, inner_l4_old_sum, inner_l4_sum,
+			ip4_header_t, checksum);
+
+  /* UDP/TCP Ports changed */
+  if (old_port[VLIB_TX] && new_port[VLIB_TX])
+    sum = ip_csum_update (sum, old_port[VLIB_TX], new_port[VLIB_TX],
+			  ip4_header_t /* cheat */ ,
+			  length /* changed member */ );
+
+  if (old_port[VLIB_RX] && new_port[VLIB_RX])
+    sum = ip_csum_update (sum, old_port[VLIB_RX], new_port[VLIB_RX],
+			  ip4_header_t /* cheat */ ,
+			  length /* changed member */ );
+
+
+  cnat_ip4_translate_l3 (ip4, new_addr);
+  ip_csum_t new_ip_sum = ip4->checksum;
+  /* IP checksum changed */
+  sum = ip_csum_update (sum, old_ip_sum, new_ip_sum, ip4_header_t, checksum);
+
+  /* IP src/dst addr changed */
+  if (new_addr[VLIB_TX].as_u32)
+    sum =
+      ip_csum_update (sum, old_addr[VLIB_TX].as_u32, new_addr[VLIB_TX].as_u32,
+		      ip4_header_t, dst_address);
+
+  if (new_addr[VLIB_RX].as_u32)
+    sum =
+      ip_csum_update (sum, old_addr[VLIB_RX].as_u32, new_addr[VLIB_RX].as_u32,
+		      ip4_header_t, src_address);
+
+  icmp->checksum = ip_csum_fold (sum);
+}
+
+static_always_inline void
 cnat_translation_ip4 (const cnat_session_t * session,
 		      ip4_header_t * ip4, udp_header_t * udp)
 {
@@ -140,27 +272,26 @@ cnat_translation_ip4 (const cnat_session_t * session,
 
   if (ip4->protocol == IP_PROTOCOL_TCP)
     {
-      if (PREDICT_FALSE (tcp->checksum))
-	cnat_ip4_translate_l4 (ip4, udp, &tcp->checksum, new_addr, new_port);
-      else
-	{
-	  udp->dst_port = new_port[VLIB_TX];
-	  udp->src_port = new_port[VLIB_RX];
-	}
+      ip_csum_t sum = tcp->checksum;
+      cnat_ip4_translate_l4 (ip4, udp, &sum, new_addr, new_port);
+      tcp->checksum = ip_csum_fold (sum);
+      cnat_ip4_translate_l3 (ip4, new_addr);
       cnat_tcp_update_session_lifetime (tcp, session->value.cs_ts_index);
     }
   else if (ip4->protocol == IP_PROTOCOL_UDP)
     {
-      if (PREDICT_FALSE (udp->checksum))
-	cnat_ip4_translate_l4 (ip4, udp, &udp->checksum, new_addr, new_port);
-      else
-	{
-	  udp->dst_port = new_port[VLIB_TX];
-	  udp->src_port = new_port[VLIB_RX];
-	}
+      ip_csum_t sum = udp->checksum;
+      cnat_ip4_translate_l4 (ip4, udp, &sum, new_addr, new_port);
+      udp->checksum = ip_csum_fold (sum);
+      cnat_ip4_translate_l3 (ip4, new_addr);
     }
-
-  cnat_ip4_translate_l3 (ip4, new_addr);
+  else if (ip4->protocol == IP_PROTOCOL_ICMP)
+    {
+      /* SNAT only if src_addr was translated */
+      u8 snat_outer_ip =
+	(ip4->src_address.as_u32 == session->key.cs_ip[VLIB_RX].ip4.as_u32);
+      cnat_translation_icmp4 (ip4, udp, new_addr, new_port, snat_outer_ip);
+    }
 }
 
 static_always_inline void
@@ -174,20 +305,146 @@ cnat_ip6_translate_l3 (ip6_header_t * ip6, ip6_address_t new_addr[VLIB_N_DIR])
 
 static_always_inline void
 cnat_ip6_translate_l4 (ip6_header_t * ip6, udp_header_t * udp,
-		       u16 * checksum,
+		       ip_csum_t * sum,
 		       ip6_address_t new_addr[VLIB_N_DIR],
 		       u16 new_port[VLIB_N_DIR])
 {
   u16 old_port[VLIB_N_DIR];
   ip6_address_t old_addr[VLIB_N_DIR];
-  ip_csum_t sum;
+
+  /* Fastpath no checksum */
+  if (PREDICT_TRUE (0 == *sum))
+    {
+      udp->dst_port = new_port[VLIB_TX];
+      udp->src_port = new_port[VLIB_RX];
+      return;
+    }
 
   old_port[VLIB_TX] = udp->dst_port;
   old_port[VLIB_RX] = udp->src_port;
   ip6_address_copy (&old_addr[VLIB_TX], &ip6->dst_address);
   ip6_address_copy (&old_addr[VLIB_RX], &ip6->src_address);
 
-  sum = *checksum;
+  if (has_ip6_address (&new_addr[VLIB_TX]))
+    {
+      *sum = ip_csum_add_even (*sum, new_addr[VLIB_TX].as_u64[0]);
+      *sum = ip_csum_add_even (*sum, new_addr[VLIB_TX].as_u64[1]);
+      *sum = ip_csum_sub_even (*sum, old_addr[VLIB_TX].as_u64[0]);
+      *sum = ip_csum_sub_even (*sum, old_addr[VLIB_TX].as_u64[1]);
+    }
+
+  if (new_port[VLIB_TX])
+    {
+      udp->dst_port = new_port[VLIB_TX];
+      *sum = ip_csum_update (*sum, old_port[VLIB_TX], new_port[VLIB_TX],
+			     ip4_header_t /* cheat */ ,
+			     length /* changed member */ );
+    }
+  if (has_ip6_address (&new_addr[VLIB_RX]))
+    {
+      *sum = ip_csum_add_even (*sum, new_addr[VLIB_RX].as_u64[0]);
+      *sum = ip_csum_add_even (*sum, new_addr[VLIB_RX].as_u64[1]);
+      *sum = ip_csum_sub_even (*sum, old_addr[VLIB_RX].as_u64[0]);
+      *sum = ip_csum_sub_even (*sum, old_addr[VLIB_RX].as_u64[1]);
+    }
+
+  if (new_port[VLIB_RX])
+    {
+      udp->src_port = new_port[VLIB_RX];
+      *sum = ip_csum_update (*sum, old_port[VLIB_RX], new_port[VLIB_RX],
+			     ip4_header_t /* cheat */ ,
+			     length /* changed member */ );
+    }
+}
+
+static_always_inline void
+cnat_translation_icmp6 (ip6_header_t * outer_ip6, udp_header_t * outer_udp,
+			ip6_address_t outer_new_addr[VLIB_N_DIR],
+			u16 outer_new_port[VLIB_N_DIR], u8 snat_outer_ip)
+{
+  icmp46_header_t *icmp = (icmp46_header_t *) outer_udp;
+  ip6_address_t new_addr[VLIB_N_DIR];
+  ip6_address_t old_addr[VLIB_N_DIR];
+  ip6_address_t outer_old_addr[VLIB_N_DIR];
+  u16 new_port[VLIB_N_DIR];
+  u16 old_port[VLIB_N_DIR];
+  ip_csum_t sum, inner_l4_sum, inner_l4_old_sum;
+
+  if (!icmp6_type_is_error_message (icmp->type))
+    return;
+
+  ip6_header_t *ip6 = (ip6_header_t *) (icmp + 2);
+  udp_header_t *udp = (udp_header_t *) (ip6 + 1);
+  tcp_header_t *tcp = (tcp_header_t *) udp;
+
+  /* Swap inner ports */
+  ip6_address_copy (&new_addr[VLIB_RX], &outer_new_addr[VLIB_TX]);
+  ip6_address_copy (&new_addr[VLIB_TX], &outer_new_addr[VLIB_RX]);
+  new_port[VLIB_TX] = outer_new_port[VLIB_RX];
+  new_port[VLIB_RX] = outer_new_port[VLIB_TX];
+
+  ip6_address_copy (&old_addr[VLIB_TX], &ip6->dst_address);
+  ip6_address_copy (&old_addr[VLIB_RX], &ip6->src_address);
+  old_port[VLIB_RX] = udp->src_port;
+  old_port[VLIB_TX] = udp->dst_port;
+
+  sum = icmp->checksum;
+  /* Translate outer ip */
+  ip6_address_copy (&outer_old_addr[VLIB_TX], &outer_ip6->dst_address);
+  ip6_address_copy (&outer_old_addr[VLIB_RX], &outer_ip6->src_address);
+  if (!snat_outer_ip)
+    ip6_address_copy (&outer_new_addr[VLIB_RX], &outer_ip6->src_address);
+  cnat_ip6_translate_l3 (outer_ip6, outer_new_addr);
+  if (has_ip6_address (&outer_new_addr[VLIB_TX]))
+    {
+      sum = ip_csum_add_even (sum, outer_new_addr[VLIB_TX].as_u64[0]);
+      sum = ip_csum_add_even (sum, outer_new_addr[VLIB_TX].as_u64[1]);
+      sum = ip_csum_sub_even (sum, outer_old_addr[VLIB_TX].as_u64[0]);
+      sum = ip_csum_sub_even (sum, outer_old_addr[VLIB_TX].as_u64[1]);
+    }
+
+  if (has_ip6_address (&outer_new_addr[VLIB_RX]))
+    {
+      sum = ip_csum_add_even (sum, outer_new_addr[VLIB_RX].as_u64[0]);
+      sum = ip_csum_add_even (sum, outer_new_addr[VLIB_RX].as_u64[1]);
+      sum = ip_csum_sub_even (sum, outer_old_addr[VLIB_RX].as_u64[0]);
+      sum = ip_csum_sub_even (sum, outer_old_addr[VLIB_RX].as_u64[1]);
+    }
+
+  if (ip6->protocol == IP_PROTOCOL_TCP)
+    {
+      inner_l4_old_sum = inner_l4_sum = tcp->checksum;
+      cnat_ip6_translate_l4 (ip6, udp, &inner_l4_sum, new_addr, new_port);
+      tcp->checksum = ip_csum_fold (inner_l4_sum);
+    }
+  else if (ip6->protocol == IP_PROTOCOL_UDP)
+    {
+      inner_l4_old_sum = inner_l4_sum = udp->checksum;
+      cnat_ip6_translate_l4 (ip6, udp, &inner_l4_sum, new_addr, new_port);
+      udp->checksum = ip_csum_fold (inner_l4_sum);
+    }
+  else
+    return;
+
+  /* UDP/TCP checksum changed */
+  sum = ip_csum_update (sum, inner_l4_old_sum, inner_l4_sum,
+			ip4_header_t /* cheat */ ,
+			checksum);
+
+  /* UDP/TCP Ports changed */
+  if (old_port[VLIB_TX] && new_port[VLIB_TX])
+    sum = ip_csum_update (sum, old_port[VLIB_TX], new_port[VLIB_TX],
+			  ip4_header_t /* cheat */ ,
+			  length /* changed member */ );
+
+  if (old_port[VLIB_RX] && new_port[VLIB_RX])
+    sum = ip_csum_update (sum, old_port[VLIB_RX], new_port[VLIB_RX],
+			  ip4_header_t /* cheat */ ,
+			  length /* changed member */ );
+
+
+  cnat_ip6_translate_l3 (ip6, new_addr);
+  /* IP src/dst addr changed */
   if (has_ip6_address (&new_addr[VLIB_TX]))
     {
       sum = ip_csum_add_even (sum, new_addr[VLIB_TX].as_u64[0]);
@@ -196,13 +453,6 @@ cnat_ip6_translate_l4 (ip6_header_t * ip6, udp_header_t * udp,
       sum = ip_csum_sub_even (sum, old_addr[VLIB_TX].as_u64[1]);
     }
 
-  if (new_port[VLIB_TX])
-    {
-      udp->dst_port = new_port[VLIB_TX];
-      sum = ip_csum_update (sum, old_port[VLIB_TX], new_port[VLIB_TX],
-			    ip4_header_t /* cheat */ ,
-			    length /* changed member */ );
-    }
   if (has_ip6_address (&new_addr[VLIB_RX]))
     {
       sum = ip_csum_add_even (sum, new_addr[VLIB_RX].as_u64[0]);
@@ -211,14 +461,7 @@ cnat_ip6_translate_l4 (ip6_header_t * ip6, udp_header_t * udp,
       sum = ip_csum_sub_even (sum, old_addr[VLIB_RX].as_u64[1]);
     }
 
-  if (new_port[VLIB_RX])
-    {
-      udp->src_port = new_port[VLIB_RX];
-      sum = ip_csum_update (sum, old_port[VLIB_RX], new_port[VLIB_RX],
-			    ip4_header_t /* cheat */ ,
-			    length /* changed member */ );
-    }
-  *checksum = ip_csum_fold (sum);
+  icmp->checksum = ip_csum_fold (sum);
 }
 
 static_always_inline void
@@ -236,27 +479,26 @@ cnat_translation_ip6 (const cnat_session_t * session,
 
   if (ip6->protocol == IP_PROTOCOL_TCP)
     {
-      if (PREDICT_FALSE (tcp->checksum))
-	cnat_ip6_translate_l4 (ip6, udp, &tcp->checksum, new_addr, new_port);
-      else
-	{
-	  udp->dst_port = new_port[VLIB_TX];
-	  udp->src_port = new_port[VLIB_RX];
-	}
+      ip_csum_t sum = tcp->checksum;
+      cnat_ip6_translate_l4 (ip6, udp, &sum, new_addr, new_port);
+      tcp->checksum = ip_csum_fold (sum);
+      cnat_ip6_translate_l3 (ip6, new_addr);
       cnat_tcp_update_session_lifetime (tcp, session->value.cs_ts_index);
     }
   else if (ip6->protocol == IP_PROTOCOL_UDP)
     {
-      if (PREDICT_FALSE (udp->checksum))
-	cnat_ip6_translate_l4 (ip6, udp, &udp->checksum, new_addr, new_port);
-      else
-	{
-	  udp->dst_port = new_port[VLIB_TX];
-	  udp->src_port = new_port[VLIB_RX];
-	}
+      ip_csum_t sum = udp->checksum;
+      cnat_ip6_translate_l4 (ip6, udp, &sum, new_addr, new_port);
+      udp->checksum = ip_csum_fold (sum);
+      cnat_ip6_translate_l3 (ip6, new_addr);
     }
-
-  cnat_ip6_translate_l3 (ip6, new_addr);
+  else if (ip6->protocol == IP_PROTOCOL_ICMP6)
+    {
+      /* SNAT only if src_addr was translated */
+      u8 snat_outer_ip = cmp_ip6_address (&ip6->src_address,
+					  &session->key.cs_ip[VLIB_RX].ip6);
+      cnat_translation_icmp6 (ip6, udp, new_addr, new_port, snat_outer_ip);
+    }
 }
 
 static_always_inline void
@@ -265,36 +507,80 @@ cnat_session_make_key (vlib_buffer_t * b, ip_address_family_t af,
 {
   udp_header_t *udp;
   cnat_session_t *session = (cnat_session_t *) bkey;
+  session->key.cs_af = af;
+  session->key.__cs_pad[0] = 0;
+  session->key.__cs_pad[1] = 0;
   if (AF_IP4 == af)
     {
       ip4_header_t *ip4;
       ip4 = vlib_buffer_get_current (b);
-      udp = (udp_header_t *) (ip4 + 1);
-      session->key.cs_af = AF_IP4;
-      session->key.__cs_pad[0] = 0;
-      session->key.__cs_pad[1] = 0;
+      if (PREDICT_FALSE (ip4->protocol == IP_PROTOCOL_ICMP))
+	{
+	  icmp46_header_t *icmp = (icmp46_header_t *) (ip4 + 1);
+	  if (!icmp_type_is_error_message (icmp->type))
+	    goto error;
+	  ip4 = (ip4_header_t *) (icmp + 2);	/* Use inner packet */
+	  udp = (udp_header_t *) (ip4 + 1);
+	  /* Swap dst & src for search as ICMP payload is reversed */
+	  ip46_address_set_ip4 (&session->key.cs_ip[VLIB_RX],
+				&ip4->dst_address);
+	  ip46_address_set_ip4 (&session->key.cs_ip[VLIB_TX],
+				&ip4->src_address);
+	  session->key.cs_proto = ip4->protocol;
+	  session->key.cs_port[VLIB_TX] = udp->src_port;
+	  session->key.cs_port[VLIB_RX] = udp->dst_port;
+	}
+      else
+	{
+	  udp = (udp_header_t *) (ip4 + 1);
+	  ip46_address_set_ip4 (&session->key.cs_ip[VLIB_TX],
+				&ip4->dst_address);
+	  ip46_address_set_ip4 (&session->key.cs_ip[VLIB_RX],
+				&ip4->src_address);
+	  session->key.cs_proto = ip4->protocol;
+	  session->key.cs_port[VLIB_RX] = udp->src_port;
+	  session->key.cs_port[VLIB_TX] = udp->dst_port;
+	}
 
-      ip46_address_set_ip4 (&session->key.cs_ip[VLIB_TX], &ip4->dst_address);
-      ip46_address_set_ip4 (&session->key.cs_ip[VLIB_RX], &ip4->src_address);
-      session->key.cs_port[VLIB_RX] = udp->src_port;
-      session->key.cs_port[VLIB_TX] = udp->dst_port;
-      session->key.cs_proto = ip4->protocol;
     }
   else
     {
       ip6_header_t *ip6;
       ip6 = vlib_buffer_get_current (b);
-      udp = (udp_header_t *) (ip6 + 1);
-      session->key.cs_af = AF_IP6;
-      session->key.__cs_pad[0] = 0;
-      session->key.__cs_pad[1] = 0;
-
-      ip46_address_set_ip6 (&session->key.cs_ip[VLIB_TX], &ip6->dst_address);
-      ip46_address_set_ip6 (&session->key.cs_ip[VLIB_RX], &ip6->src_address);
-      session->key.cs_port[VLIB_RX] = udp->src_port;
-      session->key.cs_port[VLIB_TX] = udp->dst_port;
-      session->key.cs_proto = ip6->protocol;
+      if (PREDICT_FALSE (ip6->protocol == IP_PROTOCOL_ICMP6))
+	{
+	  icmp46_header_t *icmp = (icmp46_header_t *) (ip6 + 1);
+	  if (!icmp6_type_is_error_message (icmp->type))
+	    goto error;
+	  ip6 = (ip6_header_t *) (icmp + 2);	/* Use inner packet */
+	  udp = (udp_header_t *) (ip6 + 1);
+	  /* Swap dst & src for search as ICMP payload is reversed */
+	  ip46_address_set_ip6 (&session->key.cs_ip[VLIB_RX],
+				&ip6->dst_address);
+	  ip46_address_set_ip6 (&session->key.cs_ip[VLIB_TX],
+				&ip6->src_address);
+	  session->key.cs_proto = ip6->protocol;
+	  session->key.cs_port[VLIB_TX] = udp->src_port;
+	  session->key.cs_port[VLIB_RX] = udp->dst_port;
+	}
+      else
+	{
+	  udp = (udp_header_t *) (ip6 + 1);
+	  ip46_address_set_ip6 (&session->key.cs_ip[VLIB_TX],
+				&ip6->dst_address);
+	  ip46_address_set_ip6 (&session->key.cs_ip[VLIB_RX],
+				&ip6->src_address);
+	  session->key.cs_port[VLIB_RX] = udp->src_port;
+	  session->key.cs_port[VLIB_TX] = udp->dst_port;
+	  session->key.cs_proto = ip6->protocol;
+	}
     }
+  return;
+
+error:
+  /* Ensure we dont find anything */
+  session->key.cs_proto = 0;
+  return;
 }
 
 /**
@@ -311,32 +597,6 @@ cnat_session_create (cnat_session_t * session, cnat_node_ctx_t * ctx,
   clib_bihash_kv_40_48_t *bkey = (clib_bihash_kv_40_48_t *) session;
   clib_bihash_kv_40_48_t rvalue;
   int rv;
-
-  /* create the reverse flow key */
-  ip46_address_copy (&rsession->key.cs_ip[VLIB_RX],
-		     &session->value.cs_ip[VLIB_TX]);
-  ip46_address_copy (&rsession->key.cs_ip[VLIB_TX],
-		     &session->value.cs_ip[VLIB_RX]);
-  rsession->key.cs_proto = session->key.cs_proto;
-  rsession->key.__cs_pad[0] = 0;
-  rsession->key.__cs_pad[1] = 0;
-  rsession->key.cs_af = ctx->af;
-  rsession->key.cs_port[VLIB_RX] = session->value.cs_port[VLIB_TX];
-  rsession->key.cs_port[VLIB_TX] = session->value.cs_port[VLIB_RX];
-
-  /* First search for existing reverse session */
-  rv = clib_bihash_search_inline_2_40_48 (&cnat_session_db, &rkey, &rvalue);
-  if (!rv)
-    {
-      /* Reverse session already exists
-         corresponding client should also exist
-         we only need to refcnt the timestamp */
-      cnat_session_t *found_rsession = (cnat_session_t *) & rvalue;
-      session->value.cs_ts_index = found_rsession->value.cs_ts_index;
-      cnat_timestamp_inc_refcnt (session->value.cs_ts_index);
-      clib_bihash_add_del_40_48 (&cnat_session_db, bkey, 1 /* is_add */ );
-      goto create_rsession;
-    }
 
   session->value.cs_ts_index = cnat_timestamp_new (ctx->now);
   clib_bihash_add_del_40_48 (&cnat_session_db, bkey, 1);
@@ -382,10 +642,31 @@ cnat_session_create (cnat_session_t * session, cnat_node_ctx_t * ctx,
     }
   else
     {
+      /* Refcount reverse session */
       cnat_client_cnt_session (cc);
     }
 
-create_rsession:
+  /* create the reverse flow key */
+  ip46_address_copy (&rsession->key.cs_ip[VLIB_RX],
+		     &session->value.cs_ip[VLIB_TX]);
+  ip46_address_copy (&rsession->key.cs_ip[VLIB_TX],
+		     &session->value.cs_ip[VLIB_RX]);
+  rsession->key.cs_proto = session->key.cs_proto;
+  rsession->key.__cs_pad[0] = 0;
+  rsession->key.__cs_pad[1] = 0;
+  rsession->key.cs_af = ctx->af;
+  rsession->key.cs_port[VLIB_RX] = session->value.cs_port[VLIB_TX];
+  rsession->key.cs_port[VLIB_TX] = session->value.cs_port[VLIB_RX];
+
+  /* First search for existing reverse session */
+  rv = clib_bihash_search_inline_2_40_48 (&cnat_session_db, &rkey, &rvalue);
+  if (!rv)
+    {
+      /* Reverse session already exists
+         cleanup before creating for refcnts */
+      cnat_session_t *found_rsession = (cnat_session_t *) & rvalue;
+      cnat_session_free (found_rsession);
+    }
   /* add the reverse flow */
   ip46_address_copy (&rsession->value.cs_ip[VLIB_RX],
 		     &session->key.cs_ip[VLIB_TX]);
