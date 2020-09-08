@@ -268,7 +268,7 @@ _(APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)  	\
 _(APP_WORKER_ADD_DEL_REPLY, app_worker_add_del_reply)			\
 
 void
-vppcom_api_hookup (void)
+vcl_bapi_hookup (void)
 {
 #define _(N, n)                                                	\
     vl_msg_api_set_handlers(VL_API_##N, #n,                    	\
@@ -285,7 +285,7 @@ vppcom_api_hookup (void)
  * VPP-API message functions
  */
 void
-vppcom_send_session_enable_disable (u8 is_enable)
+vcl_bapi_send_session_enable_disable (u8 is_enable)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_session_enable_disable_t *bmp;
@@ -300,7 +300,7 @@ vppcom_send_session_enable_disable (u8 is_enable)
 }
 
 void
-vppcom_app_send_attach (void)
+vcl_send_attach (void)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   u8 tls_engine = CRYPTO_ENGINE_OPENSSL;
@@ -343,7 +343,7 @@ vppcom_app_send_attach (void)
 }
 
 void
-vppcom_app_send_detach (void)
+vcl_send_detach (void)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_application_detach_t *bmp;
@@ -396,8 +396,8 @@ vcl_send_child_worker_del (vcl_worker_t * child_wrk)
 }
 
 void
-vppcom_send_application_tls_cert_add (vcl_session_t * session, char *cert,
-				      u32 cert_len)
+vcl_bapi_send_application_tls_cert_add (vcl_session_t * session, char *cert,
+					u32 cert_len)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_application_tls_cert_add_t *cert_mp;
@@ -413,8 +413,8 @@ vppcom_send_application_tls_cert_add (vcl_session_t * session, char *cert,
 }
 
 void
-vppcom_send_application_tls_key_add (vcl_session_t * session, char *key,
-				     u32 key_len)
+vcl_bapi_send_application_tls_key_add (vcl_session_t * session, char *key,
+				       u32 key_len)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_application_tls_key_add_t *key_mp;
@@ -437,7 +437,7 @@ vcl_max_nsid_len (void)
 }
 
 void
-vppcom_init_error_string_table (void)
+vcl_bapi_init_error_string_table (void)
 {
   vcm->error_string_by_error_number = hash_create (0, sizeof (uword));
 
@@ -449,49 +449,57 @@ vppcom_init_error_string_table (void)
 }
 
 int
-vppcom_connect_to_vpp (const char *app_name)
+vcl_bapi_connect_to_vpp (void)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vppcom_cfg_t *vcl_cfg = &vcm->cfg;
+  int rv = VPPCOM_OK;
   api_main_t *am;
+  u8 *wrk_name;
+
+  wrk_name = format (0, "%s-wrk-%u%c", vcm->app_name, wrk->wrk_index, 0);
 
   vlibapi_set_main (&wrk->bapi_api_ctx);
   vlibapi_set_memory_client_main (&wrk->bapi_shm_ctx);
-  vppcom_api_hookup ();
+  vcl_bapi_hookup ();
 
-  if (vcl_cfg->vpp_api_socket_name)
+  if (vcl_cfg->vpp_bapi_socket_name)
     {
       if (vl_socket_client_connect2 (&wrk->bapi_sock_ctx,
-				     (char *) vcl_cfg->vpp_api_socket_name,
-				     (char *) app_name,
+				     (char *) vcl_cfg->vpp_bapi_socket_name,
+				     (char *) wrk_name,
 				     0 /* default rx/tx buffer */ ))
 	{
-	  VERR ("app (%s) socket connect failed!", app_name);
-	  return VPPCOM_ECONNREFUSED;
+	  VERR ("app (%s) socket connect failed!", wrk_name);
+	  rv = VPPCOM_ECONNREFUSED;
+	  goto error;
 	}
 
       if (vl_socket_client_init_shm2 (&wrk->bapi_sock_ctx, 0,
 				      1 /* want_pthread */ ))
 	{
-	  VERR ("app (%s) init shm failed!", app_name);
-	  return VPPCOM_ECONNREFUSED;
+	  VERR ("app (%s) init shm failed!", wrk_name);
+	  rv = VPPCOM_ECONNREFUSED;
+	  goto error;
 	}
     }
   else
     {
-      if (!vcl_cfg->vpp_api_filename)
-	vcl_cfg->vpp_api_filename = format (0, "/vpe-api%c", 0);
+      if (!vcl_cfg->vpp_bapi_filename)
+	vcl_cfg->vpp_bapi_filename = format (0, "/vpe-api%c", 0);
 
-      vl_set_memory_root_path ((char *) vcl_cfg->vpp_api_chroot);
+      vl_set_memory_root_path ((char *) vcl_cfg->vpp_bapi_chroot);
 
       VDBG (0, "app (%s) connecting to VPP api (%s)...",
-	    app_name, vcl_cfg->vpp_api_filename);
+	    wrk_name, vcl_cfg->vpp_bapi_filename);
 
-      if (vl_client_connect_to_vlib ((char *) vcl_cfg->vpp_api_filename,
-				     app_name, vcm->cfg.vpp_api_q_length) < 0)
+      if (vl_client_connect_to_vlib ((char *) vcl_cfg->vpp_bapi_filename,
+				     (char *) wrk_name,
+				     vcm->cfg.vpp_api_q_length) < 0)
 	{
-	  VERR ("app (%s) connect failed!", app_name);
-	  return VPPCOM_ECONNREFUSED;
+	  VERR ("app (%s) connect failed!", wrk_name);
+	  rv = VPPCOM_ECONNREFUSED;
+	  goto error;
 	}
     }
 
@@ -500,18 +508,21 @@ vppcom_connect_to_vpp (const char *app_name)
   wrk->my_client_index = (u32) am->my_client_index;
   wrk->wrk_state = STATE_APP_CONN_VPP;
 
-  VDBG (0, "app (%s) is connected to VPP!", app_name);
+  VDBG (0, "app (%s) is connected to VPP!", wrk_name);
   vcl_evt (VCL_EVT_INIT, vcm);
-  return VPPCOM_OK;
+
+error:
+  vec_free (wrk_name);
+  return rv;
 }
 
 void
-vppcom_disconnect_from_vpp (void)
+vcl_bapi_disconnect_from_vpp (void)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vppcom_cfg_t *vcl_cfg = &vcm->cfg;
 
-  if (vcl_cfg->vpp_api_socket_name)
+  if (vcl_cfg->vpp_bapi_socket_name)
     vl_socket_client_disconnect2 (&wrk->bapi_sock_ctx);
   else
     vl_client_disconnect_from_vlib ();
