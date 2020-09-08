@@ -60,7 +60,7 @@ typedef enum
   STATE_APP_ADDING_TLS_DATA,
   STATE_APP_FAILED,
   STATE_APP_READY
-} app_state_t;
+} vcl_bapi_app_state_t;
 
 typedef enum
 {
@@ -214,9 +214,9 @@ typedef struct vppcom_cfg_t_
   f64 accept_timeout;
   u32 event_ring_size;
   char *event_log_path;
-  u8 *vpp_api_filename;
-  u8 *vpp_api_socket_name;
-  u8 *vpp_api_chroot;
+  u8 *vpp_bapi_filename;	/**< bapi shm transport file name */
+  u8 *vpp_bapi_socket_name;	/**< bapi socket transport socket name */
+  u8 *vpp_bapi_chroot;
   u32 tls_engine;
   u8 mt_wrk_supported;
 } vppcom_cfg_t;
@@ -251,11 +251,8 @@ typedef struct vcl_worker_
   /** Worker index in vpp*/
   u32 vpp_wrk_index;
 
-  /** API client handle */
-  u32 my_client_index;
-
-  /** State of the connection, shared between msg RX thread and main thread */
-  volatile app_state_t wrk_state;
+  /** VPP bapi client handle */
+  u32 bapi_client_index;
 
   /** VPP binary api input queue */
   svm_queue_t *vl_input_queue;
@@ -328,9 +325,6 @@ typedef struct vppcom_main_t_
   /** App's index in vpp. It's used by vpp to identify the app */
   u32 app_index;
 
-  /** State of the connection, shared between msg RX thread and main thread */
-  volatile app_state_t app_state;
-
   u8 *app_name;
 
   /** VCL configuration */
@@ -355,16 +349,23 @@ typedef struct vppcom_main_t_
 
   fifo_segment_main_t segment_main;
 
+  vcl_rpc_fn_t *wrk_rpc_fn;
+
+  /*
+   * Binary api context
+   */
+
+  /* State of the connection, shared between msg RX thread and main thread */
+  volatile vcl_bapi_app_state_t bapi_app_state;
+
+  /* VNET_API_ERROR_FOO -> "Foo" hash table */
+  uword *error_string_by_error_number;
+
 #ifdef VCL_ELOG
   /* VPP Event-logger */
   elog_main_t elog_main;
   elog_track_t elog_track;
 #endif
-
-  /* VNET_API_ERROR_FOO -> "Foo" hash table */
-  uword *error_string_by_error_number;
-
-  vcl_rpc_fn_t *wrk_rpc_fn;
 
 } vppcom_main_t;
 
@@ -612,7 +613,6 @@ vcl_proto_is_dgram (uint8_t proto)
 /*
  * Helpers
  */
-int vcl_wait_for_app_state_change (app_state_t app_state);
 vcl_mq_evt_conn_t *vcl_mq_evt_conn_alloc (vcl_worker_t * wrk);
 u32 vcl_mq_evt_conn_index (vcl_worker_t * wrk, vcl_mq_evt_conn_t * mqc);
 vcl_mq_evt_conn_t *vcl_mq_evt_conn_get (vcl_worker_t * wrk, u32 mq_conn_idx);
@@ -622,11 +622,9 @@ int vcl_mq_epoll_del_evfd (vcl_worker_t * wrk, u32 mqc_index);
 vcl_worker_t *vcl_worker_alloc_and_init (void);
 void vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp);
 int vcl_worker_register_with_vpp (void);
-int vcl_worker_set_bapi (void);
 svm_msg_q_t *vcl_worker_ctrl_mq (vcl_worker_t * wrk);
 
 void vcl_flush_mq_events (void);
-void vcl_cleanup_bapi (void);
 int vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
 			 vcl_session_handle_t sh, u8 do_disconnect);
 
@@ -673,32 +671,25 @@ void vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,
 				     u32 wrk_index);
 int vcl_send_worker_rpc (u32 dst_wrk_index, void *data, u32 data_len);
 
-/*
- * VCL Binary API
- */
-int vppcom_connect_to_vpp (const char *app_name);
-void vppcom_disconnect_from_vpp (void);
-void vppcom_init_error_string_table (void);
-void vppcom_send_session_enable_disable (u8 is_enable);
-void vppcom_app_send_attach (void);
-void vppcom_app_send_detach (void);
-void vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s);
-void vppcom_send_disconnect_session (u64 vpp_handle);
-void vppcom_api_hookup (void);
-void vppcom_send_application_tls_cert_add (vcl_session_t * session,
-					   char *cert, u32 cert_len);
-void vppcom_send_application_tls_key_add (vcl_session_t * session, char *key,
-					  u32 key_len);
-void vcl_send_app_worker_add_del (u8 is_add);
-void vcl_send_child_worker_del (vcl_worker_t * wrk);
-
 int vcl_segment_attach (u64 segment_handle, char *name,
 			ssvm_segment_type_t type, int fd);
 void vcl_segment_detach (u64 segment_handle);
+void vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s);
 
-u32 vcl_max_nsid_len (void);
+/*
+ * VCL Binary API
+ */
+int vcl_bapi_attach (void);
+int vcl_bapi_app_worker_add (void);
+void vcl_bapi_app_worker_del (vcl_worker_t * wrk);
+void vcl_bapi_disconnect_from_vpp (void);
+void vcl_bapi_send_application_tls_cert_add (vcl_session_t * session,
+					     char *cert, u32 cert_len);
+void vcl_bapi_send_application_tls_key_add (vcl_session_t * session,
+					    char *key, u32 key_len);
+u32 vcl_bapi_max_nsid_len (void);
+int vcl_bapi_worker_set (void);
 
-void vls_init ();
 #endif /* SRC_VCL_VCL_PRIVATE_H_ */
 
 /*
