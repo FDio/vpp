@@ -17,57 +17,6 @@
 
 static pthread_key_t vcl_worker_stop_key;
 
-static const char *
-vppcom_app_state_str (app_state_t state)
-{
-  char *st;
-
-  switch (state)
-    {
-    case STATE_APP_START:
-      st = "STATE_APP_START";
-      break;
-
-    case STATE_APP_CONN_VPP:
-      st = "STATE_APP_CONN_VPP";
-      break;
-
-    case STATE_APP_ENABLED:
-      st = "STATE_APP_ENABLED";
-      break;
-
-    case STATE_APP_ATTACHED:
-      st = "STATE_APP_ATTACHED";
-      break;
-
-    default:
-      st = "UNKNOWN_APP_STATE";
-      break;
-    }
-
-  return st;
-}
-
-int
-vcl_wait_for_app_state_change (app_state_t app_state)
-{
-  vcl_worker_t *wrk = vcl_worker_get_current ();
-  f64 timeout = clib_time_now (&wrk->clib_time) + vcm->cfg.app_timeout;
-
-  while (clib_time_now (&wrk->clib_time) < timeout)
-    {
-      if (vcm->app_state == app_state)
-	return VPPCOM_OK;
-      if (vcm->app_state == STATE_APP_FAILED)
-	return VPPCOM_ECONNABORTED;
-    }
-  VDBG (0, "timeout waiting for state %s (%d)",
-	vppcom_app_state_str (app_state), app_state);
-  vcl_evt (VCL_EVT_SESSION_TIMEOUT, vcm, app_state);
-
-  return VPPCOM_ETIMEDOUT;
-}
-
 vcl_mq_evt_conn_t *
 vcl_mq_evt_conn_alloc (vcl_worker_t * wrk)
 {
@@ -157,19 +106,7 @@ vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp)
 {
   clib_spinlock_lock (&vcm->workers_lock);
   if (notify_vpp)
-    {
-      /* Notify vpp that the worker is going away */
-      if (wrk->wrk_index == vcl_get_worker_index ())
-	vcl_send_app_worker_add_del (0 /* is_add */ );
-      else
-	vcl_send_child_worker_del (wrk);
-
-      /* Disconnect the binary api */
-      if (vec_len (vcm->workers) == 1)
-	vppcom_disconnect_from_vpp ();
-      else
-	vl_client_send_disconnect (1 /* vpp should cleanup */ );
-    }
+    vcl_bapi_app_worker_del (wrk);
 
   if (wrk->mqs_epfd > 0)
     close (wrk->mqs_epfd);
@@ -247,11 +184,10 @@ vcl_worker_register_with_vpp (void)
 
   clib_spinlock_lock (&vcm->workers_lock);
 
-  vcm->app_state = STATE_APP_ADDING_WORKER;
-  vcl_send_app_worker_add_del (1 /* is_add */ );
-  if (vcl_wait_for_app_state_change (STATE_APP_READY))
+  if (vcl_bapi_app_worker_add ())
     {
       VDBG (0, "failed to add worker to vpp");
+      clib_spinlock_unlock (&vcm->workers_lock);
       return -1;
     }
   if (pthread_key_create (&vcl_worker_stop_key, vcl_worker_cleanup_cb))
@@ -265,46 +201,10 @@ vcl_worker_register_with_vpp (void)
   return 0;
 }
 
-int
-vcl_worker_set_bapi (void)
-{
-  vcl_worker_t *wrk = vcl_worker_get_current ();
-  int i;
-
-  /* Find the first worker with the same pid */
-  for (i = 0; i < vec_len (vcm->workers); i++)
-    {
-      if (i == wrk->wrk_index)
-	continue;
-      if (vcm->workers[i].current_pid == wrk->current_pid)
-	{
-	  wrk->vl_input_queue = vcm->workers[i].vl_input_queue;
-	  wrk->my_client_index = vcm->workers[i].my_client_index;
-	  return 0;
-	}
-    }
-  return -1;
-}
-
 svm_msg_q_t *
 vcl_worker_ctrl_mq (vcl_worker_t * wrk)
 {
   return wrk->ctrl_mq;
-}
-
-void
-vcl_cleanup_bapi (void)
-{
-  socket_client_main_t *scm = &socket_client_main;
-  api_main_t *am = vlibapi_get_main ();
-
-  am->my_client_index = ~0;
-  am->my_registration = 0;
-  am->vl_input_queue = 0;
-  am->msg_index_by_name_and_crc = 0;
-  scm->socket_fd = 0;
-
-  vl_client_api_unmap ();
 }
 
 int
