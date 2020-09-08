@@ -214,9 +214,9 @@ typedef struct vppcom_cfg_t_
   f64 accept_timeout;
   u32 event_ring_size;
   char *event_log_path;
-  u8 *vpp_api_filename;
-  u8 *vpp_api_socket_name;
-  u8 *vpp_api_chroot;
+  u8 *vpp_bapi_filename;	/**< bapi shm transport file name */
+  u8 *vpp_bapi_socket_name;	/**< bapi socket transport socket name */
+  u8 *vpp_bapi_chroot;
   u32 tls_engine;
   u8 mt_wrk_supported;
 } vppcom_cfg_t;
@@ -251,7 +251,7 @@ typedef struct vcl_worker_
   /** Worker index in vpp*/
   u32 vpp_wrk_index;
 
-  /** API client handle */
+  /** BAPI client handle */
   u32 my_client_index;
 
   /** State of the connection, shared between msg RX thread and main thread */
@@ -673,32 +673,29 @@ void vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,
 				     u32 wrk_index);
 int vcl_send_worker_rpc (u32 dst_wrk_index, void *data, u32 data_len);
 
-/*
- * VCL Binary API
- */
-int vppcom_connect_to_vpp (const char *app_name);
-void vppcom_disconnect_from_vpp (void);
-void vppcom_init_error_string_table (void);
-void vppcom_send_session_enable_disable (u8 is_enable);
-void vppcom_app_send_attach (void);
-void vppcom_app_send_detach (void);
-void vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s);
-void vppcom_send_disconnect_session (u64 vpp_handle);
-void vppcom_api_hookup (void);
-void vppcom_send_application_tls_cert_add (vcl_session_t * session,
-					   char *cert, u32 cert_len);
-void vppcom_send_application_tls_key_add (vcl_session_t * session, char *key,
-					  u32 key_len);
-void vcl_send_app_worker_add_del (u8 is_add);
-void vcl_send_child_worker_del (vcl_worker_t * wrk);
-
 int vcl_segment_attach (u64 segment_handle, char *name,
 			ssvm_segment_type_t type, int fd);
 void vcl_segment_detach (u64 segment_handle);
+void vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s);
 
-u32 vcl_max_nsid_len (void);
+/*
+ * VCL Binary API
+ */
+int vcl_bapi_init (void);
+int vcl_bapi_connect_to_vpp (void);
+void vcl_bapi_disconnect_from_vpp (void);
+void vcl_bapi_send_attach (void);
+void vcl_bapi_send_detach (void);
+void vcl_bapi_send_app_worker_add_del (u8 is_add);
+void vcl_bapi_send_child_worker_del (vcl_worker_t * wrk);
+void vcl_bapi_send_session_enable_disable (u8 is_enable);
+void vcl_bapi_hookup (void);
+void vcl_bapi_send_application_tls_cert_add (vcl_session_t * session,
+					     char *cert, u32 cert_len);
+void vcl_bapi_send_application_tls_key_add (vcl_session_t * session,
+					    char *key, u32 key_len);
+u32 vcl_bapi_max_nsid_len (void);
 
-void vls_init ();
 #endif /* SRC_VCL_VCL_PRIVATE_H_ */
 
 /*
