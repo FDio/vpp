@@ -95,7 +95,8 @@ cnat_vip_inline (vlib_main_t * vm,
 
   cc = cnat_client_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
 
-  if (iproto != IP_PROTOCOL_UDP && iproto != IP_PROTOCOL_TCP)
+  if (iproto != IP_PROTOCOL_UDP && iproto != IP_PROTOCOL_TCP
+      && iproto != IP_PROTOCOL_ICMP && iproto != IP_PROTOCOL_ICMP6)
     {
       /* Dont translate & follow the fib programming */
       next0 = cc->cc_parent.dpoi_next_node;
@@ -214,6 +215,7 @@ cnat_vip_inline (vlib_main_t * vm,
 	}
       session->value.cs_lbi = dpo0->dpoi_index;
 
+      /* refcnt session in current client */
       cnat_client_cnt_session (cc);
       cnat_session_create (session, ctx, rsession_flags);
       created_session = 1;
@@ -221,7 +223,6 @@ cnat_vip_inline (vlib_main_t * vm,
       next0 = ct->ct_lb.dpoi_next_node;
       vnet_buffer (b)->ip.adj_index[VLIB_TX] = session->value.cs_lbi;
     }
-
 
   if (AF_IP4 == ctx->af)
     cnat_translation_ip4 (session, ip4, udp0);
