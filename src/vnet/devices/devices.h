@@ -151,7 +151,7 @@ vnet_device_input_set_interrupt_pending (vnet_main_t * vnm, u32 hw_if_index,
 
   clib_atomic_store_rel_n (&(dq->interrupt_pending), 1);
 
-  vlib_node_set_interrupt_pending (vm, hw->input_node_index);
+  vlib_node_set_interrupt_pending_unique (vm, hw->input_node_index);
 }
 
 /*
