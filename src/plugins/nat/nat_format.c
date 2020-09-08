@@ -230,7 +230,8 @@ format_snat_static_mapping (u8 * s, va_list * args)
       else
 	s = format (s, "identity mapping %U %U:%d",
 		    format_nat_protocol, m->proto,
-		    format_ip4_address, &m->local_addr, m->local_port);
+		    format_ip4_address, &m->local_addr,
+		    clib_net_to_host_u16 (m->local_port));
 
       /* *INDENT-OFF* */
       pool_foreach (local, m->locals,
@@ -256,7 +257,8 @@ format_snat_static_mapping (u8 * s, va_list * args)
 	{
 	  s = format (s, "%U external %U:%d %s %s",
 		      format_nat_protocol, m->proto,
-		      format_ip4_address, &m->external_addr, m->external_port,
+		      format_ip4_address, &m->external_addr,
+		      clib_net_to_host_u16 (m->external_port),
 		      m->twice_nat == TWICE_NAT ? "twice-nat" :
 		      m->twice_nat == TWICE_NAT_SELF ? "self-twice-nat" : "",
 		      is_out2in_only_static_mapping (m) ? "out2in-only" : "");
@@ -265,7 +267,8 @@ format_snat_static_mapping (u8 * s, va_list * args)
           pool_foreach (local, m->locals,
           ({
 	    s = format (s, "\n  local %U:%d vrf %d probability %d\%",
-			format_ip4_address, &local->addr, local->port,
+			format_ip4_address, &local->addr,
+                        clib_net_to_host_u16 (local->port),
 			local->vrf_id, local->probability);
           }));
           /* *INDENT-ON* */
@@ -274,8 +277,10 @@ format_snat_static_mapping (u8 * s, va_list * args)
       else
 	s = format (s, "%U local %U:%d external %U:%d vrf %d %s %s",
 		    format_nat_protocol, m->proto,
-		    format_ip4_address, &m->local_addr, m->local_port,
-		    format_ip4_address, &m->external_addr, m->external_port,
+		    format_ip4_address, &m->local_addr,
+		    clib_net_to_host_u16 (m->local_port),
+		    format_ip4_address, &m->external_addr,
+		    clib_net_to_host_u16 (m->external_port),
 		    m->vrf_id,
 		    m->twice_nat == TWICE_NAT ? "twice-nat" :
 		    m->twice_nat == TWICE_NAT_SELF ? "self-twice-nat" : "",
@@ -297,9 +302,10 @@ format_snat_static_map_to_resolve (u8 * s, va_list * args)
   else
     s = format (s, "%U local %U:%d external %U:%d vrf %d",
 		format_nat_protocol, m->proto,
-		format_ip4_address, &m->l_addr, m->l_port,
+		format_ip4_address, &m->l_addr,
+		clib_net_to_host_u16 (m->l_port),
 		format_vnet_sw_if_index_name, vnm, m->sw_if_index,
-		m->e_port, m->vrf_id);
+		clib_net_to_host_u16 (m->e_port), m->vrf_id);
 
   return s;
 }
