@@ -163,6 +163,10 @@ typedef struct
   u32 sndbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_SNDBUF)
   u32 rcvbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_RCVBUF)
   u32 user_mss;			// VPP-TBD: Hack until support setsockopt(TCP_MAXSEG)
+  /* socket information */
+  int socket_fd;
+  int socket_status;
+
   u64 vpp_handle;
   u32 vpp_thread_index;
 
@@ -219,6 +223,7 @@ typedef struct vppcom_cfg_t_
   u8 *vpp_api_chroot;
   u32 tls_engine;
   u8 mt_wrk_supported;
+  u8 kernel_localhost_supported;
 } vppcom_cfg_t;
 
 void vppcom_cfg (vppcom_cfg_t * vcl_cfg);

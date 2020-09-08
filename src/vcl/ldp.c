@@ -51,6 +51,9 @@
 
 #define LDP_MAX_NWORKERS 32
 
+/* Only support kernal stack based on IPV4 localhost. */
+#define LDP_IPV4_LOCALHOST 0x100007f
+
 typedef struct ldp_worker_ctx_
 {
   u8 *io_buffer;
@@ -293,7 +296,7 @@ int
 close (int fd)
 {
   vls_handle_t vlsh;
-  int rv, epfd;
+  int rv, epfd, libc_fd;
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -320,6 +323,17 @@ close (int fd)
 	  errno = -epfd;
 	  rv = -1;
 	  goto done;
+	}
+
+      libc_fd = vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, NULL, NULL);
+      if (libc_fd > 0)
+	{
+	  LDBG (0, "fd %d: calling libc_close", libc_fd);
+	  rv = libc_close (libc_fd);
+	  if (rv != 0)
+	    {
+	      goto done;
+	    }
 	}
 
       LDBG (0, "fd %d: calling vls_close: vlsh %u", fd, vlsh);
@@ -353,6 +367,18 @@ read (int fd, void *buf, size_t nbytes)
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
+
       size = vls_read (vlsh, buf, nbytes);
       if (size < 0)
 	{
@@ -362,6 +388,7 @@ read (int fd, void *buf, size_t nbytes)
     }
   else
     {
+    libc_proc:
       size = libc_read (fd, buf, nbytes);
     }
 
@@ -381,6 +408,18 @@ readv (int fd, const struct iovec * iov, int iovcnt)
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
+
       for (i = 0; i < iovcnt; ++i)
 	{
 	  rv = vls_read (vlsh, iov[i].iov_base, iov[i].iov_len);
@@ -403,6 +442,7 @@ readv (int fd, const struct iovec * iov, int iovcnt)
     }
   else
     {
+    libc_proc:
       size = libc_readv (fd, iov, iovcnt);
     }
 
@@ -421,6 +461,18 @@ write (int fd, const void *buf, size_t nbytes)
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
+
       size = vls_write_msg (vlsh, (void *) buf, nbytes);
       if (size < 0)
 	{
@@ -430,6 +482,7 @@ write (int fd, const void *buf, size_t nbytes)
     }
   else
     {
+    libc_proc:
       size = libc_write (fd, buf, nbytes);
     }
 
@@ -449,6 +502,18 @@ writev (int fd, const struct iovec * iov, int iovcnt)
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
+
       for (i = 0; i < iovcnt; ++i)
 	{
 	  rv = vls_write_msg (vlsh, iov[i].iov_base, iov[i].iov_len);
@@ -472,6 +537,7 @@ writev (int fd, const struct iovec * iov, int iovcnt)
     }
   else
     {
+    libc_proc:
       size = libc_writev (fd, iov, iovcnt);
     }
 
@@ -518,9 +584,21 @@ fcntl_internal (int fd, int cmd, va_list ap)
 	  errno = -rv;
 	  rv = -1;
 	}
+      else if (rv == 0)
+	{
+	  int libc_fd;
+	  libc_fd = vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, NULL, NULL);
+	  if (libc_fd > 0)
+	    {
+	      /* VPPCOM_SOCKET_LIBC or VPPCOM_SOCKET_INIT, fcntl both. */
+	      fd = libc_fd;
+	      goto libc_proc;
+	    }
+	}
     }
   else
     {
+    libc_proc:
 #ifdef HAVE_FCNTL64
       rv = libc_vfcntl64 (fd, cmd, ap);
 #else
@@ -605,9 +683,20 @@ ioctl (int fd, unsigned long int cmd, ...)
 	  errno = -rv;
 	  rv = -1;
 	}
+      else if (rv == 0)
+	{
+	  int libc_fd;
+	  libc_fd = vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, NULL, NULL);
+	  if (libc_fd > 0)
+	    {
+	      fd = libc_fd;
+	      goto libc_proc;
+	    }
+	}
     }
   else
     {
+    libc_proc:
       rv = libc_vioctl (fd, cmd, ap);
     }
 
@@ -639,7 +728,18 @@ ldp_select_init_maps (fd_set * __restrict original,
     if (vlsh == VLS_INVALID_HANDLE)
       clib_bitmap_set_no_check (*libcb, fd, 1);
     else
-      *vclb = clib_bitmap_set (*vclb, vlsh_to_session_index (vlsh), 1);
+      {
+        int libc_fd, status;
+	u32 size = sizeof (int);
+
+	libc_fd = vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &size);
+	if (libc_fd > 0 && status == VPPCOM_SOCKET_LIBC)
+	  clib_bitmap_set_no_check (*libcb, libc_fd, 1);
+	else if (libc_fd > 0 && status == VPPCOM_SOCKET_INIT)
+	  ASSERT (0);
+	else
+	  *vclb = clib_bitmap_set (*vclb, vlsh_to_session_index (vlsh), 1);
+      }
   }));
   /* *INDENT-ON* */
 
@@ -1002,7 +1102,32 @@ socket (int domain, int type, int protocol)
 	    {
 	      if (load_tls_cert (vlsh) < 0 || load_tls_key (vlsh) < 0)
 		{
-		  return -1;
+		  vls_close (vlsh);
+		  errno = EINVAL;
+		  rv = -1;
+		  goto done;
+		}
+	    }
+
+	  if (vls_kernel_lh_supported ())
+	    {
+	      u32 size = sizeof (int);
+	      int libc_fd;
+
+	      /* Create libc socket also. */
+	      libc_fd = libc_socket (domain, type, protocol);
+	      if (libc_fd < 0)
+		{
+		  vls_close (vlsh);
+		  rv = -1;
+		  goto done;
+		}
+	      rv = vls_attr (vlsh, VPPCOM_ATTR_SET_LIBC_FD, &libc_fd, &size);
+	      if (rv < 0)
+		{
+		  vls_close (vlsh);
+		  rv = -1;
+		  goto done;
 		}
 	    }
 	  rv = ldp_vlsh_to_fd (vlsh);
@@ -1014,6 +1139,7 @@ socket (int domain, int type, int protocol)
       rv = libc_socket (domain, type, protocol);
     }
 
+done:
   return rv;
 }
 
@@ -1048,6 +1174,54 @@ socketpair (int domain, int type, int protocol, int fds[2])
   return rv;
 }
 
+static int
+ldp_switch_to_libc (vls_handle_t vlsh)
+{
+  int status, vep_handle;
+  u32 size = sizeof (int);
+
+  status = VPPCOM_SOCKET_LIBC;
+  if (vls_attr (vlsh, VPPCOM_ATTR_SET_FD_STATUS, &status, &size) < 0)
+    {
+      LDBG (0, "ERROR: vlsh %u: Failed to set fd status %d!", vlsh, status);
+      return -1;
+    }
+
+  vep_handle = vls_attr (vlsh, VPPCOM_ATTR_GET_VEP, NULL, NULL);
+  if (vep_handle > 0)
+    vls_epoll_ctl (vls_session_handle_to_vlsh (vep_handle),
+		   EPOLL_CTL_DEL, vlsh, NULL);
+  return 0;
+}
+
+static int
+ldp_switch_to_vls (vls_handle_t vlsh, int libc_fd)
+{
+  int status, libc_epfd;
+  u32 size = sizeof (int);
+
+  /* close libc fd for less fd resources depend on LDP_SID_BIT. */
+  libc_close (libc_fd);
+  libc_fd = 0;
+  if (vls_attr (vlsh, VPPCOM_ATTR_SET_LIBC_FD, &libc_fd, &size) < 0)
+    {
+      LDBG (0, "ERROR: vlsh %u: Failed to set libc fd %d!", vlsh, libc_fd);
+      return -1;
+    }
+
+  status = VPPCOM_SOCKET_VLS;
+  if (vls_attr (vlsh, VPPCOM_ATTR_SET_FD_STATUS, &status, &size) < 0)
+    {
+      LDBG (0, "ERROR: vlsh %u: Failed to set fd status %d!", vlsh, status);
+      return -1;
+    }
+
+  libc_epfd = vls_attr (vlsh, VPPCOM_ATTR_GET_VEP_LIBC_EPFD, 0, 0);
+  if (libc_epfd > 0)
+    libc_epoll_ctl (libc_epfd, EPOLL_CTL_DEL, libc_fd, NULL);
+  return 0;
+}
+
 int
 bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 {
@@ -1072,6 +1246,52 @@ bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 	      errno = EINVAL;
 	      rv = -1;
 	      goto done;
+	    }
+
+	  if (vls_kernel_lh_supported ())
+	    {
+	      int libc_fd, status;
+	      u32 size = sizeof (int);
+
+	      libc_fd =
+		vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &size);
+	      if (status != VPPCOM_SOCKET_INIT)
+		{
+		  LDBG (0, "ERROR: fd %d: vlsh %u: Repeatly bind!", fd, vlsh);
+		  errno = EINVAL;
+		  rv = -1;
+		  goto done;
+		}
+
+	      /* TBD: only check ipv4 local addr now. */
+	      if (((u32)
+		   (((const struct sockaddr_in *) addr)->sin_addr.s_addr)) ==
+		  LDP_IPV4_LOCALHOST)
+		{
+		  if (ldp_switch_to_libc (vlsh) < 0)
+		    {
+		      LDBG (0,
+			    "ERROR: fd %d: vlsh %u: Failed to switch to libc!",
+			    fd, vlsh);
+		      errno = EINVAL;
+		      rv = -1;
+		      goto done;
+		    }
+		  fd = libc_fd;
+		  goto libc_proc;
+		}
+	      else
+		{
+		  if (ldp_switch_to_vls (vlsh, libc_fd) < 0)
+		    {
+		      LDBG (0,
+			    "ERROR: fd %d: vlsh %u: Failed to switch to vls!",
+			    fd, vlsh);
+		      errno = EINVAL;
+		      rv = -1;
+		      goto done;
+		    }
+		}
 	    }
 	  ep.is_ip4 = VPPCOM_IS_IP4;
 	  ep.ip = (u8 *) & ((const struct sockaddr_in *) addr)->sin_addr;
@@ -1111,6 +1331,7 @@ bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
     }
   else
     {
+    libc_proc:
       LDBG (0, "fd %d: calling libc_bind: addr %p, len %u", fd, addr, len);
       rv = libc_bind (fd, addr, len);
     }
@@ -1182,6 +1403,17 @@ getsockname (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict len)
       vppcom_endpt_t ep;
       u8 addr_buf[sizeof (struct in6_addr)];
       u32 size = sizeof (ep);
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
 
       ep.ip = addr_buf;
 
@@ -1203,6 +1435,7 @@ getsockname (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict len)
     }
   else
     {
+    libc_proc:
       rv = libc_getsockname (fd, addr, len);
     }
 
@@ -1242,6 +1475,51 @@ connect (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 	      rv = -1;
 	      goto done;
 	    }
+
+	  if (vls_kernel_lh_supported ())
+	    {
+	      int libc_fd, status;
+	      u32 size = sizeof (int);
+	      libc_fd =
+		vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &size);
+	      if (status == VPPCOM_SOCKET_LIBC)
+		{
+		  ASSERT (libc_fd > 0);
+		  fd = libc_fd;
+		  goto libc_proc;
+		}
+
+	      /* TBD: only check ipv4 local addr now. */
+	      if (((u32)
+		   (((const struct sockaddr_in *) addr)->sin_addr.s_addr)) ==
+		  LDP_IPV4_LOCALHOST)
+		{
+		  ASSERT (status == VPPCOM_SOCKET_INIT);
+		  if (ldp_switch_to_libc (vlsh) < 0)
+		    {
+		      LDBG (0,
+			    "ERROR: fd %d: vlsh %u: Failed to switch to libc!",
+			    fd, vlsh);
+		      errno = EINVAL;
+		      rv = -1;
+		      goto done;
+		    }
+		  fd = libc_fd;
+		  goto libc_proc;
+		}
+	      else if (status == VPPCOM_SOCKET_INIT)
+		{
+		  if (ldp_switch_to_vls (vlsh, libc_fd) < 0)
+		    {
+		      LDBG (0,
+			    "ERROR: fd %d: vlsh %u: Failed to switch to vls!",
+			    fd, vlsh);
+		      errno = EINVAL;
+		      rv = -1;
+		      goto done;
+		    }
+		}
+	    }
 	  ep.is_ip4 = VPPCOM_IS_IP4;
 	  ep.ip = (u8 *) & ((const struct sockaddr_in *) addr)->sin_addr;
 	  ep.port = (u16) ((const struct sockaddr_in *) addr)->sin_port;
@@ -1280,6 +1558,7 @@ connect (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
     }
   else
     {
+    libc_proc:
       LDBG (0, "fd %d: calling libc_connect(): addr %p, len %u",
 	    fd, addr, len);
 
@@ -1306,6 +1585,17 @@ getpeername (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict len)
       vppcom_endpt_t ep;
       u8 addr_buf[sizeof (struct in6_addr)];
       u32 size = sizeof (ep);
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
 
       ep.ip = addr_buf;
       rv = vls_attr (vlsh, VPPCOM_ATTR_GET_PEER_ADDR, &ep, &size);
@@ -1326,6 +1616,7 @@ getpeername (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict len)
     }
   else
     {
+    libc_proc:
       rv = libc_getpeername (fd, addr, len);
     }
 
@@ -1343,6 +1634,17 @@ send (int fd, const void *buf, size_t n, int flags)
 
   if (vlsh != VLS_INVALID_HANDLE)
     {
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
       size = vls_sendto (vlsh, (void *) buf, n, flags, NULL);
       if (size < VPPCOM_OK)
 	{
@@ -1352,6 +1654,7 @@ send (int fd, const void *buf, size_t n, int flags)
     }
   else
     {
+    libc_proc:
       size = libc_send (fd, buf, n, flags);
     }
 
@@ -1378,6 +1681,17 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
       int nbytes;
       u8 eagain = 0;
       u32 flags, flags_len = sizeof (flags);
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  out_fd = libc_fd;
+	  goto libc_proc;
+	}
 
       rv = vls_attr (vlsh, VPPCOM_ATTR_GET_FLAGS, &flags, &flags_len);
       if (PREDICT_FALSE (rv != VPPCOM_OK))
@@ -1496,6 +1810,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
     }
   else
     {
+    libc_proc:
       size = libc_sendfile (out_fd, in_fd, offset, len);
     }
 
@@ -1521,6 +1836,17 @@ recv (int fd, void *buf, size_t n, int flags)
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
       size = vls_recvfrom (vlsh, buf, n, flags, NULL);
       if (size < 0)
 	{
@@ -1530,6 +1856,7 @@ recv (int fd, void *buf, size_t n, int flags)
     }
   else
     {
+    libc_proc:
       size = libc_recv (fd, buf, n, flags);
     }
 
@@ -1610,8 +1937,20 @@ sendto (int fd, const void *buf, size_t n, int flags,
     return -1;
 
   vlsh = ldp_fd_to_vlsh (fd);
-  if (vlsh != INVALID_SESSION_ID)
+  if (vlsh != VLS_INVALID_HANDLE)
     {
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
+
       size = ldp_vls_sendo (vlsh, buf, n, flags, addr, addr_len);
       if (size < 0)
 	{
@@ -1621,6 +1960,7 @@ sendto (int fd, const void *buf, size_t n, int flags,
     }
   else
     {
+    libc_proc:
       size = libc_sendto (fd, buf, n, flags, addr, addr_len);
     }
 
@@ -1640,6 +1980,18 @@ recvfrom (int fd, void *__restrict buf, size_t n, int flags,
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
+
       size = ldp_vls_recvfrom (vlsh, buf, n, flags, addr, addr_len);
       if (size < 0)
 	{
@@ -1649,6 +2001,7 @@ recvfrom (int fd, void *__restrict buf, size_t n, int flags,
     }
   else
     {
+    libc_proc:
       size = libc_recvfrom (fd, buf, n, flags, addr, addr_len);
     }
 
@@ -1670,6 +2023,17 @@ sendmsg (int fd, const struct msghdr * msg, int flags)
       struct iovec *iov = msg->msg_iov;
       ssize_t total = 0;
       int i, rv;
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
 
       for (i = 0; i < msg->msg_iovlen; ++i)
 	{
@@ -1695,6 +2059,7 @@ sendmsg (int fd, const struct msghdr * msg, int flags)
     }
   else
     {
+    libc_proc:
       size = libc_sendmsg (fd, msg, flags);
     }
 
@@ -1712,14 +2077,27 @@ sendmmsg (int fd, struct mmsghdr *vmessages, unsigned int vlen, int flags)
   if ((errno = -ldp_init ()))
     return -1;
 
-  if (sh != INVALID_SESSION_ID)
+  if (sh != VLS_INVALID_HANDLE)
     {
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
+
       clib_warning ("LDP<%d>: LDP-TBD", getpid ());
       errno = ENOSYS;
       size = -1;
     }
   else
     {
+    libc_proc:
       func_str = "libc_sendmmsg";
 
       if (LDP_DEBUG > 2)
@@ -1764,6 +2142,17 @@ recvmsg (int fd, struct msghdr * msg, int flags)
       struct iovec *iov = msg->msg_iov;
       ssize_t max_deq, total = 0;
       int i, rv;
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
 
       max_deq = vls_attr (vlsh, VPPCOM_ATTR_GET_NREAD, 0, 0);
       if (!max_deq)
@@ -1796,6 +2185,7 @@ recvmsg (int fd, struct msghdr * msg, int flags)
     }
   else
     {
+    libc_proc:
       size = libc_recvmsg (fd, msg, flags);
     }
 
@@ -1814,14 +2204,27 @@ recvmmsg (int fd, struct mmsghdr *vmessages,
   if ((errno = -ldp_init ()))
     return -1;
 
-  if (sh != INVALID_SESSION_ID)
+  if (sh != VLS_INVALID_HANDLE)
     {
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
+
       clib_warning ("LDP<%d>: LDP-TBD", getpid ());
       errno = ENOSYS;
       size = -1;
     }
   else
     {
+    libc_proc:
       func_str = "libc_recvmmsg";
 
       if (LDP_DEBUG > 2)
@@ -1865,6 +2268,18 @@ getsockopt (int fd, int level, int optname,
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
+
       rv = -EOPNOTSUPP;
 
       switch (level)
@@ -1970,6 +2385,7 @@ getsockopt (int fd, int level, int optname,
     }
   else
     {
+    libc_proc:
       rv = libc_getsockopt (fd, level, optname, optval, optlen);
     }
 
@@ -2066,9 +2482,20 @@ setsockopt (int fd, int level, int optname,
 	  errno = -rv;
 	  rv = -1;
 	}
+      else
+	{
+	  int libc_fd;
+	  libc_fd = vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, NULL, NULL);
+	  if (libc_fd > 0)
+	    {
+	      fd = libc_fd;
+	      goto libc_proc;
+	    }
+	}
     }
   else
     {
+    libc_proc:
       rv = libc_setsockopt (fd, level, optname, optval, optlen);
     }
 
@@ -2087,6 +2514,18 @@ listen (int fd, int n)
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
+
       LDBG (0, "fd %d: calling vls_listen: vlsh %u, n %d", fd, vlsh, n);
 
       rv = vls_listen (vlsh, n);
@@ -2098,6 +2537,7 @@ listen (int fd, int n)
     }
   else
     {
+    libc_proc:
       LDBG (0, "fd %d: calling libc_listen(): n %d", fd, n);
       rv = libc_listen (fd, n);
     }
@@ -2111,7 +2551,8 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
 	     socklen_t * __restrict addr_len, int flags)
 {
   vls_handle_t listen_vlsh, accept_vlsh;
-  int rv;
+  int rv, status;
+  u32 size = sizeof (int);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -2121,6 +2562,17 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
     {
       vppcom_endpt_t ep;
       u8 src_addr[sizeof (struct sockaddr_in6)];
+      int libc_fd;
+
+      libc_fd =
+	vls_attr (listen_vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  listen_fd = libc_fd;
+	  goto libc_proc;
+	}
+
       memset (&ep, 0, sizeof (ep));
       ep.ip = src_addr;
 
@@ -2135,6 +2587,22 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
 	}
       else
 	{
+	  if (vls_kernel_lh_supported ())
+	    {
+	      status = VPPCOM_SOCKET_VLS;
+	      rv = vls_attr (accept_vlsh, VPPCOM_ATTR_SET_FD_STATUS,
+			     &status, &size);
+	      if (rv < 0)
+		{
+		  LDBG (0,
+			"ERROR: fd %d: vlsh %u: Failed to set fd status!",
+			listen_fd, accept_vlsh);
+		  (void) vls_close (accept_vlsh);
+		  errno = EINVAL;
+		  rv = -1;
+		  goto done;
+		}
+	    }
 	  rv = ldp_copy_ep_to_sockaddr (addr, addr_len, &ep);
 	  if (rv != VPPCOM_OK)
 	    {
@@ -2150,12 +2618,14 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
     }
   else
     {
+    libc_proc:
       LDBG (0, "listen fd %d: calling libc_accept4(): addr %p, addr_len %p,"
 	    " flags 0x%x", listen_fd, addr, addr_len, flags);
 
       rv = libc_accept4 (listen_fd, addr, addr_len, flags);
     }
 
+done:
   LDBG (1, "listen fd %d: accept returning %d", listen_fd, rv);
 
   return rv;
@@ -2187,6 +2657,18 @@ shutdown (int fd, int how)
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
+      int libc_fd, status;
+      u32 status_size = sizeof (int);
+
+      libc_fd =
+	vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &status_size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
+
       LDBG (0, "called shutdown: fd %u vlsh %u how %d", fd, vlsh, how);
 
       if (vls_attr (vlsh, VPPCOM_ATTR_SET_SHUT, &how, &flags_len))
@@ -2206,6 +2688,7 @@ shutdown (int fd, int how)
     }
   else
     {
+    libc_proc:
       LDBG (0, "fd %d: calling libc_shutdown: how %d", fd, how);
       rv = libc_shutdown (fd, how);
     }
@@ -2289,6 +2772,17 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
 
   if (vlsh != VLS_INVALID_HANDLE)
     {
+      int libc_fd, status;
+      u32 size = sizeof (int);
+
+      libc_fd = vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &size);
+      if (status == VPPCOM_SOCKET_LIBC)
+	{
+	  ASSERT (libc_fd > 0);
+	  fd = libc_fd;
+	  goto libc_proc;
+	}
+
       LDBG (1, "epfd %d: calling vls_epoll_ctl: ep_vlsh %d op %d, vlsh %u,"
 	    " event %p", epfd, vep_vlsh, vlsh, event);
 
@@ -2297,10 +2791,18 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
 	{
 	  errno = -rv;
 	  rv = -1;
+	  goto done;
+	}
+
+      if (status == VPPCOM_SOCKET_INIT && libc_fd > 0)
+	{
+	  fd = libc_fd;
+	  goto libc_proc;
 	}
     }
   else
     {
+    libc_proc:;
       int libc_epfd;
       u32 size = sizeof (epfd);
 
@@ -2580,18 +3082,34 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
       vlsh = ldp_fd_to_vlsh (fds[i].fd);
       if (vlsh != VLS_INVALID_HANDLE)
 	{
-	  fds[i].fd = -fds[i].fd;
-	  vec_add2 (ldpw->vcl_poll, vp, 1);
-	  vp->fds_ndx = i;
-	  vp->sh = vlsh_to_sh (vlsh);
-	  vp->events = fds[i].events;
+	  int libc_fd, status;
+	  u32 size = sizeof (int);
+
+	  libc_fd = vls_attr (vlsh, VPPCOM_ATTR_GET_FD_INFO, &status, &size);
+	  if (status == VPPCOM_SOCKET_LIBC)
+	    {
+	      ASSERT (libc_fd > 0);
+	      fds[i].fd = libc_fd;
+	      vec_add1 (ldpw->libc_poll, fds[i]);
+	      vec_add1 (ldpw->libc_poll_idxs, i);
+	    }
+	  else if (libc_fd > 0 && status == VPPCOM_SOCKET_INIT)
+	    ASSERT (0);
+	  else
+	    {
+	      fds[i].fd = -fds[i].fd;
+	      vec_add2 (ldpw->vcl_poll, vp, 1);
+	      vp->fds_ndx = i;
+	      vp->sh = vlsh_to_sh (vlsh);
+	      vp->events = fds[i].events;
 #ifdef __USE_XOPEN2K
-	  if (fds[i].events & POLLRDNORM)
-	    vp->events |= POLLIN;
-	  if (fds[i].events & POLLWRNORM)
-	    vp->events |= POLLOUT;
+	      if (fds[i].events & POLLRDNORM)
+		vp->events |= POLLIN;
+	      if (fds[i].events & POLLWRNORM)
+		vp->events |= POLLOUT;
 #endif
-	  vp->revents = fds[i].revents;
+	      vp->revents = fds[i].revents;
+	    }
 	}
       else
 	{

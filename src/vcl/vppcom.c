@@ -3686,6 +3686,61 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
       session->flags |= VCL_SESSION_F_CONNECTED;
       break;
 
+    case VPPCOM_ATTR_GET_VEP:
+      rv = session->is_vep_session ? session->vep.vep_sh : -1;
+      VDBG (2, "VPPCOM_ATTR_GET_VEP: vep_handle %d", rv);
+      break;
+
+    case VPPCOM_ATTR_GET_VEP_LIBC_EPFD:
+      if (session->is_vep)
+	rv = session->libc_epfd;
+      else
+	{
+	  int worker_index = vppcom_session_worker (session->vep.vep_sh);
+	  int session_index = vppcom_session_index (session->vep.vep_sh);
+	  vcl_session_t *vep_session =
+	    vcl_session_get (vcl_worker_get (worker_index), session_index);
+	  rv = vep_session->libc_epfd;
+	}
+      VDBG (2, "VPPCOM_ATTR_GET_VEP_LIBC_EPFD: libc_epfd %d", rv);
+      break;
+
+    case VPPCOM_ATTR_GET_FD_INFO:
+      rv = session->socket_fd;
+      if (buffer && buflen && (*buflen >= sizeof (int)))
+	{
+	  *(int *) buffer = session->socket_status;
+	  *buflen = sizeof (int);
+
+	  VDBG (2, "VPPCOM_ATTR_GET_FD_INFO: %d, buflen %u, #VPP-TBD#",
+		*(int *) buffer, *buflen);
+	}
+      VDBG (2, "VPPCOM_ATTR_GET_FD_INFO: libc_fd %d", rv);
+      break;
+
+    case VPPCOM_ATTR_SET_LIBC_FD:
+      if (buffer && buflen && (*buflen == sizeof (int)))
+	{
+	  session->socket_fd = *(int *) buffer;
+
+	  VDBG (2, "VPPCOM_ATTR_SET_LIBC_FD: %d, buflen %u, #VPP-TBD#",
+		session->socket_fd, *buflen);
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
+
+    case VPPCOM_ATTR_SET_FD_STATUS:
+      if (buffer && buflen && (*buflen == sizeof (int)))
+	{
+	  session->socket_status = *(int *) buffer;
+
+	  VDBG (2, "VPPCOM_ATTR_SET_FD_STATUS: %d, buflen %u, #VPP-TBD#",
+		session->socket_status, *buflen);
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
     default:
       rv = VPPCOM_EINVAL;
       break;

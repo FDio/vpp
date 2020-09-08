@@ -504,6 +504,12 @@ vppcom_cfg_read_file (char *conf_fname)
 	      VCFG_DBG (0, "VCL<%d>: configured with multithread workers",
 			getpid ());
 	    }
+	  else if (unformat (line_input, "use-kernel-localhost"))
+	    {
+	      vcl_cfg->kernel_localhost_supported = 1;
+	      VCFG_DBG (0, "VCL<%d>: configured with kernel for localhost",
+			getpid ());
+	    }
 	  else if (unformat (line_input, "}"))
 	    {
 	      vc_cfg_input = 0;
