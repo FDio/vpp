@@ -34,8 +34,8 @@ typedef ikev2_ts
   u8 protocol_id;
   u16 start_port;
   u16 end_port;
-  vl_api_ip4_address_t start_addr;
-  vl_api_ip4_address_t end_addr;
+  vl_api_address_t start_addr;
+  vl_api_address_t end_addr;
 };
 
 typedef ikev2_auth
@@ -49,7 +49,7 @@ typedef ikev2_auth
 typedef ikev2_responder
 {
   vl_api_interface_index_t sw_if_index;
-  vl_api_ip4_address_t ip4;
+  vl_api_address_t addr;
 };
 
 typedef ikev2_ike_transforms
@@ -134,8 +134,8 @@ typedef ikev2_sa
 
   u64 ispi;
   u64 rspi;
-  vl_api_ip4_address_t  iaddr;
-  vl_api_ip4_address_t  raddr;
+  vl_api_address_t iaddr;
+  vl_api_address_t raddr;
 
   vl_api_ikev2_keys_t keys;
 
