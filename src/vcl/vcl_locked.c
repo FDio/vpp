@@ -438,15 +438,20 @@ vlsh_to_session_index (vls_handle_t vlsh)
   return vppcom_session_index (sh);
 }
 
-vls_handle_t
-vls_si_wi_to_vlsh (u32 session_index, u32 vcl_wrk_index)
+static inline vls_handle_t
+sh_to_vlsh (vcl_session_handle_t sh)
 {
   vls_worker_t *wrk = vls_worker_get_current ();
   uword *vlshp;
-  vlshp = hash_get (wrk->session_handle_to_vlsh_table,
-		    vcl_session_handle_from_wrk_session_index (session_index,
-							       vcl_wrk_index));
+  vlshp = hash_get (wrk->session_handle_to_vlsh_table, sh);
   return vlshp ? *vlshp : VLS_INVALID_HANDLE;
+}
+
+vls_handle_t
+vls_si_wi_to_vlsh (u32 session_index, u32 vcl_wrk_index)
+{
+  return sh_to_vlsh (vcl_session_handle_from_wrk_session_index (session_index,
+								vcl_wrk_index));
 }
 
 vls_handle_t
@@ -456,6 +461,18 @@ vls_session_index_to_vlsh (uint32_t session_index)
 
   vls_mt_table_rlock ();
   vlsh = vls_si_wi_to_vlsh (session_index, vcl_get_worker_index ());
+  vls_mt_table_runlock ();
+
+  return vlsh;
+}
+
+vls_handle_t
+vls_session_handle_to_vlsh (vcl_session_handle_t sh)
+{
+  vls_handle_t vlsh;
+
+  vls_mt_table_rlock ();
+  vlsh = sh_to_vlsh (sh);
   vls_mt_table_runlock ();
 
   return vlsh;

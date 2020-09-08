@@ -47,6 +47,13 @@ extern "C"
 
 typedef enum
 {
+  VPPCOM_SOCKET_INIT,
+  VPPCOM_SOCKET_VLS,
+  VPPCOM_SOCKET_LIBC
+} vppcom_socket_status_t;
+
+typedef enum
+{
   VPPCOM_PROTO_TCP = 0,
   VPPCOM_PROTO_UDP,
   VPPCOM_PROTO_NONE,
@@ -129,6 +136,11 @@ typedef enum
   VPPCOM_ATTR_SET_SHUT,
   VPPCOM_ATTR_GET_SHUT,
   VPPCOM_ATTR_SET_CONNECTED,
+  VPPCOM_ATTR_GET_VEP,
+  VPPCOM_ATTR_GET_VEP_LIBC_EPFD,
+  VPPCOM_ATTR_GET_FD_INFO,
+  VPPCOM_ATTR_SET_LIBC_FD,
+  VPPCOM_ATTR_SET_FD_STATUS,
 } vppcom_attr_op_t;
 
 typedef struct _vcl_poll
