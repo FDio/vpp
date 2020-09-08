@@ -38,13 +38,22 @@ typedef CLIB_PACKED (struct {
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
+  ip4_address_t start_addr;
+  ip4_address_t end_addr;
+}) ikev2_ip4_addr_pair_t;
+
+typedef CLIB_PACKED (struct {
+  ip6_address_t start_addr;
+  ip6_address_t end_addr;
+}) ikev2_ip6_addr_pair_t;
+
+typedef CLIB_PACKED (struct {
   u8 ts_type;
   u8 protocol_id;
   u16 selector_len;
   u16 start_port;
   u16 end_port;
-  ip4_address_t start_addr;
-  ip4_address_t end_addr;
+  u8 addr_pair[0];
 }) ikev2_ts_payload_entry_t;
 /* *INDENT-OFF* */
 
@@ -286,12 +295,46 @@ ikev2_payload_add_auth (ikev2_payload_chain_t * c, ikev2_auth_t * auth)
   ikev2_payload_add_data (c, auth->data);
 }
 
+static void
+ikev2_payload_add_ts_entry (u8 ** data, ikev2_ts_t * ts)
+{
+  u8 * tmp;
+  ikev2_ts_payload_entry_t *entry;
+  int len = sizeof (*entry);
+
+  if (ts->ts_type == TS_IPV4_ADDR_RANGE)
+    len += sizeof (ikev2_ip4_addr_pair_t);
+  else
+    len += sizeof (ikev2_ip6_addr_pair_t);
+
+  vec_add2 (data[0], tmp, len);
+  entry = (ikev2_ts_payload_entry_t *) tmp;
+  entry->ts_type = ts->ts_type;
+  entry->protocol_id = ts->protocol_id;
+  entry->selector_len = clib_host_to_net_u16 (len);
+  entry->start_port = clib_host_to_net_u16 (ts->start_port);
+  entry->end_port = clib_host_to_net_u16 (ts->end_port);
+
+  if (ts->ts_type == TS_IPV4_ADDR_RANGE)
+  {
+    ikev2_ip4_addr_pair_t *pair = (ikev2_ip4_addr_pair_t*) entry->addr_pair;
+    ip_address_copy_addr (&pair->start_addr, &ts->start_addr);
+    ip_address_copy_addr (&pair->end_addr, &ts->end_addr);
+  }
+  else
+  {
+    ikev2_ip6_addr_pair_t *pair = (ikev2_ip6_addr_pair_t*) entry->addr_pair;
+    ip_address_copy_addr (&pair->start_addr, &ts->start_addr);
+    ip_address_copy_addr (&pair->end_addr, &ts->end_addr);
+  }
+}
+
 void
 ikev2_payload_add_ts (ikev2_payload_chain_t * c, ikev2_ts_t * ts, u8 type)
 {
   ike_ts_payload_header_t *tsh;
   ikev2_ts_t *ts2;
-  u8 *data = 0, *tmp;
+  u8 *data = 0;
 
   tsh =
     (ike_ts_payload_header_t *) ikev2_payload_add_hdr (c, type,
@@ -300,17 +343,9 @@ ikev2_payload_add_ts (ikev2_payload_chain_t * c, ikev2_ts_t * ts, u8 type)
 
   vec_foreach (ts2, ts)
   {
-    ASSERT (ts2->ts_type == 7);	/*TS_IPV4_ADDR_RANGE */
-    ikev2_ts_payload_entry_t *entry;
-    vec_add2 (data, tmp, sizeof (*entry));
-    entry = (ikev2_ts_payload_entry_t *) tmp;
-    entry->ts_type = ts2->ts_type;
-    entry->protocol_id = ts2->protocol_id;
-    entry->selector_len = clib_host_to_net_u16 (16);
-    entry->start_port = clib_host_to_net_u16 (ts2->start_port);
-    entry->end_port = clib_host_to_net_u16 (ts2->end_port);
-    entry->start_addr.as_u32 = ts2->start_addr.as_u32;
-    entry->end_addr.as_u32 = ts2->end_addr.as_u32;
+    ASSERT (ts2->ts_type == TS_IPV4_ADDR_RANGE ||
+        ts2->ts_type == TS_IPV6_ADDR_RANGE);
+    ikev2_payload_add_ts_entry (&data, ts2);
   }
 
   ikev2_payload_add_data (c, data);
@@ -413,31 +448,56 @@ ikev2_parse_ts_payload (ike_payload_header_t * ikep, u32 rlen)
 {
   ike_ts_payload_header_t *tsp = (ike_ts_payload_header_t *) ikep;
   ikev2_ts_t *r = 0, *ts;
-  u8 i;
+  ikev2_ip4_addr_pair_t *pair4;
+  ikev2_ip6_addr_pair_t *pair6;
+  int p = 0, n_left;
+  ikev2_ts_payload_entry_t *pe;
 
   if (sizeof (*tsp) > rlen)
     return 0;
 
-  if (sizeof (*tsp) + tsp->num_ts * sizeof (ikev2_ts_payload_entry_t) > rlen)
-    return 0;
+  rlen -= sizeof (*tsp);
+  n_left = tsp->num_ts;
 
-  for (i = 0; i < tsp->num_ts; i++)
+  while (n_left && p + sizeof (*pe) < rlen)
     {
-      if (tsp->ts[i].ts_type != 7)	/*  TS_IPV4_ADDR_RANGE */
+      pe = (ikev2_ts_payload_entry_t *) (((u8 *)tsp->ts) + p);
+      p += sizeof (*pe);
+
+      if (pe->ts_type != TS_IPV4_ADDR_RANGE &&
+          pe->ts_type != TS_IPV6_ADDR_RANGE)
         {
           ikev2_elog_uint (IKEV2_LOG_ERROR,
-              "unsupported TS type received (%u)", tsp->ts[i].ts_type);
-          continue;
+              "unsupported TS type received (%u)", pe->ts_type);
+          return 0;
         }
 
       vec_add2 (r, ts, 1);
-      ts->ts_type = tsp->ts[i].ts_type;
-      ts->protocol_id = tsp->ts[i].protocol_id;
-      ts->start_port = tsp->ts[i].start_port;
-      ts->end_port = tsp->ts[i].end_port;
-      ts->start_addr.as_u32 = tsp->ts[i].start_addr.as_u32;
-      ts->end_addr.as_u32 = tsp->ts[i].end_addr.as_u32;
+      ts->ts_type = pe->ts_type;
+      ts->protocol_id = pe->protocol_id;
+      ts->start_port = pe->start_port;
+      ts->end_port = pe->end_port;
+
+      if (pe->ts_type == TS_IPV4_ADDR_RANGE)
+        {
+          pair4 = (ikev2_ip4_addr_pair_t*) pe->addr_pair;
+          ip_address_set (&ts->start_addr, &pair4->start_addr, AF_IP4);
+          ip_address_set (&ts->end_addr, &pair4->end_addr, AF_IP4);
+          p += sizeof (*pair4);
+        }
+      else
+        {
+          pair6 = (ikev2_ip6_addr_pair_t*) pe->addr_pair;
+          ip_address_set (&ts->start_addr, &pair6->start_addr, AF_IP6);
+          ip_address_set (&ts->end_addr, &pair6->end_addr, AF_IP6);
+          p += sizeof (*pair6);
+        }
+      n_left--;
     }
+
+  if (n_left)
+    return 0;
+
   return r;
 }
 
