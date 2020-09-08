@@ -34,8 +34,8 @@ typedef ikev2_ts
   u8 protocol_id;
   u16 start_port;
   u16 end_port;
-  vl_api_ip4_address_t start_addr;
-  vl_api_ip4_address_t end_addr;
+  vl_api_address_t start_addr;
+  vl_api_address_t end_addr;
 };
 
 typedef ikev2_auth

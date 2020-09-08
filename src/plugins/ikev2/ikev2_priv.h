@@ -258,13 +258,13 @@ typedef struct
 
 typedef struct
 {
-  u8 ts_type;
+  ikev2_traffic_selector_type_t ts_type;
   u8 protocol_id;
   u16 selector_len;
   u16 start_port;
   u16 end_port;
-  ip4_address_t start_addr;
-  ip4_address_t end_addr;
+  ip_address_t start_addr;
+  ip_address_t end_addr;
 } ikev2_ts_t;
 
 typedef struct
