@@ -98,8 +98,8 @@ cp_ts (vl_api_ikev2_ts_t * vl_api_ts, ikev2_ts_t * ts, u8 is_local)
   vl_api_ts->protocol_id = ts->protocol_id;
   vl_api_ts->start_port = ts->start_port;
   vl_api_ts->end_port = ts->end_port;
-  ip4_address_encode (&ts->start_addr, vl_api_ts->start_addr);
-  ip4_address_encode (&ts->end_addr, vl_api_ts->end_addr);
+  ip_address_encode2 (&ts->start_addr, &vl_api_ts->start_addr);
+  ip_address_encode2 (&ts->end_addr, &vl_api_ts->end_addr);
 }
 
 static void
@@ -116,7 +116,7 @@ cp_responder (vl_api_ikev2_responder_t * vl_api_responder,
 	      ikev2_responder_t * responder)
 {
   vl_api_responder->sw_if_index = responder->sw_if_index;
-  ip4_address_encode (&responder->ip4, vl_api_responder->ip4);
+  ip_address_encode2 (&responder->addr, &vl_api_responder->addr);
 }
 
 void
@@ -208,8 +208,8 @@ send_sa (ikev2_sa_t * sa, vl_api_ikev2_sa_dump_t * mp, u32 api_sa_index)
     vl_api_ikev2_keys_t* k = &rsa->keys;
     rsa->profile_index = rsa->profile_index;
     rsa->sa_index = api_sa_index;
-    ip4_address_encode (&sa->iaddr, rsa->iaddr);
-    ip4_address_encode (&sa->raddr, rsa->raddr);
+    ip_address_encode2 (&sa->iaddr, &rsa->iaddr);
+    ip_address_encode2 (&sa->raddr, &rsa->raddr);
     rsa->ispi = sa->ispi;
     rsa->rspi = sa->rspi;
     cp_id(&rsa->i_id, &sa->i_id);
@@ -593,9 +593,9 @@ vl_api_ikev2_profile_set_ts_t_handler (vl_api_ikev2_profile_set_ts_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
   u8 *tmp = format (0, "%s", mp->name);
-  ip4_address_t start_addr, end_addr;
-  ip4_address_decode (mp->ts.start_addr, &start_addr);
-  ip4_address_decode (mp->ts.end_addr, &end_addr);
+  ip_address_t start_addr, end_addr;
+  ip_address_decode2 (&mp->ts.start_addr, &start_addr);
+  ip_address_decode2 (&mp->ts.end_addr, &end_addr);
   error =
     ikev2_set_profile_ts (vm, tmp, mp->ts.protocol_id,
 			  clib_net_to_host_u16 (mp->ts.start_port),
@@ -642,11 +642,11 @@ vl_api_ikev2_set_responder_t_handler (vl_api_ikev2_set_responder_t * mp)
   clib_error_t *error;
 
   u8 *tmp = format (0, "%s", mp->name);
-  ip4_address_t ip4;
-  ip4_address_decode (mp->responder.ip4, &ip4);
+  ip_address_t ip;
+  ip_address_decode2 (&mp->responder.addr, &ip);
   u32 sw_if_index = clib_net_to_host_u32 (mp->responder.sw_if_index);
 
-  error = ikev2_set_profile_responder (vm, tmp, sw_if_index, ip4);
+  error = ikev2_set_profile_responder (vm, tmp, sw_if_index, ip);
   vec_free (tmp);
   if (error)
     rv = VNET_API_ERROR_UNSPECIFIED;

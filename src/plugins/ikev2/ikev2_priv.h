@@ -81,7 +81,7 @@ do {                                                                          \
     }                                                                         \
 } while (0)                                                                   \
 
-#define ikev2_elog_exchange(_format, _ispi, _rspi, _addr)                     \
+#define ikev2_elog_exchange_internal(_format, _ispi, _rspi, _addr)            \
 do {                                                                          \
   ikev2_main_t *km = &ikev2_main;                                             \
   if (PREDICT_FALSE (km->log_level >= IKEV2_LOG_DEBUG))                       \
@@ -109,6 +109,17 @@ do {                                                                          \
       ed->oct1 = (_addr);                                                     \
     }                                                                         \
 } while (0)                                                                   \
+
+#define IKE_ELOG_IP4_FMT "%d.%d.%d.%d"
+#define IKE_ELOG_IP6_FMT "[v6]:%x%x:%x%x"
+
+#define ikev2_elog_exchange(_fmt, _ispi, _rspi, _addr, _v4)                   \
+do {                                                                          \
+  if (_v4)                                                                    \
+    ikev2_elog_exchange_internal (_fmt IKE_ELOG_IP4_FMT, _ispi, _rspi, _addr);\
+  else                                                                        \
+    ikev2_elog_exchange_internal (_fmt IKE_ELOG_IP6_FMT, _ispi, _rspi, _addr);\
+} while (0)
 
 #define ikev2_elog_uint(_level, _format, _val)                                \
 do {                                                                          \
@@ -145,31 +156,6 @@ do {                                                                          \
         u8 i21; u8 i22; u8 i23; u8 i24; }) *ed;                               \
       ed = ELOG_DATA (&vlib_global_main.elog_main, e);                        \
       ed->val = _val;                                                         \
-      ed->i14 = (_ip1) >> 24;                                                 \
-      ed->i13 = (_ip1) >> 16;                                                 \
-      ed->i12 = (_ip1) >> 8;                                                  \
-      ed->i11 = (_ip1);                                                       \
-      ed->i24 = (_ip2) >> 24;                                                 \
-      ed->i23 = (_ip2) >> 16;                                                 \
-      ed->i22 = (_ip2) >> 8;                                                  \
-      ed->i21 = (_ip2);                                                       \
-    }                                                                         \
-} while (0)
-
-#define ikev2_elog_peers(_level, _format, _ip1, _ip2)                         \
-do {                                                                          \
-  ikev2_main_t *km = &ikev2_main;                                             \
-  if (PREDICT_FALSE (km->log_level >= _level))                                \
-    {                                                                         \
-      ELOG_TYPE_DECLARE (e) =                                                 \
-        {                                                                     \
-          .format = "ikev2: " _format,                                        \
-          .format_args = "i1i1i1i1i1i1i1i1",                                  \
-        };                                                                    \
-      CLIB_PACKED(struct {                                                    \
-        u8 i11; u8 i12; u8 i13; u8 i14;                                       \
-        u8 i21; u8 i22; u8 i23; u8 i24; }) *ed;                               \
-      ed = ELOG_DATA (&vlib_global_main.elog_main, e);                        \
       ed->i14 = (_ip1) >> 24;                                                 \
       ed->i13 = (_ip1) >> 16;                                                 \
       ed->i12 = (_ip1) >> 8;                                                  \
@@ -258,19 +244,19 @@ typedef struct
 
 typedef struct
 {
-  u8 ts_type;
+  ikev2_traffic_selector_type_t ts_type;
   u8 protocol_id;
   u16 selector_len;
   u16 start_port;
   u16 end_port;
-  ip4_address_t start_addr;
-  ip4_address_t end_addr;
+  ip_address_t start_addr;
+  ip_address_t end_addr;
 } ikev2_ts_t;
 
 typedef struct
 {
   u32 sw_if_index;
-  ip4_address_t ip4;
+  ip_address_t addr;
 } ikev2_responder_t;
 
 typedef struct
@@ -368,8 +354,8 @@ typedef struct
   ikev2_state_t state;
   u8 unsupported_cp;
   u8 initial_contact;
-  ip4_address_t iaddr;
-  ip4_address_t raddr;
+  ip_address_t iaddr;
+  ip_address_t raddr;
   u64 ispi;
   u64 rspi;
   u8 *i_nonce;
