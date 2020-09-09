@@ -27,8 +27,7 @@ format_avf_device_name (u8 * s, va_list * args)
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 i = va_arg (*args, u32);
-  avf_main_t *am = &avf_main;
-  avf_device_t *ad = vec_elt_at_index (am->devices, i);
+  avf_device_t *ad = avf_get_device (i);
   vlib_pci_addr_t *addr = vlib_pci_get_addr (vm, ad->pci_dev_handle);
 
   if (ad->name)
@@ -88,8 +87,7 @@ u8 *
 format_avf_device (u8 * s, va_list * args)
 {
   u32 i = va_arg (*args, u32);
-  avf_main_t *am = &avf_main;
-  avf_device_t *ad = vec_elt_at_index (am->devices, i);
+  avf_device_t *ad = avf_get_device (i);
   u32 indent = format_get_indent (s);
   u8 *a = 0;
 
