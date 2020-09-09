@@ -444,14 +444,13 @@ VLIB_NODE_FN (avf_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       vlib_frame_t * frame)
 {
   u32 n_rx = 0;
-  avf_main_t *am = &avf_main;
   vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
   vnet_device_and_queue_t *dq;
 
   foreach_device_and_queue (dq, rt->devices_and_queues)
   {
     avf_device_t *ad;
-    ad = vec_elt_at_index (am->devices, dq->dev_instance);
+    ad = avf_get_device (dq->dev_instance);
     if ((ad->flags & AVF_DEVICE_F_ADMIN_UP) == 0)
       continue;
     n_rx += avf_device_input_inline (vm, node, frame, ad, dq->queue_id);
