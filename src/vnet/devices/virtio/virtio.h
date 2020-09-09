@@ -129,7 +129,15 @@ typedef struct
 
   /* error */
   clib_error_t *error;
-  u8 mac_addr[6];
+  union
+  {
+    struct
+    {
+      u32 mac_addr32;
+      u16 mac_addr16;
+    };
+    u8 mac_addr[6];
+  };
   union
   {
     struct			/* tun/tap interface */
