@@ -311,19 +311,17 @@ virtio_pci_modern_del_queue (vlib_main_t * vm, virtio_if_t * vif,
 static void
 virtio_pci_modern_get_device_mac (vlib_main_t * vm, virtio_if_t * vif)
 {
-  *((u32 *) vif->mac_addr) =
-    virtio_pci_reg_read_u32 (vif, VIRTIO_MAC_OFFSET (vif));
-  *((u16 *) (vif->mac_addr + 4)) =
+  vif->mac_addr32 = virtio_pci_reg_read_u32 (vif, VIRTIO_MAC_OFFSET (vif));
+  vif->mac_addr16 =
     virtio_pci_reg_read_u16 (vif, VIRTIO_MAC_OFFSET (vif) + 4);
 }
 
 static void
 virtio_pci_modern_set_device_mac (vlib_main_t * vm, virtio_if_t * vif)
 {
-  virtio_pci_reg_write_u32 (vif, VIRTIO_MAC_OFFSET (vif),
-			    *((u32 *) vif->mac_addr));
+  virtio_pci_reg_write_u32 (vif, VIRTIO_MAC_OFFSET (vif), vif->mac_addr32);
   virtio_pci_reg_write_u16 (vif, VIRTIO_MAC_OFFSET (vif) + 4,
-			    *((u16 *) (vif->mac_addr + 4)));
+			    vif->mac_addr16);
 }
 
 static u16
