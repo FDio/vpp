@@ -178,13 +178,30 @@ done:
 }
 
 int
+vcl_api_app_worker_add (void)
+{
+  int rv;
+
+  if (vcm->cfg.vpp_app_socket_api)
+    {
+      // TODO
+      rv = 0;
+    }
+  else
+    {
+      rv = vcl_bapi_app_worker_add ();
+    }
+  return rv;
+}
+
+int
 vcl_worker_register_with_vpp (void)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
 
   clib_spinlock_lock (&vcm->workers_lock);
 
-  if (vcl_bapi_app_worker_add ())
+  if (vcl_api_app_worker_add ())
     {
       VDBG (0, "failed to add worker to vpp");
       clib_spinlock_unlock (&vcm->workers_lock);
