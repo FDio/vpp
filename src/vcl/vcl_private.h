@@ -214,6 +214,7 @@ typedef struct vppcom_cfg_t_
   f64 accept_timeout;
   u32 event_ring_size;
   char *event_log_path;
+  u8 *vpp_app_socket_api;	/**< session socket api socket file name */
   u8 *vpp_bapi_filename;	/**< bapi shm transport file name */
   u8 *vpp_bapi_socket_name;	/**< bapi socket transport socket name */
   u8 *vpp_bapi_chroot;
@@ -302,6 +303,7 @@ typedef struct vcl_worker_
 
   u32 forked_child;
 
+  clib_socket_t app_api_sock;
   socket_client_main_t bapi_sock_ctx;
   memory_client_main_t bapi_shm_ctx;
   api_main_t bapi_api_ctx;
@@ -667,6 +669,12 @@ vcl_session_vpp_evt_q (vcl_worker_t * wrk, vcl_session_t * s)
   return wrk->vpp_event_queues[s->vpp_thread_index];
 }
 
+static inline u64
+vcl_vpp_worker_segment_handle (u32 wrk_index)
+{
+  return (VCL_INVALID_SEGMENT_HANDLE - wrk_index - 1);
+}
+
 void vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,
 				     u32 wrk_index);
 int vcl_send_worker_rpc (u32 dst_wrk_index, void *data, u32 data_len);
@@ -675,6 +683,8 @@ int vcl_segment_attach (u64 segment_handle, char *name,
 			ssvm_segment_type_t type, int fd);
 void vcl_segment_detach (u64 segment_handle);
 void vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s);
+
+int vcl_api_connect_app_socket (vcl_worker_t *wrk);
 
 /*
  * VCL Binary API
