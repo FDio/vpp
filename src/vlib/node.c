@@ -46,11 +46,11 @@ vlib_get_node_by_name (vlib_main_t * vm, u8 * name)
 {
   vlib_node_main_t *nm = &vm->node_main;
   uword *p;
-  u8 *key = name;
-  key = format (0, "%s", key);
+  u8 *key;
+
+  key = format (0, !clib_mem_is_vec (name) ? "%s" : "%v", name);
   p = hash_get (nm->node_by_name, key);
-  if (key != name)
-    vec_free (key);
+  vec_free (key);
   return p ? vec_elt (nm->nodes, p[0]) : 0;
 }
 
