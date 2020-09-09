@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "513f9735_7db74a1d",
+        "filename": "src/vlib/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2020-09-09T01:28:51Z",
+      "side": 1,
+      "message": "the \u0027key \u003d name\u0027 is useless, and shoud be replace with \u0027u8 *key;\u0027",
+      "revId": "4b2946a884c1ffbce022c8121c6889ff39f242e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a68aa447_827abdf7",
+        "filename": "src/vlib/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2020-09-09T01:28:51Z",
+      "side": 1,
+      "message": "node name is a vec, shoud format with %v",
+      "revId": "4b2946a884c1ffbce022c8121c6889ff39f242e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "940e105d_5853fe7b",
+        "filename": "src/vlib/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2020-09-09T01:28:51Z",
+      "side": 1,
+      "message": "this is always true, this line should be delete.",
+      "revId": "4b2946a884c1ffbce022c8121c6889ff39f242e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
