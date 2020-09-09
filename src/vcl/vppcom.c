@@ -1195,6 +1195,26 @@ vppcom_app_exit (void)
   vcl_elog_stop (vcm);
 }
 
+static int
+vcl_api_init (void)
+{
+  int rv;
+
+  /* Use vpp's app ns socket api */
+  if (vcm->cfg.vpp_app_socket_api)
+    {
+// TODO
+    }
+  else
+    {
+      /* API hookup and connect to VPP */
+      if ((rv = vcl_bapi_init ()))
+	return rv;
+    }
+
+  return 0;
+}
+
 /*
  * VPPCOM Public API functions
  */
@@ -1230,8 +1250,7 @@ vppcom_app_create (const char *app_name)
 
   vcm->app_state = STATE_APP_START;
 
-  /* API hookup and connect to VPP */
-  if ((rv = vcl_bapi_init ()))
+  if ((rv = vcl_api_init ()))
     return rv;
 
   VDBG (0, "sending app attach");

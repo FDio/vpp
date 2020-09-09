@@ -214,6 +214,7 @@ typedef struct vppcom_cfg_t_
   f64 accept_timeout;
   u32 event_ring_size;
   char *event_log_path;
+  u8 *vpp_app_socket_api;	/**< session socket api socket file name */
   u8 *vpp_bapi_filename;	/**< bapi shm transport file name */
   u8 *vpp_bapi_socket_name;	/**< bapi socket transport socket name */
   u8 *vpp_bapi_chroot;
