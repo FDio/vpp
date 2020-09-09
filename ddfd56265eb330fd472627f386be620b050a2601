@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4c9043f6_686fcda7",
+        "filename": "src/plugins/unittest/tcp_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1344,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-09T05:29:17Z",
+      "side": 1,
+      "message": "Just to make sure: you manually tried \"test tcp session\" and that failed?",
+      "range": {
+        "startLine": 1344,
+        "startChar": 2,
+        "endLine": 1344,
+        "endChar": 29
+      },
+      "revId": "ddfd56265eb330fd472627f386be620b050a2601",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
