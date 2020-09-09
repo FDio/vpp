@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8c6bd5f6_f801724c",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1112,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-09T14:48:49Z",
+      "side": 1,
+      "message": "What I was trying to avoid is keeping state both within vcl and linux kernel for a socket. So when vls_kernel_lh_supported () and the address is localhost, avoid creating a vls session and only create a linux fd. That should completely avoid changing the rest of ldp, vls and vcl.",
+      "range": {
+        "startLine": 1112,
+        "startChar": 3,
+        "endLine": 1112,
+        "endChar": 34
+      },
+      "revId": "3829c812f0475370217a5b71039b36723a8c2a31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
