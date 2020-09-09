@@ -101,12 +101,84 @@ vcl_worker_free (vcl_worker_t * wrk)
   pool_put (vcm->workers, wrk);
 }
 
+int
+vcl_api_connect_app_socket (vcl_worker_t *wrk)
+{
+  clib_socket_t *cs = &wrk->app_api_sock;
+  clib_error_t *err;
+  int rv = 0;
+
+  cs->config = (char*) vcm->cfg.vpp_app_socket_api;
+  cs->flags = CLIB_SOCKET_F_IS_CLIENT | CLIB_SOCKET_F_SEQPACKET;
+
+  wrk->vcl_needs_real_epoll = 1;
+
+  if ((err = clib_socket_init (cs)))
+    {
+      clib_error_report (err);
+      rv = -1;
+      goto done;
+    }
+
+done:
+
+  wrk->vcl_needs_real_epoll = 0;
+
+  return rv;
+}
+
+int
+vcl_api_app_worker_add (void)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  app_api_add_del_worker_msg_t *mp;
+  app_api_msg_t msg = { 0 };
+  clib_error_t *err;
+  clib_socket_t *cs;
+
+  if (!vcm->cfg.vpp_app_socket_api)
+    return vcl_bapi_app_worker_add ();
+
+  /* Connect to socket api */
+  if (vcl_api_connect_app_socket (wrk))
+    return -1;
+
+  cs = &wrk->app_api_sock;
+
+  msg.type = APP_API_MSG_TYPE_ADD_DEL_WORKER;
+  mp = &msg.add_del_worker;
+  mp->app_index = vcm->app_index;
+  mp->is_add = 1;
+
+  err = clib_socket_sendmsg (cs, &msg, sizeof (msg), 0 , 0);
+  if (err)
+    {
+      clib_error_report (err);
+      return -1;
+    }
+
+  return 0;
+}
+
+void
+vcl_api_app_worker_del (vcl_worker_t * wrk)
+{
+  if (vcm->cfg.vpp_app_socket_api)
+    {
+      // TODO
+    }
+  else
+    {
+      vcl_bapi_app_worker_del (wrk);
+    }
+}
+
 void
 vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp)
 {
   clib_spinlock_lock (&vcm->workers_lock);
   if (notify_vpp)
-    vcl_bapi_app_worker_del (wrk);
+    vcl_api_app_worker_del (wrk);
 
   if (wrk->mqs_epfd > 0)
     close (wrk->mqs_epfd);
@@ -184,7 +256,7 @@ vcl_worker_register_with_vpp (void)
 
   clib_spinlock_lock (&vcm->workers_lock);
 
-  if (vcl_bapi_app_worker_add ())
+  if (vcl_api_app_worker_add ())
     {
       VDBG (0, "failed to add worker to vpp");
       clib_spinlock_unlock (&vcm->workers_lock);
