@@ -214,6 +214,7 @@ typedef struct vppcom_cfg_t_
   f64 accept_timeout;
   u32 event_ring_size;
   char *event_log_path;
+  u8 *vpp_app_socket_api;	/**< app socket api socket file name */
   u8 *vpp_bapi_filename;	/**< bapi shm transport file name */
   u8 *vpp_bapi_socket_name;	/**< bapi socket transport socket name */
   u8 *vpp_bapi_chroot;
@@ -302,6 +303,7 @@ typedef struct vcl_worker_
 
   u32 forked_child;
 
+  clib_socket_t app_api_sock;
   socket_client_main_t bapi_sock_ctx;
   memory_client_main_t bapi_shm_ctx;
   api_main_t bapi_api_ctx;
@@ -667,6 +669,12 @@ vcl_session_vpp_evt_q (vcl_worker_t * wrk, vcl_session_t * s)
   return wrk->vpp_event_queues[s->vpp_thread_index];
 }
 
+static inline u64
+vcl_vpp_worker_segment_handle (u32 wrk_index)
+{
+  return (VCL_INVALID_SEGMENT_HANDLE - wrk_index - 1);
+}
+
 void vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,
 				     u32 wrk_index);
 int vcl_send_worker_rpc (u32 dst_wrk_index, void *data, u32 data_len);
@@ -683,12 +691,22 @@ int vcl_bapi_attach (void);
 int vcl_bapi_app_worker_add (void);
 void vcl_bapi_app_worker_del (vcl_worker_t * wrk);
 void vcl_bapi_disconnect_from_vpp (void);
+int vcl_bapi_recv_fds (vcl_worker_t * wrk, int *fds, int n_fds);
 void vcl_bapi_send_application_tls_cert_add (vcl_session_t * session,
 					     char *cert, u32 cert_len);
 void vcl_bapi_send_application_tls_key_add (vcl_session_t * session,
 					    char *key, u32 key_len);
 u32 vcl_bapi_max_nsid_len (void);
 int vcl_bapi_worker_set (void);
+
+/*
+ * VCL Socket API
+ */
+int vcl_sapi_attach (void);
+int vcl_sapi_app_worker_add (void);
+void vcl_sapi_app_worker_del (vcl_worker_t * wrk);
+void vcl_sapi_detach (vcl_worker_t * wrk);
+int vcl_sapi_recv_fds (vcl_worker_t * wrk, int *fds, int n_fds);
 
 #endif /* SRC_VCL_VCL_PRIVATE_H_ */
 
