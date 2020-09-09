@@ -330,7 +330,7 @@ svm_data_region_create (svm_map_region_args_t * a, svm_region_t * rp)
 	}
       close (fd);
       CLIB_MEM_UNPOISON (rp->data_base, map_size);
-      rp->backing_file = (char *) format (0, "%s\0", a->backing_file);
+      rp->backing_file = (char *) format (0, "%s%c", a->backing_file, 0);
       rp->flags |= SVM_FLAGS_FILE;
     }
 
