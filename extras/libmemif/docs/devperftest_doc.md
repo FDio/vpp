@@ -8,7 +8,7 @@ Start icmpr-epoll example app and VPP.
 
 VPP-side config:
 ```
-DBGvpp# create memif id 0 master
+DBGvpp# create interface memif id 0 master
 DBGvpp# set int state memif0/0 up
 DBGvpp# set int ip address memif0/0 192.168.1.1/24
 ```

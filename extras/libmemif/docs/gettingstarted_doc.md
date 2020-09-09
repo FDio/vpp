@@ -180,7 +180,7 @@ ICMP Responder multi-thread.
 
 VPP config:
 ```
-# create memif id 0 master
+# create interface memif id 0 master
 # set int state memif0 up
 # set int ip address memif0 192.168.1.1/24
 # ping 192.168.1.2
@@ -200,7 +200,7 @@ cpu {
 ```
 VPP config:
 ```
-# create memif id 0 master
+# create interface memif id 0 master
 # set int state memif0 up
 # set int ip address memif0 192.168.1.1/24
 # ping 192.168.1.2
