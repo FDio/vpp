@@ -101,12 +101,186 @@ vcl_worker_free (vcl_worker_t * wrk)
   pool_put (vcm->workers, wrk);
 }
 
+int
+vcl_api_connect_app_socket (vcl_worker_t * wrk)
+{
+  clib_socket_t *cs = &wrk->app_api_sock;
+  clib_error_t *err;
+  int rv = 0;
+
+  cs->config = (char *) vcm->cfg.vpp_app_socket_api;
+  cs->flags = CLIB_SOCKET_F_IS_CLIENT | CLIB_SOCKET_F_SEQPACKET;
+
+  wrk->vcl_needs_real_epoll = 1;
+
+  if ((err = clib_socket_init (cs)))
+    {
+      clib_error_report (err);
+      rv = -1;
+      goto done;
+    }
+
+done:
+
+  wrk->vcl_needs_real_epoll = 0;
+
+  return rv;
+}
+
+int
+vcl_api_add_del_worker_reply_handler (app_api_add_del_worker_reply_msg_t * mp,
+				      int *fds)
+{
+  int n_fds = 0, i, rv;
+  u64 segment_handle;
+  vcl_worker_t *wrk;
+
+  if (mp->retval)
+    {
+      VDBG (0, "add/del worker failed: %U", format_session_error, mp->retval);
+      goto failed;
+    }
+
+  if (!mp->is_add)
+    goto failed;
+
+  wrk = vcl_worker_get_current ();
+  wrk->vpp_wrk_index = mp->wrk_index;
+  wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
+					   svm_msg_q_t *);
+  wrk->ctrl_mq = vcm->ctrl_mq;
+
+  segment_handle = mp->segment_handle;
+  if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
+    {
+      clib_warning ("invalid segment handle");
+      goto failed;
+    }
+
+  if (!mp->n_fds)
+    goto failed;
+
+  if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
+    if (vcl_segment_attach (vcl_vpp_worker_segment_handle (wrk->wrk_index),
+			    "vpp-worker-seg", SSVM_SEGMENT_MEMFD,
+			    fds[n_fds++]))
+      goto failed;
+
+  if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
+    {
+      u8 *segment_name = format (0, "memfd-%ld%c", segment_handle, 0);
+      rv = vcl_segment_attach (segment_handle, (char *) segment_name,
+			       SSVM_SEGMENT_MEMFD, fds[n_fds++]);
+      vec_free (segment_name);
+      if (rv != 0)
+	goto failed;
+    }
+
+  if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
+    {
+      svm_msg_q_set_consumer_eventfd (wrk->app_event_queue, fds[n_fds]);
+      vcl_mq_epoll_add_evfd (wrk, wrk->app_event_queue);
+      n_fds++;
+    }
+
+  VDBG (0, "worker %u vpp-worker %u added", wrk->wrk_index,
+	wrk->vpp_wrk_index);
+
+  return 0;
+
+failed:
+  for (i = clib_max (n_fds - 1, 0); i < mp->n_fds; i++)
+    close (fds[i]);
+
+  return -1;
+}
+
+int
+vcl_api_app_worker_add (void)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  app_api_add_del_worker_msg_t *mp;
+  app_api_msg_t _rmp, *rmp = &_rmp;
+  app_api_msg_t msg = { 0 };
+  int fds[SESSION_N_FD_TYPE];
+  clib_error_t *err;
+  clib_socket_t *cs;
+
+  if (!vcm->cfg.vpp_app_socket_api)
+    return vcl_bapi_app_worker_add ();
+
+  /* Connect to socket api */
+  if (vcl_api_connect_app_socket (wrk))
+    return -1;
+
+  /*
+   * Send add worker
+   */
+  cs = &wrk->app_api_sock;
+
+  msg.type = APP_API_MSG_TYPE_ADD_DEL_WORKER;
+  mp = &msg.add_del_worker;
+  mp->app_index = vcm->app_index;
+  mp->is_add = 1;
+
+  err = clib_socket_sendmsg (cs, &msg, sizeof (msg), 0, 0);
+  if (err)
+    {
+      clib_error_report (err);
+      return -1;
+    }
+
+  /*
+   * Wait for reply
+   */
+  err = clib_socket_recvmsg (cs, rmp, sizeof (*rmp), fds, ARRAY_LEN (fds));
+  if (err)
+    {
+      clib_error_report (err);
+      return -1;
+    }
+
+  if (rmp->type != APP_API_MSG_TYPE_ADD_DEL_WORKER_REPLY)
+    {
+      clib_warning ("unexpected reply type %u", rmp->type);
+      return -1;
+    }
+
+  return vcl_api_add_del_worker_reply_handler (&rmp->add_del_worker_reply,
+					       fds);
+}
+
+void
+vcl_api_app_worker_del (vcl_worker_t * wrk)
+{
+  if (!vcm->cfg.vpp_app_socket_api)
+    return vcl_bapi_app_worker_del (wrk);
+
+  app_api_add_del_worker_msg_t *mp;
+  app_api_msg_t msg = { 0 };
+  clib_error_t *err;
+  clib_socket_t *cs;
+
+  cs = &wrk->app_api_sock;
+
+  msg.type = APP_API_MSG_TYPE_ADD_DEL_WORKER;
+  mp = &msg.add_del_worker;
+  mp->app_index = vcm->app_index;
+  mp->wrk_index = wrk->vpp_wrk_index;
+  mp->is_add = 0;
+
+  err = clib_socket_sendmsg (cs, &msg, sizeof (msg), 0, 0);
+  if (err)
+    clib_error_report (err);
+  clib_socket_close (cs);
+}
+
 void
 vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp)
 {
   clib_spinlock_lock (&vcm->workers_lock);
   if (notify_vpp)
-    vcl_bapi_app_worker_del (wrk);
+    vcl_api_app_worker_del (wrk);
 
   if (wrk->mqs_epfd > 0)
     close (wrk->mqs_epfd);
@@ -184,7 +358,7 @@ vcl_worker_register_with_vpp (void)
 
   clib_spinlock_lock (&vcm->workers_lock);
 
-  if (vcl_bapi_app_worker_add ())
+  if (vcl_api_app_worker_add ())
     {
       VDBG (0, "failed to add worker to vpp");
       clib_spinlock_unlock (&vcm->workers_lock);

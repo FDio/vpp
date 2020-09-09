@@ -61,12 +61,6 @@ static void
     vcm->bapi_app_state = STATE_APP_ENABLED;
 }
 
-static u64
-vcl_vpp_worker_segment_handle (u32 wrk_index)
-{
-  return (VCL_INVALID_SEGMENT_HANDLE - wrk_index - 1);
-}
-
 static void
 vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 {

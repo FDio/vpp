@@ -296,6 +296,13 @@ vppcom_cfg_read_file (char *conf_fname)
 	      VCFG_DBG (0, "VCL<%d>: configured api-socket-name (%s)",
 			getpid (), vcl_cfg->vpp_bapi_socket_name);
 	    }
+	  else if (unformat (line_input, "app-socket-api %s",
+			     &vcl_cfg->vpp_app_socket_api))
+	    {
+	      vec_terminate_c_string (vcl_cfg->vpp_app_socket_api);
+	      VCFG_DBG (0, "VCL<%d>: configured app-socket-api (%s)",
+			getpid (), vcl_cfg->vpp_app_socket_api);
+	    }
 	  else if (unformat (line_input, "vpp-api-q-length %d", &q_len))
 	    {
 	      if (q_len < vcl_cfg->vpp_api_q_length)
