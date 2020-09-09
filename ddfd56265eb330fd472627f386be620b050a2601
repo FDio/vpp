@@ -22,6 +22,30 @@
       "revId": "ddfd56265eb330fd472627f386be620b050a2601",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dcbd0ca7_5b8ab00f",
+        "filename": "src/plugins/unittest/tcp_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1344,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-09-09T05:35:00Z",
+      "side": 1,
+      "message": "I tested \"test tcp all\" and it caused SEGV. So this patch fixes this issue.\n\nBut, now I tested \"test tcp session\", then another SEGV is observed. Another fix is needed. Let me see.",
+      "parentUuid": "4c9043f6_686fcda7",
+      "range": {
+        "startLine": 1344,
+        "startChar": 2,
+        "endLine": 1344,
+        "endChar": 29
+      },
+      "revId": "ddfd56265eb330fd472627f386be620b050a2601",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
