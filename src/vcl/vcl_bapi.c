@@ -61,12 +61,6 @@ static void
     vcm->bapi_app_state = STATE_APP_ENABLED;
 }
 
-static u64
-vcl_vpp_worker_segment_handle (u32 wrk_index)
-{
-  return (VCL_INVALID_SEGMENT_HANDLE - wrk_index - 1);
-}
-
 static void
 vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 {
@@ -688,6 +682,21 @@ vcl_bapi_app_worker_del (vcl_worker_t * wrk)
     vcl_bapi_disconnect_from_vpp ();
   else
     vl_client_send_disconnect (1 /* vpp should cleanup */ );
+}
+
+int
+vcl_bapi_recv_fds (vcl_worker_t * wrk, int *fds, int n_fds)
+{
+  clib_error_t *err;
+
+  if ((err = vl_socket_client_recv_fd_msg2 (&wrk->bapi_sock_ctx, fds, n_fds,
+					    5)))
+    {
+      clib_error_report (err);
+      return -1;
+    }
+
+  return 0;
 }
 
 int
