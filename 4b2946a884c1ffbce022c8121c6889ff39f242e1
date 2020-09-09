@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "c0e07ec0_f19939e9",
+        "filename": "src/vlib/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2020-09-09T01:45:49Z",
+      "side": 1,
+      "message": "Function change to this maybe better:\n\nvlib_node_t *\nvlib_get_node_by_name (vlib_main_t * vm, u8 * name)\n{\n  vlib_node_main_t *nm \u003d \u0026vm-\u003enode_main;\n  uword *p;\n  u8 *key;\n\n  key \u003d format (0, !clib_mem_is_vec (name) ? \"%s\" : \"%v\", name);\n  p \u003d hash_get (nm-\u003enode_by_name, key);\n  vec_free (key);\n  return p ? vec_elt (nm-\u003enodes, p[0]) : 0;\n}",
+      "revId": "4b2946a884c1ffbce022c8121c6889ff39f242e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "513f9735_7db74a1d",
         "filename": "src/vlib/node.c",
         "patchSetId": 2
