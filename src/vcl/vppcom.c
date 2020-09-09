@@ -1178,6 +1178,43 @@ vppcom_app_exit (void)
   vcl_elog_stop (vcm);
 }
 
+static int
+vcl_api_init (void)
+{
+  int rv;
+
+  /* Use vpp's app ns socket api */
+  if (vcm->cfg.vpp_app_socket_api)
+    {
+      //TODO
+      rv = 0;
+    }
+  else
+    {
+      /* API hookup and connect to VPP */
+      rv = vcl_bapi_init ();
+    }
+
+  return rv;
+}
+
+static int
+vcl_api_attach (void)
+{
+  int rv;
+
+  if (vcm->cfg.vpp_app_socket_api)
+    {
+      // TODO
+      rv = 0;
+    }
+  else
+    {
+      rv = vcl_bapi_attach ();
+    }
+  return rv;
+}
+
 /*
  * VPPCOM Public API functions
  */
@@ -1211,11 +1248,10 @@ vppcom_app_create (const char *app_name)
   /* Allocate default worker */
   vcl_worker_alloc_and_init ();
 
-  /* API hookup and connect to VPP */
-  if ((rv = vcl_bapi_init ()))
+  if ((rv = vcl_api_init ()))
     return rv;
 
-  if ((rv = vcl_bapi_attach ()))
+  if ((rv = vcl_api_attach ()))
     return rv;
 
   VDBG (0, "app_name '%s', my_client_index %d (0x%x)", app_name,
