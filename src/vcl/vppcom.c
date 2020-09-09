@@ -1178,6 +1178,169 @@ vppcom_app_exit (void)
   vcl_elog_stop (vcm);
 }
 
+static int
+vcl_api_send_attach (clib_socket_t * cs)
+{
+  app_api_msg_t msg = { 0 };
+  app_api_attach_msg_t *mp = &msg.attach;
+  u8 app_is_proxy, tls_engine;
+  clib_error_t *err;
+
+  app_is_proxy = (vcm->cfg.app_proxy_transport_tcp ||
+		  vcm->cfg.app_proxy_transport_udp);
+  tls_engine = CRYPTO_ENGINE_OPENSSL;
+
+  clib_memcpy (&mp->name, vcm->app_name, vec_len (vcm->app_name));
+  mp->options[APP_OPTIONS_FLAGS] =
+    APP_OPTIONS_FLAGS_ACCEPT_REDIRECT | APP_OPTIONS_FLAGS_ADD_SEGMENT |
+    (vcm->cfg.app_scope_local ? APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE : 0) |
+    (vcm->cfg.app_scope_global ? APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE : 0) |
+    (app_is_proxy ? APP_OPTIONS_FLAGS_IS_PROXY : 0) |
+    (vcm->cfg.use_mq_eventfd ? APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD : 0);
+  mp->options[APP_OPTIONS_PROXY_TRANSPORT] =
+    (u64) ((vcm->cfg.app_proxy_transport_tcp ? 1 << TRANSPORT_PROTO_TCP : 0) |
+	   (vcm->cfg.app_proxy_transport_udp ? 1 << TRANSPORT_PROTO_UDP : 0));
+  mp->options[APP_OPTIONS_SEGMENT_SIZE] = vcm->cfg.segment_size;
+  mp->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = vcm->cfg.add_segment_size;
+  mp->options[APP_OPTIONS_RX_FIFO_SIZE] = vcm->cfg.rx_fifo_size;
+  mp->options[APP_OPTIONS_TX_FIFO_SIZE] = vcm->cfg.tx_fifo_size;
+  mp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
+    vcm->cfg.preallocated_fifo_pairs;
+  mp->options[APP_OPTIONS_EVT_QUEUE_SIZE] = vcm->cfg.event_queue_size;
+  mp->options[APP_OPTIONS_TLS_ENGINE] = tls_engine;
+
+  msg.type = APP_API_MSG_TYPE_ATTACH;
+  err = clib_socket_sendmsg (cs, &msg, sizeof (msg), 0, 0);
+  if (err)
+    {
+      clib_error_report (err);
+      return -1;
+    }
+
+  return 0;
+}
+
+static int
+vcl_api_attach_reply_handler (app_api_attach_reply_msg_t * mp, int *fds)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  int i, rv, n_fds_used = 0;
+  svm_msg_q_t *ctrl_mq;
+  u64 segment_handle;
+  u8 *segment_name;
+
+  if (mp->retval)
+    {
+      VERR ("attach failed: %U", format_session_error, mp->retval);
+      goto failed;
+    }
+
+  wrk->bapi_client_index = mp->api_client_handle;
+  wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
+  ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
+  vec_validate (wrk->vpp_event_queues, mp->vpp_ctrl_mq_thread);
+  wrk->vpp_event_queues[mp->vpp_ctrl_mq_thread] = ctrl_mq;
+  vcm->ctrl_mq = wrk->ctrl_mq = ctrl_mq;
+  segment_handle = mp->segment_handle;
+  if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
+    {
+      VERR ("invalid segment handle");
+      goto failed;
+    }
+
+  if (!mp->n_fds)
+    goto failed;
+
+  clib_warning ("n fds %u", mp->n_fds);
+  if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
+    if (vcl_segment_attach (vcl_vpp_worker_segment_handle (0), "vpp-mq-seg",
+			    SSVM_SEGMENT_MEMFD, fds[n_fds_used++]))
+      goto failed;
+
+  if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
+    {
+      segment_name = format (0, "memfd-%ld%c", segment_handle, 0);
+      rv = vcl_segment_attach (segment_handle, (char *) segment_name,
+			       SSVM_SEGMENT_MEMFD, fds[n_fds_used++]);
+      vec_free (segment_name);
+      if (rv != 0)
+	goto failed;
+    }
+
+  if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
+    {
+      svm_msg_q_set_consumer_eventfd (wrk->app_event_queue,
+				      fds[n_fds_used++]);
+      vcl_mq_epoll_add_evfd (wrk, wrk->app_event_queue);
+    }
+
+  vcm->app_index = mp->app_index;
+
+  return 0;
+
+failed:
+
+  for (i = clib_max (n_fds_used - 1, 0); i < mp->n_fds; i++)
+    close (fds[i]);
+
+  return -1;
+}
+
+static int
+vcl_api_attach (void)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  app_api_msg_t _rmp, *rmp = &_rmp;
+  clib_error_t *err;
+  clib_socket_t *cs;
+  int fds[SESSION_N_FD_TYPE];
+
+  if (!vcm->cfg.vpp_app_socket_api)
+    return vcl_bapi_attach ();
+
+  /*
+   * Init client socket and send attach
+   */
+  if (vcl_api_connect_app_socket (wrk))
+    return -1;
+
+  cs = &wrk->app_api_sock;
+  if (vcl_api_send_attach (cs))
+    return -1;
+
+  /*
+   * Wait for attach reply
+   */
+  err = clib_socket_recvmsg (cs, rmp, sizeof (*rmp), fds, ARRAY_LEN (fds));
+  if (err)
+    {
+      clib_error_report (err);
+      return -1;
+    }
+
+  if (rmp->type != APP_API_MSG_TYPE_ATTACH_REPLY)
+    return -1;
+
+  vcl_api_attach_reply_handler (&rmp->attach_reply, fds);
+
+  return 0;
+}
+
+static void
+vcl_api_detach (vcl_worker_t * wrk)
+{
+  vcl_send_app_detach (wrk);
+
+  if (vcm->cfg.vpp_app_socket_api)
+    {
+      // TODO
+    }
+  else
+    {
+      vcl_bapi_disconnect_from_vpp ();
+    }
+}
+
 /*
  * VPPCOM Public API functions
  */
@@ -1211,7 +1374,7 @@ vppcom_app_create (const char *app_name)
   /* Allocate default worker */
   vcl_worker_alloc_and_init ();
 
-  if ((rv = vcl_bapi_attach ()))
+  if ((rv = vcl_api_attach ()))
     return rv;
 
   VDBG (0, "app_name '%s', my_client_index %d (0x%x)", app_name,
@@ -1241,8 +1404,7 @@ vppcom_app_destroy (void)
   }));
   /* *INDENT-ON* */
 
-  vcl_send_app_detach (current_wrk);
-  vcl_bapi_disconnect_from_vpp ();
+  vcl_api_detach (current_wrk);
   vcl_worker_cleanup (current_wrk, 0 /* notify vpp */ );
 
   vcl_elog_stop (vcm);
@@ -3791,6 +3953,7 @@ vppcom_session_worker (vcl_session_handle_t session_handle)
 int
 vppcom_worker_register (void)
 {
+  // TODO move spinlocks here
   if (!vcl_worker_alloc_and_init ())
     return VPPCOM_EEXIST;
 
