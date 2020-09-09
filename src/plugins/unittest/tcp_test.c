@@ -1341,6 +1341,8 @@ tcp_test (vlib_main_t * vm,
 {
   int res = 0;
 
+  vnet_session_enable_disable (vm, 1);
+
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "sack"))
