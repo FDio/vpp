@@ -1178,6 +1178,26 @@ vppcom_app_exit (void)
   vcl_elog_stop (vcm);
 }
 
+static int
+vcl_api_attach (void)
+{
+  if (vcm->cfg.vpp_app_socket_api)
+    return vcl_sapi_attach ();
+
+  return vcl_bapi_attach ();
+}
+
+static void
+vcl_api_detach (vcl_worker_t * wrk)
+{
+  vcl_send_app_detach (wrk);
+
+  if (vcm->cfg.vpp_app_socket_api)
+    return vcl_sapi_detach (wrk);
+
+  return vcl_bapi_disconnect_from_vpp ();
+}
+
 /*
  * VPPCOM Public API functions
  */
@@ -1211,7 +1231,7 @@ vppcom_app_create (const char *app_name)
   /* Allocate default worker */
   vcl_worker_alloc_and_init ();
 
-  if ((rv = vcl_bapi_attach ()))
+  if ((rv = vcl_api_attach ()))
     return rv;
 
   VDBG (0, "app_name '%s', my_client_index %d (0x%x)", app_name,
@@ -1241,8 +1261,7 @@ vppcom_app_destroy (void)
   }));
   /* *INDENT-ON* */
 
-  vcl_send_app_detach (current_wrk);
-  vcl_bapi_disconnect_from_vpp ();
+  vcl_api_detach (current_wrk);
   vcl_worker_cleanup (current_wrk, 0 /* notify vpp */ );
 
   vcl_elog_stop (vcm);
@@ -3791,6 +3810,7 @@ vppcom_session_worker (vcl_session_handle_t session_handle)
 int
 vppcom_worker_register (void)
 {
+  // TODO move spinlocks here
   if (!vcl_worker_alloc_and_init ())
     return VPPCOM_EEXIST;
 
