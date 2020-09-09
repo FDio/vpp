@@ -91,6 +91,8 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-9)
 	DEB_DEPENDS += libssl1.0-dev
 	DEB_DEPENDS += python-all python-pip
 	DEB_DEPENDS += python-dev python-all python-pip python-virtualenv
+else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-10)
+	DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
 else
 	DEB_DEPENDS += libssl-dev
 endif
