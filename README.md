@@ -3,7 +3,7 @@ Vector Packet Processing
 
 ## Introduction
 
-The VPP platform is an extensible framework that provides out-of-the-box
+The VPP platform is a very extensible framework that provides out-of-the-box
 production quality switch/router functionality. It is the open source version
 of Cisco's Vector Packet Processing (VPP) technology: a high performance,
 packet-processing stack that can run on commodity CPUs.
