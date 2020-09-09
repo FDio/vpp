@@ -22,6 +22,30 @@
       "revId": "dfff50e841aa55829878c938228e1b32a1d53177",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "09af4baf_969395f8",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1129,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-09-09T07:59:05Z",
+      "side": 1,
+      "message": "Envoy\u0027s traffic may divide into two parts: control plane and data plane. Data plane uses LDP, and some traffic of control plane, such as healthcheck, still uses kernel to communicate with pilot-agent listened on localhost address.And till now, we only use LDP to accelerate Envoy.\nI have set the flag through VCL configuration, and used in socket/bind/connect/accept.",
+      "parentUuid": "ce2bf5f7_f23f0797",
+      "range": {
+        "startLine": 1115,
+        "startChar": 0,
+        "endLine": 1129,
+        "endChar": 6
+      },
+      "revId": "dfff50e841aa55829878c938228e1b32a1d53177",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
