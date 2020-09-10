@@ -547,29 +547,34 @@ chacha20poly1305_calc (vlib_main_t * vm,
 		       vnet_crypto_op_id_t op_id,
 		       vnet_crypto_key_index_t key_index)
 {
+  vnet_crypto_op_t _op, *op = &_op;
   u8 iv[12];
+  u8 tag_[NOISE_AUTHTAG_LEN] = { };
+  u8 src_[] = { };
+
   clib_memset (iv, 0, 12);
   clib_memcpy (iv + 4, &nonce, sizeof (nonce));
 
-  vnet_crypto_op_t _op, *op = &_op;
+  vnet_crypto_op_init (op, op_id);
 
-  u8 _tag[16] = { };
+  op->tag_len = NOISE_AUTHTAG_LEN;
   if (op_id == VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC)
     {
-      clib_memcpy (_tag, src + src_len - NOISE_AUTHTAG_LEN,
-		   NOISE_AUTHTAG_LEN);
+      op->tag = src + src_len - NOISE_AUTHTAG_LEN;
       src_len -= NOISE_AUTHTAG_LEN;
     }
-  vnet_crypto_op_init (op, op_id);
-  op->key_index = key_index;
-  op->src = src;
-  op->dst = dst;
+  else
+    op->tag = tag_;
+
+  op->src = !src ? src_ : src;
   op->len = src_len;
+
+  op->dst = dst;
+  op->key_index = key_index;
   op->aad = aad;
   op->aad_len = aad_len;
   op->iv = iv;
-  op->tag_len = NOISE_AUTHTAG_LEN;
-  op->tag = _tag;
+
   vnet_crypto_process_ops (vm, op, 1);
   if (op_id == VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC)
     {
