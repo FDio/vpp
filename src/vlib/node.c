@@ -347,7 +347,10 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 
   /* Node names must be unique. */
   {
-    vlib_node_t *o = vlib_get_node_by_name (vm, n->name);
+    /* vlib_get_node_by_name() expects NULL-terminated strings */
+    u8 *name = format (0, "%v%c", n->name, 0);
+    vlib_node_t *o = vlib_get_node_by_name (vm, name);
+    vec_free (name);
     if (o)
       clib_error ("more than one node named `%v'", n->name);
   }
