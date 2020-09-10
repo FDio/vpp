@@ -536,7 +536,7 @@ noise_remote_ready (noise_remote_t * r)
   return ret;
 }
 
-static void
+static bool
 chacha20poly1305_calc (vlib_main_t * vm,
 		       u8 * src,
 		       u32 src_len,
@@ -580,6 +580,8 @@ chacha20poly1305_calc (vlib_main_t * vm,
     {
       clib_memcpy (dst + src_len, op->tag, NOISE_AUTHTAG_LEN);
     }
+
+  return (op->status == VNET_CRYPTO_OP_STATUS_COMPLETED);
 }
 
 enum noise_state_crypt
@@ -668,9 +670,10 @@ noise_remote_decrypt (vlib_main_t * vm, noise_remote_t * r, uint32_t r_idx,
   /* Decrypt, then validate the counter. We don't want to validate the
    * counter before decrypting as we do not know the message is authentic
    * prior to decryption. */
-  chacha20poly1305_calc (vm, src, srclen, dst, NULL, 0, nonce,
-			 VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC,
-			 kp->kp_recv_index);
+  if (!chacha20poly1305_calc (vm, src, srclen, dst, NULL, 0, nonce,
+			      VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC,
+			      kp->kp_recv_index))
+    goto error;
 
   if (!noise_counter_recv (&kp->kp_ctr, nonce))
     goto error;
@@ -936,8 +939,9 @@ noise_msg_decrypt (vlib_main_t * vm, uint8_t * dst, uint8_t * src,
 		   uint8_t hash[NOISE_HASH_LEN])
 {
   /* Nonce always zero for Noise_IK */
-  chacha20poly1305_calc (vm, src, src_len, dst, hash, NOISE_HASH_LEN, 0,
-			 VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC, key_idx);
+  if (!chacha20poly1305_calc (vm, src, src_len, dst, hash, NOISE_HASH_LEN, 0,
+			      VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC, key_idx))
+    return false;
   noise_mix_hash (hash, src, src_len);
   return true;
 }
