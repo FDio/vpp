@@ -70,7 +70,6 @@ cnat_vip_inline (vlib_main_t * vm,
 		   cnat_node_ctx_t * ctx, int rv, cnat_session_t * session)
 {
   vlib_combined_counter_main_t *cntm = &cnat_translation_counters;
-  cnat_main_t *cm = &cnat_main;
   const cnat_translation_t *ct = NULL;
   ip4_header_t *ip4 = NULL;
   ip_protocol_t iproto;
@@ -201,7 +200,7 @@ cnat_vip_inline (vlib_main_t * vm,
 	       && (rsession_flags & CNAT_SESSION_FLAG_HAS_SNAT)) {
 	    sport = 0; /* force allocation */
 	    session->value.flags |= CNAT_SESSION_FLAG_ALLOC_PORT;
-	    rv = cnat_allocate_port (cm, &sport);
+	    rv = cnat_allocate_port (&sport, iproto);
 	    if (rv)
 	      {
 		vlib_node_increment_counter (vm, cnat_vip_ip4_node.index,
