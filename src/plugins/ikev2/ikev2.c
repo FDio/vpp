@@ -296,9 +296,12 @@ static void
 ikev2_sa_free_all_vec (ikev2_sa_t * sa)
 {
   vec_free (sa->i_nonce);
-  vec_free (sa->i_dh_data);
+  vec_free (sa->r_nonce);
+
   vec_free (sa->dh_shared_key);
   vec_free (sa->dh_private_key);
+  vec_free (sa->i_dh_data);
+  vec_free (sa->r_dh_data);
 
   ikev2_sa_free_proposal_vector (&sa->r_proposals);
   ikev2_sa_free_proposal_vector (&sa->i_proposals);
@@ -312,13 +315,23 @@ ikev2_sa_free_all_vec (ikev2_sa_t * sa)
   vec_free (sa->sk_pr);
 
   vec_free (sa->i_id.data);
-  vec_free (sa->i_auth.data);
   vec_free (sa->r_id.data);
+
+  vec_free (sa->i_auth.data);
+  if (sa->r_auth.key)
+    EVP_PKEY_free (sa->i_auth.key);
   vec_free (sa->r_auth.data);
   if (sa->r_auth.key)
     EVP_PKEY_free (sa->r_auth.key);
 
   vec_free (sa->del);
+
+  vec_free (sa->rekey);
+
+  vec_free (sa->last_sa_init_req_packet_data);
+  vec_free (sa->last_sa_init_res_packet_data);
+
+  vec_free (sa->last_res_packet_data);
 
   ikev2_sa_free_all_child_sa (&sa->childs);
 }
@@ -641,7 +654,7 @@ ikev2_process_sa_init_req (vlib_main_t * vm, ikev2_sa_t * sa,
   sa->ispi = clib_net_to_host_u64 (ike->ispi);
 
   /* store whole IKE payload - needed for PSK auth */
-  vec_free (sa->last_sa_init_req_packet_data);
+  vec_reset_length (sa->last_sa_init_req_packet_data);
   vec_add (sa->last_sa_init_req_packet_data, ike, len);
 
   while (p < len && payload != IKEV2_PAYLOAD_NONE)
@@ -743,7 +756,7 @@ ikev2_process_sa_init_resp (vlib_main_t * vm, ikev2_sa_t * sa,
 		       sa->raddr.as_u32);
 
   /* store whole IKE payload - needed for PSK auth */
-  vec_free (sa->last_sa_init_res_packet_data);
+  vec_reset_length (sa->last_sa_init_res_packet_data);
   vec_add (sa->last_sa_init_res_packet_data, ike, len);
 
   while (p < len && payload != IKEV2_PAYLOAD_NONE)
@@ -2323,7 +2336,7 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user,
       clib_memcpy_fast (ike->payload, chain->data, vec_len (chain->data));
 
       /* store whole IKE payload - needed for PSK auth */
-      vec_free (sa->last_sa_init_res_packet_data);
+      vec_reset_length (sa->last_sa_init_res_packet_data);
       vec_add (sa->last_sa_init_res_packet_data, ike, tlen);
     }
   else
@@ -2372,7 +2385,7 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user,
 	}
 
       /* store whole IKE payload - needed for retransmit */
-      vec_free (sa->last_res_packet_data);
+      vec_reset_length (sa->last_res_packet_data);
       vec_add (sa->last_res_packet_data, ike, tlen);
     }
 
@@ -3780,7 +3793,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     ike0->msgid = 0;
 
     /* store whole IKE payload - needed for PSK auth */
-    vec_free (sa.last_sa_init_req_packet_data);
+    vec_reset_length (sa.last_sa_init_req_packet_data);
     vec_add (sa.last_sa_init_req_packet_data, ike0, len);
 
     /* add data to the SA then add it to the pool */
