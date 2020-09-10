@@ -46,6 +46,30 @@
       "revId": "3829c812f0475370217a5b71039b36723a8c2a31",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e2764e2c_444edcf2",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1112,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-10T02:15:27Z",
+      "side": 1,
+      "message": "Fair enough, but this is really a lot of complexity added to all ldp apis, and which trickles down into vcl, for a corner case. If possible, I\u0027d like to look for alternatives. \n\nOne idea would be to create the vcl session but once we detect the connect/bind is to localhost (and if the feature is enabled), we allocate a linux fd, add the two to an ldp worker hash table, and then after ldp_fd_to_vlsh do something like:\n\nif (PREDICT_FALSE (ldp_no_lh_sockets ())) \n  ldp_maybe_update_fd_vlsh (\u0026fd, \u0026vlsh);\n\nAnd ldp_maybe_update_fd_vlsh will set vlsh to invalid and fd to the actual linux fd if one was configured. That will force execution of linux apis and keep all of this local to ldp.\n\nThis could probably even be integrated directly into ldp_fd_to_vlsh, with some changes.",
+      "parentUuid": "0663ed9c_1377873e",
+      "range": {
+        "startLine": 1112,
+        "startChar": 3,
+        "endLine": 1112,
+        "endChar": 34
+      },
+      "revId": "3829c812f0475370217a5b71039b36723a8c2a31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
