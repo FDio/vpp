@@ -386,12 +386,23 @@ readv (int fd, const struct iovec * iov, int iovcnt)
 	  rv = vls_read (vlsh, iov[i].iov_base, iov[i].iov_len);
 	  if (rv <= 0)
 	    break;
-	  else
+	  if (rv < iov[i].iov_len)
 	    {
-	      total += rv;
-	      if (rv < iov[i].iov_len)
+	      /* Try to force an EAGAIN to make sure fifo is drained */
+	      int offset = 0;
+	      do
+		{
+		  offset += rv;
+		  rv = vls_read (vlsh, iov[i].iov_base + offset,
+				 iov[i].iov_len - offset);
+		}
+	      while (iov[i].iov_len > offset && rv > 0);
+	      total += offset;
+	      if (rv <= 0)
 		break;
 	    }
+	  else
+	    total += rv;
 	}
       if (rv < 0 && total == 0)
 	{
