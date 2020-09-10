@@ -318,7 +318,7 @@ ikev2_sa_free_all_vec (ikev2_sa_t * sa)
   vec_free (sa->r_id.data);
 
   vec_free (sa->i_auth.data);
-  if (sa->r_auth.key)
+  if (sa->i_auth.key)
     EVP_PKEY_free (sa->i_auth.key);
   vec_free (sa->r_auth.data);
   if (sa->r_auth.key)
