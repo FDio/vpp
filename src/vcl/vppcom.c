@@ -1892,7 +1892,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 			      u8 peek)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
-  int n_read = 0, is_nonblocking;
+  int rv, n_read = 0, is_nonblocking;
   vcl_session_t *s = 0;
   svm_fifo_t *rx_fifo;
   svm_msg_q_msg_t msg;
@@ -1949,10 +1949,15 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 	}
     }
 
+read_again:
+
   if (s->is_dgram)
-    n_read = app_recv_dgram_raw (rx_fifo, buf, n, &s->transport, 0, peek);
+    rv = app_recv_dgram_raw (rx_fifo, buf, n, &s->transport, 0, peek);
   else
-    n_read = app_recv_stream_raw (rx_fifo, buf, n, 0, peek);
+    rv = app_recv_stream_raw (rx_fifo, buf, n, 0, peek);
+
+  ASSERT (rv >= 0);
+  n_read += rv;
 
   if (svm_fifo_is_empty_cons (rx_fifo))
     {
@@ -1960,11 +1965,18 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
       if (!svm_fifo_is_empty_cons (rx_fifo)
 	  && svm_fifo_set_event (s->rx_fifo) && is_nonblocking)
 	{
-	  session_event_t *e;
 	  vec_add2 (wrk->unhandled_evts_vector, e, 1);
 	  e->event_type = SESSION_IO_EVT_RX;
 	  e->session_index = s->session_index;
 	}
+    }
+  else if (PREDICT_FALSE (rv < n))
+    {
+      /* More data enqueued while reading. Try to drain it
+       * or fill the buffer */
+      buf += rv;
+      n -= rv;
+      goto read_again;
     }
 
   if (PREDICT_FALSE (svm_fifo_needs_deq_ntf (rx_fifo, n_read)))
