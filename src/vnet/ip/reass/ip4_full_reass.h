@@ -46,6 +46,7 @@ vnet_api_error_t ip4_full_reass_enable_disable (u32 sw_if_index,
 int ip4_full_reass_enable_disable_with_refcnt (u32 sw_if_index,
 					       int is_enable);
 
+uword ip4_full_reass_custom_register_next_node (uword node_index);
 #endif /* __included_ip4_full_reass_h__ */
 
 /*
