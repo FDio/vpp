@@ -115,7 +115,8 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
   while (n_left_from > 0)
     {
       ip4_udp_header_t *hdr = vlib_buffer_get_current (b[0]);
-      u8 *plain_data = vlib_buffer_get_current (b[0]) + sizeof (ip4_header_t);
+      u8 *plain_data = (vlib_buffer_get_current (b[0]) +
+			sizeof (ip4_udp_header_t));
       u16 plain_data_len =
 	clib_net_to_host_u16 (((ip4_header_t *) plain_data)->length);
 
@@ -144,8 +145,8 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
        * Ensure there is enough space to write the encrypted data
        * into the packet
        */
-      if (PREDICT_FALSE (encrypted_packet_len > WG_OUTPUT_SCRATCH_SIZE) ||
-	  PREDICT_FALSE ((b[0]->current_data + encrypted_packet_len) <
+      if (PREDICT_FALSE (encrypted_packet_len >= WG_OUTPUT_SCRATCH_SIZE) ||
+	  PREDICT_FALSE ((b[0]->current_data + encrypted_packet_len) >=
 			 vlib_buffer_get_default_data_size (vm)))
 	{
 	  b[0]->error = node->errors[WG_OUTPUT_ERROR_TOO_BIG];
