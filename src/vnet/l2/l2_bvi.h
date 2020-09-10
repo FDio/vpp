@@ -72,7 +72,7 @@ l2_to_bvi (vlib_main_t * vlib_main,
       ethernet_interface_t *ei = ethernet_get_interface (em, hi->hw_if_index);
       u32 rv;
 
-      if (PREDICT_FALSE (vec_len (ei->secondary_addrs) > 0))
+      if (PREDICT_FALSE (ei && (vec_len (ei->secondary_addrs) > 0)))
 	rv = l2_to_bvi_dmac_check (hi, e0->dst_address, ei,
 				   1 /* have_sec_dmac */ );
       else
