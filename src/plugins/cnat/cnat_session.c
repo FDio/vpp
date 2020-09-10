@@ -128,7 +128,7 @@ cnat_session_free (cnat_session_t * session)
   clib_bihash_kv_40_48_t *bkey = (clib_bihash_kv_40_48_t *) session;
   /* age it */
   if (session->value.flags & CNAT_SESSION_FLAG_ALLOC_PORT)
-    cnat_free_port (session->value.cs_port[VLIB_RX]);
+    cnat_free_port (session->value.cs_port[VLIB_RX], session->key.cs_proto);
   if (!(session->value.flags & CNAT_SESSION_FLAG_NO_CLIENT))
     cnat_client_free_by_ip (&session->key.cs_ip[VLIB_TX], session->key.cs_af);
   cnat_timestamp_free (session->value.cs_ts_index);

@@ -25,8 +25,9 @@ typedef enum cnat_snat_next_
 
 typedef struct cnat_snat_trace_
 {
-  u32 found;
   cnat_session_t session;
+  u32 found_session;
+  u32 created_session;
 } cnat_snat_trace_t;
 
 vlib_node_registration_t cnat_snat_ip4_node;
@@ -39,8 +40,11 @@ format_cnat_snat_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   cnat_snat_trace_t *t = va_arg (*args, cnat_snat_trace_t *);
 
-  if (t->found)
+  if (t->found_session)
     s = format (s, "found: %U", format_cnat_session, &t->session, 1);
+  else if (t->created_session)
+    s = format (s, "created: %U\n  tr: %U",
+		format_cnat_session, &t->session, 1);
   else
     s = format (s, "not found");
   return s;
@@ -56,6 +60,7 @@ cnat_snat_inline (vlib_main_t * vm,
 		  cnat_node_ctx_t * ctx, int rv, cnat_session_t * session)
 {
   cnat_main_t *cm = &cnat_main;
+  int created_session = 0;
   ip4_header_t *ip4;
   ip_protocol_t iproto;
   ip6_header_t *ip6;
@@ -126,10 +131,9 @@ cnat_snat_inline (vlib_main_t * vm,
 				&ip6->dst_address);
 	}
 
-      /* Port allocation, first try to use the original port, allocate one
-         if it is already used */
-      sport = udp0->src_port;
-      rv = cnat_allocate_port (cm, &sport);
+
+      sport = 0;
+      rv = cnat_allocate_port (&sport, iproto);
       if (rv)
 	{
 	  vlib_node_increment_counter (vm, cnat_snat_ip4_node.index,
@@ -137,13 +141,16 @@ cnat_snat_inline (vlib_main_t * vm,
 	  next0 = CNAT_SNAT_NEXT_DROP;
 	  goto trace;
 	}
-
       session->value.cs_port[VLIB_RX] = sport;
-      session->value.cs_port[VLIB_TX] = udp0->dst_port;
+      session->value.cs_port[VLIB_TX] = sport;
+      if (iproto == IP_PROTOCOL_TCP || iproto == IP_PROTOCOL_UDP)
+	session->value.cs_port[VLIB_TX] = udp0->dst_port;
+
       session->value.cs_lbi = INDEX_INVALID;
       session->value.flags =
 	CNAT_SESSION_FLAG_NO_CLIENT | CNAT_SESSION_FLAG_ALLOC_PORT;
 
+      created_session = 1;
       cnat_session_create (session, ctx, CNAT_SESSION_FLAG_HAS_SNAT);
     }
 
@@ -160,7 +167,9 @@ trace:
 
       t = vlib_add_trace (vm, node, b, sizeof (*t));
 
-      if (NULL != session)
+      t->found_session = !rv;
+      t->created_session = created_session;
+      if (t->found_session || t->created_session)
 	clib_memcpy (&t->session, session, sizeof (t->session));
     }
   return next0;

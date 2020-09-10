@@ -49,6 +49,15 @@
 
 #define MIN_SRC_PORT ((u16) 0xC000)
 
+typedef enum
+{
+  CNAT_SPORT_PROTO_TCP,
+  CNAT_SPORT_PROTO_UDP,
+  CNAT_SPORT_PROTO_ICMP,
+  CNAT_SPORT_PROTO_ICMP6,
+  CNAT_N_SPORT_PROTO
+} cnat_sport_proto_t;
+
 typedef struct cnat_endpoint_t_
 {
   ip_address_t ce_ip;
@@ -61,7 +70,11 @@ typedef struct cnat_endpoint_tuple_t_
   cnat_endpoint_t src_ep;
 } cnat_endpoint_tuple_t;
 
-
+typedef struct
+{
+  u16 identifier;
+  u16 sequence;
+} cnat_echo_header_t;
 
 typedef struct
 {
@@ -79,6 +92,15 @@ typedef struct
   /* Precomputed ip masks (ip4 & ip6) */
   ip6_address_t ip_masks[129];
 } cnat_snat_pfx_table_t;
+
+typedef struct cnat_src_port_allocator_
+{
+  /* Source ports bitmap for snat */
+  clib_bitmap_t *bmap;
+
+  /* Lock for src_ports access */
+  clib_spinlock_t lock;
+} cnat_src_port_allocator_t;
 
 typedef struct cnat_main_
 {
@@ -113,11 +135,8 @@ typedef struct cnat_main_
   /* Lock for the timestamp pool */
   clib_rwlock_t ts_lock;
 
-  /* Source ports bitmap for snat */
-  clib_bitmap_t *src_ports;
-
-  /* Lock for src_ports access */
-  clib_spinlock_t src_ports_lock;
+  /* Per proto source ports allocator for snat */
+  cnat_src_port_allocator_t *src_ports;
 
   /* Ip4 Address to use for source NATing */
   ip4_address_t snat_ip4;
@@ -265,33 +284,59 @@ cnat_timestamp_free (u32 index)
   clib_rwlock_writer_unlock (&cnat_main.ts_lock);
 }
 
-always_inline void
-cnat_free_port (u16 port)
+always_inline cnat_src_port_allocator_t *
+cnat_get_src_port_allocator (ip_protocol_t iproto)
 {
   cnat_main_t *cm = &cnat_main;
-  clib_spinlock_lock (&cm->src_ports_lock);
-  clib_bitmap_set_no_check (cm->src_ports, port, 0);
-  clib_spinlock_unlock (&cm->src_ports_lock);
+  switch (iproto)
+    {
+    case IP_PROTOCOL_TCP:
+      return &cm->src_ports[CNAT_SPORT_PROTO_TCP];
+    case IP_PROTOCOL_UDP:
+      return &cm->src_ports[CNAT_SPORT_PROTO_UDP];
+    case IP_PROTOCOL_ICMP:
+      return &cm->src_ports[CNAT_SPORT_PROTO_ICMP];
+    case IP_PROTOCOL_ICMP6:
+      return &cm->src_ports[CNAT_SPORT_PROTO_ICMP6];
+    default:
+      return 0;
+    }
+}
+
+always_inline void
+cnat_free_port (u16 port, ip_protocol_t iproto)
+{
+  cnat_src_port_allocator_t *ca;
+  ca = cnat_get_src_port_allocator (iproto);
+  if (!ca)
+    return;
+  clib_spinlock_lock (&ca->lock);
+  clib_bitmap_set_no_check (ca->bmap, port, 0);
+  clib_spinlock_unlock (&ca->lock);
 }
 
 always_inline int
-cnat_allocate_port (cnat_main_t * cm, u16 * port)
+cnat_allocate_port (u16 * port, ip_protocol_t iproto)
 {
   *port = clib_net_to_host_u16 (*port);
   if (*port == 0)
     *port = MIN_SRC_PORT;
-  clib_spinlock_lock (&cm->src_ports_lock);
-  if (clib_bitmap_get_no_check (cm->src_ports, *port))
+  cnat_src_port_allocator_t *ca;
+  ca = cnat_get_src_port_allocator (iproto);
+  if (!ca)
+    return -1;
+  clib_spinlock_lock (&ca->lock);
+  if (clib_bitmap_get_no_check (ca->bmap, *port))
     {
-      *port = clib_bitmap_next_clear (cm->src_ports, *port);
+      *port = clib_bitmap_next_clear (ca->bmap, *port);
       if (PREDICT_FALSE (*port >= UINT16_MAX))
-	*port = clib_bitmap_next_clear (cm->src_ports, MIN_SRC_PORT);
+	*port = clib_bitmap_next_clear (ca->bmap, MIN_SRC_PORT);
       if (PREDICT_FALSE (*port >= UINT16_MAX))
 	return -1;
     }
-  clib_bitmap_set_no_check (cm->src_ports, *port, 1);
+  clib_bitmap_set_no_check (ca->bmap, *port, 1);
   *port = clib_host_to_net_u16 (*port);
-  clib_spinlock_unlock (&cm->src_ports_lock);
+  clib_spinlock_unlock (&ca->lock);
   return 0;
 }
 
