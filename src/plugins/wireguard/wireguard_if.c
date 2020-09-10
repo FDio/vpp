@@ -42,10 +42,20 @@ format_wg_if (u8 * s, va_list * args)
   key_to_base64 (wgi->local.l_private, NOISE_PUBLIC_KEY_LEN, key);
 
   s = format (s, " private-key:%s", key);
+  s =
+    format (s, " %U", format_hex_bytes, wgi->local.l_private,
+	    NOISE_PUBLIC_KEY_LEN);
 
   key_to_base64 (wgi->local.l_public, NOISE_PUBLIC_KEY_LEN, key);
 
   s = format (s, " public-key:%s", key);
+
+  s =
+    format (s, " %U", format_hex_bytes, wgi->local.l_public,
+	    NOISE_PUBLIC_KEY_LEN);
+
+  s = format (s, " mac-key: %U", format_hex_bytes,
+	      &wgi->cookie_checker.cc_mac1_key, NOISE_PUBLIC_KEY_LEN);
 
   return (s);
 }
@@ -235,9 +245,6 @@ wg_if_create (u32 user_instance,
   if (~0 == wg_if->user_instance)
     wg_if->user_instance = t_idx;
 
-  udp_dst_port_info_t *pi = udp_get_dst_port_info (&udp_main, port, UDP_IP4);
-  if (pi)
-    return (VNET_API_ERROR_VALUE_EXIST);
   udp_register_dst_port (vlib_get_main (), port, wg_input_node.index, 1);
 
   vec_validate_init_empty (wg_if_index_by_port, port, INDEX_INVALID);
@@ -280,16 +287,17 @@ wg_if_delete (u32 sw_if_index)
 
   vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
   if (hw == 0 || hw->dev_class_index != wg_if_device_class.index)
-    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+    return VNET_API_ERROR_INVALID_VALUE;
 
   wg_if_t *wg_if;
   wg_if = wg_if_get (wg_if_find_by_sw_if_index (sw_if_index));
   if (NULL == wg_if)
-    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX_2;
 
-  if (wg_if_instance_free (hw->dev_instance) < 0)
-    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+  if (wg_if_instance_free (wg_if->user_instance) < 0)
+    return VNET_API_ERROR_INVALID_VALUE_2;
 
+  udp_unregister_dst_port (vlib_get_main (), wg_if->port, 1);
   wg_if_index_by_port[wg_if->port] = INDEX_INVALID;
   vnet_delete_hw_interface (vnm, hw->hw_if_index);
   pool_put (wg_if_pool, wg_if);

@@ -86,7 +86,7 @@ cookie_checker_validate_macs (vlib_main_t * vm, cookie_checker_t * cc,
   len = len - sizeof (message_macs_t);
   cookie_macs_mac1 (&our_cm, buf, len, cc->cc_mac1_key);
 
-  /* If mac1 is invald, we want to drop the packet */
+  /* If mac1 is invalid, we want to drop the packet */
   if (clib_memcmp (our_cm.mac1, cm->mac1, COOKIE_MAC_SIZE) != 0)
     return INVALID_MAC;
 
