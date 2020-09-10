@@ -313,12 +313,12 @@ VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
 	    if (entry)
 	      {
 		peer = pool_elt_at_index (wmp->peers, *entry);
-		if (!peer)
-		  {
-		    next[0] = WG_INPUT_NEXT_ERROR;
-		    b[0]->error = node->errors[WG_INPUT_ERROR_PEER];
-		    goto out;
-		  }
+	      }
+	    else
+	      {
+		next[0] = WG_INPUT_NEXT_ERROR;
+		b[0]->error = node->errors[WG_INPUT_ERROR_PEER];
+		goto out;
 	      }
 
 	    u16 encr_len = b[0]->current_length - sizeof (message_data_t);
