@@ -14305,7 +14305,7 @@ unformat_lisp_eid_vat (unformat_input_t * input, va_list * args)
     {
       a->type = 0;		/* ip prefix type */
     }
-  else if (unformat (input, "%U", unformat_ethernet_address, a->addr.mac))
+  else if (unformat (input, "%U", unformat_ethernet_address, &a->addr.mac))
     {
       a->type = 1;		/* mac type */
     }
