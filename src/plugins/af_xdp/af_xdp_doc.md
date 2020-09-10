@@ -17,6 +17,8 @@ Because of AF_XDP restrictions, the MTU is limited to below PAGE_SIZE
 (4096-bytes on most systems) minus 256-bytes, and they are additional
 limitations depending upon specific Linux device drivers.
 As a rule of thumb, a MTU of 3000-bytes or less should be safe.
+Furthermore, upon UMEM creation, the kernel allocates a physically-contiguous structure, whose size is proportional to the number of 4KB pages contained in the UMEM. That allocation might fail when the number of buffers allocated by VPP is too high. That number can be controlled with the `buffers { buffers-per-numa }` configuration option.
+Finally, note that because of this limitation, this plugin is unlikely to be compatible with the use of 1GB hugepages.
 
 ## Requirements
 The Linux kernel interface must be up and have enough queues before
