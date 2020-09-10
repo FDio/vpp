@@ -26,8 +26,8 @@ always_inline void
 ip4_header_set_len_w_chksum (ip4_header_t * ip4, u16 len)
 {
   ip_csum_t sum = ip4->checksum;
-  u8 old = ip4->length;
-  u8 new = len;
+  u16 old = ip4->length;
+  u16 new = len;
 
   sum = ip_csum_update (sum, old, new, ip4_header_t, length);
   ip4->checksum = ip_csum_fold (sum);
