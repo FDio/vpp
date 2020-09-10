@@ -94,6 +94,30 @@
       "revId": "3829c812f0475370217a5b71039b36723a8c2a31",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4a2668e1_42d1fae3",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1112,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-10T02:53:04Z",
+      "side": 1,
+      "message": "I would go with the synchronization option and update vcl to make sure that all options are stored.",
+      "parentUuid": "d1bdbd88_5d4e63a8",
+      "range": {
+        "startLine": 1112,
+        "startChar": 3,
+        "endLine": 1112,
+        "endChar": 34
+      },
+      "revId": "3829c812f0475370217a5b71039b36723a8c2a31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
