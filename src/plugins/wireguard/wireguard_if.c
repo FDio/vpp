@@ -42,10 +42,20 @@ format_wg_if (u8 * s, va_list * args)
   key_to_base64 (wgi->local.l_private, NOISE_PUBLIC_KEY_LEN, key);
 
   s = format (s, " private-key:%s", key);
+  s =
+    format (s, " %U", format_hex_bytes, wgi->local.l_private,
+	    NOISE_PUBLIC_KEY_LEN);
 
   key_to_base64 (wgi->local.l_public, NOISE_PUBLIC_KEY_LEN, key);
 
   s = format (s, " public-key:%s", key);
+
+  s =
+    format (s, " %U", format_hex_bytes, wgi->local.l_public,
+	    NOISE_PUBLIC_KEY_LEN);
+
+  s = format (s, " mac-key: %U", format_hex_bytes,
+	      &wgi->cookie_checker.cc_mac1_key, NOISE_PUBLIC_KEY_LEN);
 
   return (s);
 }

@@ -380,15 +380,16 @@ format_wg_peer (u8 * s, va_list * va)
   peer = wg_peer_get (peeri);
   key_to_base64 (peer->remote.r_public, NOISE_PUBLIC_KEY_LEN, key);
 
-  s = format (s, "[%d] key:%=45s endpoint:[%U->%U] %U keep-alive:%d adj:%d",
+  s = format (s, "[%d] endpoint:[%U->%U] %U keep-alive:%d adj:%d",
 	      peeri,
-	      key,
 	      format_wg_peer_endpoint, &peer->src,
 	      format_wg_peer_endpoint, &peer->dst,
 	      format_vnet_sw_if_index_name, vnet_get_main (),
 	      peer->wg_sw_if_index,
 	      peer->persistent_keepalive_interval, peer->adj_index);
-
+  s = format (s, "\n  key:%=s %U",
+	      key, format_hex_bytes, peer->remote.r_public,
+	      NOISE_PUBLIC_KEY_LEN);
   s = format (s, "\n  allowed-ips:");
   vec_foreach (allowed_ip, peer->allowed_ips)
   {
