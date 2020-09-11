@@ -53,7 +53,8 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
   u32 bytes_this_chunk;
 
   test_buf_len = vec_len (test_data);
-  ASSERT (test_buf_len > 0);
+  if (0 == test_buf_len)
+    return;
   test_buf_offset = s->bytes_sent % test_buf_len;
   bytes_this_chunk = clib_min (test_buf_len - test_buf_offset,
 			       s->bytes_to_send);

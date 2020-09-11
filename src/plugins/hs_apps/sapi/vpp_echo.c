@@ -742,6 +742,7 @@ add_segment_handler (session_app_add_segment_msg_t * mp)
   if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
     {
       vec_validate (fds, 1);
+      /* coverity[ -tainted_data_argument : arg-0 ] */
       if (vl_socket_client_recv_fd_msg (fds, 1, 5))
 	{
 	  ECHO_FAIL (ECHO_FAIL_VL_API_RECV_FD_MSG,
