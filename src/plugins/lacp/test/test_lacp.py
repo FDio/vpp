@@ -152,6 +152,10 @@ class TestLACP(VppTestCase):
     """
 
     @classmethod
+    def force_solo(cls):
+        return True
+
+    @classmethod
     def setUpClass(cls):
         super().setUpClass()
 
