@@ -1132,8 +1132,10 @@ vlib_pci_map_region_int (vlib_main_t * vm, vlib_pci_dev_handle_t h,
   if (p->type == LINUX_PCI_DEVICE_TYPE_UIO && addr != 0)
     flags |= MAP_FIXED;
 
-  *result = mmap (addr, size, PROT_READ | PROT_WRITE, flags, fd, offset);
-  if (*result == (void *) -1)
+  *result = clib_mem_vm_map_shared (addr, size, fd, offset,
+				    "PCIe %U region %u", format_vlib_pci_addr,
+				    vlib_pci_get_addr (vm, h), bar);
+  if (*result == CLIB_MEM_VM_MAP_FAILED)
     {
       error = clib_error_return_unix (0, "mmap `BAR%u'", bar);
       if (p->type == LINUX_PCI_DEVICE_TYPE_UIO && (fd != -1))
@@ -1337,7 +1339,7 @@ vlib_pci_device_close (vlib_main_t * vm, vlib_pci_dev_handle_t h)
     {
       if (res->size == 0)
 	continue;
-      munmap (res->addr, res->size);
+      clib_mem_vm_unmap (res->addr);
       if (res->fd != -1)
         close (res->fd);
     }

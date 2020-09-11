@@ -110,7 +110,7 @@ dpdk_early_init (vlib_main_t *vm)
   /* check if pagemap is accessible - if we get zero result
      dpdk will not be able to get physical memory address and game is over
      unless we have IOMMU */
-  pt = clib_mem_vm_get_paddr (&pt, min_log2 (sysconf (_SC_PAGESIZE)), 1);
+  pt = clib_mem_vm_get_paddr (&pt, CLIB_MEM_PAGE_SZ_DEFAULT, 1);
   if (pt && pt[0])
     goto check_hugetlb;
 
