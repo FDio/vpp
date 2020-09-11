@@ -85,26 +85,20 @@ virtio_refill_vring (vlib_main_t * vm, virtio_if_t * vif,
 		     virtio_if_type_t type, virtio_vring_t * vring,
 		     const int hdr_sz, u32 node_index)
 {
-  u16 used, next, avail, n_slots, n_refill;
-  u16 sz = vring->size;
-  u16 mask = sz - 1;
+  u16 avail, n_slots, n_refill;
+  u16 next = vring->desc_next;
+  u16 used = vring->desc_in_use;
+  const u16 sz = vring->size;
+  const u16 mask = sz - 1;
+  const u16 n_free = sz - used;
 
-more:
-  used = vring->desc_in_use;
-
-  if (sz - used < sz / 8)
+  if (n_free < 32)
     return;
 
-  /* deliver free buffers in chunks of 64 */
-  n_refill = clib_min (sz - used, 64);
-
-  next = vring->desc_next;
-  avail = vring->avail->idx;
+  n_refill = clib_min (n_free, 2 * VLIB_FRAME_SIZE);
   n_slots =
-    vlib_buffer_alloc_to_ring_from_pool (vm, vring->buffers, next,
-					 vring->size, n_refill,
-					 vring->buffer_pool_index);
-
+    vlib_buffer_alloc_to_ring_from_pool (vm, vring->buffers, next, sz,
+					 n_refill, vring->buffer_pool_index);
   if (PREDICT_FALSE (n_slots != n_refill))
     {
       vlib_error_count (vm, node_index,
@@ -113,6 +107,8 @@ more:
 	return;
     }
 
+  next = vring->desc_next;
+  avail = vring->avail->idx;
   while (n_slots)
     {
       vring_desc_t *d = &vring->desc[next];;
@@ -140,12 +136,20 @@ more:
   vring->avail->idx = avail;
   vring->desc_next = next;
   vring->desc_in_use = used;
-
-  if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0)
+  /* for rx, we only need to wake up the backend if it is faster than us and
+   * may be blocked because of lack of descriptors, only ring doorbell if
+   * backend filled a lot of buffers since last call
+   * if we are faster than the backend there should only be a low number of
+   * descriptor to refill each call */
+  if (n_free >= sz / 2)
     {
-      virtio_kick (vm, vring, vif);
+      /* the backend will check vring->avail->idx again after clearing
+       * vring->used->flags, we must make sure vring->avail->idx is updated
+       * before we check vring->used->flags */
+      CLIB_MEMORY_STORE_BARRIER ();
+      if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0)
+	virtio_kick (vm, vring, vif);
     }
-  goto more;
 }
 
 static_always_inline void
@@ -279,15 +283,24 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 last = vring->last_used_idx;
   u16 n_left = vring->used->idx - last;
 
-  if (vif->packet_coalesce)
+  if (clib_spinlock_trylock_if_init (&txq_vring->lockp))
     {
-      vnet_gro_flow_table_schedule_node_on_dispatcher (vm,
-						       txq_vring->flow_table);
-    }
+      /* Check whether we need to wake-up the TX vhost backend.
+       * Some backends can stop processing packets before draining the TX queue
+       * (eg. Linux because of too small NAPI budget).
+       * In that case, we try to reschedule the TX vhost backend here */
+      if ((txq_vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0
+	  && txq_vring->used->idx != txq_vring->last_kick_avail_idx)
+	virtio_kick (vm, txq_vring, vif);
 
-  if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0 &&
-      vring->last_kick_avail_idx != vring->avail->idx)
-    virtio_kick (vm, vring, vif);
+      if (vif->packet_coalesce)
+	{
+	  vnet_gro_flow_table_schedule_node_on_dispatcher (vm,
+							   txq_vring->flow_table);
+	}
+
+      clib_spinlock_unlock_if_init (&txq_vring->lockp);
+    }
 
   if (n_left == 0)
     goto refill;

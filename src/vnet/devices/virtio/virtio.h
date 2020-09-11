@@ -159,6 +159,7 @@ typedef struct
     struct			/* native virtio */
     {
       void *bar;
+      u32 *queue_notify_addr;
       virtio_vring_t *cxq_vring;
       pci_addr_t pci_addr;
       u32 bar_id;
@@ -224,9 +225,7 @@ virtio_kick (vlib_main_t * vm, virtio_vring_t * vring, virtio_if_t * vif)
     {
       u64 x = 1;
       int __clib_unused r;
-
       r = write (vring->kick_fd, &x, sizeof (x));
-      vring->last_kick_avail_idx = vring->avail->idx;
     }
 }
 

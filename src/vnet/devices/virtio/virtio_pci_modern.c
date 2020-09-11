@@ -289,6 +289,13 @@ virtio_pci_modern_setup_queue (vlib_main_t * vm, virtio_if_t * vif,
   if (used != virtio_pci_modern_get_queue_device (vif))
     return 1;
 
+  vec_validate_aligned (vif->queue_notify_addr, queue_id,
+			CLIB_CACHE_LINE_BYTES);
+  vec_elt (vif->queue_notify_addr, queue_id) =
+    VIRTIO_NOTIFICATION_OFFSET (vif) +
+    vif->notify_off_multiplier * virtio_pci_modern_get_queue_notify_off (vif,
+									 queue_id);
+
   virtio_pci_modern_set_queue_enable (vif, queue_id, 1);
 
   if (virtio_pci_modern_get_queue_enable (vif, queue_id))
@@ -389,12 +396,8 @@ inline void
 virtio_pci_modern_notify_queue (vlib_main_t * vm, virtio_if_t * vif,
 				u16 queue_id)
 {
-  u16 queue_notify_off =
-    virtio_pci_modern_get_queue_notify_off (vif, queue_id);
-  virtio_pci_reg_write_u16 (vif,
-			    VIRTIO_NOTIFICATION_OFFSET (vif) +
-			    vif->notify_off_multiplier * queue_notify_off,
-			    queue_id);
+  u32 queue_notify_addr = vec_elt (vif->queue_notify_addr, queue_id);
+  virtio_pci_reg_write_u16 (vif, queue_notify_addr, queue_id);
 }
 
 static void
