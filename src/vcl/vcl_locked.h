@@ -52,6 +52,7 @@ vls_handle_t vls_session_index_to_vlsh (uint32_t session_index);
 int vls_app_create (char *app_name);
 unsigned char vls_use_eventfd (void);
 unsigned char vls_mt_wrk_supported (void);
+void vls_mt_add (void);
 int vls_use_real_epoll (void);
 void vls_register_vcl_worker (void);
 

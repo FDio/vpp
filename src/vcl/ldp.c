@@ -2441,7 +2441,7 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
   /* Make sure the vcl worker is valid. Could be that epoll fd was created on
    * one thread but it is now used on another */
   if (PREDICT_FALSE (vppcom_worker_index () == ~0))
-    vls_register_vcl_worker ();
+    vls_mt_add ();
 
   ldpw = ldp_worker_get_current ();
   if (epfd == ldpw->vcl_mq_epfd)

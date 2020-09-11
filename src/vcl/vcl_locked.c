@@ -210,7 +210,7 @@ typedef enum
   VLS_MT_LOCK_SPOOL = 1 << 1
 } vls_mt_lock_type_t;
 
-static void
+void
 vls_mt_add (void)
 {
   vlsl->vls_mt_n_threads += 1;
