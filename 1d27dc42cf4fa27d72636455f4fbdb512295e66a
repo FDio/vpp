@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f5045c98_f8e6a4de",
+        "filename": "src/vcl/vcl_locked.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-11T15:05:42Z",
+      "side": 1,
+      "message": "Let\u0027s not expose this one but instead change vls_register_vcl_worker to call vls_mt_add. Also change vls_mt_add to call directly vppcom_worker_register instead of vls_register_vcl_worker",
+      "range": {
+        "startLine": 55,
+        "startChar": 5,
+        "endLine": 55,
+        "endChar": 15
+      },
+      "revId": "1d27dc42cf4fa27d72636455f4fbdb512295e66a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
