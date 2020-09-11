@@ -200,17 +200,17 @@ I:	span
 M:	N/A
 F:	src/vnet/span
 
-Crypto native Plugin
+Plugin - Crypto - native
 I:	crypto-native
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/plugins/crypto_native/
 
-Crypto openssl Plugin
+Plugin - Crypto - OpenSSL
 I:	crypto-openssl
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/plugins/crypto_openssl/
 
-Crypto ipsecmb Plugin
+Plugin - Crypto - ipsecmb
 I:	crypto-ipsecmb
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/plugins/crypto_ipsecmb/
