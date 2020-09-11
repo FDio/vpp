@@ -52,7 +52,8 @@
 #include <vppinfra/sanitizer.h>
 
 #define CLIB_MAX_MHEAPS 256
-#define CLIB_MAX_NUMAS 8
+#define CLIB_MAX_NUMAS 16
+#define CLIB_MEM_VM_MAP_FAILED ((void *) ~0)
 
 typedef enum
 {
@@ -71,6 +72,25 @@ typedef enum
   CLIB_MEM_PAGE_SZ_16G = 34,
 } clib_mem_page_sz_t;
 
+typedef struct _clib_mem_vm_map_hdr
+{
+  /* base address */
+  uword base_addr;
+
+  /* number of pages */
+  uword num_pages;
+
+  /* page size (log2) */
+  clib_mem_page_sz_t log2_page_sz;
+
+  /* allocation mame */
+#define CLIB_VM_MAP_HDR_NAME_MAX_LEN 64
+  char name[CLIB_VM_MAP_HDR_NAME_MAX_LEN];
+
+  /* linked list */
+  struct _clib_mem_vm_map_hdr *prev, *next;
+} clib_mem_vm_map_hdr_t;
+
 typedef struct
 {
   /* log2 system page size */
@@ -87,6 +107,9 @@ typedef struct
 
   /* per NUMA heaps */
   void *per_numa_mheaps[CLIB_MAX_NUMAS];
+
+  /* memory maps */
+  clib_mem_vm_map_hdr_t *first_map, *last_map;
 } clib_mem_main_t;
 
 extern clib_mem_main_t clib_mem_main;
@@ -305,13 +328,13 @@ clib_mem_set_heap (void *heap)
 
 void clib_mem_main_init ();
 void *clib_mem_init (void *heap, uword size);
+void *clib_mem_init_with_page_size (uword memory_size,
+				    clib_mem_page_sz_t log2_page_sz);
 void *clib_mem_init_thread_safe (void *memory, uword memory_size);
 void *clib_mem_init_thread_safe_numa (void *memory, uword memory_size,
 				      u8 numa);
 
 void clib_mem_exit (void);
-
-uword clib_mem_get_page_size (void);
 
 void clib_mem_validate (void);
 
@@ -374,39 +397,18 @@ clib_mem_vm_free (void *addr, uword size)
   munmap (addr, size);
 }
 
-always_inline void *
-clib_mem_vm_unmap (void *addr, uword size)
-{
-  void *mmap_addr;
-  uword flags = MAP_PRIVATE | MAP_FIXED;
+void *clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
+				uword size, int fd, uword offset, char *name);
 
-  /* To unmap we "map" with no protection.  If we actually called
-     munmap then other callers could steal the address space.  By
-     changing to PROT_NONE the kernel can free up the pages which is
-     really what we want "unmap" to mean. */
-  mmap_addr = mmap (addr, size, PROT_NONE, flags, -1, 0);
-  if (mmap_addr == (void *) -1)
-    mmap_addr = 0;
-  else
-    CLIB_MEM_UNPOISON (mmap_addr, size);
-
-  return mmap_addr;
-}
-
-always_inline void *
-clib_mem_vm_map (void *addr, uword size)
-{
-  void *mmap_addr;
-  uword flags = MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS;
-
-  mmap_addr = mmap (addr, size, (PROT_READ | PROT_WRITE), flags, -1, 0);
-  if (mmap_addr == (void *) -1)
-    mmap_addr = 0;
-  else
-    CLIB_MEM_UNPOISON (mmap_addr, size);
-
-  return mmap_addr;
-}
+void *clib_mem_vm_map (void *start, uword size,
+		       clib_mem_page_sz_t log2_page_size, char *fmt, ...);
+void *clib_mem_vm_map_stack (uword size, clib_mem_page_sz_t log2_page_size,
+			     char *fmt, ...);
+void *clib_mem_vm_map_shared (void *start, uword size, int fd, uword offset,
+			      char *fmt, ...);
+int clib_mem_vm_unmap (void *base);
+clib_mem_vm_map_hdr_t *clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t *
+						     hdr);
 
 typedef struct
 {
@@ -437,16 +439,36 @@ typedef struct
   uword requested_va;		/**< Request fixed position mapping */
 } clib_mem_vm_alloc_t;
 
+
+static_always_inline clib_mem_page_sz_t
+clib_mem_get_log2_page_size (void)
+{
+  return clib_mem_main.log2_page_sz;
+}
+
+static_always_inline uword
+clib_mem_get_page_size (void)
+{
+  return 1ULL << clib_mem_main.log2_page_sz;
+}
+
+static_always_inline clib_mem_page_sz_t
+clib_mem_get_log2_default_hugepage_size ()
+{
+  return clib_mem_main.log2_default_hugepage_sz;
+}
+
 clib_error_t *clib_mem_create_fd (char *name, int *fdp);
 clib_error_t *clib_mem_create_hugetlb_fd (char *name, int *fdp);
 clib_error_t *clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a);
 void clib_mem_vm_ext_free (clib_mem_vm_alloc_t * a);
-u64 clib_mem_get_fd_page_size (int fd);
+uword clib_mem_get_fd_page_size (int fd);
 uword clib_mem_get_default_hugepage_size (void);
-int clib_mem_get_fd_log2_page_size (int fd);
+clib_mem_page_sz_t clib_mem_get_fd_log2_page_size (int fd);
 uword clib_mem_vm_reserve (uword start, uword size,
 			   clib_mem_page_sz_t log2_page_sz);
-u64 *clib_mem_vm_get_paddr (void *mem, int log2_page_size, int n_pages);
+u64 *clib_mem_vm_get_paddr (void *mem, clib_mem_page_sz_t log2_page_size,
+			    int n_pages);
 void clib_mem_destroy_mspace (void *mspace);
 void clib_mem_destroy (void);
 
@@ -465,6 +487,61 @@ void clib_mem_vm_randomize_va (uword * requested_va,
 void mheap_trace (void *v, int enable);
 uword clib_mem_trace_enable_disable (uword enable);
 void clib_mem_trace (int enable);
+
+always_inline uword
+clib_mem_round_to_page_size (uword size, clib_mem_page_sz_t log2_page_size)
+{
+  ASSERT (log2_page_size != CLIB_MEM_PAGE_SZ_UNKNOWN);
+
+  if (log2_page_size == CLIB_MEM_PAGE_SZ_DEFAULT)
+    log2_page_size = clib_mem_get_log2_page_size ();
+  else if (log2_page_size == CLIB_MEM_PAGE_SZ_DEFAULT_HUGE)
+    log2_page_size = clib_mem_get_log2_default_hugepage_size ();
+
+  return round_pow2 (size, 1ULL << log2_page_size);
+}
+
+typedef struct
+{
+  uword mapped;
+  uword not_mapped;
+  uword per_numa[CLIB_MAX_NUMAS];
+  uword unknown;
+} clib_mem_page_stats_t;
+
+void clib_mem_get_page_stats (void *start, clib_mem_page_sz_t log2_page_size,
+			      uword n_pages, clib_mem_page_stats_t * stats);
+
+static_always_inline int
+vlib_mem_get_next_numa_node (int numa)
+{
+  clib_mem_main_t *mm = &clib_mem_main;
+  u32 bitmap = mm->numa_node_bitmap;
+
+  if (numa >= 0)
+    bitmap &= ~pow2_mask (numa + 1);
+  if (bitmap == 0)
+    return -1;
+
+  return count_trailing_zeros (bitmap);
+}
+
+static_always_inline clib_mem_page_sz_t
+clib_mem_log2_page_size_validate (clib_mem_page_sz_t log2_page_size)
+{
+  if (log2_page_size == CLIB_MEM_PAGE_SZ_DEFAULT)
+    return clib_mem_get_log2_page_size ();
+  if (log2_page_size == CLIB_MEM_PAGE_SZ_DEFAULT_HUGE)
+    return clib_mem_get_log2_default_hugepage_size ();
+  return log2_page_size;
+}
+
+static_always_inline uword
+clib_mem_page_bytes (clib_mem_page_sz_t log2_page_size)
+{
+  return 1 << clib_mem_log2_page_size_validate (log2_page_size);
+}
+
 
 #include <vppinfra/error.h>	/* clib_panic */
 
