@@ -22,6 +22,30 @@
       "revId": "58564b8453fe0d614ba6b6f3193a987e5f4e913d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3f0e1e0d_e69651a3",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 15437,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2020-09-11T15:17:41Z",
+      "side": 1,
+      "message": "Well, the vat help msg lists it as \"ip4\" and not \"ip\" thats why I assumed it must have been a typo in the code.\n\n\nvat# help one_add_del_l2_arp_entry\nusage: one_add_del_l2_arp_entry [del] mac \u003cmac\u003e bd \u003cbd\u003e ip4 \u003cip4\u003e\nvat#\n\n\nOr perhaps its a typo in the vat help msg then?",
+      "parentUuid": "fc277871_5efcd30f",
+      "range": {
+        "startLine": 15437,
+        "startChar": 33,
+        "endLine": 15437,
+        "endChar": 36
+      },
+      "revId": "58564b8453fe0d614ba6b6f3193a987e5f4e913d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
