@@ -82,12 +82,6 @@ cnat_types_init (vlib_main_t * vm)
 
 
   clib_rwlock_init (&cnat_main.ts_lock);
-  vec_validate (cnat_main.src_ports, CNAT_N_SPORT_PROTO);
-  for (int i = 0; i < CNAT_N_SPORT_PROTO; i++)
-    {
-      clib_spinlock_init (&cnat_main.src_ports[i].lock);
-      clib_bitmap_validate (cnat_main.src_ports[i].bmap, UINT16_MAX);
-    }
   throttle_init (&cnat_throttle, n_vlib_mains, 1e-3);
 
   return (NULL);
@@ -163,6 +157,12 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
     }
 
   return 0;
+}
+
+cnat_main_t *
+cnat_get_main ()
+{
+  return &cnat_main;
 }
 
 VLIB_EARLY_CONFIG_FUNCTION (cnat_config, "cnat");

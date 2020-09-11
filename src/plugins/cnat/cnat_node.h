@@ -19,6 +19,7 @@
 #include <vlibmemory/api.h>
 #include <cnat/cnat_session.h>
 #include <cnat/cnat_client.h>
+#include <cnat/cnat_inline.h>
 
 typedef uword (*cnat_node_sub_t) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
