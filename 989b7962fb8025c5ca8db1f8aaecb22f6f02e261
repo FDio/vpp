@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "461db70b_1c1180cf",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-11T15:16:38Z",
+      "side": 1,
+      "message": "Coverity not understanding asserts? Again, let\u0027s just mark them as intentional, although I seem to remember that it did use to understand asserts.",
+      "range": {
+        "startLine": 56,
+        "startChar": 2,
+        "endLine": 57,
+        "endChar": 11
+      },
+      "revId": "989b7962fb8025c5ca8db1f8aaecb22f6f02e261",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "775fb023_0fc52375",
+        "filename": "src/plugins/hs_apps/sapi/vpp_echo.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 745,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-11T15:16:38Z",
+      "side": 1,
+      "message": "Let\u0027s just mark the coverity warnings as intentional in the api instead of sprinkling comments all throughout :-(",
+      "range": {
+        "startLine": 745,
+        "startChar": 6,
+        "endLine": 745,
+        "endChar": 54
+      },
+      "revId": "989b7962fb8025c5ca8db1f8aaecb22f6f02e261",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
