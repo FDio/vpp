@@ -67,10 +67,7 @@ typedef struct
   u8 *base;
 
   /* default page size - typically 2M */
-  u32 def_log2_page_sz;
-
-  /* system page size - typically 4K */
-  u32 sys_log2_page_sz;
+  clib_mem_page_sz_t def_log2_page_sz;
 
   /* maximum number of pages, limited by VA preallocation size */
   u32 max_pages;
