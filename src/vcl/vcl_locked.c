@@ -219,7 +219,10 @@ vls_mt_add (void)
    * vcl worker with vpp. Otherwise, all threads use the same vcl worker, so
    * update the vcl worker's thread local worker index variable */
   if (vls_mt_wrk_supported ())
-    vls_register_vcl_worker ();
+    {
+      if (vppcom_worker_register () != VPPCOM_OK)
+	VERR ("failed to register worker");
+    }
   else
     vcl_set_worker_index (vlsl->vls_wrk_index);
 }
@@ -1712,11 +1715,7 @@ vls_use_real_epoll (void)
 void
 vls_register_vcl_worker (void)
 {
-  if (vppcom_worker_register () != VPPCOM_OK)
-    {
-      VERR ("failed to register worker");
-      return;
-    }
+  vls_mt_add ();
 }
 
 /*
