@@ -887,7 +887,7 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_cp_show_eid_table_command) = {
     .path = "show lisp eid-table",
-    .short_help = "Shows EID table",
+    .short_help = "show lisp eid-table [local|remote|eid <eid>]",
     .function = lisp_show_eid_table_command_fn,
 };
 /* *INDENT-ON* */
@@ -1128,7 +1128,7 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_show_eid_table_map_command) = {
     .path = "show lisp eid-table map",
-    .short_help = "show lisp eid-table l2|l3",
+    .short_help = "show lisp eid-table map l2|l3",
     .function = lisp_show_eid_table_map_command_fn,
 };
 /* *INDENT-ON* */
