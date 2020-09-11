@@ -268,6 +268,74 @@ unformat_memory_size (unformat_input_t * input, va_list * va)
   return 1;
 }
 
+/* Unparse memory page size e.g. 4K, 2M */
+u8 *
+format_log2_page_size (u8 * s, va_list * va)
+{
+  clib_mem_page_sz_t log2_page_sz = va_arg (*va, clib_mem_page_sz_t);
+
+  if (log2_page_sz == CLIB_MEM_PAGE_SZ_UNKNOWN)
+    return format (s, "unknown");
+
+  if (log2_page_sz == CLIB_MEM_PAGE_SZ_DEFAULT)
+    return format (s, "default");
+
+  if (log2_page_sz == CLIB_MEM_PAGE_SZ_DEFAULT_HUGE)
+    return format (s, "default-hugepage");
+
+  if (log2_page_sz >= 30)
+    return format (s, "%uG", 1 << (log2_page_sz - 30));
+
+  if (log2_page_sz >= 20)
+    return format (s, "%uM", 1 << (log2_page_sz - 20));
+
+  if (log2_page_sz >= 10)
+    return format (s, "%uK", 1 << (log2_page_sz - 10));
+
+  return format (s, "%u", 1 << log2_page_sz);
+}
+
+/* Parse memory page size e.g. 4K, 2M */
+uword
+unformat_log2_page_size (unformat_input_t * input, va_list * va)
+{
+  uword amount, shift, c;
+  clib_mem_page_sz_t *result = va_arg (*va, clib_mem_page_sz_t *);
+
+  if (unformat (input, "default"))
+    return CLIB_MEM_PAGE_SZ_DEFAULT;
+
+  if (unformat (input, "default-hugepage"))
+    return CLIB_MEM_PAGE_SZ_DEFAULT_HUGE;
+
+  if (!unformat (input, "%wd%_", &amount))
+    return CLIB_MEM_PAGE_SZ_UNKNOWN;
+
+  c = unformat_get_input (input);
+  switch (c)
+    {
+    case 'k':
+    case 'K':
+      shift = 10;
+      break;
+    case 'm':
+    case 'M':
+      shift = 20;
+      break;
+    case 'g':
+    case 'G':
+      shift = 30;
+      break;
+    default:
+      shift = 0;
+      unformat_put_input (input);
+      break;
+    }
+
+  *result = min_log2 (amount) + shift;
+  return 1;
+}
+
 /* Format c identifier: e.g. a_name -> "a name".
    Works for both vector names and null terminated c strings. */
 u8 *

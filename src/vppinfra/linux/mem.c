@@ -103,7 +103,8 @@ clib_mem_get_fd_log2_page_size (int fd)
 }
 
 void
-clib_mem_vm_randomize_va (uword * requested_va, u32 log2_page_size)
+clib_mem_vm_randomize_va (uword * requested_va,
+			  clib_mem_page_sz_t log2_page_size)
 {
   u8 bit_mask = 15;
 
@@ -345,7 +346,7 @@ clib_mem_vm_ext_free (clib_mem_vm_alloc_t * a)
 }
 
 uword
-clib_mem_vm_reserve (uword start, uword size, u32 log2_page_sz)
+clib_mem_vm_reserve (uword start, uword size, clib_mem_page_sz_t log2_page_sz)
 {
   uword off, pagesize = 1ULL << log2_page_sz;
   int mmap_flags = MAP_PRIVATE | MAP_ANONYMOUS;

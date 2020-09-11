@@ -54,6 +54,23 @@
 #define CLIB_MAX_MHEAPS 256
 #define CLIB_MAX_NUMAS 8
 
+typedef enum
+{
+  CLIB_MEM_PAGE_SZ_UNKNOWN = 0,
+  CLIB_MEM_PAGE_SZ_DEFAULT = 1,
+  CLIB_MEM_PAGE_SZ_DEFAULT_HUGE = 2,
+  CLIB_MEM_PAGE_SZ_4K = 12,
+  CLIB_MEM_PAGE_SZ_16K = 14,
+  CLIB_MEM_PAGE_SZ_64K = 16,
+  CLIB_MEM_PAGE_SZ_1M = 20,
+  CLIB_MEM_PAGE_SZ_2M = 21,
+  CLIB_MEM_PAGE_SZ_16M = 24,
+  CLIB_MEM_PAGE_SZ_32M = 25,
+  CLIB_MEM_PAGE_SZ_512M = 29,
+  CLIB_MEM_PAGE_SZ_1G = 30,
+  CLIB_MEM_PAGE_SZ_16G = 34,
+} clib_mem_page_sz_t;
+
 /* Unspecified NUMA socket */
 #define VEC_NUMA_UNSPECIFIED (0xFF)
 
@@ -410,7 +427,8 @@ void clib_mem_vm_ext_free (clib_mem_vm_alloc_t * a);
 u64 clib_mem_get_fd_page_size (int fd);
 uword clib_mem_get_default_hugepage_size (void);
 int clib_mem_get_fd_log2_page_size (int fd);
-uword clib_mem_vm_reserve (uword start, uword size, u32 log2_page_sz);
+uword clib_mem_vm_reserve (uword start, uword size,
+			   clib_mem_page_sz_t log2_page_sz);
 u64 *clib_mem_vm_get_paddr (void *mem, int log2_page_size, int n_pages);
 void clib_mem_destroy_mspace (void *mspace);
 void clib_mem_destroy (void);
@@ -425,7 +443,8 @@ typedef struct
 } clib_mem_vm_map_t;
 
 clib_error_t *clib_mem_vm_ext_map (clib_mem_vm_map_t * a);
-void clib_mem_vm_randomize_va (uword * requested_va, u32 log2_page_size);
+void clib_mem_vm_randomize_va (uword * requested_va,
+			       clib_mem_page_sz_t log2_page_size);
 void mheap_trace (void *v, int enable);
 uword clib_mem_trace_enable_disable (uword enable);
 void clib_mem_trace (int enable);
