@@ -1158,7 +1158,6 @@ avf_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
 {
   vlib_main_t *vm = vlib_get_main ();
   avf_device_t *ad = avf_get_device (hw->dev_instance);
-  clib_error_t *error;
   u8 promisc_enabled;
 
   switch (flags)
@@ -1174,13 +1173,12 @@ avf_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
     }
 
   promisc_enabled = ((ad->flags & AVF_DEVICE_F_PROMISC) != 0);
-  if ((error = avf_config_promisc_mode (vm, ad, promisc_enabled)))
-    {
-      avf_log_err (ad, "%s: %U", format_clib_error, error);
-      clib_error_free (error);
-      return ~0;
-    }
 
+  vlib_process_signal_event (vm, avf_process_node.index,
+			     promisc_enabled ?
+			     AVF_PROCESS_EVENT_SET_PROMISC_ENABLE :
+			     AVF_PROCESS_EVENT_SET_PROMISC_DISABLE,
+			     hw->dev_instance);
   return 0;
 }
 
@@ -1225,6 +1223,25 @@ avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	case AVF_PROCESS_EVENT_AQ_INT:
 	  irq = 1;
 	  break;
+	case AVF_PROCESS_EVENT_SET_PROMISC_ENABLE:
+	case AVF_PROCESS_EVENT_SET_PROMISC_DISABLE:
+	  for (int i = 0; i < vec_len (event_data); i++)
+	    {
+	      avf_device_t *ad = avf_get_device (event_data[i]);
+	      clib_error_t *err;
+	      int is_enable = 0;
+
+	      if (event_type == AVF_PROCESS_EVENT_SET_PROMISC_ENABLE)
+		is_enable = 1;
+
+	      if ((err = avf_config_promisc_mode (vm, ad, is_enable)))
+		{
+		  avf_log_err (ad, "%s: %U", format_clib_error, err);
+		  clib_error_free (err);
+		}
+	    }
+	  break;
+
 	default:
 	  ASSERT (0);
 	}
