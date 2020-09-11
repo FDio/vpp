@@ -15434,7 +15434,7 @@ api_one_add_del_l2_arp_entry (vat_main_t * vam)
 	is_add = 0;
       else if (unformat (input, "mac %U", unformat_ethernet_address, mac))
 	mac_set = 1;
-      else if (unformat (input, "ip %U", unformat_ip4_address, &ip4))
+      else if (unformat (input, "ip4 %U", unformat_ip4_address, &ip4))
 	ip_set = 1;
       else if (unformat (input, "bd %d", &bd))
 	bd_set = 1;
