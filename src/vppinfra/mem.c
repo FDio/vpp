@@ -21,6 +21,56 @@
 
 clib_mem_main_t clib_mem_main;
 
+void *
+clib_mem_vm_map (void *base, uword size, clib_mem_page_sz_t log2_page_sz,
+		 char *fmt, ...)
+{
+  va_list va;
+  void *rv;
+  u8 *s;
+
+  va_start (va, fmt);
+  s = va_format (0, fmt, &va);
+  vec_add1 (s, 0);
+  rv = clib_mem_vm_map_internal (base, log2_page_sz, size, -1, 0, (char *) s);
+  va_end (va);
+  vec_free (s);
+  return rv;
+}
+
+void *
+clib_mem_vm_map_stack (uword size, clib_mem_page_sz_t log2_page_sz,
+		       char *fmt, ...)
+{
+  va_list va;
+  void *rv;
+  u8 *s;
+
+  va_start (va, fmt);
+  s = va_format (0, fmt, &va);
+  vec_add1 (s, 0);
+  rv = clib_mem_vm_map_internal (0, log2_page_sz, size, -1, 0, (char *) s);
+  va_end (va);
+  vec_free (s);
+  return rv;
+}
+
+void *
+clib_mem_vm_map_shared (void *base, uword size, int fd, uword offset,
+			char *fmt, ...)
+{
+  va_list va;
+  void *rv;
+  u8 *s;
+  va_start (va, fmt);
+  s = va_format (0, fmt, &va);
+  vec_add1 (s, 0);
+  rv = clib_mem_vm_map_internal (base, 0, size, fd, offset, (char *) s);
+  va_end (va);
+  vec_free (s);
+  return rv;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

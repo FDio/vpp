@@ -197,7 +197,8 @@ mheap_trace_main_free (mheap_trace_main_t * tm)
 /* Initialize CLIB heap based on memory/size given by user.
    Set memory to 0 and CLIB will try to allocate its own heap. */
 static void *
-clib_mem_init_internal (void *memory, uword memory_size, int set_heap)
+clib_mem_init_internal (void *memory, uword memory_size,
+			clib_mem_page_sz_t log2_page_sz, int set_heap)
 {
   u8 *heap;
 
@@ -209,7 +210,18 @@ clib_mem_init_internal (void *memory, uword memory_size, int set_heap)
       mspace_disable_expand (heap);
     }
   else
-    heap = create_mspace (memory_size, 1 /* locked */ );
+    {
+      memory_size = round_pow2 (memory_size,
+				clib_mem_page_bytes (log2_page_sz));
+      memory = clib_mem_vm_map_internal (0, log2_page_sz, memory_size, -1, 0,
+					 "main heap");
+
+      if (memory == CLIB_MEM_VM_MAP_FAILED)
+	return 0;
+
+      heap = create_mspace_with_base (memory, memory_size, 1 /* locked */ );
+      mspace_disable_expand (heap);
+    }
 
   CLIB_MEM_POISON (mspace_least_addr (heap), mspace_footprint (heap));
 
@@ -226,6 +238,15 @@ void *
 clib_mem_init (void *memory, uword memory_size)
 {
   return clib_mem_init_internal (memory, memory_size,
+				 CLIB_MEM_PAGE_SZ_DEFAULT,
+				 1 /* do clib_mem_set_heap */ );
+}
+
+void *
+clib_mem_init_with_page_size (uword memory_size,
+			      clib_mem_page_sz_t log2_page_sz)
+{
+  return clib_mem_init_internal (0, memory_size, log2_page_sz,
 				 1 /* do clib_mem_set_heap */ );
 }
 
@@ -233,6 +254,7 @@ void *
 clib_mem_init_thread_safe (void *memory, uword memory_size)
 {
   return clib_mem_init_internal (memory, memory_size,
+				 CLIB_MEM_PAGE_SZ_DEFAULT,
 				 1 /* do clib_mem_set_heap */ );
 }
 
@@ -250,7 +272,10 @@ clib_mem_destroy_mspace (void *mspace)
 void
 clib_mem_destroy (void)
 {
+  void *heap = clib_mem_get_heap ();
+  void *base = mspace_least_addr (heap);
   clib_mem_destroy_mspace (clib_mem_get_heap ());
+  clib_mem_vm_unmap (base);
 }
 
 void *
@@ -270,6 +295,7 @@ clib_mem_init_thread_safe_numa (void *memory, uword memory_size, u8 numa)
     }
 
   heap = clib_mem_init_internal (memory, memory_size,
+				 CLIB_MEM_PAGE_SZ_DEFAULT,
 				 0 /* do NOT clib_mem_set_heap */ );
 
   ASSERT (heap);

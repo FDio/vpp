@@ -742,6 +742,7 @@ show_memory_usage (vlib_main_t * vm,
   clib_mem_main_t *mm = &clib_mem_main;
   int verbose __attribute__ ((unused)) = 0;
   int api_segment = 0, stats_segment = 0, main_heap = 0, numa_heaps = 0;
+  int map = 0;
   clib_error_t *error;
   u32 index = 0;
   int i;
@@ -761,6 +762,8 @@ show_memory_usage (vlib_main_t * vm,
 	main_heap = 1;
       else if (unformat (input, "numa-heaps"))
 	numa_heaps = 1;
+      else if (unformat (input, "map"))
+	map = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -769,9 +772,10 @@ show_memory_usage (vlib_main_t * vm,
 	}
     }
 
-  if ((api_segment + stats_segment + main_heap + numa_heaps) == 0)
+  if ((api_segment + stats_segment + main_heap + numa_heaps + map) == 0)
     return clib_error_return
-      (0, "Need one of api-segment, stats-segment, main-heap or numa-heaps");
+      (0, "Need one of api-segment, stats-segment, main-heap, numa-heaps "
+       "or map");
 
   if (api_segment)
     {
@@ -871,6 +875,41 @@ show_memory_usage (vlib_main_t * vm,
 			     mm->per_numa_mheaps[index], verbose);
 	  }
       }
+    if (map)
+      {
+	clib_mem_page_stats_t stats = { };
+	clib_mem_vm_map_hdr_t *hdr = 0;
+	u8 *s = 0;
+	int numa = -1;
+
+	s = format (s, "\n%-16s%7s%7s%7s",
+		    "StartAddr", "size", "PageSz", "Pages");
+	while ((numa = vlib_mem_get_next_numa_node (numa)) != -1)
+	  s = format (s, " Numa%u", numa);
+	s = format (s, " NotMap");
+	s = format (s, " Name");
+	vlib_cli_output (vm, "%v", s);
+	vec_reset_length (s);
+
+	while ((hdr = clib_mem_vm_get_next_map_hdr (hdr)))
+	  {
+	    clib_mem_get_page_stats ((void *) hdr->base_addr,
+				     hdr->log2_page_sz, hdr->num_pages,
+				     &stats);
+	    s = format (s, "%016lx%7U%7U%7lu",
+			hdr->base_addr, format_memory_size,
+			hdr->num_pages << hdr->log2_page_sz,
+			format_log2_page_size, hdr->log2_page_sz,
+			hdr->num_pages);
+	    while ((numa = vlib_mem_get_next_numa_node (numa)) != -1)
+	      s = format (s, "%6lu", stats.per_numa[numa]);
+	    s = format (s, "%7lu", stats.not_mapped);
+	    s = format (s, " %s", hdr->name);
+	    vlib_cli_output (vm, "%v", s);
+	    vec_reset_length (s);
+	  }
+	vec_free (s);
+      }
   }
   return 0;
 }
@@ -879,7 +918,7 @@ show_memory_usage (vlib_main_t * vm,
 VLIB_CLI_COMMAND (show_memory_usage_command, static) = {
   .path = "show memory",
   .short_help = "show memory [api-segment][stats-segment][verbose]\n"
-  "            [numa-heaps]",
+  "            [numa-heaps][map]",
   .function = show_memory_usage,
 };
 /* *INDENT-ON* */
