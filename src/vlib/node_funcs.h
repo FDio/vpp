@@ -455,6 +455,13 @@ vlib_current_process (vlib_main_t * vm)
   return vlib_get_current_process (vm)->node_runtime.node_index;
 }
 
+always_inline u32
+vlib_get_current_process_node_index (vlib_main_t * vm)
+{
+  vlib_process_t *process = vlib_get_current_process (vm);
+  return process->node_runtime.node_index;
+}
+
 /** Returns TRUE if a process suspend time is less than 10us
     @param dt - remaining poll time in seconds
     @returns 1 if dt < 10e-6, 0 otherwise

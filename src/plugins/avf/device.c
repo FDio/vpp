@@ -399,6 +399,11 @@ avf_send_to_pf (vlib_main_t * vm, avf_device_t * ad, virtchnl_ops_t op,
   u32 head;
   f64 t0, suspend_time = AVF_SEND_TO_PF_SUSPEND_TIME;
 
+  /* adminq operations should be only done from process node after device
+   * is initialized */
+  ASSERT ((ad->flags & AVF_DEVICE_F_INITIALIZED) == 0 ||
+	  vlib_get_current_process_node_index (vm) == avf_process_node.index);
+
   /* suppress interrupt in the next adminq receive slot
      as we are going to wait for response
      we only need interrupts when event is received */
