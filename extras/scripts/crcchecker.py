@@ -107,7 +107,8 @@ def is_in_progress(d, k):
     except:
         return False
 
-def report(old, new, added, removed, modified, same):
+def report(new, old):
+    added, removed, modified, same = dict_compare(new, old)
     backwards_incompatible = 0
     for k in added:
         print(f'added: {k}')
@@ -126,6 +127,17 @@ def report(old, new, added, removed, modified, same):
             print(f'modified: ** {k}')
         else:
             print(f'modified: {k}')
+
+    # check which messages are still there but were marked for deprecation
+    for k in new.keys():
+        newversion = int(new[k]['version'])
+        if newversion > 0 and is_deprecated(new, k):
+            if k in old:
+                if not is_deprecated(old, k):
+                    print(f'deprecated: {k}')
+            else:
+                print(f'added+deprecated: {k}')
+
     return backwards_incompatible
 
 
@@ -150,8 +162,7 @@ def main():
     if args.diff:
         oldcrcs = crc_from_apigen(None, args.diff[0])
         newcrcs = crc_from_apigen(None, args.diff[1])
-        added, removed, modified, same = dict_compare(newcrcs, oldcrcs)
-        backwards_incompatible = report(oldcrcs, newcrcs, added, removed, modified, same)
+        backwards_incompatible = report(newcrcs, oldcrcs)
         sys.exit(0)
 
     # Dump CRC for messages in given files / revision
@@ -186,8 +197,7 @@ def main():
         newcrcs.update(crc_from_apigen(None, f))
         oldcrcs.update(crc_from_apigen(revision, f))
 
-    added, removed, modified, same = dict_compare(newcrcs, oldcrcs)
-    backwards_incompatible = report(oldcrcs, newcrcs, added, removed, modified, same)
+    backwards_incompatible = report(newcrcs, oldcrcs)
 
     if args.check_patchset:
         if backwards_incompatible:
