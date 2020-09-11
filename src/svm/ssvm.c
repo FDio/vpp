@@ -29,7 +29,7 @@ int
 ssvm_master_init_shm (ssvm_private_t * ssvm)
 {
   int ssvm_fd;
-  clib_mem_vm_map_t mapa = { 0 };
+  clib_mem_vm_ext_map_t mapa = { 0 };
   u8 junk = 0, *ssvm_filename;
   ssvm_shared_header_t *sh;
   uword page_size, requested_va = 0;
@@ -276,7 +276,7 @@ ssvm_master_init_memfd (ssvm_private_t * memfd)
 int
 ssvm_slave_init_memfd (ssvm_private_t * memfd)
 {
-  clib_mem_vm_map_t mapa = { 0 };
+  clib_mem_vm_ext_map_t mapa = { 0 };
   ssvm_shared_header_t *sh;
   uword page_size;
 
