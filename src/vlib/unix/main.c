@@ -666,18 +666,17 @@ thread0 (uword arg)
 u8 *
 vlib_thread_stack_init (uword thread_index)
 {
+  void *stack;
   ASSERT (thread_index < vec_len (vlib_thread_stacks));
-  vlib_thread_stacks[thread_index] = clib_mem_alloc_aligned
-    (VLIB_THREAD_STACK_SIZE, clib_mem_get_page_size ());
+  stack = clib_mem_vm_map_stack (VLIB_THREAD_STACK_SIZE,
+				 CLIB_MEM_PAGE_SZ_DEFAULT,
+				 "thread stack: thread %u", thread_index);
 
-  /*
-   * Disallow writes to the bottom page of the stack, to
-   * catch stack overflows.
-   */
-  if (mprotect (vlib_thread_stacks[thread_index],
-		clib_mem_get_page_size (), PROT_READ) < 0)
-    clib_unix_warning ("thread stack");
-  return vlib_thread_stacks[thread_index];
+  if (stack == CLIB_MEM_VM_MAP_FAILED)
+    clib_panic ("failed to allocate thread %u stack", thread_index);
+
+  vlib_thread_stacks[thread_index] = stack;
+  return stack;
 }
 
 int
