@@ -450,6 +450,139 @@ clib_mem_vm_reserve (uword start, uword size, clib_mem_page_sz_t log2_page_sz)
   return (uword) p;
 }
 
+static inline void *
+clib_mem_vm_map_inline (void *base, uword size,
+			clib_mem_page_sz_t log2_page_sz, int fd, uword offset,
+			char *fmt, va_list * va, int is_shared, int is_stack)
+{
+  clib_mem_main_t *mm = &clib_mem_main;
+  int mmap_flags, is_huge = 0;
+
+  if (is_shared)
+    {
+      mmap_flags = MAP_SHARED;
+      log2_page_sz = clib_mem_get_fd_log2_page_size (fd);
+      if (log2_page_sz > mm->log2_page_sz)
+	is_huge = 1;
+    }
+  else
+    {
+      mmap_flags = MAP_PRIVATE | MAP_ANONYMOUS;
+      fd = -1;
+
+      if (log2_page_sz == mm->log2_page_sz)
+	log2_page_sz = CLIB_MEM_PAGE_SZ_DEFAULT;
+
+      switch (log2_page_sz)
+	{
+	case CLIB_MEM_PAGE_SZ_UNKNOWN:
+	  /* will fail later */
+	  break;
+	case CLIB_MEM_PAGE_SZ_DEFAULT:
+	  log2_page_sz = mm->log2_page_sz;
+	  break;
+	case CLIB_MEM_PAGE_SZ_DEFAULT_HUGE:
+	  mmap_flags |= MAP_HUGETLB;
+	  log2_page_sz = mm->log2_default_hugepage_sz;
+	  is_huge = 1;
+	  break;
+	default:
+	  mmap_flags |= MAP_HUGETLB;
+	  mmap_flags |= log2_page_sz << MAP_HUGE_SHIFT;
+	  is_huge = 1;
+	}
+    }
+
+  if (log2_page_sz == CLIB_MEM_PAGE_SZ_UNKNOWN)
+    {
+      vec_reset_length (mm->error);
+      mm->error = clib_error_return (mm->error, "unknown page size");
+      return CLIB_MEM_VM_MAP_FAILED;
+    }
+
+  if (base)
+    mmap_flags |= MAP_FIXED;
+
+  size = round_pow2 (size, 1 << log2_page_sz);
+
+  if (is_stack)
+    size += 1 << log2_page_sz;
+
+  base = mmap (base, size, PROT_READ | PROT_WRITE, mmap_flags, fd, offset);
+
+  if (base == MAP_FAILED)
+    {
+      vec_reset_length (mm->error);
+      mm->error = clib_error_return_unix (mm->error, "mmap");
+      return CLIB_MEM_VM_MAP_FAILED;
+    }
+
+  if (is_huge && (mlock (base, size) != 0))
+    {
+      vec_reset_length (mm->error);
+      mm->error = clib_error_return_unix (mm->error, "mlock");
+      munmap (base, size);
+      base = CLIB_MEM_VM_MAP_FAILED;
+      goto done;
+    }
+
+  if (is_stack)
+    {
+      uword page_sz = 1 << log2_page_sz;
+      munmap (base, page_sz);
+      base += page_sz;
+      size -= page_sz;
+
+      page_sz = clib_mem_get_page_size ();
+      mmap (base - page_sz, page_sz, PROT_NONE,
+	    MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+    }
+
+  CLIB_MEM_UNPOISON (base, size);
+
+done:
+  return base;
+}
+
+void *
+clib_mem_vm_map (void *base, uword size, clib_mem_page_sz_t log2_page_sz,
+		 char *fmt, ...)
+{
+  va_list va;
+  void *rv;
+  va_start (va, fmt);
+  rv = clib_mem_vm_map_inline (base, size, log2_page_sz, -1, 0, fmt, &va,
+			       /* is_shared */ 0, /* is_stack */ 0);
+  va_end (va);
+  return rv;
+}
+
+void *
+clib_mem_vm_map_stack (uword size, clib_mem_page_sz_t log2_page_sz,
+		       char *fmt, ...)
+{
+  va_list va;
+  void *rv;
+  va_start (va, fmt);
+  rv = clib_mem_vm_map_inline (0, size, log2_page_sz, -1, 0, fmt, &va,
+			       /* is_shared */ 0, /* is_stack */ 1);
+  va_end (va);
+  return rv;
+}
+
+void *
+clib_mem_vm_map_shared (void *base, uword size, int fd, uword offset,
+			char *fmt, ...)
+{
+  va_list va;
+  void *rv;
+  va_start (va, fmt);
+  rv = clib_mem_vm_map_inline (base, size, 0, fd, offset, fmt, &va,
+			       /* is_shared */ 1, /* is_stack */ 0);
+  va_end (va);
+  return rv;
+}
+
 u64 *
 clib_mem_vm_get_paddr (void *mem, clib_mem_page_sz_t log2_page_size,
 		       int n_pages)

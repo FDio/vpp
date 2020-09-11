@@ -53,6 +53,7 @@
 
 #define CLIB_MAX_MHEAPS 256
 #define CLIB_MAX_NUMAS 8
+#define CLIB_MEM_VM_MAP_FAILED ((void *) ~0)
 
 typedef enum
 {
@@ -87,6 +88,9 @@ typedef struct
 
   /* per NUMA heaps */
   void *per_numa_mheaps[CLIB_MAX_NUMAS];
+
+  /* last error */
+  clib_error_t *error;
 } clib_mem_main_t;
 
 extern clib_mem_main_t clib_mem_main;
@@ -393,20 +397,12 @@ clib_mem_vm_unmap (void *addr, uword size)
   return mmap_addr;
 }
 
-always_inline void *
-clib_mem_vm_map (void *addr, uword size)
-{
-  void *mmap_addr;
-  uword flags = MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS;
-
-  mmap_addr = mmap (addr, size, (PROT_READ | PROT_WRITE), flags, -1, 0);
-  if (mmap_addr == (void *) -1)
-    mmap_addr = 0;
-  else
-    CLIB_MEM_UNPOISON (mmap_addr, size);
-
-  return mmap_addr;
-}
+void *clib_mem_vm_map (void *start, uword size,
+		       clib_mem_page_sz_t log2_page_size, char *fmt, ...);
+void *clib_mem_vm_map_stack (uword size, clib_mem_page_sz_t log2_page_size,
+			     char *fmt, ...);
+void *clib_mem_vm_map_shared (void *start, uword size, int fd, uword offset,
+			      char *fmt, ...);
 
 typedef struct
 {
@@ -485,6 +481,27 @@ void clib_mem_vm_randomize_va (uword * requested_va,
 void mheap_trace (void *v, int enable);
 uword clib_mem_trace_enable_disable (uword enable);
 void clib_mem_trace (int enable);
+
+always_inline uword
+clib_mem_round_to_page_size (uword size, clib_mem_page_sz_t log2_page_size)
+{
+  ASSERT (log2_page_size != CLIB_MEM_PAGE_SZ_UNKNOWN);
+
+  if (log2_page_size == CLIB_MEM_PAGE_SZ_DEFAULT)
+    log2_page_size = clib_mem_get_log2_page_size ();
+  else if (log2_page_size == CLIB_MEM_PAGE_SZ_DEFAULT_HUGE)
+    log2_page_size = clib_mem_get_log2_default_hugepage_size ();
+
+  return round_pow2 (size, 1ULL << log2_page_size);
+}
+
+static_always_inline clib_error_t *
+clib_mem_get_last_error (void)
+{
+  clib_error_t *err = clib_mem_main.error;
+  clib_mem_main.error = 0;
+  return err;
+}
 
 #include <vppinfra/error.h>	/* clib_panic */
 
