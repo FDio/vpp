@@ -16,6 +16,8 @@
 #include <vlibmemory/api.h>
 #include <cnat/cnat_node.h>
 #include <cnat/cnat_translation.h>
+#include <cnat/cnat_inline.h>
+#include <cnat/cnat_src_policy.h>
 
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/load_balance_map.h>
@@ -44,19 +46,16 @@ format_cnat_translation_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  cnat_translation_trace_t *t =
-    va_arg (*args, cnat_translation_trace_t *);
+  cnat_translation_trace_t *t = va_arg (*args, cnat_translation_trace_t *);
 
   if (t->found_session)
     s = format (s, "found: %U", format_cnat_session, &t->session, 1);
   else if (t->created_session)
     s = format (s, "created: %U\n  tr: %U",
 		format_cnat_session, &t->session, 1,
-		format_cnat_translation,
-		&t->tr, 0);
+		format_cnat_translation, &t->tr, 0);
   else if (t->has_tr)
-    s = format (s, "tr pass: %U", format_cnat_translation,
-	&t->tr, 0);
+    s = format (s, "tr pass: %U", format_cnat_translation, &t->tr, 0);
   else
     s = format (s, "not found");
   return s;
@@ -65,9 +64,9 @@ format_cnat_translation_trace (u8 * s, va_list * args)
 /* CNat sub for NAT behind a fib entry (VIP or interposed real IP) */
 always_inline uword
 cnat_vip_inline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_buffer_t * b,
-		   cnat_node_ctx_t * ctx, int rv, cnat_session_t * session)
+		 vlib_node_runtime_t * node,
+		 vlib_buffer_t * b,
+		 cnat_node_ctx_t * ctx, int rv, cnat_session_t * session)
 {
   vlib_combined_counter_main_t *cntm = &cnat_translation_counters;
   const cnat_translation_t *ct = NULL;
@@ -79,6 +78,7 @@ cnat_vip_inline (vlib_main_t * vm,
   u16 next0;
   index_t cti;
   int created_session = 0;
+  cnat_src_policy_main_t *cspm = &cnat_src_policy_main;
   if (AF_IP4 == ctx->af)
     {
       ip4 = vlib_buffer_get_current (b);
@@ -104,8 +104,7 @@ cnat_vip_inline (vlib_main_t * vm,
     }
 
   ct = cnat_find_translation (cc->parent_cci,
-				clib_host_to_net_u16 (udp0->dst_port),
-				iproto);
+			      clib_host_to_net_u16 (udp0->dst_port), iproto);
 
   if (!rv)
     {
@@ -191,28 +190,19 @@ cnat_vip_inline (vlib_main_t * vm,
 	clib_host_to_net_u16 (trk0->ct_ep[VLIB_RX].ce_port);
 
       session->value.flags = 0;
-      if (!session->value.cs_port[VLIB_RX])
-	{
-	  u16 sport;
-	  sport = udp0->src_port;
-	  /* Allocate a port only if asked and if we actually sNATed */
-	  if ((ct->flags & CNAT_TRANSLATION_FLAG_ALLOCATE_PORT)
-	       && (rsession_flags & CNAT_SESSION_FLAG_HAS_SNAT)) {
-	    sport = 0; /* force allocation */
-	    session->value.flags |= CNAT_SESSION_FLAG_ALLOC_PORT;
-	    rv = cnat_allocate_port (&sport, iproto);
-	    if (rv)
-	      {
-		vlib_node_increment_counter (vm, cnat_vip_ip4_node.index,
-				            CNAT_ERROR_EXHAUSTED_PORTS, 1);
-		next0 = CNAT_TRANSLATION_NEXT_DROP;
-		goto trace;
-	      }
-	    }
-
-	  session->value.cs_port[VLIB_RX] = sport;
-	}
       session->value.cs_lbi = dpo0->dpoi_index;
+
+      rv = cspm->vip_policy (vm, b, session, &rsession_flags, ct, ctx);
+      if (CNAT_SOURCE_ERROR_USE_DEFAULT == rv)
+	rv = cspm->default_policy (vm, b, session, &rsession_flags, ct, ctx);
+      if (rv)
+	{
+	  if (CNAT_SOURCE_ERROR_EXHAUSTED_PORTS == rv)
+	    vlib_node_increment_counter (vm, cnat_vip_ip4_node.index,
+					 CNAT_ERROR_EXHAUSTED_PORTS, 1);
+	  next0 = CNAT_TRANSLATION_NEXT_DROP;
+	  goto trace;
+	}
 
       /* refcnt session in current client */
       cnat_client_cnt_session (cc);
@@ -232,7 +222,7 @@ cnat_vip_inline (vlib_main_t * vm,
     {
       cti = ct - cnat_translation_pool;
       vlib_increment_combined_counter (cntm, ctx->thread_index, cti, 1,
-				  vlib_buffer_length_in_chain (vm, b));
+				       vlib_buffer_length_in_chain (vm, b));
     }
 
 trace:
@@ -254,25 +244,25 @@ trace:
 }
 
 VLIB_NODE_FN (cnat_vip_ip4_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_node_inline (vm, node, frame, cnat_vip_inline, AF_IP4,
-			       1 /* do_trace */ );
+			     1 /* do_trace */ );
   return cnat_node_inline (vm, node, frame, cnat_vip_inline, AF_IP4,
-			     0 /* do_trace */ );
+			   0 /* do_trace */ );
 }
 
 VLIB_NODE_FN (cnat_vip_ip6_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_node_inline (vm, node, frame, cnat_vip_inline, AF_IP6,
-			       1 /* do_trace */ );
+			     1 /* do_trace */ );
   return cnat_node_inline (vm, node, frame, cnat_vip_inline, AF_IP6,
-			     0 /* do_trace */ );
+			   0 /* do_trace */ );
 }
 
 /* *INDENT-OFF* */
@@ -306,3 +296,10 @@ VLIB_REGISTER_NODE (cnat_vip_ip6_node) =
 };
 /* *INDENT-ON* */
 
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

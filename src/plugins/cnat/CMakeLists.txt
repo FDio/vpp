@@ -22,6 +22,7 @@ add_vpp_plugin(cnat
   cnat_translation.c
   cnat_types.c
   cnat_snat.c
+  cnat_src_policy.c
 
   API_FILES
   cnat.api

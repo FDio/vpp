@@ -15,13 +15,14 @@
 
 #include <vnet/ip/ip.h>
 #include <cnat/cnat_session.h>
+#include <cnat/cnat_inline.h>
 
 #include <vppinfra/bihash_template.h>
 #include <vppinfra/bihash_template.c>
 
 
 clib_bihash_40_48_t cnat_session_db;
-
+void (*cnat_free_port_cb) (u16 port, ip_protocol_t iproto);
 
 typedef struct cnat_session_walk_ctx_t_
 {
@@ -128,7 +129,8 @@ cnat_session_free (cnat_session_t * session)
   clib_bihash_kv_40_48_t *bkey = (clib_bihash_kv_40_48_t *) session;
   /* age it */
   if (session->value.flags & CNAT_SESSION_FLAG_ALLOC_PORT)
-    cnat_free_port (session->value.cs_port[VLIB_RX], session->key.cs_proto);
+    cnat_free_port_cb (session->value.cs_port[VLIB_RX],
+		       session->key.cs_proto);
   if (!(session->value.flags & CNAT_SESSION_FLAG_NO_CLIENT))
     cnat_client_free_by_ip (&session->key.cs_ip[VLIB_TX], session->key.cs_af);
   cnat_timestamp_free (session->value.cs_ts_index);
