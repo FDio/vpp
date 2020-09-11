@@ -353,6 +353,12 @@ I:	classify
 M:	N/A
 F:	src/vnet/classify/
 
+VPP Main App
+I:	vpp
+M:	Dave Barach <dave@barachs.net>
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/vpp/
+
 Plugin - Access Control List (ACL) Based Forwarding
 I:	abf
 M:	Neale Ranns <nranns@cisco.com>
