@@ -55,6 +55,7 @@ set(VPPINFRA_SRCS
   longjmp.S
   macros.c
   maplog.c
+  mem.c
   mem_dlmalloc.c
   mhash.c
   mpcap.c

@@ -626,6 +626,7 @@ vlib_get_thread_core_numa (vlib_worker_thread_t * w, unsigned cpu_id)
 static clib_error_t *
 vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
 {
+  clib_mem_main_t *mm = &clib_mem_main;
   vlib_thread_main_t *tm = &vlib_thread_main;
   void *(*fp_arg) (void *) = fp;
   void *numa_heap;
@@ -634,19 +635,19 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
   vlib_get_thread_core_numa (w, cpu_id);
 
   /* Set up NUMA-bound heap if indicated */
-  if (clib_per_numa_mheaps[w->numa_id] == 0)
+  if (mm->per_numa_mheaps[w->numa_id] == 0)
     {
       /* If the user requested a NUMA heap, create it... */
       if (tm->numa_heap_size)
 	{
 	  numa_heap = clib_mem_init_thread_safe_numa
 	    (0 /* DIY */ , tm->numa_heap_size, w->numa_id);
-	  clib_per_numa_mheaps[w->numa_id] = numa_heap;
+	  mm->per_numa_mheaps[w->numa_id] = numa_heap;
 	}
       else
 	{
 	  /* Or, use the main heap */
-	  clib_per_numa_mheaps[w->numa_id] = w->thread_mheap;
+	  mm->per_numa_mheaps[w->numa_id] = w->thread_mheap;
 	}
     }
 
