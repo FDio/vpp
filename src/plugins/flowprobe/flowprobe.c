@@ -758,6 +758,43 @@ format_flowprobe_entry (u8 * s, va_list * args)
   return s;
 }
 
+u8 *
+format_flowprobe_feature (u8 * s, va_list * args)
+{
+  u8 *which = va_arg (*args, u8 *);
+  if (*which == FLOW_VARIANT_IP4)
+    s = format (s, "ip4");
+  else if (*which == FLOW_VARIANT_IP6)
+    s = format (s, "ip6");
+  else if (*which == FLOW_VARIANT_L2)
+    s = format (s, "l2");
+
+  return s;
+}
+
+u8 *
+format_flowprobe_params (u8 * s, va_list * args)
+{
+  flowprobe_record_t flags = va_arg (*args, flowprobe_record_t);
+  u32 active_timer = va_arg (*args, u32);
+  u32 passive_timer = va_arg (*args, u32);
+
+  if (flags & FLOW_RECORD_L2)
+    s = format (s, " l2");
+  if (flags & FLOW_RECORD_L3)
+    s = format (s, " l3");
+  if (flags & FLOW_RECORD_L4)
+    s = format (s, " l4");
+
+  if (active_timer != (u32) ~ 0)
+    s = format (s, " active: %d", active_timer);
+
+  if (passive_timer != (u32) ~ 0)
+    s = format (s, " passive: %d", passive_timer);
+
+  return s;
+}
+
 static clib_error_t *
 flowprobe_show_table_fn (vlib_main_t * vm,
 			 unformat_input_t * input, vlib_cli_command_t * cm)
@@ -871,6 +908,28 @@ flowprobe_tx_interface_add_del_feature_command_fn (vlib_main_t * vm,
 }
 
 static clib_error_t *
+flowprobe_show_feature_command_fn (vlib_main_t * vm,
+				   unformat_input_t * input,
+				   vlib_cli_command_t * cmd)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  u8 *which;
+  u32 sw_if_index;
+
+  vec_foreach (which, fm->flow_per_interface)
+  {
+    if (*which == (u8) ~ 0)
+      continue;
+
+    sw_if_index = which - fm->flow_per_interface;
+    vlib_cli_output (vm, " %U %U", format_vnet_sw_if_index_name,
+		     vnet_get_main (), sw_if_index, format_flowprobe_feature,
+		     which);
+  }
+  return 0;
+}
+
+static clib_error_t *
 flowprobe_params_command_fn (vlib_main_t * vm,
 			     unformat_input_t * input,
 			     vlib_cli_command_t * cmd)
@@ -913,6 +972,21 @@ flowprobe_params_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+static clib_error_t *
+flowprobe_show_params_command_fn (vlib_main_t * vm,
+				  unformat_input_t * input,
+				  vlib_cli_command_t * cmd)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  flowprobe_record_t flags = fm->record;
+  u32 active_timer = fm->active_timer;
+  u32 passive_timer = fm->passive_timer;
+
+  vlib_cli_output (vm, "%U", format_flowprobe_params, flags, active_timer,
+		   passive_timer);
+  return 0;
+}
+
 /*?
  * '<em>flowprobe feature add-del</em>' commands to enable/disable
  * per-packet IPFIX flow record generation on an interface
@@ -939,6 +1013,19 @@ VLIB_CLI_COMMAND (flowprobe_params_command, static) = {
     .short_help =
     "flowprobe params record <[l2] [l3] [l4]> [active <timer> passive <timer>]",
     .function = flowprobe_params_command_fn,
+};
+
+VLIB_CLI_COMMAND (flowprobe_show_feature_command, static) = {
+    .path = "show flowprobe feature",
+    .short_help =
+    "show flowprobe feature",
+    .function = flowprobe_show_feature_command_fn,
+};
+VLIB_CLI_COMMAND (flowprobe_show_params_command, static) = {
+    .path = "show flowprobe params",
+    .short_help =
+    "show flowprobe params",
+    .function = flowprobe_show_params_command_fn,
 };
 VLIB_CLI_COMMAND (flowprobe_show_table_command, static) = {
     .path = "show flowprobe table",
