@@ -21031,7 +21031,7 @@ _(one_eid_table_dump, "[eid <ipv4|ipv6>/<prefix> | <mac>] [vni] "       \
 _(one_add_del_ndp_entry, "[del] mac <mac> bd <bd> ip6 <ip6>")           \
 _(one_ndp_bd_get, "")                                                   \
 _(one_ndp_entries_get, "bd <bridge-domain>")                            \
-_(one_add_del_l2_arp_entry, "[del] mac <mac> bd <bd> ip4 <ip4>")        \
+_(one_add_del_l2_arp_entry, "[del] mac <mac> bd <bd> ip <ip4>")        \
 _(one_l2_arp_bd_get, "")                                                \
 _(one_l2_arp_entries_get, "bd <bridge-domain>")                         \
 _(one_stats_enable_disable, "enable|disable")                           \
