@@ -1464,6 +1464,7 @@ DLMALLOC_EXPORT void mheap_get_trace (uword offset, uword size);
 DLMALLOC_EXPORT void mheap_put_trace (uword offset, uword size);
 DLMALLOC_EXPORT int mspace_enable_disable_trace (mspace msp, int enable);
 DLMALLOC_EXPORT int mspace_is_traced (mspace msp);
+DLMALLOC_EXPORT void mspace_munmap_on_destroy (mspace msp);
 
 #endif /* MSPACES */
 

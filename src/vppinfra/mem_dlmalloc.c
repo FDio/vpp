@@ -21,8 +21,7 @@
 #include <vppinfra/elf_clib.h>
 #include <vppinfra/sanitizer.h>
 
-void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
-void *clib_per_numa_mheaps[CLIB_MAX_NUMAS];
+clib_mem_main_t clib_mem_main;
 
 typedef struct
 {
@@ -200,13 +199,47 @@ mheap_trace_main_free (mheap_trace_main_t * tm)
 /* Initialize CLIB heap based on memory/size given by user.
    Set memory to 0 and CLIB will try to allocate its own heap. */
 static void *
-clib_mem_init_internal (void *memory, uword memory_size, int set_heap)
+clib_mem_init_internal (void *memory, uword memory_size,
+			clib_mem_page_sz_t log2_page_sz, int set_heap)
 {
+  clib_mem_main_t *mm = &clib_mem_main;
   u8 *heap;
+
+  clib_mem_main_init ();
 
   if (memory)
     {
       heap = create_mspace_with_base (memory, memory_size, 1 /* locked */ );
+      mspace_disable_expand (heap);
+    }
+  else if (log2_page_sz != CLIB_MEM_PAGE_SZ_DEFAULT)
+    {
+      int mmap_flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB;
+
+      if (log2_page_sz == CLIB_MEM_PAGE_SZ_DEFAULT_HUGE)
+	log2_page_sz = mm->log2_default_hugepage_sz;
+      else
+	mmap_flags |= log2_page_sz << MAP_HUGE_SHIFT;
+
+      if (log2_page_sz == CLIB_MEM_PAGE_SZ_UNKNOWN)
+	return 0;
+
+      memory_size = round_pow2 (memory_size, 1 << log2_page_sz);
+
+      memory = mmap (0, memory_size, PROT_READ | PROT_WRITE,
+		     mmap_flags, -1, 0);
+
+      if (memory == MAP_FAILED)
+	return 0;
+
+      if (mlock (memory, memory_size) != 0)
+	{
+	  munmap (memory, memory_size);
+	  return 0;
+	}
+
+      heap = create_mspace_with_base (memory, memory_size, 1 /* locked */ );
+      mspace_munmap_on_destroy (heap);
       mspace_disable_expand (heap);
     }
   else
@@ -227,6 +260,15 @@ void *
 clib_mem_init (void *memory, uword memory_size)
 {
   return clib_mem_init_internal (memory, memory_size,
+				 CLIB_MEM_PAGE_SZ_DEFAULT,
+				 1 /* do clib_mem_set_heap */ );
+}
+
+void *
+clib_mem_init_with_page_size (uword memory_size,
+			      clib_mem_page_sz_t log2_page_sz)
+{
+  return clib_mem_init_internal (0, memory_size, log2_page_sz,
 				 1 /* do clib_mem_set_heap */ );
 }
 
@@ -234,6 +276,7 @@ void *
 clib_mem_init_thread_safe (void *memory, uword memory_size)
 {
   return clib_mem_init_internal (memory, memory_size,
+				 CLIB_MEM_PAGE_SZ_DEFAULT,
 				 1 /* do clib_mem_set_heap */ );
 }
 
@@ -271,6 +314,7 @@ clib_mem_init_thread_safe_numa (void *memory, uword memory_size, u8 numa)
     }
 
   heap = clib_mem_init_internal (memory, memory_size,
+				 CLIB_MEM_PAGE_SZ_DEFAULT,
 				 0 /* do NOT clib_mem_set_heap */ );
 
   ASSERT (heap);

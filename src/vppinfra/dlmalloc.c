@@ -4065,6 +4065,15 @@ mspace create_mspace_with_base(void* base, size_t capacity, int locked) {
   return (mspace)m;
 }
 
+void mspace_munmap_on_destroy (mspace msp)
+{
+  mstate ms = (mstate)msp;
+  if (!ok_magic(ms))
+    return;
+  ms->seg.sflags |= USE_MMAP_BIT;
+  ms->seg.sflags &= ~EXTERN_BIT;
+}
+
 int mspace_track_large_chunks(mspace msp, int enable) {
   int ret = 0;
   mstate ms = (mstate)msp;
