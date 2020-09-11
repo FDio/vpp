@@ -111,6 +111,9 @@ main (int argc, char *argv[])
   uword main_heap_size = (1ULL << 30);
   u8 *sizep;
   u32 size;
+  clib_mem_page_sz_t main_heap_log2_page_sz = CLIB_MEM_PAGE_SZ_DEFAULT;
+  unformat_input_t input, sub_input;
+  u8 *s = 0, *v = 0;
   int main_core = 1;
   cpu_set_t cpuset;
   void *main_heap;
@@ -268,8 +271,47 @@ main (int argc, char *argv[])
 	    }
 	}
     }
-
 defaulted:
+
+  /* temporary heap */
+  clib_mem_init (0, 1 << 20);
+  unformat_init_command_line (&input, (char **) argv);
+
+  while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (&input, "memory %v", &v))
+	{
+	  unformat_init_vector (&sub_input, v);
+	  v = 0;
+	  while (unformat_check_input (&sub_input) != UNFORMAT_END_OF_INPUT)
+	    {
+	      if (unformat (&sub_input, "main-heap-size %U",
+			    unformat_memory_size, &main_heap_size))
+		;
+	      else if (unformat (&sub_input, "main-heap-page-size %U",
+				 unformat_log2_page_size,
+				 &main_heap_log2_page_sz))
+		;
+	      else
+		{
+		  fformat (stderr, "unknown 'memory' config input '%U'\n",
+			   format_unformat_error, &sub_input);
+		  exit (1);
+		}
+
+	    }
+	  unformat_free (&sub_input);
+	}
+      else if (!unformat (&input, "%s %v", &s, &v))
+	break;
+
+      vec_reset_length (s);
+      vec_reset_length (v);
+    }
+  vec_free (s);
+  vec_free (v);
+
+  unformat_free (&input);
 
   /* set process affinity for main thread */
   CPU_ZERO (&cpuset);
@@ -279,8 +321,11 @@ defaulted:
   /* Set up the plugin message ID allocator right now... */
   vl_msg_api_set_first_available_msg_id (VL_MSG_FIRST_AVAILABLE);
 
-  /* Allocate main heap */
-  if ((main_heap = clib_mem_init_thread_safe (0, main_heap_size)))
+  /* destroy temporary heap and create main one */
+  clib_mem_destroy ();
+
+  if ((main_heap = clib_mem_init_with_page_size (main_heap_size,
+						 main_heap_log2_page_sz)))
     {
       /* Figure out which numa runs the main thread */
       __os_numa_index = clib_get_current_numa_node ();
@@ -303,20 +348,16 @@ defaulted:
 }
 
 static clib_error_t *
+memory_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (memory_config, "memory");
+
+static clib_error_t *
 heapsize_config (vlib_main_t * vm, unformat_input_t * input)
 {
-  u32 junk;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%dm", &junk)
-	  || unformat (input, "%dM", &junk)
-	  || unformat (input, "%dg", &junk) || unformat (input, "%dG", &junk))
-	return 0;
-      else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
-    }
   return 0;
 }
 
