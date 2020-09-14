@@ -52,6 +52,7 @@ typedef vxlan_gbp_tunnel
 */
 define vxlan_gbp_tunnel_add_del
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   bool is_add [default=true];
@@ -61,6 +62,7 @@ define vxlan_gbp_tunnel_add_del
 
 define vxlan_gbp_tunnel_add_del_reply
 {
+  option deprecated;
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
@@ -69,6 +71,7 @@ define vxlan_gbp_tunnel_add_del_reply
 
 define vxlan_gbp_tunnel_dump
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index [default=0xffffffff];
@@ -77,6 +80,7 @@ define vxlan_gbp_tunnel_dump
 
 define vxlan_gbp_tunnel_details
 {
+  option deprecated;
   u32 context;
   vl_api_vxlan_gbp_tunnel_t tunnel;
   option in_progress;
@@ -91,6 +95,7 @@ define vxlan_gbp_tunnel_details
 */
 autoreply define sw_interface_set_vxlan_gbp_bypass
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
