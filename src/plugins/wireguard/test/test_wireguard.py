@@ -327,6 +327,14 @@ class VppWgPeer(VppObject):
     def encrypt_transport(self, p):
         return self.noise.encrypt(bytes(p))
 
+    def validate_encapped(self, rxs, tx):
+        for rx in rxs:
+            rx = IP(self.decrypt_transport(rx))
+
+            # chech the oringial packet is present
+            self._test.assertEqual(rx[IP].dst, tx[IP].dst)
+            self._test.assertEqual(rx[IP].ttl, tx[IP].ttl-1)
+
 
 class TestWg(VppTestCase):
     """ Wireguard Test Case """
@@ -455,11 +463,7 @@ class TestWg(VppTestCase):
 
         rxs = self.send_and_expect(self.pg0, p * 255, self.pg1)
 
-        for rx in rxs:
-            rx = IP(peer_1.decrypt_transport(rx))
-            # chech the oringial packet is present
-            self.assertEqual(rx[IP].dst, p[IP].dst)
-            self.assertEqual(rx[IP].ttl, p[IP].ttl-1)
+        peer_1.validate_encapped(rxs, p)
 
         # send packets into the tunnel, expect to receive them on
         # the other side
@@ -655,3 +659,90 @@ class TestWg(VppTestCase):
 
         wg0.remove_vpp_config()
         wg1.remove_vpp_config()
+
+
+class WireguardHandoffTests(TestWg):
+    """ Wireguard Tests in multi worker setup """
+    worker_config = "workers 2"
+
+    def test_wg_peer_init(self):
+        """ Handoff """
+        wg_output_node_name = '/err/wg-output-tun/'
+        wg_input_node_name = '/err/wg-input/'
+
+        port = 12323
+
+        # Create interfaces
+        wg0 = VppWgInterface(self,
+                             self.pg1.local_ip4,
+                             port).add_vpp_config()
+        wg0.admin_up()
+        wg0.config_ip4()
+
+        peer_1 = VppWgPeer(self,
+                           wg0,
+                           self.pg1.remote_ip4,
+                           port+1,
+                           ["10.11.2.0/24",
+                            "10.11.3.0/24"]).add_vpp_config()
+        self.assertEqual(len(self.vapi.wireguard_peers_dump()), 1)
+
+        # send a valid handsake init for which we expect a response
+        p = peer_1.mk_handshake(self.pg1)
+
+        rx = self.send_and_expect(self.pg1, [p], self.pg1)
+
+        peer_1.consume_response(rx[0])
+
+        # send a data packet from the peer through the tunnel
+        # this completes the handshake and pins the peer to worker 0
+        p = (IP(src="10.11.3.1", dst=self.pg0.remote_ip4, ttl=20) /
+             UDP(sport=222, dport=223) /
+             Raw())
+        d = peer_1.encrypt_transport(p)
+        p = (peer_1.mk_tunnel_header(self.pg1) /
+             (Wireguard(message_type=4, reserved_zero=0) /
+              WireguardTransport(receiver_index=peer_1.sender,
+                                 counter=0,
+                                 encrypted_encapsulated_packet=d)))
+        rxs = self.send_and_expect(self.pg1, [p], self.pg0,
+                                   worker=0)
+
+        for rx in rxs:
+            self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
+            self.assertEqual(rx[IP].ttl, 19)
+
+        # send a packets that are routed into the tunnel
+        # and pins the peer tp worker 1
+        pe = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+              IP(src=self.pg0.remote_ip4, dst="10.11.3.2") /
+              UDP(sport=555, dport=556) /
+              Raw(b'\x00' * 80))
+        rxs = self.send_and_expect(self.pg0, pe * 255, self.pg1, worker=1)
+        peer_1.validate_encapped(rxs, pe)
+
+        # send packets into the tunnel, from the other worker
+        p = [(peer_1.mk_tunnel_header(self.pg1) /
+              Wireguard(message_type=4, reserved_zero=0) /
+              WireguardTransport(
+                  receiver_index=peer_1.sender,
+                  counter=ii+1,
+                  encrypted_encapsulated_packet=peer_1.encrypt_transport(
+                      (IP(src="10.11.3.1", dst=self.pg0.remote_ip4, ttl=20) /
+                       UDP(sport=222, dport=223) /
+                       Raw())))) for ii in range(255)]
+
+        rxs = self.send_and_expect(self.pg1, p, self.pg0, worker=1)
+
+        for rx in rxs:
+            self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
+            self.assertEqual(rx[IP].ttl, 19)
+
+        # send a packets that are routed into the tunnel
+        # from owrker 0
+        rxs = self.send_and_expect(self.pg0, pe * 255, self.pg1, worker=0)
+
+        peer_1.validate_encapped(rxs, pe)
+
+        peer_1.remove_vpp_config()
+        wg0.remove_vpp_config()
