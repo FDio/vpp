@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c410c183_fad1a2a4",
+        "filename": "src/plugins/wireguard/wireguard_peer.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 408,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-09-14T15:29:27Z",
+      "side": 1,
+      "message": "typo",
+      "range": {
+        "startLine": 408,
+        "startChar": 47,
+        "endLine": 408,
+        "endChar": 54
+      },
+      "revId": "a26b0d11e91e9abca6220e50f0240ab6ae09c6d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
