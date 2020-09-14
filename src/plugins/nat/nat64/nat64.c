@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -12,24 +12,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * @file
- * @brief NAT64 implementation
- */
 
-#include <nat/nat64.h>
-#include <nat/nat64_db.h>
-#include <nat/nat_inlines.h>
-#include <vnet/fib/ip4_fib.h>
 #include <vppinfra/crc32.h>
+#include <vnet/fib/ip4_fib.h>
+
 #include <vnet/ip/reass/ip4_sv_reass.h>
 #include <vnet/ip/reass/ip6_sv_reass.h>
+#include <vnet/plugin/plugin.h>
+#include <vpp/app/version.h>
 
+#include <nat/nat64/nat64.h>
 
 nat64_main_t nat64_main;
 
 /* *INDENT-OFF* */
-
 /* Hook up input features */
 VNET_FEATURE_INIT (nat64_in2out, static) = {
   .arc_name = "ip6-unicast",
@@ -55,16 +51,28 @@ VNET_FEATURE_INIT (nat64_out2in_handoff, static) = {
   .runs_before = VNET_FEATURES ("ip4-lookup"),
   .runs_after = VNET_FEATURES ("ip4-sv-reassembly-feature"),
 };
-
-
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+    .description = "NAT64",
+};
 static u8 well_known_prefix[] = {
   0x00, 0x64, 0xff, 0x9b,
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00
 };
-
 /* *INDENT-ON* */
+
+#define nat_elog_str(_str)                      \
+do                                              \
+  {                                             \
+    ELOG_TYPE_DECLARE (e) =                     \
+      {                                         \
+        .format = "nat-msg " _str,              \
+        .format_args = "",                      \
+      };                                        \
+    ELOG_DATA (&vlib_global_main.elog_main, e); \
+  } while (0);
 
 static void
 nat64_ip4_add_del_interface_address_cb (ip4_main_t * im, uword opaque,
@@ -75,6 +83,9 @@ nat64_ip4_add_del_interface_address_cb (ip4_main_t * im, uword opaque,
 {
   nat64_main_t *nm = &nat64_main;
   int i, j;
+
+  if (plugin_enabled () == 0)
+    return;
 
   for (i = 0; i < vec_len (nm->auto_add_sw_if_indices); i++)
     {
@@ -105,8 +116,7 @@ u32
 nat64_get_worker_in2out (ip6_address_t * addr)
 {
   nat64_main_t *nm = &nat64_main;
-  snat_main_t *sm = nm->sm;
-  u32 next_worker_index = nm->sm->first_worker_index;
+  u32 next_worker_index = nm->first_worker_index;
   u32 hash;
 
 #ifdef clib_crc32c_uses_intrinsics
@@ -116,10 +126,10 @@ nat64_get_worker_in2out (ip6_address_t * addr)
   hash = clib_xxhash (tmp);
 #endif
 
-  if (PREDICT_TRUE (is_pow2 (_vec_len (sm->workers))))
-    next_worker_index += sm->workers[hash & (_vec_len (sm->workers) - 1)];
+  if (PREDICT_TRUE (is_pow2 (_vec_len (nm->workers))))
+    next_worker_index += nm->workers[hash & (_vec_len (nm->workers) - 1)];
   else
-    next_worker_index += sm->workers[hash % _vec_len (sm->workers)];
+    next_worker_index += nm->workers[hash % _vec_len (nm->workers)];
 
   return next_worker_index;
 }
@@ -128,7 +138,6 @@ u32
 nat64_get_worker_out2in (vlib_buffer_t * b, ip4_header_t * ip)
 {
   nat64_main_t *nm = &nat64_main;
-  snat_main_t *sm = nm->sm;
   udp_header_t *udp;
   u16 port;
   u32 proto;
@@ -192,7 +201,7 @@ nat64_get_worker_out2in (vlib_buffer_t * b, ip4_header_t * ip)
   /* worker by outside port  (TCP/UDP) */
   port = clib_net_to_host_u16 (port);
   if (port > 1024)
-    return nm->sm->first_worker_index + ((port - 1024) / sm->port_per_thread);
+    return nm->first_worker_index + ((port - 1024) / nm->port_per_thread);
 
   return vlib_get_thread_index ();
 }
@@ -201,42 +210,43 @@ clib_error_t *
 nat64_init (vlib_main_t * vm)
 {
   nat64_main_t *nm = &nat64_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
   ip4_add_del_interface_address_callback_t cb4;
-  ip4_main_t *im = &ip4_main;
-  nm->sm = &snat_main;
   vlib_node_t *node;
 
-  vec_validate (nm->db, tm->n_vlib_mains - 1);
+  clib_memset (nm, 0, sizeof (*nm));
+
+  nm->ip4_main = &ip4_main;
+  nm->log_class = vlib_log_register_class ("nat64", 0);
 
   nm->fq_in2out_index = ~0;
   nm->fq_out2in_index = ~0;
 
   node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   nm->error_node_index = node->index;
-
   node = vlib_get_node_by_name (vm, (u8 *) "nat64-in2out");
   nm->in2out_node_index = node->index;
-
   node = vlib_get_node_by_name (vm, (u8 *) "nat64-in2out-slowpath");
   nm->in2out_slowpath_node_index = node->index;
-
   node = vlib_get_node_by_name (vm, (u8 *) "nat64-out2in");
   nm->out2in_node_index = node->index;
 
-  /* set session timeouts to default values */
-  nm->udp_timeout = SNAT_UDP_TIMEOUT;
-  nm->icmp_timeout = SNAT_ICMP_TIMEOUT;
-  nm->tcp_trans_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
-  nm->tcp_est_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat64-expire-worker-walk");
+  nm->expire_worker_walk_node_index = node->index;
 
-  nm->total_enabled_count = 0;
+  nm->fib_src_hi = fib_source_allocate ("nat64-hi",
+					FIB_SOURCE_PRIORITY_HI,
+					FIB_SOURCE_BH_SIMPLE);
+  nm->fib_src_low = fib_source_allocate ("nat64-low",
+					 FIB_SOURCE_PRIORITY_LOW,
+					 FIB_SOURCE_BH_SIMPLE);
+
+  // set protocol timeouts to defaults
+  nat64_reset_timeouts ();
 
   /* Set up the interface address add/del callback */
   cb4.function = nat64_ip4_add_del_interface_address_cb;
   cb4.function_opaque = 0;
-  vec_add1 (im->add_del_interface_address_callbacks, cb4);
-  nm->ip4_main = im;
+  vec_add1 (nm->ip4_main->add_del_interface_address_callbacks, cb4);
 
   /* Init counters */
   nm->total_bibs.name = "total-bibs";
@@ -248,6 +258,10 @@ nat64_init (vlib_main_t * vm)
   vlib_validate_simple_counter (&nm->total_sessions, 0);
   vlib_zero_simple_counter (&nm->total_sessions, 0);
 
+  // TODO:
+  /* Init IPFIX logging */
+  //snat_ipfix_logging_init (vm);
+
 #define _(x)                                                     \
   nm->counters.in2out.x.name = #x;                               \
   nm->counters.in2out.x.stat_segment_name = "/nat64/in2out/" #x; \
@@ -255,33 +269,60 @@ nat64_init (vlib_main_t * vm)
   nm->counters.out2in.x.stat_segment_name = "/nat64/out2in/" #x;
   foreach_nat_counter;
 #undef _
-  return 0;
+  return nat64_api_hookup (vm);
 }
+
+VLIB_INIT_FUNCTION (nat64_init);
 
 static void nat64_free_out_addr_and_port (struct nat64_db_s *db,
 					  ip4_address_t * addr, u16 port,
 					  u8 protocol);
 
-void
-nat64_set_hash (u32 bib_buckets, uword bib_memory_size, u32 st_buckets,
-		uword st_memory_size)
+int
+nat64_init_hash (nat64_config_t c)
 {
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
   nat64_main_t *nm = &nat64_main;
   nat64_db_t *db;
+  int rv = 0;
 
-  nm->bib_buckets = bib_buckets;
-  nm->bib_memory_size = bib_memory_size;
-  nm->st_buckets = st_buckets;
-  nm->st_memory_size = st_memory_size;
+  vec_validate (nm->db, tm->n_vlib_mains - 1);
 
   /* *INDENT-OFF* */
   vec_foreach (db, nm->db)
     {
-      if (nat64_db_init (db, bib_buckets, bib_memory_size, st_buckets,
-                         st_memory_size, nat64_free_out_addr_and_port))
-	nat_elog_err ("NAT64 DB init failed");
+      if (nat64_db_init (db, c, nat64_free_out_addr_and_port))
+        {
+	  nat64_log_err ("NAT64 DB init failed");
+          rv = 1;
+        }
     }
   /* *INDENT-ON* */
+
+  return rv;
+}
+
+int
+nat64_free_hash ()
+{
+  nat64_main_t *nm = &nat64_main;
+  nat64_db_t *db;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  vec_foreach (db, nm->db)
+    {
+      if (nat64_db_free (db))
+        {
+	  nat64_log_err ("NAT64 DB free failed");
+          rv = 1;
+        }
+    }
+  /* *INDENT-ON* */
+
+  vec_free (nm->db);
+
+  return rv;
 }
 
 int
@@ -289,8 +330,8 @@ nat64_add_del_pool_addr (u32 thread_index,
 			 ip4_address_t * addr, u32 vrf_id, u8 is_add)
 {
   nat64_main_t *nm = &nat64_main;
-  snat_address_t *a = 0;
-  snat_interface_t *interface;
+  nat64_address_t *a = 0;
+  nat64_interface_t *interface;
   int i;
   nat64_db_t *db;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -316,7 +357,7 @@ nat64_add_del_pool_addr (u32 thread_index,
       if (vrf_id != ~0)
 	a->fib_index =
 	  fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
-					     nat_fib_src_hi);
+					     nm->fib_src_hi);
 #define _(N, id, n, s) \
       clib_memset (a->busy_##n##_port_refcounts, 0, sizeof(a->busy_##n##_port_refcounts)); \
       a->busy_##n##_ports = 0; \
@@ -330,18 +371,18 @@ nat64_add_del_pool_addr (u32 thread_index,
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
       if (a->fib_index != ~0)
-	fib_table_unlock (a->fib_index, FIB_PROTOCOL_IP6, nat_fib_src_hi);
+	fib_table_unlock (a->fib_index, FIB_PROTOCOL_IP6, nm->fib_src_hi);
       /* Delete sessions using address */
-        /* *INDENT-OFF* */
-        vec_foreach (db, nm->db)
-          {
-            nat64_db_free_out_addr (thread_index, db, &a->addr);
-            vlib_set_simple_counter (&nm->total_bibs, db - nm->db, 0,
-                                     db->bib.bib_entries_num);
-            vlib_set_simple_counter (&nm->total_sessions, db - nm->db, 0,
-                                     db->st.st_entries_num);
-          }
-        /* *INDENT-ON* */
+      /* *INDENT-OFF* */
+      vec_foreach (db, nm->db)
+        {
+          nat64_db_free_out_addr (thread_index, db, &a->addr);
+          vlib_set_simple_counter (&nm->total_bibs, db - nm->db, 0,
+                                   db->bib.bib_entries_num);
+          vlib_set_simple_counter (&nm->total_sessions, db - nm->db, 0,
+                                   db->st.st_entries_num);
+        }
+      /* *INDENT-ON* */
       vec_del1 (nm->addr_pool, i);
     }
 
@@ -349,10 +390,10 @@ nat64_add_del_pool_addr (u32 thread_index,
   /* *INDENT-OFF* */
   pool_foreach (interface, nm->interfaces,
   ({
-    if (nat_interface_is_inside(interface))
+    if (nat64_interface_is_inside(interface))
       continue;
 
-    snat_add_del_addr_to_fib (addr, 32, interface->sw_if_index, is_add);
+    nat64_add_del_addr_to_fib (addr, 32, interface->sw_if_index, is_add);
     break;
   }));
   /* *INDENT-ON* */
@@ -364,7 +405,7 @@ void
 nat64_pool_addr_walk (nat64_pool_addr_walk_fn_t fn, void *ctx)
 {
   nat64_main_t *nm = &nat64_main;
-  snat_address_t *a = 0;
+  nat64_address_t *a = 0;
 
   /* *INDENT-OFF* */
   vec_foreach (a, nm->addr_pool)
@@ -429,14 +470,45 @@ nat64_validate_counters (nat64_main_t * nm, u32 sw_if_index)
 #undef _
 }
 
+void
+nat64_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
+			   int is_add)
+{
+  nat64_main_t *nm = &nat64_main;
+  fib_prefix_t prefix = {
+    .fp_len = p_len,
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_addr = {
+		.ip4.as_u32 = addr->as_u32,
+		},
+  };
+  u32 fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
+
+  if (is_add)
+    fib_table_entry_update_one_path (fib_index,
+				     &prefix,
+				     nm->fib_src_low,
+				     (FIB_ENTRY_FLAG_CONNECTED |
+				      FIB_ENTRY_FLAG_LOCAL |
+				      FIB_ENTRY_FLAG_EXCLUSIVE),
+				     DPO_PROTO_IP4,
+				     NULL,
+				     sw_if_index,
+				     ~0, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+  else
+    fib_table_entry_delete (fib_index, &prefix, nm->fib_src_low);
+}
+
 int
-nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
+nat64_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add)
 {
   vlib_main_t *vm = vlib_get_main ();
   nat64_main_t *nm = &nat64_main;
-  snat_interface_t *interface = 0, *i;
-  snat_address_t *ap;
+  nat64_interface_t *interface = 0, *i;
+  nat64_address_t *ap;
   const char *feature_name, *arc_name;
+
+  // TODO: is enabled ? we can't signal if it is not
 
   /* Check if interface already exists */
   /* *INDENT-OFF* */
@@ -461,13 +533,13 @@ nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
       nat64_validate_counters (nm, sw_if_index);
     set_flags:
       if (is_inside)
-	interface->flags |= NAT_INTERFACE_FLAG_IS_INSIDE;
+	interface->flags |= NAT64_INTERFACE_FLAG_IS_INSIDE;
       else
-	interface->flags |= NAT_INTERFACE_FLAG_IS_OUTSIDE;
+	interface->flags |= NAT64_INTERFACE_FLAG_IS_OUTSIDE;
 
       nm->total_enabled_count++;
       vlib_process_signal_event (vm,
-				 nm->nat64_expire_walk_node_index,
+				 nm->expire_walk_node_index,
 				 NAT64_CLEANER_RESCHEDULE, 0);
 
     }
@@ -476,11 +548,11 @@ nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
       if (!interface)
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-      if ((nat_interface_is_inside (interface)
-	   && nat_interface_is_outside (interface)))
+      if ((nat64_interface_is_inside (interface)
+	   && nat64_interface_is_outside (interface)))
 	interface->flags &=
-	  is_inside ? ~NAT_INTERFACE_FLAG_IS_INSIDE :
-	  ~NAT_INTERFACE_FLAG_IS_OUTSIDE;
+	  is_inside ? ~NAT64_INTERFACE_FLAG_IS_INSIDE :
+	  ~NAT64_INTERFACE_FLAG_IS_OUTSIDE;
       else
 	pool_put (nm->interfaces, interface);
 
@@ -491,11 +563,11 @@ nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
     {
       /* *INDENT-OFF* */
       vec_foreach (ap, nm->addr_pool)
-        snat_add_del_addr_to_fib(&ap->addr, 32, sw_if_index, is_add);
+        nat64_add_del_addr_to_fib (&ap->addr, 32, sw_if_index, is_add);
       /* *INDENT-ON* */
     }
 
-  if (nm->sm->num_workers > 1)
+  if (nm->num_workers > 1)
     {
       feature_name =
 	is_inside ? "nat64-in2out-handoff" : "nat64-out2in-handoff";
@@ -532,7 +604,7 @@ void
 nat64_interfaces_walk (nat64_interface_walk_fn_t fn, void *ctx)
 {
   nat64_main_t *nm = &nat64_main;
-  snat_interface_t *i = 0;
+  nat64_interface_t *i = 0;
 
   /* *INDENT-OFF* */
   pool_foreach (i, nm->interfaces,
@@ -543,23 +615,125 @@ nat64_interfaces_walk (nat64_interface_walk_fn_t fn, void *ctx)
   /* *INDENT-ON* */
 }
 
+// TODO: plugin independent
+static_always_inline u16
+nat64_random_port (u16 min, u16 max)
+{
+  nat64_main_t *nm = &nat64_main;
+  u32 rwide;
+  u16 r;
+
+  rwide = random_u32 (&nm->random_seed);
+  r = rwide & 0xFFFF;
+  if (r >= min && r <= max)
+    return r;
+
+  return min + (rwide % (max - min + 1));
+}
+
+static_always_inline int
+nat64_alloc_addr_and_port_default (nat64_address_t * addresses,
+				   u32 fib_index,
+				   u32 thread_index,
+				   nat_protocol_t proto,
+				   ip4_address_t * addr,
+				   u16 * port,
+				   u16 port_per_thread, u32 nat_thread_index)
+{
+  int i;
+  nat64_address_t *a, *ga = 0;
+  u32 portnum;
+
+  for (i = 0; i < vec_len (addresses); i++)
+    {
+      a = addresses + i;
+      switch (proto)
+	{
+#define _(N, j, n, s) \
+        case NAT_PROTOCOL_##N: \
+          if (a->busy_##n##_ports_per_thread[thread_index] < port_per_thread) \
+            { \
+              if (a->fib_index == fib_index) \
+                { \
+                  while (1) \
+                    { \
+                      portnum = (port_per_thread * \
+                        nat_thread_index) + \
+                        nat64_random_port(0, port_per_thread - 1) + 1024; \
+                      if (a->busy_##n##_port_refcounts[portnum]) \
+                        continue; \
+		      --a->busy_##n##_port_refcounts[portnum]; \
+                      a->busy_##n##_ports_per_thread[thread_index]++; \
+                      a->busy_##n##_ports++; \
+                      *addr = a->addr; \
+                      *port = clib_host_to_net_u16(portnum); \
+                      return 0; \
+                    } \
+                } \
+              else if (a->fib_index == ~0) \
+                { \
+                  ga = a; \
+                } \
+            } \
+          break;
+	  foreach_nat_protocol
+#undef _
+	default:
+	  return 1;
+	}
+
+    }
+
+  if (ga)
+    {
+      a = ga;
+      switch (proto)
+	{
+#define _(N, j, n, s) \
+        case NAT_PROTOCOL_##N: \
+          while (1) \
+            { \
+              portnum = (port_per_thread * \
+                nat_thread_index) + \
+                nat64_random_port(0, port_per_thread - 1) + 1024; \
+	      if (a->busy_##n##_port_refcounts[portnum]) \
+                continue; \
+	      ++a->busy_##n##_port_refcounts[portnum]; \
+              a->busy_##n##_ports_per_thread[thread_index]++; \
+              a->busy_##n##_ports++; \
+              *addr = a->addr; \
+              *port = clib_host_to_net_u16(portnum); \
+              return 0; \
+            }
+	  break;
+	  foreach_nat_protocol
+#undef _
+	default:
+	  return 1;
+	}
+    }
+
+  /* Totally out of translations to use... */
+  //snat_ipfix_logging_addresses_exhausted (thread_index, 0);
+  return 1;
+}
+
 int
 nat64_alloc_out_addr_and_port (u32 fib_index, nat_protocol_t proto,
 			       ip4_address_t * addr, u16 * port,
 			       u32 thread_index)
 {
   nat64_main_t *nm = &nat64_main;
-  snat_main_t *sm = nm->sm;
   u32 worker_index = 0;
   int rv;
 
-  if (sm->num_workers > 1)
-    worker_index = thread_index - sm->first_worker_index;
+  if (nm->num_workers > 1)
+    worker_index = thread_index - nm->first_worker_index;
 
-  rv =
-    sm->alloc_addr_and_port (nm->addr_pool, fib_index, thread_index,
-			     proto, addr, port, sm->port_per_thread,
-			     worker_index);
+  rv = nat64_alloc_addr_and_port_default (nm->addr_pool, fib_index,
+					  thread_index,
+					  proto, addr, port,
+					  nm->port_per_thread, worker_index);
 
   return rv;
 }
@@ -569,11 +743,11 @@ nat64_free_out_addr_and_port (struct nat64_db_s *db, ip4_address_t * addr,
 			      u16 port, u8 protocol)
 {
   nat64_main_t *nm = &nat64_main;
-  int i;
-  snat_address_t *a;
   u32 thread_index = db - nm->db;
   nat_protocol_t proto = ip_proto_to_nat_proto (protocol);
   u16 port_host_byte_order = clib_net_to_host_u16 (port);
+  nat64_address_t *a;
+  int i;
 
   for (i = 0; i < vec_len (nm->addr_pool); i++)
     {
@@ -592,7 +766,7 @@ nat64_free_out_addr_and_port (struct nat64_db_s *db, ip4_address_t * addr,
 	  foreach_nat_protocol
 #undef _
 	default:
-	  nat_elog_notice ("unknown protocol");
+	  nat_elog_str ("unknown protocol");
 	  return;
 	}
       break;
@@ -674,24 +848,24 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
   nat64_main_t *nm = &nat64_main;
   nat64_db_bib_entry_t *bibe;
   u32 fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
-						     nat_fib_src_hi);
+						     nm->fib_src_hi);
   nat_protocol_t p = ip_proto_to_nat_proto (proto);
   ip46_address_t addr;
   int i;
-  snat_address_t *a;
+  nat64_address_t *a;
   u32 thread_index = 0;
   nat64_db_t *db;
   nat64_static_bib_to_update_t *static_bib;
   vlib_main_t *worker_vm;
   u32 *to_be_free = 0, *index;
 
-  if (nm->sm->num_workers > 1)
+  if (nm->num_workers > 1)
     {
       thread_index = nat64_get_worker_in2out (in_addr);
       db = &nm->db[thread_index];
     }
   else
-    db = &nm->db[nm->sm->num_workers];
+    db = &nm->db[nm->num_workers];
 
   addr.as_u64[0] = in_addr->as_u64[0];
   addr.as_u64[1] = in_addr->as_u64[1];
@@ -705,9 +879,9 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 	return VNET_API_ERROR_VALUE_EXIST;
 
       /* outside port must be assigned to same thread as internall address */
-      if ((out_port > 1024) && (nm->sm->num_workers > 1))
+      if ((out_port > 1024) && (nm->num_workers > 1))
 	{
-	  if (thread_index != ((out_port - 1024) / nm->sm->port_per_thread))
+	  if (thread_index != ((out_port - 1024) / nm->port_per_thread))
 	    return VNET_API_ERROR_INVALID_VALUE_2;
 	}
 
@@ -739,7 +913,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 	    }
 	  break;
 	}
-      if (!nm->sm->num_workers)
+      if (!nm->num_workers)
 	{
 	  bibe =
 	    nat64_db_bib_entry_create (thread_index, db, in_addr, out_addr,
@@ -758,7 +932,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
       if (!bibe)
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-      if (!nm->sm->num_workers)
+      if (!nm->num_workers)
 	{
 	  nat64_db_bib_entry_free (thread_index, db, bibe);
 	  vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
@@ -766,7 +940,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 	}
     }
 
-  if (nm->sm->num_workers)
+  if (nm->num_workers)
     {
       /* *INDENT-OFF* */
       pool_foreach (static_bib, nm->static_bibs,
@@ -806,7 +980,7 @@ nat64_set_udp_timeout (u32 timeout)
   nat64_main_t *nm = &nat64_main;
 
   if (timeout == 0)
-    nm->udp_timeout = SNAT_UDP_TIMEOUT;
+    nm->udp_timeout = NAT_UDP_TIMEOUT;
   else
     nm->udp_timeout = timeout;
 
@@ -827,11 +1001,22 @@ nat64_set_icmp_timeout (u32 timeout)
   nat64_main_t *nm = &nat64_main;
 
   if (timeout == 0)
-    nm->icmp_timeout = SNAT_ICMP_TIMEOUT;
+    nm->icmp_timeout = NAT_ICMP_TIMEOUT;
   else
     nm->icmp_timeout = timeout;
 
   return 0;
+}
+
+void
+nat64_reset_timeouts ()
+{
+  nat64_main_t *nm = &nat64_main;
+
+  nm->udp_timeout = NAT_UDP_TIMEOUT;
+  nm->icmp_timeout = NAT_ICMP_TIMEOUT;
+  nm->tcp_est_timeout = NAT_TCP_ESTABLISHED_TIMEOUT;
+  nm->tcp_trans_timeout = NAT_TCP_TRANSITORY_TIMEOUT;
 }
 
 u32
@@ -848,12 +1033,12 @@ nat64_set_tcp_timeouts (u32 trans, u32 est)
   nat64_main_t *nm = &nat64_main;
 
   if (trans == 0)
-    nm->tcp_trans_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
+    nm->tcp_trans_timeout = NAT_TCP_TRANSITORY_TIMEOUT;
   else
     nm->tcp_trans_timeout = trans;
 
   if (est == 0)
-    nm->tcp_est_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
+    nm->tcp_est_timeout = NAT_TCP_ESTABLISHED_TIMEOUT;
   else
     nm->tcp_est_timeout = est;
 
@@ -1011,7 +1196,7 @@ nat64_add_del_prefix (ip6_address_t * prefix, u8 plen, u32 vrf_id, u8 is_add)
 	  vec_add2 (nm->pref64, p, 1);
 	  p->fib_index =
 	    fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
-					       nat_fib_src_hi);
+					       nm->fib_src_hi);
 	  p->vrf_id = vrf_id;
 	}
 
@@ -1023,6 +1208,8 @@ nat64_add_del_prefix (ip6_address_t * prefix, u8 plen, u32 vrf_id, u8 is_add)
     {
       if (!p)
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+      // TODO: missing fib_table_unlock ?
 
       vec_del1 (nm->pref64, i);
     }
@@ -1104,7 +1291,7 @@ nat64_compose_ip6 (ip6_address_t * ip6, ip4_address_t * ip4, u32 fib_index)
 	  ip6->as_u32[3] = ip4->as_u32;
 	  break;
 	default:
-	  nat_elog_notice ("invalid prefix length");
+	  nat_elog_str ("invalid prefix length");
 	  break;
 	}
     }
@@ -1177,7 +1364,7 @@ nat64_extract_ip4 (ip6_address_t * ip6, ip4_address_t * ip4, u32 fib_index)
       ip4->as_u32 = ip6->as_u32[3];
       break;
     default:
-      nat_elog_notice ("invalid prefix length");
+      nat_elog_str ("invalid prefix length");
       break;
     }
 }
@@ -1191,19 +1378,23 @@ nat64_expire_worker_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 {
   nat64_main_t *nm = &nat64_main;
   u32 thread_index = vm->thread_index;
-  nat64_db_t *db = &nm->db[thread_index];
-  u32 now = (u32) vlib_time_now (vm);
+  nat64_db_t *db;
+  u32 now;
+
+  // TODO: barier sync on plugin enabled
+  if (plugin_enabled () == 0)
+    return 0;
+
+  db = &nm->db[thread_index];
+  now = (u32) vlib_time_now (vm);
 
   nad64_db_st_free_expired (thread_index, db, now);
   vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
 			   db->bib.bib_entries_num);
   vlib_set_simple_counter (&nm->total_sessions, thread_index, 0,
 			   db->st.st_entries_num);
-
   return 0;
 }
-
-static vlib_node_registration_t nat64_expire_worker_walk_node;
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat64_expire_worker_walk_node, static) = {
@@ -1213,8 +1404,6 @@ VLIB_REGISTER_NODE (nat64_expire_worker_walk_node, static) = {
     .name = "nat64-expire-worker-walk",
 };
 /* *INDENT-ON* */
-
-static vlib_node_registration_t nat64_expire_walk_node;
 
 /**
  * @brief Centralized process to drive per worker expire walk.
@@ -1227,8 +1416,6 @@ nat64_expire_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
   vlib_main_t **worker_vms = 0, *worker_vm;
   int i;
   uword event_type, *event_data = 0;
-
-  nm->nat64_expire_walk_node_index = nat64_expire_walk_node.index;
 
   if (vec_len (vlib_mains) == 0)
     vec_add1 (worker_vms, vm);
@@ -1262,7 +1449,7 @@ nat64_expire_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	case NAT64_CLEANER_RESCHEDULE:
 	  break;
 	default:
-	  nat_elog_notice_X1 ("unknown event %d", "i4", event_type);
+	  nat64_log_err ("unknown event %u", event_type);
 	  break;
 	}
 
@@ -1270,20 +1457,148 @@ nat64_expire_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	{
 	  worker_vm = worker_vms[i];
 	  vlib_node_set_interrupt_pending (worker_vm,
-					   nat64_expire_worker_walk_node.index);
+					   nm->expire_worker_walk_node_index);
 	}
     }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (nat64_expire_walk_node, static) = {
-    .function = nat64_expire_walk_fn,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "nat64-expire-walk",
-};
-/* *INDENT-ON* */
+void
+nat64_create_expire_walk_process ()
+{
+  nat64_main_t *nm = &nat64_main;
+
+  if (nm->expire_walk_node_index)
+    return;
+  nm->expire_walk_node_index = vlib_process_create (vlib_get_main (),
+						    "nat64-expire-walk",
+						    nat64_expire_walk_fn,
+						    16 /* stack_bytes */ );
+}
+
+int
+nat64_plugin_enable (nat64_config_t c)
+{
+  nat64_main_t *nm = &nat64_main;
+
+  if (plugin_enabled () == 1)
+    {
+      nat64_log_err ("plugin already enabled!");
+      return 1;
+    }
+
+  if (!c.bib_buckets)
+    c.bib_buckets = 1024;
+
+  if (!c.bib_memory_size)
+    c.bib_memory_size = 128 << 20;
+
+  if (!c.st_buckets)
+    c.st_buckets = 2048;
+
+  if (!c.st_memory_size)
+    c.st_memory_size = 256 << 20;
+
+  nm->config = c;
+
+  if (nat64_init_hash (c))
+    {
+      nat64_log_err ("initializing hashes failed!");
+      return 1;
+    }
+
+  nat64_create_expire_walk_process ();
+
+  nm->enabled = 1;
+  return 0;
+}
+
+int
+nat64_plugin_disable ()
+{
+  nat64_main_t *nm = &nat64_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  int rv = 0;
+
+  nat64_address_t *a;
+  nat64_interface_t *i, *interfaces;
+
+  if (plugin_enabled () == 0)
+    {
+      nat64_log_err ("plugin already disabled!");
+      return 1;
+    }
+  nm->enabled = 0;
+
+  interfaces = vec_dup (nm->interfaces);
+  vec_foreach (i, interfaces)
+  {
+    rv = nat64_interface_add_del (i->sw_if_index, i->flags, 1);
+    if (rv)
+      {
+	nat64_log_err ("%U %s interface del failed",
+		       unformat_vnet_sw_interface,
+		       i->flags & NAT64_INTERFACE_FLAG_IS_INSIDE ?
+		       "inside" : "outside", vnm, i->sw_if_index);
+      }
+  }
+  vec_free (interfaces);
+  pool_free (nm->interfaces);
+
+  nat64_reset_timeouts ();
+
+  if (nat64_free_hash ())
+    {
+      rv = 1;
+      nat64_log_err ("freeing hashes failed!");
+    }
+
+  // TODO: based on nat64_add_del_prefix fib_table_unlock is not called
+  vec_free (nm->pref64);
+
+  vec_foreach (a, nm->addr_pool)
+  {
+    if (a->fib_index != ~0)
+      fib_table_unlock (a->fib_index, FIB_PROTOCOL_IP6, nm->fib_src_hi);
+  }
+  pool_free (nm->addr_pool);
+
+  return rv;
+}
+
+uword
+unformat_nat_protocol (unformat_input_t * input, va_list * args)
+{
+  u32 *r = va_arg (*args, u32 *);
+
+  if (0);
+#define _(N, i, n, s) else if (unformat (input, s)) *r = NAT_PROTOCOL_##N;
+  foreach_nat_protocol
+#undef _
+    else
+    return 0;
+  return 1;
+}
+
+u8 *
+format_nat_protocol (u8 * s, va_list * args)
+{
+  u32 i = va_arg (*args, u32);
+  u8 *t = 0;
+
+  switch (i)
+    {
+#define _(N, j, n, str) case NAT_PROTOCOL_##N: t = (u8 *) str; break;
+      foreach_nat_protocol
+#undef _
+    default:
+      s = format (s, "unknown");
+      return s;
+    }
+  s = format (s, "%s", t);
+  return s;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON

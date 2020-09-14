@@ -13,8 +13,20 @@
  * limitations under the License.
  */
 
+#ifndef __included_lib_nat_inlines_h__
+#define __included_lib_nat_inlines_h__
+
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/ip/ip4_packet.h>
+
+static inline void
+increment_v4_address (ip4_address_t * a)
+{
+  u32 v;
+
+  v = clib_net_to_host_u32 (a->as_u32) + 1;
+  a->as_u32 = clib_host_to_net_u32 (v);
+}
 
 always_inline void
 mss_clamping (u16 mss_clamping, tcp_header_t * tcp, ip_csum_t * sum)
@@ -54,7 +66,7 @@ mss_clamping (u16 mss_clamping, tcp_header_t * tcp, ip_csum_t * sum)
 	  mss = *(u16 *) (data + 2);
 	  if (clib_net_to_host_u16 (mss) > mss_clamping)
 	    {
-	      u16 mss_value_net = clib_host_to_net_u16(mss_clamping);
+	      u16 mss_value_net = clib_host_to_net_u16 (mss_clamping);
 	      *sum =
 		ip_csum_update (*sum, mss, mss_value_net, ip4_header_t,
 				length);
@@ -64,3 +76,13 @@ mss_clamping (u16 mss_clamping, tcp_header_t * tcp, ip_csum_t * sum)
 	}
     }
 }
+
+#endif /* __included_lib_nat_inlines_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
