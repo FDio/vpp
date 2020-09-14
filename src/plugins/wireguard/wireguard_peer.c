@@ -402,8 +402,13 @@ format_wg_peer (u8 * s, va_list * va)
 static clib_error_t *
 wg_peer_module_init (vlib_main_t * vm)
 {
-  wg_fib_source = fib_source_allocate ("wireguard", 0xb0,	//
-				       FIB_SOURCE_BH_SIMPLE);
+  /*
+   * use a priority better than interface source, so that
+   * if the same subnet is added to the wg interface and is
+   * used as an allowed IP, then the wireguard soueced prefix
+   * wins and traffic is routed to the endpoint rather than dropped
+   */
+  wg_fib_source = fib_source_allocate ("wireguard", 0x2, FIB_SOURCE_BH_API);
 
   return (NULL);
 }
