@@ -1226,8 +1226,12 @@ int
 bd_add_del (l2_bridge_domain_add_del_args_t * a)
 {
   bd_main_t *bdm = &bd_main;
+  l2fib_main_t *fm = &l2fib_main;
   vlib_main_t *vm = bdm->vlib_main;
   int rv = 0;
+
+  if (fm->mac_table_initialized == 0)
+    l2fib_table_init ();
 
   u32 bd_index = bd_find_index (bdm, a->bd_id);
   if (a->is_add)

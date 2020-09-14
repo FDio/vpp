@@ -24,8 +24,8 @@
 /*
  * The size of the hash table
  */
-#define L2FIB_NUM_BUCKETS (64 * 1024)
-#define L2FIB_MEMORY_SIZE (512<<20)
+#define L2FIB_NUM_BUCKETS (256 * 1024)
+#define L2FIB_MEMORY_SIZE (128<<20)
 
 /* Ager scan interval is 1 minute for aging */
 #define L2FIB_AGE_SCAN_INTERVAL		(60.0)
@@ -44,6 +44,15 @@ typedef struct
 
   /* hash table */
   BVT (clib_bihash) mac_table;
+
+  /* number of buckets in the hash table */
+  uword mac_table_n_buckets;
+
+  /* hash table memory size */
+  uword mac_table_memory_size;
+
+  /* hash table initialized */
+  u8 mac_table_initialized;
 
   /* per swif vector of sequence number for interface based flush of MACs */
   u8 *swif_seq_num;
@@ -418,6 +427,8 @@ l2fib_lookup_4 (BVT (clib_bihash) * mac_table,
 }
 
 void l2fib_clear_table (void);
+
+void l2fib_table_init (void);
 
 void
 l2fib_add_entry (const u8 * mac,
