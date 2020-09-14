@@ -34,11 +34,6 @@ dslite_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   uword *p;
   vlib_node_t *node;
-  dslite_per_thread_data_t *td;
-  u32 translation_buckets = 1024;
-  u32 translation_memory_size = 128 << 20;
-  u32 b4_buckets = 128;
-  u32 b4_memory_size = 64 << 20;
 
   node = vlib_get_node_by_name (vm, (u8 *) "dslite-in2out");
   dm->dslite_in2out_node_index = node->index;
@@ -74,20 +69,8 @@ dslite_init (vlib_main_t * vm)
 
   vec_validate (dm->per_thread_data, tm->n_vlib_mains - 1);
 
-  /* *INDENT-OFF* */
-  vec_foreach (td, dm->per_thread_data)
-    {
-      clib_bihash_init_24_8 (&td->in2out, "in2out", translation_buckets,
-                             translation_memory_size);
-
-      clib_bihash_init_8_8 (&td->out2in, "out2in", translation_buckets,
-                            translation_memory_size);
-
-      clib_bihash_init_16_8 (&td->b4_hash, "b4s", b4_buckets, b4_memory_size);
-    }
-  /* *INDENT-ON* */
-
   dm->is_ce = 0;
+  dm->is_enabled = 0;
 
   /* Init counters */
   dm->total_b4s.name = "total-b4s";
@@ -106,6 +89,31 @@ dslite_init (vlib_main_t * vm)
 					FIB_SOURCE_BH_SIMPLE);
 
   return dslite_api_hookup (vm);
+}
+
+static void
+dslite_init_datastructures (void)
+{
+  dslite_main_t *dm = &dslite_main;
+  dslite_per_thread_data_t *td;
+  u32 translation_buckets = 1024;
+  u32 translation_memory_size = 128 << 20;
+  u32 b4_buckets = 128;
+  u32 b4_memory_size = 64 << 20;
+
+  /* *INDENT-OFF* */
+  vec_foreach (td, dm->per_thread_data)
+    {
+      clib_bihash_init_24_8 (&td->in2out, "dslite in2out", translation_buckets,
+                             translation_memory_size);
+
+      clib_bihash_init_8_8 (&td->out2in, "dslite out2in", translation_buckets,
+                            translation_memory_size);
+
+      clib_bihash_init_16_8 (&td->b4_hash, "dslite b4s", b4_buckets, b4_memory_size);
+    }
+  /* *INDENT-ON* */
+  dm->is_enabled = 1;
 }
 
 void
@@ -133,6 +141,9 @@ int
 dslite_set_aftr_ip6_addr (dslite_main_t * dm, ip6_address_t * addr)
 {
   dpo_id_t dpo = DPO_INVALID;
+
+  if (!dm->is_enabled)
+    dslite_init_datastructures ();
 
   if (dm->is_ce)
     {
@@ -175,6 +186,9 @@ dslite_set_aftr_ip4_addr (dslite_main_t * dm, ip4_address_t * addr)
 int
 dslite_set_b4_ip6_addr (dslite_main_t * dm, ip6_address_t * addr)
 {
+  if (!dm->is_enabled)
+    dslite_init_datastructures ();
+
   if (dm->is_ce)
     {
       dpo_id_t dpo = DPO_INVALID;
