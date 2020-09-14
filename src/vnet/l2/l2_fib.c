@@ -285,6 +285,12 @@ show_l2fib (vlib_main_t * vm,
 	break;
     }
 
+  if (msm->mac_table_initialized == 0)
+    {
+      vlib_cli_output (vm, "no l2fib entries");
+      return 0;
+    }
+
   BV (clib_bihash_foreach_key_value_pair)
     (&msm->mac_table, l2fib_show_walk_cb, &ctx);
 
@@ -341,6 +347,18 @@ VLIB_CLI_COMMAND (show_l2fib_cli, static) = {
 };
 /* *INDENT-ON* */
 
+void
+l2fib_table_init (void)
+{
+  l2fib_main_t *mp = &l2fib_main;
+
+  if (mp->mac_table_initialized == 1)
+    return;
+
+  BV (clib_bihash_init) (&mp->mac_table, "l2fib mac table",
+			 mp->mac_table_n_buckets, mp->mac_table_memory_size);
+  mp->mac_table_initialized = 1;
+}
 
 /* Remove all entries from the l2fib */
 void
@@ -348,10 +366,12 @@ l2fib_clear_table (void)
 {
   l2fib_main_t *mp = &l2fib_main;
 
+  if (mp->mac_table_initialized == 0)
+    return;
+
   /* Remove all entries */
   BV (clib_bihash_free) (&mp->mac_table);
-  BV (clib_bihash_init) (&mp->mac_table, "l2fib mac table",
-			 L2FIB_NUM_BUCKETS, L2FIB_MEMORY_SIZE);
+  l2fib_table_init ();
   l2learn_main.global_learn_count = 0;
 }
 
@@ -411,6 +431,9 @@ l2fib_add_entry (const u8 * mac, u32 bd_index,
   l2fib_main_t *fm = &l2fib_main;
   l2learn_main_t *lm = &l2learn_main;
   BVT (clib_bihash_kv) kv;
+
+  if (fm->mac_table_initialized == 0)
+    l2fib_table_init ();
 
   /* set up key */
   key.raw = l2fib_make_key (mac, bd_index);
@@ -555,7 +578,6 @@ static clib_error_t *
 l2fib_test_command_fn (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  clib_error_t *error = 0;
   u8 mac[6], save_mac[6];
   u32 bd_index = 0;
   u32 sw_if_index = 8;
@@ -606,6 +628,9 @@ l2fib_test_command_fn (vlib_main_t * vm,
       BVT (clib_bihash_kv) kv;
       l2fib_main_t *mp = &l2fib_main;
 
+      if (mp->mac_table_initialized == 0)
+	return clib_error_return (0, "mac table is not initialized");
+
       clib_memcpy_fast (mac, save_mac, 6);
 
       for (i = 0; i < count; i++)
@@ -631,7 +656,7 @@ l2fib_test_command_fn (vlib_main_t * vm,
 	}
     }
 
-  return error;
+  return 0;
 }
 
 /*?
@@ -691,6 +716,9 @@ l2fib_del_entry (const u8 * mac, u32 bd_index, u32 sw_if_index)
   l2fib_entry_result_t result;
   l2fib_main_t *mp = &l2fib_main;
   BVT (clib_bihash_kv) kv;
+
+  if (mp->mac_table_initialized == 0)
+    return 1;
 
   /* set up key */
   kv.key = l2fib_make_key (mac, bd_index);
@@ -1273,10 +1301,11 @@ l2fib_init (vlib_main_t * vm)
 
   mp->vlib_main = vm;
   mp->vnet_main = vnet_get_main ();
-
-  /* Create the hash table  */
-  BV (clib_bihash_init) (&mp->mac_table, "l2fib mac table",
-			 L2FIB_NUM_BUCKETS, L2FIB_MEMORY_SIZE);
+  if (mp->mac_table_n_buckets == 0)
+    mp->mac_table_n_buckets = L2FIB_NUM_BUCKETS;
+  if (mp->mac_table_memory_size == 0)
+    mp->mac_table_memory_size = L2FIB_MEMORY_SIZE;
+  mp->mac_table_initialized = 0;
 
   /* verify the key constructor is good, since it is endian-sensitive */
   clib_memset (test_mac, 0, sizeof (test_mac));
@@ -1290,6 +1319,39 @@ l2fib_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (l2fib_init);
+
+static clib_error_t *
+lfib_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  l2fib_main_t *lm = &l2fib_main;
+  uword table_size = ~0;
+  u32 n_buckets = ~0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "table-size %U", unformat_memory_size,
+		    &table_size))
+	;
+      else if (unformat (input, "num-buckets %u", &n_buckets))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  if (n_buckets != ~0)
+    {
+      if (!is_pow2 (n_buckets))
+	return clib_error_return (0, "num-buckets must be power of 2");
+      lm->mac_table_n_buckets = n_buckets;
+    }
+
+  if (table_size != ~0)
+    lm->mac_table_memory_size = table_size;
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (lfib_config, "l2fib");
 
 /*
  * fd.io coding-style-patch-verification: ON
