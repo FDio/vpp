@@ -46,7 +46,6 @@ typedef enum fib_node_type_t_ {
     FIB_NODE_TYPE_UDP_ENCAP,
     FIB_NODE_TYPE_BIER_FMASK,
     FIB_NODE_TYPE_BIER_ENTRY,
-    FIB_NODE_TYPE_VXLAN_GBP_TUNNEL,
     FIB_NODE_TYPE_IPSEC_SA,
     FIB_NODE_TYPE_IP_PUNT_REDIRECT,
     FIB_NODE_TYPE_ENTRY_TRACK,
@@ -76,7 +75,6 @@ typedef enum fib_node_type_t_ {
     [FIB_NODE_TYPE_UDP_ENCAP] = "udp-encap",			\
     [FIB_NODE_TYPE_BIER_FMASK] = "bier-fmask",			\
     [FIB_NODE_TYPE_BIER_ENTRY] = "bier-entry",			\
-    [FIB_NODE_TYPE_VXLAN_GBP_TUNNEL] = "vxlan-gbp-tunnel",	\
     [FIB_NODE_TYPE_IPSEC_SA] = "ipsec-sa",                      \
     [FIB_NODE_TYPE_IP_PUNT_REDIRECT] = "ip-punt-redirect",      \
     [FIB_NODE_TYPE_ENTRY_TRACK] = "fib-entry-track"             \
