@@ -1490,54 +1490,6 @@ static void *vl_api_vxlan_tunnel_dump_t_print
   FINISH;
 }
 
-static void *vl_api_vxlan_gbp_tunnel_add_del_t_print
-  (vl_api_vxlan_gbp_tunnel_add_del_t * mp, void *handle)
-{
-  u8 *s;
-  s = format (0, "SCRIPT: vxlan_gbp_tunnel_add_del ");
-
-  if (mp->is_add)
-    s = format (s, "add ");
-  else
-    s = format (s, "del ");
-
-  s = format (s, "instance %d ", (mp->tunnel.instance));
-  s = format (s, "src %U ", format_vl_api_address, &mp->tunnel.src);
-  s = format (s, "dst %U ", format_vl_api_address, &mp->tunnel.dst);
-  s = format (s, "mcast_sw_if_index %d ", (mp->tunnel.mcast_sw_if_index));
-  s = format (s, "encap_table_id %d ", (mp->tunnel.encap_table_id));
-  s = format (s, "vni %d ", (mp->tunnel.vni));
-  s = format (s, "sw_if_index %d ", (mp->tunnel.sw_if_index));
-
-  FINISH;
-}
-
-static void *vl_api_vxlan_gbp_tunnel_dump_t_print
-  (vl_api_vxlan_gbp_tunnel_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: vxlan_gbp_tunnel_dump ");
-
-  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
-
-  FINISH;
-}
-
-static void *vl_api_sw_interface_set_vxlan_gbp_bypass_t_print
-  (vl_api_sw_interface_set_vxlan_gbp_bypass_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: sw_interface_set_vxlan_gbp_bypass ");
-
-  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
-  s = format (s, "%s ", (mp->is_ipv6 != 0) ? "ipv6" : "ipv4");
-  s = format (s, "%s ", (mp->enable != 0) ? "enable" : "disable");
-
-  FINISH;
-}
-
 static void *vl_api_l2_fib_clear_table_t_print
   (vl_api_l2_fib_clear_table_t * mp, void *handle)
 {
@@ -3070,9 +3022,6 @@ _(SHOW_VERSION, show_version)                                           \
 _(L2_FIB_TABLE_DUMP, l2_fib_table_dump)                                 \
 _(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel) 			\
 _(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)                         \
-_(VXLAN_GBP_TUNNEL_ADD_DEL, vxlan_gbp_tunnel_add_del) 			\
-_(VXLAN_GBP_TUNNEL_DUMP, vxlan_gbp_tunnel_dump)                         \
-_(SW_INTERFACE_SET_VXLAN_GBP_BYPASS, sw_interface_set_vxlan_gbp_bypass) \
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)			\
 _(WANT_L2_MACS_EVENTS, want_l2_macs_events)                             \
 _(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \

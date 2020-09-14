@@ -289,12 +289,6 @@ I:	vxlan-gpe
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/vnet/vxlan-gpe/
 
-VNET VXLAN-GBP
-I:	vxlan-gbp
-M:	Mohsin Kazmi <sykazmi@cisco.com>
-M:	Neale Ranns <nranns@cisco.com>
-F:	src/vnet/vxlan-gbp/
-
 VNET IPIP
 I:	ipip
 Y:	src/vnet/ipip/FEATURE.yaml
@@ -374,11 +368,6 @@ I:	dns
 M:	Dave Barach <dave@barachs.net>
 F:	src/plugins/dns/
 
-Plugin - Group Based Policy (GBP)
-I:	gbp
-M:	Neale Ranns <nranns@cisco.com>
-F:	src/plugins/gbp/
-
 Plugin - ACL
 I:	acl
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
@@ -420,11 +409,6 @@ Plugin - builtinurl
 I:	builtinurl
 M:	Dave Barach <dbarach@cisco.com>
 F:	src/plugins/builtinurl/
-
-Plugin - Group Based Policy (GBP)
-I:	gbp
-M:	Neale Ranns <nranns@cisco.com>
-F:	src/plugins/gbp/
 
 Plugin - GTPU
 I:	gtpu
@@ -650,11 +634,6 @@ Source VRF Select
 I:	svs
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/plugins/svs/
-
-LAN Emulation
-I:	l2e
-M:	Neale Ranns <nranns@cisco.com>
-F:	src/plugins/l2e/
 
 IPv6 Connection Tracker
 I:	ct6

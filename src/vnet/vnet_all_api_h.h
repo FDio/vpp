@@ -62,7 +62,6 @@
 #include <vnet/feature/feature.api.h>
 #include <vnet/qos/qos.api.h>
 #include <vnet/devices/pipe/pipe.api.h>
-#include <vnet/vxlan-gbp/vxlan_gbp.api.h>
 #include <vnet/syslog/syslog.api.h>
 #include <vnet/devices/virtio/virtio.api.h>
 #include <vnet/gso/gso.api.h>

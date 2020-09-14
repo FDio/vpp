@@ -99,7 +99,7 @@ format_l2_input_features (u8 * s, va_list * args)
 {
   u32 sw_if_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
-
+  
   l2_input_config_t *l2_input = l2input_intf_config (sw_if_index);
   u32 fb = l2_input->feature_bitmap;
 
