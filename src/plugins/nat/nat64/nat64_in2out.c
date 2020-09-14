@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -12,12 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * @file
- * @brief NAT64 IPv6 to IPv4 translation (inside to outside network)
- */
 
-#include <nat/nat64.h>
+#include <nat/nat64/nat64.h>
 #include <nat/nat_inlines.h>
 #include <vnet/ip/ip6_to_ip4.h>
 #include <vnet/fib/fib_table.h>
@@ -268,7 +264,7 @@ nat64_in2out_tcp_udp (vlib_main_t * vm, vlib_buffer_t * p, u16 l4_offset,
 	  csum = ip_csum_add_even (csum, ip4->src_address.as_u32);
 	  csum = ip_csum_sub_even (csum, sport);
 	  csum = ip_csum_add_even (csum, udp->src_port);
-	  mss_clamping (nm->sm->mss_clamping, tcp, &csum);
+	  mss_clamping (nm->mss_clamping, tcp, &csum);
 	  tcp->checksum = ip_csum_fold (csum);
 
 	  nat64_tcp_session_set_state (ste, tcp, 1);

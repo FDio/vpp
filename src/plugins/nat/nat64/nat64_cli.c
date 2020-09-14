@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -12,15 +12,59 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * @file
- * @brief NAT64 CLI
- */
 
-#include <nat/nat64.h>
-#include <nat/nat.h>
-#include <nat/nat_inlines.h>
 #include <vnet/fib/fib_table.h>
+
+#include <nat/nat64/nat64.h>
+#include <nat/nat_inlines.h>
+
+static clib_error_t *
+nat64_plugin_enable_disable_command_fn (vlib_main_t * vm,
+					unformat_input_t * input,
+					vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 enable = 0, is_set = 0;
+  clib_error_t *error = 0;
+  nat64_config_t c = { 0 };
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (!is_set && unformat (line_input, "enable"))
+	{
+	  unformat (line_input, "bib-buckets %u", &c.bib_buckets);
+	  unformat (line_input, "bib-memory %u", &c.bib_memory_size);
+	  unformat (line_input, "st-buckets %u", &c.st_buckets);
+	  unformat (line_input, "st-memory %u", &c.st_memory_size);
+	  enable = 1;
+	}
+      else if (!is_set && unformat (line_input, "disable"));
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+      is_set = 1;
+    }
+
+  if (enable)
+    {
+      if (nat64_plugin_enable (c))
+	error = clib_error_return (0, "plugin enable failed");
+    }
+  else
+    {
+      if (nat64_plugin_disable ())
+	error = clib_error_return (0, "plugin disable failed");
+    }
+done:
+  unformat_free (line_input);
+  return error;
+}
 
 static clib_error_t *
 nat64_add_del_pool_addr_command_fn (vlib_main_t * vm,
@@ -101,7 +145,7 @@ done:
 }
 
 static int
-nat64_cli_pool_walk (snat_address_t * ap, void *ctx)
+nat64_cli_pool_walk (nat64_address_t * ap, void *ctx)
 {
   vlib_main_t *vm = ctx;
 
@@ -176,7 +220,7 @@ nat64_interface_feature_command_fn (vlib_main_t * vm,
       for (i = 0; i < vec_len (inside_sw_if_indices); i++)
 	{
 	  sw_if_index = inside_sw_if_indices[i];
-	  rv = nat64_add_del_interface (sw_if_index, 1, is_add);
+	  rv = nat64_interface_add_del (sw_if_index, 1, is_add);
 	  switch (rv)
 	    {
 	    case VNET_API_ERROR_NO_SUCH_ENTRY:
@@ -211,7 +255,7 @@ nat64_interface_feature_command_fn (vlib_main_t * vm,
       for (i = 0; i < vec_len (outside_sw_if_indices); i++)
 	{
 	  sw_if_index = outside_sw_if_indices[i];
-	  rv = nat64_add_del_interface (sw_if_index, 0, is_add);
+	  rv = nat64_interface_add_del (sw_if_index, 0, is_add);
 	  switch (rv)
 	    {
 	    case VNET_API_ERROR_NO_SUCH_ENTRY:
@@ -250,7 +294,7 @@ done:
 }
 
 static int
-nat64_cli_interface_walk (snat_interface_t * i, void *ctx)
+nat64_cli_interface_walk (nat64_interface_t * i, void *ctx)
 {
   vlib_main_t *vm = ctx;
   vnet_main_t *vnm = vnet_get_main ();
@@ -560,6 +604,7 @@ static clib_error_t *
 nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				 vlib_cli_command_t * cmd)
 {
+  nat64_main_t *nm = &nat64_main;
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -632,9 +677,9 @@ nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	{
 	  fib_index =
 	    fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
-					       vrf_id, nat_fib_src_hi);
+					       vrf_id, nm->fib_src_hi);
 	  fib_table_entry_update_one_path (fib_index, &fibpfx,
-					   nat_fib_src_hi,
+					   nm->fib_src_hi,
 					   FIB_ENTRY_FLAG_NONE,
 					   DPO_PROTO_IP6, NULL,
 					   sw_if_index, ~0, 0,
@@ -644,11 +689,11 @@ nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	{
 	  fib_index = fib_table_find (FIB_PROTOCOL_IP6, vrf_id);
 	  fib_table_entry_path_remove (fib_index, &fibpfx,
-				       nat_fib_src_hi,
+				       nm->fib_src_hi,
 				       DPO_PROTO_IP6, NULL,
 				       sw_if_index, ~0, 1,
 				       FIB_ROUTE_PATH_INTF_RX);
-	  fib_table_unlock (fib_index, FIB_PROTOCOL_IP6, nat_fib_src_hi);
+	  fib_table_unlock (fib_index, FIB_PROTOCOL_IP6, nm->fib_src_hi);
 	}
     }
 
@@ -731,6 +776,27 @@ done:
 }
 
 /* *INDENT-OFF* */
+/*?
+ * @cliexpar
+ * @cliexstart{nat64 plugin}
+ * Enable/disable NAT64 plugin.
+ * To enable NAT64 plugin use:
+ *  vpp# nat64 plugin enable
+ * To enable NAT64 plugin and configure buckets/memory:
+ *  vpp# nat64 plugin enable bib-buckets <n> bib-memory <s> \
+ *    st-buckets <n> st-memory <s>
+ * To disable NAT64 plugin:
+ *  vpp# nat64 plugin disable
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat64_plugin_enable_disable_command, static) =
+{
+  .path = "nat64 plugin",
+  .short_help = "nat64 plugin <enable "
+                "[bib-buckets <count>] [bib-memory <size>] "
+                "[st-buckets <count>] [st-memory <size>] | disable>",
+  .function = nat64_plugin_enable_disable_command_fn,
+};
 
 /*?
  * @cliexpar
