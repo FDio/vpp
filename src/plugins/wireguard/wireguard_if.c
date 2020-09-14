@@ -251,10 +251,14 @@ wg_if_create (u32 user_instance,
   wg_if_index_by_port[port] = wg_if - wg_if_pool;
 
   wg_if->port = port;
-  struct noise_upcall upcall;
-  upcall.u_remote_get = wg_remote_get;
-  upcall.u_index_set = wg_index_set;
-  upcall.u_index_drop = wg_index_drop;
+
+  /* *INDENT-OFF* */
+  struct noise_upcall upcall =  {
+    .u_remote_get = wg_remote_get,
+    .u_index_set = wg_index_set,
+    .u_index_drop = wg_index_drop,
+  };
+  /* *INDENT-ON* */
 
   noise_local_init (&wg_if->local, &upcall);
   noise_local_set_private (&wg_if->local, private_key);
