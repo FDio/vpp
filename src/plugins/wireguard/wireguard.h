@@ -22,8 +22,6 @@
 extern vlib_node_registration_t wg_input_node;
 extern vlib_node_registration_t wg_output_tun_node;
 
-
-
 typedef struct
 {
   /* convenience */
@@ -35,6 +33,10 @@ typedef struct
   wg_peer_t *peers;
   wg_index_table_t index_table;
 
+  u32 in_fq_index;
+  u32 out_fq_index;
+
+  tw_timer_wheel_16t_2w_512sl_t timer_wheel;
 } wg_main_t;
 
 extern wg_main_t wg_main;

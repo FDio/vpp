@@ -236,7 +236,21 @@ wg_if_create (u32 user_instance,
   if (instance == ~0)
     return VNET_API_ERROR_INVALID_REGISTRATION;
 
+  u8 will_expand = 0;
+  pool_get_will_expand (wg_if_pool, will_expand);
+
   pool_get (wg_if_pool, wg_if);
+
+  if (will_expand != 0)
+    {
+      /* *INDENT-OFF* */
+      wg_if_t *wg_itf;
+      pool_foreach(wg_itf, wg_if_pool,
+      ({
+         wg_if_peer_walk(wg_itf, wg_peer_if_change_local, NULL);
+      }));
+      /* *INDENT-ON* */
+    }
 
   /* tunnel index (or instance) */
   u32 t_idx = wg_if - wg_if_pool;
