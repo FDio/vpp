@@ -19,9 +19,9 @@
  */
 
 #include <nat/nat.h>
-#include <nat/nat64.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat44/inlines.h>
+#include <nat/lib/nat_inlines.h>
 #include <nat/nat_ha.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -96,8 +96,6 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
 {
   vl_api_nat_show_config_reply_t *rmp;
   snat_main_t *sm = &snat_main;
-  //dslite_main_t *dm = &dslite_main;
-  nat64_main_t *n64m = &nat64_main;
   int rv = 0;
 
   /* *INDENT-OFF* */
@@ -116,14 +114,15 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
     rmp->static_mapping_only = sm->static_mapping_only;
     rmp->static_mapping_connection_tracking =
       sm->static_mapping_connection_tracking;
-    rmp->deterministic = 0;
     rmp->endpoint_dependent = sm->endpoint_dependent;
     rmp->out2in_dpo = sm->out2in_dpo;
-    //rmp->dslite_ce = dm->is_ce;
-    rmp->nat64_bib_buckets = clib_net_to_host_u32(n64m->bib_buckets);
-    rmp->nat64_bib_memory_size = clib_net_to_host_u64(n64m->bib_memory_size);
-    rmp->nat64_st_buckets = clib_net_to_host_u32(n64m->st_buckets);
-    rmp->nat64_st_memory_size = clib_net_to_host_u64(n64m->st_memory_size);
+    // these are obsolete
+    rmp->dslite_ce = 0;
+    rmp->deterministic = 0;
+    rmp->nat64_bib_buckets = 0;
+    rmp->nat64_bib_memory_size = 0;
+    rmp->nat64_st_buckets = 0;
+    rmp->nat64_st_memory_size = 0;
   }));
   /* *INDENT-ON* */
 }
@@ -143,8 +142,6 @@ vl_api_nat_show_config_2_t_handler (vl_api_nat_show_config_2_t * mp)
 {
   vl_api_nat_show_config_2_reply_t *rmp;
   snat_main_t *sm = &snat_main;
-  //dslite_main_t *dm = &dslite_main;
-  nat64_main_t *n64m = &nat64_main;
   int rv = 0;
 
   /* *INDENT-OFF* */
@@ -160,16 +157,17 @@ vl_api_nat_show_config_2_t_handler (vl_api_nat_show_config_2_t * mp)
     rmp->static_mapping_only = sm->static_mapping_only;
     rmp->static_mapping_connection_tracking =
       sm->static_mapping_connection_tracking;
-    rmp->deterministic = 0;
     rmp->endpoint_dependent = sm->endpoint_dependent;
     rmp->out2in_dpo = sm->out2in_dpo;
-    //rmp->dslite_ce = dm->is_ce;
-    rmp->nat64_bib_buckets = clib_net_to_host_u32(n64m->bib_buckets);
-    rmp->nat64_bib_memory_size = clib_net_to_host_u64(n64m->bib_memory_size);
-    rmp->nat64_st_buckets = clib_net_to_host_u32(n64m->st_buckets);
-    rmp->nat64_st_memory_size = clib_net_to_host_u64(n64m->st_memory_size);
     rmp->max_translations_per_thread = clib_net_to_host_u32(sm->max_translations_per_thread);
     rmp->max_users_per_thread = clib_net_to_host_u32(sm->max_users_per_thread);
+    // these are obsolete
+    rmp->dslite_ce = 0;
+    rmp->deterministic = 0;
+    rmp->nat64_bib_buckets = 0;
+    rmp->nat64_bib_memory_size = 0;
+    rmp->nat64_st_buckets = 0;
+    rmp->nat64_st_memory_size = 0;
   }));
   /* *INDENT-ON* */
 }
@@ -381,17 +379,6 @@ vl_api_nat_set_timeouts_t_handler (vl_api_nat_set_timeouts_t * mp)
   sm->tcp_transitory_timeout = ntohl (mp->tcp_transitory);
   sm->icmp_timeout = ntohl (mp->icmp);
 
-  rv = nat64_set_icmp_timeout (ntohl (mp->icmp));
-  if (rv)
-    goto send_reply;
-  rv = nat64_set_udp_timeout (ntohl (mp->udp));
-  if (rv)
-    goto send_reply;
-  rv =
-    nat64_set_tcp_timeouts (ntohl (mp->tcp_transitory),
-			    ntohl (mp->tcp_established));
-
-send_reply:
   REPLY_MACRO (VL_API_NAT_SET_TIMEOUTS_REPLY);
 }
 
@@ -2235,490 +2222,6 @@ static void *vl_api_nat44_forwarding_is_enabled_t_print
   FINISH;
 }
 
-/*************/
-/*** NAT64 ***/
-/*************/
-
-static void
-  vl_api_nat64_add_del_pool_addr_range_t_handler
-  (vl_api_nat64_add_del_pool_addr_range_t * mp)
-{
-  vl_api_nat64_add_del_pool_addr_range_reply_t *rmp;
-  snat_main_t *sm = &snat_main;
-  int rv = 0;
-  ip4_address_t this_addr;
-  u32 start_host_order, end_host_order;
-  u32 vrf_id;
-  int i, count;
-  u32 *tmp;
-
-  tmp = (u32 *) mp->start_addr;
-  start_host_order = clib_host_to_net_u32 (tmp[0]);
-  tmp = (u32 *) mp->end_addr;
-  end_host_order = clib_host_to_net_u32 (tmp[0]);
-
-  count = (end_host_order - start_host_order) + 1;
-
-  vrf_id = clib_host_to_net_u32 (mp->vrf_id);
-
-  memcpy (&this_addr.as_u8, mp->start_addr, 4);
-
-  for (i = 0; i < count; i++)
-    {
-      if ((rv = nat64_add_del_pool_addr (0, &this_addr, vrf_id, mp->is_add)))
-	goto send_reply;
-
-      increment_v4_address (&this_addr);
-    }
-
-send_reply:
-  REPLY_MACRO (VL_API_NAT64_ADD_DEL_POOL_ADDR_RANGE_REPLY);
-}
-
-static void *vl_api_nat64_add_del_pool_addr_range_t_print
-  (vl_api_nat64_add_del_pool_addr_range_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat64_add_del_pool_addr_range ");
-  s = format (s, "%U - %U vrf_id %u %s\n",
-	      format_ip4_address, mp->start_addr,
-	      format_ip4_address, mp->end_addr,
-	      ntohl (mp->vrf_id), mp->is_add ? "" : "del");
-
-  FINISH;
-}
-
-typedef struct nat64_api_walk_ctx_t_
-{
-  vl_api_registration_t *reg;
-  u32 context;
-  nat64_db_t *db;
-} nat64_api_walk_ctx_t;
-
-static int
-nat64_api_pool_walk (snat_address_t * a, void *arg)
-{
-  vl_api_nat64_pool_addr_details_t *rmp;
-  snat_main_t *sm = &snat_main;
-  nat64_api_walk_ctx_t *ctx = arg;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_NAT64_POOL_ADDR_DETAILS + sm->msg_id_base);
-  clib_memcpy (rmp->address, &(a->addr), 4);
-  if (a->fib_index != ~0)
-    {
-      fib_table_t *fib = fib_table_get (a->fib_index, FIB_PROTOCOL_IP6);
-      if (!fib)
-	return -1;
-      rmp->vrf_id = ntohl (fib->ft_table_id);
-    }
-  else
-    rmp->vrf_id = ~0;
-  rmp->context = ctx->context;
-
-  vl_api_send_msg (ctx->reg, (u8 *) rmp);
-
-  return 0;
-}
-
-static void
-vl_api_nat64_pool_addr_dump_t_handler (vl_api_nat64_pool_addr_dump_t * mp)
-{
-  vl_api_registration_t *reg;
-
-  reg = vl_api_client_index_to_registration (mp->client_index);
-  if (!reg)
-    return;
-
-  nat64_api_walk_ctx_t ctx = {
-    .reg = reg,
-    .context = mp->context,
-  };
-
-  nat64_pool_addr_walk (nat64_api_pool_walk, &ctx);
-}
-
-static void *
-vl_api_nat64_pool_addr_dump_t_print (vl_api_nat64_pool_addr_dump_t * mp,
-				     void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat64_pool_addr_dump\n");
-
-  FINISH;
-}
-
-static void
-vl_api_nat64_add_del_interface_t_handler (vl_api_nat64_add_del_interface_t *
-					  mp)
-{
-  snat_main_t *sm = &snat_main;
-  vl_api_nat64_add_del_interface_reply_t *rmp;
-  int rv = 0;
-
-  VALIDATE_SW_IF_INDEX (mp);
-
-  rv =
-    nat64_add_del_interface (ntohl (mp->sw_if_index),
-			     mp->flags & NAT_API_IS_INSIDE, mp->is_add);
-
-  BAD_SW_IF_INDEX_LABEL;
-
-  REPLY_MACRO (VL_API_NAT64_ADD_DEL_INTERFACE_REPLY);
-}
-
-static void *
-vl_api_nat64_add_del_interface_t_print (vl_api_nat64_add_del_interface_t * mp,
-					void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat64_add_del_interface ");
-  s = format (s, "sw_if_index %d %s %s",
-	      clib_host_to_net_u32 (mp->sw_if_index),
-	      mp->flags & NAT_API_IS_INSIDE ? "in" : "out",
-	      mp->is_add ? "" : "del");
-
-  FINISH;
-}
-
-static int
-nat64_api_interface_walk (snat_interface_t * i, void *arg)
-{
-  vl_api_nat64_interface_details_t *rmp;
-  snat_main_t *sm = &snat_main;
-  nat64_api_walk_ctx_t *ctx = arg;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_NAT64_INTERFACE_DETAILS + sm->msg_id_base);
-  rmp->sw_if_index = ntohl (i->sw_if_index);
-
-  if (nat_interface_is_inside (i))
-    rmp->flags |= NAT_API_IS_INSIDE;
-  if (nat_interface_is_outside (i))
-    rmp->flags |= NAT_API_IS_OUTSIDE;
-
-  rmp->context = ctx->context;
-
-  vl_api_send_msg (ctx->reg, (u8 *) rmp);
-
-  return 0;
-}
-
-static void
-vl_api_nat64_interface_dump_t_handler (vl_api_nat64_interface_dump_t * mp)
-{
-  vl_api_registration_t *reg;
-
-  reg = vl_api_client_index_to_registration (mp->client_index);
-  if (!reg)
-    return;
-
-  nat64_api_walk_ctx_t ctx = {
-    .reg = reg,
-    .context = mp->context,
-  };
-
-  nat64_interfaces_walk (nat64_api_interface_walk, &ctx);
-}
-
-static void *
-vl_api_nat64_interface_dump_t_print (vl_api_nat64_interface_dump_t * mp,
-				     void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: snat_interface_dump ");
-
-  FINISH;
-}
-
-static void
-  vl_api_nat64_add_del_static_bib_t_handler
-  (vl_api_nat64_add_del_static_bib_t * mp)
-{
-  snat_main_t *sm = &snat_main;
-  vl_api_nat64_add_del_static_bib_reply_t *rmp;
-  ip6_address_t in_addr;
-  ip4_address_t out_addr;
-  int rv = 0;
-
-  memcpy (&in_addr.as_u8, mp->i_addr, 16);
-  memcpy (&out_addr.as_u8, mp->o_addr, 4);
-
-  rv =
-    nat64_add_del_static_bib_entry (&in_addr, &out_addr,
-				    clib_net_to_host_u16 (mp->i_port),
-				    clib_net_to_host_u16 (mp->o_port),
-				    mp->proto,
-				    clib_net_to_host_u32 (mp->vrf_id),
-				    mp->is_add);
-
-  REPLY_MACRO (VL_API_NAT64_ADD_DEL_STATIC_BIB_REPLY);
-}
-
-static void *vl_api_nat64_add_del_static_bib_t_print
-  (vl_api_nat64_add_del_static_bib_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat64_add_del_static_bib ");
-  s = format (s, "protocol %d i_addr %U o_addr %U ",
-	      mp->proto,
-	      format_ip6_address, mp->i_addr, format_ip4_address, mp->o_addr);
-
-  if (mp->vrf_id != ~0)
-    s = format (s, "vrf %d", clib_net_to_host_u32 (mp->vrf_id));
-
-  FINISH;
-}
-
-static int
-nat64_api_bib_walk (nat64_db_bib_entry_t * bibe, void *arg)
-{
-  vl_api_nat64_bib_details_t *rmp;
-  snat_main_t *sm = &snat_main;
-  nat64_api_walk_ctx_t *ctx = arg;
-  fib_table_t *fib;
-
-  fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
-  if (!fib)
-    return -1;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_NAT64_BIB_DETAILS + sm->msg_id_base);
-  rmp->context = ctx->context;
-  clib_memcpy (rmp->i_addr, &(bibe->in_addr), 16);
-  clib_memcpy (rmp->o_addr, &(bibe->out_addr), 4);
-  rmp->i_port = bibe->in_port;
-  rmp->o_port = bibe->out_port;
-  rmp->vrf_id = ntohl (fib->ft_table_id);
-  rmp->proto = bibe->proto;
-  if (bibe->is_static)
-    rmp->flags |= NAT_API_IS_STATIC;
-  rmp->ses_num = ntohl (bibe->ses_num);
-
-  vl_api_send_msg (ctx->reg, (u8 *) rmp);
-
-  return 0;
-}
-
-static void
-vl_api_nat64_bib_dump_t_handler (vl_api_nat64_bib_dump_t * mp)
-{
-  vl_api_registration_t *reg;
-  nat64_main_t *nm = &nat64_main;
-  nat64_db_t *db;
-
-  reg = vl_api_client_index_to_registration (mp->client_index);
-  if (!reg)
-    return;
-
-  nat64_api_walk_ctx_t ctx = {
-    .reg = reg,
-    .context = mp->context,
-  };
-
-  /* *INDENT-OFF* */
-  vec_foreach (db, nm->db)
-    nat64_db_bib_walk (db, mp->proto, nat64_api_bib_walk, &ctx);
-  /* *INDENT-ON* */
-}
-
-static void *
-vl_api_nat64_bib_dump_t_print (vl_api_nat64_bib_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: snat_bib_dump protocol %d", mp->proto);
-
-  FINISH;
-}
-
-static int
-nat64_api_st_walk (nat64_db_st_entry_t * ste, void *arg)
-{
-  vl_api_nat64_st_details_t *rmp;
-  snat_main_t *sm = &snat_main;
-  nat64_api_walk_ctx_t *ctx = arg;
-  nat64_db_bib_entry_t *bibe;
-  fib_table_t *fib;
-
-  bibe = nat64_db_bib_entry_by_index (ctx->db, ste->proto, ste->bibe_index);
-  if (!bibe)
-    return -1;
-
-  fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
-  if (!fib)
-    return -1;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_NAT64_ST_DETAILS + sm->msg_id_base);
-  rmp->context = ctx->context;
-  clib_memcpy (rmp->il_addr, &(bibe->in_addr), 16);
-  clib_memcpy (rmp->ol_addr, &(bibe->out_addr), 4);
-  rmp->il_port = bibe->in_port;
-  rmp->ol_port = bibe->out_port;
-  clib_memcpy (rmp->ir_addr, &(ste->in_r_addr), 16);
-  clib_memcpy (rmp->or_addr, &(ste->out_r_addr), 4);
-  rmp->il_port = ste->r_port;
-  rmp->vrf_id = ntohl (fib->ft_table_id);
-  rmp->proto = ste->proto;
-
-  vl_api_send_msg (ctx->reg, (u8 *) rmp);
-
-  return 0;
-}
-
-static void
-vl_api_nat64_st_dump_t_handler (vl_api_nat64_st_dump_t * mp)
-{
-  vl_api_registration_t *reg;
-  nat64_main_t *nm = &nat64_main;
-  nat64_db_t *db;
-
-  reg = vl_api_client_index_to_registration (mp->client_index);
-  if (!reg)
-    return;
-
-  nat64_api_walk_ctx_t ctx = {
-    .reg = reg,
-    .context = mp->context,
-  };
-
-  /* *INDENT-OFF* */
-  vec_foreach (db, nm->db)
-    {
-      ctx.db = db;
-      nat64_db_st_walk (db, mp->proto, nat64_api_st_walk, &ctx);
-    }
-  /* *INDENT-ON* */
-}
-
-static void *
-vl_api_nat64_st_dump_t_print (vl_api_nat64_st_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: snat_st_dump protocol %d", mp->proto);
-
-  FINISH;
-}
-
-static void
-vl_api_nat64_add_del_prefix_t_handler (vl_api_nat64_add_del_prefix_t * mp)
-{
-  vl_api_nat64_add_del_prefix_reply_t *rmp;
-  snat_main_t *sm = &snat_main;
-  ip6_address_t prefix;
-  int rv = 0;
-
-  memcpy (&prefix.as_u8, mp->prefix.address, 16);
-
-  rv =
-    nat64_add_del_prefix (&prefix, mp->prefix.len,
-			  clib_net_to_host_u32 (mp->vrf_id), mp->is_add);
-  REPLY_MACRO (VL_API_NAT64_ADD_DEL_PREFIX_REPLY);
-}
-
-static void *
-vl_api_nat64_add_del_prefix_t_print (vl_api_nat64_add_del_prefix_t * mp,
-				     void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat64_add_del_prefix %U/%u vrf_id %u %s\n",
-	      format_ip6_address, mp->prefix.address, mp->prefix.len,
-	      ntohl (mp->vrf_id), mp->is_add ? "" : "del");
-
-  FINISH;
-}
-
-static int
-nat64_api_prefix_walk (nat64_prefix_t * p, void *arg)
-{
-  vl_api_nat64_prefix_details_t *rmp;
-  snat_main_t *sm = &snat_main;
-  nat64_api_walk_ctx_t *ctx = arg;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_NAT64_PREFIX_DETAILS + sm->msg_id_base);
-  clib_memcpy (rmp->prefix.address, &(p->prefix), 16);
-  rmp->prefix.len = p->plen;
-  rmp->vrf_id = ntohl (p->vrf_id);
-  rmp->context = ctx->context;
-
-  vl_api_send_msg (ctx->reg, (u8 *) rmp);
-
-  return 0;
-}
-
-static void
-vl_api_nat64_prefix_dump_t_handler (vl_api_nat64_prefix_dump_t * mp)
-{
-  vl_api_registration_t *reg;
-
-  reg = vl_api_client_index_to_registration (mp->client_index);
-  if (!reg)
-    return;
-
-  nat64_api_walk_ctx_t ctx = {
-    .reg = reg,
-    .context = mp->context,
-  };
-
-  nat64_prefix_walk (nat64_api_prefix_walk, &ctx);
-}
-
-static void *
-vl_api_nat64_prefix_dump_t_print (vl_api_nat64_prefix_dump_t * mp,
-				  void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat64_prefix_dump\n");
-
-  FINISH;
-}
-
-static void
-  vl_api_nat64_add_del_interface_addr_t_handler
-  (vl_api_nat64_add_del_interface_addr_t * mp)
-{
-  snat_main_t *sm = &snat_main;
-  vl_api_nat64_add_del_interface_addr_reply_t *rmp;
-  u32 sw_if_index = ntohl (mp->sw_if_index);
-  int rv = 0;
-
-  VALIDATE_SW_IF_INDEX (mp);
-
-  rv = nat64_add_interface_address (sw_if_index, mp->is_add);
-
-  BAD_SW_IF_INDEX_LABEL;
-
-  REPLY_MACRO (VL_API_NAT64_ADD_DEL_INTERFACE_ADDR_REPLY);
-}
-
-static void *vl_api_nat64_add_del_interface_addr_t_print
-  (vl_api_nat64_add_del_interface_addr_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat64_add_del_interface_addr ");
-  s = format (s, "sw_if_index %d %s",
-	      clib_host_to_net_u32 (mp->sw_if_index),
-	      mp->is_add ? "" : "del");
-
-  FINISH;
-}
-
 /* List of message types that this plugin understands */
 #define foreach_snat_plugin_api_msg                                     \
 _(NAT_CONTROL_PING, nat_control_ping)                                   \
@@ -2765,17 +2268,7 @@ _(NAT44_LB_STATIC_MAPPING_ADD_DEL_LOCAL,                                \
 _(NAT44_LB_STATIC_MAPPING_DUMP, nat44_lb_static_mapping_dump)           \
 _(NAT44_DEL_SESSION, nat44_del_session)                                 \
 _(NAT44_FORWARDING_ENABLE_DISABLE, nat44_forwarding_enable_disable)     \
-_(NAT44_FORWARDING_IS_ENABLED, nat44_forwarding_is_enabled)             \
-_(NAT64_ADD_DEL_POOL_ADDR_RANGE, nat64_add_del_pool_addr_range)         \
-_(NAT64_POOL_ADDR_DUMP, nat64_pool_addr_dump)                           \
-_(NAT64_ADD_DEL_INTERFACE, nat64_add_del_interface)                     \
-_(NAT64_INTERFACE_DUMP, nat64_interface_dump)                           \
-_(NAT64_ADD_DEL_STATIC_BIB, nat64_add_del_static_bib)                   \
-_(NAT64_BIB_DUMP, nat64_bib_dump)                                       \
-_(NAT64_ST_DUMP, nat64_st_dump)                                         \
-_(NAT64_ADD_DEL_PREFIX, nat64_add_del_prefix)                           \
-_(NAT64_PREFIX_DUMP, nat64_prefix_dump)                                 \
-_(NAT64_ADD_DEL_INTERFACE_ADDR, nat64_add_del_interface_addr)
+_(NAT44_FORWARDING_IS_ENABLED, nat44_forwarding_is_enabled)
 
 /* Set up the API message handling tables */
 static clib_error_t *

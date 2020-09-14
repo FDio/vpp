@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -12,17 +12,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * @file
- * @brief NAT64 DB
- */
 #ifndef __included_nat64_db_h__
 #define __included_nat64_db_h__
 
+#include <vnet/vnet.h>
+#include <vnet/ip/ip.h>
+#include <vnet/fib/fib_source.h>
+
 #include <vppinfra/bihash_24_8.h>
 #include <vppinfra/bihash_48_8.h>
-#include <nat/nat.h>
 
+typedef struct
+{
+  u32 bib_buckets;
+  u32 bib_memory_size;
+  u32 st_buckets;
+  u32 st_memory_size;
+} nat64_config_t;
 
 typedef struct
 {
@@ -145,17 +151,26 @@ typedef struct nat64_db_s
  * @brief Initialize NAT64 DB.
  *
  * @param db NAT64 DB.
- * @param bib_buckets Number of BIB hash buckets.
- * @param bib_memory_size Memory size of BIB hash.
- * @param st_buckets Number of session table hash buckets.
- * @param st_memory_size Memory size of session table hash.
+ * @param c.bib_buckets Number of BIB hash buckets.
+ * @param c.bib_memory_size Memory size of BIB hash.
+ * @param c.st_buckets Number of session table hash buckets.
+ * @param c.st_memory_size Memory size of session table hash.
  * @param free_addr_port_cb Call back function to free address and port.
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat64_db_init (nat64_db_t * db, u32 bib_buckets, uword bib_memory_size,
-		   u32 st_buckets, uword st_memory_size,
+int nat64_db_init (nat64_db_t * db, nat64_config_t c,
 		   nat64_db_free_addr_port_function_t free_addr_port_cb);
+
+/**
+ * @brief Free NAT64 DB.
+ *
+ * @param db NAT64 DB.
+ *
+ * @returns 0 on success, non-zero value otherwise.
+ */
+int nat64_db_free (nat64_db_t * db);
+
 
 /**
  * @brief Create new NAT64 BIB entry.
