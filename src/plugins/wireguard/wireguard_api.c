@@ -39,7 +39,7 @@ static void
   wg_main_t *wmp = &wg_main;
   u8 private_key[NOISE_PUBLIC_KEY_LEN];
   ip_address_t src;
-  u32 sw_if_index;
+  u32 sw_if_index = ~0;
   int rv = 0;
 
   ip_address_decode2 (&mp->interface.src_ip, &src);
@@ -140,7 +140,7 @@ vl_api_wireguard_peer_add_t_handler (vl_api_wireguard_peer_add_t * mp)
 {
   vl_api_wireguard_peer_add_reply_t *rmp;
   wg_main_t *wmp = &wg_main;
-  index_t peeri;
+  index_t peeri = INDEX_INVALID;
   int ii, rv = 0;
 
   ip_address_t endpoint;
