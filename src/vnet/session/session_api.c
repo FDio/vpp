@@ -1507,7 +1507,6 @@ done:
 static void
 sapi_socket_detach (app_namespace_t * app_ns, clib_socket_t * cs)
 {
-  vnet_app_detach_args_t _a = { 0 }, *a = &_a;
   app_ns_api_handle_t *handle;
   app_worker_t *app_wrk;
   u32 api_client_handle;
@@ -1515,12 +1514,19 @@ sapi_socket_detach (app_namespace_t * app_ns, clib_socket_t * cs)
   api_client_handle = appns_sapi_socket_handle (app_ns, cs);
   sapi_socket_close_w_handle (api_client_handle);
 
-  /* Cleanup everything because app closed socket or crashed */
+  /* Cleanup everything because app worker closed socket or crashed */
   handle = (app_ns_api_handle_t *) & cs->private_data;
   app_wrk = app_worker_get (handle->aah_app_wrk_index);
-  a->app_index = app_wrk->app_index;
-  a->api_client_index = api_client_handle;
-  vnet_application_detach (a);
+
+  vnet_app_worker_add_del_args_t args = {
+    .app_index = app_wrk->app_index,
+    .wrk_map_index = app_wrk->wrk_map_index,
+    .api_client_index = api_client_handle,
+    .is_add = 0
+  };
+  /* Send rpc to main thread for worker barrier */
+  vlib_rpc_call_main_thread (vnet_app_worker_add_del, (u8 *) & args,
+			     sizeof (args));
 }
 
 static clib_error_t *
