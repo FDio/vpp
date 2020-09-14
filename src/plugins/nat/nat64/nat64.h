@@ -12,15 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * @file
- * @brief NAT64 global declarations
- */
 #ifndef __included_nat64_h__
 #define __included_nat64_h__
 
-#include <nat/nat.h>
-#include <nat/nat64_db.h>
+#include <nat/lib/lib.h>
+#include <nat/lib/nat_inlines.h>
+#include <nat/nat64/nat64_db.h>
 
 #define foreach_nat64_tcp_ses_state            \
   _(0, CLOSED, "closed")                       \
@@ -67,11 +64,41 @@ typedef struct
 
 typedef struct
 {
+  ip4_address_t addr;
+  u32 fib_index;
+/* *INDENT-OFF* */
+#define _(N, i, n, s) \
+  u16 busy_##n##_ports; \
+  u16 * busy_##n##_ports_per_thread; \
+  u32 busy_##n##_port_refcounts[65535];
+  foreach_nat_protocol
+#undef _
+/* *INDENT-ON* */
+} nat64_address_t;
+
+typedef struct
+{
+  u32 sw_if_index;
+  u8 flags;
+} nat64_interface_t;
+
+typedef struct
+{
+  u32 enabled;
+
+  nat64_config_t config;
+
+  /* API message ID base */
+  u16 msg_id_base;
+
+  /* log class */
+  vlib_log_class_t log_class;
+
   /** Interface pool */
-  snat_interface_t *interfaces;
+  nat64_interface_t *interfaces;
 
   /** Address pool vector */
-  snat_address_t *addr_pool;
+  nat64_address_t *addr_pool;
 
   /** sw_if_indices whose interface addresses should be auto-added */
   u32 *auto_add_sw_if_indices;
@@ -103,8 +130,12 @@ typedef struct
 
   /* Total count of interfaces enabled */
   u32 total_enabled_count;
-  /* The process node which orcherstrates the cleanup */
-  u32 nat64_expire_walk_node_index;
+
+  /* Expire walk process node index */
+  u32 expire_walk_node_index;
+
+  /* Expire worker walk process node index */
+  u32 expire_worker_walk_node_index;
 
   /* counters/gauges */
   vlib_simple_counter_main_t total_bibs;
@@ -117,9 +148,6 @@ typedef struct
   u32 in2out_slowpath_node_index;
 
   u32 out2in_node_index;
-
-  ip4_main_t *ip4_main;
-  snat_main_t *sm;
 
 #define _(x) vlib_simple_counter_main_t x;
   struct
@@ -135,6 +163,27 @@ typedef struct
     } out2in;
   } counters;
 #undef _
+
+  /* convenience */
+  ip4_main_t *ip4_main;
+
+  /* required */
+  vnet_main_t *vnet_main;
+
+  /* Randomize port allocation order */
+  u32 random_seed;
+
+  /* TCP MSS clamping */
+  u16 mss_clamping;
+
+  fib_source_t fib_src_hi;
+  fib_source_t fib_src_low;
+
+  /* Thread settings */
+  u32 num_workers;
+  u32 first_worker_index;
+  u32 *workers;
+  u16 port_per_thread;
 
 } nat64_main_t;
 
@@ -159,7 +208,7 @@ int nat64_add_del_pool_addr (u32 thread_index,
  * @brief Call back function when walking addresses in NAT64 pool, non-zero
  * return value stop walk.
  */
-typedef int (*nat64_pool_addr_walk_fn_t) (snat_address_t * addr, void *ctx);
+typedef int (*nat64_pool_addr_walk_fn_t) (nat64_address_t * addr, void *ctx);
 
 /**
  * @brief Walk NAT64 pool.
@@ -188,13 +237,13 @@ int nat64_add_interface_address (u32 sw_if_index, int is_add);
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add);
+int nat64_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add);
 
 /**
  * @brief Call back function when walking interfaces with NAT64 feature,
  * non-zero return value stop walk.
  */
-typedef int (*nat64_interface_walk_fn_t) (snat_interface_t * i, void *ctx);
+typedef int (*nat64_interface_walk_fn_t) (nat64_interface_t * i, void *ctx);
 
 /**
  * @brief Walk NAT64 interfaces.
@@ -395,6 +444,49 @@ u32 nat64_get_worker_in2out (ip6_address_t * addr);
  * @returns worker thread index.
  */
 u32 nat64_get_worker_out2in (vlib_buffer_t * b, ip4_header_t * ip);
+
+/* NAT64 interface flags */
+#define NAT64_INTERFACE_FLAG_IS_INSIDE 1
+#define NAT64_INTERFACE_FLAG_IS_OUTSIDE 2
+
+/** \brief Check if NAT64 interface is inside.
+    @param i NAT64 interface
+    @return 1 if inside interface
+*/
+#define nat64_interface_is_inside(i) i->flags & NAT64_INTERFACE_FLAG_IS_INSIDE
+
+/** \brief Check if NAT64 interface is outside.
+    @param i NAT64 interface
+    @return 1 if outside interface
+*/
+#define nat64_interface_is_outside(i) i->flags & NAT64_INTERFACE_FLAG_IS_OUTSIDE
+
+static_always_inline u8
+plugin_enabled ()
+{
+  nat64_main_t *nm = &nat64_main;
+  return nm->enabled;
+}
+
+void
+nat64_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
+			   int is_add);
+
+int nat64_plugin_enable (nat64_config_t c);
+int nat64_plugin_disable ();
+void nat64_reset_timeouts ();
+
+/* logging */
+#define nat64_log_err(...) \
+  vlib_log(VLIB_LOG_LEVEL_ERR, nat64_main.log_class, __VA_ARGS__)
+#define nat64_log_warn(...) \
+  vlib_log(VLIB_LOG_LEVEL_WARNING, nat64_main.log_class, __VA_ARGS__)
+#define nat64_log_notice(...) \
+  vlib_log(VLIB_LOG_LEVEL_NOTICE, nat64_main.log_class, __VA_ARGS__)
+#define nat64_log_info(...) \
+  vlib_log(VLIB_LOG_LEVEL_INFO, nat64_main.log_class, __VA_ARGS__)
+#define nat64_log_debug(...)\
+  vlib_log(VLIB_LOG_LEVEL_DEBUG, nat64_main.log_class, __VA_ARGS__)
 
 #endif /* __included_nat64_h__ */
 
