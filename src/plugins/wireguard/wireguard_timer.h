@@ -38,7 +38,7 @@ typedef enum _wg_timers
 
 typedef struct wg_peer wg_peer_t;
 
-void wg_timers_init (wg_peer_t * peer, f64 now);
+void wg_timer_wheel_init ();
 void wg_timers_stop (wg_peer_t * peer);
 void wg_timers_data_sent (wg_peer_t * peer);
 void wg_timers_data_received (wg_peer_t * peer);
