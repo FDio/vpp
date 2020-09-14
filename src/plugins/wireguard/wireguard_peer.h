@@ -69,7 +69,18 @@ typedef struct wg_peer
   u32 timers[WG_N_TIMERS];
   u32 timer_handshake_attempts;
   u16 persistent_keepalive_interval;
+
+  /* Timestamps */
   f64 last_sent_handshake;
+  f64 last_sent_packet;
+  f64 last_received_packet;
+  f64 session_derived;
+  f64 rehandshake_started;
+
+  /* Variable intervals */
+  u32 new_handshake_interval_tick;
+  u32 rehandshake_interval_tick;
+
   bool timer_need_another_keepalive;
 
   bool is_dead;

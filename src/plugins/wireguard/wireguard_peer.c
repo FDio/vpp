@@ -100,6 +100,12 @@ wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
   peer->adj_index = INDEX_INVALID;
   peer->persistent_keepalive_interval = 0;
   peer->timer_handshake_attempts = 0;
+  peer->last_sent_packet = 0;
+  peer->last_received_packet = 0;
+  peer->session_derived = 0;
+  peer->rehandshake_started = 0;
+  peer->new_handshake_interval_tick = 0;
+  peer->rehandshake_interval_tick = 0;
   peer->timer_need_another_keepalive = false;
   peer->is_dead = true;
   vec_free (peer->allowed_ips);

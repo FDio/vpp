@@ -36,25 +36,40 @@ stop_timer (wg_peer_t * peer, u32 timer_id)
 }
 
 static void
-start_or_update_timer (wg_peer_t * peer, u32 timer_id, u32 interval)
+start_timer (wg_peer_t * peer, u32 timer_id, u32 interval_ticks)
 {
   if (peer->timers[timer_id] == ~0)
     {
       wg_main_t *wmp = &wg_main;
       peer->timers[timer_id] =
 	tw_timer_start_16t_2w_512sl (&peer->timer_wheel, peer - wmp->peers,
-				     timer_id, interval);
+				     timer_id, interval_ticks);
     }
-  else
-    {
-      tw_timer_update_16t_2w_512sl (&peer->timer_wheel,
-				    peer->timers[timer_id], interval);
-    }
+}
+
+static inline u32
+timer_ticks_left (vlib_main_t * vm, f64 init_time_sec, u32 interval_ticks)
+{
+  static const int32_t rounding = (int32_t) (WHZ / 2);
+  int32_t ticks_remain;
+
+  ticks_remain = (init_time_sec - vlib_time_now (vm)) * WHZ + interval_ticks;
+  return (ticks_remain > rounding) ? (u32) ticks_remain : 0;
 }
 
 static void
 wg_expired_retransmit_handshake (vlib_main_t * vm, wg_peer_t * peer)
 {
+  if (peer->rehandshake_started == ~0)
+    return;
+
+  u32 ticks = timer_ticks_left (vm, peer->rehandshake_started,
+				peer->rehandshake_interval_tick);
+  if (ticks)
+    {
+      start_timer (peer, WG_TIMER_RETRANSMIT_HANDSHAKE, ticks);
+      return;
+    }
 
   if (peer->timer_handshake_attempts > MAX_TIMER_HANDSHAKES)
     {
@@ -63,17 +78,8 @@ wg_expired_retransmit_handshake (vlib_main_t * vm, wg_peer_t * peer)
       /* We set a timer for destroying any residue that might be left
        * of a partial exchange.
        */
+      start_timer (peer, WG_TIMER_KEY_ZEROING, REJECT_AFTER_TIME * 3 * WHZ);
 
-      if (peer->timers[WG_TIMER_KEY_ZEROING] == ~0)
-	{
-	  wg_main_t *wmp = &wg_main;
-
-	  peer->timers[WG_TIMER_KEY_ZEROING] =
-	    tw_timer_start_16t_2w_512sl (&peer->timer_wheel,
-					 peer - wmp->peers,
-					 WG_TIMER_KEY_ZEROING,
-					 REJECT_AFTER_TIME * 3 * WHZ);
-	}
     }
   else
     {
@@ -85,13 +91,23 @@ wg_expired_retransmit_handshake (vlib_main_t * vm, wg_peer_t * peer)
 static void
 wg_expired_send_keepalive (vlib_main_t * vm, wg_peer_t * peer)
 {
-  wg_send_keepalive (vm, peer);
-
-  if (peer->timer_need_another_keepalive)
+  if (peer->last_sent_packet < peer->last_received_packet)
     {
-      peer->timer_need_another_keepalive = false;
-      start_or_update_timer (peer, WG_TIMER_SEND_KEEPALIVE,
-			     KEEPALIVE_TIMEOUT * WHZ);
+      u32 ticks = timer_ticks_left (vm, peer->last_received_packet,
+				    KEEPALIVE_TIMEOUT * WHZ);
+      if (ticks)
+	{
+	  start_timer (peer, WG_TIMER_SEND_KEEPALIVE, ticks);
+	  return;
+	}
+
+      wg_send_keepalive (vm, peer);
+      if (peer->timer_need_another_keepalive)
+	{
+	  peer->timer_need_another_keepalive = false;
+	  start_timer (peer, WG_TIMER_SEND_KEEPALIVE,
+		       KEEPALIVE_TIMEOUT * WHZ);
+	}
     }
 }
 
@@ -100,6 +116,18 @@ wg_expired_send_persistent_keepalive (vlib_main_t * vm, wg_peer_t * peer)
 {
   if (peer->persistent_keepalive_interval)
     {
+      f64 latest_time = peer->last_sent_packet > peer->last_received_packet
+	? peer->last_sent_packet : peer->last_received_packet;
+
+      u32 ticks = timer_ticks_left (vm, latest_time,
+				    peer->persistent_keepalive_interval *
+				    WHZ);
+      if (ticks)
+	{
+	  start_timer (peer, WG_TIMER_PERSISTENT_KEEPALIVE, ticks);
+	  return;
+	}
+
       wg_send_keepalive (vm, peer);
     }
 }
@@ -107,64 +135,77 @@ wg_expired_send_persistent_keepalive (vlib_main_t * vm, wg_peer_t * peer)
 static void
 wg_expired_new_handshake (vlib_main_t * vm, wg_peer_t * peer)
 {
+  u32 ticks = timer_ticks_left (vm, peer->last_sent_packet,
+				peer->new_handshake_interval_tick);
+  if (ticks)
+    {
+      start_timer (peer, WG_TIMER_NEW_HANDSHAKE, ticks);
+      return;
+    }
+
   wg_send_handshake (vm, peer, false);
 }
 
 static void
 wg_expired_zero_key_material (vlib_main_t * vm, wg_peer_t * peer)
 {
+  u32 ticks =
+    timer_ticks_left (vm, peer->session_derived, REJECT_AFTER_TIME * 3 * WHZ);
+  if (ticks)
+    {
+      start_timer (peer, WG_TIMER_KEY_ZEROING, ticks);
+      return;
+    }
+
   if (!peer->is_dead)
     {
       noise_remote_clear (vm, &peer->remote);
     }
 }
 
-
 void
 wg_timers_any_authenticated_packet_traversal (wg_peer_t * peer)
 {
   if (peer->persistent_keepalive_interval)
     {
-      start_or_update_timer (peer, WG_TIMER_PERSISTENT_KEEPALIVE,
-			     peer->persistent_keepalive_interval * WHZ);
+      start_timer (peer, WG_TIMER_PERSISTENT_KEEPALIVE,
+		   peer->persistent_keepalive_interval * WHZ);
     }
 }
 
 void
 wg_timers_any_authenticated_packet_sent (wg_peer_t * peer)
 {
-  stop_timer (peer, WG_TIMER_SEND_KEEPALIVE);
+  peer->last_sent_packet = vlib_time_now (vlib_get_main ());
 }
 
 void
 wg_timers_handshake_initiated (wg_peer_t * peer)
 {
-  u32 interval =
+  peer->rehandshake_started = vlib_time_now (vlib_get_main ());
+  peer->rehandshake_interval_tick =
     REKEY_TIMEOUT * WHZ + get_random_u32_max (REKEY_TIMEOUT_JITTER);
-  start_or_update_timer (peer, WG_TIMER_RETRANSMIT_HANDSHAKE, interval);
+  start_timer (peer, WG_TIMER_RETRANSMIT_HANDSHAKE,
+	       peer->rehandshake_interval_tick);
 }
 
 void
 wg_timers_session_derived (wg_peer_t * peer)
 {
-  start_or_update_timer (peer, WG_TIMER_KEY_ZEROING,
-			 REJECT_AFTER_TIME * 3 * WHZ);
+  peer->session_derived = vlib_time_now (vlib_get_main ());
+  start_timer (peer, WG_TIMER_KEY_ZEROING, REJECT_AFTER_TIME * 3 * WHZ);
 }
 
 /* Should be called after an authenticated data packet is sent. */
 void
 wg_timers_data_sent (wg_peer_t * peer)
 {
-  u32 interval = (KEEPALIVE_TIMEOUT + REKEY_TIMEOUT) * WHZ +
+  peer->new_handshake_interval_tick =
+    (KEEPALIVE_TIMEOUT + REKEY_TIMEOUT) * WHZ +
     get_random_u32_max (REKEY_TIMEOUT_JITTER);
 
-  if (peer->timers[WG_TIMER_NEW_HANDSHAKE] == ~0)
-    {
-      wg_main_t *wmp = &wg_main;
-      peer->timers[WG_TIMER_NEW_HANDSHAKE] =
-	tw_timer_start_16t_2w_512sl (&peer->timer_wheel, peer - wmp->peers,
-				     WG_TIMER_NEW_HANDSHAKE, interval);
-    }
+  start_timer (peer, WG_TIMER_NEW_HANDSHAKE,
+	       peer->new_handshake_interval_tick);
 }
 
 /* Should be called after an authenticated data packet is received. */
@@ -172,17 +213,9 @@ void
 wg_timers_data_received (wg_peer_t * peer)
 {
   if (peer->timers[WG_TIMER_SEND_KEEPALIVE] == ~0)
-    {
-      wg_main_t *wmp = &wg_main;
-      peer->timers[WG_TIMER_SEND_KEEPALIVE] =
-	tw_timer_start_16t_2w_512sl (&peer->timer_wheel, peer - wmp->peers,
-				     WG_TIMER_SEND_KEEPALIVE,
-				     KEEPALIVE_TIMEOUT * WHZ);
-    }
+    start_timer (peer, WG_TIMER_SEND_KEEPALIVE, KEEPALIVE_TIMEOUT * WHZ);
   else
-    {
-      peer->timer_need_another_keepalive = true;
-    }
+    peer->timer_need_another_keepalive = true;
 }
 
 /* Should be called after a handshake response message is received and processed
@@ -191,15 +224,14 @@ wg_timers_data_received (wg_peer_t * peer)
 void
 wg_timers_handshake_complete (wg_peer_t * peer)
 {
-  stop_timer (peer, WG_TIMER_RETRANSMIT_HANDSHAKE);
-
+  peer->rehandshake_started = ~0;
   peer->timer_handshake_attempts = 0;
 }
 
 void
 wg_timers_any_authenticated_packet_received (wg_peer_t * peer)
 {
-  stop_timer (peer, WG_TIMER_NEW_HANDSHAKE);
+  peer->last_received_packet = vlib_time_now (vlib_get_main ());
 }
 
 static vlib_node_registration_t wg_timer_mngr_node;
