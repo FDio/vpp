@@ -21,7 +21,7 @@ import "vnet/ip/ip_types.api";
 
 define geneve_add_del_tunnel
 {
-  option deprecated="20.06";
+  option deprecated;
   u32 client_index;
   u32 context;
   bool is_add;

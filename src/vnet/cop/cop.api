@@ -26,7 +26,7 @@ import "vnet/interface_types.api";
 
 autoreply define cop_interface_enable_disable
 {
-  option deprecated="v21.01";
+  option deprecated;
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
@@ -47,7 +47,7 @@ autoreply define cop_interface_enable_disable
 
 autoreply define cop_whitelist_enable_disable
 {
-  option deprecated="v21.01";
+  option deprecated;
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
