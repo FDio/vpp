@@ -97,15 +97,17 @@ wireguard_if_send_details (index_t wgii, void *data)
   vl_api_wireguard_interface_details_t *rmp;
   wg_deatils_walk_t *ctx = data;
   const wg_if_t *wgi;
+  const noise_local_t *local;
 
   wgi = wg_if_get (wgii);
+  local = noise_local_get (wgi->local_idx);
 
   rmp = vl_msg_api_alloc_zero (sizeof (*rmp));
   rmp->_vl_msg_id = htons (VL_API_WIREGUARD_INTERFACE_DETAILS +
 			   wg_main.msg_id_base);
 
   clib_memcpy (rmp->interface.private_key,
-	       wgi->local.l_private, NOISE_PUBLIC_KEY_LEN);
+	       local->l_private, NOISE_PUBLIC_KEY_LEN);
   rmp->interface.sw_if_index = htonl (wgi->sw_if_index);
   rmp->interface.port = htons (wgi->port);
   ip_address_encode2 (&wgi->src_ip, &rmp->interface.src_ip);
