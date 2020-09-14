@@ -5,8 +5,61 @@ Adding a plugin
 
 .. toctree::
 
-Overview
-________
+Strategic Choices
+_________________
+
+Plugins may implement lightly-used, experimental, or test
+functionality. In such cases, please disable the plugin by default:
+
+.. code-block:: console
+
+    /* *INDENT-OFF* */
+    VLIB_PLUGIN_REGISTER () =
+    {
+      .version = VPP_BUILD_VER,
+      .description = "Plugin Disabled by Default...",
+      .default_disabled = 1,
+    };
+    /* *INDENT-ON* */
+
+Please do not create processes, or other dynamic data structures
+unless the plugin is configured by API or debug CLI.
+
+Specifically, please don't initialize bihash tables from
+VLIB_INIT_FUNCTIONS, *especially* if the bihash template involved
+doesn't #define BIHASH_LAZY_INSTANTIATE 1.
+
+.. code-block:: console
+
+    static clib_error_t * sample_init (vlib_main_t * vm)
+    {
+      <snip>
+      /* DONT DO THIS! */
+      BV(clib_bihash_init (h, ...))
+      <snip>
+    }
+    VLIB_INIT_FUNCTION (sample_init);
+
+Instead, please add a feature_init function:
+
+.. code-block:: console
+
+    static void
+    feature_init (my_main_t * mm)
+    {
+      if (mm->feature_initialized == 0)
+        {
+          BV(clib_bihash_init)(mm->hash_table, ...)
+          /* Create Other Things, e.g a periodic process */
+          mm->feature_initialized = 1;
+        }
+    }
+
+And call it from debug CLI and API message handlers any time the feature
+is enabled.
+
+How to create a new plugin
+__________________________
 
 This section shows how a VPP developer can create a new plugin, and
 add it to VPP. We assume that we are starting from the VPP <top-of-workspace>.
@@ -14,9 +67,6 @@ add it to VPP. We assume that we are starting from the VPP <top-of-workspace>.
 As an example, we will use the **make-plugin.sh** tool found in
 **./extras/emacs**. make-plugin.sh is a simple wrapper for a comprehensive
 plugin generator constructed from a set of emacs-lisp skeletons.
-
-Create your new plugin
-----------------------
 
 Change directory to **./src/plugins**, and run the plugin generator:
 
