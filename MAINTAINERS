@@ -286,12 +286,6 @@ I:	vxlan-gpe
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/vnet/vxlan-gpe/
 
-VNET VXLAN-GBP
-I:	vxlan-gbp
-M:	Mohsin Kazmi <sykazmi@cisco.com>
-M:	Neale Ranns <neale@graphiant.com>
-F:	src/vnet/vxlan-gbp/
-
 VNET IPIP
 I:	ipip
 Y:	src/vnet/ipip/FEATURE.yaml
@@ -432,11 +426,6 @@ Plugin - builtinurl
 I:	builtinurl
 M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/builtinurl/
-
-Plugin - Group Based Policy (GBP)
-I:	gbp
-M:	Neale Ranns <neale@graphiant.com>
-F:	src/plugins/gbp/
 
 Plugin - GTPU
 I:	gtpu
@@ -692,11 +681,6 @@ Plugin - Source VRF Select
 I:	svs
 M:	Neale Ranns <neale@graphiant.com>
 F:	src/plugins/svs/
-
-Plugin - LAN Emulation
-I:	l2e
-M:	Neale Ranns <neale@graphiant.com>
-F:	src/plugins/l2e/
 
 Plugin - IPv6 Connection Tracker
 I:	ct6
