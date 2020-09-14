@@ -436,11 +436,6 @@ I:	builtinurl
 M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/builtinurl/
 
-Plugin - Group Based Policy (GBP)
-I:	gbp
-M:	Neale Ranns <neale@graphiant.com>
-F:	src/plugins/gbp/
-
 Plugin - GTPU
 I:	gtpu
 M:	Hongjun Ni <hongjun.ni@intel.com>
@@ -683,11 +678,6 @@ Plugin - Source VRF Select
 I:	svs
 M:	Neale Ranns <neale@graphiant.com>
 F:	src/plugins/svs/
-
-Plugin - LAN Emulation
-I:	l2e
-M:	Neale Ranns <neale@graphiant.com>
-F:	src/plugins/l2e/
 
 Plugin - IPv6 Connection Tracker
 I:	ct6
