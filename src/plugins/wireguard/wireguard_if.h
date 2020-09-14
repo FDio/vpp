@@ -52,7 +52,7 @@ void wg_if_walk (wg_if_walk_cb_t fn, void *data);
 
 typedef walk_rc_t (*wg_if_peer_walk_cb_t) (wg_if_t * wgi, index_t peeri,
 					   void *data);
-void wg_if_peer_walk (wg_if_t * wgi, wg_if_peer_walk_cb_t fn, void *data);
+index_t wg_if_peer_walk (wg_if_t * wgi, wg_if_peer_walk_cb_t fn, void *data);
 
 void wg_if_peer_add (wg_if_t * wgi, index_t peeri);
 void wg_if_peer_remove (wg_if_t * wgi, index_t peeri);

@@ -120,7 +120,7 @@ typedef struct noise_local
   struct noise_upcall
   {
     void *u_arg;
-    noise_remote_t *(*u_remote_get) (uint8_t[NOISE_PUBLIC_KEY_LEN]);
+    noise_remote_t *(*u_remote_get) (const uint8_t[NOISE_PUBLIC_KEY_LEN]);
       uint32_t (*u_index_set) (noise_remote_t *);
     void (*u_index_drop) (uint32_t);
   } l_upcall;

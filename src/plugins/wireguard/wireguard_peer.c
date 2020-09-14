@@ -23,14 +23,9 @@
 #include <wireguard/wireguard.h>
 
 static fib_source_t wg_fib_source;
+wg_peer_t *wg_peer_pool;
 
 index_t *wg_peer_by_adj_index;
-
-wg_peer_t *
-wg_peer_get (index_t peeri)
-{
-  return (pool_elt_at_index (wg_main.peers, peeri));
-}
 
 static void
 wg_peer_endpoint_reset (wg_peer_endpoint_t * ep)
@@ -82,6 +77,11 @@ static void
 wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
 {
   wg_timers_stop (peer);
+  for (int i = 0; i < WG_N_TIMERS; i++)
+    {
+      peer->timers[i] = ~0;
+    }
+
   noise_remote_clear (vm, &peer->remote);
   peer->last_sent_handshake = vlib_time_now (vm) - (REKEY_TIMEOUT + 1);
 
@@ -97,9 +97,18 @@ wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
     }
   wg_peer_fib_flush (peer);
 
+  peer->input_thread_index = ~0;
+  peer->output_thread_index = ~0;
   peer->adj_index = INDEX_INVALID;
+  peer->timer_wheel = 0;
   peer->persistent_keepalive_interval = 0;
   peer->timer_handshake_attempts = 0;
+  peer->last_sent_packet = 0;
+  peer->last_received_packet = 0;
+  peer->session_derived = 0;
+  peer->rehandshake_started = 0;
+  peer->new_handshake_interval_tick = 0;
+  peer->rehandshake_interval_tick = 0;
   peer->timer_need_another_keepalive = false;
   peer->is_dead = true;
   vec_free (peer->allowed_ips);
@@ -108,7 +117,7 @@ wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
 static void
 wg_peer_init (vlib_main_t * vm, wg_peer_t * peer)
 {
-  wg_timers_init (peer, vlib_time_now (vm));
+  peer->adj_index = INDEX_INVALID;
   wg_peer_clear (vm, peer);
 }
 
@@ -194,6 +203,16 @@ wg_peer_if_table_change (wg_if_t * wgi, index_t peeri, void *data)
   return (WALK_CONTINUE);
 }
 
+walk_rc_t
+wg_peer_if_change_local (wg_if_t * wgi, index_t peeri, void *data)
+{
+  wg_peer_t *peer;
+  peer = wg_peer_get (peeri);
+  peer->remote.r_local = &wgi->local;
+
+  return (WALK_CONTINUE);
+}
+
 static int
 wg_peer_fill (vlib_main_t * vm, wg_peer_t * peer,
 	      u32 table_id,
@@ -205,8 +224,9 @@ wg_peer_fill (vlib_main_t * vm, wg_peer_t * peer,
   wg_peer_endpoint_init (&peer->dst, dst, port);
 
   peer->table_id = table_id;
-  peer->persistent_keepalive_interval = persistent_keepalive_interval;
   peer->wg_sw_if_index = wg_sw_if_index;
+  peer->timer_wheel = &wg_main.timer_wheel;
+  peer->persistent_keepalive_interval = persistent_keepalive_interval;
   peer->last_sent_handshake = vlib_time_now (vm) - (REKEY_TIMEOUT + 1);
   peer->is_dead = false;
 
@@ -230,7 +250,7 @@ wg_peer_fill (vlib_main_t * vm, wg_peer_t * peer,
 
   vec_validate_init_empty (wg_peer_by_adj_index,
 			   peer->adj_index, INDEX_INVALID);
-  wg_peer_by_adj_index[peer->adj_index] = peer - wg_main.peers;
+  wg_peer_by_adj_index[peer->adj_index] = peer - wg_peer_pool;
 
   adj_nbr_midchain_update_rewrite (peer->adj_index,
 				   NULL,
@@ -280,7 +300,7 @@ wg_peer_add (u32 tun_sw_if_index,
     return (VNET_API_ERROR_INVALID_SW_IF_INDEX);
 
   /* *INDENT-OFF* */
-  pool_foreach (peer, wg_main.peers,
+  pool_foreach (peer, wg_peer_pool,
   ({
     if (!memcmp (peer->remote.r_public, public_key, NOISE_PUBLIC_KEY_LEN))
     {
@@ -289,10 +309,10 @@ wg_peer_add (u32 tun_sw_if_index,
   }));
   /* *INDENT-ON* */
 
-  if (pool_elts (wg_main.peers) > MAX_PEERS)
+  if (pool_elts (wg_peer_pool) > MAX_PEERS)
     return (VNET_API_ERROR_LIMIT_EXCEEDED);
 
-  pool_get (wg_main.peers, peer);
+  pool_get (wg_peer_pool, peer);
 
   wg_peer_init (vm, peer);
 
@@ -302,11 +322,11 @@ wg_peer_add (u32 tun_sw_if_index,
   if (rv)
     {
       wg_peer_clear (vm, peer);
-      pool_put (wg_main.peers, peer);
+      pool_put (wg_peer_pool, peer);
       return (rv);
     }
 
-  noise_remote_init (&peer->remote, peer - wg_main.peers, public_key,
+  noise_remote_init (&peer->remote, peer - wg_peer_pool, public_key,
 		     &wg_if->local);
   cookie_maker_init (&peer->cookie_maker, public_key);
 
@@ -315,7 +335,7 @@ wg_peer_add (u32 tun_sw_if_index,
       wg_send_keepalive (vm, peer);
     }
 
-  *peer_index = peer - wg_main.peers;
+  *peer_index = peer - wg_peer_pool;
   wg_if_peer_add (wg_if, *peer_index);
 
   return (0);
@@ -328,10 +348,10 @@ wg_peer_remove (index_t peeri)
   wg_peer_t *peer = NULL;
   wg_if_t *wgi;
 
-  if (pool_is_free_index (wmp->peers, peeri))
+  if (pool_is_free_index (wg_peer_pool, peeri))
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-  peer = pool_elt_at_index (wmp->peers, peeri);
+  peer = pool_elt_at_index (wg_peer_pool, peeri);
 
   wgi = wg_if_get (wg_if_find_by_sw_if_index (peer->wg_sw_if_index));
   wg_if_peer_remove (wgi, peeri);
@@ -339,23 +359,24 @@ wg_peer_remove (index_t peeri)
   vnet_feature_enable_disable ("ip4-output", "wg-output-tun",
 			       peer->wg_sw_if_index, 0, 0, 0);
   wg_peer_clear (wmp->vlib_main, peer);
-  pool_put (wmp->peers, peer);
+  pool_put (wg_peer_pool, peer);
 
   return (0);
 }
 
-void
+index_t
 wg_peer_walk (wg_peer_walk_cb_t fn, void *data)
 {
   index_t peeri;
 
   /* *INDENT-OFF* */
-  pool_foreach_index(peeri, wg_main.peers,
+  pool_foreach_index(peeri, wg_peer_pool,
   {
     if (WALK_STOP == fn(peeri, data))
-      break;
+      return peeri;
   });
   /* *INDENT-ON* */
+  return INDEX_INVALID;
 }
 
 static u8 *

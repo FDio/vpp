@@ -5,6 +5,7 @@
 #include <wireguard/wireguard_messages.h>
 #include <wireguard/wireguard_if.h>
 #include <wireguard/wireguard.h>
+#include <wireguard/wireguard_peer.h>
 
 /* pool of interfaces */
 wg_if_t *wg_if_pool;
@@ -72,23 +73,28 @@ wg_if_find_by_sw_if_index (u32 sw_if_index)
   return (ti);
 }
 
-static noise_remote_t *
-wg_remote_get (uint8_t public[NOISE_PUBLIC_KEY_LEN])
+static walk_rc_t
+wg_if_find_peer_by_public_key (index_t peeri, void *data)
 {
-  wg_main_t *wmp = &wg_main;
-  wg_peer_t *peer = NULL;
-  wg_peer_t *peer_iter;
-  /* *INDENT-OFF* */
-  pool_foreach (peer_iter, wmp->peers,
-  ({
-    if (!memcmp (peer_iter->remote.r_public, public, NOISE_PUBLIC_KEY_LEN))
-    {
-      peer = peer_iter;
-      break;
-    }
-  }));
-  /* *INDENT-ON* */
-  return peer ? &peer->remote : NULL;
+  uint8_t *public = data;
+  wg_peer_t *peer = wg_peer_get (peeri);
+
+  if (!memcmp (peer->remote.r_public, public, NOISE_PUBLIC_KEY_LEN))
+    return (WALK_STOP);
+  return (WALK_CONTINUE);
+}
+
+static noise_remote_t *
+wg_remote_get (const uint8_t public[NOISE_PUBLIC_KEY_LEN])
+{
+  index_t peeri;
+
+  peeri = wg_peer_walk (wg_if_find_peer_by_public_key, (void *) public);
+
+  if (INDEX_INVALID != peeri)
+    return &wg_peer_get (peeri)->remote;
+
+  return NULL;
 }
 
 static uint32_t
@@ -236,7 +242,21 @@ wg_if_create (u32 user_instance,
   if (instance == ~0)
     return VNET_API_ERROR_INVALID_REGISTRATION;
 
+  u8 will_expand = 0;
+  pool_get_will_expand (wg_if_pool, will_expand);
+
   pool_get (wg_if_pool, wg_if);
+
+  if (will_expand != 0)
+    {
+      /* *INDENT-OFF* */
+      wg_if_t *wg_itf;
+      pool_foreach(wg_itf, wg_if_pool,
+      ({
+         wg_if_peer_walk(wg_itf, wg_peer_if_change_local, NULL);
+      }));
+      /* *INDENT-ON* */
+    }
 
   /* tunnel index (or instance) */
   u32 t_idx = wg_if - wg_if_pool;
@@ -343,7 +363,7 @@ wg_if_walk (wg_if_walk_cb_t fn, void *data)
   /* *INDENT-ON* */
 }
 
-void
+index_t
 wg_if_peer_walk (wg_if_t * wgi, wg_if_peer_walk_cb_t fn, void *data)
 {
   index_t peeri, val;
@@ -352,9 +372,11 @@ wg_if_peer_walk (wg_if_t * wgi, wg_if_peer_walk_cb_t fn, void *data)
   hash_foreach (peeri, val, wgi->peers,
   {
     if (WALK_STOP == fn(wgi, peeri, data))
-      break;
+      return peeri;
   });
   /* *INDENT-ON* */
+
+  return INDEX_INVALID;
 }
 
 
