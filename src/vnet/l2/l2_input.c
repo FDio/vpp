@@ -598,6 +598,9 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
   hi = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
   config = l2input_intf_config (sw_if_index);
 
+  if (l2fib_main.mac_table_initialized == 0)
+    l2fib_table_init ();
+
   if (config->bridge)
     {
       /* Interface is already in bridge mode. Undo the existing config. */
