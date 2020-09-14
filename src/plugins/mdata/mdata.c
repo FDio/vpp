@@ -353,8 +353,6 @@ _(snat.flags)
 _(qos.bits)                                     \
 _(qos.source)                                   \
 _(loop_counter)                                 \
-_(gbp.flags)                                    \
-_(gbp.sclass)                                   \
 _(gso_size)                                     \
 _(gso_l4_hdr_sz)                                \
 _(pg_replay_timestamp)

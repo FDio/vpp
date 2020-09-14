@@ -433,14 +433,6 @@ typedef struct
   u8 loop_counter;
   u8 __unused[1];
 
-  /* Group Based Policy */
-  struct
-  {
-    u8 __unused;
-    u8 flags;
-    u16 sclass;
-  } gbp;
-
   /**
    * The L4 payload size set on input on GSO enabled interfaces
    * when we receive a GSO packet (a chain of buffers with the first one
