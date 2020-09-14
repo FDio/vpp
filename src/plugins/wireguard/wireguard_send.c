@@ -14,13 +14,11 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/fib_entry.h>
 #include <vnet/ip/ip6_link.h>
 #include <vnet/pg/pg.h>
 #include <vnet/udp/udp.h>
 #include <vppinfra/error.h>
+#include <vlibmemory/api.h>
 #include <wireguard/wireguard.h>
 #include <wireguard/wireguard_send.h>
 
@@ -86,7 +84,8 @@ wg_create_buffer (vlib_main_t * vm,
 bool
 wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
 {
-  wg_main_t *wmp = &wg_main;
+  ASSERT (vm->thread_index == 0);
+
   message_handshake_initiation_t packet;
 
   if (!is_retry)
@@ -94,41 +93,73 @@ wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
 
   if (!wg_birthdate_has_expired (peer->last_sent_handshake,
 				 REKEY_TIMEOUT) || peer->is_dead)
-    {
-      return true;
-    }
-  if (noise_create_initiation (wmp->vlib_main,
+    return true;
+
+  if (noise_create_initiation (vm,
 			       &peer->remote,
 			       &packet.sender_index,
 			       packet.unencrypted_ephemeral,
 			       packet.encrypted_static,
 			       packet.encrypted_timestamp))
     {
-      f64 now = vlib_time_now (vm);
       packet.header.type = MESSAGE_HANDSHAKE_INITIATION;
       cookie_maker_mac (&peer->cookie_maker, &packet.macs, &packet,
 			sizeof (packet));
-      wg_timers_any_authenticated_packet_traversal (peer);
       wg_timers_any_authenticated_packet_sent (peer);
-      peer->last_sent_handshake = now;
       wg_timers_handshake_initiated (peer);
+      wg_timers_any_authenticated_packet_traversal (peer);
+
+      peer->last_sent_handshake = vlib_time_now (vm);
     }
   else
     return false;
+
   u32 bi0 = 0;
   if (!wg_create_buffer (vm, peer, (u8 *) & packet, sizeof (packet), &bi0))
     return false;
-  ip46_enqueue_packet (vm, bi0, false);
 
+  ip46_enqueue_packet (vm, bi0, false);
   return true;
+}
+
+typedef struct
+{
+  u32 peer_idx;
+  bool is_retry;
+} wg_send_args_t;
+
+static void *
+wg_send_handshake_thread_fn (void *arg)
+{
+  wg_send_args_t *a = arg;
+
+  wg_main_t *wmp = &wg_main;
+  wg_peer_t *peer = wg_peer_get (a->peer_idx);
+
+  wg_send_handshake (wmp->vlib_main, peer, a->is_retry);
+  return 0;
+}
+
+void
+wg_send_handshake_from_mt (u32 peer_idx, bool is_retry)
+{
+  wg_send_args_t a = {
+    .peer_idx = peer_idx,
+    .is_retry = is_retry,
+  };
+
+  vl_api_rpc_call_main_thread (wg_send_handshake_thread_fn,
+			       (u8 *) & a, sizeof (a));
 }
 
 bool
 wg_send_keepalive (vlib_main_t * vm, wg_peer_t * peer)
 {
-  wg_main_t *wmp = &wg_main;
+  ASSERT (vm->thread_index == 0);
+
   u32 size_of_packet = message_data_len (0);
-  message_data_t *packet = clib_mem_alloc (size_of_packet);
+  message_data_t *packet =
+    (message_data_t *) wg_main.per_thread_data[vm->thread_index].data;
   u32 bi0 = 0;
   bool ret = true;
   enum noise_state_crypt state;
@@ -140,23 +171,21 @@ wg_send_keepalive (vlib_main_t * vm, wg_peer_t * peer)
     }
 
   state =
-    noise_remote_encrypt (wmp->vlib_main,
+    noise_remote_encrypt (vm,
 			  &peer->remote,
 			  &packet->receiver_index,
 			  &packet->counter, NULL, 0, packet->encrypted_data);
-  switch (state)
+
+  if (PREDICT_FALSE (state == SC_KEEP_KEY_FRESH))
     {
-    case SC_OK:
-      break;
-    case SC_KEEP_KEY_FRESH:
       wg_send_handshake (vm, peer, false);
-      break;
-    case SC_FAILED:
+    }
+  else if (PREDICT_FALSE (state == SC_FAILED))
+    {
       ret = false;
       goto out;
-    default:
-      break;
     }
+
   packet->header.type = MESSAGE_DATA;
 
   if (!wg_create_buffer (vm, peer, (u8 *) packet, size_of_packet, &bi0))
@@ -166,21 +195,18 @@ wg_send_keepalive (vlib_main_t * vm, wg_peer_t * peer)
     }
 
   ip46_enqueue_packet (vm, bi0, false);
-  wg_timers_any_authenticated_packet_traversal (peer);
+
   wg_timers_any_authenticated_packet_sent (peer);
+  wg_timers_any_authenticated_packet_traversal (peer);
 
 out:
-  clib_mem_free (packet);
   return ret;
 }
 
 bool
 wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
 {
-  wg_main_t *wmp = &wg_main;
   message_handshake_response_t packet;
-
-  peer->last_sent_handshake = vlib_time_now (vm);
 
   if (noise_create_response (vm,
 			     &peer->remote,
@@ -189,17 +215,16 @@ wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
 			     packet.unencrypted_ephemeral,
 			     packet.encrypted_nothing))
     {
-      f64 now = vlib_time_now (vm);
       packet.header.type = MESSAGE_HANDSHAKE_RESPONSE;
       cookie_maker_mac (&peer->cookie_maker, &packet.macs, &packet,
 			sizeof (packet));
 
-      if (noise_remote_begin_session (wmp->vlib_main, &peer->remote))
+      if (noise_remote_begin_session (vm, &peer->remote))
 	{
 	  wg_timers_session_derived (peer);
-	  wg_timers_any_authenticated_packet_traversal (peer);
 	  wg_timers_any_authenticated_packet_sent (peer);
-	  peer->last_sent_handshake = now;
+	  wg_timers_any_authenticated_packet_traversal (peer);
+	  peer->last_sent_handshake = vlib_time_now (vm);
 
 	  u32 bi0 = 0;
 	  if (!wg_create_buffer (vm, peer, (u8 *) & packet,
