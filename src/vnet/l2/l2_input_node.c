@@ -143,7 +143,7 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u16 * next0)
       /* Disable bridge forwarding (flooding will execute instead if not xconnect) */
       feat_mask &= ~(L2INPUT_FEAT_FWD |
 		     L2INPUT_FEAT_UU_FLOOD |
-		     L2INPUT_FEAT_UU_FWD | L2INPUT_FEAT_GBP_FWD);
+		     L2INPUT_FEAT_UU_FWD);
 
       if (ethertype != ETHERNET_TYPE_ARP)
 	feat_mask &= ~(L2INPUT_FEAT_ARP_UFWD);
