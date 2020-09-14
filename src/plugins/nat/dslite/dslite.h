@@ -127,6 +127,7 @@ typedef struct
    * otherwise it behaves as AFTR */
   u8 is_ce;
 
+  u8 is_enabled;
   u16 msg_id_base;
 } dslite_main_t;
 
