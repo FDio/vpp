@@ -83,24 +83,6 @@ typedef struct
   };
 } snat_user_key_t;
 
-/* NAT API Configuration flags */
-#define foreach_nat_config_flag \
-  _(0x01, IS_TWICE_NAT)         \
-  _(0x02, IS_SELF_TWICE_NAT)    \
-  _(0x04, IS_OUT2IN_ONLY)       \
-  _(0x08, IS_ADDR_ONLY)         \
-  _(0x10, IS_OUTSIDE)           \
-  _(0x20, IS_INSIDE)            \
-  _(0x40, IS_STATIC)            \
-  _(0x80, IS_EXT_HOST_VALID)    \
-
-typedef enum nat_config_flags_t_
-{
-#define _(n,f) NAT_API_##f = n,
-  foreach_nat_config_flag
-#undef _
-} nat_config_flags_t;
-
 /* External address and port allocation modes */
 #define foreach_nat_addr_and_port_alloc_alg \
   _(0, DEFAULT, "default")         \
