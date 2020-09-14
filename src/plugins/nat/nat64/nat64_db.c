@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -12,39 +12,61 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * @file
- * @brief NAT64 DB
- */
-#include <nat/nat64_db.h>
-#include <nat/nat_ipfix_logging.h>
-#include <nat/nat_inlines.h>
-#include <nat/nat_syslog.h>
+
 #include <vnet/fib/fib_table.h>
 
+//#include <nat/nat_ipfix_logging.h>
+#include <nat/nat_inlines.h>
+#include <nat/nat_syslog.h>
+
+#include <nat/nat64/nat64_db.h>
+
+
 int
-nat64_db_init (nat64_db_t * db, u32 bib_buckets, uword bib_memory_size,
-	       u32 st_buckets, uword st_memory_size,
+nat64_db_init (nat64_db_t * db, nat64_config_t c,
 	       nat64_db_free_addr_port_function_t free_addr_port_cb)
 {
-  clib_bihash_init_24_8 (&db->bib.in2out, "bib-in2out", bib_buckets,
-			 bib_memory_size);
+  clib_bihash_init_24_8 (&db->bib.in2out, "bib-in2out", c.bib_buckets,
+			 c.bib_memory_size);
 
-  clib_bihash_init_24_8 (&db->bib.out2in, "bib-out2in", bib_buckets,
-			 bib_memory_size);
+  clib_bihash_init_24_8 (&db->bib.out2in, "bib-out2in", c.bib_buckets,
+			 c.bib_memory_size);
 
-  clib_bihash_init_48_8 (&db->st.in2out, "st-in2out", st_buckets,
-			 st_memory_size);
+  clib_bihash_init_48_8 (&db->st.in2out, "st-in2out", c.st_buckets,
+			 c.st_memory_size);
 
-  clib_bihash_init_48_8 (&db->st.out2in, "st-out2in", st_buckets,
-			 st_memory_size);
+  clib_bihash_init_48_8 (&db->st.out2in, "st-out2in", c.st_buckets,
+			 c.st_memory_size);
 
   db->free_addr_port_cb = free_addr_port_cb;
-  db->bib.limit = 10 * bib_buckets;
+  db->bib.limit = 10 * c.bib_buckets;
   db->bib.bib_entries_num = 0;
-  db->st.limit = 10 * st_buckets;
+  db->st.limit = 10 * c.st_buckets;
   db->st.st_entries_num = 0;
   db->addr_free = 0;
+
+  return 0;
+}
+
+int
+nat64_db_free (nat64_db_t * db)
+{
+  clib_bihash_free_24_8 (&db->bib.in2out);
+  clib_bihash_free_24_8 (&db->bib.out2in);
+
+  clib_bihash_free_48_8 (&db->st.in2out);
+  clib_bihash_free_48_8 (&db->st.out2in);
+
+/* *INDENT-OFF* */
+#define _(N, i, n, s) \
+  pool_free (db->bib._##n##_bib); \
+  pool_free (db->st._##n##_st);
+  foreach_nat_protocol
+#undef _
+/* *INDENT-ON* */
+
+  pool_free (db->bib._unk_proto_bib);
+  pool_free (db->st._unk_proto_st);
 
   return 0;
 }
@@ -64,7 +86,7 @@ nat64_db_bib_entry_create (u32 thread_index, nat64_db_t * db,
   if (db->bib.bib_entries_num >= db->bib.limit)
     {
       db->free_addr_port_cb (db, out_addr, out_port, proto);
-      nat_ipfix_logging_max_bibs (thread_index, db->bib.limit);
+      //nat_ipfix_logging_max_bibs (thread_index, db->bib.limit);
       return 0;
     }
 
@@ -120,8 +142,8 @@ nat64_db_bib_entry_create (u32 thread_index, nat64_db_t * db,
   clib_bihash_add_del_24_8 (&db->bib.out2in, &kv, 1);
 
   fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
-  nat_ipfix_logging_nat64_bib (thread_index, in_addr, out_addr, proto,
-			       in_port, out_port, fib->ft_table_id, 1);
+  /*nat_ipfix_logging_nat64_bib (thread_index, in_addr, out_addr, proto,
+     in_port, out_port, fib->ft_table_id, 1); */
   return bibe;
 }
 
@@ -196,13 +218,12 @@ nat64_db_bib_entry_free (u32 thread_index, nat64_db_t * db,
     db->free_addr_port_cb (db, &bibe->out_addr, bibe->out_port, bibe->proto);
 
   fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
-  nat_ipfix_logging_nat64_bib (thread_index, &bibe->in_addr, &bibe->out_addr,
-			       bibe->proto, bibe->in_port, bibe->out_port,
-			       fib->ft_table_id, 0);
+  /*nat_ipfix_logging_nat64_bib (thread_index, &bibe->in_addr, &bibe->out_addr,
+     bibe->proto, bibe->in_port, bibe->out_port,
+     fib->ft_table_id, 0); */
 
   /* delete from pool */
   pool_put (bib, bibe);
-
 }
 
 nat64_db_bib_entry_t *
@@ -386,7 +407,7 @@ nat64_db_st_entry_create (u32 thread_index, nat64_db_t * db,
 
   if (db->st.st_entries_num >= db->st.limit)
     {
-      nat_ipfix_logging_max_sessions (thread_index, db->st.limit);
+      //nat_ipfix_logging_max_sessions (thread_index, db->st.limit);
       return 0;
     }
 
@@ -456,12 +477,12 @@ nat64_db_st_entry_create (u32 thread_index, nat64_db_t * db,
   clib_bihash_add_del_48_8 (&db->st.out2in, &kv, 1);
 
   fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
-  nat_ipfix_logging_nat64_session (thread_index, &bibe->in_addr,
-				   &bibe->out_addr, bibe->proto,
-				   bibe->in_port, bibe->out_port,
-				   &ste->in_r_addr, &ste->out_r_addr,
-				   ste->r_port, ste->r_port, fib->ft_table_id,
-				   1);
+  /*nat_ipfix_logging_nat64_session (thread_index, &bibe->in_addr,
+     &bibe->out_addr, bibe->proto,
+     bibe->in_port, bibe->out_port,
+     &ste->in_r_addr, &ste->out_r_addr,
+     ste->r_port, ste->r_port, fib->ft_table_id,
+     1); */
   nat_syslog_nat64_sadd (bibe->fib_index, &bibe->in_addr, bibe->in_port,
 			 &bibe->out_addr, bibe->out_port, &ste->out_r_addr,
 			 ste->r_port, bibe->proto);
@@ -532,12 +553,12 @@ nat64_db_st_entry_free (u32 thread_index,
   clib_bihash_add_del_48_8 (&db->st.out2in, &kv, 0);
 
   fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
-  nat_ipfix_logging_nat64_session (thread_index, &bibe->in_addr,
-				   &bibe->out_addr, bibe->proto,
-				   bibe->in_port, bibe->out_port,
-				   &ste->in_r_addr, &ste->out_r_addr,
-				   ste->r_port, ste->r_port, fib->ft_table_id,
-				   0);
+  /*nat_ipfix_logging_nat64_session (thread_index, &bibe->in_addr,
+     &bibe->out_addr, bibe->proto,
+     bibe->in_port, bibe->out_port,
+     &ste->in_r_addr, &ste->out_r_addr,
+     ste->r_port, ste->r_port, fib->ft_table_id,
+     0); */
   nat_syslog_nat64_sdel (bibe->fib_index, &bibe->in_addr, bibe->in_port,
 			 &bibe->out_addr, bibe->out_port, &ste->out_r_addr,
 			 ste->r_port, bibe->proto);

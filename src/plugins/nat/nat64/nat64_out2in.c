@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -12,12 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * @file
- * @brief NAT64 IPv4 to IPv6 translation (otside to inside network)
- */
 
-#include <nat/nat64.h>
+#include <nat/nat64/nat64.h>
 #include <nat/nat_inlines.h>
 #include <vnet/ip/ip4_to_ip6.h>
 #include <vnet/fib/ip4_fib.h>

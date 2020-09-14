@@ -19,6 +19,26 @@
 #ifndef included_nat_lib_h__
 #define included_nat_lib_h__
 
+/* NAT API Configuration flags */
+#define foreach_nat_config_flag \
+  _(0x01, IS_TWICE_NAT)         \
+  _(0x02, IS_SELF_TWICE_NAT)    \
+  _(0x04, IS_OUT2IN_ONLY)       \
+  _(0x08, IS_ADDR_ONLY)         \
+  _(0x10, IS_OUTSIDE)           \
+  _(0x20, IS_INSIDE)            \
+  _(0x40, IS_STATIC)            \
+  _(0x80, IS_EXT_HOST_VALID)
+
+typedef enum nat_config_flags_t_
+{
+#define _(n,f) NAT_API_##f = n,
+  foreach_nat_config_flag
+#undef _
+} nat_config_flags_t;
+
+#define foreach_nat_counter _ (tcp) _ (udp) _ (icmp) _ (other) _ (drops)
+
 #define foreach_nat_error                      \
   _ (VALUE_EXIST, -1, "Value already exists")  \
   _ (NO_SUCH_ENTRY, -2, "No such entry")       \
@@ -44,6 +64,12 @@ typedef enum
   foreach_nat_protocol
 #undef _
 } nat_protocol_t;
+
+/* default session timeouts */
+#define NAT_UDP_TIMEOUT 300
+#define NAT_TCP_TRANSITORY_TIMEOUT 240
+#define NAT_TCP_ESTABLISHED_TIMEOUT 7440
+#define NAT_ICMP_TIMEOUT 60
 
 #endif /* included_nat_lib_h__ */
 /*
