@@ -34,6 +34,17 @@ wg_init (vlib_main_t * vm)
   wmp->vlib_main = vm;
   wmp->peers = 0;
 
+  wmp->in_fq_index = vlib_frame_queue_main_init (wg_input_node.index, 0);
+  wmp->out_fq_index =
+    vlib_frame_queue_main_init (wg_output_tun_node.index, 0);
+
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+
+  vec_validate_aligned (wmp->per_thread_data, tm->n_vlib_mains,
+			CLIB_CACHE_LINE_BYTES);
+
+  wg_timer_wheel_init ();
+
   return (NULL);
 }
 

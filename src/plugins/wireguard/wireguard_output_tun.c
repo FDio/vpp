@@ -15,7 +15,6 @@
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/fib_entry.h>
@@ -28,18 +27,7 @@
  _(NONE, "No error")							\
  _(PEER, "Peer error")                                                  \
  _(KEYPAIR, "Keypair error")                                            \
- _(HANDSHAKE_SEND, "Handshake sending failed")                          \
  _(TOO_BIG, "packet too big")                                           \
-
-#define WG_OUTPUT_SCRATCH_SIZE 2048
-
-typedef struct wg_output_scratch_t_
-{
-  u8 scratch[WG_OUTPUT_SCRATCH_SIZE];
-} wg_output_scratch_t;
-
-/* Cache line aligned per-thread scratch space */
-static wg_output_scratch_t *wg_output_scratchs;
 
 typedef enum
 {
@@ -58,6 +46,7 @@ static char *wg_output_error_strings[] = {
 typedef enum
 {
   WG_OUTPUT_NEXT_ERROR,
+  WG_OUTPUT_NEXT_HANDOFF,
   WG_OUTPUT_NEXT_INTERFACE_OUTPUT,
   WG_OUTPUT_N_NEXT,
 } wg_output_next_t;
@@ -109,7 +98,6 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
   vlib_get_buffers (vm, from, bufs, n_left_from);
 
   wg_main_t *wmp = &wg_main;
-  u32 handsh_fails = 0;
   wg_peer_t *peer = NULL;
 
   while (n_left_from > 0)
@@ -121,7 +109,6 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 	clib_net_to_host_u16 (((ip4_header_t *) plain_data)->length);
 
       next[0] = WG_OUTPUT_NEXT_ERROR;
-
       peer =
 	wg_peer_get_by_adj_index (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
 
@@ -131,10 +118,24 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 	  goto out;
 	}
 
+      if (PREDICT_FALSE (~0 == peer->output_thread_index))
+	{
+	  /* this is the first packet to use this peer, claim the peer
+	   * for this thread.
+	   */
+	  clib_atomic_cmp_and_swap (&peer->output_thread_index, ~0,
+				    wg_peer_assign_thread (thread_index));
+	}
+
+      if (PREDICT_TRUE (thread_index != peer->output_thread_index))
+	{
+	  next[0] = WG_OUTPUT_NEXT_HANDOFF;
+	  goto next;
+	}
+
       if (PREDICT_FALSE (!peer->remote.r_current))
 	{
-	  if (PREDICT_FALSE (!wg_send_handshake (vm, peer, false)))
-	    handsh_fails++;
+	  wg_send_handshake_from_mt (peer - wmp->peers, false);
 	  b[0]->error = node->errors[WG_OUTPUT_ERROR_KEYPAIR];
 	  goto out;
 	}
@@ -145,7 +146,7 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
        * Ensure there is enough space to write the encrypted data
        * into the packet
        */
-      if (PREDICT_FALSE (encrypted_packet_len >= WG_OUTPUT_SCRATCH_SIZE) ||
+      if (PREDICT_FALSE (encrypted_packet_len >= WG_DEFAULT_DATA_SIZE) ||
 	  PREDICT_FALSE ((b[0]->current_data + encrypted_packet_len) >=
 			 vlib_buffer_get_default_data_size (vm)))
 	{
@@ -154,7 +155,7 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 	}
 
       message_data_t *encrypted_packet =
-	(message_data_t *) wg_output_scratchs[thread_index].scratch;
+	(message_data_t *) wmp->per_thread_data[thread_index].data;
 
       enum noise_state_crypt state;
       state =
@@ -164,25 +165,19 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 			      &encrypted_packet->counter, plain_data,
 			      plain_data_len,
 			      encrypted_packet->encrypted_data);
-      switch (state)
+
+      if (PREDICT_FALSE (state == SC_KEEP_KEY_FRESH))
 	{
-	case SC_OK:
-	  break;
-	case SC_KEEP_KEY_FRESH:
-	  if (PREDICT_FALSE (!wg_send_handshake (vm, peer, false)))
-	    handsh_fails++;
-	  break;
-	case SC_FAILED:
+	  wg_send_handshake_from_mt (peer - wmp->peers, false);
+	}
+      else if (PREDICT_FALSE (state == SC_FAILED))
+	{
 	  //TODO: Maybe wrong
-	  if (PREDICT_FALSE (!wg_send_handshake (vm, peer, false)))
-	    handsh_fails++;
-	  clib_mem_free (encrypted_packet);
+	  wg_send_handshake_from_mt (peer - wmp->peers, false);
 	  goto out;
-	default:
-	  break;
 	}
 
-      // Here we are sure that can send packet to next node.
+      /* Here we are sure that can send packet to next node */
       next[0] = WG_OUTPUT_NEXT_INTERFACE_OUTPUT;
       encrypted_packet->header.type = MESSAGE_DATA;
 
@@ -195,9 +190,9 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
       ip4_header_set_len_w_chksum
 	(&hdr->ip4, clib_host_to_net_u16 (b[0]->current_length));
 
-      wg_timers_any_authenticated_packet_traversal (peer);
       wg_timers_any_authenticated_packet_sent (peer);
       wg_timers_data_sent (peer);
+      wg_timers_any_authenticated_packet_traversal (peer);
 
     out:
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -207,16 +202,13 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 	    vlib_add_trace (vm, node, b[0], sizeof (*t));
 	  t->hdr = *hdr;
 	}
+    next:
       n_left_from -= 1;
       next += 1;
       b += 1;
     }
 
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
-
-  vlib_node_increment_counter (vm, node->node_index,
-			       WG_OUTPUT_ERROR_HANDSHAKE_SEND, handsh_fails);
-
   return frame->n_vectors;
 }
 
@@ -231,23 +223,12 @@ VLIB_REGISTER_NODE (wg_output_tun_node) =
   .error_strings = wg_output_error_strings,
   .n_next_nodes = WG_OUTPUT_N_NEXT,
   .next_nodes = {
+        [WG_OUTPUT_NEXT_HANDOFF] = "wg-output-tun-handoff",
         [WG_OUTPUT_NEXT_INTERFACE_OUTPUT] = "adj-midchain-tx",
         [WG_OUTPUT_NEXT_ERROR] = "error-drop",
   },
 };
 /* *INDENT-ON* */
-
-static clib_error_t *
-wireguard_output_module_init (vlib_main_t * vm)
-{
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-
-  vec_validate_aligned (wg_output_scratchs, tm->n_vlib_mains,
-			CLIB_CACHE_LINE_BYTES);
-  return (NULL);
-}
-
-VLIB_INIT_FUNCTION (wireguard_output_module_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -82,6 +82,11 @@ static void
 wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
 {
   wg_timers_stop (peer);
+  for (int i = 0; i < WG_N_TIMERS; i++)
+    {
+      peer->timers[i] = ~0;
+    }
+
   noise_remote_clear (vm, &peer->remote);
   peer->last_sent_handshake = vlib_time_now (vm) - (REKEY_TIMEOUT + 1);
 
@@ -97,9 +102,18 @@ wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
     }
   wg_peer_fib_flush (peer);
 
+  peer->input_thread_index = ~0;
+  peer->output_thread_index = ~0;
   peer->adj_index = INDEX_INVALID;
+  peer->timer_wheel = 0;
   peer->persistent_keepalive_interval = 0;
   peer->timer_handshake_attempts = 0;
+  peer->last_sent_packet = 0;
+  peer->last_received_packet = 0;
+  peer->session_derived = 0;
+  peer->rehandshake_started = 0;
+  peer->new_handshake_interval_tick = 0;
+  peer->rehandshake_interval_tick = 0;
   peer->timer_need_another_keepalive = false;
   peer->is_dead = true;
   vec_free (peer->allowed_ips);
@@ -108,7 +122,7 @@ wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
 static void
 wg_peer_init (vlib_main_t * vm, wg_peer_t * peer)
 {
-  wg_timers_init (peer, vlib_time_now (vm));
+  peer->adj_index = INDEX_INVALID;
   wg_peer_clear (vm, peer);
 }
 
@@ -194,6 +208,16 @@ wg_peer_if_table_change (wg_if_t * wgi, index_t peeri, void *data)
   return (WALK_CONTINUE);
 }
 
+walk_rc_t
+wg_peer_if_change_local (wg_if_t * wgi, index_t peeri, void *data)
+{
+  wg_peer_t *peer;
+  peer = wg_peer_get (peeri);
+  peer->remote.r_local = &wgi->local;
+
+  return (WALK_CONTINUE);
+}
+
 static int
 wg_peer_fill (vlib_main_t * vm, wg_peer_t * peer,
 	      u32 table_id,
@@ -205,8 +229,9 @@ wg_peer_fill (vlib_main_t * vm, wg_peer_t * peer,
   wg_peer_endpoint_init (&peer->dst, dst, port);
 
   peer->table_id = table_id;
-  peer->persistent_keepalive_interval = persistent_keepalive_interval;
   peer->wg_sw_if_index = wg_sw_if_index;
+  peer->timer_wheel = &wg_main.timer_wheel;
+  peer->persistent_keepalive_interval = persistent_keepalive_interval;
   peer->last_sent_handshake = vlib_time_now (vm) - (REKEY_TIMEOUT + 1);
   peer->is_dead = false;
 
