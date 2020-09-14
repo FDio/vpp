@@ -78,6 +78,7 @@ typedef struct noise_handshake
 
 typedef struct noise_counter
 {
+  clib_rwlock_t c_lock;
   uint64_t c_send;
   uint64_t c_recv;
   unsigned long c_backtrack[COUNTER_NUM];
@@ -100,19 +101,22 @@ typedef struct noise_remote
 {
   uint32_t r_peer_idx;
   uint8_t r_public[NOISE_PUBLIC_KEY_LEN];
-  noise_local_t *r_local;
+  uint32_t r_local_idx;
   uint8_t r_ss[NOISE_PUBLIC_KEY_LEN];
 
+  clib_rwlock_t r_handshake_lock;
   noise_handshake_t r_handshake;
   uint8_t r_psk[NOISE_SYMMETRIC_KEY_LEN];
   uint8_t r_timestamp[NOISE_TIMESTAMP_LEN];
   f64 r_last_init;
 
+  clib_rwlock_t r_keypair_lock;
   noise_keypair_t *r_next, *r_current, *r_previous;
 } noise_remote_t;
 
 typedef struct noise_local
 {
+  clib_rwlock_t l_identity_lock;
   bool l_has_identity;
   uint8_t l_public[NOISE_PUBLIC_KEY_LEN];
   uint8_t l_private[NOISE_PUBLIC_KEY_LEN];
@@ -120,21 +124,32 @@ typedef struct noise_local
   struct noise_upcall
   {
     void *u_arg;
-    noise_remote_t *(*u_remote_get) (uint8_t[NOISE_PUBLIC_KEY_LEN]);
+    noise_remote_t *(*u_remote_get) (const uint8_t[NOISE_PUBLIC_KEY_LEN]);
       uint32_t (*u_index_set) (noise_remote_t *);
     void (*u_index_drop) (uint32_t);
   } l_upcall;
 } noise_local_t;
 
+/* pool of noise_local */
+extern noise_local_t *noise_local_pool;
+
 /* Set/Get noise parameters */
+static_always_inline noise_local_t *
+noise_local_get (uint32_t locali)
+{
+  return (pool_elt_at_index (noise_local_pool, locali));
+}
+
 void noise_local_init (noise_local_t *, struct noise_upcall *);
+void noise_local_lock_identity (noise_local_t * l);
+void noise_local_unlock_identity (noise_local_t * l);
 bool noise_local_set_private (noise_local_t *,
 			      const uint8_t[NOISE_PUBLIC_KEY_LEN]);
 bool noise_local_keys (noise_local_t *, uint8_t[NOISE_PUBLIC_KEY_LEN],
 		       uint8_t[NOISE_PUBLIC_KEY_LEN]);
 
 void noise_remote_init (noise_remote_t *, uint32_t,
-			const uint8_t[NOISE_PUBLIC_KEY_LEN], noise_local_t *);
+			const uint8_t[NOISE_PUBLIC_KEY_LEN], uint32_t);
 bool noise_remote_set_psk (noise_remote_t *,
 			   uint8_t[NOISE_SYMMETRIC_KEY_LEN]);
 bool noise_remote_keys (noise_remote_t *, uint8_t[NOISE_PUBLIC_KEY_LEN],
