@@ -17,7 +17,8 @@
 #include <vnet/api_errno.h>
 #include <vnet/ipsec/ipsec.h>
 #include <vlib/node_funcs.h>
-
+#include <rte_config.h>
+#include <dpdk/cpu.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/buffer.h>
 #include <dpdk/ipsec/ipsec.h>
