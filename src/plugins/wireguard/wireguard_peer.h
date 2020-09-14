@@ -49,6 +49,9 @@ typedef struct wg_peer
   noise_remote_t remote;
   cookie_maker_t cookie_maker;
 
+  u32 input_thread_index;
+  u32 output_thread_index;
+
   /* Peer addresses */
   wg_peer_endpoint_t dst;
   wg_peer_endpoint_t src;
@@ -65,11 +68,22 @@ typedef struct wg_peer
   u32 wg_sw_if_index;
 
   /* Timers */
-  tw_timer_wheel_16t_2w_512sl_t timer_wheel;
+  tw_timer_wheel_16t_2w_512sl_t *timer_wheel;
   u32 timers[WG_N_TIMERS];
   u32 timer_handshake_attempts;
   u16 persistent_keepalive_interval;
+
+  /* Timestamps */
   f64 last_sent_handshake;
+  f64 last_sent_packet;
+  f64 last_received_packet;
+  f64 session_derived;
+  f64 rehandshake_started;
+
+  /* Variable intervals */
+  u32 new_handshake_interval_tick;
+  u32 rehandshake_interval_tick;
+
   bool timer_need_another_keepalive;
 
   bool is_dead;
@@ -99,6 +113,7 @@ wg_peer_t *wg_peer_get (index_t peeri);
 walk_rc_t wg_peer_if_admin_state_change (wg_if_t * wgi, index_t peeri,
 					 void *data);
 walk_rc_t wg_peer_if_table_change (wg_if_t * wgi, index_t peeri, void *data);
+walk_rc_t wg_peer_if_change_local (wg_if_t * wgi, index_t peeri, void *data);
 
 /*
  * Expoed for the data-plane
@@ -109,6 +124,18 @@ static inline wg_peer_t *
 wg_peer_get_by_adj_index (index_t ai)
 {
   return wg_peer_get (wg_peer_by_adj_index[ai]);
+}
+
+/*
+ * Makes choice for thread_id should be assigned.
+*/
+static inline u32
+wg_peer_assign_thread (u32 thread_id)
+{
+  return ((thread_id) ? thread_id
+	  : (vlib_num_workers ()?
+	     ((unix_time_now_nsec () % vlib_num_workers ()) +
+	      1) : thread_id));
 }
 
 #endif // __included_wg_peer_h__
