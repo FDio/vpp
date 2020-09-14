@@ -19,6 +19,8 @@
 #include <vppinfra/xxhash.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <rte_config.h>
+#include <dpdk/cpu.h>
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <vnet/classify/vnet_classify.h>

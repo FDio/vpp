@@ -21,6 +21,8 @@
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
+#include <rte_config.h>
+#include <dpdk/cpu.h>
 #include <dpdk/buffer.h>
 #include <dpdk/ipsec/ipsec.h>
 #include <dpdk/device/dpdk.h>

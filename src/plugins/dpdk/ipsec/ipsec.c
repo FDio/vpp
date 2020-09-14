@@ -17,7 +17,8 @@
 #include <vnet/api_errno.h>
 #include <vnet/ipsec/ipsec.h>
 #include <vlib/node_funcs.h>
-
+#include <rte_config.h>
+#include <dpdk/cpu.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/buffer.h>
 #include <dpdk/ipsec/ipsec.h>
@@ -405,7 +406,7 @@ done:
   return error;
 }
 
-static void __attribute__ ((unused)) clear_and_free_obj (void *obj)
+static void __attribute__((unused)) clear_and_free_obj (void *obj)
 {
   struct rte_mempool *mp = rte_mempool_from_obj (obj);
 
@@ -802,8 +803,8 @@ crypto_auto_placement (void)
 
 static void
 crypto_op_init (struct rte_mempool *mempool,
-		void *_arg __attribute__ ((unused)),
-		void *_obj, unsigned i __attribute__ ((unused)))
+		void *_arg __attribute__((unused)),
+		void *_obj, unsigned i __attribute__((unused)))
 {
   struct rte_crypto_op *op = _obj;
 
