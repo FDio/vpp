@@ -104,14 +104,14 @@ wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
 			       packet.encrypted_static,
 			       packet.encrypted_timestamp))
     {
-      f64 now = vlib_time_now (vm);
       packet.header.type = MESSAGE_HANDSHAKE_INITIATION;
       cookie_maker_mac (&peer->cookie_maker, &packet.macs, &packet,
 			sizeof (packet));
-      wg_timers_any_authenticated_packet_traversal (peer);
       wg_timers_any_authenticated_packet_sent (peer);
-      peer->last_sent_handshake = now;
       wg_timers_handshake_initiated (peer);
+      wg_timers_any_authenticated_packet_traversal (peer);
+
+      peer->last_sent_handshake = vlib_time_now (vm);
     }
   else
     return false;
@@ -166,8 +166,9 @@ wg_send_keepalive (vlib_main_t * vm, wg_peer_t * peer)
     }
 
   ip46_enqueue_packet (vm, bi0, false);
-  wg_timers_any_authenticated_packet_traversal (peer);
+
   wg_timers_any_authenticated_packet_sent (peer);
+  wg_timers_any_authenticated_packet_traversal (peer);
 
 out:
   clib_mem_free (packet);
@@ -180,8 +181,6 @@ wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
   wg_main_t *wmp = &wg_main;
   message_handshake_response_t packet;
 
-  peer->last_sent_handshake = vlib_time_now (vm);
-
   if (noise_create_response (vm,
 			     &peer->remote,
 			     &packet.sender_index,
@@ -189,7 +188,6 @@ wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
 			     packet.unencrypted_ephemeral,
 			     packet.encrypted_nothing))
     {
-      f64 now = vlib_time_now (vm);
       packet.header.type = MESSAGE_HANDSHAKE_RESPONSE;
       cookie_maker_mac (&peer->cookie_maker, &packet.macs, &packet,
 			sizeof (packet));
@@ -197,9 +195,9 @@ wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
       if (noise_remote_begin_session (wmp->vlib_main, &peer->remote))
 	{
 	  wg_timers_session_derived (peer);
-	  wg_timers_any_authenticated_packet_traversal (peer);
 	  wg_timers_any_authenticated_packet_sent (peer);
-	  peer->last_sent_handshake = now;
+	  wg_timers_any_authenticated_packet_traversal (peer);
+	  peer->last_sent_handshake = vlib_time_now (vm);
 
 	  u32 bi0 = 0;
 	  if (!wg_create_buffer (vm, peer, (u8 *) & packet,

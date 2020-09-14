@@ -195,9 +195,9 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
       ip4_header_set_len_w_chksum
 	(&hdr->ip4, clib_host_to_net_u16 (b[0]->current_length));
 
-      wg_timers_any_authenticated_packet_traversal (peer);
       wg_timers_any_authenticated_packet_sent (peer);
       wg_timers_data_sent (peer);
+      wg_timers_any_authenticated_packet_traversal (peer);
 
     out:
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
