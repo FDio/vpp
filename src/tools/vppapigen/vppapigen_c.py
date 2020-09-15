@@ -1337,6 +1337,11 @@ def generate_c_boilerplate(services, defines, counters, file_crc,
               .format(n=d.name, ID=d.name.upper(), crc=d.crc))
     for s in services:
         d = define_hash[s.caller]
+        if 'deprecated' in d.options:
+            deprecated = 1
+        else:
+            deprecated = 0
+
         write('   c = (vl_msg_api_msg_config_t) '
               ' {{.id = VL_API_{ID} + msg_id_base,\n'
               '   .name = "{n}",\n'
@@ -1344,9 +1349,11 @@ def generate_c_boilerplate(services, defines, counters, file_crc,
               '   .cleanup = vl_noop_handler,\n'
               '   .endian = vl_api_{n}_t_endian,\n'
               '   .print = vl_api_{n}_t_print,\n'
-              '   .is_autoendian = {auto}}};\n'
+              '   .is_autoendian = {auto},\n'
+              '   .is_deprecated = {deprecated},\n'
+              '}};\n'
               .format(n=s.caller, ID=s.caller.upper(),
-                      auto=d.autoendian))
+                      auto=d.autoendian, deprecated=deprecated))
         write('   vl_msg_api_config (&c);\n')
         try:
             d = define_hash[s.reply]

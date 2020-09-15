@@ -134,6 +134,7 @@ typedef struct
   int message_bounce;		/**< do not free message after processing */
   int is_mp_safe;		/**< worker thread barrier required?  */
   int is_autoendian;		/**< endian conversion required?  */
+  int is_deprecated;		/**< is message deprecated?  */
 } vl_msg_api_msg_config_t;
 
 /** Message header structure */
@@ -252,6 +253,9 @@ typedef struct api_main_t
 
   /** Message requires us to do endian conversion */
   u8 *is_autoendian;
+
+  /** Message is deprecated */
+  u8 *is_deprecated;
 
   /** Allocator ring vectors (in shared memory) */
   struct ring_alloc_ *arings;

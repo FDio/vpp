@@ -230,20 +230,25 @@ vl_api_message_table_command (vlib_main_t * vm,
 {
   api_main_t *am = vlibapi_get_main ();
   int i;
-  int verbose = 0;
+  int verbose = 0, deprecated = 0;
 
   if (unformat (input, "verbose"))
     verbose = 1;
+
+  if (unformat (input, "deprecated"))
+    deprecated = 1;
 
 
   if (verbose == 0)
     vlib_cli_output (vm, "%-4s %s", "ID", "Name");
   else
-    vlib_cli_output (vm, "%-4s %-40s %6s %7s", "ID", "Name", "Bounce",
-		     "MP-safe");
+    vlib_cli_output (vm, "%-4s %-40s %6s %7s %10s", "ID", "Name", "Bounce",
+		     "MP-safe", "Deprecated");
 
   for (i = 1; i < vec_len (am->msg_names); i++)
     {
+      if (deprecated == 1 && am->is_deprecated[i] == 0)
+	continue;
       if (verbose == 0)
 	{
 	  vlib_cli_output (vm, "%-4d %s", i,
@@ -252,10 +257,10 @@ vl_api_message_table_command (vlib_main_t * vm,
 	}
       else
 	{
-	  vlib_cli_output (vm, "%-4d %-40s %6d %7d", i,
+	  vlib_cli_output (vm, "%-4d %-40s %6d %7d %10d", i,
 			   am->msg_names[i] ? am->msg_names[i] :
 			   "  [no handler]", am->message_bounce[i],
-			   am->is_mp_safe[i]);
+			   am->is_mp_safe[i], am->is_deprecated[i]);
 	}
     }
 
@@ -269,7 +274,7 @@ vl_api_message_table_command (vlib_main_t * vm,
 VLIB_CLI_COMMAND (cli_show_api_message_table_command, static) =
 {
   .path = "show api message-table",
-  .short_help = "Message Table",
+  .short_help = "show api message-table [verbose] [deprecated]",
   .function = vl_api_message_table_command,
 };
 /* *INDENT-ON* */
