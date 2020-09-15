@@ -287,7 +287,7 @@ vcl_bapi_send_session_enable_disable (u8 is_enable)
   memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_SESSION_ENABLE_DISABLE);
-  bmp->client_index = wrk->bapi_client_index;
+  bmp->client_index = wrk->api_client_handle;
   bmp->context = htonl (0xfeedface);
   bmp->is_enable = is_enable;
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
@@ -309,7 +309,7 @@ vcl_bapi_send_attach (void)
   memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_APP_ATTACH);
-  bmp->client_index = wrk->bapi_client_index;
+  bmp->client_index = wrk->api_client_handle;
   bmp->context = htonl (0xfeedface);
   bmp->options[APP_OPTIONS_FLAGS] =
     APP_OPTIONS_FLAGS_ACCEPT_REDIRECT | APP_OPTIONS_FLAGS_ADD_SEGMENT |
@@ -345,7 +345,7 @@ vcl_bapi_send_detach (void)
   memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_DETACH);
-  bmp->client_index = wrk->bapi_client_index;
+  bmp->client_index = wrk->api_client_handle;
   bmp->context = htonl (0xfeedface);
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
 }
@@ -360,7 +360,7 @@ vcl_bapi_send_app_worker_add_del (u8 is_add)
   memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = ntohs (VL_API_APP_WORKER_ADD_DEL);
-  mp->client_index = wrk->bapi_client_index;
+  mp->client_index = wrk->api_client_handle;
   mp->app_index = clib_host_to_net_u32 (vcm->app_index);
   mp->context = wrk->wrk_index;
   mp->is_add = is_add;
@@ -380,7 +380,7 @@ vcl_bapi_send_child_worker_del (vcl_worker_t * child_wrk)
   memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = ntohs (VL_API_APP_WORKER_ADD_DEL);
-  mp->client_index = wrk->bapi_client_index;
+  mp->client_index = wrk->api_client_handle;
   mp->app_index = clib_host_to_net_u32 (vcm->app_index);
   mp->context = wrk->wrk_index;
   mp->is_add = 0;
@@ -399,7 +399,7 @@ vcl_bapi_send_application_tls_cert_add (vcl_session_t * session, char *cert,
   cert_mp = vl_msg_api_alloc (sizeof (*cert_mp) + cert_len);
   clib_memset (cert_mp, 0, sizeof (*cert_mp));
   cert_mp->_vl_msg_id = ntohs (VL_API_APPLICATION_TLS_CERT_ADD);
-  cert_mp->client_index = wrk->bapi_client_index;
+  cert_mp->client_index = wrk->api_client_handle;
   cert_mp->context = session->session_index;
   cert_mp->cert_len = clib_host_to_net_u16 (cert_len);
   clib_memcpy_fast (cert_mp->cert, cert, cert_len);
@@ -416,7 +416,7 @@ vcl_bapi_send_application_tls_key_add (vcl_session_t * session, char *key,
   key_mp = vl_msg_api_alloc (sizeof (*key_mp) + key_len);
   clib_memset (key_mp, 0, sizeof (*key_mp));
   key_mp->_vl_msg_id = ntohs (VL_API_APPLICATION_TLS_KEY_ADD);
-  key_mp->client_index = wrk->bapi_client_index;
+  key_mp->client_index = wrk->api_client_handle;
   key_mp->context = session->session_index;
   key_mp->key_len = clib_host_to_net_u16 (key_len);
   clib_memcpy_fast (key_mp->key, key, key_len);
@@ -518,7 +518,7 @@ vcl_bapi_connect_to_vpp (void)
 
   am = vlibapi_get_main ();
   wrk->vl_input_queue = am->shmem_hdr->vl_input_queue;
-  wrk->bapi_client_index = (u32) am->my_client_index;
+  wrk->api_client_handle = (u32) am->my_client_index;
 
   VDBG (0, "app (%s) is connected to VPP!", wrk_name);
   vcl_evt (VCL_EVT_INIT, vcm);
@@ -758,7 +758,7 @@ vcl_bapi_worker_set (void)
       if (vcm->workers[i].current_pid == wrk->current_pid)
 	{
 	  wrk->vl_input_queue = vcm->workers[i].vl_input_queue;
-	  wrk->bapi_client_index = vcm->workers[i].bapi_client_index;
+	  wrk->api_client_handle = vcm->workers[i].api_client_handle;
 	  return 0;
 	}
     }

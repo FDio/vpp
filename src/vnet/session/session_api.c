@@ -1434,8 +1434,8 @@ sapi_add_del_worker_handler (app_namespace_t * app_ns,
   app_ns_api_handle_t *handle;
   app_sapi_msg_t msg = { 0 };
   app_worker_t *app_wrk;
+  u32 sapi_handle = -1;
   application_t *app;
-  u32 sapi_handle;
   u8 fd_flags = 0;
 
   app = application_get_if_valid (mp->app_index);
@@ -1486,6 +1486,7 @@ done:
   rmp = &msg.worker_add_del_reply;
   rmp->retval = rv;
   rmp->is_add = mp->is_add;
+  rmp->api_client_handle = sapi_handle;
   rmp->wrk_index = args.wrk_map_index;
   rmp->segment_handle = args.segment_handle;
   if (!rv && mp->is_add)

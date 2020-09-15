@@ -825,6 +825,7 @@ typedef struct app_sapi_worker_add_del_reply_msg_
   u32 wrk_index;
   u64 app_event_queue_address;
   u64 segment_handle;
+  u32 api_client_handle;
   u8 n_fds;
   u8 fd_flags;
   u8 is_add;
