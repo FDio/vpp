@@ -24,34 +24,17 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/ip/ip_types_api.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/geneve/geneve.api_enum.h>
+#include <vnet/geneve/geneve.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE gm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_vpe_api_msg                             \
-_(SW_INTERFACE_SET_GENEVE_BYPASS, sw_interface_set_geneve_bypass)         \
-_(GENEVE_ADD_DEL_TUNNEL, geneve_add_del_tunnel)                           \
-_(GENEVE_ADD_DEL_TUNNEL2, geneve_add_del_tunnel2)                         \
-_(GENEVE_TUNNEL_DUMP, geneve_tunnel_dump)
 
 static void
   vl_api_sw_interface_set_geneve_bypass_t_handler
   (vl_api_sw_interface_set_geneve_bypass_t * mp)
 {
+  geneve_main_t *gm = &geneve_main;
   vl_api_sw_interface_set_geneve_bypass_reply_t *rmp;
   int rv = 0;
   u32 sw_if_index = ntohl (mp->sw_if_index);
@@ -67,6 +50,7 @@ static void
 static void vl_api_geneve_add_del_tunnel_t_handler
   (vl_api_geneve_add_del_tunnel_t * mp)
 {
+  geneve_main_t *gm = &geneve_main;
   vl_api_geneve_add_del_tunnel_reply_t *rmp;
   int rv = 0;
   ip4_main_t *im = &ip4_main;
@@ -118,6 +102,7 @@ out:
 static void vl_api_geneve_add_del_tunnel2_t_handler
   (vl_api_geneve_add_del_tunnel2_t * mp)
 {
+  geneve_main_t *gm = &geneve_main;
   vl_api_geneve_add_del_tunnel2_reply_t *rmp;
   int rv = 0;
   ip4_main_t *im = &ip4_main;
@@ -170,6 +155,7 @@ out:
 static void send_geneve_tunnel_details
   (geneve_tunnel_t * t, vl_api_registration_t * reg, u32 context)
 {
+  geneve_main_t *gm = &geneve_main;
   vl_api_geneve_tunnel_details_t *rmp;
   ip4_main_t *im4 = &ip4_main;
   ip6_main_t *im6 = &ip6_main;
@@ -177,7 +163,7 @@ static void send_geneve_tunnel_details
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_GENEVE_TUNNEL_DETAILS);
+  rmp->_vl_msg_id = ntohs (VL_API_GENEVE_TUNNEL_DETAILS + gm->msg_id_base);
   ip_address_encode (&t->local, is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
 		     &rmp->src_address);
   ip_address_encode (&t->remote, is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
@@ -231,45 +217,22 @@ static void vl_api_geneve_tunnel_dump_t_handler
 }
 
 /*
- * vpe_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
+ * geneve_api_hookup
+ * Add geneve's API message handlers to the table.
  */
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_geneve;
-#undef _
-}
+/* API definitions */
+#include <vnet/format_fns.h>
+#include <vnet/geneve/geneve.api.c>
 
 static clib_error_t *
 geneve_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
-
-  am->api_trace_cfg[VL_API_GENEVE_ADD_DEL_TUNNEL].size += 16 * sizeof (u32);
+  geneve_main_t *gm = &geneve_main;
 
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  gm->msg_id_base = setup_message_id_table ();
 
   return 0;
 }

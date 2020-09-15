@@ -127,6 +127,8 @@ typedef struct
   u64 bytes;
 } ip6_nbr_counter_t;
 
+struct vat_registered_features_t;
+
 typedef struct
 {
   /* vpe input queue */
@@ -228,6 +230,8 @@ typedef struct
 
   elog_main_t elog_main;
 
+  struct vat_registered_features_t *feature_function_registrations;
+
   /* Convenience */
   vlib_main_t *vlib_main;
 } vat_main_t;
@@ -266,6 +270,31 @@ void api_cli_output (void *, const char *fmt, ...);
 #define print fformat_append_cr
 void fformat_append_cr (FILE *, const char *fmt, ...);
 #endif
+
+
+typedef clib_error_t *(vat_feature_function_t) (vat_main_t * vam);
+typedef struct vat_registered_features_t
+{
+  vat_feature_function_t *function;
+  struct vat_registered_features_t *next;
+} vat_registered_features_t;
+
+
+#define VAT_REGISTER_FEATURE_FUNCTION(x)                               \
+    vat_registered_features_t _vat_feature_function_##x;               \
+static void __vlib_add_config_function_##x (void)                      \
+    __attribute__((__constructor__)) ;                                 \
+static void __vlib_add_config_function_##x (void)                      \
+{                                                                      \
+  vat_main_t * vam = &vat_main;                                                \
+  _vat_feature_function_##x.next = vam->feature_function_registrations;        \
+  vam->feature_function_registrations = &_vat_feature_function_##x;    \
+}                                                                      \
+ vat_registered_features_t _vat_feature_function_##x =		       \
+   {								       \
+    .function = x,						       \
+   }
+
 
 #endif /* __included_vat_h__ */
 

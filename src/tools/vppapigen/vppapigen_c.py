@@ -512,7 +512,7 @@ def generate_include_enum(s, module, stream):
         write('typedef enum {\n')
         for t in s['Define']:
             write('   VL_API_{},\n'.format(t.name.upper()))
-        write('   VL_MSG_FIRST_AVAILABLE\n')
+        write('   VL_MSG_{}_LAST\n'.format(module.upper()))
         write('}} vl_api_{}_enum_t;\n'.format(module))
 
 
@@ -625,8 +625,8 @@ def generate_c_boilerplate(services, defines, file_crc, module, stream):
     write('setup_message_id_table (void) {\n')
     write('   api_main_t *am = my_api_main;\n')
     write('   vl_msg_api_msg_config_t c;\n')
-    write('   u16 msg_id_base = vl_msg_api_get_msg_ids ("{}_{crc:08x}", VL_MSG_FIRST_AVAILABLE);\n'
-          .format(module, crc=file_crc))
+    write('   u16 msg_id_base = vl_msg_api_get_msg_ids ("{}_{crc:08x}", VL_MSG_{m}_LAST);\n'
+          .format(module, crc=file_crc, m=module.upper()))
 
 
     for d in defines:
@@ -743,7 +743,7 @@ def generate_c_test_plugin_boilerplate(services, defines, file_crc, module, stre
 
     write('}\n')
 
-    write('clib_error_t * vat_plugin_register (vat_main_t *vam)\n')
+    write('clib_error_t * vat_{}_plugin_register (vat_main_t *vam)\n'.format(module))
     write('{\n')
     write('   {n}_test_main_t * mainp = &{n}_test_main;\n'.format(n=module))
     write('   mainp->vat_main = vam;\n')
