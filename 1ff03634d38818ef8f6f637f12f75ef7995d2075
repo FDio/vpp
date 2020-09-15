@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "95eccb20_57141428",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-15T14:55:11Z",
+      "side": 1,
+      "message": "Does GRO really need to be changed? As long as we use a custom tcp_cfg.max_gso_size when generating packets in tcp, we can let the other parts of the infra use TCP_MAX_GSO_SZ.",
+      "range": {
+        "startLine": 196,
+        "startChar": 33,
+        "endLine": 196,
+        "endChar": 53
+      },
+      "revId": "1ff03634d38818ef8f6f637f12f75ef7995d2075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9d541f6e_9be590d0",
+        "filename": "src/vnet/tcp/tcp_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1104,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-15T14:55:11Z",
+      "side": 1,
+      "message": "clib_min (max_gso_size, TCP_MAX_GSO_SZ); \n\nto be on the safe side.",
+      "range": {
+        "startLine": 1104,
+        "startChar": 24,
+        "endLine": 1104,
+        "endChar": 36
+      },
+      "revId": "1ff03634d38818ef8f6f637f12f75ef7995d2075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1349629b_231e2b2b",
+        "filename": "src/vnet/tcp/tcp_types.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-15T14:55:11Z",
+      "side": 1,
+      "message": "Let\u0027s keep the original because that\u0027s a real upper limit on max gso size. What each component decides to use it\u0027s up to its own configuration.",
+      "range": {
+        "startLine": 36,
+        "startChar": 8,
+        "endLine": 36,
+        "endChar": 30
+      },
+      "revId": "1ff03634d38818ef8f6f637f12f75ef7995d2075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
