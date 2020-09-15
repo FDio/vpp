@@ -67,7 +67,7 @@ DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
 DEB_DEPENDS += python3-all python3-setuptools check
 DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
-DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml
+DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml meson
 DEB_DEPENDS += python3-venv  # ensurepip
 DEB_DEPENDS += python3-dev   # needed for python3 -m pip install psutil
 # python3.6 on 16.04 requires python36-dev
@@ -111,6 +111,7 @@ RPM_DEPENDS += mbedtls-devel
 RPM_DEPENDS += ccache
 RPM_DEPENDS += xmlto
 RPM_DEPENDS += elfutils-libelf-devel
+RPM_DEPENDS += meson
 
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
@@ -151,7 +152,7 @@ RPM_DEPENDS_DEBUG += yum-plugin-auto-update-debug-info
 SUSE_NAME= $(shell grep '^NAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | sed -e 's/ /-/' | awk '{print tolower($$0)}')
 SUSE_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
 RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
-RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
+RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply meson
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel libuuid-devel

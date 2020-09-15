@@ -20,7 +20,8 @@
 #include <vnet/crypto/crypto.h>
 #include <vnet/vnet.h>
 #include <vpp/app/version.h>
-
+#include <rte_config.h>
+#include <dpdk/cpu.h>
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
