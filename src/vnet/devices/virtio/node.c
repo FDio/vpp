@@ -141,6 +141,10 @@ more:
   vring->desc_next = next;
   vring->desc_in_use = used;
 
+  /* the backend will check vring->avail->idx again after clearing
+   * vring->used->flags, we must make sure vring->avail->idx is updated
+   * before we check vring->used->flags */
+  CLIB_MEMORY_STORE_BARRIER ();
   if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0)
     {
       virtio_kick (vm, vring, vif);
@@ -284,10 +288,6 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vnet_gro_flow_table_schedule_node_on_dispatcher (vm,
 						       txq_vring->flow_table);
     }
-
-  if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0 &&
-      vring->last_kick_avail_idx != vring->avail->idx)
-    virtio_kick (vm, vring, vif);
 
   if (n_left == 0)
     goto refill;
