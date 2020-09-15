@@ -85,26 +85,21 @@ virtio_refill_vring (vlib_main_t * vm, virtio_if_t * vif,
 		     virtio_if_type_t type, virtio_vring_t * vring,
 		     const int hdr_sz, u32 node_index)
 {
-  u16 used, next, avail, n_slots, n_refill;
-  u16 sz = vring->size;
-  u16 mask = sz - 1;
+  u16 next, avail, n_slots, n_refill;
+  const u16 sz = vring->size;
+  const u16 mask = sz - 1;
+  u16 used = vring->desc_in_use;
+  const u16 n_free = sz - used;
 
-more:
-  used = vring->desc_in_use;
-
-  if (sz - used < sz / 8)
+  if (n_free < 32)
     return;
 
-  /* deliver free buffers in chunks of 64 */
-  n_refill = clib_min (sz - used, 64);
-
+  n_refill = clib_min (n_free, 2 * VLIB_FRAME_SIZE);
   next = vring->desc_next;
   avail = vring->avail->idx;
   n_slots =
-    vlib_buffer_alloc_to_ring_from_pool (vm, vring->buffers, next,
-					 vring->size, n_refill,
-					 vring->buffer_pool_index);
-
+    vlib_buffer_alloc_to_ring_from_pool (vm, vring->buffers, next, sz,
+					 n_refill, vring->buffer_pool_index);
   if (PREDICT_FALSE (n_slots != n_refill))
     {
       vlib_error_count (vm, node_index,
@@ -140,16 +135,20 @@ more:
   vring->avail->idx = avail;
   vring->desc_next = next;
   vring->desc_in_use = used;
-
-  /* the backend will check vring->avail->idx again after clearing
-   * vring->used->flags, we must make sure vring->avail->idx is updated
-   * before we check vring->used->flags */
-  CLIB_MEMORY_STORE_BARRIER ();
-  if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0)
+  /* for rx, we only need to wake up the backend if it is faster than us and
+   * may be blocked because of lack of descriptors, only ring doorbell if
+   * backend filled a lot of buffers since last call
+   * if we are faster than the backend there should only be a low number of
+   * descriptor to refill each call */
+  if (n_free >= 100)
     {
-      virtio_kick (vm, vring, vif);
+      /* the backend will check vring->avail->idx again after clearing
+       * vring->used->flags, we must make sure vring->avail->idx is updated
+       * before we check vring->used->flags */
+      CLIB_MEMORY_STORE_BARRIER ();
+      if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0)
+	virtio_kick (vm, vring, vif);
     }
-  goto more;
 }
 
 static_always_inline void
