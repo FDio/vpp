@@ -181,6 +181,8 @@ typedef struct
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
+
+  u16 msg_id_base;
 } geneve_main_t;
 
 extern geneve_main_t geneve_main;

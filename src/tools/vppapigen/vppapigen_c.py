@@ -512,7 +512,7 @@ def generate_include_enum(s, module, stream):
         write('typedef enum {\n')
         for t in s['Define']:
             write('   VL_API_{},\n'.format(t.name.upper()))
-        write('   VL_MSG_FIRST_AVAILABLE\n')
+        write('   VL_MSG_{}_LAST\n'.format(module.upper()))
         write('}} vl_api_{}_enum_t;\n'.format(module))
 
 
@@ -625,8 +625,8 @@ def generate_c_boilerplate(services, defines, file_crc, module, stream):
     write('setup_message_id_table (void) {\n')
     write('   api_main_t *am = my_api_main;\n')
     write('   vl_msg_api_msg_config_t c;\n')
-    write('   u16 msg_id_base = vl_msg_api_get_msg_ids ("{}_{crc:08x}", VL_MSG_FIRST_AVAILABLE);\n'
-          .format(module, crc=file_crc))
+    write('   u16 msg_id_base = vl_msg_api_get_msg_ids ("{}_{crc:08x}", VL_MSG_{m}_LAST);\n'
+          .format(module, crc=file_crc, m=module.upper()))
 
 
     for d in defines:
@@ -662,7 +662,7 @@ def generate_c_boilerplate(services, defines, file_crc, module, stream):
     write('}\n')
 
 
-def generate_c_test_plugin_boilerplate(services, defines, file_crc, module, stream):
+def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, stream):
     write = stream.write
 
     define_hash = {d.name:d for d in defines}
@@ -742,8 +742,10 @@ def generate_c_test_plugin_boilerplate(services, defines, file_crc, module, stre
                   .format(n=e, ID=e.upper()))
 
     write('}\n')
-
-    write('clib_error_t * vat_plugin_register (vat_main_t *vam)\n')
+    if plugin:
+        write('clib_error_t * vat_plugin_register (vat_main_t *vam)\n')
+    else:
+        write('clib_error_t * vat_{}_plugin_register (vat_main_t *vam)\n'.format(module))
     write('{\n')
     write('   {n}_test_main_t * mainp = &{n}_test_main;\n'.format(n=module))
     write('   mainp->vat_main = vam;\n')
@@ -757,7 +759,6 @@ def generate_c_test_plugin_boilerplate(services, defines, file_crc, module, stre
     write('#endif\n')
     write('   return 0;\n')
     write('}\n')
-
 
 #
 # Plugin entry point
@@ -803,10 +804,10 @@ def run(args, input_filename, s):
     st.close()
 
     # Generate separate C test file
-    # This is only supported for plugins at the moment
     st = StringIO()
-    generate_c_test_plugin_boilerplate(s['Service'], s['Define'], s['file_crc'],
-                                       modulename, st)
+    plugin = True if 'plugin' in input_filename else False
+    generate_c_test_boilerplate(s['Service'], s['Define'], s['file_crc'],
+                                modulename, plugin, st)
     with open (filename_c_test, 'w') as fd:
         st.seek (0)
         shutil.copyfileobj(st, fd)
