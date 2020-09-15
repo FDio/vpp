@@ -286,7 +286,10 @@ defaulted:
 
       /* Figure out which numa runs the main thread */
       vlib_get_thread_core_numa (&tmp, main_core);
-      __os_numa_index = tmp.numa_id;
+      if (-1 == tmp.numa_id)
+	__os_numa_index = 0;	/* vlib_get_thread_core_numa() failed, default to 0 */
+      else
+	__os_numa_index = tmp.numa_id;
 
       /* and use the main heap as that numa's numa heap */
       clib_mem_set_per_numa_heap (main_heap);
