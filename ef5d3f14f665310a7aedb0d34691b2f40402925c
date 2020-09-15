@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "39d95f33_2eee0059",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-15T15:47:53Z",
+      "side": 1,
+      "message": "Please remove this!",
+      "revId": "ef5d3f14f665310a7aedb0d34691b2f40402925c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "87a06388_8df92abf",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-15T15:47:53Z",
+      "side": 1,
+      "message": "I am sure, setting 512 buffers adds big latency spike for faster backends, when backend sits idle, waiting for available buffers. There will be performance impact i.e. drops.\nWe should supply buffers in chunks of \u002764\u0027, so that backend should start processing buffers as soon as possible and meanwhile, driver will be providing more buffers.",
+      "revId": "ef5d3f14f665310a7aedb0d34691b2f40402925c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a9b4d0e9_aa144ed2",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-15T15:47:53Z",
+      "side": 1,
+      "message": "It should not be conditional. We should act as backend wants from us. We should implement VIRTIO_RING_F_EVENT_IDX for fewer interrupts based on threshold negotiated between device and driver.",
+      "revId": "ef5d3f14f665310a7aedb0d34691b2f40402925c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
