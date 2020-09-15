@@ -20,6 +20,8 @@
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
+#include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip4_packet.h>
 
 #include <vmxnet3/vmxnet3.h>
 
@@ -128,6 +130,7 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
     {
       u16 space_needed = 1, i;
       u32 gso_size = 0;
+      u32 l4_hdr_sz;
       vlib_buffer_t *b;
       u32 hdr_len = 0;
 
@@ -193,8 +196,13 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
 	       */
 	      ASSERT (vd->gso_enable == 1);
 	      gso_size = vnet_buffer2 (b0)->gso_size;
-	      hdr_len = vnet_buffer (b0)->l4_hdr_offset +
-		sizeof (ethernet_header_t);
+	      l4_hdr_sz = vnet_buffer2 (b0)->gso_l4_hdr_sz;
+	      if (b0->flags & VNET_BUFFER_F_IS_IP6)
+		hdr_len = sizeof (ethernet_header_t) + sizeof (ip6_header_t) +
+		  l4_hdr_sz;
+	      else
+		hdr_len = sizeof (ethernet_header_t) + sizeof (ip4_header_t) +
+		  l4_hdr_sz;
 	    }
 
 	  generation = txq->tx_ring.gen;
@@ -202,9 +210,9 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
 	}
       if (PREDICT_FALSE (gso_size != 0))
 	{
-	  txd->flags[1] = hdr_len;
-	  txd->flags[1] |= VMXNET3_TXF_OM (VMXNET3_OM_TSO);
-	  txd->flags[0] |= VMXNET3_TXF_MSSCOF (gso_size);
+	  txq->tx_desc[first_idx].flags[1] = hdr_len;
+	  txq->tx_desc[first_idx].flags[1] |= VMXNET3_TXF_OM (VMXNET3_OM_TSO);
+	  txq->tx_desc[first_idx].flags[0] |= VMXNET3_TXF_MSSCOF (gso_size);
 	}
       txd->flags[1] |= VMXNET3_TXF_CQ | VMXNET3_TXF_EOP;
       asm volatile ("":::"memory");

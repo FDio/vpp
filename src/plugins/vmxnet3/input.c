@@ -269,7 +269,6 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       b0->flags = 0;
       b0->error = 0;
       b0->current_config_index = 0;
-      ASSERT (b0->current_length != 0);
 
       if (PREDICT_FALSE ((rx_comp->index & VMXNET3_RXCI_EOP) &&
 			 (rx_comp->len & VMXNET3_RXCL_ERROR)))
@@ -317,12 +316,19 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       else if (rx_comp->index & VMXNET3_RXCI_EOP)
 	{
 	  /* end of segment */
-	  if (prev_b0)
+	  if (PREDICT_TRUE (prev_b0 != 0))
 	    {
-	      prev_b0->flags |= VLIB_BUFFER_NEXT_PRESENT;
-	      prev_b0->next_buffer = bi0;
-	      hb->total_length_not_including_first_buffer +=
-		b0->current_length;
+	      if (PREDICT_TRUE (b0->current_length != 0))
+		{
+		  prev_b0->flags |= VLIB_BUFFER_NEXT_PRESENT;
+		  prev_b0->next_buffer = bi0;
+		  hb->total_length_not_including_first_buffer +=
+		    b0->current_length;
+		}
+	      else
+		{
+		  vlib_buffer_free_one (vm, bi0);
+		}
 	      prev_b0 = 0;
 	      got_packet = 1;
 	    }
@@ -387,7 +393,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      ethernet_header_t *e = (ethernet_header_t *) hb->data;
 
 	      next[0] = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-	      if (!ethernet_frame_is_tagged (e->type))
+	      if (!ethernet_frame_is_tagged (ntohs (e->type)))
 		vmxnet3_handle_offload (rx_comp, hb, gso_size);
 	    }
 
