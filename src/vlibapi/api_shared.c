@@ -802,7 +802,8 @@ _(msg_print_handlers)                           \
 _(api_trace_cfg)				\
 _(message_bounce)				\
 _(is_mp_safe)					\
-_(is_autoendian)
+_(is_autoendian)				\
+_(is_deprecated)
 
 void
 vl_msg_api_config (vl_msg_api_msg_config_t * c)
@@ -844,6 +845,7 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
   am->message_bounce[c->id] = c->message_bounce;
   am->is_mp_safe[c->id] = c->is_mp_safe;
   am->is_autoendian[c->id] = c->is_autoendian;
+  am->is_deprecated[c->id] = c->is_deprecated;
 
   am->api_trace_cfg[c->id].size = c->size;
   am->api_trace_cfg[c->id].trace_enable = c->traced;
@@ -874,6 +876,7 @@ vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
   c->message_bounce = 0;
   c->is_mp_safe = 0;
   c->is_autoendian = 0;
+  c->is_deprecated = 0;
   vl_msg_api_config (c);
 }
 
