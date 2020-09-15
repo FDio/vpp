@@ -17,8 +17,13 @@ Because of AF_XDP restrictions, the MTU is limited to below PAGE_SIZE
 (4096-bytes on most systems) minus 256-bytes, and they are additional
 limitations depending upon specific Linux device drivers.
 As a rule of thumb, a MTU of 3000-bytes or less should be safe.
-Furthermore, upon UMEM creation, the kernel allocates a physically-contiguous structure, whose size is proportional to the number of 4KB pages contained in the UMEM. That allocation might fail when the number of buffers allocated by VPP is too high. That number can be controlled with the `buffers { buffers-per-numa }` configuration option.
-Finally, note that because of this limitation, this plugin is unlikely to be compatible with the use of 1GB hugepages.
+Furthermore, upon UMEM creation, the kernel allocates a
+physically-contiguous structure, whose size is proportional to the number
+of 4KB pages contained in the UMEM. That allocation might fail when
+the number of buffers allocated by VPP is too high. That number can be
+controlled with the `buffers { buffers-per-numa }` configuration option.
+Finally, note that because of this limitation, this plugin is unlikely
+to be compatible with the use of 1GB hugepages.
 
 ## Requirements
 The Linux kernel interface must be up and have enough queues before
@@ -31,9 +36,10 @@ AF_XDP interface, and only them. Depending on your configuration, there
 will usually be several RX queues (typically 1 per core) and packets are
 spread accross queues by RSS. In order to receive consistent traffic,
 you **must** program the NIC dispatching accordingly. The simplest way
-to get all the packets is to reconfigure the Linux kernel driver to use
-only `num_rx_queues` RX queues (ie all NIC queues will be associated
-with the AF_XDP socket):
+to get all the packets is to specify `num-rx-queues all` to grab all
+available queues or to reconfigure the Linux kernel driver to use only
+`num_rx_queues` RX queues (ie all NIC queues will be associated with
+the AF_XDP socket):
 ```
 ~# ethtool -L <iface> combined <num_rx_queues>
 ```
@@ -57,25 +63,21 @@ kernel interface in promiscuous mode:
 
 ## Security considerations
 When creating an AF_XDP interface, it will receive all packets arriving
-to the NIC RX queue #0. You need to configure the Linux kernel NIC
-driver properly to ensure that only intented packets will arrive in
-this queue. There is no way to filter the packets after-the-fact using
-eg. netfilter or eBPF.
+to the NIC RX queue [0, num_rx_queues[`. You need to configure the Linux
+kernel NIC driver properly to ensure that only intented packets will
+arrive in this queue. There is no way to filter the packets after-the-fact
+using eg. netfilter or eBPF.
 
 ## Quickstart
-1. Setup the Linux kernel interface (enp216s0f0 here) to use 4 queues:
-```
-~# ethtool -L enp216s0f0 combined 4
-```
-2. Put the Linux kernel interface up and in promiscuous mode:
+1. Put the Linux kernel interface up and in promiscuous mode:
 ```
 ~# ip l set dev enp216s0f0 promisc on up
 ```
-3. Create the AF_XDP interface:
+2. Create the AF_XDP interface:
 ```
-~# vppctl create int af_xdp host-if enp216s0f0 num-rx-queues 4
+~# vppctl create int af_xdp host-if enp216s0f0 num-rx-queues all
 ```
-4. Use the interface as usual, eg.:
+3. Use the interface as usual, eg.:
 ```
 ~# vppctl set int ip addr enp216s0f0/0 1.1.1.1/24
 ~# vppctl set int st enp216s0f0/0 up
