@@ -61,7 +61,7 @@ autoreply define nsim_output_feature_enable_disable
 */
 autoreply define nsim_configure
 {
-  option deprecated="v21.01";
+  option deprecated;
   /* Client identifier, set from api_main.my_client_index */
   u32 client_index;
   
