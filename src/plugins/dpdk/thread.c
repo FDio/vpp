@@ -14,7 +14,7 @@
  */
 
 #include <rte_config.h>
-
+#include <dpdk/cpu.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_memory.h>
