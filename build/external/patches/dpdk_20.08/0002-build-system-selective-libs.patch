@@ -1,0 +1,88 @@
+diff --git a/app/meson.build b/app/meson.build
+index eb74f215a..93affefa3 100644
+--- a/app/meson.build
++++ b/app/meson.build
+@@ -42,7 +42,17 @@ foreach app:apps
+ 
+ 	subdir(name)
+ 
+-	if build
++	foreach d:deps
++		if dpdk_libs_disabled.contains(d)
++			build = false
++			reason = 'missing dependency, "@0@" '.format (d)
++		endif
++	endforeach
++
++	if not build
++		dpdk_apps_disabled += name
++		set_variable(name.underscorify() + '_disable_reason', reason)
++	else
+ 		dep_objs = []
+ 		foreach d:deps
+ 			dep_objs += get_variable(get_option('default_library')
+diff --git a/lib/meson.build b/lib/meson.build
+index 3852c0156..76996544d 100644
+--- a/lib/meson.build
++++ b/lib/meson.build
+@@ -44,6 +44,8 @@ if is_windows
+ 	] # only supported libraries for windows
+ endif
+ 
++disabled_libs = get_option('disable_libs').split(',')
++
+ default_cflags = machine_args
+ default_cflags += ['-DALLOW_EXPERIMENTAL_API']
+ default_cflags += ['-DALLOW_INTERNAL_API']
+@@ -78,6 +80,11 @@ foreach l:libraries
+ 	dir_name = 'librte_' + l
+ 	subdir(dir_name)
+ 
++	if disabled_libs.contains(l)
++		build = false
++		reason = 'Explicitly disabled via build config'
++	endif
++
+ 	if build
+ 		shared_deps = ext_deps
+ 		static_deps = ext_deps
+diff --git a/meson.build b/meson.build
+index 61d9a4f5f..cf04f0e0e 100644
+--- a/meson.build
++++ b/meson.build
+@@ -21,6 +21,7 @@ dpdk_drivers = []
+ dpdk_extra_ldflags = []
+ dpdk_libs_disabled = []
+ dpdk_drvs_disabled = []
++dpdk_apps_disabled = []
+ abi_version_file = files('ABI_VERSION')
+ 
+ if host_machine.cpu_family().startswith('x86')
+@@ -106,6 +107,14 @@ foreach class:dpdk_driver_classes
+ endforeach
+ message(output_message + '\n')
+ 
++output_message = '\n===============\nApplications Disabled\n===============\n'
++foreach app:dpdk_apps_disabled
++	reason = get_variable(app.underscorify() + '_disable_reason')
++	output_message += app + ':\t' + reason + '\n\t'
++endforeach
++
++message(output_message + '\n')
++
+ output_message = '\n=================\nContent Skipped\n=================\n'
+ output_message += '\nlibs:\n\t'
+ foreach lib:dpdk_libs_disabled
+diff --git a/meson_options.txt b/meson_options.txt
+index 9bf18ab6b..d1aa46b8d 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -4,6 +4,8 @@ option('armv8_crypto_dir', type: 'string', value: '',
+ 	description: 'path to the armv8_crypto library installation directory')
+ option('disable_drivers', type: 'string', value: '',
+ 	description: 'Comma-separated list of drivers to explicitly disable.')
++option('disable_libs', type: 'string', value: '',
++	description: 'Comma-separated list of libs to explicitly disable.')
+ option('drivers_install_subdir', type: 'string', value: 'dpdk/pmds-<VERSION>',
+ 	description: 'Subdirectory of libdir where to install PMDs. Defaults to using a versioned subdirectory.')
+ option('enable_docs', type: 'boolean', value: false,
