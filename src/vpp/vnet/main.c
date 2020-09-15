@@ -282,11 +282,8 @@ defaulted:
   /* Allocate main heap */
   if ((main_heap = clib_mem_init_thread_safe (0, main_heap_size)))
     {
-      vlib_worker_thread_t tmp;
-
       /* Figure out which numa runs the main thread */
-      vlib_get_thread_core_numa (&tmp, main_core);
-      __os_numa_index = tmp.numa_id;
+      __os_numa_index = clib_get_current_numa_node ();
 
       /* and use the main heap as that numa's numa heap */
       clib_mem_set_per_numa_heap (main_heap);
