@@ -44,25 +44,33 @@ VNET_FEATURE_INIT (nat66_out2in, static) = {
 
 /* *INDENT-ON* */
 
+static void
+nat66_init_tables (void)
+{
+  nat66_main_t *nm = &nat66_main;
+  u32 static_mapping_buckets = 1024;
+  uword static_mapping_memory_size = 64 << 20;
+
+  clib_bihash_init_24_8 (&nm->sm_l, "nat66-static-map-by-local",
+			 static_mapping_buckets, static_mapping_memory_size);
+  clib_bihash_init_24_8 (&nm->sm_e, "nat66-static-map-by-external",
+			 static_mapping_buckets, static_mapping_memory_size);
+
+  nm->is_enabled = 1;
+}
+
 clib_error_t *nat66_plugin_api_hookup (vlib_main_t * vm);
 static clib_error_t *
 nat66_init (vlib_main_t * vm)
 {
   nat66_main_t *nm = &nat66_main;
   vlib_node_t *node;
-  u32 static_mapping_buckets = 1024;
-  uword static_mapping_memory_size = 64 << 20;
 
   node = vlib_get_node_by_name (vm, (u8 *) "nat66-in2out");
   nm->in2out_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "nat66-out2in");
   nm->out2in_node_index = node->index;
-
-  clib_bihash_init_24_8 (&nm->sm_l, "nat66-static-map-by-local",
-			 static_mapping_buckets, static_mapping_memory_size);
-  clib_bihash_init_24_8 (&nm->sm_e, "nat66-static-map-by-external",
-			 static_mapping_buckets, static_mapping_memory_size);
 
   nm->session_counters.name = "session counters";
 
@@ -92,6 +100,9 @@ nat66_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add)
   nat66_main_t *nm = &nat66_main;
   nat66_interface_t *interface = 0, *i;
   const char *feature_name;
+
+  if (!nm->is_enabled)
+    nat66_init_tables ();
 
   /* *INDENT-OFF* */
   pool_foreach (i, nm->interfaces,
@@ -181,6 +192,9 @@ nat66_static_mapping_add_del (ip6_address_t * l_addr, ip6_address_t * e_addr,
   nat66_sm_key_t sm_key;
   clib_bihash_kv_24_8_t kv, value;
   u32 fib_index = fib_table_find (FIB_PROTOCOL_IP6, vrf_id);
+
+  if (!nm->is_enabled)
+    nat66_init_tables ();
 
   sm_key.addr.as_u64[0] = l_addr->as_u64[0];
   sm_key.addr.as_u64[1] = l_addr->as_u64[1];

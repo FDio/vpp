@@ -77,6 +77,8 @@ typedef struct
 
   vlib_simple_counter_main_t in2out_packets;
   vlib_simple_counter_main_t out2in_packets;;
+
+  u8 is_enabled;
 } nat66_main_t;
 
 #define nat66_elog(_level, _str)                         \
