@@ -63,6 +63,7 @@ typedef enum
 
 static const u32x4 ctr_inv_1 = { 0, 0, 0, 1 << 24 };
 
+#ifndef __VAES__
 static_always_inline void
 aes_gcm_enc_first_round (u8x16 * r, aes_gcm_counter_t * ctr, u8x16 k,
 			 int n_blocks)
@@ -106,6 +107,7 @@ aes_gcm_enc_last_round (u8x16 * r, u8x16 * d, u8x16 const *k,
   for (int i = 0; i < n_blocks; i++)
     d[i] ^= aes_enc_last_round (r[i], k[rounds]);
 }
+#endif
 
 static_always_inline u8x16
 aes_gcm_ghash_blocks (u8x16 T, aes_gcm_key_data_t * kd,
@@ -161,6 +163,7 @@ aes_gcm_ghash (u8x16 T, aes_gcm_key_data_t * kd, u8x16u * in, u32 n_left)
   return T;
 }
 
+#ifndef __VAES__
 static_always_inline u8x16
 aes_gcm_calc (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
 	      aes_gcm_counter_t * ctr, u8x16u * inv, u8x16u * outv,
@@ -414,6 +417,7 @@ aes_gcm_ghash_last (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
   ghash_reduce2 (gd);
   return ghash_final (gd);
 }
+#endif
 
 #ifdef __VAES__
 static const u32x16 ctr_inv_1234 = {
@@ -748,7 +752,6 @@ static_always_inline u8x16
 aes_gcm_enc (u8x16 T, aes_gcm_key_data_t * kd, aes_gcm_counter_t * ctr,
 	     u8x16u * inv, u8x16u * outv, u32 n_left, int rounds)
 {
-  u8x16 d[4];
   aes_gcm_flags_t f = AES_GCM_F_ENCRYPT;
 
   if (n_left == 0)
@@ -841,8 +844,8 @@ aes_gcm_enc (u8x16 T, aes_gcm_key_data_t * kd, aes_gcm_counter_t * ctr,
 
   T = aes4_gcm_calc (T, kd, d4, ctr, inv, outv, rounds, 1, n_left, f);
   return aes4_gcm_ghash_last (T, kd, d4, 1, n_left);
-#endif
-
+#else
+  u8x16 d[4];
   if (n_left < 64)
     {
       f |= AES_GCM_F_LAST_ROUND;
@@ -928,6 +931,7 @@ aes_gcm_enc (u8x16 T, aes_gcm_key_data_t * kd, aes_gcm_counter_t * ctr,
 
   T = aes_gcm_calc (T, kd, d, ctr, inv, outv, rounds, 1, n_left, f);
   return aes_gcm_ghash_last (T, kd, d, 1, n_left);
+#endif
 }
 
 static_always_inline u8x16
