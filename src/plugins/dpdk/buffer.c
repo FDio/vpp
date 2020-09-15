@@ -17,6 +17,7 @@
 #include <errno.h>
 
 #include <rte_config.h>
+#include <dpdk/cpu.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 #include <rte_vfio.h>
@@ -280,7 +281,7 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_enqueue_no_cache) (struct rte_mempool * cmp,
 						   void *const *obj_table,
 						   unsigned n)
 {
-  vlib_main_t *vm = vlib_get_main ();
+  vlib_main_t * vm = vlib_get_main ();
   vlib_buffer_t bt;
   struct rte_mempool *mp;
   mp = dpdk_mempool_by_buffer_pool_index[cmp->pool_id];

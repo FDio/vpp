@@ -20,7 +20,8 @@
 #include <vnet/crypto/crypto.h>
 #include <vnet/vnet.h>
 #include <vpp/app/version.h>
-
+#include <rte_config.h>
+#include <dpdk/cpu.h>
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
@@ -699,7 +700,7 @@ cryptodev_frame_gcm_enqueue (vlib_main_t * vm,
 }
 
 static_always_inline cryptodev_op_t *
-cryptodev_get_ring_head (struct rte_ring * ring)
+cryptodev_get_ring_head (struct rte_ring *ring)
 {
   cryptodev_op_t **r = (void *) &ring[1];
   return r[ring->cons.head & ring->mask];
