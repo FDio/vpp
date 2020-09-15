@@ -517,10 +517,6 @@ virtio_interface_tx_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   clib_spinlock_lock_if_init (&vring->lockp);
 
-  if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0 &&
-      (vring->last_kick_avail_idx != vring->avail->idx))
-    virtio_kick (vm, vring, vif);
-
   if (do_gro)
     {
       n_left = vnet_gro_inline (vm, vring->flow_table, buffers, n_left, to);
@@ -619,6 +615,10 @@ retry:
       vring->avail->idx = avail;
       vring->desc_next = next;
       vring->desc_in_use = used;
+      /* the backend will check vring->avail->idx again after clearing
+       * vring->used->flags, we must make sure vring->avail->idx is updated
+       * before we check vring->used->flags */
+      CLIB_MEMORY_STORE_BARRIER ();
       if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0)
 	virtio_kick (vm, vring, vif);
     }
