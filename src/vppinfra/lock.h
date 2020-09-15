@@ -91,11 +91,28 @@ clib_spinlock_lock (clib_spinlock_t * p)
   CLIB_LOCK_DBG (p);
 }
 
+static_always_inline int
+clib_spinlock_trylock (clib_spinlock_t * p)
+{
+  if (PREDICT_FALSE (CLIB_SPINLOCK_IS_LOCKED (p)))
+    return 0;
+  clib_spinlock_lock (p);
+  return 1;
+}
+
 static_always_inline void
 clib_spinlock_lock_if_init (clib_spinlock_t * p)
 {
   if (PREDICT_FALSE (*p != 0))
     clib_spinlock_lock (p);
+}
+
+static_always_inline int
+clib_spinlock_trylock_if_init (clib_spinlock_t * p)
+{
+  if (PREDICT_FALSE (*p != 0))
+    return clib_spinlock_trylock (p);
+  return 1;
 }
 
 static_always_inline void
