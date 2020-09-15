@@ -318,6 +318,26 @@ vat_find_plugin_path ()
   vat_plugin_path = (char *) s;
 }
 
+static void
+load_features (void)
+{
+  vat_registered_features_t *f;
+  vat_main_t *vam = &vat_main;
+  clib_error_t *error;
+
+  f = vam->feature_function_registrations;
+
+  while (f)
+    {
+      error = f->function (vam);
+      if (error)
+	{
+	  clib_warning ("INIT FAILED");
+	}
+      f = f->next;
+    }
+}
+
 int
 main (int argc, char **argv)
 {
@@ -421,6 +441,8 @@ main (int argc, char **argv)
     api_sw_interface_dump (vam);
 
   vec_validate (vam->inbuf, 4096);
+
+  load_features ();
 
   vam->current_file = (u8 *) "plugin-init";
   vat_plugin_init (vam);

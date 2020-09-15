@@ -30,7 +30,6 @@
 #include <vnet/srmpls/sr_mpls.h>
 #include <vnet/gre/gre.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
-#include <vnet/geneve/geneve.h>
 #include <vnet/classify/policer_classify.h>
 #include <vnet/policer/xlate.h>
 #include <vnet/policer/policer.h>
@@ -250,26 +249,6 @@ static void *vl_api_sw_interface_set_vxlan_bypass_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: sw_interface_set_vxlan_bypass ");
-
-  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
-
-  if (mp->is_ipv6)
-    s = format (s, "ip6 ");
-
-  if (mp->enable)
-    s = format (s, "enable ");
-  else
-    s = format (s, "disable ");
-
-  FINISH;
-}
-
-static void *vl_api_sw_interface_set_geneve_bypass_t_print
-  (vl_api_sw_interface_set_geneve_bypass_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: sw_interface_set_geneve_bypass ");
 
   s = format (s, "sw_if_index %d ", (mp->sw_if_index));
 
@@ -1650,52 +1629,6 @@ static void *vl_api_sw_interface_set_vxlan_gbp_bypass_t_print
   s = format (s, "sw_if_index %d ", (mp->sw_if_index));
   s = format (s, "%s ", (mp->is_ipv6 != 0) ? "ipv6" : "ipv4");
   s = format (s, "%s ", (mp->enable != 0) ? "enable" : "disable");
-
-  FINISH;
-}
-
-static void *vl_api_geneve_add_del_tunnel_t_print
-  (vl_api_geneve_add_del_tunnel_t * mp, void *handle)
-{
-  u8 *s;
-  s = format (0, "SCRIPT: geneve_add_del_tunnel ");
-
-  ip46_address_t local;
-  ip46_address_t remote;
-  ip_address_decode (&mp->remote_address, &remote);
-  ip_address_decode (&mp->local_address, &local);
-
-  u8 is_grp = ip46_address_is_multicast (&remote);
-  char *remote_name = is_grp ? "group" : "dst";
-
-  s = format (s, "src %U ", format_ip46_address, &local, IP46_TYPE_ANY);
-  s = format (s, "%s %U ", remote_name, format_ip46_address,
-	      &remote, IP46_TYPE_ANY);
-
-  if (is_grp)
-    s = format (s, "mcast_sw_if_index %d ", (mp->mcast_sw_if_index));
-
-  if (mp->encap_vrf_id)
-    s = format (s, "encap-vrf-id %d ", (mp->encap_vrf_id));
-
-  s = format (s, "decap-next %d ", (mp->decap_next_index));
-
-  s = format (s, "vni %d ", (mp->vni));
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
-  FINISH;
-}
-
-static void *vl_api_geneve_tunnel_dump_t_print
-  (vl_api_geneve_tunnel_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: geneve_tunnel_dump ");
-
-  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
 
   FINISH;
 }
@@ -3612,7 +3545,6 @@ _(SW_INTERFACE_SET_TABLE, sw_interface_set_table)                       \
 _(SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable)           \
 _(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)                       \
 _(SW_INTERFACE_SET_VXLAN_BYPASS, sw_interface_set_vxlan_bypass)         \
-_(SW_INTERFACE_SET_GENEVE_BYPASS, sw_interface_set_geneve_bypass)       \
 _(BOND_CREATE, bond_create)                                             \
 _(BOND_CREATE2, bond_create2)                                           \
 _(BOND_DELETE, bond_delete)                                             \
@@ -3669,8 +3601,6 @@ _(SW_IF_L2TPV3_TUNNEL_DUMP, sw_if_l2tpv3_tunnel_dump)                   \
 _(VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel)                           \
 _(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
 _(VXLAN_OFFLOAD_RX, vxlan_offload_rx)                                   \
-_(GENEVE_ADD_DEL_TUNNEL, geneve_add_del_tunnel)                         \
-_(GENEVE_TUNNEL_DUMP, geneve_tunnel_dump)                               \
 _(GRE_TUNNEL_ADD_DEL, gre_tunnel_add_del)                               \
 _(GRE_TUNNEL_DUMP, gre_tunnel_dump)                                     \
 _(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                               \

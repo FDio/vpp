@@ -73,6 +73,8 @@ if(VPP_API_TEST_BUILTIN)
     api/api_main.c
     api/plugin.c
     api/types.c
+    ../vnet/arp/arp_test.c
+    ../vnet/geneve/geneve_test.c
   )
   add_definitions(-DVPP_API_TEST_BUILTIN=1)
 endif()

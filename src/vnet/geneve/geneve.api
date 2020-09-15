@@ -31,6 +31,7 @@ define geneve_add_del_tunnel
   u32 encap_vrf_id;
   u32 decap_next_index;
   u32 vni;
+  option vat_help="src <ip-addr> { dst <ip-addr> | group <mcast-ip-addr> { <intfc> | mcast_sw_if_index <nn> } } vni <vni> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]";
 };
 
 define geneve_add_del_tunnel_reply
@@ -66,6 +67,7 @@ define geneve_tunnel_dump
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
+  option vat_help="[<intfc> | sw_if_index <nn>]";
 };
 
 define geneve_tunnel_details
@@ -94,4 +96,5 @@ autoreply define sw_interface_set_geneve_bypass
   vl_api_interface_index_t sw_if_index;
   bool is_ipv6;
   bool enable;
+  option vat_help="<intfc> | sw_if_index <id> [ip4 | ip6] [enable | disable]";
 };

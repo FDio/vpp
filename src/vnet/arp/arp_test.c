@@ -41,8 +41,8 @@ arp_test_main_t arp_test_main;
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
 /* Declare message IDs */
-#include <arp/arp.api_enum.h>
-#include <arp/arp.api_types.h>
+#include <vnet/arp/arp.api_enum.h>
+#include <vnet/arp/arp.api_types.h>
 #include <vpp/api/vpe.api_types.h>
 
 static int
@@ -156,8 +156,9 @@ api_proxy_arp_intfc_enable_disable (vat_main_t * vam)
   return ret;
 }
 
-#include <arp/arp.api_test.c>
+#include <vnet/arp/arp.api_test.c>
 
+VAT_REGISTER_FEATURE_FUNCTION (vat_arp_plugin_register);
 
 /*
  * fd.io coding-style-patch-verification: ON
