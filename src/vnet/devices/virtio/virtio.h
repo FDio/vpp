@@ -159,6 +159,7 @@ typedef struct
     struct			/* native virtio */
     {
       void *bar;
+      u32 *queue_notify_addr;
       virtio_vring_t *cxq_vring;
       pci_addr_t pci_addr;
       u32 bar_id;
