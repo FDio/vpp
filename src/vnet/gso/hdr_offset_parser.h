@@ -82,7 +82,6 @@ format_generic_header_offset (u8 * s, va_list * args)
 {
   generic_header_offset_t *gho = va_arg (*args, generic_header_offset_t *);
 
-  s = format (s, "\n\t");
   if (gho->gho_flags & GHO_F_TUNNEL)
     {
       if (gho->gho_flags & GHO_F_VXLAN_TUNNEL)
