@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Cisco and/or its affiliates.
+# Copyright (c) 2020 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -12,295 +12,156 @@
 # limitations under the License.
 
 DPDK_PKTMBUF_HEADROOM        ?= 128
-DPDK_CACHE_LINE_SIZE         ?= 64
-DPDK_DOWNLOAD_DIR            ?= $(DL_CACHE_DIR)
 DPDK_DEBUG                   ?= n
-DPDK_AARCH64_GENERIC         ?= y
 DPDK_MLX4_PMD                ?= n
 DPDK_MLX5_PMD                ?= n
+DPDK_MLX5_COMMON_PMD         ?= n
 DPDK_TAP_PMD                 ?= n
 DPDK_FAILSAFE_PMD            ?= n
+DPDK_MACHINE                 ?= default
 
-DPDK_VERSION                 ?= 20.08
-DPDK_BASE_URL                ?= http://fast.dpdk.org/rel
-DPDK_TARBALL                 := dpdk-$(DPDK_VERSION).tar.xz
-DPDK_TAR_URL                 := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
-DPDK_18.11_TARBALL_MD5_CKSUM := 04b86f4a77f4f81a7fbd26467dd2ea9f
-DPDK_20.05_TARBALL_MD5_CKSUM := 7c6f3e7f7de2422775c4cba116012c4d
-DPDK_20.08_TARBALL_MD5_CKSUM := 64badd32cd6bc0761befc8f2402c2148
-MACHINE=$(shell uname -m)
+dpdk_version                 ?= 20.08
+dpdk_base_url                ?= http://fast.dpdk.org/rel
+dpdk_tarball                 := dpdk-$(dpdk_version).tar.xz
+dpdk_tarball_md5sum_20.08    := 64badd32cd6bc0761befc8f2402c2148
+dpdk_tarball_md5sum          := $(dpdk_tarball_md5sum_$(dpdk_version))
+dpdk_url                     := $(dpdk_base_url)/$(dpdk_tarball)
+dpdk_tarball_strip_dirs      := 1
 
-# replace dot with space, and if 3rd word exists we deal with stable dpdk rel
-ifeq ($(word 3,$(subst ., ,$(DPDK_VERSION))),)
-DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
-else
-DPDK_SOURCE := $(B)/dpdk-stable-$(DPDK_VERSION)
+# Debug or release
+
+DPDK_BUILD_TYPE:=release
+ifeq ($(DPDK_DEBUG), y)
+DPDK_BUILD_TYPE:=debug
 endif
 
-ifeq ($(MACHINE),$(filter $(MACHINE),x86_64))
-  AESNI ?= y
-  DPDK_BUILD_DEPS := ipsec-mb-install
-else
-  AESNI ?= n
+DPDK_DRIVERS_DISABLED := baseband/\*,	\
+	bus/dpaa,							\
+	bus/ifpga,							\
+	compress/\*,						\
+	crypto/ccp,							\
+	crypto/dpaa_sec,					\
+	crypto/openssl,						\
+	event/\*,							\
+	mempool/dpaa,						\
+	net/af_packet,						\
+	net/bnx2x,							\
+	net/bonding,						\
+	net/ipn3ke,							\
+	net/liquidio,						\
+	net/pcap,							\
+	net/pfe,							\
+	net/sfc,							\
+	net/softnic,						\
+	net/thunderx,						\
+	raw/ifpga,							\
+	net/af_xdp							
+
+DPDK_LIBS_DISABLED := acl,				\
+	bbdev,								\
+	bitratestats,						\
+	bpf,								\
+	cfgfile,							\
+	distributor,						\
+	efd,								\
+	fib,								\
+	flow_classify,						\
+	graph,								\
+	gro,								\
+	gso,								\
+	jobstats,							\
+	kni,								\
+	latencystats,						\
+	lpm,								\
+	member,								\
+	node,								\
+	pipeline,							\
+	port,								\
+	power,								\
+	rawdev,								\
+	rib,								\
+	table
+
+# Adjust disabled pmd and libs depending on user provided variables
+ifeq ($(DPDK_MLX4_PMD), n)
+	DPDK_DRIVERS_DISABLED += ,net/mlx4
+endif
+ifeq ($(DPDK_MLX5_PMD), n)
+	DPDK_DRIVERS_DISABLED += ,net/mlx5
+endif
+ifeq ($(DPDK_MLX5_COMMON_PMD), n)
+	DPDK_DRIVERS_DISABLED += ,common/mlx5
+endif
+ifeq ($(DPDK_TAP_PMD), n)
+	DPDK_DRIVERS_DISABLED += ,net/tap
+endif
+ifeq ($(DPDK_FAILSAFE_PMD), n)
+	DPDK_DRIVERS_DISABLED += ,net/failsafe
 endif
 
-ifneq (,$(findstring clang,$(CC)))
-DPDK_CC=clang
-else ifneq (,$(findstring icc,$(CC)))
-DPDK_CC=icc
-else
-DPDK_CC=gcc
-endif
+# Sanitize DPDK_DRIVERS_DISABLED and DPDK_LIBS_DISABLED
+DPDK_DRIVERS_DISABLED := $(shell echo $(DPDK_DRIVERS_DISABLED) | tr -d '\\\t ')
+DPDK_LIBS_DISABLED := $(shell echo $(DPDK_LIBS_DISABLED) | tr -d '\\\t ')
 
-##############################################################################
-# Intel x86
-##############################################################################
-ifeq ($(MACHINE),$(filter $(MACHINE),x86_64 i686))
-DPDK_TARGET           ?= $(MACHINE)-native-linuxapp-$(DPDK_CC)
-DPDK_MACHINE          ?= nhm
-DPDK_TUNE             ?= core-avx2
-
-##############################################################################
-# ARM64
-##############################################################################
-else ifeq ($(MACHINE),aarch64)
-CROSS :=
-export CROSS
-DPDK_TARGET           ?= arm64-armv8a-linuxapp-$(DPDK_CC)
-DPDK_MACHINE          ?= armv8a
-DPDK_TUNE             ?= generic
-ifeq (y, $(DPDK_AARCH64_GENERIC))
-DPDK_CACHE_LINE_SIZE  := 128
-# assign aarch64 variant specific options
-else
-CPU_IMP_ARM                     = 0x41
-CPU_IMP_CAVIUM                  = 0x43
-
-CPU_PART_ARM_CORTEX_A53         = 0xd03
-CPU_PART_ARM_CORTEX_A57         = 0xd07
-CPU_PART_ARM_CORTEX_A72         = 0xd08
-CPU_PART_ARM_CORTEX_A73         = 0xd09
-
-CPU_PART_CAVIUM_THUNDERX        = 0x0a1
-CPU_PART_CAVIUM_THUNDERX_81XX   = 0x0a2
-CPU_PART_CAVIUM_THUNDERX_83XX   = 0x0a3
-
-MIDR_IMPLEMENTER=$(shell awk '/implementer/ {print $$4;exit}' /proc/cpuinfo)
-MIDR_PARTNUM=$(shell awk '/part/ {print $$4;exit}' /proc/cpuinfo)
-
-ifeq ($(MIDR_IMPLEMENTER),$(CPU_IMP_ARM))
-##############################################################################
-# Arm Cortex
-##############################################################################
-CPU_PART_ARM_TUNE := $(CPU_PART_ARM_CORTEX_A53)/cortex-a53 \
-		     $(CPU_PART_ARM_CORTEX_A57)/cortex-a57 \
-		     $(CPU_PART_ARM_CORTEX_A72)/cortex-a72 \
-		     $(CPU_PART_ARM_CORTEX_A73)/cortex-a73
-CPU_TUNE = $(notdir $(filter $(MIDR_PARTNUM)/%,$(CPU_PART_ARM_TUNE)))
-ifneq ($(CPU_TUNE),)
-DPDK_TUNE             = $(CPU_TUNE)
-else
-$(warning Unknown Arm CPU)
-endif
-
-else ifeq ($(MIDR_IMPLEMENTER),$(CPU_IMP_CAVIUM))
-##############################################################################
-# Cavium ThunderX
-##############################################################################
-ifneq (,$(findstring $(MIDR_PARTNUM),$(CPU_PART_CAVIUM_THUNDERX) \
-	$(CPU_PART_CAVIUM_THUNDERX_81XX) $(CPU_PART_CAVIUM_THUNDERX_83XX)))
-DPDK_TARGET           = arm64-thunderx-linuxapp-$(DPDK_CC)
-DPDK_MACHINE          = thunderx
-DPDK_CACHE_LINE_SIZE := 128
-else
-$(warning Unknown Cavium CPU)
-endif
-endif
-
-# finish of assigning aarch64 variant specific options
-endif
-
-##############################################################################
-# Unknown platform
-##############################################################################
-else
-$(error Unknown platform)
-endif
-
-# compiler/linker custom arguments
-ifeq ($(DPDK_CC),clang)
-DPDK_CPU_CFLAGS := -fPIE -fPIC
-else
-DPDK_CPU_CFLAGS := -pie -fPIC
-endif
-
-ifeq ($(DPDK_DEBUG),n)
-DPDK_EXTRA_CFLAGS := -g -mtune=$(DPDK_TUNE)
-else
-DPDK_EXTRA_CFLAGS := -g -O0
-endif
-
-# -Wimplicit-fallthrough was introduced starting from GCC 7,
-# and it requires newer version of ccache.
-# Disable fallthrough warning for old ccache version.
-ifeq ($(DPDK_CC),gcc)
-GCC_VER_V = "7.0.0"
-CCACHE_VER_V = "3.4.1"
-GCC_VER = $(shell gcc --version | grep ^gcc | sed 's/^.* //g')
-CCACHE_VER = $(shell ccache --version | grep ^ccache | sed 's/^.* //g')
-ifeq ($(shell expr "$(GCC_VER)" ">=" "$(GCC_VER_V)"),1)
-ifeq ($(shell expr "$(CCACHE_VER)" "<" "$(CCACHE_VER_V)"),1)
-DPDK_EXTRA_CFLAGS += -Wimplicit-fallthrough=0
-endif
-endif
-endif
-
-DPDK_EXTRA_CFLAGS += -I$(I)/include
-DPDK_EXTRA_LDFLAGS += -L$(I)/lib
-
-# assemble DPDK make arguments
-DPDK_MAKE_ARGS := -C $(DPDK_SOURCE) -j $(JOBS) \
-	T=$(DPDK_TARGET) \
-	RTE_CONFIG_TEMPLATE=../custom-config \
-	EXTRA_CFLAGS="$(DPDK_EXTRA_CFLAGS)" \
-	EXTRA_LDFLAGS="$(DPDK_EXTRA_LDFLAGS)" \
-	CPU_CFLAGS="$(DPDK_CPU_CFLAGS)" \
-	DESTDIR=$(I) \
-	MAKE_PAUSE=n \
-        $(DPDK_MAKE_EXTRA_ARGS)
-
-define set
-@if grep -q CONFIG_$1 $@ ; \
-	then sed -i -e 's/.*\(CONFIG_$1=\).*/\1$2/' $@ ; \
-	else echo CONFIG_$1=$2 >> $@ ; \
+HASH := \#
+# post-meson-setup snippet to alter rte_build_config.h
+define dpdk_config
+if grep -q RTE_$(1) $(dpdk_src_dir)/config/rte_config.h ; then	\
+sed -i -e 's/$(HASH)define RTE_$(1).*/$(HASH)define RTE_$(1) $(DPDK_$(1))/' \
+	$(dpdk_src_dir)/config/rte_config.h; \
+elif grep -q RTE_$(1) $(dpdk_build_dir)/rte_build_config.h ; then \
+sed -i -e 's/$(HASH)define RTE_$(1).*/$(HASH)define RTE_$(1) $(DPDK_$(1))/' \
+	$(dpdk_build_dir)/rte_build_config.h; \
+else \
+echo '$(HASH)define RTE_$(1) $(DPDK_$(1))' \
+	>> $(dpdk_build_dir)/rte_build_config.h ; \
 fi
 endef
 
-$(B)/custom-config: $(B)/.dpdk-patch.ok Makefile
-	@echo --- generating custom config from $(DPDK_SOURCE)/config/defconfig_$(DPDK_TARGET) ---
-	@cpp -undef -ffreestanding -x assembler-with-cpp $(DPDK_SOURCE)/config/defconfig_$(DPDK_TARGET) $@
-	$(call set,RTE_MACHINE,$(DPDK_MACHINE))
-	@# modify options
-	$(call set,RTE_MAX_LCORE,256)
-	$(call set,RTE_PKTMBUF_HEADROOM,$(DPDK_PKTMBUF_HEADROOM))
-	$(call set,RTE_CACHE_LINE_SIZE,$(DPDK_CACHE_LINE_SIZE))
-	$(call set,RTE_BUILD_COMBINE_LIBS,y)
-	$(call set,RTE_PCI_CONFIG,y)
-	$(call set,RTE_PCI_EXTENDED_TAG,"on")
-	$(call set,RTE_PCI_MAX_READ_REQUEST_SIZE,4096)
-	$(call set,RTE_LIBRTE_PMD_BOND,n)
-	$(call set,RTE_LIBRTE_IP_FRAG,y)
-	$(call set,RTE_LIBRTE_PMD_QAT,y)
-	$(call set,RTE_LIBRTE_PMD_QAT_SYM,y)
-	$(call set,RTE_LIBRTE_PMD_AESNI_MB,$(AESNI))
-	$(call set,RTE_LIBRTE_PMD_AESNI_GCM,$(AESNI))
-	$(call set,RTE_LIBRTE_MLX4_PMD,$(DPDK_MLX4_PMD))
-	$(call set,RTE_LIBRTE_MLX5_PMD,$(DPDK_MLX5_PMD))
-	$(call set,RTE_LIBRTE_BNXT_PMD,y)
-	$(call set,RTE_LIBRTE_PMD_SOFTNIC,n)
-	$(call set,RTE_IBVERBS_LINK_DLOPEN,y)
-	$(call set,RTE_LIBRTE_PMD_TAP,$(DPDK_TAP_PMD))
-	$(call set,RTE_LIBRTE_GSO,$(DPDK_TAP_PMD))
-	$(call set,RTE_LIBRTE_PMD_FAILSAFE,$(DPDK_FAILSAFE_PMD))
-	@# not needed
-	$(call set,RTE_ETHDEV_RXTX_CALLBACKS,n)
-	$(call set,RTE_LIBRTE_CFGFILE,n)
-	$(call set,RTE_LIBRTE_LPM,n)
-	$(call set,RTE_LIBRTE_ACL,n)
-	$(call set,RTE_LIBRTE_JOBSTATS,n)
-	$(call set,RTE_LIBRTE_EFD,n)
-	$(call set,RTE_LIBRTE_MEMBER,n)
-	$(call set,RTE_LIBRTE_BITRATE,n)
-	$(call set,RTE_LIBRTE_LATENCY_STATS,n)
-	$(call set,RTE_LIBRTE_POWER,n)
-	$(call set,RTE_LIBRTE_DISTRIBUTOR,n)
-	$(call set,RTE_LIBRTE_PORT,n)
-	$(call set,RTE_LIBRTE_TABLE,n)
-	$(call set,RTE_LIBRTE_PIPELINE,n)
-	$(call set,RTE_LIBRTE_PMD_SOFTNIC,n)
-	$(call set,RTE_LIBRTE_FLOW_CLASSIFY,n)
-	$(call set,RTE_LIBRTE_ACL,n)
-	$(call set,RTE_LIBRTE_GRO,n)
-	$(call set,RTE_LIBRTE_KNI,n)
-	$(call set,RTE_LIBRTE_BPF,n)
-	$(call set,RTE_LIBRTE_RAWDEV,n)
-	$(call set,RTE_LIBRTE_PMD_IFPGA_RAWDEV,n)
-	$(call set,RTE_LIBRTE_IPN3KE_PMD,n)
-	$(call set,RTE_LIBRTE_IFPGA_BUS,n)
-	$(call set,RTE_LIBRTE_BBDEV,n)
-	$(call set,RTE_LIBRTE_BBDEV_NULL,n)
-	$(call set,RTE_LIBRTE_GRAPH,n)
-	$(call set,RTE_LIBRTE_NODE,n)
-	$(call set,RTE_LIBRTE_FIB,n)
-	$(call set,RTE_LIBRTE_RIB,n)
-	$(call set,RTE_TEST_PMD,n)
-	$(call set,RTE_KNI_KMOD,n)
-	$(call set,RTE_EAL_IGB_UIO,n)
-	@# currently broken in 18.02
-	$(call set,RTE_LIBRTE_DPAA_BUS,n)
-	$(call set,RTE_LIBRTE_DPAA_MEMPOOL,n)
-	$(call set,RTE_LIBRTE_DPAA_PMD,n)
-	$(call set,RTE_LIBRTE_PMD_DPAA_SEC,n)
-	$(call set,RTE_LIBRTE_PMD_DPAA_EVENTDEV,n)
-	@rm -f .dpdk-config.ok
+DPDK_MESON_ARGS = \
+	--default-library static \
+	--libdir lib \
+	--prefix $(dpdk_install_dir) \
+	-Dtests=false \
+	"-Ddisable_drivers=$(DPDK_DRIVERS_DISABLED)" \
+	"-Ddisable_libs=$(DPDK_LIBS_DISABLED)" \
+	-Db_pie=true \
+	-Dmachine=$(DPDK_MACHINE) \
+	--buildtype=$(DPDK_BUILD_TYPE) 
 
-DPDK_DOWNLOADS = $(CURDIR)/downloads/$(DPDK_TARBALL)
+define dpdk_config_cmds
+	cd $(dpdk_build_dir) && \
+	rm -rf ../dpdk-meson-venv && \
+	mkdir -p ../dpdk-meson-venv && \
+	python3 -m venv ../dpdk-meson-venv && \
+	source ../dpdk-meson-venv/bin/activate && \
+	pip3 install meson==0.54 && \
+	meson setup $(dpdk_src_dir) \
+		$(dpdk_build_dir) \
+		$(DPDK_MESON_ARGS) \
+			| tee $(dpdk_config_log) && \
+	deactivate && \
+	echo "DPDK post meson configuration" && \
+	echo "Altering rte_build_config.h" && \
+	$(call dpdk_config,PKTMBUF_HEADROOM) 
+endef
 
-$(DPDK_DOWNLOADS):
-	mkdir -p downloads
-	@if [ -e $(DPDK_DOWNLOAD_DIR)/$(DPDK_TARBALL) ] ; \
-		then cp $(DPDK_DOWNLOAD_DIR)/$(DPDK_TARBALL) $@ ; \
-		else curl -o $@ -LO $(DPDK_TAR_URL) ; \
-	fi
-	@rm -f $(B)/.dpdk-download.ok
+define dpdk_build_cmds
+	cd $(dpdk_build_dir) && \
+	source ../dpdk-meson-venv/bin/activate && \
+	meson compile -C . | tee $(dpdk_build_log) && \
+	deactivate
+endef
 
-$(B)/.dpdk-download.ok: $(DPDK_DOWNLOADS)
-	@mkdir -p $(B)
-	@openssl md5 $< | cut -f 2 -d " " - > $(B)/$(DPDK_TARBALL).md5sum
-	@([ "$$(<$(B)/$(DPDK_TARBALL).md5sum)" = "$(DPDK_$(DPDK_VERSION)_TARBALL_MD5_CKSUM)" ] || \
-	( echo "Bad Checksum! Please remove $< and retry" && \
-		rm $(B)/$(DPDK_TARBALL).md5sum && false ))
-	@touch $@
+define dpdk_install_cmds
+	cd $(dpdk_build_dir) && \
+	source ../dpdk-meson-venv/bin/activate && \
+	meson install && \
+	cd $(dpdk_install_dir)/lib && \
+	echo "GROUP ( $$(ls librte*.a ) )" > libdpdk.a && \
+	rm -rf librte*.so librte*.so.* dpdk/*/librte*.so dpdk/*/librte*.so.* && \
+	deactivate && \
+	rm -rf $(dpdk_build_dir)/../dpdk-meson-venv
+endef
 
-.PHONY: dpdk-download
-dpdk-download: $(B)/.dpdk-download.ok
-
-$(B)/.dpdk-extract.ok: $(B)/.dpdk-download.ok
-	@echo --- extracting $(DPDK_TARBALL) ---
-	@tar --directory $(B) --extract --file $(DPDK_DOWNLOADS)
-	@touch $@
-
-.PHONY: dpdk-extract
-dpdk-extract: $(B)/.dpdk-extract.ok
-
-$(B)/.dpdk-patch.ok: $(B)/.dpdk-extract.ok
-ifneq ($(wildcard $(CURDIR)/patches/dpdk_$(DPDK_VERSION)/*.patch),)
-	@echo --- patching ---
-	@for f in $(CURDIR)/patches/dpdk_$(DPDK_VERSION)/*.patch ; do \
-		echo Applying patch: $$(basename $$f) ; \
-		patch -p1 -d $(DPDK_SOURCE) < $$f ; \
-	done
-endif
-	@touch $@
-
-.PHONY: dpdk-patch
-dpdk-patch: $(B)/.dpdk-patch.ok
-
-$(B)/.dpdk-config.ok: $(B)/.dpdk-patch.ok $(B)/custom-config
-	@make $(DPDK_MAKE_ARGS) config
-	@touch $@
-
-.PHONY: dpdk-config
-dpdk-config: $(B)/.dpdk-config.ok
-
-$(B)/.dpdk-build.ok: dpdk-config $(DPDK_BUILD_DEPS)
-	@if [ ! -e $(B)/.dpdk-config.ok ] ; then echo 'Please run "make config" first' && false ; fi
-	@rm -f $(B)/.*.install.ok #deals with build-root/Makefile line 709
-	@make $(DPDK_MAKE_ARGS) install
-	@touch $@
-
-.PHONY: dpdk-build
-dpdk-build: $(B)/.dpdk-build.ok
-
-.PHONY: dpdk-install
-dpdk-install: $(B)/.dpdk-build.ok
+$(eval $(call package,dpdk))
