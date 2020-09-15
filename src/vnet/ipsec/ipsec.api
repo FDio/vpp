@@ -343,7 +343,7 @@ define ipsec_spd_interface_details {
     @param salt - for use with counter mode ciphers
 */
 define ipsec_tunnel_if_add_del {
-  option deprecated="20.09";
+  option deprecated;
   u32 client_index;
   u32 context;
   bool is_add;
@@ -491,7 +491,7 @@ define ipsec_sa_details {
     @param is_outbound - 1 if outbound (local) SA, 0 if inbound (remote)
 */
 autoreply define ipsec_tunnel_if_set_sa {
-  option deprecated="20.09";
+  option deprecated;
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
