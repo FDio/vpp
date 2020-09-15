@@ -494,6 +494,7 @@ virtio_pci_control_vring_init (vlib_main_t * vm, virtio_if_t * vif,
 clib_error_t *
 virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
 {
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   clib_error_t *error = 0;
   u16 queue_size = 0;
   virtio_vring_t *vring;
@@ -519,7 +520,8 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 queue_num)
       vec_validate_aligned (vif->txq_vrings, TX_QUEUE_ACCESS (queue_num),
 			    CLIB_CACHE_LINE_BYTES);
       vring = vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS (queue_num));
-      clib_spinlock_init (&vring->lockp);
+      if (vif->max_queue_pairs < vtm->n_vlib_mains)
+	clib_spinlock_init (&vring->lockp);
     }
   else
     {
