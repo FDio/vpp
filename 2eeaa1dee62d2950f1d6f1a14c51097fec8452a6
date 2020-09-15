@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "08a6bc52_ba1f9949",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 621,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-15T15:51:39Z",
+      "side": 1,
+      "message": "driver needs to read updated value of USED flag.\nIn my opinion, here we should use full memory barrier.",
+      "revId": "2eeaa1dee62d2950f1d6f1a14c51097fec8452a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3908c6b3_104da4ba",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-15T15:51:39Z",
+      "side": 1,
+      "message": "driver needs to read updated value of USED flag.\nIn my opinion, here we should use full memory barrier.",
+      "revId": "2eeaa1dee62d2950f1d6f1a14c51097fec8452a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
