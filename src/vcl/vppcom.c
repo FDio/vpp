@@ -202,7 +202,7 @@ vcl_send_session_listen (vcl_worker_t * wrk, vcl_session_t * s)
   app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_LISTEN);
   mp = (session_listen_msg_t *) app_evt->evt->data;
   memset (mp, 0, sizeof (*mp));
-  mp->client_index = wrk->bapi_client_index;
+  mp->client_index = wrk->api_client_handle;
   mp->context = s->session_index;
   mp->wrk_index = wrk->vpp_wrk_index;
   mp->is_ip4 = s->transport.is_ip4;
@@ -225,7 +225,7 @@ vcl_send_session_connect (vcl_worker_t * wrk, vcl_session_t * s)
   app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_CONNECT);
   mp = (session_connect_msg_t *) app_evt->evt->data;
   memset (mp, 0, sizeof (*mp));
-  mp->client_index = wrk->bapi_client_index;
+  mp->client_index = wrk->api_client_handle;
   mp->context = s->session_index;
   mp->wrk_index = wrk->vpp_wrk_index;
   mp->is_ip4 = s->transport.is_ip4;
@@ -251,7 +251,7 @@ vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s)
   app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_UNLISTEN);
   mp = (session_unlisten_msg_t *) app_evt->evt->data;
   memset (mp, 0, sizeof (*mp));
-  mp->client_index = wrk->bapi_client_index;
+  mp->client_index = wrk->api_client_handle;
   mp->wrk_index = wrk->vpp_wrk_index;
   mp->handle = s->vpp_handle;
   mp->context = wrk->wrk_index;
@@ -270,7 +270,7 @@ vcl_send_session_disconnect (vcl_worker_t * wrk, vcl_session_t * s)
   app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_DISCONNECT);
   mp = (session_disconnect_msg_t *) app_evt->evt->data;
   memset (mp, 0, sizeof (*mp));
-  mp->client_index = wrk->bapi_client_index;
+  mp->client_index = wrk->api_client_handle;
   mp->handle = s->vpp_handle;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
@@ -286,7 +286,7 @@ vcl_send_app_detach (vcl_worker_t * wrk)
   app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_APP_DETACH);
   mp = (session_app_detach_msg_t *) app_evt->evt->data;
   memset (mp, 0, sizeof (*mp));
-  mp->client_index = wrk->bapi_client_index;
+  mp->client_index = wrk->api_client_handle;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
@@ -344,7 +344,7 @@ vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,
   mq = vcl_session_vpp_evt_q (wrk, s);
   app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_WORKER_UPDATE);
   mp = (session_worker_update_msg_t *) app_evt->evt->data;
-  mp->client_index = wrk->bapi_client_index;
+  mp->client_index = wrk->api_client_handle;
   mp->handle = s->vpp_handle;
   mp->req_wrk_index = wrk->vpp_wrk_index;
   mp->wrk_index = wrk_index;
@@ -373,7 +373,7 @@ vcl_send_worker_rpc (u32 dst_wrk_index, void *data, u32 data_len)
   mq = vcl_worker_ctrl_mq (wrk);
   app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_APP_WRK_RPC);
   mp = (session_app_wrk_rpc_msg_t *) app_evt->evt->data;
-  mp->client_index = wrk->bapi_client_index;
+  mp->client_index = wrk->api_client_handle;
   mp->wrk_index = dst_wrk->vpp_wrk_index;
   clib_memcpy (mp->data, data, data_len);
   app_send_ctrl_evt_to_vpp (mq, app_evt);
@@ -1145,7 +1145,7 @@ vppcom_session_disconnect (u32 session_handle)
   if (state & STATE_VPP_CLOSING)
     {
       vpp_evt_q = vcl_session_vpp_evt_q (wrk, session);
-      vcl_send_session_disconnected_reply (vpp_evt_q, wrk->bapi_client_index,
+      vcl_send_session_disconnected_reply (vpp_evt_q, wrk->api_client_handle,
 					   vpp_handle, 0);
       VDBG (1, "session %u [0x%llx]: sending disconnect REPLY...",
 	    session->session_index, vpp_handle);
@@ -1245,7 +1245,7 @@ vppcom_app_create (const char *app_name)
     return rv;
 
   VDBG (0, "app_name '%s', my_client_index %d (0x%x)", app_name,
-	vcm->workers[0].bapi_client_index, vcm->workers[0].bapi_client_index);
+	vcm->workers[0].api_client_handle, vcm->workers[0].api_client_handle);
 
   return VPPCOM_OK;
 }
@@ -1381,7 +1381,7 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
   else if (state == STATE_DISCONNECT)
     {
       svm_msg_q_t *mq = vcl_session_vpp_evt_q (wrk, session);
-      vcl_send_session_reset_reply (mq, wrk->bapi_client_index,
+      vcl_send_session_reset_reply (mq, wrk->api_client_handle,
 				    session->vpp_handle, 0);
     }
   else if (state == STATE_DETACHED)
