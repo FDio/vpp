@@ -252,8 +252,11 @@ typedef struct vcl_worker_
   /** Worker index in vpp*/
   u32 vpp_wrk_index;
 
-  /** VPP bapi client handle */
-  u32 bapi_client_index;
+  /**
+   * Generic api client handle. When binary api is in used, it stores
+   * the "client_index" and when socket api is use, it stores the sapi
+   * client handle */
+  u32 api_client_handle;
 
   /** VPP binary api input queue */
   svm_queue_t *vl_input_queue;

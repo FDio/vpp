@@ -56,7 +56,7 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
       goto failed;
     }
 
-  wrk->bapi_client_index = mp->api_client_handle;
+  wrk->api_client_handle = mp->api_client_handle;
   wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
   ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
   vec_validate (wrk->vpp_event_queues, mp->vpp_ctrl_mq_thread);
@@ -201,6 +201,7 @@ vcl_api_add_del_worker_reply_handler (app_sapi_worker_add_del_reply_msg_t *
     goto failed;
 
   wrk = vcl_worker_get_current ();
+  wrk->api_client_handle = mp->api_client_handle;
   wrk->vpp_wrk_index = mp->wrk_index;
   wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
 					   svm_msg_q_t *);
