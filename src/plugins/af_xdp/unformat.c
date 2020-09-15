@@ -40,6 +40,8 @@ unformat_af_xdp_create_if_args (unformat_input_t * input, va_list * vargs)
 	;
       else if (unformat (line_input, "tx-queue-size %u", &args->txq_size))
 	;
+      else if (unformat (line_input, "num-rx-queues all"))
+	args->rxq_num = AF_XDP_NUM_RX_QUEUES_ALL;
       else if (unformat (line_input, "num-rx-queues %u", &args->rxq_num))
 	;
       else if (unformat (line_input, "prog %s", &args->prog))
