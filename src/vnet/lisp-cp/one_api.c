@@ -840,7 +840,7 @@ send_one_eid_table_details (mapping_t * mapit,
   if (mapit->pitr_set || mapit->nsh_set)
     return;
 
-  switch (ntohl (filter))
+  switch (filter)
     {
     case ONE_FILTER_API_ALL:	/* all mappings */
       break;
