@@ -17,6 +17,7 @@
 #include <errno.h>
 
 #include <rte_config.h>
+#include <dpdk/cpu.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 #include <rte_vfio.h>
