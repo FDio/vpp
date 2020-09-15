@@ -84,6 +84,25 @@ vlib_increment_simple_counter (vlib_simple_counter_main_t * cm,
   my_counters[index] += increment;
 }
 
+/** Decrement a simple counter
+    @param cm - (vlib_simple_counter_main_t *) simple counter main pointer
+    @param thread_index - (u32) the current cpu index
+    @param index - (u32) index of the counter to increment
+    @param increment - (u64) quantitiy remove from the counter value
+*/
+always_inline void
+vlib_decrement_simple_counter (vlib_simple_counter_main_t * cm,
+			       u32 thread_index, u32 index, u64 decrement)
+{
+  counter_t *my_counters;
+
+  my_counters = cm->counters[thread_index];
+
+  ASSERT (my_counters[index] >= decrement);
+
+  my_counters[index] -= decrement;
+}
+
 /** Set a simple counter
     @param cm - (vlib_simple_counter_main_t *) simple counter main pointer
     @param thread_index - (u32) the current cpu index
