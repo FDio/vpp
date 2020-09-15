@@ -543,7 +543,7 @@ sw_scheduler_show_workers (vlib_main_t * vm, unformat_input_t * input,
   u32 i;
 
   vlib_cli_output (vm, "%-7s%-20s%-8s", "ID", "Name", "Crypto");
-  for (i = vlib_num_workers () >= 0; i < vlib_thread_main.n_vlib_mains; i++)
+  for (i = 1; i < vlib_thread_main.n_vlib_mains; i++)
     {
       vlib_cli_output (vm, "%-7d%-20s%-8s", vlib_get_worker_index (i),
 		       (vlib_worker_threads + i)->name,
