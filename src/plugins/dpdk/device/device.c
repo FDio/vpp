@@ -639,13 +639,6 @@ dpdk_interface_set_rss_queues (struct vnet_main_t *vnm,
   }));
   /* *INDENT-ON* */
 
-  /* check valid_queue_count not zero, make coverity happy */
-  if (valid_queue_count == 0)
-    {
-      err = clib_error_return (0, "must assign at least one valid rss queue");
-      goto done;
-    }
-
   valid_queue = reta;
   for (i = valid_queue_count, j = 0; i < dev_info.reta_size; i++, j++)
     {
