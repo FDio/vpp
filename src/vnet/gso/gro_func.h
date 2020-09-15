@@ -193,7 +193,7 @@ gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
     return 0;
 
   pkt_len0 = vlib_buffer_length_in_chain (vm, b0);
-  if (PREDICT_FALSE (pkt_len0 >= TCP_MAX_GSO_SZ))
+  if (PREDICT_FALSE (pkt_len0 >= tcp_cfg.max_gso_size))
     return 0;
 
   return pkt_len0;
@@ -290,8 +290,8 @@ gro_coalesce_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
   payload_len0 = pkt_len0 - l234_sz0;
   payload_len1 = pkt_len1 - l234_sz1;
 
-  if (pkt_len0 >= TCP_MAX_GSO_SZ || pkt_len1 >= TCP_MAX_GSO_SZ
-      || (pkt_len0 + payload_len1) >= TCP_MAX_GSO_SZ)
+  if (pkt_len0 >= tcp_cfg.max_gso_size || pkt_len1 >= tcp_cfg.max_gso_size
+      || (pkt_len0 + payload_len1) >= tcp_cfg.max_gso_size)
     return 0;
 
   if (gro_tcp_sequence_check (tcp0, tcp1, payload_len0) ==
@@ -490,7 +490,8 @@ vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
 
       if (PREDICT_TRUE (action == GRO_PACKET_ACTION_ENQUEUE))
 	{
-	  if (PREDICT_TRUE ((pkt_len_s + payload_len0) < TCP_MAX_GSO_SZ))
+	  if (PREDICT_TRUE
+	      ((pkt_len_s + payload_len0) < tcp_cfg.max_gso_size))
 	    {
 	      flow_table->total_vectors++;
 	      gro_merge_buffers (vm, b_s, b0, bi0, payload_len0, l234_sz0);
