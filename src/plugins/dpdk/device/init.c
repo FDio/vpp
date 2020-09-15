@@ -759,7 +759,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       dpdk_device_setup (xd);
 
       /* rss queues should be configured after dpdk_device_setup() */
-      if ((hi != NULL) && (devconf->rss_queues != NULL))
+      if (devconf->rss_queues != NULL)
         {
           if (vnet_hw_interface_set_rss_queues
               (vnet_get_main (), hi, devconf->rss_queues))
