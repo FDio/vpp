@@ -171,14 +171,27 @@ static int
 af_xdp_create_queue (vlib_main_t * vm, af_xdp_create_if_args_t * args,
 		     af_xdp_device_t * ad, int qid, int rxq_num, int txq_num)
 {
-  struct xsk_umem **umem = vec_elt_at_index (ad->umem, qid);
-  struct xsk_socket **xsk = vec_elt_at_index (ad->xsk, qid);
-  af_xdp_rxq_t *rxq = vec_elt_at_index (ad->rxqs, qid);
-  af_xdp_txq_t *txq = vec_elt_at_index (ad->txqs, qid);
+  struct xsk_umem **umem;
+  struct xsk_socket **xsk;
+  af_xdp_rxq_t *rxq;
+  af_xdp_txq_t *txq;
   struct xsk_umem_config umem_config;
   struct xsk_socket_config sock_config;
   struct xdp_options opt;
   socklen_t optlen;
+
+  vec_validate_aligned (ad->umem, qid, CLIB_CACHE_LINE_BYTES);
+  umem = vec_elt_at_index (ad->umem, qid);
+
+  vec_validate_aligned (ad->xsk, qid, CLIB_CACHE_LINE_BYTES);
+  xsk = vec_elt_at_index (ad->xsk, qid);
+
+  vec_validate_aligned (ad->rxqs, qid, CLIB_CACHE_LINE_BYTES);
+  rxq = vec_elt_at_index (ad->rxqs, qid);
+
+  vec_validate_aligned (ad->txqs, qid, CLIB_CACHE_LINE_BYTES);
+  txq = vec_elt_at_index (ad->txqs, qid);
+
   /*
    * fq and cq must always be allocated even if unused
    * whereas rx and tx indicates whether we want rxq, txq, or both
@@ -335,10 +348,6 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
     goto err1;
 
   q_num = clib_max (rxq_num, txq_num);
-  vec_validate_aligned (ad->rxqs, q_num - 1, CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (ad->txqs, q_num - 1, CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (ad->umem, q_num - 1, CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (ad->xsk, q_num - 1, CLIB_CACHE_LINE_BYTES);
   ad->txq_num = txq_num;
   for (i = 0; i < q_num; i++)
     {
@@ -347,10 +356,10 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 	  /*
 	   * queue creation failed
 	   * it is only a fatal error if we could not create the number of rx
-	   * queues requested explicitely by the user
+	   * queues requested explicitely by the user and the user did not
+	   * requested 'max'
 	   * we might create less tx queues than workers but this is ok
 	   */
-	  af_xdp_txq_t *txq;
 
 	  /* fixup vectors length */
 	  vec_set_len (ad->umem, i);
@@ -358,15 +367,17 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 	  vec_set_len (ad->rxqs, i);
 	  vec_set_len (ad->txqs, i);
 
-	  if (i < rxq_num)
+	  if (i < rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != rxq_num)
 	    goto err1;		/* failed creating requested rxq: fatal error, bailing out */
 
-	  /*
-	   * we created all rxq but failed some txq: not an error but
-	   * initialize lock for shared txq
-	   */
-	  ad->txq_num = i;
-	  vec_foreach (txq, ad->txqs) clib_spinlock_init (&txq->lock);
+	  if (i < txq_num)
+	    {
+	      /* we created less txq than threads not an error but initialize lock for shared txq */
+	      af_xdp_txq_t *txq;
+	      ad->txq_num = i;
+	      vec_foreach (txq, ad->txqs) clib_spinlock_init (&txq->lock);
+	    }
+
 	  args->rv = 0;
 	  clib_error_free (args->error);
 	  break;
@@ -406,7 +417,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   vnet_hw_interface_set_input_node (vnm, ad->hw_if_index,
 				    af_xdp_input_node.index);
 
-  for (i = 0; i < rxq_num; i++)
+  for (i = 0; i < vec_len (ad->rxqs); i++)
     {
       af_xdp_rxq_t *rxq = vec_elt_at_index (ad->rxqs, i);
       clib_file_t f = {

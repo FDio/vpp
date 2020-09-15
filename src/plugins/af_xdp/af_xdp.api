@@ -31,7 +31,7 @@ enum af_xdp_mode
     @param context - sender context, to match reply w/ request
     @param host_if - Linux netdev interface name
     @param name - new af_xdp interface name (optional)
-    @param rxq_num - number of receive queues (optional)
+    @param rxq_num - number of receive queues. 65535 can be used as special value to request all available queues (optional)
     @param rxq_size - receive queue size (optional)
     @param txq_size - transmit queue size (optional)
     @param mode - operation mode (optional)
@@ -50,7 +50,7 @@ define af_xdp_create
   u16 txq_size [default=0];
   vl_api_af_xdp_mode_t mode [default=0];
   string prog[256];
-  option vat_help = "<host-if linux-ifname> [name ifname] [rx-queue-size size] [tx-queue-size size] [num-rx-queues num] [prog pathname] [zero-copy|no-zero-copy]";
+  option vat_help = "<host-if linux-ifname> [name ifname] [rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] [prog pathname] [zero-copy|no-zero-copy]";
   option status="in_progress";
 };
 

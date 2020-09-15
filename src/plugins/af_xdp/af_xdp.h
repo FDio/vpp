@@ -22,6 +22,8 @@
 #include <vnet/interface.h>
 #include <bpf/xsk.h>
 
+#define AF_XDP_NUM_RX_QUEUES_ALL        ((u16)-1)
+
 #define af_xdp_log(lvl, dev, f, ...) \
   vlib_log(lvl, af_xdp_main.log_class, "%v: " f, (dev)->name, ##__VA_ARGS__)
 
