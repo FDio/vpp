@@ -311,7 +311,7 @@ autoreply define nat_det_add_del_map {
   u8 in_plen;
   vl_api_ip4_address_t out_addr;
   u8 out_plen;
-  option status="deprecated";
+  option deprecated;
 };
 
 /** \brief Get outside address and port range from inside address
@@ -323,7 +323,7 @@ define nat_det_forward {
   u32 client_index;
   u32 context;
   vl_api_ip4_address_t in_addr;
-  option status="deprecated";
+  option deprecated;
 };
 
 /** \brief Get outside address and port range from inside address
@@ -339,7 +339,7 @@ define nat_det_forward_reply {
   u16 out_port_lo;
   u16 out_port_hi;
   vl_api_ip4_address_t out_addr;
-  option status="deprecated";
+  option deprecated;
 };
 
 /** \brief Get inside address from outside address and port
@@ -353,7 +353,7 @@ define nat_det_reverse {
   u32 context;
   u16 out_port;
   vl_api_ip4_address_t out_addr;
-  option status="deprecated";
+  option deprecated;
 };
 
 /** \brief Get inside address from outside address and port reply
@@ -365,7 +365,7 @@ define nat_det_reverse_reply {
   u32 context;
   i32 retval;
   vl_api_ip4_address_t in_addr;
-  option status="deprecated";
+  option deprecated;
 };
 
 /** \brief Dump NAT deterministic mappings
@@ -375,7 +375,7 @@ define nat_det_reverse_reply {
 define nat_det_map_dump {
   u32 client_index;
   u32 context;
-  option status="deprecated";
+  option deprecated;
 };
 
 /** \brief NAT users response
@@ -397,7 +397,7 @@ define nat_det_map_details {
   u32 sharing_ratio;
   u16 ports_per_host;
   u32 ses_num;
-  option status="deprecated";
+  option deprecated;
 };
 
 /** \brief Close deterministic NAT session by outside address and port
@@ -415,7 +415,7 @@ autoreply define nat_det_close_session_out {
   u16 out_port;
   vl_api_ip4_address_t ext_addr;
   u16 ext_port;
-  option status="deprecated";
+  option deprecated;
 };
 
 /** \brief Close deterministic NAT session by inside address and port
@@ -433,7 +433,7 @@ autoreply define nat_det_close_session_in {
   u16 in_port;
   vl_api_ip4_address_t ext_addr;
   u16 ext_port;
-  option status="deprecated";
+  option deprecated;
 };
 
 /** \brief Dump determinstic NAT sessions
@@ -445,7 +445,7 @@ define nat_det_session_dump {
   u32 client_index;
   u32 context;
   vl_api_ip4_address_t user_addr;
-  option status="deprecated";
+  option deprecated;
 };
 
 /** \brief Deterministic NAT sessions reply
@@ -465,5 +465,5 @@ define nat_det_session_details {
   u16 out_port;
   u8 state;
   u32 expire;
-  option status="deprecated";
+  option deprecated;
 };
