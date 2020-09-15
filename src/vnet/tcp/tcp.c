@@ -877,7 +877,7 @@ tcp_session_cal_goal_size (tcp_connection_t * tc)
 {
   u16 goal_size = tc->snd_mss;
 
-  goal_size = TCP_MAX_GSO_SZ - tc->snd_mss % TCP_MAX_GSO_SZ;
+  goal_size = tcp_cfg.max_gso_size - tc->snd_mss % tcp_cfg.max_gso_size;
   goal_size = clib_min (goal_size, tc->snd_wnd / 2);
 
   return goal_size > tc->snd_mss ? goal_size : tc->snd_mss;
@@ -1430,6 +1430,7 @@ tcp_configuration_init (void)
   tcp_cfg.csum_offload = 1;
   tcp_cfg.cc_algo = TCP_CC_CUBIC;
   tcp_cfg.rwnd_min_update_ack = 1;
+  tcp_cfg.max_gso_size = TCP_MAX_GSO_SZ;
 
   /* Time constants defined as timer tick (100ms) multiples */
   tcp_cfg.delack_time = 1;	/* 0.1s */
