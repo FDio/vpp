@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e7477290_38b5b0a0",
+        "filename": "src/vpp/vnet/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-15T23:14:10Z",
+      "side": 1,
+      "message": "what about __os_numa_index \u003d clib_get_current_numa_node (); 😊",
+      "revId": "43bb743037974ef9ba2c58052e87f59b18de1af5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
