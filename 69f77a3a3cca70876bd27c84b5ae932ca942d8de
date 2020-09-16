@@ -46,6 +46,30 @@
       "revId": "69f77a3a3cca70876bd27c84b5ae932ca942d8de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6eccdfea_9a4fec86",
+        "filename": "src/vnet/lisp-cp/one_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 843,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-16T14:43:33Z",
+      "side": 0,
+      "message": "Filter is passed as a u8 in this function, so I wonder if it ever worked. We can still call clib_net_to_host_u32() in vl_api_one_eid_table_dump_t_handler when calling send_one_eid_table_details and actually fix api_one_eid_table_dump by setting mp-\u003efilter \u003d clib_host_to_net_u32 (filter)\n\n@Onong could you take a look at it?\n\nEdit: my reply overlapped with Andrew\u0027s. Agreed!",
+      "parentUuid": "147c9ab7_4dd10a40",
+      "range": {
+        "startLine": 843,
+        "startChar": 10,
+        "endLine": 843,
+        "endChar": 15
+      },
+      "revId": "69f77a3a3cca70876bd27c84b5ae932ca942d8de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
