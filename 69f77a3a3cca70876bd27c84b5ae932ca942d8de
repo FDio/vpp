@@ -22,6 +22,30 @@
       "revId": "69f77a3a3cca70876bd27c84b5ae932ca942d8de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a86945bd_2a8231f0",
+        "filename": "src/vnet/lisp-cp/one_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 843,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2020-09-16T14:39:55Z",
+      "side": 0,
+      "message": "the definition of the \"filter\" is u8, and this function is called from the message handler, so I think it should have been broken in both... The handler starts on the line 916 below, and it calls the function here. So I think this is a copy-paste remnant from the old handler. Could you take a look and confirm you agree this is indeed the case ?",
+      "parentUuid": "147c9ab7_4dd10a40",
+      "range": {
+        "startLine": 843,
+        "startChar": 10,
+        "endLine": 843,
+        "endChar": 15
+      },
+      "revId": "69f77a3a3cca70876bd27c84b5ae932ca942d8de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
