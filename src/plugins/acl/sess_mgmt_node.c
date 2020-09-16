@@ -381,12 +381,9 @@ aclp_post_session_change_request (acl_main_t * am, u32 target_thread,
     &am->per_worker_data[os_get_thread_index ()];
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[target_thread];
   clib_spinlock_lock_if_init (&pw->pending_session_change_request_lock);
-  /* vec_add1 might cause a reallocation, change the heap just in case */
-  void *oldheap = clib_mem_set_heap (am->acl_mheap);
+  /* vec_add1 might cause a reallocation */
   vec_add1 (pw->pending_session_change_requests,
 	    (((u64) request_type) << 32) | target_session);
-  clib_mem_set_heap (oldheap);
-
   pw->rcvd_session_change_requests++;
   pw_me->sent_session_change_requests++;
   if (vec_len (pw->pending_session_change_requests) == 1)
