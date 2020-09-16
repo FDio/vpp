@@ -21,9 +21,6 @@
 #include <vppinfra/elf_clib.h>
 #include <vppinfra/sanitizer.h>
 
-void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
-void *clib_per_numa_mheaps[CLIB_MAX_NUMAS];
-
 typedef struct
 {
   /* Address of callers: outer first, inner last. */
