@@ -197,7 +197,6 @@ static void acl_plugin_put_lookup_context_index (u32 lc_index)
     return;
   }
 
-  void *oldheap = acl_plugin_set_heap ();
   acl_lookup_context_t *acontext = pool_elt_at_index(am->acl_lookup_contexts, lc_index);
 
   u32 index = vec_search(am->acl_users[acontext->context_user_id].lookup_contexts, lc_index);
@@ -208,7 +207,6 @@ static void acl_plugin_put_lookup_context_index (u32 lc_index)
   unlock_acl_vec(lc_index, acontext->acl_indices);
   vec_free(acontext->acl_indices);
   pool_put(am->acl_lookup_contexts, acontext);
-  clib_mem_set_heap (oldheap);
 }
 
 /*
@@ -233,8 +231,6 @@ static int acl_plugin_set_acl_vec_for_context (u32 lc_index, u32 *acl_list)
     clib_warning("BUG: lc_index %d is not valid", lc_index);
     return -1;
   }
-  void *oldheap = acl_plugin_set_heap ();
-
   vec_foreach (pacln, acl_list)
   {
     if (pool_is_free_index (am->acls, *pacln))
@@ -267,7 +263,6 @@ static int acl_plugin_set_acl_vec_for_context (u32 lc_index, u32 *acl_list)
 
 done:
   clib_bitmap_free (seen_acl_bitmap);
-  clib_mem_set_heap (oldheap);
   return rv;
 }
 

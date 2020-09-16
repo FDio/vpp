@@ -77,66 +77,6 @@ format_vec16 (u8 * s, va_list * va)
   return s;
 }
 
-static void *
-acl_set_heap (acl_main_t * am)
-{
-  if (0 == am->acl_mheap)
-    {
-      if (0 == am->acl_mheap_size)
-	{
-	  vlib_thread_main_t *tm = vlib_get_thread_main ();
-	  u64 per_worker_slack = 1000000LL;
-	  u64 per_worker_size =
-	    per_worker_slack +
-	    ((u64) am->fa_conn_table_max_entries) * sizeof (fa_session_t);
-	  u64 per_worker_size_with_slack = per_worker_slack + per_worker_size;
-	  u64 main_slack = 2000000LL;
-	  u64 bihash_size = (u64) am->fa_conn_table_hash_memory_size;
-
-	  am->acl_mheap_size =
-	    per_worker_size_with_slack * tm->n_vlib_mains + bihash_size +
-	    main_slack;
-	}
-      u64 max_possible = ((uword) ~ 0);
-      if (am->acl_mheap_size > max_possible)
-	{
-	  clib_warning ("ACL heap size requested: %lld, max possible %lld",
-			am->acl_mheap_size, max_possible);
-	}
-
-      am->acl_mheap = mheap_alloc_with_lock (0 /* use VM */ ,
-					     am->acl_mheap_size,
-					     1 /* locked */ );
-      if (0 == am->acl_mheap)
-	{
-	  clib_error
-	    ("ACL plugin failed to allocate main heap of %U bytes, abort",
-	     format_memory_size, am->acl_mheap_size);
-	}
-    }
-  void *oldheap = clib_mem_set_heap (am->acl_mheap);
-  return oldheap;
-}
-
-void *
-acl_plugin_set_heap ()
-{
-  acl_main_t *am = &acl_main;
-  return acl_set_heap (am);
-}
-
-void
-acl_plugin_acl_set_validate_heap (acl_main_t * am, int on)
-{
-  clib_mem_set_heap (acl_set_heap (am));
-}
-
-void
-acl_plugin_acl_set_trace_heap (acl_main_t * am, int on)
-{
-  clib_mem_set_heap (acl_set_heap (am));
-}
-
 static void
 vl_api_acl_plugin_get_version_t_handler (vl_api_acl_plugin_get_version_t * mp)
 {
@@ -398,8 +338,6 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
 	 *acl_list_index, tag);
     }
 
-  void *oldheap = acl_set_heap (am);
-
   /* Create and populate the rules */
   if (count > 0)
     vec_validate (acl_new_rules, count - 1);
@@ -447,15 +385,8 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
       /* a change in an ACLs if they are applied may mean a new policy epoch */
       policy_notify_acl_change (am, *acl_list_index);
     }
-
-  /* stats segment expects global heap, so restore it temporarily */
-  clib_mem_set_heap (oldheap);
   validate_and_reset_acl_counters (am, *acl_list_index);
-  oldheap = acl_set_heap (am);
-
-  /* notify the lookup contexts about the ACL changes */
   acl_plugin_lookup_context_notify_acl_change (*acl_list_index);
-  clib_mem_set_heap (oldheap);
   return 0;
 }
 
@@ -490,8 +421,6 @@ acl_del_list (u32 acl_list_index)
   if (acl_is_used_by (acl_list_index, am->lc_index_vec_by_acl))
     return VNET_API_ERROR_ACL_IN_USE_BY_LOOKUP_CONTEXT;
 
-  void *oldheap = acl_set_heap (am);
-
   /* now we can delete the ACL itself */
   a = pool_elt_at_index (am->acls, acl_list_index);
   if (a->rules)
@@ -499,7 +428,6 @@ acl_del_list (u32 acl_list_index)
   pool_put (am->acls, a);
   /* acl_list_index is now free, notify the lookup contexts */
   acl_plugin_lookup_context_notify_acl_change (acl_list_index);
-  clib_mem_set_heap (oldheap);
   return 0;
 }
 
@@ -535,14 +463,12 @@ acl_classify_add_del_table_small (vnet_classify_main_t * cm, u8 * mask,
   if (0 == match)
     match = 1;
 
-  void *oldheap = clib_mem_set_heap (cm->vlib_main->heap_base);
   int ret = vnet_classify_add_del_table (cm, skip_mask_ptr, nbuckets,
 					 memory_size, skip, match,
 					 next_table_index, miss_next_index,
 					 table_index, current_data_flag,
 					 current_data_offset, is_add,
 					 1 /* delete_chain */ );
-  clib_mem_set_heap (oldheap);
   return ret;
 }
 
@@ -559,11 +485,9 @@ intf_has_etype_whitelist (acl_main_t * am, u32 sw_if_index, int is_input)
 static void
 acl_clear_sessions (acl_main_t * am, u32 sw_if_index)
 {
-  void *oldheap = clib_mem_set_heap (am->vlib_main->heap_base);
   vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
 			     ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX,
 			     sw_if_index);
-  clib_mem_set_heap (oldheap);
 }
 
 
@@ -584,7 +508,6 @@ acl_interface_in_enable_disable (acl_main_t * am, u32 sw_if_index,
 
   acl_fa_enable_disable (sw_if_index, 1, enable_disable);
 
-  void *oldheap = clib_mem_set_heap (am->vlib_main->heap_base);
   rv = vnet_l2_feature_enable_disable ("l2-input-ip4", "acl-plugin-in-ip4-l2",
 				       sw_if_index, enable_disable, 0, 0);
   if (rv)
@@ -598,9 +521,6 @@ acl_interface_in_enable_disable (acl_main_t * am, u32 sw_if_index,
     vnet_l2_feature_enable_disable ("l2-input-nonip",
 				    "acl-plugin-in-nonip-l2", sw_if_index,
 				    enable_disable, 0, 0);
-
-  clib_mem_set_heap (oldheap);
-
   am->in_acl_on_sw_if_index =
     clib_bitmap_set (am->in_acl_on_sw_if_index, sw_if_index, enable_disable);
 
@@ -624,7 +544,6 @@ acl_interface_out_enable_disable (acl_main_t * am, u32 sw_if_index,
 
   acl_fa_enable_disable (sw_if_index, 0, enable_disable);
 
-  void *oldheap = clib_mem_set_heap (am->vlib_main->heap_base);
   rv =
     vnet_l2_feature_enable_disable ("l2-output-ip4", "acl-plugin-out-ip4-l2",
 				    sw_if_index, enable_disable, 0, 0);
@@ -639,10 +558,6 @@ acl_interface_out_enable_disable (acl_main_t * am, u32 sw_if_index,
     vnet_l2_feature_enable_disable ("l2-output-nonip",
 				    "acl-plugin-out-nonip-l2", sw_if_index,
 				    enable_disable, 0, 0);
-
-
-  clib_mem_set_heap (oldheap);
-
   am->out_acl_on_sw_if_index =
     clib_bitmap_set (am->out_acl_on_sw_if_index, sw_if_index, enable_disable);
 
@@ -782,8 +697,6 @@ acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
    */
   vec_validate_init_empty ((*pinout_lc_index_by_sw_if_index), sw_if_index,
 			   ~0);
-  /* lookup context creation is to be done in global heap */
-  void *oldheap = clib_mem_set_heap (am->vlib_main->heap_base);
   if (vec_len (vec_acl_list_index) > 0)
     {
       u32 lc_index = (*pinout_lc_index_by_sw_if_index)[sw_if_index];
@@ -804,8 +717,6 @@ acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
 	  (*pinout_lc_index_by_sw_if_index)[sw_if_index] = ~0;
 	}
     }
-  clib_mem_set_heap (oldheap);
-
   /* ensure ACL processing is enabled/disabled as needed */
   acl_interface_inout_enable_disable (am, sw_if_index, is_input,
 				      vec_len (vec_acl_list_index) > 0);
@@ -822,10 +733,8 @@ acl_interface_reset_inout_acls (u32 sw_if_index, u8 is_input,
 				int *may_clear_sessions)
 {
   acl_main_t *am = &acl_main;
-  void *oldheap = acl_set_heap (am);
   acl_interface_set_inout_acl_list (am, sw_if_index, is_input, 0,
 				    may_clear_sessions);
-  clib_mem_set_heap (oldheap);
 }
 
 static int
@@ -844,8 +753,6 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
     is_input ? &am->
     input_acl_vec_by_sw_if_index : &am->output_acl_vec_by_sw_if_index;
   int rv = 0;
-  void *oldheap = acl_set_heap (am);
-
   if (is_add)
     {
       vec_validate ((*pinout_acl_vec_by_sw_if_index), sw_if_index);
@@ -886,7 +793,6 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
 					 &may_clear_sessions);
 done:
   vec_free (acl_vec);
-  clib_mem_set_heap (oldheap);
   return rv;
 }
 
@@ -1643,7 +1549,6 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
   /* if replacing the ACL, unapply the classifier tables first - they will be gone.. */
   if (~0 != *acl_list_index)
     rv = macip_maybe_apply_unapply_classifier_tables (am, *acl_list_index, 0);
-  void *oldheap = acl_set_heap (am);
   /* Create and populate the rules */
   if (count > 0)
     vec_validate (acl_new_rules, count - 1);
@@ -1684,7 +1589,6 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
 
   /* Create and populate the classifier tables */
   macip_create_classify_tables (am, *acl_list_index);
-  clib_mem_set_heap (oldheap);
   /* If the ACL was already applied somewhere, reapply the newly created tables */
   rv = rv
     || macip_maybe_apply_unapply_classifier_tables (am, *acl_list_index, 1);
@@ -1745,12 +1649,10 @@ macip_acl_interface_add_acl (acl_main_t * am, u32 sw_if_index,
     {
       return VNET_API_ERROR_NO_SUCH_ENTRY;
     }
-  void *oldheap = acl_set_heap (am);
   a = pool_elt_at_index (am->macip_acls, macip_acl_index);
   vec_validate_init_empty (am->macip_acl_by_sw_if_index, sw_if_index, ~0);
   vec_validate (am->sw_if_index_vec_by_macip_acl, macip_acl_index);
   vec_add1 (am->sw_if_index_vec_by_macip_acl[macip_acl_index], sw_if_index);
-  clib_mem_set_heap (oldheap);
   /* If there already a MACIP ACL applied, unapply it */
   if (~0 != am->macip_acl_by_sw_if_index[sw_if_index])
     macip_acl_interface_del_acl (am, sw_if_index);
@@ -1787,7 +1689,6 @@ macip_acl_del_list (u32 acl_list_index)
 	}
     }
 
-  void *oldheap = acl_set_heap (am);
   /* Now that classifier tables are detached, clean them up */
   macip_destroy_classify_tables (am, acl_list_index);
 
@@ -1798,7 +1699,6 @@ macip_acl_del_list (u32 acl_list_index)
       vec_free (a->rules);
     }
   pool_put (am->macip_acls, a);
-  clib_mem_set_heap (oldheap);
   return 0;
 }
 
@@ -1952,8 +1852,6 @@ static void
 	}
       if (0 == rv)
 	{
-	  void *oldheap = acl_set_heap (am);
-
 	  u32 *in_acl_vec = 0;
 	  u32 *out_acl_vec = 0;
 	  for (i = 0; i < mp->count; i++)
@@ -1971,7 +1869,6 @@ static void
 						 &may_clear_sessions);
 	  vec_free (in_acl_vec);
 	  vec_free (out_acl_vec);
-	  clib_mem_set_heap (oldheap);
 	}
     }
 
@@ -2006,7 +1903,6 @@ send_acl_details (acl_main_t * am, vl_api_registration_t * reg,
   int i;
   acl_rule_t *acl_rules = acl->rules;
   int msg_size = sizeof (*mp) + sizeof (mp->r[0]) * vec_len (acl_rules);
-  void *oldheap = acl_set_heap (am);
 
   mp = vl_msg_api_alloc (msg_size);
   clib_memset (mp, 0, msg_size);
@@ -2024,7 +1920,6 @@ send_acl_details (acl_main_t * am, vl_api_registration_t * reg,
       copy_acl_rule_to_api_rule (&rules[i], &acl_rules[i]);
     }
 
-  clib_mem_set_heap (oldheap);
   vl_api_send_msg (reg, (u8 *) mp);
 }
 
@@ -2080,12 +1975,9 @@ send_acl_interface_list_details (acl_main_t * am,
   int n_output;
   int count;
   int i = 0;
-  void *oldheap = acl_set_heap (am);
 
   vec_validate (am->input_acl_vec_by_sw_if_index, sw_if_index);
   vec_validate (am->output_acl_vec_by_sw_if_index, sw_if_index);
-
-  clib_mem_set_heap (oldheap);
 
   n_input = vec_len (am->input_acl_vec_by_sw_if_index[sw_if_index]);
   n_output = vec_len (am->output_acl_vec_by_sw_if_index[sw_if_index]);
@@ -2416,7 +2308,6 @@ static void
   vnet_interface_main_t *im = &am->vnet_main->interface_main;
   u32 sw_if_index = ntohl (mp->sw_if_index);
   u16 *vec_in = 0, *vec_out = 0;
-  void *oldheap = acl_set_heap (am);
 
   if (pool_is_free_index (im->sw_interfaces, sw_if_index))
     rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
@@ -2432,7 +2323,6 @@ static void
       rv = acl_set_etype_whitelists (am, sw_if_index, vec_in, vec_out);
     }
 
-  clib_mem_set_heap (oldheap);
   REPLY_MACRO (VL_API_ACL_INTERFACE_SET_ETYPE_WHITELIST_REPLY);
 }
 
@@ -2462,8 +2352,6 @@ send_acl_interface_etype_whitelist_details (acl_main_t * am,
   if ((0 == whitelist_in) && (0 == whitelist_out))
     return;			/* nothing to do */
 
-  void *oldheap = acl_set_heap (am);
-
   n_input = vec_len (whitelist_in);
   n_output = vec_len (whitelist_out);
   count = n_input + n_output;
@@ -2489,7 +2377,6 @@ send_acl_interface_etype_whitelist_details (acl_main_t * am,
     {
       mp->whitelist[n_input + i] = htons (whitelist_out[i]);
     }
-  clib_mem_set_heap (oldheap);
   vl_api_send_msg (reg, (u8 *) mp);
 }
 
@@ -2573,11 +2460,6 @@ static clib_error_t *
 acl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 {
   acl_main_t *am = &acl_main;
-  if (0 == am->acl_mheap)
-    {
-      /* ACL heap is not initialized, so definitely nothing to do. */
-      return 0;
-    }
   if (0 == is_add)
     {
       int may_clear_sessions = 1;
@@ -2650,17 +2532,17 @@ acl_set_aclplugin_fn (vlib_main_t * vm,
       if (unformat (input, "main"))
 	{
 	  if (unformat (input, "validate %u", &val))
-	    acl_plugin_acl_set_validate_heap (am, val);
+	    clib_warning ("ACL local heap is deprecated");
 	  else if (unformat (input, "trace %u", &val))
-	    acl_plugin_acl_set_trace_heap (am, val);
+	    clib_warning ("ACL local heap is deprecated");
 	  goto done;
 	}
       else if (unformat (input, "hash"))
 	{
 	  if (unformat (input, "validate %u", &val))
-	    acl_plugin_hash_acl_set_validate_heap (val);
+	    clib_warning ("ACL local heap is deprecated");
 	  else if (unformat (input, "trace %u", &val))
-	    acl_plugin_hash_acl_set_trace_heap (val);
+	    clib_warning ("ACL local heap is deprecated");
 	  goto done;
 	}
       goto done;
@@ -3300,26 +3182,7 @@ acl_show_aclplugin_memory_fn (vlib_main_t * vm,
 			      vlib_cli_command_t * cmd)
 {
   clib_error_t *error = 0;
-  acl_main_t *am = &acl_main;
-
-  vlib_cli_output (vm, "ACL plugin main heap statistics:\n");
-  if (am->acl_mheap)
-    {
-      vlib_cli_output (vm, " %U\n", format_mheap, am->acl_mheap, 1);
-    }
-  else
-    {
-      vlib_cli_output (vm, " Not initialized\n");
-    }
-  vlib_cli_output (vm, "ACL hash lookup support heap statistics:\n");
-  if (am->hash_lookup_mheap)
-    {
-      vlib_cli_output (vm, " %U\n", format_mheap, am->hash_lookup_mheap, 1);
-    }
-  else
-    {
-      vlib_cli_output (vm, " Not initialized\n");
-    }
+  vlib_cli_output (vm, "ACL memory is now part of the main heap");
   return error;
 }
 
@@ -3707,14 +3570,17 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
 	if (unformat
 	    (input, "main heap size %U", unformat_memory_size,
 	     &main_heap_size))
-	am->acl_mheap_size = main_heap_size;
+	clib_warning
+	  ("WARNING: ACL heap is now part of the main heap. 'main heap size' is ineffective.");
       else
 	if (unformat
 	    (input, "hash lookup heap size %U", unformat_memory_size,
 	     &hash_heap_size))
-	am->hash_lookup_mheap_size = hash_heap_size;
-      else if (unformat (input, "hash lookup hash buckets %d",
-			 &hash_lookup_hash_buckets))
+	clib_warning
+	  ("WARNING: ACL heap is now part of the main heap. 'hash lookup heap size' is ineffective.");
+      else
+	if (unformat
+	    (input, "hash lookup hash buckets %d", &hash_lookup_hash_buckets))
 	am->hash_lookup_hash_buckets = hash_lookup_hash_buckets;
       else
 	if (unformat
@@ -3763,9 +3629,6 @@ acl_init (vlib_main_t * vm)
 
   if (error)
     return error;
-
-  am->acl_mheap_size = 0;	/* auto size when initializing */
-  am->hash_lookup_mheap_size = ACL_PLUGIN_HASH_LOOKUP_HEAP_SIZE;
 
   am->hash_lookup_hash_buckets = ACL_PLUGIN_HASH_LOOKUP_HASH_BUCKETS;
   am->hash_lookup_hash_memory = ACL_PLUGIN_HASH_LOOKUP_HASH_MEMORY;
