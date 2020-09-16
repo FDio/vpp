@@ -1241,7 +1241,7 @@ avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
 	      if ((err = avf_config_promisc_mode (vm, ad, is_enable)))
 		{
-		  avf_log_err (ad, "%s: %U", format_clib_error, err);
+		  avf_log_err (ad, "error: %U", format_clib_error, err);
 		  clib_error_free (err);
 		}
 	    }
