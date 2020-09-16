@@ -267,7 +267,7 @@ dpdk-download: $(B)/.dpdk-download.ok
 
 $(B)/.dpdk-extract.ok: $(B)/.dpdk-download.ok
 	@echo --- extracting $(DPDK_TARBALL) ---
-	@tar --directory $(B) --extract --file $(DPDK_DOWNLOADS)
+	@tar --directory $(B) --extract --touch --file $(DPDK_DOWNLOADS)
 	@touch $@
 
 .PHONY: dpdk-extract

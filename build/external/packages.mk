@@ -62,6 +62,7 @@ $(B)/.$1.extract.ok: $(B)/.$1.download.ok
 	$$(call h1,"extracting $1 $($1_version)")
 	@mkdir -p $$($1_src_dir)
 	@tar \
+	  --touch \
 	  --directory $$($1_src_dir) \
 	  --extract \
 	  --strip-components=$$($1_tarball_strip_dirs) \
