@@ -193,6 +193,9 @@ typedef struct tcp_configuration_
   /** Number of preallocated half-open connections */
   u32 preallocated_half_open_connections;
 
+  /** Maxium allowed GSO packet size */
+  u32 max_gso_size;
+
   /** Vectors of src addresses. Optional unless one needs > 63K active-opens */
   ip4_address_t *ip4_src_addrs;
   ip6_address_t *ip6_src_addrs;

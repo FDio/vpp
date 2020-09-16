@@ -1050,7 +1050,7 @@ unformat_tcp_cc_algo_cfg (unformat_input_t * input, va_list * va)
 static clib_error_t *
 tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
-  u32 cwnd_multiplier, tmp_time, mtu;
+  u32 cwnd_multiplier, tmp_time, mtu, max_gso_size;
   uword memory_size;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1100,6 +1100,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	tcp_cfg.allow_tso = 1;
       else if (unformat (input, "no-csum-offload"))
 	tcp_cfg.csum_offload = 0;
+      else if (unformat (input, "max-gso-size %u", &max_gso_size))
+	tcp_cfg.max_gso_size = clib_min (max_gso_size, TCP_MAX_GSO_SZ);
       else if (unformat (input, "cc-algo %U", unformat_tcp_cc_algo,
 			 &tcp_cfg.cc_algo))
 	;
