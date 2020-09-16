@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "147c9ab7_4dd10a40",
+        "filename": "src/vnet/lisp-cp/one_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 843,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-09-16T13:48:29Z",
+      "side": 0,
+      "message": "Let me guess. Removing this (without adding it to one_api.c) has fixed VAT, but has broken binary API instead, right?\nA nice fix would be to use u8 as the base type for one_filter enum (just to see if our CRC framework would detect it).",
+      "range": {
+        "startLine": 843,
+        "startChar": 10,
+        "endLine": 843,
+        "endChar": 15
+      },
+      "revId": "69f77a3a3cca70876bd27c84b5ae932ca942d8de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
