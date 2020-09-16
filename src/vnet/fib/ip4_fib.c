@@ -106,14 +106,11 @@ ip4_create_fib_with_table_id (u32 table_id,
 {
     fib_table_t *fib_table;
     ip4_fib_t *v4_fib;
-    void *old_heap;
 
     pool_get(ip4_main.fibs, fib_table);
     clib_memset(fib_table, 0, sizeof(*fib_table));
 
-    old_heap = clib_mem_set_heap (ip4_main.mtrie_mheap);
     pool_get_aligned(ip4_main.v4_fibs, v4_fib, CLIB_CACHE_LINE_BYTES);
-    clib_mem_set_heap (old_heap);
 
     ASSERT((fib_table - ip4_main.fibs) ==
            (v4_fib - ip4_main.v4_fibs));
@@ -333,8 +330,6 @@ ip4_fib_table_entry_insert (ip4_fib_t *fib,
 	/*
 	 * adding a new entry
 	 */
-        uword *old_heap;
-        old_heap = clib_mem_set_heap (ip4_main.mtrie_mheap);
 
 	if (NULL == hash) {
 	    hash = hash_create (32 /* elts */, sizeof (uword));
@@ -343,7 +338,6 @@ ip4_fib_table_entry_insert (ip4_fib_t *fib,
 	}
 	hash = hash_set(hash, key, fib_entry_index);
 	fib->fib_entry_by_dst_address[len] = hash;
-        clib_mem_set_heap (old_heap);
     }
     else
     {
@@ -371,11 +365,7 @@ ip4_fib_table_entry_remove (ip4_fib_t *fib,
     }
     else
     {
-        uword *old_heap;
-
-        old_heap = clib_mem_set_heap (ip4_main.mtrie_mheap);
 	hash_unset(hash, key);
-        clib_mem_set_heap (old_heap);
     }
 
     fib->fib_entry_by_dst_address[len] = hash;
@@ -571,10 +561,9 @@ ip4_fib_table_show_one (ip4_fib_t *fib,
 u8 *
 format_ip4_fib_table_memory (u8 * s, va_list * args)
 {
-    s = format(s, "%=30s %=6d %=12ld\n",
+    s = format(s, "%=30s %=6d\n",
                "IPv4 unicast",
-               pool_elts(ip4_main.fibs),
-               mspace_footprint(ip4_main.mtrie_mheap));
+               pool_elts(ip4_main.fibs));
     return (s);
 }
 
@@ -640,13 +629,12 @@ ip4_show_fib (vlib_main_t * vm,
 
         if (memory)
         {
-            uword mtrie_size, hash_size, *old_heap;
+            uword mtrie_size, hash_size;
 
 
             mtrie_size = ip4_fib_mtrie_memory_usage(&fib->mtrie);
             hash_size = 0;
 
-            old_heap = clib_mem_set_heap (ip4_main.mtrie_mheap);
 	    for (i = 0; i < ARRAY_LEN (fib->fib_entry_by_dst_address); i++)
 	    {
 		uword * hash = fib->fib_entry_by_dst_address[i];
@@ -655,7 +643,6 @@ ip4_show_fib (vlib_main_t * vm,
                     hash_size += hash_bytes(hash);
                 }
             }
-            clib_mem_set_heap (old_heap);
 
             if (verbose)
                 vlib_cli_output (vm, "%U mtrie:%d hash:%d",
@@ -725,8 +712,6 @@ ip4_show_fib (vlib_main_t * vm,
                          total_mtrie_memory,
                          total_hash_memory,
                          total_mtrie_memory + total_hash_memory);
-        vlib_cli_output (vm, "\nMtrie Mheap Usage: %U\n",
-                         format_mheap, ip4_main.mtrie_mheap, 1);
     }
     return 0;
 }
