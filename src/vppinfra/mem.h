@@ -73,6 +73,15 @@ typedef enum
 
 typedef struct
 {
+  /* log2 system page size */
+  clib_mem_page_sz_t log2_page_sz;
+
+  /* log2 system default hugepage size */
+  clib_mem_page_sz_t log2_default_hugepage_sz;
+
+  /* bitmap of available numa nodes */
+  u32 numa_node_bitmap;
+
   /* per CPU heaps */
   void *per_cpu_mheaps[CLIB_MAX_MHEAPS];
 
@@ -294,6 +303,7 @@ clib_mem_set_heap (void *heap)
   return clib_mem_set_per_cpu_heap (heap);
 }
 
+void clib_mem_main_init ();
 void *clib_mem_init (void *heap, uword size);
 void *clib_mem_init_thread_safe (void *memory, uword memory_size);
 void *clib_mem_init_thread_safe_numa (void *memory, uword memory_size,

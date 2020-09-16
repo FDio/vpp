@@ -201,6 +201,8 @@ clib_mem_init_internal (void *memory, uword memory_size, int set_heap)
 {
   u8 *heap;
 
+  clib_mem_main_init ();
+
   if (memory)
     {
       heap = create_mspace_with_base (memory, memory_size, 1 /* locked */ );

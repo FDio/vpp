@@ -46,6 +46,9 @@
 #define F_SEAL_WRITE    0x0008	/* prevent writes */
 #endif
 
+#ifndef MFD_HUGETLB
+#define MFD_HUGETLB 0x0004U
+#endif
 
 uword
 clib_mem_get_page_size (void)
@@ -87,6 +90,73 @@ done:
   return 1024ULL * size;
 }
 
+static clib_mem_page_sz_t
+legacy_get_log2_default_hugepage_size (void)
+{
+  clib_mem_page_sz_t log2_page_size = CLIB_MEM_PAGE_SZ_UNKNOWN;
+  FILE *fp;
+  char tmp[33] = { };
+
+  if ((fp = fopen ("/proc/meminfo", "r")) == NULL)
+    return CLIB_MEM_PAGE_SZ_UNKNOWN;
+
+  while (fscanf (fp, "%32s", tmp) > 0)
+    if (strncmp ("Hugepagesize:", tmp, 13) == 0)
+      {
+	u32 size;
+	if (fscanf (fp, "%u", &size) > 0)
+	  log2_page_size = 10 + min_log2 (size);
+	break;
+      }
+
+  fclose (fp);
+  return log2_page_size;
+}
+
+void
+clib_mem_main_init ()
+{
+  clib_mem_main_t *mm = &clib_mem_main;
+  uword page_size;
+  void *va;
+  int fd;
+
+  if (mm->log2_page_sz != CLIB_MEM_PAGE_SZ_UNKNOWN)
+    return;
+
+  /* system page size */
+  page_size = sysconf (_SC_PAGESIZE);
+  mm->log2_page_sz = min_log2 (page_size);
+
+  /* default system hugeppage size */
+  if ((fd = memfd_create ("test", MFD_HUGETLB)) != -1)
+    {
+      mm->log2_default_hugepage_sz = clib_mem_get_fd_log2_page_size (fd);
+      close (fd);
+    }
+  else				/* likely kernel older than 4.14 */
+    mm->log2_default_hugepage_sz = legacy_get_log2_default_hugepage_size ();
+
+  /* numa nodes */
+  va = mmap (0, page_size, PROT_READ | PROT_WRITE, MAP_PRIVATE |
+	     MAP_ANONYMOUS, -1, 0);
+  if (va == MAP_FAILED)
+    return;
+
+  if (mlock (va, page_size))
+    goto done;
+
+  for (int i = 0; i < CLIB_MAX_NUMAS; i++)
+    {
+      int status;
+      if (move_pages (0, 1, &va, &i, &status, 0) == 0)
+	mm->numa_node_bitmap |= 1ULL << i;
+    }
+
+done:
+  munmap (va, page_size);
+}
+
 u64
 clib_mem_get_fd_page_size (int fd)
 {
@@ -118,10 +188,6 @@ clib_mem_vm_randomize_va (uword * requested_va,
   *requested_va +=
     (clib_cpu_time_now () & bit_mask) * (1ull << log2_page_size);
 }
-
-#ifndef MFD_HUGETLB
-#define MFD_HUGETLB 0x0004U
-#endif
 
 clib_error_t *
 clib_mem_create_fd (char *name, int *fdp)
