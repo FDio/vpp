@@ -406,7 +406,6 @@ acl_fa_deactivate_session (acl_main_t * am, u32 sw_if_index,
   fa_session_t *sess =
     get_session_ptr (am, sess_id.thread_index, sess_id.session_index);
   ASSERT (sess->thread_index == os_get_thread_index ());
-  void *oldheap = clib_mem_set_heap (am->acl_mheap);
   if (sess->is_ip6)
     {
       clib_bihash_add_del_40_8 (&am->fa_ip6_sessions_hash,
@@ -422,7 +421,6 @@ acl_fa_deactivate_session (acl_main_t * am, u32 sw_if_index,
 
   sess->deleted = 1;
   clib_atomic_fetch_add (&am->fa_session_total_deactivations, 1);
-  clib_mem_set_heap (oldheap);
 }
 
 always_inline void
@@ -435,13 +433,11 @@ acl_fa_put_session (acl_main_t * am, u32 sw_if_index,
 	("Attempting to delete session belonging to thread %d by thread %d",
 	 sess_id.thread_index, os_get_thread_index ());
     }
-  void *oldheap = clib_mem_set_heap (am->acl_mheap);
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[sess_id.thread_index];
   pool_put_index (pw->fa_sessions_pool, sess_id.session_index);
   /* Deleting from timer structures not needed,
      as the caller must have dealt with the timers. */
   vec_validate (pw->fa_session_dels_by_sw_if_index, sw_if_index);
-  clib_mem_set_heap (oldheap);
   pw->fa_session_dels_by_sw_if_index[sw_if_index]++;
   clib_atomic_fetch_add (&am->fa_session_total_dels, 1);
 }
@@ -522,7 +518,6 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
 {
   fa_full_session_id_t f_sess_id;
   uword thread_index = os_get_thread_index ();
-  void *oldheap = clib_mem_set_heap (am->acl_mheap);
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
 
   f_sess_id.thread_index = thread_index;
@@ -580,7 +575,6 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
     }
 
   vec_validate (pw->fa_session_adds_by_sw_if_index, sw_if_index);
-  clib_mem_set_heap (oldheap);
   pw->fa_session_adds_by_sw_if_index[sw_if_index]++;
   clib_atomic_fetch_add (&am->fa_session_total_adds, 1);
   return f_sess_id;
