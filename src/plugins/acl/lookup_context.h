@@ -43,18 +43,11 @@ void acl_plugin_lookup_context_notify_acl_change(u32 acl_num);
 void acl_plugin_show_lookup_context (u32 lc_index);
 void acl_plugin_show_lookup_user (u32 user_index);
 
-
 /* These are in the hash matching for now */
 void acl_plugin_show_tables_mask_type (void);
 void acl_plugin_show_tables_acl_hash_info (u32 acl_index);
 void acl_plugin_show_tables_applied_info (u32 sw_if_index);
 void acl_plugin_show_tables_bihash (u32 show_bihash_verbose);
-
-/* Debug functions to turn validate/trace on and off */
-void acl_plugin_hash_acl_set_validate_heap(int on);
-void acl_plugin_hash_acl_set_trace_heap(int on);
-
-
 
 #endif
 
