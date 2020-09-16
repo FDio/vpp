@@ -164,7 +164,10 @@ Requires(post): selinux-policy-base >= %{selinux_policyver}, selinux-policy-targ
 This package contains a tailored VPP SELinux policy
 
 %prep
-%setup -q -n %{name}-%{_version}
+%setup -q -c -T -n %{name}-%{_version}
+cd ..
+unxz --stdout ./SOURCES/%{name}-%{_version}-%{_release}.tar.xz | tar --extract --touch
+cd -
 
 %pre
 # Add the vpp group
@@ -175,7 +178,7 @@ groupadd -f -r vpp
 . /opt/rh/devtoolset-7/enable
 %endif
 %if %{with aesni}
-    make bootstrap
+    make install-dep
     make -C build-root PLATFORM=vpp TAG=%{_vpp_tag} install-packages
 %else
     make bootstrap AESNI=n
