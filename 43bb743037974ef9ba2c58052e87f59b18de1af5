@@ -16,6 +16,24 @@
       "revId": "43bb743037974ef9ba2c58052e87f59b18de1af5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0eef2800_3e2e2156",
+        "filename": "src/vpp/vnet/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-16T08:19:00Z",
+      "side": 1,
+      "message": "Indeed, it is better and will work as we already pinned main thread above",
+      "parentUuid": "e7477290_38b5b0a0",
+      "revId": "43bb743037974ef9ba2c58052e87f59b18de1af5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
