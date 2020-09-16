@@ -170,9 +170,6 @@ typedef struct ip4_main_t
   /** Use hugetlb pages for the Mtries */
   int mtrie_hugetlb;
 
-  /** The memory heap for the mtries */
-  void *mtrie_mheap;
-
   /** ARP throttling */
   throttle_t arp_throttle;
 

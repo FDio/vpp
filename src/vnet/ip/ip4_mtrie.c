@@ -176,12 +176,9 @@ ply_create (ip4_fib_mtrie_t * m,
 	    u32 leaf_prefix_len, u32 ply_base_len)
 {
   ip4_fib_mtrie_8_ply_t *p;
-  void *old_heap;
   /* Get cache aligned ply. */
 
-  old_heap = clib_mem_set_heap (ip4_main.mtrie_mheap);
   pool_get_aligned (ip4_ply_pool, p, CLIB_CACHE_LINE_BYTES);
-  clib_mem_set_heap (old_heap);
 
   ply_8_init (p, init_leaf, leaf_prefix_len, ply_base_len);
   return ip4_fib_mtrie_leaf_set_next_ply_index (p - ip4_ply_pool);
@@ -798,55 +795,10 @@ static clib_error_t *
 ip4_mtrie_module_init (vlib_main_t * vm)
 {
   CLIB_UNUSED (ip4_fib_mtrie_8_ply_t * p);
-  ip4_main_t *im = &ip4_main;
   clib_error_t *error = NULL;
-  uword *old_heap;
-
-  if (im->mtrie_heap_size == 0)
-    im->mtrie_heap_size = IP4_FIB_DEFAULT_MTRIE_HEAP_SIZE;
-
-again:
-  if (im->mtrie_hugetlb)
-    {
-      void *rv;
-      int mmap_flags, mmap_flags_huge;
-      uword htlb_pagesize = clib_mem_get_default_hugepage_size ();
-      if (htlb_pagesize == 0)
-	{
-	  clib_warning ("WARNING: htlb pagesize == 0");
-	  im->mtrie_hugetlb = 0;
-	  goto again;
-	}
-      /* Round the allocation request to an even number of huge pages */
-      im->mtrie_heap_size = (im->mtrie_heap_size + (htlb_pagesize - 1)) &
-	~(htlb_pagesize - 1);
-      mmap_flags = MAP_PRIVATE | MAP_ANONYMOUS;
-      mmap_flags_huge = (mmap_flags | MAP_HUGETLB | MAP_LOCKED |
-			 min_log2 (htlb_pagesize) << MAP_HUGE_SHIFT);
-      rv = mmap (0, im->mtrie_heap_size,
-		 PROT_READ | PROT_WRITE, mmap_flags_huge, -1, 0);
-      if (rv == MAP_FAILED)
-	{
-	  /* Failure when running as root should be logged... */
-	  if (geteuid () == 0)
-	    clib_warning ("ip4 mtrie htlb map failed: not enough pages?");
-	  im->mtrie_hugetlb = 0;
-	  goto again;
-	}
-      if (mlock (rv, im->mtrie_heap_size))
-	clib_warning ("WARNING: couldn't lock mtrie heap at %llx", rv);
-      im->mtrie_mheap = create_mspace_with_base (rv, im->mtrie_heap_size,
-						 1 /* locked */ );
-    }
-  else
-    {
-      im->mtrie_mheap = create_mspace (im->mtrie_heap_size, 1 /* locked */ );
-    }
 
   /* Burn one ply so index 0 is taken */
-  old_heap = clib_mem_set_heap (ip4_main.mtrie_mheap);
   pool_get (ip4_ply_pool, p);
-  clib_mem_set_heap (old_heap);
 
   return (error);
 }
