@@ -110,6 +110,12 @@ def is_in_progress(d, k):
 def report(new, old):
     added, removed, modified, same = dict_compare(new, old)
     backwards_incompatible = 0
+    # print the full list of in-progress messages
+    # they should eventually either disappear of become supported
+    for k in new.keys():
+        newversion = int(new[k]['version'])
+        if newversion == 0 or is_in_progress(new, k):
+            print(f'in-progress: {k}')
     for k in added:
         print(f'added: {k}')
     for k in removed:
