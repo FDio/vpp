@@ -164,15 +164,6 @@ typedef struct ip4_main_t
     u8 pad[2];
   } host_config;
 
-  /** Heapsize for the Mtries */
-  uword mtrie_heap_size;
-
-  /** Use hugetlb pages for the Mtries */
-  int mtrie_hugetlb;
-
-  /** The memory heap for the mtries */
-  void *mtrie_mheap;
-
   /** ARP throttling */
   throttle_t arp_throttle;
 
