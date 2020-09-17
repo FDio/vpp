@@ -22,6 +22,30 @@
       "revId": "47304df0f4ee08ad428f167e294b329cc7ff86aa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6849e18e_d0c3e03e",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 881,
+      "author": {
+        "id": 2295
+      },
+      "writtenOn": "2020-09-17T15:31:17Z",
+      "side": 1,
+      "message": "vcl {\n\n        rx-fifo-size 2200000\n        tx-fifo-size 2200000\n        api-socket-name /run/vpp/api.sock\n        app-proxy-transport-tcp\n        event-queue-size 1000000\n        segment-size 1024000000\n        add-segment-size 1024000000\n        vpp-api-q-length 65536\n        max-workers 36\n        use-mq-eventfd\n}\nthis is my vcl.conf, nginx run as a proxy server with LD_PRELOAD.  vpp exit abnormal in segment_manager_segment_reader_unlock (sm) when nginx starting.",
+      "parentUuid": "5668a0d0_0a4c689b",
+      "range": {
+        "startLine": 879,
+        "startChar": 0,
+        "endLine": 881,
+        "endChar": 47
+      },
+      "revId": "47304df0f4ee08ad428f167e294b329cc7ff86aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
