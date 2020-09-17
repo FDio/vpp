@@ -83,6 +83,9 @@ typedef struct _clib_mem_vm_map_hdr
   /* page size (log2) */
   clib_mem_page_sz_t log2_page_sz;
 
+  /* file descriptor, -1 if memory is not shared */
+  int fd;
+
   /* allocation mame */
 #define CLIB_VM_MAP_HDR_NAME_MAX_LEN 64
   char name[CLIB_VM_MAP_HDR_NAME_MAX_LEN];
