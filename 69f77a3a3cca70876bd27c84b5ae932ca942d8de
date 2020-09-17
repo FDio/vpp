@@ -70,6 +70,30 @@
       "revId": "69f77a3a3cca70876bd27c84b5ae932ca942d8de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7fdd5ce9_cde0e00c",
+        "filename": "src/vnet/lisp-cp/one_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 843,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2020-09-17T11:19:02Z",
+      "side": 0,
+      "message": "*Vratko Polak\n\n\u003eLet me guess. Removing this (without adding it to one_api.c) has fixed VAT, but has broken \u003ebinary API instead, right?\n\nEr, what do you mean by \"(without adding it to one_api.c)\"? The change is in one_api.c.\n\nAssuming a 3rd-party application was using this, then the lisp_eid_table_dump api was broke for it in any case.\n\nNow, does this change cause something else to break in the application? I don\u0027t think so since the above stuff goes into the runtime stack and the api invocation is through S() in any case. But I may be wrong.\n\n\n\u003eA nice fix would be to use u8 as the base type for one_filter enum (just to see if our CRC \u003eframework would detect it).\n\nGood point although I am not very familiar with the CRC checker.\n\n\n\n*Andrew Yourtchenko\n\n\u003ethe definition of the \"filter\" is u8, and this function is called from the message handler, so I think it should have \n\u003ebeen broken in both... The handler starts on the line 916 below, and it calls the function here. So I think this is a\n\u003ecopy-paste remnant from the old handler. Could you take a look and confirm you agree this is indeed the case ?\n\n\nI dug into the git logs and it is not a copy-paste remnant. It was changed from \"switch(filter)\" to \"switch(ntohl(filter))\" as part of an API cleanup patch - 58db6e16cf4f3bb1740ca2f62d7d887baad58d63.\n\nOddly, the same code in send_lisp_eid_table_details() is not changed to use ntohl()!\n\n\n\n*Florin Coras\n\n\u003e Filter is passed as a u8 in this function, so I wonder if it ever worked. We can still call \u003eclib_net_to_host_u32() in vl_api_one_eid_table_dump_t_handler when calling \u003esend_one_eid_table_details and actually fix api_one_eid_table_dump by setting mp-\u003efilter \u003d \u003eclib_host_to_net_u32 (filter)\n\u003e \n\u003e @Onong could you take a look at it?\n\u003e \n\u003e Edit: my reply overlapped with Andrew\u0027s. Agreed!\n\nIt must have worked before the API cleanup patch.",
+      "parentUuid": "6eccdfea_9a4fec86",
+      "range": {
+        "startLine": 843,
+        "startChar": 10,
+        "endLine": 843,
+        "endChar": 15
+      },
+      "revId": "69f77a3a3cca70876bd27c84b5ae932ca942d8de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
