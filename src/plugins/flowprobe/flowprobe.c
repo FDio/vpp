@@ -733,6 +733,62 @@ vl_api_flowprobe_params_t_handler (vl_api_flowprobe_params_t * mp)
   REPLY_MACRO (VL_API_FLOWPROBE_PARAMS_REPLY);
 }
 
+static void
+vl_api_flowprobe_params_dump_t_handler (vl_api_flowprobe_params_dump_t * mp)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  vl_api_flowprobe_params_details_t *rmp = 0;
+  int rv = 0;
+
+    /* *INDENT-OFF* */
+  REPLY_MACRO2_ZERO (VL_API_FLOWPROBE_PARAMS_DETAILS,
+  {
+    rmp->record_flags = fm->record;
+    rmp->active_timer = clib_host_to_net_u32(fm->active_timer);
+    rmp->passive_timer = clib_host_to_net_u32(fm->passive_timer);
+  });
+    /* *INDENT-ON* */
+}
+
+static void
+vl_api_flowprobe_feature_dump_t_handler (vl_api_flowprobe_feature_dump_t * mp)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  u8 *which;
+  u32 sw_if_index;
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  vec_foreach (which, fm->flow_per_interface)
+  {
+    if (*which == (u8) ~ 0)
+      continue;
+
+    sw_if_index = which - fm->flow_per_interface;
+    if (!vnet_sw_interface_is_api_valid (fm->vnet_main, sw_if_index))
+      continue;
+
+    vl_api_flowprobe_feature_details_t *rmp = 0;
+    int rv = 0;
+
+    /* *INDENT-OFF* */
+    REPLY_MACRO2_ZERO (VL_API_FLOWPROBE_FEATURE_DETAILS,
+    {
+      rmp->which = *which;
+      rmp->sw_if_index = clib_host_to_net_u32(sw_if_index);
+    });
+    /* *INDENT-ON* */
+  }
+}
+
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
