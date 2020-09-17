@@ -93,6 +93,7 @@ typedef struct
   clib_socket_t *socket;
   u8 *socket_name;
   ssize_t memory_size;
+  clib_mem_page_sz_t log2_page_sz;
   u8 node_counters_enabled;
   void *last;
   void *heap;
