@@ -543,6 +543,19 @@ mheap_alloc_with_lock (void *memory, uword size, int locked)
     }
 }
 
+void *
+clib_mem_create_heap (void *base, uword size, char *fmt, ...)
+{
+  base = clib_mem_vm_map_internal (base, CLIB_MEM_PAGE_SZ_DEFAULT, size, -1,
+				   0, "str");
+
+  if (base == 0)
+    return 0;
+
+  create_mspace_with_base (base, size, 1 /* locked */ );
+  return base;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
