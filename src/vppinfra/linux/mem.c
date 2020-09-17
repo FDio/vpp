@@ -54,6 +54,10 @@
 #define MAP_HUGE_SHIFT 26
 #endif
 
+#ifndef MFD_HUGE_SHIFT
+#define MFD_HUGE_SHIFT 26
+#endif
+
 #ifndef MAP_FIXED_NOREPLACE
 #define MAP_FIXED_NOREPLACE 0x100000
 #endif
@@ -193,75 +197,9 @@ clib_mem_vm_randomize_va (uword * requested_va,
 }
 
 clib_error_t *
-clib_mem_create_fd (char *name, int *fdp)
-{
-  int fd;
-
-  ASSERT (name);
-
-  if ((fd = memfd_create (name, MFD_ALLOW_SEALING)) == -1)
-    return clib_error_return_unix (0, "memfd_create");
-
-  if ((fcntl (fd, F_ADD_SEALS, F_SEAL_SHRINK)) == -1)
-    {
-      close (fd);
-      return clib_error_return_unix (0, "fcntl (F_ADD_SEALS)");
-    }
-
-  *fdp = fd;
-  return 0;
-}
-
-clib_error_t *
-clib_mem_create_hugetlb_fd (char *name, int *fdp)
-{
-  clib_error_t *err = 0;
-  int fd = -1;
-  static int memfd_hugetlb_supported = 1;
-  char *mount_dir;
-  char template[] = "/tmp/hugepage_mount.XXXXXX";
-  u8 *filename;
-
-  ASSERT (name);
-
-  if (memfd_hugetlb_supported)
-    {
-      if ((fd = memfd_create (name, MFD_HUGETLB)) != -1)
-	goto done;
-
-      /* avoid further tries if memfd MFD_HUGETLB is not supported */
-      if (errno == EINVAL && strnlen (name, 256) <= 249)
-	memfd_hugetlb_supported = 0;
-    }
-
-  mount_dir = mkdtemp (template);
-  if (mount_dir == 0)
-    return clib_error_return_unix (0, "mkdtemp \'%s\'", template);
-
-  if (mount ("none", (char *) mount_dir, "hugetlbfs", 0, NULL))
-    {
-      rmdir ((char *) mount_dir);
-      err = clib_error_return_unix (0, "mount hugetlb directory '%s'",
-				    mount_dir);
-    }
-
-  filename = format (0, "%s/%s%c", mount_dir, name, 0);
-  fd = open ((char *) filename, O_CREAT | O_RDWR, 0755);
-  umount2 ((char *) mount_dir, MNT_DETACH);
-  rmdir ((char *) mount_dir);
-
-  if (fd == -1)
-    err = clib_error_return_unix (0, "open");
-
-done:
-  if (fd != -1)
-    fdp[0] = fd;
-  return err;
-}
-
-clib_error_t *
 clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
 {
+  clib_mem_main_t *mm = &clib_mem_main;
   int fd = -1;
   clib_error_t *err = 0;
   void *addr = 0;
@@ -301,15 +239,16 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
       /* if hugepages are needed we need to create mount point */
       if (a->flags & CLIB_MEM_VM_F_HUGETLB)
 	{
-	  if ((err = clib_mem_create_hugetlb_fd (a->name, &fd)))
-	    goto error;
-
+	  log2_page_size = CLIB_MEM_PAGE_SZ_DEFAULT_HUGE;
 	  mmap_flags |= MAP_LOCKED;
 	}
       else
+	log2_page_size = CLIB_MEM_PAGE_SZ_DEFAULT;
+
+      if ((fd = clib_mem_vm_create_fd (log2_page_size, "%s", a->name)) == -1)
 	{
-	  if ((err = clib_mem_create_fd (a->name, &fd)))
-	    goto error;
+	  err = clib_error_return (0, "%U", format_clib_error, mm->error);
+	  goto error;
 	}
 
       log2_page_size = clib_mem_get_fd_log2_page_size (fd);
@@ -412,6 +351,111 @@ clib_mem_vm_ext_free (clib_mem_vm_alloc_t * a)
       if (a->fd != -1)
 	close (a->fd);
     }
+}
+
+static int
+legacy_memfd_create (u8 * name)
+{
+  clib_mem_main_t *mm = &clib_mem_main;
+  int fd = -1;
+  char *mount_dir;
+  u8 *filename;
+
+  /* create mount directory */
+  if ((mount_dir = mkdtemp ("/tmp/hugepage_mount.XXXXXX")) == 0)
+    {
+      vec_reset_length (mm->error);
+      mm->error = clib_error_return_unix (mm->error, "mkdtemp");
+      return -1;
+    }
+
+  if (mount ("none", mount_dir, "hugetlbfs", 0, NULL))
+    {
+      rmdir ((char *) mount_dir);
+      vec_reset_length (mm->error);
+      mm->error = clib_error_return_unix (mm->error, "mount");
+      return -1;
+    }
+
+  filename = format (0, "%s/%s%c", mount_dir, name, 0);
+
+  if ((fd = open ((char *) filename, O_CREAT | O_RDWR, 0755)) == -1)
+    {
+      vec_reset_length (mm->error);
+      mm->error = clib_error_return_unix (mm->error, "mkdtemp");
+    }
+
+  umount2 ((char *) mount_dir, MNT_DETACH);
+  rmdir ((char *) mount_dir);
+  vec_free (filename);
+
+  return fd;
+}
+
+int
+clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
+{
+  clib_mem_main_t *mm = &clib_mem_main;
+  int fd;
+  unsigned int memfd_flags;
+  va_list va;
+  u8 *s = 0;
+
+  if (log2_page_size == mm->log2_page_sz)
+    log2_page_size = CLIB_MEM_PAGE_SZ_DEFAULT;
+
+  switch (log2_page_size)
+    {
+    case CLIB_MEM_PAGE_SZ_UNKNOWN:
+      return -1;
+    case CLIB_MEM_PAGE_SZ_DEFAULT:
+      memfd_flags = MFD_ALLOW_SEALING;
+      break;
+    case CLIB_MEM_PAGE_SZ_DEFAULT_HUGE:
+      memfd_flags = MFD_HUGETLB;
+      break;
+    default:
+      memfd_flags = MFD_HUGETLB | log2_page_size << MFD_HUGE_SHIFT;
+    }
+
+  va_start (va, fmt);
+  s = va_format (0, fmt, &va);
+  va_end (va);
+
+  /* memfd_create maximum string size is 249 chars without trailing zero */
+  if (vec_len (s) > 249)
+    _vec_len (s) = 249;
+  vec_add1 (s, 0);
+
+  /* memfd_create introduced in kernel 3.17, we don't support older kernels */
+  fd = memfd_create ((char *) s, memfd_flags);
+
+  /* kernel versions < 4.14 does not support memfd_create for huge pages */
+  if (fd == -1 && errno == EINVAL &&
+      log2_page_size == CLIB_MEM_PAGE_SZ_DEFAULT_HUGE)
+    {
+      fd = legacy_memfd_create (s);
+    }
+  else if (fd == -1)
+    {
+      vec_reset_length (mm->error);
+      mm->error = clib_error_return_unix (mm->error, "memfd_create");
+      vec_free (s);
+      return -1;
+    }
+
+  vec_free (s);
+
+  if ((memfd_flags & MFD_ALLOW_SEALING) &&
+      ((fcntl (fd, F_ADD_SEALS, F_SEAL_SHRINK)) == -1))
+    {
+      vec_reset_length (mm->error);
+      mm->error = clib_error_return_unix (mm->error, "fcntl (F_ADD_SEALS)");
+      close (fd);
+      return -1;
+    }
+
+  return fd;
 }
 
 uword
