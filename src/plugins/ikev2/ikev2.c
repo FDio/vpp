@@ -3210,6 +3210,8 @@ ikev2_set_local_key (vlib_main_t * vm, u8 * file)
 {
   ikev2_main_t *km = &ikev2_main;
 
+  if (km->pkey)
+    EVP_PKEY_free (km->pkey);
   km->pkey = ikev2_load_key_file (file);
   if (km->pkey == NULL)
     return clib_error_return (0, "load key '%s' failed", file);
@@ -3358,6 +3360,19 @@ ikev2_cleanup_profile_sessions (ikev2_main_t * km, ikev2_profile_t * p)
   vec_free (del_sai);
 }
 
+static void
+ikev2_profile_free (ikev2_profile_t * p)
+{
+  vec_free (p->name);
+
+  vec_free (p->auth.data);
+  if (p->auth.key)
+    EVP_PKEY_free (p->auth.key);
+
+  vec_free (p->loc_id.data);
+  vec_free (p->rem_id.data);
+}
+
 clib_error_t *
 ikev2_add_del_profile (vlib_main_t * vm, u8 * name, int is_add)
 {
@@ -3387,7 +3402,7 @@ ikev2_add_del_profile (vlib_main_t * vm, u8 * name, int is_add)
       ikev2_unregister_udp_port (p);
       ikev2_cleanup_profile_sessions (km, p);
 
-      vec_free (p->name);
+      ikev2_profile_free (p);
       pool_put (km->profiles, p);
       mhash_unset (&km->profile_index_by_name, name, 0);
     }
@@ -3408,7 +3423,11 @@ ikev2_set_profile_auth (vlib_main_t * vm, u8 * name, u8 auth_method,
       r = clib_error_return (0, "unknown profile %v", name);
       return r;
     }
+
+  if (p->auth.key)
+    EVP_PKEY_free (p->auth.key);
   vec_free (p->auth.data);
+
   p->auth.method = auth_method;
   p->auth.data = vec_dup (auth_data);
   p->auth.hex = data_hex_format;
@@ -3416,8 +3435,6 @@ ikev2_set_profile_auth (vlib_main_t * vm, u8 * name, u8 auth_method,
   if (auth_method == IKEV2_AUTH_METHOD_RSA_SIG)
     {
       vec_add1 (p->auth.data, 0);
-      if (p->auth.key)
-	EVP_PKEY_free (p->auth.key);
       p->auth.key = ikev2_load_cert_file (p->auth.data);
       if (p->auth.key == NULL)
 	return clib_error_return (0, "load cert '%s' failed", p->auth.data);

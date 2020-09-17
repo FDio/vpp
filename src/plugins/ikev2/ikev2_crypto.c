@@ -828,6 +828,7 @@ ikev2_load_cert_file (u8 * file)
     }
 
   pkey = X509_get_pubkey (x509);
+  X509_free (x509);
   if (pkey == NULL)
     ikev2_log_error ("get pubkey %s failed", file);
 
