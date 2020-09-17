@@ -112,7 +112,7 @@ typedef struct
   if (ldp->debug > _lvl)						\
     {									\
       int errno_saved = errno;						\
-      clib_warning ("ldp<%d>: " _fmt, getpid(), ##_args);		\
+      fprintf (stderr, "ldp<%d>: " _fmt, getpid(), ##_args);		\
       errno = errno_saved;						\
     }
 
@@ -1408,7 +1408,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 	  size = vls_attr (vlsh, VPPCOM_ATTR_GET_NWRITE, 0, 0);
 	  if (size < 0)
 	    {
-	      LDBG (0, "ERROR: fd %d: vls_attr: vlsh %u returned %d (%s)!",
+	      LDBG (0, "ERROR: fd %d: vls_attr: vlsh %u returned %ld (%s)!",
 		    out_fd, vlsh, size, vppcom_retval_str (size));
 	      vec_reset_length (ldpw->io_buffer);
 	      errno = -size;
@@ -2125,7 +2125,7 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
       ep.ip = src_addr;
 
       LDBG (0, "listen fd %d: calling vppcom_session_accept: listen sid %u,"
-	    " ep %p, flags 0x%x", listen_fd, listen_vlsh, ep, flags);
+	    " ep %p, flags 0x%x", listen_fd, listen_vlsh, &ep, flags);
 
       accept_vlsh = vls_accept (listen_vlsh, &ep, flags);
       if (accept_vlsh < 0)
@@ -2290,7 +2290,7 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
   if (vlsh != VLS_INVALID_HANDLE)
     {
       LDBG (1, "epfd %d: calling vls_epoll_ctl: ep_vlsh %d op %d, vlsh %u,"
-	    " event %p", epfd, vep_vlsh, vlsh, event);
+	    " event %p", epfd, vep_vlsh, op, vlsh, event);
 
       rv = vls_epoll_ctl (vep_vlsh, op, vlsh, event);
       if (rv != VPPCOM_OK)
@@ -2564,7 +2564,7 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
   vcl_poll_t *vp;
   double max_time;
 
-  LDBG (3, "fds %p, nfds %d, timeout %d", fds, nfds, timeout);
+  LDBG (3, "fds %p, nfds %ld, timeout %d", fds, nfds, timeout);
 
   if (PREDICT_FALSE (ldpw->clib_time.init_cpu_time == 0))
     clib_time_init (&ldpw->clib_time);
