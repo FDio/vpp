@@ -56,3 +56,56 @@ autoreply define flowprobe_params
   u32 passive_timer; /* ~0 is off, 0 is default */
   option vat_help = "record <[l2] [l3] [l4]> [active <timer> passive <timer>]";
 };
+
+/** \brief Dump of set flags, timers of all recorded interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define flowprobe_feature_dump
+{
+  u32 client_index;
+  u32 context;
+  option status="in_progress";
+};
+
+/** \brief Details of set flags, timers of all recorded interfaces
+    @param context - sender context, to match reply w/ request
+    @param which - flags indicating forwarding path
+    @param sw_if_index - index of the interface
+*/
+define flowprobe_feature_details
+{
+  u32 context;
+  vl_api_flowprobe_which_flags_t which;
+
+  /* Interface handle */
+  vl_api_interface_index_t sw_if_index;
+  option status="in_progress";
+};
+
+
+/** \brief Dump of flowprobe parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define flowprobe_params_dump
+{
+  u32 client_index;
+  u32 context;
+  option status="in_progress";
+};
+
+/** \brief Details of flowprobe parameters
+    @param context - sender context, to match reply w/ request
+    @param record_flags - flags of specific recorded interface
+    @param active_timer - value of active timer, if ~0 is off
+    @param passive_timer - value of passive timer, if ~0 is off
+*/
+define flowprobe_params_details
+{
+  u32 context;
+  vl_api_flowprobe_record_flags_t record_flags;
+  u32 active_timer;
+  u32 passive_timer;
+  option status="in_progress";
+};
