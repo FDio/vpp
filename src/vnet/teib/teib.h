@@ -36,8 +36,7 @@ typedef struct teib_entry_t_ teib_entry_t;
 /** accessors for the opaque struct */
 extern u32 teib_entry_get_sw_if_index (const teib_entry_t * ne);
 extern u32 teib_entry_get_fib_index (const teib_entry_t * ne);
-extern const ip46_address_t *teib_entry_get_peer (const teib_entry_t * ne);
-extern fib_protocol_t teib_entry_get_proto (const teib_entry_t * ne);
+extern const ip_address_t *teib_entry_get_peer (const teib_entry_t * ne);
 extern const fib_prefix_t *teib_entry_get_nh (const teib_entry_t * ne);
 extern u8 *format_teib_entry (u8 * s, va_list * args);
 
@@ -45,17 +44,16 @@ extern u8 *format_teib_entry (u8 * s, va_list * args);
  * Create a new TEIB entry
  */
 extern int teib_entry_add (u32 sw_if_index,
-			   fib_protocol_t fproto,
-			   const ip46_address_t * peer,
-			   u32 nh_table_id, const ip46_address_t * nh);
+			   const ip_address_t * peer,
+			   u32 nh_table_id, const ip_address_t * nh);
 
-extern int teib_entry_del (u32 sw_if_index,
-			   fib_protocol_t fproto,
-			   const ip46_address_t * peer);
+extern int teib_entry_del (u32 sw_if_index, const ip_address_t * peer);
 
 extern teib_entry_t *teib_entry_find (u32 sw_if_index,
-				      fib_protocol_t fproto,
-				      const ip46_address_t * peer);
+				      const ip_address_t * peer);
+extern teib_entry_t *teib_entry_find_46 (u32 sw_if_index,
+					 fib_protocol_t fproto,
+					 const ip46_address_t * peer);
 extern teib_entry_t *teib_entry_get (index_t nei);
 
 extern void teib_entry_adj_stack (const teib_entry_t * ne, adj_index_t ai);

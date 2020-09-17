@@ -53,6 +53,7 @@ typedef struct ip_address
 
 #define IP_ADDRESS_V4_ALL_0S {.ip.ip4.as_u32 = 0, .version = AF_IP4}
 #define IP_ADDRESS_V6_ALL_0S {.ip.ip6.as_u64 = {0, 0}, .version = AF_IP6}
+#define ip_address_initializer IP_ADDRESS_V6_ALL_0S
 
 #define ip_addr_46(_a) (_a)->ip
 #define ip_addr_v4(_a) (_a)->ip.ip4

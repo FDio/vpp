@@ -210,7 +210,7 @@ static void
 gre_teib_entry_added (const teib_entry_t * ne)
 {
   gre_main_t *gm = &gre_main;
-  const ip46_address_t *nh;
+  const ip_address_t *nh;
   gre_tunnel_key_t key;
   gre_tunnel_t *t;
   u32 sw_if_index;
@@ -244,16 +244,17 @@ gre_teib_entry_added (const teib_entry_t * ne)
   };
   nh = teib_entry_get_peer (ne);
   adj_nbr_walk_nh (teib_entry_get_sw_if_index (ne),
-		   (ip46_address_is_ip4 (nh) ?
+		   (AF_IP4 == ip_addr_version (nh) ?
 		    FIB_PROTOCOL_IP4 :
-		    FIB_PROTOCOL_IP6), nh, mgre_mk_complete_walk, &ctx);
+		    FIB_PROTOCOL_IP6),
+		   &ip_addr_46 (nh), mgre_mk_complete_walk, &ctx);
 }
 
 static void
 gre_teib_entry_deleted (const teib_entry_t * ne)
 {
   gre_main_t *gm = &gre_main;
-  const ip46_address_t *nh;
+  const ip_address_t *nh;
   gre_tunnel_key_t key;
   gre_tunnel_t *t;
   u32 sw_if_index;
@@ -278,9 +279,10 @@ gre_teib_entry_deleted (const teib_entry_t * ne)
 
   /* make all the adjacencies incomplete */
   adj_nbr_walk_nh (teib_entry_get_sw_if_index (ne),
-		   (ip46_address_is_ip4 (nh) ?
+		   (AF_IP4 == ip_addr_version (nh) ?
 		    FIB_PROTOCOL_IP4 :
-		    FIB_PROTOCOL_IP6), nh, mgre_mk_incomplete_walk, t);
+		    FIB_PROTOCOL_IP6),
+		   &ip_addr_46 (nh), mgre_mk_incomplete_walk, t);
 }
 
 static walk_rc_t

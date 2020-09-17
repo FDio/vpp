@@ -20,8 +20,8 @@ teib_add (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  ip46_address_t nh = ip46_address_initializer;
-  ip_address_t peer = IP_ADDRESS_V6_ALL_0S;
+  ip_address_t peer = ip_address_initializer;
+  ip_address_t nh = ip_address_initializer;
   u32 sw_if_index, nh_table_id;
   clib_error_t *error = NULL;
   int rv;
@@ -40,7 +40,7 @@ teib_add (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "peer %U", unformat_ip_address, &peer))
 	;
-      else if (unformat (line_input, "nh %U", unformat_ip46_address, &nh))
+      else if (unformat (line_input, "nh %U", unformat_ip_address, &nh))
 	;
       else if (unformat (line_input, "nh-table-id %d", &nh_table_id))
 	;
@@ -64,17 +64,14 @@ teib_add (vlib_main_t * vm,
 				 format_unformat_error, line_input);
       goto done;
     }
-  if (ip46_address_is_zero (&nh))
+  if (ip_address_is_zero (&nh))
     {
       error = clib_error_return (0, "next-hop required'",
 				 format_unformat_error, line_input);
       goto done;
     }
 
-  rv = teib_entry_add (sw_if_index,
-		       ip_address_family_to_fib_proto (ip_addr_version
-						       (&peer)),
-		       &ip_addr_46 (&peer), nh_table_id, &nh);
+  rv = teib_entry_add (sw_if_index, &peer, nh_table_id, &nh);
 
   if (rv)
     {
@@ -102,7 +99,7 @@ teib_del (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  ip_address_t peer = IP_ADDRESS_V6_ALL_0S;
+  ip_address_t peer = ip_address_initializer;
   clib_error_t *error = NULL;
   u32 sw_if_index;
   int rv;
@@ -140,10 +137,7 @@ teib_del (vlib_main_t * vm,
       goto done;
     }
 
-  rv = teib_entry_del (sw_if_index,
-		       ip_address_family_to_fib_proto (ip_addr_version
-						       (&peer)),
-		       &ip_addr_46 (&peer));
+  rv = teib_entry_del (sw_if_index, &peer);
 
   if (rv)
     {

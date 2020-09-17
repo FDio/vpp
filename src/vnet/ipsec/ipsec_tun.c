@@ -713,14 +713,8 @@ ipsec_tun_protect_update (u32 sw_if_index,
 	{
 	  /* tunnel has no destination address, presumably because it's p2mp
 	     in which case we use the nh that this is protection for */
-	  ip46_address_t peer;
-
-	  ip_address_to_46 (nh, &peer);
-
 	  ipsec_tun_protect_update_from_teib
-	    (itp, teib_entry_find (sw_if_index,
-				   ip_address_family_to_fib_proto
-				   (ip_addr_version (nh)), &peer));
+	    (itp, teib_entry_find (sw_if_index, nh));
 	}
 
       if (is_l2)
@@ -886,17 +880,11 @@ ipsec_tun_protect_adj_delegate_format (const adj_delegate_t * aed, u8 * s)
 static void
 ipsec_tun_teib_entry_added (const teib_entry_t * ne)
 {
-  const ip46_address_t *peer46;
   ipsec_tun_protect_t *itp;
-  ip_address_t peer;
   index_t itpi;
 
-  peer46 = teib_entry_get_peer (ne);
-  ip_address_from_46 (peer46,
-		      (ip46_address_is_ip4 (peer46) ?
-		       FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6), &peer);
-
-  itpi = ipsec_tun_protect_find (teib_entry_get_sw_if_index (ne), &peer);
+  itpi = ipsec_tun_protect_find (teib_entry_get_sw_if_index (ne),
+				 teib_entry_get_peer (ne));
 
   if (INDEX_INVALID == itpi)
     return;
@@ -913,17 +901,11 @@ ipsec_tun_teib_entry_added (const teib_entry_t * ne)
 static void
 ipsec_tun_teib_entry_deleted (const teib_entry_t * ne)
 {
-  const ip46_address_t *peer46;
   ipsec_tun_protect_t *itp;
-  ip_address_t peer;
   index_t itpi;
 
-  peer46 = teib_entry_get_peer (ne);
-  ip_address_from_46 (peer46,
-		      (ip46_address_is_ip4 (peer46) ?
-		       FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6), &peer);
-
-  itpi = ipsec_tun_protect_find (teib_entry_get_sw_if_index (ne), &peer);
+  itpi = ipsec_tun_protect_find (teib_entry_get_sw_if_index (ne),
+				 teib_entry_get_peer (ne));
 
   if (INDEX_INVALID == itpi)
     return;
