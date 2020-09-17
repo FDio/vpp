@@ -32,11 +32,13 @@ uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 /* Declare message IDs */
 #include <flowprobe/flowprobe.api_enum.h>
 #include <flowprobe/flowprobe.api_types.h>
+#include <vpp/api/vpe.api_types.h>
 
 typedef struct
 {
     /** API message ID base */
   u16 msg_id_base;
+  u32 ping_id;
     /** vat_main_t pointer */
   vat_main_t *vat_main;
 } flowprobe_test_main_t;
@@ -143,6 +145,107 @@ api_flowprobe_params (vat_main_t * vam)
   W (ret);
 
   return ret;
+}
+
+static int
+api_flowprobe_feature_dump (vat_main_t * vam)
+{
+  flowprobe_test_main_t *fm = &flowprobe_test_main;
+  vl_api_flowprobe_feature_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+  /* Construct the API message */
+  M (FLOWPROBE_FEATURE_DUMP, mp);
+
+  /* send it... */
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  if (!fm->ping_id)
+    fm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
+  mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));
+  mp_ping->_vl_msg_id = htons (fm->ping_id);
+  mp_ping->client_index = vam->my_client_index;
+  fformat (vam->ofp, "Sending ping id=%d\n", fm->ping_id);
+
+  vam->result_ready = 0;
+  S (mp_ping);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static void
+vl_api_flowprobe_feature_details_t_handler (vl_api_flowprobe_feature_details_t
+					    * mp)
+{
+  vat_main_t *vam = flowprobe_test_main.vat_main;
+  u32 sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
+  fformat (vam->ofp, " interface %d ", sw_if_index);
+  u8 which = mp->which;
+
+  if (which == FLOW_VARIANT_IP4)
+    fformat (vam->ofp, "ip4");
+  else if (which == FLOW_VARIANT_L2)
+    fformat (vam->ofp, "l2");
+  else if (which == FLOW_VARIANT_IP6)
+    fformat (vam->ofp, "ip6");
+
+  fformat (vam->ofp, "\n");
+
+  return;
+}
+
+static int
+api_flowprobe_params_dump (vat_main_t * vam)
+{
+  flowprobe_test_main_t *fm = &flowprobe_test_main;
+  vl_api_flowprobe_params_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+  /* Construct the API message */
+  M (FLOWPROBE_PARAMS_DUMP, mp);
+
+  /* send it... */
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  if (!fm->ping_id)
+    fm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
+  mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));
+  mp_ping->_vl_msg_id = htons (fm->ping_id);
+  mp_ping->client_index = vam->my_client_index;
+  fformat (vam->ofp, "Sending ping id=%d\n", fm->ping_id);
+
+  vam->result_ready = 0;
+  S (mp_ping);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static void vl_api_flowprobe_params_details_t_handler
+  (vl_api_flowprobe_params_details_t * mp)
+{
+  vat_main_t *vam = flowprobe_test_main.vat_main;
+  u32 active_timer = clib_net_to_host_u32 (mp->active_timer);
+  u32 passive_timer = clib_net_to_host_u32 (mp->passive_timer);
+
+  if (mp->record_flags & FLOWPROBE_RECORD_FLAG_L2)
+    fformat (vam->ofp, " l2");
+  if (mp->record_flags & FLOWPROBE_RECORD_FLAG_L3)
+    fformat (vam->ofp, " l3");
+  if (mp->record_flags & FLOWPROBE_RECORD_FLAG_L4)
+    fformat (vam->ofp, " l4");
+  if (active_timer != (u32) ~ 0)
+    fformat (vam->ofp, " active: %d", active_timer);
+  if (passive_timer != (u32) ~ 0)
+    fformat (vam->ofp, " passive: %d", passive_timer);
+  fformat (vam->ofp, "\n");
+
+  return;
 }
 
 /*
