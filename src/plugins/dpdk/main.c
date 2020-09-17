@@ -105,7 +105,6 @@ dpdk_early_init (vlib_main_t *vm)
   int fd = -1;
   u64 *pt = 0;
   clib_error_t *err = 0;
-  clib_mem_vm_alloc_t alloc = { 0 };
 
   /* check if pagemap is accessible - if we get zero result
      dpdk will not be able to get physical memory address and game is over
@@ -125,19 +124,18 @@ dpdk_early_init (vlib_main_t *vm)
     goto error;
 
 check_hugetlb:
-  alloc.flags = CLIB_MEM_VM_F_SHARED | CLIB_MEM_VM_F_HUGETLB | CLIB_MEM_VM_F_HUGETLB_PREALLOC;
-  alloc.size = 1;
-  alloc.name = "dpdk_early_init";
+  fd = clib_mem_vm_create_fd (CLIB_MEM_PAGE_SZ_DEFAULT_HUGE,
+			      "dpdk early init");
 
-  if ((err = clib_mem_vm_ext_alloc (&alloc)))
+  if (fd != -1)
     {
-      clib_error_free (err);
-      goto error;
+      u8 *page = clib_mem_vm_map_shared (0, 1, fd, 0, "dpdk_early_init");
+      if (page != CLIB_MEM_VM_MAP_FAILED)
+	{
+	  clib_mem_vm_unmap (page);
+	  goto done;
+	}
     }
-  else
-    clib_mem_vm_ext_free (&alloc);
-
-  goto done;
 
 error:
   err = clib_error_return (0, "access to physical devices is not allowed");
