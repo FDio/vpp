@@ -619,6 +619,7 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
   hdr->base_addr = (uword) base;
   hdr->log2_page_sz = log2_page_sz;
   hdr->num_pages = size >> log2_page_sz;
+  hdr->fd = fd;
   snprintf (hdr->name, CLIB_VM_MAP_HDR_NAME_MAX_LEN - 1, "%s", (char *) name);
   hdr->name[CLIB_VM_MAP_HDR_NAME_MAX_LEN - 1] = 0;
   mprotect (hdr, sys_page_sz, PROT_NONE);

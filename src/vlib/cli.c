@@ -882,8 +882,8 @@ show_memory_usage (vlib_main_t * vm,
 	u8 *s = 0;
 	int numa = -1;
 
-	s = format (s, "\n%-16s%7s%7s%7s",
-		    "StartAddr", "size", "PageSz", "Pages");
+	s = format (s, "\n%-16s%7s%5s%7s%7s",
+		    "StartAddr", "size", "FD", "PageSz", "Pages");
 	while ((numa = vlib_mem_get_next_numa_node (numa)) != -1)
 	  s = format (s, " Numa%u", numa);
 	s = format (s, " NotMap");
@@ -896,9 +896,16 @@ show_memory_usage (vlib_main_t * vm,
 	    clib_mem_get_page_stats ((void *) hdr->base_addr,
 				     hdr->log2_page_sz, hdr->num_pages,
 				     &stats);
-	    s = format (s, "%016lx%7U%7U%7lu",
+	    s = format (s, "%016lx%7U",
 			hdr->base_addr, format_memory_size,
-			hdr->num_pages << hdr->log2_page_sz,
+			hdr->num_pages << hdr->log2_page_sz);
+
+	    if (hdr->fd != -1)
+	      s = format (s, "%5d", hdr->fd);
+	    else
+	      s = format (s, "%5s", " ");
+
+	    s = format (s, "%7U%7lu",
 			format_log2_page_size, hdr->log2_page_sz,
 			hdr->num_pages);
 	    while ((numa = vlib_mem_get_next_numa_node (numa)) != -1)
