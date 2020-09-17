@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5668a0d0_0a4c689b",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 881,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-17T14:42:12Z",
+      "side": 1,
+      "message": "Interesting, are you configuring proxied transports like tcp/udp in the attach message?\n\nKeep in mind that setting up a proxy like this still needs clients to explicitly connect to one of vpp\u0027s local ips. The alternative would be to add a flow classifier in front of the fib and redirect the packets to tcp/udp input.",
+      "range": {
+        "startLine": 879,
+        "startChar": 0,
+        "endLine": 881,
+        "endChar": 47
+      },
+      "revId": "47304df0f4ee08ad428f167e294b329cc7ff86aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
