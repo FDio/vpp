@@ -110,6 +110,9 @@ typedef struct
 
   /* memory maps */
   clib_mem_vm_map_hdr_t *first_map, *last_map;
+
+  /* last error */
+  clib_error_t *error;
 } clib_mem_main_t;
 
 extern clib_mem_main_t clib_mem_main;
@@ -458,8 +461,7 @@ clib_mem_get_log2_default_hugepage_size ()
   return clib_mem_main.log2_default_hugepage_sz;
 }
 
-clib_error_t *clib_mem_create_fd (char *name, int *fdp);
-clib_error_t *clib_mem_create_hugetlb_fd (char *name, int *fdp);
+int clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...);
 clib_error_t *clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a);
 void clib_mem_vm_ext_free (clib_mem_vm_alloc_t * a);
 uword clib_mem_get_fd_page_size (int fd);
@@ -540,6 +542,12 @@ static_always_inline uword
 clib_mem_page_bytes (clib_mem_page_sz_t log2_page_size)
 {
   return 1 << clib_mem_log2_page_size_validate (log2_page_size);
+}
+
+static_always_inline clib_error_t *
+clib_mem_get_last_error (void)
+{
+  return clib_mem_main.error;
 }
 
 

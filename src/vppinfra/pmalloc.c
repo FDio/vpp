@@ -288,10 +288,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
   if (a->flags & CLIB_PMALLOC_ARENA_F_SHARED_MEM)
     {
       mmap_flags |= MAP_SHARED;
-      if (a->log2_subpage_sz != clib_mem_get_log2_page_size ())
-	pm->error = clib_mem_create_hugetlb_fd ((char *) a->name, &a->fd);
-      else
-	pm->error = clib_mem_create_fd ((char *) a->name, &a->fd);
+      a->fd = clib_mem_vm_create_fd (a->log2_subpage_sz, "%s", a->name);
       if (a->fd == -1)
 	goto error;
       if ((ftruncate (a->fd, size)) == -1)
