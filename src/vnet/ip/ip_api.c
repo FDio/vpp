@@ -330,7 +330,7 @@ send_ip_mroute_details (vpe_api_main_t * am,
   vl_api_ip_mroute_details_t *mp;
   const mfib_prefix_t *pfx;
   vl_api_mfib_path_t *fp;
-  int path_count;
+  u8 path_count;
 
   rpaths = NULL;
   pfx = mfib_entry_get_prefix (mfib_entry_index);
@@ -348,7 +348,7 @@ send_ip_mroute_details (vpe_api_main_t * am,
   mp->route.table_id =
     htonl (mfib_table_get_table_id
 	   (mfib_entry_get_fib_index (mfib_entry_index), pfx->fp_proto));
-  mp->route.n_paths = htonl (path_count);
+  mp->route.n_paths = path_count;
   fp = mp->route.paths;
   vec_foreach (rpath, rpaths)
   {
