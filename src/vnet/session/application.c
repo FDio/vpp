@@ -874,7 +874,12 @@ vnet_application_attach (vnet_app_attach_args_t * a)
   fs = segment_manager_get_segment_w_lock (sm, 0);
 
   if (application_is_proxy (app))
-    application_setup_proxy (app);
+    {
+      application_setup_proxy (app);
+      /* app_wrk->first_segment_manager maybe reallocated, reassignment sm and fs */
+      sm = segment_manager_get (app_wrk->first_segment_manager);
+      fs = segment_manager_get_segment (sm, 0);
+    }
 
   ASSERT (vec_len (fs->ssvm.name) <= 128);
   a->segment = &fs->ssvm;
