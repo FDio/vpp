@@ -39,26 +39,19 @@ static void
 vl_api_teib_entry_add_del_t_handler (vl_api_teib_entry_add_del_t * mp)
 {
   vl_api_teib_entry_add_del_reply_t *rmp;
-  ip46_address_t nh;
-  ip_address_t peer;
+  ip_address_t peer, nh;
   int rv;
 
   VALIDATE_SW_IF_INDEX ((&mp->entry));
 
   ip_address_decode2 (&mp->entry.peer, &peer);
-  ip_address_decode (&mp->entry.nh, &nh);
+  ip_address_decode2 (&mp->entry.nh, &nh);
 
   if (mp->is_add)
     rv = teib_entry_add (ntohl (mp->entry.sw_if_index),
-			 ip_address_family_to_fib_proto (ip_addr_version
-							 (&peer)),
-			 &ip_addr_46 (&peer), ntohl (mp->entry.nh_table_id),
-			 &nh);
+			 &peer, ntohl (mp->entry.nh_table_id), &nh);
   else
-    rv = teib_entry_del (ntohl (mp->entry.sw_if_index),
-			 ip_address_family_to_fib_proto (ip_addr_version
-							 (&peer)),
-			 &ip_addr_46 (&peer));
+    rv = teib_entry_del (ntohl (mp->entry.sw_if_index), &peer);
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -86,8 +79,7 @@ vl_api_teib_send_one (index_t nei, void *arg)
   ne = teib_entry_get (nei);
   pfx = teib_entry_get_nh (ne);
 
-  ip_address_encode (teib_entry_get_peer (ne), IP46_TYPE_ANY,
-		     &mp->entry.peer);
+  ip_address_encode2 (teib_entry_get_peer (ne), &mp->entry.peer);
   ip_address_encode (&pfx->fp_addr, IP46_TYPE_ANY, &mp->entry.nh);
   mp->entry.nh_table_id =
     htonl (fib_table_get_table_id

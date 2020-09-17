@@ -472,8 +472,8 @@ mgre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
   t = pool_elt_at_index (gm->tunnels, ti);
 
-  ne = teib_entry_find (sw_if_index,
-			adj->ia_nh_proto, &adj->sub_type.nbr.next_hop);
+  ne = teib_entry_find_46 (sw_if_index,
+			   adj->ia_nh_proto, &adj->sub_type.nbr.next_hop);
 
   if (NULL == ne)
     // no NHRP entry to provide the next-hop

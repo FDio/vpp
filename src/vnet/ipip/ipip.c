@@ -364,8 +364,8 @@ mipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
   t = pool_elt_at_index (gm->tunnels, ti);
 
-  ne = teib_entry_find (sw_if_index,
-			adj->ia_nh_proto, &adj->sub_type.nbr.next_hop);
+  ne = teib_entry_find_46 (sw_if_index,
+			   adj->ia_nh_proto, &adj->sub_type.nbr.next_hop);
 
   if (NULL == ne)
     {
@@ -561,7 +561,7 @@ static void
 ipip_teib_entry_added (const teib_entry_t * ne)
 {
   ipip_main_t *gm = &ipip_main;
-  const ip46_address_t *nh;
+  const ip_address_t *nh;
   ipip_tunnel_key_t key;
   ipip_tunnel_t *t;
   u32 sw_if_index;
@@ -588,16 +588,17 @@ ipip_teib_entry_added (const teib_entry_t * ne)
   };
   nh = teib_entry_get_peer (ne);
   adj_nbr_walk_nh (teib_entry_get_sw_if_index (ne),
-		   (ip46_address_is_ip4 (nh) ?
+		   (AF_IP4 == ip_addr_version (nh) ?
 		    FIB_PROTOCOL_IP4 :
-		    FIB_PROTOCOL_IP6), nh, mipip_mk_complete_walk, &ctx);
+		    FIB_PROTOCOL_IP6),
+		   &ip_addr_46 (nh), mipip_mk_complete_walk, &ctx);
 }
 
 static void
 ipip_teib_entry_deleted (const teib_entry_t * ne)
 {
   ipip_main_t *gm = &ipip_main;
-  const ip46_address_t *nh;
+  const ip_address_t *nh;
   ipip_tunnel_key_t key;
   ipip_tunnel_t *t;
   u32 sw_if_index;
@@ -621,9 +622,10 @@ ipip_teib_entry_deleted (const teib_entry_t * ne)
 
   /* make all the adjacencies incomplete */
   adj_nbr_walk_nh (teib_entry_get_sw_if_index (ne),
-		   (ip46_address_is_ip4 (nh) ?
+		   (AF_IP4 == ip_addr_version (nh) ?
 		    FIB_PROTOCOL_IP4 :
-		    FIB_PROTOCOL_IP6), nh, mipip_mk_incomplete_walk, t);
+		    FIB_PROTOCOL_IP6),
+		   &ip_addr_46 (nh), mipip_mk_incomplete_walk, t);
 }
 
 static walk_rc_t
