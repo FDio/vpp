@@ -74,16 +74,16 @@ mheap_get_trace (uword offset, uword size)
   /* Spurious Coverity warnings be gone. */
   clib_memset (&trace, 0, sizeof (trace));
 
-  /* Skip our frame and mspace_get_aligned's frame */
-  n_callers = clib_backtrace (trace.callers, ARRAY_LEN (trace.callers), 2);
-  if (n_callers == 0)
-    return;
-
   clib_spinlock_lock (&tm->lock);
 
   /* Turn off tracing to avoid embarrassment... */
   save_enabled = tm->enabled;
   tm->enabled = 0;
+
+  /* Skip our frame and mspace_get_aligned's frame */
+  n_callers = clib_backtrace (trace.callers, ARRAY_LEN (trace.callers), 2);
+  if (n_callers == 0)
+    goto out;
 
   if (!tm->trace_by_callers)
     tm->trace_by_callers =
@@ -137,6 +137,8 @@ mheap_get_trace (uword offset, uword size)
   t->n_bytes += size;
   t->offset = offset;		/* keep a sample to autopsy */
   hash_set (tm->trace_index_by_offset, offset, t - tm->traces);
+
+out:
   tm->enabled = save_enabled;
   clib_spinlock_unlock (&tm->lock);
 }
@@ -192,6 +194,59 @@ mheap_trace_main_free (mheap_trace_main_t * tm)
   vec_free (tm->trace_free_list);
   hash_free (tm->trace_by_callers);
   hash_free (tm->trace_index_by_offset);
+}
+
+#define CLIB_MEM_EARLY_HEAP_NAME        "early heap"
+
+__clib_export clib_mem_heap_t *
+clib_mem_init_early (void)
+{
+  void *msp;
+  clib_mem_heap_t *h;
+
+  ASSERT (0 == clib_mem_main.per_cpu_mheaps[0]);
+
+  msp = create_mspace (0, 1);
+  if (!msp)
+    abort ();
+
+  h = mspace_malloc (msp, sizeof (*h) + sizeof (CLIB_MEM_EARLY_HEAP_NAME));
+  if (!h)
+    abort ();
+
+  memset (h, 0xfe, sizeof (*h));
+  h->mspace = msp;
+  memcpy (h->name, CLIB_MEM_EARLY_HEAP_NAME,
+	  sizeof (CLIB_MEM_EARLY_HEAP_NAME));
+
+  clib_mem_main.per_cpu_mheaps[0] = h;
+  clib_mem_main.log2_page_sz = min_log2 (sysconf (_SC_PAGESIZE));
+
+  return h;
+}
+
+__clib_export void
+clib_mem_destroy_early (clib_mem_heap_t * h)
+{
+  void *msp;
+  struct dlmallinfo mi;
+
+  ASSERT (h);
+  ASSERT (memcmp
+	  (h->name, CLIB_MEM_EARLY_HEAP_NAME,
+	   sizeof (CLIB_MEM_EARLY_HEAP_NAME)) == 0);
+
+  msp = h->mspace;
+  mspace_free (msp, h);
+  mspace_trim (msp, 0);
+
+  mi = mspace_mallinfo (msp);
+  if (0 == mi.uordblks)
+    destroy_mspace (msp);
+  else
+    fprintf (stderr,
+	     "Cannot reclaim %ld bytes: %ld bytes still allocated in early heap.\n",
+	     mi.arena + mi.hblks, mi.uordblks);
 }
 
 static clib_mem_heap_t *

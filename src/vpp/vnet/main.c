@@ -116,7 +116,10 @@ main (int argc, char *argv[])
   u8 *s = 0, *v = 0;
   int main_core = 1;
   cpu_set_t cpuset;
-  void *main_heap;
+  void *early_heap, *main_heap;
+
+  /* temporary heap */
+  early_heap = clib_mem_init_early ();
 
 #if __x86_64__
   CLIB_UNUSED (const char *msg)
@@ -273,8 +276,6 @@ main (int argc, char *argv[])
     }
 defaulted:
 
-  /* temporary heap */
-  clib_mem_init (0, 1 << 20);
   unformat_init_command_line (&input, (char **) argv);
 
   while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
@@ -322,11 +323,11 @@ defaulted:
   vl_msg_api_set_first_available_msg_id (VL_MSG_FIRST_AVAILABLE);
 
   /* destroy temporary heap and create main one */
-  clib_mem_destroy ();
-
   if ((main_heap = clib_mem_init_with_page_size (main_heap_size,
 						 main_heap_log2_page_sz)))
     {
+      clib_mem_destroy_early (early_heap);
+
       /* Figure out which numa runs the main thread */
       __os_numa_index = clib_get_current_numa_node ();
 

@@ -367,10 +367,12 @@ clib_mem_set_heap (clib_mem_heap_t * heap)
   return clib_mem_set_per_cpu_heap (heap);
 }
 
+void clib_mem_destroy_early (clib_mem_heap_t * heap);
 void clib_mem_destroy_heap (clib_mem_heap_t * heap);
 clib_mem_heap_t *clib_mem_create_heap (void *base, uword size, int is_locked,
 				       char *fmt, ...);
 
+clib_mem_heap_t *clib_mem_init_early (void);
 void clib_mem_main_init ();
 void *clib_mem_init (void *base, uword size);
 void *clib_mem_init_with_page_size (uword memory_size,
@@ -467,6 +469,7 @@ clib_mem_get_log2_page_size (void)
 static_always_inline uword
 clib_mem_get_page_size (void)
 {
+  ASSERT (clib_mem_main.log2_page_sz != CLIB_MEM_PAGE_SZ_UNKNOWN);
   return 1ULL << clib_mem_main.log2_page_sz;
 }
 

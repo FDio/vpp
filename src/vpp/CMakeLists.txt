@@ -57,6 +57,7 @@ foreach(file ${VPP_API_FILES})
 endforeach()
 
 set(VPP_SOURCES
+  vnet/mem.c
   vnet/main.c
   app/vpe_cli.c
   app/version.c
