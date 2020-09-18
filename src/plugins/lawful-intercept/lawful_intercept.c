@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <vnet/lawful-intercept/lawful_intercept.h>
+#include <lawful-intercept/lawful_intercept.h>
 
 li_main_t li_main;
 
@@ -114,6 +114,15 @@ li_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (li_init);
 
+#include <vlib/unix/plugin.h>
+#include <vpp/app/version.h>
+
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+    .description = "Lawful Intercept",
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
