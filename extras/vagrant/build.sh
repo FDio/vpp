@@ -66,7 +66,5 @@ elif [ "$OS_ID" == "debian" ]; then
 elif [ "$OS_ID" == "centos" ]; then
     (cd $VPP_DIR/vnet ;$SUDOCMD aclocal;$SUDOCMD automake -a)
     $SUDOCMD make pkg-rpm
-elif [ "$OS_ID" == "opensuse" ]; then
-    $SUDOCMD make pkg-rpm
 fi
 

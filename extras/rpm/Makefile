@@ -26,18 +26,7 @@ PC=%
 
 all: RPM
 
-# SUSE rolling-release (a.k.a. Tumbleweed)
-ifeq ($(filter opensuse-tumbleweed,$(OS_ID)),$(OS_ID))
-SPEC_FILE='vpp-suse.spec'
-# SUSE osleap15
-else ifeq ($(filter opensuse-leap,$(OS_ID)),$(OS_ID))
-SPEC_FILE='vpp-suse.spec'
-# SUSE leap42.x
-else ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
-SPEC_FILE='vpp-suse.spec'
-else
 SPEC_FILE='vpp.spec'
-endif
 
 spec:
 	@echo $(TARBALL)
