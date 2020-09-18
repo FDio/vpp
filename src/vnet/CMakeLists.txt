@@ -1030,23 +1030,6 @@ list(APPEND VNET_HEADERS
 )
 
 ##############################################################################
-# lawful intercept
-##############################################################################
-
-list(APPEND VNET_SOURCES
-  lawful-intercept/lawful_intercept.c
-  lawful-intercept/node.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  lawful-intercept/node.c
-)
-
-list(APPEND VNET_HEADERS
-  lawful-intercept/lawful_intercept.h
-)
-
-##############################################################################
 # SPAN (port mirroring)
 ##############################################################################
 
