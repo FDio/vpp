@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c6f9a855_7619e40d",
+        "filename": "src/vnet/session/application_worker.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-18T04:36:33Z",
+      "side": 1,
+      "message": "Could you provide more details about the scenario you\u0027re testing? This typically should not be needed as we add more segment managers per app (each listener gets one). The init function deals with first segment manager initialization (prealloced fifos, mq), although recently something else might\u0027ve slipped in that is needed for all segment managers.",
+      "range": {
+        "startLine": 189,
+        "startChar": 6,
+        "endLine": 189,
+        "endChar": 26
+      },
+      "revId": "7c62941b9e5edc88e2862a2134ba4b8b5270946e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
