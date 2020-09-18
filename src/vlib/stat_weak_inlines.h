@@ -20,28 +20,29 @@
 
 #ifndef included_stat_weak_inlines_h
 #define included_stat_weak_inlines_h
-void *vlib_stats_push_heap (void *) __attribute__ ((weak));
-void *
+u32 vlib_stats_push_heap (void *) __attribute__ ((weak));
+
+u32
 vlib_stats_push_heap (void *unused)
 {
   return 0;
 };
 
-void vlib_stats_pop_heap (void *, void *, u32, int) __attribute__ ((weak));
+void vlib_stats_pop_heap (void *, u32, u32, int) __attribute__ ((weak));
 void
-vlib_stats_pop_heap (void *notused, void *notused2, u32 i, int type)
+vlib_stats_pop_heap (void *notused, u32 notused2, u32 i, int type)
 {
 };
-void vlib_stats_register_error_index (void *, u8 *, u64 *, u64)
+void vlib_stats_register_error_index (u32, u8 *, u64 *, u64)
   __attribute__ ((weak));
 void
-vlib_stats_register_error_index (void * notused, u8 * notused2, u64 * notused3, u64 notused4)
+vlib_stats_register_error_index (u32 notused, u8 * notused2, u64 * notused3, u64 notused4)
 {
 };
 
-void vlib_stats_pop_heap2 (void *, u32, void *, int) __attribute__ ((weak));
+void vlib_stats_pop_heap2 (void *, u32, u32, int) __attribute__ ((weak));
 void
-vlib_stats_pop_heap2 (void *notused, u32 notused2, void *notused3,
+vlib_stats_pop_heap2 (void *notused, u32 notused2, u32 notused3,
 		      int notused4)
 {
 };

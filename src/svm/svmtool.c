@@ -293,7 +293,9 @@ trace (char *chroot_path, char *name, int enable_disable)
 
   oldheap = svm_push_data_heap (db_rp);
 
+#ifdef FIXME
   mheap_trace (db_rp->data_heap, enable_disable);
+#endif
 
   svm_pop_heap (oldheap);
   region_unlock (db_rp);

@@ -275,6 +275,7 @@ vcl_send_session_disconnect (vcl_worker_t * wrk, vcl_session_t * s)
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
+#ifdef FIXME
 static void
 vcl_send_app_detach (vcl_worker_t * wrk)
 {
@@ -289,6 +290,7 @@ vcl_send_app_detach (vcl_worker_t * wrk)
   mp->client_index = wrk->api_client_handle;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
+#endif
 
 static void
 vcl_send_session_accepted_reply (svm_msg_q_t * mq, u32 context,
@@ -1197,6 +1199,7 @@ vcl_api_attach (void)
   return vcl_bapi_attach ();
 }
 
+#ifdef FIXME
 static void
 vcl_api_detach (vcl_worker_t * wrk)
 {
@@ -1207,6 +1210,7 @@ vcl_api_detach (vcl_worker_t * wrk)
 
   return vcl_bapi_disconnect_from_vpp ();
 }
+#endif
 
 /*
  * VPPCOM Public API functions
@@ -1253,6 +1257,7 @@ vppcom_app_create (const char *app_name)
 void
 vppcom_app_destroy (void)
 {
+#ifdef FIXME
   vcl_worker_t *wrk, *current_wrk;
   struct dlmallinfo mi;
   mspace heap;
@@ -1285,6 +1290,7 @@ vppcom_app_destroy (void)
 
   vcm = &_vppcom_main;
   vcm->is_init = 0;
+#endif
 }
 
 int

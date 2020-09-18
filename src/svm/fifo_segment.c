@@ -42,7 +42,9 @@ fsh_free_space (fifo_segment_header_t * fsh)
 {
   struct dlmallinfo dlminfo;
 
+#ifdef FIXME
   dlminfo = mspace_mallinfo (fsh->ssvm_sh->heap);
+#endif
   return dlminfo.fordblks;
 }
 
