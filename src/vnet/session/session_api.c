@@ -1534,6 +1534,7 @@ static clib_error_t *
 sapi_sock_read_ready (clib_file_t * cf)
 {
   app_ns_api_handle_t *handle = (app_ns_api_handle_t *) & cf->private_data;
+  vlib_main_t *vm = vlib_get_main ();
   app_sapi_msg_t msg = { 0 };
   app_namespace_t *app_ns;
   clib_error_t *err = 0;
@@ -1554,6 +1555,8 @@ sapi_sock_read_ready (clib_file_t * cf)
 
   handle = (app_ns_api_handle_t *) & cs->private_data;
 
+  vlib_worker_thread_barrier_sync (vm);
+
   switch (msg.type)
     {
     case APP_SAPI_MSG_TYPE_ATTACH:
@@ -1567,6 +1570,8 @@ sapi_sock_read_ready (clib_file_t * cf)
 		    handle->aah_app_wrk_index, msg.type);
       break;
     }
+
+  vlib_worker_thread_barrier_release (vm);
 
 error:
   return 0;
