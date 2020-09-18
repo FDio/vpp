@@ -42,9 +42,6 @@
     Vector bootstrap header file
 */
 
-/* Bootstrap include so that #include <vppinfra/mem.h> can include e.g.
-   <vppinfra/mheap.h> which depends on <vppinfra/vec.h>. */
-
 /** \brief vector header structure
 
    Bookkeeping header preceding vector elements in memory.

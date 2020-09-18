@@ -35,7 +35,6 @@
 #include <vppinfra/bitmap.h>
 #include <vppinfra/fifo.h>
 #include <vppinfra/time.h>
-#include <vppinfra/mheap.h>
 #include <vppinfra/heap.h>
 #include <vppinfra/pool.h>
 #include <vppinfra/format.h>
@@ -293,7 +292,7 @@ trace (char *chroot_path, char *name, int enable_disable)
 
   oldheap = svm_push_data_heap (db_rp);
 
-  mheap_trace (db_rp->data_heap, enable_disable);
+  clib_mem_set_heap_trace (db_rp->data_heap, enable_disable);
 
   svm_pop_heap (oldheap);
   region_unlock (db_rp);

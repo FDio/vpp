@@ -38,9 +38,6 @@
 #ifndef included_error_bootstrap_h
 #define included_error_bootstrap_h
 
-/* Bootstrap include so that #include <vppinfra/mem.h> can include e.g.
-   <vppinfra/mheap.h> which depends on <vppinfra/vec.h>. */
-
 #include <vppinfra/clib.h>	/* for uword */
 
 enum

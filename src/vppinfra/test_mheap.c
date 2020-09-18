@@ -170,7 +170,7 @@ test_mheap_main (unformat_input_t * input)
   }
 
   if (trace)
-    mheap_trace (h, trace);
+    clib_mem_set_heap_trace (h, trace);
 
   mh = mheap_header (h);
 

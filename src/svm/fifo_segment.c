@@ -30,7 +30,7 @@ static char *fifo_segment_mem_status_strings[] = {
 /**
  * Fifo segment free space
  *
- * Queries the underlying memory manager, dlmalloc, for free space. Since this
+ * Queries the underlying memory manager for free space. Since this
  * ends up walking the internal data structures, it should not be called
  * indiscriminately.
  *
@@ -40,10 +40,7 @@ static char *fifo_segment_mem_status_strings[] = {
 static uword
 fsh_free_space (fifo_segment_header_t * fsh)
 {
-  struct dlmallinfo dlminfo;
-
-  dlminfo = mspace_mallinfo (fsh->ssvm_sh->heap);
-  return dlminfo.fordblks;
+  return clib_mem_get_heap_free_space (fsh->ssvm_sh->heap);
 }
 
 static inline void

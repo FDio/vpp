@@ -486,10 +486,12 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
       u8 *leak_report;
       if (current_traced_heap)
 	{
+#ifdef FIXME
 	  void *oldheap;
 	  oldheap = clib_mem_set_heap (current_traced_heap);
 	  clib_mem_trace (0);
 	  clib_mem_set_heap (oldheap);
+#endif
 	  current_traced_heap = 0;
 	}
       clib_mem_trace (1);
@@ -507,7 +509,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	}
 
       (void) clib_mem_trace_enable_disable (0);
-      leak_report = format (0, "%U", format_mheap, clib_mem_get_heap (),
+      leak_report = format (0, "%U", format_clib_mem_heap, 0,
 			    1 /* verbose, i.e. print leaks */ );
       clib_mem_trace (0);
       vlib_cli_output (vm, "%v", leak_report);
@@ -739,6 +741,7 @@ static clib_error_t *
 show_memory_usage (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+#ifdef FIXME
   clib_mem_main_t *mm = &clib_mem_main;
   int verbose __attribute__ ((unused)) = 0;
   int api_segment = 0, stats_segment = 0, main_heap = 0, numa_heaps = 0;
@@ -782,7 +785,7 @@ show_memory_usage (vlib_main_t * vm,
       void *oldheap = vl_msg_push_heap ();
       was_enabled = clib_mem_trace_enable_disable (0);
       u8 *s_in_svm =
-	format (0, "%U\n", format_mheap, clib_mem_get_heap (), 1);
+	format (0, "%U\n", format_clib_mem_heap, 0, 1);
       vl_msg_pop_heap (oldheap);
       u8 *s = vec_dup (s_in_svm);
 
@@ -796,10 +799,11 @@ show_memory_usage (vlib_main_t * vm,
     }
   if (stats_segment)
     {
+#ifdef FIXME
       void *oldheap = vlib_stats_push_heap (0);
       was_enabled = clib_mem_trace_enable_disable (0);
       u8 *s_in_svm =
-	format (0, "%U\n", format_mheap, clib_mem_get_heap (), 1);
+	format (0, "%U\n", format_clib_mem_heap, 0, 1);
       if (oldheap)
 	clib_mem_set_heap (oldheap);
       u8 *s = vec_dup (s_in_svm);
@@ -814,6 +818,7 @@ show_memory_usage (vlib_main_t * vm,
       vlib_cli_output (vm, "Stats segment");
       vlib_cli_output (vm, "%v", s);
       vec_free (s);
+#endif
     }
 
 
@@ -839,7 +844,7 @@ show_memory_usage (vlib_main_t * vm,
           vlib_cli_output (vm, "  %U\n", format_page_map,
                            pointer_to_uword (mspace_least_addr(mspace)),
                            mi.arena);
-          vlib_cli_output (vm, "  %U\n", format_mheap,
+          vlib_cli_output (vm, "  %U\n", format_clib_mem_heap,
                            mm->per_cpu_mheaps[index],
                            verbose);
           index++;
@@ -871,7 +876,7 @@ show_memory_usage (vlib_main_t * vm,
 	    vlib_cli_output (vm, "  %U\n", format_page_map,
 			     pointer_to_uword (mspace_least_addr (mspace)),
 			     mi.arena);
-	    vlib_cli_output (vm, "  %U\n", format_mheap,
+	    vlib_cli_output (vm, "  %U\n", format_clib_mem_heap,
 			     mm->per_numa_mheaps[index], verbose);
 	  }
       }
@@ -918,6 +923,7 @@ show_memory_usage (vlib_main_t * vm,
 	vec_free (s);
       }
   }
+#endif
   return 0;
 }
 
@@ -968,6 +974,7 @@ enable_disable_memory_trace (vlib_main_t * vm,
 			     unformat_input_t * input,
 			     vlib_cli_command_t * cmd)
 {
+#ifdef FIXME
   clib_mem_main_t *mm = &clib_mem_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   int enable = 1;
@@ -1031,6 +1038,7 @@ enable_disable_memory_trace (vlib_main_t * vm,
 
     }
 
+#ifdef FIXME
   /* Stats segment */
   if (stats_segment)
     {
@@ -1064,8 +1072,10 @@ enable_disable_memory_trace (vlib_main_t * vm,
       clib_mem_trace (1);
       clib_mem_set_heap (oldheap);
     }
+#endif
 
 
+#endif
   return 0;
 }
 

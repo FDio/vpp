@@ -46,7 +46,6 @@
 
 #include <vppinfra/bitmap.h>
 #include <vppinfra/error.h>
-#include <vppinfra/mheap.h>
 
 
 typedef struct

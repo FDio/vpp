@@ -133,7 +133,6 @@ set(VPPINFRA_HEADERS
   memcpy_sse3.h
   mem.h
   mhash.h
-  mheap.h
   mpcap.h
   os.h
   pcap.h
