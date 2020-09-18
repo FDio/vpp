@@ -14,8 +14,8 @@
  */
 
 #include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/geneve/geneve.h>
+
+#include <geneve/geneve.h>
 
 typedef struct
 {
@@ -807,7 +807,7 @@ VLIB_NODE_FN (geneve6_input_node) (vlib_main_t * vm,
 
 static char *geneve_error_strings[] = {
 #define geneve_error(n,s) s,
-#include <vnet/geneve/geneve_error.def>
+#include <geneve/geneve_error.def>
 #undef geneve_error
 #undef _
 };

@@ -17,7 +17,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/geneve/geneve.h>
+#include <geneve/geneve.h>
 
 /* Statistics (not all errors) */
 #define foreach_geneve_encap_error    \
