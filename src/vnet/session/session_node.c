@@ -972,7 +972,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       max_burst -= n_custom_tx;
       if (!max_burst || (ctx->s->flags & SESSION_F_CUSTOM_TX))
 	{
-	  session_evt_add_old (wrk, elt);
+	  session_evt_program_old (wrk, elt);
 	  return SESSION_TX_OK;
 	}
     }
@@ -988,7 +988,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       /* Request to postpone the session, e.g., zero-wnd and transport
        * is not currently probing */
       else if (ctx->sp.flags & TRANSPORT_SND_F_POSTPONE)
-	session_evt_add_old (wrk, elt);
+	session_evt_program_old (wrk, elt);
       /* This flow queue is "empty" so it should be re-evaluated before
        * the ones that have data to send. */
       else
@@ -1117,7 +1117,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   /* If we couldn't dequeue all bytes reschedule as old flow. Otherwise,
    * check if application enqueued more data and reschedule accordingly */
   if (ctx->max_len_to_snd < ctx->max_dequeue)
-    session_evt_add_old (wrk, elt);
+    session_evt_program_old (wrk, elt);
   else
     session_tx_maybe_reschedule (wrk, ctx, elt);
 
@@ -1168,7 +1168,7 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
 
   if (s->flags & SESSION_F_CUSTOM_TX)
     {
-      session_evt_add_old (wrk, elt);
+      session_evt_program_old (wrk, elt);
     }
   else if (!(sp->flags & TRANSPORT_SND_F_DESCHED))
     {
@@ -1380,6 +1380,24 @@ session_flush_pending_tx_buffers (session_worker_t * wrk,
   vec_reset_length (wrk->pending_tx_nexts);
 }
 
+void
+session_expired_old_dispatch (u32 * expired_timers)
+{
+  u32 thread_index = vlib_get_thread_index ();
+  session_evt_elt_t *elt;
+  session_worker_t *wrk;
+  int i;
+
+  wrk = session_main_get_worker (thread_index);
+
+  for (i = 0; i < vec_len (expired_timers); i++)
+    {
+      elt = session_evt_alloc_old (wrk);
+      elt->evt.session_index = expired_timers[i] & 0x7fffffff;
+      elt->evt.event_type = SESSION_IO_EVT_TX;
+    }
+}
+
 static uword
 session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * frame)
@@ -1388,7 +1406,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 thread_index = vm->thread_index, n_to_dequeue;
   session_worker_t *wrk = &smm->wrk[thread_index];
   session_evt_elt_t *elt, *ctrl_he, *new_he, *old_he;
-  clib_llist_index_t ei, next_ei, old_ti;
+  clib_llist_index_t ei;
   svm_msg_q_msg_t _msg, *msg = &_msg;
   int i = 0, n_tx_packets;
   session_event_t *evt;
@@ -1448,8 +1466,6 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
    */
 
   new_he = pool_elt_at_index (wrk->event_elts, wrk->new_head);
-  old_he = pool_elt_at_index (wrk->event_elts, wrk->old_head);
-  old_ti = clib_llist_prev_index (old_he, evt_list);
 
   ei = clib_llist_next_index (new_he, evt_list);
   while (ei != wrk->new_head && n_tx_packets < VLIB_FRAME_SIZE)
@@ -1463,29 +1479,22 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, NEW_IO_EVTS, wrk);
 
   /*
-   * Handle the old io events, if we had any prior to processing the new ones
+   * Handle the old io events
    */
+  tw_timer_expire_timers_1t_3w_1024sl_ov (&wrk->tw, wrk->last_vlib_time);
 
-  if (old_ti != wrk->old_head)
+  old_he = pool_elt_at_index (wrk->event_elts, wrk->old_head);
+  ei = clib_llist_next_index (old_he, evt_list);
+
+  while (ei != wrk->old_head && n_tx_packets < VLIB_FRAME_SIZE)
     {
-      old_he = pool_elt_at_index (wrk->event_elts, wrk->old_head);
-      ei = clib_llist_next_index (old_he, evt_list);
+      elt = pool_elt_at_index (wrk->event_elts, ei);
+      ei = clib_llist_next_index (elt, evt_list);
 
-      while (n_tx_packets < VLIB_FRAME_SIZE)
-	{
-	  elt = pool_elt_at_index (wrk->event_elts, ei);
-	  next_ei = clib_llist_next_index (elt, evt_list);
-	  clib_llist_remove (wrk->event_elts, evt_list, elt);
+      clib_llist_remove (wrk->event_elts, evt_list, elt);
 
-	  session_event_dispatch_io (wrk, node, elt, thread_index,
-				     &n_tx_packets);
-
-	  if (ei == old_ti)
-	    break;
-
-	  ei = next_ei;
-	};
-    }
+      session_event_dispatch_io (wrk, node, elt, thread_index, &n_tx_packets);
+    };
 
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, OLD_IO_EVTS, wrk);
 
