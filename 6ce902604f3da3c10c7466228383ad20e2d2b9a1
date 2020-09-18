@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1fd1e822_f555a7af",
+        "filename": "src/vnet/devices/virtio/cli.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-18T13:15:21Z",
+      "side": 1,
+      "message": "args is memet()ed to 0 right above, this should not be necessary",
+      "revId": "6ce902604f3da3c10c7466228383ad20e2d2b9a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "daa85ec2_b558e651",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 248,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-18T13:15:21Z",
+      "side": 1,
+      "message": "maybe we should split this loop? 1st loop just count the descriptors to be free up (and maybe break because of used_wrap_counter), and then call vlib_buffer_free_from_ring()?",
+      "revId": "6ce902604f3da3c10c7466228383ad20e2d2b9a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c098af64_1d6d0762",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 539,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-18T13:15:21Z",
+      "side": 1,
+      "message": "I think we are missing GRO timeout here",
+      "revId": "6ce902604f3da3c10c7466228383ad20e2d2b9a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e000db33_c50fbf4c",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 815,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-18T13:15:21Z",
+      "side": 1,
+      "message": "this should be\n  if (vif-\u003emax_queue_pairs \u003c vtm-\u003en_vlib_mains)\n    clib_spinlock_init (\u0026vring-\u003elockp);",
+      "revId": "6ce902604f3da3c10c7466228383ad20e2d2b9a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4f8944b1_896dfe9a",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-18T13:15:21Z",
+      "side": 1,
+      "message": "maybe having this would be more readable:\n  union {\n    /* split ring */\n    struct {\n      vring_desc_t *desc;\n      vring_used_t *used;\n      vring_avail_t *avail;\n    };\n    /* packed ring */\n    struct {\n      vring_packed_desc_t *packed_desc;\n      vring_desc_event_t *device_event;\n      vring_desc_event_t *driver_event;\n    };\n  };",
+      "revId": "6ce902604f3da3c10c7466228383ad20e2d2b9a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
