@@ -988,7 +988,7 @@ send_session_rules_table_details (session_rules_table_t * srt, u8 fib_proto,
 }
 
 static void
-vl_api_session_rules_dump_t_handler (vl_api_one_map_server_dump_t * mp)
+vl_api_session_rules_dump_t_handler (vl_api_session_rules_dump_t * mp)
 {
   vl_api_registration_t *reg;
   session_table_t *st;
