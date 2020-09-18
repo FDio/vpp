@@ -22,33 +22,21 @@
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
-#include <vnet/l2tp/l2tp.h>
+#include <l2tp/l2tp.h>
 #include <vnet/ip/ip_types_api.h>
 
-#include <vnet/vnet_msg_enum.h>
+/* define message IDs */
+#include <vnet/format_fns.h>
+#include <l2tp/l2tp.api_enum.h>
+#include <l2tp/l2tp.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
+/**
+ * Base message ID fot the plugin
+ */
+static u32 l2tp_base_msg_id;
+#define REPLY_MSG_ID_BASE l2tp_base_msg_id
 
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_vpe_api_msg                             \
-_(L2TPV3_CREATE_TUNNEL, l2tpv3_create_tunnel)                           \
-_(L2TPV3_SET_TUNNEL_COOKIES, l2tpv3_set_tunnel_cookies)                 \
-_(L2TPV3_INTERFACE_ENABLE_DISABLE, l2tpv3_interface_enable_disable)     \
-_(L2TPV3_SET_LOOKUP_KEY, l2tpv3_set_lookup_key)                         \
-_(SW_IF_L2TPV3_TUNNEL_DUMP, sw_if_l2tpv3_tunnel_dump)
 
 static void
 send_sw_if_l2tpv3_tunnel_details (vpe_api_main_t * am,
@@ -67,7 +55,7 @@ send_sw_if_l2tpv3_tunnel_details (vpe_api_main_t * am,
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_SW_IF_L2TPV3_TUNNEL_DETAILS);
+  mp->_vl_msg_id = ntohs (VL_API_SW_IF_L2TPV3_TUNNEL_DETAILS + REPLY_MSG_ID_BASE);
   strncpy ((char *) mp->interface_name,
 	   (char *) if_name, ARRAY_LEN (mp->interface_name) - 1);
   mp->sw_if_index = ntohl (si->sw_if_index);
@@ -227,42 +215,31 @@ out:
  * added the client registration handlers.
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_l2tp;
-#undef _
-}
+#include <l2tp/l2tp.api.c>
 
 static clib_error_t *
 l2tp_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  l2tp_base_msg_id = setup_message_id_table ();
 
   return 0;
 }
 
 VLIB_API_INIT_FUNCTION (l2tp_api_hookup);
+
+#include <vlib/unix/plugin.h>
+#include <vpp/app/version.h>
+
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+    .description = "Layer 2 Tunneling Protocol v3 (L2TP)",
+};
+/* *INDENT-ON* */
+
 
 /*
  * fd.io coding-style-patch-verification: ON

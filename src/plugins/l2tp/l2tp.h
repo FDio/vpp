@@ -20,7 +20,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/ip/ip.h>
-#include <vnet/l2tp/packet.h>
+#include <l2tp/packet.h>
 
 typedef struct
 {
