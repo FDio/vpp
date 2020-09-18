@@ -20,7 +20,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/l2tp/l2tp.h>
+#include <l2tp/l2tp.h>
 #include <vnet/l2/l2_input.h>
 
 /* Statistics (not really errors) */
