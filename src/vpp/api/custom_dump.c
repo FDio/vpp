@@ -24,7 +24,6 @@
 #include <vnet/fib/fib_api.h>
 #include <vnet/unix/tuntap.h>
 #include <vnet/mpls/mpls.h>
-#include <vnet/l2tp/l2tp.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/srv6/sr.h>
 #include <vnet/srmpls/sr_mpls.h>
@@ -1425,100 +1424,6 @@ static void *vl_api_add_node_next_t_print
   s = format (0, "SCRIPT: add_node_next ");
 
   s = format (s, "node %s next %s ", mp->node_name, mp->next_name);
-
-  FINISH;
-}
-
-static void *vl_api_l2tpv3_create_tunnel_t_print
-  (vl_api_l2tpv3_create_tunnel_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: l2tpv3_create_tunnel ");
-
-  s = format (s, "client_address %U our_address %U ",
-	      format_ip6_address,
-	      (ip6_address_t *) (mp->client_address.un.ip6),
-	      format_ip6_address, (ip6_address_t *) (mp->our_address.un.ip6));
-  s = format (s, "local_session_id %d ", (mp->local_session_id));
-  s = format (s, "remote_session_id %d ", (mp->remote_session_id));
-  s = format (s, "local_cookie %lld ",
-	      clib_net_to_host_u64 (mp->local_cookie));
-  s = format (s, "remote_cookie %lld ",
-	      clib_net_to_host_u64 (mp->remote_cookie));
-  if (mp->l2_sublayer_present)
-    s = format (s, "l2-sublayer-present ");
-
-  FINISH;
-}
-
-static void *vl_api_l2tpv3_set_tunnel_cookies_t_print
-  (vl_api_l2tpv3_set_tunnel_cookies_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: l2tpv3_set_tunnel_cookies ");
-
-  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
-
-  s = format (s, "new_local_cookie %llu ",
-	      clib_net_to_host_u64 (mp->new_local_cookie));
-
-  s = format (s, "new_remote_cookie %llu ",
-	      clib_net_to_host_u64 (mp->new_remote_cookie));
-
-  FINISH;
-}
-
-static void *vl_api_l2tpv3_interface_enable_disable_t_print
-  (vl_api_l2tpv3_interface_enable_disable_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: l2tpv3_interface_enable_disable ");
-
-  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
-
-  if (mp->enable_disable == 0)
-    s = format (s, "del ");
-
-  FINISH;
-}
-
-static void *vl_api_l2tpv3_set_lookup_key_t_print
-  (vl_api_l2tpv3_set_lookup_key_t * mp, void *handle)
-{
-  u8 *s;
-  char *str = "unknown";
-
-  s = format (0, "SCRIPT: l2tpv3_set_lookup_key ");
-
-  switch (mp->key)
-    {
-    case L2T_LOOKUP_SRC_ADDRESS:
-      str = "lookup_v6_src";
-      break;
-    case L2T_LOOKUP_DST_ADDRESS:
-      str = "lookup_v6_dst";
-      break;
-    case L2T_LOOKUP_SESSION_ID:
-      str = "lookup_session_id";
-      break;
-    default:
-      break;
-    }
-
-  s = format (s, "%s ", str);
-
-  FINISH;
-}
-
-static void *vl_api_sw_if_l2tpv3_tunnel_dump_t_print
-  (vl_api_sw_if_l2tpv3_tunnel_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: sw_if_l2tpv3_tunnel_dump ");
 
   FINISH;
 }
@@ -3593,11 +3498,6 @@ _(BRIDGE_DOMAIN_SET_MAC_AGE, bridge_domain_set_mac_age)                 \
 _(CLASSIFY_SET_INTERFACE_IP_TABLE, classify_set_interface_ip_table)	\
 _(CLASSIFY_SET_INTERFACE_L2_TABLES, classify_set_interface_l2_tables)	\
 _(ADD_NODE_NEXT, add_node_next)						\
-_(L2TPV3_CREATE_TUNNEL, l2tpv3_create_tunnel)                           \
-_(L2TPV3_SET_TUNNEL_COOKIES, l2tpv3_set_tunnel_cookies)                 \
-_(L2TPV3_INTERFACE_ENABLE_DISABLE, l2tpv3_interface_enable_disable)     \
-_(L2TPV3_SET_LOOKUP_KEY, l2tpv3_set_lookup_key)                         \
-_(SW_IF_L2TPV3_TUNNEL_DUMP, sw_if_l2tpv3_tunnel_dump)                   \
 _(VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel)                           \
 _(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
 _(VXLAN_OFFLOAD_RX, vxlan_offload_rx)                                   \
