@@ -1,0 +1,174 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c046a80d_4b5d8f6e",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 5
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-18T17:16:15Z",
+      "side": 1,
+      "message": "s/bufffering/buffering/",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5a928716_dafdfbba",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 5
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-18T17:16:15Z",
+      "side": 1,
+      "message": "I think this is not exact: what we need is to make sure all txq are served by at least 1 input node for timeout right? Then the rule should be #workers \u003e\u003d #txq right?",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "86b875fe_6ed034ff",
+        "filename": "src/vnet/devices/virtio/cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-18T17:16:15Z",
+      "side": 1,
+      "message": "can we make the buffer size configurable?",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bfb73450_752de424",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 554,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-18T17:16:15Z",
+      "side": 1,
+      "message": "can you explain why we need to duplicate the code here?",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3bbc8fb4_20e0b402",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 819,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-18T17:16:15Z",
+      "side": 1,
+      "message": "maybe we should just return an error here if buffering or gro is enabled?",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4d79b36e_24fba3bd",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-18T17:16:15Z",
+      "side": 1,
+      "message": "it should be a plain \u0027if\u0027 not \u0027else if\u0027 I think",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4a5c2c43_8f5dbf31",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1158,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-18T17:16:15Z",
+      "side": 1,
+      "message": "in order to reject erroneous config, can we return an error if (vif-\u003emax_queue_pairs \u003e\u003d vtm-\u003en_vlib_mains) ?",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f7fcc62d_19720b2e",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1160,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-18T17:16:15Z",
+      "side": 1,
+      "message": "can we move this to inside virtio_set_packet_buffering() ?",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a555a1b7_fc191941",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-18T17:16:15Z",
+      "side": 1,
+      "message": "it should be dynamically allocated if enabled as gro, esp as the buffer ring can be pretty big",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "33c0bcf2_35f0f312",
+        "filename": "src/vnet/devices/virtio/virtio_buffering.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-18T17:16:15Z",
+      "side": 1,
+      "message": "why not just\n  if (buffering)\n    buffering-\u003eis_enable \u003d is_enable",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
