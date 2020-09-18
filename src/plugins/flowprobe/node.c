@@ -563,8 +563,8 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
   ip->flags_and_fragment_offset = 0;
   ip->src_address.as_u32 = frm->src_address.as_u32;
   ip->dst_address.as_u32 = frm->ipfix_collector.as_u32;
-  udp->src_port = clib_host_to_net_u16 (UDP_DST_PORT_ipfix);
-  udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_ipfix);
+  udp->src_port = clib_host_to_net_u16 (stream->src_port);
+  udp->dst_port = clib_host_to_net_u16 (frm->collector_port);
   udp->checksum = 0;
 
   /* FIXUP: message header export_time */
