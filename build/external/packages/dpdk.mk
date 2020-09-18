@@ -12,6 +12,7 @@
 # limitations under the License.
 
 DPDK_PKTMBUF_HEADROOM        ?= 128
+DPDK_USE_LIBBSD              ?= n
 DPDK_DEBUG                   ?= n
 DPDK_MLX4_PMD                ?= n
 DPDK_MLX5_PMD                ?= n
@@ -118,6 +119,19 @@ echo '$(HASH)define RTE_$(1) $(DPDK_$(1))' \
 fi
 endef
 
+define dpdk_config_def
+if [[ "$(DPDK_$(1))" == "y" ]]; then \
+    if ! grep -q "RTE_$(1)" $(dpdk_build_dir)/rte_build_config.h \
+      $(dpdk_src_dir)/config/rte_config.h ; then \
+        echo '$(HASH)define RTE_$(1) 1' \
+          >> $(dpdk_build_dir)/rte_build_config.h ; \
+    fi; \
+elif [[ "$(DPDK_$(1))" == "n" ]]; then \
+    sed -i '/$(HASH)define RTE_$(1) .*/d' $(dpdk_build_dir)/rte_build_config.h \
+      $(dpdk_src_dir)/config/rte_config.h ; \
+fi
+endef
+
 DPDK_MESON_ARGS = \
 	--default-library static \
 	--libdir lib \
@@ -143,7 +157,8 @@ define dpdk_config_cmds
 	deactivate && \
 	echo "DPDK post meson configuration" && \
 	echo "Altering rte_build_config.h" && \
-	$(call dpdk_config,PKTMBUF_HEADROOM) 
+	$(call dpdk_config,PKTMBUF_HEADROOM) && \
+	$(call dpdk_config_def,USE_LIBBSD)
 endef
 
 define dpdk_build_cmds
