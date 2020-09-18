@@ -27,7 +27,6 @@
 #include <vnet/ip-neighbor/ip_neighbor.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/l2/l2_input.h>
-#include <vnet/l2tp/l2tp.h>
 #include <vnet/vxlan/vxlan.h>
 #include <vnet/gre/gre.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
@@ -2288,40 +2287,6 @@ static void vl_api_mpls_tunnel_add_del_reply_t_handler_json
   vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
   vat_json_object_add_uint (&node, "tunnel_sw_if_index",
 			    ntohl (mp->sw_if_index));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
-static void vl_api_l2tpv3_create_tunnel_reply_t_handler
-  (vl_api_l2tpv3_create_tunnel_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->sw_if_index = ntohl (mp->sw_if_index);
-      vam->result_ready = 1;
-    }
-}
-
-static void vl_api_l2tpv3_create_tunnel_reply_t_handler_json
-  (vl_api_l2tpv3_create_tunnel_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
 
   vat_json_print (vam->ofp, &node);
   vat_json_free (&node);
@@ -5121,9 +5086,6 @@ _(sr_steering_add_del_reply)                            \
 _(classify_add_del_session_reply)                       \
 _(classify_set_interface_ip_table_reply)                \
 _(classify_set_interface_l2_tables_reply)               \
-_(l2tpv3_set_tunnel_cookies_reply)                      \
-_(l2tpv3_interface_enable_disable_reply)                \
-_(l2tpv3_set_lookup_key_reply)                          \
 _(l2_fib_clear_table_reply)                             \
 _(l2_interface_efp_filter_reply)                        \
 _(l2_interface_vlan_tag_rewrite_reply)                  \
@@ -5320,12 +5282,6 @@ _(CLASSIFY_SET_INTERFACE_L2_TABLES_REPLY,                               \
   classify_set_interface_l2_tables_reply)                               \
 _(GET_NODE_INDEX_REPLY, get_node_index_reply)                           \
 _(ADD_NODE_NEXT_REPLY, add_node_next_reply)                             \
-_(L2TPV3_CREATE_TUNNEL_REPLY, l2tpv3_create_tunnel_reply)               \
-_(L2TPV3_SET_TUNNEL_COOKIES_REPLY, l2tpv3_set_tunnel_cookies_reply)     \
-_(L2TPV3_INTERFACE_ENABLE_DISABLE_REPLY,                                \
-  l2tpv3_interface_enable_disable_reply)                                \
-_(L2TPV3_SET_LOOKUP_KEY_REPLY, l2tpv3_set_lookup_key_reply)             \
-_(SW_IF_L2TPV3_TUNNEL_DETAILS, sw_if_l2tpv3_tunnel_details)             \
 _(VXLAN_ADD_DEL_TUNNEL_REPLY, vxlan_add_del_tunnel_reply)               \
 _(VXLAN_OFFLOAD_RX_REPLY, vxlan_offload_rx_reply)               \
 _(VXLAN_TUNNEL_DETAILS, vxlan_tunnel_details)                           \
@@ -11145,274 +11101,6 @@ api_add_node_next (vat_main_t * vam)
   W (ret);
   return ret;
 }
-
-static int
-api_l2tpv3_create_tunnel (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  ip6_address_t client_address, our_address;
-  int client_address_set = 0;
-  int our_address_set = 0;
-  u32 local_session_id = 0;
-  u32 remote_session_id = 0;
-  u64 local_cookie = 0;
-  u64 remote_cookie = 0;
-  u8 l2_sublayer_present = 0;
-  vl_api_l2tpv3_create_tunnel_t *mp;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "client_address %U", unformat_ip6_address,
-		    &client_address))
-	client_address_set = 1;
-      else if (unformat (i, "our_address %U", unformat_ip6_address,
-			 &our_address))
-	our_address_set = 1;
-      else if (unformat (i, "local_session_id %d", &local_session_id))
-	;
-      else if (unformat (i, "remote_session_id %d", &remote_session_id))
-	;
-      else if (unformat (i, "local_cookie %lld", &local_cookie))
-	;
-      else if (unformat (i, "remote_cookie %lld", &remote_cookie))
-	;
-      else if (unformat (i, "l2-sublayer-present"))
-	l2_sublayer_present = 1;
-      else
-	break;
-    }
-
-  if (client_address_set == 0)
-    {
-      errmsg ("client_address required");
-      return -99;
-    }
-
-  if (our_address_set == 0)
-    {
-      errmsg ("our_address required");
-      return -99;
-    }
-
-  M (L2TPV3_CREATE_TUNNEL, mp);
-
-  clib_memcpy (mp->client_address.un.ip6, client_address.as_u8,
-	       sizeof (ip6_address_t));
-
-  clib_memcpy (mp->our_address.un.ip6, our_address.as_u8,
-	       sizeof (ip6_address_t));
-
-  mp->local_session_id = ntohl (local_session_id);
-  mp->remote_session_id = ntohl (remote_session_id);
-  mp->local_cookie = clib_host_to_net_u64 (local_cookie);
-  mp->remote_cookie = clib_host_to_net_u64 (remote_cookie);
-  mp->l2_sublayer_present = l2_sublayer_present;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_l2tpv3_set_tunnel_cookies (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  u32 sw_if_index;
-  u8 sw_if_index_set = 0;
-  u64 new_local_cookie = 0;
-  u64 new_remote_cookie = 0;
-  vl_api_l2tpv3_set_tunnel_cookies_t *mp;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "new_local_cookie %lld", &new_local_cookie))
-	;
-      else if (unformat (i, "new_remote_cookie %lld", &new_remote_cookie))
-	;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  M (L2TPV3_SET_TUNNEL_COOKIES, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->new_local_cookie = clib_host_to_net_u64 (new_local_cookie);
-  mp->new_remote_cookie = clib_host_to_net_u64 (new_remote_cookie);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_l2tpv3_interface_enable_disable (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_l2tpv3_interface_enable_disable_t *mp;
-  u32 sw_if_index;
-  u8 sw_if_index_set = 0;
-  u8 enable_disable = 1;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "enable"))
-	enable_disable = 1;
-      else if (unformat (i, "disable"))
-	enable_disable = 0;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  M (L2TPV3_INTERFACE_ENABLE_DISABLE, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->enable_disable = enable_disable;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_l2tpv3_set_lookup_key (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_l2tpv3_set_lookup_key_t *mp;
-  u8 key = ~0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "lookup_v6_src"))
-	key = L2T_LOOKUP_SRC_ADDRESS;
-      else if (unformat (i, "lookup_v6_dst"))
-	key = L2T_LOOKUP_DST_ADDRESS;
-      else if (unformat (i, "lookup_session_id"))
-	key = L2T_LOOKUP_SESSION_ID;
-      else
-	break;
-    }
-
-  if (key == (u8) ~ 0)
-    {
-      errmsg ("l2tp session lookup key unset");
-      return -99;
-    }
-
-  M (L2TPV3_SET_LOOKUP_KEY, mp);
-
-  mp->key = key;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static void vl_api_sw_if_l2tpv3_tunnel_details_t_handler
-  (vl_api_sw_if_l2tpv3_tunnel_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-
-  print (vam->ofp, "* %U (our) %U (client) (sw_if_index %d)",
-	 format_ip6_address, mp->our_address,
-	 format_ip6_address, mp->client_address,
-	 clib_net_to_host_u32 (mp->sw_if_index));
-
-  print (vam->ofp,
-	 "   local cookies %016llx %016llx remote cookie %016llx",
-	 clib_net_to_host_u64 (mp->local_cookie[0]),
-	 clib_net_to_host_u64 (mp->local_cookie[1]),
-	 clib_net_to_host_u64 (mp->remote_cookie));
-
-  print (vam->ofp, "   local session-id %d remote session-id %d",
-	 clib_net_to_host_u32 (mp->local_session_id),
-	 clib_net_to_host_u32 (mp->remote_session_id));
-
-  print (vam->ofp, "   l2 specific sublayer %s\n",
-	 mp->l2_sublayer_present ? "preset" : "absent");
-
-}
-
-static void vl_api_sw_if_l2tpv3_tunnel_details_t_handler_json
-  (vl_api_sw_if_l2tpv3_tunnel_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-  struct in6_addr addr;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-
-  clib_memcpy (&addr, mp->our_address.un.ip6, sizeof (addr));
-  vat_json_object_add_ip6 (node, "our_address", addr);
-  clib_memcpy (&addr, mp->client_address.un.ip6, sizeof (addr));
-  vat_json_object_add_ip6 (node, "client_address", addr);
-
-  vat_json_node_t *lc = vat_json_object_add (node, "local_cookie");
-  vat_json_init_array (lc);
-  vat_json_array_add_uint (lc, clib_net_to_host_u64 (mp->local_cookie[0]));
-  vat_json_array_add_uint (lc, clib_net_to_host_u64 (mp->local_cookie[1]));
-  vat_json_object_add_uint (node, "remote_cookie",
-			    clib_net_to_host_u64 (mp->remote_cookie));
-
-  printf ("local id: %u", clib_net_to_host_u32 (mp->local_session_id));
-  vat_json_object_add_uint (node, "local_session_id",
-			    clib_net_to_host_u32 (mp->local_session_id));
-  vat_json_object_add_uint (node, "remote_session_id",
-			    clib_net_to_host_u32 (mp->remote_session_id));
-  vat_json_object_add_string_copy (node, "l2_sublayer",
-				   mp->l2_sublayer_present ? (u8 *) "present"
-				   : (u8 *) "absent");
-}
-
-static int
-api_sw_if_l2tpv3_tunnel_dump (vat_main_t * vam)
-{
-  vl_api_sw_if_l2tpv3_tunnel_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  int ret;
-
-  /* Get list of l2tpv3-tunnel interfaces */
-  M (SW_IF_L2TPV3_TUNNEL_DUMP, mp);
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  W (ret);
-  return ret;
-}
-
 
 static void vl_api_sw_interface_tap_v2_details_t_handler
   (vl_api_sw_interface_tap_v2_details_t * mp)
@@ -20425,18 +20113,6 @@ _(classify_set_interface_l2_tables,                                     \
   "  [other-table <nn>]")                                               \
 _(get_node_index, "node <node-name")                                    \
 _(add_node_next, "node <node-name> next <next-node-name>")              \
-_(l2tpv3_create_tunnel,                                                 \
-  "client_address <ip6-addr> our_address <ip6-addr>\n"                  \
-  "[local_session_id <nn>][remote_session_id <nn>][local_cookie <nn>]\n" \
-  "[remote_cookie <nn>]\n[l2-sublayer-preset]\n")                       \
-_(l2tpv3_set_tunnel_cookies,                                            \
-  "<intfc> | sw_if_index <nn> [new_local_cookie <nn>]\n"                \
-  "[new_remote_cookie <nn>]\n")                                         \
-_(l2tpv3_interface_enable_disable,                                      \
-  "<intfc> | sw_if_index <nn> enable | disable")                        \
-_(l2tpv3_set_lookup_key,                                                \
-  "lookup_v6_src | lookup_v6_dst | lookup_session_id")                  \
-_(sw_if_l2tpv3_tunnel_dump, "")                                         \
 _(vxlan_offload_rx,                                                     \
   "hw { <interface name> | hw_if_index <nn>} "                          \
   "rx { <vxlan tunnel name> | sw_if_index <nn> } [del]")                \

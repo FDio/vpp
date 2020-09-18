@@ -762,29 +762,6 @@ list(APPEND VNET_HEADERS
 )
 
 ##############################################################################
-# Tunnel protocol: l2tpv3
-##############################################################################
-list(APPEND VNET_SOURCES
-  l2tp/l2tp.c
-  l2tp/encap.c
-  l2tp/decap.c
-  l2tp/pg.c
-  l2tp/l2tp_api.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  l2tp/encap.c
-  l2tp/decap.c
-)
-
-list(APPEND VNET_HEADERS
-  l2tp/l2tp.h
-  l2tp/packet.h
-)
-
-list(APPEND VNET_API_FILES l2tp/l2tp.api)
-
-##############################################################################
 # Tunnel protocol: gre+mpls
 ##############################################################################
 list(APPEND VNET_SOURCES
