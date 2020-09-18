@@ -362,24 +362,6 @@ list(APPEND VNET_MULTIARCH_SOURCES bonding/node.c bonding/device.c)
 list(APPEND VNET_API_FILES bonding/bond.api)
 
 ##############################################################################
-# Layer 2 / LLDP
-##############################################################################
-list(APPEND VNET_SOURCES
-  lldp/lldp_input.c
-  lldp/lldp_node.c
-  lldp/lldp_output.c
-  lldp/lldp_cli.c
-  lldp/lldp_api.c
-)
-
-list(APPEND VNET_HEADERS
-  lldp/lldp_protocol.h
-  lldp/lldp.h
-)
-
-list(APPEND VNET_API_FILES lldp/lldp.api)
-
-##############################################################################
 # Layer 2/3 "classify"
 ##############################################################################
 list(APPEND VNET_SOURCES

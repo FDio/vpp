@@ -16,7 +16,7 @@
  * @file
  * @brief LLDP nodes implementation
  */
-#include <vnet/lldp/lldp_node.h>
+#include <lldp/lldp_node.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ethernet/packet.h>
 

@@ -25,7 +25,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/hash.h>
 
-#include <vnet/lldp/lldp_protocol.h>
+#include <lldp/lldp_protocol.h>
 
 typedef struct lldp_intf
 {

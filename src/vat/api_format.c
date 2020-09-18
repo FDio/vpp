@@ -5196,8 +5196,6 @@ _(sw_interface_add_del_mac_address_reply)		\
 _(hw_interface_set_mtu_reply)                           \
 _(p2p_ethernet_add_reply)                               \
 _(p2p_ethernet_del_reply)                               \
-_(lldp_config_reply)                                    \
-_(sw_interface_set_lldp_reply)				\
 _(tcp_configure_src_addresses_reply)			\
 _(session_rule_add_del_reply)				\
 _(ip_container_proxy_add_del_reply)                     \
@@ -5492,8 +5490,6 @@ _(HW_INTERFACE_SET_MTU_REPLY, hw_interface_set_mtu_reply)               \
 _(SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)           \
 _(P2P_ETHERNET_ADD_REPLY, p2p_ethernet_add_reply)                       \
 _(P2P_ETHERNET_DEL_REPLY, p2p_ethernet_del_reply)                       \
-_(LLDP_CONFIG_REPLY, lldp_config_reply)                                 \
-_(SW_INTERFACE_SET_LLDP_REPLY, sw_interface_set_lldp_reply)		\
 _(TCP_CONFIGURE_SRC_ADDRESSES_REPLY, tcp_configure_src_addresses_reply)	\
 _(APP_NAMESPACE_ADD_DEL_REPLY, app_namespace_add_del_reply)		\
 _(SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)		\
@@ -19266,104 +19262,6 @@ api_p2p_ethernet_del (vat_main_t * vam)
 }
 
 static int
-api_lldp_config (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_lldp_config_t *mp;
-  int tx_hold = 0;
-  int tx_interval = 0;
-  u8 *sys_name = NULL;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "system-name %s", &sys_name))
-	;
-      else if (unformat (i, "tx-hold %d", &tx_hold))
-	;
-      else if (unformat (i, "tx-interval %d", &tx_interval))
-	;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  vec_add1 (sys_name, 0);
-
-  M (LLDP_CONFIG, mp);
-  mp->tx_hold = htonl (tx_hold);
-  mp->tx_interval = htonl (tx_interval);
-  vl_api_vec_to_api_string (sys_name, &mp->system_name);
-  vec_free (sys_name);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_sw_interface_set_lldp (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sw_interface_set_lldp_t *mp;
-  u32 sw_if_index = ~0;
-  u32 enable = 1;
-  u8 *port_desc = NULL, *mgmt_oid = NULL;
-  ip4_address_t ip4_addr;
-  ip6_address_t ip6_addr;
-  int ret;
-
-  clib_memset (&ip4_addr, 0, sizeof (ip4_addr));
-  clib_memset (&ip6_addr, 0, sizeof (ip6_addr));
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "disable"))
-	enable = 0;
-      else
-	if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	;
-      else if (unformat (i, "port-desc %s", &port_desc))
-	;
-      else if (unformat (i, "mgmt-ip4 %U", unformat_ip4_address, &ip4_addr))
-	;
-      else if (unformat (i, "mgmt-ip6 %U", unformat_ip6_address, &ip6_addr))
-	;
-      else if (unformat (i, "mgmt-oid %s", &mgmt_oid))
-	;
-      else
-	break;
-    }
-
-  if (sw_if_index == ~0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  /* Construct the API message */
-  vec_add1 (port_desc, 0);
-  vec_add1 (mgmt_oid, 0);
-  M (SW_INTERFACE_SET_LLDP, mp);
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->enable = enable;
-  vl_api_vec_to_api_string (port_desc, &mp->port_desc);
-  clib_memcpy (mp->mgmt_oid, mgmt_oid, vec_len (mgmt_oid));
-  clib_memcpy (mp->mgmt_ip4, &ip4_addr, sizeof (ip4_addr));
-  clib_memcpy (mp->mgmt_ip6, &ip6_addr, sizeof (ip6_addr));
-  vec_free (port_desc);
-  vec_free (mgmt_oid);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
 api_tcp_configure_src_addresses (vat_main_t * vam)
 {
   vl_api_tcp_configure_src_addresses_t *mp;
@@ -20797,9 +20695,6 @@ _(hw_interface_set_mtu, "<intfc> | hw_if_index <nn> mtu <nn>")        \
 _(sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")          \
 _(p2p_ethernet_add, "<intfc> | sw_if_index <nn> remote_mac <mac-address> sub_id <id>") \
 _(p2p_ethernet_del, "<intfc> | sw_if_index <nn> remote_mac <mac-address>") \
-_(lldp_config, "system-name <name> tx-hold <nn> tx-interval <nn>") \
-_(sw_interface_set_lldp, "<intfc> | sw_if_index <nn> [port-desc <description>]\n" \
-  " [mgmt-ip4 <ip4>] [mgmt-ip6 <ip6>] [mgmt-oid <object id>] [disable]") \
 _(tcp_configure_src_addresses, "<ip4|6>first-<ip4|6>last [vrf <id>]")	\
 _(sock_init_shm, "size <nnn>")						\
 _(app_namespace_add_del, "[add] id <ns-id> secret <nn> sw_if_index <nn>")\
