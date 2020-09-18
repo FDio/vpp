@@ -22,33 +22,24 @@
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
-#include <vnet/lldp/lldp.h>
+#include <lldp/lldp.h>
 
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip_types_api.h>
 
-#include <vnet/vnet_msg_enum.h>
+/* define message IDs */
+#include <vnet/format_fns.h>
+#include <lldp/lldp.api_enum.h>
+#include <lldp/lldp.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
+/**
+ * Base message ID fot the plugin
+ */
+static u32 lldp_base_msg_id;
+#define REPLY_MSG_ID_BASE lldp_base_msg_id
 
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_vpe_api_msg                             \
-_(LLDP_CONFIG, lldp_config)                             \
-_(SW_INTERFACE_SET_LLDP, sw_interface_set_lldp)
 
 static void
 vl_api_lldp_config_t_handler (vl_api_lldp_config_t * mp)
@@ -133,42 +124,31 @@ vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
  *     * added the client registration handlers.
  *      * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  *       */
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_lldp;
-#undef _
-}
+#include <lldp/lldp.api.c>
 
 static clib_error_t *
 lldp_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
-
   /*
-   *    * Set up the (msg_name, crc, message-id) table
-   *       */
-  setup_message_id_table (am);
+   * Set up the (msg_name, crc, message-id) table
+   */
+  lldp_base_msg_id = setup_message_id_table ();
 
   return 0;
 }
 
 VLIB_API_INIT_FUNCTION (lldp_api_hookup);
+
+#include <vlib/unix/plugin.h>
+#include <vpp/app/version.h>
+
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+    .description = "Link Layer Discovery Protocol (LLDP)",
+};
+/* *INDENT-ON* */
+
 
 /*
  * fd.io coding-style-patch-verification: ON

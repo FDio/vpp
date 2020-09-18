@@ -19,9 +19,9 @@
  *
  */
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/lisp-cp/lisp_types.h>
-#include <vnet/lldp/lldp.h>
-#include <vnet/lldp/lldp_node.h>
+#include <vnet/ip/ip.h>
+#include <lldp/lldp.h>
+#include <lldp/lldp_node.h>
 
 #ifndef ETHER_ADDR_LEN
 #include <net/ethernet.h>

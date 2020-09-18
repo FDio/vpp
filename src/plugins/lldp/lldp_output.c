@@ -16,7 +16,7 @@
  * @file
  * @brief LLDP packet generation implementation
  */
-#include <vnet/lldp/lldp_node.h>
+#include <lldp/lldp_node.h>
 
 static void
 lldp_build_mgmt_addr_tlv (u8 ** t0p, u8 subtype, u8 addr_len, u8 * addr,

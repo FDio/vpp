@@ -16,8 +16,8 @@
  * @file
  * @brief LLDP packet parsing implementation
  */
-#include <vnet/lldp/lldp_node.h>
-#include <vnet/lldp/lldp_protocol.h>
+#include <lldp/lldp_node.h>
+#include <lldp/lldp_protocol.h>
 #include <vlibmemory/api.h>
 
 typedef struct
