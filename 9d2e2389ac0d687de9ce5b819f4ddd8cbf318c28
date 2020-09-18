@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "36123ad3_3c84f03b",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 879,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-18T04:48:08Z",
+      "side": 1,
+      "message": "I suspect the segment manager pool gets reallocated (because a new listener is added, and each listener has a segment manager) so sm becomes a dangling reference. That\u0027s why we need to re-grab sm. Could you update the comment?",
+      "range": {
+        "startLine": 879,
+        "startChar": 0,
+        "endLine": 879,
+        "endChar": 84
+      },
+      "revId": "9d2e2389ac0d687de9ce5b819f4ddd8cbf318c28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f099d9c7_dcdcf10b",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 881,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-18T04:48:08Z",
+      "side": 1,
+      "message": "On the other hand, fs should still be fine since the segment manager\u0027s pool did not change. Could you retry without this line?",
+      "range": {
+        "startLine": 881,
+        "startChar": 0,
+        "endLine": 881,
+        "endChar": 47
+      },
+      "revId": "9d2e2389ac0d687de9ce5b819f4ddd8cbf318c28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
