@@ -19,7 +19,10 @@
 #include <vppinfra/lock.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/elf_clib.h>
+#include <vppinfra/pool.h>
 #include <vppinfra/sanitizer.h>
+
+__thread void *__clib_mem_active_heap_mspace = 0;
 
 typedef struct
 {
@@ -142,6 +145,11 @@ mheap_get_trace (uword offset, uword size)
 }
 
 void
+clib_mem_alloc_trace (void *p)
+{
+}
+
+void
 mheap_put_trace (uword offset, uword size)
 {
   mheap_trace_t *t;
@@ -200,14 +208,16 @@ static void *
 clib_mem_init_internal (void *memory, uword memory_size,
 			clib_mem_page_sz_t log2_page_sz, int set_heap)
 {
-  u8 *heap;
+  clib_mem_main_t *mm = &clib_mem_main;
+  clib_mem_heap_t *h = 0, **hp;
+  void *mspace;
 
   clib_mem_main_init ();
 
   if (memory)
     {
-      heap = create_mspace_with_base (memory, memory_size, 1 /* locked */ );
-      mspace_disable_expand (heap);
+      mspace = create_mspace_with_base (memory, memory_size, 1 /* locked */ );
+      mspace_disable_expand (mspace);
     }
   else
     {
@@ -219,19 +229,32 @@ clib_mem_init_internal (void *memory, uword memory_size,
       if (memory == CLIB_MEM_VM_MAP_FAILED)
 	return 0;
 
-      heap = create_mspace_with_base (memory, memory_size, 1 /* locked */ );
-      mspace_disable_expand (heap);
+      mspace = create_mspace_with_base (memory, memory_size, 1 /* locked */ );
+      mspace_disable_expand (mspace);
     }
 
-  CLIB_MEM_POISON (mspace_least_addr (heap), mspace_footprint (heap));
+  CLIB_MEM_POISON (mspace_least_addr (mspace), mspace_footprint (mspace));
 
-  if (set_heap)
-    clib_mem_set_heap (heap);
+  ASSERT (mm->heaps == 0);
+  __clib_mem_active_heap_mspace = mspace;
+  h = clib_mem_alloc_aligned (sizeof (clib_mem_heap_t),
+			      CLIB_CACHE_LINE_BYTES);
+  pool_get (mm->heaps, hp);
+  hp[0] = h;
+  h->heap_index = hp - mm->heaps;
+  h->mspace = mspace;
+  h->base = memory;
+  h->size = memory_size;
+  h->name = format (0, "main heap");
+  h->cookie = CLIB_MEM_HEAP_COOKIE;
 
-  if (mheap_trace_main.lock == 0)
-    clib_spinlock_init (&mheap_trace_main.lock);
+  clib_mem_set_heap (h);
 
-  return heap;
+  ASSERT (h->heap_index == 0);
+
+  clib_spinlock_init (&mheap_trace_main.lock);
+
+  return h;
 }
 
 void *
@@ -259,28 +282,34 @@ clib_mem_init_thread_safe (void *memory, uword memory_size)
 }
 
 void
-clib_mem_destroy_mspace (void *mspace)
+clib_mem_destroy_heap (void *heap)
 {
-  mheap_trace_main_t *tm = &mheap_trace_main;
-
-  if (tm->enabled && mspace == tm->current_traced_mheap)
-    tm->enabled = 0;
-
-  destroy_mspace (mspace);
+  clib_mem_main_t *mm = &clib_mem_main;
+  clib_mem_heap_t *h = heap;
+  destroy_mspace (h->mspace);
+  pool_put_index (mm->heaps, h->heap_index);
+  clib_mem_free (h);
 }
+
 
 void
 clib_mem_destroy (void)
 {
-  void *heap = clib_mem_get_heap ();
-  void *base = mspace_least_addr (heap);
-  clib_mem_destroy_mspace (clib_mem_get_heap ());
-  clib_mem_vm_unmap (base);
+  clib_mem_heap_t *h = clib_mem_get_heap ();
+  mheap_trace_main_t *tm = &mheap_trace_main;
+
+  if (tm->enabled && h->mspace == tm->current_traced_mheap)
+    tm->enabled = 0;
+
+  destroy_mspace (h->mspace);
+  clib_mem_vm_unmap (h->base);
+  clib_mem_main.heaps = 0;
 }
 
 void *
 clib_mem_init_thread_safe_numa (void *memory, uword memory_size, u8 numa)
 {
+#ifdef FIXME
   clib_mem_vm_alloc_t alloc = { 0 };
   clib_error_t *err;
   void *heap;
@@ -301,6 +330,8 @@ clib_mem_init_thread_safe_numa (void *memory, uword memory_size, u8 numa)
   ASSERT (heap);
 
   return heap;
+#endif
+  return 0;
 }
 
 u8 *
@@ -426,16 +457,22 @@ format_mheap_trace (u8 * s, va_list * va)
 
 
 u8 *
-format_mheap (u8 * s, va_list * va)
+format_clib_mem_heap (u8 * s, va_list * va)
 {
-  void *heap = va_arg (*va, u8 *);
+  clib_mem_heap_t *h = va_arg (*va, clib_mem_heap_t *);
   int verbose = va_arg (*va, int);
   struct dlmallinfo mi;
   mheap_trace_main_t *tm = &mheap_trace_main;
 
-  mi = mspace_mallinfo (heap);
+  if (h == 0)
+    h = clib_mem_get_heap ();
 
-  s = format (s, "total: %U, used: %U, free: %U, trimmable: %U",
+  mi = mspace_mallinfo (h->mspace);
+
+  s = format (s, "index %u, base %p, size %U, name '%v'",
+	      h->heap_index, h->base, format_memory_size, h->size, h->name);
+
+  s = format (s, "\n  total: %U, used: %U, free: %U, trimmable: %U",
 	      format_msize, mi.arena,
 	      format_msize, mi.uordblks,
 	      format_msize, mi.fordblks, format_msize, mi.keepcost);
@@ -447,21 +484,16 @@ format_mheap (u8 * s, va_list * va)
 	format (s, "\n    max total allocated %U", format_msize, mi.usmblks);
     }
 
-  if (mspace_is_traced (heap))
+  if (mspace_is_traced (h->mspace))
     s = format (s, "\n%U", format_mheap_trace, tm, verbose);
   return s;
 }
 
 void
-clib_mem_usage (clib_mem_usage_t * u)
+clib_mem_get_heap_usage (void *heap, clib_mem_usage_t * usage)
 {
-  clib_warning ("unimp");
-}
-
-void
-mheap_usage (void *heap, clib_mem_usage_t * usage)
-{
-  struct dlmallinfo mi = mspace_mallinfo (heap);
+  clib_mem_heap_t *h = heap;
+  struct dlmallinfo mi = mspace_mallinfo (h->mspace);
 
   /* TODO: Fill in some more values */
   usage->object_count = 0;
@@ -477,15 +509,10 @@ mheap_usage (void *heap, clib_mem_usage_t * usage)
 uword clib_mem_validate_serial = 0;
 
 void
-clib_mem_validate (void)
+clib_mem_set_heap_trace (void *v, int enable)
 {
-  clib_warning ("unimp");
-}
-
-void
-mheap_trace (void *v, int enable)
-{
-  (void) mspace_enable_disable_trace (v, enable);
+  clib_mem_heap_t *h = v;
+  (void) mspace_enable_disable_trace (h->mspace, enable);
 
   if (enable == 0)
     mheap_trace_main_free (&mheap_trace_main);
@@ -495,13 +522,13 @@ void
 clib_mem_trace (int enable)
 {
   mheap_trace_main_t *tm = &mheap_trace_main;
-  void *current_heap = clib_mem_get_heap ();
+  clib_mem_heap_t *h = clib_mem_get_heap ();
 
   tm->enabled = enable;
-  mheap_trace (current_heap, enable);
+  clib_mem_set_heap_trace (h, enable);
 
   if (enable)
-    tm->current_traced_mheap = current_heap;
+    tm->current_traced_mheap = h;
   else
     tm->current_traced_mheap = 0;
 }
@@ -509,7 +536,8 @@ clib_mem_trace (int enable)
 int
 clib_mem_is_traced (void)
 {
-  return mspace_is_traced (clib_mem_get_heap ());
+  clib_mem_heap_t *h = clib_mem_get_heap ();
+  return mspace_is_traced (h->mspace);
 }
 
 uword
@@ -523,37 +551,57 @@ clib_mem_trace_enable_disable (uword enable)
   return rv;
 }
 
-/*
- * These API functions seem like layering violations, but
- * by introducing them we greatly reduce the number
- * of code changes required to use dlmalloc spaces
- */
 void *
-mheap_alloc_with_lock (void *memory, uword size, int locked)
+clib_mem_create_heap (void *base, uword size, int is_locked, char *fmt, ...)
 {
-  void *rv;
-  if (memory == 0)
-    return create_mspace (size, locked);
-  else
-    {
-      rv = create_mspace_with_base (memory, size, locked);
-      if (rv)
-	mspace_disable_expand (rv);
-      return rv;
-    }
-}
+  clib_mem_main_t *mm = &clib_mem_main;
+  clib_mem_heap_t *h, **hp;
+  void *oldheap;
+  va_list va;
+  u8 *s;
 
-void *
-clib_mem_create_heap (void *base, uword size, char *fmt, ...)
-{
-  base = clib_mem_vm_map_internal (base, CLIB_MEM_PAGE_SZ_DEFAULT, size, -1,
-				   0, "str");
+  va_start (va, fmt);
+  s = va_format (0, fmt, &va);
+  va_end (va);
 
   if (base == 0)
-    return 0;
+    base = clib_mem_vm_map (0, size, CLIB_MEM_PAGE_SZ_DEFAULT, "heap: %v", s);
 
-  create_mspace_with_base (base, size, 1 /* locked */ );
-  return base;
+  if (base == 0)
+    {
+      vec_free (s);
+      return 0;
+    }
+
+  /* always use main heap */
+  oldheap = clib_mem_set_heap (mm->heaps[0]);
+  h = clib_mem_alloc_aligned (sizeof (clib_mem_heap_t),
+			      CLIB_CACHE_LINE_BYTES);
+  clib_memset (h, 0, sizeof (clib_mem_heap_t));
+
+  h->mspace = create_mspace_with_base (base, size, is_locked);
+  mspace_disable_expand (h->mspace);
+
+  pool_get (mm->heaps, hp);
+  hp[0] = h;
+  h->heap_index = hp - mm->heaps;
+  h->base = base;
+  h->size = size;
+  h->name = s;
+  h->cookie = CLIB_MEM_HEAP_COOKIE;
+
+  clib_mem_set_heap (oldheap);
+  return h;
+}
+
+uword
+clib_mem_get_heap_free_space (void *heap)
+{
+  clib_mem_heap_t *h = heap;
+  struct dlmallinfo dlminfo;
+
+  dlminfo = mspace_mallinfo (h->mspace);
+  return dlminfo.fordblks;
 }
 
 /*

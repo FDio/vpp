@@ -1,0 +1,26 @@
+#/bin/env bash
+
+echo "\nCPU"
+lscpu
+
+echo "\nKernel:"
+uname -a
+cat /proc/cmdline
+
+echo "\nOS:"
+cat /etc/os-release
+
+echo "\nHugepages:"
+(echo "PageSz Entry Value" ;\
+ grep . /sys/kernel/mm/hugepages/hugepages-*/* | sed \
+       -e 's/.*hugepages-//' \
+       -e 's/\// /' \
+       -e 's/:/ /' ) | column -t
+
+echo "\nHugepages per numa:"
+(echo "Numa PageSz Entry Value"; \
+ grep . /sys/devices/system/node/node*/hugepages/hugepages-*/* | sed \
+       -e 's/.*node//' \
+       -e 's/.hugepages.hugepages-/ /g' \
+       -e 's/\// /' \
+       -e 's/:/ /') | column -t
