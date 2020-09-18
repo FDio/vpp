@@ -1694,6 +1694,10 @@ session_manager_main_enable (vlib_main_t * vm)
       wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
       vec_validate (wrk->session_to_enqueue, smm->last_transport_proto_type);
 
+      tw_timer_wheel_init_1t_3w_1024sl_ov (&wrk->tw,
+					   session_expired_old_dispatch,
+					   1e-6, ~0);
+      wrk->tw.last_run_time = wrk->last_vlib_time;
       if (num_threads > 1)
 	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
     }

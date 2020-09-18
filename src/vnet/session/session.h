@@ -69,6 +69,8 @@ typedef struct session_ctrl_evt_data_
   u8 data[SESSION_CTRL_MSG_MAX_SIZE];
 } session_evt_ctrl_data_t;
 
+typedef tw_timer_wheel_1t_3w_1024sl_ov_t session_tw_t;
+
 typedef struct session_worker_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -120,6 +122,9 @@ typedef struct session_worker_
 
   /** Vector of nexts for the pending tx buffers */
   u16 *pending_tx_nexts;
+
+  /** Old list timer wheel */
+  session_tw_t tw;
 
 #if SESSION_DEBUG
   /** last event poll time by thread */
@@ -237,6 +242,23 @@ session_evt_add_old (session_worker_t * wrk, session_evt_elt_t * elt)
 }
 
 static inline void
+session_evt_program_old (session_worker_t * wrk, session_evt_elt_t * elt)
+{
+  f64 min_time;
+  u32 interval;
+
+  if (transport_connection_is_tx_paced (wrk->ctx.tc))
+    min_time =
+      (f64) TRANSPORT_PACER_MIN_MSS / wrk->ctx.tc->pacer.bytes_per_sec;
+  else
+    min_time = 1e-6;
+
+  interval = clib_max (min_time * 1e6, 1);
+  tw_timer_start_1t_3w_1024sl_ov (&wrk->tw, elt->evt.session_index, 0,
+				  interval);
+}
+
+static inline void
 session_evt_add_head_old (session_worker_t * wrk, session_evt_elt_t * elt)
 {
   clib_llist_add (wrk->event_elts, evt_list, elt,
@@ -295,6 +317,8 @@ session_evt_alloc_old (session_worker_t * wrk)
 		       pool_elt_at_index (wrk->event_elts, wrk->old_head));
   return elt;
 }
+
+void session_expired_old_dispatch (u32 * expired_timers);
 
 session_t *session_alloc (u32 thread_index);
 void session_free (session_t * s);
