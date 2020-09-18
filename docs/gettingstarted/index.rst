@@ -11,7 +11,7 @@ code that provides tools that are used in a development environment.
 
 This section covers the following:
 
-* Describes how to manually install VPP Binaries on different OS platforms (Ubuntu, Centos, openSUSE) and then how to configure and use VPP.
+* Describes how to manually install VPP Binaries on different OS platforms (Ubuntu, Centos) and then how to configure and use VPP.
 * Describes the different types of VPP packages, which are used in both basic and developer installs.
 * A VPP tutorial which is a great way to learn VPP basics.
 
