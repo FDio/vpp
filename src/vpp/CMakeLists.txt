@@ -124,5 +124,13 @@ add_vpp_executable(vpp_prometheus_export
   DEPENDS api_headers
 )
 
+##############################################################################
+# vppmem_preload library
+##############################################################################
+add_vpp_library(vppmem_preload
+  SOURCES mem/mem.c
+  LINK_LIBRARIES vppinfra
+)
+
 install(FILES conf/startup.conf DESTINATION etc/vpp COMPONENT vpp)
 install(FILES conf/80-vpp.conf DESTINATION etc/sysctl.d COMPONENT vpp)
