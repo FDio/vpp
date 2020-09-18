@@ -16,6 +16,24 @@
       "revId": "d0365d7b4c4b63a6bddaba6273d8060230371a9f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "005e79c6_e309c80d",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1008,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-09-18T13:11:31Z",
+      "side": 1,
+      "message": "Hi Mohsin,\n\nvnet_netlink_set_link_state() toggles the \"admin state\" (IFF_UP flag) of a kernel tap interface. This new function tap_set_carrier() is intended to change the link/carrier state instead. Admin state changes and link/carrier state changes are handled differently by the kernel. When an interface\u0027s admin state is brought down, it causes the kernel to delete any routes or neighbors which had been resolved to the interface. When a link state change occurs, the routes and neighbors for the interface are not deleted.\n\nJust to provide some background on why this distinction matters and why I submitted the change... I am using a version of Neale\u0027s linux-cp plugin (https://gerrit.fd.io/r/c/vpp/+/23597). The plugin associates a host tap interface to a VPP hardware interface and keeps configurations on the host tap interface synchronized with the configuration of the corresponding hardware interface. My updated version of this plugin has a callback that is invoked when the link state changes on a VPP hardware interface. The callback calls tap_set_carrier() to propagate the link state change to the host tap interface. This is intended to allow applications to detect if a tap interface\u0027s state is impaired and adjust accordingly (e.g. FRR can update it\u0027s RIB and select a route path through a different interface) while leaving the tap interface\u0027s admin state in whatever state the user (or control plane on behalf of a user) put it in. Using link/carrier state for this instead of admin state prevents side effects due to the kernel automatically removing configurations when admin state is brought down.\n\nThanks for your review!\n-Matt",
+      "parentUuid": "54a716c2_adbb2e91",
+      "revId": "d0365d7b4c4b63a6bddaba6273d8060230371a9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
