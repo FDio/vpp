@@ -322,29 +322,6 @@ list(APPEND VNET_MULTIARCH_SOURCES vxlan/decap.c)
 list(APPEND VNET_API_FILES vxlan/vxlan.api)
 
 ##############################################################################
-# Layer 2 / Geneve
-##############################################################################
-list(APPEND VNET_SOURCES
-  geneve/geneve.c
-  geneve/encap.c
-  geneve/decap.c
-  geneve/geneve_api.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  geneve/encap.c
-  geneve/decap.c
-)
-
-list(APPEND VNET_HEADERS
-  geneve/geneve.h
-  geneve/geneve_packet.h
-  geneve/geneve_error.def
-)
-
-list(APPEND VNET_API_FILES geneve/geneve.api)
-
-##############################################################################
 # Layer 2 / Bonding
 ##############################################################################
 list(APPEND VNET_SOURCES

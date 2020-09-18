@@ -18,13 +18,15 @@
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
 #include <vnet/vnet.h>
+
+#include <geneve/geneve_packet.h>
+
 #include <vnet/ip/ip.h>
 #include <vnet/ip/vtep.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_output.h>
 #include <vnet/l2/l2_bd.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/geneve/geneve_packet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/udp/udp.h>
@@ -154,7 +156,7 @@ typedef enum
 typedef enum
 {
 #define geneve_error(n,s) GENEVE_ERROR_##n,
-#include <vnet/geneve/geneve_error.def>
+#include <geneve/geneve_error.def>
 #undef geneve_error
   GENEVE_N_ERROR,
 } geneve_input_error_t;

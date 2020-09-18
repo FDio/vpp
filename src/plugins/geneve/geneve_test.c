@@ -1,7 +1,4 @@
 /*
- *------------------------------------------------------------------
- * geneve_test.c
- *
  * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +11,22 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *------------------------------------------------------------------
  */
- 
+
 #include <vat/vat.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vnet/format_fns.h>
+#include <vppinfra/error.h>
+
 #include <vnet/ip/ip.h>
-#include <vpp/api/types.h>
-#include <vnet/geneve/geneve.h>
+#include <vnet/ip/ip_types_api.h>
+#include <geneve/geneve.h>
+
+/* define message IDs */
+#include <vnet/format_fns.h>
+#include <geneve/geneve.api_enum.h>
+#include <geneve/geneve.api_types.h>
+#include <vpp/api/vpe.api_types.h>
 
 typedef struct
 {
@@ -35,21 +38,36 @@ typedef struct
 
 geneve_test_main_t geneve_test_main;
 
-/* Declare message IDs */
-#include <vnet/geneve/geneve.api_enum.h>
-#include <vnet/geneve/geneve.api_types.h>
-#include <vpp/api/vpe.api_types.h>
-
 #define __plugin_msg_base geneve_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
+
+/* Macro to finish up custom dump fns */
+#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
+#define FINISH                                  \
+    vec_add1 (s, 0);                            \
+    vl_print (handle, (char *)s);               \
+    vec_free (s);                               \
+    return handle;
+
+static void vl_api_geneve_add_del_tunnel_reply_t_handler
+  (vl_api_geneve_add_del_tunnel_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->sw_if_index = ntohl (mp->sw_if_index);
+      vam->result_ready = 1;
+    }
+}
 
 static void vl_api_geneve_add_del_tunnel2_reply_t_handler
   (vl_api_geneve_add_del_tunnel2_reply_t * mp)
-{
-}
-static void vl_api_geneve_add_del_tunnel_reply_t_handler
-  (vl_api_geneve_add_del_tunnel_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   i32 retval = ntohl (mp->retval);
@@ -115,6 +133,7 @@ api_sw_interface_set_geneve_bypass (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
 static uword unformat_geneve_decap_next
   (unformat_input_t * input, va_list * args)
 {
@@ -128,12 +147,6 @@ static uword unformat_geneve_decap_next
   else
     return 0;
   return 1;
-}
-
-static int
-api_geneve_add_del_tunnel2 (vat_main_t * vam)
-{
-  return 0; // NOT YET IMPLEMENTED
 }
 
 static int
@@ -291,6 +304,12 @@ api_geneve_add_del_tunnel (vat_main_t * vam)
   return ret;
 }
 
+static int
+api_geneve_add_del_tunnel2 (vat_main_t * vam)
+{
+  return api_geneve_add_del_tunnel (vam);
+}
+
 static void vl_api_geneve_tunnel_details_t_handler
   (vl_api_geneve_tunnel_details_t * mp)
 {
@@ -327,7 +346,6 @@ api_geneve_tunnel_dump (vat_main_t * vam)
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   int ret;
-  geneve_test_main_t *gm = &geneve_test_main;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -358,17 +376,37 @@ api_geneve_tunnel_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  if (!gm->ping_id)
-    gm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
+  if (!geneve_test_main.ping_id)
+    geneve_test_main.ping_id =
+      vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
   mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));
-  mp_ping->_vl_msg_id = htons (gm->ping_id);
+  mp_ping->_vl_msg_id = htons (geneve_test_main.ping_id);
   mp_ping->client_index = vam->my_client_index;
+
+  fformat (vam->ofp, "Sending ping id=%d\n", geneve_test_main.ping_id);
+
+  vam->result_ready = 0;
   S (mp_ping);
 
   W (ret);
   return ret;
 }
 
-#include <vnet/geneve/geneve.api_test.c>
-VAT_REGISTER_FEATURE_FUNCTION(vat_geneve_plugin_register);
+/* _(sw_interface_set_geneve_bypass,                                        */
+/*   "<intfc> | sw_if_index <id> [ip4 | ip6] [enable | disable]")           */
+/* _(geneve_add_del_tunnel,                                                 */
+/*   "src <ip-addr> { dst <ip-addr> | group <mcast-ip-addr>\n"              */
+/*   "{ <intfc> | mcast_sw_if_index <nn> } }\n"                             */
+/*   "vni <vni> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]")            */
+/* _(geneve_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    */
 
+
+#include <geneve/geneve.api_test.c>
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
