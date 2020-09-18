@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "36f46272_4af5602a",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 950,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-09-18T13:53:06Z",
+      "side": 1,
+      "message": "Hi Vladimir,\n\nIt seems like the cast to const char * was probably there so the compiler would not complain about the type of the argument being passed to strlen(). Does this still serve any purpose if we switch to use vec_len()?\n\nThanks,\n-Matt",
+      "range": {
+        "startLine": 950,
+        "startChar": 30,
+        "endLine": 950,
+        "endChar": 44
+      },
+      "revId": "920d756905698858b0d1cc9828230db8e4ff5b01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
