@@ -946,8 +946,7 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
     tapid->sw_if_index = vif->sw_if_index;
     hi = vnet_get_hw_interface (vnm, vif->hw_if_index);
     clib_memcpy(tapid->dev_name, hi->name,
-                MIN (ARRAY_LEN (tapid->dev_name) - 1,
-                     strlen ((const char *) hi->name)));
+                MIN (ARRAY_LEN (tapid->dev_name) - 1, vec_len (hi->name)));
     vring = vec_elt_at_index (vif->rxq_vrings, RX_QUEUE_ACCESS(0));
     tapid->rx_ring_sz = vring->size;
     vring = vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS(0));
