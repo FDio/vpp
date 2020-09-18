@@ -298,16 +298,20 @@ vnet_classify_prefetch_bucket (vnet_classify_table_t * t, u64 hash)
 static inline vnet_classify_entry_t *
 vnet_classify_get_entry (vnet_classify_table_t * t, uword offset)
 {
+#ifdef FIXME
   u8 *hp = t->mheap;
   u8 *vp = hp + offset;
-
   return (void *) vp;
+#else
+  return 0;
+#endif
 }
 
 static inline uword
 vnet_classify_get_offset (vnet_classify_table_t * t,
 			  vnet_classify_entry_t * v)
 {
+#ifdef FIXME
   u8 *hp, *vp;
 
   hp = (u8 *) t->mheap;
@@ -315,6 +319,9 @@ vnet_classify_get_offset (vnet_classify_table_t * t,
 
   ASSERT ((vp - hp) < 0x100000000ULL);
   return vp - hp;
+#else
+  return 0;
+#endif
 }
 
 static inline vnet_classify_entry_t *

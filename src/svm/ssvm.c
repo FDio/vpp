@@ -102,10 +102,9 @@ ssvm_master_init_shm (ssvm_private_t * ssvm)
   sh->ssvm_size = ssvm->ssvm_size;
   sh->ssvm_va = pointer_to_uword (sh);
   sh->type = SSVM_SEGMENT_SHM;
-  sh->heap = create_mspace_with_base (((u8 *) sh) + page_size,
-				      ssvm->ssvm_size - page_size,
-				      1 /* locked */ );
-  mspace_disable_expand (sh->heap);
+  sh->heap = clib_mem_create_heap (((u8 *) sh) + page_size,
+				   ssvm->ssvm_size - page_size,
+				   1 /* locked */ , "ssvm master shm");
 
   oldheap = ssvm_push_heap (sh);
   sh->name = format (0, "%s", ssvm->name, 0);
@@ -254,10 +253,9 @@ ssvm_master_init_memfd (ssvm_private_t * memfd)
   sh->ssvm_va = pointer_to_uword (sh);
   sh->type = SSVM_SEGMENT_MEMFD;
 
-  sh->heap = create_mspace_with_base (((u8 *) sh) + page_size,
-				      memfd->ssvm_size - page_size,
-				      1 /* locked */ );
-  mspace_disable_expand (sh->heap);
+  sh->heap = clib_mem_create_heap (((u8 *) sh) + page_size,
+				   memfd->ssvm_size - page_size,
+				   1 /* locked */ , "ssvm master memfd");
   oldheap = ssvm_push_heap (sh);
   sh->name = format (0, "%s", memfd->name, 0);
   ssvm_pop_heap (oldheap);
@@ -363,15 +361,13 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
       return SSVM_API_ERROR_CREATE_FAILURE;
     }
 
-  heap = create_mspace_with_base ((u8 *) alloc.addr + pagesize, rnd_size,
-				  1 /* locked */ );
+  heap = clib_mem_create_heap ((u8 *) alloc.addr + pagesize, rnd_size,
+			       1 /* locked */ , "ssvm master private");
   if (heap == 0)
     {
       clib_unix_warning ("mheap alloc");
       return -1;
     }
-
-  mspace_disable_expand (heap);
 
   /* Find actual size because mspace size is rounded up by dlmalloc */
   dlminfo = mspace_mallinfo (heap);
@@ -387,7 +383,9 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
   ssvm->sh = sh;
 
   clib_memset (sh, 0, sizeof (*sh));
+#ifdef FIXME
   sh->heap = heap;
+#endif
   sh->ssvm_size = rnd_size;
   sh->ssvm_va = pointer_to_uword (heap);
   sh->type = SSVM_SEGMENT_PRIVATE;
@@ -407,7 +405,9 @@ void
 ssvm_delete_private (ssvm_private_t * ssvm)
 {
   vec_free (ssvm->name);
+#ifdef FIXME
   destroy_mspace (ssvm->sh->heap);
+#endif
   clib_mem_vm_free (ssvm->sh, ssvm->ssvm_size + clib_mem_get_page_size ());
 }
 

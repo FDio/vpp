@@ -93,6 +93,7 @@ vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 void
 vlib_free_simple_counter (vlib_simple_counter_main_t * cm)
 {
+#ifdef FIXME
   int i;
 
   vlib_stats_delete_cm (cm);
@@ -102,6 +103,7 @@ vlib_free_simple_counter (vlib_simple_counter_main_t * cm)
     vec_free (cm->counters[i]);
   vec_free (cm->counters);
   clib_mem_set_heap (oldheap);
+#endif
 }
 
 void
@@ -160,6 +162,7 @@ int
 void
 vlib_free_combined_counter (vlib_combined_counter_main_t * cm)
 {
+#ifdef FIXME
   int i;
 
   vlib_stats_delete_cm (cm);
@@ -169,6 +172,7 @@ vlib_free_combined_counter (vlib_combined_counter_main_t * cm)
     vec_free (cm->counters[i]);
   vec_free (cm->counters);
   clib_mem_set_heap (oldheap);
+#endif
 }
 
 u32

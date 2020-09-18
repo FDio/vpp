@@ -19,7 +19,10 @@
 #include <vppinfra/lock.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/elf_clib.h>
+#include <vppinfra/pool.h>
 #include <vppinfra/sanitizer.h>
+
+__thread void *__clib_mem_heap_active_mspace = 0;
 
 typedef struct
 {
@@ -200,14 +203,16 @@ static void *
 clib_mem_init_internal (void *memory, uword memory_size,
 			clib_mem_page_sz_t log2_page_sz, int set_heap)
 {
-  u8 *heap;
+  clib_mem_main_t *mm = &clib_mem_main;
+  clib_mem_heap_t *h = 0;
+  void *mspace;
 
   clib_mem_main_init ();
 
   if (memory)
     {
-      heap = create_mspace_with_base (memory, memory_size, 1 /* locked */ );
-      mspace_disable_expand (heap);
+      mspace = create_mspace_with_base (memory, memory_size, 1 /* locked */ );
+      mspace_disable_expand (mspace);
     }
   else
     {
@@ -219,19 +224,27 @@ clib_mem_init_internal (void *memory, uword memory_size,
       if (memory == CLIB_MEM_VM_MAP_FAILED)
 	return 0;
 
-      heap = create_mspace_with_base (memory, memory_size, 1 /* locked */ );
-      mspace_disable_expand (heap);
+      mspace = create_mspace_with_base (memory, memory_size, 1 /* locked */ );
+      mspace_disable_expand (mspace);
     }
 
-  CLIB_MEM_POISON (mspace_least_addr (heap), mspace_footprint (heap));
+  CLIB_MEM_POISON (mspace_least_addr (mspace), mspace_footprint (mspace));
 
-  if (set_heap)
-    clib_mem_set_heap (heap);
+  ASSERT (mm->heaps == 0);
+  __clib_mem_heap_active_mspace = mspace;
+  h = clib_mem_alloc_aligned (sizeof (clib_mem_heap_t),
+			      CLIB_CACHE_LINE_BYTES);
+  h->mspace = mspace;
+  h->base = memory;
+  h->size = memory_size;
+  h->name = format (0, "main heap");
+
+  clib_mem_set_heap (h);
 
   if (mheap_trace_main.lock == 0)
     clib_spinlock_init (&mheap_trace_main.lock);
 
-  return heap;
+  return h;
 }
 
 void *
@@ -261,10 +274,12 @@ clib_mem_init_thread_safe (void *memory, uword memory_size)
 void
 clib_mem_destroy_mspace (void *mspace)
 {
+#ifdef FIXME
   mheap_trace_main_t *tm = &mheap_trace_main;
 
   if (tm->enabled && mspace == tm->current_traced_mheap)
     tm->enabled = 0;
+#endif
 
   destroy_mspace (mspace);
 }
@@ -272,15 +287,16 @@ clib_mem_destroy_mspace (void *mspace)
 void
 clib_mem_destroy (void)
 {
-  void *heap = clib_mem_get_heap ();
-  void *base = mspace_least_addr (heap);
-  clib_mem_destroy_mspace (clib_mem_get_heap ());
-  clib_mem_vm_unmap (base);
+  clib_mem_heap_t *h = clib_mem_get_heap ();
+  clib_mem_destroy_mspace (h->mspace);
+  clib_mem_vm_unmap (h->base);
+  clib_mem_main.heaps = 0;
 }
 
 void *
 clib_mem_init_thread_safe_numa (void *memory, uword memory_size, u8 numa)
 {
+#ifdef FIXME
   clib_mem_vm_alloc_t alloc = { 0 };
   clib_error_t *err;
   void *heap;
@@ -301,6 +317,8 @@ clib_mem_init_thread_safe_numa (void *memory, uword memory_size, u8 numa)
   ASSERT (heap);
 
   return heap;
+#endif
+  return 0;
 }
 
 u8 *
@@ -494,8 +512,9 @@ mheap_trace (void *v, int enable)
 void
 clib_mem_trace (int enable)
 {
+#if FIXME
   mheap_trace_main_t *tm = &mheap_trace_main;
-  void *current_heap = clib_mem_get_heap ();
+  u32 current_heap = clib_mem_get_heap ();
 
   tm->enabled = enable;
   mheap_trace (current_heap, enable);
@@ -504,12 +523,16 @@ clib_mem_trace (int enable)
     tm->current_traced_mheap = current_heap;
   else
     tm->current_traced_mheap = 0;
+#endif
 }
 
 int
 clib_mem_is_traced (void)
 {
+#if FIXME
   return mspace_is_traced (clib_mem_get_heap ());
+#endif
+  return 0;
 }
 
 uword
@@ -544,16 +567,34 @@ mheap_alloc_with_lock (void *memory, uword size, int locked)
 }
 
 void *
-clib_mem_create_heap (void *base, uword size, char *fmt, ...)
+clib_mem_create_heap (void *base, uword size, int is_locked, char *fmt, ...)
 {
-  base = clib_mem_vm_map_internal (base, CLIB_MEM_PAGE_SZ_DEFAULT, size, -1,
-				   0, "str");
+  clib_mem_heap_t *h;
+
+  if (base == 0)
+    base = clib_mem_vm_map_internal (base, CLIB_MEM_PAGE_SZ_DEFAULT, size, -1,
+				     0, "str");
 
   if (base == 0)
     return 0;
 
-  create_mspace_with_base (base, size, 1 /* locked */ );
-  return base;
+  h = clib_mem_alloc_aligned (sizeof (clib_mem_heap_t),
+			      CLIB_CACHE_LINE_BYTES);
+
+  h->mspace = create_mspace_with_base (base, size, is_locked);
+  h->base = base;
+  h->size = size;
+  mspace_disable_expand (h->mspace);
+  return h;
+}
+
+void
+clib_mem_destroy_heap (void *heap)
+{
+  clib_mem_main_t *mm = &clib_mem_main;
+  clib_mem_heap_t *h = heap;
+  clib_mem_destroy_mspace (h->mspace);
+  pool_put (mm->heaps, h);
 }
 
 /*
