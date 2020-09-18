@@ -20,21 +20,28 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 #include <vnet/feature/feature.h>
-#include <vnet/geneve/geneve.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/ip/ip_types_api.h>
 
-#include <vnet/geneve/geneve.api_enum.h>
-#include <vnet/geneve/geneve.api_types.h>
+#include <geneve/geneve.h>
 
-#define REPLY_MSG_ID_BASE gm->msg_id_base
+/* define message IDs */
+#include <vnet/format_fns.h>
+#include <geneve/geneve.api_enum.h>
+#include <geneve/geneve.api_types.h>
+
+/**
+ * Base message ID fot the plugin
+ */
+static u32 geneve_base_msg_id;
+#define REPLY_MSG_ID_BASE geneve_base_msg_id
+
 #include <vlibapi/api_helper_macros.h>
 
 static void
   vl_api_sw_interface_set_geneve_bypass_t_handler
   (vl_api_sw_interface_set_geneve_bypass_t * mp)
 {
-  geneve_main_t *gm = &geneve_main;
   vl_api_sw_interface_set_geneve_bypass_reply_t *rmp;
   int rv = 0;
   u32 sw_if_index = ntohl (mp->sw_if_index);
@@ -50,7 +57,6 @@ static void
 static void vl_api_geneve_add_del_tunnel_t_handler
   (vl_api_geneve_add_del_tunnel_t * mp)
 {
-  geneve_main_t *gm = &geneve_main;
   vl_api_geneve_add_del_tunnel_reply_t *rmp;
   int rv = 0;
   ip4_main_t *im = &ip4_main;
@@ -102,7 +108,6 @@ out:
 static void vl_api_geneve_add_del_tunnel2_t_handler
   (vl_api_geneve_add_del_tunnel2_t * mp)
 {
-  geneve_main_t *gm = &geneve_main;
   vl_api_geneve_add_del_tunnel2_reply_t *rmp;
   int rv = 0;
   ip4_main_t *im = &ip4_main;
@@ -155,7 +160,6 @@ out:
 static void send_geneve_tunnel_details
   (geneve_tunnel_t * t, vl_api_registration_t * reg, u32 context)
 {
-  geneve_main_t *gm = &geneve_main;
   vl_api_geneve_tunnel_details_t *rmp;
   ip4_main_t *im4 = &ip4_main;
   ip6_main_t *im6 = &ip6_main;
@@ -163,7 +167,7 @@ static void send_geneve_tunnel_details
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_GENEVE_TUNNEL_DETAILS + gm->msg_id_base);
+  rmp->_vl_msg_id = ntohs (VL_API_GENEVE_TUNNEL_DETAILS + REPLY_MSG_ID_BASE);
   ip_address_encode (&t->local, is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
 		     &rmp->src_address);
   ip_address_encode (&t->remote, is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
@@ -222,22 +226,34 @@ static void vl_api_geneve_tunnel_dump_t_handler
  */
 /* API definitions */
 #include <vnet/format_fns.h>
-#include <vnet/geneve/geneve.api.c>
+#include <geneve/geneve.api.c>
 
 static clib_error_t *
 geneve_api_hookup (vlib_main_t * vm)
 {
-  geneve_main_t *gm = &geneve_main;
+  api_main_t *am = vlibapi_get_main ();
 
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  gm->msg_id_base = setup_message_id_table ();
+  geneve_base_msg_id = setup_message_id_table ();
+
+  am->api_trace_cfg[VL_API_GENEVE_ADD_DEL_TUNNEL + REPLY_MSG_ID_BASE].size += 16 * sizeof (u32);
 
   return 0;
 }
 
 VLIB_API_INIT_FUNCTION (geneve_api_hookup);
+
+#include <vlib/unix/plugin.h>
+#include <vpp/app/version.h>
+
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+    .description = "GENEVE Tunnels",
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

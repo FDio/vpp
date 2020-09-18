@@ -715,6 +715,11 @@ M:	Benoît Ganne <bganne@cisco.com>
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/plugins/af_xdp/
 
+Plugin - geneve
+I:	geneve
+M:	community vpp-dev@lists.fd.io
+F:	src/plugins/geneve/
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>

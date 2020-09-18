@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/geneve/geneve.h>
+#include <geneve/geneve.h>
 #include <vnet/ip/format.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
