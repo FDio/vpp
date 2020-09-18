@@ -74,16 +74,16 @@ mheap_get_trace (uword offset, uword size)
   /* Spurious Coverity warnings be gone. */
   clib_memset (&trace, 0, sizeof (trace));
 
-  /* Skip our frame and mspace_get_aligned's frame */
-  n_callers = clib_backtrace (trace.callers, ARRAY_LEN (trace.callers), 2);
-  if (n_callers == 0)
-    return;
-
   clib_spinlock_lock (&tm->lock);
 
   /* Turn off tracing to avoid embarrassment... */
   save_enabled = tm->enabled;
   tm->enabled = 0;
+
+  /* Skip our frame and mspace_get_aligned's frame */
+  n_callers = clib_backtrace (trace.callers, ARRAY_LEN (trace.callers), 2);
+  if (n_callers == 0)
+    goto out;
 
   if (!tm->trace_by_callers)
     tm->trace_by_callers =
@@ -137,6 +137,8 @@ mheap_get_trace (uword offset, uword size)
   t->n_bytes += size;
   t->offset = offset;		/* keep a sample to autopsy */
   hash_set (tm->trace_index_by_offset, offset, t - tm->traces);
+
+out:
   tm->enabled = save_enabled;
   clib_spinlock_unlock (&tm->lock);
 }
