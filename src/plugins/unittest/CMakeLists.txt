@@ -33,7 +33,6 @@ add_vpp_plugin(unittest
   fib_test.c
   interface_test.c
   ipsec_test.c
-  lisp_cp_test.c
   llist_test.c
   mactime_test.c
   mfib_test.c

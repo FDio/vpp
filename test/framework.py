@@ -419,6 +419,7 @@ class VppTestCase(unittest.TestCase):
                            "plugins",
                            "{", "plugin", "dpdk_plugin.so", "{", "disable",
                            "}", "plugin", "rdma_plugin.so", "{", "disable",
+                           "}", "plugin", "lisp_unittest_plugin.so", "{", "enable",
                            "}", "plugin", "unittest_plugin.so", "{", "enable",
                            "}"] + cls.extra_vpp_plugin_config + ["}", ]
 
