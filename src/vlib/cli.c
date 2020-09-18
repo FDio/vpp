@@ -740,7 +740,8 @@ show_memory_usage (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   int verbose __attribute__ ((unused)) = 0;
-  int api_segment = 0, stats_segment = 0, main_heap = 0, numa_heaps = 0;
+  int api_segment = 0, stats_segment = 0, main_heap = 0, numa_heaps =
+    0, libc = 0;
   clib_error_t *error;
   u32 index = 0;
   int i;
@@ -760,6 +761,8 @@ show_memory_usage (vlib_main_t * vm,
 	main_heap = 1;
       else if (unformat (input, "numa-heaps"))
 	numa_heaps = 1;
+      else if (unformat (input, "libc"))
+	libc = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -768,7 +771,7 @@ show_memory_usage (vlib_main_t * vm,
 	}
     }
 
-  if ((api_segment + stats_segment + main_heap + numa_heaps) == 0)
+  if ((api_segment + stats_segment + main_heap + numa_heaps + libc) == 0)
     return clib_error_return
       (0, "Need one of api-segment, stats-segment, main-heap or numa-heaps");
 
@@ -868,9 +871,30 @@ show_memory_usage (vlib_main_t * vm,
 			     mi.arena);
 	    vlib_cli_output (vm, "  %U\n", format_mheap,
 			     clib_per_numa_mheaps[index], verbose);
+
+	    clib_mem_trace_enable_disable (was_enabled);
 	  }
       }
   }
+
+  if (libc)
+    {
+      was_enabled = clib_mem_trace_enable_disable (0);
+
+      struct dlmallinfo mi;
+      void *mspace;
+      mspace = clib_mem_libc_heap_get ();
+
+      mi = mspace_mallinfo (mspace);
+      vlib_cli_output (vm, "libc\n");
+      vlib_cli_output (vm, "  %U\n", format_page_map,
+		       pointer_to_uword (mspace_least_addr (mspace)),
+		       mi.arena);
+      vlib_cli_output (vm, "  %U\n", format_mheap, mspace, verbose);
+
+      clib_mem_trace_enable_disable (was_enabled);
+    }
+
   return 0;
 }
 
@@ -878,7 +902,7 @@ show_memory_usage (vlib_main_t * vm,
 VLIB_CLI_COMMAND (show_memory_usage_command, static) = {
   .path = "show memory",
   .short_help = "show memory [api-segment][stats-segment][verbose]\n"
-  "            [numa-heaps]",
+  "            [numa-heaps][libc]",
   .function = show_memory_usage,
 };
 /* *INDENT-ON* */
@@ -926,6 +950,7 @@ enable_disable_memory_trace (vlib_main_t * vm,
   int api_segment = 0;
   int stats_segment = 0;
   int main_heap = 0;
+  int libc = 0;
   u32 numa_id = ~0;
   void *oldheap;
 
@@ -944,6 +969,8 @@ enable_disable_memory_trace (vlib_main_t * vm,
 	main_heap = 1;
       else if (unformat (line_input, "numa-heap %d", &numa_id))
 	;
+      else if (unformat (line_input, "libc"))
+	libc = 1;
       else
 	{
 	  unformat_free (line_input);
@@ -952,7 +979,7 @@ enable_disable_memory_trace (vlib_main_t * vm,
     }
   unformat_free (line_input);
 
-  if ((api_segment + stats_segment + main_heap + (enable == 0)
+  if ((api_segment + stats_segment + main_heap + libc + (enable == 0)
        + (numa_id != ~0)) == 0)
     {
       return clib_error_return
@@ -963,10 +990,7 @@ enable_disable_memory_trace (vlib_main_t * vm,
   /* Turn off current trace, if any */
   if (current_traced_heap)
     {
-      void *oldheap;
-      oldheap = clib_mem_set_heap (current_traced_heap);
-      clib_mem_trace (0);
-      clib_mem_set_heap (oldheap);
+      clib_mem_trace_ex (current_traced_heap, 0);
       current_traced_heap = 0;
     }
 
@@ -1017,6 +1041,12 @@ enable_disable_memory_trace (vlib_main_t * vm,
       clib_mem_set_heap (oldheap);
     }
 
+  /* libc heap */
+  if (libc)
+    {
+      current_traced_heap = clib_mem_libc_heap_get ();
+      clib_mem_trace_ex (current_traced_heap, 1);
+    }
 
   return 0;
 }
@@ -1025,7 +1055,7 @@ enable_disable_memory_trace (vlib_main_t * vm,
 VLIB_CLI_COMMAND (enable_disable_memory_trace_command, static) = {
   .path = "memory-trace",
   .short_help = "memory-trace on|off [api-segment][stats-segment][main-heap]\n"
-  "                   [numa-heap <numa-id>]\n",
+  "                   [numa-heap <numa-id>][libc]\n",
   .function = enable_disable_memory_trace,
 };
 /* *INDENT-ON* */

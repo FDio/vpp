@@ -4212,7 +4212,7 @@ void* mspace_get_aligned (mspace msp,
       mchunkptr p  = mem2chunk(rv);
       size_t psize = chunksize(p);
 
-      mheap_get_trace ((unsigned long)rv + sizeof (unsigned), psize);
+      mheap_get_trace (msp, (unsigned long)rv + sizeof (unsigned), psize);
     }
 
     wwp = (unsigned *)rv;
@@ -4239,7 +4239,7 @@ void* mspace_get_aligned (mspace msp,
     if (rv && use_trace(ms)) {
       mchunkptr p  = mem2chunk(rv);
       size_t psize = chunksize(p);
-      mheap_get_trace ((unsigned long)rv, psize);
+      mheap_get_trace (msp, (unsigned long)rv, psize);
     }
     return rv;
   }
@@ -4280,7 +4280,7 @@ void* mspace_get_aligned (mspace msp,
   if (use_trace(ms)) {
     mchunkptr p  = mem2chunk(rv);
     size_t psize = chunksize(p);
-    mheap_get_trace (searchp, psize);
+    mheap_get_trace (msp, searchp, psize);
   }
   return (void *) searchp;
 }

@@ -1460,7 +1460,7 @@ DLMALLOC_EXPORT void mspace_put_no_offset (mspace msp, void *p);
 DLMALLOC_EXPORT size_t mspace_usable_size_with_delta (const void *p);
 DLMALLOC_EXPORT void mspace_disable_expand (mspace msp);
 DLMALLOC_EXPORT void *mspace_least_addr (mspace msp);
-DLMALLOC_EXPORT void mheap_get_trace (uword offset, uword size);
+DLMALLOC_EXPORT void mheap_get_trace (void *heap, uword offset, uword size);
 DLMALLOC_EXPORT void mheap_put_trace (uword offset, uword size);
 DLMALLOC_EXPORT int mspace_enable_disable_trace (mspace msp, int enable);
 DLMALLOC_EXPORT int mspace_is_traced (mspace msp);

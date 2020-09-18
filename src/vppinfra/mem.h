@@ -78,6 +78,33 @@ typedef enum
 extern void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
 extern void *clib_per_numa_mheaps[CLIB_MAX_NUMAS];
 
+#define CLIB_MEM_LIBC_HEAP_SIZE (1U<<30)
+
+/* libc heap */
+extern void *clib_mem_libc_mheap;
+
+void *clib_mem_init_internal (void *memory, uword memory_size, int set_heap,
+			      int init_trace_lock);
+void *clib_mem_init (void *heap, uword size);
+void *clib_mem_init_thread_safe (void *memory, uword memory_size);
+void *clib_mem_init_thread_safe_numa (void *memory, uword memory_size,
+				      u8 numa);
+void clib_mem_exit (void);
+uword clib_mem_get_page_size (void);
+void clib_mem_validate (void);
+void clib_mem_trace_ex (void *heap, int enable);
+void clib_mem_trace (int enable);
+int clib_mem_is_traced (void);
+
+static_always_inline void *
+clib_mem_libc_heap_get (void)
+{
+  if (PREDICT_FALSE (0 == clib_mem_libc_mheap))
+    clib_mem_libc_mheap =
+      clib_mem_init_internal (0, CLIB_MEM_LIBC_HEAP_SIZE, 0, 0);
+  return clib_mem_libc_mheap;
+}
+
 always_inline void *
 clib_mem_get_per_cpu_heap (void)
 {
@@ -139,11 +166,11 @@ clib_mem_size_nocheck (void *p)
 
 /* Memory allocator which may call os_out_of_memory() if it fails */
 always_inline void *
-clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
-				  int os_out_of_memory_on_failure)
+clib_mem_alloc_aligned_at_offset_ex (void *heap, uword size, uword align,
+				     uword align_offset,
+				     int os_out_of_memory_on_failure)
 {
-  void *heap, *p;
-  uword cpu;
+  void *p;
 
   if (align_offset > align)
     {
@@ -152,9 +179,6 @@ clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
       else
 	align_offset = align;
     }
-
-  cpu = os_get_thread_index ();
-  heap = clib_per_cpu_mheaps[cpu];
 
   p = mspace_get_aligned (heap, size, align, align_offset);
 
@@ -167,6 +191,22 @@ clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
 
   CLIB_MEM_UNPOISON (p, size);
   return p;
+}
+
+always_inline void *
+clib_mem_get_heap (void)
+{
+  return clib_mem_get_per_cpu_heap ();
+}
+
+/* Memory allocator which may call os_out_of_memory() if it fails */
+always_inline void *
+clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
+				  int os_out_of_memory_on_failure)
+{
+  return clib_mem_alloc_aligned_at_offset_ex (clib_mem_get_heap (), size,
+					      align, align_offset,
+					      os_out_of_memory_on_failure);
 }
 
 /* Memory allocator which calls os_out_of_memory() when it fails */
@@ -221,31 +261,50 @@ clib_mem_alloc_aligned_or_null (uword size, uword align)
 #define clib_mem_alloc_stack(bytes) __builtin_alloca(bytes)
 
 always_inline uword
-clib_mem_is_heap_object (void *p)
+clib_mem_is_heap_object_ex (void *heap, void *p)
 {
-  void *heap = clib_mem_get_per_cpu_heap ();
-
   return mspace_is_heap_object (heap, p);
 }
 
-always_inline void
-clib_mem_free (void *p)
+always_inline uword
+clib_mem_is_heap_object (void *p)
 {
-  u8 *heap = clib_mem_get_per_cpu_heap ();
+  return clib_mem_is_heap_object_ex (clib_mem_get_per_cpu_heap (), p);
+}
 
+always_inline void
+clib_mem_free_ex (void *heap, void *p)
+{
   /* Make sure object is in the correct heap. */
-  ASSERT (clib_mem_is_heap_object (p));
+  ASSERT (clib_mem_is_heap_object_ex (heap, p));
 
   CLIB_MEM_POISON (p, clib_mem_size_nocheck (p));
 
   mspace_put (heap, p);
 }
 
-always_inline void *
-clib_mem_realloc (void *p, uword new_size, uword old_size)
+always_inline void
+clib_mem_free (void *p)
 {
-  /* By default use alloc, copy and free to emulate realloc. */
-  void *q = clib_mem_alloc (new_size);
+  clib_mem_free_ex (clib_mem_get_heap (), p);
+}
+
+always_inline uword
+clib_mem_size_ex (void *heap, void *p)
+{
+  ASSERT (clib_mem_is_heap_object_ex (heap, p));
+  return clib_mem_size_nocheck (p);
+}
+
+always_inline void *
+clib_mem_realloc_ex (void *heap, void *p, uword new_size, uword old_size)
+{
+  void *q;
+
+  if (clib_mem_size_ex (heap, p) >= new_size)
+    return p;
+
+  q = clib_mem_alloc_aligned_at_offset_ex (heap, new_size, 0, 0, 1);
   if (q)
     {
       uword copy_size;
@@ -254,16 +313,22 @@ clib_mem_realloc (void *p, uword new_size, uword old_size)
       else
 	copy_size = new_size;
       clib_memcpy_fast (q, p, copy_size);
-      clib_mem_free (p);
+      clib_mem_free_ex (heap, p);
     }
   return q;
 }
 
+always_inline void *
+clib_mem_realloc (void *p, uword new_size, uword old_size)
+{
+  return clib_mem_realloc_ex (clib_mem_get_heap (), p, new_size, old_size);
+}
+
+
 always_inline uword
 clib_mem_size (void *p)
 {
-  ASSERT (clib_mem_is_heap_object (p));
-  return clib_mem_size_nocheck (p);
+  return clib_mem_size_ex (clib_mem_get_heap (), p);
 }
 
 always_inline void
@@ -276,31 +341,10 @@ clib_mem_free_s (void *p)
 }
 
 always_inline void *
-clib_mem_get_heap (void)
-{
-  return clib_mem_get_per_cpu_heap ();
-}
-
-always_inline void *
 clib_mem_set_heap (void *heap)
 {
   return clib_mem_set_per_cpu_heap (heap);
 }
-
-void *clib_mem_init (void *heap, uword size);
-void *clib_mem_init_thread_safe (void *memory, uword memory_size);
-void *clib_mem_init_thread_safe_numa (void *memory, uword memory_size,
-				      u8 numa);
-
-void clib_mem_exit (void);
-
-uword clib_mem_get_page_size (void);
-
-void clib_mem_validate (void);
-
-void clib_mem_trace (int enable);
-
-int clib_mem_is_traced (void);
 
 typedef struct
 {

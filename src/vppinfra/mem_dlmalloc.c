@@ -27,7 +27,7 @@ void *clib_per_numa_mheaps[CLIB_MAX_NUMAS];
 typedef struct
 {
   /* Address of callers: outer first, inner last. */
-  uword callers[12];
+  uword callers[24];
 
   /* Count of allocations with this traceback. */
   u32 n_allocations;
@@ -63,7 +63,7 @@ typedef struct
 mheap_trace_main_t mheap_trace_main;
 
 void
-mheap_get_trace (uword offset, uword size)
+mheap_get_trace (void *heap, uword offset, uword size)
 {
   mheap_trace_main_t *tm = &mheap_trace_main;
   mheap_trace_t *t;
@@ -71,8 +71,10 @@ mheap_get_trace (uword offset, uword size)
   mheap_trace_t trace;
   uword save_enabled;
 
-  if (tm->enabled == 0 || (clib_mem_get_heap () != tm->current_traced_mheap))
+  if (tm->enabled == 0 || (heap != tm->current_traced_mheap))
     return;
+
+  mspace_enable_disable_trace (heap, 0);
 
   /* Spurious Coverity warnings be gone. */
   clib_memset (&trace, 0, sizeof (trace));
@@ -80,7 +82,7 @@ mheap_get_trace (uword offset, uword size)
   /* Skip our frame and mspace_get_aligned's frame */
   n_callers = clib_backtrace (trace.callers, ARRAY_LEN (trace.callers), 2);
   if (n_callers == 0)
-    return;
+    goto out;
 
   clib_spinlock_lock (&tm->lock);
 
@@ -142,6 +144,8 @@ mheap_get_trace (uword offset, uword size)
   hash_set (tm->trace_index_by_offset, offset, t - tm->traces);
   tm->enabled = save_enabled;
   clib_spinlock_unlock (&tm->lock);
+out:
+  mspace_enable_disable_trace (heap, 1);
 }
 
 void
@@ -199,8 +203,9 @@ mheap_trace_main_free (mheap_trace_main_t * tm)
 
 /* Initialize CLIB heap based on memory/size given by user.
    Set memory to 0 and CLIB will try to allocate its own heap. */
-static void *
-clib_mem_init_internal (void *memory, uword memory_size, int set_heap)
+void *
+clib_mem_init_internal (void *memory, uword memory_size, int set_heap,
+			int init_trace_lock)
 {
   u8 *heap;
 
@@ -217,7 +222,7 @@ clib_mem_init_internal (void *memory, uword memory_size, int set_heap)
   if (set_heap)
     clib_mem_set_heap (heap);
 
-  if (mheap_trace_main.lock == 0)
+  if (init_trace_lock && mheap_trace_main.lock == 0)
     clib_spinlock_init (&mheap_trace_main.lock);
 
   return heap;
@@ -227,14 +232,14 @@ void *
 clib_mem_init (void *memory, uword memory_size)
 {
   return clib_mem_init_internal (memory, memory_size,
-				 1 /* do clib_mem_set_heap */ );
+				 1 /* do clib_mem_set_heap */ ,
+				 1 /* init trace lock */ );
 }
 
 void *
 clib_mem_init_thread_safe (void *memory, uword memory_size)
 {
-  return clib_mem_init_internal (memory, memory_size,
-				 1 /* do clib_mem_set_heap */ );
+  return clib_mem_init (memory, memory_size);
 }
 
 void
@@ -271,7 +276,8 @@ clib_mem_init_thread_safe_numa (void *memory, uword memory_size, u8 numa)
     }
 
   heap = clib_mem_init_internal (memory, memory_size,
-				 0 /* do NOT clib_mem_set_heap */ );
+				 0 /* do NOT clib_mem_set_heap */ ,
+				 1 /* init trace lock */ );
 
   ASSERT (heap);
 
@@ -334,14 +340,14 @@ mheap_trace_sort (const void *_t1, const void *_t2)
 u8 *
 format_mheap_trace (u8 * s, va_list * va)
 {
+  void *heap = va_arg (*va, void *);
   mheap_trace_main_t *tm = va_arg (*va, mheap_trace_main_t *);
   int verbose = va_arg (*va, int);
   int have_traces = 0;
   int i;
 
   clib_spinlock_lock (&tm->lock);
-  if (vec_len (tm->traces) > 0 &&
-      clib_mem_get_heap () == tm->current_traced_mheap)
+  if (vec_len (tm->traces) > 0 && heap == tm->current_traced_mheap)
     {
       have_traces = 1;
 
@@ -423,7 +429,7 @@ format_mheap (u8 * s, va_list * va)
     }
 
   if (mspace_is_traced (heap))
-    s = format (s, "\n%U", format_mheap_trace, tm, verbose);
+    s = format (s, "\n%U", format_mheap_trace, heap, tm, verbose);
   return s;
 }
 
@@ -467,18 +473,23 @@ mheap_trace (void *v, int enable)
 }
 
 void
-clib_mem_trace (int enable)
+clib_mem_trace_ex (void *heap, int enable)
 {
   mheap_trace_main_t *tm = &mheap_trace_main;
-  void *current_heap = clib_mem_get_heap ();
 
   tm->enabled = enable;
-  mheap_trace (current_heap, enable);
+  mheap_trace (heap, enable);
 
   if (enable)
-    tm->current_traced_mheap = current_heap;
+    tm->current_traced_mheap = heap;
   else
     tm->current_traced_mheap = 0;
+}
+
+void
+clib_mem_trace (int enable)
+{
+  clib_mem_trace_ex (clib_mem_get_heap (), enable);
 }
 
 int
