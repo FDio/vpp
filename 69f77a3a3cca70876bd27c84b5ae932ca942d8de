@@ -118,6 +118,30 @@
       "revId": "69f77a3a3cca70876bd27c84b5ae932ca942d8de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a2b1915c_4cb7b918",
+        "filename": "src/vnet/lisp-cp/one_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 843,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2020-09-21T09:05:26Z",
+      "side": 0,
+      "message": "Look\u0027s like my fault in the lisp api cleanup patch. The filter parameter in api message is u32 so the ntohl() should happen on line 947 where send_one_eid_table_details() is called. Or pass the filter as u32 in send_one_eid_table_details().",
+      "parentUuid": "c615ea35_0382b237",
+      "range": {
+        "startLine": 843,
+        "startChar": 10,
+        "endLine": 843,
+        "endChar": 15
+      },
+      "revId": "69f77a3a3cca70876bd27c84b5ae932ca942d8de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
