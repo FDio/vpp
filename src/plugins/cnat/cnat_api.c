@@ -47,8 +47,13 @@ static void
 cnat_endpoint_decode (const vl_api_cnat_endpoint_t * in,
 		      cnat_endpoint_t * out)
 {
-  ip_address_decode2 (&in->addr, &out->ce_ip);
   out->ce_port = clib_net_to_host_u16 (in->port);
+  out->ce_sw_if_index = clib_net_to_host_u32 (in->sw_if_index);
+  out->ce_flags = 0;
+  if (out->ce_sw_if_index == INDEX_INVALID)
+    ip_address_decode2 (&in->addr, &out->ce_ip);
+  else
+    ip_address_family_decode (in->if_af, &out->ce_ip.version);
 }
 
 static void
@@ -63,8 +68,13 @@ static void
 cnat_endpoint_encode (const cnat_endpoint_t * in,
 		      vl_api_cnat_endpoint_t * out)
 {
-  ip_address_encode2 (&in->ce_ip, &out->addr);
   out->port = clib_net_to_host_u16 (in->ce_port);
+  out->sw_if_index = clib_net_to_host_u32 (in->ce_sw_if_index);
+  out->if_af = ip_address_family_encode (in->ce_ip.version);
+  if (in->ce_flags & CNAT_EP_FLAG_RESOLVED)
+    ip_address_encode2 (&in->ce_ip, &out->addr);
+  else
+    clib_memset ((void *) &in->ce_ip, 0, sizeof (in->ce_ip));
 }
 
 static void
@@ -259,16 +269,36 @@ vl_api_cnat_session_purge_t_handler (vl_api_cnat_session_purge_t * mp)
 }
 
 static void
+vl_api_cnat_get_snat_addresses_t_handler (vl_api_cnat_get_snat_addresses_t
+					  * mp)
+{
+  vl_api_cnat_get_snat_addresses_reply_t *rmp;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_CNAT_GET_SNAT_ADDRESSES_REPLY,
+  ({
+    ip6_address_encode (&ip_addr_v6(&cnat_main.snat_ip6.ce_ip), rmp->snat_ip6);
+    ip4_address_encode (&ip_addr_v4(&cnat_main.snat_ip4.ce_ip), rmp->snat_ip4);
+    rmp->sw_if_index = clib_host_to_net_u32 (cnat_main.snat_ip6.ce_sw_if_index);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
 vl_api_cnat_set_snat_addresses_t_handler (vl_api_cnat_set_snat_addresses_t
 					  * mp)
 {
   vl_api_cnat_set_snat_addresses_reply_t *rmp;
+  u32 sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
+  ip4_address_t ip4;
+  ip6_address_t ip6;
   int rv = 0;
 
-  cnat_lazy_init ();
+  ip4_address_decode (mp->snat_ip4, &ip4);
+  ip6_address_decode (mp->snat_ip6, &ip6);
 
-  ip4_address_decode (mp->snat_ip4, &cnat_main.snat_ip4);
-  ip6_address_decode (mp->snat_ip6, &cnat_main.snat_ip6);
+  cnat_set_snat (&ip4, &ip6, sw_if_index);
 
   REPLY_MACRO (VL_API_CNAT_SET_SNAT_ADDRESSES_REPLY);
 }

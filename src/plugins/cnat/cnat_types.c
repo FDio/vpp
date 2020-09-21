@@ -26,17 +26,75 @@ char *cnat_error_strings[] = {
 #undef cnat_error
 };
 
+u8
+cnat_resolve_addr (u32 sw_if_index, ip_address_family_t af,
+		   ip_address_t * addr)
+{
+  /* Tries to resolve IP from sw_if_index
+   * returns 1 if we need to schedule DHCP */
+  if (INDEX_INVALID == sw_if_index)
+    return 0;
+  if (af == AF_IP6)
+    {
+      ip6_address_t *ip6 = 0;
+      ip6 = ip6_interface_first_address (&ip6_main, sw_if_index);
+      if (ip6)
+	{
+	  ip_address_set (addr, ip6, AF_IP6);
+	  return 0;
+	}
+      else
+	return 1;
+    }
+  else
+    {
+      ip4_address_t *ip4 = 0;
+      ip4 = ip4_interface_first_address (&ip4_main, sw_if_index, 0);
+      if (ip4)
+	{
+	  ip_address_set (addr, ip4, AF_IP4);
+	  return 0;
+	}
+      else
+	return 1;
+    }
+}
+
+u8
+cnat_resolve_ep (cnat_endpoint_t * ep)
+{
+  int rv;
+  rv = cnat_resolve_addr (ep->ce_sw_if_index, ep->ce_ip.version, &ep->ce_ip);
+  if (0 == rv)
+    ep->ce_flags |= CNAT_EP_FLAG_RESOLVED;
+  return rv;
+}
+
 uword
 unformat_cnat_ep (unformat_input_t * input, va_list * args)
 {
   cnat_endpoint_t *a = va_arg (*args, cnat_endpoint_t *);
+  vnet_main_t *vnm = vnet_get_main ();
   int port = 0;
 
   clib_memset (a, 0, sizeof (*a));
+  a->ce_sw_if_index = INDEX_INVALID;
   if (unformat (input, "%U %d", unformat_ip_address, &a->ce_ip, &port))
     ;
   else if (unformat_user (input, unformat_ip_address, &a->ce_ip))
     ;
+  else if (unformat (input, "%U v6 %d", unformat_vnet_sw_interface,
+		     vnm, &a->ce_sw_if_index, &port))
+    a->ce_ip.version = AF_IP6;
+  else if (unformat (input, "%U v6", unformat_vnet_sw_interface,
+		     vnm, &a->ce_sw_if_index))
+    a->ce_ip.version = AF_IP6;
+  else if (unformat (input, "%U %d", unformat_vnet_sw_interface,
+		     vnm, &a->ce_sw_if_index, &port))
+    a->ce_ip.version = AF_IP4;
+  else if (unformat_user (input, unformat_vnet_sw_interface,
+			  vnm, &a->ce_sw_if_index))
+    a->ce_ip.version = AF_IP4;
   else if (unformat (input, "%d", &port))
     ;
   else
@@ -65,9 +123,21 @@ u8 *
 format_cnat_endpoint (u8 * s, va_list * args)
 {
   cnat_endpoint_t *cep = va_arg (*args, cnat_endpoint_t *);
-
-  s = format (s, "%U;%d", format_ip_address, &cep->ce_ip, cep->ce_port);
-
+  vnet_main_t *vnm = vnet_get_main ();
+  if (INDEX_INVALID == cep->ce_sw_if_index)
+    s = format (s, "%U;%d", format_ip_address, &cep->ce_ip, cep->ce_port);
+  else
+    {
+      if (cep->ce_flags & CNAT_EP_FLAG_RESOLVED)
+	s = format (s, "%U (%U);%d", format_vnet_sw_if_index_name, vnm,
+		    cep->ce_sw_if_index, format_ip_address, &cep->ce_ip,
+		    cep->ce_port);
+      else
+	s =
+	  format (s, "%U (%U);%d", format_vnet_sw_if_index_name, vnm,
+		  cep->ce_sw_if_index, format_ip_address_family,
+		  cep->ce_ip.version, cep->ce_port);
+    }
   return (s);
 }
 

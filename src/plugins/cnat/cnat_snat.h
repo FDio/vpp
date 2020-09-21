@@ -18,6 +18,9 @@
 
 #include <cnat/cnat_types.h>
 
+
+extern void cnat_set_snat (ip4_address_t * ip4, ip6_address_t * ip6,
+			   u32 sw_if_index);
 extern int cnat_add_snat_prefix (ip_prefix_t * pfx);
 extern int cnat_del_snat_prefix (ip_prefix_t * pfx);
 
