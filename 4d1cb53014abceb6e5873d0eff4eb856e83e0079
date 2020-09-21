@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ceade4b1_9219ac99",
+        "filename": "extras/scripts/crcchecker.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-09-21T13:04:57Z",
+      "side": 1,
+      "message": "| grep \u0027^src/\u0027 | \n\nBut I am not sure it is enough, and I do not have enough time to test.",
+      "range": {
+        "startLine": 84,
+        "startChar": 63,
+        "endLine": 84,
+        "endChar": 66
+      },
+      "revId": "4d1cb53014abceb6e5873d0eff4eb856e83e0079",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
