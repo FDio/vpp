@@ -54,7 +54,6 @@ vl_api_crypto_set_async_dispatch_t_handler (vl_api_crypto_set_async_dispatch_t
 static void
 vl_api_crypto_set_handler_t_handler (vl_api_crypto_set_handler_t * mp)
 {
-  vnet_crypto_main_t *cm = &crypto_main;
   vl_api_crypto_set_handler_reply_t *rmp;
   int rv = 0;
   char *engine;
@@ -65,42 +64,10 @@ vl_api_crypto_set_handler_t_handler (vl_api_crypto_set_handler_t * mp)
   alg_name = (char *) mp->alg_name;
   oct = (crypto_op_class_type_t) mp->oct;
 
-  if (strcmp ("all", alg_name) == 0)
-    {
-      if (mp->is_async)
-	{
-	  char *key;
-	  u8 *value;
-
-          /* *INDENT-OFF* */
-          hash_foreach_mem (key, value, cm->async_alg_index_by_name,
-          ({
-            (void) value;
-            rv += vnet_crypto_set_async_handler2 (key, engine);
-          }));
-          /* *INDENT-ON* */
-	}
-      else
-	{
-	  char *key;
-	  u8 *value;
-
-          /* *INDENT-OFF* */
-          hash_foreach_mem (key, value, cm->alg_index_by_name,
-          ({
-            (void) value;
-            rv += vnet_crypto_set_handler2 (key, engine, oct);
-          }));
-          /* *INDENT-ON* */
-	}
-    }
+  if (mp->is_async)
+    rv = vnet_crypto_set_async_handler2 (alg_name, engine);
   else
-    {
-      if (mp->is_async)
-	rv = vnet_crypto_set_async_handler2 (alg_name, engine);
-      else
-	rv = vnet_crypto_set_handler2 (alg_name, engine, oct);
-    }
+    rv = vnet_crypto_set_handler2 (alg_name, engine, oct);
 
   REPLY_MACRO (VL_API_CRYPTO_SET_HANDLER_REPLY);
 }
