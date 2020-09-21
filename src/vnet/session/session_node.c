@@ -1182,9 +1182,13 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
 }
 
 always_inline session_t *
-session_event_get_session (session_event_t * e, u8 thread_index)
+session_event_get_session (session_worker_t * wrk, session_event_t * e)
 {
-  return session_get_if_valid (e->session_index, thread_index);
+  if (pool_is_free_index (wrk->sessions, e->session_index))
+    return 0;
+
+  ASSERT (session_is_valid (e->session_index, wrk->vm->thread_index));
+  return pool_elt_at_index (wrk->sessions, e->session_index);
 }
 
 always_inline void
@@ -1274,8 +1278,7 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
 
 always_inline void
 session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
-			   session_evt_elt_t * elt, u32 thread_index,
-			   int *n_tx_packets)
+			   session_evt_elt_t * elt, int *n_tx_packets)
 {
   session_main_t *smm = &session_main;
   app_worker_t *app_wrk;
@@ -1290,7 +1293,7 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
     {
     case SESSION_IO_EVT_TX_FLUSH:
     case SESSION_IO_EVT_TX:
-      s = session_event_get_session (e, thread_index);
+      s = session_event_get_session (wrk, e);
       if (PREDICT_FALSE (!s))
 	break;
       CLIB_PREFETCH (s->tx_fifo, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
@@ -1300,14 +1303,14 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
       (smm->session_tx_fns[s->session_type]) (wrk, node, elt, n_tx_packets);
       break;
     case SESSION_IO_EVT_RX:
-      s = session_event_get_session (e, thread_index);
+      s = session_event_get_session (wrk, e);
       if (!s)
 	break;
       transport_app_rx_evt (session_get_transport_proto (s),
 			    s->connection_index, s->thread_index);
       break;
     case SESSION_IO_EVT_BUILTIN_RX:
-      s = session_event_get_session (e, thread_index);
+      s = session_event_get_session (wrk, e);
       if (PREDICT_FALSE (!s || s->session_state >= SESSION_STATE_CLOSING))
 	break;
       svm_fifo_unset_event (s->rx_fifo);
@@ -1457,7 +1460,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       elt = pool_elt_at_index (wrk->event_elts, ei);
       ei = clib_llist_next_index (elt, evt_list);
       clib_llist_remove (wrk->event_elts, evt_list, elt);
-      session_event_dispatch_io (wrk, node, elt, thread_index, &n_tx_packets);
+      session_event_dispatch_io (wrk, node, elt, &n_tx_packets);
     }
 
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, NEW_IO_EVTS, wrk);
@@ -1477,8 +1480,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  next_ei = clib_llist_next_index (elt, evt_list);
 	  clib_llist_remove (wrk->event_elts, evt_list, elt);
 
-	  session_event_dispatch_io (wrk, node, elt, thread_index,
-				     &n_tx_packets);
+	  session_event_dispatch_io (wrk, node, elt, &n_tx_packets);
 
 	  if (ei == old_ti)
 	    break;
