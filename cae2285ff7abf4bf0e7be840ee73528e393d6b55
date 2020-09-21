@@ -16,6 +16,24 @@
       "revId": "cae2285ff7abf4bf0e7be840ee73528e393d6b55",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d7e3d1e4_1a38cd20",
+        "filename": "src/plugins/wireguard/wireguard_peer.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2020-09-21T10:27:36Z",
+      "side": 1,
+      "message": "I don\u0027t fully understand.\n\u0027local\u0027 - is just a field in interface.\nIn peer it is just a pointer to interface field for convenience.",
+      "parentUuid": "b5d104c9_579a33a0",
+      "revId": "cae2285ff7abf4bf0e7be840ee73528e393d6b55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
