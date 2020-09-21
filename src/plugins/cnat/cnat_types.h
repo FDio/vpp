@@ -49,10 +49,24 @@
 
 #define MIN_SRC_PORT ((u16) 0xC000)
 
+typedef enum
+{
+  CNAT_EP_FLAG_RESOLVING = 1,
+} cnat_ep_flag_t;
+
 typedef struct cnat_endpoint_t_
 {
-  ip_address_t ce_ip;
+  union
+  {
+    ip_address_t ce_ip;
+    struct
+    {
+      u32 ce_sw_if_index;
+      ip_address_family_t ce_if_af;
+    };
+  };
   u16 ce_port;
+  u8 ce_flags;
 } cnat_endpoint_t;
 
 typedef struct cnat_endpoint_tuple_t_
@@ -60,8 +74,6 @@ typedef struct cnat_endpoint_tuple_t_
   cnat_endpoint_t dst_ep;
   cnat_endpoint_t src_ep;
 } cnat_endpoint_tuple_t;
-
-
 
 typedef struct
 {

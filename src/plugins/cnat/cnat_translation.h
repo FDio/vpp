@@ -49,12 +49,49 @@ typedef struct cnat_ep_trk_t_
    * The forwarding contributed by the entry
    */
   dpo_id_t ct_dpo;
+
+  u8 is_active;
 } cnat_ep_trk_t;
 
 typedef enum cnat_translation_flag_t_
 {
   CNAT_TRANSLATION_FLAG_ALLOCATE_PORT = (1 << 0),
 } cnat_translation_flag_t;
+
+typedef enum
+{
+  CNAT_ADDR_RESOLUTION_BACKEND,
+  CNAT_ADDR_RESOLUTION_SNAT,
+  CNAT_ADDR_N_RESOLUTIONS,
+} cnat_addr_resol_type_t;
+
+/**
+ * Entry used to account for a translation's backend
+ * waiting for address resolution
+ */
+typedef struct addr_resolution_t_
+{
+  /**
+   * The interface index to resolve
+   */
+  u32 sw_if_index;
+  /**
+   * ip4 or ip6 resolution
+   */
+  ip_address_family_t af;
+  /**
+   * The cnat_addr_resolution_t
+   */
+  cnat_addr_resol_type_t type;
+  /**
+   * Resolve src_ep or dst_ep ?
+   */
+  u8 direction;
+  /**
+   * The Translation index
+   */
+  index_t cti;
+} addr_resolution_t;
 
 /**
  * A Translation represents the translation of a VEP to one of a set
@@ -116,9 +153,9 @@ extern u8 *format_cnat_translation (u8 * s, va_list * args);
  *
  * @return the ID of the translation. used to delete and gather stats
  */
-extern u32 cnat_translation_update (const cnat_endpoint_t * vip,
+extern u32 cnat_translation_update (cnat_endpoint_t * vip,
 				    ip_protocol_t ip_proto,
-				    const cnat_endpoint_tuple_t *
+				    cnat_endpoint_tuple_t *
 				    backends, u8 flags);
 
 /**
@@ -163,6 +200,20 @@ extern void cnat_translation_walk (cnat_translation_walk_cb_t cb, void *ctx);
  * Purge all the trahslations
  */
 extern int cnat_translation_purge (void);
+
+/**
+ * Add an address resolution request
+ */
+extern addr_resolution_t *cnat_add_addr_resolution (u32 sw_if_index,
+						    ip_address_family_t af,
+						    cnat_addr_resol_type_t
+						    type);
+
+/**
+ * Cleanup matching addr resolution requests
+ */
+extern void cnat_addr_resolution_cleanup (u32 cti,
+					  cnat_addr_resol_type_t type);
 
 /*
  * Data plane functions
