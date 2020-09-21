@@ -49,6 +49,7 @@ cnat_endpoint_decode (const vl_api_cnat_endpoint_t * in,
 {
   ip_address_decode2 (&in->addr, &out->ce_ip);
   out->ce_port = clib_net_to_host_u16 (in->port);
+  out->ce_sw_if_index = clib_net_to_host_u32 (in->sw_if_index);
 }
 
 static void
@@ -65,6 +66,7 @@ cnat_endpoint_encode (const cnat_endpoint_t * in,
 {
   ip_address_encode2 (&in->ce_ip, &out->addr);
   out->port = clib_net_to_host_u16 (in->ce_port);
+  out->sw_if_index = clib_net_to_host_u32 (in->ce_sw_if_index);
 }
 
 static void

@@ -49,12 +49,23 @@ typedef struct cnat_ep_trk_t_
    * The forwarding contributed by the entry
    */
   dpo_id_t ct_dpo;
+
+  u8 is_active;
 } cnat_ep_trk_t;
 
 typedef enum cnat_translation_flag_t_
 {
   CNAT_TRANSLATION_FLAG_ALLOCATE_PORT = (1 << 0),
 } cnat_translation_flag_t;
+
+typedef struct tr_resolution_t_
+{
+  index_t cti;
+  u32 sw_if_index;
+  u8 af;
+  /* Resolve src_ep or dst_ep ? */
+  u8 direction;
+} tr_resolution_t;
 
 /**
  * A Translation represents the translation of a VEP to one of a set
@@ -116,9 +127,9 @@ extern u8 *format_cnat_translation (u8 * s, va_list * args);
  *
  * @return the ID of the translation. used to delete and gather stats
  */
-extern u32 cnat_translation_update (const cnat_endpoint_t * vip,
+extern u32 cnat_translation_update (cnat_endpoint_t * vip,
 				    ip_protocol_t ip_proto,
-				    const cnat_endpoint_tuple_t *
+				    cnat_endpoint_tuple_t *
 				    backends, u8 flags);
 
 /**

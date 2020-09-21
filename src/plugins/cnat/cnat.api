@@ -22,15 +22,21 @@
 option version = "0.1.0";
 import "vnet/ip/ip_types.api";
 import "vnet/fib/fib_types.api";
+import "vnet/interface_types.api";
 
 enum cnat_translation_flags:u8
 {
   CNAT_TRANSLATION_ALLOC_PORT = 1,
 };
 
+/* An enpoint is either
+ * An IP & a port
+ * An interface, an address familiy and a port */
 typedef cnat_endpoint
 {
   vl_api_address_t addr;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_address_family_t if_af;
   u16 port;
 };
 

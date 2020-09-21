@@ -30,12 +30,23 @@ uword
 unformat_cnat_ep (unformat_input_t * input, va_list * args)
 {
   cnat_endpoint_t *a = va_arg (*args, cnat_endpoint_t *);
+  vnet_main_t *vnm = vnet_get_main ();
   int port = 0;
 
   clib_memset (a, 0, sizeof (*a));
+  a->ce_sw_if_index = INDEX_INVALID;
   if (unformat (input, "%U %d", unformat_ip_address, &a->ce_ip, &port))
     ;
   else if (unformat_user (input, unformat_ip_address, &a->ce_ip))
+    ;
+  else
+    if (unformat
+	(input, "%U %d", unformat_vnet_sw_interface, vnm, &a->ce_sw_if_index,
+	 &port))
+    ;
+  else
+    if (unformat_user
+	(input, unformat_vnet_sw_interface, vnm, &a->ce_sw_if_index))
     ;
   else if (unformat (input, "%d", &port))
     ;
