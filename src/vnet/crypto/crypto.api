@@ -41,7 +41,7 @@ autoreply define crypto_set_async_dispatch
   vl_api_crypto_dispatch_mode_t mode;
 };
 
- /** \brief crypto: set crypto handler
+ /** \brief crypto: use polling or interrupt dispatch
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param alg_name - Name of the algorithm to add
