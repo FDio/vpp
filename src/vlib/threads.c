@@ -1760,6 +1760,8 @@ vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm)
   while (1)
     {
       vlib_buffer_t *b;
+      u32 fq_elts_processed = 0;
+
       if (fq->head == fq->tail)
 	{
 	  fq->head_hint = fq->head;
@@ -1781,13 +1783,16 @@ vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm)
       ASSERT (elt->n_vectors <= VLIB_FRAME_SIZE);
 
       f = vlib_get_frame_to_node (vm, fqm->node_index);
+      f->n_vectors = 0;
 
+    more:
       /* If the first vector is traced, set the frame trace flag */
       b = vlib_get_buffer (vm, from[0]);
       if (b->flags & VLIB_BUFFER_IS_TRACED)
 	f->frame_flags |= VLIB_NODE_FLAG_TRACE;
 
       to = vlib_frame_vector_args (f);
+      to += f->n_vectors;
 
       n_left_to_node = elt->n_vectors;
 
@@ -1811,14 +1816,45 @@ vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm)
 	}
 
       vectors += elt->n_vectors;
-      f->n_vectors = elt->n_vectors;
+      f->n_vectors += elt->n_vectors;
+      ++fq_elts_processed;
+
+      // if there is still lots of space in this frame, try to grab and
+      // process following elt from queue as well
+      if (f->n_vectors * 2 < VLIB_FRAME_SIZE &&
+	  fq->head + fq_elts_processed != fq->tail)
+	{
+
+	  vlib_frame_queue_elt_t *next_elt;
+	  next_elt =
+	    fq->elts + ((fq->head + fq_elts_processed + 1) & (fq->nelts - 1));
+
+	  if (next_elt->valid)
+	    {
+	      from = next_elt->buffer_index;
+	      msg_type = next_elt->msg_type;
+
+	      ASSERT (msg_type == VLIB_FRAME_QUEUE_ELT_DISPATCH_FRAME);
+	      ASSERT (next_elt->n_vectors <= VLIB_FRAME_SIZE);
+
+	      if (f->n_vectors + next_elt->n_vectors < VLIB_FRAME_SIZE)
+		{
+		  elt->valid = 0;
+		  elt->n_vectors = 0;
+		  elt->msg_type = 0xfefefefe;
+		  elt = next_elt;
+		  goto more;
+		}
+	    }
+	}
+
       vlib_put_frame_to_node (vm, fqm->node_index, f);
 
       elt->valid = 0;
       elt->n_vectors = 0;
       elt->msg_type = 0xfefefefe;
       CLIB_MEMORY_BARRIER ();
-      fq->head++;
+      fq->head += fq_elts_processed;
       processed++;
 
       /*
