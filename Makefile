@@ -293,7 +293,7 @@ ifeq ($(OS_ID),rhel)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs mbedtls-devel zlib
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
-	@sudo -E dnf install $(CONFIRM) epel-release
+	@sudo -E dnf install $(CONFIRM) dnf-plugins-core epel-release
 	@sudo -E dnf config-manager --set-enabled PowerTools
 	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)
