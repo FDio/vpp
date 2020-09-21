@@ -818,64 +818,6 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES vxlan-gpe/vxlan_gpe.api)
 
 ##############################################################################
-# LISP control plane: lisp-cp
-##############################################################################
-
-list(APPEND VNET_SOURCES
-  lisp-cp/lisp_types.c
-  lisp-cp/lisp_cp_dpo.c
-  lisp-cp/control.c
-  lisp-cp/gid_dictionary.c
-  lisp-cp/lisp_msg_serdes.c
-  lisp-cp/packets.c
-  lisp-cp/one_cli.c
-  lisp-cp/lisp_cli.c
-  lisp-cp/one_api.c
-  lisp-cp/lisp_api.c
-  lisp-cp/lisp_types_api.c
-)
-
-list(APPEND VNET_HEADERS
-  lisp-cp/lisp_types.h
-  lisp-cp/packets.h
-  lisp-cp/gid_dictionary.h
-  lisp-cp/lisp_cp_messages.h
-  lisp-cp/lisp_msg_serdes.h
-  lisp-cp/control.h
-  lisp-cp/lisp_types_api.h
-)
-
-list(APPEND VNET_API_FILES lisp-cp/lisp_types.api)
-list(APPEND VNET_API_FILES lisp-cp/lisp.api)
-list(APPEND VNET_API_FILES lisp-cp/one.api)
-
-##############################################################################
-# Tunnel protocol: lisp-gpe
-##############################################################################
-
-list(APPEND VNET_SOURCES
-  lisp-gpe/lisp_gpe.c
-  lisp-gpe/lisp_gpe_sub_interface.c
-  lisp-gpe/lisp_gpe_adjacency.c
-  lisp-gpe/lisp_gpe_tunnel.c
-  lisp-gpe/lisp_gpe_fwd_entry.c
-  lisp-gpe/lisp_gpe_tenant.c
-  lisp-gpe/interface.c
-  lisp-gpe/decap.c
-  lisp-gpe/lisp_gpe_api.c
-)
-
-list(APPEND VNET_HEADERS
-  lisp-gpe/lisp_gpe.h
-  lisp-gpe/lisp_gpe_fwd_entry.h
-  lisp-gpe/lisp_gpe_tenant.h
-  lisp-gpe/lisp_gpe_packet.h
-  lisp-gpe/lisp_gpe_error.def
-)
-
-list(APPEND VNET_API_FILES lisp-gpe/lisp_gpe.api)
-
-##############################################################################
 # ipv6 segment routing
 ##############################################################################
 
