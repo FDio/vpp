@@ -30,6 +30,7 @@ uword
 unformat_cnat_ep (unformat_input_t * input, va_list * args)
 {
   cnat_endpoint_t *a = va_arg (*args, cnat_endpoint_t *);
+  vnet_main_t *vnm = vnet_get_main ();
   int port = 0;
 
   clib_memset (a, 0, sizeof (*a));
@@ -37,6 +38,30 @@ unformat_cnat_ep (unformat_input_t * input, va_list * args)
     ;
   else if (unformat_user (input, unformat_ip_address, &a->ce_ip))
     ;
+  else if (unformat (input, "%U %d", unformat_vnet_sw_interface,
+		     vnm, &a->ce_sw_if_index, &port))
+    {
+      a->ce_af = AF_IP4;
+      a->ce_flags = CNAT_EP_FLAG_RESOLVING;
+    }
+  else if (unformat_user (input, unformat_vnet_sw_interface,
+			  vnm, &a->ce_sw_if_index))
+    {
+      a->ce_af = AF_IP4;
+      a->ce_flags = CNAT_EP_FLAG_RESOLVING;
+    }
+  else if (unformat (input, "%U:v6 %d", unformat_vnet_sw_interface,
+		     vnm, &a->ce_sw_if_index, &port))
+    {
+      a->ce_af = AF_IP6;
+      a->ce_flags = CNAT_EP_FLAG_RESOLVING;
+    }
+  else if (unformat (input, "%U:v6", unformat_vnet_sw_interface,
+		     vnm, &a->ce_sw_if_index))
+    {
+      a->ce_af = AF_IP6;
+      a->ce_flags = CNAT_EP_FLAG_RESOLVING;
+    }
   else if (unformat (input, "%d", &port))
     ;
   else
@@ -65,8 +90,14 @@ u8 *
 format_cnat_endpoint (u8 * s, va_list * args)
 {
   cnat_endpoint_t *cep = va_arg (*args, cnat_endpoint_t *);
-
-  s = format (s, "%U;%d", format_ip_address, &cep->ce_ip, cep->ce_port);
+  vnet_main_t *vnm = vnet_get_main ();
+  if (cep->ce_flags & CNAT_EP_FLAG_RESOLVING)
+    s =
+      format (s, "%U (%U);%d", format_vnet_sw_if_index_name, vnm,
+	      cep->ce_sw_if_index, format_ip_address_family, cep->ce_af,
+	      cep->ce_port);
+  else
+    s = format (s, "%U;%d", format_ip_address, &cep->ce_ip, cep->ce_port);
 
   return (s);
 }

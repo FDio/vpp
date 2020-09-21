@@ -113,6 +113,9 @@ void
 cnat_client_translation_added (index_t cci)
 {
   cnat_client_t *cc;
+  if (INDEX_INVALID == cci)
+    return;
+
   cc = cnat_client_get (cci);
   ASSERT (!(cc->flags & CNAT_FLAG_EXPIRES));
   cc->tr_refcnt++;
@@ -122,6 +125,8 @@ void
 cnat_client_translation_deleted (index_t cci)
 {
   cnat_client_t *cc;
+  if (INDEX_INVALID == cci)
+    return;
 
   cc = cnat_client_get (cci);
   ASSERT (!(cc->flags & CNAT_FLAG_EXPIRES));

@@ -3,7 +3,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
+from vpp_ip import DpoProto, INVALID_INDEX
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -30,14 +30,22 @@ def find_cnat_translation(test, id):
 class Ep(object):
     """ CNat endpoint """
 
-    def __init__(self, ip, port, l4p=TCP):
+    def __init__(self, ip, port, l4p=TCP,
+                 sw_if_index=INVALID_INDEX, is_v6=False):
         self.ip = ip
         self.port = port
         self.l4p = l4p
+        self.sw_if_index = sw_if_index
+        if is_v6:
+            self.if_af = VppEnum.vl_api_address_family_t.ADDRESS_IP6
+        else:
+            self.if_af = VppEnum.vl_api_address_family_t.ADDRESS_IP4
 
     def encode(self):
         return {'addr': self.ip,
-                'port': self.port}
+                'port': self.port,
+                'sw_if_index': self.sw_if_index,
+                'if_af': self.if_af}
 
     def __str__(self):
         return ("%s:%d" % (self.ip, self.port))
@@ -211,6 +219,7 @@ class TestCNatTranslation(VppTestCase):
                 rxs = self.send_and_expect(self.pg0,
                                            p1 * N_PKTS,
                                            self.pg1)
+                self.logger.info(self.vapi.cli("show trace max 1"))
 
                 for rx in rxs:
                     self.assert_packet_checksums_valid(rx)
@@ -504,10 +513,13 @@ class TestCNatSourceNAT(VppTestCase):
                 l4p(sport=sports[nbr], dport=dports[nbr]) /
                 Raw())
 
+            self.vapi.cli("trace add pg-input 1")
             rxs = self.send_and_expect(
                 self.pg0,
                 p1 * N_PKTS,
                 self.pg1)
+            self.logger.info(self.vapi.cli("show trace max 1"))
+
             for rx in rxs:
                 self.assert_packet_checksums_valid(rx)
                 self.assertEqual(

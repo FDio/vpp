@@ -25,6 +25,11 @@
 
 cnat_translation_t *cnat_translation_pool;
 clib_bihash_8_8_t cnat_translation_db;
+addr_resolution_t *tr_resolutions;
+
+typedef void (*cnat_if_addr_add_cb_t) (addr_resolution_t * ar,
+				       ip_address_t * address);
+cnat_if_addr_add_cb_t *cnat_if_addr_add_cbs;
 
 static fib_node_type_t cnat_translation_fib_node_type;
 
@@ -33,25 +38,114 @@ vlib_combined_counter_main_t cnat_translation_counters = {
   .stat_segment_name = "/net/cnat-translation",
 };
 
+static u8
+cnat_resolve_ep (cnat_endpoint_t * ep)
+{
+  /* Tries to resolve IP from sw_if_index
+   * returns 1 if we need to schedule DHCP */
+  if (!(ep->ce_flags & CNAT_EP_FLAG_RESOLVING))
+    return 0;
+  if (ep->ce_af == AF_IP6)
+    {
+      ip6_address_t *ip6 = 0;
+      ip6 = ip6_interface_first_address (&ip6_main, ep->ce_sw_if_index);
+      if (ip6)
+	{
+	  ep->ce_flags &= ~CNAT_EP_FLAG_RESOLVING;
+	  ip_address_set (&ep->ce_ip, ip6, AF_IP6);
+	  return 0;
+	}
+      else
+	return 1;
+    }
+  else
+    {
+      ip4_address_t *ip4 = 0;
+      ip4 = ip4_interface_first_address (&ip4_main, ep->ce_sw_if_index, 0);
+      if (ip4)
+	{
+	  ep->ce_flags &= ~CNAT_EP_FLAG_RESOLVING;
+	  ip_address_set (&ep->ce_ip, ip4, AF_IP4);
+	  return 0;
+	}
+      else
+	return 1;
+    }
+}
+
+addr_resolution_t *
+cnat_add_addr_resolution (u32 sw_if_index, ip_address_family_t af,
+			  cnat_addr_resol_type_t type)
+{
+  addr_resolution_t *ar;
+  pool_get (tr_resolutions, ar);
+  ar->af = af;
+  ar->sw_if_index = sw_if_index;
+  ar->type = type;
+  return ar;
+}
+
+static void
+cnat_resolve_ep_tuple (cnat_endpoint_tuple_t * path, index_t cti)
+{
+  if (cnat_resolve_ep (&path->src_ep))
+    {
+      addr_resolution_t *ar;
+      ar = cnat_add_addr_resolution (path->src_ep.ce_sw_if_index,
+				     path->src_ep.ce_af,
+				     CNAT_RESOLV_ADDR_BACKEND);
+      ar->cti = cti;
+      ar->direction = VLIB_RX;
+    }
+  if (cnat_resolve_ep (&path->dst_ep))
+    {
+      addr_resolution_t *ar;
+      ar = cnat_add_addr_resolution (path->dst_ep.ce_sw_if_index,
+				     path->dst_ep.ce_af,
+				     CNAT_RESOLV_ADDR_BACKEND);
+      ar->cti = cti;
+      ar->direction = VLIB_TX;
+    }
+}
+
+void
+cnat_addr_resolution_cleanup (u32 cti, cnat_addr_resol_type_t type)
+{
+  /* Delete tr resolution entries matching translation index */
+  addr_resolution_t *ar;
+  index_t *indexes = 0, *ari;
+  /* *INDENT-OFF* */
+  pool_foreach (ar, tr_resolutions, ({
+    if ((cti == INDEX_INVALID || ar->cti == cti) &&
+      (ar->type == type || CNAT_RESOLV_ADDR_ANY == type))
+      vec_add1(indexes, ar - tr_resolutions);
+  }));
+  /* *INDENT-ON* */
+  vec_foreach (ari, indexes) pool_put_index (tr_resolutions, *ari);
+
+  vec_free (indexes);
+}
+
 static void
 cnat_tracker_release (cnat_ep_trk_t * trk)
 {
+  /* We only track fully resolved endpoints */
+  if (!trk->is_active)
+    return;
   fib_entry_untrack (trk->ct_fei, trk->ct_sibling);
 }
 
 static void
-cnat_tracker_track (index_t cti,
-		    const cnat_endpoint_tuple_t * path, cnat_ep_trk_t * trk)
+cnat_tracker_track (index_t cti, cnat_ep_trk_t * trk)
 {
   fib_prefix_t pfx;
+  /* We only track fully resolved endpoints */
+  trk->is_active = !(trk->ct_ep[VLIB_TX].ce_flags & CNAT_EP_FLAG_RESOLVING)
+    && !(trk->ct_ep[VLIB_RX].ce_flags & CNAT_EP_FLAG_RESOLVING);
+  if (!trk->is_active)
+    return;
 
-  ip_address_to_fib_prefix (&path->dst_ep.ce_ip, &pfx);
-
-  clib_memcpy (&trk->ct_ep[VLIB_TX], &path->dst_ep,
-	       sizeof (trk->ct_ep[VLIB_TX]));
-  clib_memcpy (&trk->ct_ep[VLIB_RX], &path->src_ep,
-	       sizeof (trk->ct_ep[VLIB_RX]));
-
+  ip_address_to_fib_prefix (&trk->ct_ep[VLIB_TX].ce_ip, &pfx);
   trk->ct_fei = fib_entry_track (CNAT_FIB_TABLE,
 				 &pfx,
 				 cnat_translation_fib_node_type,
@@ -62,15 +156,32 @@ cnat_tracker_track (index_t cti,
 				   (pfx.fp_proto), &trk->ct_dpo);
 }
 
-void
-cnat_add_translation_to_db (index_t cci, u16 port, ip_protocol_t proto,
-			    index_t cti)
+/**
+ * Add a translation to the bihash
+ *
+ * @param cci the ID of the parent client (invalid if vip not resolved)
+ * @param vip the translation endpoint
+ * @param proto the translation proto
+ * @param cti the translation index to be used as value
+ */
+static void
+cnat_add_translation_to_db (index_t cci, cnat_endpoint_t * vip,
+			    ip_protocol_t proto, index_t cti)
 {
   clib_bihash_kv_8_8_t bkey;
   u64 key;
-
-  key = (proto << 16) | port;
-  key = key << 32 | (u32) cci;
+  if (INDEX_INVALID == cci)
+    {
+      key = proto << 8 | 0x80 | vip->ce_af;
+      key = key << 16 | vip->ce_port;
+      key = key << 32 | (u32) vip->ce_sw_if_index;
+    }
+  else
+    {
+      key = proto << 8;
+      key = key << 16 | vip->ce_port;
+      key = key << 32 | (u32) cci;
+    }
 
   bkey.key = key;
   bkey.value = cti;
@@ -78,14 +189,31 @@ cnat_add_translation_to_db (index_t cci, u16 port, ip_protocol_t proto,
   clib_bihash_add_del_8_8 (&cnat_translation_db, &bkey, 1);
 }
 
-void
-cnat_remove_translation_from_db (index_t cci, u16 port, ip_protocol_t proto)
+/**
+ * Remove a translation from the bihash
+ *
+ * @param cci the ID of the parent client
+ * @param vip the translation endpoint
+ * @param proto the translation proto
+ */
+static void
+cnat_remove_translation_from_db (index_t cci, cnat_endpoint_t * vip,
+				 ip_protocol_t proto)
 {
   clib_bihash_kv_8_8_t bkey;
   u64 key;
-
-  key = (proto << 16) | port;
-  key = key << 32 | (u32) cci;
+  if (INDEX_INVALID == cci)
+    {
+      key = proto << 8 | 0x80 | vip->ce_af;
+      key = key << 16 | vip->ce_port;
+      key = key << 32 | (u32) vip->ce_sw_if_index;
+    }
+  else
+    {
+      key = proto << 8;
+      key = key << 16 | vip->ce_port;
+      key = key << 32 | (u32) cci;
+    }
 
   bkey.key = key;
 
@@ -98,16 +226,21 @@ cnat_translation_stack (cnat_translation_t * ct)
   fib_protocol_t fproto;
   cnat_ep_trk_t *trk;
   dpo_proto_t dproto;
+  u8 ep_idx = 0;
   index_t lbi;
 
   fproto = ip_address_family_to_fib_proto (ct->ct_vip.ce_ip.version);
   dproto = fib_proto_to_dpo (fproto);
 
-  lbi = load_balance_create (vec_len (ct->ct_paths),
-			     fib_proto_to_dpo (fproto), IP_FLOW_HASH_DEFAULT);
+  vec_foreach (trk, ct->ct_paths) if (trk->is_active)
+    ep_idx++;
 
-  vec_foreach (trk, ct->ct_paths)
-    load_balance_set_bucket (lbi, trk - ct->ct_paths, &trk->ct_dpo);
+  lbi = load_balance_create (ep_idx, fib_proto_to_dpo (fproto),
+			     IP_FLOW_HASH_DEFAULT);
+
+  ep_idx = 0;
+  vec_foreach (trk, ct->ct_paths) if (trk->is_active)
+    load_balance_set_bucket (lbi, ep_idx++, &trk->ct_dpo);
 
   dpo_set (&ct->ct_lb, DPO_LOAD_BALANCE, dproto, lbi);
   dpo_stack (cnat_client_dpo, dproto, &ct->ct_lb, &ct->ct_lb);
@@ -128,32 +261,40 @@ cnat_translation_delete (u32 id)
 
   vec_foreach (trk, ct->ct_paths) cnat_tracker_release (trk);
 
-  cnat_remove_translation_from_db (ct->ct_cci, ct->ct_vip.ce_port,
-				   ct->ct_proto);
+  cnat_remove_translation_from_db (ct->ct_cci, &ct->ct_vip, ct->ct_proto);
   cnat_client_translation_deleted (ct->ct_cci);
+  cnat_addr_resolution_cleanup (id, CNAT_RESOLV_ADDR_ANY);
   pool_put (cnat_translation_pool, ct);
 
   return (0);
 }
 
 u32
-cnat_translation_update (const cnat_endpoint_t * vip,
+cnat_translation_update (cnat_endpoint_t * vip,
 			 ip_protocol_t proto,
-			 const cnat_endpoint_tuple_t * paths, u8 flags)
+			 cnat_endpoint_tuple_t * paths, u8 flags)
 {
-  const cnat_endpoint_tuple_t *path;
+  cnat_endpoint_tuple_t *path;
   const cnat_client_t *cc;
   cnat_translation_t *ct;
   cnat_ep_trk_t *trk;
   index_t cci;
 
   cnat_lazy_init ();
+  if (cnat_resolve_ep (vip))
+    {
+      /* vip only contains a sw_if_index for now */
+      ct = cnat_find_translation (vip->ce_sw_if_index, vip->ce_port, proto);
+      cci = INDEX_INVALID;
+    }
+  else
+    {
+      /* do we know of this ep's vip */
+      cci = cnat_client_add (&vip->ce_ip, flags);
+      cc = cnat_client_get (cci);
 
-  /* do we know of this ep's vip */
-  cci = cnat_client_add (&vip->ce_ip, flags);
-  cc = cnat_client_get (cci);
-
-  ct = cnat_find_translation (cc->parent_cci, vip->ce_port, proto);
+      ct = cnat_find_translation (cc->parent_cci, vip->ce_port, proto);
+    }
 
   if (NULL == ct)
     {
@@ -164,14 +305,23 @@ cnat_translation_update (const cnat_endpoint_t * vip,
       ct->ct_cci = cci;
       ct->index = ct - cnat_translation_pool;
 
-      cnat_add_translation_to_db (cci, ct->ct_vip.ce_port, ct->ct_proto,
-				  ct->index);
+      cnat_add_translation_to_db (cci, vip, proto, ct->index);
       cnat_client_translation_added (cci);
 
       vlib_validate_combined_counter (&cnat_translation_counters, ct->index);
       vlib_zero_combined_counter (&cnat_translation_counters, ct->index);
     }
   ct->flags = flags;
+
+  if (INDEX_INVALID == cci)
+    {
+      cnat_addr_resolution_cleanup (ct->index, CNAT_RESOLV_ADDR_TRANSLATION);
+      addr_resolution_t *ar;
+      ar = cnat_add_addr_resolution (vip->ce_sw_if_index,
+				     vip->ce_af,
+				     CNAT_RESOLV_ADDR_TRANSLATION);
+      ar->cti = ct->index;
+    }
 
   vec_foreach (trk, ct->ct_paths)
   {
@@ -182,9 +332,16 @@ cnat_translation_update (const cnat_endpoint_t * vip,
 
   vec_foreach (path, paths)
   {
+    cnat_resolve_ep_tuple (path, ct->index);
+
     vec_add2 (ct->ct_paths, trk, 1);
 
-    cnat_tracker_track (ct->index, path, trk);
+    clib_memcpy (&trk->ct_ep[VLIB_TX], &path->dst_ep,
+		 sizeof (trk->ct_ep[VLIB_TX]));
+    clib_memcpy (&trk->ct_ep[VLIB_RX], &path->src_ep,
+		 sizeof (trk->ct_ep[VLIB_RX]));
+
+    cnat_tracker_track (ct->index, trk);
   }
 
   cnat_translation_stack (ct);
@@ -409,9 +566,109 @@ VLIB_CLI_COMMAND (cnat_translation_cli_add_del_command, static) =
 };
 /* *INDENT-ON* */
 
+static void
+cnat_if_addr_add_del_translation_cb (addr_resolution_t * ar,
+				     ip_address_t * address)
+{
+  cnat_translation_t *ct;
+  ct = cnat_translation_get (ar->cti);
+  ASSERT (ct->ct_vip.ce_flags && CNAT_EP_FLAG_RESOLVING);
+  cnat_remove_translation_from_db (ct->ct_cci, &ct->ct_vip, ct->ct_proto);
+  ct->ct_cci = cnat_client_add (address, ct->flags);
+
+  ip_address_copy (&ct->ct_vip.ce_ip, address);
+  ct->ct_vip.ce_flags &= ~CNAT_EP_FLAG_RESOLVING;
+
+  cnat_add_translation_to_db (ct->ct_cci, &ct->ct_vip, ct->ct_proto,
+			      ct->index);
+  cnat_client_translation_added (ct->ct_cci);
+}
+
+static void
+cnat_if_addr_add_del_backend_cb (addr_resolution_t * ar,
+				 ip_address_t * address)
+{
+  cnat_translation_t *ct;
+  cnat_ep_trk_t *trk;
+  ct = cnat_translation_get (ar->cti);
+  vec_foreach (trk, ct->ct_paths)
+  {
+    cnat_endpoint_t *ep = &trk->ct_ep[ar->direction];
+    if (trk->is_active)
+      continue;
+    if (ep->ce_sw_if_index != ar->sw_if_index)
+      continue;
+    ip_address_copy (&ep->ce_ip, address);
+    ep->ce_flags &= ~CNAT_EP_FLAG_RESOLVING;
+    cnat_tracker_track (ar->cti, trk);
+  }
+
+  cnat_translation_stack (ct);
+}
+
+static void
+cnat_if_addr_add_del_snat_cb (addr_resolution_t * ar, ip_address_t * address)
+{
+  if (AF_IP4 == ar->af)
+    cnat_main.snat_ip4 = ip_addr_v4 (address);
+  else
+    ip6_address_copy (&cnat_main.snat_ip6, &ip_addr_v6 (address));
+}
+
+static void
+cnat_if_addr_add_del_callback (u32 sw_if_index, ip_address_t * address)
+{
+  addr_resolution_t *ar;
+  index_t *indexes = 0, *ari;
+  /* *INDENT-OFF* */
+  pool_foreach (ar, tr_resolutions, ({
+    if (ar->sw_if_index != sw_if_index)
+      continue;
+    if (ar->af != ip_addr_version (address))
+      continue;
+    cnat_if_addr_add_cbs[ar->type] (ar, address);
+    vec_add1(indexes, ar - tr_resolutions);
+  }));
+  /* *INDENT-ON* */
+
+  vec_foreach (ari, indexes) pool_put_index (tr_resolutions, *ari);
+
+  vec_free (indexes);
+}
+
+static void
+cnat_ip6_if_addr_add_del_callback (struct ip6_main_t *im,
+				   uword opaque, u32 sw_if_index,
+				   ip6_address_t * address,
+				   u32 address_length, u32 if_address_index,
+				   u32 is_del)
+{
+  ip_address_t addr;
+  if (is_del)
+    return;
+  ip_address_set (&addr, address, AF_IP6);
+  cnat_if_addr_add_del_callback (sw_if_index, &addr);
+}
+
+static void
+cnat_ip4_if_addr_add_del_callback (struct ip4_main_t *im,
+				   uword opaque, u32 sw_if_index,
+				   ip4_address_t * address,
+				   u32 address_length, u32 if_address_index,
+				   u32 is_del)
+{
+  ip_address_t addr;
+  if (is_del)
+    return;
+  ip_address_set (&addr, address, AF_IP4);
+  cnat_if_addr_add_del_callback (sw_if_index, &addr);
+}
+
 static clib_error_t *
 cnat_translation_init (vlib_main_t * vm)
 {
+  ip4_main_t *i4m = &ip4_main;
+  ip6_main_t *i6m = &ip6_main;
   cnat_main_t *cm = &cnat_main;
   cnat_translation_fib_node_type =
     fib_node_register_new_type (&cnat_translation_vft);
@@ -420,6 +677,20 @@ cnat_translation_init (vlib_main_t * vm)
 			cm->translation_hash_buckets,
 			cm->translation_hash_memory);
 
+  ip4_add_del_interface_address_callback_t cb4;
+  cb4.function = cnat_ip4_if_addr_add_del_callback;
+  vec_add1 (i4m->add_del_interface_address_callbacks, cb4);
+
+  ip6_add_del_interface_address_callback_t cb6;
+  cb6.function = cnat_ip6_if_addr_add_del_callback;
+  vec_add1 (i6m->add_del_interface_address_callbacks, cb6);
+
+  vec_validate (cnat_if_addr_add_cbs, CNAT_ADDR_N_RESOLUTIONS);
+  cnat_if_addr_add_cbs[CNAT_RESOLV_ADDR_BACKEND] =
+    cnat_if_addr_add_del_backend_cb;
+  cnat_if_addr_add_cbs[CNAT_RESOLV_ADDR_SNAT] = cnat_if_addr_add_del_snat_cb;
+  cnat_if_addr_add_cbs[CNAT_RESOLV_ADDR_TRANSLATION] =
+    cnat_if_addr_add_del_translation_cb;
   return (NULL);
 }
 
