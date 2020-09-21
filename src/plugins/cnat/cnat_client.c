@@ -48,7 +48,6 @@ cnat_client_destroy (cnat_client_t * cc)
     {
       ASSERT (fib_entry_is_sourced (cc->cc_fei, cnat_fib_source));
       fib_table_entry_delete_index (cc->cc_fei, cnat_fib_source);
-      ASSERT (!fib_entry_is_sourced (cc->cc_fei, cnat_fib_source));
     }
   cnat_client_db_remove (cc);
   dpo_reset (&cc->cc_parent);
@@ -110,6 +109,9 @@ void
 cnat_client_translation_added (index_t cci)
 {
   cnat_client_t *cc;
+  if (INDEX_INVALID == cci)
+    return;
+
   cc = cnat_client_get (cci);
   ASSERT (!(cc->flags & CNAT_FLAG_EXPIRES));
   cc->tr_refcnt++;
@@ -119,6 +121,8 @@ void
 cnat_client_translation_deleted (index_t cci)
 {
   cnat_client_t *cc;
+  if (INDEX_INVALID == cci)
+    return;
 
   cc = cnat_client_get (cci);
   ASSERT (!(cc->flags & CNAT_FLAG_EXPIRES));
