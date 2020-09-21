@@ -580,6 +580,7 @@ Binary API Compiler for Python
 I:	vppapigen
 M:	Ole Troan <otroan@employees.org>
 F:	src/tools/vppapigen/
+F:	extras/scripts/crcchecker.py
 
 API trace tool
 I:	vppapitrace

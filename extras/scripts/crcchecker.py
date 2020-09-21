@@ -6,13 +6,13 @@ import json
 import argparse
 from subprocess import run, PIPE, check_output, CalledProcessError
 
-rootdir = os.path.dirname(os.path.realpath(__file__)) + '/../..'
+rootdir = os.path.dirname(os.path.realpath(__file__)) + '/../../src'
 
 def crc_from_apigen(revision, filename):
     if not revision and not os.path.isfile(filename):
         print(f'skipping: {filename}', file=sys.stderr)
         return {}
-    apigen_bin = f'{rootdir}/src/tools/vppapigen/vppapigen.py'
+    apigen_bin = f'{rootdir}/tools/vppapigen/vppapigen.py'
     if revision:
         apigen = (f'{apigen_bin} --git-revision {revision} --includedir src '
                   f'--input {filename} CRC')
