@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aeb61980_2f682d24",
+        "filename": "src/plugins/lisp/lisp-cp/control_main.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-21T17:24:13Z",
+      "side": 1,
+      "message": "Was this really meant for this patch?",
+      "range": {
+        "startLine": 16,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 0
+      },
+      "revId": "3f9fdd98463bd926fc78a2b366875c929058e2db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
