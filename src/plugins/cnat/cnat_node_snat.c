@@ -121,14 +121,14 @@ cnat_snat_inline (vlib_main_t * vm,
       if (AF_IP4 == ctx->af)
 	{
 	  ip46_address_set_ip4 (&session->value.cs_ip[VLIB_RX],
-				&cm->snat_ip4);
+				&ip_addr_v4 (&cm->snat_ip4.ce_ip));
 	  ip46_address_set_ip4 (&session->value.cs_ip[VLIB_TX],
 				&ip4->dst_address);
 	}
       else
 	{
 	  ip46_address_set_ip6 (&session->value.cs_ip[VLIB_RX],
-				&cm->snat_ip6);
+				&ip_addr_v6 (&cm->snat_ip6.ce_ip));
 	  ip46_address_set_ip6 (&session->value.cs_ip[VLIB_TX],
 				&ip6->dst_address);
 	}

@@ -22,15 +22,21 @@
 option version = "0.1.0";
 import "vnet/ip/ip_types.api";
 import "vnet/fib/fib_types.api";
+import "vnet/interface_types.api";
 
 enum cnat_translation_flags:u8
 {
   CNAT_TRANSLATION_ALLOC_PORT = 1,
 };
 
+/* An enpoint is either
+ * An IP & a port
+ * An interface, an address familiy and a port */
 typedef cnat_endpoint
 {
   vl_api_address_t addr;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_address_family_t if_af;
   u16 port;
 };
 
@@ -117,6 +123,23 @@ autoreply define cnat_set_snat_addresses
   u32 context;
   vl_api_ip4_address_t snat_ip4;
   vl_api_ip6_address_t snat_ip6;
+  vl_api_interface_index_t sw_if_index;
+};
+
+define cnat_get_snat_addresses
+{
+  u32 client_index;
+  u32 context;
+};
+
+define cnat_get_snat_addresses_reply
+{
+  u32 context;
+  i32 retval;
+  u32 id;
+  vl_api_ip4_address_t snat_ip4;
+  vl_api_ip6_address_t snat_ip6;
+  vl_api_interface_index_t sw_if_index;
 };
 
 autoreply define cnat_add_del_snat_prefix
