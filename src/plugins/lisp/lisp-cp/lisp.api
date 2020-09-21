@@ -1,0 +1,674 @@
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "2.0.0";
+
+import "vnet/interface_types.api";
+import "plugins/lisp/lisp-cp/lisp_types.api";
+
+/** \brief add or delete locator_set
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param locator_set_name - locator name
+    @param locator_num - number of locators
+    @param locators - LISP locator records
+*/
+define lisp_add_del_locator_set
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  string locator_set_name[64];
+  u32 locator_num;
+  vl_api_local_locator_t locators[locator_num];
+};
+
+/** \brief Reply for locator_set add/del
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param ls_index - locator set index
+*/
+define lisp_add_del_locator_set_reply
+{
+  u32 context;
+  i32 retval;
+  u32 ls_index;
+};
+
+/** \brief add or delete locator for locator_set
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param locator_set_name - name of locator_set to add/del locator
+    @param sw_if_index - index of the interface
+    @param priority - priority of the lisp locator
+    @param weight - weight of the lisp locator
+*/
+autoreply define lisp_add_del_locator
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  string locator_set_name[64];
+  vl_api_interface_index_t sw_if_index;
+  u8 priority;
+  u8 weight;
+};
+
+/** \brief add or delete lisp eid-table
+        @param client_index - opaque cookie to identify the sender
+        @param context - sender context, to match reply w/ request
+        @param is_add - add address if non-zero, else delete
+        @param eid - endpoint identifier
+        @param locator_set_name - name of locator_set to add/del eid-table
+        @param vni - virtual network instance
+        @param key - secret key
+*/
+autoreply define lisp_add_del_local_eid
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  vl_api_eid_t eid;
+  string locator_set_name[64];
+  u32 vni;
+  vl_api_hmac_key_t key;
+};
+
+/** \brief Add/delete map server
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero; delete otherwise
+    @param ip_address - map server IP address
+*/
+autoreply define lisp_add_del_map_server
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  vl_api_address_t ip_address;
+};
+
+/** \brief add or delete map-resolver
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param ip_address - ip address
+*/
+autoreply define lisp_add_del_map_resolver
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  vl_api_address_t ip_address;
+};
+
+/** \brief enable or disable LISP feature
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_en - enable protocol if non-zero, else disable
+*/
+autoreply define lisp_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  bool is_enable [default=true];
+};
+
+/** \brief configure or disable LISP PITR node
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ls_name - locator set name
+    @param is_add - add locator set if non-zero, else disable pitr
+*/
+autoreply define lisp_pitr_set_locator_set
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  string ls_name[64];
+};
+
+/** \brief configure or disable use of PETR
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip_address - PETR IP address
+    @param is_add - add locator set if non-zero, else disable pitr
+*/
+autoreply define lisp_use_petr
+{
+  u32 client_index;
+  u32 context;
+  vl_api_address_t ip_address;
+  bool is_add [default=true];
+};
+
+/** \brief Request for LISP PETR status
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define show_lisp_use_petr
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief LISP PETR status, enable or disable
+    @param context - sender context, to match reply w/ request
+    @param status - LISP PETR enable if non-zero, else disable
+    @param address - PETR IP address
+*/
+define show_lisp_use_petr_reply
+{
+  u32 context;
+  i32 retval;
+  bool is_petr_enable [default=true];
+  vl_api_address_t ip_address;
+};
+
+/** \brief Get state of LISP RLOC probing
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define show_lisp_rloc_probe_state
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for show_lisp_rloc_probe_state
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param is_enabled - state of RLOC probing
+*/
+define show_lisp_rloc_probe_state_reply
+{
+  u32 context;
+  i32 retval;
+  bool is_enabled [default=true];
+};
+
+/** \brief enable/disable LISP RLOC probing
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_enable - enable if non-zero; disable otherwise
+*/
+autoreply define lisp_rloc_probe_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  bool is_enable [default=true];
+};
+
+/** \brief enable/disable LISP map-register
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_enable - enable if non-zero; disable otherwise
+*/
+autoreply define lisp_map_register_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  bool is_enable [default=true];
+};
+
+/** \brief Get state of LISP map-register
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define show_lisp_map_register_state
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for show_lisp_map_register_state
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define show_lisp_map_register_state_reply
+{
+  u32 context;
+  i32 retval;
+  bool is_enabled [default=true];
+};
+
+/** \brief set LISP map-request mode. Based on configuration VPP will send
+      src/dest or just normal destination map requests.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_src_dst - if non-zero source/destination else destination only
+*/
+autoreply define lisp_map_request_mode
+{
+  u32 client_index;
+  u32 context;
+  bool is_src_dst;
+};
+
+/** \brief Request for LISP map-request mode
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define show_lisp_map_request_mode
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for show_lisp_map_request_mode
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param is_src_dst - if non-zero source/destination else destination only
+*/
+define show_lisp_map_request_mode_reply
+{
+  u32 context;
+  i32 retval;
+  bool is_src_dst;
+};
+
+/** \brief add or delete remote static mapping
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param is_src_dst - flag indicating src/dst based routing policy
+    @param del_all - if set, delete all remote mappings
+    @param vni - virtual network instance
+    @param action - negative map-reply action
+    @param deid - dst EID
+    @param seid - src EID, valid only if is_src_dst is enabled
+    @param rloc_num - number of remote locators
+    @param rlocs - remote locator records
+*/
+autoreply define lisp_add_del_remote_mapping
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  bool is_src_dst;
+  bool del_all;
+  u32 vni;
+  u8 action;
+  vl_api_eid_t deid;
+  vl_api_eid_t seid;
+  u32 rloc_num;
+  vl_api_remote_locator_t rlocs[rloc_num];
+};
+
+/** \brief add or delete LISP adjacency adjacency
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param vni - virtual network instance
+    @param reid - remote EID
+    @param leid - local EID
+*/
+autoreply define lisp_add_del_adjacency
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  u32 vni;
+  vl_api_eid_t reid;
+  vl_api_eid_t leid;
+};
+
+/** \brief add or delete map request itr rlocs
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param locator_set_name - locator set name
+*/
+autoreply define lisp_add_del_map_request_itr_rlocs
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  string locator_set_name[64];
+};
+
+/** \brief Reply for lisp_add_del_map_request_itr_rlocs
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+
+/** \brief map/unmap vni/bd_index to vrf
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add or delete mapping
+    @param dp_table - virtual network id/bridge domain index
+    @param vrf - vrf
+*/
+autoreply define lisp_eid_table_add_del_map
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  u32 vni;
+  u32 dp_table;
+  bool is_l2;
+};
+
+/** \brief Request for map lisp locator status
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param locator_set_index - index of locator_set
+    @param ls_name - locator set name
+    @param is_index_set - flag indicating whether ls_name or ls_index is set
+ */
+define lisp_locator_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 ls_index;
+  string ls_name[64];
+  u8 is_index_set;
+};
+
+/** \brief LISP locator_set status
+    @param local - if is set, then locator is local
+    @param locator_set_name - name of the locator_set
+    @param sw_if_index - sw_if_index of the locator
+    @param ip_address - ip address
+    @param priority - locator priority
+    @param weight - locator weight
+  */
+define lisp_locator_details
+{
+  u32 context;
+  u8 local;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_address_t ip_address;
+  u8 priority;
+  u8 weight;
+};
+
+/** \brief LISP locator_set status
+    @param context - sender context, to match reply w/ request
+    @param ls_index - locator set index
+    @param ls_name - name of the locator set
+ */
+define lisp_locator_set_details
+{
+  u32 context;
+  u32 ls_index;
+  string ls_name[64];
+};
+
+enum lisp_locator_set_filter : u8 {
+        LISP_LOCATOR_SET_FILTER_API_ALL = 0,
+        LISP_LOCATOR_SET_FILTER_API_LOCAL = 1,
+        LISP_LOCATOR_SET_FILTER_API_REMOTE = 2,
+};
+
+/** \brief Request for locator_set summary status
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param filter - filter type
+ */
+define lisp_locator_set_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_lisp_locator_set_filter_t filter;
+};
+
+/** \brief Dump lisp eid-table
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param locator_set_index - index of locator_set, if ~0 then the mapping
+                                is negative
+    @param action - negative map request action
+    @param is_local - local if non-zero, else remote
+    @param is_src_dst - EID is type of source/destination
+    @param deid - dst EID
+    @param seid - src EID
+    @param vni - virtual network instance
+    @param ttl - time to live
+    @param authoritative - authoritative
+    @param key_id
+      HMAC_NO_KEY           0
+      HMAC_SHA_1_96         1
+      HMAC_SHA_256_128      2
+    @param key - secret key
+*/
+
+define lisp_eid_table_details
+{
+  u32 context;
+  u32 locator_set_index;
+  u8 action;
+  bool is_local;
+  bool is_src_dst;
+  u32 vni;
+  vl_api_eid_t deid;
+  vl_api_eid_t seid;
+  u32 ttl;
+  u8 authoritative;
+  vl_api_hmac_key_t key;
+};
+
+/** \brief Request for eid table summary status
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param eid_set - if non-zero request info about specific mapping
+    @param vni - virtual network instance; valid only if eid_set != 0
+    @param prefix_length - prefix length if EID is IP address;
+      valid only if eid_set != 0
+    @param eid - endpoint identifier
+    @param filter - filter type;
+      Support values:
+        0: all eid
+        1: local eid
+        2: remote eid
+ */
+define lisp_eid_table_dump
+{
+  u32 client_index;
+  u32 context;
+  u8 eid_set;
+  u8 prefix_length;
+  u32 vni;
+  vl_api_eid_t eid;
+  vl_api_lisp_locator_set_filter_t filter;
+};
+
+/** \brief LISP adjacency
+    @param reid - remote EID
+    @param leid - local EID
+  */
+typedef lisp_adjacency
+{
+  vl_api_eid_t reid;
+  vl_api_eid_t leid;
+};
+
+/** \brief LISP adjacency reply
+    @param count - number of adjacencies
+    @param adjacencies - array of adjacencies
+  */
+define lisp_adjacencies_get_reply
+{
+  u32 context;
+  i32 retval;
+  u32 count;
+  vl_api_lisp_adjacency_t adjacencies[count];
+};
+
+/** \brief Request for LISP adjacencies
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param vni - filter adjacencies by VNI
+ */
+define lisp_adjacencies_get
+{
+  u32 client_index;
+  u32 context;
+  u32 vni;
+};
+
+/** \brief Shows relationship between vni and vrf/bd
+    @param dp_table - VRF index or bridge domain index
+    @param vni - virtual network instance
+  */
+define lisp_eid_table_map_details
+{
+  u32 context;
+  u32 vni;
+  u32 dp_table;
+};
+
+/** \brief Request for lisp_eid_table_map_details
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_l2 - if set dump vni/bd mappings else vni/vrf
+ */
+define lisp_eid_table_map_dump
+{
+  u32 client_index;
+  u32 context;
+  bool is_l2;
+};
+
+/** \brief Dumps all VNIs used in mappings
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+  */
+define lisp_eid_table_vni_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief reply to lisp_eid_table_vni_dump
+    @param context - sender context, to match reply w/ request
+    @param vni - virtual network instance
+ */
+define lisp_eid_table_vni_details
+{
+  u32 context;
+  u32 vni;
+};
+
+/** \brief LISP map resolver status
+    @param ip_address - array of address bytes
+ */
+define lisp_map_resolver_details
+{
+  u32 context;
+  vl_api_address_t ip_address;
+};
+
+/** \brief Request for map resolver summary status
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+ */
+define lisp_map_resolver_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief LISP map server details
+    @param ip_address - array of address bytes
+ */
+define lisp_map_server_details
+{
+  u32 context;
+  vl_api_address_t ip_address;
+};
+
+/** \brief Request for map server summary status
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+ */
+define lisp_map_server_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Request for lisp-gpe protocol status
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define show_lisp_status
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Status of lisp, enable or disable
+    @param context - sender context, to match reply w/ request
+    @param feature_status - lisp enable if non-zero, else disable
+    @param gpe_status - lisp enable if non-zero, else disable
+*/
+define show_lisp_status_reply
+{
+  u32 context;
+  i32 retval;
+  bool is_lisp_enabled;
+  bool is_gpe_enabled;
+};
+
+/** \brief Get LISP map request itr rlocs status
+    @param context - sender context, to match reply w/ request
+    @param locator_set_name - name of the locator_set
+ */
+define lisp_get_map_request_itr_rlocs
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Request for map request itr rlocs summary status
+ */
+define lisp_get_map_request_itr_rlocs_reply
+{
+  u32 context;
+  i32 retval;
+  string locator_set_name[64];
+};
+
+/** \brief Request for lisp pitr status
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define show_lisp_pitr
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Status of lisp pitr, enable or disable
+    @param context - sender context, to match reply w/ request
+    @param status - lisp pitr enable if non-zero, else disable
+    @param locator_set_name -  name of the locator_set
+*/
+define show_lisp_pitr_reply
+{
+  u32 context;
+  i32 retval;
+  bool is_enabled;
+  string locator_set_name[64];
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
