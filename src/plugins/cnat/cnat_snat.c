@@ -15,6 +15,7 @@
 
 #include <vnet/ip/ip.h>
 #include <cnat/cnat_snat.h>
+#include <cnat/cnat_translation.h>
 
 static void
 cnat_compute_prefix_lengths_in_search_order (cnat_snat_pfx_table_t *
@@ -157,13 +158,36 @@ format_cnat_snat_prefix (u8 * s, va_list * args)
   return (s);
 }
 
+void
+cnat_set_snat (ip4_address_t * ip4, ip6_address_t * ip6, u32 sw_if_index)
+{
+  cnat_lazy_init ();
+
+  cnat_translation_unwatch_addr (INDEX_INVALID, CNAT_RESOLV_ADDR_SNAT);
+
+  ip_address_set (&cnat_main.snat_ip4.ce_ip, ip4, AF_IP4);
+  ip_address_set (&cnat_main.snat_ip6.ce_ip, ip6, AF_IP6);
+  cnat_main.snat_ip4.ce_sw_if_index = sw_if_index;
+  cnat_main.snat_ip6.ce_sw_if_index = sw_if_index;
+
+  cnat_resolve_ep (&cnat_main.snat_ip4);
+  cnat_resolve_ep (&cnat_main.snat_ip6);
+  cnat_translation_watch_addr (INDEX_INVALID, 0, &cnat_main.snat_ip4,
+			       CNAT_RESOLV_ADDR_SNAT);
+  cnat_translation_watch_addr (INDEX_INVALID, 0, &cnat_main.snat_ip6,
+			       CNAT_RESOLV_ADDR_SNAT);
+}
+
 static clib_error_t *
-cnat_set_snat (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+cnat_set_snat_cli (vlib_main_t * vm,
+		   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  ip4_address_t ip4 = { {0} };
+  ip6_address_t ip6 = { {0} };
   clib_error_t *e = 0;
-  ip_address_t addr;
+  u32 sw_if_index = INDEX_INVALID;
 
   cnat_lazy_init ();
 
@@ -173,15 +197,13 @@ cnat_set_snat (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%U", unformat_ip_address, &addr))
-	{
-	  if (ip_addr_version (&addr) == AF_IP4)
-	    clib_memcpy (&cnat_main.snat_ip4, &ip_addr_v4 (&addr),
-			 sizeof (ip4_address_t));
-	  else
-	    clib_memcpy (&cnat_main.snat_ip6, &ip_addr_v6 (&addr),
-			 sizeof (ip6_address_t));
-	}
+      if (unformat_user (line_input, unformat_ip4_address, &ip4))
+	;
+      else if (unformat_user (line_input, unformat_ip6_address, &ip6))
+	;
+      else if (unformat_user (line_input, unformat_vnet_sw_interface,
+			      vnm, &sw_if_index))
+	;
       else
 	{
 	  e = clib_error_return (0, "unknown input '%U'",
@@ -189,6 +211,8 @@ cnat_set_snat (vlib_main_t * vm,
 	  goto done;
 	}
     }
+
+  cnat_set_snat (&ip4, &ip6, sw_if_index);
 
 done:
   unformat_free (line_input);
@@ -201,7 +225,7 @@ VLIB_CLI_COMMAND (cnat_set_snat_command, static) =
 {
   .path = "cnat snat with",
   .short_help = "cnat snat with [<ip4-address>][<ip6-address>]",
-  .function = cnat_set_snat,
+  .function = cnat_set_snat_cli,
 };
 /* *INDENT-ON* */
 

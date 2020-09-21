@@ -49,10 +49,18 @@
 
 #define MIN_SRC_PORT ((u16) 0xC000)
 
+typedef enum
+{
+  /* Endpoint addr has been resolved */
+  CNAT_EP_FLAG_RESOLVED = 1,
+} cnat_ep_flag_t;
+
 typedef struct cnat_endpoint_t_
 {
   ip_address_t ce_ip;
+  u32 ce_sw_if_index;
   u16 ce_port;
+  u8 ce_flags;
 } cnat_endpoint_t;
 
 typedef struct cnat_endpoint_tuple_t_
@@ -118,10 +126,10 @@ typedef struct cnat_main_
   clib_rwlock_t ts_lock;
 
   /* Ip4 Address to use for source NATing */
-  ip4_address_t snat_ip4;
+  cnat_endpoint_t snat_ip4;
 
   /* Ip6 Address to use for source NATing */
-  ip6_address_t snat_ip6;
+  cnat_endpoint_t snat_ip6;
 
   /* Longest prefix Match table for source NATing */
   cnat_snat_pfx_table_t snat_pfx_table;
@@ -191,6 +199,14 @@ extern void cnat_lazy_init ();
  * Enable/Disable session cleanup
  */
 extern void cnat_enable_disable_scanner (cnat_scanner_cmd_t event_type);
+
+/**
+ * Resolve endpoint address
+ */
+extern u8 cnat_resolve_ep (cnat_endpoint_t * ep);
+extern u8 cnat_resolve_addr (u32 sw_if_index, ip_address_family_t af,
+			     ip_address_t * addr);
+
 
 /*
  * fd.io coding-style-patch-verification: ON

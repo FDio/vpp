@@ -49,12 +49,54 @@ typedef struct cnat_ep_trk_t_
    * The forwarding contributed by the entry
    */
   dpo_id_t ct_dpo;
+
+  /**
+   * Allows to disable if not resolved yet
+   */
+  u8 is_active;
 } cnat_ep_trk_t;
 
 typedef enum cnat_translation_flag_t_
 {
   CNAT_TRANSLATION_FLAG_ALLOCATE_PORT = (1 << 0),
 } cnat_translation_flag_t;
+
+typedef enum
+{
+  CNAT_RESOLV_ADDR_ANY,
+  CNAT_RESOLV_ADDR_BACKEND,
+  CNAT_RESOLV_ADDR_SNAT,
+  CNAT_RESOLV_ADDR_TRANSLATION,
+  CNAT_ADDR_N_RESOLUTIONS,
+} cnat_addr_resol_type_t;
+
+/**
+ * Entry used to account for a translation's backend
+ * waiting for address resolution
+ */
+typedef struct addr_resolution_t_
+{
+  /**
+   * The interface index to resolve
+   */
+  u32 sw_if_index;
+  /**
+   * ip4 or ip6 resolution
+   */
+  ip_address_family_t af;
+  /**
+   * The cnat_addr_resolution_t
+   */
+  cnat_addr_resol_type_t type;
+  /**
+   * Translation index
+   */
+  index_t cti;
+  /**
+   * Callback data
+   */
+  u64 opaque;
+} addr_resolution_t;
 
 /**
  * A Translation represents the translation of a VEP to one of a set
@@ -89,6 +131,7 @@ typedef struct cnat_translation_t_
 
   /**
    * The client object this translation belongs on
+   * INDEX_INVALID if vip is unresolved
    */
   index_t ct_cci;
 
@@ -116,31 +159,10 @@ extern u8 *format_cnat_translation (u8 * s, va_list * args);
  *
  * @return the ID of the translation. used to delete and gather stats
  */
-extern u32 cnat_translation_update (const cnat_endpoint_t * vip,
+extern u32 cnat_translation_update (cnat_endpoint_t * vip,
 				    ip_protocol_t ip_proto,
-				    const cnat_endpoint_tuple_t *
+				    cnat_endpoint_tuple_t *
 				    backends, u8 flags);
-
-/**
- * Add a translation to the bihash
- *
- * @param cci the ID of the parent client
- * @param port the translation port
- * @param proto the translation proto
- * @param cti the translation index to be used as value
- */
-extern void cnat_add_translation_to_db (index_t cci, u16 port,
-					ip_protocol_t proto, index_t cti);
-
-/**
- * Remove a translation from the bihash
- *
- * @param cci the ID of the parent client
- * @param port the translation port
- * @param proto the translation proto
- */
-extern void cnat_remove_translation_from_db (index_t cci, u16 port,
-					     ip_protocol_t proto);
 
 /**
  * Delete a translation
@@ -164,6 +186,19 @@ extern void cnat_translation_walk (cnat_translation_walk_cb_t cb, void *ctx);
  */
 extern int cnat_translation_purge (void);
 
+/**
+ * Add an address resolution request
+ */
+extern void cnat_translation_watch_addr (index_t cti, u64 opaque,
+					 cnat_endpoint_t * ep,
+					 cnat_addr_resol_type_t type);
+
+/**
+ * Cleanup matching addr resolution requests
+ */
+extern void cnat_translation_unwatch_addr (u32 cti,
+					   cnat_addr_resol_type_t type);
+
 /*
  * Data plane functions
  */
@@ -182,7 +217,7 @@ cnat_find_translation (index_t cti, u16 port, ip_protocol_t proto)
   u64 key;
   int rv;
 
-  key = (proto << 16) | port;
+  key = (proto << 24) | port;
   key = key << 32 | (u32) cti;
 
   bkey.key = key;
