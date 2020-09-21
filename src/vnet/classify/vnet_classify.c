@@ -1812,9 +1812,11 @@ classify_filter_command_fn (vlib_main_t * vm,
       else
 	set = pool_elt_at_index (cm->filter_sets, set_index);
 
+      ASSERT (set);
+
       for (i = 0; i < vec_len (set->table_indices); i++)
 	{
-	  t = pool_elt_at_index (cm->tables, i);
+	  t = pool_elt_at_index (cm->tables, set->table_indices[i]);
 	  /* classifier geometry mismatch, can't use this table */
 	  if (t->match_n_vectors != match || t->skip_n_vectors != skip)
 	    continue;
@@ -1826,7 +1828,7 @@ classify_filter_command_fn (vlib_main_t * vm,
 	    continue;
 
 	  /* Winner... */
-	  table_index = i;
+	  table_index = set->table_indices[i];
 	  goto found_table;
 	}
     }
@@ -1863,18 +1865,8 @@ classify_filter_command_fn (vlib_main_t * vm,
       cm->filter_set_by_sw_if_index[sw_if_index] = set - cm->filter_sets;
     }
 
-  /* Put top table index where device drivers can find them */
-  if (sw_if_index > 0 && pkt_trace == 0)
-    {
-      vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
-      ASSERT (vec_len (set->table_indices) > 0);
-      hi->trace_classify_table_index = set->table_indices[0];
-    }
-
   /* Sort filter tables from most-specific mask to least-specific mask */
   vec_sort_with_function (set->table_indices, filter_table_mask_compare);
-
-  ASSERT (set);
 
   /* Setup next_table_index fields */
   for (i = 0; i < vec_len (set->table_indices); i++)
@@ -1885,6 +1877,14 @@ classify_filter_command_fn (vlib_main_t * vm,
 	t->next_table_index = set->table_indices[i + 1];
       else
 	t->next_table_index = ~0;
+    }
+
+  /* Put top table index where device drivers can find them */
+  if (sw_if_index > 0 && pkt_trace == 0)
+    {
+      vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+      ASSERT (vec_len (set->table_indices) > 0);
+      hi->trace_classify_table_index = set->table_indices[0];
     }
 
 found_table:
