@@ -709,7 +709,8 @@ done:
 VLIB_CLI_COMMAND (create_gre_tunnel_command, static) = {
   .path = "create gre tunnel",
   .short_help = "create gre tunnel src <addr> dst <addr> [instance <n>] "
-                "[outer-fib-id <fib>] [teb | erspan <session-id>] [del]",
+                "[outer-fib-id <fib>] [teb | erspan <session-id>] [del] "
+                "[multipoint]",
   .function = create_gre_tunnel_command_fn,
 };
 /* *INDENT-ON* */

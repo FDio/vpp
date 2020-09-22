@@ -163,7 +163,7 @@ done:
 VLIB_CLI_COMMAND(create_ipip_tunnel_command, static) = {
     .path = "create ipip tunnel",
     .short_help = "create ipip tunnel src <addr> dst <addr> [instance <n>] "
-                  "[outer-table-id <ID>]",
+                  "[outer-table-id <ID>] [p2mp]",
     .function = create_ipip_tunnel_command_fn,
 };
 VLIB_CLI_COMMAND(delete_ipip_tunnel_command, static) = {
