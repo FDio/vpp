@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f8b0f159_f523d8f6",
+        "filename": "src/plugins/wireguard/wireguard_if.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-09-22T13:44:22Z",
+      "side": 1,
+      "message": "... and this set function is only ever called during interface creation which happens on the main thread. so i don\u0027t think there is contention.\nsince this is the only place the locla is set, the has_identity is always true, and so also redundant IMO.",
+      "revId": "76e7434f49fd7c7a5196a341e4c2abe504eab147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f073d763_c68443b4",
+        "filename": "src/plugins/wireguard/wireguard_noise.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-09-22T13:44:22Z",
+      "side": 1,
+      "message": "this function is never called...",
+      "revId": "76e7434f49fd7c7a5196a341e4c2abe504eab147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "97fc11fd_6c60b200",
+        "filename": "src/plugins/wireguard/wireguard_noise.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-09-22T13:44:22Z",
+      "side": 1,
+      "message": "because of peer worker pinning and handoff, all counter actions are done on the same worker. so do we need this?",
+      "revId": "76e7434f49fd7c7a5196a341e4c2abe504eab147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5d4fd0b4_01a301c9",
+        "filename": "src/plugins/wireguard/wireguard_noise.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-09-22T13:44:22Z",
+      "side": 1,
+      "message": "if all packets that are part of the handshake are processed in the main thread, then there\u0027s no contention, right?",
+      "revId": "76e7434f49fd7c7a5196a341e4c2abe504eab147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
