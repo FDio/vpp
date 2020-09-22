@@ -17289,7 +17289,7 @@ vl_api_ip_table_details_t_handler (vl_api_ip_table_details_t * mp)
   vat_main_t *vam = &vat_main;
 
   print (vam->ofp,
-	 "%s; table-id %d, prefix %U/%d",
+	 "%s; table-id %d",
 	 mp->table.name, ntohl (mp->table.table_id));
 }
 
