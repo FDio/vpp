@@ -56,6 +56,7 @@ define vxlan_gbp_tunnel_add_del
   u32 context;
   bool is_add [default=true];
   vl_api_vxlan_gbp_tunnel_t tunnel;
+  option in_progress;
 };
 
 define vxlan_gbp_tunnel_add_del_reply
@@ -63,6 +64,7 @@ define vxlan_gbp_tunnel_add_del_reply
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
+  option in_progress;
 };
 
 define vxlan_gbp_tunnel_dump
@@ -70,12 +72,14 @@ define vxlan_gbp_tunnel_dump
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index [default=0xffffffff];
+  option in_progress;
 };
 
 define vxlan_gbp_tunnel_details
 {
   u32 context;
   vl_api_vxlan_gbp_tunnel_t tunnel;
+  option in_progress;
 };
 
 /** \brief Interface set vxlan-bypass request
@@ -92,4 +96,5 @@ autoreply define sw_interface_set_vxlan_gbp_bypass
   vl_api_interface_index_t sw_if_index;
   bool is_ipv6;
   bool enable [default=true];
+  option in_progress;
 };
