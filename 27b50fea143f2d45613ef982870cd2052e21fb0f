@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "14d1c6ab_473c2e26",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 3
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-09-22T08:11:18Z",
+      "side": 1,
+      "message": "tar xmf ./SOURCES/%{name}-%{_version}-%{_release}.tar.xz\n\nDepending on how cryptic we want to be.",
+      "range": {
+        "startLine": 173,
+        "startChar": 0,
+        "endLine": 173,
+        "endChar": 86
+      },
+      "revId": "27b50fea143f2d45613ef982870cd2052e21fb0f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
