@@ -77,6 +77,29 @@ git add crccheck.api
 git commit -m "deprecated api";
 extras/scripts/crcchecker.py --check-patchset
 
+echo "TEST 7.1: Verify we can delete deprecated message (old/confused style)"
+cat >crccheck_dep.api <<EOL
+option version="1.0.0";
+autoreply define crccheck
+{
+  option status="deprecated";
+  bool foo;
+};
+EOL
+git add crccheck_dep.api
+git commit -m "deprecated api";
+# delete API
+cat >crccheck_dep.api <<EOL
+option version="1.0.0";
+autoreply define crccheck_2
+{
+  bool foo;
+};
+EOL
+git add crccheck_dep.api
+git commit -m "deprecated api";
+extras/scripts/crcchecker.py --check-patchset
+
 echo "TEST 8: Verify that we can not rename a non-deprecated message"
 sed -i -e 's/crccheck_2/crccheck_3/g' crccheck.api
 git add crccheck.api
@@ -106,6 +129,13 @@ sed -i -e 's/crc_new_check_in_progress/crc_new_check_in_progress_2/g' crccheck.a
 git add crccheck.api
 git commit -m "renamed in-progress api";
 extras/scripts/crcchecker.py --check-patchset
+
+echo "TEST11.1: Switch to new designation of in-progress API"
+sed -i -e 's/status="in_progress"/in_progress/g' crccheck.api
+git add crccheck.api
+git commit -m "new designation of in-progress api";
+extras/scripts/crcchecker.py --check-patchset
+
 
 echo "TEST12: Verify we can add a field to an in-progress API"
 sed -i -e 's/foobar;/foobar; bool new_baz;/g' crccheck.api
