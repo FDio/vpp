@@ -36,7 +36,7 @@ if [ -z "${POINT}" ]; then
     # verify that we are not:
     # - directly on the XX.YY tag (then ADD will equal "0" by its construction)
     # - not on any of the builds past "-rc[123]" but before releases - then ADD will be "rc[123]"
-    if [ "${ADD}" != "0" -a "${ADD}" != "rc0" -a "${ADD}" != "rc1" -a "${ADD}" != "rc2" ]; then
+    if [ "${ADD}" != "0" -a "${ADD}" != "rc0" -a "${ADD}" != "rc1" -a "${ADD}" != "rc2" -a "${ADD}" != "rc3" -a "${ADD}" != "rc4" ]; then
 	TAG="${TAG}.0"
     fi
 fi
