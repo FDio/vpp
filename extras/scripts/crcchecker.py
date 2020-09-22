@@ -96,16 +96,24 @@ def filelist_from_patchset():
     return set(filelist)
 
 def is_deprecated(d, k):
-    if 'options' in d[k] and 'deprecated' in d[k]['options']:
-        return True
+    if 'options' in d[k]:
+        if 'deprecated' in d[k]['options']:
+            return True
+        # recognize the deprecated format
+        if 'status' in d[k]['options'] and d[k]['options']['status'] == 'deprecated':
+            print("WARNING: please use 'option deprecated;'")
+            return True
     return False
 
 def is_in_progress(d, k):
-    try:
-        if d[k]['options']['status'] == 'in_progress':
+    if 'options' in d[k]:
+        if 'in_progress' in d[k]['options']:
             return True
-    except:
-        return False
+        # recognize the deprecated format
+        if  'status' in d[k]['options'] and d[k]['options']['status'] == 'in_progress':
+            print("WARNING: please use 'option in_progress;'")
+            return True
+    return False
 
 def report(new, old):
     added, removed, modified, same = dict_compare(new, old)
