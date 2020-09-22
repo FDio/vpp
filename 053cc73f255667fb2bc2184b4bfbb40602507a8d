@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e2214459_94517549",
+        "filename": "src/vnet/ipsec/ipsec_tun_in.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 261,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-09-22T14:17:21Z",
+      "side": 1,
+      "message": "Common long read after short write case. Penalty can be \u003e 10 clocks.\nkey40 is stored with two 32-bit store operations and then immediately after that same memory location is read with single 64-bit load operation.",
+      "revId": "053cc73f255667fb2bc2184b4bfbb40602507a8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
