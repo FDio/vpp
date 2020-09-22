@@ -1368,8 +1368,8 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       /* Send the first unacked segment. If we're short on buffers, return
        * as soon as possible */
       n_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
-      n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, n_bytes, &b);
-      if (!n_bytes)
+      if (!n_bytes
+	  || !tcp_prepare_retransmit_segment (wrk, tc, 0, n_bytes, &b))
 	{
 	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
 	  return;
