@@ -20,7 +20,8 @@ def find_nbr(test, sw_if_index, nbr_addr, is_static=0, mac=None):
                                       af=ip_addr.vapi_af)
 
     for n in nbrs:
-        if ip_addr == n.neighbor.ip_address and \
+        if sw_if_index == n.neighbor.sw_if_index and \
+           ip_addr == n.neighbor.ip_address and \
            is_static == (n.neighbor.flags & e.IP_API_NEIGHBOR_FLAG_STATIC):
             if mac:
                 if mac == str(n.neighbor.mac_address):
