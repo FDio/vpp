@@ -39,7 +39,6 @@ autoreply define det44_plugin_enable_disable {
   u32 inside_vrf;
   u32 outside_vrf;
   bool enable;
-  vl_api_interface_index_t sw_if_index;
   option status="in_progress";
 };
 
