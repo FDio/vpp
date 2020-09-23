@@ -147,6 +147,8 @@ cnat_translation_update (const cnat_endpoint_t * vip,
   cnat_ep_trk_t *trk;
   index_t cci;
 
+  cnat_lazy_init ();
+
   /* do we know of this ep's vip */
   cci = cnat_client_add (&vip->ce_ip, flags);
   cc = cnat_client_get (cci);

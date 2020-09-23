@@ -127,6 +127,15 @@ typedef struct cnat_main_
 
   /* Longest prefix Match table for source NATing */
   cnat_snat_pfx_table_t snat_pfx_table;
+
+  /* Index of the scanner process node */
+  uword scanner_node_index;
+
+  /* Did we do lazy init ? */
+  u8 lazy_init_done;
+
+  /* Enable or Disable the scanner on startup */
+  u8 default_scanner_state;
 } cnat_main_t;
 
 typedef struct cnat_timestamp_t_
@@ -166,6 +175,23 @@ typedef enum
 #undef cnat_error
   CNAT_N_ERROR,
 } cnat_error_t;
+
+typedef enum cnat_scanner_cmd_t_
+{
+  CNAT_SCANNER_OFF,
+  CNAT_SCANNER_ON,
+} cnat_scanner_cmd_t;
+
+/**
+ * Lazy initialization when first adding a translation
+ * or using snat
+ */
+extern void cnat_lazy_init ();
+
+/**
+ * Enable/Disable session cleanup
+ */
+extern void cnat_enable_disable_scanner (cnat_scanner_cmd_t event_type);
 
 /*
   Dataplane functions
