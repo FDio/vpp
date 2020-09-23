@@ -499,6 +499,36 @@ det44_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
+static clib_error_t *
+det44_show_counters_command_fn (vlib_main_t * vm,
+				unformat_input_t * input,
+				vlib_cli_command_t * cmd)
+{
+  det44_main_t *dm = &det44_main;
+  det44_counters_t *cnts = &dm->host_counters;
+  u8 **name;
+  u32 index;
+  counter_t ses_cnt, max_ses_cnt, port_cnt, max_port_cnt;
+
+  vlib_cli_output (vm, "NAT44 deterministic counters per inside host:");
+
+  /* *INDENT-OFF* */
+  pool_foreach (name, cnts->names,
+  ({
+    index = name - cnts->names;
+    ses_cnt = vlib_get_simple_counter (&cnts->ses_per_host, index);
+    max_ses_cnt = vlib_get_simple_counter (&cnts->max_ses_per_host, index);
+    port_cnt = vlib_get_simple_counter (&cnts->ports_per_host, index);
+    max_port_cnt = vlib_get_simple_counter (&cnts->max_ports_per_host, index);
+    vlib_cli_output (vm, "  %s : %d sessions / %d max-sessions, %d ports / %d "
+		     "max-ports", *name, ses_cnt, max_ses_cnt, port_cnt,
+		     max_port_cnt);
+  }));
+  /* *INDENT-ON* */
+
+  return 0;
+}
+
 /* *INDENT-OFF* */
 /*?
  * @cliexpar
@@ -611,7 +641,6 @@ VLIB_CLI_COMMAND (det44_close_session_in_command, static) = {
                 "<in_addr>:<in_port> <ext_addr>:<ext_port>",
   .function = det44_close_session_in_fn,
 };
-/* *INDENT-ON* */
 
 /*?
  * @cliexpar
@@ -624,10 +653,11 @@ VLIB_CLI_COMMAND (det44_close_session_in_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (det44_set_timeouts_command, static) =
 {
-.path = "set det44 timeouts",.short_help =
-    "set det44 timeouts <[udp <sec>] [tcp established <sec>] "
-    "[tcp transitory <sec>] [icmp <sec>]|reset>",.function =
-    det44_set_timeouts_command_fn,};
+  .path = "set det44 timeouts",
+  .short_help = "set det44 timeouts <[udp <sec>] [tcp established <sec>] "
+                "[tcp transitory <sec>] [icmp <sec>]|reset>",
+  .function = det44_set_timeouts_command_fn,
+};
 
 /*?
  * @cliexpar
@@ -642,8 +672,10 @@ VLIB_CLI_COMMAND (det44_set_timeouts_command, static) =
 ?*/
 VLIB_CLI_COMMAND (det44_show_timeouts_command, static) =
 {
-.path = "show det44 timeouts",.short_help =
-    "show det44 timeouts",.function = det44_show_timeouts_command_fn,};
+  .path = "show det44 timeouts",
+  .short_help = "show det44 timeouts",
+  .function = det44_show_timeouts_command_fn,
+};
 
 /*?
  * @cliexpar
@@ -653,9 +685,10 @@ VLIB_CLI_COMMAND (det44_show_timeouts_command, static) =
 ?*/
 VLIB_CLI_COMMAND (det44_plugin_enable_disable_command, static) =
 {
-.path = "det44 plugin",.short_help =
-    "det44 plugin <enable [inside vrf] [outside vrf]|disable>",.function =
-    det44_plugin_enable_disable_command_fn,};
+  .path = "det44 plugin",
+  .short_help = "det44 plugin <enable [inside vrf] [outside vrf]|disable>",
+  .function = det44_plugin_enable_disable_command_fn,
+};
 
 /*?
  * @cliexpar
@@ -669,9 +702,10 @@ VLIB_CLI_COMMAND (det44_plugin_enable_disable_command, static) =
 ?*/
 VLIB_CLI_COMMAND (det44_feature_command, static) =
 {
-.path = "set interface det44",.short_help =
-    "set interface det44 inside <intfc> outside <intfc> [del]",.function =
-    det44_feature_command_fn,};
+  .path = "set interface det44",
+  .short_help = "set interface det44 inside <intfc> outside <intfc> [del]",
+  .function = det44_feature_command_fn,
+};
 
 /*?
  * @cliexpar
@@ -685,8 +719,23 @@ VLIB_CLI_COMMAND (det44_feature_command, static) =
 ?*/
 VLIB_CLI_COMMAND (det44_show_interfaces_command, static) =
 {
-.path = "show det44 interfaces",.short_help =
-    "show det44 interfaces",.function = det44_show_interfaces_command_fn,};
+  .path = "show det44 interfaces"
+  .short_help = "show det44 interfaces",
+  .function = det44_show_interfaces_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{show det44 counters}
+ * Show DET44 per inside host session and port counters.
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (det44_show_counters_command, static) = {
+  .path = "show det44 counters",
+  .short_help = "show det44 counters",
+  .function = det44_show_counters_command_fn,
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

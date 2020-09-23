@@ -31,11 +31,14 @@
 #include <vnet/fib/fib_source.h>
 #include <vppinfra/dlist.h>
 #include <vppinfra/error.h>
+#include <vppinfra/bihash_8_8.h>
 #include <vlibapi/api.h>
 #include <vlib/log.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/ip/reass/ip4_sv_reass.h>
+#include <vpp/stats/stat_segment.h>
+#include <vlib/stat_weak_inlines.h>
 
 #include <nat/lib/lib.h>
 #include <nat/lib/inlines.h>
@@ -118,6 +121,8 @@ typedef struct
   u8 state;
   /* Expire timeout */
   u32 expire;
+  /* Inside host IP, i.e. before translation */
+  ip4_address_t in_addr;
 } snat_det_session_t;
 
 typedef struct
@@ -157,6 +162,40 @@ typedef struct
   u32 fib_index;
   u32 refcount;
 } det44_fib_t;
+
+typedef struct
+{
+  union
+  {
+    struct
+    {
+      ip4_address_t addr;
+      u16 port;
+    };
+    u64 as_u64;
+  };
+} det44_port_counters_key_t;
+
+typedef struct
+{
+  /* key - inside host
+   * value - counter index for given host
+   */
+  clib_bihash_8_8_t in_host;
+  /* key - inside host + out port (after translation) pair
+   * value - number of ports used by given host
+   */
+  clib_bihash_8_8_t in_host_out_port;
+  /* statistics segment name vector, i.e. inside host IP adress strings */
+  u8 **names;
+  u32 stats_name_vector_index;
+
+  vlib_simple_counter_main_t ses_per_host;
+  vlib_simple_counter_main_t max_ses_per_host;
+  /* ports and sessions count differs only in ED NAT */
+  vlib_simple_counter_main_t ports_per_host;
+  vlib_simple_counter_main_t max_ports_per_host;
+} det44_counters_t;
 
 typedef struct det44_main_s
 {
@@ -201,6 +240,8 @@ typedef struct det44_main_s
   /* required */
   vnet_main_t *vnet_main;
 
+  /* per inside host counters */
+  det44_counters_t host_counters;
 } det44_main_t;
 
 extern det44_main_t det44_main;
@@ -232,6 +273,15 @@ extern det44_main_t det44_main;
     @return 1 if outside interface
 */
 #define det44_interface_is_outside(i) i->flags & DET44_INTERFACE_FLAG_IS_OUTSIDE
+
+/** \brief Update per inside host counters.
+    @param in_addr        inside host IPv4 address
+    @param out_port       port after translation
+    @param ports_per_host max number of ports per inside host
+    @param is_add         0 = delete, 1 = add.
+*/
+void det44_update_host_counters (ip4_address_t * in_addr, u16 out_port,
+				 u16 ports_per_host, int is_add);
 
 static_always_inline u8
 plugin_enabled ()
@@ -413,7 +463,10 @@ snat_det_ses_create (u32 thread_index, snat_det_map_t * dm,
 	      dm->sessions[i + user_offset].out.as_u64 = out->as_u64;
 	      dm->sessions[i + user_offset].state = DET44_SESSION_UNKNOWN;
 	      dm->sessions[i + user_offset].expire = 0;
+	      dm->sessions[i + user_offset].in_addr = *in_addr;
 	      clib_atomic_add_fetch (&dm->ses_num, 1);
+	      det44_update_host_counters (in_addr, out->out_port,
+					  dm->ports_per_host, 1);
 	      return &dm->sessions[i + user_offset];
 	    }
 	}
@@ -429,6 +482,8 @@ snat_det_ses_create (u32 thread_index, snat_det_map_t * dm,
 static_always_inline void
 snat_det_ses_close (snat_det_map_t * dm, snat_det_session_t * ses)
 {
+  det44_update_host_counters (&ses->in_addr, ses->out.out_port, 0, 0);
+
   if (clib_atomic_bool_cmp_and_swap (&ses->in_port, ses->in_port, 0))
     {
       ses->out.as_u64 = 0;
