@@ -515,11 +515,50 @@ det44_update_outside_fib (ip4_main_t * im,
 }
 
 static clib_error_t *
+det44_counters_init ()
+{
+  det44_main_t *dm = &det44_main;
+  det44_counters_t *cnts = &dm->host_counters;
+  clib_error_t *error = 0;
+
+  u8 *name = format (0, "/nat44/det/inside-hosts");
+  error = stat_segment_register_name_vector (name,
+					     &cnts->stats_name_vector_index);
+  vec_free (name);
+
+  cnts->ses_per_host.name = "det NAT sessions per inside host";
+  cnts->ses_per_host.stat_segment_name = "/nat44/det/sessions";
+  vlib_validate_simple_counter (&cnts->ses_per_host, 0);
+
+  cnts->max_ses_per_host.name = "det NAT max. sessions per inside host";
+  cnts->max_ses_per_host.stat_segment_name = "/nat44/det/max-sessions";
+  vlib_validate_simple_counter (&cnts->max_ses_per_host, 0);
+
+  cnts->ports_per_host.name = "det NAT ports used per inside host";
+  cnts->ports_per_host.stat_segment_name = "/nat44/det/ports";
+  vlib_validate_simple_counter (&cnts->ports_per_host, 0);
+
+  cnts->max_ports_per_host.name = "det NAT max. ports per inside host";
+  cnts->max_ports_per_host.stat_segment_name = "/nat44/det/max-ports";
+  vlib_validate_simple_counter (&cnts->max_ports_per_host, 0);
+
+  clib_bihash_init_8_8 (&cnts->in_host,
+			"deterministic NAT inside hosts", 1024, 128 << 20);
+
+  clib_bihash_init_8_8 (&cnts->in_host_out_port,
+			"deterministic NAT inside hosts & outside ports",
+			1024, 128 << 20);
+
+  return error;
+}
+
+static clib_error_t *
 det44_init (vlib_main_t * vm)
 {
   det44_main_t *dm = &det44_main;
   ip4_table_bind_callback_t cb;
   vlib_node_t *node;
+  clib_error_t *error = 0;
 
   clib_memset (dm, 0, sizeof (*dm));
 
@@ -543,10 +582,155 @@ det44_init (vlib_main_t * vm)
   vec_add1 (dm->ip4_main->table_bind_callbacks, cb);
 
   det44_reset_timeouts ();
+  error = det44_counters_init ();
+  if (error)
+    return error;
   return det44_api_hookup (vm);
 }
 
 VLIB_INIT_FUNCTION (det44_init);
+
+static void
+det44_update_host_port_counters (u32 cnt_index, ip4_address_t * in_addr,
+				 u16 out_port, int is_add)
+{
+  det44_main_t *dm = &det44_main;
+  vlib_main_t *vm = vlib_get_main ();
+  u32 thread_index = vm->thread_index;
+  det44_counters_t *cnts = &dm->host_counters;
+  clib_bihash_kv_8_8_t kv, kv_result;
+  det44_port_counters_key_t key;
+  u64 cnt_val;
+
+  key.as_u64 = 0;
+  key.addr = *in_addr;
+  key.port = out_port;
+  kv.key = key.as_u64;
+
+  if (is_add)
+    {
+      if (clib_bihash_search_8_8 (&cnts->in_host_out_port, &kv, &kv_result))
+	{
+	  /* not found -> new combination, set in_host_out_port for
+	   * given key to 1 and increment ports_per_host */
+	  kv.value = 1;
+	  clib_bihash_add_del_8_8 (&cnts->in_host_out_port, &kv, 1);
+
+	  vlib_increment_simple_counter (&cnts->ports_per_host, thread_index,
+					 cnt_index, 1);
+	}
+      else
+	{
+	  kv.value = kv_result.value + 1;
+	  clib_bihash_add_del_8_8 (&cnts->in_host_out_port, &kv, 1);
+	}
+    }
+  else
+    {
+      if (clib_bihash_search_8_8 (&cnts->in_host_out_port, &kv, &kv_result))
+	ASSERT (0);		/* inconsistency! no track of the deleted session */
+
+      if (kv_result.value == 1)
+	{
+	  clib_bihash_add_del_8_8 (&cnts->in_host_out_port, &kv, 0);
+
+	  cnt_val =
+	    vlib_get_simple_counter (&cnts->ports_per_host, cnt_index);
+	  ASSERT (cnt_val > 0);
+
+	  vlib_set_simple_counter (&cnts->ports_per_host, thread_index,
+				   cnt_index, cnt_val - 1);
+	}
+      else
+	{
+	  kv.value = kv_result.value - 1;
+	  clib_bihash_add_del_8_8 (&cnts->in_host_out_port, &kv, 1);
+	}
+    }
+}
+
+void
+det44_update_host_counters (ip4_address_t * in_addr, u16 out_port,
+			    u16 ports_per_host, int is_add)
+{
+  det44_main_t *dm = &det44_main;
+  vlib_main_t *vm = vlib_get_main ();
+  u32 thread_index = vm->thread_index;
+  det44_counters_t *cnts = &dm->host_counters;
+  clib_bihash_kv_8_8_t kv, kv_result;
+  u8 **name;
+  u32 cnt_index;
+  u64 cnt_val;
+
+  kv.key = in_addr->as_u32;
+
+  if (is_add)
+    {
+      if (clib_bihash_search_8_8 (&cnts->in_host, &kv, &kv_result))
+	{
+	  /* not found */
+	  void *oldheap = stat_segment_prepare_name_vector (cnts->names);
+	  pool_get (cnts->names, name);
+	  *name = format (0, "%U", format_ip4_address, in_addr);
+	  stat_segment_set_name_vector (cnts->stats_name_vector_index,
+					cnts->names, oldheap);
+	  cnt_index = name - cnts->names;
+	  vlib_validate_simple_counter (&cnts->ses_per_host, cnt_index);
+	  vlib_validate_simple_counter (&cnts->max_ses_per_host, cnt_index);
+	  vlib_validate_simple_counter (&cnts->ports_per_host, cnt_index);
+	  vlib_validate_simple_counter (&cnts->max_ports_per_host, cnt_index);
+	  vlib_zero_simple_counter (&cnts->ses_per_host, cnt_index);
+	  vlib_zero_simple_counter (&cnts->max_ses_per_host, cnt_index);
+	  vlib_zero_simple_counter (&cnts->ports_per_host, cnt_index);
+	  vlib_zero_simple_counter (&cnts->max_ports_per_host, cnt_index);
+	  vlib_set_simple_counter (&cnts->ses_per_host, thread_index,
+				   cnt_index, 1);
+	  vlib_set_simple_counter (&cnts->max_ses_per_host, thread_index,
+				   cnt_index, DET44_SES_PER_USER);
+	  vlib_set_simple_counter (&cnts->max_ports_per_host, thread_index,
+				   cnt_index, ports_per_host);
+	  kv.value = cnt_index;
+	  clib_bihash_add_del_8_8 (&cnts->in_host, &kv, 1);
+	}
+      else
+	{
+	  cnt_index = kv_result.value;
+	  vlib_increment_simple_counter (&cnts->ses_per_host, thread_index,
+					 cnt_index, 1);
+	}
+      det44_update_host_port_counters (cnt_index, in_addr, out_port, is_add);
+    }
+  else
+    {
+      if (clib_bihash_search_8_8 (&cnts->in_host, &kv, &kv_result))
+	ASSERT (0);		/* inconsistency! no track of the deleted session */
+
+      cnt_index = kv_result.value;
+      cnt_val = vlib_get_simple_counter (&cnts->ses_per_host, cnt_index);
+
+      if (cnt_val > 1)
+	{
+	  vlib_set_simple_counter (&cnts->ses_per_host, thread_index,
+				   cnt_index, cnt_val - 1);
+	  det44_update_host_port_counters (cnt_index, in_addr, out_port,
+					   is_add);
+	}
+      else
+	{
+	  clib_bihash_add_del_8_8 (&cnts->in_host, &kv, 0);
+	  name = pool_elt_at_index (cnts->names, cnt_index);
+	  void *oldheap = stat_segment_prepare_name_vector (cnts->names);
+	  pool_put (cnts->names, name);
+	  vec_free (*name);
+	  stat_segment_set_name_vector (cnts->stats_name_vector_index,
+					cnts->names, oldheap);
+	  vlib_zero_simple_counter (&cnts->ses_per_host, cnt_index);
+	  vlib_zero_simple_counter (&cnts->max_ses_per_host, cnt_index);
+	  vlib_zero_simple_counter (&cnts->ports_per_host, cnt_index);
+	  vlib_zero_simple_counter (&cnts->max_ports_per_host, cnt_index);
+	}
+    }
+}
 
 u8 *
 format_det44_session_state (u8 * s, va_list * args)
