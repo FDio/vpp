@@ -245,12 +245,19 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
 
     case STAT_DIR_TYPE_NAME_VECTOR:
       {
+	if (ep->data == 0)
+	  return result;
 	uint8_t **name_vector = stat_segment_adjust (sm, ep->data);
 	result.name_vector = vec_dup (name_vector);
 	for (i = 0; i < vec_len (name_vector); i++)
 	  {
-	    u8 *name = stat_segment_adjust (sm, name_vector[i]);
-	    result.name_vector[i] = vec_dup (name);
+	    if (name_vector[i])
+	      {
+		u8 *name = stat_segment_adjust (sm, name_vector[i]);
+		result.name_vector[i] = vec_dup (name);
+	      }
+	    else
+	      result.name_vector[i] = 0;
 	  }
       }
       break;
