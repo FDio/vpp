@@ -99,10 +99,10 @@ class MarkDown():
         write = self.stream.write
         if type(o) is list:
             write('Maintainers: ' +
-                  ', '.join(f'{m}' for m in
+                  ', '.join('{m}'.format(m=m) for m in
                             o) + '  \n')
         else:
-            write(f'Maintainer: {o}  \n')
+            write('Maintainer: {o}  \n'.format(o=o))
 
     _dispatch['maintainer'] = print_maintainer
 
@@ -112,39 +112,39 @@ class MarkDown():
             indentstr = ' ' * indent
             if type(f) is dict:
                 for k, v in f.items():
-                    write(f'{indentstr}- {k}\n')
+                    write('{indentstr}- {k}\n'.format(indentstr=indentstr, k=k))
                     self.print_features(v, indent + 2)
             else:
-                write(f'{indentstr}- {f}\n')
+                write('{indentstr}- {f}\n'.format(indentstr=indentstr, f=f))
         write('\n')
     _dispatch['features'] = print_features
 
     def print_markdown_header(self, o):
         write = self.stream.write
-        write(f'## {o}\n')
+        write('## {o}\n'.format(o=o))
         version = version_from_git()
-        write(f'VPP version: {version}\n\n')
+        write('VPP version: {version}\n\n'.format(version=version))
     _dispatch['markdown_header'] = print_markdown_header
 
     def print_name(self, o):
         write = self.stream.write
-        write(f'### {o}\n')
+        write('### {o}\n'.format(o=o))
         self.toc.append(o)
     _dispatch['name'] = print_name
 
     def print_description(self, o):
         write = self.stream.write
-        write(f'\n{o}\n\n')
+        write('\n{o}\n\n'.format(o=o))
     _dispatch['description'] = print_description
 
     def print_state(self, o):
         write = self.stream.write
-        write(f'Feature maturity level: {o}  \n')
+        write('Feature maturity level: {o}  \n'.format(o=o))
     _dispatch['state'] = print_state
 
     def print_properties(self, o):
         write = self.stream.write
-        write(f'Supports: {" ".join(o)}  \n')
+        write('Supports: {s}  \n'.format(s=" ".join(o)))
     _dispatch['properties'] = print_properties
 
     def print_missing(self, o):
@@ -155,7 +155,7 @@ class MarkDown():
 
     def print_code(self, o):
         write = self.stream.write
-        write(f'Source Code: [{o}]({o}) \n')
+        write('Source Code: [{o}]({o}) \n'.format(o=o))
     _dispatch['code'] = print_code
 
     def print(self, t, o):
@@ -171,7 +171,7 @@ def output_toc(toc, stream):
 
     for t in toc:
         ref = t.lower().replace(' ', '-')
-        write(f'[{t}](#{ref})  \n')
+        write('[{t}](#{ref})  \n'.format(t=t, ref=ref))
 
 def featuresort(k):
     return k[1]['name']
@@ -194,7 +194,8 @@ def output_markdown(features, fields, notfields):
     m = MarkDown(stream)
     m.print('markdown_header', 'Feature Details:')
     for path, featuredef in sorted(features.items(), key=featuresort):
-        codeurl = 'https://git.fd.io/vpp/tree/src/' + '/'.join(os.path.normpath(path).split('/')[1:-1])
+        codeurl = 'https://git.fd.io/vpp/tree/src/' + \
+                  '/'.join(os.path.normpath(path).split('/')[1:-1])
         featuredef['code'] = codeurl
         for k, v in sorted(featuredef.items(), key=featurelistsort):
             if notfields:
@@ -253,8 +254,8 @@ def main():
         try:
             validate(instance=cfg, schema=schema)
         except exceptions.ValidationError:
-            print(f'File does not validate: {featurefile}',
-                  file=sys.stderr)
+            print('File does not validate: {featurefile}' \
+                  .format(featurefile=featurefile), file=sys.stderr)
             raise
         features[featurefile] = cfg
 
