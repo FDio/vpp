@@ -22,6 +22,30 @@
       "revId": "27380b59891570f6f09a9cc219df56239ca78496",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4ad04865_7266151c",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 7
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2020-09-23T07:36:10Z",
+      "side": 1,
+      "message": "Hi Lijian, \nThanks for the comment.\n\n\u003e\u003eThere will be other Arm CPUs which is armv8.2 and supports crc/crypto/lse features, but NOT OcteonTX2.\nThis is specific to octeontx2 and does not conflict with any other chip. Generic ARM chip that supports armv8.2+crc+crypto+lse can add extra multi-arch function and compile option which will not conflict with Octeontx2. Implementerid and part number check at runtime handles multi-arch select. Moreover there is a multi-arch priority feature that can also be used to select higher priority function.\n\nWe specifically need multi-arch support for our chip specific features to make it work with binary comes with distros. In this case I tried enabling HW mempool_ops",
+      "parentUuid": "b57d2333_5afbdc2e",
+      "range": {
+        "startLine": 102,
+        "startChar": 2,
+        "endLine": 104,
+        "endChar": 129
+      },
+      "revId": "27380b59891570f6f09a9cc219df56239ca78496",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
