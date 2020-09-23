@@ -1543,7 +1543,8 @@ format_quic_ctx (u8 * s, va_list * args)
 		ctx->parent_app_wrk_id);
 
   if (verbose == 1)
-    s = format (s, "%-50s%-15d", str, ctx->conn_state);
+    s = format (s, "%-" SESSION_CLI_ID_LEN "s%-" SESSION_CLI_STATE_LEN "d",
+		str, ctx->conn_state);
   else
     s = format (s, "%s\n", str);
   vec_free (str);

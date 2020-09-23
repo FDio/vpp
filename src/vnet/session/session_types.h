@@ -495,6 +495,9 @@ typedef enum session_error_
 #undef _
 } session_error_t;
 
+#define SESSION_CLI_ID_LEN "70"
+#define SESSION_CLI_STATE_LEN "15"
+
 /* Maintained for compatibility. Will be deprecated */
 #define SESSION_ERROR_SEG_CREATE SESSION_E_SEG_CREATE
 #define SESSION_ERROR_NO_SPACE SESSION_E_SEG_NO_SPACE
