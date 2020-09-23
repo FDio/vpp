@@ -708,7 +708,7 @@ autoreply define nat44_add_del_static_mapping {
     @param tag - opaque string tag
 */
 autoreply define nat44_add_del_static_mapping_v2 {
-  option status="in_progress";
+  option in_progress;
   u32 client_index;
   u32 context;
   bool is_add;
