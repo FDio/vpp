@@ -554,7 +554,7 @@ format_lldp_intfs_detail (u8 * s, vlib_main_t * vm, const lldp_main_t * lm)
         hw = vnet_get_hw_interface(vnm, n->hw_if_index);
         sw = vnet_get_sw_interface(lm->vnet_main, hw->sw_if_index);
 
-        s = format(s, "\nLocal Interface name: %s\n"
+        s = format(s, "\nLocal Interface name: %v\n"
                       "Local Port Description: %s\n",
                        hw->name, n->port_desc);
         if (n->mgmt_ip4)
@@ -643,7 +643,7 @@ format_lldp_intfs (u8 * s, va_list * va)
           continue;
         if (now < n->last_heard + n->ttl)
           {
-            s = format(s, "%-25s %-25U %-25U %=15U %=15U %=10s\n", hw->name,
+            s = format(s, "%-25v %-25U %-25U %=15U %=15U %=10s\n", hw->name,
                        format_lldp_chassis_id, n->chassis_id_subtype,
                        n->chassis_id, vec_len(n->chassis_id), 0,
                        format_lldp_port_id, n->port_id_subtype, n->port_id,
@@ -652,7 +652,7 @@ format_lldp_intfs (u8 * s, va_list * va)
           }
         else
           {
-            s = format(s, "%-25s %-25s %-25s %=15U %=15U %=10s\n", hw->name,
+            s = format(s, "%-25v %-25s %-25s %=15U %=15U %=10s\n", hw->name,
                        "", "", format_time_ago, n->last_heard, now,
                        format_time_ago, n->last_sent, now, "inactive");
           }
