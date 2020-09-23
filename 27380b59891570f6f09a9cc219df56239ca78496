@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b57d2333_5afbdc2e",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 7
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2020-09-23T07:16:22Z",
+      "side": 1,
+      "message": "The whole judgement here is not correct. The code segment claims if current compiler support compiler option \"-march\u003darmv8.2-a+crc+crypto+lse\", then the target binary will be compiled for OcteonTX2, and some OcteonTX2 features will be applied. This is not true.\nThere will be other Arm CPUs which is armv8.2 and supports crc/crypto/lse features, but NOT OcteonTX2.",
+      "range": {
+        "startLine": 102,
+        "startChar": 2,
+        "endLine": 104,
+        "endChar": 129
+      },
+      "revId": "27380b59891570f6f09a9cc219df56239ca78496",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
