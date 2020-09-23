@@ -113,4 +113,40 @@ clib_error_t *
 stat_segment_deregister_state_counter(u32 index);
 void stat_segment_set_state_counter (u32 index, u64 value);
 
+clib_error_t *
+stat_segment_register_name_vector  (u8 * name, u32 * index);
+
+clib_error_t *
+stat_segment_deregister_name_vector (u32 index);
+
+/**
+ * @brief Prepare statistics segment name vector entry.
+ *
+ * Call before any name_vector memory manipulation and before setting it.
+ * Workflow:
+ * call stat_segment_prepare_name_vector
+ * allocate / resize name_vector and set some values into it
+ * call stat_segment_set_name_vector
+ *
+ * @param name_vector array of strings, can be also vector or pool of strings
+ */
+void *
+stat_segment_prepare_name_vector (u8 **name_vector);
+
+/**
+ * @brief Set statistics segment name vector entry.
+ *
+ * Set name_vector values to the statistics segment entry by index.
+ * However the name_vector must be allocated on statistics segment heap.
+ * That means all of the memory allocations as vector validation etc. must
+ * be done with proper memory heap set and statistics segment locked.
+ * To achieve this call stat_segment_prepare_name_vector first.
+ *
+ * @param index       index obtained in registration
+ * @param name_vector array of strings, can be also vector or pool of strings
+ * @param oldheap     previous heap, returned from
+ *                    stat_segment_prepare_name_vector
+ */
+void stat_segment_set_name_vector (u32 index, u8 **name_vector, void *oldheap);
+
 #endif
