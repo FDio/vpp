@@ -1435,6 +1435,7 @@ class ARPTestCase(VppTestCase):
         # Generate some hosts on the LAN
         #
         self.pg1.generate_remote_hosts(4)
+        self.pg2.generate_remote_hosts(4)
 
         #
         # And an ARP entry
@@ -1525,6 +1526,36 @@ class ARPTestCase(VppTestCase):
         self.assertFalse(find_nbr(self,
                                   self.pg1.sw_if_index,
                                   self.pg1.remote_hosts[2].ip4))
+
+        #
+        # IP address in different subnets are not learnt
+        #
+        self.pg2.configure_ipv4_neighbors()
+
+        for op in ["is-at", "who-has"]:
+            p1 = [(Ether(dst="ff:ff:ff:ff:ff:ff",
+                         src=self.pg2.remote_hosts[1].mac) /
+                   ARP(op=op,
+                       hwdst=self.pg2.local_mac,
+                       hwsrc=self.pg2.remote_hosts[1].mac,
+                       pdst=self.pg2.remote_hosts[1].ip4,
+                       psrc=self.pg2.remote_hosts[1].ip4)),
+                  (Ether(dst="ff:ff:ff:ff:ff:ff",
+                         src=self.pg2.remote_hosts[1].mac) /
+                   ARP(op=op,
+                       hwdst="ff:ff:ff:ff:ff:ff",
+                       hwsrc=self.pg2.remote_hosts[1].mac,
+                       pdst=self.pg2.remote_hosts[1].ip4,
+                       psrc=self.pg2.remote_hosts[1].ip4))]
+
+            self.send_and_assert_no_replies(self.pg1, p1)
+            self.assertFalse(find_nbr(self,
+                                      self.pg1.sw_if_index,
+                                      self.pg2.remote_hosts[1].ip4))
+
+        # they are all dropped because the subnet's don't match
+        self.assertEqual(4, self.statistics.get_err_counter(
+            "/err/arp-reply/IP4 destination address not local to subnet"))
 
     def test_arp_incomplete(self):
         """ Incomplete Entries """

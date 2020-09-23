@@ -543,6 +543,8 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  dst_fei = ip4_fib_table_lookup (ip4_fib_get (fib_index0),
 					  &arp0->ip4_over_ethernet[1].ip4,
 					  32);
+	  conn_sw_if_index0 = fib_entry_get_resolving_interface (dst_fei);
+
 	  switch (arp_dst_fib_check (dst_fei, &dst_flags))
 	    {
 	    case ARP_DST_FIB_ADJ:
@@ -554,10 +556,12 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	       * from spamming us with gratuitous ARPS that might otherwise
 	       * blow our ARP cache
 	       */
-	      if (arp0->ip4_over_ethernet[0].ip4.as_u32 ==
-		  arp0->ip4_over_ethernet[1].ip4.as_u32)
-		error0 =
-		  arp_learn (sw_if_index0, &arp0->ip4_over_ethernet[0]);
+	      if (conn_sw_if_index0 != sw_if_index0)
+		error0 = ETHERNET_ARP_ERROR_l3_dst_address_not_local;
+	      else if (arp0->ip4_over_ethernet[0].ip4.as_u32 ==
+		       arp0->ip4_over_ethernet[1].ip4.as_u32)
+		error0 = arp_learn (sw_if_index0,
+				    &arp0->ip4_over_ethernet[0]);
 	      goto drop;
 	    case ARP_DST_FIB_CONN:
 	      /* destination is connected, continue to process */
@@ -615,7 +619,6 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    }
 
 	  /* Honor unnumbered interface, if any */
-	  conn_sw_if_index0 = fib_entry_get_resolving_interface (dst_fei);
 	  if (sw_if_index0 != conn_sw_if_index0 ||
 	      sw_if_index0 != fib_entry_get_resolving_interface (src_fei))
 	    {
