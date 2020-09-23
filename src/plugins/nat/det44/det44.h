@@ -146,10 +146,8 @@ typedef struct
 
 typedef struct
 {
-
   u32 outside_vrf_id;
   u32 inside_vrf_id;
-
 } det44_config_t;
 
 typedef struct
