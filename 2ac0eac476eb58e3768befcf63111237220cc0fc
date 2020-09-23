@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8fbf22a4_b807ad8b",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-23T04:14:32Z",
+      "side": 1,
+      "message": "As much as possible, try to keep this short (less than 60 chars). \n\nFor instance:\ntls: fix session format assert in connected callback",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 92
+      },
+      "revId": "2ac0eac476eb58e3768befcf63111237220cc0fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "24775e23_98442679",
+        "filename": "src/vnet/tls/tls.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-09-23T04:14:32Z",
+      "side": 1,
+      "message": "Hm, I suspect this is not entirely right either because lower, if notification fails, we want to know when handling tls_disconnect. So set app_session-\u003esession_state \u003d SESSION_STATE_CONNECTING; above the call to tls_disconnect.",
+      "range": {
+        "startLine": 235,
+        "startChar": 0,
+        "endLine": 235,
+        "endChar": 51
+      },
+      "revId": "2ac0eac476eb58e3768befcf63111237220cc0fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
