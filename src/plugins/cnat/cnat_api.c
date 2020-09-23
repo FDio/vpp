@@ -265,6 +265,8 @@ vl_api_cnat_set_snat_addresses_t_handler (vl_api_cnat_set_snat_addresses_t
   vl_api_cnat_set_snat_addresses_reply_t *rmp;
   int rv = 0;
 
+  cnat_lazy_init ();
+
   ip4_address_decode (mp->snat_ip4, &cnat_main.snat_ip4);
   ip6_address_decode (mp->snat_ip6, &cnat_main.snat_ip6);
 

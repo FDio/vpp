@@ -123,6 +123,8 @@ cnat_set_snat (vlib_main_t * vm,
   clib_error_t *e = 0;
   ip_address_t addr;
 
+  cnat_lazy_init ();
+
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;

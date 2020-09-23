@@ -88,6 +88,23 @@ cnat_types_init (vlib_main_t * vm)
   return (NULL);
 }
 
+void
+cnat_enable_disable_scanner (cnat_scanner_cmd_t event_type)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_process_signal_event (vm, cnat_main.scanner_node_index, event_type, 0);
+}
+
+void
+cnat_lazy_init ()
+{
+  cnat_main_t *cm = &cnat_main;
+  if (cm->lazy_init_done)
+    return;
+  cnat_enable_disable_scanner (cm->default_scanner_state);
+  cm->lazy_init_done = 1;
+}
+
 static clib_error_t *
 cnat_config (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -102,6 +119,8 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
   cm->scanner_timeout = CNAT_DEFAULT_SCANNER_TIMEOUT;
   cm->session_max_age = CNAT_DEFAULT_SESSION_MAX_AGE;
   cm->tcp_max_age = CNAT_DEFAULT_TCP_MAX_AGE;
+  cm->default_scanner_state = CNAT_SCANNER_ON;
+  cm->lazy_init_done = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -125,6 +144,10 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "session-cleanup-timeout %f",
 			 &cm->scanner_timeout))
 	;
+      else if (unformat (input, "scanner off"))
+	cm->default_scanner_state = CNAT_SCANNER_OFF;
+      else if (unformat (input, "scanner on"))
+	cm->default_scanner_state = CNAT_SCANNER_ON;
       else if (unformat (input, "session-max-age %u", &cm->session_max_age))
 	;
       else if (unformat (input, "tcp-max-age %u", &cm->tcp_max_age))

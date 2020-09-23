@@ -16,12 +16,6 @@
 #include <cnat/cnat_session.h>
 #include <cnat/cnat_client.h>
 
-typedef enum cnat_scanner_cmd_t_
-{
-  CNAT_SCANNER_OFF,
-  CNAT_SCANNER_ON,
-} cnat_scanner_cmd_t;
-
 static uword
 cnat_scanner_process (vlib_main_t * vm,
 		      vlib_node_runtime_t * rt, vlib_frame_t * f)
@@ -29,7 +23,7 @@ cnat_scanner_process (vlib_main_t * vm,
   uword event_type, *event_data = 0;
   cnat_main_t *cm = &cnat_main;
   f64 start_time;
-  int enabled = 1, i = 0;
+  int enabled = 0, i = 0;
 
   while (1)
     {
@@ -90,8 +84,7 @@ cnat_scanner_cmd (vlib_main_t * vm,
 	return (clib_error_return (0, "unknown input '%U'",
 				   format_unformat_error, input));
     }
-
-  vlib_process_signal_event (vm, cnat_scanner_process_node.index, cmd, 0);
+  cnat_enable_disable_scanner (cmd);
 
   return (NULL);
 }
@@ -103,6 +96,17 @@ VLIB_CLI_COMMAND (cnat_scanner_cmd_node, static) = {
   .short_help = "test cnat scanner",
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+cnat_scanner_init (vlib_main_t * vm)
+{
+  cnat_main_t *cm = &cnat_main;
+  cm->scanner_node_index = cnat_scanner_process_node.index;
+
+  return (NULL);
+}
+
+VLIB_INIT_FUNCTION (cnat_scanner_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

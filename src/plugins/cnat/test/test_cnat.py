@@ -135,7 +135,7 @@ class VppCNATSourceNat(VppObject):
     def cnat_exclude_subnet(self, exclude_subnet, isAdd=True):
         add = 1 if isAdd else 0
         self._test.vapi.cnat_add_del_snat_prefix(
-                prefix=exclude_subnet, is_add=add)
+            prefix=exclude_subnet, is_add=add)
 
     def query_vpp_config(self):
         return False
@@ -147,8 +147,11 @@ class VppCNATSourceNat(VppObject):
 class TestCNatTranslation(VppTestCase):
     """ CNat Translation """
     extra_vpp_punt_config = ["cnat", "{",
+                             "session-db-buckets", "64",
+                             "session-cleanup-timeout", "0.1",
                              "session-max-age", "1",
-                             "tcp-max-age", "1", "}"]
+                             "tcp-max-age", "1",
+                             "scanner", "off", "}"]
 
     @classmethod
     def setUpClass(cls):
@@ -358,7 +361,7 @@ class TestCNatTranslation(VppTestCase):
             self.logger.info(self.vapi.cli("sh cnat session verbose"))
 
         #
-        # turn the scanner back on and wait untill the sessions
+        # turn the scanner back on and wait until the sessions
         # all disapper
         #
         self.vapi.cli("test cnat scanner on")
@@ -502,9 +505,9 @@ class TestCNatSourceNAT(VppTestCase):
                 Raw())
 
             rxs = self.send_and_expect(
-                                self.pg0,
-                                p1 * N_PKTS,
-                                self.pg1)
+                self.pg0,
+                p1 * N_PKTS,
+                self.pg1)
             for rx in rxs:
                 self.assert_packet_checksums_valid(rx)
                 self.assertEqual(
@@ -526,9 +529,9 @@ class TestCNatSourceNAT(VppTestCase):
                 Raw())
 
             rxs = self.send_and_expect(
-                                    self.pg1,
-                                    p2 * N_PKTS,
-                                    self.pg0)
+                self.pg1,
+                p2 * N_PKTS,
+                self.pg0)
 
             for rx in rxs:
                 self.assert_packet_checksums_valid(rx)
@@ -550,9 +553,9 @@ class TestCNatSourceNAT(VppTestCase):
             self.vapi.cnat_session_purge()
 
             rxs = self.send_and_expect(
-                                self.pg0,
-                                p1 * N_PKTS,
-                                self.pg1)
+                self.pg0,
+                p1 * N_PKTS,
+                self.pg1)
             for rx in rxs:
                 self.assert_packet_checksums_valid(rx)
                 self.assertEqual(
@@ -568,9 +571,9 @@ class TestCNatSourceNAT(VppTestCase):
             self.vapi.cnat_session_purge()
 
             rxs = self.send_and_expect(
-                    self.pg0,
-                    p1 * N_PKTS,
-                    self.pg1)
+                self.pg0,
+                p1 * N_PKTS,
+                self.pg1)
 
             for rx in rxs:
                 self.assert_packet_checksums_valid(rx)
@@ -591,6 +594,7 @@ class TestCNatSourceNAT(VppTestCase):
         # """ CNat Source Nat ipv4 """
         self.cnat_test_sourcenat(self.pg2.remote_hosts[0].ip4, TCP)
         self.cnat_test_sourcenat(self.pg2.remote_hosts[0].ip4, UDP)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
