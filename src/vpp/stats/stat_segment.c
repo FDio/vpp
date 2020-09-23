@@ -822,8 +822,8 @@ stat_segment_register_gauge (u8 * name, stat_segment_update_fn update_fn,
   return NULL;
 }
 
-clib_error_t *
-stat_segment_register_state_counter (u8 * name, u32 * index)
+static clib_error_t *
+stat_segment_register (u8 * name, u32 * index, stat_directory_type_t type)
 {
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
@@ -839,7 +839,7 @@ stat_segment_register_state_counter (u8 * name, u32 * index)
     return clib_error_return (0, "%v is already registered", name);
 
   memset (&e, 0, sizeof (e));
-  e.type = STAT_DIR_TYPE_SCALAR_INDEX;
+  e.type = type;
   memcpy (e.name, name, vec_len (name));
 
   oldheap = vlib_stats_push_heap (NULL);
@@ -857,7 +857,19 @@ stat_segment_register_state_counter (u8 * name, u32 * index)
 }
 
 clib_error_t *
-stat_segment_deregister_state_counter (u32 index)
+stat_segment_register_state_counter (u8 * name, u32 * index)
+{
+  return stat_segment_register (name, index, STAT_DIR_TYPE_SCALAR_INDEX);
+}
+
+clib_error_t *
+stat_segment_register_name_vector (u8 * name, u32 * index)
+{
+  return stat_segment_register (name, index, STAT_DIR_TYPE_NAME_VECTOR);
+}
+
+static clib_error_t *
+stat_segment_deregister (u32 index, stat_directory_type_t type)
 {
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
@@ -870,7 +882,7 @@ stat_segment_deregister_state_counter (u32 index)
     return clib_error_return (0, "%u index does not exist", index);
 
   e = &sm->directory_vector[index];
-  if (e->type != STAT_DIR_TYPE_SCALAR_INDEX)
+  if (e->type != type)
     return clib_error_return (0, "%u index cannot be deleted", index);
 
   oldheap = vlib_stats_push_heap (NULL);
@@ -884,6 +896,18 @@ stat_segment_deregister_state_counter (u32 index)
   return 0;
 }
 
+clib_error_t *
+stat_segment_deregister_state_counter (u32 index)
+{
+  return stat_segment_deregister (index, STAT_DIR_TYPE_SCALAR_INDEX);
+}
+
+clib_error_t *
+stat_segment_deregister_name_vector (u32 index)
+{
+  return stat_segment_deregister (index, STAT_DIR_TYPE_NAME_VECTOR);
+}
+
 void
 stat_segment_set_state_counter (u32 index, u64 value)
 {
@@ -891,6 +915,36 @@ stat_segment_set_state_counter (u32 index, u64 value)
 
   ASSERT (index < vec_len (sm->directory_vector));
   sm->directory_vector[index].index = value;
+}
+
+void *
+stat_segment_prepare_name_vector (u8 ** name_vector)
+{
+  void *oldheap = vlib_stats_push_heap (name_vector);
+  vlib_stat_segment_lock ();
+
+  return oldheap;
+}
+
+void
+stat_segment_set_name_vector (u32 index, u8 ** name_vector, void *oldheap)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  stat_segment_directory_entry_t *e;
+
+  if (!name_vector)
+    goto end;
+
+  ASSERT (index < vec_len (sm->directory_vector));
+
+  e = &sm->directory_vector[index];
+  ASSERT (e->type == STAT_DIR_TYPE_NAME_VECTOR);
+
+  e->data = name_vector;
+
+end:
+  vlib_stat_segment_unlock ();
+  clib_mem_set_heap (oldheap);
 }
 
 static clib_error_t *
