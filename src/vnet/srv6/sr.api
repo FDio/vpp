@@ -225,7 +225,7 @@ define sr_policies_with_sl_index_dump
 {
   u32 client_index;
   u32 context;
-  option status="in_progress";
+  option in_progress;
 };
 
 
@@ -238,7 +238,7 @@ define sr_policies_with_sl_index_details
   u32 fib_table;
   u8 num_sid_lists;
   vl_api_srv6_sid_list_with_sl_index_t sid_lists[num_sid_lists];
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief Dump the steering policies

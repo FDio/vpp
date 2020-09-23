@@ -51,7 +51,7 @@ define af_xdp_create
   vl_api_af_xdp_mode_t mode [default=0];
   string prog[256];
   option vat_help = "<host-if linux-ifname> [name ifname] [rx-queue-size size] [tx-queue-size size] [num-rx-queues num] [prog pathname] [zero-copy|no-zero-copy]";
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief
@@ -65,7 +65,7 @@ define af_xdp_create_reply
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief
@@ -81,7 +81,7 @@ autoreply define af_xdp_delete
 
   vl_api_interface_index_t sw_if_index;
   option vat_help = "<sw_if_index index>";
-  option status="in_progress";
+  option in_progress;
 };
 
 /*

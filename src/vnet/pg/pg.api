@@ -61,7 +61,7 @@ autoreply define pg_interface_enable_disable_coalesce
   u32 context;
   vl_api_interface_index_t sw_if_index;
   bool coalesce_enabled;
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief PacketGenerator capture packets on given interface request

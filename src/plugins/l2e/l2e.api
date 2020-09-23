@@ -25,7 +25,7 @@ import "vnet/interface_types.api";
 */
 autoreply define l2_emulation
 {
-  option status="in_progress";
+  option in_progress;
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
