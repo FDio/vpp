@@ -50,7 +50,7 @@ define ikev2_profile_dump
 {
   u32 client_index;
   u32 context;
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief Details about all profiles
@@ -61,7 +61,7 @@ define ikev2_profile_details
 {
   u32 context;
   vl_api_ikev2_profile_t profile;
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief Dump all SAs
@@ -202,7 +202,7 @@ autoreply define ikev2_profile_add_del
   string name[64];
   bool is_add;
   option vat_help = "name <profile_name> [del]";
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Set IKEv2 profile authentication method
@@ -225,7 +225,7 @@ autoreply define ikev2_profile_set_auth
   u32 data_len;
   u8 data[data_len];
   option vat_help = "name <profile_name> auth_method <method> (auth_data 0x<data> | auth_data <data>)";
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Set IKEv2 profile local/remote identification
@@ -248,7 +248,7 @@ autoreply define ikev2_profile_set_id
   u32 data_len;
   u8 data[data_len];
   option vat_help = "name <profile_name> id_type <type> (id_data 0x<data> | id_data <data>) (local|remote)";
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Set IKEv2 profile traffic selector parameters
@@ -265,7 +265,7 @@ autoreply define ikev2_profile_set_ts
   string name[64];
   vl_api_ikev2_ts_t ts;
   option vat_help = "name <profile_name> protocol <proto> start_port <port> end_port <port> start_addr <ip4> end_addr <ip4> (local|remote)";
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Set IKEv2 local RSA private key
@@ -280,7 +280,7 @@ autoreply define ikev2_set_local_key
 
   string key_file[256];
   option vat_help = "file <absolute_file_path>";
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Set the tunnel interface which will be protected by IKE
@@ -297,7 +297,7 @@ autoreply define ikev2_set_tunnel_interface
   string name[64];
 
   vl_api_interface_index_t sw_if_index;
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Set IKEv2 responder interface and IP address
@@ -314,7 +314,7 @@ autoreply define ikev2_set_responder
   string name[64];
   vl_api_ikev2_responder_t responder;
   option vat_help = "<profile_name> interface <interface> address <addr>";
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Set IKEv2 IKE transforms in SA_INIT proposal (RFC 7296)
@@ -331,7 +331,7 @@ autoreply define ikev2_set_ike_transforms
   string name[64];
   vl_api_ikev2_ike_transforms_t tr;
   option vat_help = "<profile_name> <crypto alg> <key size> <integrity alg> <DH group>";
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Set IKEv2 ESP transforms in SA_INIT proposal (RFC 7296)
@@ -348,7 +348,7 @@ autoreply define ikev2_set_esp_transforms
   string name[64];
   vl_api_ikev2_esp_transforms_t tr;
   option vat_help = "<profile_name> <crypto alg> <key size> <integrity alg>";
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Set Child SA lifetime, limited by time and/or data
@@ -371,7 +371,7 @@ autoreply define ikev2_set_sa_lifetime
   u32 handover;
   u64 lifetime_maxdata;
   option vat_help = "<profile_name> <seconds> <jitter> <handover> <max bytes>";
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Initiate the SA_INIT exchange
@@ -386,7 +386,7 @@ autoreply define ikev2_initiate_sa_init
 
   string name[64];
   option vat_help = "<profile_name>";
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Initiate the delete IKE SA exchange
@@ -401,7 +401,7 @@ autoreply define ikev2_initiate_del_ike_sa
 
   u64 ispi;
   option vat_help = "<ispi>";
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Initiate the delete Child SA exchange
@@ -416,7 +416,7 @@ autoreply define ikev2_initiate_del_child_sa
 
   u32 ispi;
   option vat_help = "<ispi>";
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Initiate the rekey Child SA exchange
@@ -431,7 +431,7 @@ autoreply define ikev2_initiate_rekey_child_sa
 
   u32 ispi;
   option vat_help = "<ispi>";
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Set UDP encapsulation
@@ -445,7 +445,7 @@ autoreply define ikev2_profile_set_udp_encap
   u32 context;
 
   string name[64];
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Set/unset custom ipsec-over-udp port
@@ -463,7 +463,7 @@ autoreply define ikev2_profile_set_ipsec_udp_port
   u8 is_set;
   u16 port;
   string name[64];
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IKEv2: Set liveness parameters
@@ -479,7 +479,7 @@ autoreply define ikev2_profile_set_liveness
 
   u32 period;
   u32 max_retries;
-  option status="in_progress";
+  option in_progress;
 };
 
 /*
