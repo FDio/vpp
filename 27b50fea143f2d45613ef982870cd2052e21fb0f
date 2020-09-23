@@ -22,6 +22,30 @@
       "revId": "27b50fea143f2d45613ef982870cd2052e21fb0f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "68a21b70_61646647",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 3
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-09-23T18:35:52Z",
+      "side": 1,
+      "message": "Unfortunately I didn\u0027t realize until after the patch was committed that tar understood xz compression 😞\n\nThanks for the info.  For now, I\u0027ll leave it as is, but reserve the right to clean it up in the future.",
+      "parentUuid": "14d1c6ab_473c2e26",
+      "range": {
+        "startLine": 173,
+        "startChar": 0,
+        "endLine": 173,
+        "endChar": 86
+      },
+      "revId": "27b50fea143f2d45613ef982870cd2052e21fb0f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
