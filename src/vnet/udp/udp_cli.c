@@ -14,6 +14,7 @@
  */
 
 #include <vnet/udp/udp.h>
+#include <vnet/session/session_types.h>
 
 u8 *
 format_udp_connection_id (u8 * s, va_list * args)
@@ -78,10 +79,10 @@ format_udp_connection (u8 * s, va_list * args)
   u32 verbose = va_arg (*args, u32);
   if (!uc)
     return s;
-  s = format (s, "%-50U", format_udp_connection_id, uc);
+  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_udp_connection_id, uc);
   if (verbose)
     {
-      s = format (s, "%-15s",
+      s = format (s, "%-" SESSION_CLI_STATE_LEN "s",
 		  (uc->flags & UDP_CONN_F_LISTEN) ? "LISTEN" : "OPENED", uc);
       if (verbose > 1)
 	s = format (s, "\n%U", format_udp_vars, uc);

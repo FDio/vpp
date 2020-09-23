@@ -329,7 +329,7 @@ session_cli_show_all_sessions (vlib_main_t * vm, int verbose)
 	}
 
       if (verbose == 1)
-	vlib_cli_output (vm, "%s%-50s%-15s%-10s%-10s",
+	vlib_cli_output (vm, "%s%-80s%-15s%-10s%-10s",
 			 thread_index ? "\n" : "",
 			 "Connection", "State", "Rx-f", "Tx-f");
 
@@ -617,7 +617,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (do_listeners)
     {
       sst = session_type_from_proto_and_ip (transport_proto, 1);
-      vlib_cli_output (vm, "%-50s%-24s", "Listener", "App");
+      vlib_cli_output (vm, "%-80s%-24s", "Listener", "App");
       /* *INDENT-OFF* */
       pool_foreach (s, smm->wrk[0].sessions, ({
 	if (s->session_state != SESSION_STATE_LISTENING

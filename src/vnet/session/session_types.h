@@ -23,6 +23,9 @@
 #define SESSION_INVALID_HANDLE ((u64)~0)
 #define SESSION_CTRL_MSG_MAX_SIZE 86
 
+#define SESSION_CLI_ID_LEN "85"
+#define SESSION_CLI_STATE_LEN "15"
+
 #define foreach_session_endpoint_fields				\
   foreach_transport_endpoint_cfg_fields				\
   _(u8, transport_proto)					\
