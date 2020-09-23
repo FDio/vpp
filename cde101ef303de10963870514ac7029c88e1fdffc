@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f4f62f1e_d4d573ea",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 5
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-23T13:45:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c046a80d_4b5d8f6e",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a928716_dafdfbba",
         "filename": "/COMMIT_MSG",
         "patchSetId": 5
@@ -30,6 +48,24 @@
       "writtenOn": "2020-09-18T17:16:15Z",
       "side": 1,
       "message": "I think this is not exact: what we need is to make sure all txq are served by at least 1 input node for timeout right? Then the rule should be #workers \u003e\u003d #txq right?",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f5da68f1_19deca55",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 5
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-23T13:45:25Z",
+      "side": 1,
+      "message": "No, that\u0027s not the rule. We need at least 1 rxq of an interface with buffering enabled on each worker including main thread.",
+      "parentUuid": "5a928716_dafdfbba",
       "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "81bb155d_a007c6e2",
+        "filename": "src/vnet/devices/virtio/cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-23T13:45:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "86b875fe_6ed034ff",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bfb73450_752de424",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 5
@@ -64,6 +118,24 @@
       "writtenOn": "2020-09-18T17:16:15Z",
       "side": 1,
       "message": "can you explain why we need to duplicate the code here?",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aa48d923_4172520d",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 554,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-23T13:45:25Z",
+      "side": 1,
+      "message": "I have another patch which refactors the code.",
+      "parentUuid": "bfb73450_752de424",
       "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "f4305205_5e59500c",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 819,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-23T13:45:25Z",
+      "side": 1,
+      "message": "It will just turn feature usage OFF and ON based on what user will configure. Returning warning will be making much more sense.",
+      "parentUuid": "3bbc8fb4_20e0b402",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4d79b36e_24fba3bd",
         "filename": "src/vnet/devices/virtio/node.c",
         "patchSetId": 5
@@ -98,6 +188,24 @@
       "writtenOn": "2020-09-18T17:16:15Z",
       "side": 1,
       "message": "it should be a plain \u0027if\u0027 not \u0027else if\u0027 I think",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "337114fe_79b72d60",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-23T13:45:25Z",
+      "side": 1,
+      "message": "We want to make them mutually exclusive: Either GRO or BUFFERING not both.",
+      "parentUuid": "4d79b36e_24fba3bd",
       "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -121,6 +229,24 @@
     },
     {
       "key": {
+        "uuid": "1f364d24_28300515",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1158,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-23T13:45:25Z",
+      "side": 1,
+      "message": "Not sure, if we can get something from that error if implemented. \"Limitation\" depends on rx-queue(s) placement of an interface (with buffering enabled) on worker thread(s).",
+      "parentUuid": "4a5c2c43_8f5dbf31",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "f7fcc62d_19720b2e",
         "filename": "src/vnet/devices/virtio/pci.c",
         "patchSetId": 5
@@ -135,6 +261,24 @@
       "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2ec3e59e_960f74ef",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1160,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-23T13:45:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f7fcc62d_19720b2e",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -155,6 +299,24 @@
     },
     {
       "key": {
+        "uuid": "4e747d42_6be4ef61",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-23T13:45:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a555a1b7_fc191941",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "33c0bcf2_35f0f312",
         "filename": "src/vnet/devices/virtio/virtio_buffering.h",
         "patchSetId": 5
@@ -169,6 +331,24 @@
       "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "99c2a0ee_37f0c117",
+        "filename": "src/vnet/devices/virtio/virtio_buffering.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-23T13:45:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "33c0bcf2_35f0f312",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
