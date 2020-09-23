@@ -46,6 +46,30 @@
       "revId": "27380b59891570f6f09a9cc219df56239ca78496",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ca2a83c4_9e195be2",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 7
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2020-09-23T08:38:18Z",
+      "side": 1,
+      "message": "OK, Nitin, got your point.",
+      "parentUuid": "4ad04865_7266151c",
+      "range": {
+        "startLine": 102,
+        "startChar": 2,
+        "endLine": 104,
+        "endChar": 129
+      },
+      "revId": "27380b59891570f6f09a9cc219df56239ca78496",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
