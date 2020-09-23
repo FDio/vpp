@@ -232,17 +232,17 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
   if ((err = app_worker_init_connected (app_wrk, app_session)))
     goto failed;
 
-  app_session->session_state = SESSION_STATE_CONNECTING;
+  app_session->session_state = SESSION_STATE_READY;
   if (app_worker_connect_notify (app_wrk, app_session,
 				 SESSION_E_NONE, ctx->parent_app_api_context))
     {
       TLS_DBG (1, "failed to notify app");
+      app_session->session_state = SESSION_STATE_CONNECTING;
       tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
       return -1;
     }
 
   ctx->app_session_handle = session_handle (app_session);
-  app_session->session_state = SESSION_STATE_READY;
 
   return 0;
 
@@ -745,14 +745,14 @@ tls_custom_tx_callback (void *session, transport_send_params_t * sp)
 u8 *
 format_tls_ctx (u8 * s, va_list * args)
 {
-  u32 tcp_si, tcp_ti, ctx_index, ctx_engine, app_si, app_ti;
+  u32 tcp_si, tcp_ti, ctx_index, ctx_engine;
   tls_ctx_t *ctx = va_arg (*args, tls_ctx_t *);
 
   session_parse_handle (ctx->tls_session_handle, &tcp_si, &tcp_ti);
   tls_ctx_parse_handle (ctx->tls_ctx_handle, &ctx_index, &ctx_engine);
-  session_parse_handle (ctx->app_session_handle, &app_si, &app_ti);
   s = format (s, "[%d:%d][TLS] app_wrk %u index %u engine %u tcp %d:%d",
-	      app_ti, app_si, ctx->parent_app_wrk_index, ctx_index,
+	      ctx->c_thread_index, ctx->c_s_index,
+	      ctx->parent_app_wrk_index, ctx_index,
 	      ctx_engine, tcp_ti, tcp_si);
 
   return s;
@@ -763,16 +763,15 @@ format_tls_listener_ctx (u8 * s, va_list * args)
 {
   session_t *tls_listener;
   app_listener_t *al;
-  u32 app_si, app_ti;
   tls_ctx_t *ctx;
 
   ctx = va_arg (*args, tls_ctx_t *);
 
   al = app_listener_get_w_handle (ctx->tls_session_handle);
   tls_listener = app_listener_get_session (al);
-  session_parse_handle (ctx->app_session_handle, &app_si, &app_ti);
   s = format (s, "[%d:%d][TLS] app_wrk %u engine %u tcp %d:%d",
-	      app_ti, app_si, ctx->parent_app_wrk_index, ctx->tls_ctx_engine,
+	      ctx->c_thread_index, ctx->c_s_index,
+	      ctx->parent_app_wrk_index, ctx->tls_ctx_engine,
 	      tls_listener->thread_index, tls_listener->session_index);
 
   return s;
@@ -785,7 +784,7 @@ format_tls_ctx_state (u8 * s, va_list * args)
   session_t *ts;
 
   ctx = va_arg (*args, tls_ctx_t *);
-  ts = session_get_from_handle (ctx->app_session_handle);
+  ts = session_get (ctx->c_s_index, ctx->c_thread_index);
   if (ts->session_state == SESSION_STATE_LISTENING)
     s = format (s, "%s", "LISTEN");
   else
