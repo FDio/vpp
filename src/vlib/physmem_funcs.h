@@ -109,7 +109,8 @@ vlib_physmem_get_pa (vlib_main_t * vm, void *mem)
 always_inline clib_error_t *
 vlib_physmem_last_error (struct vlib_main_t * vm)
 {
-  return clib_error_return (0, "unknown error");
+  clib_pmalloc_main_t *pm = vm->physmem_main.pmalloc_main;
+  return pm->error;
 }
 
 #endif /* included_vlib_physmem_funcs_h */
