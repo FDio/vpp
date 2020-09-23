@@ -258,10 +258,11 @@ format_tcp_connection (u8 * s, va_list * args)
 
   if (!tc)
     return s;
-  s = format (s, "%-50U", format_tcp_connection_id, tc);
+  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tcp_connection_id, tc);
   if (verbose)
     {
-      s = format (s, "%-15U", format_tcp_state, tc->state);
+      s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_tcp_state,
+		  tc->state);
       if (verbose > 1)
 	s = format (s, "\n%U", format_tcp_vars, tc);
     }

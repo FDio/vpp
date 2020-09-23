@@ -841,9 +841,10 @@ format_tcp_listener_session (u8 * s, va_list * args)
   u32 __clib_unused thread_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
   tcp_connection_t *tc = tcp_listener_get (tci);
-  s = format (s, "%-50U", format_tcp_connection_id, tc);
+  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tcp_connection_id, tc);
   if (verbose)
-    s = format (s, "%-15U", format_tcp_state, tc->state);
+    s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_tcp_state,
+		tc->state);
   return s;
 }
 
