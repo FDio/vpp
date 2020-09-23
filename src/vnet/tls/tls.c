@@ -816,10 +816,11 @@ format_tls_connection (u8 * s, va_list * args)
   if (!ctx)
     return s;
 
-  s = format (s, "%-50U", format_tls_ctx, ctx);
+  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tls_ctx, ctx);
   if (verbose)
     {
-      s = format (s, "%-15U", format_tls_ctx_state, ctx);
+      s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_tls_ctx_state,
+		  ctx);
       if (verbose > 1)
 	s = format (s, "\n");
     }
@@ -834,9 +835,9 @@ format_tls_listener (u8 * s, va_list * args)
   u32 verbose = va_arg (*args, u32);
   tls_ctx_t *ctx = tls_listener_ctx_get (tc_index);
 
-  s = format (s, "%-50U", format_tls_listener_ctx, ctx);
+  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tls_listener_ctx, ctx);
   if (verbose)
-    s = format (s, "%-15U", format_tls_ctx_state, ctx);
+    s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_tls_ctx_state, ctx);
   return s;
 }
 
