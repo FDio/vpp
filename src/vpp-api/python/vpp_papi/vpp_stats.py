@@ -139,8 +139,8 @@ def error_vec_list(api, e):
 
 
 def name_vec_list(api, e):
-    return [ffi.string(e[i]).decode('utf-8') for i in
-            range(api.stat_segment_vec_len(e)) if e[i] != ffi.NULL]
+    return [ffi.string(e[i]).decode('utf-8') if e[i] != ffi.NULL else None
+            for i in range(api.stat_segment_vec_len(e))]
 
 
 def stat_entry_to_python(api, e):
