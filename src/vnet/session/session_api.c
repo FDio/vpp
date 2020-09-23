@@ -1225,6 +1225,8 @@ sapi_send_fds (app_worker_t * app_wrk, int *fds, int n_fds)
   app_ns = app_namespace_get (app->ns_index);
   cs_index = appns_sapi_handle_sock_index (app_wrk->api_client_index);
   cs = appns_sapi_get_socket (app_ns, cs_index);
+  if (PREDICT_FALSE (!cs))
+    return;
 
   /* There's no payload for the message only the type */
   smsg.type = APP_SAPI_MSG_TYPE_SEND_FDS;
