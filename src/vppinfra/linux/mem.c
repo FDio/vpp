@@ -366,7 +366,7 @@ legacy_memfd_create (u8 * name)
     {
       vec_reset_length (mm->error);
       mm->error = clib_error_return_unix (mm->error, "mkdtemp");
-      return -1;
+      return CLIB_MEM_ERROR;
     }
 
   if (mount ("none", mount_dir, "hugetlbfs", 0, NULL))
@@ -374,7 +374,7 @@ legacy_memfd_create (u8 * name)
       rmdir ((char *) mount_dir);
       vec_reset_length (mm->error);
       mm->error = clib_error_return_unix (mm->error, "mount");
-      return -1;
+      return CLIB_MEM_ERROR;
     }
 
   filename = format (0, "%s/%s%c", mount_dir, name, 0);
@@ -407,7 +407,7 @@ clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
   switch (log2_page_size)
     {
     case CLIB_MEM_PAGE_SZ_UNKNOWN:
-      return -1;
+      return CLIB_MEM_ERROR;
     case CLIB_MEM_PAGE_SZ_DEFAULT:
       memfd_flags = MFD_ALLOW_SEALING;
       break;
@@ -441,7 +441,7 @@ clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
       vec_reset_length (mm->error);
       mm->error = clib_error_return_unix (mm->error, "memfd_create");
       vec_free (s);
-      return -1;
+      return CLIB_MEM_ERROR;
     }
 
   vec_free (s);
@@ -452,7 +452,7 @@ clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
       vec_reset_length (mm->error);
       mm->error = clib_error_return_unix (mm->error, "fcntl (F_ADD_SEALS)");
       close (fd);
-      return -1;
+      return CLIB_MEM_ERROR;
     }
 
   return fd;
@@ -640,11 +640,11 @@ clib_mem_vm_unmap (void *base)
   clib_mem_vm_map_hdr_t *hdr = base - sys_page_sz;;
 
   if (mprotect (hdr, sys_page_sz, PROT_READ | PROT_WRITE) != 0)
-    return -1;
+    return CLIB_MEM_ERROR;
 
   size = hdr->num_pages << hdr->log2_page_sz;
   if (munmap ((void *) hdr->base_addr, size) != 0)
-    return -1;
+    return CLIB_MEM_ERROR;
 
   if (hdr->next)
     {
@@ -665,7 +665,7 @@ clib_mem_vm_unmap (void *base)
     mm->first_map = hdr->next;
 
   if (munmap (hdr, sys_page_sz) != 0)
-    return -1;
+    return CLIB_MEM_ERROR;
 
   return 0;
 }
@@ -806,6 +806,55 @@ clib_mem_vm_ext_map (clib_mem_vm_map_t * a)
 
 done:
   return err;
+}
+
+int
+clib_mem_set_numa_affinity (u8 numa_node, int force)
+{
+  clib_mem_main_t *mm = &clib_mem_main;
+  long unsigned int mask[16] = { 0 };
+  int mask_len = sizeof (mask) * 8 + 1;
+
+  /* no numa support */
+  if (mm->numa_node_bitmap == 0)
+    {
+      if (numa_node)
+	{
+	  vec_reset_length (mm->error);
+	  mm->error = clib_error_return (mm->error, "%s: numa not supported",
+					 (char *) __func__);
+	  return CLIB_MEM_ERROR;
+	}
+      else
+	return 0;
+    }
+
+  mask[0] = 1 << numa_node;
+
+  if (set_mempolicy (force ? MPOL_BIND : MPOL_PREFERRED, mask, mask_len))
+    goto error;
+
+  vec_reset_length (mm->error);
+  return 0;
+
+error:
+  vec_reset_length (mm->error);
+  mm->error = clib_error_return_unix (mm->error, (char *) __func__);
+  return CLIB_MEM_ERROR;
+}
+
+int
+clib_mem_set_default_numa_affinity ()
+{
+  clib_mem_main_t *mm = &clib_mem_main;
+
+  if (set_mempolicy (MPOL_DEFAULT, 0, 0))
+    {
+      vec_reset_length (mm->error);
+      mm->error = clib_error_return_unix (mm->error, (char *) __func__);
+      return CLIB_MEM_ERROR;
+    }
+  return 0;
 }
 
 /*
