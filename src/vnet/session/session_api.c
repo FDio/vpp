@@ -1638,14 +1638,14 @@ sapi_sock_accept_ready (clib_file_t * scf)
   cf.file_descriptor = ccs->fd;
   /* File points to app namespace and socket */
   handle.aah_sock_index = appns_sapi_socket_index (app_ns, ccs);
-  cf.private_data = handle.as_uword;
+  cf.private_data = handle.as_u64;
   cf.description = format (0, "app sock conn fd: %d", ccs->fd);
 
   /* Poll until we get an attach message. Socket points to file and
    * application that owns the socket */
   handle.aah_app_wrk_index = APP_INVALID_INDEX;
   handle.aah_file_index = clib_file_add (&file_main, &cf);
-  ccs->private_data = handle.as_uword;
+  ccs->private_data = handle.as_u64;
 
   return err;
 

@@ -102,15 +102,15 @@ typedef struct app_ns_api_handle_
       /** socket index for files and clib file index for sockets */
       u32 u_index;
     };
-    uword as_uword;
+    u64 as_u64;
   };
 #define aah_app_ns_index l_index
 #define aah_app_wrk_index l_index
 #define aah_sock_index u_index
 #define aah_file_index u_index
-} __attribute__ ((aligned (sizeof (uword)))) app_ns_api_handle_t;
+} __attribute__ ((aligned (sizeof (u64)))) app_ns_api_handle_t;
 
-STATIC_ASSERT (sizeof (app_ns_api_handle_t) == sizeof (uword), "not uword");
+STATIC_ASSERT (sizeof (app_ns_api_handle_t) == sizeof (u64), "not u64");
 
 static inline clib_socket_t *
 appns_sapi_alloc_socket (app_namespace_t * app_ns)
