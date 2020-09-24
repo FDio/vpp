@@ -83,10 +83,6 @@ else ifeq ($(OS_VERSION_ID),20.04)
 	DEB_DEPENDS += libssl-dev
 	DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
 	LIBFFI=libffi7
-else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
-	DEB_DEPENDS += libssl-dev
-	DEB_DEPENDS += python-dev python-all python-pip python-virtualenv
-	APT_ARGS = -t jessie-backports
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-9)
 	DEB_DEPENDS += libssl1.0-dev
 	DEB_DEPENDS += python-all python-pip
@@ -278,13 +274,6 @@ bootstrap:
 .PHONY: install-dep
 install-dep:
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
-ifeq ($(OS_VERSION_ID),14.04)
-	@sudo -E apt-get $(CONFIRM) $(FORCE) install software-properties-common
-endif
-ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
-	@grep -q jessie-backports /etc/apt/sources.list /etc/apt/sources.list.d/* 2> /dev/null \
-           || ( echo "Please install jessie-backports" ; exit 1 )
-endif
 	@sudo -E apt-get update
 	@sudo -E apt-get $(APT_ARGS) $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
 else ifneq ("$(wildcard /etc/redhat-release)","")
