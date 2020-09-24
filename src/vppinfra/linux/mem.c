@@ -582,6 +582,10 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
 
   size = round_pow2 (size, 1 << log2_page_sz);
 
+  /* Set size */
+  if (fd != -1 && (ftruncate (fd, size)) == -1)
+    return CLIB_MEM_VM_MAP_FAILED;
+
   base = (void *) clib_mem_vm_reserve ((uword) base, size, log2_page_sz);
 
   if (base == (void *) ~0)
