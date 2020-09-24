@@ -61,7 +61,7 @@ typedef struct clib_file
   u32 polling_thread_index;
 
   /* Data available for function's use. */
-  uword private_data;
+  u64 private_data;
 
   /* Functions to be called when read/write data becomes ready. */
   clib_file_function_t *read_function, *write_function, *error_function;
