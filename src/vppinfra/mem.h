@@ -54,6 +54,7 @@
 #define CLIB_MAX_MHEAPS 256
 #define CLIB_MAX_NUMAS 16
 #define CLIB_MEM_VM_MAP_FAILED ((void *) ~0)
+#define CLIB_MEM_ERROR (-1)
 
 typedef enum
 {
@@ -476,6 +477,8 @@ u64 *clib_mem_vm_get_paddr (void *mem, clib_mem_page_sz_t log2_page_size,
 			    int n_pages);
 void clib_mem_destroy_mspace (void *mspace);
 void clib_mem_destroy (void);
+int clib_mem_set_numa_affinity (u8 numa_node, int force);
+int clib_mem_set_default_numa_affinity ();
 
 typedef struct
 {
