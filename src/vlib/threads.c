@@ -640,9 +640,12 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
       /* If the user requested a NUMA heap, create it... */
       if (tm->numa_heap_size)
 	{
-	  numa_heap = clib_mem_init_thread_safe_numa
-	    (0 /* DIY */ , tm->numa_heap_size, w->numa_id);
+	  clib_mem_set_numa_affinity (w->numa_id, /* force */ 1);
+	  numa_heap = clib_mem_create_heap (0, tm->numa_heap_size,
+					    /* is_locked */ 1, "numa %u heap",
+					    w->numa_id);
 	  mm->per_numa_mheaps[w->numa_id] = numa_heap;
+	  clib_mem_set_default_numa_affinity ();
 	}
       else
 	{
@@ -757,8 +760,10 @@ start_workers (vlib_main_t * vm)
 	      vec_add2 (vlib_worker_threads, w, 1);
 	      /* Currently unused, may not really work */
 	      if (tr->mheap_size)
-		w->thread_mheap = create_mspace (tr->mheap_size,
-						 0 /* unlocked */ );
+		w->thread_mheap = clib_mem_create_heap (0, tr->mheap_size,
+							/* unlocked */ 0,
+							"%s%d heap",
+							tr->name, k);
 	      else
 		w->thread_mheap = main_heap;
 
@@ -927,8 +932,10 @@ start_workers (vlib_main_t * vm)
 	      vec_add2 (vlib_worker_threads, w, 1);
 	      if (tr->mheap_size)
 		{
-		  w->thread_mheap =
-		    create_mspace (tr->mheap_size, 0 /* locked */ );
+		  w->thread_mheap = clib_mem_create_heap (0, tr->mheap_size,
+							  /* locked */ 0,
+							  "%s%d heap",
+							  tr->name, j);
 		}
 	      else
 		w->thread_mheap = main_heap;

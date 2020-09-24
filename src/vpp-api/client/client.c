@@ -96,8 +96,7 @@ vac_client_destructor (void)
 {
   if (mem_trace)
     fformat(stderr, "TRACE: %s",
-	    format (0, "%U\n",
-		    format_mheap, clib_mem_get_heap (), 1));
+	    format (0, "%U\n", format_clib_mem_heap, 0, 1));
 }
 
 

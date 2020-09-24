@@ -345,9 +345,9 @@ vlib_map_stat_segment_init (void)
 
   sys_page_sz = clib_mem_get_page_size ();
 
-  heap = create_mspace_with_base (((u8 *) memaddr) + sys_page_sz, memory_size
-				  - sys_page_sz, 1 /* locked */ );
-  mspace_disable_expand (heap);
+  heap = clib_mem_create_heap (((u8 *) memaddr) + sys_page_sz, memory_size
+			       - sys_page_sz, 1 /* locked */ ,
+			       "stat segment");
   sm->heap = heap;
   sm->memfd = mfd;
 
@@ -381,7 +381,7 @@ vlib_map_stat_segment_init (void)
 
   /* Total shared memory size */
   clib_mem_usage_t usage;
-  mheap_usage (sm->heap, &usage);
+  clib_mem_get_heap_usage (sm->heap, &usage);
   sm->directory_vector[STAT_COUNTER_MEM_STATSEG_TOTAL].value =
     usage.bytes_total;
 
@@ -475,7 +475,8 @@ show_stat_segment_command_fn (vlib_main_t * vm,
   if (verbose)
     {
       ASSERT (sm->heap);
-      vlib_cli_output (vm, "%U", format_mheap, sm->heap, 0 /* verbose */ );
+      vlib_cli_output (vm, "%U", format_clib_mem_heap, sm->heap,
+		       0 /* verbose */ );
     }
 
   return 0;
@@ -658,7 +659,7 @@ do_stat_segment_updates (stat_segment_main_t * sm)
 
   /* Stats segment memory heap counter */
   clib_mem_usage_t usage;
-  mheap_usage (sm->heap, &usage);
+  clib_mem_get_heap_usage (sm->heap, &usage);
   sm->directory_vector[STAT_COUNTER_MEM_STATSEG_USED].value =
     usage.bytes_used;
 

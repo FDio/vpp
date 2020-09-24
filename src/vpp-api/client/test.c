@@ -178,7 +178,7 @@ test_stats (void)
   vec_free(dir);
 
   (void) clib_mem_trace_enable_disable (0);
-  u8 *leak_report = format (0, "%U", format_mheap, clib_mem_get_heap (),
+  u8 *leak_report = format (0, "%U", format_clib_mem_heap, 0,
                             1 /* verbose, i.e. print leaks */ );
   printf("%s", leak_report);
   vec_free (leak_report);
