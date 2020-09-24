@@ -72,6 +72,24 @@
     },
     {
       "key": {
+        "uuid": "3a1249fd_ff421475",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 5
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-24T17:09:06Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f5da68f1_19deca55",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "86b875fe_6ed034ff",
         "filename": "src/vnet/devices/virtio/cli.c",
         "patchSetId": 5
@@ -142,6 +160,24 @@
     },
     {
       "key": {
+        "uuid": "cef39e8a_98fd84f0",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 554,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-24T17:09:06Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "aa48d923_4172520d",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3bbc8fb4_20e0b402",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 5
@@ -171,6 +207,24 @@
       "side": 1,
       "message": "It will just turn feature usage OFF and ON based on what user will configure. Returning warning will be making much more sense.",
       "parentUuid": "3bbc8fb4_20e0b402",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "394fe6e5_7a1cd299",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 819,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-24T17:09:06Z",
+      "side": 1,
+      "message": "Ok, can we add a warn log then?",
+      "parentUuid": "f4305205_5e59500c",
       "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -212,6 +266,24 @@
     },
     {
       "key": {
+        "uuid": "b9d59524_83fd3e5e",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-24T17:09:06Z",
+      "side": 1,
+      "message": "Ok then if the user tries to configure both we should reject it with an error",
+      "parentUuid": "337114fe_79b72d60",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4a5c2c43_8f5dbf31",
         "filename": "src/vnet/devices/virtio/pci.c",
         "patchSetId": 5
@@ -241,6 +313,24 @@
       "side": 1,
       "message": "Not sure, if we can get something from that error if implemented. \"Limitation\" depends on rx-queue(s) placement of an interface (with buffering enabled) on worker thread(s).",
       "parentUuid": "4a5c2c43_8f5dbf31",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "59fb0b61_af05e83d",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1158,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-24T17:09:06Z",
+      "side": 1,
+      "message": "Then what about not setting hw-\u003eflags |\u003d VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE; above if buffering (or gro for that matter) is enabled? That should prevent the option of setting the interface in interrupt mode if buffering is enabled?",
+      "parentUuid": "1f364d24_28300515",
       "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true

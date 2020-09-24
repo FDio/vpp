@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2a9c8d94_d294da1d",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1159,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-24T17:09:06Z",
+      "side": 1,
+      "message": "virtio_vring_buffering_init() called from virtio_set_packet_buffering() can failed but we do not check for errors here - it would be good to reject bad conf (eg. buffering size bigger than 32768)",
+      "revId": "44cda50acda16273d53a80f81ffbfb35973bd0e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
