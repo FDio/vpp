@@ -1254,8 +1254,7 @@ void
 vppcom_app_destroy (void)
 {
   vcl_worker_t *wrk, *current_wrk;
-  struct dlmallinfo mi;
-  mspace heap;
+  void *heap;
 
   if (!pool_elts (vcm->workers))
     return;
@@ -1280,8 +1279,7 @@ vppcom_app_destroy (void)
    * Free the heap and fix vcm
    */
   heap = clib_mem_get_heap ();
-  mi = mspace_mallinfo (heap);
-  munmap (mspace_least_addr (heap), mi.arena);
+  munmap (clib_mem_get_heap_base (heap), clib_mem_get_heap_size (heap));
 
   vcm = &_vppcom_main;
   vcm->is_init = 0;

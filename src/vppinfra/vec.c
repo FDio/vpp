@@ -44,39 +44,38 @@ void *
 vec_resize_allocate_memory (void *v,
 			    word length_increment,
 			    uword data_bytes,
-			    uword header_bytes, uword data_align,
-			    uword numa_id)
+			    uword header_bytes, uword data_align)
 {
   vec_header_t *vh = _vec_find (v);
   uword old_alloc_bytes, new_alloc_bytes;
   void *old, *new;
-  void *oldheap;
+  void *oldheap = 0;
 
   header_bytes = vec_header_bytes (header_bytes);
 
   data_bytes += header_bytes;
 
-  if (PREDICT_FALSE (numa_id != VEC_NUMA_UNSPECIFIED))
-    {
-      oldheap = clib_mem_get_per_cpu_heap ();
-      clib_mem_set_per_cpu_heap (clib_mem_get_per_numa_heap (numa_id));
-    }
-
   if (!v)
     {
-      new = clib_mem_alloc_aligned_at_offset (data_bytes, data_align, header_bytes, 1	/* yes, call os_out_of_memory */
-	);
+      clib_mem_heap_t *heap = clib_mem_get_heap ();
+
+      new = clib_mem_alloc_aligned_at_offset
+	(data_bytes, data_align, header_bytes,
+	 1 /* yes, call os_out_of_memory */ );
+
       new_alloc_bytes = clib_mem_size (new);
       CLIB_MEM_UNPOISON (new + data_bytes, new_alloc_bytes - data_bytes);
       clib_memset (new, 0, new_alloc_bytes);
       CLIB_MEM_POISON (new + data_bytes, new_alloc_bytes - data_bytes);
       v = new + header_bytes;
       _vec_len (v) = length_increment;
-      _vec_numa (v) = numa_id;
-      if (PREDICT_FALSE (numa_id != VEC_NUMA_UNSPECIFIED))
-	clib_mem_set_per_cpu_heap (oldheap);
+      _vec_heap_index (v) = heap->heap_index;
       return v;
     }
+
+  /* if vector is allocated from the different heap, swap the heap */
+  if (clib_mem_get_heap_index () != vh->heap_index)
+    oldheap = clib_mem_set_heap (clib_mem_get_heap_by_index (vh->heap_index));
 
   vh->len += length_increment;
   old = v - header_bytes;
@@ -86,12 +85,12 @@ vec_resize_allocate_memory (void *v,
 
   old_alloc_bytes = clib_mem_size (old);
 
-  /* Need to resize? */
+  /* No Need for resize? */
   if (data_bytes <= old_alloc_bytes)
     {
       CLIB_MEM_UNPOISON (v, data_bytes);
-      if (PREDICT_FALSE (numa_id != VEC_NUMA_UNSPECIFIED))
-	clib_mem_set_per_cpu_heap (oldheap);
+      if (oldheap)
+	clib_mem_set_heap (oldheap);
       return v;
     }
 
@@ -127,10 +126,8 @@ vec_resize_allocate_memory (void *v,
   memset (v + old_alloc_bytes, 0, new_alloc_bytes - old_alloc_bytes);
   CLIB_MEM_POISON (new + data_bytes, new_alloc_bytes - data_bytes);
 
-  _vec_numa ((v + header_bytes)) = numa_id;
-  if (PREDICT_FALSE (numa_id != VEC_NUMA_UNSPECIFIED))
-    clib_mem_set_per_cpu_heap (oldheap);
-
+  if (oldheap)
+    clib_mem_set_heap (oldheap);
   return v + header_bytes;
 }
 

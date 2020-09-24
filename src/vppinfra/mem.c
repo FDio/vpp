@@ -20,6 +20,7 @@
 #include <vppinfra/clib_error.h>
 
 clib_mem_main_t clib_mem_main;
+u16 __thread __clib_mem_active_heap_index = 0;
 
 void *
 clib_mem_vm_map (void *base, uword size, clib_mem_page_sz_t log2_page_sz,

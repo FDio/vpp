@@ -507,7 +507,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	}
 
       (void) clib_mem_trace_enable_disable (0);
-      leak_report = format (0, "%U", format_mheap, clib_mem_get_heap (),
+      leak_report = format (0, "%U", format_clib_mem_heap, 0,
 			    1 /* verbose, i.e. print leaks */ );
       clib_mem_trace (0);
       vlib_cli_output (vm, "%v", leak_report);
@@ -735,6 +735,7 @@ vlib_stats_push_heap (void *notused)
   return 0;
 }
 
+#if FIXME
 static clib_error_t *
 show_memory_usage (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -781,8 +782,7 @@ show_memory_usage (vlib_main_t * vm,
     {
       void *oldheap = vl_msg_push_heap ();
       was_enabled = clib_mem_trace_enable_disable (0);
-      u8 *s_in_svm =
-	format (0, "%U\n", format_mheap, clib_mem_get_heap (), 1);
+      u8 *s_in_svm = format (0, "%U\n", format_clib_mem_heap, 0, 1);
       vl_msg_pop_heap (oldheap);
       u8 *s = vec_dup (s_in_svm);
 
@@ -796,10 +796,10 @@ show_memory_usage (vlib_main_t * vm,
     }
   if (stats_segment)
     {
+#ifdef FIXME
       void *oldheap = vlib_stats_push_heap (0);
       was_enabled = clib_mem_trace_enable_disable (0);
-      u8 *s_in_svm =
-	format (0, "%U\n", format_mheap, clib_mem_get_heap (), 1);
+      u8 *s_in_svm = format (0, "%U\n", format_clib_mem_heap, 0, 1);
       if (oldheap)
 	clib_mem_set_heap (oldheap);
       u8 *s = vec_dup (s_in_svm);
@@ -814,6 +814,7 @@ show_memory_usage (vlib_main_t * vm,
       vlib_cli_output (vm, "Stats segment");
       vlib_cli_output (vm, "%v", s);
       vec_free (s);
+#endif
     }
 
 
@@ -839,7 +840,7 @@ show_memory_usage (vlib_main_t * vm,
           vlib_cli_output (vm, "  %U\n", format_page_map,
                            pointer_to_uword (mspace_least_addr(mspace)),
                            mi.arena);
-          vlib_cli_output (vm, "  %U\n", format_mheap,
+          vlib_cli_output (vm, "  %U\n", format_clib_mem_heap,
                            mm->per_cpu_mheaps[index],
                            verbose);
           index++;
@@ -871,51 +872,9 @@ show_memory_usage (vlib_main_t * vm,
 	    vlib_cli_output (vm, "  %U\n", format_page_map,
 			     pointer_to_uword (mspace_least_addr (mspace)),
 			     mi.arena);
-	    vlib_cli_output (vm, "  %U\n", format_mheap,
+	    vlib_cli_output (vm, "  %U\n", format_clib_mem_heap,
 			     mm->per_numa_mheaps[index], verbose);
 	  }
-      }
-    if (map)
-      {
-	clib_mem_page_stats_t stats = { };
-	clib_mem_vm_map_hdr_t *hdr = 0;
-	u8 *s = 0;
-	int numa = -1;
-
-	s = format (s, "\n%-16s%7s%5s%7s%7s",
-		    "StartAddr", "size", "FD", "PageSz", "Pages");
-	while ((numa = vlib_mem_get_next_numa_node (numa)) != -1)
-	  s = format (s, " Numa%u", numa);
-	s = format (s, " NotMap");
-	s = format (s, " Name");
-	vlib_cli_output (vm, "%v", s);
-	vec_reset_length (s);
-
-	while ((hdr = clib_mem_vm_get_next_map_hdr (hdr)))
-	  {
-	    clib_mem_get_page_stats ((void *) hdr->base_addr,
-				     hdr->log2_page_sz, hdr->num_pages,
-				     &stats);
-	    s = format (s, "%016lx%7U",
-			hdr->base_addr, format_memory_size,
-			hdr->num_pages << hdr->log2_page_sz);
-
-	    if (hdr->fd != -1)
-	      s = format (s, "%5d", hdr->fd);
-	    else
-	      s = format (s, "%5s", " ");
-
-	    s = format (s, "%7U%7lu",
-			format_log2_page_size, hdr->log2_page_sz,
-			hdr->num_pages);
-	    while ((numa = vlib_mem_get_next_numa_node (numa)) != -1)
-	      s = format (s, "%6lu", stats.per_numa[numa]);
-	    s = format (s, "%7lu", stats.not_mapped);
-	    s = format (s, " %s", hdr->name);
-	    vlib_cli_output (vm, "%v", s);
-	    vec_reset_length (s);
-	  }
-	vec_free (s);
       }
   }
   return 0;
@@ -927,6 +886,121 @@ VLIB_CLI_COMMAND (show_memory_usage_command, static) = {
   .short_help = "show memory [api-segment][stats-segment][verbose]\n"
   "            [numa-heaps][map]",
   .function = show_memory_usage,
+};
+/* *INDENT-ON* */
+#endif
+
+static clib_error_t *
+show_memory_heaps (vlib_main_t * vm, unformat_input_t * input,
+		   vlib_cli_command_t * cmd)
+{
+  clib_mem_main_t *mm = &clib_mem_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  uword trace_enabled = clib_mem_trace_enable_disable (0);
+  int verbose = 0;
+  clib_error_t *error = 0;
+  int i;
+
+  if (unformat_user (input, unformat_line_input, line_input))
+    {
+      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+	{
+	  if (unformat (line_input, "verbose"))
+	    verbose = 1;
+	  else
+	    {
+	      error = clib_error_return (0, "unknown input `%U'",
+					 format_unformat_error, line_input);
+	      goto done;
+	    }
+	}
+      unformat_free (line_input);
+    }
+
+  /* *INDENT-OFF* */
+  pool_foreach_index (i, mm->heaps,
+    {
+      vlib_cli_output (vm, "%U\n", format_clib_mem_heap, mm->heaps[i], verbose);
+    });
+  /* *INDENT-ON* */
+
+done:
+  clib_mem_trace_enable_disable (trace_enabled);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_memory_heaps_command, static) = {
+  .path = "show memory heaps",
+  .short_help = "show memory heaps [verbose]",
+  .function = show_memory_heaps,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_memory_maps (vlib_main_t * vm, unformat_input_t * input,
+		  vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_mem_page_stats_t stats = { };
+  clib_mem_vm_map_hdr_t *hdr = 0;
+  u8 *s = 0;
+  int numa = -1;
+
+  if (unformat_user (input, unformat_line_input, line_input))
+    {
+
+      if (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+	{
+	  clib_error_t *error;
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  return error;
+	}
+      unformat_free (line_input);
+    }
+
+  s = format (s, "\n%-16s%7s%5s%7s%7s",
+	      "StartAddr", "size", "FD", "PageSz", "Pages");
+  while ((numa = vlib_mem_get_next_numa_node (numa)) != -1)
+    s = format (s, " Numa%u", numa);
+  s = format (s, " NotMap");
+  s = format (s, " Name");
+  vlib_cli_output (vm, "%v", s);
+  vec_reset_length (s);
+
+  while ((hdr = clib_mem_vm_get_next_map_hdr (hdr)))
+    {
+      clib_mem_get_page_stats ((void *) hdr->base_addr,
+			       hdr->log2_page_sz, hdr->num_pages, &stats);
+      s = format (s, "%016lx%7U",
+		  hdr->base_addr, format_memory_size,
+		  hdr->num_pages << hdr->log2_page_sz);
+
+      if (hdr->fd != -1)
+	s = format (s, "%5d", hdr->fd);
+      else
+	s = format (s, "%5s", " ");
+
+      s = format (s, "%7U%7lu",
+		  format_log2_page_size, hdr->log2_page_sz, hdr->num_pages);
+      while ((numa = vlib_mem_get_next_numa_node (numa)) != -1)
+	s = format (s, "%6lu", stats.per_numa[numa]);
+      s = format (s, "%7lu", stats.not_mapped);
+      s = format (s, " %s", hdr->name);
+      vlib_cli_output (vm, "%v", s);
+      vec_reset_length (s);
+    }
+  vec_free (s);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_memory_maps_command, static) = {
+  .path = "show memory maps",
+  .short_help = "show memory maps [verbose]",
+  .function = show_memory_maps,
 };
 /* *INDENT-ON* */
 
@@ -1064,7 +1138,6 @@ enable_disable_memory_trace (vlib_main_t * vm,
       clib_mem_trace (1);
       clib_mem_set_heap (oldheap);
     }
-
 
   return 0;
 }
