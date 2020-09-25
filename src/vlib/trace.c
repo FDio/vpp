@@ -39,6 +39,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
+#include <vnet/vnet.h>
 
 u8 *vnet_trace_placeholder;
 
@@ -122,6 +123,7 @@ clear_trace_buffer (void)
     tm = &this_vlib_main->trace_main;
 
     tm->trace_enable = 0;
+    tm->filter_flag = FILTER_FLAG_NONE;
 
     for (i = 0; i < vec_len (tm->trace_buffer_pool); i++)
       if (! pool_is_free_index (tm->trace_buffer_pool, i))
@@ -192,10 +194,10 @@ filter_accept (vlib_trace_main_t * tm, vlib_trace_header_t * h)
 {
   vlib_trace_header_t *e = vec_end (h);
 
-  if (tm->filter_flag == 0)
+  if (tm->filter_flag == FILTER_FLAG_NONE)
     return 1;
 
-  if (tm->filter_flag == FILTER_FLAG_INCLUDE)
+  if (tm->filter_flag == FILTER_FLAG_INCLUDE_NODE_INDEX)
     {
       while (h < e)
 	{
@@ -205,7 +207,14 @@ filter_accept (vlib_trace_main_t * tm, vlib_trace_header_t * h)
 	}
       return 0;
     }
-  else				/* FILTER_FLAG_EXCLUDE */
+  else if (tm->filter_flag == FILTER_FLAG_INCLUDE_SW_IF_INDEX)
+    {
+      /* src sw_if_index is the same for the whole trace */
+      if (h->sw_if_index == tm->filter_sw_if_index)
+	return 1;
+      return 0;
+    }
+  else				/* FILTER_FLAG_EXCLUDE_NODE_INDEX */
     {
       while (h < e)
 	{
@@ -363,13 +372,17 @@ cli_add_trace_buffer (vlib_main_t * vm,
 		      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
   vlib_trace_main_t *tm;
   vlib_node_t *node;
   vlib_trace_node_t *tn;
-  u32 node_index, add;
+  u32 node_index = (u32) ~ 0;
+  u32 add = TRACE_DEFAULT_LENGTH;
   u8 verbose = 0;
   int filter = 0;
   clib_error_t *error = 0;
+  u32 sw_if_index = (u32) ~ 0;
+  vnet_hw_interface_t *hwi;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -380,8 +393,16 @@ cli_add_trace_buffer (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != (uword) UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%U %d",
-		    unformat_vlib_node, vm, &node_index, &add))
+      if (unformat_user (line_input, unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
+	{
+	  hwi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+	  node_index = hwi->input_node_index;
+	}
+      else if (unformat (line_input, "%d", &add))
+	;
+      else if (unformat_user (line_input, unformat_vlib_node, vm,
+			      &node_index))
 	;
       else if (unformat (line_input, "verbose"))
 	verbose = 1;
@@ -393,6 +414,12 @@ cli_add_trace_buffer (vlib_main_t * vm,
 				     format_unformat_error, line_input);
 	  goto done;
 	}
+    }
+
+  if ((u32) ~ 0 == node_index)
+    {
+      error = clib_error_create ("expected NODE or INTERFACE");
+      goto done;
     }
 
   node = vlib_get_node (vm, node_index);
@@ -419,11 +446,19 @@ cli_add_trace_buffer (vlib_main_t * vm,
   foreach_vlib_main ((
     {
       tm = &this_vlib_main->trace_main;
+      if ((u32) ~ 0 != sw_if_index) {
+	tm->filter_flag = FILTER_FLAG_INCLUDE_SW_IF_INDEX;
+	tm->filter_count = add;
+	tm->filter_sw_if_index = sw_if_index;
+	vec_free (tm->nodes);
+      }
+
       tm->verbose = verbose;
       vec_validate (tm->nodes, node_index);
       tn = tm->nodes + node_index;
       tn->limit += add;
       tm->trace_enable = 1;
+
     }));
   /* *INDENT-ON* */
 
@@ -436,7 +471,12 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (add_trace_cli,static) = {
   .path = "trace add",
-  .short_help = "Trace given number of packets",
+  .short_help = "trace add [NODE|INTERFACE] [N_PACKETS] [filter] [verbose]",
+  .long_help = "Trace given number of packets comming from given NODE or \n"
+	       "INTERFACE. Limit trace to N_PACKETS.\n"
+	       "Additional filters can be added with :\n"
+	       "* trace filter ...\n"
+	       "* classify filter trace ... AND passing `filter`\n",
   .function = cli_add_trace_buffer,
 };
 /* *INDENT-ON* */
@@ -482,33 +522,48 @@ static clib_error_t *
 cli_filter_trace (vlib_main_t * vm,
 		  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
   vlib_trace_main_t *tm = &vm->trace_main;
-  u32 filter_node_index;
-  u32 filter_flag;
-  u32 filter_count;
+  u32 filter_node_index = 0;
+  u32 filter_flag = FILTER_FLAG_NONE;
+  u32 filter_count = TRACE_DEFAULT_LENGTH;
+  u32 sw_if_index = (u32) ~ 0;
+  clib_error_t *e = 0;
 
-  if (unformat (input, "include %U %d",
-		unformat_vlib_node, vm, &filter_node_index, &filter_count))
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      filter_flag = FILTER_FLAG_INCLUDE;
+      if (unformat (line_input, "%d", &filter_count))
+	;
+      else if (unformat (line_input, "include %U",
+			 unformat_vlib_node, vm, &filter_node_index,
+			 &filter_count))
+	filter_flag = FILTER_FLAG_INCLUDE_NODE_INDEX;
+      else if (unformat (line_input, "include %U",
+			 unformat_vnet_sw_interface, vnm, &sw_if_index,
+			 &filter_count))
+	filter_flag = FILTER_FLAG_INCLUDE_SW_IF_INDEX;
+      else if (unformat (line_input, "exclude %U",
+			 unformat_vlib_node, vm, &filter_node_index,
+			 &filter_count))
+	filter_flag = FILTER_FLAG_EXCLUDE_NODE_INDEX;
+      else if (unformat (line_input, "none"))
+	{
+	  filter_flag = FILTER_FLAG_NONE;
+	  filter_node_index = 0;
+	  filter_count = 0;
+	}
+      else
+	{
+	  e = clib_error_create ("expected 'include NODE COUNT' or"
+				 "'exclude NODE COUNT' or 'none', got `%U'",
+				 format_unformat_error, input);
+	  goto done;
+	}
     }
-  else if (unformat (input, "exclude %U %d",
-		     unformat_vlib_node, vm, &filter_node_index,
-		     &filter_count))
-    {
-      filter_flag = FILTER_FLAG_EXCLUDE;
-    }
-  else if (unformat (input, "none"))
-    {
-      filter_flag = FILTER_FLAG_NONE;
-      filter_node_index = 0;
-      filter_count = 0;
-    }
-  else
-    return
-      clib_error_create
-      ("expected 'include NODE COUNT' or 'exclude NODE COUNT' or 'none', got `%U'",
-       format_unformat_error, input);
 
   /* *INDENT-OFF* */
   foreach_vlib_main (
@@ -517,6 +572,7 @@ cli_filter_trace (vlib_main_t * vm,
     tm->filter_node_index = filter_node_index;
     tm->filter_flag = filter_flag;
     tm->filter_count = filter_count;
+    tm->filter_sw_if_index = sw_if_index;
 
     /*
      * Clear the trace limits to stop any in-progress tracing
@@ -526,15 +582,106 @@ cli_filter_trace (vlib_main_t * vm,
     vec_free (tm->nodes);
   }));
   /* *INDENT-ON* */
-
-  return 0;
+done:
+  unformat_free (line_input);
+  return e;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (filter_trace_cli,static) = {
   .path = "trace filter",
-  .short_help = "filter trace output - include NODE COUNT | exclude NODE COUNT | none",
+  .short_help = "filter trace [include NODE|exclude NODE|include "
+		"INTERFACE|none] [N_PACKETS]",
+  .long_help = "Filter the first N_PACKETS of the current trace by requiring "
+	       "the trace to :\n"
+	       "* include NODE\n"
+	       "* exclude NODE\n"
+	       "* include INTERFACE as source\n"
+	       "NB: filters cannot be stacked",
   .function = cli_filter_trace,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+trace_get_input_node_cli_fn (vlib_main_t * vm,
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  clib_error_t *error = 0;
+  u32 sw_if_index = (u32) ~ 0;
+  vnet_hw_interface_t *hwi;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != (uword) UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat_user (line_input, unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
+	{
+	  hwi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+	  vlib_cli_output (vm,
+			   "To trace packets from %U and similar interfaces\n"
+			   "Use : `trace add %U [count]`",
+			   format_vlib_node_name, vm, hwi->input_node_index,
+			   format_vnet_sw_if_index_name, vnm, sw_if_index);
+
+	}
+      else
+	{
+	  error = clib_error_create ("expected interface name, got `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (trace_get_input_node_cli,static) = {
+  .path = "trace get input-node",
+  .short_help = "trace get input-node INTERFACE",
+  .function = trace_get_input_node_cli_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_trace_filter_cli_fn (vlib_main_t * vm,
+			  unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  vlib_trace_main_t *tm = &vm->trace_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  switch (tm->filter_flag)
+    {
+    case FILTER_FLAG_EXCLUDE_NODE_INDEX:
+      vlib_cli_output (vm, "exclude traces via %U", format_vlib_node_name, vm,
+		       tm->filter_node_index);
+      break;
+    case FILTER_FLAG_INCLUDE_NODE_INDEX:
+      vlib_cli_output (vm, "only traces via %U", format_vlib_node_name, vm,
+		       tm->filter_node_index);
+      break;
+    case FILTER_FLAG_INCLUDE_SW_IF_INDEX:
+      vlib_cli_output (vm, "only packets from %U",
+		       format_vnet_sw_if_index_name, vnm,
+		       tm->filter_sw_if_index);
+      break;
+    default:
+      vlib_cli_output (vm, "No filter");
+      break;
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_trace_filter_cli,static) = {
+  .path = "show trace filter",
+  .short_help = "Show the current trace filter",
+  .function = show_trace_filter_cli_fn,
 };
 /* *INDENT-ON* */
 

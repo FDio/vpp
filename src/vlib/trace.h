@@ -50,6 +50,9 @@ typedef struct
   /* Node which generated this trace. */
   u32 node_index;
 
+  /* Input sw_if_index for this trace. */
+  u32 sw_if_index;
+
   /* Number of data words in this trace. */
   u32 n_data;
 
@@ -66,6 +69,8 @@ typedef struct
   u32 limit;
 } vlib_trace_node_t;
 
+#define TRACE_DEFAULT_LENGTH (20)
+
 /* Callback type for post-processing the vlib trace buffer */
 struct vlib_main_t;
 struct vlib_trace_main_t;
@@ -80,6 +85,14 @@ typedef void *(vlib_add_trace_callback_t) (struct vlib_main_t *,
 					   struct vlib_buffer_t * b,
 					   u32 n_data_bytes);
 
+typedef enum
+{
+  FILTER_FLAG_NONE,
+  FILTER_FLAG_INCLUDE_NODE_INDEX,
+  FILTER_FLAG_EXCLUDE_NODE_INDEX,
+  FILTER_FLAG_INCLUDE_SW_IF_INDEX,
+} vlib_trace_filter_flag_t;
+
 typedef struct
 {
   /* Pool of trace buffers. */
@@ -87,10 +100,8 @@ typedef struct
 
   u32 last_main_loop_count;
   u32 filter_node_index;
+  u32 filter_sw_if_index;
   u32 filter_flag;
-#define FILTER_FLAG_NONE    0
-#define FILTER_FLAG_INCLUDE 1
-#define FILTER_FLAG_EXCLUDE 2
   u32 filter_count;
 
   /* set on trace add, cleared on clear trace */

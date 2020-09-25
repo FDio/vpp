@@ -114,8 +114,15 @@ vlib_add_handoff_trace (vlib_main_t * vm, vlib_buffer_t * b)
   t->prev_trace_index = prev_trace_index;
 }
 
+void
+vlib_add_extra_trace_meta (vlib_main_t * vm, vlib_buffer_t * b,
+			   vlib_trace_header_t * h)
+{
+  h->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+}
 
-/* *INDENT-ON* */
+
+
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -50,6 +50,8 @@ vlib_validate_trace (vlib_trace_main_t * tm, vlib_buffer_t * b)
 }
 
 void vlib_add_handoff_trace (vlib_main_t * vm, vlib_buffer_t * b);
+void vlib_add_extra_trace_meta (vlib_main_t * vm, vlib_buffer_t * b,
+				vlib_trace_header_t * h);
 
 always_inline void *
 vlib_add_trace_inline (vlib_main_t * vm,
@@ -92,6 +94,8 @@ vlib_add_trace_inline (vlib_main_t * vm,
   h->time = vm->cpu_time_last_node_dispatch;
   h->n_data = n_data_words;
   h->node_index = r->node_index;
+  if (PREDICT_FALSE (tm->filter_flag))
+    vlib_add_extra_trace_meta (vm, b, h);
 
   return h->data;
 }
