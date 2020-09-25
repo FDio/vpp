@@ -348,8 +348,9 @@ int svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len);
  * @param f		fifo
  */
 void svm_fifo_dequeue_drop_all (svm_fifo_t * f);
-int svm_fifo_segments (svm_fifo_t * f, svm_fifo_seg_t * fs);
-void svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_seg_t * fs);
+int svm_fifo_segments (svm_fifo_t * f, svm_fifo_seg_t * fs, u32 n_fs,
+		       u32 max_bytes);
+//void svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_seg_t * fs);
 /**
  * Add io events subscriber to list
  *
