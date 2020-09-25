@@ -481,27 +481,37 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
   cnat_endpoint_t vip;
   u8 flags = CNAT_FLAG_EXCLUSIVE;
   cnat_endpoint_tuple_t tmp, *paths = NULL, *path;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *e = 0;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "add"))
+      if (unformat (line_input, "add"))
 	del_index = INDEX_INVALID;
-      else if (unformat (input, "del %d", &del_index))
+      else if (unformat (line_input, "del %d", &del_index))
 	;
-      else if (unformat (input, "proto %U", unformat_ip_protocol, &proto))
+      else
+	if (unformat (line_input, "proto %U", unformat_ip_protocol, &proto))
 	;
-      else if (unformat (input, "vip %U", unformat_cnat_ep, &vip))
+      else if (unformat (line_input, "vip %U", unformat_cnat_ep, &vip))
 	flags = CNAT_FLAG_EXCLUSIVE;
-      else if (unformat (input, "real %U", unformat_cnat_ep, &vip))
+      else if (unformat (line_input, "real %U", unformat_cnat_ep, &vip))
 	flags = 0;
-      else if (unformat (input, "to %U", unformat_cnat_ep_tuple, &tmp))
+      else if (unformat (line_input, "to %U", unformat_cnat_ep_tuple, &tmp))
 	{
-	  pool_get (paths, path);
+	  vec_add2 (paths, path, 1);
 	  clib_memcpy (path, &tmp, sizeof (cnat_endpoint_tuple_t));
 	}
       else
-	return (clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, input));
+	{
+	  e = clib_error_return (0, "unknown input '%U'",
+				 format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
   if (INDEX_INVALID == del_index)
@@ -509,8 +519,10 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
   else
     cnat_translation_delete (del_index);
 
-  pool_free (paths);
-  return (NULL);
+done:
+  vec_free (paths);
+  unformat_free (line_input);
+  return (e);
 }
 
 /* *INDENT-OFF* */
