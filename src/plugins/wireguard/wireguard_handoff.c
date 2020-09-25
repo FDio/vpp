@@ -79,7 +79,7 @@ wg_handoff (vlib_main_t * vm,
   while (n_left_from > 0)
     {
       const wg_peer_t *peer;
-      index_t peeri;
+      index_t peeri = INDEX_INVALID;
 
       if (PREDICT_FALSE (mode == WG_HANDOFF_HANDSHAKE))
 	{
