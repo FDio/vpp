@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c674cae8_ca6d1fcc",
+        "filename": "src/vnet/ip/ip_in_out_acl.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-09-25T14:49:29Z",
+      "side": 1,
+      "message": "IMO, these are unfortunate, gratuitous changes.",
+      "range": {
+        "startLine": 25,
+        "startChar": 0,
+        "endLine": 25,
+        "endChar": 1
+      },
+      "revId": "7d86fd982f367a960c86499b7bb68075d2874050",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
