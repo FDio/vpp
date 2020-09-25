@@ -22,6 +22,12 @@ if (NOT DPDK_INCLUDE_DIR)
   return()
 endif()
 
+find_path(DPDK_BUILD_DIR PATH_SUFFIXES dpdk NAMES rte_build_config.h)
+if (NOT DPDK_BUILD_DIR)
+  message(WARNGING "-- DPDK rte_build_config.h not found - dpdk plugin disabled")
+  return()
+endif()
+
 if (NOT DPDK_LIB)
   vpp_plugin_find_library(dpdk DPDK_SHLIB "libdpdk.so")
   set(DPDK_IS_SHARED_LIB 1)
@@ -31,11 +37,8 @@ endif()
 ##############################################################################
 # Parse DPDK config and version header files
 ##############################################################################
-
-file(STRINGS ${DPDK_INCLUDE_DIR}/rte_config.h rte_config)
-file(STRINGS ${DPDK_INCLUDE_DIR}/rte_version.h rte_version)
-
-foreach(l ${rte_config} ${rte_version})
+file(STRINGS ${DPDK_BUILD_DIR}/rte_build_config.h rte_build_config)
+foreach(l ${rte_build_config})
   if (l MATCHES "^#define[\t ]*RTE_")
     STRING(REGEX REPLACE "^#define[\t ]*([A-Z1-9_]+)[\t ]*(.+)" "\\1;\\2" v "${l}")
     list(GET v 0 name)
