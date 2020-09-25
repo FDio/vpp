@@ -243,7 +243,13 @@ add_section (struct dl_phdr_info *info, size_t size, void *opaque)
 
   error = clib_elf_parse_file (cem, name, addr);
   if (error)
-    clib_error_report (error);
+    {
+      /* Don't complain about 'linux-vdso.so.1' */
+      if (!is_main && name[0] != '/' && error->code == ENOENT)
+	clib_error_free (error);
+      else
+	clib_error_report (error);
+    }
 
   if (is_main && name != cem->exec_path)
     vec_free (name);
