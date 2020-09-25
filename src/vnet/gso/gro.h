@@ -164,16 +164,7 @@ static_always_inline void
 gro_flow_table_set_is_enable (gro_flow_table_t * flow_table, u8 is_enable)
 {
   if (flow_table)
-    {
-      if (is_enable)
-	{
-	  flow_table->is_enable = 1;
-	}
-      else
-	{
-	  flow_table->is_enable = 0;
-	}
-    }
+    flow_table->is_enable = is_enable;
 }
 
 static_always_inline void
@@ -264,12 +255,24 @@ static_always_inline u8 *
 gro_flow_table_format (u8 * s, va_list * args)
 {
   gro_flow_table_t *flow_table = va_arg (*args, gro_flow_table_t *);
+  u32 indent;
+
+  if (!flow_table)
+    return s;
+
+  indent = format_get_indent (s);
+  if (flow_table->is_enable)
+    s = format (s, "packet-coalesce: enable\n");
+  else
+    s = format (s, "packet-coalesce: disable\n");
+
+  indent += 2;
 
   s =
     format (s,
-	    "flow-table: size %u gro-total-vectors %lu gro-n-vectors %u",
-	    flow_table->flow_table_size, flow_table->total_vectors,
-	    flow_table->n_vectors);
+	    "%Uflow-table: size %u gro-total-vectors %lu gro-n-vectors %u",
+	    format_white_space, indent, flow_table->flow_table_size,
+	    flow_table->total_vectors, flow_table->n_vectors);
   if (flow_table->n_vectors)
     {
       double average_rate =
