@@ -687,11 +687,9 @@ ikev2_process_sa_init_req (vlib_main_t * vm, ikev2_sa_t * sa,
 	  ikev2_notify_t *n = ikev2_parse_notify_payload (ikep);
 	  if (n->msg_type == IKEV2_NOTIFY_MSG_NAT_DETECTION_SOURCE_IP)
 	    {
-	      u8 *src_sha =
-		ikev2_compute_nat_sha1 (clib_net_to_host_u64 (ike->ispi), 0,
-					clib_net_to_host_u32 (sa->
-							      iaddr.as_u32),
-					udp->src_port);
+	      u8 *src_sha = ikev2_compute_nat_sha1 (ike->ispi, 0,
+						    sa->iaddr.as_u32,
+						    udp->src_port);
 	      if (clib_memcmp (src_sha, n->data, vec_len (src_sha)))
 		{
 		  sa->natt = 1;
@@ -703,11 +701,9 @@ ikev2_process_sa_init_req (vlib_main_t * vm, ikev2_sa_t * sa,
 	  else if (n->msg_type ==
 		   IKEV2_NOTIFY_MSG_NAT_DETECTION_DESTINATION_IP)
 	    {
-	      u8 *dst_sha =
-		ikev2_compute_nat_sha1 (clib_net_to_host_u64 (ike->ispi), 0,
-					clib_net_to_host_u32 (sa->
-							      raddr.as_u32),
-					udp->dst_port);
+	      u8 *dst_sha = ikev2_compute_nat_sha1 (ike->ispi, 0,
+						    sa->raddr.as_u32,
+						    udp->dst_port);
 	      if (clib_memcmp (dst_sha, n->data, vec_len (dst_sha)))
 		{
 		  sa->natt = 1;
@@ -797,8 +793,7 @@ ikev2_process_sa_init_resp (vlib_main_t * vm, ikev2_sa_t * sa,
 	    {
 	      u8 *src_sha = ikev2_compute_nat_sha1 (ike->ispi,
 						    ike->rspi,
-						    clib_net_to_host_u32
-						    (sa->raddr.as_u32),
+						    sa->raddr.as_u32,
 						    udp->src_port);
 	      if (clib_memcmp (src_sha, n->data, vec_len (src_sha)))
 		{
@@ -2139,7 +2134,7 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user,
 	  u8 *nat_detection_sha1 =
 	    ikev2_compute_nat_sha1 (clib_host_to_net_u64 (sa->ispi),
 				    clib_host_to_net_u64 (sa->rspi),
-				    clib_host_to_net_u32 (sa->raddr.as_u32),
+				    sa->raddr.as_u32,
 				    udp->dst_port);
 	  ikev2_payload_add_notify (chain,
 				    IKEV2_NOTIFY_MSG_NAT_DETECTION_SOURCE_IP,
@@ -2694,7 +2689,7 @@ ikev2_node_fn (vlib_main_t * vm,
 		    {
 		      is_req = 1;
 		      ike0->exchange = IKEV2_EXCHANGE_IKE_AUTH;
-		      uword *p = hash_get (km->sa_by_ispi, ike0->ispi);
+		      uword *p = hash_get (km->sa_by_ispi, sa0->ispi);
 		      if (p)
 			{
 			  ikev2_sa_t *sai =
@@ -2771,7 +2766,7 @@ ikev2_node_fn (vlib_main_t * vm,
 
 		  if (sa0->is_initiator)
 		    {
-		      ikev2_del_sa_init (ike0->ispi);
+		      ikev2_del_sa_init (sa0->ispi);
 		    }
 		  else
 		    {
@@ -3770,7 +3765,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     u8 *nat_detection_sha1 =
       ikev2_compute_nat_sha1 (clib_host_to_net_u64 (sa.ispi),
 			      clib_host_to_net_u64 (sa.rspi),
-			      clib_host_to_net_u32 (if_ip->as_u32),
+			      if_ip->as_u32,
 			      clib_host_to_net_u16 (IKEV2_PORT));
 
     ikev2_payload_add_notify (chain, IKEV2_NOTIFY_MSG_NAT_DETECTION_SOURCE_IP,
@@ -3779,7 +3774,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     nat_detection_sha1 =
       ikev2_compute_nat_sha1 (clib_host_to_net_u64 (sa.ispi),
 			      clib_host_to_net_u64 (sa.rspi),
-			      clib_host_to_net_u32 (p->responder.ip4.as_u32),
+			      p->responder.ip4.as_u32,
 			      clib_host_to_net_u16 (sa.dst_port));
     ikev2_payload_add_notify (chain,
 			      IKEV2_NOTIFY_MSG_NAT_DETECTION_DESTINATION_IP,
@@ -3805,7 +3800,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     ike0->version = IKE_VERSION_2;
     ike0->flags = IKEV2_HDR_FLAG_INITIATOR;
     ike0->exchange = IKEV2_EXCHANGE_SA_INIT;
-    ike0->ispi = sa.ispi;
+    ike0->ispi = clib_host_to_net_u64 (sa.ispi);
     ike0->rspi = 0;
     ike0->msgid = 0;
 
