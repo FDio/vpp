@@ -719,24 +719,38 @@ virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
   virtio_main_t *mm = &virtio_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
-  virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, qid);
+  virtio_vring_t *rx_vring = vec_elt_at_index (vif->rxq_vrings, qid);
+  virtio_vring_t *tx_vring = 0;
 
   if (vif->type == VIRTIO_IF_TYPE_PCI && !(vif->support_int_mode))
     {
-      vring->avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
+      rx_vring->avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
       return clib_error_return (0, "interrupt mode is not supported");
     }
 
   if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
     {
-      /* only enable packet coalesce in poll mode */
-      gro_flow_table_set_is_enable (vring->flow_table, 1);
-      vring->avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
+      vec_foreach (tx_vring, vif->txq_vrings)
+      {
+	/* only enable packet coalesce in poll mode */
+	gro_flow_table_set_is_enable (tx_vring->flow_table, 1);
+      }
+      rx_vring->avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
     }
   else
     {
-      gro_flow_table_set_is_enable (vring->flow_table, 0);
-      vring->avail->flags &= ~VRING_AVAIL_F_NO_INTERRUPT;
+      if (vif->packet_coalesce)
+	{
+	  virtio_log_warning (vif,
+			      "interface %U is in interrupt mode, disabling packet coalescing",
+			      format_vnet_sw_if_index_name, vnet_get_main (),
+			      vif->sw_if_index);
+	  vec_foreach (tx_vring, vif->txq_vrings)
+	  {
+	    gro_flow_table_set_is_enable (tx_vring->flow_table, 0);
+	  }
+	}
+      rx_vring->avail->flags &= ~VRING_AVAIL_F_NO_INTERRUPT;
     }
 
   return 0;
