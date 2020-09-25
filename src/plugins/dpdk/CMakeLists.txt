@@ -31,11 +31,11 @@ endif()
 ##############################################################################
 # Parse DPDK config and version header files
 ##############################################################################
-
 file(STRINGS ${DPDK_INCLUDE_DIR}/rte_config.h rte_config)
 file(STRINGS ${DPDK_INCLUDE_DIR}/rte_version.h rte_version)
+file(STRINGS ${DPDK_INCLUDE_DIR}/rte_build_config.h rte_build_config)
 
-foreach(l ${rte_config} ${rte_version})
+foreach(l ${rte_config} ${rte_build_config} ${rte_version}})
   if (l MATCHES "^#define[\t ]*RTE_")
     STRING(REGEX REPLACE "^#define[\t ]*([A-Z1-9_]+)[\t ]*(.+)" "\\1;\\2" v "${l}")
     list(GET v 0 name)
