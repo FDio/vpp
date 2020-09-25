@@ -348,8 +348,22 @@ int svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len);
  * @param f		fifo
  */
 void svm_fifo_dequeue_drop_all (svm_fifo_t * f);
-int svm_fifo_segments (svm_fifo_t * f, svm_fifo_seg_t * fs);
-void svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_seg_t * fs);
+/**
+ * Get pointers to fifo chunks data in @ref svm_fifo_seg_t array
+ *
+ * Populates fifo segment array with pointers to fifo chunk data and lengths.
+ * Because this returns pointers to data, it must be paired with
+ * @ref svm_fifo_dequeue_drop to actually release the fifo chunks after the
+ * data is consumed.
+ *
+ * @param f		fifo
+ * @param fs		array of fifo segments allocated by caller
+ * @param n_segs	number of fifo segments in array
+ * @param max_bytes	max bytes to be mapped to fifo segments
+ * @return 		number of bytes in fifo segments or SVM_FIFO_EEMPTY
+ */
+int svm_fifo_segments (svm_fifo_t * f, svm_fifo_seg_t * fs, u32 n_segs,
+		       u32 max_bytes);
 /**
  * Add io events subscriber to list
  *

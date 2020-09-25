@@ -1929,7 +1929,8 @@ vppcom_session_peek (uint32_t session_handle, void *buf, int n)
 
 int
 vppcom_session_read_segments (uint32_t session_handle,
-			      vppcom_data_segments_t ds)
+			      vppcom_data_segment_t * ds, uint32_t n_segments,
+			      uint32_t max_bytes)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   int n_read = 0, is_nonblocking;
@@ -1982,15 +1983,13 @@ vppcom_session_read_segments (uint32_t session_handle,
 	}
     }
 
-  n_read = svm_fifo_segments (rx_fifo, (svm_fifo_seg_t *) ds);
-  svm_fifo_unset_event (rx_fifo);
-
+  n_read = svm_fifo_segments (rx_fifo, (svm_fifo_seg_t *) ds, n_segments,
+			      max_bytes);
   return n_read;
 }
 
 void
-vppcom_session_free_segments (uint32_t session_handle,
-			      vppcom_data_segments_t ds)
+vppcom_session_free_segments (uint32_t session_handle, uint32_t n_bytes)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vcl_session_t *s;
@@ -1999,20 +1998,20 @@ vppcom_session_free_segments (uint32_t session_handle,
   if (PREDICT_FALSE (!s || s->is_vep))
     return;
 
-  svm_fifo_segments_free (s->rx_fifo, (svm_fifo_seg_t *) ds);
-}
-
-int
-vppcom_data_segment_copy (void *buf, vppcom_data_segments_t ds, u32 max_bytes)
-{
-  u32 first_copy = clib_min (ds[0].len, max_bytes);
-  clib_memcpy_fast (buf, ds[0].data, first_copy);
-  if (first_copy < max_bytes)
+  svm_fifo_dequeue_drop (s->rx_fifo, n_bytes);
+  if (svm_fifo_is_empty_cons (s->rx_fifo))
     {
-      clib_memcpy_fast (buf + first_copy, ds[1].data,
-			clib_min (ds[1].len, max_bytes - first_copy));
+      svm_fifo_unset_event (s->rx_fifo);
+      if (!svm_fifo_is_empty_cons (s->rx_fifo)
+	  && svm_fifo_set_event (s->rx_fifo)
+	  && VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK))
+	{
+	  session_event_t *e;
+	  vec_add2 (wrk->unhandled_evts_vector, e, 1);
+	  e->event_type = SESSION_IO_EVT_RX;
+	  e->session_index = s->session_index;
+	}
     }
-  return 0;
 }
 
 static u8
