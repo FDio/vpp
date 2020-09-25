@@ -39,7 +39,9 @@ endif
 DPDK_DRIVERS_DISABLED := baseband/\*,	\
 	bus/dpaa,							\
 	bus/ifpga,							\
-	compress/\*,						\
+	compress/isal,						\
+	compress/octeontx,					\
+	compress/zlib,						\
 	crypto/ccp,							\
 	crypto/dpaa_sec,					\
 	crypto/openssl,						\
