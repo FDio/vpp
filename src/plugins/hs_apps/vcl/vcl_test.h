@@ -444,7 +444,8 @@ vcl_test_read (int fd, uint8_t * buf, uint32_t nbytes,
 }
 
 static inline int
-vcl_test_read_ds (int fd, vppcom_data_segments_t ds, vcl_test_stats_t * stats)
+vcl_test_read_ds (int fd, vppcom_data_segment_t * ds,
+		  vcl_test_stats_t * stats)
 {
   int rx_bytes;
 
@@ -452,7 +453,7 @@ vcl_test_read_ds (int fd, vppcom_data_segments_t ds, vcl_test_stats_t * stats)
     {
       if (stats)
 	stats->rx_xacts++;
-      rx_bytes = vppcom_session_read_segments (fd, ds);
+      rx_bytes = vppcom_session_read_segments (fd, ds, 2, ~0);
 
       if (rx_bytes < 0)
 	{
