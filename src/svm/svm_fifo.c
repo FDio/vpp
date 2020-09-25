@@ -1136,9 +1136,11 @@ svm_fifo_fill_chunk_list (svm_fifo_t * f)
 }
 
 int
-svm_fifo_segments (svm_fifo_t * f, svm_fifo_seg_t * fs)
+svm_fifo_segments (svm_fifo_t * f, svm_fifo_seg_t * fs, u32 n_segs,
+		   u32 max_bytes)
 {
-  u32 cursize, head, tail, head_idx;
+  u32 cursize, to_read, head, tail, fs_index = 1, n_bytes, head_pos, len;
+  svm_fifo_chunk_t *c;
 
   f_load_head_tail_cons (f, &head, &tail);
 
@@ -1148,37 +1150,26 @@ svm_fifo_segments (svm_fifo_t * f, svm_fifo_seg_t * fs)
   if (PREDICT_FALSE (cursize == 0))
     return SVM_FIFO_EEMPTY;
 
-  head_idx = head;
+  to_read = clib_min (cursize, max_bytes);
 
-  if (tail < head)
+  c = f->head_chunk;
+  head_pos = head - c->start_byte;
+  fs[0].data = c->data + head_pos;
+  fs[0].len = c->length - head_pos;
+  n_bytes = fs[0].len;
+  c = c->next;
+
+  while (n_bytes < to_read && fs_index < n_segs)
     {
-      fs[0].len = f->size - head_idx;
-      fs[0].data = f->head_chunk->data + head_idx;
-      fs[1].len = cursize - fs[0].len;
-      fs[1].data = f->head_chunk->data;
+      len = clib_min (c->length, to_read - n_bytes);
+      fs[fs_index].data = c->data;
+      fs[fs_index].len = len;
+      n_bytes += len;
+      c = c->next;
+      fs_index += 1;
     }
-  else
-    {
-      fs[0].len = cursize;
-      fs[0].data = f->head_chunk->data + head_idx;
-      fs[1].len = 0;
-      fs[1].data = 0;
-    }
-  return cursize;
-}
 
-void
-svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_seg_t * fs)
-{
-  u32 head;
-
-  /* consumer owned index */
-  head = f->head;
-
-  ASSERT (fs[0].data == f->head_chunk->data + head);
-  head = (head + fs[0].len + fs[1].len);
-  /* store-rel: consumer owned index (paired with load-acq in producer) */
-  clib_atomic_store_rel_n (&f->head, head);
+  return n_bytes;
 }
 
 /**
