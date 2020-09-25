@@ -231,6 +231,24 @@
     },
     {
       "key": {
+        "uuid": "a38d4878_50601ca7",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 819,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-25T23:57:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "394fe6e5_7a1cd299",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4d79b36e_24fba3bd",
         "filename": "src/vnet/devices/virtio/node.c",
         "patchSetId": 5
@@ -284,6 +302,24 @@
     },
     {
       "key": {
+        "uuid": "2ca67554_cbe83f78",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-25T23:57:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b9d59524_83fd3e5e",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4a5c2c43_8f5dbf31",
         "filename": "src/vnet/devices/virtio/pci.c",
         "patchSetId": 5
@@ -331,6 +367,24 @@
       "side": 1,
       "message": "Then what about not setting hw-\u003eflags |\u003d VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE; above if buffering (or gro for that matter) is enabled? That should prevent the option of setting the interface in interrupt mode if buffering is enabled?",
       "parentUuid": "1f364d24_28300515",
+      "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0b8fb77e_866d2d74",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1158,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-25T23:57:53Z",
+      "side": 1,
+      "message": "I don\u0027t want to restrict the interface usage. We have defined the limitations. Now it is up to user to enable/disable features during runtime. We are reporting warning messages for choices with limitation.",
+      "parentUuid": "59fb0b61_af05e83d",
       "revId": "cde101ef303de10963870514ac7029c88e1fdffc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
