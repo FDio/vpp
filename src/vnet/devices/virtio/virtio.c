@@ -226,6 +226,7 @@ virtio_set_packet_coalesce (virtio_if_t * vif)
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
   virtio_vring_t *vring;
+  vif->packet_coalesce = 1;
   vec_foreach (vring, vif->txq_vrings)
   {
     gro_flow_table_init (&vring->flow_table,

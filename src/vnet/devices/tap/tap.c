@@ -731,7 +731,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   if ((args->tap_flags & TAP_FLAG_GSO)
       && (args->tap_flags & TAP_FLAG_GRO_COALESCE))
     {
-      vif->packet_coalesce = 1;
       virtio_set_packet_coalesce (vif);
     }
   vnet_hw_interface_set_input_node (vnm, vif->hw_if_index,
@@ -900,7 +899,6 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable,
 	}
       if (is_packet_coalesce)
 	{
-	  vif->packet_coalesce = 1;
 	  virtio_set_packet_coalesce (vif);
 	}
     }
