@@ -96,6 +96,7 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-10)
 	DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
 else
 	DEB_DEPENDS += libssl-dev
+	DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
 endif
 
 DEB_DEPENDS += $(LIBFFI)
