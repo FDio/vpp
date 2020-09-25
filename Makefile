@@ -72,7 +72,7 @@ DEB_DEPENDS += python3-venv  # ensurepip
 DEB_DEPENDS += python3-dev   # needed for python3 -m pip install psutil
 # python3.6 on 16.04 requires python36-dev
 
-LIBFFI=libffi6 # works on all but 20.04
+LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 
 ifeq ($(OS_VERSION_ID),18.04)
 	DEB_DEPENDS += python-dev python-all python-pip python-virtualenv
@@ -92,6 +92,8 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-10)
 	DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
 else
 	DEB_DEPENDS += libssl-dev
+	DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
+	LIBFFI=libffi7
 endif
 
 DEB_DEPENDS += $(LIBFFI)
