@@ -201,9 +201,9 @@ The simplest possible (key, value) search goes like so:
    search_kv.key = key_to_add_or_delete;
 
    if (clib_bihash_search_8_8 (h, &search_kv, &return_kv) < 0)
-     key_not_found()
-   else
      key_not_found();
+   else
+     key_found();
 ```
 
 Note that it's perfectly fine to collect the lookup result
