@@ -1190,6 +1190,7 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	}
       else
 	{
+	  bfd_unlock (bm);
 	  (void) vlib_process_wait_for_event (vm);
 	}
       event_type = vlib_process_get_events (vm, &event_data);
