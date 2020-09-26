@@ -124,6 +124,25 @@ typedef CLIB_PACKED (struct {
 STATIC_ASSERT_SIZEOF (BVT (clib_bihash_shared_header), 8 * sizeof (u64));
 
 typedef
+BVS (clib_bihash_alloc_chunk)
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
+  /* chunk size */
+  uword size;
+
+  /* pointer to the next allocation */
+  u8 *next_alloc;
+
+  /* number of bytes left in this chunk */
+  uword bytes_left;
+
+  /* doubly linked list of heap allocated chunks */
+  BVS (clib_bihash_alloc_chunk) * prev, *next;
+
+} BVT (clib_bihash_alloc_chunk);
+
+typedef
 BVS (clib_bihash)
 {
   BVT (clib_bihash_bucket) * buckets;
@@ -137,6 +156,8 @@ BVS (clib_bihash)
   u32 log2_nbuckets;
   u64 memory_size;
   u8 *name;
+  void *heap;
+  BVT (clib_bihash_alloc_chunk) * chunks;
 
   u64 *freelists;
 

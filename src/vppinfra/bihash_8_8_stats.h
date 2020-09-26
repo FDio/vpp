@@ -19,6 +19,7 @@
 #undef BIHASH_KVP_AT_BUCKET_LEVEL
 #undef BIHASH_LAZY_INSTANTIATE
 #undef BIHASH_BUCKET_PREFETCH_CACHE_LINES
+#undef BIHASH_USE_HEAP
 
 #define BIHASH_TYPE _8_8_stats
 #define BIHASH_KVP_PER_PAGE 4
@@ -26,6 +27,7 @@
 #define BIHASH_KVP_AT_BUCKET_LEVEL 0
 #define BIHASH_LAZY_INSTANTIATE 1
 #define BIHASH_BUCKET_PREFETCH_CACHE_LINES 1
+#define BIHASH_USE_HEAP 1
 
 #ifndef __included_bihash_8_8_stats_h__
 #define __included_bihash_8_8__stats_h__
