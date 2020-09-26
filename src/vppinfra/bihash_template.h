@@ -137,6 +137,7 @@ BVS (clib_bihash)
   u32 log2_nbuckets;
   u64 memory_size;
   u8 *name;
+  void *heap;
 
   u64 *freelists;
 

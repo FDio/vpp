@@ -378,6 +378,12 @@ void clib_mem_usage (clib_mem_usage_t * usage);
 
 u8 *format_clib_mem_usage (u8 * s, va_list * args);
 
+always_inline void *
+clib_mem_get_heap_base (void *heap)
+{
+  return mspace_least_addr (heap);
+}
+
 /* Allocate virtual address space. */
 always_inline void *
 clib_mem_vm_alloc (uword size)

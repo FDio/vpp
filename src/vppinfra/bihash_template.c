@@ -21,11 +21,18 @@
 
 static inline void *BV (alloc_aligned) (BVT (clib_bihash) * h, uword nbytes)
 {
-  uword rv;
-
   /* Round to an even number of cache lines */
-  nbytes += CLIB_CACHE_LINE_BYTES - 1;
-  nbytes &= ~(CLIB_CACHE_LINE_BYTES - 1);
+  nbytes = round_pow2 (nbytes, CLIB_CACHE_LINE_BYTES);
+
+#ifdef BIHASH_USE_HEAP
+  void *rv, *oldheap;
+  oldheap = clib_mem_set_heap (h->heap);
+  rv = clib_mem_alloc_aligned (nbytes, CLIB_CACHE_LINE_BYTES);
+  clib_mem_set_heap (oldheap);
+  clib_memset_u8 (rv, 0, nbytes);
+  return rv;
+#else
+  uword rv;
 
   rv = alloc_arena_next (h);
   alloc_arena_next (h) += nbytes;
@@ -63,12 +70,17 @@ static inline void *BV (alloc_aligned) (BVT (clib_bihash) * h, uword nbytes)
     }
 
   return (void *) (uword) (rv + alloc_arena (h));
+#endif
 }
 
 static void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
 {
   uword bucket_size;
 
+#ifdef BIHASH_USE_HEAP
+  h->heap = clib_mem_get_heap ();
+  alloc_arena (h) = (uword) clib_mem_get_heap_base (h->heap);
+#else
   alloc_arena (h) = clib_mem_vm_reserve (0, h->memory_size,
 					 BIHASH_LOG2_HUGEPAGE_SIZE);
   if (alloc_arena (h) == ~0)
@@ -76,6 +88,7 @@ static void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
   alloc_arena_next (h) = 0;
   alloc_arena_size (h) = h->memory_size;
   alloc_arena_mapped (h) = 0;
+#endif
 
   bucket_size = h->nbuckets * sizeof (h->buckets[0]);
 
@@ -121,7 +134,9 @@ void BV (clib_bihash_init2) (BVT (clib_bihash_init2_args) * a)
   h->name = (u8 *) a->name;
   h->nbuckets = a->nbuckets;
   h->log2_nbuckets = max_log2 (a->nbuckets);
+#ifndef BIHASH_USE_HEAP
   h->memory_size = a->memory_size;
+#endif
   h->instantiated = 0;
   h->fmt_fn = a->fmt_fn;
 
@@ -133,7 +148,9 @@ void BV (clib_bihash_init2) (BVT (clib_bihash_init2_args) * a)
    * If someone starts complaining that's not enough, we can shift
    * the offset by CLIB_LOG2_CACHE_LINE_BYTES...
    */
+#ifndef BIHASH_USE_HEAP
   ASSERT (h->memory_size < (1ULL << BIHASH_BUCKET_OFFSET_BITS));
+#endif
 
   /* Add this hash table to the list */
   if (a->dont_add_to_all_bihash_list == 0)
@@ -227,9 +244,11 @@ void BV (clib_bihash_initiator_init_svm)
   h->sh->nbuckets = h->nbuckets = nbuckets;
   h->log2_nbuckets = max_log2 (nbuckets);
 
+#ifndef BIHASH_USE_HEAP
   alloc_arena (h) = (u64) (uword) mmap_addr;
   alloc_arena_next (h) = CLIB_CACHE_LINE_BYTES;
   alloc_arena_size (h) = memory_size;
+#endif
 
   bucket_size = nbuckets * sizeof (h->buckets[0]);
   h->buckets = BV (alloc_aligned) (h, bucket_size);
@@ -270,7 +289,9 @@ void BV (clib_bihash_responder_init_svm)
 
   sh = (BVT (clib_bihash_shared_header) *) mmap_addr;
 
+#ifndef BIHASH_USE_HEAP
   memory_size = sh->alloc_arena_size;
+#endif
 
   munmap (mmap_addr, 4096);
 
@@ -323,7 +344,9 @@ void BV (clib_bihash_free) (BVT (clib_bihash) * h)
   if (h->memfd > 0)
     (void) close (h->memfd);
 #endif
+#ifndef BIHASH_USE_HEAP
   clib_mem_vm_free ((void *) (uword) (alloc_arena (h)), alloc_arena_size (h));
+#endif
 never_initialized:
   clib_memset (h, 0, sizeof (*h));
   for (i = 0; i < vec_len (clib_all_bihashes); i++)
@@ -888,7 +911,9 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
   u64 active_elements = 0;
   u64 active_buckets = 0;
   u64 linear_buckets = 0;
+#ifndef BIHASH_USE_HEAP
   u64 used_bytes;
+#endif
 
   s = format (s, "Hash table %s\n", h->name ? h->name : (u8 *) "(unnamed)");
 
@@ -974,6 +999,7 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
     }
 
   s = format (s, "    %lld linear search buckets\n", linear_buckets);
+#ifndef BIHASH_USE_HEAP
   used_bytes = alloc_arena_next (h);
   s = format (s,
 	      "    arena: base %llx, next %llx\n"
@@ -981,6 +1007,7 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
 	      alloc_arena (h), alloc_arena_next (h),
 	      used_bytes, used_bytes >> 20,
 	      alloc_arena_size (h), alloc_arena_size (h) >> 20);
+#endif
   return s;
 }
 
