@@ -19,13 +19,71 @@
 #define MAP_HUGE_SHIFT 26
 #endif
 
+#ifndef BIIHASH_MIN_ALLOC_LOG2_PAGES
+#define BIIHASH_MIN_ALLOC_LOG2_PAGES 10
+#endif
+
 static inline void *BV (alloc_aligned) (BVT (clib_bihash) * h, uword nbytes)
 {
   uword rv;
 
   /* Round to an even number of cache lines */
-  nbytes += CLIB_CACHE_LINE_BYTES - 1;
-  nbytes &= ~(CLIB_CACHE_LINE_BYTES - 1);
+  nbytes = round_pow2 (nbytes, CLIB_CACHE_LINE_BYTES);
+
+  if (BIHASH_USE_HEAP)
+    {
+      void *rv, *oldheap;
+      uword page_sz = sizeof (BVT (clib_bihash_value));
+      uword chunk_sz = round_pow2 (page_sz << BIIHASH_MIN_ALLOC_LOG2_PAGES,
+				   CLIB_CACHE_LINE_BYTES);
+
+      BVT (clib_bihash_alloc_chunk) * chunk = h->chunks;
+
+      /* if there is enough space in the currenrt chunk */
+      if (chunk && chunk->bytes_left >= nbytes)
+	{
+	  rv = chunk->next_alloc;
+	  chunk->bytes_left -= nbytes;
+	  chunk->next_alloc += nbytes;
+	  return rv;
+	}
+
+      /* requested allocation is bigger than chunk size */
+      if (nbytes >= chunk_sz)
+	{
+	  oldheap = clib_mem_set_heap (h->heap);
+	  chunk = clib_mem_alloc_aligned (nbytes + sizeof (*chunk),
+					  CLIB_CACHE_LINE_BYTES);
+	  clib_mem_set_heap (oldheap);
+	  clib_memset_u8 (chunk, 0, sizeof (*chunk));
+	  chunk->size = nbytes;
+	  rv = (u8 *) (chunk + 1);
+	  if (h->chunks)
+	    {
+	      /* take 2nd place in the list */
+	      chunk->next = h->chunks->next;
+	      h->chunks->next = chunk;
+	    }
+	  else
+	    h->chunks = chunk;
+
+	  return rv;
+	}
+
+      oldheap = clib_mem_set_heap (h->heap);
+      chunk = clib_mem_alloc_aligned (chunk_sz + sizeof (*chunk),
+				      CLIB_CACHE_LINE_BYTES);
+      clib_mem_set_heap (oldheap);
+      chunk->size = chunk_sz;
+      chunk->bytes_left = chunk_sz;
+      chunk->next_alloc = (u8 *) (chunk + 1);
+      chunk->next = h->chunks;
+      h->chunks = chunk;
+      rv = chunk->next_alloc;
+      chunk->bytes_left -= nbytes;
+      chunk->next_alloc += nbytes;
+      return rv;
+    }
 
   rv = alloc_arena_next (h);
   alloc_arena_next (h) += nbytes;
@@ -69,13 +127,22 @@ static void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
 {
   uword bucket_size;
 
-  alloc_arena (h) = clib_mem_vm_reserve (0, h->memory_size,
-					 BIHASH_LOG2_HUGEPAGE_SIZE);
-  if (alloc_arena (h) == ~0)
-    os_out_of_memory ();
-  alloc_arena_next (h) = 0;
-  alloc_arena_size (h) = h->memory_size;
-  alloc_arena_mapped (h) = 0;
+  if (BIHASH_USE_HEAP)
+    {
+      h->heap = clib_mem_get_heap ();
+      h->chunks = 0;
+      alloc_arena (h) = (uword) clib_mem_get_heap_base (h->heap);
+    }
+  else
+    {
+      alloc_arena (h) = clib_mem_vm_reserve (0, h->memory_size,
+					     BIHASH_LOG2_HUGEPAGE_SIZE);
+      if (alloc_arena (h) == ~0)
+	os_out_of_memory ();
+      alloc_arena_next (h) = 0;
+      alloc_arena_size (h) = h->memory_size;
+      alloc_arena_mapped (h) = 0;
+    }
 
   bucket_size = h->nbuckets * sizeof (h->buckets[0]);
 
@@ -84,6 +151,7 @@ static void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
       h->nbuckets * BIHASH_KVP_PER_PAGE * sizeof (BVT (clib_bihash_kv));
 
   h->buckets = BV (alloc_aligned) (h, bucket_size);
+  clib_memset_u8 (h->buckets, 0, bucket_size);
 
   if (BIHASH_KVP_AT_BUCKET_LEVEL)
     {
@@ -97,8 +165,8 @@ static void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
 	  b->offset = BV (clib_bihash_get_offset) (h, (void *) (b + 1));
 	  b->refcnt = 1;
 	  /* Mark all elements free */
-	  clib_memset ((b + 1), 0xff,
-		       BIHASH_KVP_PER_PAGE * sizeof (BVT (clib_bihash_kv)));
+	  clib_memset_u8 ((b + 1), 0xff, BIHASH_KVP_PER_PAGE *
+			  sizeof (BVT (clib_bihash_kv)));
 
 	  /* Compute next bucket start address */
 	  b = (void *) (((uword) b) + sizeof (*b) +
@@ -121,7 +189,7 @@ void BV (clib_bihash_init2) (BVT (clib_bihash_init2_args) * a)
   h->name = (u8 *) a->name;
   h->nbuckets = a->nbuckets;
   h->log2_nbuckets = max_log2 (a->nbuckets);
-  h->memory_size = a->memory_size;
+  h->memory_size = BIHASH_USE_HEAP ? 0 : a->memory_size;
   h->instantiated = 0;
   h->fmt_fn = a->fmt_fn;
 
@@ -133,7 +201,8 @@ void BV (clib_bihash_init2) (BVT (clib_bihash_init2_args) * a)
    * If someone starts complaining that's not enough, we can shift
    * the offset by CLIB_LOG2_CACHE_LINE_BYTES...
    */
-  ASSERT (h->memory_size < (1ULL << BIHASH_BUCKET_OFFSET_BITS));
+  if (BIHASH_USE_HEAP)
+    ASSERT (h->memory_size < (1ULL << BIHASH_BUCKET_OFFSET_BITS));
 
   /* Add this hash table to the list */
   if (a->dont_add_to_all_bihash_list == 0)
@@ -192,6 +261,8 @@ void BV (clib_bihash_initiator_init_svm)
   vec_header_t *freelist_vh;
   int fd;
 
+  ASSERT (BIHASH_USE_HEAP == 0);
+
   ASSERT (memory_size < (1ULL << 32));
   /* Set up for memfd sharing */
   if ((fd = memfd_create (name, MFD_ALLOW_SEALING)) == -1)
@@ -233,6 +304,7 @@ void BV (clib_bihash_initiator_init_svm)
 
   bucket_size = nbuckets * sizeof (h->buckets[0]);
   h->buckets = BV (alloc_aligned) (h, bucket_size);
+  clib_memset_u8 (h->buckets, 0, bucket_size);
   h->sh->buckets_as_u64 = (u64) BV (clib_bihash_get_offset) (h, h->buckets);
 
   h->alloc_lock = BV (alloc_aligned) (h, CLIB_CACHE_LINE_BYTES);
@@ -259,6 +331,8 @@ void BV (clib_bihash_responder_init_svm)
   u8 *mmap_addr;
   u64 memory_size;
   BVT (clib_bihash_shared_header) * sh;
+
+  ASSERT (BIHASH_USE_HEAP == 0);
 
   /* Trial mapping, to learn the segment size */
   mmap_addr = mmap (0, 4096, PROT_READ, MAP_SHARED, fd, 0 /* offset */ );
@@ -315,6 +389,22 @@ void BV (clib_bihash_free) (BVT (clib_bihash) * h)
     goto never_initialized;
 
   h->instantiated = 0;
+
+  if (BIHASH_USE_HEAP)
+    {
+      BVT (clib_bihash_alloc_chunk) * next, *chunk;
+      void *oldheap = clib_mem_set_heap (h->heap);
+
+      chunk = h->chunks;
+      while (chunk)
+	{
+	  next = chunk->next;
+	  clib_mem_free (chunk);
+	  chunk = next;
+	}
+      clib_mem_set_heap (oldheap);
+    }
+
   vec_free (h->working_copies);
   vec_free (h->working_copy_lengths);
 #if BIHASH_32_64_SVM == 0
@@ -323,9 +413,11 @@ void BV (clib_bihash_free) (BVT (clib_bihash) * h)
   if (h->memfd > 0)
     (void) close (h->memfd);
 #endif
-  clib_mem_vm_free ((void *) (uword) (alloc_arena (h)), alloc_arena_size (h));
+  if (BIHASH_USE_HEAP == 0)
+    clib_mem_vm_free ((void *) (uword) (alloc_arena (h)),
+		      alloc_arena_size (h));
 never_initialized:
-  clib_memset (h, 0, sizeof (*h));
+  clib_memset_u8 (h, 0, sizeof (*h));
   for (i = 0; i < vec_len (clib_all_bihashes); i++)
     {
       if ((void *) h == clib_all_bihashes[i])
@@ -366,7 +458,7 @@ initialize:
    * if we replace (1<<log2_pages) with vec_len(rv).
    * No clue.
    */
-  clib_memset (rv, 0xff, sizeof (*rv) * (1 << log2_pages));
+  clib_memset_u8 (rv, 0xff, sizeof (*rv) * (1 << log2_pages));
   return rv;
 }
 
@@ -379,7 +471,7 @@ BV (value_free) (BVT (clib_bihash) * h, BVT (clib_bihash_value) * v,
   ASSERT (vec_len (h->freelists) > log2_pages);
 
   if (CLIB_DEBUG > 0)
-    clib_memset (v, 0xFE, sizeof (*v) * (1 << log2_pages));
+    clib_memset_u8 (v, 0xFE, sizeof (*v) * (1 << log2_pages));
 
   v->next_free_as_u64 = (u64) h->freelists[log2_pages];
   h->freelists[log2_pages] = (u64) BV (clib_bihash_get_offset) (h, v);
@@ -888,7 +980,6 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
   u64 active_elements = 0;
   u64 active_buckets = 0;
   u64 linear_buckets = 0;
-  u64 used_bytes;
 
   s = format (s, "Hash table %s\n", h->name ? h->name : (u8 *) "(unnamed)");
 
@@ -974,13 +1065,34 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
     }
 
   s = format (s, "    %lld linear search buckets\n", linear_buckets);
-  used_bytes = alloc_arena_next (h);
-  s = format (s,
-	      "    arena: base %llx, next %llx\n"
-	      "           used %lld b (%lld Mbytes) of %lld b (%lld Mbytes)\n",
-	      alloc_arena (h), alloc_arena_next (h),
-	      used_bytes, used_bytes >> 20,
-	      alloc_arena_size (h), alloc_arena_size (h) >> 20);
+  if (BIHASH_USE_HEAP)
+    {
+      BVT (clib_bihash_alloc_chunk) * c = h->chunks;
+      uword bytes_left = 0, total_size = 0, n_chunks = 0;
+
+      while (c)
+	{
+	  bytes_left += c->bytes_left;
+	  total_size += c->size;
+	  n_chunks += 1;
+	  c = c->next;
+	}
+      s = format (s,
+		  "    heap: %u chunks allocated\n"
+		  "          used %UB, scrap %UB\n", n_chunks,
+		  format_memory_size, total_size,
+		  format_memory_size, bytes_left);
+    }
+  else
+    {
+      u64 used_bytes = alloc_arena_next (h);
+      s = format (s,
+		  "    arena: base %llx, next %llx\n"
+		  "           used %lld b (%lld Mbytes) of %lld b (%lld Mbytes)\n",
+		  alloc_arena (h), alloc_arena_next (h),
+		  used_bytes, used_bytes >> 20,
+		  alloc_arena_size (h), alloc_arena_size (h) >> 20);
+    }
   return s;
 }
 
