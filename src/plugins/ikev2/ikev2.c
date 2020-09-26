@@ -1840,11 +1840,11 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 
 static int
 ikev2_create_tunnel_interface (vlib_main_t * vm,
-			       u32 thread_index,
 			       ikev2_sa_t * sa,
 			       ikev2_child_sa_t * child, u32 sa_index,
 			       u32 child_index, u8 is_rekey)
 {
+  u32 thread_index = vlib_get_thread_index ();
   ikev2_main_t *km = &ikev2_main;
   ipsec_crypto_alg_t encr_type;
   ipsec_integ_alg_t integ_type;
@@ -2662,210 +2662,132 @@ static uword
 ikev2_node_fn (vlib_main_t * vm,
 	       vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  u32 n_left_from, *from, *to_next;
-  ikev2_next_t next_index;
+  u32 n_left = frame->n_vectors, *from;
   ikev2_main_t *km = &ikev2_main;
-  u32 thread_index = vlib_get_thread_index ();
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
+  ikev2_main_per_thread_data_t *ptd = ikev2_get_per_thread_data ();
   int res;
 
   from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
+  vlib_get_buffers (vm, from, bufs, n_left);
+  b = bufs;
 
-  while (n_left_from > 0)
+  while (n_left > 0)
     {
-      u32 n_left_to_next;
+      vlib_buffer_t *b0 = b[0];
+      next[0] = IKEV2_NEXT_ERROR_DROP;
+      ip4_header_t *ip40;
+      udp_header_t *udp0;
+      ike_header_t *ike0;
+      ikev2_sa_t *sa0 = 0;
+      ikev2_sa_t sa;		/* temporary store for SA */
+      u32 rlen, slen = 0;
+      int is_req = 0, has_non_esp_marker = 0;
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      while (n_left_from > 0 && n_left_to_next > 0)
+      if (b0->punt_reason == ipsec_punt_reason[IPSEC_PUNT_IP4_SPI_UDP_0])
 	{
-	  u32 bi0;
-	  vlib_buffer_t *b0;
-	  u32 next0 = IKEV2_NEXT_ERROR_DROP;
-	  ip4_header_t *ip40;
-	  udp_header_t *udp0;
-	  ike_header_t *ike0;
-	  ikev2_sa_t *sa0 = 0;
-	  ikev2_sa_t sa;	/* temporary store for SA */
-	  u32 rlen, slen = 0;
-	  int is_req = 0, has_non_esp_marker = 0;
+	  u8 *ptr = vlib_buffer_get_current (b0);
+	  ip40 = (ip4_header_t *) ptr;
+	  ptr += sizeof (*ip40);
+	  udp0 = (udp_header_t *) ptr;
+	  ptr += sizeof (*udp0);
+	  ike0 = (ike_header_t *) ptr;
+	}
+      else
+	{
+	  ike0 = vlib_buffer_get_current (b0);
+	  vlib_buffer_advance (b0, -sizeof (*udp0));
+	  udp0 = vlib_buffer_get_current (b0);
+	  vlib_buffer_advance (b0, -sizeof (*ip40));
+	  ip40 = vlib_buffer_get_current (b0);
+	}
 
-	  /* speculatively enqueue b0 to the current next frame */
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
+      rlen = b0->current_length - sizeof (*ip40) - sizeof (*udp0);
 
-	  b0 = vlib_get_buffer (vm, bi0);
+      /* check for non-esp marker */
+      if (*((u32 *) ike0) == 0)
+	{
+	  ike0 =
+	    (ike_header_t *) ((u8 *) ike0 + sizeof (ikev2_non_esp_marker));
+	  rlen -= sizeof (ikev2_non_esp_marker);
+	  has_non_esp_marker = 1;
+	}
 
-	  if (b0->punt_reason == ipsec_punt_reason[IPSEC_PUNT_IP4_SPI_UDP_0])
+      if (clib_net_to_host_u32 (ike0->length) != rlen)
+	{
+	  vlib_node_increment_counter (vm, ikev2_node.index,
+				       IKEV2_ERROR_BAD_LENGTH, 1);
+	  goto dispatch0;
+	}
+
+      if (ike0->version != IKE_VERSION_2)
+	{
+	  vlib_node_increment_counter (vm, ikev2_node.index,
+				       IKEV2_ERROR_NOT_IKEV2, 1);
+	  goto dispatch0;
+	}
+
+      if (ike0->exchange == IKEV2_EXCHANGE_SA_INIT)
+	{
+	  sa0 = &sa;
+	  clib_memset (sa0, 0, sizeof (*sa0));
+
+	  if (ike0->flags & IKEV2_HDR_FLAG_INITIATOR)
 	    {
-	      u8 *ptr = vlib_buffer_get_current (b0);
-	      ip40 = (ip4_header_t *) ptr;
-	      ptr += sizeof (*ip40);
-	      udp0 = (udp_header_t *) ptr;
-	      ptr += sizeof (*udp0);
-	      ike0 = (ike_header_t *) ptr;
-	    }
-	  else
-	    {
-	      ike0 = vlib_buffer_get_current (b0);
-	      vlib_buffer_advance (b0, -sizeof (*udp0));
-	      udp0 = vlib_buffer_get_current (b0);
-	      vlib_buffer_advance (b0, -sizeof (*ip40));
-	      ip40 = vlib_buffer_get_current (b0);
-	    }
-
-	  rlen = b0->current_length - sizeof (*ip40) - sizeof (*udp0);
-
-	  /* check for non-esp marker */
-	  if (*((u32 *) ike0) == 0)
-	    {
-	      ike0 =
-		(ike_header_t *) ((u8 *) ike0 +
-				  sizeof (ikev2_non_esp_marker));
-	      rlen -= sizeof (ikev2_non_esp_marker);
-	      has_non_esp_marker = 1;
-	    }
-
-	  if (clib_net_to_host_u32 (ike0->length) != rlen)
-	    {
-	      vlib_node_increment_counter (vm, ikev2_node.index,
-					   IKEV2_ERROR_BAD_LENGTH, 1);
-	      goto dispatch0;
-	    }
-
-	  if (ike0->version != IKE_VERSION_2)
-	    {
-	      vlib_node_increment_counter (vm, ikev2_node.index,
-					   IKEV2_ERROR_NOT_IKEV2, 1);
-	      goto dispatch0;
-	    }
-
-	  if (ike0->exchange == IKEV2_EXCHANGE_SA_INIT)
-	    {
-	      sa0 = &sa;
-	      clib_memset (sa0, 0, sizeof (*sa0));
-
-	      if (ike0->flags & IKEV2_HDR_FLAG_INITIATOR)
+	      if (ike0->rspi == 0)
 		{
-		  if (ike0->rspi == 0)
+		  sa0->raddr.as_u32 = ip40->dst_address.as_u32;
+		  sa0->iaddr.as_u32 = ip40->src_address.as_u32;
+		  sa0->dst_port = clib_net_to_host_u16 (udp0->src_port);
+
+		  slen =
+		    ikev2_retransmit_sa_init (ike0, sa0->iaddr,
+					      sa0->raddr, rlen);
+		  if (slen)
 		    {
-		      sa0->raddr.as_u32 = ip40->dst_address.as_u32;
-		      sa0->iaddr.as_u32 = ip40->src_address.as_u32;
-		      sa0->dst_port = clib_net_to_host_u16 (udp0->src_port);
-
-		      slen =
-			ikev2_retransmit_sa_init (ike0, sa0->iaddr,
-						  sa0->raddr, rlen);
-		      if (slen)
-			{
-			  vlib_node_increment_counter (vm, ikev2_node.index,
-						       ~0 ==
-						       slen ?
-						       IKEV2_ERROR_IKE_SA_INIT_IGNORE
-						       :
-						       IKEV2_ERROR_IKE_SA_INIT_RETRANSMIT,
-						       1);
-			  goto dispatch0;
-			}
-
-		      res = ikev2_process_sa_init_req (vm, sa0,
-						       ike0, udp0, rlen);
-		      if (!res)
-			vlib_node_increment_counter (vm, ikev2_node.index,
-						     IKEV2_ERROR_MALFORMED_PACKET,
-						     1);
-
-		      if (sa0->state == IKEV2_STATE_SA_INIT)
-			{
-			  ikev2_sa_free_proposal_vector (&sa0->r_proposals);
-			  sa0->r_proposals =
-			    ikev2_select_proposal (sa0->i_proposals,
-						   IKEV2_PROTOCOL_IKE);
-			  ikev2_generate_sa_init_data (sa0);
-			}
-
-		      if (sa0->state == IKEV2_STATE_SA_INIT
-			  || sa0->state == IKEV2_STATE_NOTIFY_AND_DELETE)
-			{
-			  slen =
-			    ikev2_generate_message (b0, sa0, ike0, 0, udp0);
-			  if (~0 == slen)
-			    vlib_node_increment_counter (vm, ikev2_node.index,
-							 IKEV2_ERROR_NO_BUFF_SPACE,
-							 1);
-			}
-
-		      if (sa0->state == IKEV2_STATE_SA_INIT)
-			{
-			  /* add SA to the pool */
-			  pool_get (km->per_thread_data[thread_index].sas,
-				    sa0);
-			  clib_memcpy_fast (sa0, &sa, sizeof (*sa0));
-			  ikev2_init_sa (vm, sa0);
-			  hash_set (km->
-				    per_thread_data[thread_index].sa_by_rspi,
-				    sa0->rspi,
-				    sa0 -
-				    km->per_thread_data[thread_index].sas);
-			}
-		      else
-			{
-			  ikev2_sa_free_all_vec (sa0);
-			}
+		      vlib_node_increment_counter (vm, ikev2_node.index,
+						   ~0 ==
+						   slen ?
+						   IKEV2_ERROR_IKE_SA_INIT_IGNORE
+						   :
+						   IKEV2_ERROR_IKE_SA_INIT_RETRANSMIT,
+						   1);
+		      goto dispatch0;
 		    }
-		}
-	      else		//received sa_init without initiator flag
-		{
-		  sa0->raddr.as_u32 = ip40->src_address.as_u32;
-		  sa0->iaddr.as_u32 = ip40->dst_address.as_u32;
-		  ikev2_process_sa_init_resp (vm, sa0, ike0, udp0, rlen);
+
+		  res = ikev2_process_sa_init_req (vm, sa0, ike0, udp0, rlen);
+		  if (!res)
+		    vlib_node_increment_counter (vm, ikev2_node.index,
+						 IKEV2_ERROR_MALFORMED_PACKET,
+						 1);
 
 		  if (sa0->state == IKEV2_STATE_SA_INIT)
 		    {
-		      is_req = 1;
-		      ike0->exchange = IKEV2_EXCHANGE_IKE_AUTH;
-		      uword *p = hash_get (km->sa_by_ispi, sa0->ispi);
-		      if (p)
-			{
-			  ikev2_sa_t *sai =
-			    pool_elt_at_index (km->sais, p[0]);
+		      ikev2_sa_free_proposal_vector (&sa0->r_proposals);
+		      sa0->r_proposals =
+			ikev2_select_proposal (sa0->i_proposals,
+					       IKEV2_PROTOCOL_IKE);
+		      ikev2_generate_sa_init_data (sa0);
+		    }
 
-			  if (clib_atomic_bool_cmp_and_swap
-			      (&sai->init_response_received, 0, 1))
-			    {
-			      ikev2_complete_sa_data (sa0, sai);
-			      ikev2_calc_keys (sa0);
-			      ikev2_sa_auth_init (sa0);
-			      slen =
-				ikev2_generate_message (b0, sa0, ike0, 0,
-							udp0);
-			      if (~0 == slen)
-				vlib_node_increment_counter (vm,
-							     ikev2_node.index,
-							     IKEV2_ERROR_NO_BUFF_SPACE,
-							     1);
-			    }
-			  else
-			    {
-			      /* we've already processed sa-init response */
-			      sa0->state = IKEV2_STATE_UNKNOWN;
-			    }
-			}
+		  if (sa0->state == IKEV2_STATE_SA_INIT
+		      || sa0->state == IKEV2_STATE_NOTIFY_AND_DELETE)
+		    {
+		      slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
+		      if (~0 == slen)
+			vlib_node_increment_counter (vm, ikev2_node.index,
+						     IKEV2_ERROR_NO_BUFF_SPACE,
+						     1);
 		    }
 
 		  if (sa0->state == IKEV2_STATE_SA_INIT)
 		    {
 		      /* add SA to the pool */
-		      pool_get (km->per_thread_data[thread_index].sas, sa0);
+		      pool_get (ptd->sas, sa0);
 		      clib_memcpy_fast (sa0, &sa, sizeof (*sa0));
-		      hash_set (km->per_thread_data[thread_index].sa_by_rspi,
-				sa0->rspi,
-				sa0 - km->per_thread_data[thread_index].sas);
+		      ikev2_init_sa (vm, sa0);
+		      hash_set (ptd->sa_by_rspi, sa0->rspi, sa0 - ptd->sas);
 		    }
 		  else
 		    {
@@ -2873,291 +2795,321 @@ ikev2_node_fn (vlib_main_t * vm,
 		    }
 		}
 	    }
-	  else if (ike0->exchange == IKEV2_EXCHANGE_IKE_AUTH)
+	  else			//received sa_init without initiator flag
 	    {
-	      uword *p;
-	      p = hash_get (km->per_thread_data[thread_index].sa_by_rspi,
-			    clib_net_to_host_u64 (ike0->rspi));
-	      if (p)
+	      sa0->raddr.as_u32 = ip40->src_address.as_u32;
+	      sa0->iaddr.as_u32 = ip40->dst_address.as_u32;
+	      ikev2_process_sa_init_resp (vm, sa0, ike0, udp0, rlen);
+
+	      if (sa0->state == IKEV2_STATE_SA_INIT)
 		{
-		  sa0 =
-		    pool_elt_at_index (km->per_thread_data[thread_index].sas,
-				       p[0]);
+		  is_req = 1;
+		  ike0->exchange = IKEV2_EXCHANGE_IKE_AUTH;
+		  uword *p = hash_get (km->sa_by_ispi, sa0->ispi);
+		  if (p)
+		    {
+		      ikev2_sa_t *sai = pool_elt_at_index (km->sais, p[0]);
 
-		  slen = ikev2_retransmit_resp (sa0, ike0);
-		  if (slen)
-		    {
-		      vlib_node_increment_counter (vm, ikev2_node.index,
-						   ~0 ==
-						   slen ?
-						   IKEV2_ERROR_IKE_REQ_IGNORE
-						   :
-						   IKEV2_ERROR_IKE_REQ_RETRANSMIT,
-						   1);
-		      goto dispatch0;
-		    }
-
-		  sa0->dst_port = clib_net_to_host_u16 (udp0->src_port);
-		  res = ikev2_process_auth_req (vm, sa0, ike0, rlen);
-		  if (res)
-		    ikev2_sa_auth (sa0);
-		  else
-		    vlib_node_increment_counter (vm, ikev2_node.index,
-						 IKEV2_ERROR_MALFORMED_PACKET,
-						 1);
-		  if (sa0->state == IKEV2_STATE_AUTHENTICATED)
-		    {
-		      ikev2_initial_contact_cleanup (sa0);
-		      ikev2_sa_match_ts (sa0);
-		      if (sa0->state != IKEV2_STATE_TS_UNACCEPTABLE)
-			ikev2_create_tunnel_interface (vm, thread_index, sa0,
-						       &sa0->childs[0],
-						       p[0], 0, 0);
-		    }
-
-		  if (sa0->is_initiator)
-		    {
-		      ikev2_del_sa_init (sa0->ispi);
-		    }
-		  else
-		    {
-		      slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
-		      if (~0 == slen)
-			vlib_node_increment_counter (vm, ikev2_node.index,
-						     IKEV2_ERROR_NO_BUFF_SPACE,
-						     1);
-		    }
-		}
-	    }
-	  else if (ike0->exchange == IKEV2_EXCHANGE_INFORMATIONAL)
-	    {
-	      uword *p;
-	      p = hash_get (km->per_thread_data[thread_index].sa_by_rspi,
-			    clib_net_to_host_u64 (ike0->rspi));
-	      if (p)
-		{
-		  sa0 =
-		    pool_elt_at_index (km->per_thread_data[thread_index].sas,
-				       p[0]);
-
-		  slen = ikev2_retransmit_resp (sa0, ike0);
-		  if (slen)
-		    {
-		      vlib_node_increment_counter (vm, ikev2_node.index,
-						   ~0 ==
-						   slen ?
-						   IKEV2_ERROR_IKE_REQ_IGNORE
-						   :
-						   IKEV2_ERROR_IKE_REQ_RETRANSMIT,
-						   1);
-		      goto dispatch0;
-		    }
-
-		  res = ikev2_process_informational_req (vm, sa0, ike0, rlen);
-		  if (!res)
-		    {
-		      vlib_node_increment_counter (vm, ikev2_node.index,
-						   IKEV2_ERROR_MALFORMED_PACKET,
-						   1);
-		      slen = ~0;
-		      goto dispatch0;
-		    }
-
-		  if (sa0->del)
-		    {
-		      if (sa0->del[0].protocol_id != IKEV2_PROTOCOL_IKE)
+		      if (clib_atomic_bool_cmp_and_swap
+			  (&sai->init_response_received, 0, 1))
 			{
-			  ikev2_delete_t *d, *tmp, *resp = 0;
-			  vec_foreach (d, sa0->del)
-			  {
-			    ikev2_child_sa_t *ch_sa;
-			    ch_sa = ikev2_sa_get_child (sa0, d->spi,
-							d->protocol_id,
-							!sa0->is_initiator);
-			    if (ch_sa)
-			      {
-				ikev2_delete_tunnel_interface (km->vnet_main,
-							       sa0, ch_sa);
-				if (!sa0->is_initiator)
-				  {
-				    vec_add2 (resp, tmp, 1);
-				    tmp->protocol_id = d->protocol_id;
-				    tmp->spi = ch_sa->r_proposals[0].spi;
-				  }
-				ikev2_sa_del_child_sa (sa0, ch_sa);
-			      }
-			  }
-			  if (!sa0->is_initiator)
-			    {
-			      vec_free (sa0->del);
-			      sa0->del = resp;
-			    }
-			}
-		    }
-		  if (!(ike0->flags & IKEV2_HDR_FLAG_RESPONSE))
-		    {
-		      ike0->flags |= IKEV2_HDR_FLAG_RESPONSE;
-		      slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
-		      if (~0 == slen)
-			vlib_node_increment_counter (vm, ikev2_node.index,
-						     IKEV2_ERROR_NO_BUFF_SPACE,
-						     1);
-		    }
-		}
-	    }
-	  else if (ike0->exchange == IKEV2_EXCHANGE_CREATE_CHILD_SA)
-	    {
-	      uword *p;
-	      p = hash_get (km->per_thread_data[thread_index].sa_by_rspi,
-			    clib_net_to_host_u64 (ike0->rspi));
-	      if (p)
-		{
-		  sa0 =
-		    pool_elt_at_index (km->per_thread_data[thread_index].sas,
-				       p[0]);
-
-		  slen = ikev2_retransmit_resp (sa0, ike0);
-		  if (slen)
-		    {
-		      vlib_node_increment_counter (vm, ikev2_node.index,
-						   ~0 ==
-						   slen ?
-						   IKEV2_ERROR_IKE_REQ_IGNORE
-						   :
-						   IKEV2_ERROR_IKE_REQ_RETRANSMIT,
-						   1);
-		      goto dispatch0;
-		    }
-
-		  res = ikev2_process_create_child_sa_req (vm, sa0,
-							   ike0, rlen);
-		  if (!res)
-		    {
-		      vlib_node_increment_counter (vm, ikev2_node.index,
-						   IKEV2_ERROR_MALFORMED_PACKET,
-						   1);
-		      slen = ~0;
-		      goto dispatch0;
-		    }
-
-		  if (sa0->rekey)
-		    {
-		      if (sa0->rekey[0].protocol_id != IKEV2_PROTOCOL_IKE)
-			{
-			  if (sa0->childs)
-			    ikev2_sa_free_all_child_sa (&sa0->childs);
-			  ikev2_child_sa_t *child;
-			  vec_add2 (sa0->childs, child, 1);
-			  clib_memset (child, 0, sizeof (*child));
-			  child->r_proposals = sa0->rekey[0].r_proposal;
-			  child->i_proposals = sa0->rekey[0].i_proposal;
-			  child->tsi = sa0->rekey[0].tsi;
-			  child->tsr = sa0->rekey[0].tsr;
-			  ikev2_create_tunnel_interface (vm, thread_index,
-							 sa0, child, p[0],
-							 child - sa0->childs,
-							 1);
-			}
-		      if (sa0->is_initiator)
-			{
-			  vec_free (sa0->rekey);
-			}
-		      else
-			{
+			  ikev2_complete_sa_data (sa0, sai);
+			  ikev2_calc_keys (sa0);
+			  ikev2_sa_auth_init (sa0);
 			  slen =
 			    ikev2_generate_message (b0, sa0, ike0, 0, udp0);
 			  if (~0 == slen)
-			    vlib_node_increment_counter (vm, ikev2_node.index,
+			    vlib_node_increment_counter (vm,
+							 ikev2_node.index,
 							 IKEV2_ERROR_NO_BUFF_SPACE,
 							 1);
 			}
+		      else
+			{
+			  /* we've already processed sa-init response */
+			  sa0->state = IKEV2_STATE_UNKNOWN;
+			}
 		    }
+		}
+
+	      if (sa0->state == IKEV2_STATE_SA_INIT)
+		{
+		  /* add SA to the pool */
+		  pool_get (ptd->sas, sa0);
+		  clib_memcpy_fast (sa0, &sa, sizeof (*sa0));
+		  hash_set (ptd->sa_by_rspi, sa0->rspi, sa0 - ptd->sas);
+		}
+	      else
+		{
+		  ikev2_sa_free_all_vec (sa0);
+		}
+	    }
+	}
+      else if (ike0->exchange == IKEV2_EXCHANGE_IKE_AUTH)
+	{
+	  uword *p;
+	  p = hash_get (ptd->sa_by_rspi, clib_net_to_host_u64 (ike0->rspi));
+	  if (p)
+	    {
+	      sa0 = pool_elt_at_index (ptd->sas, p[0]);
+	      slen = ikev2_retransmit_resp (sa0, ike0);
+	      if (slen)
+		{
+		  vlib_node_increment_counter (vm, ikev2_node.index,
+					       ~0 ==
+					       slen ?
+					       IKEV2_ERROR_IKE_REQ_IGNORE
+					       :
+					       IKEV2_ERROR_IKE_REQ_RETRANSMIT,
+					       1);
+		  goto dispatch0;
+		}
+
+	      sa0->dst_port = clib_net_to_host_u16 (udp0->src_port);
+	      res = ikev2_process_auth_req (vm, sa0, ike0, rlen);
+	      if (res)
+		ikev2_sa_auth (sa0);
+	      else
+		vlib_node_increment_counter (vm, ikev2_node.index,
+					     IKEV2_ERROR_MALFORMED_PACKET, 1);
+	      if (sa0->state == IKEV2_STATE_AUTHENTICATED)
+		{
+		  ikev2_initial_contact_cleanup (sa0);
+		  ikev2_sa_match_ts (sa0);
+		  if (sa0->state != IKEV2_STATE_TS_UNACCEPTABLE)
+		    ikev2_create_tunnel_interface (vm, sa0,
+						   &sa0->childs[0],
+						   p[0], 0, 0);
+		}
+
+	      if (sa0->is_initiator)
+		{
+		  ikev2_del_sa_init (sa0->ispi);
+		}
+	      else
+		{
+		  slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
+		  if (~0 == slen)
+		    vlib_node_increment_counter (vm, ikev2_node.index,
+						 IKEV2_ERROR_NO_BUFF_SPACE,
+						 1);
+		}
+	    }
+	}
+      else if (ike0->exchange == IKEV2_EXCHANGE_INFORMATIONAL)
+	{
+	  uword *p;
+	  p = hash_get (ptd->sa_by_rspi, clib_net_to_host_u64 (ike0->rspi));
+	  if (p)
+	    {
+	      sa0 = pool_elt_at_index (ptd->sas, p[0]);
+	      slen = ikev2_retransmit_resp (sa0, ike0);
+	      if (slen)
+		{
+		  vlib_node_increment_counter (vm, ikev2_node.index,
+					       ~0 ==
+					       slen ?
+					       IKEV2_ERROR_IKE_REQ_IGNORE
+					       :
+					       IKEV2_ERROR_IKE_REQ_RETRANSMIT,
+					       1);
+		  goto dispatch0;
+		}
+
+	      res = ikev2_process_informational_req (vm, sa0, ike0, rlen);
+	      if (!res)
+		{
+		  vlib_node_increment_counter (vm, ikev2_node.index,
+					       IKEV2_ERROR_MALFORMED_PACKET,
+					       1);
+		  slen = ~0;
+		  goto dispatch0;
+		}
+
+	      if (sa0->del)
+		{
+		  if (sa0->del[0].protocol_id != IKEV2_PROTOCOL_IKE)
+		    {
+		      ikev2_delete_t *d, *tmp, *resp = 0;
+		      vec_foreach (d, sa0->del)
+		      {
+			ikev2_child_sa_t *ch_sa;
+			ch_sa = ikev2_sa_get_child (sa0, d->spi,
+						    d->protocol_id,
+						    !sa0->is_initiator);
+			if (ch_sa)
+			  {
+			    ikev2_delete_tunnel_interface (km->vnet_main,
+							   sa0, ch_sa);
+			    if (!sa0->is_initiator)
+			      {
+				vec_add2 (resp, tmp, 1);
+				tmp->protocol_id = d->protocol_id;
+				tmp->spi = ch_sa->r_proposals[0].spi;
+			      }
+			    ikev2_sa_del_child_sa (sa0, ch_sa);
+			  }
+		      }
+		      if (!sa0->is_initiator)
+			{
+			  vec_free (sa0->del);
+			  sa0->del = resp;
+			}
+		    }
+		}
+	      if (!(ike0->flags & IKEV2_HDR_FLAG_RESPONSE))
+		{
+		  ike0->flags |= IKEV2_HDR_FLAG_RESPONSE;
+		  slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
+		  if (~0 == slen)
+		    vlib_node_increment_counter (vm, ikev2_node.index,
+						 IKEV2_ERROR_NO_BUFF_SPACE,
+						 1);
+		}
+	    }
+	}
+      else if (ike0->exchange == IKEV2_EXCHANGE_CREATE_CHILD_SA)
+	{
+	  uword *p;
+	  p = hash_get (ptd->sa_by_rspi, clib_net_to_host_u64 (ike0->rspi));
+	  if (p)
+	    {
+	      sa0 = pool_elt_at_index (ptd->sas, p[0]);
+	      slen = ikev2_retransmit_resp (sa0, ike0);
+	      if (slen)
+		{
+		  vlib_node_increment_counter (vm, ikev2_node.index,
+					       ~0 ==
+					       slen ?
+					       IKEV2_ERROR_IKE_REQ_IGNORE
+					       :
+					       IKEV2_ERROR_IKE_REQ_RETRANSMIT,
+					       1);
+		  goto dispatch0;
+		}
+
+	      res = ikev2_process_create_child_sa_req (vm, sa0, ike0, rlen);
+	      if (!res)
+		{
+		  vlib_node_increment_counter (vm, ikev2_node.index,
+					       IKEV2_ERROR_MALFORMED_PACKET,
+					       1);
+		  slen = ~0;
+		  goto dispatch0;
+		}
+
+	      if (sa0->rekey)
+		{
+		  if (sa0->rekey[0].protocol_id != IKEV2_PROTOCOL_IKE)
+		    {
+		      if (sa0->childs)
+			ikev2_sa_free_all_child_sa (&sa0->childs);
+		      ikev2_child_sa_t *child;
+		      vec_add2 (sa0->childs, child, 1);
+		      clib_memset (child, 0, sizeof (*child));
+		      child->r_proposals = sa0->rekey[0].r_proposal;
+		      child->i_proposals = sa0->rekey[0].i_proposal;
+		      child->tsi = sa0->rekey[0].tsi;
+		      child->tsr = sa0->rekey[0].tsr;
+		      ikev2_create_tunnel_interface (vm, sa0, child, p[0],
+						     child - sa0->childs, 1);
+		    }
+		  if (sa0->is_initiator)
+		    {
+		      vec_free (sa0->rekey);
+		    }
+		  else
+		    {
+		      slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
+		      if (~0 == slen)
+			vlib_node_increment_counter (vm, ikev2_node.index,
+						     IKEV2_ERROR_NO_BUFF_SPACE,
+						     1);
+		    }
+		}
+	    }
+	}
+      else
+	{
+	  ikev2_elog_uint_peers (IKEV2_LOG_WARNING, "IKEv2 exchange %d "
+				 "received from %d.%d.%d.%d to %d.%d.%d.%d",
+				 ike0->exchange,
+				 ip40->src_address.as_u32,
+				 ip40->dst_address.as_u32);
+	}
+
+    dispatch0:
+      /* if we are sending packet back, rewrite headers */
+      if (slen && ~0 != slen)
+	{
+	  next[0] = IKEV2_NEXT_IP4_LOOKUP;
+	  if (sa0->is_initiator)
+	    {
+	      ip40->dst_address.as_u32 = sa0->raddr.as_u32;
+	      ip40->src_address.as_u32 = sa0->iaddr.as_u32;
+	    }
+	  else
+	    {
+	      ip40->dst_address.as_u32 = sa0->iaddr.as_u32;
+	      ip40->src_address.as_u32 = sa0->raddr.as_u32;
+	    }
+
+	  if (is_req)
+	    {
+	      udp0->dst_port = udp0->src_port =
+		clib_net_to_host_u16 (ikev2_get_port (sa0));
+
+	      if (udp0->dst_port == clib_net_to_host_u16 (IKEV2_PORT_NATT)
+		  && sa0->natt)
+		{
+		  if (!has_non_esp_marker)
+		    slen = ikev2_insert_non_esp_marker (ike0, slen);
 		}
 	    }
 	  else
 	    {
-	      ikev2_elog_uint_peers (IKEV2_LOG_WARNING, "IKEv2 exchange %d "
-				     "received from %d.%d.%d.%d to %d.%d.%d.%d",
-				     ike0->exchange,
-				     ip40->src_address.as_u32,
-				     ip40->dst_address.as_u32);
+	      if (has_non_esp_marker)
+		slen += sizeof (ikev2_non_esp_marker);
+
+	      u16 tp = udp0->dst_port;
+	      udp0->dst_port = udp0->src_port;
+	      udp0->src_port = tp;
 	    }
 
-	dispatch0:
-	  /* if we are sending packet back, rewrite headers */
-	  if (slen && ~0 != slen)
-	    {
-	      next0 = IKEV2_NEXT_IP4_LOOKUP;
-	      if (sa0->is_initiator)
-		{
-		  ip40->dst_address.as_u32 = sa0->raddr.as_u32;
-		  ip40->src_address.as_u32 = sa0->iaddr.as_u32;
-		}
-	      else
-		{
-		  ip40->dst_address.as_u32 = sa0->iaddr.as_u32;
-		  ip40->src_address.as_u32 = sa0->raddr.as_u32;
-		}
-
-	      if (is_req)
-		{
-		  udp0->dst_port = udp0->src_port =
-		    clib_net_to_host_u16 (ikev2_get_port (sa0));
-
-		  if (udp0->dst_port == clib_net_to_host_u16 (IKEV2_PORT_NATT)
-		      && sa0->natt)
-		    {
-		      if (!has_non_esp_marker)
-			slen = ikev2_insert_non_esp_marker (ike0, slen);
-		    }
-		}
-	      else
-		{
-		  if (has_non_esp_marker)
-		    slen += sizeof (ikev2_non_esp_marker);
-
-		  u16 tp = udp0->dst_port;
-		  udp0->dst_port = udp0->src_port;
-		  udp0->src_port = tp;
-		}
-
-	      udp0->length =
-		clib_host_to_net_u16 (slen + sizeof (udp_header_t));
-	      udp0->checksum = 0;
-	      b0->current_length =
-		slen + sizeof (ip4_header_t) + sizeof (udp_header_t);
-	      ip40->length = clib_host_to_net_u16 (b0->current_length);
-	      ip40->checksum = ip4_header_checksum (ip40);
-	    }
-	  /* delete sa */
-	  if (sa0 && (sa0->state == IKEV2_STATE_DELETED ||
-		      sa0->state == IKEV2_STATE_NOTIFY_AND_DELETE))
-	    {
-	      ikev2_child_sa_t *c;
-
-	      vec_foreach (c, sa0->childs)
-		ikev2_delete_tunnel_interface (km->vnet_main, sa0, c);
-
-	      ikev2_delete_sa (sa0);
-	    }
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
-	    {
-
-	      ikev2_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	      t->next_index = next0;
-	    }
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					   n_left_to_next, bi0, next0);
+	  udp0->length = clib_host_to_net_u16 (slen + sizeof (udp_header_t));
+	  udp0->checksum = 0;
+	  b0->current_length =
+	    slen + sizeof (ip4_header_t) + sizeof (udp_header_t);
+	  ip40->length = clib_host_to_net_u16 (b0->current_length);
+	  ip40->checksum = ip4_header_checksum (ip40);
 	}
+      /* delete sa */
+      if (sa0 && (sa0->state == IKEV2_STATE_DELETED ||
+		  sa0->state == IKEV2_STATE_NOTIFY_AND_DELETE))
+	{
+	  ikev2_child_sa_t *c;
 
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+	  vec_foreach (c, sa0->childs)
+	    ikev2_delete_tunnel_interface (km->vnet_main, sa0, c);
+
+	  ikev2_delete_sa (sa0);
+	}
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+
+	  ikev2_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
+	  t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  t->next_index = next[0];
+	}
+      n_left -= 1;
+      next += 1;
+      b += 1;
     }
 
   vlib_node_increment_counter (vm, ikev2_node.index,
 			       IKEV2_ERROR_PROCESSED, frame->n_vectors);
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   return frame->n_vectors;
 }
 
@@ -3176,7 +3128,7 @@ VLIB_REGISTER_NODE (ikev2_node,static) = {
 
   .next_nodes = {
     [IKEV2_NEXT_IP4_LOOKUP] = "ip4-lookup",
-        [IKEV2_NEXT_ERROR_DROP] = "error-drop",
+    [IKEV2_NEXT_ERROR_DROP] = "error-drop",
   },
 };
 /* *INDENT-ON* */
