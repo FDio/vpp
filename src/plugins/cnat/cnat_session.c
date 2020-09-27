@@ -165,7 +165,7 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
   if (alloc_arena (h) == 0)
     return 0.0;
 
-  for (i = 0; i < h->nbuckets; i++)
+  for ( /* caller saves starting point */ ; i < h->nbuckets; i++)
     {
       /* allow no more than 100us without a pause */
       if ((vlib_time_now (vm) - start_time) > 10e-5)
