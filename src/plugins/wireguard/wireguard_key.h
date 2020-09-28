@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2020 Doc.ai and/or its affiliates.
- * Copyright (c) 2005 Jouni Malinen <j@w1.fi>.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
