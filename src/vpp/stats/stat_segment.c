@@ -345,9 +345,9 @@ vlib_map_stat_segment_init (void)
 
   sys_page_sz = clib_mem_get_page_size ();
 
-  heap = create_mspace_with_base (((u8 *) memaddr) + sys_page_sz, memory_size
-				  - sys_page_sz, 1 /* locked */ );
-  mspace_disable_expand (heap);
+  heap = clib_mem_create_heap (((u8 *) memaddr) + sys_page_sz, memory_size
+			       - sys_page_sz, 1 /* locked */ ,
+			       "stat segment");
   sm->heap = heap;
   sm->memfd = mfd;
 

@@ -523,37 +523,45 @@ clib_mem_trace_enable_disable (uword enable)
   return rv;
 }
 
-/*
- * These API functions seem like layering violations, but
- * by introducing them we greatly reduce the number
- * of code changes required to use dlmalloc spaces
- */
 void *
-mheap_alloc_with_lock (void *memory, uword size, int locked)
+clib_mem_create_heap (void *base, uword size, int is_locked, char *fmt, ...)
 {
   void *rv;
-  if (memory == 0)
-    return create_mspace (size, locked);
+  if (base == 0)
+    rv = create_mspace (size, is_locked);
   else
-    {
-      rv = create_mspace_with_base (memory, size, locked);
-      if (rv)
-	mspace_disable_expand (rv);
-      return rv;
-    }
+    rv = create_mspace_with_base (base, size, is_locked);
+
+  if (rv)
+    mspace_disable_expand (rv);
+  return rv;
+}
+
+void
+clib_mem_destroy_heap (void *heap)
+{
+  destroy_mspace (heap);
+}
+
+uword
+clib_mem_get_heap_free_space (void *heap)
+{
+  struct dlmallinfo dlminfo = mspace_mallinfo (heap);
+  return dlminfo.fordblks;
 }
 
 void *
-clib_mem_create_heap (void *base, uword size, char *fmt, ...)
+clib_mem_get_heap_base (void *heap)
 {
-  base = clib_mem_vm_map_internal (base, CLIB_MEM_PAGE_SZ_DEFAULT, size, -1,
-				   0, "str");
+  return mspace_least_addr (heap);
+}
 
-  if (base == 0)
-    return 0;
-
-  create_mspace_with_base (base, size, 1 /* locked */ );
-  return base;
+uword
+clib_mem_get_heap_size (void *heap)
+{
+  struct dlmallinfo mi;
+  mi = mspace_mallinfo (heap);
+  return mi.arena;
 }
 
 /*

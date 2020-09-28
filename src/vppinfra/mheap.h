@@ -40,7 +40,6 @@
 
 /* Format mheap data structures as string. */
 u8 *format_mheap (u8 * s, va_list * va);
-void *mheap_alloc_with_lock (void *memory, uword size, int locked);
 void mheap_usage (void *v, clib_mem_usage_t * usage);
 
 #endif /* included_mheap_h */

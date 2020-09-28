@@ -303,7 +303,7 @@ vnet_classify_prefetch_bucket (vnet_classify_table_t * t, u64 hash)
 static inline vnet_classify_entry_t *
 vnet_classify_get_entry (vnet_classify_table_t * t, uword offset)
 {
-  u8 *hp = t->mheap;
+  u8 *hp = clib_mem_get_heap_base (t->mheap);
   u8 *vp = hp + offset;
 
   return (void *) vp;
@@ -315,7 +315,7 @@ vnet_classify_get_offset (vnet_classify_table_t * t,
 {
   u8 *hp, *vp;
 
-  hp = (u8 *) t->mheap;
+  hp = (u8 *) clib_mem_get_heap_base (t->mheap);
   vp = (u8 *) v;
 
   ASSERT ((vp - hp) < 0x100000000ULL);

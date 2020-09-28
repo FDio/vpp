@@ -45,8 +45,6 @@
 #include <vppinfra/clib.h>	/* uword, etc */
 #include <vppinfra/clib_error.h>
 
-#include <vppinfra/dlmalloc.h>
-
 #include <vppinfra/os.h>
 #include <vppinfra/string.h>	/* memcpy, clib_memset */
 #include <vppinfra/sanitizer.h>
@@ -180,6 +178,7 @@ clib_mem_set_thread_index (void)
 always_inline uword
 clib_mem_size_nocheck (void *p)
 {
+  size_t mspace_usable_size_with_delta (const void *p);
   return mspace_usable_size_with_delta (p);
 }
 
@@ -190,6 +189,8 @@ clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
 {
   void *heap, *p;
   uword cpu;
+  void *mspace_get_aligned (void *msp, unsigned long n_user_data_bytes,
+			    unsigned long align, unsigned long align_offset);
 
   if (align_offset > align)
     {
@@ -270,6 +271,7 @@ always_inline uword
 clib_mem_is_heap_object (void *p)
 {
   void *heap = clib_mem_get_per_cpu_heap ();
+  int mspace_is_heap_object (void *msp, void *p);
 
   return mspace_is_heap_object (heap, p);
 }
@@ -279,6 +281,7 @@ clib_mem_free (void *p)
 {
   u8 *heap = clib_mem_get_per_cpu_heap ();
 
+  void mspace_put (void *msp, void *p_arg);
   /* Make sure object is in the correct heap. */
   ASSERT (clib_mem_is_heap_object (p));
 
@@ -333,6 +336,10 @@ clib_mem_set_heap (void *heap)
   return clib_mem_set_per_cpu_heap (heap);
 }
 
+void clib_mem_destroy_heap (void *heap);
+void *clib_mem_create_heap (void *base, uword size, int is_locked, char *fmt,
+			    ...);
+
 void clib_mem_main_init ();
 void *clib_mem_init (void *heap, uword size);
 void *clib_mem_init_with_page_size (uword memory_size,
@@ -342,8 +349,6 @@ void *clib_mem_init_thread_safe_numa (void *memory, uword memory_size,
 				      u8 numa);
 
 void clib_mem_exit (void);
-
-void clib_mem_validate (void);
 
 void clib_mem_trace (int enable);
 
@@ -374,9 +379,14 @@ typedef struct
   uword bytes_max;
 } clib_mem_usage_t;
 
-void clib_mem_usage (clib_mem_usage_t * usage);
+void clib_mem_get_heap_usage (void *heap, clib_mem_usage_t * usage);
+
+void *clib_mem_get_heap_base (void *heap);
+uword clib_mem_get_heap_size (void *heap);
+uword clib_mem_get_heap_free_space (void *heap);
 
 u8 *format_clib_mem_usage (u8 * s, va_list * args);
+u8 *format_clib_mem_heap (u8 * s, va_list * va);
 
 /* Allocate virtual address space. */
 always_inline void *
@@ -475,7 +485,6 @@ uword clib_mem_vm_reserve (uword start, uword size,
 			   clib_mem_page_sz_t log2_page_sz);
 u64 *clib_mem_vm_get_paddr (void *mem, clib_mem_page_sz_t log2_page_size,
 			    int n_pages);
-void clib_mem_destroy_mspace (void *mspace);
 void clib_mem_destroy (void);
 int clib_mem_set_numa_affinity (u8 numa_node, int force);
 int clib_mem_set_default_numa_affinity ();

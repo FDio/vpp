@@ -757,8 +757,10 @@ start_workers (vlib_main_t * vm)
 	      vec_add2 (vlib_worker_threads, w, 1);
 	      /* Currently unused, may not really work */
 	      if (tr->mheap_size)
-		w->thread_mheap = create_mspace (tr->mheap_size,
-						 0 /* unlocked */ );
+		w->thread_mheap = clib_mem_create_heap (0, tr->mheap_size,
+							/* unlocked */ 0,
+							"%s%d heap",
+							tr->name, k);
 	      else
 		w->thread_mheap = main_heap;
 
@@ -927,8 +929,10 @@ start_workers (vlib_main_t * vm)
 	      vec_add2 (vlib_worker_threads, w, 1);
 	      if (tr->mheap_size)
 		{
-		  w->thread_mheap =
-		    create_mspace (tr->mheap_size, 0 /* locked */ );
+		  w->thread_mheap = clib_mem_create_heap (0, tr->mheap_size,
+							  /* locked */ 0,
+							  "%s%d heap",
+							  tr->name, j);
 		}
 	      else
 		w->thread_mheap = main_heap;
