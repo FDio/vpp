@@ -158,35 +158,49 @@ VLIB_NODE_FN (wg_output_tun_handoff) (vlib_main_t * vm,
 		     WG_HANDOFF_OUT_TUN);
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (wg_handshake_handoff) =
 {
-  .name = "wg-handshake-handoff",.vector_size = sizeof (u32),.format_trace =
-    format_wg_handoff_trace,.type = VLIB_NODE_TYPE_INTERNAL,.n_errors =
-    ARRAY_LEN (wg_handoff_error_strings),.error_strings =
-    wg_handoff_error_strings,.n_next_nodes = 1,.next_nodes =
-  {
-  [0] = "error-drop",}
-,};
+  .name = "wg-handshake-handoff",
+  .vector_size = sizeof (u32),
+  .format_trace = format_wg_handoff_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (wg_handoff_error_strings),
+  .error_strings = wg_handoff_error_strings,
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
 
 VLIB_REGISTER_NODE (wg_input_data_handoff) =
 {
-  .name = "wg-input-data-handoff",.vector_size = sizeof (u32),.format_trace =
-    format_wg_handoff_trace,.type = VLIB_NODE_TYPE_INTERNAL,.n_errors =
-    ARRAY_LEN (wg_handoff_error_strings),.error_strings =
-    wg_handoff_error_strings,.n_next_nodes = 1,.next_nodes =
-  {
-  [0] = "error-drop",}
-,};
+  .name = "wg-input-data-handoff",
+  .vector_size = sizeof (u32),
+  .format_trace = format_wg_handoff_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (wg_handoff_error_strings),
+  .error_strings = wg_handoff_error_strings,
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
 
 VLIB_REGISTER_NODE (wg_output_tun_handoff) =
 {
-  .name = "wg-output-tun-handoff",.vector_size = sizeof (u32),.format_trace =
-    format_wg_handoff_trace,.type = VLIB_NODE_TYPE_INTERNAL,.n_errors =
-    ARRAY_LEN (wg_handoff_error_strings),.error_strings =
-    wg_handoff_error_strings,.n_next_nodes = 1,.next_nodes =
-  {
-  [0] = "error-drop",}
-,};
+  .name = "wg-output-tun-handoff",
+  .vector_size = sizeof (u32),
+  .format_trace = format_wg_handoff_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (wg_handoff_error_strings),
+  .error_strings = wg_handoff_error_strings,
+  .n_next_nodes = 1,
+  .next_nodes =  {
+    [0] = "error-drop",
+  },
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
