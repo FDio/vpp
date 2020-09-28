@@ -403,6 +403,8 @@ clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
 
   if (log2_page_size == mm->log2_page_sz)
     log2_page_size = CLIB_MEM_PAGE_SZ_DEFAULT;
+  else if (log2_page_size == mm->log2_default_hugepage_sz)
+    log2_page_size = CLIB_MEM_PAGE_SZ_DEFAULT_HUGE;
 
   switch (log2_page_size)
     {
