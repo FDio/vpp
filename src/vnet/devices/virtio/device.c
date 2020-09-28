@@ -546,7 +546,7 @@ virtio_interface_tx_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   virtio_vring_t *vring;
   u16 qid = vm->thread_index % vif->num_txqs;
   vring = vec_elt_at_index (vif->txq_vrings, qid);
-  u16 used, next, avail;
+  u16 used, next, avail, n_buffers = 0, n_buffers_left = 0;
   u16 sz = vring->size;
   u16 mask = sz - 1;
   u16 retry_count = 2;
@@ -588,6 +588,42 @@ retry:
   else
     free_desc_count = sz - used;
 
+  if (vif->packet_buffering)
+    {
+      n_buffers = n_buffers_left = virtio_vring_n_buffers (vring->buffering);
+
+      while (n_buffers_left && free_desc_count)
+	{
+	  u16 n_added = 0;
+
+	  u32 bi = virtio_vring_buffering_read_from_front (vring->buffering);
+	  if (bi == ~0)
+	    break;
+	  vlib_buffer_t *b0 = vlib_get_buffer (vm, bi);
+	  if (b0->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      virtio_tx_trace (vm, node, type, b0, buffers[0]);
+	    }
+	  n_added =
+	    add_buffer_to_slot (vm, vif, type, vring, bi, free_desc_count,
+				avail, next, mask, do_gso, csum_offload,
+				node->node_index);
+	  if (PREDICT_FALSE (n_added == 0))
+	    {
+	      n_buffers_left--;
+	      continue;
+	    }
+	  else if (PREDICT_FALSE (n_added > free_desc_count))
+	    break;
+
+	  avail++;
+	  next = (next + n_added) & mask;
+	  used += n_added;
+	  n_buffers_left--;
+	  free_desc_count -= n_added;
+	}
+    }
+
   while (n_left && free_desc_count)
     {
       u16 n_added = 0;
@@ -619,7 +655,7 @@ retry:
       free_desc_count -= n_added;
     }
 
-  if (n_left != frame->n_vectors)
+  if (n_left != frame->n_vectors || n_buffers != n_buffers_left)
     {
       CLIB_MEMORY_STORE_BARRIER ();
       vring->avail->idx = avail;
@@ -634,9 +670,19 @@ retry:
       if (retry_count--)
 	goto retry;
 
-      virtio_interface_drop_inline (vm, node->node_index,
-				    buffers, n_left,
-				    VIRTIO_TX_ERROR_NO_FREE_SLOTS);
+      if (vif->packet_buffering)
+	{
+
+	  u16 n_buffered =
+	    virtio_vring_buffering_store_packets (vring->buffering, buffers,
+						  n_left);
+	  buffers += n_buffered;
+	  n_left -= n_buffered;
+	}
+      if (n_left)
+	virtio_interface_drop_inline (vm, node->node_index,
+				      buffers, n_left,
+				      VIRTIO_TX_ERROR_NO_FREE_SLOTS);
     }
 
   clib_spinlock_unlock_if_init (&vring->lockp);
@@ -740,20 +786,23 @@ virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
       {
 	/* only enable packet coalesce in poll mode */
 	gro_flow_table_set_is_enable (tx_vring->flow_table, 1);
+	/* only enable packet buffering in poll mode */
+	virtio_vring_buffering_set_is_enable (tx_vring->buffering, 1);
       }
       rx_vring->avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
     }
   else
     {
-      if (vif->packet_coalesce)
+      if (vif->packet_coalesce || vif->packet_buffering)
 	{
 	  virtio_log_warning (vif,
-			      "interface %U is in interrupt mode, disabling packet coalescing",
+			      "interface %U is in interrupt mode, disabling packet coalescing or buffering",
 			      format_vnet_sw_if_index_name, vnet_get_main (),
 			      vif->sw_if_index);
 	  vec_foreach (tx_vring, vif->txq_vrings)
 	  {
 	    gro_flow_table_set_is_enable (tx_vring->flow_table, 0);
+	    virtio_vring_buffering_set_is_enable (tx_vring->buffering, 0);
 	  }
 	}
       rx_vring->avail->flags &= ~VRING_AVAIL_F_NO_INTERRUPT;
