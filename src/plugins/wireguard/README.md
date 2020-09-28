@@ -2,7 +2,7 @@
 
 ## Overview
 This plugin is an implementation of [wireguard protocol](https://www.wireguard.com/) for VPP. It allows one to create secure VPN tunnels.
-This implementation is based on [wireguard-openbsd](https://git.zx2c4.com/wireguard-openbsd/), using the implementaiton of *ipip-tunnel*.
+This implementation is based on [wireguard-openbsd](https://git.zx2c4.com/wireguard-openbsd/).
 
 ## Crypto
 
@@ -16,59 +16,40 @@ OpenSSL:
 - chachapoly1305
 
 ## Plugin usage example
-Usage is very similar to other wireguard implementations.
 
-### Create connection
-Create keys:
+### Create wireguard interface
 
 ```
-> vpp# wg genkey
-> *my_private_key*
-> vpp# wg pubkey <my_private_key>
-> *my_pub_key*
+> vpp# wireguard create listen-port <port> private-key <priv_key> src <src_ip4> [generate-key]
+> *wg_interface*
+> vpp# set int state <wg_interface> up
+> vpp# set int ip address <wg_interface> <wg_ip4>
 ```
 
-Create tunnel:
+### Add a peer configuration:
 ```
-> vpp# create ipip tunnel src <ip4_src> dst <ip4_dst>
-> *tun_name*
-> vpp# set int state <tun_name> up
-> vpp# set int ip address <tun_name> <tun_ip4>
+> vpp# wireguard peer add <wg_interface> public-key <pub_key_other> endpoint <ip4_dst> allowed-ip <prefix> dst-port <port_dst> persistent-keepalive [keepalive_interval]
+> vpp# *peer_idx*
 ```
 
-After this we can create wg-device. The UDP port is opened automatically.
-```
-> vpp# wg set device private-key <my_private_key> src-port <my_port>
-```
-
-Now, we can add a peer configuration:
-```
-> vpp# wg set peer public-key <peer_pub_key> endpoint <peer_ip4> allowed-ip <peer_tun_ip4> dst-port <peer_port> tunnel <tun_name> persistent-keepalive <keepalive_interval>
-```
-If you need to add more peers, don't forget to first create another ipip-tunnel.
-Ping.
-```
-> vpp# ping <peer_tun_ip4>
-```
 ### Show config
-To show device and all peer configurations:
 ```
-> vpp# show wg
+> vpp# show wireguard interface
+> vpp# show wireguard peer
 ```
 
 ### Remove peer
-Peer can be removed by its public-key.
 ```
-> vpp# wg remove peer <peer_pub_key>
-```
-This removes the associated ipip tunnel as well
-
-### Clear all connections
-```
-> vpp# wg remove device
+> vpp# wireguard peer remove <peer_idx>
 ```
 
-## main next steps for improving this implementation
+
+### Delete interface 
+```
+> vpp# wireguard delete <wg_interface>
+```
+
+## Main next steps for improving this implementation
 1. Use all benefits of VPP-engine.
-2. Add IP6 support (currently only supports IPv4))
+2. Add IPv6 support (currently only supports IPv4)
 3. Add DoS protection as in original protocol (using cookie)
