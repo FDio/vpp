@@ -359,11 +359,14 @@ legacy_memfd_create (u8 * name)
   clib_mem_main_t *mm = &clib_mem_main;
   int fd = -1;
   char *mount_dir;
+  u8 *temp;
   u8 *filename;
 
+  temp = format (0, "/tmp/hugepage_mount.XXXXXX%c", 0);
   /* create mount directory */
-  if ((mount_dir = mkdtemp ("/tmp/hugepage_mount.XXXXXX")) == 0)
+  if ((mount_dir = mkdtemp ((char *) temp)) == 0)
     {
+      vec_free (temp);
       vec_reset_length (mm->error);
       mm->error = clib_error_return_unix (mm->error, "mkdtemp");
       return CLIB_MEM_ERROR;
@@ -371,6 +374,7 @@ legacy_memfd_create (u8 * name)
 
   if (mount ("none", mount_dir, "hugetlbfs", 0, NULL))
     {
+      vec_free (temp);
       rmdir ((char *) mount_dir);
       vec_reset_length (mm->error);
       mm->error = clib_error_return_unix (mm->error, "mount");
@@ -388,6 +392,7 @@ legacy_memfd_create (u8 * name)
   umount2 ((char *) mount_dir, MNT_DETACH);
   rmdir ((char *) mount_dir);
   vec_free (filename);
+  vec_free (temp);
 
   return fd;
 }
@@ -403,6 +408,8 @@ clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
 
   if (log2_page_size == mm->log2_page_sz)
     log2_page_size = CLIB_MEM_PAGE_SZ_DEFAULT;
+  else if (log2_page_size == mm->log2_default_hugepage_sz)
+    log2_page_size = CLIB_MEM_PAGE_SZ_DEFAULT_HUGE;
 
   switch (log2_page_size)
     {
