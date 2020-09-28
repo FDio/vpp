@@ -45,7 +45,6 @@
 #include <stdio.h>		/* scanf */
 #endif
 
-#include <vppinfra/mheap.h>
 #include <vppinfra/format.h>
 #include <vppinfra/random.h>
 #include <vppinfra/time.h>

@@ -40,10 +40,7 @@ static char *fifo_segment_mem_status_strings[] = {
 static uword
 fsh_free_space (fifo_segment_header_t * fsh)
 {
-  struct dlmallinfo dlminfo;
-
-  dlminfo = mspace_mallinfo (fsh->ssvm_sh->heap);
-  return dlminfo.fordblks;
+  return clib_mem_get_heap_free_space (fsh->ssvm_sh->heap);
 }
 
 static inline void
