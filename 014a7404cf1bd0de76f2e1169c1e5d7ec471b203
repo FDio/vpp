@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3ba0bf97_721d81ce",
+        "filename": "src/plugins/dpdk/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-09-28T11:24:48Z",
+      "side": 1,
+      "message": "We still need lines 34 and 35, we are using rte_config and rte_version later",
+      "revId": "014a7404cf1bd0de76f2e1169c1e5d7ec471b203",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

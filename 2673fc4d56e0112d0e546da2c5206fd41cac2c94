@@ -51,6 +51,24 @@
       "revId": "2673fc4d56e0112d0e546da2c5206fd41cac2c94",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6dcefb7b_71ca4358",
+        "filename": "src/plugins/dpdk/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-09-28T11:24:48Z",
+      "side": 1,
+      "message": "It is not strictly necessary, but it\u0027s good to have the CMake build system of VPP behave correctly, independently from the way DPDK is built. This way, if someone wants to use a custom DPDK (built with Makefiles) with VPP, they can do so by only pointing VPP to another DPDK directory, and VPP will support the absence of rte_build_config.h\nAlso, I think RTE_PKTMBUF_HEADROOM is actually defined in rte_config.h and not rte_build_config.h",
+      "parentUuid": "5a2a0a64_251e55cb",
+      "revId": "2673fc4d56e0112d0e546da2c5206fd41cac2c94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
