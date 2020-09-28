@@ -214,7 +214,8 @@ typedef struct _virtio_pci_func
   _ (CSUM_OFFLOAD, 1)         \
   _ (GRO_COALESCE, 2)         \
   _ (PACKED, 3)               \
-  _ (IN_ORDER, 4)
+  _ (IN_ORDER, 4)	      \
+  _ (BUFFERING, 5)
 
 typedef enum
 {
@@ -234,6 +235,7 @@ typedef struct
   u64 features;
   u8 gso_enabled;
   u8 checksum_offload_enabled;
+  u32 buffering_size;
   u32 virtio_flags;
   clib_error_t *error;
 } virtio_pci_create_if_args_t;
