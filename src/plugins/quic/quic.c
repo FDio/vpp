@@ -2546,18 +2546,29 @@ quic_plugin_crypto_command_fn (vlib_main_t * vm,
 			       unformat_input_t * input,
 			       vlib_cli_command_t * cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   quic_main_t *qm = &quic_main;
-  if (unformat_check_input (input) == UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "unknown input '%U'",
-			      format_unformat_error, input);
-  if (unformat (input, "vpp"))
-    qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
-  else if (unformat (input, "picotls"))
-    qm->default_crypto_engine = CRYPTO_ENGINE_PICOTLS;
-  else
-    return clib_error_return (0, "unknown input '%U'",
-			      format_unformat_error, input);
-  return 0;
+  clib_error_t *e = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "vpp"))
+	qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
+      else if (unformat (line_input, "picotls"))
+	qm->default_crypto_engine = CRYPTO_ENGINE_PICOTLS;
+      else
+	{
+	  e = clib_error_return (0, "unknown input '%U'",
+				 format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+done:
+  unformat_free (line_input);
+  return e;
 }
 
 u64 quic_fifosize = 0;
@@ -2870,22 +2881,29 @@ VLIB_PLUGIN_REGISTER () =
 static clib_error_t *
 quic_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   quic_main_t *qm = &quic_main;
+  clib_error_t *e = 0;
   uword tmp;
   u32 i;
 
   qm->udp_fifo_size = QUIC_DEFAULT_FIFO_SIZE;
   qm->udp_fifo_prealloc = 0;
   qm->connection_timeout = QUIC_DEFAULT_CONN_TIMEOUT;
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "fifo-size %U", unformat_memory_size, &tmp))
 	{
 	  if (tmp >= 0x100000000ULL)
 	    {
-	      return clib_error_return (0,
-					"fifo-size %llu (0x%llx) too large",
-					tmp, tmp);
+	      e = clib_error_return (0,
+				     "fifo-size %llu (0x%llx) too large",
+				     tmp, tmp);
+	      goto done;
 	    }
 	  qm->udp_fifo_size = tmp;
 	}
@@ -2894,10 +2912,14 @@ quic_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "fifo-prealloc %u", &i))
 	qm->udp_fifo_prealloc = i;
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
+	{
+	  e = clib_error_return (0, "unknown input '%U'",
+				 format_unformat_error, line_input);
+	  goto done;
+	}
     }
-
+done:
+  unformat_free (line_input);
   return 0;
 }
 
