@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "831cb8c5_0518754b",
+        "filename": "src/plugins/dpdk/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-09-28T08:35:04Z",
+      "side": 1,
+      "message": "rte_build_config.h is installed in the same include dir as rte_config.h, we can just use DPDK_INCLUDE_DIR and remove lines 25-29",
+      "revId": "2673fc4d56e0112d0e546da2c5206fd41cac2c94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "24bed797_0d79522f",
+        "filename": "src/plugins/dpdk/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-09-28T08:35:04Z",
+      "side": 1,
+      "message": "...And we would have foreach(l ${rte_config} ${rte_build_config} ${rte_version}}",
+      "revId": "2673fc4d56e0112d0e546da2c5206fd41cac2c94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

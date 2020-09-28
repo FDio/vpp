@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a52f5e63_e4d1fa82",
+        "filename": "src/plugins/dpdk/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-09-28T08:35:04Z",
+      "side": 0,
+      "message": "Maybe we can keep those and only add a line for rte_build_config...",
+      "revId": "af897c5e3fa76180fbe0634052bde98b4b3c34d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
