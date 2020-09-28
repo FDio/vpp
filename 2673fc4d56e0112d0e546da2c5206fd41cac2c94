@@ -33,6 +33,24 @@
       "revId": "2673fc4d56e0112d0e546da2c5206fd41cac2c94",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5a2a0a64_251e55cb",
+        "filename": "src/plugins/dpdk/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2020-09-28T10:22:12Z",
+      "side": 1,
+      "message": "I thought about that. Rte_build_config.h is a new thing happens only when you compile with meson and it has all the information we need to gather version info. I don\u0027t mind parsing all config/build_config.h files but do we have to?",
+      "parentUuid": "24bed797_0d79522f",
+      "revId": "2673fc4d56e0112d0e546da2c5206fd41cac2c94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
