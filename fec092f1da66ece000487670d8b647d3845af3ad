@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "09d765d5_c6dcfc34",
+        "filename": "src/vlib/trace.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-09-28T12:54:14Z",
+      "side": 1,
+      "message": "you mustn\u0027t include vnet headers from vlib. that inverts the dependency.\nit should be possible to link a binary against vlib without requiring vnet.",
+      "revId": "fec092f1da66ece000487670d8b647d3845af3ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
