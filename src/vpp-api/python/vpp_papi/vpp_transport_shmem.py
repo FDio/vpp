@@ -24,7 +24,8 @@ int vac_msg_table_max_index(void);
 void vac_rx_suspend (void);
 void vac_rx_resume (void);
 void vac_set_error_handler(vac_error_callback_t);
- """)
+void vac_mem_init (size_t size);
+""")
 
 vpp_object = None
 
@@ -66,6 +67,8 @@ class VppTransport(object):
         self.parent = parent
         global vpp_object
         vpp_object = parent
+
+        vpp_api.vac_mem_init(0);
 
         # Register error handler
         vpp_api.vac_set_error_handler(vac_error_handler)

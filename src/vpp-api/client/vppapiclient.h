@@ -16,6 +16,7 @@
 #define included_vppapiclient_h
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef void (*vac_callback_t)(unsigned char * data, int len);
 typedef void (*vac_error_callback_t)(void *, unsigned char *, int);
@@ -33,4 +34,6 @@ int vac_msg_table_max_index(void);
 void vac_rx_suspend (void);
 void vac_rx_resume (void);
 void vac_set_error_handler(vac_error_callback_t);
+void vac_mem_init (size_t size);
+
 #endif
