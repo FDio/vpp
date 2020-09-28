@@ -90,8 +90,16 @@ format_avf_device (u8 * s, va_list * args)
   avf_device_t *ad = avf_get_device (i);
   u32 indent = format_get_indent (s);
   u8 *a = 0;
+  avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, 0);
+  avf_txq_t *txq = vec_elt_at_index (ad->txqs, 0);
 
-  s = format (s, "flags: %U", format_avf_device_flags, ad);
+  s = format (s, "rx: queues %u, desc %u (min %u max %u)", ad->n_rx_queues,
+	      rxq->size, AVF_QUEUE_SZ_MIN, AVF_QUEUE_SZ_MAX);
+  s = format (s, "\n%Utx: queues %u, desc %u (min %u max %u)",
+	      format_white_space, indent, ad->n_tx_queues, txq->size,
+	      AVF_QUEUE_SZ_MIN, AVF_QUEUE_SZ_MAX);
+  s = format (s, "\n%Uflags: %U", format_white_space, indent,
+	      format_avf_device_flags, ad);
   s = format (s, "\n%Uoffload features: %U", format_white_space, indent,
 	      format_avf_vf_cap_flags, ad->feature_bitmap);
 
