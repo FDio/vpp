@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c9fd30c0_468d42ab",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-28T20:11:17Z",
+      "side": 1,
+      "message": "It should be part of vring.",
+      "revId": "2b9472042d3d541afe37f42a50b5a4b5b8ced30e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
