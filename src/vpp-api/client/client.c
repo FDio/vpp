@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -77,29 +78,6 @@ vac_callback_t vac_callback;
 u16 read_timeout = 0;
 bool rx_is_running = false;
 bool timeout_thread_cancelled = false;
-
-/* Set to true to enable memory tracing */
-bool mem_trace = false;
-
-__attribute__((constructor))
-static void
-vac_client_constructor (void)
-{
-  clib_mem_init (0, 1 << 30);
-  if (mem_trace)
-    clib_mem_trace (1);
-}
-
-__attribute__((destructor))
-static void
-vac_client_destructor (void)
-{
-  if (mem_trace)
-    fformat(stderr, "TRACE: %s",
-	    format (0, "%U\n",
-		    format_mheap, clib_mem_get_heap (), 1));
-}
-
 
 static void
 init (void)
@@ -308,12 +286,13 @@ vac_msg_table_size(void)
 
 int
 vac_connect (char * name, char * chroot_prefix, vac_callback_t cb,
-               int rx_qlen)
+             int rx_qlen)
 {
   rx_thread_done = false;
   int rv = 0;
   vac_main_t *pm = &vac_main;
 
+  assert (clib_mem_get_heap ());
   init();
   if (chroot_prefix != NULL)
     vl_set_memory_root_path (chroot_prefix);
@@ -575,5 +554,18 @@ vac_msg_table_max_index(void)
 void
 vac_set_error_handler (vac_error_callback_t cb)
 {
+  assert (clib_mem_get_heap ());
   if (cb) clib_error_register_handler (cb, 0);
+}
+
+/*
+ * Required if application doesn't use a VPP heap.
+ */
+void
+vac_mem_init (size_t size)
+{
+  if (size == 0)
+    clib_mem_init (0, 1 << 30);  // default
+  else
+    clib_mem_init (0, size);
 }
