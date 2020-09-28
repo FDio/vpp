@@ -22,6 +22,9 @@
 
 #include <vlib/log.h>
 
+#define AVF_QUEUE_SZ_MAX                4096
+#define AVF_QUEUE_SZ_MIN                64
+
 #define AVF_AQ_ENQ_SUSPEND_TIME		50e-6
 #define AVF_AQ_ENQ_MAX_WAIT_TIME	250e-3
 

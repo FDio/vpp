@@ -1418,6 +1418,43 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier)
   clib_mem_free (ad);
 }
 
+static u8
+avf_validate_queue_size (avf_create_if_args_t * args)
+{
+  clib_error_t *error = 0;
+
+  args->rxq_size = (args->rxq_size == 0) ? AVF_RXQ_SZ : args->rxq_size;
+  args->txq_size = (args->txq_size == 0) ? AVF_TXQ_SZ : args->txq_size;
+
+  if ((args->rxq_size > AVF_QUEUE_SZ_MAX)
+      || (args->txq_size > AVF_QUEUE_SZ_MAX))
+    {
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error =
+	clib_error_return (error, "queue size must not be greater than %u",
+			   AVF_QUEUE_SZ_MAX);
+      return 1;
+    }
+  if ((args->rxq_size < AVF_QUEUE_SZ_MIN)
+      || (args->txq_size < AVF_QUEUE_SZ_MIN))
+    {
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error =
+	clib_error_return (error, "queue size must not be smaller than %u",
+			   AVF_QUEUE_SZ_MIN);
+      return 1;
+    }
+  if ((args->rxq_size & (args->rxq_size - 1)) ||
+      (args->txq_size & (args->txq_size - 1)))
+    {
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error =
+	clib_error_return (error, "queue size must be a power of two");
+      return 1;
+    }
+  return 0;
+}
+
 void
 avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 {
@@ -1429,17 +1466,8 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   int i;
 
   /* check input args */
-  args->rxq_size = (args->rxq_size == 0) ? AVF_RXQ_SZ : args->rxq_size;
-  args->txq_size = (args->txq_size == 0) ? AVF_TXQ_SZ : args->txq_size;
-
-  if ((args->rxq_size & (args->rxq_size - 1))
-      || (args->txq_size & (args->txq_size - 1)))
-    {
-      args->rv = VNET_API_ERROR_INVALID_VALUE;
-      args->error =
-	clib_error_return (error, "queue size must be a power of two");
-      return;
-    }
+  if (avf_validate_queue_size (args) != 0)
+    return;
 
   pool_get (am->devices, adp);
   adp[0] = ad = clib_mem_alloc_aligned (sizeof (avf_device_t),
