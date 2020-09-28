@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "54a7b775_0f2e6025",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 750,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-28T08:04:13Z",
+      "side": 1,
+      "message": "you should use virtio_log_warning() here\nwe should avoid using clib_warning() unless absolutely necessary",
+      "revId": "b2a671a022d35bd068112761c707fe65ad86efa1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
