@@ -142,7 +142,9 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
 
   fs->ssvm.ssvm_size = segment_size;
   fs->ssvm.name = seg_name;
-  fs->ssvm.requested_va = baseva;
+  /* clib mem allocator wants a page before the requested va */
+  fs->ssvm.requested_va = baseva + page_size;
+  clib_warning ("baseva %x requested %x", baseva, fs->ssvm.requested_va);
 
   if ((rv = ssvm_master_init (&fs->ssvm, props->segment_type)))
     {
@@ -192,7 +194,11 @@ segment_manager_del_segment (segment_manager_t * sm, fifo_segment_t * fs)
 
   if (ssvm_type (&fs->ssvm) != SSVM_SEGMENT_PRIVATE)
     {
-      clib_valloc_free (&smm->va_allocator, fs->ssvm.requested_va);
+      clib_warning ("baseva %x requested %x", fs->ssvm.requested_va,
+		    fs->ssvm.requested_va - clib_mem_get_page_size ());
+
+      clib_valloc_free (&smm->va_allocator,
+			fs->ssvm.requested_va - clib_mem_get_page_size ());
 
       if (!segment_manager_app_detached (sm))
 	{
