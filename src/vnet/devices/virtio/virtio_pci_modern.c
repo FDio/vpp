@@ -208,7 +208,8 @@ virtio_pci_modern_set_queue_enable (virtio_if_t * vif, u16 queue_id,
 }
 
 static u16
-virtio_pci_modern_get_queue_notify_off (virtio_if_t * vif, u16 queue_id)
+virtio_pci_modern_get_queue_notify_off (vlib_main_t * vm, virtio_if_t * vif,
+					u16 queue_id)
 {
   u16 queue_notify_off = 0;
   virtio_pci_modern_set_queue_select (vif, queue_id);
@@ -387,14 +388,11 @@ virtio_pci_modern_get_isr (vlib_main_t * vm, virtio_if_t * vif)
 
 inline void
 virtio_pci_modern_notify_queue (vlib_main_t * vm, virtio_if_t * vif,
-				u16 queue_id)
+				u16 queue_id, u16 queue_notify_off)
 {
-  u16 queue_notify_off =
-    virtio_pci_modern_get_queue_notify_off (vif, queue_id);
   virtio_pci_reg_write_u16 (vif,
 			    VIRTIO_NOTIFICATION_OFFSET (vif) +
-			    vif->notify_off_multiplier * queue_notify_off,
-			    queue_id);
+			    queue_notify_off, queue_id);
 }
 
 static void
@@ -418,6 +416,7 @@ const virtio_pci_func_t virtio_pci_modern_func = {
   .set_queue_size = virtio_pci_modern_set_queue_size,
   .setup_queue = virtio_pci_modern_setup_queue,
   .del_queue = virtio_pci_modern_del_queue,
+  .get_queue_notify_off = virtio_pci_modern_get_queue_notify_off,
   .notify_queue = virtio_pci_modern_notify_queue,
   .set_config_irq = virtio_pci_modern_set_msix_config,
   .set_queue_irq = virtio_pci_modern_set_queue_msix_vector,
