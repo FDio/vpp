@@ -251,6 +251,13 @@ wg_if_create (u32 user_instance,
   *sw_if_indexp = (u32) ~ 0;
 
   /*
+   * Check if the required port is already in use
+   */
+  udp_dst_port_info_t *pi = udp_get_dst_port_info (&udp_main, port, UDP_IP4);
+  if (pi)
+    return VNET_API_ERROR_UDP_PORT_TAKEN;
+
+  /*
    * Allocate a wg_if instance. Either select on dynamically
    * or try to use the desired user_instance number.
    */

@@ -488,7 +488,7 @@ class TestWg(VppTestCase):
         wg_output_node_name = '/err/wg-output-tun/'
         wg_input_node_name = '/err/wg-input/'
 
-        port = 12323
+        port = 12333
 
         # Create interfaces
         wg0 = VppWgInterface(self,
@@ -602,7 +602,7 @@ class TestWg(VppTestCase):
 
     def test_wg_multi_peer(self):
         """ multiple peer setup """
-        port = 12323
+        port = 12343
 
         # Create interfaces
         wg0 = VppWgInterface(self,
@@ -670,7 +670,7 @@ class WireguardHandoffTests(TestWg):
         wg_output_node_name = '/err/wg-output-tun/'
         wg_input_node_name = '/err/wg-input/'
 
-        port = 12323
+        port = 12353
 
         # Create interfaces
         wg0 = VppWgInterface(self,
