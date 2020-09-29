@@ -415,8 +415,6 @@ class TestNAT64(VppTestCase):
         self.assert_packet_checksums_valid(p)
         return p
 
-    # TODO: ipfix needs to be separated from NAT base plugin
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def verify_ipfix_max_bibs(self, data, limit):
         """
         Verify IPFIX maximum BIB entries exceeded event
@@ -433,8 +431,6 @@ class TestNAT64(VppTestCase):
         # maxBIBEntries
         self.assertEqual(struct.pack("I", limit), record[472])
 
-    # TODO: ipfix needs to be separated from NAT base plugin
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def verify_ipfix_bib(self, data, is_create, src_addr):
         """
         Verify IPFIX NAT64 BIB create and delete events
@@ -463,8 +459,6 @@ class TestNAT64(VppTestCase):
         # postNAPTSourceTransportPort
         self.assertEqual(struct.pack("!H", self.tcp_port_out), record[227])
 
-    # TODO: ipfix needs to be separated from NAT base plugin
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def verify_ipfix_nat64_ses(self, data, is_create, src_addr, dst_addr,
                                dst_port):
         """
@@ -583,8 +577,6 @@ class TestNAT64(VppTestCase):
         packed_pref_n = b''.join([scapy.compat.chb(x) for x in pref_n])
         return socket.inet_ntop(socket.AF_INET6, packed_pref_n)
 
-    # TODO: ipfix needs to be separated from NAT base plugin
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def verify_ipfix_max_sessions(self, data, limit):
         """
         Verify IPFIX maximum session entries exceeded event
@@ -1655,7 +1647,6 @@ class TestNAT64(VppTestCase):
         addresses = self.vapi.nat64_pool_addr_dump()
         self.assertEqual(0, len(addresses))
 
-    # TODO: ipfix needs to be separated from NAT base plugin
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ipfix_max_bibs_sessions(self):
         """ IPFIX logging maximum session and BIB entries exceeded """
@@ -1751,8 +1742,6 @@ class TestNAT64(VppTestCase):
                 data = ipfix.decode_data_set(p.getlayer(Set))
                 self.verify_ipfix_max_bibs(data, max_bibs)
 
-    # TODO: ipfix needs to be separated from NAT base plugin
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ipfix_bib_ses(self):
         """ IPFIX logging NAT64 BIB/session create and delete events """
         self.tcp_port_in = random.randint(1025, 65535)

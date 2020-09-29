@@ -15,9 +15,11 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 add_vpp_library(nat
   SOURCES
+  lib/ipfix_logging.c
   lib/alloc.c
 
   INSTALL_HEADERS
+  lib/ipfix_logging.h
   lib/alloc.h
 )
 
@@ -29,7 +31,6 @@ add_vpp_plugin(nat
   in2out_ed.c
   out2in.c
   out2in_ed.c
-  nat_ipfix_logging.c
   nat_dpo.c
   nat44_cli.c
   nat44_handoff.c
@@ -59,6 +60,8 @@ add_vpp_plugin(nat
   INSTALL_HEADERS
   nat_all_api_h.h
   nat_msg_enum.h
+
+  LINK_LIBRARIES nat
 )
 
 add_vpp_plugin(dslite

@@ -39,6 +39,7 @@
 
 #include <nat/lib/lib.h>
 #include <nat/lib/inlines.h>
+#include <nat/lib/ipfix_logging.h>
 
 /* Session state */
 #define foreach_det44_session_state        \
@@ -419,10 +420,9 @@ snat_det_ses_create (u32 thread_index, snat_det_map_t * dm,
 	}
     }
 
-  // TODO:
-  /*snat_ipfix_logging_max_entries_per_user (thread_index,
-     DET44_SES_PER_USER,
-     in_addr->as_u32); */
+  nat_ipfix_logging_max_entries_per_user (thread_index,
+					  DET44_SES_PER_USER,
+					  in_addr->as_u32);
   return 0;
 }
 

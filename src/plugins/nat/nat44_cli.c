@@ -18,7 +18,7 @@
  */
 
 #include <nat/nat.h>
-#include <nat/nat_ipfix_logging.h>
+#include <nat/lib/ipfix_logging.h>
 #include <nat/lib/nat_inlines.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat44/inlines.h>
@@ -156,8 +156,8 @@ snat_ipfix_logging_enable_disable_command_fn (vlib_main_t * vm,
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     {
-      rv = snat_ipfix_logging_enable_disable (enable, domain_id,
-					      (u16) src_port);
+      rv = nat_ipfix_logging_enable_disable (enable, domain_id,
+					     (u16) src_port);
       if (rv)
 	return clib_error_return (0, "ipfix logging enable failed");
       return 0;
@@ -179,7 +179,7 @@ snat_ipfix_logging_enable_disable_command_fn (vlib_main_t * vm,
 	}
     }
 
-  rv = snat_ipfix_logging_enable_disable (enable, domain_id, (u16) src_port);
+  rv = nat_ipfix_logging_enable_disable (enable, domain_id, (u16) src_port);
 
   if (rv)
     {
