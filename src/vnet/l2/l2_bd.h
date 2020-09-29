@@ -139,7 +139,6 @@ bd_is_valid (l2_bridge_domain_t * bd_config)
 /* Init bridge domain if not done already */
 void bd_validate (l2_bridge_domain_t * bd_config);
 
-
 void
 bd_add_member (l2_bridge_domain_t * bd_config, l2_flood_member_t * member);
 
@@ -200,6 +199,9 @@ bd_find_or_add_bd_index (bd_main_t * bdm, u32 bd_id)
     return bd_add_bd_index (bdm, bd_id);
   return bd_index;
 }
+
+l2_bridge_domain_t *bd_get (u32 bd_index);
+l2_bridge_domain_t *bd_get_by_table_id (u32 table_id);
 
 u32 bd_add_del_ip_mac (u32 bd_index,
 		       ip46_type_t type,

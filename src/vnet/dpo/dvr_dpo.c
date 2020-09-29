@@ -110,7 +110,8 @@ dvr_dpo_add_or_lock (u32 sw_if_index,
 
         config = l2input_intf_config (sw_if_index);
 
-        if (config->bridge || config->xconnect)
+        if (l2_input_is_bridge(config) ||
+            l2_input_is_xconnect(config))
         {
             dd->dd_reinject = DVR_REINJECT_L2;
         }

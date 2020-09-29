@@ -342,14 +342,7 @@ show_sw_interfaces (vlib_main_t * vm,
   if (show_features)
     {
       vnet_interface_features_show (vm, sw_if_index, verbose);
-
-      l2_input_config_t *l2_input = l2input_intf_config (sw_if_index);
-      u32 fb = l2_input->feature_bitmap;
-      /* intf input features are masked by bridge domain */
-      if (l2_input->bridge)
-	fb &= l2input_bd_config (l2_input->bd_index)->feature_bitmap;
-      vlib_cli_output (vm, "\nl2-input:\n%U", format_l2_input_features, fb,
-		       1);
+      vlib_cli_output (vm, "%U", format_l2_input_features, sw_if_index);
 
       l2_output_config_t *l2_output = l2output_intf_config (sw_if_index);
       vlib_cli_output (vm, "\nl2-output:");
@@ -448,19 +441,7 @@ show_sw_interfaces (vlib_main_t * vm,
 	     (si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? "up" : "dn");
 
 	/* Display any L2 info */
-	l2_input_config_t *l2_input = l2input_intf_config (si->sw_if_index);
-	if (l2_input->bridge)
-	  {
-	    bd_main_t *bdm = &bd_main;
-	    u32 bd_id = l2input_main.bd_configs[l2_input->bd_index].bd_id;
-	    vlib_cli_output (vm, "  L2 bridge bd-id %d idx %d shg %d %s",
-			     bd_id, bd_find_index (bdm, bd_id), l2_input->shg,
-			     l2_input->bvi ? "bvi" : " ");
-	  }
-	else if (l2_input->xconnect)
-	  vlib_cli_output (vm, "  L2 xconnect %U",
-			   format_vnet_sw_if_index_name, vnm,
-			   l2_input->output_sw_if_index);
+	vlib_cli_output (vm, "%U", format_l2_input, si->sw_if_index);
 
 	/* *INDENT-OFF* */
 	/* Display any IP4 addressing info */
