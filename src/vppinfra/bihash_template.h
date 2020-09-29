@@ -341,6 +341,8 @@ int BV (clib_bihash_search) (BVT (clib_bihash) * h,
 			     BVT (clib_bihash_kv) * search_v,
 			     BVT (clib_bihash_kv) * return_v);
 
+int BV (clib_bihash_is_initialised) (const BVT (clib_bihash) * h);
+
 #define BIHASH_WALK_STOP 0
 #define BIHASH_WALK_CONTINUE 1
 

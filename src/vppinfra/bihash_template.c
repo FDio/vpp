@@ -307,6 +307,11 @@ void BV (clib_bihash_set_kvp_format_fn) (BVT (clib_bihash) * h,
   h->fmt_fn = fmt_fn;
 }
 
+int BV (clib_bihash_is_initialised) (const BVT (clib_bihash) * h)
+{
+  return (h->instantiated != 0);
+}
+
 void BV (clib_bihash_free) (BVT (clib_bihash) * h)
 {
   int i;
