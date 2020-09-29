@@ -25,32 +25,57 @@
 #include <vnet/ethernet/packet.h>
 #include <vnet/ip/ip.h>
 
-/* Per-subinterface L2 feature configuration */
+/* l2 connection type */
+typedef enum l2_input_flags_t_
+{
+  /* NONE imples L3 mode. */
+  L2_INPUT_FLAG_NONE = 0,
+  L2_INPUT_FLAG_XCONNECT = (1 << 0),
+  L2_INPUT_FLAG_BRIDGE = (1 << 1),
+  L2_INPUT_FLAG_BVI = (1 << 2),
+} __clib_packed l2_input_flags_t;
 
+/* Per-subinterface L2 feature configuration */
 typedef struct
 {
+  u8 __force_u64_alignement[0] __attribute__ ((aligned (8)));
 
   union
   {
-    u16 bd_index;		/* bridge domain id */
-    u32 output_sw_if_index;	/* for xconnect */
+    /* bridge domain id and values cached from the BD */
+    struct
+    {
+      u16 bd_index;
+      u8 bd_seq_num;
+      u8 bd_mac_age;
+    };
+    /* for xconnect */
+    u32 output_sw_if_index;
   };
 
   /* config for which input features are configured on this interface */
   u32 feature_bitmap;
 
+  /* config for which input features are configured on this interface's
+   * BD - this is cahced from the BD struct*/
+  u32 bd_feature_bitmap;
+
   /* split horizon group */
   u8 shg;
 
-  /* Interface mode. If both are 0, this interface is in L3 mode */
-  u8 xconnect;
-  u8 bridge;
+  /* Interface sequence number */
+  u8 seq_num;
 
-  /* this is the bvi interface for the bridge-domain */
-  u8 bvi;
+  /* Flags describing this interface */
+  l2_input_flags_t flags;
 
+  /* A wee bit of spare space */
+  u8 __pad;
 } l2_input_config_t;
 
+/* Ensure a struct is an even multiple of 8 bytes,
+ * so they do not stradle cache lines */
+STATIC_ASSERT_SIZEOF (l2_input_config_t, 2 * sizeof (u64));
 
 typedef struct
 {
@@ -157,7 +182,9 @@ STATIC_ASSERT ((u64) L2INPUT_VALID_MASK == (1ull << L2INPUT_N_FEAT) - 1, "");
 char **l2input_get_feat_names (void);
 
 /* arg0 - u32 feature_bitmap, arg1 - u32 verbose */
+u8 *format_l2_input_feature_bitmap (u8 * s, va_list * args);
 u8 *format_l2_input_features (u8 * s, va_list * args);
+u8 *format_l2_input (u8 * s, va_list * args);
 
 static_always_inline u8
 bd_feature_flood (l2_bridge_domain_t * bd_config)
@@ -200,6 +227,35 @@ bd_feature_arp_ufwd (l2_bridge_domain_t * bd_config)
 	  L2INPUT_FEAT_ARP_UFWD);
 }
 
+static inline bool
+l2_input_is_bridge (const l2_input_config_t * input)
+{
+  return (input->flags & L2_INPUT_FLAG_BRIDGE);
+}
+
+static inline bool
+l2_input_is_xconnect (const l2_input_config_t * input)
+{
+  return (input->flags & L2_INPUT_FLAG_XCONNECT);
+}
+
+static inline bool
+l2_input_is_bvi (const l2_input_config_t * input)
+{
+  return (input->flags & L2_INPUT_FLAG_BVI);
+}
+
+static_always_inline u8
+l2_input_seq_num (u32 sw_if_index)
+{
+  l2_input_config_t *input;
+
+  input = vec_elt_at_index (l2input_main.configs, sw_if_index);
+
+  return input->seq_num;
+}
+
+
 /** Masks for eliminating features that do not apply to a packet */
 
 /** Get a pointer to the config for the given interface */
@@ -216,6 +272,9 @@ u32 l2input_set_bridge_features (u32 bd_index, u32 feat_mask, u32 feat_value);
 void l2input_interface_mac_change (u32 sw_if_index,
 				   const u8 * old_address,
 				   const u8 * new_address);
+
+void l2_input_seq_num_inc (u32 sw_if_index);
+walk_rc_t l2input_recache (u32 bd_index, u32 sw_if_index);
 
 #define MODE_L3        0
 #define MODE_L2_BRIDGE 1

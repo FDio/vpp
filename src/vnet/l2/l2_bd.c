@@ -243,6 +243,45 @@ l2bd_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (l2bd_init);
 
+l2_bridge_domain_t *
+bd_get (u32 bd_index)
+{
+  if (bd_index < vec_len (l2input_main.bd_configs))
+    return (vec_elt_at_index (l2input_main.bd_configs, bd_index));
+  return (NULL);
+}
+
+typedef walk_rc_t (*bd_input_walk_fn_t) (u32 bd_index, u32 sw_if_index);
+
+static u32
+bd_input_walk (u32 bd_index, bd_input_walk_fn_t fn, void *data)
+{
+  l2_flood_member_t *member;
+  l2_bridge_domain_t *bd;
+  u32 sw_if_index;
+
+  sw_if_index = ~0;
+  bd = bd_get (bd_index);
+
+  ASSERT (bd);
+
+  vec_foreach (member, bd->members)
+  {
+    if (WALK_STOP == fn (bd_index, member->sw_if_index))
+      {
+	sw_if_index = member->sw_if_index;
+	break;
+      }
+  }
+
+  return (sw_if_index);
+}
+
+static void
+b2_input_recache (u32 bd_index)
+{
+  bd_input_walk (bd_index, l2input_recache, NULL);
+}
 
 /**
     Set the learn/forward/flood flags for the bridge domain.
@@ -290,6 +329,8 @@ bd_set_flags (vlib_main_t * vm, u32 bd_index, bd_flags_t flags, u32 enable)
       bd_config->feature_bitmap &= ~feature_bitmap;
     }
 
+  b2_input_recache (bd_index);
+
   return bd_config->feature_bitmap;
 }
 
@@ -305,6 +346,7 @@ bd_set_mac_age (vlib_main_t * vm, u32 bd_index, u8 age)
   vec_validate (l2input_main.bd_configs, bd_index);
   bd_config = vec_elt_at_index (l2input_main.bd_configs, bd_index);
   bd_config->mac_age = age;
+  b2_input_recache (bd_index);
 
   /* check if there is at least one bd with mac aging enabled */
   vec_foreach (bd_config, l2input_main.bd_configs)
@@ -1093,8 +1135,8 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	  else
 	    as = format (as, "off");
 	  vlib_cli_output (vm,
-			   "%=8d %=7d %=4d %=9v %=9s %=9s %=11U %=9s %=9s %=9s %=11U",
-			   bd_config->bd_id, bd_index, bd_config->seq_num, as,
+			   "%=8d %=7d %=9v %=9s %=9s %=11U %=9s %=9s %=9s %=11U",
+			   bd_config->bd_id, bd_index, as,
 			   bd_config->feature_bitmap & L2INPUT_FEAT_LEARN ?
 			   "on" : "off",
 			   bd_config->feature_bitmap & L2INPUT_FEAT_FWD ?
@@ -1108,6 +1150,8 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 			   "on" : "off",
 			   format_vnet_sw_if_index_name_with_NA,
 			   vnm, bd_config->bvi_sw_if_index);
+	  vlib_cli_output (vm, "%U", format_l2_input_feature_bitmap,
+			   bd_config->feature_bitmap);
 	  vec_reset_length (as);
 
 	  if (detail || intf)
@@ -1118,7 +1162,7 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	      {
 		l2_flood_member_t *member =
 		  vec_elt_at_index (bd_config->members, i);
-		u8 swif_seq_num = *l2fib_swif_seq_num (member->sw_if_index);
+		u8 swif_seq_num = l2_input_seq_num (member->sw_if_index);
 		u32 vtr_opr, dot1q, tag1, tag2;
 		if (i == 0)
 		  {

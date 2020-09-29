@@ -496,10 +496,10 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
 
   /* Ordinarily, this is the only config lookup. */
   config = l2input_intf_config (vnet_buffer (b[0])->sw_if_index[VLIB_TX]);
-  next_index =
-    config->bridge ? VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
-    VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT;
-  new_tx_sw_if_index = config->bvi ? L2INPUT_BVI : ~0;
+  next_index = (l2_input_is_bridge (config) ?
+		VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
+		VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
+  new_tx_sw_if_index = l2_input_is_bvi (config) ? L2INPUT_BVI : ~0;
   new_rx_sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 
   while (n_left_from >= 4)
@@ -579,10 +579,10 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
 	{
 	  config = l2input_intf_config
 	    (vnet_buffer (b[0])->sw_if_index[VLIB_TX]);
-	  next_index =
-	    config->bridge ? VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
-	    VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT;
-	  new_tx_sw_if_index = config->bvi ? L2INPUT_BVI : ~0;
+	  next_index = (l2_input_is_bridge (config) ?
+			VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
+			VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
+	  new_tx_sw_if_index = l2_input_is_bvi (config) ? L2INPUT_BVI : ~0;
 	  new_rx_sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 	}
       next[0] = next_index;
@@ -602,11 +602,11 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
 	{
 	  config = l2input_intf_config
 	    (vnet_buffer (b[1])->sw_if_index[VLIB_TX]);
-	  next_index =
-	    config->bridge ? VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
-	    VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT;
+	  next_index = (l2_input_is_bridge (config) ?
+			VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
+			VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
 	  new_rx_sw_if_index = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
-	  new_tx_sw_if_index = config->bvi ? L2INPUT_BVI : ~0;
+	  new_tx_sw_if_index = l2_input_is_bvi (config) ? L2INPUT_BVI : ~0;
 	}
       next[1] = next_index;
       vnet_buffer (b[1])->sw_if_index[VLIB_RX] = new_rx_sw_if_index;
@@ -625,11 +625,11 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
 	{
 	  config = l2input_intf_config
 	    (vnet_buffer (b[2])->sw_if_index[VLIB_TX]);
-	  next_index =
-	    config->bridge ? VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
-	    VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT;
+	  next_index = (l2_input_is_bridge (config) ?
+			VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
+			VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
 	  new_rx_sw_if_index = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
-	  new_tx_sw_if_index = config->bvi ? L2INPUT_BVI : ~0;
+	  new_tx_sw_if_index = l2_input_is_bvi (config) ? L2INPUT_BVI : ~0;
 	}
       next[2] = next_index;
       vnet_buffer (b[2])->sw_if_index[VLIB_RX] = new_rx_sw_if_index;
@@ -648,11 +648,11 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
 	{
 	  config = l2input_intf_config
 	    (vnet_buffer (b[3])->sw_if_index[VLIB_TX]);
-	  next_index =
-	    config->bridge ? VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
-	    VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT;
+	  next_index = (l2_input_is_bridge (config) ?
+			VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
+			VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
 	  new_rx_sw_if_index = vnet_buffer (b[3])->sw_if_index[VLIB_TX];
-	  new_tx_sw_if_index = config->bvi ? L2INPUT_BVI : ~0;
+	  new_tx_sw_if_index = l2_input_is_bvi (config) ? L2INPUT_BVI : ~0;
 	}
       next[3] = next_index;
       vnet_buffer (b[3])->sw_if_index[VLIB_RX] = new_rx_sw_if_index;
@@ -676,10 +676,10 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
 	{
 	  config = l2input_intf_config
 	    (vnet_buffer (b[0])->sw_if_index[VLIB_TX]);
-	  next_index =
-	    config->bridge ? VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
-	    VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT;
-	  new_tx_sw_if_index = config->bvi ? L2INPUT_BVI : ~0;
+	  next_index = (l2_input_is_bridge (config) ?
+			VNET_SIMULATED_ETHERNET_TX_NEXT_L2_INPUT :
+			VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
+	  new_tx_sw_if_index = l2_input_is_bvi (config) ? L2INPUT_BVI : ~0;
 	  new_rx_sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 	}
       next[0] = next_index;
