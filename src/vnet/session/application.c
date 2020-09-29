@@ -876,11 +876,8 @@ vnet_application_attach (vnet_app_attach_args_t * a)
   if (application_is_proxy (app))
     {
       application_setup_proxy (app);
-      /*
-       * I suspect the segment manager pool gets reallocated (because a new listener
-       * is added, and each listener has a segment manager) so sm becomes a dangling
-       * reference. That's why we need to re-grab sm.
-       */
+      /* The segment manager pool is reallocated because a new listener
+       * is added. Re-grab segment manager to avoid dangling reference */
       sm = segment_manager_get (app_wrk->first_segment_manager);
     }
 

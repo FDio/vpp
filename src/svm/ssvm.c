@@ -29,7 +29,6 @@ int
 ssvm_master_init_shm (ssvm_private_t * ssvm)
 {
   int ssvm_fd;
-  clib_mem_vm_map_t mapa = { 0 };
   u8 junk = 0, *ssvm_filename;
   ssvm_shared_header_t *sh;
   uword page_size, requested_va = 0;
@@ -84,19 +83,18 @@ ssvm_master_init_shm (ssvm_private_t * ssvm)
       clib_mem_vm_randomize_va (&requested_va, min_log2 (page_size));
     }
 
-  mapa.requested_va = requested_va;
-  mapa.size = ssvm->ssvm_size;
-  mapa.fd = ssvm_fd;
-  mapa.numa_node = ssvm->numa;
-  if (clib_mem_vm_ext_map (&mapa))
+  sh = clib_mem_vm_map_shared (uword_to_pointer (requested_va, void *),
+			       ssvm->ssvm_size, ssvm_fd, 0,
+			       (char *) ssvm->name);
+  if (sh == CLIB_MEM_VM_MAP_FAILED)
     {
       clib_unix_warning ("mmap");
       close (ssvm_fd);
       return SSVM_API_ERROR_MMAP;
     }
+
   close (ssvm_fd);
 
-  sh = mapa.addr;
   CLIB_MEM_UNPOISON (sh, sizeof (*sh));
   sh->master_pid = ssvm->my_pid;
   sh->ssvm_size = ssvm->ssvm_size;
@@ -206,7 +204,10 @@ ssvm_delete_shm (ssvm_private_t * ssvm)
   vec_free (fn);
   vec_free (ssvm->name);
 
-  munmap ((void *) ssvm->sh, ssvm->ssvm_size);
+  if (ssvm->i_am_master)
+    clib_mem_vm_unmap (ssvm->sh);
+  else
+    munmap ((void *) ssvm->sh, ssvm->ssvm_size);
 }
 
 /**
@@ -215,44 +216,60 @@ ssvm_delete_shm (ssvm_private_t * ssvm)
 int
 ssvm_master_init_memfd (ssvm_private_t * memfd)
 {
+  int log2_page_size, n_pages;
   uword page_size;
   ssvm_shared_header_t *sh;
   void *oldheap;
-  clib_mem_vm_alloc_t alloc = { 0 };
-  clib_error_t *err;
 
   if (memfd->ssvm_size == 0)
     return SSVM_API_ERROR_NO_SIZE;
 
   ASSERT (vec_c_string_is_terminated (memfd->name));
 
-  alloc.name = (char *) memfd->name;
-  alloc.size = memfd->ssvm_size;
-  alloc.flags = CLIB_MEM_VM_F_SHARED;
-  alloc.requested_va = memfd->requested_va;
-  if (memfd->numa)
+  memfd->fd = clib_mem_vm_create_fd (CLIB_MEM_PAGE_SZ_DEFAULT,
+				     (char *) memfd->name);
+
+  if (memfd->fd == CLIB_MEM_ERROR)
     {
-      alloc.numa_node = memfd->numa;
-      alloc.flags |= CLIB_MEM_VM_F_NUMA_PREFER;
-    }
-  if ((err = clib_mem_vm_ext_alloc (&alloc)))
-    {
-      clib_error_report (err);
+      clib_unix_warning (0, "failed to create memfd");
       return SSVM_API_ERROR_CREATE_FAILURE;
     }
 
-  memfd->fd = alloc.fd;
-  memfd->sh = (ssvm_shared_header_t *) alloc.addr;
+  log2_page_size = clib_mem_get_fd_log2_page_size (memfd->fd);
+  if (log2_page_size == 0)
+    {
+      clib_unix_warning (0, "cannot determine page size");
+      return SSVM_API_ERROR_CREATE_FAILURE;
+    }
+
+  n_pages = ((memfd->ssvm_size - 1) >> log2_page_size) + 1;
+
+  if ((ftruncate (memfd->fd, n_pages << log2_page_size)) == -1)
+    {
+      clib_unix_warning (0, "memfd ftruncate failure");
+      return SSVM_API_ERROR_CREATE_FAILURE;
+    }
+
+  sh = clib_mem_vm_map_shared (uword_to_pointer (memfd->requested_va, void *),
+			       memfd->ssvm_size, memfd->fd, 0,
+			       (char *) memfd->name);
+  if (sh == CLIB_MEM_VM_MAP_FAILED)
+    {
+      clib_unix_warning ("memfd map (fd %d)", memfd->fd);
+      close (memfd->fd);
+      return SSVM_API_ERROR_CREATE_FAILURE;
+    }
+
+  memfd->sh = sh;
   memfd->my_pid = getpid ();
   memfd->i_am_master = 1;
 
-  page_size = 1ull << alloc.log2_page_size;
-  sh = memfd->sh;
   sh->master_pid = memfd->my_pid;
   sh->ssvm_size = memfd->ssvm_size;
   sh->ssvm_va = pointer_to_uword (sh);
   sh->type = SSVM_SEGMENT_MEMFD;
 
+  page_size = 1 << log2_page_size;
   sh->heap = clib_mem_create_heap (((u8 *) sh) + page_size,
 				   memfd->ssvm_size - page_size,
 				   1 /* locked */ , "ssvm master memfd");
@@ -327,7 +344,10 @@ void
 ssvm_delete_memfd (ssvm_private_t * memfd)
 {
   vec_free (memfd->name);
-  clib_mem_vm_free (memfd->sh, memfd->ssvm_size);
+  if (memfd->i_am_master)
+    clib_mem_vm_unmap (memfd->sh);
+  else
+    clib_mem_vm_free (memfd->sh, memfd->ssvm_size);
   close (memfd->fd);
 }
 
@@ -337,34 +357,35 @@ ssvm_delete_memfd (ssvm_private_t * memfd)
 int
 ssvm_master_init_private (ssvm_private_t * ssvm)
 {
-  uword pagesize = clib_mem_get_page_size (), rnd_size = 0;
-  clib_mem_vm_alloc_t alloc = { 0 };
+  uword page_size, log2_page_size, rnd_size = 0;
   ssvm_shared_header_t *sh;
-  clib_error_t *err;
+  void *oldheap;
   u8 *heap;
 
-  rnd_size = clib_max (ssvm->ssvm_size + (pagesize - 1), ssvm->ssvm_size);
-  rnd_size &= ~(pagesize - 1);
-
-  alloc.name = (char *) ssvm->name;
-  alloc.size = rnd_size + pagesize;
-  if (ssvm->numa)
+  log2_page_size = clib_mem_get_log2_page_size ();
+  if (log2_page_size == 0)
     {
-      alloc.numa_node = ssvm->numa;
-      alloc.flags |= CLIB_MEM_VM_F_NUMA_PREFER;
-    }
-
-  if ((err = clib_mem_vm_ext_alloc (&alloc)))
-    {
-      clib_error_report (err);
+      clib_unix_warning (0, "cannot determine page size");
       return SSVM_API_ERROR_CREATE_FAILURE;
     }
 
-  heap = clib_mem_create_heap ((u8 *) alloc.addr + pagesize, rnd_size,
+  page_size = 1 << log2_page_size;
+  rnd_size = clib_max (ssvm->ssvm_size + (page_size - 1), ssvm->ssvm_size);
+  rnd_size &= ~(page_size - 1);
+
+  sh = clib_mem_vm_map (0, rnd_size + page_size, log2_page_size,
+			(char *) ssvm->name);
+  if (sh == CLIB_MEM_VM_MAP_FAILED)
+    {
+      clib_unix_warning ("private map failed");
+      return SSVM_API_ERROR_CREATE_FAILURE;
+    }
+
+  heap = clib_mem_create_heap ((u8 *) sh + page_size, rnd_size,
 			       1 /* locked */ , "ssvm master private");
   if (heap == 0)
     {
-      clib_unix_warning ("mheap alloc");
+      clib_unix_warning ("heap alloc");
       return -1;
     }
 
@@ -376,7 +397,6 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
   ssvm->requested_va = ~0;
 
   /* First page in allocated memory is set aside for the shared header */
-  sh = alloc.addr;
   ssvm->sh = sh;
 
   clib_memset (sh, 0, sizeof (*sh));
@@ -384,7 +404,10 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
   sh->ssvm_size = rnd_size;
   sh->ssvm_va = pointer_to_uword (heap);
   sh->type = SSVM_SEGMENT_PRIVATE;
-  sh->name = ssvm->name;
+
+  oldheap = ssvm_push_heap (sh);
+  sh->name = format (0, "%s", ssvm->name, 0);
+  ssvm_pop_heap (oldheap);
 
   return 0;
 }
@@ -401,7 +424,7 @@ ssvm_delete_private (ssvm_private_t * ssvm)
 {
   vec_free (ssvm->name);
   clib_mem_destroy_heap (ssvm->sh->heap);
-  clib_mem_vm_free (ssvm->sh, ssvm->ssvm_size + clib_mem_get_page_size ());
+  clib_mem_vm_unmap (ssvm->sh);
 }
 
 int
