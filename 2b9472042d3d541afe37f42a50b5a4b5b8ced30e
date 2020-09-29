@@ -16,6 +16,24 @@
       "revId": "2b9472042d3d541afe37f42a50b5a4b5b8ced30e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b934a818_13fb46e7",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-29T13:34:09Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c9fd30c0_468d42ab",
+      "revId": "2b9472042d3d541afe37f42a50b5a4b5b8ced30e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
