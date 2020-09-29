@@ -21,7 +21,7 @@
 #include <vnet/plugin/plugin.h>
 #include <nat/nat.h>
 #include <nat/nat_dpo.h>
-#include <nat/nat_ipfix_logging.h>
+#include <nat/lib/ipfix_logging.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat44/inlines.h>
 #include <nat/nat_affinity.h>
@@ -288,13 +288,13 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
   if (!is_ha)
     {
       /* log NAT event */
-      snat_ipfix_logging_nat44_ses_delete (thread_index,
-					   s->in2out.addr.as_u32,
-					   s->out2in.addr.as_u32,
-					   s->nat_proto,
-					   s->in2out.port,
-					   s->out2in.port,
-					   s->in2out.fib_index);
+      nat_ipfix_logging_nat44_ses_delete (thread_index,
+					  s->in2out.addr.as_u32,
+					  s->out2in.addr.as_u32,
+					  s->nat_proto,
+					  s->in2out.port,
+					  s->out2in.port,
+					  s->in2out.fib_index);
 
       nat_ha_sdel (&s->out2in.addr, s->out2in.port, &s->ext_host_addr,
 		   s->ext_host_port, s->nat_proto, s->out2in.fib_index,
@@ -411,13 +411,13 @@ nat44_free_session_data (snat_main_t * sm, snat_session_t * s,
 
   if (!is_ha)
     {
-      snat_ipfix_logging_nat44_ses_delete (thread_index,
-					   s->in2out.addr.as_u32,
-					   s->out2in.addr.as_u32,
-					   s->nat_proto,
-					   s->in2out.port,
-					   s->out2in.port,
-					   s->in2out.fib_index);
+      nat_ipfix_logging_nat44_ses_delete (thread_index,
+					  s->in2out.addr.as_u32,
+					  s->out2in.addr.as_u32,
+					  s->nat_proto,
+					  s->in2out.port,
+					  s->out2in.port,
+					  s->in2out.fib_index);
       nat_ha_sdel (&s->out2in.addr, s->out2in.port, &s->ext_host_addr,
 		   s->ext_host_port, s->nat_proto, s->out2in.fib_index,
 		   thread_index);
@@ -2710,7 +2710,7 @@ snat_init (vlib_main_t * vm)
   sm->counters.hairpinning.stat_segment_name = "/nat44/hairpinning";
 
   /* Init IPFIX logging */
-  snat_ipfix_logging_init (vm);
+  nat_ipfix_logging_init (vm);
 
   ip4_table_bind_callback_t cbt4 = {
     .function = snat_ip4_table_bind,
@@ -3067,7 +3067,7 @@ nat_alloc_addr_and_port_default (snat_address_t * addresses,
     }
 
   /* Totally out of translations to use... */
-  snat_ipfix_logging_addresses_exhausted (thread_index, 0);
+  nat_ipfix_logging_addresses_exhausted (thread_index, 0);
   return 1;
 }
 
@@ -3116,7 +3116,7 @@ nat_alloc_addr_and_port_mape (snat_address_t * addresses, u32 fib_index,
 
 exhausted:
   /* Totally out of translations to use... */
-  snat_ipfix_logging_addresses_exhausted (thread_index, 0);
+  nat_ipfix_logging_addresses_exhausted (thread_index, 0);
   return 1;
 }
 
@@ -3163,7 +3163,7 @@ nat_alloc_addr_and_port_range (snat_address_t * addresses, u32 fib_index,
 
 exhausted:
   /* Totally out of translations to use... */
-  snat_ipfix_logging_addresses_exhausted (thread_index, 0);
+  nat_ipfix_logging_addresses_exhausted (thread_index, 0);
   return 1;
 }
 
