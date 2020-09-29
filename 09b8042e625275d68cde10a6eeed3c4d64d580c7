@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3fe78543_77057e71",
+        "filename": "src/vppinfra/linux/mem.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 364,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-29T07:32:58Z",
+      "side": 1,
+      "message": "can you add a comment explaining mkdtemp() modifies its argument, so we cannot use a const string here ?\nJust so others are aware of the pitfall",
+      "revId": "09b8042e625275d68cde10a6eeed3c4d64d580c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
