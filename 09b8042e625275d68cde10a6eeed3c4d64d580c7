@@ -16,6 +16,24 @@
       "revId": "09b8042e625275d68cde10a6eeed3c4d64d580c7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f6c5d7a2_bb42796a",
+        "filename": "src/vppinfra/linux/mem.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 364,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-09-29T08:36:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3fe78543_77057e71",
+      "revId": "09b8042e625275d68cde10a6eeed3c4d64d580c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
