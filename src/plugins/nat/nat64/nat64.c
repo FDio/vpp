@@ -21,6 +21,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 
+#include <nat/lib/ipfix_logging.h>
 #include <nat/nat64/nat64.h>
 
 nat64_main_t nat64_main;
@@ -293,9 +294,8 @@ nat64_init (vlib_main_t * vm)
       nm->port_per_thread = (0xffff - 1024) / _vec_len (nm->workers);
     }
 
-  // TODO: ipfix needs to be separated from NAT base plugin
   /* Init IPFIX logging */
-  //snat_ipfix_logging_init (vm);
+  nat_ipfix_logging_init (vm);
 
 #define _(x)                                                     \
   nm->counters.in2out.x.name = #x;                               \
@@ -749,7 +749,7 @@ nat64_alloc_addr_and_port_default (nat64_address_t * addresses,
     }
 
   /* Totally out of translations to use... */
-  //snat_ipfix_logging_addresses_exhausted (thread_index, 0);
+  nat_ipfix_logging_addresses_exhausted (thread_index, 0);
   return 1;
 }
 

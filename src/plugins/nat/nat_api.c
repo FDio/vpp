@@ -30,7 +30,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/ip/ip_types_api.h>
 #include <nat/nat44/ed_inlines.h>
-#include <nat/nat_ipfix_logging.h>
+#include <nat/lib/ipfix_logging.h>
 
 #define vl_api_nat44_add_del_lb_static_mapping_t_endian vl_noop_handler
 #define vl_api_nat44_nat44_lb_static_mapping_details_t_endian vl_noop_handler
@@ -341,11 +341,10 @@ vl_api_nat_ipfix_enable_disable_t_handler (vl_api_nat_ipfix_enable_disable_t *
   vl_api_nat_ipfix_enable_disable_reply_t *rmp;
   int rv = 0;
 
-  rv = snat_ipfix_logging_enable_disable (mp->enable,
-					  clib_host_to_net_u32
-					  (mp->domain_id),
-					  clib_host_to_net_u16
-					  (mp->src_port));
+  rv = nat_ipfix_logging_enable_disable (mp->enable,
+					 clib_host_to_net_u32
+					 (mp->domain_id),
+					 clib_host_to_net_u16 (mp->src_port));
 
   REPLY_MACRO (VL_API_NAT_IPFIX_ENABLE_DISABLE_REPLY);
 }
