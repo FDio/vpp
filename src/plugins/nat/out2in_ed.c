@@ -26,7 +26,7 @@
 #include <vnet/udp/udp.h>
 #include <vppinfra/error.h>
 #include <nat/nat.h>
-#include <nat/nat_ipfix_logging.h>
+#include <nat/lib/ipfix_logging.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat44/inlines.h>
 #include <nat/nat_syslog.h>
@@ -138,13 +138,13 @@ nat44_o2i_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
       if (snat_is_unk_proto_session (s))
 	goto delete;
 
-      snat_ipfix_logging_nat44_ses_delete (ctx->thread_index,
-					   s->in2out.addr.as_u32,
-					   s->out2in.addr.as_u32,
-					   s->nat_proto,
-					   s->in2out.port,
-					   s->out2in.port,
-					   s->in2out.fib_index);
+      nat_ipfix_logging_nat44_ses_delete (ctx->thread_index,
+					  s->in2out.addr.as_u32,
+					  s->out2in.addr.as_u32,
+					  s->nat_proto,
+					  s->in2out.port,
+					  s->out2in.port,
+					  s->in2out.fib_index);
 
       nat_syslog_nat44_sdel (s->user_index, s->in2out.fib_index,
 			     &s->in2out.addr, s->in2out.port,
@@ -231,7 +231,7 @@ nat_alloc_addr_and_port_exact (snat_address_t * a,
     }
 
   /* Totally out of translations to use... */
-  snat_ipfix_logging_addresses_exhausted (thread_index, 0);
+  nat_ipfix_logging_addresses_exhausted (thread_index, 0);
   return 1;
 }
 
@@ -372,12 +372,12 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
 					       &ctx))
     nat_elog_notice ("in2out-ed key add failed");
 
-  snat_ipfix_logging_nat44_ses_create (thread_index,
-				       s->in2out.addr.as_u32,
-				       s->out2in.addr.as_u32,
-				       s->nat_proto,
-				       s->in2out.port,
-				       s->out2in.port, s->in2out.fib_index);
+  nat_ipfix_logging_nat44_ses_create (thread_index,
+				      s->in2out.addr.as_u32,
+				      s->out2in.addr.as_u32,
+				      s->nat_proto,
+				      s->in2out.port,
+				      s->out2in.port, s->in2out.fib_index);
 
   nat_syslog_nat44_sadd (s->user_index, s->in2out.fib_index,
 			 &s->in2out.addr, s->in2out.port,

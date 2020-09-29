@@ -14,7 +14,7 @@
  */
 
 #include <vnet/fib/fib_table.h>
-//#include <nat/nat_ipfix_logging.h>
+#include <nat/lib/ipfix_logging.h>
 #include <nat/nat_syslog.h>
 #include <nat/lib/inlines.h>
 #include <nat/nat64/nat64_db.h>
@@ -83,7 +83,7 @@ nat64_db_bib_entry_create (u32 thread_index, nat64_db_t * db,
   if (db->bib.bib_entries_num >= db->bib.limit)
     {
       db->free_addr_port_cb (db, out_addr, out_port, proto);
-      //nat_ipfix_logging_max_bibs (thread_index, db->bib.limit);
+      nat_ipfix_logging_max_bibs (thread_index, db->bib.limit);
       return 0;
     }
 
@@ -139,8 +139,8 @@ nat64_db_bib_entry_create (u32 thread_index, nat64_db_t * db,
   clib_bihash_add_del_24_8 (&db->bib.out2in, &kv, 1);
 
   fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
-  /*nat_ipfix_logging_nat64_bib (thread_index, in_addr, out_addr, proto,
-     in_port, out_port, fib->ft_table_id, 1); */
+  nat_ipfix_logging_nat64_bib (thread_index, in_addr, out_addr, proto,
+     in_port, out_port, fib->ft_table_id, 1);
   return bibe;
 }
 
@@ -215,9 +215,9 @@ nat64_db_bib_entry_free (u32 thread_index, nat64_db_t * db,
     db->free_addr_port_cb (db, &bibe->out_addr, bibe->out_port, bibe->proto);
 
   fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
-  /*nat_ipfix_logging_nat64_bib (thread_index, &bibe->in_addr, &bibe->out_addr,
+  nat_ipfix_logging_nat64_bib (thread_index, &bibe->in_addr, &bibe->out_addr,
      bibe->proto, bibe->in_port, bibe->out_port,
-     fib->ft_table_id, 0); */
+     fib->ft_table_id, 0);
 
   /* delete from pool */
   pool_put (bib, bibe);
@@ -404,7 +404,7 @@ nat64_db_st_entry_create (u32 thread_index, nat64_db_t * db,
 
   if (db->st.st_entries_num >= db->st.limit)
     {
-      //nat_ipfix_logging_max_sessions (thread_index, db->st.limit);
+      nat_ipfix_logging_max_sessions (thread_index, db->st.limit);
       return 0;
     }
 
@@ -474,12 +474,12 @@ nat64_db_st_entry_create (u32 thread_index, nat64_db_t * db,
   clib_bihash_add_del_48_8 (&db->st.out2in, &kv, 1);
 
   fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
-  /*nat_ipfix_logging_nat64_session (thread_index, &bibe->in_addr,
+  nat_ipfix_logging_nat64_session (thread_index, &bibe->in_addr,
      &bibe->out_addr, bibe->proto,
      bibe->in_port, bibe->out_port,
      &ste->in_r_addr, &ste->out_r_addr,
      ste->r_port, ste->r_port, fib->ft_table_id,
-     1); */
+     1);
   nat_syslog_nat64_sadd (bibe->fib_index, &bibe->in_addr, bibe->in_port,
 			 &bibe->out_addr, bibe->out_port, &ste->out_r_addr,
 			 ste->r_port, bibe->proto);
@@ -550,12 +550,12 @@ nat64_db_st_entry_free (u32 thread_index,
   clib_bihash_add_del_48_8 (&db->st.out2in, &kv, 0);
 
   fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
-  /*nat_ipfix_logging_nat64_session (thread_index, &bibe->in_addr,
+  nat_ipfix_logging_nat64_session (thread_index, &bibe->in_addr,
      &bibe->out_addr, bibe->proto,
      bibe->in_port, bibe->out_port,
      &ste->in_r_addr, &ste->out_r_addr,
      ste->r_port, ste->r_port, fib->ft_table_id,
-     0); */
+     0);
   nat_syslog_nat64_sdel (bibe->fib_index, &bibe->in_addr, bibe->in_port,
 			 &bibe->out_addr, bibe->out_port, &ste->out_r_addr,
 			 ste->r_port, bibe->proto);
