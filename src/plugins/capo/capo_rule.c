@@ -217,10 +217,17 @@ capo_rule_get_entries (capo_rule_t * rule)
 	entry->flags = i;
 	clib_memcpy (&entry->data.port_range, pr, sizeof (*pr));
       }
-      vec_foreach (set_id, rule->ipsets[i])
+      vec_foreach (set_id, rule->ip_ipsets[i])
       {
 	vec_add2 (entries, entry, 1);
 	entry->type = CAPO_IP_SET;
+	entry->flags = i;
+	entry->data.set_id = *set_id;
+      }
+      vec_foreach (set_id, rule->ipport_ipsets[i])
+      {
+	vec_add2 (entries, entry, 1);
+	entry->type = CAPO_PORT_IP_SET;
 	entry->flags = i;
 	entry->data.set_id = *set_id;
       }
@@ -276,7 +283,8 @@ capo_rule_cleanup (capo_rule_t * rule)
     {
       vec_free (rule->prefixes[i]);
       vec_free (rule->port_ranges[i]);
-      vec_free (rule->ipsets[i]);
+      vec_free (rule->ip_ipsets[i]);
+      vec_free (rule->ipport_ipsets[i]);
     }
 }
 
@@ -296,7 +304,7 @@ capo_rule_update (u32 * id, capo_rule_action_t action,
   else
     rule = capo_rule_alloc ();
 
-  rule->af = af;
+  rule->af = -1;
   rule->action = action;
   vec_foreach (filter, filters) vec_add1 (rule->filters, *filter);
 
@@ -312,8 +320,10 @@ capo_rule_update (u32 * id, capo_rule_action_t action,
 	vec_add1 (rule->port_ranges[flags], entry->data.port_range);
 	break;
       case CAPO_PORT_IP_SET:
+	vec_add1 (rule->ipport_ipsets[flags], entry->data.set_id);
+  break;
       case CAPO_IP_SET:
-	vec_add1 (rule->ipsets[flags], entry->data.set_id);
+	vec_add1 (rule->ip_ipsets[flags], entry->data.set_id);
 	break;
       default:
 	rv = 1;
