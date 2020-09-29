@@ -255,12 +255,13 @@ vts_server_rx (vcl_test_server_conn_t * conn, int rx_bytes)
 static void
 vts_copy_ds (void *buf, vppcom_data_segment_t * ds, u32 max_bytes)
 {
-  uint32_t n_bytes = 0, ds_idx = 0;
+  uint32_t n_bytes = 0, ds_idx = 0, to_copy;
 
   while (n_bytes < max_bytes)
     {
-      clib_memcpy_fast (buf + n_bytes, ds[ds_idx].data,
-			clib_min (ds[ds_idx].len, max_bytes - n_bytes));
+      to_copy = clib_min (ds[ds_idx].len, max_bytes - n_bytes);
+      clib_memcpy_fast (buf + n_bytes, ds[ds_idx].data, to_copy);
+      n_bytes += to_copy;
       ds_idx += 1;
     }
 }
