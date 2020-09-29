@@ -85,7 +85,7 @@ typedef struct
   uword requested_va;
   u32 my_pid;
   u8 *name;
-  u8 numa;			/**< Numa requested at alloc time */
+  u8 numa;			/**< UNUSED: numa requested at alloc time */
   int i_am_master;
 
   union
