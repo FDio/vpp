@@ -65,8 +65,15 @@ typedef struct
   vring_avail_t *avail;
   u16 desc_in_use;
   u16 desc_next;
-  int kick_fd;
-  int call_fd;
+  union
+  {
+    struct
+    {
+      int kick_fd;
+      int call_fd;
+    };
+    u16 queue_notify_offset;
+  };
   u8 buffer_pool_index;
   u16 size;
   u16 queue_id;
@@ -204,9 +211,11 @@ extern void virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
 			 u32 type);
 extern void virtio_set_packet_coalesce (virtio_if_t * vif);
 extern void virtio_pci_legacy_notify_queue (vlib_main_t * vm,
-					    virtio_if_t * vif, u16 queue_id);
+					    virtio_if_t * vif, u16 queue_id,
+					    u16 queue_notify_offset);
 extern void virtio_pci_modern_notify_queue (vlib_main_t * vm,
-					    virtio_if_t * vif, u16 queue_id);
+					    virtio_if_t * vif, u16 queue_id,
+					    u16 queue_notify_offset);
 format_function_t format_virtio_device_name;
 format_function_t format_virtio_log_name;
 
@@ -216,9 +225,11 @@ virtio_kick (vlib_main_t * vm, virtio_vring_t * vring, virtio_if_t * vif)
   if (vif->type == VIRTIO_IF_TYPE_PCI)
     {
       if (vif->is_modern)
-	virtio_pci_modern_notify_queue (vm, vif, vring->queue_id);
+	virtio_pci_modern_notify_queue (vm, vif, vring->queue_id,
+					vring->queue_notify_offset);
       else
-	virtio_pci_legacy_notify_queue (vm, vif, vring->queue_id);
+	virtio_pci_legacy_notify_queue (vm, vif, vring->queue_id,
+					vring->queue_notify_offset);
     }
   else
     {
