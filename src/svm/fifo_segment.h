@@ -29,7 +29,7 @@ typedef enum
 
 #define FIFO_SEGMENT_MIN_LOG2_FIFO_SIZE 12	/**< 4kB min fifo size */
 #define FIFO_SEGMENT_MIN_FIFO_SIZE 4096		/**< 4kB min fifo size */
-#define FIFO_SEGMENT_MAX_FIFO_SIZE (2 << 30)	/**< 2GB max fifo size */
+#define FIFO_SEGMENT_MAX_FIFO_SIZE (2ULL << 30)	/**< 2GB max fifo size */
 #define FIFO_SEGMENT_ALLOC_BATCH_SIZE 32	/* Allocation quantum */
 
 typedef enum fifo_segment_flags_
