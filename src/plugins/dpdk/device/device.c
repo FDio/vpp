@@ -527,7 +527,7 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   dpdk_device_t *xd = vec_elt_at_index (xm->devices, hw->dev_instance);
   vnet_sw_interface_t *t = (vnet_sw_interface_t *) st;
-  int r, vlan_offload;
+  int r, vlan_offload, vlan_offload_old;
   u32 prev_subifs = xd->num_subifs;
   clib_error_t *err = 0;
 
@@ -555,6 +555,13 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
 
   vlan_offload = rte_eth_dev_get_vlan_offload (xd->port_id);
   vlan_offload |= ETH_VLAN_FILTER_OFFLOAD;
+  vlan_offload_old = vlan_offload;
+  
+  /* The Linux Kernel i40e PF enables VLAN stripping upon vlan filter creation
+   * So we forcefully enable stripping, and restore the initial vlan offload
+   * as configured */
+  vlan_offload |=
+    xd->pmd == VNET_DPDK_PMD_I40EVF ? ETH_VLAN_STRIP_OFFLOAD : 0;
 
   if ((r = rte_eth_dev_set_vlan_offload (xd->port_id, vlan_offload)))
     {
@@ -571,6 +578,15 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
     {
       xd->num_subifs = prev_subifs;
       err = clib_error_return (0, "rte_eth_dev_vlan_filter[%d]: err %d",
+			       xd->port_id, r);
+      goto done;
+    }
+  /* Restore initial stripping config for I40EVF */
+  if (xd->pmd == VNET_DPDK_PMD_I40EVF
+      && (r = rte_eth_dev_set_vlan_offload (xd->port_id, vlan_offload_old)))
+    {
+      xd->num_subifs = prev_subifs;
+      err = clib_error_return (0, "rte_eth_dev_set_vlan_offload[%d]: err %d",
 			       xd->port_id, r);
       goto done;
     }
