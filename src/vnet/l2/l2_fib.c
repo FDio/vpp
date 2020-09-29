@@ -146,6 +146,26 @@ l2fib_table_dump (u32 bd_index,
   *l2fe_res = ctx.l2fe_res;
 }
 
+void
+l2_fib_extract_seq_num (l2fib_seq_num_t sn, u8 * bd_sn, u8 * if_sn)
+{
+  *bd_sn = sn >> 8;
+  *if_sn = sn & 0xff;
+}
+
+u8 *
+format_l2_fib_seq_num (u8 * s, va_list * a)
+{
+  l2fib_seq_num_t sn = va_arg (*a, int);
+  u8 bd_sn, if_sn;
+
+  l2_fib_extract_seq_num (sn, &bd_sn, &if_sn);
+
+  s = format (s, "%3d/%-3d", bd_sn, if_sn);
+
+  return (s);
+}
+
 typedef struct l2fib_show_walk_ctx_t_
 {
   u8 first_entry;
@@ -207,12 +227,12 @@ l2fib_show_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
 	}
 
       vlib_cli_output (ctx->vm,
-		       "%=19U%=7d%=7d %3d/%-3d%=9v%=7s%=7s%=5s%=30U",
+		       "%=19U%=7d%=7d %U%=9v%=7s%=7s%=5s%=30U",
 		       format_ethernet_address, key.fields.mac,
 		       key.fields.bd_index,
 		       result.fields.sw_if_index == ~0
 		       ? -1 : result.fields.sw_if_index,
-		       result.fields.sn.bd, result.fields.sn.swif, s,
+		       format_l2_fib_seq_num, result.fields.sn, s,
 		       l2fib_entry_result_is_set_STATIC (&result) ? "*" : "-",
 		       l2fib_entry_result_is_set_FILTER (&result) ? "*" : "-",
 		       l2fib_entry_result_is_set_BVI (&result) ? "*" : "-",
@@ -404,16 +424,13 @@ VLIB_CLI_COMMAND (clear_l2fib_cli, static) = {
 };
 /* *INDENT-ON* */
 
-static inline l2fib_seq_num_t
+static l2fib_seq_num_t
 l2fib_cur_seq_num (u32 bd_index, u32 sw_if_index)
 {
   l2_bridge_domain_t *bd_config = l2input_bd_config (bd_index);
-  /* *INDENT-OFF* */
-  return (l2fib_seq_num_t) {
-    .swif = *l2fib_swif_seq_num (sw_if_index),
-    .bd = bd_config->seq_num,
-  };
-  /* *INDENT-ON* */
+
+  return l2_fib_mk_seq_num (bd_config->seq_num,
+			    l2_input_seq_num (sw_if_index));
 }
 
 /**
@@ -835,7 +852,7 @@ l2fib_start_ager_scan (vlib_main_t * vm)
 void
 l2fib_flush_int_mac (vlib_main_t * vm, u32 sw_if_index)
 {
-  *l2fib_swif_seq_num (sw_if_index) += 1;
+  l2_input_seq_num_inc (sw_if_index);
   l2fib_start_ager_scan (vm);
 }
 
@@ -989,7 +1006,8 @@ clib_error_t *
 l2fib_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 {
   l2_input_config_t *config = l2input_intf_config (sw_if_index);
-  if ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) == 0 && config->bridge)
+  if ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) == 0 &&
+      l2_input_is_bridge (config))
     l2fib_flush_int_mac (vnm->vlib_main, sw_if_index);
   return 0;
 }
@@ -1136,8 +1154,8 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 	      /* start aging processing */
 	      u32 bd_index = key.fields.bd_index;
 	      u32 sw_if_index = result.fields.sw_if_index;
-	      u16 sn = l2fib_cur_seq_num (bd_index, sw_if_index).as_u16;
-	      if (result.fields.sn.as_u16 != sn)
+	      u16 sn = l2fib_cur_seq_num (bd_index, sw_if_index);
+	      if (result.fields.sn != sn)
 		goto age_out;	/* stale mac */
 
 	      l2_bridge_domain_t *bd_config =

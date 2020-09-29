@@ -156,13 +156,12 @@ l2fwd_process (vlib_main_t * vm,
       /* check l2fib seq num for stale entries */
       if (!l2fib_entry_result_is_set_AGE_NOT (result0))
 	{
-	  l2fib_seq_num_t in_sn = {.as_u16 = vnet_buffer (b0)->l2.l2fib_sn };
-	  l2fib_seq_num_t expected_sn = {
-	    .bd = in_sn.bd,
-	    .swif = *l2fib_swif_seq_num (result0->fields.sw_if_index),
-	  };
-	  l2fib_seq_num_valid =
-	    expected_sn.as_u16 == result0->fields.sn.as_u16;
+	  l2fib_seq_num_t in_sn = vnet_buffer (b0)->l2.l2fib_sn;
+	  l2fib_seq_num_t expected_sn = l2_fib_update_seq_num (in_sn,
+							       l2_input_seq_num
+							       (result0->fields.sw_if_index));
+
+	  l2fib_seq_num_valid = expected_sn == result0->fields.sn;
 	}
 
       if (PREDICT_FALSE (!l2fib_seq_num_valid))
@@ -505,7 +504,7 @@ int_fwd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
     }
 
   /* set the interface flag */
-  if (l2input_intf_config (sw_if_index)->xconnect)
+  if (l2input_intf_config (sw_if_index))
     {
       l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_XCONNECT, enable);
     }

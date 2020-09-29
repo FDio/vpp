@@ -555,7 +555,7 @@ format_vnet_buffer_opaque (u8 * s, va_list * args)
 
   s = format (s,
 	      "l2.feature_bitmap_input: %U, L2.feature_bitmap_output: %U",
-	      format_l2_input_features, o->l2.feature_bitmap, 0,
+	      format_l2_input_feature_bitmap, o->l2.feature_bitmap, 0,
 	      format_l2_output_features, o->l2.feature_bitmap, 0);
   vec_add1 (s, '\n');
 
