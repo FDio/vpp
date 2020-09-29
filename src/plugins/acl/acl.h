@@ -29,6 +29,8 @@
 #include <vppinfra/bihash_16_8.h>
 #include <vlib/counter.h>
 
+#include <acl/acl.api_types.h>
+
 #include "types.h"
 #include "fa_node.h"
 #include "hash_lookup_types.h"
@@ -319,6 +321,8 @@ typedef struct {
   vlib_combined_counter_main_t *combined_acl_counters;
   /* enable/disable ACL counters for interface processing */
   u32 interface_acl_counters_enabled;
+
+  u32 caiop_dummy_acl;
 } acl_main_t;
 
 #define acl_log_err(...) \
@@ -396,5 +400,9 @@ typedef enum {
 
 void aclp_post_session_change_request(acl_main_t *am, u32 target_thread, u32 target_session, acl_fa_sess_req_t request_type);
 void aclp_swap_wip_and_pending_session_change_requests(acl_main_t *am, u32 target_thread);
+
+int acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
+				 u32 acl_list_index);
+int acl_add_list (u32 count, vl_api_acl_rule_t rules[], u32 * acl_list_index, u8 * tag);
 
 #endif

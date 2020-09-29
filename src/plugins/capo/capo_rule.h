@@ -27,7 +27,7 @@ typedef struct capo_rule_filter_
   capo_rule_filter_type_t type;
   /* Content to filter against */
   u32 value;
-  /* If true match packet.property == opaque */
+  /* If true match packet.property == opaque, else packet.property != opaque */
   u8 should_match;
 } capo_rule_filter_t;
 
@@ -45,6 +45,12 @@ typedef enum capo_rule_key_flag_
   CAPO_RULE_MAX_FLAGS = 1 << 2,
 } capo_rule_key_flag_t;
 
+
+#define CAPO_SRC        CAPO_IS_SRC
+#define CAPO_NOT_SRC    (CAPO_IS_SRC | CAPO_IS_NOT)
+#define CAPO_DST        0
+#define CAPO_NOT_DST    CAPO_IS_NOT
+
 typedef struct capo_rule_entry_t_
 {
   capo_entry_type_t type;
@@ -61,9 +67,9 @@ typedef struct capo_rule_
 
   /* Indexed by capo_rule_key_flag_t */
   ip_prefix_t *prefixes[CAPO_RULE_MAX_FLAGS];
+  u32 *ip_ipsets[CAPO_RULE_MAX_FLAGS];
   capo_port_range_t *port_ranges[CAPO_RULE_MAX_FLAGS];
-  /* These can be port + IP or just IP ipsets */
-  u32 *ipsets[CAPO_RULE_MAX_FLAGS];
+  u32 *ipport_ipsets[CAPO_RULE_MAX_FLAGS];
 } capo_rule_t;
 
 extern capo_rule_t *capo_rules;
