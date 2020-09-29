@@ -612,14 +612,15 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
       mprotect (mm->last_map, sys_page_sz, PROT_READ | PROT_WRITE);
       mm->last_map->next = hdr;
       mprotect (mm->last_map, sys_page_sz, PROT_NONE);
+      hdr->prev = mm->last_map;
     }
   else
-    mm->first_map = hdr;
+    {
+      mm->first_map = mm->last_map = hdr;
+      hdr->prev = 0;
+    }
 
   hdr->next = 0;
-  hdr->prev = mm->last_map;
-  mm->last_map = hdr;
-
   hdr->base_addr = (uword) base;
   hdr->log2_page_sz = log2_page_sz;
   hdr->num_pages = size >> log2_page_sz;
