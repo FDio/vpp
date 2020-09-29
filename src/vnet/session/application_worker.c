@@ -180,12 +180,12 @@ app_worker_alloc_segment_manager (app_worker_t * app_wrk)
     {
       sm = segment_manager_get (app_wrk->first_segment_manager);
       app_wrk->first_segment_manager_in_use = 1;
-      return sm;
     }
-
-  sm = segment_manager_alloc ();
+  else
+    {
+      sm = segment_manager_alloc ();
+    }
   sm->app_wrk_index = app_wrk->wrk_index;
-
   return sm;
 }
 
