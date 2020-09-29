@@ -42,7 +42,6 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_mcast.h>
-#include <vnet/l2/l2_input.h>
 
 typedef enum vnet_interface_helper_flags_t_
 {
@@ -636,18 +635,6 @@ vnet_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
     pool_elt_at_index (im->sw_interfaces, sw_if_index);
 
   /* Check if the interface has config and is removed from L2 BD or XConnect */
-  vlib_main_t *vm = vlib_get_main ();
-  l2_input_config_t *config;
-  if (sw_if_index < vec_len (l2input_main.configs))
-    {
-      config = vec_elt_at_index (l2input_main.configs, sw_if_index);
-      if (config->xconnect)
-	set_int_l2_mode (vm, vnm, MODE_L3, config->output_sw_if_index, 0,
-			 L2_BD_PORT_TYPE_NORMAL, 0, 0);
-      if (config->xconnect || config->bridge)
-	set_int_l2_mode (vm, vnm, MODE_L3, sw_if_index, 0,
-			 L2_BD_PORT_TYPE_NORMAL, 0, 0);
-    }
   vnet_clear_sw_interface_tag (vnm, sw_if_index);
 
   /* Bring down interface in case it is up. */

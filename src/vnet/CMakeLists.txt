@@ -176,6 +176,7 @@ list(APPEND VNET_SOURCES
   l2/l2_flood.c
   l2/l2_fwd.c
   l2/l2_input.c
+  l2/l2_input_node.c
   l2/l2_input_vtr.c
   l2/l2_learn.c
   l2/l2_output.c
@@ -196,7 +197,7 @@ list(APPEND VNET_MULTIARCH_SOURCES
   l2/l2_patch.c
   l2/l2_in_out_feat_arc.c
   l2/l2_input_classify.c
-  l2/l2_input.c
+  l2/l2_input_node.c
   l2/l2_output_classify.c
   l2/l2_flood.c
   l2/l2_uu_fwd.c
