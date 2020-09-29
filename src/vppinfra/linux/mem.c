@@ -607,6 +607,9 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
       return CLIB_MEM_VM_MAP_FAILED;
     }
 
+  hdr->next = 0;
+  hdr->prev = mm->last_map;
+
   if (mm->last_map)
     {
       mprotect (mm->last_map, sys_page_sz, PROT_READ | PROT_WRITE);
@@ -614,11 +617,9 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
       mprotect (mm->last_map, sys_page_sz, PROT_NONE);
     }
   else
-    mm->first_map = hdr;
-
-  hdr->next = 0;
-  hdr->prev = mm->last_map;
-  mm->last_map = hdr;
+    {
+      mm->first_map = mm->last_map = hdr;
+    }
 
   hdr->base_addr = (uword) base;
   hdr->log2_page_sz = log2_page_sz;
