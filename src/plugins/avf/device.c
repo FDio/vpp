@@ -1469,6 +1469,19 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if (avf_validate_queue_size (args) != 0)
     return;
 
+  /* *INDENT-OFF* */
+  pool_foreach (adp, am->devices, ({
+	if ((*adp)->pci_addr.as_u32 == args->addr.as_u32)
+      {
+	args->rv = VNET_API_ERROR_ADDRESS_IN_USE;
+	args->error =
+	  clib_error_return (error, "%U: %s", format_vlib_pci_addr,
+			     &args->addr, "pci address in use");
+	return;
+      }
+  }));
+  /* *INDENT-ON* */
+
   pool_get (am->devices, adp);
   adp[0] = ad = clib_mem_alloc_aligned (sizeof (avf_device_t),
 					CLIB_CACHE_LINE_BYTES);
