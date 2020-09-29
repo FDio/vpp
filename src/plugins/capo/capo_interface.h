@@ -13,40 +13,20 @@
  * limitations under the License.
  */
 
-#ifndef included_capo_h
-#define included_capo_h
+#ifndef included_capo_interface_h
+#define included_capo_interface_h
 
-#include <vnet/ip/ip.h>
-#include <vnet/ip/ip_types_api.h>
-#include <acl/public_inlines.h>
-#include <capo/bihash_4_12.h>
+#include <vppinfra/clib.h>
 
-#include <capo/capo.api_enum.h>
-#include <capo/capo.api_types.h>
-#include <capo/capo_interface.h>
-
-#define CAPO_INVALID_INDEX ((u32)~0)
-
-typedef struct
+typedef CLIB_PACKED (struct
 {
-  u16 start;
-  u16 end;
-} capo_port_range_t;
+  u32 pass_id;
+  u32 *policies;
+}) capo_interface_config_t;
 
-typedef struct
-{
-  clib_bihash_4_12_t if_config;	/* sw_if_index -> capo_interface_config */
-
-  u32 calico_acl_user_id;
-  acl_plugin_methods_t acl_plugin;
-
-  /* API message ID base */
-  u16 msg_id_base;
-
-} capo_main_t;
-
-
-extern capo_main_t capo_main;
+int capo_remove_policies(u32 sw_if_index);
+int capo_configure_policies(u32 sw_if_index, u32 pass_policy_id,
+                            u32 num_policies, u32 *policy_ids);
 
 #endif
 

@@ -22,12 +22,12 @@
 #include <vpp/app/version.h>
 #include <stdbool.h>
 
-#include <acl/public_inlines.h>
 
 #include <capo/capo.h>
 #include <capo/capo_rule.h>
 #include <capo/capo_policy.h>
 #include <capo/capo_ipset.h>
+#include <capo/capo_interface.h>
 
 #define REPLY_MSG_ID_BASE cpm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
@@ -384,36 +384,38 @@ vl_api_capo_configure_policies_t_handler (vl_api_capo_configure_policies_t *
   capo_main_t *cpm = &capo_main;
   int rv = -1;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_CAPO_CONFIGURE_POLICIES_REPLY,
-  ({
-      /* FIXME: do something here */
-  }));
-  /* *INDENT-ON* */
+  if (mp->num_policies == 0)
+    {
+      rv = capo_remove_policies(mp->sw_if_index);
+    }
+  else
+    {
+      rv = capo_configure_policies(mp->sw_if_index, mp->pass_policy_id,
+                                   mp->num_policies, mp->policy_ids);
+    }
 
-
+  REPLY_MACRO (VL_API_CAPO_CONFIGURE_POLICIES_REPLY);
 }
 
 /* Set up the API message handling tables */
 #include <vnet/format_fns.h>
 #include <capo/capo.api.c>
 
-static u32 calico_acl_user_id;
-static acl_plugin_methods_t acl_plugin;
-
 
 static clib_error_t *
 calpol_init (vlib_main_t * vm)
 {
-  clib_error_t *acl_init_res = acl_plugin_exports_init (&acl_plugin);
   capo_main_t *cpm = &capo_main;
+  clib_error_t *acl_init_res = acl_plugin_exports_init (&cpm->acl_plugin);
   if (acl_init_res)
     return (acl_init_res);
 
-  calico_acl_user_id =
-    acl_plugin.register_user_module ("Calico Policy Plugin", NULL, NULL);
+  cpm->calico_acl_user_id =
+    cpm->acl_plugin.register_user_module ("Calico Policy Plugin", NULL, NULL);
 
   cpm->msg_id_base = setup_message_id_table ();
+
+  clib_bihash_init_4_12 (&cpm->if_config, "capo interfaces", 64, 32 << 10);
 
   return (NULL);
 }
