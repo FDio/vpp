@@ -16,18 +16,16 @@
 
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
-
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vpp/app/version.h>
 #include <stdbool.h>
 
-#include <acl/public_inlines.h>
-
 #include <capo/capo.h>
 #include <capo/capo_rule.h>
 #include <capo/capo_policy.h>
 #include <capo/capo_ipset.h>
+#include <capo/capo_interface.h>
 
 #define REPLY_MSG_ID_BASE cpm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
@@ -36,7 +34,7 @@
 #define CALICO_POLICY_VERSION_MAJOR 0
 #define CALICO_POLICY_VERSION_MINOR 0
 
-capo_main_t capo_main;
+capo_main_t capo_main= {0};
 
 void
 capo_policy_rule_decode (const vl_api_capo_policy_item_t * in,
@@ -168,7 +166,7 @@ vl_api_capo_ipset_create_t_handler (vl_api_capo_ipset_create_t * mp)
 
 /* NAME: ipset_add_del_members */
 static void
-  vl_api_capo_ipset_add_del_members_t_handler
+vl_api_capo_ipset_add_del_members_t_handler
   (vl_api_capo_ipset_add_del_members_t * mp)
 {
   capo_main_t *cpm = &capo_main;
@@ -191,9 +189,9 @@ static void
       if (rv)
 	break;
       if (mp->is_add)
-	rv = capo_ipset_add_member (type, member);
+	rv = capo_ipset_add_member (set_id, member);
       else
-	rv = capo_ipset_del_member (type, member);
+	rv = capo_ipset_del_member (set_id, member);
       if (rv)
 	break;
     }
@@ -223,15 +221,15 @@ vl_api_capo_rule_update_create_handler (u32 * id, vl_api_capo_rule_t * rule)
   capo_rule_filter_t *filters = 0, *filter;
   capo_rule_entry_t *entries = 0, *entry;
   capo_rule_action_t action;
-  ip_address_family_t af;
+  ip_address_family_t af = 0;
   int rv;
   u32 n_matches;
   u32 i;
 
   action = (capo_rule_action_t) rule->action;
 
-  if ((rv = ip_address_family_decode (rule->af, &af)))
-    goto done;
+  // if ((rv = ip_address_family_decode (rule->af, &af)))
+  //   goto done;
 
   for (i = 0; i < ARRAY_LEN (rule->filters); i++)
     {
@@ -383,37 +381,63 @@ vl_api_capo_configure_policies_t_handler (vl_api_capo_configure_policies_t *
   vl_api_capo_configure_policies_reply_t *rmp;
   capo_main_t *cpm = &capo_main;
   int rv = -1;
+  int i = 0;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_CAPO_CONFIGURE_POLICIES_REPLY,
-  ({
-      /* FIXME: do something here */
-  }));
-  /* *INDENT-ON* */
+  mp->sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
+  mp->pass_policy_id = clib_net_to_host_u32 (mp->pass_policy_id);
+  mp->num_policies = clib_net_to_host_u32 (mp->num_policies);
+  for (i = 0; i < mp->num_policies; i ++)
+    {
+      mp->policy_ids[i] = clib_net_to_host_u32 (mp->policy_ids[i]);
+    }
 
+  if (mp->num_policies == 0)
+    {
+      rv = capo_remove_policies(mp->sw_if_index);
+    }
+  else
+    {
+      rv = capo_configure_policies(mp->sw_if_index, mp->pass_policy_id,
+                                   mp->num_policies, mp->policy_ids);
+    }
 
+  REPLY_MACRO (VL_API_CAPO_CONFIGURE_POLICIES_REPLY);
 }
 
 /* Set up the API message handling tables */
 #include <vnet/format_fns.h>
 #include <capo/capo.api.c>
 
-static u32 calico_acl_user_id;
-static acl_plugin_methods_t acl_plugin;
 
+#include <vat/vat.h>
+#include <vlibapi/vat_helper_macros.h>
+
+/* Declare message IDs */
+#include <acl/acl.api_enum.h>
+#include <acl/acl.api_types.h>
+#undef vl_print
+#define vl_print(handle, ...)
+#include <acl/manual_fns.h>
+#undef vl_print
+#define vl_endianfun            /* define message structures */
+#include <acl/acl.api.h>
+#undef vl_endianfun
 
 static clib_error_t *
 calpol_init (vlib_main_t * vm)
 {
-  clib_error_t *acl_init_res = acl_plugin_exports_init (&acl_plugin);
   capo_main_t *cpm = &capo_main;
+  
+  clib_error_t *acl_init_res = acl_plugin_exports_init (&cpm->acl_plugin);
   if (acl_init_res)
     return (acl_init_res);
 
-  calico_acl_user_id =
-    acl_plugin.register_user_module ("Calico Policy Plugin", NULL, NULL);
+  cpm->calico_acl_user_id =
+    cpm->acl_plugin.register_user_module ("Calico Policy Plugin", NULL, NULL);
 
   cpm->msg_id_base = setup_message_id_table ();
+
+  clib_bihash_init_8_16 (&cpm->if_config, "capo interfaces", 512, 1 << 20);
 
   return (NULL);
 }

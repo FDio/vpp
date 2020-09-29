@@ -87,6 +87,9 @@ static int
 caiop_add (u32 sw_if_index, int is_input,
 	   acl_plugin_private_caiop_match_5tuple_func_t func)
 {
+  int rv;
+  u32 *vec = NULL;
+  u8 tag[64] = "caiop dummy acl";
   acl_main_t *am = &acl_main;
   acl_plugin_private_caiop_match_5tuple_func_t ***pvecvec = is_input ?
     &am->caip_match_func_by_sw_if_index : &am->caop_match_func_by_sw_if_index;
@@ -103,7 +106,18 @@ caiop_add (u32 sw_if_index, int is_input,
       vec_add1 ((*pvecvec)[sw_if_index], func);
       *pbitmap = clib_bitmap_set (*pbitmap, sw_if_index, 1);
       (*pcount)++;
-      return 0;
+      if (am->caiop_dummy_acl == ~0U) {
+        vl_api_acl_rule_t rules[1] = {{
+          .is_permit = ACL_ACTION_API_PERMIT_REFLECT,
+        }};
+        rv = acl_add_list (1, rules, &am->caiop_dummy_acl, tag);
+        if (rv)
+          return rv;
+      }
+      vec_validate (vec, 1);
+      vec[0] = am->caiop_dummy_acl;
+      rv = acl_interface_add_del_inout_acl (sw_if_index, 1, is_input, am->caiop_dummy_acl);
+      return rv;
     }
   else
     {
@@ -141,6 +155,7 @@ caiop_del (u32 sw_if_index, int is_input,
 	  vec_del1 ((*pvecvec)[sw_if_index], index);
 	  *pbitmap = clib_bitmap_set (*pbitmap, sw_if_index, 0);
 	  (*pcount)--;
+    // acl_interface_inout_enable_disable (am, sw_if_index, is_input, 0);
 	  return 0;
 	}
     }

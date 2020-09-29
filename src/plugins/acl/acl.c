@@ -291,7 +291,7 @@ acl_api_invalid_prefix (const vl_api_prefix_t * prefix)
   return ip_prefix_decode2 (prefix, &ip_prefix);
 }
 
-static int
+int
 acl_add_list (u32 count, vl_api_acl_rule_t rules[],
 	      u32 * acl_list_index, u8 * tag)
 {
@@ -741,7 +741,7 @@ acl_interface_reset_inout_acls (u32 sw_if_index, u8 is_input,
 				    may_clear_sessions);
 }
 
-static int
+int
 acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
 				 u32 acl_list_index)
 {
@@ -3714,6 +3714,8 @@ acl_init (vlib_main_t * vm)
   am->acl_counter_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
 						 CLIB_CACHE_LINE_BYTES);
   am->acl_counter_lock[0] = 0;	/* should be no need */
+
+  am->caiop_dummy_acl = ~0U;
 
   return error;
 }

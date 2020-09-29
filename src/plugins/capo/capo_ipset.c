@@ -166,10 +166,11 @@ capo_ipset_add_member (u32 ipset_id, capo_ipset_member_t * member)
   capo_ipset_member_t *m;
   capo_ipset_t *ipset = &capo_ipsets[ipset_id];
 
-  if (pool_is_free (capo_ipsets, ipset))
+  if (pool_is_free (capo_ipsets, ipset)) {
     return 1;
+  }
 
-  /* zero so that we can memcmp */
+  /* zero so that we can memcmp later */
   pool_get_zero (ipset->members, m);
   clib_memcpy (m, member, sizeof (*m));
   return 0;
