@@ -31,11 +31,11 @@ typedef struct
   u16 end;
 } capo_port_range_t;
 
-typedef struct
+typedef CLIB_PACKED (struct
 {
-  u32 *policies;
   u32 pass_id;
-} capo_interface_config;
+  u32 *policies;
+}) capo_interface_config_t;
 
 typedef struct
 {
