@@ -195,7 +195,10 @@ typedef struct _virtio_pci_func
     u8 (*setup_queue) (vlib_main_t * vm, virtio_if_t * vif, u16 queue_id,
 		       void *p);
   void (*del_queue) (vlib_main_t * vm, virtio_if_t * vif, u16 queue_id);
-  void (*notify_queue) (vlib_main_t * vm, virtio_if_t * vif, u16 queue_id);
+    u16 (*get_queue_notify_off) (vlib_main_t * vm, virtio_if_t * vif,
+				 u16 queue_id);
+  void (*notify_queue) (vlib_main_t * vm, virtio_if_t * vif, u16 queue_id,
+			u16 queue_notify_offset);
 
     u16 (*set_config_irq) (vlib_main_t * vm, virtio_if_t * vif, u16 vec);
     u16 (*set_queue_irq) (vlib_main_t * vm, virtio_if_t * vif, u16 vec,
