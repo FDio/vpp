@@ -203,9 +203,16 @@ virtio_pci_legacy_del_queue (vlib_main_t * vm, virtio_if_t * vif,
   vlib_pci_write_io_u32 (vm, vif->pci_dev_handle, VIRTIO_PCI_QUEUE_PFN, &src);
 }
 
+static u16
+virtio_pci_legacy_get_queue_notify_off (vlib_main_t * vm, virtio_if_t * vif,
+					u16 queue_id)
+{
+  return 0;
+}
+
 inline void
 virtio_pci_legacy_notify_queue (vlib_main_t * vm, virtio_if_t * vif,
-				u16 queue_id)
+				u16 queue_id, u16 queue_notify_off)
 {
   vlib_pci_write_io_u16 (vm, vif->pci_dev_handle, VIRTIO_PCI_QUEUE_NOTIFY,
 			 &queue_id);
@@ -364,6 +371,7 @@ const virtio_pci_func_t virtio_pci_legacy_func = {
   .set_queue_size = virtio_pci_legacy_set_queue_num,
   .setup_queue = virtio_pci_legacy_setup_queue,
   .del_queue = virtio_pci_legacy_del_queue,
+  .get_queue_notify_off = virtio_pci_legacy_get_queue_notify_off,
   .notify_queue = virtio_pci_legacy_notify_queue,
   .set_config_irq = virtio_pci_legacy_set_config_irq,
   .set_queue_irq = virtio_pci_legacy_set_queue_irq,
