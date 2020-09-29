@@ -138,11 +138,16 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
 	}
     }
   else
-    seg_name = format (0, "%s%c", "process-private", 0);
+    {
+      app_worker_t *app_wrk = app_worker_get (sm->app_wrk_index);
+      application_t *app = application_get (app_wrk->app_index);
+      seg_name = format (0, "%v segment%c", app->name, 0);
+    }
 
   fs->ssvm.ssvm_size = segment_size;
   fs->ssvm.name = seg_name;
-  fs->ssvm.requested_va = baseva;
+  /* clib mem allocator wants the page before the requested va */
+  fs->ssvm.requested_va = baseva + page_size;
 
   if ((rv = ssvm_master_init (&fs->ssvm, props->segment_type)))
     {
@@ -192,7 +197,8 @@ segment_manager_del_segment (segment_manager_t * sm, fifo_segment_t * fs)
 
   if (ssvm_type (&fs->ssvm) != SSVM_SEGMENT_PRIVATE)
     {
-      clib_valloc_free (&smm->va_allocator, fs->ssvm.requested_va);
+      clib_valloc_free (&smm->va_allocator,
+			fs->ssvm.requested_va - clib_mem_get_page_size ());
 
       if (!segment_manager_app_detached (sm))
 	{
@@ -947,6 +953,7 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
       }));
       /* *INDENT-ON* */
 
+      vlib_cli_output (vm, "\n");
     }
   if (show_segments)
     {
