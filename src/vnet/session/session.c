@@ -1496,8 +1496,8 @@ session_vpp_event_queues_allocate (session_main_t * smm)
       eqs->ssvm_size = eqs_size;
       eqs->i_am_master = 1;
       eqs->my_pid = vpp_pid;
-      eqs->name = format (0, "%s%c", "evt-qs-segment", 0);
-      eqs->requested_va = smm->session_baseva;
+      eqs->name = format (0, "%s%c", "session: evt-qs-segment", 0);
+      eqs->requested_va = smm->session_baseva + clib_mem_get_page_size ();
 
       if (ssvm_master_init (eqs, SSVM_SEGMENT_MEMFD))
 	{
@@ -1661,6 +1661,7 @@ session_manager_main_enable (vlib_main_t * vm)
   session_main_t *smm = &session_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads, preallocated_sessions_per_worker;
+  uword margin = 8 << 12;
   session_worker_t *wrk;
   int i;
 
@@ -1691,7 +1692,7 @@ session_manager_main_enable (vlib_main_t * vm)
   session_vpp_event_queues_allocate (smm);
 
   /* Initialize fifo segment main baseva and timeout */
-  sm_args->baseva = smm->session_baseva + smm->evt_qs_segment_size;
+  sm_args->baseva = smm->session_baseva + smm->evt_qs_segment_size + margin;
   sm_args->size = smm->session_va_space_size;
   segment_manager_main_init (sm_args);
 
