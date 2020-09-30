@@ -639,10 +639,10 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
   clib_memset (memfd, 0, sizeof (*memfd));
   memfd->ssvm_size = mp->requested_size;
   memfd->requested_va = 0ULL;
-  memfd->i_am_master = 1;
+  memfd->is_server = 1;
   memfd->name = format (0, "%s%c", regp->name, 0);
 
-  if ((rv = ssvm_master_init_memfd (memfd)))
+  if ((rv = ssvm_server_init_memfd (memfd)))
     goto reply;
 
   /* Remember to close this fd when the socket connection goes away */

@@ -379,7 +379,7 @@ static void vl_api_sock_init_shm_reply_t_handler
   memfd->fd = my_fd;
 
   /* Note: this closes memfd.fd */
-  retval = ssvm_slave_init_memfd (memfd);
+  retval = ssvm_client_init_memfd (memfd);
   if (retval)
     clib_warning ("WARNING: segment map returned %d", retval);
 

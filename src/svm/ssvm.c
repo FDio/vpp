@@ -18,15 +18,15 @@
 typedef int (*init_fn) (ssvm_private_t *);
 typedef void (*delete_fn) (ssvm_private_t *);
 
-static init_fn master_init_fns[SSVM_N_SEGMENT_TYPES] =
-  { ssvm_master_init_shm, ssvm_master_init_memfd, ssvm_master_init_private };
-static init_fn slave_init_fns[SSVM_N_SEGMENT_TYPES] =
-  { ssvm_slave_init_shm, ssvm_slave_init_memfd, ssvm_slave_init_private };
+static init_fn server_init_fns[SSVM_N_SEGMENT_TYPES] =
+  { ssvm_server_init_shm, ssvm_server_init_memfd, ssvm_server_init_private };
+static init_fn client_init_fns[SSVM_N_SEGMENT_TYPES] =
+  { ssvm_client_init_shm, ssvm_client_init_memfd, ssvm_client_init_private };
 static delete_fn delete_fns[SSVM_N_SEGMENT_TYPES] =
   { ssvm_delete_shm, ssvm_delete_memfd, ssvm_delete_private };
 
 int
-ssvm_master_init_shm (ssvm_private_t * ssvm)
+ssvm_server_init_shm (ssvm_private_t * ssvm)
 {
   int ssvm_fd;
   u8 junk = 0, *ssvm_filename;
@@ -96,13 +96,13 @@ ssvm_master_init_shm (ssvm_private_t * ssvm)
   close (ssvm_fd);
 
   CLIB_MEM_UNPOISON (sh, sizeof (*sh));
-  sh->master_pid = ssvm->my_pid;
+  sh->server_pid = ssvm->my_pid;
   sh->ssvm_size = ssvm->ssvm_size;
   sh->ssvm_va = pointer_to_uword (sh);
   sh->type = SSVM_SEGMENT_SHM;
   sh->heap = clib_mem_create_heap (((u8 *) sh) + page_size,
 				   ssvm->ssvm_size - page_size,
-				   1 /* locked */ , "ssvm master shm");
+				   1 /* locked */ , "ssvm server shm");
 
   oldheap = ssvm_push_heap (sh);
   sh->name = format (0, "%s", ssvm->name, 0);
@@ -110,21 +110,21 @@ ssvm_master_init_shm (ssvm_private_t * ssvm)
 
   ssvm->sh = sh;
   ssvm->my_pid = getpid ();
-  ssvm->i_am_master = 1;
+  ssvm->is_server = 1;
 
   /* The application has to set set sh->ready... */
   return 0;
 }
 
 int
-ssvm_slave_init_shm (ssvm_private_t * ssvm)
+ssvm_client_init_shm (ssvm_private_t * ssvm)
 {
   struct stat stat;
   int ssvm_fd = -1;
   ssvm_shared_header_t *sh;
 
   ASSERT (vec_c_string_is_terminated (ssvm->name));
-  ssvm->i_am_master = 0;
+  ssvm->is_server = 0;
 
   while (ssvm->attach_timeout-- > 0)
     {
@@ -144,15 +144,15 @@ ssvm_slave_init_shm (ssvm_private_t * ssvm)
       if (stat.st_size > 0)
 	goto map_it;
     }
-  clib_warning ("slave timeout");
-  return SSVM_API_ERROR_SLAVE_TIMEOUT;
+  clib_warning ("client timeout");
+  return SSVM_API_ERROR_CLIENT_TIMEOUT;
 
 map_it:
   sh = (void *) mmap (0, MMAP_PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED,
 		      ssvm_fd, 0);
   if (sh == MAP_FAILED)
     {
-      clib_unix_warning ("slave research mmap");
+      clib_unix_warning ("client research mmap");
       close (ssvm_fd);
       return SSVM_API_ERROR_MMAP;
     }
@@ -164,8 +164,8 @@ map_it:
     }
   close (ssvm_fd);
   munmap (sh, MMAP_PAGESIZE);
-  clib_warning ("slave timeout 2");
-  return SSVM_API_ERROR_SLAVE_TIMEOUT;
+  clib_warning ("client timeout 2");
+  return SSVM_API_ERROR_CLIENT_TIMEOUT;
 
 re_map_it:
   ssvm->requested_va = sh->ssvm_va;
@@ -178,11 +178,11 @@ re_map_it:
 
   if (sh == MAP_FAILED)
     {
-      clib_unix_warning ("slave final mmap");
+      clib_unix_warning ("client final mmap");
       close (ssvm_fd);
       return SSVM_API_ERROR_MMAP;
     }
-  sh->slave_pid = getpid ();
+  sh->client_pid = getpid ();
   return 0;
 }
 
@@ -204,17 +204,17 @@ ssvm_delete_shm (ssvm_private_t * ssvm)
   vec_free (fn);
   vec_free (ssvm->name);
 
-  if (ssvm->i_am_master)
+  if (ssvm->is_server)
     clib_mem_vm_unmap (ssvm->sh);
   else
     munmap ((void *) ssvm->sh, ssvm->ssvm_size);
 }
 
 /**
- * Initialize memfd segment master
+ * Initialize memfd segment server
  */
 int
-ssvm_master_init_memfd (ssvm_private_t * memfd)
+ssvm_server_init_memfd (ssvm_private_t * memfd)
 {
   int log2_page_size, n_pages;
   uword page_size;
@@ -262,9 +262,9 @@ ssvm_master_init_memfd (ssvm_private_t * memfd)
 
   memfd->sh = sh;
   memfd->my_pid = getpid ();
-  memfd->i_am_master = 1;
+  memfd->is_server = 1;
 
-  sh->master_pid = memfd->my_pid;
+  sh->server_pid = memfd->my_pid;
   sh->ssvm_size = memfd->ssvm_size;
   sh->ssvm_va = pointer_to_uword (sh);
   sh->type = SSVM_SEGMENT_MEMFD;
@@ -272,7 +272,7 @@ ssvm_master_init_memfd (ssvm_private_t * memfd)
   page_size = 1 << log2_page_size;
   sh->heap = clib_mem_create_heap (((u8 *) sh) + page_size,
 				   memfd->ssvm_size - page_size,
-				   1 /* locked */ , "ssvm master memfd");
+				   1 /* locked */ , "ssvm server memfd");
   oldheap = ssvm_push_heap (sh);
   sh->name = format (0, "%s", memfd->name, 0);
   ssvm_pop_heap (oldheap);
@@ -282,20 +282,20 @@ ssvm_master_init_memfd (ssvm_private_t * memfd)
 }
 
 /**
- * Initialize memfd segment slave
+ * Initialize memfd segment client
  *
- * Subtly different than svm_slave_init. The caller needs to acquire
+ * Subtly different than svm_client_init. The caller needs to acquire
  * a usable file descriptor for the memfd segment e.g. via
  * vppinfra/socket.c:default_socket_recvmsg
  */
 int
-ssvm_slave_init_memfd (ssvm_private_t * memfd)
+ssvm_client_init_memfd (ssvm_private_t * memfd)
 {
   clib_mem_vm_map_t mapa = { 0 };
   ssvm_shared_header_t *sh;
   uword page_size;
 
-  memfd->i_am_master = 0;
+  memfd->is_server = 0;
 
   page_size = clib_mem_get_fd_page_size (memfd->fd);
   if (!page_size)
@@ -312,7 +312,7 @@ ssvm_slave_init_memfd (ssvm_private_t * memfd)
 
   if (clib_mem_vm_ext_map (&mapa))
     {
-      clib_unix_warning ("slave research mmap (fd %d)", mapa.fd);
+      clib_unix_warning ("client research mmap (fd %d)", mapa.fd);
       close (memfd->fd);
       return SSVM_API_ERROR_MMAP;
     }
@@ -329,13 +329,13 @@ ssvm_slave_init_memfd (ssvm_private_t * memfd)
   mapa.size = memfd->ssvm_size;
   if (clib_mem_vm_ext_map (&mapa))
     {
-      clib_unix_warning ("slave final mmap");
+      clib_unix_warning ("client final mmap");
       close (memfd->fd);
       return SSVM_API_ERROR_MMAP;
     }
 
   sh = mapa.addr;
-  sh->slave_pid = getpid ();
+  sh->client_pid = getpid ();
   memfd->sh = sh;
   return 0;
 }
@@ -344,7 +344,7 @@ void
 ssvm_delete_memfd (ssvm_private_t * memfd)
 {
   vec_free (memfd->name);
-  if (memfd->i_am_master)
+  if (memfd->is_server)
     clib_mem_vm_unmap (memfd->sh);
   else
     clib_mem_vm_free (memfd->sh, memfd->ssvm_size);
@@ -355,7 +355,7 @@ ssvm_delete_memfd (ssvm_private_t * memfd)
  * Initialize segment in a private heap
  */
 int
-ssvm_master_init_private (ssvm_private_t * ssvm)
+ssvm_server_init_private (ssvm_private_t * ssvm)
 {
   uword page_size, log2_page_size, rnd_size = 0;
   ssvm_shared_header_t *sh;
@@ -382,7 +382,7 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
     }
 
   heap = clib_mem_create_heap ((u8 *) sh + page_size, rnd_size,
-			       1 /* locked */ , "ssvm master private");
+			       1 /* locked */ , "ssvm server private");
   if (heap == 0)
     {
       clib_unix_warning ("heap alloc");
@@ -392,7 +392,7 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
   rnd_size = clib_mem_get_heap_free_space (heap);
 
   ssvm->ssvm_size = rnd_size;
-  ssvm->i_am_master = 1;
+  ssvm->is_server = 1;
   ssvm->my_pid = getpid ();
   ssvm->requested_va = ~0;
 
@@ -413,7 +413,7 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
 }
 
 int
-ssvm_slave_init_private (ssvm_private_t * ssvm)
+ssvm_client_init_private (ssvm_private_t * ssvm)
 {
   clib_warning ("BUG: this should not be called!");
   return -1;
@@ -428,15 +428,15 @@ ssvm_delete_private (ssvm_private_t * ssvm)
 }
 
 int
-ssvm_master_init (ssvm_private_t * ssvm, ssvm_segment_type_t type)
+ssvm_server_init (ssvm_private_t * ssvm, ssvm_segment_type_t type)
 {
-  return (master_init_fns[type]) (ssvm);
+  return (server_init_fns[type]) (ssvm);
 }
 
 int
-ssvm_slave_init (ssvm_private_t * ssvm, ssvm_segment_type_t type)
+ssvm_client_init (ssvm_private_t * ssvm, ssvm_segment_type_t type)
 {
-  return (slave_init_fns[type]) (ssvm);
+  return (client_init_fns[type]) (ssvm);
 }
 
 void
