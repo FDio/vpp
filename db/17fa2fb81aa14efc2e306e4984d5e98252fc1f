@@ -1,0 +1,8 @@
+Code-Review+1: Beno�t Ganne <bganne@cisco.com>
+Code-Review+2: Andrew Yourtchenko <ayourtch@gmail.com>
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Submitted-by: Andrew Yourtchenko <ayourtch@gmail.com>
+Submitted-at: Wed, 30 Sep 2020 11:29:30 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/29133
+Project: vpp
+Branch: refs/heads/stable/2009
