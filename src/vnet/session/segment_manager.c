@@ -149,7 +149,7 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
   /* clib_mem_vm_map_shared consumes first page before requested_va */
   fs->ssvm.requested_va = baseva + page_size;
 
-  if ((rv = ssvm_master_init (&fs->ssvm, props->segment_type)))
+  if ((rv = ssvm_server_init (&fs->ssvm, props->segment_type)))
     {
       clib_warning ("svm_master_init ('%v', %u) failed", seg_name,
 		    segment_size);
