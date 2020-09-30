@@ -206,12 +206,12 @@ fifo_segment_create (fifo_segment_main_t * sm, fifo_segment_create_args_t * a)
 
   baseva = a->segment_type == SSVM_SEGMENT_PRIVATE ? ~0ULL : sm->next_baseva;
   fs->ssvm.ssvm_size = a->segment_size;
-  fs->ssvm.i_am_master = 1;
+  fs->ssvm.is_server = 1;
   fs->ssvm.my_pid = getpid ();
   fs->ssvm.name = format (0, "%s%c", a->segment_name, 0);
   fs->ssvm.requested_va = baseva;
 
-  if ((rv = ssvm_master_init (&fs->ssvm, a->segment_type)))
+  if ((rv = ssvm_server_init (&fs->ssvm, a->segment_type)))
     {
       pool_put (sm->segments, fs);
       return (rv);
@@ -245,7 +245,7 @@ fifo_segment_attach (fifo_segment_main_t * sm, fifo_segment_create_args_t * a)
   else
     fs->ssvm.attach_timeout = sm->timeout_in_seconds;
 
-  if ((rv = ssvm_slave_init (&fs->ssvm, a->segment_type)))
+  if ((rv = ssvm_client_init (&fs->ssvm, a->segment_type)))
     {
       _vec_len (fs) = vec_len (fs) - 1;
       return (rv);

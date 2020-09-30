@@ -1494,13 +1494,12 @@ session_vpp_event_queues_allocate (session_main_t * smm)
 	eqs_size = smm->evt_qs_segment_size;
 
       eqs->ssvm_size = eqs_size;
-      eqs->i_am_master = 1;
       eqs->my_pid = vpp_pid;
       eqs->name = format (0, "%s%c", "session: evt-qs-segment", 0);
       /* clib_mem_vm_map_shared consumes first page before requested_va */
       eqs->requested_va = smm->session_baseva + clib_mem_get_page_size ();
 
-      if (ssvm_master_init (eqs, SSVM_SEGMENT_MEMFD))
+      if (ssvm_server_init (eqs, SSVM_SEGMENT_MEMFD))
 	{
 	  clib_warning ("failed to initialize queue segment");
 	  return;
