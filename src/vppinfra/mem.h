@@ -498,7 +498,6 @@ typedef struct
   u8 numa_node;
 } clib_mem_vm_map_t;
 
-clib_error_t *clib_mem_vm_ext_map (clib_mem_vm_map_t * a);
 void clib_mem_vm_randomize_va (uword * requested_va,
 			       clib_mem_page_sz_t log2_page_size);
 void mheap_trace (void *v, int enable);

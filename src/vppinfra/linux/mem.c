@@ -750,64 +750,6 @@ done:
   return r;
 }
 
-clib_error_t *
-clib_mem_vm_ext_map (clib_mem_vm_map_t * a)
-{
-  long unsigned int old_mask[16] = { 0 };
-  int mmap_flags = MAP_SHARED;
-  clib_error_t *err = 0;
-  int old_mpol = -1;
-  void *addr;
-  int rv;
-
-  if (a->numa_node)
-    {
-      rv = get_mempolicy (&old_mpol, old_mask, sizeof (old_mask) * 8 + 1, 0,
-			  0);
-
-      if (rv == -1)
-	{
-	  err = clib_error_return_unix (0, "get_mempolicy");
-	  goto done;
-	}
-    }
-
-  if (a->requested_va)
-    mmap_flags |= MAP_FIXED;
-
-  if (old_mpol != -1)
-    {
-      long unsigned int mask[16] = { 0 };
-      mask[0] = 1 << a->numa_node;
-      rv = set_mempolicy (MPOL_BIND, mask, sizeof (mask) * 8 + 1);
-      if (rv == -1)
-	{
-	  err = clib_error_return_unix (0, "set_mempolicy");
-	  goto done;
-	}
-    }
-
-  addr = (void *) mmap (uword_to_pointer (a->requested_va, void *), a->size,
-			PROT_READ | PROT_WRITE, mmap_flags, a->fd, 0);
-
-  if (addr == MAP_FAILED)
-    return clib_error_return_unix (0, "mmap");
-
-  /* re-apply old numa memory policy */
-  if (old_mpol != -1 &&
-      set_mempolicy (old_mpol, old_mask, sizeof (old_mask) * 8 + 1) == -1)
-    {
-      err = clib_error_return_unix (0, "set_mempolicy");
-      goto done;
-    }
-
-  a->addr = addr;
-  CLIB_MEM_UNPOISON (addr, a->size);
-
-done:
-  return err;
-}
-
 int
 clib_mem_set_numa_affinity (u8 numa_node, int force)
 {
