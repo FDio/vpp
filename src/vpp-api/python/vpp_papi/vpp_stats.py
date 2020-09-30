@@ -85,6 +85,7 @@ char *stat_segment_index_to_name_r (uint32_t index, stat_client_main_t * sm);
 uint64_t stat_segment_version(void);
 uint64_t stat_segment_version_r(stat_client_main_t *sm);
 void free(void *ptr);
+void vac_mem_init (size_t size);
 """)  # noqa: E501
 
 
@@ -203,6 +204,7 @@ class VPPStats(object):
         except Exception:
             raise VPPStatsClientLoadError("Could not open: %s" %
                                           VPPStats.sharedlib_name)
+        self.api.vac_mem_init(0)
 
     def connect(self):
         self.client = self.api.stat_client_get()

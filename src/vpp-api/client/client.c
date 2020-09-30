@@ -79,6 +79,9 @@ u16 read_timeout = 0;
 bool rx_is_running = false;
 bool timeout_thread_cancelled = false;
 
+/* Only ever allocate one heap */
+bool mem_initialized = false;
+
 static void
 init (void)
 {
@@ -564,8 +567,11 @@ vac_set_error_handler (vac_error_callback_t cb)
 void
 vac_mem_init (size_t size)
 {
+  if (mem_initialized)
+    return;
   if (size == 0)
     clib_mem_init (0, 1 << 30);  // default
   else
     clib_mem_init (0, size);
+  mem_initialized = true;
 }
