@@ -858,7 +858,7 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike, u8 * payload,
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
   int is_aead = tr_encr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16;
 
-  if ((!sa->sk_ar || !sa->sk_ai) && !is_aead)
+  if (((!sa->sk_ar || !sa->sk_ai) && !is_aead) || (!sa->sk_ei || !sa->sk_er))
     return 0;
 
   while (p < len &&
