@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dfe74af4_5db8728a",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 3285,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T14:12:25Z",
+      "side": 1,
+      "message": "we should move this block of 3 lines above so that we have a single if (send_notification)\nI do not think order matter here",
+      "revId": "7c9a33dd8ac3010c9ea23ec02fc6eca261ddfcf9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "621694d8_5c9d089f",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 3686,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T14:12:25Z",
+      "side": 1,
+      "message": "can we remove this useless bracket pair? it would ease readability",
+      "revId": "7c9a33dd8ac3010c9ea23ec02fc6eca261ddfcf9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e48626b9_7ed6dc82",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 3833,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T14:12:25Z",
+      "side": 1,
+      "message": "this should be the \u0027else\u0027 branch of the if (valid_ip) test above",
+      "revId": "7c9a33dd8ac3010c9ea23ec02fc6eca261ddfcf9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
