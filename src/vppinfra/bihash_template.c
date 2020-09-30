@@ -197,7 +197,8 @@ void BV (clib_bihash_init2) (BVT (clib_bihash_init2_args) * a)
   h->log2_nbuckets = max_log2 (a->nbuckets);
   h->memory_size = BIHASH_USE_HEAP ? 0 : a->memory_size;
   h->instantiated = 0;
-  h->fmt_fn = a->fmt_fn;
+  h->fmt_fn = BV (format_bihash);
+  h->kvp_fmt_fn = a->kvp_fmt_fn;
 
   alloc_arena (h) = 0;
 
@@ -327,7 +328,8 @@ void BV (clib_bihash_initiator_init_svm)
     (u64) BV (clib_bihash_get_offset) (h, freelist_vh->vector_data);
   h->freelists = (void *) (freelist_vh->vector_data);
 
-  h->fmt_fn = NULL;
+  h->fmt_fn = BV (format_bihash);
+  h->kvp_fmt_fn = NULL;
   h->instantiated = 1;
 }
 
@@ -377,14 +379,15 @@ void BV (clib_bihash_responder_init_svm)
 
   h->alloc_lock = BV (clib_bihash_get_value) (h, h->sh->alloc_lock_as_u64);
   h->freelists = BV (clib_bihash_get_value) (h, h->sh->freelists_as_u64);
-  h->fmt_fn = NULL;
+  h->fmt_fn = BV (format_bihash);
+  h->kvp_fmt_fn = NULL;
 }
 #endif /* BIHASH_32_64_SVM */
 
 void BV (clib_bihash_set_kvp_format_fn) (BVT (clib_bihash) * h,
-					 format_function_t * fmt_fn)
+					 format_function_t * kvp_fmt_fn)
 {
-  h->fmt_fn = fmt_fn;
+  h->kvp_fmt_fn = kvp_fmt_fn;
 }
 
 void BV (clib_bihash_free) (BVT (clib_bihash) * h)
@@ -1009,11 +1012,11 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
   u64 active_buckets = 0;
   u64 linear_buckets = 0;
 
-  s = format (s, "Hash table %s\n", h->name ? h->name : (u8 *) "(unnamed)");
+  s = format (s, "Hash table '%s'\n", h->name ? h->name : (u8 *) "(unnamed)");
 
 #if BIHASH_LAZY_INSTANTIATE
   if (PREDICT_FALSE (h->instantiated == 0))
-    return format (s, "[empty, uninitialized]");
+    return format (s, "    empty, uninitialized");
 #endif
 
   for (i = 0; i < h->nbuckets; i++)
@@ -1052,11 +1055,11 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
 		}
 	      if (verbose)
 		{
-		  if (h->fmt_fn)
+		  if (h->kvp_fmt_fn)
 		    {
 		      s = format (s, "    %d: %U\n",
 				  j * BIHASH_KVP_PER_PAGE + k,
-				  h->fmt_fn, &(v->kvp[k]), verbose);
+				  h->kvp_fmt_fn, &(v->kvp[k]), verbose);
 		    }
 		  else
 		    {
@@ -1106,8 +1109,8 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
 	  c = c->next;
 	}
       s = format (s,
-		  "    heap: %u chunks allocated\n"
-		  "          used %UB, scrap %UB\n", n_chunks,
+		  "    heap: %u chunk(s) allocated\n"
+		  "          bytes: used %U, scrap %U\n", n_chunks,
 		  format_memory_size, total_size,
 		  format_memory_size, bytes_left);
     }

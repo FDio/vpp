@@ -156,6 +156,7 @@ BVS (clib_bihash)
   u32 log2_nbuckets;
   u64 memory_size;
   u8 *name;
+  format_function_t *fmt_fn;
   void *heap;
   BVT (clib_bihash_alloc_chunk) * chunks;
 
@@ -174,7 +175,7 @@ BVS (clib_bihash)
   /**
     * A custom format function to print the Key and Value of bihash_key instead of default hexdump
     */
-  format_function_t *fmt_fn;
+  format_function_t *kvp_fmt_fn;
 
   /** Optional statistics-gathering callback */
 #if BIHASH_ENABLE_STATS
@@ -192,7 +193,7 @@ typedef struct
   char *name;
   u32 nbuckets;
   uword memory_size;
-  format_function_t *fmt_fn;
+  format_function_t *kvp_fmt_fn;
   u8 instantiate_immediately;
   u8 dont_add_to_all_bihash_list;
 } BVT (clib_bihash_init2_args);
@@ -346,7 +347,7 @@ void BV (clib_bihash_responder_init_svm)
 #endif
 
 void BV (clib_bihash_set_kvp_format_fn) (BVT (clib_bihash) * h,
-					 format_function_t * fmt_fn);
+					 format_function_t * kvp_fmt_fn);
 
 void BV (clib_bihash_free) (BVT (clib_bihash) * h);
 
