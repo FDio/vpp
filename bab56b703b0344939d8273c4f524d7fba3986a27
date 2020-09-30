@@ -1,0 +1,208 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c3525828_027872d0",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 629,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T15:16:10Z",
+      "side": 1,
+      "message": "why not use an ip_address_t directly instead?",
+      "revId": "bab56b703b0344939d8273c4f524d7fba3986a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "24e4f6d6_24dc557e",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 681,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T15:16:10Z",
+      "side": 1,
+      "message": "we should update ikev2_elog_exchange for ipv6 support instead",
+      "revId": "bab56b703b0344939d8273c4f524d7fba3986a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "26b8b3f5_4c483d09",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 921,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T15:16:10Z",
+      "side": 1,
+      "message": "it looks like an unrelated bugfix? If so can it be part of a separate patch so we can backport it more easily?",
+      "revId": "bab56b703b0344939d8273c4f524d7fba3986a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0d83a991_a090f1c2",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1821,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T15:16:10Z",
+      "side": 1,
+      "message": "we should update ikev2_elog_peers for ipv6 support instead",
+      "revId": "bab56b703b0344939d8273c4f524d7fba3986a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "37c141cd_ae7fc65b",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2777,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T15:16:10Z",
+      "side": 1,
+      "message": "maybe we can move this to a function? It would be more readable and can be reused below",
+      "revId": "bab56b703b0344939d8273c4f524d7fba3986a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ca281bc7_5290a07d",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2849,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T15:16:10Z",
+      "side": 1,
+      "message": "this could use the same function as above",
+      "revId": "bab56b703b0344939d8273c4f524d7fba3986a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9e9c99cc_663394e3",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 3106,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T15:16:10Z",
+      "side": 1,
+      "message": "maybe this can be a function? it will help readability and can be reused below",
+      "revId": "bab56b703b0344939d8273c4f524d7fba3986a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7519a3fd_e05acd68",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 3120,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T15:16:10Z",
+      "side": 1,
+      "message": "can reuse the function above",
+      "revId": "bab56b703b0344939d8273c4f524d7fba3986a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "26c63e10_8e74db31",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 3226,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T15:16:10Z",
+      "side": 1,
+      "message": "I think the v4 version should only have ip4-lookup and not ip6-lookup",
+      "revId": "bab56b703b0344939d8273c4f524d7fba3986a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f3d304d8_649dc6e5",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 3243,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T15:16:10Z",
+      "side": 1,
+      "message": "I think the v6 version should only have ip6-lookup and not ip4-lookup",
+      "revId": "bab56b703b0344939d8273c4f524d7fba3986a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "edde47a1_faa507d5",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 3785,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T15:16:10Z",
+      "side": 1,
+      "message": "it would be good to have a function that can be reused below",
+      "revId": "bab56b703b0344939d8273c4f524d7fba3986a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c2f62638_1231db46",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 3797,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T15:16:10Z",
+      "side": 1,
+      "message": "this could reuse the function above",
+      "revId": "bab56b703b0344939d8273c4f524d7fba3986a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
