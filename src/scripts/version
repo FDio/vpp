@@ -30,6 +30,11 @@ TAG=$(echo ${vstring} | cut -d- -f1 | sed -e 's/^v//')
 ADD=$(echo ${vstring} | cut -s -d- -f2)
 POINT=$(echo ${TAG} | cut -d. -f3)
 
+# during make pkg-rpm vstring ends up being vXX.YY, which is not what we expect. Fix it up.
+if [ -z "${ADD}" ]; then
+  ADD="0"
+fi
+
 # if this is a "implicit zeroth" release (e.g. 19.08), check if we need to add ".0"
 # to fix the artifact versioning sorting
 if [ -z "${POINT}" ]; then
