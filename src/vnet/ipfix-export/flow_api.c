@@ -264,8 +264,8 @@ static void
     return;
 
   classify_table_index = ntohl (mp->table_id);
-  ip_version = ntohl (mp->ip_version);
-  transport_protocol = ntohl (mp->transport_protocol);
+  ip_version = (mp->ip_version == ADDRESS_IP4) ? 4 : 6;
+  transport_protocol = mp->transport_protocol;
   is_add = mp->is_add;
 
   if (fcm->src_port == 0)
@@ -340,8 +340,8 @@ send_ipfix_classify_table_details (u32 table_index,
   mp->_vl_msg_id = ntohs (VL_API_IPFIX_CLASSIFY_TABLE_DETAILS);
   mp->context = context;
   mp->table_id = htonl (table->classify_table_index);
-  mp->ip_version = htonl (table->ip_version);
-  mp->transport_protocol = htonl (table->transport_protocol);
+  mp->ip_version = (table->ip_version == 4) ? ADDRESS_IP4 : ADDRESS_IP6;
+  mp->transport_protocol = table->transport_protocol;
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
