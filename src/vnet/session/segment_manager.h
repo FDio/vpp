@@ -88,6 +88,7 @@ typedef struct segment_manager_main_init_args_
 
 segment_manager_t *segment_manager_alloc (void);
 int segment_manager_init (segment_manager_t * sm);
+int segment_manager_init_first (segment_manager_t * sm);
 
 /**
  * Cleanup segment manager

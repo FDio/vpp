@@ -711,7 +711,7 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
   sm = segment_manager_alloc ();
   sm->app_wrk_index = app_wrk->wrk_index;
 
-  if ((rv = segment_manager_init (sm)))
+  if ((rv = segment_manager_init_first (sm)))
     {
       app_worker_free (app_wrk);
       return rv;
