@@ -291,7 +291,7 @@ ssvm_server_init_memfd (ssvm_private_t * memfd)
 int
 ssvm_client_init_memfd (ssvm_private_t * memfd)
 {
-  clib_mem_vm_map_t mapa = { 0 };
+  int mmap_flags = MAP_SHARED;
   ssvm_shared_header_t *sh;
   uword page_size;
 
@@ -304,37 +304,42 @@ ssvm_client_init_memfd (ssvm_private_t * memfd)
       return SSVM_API_ERROR_MMAP;
     }
 
+  if (memfd->requested_va)
+    mmap_flags |= MAP_FIXED;
+
   /*
    * Map the segment once, to look at the shared header
    */
-  mapa.fd = memfd->fd;
-  mapa.size = page_size;
 
-  if (clib_mem_vm_ext_map (&mapa))
+  sh = (void *) mmap (0, page_size, PROT_READ | PROT_WRITE, MAP_SHARED,
+		      memfd->fd, 0);
+
+  if (sh == MAP_FAILED)
     {
-      clib_unix_warning ("client research mmap (fd %d)", mapa.fd);
+      clib_unix_warning ("client research mmap (fd %d)", memfd->fd);
       close (memfd->fd);
       return SSVM_API_ERROR_MMAP;
     }
 
-  sh = mapa.addr;
   memfd->requested_va = sh->ssvm_va;
   memfd->ssvm_size = sh->ssvm_size;
-  clib_mem_vm_free (sh, page_size);
+  munmap (sh, page_size);
 
   /*
    * Remap the segment at the 'right' address
    */
-  mapa.requested_va = memfd->requested_va;
-  mapa.size = memfd->ssvm_size;
-  if (clib_mem_vm_ext_map (&mapa))
+
+  sh = (void *) mmap (uword_to_pointer (memfd->requested_va, void *),
+		      memfd->ssvm_size,
+		      PROT_READ | PROT_WRITE, mmap_flags, memfd->fd, 0);
+
+  if (sh == MAP_FAILED)
     {
       clib_unix_warning ("client final mmap");
       close (memfd->fd);
       return SSVM_API_ERROR_MMAP;
     }
 
-  sh = mapa.addr;
   sh->client_pid = getpid ();
   memfd->sh = sh;
   return 0;
@@ -347,7 +352,7 @@ ssvm_delete_memfd (ssvm_private_t * memfd)
   if (memfd->is_server)
     clib_mem_vm_unmap (memfd->sh);
   else
-    clib_mem_vm_free (memfd->sh, memfd->ssvm_size);
+    munmap (memfd->sh, memfd->ssvm_size);
   close (memfd->fd);
 }
 
