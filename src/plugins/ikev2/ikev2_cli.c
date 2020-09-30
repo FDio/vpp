@@ -249,6 +249,23 @@ VLIB_CLI_COMMAND (show_ikev2_sa_command, static) = {
 };
 /* *INDENT-ON* */
 
+static uword
+unformat_ikev2_token (unformat_input_t * input, va_list * va)
+{
+  u8 **string_return = va_arg (*va, u8 **);
+  const char *token_chars = "a-zA-Z0-9_";
+  if (*string_return)
+    {
+      /* if string_return was already allocated (eg. because of a previous
+       * partial match with a successful unformat_token()), we must free it
+       * before reusing the pointer, otherwise we'll be leaking memory
+       */
+      vec_free (*string_return);
+      *string_return = 0;
+    }
+  return unformat_user (input, unformat_token, token_chars, string_return);
+}
+
 static clib_error_t *
 ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 				  unformat_input_t * input,
@@ -271,27 +288,23 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
   ikev2_transform_integ_type_t integ_alg;
   ikev2_transform_dh_type_t dh_type;
 
-  const char *valid_chars = "a-zA-Z0-9_";
-
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "add %U", unformat_token, valid_chars, &name))
+      if (unformat (line_input, "add %U", unformat_ikev2_token, &name))
 	{
 	  r = ikev2_add_del_profile (vm, name, 1);
 	  goto done;
 	}
-      else
-	if (unformat
-	    (line_input, "del %U", unformat_token, valid_chars, &name))
+      else if (unformat (line_input, "del %U", unformat_ikev2_token, &name))
 	{
 	  r = ikev2_add_del_profile (vm, name, 0);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U auth shared-key-mic string %v",
-			 unformat_token, valid_chars, &name, &data))
+			 unformat_ikev2_token, &name, &data))
 	{
 	  r =
 	    ikev2_set_profile_auth (vm, name,
@@ -300,7 +313,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
       else if (unformat (line_input, "set %U auth shared-key-mic hex %U",
-			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_token, &name,
 			 unformat_hex_string, &data))
 	{
 	  r =
@@ -310,7 +323,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
       else if (unformat (line_input, "set %U auth rsa-sig cert-file %v",
-			 unformat_token, valid_chars, &name, &data))
+			 unformat_ikev2_token, &name, &data))
 	{
 	  r =
 	    ikev2_set_profile_auth (vm, name, IKEV2_AUTH_METHOD_RSA_SIG, data,
@@ -318,7 +331,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
       else if (unformat (line_input, "set %U id local %U %U",
-			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_token, &name,
 			 unformat_ikev2_id_type, &id_type,
 			 unformat_ip4_address, &ip4))
 	{
@@ -329,7 +342,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
       else if (unformat (line_input, "set %U id local %U 0x%U",
-			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_token, &name,
 			 unformat_ikev2_id_type, &id_type,
 			 unformat_hex_string, &data))
 	{
@@ -338,7 +351,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
       else if (unformat (line_input, "set %U id local %U %v",
-			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_token, &name,
 			 unformat_ikev2_id_type, &id_type, &data))
 	{
 	  r =
@@ -346,7 +359,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
       else if (unformat (line_input, "set %U id remote %U %U",
-			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_token, &name,
 			 unformat_ikev2_id_type, &id_type,
 			 unformat_ip4_address, &ip4))
 	{
@@ -357,7 +370,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
       else if (unformat (line_input, "set %U id remote %U 0x%U",
-			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_token, &name,
 			 unformat_ikev2_id_type, &id_type,
 			 unformat_hex_string, &data))
 	{
@@ -366,7 +379,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
       else if (unformat (line_input, "set %U id remote %U %v",
-			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_token, &name,
 			 unformat_ikev2_id_type, &id_type, &data))
 	{
 	  r = ikev2_set_profile_id (vm, name, (u8) id_type, data,	/*remote */
@@ -375,7 +388,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	}
       else if (unformat (line_input, "set %U traffic-selector local "
 			 "ip-range %U - %U port-range %u - %u protocol %u",
-			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_token, &name,
 			 unformat_ip4_address, &ip4,
 			 unformat_ip4_address, &end_addr,
 			 &tmp1, &tmp2, &tmp3))
@@ -387,7 +400,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	}
       else if (unformat (line_input, "set %U traffic-selector remote "
 			 "ip-range %U - %U port-range %u - %u protocol %u",
-			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_token, &name,
 			 unformat_ip4_address, &ip4,
 			 unformat_ip4_address, &end_addr,
 			 &tmp1, &tmp2, &tmp3))
@@ -398,7 +411,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
       else if (unformat (line_input, "set %U responder %U %U",
-			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_token, &name,
 			 unformat_vnet_sw_interface, vnm,
 			 &responder_sw_if_index, unformat_ip4_address,
 			 &responder_ip4))
@@ -409,7 +422,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
       else if (unformat (line_input, "set %U tunnel %U",
-			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_token, &name,
 			 unformat_vnet_sw_interface, vnm, &tun_sw_if_index))
 	{
 	  r = ikev2_set_profile_tunnel_interface (vm, name, tun_sw_if_index);
@@ -419,7 +432,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	if (unformat
 	    (line_input,
 	     "set %U ike-crypto-alg %U %u ike-integ-alg %U ike-dh %U",
-	     unformat_token, valid_chars, &name,
+	     unformat_ikev2_token, &name,
 	     unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1,
 	     unformat_ikev2_transform_integ_type, &integ_alg,
 	     unformat_ikev2_transform_dh_type, &dh_type))
@@ -433,7 +446,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	if (unformat
 	    (line_input,
 	     "set %U ike-crypto-alg %U %u ike-dh %U",
-	     unformat_token, valid_chars, &name,
+	     unformat_ikev2_token, &name,
 	     unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1,
 	     unformat_ikev2_transform_dh_type, &dh_type))
 	{
@@ -447,7 +460,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	if (unformat
 	    (line_input,
 	     "set %U esp-crypto-alg %U %u esp-integ-alg %U",
-	     unformat_token, valid_chars, &name,
+	     unformat_ikev2_token, &name,
 	     unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1,
 	     unformat_ikev2_transform_integ_type, &integ_alg))
 	{
@@ -459,7 +472,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
       else if (unformat
 	       (line_input,
 		"set %U esp-crypto-alg %U %u",
-		unformat_token, valid_chars, &name,
+		unformat_ikev2_token, &name,
 		unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1))
 	{
 	  r =
@@ -467,7 +480,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
       else if (unformat (line_input, "set %U sa-lifetime %lu %u %u %lu",
-			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_token, &name,
 			 &tmp4, &tmp1, &tmp2, &tmp5))
 	{
 	  r =
@@ -475,13 +488,13 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
       else if (unformat (line_input, "set %U udp-encap",
-			 unformat_token, valid_chars, &name))
+			 unformat_ikev2_token, &name))
 	{
 	  r = ikev2_set_profile_udp_encap (vm, name);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U ipsec-over-udp port %u",
-			 unformat_token, valid_chars, &name, &tmp1))
+			 unformat_ikev2_token, &name, &tmp1))
 	{
 	  int rv = ikev2_set_profile_ipsec_udp_port (vm, name, tmp1, 1);
 	  if (rv)
@@ -725,15 +738,12 @@ ikev2_initiate_command_fn (vlib_main_t * vm,
   u32 tmp1;
   u64 tmp2;
 
-  const char *valid_chars = "a-zA-Z0-9_";
-
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "sa-init %U", unformat_token, valid_chars, &name))
+      if (unformat (line_input, "sa-init %U", unformat_ikev2_token, &name))
 	{
 	  r = ikev2_initiate_sa_init (vm, name);
 	  goto done;
