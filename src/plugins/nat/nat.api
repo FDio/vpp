@@ -30,6 +30,47 @@ import "plugins/nat/nat_types.api";
  * Common NAT plugin APIs
  */
 
+enum nat44_config_flags : u8
+{
+  NAT44_IS_ENDPOINT_INDEPENDENT = 0x00,
+  NAT44_IS_ENDPOINT_DEPENDENT = 0x01,
+  NAT44_IS_STATIC_MAPPING_ONLY = 0x02,
+  NAT44_IS_CONNECTION_TRACKING = 0x04,
+  NAT44_IS_OUT2IN_DPO = 0x08,
+};
+
+/** \brief Enable/disable NAT44 plugin
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param inside_vrf - inside vrf id
+    @param outside_vrf - outside vrf id
+    @param users - maximum number of users (used in endpoint-independent)
+    @param user_memory - overwrite hash allocation parameter
+    @param sessions - maximum number of sessions
+    @param session_memory - overwrite hash allocation parameter
+    @param user_sessions - maximum number of sessions per user
+                          (only in endpoint-indpendent)
+    @param enable - true if enable, false if disable
+    @param flags - flag NAT44_IS_ENDPOINT_INDEPENDENT,
+                        NAT44_IS_ENDPOINT_DEPENDENT,
+                        NAT44_IS_STATIC_MAPPING_ONLY,
+                        NAT44_IS_CONNECTION_TRACKING,
+                        NAT44_IS_OUT2IN_DPO
+*/
+autoreply define nat44_plugin_enable_disable {
+  u32 client_index;
+  u32 context;
+  u32 inside_vrf;
+  u32 outside_vrf;
+  u32 users;
+  u32 user_memory;
+  u32 sessions;
+  u32 session_memory;
+  u32 user_sessions;
+  bool enable;
+  vl_api_nat44_config_flags_t flags;
+};
+
 /** \brief Control ping from client to api server request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
