@@ -333,21 +333,12 @@ segment_manager_alloc (void)
   return sm;
 }
 
-/**
- * Initializes segment manager based on options provided.
- * Returns error if ssvm segment(s) allocation fails.
- */
 int
 segment_manager_init (segment_manager_t * sm)
 {
   segment_manager_props_t *props;
-  uword first_seg_size;
-  fifo_segment_t *fs;
-  int fs_index, i;
 
   props = segment_manager_properties_get (sm);
-  first_seg_size = clib_max (props->segment_size,
-			     sm_main.default_segment_size);
 
   sm->max_fifo_size = props->max_fifo_size ?
     props->max_fifo_size : sm_main.default_max_fifo_size;
@@ -356,6 +347,25 @@ segment_manager_init (segment_manager_t * sm)
   segment_manager_set_watermarks (sm,
 				  props->high_watermark,
 				  props->low_watermark);
+  return 0;
+}
+
+/**
+ * Initializes segment manager based on options provided.
+ * Returns error if ssvm segment(s) allocation fails.
+ */
+int
+segment_manager_init_first (segment_manager_t * sm)
+{
+  segment_manager_props_t *props;
+  uword first_seg_size;
+  fifo_segment_t *fs;
+  int fs_index, i;
+
+  segment_manager_init (sm);
+  props = segment_manager_properties_get (sm);
+  first_seg_size = clib_max (props->segment_size,
+			     sm_main.default_segment_size);
 
   if (props->prealloc_fifos)
     {
