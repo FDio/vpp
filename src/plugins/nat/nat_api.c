@@ -334,6 +334,89 @@ vl_api_nat_set_log_level_t_print (vl_api_nat_set_log_level_t *
 }
 
 static void
+  vl_api_nat44_plugin_enable_disable_t_handler
+  (vl_api_nat44_plugin_enable_disable_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  nat44_config_t c = { 0 };
+  vl_api_nat44_plugin_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  if (mp->enable)
+    {
+      c.endpoint_dependent = mp->flags & NAT44_API_IS_ENDPOINT_DEPENDENT;
+      c.static_mapping_only = mp->flags & NAT44_API_IS_STATIC_MAPPING_ONLY;
+      c.connection_tracking = mp->flags & NAT44_API_IS_CONNECTION_TRACKING;
+      c.out2in_dpo = mp->flags & NAT44_API_IS_OUT2IN_DPO;
+
+      c.inside_vrf = ntohl (mp->inside_vrf);
+      c.outside_vrf = ntohl (mp->outside_vrf);
+
+      c.users = ntohl (mp->users);
+      c.user_memory = ntohl (mp->user_memory);
+
+      c.sessions = ntohl (mp->sessions);
+      c.session_memory = ntohl (mp->session_memory);
+
+      c.user_sessions = ntohl (mp->user_sessions);
+
+      rv = nat44_plugin_enable (c);
+    }
+  else
+    rv = nat44_plugin_disable ();
+
+  REPLY_MACRO (VL_API_NAT44_PLUGIN_ENABLE_DISABLE_REPLY);
+}
+
+static void *vl_api_nat44_plugin_enable_disable_t_print
+  (vl_api_nat44_plugin_enable_disable_t * mp, void *handle)
+{
+  u8 *s;
+  u32 val;
+
+  s = format (0, "SCRIPT: nat44_plugin_enable_disable ");
+  if (mp->enable)
+    {
+      s = format (s, "enable ");
+      if (mp->flags & NAT44_API_IS_ENDPOINT_DEPENDENT)
+	s = format (s, "endpoint-dependent ");
+      else
+	s = format (s, "endpoint-indepenednet ");
+      if (mp->flags & NAT44_API_IS_STATIC_MAPPING_ONLY)
+	s = format (s, "static_mapping_only ");
+      if (mp->flags & NAT44_API_IS_CONNECTION_TRACKING)
+	s = format (s, "connection_tracking ");
+      if (mp->flags & NAT44_API_IS_OUT2IN_DPO)
+	s = format (s, "out2in_dpo ");
+      val = ntohl (mp->inside_vrf);
+      if (val)
+	s = format (s, "inside_vrf %u ", val);
+      val = ntohl (mp->outside_vrf);
+      if (val)
+	s = format (s, "outside_vrf %u ", val);
+      val = ntohl (mp->users);
+      if (val)
+	s = format (s, "users %u ", val);
+      val = ntohl (mp->user_memory);
+      if (val)
+	s = format (s, "user_memory %u ", val);
+      val = ntohl (mp->sessions);
+      if (val)
+	s = format (s, "sessions %u ", val);
+      val = ntohl (mp->session_memory);
+      if (val)
+	s = format (s, "session_memory %u ", val);
+      val = ntohl (mp->user_sessions);
+      if (val)
+	s = format (s, "user_sessions %u ", val);
+    }
+  else
+    s = format (s, "disable ");
+
+  FINISH;
+}
+
+static void
 vl_api_nat_ipfix_enable_disable_t_handler (vl_api_nat_ipfix_enable_disable_t *
 					   mp)
 {
@@ -2228,6 +2311,7 @@ _(NAT_SHOW_CONFIG, nat_show_config)                                     \
 _(NAT_SHOW_CONFIG_2, nat_show_config_2)                                 \
 _(NAT_SET_WORKERS, nat_set_workers)                                     \
 _(NAT_WORKER_DUMP, nat_worker_dump)                                     \
+_(NAT44_PLUGIN_ENABLE_DISABLE, nat44_plugin_enable_disable)             \
 _(NAT44_DEL_USER, nat44_del_user)                                       \
 _(NAT44_SET_SESSION_LIMIT, nat44_set_session_limit)                     \
 _(NAT_SET_LOG_LEVEL, nat_set_log_level)                                 \
