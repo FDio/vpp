@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1cfbb4f6_219beaf3",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 650,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T13:34:50Z",
+      "side": 1,
+      "message": "shouldn\u0027t it be if (plen \u003c sizeof (*ke) || plen \u003e rlen) ?",
+      "revId": "93cd31d3e1e187379b50cbcf4150c646ecf0eff1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "65f1ca83_59263ecd",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 664,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T13:34:50Z",
+      "side": 1,
+      "message": "maybe add ASSERT (plen \u003e\u003d sizeof (*ikep) \u0026\u0026 plen \u003c\u003d rlen) ?\nI know the caller checked it but it is easy to forget in a refactoring, or start to use it elsewhere...",
+      "revId": "93cd31d3e1e187379b50cbcf4150c646ecf0eff1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9bcc59e3_8af29144",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 701,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T13:34:50Z",
+      "side": 1,
+      "message": "shouldn\u0027t it be if (plen \u003e current_length || plen \u003c sizeof(*ikep)) ?",
+      "revId": "93cd31d3e1e187379b50cbcf4150c646ecf0eff1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dd1d6f2c_68547b40",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 912,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T13:34:50Z",
+      "side": 1,
+      "message": "should we check that rlen \u003e\u003d sizeof(*ike) before doing that?",
+      "revId": "93cd31d3e1e187379b50cbcf4150c646ecf0eff1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "74512783_ec4517f2",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 917,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-09-30T13:34:50Z",
+      "side": 1,
+      "message": "should we check that len \u003e\u003d sizeof(*ikep) before doing that?",
+      "revId": "93cd31d3e1e187379b50cbcf4150c646ecf0eff1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
