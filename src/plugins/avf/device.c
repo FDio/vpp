@@ -637,6 +637,8 @@ avf_config_promisc_mode (vlib_main_t * vm, avf_device_t * ad, int is_enable)
 
   if (is_enable)
     pi.flags = FLAG_VF_UNICAST_PROMISC | FLAG_VF_MULTICAST_PROMISC;
+  else				/* always enable multicast */
+    pi.flags = FLAG_VF_MULTICAST_PROMISC;
 
   avf_log_debug (ad, "config_promisc_mode: unicast %s multicast %s",
 		 pi.flags & FLAG_VF_UNICAST_PROMISC ? "on" : "off",
