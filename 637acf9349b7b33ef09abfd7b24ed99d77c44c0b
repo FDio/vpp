@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "187db529_dc0a4a80",
+        "filename": "RELEASE.md",
+        "patchSetId": 7
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-09-30T14:20:52Z",
+      "side": 1,
+      "message": "dive into the implementation",
+      "range": {
+        "startLine": 54,
+        "startChar": 12,
+        "endLine": 54,
+        "endChar": 38
+      },
+      "revId": "637acf9349b7b33ef09abfd7b24ed99d77c44c0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
