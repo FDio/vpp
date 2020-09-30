@@ -32,6 +32,97 @@
   "This command is supported only in endpoint dependent mode"
 
 static clib_error_t *
+nat44_enable_command_fn (vlib_main_t * vm,
+			 unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+
+  nat44_config_t c = { 0 };
+  u8 mode_set = 0;
+
+  // TODO: check this also inside the function so it can be
+  //       safely called from anyplace, also sanity checking required
+  if (sm->enabled)
+    return clib_error_return (0, "nat44 already enabled");
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    {
+      if (nat44_plugin_enable (c) != 0)
+	return clib_error_return (0, "nat44 enable failed");
+      return 0;
+    }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (!mode_set && unformat (line_input, "static-mapping-only"))
+	{
+	  mode_set = 1;
+	  c.static_mapping_only = 1;
+	  if (unformat (line_input, "connection-tracking"))
+	    {
+	      c.connection_tracking = 1;
+	    }
+	}
+      else if (!mode_set && unformat (line_input, "out2in-dpo"))
+	{
+	  mode_set = 1;
+	  c.out2in_dpo = 1;
+	}
+      else if (!mode_set && unformat (line_input, "endpoint-dependent"))
+	{
+	  mode_set = 1;
+	  c.endpoint_dependent = 1;
+	}
+      else if (unformat (input, "inside-vrf %u", &c.inside_vrf));
+      else if (unformat (input, "outside-vrf %u", &c.outside_vrf));
+      else if (unformat (input, "users %u", &c.users));
+      else if (unformat (input, "user-memory %u", &c.user_memory));
+      else if (unformat (input, "sessions %u", &c.sessions));
+      else if (unformat (input, "session-memory %u", &c.session_memory));
+      else if (unformat (input, "user-sessions %u", &c.user_sessions));
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (!(c.sessions && c.session_memory))
+    {
+      error =
+	clib_error_return (0,
+			   "either number of sessions or size of the memory is required");
+      goto done;
+    }
+
+  if (nat44_plugin_enable (c) != 0)
+    error = clib_error_return (0, "nat44 enable failed");
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+static clib_error_t *
+nat44_disable_command_fn (vlib_main_t * vm,
+			  unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  clib_error_t *error = 0;
+
+  if (sm->enabled)
+    return clib_error_return (0, "nat44 already disabled");
+
+  if (nat44_plugin_disable () != 0)
+    error = clib_error_return (0, "nat44 disable failed");
+
+  return error;
+}
+
+static clib_error_t *
 set_workers_command_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
@@ -1887,6 +1978,48 @@ VLIB_CLI_COMMAND (nat44_debug_fib_registration_command, static) = {
   .path = "debug nat44 fib registration",
   .short_help = "debug nat44 fib registration",
   .function = nat44_debug_fib_registration_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat44 enable}
+ * Enable nat44 plugin
+ * To enable nat44, use:
+ *  vpp# nat44 enable sessions <n>
+ * To enable nat44 static mapping only, use:
+ *  vpp# nat44 enable sessions <n> static-mapping
+ * To enable nat44 static mapping with connection tracking, use:
+ *  vpp# nat44 enable sessions <n> static-mapping connection-tracking
+ * To enable nat44 out2in dpo, use:
+ *  vpp# nat44 enable sessions <n> out2in-dpo
+ * To enable nat44 endpoint-dependent, use:
+ *  vpp# nat44 enable sessions <n> endpoint-dependent
+ * To overwrite user hash configuration, use:
+ *  vpp# nat44 enable sessions <n> user-memory <n>
+ * To overwrite session hash configuration, use:
+ *  vpp# nat44 enable session-memory <n>
+ * To set inside-vrf outside-vrf, use:
+ *  vpp# nat44 enable sessions <n> inside-vrf <id> outside-vrf <id>
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat44_enable_command, static) = {
+  .path = "nat44 enable",
+  .short_help = "nat44 enable sessions <max-number> [users <max-number>] [static-mappig-only [connection-tracking]|out2in-dpo|endpoint-dependent] [inside-vrf <vrf-id>] [outside-vrf <vrf-id>] [user-memory <number>] [session-memory <number>] [user-sessions <max-number>]",
+  .function = nat44_enable_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat44 disable}
+ * Disable nat44 plugin
+ * To disable nat44, use:
+ *  vpp# nat44 disable
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat44_disable_command, static) = {
+  .path = "nat44 disable",
+  .short_help = "nat44 disable",
+  .function = nat44_disable_command_fn,
 };
 
 /*?
