@@ -76,102 +76,12 @@ class MethodHolder(VppTestCase):
         return VppEnum.vl_api_nat_config_flags_t
 
     @property
+    def nat44_config_flags(self):
+        return VppEnum.vl_api_nat44_config_flags_t
+
+    @property
     def SYSLOG_SEVERITY(self):
         return VppEnum.vl_api_syslog_severity_t
-
-    def clear_nat44(self):
-        """
-        Clear NAT44 configuration.
-        """
-        if hasattr(self, 'pg7') and hasattr(self, 'pg8'):
-            if self.pg7.has_ip4_config:
-                self.pg7.unconfig_ip4()
-
-        self.vapi.nat44_forwarding_enable_disable(enable=0)
-
-        interfaces = self.vapi.nat44_interface_addr_dump()
-        for intf in interfaces:
-            self.vapi.nat44_add_del_interface_addr(
-                is_add=0,
-                sw_if_index=intf.sw_if_index,
-                flags=intf.flags)
-
-        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
-                                           src_port=self.ipfix_src_port,
-                                           enable=0)
-        self.ipfix_src_port = 4739
-        self.ipfix_domain_id = 1
-
-        self.vapi.syslog_set_filter(
-            self.SYSLOG_SEVERITY.SYSLOG_API_SEVERITY_EMERG)
-
-        self.vapi.nat_ha_set_listener(ip_address='0.0.0.0', port=0,
-                                      path_mtu=512)
-        self.vapi.nat_ha_set_failover(ip_address='0.0.0.0', port=0,
-                                      session_refresh_interval=10)
-
-        interfaces = self.vapi.nat44_interface_dump()
-        for intf in interfaces:
-            if intf.flags & self.config_flags.NAT_IS_INSIDE and \
-                    intf.flags & self.config_flags.NAT_IS_OUTSIDE:
-                self.vapi.nat44_interface_add_del_feature(
-                    sw_if_index=intf.sw_if_index)
-            self.vapi.nat44_interface_add_del_feature(
-                sw_if_index=intf.sw_if_index,
-                flags=intf.flags)
-
-        interfaces = self.vapi.nat44_interface_output_feature_dump()
-        for intf in interfaces:
-            self.vapi.nat44_interface_add_del_output_feature(
-                is_add=0,
-                flags=intf.flags,
-                sw_if_index=intf.sw_if_index)
-        static_mappings = self.vapi.nat44_static_mapping_dump()
-        for sm in static_mappings:
-            self.vapi.nat44_add_del_static_mapping(
-                is_add=0,
-                local_ip_address=sm.local_ip_address,
-                external_ip_address=sm.external_ip_address,
-                external_sw_if_index=sm.external_sw_if_index,
-                local_port=sm.local_port,
-                external_port=sm.external_port,
-                vrf_id=sm.vrf_id,
-                protocol=sm.protocol,
-                flags=sm.flags, tag=sm.tag)
-
-        lb_static_mappings = self.vapi.nat44_lb_static_mapping_dump()
-        for lb_sm in lb_static_mappings:
-            self.vapi.nat44_add_del_lb_static_mapping(
-                is_add=0,
-                flags=lb_sm.flags,
-                external_addr=lb_sm.external_addr,
-                external_port=lb_sm.external_port,
-                protocol=lb_sm.protocol,
-                local_num=0, locals=[],
-                tag=lb_sm.tag)
-
-        identity_mappings = self.vapi.nat44_identity_mapping_dump()
-        for id_m in identity_mappings:
-            self.vapi.nat44_add_del_identity_mapping(
-                ip_address=id_m.ip_address,
-                sw_if_index=id_m.sw_if_index,
-                port=id_m.port,
-                flags=id_m.flags,
-                vrf_id=id_m.vrf_id,
-                protocol=id_m.protocol)
-
-        addresses = self.vapi.nat44_address_dump()
-        for addr in addresses:
-            self.vapi.nat44_add_del_address_range(
-                first_ip_address=addr.ip_address,
-                last_ip_address=addr.ip_address,
-                vrf_id=0xFFFFFFFF, flags=addr.flags)
-
-        self.verify_no_nat44_user()
-        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
-                                   tcp_transitory=240, icmp=60)
-        self.vapi.nat_set_addr_and_port_alloc_alg()
-        self.vapi.nat_set_mss_clamping(enable=0, mss_value=1500)
 
     def nat44_add_static_mapping(self, local_ip, external_ip='0.0.0.0',
                                  local_port=0, external_port=0, vrf_id=0,
@@ -1256,19 +1166,17 @@ class TestNATMisc(MethodHolder):
     max_translations = 10240
     max_users = 10240
 
-    @classmethod
-    def setUpConstants(cls):
-        super(TestNATMisc, cls).setUpConstants()
-        cls.vpp_cmdline.extend([
-            "nat", "{",
-            "max translations per thread %d" % cls.max_translations,
-            "max users per thread %d" % cls.max_users,
-            "}"
-        ])
+    def setUp(self):
+        super(TestNATMisc, self).setUp()
+        self.vapi.nat44_plugin_enable_disable(
+            sessions=self.max_translations,
+            users=self.max_users, enable=1)
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestNATMisc, cls).tearDownClass()
+    def tearDown(self):
+        super(TestNATMisc, self).tearDown()
+        if not self.vpp_dead:
+            self.vapi.nat44_plugin_enable_disable(enable=0)
+            self.vapi.cli("clear logging")
 
     def test_show_config(self):
         """ NAT config translation memory """
@@ -1298,16 +1206,6 @@ class TestNAT44(MethodHolder):
 
     max_translations = 10240
     max_users = 10240
-
-    @classmethod
-    def setUpConstants(cls):
-        super(TestNAT44, cls).setUpConstants()
-        cls.vpp_cmdline.extend([
-            "nat", "{",
-            "max translations per thread %d" % cls.max_translations,
-            "max users per thread %d" % cls.max_users,
-            "}"
-        ])
 
     @classmethod
     def setUpClass(cls):
@@ -1373,9 +1271,27 @@ class TestNAT44(MethodHolder):
         cls.pg4._remote_ip4 = cls.pg9._remote_hosts[0]._ip4 = "10.0.0.2"
         cls.pg9.resolve_arp()
 
+    def setUp(self):
+        super(TestNAT44, self).setUp()
+        self.vapi.nat44_plugin_enable_disable(
+            sessions=self.max_translations,
+            users=self.max_users, enable=1)
+
     @classmethod
     def tearDownClass(cls):
         super(TestNAT44, cls).tearDownClass()
+
+    def tearDown(self):
+        super(TestNAT44, self).tearDown()
+        if not self.vpp_dead:
+            self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+                                               src_port=self.ipfix_src_port,
+                                               enable=0)
+            self.ipfix_src_port = 4739
+            self.ipfix_domain_id = 1
+
+            self.vapi.nat44_plugin_enable_disable(enable=0)
+            self.vapi.cli("clear logging")
 
     def test_clear_sessions(self):
         """ NAT44 session clearing test """
@@ -4094,11 +4010,6 @@ class TestNAT44(MethodHolder):
             self.assertEqual(tcp.sport, self.tcp_external_port)
             self.assertEqual(tcp.dport, self.tcp_port_in)
 
-    def tearDown(self):
-        super(TestNAT44, self).tearDown()
-        self.clear_nat44()
-        self.vapi.cli("clear logging")
-
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show nat44 addresses"))
         self.logger.info(self.vapi.cli("show nat44 interfaces"))
@@ -4114,11 +4025,6 @@ class TestNAT44(MethodHolder):
 
 class TestNAT44EndpointDependent2(MethodHolder):
     """ Endpoint-Dependent mapping and filtering test cases """
-
-    @classmethod
-    def setUpConstants(cls):
-        super(TestNAT44EndpointDependent2, cls).setUpConstants()
-        cls.vpp_cmdline.extend(["nat", "{", "endpoint-dependent", "}"])
 
     @classmethod
     def tearDownClass(cls):
@@ -4151,9 +4057,14 @@ class TestNAT44EndpointDependent2(MethodHolder):
 
     def setUp(self):
         super(TestNAT44EndpointDependent2, self).setUp()
+        flags = self.nat44_config_flags.NAT44_IS_ENDPOINT_DEPENDENT
+        self.vapi.nat44_plugin_enable_disable(enable=1, flags=flags)
 
-        nat_config = self.vapi.nat_show_config()
-        self.assertEqual(1, nat_config.endpoint_dependent)
+    def tearDown(self):
+        super(TestNAT44EndpointDependent2, self).tearDown()
+        if not self.vpp_dead:
+            self.vapi.nat44_plugin_enable_disable(enable=0)
+            self.vapi.cli("clear logging")
 
     def nat_add_inside_interface(self, i):
         self.vapi.nat44_interface_add_del_feature(
@@ -4247,11 +4158,6 @@ class TestNAT44EndpointDependent2(MethodHolder):
 
 class TestNAT44EndpointDependent(MethodHolder):
     """ Endpoint-Dependent mapping and filtering test cases """
-
-    @classmethod
-    def setUpConstants(cls):
-        super(TestNAT44EndpointDependent, cls).setUpConstants()
-        cls.vpp_cmdline.extend(["nat", "{", "endpoint-dependent", "}"])
 
     @classmethod
     def setUpClass(cls):
@@ -4352,14 +4258,23 @@ class TestNAT44EndpointDependent(MethodHolder):
         cls.pg8.config_ip4()
         cls.pg8.resolve_arp()
 
-    def setUp(self):
-        super(TestNAT44EndpointDependent, self).setUp()
-        self.vapi.nat_set_timeouts(
-            udp=300, tcp_established=7440, tcp_transitory=240, icmp=60)
-
     @classmethod
     def tearDownClass(cls):
         super(TestNAT44EndpointDependent, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestNAT44EndpointDependent, self).setUp()
+        flags = self.nat44_config_flags.NAT44_IS_ENDPOINT_DEPENDENT
+        self.vapi.nat44_plugin_enable_disable(enable=1, flags=flags)
+        self.vapi.nat_set_timeouts(
+            udp=300, tcp_established=7440,
+            tcp_transitory=240, icmp=60)
+
+    def tearDown(self):
+        super(TestNAT44EndpointDependent, self).tearDown()
+        if not self.vpp_dead:
+            self.vapi.nat44_plugin_enable_disable(enable=0)
+            self.vapi.cli("clear logging")
 
     def test_frag_in_order(self):
         """ NAT44 translate fragments arriving in order """
@@ -7120,12 +7035,6 @@ class TestNAT44EndpointDependent(MethodHolder):
                 external_sw_if_index=0xFFFFFFFF,
                 flags=flags)
 
-    def tearDown(self):
-        super(TestNAT44EndpointDependent, self).tearDown()
-        if not self.vpp_dead:
-            self.clear_nat44()
-            self.vapi.cli("clear logging")
-
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show errors"))
         self.logger.info(self.vapi.cli("show nat44 addresses"))
@@ -7144,15 +7053,6 @@ class TestNAT44EndpointDependent3(MethodHolder):
     max_translations = 50
 
     @classmethod
-    def setUpConstants(cls):
-        super(TestNAT44EndpointDependent3, cls).setUpConstants()
-        cls.vpp_cmdline.extend([
-            "nat", "{", "endpoint-dependent",
-            "max translations per thread %d" % cls.max_translations,
-            "}"
-        ])
-
-    @classmethod
     def setUpClass(cls):
         super(TestNAT44EndpointDependent3, cls).setUpClass()
         cls.vapi.cli("set log class nat level debug")
@@ -7168,8 +7068,13 @@ class TestNAT44EndpointDependent3(MethodHolder):
 
     def setUp(self):
         super(TestNAT44EndpointDependent3, self).setUp()
+        flags = self.nat44_config_flags.NAT44_IS_ENDPOINT_DEPENDENT
+        self.vapi.nat44_plugin_enable_disable(
+            sessions=self.max_translations,
+            flags=flags, enable=1)
         self.vapi.nat_set_timeouts(
             udp=1, tcp_established=7440, tcp_transitory=30, icmp=1)
+
         self.nat44_add_address(self.nat_addr)
         flags = self.config_flags.NAT_IS_INSIDE
         self.vapi.nat44_interface_add_del_feature(
@@ -7180,6 +7085,12 @@ class TestNAT44EndpointDependent3(MethodHolder):
     @classmethod
     def tearDownClass(cls):
         super(TestNAT44EndpointDependent3, cls).tearDownClass()
+
+    def tearDown(self):
+        super(TestNAT44EndpointDependent3, self).tearDown()
+        if not self.vpp_dead:
+            self.vapi.nat44_plugin_enable_disable(enable=0)
+            self.vapi.cli("clear logging")
 
     def init_tcp_session(self, in_if, out_if, sport, ext_dport):
         # SYN packet in->out
@@ -7246,11 +7157,6 @@ class TestNAT44Out2InDPO(MethodHolder):
     """ NAT44 Test Cases using out2in DPO """
 
     @classmethod
-    def setUpConstants(cls):
-        super(TestNAT44Out2InDPO, cls).setUpConstants()
-        cls.vpp_cmdline.extend(["nat", "{", "out2in dpo", "}"])
-
-    @classmethod
     def setUpClass(cls):
         super(TestNAT44Out2InDPO, cls).setUpClass()
         cls.vapi.cli("set log class nat level debug")
@@ -7283,6 +7189,17 @@ class TestNAT44Out2InDPO(MethodHolder):
     @classmethod
     def tearDownClass(cls):
         super(TestNAT44Out2InDPO, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestNAT44Out2InDPO, self).setUp()
+        flags = self.nat44_config_flags.NAT44_API_IS_OUT2IN_DPO
+        self.vapi.nat44_plugin_enable_disable(enable=1, flags=flags)
+
+    def tearDown(self):
+        super(TestNAT44Out2InDPO, self).tearDown()
+        if not self.vpp_dead:
+            self.vapi.nat44_plugin_enable_disable(enable=0)
+            self.vapi.cli("clear logging")
 
     def configure_xlat(self):
         self.dst_ip6_pfx = '1:2:3::'

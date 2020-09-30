@@ -79,6 +79,16 @@ u32 nat_affinity_get_per_service_list_head_index (void);
 void nat_affinity_flush_service (u32 affinity_per_service_list_head_index);
 
 /**
+ * @brief NAT affinity enable
+ */
+void nat_affinity_enable ();
+
+/**
+ * @brief NAT affinity disable
+ */
+void nat_affinity_disable ();
+
+/**
  * @brief Initialize NAT client-IP based affinity.
  *
  * @param vm vlib main.
