@@ -68,7 +68,7 @@ class VppTransport(object):
         global vpp_object
         vpp_object = parent
 
-        vpp_api.vac_mem_init(0);
+        vpp_api.vac_mem_init(0)
 
         # Register error handler
         vpp_api.vac_set_error_handler(vac_error_handler)
