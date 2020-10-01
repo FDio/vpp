@@ -113,13 +113,7 @@ vl_api_set_ipfix_exporter_t_handler (vl_api_set_ipfix_exporter_t * mp)
     template_interval = 20;
   udp_checksum = mp->udp_checksum;
 
-  if (collector.as_u32 == 0)
-    {
-      rv = VNET_API_ERROR_INVALID_VALUE;
-      goto out;
-    }
-
-  if (src.as_u32 == 0)
+  if (collector.as_u32 != 0 && src.as_u32 == 0)
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
       goto out;
