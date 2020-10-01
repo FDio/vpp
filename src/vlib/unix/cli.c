@@ -2520,6 +2520,7 @@ unix_cli_line_edit (unix_cli_main_t * cm, unix_main_t * um,
 	  if (cf->line_mode)
 	    {
 	      vec_delete (cf->input_vector, i, 0);
+	      vec_free (cf->current_command);
 	      cf->current_command = cf->input_vector;
 	      return 0;
 	    }
