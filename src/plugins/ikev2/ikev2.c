@@ -3471,6 +3471,22 @@ ikev2_cleanup_profile_sessions (ikev2_main_t * km, ikev2_profile_t * p)
   u32 *sai;
   u32 *del_sai = 0;
 
+  /* *INDENT-OFF* */
+  pool_foreach(sa, km->sais, ({
+    if (pi == sa->profile_index)
+      vec_add1 (del_sai, sa - km->sais);
+  }));
+  /* *INDENT-ON* */
+
+  vec_foreach (sai, del_sai)
+  {
+    sa = pool_elt_at_index (km->sais, sai[0]);
+    ikev2_sa_free_all_vec (sa);
+    hash_unset (km->sa_by_ispi, sa->ispi);
+    pool_put (km->sais, sa);
+  }
+  vec_reset_length (del_sai);
+
   vec_foreach (tkm, km->per_thread_data)
   {
     /* *INDENT-OFF* */
