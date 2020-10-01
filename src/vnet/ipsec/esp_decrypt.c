@@ -583,7 +583,7 @@ esp_decrypt_prepare_sync_op (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * to form the nonce = (Salt + IV)
 	   */
 	  op->iv -= sizeof (sa0->salt);
-	  clib_memcpy_fast (op->iv, &sa0->salt, sizeof (sa0->salt));
+	  *(u32 *) op->iv = sa0->salt;
 
 	  op->tag = payload + len;
 	  op->tag_len = 16;
@@ -983,10 +983,10 @@ esp_decrypt_post_crypto (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 		  ip4 = vlib_buffer_get_current (b);
 
-		  if (!ip46_address_is_equal_v4 (&itp->itp_tun.src,
-						 &ip4->dst_address) ||
-		      !ip46_address_is_equal_v4 (&itp->itp_tun.dst,
-						 &ip4->src_address))
+		  if (PREDICT_FALSE
+		      (memcmp (&itp->itp_tun.src.ip4, &ip4->dst_address, 4)
+		       || memcmp (&itp->itp_tun.dst.ip4, &ip4->src_address,
+				  4)))
 		    {
 		      next[0] = ESP_DECRYPT_NEXT_DROP;
 		      b->error = node->errors[ESP_DECRYPT_ERROR_TUN_NO_PROTO];
