@@ -1258,6 +1258,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	if (unformat
 	    (input, "blacklist %x:%x:%x.%x", &domain, &bus, &device, &func))
 	{
+	  tmp = format (0, "-b%c", 0);
+	  vec_add1 (conf->eal_init_args, tmp);
 	  tmp =
 	    format (0, "-b %04x:%02x:%02x.%x%c", domain, bus, device, func,
 		    0);
