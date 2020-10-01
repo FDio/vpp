@@ -64,9 +64,12 @@ uword
 unformat_ip_prefix (unformat_input_t * input, va_list * args)
 {
   ip_prefix_t *a = va_arg (*args, ip_prefix_t *);
+  /* %d writes more than a u8 */
+  int plen;
   if (unformat (input, "%U/%d", unformat_ip_address, &ip_prefix_addr (a),
-		&ip_prefix_len (a)))
+		&plen))
     {
+      ip_prefix_len (a) = plen;
       if ((ip_prefix_version (a) == AF_IP4 && 32 < ip_prefix_len (a)) ||
 	  (ip_prefix_version (a) == AF_IP6 && 128 < ip_prefix_len (a)))
 	{
