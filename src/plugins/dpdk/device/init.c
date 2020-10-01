@@ -1258,9 +1258,10 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	if (unformat
 	    (input, "blacklist %x:%x:%x.%x", &domain, &bus, &device, &func))
 	{
+	  tmp = format (0, "-b%c", 0);
+	  vec_add1 (conf->eal_init_args, tmp);
 	  tmp =
-	    format (0, "-b %04x:%02x:%02x.%x%c", domain, bus, device, func,
-		    0);
+	    format (0, "%04x:%02x:%02x.%x%c", domain, bus, device, func, 0);
 	  vec_add1 (conf->eal_init_args, tmp);
 	}
       else if (unformat (input, "blacklist %x:%x", &vendor, &device))
@@ -1547,11 +1548,11 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
   if (LINK_STATE_ELOGS)
     {
       vlib_main_t *vm = vlib_get_main ();
-      ELOG_TYPE_DECLARE (e) =
-      {
-      .format =
+      ELOG_TYPE_DECLARE (e) = {
+	.format =
 	  "update-link-state: sw_if_index %d, admin_up %d,"
-	  "old link_state %d new link_state %d",.format_args = "i4i1i1i1",};
+	  "old link_state %d new link_state %d",.format_args = "i4i1i1i1",
+      };
 
       struct
       {
@@ -1601,11 +1602,11 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	{
 	  vlib_main_t *vm = vlib_get_main ();
 
-	  ELOG_TYPE_DECLARE (e) =
-	  {
-	  .format =
+	  ELOG_TYPE_DECLARE (e) = {
+	    .format =
 	      "update-link-state: sw_if_index %d, new flags %d",.format_args
-	      = "i4i4",};
+	      = "i4i4",
+	  };
 
 	  struct
 	  {
