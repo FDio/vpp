@@ -389,17 +389,16 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* trace */
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
-	  if (PREDICT_FALSE (n_trace > 0))
+	  if (PREDICT_FALSE (n_trace > 0 && vlib_trace_buffer (vm, node, next0, b0,	/* follow_chain */
+							       1)))
 	    {
-	      virtio_input_trace_t *tr;
-	      vlib_trace_buffer (vm, node, next0, b0,
-				 /* follow_chain */ 1);
-	      vlib_set_trace_count (vm, node, --n_trace);
-	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      virtio_input_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->next_index = next0;
 	      tr->hw_if_index = vif->hw_if_index;
 	      tr->len = len;
 	      clib_memcpy_fast (&tr->hdr, hdr, hdr_sz);
+	      n_trace--;
 	    }
 
 	  /* enqueue buffer */
@@ -426,6 +425,8 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				   + VNET_INTERFACE_COUNTER_RX, thread_index,
 				   vif->sw_if_index, n_rx_packets,
 				   n_rx_bytes);
+
+  vlib_set_trace_count (vm, node, n_trace);
 
 refill:
   virtio_refill_vring (vm, vif, type, vring, hdr_sz, node->node_index);

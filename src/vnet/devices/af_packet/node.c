@@ -310,16 +310,16 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* trace */
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (first_b0);
-	  if (PREDICT_FALSE (n_trace > 0))
+	  if (PREDICT_FALSE
+	      (n_trace > 0 && vlib_trace_buffer (vm, node, next0, first_b0,
+						 /* follow_chain */ 0)))
 	    {
-	      af_packet_input_trace_t *tr;
-	      vlib_trace_buffer (vm, node, next0, first_b0,	/* follow_chain */
-				 0);
-	      vlib_set_trace_count (vm, node, --n_trace);
-	      tr = vlib_add_trace (vm, node, first_b0, sizeof (*tr));
+	      af_packet_input_trace_t *tr =
+		vlib_add_trace (vm, node, first_b0, sizeof (*tr));
 	      tr->next_index = next0;
 	      tr->hw_if_index = apif->hw_if_index;
 	      clib_memcpy_fast (&tr->tph, tph, sizeof (struct tpacket2_hdr));
+	      n_trace--;
 	    }
 
 	  /* enque and take next packet */
@@ -342,6 +342,7 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
      + VNET_INTERFACE_COUNTER_RX,
      vlib_get_thread_index (), apif->hw_if_index, n_rx_packets, n_rx_bytes);
 
+  vlib_set_trace_count (vm, node, n_trace);
   vnet_device_increment_rx_packets (thread_index, n_rx_packets);
   return n_rx_packets;
 }
