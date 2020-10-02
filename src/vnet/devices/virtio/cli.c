@@ -37,6 +37,7 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return 0;
 
   memset (&args, 0, sizeof (args));
+
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "%U", unformat_vlib_pci_addr, &args.addr))
@@ -49,10 +50,12 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.checksum_offload_enabled = 1;
       else if (unformat (line_input, "buffering"))
 	{
-	  args.virtio_flags = VIRTIO_FLAG_BUFFERING;
+	  args.virtio_flags |= VIRTIO_FLAG_BUFFERING;
 	  if (unformat (line_input, "size %u", &buffering_size))
 	    args.buffering_size = buffering_size;
 	}
+      else if (unformat (line_input, "packed"))
+	args.virtio_flags |= VIRTIO_FLAG_PACKED;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -69,7 +72,7 @@ VLIB_CLI_COMMAND (virtio_pci_create_command, static) = {
   .path = "create interface virtio",
   .short_help = "create interface virtio <pci-address> "
                 "[feature-mask <hex-mask>] [gso-enabled] [csum-enabled] "
-		"[buffering [size <buffering-szie>]]",
+		"[buffering [size <buffering-szie>]] [packed]",
   .function = virtio_pci_create_command_fn,
 };
 /* *INDENT-ON* */
