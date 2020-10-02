@@ -1124,6 +1124,13 @@ nat_ha_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
+int
+nat_ha_resync (u32 client_index, u32 pid,
+	       nat_ha_resync_event_cb_t event_callback)
+{
+  return 0;
+}
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat_ha_handoff_node) = {
   .function = nat_ha_handoff_node_fn,
