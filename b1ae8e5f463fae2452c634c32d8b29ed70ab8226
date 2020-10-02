@@ -2,6 +2,40 @@
   "comments": [
     {
       "key": {
+        "uuid": "a761d30e_67b4467c",
+        "filename": "src/vnet/ipsec/ipsec_tun.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1053,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-10-02T12:30:59Z",
+      "side": 1,
+      "message": "table size is now ignored, as main heap is used",
+      "revId": "b1ae8e5f463fae2452c634c32d8b29ed70ab8226",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "29832a8f_fa383c46",
+        "filename": "src/vnet/ipsec/ipsec_tun.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1072,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-10-02T12:30:59Z",
+      "side": 1,
+      "message": "why early?",
+      "revId": "b1ae8e5f463fae2452c634c32d8b29ed70ab8226",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "eab97da7_1392a89b",
         "filename": "src/vpp/conf/startup.conf",
         "patchSetId": 7
