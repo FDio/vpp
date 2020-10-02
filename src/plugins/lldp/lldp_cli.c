@@ -39,6 +39,8 @@ lldp_cfg_err_to_clib_err (lldp_cfg_err_t e)
       return clib_error_return (0, "not supported");
     case lldp_invalid_arg:
       return clib_error_return (0, "invalid argument");
+    case lldp_internal_error:
+      return clib_error_return (0, "internal error");
     }
   return 0;
 }
@@ -99,6 +101,13 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
 	  *mgmt_oid = NULL;
 	}
 
+      if (!vnet_hw_interface_add_del_mac_address (lm->vnet_main, hw_if_index,
+						  lldp_mac_addr,
+						  1 /* is_add */ ))
+	{
+	  return lldp_internal_error;
+	}
+
       const vnet_sw_interface_t *sw =
 	vnet_get_sw_interface (lm->vnet_main, hi->sw_if_index);
       if (sw->flags & (VNET_SW_INTERFACE_FLAG_ADMIN_UP))
@@ -110,6 +119,12 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
     {
       lldp_intf_t *n = lldp_get_intf (lm, hi->sw_if_index);
       lldp_delete_intf (lm, n);
+      if (n)
+	{
+	  vnet_hw_interface_add_del_mac_address (lm->vnet_main, hw_if_index,
+						 lldp_mac_addr,
+						 0 /* is_add */ );
+	}
     }
 
   return lldp_ok;
