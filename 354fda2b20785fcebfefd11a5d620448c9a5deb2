@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8a208217_c7d0cbd0",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 586,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-10-02T10:41:49Z",
+      "side": 1,
+      "message": "why is this better? in both cases compiler should emit one 32-bit load and one 32-bit store.",
+      "revId": "354fda2b20785fcebfefd11a5d620448c9a5deb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1f74cb8b_d1a00cdf",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 990,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-10-02T10:41:49Z",
+      "side": 1,
+      "message": "Again, why is this better? original code does single 32-bit load and compare....",
+      "revId": "354fda2b20785fcebfefd11a5d620448c9a5deb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
