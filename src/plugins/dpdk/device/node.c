@@ -417,21 +417,28 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 	  b0 = vlib_get_buffer (vm, buffers[0]);
 	  if (single_next == 0)
 	    next_index = next[0];
-	  vlib_trace_buffer (vm, node, next_index, b0, /* follow_chain */ 0);
 
-	  dpdk_rx_trace_t *t0 = vlib_add_trace (vm, node, b0, sizeof t0[0]);
-	  t0->queue_index = queue_id;
-	  t0->device_index = xd->device_index;
-	  t0->buffer_index = vlib_get_buffer_index (vm, b0);
+	  if (PREDICT_TRUE
+	      (vlib_trace_buffer
+	       (vm, node, next_index, b0, /* follow_chain */ 0)))
+	    {
 
-	  clib_memcpy_fast (&t0->mb, mb[0], sizeof t0->mb);
-	  clib_memcpy_fast (&t0->buffer, b0,
-			    sizeof b0[0] - sizeof b0->pre_data);
-	  clib_memcpy_fast (t0->buffer.pre_data, b0->data,
-			    sizeof t0->buffer.pre_data);
-	  clib_memcpy_fast (&t0->data, mb[0]->buf_addr + mb[0]->data_off,
-			    sizeof t0->data);
-	  n_trace--;
+	      dpdk_rx_trace_t *t0 =
+		vlib_add_trace (vm, node, b0, sizeof t0[0]);
+	      t0->queue_index = queue_id;
+	      t0->device_index = xd->device_index;
+	      t0->buffer_index = vlib_get_buffer_index (vm, b0);
+
+	      clib_memcpy_fast (&t0->mb, mb[0], sizeof t0->mb);
+	      clib_memcpy_fast (&t0->buffer, b0,
+				sizeof b0[0] - sizeof b0->pre_data);
+	      clib_memcpy_fast (t0->buffer.pre_data, b0->data,
+				sizeof t0->buffer.pre_data);
+	      clib_memcpy_fast (&t0->data, mb[0]->buf_addr + mb[0]->data_off,
+				sizeof t0->data);
+	      n_trace--;
+	    }
+
 	  n_left--;
 	  buffers++;
 	  mb++;
