@@ -345,8 +345,6 @@ void *clib_mem_init (void *heap, uword size);
 void *clib_mem_init_with_page_size (uword memory_size,
 				    clib_mem_page_sz_t log2_page_sz);
 void *clib_mem_init_thread_safe (void *memory, uword memory_size);
-void *clib_mem_init_thread_safe_numa (void *memory, uword memory_size,
-				      u8 numa);
 
 void clib_mem_exit (void);
 
@@ -427,36 +425,6 @@ int clib_mem_vm_unmap (void *base);
 clib_mem_vm_map_hdr_t *clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t *
 						     hdr);
 
-typedef struct
-{
-#define CLIB_MEM_VM_F_SHARED (1 << 0)
-#define CLIB_MEM_VM_F_HUGETLB (1 << 1)
-#define CLIB_MEM_VM_F_NUMA_PREFER (1 << 2)
-#define CLIB_MEM_VM_F_NUMA_FORCE (1 << 3)
-#define CLIB_MEM_VM_F_HUGETLB_PREALLOC (1 << 4)
-#define CLIB_MEM_VM_F_LOCKED (1 << 5)
-  u32 flags; /**< vm allocation flags:
-                <br> CLIB_MEM_VM_F_SHARED: request shared memory, file
-		descriptor will be provided on successful allocation.
-                <br> CLIB_MEM_VM_F_HUGETLB: request hugepages.
-		<br> CLIB_MEM_VM_F_NUMA_PREFER: numa_node field contains valid
-		numa node preference.
-		<br> CLIB_MEM_VM_F_NUMA_FORCE: fail if setting numa policy fails.
-		<br> CLIB_MEM_VM_F_HUGETLB_PREALLOC: pre-allocate hugepages if
-		number of available pages is not sufficient.
-		<br> CLIB_MEM_VM_F_LOCKED: request locked memory.
-             */
-  char *name; /**< Name for memory allocation, set by caller. */
-  uword size; /**< Allocation size, set by caller. */
-  int numa_node; /**< numa node preference. Valid if CLIB_MEM_VM_F_NUMA_PREFER set. */
-  void *addr; /**< Pointer to allocated memory, set on successful allocation. */
-  int fd; /**< File descriptor, set on successful allocation if CLIB_MEM_VM_F_SHARED is set. */
-  int log2_page_size;		/* Page size in log2 format, set on successful allocation. */
-  int n_pages;			/* Number of pages. */
-  uword requested_va;		/**< Request fixed position mapping */
-} clib_mem_vm_alloc_t;
-
-
 static_always_inline clib_mem_page_sz_t
 clib_mem_get_log2_page_size (void)
 {
@@ -476,8 +444,6 @@ clib_mem_get_log2_default_hugepage_size ()
 }
 
 int clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...);
-clib_error_t *clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a);
-void clib_mem_vm_ext_free (clib_mem_vm_alloc_t * a);
 uword clib_mem_get_fd_page_size (int fd);
 uword clib_mem_get_default_hugepage_size (void);
 clib_mem_page_sz_t clib_mem_get_fd_log2_page_size (int fd);

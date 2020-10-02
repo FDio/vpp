@@ -278,31 +278,6 @@ clib_mem_destroy (void)
   clib_mem_vm_unmap (base);
 }
 
-void *
-clib_mem_init_thread_safe_numa (void *memory, uword memory_size, u8 numa)
-{
-  clib_mem_vm_alloc_t alloc = { 0 };
-  clib_error_t *err;
-  void *heap;
-
-  alloc.size = memory_size;
-  alloc.flags = CLIB_MEM_VM_F_NUMA_FORCE;
-  alloc.numa_node = numa;
-  if ((err = clib_mem_vm_ext_alloc (&alloc)))
-    {
-      clib_error_report (err);
-      return 0;
-    }
-
-  heap = clib_mem_init_internal (memory, memory_size,
-				 CLIB_MEM_PAGE_SZ_DEFAULT,
-				 0 /* do NOT clib_mem_set_heap */ );
-
-  ASSERT (heap);
-
-  return heap;
-}
-
 u8 *
 format_clib_mem_usage (u8 * s, va_list * va)
 {

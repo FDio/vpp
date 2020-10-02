@@ -640,8 +640,11 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
       /* If the user requested a NUMA heap, create it... */
       if (tm->numa_heap_size)
 	{
-	  numa_heap = clib_mem_init_thread_safe_numa
-	    (0 /* DIY */ , tm->numa_heap_size, w->numa_id);
+	  clib_mem_set_numa_affinity (w->numa_id, 1 /* force */ );
+	  numa_heap = clib_mem_create_heap (0 /* DIY */ , tm->numa_heap_size,
+					    1 /* is_locked */ ,
+					    "numa %u heap", w->numa_id);
+	  clib_mem_set_default_numa_affinity ();
 	  mm->per_numa_mheaps[w->numa_id] = numa_heap;
 	}
       else
