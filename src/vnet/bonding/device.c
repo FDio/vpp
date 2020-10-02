@@ -651,25 +651,28 @@ bond_tx_trace (vlib_main_t * vm, vlib_node_runtime_t * node, bond_if_t * bif,
 
   while (n_trace > 0 && n_left > 0)
     {
-      bond_packet_trace_t *t0;
-      ethernet_header_t *eth;
-      u32 next0 = 0;
+      if (PREDICT_TRUE
+	  (vlib_trace_buffer (vm, node, 0, b[0], 0 /* follow_chain */ )))
+	{
+	  bond_packet_trace_t *t0;
+	  ethernet_header_t *eth;
 
-      vlib_trace_buffer (vm, node, next0, b[0], 0 /* follow_chain */ );
-      vlib_set_trace_count (vm, node, --n_trace);
-      t0 = vlib_add_trace (vm, node, b[0], sizeof (*t0));
-      eth = vlib_buffer_get_current (b[0]);
-      t0->ethernet = *eth;
-      t0->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
-      if (!h)
-	{
-	  t0->bond_sw_if_index = *vec_elt_at_index (bif->active_members, 0);
-	}
-      else
-	{
-	  t0->bond_sw_if_index =
-	    *vec_elt_at_index (bif->active_members, h[0]);
-	  h++;
+	  vlib_set_trace_count (vm, node, --n_trace);
+	  t0 = vlib_add_trace (vm, node, b[0], sizeof (*t0));
+	  eth = vlib_buffer_get_current (b[0]);
+	  t0->ethernet = *eth;
+	  t0->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+	  if (!h)
+	    {
+	      t0->bond_sw_if_index =
+		*vec_elt_at_index (bif->active_members, 0);
+	    }
+	  else
+	    {
+	      t0->bond_sw_if_index =
+		*vec_elt_at_index (bif->active_members, h[0]);
+	      h++;
+	    }
 	}
       b++;
       n_left--;

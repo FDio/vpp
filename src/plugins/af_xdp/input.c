@@ -46,23 +46,23 @@ af_xdp_device_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 			   u32 n_left, const u32 * bi, u32 next_index,
 			   u32 hw_if_index)
 {
-  u32 n_trace;
+  u32 n_trace = vlib_get_trace_count (vm, node);
 
-  if (PREDICT_TRUE (0 == (n_trace = vlib_get_trace_count (vm, node))))
+  if (PREDICT_TRUE (0 == n_trace))
     return;
 
   while (n_trace && n_left)
     {
-      vlib_buffer_t *b;
-      af_xdp_input_trace_t *tr;
-      b = vlib_get_buffer (vm, bi[0]);
-      vlib_trace_buffer (vm, node, next_index, b,
-			 /* follow_chain */ 0);
-      tr = vlib_add_trace (vm, node, b, sizeof (*tr));
-      tr->next_index = next_index;
-      tr->hw_if_index = hw_if_index;
-
-      n_trace--;
+      vlib_buffer_t *b = vlib_get_buffer (vm, bi[0]);
+      if (PREDICT_TRUE
+	  (vlib_trace_buffer (vm, node, next_index, b, /* follow_chain */ 0)))
+	{
+	  af_xdp_input_trace_t *tr =
+	    vlib_add_trace (vm, node, b, sizeof (*tr));
+	  tr->next_index = next_index;
+	  tr->hw_if_index = hw_if_index;
+	  n_trace--;
+	}
       n_left--;
       bi++;
     }

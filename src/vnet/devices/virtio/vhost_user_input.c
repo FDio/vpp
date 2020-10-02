@@ -540,10 +540,10 @@ vhost_user_if_input (vlib_main_t * vm,
       b_head->total_length_not_including_first_buffer = 0;
       b_head->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
-      if (PREDICT_FALSE (n_trace))
+      if (PREDICT_FALSE
+	  (n_trace > 0 && vlib_trace_buffer (vm, node, next_index, b_head,
+					     /* follow_chain */ 0)))
 	{
-	  vlib_trace_buffer (vm, node, next_index, b_head,
-			     /* follow_chain */ 0);
 	  vhost_trace_t *t0 =
 	    vlib_add_trace (vm, node, b_head, sizeof (t0[0]));
 	  vhost_user_rx_trace (t0, vui, qid, b_head, txvq, last_avail_idx);
@@ -1362,17 +1362,19 @@ vhost_user_if_input_packed (vlib_main_t * vm, vhost_user_main_t * vum,
       b = cpu->rx_buffers_pdesc;
       while (n_trace && left)
 	{
-	  vhost_trace_t *t0;
-
-	  vlib_trace_buffer (vm, node, next_index, b[0],
-			     /* follow_chain */ 0);
-	  t0 = vlib_add_trace (vm, node, b[0], sizeof (t0[0]));
-	  b++;
-	  vhost_user_rx_trace_packed (t0, vui, qid, txvq, last_used_idx);
-	  last_used_idx = (last_used_idx + 1) & mask;
-	  n_trace--;
+	  if (PREDICT_TRUE
+	      (vlib_trace_buffer
+	       (vm, node, next_index, b[0], /* follow_chain */ 0)))
+	    {
+	      vhost_trace_t *t0;
+	      t0 = vlib_add_trace (vm, node, b[0], sizeof (t0[0]));
+	      vhost_user_rx_trace_packed (t0, vui, qid, txvq, last_used_idx);
+	      last_used_idx = (last_used_idx + 1) & mask;
+	      n_trace--;
+	      vlib_set_trace_count (vm, node, n_trace);
+	    }
 	  left--;
-	  vlib_set_trace_count (vm, node, n_trace);
+	  b++;
 	}
     }
 

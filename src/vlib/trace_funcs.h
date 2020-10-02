@@ -49,7 +49,7 @@ vlib_validate_trace (vlib_trace_main_t * tm, vlib_buffer_t * b)
 			       vlib_buffer_get_trace_index (b)));
 }
 
-void vlib_add_handoff_trace (vlib_main_t * vm, vlib_buffer_t * b);
+int vlib_add_handoff_trace (vlib_main_t * vm, vlib_buffer_t * b);
 
 always_inline void *
 vlib_add_trace_inline (vlib_main_t * vm,
@@ -80,7 +80,8 @@ vlib_add_trace_inline (vlib_main_t * vm,
 
   /* Are we trying to trace a handoff case? */
   if (PREDICT_FALSE (vlib_buffer_get_trace_thread (b) != vm->thread_index))
-    vlib_add_handoff_trace (vm, b);
+    if (PREDICT_FALSE (!vlib_add_handoff_trace (vm, b)))
+      return vnet_trace_placeholder;
 
   vlib_validate_trace (tm, b);
 
@@ -131,8 +132,13 @@ int vnet_is_packet_traced (vlib_buffer_t * b,
 			   u32 classify_table_index, int func);
 
 
-/* Mark buffer as traced and allocate trace buffer. */
-always_inline void
+/*
+ * Mark buffer as traced and allocate trace buffer.
+ * return 1 if the buffer is successfully traced, 0 if not
+ * A buffer might not be traced if tracing is off or if the packet did not
+ * match the filter.
+ */
+always_inline __clib_warn_unused_result int
 vlib_trace_buffer (vlib_main_t * vm,
 		   vlib_node_runtime_t * r,
 		   u32 next_index, vlib_buffer_t * b, int follow_chain)
@@ -141,7 +147,7 @@ vlib_trace_buffer (vlib_main_t * vm,
   vlib_trace_header_t **h;
 
   if (PREDICT_FALSE (tm->trace_enable == 0))
-    return;
+    return 0;
 
   /* Classifier filter in use? */
   if (PREDICT_FALSE (vlib_global_main.trace_filter.trace_filter_enable))
@@ -150,7 +156,7 @@ vlib_trace_buffer (vlib_main_t * vm,
       if (vnet_is_packet_traced
 	  (b, vlib_global_main.trace_filter.trace_classify_table_index,
 	   0 /* full classify */ ) != 1)
-	return;
+	return 0;
     }
 
   /*
@@ -178,6 +184,8 @@ vlib_trace_buffer (vlib_main_t * vm,
 	(vm->thread_index, h - tm->trace_buffer_pool);
     }
   while (follow_chain && (b = vlib_get_next_buffer (vm, b)));
+
+  return 1;
 }
 
 always_inline void

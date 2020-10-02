@@ -92,10 +92,10 @@ memif_trace_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
 
-  if (PREDICT_TRUE (b != 0))
+  if (PREDICT_TRUE
+      (b != 0 && vlib_trace_buffer (vm, node, next, b, /* follow_chain */ 0)))
     {
       memif_input_trace_t *tr;
-      vlib_trace_buffer (vm, node, next, b, /* follow_chain */ 0);
       vlib_set_trace_count (vm, node, --(*n_tracep));
       tr = vlib_add_trace (vm, node, b, sizeof (*tr));
       tr->next_index = next;
@@ -484,14 +484,17 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (mode != MEMIF_INTERFACE_MODE_ETHERNET)
 	    ni = next[0];
 	  b = vlib_get_buffer (vm, bi[0]);
-	  vlib_trace_buffer (vm, node, ni, b, /* follow_chain */ 0);
-	  tr = vlib_add_trace (vm, node, b, sizeof (*tr));
-	  tr->next_index = ni;
-	  tr->hw_if_index = mif->hw_if_index;
-	  tr->ring = qid;
+	  if (PREDICT_TRUE
+	      (vlib_trace_buffer (vm, node, ni, b, /* follow_chain */ 0)))
+	    {
+	      tr = vlib_add_trace (vm, node, b, sizeof (*tr));
+	      tr->next_index = ni;
+	      tr->hw_if_index = mif->hw_if_index;
+	      tr->ring = qid;
+	      n_trace--;
+	    }
 
 	  /* next */
-	  n_trace--;
 	  n_left--;
 	  bi++;
 	  next++;

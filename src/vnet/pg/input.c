@@ -1454,15 +1454,16 @@ format_pg_input_trace (u8 * s, va_list * va)
   return s;
 }
 
-static void
+static int
 pg_input_trace (pg_main_t * pg,
 		vlib_node_runtime_t * node, u32 stream_index, u32 next_index,
-		u32 * buffers, u32 n_buffers)
+		u32 * buffers, const u32 n_buffers, const u32 n_trace)
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 *b, n_left;
+  u32 n_trace0 = 0, n_trace1 = 0;
 
-  n_left = n_buffers;
+  n_left = clib_min (n_buffers, n_trace);
   b = buffers;
 
   while (n_left >= 2)
@@ -1479,8 +1480,10 @@ pg_input_trace (pg_main_t * pg,
       b0 = vlib_get_buffer (vm, bi0);
       b1 = vlib_get_buffer (vm, bi1);
 
-      vlib_trace_buffer (vm, node, next_index, b0, /* follow_chain */ 1);
-      vlib_trace_buffer (vm, node, next_index, b1, /* follow_chain */ 1);
+      n_trace0 +=
+	vlib_trace_buffer (vm, node, next_index, b0, /* follow_chain */ 1);
+      n_trace1 +=
+	vlib_trace_buffer (vm, node, next_index, b1, /* follow_chain */ 1);
 
       t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
       t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
@@ -1517,7 +1520,8 @@ pg_input_trace (pg_main_t * pg,
 
       b0 = vlib_get_buffer (vm, bi0);
 
-      vlib_trace_buffer (vm, node, next_index, b0, /* follow_chain */ 1);
+      n_trace0 +=
+	vlib_trace_buffer (vm, node, next_index, b0, /* follow_chain */ 1);
       t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 
       t0->stream_index = stream_index;
@@ -1528,6 +1532,8 @@ pg_input_trace (pg_main_t * pg,
       clib_memcpy_fast (t0->buffer.pre_data, b0->data,
 			sizeof (t0->buffer.pre_data));
     }
+
+  return n_trace - n_trace0 - n_trace1;
 }
 
 static_always_inline void
@@ -1714,11 +1720,12 @@ pg_generate_packets (vlib_node_runtime_t * node,
 	}
 
       n_trace = vlib_get_trace_count (vm, node);
-      if (n_trace > 0)
+      if (PREDICT_FALSE (n_trace > 0))
 	{
-	  u32 n = clib_min (n_trace, n_this_frame);
-	  pg_input_trace (pg, node, s - pg->streams, next_index, to_next, n);
-	  vlib_set_trace_count (vm, node, n_trace - n);
+	  n_trace =
+	    pg_input_trace (pg, node, s - pg->streams, next_index, to_next,
+			    n_this_frame, n_trace);
+	  vlib_set_trace_count (vm, node, n_trace);
 	}
       n_packets_to_generate -= n_this_frame;
       n_packets_generated += n_this_frame;

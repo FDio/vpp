@@ -106,14 +106,16 @@ dpdk_crypto_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0 = vlib_get_buffer (vm, bi);
 
-	  vlib_trace_buffer (vm, node, next, b0, /* follow_chain */ 0);
+	  if (PREDICT_TRUE
+	      (vlib_trace_buffer (vm, node, next, b0, /* follow_chain */ 0)))
+	    {
+	      dpdk_crypto_input_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      tr->dev_id = dev_id;
+	      tr->next_index = next;
+	      n_trace--;
+	    }
 
-	  dpdk_crypto_input_trace_t *tr =
-	    vlib_add_trace (vm, node, b0, sizeof (*tr));
-	  tr->dev_id = dev_id;
-	  tr->next_index = next;
-
-	  n_trace--;
 	  n_left--;
 	  nexts++;
 	  bis++;

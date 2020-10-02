@@ -383,20 +383,24 @@ no_more_desc:
 
       while (n_trace && n_left)
 	{
-	  vlib_buffer_t *b;
-	  avf_input_trace_t *tr;
-	  b = vlib_get_buffer (vm, bi[0]);
-	  vlib_trace_buffer (vm, node, next_index, b, /* follow_chain */ 0);
-	  tr = vlib_add_trace (vm, node, b, sizeof (*tr));
-	  tr->next_index = next_index;
-	  tr->qid = qid;
-	  tr->hw_if_index = ad->hw_if_index;
-	  tr->qw1s[0] = ptd->qw1s[i];
-	  for (j = 1; j < AVF_RX_MAX_DESC_IN_CHAIN; j++)
-	    tr->qw1s[j] = ptd->tails[i].qw1s[j - 1];
+	  vlib_buffer_t *b = vlib_get_buffer (vm, bi[0]);
+	  if (PREDICT_TRUE
+	      (vlib_trace_buffer
+	       (vm, node, next_index, b, /* follow_chain */ 0)))
+	    {
+	      avf_input_trace_t *tr =
+		vlib_add_trace (vm, node, b, sizeof (*tr));
+	      tr->next_index = next_index;
+	      tr->qid = qid;
+	      tr->hw_if_index = ad->hw_if_index;
+	      tr->qw1s[0] = ptd->qw1s[i];
+	      for (j = 1; j < AVF_RX_MAX_DESC_IN_CHAIN; j++)
+		tr->qw1s[j] = ptd->tails[i].qw1s[j - 1];
+
+	      n_trace--;
+	    }
 
 	  /* next */
-	  n_trace--;
 	  n_left--;
 	  bi++;
 	  i++;

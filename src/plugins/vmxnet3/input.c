@@ -418,17 +418,18 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       next = nexts;
       while (n_trace && n_left)
 	{
-	  vlib_buffer_t *b;
-	  vmxnet3_input_trace_t *tr;
-
-	  b = vlib_get_buffer (vm, bi[0]);
-	  vlib_trace_buffer (vm, node, next[0], b, /* follow_chain */ 0);
-	  tr = vlib_add_trace (vm, node, b, sizeof (*tr));
-	  tr->next_index = next[0];
-	  tr->hw_if_index = vd->hw_if_index;
-	  tr->buffer = *b;
-
-	  n_trace--;
+	  vlib_buffer_t *b = vlib_get_buffer (vm, bi[0]);
+	  if (PREDICT_TRUE
+	      (vlib_trace_buffer
+	       (vm, node, next[0], b, /* follow_chain */ 0)))
+	    {
+	      vmxnet3_input_trace_t *tr =
+		vlib_add_trace (vm, node, b, sizeof (*tr));
+	      tr->next_index = next[0];
+	      tr->hw_if_index = vd->hw_if_index;
+	      tr->buffer = *b;
+	      n_trace--;
+	    }
 	  n_left--;
 	  bi++;
 	  next++;

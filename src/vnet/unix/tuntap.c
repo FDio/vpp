@@ -378,11 +378,9 @@ tuntap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
     vlib_set_next_frame_buffer (vm, node, next_index, bi);
 
-    if (n_trace > 0)
-      {
-	vlib_trace_buffer (vm, node, next_index, b, /* follow_chain */ 1);
-	vlib_set_trace_count (vm, node, n_trace - 1);
-      }
+    if (PREDICT_FALSE (n_trace > 0 && vlib_trace_buffer (vm, node, next_index, b,	/* follow_chain */
+							 1)))
+      vlib_set_trace_count (vm, node, n_trace - 1);
   }
 
   return 1;

@@ -96,7 +96,7 @@ VLIB_REGISTER_NODE (handoff_trace_node, static) =
 };
 /* *INDENT-ON* */
 
-void
+int
 vlib_add_handoff_trace (vlib_main_t * vm, vlib_buffer_t * b)
 {
   u32 prev_thread = vlib_buffer_get_trace_thread (b);
@@ -105,13 +105,15 @@ vlib_add_handoff_trace (vlib_main_t * vm, vlib_buffer_t * b)
   vlib_node_runtime_t *node
     = vlib_node_get_runtime (vm, handoff_trace_node.index);
 
-  vlib_trace_buffer (vm, node, 0 /* fake next frame index */ ,
-		     b, 1 /* folllow chain */ );
+  if (PREDICT_FALSE
+      (!vlib_trace_buffer
+       (vm, node, 0 /* fake next frame index */ , b, 1 /* follow chain */ )))
+    return 0;
 
   t = vlib_add_trace (vm, node, b, sizeof (*t));
-
   t->prev_thread = prev_thread;
   t->prev_trace_index = prev_trace_index;
+  return 1;
 }
 
 

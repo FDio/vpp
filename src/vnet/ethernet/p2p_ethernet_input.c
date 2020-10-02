@@ -119,11 +119,12 @@ VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
 	      vnet_buffer (b0)->sw_if_index[VLIB_RX] = rx0;
 	      n_p2p_ethernet_packets += 1;
 
-	      if (PREDICT_FALSE (n_trace > 0))
+	      if (PREDICT_FALSE
+		  (n_trace > 0
+		   && vlib_trace_buffer (vm, node, next_index, b0,
+					 1 /* follow_chain */ )))
 		{
 		  p2p_ethernet_trace_t *t0;
-		  vlib_trace_buffer (vm, node, next_index, b0,
-				     1 /* follow_chain */ );
 		  vlib_set_trace_count (vm, node, --n_trace);
 		  t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
 		  t0->sw_if_index = sw_if_index0;
@@ -140,11 +141,12 @@ VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
 	      vnet_buffer (b1)->sw_if_index[VLIB_RX] = rx1;
 	      n_p2p_ethernet_packets += 1;
 
-	      if (PREDICT_FALSE (n_trace > 0))
+	      if (PREDICT_FALSE
+		  (n_trace > 0
+		   && vlib_trace_buffer (vm, node, next_index, b1,
+					 1 /* follow_chain */ )))
 		{
 		  p2p_ethernet_trace_t *t1;
-		  vlib_trace_buffer (vm, node, next_index, b1,
-				     1 /* follow_chain */ );
 		  vlib_set_trace_count (vm, node, --n_trace);
 		  t1 = vlib_add_trace (vm, node, b1, sizeof (*t1));
 		  t1->sw_if_index = sw_if_index1;
@@ -195,11 +197,12 @@ VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
 	      vnet_buffer (b0)->sw_if_index[VLIB_RX] = rx0;
 	      n_p2p_ethernet_packets += 1;
 
-	      if (PREDICT_FALSE (n_trace > 0))
+	      if (PREDICT_FALSE
+		  (n_trace > 0
+		   && vlib_trace_buffer (vm, node, next_index, b0,
+					 1 /* follow_chain */ )))
 		{
 		  p2p_ethernet_trace_t *t0;
-		  vlib_trace_buffer (vm, node, next_index, b0,
-				     1 /* follow_chain */ );
 		  vlib_set_trace_count (vm, node, --n_trace);
 		  t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
 		  t0->sw_if_index = sw_if_index0;
@@ -228,6 +231,7 @@ VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
 
   vlib_node_increment_counter (vm, p2p_ethernet_input_node.index,
 			       P2PE_ERROR_HITS, n_p2p_ethernet_packets);
+
   return frame->n_vectors;
 }
 

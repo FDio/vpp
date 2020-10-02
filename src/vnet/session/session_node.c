@@ -569,19 +569,23 @@ session_tx_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 			u32 next_index, u32 * to_next, u16 n_segs,
 			session_t * s, u32 n_trace)
 {
-  session_queue_trace_t *t;
-  vlib_buffer_t *b;
-  int i;
-
-  for (i = 0; i < clib_min (n_trace, n_segs); i++)
+  while (n_trace && n_segs)
     {
-      b = vlib_get_buffer (vm, to_next[i]);
-      vlib_trace_buffer (vm, node, next_index, b, 1 /* follow_chain */ );
-      t = vlib_add_trace (vm, node, b, sizeof (*t));
-      t->session_index = s->session_index;
-      t->server_thread_index = s->thread_index;
+      vlib_buffer_t *b = vlib_get_buffer (vm, to_next[0]);
+      if (PREDICT_TRUE
+	  (vlib_trace_buffer
+	   (vm, node, next_index, b, 1 /* follow_chain */ )))
+	{
+	  session_queue_trace_t *t =
+	    vlib_add_trace (vm, node, b, sizeof (*t));
+	  t->session_index = s->session_index;
+	  t->server_thread_index = s->thread_index;
+	  n_trace--;
+	}
+      to_next++;
+      n_segs--;
     }
-  vlib_set_trace_count (vm, node, n_trace - i);
+  vlib_set_trace_count (vm, node, n_trace);
 }
 
 always_inline void

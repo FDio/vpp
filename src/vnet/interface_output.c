@@ -800,19 +800,21 @@ interface_drop_punt (vlib_main_t * vm,
 	  node->flags |= VLIB_NODE_FLAG_TRACE;
 	  while (n_trace && n_left)
 	    {
-	      vlib_trace_buffer (vm, node, 0 /* next_index */ ,
-				 b[0], 0 /* follow chain */ );
-	      /*
-	       * Here we have a wireshark dissector problem.
-	       * Packets may be well-formed, or not. We
-	       * must not blow chunks in any case.
-	       *
-	       * Try to produce trace records which will help
-	       * folks understand what's going on.
-	       */
-	      drop_catchup_trace (vm, node, b[0]);
-
-	      n_trace--;
+	      if (PREDICT_TRUE
+		  (vlib_trace_buffer (vm, node, 0 /* next_index */ , b[0],
+				      0 /* follow chain */ )))
+		{
+		  /*
+		   * Here we have a wireshark dissector problem.
+		   * Packets may be well-formed, or not. We
+		   * must not blow chunks in any case.
+		   *
+		   * Try to produce trace records which will help
+		   * folks understand what's going on.
+		   */
+		  drop_catchup_trace (vm, node, b[0]);
+		  n_trace--;
+		}
 	      n_left--;
 	      b++;
 	    }

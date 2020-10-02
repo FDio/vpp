@@ -573,10 +573,11 @@ punt_socket_rx_fd (vlib_main_t * vm, vlib_node_runtime_t * node, u32 fd)
       goto error;
     }
 
-  if (PREDICT_FALSE (n_trace > 0))
+  if (PREDICT_FALSE
+      (n_trace > 0
+       && vlib_trace_buffer (vm, node, next_index, b, 1 /* follow_chain */ )))
     {
       punt_trace_t *t;
-      vlib_trace_buffer (vm, node, next_index, b, 1 /* follow_chain */ );
       vlib_set_trace_count (vm, node, --n_trace);
       t = vlib_add_trace (vm, node, b, sizeof (*t));
       t->sw_if_index = packetdesc.sw_if_index;
@@ -590,6 +591,7 @@ punt_socket_rx_fd (vlib_main_t * vm, vlib_node_runtime_t * node, u32 fd)
   vlib_validate_buffer_enqueue_x1 (vm, node, next, to_next, n_left_to_next,
 				   bi, next_index);
   vlib_put_next_frame (vm, node, next, n_left_to_next);
+
   return 1;
 
 error:
