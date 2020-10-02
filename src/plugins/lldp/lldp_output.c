@@ -263,6 +263,11 @@ lldp_delete_intf (lldp_main_t * lm, lldp_intf_t * n)
     }
 }
 
+
+/* 01:80:C2:00:00:0E - propagation constrained to a single
+ * physical link - stopped by all type of bridge */
+const u8 lldp_mac_addr[6] = { 0x01, 0x80, 0xC3, 0x00, 0x00, 0x0E };
+
 static clib_error_t *
 lldp_template_init (vlib_main_t * vm)
 {
@@ -274,16 +279,12 @@ lldp_template_init (vlib_main_t * vm)
 
     clib_memset (&h, 0, sizeof (h));
 
-    /*
-     * Send to 01:80:C2:00:00:0E - propagation constrained to a single
-     * physical link - stopped by all type of bridge
-     */
-    h.dst_address[0] = 0x01;
-    h.dst_address[1] = 0x80;
-    h.dst_address[2] = 0xC2;
-    /* h.dst_address[3] = 0x00; (clib_memset) */
-    /* h.dst_address[4] = 0x00; (clib_memset) */
-    h.dst_address[5] = 0x0E;
+    h.dst_address[0] = lldp_mac_addr[0];
+    h.dst_address[1] = lldp_mac_addr[1];
+    h.dst_address[2] = lldp_mac_addr[2];
+    h.dst_address[3] = lldp_mac_addr[3];
+    h.dst_address[4] = lldp_mac_addr[4];
+    h.dst_address[5] = lldp_mac_addr[5];
 
     /* leave src address blank (fill in at send time) */
 
