@@ -704,16 +704,15 @@ start_workers (vlib_main_t * vm)
   clib_callback_data_init (&vm->vlib_node_runtime_perf_callbacks,
 			   &vm->worker_thread_main_loop_callback_lock);
 
+  /* Replace hand-crafted length-1 vector with a real vector */
+  vlib_mains = 0;
+
+  vec_validate_aligned (vlib_mains, n_vlib_mains - 1, CLIB_CACHE_LINE_BYTES);
+  _vec_len (vlib_mains) = 0;
+  vec_add1_aligned (vlib_mains, vm, CLIB_CACHE_LINE_BYTES);
+
   if (n_vlib_mains > 1)
     {
-      /* Replace hand-crafted length-1 vector with a real vector */
-      vlib_mains = 0;
-
-      vec_validate_aligned (vlib_mains, tm->n_vlib_mains - 1,
-			    CLIB_CACHE_LINE_BYTES);
-      _vec_len (vlib_mains) = 0;
-      vec_add1_aligned (vlib_mains, vm, CLIB_CACHE_LINE_BYTES);
-
       vlib_worker_threads->wait_at_barrier =
 	clib_mem_alloc_aligned (sizeof (u32), CLIB_CACHE_LINE_BYTES);
       vlib_worker_threads->workers_at_barrier =
