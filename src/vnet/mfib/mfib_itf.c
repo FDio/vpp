@@ -109,6 +109,79 @@ mfib_itf_hash_flush (mfib_itf_t *mfi)
     };
 }
 
+static void
+mfib_itf_prefix4_to_mac (const mfib_prefix_t *pfx,
+                         mac_address_t *mac)
+{
+    mac->bytes[0] = 0x01;
+    mac->bytes[1] = 0x0;
+    mac->bytes[2] = 0x5e;
+    mac->bytes[3] = pfx->fp_grp_addr.ip4.as_u8[1] & 0x7f;
+    mac->bytes[4] = pfx->fp_grp_addr.ip4.as_u8[2];
+    mac->bytes[5] = pfx->fp_grp_addr.ip4.as_u8[3];
+}
+
+static void
+mfib_itf_prefix6_to_mac (const mfib_prefix_t *pfx,
+                         mac_address_t *mac)
+{
+    mac->bytes[0] = 0x33;
+    mac->bytes[1] = 0x33;
+    mac->bytes[2] = pfx->fp_grp_addr.ip6.as_u8[12];
+    mac->bytes[3] = pfx->fp_grp_addr.ip6.as_u8[13];
+    mac->bytes[4] = pfx->fp_grp_addr.ip6.as_u8[14];
+    mac->bytes[5] = pfx->fp_grp_addr.ip6.as_u8[15];
+}
+
+static void
+mfib_itf_prefix_to_mac (const mfib_prefix_t *pfx,
+                        mac_address_t *mac)
+{
+    switch (pfx->fp_proto)
+    {
+    case FIB_PROTOCOL_IP4:
+        mfib_itf_prefix4_to_mac(pfx, mac);
+        break;
+    case FIB_PROTOCOL_IP6:
+        mfib_itf_prefix6_to_mac(pfx, mac);
+        break;
+    case FIB_PROTOCOL_MPLS:
+        break;
+    }
+}
+
+static void
+mfib_itf_mac_add_del (mfib_itf_t *itf,
+                      const mfib_prefix_t *pfx,
+                      int add)
+{
+    vnet_sw_interface_t *si;
+    vnet_main_t *vnm;
+    mac_address_t mac;
+
+    vnm = vnet_get_main();
+    mfib_itf_prefix_to_mac(pfx, &mac);
+
+    si = vnet_get_sw_interface(vnm, itf->mfi_sw_if_index);
+    vnet_hw_interface_add_del_mac_address (vnet_get_main(),
+                                           si->hw_if_index,
+                                           mac.bytes, add);
+}
+
+void
+mfib_itf_mac_add (mfib_itf_t *itf,
+                  const mfib_prefix_t *pfx)
+{
+    mfib_itf_mac_add_del(itf, pfx, 1);
+}
+
+void
+mfib_itf_mac_del (mfib_itf_t *itf,
+                  const mfib_prefix_t *pfx)
+{
+    mfib_itf_mac_add_del(itf, pfx, 0);
+}
+
 void
 mfib_itf_delete (mfib_itf_t *mfi)
 {

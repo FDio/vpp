@@ -1823,6 +1823,124 @@ VLIB_REGISTER_NODE (pg_input_node) = {
 };
 /* *INDENT-ON* */
 
+VLIB_NODE_FN (pg_input_mac_filter) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
+{
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
+  pg_main_t *pg = &pg_main;
+  u32 n_left, *from;
+
+  from = vlib_frame_vector_args (frame);
+  n_left = frame->n_vectors;
+  next = nexts;
+
+  clib_memset_u16 (next, 0, VLIB_FRAME_SIZE);
+
+  vlib_get_buffers (vm, from, bufs, n_left);
+
+  while (n_left)
+    {
+      const ethernet_header_t *eth;
+      pg_interface_t *pi;
+      mac_address_t in;
+
+      pi = pool_elt_at_index
+	(pg->interfaces,
+	 pg->if_id_by_sw_if_index[vnet_buffer (b[0])->sw_if_index[VLIB_RX]]);
+      eth = vlib_buffer_get_current (b[0]);
+
+      mac_address_from_bytes (&in, eth->dst_address);
+
+      if (PREDICT_FALSE (ethernet_address_cast (in.bytes)))
+	{
+	  mac_address_t *allowed;
+
+	  if (0 != vec_len (pi->allowed_mcast_macs))
+	    {
+	      vec_foreach (allowed, pi->allowed_mcast_macs)
+	      {
+		if (0 != mac_address_cmp (allowed, &in))
+		  break;
+	      }
+
+	      if (vec_is_member (allowed, pi->allowed_mcast_macs))
+		vnet_feature_next_u16 (&next[0], b[0]);
+	    }
+	}
+
+      b += 1;
+      next += 1;
+      n_left -= 1;
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+
+  return (frame->n_vectors);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (pg_input_mac_filter) = {
+  .name = "pg-input-mac-filter",
+  .vector_size = sizeof (u32),
+  .format_trace = format_pg_input_trace,
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+VNET_FEATURE_INIT (pg_input_mac_filter_feat, static) = {
+  .arc_name = "device-input",
+  .node_name = "pg-input-mac-filter",
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+pg_input_mac_filter_cfg (vlib_main_t * vm,
+			 unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index = ~0;
+  int is_enable;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U",
+		    unformat_vnet_sw_interface,
+		    vnet_get_main (), &sw_if_index))
+	;
+      else if (unformat (line_input, "%U",
+			 unformat_vlib_enable_disable, &is_enable))
+	;
+      else
+	return clib_error_create ("unknown input `%U'",
+				  format_unformat_error, line_input);
+    }
+  unformat_free (line_input);
+
+  if (~0 == sw_if_index)
+    return clib_error_create ("specify interface");
+
+  vnet_feature_enable_disable ("device-input",
+			       "pg-input-mac-filter",
+			       sw_if_index, is_enable, 0, 0);
+
+  return NULL;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (enable_streams_cli, static) = {
+  .path = "packet-generator mac-filter",
+  .short_help = "packet-generator mac-filter <INTERFACE> <on|off>",
+  .function = pg_input_mac_filter_cfg,
+};
+/* *INDENT-ON* */
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

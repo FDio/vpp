@@ -69,6 +69,11 @@ extern void mfib_itf_delete(mfib_itf_t *itf);
 
 extern u8 *format_mfib_itf(u8 * s, va_list * args);
 
+extern void mfib_itf_mac_add(mfib_itf_t *itf,
+                             const mfib_prefix_t *pfx);
+extern void mfib_itf_mac_del(mfib_itf_t *itf,
+                             const mfib_prefix_t *pfx);
+
 extern mfib_itf_t *mfib_itf_pool;
 
 /**

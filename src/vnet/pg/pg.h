@@ -45,6 +45,7 @@
 #include <vppinfra/fifo.h>	/* for buffer_fifo */
 #include <vppinfra/pcap.h>
 #include <vnet/interface.h>
+#include <vnet/ethernet/mac_address.h>
 #include <vnet/gso/gro.h>
 
 extern vnet_device_class_t pg_dev_class;
@@ -312,6 +313,8 @@ typedef struct
   u32 gso_size;
   pcap_main_t pcap_main;
   char *pcap_file_name;
+
+  mac_address_t *allowed_mcast_macs;
 } pg_interface_t;
 
 /* Per VLIB node data. */
@@ -335,6 +338,7 @@ typedef struct pg_main_t
   /* Pool of interfaces. */
   pg_interface_t *interfaces;
   uword *if_index_by_if_id;
+  uword *if_id_by_sw_if_index;
 
   /* Vector of buffer indices for use in pg_stream_fill_replay, per thread */
   u32 **replay_buffers_by_thread;

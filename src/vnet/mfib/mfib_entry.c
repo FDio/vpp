@@ -992,12 +992,14 @@ mfib_entry_path_update (fib_node_index_t mfib_entry_index,
     const fib_route_path_t *rpath;
     mfib_source_t current_best;
     mfib_path_ext_t *path_ext;
+    const mfib_prefix_t *pfx;
     mfib_entry_t *mfib_entry;
     mfib_entry_src_t *msrc;
     mfib_itf_flags_t old;
     u32 ii;
 
     mfib_entry = mfib_entry_get(mfib_entry_index);
+    pfx = mfib_entry_get_prefix(mfib_entry_index);
     ASSERT(NULL != mfib_entry);
     current_best = mfib_entry_get_best_source(mfib_entry);
     msrc = mfib_entry_src_find_or_create(mfib_entry, source);
@@ -1051,13 +1053,23 @@ mfib_entry_path_update (fib_node_index_t mfib_entry_index,
 
                 if (NULL == mfib_itf)
                 {
+                    index_t mfib_itf_i = mfib_itf_create(path_index,
+                                                         rpath->frp_mitf_flags);
                     mfib_entry_itf_add(msrc,
                                        rpath->frp_sw_if_index,
-                                       mfib_itf_create(path_index,
-                                                       rpath->frp_mitf_flags));
+                                       mfib_itf_i);
+
+                    if (MFIB_ITF_FLAG_ACCEPT & rpath->frp_mitf_flags)
+                    {
+                        /* new accepting interface - add the mac to the driver */
+                        mfib_itf_mac_add(mfib_itf_get(mfib_itf_i), pfx);
+                    }
                 }
                 else
                 {
+                    u8 was_accept = !!(old & MFIB_ITF_FLAG_ACCEPT);
+                    u8 is_accept = !!(rpath->frp_mitf_flags & MFIB_ITF_FLAG_ACCEPT);
+
                     if (mfib_itf_update(mfib_itf,
                                         path_index,
                                         rpath->frp_mitf_flags))
@@ -1066,7 +1078,31 @@ mfib_entry_path_update (fib_node_index_t mfib_entry_index,
                          * no more interface flags on this path, remove
                          * from the data-plane set
                          */
+                        if (was_accept)
+                        {
+                            mfib_itf_mac_del(mfib_itf, pfx);
+
+                        }
                         mfib_entry_itf_remove(msrc, rpath->frp_sw_if_index);
+                    }
+                    else
+                    {
+                        /*
+                         * is there a change to the ACCEPT flag that
+                         * requires us to update hte driver with the
+                         * MAC
+                         */
+                        if (is_accept != was_accept)
+                        {
+                            if (is_accept)
+                            {
+                                mfib_itf_mac_add(mfib_itf, pfx);
+                            }
+                            else if (was_accept)
+                            {
+                                mfib_itf_mac_del(mfib_itf, pfx);
+                            }
+                        }
                     }
                 }
             }
@@ -1091,11 +1127,13 @@ mfib_entry_path_remove (fib_node_index_t mfib_entry_index,
     fib_node_index_t path_index, *path_indices;
     const fib_route_path_t *rpath;
     mfib_source_t current_best;
+    const mfib_prefix_t *pfx;
     mfib_entry_t *mfib_entry;
     mfib_entry_src_t *msrc;
     u32 ii;
 
     mfib_entry = mfib_entry_get(mfib_entry_index);
+    pfx = mfib_entry_get_prefix(mfib_entry_index);
     ASSERT(NULL != mfib_entry);
     current_best = mfib_entry_get_best_source(mfib_entry);
     msrc = mfib_entry_src_find(mfib_entry, source, NULL);
@@ -1128,20 +1166,36 @@ mfib_entry_path_remove (fib_node_index_t mfib_entry_index,
         mfib_path_ext_remove(msrc, path_index);
         if (mfib_entry_path_itf_based(rpath))
         {
+            u8 was_accept, is_accept;
             mfib_itf_t *mfib_itf;
 
             mfib_itf = mfib_entry_itf_find(msrc->mfes_itfs,
                                            rpath->frp_sw_if_index);
+            was_accept = !!(MFIB_ITF_FLAG_ACCEPT & mfib_itf->mfi_flags);
 
             if (mfib_itf_update(mfib_itf,
                                 path_index,
                                 MFIB_ITF_FLAG_NONE))
             {
+                if (was_accept)
+                {
+                    mfib_itf_mac_del(mfib_itf, pfx);                    
+                }
+
                 /*
                  * no more interface flags on this path, remove
                  * from the data-plane set
                  */
                 mfib_entry_itf_remove(msrc, rpath->frp_sw_if_index);
+            }
+            else
+            {
+                is_accept = !!(MFIB_ITF_FLAG_ACCEPT & mfib_itf->mfi_flags);
+
+                if (was_accept && !is_accept)
+                {
+                    mfib_itf_mac_del(mfib_itf, pfx);                    
+                }
             }
         }
     }

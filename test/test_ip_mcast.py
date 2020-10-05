@@ -95,7 +95,7 @@ class TestIPMcast(VppTestCase):
     def create_stream_ip4(self, src_if, src_ip, dst_ip, payload_size=0):
         pkts = []
         # default to small packet sizes
-        p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+        p = (Ether(dst=getmacbyip(dst_ip), src=src_if.remote_mac) /
              IP(src=src_ip, dst=dst_ip) /
              UDP(sport=1234, dport=1234))
         if not payload_size:
@@ -111,7 +111,7 @@ class TestIPMcast(VppTestCase):
         for i in range(0, N_PKTS_IN_STREAM):
             info = self.create_packet_info(src_if, src_if)
             payload = self.info_to_payload(info)
-            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+            p = (Ether(dst=getmacbyip6(dst_ip), src=src_if.remote_mac) /
                  IPv6(src=src_ip, dst=dst_ip) /
                  UDP(sport=1234, dport=1234) /
                  Raw(payload))
@@ -189,6 +189,14 @@ class TestIPMcast(VppTestCase):
         # a stream that matches the default route. gets dropped.
         #
         self.vapi.cli("clear trace")
+        self.vapi.cli("packet mac-filter pg0 on")
+        self.vapi.cli("packet mac-filter pg1 on")
+        self.vapi.cli("packet mac-filter pg2 on")
+        self.vapi.cli("packet mac-filter pg4 on")
+        self.vapi.cli("packet mac-filter pg5 on")
+        self.vapi.cli("packet mac-filter pg6 on")
+        self.vapi.cli("packet mac-filter pg7 on")
+
         tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
         self.pg0.add_stream(tx)
 
@@ -395,9 +403,24 @@ class TestIPMcast(VppTestCase):
         self.pg0.assert_nothing_captured(
             remark="IP multicast packets forwarded on PG0")
 
+        self.vapi.cli("packet mac-filter pg0 off")
+        self.vapi.cli("packet mac-filter pg1 off")
+        self.vapi.cli("packet mac-filter pg2 off")
+        self.vapi.cli("packet mac-filter pg4 off")
+        self.vapi.cli("packet mac-filter pg5 off")
+        self.vapi.cli("packet mac-filter pg6 off")
+        self.vapi.cli("packet mac-filter pg7 off")
+
     def test_ip6_mcast(self):
         """ IPv6 Multicast Replication """
 
+        self.vapi.cli("packet mac-filter pg0 on")
+        self.vapi.cli("packet mac-filter pg1 on")
+        self.vapi.cli("packet mac-filter pg2 on")
+        self.vapi.cli("packet mac-filter pg4 on")
+        self.vapi.cli("packet mac-filter pg5 on")
+        self.vapi.cli("packet mac-filter pg6 on")
+        self.vapi.cli("packet mac-filter pg7 on")
         #
         # a stream that matches the default route. gets dropped.
         #
@@ -555,6 +578,14 @@ class TestIPMcast(VppTestCase):
             remark="IP multicast packets forwarded on PG0")
         self.pg3.assert_nothing_captured(
             remark="IP multicast packets forwarded on PG3")
+
+        self.vapi.cli("packet mac-filter pg0 off")
+        self.vapi.cli("packet mac-filter pg1 off")
+        self.vapi.cli("packet mac-filter pg2 off")
+        self.vapi.cli("packet mac-filter pg4 off")
+        self.vapi.cli("packet mac-filter pg5 off")
+        self.vapi.cli("packet mac-filter pg6 off")
+        self.vapi.cli("packet mac-filter pg7 off")
 
     def _mcast_connected_send_stream(self, dst_ip):
         self.vapi.cli("clear trace")
