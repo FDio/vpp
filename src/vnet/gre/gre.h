@@ -21,7 +21,6 @@
 #include <vnet/vnet.h>
 #include <vnet/gre/packet.h>
 #include <vnet/ip/ip.h>
-#include <vnet/pg/pg.h>
 #include <vnet/ip/format.h>
 #include <vnet/adj/adj_types.h>
 #include <vnet/tunnel/tunnel.h>

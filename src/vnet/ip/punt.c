@@ -24,7 +24,6 @@
 
 #include <vnet/ip/ip.h>
 #include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
 #include <vnet/udp/udp.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/ip/punt.h>

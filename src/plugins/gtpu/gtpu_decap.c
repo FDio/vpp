@@ -16,7 +16,6 @@
  */
 
 #include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
 #include <gtpu/gtpu.h>
 
 extern vlib_node_registration_t gtpu4_input_node;

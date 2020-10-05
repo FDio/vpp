@@ -14,7 +14,6 @@
  */
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/feature/feature.h>
 #include <vppinfra/error.h>

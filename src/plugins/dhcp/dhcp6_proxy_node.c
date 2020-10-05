@@ -16,7 +16,6 @@
  */
 
 #include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
 #include <dhcp/dhcp_proxy.h>
 #include <dhcp/dhcp6_packet.h>
 #include <vnet/mfib/mfib_table.h>

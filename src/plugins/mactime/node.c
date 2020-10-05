@@ -16,7 +16,6 @@
  */
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 #include <mactime/mactime.h>
 #include <vnet/ip/ip4.h>
