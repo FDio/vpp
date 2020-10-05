@@ -4082,6 +4082,7 @@ int mspace_track_large_chunks(mspace msp, int enable) {
   return ret;
 }
 
+CLIB_NOSANITIZE_ADDR
 size_t destroy_mspace(mspace msp) {
   size_t freed = 0;
   mstate ms = (mstate)msp;
