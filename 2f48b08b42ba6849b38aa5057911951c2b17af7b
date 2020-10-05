@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d0c5aea3_a03b8595",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1665,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-10-05T12:45:54Z",
+      "side": 1,
+      "message": "can we move it out of the if/else above (eg. line 1663) to avoid duplication in each branch?",
+      "revId": "2f48b08b42ba6849b38aa5057911951c2b17af7b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6944ed04_12643327",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1728,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-10-05T12:45:54Z",
+      "side": 1,
+      "message": "can we move it out of the if/else above (eg. line 1725) to avoid duplication in each branch?",
+      "revId": "2f48b08b42ba6849b38aa5057911951c2b17af7b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
