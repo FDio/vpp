@@ -139,6 +139,39 @@ pg_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return 0;
 }
 
+static int
+pg_mac_address_cmp (const mac_address_t * m1, const mac_address_t * m2)
+{
+  return (!mac_address_cmp (m1, m2));
+}
+
+static clib_error_t *
+pg_add_del_mac_address (vnet_hw_interface_t * hi,
+			const u8 * address, u8 is_add)
+{
+  pg_main_t *pg = &pg_main;
+
+  if (ethernet_address_cast (address))
+    {
+      mac_address_t mac;
+      pg_interface_t *pi;
+
+      pi = pool_elt_at_index (pg->interfaces, hi->dev_instance);
+
+      mac_address_from_bytes (&mac, address);
+      if (is_add)
+	vec_add1 (pi->allowed_mcast_macs, mac);
+      else
+	{
+	  u32 pos = vec_search_with_function (pi->allowed_mcast_macs, &mac,
+					      pg_mac_address_cmp);
+	  if (~0 != pos)
+	    vec_del1 (pi->allowed_mcast_macs, pos);
+	}
+    }
+  return (NULL);
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (pg_dev_class) = {
   .name = "pg",
@@ -146,6 +179,7 @@ VNET_DEVICE_CLASS (pg_dev_class) = {
   .format_device_name = format_pg_interface_name,
   .format_tx_trace = format_pg_output_trace,
   .admin_up_down_function = pg_interface_admin_up_down,
+  .mac_addr_add_del_function = pg_add_del_mac_address,
 };
 /* *INDENT-ON* */
 
@@ -244,6 +278,9 @@ pg_interface_add_or_get (pg_main_t * pg, uword if_id, u8 gso_enabled,
       pi->sw_if_index = hi->sw_if_index;
 
       hash_set (pg->if_index_by_if_id, if_id, i);
+
+      vec_validate (pg->if_id_by_sw_if_index, hi->sw_if_index);
+      pg->if_id_by_sw_if_index[hi->sw_if_index] = i;
 
       if (vlib_num_workers ())
 	{

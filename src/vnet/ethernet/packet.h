@@ -64,20 +64,20 @@ typedef struct
 
 /* I/G bit: individual (unicast)/group (broadcast/multicast). */
 always_inline uword
-ethernet_address_cast (u8 * a)
+ethernet_address_cast (const u8 * a)
 {
   return (a[0] >> 0) & 1;
 }
 
 always_inline int
-ethernet_address_is_broadcast (u8 * a)
+ethernet_address_is_broadcast (const u8 * a)
 {
   return clib_mem_unaligned (a, u32) == 0xffffffff &&
     clib_mem_unaligned (a + 4, u16) == 0xffff;
 }
 
 always_inline uword
-ethernet_address_is_locally_administered (u8 * a)
+ethernet_address_is_locally_administered (const u8 * a)
 {
   return (a[0] >> 1) & 1;
 }
@@ -89,7 +89,7 @@ ethernet_address_set_locally_administered (u8 * a)
 }
 
 always_inline int
-eh_dst_addr_to_rx_ctype (ethernet_header_t * eh)
+eh_dst_addr_to_rx_ctype (const ethernet_header_t * eh)
 {
   if (PREDICT_TRUE (ethernet_address_cast (eh->dst_address) ==
 		    ETHERNET_ADDRESS_UNICAST))
@@ -107,7 +107,7 @@ eh_dst_addr_to_rx_ctype (ethernet_header_t * eh)
 }
 
 always_inline int
-eh_dst_addr_to_tx_ctype (ethernet_header_t * eh)
+eh_dst_addr_to_tx_ctype (const ethernet_header_t * eh)
 {
   if (PREDICT_TRUE (ethernet_address_cast (eh->dst_address) ==
 		    ETHERNET_ADDRESS_UNICAST))
