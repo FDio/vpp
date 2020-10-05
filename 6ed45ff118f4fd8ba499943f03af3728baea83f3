@@ -34,6 +34,24 @@
       "revId": "6ed45ff118f4fd8ba499943f03af3728baea83f3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b3de4719_2cca52ef",
+        "filename": "src/vnet/devices/virtio/vhost_user_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 550,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-10-05T18:07:42Z",
+      "side": 1,
+      "message": "Just keep what it is. Sorry for the noise.",
+      "parentUuid": "9180a5a4_1479d837",
+      "revId": "6ed45ff118f4fd8ba499943f03af3728baea83f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
