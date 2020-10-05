@@ -16,7 +16,6 @@
  */
 
 #include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
 #include <dhcp/dhcp_proxy.h>
 #include <dhcp/client.h>
 #include <vnet/fib/ip4_fib.h>

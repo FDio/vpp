@@ -18,7 +18,6 @@
 #include <vlibmemory/api.h>
 #include <vpp/app/version.h>
 #include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 #include <vppinfra/random.h>
 #include <vnet/udp/udp.h>

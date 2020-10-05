@@ -16,7 +16,6 @@
  */
 
 #include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
 #include <vnet/mpls/mpls_lookup.h>
 #include <vnet/fib/mpls_fib.h>
 #include <vnet/dpo/load_balance_map.h>

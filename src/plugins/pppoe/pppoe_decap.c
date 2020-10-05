@@ -16,7 +16,6 @@
  */
 
 #include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
 #include <vnet/ppp/packet.h>
 #include <pppoe/pppoe.h>
 

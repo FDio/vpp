@@ -14,7 +14,6 @@
  */
 
 #include <plugins/adl/adl.h>
-#include <vnet/pg/pg.h>
 
 typedef struct {
   u32 next_index;

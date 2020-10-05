@@ -12,7 +12,6 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_link.h>
 #include <vnet/ethernet/arp_packet.h>
-#include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 #include <vrrp/vrrp.h>
 #include <vrrp/vrrp_packet.h>

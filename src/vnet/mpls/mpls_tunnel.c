@@ -16,7 +16,6 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
 #include <vnet/mpls/mpls_tunnel.h>
 #include <vnet/mpls/mpls_types.h>
 #include <vnet/ip/ip.h>

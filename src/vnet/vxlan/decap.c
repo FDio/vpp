@@ -16,7 +16,6 @@
  */
 
 #include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
 #include <vnet/vxlan/vxlan.h>
 
 #ifndef CLIB_MARCH_VARIANT

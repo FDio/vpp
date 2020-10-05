@@ -16,7 +16,6 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
 #include <vnet/gre/gre.h>
 #include <vnet/ip/format.h>
 #include <vnet/fib/ip4_fib.h>
