@@ -322,8 +322,10 @@ cli_show_trace_buffer (vlib_main_t * vm,
       {
         if (i == max)
           {
-            vlib_cli_output (vm, "Limiting display to %d packets."
-                                 " To display more specify max.", max);
+            char *warn = "Limiting display to %d packets."
+                               " To display more specify max.";
+            vlib_cli_output (vm, warn, max);
+            s = format (s, warn, max);
             goto done;
           }
 
