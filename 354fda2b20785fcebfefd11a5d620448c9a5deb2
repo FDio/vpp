@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "b86a42b0_f9a7895e",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 586,
+      "author": {
+        "id": 2189
+      },
+      "writtenOn": "2020-10-05T08:57:52Z",
+      "side": 1,
+      "message": "We checked the esp_decrypt hotspots and uArchExploration in VTune some time ago, and changing to simple assignment was reducing time spent here, however I checked the latest code from master and this no longer a case here.",
+      "parentUuid": "8a208217_c7d0cbd0",
+      "revId": "354fda2b20785fcebfefd11a5d620448c9a5deb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "1f74cb8b_d1a00cdf",
         "filename": "src/vnet/ipsec/esp_decrypt.c",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2020-10-02T10:41:49Z",
       "side": 1,
       "message": "Again, why is this better? original code does single 32-bit load and compare....",
+      "revId": "354fda2b20785fcebfefd11a5d620448c9a5deb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2c2f0859_ab62e0f0",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 990,
+      "author": {
+        "id": 2189
+      },
+      "writtenOn": "2020-10-05T08:57:52Z",
+      "side": 1,
+      "message": "I also checked this part on latest master and those check are no longer called because ipsec_sa_is_set_IS_PROTECT is not set (it was changed by Dave in commit: dd4ccf2623b547654d215ffcf42f9813e42aa90c). \nThe main reason for this change was that all the checked address are unaligned the memory access time is slower, I recall that memcmp was performing better as it was comparing byte by byte.\nI suppose we can abandon this change.",
+      "parentUuid": "1f74cb8b_d1a00cdf",
       "revId": "354fda2b20785fcebfefd11a5d620448c9a5deb2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
