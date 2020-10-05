@@ -1672,11 +1672,13 @@ ikev2_sa_auth (ikev2_sa_t * sa)
 	  authmsg = ikev2_sa_generate_authmsg (sa, 1);
 	  if (sel_p->auth.method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
 	    {
+	      vec_free (sa->r_auth.data);
 	      sa->r_auth.data = ikev2_calc_prf (tr_prf, psk, authmsg);
 	      sa->r_auth.method = IKEV2_AUTH_METHOD_SHARED_KEY_MIC;
 	    }
 	  else if (sel_p->auth.method == IKEV2_AUTH_METHOD_RSA_SIG)
 	    {
+	      vec_free (sa->r_auth.data);
 	      sa->r_auth.data = ikev2_calc_sign (km->pkey, authmsg);
 	      sa->r_auth.method = IKEV2_AUTH_METHOD_RSA_SIG;
 	    }
@@ -1733,11 +1735,13 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
 
   if (sa->i_auth.method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
     {
+      vec_free (sa->i_auth.data);
       sa->i_auth.data = ikev2_calc_prf (tr_prf, psk, authmsg);
       sa->i_auth.method = IKEV2_AUTH_METHOD_SHARED_KEY_MIC;
     }
   else if (sa->i_auth.method == IKEV2_AUTH_METHOD_RSA_SIG)
     {
+      vec_free (sa->i_auth.data);
       sa->i_auth.data = ikev2_calc_sign (km->pkey, authmsg);
       sa->i_auth.method = IKEV2_AUTH_METHOD_RSA_SIG;
     }
