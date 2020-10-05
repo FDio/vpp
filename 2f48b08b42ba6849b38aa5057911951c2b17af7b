@@ -33,6 +33,24 @@
       "revId": "2f48b08b42ba6849b38aa5057911951c2b17af7b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "26b17308_208a6661",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1728,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-10-05T12:58:51Z",
+      "side": 1,
+      "message": "i think we can\u0027t do that - we need to make sure that auth data is always present. In case of unsupported auth method we lose auth data so in the next call psk is computed from null pointer",
+      "parentUuid": "6944ed04_12643327",
+      "revId": "2f48b08b42ba6849b38aa5057911951c2b17af7b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
