@@ -2715,6 +2715,26 @@ ikev2_set_ip_address (ikev2_sa_t * sa, const void *src,
   ip_address_set (&sa->iaddr, iaddr, af);
 }
 
+static void
+ikev2_elog_uint_peers_addr (u32 exchange, ip4_header_t * ip4,
+			    ip6_header_t * ip6, u8 is_ip4)
+{
+  u32 src, dst;
+  if (is_ip4)
+    {
+      src = ip4->src_address.as_u32;
+      dst = ip4->dst_address.as_u32;
+    }
+  else
+    {
+      src = ip6->src_address.as_u32[3];
+      dst = ip6->dst_address.as_u32[3];
+    }
+  ikev2_elog_uint_peers (IKEV2_LOG_WARNING, "IKEv2 exchange %d "
+			 "received from %d.%d.%d.%d to %d.%d.%d.%d",
+			 exchange, src, dst);
+}
+
 static_always_inline uword
 ikev2_node_internal (vlib_main_t * vm,
 		     vlib_node_runtime_t * node, vlib_frame_t * frame,
@@ -3119,11 +3139,7 @@ ikev2_node_internal (vlib_main_t * vm,
 	}
       else
 	{
-	  ikev2_elog_uint_peers (IKEV2_LOG_WARNING, "IKEv2 exchange %d "
-				 "received from %d.%d.%d.%d to %d.%d.%d.%d",
-				 ike0->exchange,
-				 ip40->src_address.as_u32,
-				 ip40->dst_address.as_u32);
+	  ikev2_elog_uint_peers_addr (ike0->exchange, ip40, ip60, is_ip4);
 	}
 
     dispatch0:
