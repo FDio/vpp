@@ -3115,11 +3115,20 @@ ikev2_node_internal (vlib_main_t * vm,
 	}
       else
 	{
+          u32 src, dst;
+          if (is_ip4)
+          {
+            src = ip40->src_address.as_u32;
+            dst = ip40->dst_address.as_u32;
+          }
+          else
+          {
+            src = ip60->src_address.as_u32[3];
+            dst = ip60->dst_address.as_u32[3];
+          }
 	  ikev2_elog_uint_peers (IKEV2_LOG_WARNING, "IKEv2 exchange %d "
 				 "received from %d.%d.%d.%d to %d.%d.%d.%d",
-				 ike0->exchange,
-				 ip40->src_address.as_u32,
-				 ip40->dst_address.as_u32);
+				 ike0->exchange, src, dst);
 	}
 
     dispatch0:
