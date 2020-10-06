@@ -147,6 +147,7 @@ gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
   ip4_header_t *ip4_0 = 0;
   ip6_header_t *ip6_0 = 0;
   tcp_header_t *tcp0 = 0;
+  u32 flags = 0;
   u32 pkt_len0 = 0;
   u16 l234_sz0 = 0;
   u32 sw_if_index0[VLIB_N_RX_TX] = { ~0 };
@@ -179,17 +180,28 @@ gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
   sw_if_index0[VLIB_RX] = vnet_buffer (b0)->sw_if_index[VLIB_RX];
   sw_if_index0[VLIB_TX] = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
+  vlib_buffer_advance (b0, gho0->l3_hdr_offset);
   if (gho0->gho_flags & GHO_F_IP4)
     {
+      flags = ip4_tcp_udp_validate_checksum (vm, b0);
       gro_get_ip4_flow_from_packet (sw_if_index0, ip4_0, tcp0, flow_key0,
 				    is_l2);
     }
   else if (gho0->gho_flags & GHO_F_IP6)
     {
+      flags = ip6_tcp_udp_icmp_validate_checksum (vm, b0);
       gro_get_ip6_flow_from_packet (sw_if_index0, ip6_0, tcp0, flow_key0,
 				    is_l2);
     }
   else
+    {
+      vlib_buffer_advance (b0, -gho0->l3_hdr_offset);
+      return 0;
+    }
+
+  vlib_buffer_advance (b0, -gho0->l3_hdr_offset);
+
+  if ((flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) == 0)
     return 0;
 
   pkt_len0 = vlib_buffer_length_in_chain (vm, b0);
