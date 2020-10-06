@@ -93,6 +93,38 @@ typedef struct _clib_mem_vm_map_hdr
   struct _clib_mem_vm_map_hdr *prev, *next;
 } clib_mem_vm_map_hdr_t;
 
+#define foreach_clib_mem_heap_flag \
+  _(0, LOCKED, "locked") \
+  _(1, UNMAP_ON_DESTROY, "unmap-on-destroy")
+
+typedef enum
+{
+#define _(i, v, s) CLIB_MEM_HEAP_F_##v = (1 << i),
+  foreach_clib_mem_heap_flag
+#undef _
+} clib_mem_heap_flag_t;
+
+typedef struct
+{
+  /* base address */
+  void *base;
+
+  /* dlmalloc mspace */
+  void *mspace;
+
+  /* heap size */
+  uword size;
+
+  /* page size (log2) */
+  clib_mem_page_sz_t log2_page_sz:8;
+
+  /* flags */
+  clib_mem_heap_flag_t flags:8;
+
+  /* name - _MUST_ be last */
+  char name[0];
+} clib_mem_heap_t;
+
 typedef struct
 {
   /* log2 system page size */
@@ -122,7 +154,7 @@ extern clib_mem_main_t clib_mem_main;
 /* Unspecified NUMA socket */
 #define VEC_NUMA_UNSPECIFIED (0xFF)
 
-always_inline void *
+always_inline clib_mem_heap_t *
 clib_mem_get_per_cpu_heap (void)
 {
   int cpu = os_get_thread_index ();
@@ -130,7 +162,7 @@ clib_mem_get_per_cpu_heap (void)
 }
 
 always_inline void *
-clib_mem_set_per_cpu_heap (u8 * new_heap)
+clib_mem_set_per_cpu_heap (void *new_heap)
 {
   int cpu = os_get_thread_index ();
   void *old = clib_mem_main.per_cpu_mheaps[cpu];
@@ -146,7 +178,7 @@ clib_mem_get_per_numa_heap (u32 numa_id)
 }
 
 always_inline void *
-clib_mem_set_per_numa_heap (u8 * new_heap)
+clib_mem_set_per_numa_heap (void *new_heap)
 {
   int numa = os_get_numa_index ();
   void *old = clib_mem_main.per_numa_mheaps[numa];
@@ -187,10 +219,10 @@ always_inline void *
 clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
 				  int os_out_of_memory_on_failure)
 {
-  void *heap, *p;
-  uword cpu;
   void *mspace_get_aligned (void *msp, unsigned long n_user_data_bytes,
 			    unsigned long align, unsigned long align_offset);
+  clib_mem_heap_t *h = clib_mem_get_per_cpu_heap ();
+  void *p;
 
   if (align_offset > align)
     {
@@ -200,10 +232,7 @@ clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
 	align_offset = align;
     }
 
-  cpu = os_get_thread_index ();
-  heap = clib_mem_main.per_cpu_mheaps[cpu];
-
-  p = mspace_get_aligned (heap, size, align, align_offset);
+  p = mspace_get_aligned (h->mspace, size, align, align_offset);
 
   if (PREDICT_FALSE (0 == p))
     {
@@ -270,24 +299,23 @@ clib_mem_alloc_aligned_or_null (uword size, uword align)
 always_inline uword
 clib_mem_is_heap_object (void *p)
 {
-  void *heap = clib_mem_get_per_cpu_heap ();
   int mspace_is_heap_object (void *msp, void *p);
-
-  return mspace_is_heap_object (heap, p);
+  clib_mem_heap_t *h = clib_mem_get_per_cpu_heap ();
+  return mspace_is_heap_object (h->mspace, p);
 }
 
 always_inline void
 clib_mem_free (void *p)
 {
-  u8 *heap = clib_mem_get_per_cpu_heap ();
-
   void mspace_put (void *msp, void *p_arg);
+  clib_mem_heap_t *h = clib_mem_get_per_cpu_heap ();
+
   /* Make sure object is in the correct heap. */
   ASSERT (clib_mem_is_heap_object (p));
 
   CLIB_MEM_POISON (p, clib_mem_size_nocheck (p));
 
-  mspace_put (heap, p);
+  mspace_put (h->mspace, p);
 }
 
 always_inline void *
@@ -324,24 +352,24 @@ clib_mem_free_s (void *p)
   clib_mem_free (p);
 }
 
-always_inline void *
+always_inline clib_mem_heap_t *
 clib_mem_get_heap (void)
 {
   return clib_mem_get_per_cpu_heap ();
 }
 
-always_inline void *
-clib_mem_set_heap (void *heap)
+always_inline clib_mem_heap_t *
+clib_mem_set_heap (clib_mem_heap_t * heap)
 {
   return clib_mem_set_per_cpu_heap (heap);
 }
 
-void clib_mem_destroy_heap (void *heap);
-void *clib_mem_create_heap (void *base, uword size, int is_locked, char *fmt,
-			    ...);
+void clib_mem_destroy_heap (clib_mem_heap_t * heap);
+clib_mem_heap_t *clib_mem_create_heap (void *base, uword size, int is_locked,
+				       char *fmt, ...);
 
 void clib_mem_main_init ();
-void *clib_mem_init (void *heap, uword size);
+void *clib_mem_init (void *base, uword size);
 void *clib_mem_init_with_page_size (uword memory_size,
 				    clib_mem_page_sz_t log2_page_sz);
 void *clib_mem_init_thread_safe (void *memory, uword memory_size);
@@ -377,14 +405,16 @@ typedef struct
   uword bytes_max;
 } clib_mem_usage_t;
 
-void clib_mem_get_heap_usage (void *heap, clib_mem_usage_t * usage);
+void clib_mem_get_heap_usage (clib_mem_heap_t * heap,
+			      clib_mem_usage_t * usage);
 
-void *clib_mem_get_heap_base (void *heap);
-uword clib_mem_get_heap_size (void *heap);
-uword clib_mem_get_heap_free_space (void *heap);
+void *clib_mem_get_heap_base (clib_mem_heap_t * heap);
+uword clib_mem_get_heap_size (clib_mem_heap_t * heap);
+uword clib_mem_get_heap_free_space (clib_mem_heap_t * heap);
 
 u8 *format_clib_mem_usage (u8 * s, va_list * args);
 u8 *format_clib_mem_heap (u8 * s, va_list * va);
+u8 *format_clib_mem_page_stats (u8 * s, va_list * va);
 
 /* Allocate virtual address space. */
 always_inline void *
@@ -454,19 +484,9 @@ u64 *clib_mem_vm_get_paddr (void *mem, clib_mem_page_sz_t log2_page_size,
 void clib_mem_destroy (void);
 int clib_mem_set_numa_affinity (u8 numa_node, int force);
 int clib_mem_set_default_numa_affinity ();
-
-typedef struct
-{
-  uword size;		/**< Map size */
-  int fd;		/**< File descriptor to be mapped */
-  uword requested_va;	/**< Request fixed position mapping */
-  void *addr;		/**< Pointer to mapped memory, if successful */
-  u8 numa_node;
-} clib_mem_vm_map_t;
-
 void clib_mem_vm_randomize_va (uword * requested_va,
 			       clib_mem_page_sz_t log2_page_size);
-void mheap_trace (void *v, int enable);
+void mheap_trace (clib_mem_heap_t * v, int enable);
 uword clib_mem_trace_enable_disable (uword enable);
 void clib_mem_trace (int enable);
 
@@ -485,6 +505,8 @@ clib_mem_round_to_page_size (uword size, clib_mem_page_sz_t log2_page_size)
 
 typedef struct
 {
+  clib_mem_page_sz_t log2_page_sz;
+  uword total;
   uword mapped;
   uword not_mapped;
   uword per_numa[CLIB_MAX_NUMAS];

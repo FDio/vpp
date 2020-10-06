@@ -17,9 +17,9 @@
 
 /* Vector of all bihashes */
 void **clib_all_bihashes;
-static void **clib_all_bihash_heap;
+static clib_mem_heap_t *clib_all_bihash_heap;
 
-void *
+clib_mem_heap_t *
 clib_all_bihash_set_heap (void)
 {
   if (PREDICT_FALSE (clib_all_bihash_heap == 0))
