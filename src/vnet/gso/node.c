@@ -97,7 +97,6 @@ tso_segment_ipip_tunnel_fixup (vlib_main_t * vm,
       i++;
     }
   return n_tx_bytes;
-
 }
 
 static_always_inline void
