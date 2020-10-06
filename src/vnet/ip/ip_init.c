@@ -9,6 +9,7 @@
 #include <vnet/ip/ip4_mtrie.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/dpo/load_balance.h>
+#include <vnet/ip/ip_interface_address_watch.h>
 
 ip_main_t ip_main;
 
@@ -71,6 +72,8 @@ do {						\
 	hash_set (im->port_info_by_port, pi->port, i);
       }
   }
+
+  ip46_interface_address_register_callbacks ();
 
   return error;
 }
