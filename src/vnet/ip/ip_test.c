@@ -42,6 +42,12 @@ api_ip_route_add_del_v2 (vat_main_t *vam)
   return -1;
 }
 
+static int
+api_want_ip_interface_address_events (vat_main_t *vam)
+{
+  return -1;
+}
+
 static void
 set_ip4_address (vl_api_address_t *a, u32 v)
 {
