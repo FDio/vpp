@@ -155,8 +155,10 @@ ip_neighbor_unwatch (const ip_address_t * ip,
 
   vec_del1 (ipws, pos);
 
-  if (vec_len(ipws) == 0)
+  if (vec_len(ipws) == 0) {
     mhash_unset (&ipnw_db.ipnwdb_hash, &key, NULL);
+    vec_free (ipws);
+  }
 }
 
 static void
