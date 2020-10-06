@@ -140,6 +140,23 @@ gro_merge_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
 }
 
 static_always_inline u32
+gro_validate_checksum (vlib_main_t * vm, vlib_buffer_t * b0,
+		       generic_header_offset_t * gho0, int is_ip4)
+{
+  u32 flags = 0;
+
+  if (b0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
+    return VNET_BUFFER_F_L4_CHECKSUM_CORRECT;
+  vlib_buffer_advance (b0, gho0->l3_hdr_offset);
+  if (is_ip4)
+    flags = ip4_tcp_udp_validate_checksum (vm, b0);
+  else
+    flags = ip6_tcp_udp_icmp_validate_checksum (vm, b0);
+  vlib_buffer_advance (b0, -gho0->l3_hdr_offset);
+  return flags;
+}
+
+static_always_inline u32
 gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
 		     generic_header_offset_t * gho0,
 		     gro_flow_key_t * flow_key0, int is_l2)
@@ -147,6 +164,7 @@ gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
   ip4_header_t *ip4_0 = 0;
   ip6_header_t *ip6_0 = 0;
   tcp_header_t *tcp0 = 0;
+  u32 flags = 0;
   u32 pkt_len0 = 0;
   u16 l234_sz0 = 0;
   u32 sw_if_index0[VLIB_N_RX_TX] = { ~0 };
@@ -181,15 +199,20 @@ gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
 
   if (gho0->gho_flags & GHO_F_IP4)
     {
+      flags = gro_validate_checksum (vm, b0, gho0, 1);
       gro_get_ip4_flow_from_packet (sw_if_index0, ip4_0, tcp0, flow_key0,
 				    is_l2);
     }
   else if (gho0->gho_flags & GHO_F_IP6)
     {
+      flags = gro_validate_checksum (vm, b0, gho0, 0);
       gro_get_ip6_flow_from_packet (sw_if_index0, ip6_0, tcp0, flow_key0,
 				    is_l2);
     }
   else
+    return 0;
+
+  if ((flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) == 0)
     return 0;
 
   pkt_len0 = vlib_buffer_length_in_chain (vm, b0);
