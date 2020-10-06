@@ -2010,6 +2010,12 @@ VLIB_CLI_COMMAND (f_command, static) =
 };
 /* *INDENT-ON* */
 
+vlib_thread_main_t *
+vlib_get_thread_main_not_inline (void)
+{
+  return vlib_get_thread_main ();
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

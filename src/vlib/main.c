@@ -2510,6 +2510,18 @@ VLIB_CLI_COMMAND (pcap_dispatch_trace_command, static) = {
 };
 /* *INDENT-ON* */
 
+vlib_main_t *
+vlib_get_main_not_inline (void)
+{
+  return vlib_get_main ();
+}
+
+elog_main_t *
+vlib_get_elog_main_not_inline ()
+{
+  return &vlib_global_main.elog_main;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

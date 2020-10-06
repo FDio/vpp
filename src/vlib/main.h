@@ -489,6 +489,8 @@ typedef struct
 } vlib_pcap_dispatch_trace_args_t;
 
 int vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t *);
+vlib_main_t *vlib_get_main_not_inline (void);
+elog_main_t *vlib_get_elog_main_not_inline ();
 
 #endif /* included_vlib_main_h */
 
