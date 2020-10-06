@@ -827,13 +827,8 @@ show_memory_usage (vlib_main_t * vm,
         /* *INDENT-OFF* */
         foreach_vlib_main (
         ({
-          void *heap = mm->per_cpu_mheaps[index];
-
           vlib_cli_output (vm, "%sThread %d %s\n", index ? "\n":"", index,
                            vlib_worker_threads[index].name);
-          vlib_cli_output (vm, "  %U\n", format_page_map,
-                           pointer_to_uword (clib_mem_get_heap_base(heap)),
-                           clib_mem_get_heap_size (heap));
           vlib_cli_output (vm, "  %U\n", format_clib_mem_heap,
                            mm->per_cpu_mheaps[index],
                            verbose);
@@ -846,8 +841,6 @@ show_memory_usage (vlib_main_t * vm,
       }
     if (numa_heaps)
       {
-	void *heap;
-
 	for (i = 0; i < ARRAY_LEN (mm->per_numa_mheaps); i++)
 	  {
 	    if (mm->per_numa_mheaps[i] == 0)
@@ -858,12 +851,8 @@ show_memory_usage (vlib_main_t * vm,
 		continue;
 	      }
 	    was_enabled = clib_mem_trace_enable_disable (0);
-	    heap = mm->per_numa_mheaps[i];
 
 	    vlib_cli_output (vm, "Numa %d:", i);
-	    vlib_cli_output (vm, "  %U\n", format_page_map,
-			     pointer_to_uword (clib_mem_get_heap_base (heap)),
-			     clib_mem_get_heap_size (heap));
 	    vlib_cli_output (vm, "  %U\n", format_clib_mem_heap,
 			     mm->per_numa_mheaps[index], verbose);
 	  }

@@ -117,7 +117,6 @@ _(format_timeval);
 _(format_time_float);
 _(format_signal);
 _(format_ucontext_pc);
-_(format_page_map);
 #endif
 
 #undef _
