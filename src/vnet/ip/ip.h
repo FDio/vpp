@@ -93,6 +93,27 @@ typedef struct
   uword *port_info_by_name;
 } ip_main_t;
 
+typedef struct
+{
+  /* this address was added or removed */
+  ip_prefix_t prefix;
+
+  /* this interface experienced the address change */
+  u32 sw_if_index;
+
+  /* client that should receive the event */
+  u32 client_index;
+
+  u32 pid;
+
+  /* 1 => address deleted, 0 => address added */
+  u8 is_delete;
+
+} ip_interface_address_event_t;
+
+void
+ip_interface_address_handle_event (const ip_interface_address_event_t *event);
+
 extern ip_main_t ip_main;
 
 clib_error_t *ip_main_init (vlib_main_t * vm);
