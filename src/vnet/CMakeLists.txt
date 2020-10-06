@@ -401,6 +401,7 @@ list(APPEND VNET_SOURCES
   ip/ip_frag.c
   ip/ip.c
   ip/ip_interface.c
+  ip/ip_interface_address_watch.c
   ip/ip_init.c
   ip/ip_in_out_acl.c
   ip/ip_path_mtu.c
@@ -452,6 +453,7 @@ list(APPEND VNET_HEADERS
   ip/ip_flow_hash.h
   ip/ip_table.h
   ip/ip_interface.h
+  ip/ip_interface_address_watch.h
   ip/ip_packet.h
   ip/ip_psh_cksum.h
   ip/ip_source_and_port_range_check.h
