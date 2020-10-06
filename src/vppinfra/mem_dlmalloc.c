@@ -194,87 +194,106 @@ mheap_trace_main_free (mheap_trace_main_t * tm)
   hash_free (tm->trace_index_by_offset);
 }
 
+static clib_mem_heap_t *
+clib_mem_create_heap_internal (void *base, uword size,
+			       clib_mem_page_sz_t log2_page_sz, int is_locked,
+			       char *name)
+{
+  clib_mem_heap_t *h;
+  u8 flags = 0;
+  int sz = sizeof (clib_mem_heap_t);
+
+  if (base == 0)
+    {
+      log2_page_sz = clib_mem_log2_page_size_validate (log2_page_sz);
+      size = round_pow2 (size, clib_mem_page_bytes (log2_page_sz));
+      base = clib_mem_vm_map_internal (0, log2_page_sz, size, -1, 0,
+				       "main heap");
+
+      if (base == CLIB_MEM_VM_MAP_FAILED)
+	return 0;
+
+      flags = CLIB_MEM_HEAP_F_UNMAP_ON_DESTROY;
+    }
+  else
+    log2_page_sz = CLIB_MEM_PAGE_SZ_UNKNOWN;
+
+  if (is_locked)
+    flags |= CLIB_MEM_HEAP_F_LOCKED;
+
+  h = base;
+  h->base = base;
+  h->size = size;
+  h->log2_page_sz = log2_page_sz;
+  h->flags = flags;
+  sz = strlen (name);
+  strcpy (h->name, name);
+  sz = round_pow2 (sz + sizeof (clib_mem_heap_t), 16);
+  h->mspace = create_mspace_with_base (base + sz, size - sz, is_locked);
+
+  mspace_disable_expand (h->mspace);
+
+  CLIB_MEM_POISON (mspace_least_addr (h->mspace),
+		   mspace_footprint (h->mspace));
+
+  return h;
+}
+
+//STATIC_ASSERT_OFFSET_OF (clib_mem_heap_t, name, sizeof (clib_mem_heap_t));
+
 /* Initialize CLIB heap based on memory/size given by user.
    Set memory to 0 and CLIB will try to allocate its own heap. */
 static void *
-clib_mem_init_internal (void *memory, uword memory_size,
-			clib_mem_page_sz_t log2_page_sz, int set_heap)
+clib_mem_init_internal (void *base, uword size,
+			clib_mem_page_sz_t log2_page_sz)
 {
-  u8 *heap;
+  clib_mem_heap_t *h;
 
   clib_mem_main_init ();
 
-  if (memory)
-    {
-      heap = create_mspace_with_base (memory, memory_size, 1 /* locked */ );
-      mspace_disable_expand (heap);
-    }
-  else
-    {
-      memory_size = round_pow2 (memory_size,
-				clib_mem_page_bytes (log2_page_sz));
-      memory = clib_mem_vm_map_internal (0, log2_page_sz, memory_size, -1, 0,
-					 "main heap");
+  h = clib_mem_create_heap_internal (base, size, log2_page_sz,
+				     1 /*is_locked */ , "main heap");
 
-      if (memory == CLIB_MEM_VM_MAP_FAILED)
-	return 0;
-
-      heap = create_mspace_with_base (memory, memory_size, 1 /* locked */ );
-      mspace_disable_expand (heap);
-    }
-
-  CLIB_MEM_POISON (mspace_least_addr (heap), mspace_footprint (heap));
-
-  if (set_heap)
-    clib_mem_set_heap (heap);
+  clib_mem_set_heap (h);
 
   if (mheap_trace_main.lock == 0)
     clib_spinlock_init (&mheap_trace_main.lock);
 
-  return heap;
+  return h;
 }
 
 void *
 clib_mem_init (void *memory, uword memory_size)
 {
   return clib_mem_init_internal (memory, memory_size,
-				 CLIB_MEM_PAGE_SZ_DEFAULT,
-				 1 /* do clib_mem_set_heap */ );
+				 CLIB_MEM_PAGE_SZ_DEFAULT);
 }
 
 void *
 clib_mem_init_with_page_size (uword memory_size,
 			      clib_mem_page_sz_t log2_page_sz)
 {
-  return clib_mem_init_internal (0, memory_size, log2_page_sz,
-				 1 /* do clib_mem_set_heap */ );
+  return clib_mem_init_internal (0, memory_size, log2_page_sz);
 }
 
 void *
 clib_mem_init_thread_safe (void *memory, uword memory_size)
 {
   return clib_mem_init_internal (memory, memory_size,
-				 CLIB_MEM_PAGE_SZ_DEFAULT,
-				 1 /* do clib_mem_set_heap */ );
-}
-
-void
-clib_mem_destroy_mspace (void *mspace)
-{
-  mheap_trace_main_t *tm = &mheap_trace_main;
-
-  if (tm->enabled && mspace == tm->current_traced_mheap)
-    tm->enabled = 0;
-
-  destroy_mspace (mspace);
+				 CLIB_MEM_PAGE_SZ_DEFAULT);
 }
 
 void
 clib_mem_destroy (void)
 {
-  void *heap = clib_mem_get_heap ();
-  void *base = mspace_least_addr (heap);
-  clib_mem_destroy_mspace (clib_mem_get_heap ());
+  mheap_trace_main_t *tm = &mheap_trace_main;
+  clib_mem_heap_t *heap = clib_mem_get_heap ();
+  void *base = mspace_least_addr (heap->mspace);
+
+  if (tm->enabled && heap->mspace == tm->current_traced_mheap)
+    tm->enabled = 0;
+
+  destroy_mspace (heap->mspace);
   clib_mem_vm_unmap (base);
 }
 
@@ -399,47 +418,61 @@ format_mheap_trace (u8 * s, va_list * va)
   return s;
 }
 
-
 u8 *
 format_clib_mem_heap (u8 * s, va_list * va)
 {
-  void *heap = va_arg (*va, u8 *);
+  clib_mem_heap_t *heap = va_arg (*va, clib_mem_heap_t *);
   int verbose = va_arg (*va, int);
   struct dlmallinfo mi;
   mheap_trace_main_t *tm = &mheap_trace_main;
+  u32 indent = format_get_indent (s) + 2;
 
   if (heap == 0)
     heap = clib_mem_get_heap ();
 
-  mi = mspace_mallinfo (heap);
+  mi = mspace_mallinfo (heap->mspace);
 
-  s = format (s, "total: %U, used: %U, free: %U, trimmable: %U",
+  s = format (s, "base %p, size %U",
+	      heap->base, format_memory_size, heap->size);
+
+#define _(i,v,str) \
+  if (heap->flags & CLIB_MEM_HEAP_F_##v) s = format (s, ", %s", str);
+  foreach_clib_mem_heap_flag;
+#undef _
+
+  s = format (s, ", name '%s'", heap->name);
+
+  if (heap->log2_page_sz != CLIB_MEM_PAGE_SZ_UNKNOWN)
+    {
+      clib_mem_page_stats_t stats;
+      clib_mem_get_page_stats (heap->base, heap->log2_page_sz,
+			       heap->size >> heap->log2_page_sz, &stats);
+      s = format (s, "\n%U%U", format_white_space, indent,
+		  format_clib_mem_page_stats, &stats);
+    }
+
+  s = format (s, "\n%Utotal: %U, used: %U, free: %U, trimmable: %U",
+	      format_white_space, indent,
 	      format_msize, mi.arena,
 	      format_msize, mi.uordblks,
 	      format_msize, mi.fordblks, format_msize, mi.keepcost);
   if (verbose > 0)
     {
-      s = format (s, "\n    free chunks %llu free fastbin blks %llu",
-		  mi.ordblks, mi.smblks);
-      s =
-	format (s, "\n    max total allocated %U", format_msize, mi.usmblks);
+      s = format (s, "\n%Ufree chunks %llu free fastbin blks %llu",
+		  format_white_space, indent + 2, mi.ordblks, mi.smblks);
+      s = format (s, "\n%Umax total allocated %U",
+		  format_white_space, indent + 2, format_msize, mi.usmblks);
     }
 
-  if (mspace_is_traced (heap))
+  if (mspace_is_traced (heap->mspace))
     s = format (s, "\n%U", format_mheap_trace, tm, verbose);
   return s;
 }
 
 void
-clib_mem_usage (clib_mem_usage_t * u)
+clib_mem_get_heap_usage (clib_mem_heap_t * heap, clib_mem_usage_t * usage)
 {
-  clib_warning ("unimp");
-}
-
-void
-clib_mem_get_heap_usage (void *heap, clib_mem_usage_t * usage)
-{
-  struct dlmallinfo mi = mspace_mallinfo (heap);
+  struct dlmallinfo mi = mspace_mallinfo (heap->mspace);
 
   /* TODO: Fill in some more values */
   usage->object_count = 0;
@@ -455,15 +488,9 @@ clib_mem_get_heap_usage (void *heap, clib_mem_usage_t * usage)
 uword clib_mem_validate_serial = 0;
 
 void
-clib_mem_validate (void)
+mheap_trace (clib_mem_heap_t * h, int enable)
 {
-  clib_warning ("unimp");
-}
-
-void
-mheap_trace (void *v, int enable)
-{
-  (void) mspace_enable_disable_trace (v, enable);
+  (void) mspace_enable_disable_trace (h->mspace, enable);
 
   if (enable == 0)
     mheap_trace_main_free (&mheap_trace_main);
@@ -487,7 +514,8 @@ clib_mem_trace (int enable)
 int
 clib_mem_is_traced (void)
 {
-  return mspace_is_traced (clib_mem_get_heap ());
+  clib_mem_heap_t *h = clib_mem_get_heap ();
+  return mspace_is_traced (h->mspace);
 }
 
 uword
@@ -501,45 +529,66 @@ clib_mem_trace_enable_disable (uword enable)
   return rv;
 }
 
-void *
+clib_mem_heap_t *
 clib_mem_create_heap (void *base, uword size, int is_locked, char *fmt, ...)
 {
-  void *rv;
-  if (base == 0)
-    rv = create_mspace (size, is_locked);
-  else
-    rv = create_mspace_with_base (base, size, is_locked);
+  clib_mem_page_sz_t log2_page_sz = clib_mem_get_log2_page_size ();
+  clib_mem_heap_t *h;
+  char *name;
+  u8 *s = 0;
 
-  if (rv)
-    mspace_disable_expand (rv);
-  return rv;
+  if (fmt == 0)
+    {
+      name = "";
+    }
+  else if (strchr (fmt, '%'))
+    {
+      va_list va;
+      va_start (va, fmt);
+      s = va_format (0, fmt, &va);
+      vec_add1 (s, 0);
+      va_end (va);
+      name = (char *) s;
+    }
+  else
+    name = fmt;
+
+  h = clib_mem_create_heap_internal (base, size, log2_page_sz, is_locked,
+				     name);
+  vec_free (s);
+  return h;
 }
 
 void
-clib_mem_destroy_heap (void *heap)
+clib_mem_destroy_heap (clib_mem_heap_t * h)
 {
-  destroy_mspace (heap);
+  mheap_trace_main_t *tm = &mheap_trace_main;
+
+  if (tm->enabled && h->mspace == tm->current_traced_mheap)
+    tm->enabled = 0;
+
+  destroy_mspace (h->mspace);
+  if (h->flags & CLIB_MEM_HEAP_F_UNMAP_ON_DESTROY)
+    clib_mem_vm_unmap (h->base);
 }
 
 uword
-clib_mem_get_heap_free_space (void *heap)
+clib_mem_get_heap_free_space (clib_mem_heap_t * h)
 {
-  struct dlmallinfo dlminfo = mspace_mallinfo (heap);
+  struct dlmallinfo dlminfo = mspace_mallinfo (h->mspace);
   return dlminfo.fordblks;
 }
 
 void *
-clib_mem_get_heap_base (void *heap)
+clib_mem_get_heap_base (clib_mem_heap_t * h)
 {
-  return mspace_least_addr (heap);
+  return h->base;
 }
 
 uword
-clib_mem_get_heap_size (void *heap)
+clib_mem_get_heap_size (clib_mem_heap_t * heap)
 {
-  struct dlmallinfo mi;
-  mi = mspace_mallinfo (heap);
-  return mi.arena;
+  return heap->size;
 }
 
 /*

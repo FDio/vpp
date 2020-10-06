@@ -142,7 +142,7 @@ ssvm_unlock_non_recursive (ssvm_shared_header_t * h)
 static inline void *
 ssvm_push_heap (ssvm_shared_header_t * sh)
 {
-  u8 *oldheap;
+  clib_mem_heap_t *oldheap;
   oldheap = clib_mem_set_heap (sh->heap);
   return ((void *) oldheap);
 }
@@ -156,7 +156,7 @@ ssvm_pop_heap (void *oldheap)
 static inline void *
 ssvm_mem_alloc (ssvm_private_t * ssvm, uword size)
 {
-  u8 *oldheap;
+  clib_mem_heap_t *oldheap;
   void *rv;
 
   oldheap = clib_mem_set_heap (ssvm->sh->heap);

@@ -542,6 +542,8 @@ clib_mem_get_page_stats (void *start, clib_mem_page_sz_t log2_page_size,
     ptr[i] = start + (i << log2_page_size);
 
   clib_memset (stats, 0, sizeof (clib_mem_page_stats_t));
+  stats->total = n_pages;
+  stats->log2_page_sz = log2_page_size;
 
   if (move_pages (0, n_pages, ptr, 0, status, 0) != 0)
     {

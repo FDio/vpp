@@ -362,8 +362,7 @@ ssvm_server_init_private (ssvm_private_t * ssvm)
 {
   uword page_size, log2_page_size, rnd_size = 0;
   ssvm_shared_header_t *sh;
-  void *oldheap;
-  u8 *heap;
+  clib_mem_heap_t *heap, *oldheap;
 
   log2_page_size = clib_mem_get_log2_page_size ();
   if (log2_page_size == 0)
