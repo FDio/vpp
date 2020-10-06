@@ -214,6 +214,7 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
 	  l_addr = &s->in2out.addr;
 	  r_addr = &s->ext_host_addr;
 	  proto = nat_proto_to_ip_proto (s->nat_proto);
+	  fib_index = s->in2out.fib_index;
 	  init_ed_k (&ed_kv, *l_addr, l_port, *r_addr, r_port, fib_index,
 		     proto);
 	}
