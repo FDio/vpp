@@ -1654,13 +1654,13 @@ avf_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
 static clib_error_t *
 avf_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
-			      vnet_hw_interface_rx_mode mode)
+			      vnet_hw_if_rx_mode mode)
 {
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   avf_device_t *ad = avf_get_device (hw->dev_instance);
   avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, qid);
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+  if (mode == VNET_HW_IF_RX_MODE_POLLING)
     {
       if (rxq->int_mode == 0)
 	return 0;

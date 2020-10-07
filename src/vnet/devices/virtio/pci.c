@@ -1190,7 +1190,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
     virtio_vring_set_numa_node (vm, vif, RX_QUEUE (i));
     /* Set default rx mode to POLLING */
     vnet_hw_interface_set_rx_mode (vnm, vif->hw_if_index, i,
-				   VNET_HW_INTERFACE_RX_MODE_POLLING);
+				   VNET_HW_IF_RX_MODE_POLLING);
   }
   if (virtio_pci_is_link_up (vm, vif) & VIRTIO_NET_S_LINK_UP)
     {

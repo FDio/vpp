@@ -170,14 +170,14 @@ vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
   dq->hw_if_index = hw_if_index;
   dq->dev_instance = hw->dev_instance;
   dq->queue_id = queue_id;
-  dq->mode = VNET_HW_INTERFACE_RX_MODE_POLLING;
+  dq->mode = VNET_HW_IF_RX_MODE_POLLING;
   rt->enabled_node_state = VLIB_NODE_STATE_POLLING;
 
   vnet_device_queue_update (vnm, rt);
   vec_validate (hw->input_node_thread_index_by_queue, queue_id);
   vec_validate (hw->rx_mode_by_queue, queue_id);
   hw->input_node_thread_index_by_queue[queue_id] = thread_index;
-  hw->rx_mode_by_queue[queue_id] = VNET_HW_INTERFACE_RX_MODE_POLLING;
+  hw->rx_mode_by_queue[queue_id] = VNET_HW_IF_RX_MODE_POLLING;
 
   vlib_worker_thread_barrier_release (vm0);
 
@@ -193,7 +193,7 @@ vnet_hw_interface_unassign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
   vnet_device_input_runtime_t *rt;
   vnet_device_and_queue_t *dq;
   uword old_thread_index;
-  vnet_hw_interface_rx_mode mode;
+  vnet_hw_if_rx_mode mode;
 
   if (hw->input_node_thread_index_by_queue == 0)
     return VNET_API_ERROR_INVALID_INTERFACE;
@@ -222,12 +222,12 @@ delete:
   vlib_worker_thread_barrier_sync (vm0);
   vec_del1 (rt->devices_and_queues, dq - rt->devices_and_queues);
   vnet_device_queue_update (vnm, rt);
-  hw->rx_mode_by_queue[queue_id] = VNET_HW_INTERFACE_RX_MODE_UNKNOWN;
+  hw->rx_mode_by_queue[queue_id] = VNET_HW_IF_RX_MODE_UNKNOWN;
   vlib_worker_thread_barrier_release (vm0);
 
   if (vec_len (rt->devices_and_queues) == 0)
     vlib_node_set_state (vm, hw->input_node_index, VLIB_NODE_STATE_DISABLED);
-  else if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+  else if (mode == VNET_HW_IF_RX_MODE_POLLING)
     {
       /*
        * if the deleted interface is polling, we may need to set the node state
@@ -238,7 +238,7 @@ delete:
        */
       vec_foreach (dq, rt->devices_and_queues)
       {
-	if (dq->mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+	if (dq->mode == VNET_HW_IF_RX_MODE_POLLING)
 	  return 0;
       }
       rt->enabled_node_state = VLIB_NODE_STATE_INTERRUPT;
@@ -251,18 +251,18 @@ delete:
 
 int
 vnet_hw_interface_set_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
-			       u16 queue_id, vnet_hw_interface_rx_mode mode)
+			       u16 queue_id, vnet_hw_if_rx_mode mode)
 {
   vlib_main_t *vm;
   uword thread_index;
   vnet_device_and_queue_t *dq;
   vlib_node_state_t enabled_node_state;
-  ASSERT (mode < VNET_HW_INTERFACE_NUM_RX_MODES);
+  ASSERT (mode < VNET_HW_IF_NUM_RX_MODES);
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   vnet_device_input_runtime_t *rt;
   int is_polling = 0;
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_DEFAULT)
+  if (mode == VNET_HW_IF_RX_MODE_DEFAULT)
     mode = hw->default_rx_mode;
 
   if (hw->input_node_thread_index_by_queue == 0 || hw->rx_mode_by_queue == 0)
@@ -271,7 +271,7 @@ vnet_hw_interface_set_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
   if (hw->rx_mode_by_queue[queue_id] == mode)
     return 0;
 
-  if (mode != VNET_HW_INTERFACE_RX_MODE_POLLING &&
+  if (mode != VNET_HW_IF_RX_MODE_POLLING &&
       (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE) == 0)
     return VNET_API_ERROR_UNSUPPORTED;
 
@@ -289,7 +289,7 @@ vnet_hw_interface_set_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
   {
     if (dq->hw_if_index == hw_if_index && dq->queue_id == queue_id)
       dq->mode = mode;
-    if (dq->mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+    if (dq->mode == VNET_HW_IF_RX_MODE_POLLING)
       is_polling = 1;
   }
 
@@ -311,7 +311,7 @@ vnet_hw_interface_set_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
 
 int
 vnet_hw_interface_get_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
-			       u16 queue_id, vnet_hw_interface_rx_mode * mode)
+			       u16 queue_id, vnet_hw_if_rx_mode * mode)
 {
   vlib_main_t *vm;
   uword thread_index;

@@ -296,17 +296,17 @@ memif_connect (memif_if_t * mif)
       mq->buffer_pool_index =
 	vlib_buffer_pool_get_default_for_numa (vm, vlib_mains[ti]->numa_node);
       rv = vnet_hw_interface_set_rx_mode (vnm, mif->hw_if_index, i,
-					  VNET_HW_INTERFACE_RX_MODE_DEFAULT);
+					  VNET_HW_IF_RX_MODE_DEFAULT);
       if (rv)
 	memif_log_err
 	  (mif, "Warning: unable to set rx mode for interface %d queue %d: "
 	   "rc=%d", mif->hw_if_index, i, rv);
       else
 	{
-	  vnet_hw_interface_rx_mode rxmode;
+	  vnet_hw_if_rx_mode rxmode;
 	  vnet_hw_interface_get_rx_mode (vnm, mif->hw_if_index, i, &rxmode);
 
-	  if (rxmode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+	  if (rxmode == VNET_HW_IF_RX_MODE_POLLING)
 	    mq->ring->flags |= MEMIF_RING_FLAG_MASK_INT;
 	  else
 	    vnet_device_input_set_interrupt_pending (vnm, mif->hw_if_index, i);

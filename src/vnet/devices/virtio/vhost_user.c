@@ -170,9 +170,9 @@ vhost_user_rx_thread_placement (vhost_user_intf_t * vui, u32 qid)
   vnet_hw_interface_set_input_node (vnm, vui->hw_if_index,
 				    vhost_user_input_node.index);
   vnet_hw_interface_assign_rx_thread (vnm, vui->hw_if_index, q, ~0);
-  if (txvq->mode == VNET_HW_INTERFACE_RX_MODE_UNKNOWN)
+  if (txvq->mode == VNET_HW_IF_RX_MODE_UNKNOWN)
     /* Set polling as the default */
-    txvq->mode = VNET_HW_INTERFACE_RX_MODE_POLLING;
+    txvq->mode = VNET_HW_IF_RX_MODE_POLLING;
   txvq->qid = q;
   rv = vnet_hw_interface_set_rx_mode (vnm, vui->hw_if_index, q, txvq->mode);
   if (rv)
@@ -1358,8 +1358,8 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
       if (txvq->qid == -1)
 	continue;
       if ((vum->ifq_count > 0) &&
-	  ((txvq->mode == VNET_HW_INTERFACE_RX_MODE_INTERRUPT) ||
-	   (txvq->mode == VNET_HW_INTERFACE_RX_MODE_ADAPTIVE)))
+	  ((txvq->mode == VNET_HW_IF_RX_MODE_INTERRUPT) ||
+	   (txvq->mode == VNET_HW_IF_RX_MODE_ADAPTIVE)))
 	{
 	  vum->ifq_count--;
 	  // Stop the timer if there is no more interrupt interface/queue
@@ -2164,7 +2164,7 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 	{
 	  vnet_main_t *vnm = vnet_get_main ();
 	  uword thread_index;
-	  vnet_hw_interface_rx_mode mode;
+	  vnet_hw_if_rx_mode mode;
 	  vhost_user_vring_t *txvq = &vui->vrings[qid];
 
 	  if (txvq->qid == -1)
@@ -2176,7 +2176,7 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 					 &mode);
 	  vlib_cli_output (vm, "   thread %d on vring %d, %U\n",
 			   thread_index, qid,
-			   format_vnet_hw_interface_rx_mode, mode);
+			   format_vnet_hw_if_rx_mode, mode);
 	}
 
       vlib_cli_output (vm, " tx placement: %s\n",

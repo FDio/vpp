@@ -60,7 +60,7 @@ typedef struct
   u32 hw_if_index;
   u32 dev_instance;
   u16 queue_id;
-  vnet_hw_interface_rx_mode mode;
+  vnet_hw_if_rx_mode mode;
   u32 interrupt_pending;
 } vnet_device_and_queue_t;
 
@@ -88,11 +88,9 @@ void vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
 int vnet_hw_interface_unassign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
 					  u16 queue_id);
 int vnet_hw_interface_set_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
-				   u16 queue_id,
-				   vnet_hw_interface_rx_mode mode);
+				   u16 queue_id, vnet_hw_if_rx_mode mode);
 int vnet_hw_interface_get_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
-				   u16 queue_id,
-				   vnet_hw_interface_rx_mode * mode);
+				   u16 queue_id, vnet_hw_if_rx_mode * mode);
 
 static inline u64
 vnet_get_aggregate_rx_packets (void)
@@ -160,7 +158,7 @@ vnet_device_input_set_interrupt_pending (vnet_main_t * vnm, u32 hw_if_index,
  */
 #define foreach_device_and_queue(var,vec)                       \
   for (var = (vec); var < vec_end (vec); var++)                 \
-    if ((var->mode == VNET_HW_INTERFACE_RX_MODE_POLLING)        \
+    if ((var->mode == VNET_HW_IF_RX_MODE_POLLING)               \
         || clib_atomic_swap_acq_n (&((var)->interrupt_pending), 0))
 
 #endif /* included_vnet_vnet_device_h */

@@ -305,7 +305,7 @@ mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args)
 				    mrvl_pp2_input_node.index);
   vnet_hw_interface_assign_rx_thread (vnm, ppif->hw_if_index, 0, ~0);
   vnet_hw_interface_set_rx_mode (vnm, ppif->hw_if_index, 0,
-				 VNET_HW_INTERFACE_RX_MODE_POLLING);
+				 VNET_HW_IF_RX_MODE_POLLING);
   vnet_hw_interface_set_flags (vnm, ppif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
   goto done;
