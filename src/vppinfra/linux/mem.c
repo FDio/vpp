@@ -374,7 +374,7 @@ clib_mem_vm_map_hdr_t *
 clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t * hdr)
 {
   clib_mem_main_t *mm = &clib_mem_main;
-  uword sys_page_sz = 1 << mm->log2_page_sz;
+  uword sys_page_sz = 1ULL << mm->log2_page_sz;
   clib_mem_vm_map_hdr_t *next;
   if (hdr == 0)
     {
@@ -396,7 +396,7 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
 {
   clib_mem_main_t *mm = &clib_mem_main;
   clib_mem_vm_map_hdr_t *hdr;
-  uword sys_page_sz = 1 << mm->log2_page_sz;
+  uword sys_page_sz = 1ULL << mm->log2_page_sz;
   int mmap_flags = MAP_FIXED, is_huge = 0;
 
   if (fd != -1)
@@ -436,7 +436,7 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
   if (log2_page_sz == CLIB_MEM_PAGE_SZ_UNKNOWN)
     return CLIB_MEM_VM_MAP_FAILED;
 
-  size = round_pow2 (size, 1 << log2_page_sz);
+  size = round_pow2 (size, 1ULL << log2_page_sz);
 
   base = (void *) clib_mem_vm_reserve ((uword) base, size, log2_page_sz);
 
@@ -492,7 +492,7 @@ int
 clib_mem_vm_unmap (void *base)
 {
   clib_mem_main_t *mm = &clib_mem_main;
-  uword size, sys_page_sz = 1 << mm->log2_page_sz;
+  uword size, sys_page_sz = 1ULL << mm->log2_page_sz;
   clib_mem_vm_map_hdr_t *hdr = base - sys_page_sz;;
 
   if (mprotect (hdr, sys_page_sz, PROT_READ | PROT_WRITE) != 0)

@@ -543,7 +543,7 @@ clib_mem_log2_page_size_validate (clib_mem_page_sz_t log2_page_size)
 static_always_inline uword
 clib_mem_page_bytes (clib_mem_page_sz_t log2_page_size)
 {
-  return 1 << clib_mem_log2_page_size_validate (log2_page_size);
+  return 1ULL << clib_mem_log2_page_size_validate (log2_page_size);
 }
 
 static_always_inline clib_error_t *
