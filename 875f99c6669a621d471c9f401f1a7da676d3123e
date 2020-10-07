@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c96c600f_92589d00",
+        "filename": "src/plugins/nat/nat64/nat64.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-10-07T07:49:31Z",
+      "side": 1,
+      "message": "Change this one to option in_progress;",
+      "range": {
+        "startLine": 46,
+        "startChar": 9,
+        "endLine": 46,
+        "endChar": 15
+      },
+      "revId": "875f99c6669a621d471c9f401f1a7da676d3123e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
