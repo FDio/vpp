@@ -23,6 +23,7 @@
 #include <vnet/dpo/load_balance.h>
 #include "lpm.h"
 #include <vppinfra/lock.h>
+#include <map/map.api_enum.h>
 
 #define MAP_SKIP_IP6_LOOKUP 1
 
@@ -205,37 +206,7 @@ typedef struct
   uword ip4_sv_reass_custom_next_index;
 } map_main_t;
 
-/*
- * MAP Error counters/messages
- */
-#define foreach_map_error				\
-  /* Must be first. */					\
- _(NONE, "valid MAP packets")				\
- _(BAD_PROTOCOL, "bad protocol")			\
- _(SEC_CHECK, "security check failed")			\
- _(ENCAP_SEC_CHECK, "encap security check failed")	\
- _(DECAP_SEC_CHECK, "decap security check failed")	\
- _(ICMP, "unable to translate ICMP")			\
- _(ICMP_RELAY, "unable to relay ICMP")			\
- _(UNKNOWN, "unknown")					\
- _(NO_BINDING, "no binding")				\
- _(NO_DOMAIN, "no domain")				\
- _(FRAGMENTED, "packet is a fragment")                  \
- _(FRAGMENT_MEMORY, "could not cache fragment")	        \
- _(FRAGMENT_MALFORMED, "fragment has unexpected format")\
- _(FRAGMENT_DROPPED, "dropped cached fragment")         \
- _(MALFORMED, "malformed packet")			\
- _(DF_SET, "can't fragment, DF set")			\
- _(TIME_EXCEEDED, "time exceeded")			\
-
-typedef enum
-{
-#define _(sym,str) MAP_ERROR_##sym,
-  foreach_map_error
-#undef _
-    MAP_N_ERROR,
-} map_error_t;
-
+typedef vl_counter_map_enum_t map_error_t;
 u64 map_error_counter_get (u32 node_index, map_error_t map_error);
 
 typedef struct

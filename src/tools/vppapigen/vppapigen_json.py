@@ -1,11 +1,25 @@
 # JSON generation
 import json
 
+
 def walk_imports(s):
     r = []
     for e in s:
         r.append(str(e))
     return r
+
+
+def walk_counters(s, pathset):
+    r = []
+    for e in s:
+        r2 = {'name': e.name, 'elements': e.block}
+        r.append(r2)
+
+    r3 = []
+    for p in pathset:
+        r3.append(p.paths)
+
+    return r, r3
 
 
 def walk_enums(s):
@@ -66,6 +80,7 @@ def walk_defs(s, is_message=False):
         r.append(d)
     return r
 
+
 #
 # Plugin entry point
 #
@@ -84,4 +99,5 @@ def run(args, filename, s):
     j['aliases'] = {o.name:o.alias for o in s['types'] if o.__class__.__name__ == 'Using'}
     j['vl_api_version'] = hex(s['file_crc'])
     j['imports'] = walk_imports(i for i in s['Import'])
+    j['counters'], j['paths'] = walk_counters(s['Counters'], s['Paths'])
     return json.dumps(j, indent=4, separators=(',', ': '))
