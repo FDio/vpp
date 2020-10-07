@@ -452,6 +452,12 @@ create_bypass_for_fwd (snat_main_t * sm, vlib_buffer_t * b, ip4_header_t * ip,
 	pool_elt_at_index (tsm->sessions,
 			   ed_value_get_session_index (&value));
     }
+  else if (ip->protocol == IP_PROTOCOL_ICMP &&
+	   icmp_type_is_error_message
+	   (vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags))
+    {
+      return;
+    }
   else
     {
       u32 proto;
