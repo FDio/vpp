@@ -316,6 +316,8 @@ clib_error_t *vlib_pci_disable_msix_irq (vlib_main_t * vm,
 					 u16 count);
 clib_error_t *vlib_pci_map_dma (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 				void *ptr);
+uword vlib_pci_get_msix_file_index (vlib_main_t * vm, vlib_pci_dev_handle_t h,
+				    u16 index);
 
 int vlib_pci_supports_virtual_addr_dma (vlib_main_t * vm,
 					vlib_pci_dev_handle_t h);
