@@ -42,6 +42,20 @@
 
 typedef u16 vlib_error_t;
 
+enum vl_counter_severity_e
+{
+  VL_COUNTER_SEVERITY_ERROR,
+  VL_COUNTER_SEVERITY_WARN,
+  VL_COUNTER_SEVERITY_INFO,
+};
+
+typedef struct
+{
+  char *name;
+  char *desc;
+  enum vl_counter_severity_e severity;
+} vl_counter_t;
+
 typedef struct
 {
   /* Error counters. */
@@ -50,15 +64,16 @@ typedef struct
   /* Counter values as of last counter clear. */
   u64 *counters_last_clear;
 
-  /* Error name strings in heap.  Heap index
+  /* Counter structures in heap. Heap index
      indexes counter vector. */
-  char **error_strings_heap;
+  vl_counter_t *counters_heap;
 } vlib_error_main_t;
 
 /* Per node error registration. */
 void vlib_register_errors (struct vlib_main_t *vm,
 			   u32 node_index,
-			   u32 n_errors, char *error_strings[]);
+			   u32 n_errors, char *error_strings[],
+			   vl_counter_t counters[]);
 
 #endif /* included_vlib_error_h */
 
