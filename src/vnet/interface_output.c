@@ -967,7 +967,7 @@ pcap_drop_trace (vlib_main_t * vm,
 	    vlib_node_t *n;
 	    /* Length of the error string */
 	    int error_string_len =
-	      clib_strnlen (em->error_strings_heap[b0->error], 128);
+	      clib_strnlen (em->counters_heap[b0->error].name, 128);
 
 	    /* Dig up the drop node */
 	    error_node_index = vm->node_main.node_by_error[b0->error];
@@ -996,7 +996,7 @@ pcap_drop_trace (vlib_main_t * vm,
 				  ": ", 2);
 		clib_memcpy_fast (last->data + last->current_data +
 				  last->current_length + vec_len (n->name) +
-				  2, em->error_strings_heap[b0->error],
+				  2, em->counters_heap[b0->error].name,
 				  error_string_len);
 		last->current_length += drop_string_len;
 		b0->flags &= ~(VLIB_BUFFER_TOTAL_LENGTH_VALID);

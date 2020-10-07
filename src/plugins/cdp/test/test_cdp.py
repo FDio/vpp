@@ -108,18 +108,9 @@ class TestCDP(VppTestCase):
         self.logger.info(self.vapi.cdp_enable_disable(enable_disable=1))
         self.send_packet(self.create_bad_packet(l, v))
 
-        errors = list(self.show_errors())
-        self.assertTrue(errors)
-
-        expected_errors = False
-        for count, node, reason in errors:
-            if (node == u'cdp-input' and
-                    reason == u'cdp packets with bad TLVs' and
-                    int(count) >= 1):
-
-                expected_errors = True
-                break
-        self.assertTrue(expected_errors, "CDP didn't drop bad packet")
+        err = self.statistics.get_err_counter(
+            '/err/cdp-input/cdp packets with bad TLVs')
+        self.assertTrue(err >= 1, "CDP didn't drop bad packet")
 
     def send_packet(self, packet):
         self.logger.debug(ppp("Sending packet:", packet))
@@ -162,12 +153,3 @@ class TestCDP(VppTestCase):
                 pass
             else:
                 yield port, system
-
-    def show_errors(self):
-        for pack in self.process_cli("show errors", self.err_ptr):
-            try:
-                count, node, reason = pack
-            except ValueError:
-                pass
-            else:
-                yield count, node, reason

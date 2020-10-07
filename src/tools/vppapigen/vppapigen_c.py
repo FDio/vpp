@@ -516,6 +516,22 @@ def generate_include_enum(s, module, stream):
         write('}} vl_api_{}_enum_t;\n'.format(module))
 
 
+def generate_include_counters(s, module, stream):
+    write = stream.write
+
+    for counters in s:
+        csetname = counters.name
+        write('typedef enum {\n')
+        for c in counters.block:
+            write('   {}_ERROR_{},\n'
+                  .format(csetname.upper(), c['name'].upper()))
+        write('   {}_N_ERROR\n'.format(csetname.upper()))
+        write('}} vl_counter_{}_enum_t;\n'.format(csetname))
+
+        # write('extern char *{}_error_strings[];\n'.format(csetname))
+        # write('extern char *{}_description_strings[];\n'.format(csetname))
+        write('extern vl_counter_t {}_error_counters[];\n'.format(csetname))
+
 #
 # Generate separate API _types file.
 #
@@ -603,9 +619,10 @@ def generate_include_types(s, module, stream):
     write("\n#endif\n")
 
 
-def generate_c_boilerplate(services, defines, file_crc, module, stream):
+def generate_c_boilerplate(services, defines, counters, file_crc,
+                           module, stream):
     write = stream.write
-    define_hash = {d.name:d for d in defines}
+    define_hash = {d.name: d for d in defines}
 
     hdr = '''\
 #define vl_endianfun		/* define message structures */
@@ -661,6 +678,30 @@ def generate_c_boilerplate(services, defines, file_crc, module, stream):
     write('   return msg_id_base;\n')
     write('}\n')
 
+    severity = {'error': 'VL_COUNTER_SEVERITY_ERROR',
+                'info': 'VL_COUNTER_SEVERITY_INFO',
+                'warn': 'VL_COUNTER_SEVERITY_WARN'}
+
+    for cnt in counters:
+        csetname = cnt.name
+        '''
+        write('char *{}_error_strings[] = {{\n'.format(csetname))
+        for c in cnt.block:
+            write('   "{}",\n'.format(c['name']))
+        write('};\n')
+        write('char *{}_description_strings[] = {{\n'.format(csetname))
+        for c in cnt.block:
+            write('   "{}",\n'.format(c['description']))
+        write('};\n')
+        '''
+        write('vl_counter_t {}_error_counters[] = {{\n'.format(csetname))
+        for c in cnt.block:
+            write('  {\n')
+            write('   .name = "{}",\n'.format(c['name']))
+            write('   .desc = "{}",\n'.format(c['description']))
+            write('   .severity = {},\n'.format(severity[c['severity']]))
+            write('  },\n')
+        write('};\n')
 
 def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, stream):
     write = stream.write
@@ -788,7 +829,11 @@ def run(args, input_filename, s):
 
     # Generate separate enum file
     st = StringIO()
+    st.write('#ifndef included_{}_api_enum_h\n'.format(modulename))
+    st.write('#define included_{}_api_enum_h\n'.format(modulename))
     generate_include_enum(s, modulename, st)
+    generate_include_counters(s['Counters'], modulename, st)
+    st.write('#endif\n')
     with open (filename_enum, 'w') as fd:
         st.seek (0)
         shutil.copyfileobj (st, fd)
@@ -796,8 +841,8 @@ def run(args, input_filename, s):
 
     # Generate separate C file
     st = StringIO()
-    generate_c_boilerplate(s['Service'], s['Define'], s['file_crc'],
-                           modulename, st)
+    generate_c_boilerplate(s['Service'], s['Define'], s['Counters'],
+                           s['file_crc'], modulename, st)
     with open (filename_c, 'w') as fd:
         st.seek (0)
         shutil.copyfileobj(st, fd)

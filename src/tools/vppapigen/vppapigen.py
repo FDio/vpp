@@ -8,7 +8,6 @@ import keyword
 import logging
 import binascii
 import os
-import sys
 from subprocess import Popen, PIPE
 
 assert sys.version_info >= (3, 5), \
@@ -80,6 +79,12 @@ class VPPAPILexer(object):
         'true': 'TRUE',
         'false': 'FALSE',
         'union': 'UNION',
+        'counters': 'COUNTERS',
+        'paths': 'PATHS',
+        'units': 'UNITS',
+        'severity': 'SEVERITY',
+        'type': 'TYPE',
+        'description': 'DESCRIPTION',
     }
 
     tokens = ['STRING_LITERAL',
@@ -191,7 +196,6 @@ class Typedef():
                 self.manual_print = True
             elif f == 'manual_endian':
                 self.manual_endian = True
-
         global_type_add(name, self)
 
         self.vla = vla_is_last_check(name, block)
@@ -413,6 +417,19 @@ class Field():
         return str([self.fieldtype, self.fieldname])
 
 
+class Counter():
+    def __init__(self, path, counter):
+        self.type = 'Counter'
+        self.name = path
+        self.block = counter
+
+
+class Paths():
+    def __init__(self, pathset):
+        self.type = 'Paths'
+        self.paths = pathset
+
+
 class Coord(object):
     """ Coordinates of a syntactic element. Consists of:
             - File name
@@ -487,12 +504,67 @@ class VPPAPIParser(object):
                 | import
                 | enum
                 | union
-                | service'''
+                | service
+                | paths
+                | counters'''
         p[0] = p[1]
 
     def p_import(self, p):
         '''import : IMPORT STRING_LITERAL ';' '''
         p[0] = Import(p[2], revision=self.revision)
+
+    def p_path_elements(self, p):
+        '''path_elements : path_element
+                            | path_elements path_element'''
+        if len(p) == 2:
+            p[0] = p[1]
+        else:
+            if type(p[1]) is dict:
+                p[0] = [p[1], p[2]]
+            else:
+                p[0] = p[1] + [p[2]]
+
+    def p_path_element(self, p):
+        '''path_element : STRING_LITERAL STRING_LITERAL ';' '''
+        p[0] = {'path': p[1], 'counter': p[2]}
+
+    def p_paths(self, p):
+        '''paths : PATHS '{' path_elements '}' ';' '''
+        p[0] = Paths(p[3])
+
+    def p_counters(self, p):
+        '''counters : COUNTERS ID '{' counter_elements '}' ';' '''
+        p[0] = Counter(p[2], p[4])
+
+    def p_counter_elements(self, p):
+        '''counter_elements : counter_element
+                            | counter_elements counter_element'''
+        if len(p) == 2:
+            p[0] = p[1]
+        else:
+            if type(p[1]) is dict:
+                p[0] = [p[1], p[2]]
+            else:
+                p[0] = p[1] + [p[2]]
+
+    def p_counter_element(self, p):
+        '''counter_element : ID '{' counter_statements '}' ';' '''
+        p[0] = {**{'name': p[1]}, **p[3]}
+
+    def p_counter_statements(self, p):
+        '''counter_statements : counter_statement
+                        | counter_statements counter_statement'''
+        if len(p) == 2:
+            p[0] = p[1]
+        else:
+            p[0] = {**p[1], **p[2]}
+
+    def p_counter_statement(self, p):
+        '''counter_statement : SEVERITY ID ';'
+                             | UNITS STRING_LITERAL ';'
+                             | DESCRIPTION STRING_LITERAL ';'
+                             | TYPE ID ';' '''
+        p[0] = {p[1]: p[2]}
 
     def p_service(self, p):
         '''service : SERVICE '{' service_statements '}' ';' '''
@@ -666,9 +738,20 @@ class VPPAPIParser(object):
         else:
             p[0] = {p[1]: p[3]}
 
+    def p_variable_name(self, p):
+        '''variable_name : ID
+                         | TYPE
+                         | SEVERITY
+                         | DESCRIPTION
+                         | COUNTERS
+                         | PATHS
+        '''
+        p[0] = p[1]
+
     def p_declaration(self, p):
-        '''declaration : type_specifier ID ';'
-                       | type_specifier ID '[' field_options ']' ';' '''
+        '''declaration : type_specifier variable_name ';'
+                       | type_specifier variable_name '[' field_options ']' ';'
+        '''
         if len(p) == 7:
             p[0] = Field(p[1], p[2], p[4])
         elif len(p) == 4:
@@ -678,12 +761,12 @@ class VPPAPIParser(object):
         self.fields.append(p[2])
 
     def p_declaration_array_vla(self, p):
-        '''declaration : type_specifier ID '[' ']' ';' '''
+        '''declaration : type_specifier variable_name '[' ']' ';' '''
         p[0] = Array(p[1], p[2], 0, modern_vla=True)
 
     def p_declaration_array(self, p):
-        '''declaration : type_specifier ID '[' NUM ']' ';'
-                       | type_specifier ID '[' ID ']' ';' '''
+        '''declaration : type_specifier variable_name '[' NUM ']' ';'
+                       | type_specifier variable_name '[' ID ']' ';' '''
 
         if len(p) != 7:
             return self._parse_error(
@@ -814,6 +897,8 @@ class VPPAPI(object):
         s['Service'] = []
         s['types'] = []
         s['Import'] = []
+        s['Counters'] = []
+        s['Paths'] = []
         crc = 0
         for o in objs:
             tname = o.__class__.__name__
@@ -836,6 +921,10 @@ class VPPAPI(object):
                   isinstance(o, Using) or
                   isinstance(o, Union)):
                 s['types'].append(o)
+            elif (isinstance(o, Counter)):
+                s['Counters'].append(o)
+            elif (isinstance(o, Paths)):
+                s['Paths'].append(o)
             else:
                 if tname not in s:
                     raise ValueError('Unknown class type: {} {}'

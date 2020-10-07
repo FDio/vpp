@@ -349,3 +349,117 @@ define map_param_get_reply
   bool tc_copy;
   u8 tc_class;
 };
+
+/*
+ * MAP Error counters/messages
+ */
+counters map {
+  none {
+    severity info;
+    type counter64;
+    units "packets";
+    description "valid MAP packets";
+  };
+  bad_protocol {
+    severity error;
+    type counter64;
+    units "packets";
+    description "bad protocol";
+  };
+  sec_check {
+    severity error;
+    type counter64;
+    units "packets";
+    description "security check failed";
+  };
+  encap_sec_check {
+    severity error;
+    type counter64;
+    units "packets";
+    description "encap security check failed";
+  };
+  decap_sec_check {
+    severity error;
+    type counter64;
+    units "packets";
+    description "decap security check failed";
+  };
+  icmp {
+    severity error;
+    type counter64;
+    units "packets";
+    description "unable to translate ICMP";
+  };
+  icmp_relay {
+    severity error;
+    type counter64;
+    units "packets";
+    description "unable to relay ICMP";
+  };
+  unknown {
+    severity error;
+    type counter64;
+    units "packets";
+    description "unknown";
+  };
+  no_binding {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no binding";
+  };
+  no_domain {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no domain";
+  };
+  fragmented {
+    severity error;
+    type counter64;
+    units "packets";
+    description "packet is a fragment";
+  };
+  fragment_memory {
+    severity error;
+    type counter64;
+    units "packets";
+    description "could not cache fragment";
+  };
+  fragment_malformed {
+    severity error;
+    type counter64;
+    units "packets";
+    description "fragment has unexpected format";
+  };
+  fragment_dropped {
+    severity error;
+    type counter64;
+    units "packets";
+    description "dropped cached fragment";
+  };
+  malformed {
+    severity error;
+    type counter64;
+    units "packets";
+    description "malformed packet";
+  };
+  df_set {
+    severity error;
+    type counter64;
+    units "packets";
+    description "can't fragment, DF set";
+  };
+  time_exceeded {
+    severity error;
+    type counter64;
+    units "packets";
+    description "time exceeded";
+  };
+};
+paths {
+  "/err/ip4-map" "map";
+  "/err/ip6-map" "map";
+  "/err/ip4-t-map" "map";
+  "/err/ip6-t-map" "map";
+};
