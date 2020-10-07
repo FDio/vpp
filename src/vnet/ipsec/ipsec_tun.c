@@ -147,8 +147,9 @@ ipsec_tun_protect_get_adj_next (vnet_link_t linkt,
   sa = ipsec_sa_get (itp->itp_out_sa);
   im = &ipsec_main;
 
-  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
-      sa->integ_alg == IPSEC_INTEG_ALG_NONE)
+  if ((sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
+       sa->integ_alg == IPSEC_INTEG_ALG_NONE) &&
+      !(itp->itp_flags & IPSEC_PROTECT_ITF))
     next = (is_ip4 ?
 	    im->esp4_no_crypto_tun_node_index :
 	    im->esp6_no_crypto_tun_node_index);

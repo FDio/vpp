@@ -548,17 +548,17 @@ class TestIpsec4TunIfEspAll(TemplateIpsec, IpsecTun4):
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_CBC_192),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
-                                IPSEC_API_INTEG_ALG_SHA1_96),
+                                IPSEC_API_INTEG_ALG_SHA_512_256),
                   'scapy-crypto': "AES-CBC",
-                  'scapy-integ': "HMAC-SHA1-96",
+                  'scapy-integ': "SHA2-512-256",
                   'salt': 0,
                   'key': b"JPjyOWBeVEQiMe7hJPjyOWBe"},
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
                                  IPSEC_API_CRYPTO_ALG_AES_CBC_256),
                   'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
-                                IPSEC_API_INTEG_ALG_SHA1_96),
+                                IPSEC_API_INTEG_ALG_SHA_256_128),
                   'scapy-crypto': "AES-CBC",
-                  'scapy-integ': "HMAC-SHA1-96",
+                  'scapy-integ': "SHA2-256-128",
                   'salt': 0,
                   'key': b"JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"},
                  {'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
@@ -2622,6 +2622,27 @@ class TestIpsecItf4(TemplateIpsec,
         self.unconfig_protect(np)
         self.unconfig_sa(np)
         self.unconfig_network(p)
+
+    def test_tun_44_null(self):
+        """IPSEC interface IPv4 NULL auth/crypto"""
+
+        n_pkts = 127
+        p = copy.copy(self.ipv4_params)
+
+        p.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
+                              IPSEC_API_INTEG_ALG_NONE)
+        p.crypt_algo_vpp_id = (VppEnum.vl_api_ipsec_crypto_alg_t.
+                               IPSEC_API_CRYPTO_ALG_NONE)
+        p.crypt_algo = "NULL"
+        p.auth_algo = "NULL"
+
+        self.config_network(p)
+        self.config_sa_tun(p,
+                           self.pg0.local_ip4,
+                           self.pg0.remote_ip4)
+        self.config_protect(p)
+
+        self.verify_tun_44(p, count=n_pkts)
 
 
 class TemplateIpsecItf6(object):
