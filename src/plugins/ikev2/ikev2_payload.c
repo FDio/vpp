@@ -588,6 +588,30 @@ ikev2_parse_delete_payload (ike_payload_header_t * ikep, u32 rlen)
   return r;
 }
 
+u8 *
+ikev2_find_ike_notify_payload (ike_header_t * ike, u32 msg_type)
+{
+  int p = 0;
+  ike_notify_payload_header_t *n;
+  ike_payload_header_t *ikep;
+  u32 payload = ike->nextpayload;
+
+  while (payload != IKEV2_PAYLOAD_NONE)
+    {
+      ikep = (ike_payload_header_t *) & ike->payload[p];
+      if (payload == IKEV2_PAYLOAD_NOTIFY)
+      {
+        n = (ike_notify_payload_header_t *)ikep;
+        if (n->msg_type == clib_net_to_host_u16 (msg_type))
+          return n->payload;
+      }
+      u16 plen = clib_net_to_host_u16 (ikep->length);
+      payload = ikep->nextpayload;
+      p += plen;
+    }
+  return 0;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

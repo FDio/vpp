@@ -641,7 +641,7 @@ ikev2_compute_nat_sha1 (u64 ispi, u64 rspi, ip_address_t * ia, u16 port)
   clib_memcpy_fast (&buf[8], &rspi, sizeof (rspi));
   clib_memcpy_fast (&buf[8 + 8], ip_addr_bytes (ia), ip_address_size (ia));
   clib_memcpy_fast (&buf[8 + 8 + ip_address_size (ia)], &port, sizeof (port));
-  SHA1 (buf, sizeof (buf), res);
+  SHA1 (buf, 2 * sizeof (ispi) + sizeof (port) + ip_address_size (ia), res);
   return res;
 }
 
@@ -2735,11 +2735,9 @@ ikev2_rewrite_v4_addrs (ikev2_sa_t * sa, ip4_header_t * ih)
 }
 
 static_always_inline void
-ikev2_set_ip_address (ikev2_sa_t * sa, const void *src,
-		      const void *dst, const int af, const int is_initiator)
+ikev2_set_ip_address (ikev2_sa_t * sa, const void *iaddr,
+		      const void *raddr, const int af)
 {
-  const void *raddr = is_initiator ? src : dst;
-  const void *iaddr = is_initiator ? dst : src;
   ip_address_set (&sa->raddr, raddr, af);
   ip_address_set (&sa->iaddr, iaddr, af);
 }
@@ -2855,19 +2853,16 @@ ikev2_node_internal (vlib_main_t * vm,
 	  sa0 = &sa;
 	  clib_memset (sa0, 0, sizeof (*sa0));
 
-	  u8 is_initiator = ike0->flags & IKEV2_HDR_FLAG_INITIATOR;
-	  if (is_initiator)
+	  if (ike0->flags & IKEV2_HDR_FLAG_INITIATOR)
 	    {
 	      if (ike0->rspi == 0)
 		{
 		  if (is_ip4)
-		    ikev2_set_ip_address (sa0, &ip40->dst_address,
-					  &ip40->src_address, AF_IP4,
-					  is_initiator);
+		    ikev2_set_ip_address (sa0, &ip40->src_address,
+					  &ip40->dst_address, AF_IP4);
 		  else
-		    ikev2_set_ip_address (sa0, &ip60->dst_address,
-					  &ip60->src_address, AF_IP6,
-					  is_initiator);
+		    ikev2_set_ip_address (sa0, &ip60->src_address,
+					  &ip60->dst_address, AF_IP6);
 
 		  sa0->dst_port = clib_net_to_host_u16 (udp0->src_port);
 
@@ -2928,13 +2923,11 @@ ikev2_node_internal (vlib_main_t * vm,
 	  else			//received sa_init without initiator flag
 	    {
 	      if (is_ip4)
-		ikev2_set_ip_address (sa0, &ip40->src_address,
-				      &ip40->dst_address, AF_IP4,
-				      is_initiator);
+		ikev2_set_ip_address (sa0, &ip40->dst_address,
+				      &ip40->src_address, AF_IP4);
 	      else
-		ikev2_set_ip_address (sa0, &ip60->src_address,
-				      &ip60->dst_address, AF_IP6,
-				      is_initiator);
+		ikev2_set_ip_address (sa0, &ip60->dst_address,
+				      &ip60->src_address, AF_IP6);
 
 	      ikev2_process_sa_init_resp (vm, sa0, ike0, udp0, rlen);
 
@@ -4758,33 +4751,12 @@ ikev2_mngr_process_ipsec_sa (ipsec_sa_t * ipsec_sa)
     }
 }
 
-static ike_payload_header_t *
-ikev2_find_ike_payload (ike_header_t * ike, u32 payload_type)
-{
-  int p = 0;
-  ike_payload_header_t *ikep;
-  u32 payload = ike->nextpayload;
-
-  while (payload != IKEV2_PAYLOAD_NONE)
-    {
-      ikep = (ike_payload_header_t *) & ike->payload[p];
-      if (payload == payload_type)
-	return ikep;
-
-      u16 plen = clib_net_to_host_u16 (ikep->length);
-      payload = ikep->nextpayload;
-      p += plen;
-    }
-  return 0;
-}
-
 static void
 ikev2_process_pending_sa_init_one (ikev2_main_t * km, ikev2_sa_t * sa)
 {
   ikev2_profile_t *p;
   u32 bi0;
-  u8 *nat_sha;
-  ike_payload_header_t *ph;
+  u8 *nat_sha, *np;
 
   if (ip_address_is_zero (&sa->iaddr))
     {
@@ -4795,20 +4767,20 @@ ikev2_process_pending_sa_init_one (ikev2_main_t * km, ikev2_sa_t * sa)
 	return;
 
       /* update NAT detection payload */
-      ph =
-	ikev2_find_ike_payload ((ike_header_t *)
-				sa->last_sa_init_req_packet_data,
-				IKEV2_NOTIFY_MSG_NAT_DETECTION_SOURCE_IP);
-      if (!ph)
-	return;
-
-      nat_sha =
-	ikev2_compute_nat_sha1 (clib_host_to_net_u64 (sa->ispi),
-				clib_host_to_net_u64 (sa->rspi),
-				&sa->iaddr,
-				clib_host_to_net_u16 (IKEV2_PORT));
-      clib_memcpy_fast (ph->payload, nat_sha, vec_len (nat_sha));
-      vec_free (nat_sha);
+      np =
+	ikev2_find_ike_notify_payload
+	((ike_header_t *) sa->last_sa_init_req_packet_data,
+	 IKEV2_NOTIFY_MSG_NAT_DETECTION_SOURCE_IP);
+      if (np)
+	{
+	  nat_sha =
+	    ikev2_compute_nat_sha1 (clib_host_to_net_u64 (sa->ispi),
+				    clib_host_to_net_u64 (sa->rspi),
+				    &sa->iaddr,
+				    clib_host_to_net_u16 (IKEV2_PORT));
+	  clib_memcpy_fast (np, nat_sha, vec_len (nat_sha));
+	  vec_free (nat_sha);
+	}
     }
 
   if (vlib_buffer_alloc (km->vlib_main, &bi0, 1) != 1)
