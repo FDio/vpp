@@ -453,7 +453,21 @@ create_bypass_for_fwd (snat_main_t * sm, vlib_buffer_t * b, ip4_header_t * ip,
 	pool_elt_at_index (tsm->sessions,
 			   ed_value_get_session_index (&value));
     }
-  else
+  else if (ip->protocol == IP_PROTOCOL_ICMP)
+    {
+      init_ed_k (&kv, ip->dst_address, l_port, ip->src_address, r_port,
+		 rx_fib_index, ip->protocol);
+
+      if (!clib_bihash_search_16_8 (&tsm->in2out_ed, &kv, &value))
+	{
+	  ASSERT (thread_index == ed_value_get_thread_index (&value));
+	  s =
+	    pool_elt_at_index (tsm->sessions,
+			       ed_value_get_session_index (&value));
+	}
+    }
+
+  if (s == 0)
     {
       u32 proto;
 
