@@ -115,7 +115,8 @@ vlib_error_drop_buffers (vlib_main_t * vm,
 /* Reserves given number of error codes for given node. */
 void
 vlib_register_errors (vlib_main_t * vm,
-		      u32 node_index, u32 n_errors, char *error_strings[])
+		      u32 node_index, u32 n_errors, char *error_strings[],
+		      vl_counter_t counters[])
 {
   vlib_error_main_t *em = &vm->error_main;
   vlib_node_main_t *nm = &vm->node_main;
@@ -128,21 +129,33 @@ vlib_register_errors (vlib_main_t * vm,
 
   /* Free up any previous error strings. */
   if (n->n_errors > 0)
-    heap_dealloc (em->error_strings_heap, n->error_heap_handle);
-
-  n->n_errors = n_errors;
-  n->error_strings = error_strings;
+    heap_dealloc (em->counters_heap, n->error_heap_handle);
 
   if (n_errors == 0)
     return;
 
+  n->n_errors = n_errors;
+
+  /*  Legacy node */
+  if (!counters)
+    {
+      counters = clib_mem_alloc (sizeof (counters[0]) * n_errors);
+      int i;
+      for (i = 0; i < n_errors; i++)
+	{
+	  counters[i].name = error_strings[i];	// XXX Make name saner
+	  counters[i].desc = error_strings[i];
+	  counters[i].severity = VL_COUNTER_SEVERITY_ERROR;
+	}
+    }
+
+  n->counters = counters;
+
   n->error_heap_index =
-    heap_alloc (em->error_strings_heap, n_errors, n->error_heap_handle);
-
-  l = vec_len (em->error_strings_heap);
-
-  clib_memcpy (vec_elt_at_index (em->error_strings_heap, n->error_heap_index),
-	       error_strings, n_errors * sizeof (error_strings[0]));
+    heap_alloc (em->counters_heap, n_errors, n->error_heap_handle);
+  l = vec_len (em->counters_heap);
+  clib_memcpy (vec_elt_at_index (em->counters_heap, n->error_heap_index),
+	       counters, n_errors * sizeof (counters[0]));
 
   vec_validate (vm->error_elog_event_types, l - 1);
 
@@ -170,7 +183,7 @@ vlib_register_errors (vlib_main_t * vm,
       {
 	vec_reset_length (error_name);
 	error_name =
-	  format (error_name, "/err/%v/%s%c", n->name, error_strings[i], 0);
+	  format (error_name, "/err/%v/%s%c", n->name, counters[i].name, 0);
 	vlib_stats_register_error_index (oldheap, error_name, em->counters,
 					 n->error_heap_index + i);
       }
@@ -191,11 +204,27 @@ vlib_register_errors (vlib_main_t * vm,
     for (i = 0; i < n_errors; i++)
       {
 	t.format = (char *) format (0, "%v %s: %%d",
-				    n->name, error_strings[i]);
+				    n->name, counters[i].name);
 	vm->error_elog_event_types[n->error_heap_index + i] = t;
 	nm->node_by_error[n->error_heap_index + i] = n->index;
       }
   }
+}
+
+static char *
+sev2str (enum vl_counter_severity_e s)
+{
+  switch (s)
+    {
+    case VL_COUNTER_SEVERITY_ERROR:
+      return "error";
+    case VL_COUNTER_SEVERITY_WARN:
+      return "warn";
+    case VL_COUNTER_SEVERITY_INFO:
+      return "info";
+    default:
+      return "unknown";
+    }
 }
 
 static clib_error_t *
@@ -218,10 +247,11 @@ show_errors (vlib_main_t * vm,
   vec_validate (sums, vec_len (em->counters));
 
   if (verbose)
-    vlib_cli_output (vm, "%=10s%=40s%=20s%=6s", "Count", "Node", "Reason",
-		     "Index");
+    vlib_cli_output (vm, "%=10s%=30s%=20s%=10s%=6s", "Count", "Node",
+		     "Reason", "Severity", "Index");
   else
-    vlib_cli_output (vm, "%=10s%=40s%=6s", "Count", "Node", "Reason");
+    vlib_cli_output (vm, "%=10s%=30s%=20s%=10s", "Count", "Node", "Reason",
+		     "Severity");
 
 
   /* *INDENT-OFF* */
@@ -247,11 +277,13 @@ show_errors (vlib_main_t * vm,
 	      continue;
 
             if (verbose)
-              vlib_cli_output (vm, "%10lu%=40v%=20s%=6d", c, n->name,
-                               em->error_strings_heap[i], i);
+              vlib_cli_output (vm, "%10lu%=30v%=20s%=10s%=6d", c, n->name,
+                               em->counters_heap[i].name,
+                               sev2str(em->counters_heap[i].severity), i);
             else
-              vlib_cli_output (vm, "%10lu%=40v%s", c, n->name,
-                               em->error_strings_heap[i]);
+              vlib_cli_output (vm, "%10lu%=30v%=20s%=10s", c, n->name,
+                               em->counters_heap[i].name,
+                               sev2str(em->counters_heap[i].severity));
 	  }
       }
     index++;
@@ -271,7 +303,7 @@ show_errors (vlib_main_t * vm,
 	    {
 	      if (verbose)
 		vlib_cli_output (vm, "%10lu%=40v%=20s%=10d", sums[i], n->name,
-				 em->error_strings_heap[i], i);
+				 em->counters_heap[i].name, i);
 	    }
 	}
     }

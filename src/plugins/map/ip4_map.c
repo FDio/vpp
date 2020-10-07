@@ -325,13 +325,6 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   return frame->n_vectors;
 }
 
-static char *map_error_strings[] = {
-#define _(sym,string) string,
-  foreach_map_error
-#undef _
-};
-
-
 /* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip4_map_feature, static) =
 {
@@ -349,7 +342,7 @@ VLIB_REGISTER_NODE(ip4_map_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = MAP_N_ERROR,
-  .error_strings = map_error_strings,
+  .counters = map_counters,
 
   .n_next_nodes = IP4_MAP_N_NEXT,
   .next_nodes = {

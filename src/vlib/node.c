@@ -380,7 +380,8 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
   _(validate_frame);
 
   /* Register error counters. */
-  vlib_register_errors (vm, n->index, r->n_errors, r->error_strings);
+  vlib_register_errors (vm, n->index, r->n_errors, r->error_strings,
+			r->counters);
   node_elog_init (vm, n->index);
 
   _(runtime_data_bytes);

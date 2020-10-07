@@ -684,12 +684,6 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   return frame->n_vectors;
 }
 
-static char *map_t_error_strings[] = {
-#define _(sym,string) string,
-  foreach_map_error
-#undef _
-};
-
 /* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip4_map_t_feature, static) = {
     .arc_name = "ip4-unicast",
@@ -706,7 +700,7 @@ VLIB_REGISTER_NODE(ip4_map_t_fragmented_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = MAP_N_ERROR,
-  .error_strings = map_t_error_strings,
+  .counters = map_counters,
 
   .n_next_nodes = IP4_MAPT_FRAGMENTED_N_NEXT,
   .next_nodes = {
@@ -727,7 +721,7 @@ VLIB_REGISTER_NODE(ip4_map_t_icmp_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = MAP_N_ERROR,
-  .error_strings = map_t_error_strings,
+  .counters = map_counters,
 
   .n_next_nodes = IP4_MAPT_ICMP_N_NEXT,
   .next_nodes = {
@@ -748,7 +742,7 @@ VLIB_REGISTER_NODE(ip4_map_t_tcp_udp_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = MAP_N_ERROR,
-  .error_strings = map_t_error_strings,
+  .counters = map_counters,
 
   .n_next_nodes = IP4_MAPT_TCP_UDP_N_NEXT,
   .next_nodes = {
@@ -769,7 +763,7 @@ VLIB_REGISTER_NODE(ip4_map_t_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = MAP_N_ERROR,
-  .error_strings = map_t_error_strings,
+  .counters = map_counters,
 
   .n_next_nodes = IP4_MAPT_N_NEXT,
   .next_nodes = {

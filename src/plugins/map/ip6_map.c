@@ -803,12 +803,6 @@ ip6_map_icmp_relay (vlib_main_t * vm,
 
 }
 
-static char *map_error_strings[] = {
-#define _(sym,string) string,
-  foreach_map_error
-#undef _
-};
-
 /* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip6_map_feature, static) =
 {
@@ -826,7 +820,7 @@ VLIB_REGISTER_NODE(ip6_map_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = MAP_N_ERROR,
-  .error_strings = map_error_strings,
+  .counters = map_counters,
 
   .n_next_nodes = IP6_MAP_N_NEXT,
   .next_nodes = {
@@ -852,7 +846,7 @@ VLIB_REGISTER_NODE(ip6_map_post_ip4_reass_node) = {
   .format_trace = format_ip6_map_post_ip4_reass_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = MAP_N_ERROR,
-  .error_strings = map_error_strings,
+  .counters = map_counters,
   .n_next_nodes = IP6_MAP_POST_IP4_REASS_N_NEXT,
   .next_nodes = {
     [IP6_MAP_POST_IP4_REASS_NEXT_IP4_LOOKUP] = "ip4-lookup",
@@ -870,7 +864,7 @@ VLIB_REGISTER_NODE(ip6_map_icmp_relay_node, static) = {
   .format_trace = format_map_trace, //FIXME
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = MAP_N_ERROR,
-  .error_strings = map_error_strings,
+  .counters = map_counters,
   .n_next_nodes = IP6_ICMP_RELAY_N_NEXT,
   .next_nodes = {
     [IP6_ICMP_RELAY_NEXT_IP4_LOOKUP] = "ip4-lookup",
