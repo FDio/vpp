@@ -1496,16 +1496,16 @@ VLIB_CLI_COMMAND (set_ip_directed_broadcast_command, static) = {
 
 static clib_error_t *
 set_hw_interface_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
-			  u32 queue_id, vnet_hw_interface_rx_mode mode)
+			  u32 queue_id, vnet_hw_if_rx_mode mode)
 {
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   vnet_device_class_t *dev_class =
     vnet_get_device_class (vnm, hw->dev_class_index);
   clib_error_t *error;
-  vnet_hw_interface_rx_mode old_mode;
+  vnet_hw_if_rx_mode old_mode;
   int rv;
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_DEFAULT)
+  if (mode == VNET_HW_IF_RX_MODE_DEFAULT)
     mode = hw->default_rx_mode;
 
   rv = vnet_hw_interface_get_rx_mode (vnm, hw_if_index, queue_id, &old_mode);
@@ -1552,7 +1552,7 @@ set_hw_interface_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
 clib_error_t *
 set_hw_interface_change_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
 				 u8 queue_id_valid, u32 queue_id,
-				 vnet_hw_interface_rx_mode mode)
+				 vnet_hw_if_rx_mode mode)
 {
   clib_error_t *error = 0;
   vnet_hw_interface_t *hw;
@@ -1585,7 +1585,7 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
   vnet_main_t *vnm = vnet_get_main ();
   u32 hw_if_index = (u32) ~ 0;
   u32 queue_id = (u32) ~ 0;
-  vnet_hw_interface_rx_mode mode = VNET_HW_INTERFACE_RX_MODE_UNKNOWN;
+  vnet_hw_if_rx_mode mode = VNET_HW_IF_RX_MODE_UNKNOWN;
   u8 queue_id_valid = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1599,11 +1599,11 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "queue %d", &queue_id))
 	queue_id_valid = 1;
       else if (unformat (line_input, "polling"))
-	mode = VNET_HW_INTERFACE_RX_MODE_POLLING;
+	mode = VNET_HW_IF_RX_MODE_POLLING;
       else if (unformat (line_input, "interrupt"))
-	mode = VNET_HW_INTERFACE_RX_MODE_INTERRUPT;
+	mode = VNET_HW_IF_RX_MODE_INTERRUPT;
       else if (unformat (line_input, "adaptive"))
-	mode = VNET_HW_INTERFACE_RX_MODE_ADAPTIVE;
+	mode = VNET_HW_IF_RX_MODE_ADAPTIVE;
       else
 	{
 	  error = clib_error_return (0, "parse error: '%U'",
@@ -1618,7 +1618,7 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
   if (hw_if_index == (u32) ~ 0)
     return clib_error_return (0, "please specify valid interface name");
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_UNKNOWN)
+  if (mode == VNET_HW_IF_RX_MODE_UNKNOWN)
     return clib_error_return (0, "please specify valid rx-mode");
 
   error = set_hw_interface_change_rx_mode (vnm, hw_if_index, queue_id_valid,
@@ -1696,7 +1696,7 @@ show_interface_rx_placement_fn (vlib_main_t * vm, unformat_input_t * input,
 	    s = format (s, "    %U queue %u (%U)\n",
 			format_vnet_sw_if_index_name, vnm, hi->sw_if_index,
 			dq->queue_id,
-			format_vnet_hw_interface_rx_mode, dq->mode);
+			format_vnet_hw_if_rx_mode, dq->mode);
 	  }
       }));
     if (vec_len (s) > 0)
@@ -1753,7 +1753,7 @@ set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
   vnet_main_t *vnm = vnet_get_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
   clib_error_t *error = 0;
-  vnet_hw_interface_rx_mode mode = VNET_HW_INTERFACE_RX_MODE_UNKNOWN;
+  vnet_hw_if_rx_mode mode = VNET_HW_IF_RX_MODE_UNKNOWN;
   int rv;
 
   if (is_main)

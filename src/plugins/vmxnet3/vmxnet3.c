@@ -62,14 +62,14 @@ vmxnet3_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 
 static clib_error_t *
 vmxnet3_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
-				  vnet_hw_interface_rx_mode mode)
+				  vnet_hw_if_rx_mode mode)
 {
   vmxnet3_main_t *vmxm = &vmxnet3_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   vmxnet3_device_t *vd = pool_elt_at_index (vmxm->devices, hw->dev_instance);
   vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, qid);
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+  if (mode == VNET_HW_IF_RX_MODE_POLLING)
     rxq->int_mode = 0;
   else
     rxq->int_mode = 1;

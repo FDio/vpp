@@ -459,14 +459,14 @@ memif_clear_hw_interface_counters (u32 instance)
 
 static clib_error_t *
 memif_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
-				vnet_hw_interface_rx_mode mode)
+				vnet_hw_if_rx_mode mode)
 {
   memif_main_t *mm = &memif_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   memif_if_t *mif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
   memif_queue_t *mq = vec_elt_at_index (mif->rx_queues, qid);
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+  if (mode == VNET_HW_IF_RX_MODE_POLLING)
     mq->ring->flags |= MEMIF_RING_FLAG_MASK_INT;
   else
     mq->ring->flags &= ~MEMIF_RING_FLAG_MASK_INT;

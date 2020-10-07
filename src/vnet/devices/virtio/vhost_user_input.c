@@ -380,7 +380,7 @@ vhost_user_if_input (vlib_main_t * vm,
 		     vhost_user_main_t * vum,
 		     vhost_user_intf_t * vui,
 		     u16 qid, vlib_node_runtime_t * node,
-		     vnet_hw_interface_rx_mode mode, u8 enable_csum)
+		     vnet_hw_if_rx_mode mode, u8 enable_csum)
 {
   vhost_user_vring_t *txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
   vnet_feature_main_t *fm = &feature_main;
@@ -415,7 +415,7 @@ vhost_user_if_input (vlib_main_t * vm,
    * When the traffic subsides, the scheduler switches the node back to
    * interrupt mode. We must tell the driver we want interrupt.
    */
-  if (PREDICT_FALSE (mode == VNET_HW_INTERFACE_RX_MODE_ADAPTIVE))
+  if (PREDICT_FALSE (mode == VNET_HW_IF_RX_MODE_ADAPTIVE))
     {
       if ((node->flags &
 	   VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE) ||
@@ -1088,7 +1088,7 @@ static_always_inline u32
 vhost_user_if_input_packed (vlib_main_t * vm, vhost_user_main_t * vum,
 			    vhost_user_intf_t * vui, u16 qid,
 			    vlib_node_runtime_t * node,
-			    vnet_hw_interface_rx_mode mode, u8 enable_csum)
+			    vnet_hw_if_rx_mode mode, u8 enable_csum)
 {
   vhost_user_vring_t *txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
   vnet_feature_main_t *fm = &feature_main;
@@ -1130,7 +1130,7 @@ vhost_user_if_input_packed (vlib_main_t * vm, vhost_user_main_t * vum,
    * When the traffic subsides, the scheduler switches the node back to
    * interrupt mode. We must tell the driver we want interrupt.
    */
-  if (PREDICT_FALSE (mode == VNET_HW_INTERFACE_RX_MODE_ADAPTIVE))
+  if (PREDICT_FALSE (mode == VNET_HW_IF_RX_MODE_ADAPTIVE))
     {
       if ((node->flags &
 	   VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE) ||
