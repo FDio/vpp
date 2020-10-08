@@ -1146,7 +1146,7 @@ tcp_update_time (f64 now, u8 thread_index)
 
   tcp_set_time_now (wrk);
   tcp_handle_cleanups (wrk, now);
-  tw_timer_expire_timers_16t_2w_512sl (&wrk->timer_wheel, now);
+  tcp_timer_expire_timers (&wrk->timer_wheel, now);
   tcp_dispatch_pending_timers (wrk);
 }
 
@@ -1268,21 +1268,6 @@ tcp_expired_timers_dispatch (u32 * expired_timers)
 }
 
 static void
-tcp_initialize_timer_wheels (tcp_main_t * tm)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  tw_timer_wheel_16t_2w_512sl_t *tw;
-  /* *INDENT-OFF* */
-  foreach_vlib_main (({
-    tw = &tm->wrk_ctx[ii].timer_wheel;
-    tw_timer_wheel_init_16t_2w_512sl (tw, tcp_expired_timers_dispatch,
-                                      TCP_TIMER_TICK, ~0);
-    tw->last_run_time = vlib_time_now (vm);
-  }));
-  /* *INDENT-ON* */
-}
-
-static void
 tcp_initialize_iss_seed (tcp_main_t * tm)
 {
   u32 default_seed = random_default_seed ();
@@ -1357,6 +1342,10 @@ tcp_main_enable (vlib_main_t * vm)
        */
       if ((thread > 0 || num_threads == 1) && prealloc_conn_per_wrk)
 	pool_init_fixed (wrk->connections, prealloc_conn_per_wrk);
+
+      tcp_timer_initialize_wheel (&wrk->timer_wheel,
+				  tcp_expired_timers_dispatch,
+				  vlib_time_now (vm));
     }
 
   /*
@@ -1371,7 +1360,6 @@ tcp_main_enable (vlib_main_t * vm)
       clib_spinlock_init (&tm->half_open_lock);
     }
 
-  tcp_initialize_timer_wheels (tm);
   tcp_initialize_iss_seed (tm);
 
   tm->bytes_per_buffer = vlib_buffer_get_default_data_size (vm);

@@ -20,7 +20,6 @@
 #include <vppinfra/rbtree.h>
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/session/transport.h>
-#include <vppinfra/tw_timer_16t_2w_512sl.h>
 
 #define TCP_TICK 0.000001			/**< TCP tick period (s) */
 #define THZ (u32) (1/TCP_TICK)			/**< TCP tick frequency */
@@ -447,7 +446,35 @@ tcp_get_connection_from_transport (transport_connection_t * tconn)
   return (tcp_connection_t *) tconn;
 }
 
-typedef tw_timer_wheel_16t_2w_512sl_t tcp_timer_wheel_t;
+/*
+ * Define custom timer wheel geometry
+ */
+
+#undef TW_TIMER_WHEELS
+#undef TW_SLOTS_PER_RING
+#undef TW_RING_SHIFT
+#undef TW_RING_MASK
+#undef TW_TIMERS_PER_OBJECT
+#undef LOG2_TW_TIMERS_PER_OBJECT
+#undef TW_SUFFIX
+#undef TW_OVERFLOW_VECTOR
+#undef TW_FAST_WHEEL_BITMAP
+#undef TW_TIMER_ALLOW_DUPLICATE_STOP
+#undef TW_START_STOP_TRACE_SIZE
+
+#define TW_TIMER_WHEELS 2
+#define TW_SLOTS_PER_RING 512
+#define TW_RING_SHIFT 9
+#define TW_RING_MASK (TW_SLOTS_PER_RING -1)
+#define TW_TIMERS_PER_OBJECT 16
+#define LOG2_TW_TIMERS_PER_OBJECT 4
+#define TW_SUFFIX _tcp_twsl
+#define TW_FAST_WHEEL_BITMAP 0
+#define TW_TIMER_ALLOW_DUPLICATE_STOP 1
+
+#include <vppinfra/tw_timer_template.h>
+
+typedef tw_timer_wheel_tcp_twsl_t tcp_timer_wheel_t;
 
 #endif /* SRC_VNET_TCP_TCP_TYPES_H_ */
 
