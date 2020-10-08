@@ -14,7 +14,9 @@ from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 from vpp_gre_interface import VppGreInterface
 from vpp_teib import VppTeib
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto, \
+    VppMplsLabel
+from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 from util import ppp, ppc
 from vpp_papi import VppEnum
 
@@ -630,11 +632,63 @@ class TestGRE(VppTestCase):
                                  self.pg0.local_ip4, "1.1.1.2")
 
         #
+        # add a labelled route through the tunnel
+        #
+        label_via_tun = VppIpRoute(self, "5.4.3.2", 32,
+                                   [VppRoutePath("0.0.0.0",
+                                                 gre_if.sw_if_index,
+                                                 labels=[VppMplsLabel(33)])])
+        label_via_tun.add_vpp_config()
+
+        tx = self.create_stream_ip4(self.pg0, "5.5.5.5", "5.4.3.2")
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
+        self.verify_tunneled_4o4(self.pg0, rx, tx,
+                                 self.pg0.local_ip4, "1.1.1.2")
+
+        #
+        # an MPLS tunnel over the GRE tunnel add a route through
+        # the mpls tunnel
+        #
+        mpls_tun = VppMPLSTunnelInterface(
+            self,
+            [VppRoutePath("0.0.0.0",
+                          gre_if.sw_if_index,
+                          labels=[VppMplsLabel(44),
+                                  VppMplsLabel(46)])])
+        mpls_tun.add_vpp_config()
+        mpls_tun.admin_up()
+
+        label_via_mpls = VppIpRoute(self, "5.4.3.1", 32,
+                                    [VppRoutePath("0.0.0.0",
+                                                  mpls_tun.sw_if_index,
+                                                  labels=[VppMplsLabel(33)])])
+        label_via_mpls.add_vpp_config()
+
+        tx = self.create_stream_ip4(self.pg0, "5.5.5.5", "5.4.3.1")
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
+        self.verify_tunneled_4o4(self.pg0, rx, tx,
+                                 self.pg0.local_ip4, "1.1.1.2")
+
+        mpls_tun_l2 = VppMPLSTunnelInterface(
+            self,
+            [VppRoutePath("0.0.0.0",
+                          gre_if.sw_if_index,
+                          labels=[VppMplsLabel(44),
+                                  VppMplsLabel(46)])],
+            is_l2=1)
+        mpls_tun_l2.add_vpp_config()
+        mpls_tun_l2.admin_up()
+
+        #
         # test case cleanup
         #
         route_tun_dst.remove_vpp_config()
         route_via_tun.remove_vpp_config()
         route6_via_tun.remove_vpp_config()
+        label_via_mpls.remove_vpp_config()
+        label_via_tun.remove_vpp_config()
+        mpls_tun.remove_vpp_config()
+        mpls_tun_l2.remove_vpp_config()
         gre_if.remove_vpp_config()
 
         self.pg0.unconfig_ip6()
