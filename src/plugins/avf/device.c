@@ -763,6 +763,34 @@ avf_op_add_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count, u8 * macs)
 }
 
 clib_error_t *
+avf_op_del_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count, u8 * macs)
+{
+  int msg_len =
+    sizeof (virtchnl_ether_addr_list_t) +
+    count * sizeof (virtchnl_ether_addr_t);
+  u8 msg[msg_len];
+  virtchnl_ether_addr_list_t *al;
+  int i;
+
+  clib_memset (msg, 0, msg_len);
+  al = (virtchnl_ether_addr_list_t *) msg;
+  al->vsi_id = ad->vsi_id;
+  al->num_elements = count;
+
+  avf_log_debug (ad, "del_eth_addr: vsi_id %u num_elements %u",
+		 ad->vsi_id, al->num_elements);
+
+  for (i = 0; i < count; i++)
+    {
+      clib_memcpy_fast (&al->list[i].addr, macs + i * 6, 6);
+      avf_log_debug (ad, "del_eth_addr[%u]: %U", i,
+		     format_ethernet_address, &al->list[i].addr);
+    }
+  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_DEL_ETH_ADDR, msg, msg_len, 0,
+			 0);
+}
+
+clib_error_t *
 avf_op_enable_queues (vlib_main_t * vm, avf_device_t * ad, u32 rx, u32 tx)
 {
   virtchnl_queue_select_t qs = { 0 };
@@ -1246,6 +1274,19 @@ avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 		}
 	    }
 	  break;
+	case AVF_PROCESS_EVENT_ADD_ETHER_ADDR:
+	case AVF_PROCESS_EVENT_DEL_ETHER_ADDR:
+	  for (int i = 0; i < vec_len (event_data); i++)
+	    {
+	      avf_process_event_msg_t *m = (void *) event_data[i];
+	      avf_device_t *ad = avf_get_device (m->dev_instance);
+	      if (event_type == AVF_PROCESS_EVENT_ADD_ETHER_ADDR)
+		avf_op_add_eth_addr (vm, ad, 1, m->eth_addr);
+	      else
+		avf_op_del_eth_addr (vm, ad, 1, m->eth_addr);
+	      clib_mem_free (m);
+	    }
+	  break;
 
 	default:
 	  ASSERT (0);
@@ -1701,6 +1742,26 @@ avf_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
     vlib_node_add_next (vlib_get_main (), avf_input_node.index, node_index);
 }
 
+static clib_error_t *
+avf_add_del_mac_address (vnet_hw_interface_t * hw,
+			 const u8 * address, u8 is_add)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  avf_process_event_msg_t *msg;
+
+  msg = clib_mem_alloc (sizeof (avf_process_event_msg_t));
+  msg->dev_instance = hw->dev_instance;
+  clib_memcpy (msg->eth_addr, address, 6);
+  return 0;
+
+  vlib_process_signal_event_pointer (vm, avf_process_node.index,
+				     is_add ?
+				     AVF_PROCESS_EVENT_ADD_ETHER_ADDR :
+				     AVF_PROCESS_EVENT_DEL_ETHER_ADDR, msg);
+
+  return 0;
+}
+
 static char *avf_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_avf_tx_func_error
@@ -1725,6 +1786,7 @@ VNET_DEVICE_CLASS (avf_device_class,) =
   .admin_up_down_function = avf_interface_admin_up_down,
   .rx_mode_change_function = avf_interface_rx_mode_change,
   .rx_redirect_to_node = avf_set_interface_next_node,
+  .mac_addr_add_del_function = avf_add_del_mac_address,
   .tx_function_n_errors = AVF_TX_N_ERROR,
   .tx_function_error_strings = avf_tx_func_error_strings,
 };
