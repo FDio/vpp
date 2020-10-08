@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "836ef53b_41199e98",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1202,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-10-08T13:31:51Z",
+      "side": 1,
+      "message": "typo s/rocess/process/",
+      "revId": "dbe5bbea5701617d97fa4a5200ec489e61b11061",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0b684176_cba48e4e",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1217,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-10-08T13:31:51Z",
+      "side": 1,
+      "message": "Maybe switch(req-\u003etype), with default: return EWHAT_THE_HELL to the caller? Unless you\u0027re never going to add other request types...",
+      "revId": "dbe5bbea5701617d97fa4a5200ec489e61b11061",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
