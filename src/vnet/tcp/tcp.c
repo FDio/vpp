@@ -1101,7 +1101,7 @@ tcp_dispatch_pending_timers (tcp_worker_ctx_t * wrk)
 	continue;
 
       /* Skip if the timer is not pending. Probably it was reset while
-       * wating for dispatch */
+       * waiting for dispatch */
       if (PREDICT_FALSE (!(tc->pending_timers & (1 << timer_id))))
 	continue;
 

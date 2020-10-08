@@ -117,7 +117,8 @@ tcp_retransmit_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 always_inline u8
 tcp_timer_is_active (tcp_connection_t * tc, tcp_timers_e timer)
 {
-  return tc->timers[timer] != TCP_TIMER_HANDLE_INVALID;
+  return tc->timers[timer] != TCP_TIMER_HANDLE_INVALID
+    || (tc->pending_timers & (1 << timer));
 }
 
 #endif /* __included_tcp_timer_h__ */

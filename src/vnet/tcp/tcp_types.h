@@ -76,7 +76,7 @@ typedef enum _tcp_timers
   foreach_tcp_timer
 #undef _
   TCP_N_TIMERS
-} tcp_timers_e;
+} __clib_packed tcp_timers_e;
 
 #define TCP_TIMER_HANDLE_INVALID ((u32) ~0)
 
