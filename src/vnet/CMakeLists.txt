@@ -623,6 +623,7 @@ list(APPEND VNET_SOURCES
   tcp/tcp_cubic.c
   tcp/tcp_debug.c
   tcp/tcp_sack.c
+  tcp/tcp_timer.c
   tcp/tcp.c
 )
 
