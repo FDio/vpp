@@ -5,6 +5,7 @@ import time
 import sys
 from io import StringIO
 import shutil
+from vpp_json import generate_tojson, generate_fromjson
 
 datestring = datetime.datetime.utcfromtimestamp(
     int(os.environ.get('SOURCE_DATE_EPOCH', time.time())))
@@ -532,6 +533,7 @@ def generate_include_counters(s, module, stream):
         # write('extern char *{}_description_strings[];\n'.format(csetname))
         write('extern vl_counter_t {}_error_counters[];\n'.format(csetname))
 
+
 #
 # Generate separate API _types file.
 #
@@ -544,9 +546,12 @@ def generate_include_types(s, module, stream):
     if 'version' in s['Option']:
         v = s['Option']['version']
         (major, minor, patch) = v.split('.')
-        write('#define VL_API_{m}_API_VERSION_MAJOR {v}\n'.format(m=module.upper(), v=major))
-        write('#define VL_API_{m}_API_VERSION_MINOR {v}\n'.format(m=module.upper(), v=minor))
-        write('#define VL_API_{m}_API_VERSION_PATCH {v}\n'.format(m=module.upper(), v=patch))
+        write('#define VL_API_{m}_API_VERSION_MAJOR {v}\n'
+              .format(m=module.upper(), v=major))
+        write('#define VL_API_{m}_API_VERSION_MINOR {v}\n'
+              .format(m=module.upper(), v=minor))
+        write('#define VL_API_{m}_API_VERSION_PATCH {v}\n'
+              .format(m=module.upper(), v=patch))
 
     if len(s['Import']):
         write('/* Imported API files */\n')
@@ -558,7 +563,8 @@ def generate_include_types(s, module, stream):
         tname = o.__class__.__name__
         if tname == 'Using':
             if 'length' in o.alias:
-                write('typedef %s vl_api_%s_t[%s];\n' % (o.alias['type'], o.name, o.alias['length']))
+                write('typedef %s vl_api_%s_t[%s];\n' %
+                      (o.alias['type'], o.name, o.alias['length']))
             else:
                 write('typedef %s vl_api_%s_t;\n' % (o.alias['type'], o.name))
         elif tname == 'Enum':
@@ -578,7 +584,8 @@ def generate_include_types(s, module, stream):
                       % (size1, size2, err_str))
         else:
             if tname == 'Union':
-                write("typedef union __attribute__ ((packed)) _vl_api_%s {\n" % o.name)
+                write("typedef union __attribute__ ((packed)) _vl_api_%s {\n"
+                      % o.name)
             else:
                 write(("typedef struct __attribute__ ((packed)) _vl_api_%s {\n")
                            % o.name)
@@ -586,11 +593,11 @@ def generate_include_types(s, module, stream):
                 if b.type == 'Option':
                     continue
                 if b.type == 'Field':
-                      write("    %s %s;\n" % (api2c(b.fieldtype),
+                    write("    %s %s;\n" % (api2c(b.fieldtype),
                                               b.fieldname))
                 elif b.type == 'Array':
                     if b.lengthfield:
-                      write("    %s %s[0];\n" % (api2c(b.fieldtype),
+                        write("    %s %s[0];\n" % (api2c(b.fieldtype),
                                                  b.fieldname))
                     else:
                         # Fixed length strings decay to nul terminated u8
@@ -703,6 +710,7 @@ def generate_c_boilerplate(services, defines, counters, file_crc,
             write('  },\n')
         write('};\n')
 
+
 def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, stream):
     write = stream.write
 
@@ -710,7 +718,7 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
     replies = {}
 
     hdr = '''\
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun            /* define message structures */
 #include "{module}.api.h"
 #undef vl_endianfun
 
@@ -801,6 +809,262 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
     write('   return 0;\n')
     write('}\n')
 
+def apifunc(func):
+    def f(module, d, processed, *args):
+        if d.name in processed:
+            return
+        processed[d.name] = True
+        return func(module, d, *args)
+    return f
+
+
+#@apifunc
+def c_test_api_service(module, s, already_processes, dump, stream):
+    write = stream.write
+
+    req_reply_template = '''\
+static cJSON *
+api_{n} (cJSON *o)
+{{
+  vl_api_{n}_t *mp;
+  int len;
+  if (!o) return 0;
+  mp = vl_api_{n}_t_fromjson(o, &len);
+  if (!mp) {{
+    fprintf(stderr, "Failed converting JSON to API\\n");
+    return 0;
+  }}
+
+  mp->_vl_msg_id = vac_get_msg_index(VL_API_{N}_CRC);
+  vl_api_{n}_t_endian(mp);
+  vac_write((char *)mp, len);
+  free(mp);
+
+  /* Read reply */
+  char *p;
+  int l;
+  vac_read(&p, &l, 5); // XXX: Fix timeout
+    // XXX Will fail in case of event received. Do loop
+  if (ntohs(*((u16 *)p)) != vac_get_msg_index(VL_API_{R}_CRC)) {{
+    fprintf(stderr, "Mismatched reply\\n");
+    return 0;
+  }}
+  vl_api_{r}_t *rmp = (vl_api_{r}_t *)p;
+  vl_api_{r}_t_endian(rmp);
+  return vl_api_{r}_t_tojson(rmp);
+}}
+
+'''
+    dump_details_template = '''\
+static cJSON *
+api_{n} (cJSON *o)
+{{
+  u16 msg_id = vac_get_msg_index(VL_API_{N}_CRC);
+  int len;
+  if (!o) return 0;
+  vl_api_{n}_t *mp = vl_api_{n}_t_fromjson(o, &len);
+  if (!mp) {{
+      fprintf(stderr, "Failed converting JSON to API\\n");
+      return 0;
+  }}
+  mp->_vl_msg_id = msg_id;
+  vl_api_{n}_t_endian(mp);
+  vac_write((char *)mp, len);
+  free(mp);
+
+  vat2_control_ping(123); // FIX CONTEXT
+  cJSON *reply = cJSON_CreateArray();
+
+  u16 ping_reply_msg_id = vac_get_msg_index(VL_API_CONTROL_PING_REPLY_CRC);
+  u16 details_msg_id = vac_get_msg_index(VL_API_{R}_CRC);
+
+  while (1) {{
+    /* Read reply */
+    char *p;
+    int l;
+    vac_read(&p, &l, 5); // XXX: Fix timeout
+
+    /* Message can be one of [_details, control_ping_reply or unrelated event] */
+    u16 reply_msg_id = ntohs(*((u16 *)p));
+    if (reply_msg_id == ping_reply_msg_id) {{
+        break;
+    }}
+
+    if (reply_msg_id == details_msg_id) {{
+        vl_api_{r}_t *rmp = (vl_api_{r}_t *)p;
+        vl_api_{r}_t_endian(rmp);
+        cJSON_AddItemToArray(reply, vl_api_{r}_t_tojson(rmp));
+    }}
+  }}
+  return reply;
+}}
+
+'''
+    gets_details_reply_template = '''\
+static cJSON *
+api_{n} (cJSON *o)
+{{
+    u16 msg_id = vac_get_msg_index(VL_API_{N}_CRC);
+  int len = 0;
+  if (!o) return 0;
+  vl_api_{n}_t *mp = vl_api_{n}_t_fromjson(o, &len);
+  if (!mp) {{
+    fprintf(stderr, "Failed converting JSON to API\\n");
+    return 0;
+  }}
+  mp->_vl_msg_id = msg_id;
+
+  vl_api_{n}_t_endian(mp);
+  vac_write((char *)mp, len);
+  free(mp);
+
+  cJSON *reply = cJSON_CreateArray();
+
+  u16 reply_msg_id = vac_get_msg_index(VL_API_{R}_CRC);
+  u16 details_msg_id = vac_get_msg_index(VL_API_{D}_CRC);
+
+  while (1) {{
+    /* Read reply */
+    char *p;
+    int l;
+    vac_read(&p, &l, 5); // XXX: Fix timeout
+
+    /* Message can be one of [_details, control_ping_reply or unrelated event] */
+    u16 msg_id = ntohs(*((u16 *)p));
+    if (msg_id == reply_msg_id) {{
+        vl_api_{r}_t *rmp = (vl_api_{r}_t *)p;
+        vl_api_{r}_t_endian(rmp);
+        cJSON_AddItemToArray(reply, vl_api_{r}_t_tojson(rmp));
+        break;
+    }}
+
+    if (msg_id == details_msg_id) {{
+        vl_api_{d}_t *rmp = (vl_api_{d}_t *)p;
+        vl_api_{d}_t_endian(rmp);
+        cJSON_AddItemToArray(reply, vl_api_{d}_t_tojson(rmp));
+    }}
+  }}
+  return reply;
+}}
+
+'''
+
+    if dump:
+        if s.stream_message:
+            write(gets_details_reply_template.format(n=s.caller, r=s.reply,
+                                                     N=s.caller.upper(),
+                                                     R=s.reply.upper(),
+                                                     d=s.stream_message,
+                                                     D=s.stream_message.upper()))
+        else:
+            write(dump_details_template.format(n=s.caller, r=s.reply,
+                                               N=s.caller.upper(),
+                                               R=s.reply.upper()))
+    else:
+        write(req_reply_template.format(n=s.caller, r=s.reply,
+                                        N=s.caller.upper(),
+                                        R=s.reply.upper()))
+
+
+def generate_c_test2_boilerplate(services, defines, file_crc, module, plugin, stream):
+    write = stream.write
+    already_processed = {}
+
+    define_hash = {d.name: d for d in defines}
+    # replies = {}
+
+    hdr = '''\
+#include <vlibapi/api.h>
+#include <vlibmemory/api.h>
+#include <vppinfra/error.h>
+#include <vnet/ip/ip_format_fns.h>
+#include <vnet/ethernet/ethernet_format_fns.h>
+#include <vpp/api/types.h>
+#include "{module}.api_enum.h"
+#include "{module}.api_types.h"
+
+#define vl_endianfun		/* define message structures */
+#include "{module}.api.h"
+#undef vl_endianfun
+
+#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
+#define vl_printfun
+#include "{module}.api.h"
+#undef vl_printfun
+
+#include "{module}.api_tojson.h"
+#include "{module}.api_fromjson.h"
+#include <vpp-api/client/vppapiclient.h>
+
+#include <vat2/vat2.h>
+#include <vat2/vat2_helpers.h>
+
+'''
+
+    write(hdr.format(module=module))
+
+    for s in services:
+        caller = define_hash[s.caller]
+        if s.reply not in define_hash:
+            # print('No REPLY function {}'.format(s.caller))
+            continue
+        reply = define_hash[s.reply]
+        c_test_api_service(module, s, already_processed,
+                           s.stream, stream)
+        '''
+        if s.stream:
+            if s.stream_message:
+                c_test_api_caller(module, caller, already_processed,
+                                  False, stream)
+                details = define_hash[s.stream_message]
+                c_test_api_details(module, details, already_processed,
+                                   stream)
+                c_test_api_reply_v2(module, reply, already_processed,
+                                    True, stream)
+            else:
+                c_test_api_caller(module, caller, already_processed,
+                                  True, stream)
+                c_test_api_details(module, reply, already_processed,
+                                   stream)
+        else:
+            c_test_api_caller(module, caller, already_processed,
+                              False, stream)
+            c_test_api_reply_v2(module, reply, already_processed,
+                                False, stream)
+        '''
+        continue
+        if reply.manual_print:
+            write('/* Manual definition requested for: vl_api_{n}_t_handler() */\n'
+                  .format(n=s.reply))
+            continue
+        if not caller.autoreply:
+            write('/* Only autoreply is supported (vl_api_{n}_t_handler()) */\n'
+                  .format(n=s.reply))
+            continue
+        if s.stream:
+            c_test_api_details(module, reply, already_processed, stream)
+        else:
+            c_test_api_reply(module, reply, already_processed, stream)
+
+        for e in s.events:
+            if define_hash[e].manual_print:
+                continue
+            write('static void\n')
+            write('vl_api_{n}_t_handler (vl_api_{n}_t * mp) {{\n'.format(n=e))
+            write('    vl_print(0, "{n} event called:");\n'.format(n=e))
+            write('    vl_api_{n}_t_print(mp, 0);\n'.format(n=e))
+            write('}\n')
+
+    write('void vat2_register_function(char *, cJSON * (*)(cJSON *));\n')
+    # write('__attribute__((constructor))')
+    write('clib_error_t *\n')
+    write('vat2_register_plugin (void) {\n')
+    for s in services:
+        write('   vat2_register_function("{n}", api_{n});\n'.format(n=s.caller))
+    write('   return 0;\n')
+    write('}\n')
+
+
 #
 # Plugin entry point
 #
@@ -818,13 +1082,19 @@ def run(args, input_filename, s):
     filename_types = os.path.join(args.outputdir + '/' + basename + '_types.h')
     filename_c = os.path.join(args.outputdir + '/' + basename + '.c')
     filename_c_test = os.path.join(args.outputdir + '/' + basename + '_test.c')
+    filename_c_test2 = (os.path.join(args.outputdir + '/' + basename +
+                                     '_test2.c'))
+    filename_c_tojson = (os.path.join(args.outputdir +
+                                      '/' + basename + '_tojson.h'))
+    filename_c_fromjson = (os.path.join(args.outputdir + '/' +
+                                        basename + '_fromjson.h'))
 
     # Generate separate types file
     st = StringIO()
     generate_include_types(s, modulename, st)
-    with open (filename_types, 'w') as fd:
-        st.seek (0)
-        shutil.copyfileobj (st, fd)
+    with open(filename_types, 'w') as fd:
+        st.seek(0)
+        shutil.copyfileobj(st, fd)
     st.close()
 
     # Generate separate enum file
@@ -834,27 +1104,52 @@ def run(args, input_filename, s):
     generate_include_enum(s, modulename, st)
     generate_include_counters(s['Counters'], modulename, st)
     st.write('#endif\n')
-    with open (filename_enum, 'w') as fd:
-        st.seek (0)
-        shutil.copyfileobj (st, fd)
+    with open(filename_enum, 'w') as fd:
+        st.seek(0)
+        shutil.copyfileobj(st, fd)
     st.close()
 
     # Generate separate C file
     st = StringIO()
     generate_c_boilerplate(s['Service'], s['Define'], s['Counters'],
                            s['file_crc'], modulename, st)
-    with open (filename_c, 'w') as fd:
-        st.seek (0)
+    with open(filename_c, 'w') as fd:
+        st.seek(0)
         shutil.copyfileobj(st, fd)
     st.close()
 
     # Generate separate C test file
     st = StringIO()
     plugin = True if 'plugin' in input_filename else False
-    generate_c_test_boilerplate(s['Service'], s['Define'], s['file_crc'],
+    generate_c_test_boilerplate(s['Service'], s['Define'],
+                                s['file_crc'],
                                 modulename, plugin, st)
-    with open (filename_c_test, 'w') as fd:
-        st.seek (0)
+    with open(filename_c_test, 'w') as fd:
+        st.seek(0)
+        shutil.copyfileobj(st, fd)
+    st.close()
+
+    # Fully autogenerated VATv2 C test file
+    st = StringIO()
+    generate_c_test2_boilerplate(s['Service'], s['Define'],
+                                 s['file_crc'],
+                                 modulename, plugin, st)
+    with open(filename_c_test2, 'w') as fd:
+        st.seek(0)
+        shutil.copyfileobj(st, fd)
+    st.close()
+
+    # Generate separate JSON file
+    st = StringIO()
+    generate_tojson(s, modulename, st)
+    with open(filename_c_tojson, 'w') as fd:
+        st.seek(0)
+        shutil.copyfileobj(st, fd)
+    st.close()
+    st = StringIO()
+    generate_fromjson(s, modulename, st)
+    with open(filename_c_fromjson, 'w') as fd:
+        st.seek(0)
         shutil.copyfileobj(st, fd)
     st.close()
 

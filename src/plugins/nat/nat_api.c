@@ -32,9 +32,6 @@
 #include <nat/nat44/ed_inlines.h>
 #include <nat/lib/ipfix_logging.h>
 
-#define vl_api_nat44_add_del_lb_static_mapping_t_endian vl_noop_handler
-#define vl_api_nat44_nat44_lb_static_mapping_details_t_endian vl_noop_handler
-
 /* define message structures */
 #define vl_typedefs
 #include <nat/nat_all_api_h.h>
