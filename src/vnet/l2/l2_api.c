@@ -42,9 +42,6 @@
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
-#define vl_api_bridge_domain_details_t_endian vl_noop_handler
-#define vl_api_bridge_domain_details_t_print vl_noop_handler
-
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun

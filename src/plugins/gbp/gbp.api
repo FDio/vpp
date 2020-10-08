@@ -39,14 +39,14 @@ typedef gbp_bridge_domain
   vl_api_interface_index_t bm_flood_sw_if_index;
 };
 
-manual_print autoreply define gbp_bridge_domain_add
+ autoreply define gbp_bridge_domain_add
 {
   option status="in_progress";
   u32 client_index;
   u32 context;
   vl_api_gbp_bridge_domain_t bd;
 };
-manual_print autoreply define gbp_bridge_domain_del
+ autoreply define gbp_bridge_domain_del
 {
   option status="in_progress";
   u32 client_index;
@@ -78,14 +78,14 @@ typedef gbp_route_domain
   vl_api_gbp_scope_t scope;
 };
 
-manual_print autoreply define gbp_route_domain_add
+ autoreply define gbp_route_domain_add
 {
   option status="in_progress";
   u32 client_index;
   u32 context;
   vl_api_gbp_route_domain_t rd;
 };
-manual_print autoreply define gbp_route_domain_del
+ autoreply define gbp_route_domain_del
 {
   option status="in_progress";
   u32 client_index;
@@ -136,7 +136,7 @@ typedef gbp_endpoint
   vl_api_address_t ips[n_ips];
 };
 
-manual_print define gbp_endpoint_add
+ define gbp_endpoint_add
 {
   option status="in_progress";
   u32 client_index;
@@ -152,7 +152,7 @@ define gbp_endpoint_add_reply
   u32 handle;
 };
 
-manual_print autoreply define gbp_endpoint_del
+ autoreply define gbp_endpoint_del
 {
   option status="in_progress";
   u32 client_index;
@@ -191,14 +191,14 @@ typedef gbp_endpoint_group
   vl_api_gbp_endpoint_retention_t retention;
 };
 
-manual_print autoreply define gbp_endpoint_group_add
+ autoreply define gbp_endpoint_group_add
 {
   option status="in_progress";
   u32 client_index;
   u32 context;
   vl_api_gbp_endpoint_group_t epg;
 };
-manual_print autoreply define gbp_endpoint_group_del
+ autoreply define gbp_endpoint_group_del
 {
   option status="in_progress";
   u32 client_index;
@@ -227,7 +227,7 @@ typedef gbp_recirc
   bool is_ext;
 };
 
-manual_print autoreply define gbp_recirc_add_del
+ autoreply define gbp_recirc_add_del
 {
   option status="in_progress";
   u32 client_index;
@@ -268,7 +268,7 @@ typedef gbp_subnet
   vl_api_prefix_t prefix;
 };
 
-manual_print autoreply define gbp_subnet_add_del
+ autoreply define gbp_subnet_add_del
 {
   option status="in_progress";
   u32 client_index;
@@ -338,7 +338,7 @@ typedef gbp_contract
   vl_api_gbp_rule_t rules[n_rules];
 };
 
-manual_print define gbp_contract_add_del
+ define gbp_contract_add_del
 {
   option status="in_progress";
   u32 client_index;
@@ -388,7 +388,7 @@ typedef gbp_vxlan_tunnel
   vl_api_ip4_address_t src;
 };
 
-manual_print define gbp_vxlan_tunnel_add
+ define gbp_vxlan_tunnel_add
 {
   option status="in_progress";
   u32 client_index;
@@ -404,7 +404,7 @@ define gbp_vxlan_tunnel_add_reply
   vl_api_interface_index_t sw_if_index;
 };
 
-manual_print autoreply define gbp_vxlan_tunnel_del
+ autoreply define gbp_vxlan_tunnel_del
 {
   option status="in_progress";
   u32 client_index;
@@ -440,7 +440,7 @@ typedef gbp_ext_itf
   vl_api_gbp_ext_itf_flags_t flags;
 };
 
-manual_print autoreply define gbp_ext_itf_add_del
+ autoreply define gbp_ext_itf_add_del
 {
   option status="in_progress";
   u32 client_index;

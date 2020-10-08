@@ -24,6 +24,9 @@ add_vpp_plugin(map
   API_FILES
   map.api
 
+  API_TEST2_SOURCES
+  map.api_test2.c
+
   INSTALL_HEADERS
   map.h
   lpm.h
