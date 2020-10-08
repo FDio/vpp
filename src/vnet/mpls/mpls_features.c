@@ -23,6 +23,7 @@ format_mpls_drop_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
 
+  s = format (s, "drop");
   return s;
 }
 

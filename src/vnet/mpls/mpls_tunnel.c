@@ -41,6 +41,144 @@ static u32 *mpls_tunnel_db;
 static const char *mpls_tunnel_attribute_names[] = MPLS_TUNNEL_ATTRIBUTES;
 
 /**
+ * @brief Packet trace structure
+ */
+typedef struct mpls_tunnel_trace_t_
+{
+    /**
+   * Tunnel-id / index in tunnel vector
+   */
+  u32 tunnel_id;
+} mpls_tunnel_trace_t;
+
+static u8 *
+format_mpls_tunnel_tx_trace (u8 * s,
+                             va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  mpls_tunnel_trace_t * t = va_arg (*args, mpls_tunnel_trace_t *);
+
+  s = format (s, "MPLS: tunnel %d", t->tunnel_id);
+  return s;
+}
+
+typedef enum
+{
+  MPLS_TUNNEL_ENCAP_NEXT_L2_MIDCHAIN,
+  MPLS_TUNNEL_ENCAP_N_NEXT,
+} mpls_tunnel_encap_next_t;
+
+/**
+ * @brief TX function. Only called L2. L3 traffic uses the adj-midchains
+ */
+VLIB_NODE_FN (mpls_tunnel_tx) (vlib_main_t * vm,
+                               vlib_node_runtime_t * node,
+                               vlib_frame_t * frame)
+{
+  u32 *from = vlib_frame_vector_args (frame);
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
+  u32 n_left;
+
+  n_left = frame->n_vectors;
+  b = bufs;
+  next = nexts;
+
+  vlib_get_buffers (vm, from, bufs, n_left);
+
+  while (n_left > 2)
+    {
+      const mpls_tunnel_t *mt0, *mt1;
+      u32 sw_if_index0, sw_if_index1;
+
+      sw_if_index0 = vnet_buffer(b[0])->sw_if_index[VLIB_TX];
+      sw_if_index1 = vnet_buffer(b[1])->sw_if_index[VLIB_TX];
+
+      mt0 = pool_elt_at_index(mpls_tunnel_pool,
+                              mpls_tunnel_db[sw_if_index0]);
+      mt1 = pool_elt_at_index(mpls_tunnel_pool,
+                              mpls_tunnel_db[sw_if_index1]);
+
+      vnet_buffer(b[0])->ip.adj_index[VLIB_TX] = mt0->mt_l2_lb.dpoi_index;
+      vnet_buffer(b[1])->ip.adj_index[VLIB_TX] = mt1->mt_l2_lb.dpoi_index;
+      next[0] = mt0->mt_l2_lb.dpoi_next_node;
+      next[1] = mt1->mt_l2_lb.dpoi_next_node;
+
+      /* since we are coming out of the L2 world, where the vlib_buffer
+       * union is used for other things, make sure it is clean for
+       * MPLS from now on.
+       */
+      vnet_buffer(b[0])->mpls.first = 0;
+      vnet_buffer(b[1])->mpls.first = 0;
+
+      if (PREDICT_FALSE(b[0]->flags & VLIB_BUFFER_IS_TRACED))
+      {
+          mpls_tunnel_trace_t *tr = vlib_add_trace (vm, node,
+                                                    b[0], sizeof (*tr));
+          tr->tunnel_id = mpls_tunnel_db[sw_if_index0];
+      }
+      if (PREDICT_FALSE(b[1]->flags & VLIB_BUFFER_IS_TRACED))
+      {
+          mpls_tunnel_trace_t *tr = vlib_add_trace (vm, node,
+                                                    b[1], sizeof (*tr));
+          tr->tunnel_id = mpls_tunnel_db[sw_if_index1];
+      }
+
+      b += 2;
+      n_left -= 2;
+      next += 2;
+    }
+  while (n_left)
+    {
+      const mpls_tunnel_t *mt0;
+      u32 sw_if_index0;
+
+      sw_if_index0 = vnet_buffer(b[0])->sw_if_index[VLIB_TX];
+      mt0 = pool_elt_at_index(mpls_tunnel_pool,
+                              mpls_tunnel_db[sw_if_index0]);
+
+      vnet_buffer(b[0])->ip.adj_index[VLIB_TX] = mt0->mt_l2_lb.dpoi_index;
+      next[0] = mt0->mt_l2_lb.dpoi_next_node;
+
+      /* since we are coming out of the L2 world, where the vlib_buffer
+       * union is used for other things, make sure it is clean for
+       * MPLS from now on.
+       */
+      vnet_buffer(b[0])->mpls.first = 0;
+
+      if (PREDICT_FALSE(b[0]->flags & VLIB_BUFFER_IS_TRACED))
+        {
+          mpls_tunnel_trace_t *tr = vlib_add_trace (vm, node,
+                                                    b[0], sizeof (*tr));
+          tr->tunnel_id = mpls_tunnel_db[sw_if_index0];
+        }
+
+      b += 1;
+      n_left -= 1;
+      next += 1;
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+
+  return frame->n_vectors;
+}
+
+VLIB_REGISTER_NODE (mpls_tunnel_tx) =
+{
+  .name = "mpls-tunnel-tx",
+  .vector_size = sizeof (u32),
+  .format_trace = format_mpls_tunnel_tx_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = 0,
+  .n_next_nodes = 0,
+  /* MPLS_TUNNEL_ENCAP_N_NEXT, */
+  /* .next_nodes = { */
+  /*   [MPLS_TUNNEL_ENCAP_NEXT_L2_MIDCHAIN] = "mpls-load-balance", */
+  /* }, */
+};
+
+/**
  * @brief Get a tunnel object from a SW interface index
  */
 static mpls_tunnel_t*
@@ -326,7 +464,7 @@ mpls_tunnel_restack (mpls_tunnel_t *mt)
                           &dpo);
 
         hi = vnet_get_hw_interface(vnet_get_main(), mt->mt_hw_if_index);
-        dpo_stack_from_node(hi->tx_node_index,
+        dpo_stack_from_node(mpls_tunnel_tx.index,
                             &mt->mt_l2_lb,
                             &dpo);
         dpo_reset(&dpo);
@@ -451,106 +589,11 @@ format_mpls_tunnel_device (u8 * s, va_list * args)
   return (format (s, "MPLS-tunnel: id %d\n", dev_instance));
 }
 
-/**
- * @brief Packet trace structure
- */
-typedef struct mpls_tunnel_trace_t_
-{
-    /**
-   * Tunnel-id / index in tunnel vector
-   */
-  u32 tunnel_id;
-} mpls_tunnel_trace_t;
-
-static u8 *
-format_mpls_tunnel_tx_trace (u8 * s,
-                             va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  mpls_tunnel_trace_t * t = va_arg (*args, mpls_tunnel_trace_t *);
-
-  s = format (s, "MPLS: tunnel %d", t->tunnel_id);
-  return s;
-}
-
-/**
- * @brief TX function. Only called L2. L3 traffic uses the adj-midchains
- */
-static uword
-mpls_tunnel_tx (vlib_main_t * vm,
-                vlib_node_runtime_t * node,
-                vlib_frame_t * frame)
-{
-  u32 next_index;
-  u32 * from, * to_next, n_left_from, n_left_to_next;
-  vnet_interface_output_runtime_t * rd = (void *) node->runtime_data;
-  const mpls_tunnel_t *mt;
-
-  mt = pool_elt_at_index(mpls_tunnel_pool, rd->dev_instance);
-
-  /* Vector of buffer / pkt indices we're supposed to process */
-  from = vlib_frame_vector_args (frame);
-
-  /* Number of buffers / pkts */
-  n_left_from = frame->n_vectors;
-
-  /* Speculatively send the first buffer to the last disposition we used */
-  next_index = node->cached_next_index;
-
-  while (n_left_from > 0)
-    {
-      /* set up to enqueue to our disposition with index = next_index */
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      /*
-       * FIXME DUAL LOOP
-       */
-      while (n_left_from > 0 && n_left_to_next > 0)
-        {
-          vlib_buffer_t * b0;
-          u32 bi0;
-
-          bi0 = from[0];
-          to_next[0] = bi0;
-          from += 1;
-          to_next += 1;
-          n_left_from -= 1;
-          n_left_to_next -= 1;
-
-          b0 = vlib_get_buffer(vm, bi0);
-
-          vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mt->mt_l2_lb.dpoi_index;
-          /* since we are coming out of the L2 world, where the vlib_buffer
-           * union is used for other things, make sure it is clean for
-           * MPLS from now on.
-           */
-          vnet_buffer(b0)->mpls.first = 0;
-
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-            {
-              mpls_tunnel_trace_t *tr = vlib_add_trace (vm, node,
-                                                   b0, sizeof (*tr));
-              tr->tunnel_id = rd->dev_instance;
-            }
-
-          vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-                                           to_next, n_left_to_next,
-                                           bi0, mt->mt_l2_lb.dpoi_next_node);
-        }
-
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-    }
-
-  return frame->n_vectors;
-}
-
 VNET_DEVICE_CLASS (mpls_tunnel_class) = {
     .name = "MPLS tunnel device",
     .format_device_name = format_mpls_tunnel_name,
     .format_device = format_mpls_tunnel_device,
     .format_tx_trace = format_mpls_tunnel_tx_trace,
-    .tx_function = mpls_tunnel_tx,
     .admin_up_down_function = mpls_tunnel_admin_up_down,
 };
 
@@ -640,6 +683,10 @@ vnet_mpls_tunnel_create (u8 l2_only,
         mpls_tunnel_hw_interface_class.index,
         mti);
     hi = vnet_get_hw_interface (vnm, mt->mt_hw_if_index);
+
+    if (mt->mt_flags & MPLS_TUNNEL_FLAG_L2)
+        vnet_set_interface_output_node (vnm, mt->mt_hw_if_index,
+                                        mpls_tunnel_tx.index);
 
     /* Standard default MPLS tunnel MTU. */
     vnet_sw_interface_set_mtu (vnm, hi->sw_if_index, 9000);
