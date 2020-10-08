@@ -27,8 +27,10 @@ else
   LIBBPF_CFLAGS+= -O2
 endif
 
-IF_XDP:=$(shell echo "\#include <linux/if_xdp.h>" | $(CC) -E -xc - > /dev/null 2>&1)
-IF_XDP:=$(.SHELLSTATUS)
+# check for libelf, zlib and kernel if_xdp.h presence
+LIBBPF_DEPS_CHECK:="\#include <linux/if_xdp.h>\\n\#include <gelf.h>\\n\#include <zlib.h>\\nint main(void){return 0;}"
+LIBBPF_DEPS_CHECK:=$(shell echo -e $(LIBBPF_DEPS_CHECK) | $(CC) -xc -lelf -lz -o /dev/null - > /dev/null 2>&1)
+LIBBPF_DEPS_CHECK:=$(.SHELLSTATUS)
 
 define  libbpf_config_cmds
 	@true
@@ -46,8 +48,8 @@ define  libbpf_install_cmds
 	$(call libbpf_build_cmds__,install,$(libbpf_install_log))
 endef
 
-ifneq ($(IF_XDP),0)
-  $(warning "linux/if_xdp.h was not found on this system. libbpf will be skipped.")
+ifneq ($(LIBBPF_DEPS_CHECK),0)
+  $(warning "Missing libbpf dependencies. libbpf will be skipped.")
 libbpf-install:
 	@true
 else
