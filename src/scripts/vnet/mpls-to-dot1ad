@@ -1,0 +1,53 @@
+
+create packet-generator interface pg0
+create packet-generator interface pg1
+
+set int ip address pg0 192.168.0.1/24
+
+set int state pg0 up
+set int state pg1 up
+set int mac address pg1 00:00:00:00:00:11
+create sub-interface pg1 12 dot1ad 32 inner-dot1q 33
+set int state pg1.12 up
+set int l2 tag-rewrite pg1.12 pop 2
+
+set ip neighbor pg0 192.168.0.2 1:2:3:4:5:6 static
+
+create gre tunnel dst 192.168.0.2 src 192.168.0.1
+set int state gre0 up
+set int ip addr gre0 1.1.1.1/30
+
+mpls table 0
+mpls tunnel add l2-only via 1.1.1.2 gre0 out-labels 33
+set int state mpls-tunnel0 up
+set int mpls gre0 enable
+
+set int l2 xconnect pg1.12 mpls-tunnel0
+set int l2 xconnect mpls-tunnel0 pg1.12
+
+mpls local-label add eos 33 via l2-input-on mpls-tunnel0
+
+trace add pg-input 100
+
+packet-generator new {
+  name g2v
+  limit 1
+  node ip4-input
+  interface pg0
+  data {
+    hex 0x4500002000000000fe2f3b5bc0a80002c0a800010000884700021140000000000011005056b77c83010203040506
+  }
+}
+
+packet-generator new {
+  name v2g
+  limit 1
+  node ethernet-input
+  interface pg1.12
+  data {
+      hex 0x000000000011005056b77c8388a80020810000210102030405060708
+  }
+}
+
+pack en g2v
+sh trace

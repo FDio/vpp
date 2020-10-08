@@ -391,9 +391,9 @@ gre_get_fixup (fib_protocol_t fproto, vnet_link_t lt)
     return (gre64_fixup);
   if (fproto == FIB_PROTOCOL_IP4 && lt == VNET_LINK_IP4)
     return (gre44_fixup);
-  if (fproto == FIB_PROTOCOL_IP6 && lt == VNET_LINK_ETHERNET)
+  if (fproto == FIB_PROTOCOL_IP6)
     return (grex6_fixup);
-  if (fproto == FIB_PROTOCOL_IP4 && lt == VNET_LINK_ETHERNET)
+  if (fproto == FIB_PROTOCOL_IP4)
     return (grex4_fixup);
 
   ASSERT (0);
