@@ -30,7 +30,4 @@ add_vpp_plugin(acl
 
   API_TEST_SOURCES
   acl_test.c
-
-  INSTALL_HEADERS
-  manual_fns.h
 )

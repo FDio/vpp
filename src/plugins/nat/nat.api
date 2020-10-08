@@ -965,7 +965,7 @@ typedef nat44_lb_addr_port {
     @param locals - local network nodes
     @param tag - opaque string tag
 */
-autoreply manual_endian define nat44_add_del_lb_static_mapping {
+autoreply define nat44_add_del_lb_static_mapping {
   u32 client_index;
   u32 context;
   bool is_add;
@@ -1023,7 +1023,7 @@ define nat44_lb_static_mapping_dump {
     @param locals - local network nodes
     @param tag - opaque string tag
 */
-manual_endian define nat44_lb_static_mapping_details {
+define nat44_lb_static_mapping_details {
   u32 context;
   vl_api_ip4_address_t external_addr;
   u16 external_port;

@@ -656,24 +656,6 @@ out:
   REPLY_MACRO (VL_API_FLOWPROBE_TX_INTERFACE_ADD_DEL_REPLY);
 }
 
-/**
- * @brief API message custom-dump function
- * @param mp vl_api_flowprobe_tx_interface_add_del_t * mp the api message
- * @param handle void * print function handle
- * @returns u8 * output string
- */
-static void *vl_api_flowprobe_tx_interface_add_del_t_print
-  (vl_api_flowprobe_tx_interface_add_del_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: flowprobe_tx_interface_add_del ");
-  s = format (s, "sw_if_index %d is_add %d which %d ",
-	      clib_host_to_net_u32 (mp->sw_if_index),
-	      (int) mp->is_add, (int) mp->which);
-  FINISH;
-}
-
 #define vec_neg_search(v,E)         \
 ({              \
   word _v(i) = 0;         \

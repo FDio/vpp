@@ -42,7 +42,6 @@
 #include <vnet/format_fns.h>
 #include <vlibapi/api_helper_macros.h>
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#include "gbp_api_print.h"
 
 gbp_main_t gbp_main;
 
