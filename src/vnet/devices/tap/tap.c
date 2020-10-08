@@ -207,7 +207,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	{
 	  host_if_name = (char *) args->host_if_name;
 	  clib_memcpy (ifr.ifr_name, host_if_name,
-		       clib_min (IFNAMSIZ, strlen (host_if_name)));
+		       clib_min (IFNAMSIZ, vec_len (host_if_name)));
 	}
       else
 	{
@@ -955,19 +955,19 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
       {
         clib_memcpy(tapid->host_if_name, vif->host_if_name,
                     MIN (ARRAY_LEN (tapid->host_if_name) - 1,
-                    strlen ((const char *) vif->host_if_name)));
+                    vec_len (vif->host_if_name)));
       }
     if (vif->net_ns)
       {
         clib_memcpy(tapid->host_namespace, vif->net_ns,
                     MIN (ARRAY_LEN (tapid->host_namespace) - 1,
-                    strlen ((const char *) vif->net_ns)));
+                    vec_len (vif->net_ns)));
       }
     if (vif->host_bridge)
       {
         clib_memcpy(tapid->host_bridge, vif->host_bridge,
                     MIN (ARRAY_LEN (tapid->host_bridge) - 1,
-                    strlen ((const char *) vif->host_bridge)));
+                    vec_len (vif->host_bridge)));
       }
     if (vif->host_ip4_prefix_len)
       clib_memcpy(tapid->host_ip4_addr.as_u8, &vif->host_ip4_addr, 4);
