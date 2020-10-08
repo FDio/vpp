@@ -614,7 +614,7 @@ elog_string (elog_main_t * em, char *fmt, ...)
 elog_event_t *
 elog_get_events (elog_main_t * em)
 {
-  vec_reset_length (em->events);
+  vec_free (em->events);
   em->events = elog_peek_events (em);
   return em->events;
 }
