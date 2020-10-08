@@ -205,9 +205,24 @@ typedef enum
   AVF_PROCESS_EVENT_START = 1,
   AVF_PROCESS_EVENT_DELETE_IF = 2,
   AVF_PROCESS_EVENT_AQ_INT = 3,
-  AVF_PROCESS_EVENT_SET_PROMISC_ENABLE = 4,
-  AVF_PROCESS_EVENT_SET_PROMISC_DISABLE = 5,
+  AVF_PROCESS_EVENT_REQ = 4,
 } avf_process_event_t;
+
+typedef enum
+{
+  AVF_PROCESS_REQ_ADD_DEL_ETH_ADDR = 1,
+  AVF_PROCESS_REQ_CONFIG_PROMISC_MDDE = 2,
+} avf_process_req_type_t;
+
+typedef struct
+{
+  avf_process_req_type_t type;
+  u32 dev_instance;
+  u32 calling_process_index;
+  u8 eth_addr[6];
+  int is_add, is_enable;
+  clib_error_t *error;
+} avf_process_req_t;
 
 typedef struct
 {
