@@ -242,3 +242,38 @@ define vrrp_vr_track_if_details {
   u8 n_ifs;
   vl_api_vrrp_vr_track_if_t ifs[n_ifs];
 };
+
+/** \brief Notification about VRRP VR state change event
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param vr - configuration parameters identifying the VR
+    @param old_state - old state of VR
+    @param new_state - new state of VR
+*/
+define vrrp_vr_event
+{
+  u32 client_index;
+  u32 pid;
+  vl_api_vrrp_vr_key_t vr;
+  vl_api_vrrp_vr_state_t old_state;
+  vl_api_vrrp_vr_state_t new_state;
+};
+
+service {
+  rpc want_vrrp_vr_events returns want_vrrp_vr_events_reply
+    events vrrp_vr_event;
+};
+
+/** \brief Register for VRRP VR state change events
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 to register, 0 to cancel registration
+    @param pid - sender's pid
+*/
+autoreply define want_vrrp_vr_events
+{
+  u32 client_index;
+  u32 context;
+  bool enable_disable;
+  u32 pid;
+};

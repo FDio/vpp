@@ -351,6 +351,8 @@ vrrp_vr_transition (vrrp_vr_t * vr, vrrp_vr_state_t new_state, void *data)
   /* add/delete virtual MAC address on NIC if necessary */
   vrrp_vr_transition_vmac (vr, new_state);
 
+  vrrp_vr_event (vr, new_state);
+
   vr->runtime.state = new_state;
 }
 

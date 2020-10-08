@@ -20,14 +20,13 @@
 #include <vrrp/vrrp.api_enum.h>
 #include <vrrp/vrrp.api_types.h>
 
-#define REPLY_MSG_ID_BASE vmp->msg_id_base
+#define REPLY_MSG_ID_BASE vrrp_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
 /* API message handlers */
 static void
 vl_api_vrrp_vr_add_del_t_handler (vl_api_vrrp_vr_add_del_t * mp)
 {
-  vrrp_main_t *vmp = &vrrp_main;
   vl_api_vrrp_vr_add_del_reply_t *rmp;
   vrrp_vr_config_t vr_conf;
   u32 api_flags;
@@ -112,6 +111,19 @@ vl_api_vrrp_vr_add_del_t_handler (vl_api_vrrp_vr_add_del_t * mp)
   REPLY_MACRO (VL_API_VRRP_VR_ADD_DEL_REPLY);
 }
 
+static vl_api_vrrp_vr_state_t
+vrrp_vr_state_encode (vrrp_vr_state_t vr_state)
+{
+  if (vr_state == VRRP_VR_STATE_BACKUP)
+    return VRRP_API_VR_STATE_BACKUP;
+  if (vr_state == VRRP_VR_STATE_MASTER)
+    return VRRP_API_VR_STATE_MASTER;
+  if (vr_state == VRRP_VR_STATE_INTF_DOWN)
+    return VRRP_API_VR_STATE_INTF_DOWN;
+
+  return VRRP_API_VR_STATE_INIT;
+}
+
 static void
 send_vrrp_vr_details (vrrp_vr_t * vr, vl_api_registration_t * reg,
 		      u32 context)
@@ -150,23 +162,7 @@ send_vrrp_vr_details (vrrp_vr_t * vr, vl_api_registration_t * reg,
   mp->config.flags = htonl (api_flags);
 
   /* runtime */
-  switch (vr->runtime.state)
-    {
-    case VRRP_VR_STATE_INIT:
-      mp->runtime.state = htonl (VRRP_API_VR_STATE_INIT);
-      break;
-    case VRRP_VR_STATE_BACKUP:
-      mp->runtime.state = htonl (VRRP_API_VR_STATE_BACKUP);
-      break;
-    case VRRP_VR_STATE_MASTER:
-      mp->runtime.state = htonl (VRRP_API_VR_STATE_MASTER);
-      break;
-    case VRRP_VR_STATE_INTF_DOWN:
-      mp->runtime.state = htonl (VRRP_API_VR_STATE_INTF_DOWN);
-      break;
-    default:
-      break;
-    }
+  mp->runtime.state = htonl (vrrp_vr_state_encode (vr->runtime.state));
 
   mp->runtime.master_adv_int = htons (vr->runtime.master_adv_int);
   mp->runtime.skew = htons (vr->runtime.skew);
@@ -234,7 +230,6 @@ vl_api_vrrp_vr_dump_t_handler (vl_api_vrrp_vr_dump_t * mp)
 static void
 vl_api_vrrp_vr_start_stop_t_handler (vl_api_vrrp_vr_start_stop_t * mp)
 {
-  vrrp_main_t *vmp = &vrrp_main;
   vl_api_vrrp_vr_start_stop_reply_t *rmp;
   vrrp_vr_key_t vr_key;
   int rv;
@@ -253,7 +248,6 @@ vl_api_vrrp_vr_start_stop_t_handler (vl_api_vrrp_vr_start_stop_t * mp)
 static void
 vl_api_vrrp_vr_set_peers_t_handler (vl_api_vrrp_vr_set_peers_t * mp)
 {
-  vrrp_main_t *vmp = &vrrp_main;
   vl_api_vrrp_vr_set_peers_reply_t *rmp;
   vrrp_vr_key_t vr_key;
   ip46_address_t *peer_addrs = 0;
@@ -385,7 +379,6 @@ static void
   vl_api_vrrp_vr_track_if_add_del_t_handler
   (vl_api_vrrp_vr_track_if_add_del_t * mp)
 {
-  vrrp_main_t *vmp = &vrrp_main;
   vl_api_vrrp_vr_track_if_add_del_reply_t *rmp;
   vrrp_vr_t *vr;
   vrrp_vr_tracking_if_t *track_if, *track_ifs = 0;
@@ -485,6 +478,49 @@ vl_api_vrrp_vr_track_if_dump_t_handler (vl_api_vrrp_vr_track_if_dump_t * mp)
   }));
   /* *INDENT-ON* */
 }
+
+static void
+send_vrrp_vr_event (vpe_client_registration_t * reg,
+		    vl_api_registration_t * vl_reg,
+		    vrrp_vr_t * vr, vrrp_vr_state_t new_state)
+{
+  vrrp_main_t *vmp = &vrrp_main;
+  vl_api_vrrp_vr_event_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_VRRP_VR_EVENT + vmp->msg_id_base);
+  mp->client_index = reg->client_index;
+  mp->pid = reg->client_pid;
+  mp->vr.sw_if_index = ntohl (vr->config.sw_if_index);
+  mp->vr.vr_id = vr->config.vr_id;
+  mp->vr.is_ipv6 = ((vr->config.flags & VRRP_VR_IPV6) != 0);
+
+  mp->old_state = htonl (vrrp_vr_state_encode (vr->runtime.state));
+  mp->new_state = htonl (vrrp_vr_state_encode (new_state));
+
+  vl_api_send_msg (vl_reg, (u8 *) mp);
+}
+
+void
+vrrp_vr_event (vrrp_vr_t * vr, vrrp_vr_state_t new_state)
+{
+  vpe_api_main_t *vam = &vpe_api_main;
+  vpe_client_registration_t *reg;
+  vl_api_registration_t *vl_reg;
+
+  /* *INDENT-OFF* */
+  pool_foreach(reg, vam->vrrp_vr_events_registrations,
+  ({
+    vl_reg = vl_api_client_index_to_registration (reg->client_index);
+    if (vl_reg)
+      send_vrrp_vr_event (reg, vl_reg, vr, new_state);
+  }));
+  /* *INDENT-ON* */
+}
+
+pub_sub_handler (vrrp_vr_events, VRRP_VR_EVENTS);
 
 /* Set up the API message handling tables */
 #include <vrrp/vrrp.api.c>
