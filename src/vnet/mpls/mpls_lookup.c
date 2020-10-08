@@ -615,6 +615,14 @@ VLIB_NODE_FN (mpls_load_balance_node) (vlib_main_t * vm,
               tr->lb_index = lbi0;
               tr->hash = hc0;
           }
+          if (PREDICT_FALSE(p1->flags & VLIB_BUFFER_IS_TRACED))
+          {
+              mpls_load_balance_trace_t *tr = vlib_add_trace (vm, node,
+                                                              p1, sizeof (*tr));
+              tr->next_index = next1;
+              tr->lb_index = lbi1;
+              tr->hash = hc1;
+          }
 
           vlib_validate_buffer_enqueue_x2 (vm, node, next,
                                            to_next, n_left_to_next,
@@ -663,6 +671,15 @@ VLIB_NODE_FN (mpls_load_balance_node) (vlib_main_t * vm,
 
           next0 = dpo0->dpoi_next_node;
           vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+
+          if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
+          {
+              mpls_load_balance_trace_t *tr = vlib_add_trace (vm, node,
+                                                              p0, sizeof (*tr));
+              tr->next_index = next0;
+              tr->lb_index = lbi0;
+              tr->hash = hc0;
+          }
 
           vlib_increment_combined_counter
               (cm, thread_index, lbi0, 1,
