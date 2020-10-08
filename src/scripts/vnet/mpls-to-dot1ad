@@ -43,7 +43,7 @@ packet-generator new {
   name v2g
   limit 1
   node ethernet-input
-  interface pg1.12
+  interface pg1
   data {
       hex 0x000000000011005056b77c8388a80020810000210102030405060708
   }

@@ -1623,9 +1623,11 @@ pg_generate_packets (vlib_node_runtime_t * node,
   u8 feature_arc_index = fm->device_input_feature_arc_index;
   cm = &fm->feature_config_mains[feature_arc_index];
   u32 current_config_index = ~(u32) 0;
-  pg_interface_t *pi = pool_elt_at_index (pg->interfaces, s->pg_if_index);
+  pg_interface_t *pi;
   int i;
 
+  pi = pool_elt_at_index (pg->interfaces,
+			  pg->if_id_by_sw_if_index[s->sw_if_index[VLIB_RX]]);
   bi0 = s->buffer_indices;
 
   n_packets_in_fifo = pg_stream_fill (pg, s, n_packets_to_generate);
