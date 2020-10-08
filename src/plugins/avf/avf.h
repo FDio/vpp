@@ -207,7 +207,15 @@ typedef enum
   AVF_PROCESS_EVENT_AQ_INT = 3,
   AVF_PROCESS_EVENT_SET_PROMISC_ENABLE = 4,
   AVF_PROCESS_EVENT_SET_PROMISC_DISABLE = 5,
+  AVF_PROCESS_EVENT_ADD_ETHER_ADDR = 6,
+  AVF_PROCESS_EVENT_DEL_ETHER_ADDR = 7,
 } avf_process_event_t;
+
+typedef struct
+{
+  u32 dev_instance;
+  u8 eth_addr[6];
+} avf_process_event_msg_t;
 
 typedef struct
 {
