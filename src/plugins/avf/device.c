@@ -629,7 +629,8 @@ avf_op_disable_vlan_stripping (vlib_main_t * vm, avf_device_t * ad)
 }
 
 clib_error_t *
-avf_config_promisc_mode (vlib_main_t * vm, avf_device_t * ad, int is_enable)
+avf_op_config_promisc_mode (vlib_main_t * vm, avf_device_t * ad,
+			    int is_enable)
 {
   virtchnl_promisc_info_t pi = { 0 };
 
@@ -735,7 +736,8 @@ avf_op_config_irq_map (vlib_main_t * vm, avf_device_t * ad)
 }
 
 clib_error_t *
-avf_op_add_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count, u8 * macs)
+avf_op_add_del_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count,
+			 u8 * macs, int is_add)
 {
   int msg_len =
     sizeof (virtchnl_ether_addr_list_t) +
@@ -749,17 +751,17 @@ avf_op_add_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count, u8 * macs)
   al->vsi_id = ad->vsi_id;
   al->num_elements = count;
 
-  avf_log_debug (ad, "add_eth_addr: vsi_id %u num_elements %u",
-		 ad->vsi_id, al->num_elements);
+  avf_log_debug (ad, "add_del_eth_addr: vsi_id %u num_elements %u is_add %u",
+		 ad->vsi_id, al->num_elements, is_add);
 
   for (i = 0; i < count; i++)
     {
       clib_memcpy_fast (&al->list[i].addr, macs + i * 6, 6);
-      avf_log_debug (ad, "add_eth_addr[%u]: %U", i,
+      avf_log_debug (ad, "add_del_eth_addr[%u]: %U", i,
 		     format_ethernet_address, &al->list[i].addr);
     }
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_ADD_ETH_ADDR, msg, msg_len, 0,
-			 0);
+  return avf_send_to_pf (vm, ad, is_add ? VIRTCHNL_OP_ADD_ETH_ADDR :
+			 VIRTCHNL_OP_ADD_ETH_ADDR, msg, msg_len, 0, 0);
 }
 
 clib_error_t *
@@ -1001,7 +1003,7 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
     avf_irq_n_set_state (ad, i, wb_on_itr ? AVF_IRQ_STATE_WB_ON_ITR :
 			 AVF_IRQ_STATE_ENABLED);
 
-  if ((error = avf_op_add_eth_addr (vm, ad, 1, ad->hwaddr)))
+  if ((error = avf_op_add_del_eth_addr (vm, ad, 1, ad->hwaddr, 1 /* add */ )))
     return error;
 
   if ((error = avf_op_enable_queues (vm, ad, pow2_mask (ad->n_rx_queues),
@@ -1158,12 +1160,46 @@ error:
   vlib_log_err (am->log_class, "%U", format_clib_error, ad->error);
 }
 
+static clib_error_t *
+avf_process_request (vlib_main_t * vm, avf_process_req_t * req)
+{
+  uword *event_data = 0;
+  req->calling_process_index = vlib_get_current_process_node_index (vm);
+  vlib_process_signal_event_pointer (vm, avf_process_node.index,
+				     AVF_PROCESS_EVENT_REQ, req);
+
+  vlib_process_wait_for_event_or_clock (vm, 5.0);
+
+  if (vlib_process_get_events (vm, &event_data) != 0)
+    clib_panic ("avf rocess node failed to reply in 5 seconds");
+  vec_free (event_data);
+
+  return req->error;
+}
+
+static void
+avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
+{
+  avf_device_t *ad = avf_get_device (req->dev_instance);
+
+  if (req->type == AVF_PROCESS_REQ_ADD_DEL_ETH_ADDR)
+    req->error = avf_op_add_del_eth_addr (vm, ad, 1, req->eth_addr,
+					  req->is_add);
+  else if (req->type == AVF_PROCESS_REQ_CONFIG_PROMISC_MDDE)
+    req->error = avf_op_config_promisc_mode (vm, ad, req->is_enable);
+  else
+    clib_panic ("BUG: unknown avf proceess request type");
+
+  vlib_process_signal_event (vm, req->calling_process_index, 0, 0);
+}
+
 static u32
 avf_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
 {
+  avf_process_req_t req;
   vlib_main_t *vm = vlib_get_main ();
   avf_device_t *ad = avf_get_device (hw->dev_instance);
-  u8 promisc_enabled;
+  clib_error_t *err;
 
   switch (flags)
     {
@@ -1177,13 +1213,16 @@ avf_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
       return ~0;
     }
 
-  promisc_enabled = ((ad->flags & AVF_DEVICE_F_PROMISC) != 0);
+  req.is_enable = ((ad->flags & AVF_DEVICE_F_PROMISC) != 0);
+  req.type = AVF_PROCESS_REQ_CONFIG_PROMISC_MDDE;
+  req.dev_instance = hw->dev_instance;
 
-  vlib_process_signal_event (vm, avf_process_node.index,
-			     promisc_enabled ?
-			     AVF_PROCESS_EVENT_SET_PROMISC_ENABLE :
-			     AVF_PROCESS_EVENT_SET_PROMISC_DISABLE,
-			     hw->dev_instance);
+  if ((err = avf_process_request (vm, &req)))
+    {
+      avf_log_err (ad, "error: %U", format_clib_error, err);
+      clib_error_free (err);
+      return ~0;
+    }
   return 0;
 }
 
@@ -1228,23 +1267,9 @@ avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	case AVF_PROCESS_EVENT_AQ_INT:
 	  irq = 1;
 	  break;
-	case AVF_PROCESS_EVENT_SET_PROMISC_ENABLE:
-	case AVF_PROCESS_EVENT_SET_PROMISC_DISABLE:
+	case AVF_PROCESS_EVENT_REQ:
 	  for (int i = 0; i < vec_len (event_data); i++)
-	    {
-	      avf_device_t *ad = avf_get_device (event_data[i]);
-	      clib_error_t *err;
-	      int is_enable = 0;
-
-	      if (event_type == AVF_PROCESS_EVENT_SET_PROMISC_ENABLE)
-		is_enable = 1;
-
-	      if ((err = avf_config_promisc_mode (vm, ad, is_enable)))
-		{
-		  avf_log_err (ad, "error: %U", format_clib_error, err);
-		  clib_error_free (err);
-		}
-	    }
+	    avf_process_handle_request (vm, (void *) event_data[i]);
 	  break;
 
 	default:
@@ -1701,6 +1726,21 @@ avf_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
     vlib_node_add_next (vlib_get_main (), avf_input_node.index, node_index);
 }
 
+static clib_error_t *
+avf_add_del_mac_address (vnet_hw_interface_t * hw,
+			 const u8 * address, u8 is_add)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  avf_process_req_t req;
+
+  req.dev_instance = hw->dev_instance;
+  req.type = AVF_PROCESS_REQ_ADD_DEL_ETH_ADDR;
+  req.is_add = is_add;
+  clib_memcpy (req.eth_addr, address, 6);
+
+  return avf_process_request (vm, &req);
+}
+
 static char *avf_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_avf_tx_func_error
@@ -1725,6 +1765,7 @@ VNET_DEVICE_CLASS (avf_device_class,) =
   .admin_up_down_function = avf_interface_admin_up_down,
   .rx_mode_change_function = avf_interface_rx_mode_change,
   .rx_redirect_to_node = avf_set_interface_next_node,
+  .mac_addr_add_del_function = avf_add_del_mac_address,
   .tx_function_n_errors = AVF_TX_N_ERROR,
   .tx_function_error_strings = avf_tx_func_error_strings,
 };
