@@ -86,7 +86,7 @@ define mpls_tunnel_dump
 
 /** \brief mpls tunnel details
 */
-manual_endian manual_print define mpls_tunnel_details
+define mpls_tunnel_details
 {
   u32 context;
   vl_api_mpls_tunnel_t mt_tunnel;
@@ -192,7 +192,7 @@ define mpls_route_dump
     @param count - the number of fib_path in path
     @param path  - array of of fib_path structures
 */
-manual_endian manual_print define mpls_route_details
+define mpls_route_details
 {
   u32 context;
   vl_api_mpls_route_t mr_route;

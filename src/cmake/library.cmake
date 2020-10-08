@@ -93,3 +93,34 @@ function (add_vpp_headers path)
     )
   endforeach()
 endfunction()
+
+macro(add_vpp_test_library lib)
+  cmake_parse_arguments(TEST
+    ""
+    ""
+    ${ARGN}
+  )
+
+  foreach(file ${ARGN})
+    get_filename_component(name ${file} NAME_WE)
+    set(test_lib ${lib}_${name}_plugin)
+    add_library(${test_lib} SHARED ${file}_test2.c)
+    if(NOT VPP_EXTERNAL_PROJECT)
+      add_dependencies(${test_lib} api_headers)
+    endif()
+    if (TARGET ${name}_plugin_api_headers)
+      add_dependencies(${test_lib} ${name}_plugin_api_headers)
+    endif()
+    set_target_properties(${test_lib} PROPERTIES NO_SONAME 1)
+    set_target_properties(${test_lib} PROPERTIES
+      PREFIX ""
+      LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/vat2_plugins)
+
+    # install .so
+    install(
+      TARGETS ${test_lib}
+      DESTINATION ${VPP_LIBRARY_DIR}/vat2_plugins
+      #COMPONENT ${ARG_COMPONENT}
+      )
+  endforeach()
+endmacro()
