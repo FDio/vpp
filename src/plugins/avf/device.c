@@ -735,7 +735,8 @@ avf_op_config_irq_map (vlib_main_t * vm, avf_device_t * ad)
 }
 
 clib_error_t *
-avf_op_add_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count, u8 * macs)
+avf_op_add_del_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count,
+			 u8 * macs, int is_add)
 {
   int msg_len =
     sizeof (virtchnl_ether_addr_list_t) +
@@ -749,17 +750,17 @@ avf_op_add_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count, u8 * macs)
   al->vsi_id = ad->vsi_id;
   al->num_elements = count;
 
-  avf_log_debug (ad, "add_eth_addr: vsi_id %u num_elements %u",
-		 ad->vsi_id, al->num_elements);
+  avf_log_debug (ad, "add_del_eth_addr: vsi_id %u num_elements %u is_add %u",
+		 ad->vsi_id, al->num_elements, is_add);
 
   for (i = 0; i < count; i++)
     {
       clib_memcpy_fast (&al->list[i].addr, macs + i * 6, 6);
-      avf_log_debug (ad, "add_eth_addr[%u]: %U", i,
+      avf_log_debug (ad, "add_del_eth_addr[%u]: %U", i,
 		     format_ethernet_address, &al->list[i].addr);
     }
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_ADD_ETH_ADDR, msg, msg_len, 0,
-			 0);
+  return avf_send_to_pf (vm, ad, is_add ? VIRTCHNL_OP_ADD_ETH_ADDR :
+			 VIRTCHNL_OP_ADD_ETH_ADDR, msg, msg_len, 0, 0);
 }
 
 clib_error_t *
@@ -1001,7 +1002,7 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
     avf_irq_n_set_state (ad, i, wb_on_itr ? AVF_IRQ_STATE_WB_ON_ITR :
 			 AVF_IRQ_STATE_ENABLED);
 
-  if ((error = avf_op_add_eth_addr (vm, ad, 1, ad->hwaddr)))
+  if ((error = avf_op_add_del_eth_addr (vm, ad, 1, ad->hwaddr, 1 /* add */ )))
     return error;
 
   if ((error = avf_op_enable_queues (vm, ad, pow2_mask (ad->n_rx_queues),
@@ -1187,6 +1188,35 @@ avf_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
   return 0;
 }
 
+static void
+avf_process_request (vlib_main_t * vm, avf_process_req_t * req)
+{
+  uword *event_data = 0;
+  req->calling_process_index = vlib_get_current_process_node_index (vm);
+  vlib_process_signal_event_pointer (vm, avf_process_node.index,
+				     AVF_PROCESS_EVENT_REQ, req);
+
+  vlib_process_wait_for_event_or_clock (vm, 5.0);
+
+  if (vlib_process_get_events (vm, &event_data) != 0)
+    clib_panic ("avf rocess node failed to reply in 5 seconds");
+  vec_free (event_data);
+}
+
+static void
+avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
+{
+  avf_device_t *ad = avf_get_device (req->dev_instance);
+
+  if (req->type == AVF_PROCESS_REQ_ADD_ETHER_ADDR ||
+      req->type == AVF_PROCESS_REQ_DEL_ETHER_ADDR)
+    {
+      int is_add = req->type == AVF_PROCESS_REQ_ADD_ETHER_ADDR;
+      avf_op_add_del_eth_addr (vm, ad, 1, req->eth_addr, is_add);
+    }
+  vlib_process_signal_event (vm, req->calling_process_index, 0, 0);
+}
+
 static uword
 avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
@@ -1245,6 +1275,10 @@ avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 		  clib_error_free (err);
 		}
 	    }
+	  break;
+	case AVF_PROCESS_EVENT_REQ:
+	  for (int i = 0; i < vec_len (event_data); i++)
+	    avf_process_handle_request (vm, (void *) event_data[i]);
 	  break;
 
 	default:
@@ -1701,6 +1735,23 @@ avf_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
     vlib_node_add_next (vlib_get_main (), avf_input_node.index, node_index);
 }
 
+static clib_error_t *
+avf_add_del_mac_address (vnet_hw_interface_t * hw,
+			 const u8 * address, u8 is_add)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  avf_process_req_t req;
+
+  req.dev_instance = hw->dev_instance;
+  req.type = (is_add ? AVF_PROCESS_REQ_ADD_ETHER_ADDR :
+	      AVF_PROCESS_REQ_ADD_ETHER_ADDR);
+  clib_memcpy (req.eth_addr, address, 6);
+
+  avf_process_request (vm, &req);
+
+  return 0;
+}
+
 static char *avf_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_avf_tx_func_error
@@ -1725,6 +1776,7 @@ VNET_DEVICE_CLASS (avf_device_class,) =
   .admin_up_down_function = avf_interface_admin_up_down,
   .rx_mode_change_function = avf_interface_rx_mode_change,
   .rx_redirect_to_node = avf_set_interface_next_node,
+  .mac_addr_add_del_function = avf_add_del_mac_address,
   .tx_function_n_errors = AVF_TX_N_ERROR,
   .tx_function_error_strings = avf_tx_func_error_strings,
 };
