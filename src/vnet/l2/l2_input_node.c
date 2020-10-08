@@ -53,7 +53,6 @@ typedef struct
 {
   /* per-pkt trace data */
   u8 dst_and_src[12];
-  u32 next_index;
   u32 sw_if_index;
   u32 feat_mask;
 } l2input_trace_t;
@@ -237,14 +236,12 @@ l2input_node_inline (vlib_main_t * vm,
 		     int do_trace)
 {
   u32 n_left, *from;
-  l2input_next_t next_index;
   l2input_main_t *msm = &l2input_main;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
 
   from = vlib_frame_vector_args (frame);
   n_left = frame->n_vectors;	/* number of packets to process */
-  next_index = node->cached_next_index;
 
   vlib_get_buffers (vm, from, bufs, n_left);
 
