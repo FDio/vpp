@@ -26,6 +26,7 @@ install(
     vppapigen_c.py
     vppapigen_json.py
     generate_json.py
+    vpp_json.py
   DESTINATION
     share/vpp
   COMPONENT

@@ -23,7 +23,15 @@ function(vpp_generate_api_c_header file)
   if (VPP_INCLUDE_DIR)
     set(includedir "--includedir" ${VPP_INCLUDE_DIR})
   endif()
-  add_custom_command (OUTPUT ${output_name}
+  add_custom_command (
+    OUTPUT ${output_name}
+    ${CMAKE_CURRENT_BINARY_DIR}/${file}_fromjson.h
+    ${CMAKE_CURRENT_BINARY_DIR}/${file}_tojson.h
+    ${CMAKE_CURRENT_BINARY_DIR}/${file}_enum.h
+    ${CMAKE_CURRENT_BINARY_DIR}/${file}_types.h
+    ${CMAKE_CURRENT_BINARY_DIR}/${file}.c
+    ${CMAKE_CURRENT_BINARY_DIR}/${file}_test.c
+    ${CMAKE_CURRENT_BINARY_DIR}/${file}_test2.c
     COMMAND mkdir -p ${output_dir}
     COMMAND ${VPP_APIGEN}
     ARGS ${includedir} --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} --outputdir ${output_dir} --output ${output_name}

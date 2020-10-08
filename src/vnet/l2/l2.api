@@ -315,7 +315,7 @@ typedef bridge_domain_sw_if
     @param bd_tag - optional textual tag for the bridge domain
     @param n_sw_ifs - number of sw_if_index's in the domain
 */
-manual_print manual_endian define bridge_domain_details
+define bridge_domain_details
 {
   u32 context;
   u32 bd_id;

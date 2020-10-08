@@ -124,7 +124,7 @@ autoreply define ip_table_flush
     @param context - sender context
     @param table - description of the table
 */
-manual_endian manual_print define ip_table_details
+define ip_table_details
 {
   u32 context;
   vl_api_ip_table_t table;
@@ -184,7 +184,7 @@ define ip_route_dump
 /** \brief IP FIB table entry response
     @param route The route entry in the table
 */
-manual_endian manual_print define ip_route_details
+define ip_route_details
 {
   u32 context;
   vl_api_ip_route_t route;
@@ -339,7 +339,7 @@ define ip_mroute_dump
 /** \brief IP Multicast Route Details
     @param route - Details of the route
 */
-manual_endian manual_print define ip_mroute_details
+define ip_mroute_details
 {
   u32 context;
   vl_api_ip_mroute_t route;
