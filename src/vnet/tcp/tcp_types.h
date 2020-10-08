@@ -80,8 +80,8 @@ typedef enum _tcp_timers
 
 #define TCP_TIMER_HANDLE_INVALID ((u32) ~0)
 
-#define TCP_TIMER_TICK		0.1		/**< Timer tick in seconds */
-#define TCP_TO_TIMER_TICK       TCP_TICK*10	/**< Factor for converting
+#define TCP_TIMER_TICK		0.001		/**< Timer tick in seconds */
+#define TCP_TO_TIMER_TICK       TCP_TICK*1000	/**< Factor for converting
 						     ticks to timer ticks */
 
 #define TCP_RTO_MAX 60 * THZ	/* Min max RTO (60s) as per RFC6298 */
