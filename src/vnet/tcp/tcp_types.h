@@ -79,8 +79,8 @@ typedef enum _tcp_timers
 
 #define TCP_TIMER_HANDLE_INVALID ((u32) ~0)
 
-#define TCP_TIMER_TICK		0.1		/**< Timer tick in seconds */
-#define TCP_TO_TIMER_TICK       TCP_TICK*10	/**< Factor for converting
+#define TCP_TIMER_TICK		0.0001		/**< Timer tick in seconds */
+#define TCP_TO_TIMER_TICK       TCP_TICK*10000	/**< Factor for converting
 						     ticks to timer ticks */
 
 #define TCP_RTO_MAX 60 * THZ	/* Min max RTO (60s) as per RFC6298 */
@@ -463,8 +463,8 @@ tcp_get_connection_from_transport (transport_connection_t * tconn)
 #undef TW_START_STOP_TRACE_SIZE
 
 #define TW_TIMER_WHEELS 2
-#define TW_SLOTS_PER_RING 512
-#define TW_RING_SHIFT 9
+#define TW_SLOTS_PER_RING 1024
+#define TW_RING_SHIFT 10
 #define TW_RING_MASK (TW_SLOTS_PER_RING -1)
 #define TW_TIMERS_PER_OBJECT 16
 #define LOG2_TW_TIMERS_PER_OBJECT 4
