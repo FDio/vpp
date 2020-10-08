@@ -390,7 +390,8 @@ _(bfd_events)                                   \
 _(l2_arp_term_events)                           \
 _(ip6_ra_events)                                \
 _(dhcp6_pd_reply_events)                        \
-_(dhcp6_reply_events)
+_(dhcp6_reply_events)				\
+_(vrrp_vr_events)
 
 typedef struct
 {

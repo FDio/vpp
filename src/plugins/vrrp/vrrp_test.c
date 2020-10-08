@@ -690,6 +690,38 @@ vl_api_vrrp_vr_peer_details_t_handler (vl_api_vrrp_vr_peer_details_t * mp)
   fformat (vam->ofp, "\n");
 }
 
+static int
+api_want_vrrp_vr_events (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_want_vrrp_vr_events_t *mp;
+  int enable = -1;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "enable"))
+	enable = 1;
+      else if (unformat (i, "disable"))
+	enable = 0;
+      else
+	break;
+    }
+
+  if (enable == -1)
+    {
+      errmsg ("missing enable|disable");
+      return -99;
+    }
+
+  M (WANT_VRRP_VR_EVENTS, mp);
+  mp->enable_disable = enable;
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
 #include <vrrp/vrrp.api_test.c>
 /*
  * fd.io coding-style-patch-verification: ON

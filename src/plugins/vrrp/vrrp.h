@@ -207,6 +207,7 @@ int vrrp_vr_tracking_if_add_del (vrrp_vr_t * vr, u32 sw_if_index,
 int vrrp_vr_tracking_ifs_add_del (vrrp_vr_t * vr,
 				  vrrp_vr_tracking_if_t * track_ifs,
 				  u8 is_add);
+void vrrp_vr_event (vrrp_vr_t * vr, vrrp_vr_state_t new_state);
 
 
 always_inline void
