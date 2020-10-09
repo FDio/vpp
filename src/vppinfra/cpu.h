@@ -167,21 +167,8 @@ _ (asimddp,    20) \
 _ (sha512,     21) \
 _ (sve,        22)
 
-static inline u32
-clib_get_current_cpu_id ()
-{
-  unsigned cpu, node;
-  syscall (__NR_getcpu, &cpu, &node, 0);
-  return cpu;
-}
-
-static inline u32
-clib_get_current_numa_node ()
-{
-  unsigned cpu, node;
-  syscall (__NR_getcpu, &cpu, &node, 0);
-  return node;
-}
+u32 clib_get_current_cpu_id ();
+u32 clib_get_current_numa_node ();
 
 #if defined(__x86_64__)
 #include "cpuid.h"

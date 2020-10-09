@@ -30,7 +30,6 @@
 #include <vppinfra/time.h>
 #include <vppinfra/format.h>
 #include <vppinfra/clib_error.h>
-#include <vppinfra/linux/syscall.h>
 #include <vppinfra/linux/sysfs.h>
 
 #ifndef F_LINUX_SPECIFIC_BASE
@@ -149,7 +148,7 @@ clib_mem_main_init ()
   mm->log2_page_sz = min_log2 (page_size);
 
   /* default system hugeppage size */
-  if ((fd = memfd_create ("test", MFD_HUGETLB)) != -1)
+  if ((fd = syscall (__NR_memfd_create, "test", MFD_HUGETLB)) != -1)
     {
       mm->log2_default_hugepage_sz = clib_mem_get_fd_log2_page_size (fd);
       close (fd);
@@ -169,7 +168,7 @@ clib_mem_main_init ()
   for (int i = 0; i < CLIB_MAX_NUMAS; i++)
     {
       int status;
-      if (move_pages (0, 1, &va, &i, &status, 0) == 0)
+      if (syscall (__NR_move_pages, 0, 1, &va, &i, &status, 0) == 0)
 	mm->numa_node_bitmap |= 1ULL << i;
     }
 
@@ -298,7 +297,7 @@ clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
   vec_add1 (s, 0);
 
   /* memfd_create introduced in kernel 3.17, we don't support older kernels */
-  fd = memfd_create ((char *) s, memfd_flags);
+  fd = syscall (__NR_memfd_create, (char *) s, memfd_flags);
 
   /* kernel versions < 4.14 does not support memfd_create for huge pages */
   if (fd == -1 && errno == EINVAL &&
@@ -568,7 +567,7 @@ clib_mem_get_page_stats (void *start, clib_mem_page_sz_t log2_page_size,
   stats->total = n_pages;
   stats->log2_page_sz = log2_page_size;
 
-  if (move_pages (0, n_pages, ptr, 0, status, 0) != 0)
+  if (syscall (__NR_move_pages, 0, n_pages, ptr, 0, status, 0) != 0)
     {
       stats->unknown = n_pages;
       goto done;
@@ -658,7 +657,8 @@ clib_mem_set_numa_affinity (u8 numa_node, int force)
 
   mask[0] = 1 << numa_node;
 
-  if (set_mempolicy (force ? MPOL_BIND : MPOL_PREFERRED, mask, mask_len))
+  if (syscall (__NR_set_mempolicy, force ? MPOL_BIND : MPOL_PREFERRED, mask,
+	       mask_len))
     goto error;
 
   vec_reset_length (mm->error);
@@ -675,7 +675,7 @@ clib_mem_set_default_numa_affinity ()
 {
   clib_mem_main_t *mm = &clib_mem_main;
 
-  if (set_mempolicy (MPOL_DEFAULT, 0, 0))
+  if (syscall (__NR_set_mempolicy, MPOL_DEFAULT, 0, 0))
     {
       vec_reset_length (mm->error);
       mm->error = clib_error_return_unix (mm->error, (char *) __func__);

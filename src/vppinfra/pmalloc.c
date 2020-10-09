@@ -19,16 +19,14 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <linux/mempolicy.h>
-#include <linux/memfd.h>
 #include <sched.h>
 
 #include <vppinfra/format.h>
-#include <vppinfra/linux/syscall.h>
 #include <vppinfra/linux/sysfs.h>
 #include <vppinfra/mem.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/pmalloc.h>
+#include <vppinfra/cpu.h>
 
 #if __SIZEOF_POINTER__ >= 8
 #define DEFAULT_RESERVED_MB 16384
@@ -46,18 +44,6 @@ static inline uword
 pmalloc_size2pages (uword size, u32 log2_page_sz)
 {
   return round_pow2 (size, 1ULL << log2_page_sz) >> log2_page_sz;
-}
-
-static inline int
-pmalloc_validate_numa_node (u32 * numa_node)
-{
-  if (*numa_node == CLIB_PMALLOC_NUMA_LOCAL)
-    {
-      u32 cpu;
-      if (getcpu (&cpu, numa_node) != 0)
-	return 1;
-    }
-  return 0;
 }
 
 __clib_export int
@@ -241,12 +227,10 @@ static inline clib_pmalloc_page_t *
 pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 		   u32 numa_node, u32 n_pages)
 {
+  clib_mem_page_stats_t stats = {};
   clib_pmalloc_page_t *pp = 0;
-  int status, rv, i, mmap_flags;
+  int rv, i, mmap_flags;
   void *va = MAP_FAILED;
-  int old_mpol = -1;
-  long unsigned int mask[16] = { 0 };
-  long unsigned int old_mask[16] = { 0 };
   uword size = (uword) n_pages << pm->def_log2_page_sz;
 
   clib_error_free (pm->error);
@@ -266,17 +250,8 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 	return 0;
     }
 
-  rv = get_mempolicy (&old_mpol, old_mask, sizeof (old_mask) * 8 + 1, 0, 0);
-  /* failure to get mempolicy means we can only proceed with numa 0 maps */
-  if (rv == -1 && numa_node != 0)
-    {
-      pm->error = clib_error_return_unix (0, "failed to get mempolicy");
-      return 0;
-    }
-
-  mask[0] = 1 << numa_node;
-  rv = set_mempolicy (MPOL_BIND, mask, sizeof (mask) * 8 + 1);
-  if (rv == -1 && numa_node != 0)
+  rv = clib_mem_set_numa_affinity (numa_node, /* force */ 1);
+  if (rv == CLIB_MEM_ERROR && numa_node != 0)
     {
       pm->error = clib_error_return_unix (0, "failed to set mempolicy for "
 					  "numa node %u", numa_node);
@@ -323,8 +298,8 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 
   clib_memset (va, 0, size);
 
-  rv = set_mempolicy (old_mpol, old_mask, sizeof (old_mask) * 8 + 1);
-  if (rv == -1 && numa_node != 0)
+  rv = clib_mem_set_default_numa_affinity ();
+  if (rv == CLIB_MEM_ERROR && numa_node != 0)
     {
       pm->error = clib_error_return_unix (0, "failed to restore mempolicy");
       goto error;
@@ -332,14 +307,23 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 
   /* we tolerate move_pages failure only if request os for numa node 0
      to support non-numa kernels */
-  rv = move_pages (0, 1, &va, 0, &status, 0);
-  if ((rv == 0 && status != numa_node) || (rv != 0 && numa_node != 0))
+  clib_mem_get_page_stats (va, CLIB_MEM_PAGE_SZ_DEFAULT, 1, &stats);
+
+  if (stats.per_numa[numa_node] != 1)
     {
-      pm->error = rv == -1 ?
-	clib_error_return_unix (0, "page allocated on wrong node, numa node "
-				"%u status %d", numa_node, status) :
-	clib_error_return (0, "page allocated on wrong node, numa node "
-			   "%u status %d", numa_node, status);
+      u16 allocated_at = ~0;
+      if (stats.unknown)
+	clib_error_return (0,
+			   "unable to get information about numa allocation");
+
+      for (u16 i = 0; i < CLIB_MAX_NUMAS; i++)
+	if (stats.per_numa[i] == 1)
+	  allocated_at = i;
+
+      clib_error_return (0,
+			 "page allocated on the wrong numa node (%u), "
+			 "expected %u",
+			 allocated_at, numa_node);
 
       goto error;
     }
@@ -407,8 +391,8 @@ clib_pmalloc_create_shared_arena (clib_pmalloc_main_t * pm, char *name,
   if (n_pages + vec_len (pm->pages) > pm->max_pages)
     return 0;
 
-  if (pmalloc_validate_numa_node (&numa_node))
-    return 0;
+  if (numa_node == CLIB_PMALLOC_NUMA_LOCAL)
+    numa_node = clib_get_current_numa_node ();
 
   pool_get (pm->arenas, a);
   a->index = a - pm->arenas;
@@ -438,8 +422,8 @@ clib_pmalloc_alloc_inline (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 
   ASSERT (is_pow2 (align));
 
-  if (pmalloc_validate_numa_node (&numa_node))
-    return 0;
+  if (numa_node == CLIB_PMALLOC_NUMA_LOCAL)
+    numa_node = clib_get_current_numa_node ();
 
   if (a == 0)
     {

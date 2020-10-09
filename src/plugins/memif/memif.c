@@ -33,7 +33,6 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
-#include <vppinfra/linux/syscall.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
