@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d69002ea_bbbeba67",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 764,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-10-09T03:04:04Z",
+      "side": 1,
+      "message": "I think the second VIRTCHNL_OP_ADD_ETH_ADDR should be VIRTCHNL_OP_DEL_ETH_ADDR",
+      "revId": "67842d1c305204ee4449987f802ce4d601fbce9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
