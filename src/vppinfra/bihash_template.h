@@ -34,7 +34,6 @@
 #endif
 
 #ifdef BIHASH_32_64_SVM
-#undef HAVE_MEMFD_CREATE
 #include <vppinfra/linux/syscall.h>
 #include <fcntl.h>
 #define F_LINUX_SPECIFIC_BASE 1024

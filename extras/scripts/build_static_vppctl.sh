@@ -11,8 +11,6 @@ ${CC:-cc} \
  -static \
  -I ${src} \
  -I ${tmp} \
- -DHAVE_MEMFD_CREATE \
- -DHAVE_GETCPU \
  ${src}/vppinfra/backtrace.c \
  ${src}/vppinfra/dlmalloc.c \
  ${src}/vppinfra/elf.c \

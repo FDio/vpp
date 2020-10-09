@@ -63,8 +63,6 @@
 
 #include <vppinfra/time.h>
 #if __linux__
-#include <vppinfra/linux/syscall.h>
-
 #ifdef AF_NETLINK
 #include <linux/types.h>
 #include <linux/netlink.h>

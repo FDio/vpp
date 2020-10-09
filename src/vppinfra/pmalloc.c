@@ -24,11 +24,11 @@
 #include <sched.h>
 
 #include <vppinfra/format.h>
-#include <vppinfra/linux/syscall.h>
 #include <vppinfra/linux/sysfs.h>
 #include <vppinfra/mem.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/pmalloc.h>
+#include <vppinfra/cpu.h>
 
 #if __SIZEOF_POINTER__ >= 8
 #define DEFAULT_RESERVED_MB 16384
@@ -46,18 +46,6 @@ static inline uword
 pmalloc_size2pages (uword size, u32 log2_page_sz)
 {
   return round_pow2 (size, 1ULL << log2_page_sz) >> log2_page_sz;
-}
-
-static inline int
-pmalloc_validate_numa_node (u32 * numa_node)
-{
-  if (*numa_node == CLIB_PMALLOC_NUMA_LOCAL)
-    {
-      u32 cpu;
-      if (getcpu (&cpu, numa_node) != 0)
-	return 1;
-    }
-  return 0;
 }
 
 __clib_export int
@@ -266,7 +254,8 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 	return 0;
     }
 
-  rv = get_mempolicy (&old_mpol, old_mask, sizeof (old_mask) * 8 + 1, 0, 0);
+  rv = syscall (__NR_get_mempolicy, &old_mpol, old_mask,
+		sizeof (old_mask) * 8 + 1, 0, 0);
   /* failure to get mempolicy means we can only proceed with numa 0 maps */
   if (rv == -1 && numa_node != 0)
     {
@@ -275,7 +264,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
     }
 
   mask[0] = 1 << numa_node;
-  rv = set_mempolicy (MPOL_BIND, mask, sizeof (mask) * 8 + 1);
+  rv = syscall (__NR_set_mempolicy, MPOL_BIND, mask, sizeof (mask) * 8 + 1);
   if (rv == -1 && numa_node != 0)
     {
       pm->error = clib_error_return_unix (0, "failed to set mempolicy for "
@@ -323,7 +312,8 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 
   clib_memset (va, 0, size);
 
-  rv = set_mempolicy (old_mpol, old_mask, sizeof (old_mask) * 8 + 1);
+  rv = syscall (__NR_set_mempolicy, old_mpol, old_mask,
+		sizeof (old_mask) * 8 + 1);
   if (rv == -1 && numa_node != 0)
     {
       pm->error = clib_error_return_unix (0, "failed to restore mempolicy");
@@ -332,7 +322,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 
   /* we tolerate move_pages failure only if request os for numa node 0
      to support non-numa kernels */
-  rv = move_pages (0, 1, &va, 0, &status, 0);
+  rv = syscall (__NR_move_pages, 0, 1, &va, 0, &status, 0);
   if ((rv == 0 && status != numa_node) || (rv != 0 && numa_node != 0))
     {
       pm->error = rv == -1 ?
@@ -407,8 +397,8 @@ clib_pmalloc_create_shared_arena (clib_pmalloc_main_t * pm, char *name,
   if (n_pages + vec_len (pm->pages) > pm->max_pages)
     return 0;
 
-  if (pmalloc_validate_numa_node (&numa_node))
-    return 0;
+  if (numa_node == CLIB_PMALLOC_NUMA_LOCAL)
+    numa_node = clib_get_current_numa_node ();
 
   pool_get (pm->arenas, a);
   a->index = a - pm->arenas;
@@ -438,8 +428,8 @@ clib_pmalloc_alloc_inline (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 
   ASSERT (is_pow2 (align));
 
-  if (pmalloc_validate_numa_node (&numa_node))
-    return 0;
+  if (numa_node == CLIB_PMALLOC_NUMA_LOCAL)
+    numa_node = clib_get_current_numa_node ();
 
   if (a == 0)
     {

@@ -272,7 +272,7 @@ void BV (clib_bihash_initiator_init_svm)
 
   ASSERT (memory_size < (1ULL << 32));
   /* Set up for memfd sharing */
-  if ((fd = memfd_create (name, MFD_ALLOW_SEALING)) == -1)
+  if ((fd = clib_mem_vm_create_fd (CLIB_MEM_PAGE_SZ_DEFAULT, name) == -1)
     {
       clib_unix_warning ("memfd_create");
       return;
