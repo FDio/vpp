@@ -18,9 +18,11 @@ add_vpp_plugin(acl
   lookup_context.c
   sess_mgmt_node.c
   dataplane_node.c
+  dataplane_node_nonip.c
 
   MULTIARCH_SOURCES
   dataplane_node.c
+  dataplane_node_nonip.c
 
   API_FILES
   acl.api
