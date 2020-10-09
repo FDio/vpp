@@ -825,6 +825,17 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+enum {
+	ACL_NODE_IS_IP6 =        1 << 0,
+	ACL_NODE_IS_INPUT =      1 << 1,
+	ACL_NODE_IS_L2_PATH =    1 << 2,
+	ACL_NODE_IS_STATEFUL =   1 << 3,
+	ACL_NODE_IS_TRACE =      1 << 4,
+	ACL_NODE_IS_RECLASSIFY = 1 << 5,
+};
+
+#include "dataplane-gen.c"
+
 always_inline uword
 acl_fa_outer_node_fn (vlib_main_t * vm,
 		      vlib_node_runtime_t * node, vlib_frame_t * frame,
@@ -832,33 +843,17 @@ acl_fa_outer_node_fn (vlib_main_t * vm,
 		      int do_stateful_datapath)
 {
   acl_main_t *am = &acl_main;
+  uword func_selector = 0;
 
-  acl_fa_node_common_prepare_fn (vm, node, frame, is_ip6, is_input,
-				 is_l2_path, do_stateful_datapath);
+  func_selector |= is_ip6 ? ACL_NODE_IS_IP6 : 0;
+  func_selector |= is_input ? ACL_NODE_IS_INPUT : 0;
+  func_selector |= is_l2_path ? ACL_NODE_IS_L2_PATH : 0;
+  func_selector |= do_stateful_datapath ? ACL_NODE_IS_STATEFUL : 0;
 
-  if (am->reclassify_sessions)
-    {
-      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-	return acl_fa_inner_node_fn (vm, node, frame, is_ip6, is_input,
-				     is_l2_path, do_stateful_datapath,
-				     1 /* trace */ ,
-				     1 /* reclassify */ );
-      else
-	return acl_fa_inner_node_fn (vm, node, frame, is_ip6, is_input,
-				     is_l2_path, do_stateful_datapath, 0,
-				     1 /* reclassify */ );
-    }
-  else
-    {
-      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-	return acl_fa_inner_node_fn (vm, node, frame, is_ip6, is_input,
-				     is_l2_path, do_stateful_datapath,
-				     1 /* trace */ ,
-				     0);
-      else
-	return acl_fa_inner_node_fn (vm, node, frame, is_ip6, is_input,
-				     is_l2_path, do_stateful_datapath, 0, 0);
-    }
+  func_selector |= (node->flags & VLIB_NODE_FLAG_TRACE) ? ACL_NODE_IS_TRACE : 0;
+  func_selector |= am->reclassify_sessions ? ACL_NODE_IS_RECLASSIFY : 0;
+
+  return acl_fa_node_function(vm, node, frame, func_selector);
 }
 
 always_inline uword
