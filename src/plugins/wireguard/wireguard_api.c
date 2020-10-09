@@ -43,6 +43,8 @@ static void
   u32 sw_if_index = ~0;
   int rv = 0;
 
+  wg_feature_init (wmp);
+
   ip_address_decode2 (&mp->interface.src_ip, &src);
 
   if (AF_IP6 == ip_addr_version (&src))
@@ -74,6 +76,8 @@ static void
   vl_api_wireguard_interface_delete_reply_t *rmp;
   wg_main_t *wmp = &wg_main;
   int rv = 0;
+
+  wg_feature_init (wmp);
 
   VALIDATE_SW_IF_INDEX (mp);
 
@@ -125,6 +129,9 @@ vl_api_wireguard_interface_dump_t_handler (vl_api_wireguard_interface_dump_t *
 					   mp)
 {
   vl_api_registration_t *reg;
+  wg_main_t *wmp = &wg_main;
+
+  wg_feature_init (wmp);
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (reg == 0)
@@ -156,6 +163,8 @@ vl_api_wireguard_peer_add_t_handler (vl_api_wireguard_peer_add_t * mp)
       rv = VNET_API_ERROR_INVALID_VALUE;
       goto done;
     }
+
+  wg_feature_init (wmp);
 
   vec_validate (allowed_ips, mp->peer.n_allowed_ips - 1);
   ip_address_decode2 (&mp->peer.endpoint, &endpoint);
@@ -194,6 +203,8 @@ vl_api_wireguard_peer_remove_t_handler (vl_api_wireguard_peer_remove_t * mp)
   vl_api_wireguard_peer_remove_reply_t *rmp;
   wg_main_t *wmp = &wg_main;
   int rv = 0;
+
+  wg_feature_init (wmp);
 
   rv = wg_peer_remove (ntohl (mp->peer_index));
 
@@ -247,6 +258,9 @@ static void
 vl_api_wireguard_peers_dump_t_handler (vl_api_wireguard_peers_dump_t * mp)
 {
   vl_api_registration_t *reg;
+  wg_main_t *wmp = &wg_main;
+
+  wg_feature_init (wmp);
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (reg == NULL)

@@ -334,7 +334,6 @@ wg_timer_wheel_init ()
   tw_timer_wheel_init_16t_2w_512sl (tw,
 				    expired_timer_callback,
 				    WG_TICK /* timer period in s */ , ~0);
-  tw->last_run_time = vlib_time_now (wmp->vlib_main);
 }
 
 static uword
@@ -342,6 +341,28 @@ wg_timer_mngr_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		  vlib_frame_t * f)
 {
   wg_main_t *wmp = &wg_main;
+  uword event_type = 0;
+
+  /* Park the process until the feature is configured */
+  while (1)
+    {
+      vlib_process_wait_for_event (vm);
+      event_type = vlib_process_get_events (vm, 0);
+      if (event_type == WG_START_EVENT)
+	{
+	  break;
+	}
+      else
+	{
+	  clib_warning ("Unknown event type %d", event_type);
+	}
+    }
+  /*
+   * Reset the timer wheel time so it won't try to
+   * expire Avogadro's number of time slots.
+   */
+  wmp->timer_wheel.last_run_time = vlib_time_now (vm);
+
   while (1)
     {
       vlib_process_wait_for_event_or_clock (vm, WG_TICK);
@@ -376,6 +397,18 @@ VLIB_REGISTER_NODE (wg_timer_mngr_node, static) = {
     "wg-timer-manager",
 };
 /* *INDENT-ON* */
+
+void
+wg_feature_init (wg_main_t * wmp)
+{
+  if (wmp->feature_init)
+    return;
+  vlib_process_signal_event (wmp->vlib_main, wg_timer_mngr_node.index,
+			     WG_START_EVENT, 0);
+  wmp->feature_init = 1;
+}
+
+
 
 /*
  * fd.io coding-style-patch-verification: ON

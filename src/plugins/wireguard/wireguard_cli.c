@@ -23,6 +23,7 @@ static clib_error_t *
 wg_if_create_cli (vlib_main_t * vm,
 		  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  wg_main_t *wmp = &wg_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 private_key[NOISE_PUBLIC_KEY_LEN];
   u32 instance, sw_if_index;
@@ -36,6 +37,8 @@ wg_if_create_cli (vlib_main_t * vm,
   instance = sw_if_index = ~0;
   private_key_64 = 0;
   port = 0;
+
+  wg_feature_init (wmp);
 
   if (unformat_user (input, unformat_line_input, line_input))
     {
@@ -104,9 +107,12 @@ static clib_error_t *
 wg_if_delete_cli (vlib_main_t * vm,
 		  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  wg_main_t *wmp = &wg_main;
   vnet_main_t *vnm;
   u32 sw_if_index;
   int rv;
+
+  wg_feature_init (wmp);
 
   vnm = vnet_get_main ();
   sw_if_index = ~0;
@@ -151,6 +157,7 @@ wg_peer_add_command_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
+  wg_main_t *wmp = &wg_main;
   clib_error_t *error = NULL;
   unformat_input_t _line_input, *line_input = &_line_input;
 
@@ -167,6 +174,8 @@ wg_peer_add_command_fn (vlib_main_t * vm,
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
+
+  wg_feature_init (wmp);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -259,6 +268,7 @@ static clib_error_t *
 wg_peer_remove_command_fn (vlib_main_t * vm,
 			   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  wg_main_t *wmp = &wg_main;
   clib_error_t *error = NULL;
   u32 peer_index;
   int rv;
@@ -266,6 +276,8 @@ wg_peer_remove_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
+
+  wg_feature_init (wmp);
 
   if (unformat (line_input, "%d", &peer_index))
     ;
@@ -336,6 +348,10 @@ static clib_error_t *
 wg_show_if_command_fn (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  wg_main_t *wmp = &wg_main;
+
+  wg_feature_init (wmp);
+
   wg_if_walk (wg_if_show_one, vm);
 
   return NULL;

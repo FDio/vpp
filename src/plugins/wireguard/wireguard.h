@@ -41,11 +41,15 @@ typedef struct
   u32 out_fq_index;
 
   wg_per_thread_data_t *per_thread_data;
+  u8 feature_init;
 
   tw_timer_wheel_16t_2w_512sl_t timer_wheel;
 } wg_main_t;
 
 extern wg_main_t wg_main;
+
+#define WG_START_EVENT	1
+void wg_feature_init (wg_main_t * wmp);
 
 #endif /* __included_wg_h__ */
 
