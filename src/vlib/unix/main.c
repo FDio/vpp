@@ -93,8 +93,8 @@ unsetup_signal_handlers (int sig)
     dangerous to vec_resize it when crashing, mheap itself might have been
     corrupted already */
 static u8 *syslog_msg = 0;
-static int last_signum = 0;
-static uword last_faulting_address = 0;
+int vlib_last_signum = 0;
+uword vlib_last_faulting_address = 0;
 
 static void
 unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
@@ -102,8 +102,8 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
   uword fatal = 0;
 
   /* These come in handy when looking at core files from optimized images */
-  last_signum = signum;
-  last_faulting_address = (uword) si->si_addr;
+  vlib_last_signum = signum;
+  vlib_last_faulting_address = (uword) si->si_addr;
 
   syslog_msg = format (syslog_msg, "received signal %U, PC %U",
 		       format_signal, signum, format_ucontext_pc, uc);
