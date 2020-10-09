@@ -591,11 +591,12 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
     return;
 
   delivered = tc->bytes_acked + tc->sack_sb.last_sacked_bytes;
+  /* Do not count bytes that were previously sacked again */
+  delivered -= tc->sack_sb.last_bytes_delivered;
   if (!delivered || tc->bt->head == TCP_BTS_INVALID_INDEX)
     return;
 
-  /* Do not count bytes that were previously sacked again */
-  tc->delivered += delivered - tc->sack_sb.last_bytes_delivered;
+  tc->delivered += delivered;
   tc->delivered_time = tcp_time_now_us (tc->c_thread_index);
 
   if (tc->app_limited && tc->delivered > tc->app_limited)
