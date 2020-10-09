@@ -57,7 +57,6 @@ wg_birthdate_has_expired (f64 birthday_seconds, f64 expiration_seconds)
   return (birthday_seconds + expiration_seconds) < now_seconds;
 }
 
-
 #endif /* __included_wg_timer_h__ */
 
 /*
