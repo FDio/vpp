@@ -21,16 +21,19 @@ ipsec-mb_tarball_strip_dirs  := 1
 ipsec-mb_depends             := nasm
 ipsec-mb_url                 := http://github.com/01org/intel-ipsec-mb/archive/$(ipsec-mb_tarball)
 
-define  ipsec-mb_config_cmds
-	@true
-endef
+HAVE_SSE42=$(filter-out 0,$(shell grep sse4_2 /proc/cpuinfo | wc -l))
+SEE42_FLAG+=$(if $(HAVE_SSE42),-msse4.2)
 
-define  ipsec-mb_build_cmds
+define  ipsec-mb_config_cmds
 	@make -C $(ipsec-mb_src_dir) -j \
 	  SHARED=n \
 	  PREFIX=$(ipsec-mb_install_dir) \
 	  NASM=$(ipsec-mb_install_dir)/bin/nasm \
-	  EXTRA_CFLAGS="-g -msse4.2" > $(ipsec-mb_build_log)
+	  EXTRA_CFLAGS="-g $(SSE42_FLAG)" > $(ipsec-mb_build_log)
+endef
+
+define  ipsec-mb_build_cmds
+	@true
 endef
 
 define  ipsec-mb_install_cmds
