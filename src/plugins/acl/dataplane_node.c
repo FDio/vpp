@@ -326,7 +326,7 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 		      int with_stateful_datapath, int node_trace_on,
 		      int reclassify_sessions)
 {
-  u32 n_left, *from;
+  u32 n_left;
   u32 pkts_exist_session = 0;
   u32 pkts_new_session = 0;
   u32 pkts_acl_permit = 0;
@@ -349,7 +349,6 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
   u32 saved_packet_count = 0;
   u32 saved_byte_count = 0;
 
-  from = vlib_frame_vector_args (frame);
   error_node = vlib_node_get_runtime (vm, node->node_index);
   no_error_existing_session =
     error_node->errors[ACL_FA_ERROR_ACL_EXIST_SESSION];
@@ -579,8 +578,6 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 	}
     }
 
-  vlib_buffer_enqueue_to_next (vm, node, from, pw->nexts, frame->n_vectors);
-
   /*
    * if we were had an acl match then we have a counter to increment.
    * else it is all zeroes, so this will be harmless.
@@ -647,13 +644,19 @@ acl_fa_node_fn (vlib_main_t * vm,
 {
   /* select the reclassify/no-reclassify version of the datapath */
   acl_main_t *am = &acl_main;
+  acl_fa_per_worker_data_t *pw = &am->per_worker_data[vm->thread_index];
+  uword rv;
 
   if (am->fa_sessions_hash_is_initialized)
-    return acl_fa_outer_node_fn (vm, node, frame, is_ip6, is_input,
-				 is_l2_path, 1);
+    rv = acl_fa_outer_node_fn (vm, node, frame, is_ip6, is_input,
+			       is_l2_path, 1);
   else
-    return acl_fa_outer_node_fn (vm, node, frame, is_ip6, is_input,
-				 is_l2_path, 0);
+    rv = acl_fa_outer_node_fn (vm, node, frame, is_ip6, is_input,
+			       is_l2_path, 0);
+
+  vlib_buffer_enqueue_to_next (vm, node, vlib_frame_vector_args (frame),
+			       pw->nexts, frame->n_vectors);
+  return rv;
 }
 
 
