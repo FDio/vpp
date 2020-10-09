@@ -22,6 +22,30 @@
       "revId": "1d27dc42cf4fa27d72636455f4fbdb512295e66a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "02a5e7db_a1d4bb02",
+        "filename": "src/vcl/vcl_locked.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-10-09T06:01:49Z",
+      "side": 1,
+      "message": "fixed!",
+      "parentUuid": "f5045c98_f8e6a4de",
+      "range": {
+        "startLine": 55,
+        "startChar": 5,
+        "endLine": 55,
+        "endChar": 15
+      },
+      "revId": "1d27dc42cf4fa27d72636455f4fbdb512295e66a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
