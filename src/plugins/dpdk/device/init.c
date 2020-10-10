@@ -476,10 +476,20 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      break;
 	    case VNET_DPDK_PMD_CXGBE:
 	    case VNET_DPDK_PMD_MLX4:
-	    case VNET_DPDK_PMD_MLX5:
 	    case VNET_DPDK_PMD_QEDE:
 	    case VNET_DPDK_PMD_BNXT:
 	      xd->port_type = port_type_from_speed_capa (&dev_info);
+	      break;
+
+	    case VNET_DPDK_PMD_MLX5:
+	      xd->port_type = port_type_from_speed_capa (&dev_info);
+
+	      if (dm->conf->no_tx_checksum_offload == 0)
+		{
+		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD;
+		}
 	      break;
 
 	      /* SR-IOV VFs */
