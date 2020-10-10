@@ -810,12 +810,14 @@ format_app_worker_listener (u8 * s, va_list * args)
     {
       u8 *buf;
       buf = format (0, "%u(%u)", app_wrk->wrk_map_index, app_wrk->wrk_index);
-      s = format (s, "%-40s%-25s%=10v%-15u%-15u%-10u", str, app_name,
+      s = format (s, "%-40v%-25v%=10v%-15u%-15u%-10u", str, app_name,
 		  buf, app_wrk->api_client_index, handle, sm_index);
       vec_free (buf);
     }
   else
-    s = format (s, "%-40s%-25s%=10u", str, app_name, app_wrk->wrk_map_index);
+    s = format (s, "%-40v%-25v%=10u", str, app_name, app_wrk->wrk_map_index);
+
+  vec_free (str);
 
   return s;
 }
