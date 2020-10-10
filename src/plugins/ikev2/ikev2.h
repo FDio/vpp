@@ -44,6 +44,11 @@ typedef CLIB_PACKED (struct {
 }) ike_header_t;
 /* *INDENT-ON* */
 
+#define ike_hdr_is_response(_h) ((_h)->flags & IKEV2_HDR_FLAG_RESPONSE)
+#define ike_hdr_is_request(_h) (!ike_hdr_is_response(_h))
+#define ike_hdr_is_initiator(_h) ((_h)->flags & IKEV2_HDR_FLAG_INITIATOR)
+#define ike_hdr_is_responder(_h) (!(ike_hdr_is_initiator(_h)))
+
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 nextpayload;
