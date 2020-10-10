@@ -400,10 +400,12 @@ typedef struct
   u8 *last_sa_init_res_packet_data;
 
   /* retransmit */
+  /* message id expected in the request from the other peer */
   u32 last_msg_id;
   u8 *last_res_packet_data;
 
   u8 is_initiator;
+  /* last message id that was used for an initiated request */
   u32 last_init_msg_id;
   u32 profile_index;
   u8 is_tun_itf_set;

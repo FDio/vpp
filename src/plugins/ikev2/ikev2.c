@@ -2353,7 +2353,7 @@ ikev2_generate_message (vlib_buffer_t * b, ikev2_sa_t * sa,
 	{
 	  if (sa->del[0].protocol_id == IKEV2_PROTOCOL_IKE)
 	    {
-	      if (sa->is_initiator)
+	      if (ike_hdr_is_request (ike))
 		ikev2_payload_add_delete (chain, sa->del);
 
 	      /* The response to a request that deletes the IKE SA is an empty
@@ -2447,16 +2447,14 @@ ikev2_generate_message (vlib_buffer_t * b, ikev2_sa_t * sa,
   ike->version = IKE_VERSION_2;
   ike->nextpayload = IKEV2_PAYLOAD_SK;
   tlen = sizeof (*ike);
+
   if (sa->is_initiator)
+    ike->flags |= IKEV2_HDR_FLAG_INITIATOR;
+
+  if (ike_hdr_is_request (ike))
     {
-      ike->flags = IKEV2_HDR_FLAG_INITIATOR;
       sa->last_init_msg_id = clib_net_to_host_u32 (ike->msgid);
     }
-  else
-    {
-      ike->flags = IKEV2_HDR_FLAG_RESPONSE;
-    }
-
 
   if (ike->exchange == IKEV2_EXCHANGE_SA_INIT)
     {
@@ -2639,6 +2637,9 @@ ikev2_retransmit_sa_init (ike_header_t * ike, ip_address_t iaddr,
 static u32
 ikev2_retransmit_resp (ikev2_sa_t * sa, ike_header_t * ike)
 {
+  if (ike_hdr_is_response (ike))
+    return 0;
+
   u32 msg_id = clib_net_to_host_u32 (ike->msgid);
 
   /* new req */
@@ -2853,7 +2854,7 @@ ikev2_node_internal (vlib_main_t * vm,
 	  sa0 = &sa;
 	  clib_memset (sa0, 0, sizeof (*sa0));
 
-	  if (ike0->flags & IKEV2_HDR_FLAG_INITIATOR)
+	  if (ike_hdr_is_initiator (ike0))
 	    {
 	      if (ike0->rspi == 0)
 		{
@@ -2899,6 +2900,7 @@ ikev2_node_internal (vlib_main_t * vm,
 		  if (sa0->state == IKEV2_STATE_SA_INIT
 		      || sa0->state == IKEV2_STATE_NOTIFY_AND_DELETE)
 		    {
+		      ike0->flags = IKEV2_HDR_FLAG_RESPONSE;
 		      slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
 		      if (~0 == slen)
 			vlib_node_increment_counter (vm, node->node_index,
@@ -2946,6 +2948,7 @@ ikev2_node_internal (vlib_main_t * vm,
 			  ikev2_complete_sa_data (sa0, sai);
 			  ikev2_calc_keys (sa0);
 			  ikev2_sa_auth_init (sa0);
+			  ike0->flags = IKEV2_HDR_FLAG_INITIATOR;
 			  slen =
 			    ikev2_generate_message (b0, sa0, ike0, 0, udp0);
 			  if (~0 == slen)
@@ -3087,9 +3090,9 @@ ikev2_node_internal (vlib_main_t * vm,
 			}
 		    }
 		}
-	      if (!(ike0->flags & IKEV2_HDR_FLAG_RESPONSE))
+	      if (ike_hdr_is_request (ike0))
 		{
-		  ike0->flags |= IKEV2_HDR_FLAG_RESPONSE;
+		  ike0->flags = IKEV2_HDR_FLAG_RESPONSE;
 		  slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
 		  if (~0 == slen)
 		    vlib_node_increment_counter (vm, node->node_index,
@@ -3150,6 +3153,7 @@ ikev2_node_internal (vlib_main_t * vm,
 		    }
 		  else
 		    {
+		      ike0->flags = IKEV2_HDR_FLAG_RESPONSE;
 		      slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
 		      if (~0 == slen)
 			vlib_node_increment_counter (vm, node->node_index,
@@ -3616,7 +3620,7 @@ ikev2_initiate_delete_ike_sa_internal (vlib_main_t * vm,
       ike0->exchange = IKEV2_EXCHANGE_INFORMATIONAL;
       ike0->ispi = clib_host_to_net_u64 (sa->ispi);
       ike0->rspi = clib_host_to_net_u64 (sa->rspi);
-
+      ike0->flags = 0;
       ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id + 1);
       sa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
       len = ikev2_generate_message (b0, sa, ike0, 0, 0);
@@ -4270,6 +4274,7 @@ ikev2_delete_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   ike0->exchange = IKEV2_EXCHANGE_INFORMATIONAL;
   ike0->ispi = clib_host_to_net_u64 (sa->ispi);
   ike0->rspi = clib_host_to_net_u64 (sa->rspi);
+  ike0->flags = 0;
   vec_resize (sa->del, 1);
   sa->del->protocol_id = IKEV2_PROTOCOL_ESP;
   sa->del->spi = csa->i_proposals->spi;
@@ -4838,6 +4843,7 @@ ikev2_send_informational_request (ikev2_sa_t * sa)
   ike0->ispi = clib_host_to_net_u64 (sa->ispi);
   ike0->rspi = clib_host_to_net_u64 (sa->rspi);
   ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id + 1);
+  ike0->flags = 0;
   sa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
   len = ikev2_generate_message (b0, sa, ike0, 0, 0);
   if (~0 == len)
