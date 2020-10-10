@@ -13,7 +13,7 @@
 
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
-set(CMAKE_C_COMPILER_NAMES clang-10 clang-9 gcc-9 cc)
+set(CMAKE_C_COMPILER_NAMES clang-11 clang-10 clang-9 gcc-10 gcc-9 cc)
 
 project(vpp C)
 
