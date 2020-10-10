@@ -195,6 +195,9 @@ ipsec_add_del_policy (vlib_main_t * vm,
 	if (ipsec_policy_is_equal (vp, policy))
 	  {
 	    vec_del1 (spd->policies[policy->type], ii);
+	    if (vec_len (spd->policies[policy->type]) > 1)
+	      vec_sort_with_function (spd->policies[policy->type],
+				      ipsec_spd_entry_sort);
 	    ipsec_sa_unlock (vp->sa_index);
 	    pool_put (im->policies, vp);
 	    break;
