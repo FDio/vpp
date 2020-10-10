@@ -74,8 +74,8 @@ typedef struct
 {
   u32 buffer_index;
   u32 sw_if_index;
-  vlib_buffer_t buffer;
   generic_header_offset_t gho;
+  vlib_buffer_t buffer;
 } virtio_tx_trace_t;
 
 static u8 *

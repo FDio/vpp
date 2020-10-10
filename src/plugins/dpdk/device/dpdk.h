@@ -357,8 +357,8 @@ typedef struct
   u8 queue_index;
   struct rte_mbuf mb;
   /* Copy of VLIB buffer; packet data stored in pre_data. */
-  vlib_buffer_t buffer;
   u8 data[256];			/* First 256 data bytes, used for hexdump */
+  vlib_buffer_t buffer;
 } dpdk_tx_trace_t;
 
 typedef struct
@@ -367,8 +367,8 @@ typedef struct
   u16 device_index;
   u16 queue_index;
   struct rte_mbuf mb;
-  vlib_buffer_t buffer;		/* Copy of VLIB buffer; pkt data stored in pre_data. */
   u8 data[256];			/* First 256 data bytes, used for hexdump */
+  vlib_buffer_t buffer;		/* Copy of VLIB buffer; pkt data stored in pre_data. */
 } dpdk_rx_trace_t;
 
 void dpdk_device_setup (dpdk_device_t * xd);

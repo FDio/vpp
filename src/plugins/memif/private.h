@@ -226,8 +226,8 @@ typedef struct
   u32 *buffers;
 
   /* buffer template */
-  vlib_buffer_t buffer_template;
   memif_desc_t desc_template;
+  vlib_buffer_t buffer_template;
 } memif_per_thread_data_t;
 
 typedef struct
