@@ -402,8 +402,8 @@ clib_error_t *pg_capture (pg_capture_args_t * a);
 
 typedef struct
 {
-  vlib_buffer_t buffer;
   u32 buffer_index;
+  vlib_buffer_t buffer;
 }
 pg_output_trace_t;
 
