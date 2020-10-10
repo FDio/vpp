@@ -231,14 +231,14 @@ ssvm_server_init_memfd (ssvm_private_t * memfd)
 
   if (memfd->fd == CLIB_MEM_ERROR)
     {
-      clib_unix_warning (0, "failed to create memfd");
+      clib_unix_warning ("failed to create memfd");
       return SSVM_API_ERROR_CREATE_FAILURE;
     }
 
   log2_page_size = clib_mem_get_fd_log2_page_size (memfd->fd);
   if (log2_page_size == 0)
     {
-      clib_unix_warning (0, "cannot determine page size");
+      clib_unix_warning ("cannot determine page size");
       return SSVM_API_ERROR_CREATE_FAILURE;
     }
 
@@ -246,7 +246,7 @@ ssvm_server_init_memfd (ssvm_private_t * memfd)
 
   if ((ftruncate (memfd->fd, n_pages << log2_page_size)) == -1)
     {
-      clib_unix_warning (0, "memfd ftruncate failure");
+      clib_unix_warning ("memfd ftruncate failure");
       return SSVM_API_ERROR_CREATE_FAILURE;
     }
 
@@ -367,7 +367,7 @@ ssvm_server_init_private (ssvm_private_t * ssvm)
   log2_page_size = clib_mem_get_log2_page_size ();
   if (log2_page_size == 0)
     {
-      clib_unix_warning (0, "cannot determine page size");
+      clib_unix_warning ("cannot determine page size");
       return SSVM_API_ERROR_CREATE_FAILURE;
     }
 
