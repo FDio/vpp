@@ -1034,10 +1034,10 @@ segment_manager_format_sessions (segment_manager_t * sm, int verbose)
             str = format (0, "%U", format_session, session, verbose);
 
             if (verbose)
-              s = format (s, "%-40s%-20s%-15u%-10u", str, app_name,
+              s = format (s, "%-40v%-20v%-15u%-10u", str, app_name,
                           app_wrk->api_client_index, app_wrk->connects_seg_manager);
             else
-              s = format (s, "%-40s%-20s", str, app_name);
+              s = format (s, "%-40v%-20v", str, app_name);
 
             vlib_cli_output (vm, "%v", s);
             vec_reset_length (s);
