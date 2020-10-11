@@ -2575,6 +2575,12 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  lc = tcp_lookup_listener (b, tc->c_fib_index, is_ip4);
 	  /* clean up the old session */
 	  tcp_connection_del (tc);
+	  /* listener was cleaned up */
+	  if (!lc)
+	    {
+	      error = TCP_ERROR_NO_LISTENER;
+	      goto done;
+	    }
 	}
 
       /* Make sure connection wasn't just created */
