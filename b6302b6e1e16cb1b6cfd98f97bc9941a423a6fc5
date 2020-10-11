@@ -118,6 +118,29 @@
       "revId": "b6302b6e1e16cb1b6cfd98f97bc9941a423a6fc5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a789c245_8b53d389",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-11T18:55:09Z",
+      "side": 1,
+      "message": "I guess changes to this function can be dropped now.",
+      "range": {
+        "startLine": 152,
+        "startChar": 0,
+        "endLine": 152,
+        "endChar": 21
+      },
+      "revId": "b6302b6e1e16cb1b6cfd98f97bc9941a423a6fc5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
