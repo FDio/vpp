@@ -266,7 +266,7 @@ lldp_delete_intf (lldp_main_t * lm, lldp_intf_t * n)
 
 /* 01:80:C2:00:00:0E - propagation constrained to a single
  * physical link - stopped by all type of bridge */
-const u8 lldp_mac_addr[6] = { 0x01, 0x80, 0xC3, 0x00, 0x00, 0x0E };
+const u8 lldp_mac_addr[6] = { 0x01, 0x80, 0xC2, 0x00, 0x00, 0x0E };
 
 static clib_error_t *
 lldp_template_init (vlib_main_t * vm)
