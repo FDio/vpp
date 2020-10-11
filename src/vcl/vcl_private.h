@@ -184,6 +184,7 @@ typedef struct
   int libc_epfd;
   svm_msg_q_t *our_evt_q;
   vcl_session_msg_t *accept_evts_fifo;
+  u32 rx_bytes_pending;
 #if VCL_ELOG
   elog_track_t elog_track;
 #endif
