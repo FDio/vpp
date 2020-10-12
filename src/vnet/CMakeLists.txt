@@ -985,6 +985,7 @@ list(APPEND VNET_SOURCES
   devices/virtio/virtio_api.c
   devices/virtio/virtio_pci_legacy.c
   devices/virtio/virtio_pci_modern.c
+  devices/virtio/virtio_process.c
   devices/virtio/virtio_types_api.c
 )
 
