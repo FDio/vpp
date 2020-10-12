@@ -21,6 +21,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
+#include <vppinfra/crc32.h>
 #include <vnet/vnet.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/gso/gro_func.h>
@@ -542,20 +543,20 @@ virtio_find_free_desc (virtio_vring_t * vring, u16 size, u16 mask,
 }
 
 static_always_inline uword
-virtio_interface_tx_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-				vlib_frame_t * frame, virtio_if_t * vif,
-				virtio_if_type_t type, int do_gso,
-				int csum_offload, int do_gro)
+virtio_interface_tx_gso_inline__ (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame, virtio_if_t * vif,
+				  int qid, u32 * buffers, u32 n_left_from,
+				  virtio_if_type_t type, int do_gso,
+				  int csum_offload, int do_gro)
 {
-  u16 n_left = frame->n_vectors;
+  u16 n_left = n_left_from;
   virtio_vring_t *vring;
-  u16 qid = vm->thread_index % vif->num_txqs;
   vring = vec_elt_at_index (vif->txq_vrings, qid);
   u16 used, next, avail, n_buffers = 0, n_buffers_left = 0;
   u16 sz = vring->size;
   u16 mask = sz - 1;
   u16 retry_count = 2;
-  u32 *buffers = vlib_frame_vector_args (frame);
   u32 to[GRO_TO_VECTOR_SIZE (n_left)];
 
   clib_spinlock_lock_if_init (&vring->lockp);
@@ -651,7 +652,7 @@ retry:
       free_desc_count -= n_added;
     }
 
-  if (n_left != frame->n_vectors || n_buffers != n_buffers_left)
+  if (n_left != n_left_from || n_buffers != n_buffers_left)
     {
       CLIB_MEMORY_STORE_BARRIER ();
       vring->avail->idx = avail;
@@ -683,7 +684,81 @@ retry:
 
   clib_spinlock_unlock_if_init (&vring->lockp);
 
-  return frame->n_vectors - n_left;
+  return n_left_from - n_left;
+}
+
+static_always_inline uword
+virtio_interface_tx_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+				vlib_frame_t * frame, virtio_if_t * vif,
+				virtio_if_type_t type, int do_gso,
+				int csum_offload, int do_gro)
+{
+  vlib_thread_main_t *thm = vlib_get_thread_main ();
+  u32 n_vlib_mains = thm->n_vlib_mains;
+  u32 thread_index = vm->thread_index;
+  void *bufs[VLIB_FRAME_SIZE];
+  u32 *from = vlib_frame_vector_args (frame);
+  const u32 n_left_from = frame->n_vectors;
+  u32 num_txqs;
+  u32 n_tx = 0;
+  u8 txq_n[VIRTIO_MAX_TXQ_PER_WORKER] = { };
+  static __thread u32 txq_b[VIRTIO_MAX_TXQ_PER_WORKER][VLIB_FRAME_SIZE];
+  static __thread union
+  {
+    struct
+    {
+      u64 addr64;
+      u32 port32;
+    };
+    u8 as_u8[12];
+  } key[VLIB_FRAME_SIZE];
+  const i32 ip_off =
+    VIRTIO_IF_TYPE_TUN == type ? 0 : sizeof (ethernet_header_t);
+  int i;
+
+  STATIC_ASSERT (VLIB_FRAME_SIZE <= 256, "wrong size");
+
+  num_txqs = vif->num_txqs / n_vlib_mains;
+  num_txqs = clib_min (num_txqs, VIRTIO_MAX_TXQ_PER_WORKER);
+
+  vlib_get_buffers_with_offset (vm, from, bufs, n_left_from,
+				sizeof (vlib_buffer_t) + ip_off);
+
+  for (i = 0; i < n_left_from; i++)
+    {
+      const ip4_header_t *ip = bufs[i];
+      if (PREDICT_TRUE
+	  (0x45 == ip->ip_version_and_header_length
+	   && ip->protocol == IP_PROTOCOL_TCP))
+	{
+	  const tcp_header_t *tcp = (void *) (ip + 1);
+	  key[i].addr64 = ip->addr64;
+	  key[i].port32 = tcp->port32;
+	}
+      else
+	key[i].port32 = 0;	/* port 0 is reserved anyway */
+    }
+
+  for (i = 0; i < n_left_from; i++)
+    {
+      u32 id = PREDICT_TRUE (key[i].port32)
+	? clib_crc32c (key[i].as_u8, sizeof (key[0])) % num_txqs : 0;
+      txq_b[id][txq_n[id]++] = from[i];
+    }
+
+  for (i = 0; i < num_txqs; i++)
+    {
+      if (txq_n[i])
+	{
+	  int qid = thread_index * num_txqs + i;
+	  n_tx +=
+	    virtio_interface_tx_gso_inline__ (vm, node, frame, vif, qid,
+					      txq_b[i], txq_n[i], type,
+					      do_gso, csum_offload, do_gro);
+	}
+    }
+
+  return n_tx;
 }
 
 static_always_inline uword
