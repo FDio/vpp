@@ -23,6 +23,8 @@
 #include <vnet/devices/virtio/virtio_buffering.h>
 #include <vnet/gso/gro.h>
 
+#define VIRTIO_MAX_TXQ_PER_WORKER       64
+
 #define foreach_virtio_if_flag		\
   _(0, ADMIN_UP, "admin-up")		\
   _(1, DELETING, "deleting")

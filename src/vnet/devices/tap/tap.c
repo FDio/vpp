@@ -198,7 +198,9 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   vif->dev_instance = vif - vim->interfaces;
   vif->id = args->id;
-  vif->num_txqs = thm->n_vlib_mains;
+  vif->num_txqs =
+    clib_max (args->num_tx_queues_per_worker * thm->n_vlib_mains,
+	      thm->n_vlib_mains);
   vif->num_rxqs = clib_max (args->num_rx_queues, 1);
 
   if (args->tap_flags & TAP_FLAG_ATTACH)
@@ -255,7 +257,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   if ((tap_features & IFF_MULTI_QUEUE) == 0)
     {
-      if (vif->num_rxqs > 1)
+      if (vif->num_rxqs > 1 || vif->num_txqs > 1)
 	{
 	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
 	  args->error = clib_error_return (0, "multiqueue not supported");

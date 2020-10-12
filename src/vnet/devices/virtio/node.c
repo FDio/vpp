@@ -277,6 +277,29 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 n_left = vring->used->idx - last;
   vlib_buffer_t bt;
 
+  if (vif->packet_coalesce || vif->packet_buffering)
+    {
+      vlib_thread_main_t *thm = vlib_get_thread_main ();
+      u32 num_txqs = clib_min (vif->num_txqs / thm->n_vlib_mains,
+			       VIRTIO_MAX_TXQ_PER_WORKER);
+      u32 i;
+      for (i = 0; i < num_txqs; i++)
+	{
+	  virtio_vring_t *txq_vring =
+	    vec_elt_at_index (vif->txq_vrings, thread_index * num_txqs + i);
+	  if (clib_spinlock_trylock_if_init (&txq_vring->lockp))
+	    {
+	      if (vif->packet_coalesce)
+		vnet_gro_flow_table_schedule_node_on_dispatcher (vm,
+								 txq_vring->flow_table);
+	      else if (vif->packet_buffering)
+		virtio_vring_buffering_schedule_node_on_dispatcher (vm,
+								    txq_vring->buffering);
+	      clib_spinlock_unlock_if_init (&txq_vring->lockp);
+	    }
+	}
+    }
+
   if (n_left == 0)
     return 0;
 

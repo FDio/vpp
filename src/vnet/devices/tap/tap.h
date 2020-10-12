@@ -45,6 +45,7 @@ typedef struct
   u8 mac_addr_set;
   mac_address_t mac_addr;
   u8 num_rx_queues;
+  u8 num_tx_queues_per_worker;
   u16 rx_ring_sz;
   u16 tx_ring_sz;
   u32 tap_flags;
