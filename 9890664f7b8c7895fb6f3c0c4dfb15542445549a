@@ -16,6 +16,24 @@
       "revId": "9890664f7b8c7895fb6f3c0c4dfb15542445549a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5f9cdcda_b7e67777",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 2189
+      },
+      "writtenOn": "2020-10-12T14:05:48Z",
+      "side": 1,
+      "message": "Previously nasm and ipsec-mb were dependecies of dpdk, but it was chnaged when dpdk meson build was enabled. I added ipsec-mb targets to config and install, but I had trouble building ipsec-mb, as nasm biaries installed in install_dir were deleted before ipsec-mb was built. In patch set 4 i also removed the nasm dependency of ipsec-mb and added nasm-config and nasm-install to targets.",
+      "parentUuid": "c1ccc4ad_8cca4943",
+      "revId": "9890664f7b8c7895fb6f3c0c4dfb15542445549a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
