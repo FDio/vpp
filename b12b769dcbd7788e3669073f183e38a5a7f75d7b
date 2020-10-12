@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b4f80eb6_bfb66b68",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 197,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-10-12T08:51:51Z",
+      "side": 1,
+      "message": "maybe use vec_delete to preserve the order.",
+      "revId": "b12b769dcbd7788e3669073f183e38a5a7f75d7b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
