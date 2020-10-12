@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "70dd26f2_bb4cbced",
+        "filename": "src/plugins/nat/out2in_ed.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 456,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-10-12T19:42:47Z",
+      "side": 1,
+      "message": "If the icmp type is not an error type, get_icmp_o2i_ed_key() will populate the outer header protocol into the bihash key. In that case, it seems like the calls to init_ed_k() and clib_bihash_search_16_8() here will generate and look up the same key that was already generated and looked up.\n\nMaybe a nat_protocol_t variable should be declared and a reference to it should be passed in as the 6th argument of the call to get_icmp_o2i_ed_key() and the condition here should check that the value populated by get_icmp_o2i_ed_key() into that variable !\u003d NAT_PROTOCOL_ICMP in addition to checking that ip-\u003eprotocol \u003d\u003d IP_PROTOCOL_ICMP.",
+      "revId": "0d5e2f6b8a2a39956366b976fa128e41ee853764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
