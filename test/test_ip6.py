@@ -1147,6 +1147,35 @@ class TestIPv6IfAddrRoute(VppTestCase):
                 prefix=self.pg0.local_ip6_prefix,
                 is_add=0)
 
+    def test_ipv6_ifaddrs_secondary_prefix(self):
+        """ IPv6 Interface Secondary Addresses """
+
+        addr1 = "2001:10::10"
+        addr2 = "2001:20::20"
+
+        if_addr1 = VppIpInterfaceAddress(self, self.pg0, addr1, 64)
+        if_addr1.add_vpp_config()
+        if_addr2 = VppIpInterfaceAddress(self, self.pg0, addr2, 64)
+        if_addr2.add_vpp_config()
+
+        self.assertTrue(if_addr1.query_vpp_config())
+        self.assertTrue(if_addr2.query_vpp_config())
+        self.assertTrue(find_route(self, addr1, 128))
+        self.assertTrue(find_route(self, addr2, 128))
+
+        ll = self.vapi.sw_interface_ip6_link_local_address_dump(
+            sw_if_index=self.pg0.sw_if_index)
+        self.assertEqual(1, len(ll))
+
+        self.logger.info(self.vapi.cli("sh int addr"))
+
+        if_addr1.remove_vpp_config()
+        self.assertTrue(if_addr2.query_vpp_config())
+        self.assertTrue(find_route(self, addr2, 128))
+        ll = self.vapi.sw_interface_ip6_link_local_address_dump(
+            sw_if_index=self.pg0.sw_if_index)
+        self.assertEqual(1, len(ll))
+
 
 class TestICMPv6Echo(VppTestCase):
     """ ICMPv6 Echo Test Case """

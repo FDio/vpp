@@ -47,6 +47,7 @@
 #include <vnet/ip/reass/ip6_sv_reass.h>
 #include <vnet/ip/reass/ip6_full_reass.h>
 #include <vnet/ip/ip_table.h>
+#include <vnet/ip/ip6_ll_table.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -98,6 +99,8 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
   ip_source_and_port_range_check_interface_add_del)                     \
  _(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS,                             \
    sw_interface_ip6_set_link_local_address)                             \
+ _(SW_INTERFACE_IP6_LINK_LOCAL_ADDRESS_DUMP,                            \
+   sw_interface_ip6_link_local_address_dump)                            \
 _(IP_REASSEMBLY_SET, ip_reassembly_set)                                 \
 _(IP_REASSEMBLY_GET, ip_reassembly_get)                                 \
 _(IP_REASSEMBLY_ENABLE_DISABLE, ip_reassembly_enable_disable)           \
@@ -1360,6 +1363,53 @@ static void
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS_REPLY);
+}
+
+typedef struct ip6_link_local_address_walk_ctx_t_
+{
+  vl_api_registration_t *reg;
+  u32 context;
+} ip6_link_local_address_walk_ctx_t;
+
+static walk_rc_t
+send_ll_details (const ip6_ll_prefix_t *ll,
+                 void *data)
+{
+  vl_api_sw_interface_ip6_link_local_address_details_t *mp;
+  ip6_link_local_address_walk_ctx_t *ctx = data;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  if (!mp)
+    return 1;
+
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_IP6_LINK_LOCAL_ADDRESS_DETAILS);
+  mp->context = ctx->context;
+
+  mp->sw_if_index = ntohl (ll->ilp_sw_if_index);
+  ip6_address_encode (&ll->ilp_addr, mp->ip);
+
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+  return (WALK_CONTINUE);
+}
+
+static void
+  vl_api_sw_interface_ip6_link_local_address_dump_t_handler
+  (vl_api_sw_interface_ip6_link_local_address_dump_t * mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  ip6_link_local_address_walk_ctx_t  ctx = {
+    .context = mp->context,
+    .reg = reg,
+  };
+
+  ip6_ll_table_walk (htonl(mp->sw_if_index), send_ll_details, &ctx);
 }
 
 static void

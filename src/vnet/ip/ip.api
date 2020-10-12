@@ -20,7 +20,7 @@
     called through a shared memory interface.
 */
 
-option version = "3.0.1";
+option version = "3.0.2";
 
 import "vnet/interface_types.api";
 import "vnet/fib/fib_types.api";
@@ -544,6 +544,31 @@ autoreply define ip_source_and_port_range_check_interface_add_del
 autoreply define sw_interface_ip6_set_link_local_address
 {
   u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_ip6_address_t ip;
+};
+
+/** \brief IPv6 dump link local address on interface request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to dump link local on. ~0 = all
+*/
+define sw_interface_ip6_link_local_address_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief IPv6 link local address on interface 
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to set link local on
+    @param ip - the new link local address
+*/
+define sw_interface_ip6_link_local_address_details
+{
   u32 context;
   vl_api_interface_index_t sw_if_index;
   vl_api_ip6_address_t ip;
