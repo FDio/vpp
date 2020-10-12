@@ -539,8 +539,8 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
   if ((xd->flags & DPDK_DEVICE_FLAG_PMD) == 0)
     goto done;
 
-  /* currently we program VLANS only for IXGBE VF and I40E VF */
-  if ((xd->pmd != VNET_DPDK_PMD_IXGBEVF) && (xd->pmd != VNET_DPDK_PMD_I40EVF))
+  /* currently we program VLANS only for IXGBE VF */
+  if (xd->pmd != VNET_DPDK_PMD_IXGBEVF)
     goto done;
 
   if (t->sub.eth.flags.no_tags == 1)
