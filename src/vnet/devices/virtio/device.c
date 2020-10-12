@@ -21,6 +21,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
+#include <vppinfra/crc32.h>
 #include <vnet/vnet.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/gso/gro_func.h>
@@ -980,17 +981,12 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 					   0 /* no checksum offload */ );
 }
 
-VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
-					       vlib_node_runtime_t * node,
-					       vlib_frame_t * frame)
+static_always_inline u16
+virtio_interface_tx_inline__ (vlib_main_t *vm, vlib_node_runtime_t *node,
+			      virtio_if_t *vif, virtio_vring_t *vring,
+			      u32 *buffers, u16 n_left_from)
 {
-  virtio_main_t *nm = &virtio_main;
-  vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
-  virtio_if_t *vif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
-  u16 qid = vm->thread_index % vif->num_txqs;
-  virtio_vring_t *vring = vec_elt_at_index (vif->txq_vrings, qid);
-  u16 n_left = frame->n_vectors;
-  u32 *buffers = vlib_frame_vector_args (frame);
+  u16 n_left = n_left_from;
   u32 to[GRO_TO_VECTOR_SIZE (n_left)];
   int packed = vif->is_packed;
 
@@ -1015,20 +1011,17 @@ retry:
   virtio_free_used_device_desc (vm, vring, node->node_index, packed);
 
   if (vif->type == VIRTIO_IF_TYPE_TAP)
-    n_left = virtio_interface_tx_inline (vm, node, vif, vring,
-					 VIRTIO_IF_TYPE_TAP,
-					 &buffers[frame->n_vectors - n_left],
-					 n_left, packed);
+    n_left = virtio_interface_tx_inline (
+      vm, node, vif, vring, VIRTIO_IF_TYPE_TAP, &buffers[n_left_from - n_left],
+      n_left, packed);
   else if (vif->type == VIRTIO_IF_TYPE_PCI)
-    n_left = virtio_interface_tx_inline (vm, node, vif, vring,
-					 VIRTIO_IF_TYPE_PCI,
-					 &buffers[frame->n_vectors - n_left],
-					 n_left, packed);
+    n_left = virtio_interface_tx_inline (
+      vm, node, vif, vring, VIRTIO_IF_TYPE_PCI, &buffers[n_left_from - n_left],
+      n_left, packed);
   else if (vif->type == VIRTIO_IF_TYPE_TUN)
-    n_left = virtio_interface_tx_inline (vm, node, vif, vring,
-					 VIRTIO_IF_TYPE_TUN,
-					 &buffers[frame->n_vectors - n_left],
-					 n_left, packed);
+    n_left = virtio_interface_tx_inline (
+      vm, node, vif, vring, VIRTIO_IF_TYPE_TUN, &buffers[n_left_from - n_left],
+      n_left, packed);
   else
     ASSERT (0);
 
@@ -1037,21 +1030,82 @@ retry:
 
   if (vif->packet_buffering && n_left)
     {
-      u16 n_buffered = virtio_vring_buffering_store_packets (vring->buffering,
-							     &buffers
-							     [frame->n_vectors
-							      - n_left],
-							     n_left);
+      u16 n_buffered = virtio_vring_buffering_store_packets (
+	vring->buffering, &buffers[n_left_from - n_left], n_left);
       n_left -= n_buffered;
     }
   if (n_left)
     virtio_interface_drop_inline (vm, node->node_index,
-				  &buffers[frame->n_vectors - n_left], n_left,
+				  &buffers[n_left_from - n_left], n_left,
 				  VIRTIO_TX_ERROR_NO_FREE_SLOTS);
 
   clib_spinlock_unlock_if_init (&vring->lockp);
 
-  return frame->n_vectors - n_left;
+  return n_left_from - n_left;
+}
+
+VNET_DEVICE_CLASS_TX_FN (virtio_device_class)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  virtio_main_t *nm = &virtio_main;
+  vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
+  virtio_if_t *vif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  u32 *from = vlib_frame_vector_args (frame);
+  const u32 n_left_from = frame->n_vectors;
+  u32 num_txqs;
+  u32 n_tx = 0;
+  u16 txq_n[VIRTIO_MAX_TXQ_PER_WORKER];
+  static __thread u32 txq_b[VIRTIO_MAX_TXQ_PER_WORKER][VLIB_FRAME_SIZE];
+  static __thread union
+  {
+    struct
+    {
+      u64 addr64;
+      u32 port32;
+    };
+    u8 as_u8[12];
+  } key[VLIB_FRAME_SIZE];
+  const int ip_off =
+    VIRTIO_IF_TYPE_TUN == vif->type ? 0 : sizeof (ethernet_header_t);
+  int i;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+  for (i = 0; i < n_left_from; i++)
+    {
+      const ip4_header_t *ip = vlib_buffer_get_current (bufs[i]) + ip_off;
+      if (PREDICT_TRUE (0x45 == ip->ip_version_and_header_length &&
+			ip->protocol == IP_PROTOCOL_TCP))
+	{
+	  const tcp_header_t *tcp = (void *) (ip + 1);
+	  key[i].addr64 = ip->addr64;
+	  key[i].port32 = tcp->port32;
+	}
+      else
+	key[i].port32 = 0; /* port 0 is reserved anyway */
+    }
+  num_txqs =
+    clib_min (vif->num_txqs / tm->n_vlib_mains, VIRTIO_MAX_TXQ_PER_WORKER);
+  clib_memset_u16 (txq_n, 0, VIRTIO_MAX_TXQ_PER_WORKER);
+  for (i = 0; i < n_left_from; i++)
+    {
+      u32 id = PREDICT_TRUE (key[i].port32) ?
+		 clib_crc32c (key[i].as_u8, sizeof (key[0])) % num_txqs :
+		 0;
+      txq_b[id][txq_n[id]] = from[i];
+      txq_n[id]++;
+    }
+  for (i = 0; i < num_txqs; i++)
+    {
+      if (txq_n[i])
+	{
+	  int qid = vm->thread_index * num_txqs + i;
+	  virtio_vring_t *vring = vec_elt_at_index (vif->txq_vrings, qid);
+	  n_tx += virtio_interface_tx_inline__ (vm, node, vif, vring, txq_b[i],
+						txq_n[i]);
+	}
+    }
+  return n_tx;
 }
 
 static void
