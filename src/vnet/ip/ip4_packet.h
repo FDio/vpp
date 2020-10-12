@@ -125,6 +125,7 @@ typedef union
 	ip4_address_t src_address, dst_address;
       };
       ip4_address_pair_t address_pair;
+        CLIB_PACKED (u64 addr64);
     };
   };
 
