@@ -182,7 +182,7 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
       vec_validate (ip6_links, sw_if_index);
 
       il = &ip6_links[sw_if_index];
-      il->il_locks = 1;
+      il->il_locks = 0;
       il->il_sw_if_index = sw_if_index;
 
       sw = vnet_get_sup_sw_interface (vnm, sw_if_index);
@@ -237,6 +237,8 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
     {
       rv = VNET_API_ERROR_VALUE_EXIST;
     }
+
+  il->il_locks++;
 
 out:
   return (rv);
