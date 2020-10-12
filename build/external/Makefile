@@ -46,10 +46,11 @@ clean:
 	@rm -rf $(B) $(I)
 
 .PHONY: install
-install: dpdk-install rdma-core-install quicly-install libbpf-install
+install: nasm-install ipsec-mb-install dpdk-install rdma-core-install quicly-install libbpf-install
 
 .PHONY: config
-config: dpdk-config rdma-core-config
+config: nasm-config ipsec-mb-config dpdk-config rdma-core-config
+
 
 ##############################################################################
 # .deb packaging

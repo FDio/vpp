@@ -18,4 +18,20 @@ nasm_tarball_strip_dirs := 1
 nasm_url                := https://ftp.osuosl.org/pub/blfs/conglomeration/nasm/$(nasm_tarball)
 nasm_cflags             := -Wno-implicit-fallthrough -std=c11
 
+ARCH_X86_64=$(filter x86_64,$(shell uname -m))
+
+ifndef $(ARCH_X86_64)
+define  ipsec-mb_config_cmds
+	@true
+endef
+
+define  ipsec-mb_build_cmds
+	@true
+endef
+
+define  ipsec-mb_install_cmds
+	@true
+endef
+endif
+
 $(eval $(call package,nasm))

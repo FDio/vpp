@@ -83,21 +83,6 @@ vpp_plugin_find_library(dpdk NUMA_LIB "numa")
 list(APPEND DPDK_LINK_LIBRARIES ${NUMA_LIB})
 
 ##############################################################################
-# AESNI libraries
-##############################################################################
-if(DPDK_RTE_LIBRTE_PMD_AESNI_MB OR DPDK_RTE_LIBRTE_PMD_AESNI_GCM)
-  if(DPDK_IS_SHARED_LIB)
-    vpp_plugin_find_library(dpdk IPSECMB_LIB "libIPSec_MB.so")
-    list(APPEND DPDK_LINK_LIBRARIES "${IPSECMB_LIB}")
-  else()
-    vpp_plugin_find_library(dpdk IPSECMB_LIB "libIPSec_MB.a")
-    get_filename_component(IPSECMB_LIB_DIR ${IPSECMB_LIB} DIRECTORY)
-    string_append(DPDK_LINK_FLAGS "-L${IPSECMB_LIB_DIR}")
-    string_append(DPDK_LINK_FLAGS "-Wl,--exclude-libs,libIPSec_MB.a,-l:libIPSec_MB.a")
-  endif()
-endif()
-
-##############################################################################
 # Mellanox libraries
 ##############################################################################
 if(DPDK_RTE_LIBRTE_MLX4_PMD OR DPDK_RTE_LIBRTE_MLX5_PMD)
