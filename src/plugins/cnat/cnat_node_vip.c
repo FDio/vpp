@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vppinfra/crc32.h>
 #include <vlibmemory/api.h>
 #include <cnat/cnat_node.h>
 #include <cnat/cnat_translation.h>
@@ -59,6 +60,31 @@ format_cnat_translation_trace (u8 * s, va_list * args)
   else
     s = format (s, "not found");
   return s;
+}
+
+static_always_inline u32
+cnat_ip4_flow_hash (const ip4_header_t * ip)
+{
+  if (PREDICT_TRUE
+      (0x45 == ip->ip_version_and_header_length
+       && IP_PROTOCOL_TCP == ip->protocol))
+    {
+      const tcp_header_t *tcp = (void *) (ip + 1);
+      union
+      {
+	struct
+	{
+	  ip4_address_pair_t addr;
+	  u16 sport;
+	  u16 dport;
+	};
+	u8 as_u8[12];
+      } key =
+      {
+      .addr = ip->address_pair,.sport = tcp->src,.dport = tcp->dst};
+      return clib_crc32c (key.as_u8, sizeof (key));
+    }
+  return 0;
 }
 
 /* CNat sub for NAT behind a fib entry (VIP or interposed real IP) */
@@ -158,7 +184,7 @@ cnat_vip_inline (vlib_main_t * vm,
 
       /* session table miss */
       hash_c0 = (AF_IP4 == ctx->af ?
-		 ip4_compute_flow_hash (ip4, lb0->lb_hash_config) :
+		 cnat_ip4_flow_hash (ip4) :
 		 ip6_compute_flow_hash (ip6, lb0->lb_hash_config));
       bucket0 = hash_c0 & lb0->lb_n_buckets_minus_1;
       dpo0 = load_balance_get_fwd_bucket (lb0, bucket0);
