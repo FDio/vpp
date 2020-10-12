@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c1ccc4ad_8cca4943",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-10-12T13:35:52Z",
+      "side": 1,
+      "message": "Why is the build happening in the config phase and not the build phase?",
+      "revId": "9890664f7b8c7895fb6f3c0c4dfb15542445549a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
