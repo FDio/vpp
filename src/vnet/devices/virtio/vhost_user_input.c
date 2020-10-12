@@ -296,15 +296,11 @@ vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
 	  tcp_header_t *tcp = (tcp_header_t *)
 	    (b0_data + vnet_buffer (b0)->l4_hdr_offset);
 	  l4_hdr_sz = tcp_header_bytes (tcp);
-	  tcp->checksum = 0;
 	  b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
 	}
       else if (l4_proto == IP_PROTOCOL_UDP)
 	{
-	  udp_header_t *udp =
-	    (udp_header_t *) (b0_data + vnet_buffer (b0)->l4_hdr_offset);
-	  l4_hdr_sz = sizeof (*udp);
-	  udp->checksum = 0;
+	  l4_hdr_sz = sizeof (udp_header_t);
 	  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
 	}
     }
