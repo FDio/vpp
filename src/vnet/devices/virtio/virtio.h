@@ -57,6 +57,9 @@ typedef enum
 
 #define VIRTIO_RING_FLAG_MASK_INT 1
 
+#define VIRTIO_EVENT_START_TIMER 1
+#define VIRTIO_EVENT_STOP_TIMER 2
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -84,6 +87,7 @@ typedef struct
   u16 last_used_idx;
   u16 last_kick_avail_idx;
   u32 call_file_index;
+  vnet_hw_if_rx_mode mode;
   virtio_vring_buffering_t *buffering;
   gro_flow_table_t *flow_table;
 } virtio_vring_t;
@@ -189,6 +193,7 @@ typedef struct
 
 typedef struct
 {
+  u32 packet_coalesce_count;
   /* logging */
   vlib_log_class_t log_default;
 
@@ -198,6 +203,7 @@ typedef struct
 extern virtio_main_t virtio_main;
 extern vnet_device_class_t virtio_device_class;
 extern vlib_node_registration_t virtio_input_node;
+extern vlib_node_registration_t virtio_send_interrupt_node;
 
 clib_error_t *virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx,
 				 u16 sz);
