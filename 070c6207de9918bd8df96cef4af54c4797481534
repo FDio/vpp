@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "60cb1ba9_3e3f9350",
+        "filename": "src/plugins/dpdk/device/dpdk.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-10-12T08:50:41Z",
+      "side": 1,
+      "message": "move the comment too",
+      "revId": "070c6207de9918bd8df96cef4af54c4797481534",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "18d9be1c_b32664cf",
+        "filename": "src/plugins/memif/private.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-10-12T08:50:41Z",
+      "side": 1,
+      "message": "move the comment too.",
+      "revId": "070c6207de9918bd8df96cef4af54c4797481534",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
