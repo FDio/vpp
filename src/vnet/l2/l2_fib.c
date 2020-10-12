@@ -388,6 +388,8 @@ l2fib_clear_table (void)
   if (mp->mac_table_initialized == 0)
     return;
 
+  mp->mac_table_initialized = 0;
+
   /* Remove all entries */
   BV (clib_bihash_free) (&mp->mac_table);
   l2fib_table_init ();
