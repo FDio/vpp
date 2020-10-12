@@ -43,6 +43,7 @@ enum tap_flags {
     @param use_random_mac - let the system generate a unique mac address
     @param mac_address - mac addr to assign to the interface if use_random not set
     @param num_rx_queues - number of rx queues
+    @param num_tx_queues_per_worker - number of tx queues per worker
     @param tx_ring_sz - the number of entries of TX ring, optional, default is 256 entries, must be power of 2
     @param rx_ring_sz - the number of entries of RX ring, optional, default is 256 entries, must be power of 2
     @param host_mtu_set - host MTU should be set
@@ -74,6 +75,7 @@ define tap_create_v2
   bool use_random_mac [default=true];
   vl_api_mac_address_t mac_address;
   u8 num_rx_queues [default=1];
+  u8 num_tx_queues_per_worker [default=0];
   u16 tx_ring_sz [default=256];
   u16 rx_ring_sz [default=256];
   bool host_mtu_set;

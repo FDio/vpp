@@ -57,6 +57,7 @@ typedef struct _tcp_header
     {
       u16 src, dst;
     };
+    u32 port32;
   };
 
   u32 seq_number;	/**< Sequence number of the first data octet in this
