@@ -586,6 +586,13 @@ typedef struct vnet_hw_interface_t
   u32 l2_if_count;
   u32 l3_if_count;
 
+  /* some multicast features need promiscuous mode set and remain always
+   * set as long as the feature is enabled. They bump up this count */
+  u32 promisc_lock;
+
+  /* if set, interface is set to l3 when promisc lock is down to 0 */
+  u8 l3_on_unlock;
+
   /* Bonded interface info -
      0       - not a bonded interface nor a slave
      ~0      - slave to a bonded interface

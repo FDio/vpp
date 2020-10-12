@@ -318,11 +318,14 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, member_if_t * mif)
   bond_member_add_del_mac_addrs (bif, mif->sw_if_index, 0 /* is_add */ );
 
 
-  if ((bif->mode == BOND_MODE_LACP) && bm->lacp_enable_disable)
-    (*bm->lacp_enable_disable) (vm, bif, mif, 0);
-
   if (bif->mode == BOND_MODE_LACP)
     {
+      if (bm->lacp_enable_disable)
+	(*bm->lacp_enable_disable) (vm, bif, mif, 0);
+
+      /* unlock the promiscuous mode for the bond member interface */
+      ethernet_unlock_promisc_mode (vnm, mif->hw_if_index);
+
       stat_segment_deregister_state_counter
 	(bm->stats[bif->sw_if_index][mif->sw_if_index].actor_state);
       stat_segment_deregister_state_counter
@@ -728,15 +731,11 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
   /* if there are secondary/virtual mac addrs, propagate to the member */
   bond_member_add_del_mac_addrs (bif, mif->sw_if_index, 1 /* is_add */ );
 
-  if (bif_hw->l2_if_count)
-    ethernet_set_flags (vnm, mif_hw->hw_if_index,
-			ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
-  else
-    ethernet_set_flags (vnm, mif_hw->hw_if_index,
-			/*ETHERNET_INTERFACE_FLAG_DEFAULT_L3 */ 0);
-
   if (bif->mode == BOND_MODE_LACP)
     {
+      /* lock the promiscuous mode for the bond member interface */
+      ethernet_lock_promisc_mode (vnm, mif_hw->hw_if_index);
+
       if (bm->lacp_enable_disable)
 	(*bm->lacp_enable_disable) (vm, bif, mif, 1);
     }

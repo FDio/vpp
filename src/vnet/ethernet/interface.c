@@ -422,6 +422,66 @@ ethernet_delete_interface (vnet_main_t * vnm, u32 hw_if_index)
   pool_put (em->interfaces, ei);
 }
 
+/*
+ * Set the interface flags to ETHERNET_INTERFACE_FLAG_ACCEPT_ALL (promiscuous
+ * mode). The flags remains set until ethernet_unlock_promisc_mode is called.
+ *
+ * Features require promiscuos mode to operate should call this function
+ * when the feature is enable on the interface.
+ * When the feature is disable on the interface, it must call
+ * ethernet_unlock_promisc_mode.
+ */
+void
+ethernet_lock_promisc_mode (vnet_main_t * vnm, u32 hw_if_index)
+{
+  ethernet_main_t *em = &ethernet_main;
+  vnet_hw_interface_t *hi;
+  ethernet_interface_t *ei;
+
+  hi = vnet_get_hw_interface (vnm, hw_if_index);
+
+  ASSERT (hi->hw_class_index == ethernet_hw_interface_class.index);
+
+  if (hi->promisc_lock == 0)
+    {
+      ei = pool_elt_at_index (em->interfaces, hi->hw_instance);
+      if ((ei->flags & ETHERNET_INTERFACE_FLAGS_STATUS_MASK) ==
+	  ETHERNET_INTERFACE_FLAG_STATUS_L3)
+	{
+	  ethernet_set_flags (vnm, hi->hw_if_index,
+			      ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
+	  /* Record L3 was set so that it can be restored when unlock */
+	  hi->l3_on_unlock = 1;
+	}
+    }
+
+  hi->promisc_lock++;
+}
+
+void
+ethernet_unlock_promisc_mode (vnet_main_t * vnm, u32 hw_if_index)
+{
+  vnet_hw_interface_t *hi;
+
+  hi = vnet_get_hw_interface (vnm, hw_if_index);
+
+  ASSERT (hi->hw_class_index == ethernet_hw_interface_class.index);
+
+  ASSERT (hi->promisc_lock > 0);
+
+  hi->promisc_lock--;
+  if (hi->promisc_lock == 0)
+    {
+      /* switch back to L3 mode if it was set to L3 mode prior to promisc lock */
+      if (hi->l3_on_unlock)
+	{
+	  ethernet_set_flags (vnm, hi->hw_if_index,
+			      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
+	  hi->l3_on_unlock = 0;
+	}
+    }
+}
+
 u32
 ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 {
@@ -446,6 +506,17 @@ ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 	case ETHERNET_INTERFACE_FLAG_DEFAULT_L3:
 	  if (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER)
 	    {
+	      /*
+	       * if promisc_lock is on, skip the flags_change callback. This
+	       * means packets should have been filtered by the HW would come to
+	       * ethernet_input. ethernet_input will do the dmac check to weed
+	       * out the unwanted packets.
+	       */
+	      if (hi->promisc_lock > 0)
+		{
+		  ei->flags |= ETHERNET_INTERFACE_FLAG_STATUS_L3;
+		  return 0;
+		}
 	      if (ei->flag_change (vnm, hi, opn_flags) != ~0)
 		{
 		  ei->flags |= ETHERNET_INTERFACE_FLAG_STATUS_L3;

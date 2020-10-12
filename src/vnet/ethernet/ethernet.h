@@ -580,6 +580,8 @@ u8 *ethernet_build_rewrite (vnet_main_t * vnm,
 void ethernet_input_init (vlib_main_t * vm, ethernet_main_t * em);
 
 extern vlib_node_registration_t ethernet_input_node;
+extern void ethernet_lock_promisc_mode (vnet_main_t * vnm, u32 hw_if_index);
+extern void ethernet_unlock_promisc_mode (vnet_main_t * vnm, u32 hw_if_index);
 
 #endif /* included_ethernet_h */
 
