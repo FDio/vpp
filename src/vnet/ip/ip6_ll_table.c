@@ -205,6 +205,71 @@ ip6_ll_table_show_all (vlib_main_t * vm, u32 fib_index)
   vec_free (ctx.entries);
 }
 
+static void
+ip6_ll_table_walk_i (u32 fib_index,
+		     u32 sw_if_index, ip6_ll_table_walk_fn_t fn, void *data)
+{
+  fib_node_index_t *fib_entry_index;
+  ip6_ll_show_ctx_t ctx = {
+    .entries = NULL,
+  };
+  fib_table_t *fib_table;
+
+  if (0 == fib_index)
+    return;
+
+  fib_table = fib_table_get (fib_index, FIB_PROTOCOL_IP6);
+
+  if (!(fib_table->ft_flags & FIB_TABLE_FLAG_IP6_LL))
+    return;
+
+  fib_table_walk (fib_index, FIB_PROTOCOL_IP6, ip6_ll_table_show_walk, &ctx);
+  vec_sort_with_function (ctx.entries, fib_entry_cmp_for_sort);
+
+  vec_foreach (fib_entry_index, ctx.entries)
+  {
+    const fib_prefix_t *pfx;
+
+    pfx = fib_entry_get_prefix (*fib_entry_index);
+
+    if (128 == pfx->fp_len)
+      {
+	ip6_ll_prefix_t ilp = {
+	  .ilp_sw_if_index = sw_if_index,
+	  .ilp_addr = pfx->fp_addr.ip6,
+	};
+
+	if (WALK_STOP == fn (&ilp, data))
+	  break;
+      }
+  }
+  vec_free (ctx.entries);
+}
+
+void
+ip6_ll_table_walk (u32 sw_if_index, ip6_ll_table_walk_fn_t fn, void *data)
+{
+
+  if (~0 == sw_if_index)
+    {
+      vec_foreach_index (sw_if_index, ip6_ll_table.ilt_fibs)
+      {
+	u32 fib_index = ip6_ll_table.ilt_fibs[sw_if_index];
+
+	ip6_ll_table_walk_i (fib_index, sw_if_index, fn, data);
+      }
+    }
+  else
+    {
+      if (sw_if_index < vec_len (ip6_ll_table.ilt_fibs))
+	{
+	  u32 fib_index = ip6_ll_table.ilt_fibs[sw_if_index];
+
+	  ip6_ll_table_walk_i (fib_index, sw_if_index, fn, data);
+	}
+    }
+}
+
 typedef struct
 {
   u32 fib_index;

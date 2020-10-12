@@ -89,6 +89,19 @@ extern fib_node_index_t ip6_ll_table_entry_update
 extern void ip6_ll_table_entry_delete (const ip6_ll_prefix_t * prefix);
 
 /**
+ * @brief
+ *  Walk the Link local table entries.
+ *
+ * @param prefix
+ *  The prefix for the entry to remove
+ */
+typedef walk_rc_t (*ip6_ll_table_walk_fn_t) (const ip6_ll_prefix_t * prefix,
+					     void *data);
+
+extern void ip6_ll_table_walk (u32 sw_if_index,
+			       ip6_ll_table_walk_fn_t fn, void *data);
+
+/**
  * @brief For use in the data plane. Get the underlying ip6 FIB
  */
 extern u32 ip6_ll_fib_get (u32 sw_if_index);

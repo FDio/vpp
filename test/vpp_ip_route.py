@@ -117,6 +117,18 @@ def find_route(test, addr, len, table_id=0, sw_if_index=None):
     return False
 
 
+def find_ip6_ll_route(test, sw_if_index, addr):
+    routes = test.vapi.sw_interface_ip6_link_local_address_dump(
+        sw_if_index=sw_if_index)
+
+    for r in routes:
+        if str(r.ip) == str(addr) and \
+           r.sw_if_index == sw_if_index:
+            return True
+
+    return False
+
+
 def find_route_in_dump(dump, route, table):
     for r in dump:
         if table.table_id == r.route.table_id \
