@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a45b2210_a0dac12e",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 5
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-10-12T22:32:34Z",
+      "side": 1,
+      "message": "please leave \u0027@\u0027",
+      "revId": "a0478f261644e17c2a79462d50ca59a74d15a938",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a8ae07ad_0b7eb646",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 5
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-10-12T22:32:34Z",
+      "side": 1,
+      "message": "No need for this, simply exclude ipsecmb from list of packages in build/external/Makefile",
+      "revId": "a0478f261644e17c2a79462d50ca59a74d15a938",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
