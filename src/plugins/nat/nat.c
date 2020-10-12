@@ -3576,7 +3576,7 @@ nat44_ed_get_worker_out2in_cb (vlib_buffer_t * b, ip4_header_t * ip,
   /* try static mappings with port */
   if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
     {
-      init_nat_k (&kv, ip->dst_address, proto, 0, port);
+      init_nat_k (&kv, ip->dst_address, port, 0, proto);
       if (!clib_bihash_search_8_8
 	  (&sm->static_mapping_by_external, &kv, &value))
 	{
