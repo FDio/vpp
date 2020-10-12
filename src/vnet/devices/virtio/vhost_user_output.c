@@ -256,18 +256,12 @@ vhost_user_handle_tx_offload (vhost_user_intf_t * vui, vlib_buffer_t * b,
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
       hdr->csum_start = gho.l4_hdr_offset;
       hdr->csum_offset = offsetof (udp_header_t, checksum);
-      udp_header_t *udp =
-	(udp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
-      udp->checksum = 0;
     }
   else if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
     {
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
       hdr->csum_start = gho.l4_hdr_offset;
       hdr->csum_offset = offsetof (tcp_header_t, checksum);
-      tcp_header_t *tcp =
-	(tcp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
-      tcp->checksum = 0;
     }
 
   /* GSO offload */
