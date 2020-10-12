@@ -49,6 +49,7 @@ lldp_cfg_err_t
 lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
 		   u8 ** mgmt_ip6, u8 ** mgmt_oid, int enable)
 {
+  clib_error_t *error = 0;
   lldp_main_t *lm = &lldp_main;
   vnet_main_t *vnm = lm->vnet_main;
   ethernet_main_t *em = &ethernet_main;
@@ -101,10 +102,14 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
 	  *mgmt_oid = NULL;
 	}
 
-      if (!vnet_hw_interface_add_del_mac_address (lm->vnet_main, hw_if_index,
-						  lldp_mac_addr,
-						  1 /* is_add */ ))
+      error =
+	vnet_hw_interface_add_del_mac_address (lm->vnet_main, hw_if_index,
+					       lldp_mac_addr,
+					       1 /* is_add */ );
+      if (error)
 	{
+	  clib_error_free (error);
+	  lldp_delete_intf (lm, n);
 	  return lldp_internal_error;
 	}
 
@@ -121,9 +126,14 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
       lldp_delete_intf (lm, n);
       if (n)
 	{
-	  vnet_hw_interface_add_del_mac_address (lm->vnet_main, hw_if_index,
-						 lldp_mac_addr,
-						 0 /* is_add */ );
+	  error =
+	    vnet_hw_interface_add_del_mac_address (lm->vnet_main, hw_if_index,
+						   lldp_mac_addr,
+						   0 /* is_add */ );
+	  if (error)
+	    {
+	      clib_error_free (error);
+	    }
 	}
     }
 
