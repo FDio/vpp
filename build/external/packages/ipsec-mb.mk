@@ -11,14 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ipsec-mb_version             := 0.53
+ipsec-mb_version             := 0.54
 ipsec-mb_tarball             := v$(ipsec-mb_version).tar.gz
 ipsec-mb_tarball_md5sum_0.49 := 3a2bee86f25f6c8ed720da5b4b8d4297
 ipsec-mb_tarball_md5sum_0.52 := 11ecfa6db4dc0c4ca6e5c616c141ac46
 ipsec-mb_tarball_md5sum_0.53 := e9b3507590efd1c23321518612b644cd
+ipsec-mb_tarball_md5sum_0.54 := 258941f7ba90c275fcf9d19c622d2d21
 ipsec-mb_tarball_md5sum      := $(ipsec-mb_tarball_md5sum_$(ipsec-mb_version))
 ipsec-mb_tarball_strip_dirs  := 1
-ipsec-mb_depends             := nasm
 ipsec-mb_url                 := http://github.com/01org/intel-ipsec-mb/archive/$(ipsec-mb_tarball)
 
 define  ipsec-mb_config_cmds
