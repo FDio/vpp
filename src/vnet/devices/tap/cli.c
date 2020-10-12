@@ -76,6 +76,8 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    args.host_ip6_gw_set = 1;
 	  else if (unformat (line_input, "num-rx-queues %d", &tmp))
 	    args.num_rx_queues = tmp;
+	  else if (unformat (line_input, "num-tx-queues-per-worker %d", &tmp))
+	    args.num_tx_queues_per_worker = tmp;
 	  else if (unformat (line_input, "rx-ring-size %d", &tmp))
 	    args.rx_ring_sz = tmp;
 	  else if (unformat (line_input, "tx-ring-size %d", &tmp))
