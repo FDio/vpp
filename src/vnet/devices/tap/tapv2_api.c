@@ -82,6 +82,9 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
   if (mp->num_rx_queues > 1)
     ap->num_rx_queues = mp->num_rx_queues;
 
+  if (mp->num_tx_queues_per_worker > 1)
+    ap->num_tx_queues_per_worker = mp->num_tx_queues_per_worker;
+
   if (mp->host_if_name_set)
     ap->host_if_name = mp->host_if_name;
 
