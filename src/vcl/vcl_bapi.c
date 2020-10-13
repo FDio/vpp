@@ -466,7 +466,7 @@ vcl_bapi_connect_to_vpp (void)
   api_main_t *am;
   u8 *wrk_name;
 
-  wrk_name = format (0, "%s-wrk-%u%c", vcm->app_name, wrk->wrk_index, 0);
+  wrk_name = format (0, "%v-wrk-%u%c", vcm->app_name, wrk->wrk_index, 0);
 
   /* Make sure api is cleaned up in case this is a connect from a
    * forked worker */
