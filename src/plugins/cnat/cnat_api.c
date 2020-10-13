@@ -88,16 +88,17 @@ vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
   u32 id = ~0;
   u8 flags;
   int rv = 0;
-  u8 pi;
+  u32 pi, n_paths;
 
   rv = ip_proto_decode (mp->translation.ip_proto, &ip_proto);
 
   if (rv)
     goto done;
 
-  vec_validate (paths, mp->translation.n_paths - 1);
+  n_paths = clib_net_to_host_u32 (mp->translation.n_paths);
+  vec_validate (paths, n_paths - 1);
 
-  for (pi = 0; pi < mp->translation.n_paths; pi++)
+  for (pi = 0; pi < n_paths; pi++)
     {
       path = &paths[pi];
       cnat_endpoint_tuple_decode (&mp->translation.paths[pi], path);
@@ -146,7 +147,7 @@ cnat_translation_send_details (u32 cti, void *args)
   vl_api_cnat_endpoint_tuple_t *path;
   size_t msg_size;
   cnat_translation_t *ct;
-  u8 n_paths;
+  u32 n_paths;
 
   ctx = args;
   ct = cnat_translation_get (cti);
@@ -158,8 +159,8 @@ cnat_translation_send_details (u32 cti, void *args)
 
   /* fill in the message */
   mp->context = ctx->context;
-  mp->translation.n_paths = n_paths;
-  mp->translation.id = htonl (cti);
+  mp->translation.n_paths = clib_host_to_net_u32 (n_paths);
+  mp->translation.id = clib_host_to_net_u32 (cti);
   cnat_endpoint_encode (&ct->ct_vip, &mp->translation.vip);
   mp->translation.ip_proto = ip_proto_encode (ct->ct_proto);
 
