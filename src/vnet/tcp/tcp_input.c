@@ -2650,12 +2650,8 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  tcp_rx_trace_t *t;
-	  t = vlib_add_trace (vm, node, b, sizeof (*t));
-	  clib_memcpy_fast (&t->tcp_header, tcp_buffer_hdr (b),
-			    sizeof (t->tcp_header));
-	  clib_memcpy_fast (&t->tcp_connection, lc,
-			    sizeof (t->tcp_connection));
+	  tcp_rx_trace_t *t = vlib_add_trace (vm, node, b, sizeof (*t));
+	  tcp_set_rx_trace_data (t, lc, tcp_buffer_hdr (b), b, is_ip4);
 	}
 
       n_syns += (error == TCP_ERROR_NONE);
