@@ -794,10 +794,10 @@ format_app_worker_listener (u8 * s, va_list * args)
   if (!app_wrk)
     {
       if (verbose)
-	s = format (s, "%-40s%-25s%=10s%-15s%-15s%-10s", "Connection", "App",
+	s = format (s, "%-40s%-25s%-10s%-15s%-15s%-10s", "Connection", "App",
 		    "Wrk", "API Client", "ListenerID", "SegManager");
       else
-	s = format (s, "%-40s%-25s%=10s", "Connection", "App", "Wrk");
+	s = format (s, "%-40s%-25s%-10s", "Connection", "App", "Wrk");
 
       return s;
     }
@@ -810,7 +810,7 @@ format_app_worker_listener (u8 * s, va_list * args)
     {
       u8 *buf;
       buf = format (0, "%u(%u)", app_wrk->wrk_map_index, app_wrk->wrk_index);
-      s = format (s, "%-40v%-25v%=10v%-15u%-15u%-10u", str, app_name,
+      s = format (s, "%-40v%-25v%-10v%-15u%-15u%-10u", str, app_name,
 		  buf, app_wrk->api_client_index, handle, sm_index);
       vec_free (buf);
     }
