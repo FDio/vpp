@@ -1723,7 +1723,10 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
 
   if (VCL_SESS_ATTR_TEST (session->attr, VCL_SESS_ATTR_NONBLOCK))
     {
-      session->session_state = STATE_CONNECT;
+      /* State set to STATE_UPDATED to ensure the session is not assumed
+       * to be open and to also allow the app to close it prior to vpp's
+       * connected reply. */
+      session->session_state = STATE_UPDATED;
       return VPPCOM_EINPROGRESS;
     }
 
