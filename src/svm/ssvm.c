@@ -269,7 +269,7 @@ ssvm_server_init_memfd (ssvm_private_t * memfd)
   sh->ssvm_va = pointer_to_uword (sh);
   sh->type = SSVM_SEGMENT_MEMFD;
 
-  page_size = 1 << log2_page_size;
+  page_size = 1ULL << log2_page_size;
   sh->heap = clib_mem_create_heap (((u8 *) sh) + page_size,
 				   memfd->ssvm_size - page_size,
 				   1 /* locked */ , "ssvm server memfd");
@@ -371,7 +371,7 @@ ssvm_server_init_private (ssvm_private_t * ssvm)
       return SSVM_API_ERROR_CREATE_FAILURE;
     }
 
-  page_size = 1 << log2_page_size;
+  page_size = 1ULL << log2_page_size;
   rnd_size = clib_max (ssvm->ssvm_size + (page_size - 1), ssvm->ssvm_size);
   rnd_size &= ~(page_size - 1);
 
