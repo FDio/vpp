@@ -1830,19 +1830,19 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   if (PREDICT_FALSE (!s || s->is_vep))
     return VPPCOM_EBADFD;
 
-  if (PREDICT_FALSE (!vcl_session_is_open (s)))
+  is_nonblocking = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
+  is_ct = vcl_session_is_ct (s);
+  mq = wrk->app_event_queue;
+  rx_fifo = is_ct ? s->ct_rx_fifo : s->rx_fifo;
+  s->has_rx_evt = 0;
+
+  if (PREDICT_FALSE (!vcl_session_is_open (s) || !rx_fifo))
     {
       VDBG (0, "session %u[0x%llx] is not open! state 0x%x (%s)",
 	    s->session_index, s->vpp_handle, s->session_state,
 	    vppcom_session_state_str (s->session_state));
       return vcl_session_closed_error (s);
     }
-
-  is_nonblocking = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
-  is_ct = vcl_session_is_ct (s);
-  mq = wrk->app_event_queue;
-  rx_fifo = is_ct ? s->ct_rx_fifo : s->rx_fifo;
-  s->has_rx_evt = 0;
 
   if (svm_fifo_is_empty_cons (rx_fifo))
     {
@@ -2060,17 +2060,17 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
       return VPPCOM_EBADFD;
     }
 
-  if (PREDICT_FALSE (!vcl_session_is_open (s)))
+  is_ct = vcl_session_is_ct (s);
+  tx_fifo = is_ct ? s->ct_tx_fifo : s->tx_fifo;
+  is_nonblocking = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
+
+  if (PREDICT_FALSE (!vcl_session_is_open (s) || !tx_fifo))
     {
       VDBG (1, "session %u [0x%llx]: is not open! state 0x%x (%s)",
 	    s->session_index, s->vpp_handle, s->session_state,
 	    vppcom_session_state_str (s->session_state));
       return vcl_session_closed_error (s);;
     }
-
-  is_ct = vcl_session_is_ct (s);
-  tx_fifo = is_ct ? s->ct_tx_fifo : s->tx_fifo;
-  is_nonblocking = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
 
   mq = wrk->app_event_queue;
   if (!vcl_fifo_is_writeable (tx_fifo, n, is_dgram))
