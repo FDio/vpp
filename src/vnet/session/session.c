@@ -1905,6 +1905,8 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "enable"))
 	smm->session_enable_asap = 1;
+      else if (unformat (input, "segment-baseva 0x%lx", &smm->session_baseva))
+	;
       else if (unformat (input, "use-app-socket-api"))
 	appns_sapi_enable ();
       else
