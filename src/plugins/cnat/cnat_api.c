@@ -88,16 +88,17 @@ vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
   u32 id = ~0;
   u8 flags;
   int rv = 0;
-  u8 pi;
+  u32 pi, n_paths;
 
   rv = ip_proto_decode (mp->translation.ip_proto, &ip_proto);
 
   if (rv)
     goto done;
 
-  vec_validate (paths, mp->translation.n_paths - 1);
+  n_paths = clib_net_to_host_u32 (mp->translation.n_paths);
+  vec_validate (paths, n_paths - 1);
 
-  for (pi = 0; pi < mp->translation.n_paths; pi++)
+  for (pi = 0; pi < n_paths; pi++)
     {
       path = &paths[pi];
       cnat_endpoint_tuple_decode (&mp->translation.paths[pi], path);

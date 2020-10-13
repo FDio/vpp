@@ -113,12 +113,12 @@ typedef struct load_balance_t_ {
     /**
      * number of buckets in the load-balance. always a power of 2.
      */
-    u16 lb_n_buckets;
+    u32 lb_n_buckets;
     /**
      * number of buckets in the load-balance - 1. used in the switch path
      * as part of the hash calculation.
      */
-    u16 lb_n_buckets_minus_1;
+    u32 lb_n_buckets_minus_1;
 
    /**
      * The protocol of packets that traverse this LB.
@@ -174,8 +174,8 @@ typedef struct load_balance_t_ {
     dpo_id_t lb_buckets_inline[LB_NUM_INLINE_BUCKETS];
 } load_balance_t;
 
-STATIC_ASSERT(sizeof(load_balance_t) <= CLIB_CACHE_LINE_BYTES,
-	      "A load_balance object size exceeds one cacheline");
+// STATIC_ASSERT(sizeof(load_balance_t) <= CLIB_CACHE_LINE_BYTES,
+// 	      "A load_balance object size exceeds one cacheline");
 
 /**
  * Flags controlling load-balance formatting/display
