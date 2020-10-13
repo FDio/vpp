@@ -247,10 +247,10 @@ show_errors (vlib_main_t * vm,
   vec_validate (sums, vec_len (em->counters));
 
   if (verbose)
-    vlib_cli_output (vm, "%=10s%=30s%=20s%=10s%=6s", "Count", "Node",
+    vlib_cli_output (vm, "%=10s%=35s%=35s%=10s%=6s", "Count", "Node",
 		     "Reason", "Severity", "Index");
   else
-    vlib_cli_output (vm, "%=10s%=30s%=20s%=10s", "Count", "Node", "Reason",
+    vlib_cli_output (vm, "%=10s%=35s%=35s%=10s", "Count", "Node", "Reason",
 		     "Severity");
 
 
@@ -277,11 +277,11 @@ show_errors (vlib_main_t * vm,
 	      continue;
 
             if (verbose)
-              vlib_cli_output (vm, "%10lu%=30v%=20s%=10s%=6d", c, n->name,
+              vlib_cli_output (vm, "%10lu%=35v%=35s%=10s%=6d", c, n->name,
                                em->counters_heap[i].name,
                                sev2str(em->counters_heap[i].severity), i);
             else
-              vlib_cli_output (vm, "%10lu%=30v%=20s%=10s", c, n->name,
+              vlib_cli_output (vm, "%10lu%=35v%=35s%=10s", c, n->name,
                                em->counters_heap[i].name,
                                sev2str(em->counters_heap[i].severity));
 	  }
