@@ -16,6 +16,24 @@
       "revId": "0d5e2f6b8a2a39956366b976fa128e41ee853764",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "397ce603_8f88de3f",
+        "filename": "src/plugins/nat/out2in_ed.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 456,
+      "author": {
+        "id": 2123
+      },
+      "writtenOn": "2020-10-13T08:48:17Z",
+      "side": 1,
+      "message": "Hi Matt!\n\nI see that here we possible do double work if ICMP is not an error message.\n\nI don\u0027t think that we can just check if protocol is not ICMP here because inner packet can be ICMP also. And in that case we will have key generated with inner IP addresses.\n\nWe can check if received ICMP is an error message and just drop it in that case. Because I think it is unusual (suspicious?) case when we have to deliver error message without session. I also don\u0027t think that we should create UDP/TCP session based on inner packet of error ICMP message but session created in this patch (and before of this patch) here does not have a lot of sense.",
+      "parentUuid": "70dd26f2_bb4cbced",
+      "revId": "0d5e2f6b8a2a39956366b976fa128e41ee853764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
