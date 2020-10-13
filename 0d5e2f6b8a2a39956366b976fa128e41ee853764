@@ -34,6 +34,24 @@
       "revId": "0d5e2f6b8a2a39956366b976fa128e41ee853764",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "84d97cf0_63ee1bbc",
+        "filename": "src/plugins/nat/out2in_ed.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 456,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-10-13T13:29:44Z",
+      "side": 1,
+      "message": "Hi Vladimir,\n\nI agree. If this packet is an ICMP error and no existing in2out session was found for the inner header, there does not seem to be much need to create a session.\n\nI don\u0027t know if we can drop the packet since this function will only get called if forwarding is enabled. It seems like when forwarding is enabled, the packet should always be allowed to pass. But create_bypass_for_fwd() can just return without creating any bypass session.\n\n-Matt",
+      "parentUuid": "397ce603_8f88de3f",
+      "revId": "0d5e2f6b8a2a39956366b976fa128e41ee853764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
