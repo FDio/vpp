@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "56fa3d01_e23d798e",
+        "filename": "src/vcl/vcl_bapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 469,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-13T14:22:11Z",
+      "side": 1,
+      "message": "Did you actually hit an issue with this?",
+      "range": {
+        "startLine": 469,
+        "startChar": 44,
+        "endLine": 469,
+        "endChar": 52
+      },
+      "revId": "1cdcd56b191a96e89ca32ac0c5877fa0284bac66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
