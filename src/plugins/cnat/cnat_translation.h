@@ -58,7 +58,12 @@ typedef struct cnat_ep_trk_t_
 
 typedef enum cnat_translation_flag_t_
 {
+  /* Do allocate a source port */
   CNAT_TRANSLATION_FLAG_ALLOCATE_PORT = (1 << 0),
+  /* Has this translation been satcked ?
+   * this allow not being called twice when
+   * with more then FIB_PATH_LIST_POPULAR backends  */
+  CNAT_TRANSLATION_STACKED = (1 << 1),
 } cnat_translation_flag_t;
 
 typedef enum
