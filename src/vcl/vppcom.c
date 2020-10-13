@@ -68,6 +68,9 @@ vppcom_session_state_str (vcl_session_state_t state)
       st = "STATE_CONNECT";
       break;
 
+    case STATE_ESTABLISH:
+      st = "STATE_ESTABLISH";
+
     case STATE_LISTEN:
       st = "STATE_LISTEN";
       break;
@@ -536,7 +539,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
       && session->session_state == STATE_CLOSED)
     vcl_send_session_disconnect (wrk, session);
   else
-    session->session_state = STATE_CONNECT;
+    session->session_state = STATE_ESTABLISH;
 
   /* Add it to lookup table */
   vcl_session_table_add_vpp_handle (wrk, mp->handle, session_index);
@@ -1720,17 +1723,17 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
 	vppcom_proto_str (session->session_type));
 
   vcl_send_session_connect (wrk, session);
+  session->session_state = STATE_CONNECT;
 
   if (VCL_SESS_ATTR_TEST (session->attr, VCL_SESS_ATTR_NONBLOCK))
     {
-      session->session_state = STATE_CONNECT;
       return VPPCOM_EINPROGRESS;
     }
 
   /*
    * Wait for reply from vpp if blocking
    */
-  rv = vppcom_wait_for_session_state_change (session_index, STATE_CONNECT,
+  rv = vppcom_wait_for_session_state_change (session_index, STATE_ESTABLISH,
 					     vcm->cfg.session_timeout);
 
   session = vcl_session_get (wrk, session_index);
@@ -1789,7 +1792,7 @@ vppcom_session_stream_connect (uint32_t session_handle,
    * Send connect request and wait for reply from vpp
    */
   vcl_send_session_connect (wrk, session);
-  rv = vppcom_wait_for_session_state_change (session_index, STATE_CONNECT,
+  rv = vppcom_wait_for_session_state_change (session_index, STATE_ESTABLISH,
 					     vcm->cfg.session_timeout);
 
   session->listener_index = parent_session_index;
@@ -2067,6 +2070,7 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
 	    vppcom_session_state_str (s->session_state));
       return vcl_session_closed_error (s);;
     }
+
 
   is_ct = vcl_session_is_ct (s);
   tx_fifo = is_ct ? s->ct_tx_fifo : s->tx_fifo;

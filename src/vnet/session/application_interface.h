@@ -291,7 +291,7 @@ typedef struct app_session_transport_
   _(svm_fifo_t, *rx_fifo)		/**< rx fifo */			\
   _(svm_fifo_t, *tx_fifo)		/**< tx fifo */			\
   _(session_type_t, session_type)	/**< session type */		\
-  _(volatile u8, session_state)		/**< session state */		\
+  _(volatile u16, session_state)	/**< session state */		\
   _(u32, session_index)			/**< index in owning pool */	\
   _(app_session_transport_t, transport)	/**< transport info */		\
   _(svm_msg_q_t, *vpp_evt_q)		/**< vpp event queue  */	\
