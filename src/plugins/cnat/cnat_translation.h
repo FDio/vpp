@@ -59,6 +59,7 @@ typedef struct cnat_ep_trk_t_
 typedef enum cnat_translation_flag_t_
 {
   CNAT_TRANSLATION_FLAG_ALLOCATE_PORT = (1 << 0),
+  CNAT_TRANSLATION_STACKED = (1 << 1),
 } cnat_translation_flag_t;
 
 typedef enum

@@ -198,6 +198,7 @@ cnat_translation_stack (cnat_translation_t * ct)
 
   dpo_set (&ct->ct_lb, DPO_LOAD_BALANCE, dproto, lbi);
   dpo_stack (cnat_client_dpo, dproto, &ct->ct_lb, &ct->ct_lb);
+  ct->flags |= CNAT_TRANSLATION_STACKED;
 }
 
 int
@@ -277,6 +278,7 @@ cnat_translation_update (cnat_endpoint_t * vip,
   }
 
   vec_reset_length (ct->ct_paths);
+  ct->flags &= ~CNAT_TRANSLATION_STACKED;
 
   u64 path_idx = 0;
   vec_foreach (path, paths)
@@ -457,6 +459,12 @@ cnat_translation_back_walk_notify (fib_node_t * node,
    */
   cnat_translation_t *ct = cnat_translation_get_from_node (node);
 
+  /* If we have more than FIB_PATH_LIST_POPULAR paths
+   * we might get called during path tracking
+   * (cnat_tracker_track) */
+  if (!(ct->flags & CNAT_TRANSLATION_STACKED))
+    return (FIB_NODE_BACK_WALK_CONTINUE);
+
   cnat_translation_stack (ct);
 
   return (FIB_NODE_BACK_WALK_CONTINUE);
@@ -601,9 +609,12 @@ cnat_if_addr_add_del_backend_cb (addr_resolution_t * ar,
       ip_address_copy (&ep->ce_ip, address);
       ep->ce_flags |= CNAT_EP_FLAG_RESOLVED;
     }
+
+  ct->flags &= ~CNAT_TRANSLATION_STACKED;
   cnat_tracker_track (ar->cti, trk);
 
   cnat_translation_stack (ct);
+  ct->flags |= CNAT_TRANSLATION_STACKED;
 }
 
 static void
