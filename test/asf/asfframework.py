@@ -681,7 +681,8 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
                 )
                 raise
             try:
-                cls.vapi.connect()
+                rx_qlen = cls.rx_qlen if hasattr(cls, "rx_qlen") else 32
+                cls.vapi.connect(rx_qlen=rx_qlen)
             except (vpp_papi.VPPIOError, Exception) as e:
                 cls.logger.debug("Exception connecting to vapi: %s" % e)
                 cls.vapi.disconnect()
