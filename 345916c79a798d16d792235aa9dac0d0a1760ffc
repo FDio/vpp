@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "80fb42f2_b667de15",
+        "filename": "src/plugins/nat/in2out_ed.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 589,
+      "author": {
+        "id": 2123
+      },
+      "writtenOn": "2020-10-14T16:41:07Z",
+      "side": 1,
+      "message": "It is used in is_interface_addr (sm, node, tx_sw_if_index, ip-\u003esrc_address.as_u32) #605.",
+      "parentUuid": "5a4e2c61_6a717b6a",
+      "revId": "345916c79a798d16d792235aa9dac0d0a1760ffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "67a45384_7931a9e7",
         "filename": "src/plugins/nat/in2out_ed.c",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2020-10-14T15:30:17Z",
       "side": 1,
       "message": "There is a utility inlined function vnet_sw_interface_is_valid() defined in src/vnet/interfaces_func.h which could be used here instead of checking the interface pool indices directly.",
+      "revId": "345916c79a798d16d792235aa9dac0d0a1760ffc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3329e2ef_b2e0ea7e",
+        "filename": "src/plugins/nat/in2out_ed.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 603,
+      "author": {
+        "id": 2123
+      },
+      "writtenOn": "2020-10-14T16:41:07Z",
+      "side": 1,
+      "message": "oh, I didn\u0027t find it!",
+      "parentUuid": "67a45384_7931a9e7",
       "revId": "345916c79a798d16d792235aa9dac0d0a1760ffc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
