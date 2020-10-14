@@ -350,7 +350,7 @@ class VppPapiProvider(object):
             setattr(self, name, method)
         return method
 
-    def connect(self):
+    def connect(self, rx_qlen=None):
         """Connect the API to VPP"""
         # This might be called before VPP is prepared to listen to the socket
         retries = 0
@@ -359,7 +359,8 @@ class VppPapiProvider(object):
             retries += 1
             if retries > 120:
                 break
-        self.vpp.connect(self.name[:63])
+        kwargs = {} if rx_qlen is None else {"rx_qlen": rx_qlen}
+        self.vpp.connect(self.name[:63], **kwargs)
         self.papi = self.vpp.api
         self.vpp.register_event_callback(self)
 
