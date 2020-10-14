@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "27a02ebb_2e3b7e3f",
+        "filename": "src/plugins/avf/elog.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-10-14T13:44:32Z",
+      "side": 1,
+      "message": "It\u0027s probably just about worth creating a hash table to solve this problem, especially in view of the \"for (i \u003d 0; i \u003c 16; ...)\" loop below",
+      "revId": "3b258513c8dcaaa9478698890226ef0360681c56",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4ab2a1a0_f844ab8d",
+        "filename": "src/plugins/avf/elog.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 232,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-10-14T13:44:32Z",
+      "side": 1,
+      "message": "Maybe \"if (...) { ed-\u003estr \u003d N; return}\"?",
+      "revId": "3b258513c8dcaaa9478698890226ef0360681c56",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
