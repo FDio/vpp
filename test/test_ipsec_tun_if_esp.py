@@ -21,6 +21,7 @@ from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 from vpp_teib import VppTeib
 from util import ppp
 from vpp_papi import VppEnum
+from vpp_papi_provider import CliFailedCommandError
 from vpp_acl import AclRule, VppAcl, VppAclInterface
 
 
@@ -2512,8 +2513,8 @@ class TemplateIpsecItf4(object):
                                            [p.tun_sa_in])
         p.tun_protect.add_vpp_config()
 
-    def config_network(self, p):
-        p.tun_if = VppIpsecInterface(self)
+    def config_network(self, p, instance=0xffffffff):
+        p.tun_if = VppIpsecInterface(self, instance=instance)
 
         p.tun_if.add_vpp_config()
         p.tun_if.admin_up()
@@ -2554,6 +2555,18 @@ class TestIpsecItf4(TemplateIpsec,
 
     def tearDown(self):
         super(TestIpsecItf4, self).tearDown()
+
+    def test_tun_instance_44(self):
+        p = self.ipv4_params
+        self.config_network(p, instance=3)
+
+        with self.assertRaises(CliFailedCommandError):
+            self.vapi.cli("show interface ipsec0")
+
+        output = self.vapi.cli("show interface ipsec3")
+        self.assertTrue("unknown" not in output)
+
+        self.unconfig_network(p)
 
     def test_tun_44(self):
         """IPSEC interface IPv4"""
@@ -2643,6 +2656,11 @@ class TestIpsecItf4(TemplateIpsec,
         self.config_protect(p)
 
         self.verify_tun_44(p, count=n_pkts)
+
+        # teardown
+        self.unconfig_protect(p)
+        self.unconfig_sa(p)
+        self.unconfig_network(p)
 
 
 class TemplateIpsecItf6(object):

@@ -294,12 +294,10 @@ ipsec_itf_create (u32 user_instance, tunnel_mode_t mode, u32 * sw_if_indexp)
 
   ipsec_itf->ii_mode = mode;
   ipsec_itf->ii_user_instance = instance;
-  if (~0 == ipsec_itf->ii_user_instance)
-    ipsec_itf->ii_user_instance = t_idx;
 
   hw_if_index = vnet_register_interface (vnm,
 					 ipsec_itf_device_class.index,
-					 t_idx,
+					 ipsec_itf->ii_user_instance,
 					 ipsec_hw_interface_class.index,
 					 t_idx);
 

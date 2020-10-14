@@ -376,16 +376,17 @@ class VppIpsecInterface(VppInterface):
     VPP IPSec interface
     """
 
-    def __init__(self, test, mode=None):
+    def __init__(self, test, mode=None, instance=0xffffffff):
         super(VppIpsecInterface, self).__init__(test)
 
         # only p2p mode is supported currently
         self.mode = (VppEnum.vl_api_tunnel_mode_t.
                      TUNNEL_API_MODE_P2P)
+        self.instance = instance
 
     def add_vpp_config(self):
         r = self.test.vapi.ipsec_itf_create(itf={
-            'user_instance': 0xffffffff,
+            'user_instance': self.instance,
             'mode': self.mode,
         })
         self.set_sw_if_index(r.sw_if_index)
