@@ -62,22 +62,23 @@ typedef enum
   STATE_APP_READY
 } vcl_bapi_app_state_t;
 
-typedef enum
-{
-  STATE_CLOSED = 0,
-  STATE_CONNECT = 0x01,
-  STATE_LISTEN = 0x02,
-  STATE_ACCEPT = 0x04,
-  STATE_VPP_CLOSING = 0x08,
-  STATE_DISCONNECT = 0x10,
-  STATE_DETACHED = 0x20,
-  STATE_UPDATED = 0x40,
-  STATE_LISTEN_NO_MQ = 0x80,
-} vcl_session_state_t;
+#define foreach_vcl_state		\
+  _(CLOSED, "CLOSED")			\
+  _(CONNECT, "CONNECT")			\
+  _(LISTEN, "LISTEN")			\
+  _(ACCEPT, "ACCEPT")			\
+  _(VPP_CLOSING, "VPP-CLOSING")		\
+  _(DISCONNECT, "DISCONNECT")		\
+  _(DETACHED, "DETACHED")		\
+  _(UPDATED, "UPDATED")			\
+  _(LISTEN_NO_MQ, "LISTEN_NO_MQ")
 
-#define SERVER_STATE_OPEN  (STATE_ACCEPT|STATE_VPP_CLOSING)
-#define CLIENT_STATE_OPEN  (STATE_CONNECT|STATE_VPP_CLOSING)
-#define STATE_OPEN (SERVER_STATE_OPEN | CLIENT_STATE_OPEN)
+typedef enum vcl_session_state_
+{
+#define _(sym, str) VCL_STATE_##sym,
+  foreach_vcl_state
+#undef _
+} vcl_session_state_t;
 
 typedef struct epoll_event vppcom_epoll_event_t;
 
@@ -509,18 +510,18 @@ vcl_session_is_connectable_listener (vcl_worker_t * wrk,
   if (session->session_type != VPPCOM_PROTO_QUIC)
     return 0;
   if (session->listener_index == VCL_INVALID_SESSION_INDEX)
-    return !(session->session_state & STATE_LISTEN);
+    return !(session->session_state == VCL_STATE_LISTEN);
   ls = vcl_session_get_w_handle (wrk, session->listener_index);
   if (!ls)
     return VPPCOM_EBADFD;
-  return ls->session_state & STATE_LISTEN;
+  return ls->session_state == VCL_STATE_LISTEN;
 }
 
 static inline vcl_session_t *
 vcl_session_table_lookup_listener (vcl_worker_t * wrk, u64 handle)
 {
   uword *p;
-  vcl_session_t *session;
+  vcl_session_t *s;
 
   p = hash_get (wrk->session_index_by_vpp_handles, handle);
   if (!p)
@@ -529,16 +530,17 @@ vcl_session_table_lookup_listener (vcl_worker_t * wrk, u64 handle)
 	    " %llx", handle);
       return 0;
     }
-  session = vcl_session_get (wrk, p[0]);
-  if (!session)
+  s = vcl_session_get (wrk, p[0]);
+  if (!s)
     {
       VDBG (1, "invalid listen session index (%u)", p[0]);
       return 0;
     }
 
-  ASSERT ((session->session_state & (STATE_LISTEN | STATE_LISTEN_NO_MQ)) ||
-	  vcl_session_is_connectable_listener (wrk, session));
-  return session;
+  ASSERT (s->session_state == VCL_STATE_LISTEN
+	  || s->session_state == VCL_STATE_LISTEN_NO_MQ
+	  || vcl_session_is_connectable_listener (wrk, s));
+  return s;
 }
 
 const char *vppcom_session_state_str (vcl_session_state_t state);
@@ -558,37 +560,45 @@ vcl_session_is_cl (vcl_session_t * s)
 }
 
 static inline u8
+vcl_session_is_established (vcl_session_t * s)
+{
+  return (s->session_state == VCL_STATE_ACCEPT
+	  || s->session_state == VCL_STATE_CONNECT
+	  || s->session_state == VCL_STATE_VPP_CLOSING);
+}
+
+static inline u8
 vcl_session_is_open (vcl_session_t * s)
 {
-  return ((s->session_state & STATE_OPEN)
-	  || (s->session_state == STATE_LISTEN
+  return ((vcl_session_is_established (s))
+	  || (s->session_state == VCL_STATE_LISTEN
 	      && s->session_type == VPPCOM_PROTO_UDP));
 }
 
 static inline u8
 vcl_session_is_closing (vcl_session_t * s)
 {
-  return (s->session_state == STATE_VPP_CLOSING
-	  || s->session_state == STATE_DISCONNECT);
+  return (s->session_state == VCL_STATE_VPP_CLOSING
+	  || s->session_state == VCL_STATE_DISCONNECT);
 }
 
 static inline u8
 vcl_session_is_closed (vcl_session_t * s)
 {
-  return (!s || (s->session_state == STATE_CLOSED));
+  return (!s || (s->session_state == VCL_STATE_CLOSED));
 }
 
 static inline int
 vcl_session_closing_error (vcl_session_t * s)
 {
   /* Return 0 on closing sockets */
-  return s->session_state == STATE_DISCONNECT ? VPPCOM_ECONNRESET : 0;
+  return s->session_state == VCL_STATE_DISCONNECT ? VPPCOM_ECONNRESET : 0;
 }
 
 static inline int
 vcl_session_closed_error (vcl_session_t * s)
 {
-  return s->session_state == STATE_DISCONNECT
+  return s->session_state == VCL_STATE_DISCONNECT
     ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN;
 }
 
