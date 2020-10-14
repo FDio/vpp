@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9dc5b784_f297c634",
+        "filename": "src/cmake/library.cmake",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-10-14T17:34:21Z",
+      "side": 1,
+      "message": "Isn\u0027t order of arguments wrong?",
+      "revId": "d18c780400c2feb932f2261ba4fe756f7bb152ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
