@@ -76,8 +76,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 			     vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  ip46_address_t tun_src = { }, tun_dst =
-  {
+  ip46_address_t tun_src = { }, tun_dst = {
   };
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
@@ -997,6 +996,8 @@ ipsec_tun_protect_cmd (vlib_main_t * vm,
 
   if (!is_del)
     ipsec_tun_protect_update (sw_if_index, &peer, sa_out, sa_ins);
+  else
+    ipsec_tun_protect_del (sw_if_index, &peer);
 
   unformat_free (line_input);
   return NULL;
@@ -1010,7 +1011,7 @@ VLIB_CLI_COMMAND (ipsec_tun_protect_cmd_node, static) =
 {
   .path = "ipsec tunnel protect",
   .function = ipsec_tun_protect_cmd,
-  .short_help = "ipsec tunnel protect <interface> input-sa <SA> output-sa <SA>",
+  .short_help = "ipsec tunnel protect <interface> input-sa <SA> output-sa <SA> [add|del]",
     // this is not MP safe
 };
 /* *INDENT-ON* */
