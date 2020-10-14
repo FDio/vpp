@@ -148,16 +148,27 @@ snat_not_translate (snat_main_t * sm, vlib_node_runtime_t * node,
 }
 
 static inline int
-nat_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip0,
-				  u32 proto0, u16 src_port, u16 dst_port,
-				  u32 thread_index, u32 sw_if_index)
+nat_not_translate_output_feature (snat_main_t * sm,
+				  vlib_node_runtime_t * node,
+				  ip4_header_t * ip0, u32 proto0,
+				  u16 src_port, u16 dst_port,
+				  u32 thread_index, u32 rx_sw_if_index,
+				  u32 tx_sw_if_index)
 {
   clib_bihash_kv_8_8_t kv0, value0;
   snat_interface_t *i;
 
+  /* Do not translate packets from interface itself */
+  if (vnet_sw_interface_is_valid (vnet_get_main (), tx_sw_if_index) &&
+      is_interface_addr (sm, node, tx_sw_if_index, ip0->src_address.as_u32))
+    {
+      return 1;
+    }
+
   /* src NAT check */
   init_nat_k (&kv0, ip0->src_address, src_port,
-	      ip4_fib_table_get_index_for_sw_if_index (sw_if_index), proto0);
+	      ip4_fib_table_get_index_for_sw_if_index (rx_sw_if_index),
+	      proto0);
 
   if (!clib_bihash_search_8_8
       (&sm->per_thread_data[thread_index].out2in, &kv0, &value0))
@@ -165,7 +176,8 @@ nat_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip0,
 
   /* dst NAT check */
   init_nat_k (&kv0, ip0->dst_address, dst_port,
-	      ip4_fib_table_get_index_for_sw_if_index (sw_if_index), proto0);
+	      ip4_fib_table_get_index_for_sw_if_index (rx_sw_if_index),
+	      proto0);
   if (!clib_bihash_search_8_8
       (&sm->per_thread_data[thread_index].in2out, &kv0, &value0))
     {
@@ -173,7 +185,7 @@ nat_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip0,
     /* *INDENT-OFF* */
     pool_foreach (i, sm->output_feature_interfaces,
     ({
-      if ((nat_interface_is_inside(i)) && (sw_if_index == i->sw_if_index))
+      if ((nat_interface_is_inside(i)) && (rx_sw_if_index == i->sw_if_index))
         return 0;
     }));
     /* *INDENT-ON* */
@@ -483,7 +495,8 @@ icmp_match_in2out_slow (snat_main_t * sm, vlib_node_runtime_t * node,
 	{
 	  if (PREDICT_FALSE
 	      (nat_not_translate_output_feature
-	       (sm, ip0, *proto, *port, *port, thread_index, sw_if_index0)))
+	       (sm, node, ip0, *proto, *port, *port, thread_index,
+		sw_if_index0, vnet_buffer (b0)->sw_if_index[VLIB_TX])))
 	    {
 	      *dont_translate = 1;
 	      goto out;
@@ -1003,10 +1016,11 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		{
 		  if (PREDICT_FALSE
 		      (nat_not_translate_output_feature
-		       (sm, ip0, proto0,
+		       (sm, node, ip0, proto0,
 			vnet_buffer (b0)->ip.reass.l4_src_port,
 			vnet_buffer (b0)->ip.reass.l4_dst_port,
-			thread_index, sw_if_index0)))
+			thread_index, sw_if_index0,
+			vnet_buffer (b0)->sw_if_index[VLIB_TX])))
 		    goto trace00;
 
 		  /*
@@ -1228,10 +1242,11 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		{
 		  if (PREDICT_FALSE
 		      (nat_not_translate_output_feature
-		       (sm, ip1, proto1,
+		       (sm, node, ip1, proto1,
 			vnet_buffer (b1)->ip.reass.l4_src_port,
 			vnet_buffer (b1)->ip.reass.l4_dst_port,
-			thread_index, sw_if_index1)))
+			thread_index, sw_if_index1,
+			vnet_buffer (b1)->sw_if_index[VLIB_TX])))
 		    goto trace01;
 
 		  /*
@@ -1479,10 +1494,11 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		{
 		  if (PREDICT_FALSE
 		      (nat_not_translate_output_feature
-		       (sm, ip0, proto0,
+		       (sm, node, ip0, proto0,
 			vnet_buffer (b0)->ip.reass.l4_src_port,
 			vnet_buffer (b0)->ip.reass.l4_dst_port,
-			thread_index, sw_if_index0)))
+			thread_index, sw_if_index0,
+			vnet_buffer (b0)->sw_if_index[VLIB_TX])))
 		    goto trace0;
 
 		  /*
