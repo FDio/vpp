@@ -481,7 +481,8 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
     {
       VDBG (0, "ERROR: session index %u: connect failed! %U",
 	    session_index, format_session_error, mp->retval);
-      session->session_state = STATE_DETACHED | STATE_DISCONNECT;
+//      session->session_state = STATE_DETACHED | STATE_DISCONNECT;
+      session->session_state = STATE_DETACHED;
       session->vpp_handle = mp->handle;
       return session_index;
     }
@@ -495,7 +496,8 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
     {
       VDBG (0, "segment for session %u is not mounted!",
 	    session->session_index);
-      session->session_state = STATE_DETACHED | STATE_DISCONNECT;
+//      session->session_state = STATE_DETACHED | STATE_DISCONNECT;
+      session->session_state = STATE_DETACHED;
       vcl_send_session_disconnect (wrk, session);
       return session_index;
     }
@@ -517,7 +519,8 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 	{
 	  VDBG (0, "ct segment for session %u is not mounted!",
 		session->session_index);
-	  session->session_state = STATE_DETACHED | STATE_DISCONNECT;
+//        session->session_state = STATE_DETACHED | STATE_DISCONNECT;
+	  session->session_state = STATE_DETACHED;
 	  vcl_send_session_disconnect (wrk, session);
 	  return session_index;
 	}
@@ -928,14 +931,14 @@ static int
 vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
 {
   session_disconnected_msg_t *disconnected_msg;
-  vcl_session_t *session;
+  vcl_session_t *s;
 
   switch (e->event_type)
     {
     case SESSION_IO_EVT_RX:
     case SESSION_IO_EVT_TX:
-      session = vcl_session_get (wrk, e->session_index);
-      if (!session || !(session->session_state & STATE_OPEN))
+      s = vcl_session_get (wrk, e->session_index);
+      if (!s || !(vcl_session_is_established (s)))
 	break;
       vec_add1 (wrk->unhandled_evts_vector, *e);
       break;
@@ -948,11 +951,11 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
       break;
     case SESSION_CTRL_EVT_DISCONNECTED:
       disconnected_msg = (session_disconnected_msg_t *) e->data;
-      session = vcl_session_disconnected_handler (wrk, disconnected_msg);
-      if (!session)
+      s = vcl_session_disconnected_handler (wrk, disconnected_msg);
+      if (!s)
 	break;
-      VDBG (0, "disconnected session %u [0x%llx]", session->session_index,
-	    session->vpp_handle);
+      VDBG (0, "disconnected session %u [0x%llx]", s->session_index,
+	    s->vpp_handle);
       break;
     case SESSION_CTRL_EVT_RESET:
       vcl_session_reset_handler (wrk, (session_reset_msg_t *) e->data);
@@ -1310,7 +1313,7 @@ vppcom_session_create (u8 proto, u8 is_nonblocking)
 }
 
 int
-vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
+vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * s,
 		     vcl_session_handle_t sh, u8 do_disconnect)
 {
   vcl_session_state_t state;
@@ -1319,13 +1322,13 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
   u64 vpp_handle;
   u8 is_vep;
 
-  is_vep = session->is_vep;
-  next_sh = session->vep.next_sh;
-  vep_sh = session->vep.vep_sh;
-  state = session->session_state;
-  vpp_handle = session->vpp_handle;
+  is_vep = s->is_vep;
+  next_sh = s->vep.next_sh;
+  vep_sh = s->vep.vep_sh;
+  state = s->session_state;
+  vpp_handle = s->vpp_handle;
 
-  VDBG (1, "session %u [0x%llx] closing", session->session_index, vpp_handle);
+  VDBG (1, "session %u [0x%llx] closing", s->session_index, vpp_handle);
 
   if (is_vep)
     {
@@ -1337,59 +1340,59 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
 		  " failed! rv %d (%s)", vpp_handle, next_sh, vep_sh, rv,
 		  vppcom_retval_str (rv));
 
-	  next_sh = session->vep.next_sh;
+	  next_sh = s->vep.next_sh;
 	}
       goto cleanup;
     }
 
-  if (session->is_vep_session)
+  if (s->is_vep_session)
     {
       rv = vppcom_epoll_ctl (vep_sh, EPOLL_CTL_DEL, sh, 0);
       if (rv < 0)
 	VDBG (0, "session %u [0x%llx]: EPOLL_CTL_DEL vep_idx %u "
-	      "failed! rv %d (%s)", session->session_index, vpp_handle,
+	      "failed! rv %d (%s)", s->session_index, vpp_handle,
 	      vep_sh, rv, vppcom_retval_str (rv));
     }
 
   if (!do_disconnect)
     {
       VDBG (1, "session %u [0x%llx] disconnect skipped",
-	    session->session_index, vpp_handle);
+	    s->session_index, vpp_handle);
       goto cleanup;
     }
 
-  if (state & STATE_LISTEN)
+  if (state == STATE_LISTEN)
     {
       rv = vppcom_session_unbind (sh);
       if (PREDICT_FALSE (rv < 0))
 	VDBG (0, "session %u [0x%llx]: listener unbind failed! "
-	      "rv %d (%s)", session->session_index, vpp_handle, rv,
+	      "rv %d (%s)", s->session_index, vpp_handle, rv,
 	      vppcom_retval_str (rv));
       return rv;
     }
-  else if ((state & STATE_OPEN)
-	   || (vcl_session_is_connectable_listener (wrk, session)))
+  else if ((vcl_session_is_established (s))
+	   || (vcl_session_is_connectable_listener (wrk, s)))
     {
       rv = vppcom_session_disconnect (sh);
       if (PREDICT_FALSE (rv < 0))
 	VDBG (0, "ERROR: session %u [0x%llx]: disconnect failed!"
-	      " rv %d (%s)", session->session_index, vpp_handle,
+	      " rv %d (%s)", s->session_index, vpp_handle,
 	      rv, vppcom_retval_str (rv));
     }
   else if (state == STATE_DISCONNECT)
     {
-      svm_msg_q_t *mq = vcl_session_vpp_evt_q (wrk, session);
+      svm_msg_q_t *mq = vcl_session_vpp_evt_q (wrk, s);
       vcl_send_session_reset_reply (mq, wrk->api_client_handle,
-				    session->vpp_handle, 0);
+				    s->vpp_handle, 0);
     }
   else if (state == STATE_DETACHED)
     {
       /* Should not happen. VPP cleaned up before app confirmed close */
-      VDBG (0, "vpp freed session %d before close", session->session_index);
+      VDBG (0, "vpp freed session %d before close", s->session_index);
       goto free_session;
     }
 
-  session->session_state = STATE_CLOSED;
+  s->session_state = STATE_CLOSED;
 
   /* Session is removed only after vpp confirms the disconnect */
   return rv;
@@ -1397,8 +1400,8 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
 cleanup:
   vcl_session_table_del_vpp_handle (wrk, vpp_handle);
 free_session:
-  vcl_session_free (wrk, session);
-  vcl_evt (VCL_EVT_CLOSE, session, rv);
+  vcl_session_free (wrk, s);
+  vcl_evt (VCL_EVT_CLOSE, s, rv);
 
   return rv;
 }
@@ -1680,7 +1683,7 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
       return VPPCOM_EBADFD;
     }
 
-  if (PREDICT_FALSE (session->session_state & CLIENT_STATE_OPEN))
+  if (PREDICT_FALSE (vcl_session_is_established (session)))
     {
       VDBG (0, "session handle %u [0x%llx]: session already "
 	    "connected to %s %U port %d proto %s, state 0x%x (%s)",
@@ -1695,7 +1698,7 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
     }
 
   /* Attempt to connect a connectionless listener */
-  if (PREDICT_FALSE (session->session_state & STATE_LISTEN))
+  if (PREDICT_FALSE (session->session_state == STATE_LISTEN))
     {
       if (session->session_type != VPPCOM_PROTO_UDP)
 	return VPPCOM_EINVAL;
@@ -1768,7 +1771,7 @@ vppcom_session_stream_connect (uint32_t session_handle,
       return VPPCOM_EBADFD;
     }
 
-  if (PREDICT_FALSE (session->session_state & CLIENT_STATE_OPEN))
+  if (PREDICT_FALSE (vcl_session_is_established (session)))
     {
       VDBG (0, "session handle %u [0x%llx]: session already "
 	    "connected to session %u [0x%llx] proto %s, state 0x%x (%s)",
