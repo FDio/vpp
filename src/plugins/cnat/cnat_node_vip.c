@@ -160,7 +160,7 @@ cnat_vip_inline (vlib_main_t * vm,
       hash_c0 = (AF_IP4 == ctx->af ?
 		 ip4_compute_flow_hash (ip4, lb0->lb_hash_config) :
 		 ip6_compute_flow_hash (ip6, lb0->lb_hash_config));
-      bucket0 = hash_c0 & lb0->lb_n_buckets_minus_1;
+      bucket0 = hash_c0 % lb0->lb_n_buckets;
       dpo0 = load_balance_get_fwd_bucket (lb0, bucket0);
 
       /* add the session */
