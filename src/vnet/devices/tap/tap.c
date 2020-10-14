@@ -405,6 +405,12 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->features |= VIRTIO_FEATURE (VIRTIO_F_VERSION_1);
   vif->features |= VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC);
 
+  if (args->tap_flags & TAP_FLAG_PACKED)
+    {
+      vif->is_packed = 1;
+      vif->features |= VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
+    }
+
   virtio_set_net_hdr_size (vif);
 
   if (!(args->tap_flags & TAP_FLAG_ATTACH))
