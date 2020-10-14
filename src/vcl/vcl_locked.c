@@ -566,10 +566,10 @@ vls_listener_wrk_stop_listen (vcl_locked_session_t * vls, u32 wrk_index)
 
   wrk = vcl_worker_get (wrk_index);
   s = vcl_session_get (wrk, vls->session_index);
-  if (s->session_state != STATE_LISTEN)
+  if (s->session_state != VCL_STATE_LISTEN)
     return;
   vcl_send_session_unlisten (wrk, s);
-  s->session_state = STATE_LISTEN_NO_MQ;
+  s->session_state = VCL_STATE_LISTEN_NO_MQ;
   vls_listener_wrk_set (vls, wrk_index, 0 /* is_active */ );
 }
 
@@ -599,7 +599,7 @@ vls_unshare_session (vcl_locked_session_t * vls, vcl_worker_t * wrk)
     return 0;
 
   s = vcl_session_get (wrk, vls->session_index);
-  if (s->session_state == STATE_LISTEN)
+  if (s->session_state == VCL_STATE_LISTEN)
     vls_listener_wrk_set (vls, wrk->wrk_index, 0 /* is_active */ );
 
   vls_shared_data_pool_rlock ();
@@ -629,7 +629,7 @@ vls_unshare_session (vcl_locked_session_t * vls, vcl_worker_t * wrk)
    * Cleanup vcl state
    */
   n_subscribers = vec_len (vls_shd->workers_subscribed);
-  do_disconnect = s->session_state == STATE_LISTEN || !n_subscribers;
+  do_disconnect = s->session_state == VCL_STATE_LISTEN || !n_subscribers;
   vcl_session_cleanup (wrk, s, vcl_session_handle (s), do_disconnect);
 
   /*
@@ -724,9 +724,9 @@ vls_share_session (vls_worker_t * vls_wrk, vcl_locked_session_t * vls)
       svm_fifo_add_subscriber (s->rx_fifo, vcl_wrk->vpp_wrk_index);
       svm_fifo_add_subscriber (s->tx_fifo, vcl_wrk->vpp_wrk_index);
     }
-  else if (s->session_state == STATE_LISTEN)
+  else if (s->session_state == VCL_STATE_LISTEN)
     {
-      s->session_state = STATE_LISTEN_NO_MQ;
+      s->session_state = VCL_STATE_LISTEN_NO_MQ;
     }
 }
 
@@ -904,7 +904,7 @@ vls_mt_session_migrate (vcl_locked_session_t * vls)
       return;
     }
   else if (PREDICT_FALSE (!session->is_vep &&
-			  session->session_state != STATE_CLOSED))
+			  session->session_state != VCL_STATE_CLOSED))
     {
       /* TODO: rollback? */
       VERR ("migrate NOT supported, session_status (%u)",
@@ -1099,7 +1099,7 @@ vls_mp_checks (vcl_locked_session_t * vls, int is_add)
   s = vcl_session_get (wrk, vls->session_index);
   switch (s->session_state)
     {
-    case STATE_LISTEN:
+    case VCL_STATE_LISTEN:
       if (is_add)
 	{
 	  vls_listener_wrk_set (vls, vls->worker_index, 1 /* is_active */ );
@@ -1107,7 +1107,7 @@ vls_mp_checks (vcl_locked_session_t * vls, int is_add)
 	}
       vls_listener_wrk_stop_listen (vls, vls->worker_index);
       break;
-    case STATE_LISTEN_NO_MQ:
+    case VCL_STATE_LISTEN_NO_MQ:
       if (!is_add)
 	break;
 
@@ -1339,7 +1339,7 @@ vls_select_mp_checks (vcl_si_set * read_map)
   /* *INDENT-OFF* */
   clib_bitmap_foreach (si, read_map, ({
     s = vcl_session_get (wrk, si);
-    if (s->session_state == STATE_LISTEN)
+    if (s->session_state == VCL_STATE_LISTEN)
       {
 	vls = vls_get (vls_session_index_to_vlsh (si));
 	vls_mp_checks (vls, 1 /* is_add */);
