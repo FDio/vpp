@@ -997,6 +997,8 @@ ipsec_tun_protect_cmd (vlib_main_t * vm,
 
   if (!is_del)
     ipsec_tun_protect_update (sw_if_index, &peer, sa_out, sa_ins);
+  else
+    ipsec_tun_protect_del (sw_if_index, &peer);
 
   unformat_free (line_input);
   return NULL;
@@ -1010,7 +1012,7 @@ VLIB_CLI_COMMAND (ipsec_tun_protect_cmd_node, static) =
 {
   .path = "ipsec tunnel protect",
   .function = ipsec_tun_protect_cmd,
-  .short_help = "ipsec tunnel protect <interface> input-sa <SA> output-sa <SA>",
+  .short_help = "ipsec tunnel protect <interface> input-sa <SA> output-sa <SA> [add|del]",
     // this is not MP safe
 };
 /* *INDENT-ON* */
