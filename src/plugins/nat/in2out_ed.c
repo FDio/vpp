@@ -585,7 +585,9 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
 }
 
 static_always_inline int
-nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
+nat44_ed_not_translate_output_feature (snat_main_t * sm,
+				       vlib_node_runtime_t * node,
+				       ip4_header_t * ip,
 				       u16 src_port, u16 dst_port,
 				       u32 thread_index, u32 rx_sw_if_index,
 				       u32 tx_sw_if_index)
@@ -596,6 +598,13 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
   snat_session_t *s;
   u32 rx_fib_index = ip4_fib_table_get_index_for_sw_if_index (rx_sw_if_index);
   u32 tx_fib_index = ip4_fib_table_get_index_for_sw_if_index (tx_sw_if_index);
+
+  /* Do not translate packets from interface itself */
+  if (vnet_sw_interface_is_valid (vnet_get_main(), tx_sw_if_index) &&
+      is_interface_addr (sm, node, tx_sw_if_index, ip->src_address.as_u32))
+    {
+      return 1;
+    }
 
   /* src NAT check */
   init_ed_k (&kv, ip->src_address, src_port, ip->dst_address, dst_port,
@@ -680,7 +689,7 @@ icmp_match_in2out_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 	{
 	  if (PREDICT_FALSE
 	      (nat44_ed_not_translate_output_feature
-	       (sm, ip, l_port, r_port, thread_index,
+	       (sm, node, ip, l_port, r_port, thread_index,
 		sw_if_index, vnet_buffer (b)->sw_if_index[VLIB_TX])))
 	    {
 	      *dont_translate = 1;
@@ -1312,7 +1321,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	    {
 	      if (PREDICT_FALSE
 		  (nat44_ed_not_translate_output_feature
-		   (sm, ip0, vnet_buffer (b0)->ip.reass.l4_src_port,
+		   (sm, node, ip0, vnet_buffer (b0)->ip.reass.l4_src_port,
 		    vnet_buffer (b0)->ip.reass.l4_dst_port, thread_index,
 		    sw_if_index0, vnet_buffer (b0)->sw_if_index[VLIB_TX])))
 		goto trace0;
