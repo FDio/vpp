@@ -45,6 +45,7 @@
 
 /* FIXME autoconf */
 #define HAVE_LINUX_EPOLL
+#define BRICOLAGE_MODE
 
 #ifdef HAVE_LINUX_EPOLL
 
@@ -239,13 +240,22 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	if (timeout_ms)
 	  {
 	    struct timespec ts, tsrem;
+#ifndef BRICOLAGE_MODE
 	    f64 limit = now + (f64) timeout_ms * 1e-3;
+#else
+	    f64 sec_per_loop = 1.f / (1.f + vm->loops_per_second);
+	    f64 limit = now + (f64) (5000.f * sec_per_loop);
+#endif
 
 	    while (vlib_time_now (vm) < limit)
 	      {
 		/* Sleep for 100us at a time */
 		ts.tv_sec = 0;
+#ifdef BRICOLAGE_MODE
+		ts.tv_nsec = (u64) ((f64) 1.e-9 * sec_per_loop * 10.f);
+#else
 		ts.tv_nsec = 1000 * 100;
+#endif
 
 		while (nanosleep (&ts, &tsrem) < 0)
 		  ts = tsrem;
