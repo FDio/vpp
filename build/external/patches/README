@@ -24,7 +24,7 @@ for release tag “v2.2.0” and will create a branch named “two_dot_two”.
 
 5. Create the patch files with format-patch. This creates all the patch files
 for your branch (two_dot_two), with your latest commits as the last ones.
- # git format-patch master..two_dot_two
+ # git format-patch main..two_dot_two
 
 6. Copy, add and commit the new patches into the patches directory.
 
