@@ -1992,7 +1992,6 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
   vnet_pcap_t *pp = &vm->pcap;
   pcap_main_t *pm = &pp->pcap_main;
   vnet_classify_main_t *cm = &vnet_classify_main;
-  vnet_classify_filter_set_t *set = 0;
 
   if (a->status)
     {
@@ -2028,11 +2027,9 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
       && (pm->n_packets_to_capture != a->packets_to_capture))
     return VNET_API_ERROR_INVALID_VALUE_2;
 
-  set = pool_elt_at_index (cm->filter_sets, cm->filter_set_by_sw_if_index[0]);
-
   /* Classify filter specified, but no classify filter configured */
   if ((a->rx_enable + a->tx_enable + a->drop_enable) && a->filter &&
-      (set->table_indices == 0 || set->table_indices[0] == ~0))
+      cm->classify_table_index_by_sw_if_index[0] == ~0)
     return VNET_API_ERROR_NO_SUCH_LABEL;
 
   if (a->rx_enable + a->tx_enable + a->drop_enable)
@@ -2089,7 +2086,8 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
       pm->n_packets_to_capture = a->packets_to_capture;
       pp->pcap_sw_if_index = a->sw_if_index;
       if (a->filter)
-	pp->filter_classify_table_index = set->table_indices[0];
+	pp->filter_classify_table_index =
+	  cm->classify_table_index_by_sw_if_index[0];
       else
 	pp->filter_classify_table_index = ~0;
       pp->pcap_rx_enable = a->rx_enable;
