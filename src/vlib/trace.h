@@ -120,6 +120,7 @@ int vlib_enable_disable_pkt_trace_filter (int enable) __attribute__ ((weak));
 void trace_update_capture_options (u32 add, u32 node_index,
 				   u32 filter, u8 verbose);
 void trace_filter_set (u32 node_index, u32 flag, u32 count);
+void clear_trace_buffer (void);
 
 #endif /* included_vlib_trace_h */
 

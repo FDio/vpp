@@ -102,16 +102,6 @@ vl_api_trace_capture_packets_t_handler (vl_api_trace_capture_packets_t * mp)
       goto done;
     }
 
-  if (filter)
-    {
-      if (vlib_enable_disable_pkt_trace_filter (1) < 0)	/* enable */
-	{
-	  /* FIXME: Make a new error like "UNSUPPORTED_NODE_OPERATION"? */
-	  rv = VNET_API_ERROR_NO_SUCH_NODE;
-	  goto done;
-	}
-    }
-
   if (pre_clear)
     vlib_trace_stop_and_clear ();
 

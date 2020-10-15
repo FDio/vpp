@@ -39,6 +39,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
+#include <vnet/classify/vnet_classify.h>
 
 u8 *vnet_trace_placeholder;
 
@@ -110,7 +111,7 @@ vlib_trace_frame_buffers_only (vlib_main_t * vm,
 }
 
 /* Free up all trace buffer memory. */
-always_inline void
+void
 clear_trace_buffer (void)
 {
   int i;
@@ -416,6 +417,8 @@ trace_update_capture_options (u32 add, u32 node_index, u32 filter, u8 verbose)
       tm->trace_enable = 1;
     }));
   /* *INDENT-ON* */
+
+  vlib_enable_disable_pkt_trace_filter (! !filter);
 }
 
 static clib_error_t *
@@ -464,13 +467,11 @@ cli_add_trace_buffer (vlib_main_t * vm,
       goto done;
     }
 
-  if (filter)
+  u32 filter_table = classify_get_trace_chain ();
+  if (filter && filter_table == ~0)
     {
-      if (vlib_enable_disable_pkt_trace_filter (1 /* enable */ ))
-	{
-	  error = clib_error_create ("No packet trace filter configured...");
-	  goto done;
-	}
+      error = clib_error_create ("No packet trace filter configured...");
+      goto done;
     }
 
   trace_update_capture_options (add, node_index, filter, verbose);
