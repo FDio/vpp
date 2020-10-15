@@ -65,9 +65,8 @@ typedef enum
 typedef enum vcl_session_state_
 {
   VCL_STATE_CLOSED,
-  VCL_STATE_CONNECT,
   VCL_STATE_LISTEN,
-  VCL_STATE_ACCEPT,
+  VCL_STATE_READY,
   VCL_STATE_VPP_CLOSING,
   VCL_STATE_DISCONNECT,
   VCL_STATE_DETACHED,
@@ -557,8 +556,7 @@ vcl_session_is_cl (vcl_session_t * s)
 static inline u8
 vcl_session_is_ready (vcl_session_t * s)
 {
-  return (s->session_state == VCL_STATE_ACCEPT
-	  || s->session_state == VCL_STATE_CONNECT
+  return (s->session_state == VCL_STATE_READY
 	  || s->session_state == VCL_STATE_VPP_CLOSING);
 }
 
