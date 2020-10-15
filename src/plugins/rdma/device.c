@@ -524,7 +524,8 @@ rdma_rxq_finalize (vlib_main_t * vm, rdma_device_t * rd)
   qpia.rx_hash_conf.rx_hash_key = rdma_rss_hash_key;
   qpia.rx_hash_conf.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ;
   qpia.rx_hash_conf.rx_hash_fields_mask =
-    IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4;
+    IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4 | IBV_RX_HASH_SRC_IPV6 |
+    IBV_RX_HASH_DST_IPV6;
   if ((rd->rx_qp = ibv_create_qp_ex (rd->ctx, &qpia)) == 0)
     return clib_error_return_unix (0, "Queue Pair create failed");
 
