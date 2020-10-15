@@ -1,0 +1,56 @@
+From 858b4575513fe72dce95370944b0da237b755204 Mon Sep 17 00:00:00 2001
+From: Dave Wallace <dwallacelf@gmail.com>
+Date: Thu, 15 Oct 2020 15:22:22 -0400
+Subject: [PATCH] usertools: fix python shebang to python3
+
+Signed-off-by: Dave Wallace <dwallacelf@gmail.com>
+---
+ usertools/cpu_layout.py            | 2 +-
+ usertools/dpdk-devbind.py          | 2 +-
+ usertools/dpdk-pmdinfo.py          | 2 +-
+ usertools/dpdk-telemetry-client.py | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/usertools/cpu_layout.py b/usertools/cpu_layout.py
+index 5423c7965..e3f039171 100755
+--- a/usertools/cpu_layout.py
++++ b/usertools/cpu_layout.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ # SPDX-License-Identifier: BSD-3-Clause
+ # Copyright(c) 2010-2014 Intel Corporation
+ # Copyright(c) 2017 Cavium, Inc. All rights reserved.
+diff --git a/usertools/dpdk-devbind.py b/usertools/dpdk-devbind.py
+index 86b6b53c4..4b3f8f762 100755
+--- a/usertools/dpdk-devbind.py
++++ b/usertools/dpdk-devbind.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python
++#! /usr/bin/env python3
+ # SPDX-License-Identifier: BSD-3-Clause
+ # Copyright(c) 2010-2014 Intel Corporation
+ #
+diff --git a/usertools/dpdk-pmdinfo.py b/usertools/dpdk-pmdinfo.py
+index f9ed75517..99751568e 100755
+--- a/usertools/dpdk-pmdinfo.py
++++ b/usertools/dpdk-pmdinfo.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ # SPDX-License-Identifier: BSD-3-Clause
+ # Copyright(c) 2016  Neil Horman <nhorman@tuxdriver.com>
+ 
+diff --git a/usertools/dpdk-telemetry-client.py b/usertools/dpdk-telemetry-client.py
+index 98d28fa89..9b23a284a 100755
+--- a/usertools/dpdk-telemetry-client.py
++++ b/usertools/dpdk-telemetry-client.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/env python
++#! /usr/bin/env python3
+ # SPDX-License-Identifier: BSD-3-Clause
+ # Copyright(c) 2018 Intel Corporation
+ 
+-- 
+2.17.1
+
