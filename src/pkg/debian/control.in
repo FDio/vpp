@@ -51,6 +51,9 @@ Description: Vector Packet Processing--runtime libraries
 Package: vpp-plugin-core
 Architecture: any
 Depends: vpp (= ${source:Version}),
+         libmbedtls12,
+         libmbedx509-0,
+         libmbedcrypto3,
          ${shlibs:Depends}
 Description: Vector Packet Processing--runtime core plugins
  This package contains VPP core plugins
@@ -76,6 +79,9 @@ Description: VPP Python API bindings
 Package: python3-vpp-api
 Architecture: any
 Depends: vpp (= ${source:Version}),
+         python3-cffi,
+         python3-ply,
+         python3-pycparser,
          ${python3:Depends},
 	 ${misc:Depends}
 Description: VPP Python3 API bindings
