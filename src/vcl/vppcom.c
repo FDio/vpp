@@ -63,14 +63,11 @@ vppcom_session_state_str (vcl_session_state_t state)
     case VCL_STATE_CLOSED:
       st = "STATE_CLOSED";
       break;
-    case VCL_STATE_CONNECT:
-      st = "STATE_CONNECT";
-      break;
     case VCL_STATE_LISTEN:
       st = "STATE_LISTEN";
       break;
-    case VCL_STATE_ACCEPT:
-      st = "STATE_ACCEPT";
+    case VCL_STATE_READY:
+      st = "STATE_READY";
       break;
     case VCL_STATE_VPP_CLOSING:
       st = "STATE_VPP_CLOSING";
@@ -418,7 +415,7 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
   session->rx_fifo = rx_fifo;
   session->tx_fifo = tx_fifo;
 
-  session->session_state = VCL_STATE_ACCEPT;
+  session->session_state = VCL_STATE_READY;
   session->transport.rmt_port = mp->rmt.port;
   session->transport.is_ip4 = mp->rmt.is_ip4;
   clib_memcpy_fast (&session->transport.rmt_ip, &mp->rmt.ip,
@@ -527,7 +524,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
       && session->session_state == VCL_STATE_CLOSED)
     vcl_send_session_disconnect (wrk, session);
   else
-    session->session_state = VCL_STATE_CONNECT;
+    session->session_state = VCL_STATE_READY;
 
   /* Add it to lookup table */
   vcl_session_table_add_vpp_handle (wrk, mp->handle, session_index);
@@ -1716,7 +1713,7 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
   if (VCL_SESS_ATTR_TEST (session->attr, VCL_SESS_ATTR_NONBLOCK))
     {
       /* State set to STATE_UPDATED to ensure the session is not assumed
-       * to be open and to also allow the app to close it prior to vpp's
+       * to be ready and to also allow the app to close it prior to vpp's
        * connected reply. */
       session->session_state = VCL_STATE_UPDATED;
       return VPPCOM_EINPROGRESS;
@@ -1725,7 +1722,7 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
   /*
    * Wait for reply from vpp if blocking
    */
-  rv = vppcom_wait_for_session_state_change (session_index, VCL_STATE_CONNECT,
+  rv = vppcom_wait_for_session_state_change (session_index, VCL_STATE_READY,
 					     vcm->cfg.session_timeout);
 
   session = vcl_session_get (wrk, session_index);
@@ -1784,7 +1781,7 @@ vppcom_session_stream_connect (uint32_t session_handle,
    * Send connect request and wait for reply from vpp
    */
   vcl_send_session_connect (wrk, session);
-  rv = vppcom_wait_for_session_state_change (session_index, VCL_STATE_CONNECT,
+  rv = vppcom_wait_for_session_state_change (session_index, VCL_STATE_READY,
 					     vcm->cfg.session_timeout);
 
   session->listener_index = parent_session_index;
