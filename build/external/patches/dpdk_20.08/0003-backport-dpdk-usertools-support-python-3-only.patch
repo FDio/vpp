@@ -1,0 +1,212 @@
+From 858b4575513fe72dce95370944b0da237b755204 Mon Sep 17 00:00:00 2001
+From: Dave Wallace <dwallacelf@gmail.com>
+Date: Thu, 15 Oct 2020 15:22:22 -0400
+Subject: [PATCH] backport dpdk usertools support python 3 only
+
+Applicable usertools section of DPDK patch:
+http://git.dpdk.org/dpdk/commit/?id=3f6f83626cf4967a99382a6518a614a1bf3d2c20
+
+Required to avoid build failure of 'make install-ext-deps' on CentOS-8 due
+to brp-mangle-shebangs failing on un-versioned python shebang (e.g.
+'#! /usr/bin/env python'.
+
+Signed-off-by: Dave Wallace <dwallacelf@gmail.com>
+---
+ usertools/cpu_layout.py                  | 15 ++-------------
+ usertools/dpdk-devbind.py                | 22 ++++------------------
+ usertools/dpdk-pmdinfo.py                |  7 +------
+ usertools/dpdk-telemetry-client.py       | 18 +++---------------
+ usertools/dpdk-telemetry.py              |  2 +-
+ 5 files changed, 11 insertions(+), 53 deletions(-)
+
+diff --git a/usertools/cpu_layout.py b/usertools/cpu_layout.py
+index 5423c7965..cc3963821 100755
+--- a/usertools/cpu_layout.py
++++ b/usertools/cpu_layout.py
+@@ -1,19 +1,8 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ # SPDX-License-Identifier: BSD-3-Clause
+ # Copyright(c) 2010-2014 Intel Corporation
+ # Copyright(c) 2017 Cavium, Inc. All rights reserved.
+
+-from __future__ import print_function
+-import sys
+-try:
+-    xrange # Python 2
+-except NameError:
+-    xrange = range # Python 3
+-
+-if sys.version_info.major < 3:
+-    print("WARNING: Python 2 is deprecated for use in DPDK, and will not work in future releases.", file=sys.stderr)
+-    print("Please use Python 3 instead", file=sys.stderr)
+-
+ sockets = []
+ cores = []
+ core_map = {}
+@@ -21,7 +10,7 @@
+ fd = open("{}/kernel_max".format(base_path))
+ max_cpus = int(fd.read())
+ fd.close()
+-for cpu in xrange(max_cpus + 1):
++for cpu in range(max_cpus + 1):
+     try:
+         fd = open("{}/cpu{}/topology/core_id".format(base_path, cpu))
+     except IOError:
+diff --git a/usertools/dpdk-devbind.py b/usertools/dpdk-devbind.py
+index 094c2ffc8..8278a748d 100755
+--- a/usertools/dpdk-devbind.py
++++ b/usertools/dpdk-devbind.py
+@@ -1,9 +1,8 @@
+-#! /usr/bin/env python
++#!/usr/bin/env python3
+ # SPDX-License-Identifier: BSD-3-Clause
+ # Copyright(c) 2010-2014 Intel Corporation
+ #
+
+-from __future__ import print_function
+ import sys
+ import os
+ import getopt
+@@ -12,10 +11,6 @@
+ from os.path import exists, abspath, dirname, basename
+ from os.path import join as path_join
+
+-if sys.version_info.major < 3:
+-    print("WARNING: Python 2 is deprecated for use in DPDK, and will not work in future releases.", file=sys.stderr)
+-    print("Please use Python 3 instead", file=sys.stderr)
+-
+ # The PCI base class for all devices
+ network_class = {'Class': '02', 'Vendor': None, 'Device': None,
+                     'SVendor': None, 'SDevice': None}
+@@ -154,14 +149,6 @@ def usage():
+
+     """ % locals())  # replace items from local variables
+
+-
+-# This is roughly compatible with check_output function in subprocess module
+-# which is only available in python 2.7.
+-def check_output(args, stderr=None):
+-    '''Run a command and capture its output'''
+-    return subprocess.Popen(args, stdout=subprocess.PIPE,
+-                            stderr=stderr).communicate()[0]
+-
+ # check if a specific kernel module is loaded
+ def module_is_loaded(module):
+     global loaded_modules
+@@ -218,8 +205,7 @@ def get_pci_device_details(dev_id, probe_lspci):
+     device = {}
+
+     if probe_lspci:
+-        extra_info = check_output(["lspci", "-vmmks", dev_id]).splitlines()
+-
++        extra_info = subprocess.check_output(["lspci", "-vmmks", dev_id]).splitlines()
+         # parse lspci details
+         for line in extra_info:
+             if len(line) == 0:
+@@ -255,7 +241,7 @@ def get_device_details(devices_type):
+     # first loop through and read details for all devices
+     # request machine readable format, with numeric IDs and String
+     dev = {}
+-    dev_lines = check_output(["lspci", "-Dvmmnnk"]).splitlines()
++    dev_lines = subprocess.check_output(["lspci", "-Dvmmnnk"]).splitlines()
+     for dev_line in dev_lines:
+         if len(dev_line) == 0:
+             if device_type_match(dev, devices_type):
+@@ -283,7 +269,7 @@ def get_device_details(devices_type):
+         # check what is the interface if any for an ssh connection if
+         # any to this host, so we can mark it later.
+         ssh_if = []
+-        route = check_output(["ip", "-o", "route"])
++        route = subprocess.check_output(["ip", "-o", "route"])
+         # filter out all lines for 169.254 routes
+         route = "\n".join(filter(lambda ln: not ln.startswith("169.254"),
+                              route.decode().splitlines()))
+diff --git a/usertools/dpdk-pmdinfo.py b/usertools/dpdk-pmdinfo.py
+index f9ed75517..166198279 100755
+--- a/usertools/dpdk-pmdinfo.py
++++ b/usertools/dpdk-pmdinfo.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ # SPDX-License-Identifier: BSD-3-Clause
+ # Copyright(c) 2016  Neil Horman <nhorman@tuxdriver.com>
+
+@@ -7,8 +7,6 @@
+ # Utility to dump PMD_INFO_STRING support from an object file
+ #
+ # -------------------------------------------------------------------------
+-from __future__ import print_function
+-from __future__ import unicode_literals
+ import json
+ import io
+ import os
+@@ -28,9 +26,6 @@
+ pcidb = None
+
+ # ===========================================
+-if sys.version_info.major < 3:
+-        print("WARNING: Python 2 is deprecated for use in DPDK, and will not work in future releases.", file=sys.stderr)
+-        print("Please use Python 3 instead", file=sys.stderr)
+
+ class Vendor:
+     """
+diff --git a/usertools/dpdk-telemetry-client.py b/usertools/dpdk-telemetry-client.py
+index 98d28fa89..d8e439027 100755
+--- a/usertools/dpdk-telemetry-client.py
++++ b/usertools/dpdk-telemetry-client.py
+@@ -1,10 +1,7 @@
+-#! /usr/bin/env python
++#! /usr/bin/env python3
+ # SPDX-License-Identifier: BSD-3-Clause
+ # Copyright(c) 2018 Intel Corporation
+
+-from __future__ import print_function
+-from __future__ import unicode_literals
+-
+ import socket
+ import os
+ import sys
+@@ -18,15 +15,6 @@
+ GLOBAL_METRICS_REQ = "{\"action\":0,\"command\":\"global_stat_values\",\"data\":null}"
+ DEFAULT_FP = "/var/run/dpdk/default_client"
+
+-try:
+-    raw_input  # Python 2
+-except NameError:
+-    raw_input = input  # Python 3
+-
+-if sys.version_info.major < 3:
+-    print("WARNING: Python 2 is deprecated for use in DPDK, and will not work in future releases.", file=sys.stderr)
+-    print("Please use Python 3 instead", file=sys.stderr)
+-
+ class Socket:
+
+     def __init__(self):
+@@ -86,7 +74,7 @@ def requestMetrics(self): # Requests metrics for given client
+
+     def repeatedlyRequestMetrics(self, sleep_time): # Recursively requests metrics for given client
+         print("\nPlease enter the number of times you'd like to continuously request Metrics:")
+-        n_requests = int(raw_input("\n:"))
++        n_requests = int(input("\n:"))
+         print("\033[F") #Removes the user input from screen, cleans it up
+         print("\033[K")
+         for i in range(n_requests):
+@@ -107,7 +95,7 @@ def interactiveMenu(self, sleep_time): # Creates Interactive menu within the scr
+             print("[4] Unregister client")
+
+             try:
+-                self.choice = int(raw_input("\n:"))
++                self.choice = int(input("\n:"))
+                 print("\033[F") #Removes the user input for screen, cleans it up
+                 print("\033[K")
+                 if self.choice == 1:
+diff --git a/usertools/dpdk-telemetry.py b/usertools/dpdk-telemetry.py
+index 8e4039d57..181859658 100755
+--- a/usertools/dpdk-telemetry.py
++++ b/usertools/dpdk-telemetry.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/python3
++#! /usr/bin/env python3
+ # SPDX-License-Identifier: BSD-3-Clause
+ # Copyright(c) 2020 Intel Corporation
