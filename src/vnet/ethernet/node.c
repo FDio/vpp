@@ -204,7 +204,8 @@ ethernet_input_inline_dmac_check (vnet_hw_interface_t * hi,
 // vlan table lookups and vlan header parsing. Check the most specific
 // matches first.
 static_always_inline void
-identify_subint (vnet_hw_interface_t * hi,
+identify_subint (ethernet_main_t * em,
+		 vnet_hw_interface_t * hi,
 		 vlib_buffer_t * b0,
 		 u32 match_flags,
 		 main_intf_t * main_intf,
@@ -213,6 +214,7 @@ identify_subint (vnet_hw_interface_t * hi,
 		 u32 * new_sw_if_index, u8 * error0, u32 * is_l2)
 {
   u32 matched;
+  ethernet_interface_t *ei = ethernet_get_interface (em, hi->hw_if_index);
 
   matched = eth_identify_subint (hi, match_flags, main_intf, vlan_intf,
 				 qinq_intf, new_sw_if_index, error0, is_l2);
@@ -223,7 +225,7 @@ identify_subint (vnet_hw_interface_t * hi,
       // A unicast packet arriving on an L3 interface must have a dmac
       // matching the interface mac. If interface has STATUS_L3 bit set
       // mac filter is already done.
-      if (!(*is_l2 || (hi->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)))
+      if (!(*is_l2 || (ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)))
 	{
 	  u64 dmacs[2];
 	  u8 dmacs_bad[2];
@@ -1331,7 +1333,7 @@ ethernet_input_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  if (hi->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)
+		  if (ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)
 		    goto skip_dmac_check01;
 
 		  dmacs[0] = *(u64 *) e0;
@@ -1399,14 +1401,16 @@ ethernet_input_inline (vlib_main_t * vm,
 				  &hi1,
 				  &main_intf1, &vlan_intf1, &qinq_intf1);
 
-	  identify_subint (hi0,
+	  identify_subint (em,
+			   hi0,
 			   b0,
 			   match_flags0,
 			   main_intf0,
 			   vlan_intf0,
 			   qinq_intf0, &new_sw_if_index0, &error0, &is_l20);
 
-	  identify_subint (hi1,
+	  identify_subint (em,
+			   hi1,
 			   b1,
 			   match_flags1,
 			   main_intf1,
@@ -1573,7 +1577,7 @@ ethernet_input_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  if (hi->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)
+		  if (ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)
 		    goto skip_dmac_check0;
 
 		  dmacs[0] = *(u64 *) e0;
@@ -1619,7 +1623,8 @@ ethernet_input_inline (vlib_main_t * vm,
 				  &hi0,
 				  &main_intf0, &vlan_intf0, &qinq_intf0);
 
-	  identify_subint (hi0,
+	  identify_subint (em,
+			   hi0,
 			   b0,
 			   match_flags0,
 			   main_intf0,
