@@ -16,6 +16,24 @@
       "revId": "d18c780400c2feb932f2261ba4fe756f7bb152ec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0766ccf5_5d2e468f",
+        "filename": "src/cmake/library.cmake",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2020-10-15T07:50:26Z",
+      "side": 1,
+      "message": "I think this is correct, sources are retrieved in the vpp_library_set_multiarch_sources with ${ARGN}.",
+      "parentUuid": "9dc5b784_f297c634",
+      "revId": "d18c780400c2feb932f2261ba4fe756f7bb152ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
