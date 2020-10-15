@@ -1,6 +1,10 @@
 %define _install_dir	/opt/vpp/external/%(uname -m)
 %define _make_args	-C ../.. BUILD_DIR=%{_topdir}/tmp INSTALL_DIR=%{buildroot}%{_install_dir}
 
+%{!?__python3: %global __python3 /usr/bin/python3}
+%global __python %{__python3}
+%global _pylib /usr/lib/python3.6/site-packages
+
 Name:		vpp-ext-deps
 Version:	%{_version}
 Release:	%{_release}
