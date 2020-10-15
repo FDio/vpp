@@ -180,12 +180,6 @@ typedef struct
 
 } vnet_classify_table_t;
 
-typedef struct
-{
-  int refcnt;
-  u32 *table_indices;
-} vnet_classify_filter_set_t;
-
 struct _vnet_classify_main
 {
   /* Table pool */
@@ -198,11 +192,8 @@ struct _vnet_classify_main
   unformat_function_t **unformat_policer_next_index_fns;
   unformat_function_t **unformat_opaque_index_fns;
 
-  /* Pool of filter sets */
-  vnet_classify_filter_set_t *filter_sets;
-
-  /* Per-interface filter set map. [0] is used for pcap */
-  u32 *filter_set_by_sw_if_index;
+  /* Per-interface filter table.  [0] is used for pcap */
+  u32 *classify_table_index_by_sw_if_index;
 
   /* convenience variables */
   vlib_main_t *vlib_main;
@@ -553,6 +544,17 @@ void vnet_classify_register_unformat_policer_next_index_fn
 
 void vnet_classify_register_unformat_opaque_index_fn (unformat_function_t *
 						      fn);
+
+u32 classify_get_pcap_chain (vnet_classify_main_t * cm, u32 sw_if_index);
+void classify_set_pcap_chain (vnet_classify_main_t * cm,
+			      u32 sw_if_index, u32 table_index);
+
+u32 classify_get_trace_chain (void);
+void classify_set_trace_chain (vnet_classify_main_t * cm, u32 table_index);
+
+u32 classify_sort_table_chain (vnet_classify_main_t * cm, u32 table_index);
+u32 classify_lookup_chain (u32 table_index,
+			   u8 * mask, u32 n_skip, u32 n_match);
 
 #endif /* __included_vnet_classify_h__ */
 
