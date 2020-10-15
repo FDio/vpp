@@ -77,8 +77,7 @@ typedef struct
 typedef struct
 {
   u8 trace_filter_enable;
-  u32 trace_classify_table_index;
-  u32 trace_filter_set_index;
+  u32 classify_table_index;
 } vlib_trace_filter_t;
 
 typedef enum

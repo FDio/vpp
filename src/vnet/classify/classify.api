@@ -442,6 +442,175 @@ autoreply define output_acl_set_interface
   bool is_add;
 };
 
+
+
+/** \brief Find a compatible Classify table in a PCAP chain
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface whose chain will be searched, 0==system-wide
+    @param skip_n_vectors - number of u32x4 skip vectors
+    @param match_n_vectors - number of u32x4 vectors, 1..5
+    @param mask_len - length of mask, match_n_vectors * sizeof(u32x4)
+    @param mask - match mask
+*/
+define classify_pcap_lookup_table
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
+  u32 skip_n_vectors [default=0];
+  u32 match_n_vectors [default=1];
+  u32 mask_len;
+  u8 mask[mask_len];
+};
+
+/** \brief Classify pcap table lookup response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the table lookup request
+    @param table_index - returned index of the found table, or ~0
+ */
+define classify_pcap_lookup_table_reply
+{
+  u32 context;
+  i32 retval;
+  u32 table_index;
+};
+
+/** \brief Add a Classify table into a PCAP chain on an interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface whose chain will be searched, 0==system-wide
+    @param table_index - Classify table to be added
+    @param sort_masks - 1=sort masks into most-to-least specific order
+ */
+define classify_pcap_set_table
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u32 table_index [default=0xffffffff];
+  bool sort_masks [default=0];
+};
+
+/** \brief Classify pcap table lookup response
+    @param context - sender context which was passed in the request
+    @param retval - return code for the table lookup request
+    @param table_index - returned index of the sorted table chain
+ */
+define classify_pcap_set_table_reply
+{
+  u32 context;
+  i32 retval;
+  u32 table_index;
+};
+
+/** \brief Classify get the PCAP table indices for an interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+ */
+define classify_pcap_get_tables
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Classify get a PCAP tables response
+    @param context - sender context which was passed in the request
+    @param retval - return code for the request
+    @param count - number of ids returned in response
+    @param indices - array of classify table indices
+ */
+define classify_pcap_get_tables_reply
+{
+  u32 context;
+  i32 retval;
+  u32 count;
+  u32 indices[count];
+};
+
+
+
+/** \brief Find a mask-compatible Classify table in the Trace chain
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param skip_n_vectors - number of u32x4 skip vectors
+    @param match_n_vectors - number of u32x4 vectors, 1..5
+    @param mask_len - length of mask, match_n_vectors * sizeof(u32x4)
+    @param mask - match mask
+*/
+define classify_trace_lookup_table
+{
+  u32 client_index;
+  u32 context;
+  u32 skip_n_vectors [default=0];
+  u32 match_n_vectors [default=1];
+  u32 mask_len;
+  u8 mask[mask_len];
+};
+
+/** \brief Classify trace table lookup response
+    @param context - sender context which was passed in the request
+    @param retval - return code for the table lookup request
+    @param table_index - returned index of the found table, or ~0
+ */
+define classify_trace_lookup_table_reply
+{
+  u32 context;
+  i32 retval;
+  u32 table_index;
+};
+
+/** \brief Add a Classify table into the Trace chain
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table_index - Classify table to be added
+    @param sort_masks - 1=sort masks into most-to-least specific order
+ */
+define classify_trace_set_table
+{
+  u32 client_index;
+  u32 context;
+  u32 table_index [default=0xffffffff];
+  bool sort_masks [default=0];
+};
+
+/** \brief Classify Trace table lookup response
+    @param context - sender context which was passed in the request
+    @param retval - return code for the table lookup request
+    @param table_index - returned index of the sorted table chain
+ */
+define classify_trace_set_table_reply
+{
+  u32 context;
+  i32 retval;
+  u32 table_index;
+};
+
+/** \brief Classify get the Trace table indices
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+ */
+define classify_trace_get_tables
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Classify get the Trace tables response
+    @param context - sender context which was passed in the request
+    @param retval - return code for the request
+    @param count - number of ids returned in response
+    @param indices - array of classify table indices
+ */
+define classify_trace_get_tables_reply
+{
+  u32 context;
+  i32 retval;
+  u32 count;
+  u32 indices[count];
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

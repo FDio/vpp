@@ -21,6 +21,8 @@
 #include <vppinfra/lock.h>
 #include <vnet/classify/trace_classify.h>
 
+
+
 /**
  * @file
  * @brief N-tuple classifier
@@ -1671,6 +1673,165 @@ filter_table_mask_compare (void *a1, void *a2)
     return 0;
 }
 
+
+/*
+ * Reorder the chain of tables starting with table_index such
+ * that more more-specific masks come before less-specific masks.
+ * Return the new head of the table chain.
+ */
+u32
+classify_sort_table_chain (vnet_classify_main_t * cm, u32 table_index)
+{
+  /*
+   * Form a vector of all classifier tables in this chain.
+   */
+  u32 *tables = 0;
+  vnet_classify_table_t *t;
+  u32 cti;
+  for (cti = table_index; cti != ~0; cti = t->next_table_index)
+    {
+      vec_add1 (tables, cti);
+      t = pool_elt_at_index (cm->tables, cti);
+    }
+
+  /*
+   * Sort filter tables from most-specific mask to least-specific mask.
+   */
+  vec_sort_with_function (tables, filter_table_mask_compare);
+
+  /*
+   * Relink tables via  next_table_index fields.
+   */
+  int i;
+  for (i = 0; i < vec_len (tables); i++)
+    {
+      t = pool_elt_at_index (cm->tables, i);
+
+      if ((i + 1) < vec_len (tables))
+	t->next_table_index = tables[i + 1];
+      else
+	t->next_table_index = ~0;
+    }
+
+  table_index = tables[0];
+  vec_free (tables);
+
+  return table_index;
+}
+
+
+u32
+classify_get_trace_chain (void)
+{
+  u32 table_index;
+
+  table_index = vlib_global_main.trace_filter.classify_table_index;
+
+  return table_index;
+}
+
+/*
+ * Seting the Trace chain to ~0 is a request to delete and clear it.
+ */
+void
+classify_set_trace_chain (vnet_classify_main_t * cm, u32 table_index)
+{
+  if (table_index == ~0)
+    {
+      u32 old_table_index;
+
+      old_table_index = vlib_global_main.trace_filter.classify_table_index;
+      vnet_classify_delete_table_index (cm, old_table_index, 1);
+    }
+
+  vlib_global_main.trace_filter.classify_table_index = table_index;
+}
+
+
+u32
+classify_get_pcap_chain (vnet_classify_main_t * cm, u32 sw_if_index)
+{
+  u32 table_index = ~0;
+
+  if (sw_if_index != ~0
+      && (sw_if_index < vec_len (cm->classify_table_index_by_sw_if_index)))
+    table_index = cm->classify_table_index_by_sw_if_index[sw_if_index];
+
+  return table_index;
+}
+
+void
+classify_set_pcap_chain (vnet_classify_main_t * cm,
+			 u32 sw_if_index, u32 table_index)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+
+  if (sw_if_index != ~0 && table_index != ~0)
+    vec_validate_init_empty (cm->classify_table_index_by_sw_if_index,
+			     sw_if_index, ~0);
+
+  if (table_index == ~0)
+    {
+      u32 old_table_index = ~0;
+
+      if (sw_if_index < vec_len (cm->classify_table_index_by_sw_if_index))
+	old_table_index =
+	  cm->classify_table_index_by_sw_if_index[sw_if_index];
+
+      vnet_classify_delete_table_index (cm, old_table_index, 1);
+    }
+
+  /*
+   * Put the table index where device drivers can find them.
+   * This table index will be either a valid table or a ~0 to clear it.
+   */
+  cm->classify_table_index_by_sw_if_index[sw_if_index] = table_index;
+  if (sw_if_index > 0)
+    {
+      vnet_hw_interface_t *hi;
+      hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+      hi->trace_classify_table_index = table_index;
+    }
+}
+
+
+/*
+ * Search for a mask-compatible Classify table within the given table chain.
+ */
+u32
+classify_lookup_chain (u32 table_index, u8 * mask, u32 n_skip, u32 n_match)
+{
+  vnet_classify_main_t *cm = &vnet_classify_main;
+  vnet_classify_table_t *t;
+  u32 cti;
+
+  if (table_index == ~0)
+    return ~0;
+
+  for (cti = table_index; cti != ~0; cti = t->next_table_index)
+    {
+      t = pool_elt_at_index (cm->tables, cti);
+
+      /* Classifier geometry mismatch, can't use this table. */
+      if (t->match_n_vectors != n_match || t->skip_n_vectors != n_skip)
+	continue;
+
+      /* Masks aren't congruent, can't use this table. */
+      if (vec_len (t->mask) * sizeof (u32x4) != vec_len (mask))
+	continue;
+
+      /* Masks aren't bit-for-bit identical, can't use this table. */
+      if (memcmp (t->mask, mask, vec_len (mask)))
+	continue;
+
+      /* Winner... */
+      return cti;
+    }
+
+  return ~0;
+}
+
+
 static clib_error_t *
 classify_filter_command_fn (vlib_main_t * vm,
 			    unformat_input_t * input,
@@ -1683,7 +1844,6 @@ classify_filter_command_fn (vlib_main_t * vm,
   u32 match = ~0;
   u8 *match_vector;
   int is_add = 1;
-  int del_chain = 0;
   u32 table_index = ~0;
   u32 next_table_index = ~0;
   u32 miss_next_index = ~0;
@@ -1692,13 +1852,9 @@ classify_filter_command_fn (vlib_main_t * vm,
   u32 sw_if_index = ~0;
   int pkt_trace = 0;
   int pcap = 0;
-  int i;
-  vnet_classify_table_t *t;
   u8 *mask = 0;
   vnet_classify_main_t *cm = &vnet_classify_main;
   int rv = 0;
-  vnet_classify_filter_set_t *set = 0;
-  u32 set_index = ~0;
   clib_error_t *err = 0;
 
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -1760,149 +1916,78 @@ classify_filter_command_fn (vlib_main_t * vm,
 
   if (!is_add)
     {
+      /*
+       * Delete an existing PCAP or trace classify table.
+       */
       if (pkt_trace)
-	set_index = vlib_global_main.trace_filter.trace_filter_set_index;
-      else if (sw_if_index < vec_len (cm->filter_set_by_sw_if_index))
-	set_index = cm->filter_set_by_sw_if_index[sw_if_index];
-
-      if (set_index == ~0)
-	{
-	  if (pkt_trace)
-	    err =
-	      clib_error_return (0, "No pkt trace classify filter set...");
-	  else if (sw_if_index == 0)
-	    err = clib_error_return (0, "No pcap classify filter set...");
-	  else
-	    err = clib_error_return (0, "No classify filter set for %U...",
-				     format_vnet_sw_if_index_name, vnm,
-				     sw_if_index);
-	  unformat_free (line_input);
-	  return err;
-	}
-
-      set = pool_elt_at_index (cm->filter_sets, set_index);
-
-      set->refcnt--;
-      ASSERT (set->refcnt >= 0);
-      if (set->refcnt == 0)
-	{
-	  del_chain = 1;
-	  table_index = set->table_indices[0];
-	  vec_reset_length (set->table_indices);
-	  pool_put (cm->filter_sets, set);
-	  if (pkt_trace)
-	    {
-	      vlib_global_main.trace_filter.trace_filter_set_index = ~0;
-	      vlib_global_main.trace_filter.trace_classify_table_index = ~0;
-	    }
-	  else
-	    {
-	      cm->filter_set_by_sw_if_index[sw_if_index] = ~0;
-	      if (sw_if_index > 0)
-		{
-		  vnet_hw_interface_t *hi =
-		    vnet_get_sup_hw_interface (vnm, sw_if_index);
-		  hi->trace_classify_table_index = ~0;
-		}
-	    }
-	}
-    }
-
-  if (is_add)
-    {
-      if (pkt_trace)
-	set_index = vlib_global_main.trace_filter.trace_filter_set_index;
-      else if (sw_if_index < vec_len (cm->filter_set_by_sw_if_index))
-	set_index = cm->filter_set_by_sw_if_index[sw_if_index];
-
-      /* Do we have a filter set for this intfc / pcap yet? */
-      if (set_index == ~0)
-	{
-	  pool_get (cm->filter_sets, set);
-	  set_index = set - cm->filter_sets;
-	  set->refcnt = 1;
-	}
+	classify_set_trace_chain (cm, ~0);
       else
-	set = pool_elt_at_index (cm->filter_sets, set_index);
+	classify_set_pcap_chain (cm, sw_if_index, ~0);
 
-      ASSERT (set);
-
-      for (i = 0; i < vec_len (set->table_indices); i++)
-	{
-	  t = pool_elt_at_index (cm->tables, set->table_indices[i]);
-	  /* classifier geometry mismatch, can't use this table */
-	  if (t->match_n_vectors != match || t->skip_n_vectors != skip)
-	    continue;
-	  /* Masks aren't congruent, can't use this table */
-	  if (vec_len (t->mask) * sizeof (u32x4) != vec_len (mask))
-	    continue;
-	  /* Masks aren't bit-for-bit identical, can't use this table */
-	  if (memcmp (t->mask, mask, vec_len (mask)))
-	    continue;
-
-	  /* Winner... */
-	  table_index = set->table_indices[i];
-	  goto found_table;
-	}
-    }
-
-  rv = vnet_classify_add_del_table (cm, mask, nbuckets, memory_size,
-				    skip, match, next_table_index,
-				    miss_next_index, &table_index,
-				    current_data_flag, current_data_offset,
-				    is_add, del_chain);
-  vec_free (mask);
-
-  if (rv != 0)
-    {
+      vec_free (mask);
       unformat_free (line_input);
-      return clib_error_return (0, "vnet_classify_add_del_table returned %d",
-				rv);
-    }
 
-  if (is_add == 0)
-    {
-      unformat_free (line_input);
       return 0;
     }
 
-  /* Remember the table */
-  vec_add1 (set->table_indices, table_index);
-
+  /*
+   * Find an existing compatible table or else make a new one.
+   */
   if (pkt_trace)
-    vlib_global_main.trace_filter.trace_filter_set_index = set_index;
+    table_index = classify_get_trace_chain ();
   else
+    table_index = classify_get_pcap_chain (cm, sw_if_index);
+
+  if (table_index != ~0)
+    table_index = classify_lookup_chain (table_index, mask, skip, match);
+
+  /*
+   * When no table is found, make one.
+   */
+  if (table_index == ~0)
     {
-      vec_validate_init_empty (cm->filter_set_by_sw_if_index, sw_if_index,
-			       ~0);
-      cm->filter_set_by_sw_if_index[sw_if_index] = set - cm->filter_sets;
-    }
+      /*
+       * Matching table wasn't found, so create a new one at the
+       * head of the next_table_index chain.
+       */
+      next_table_index = table_index;
+      table_index = ~0;
 
-  /* Sort filter tables from most-specific mask to least-specific mask */
-  vec_sort_with_function (set->table_indices, filter_table_mask_compare);
+      rv = vnet_classify_add_del_table (cm, mask, nbuckets, memory_size,
+					skip, match, next_table_index,
+					miss_next_index, &table_index,
+					current_data_flag,
+					current_data_offset, 1, 0);
 
-  /* Setup next_table_index fields */
-  for (i = 0; i < vec_len (set->table_indices); i++)
-    {
-      t = pool_elt_at_index (cm->tables, set->table_indices[i]);
+      if (rv != 0)
+	{
+	  vec_free (mask);
+	  unformat_free (line_input);
+	  return clib_error_return (0,
+				    "vnet_classify_add_del_table returned %d",
+				    rv);
+	}
 
-      if ((i + 1) < vec_len (set->table_indices))
-	t->next_table_index = set->table_indices[i + 1];
+      /*
+       * Reorder tables such that masks are most-specify to least-specific.
+       */
+      table_index = classify_sort_table_chain (cm, table_index);
+
+      /*
+       * Put first classifier table in chain in a place where
+       * other data structures expect to find and use it.
+       */
+      if (pkt_trace)
+	classify_set_trace_chain (cm, table_index);
       else
-	t->next_table_index = ~0;
+	classify_set_pcap_chain (cm, sw_if_index, table_index);
     }
 
-  /* Put top table index where device drivers can find them */
-  if (sw_if_index > 0 && pkt_trace == 0)
-    {
-      vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
-      ASSERT (vec_len (set->table_indices) > 0);
-      hi->trace_classify_table_index = set->table_indices[0];
-    }
+  vec_free (mask);
 
-found_table:
-
-  /* Now try to parse a session */
+  /*
+   * Now try to parse a and add a filter-match session.
+   */
   if (unformat (line_input, "match %U", unformat_classify_match,
 		cm, &match_vector, table_index) == 0)
     return 0;
@@ -1930,16 +2015,6 @@ vlib_enable_disable_pkt_trace_filter (int enable)
 {
   if (enable)
     {
-      vnet_classify_main_t *cm = &vnet_classify_main;
-      vnet_classify_filter_set_t *set;
-      u32 set_index = vlib_global_main.trace_filter.trace_filter_set_index;
-
-      if (set_index == ~0)
-	return -1;
-
-      set = pool_elt_at_index (cm->filter_sets, set_index);
-      vlib_global_main.trace_filter.trace_classify_table_index =
-	set->table_indices[0];
       vlib_global_main.trace_filter.trace_filter_enable = 1;
     }
   else
@@ -2040,10 +2115,8 @@ show_classify_filter_command_fn (vlib_main_t * vm,
 {
   vnet_classify_main_t *cm = &vnet_classify_main;
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_classify_filter_set_t *set;
   u8 *name = 0;
   u8 *s = 0;
-  u32 set_index;
   u32 table_index;
   int verbose = 0;
   int i, j, limit;
@@ -2053,53 +2126,50 @@ show_classify_filter_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "%-30s%s", "Filter Used By", " Table(s)");
   vlib_cli_output (vm, "%-30s%s", "--------------", " --------");
 
-  limit = vec_len (cm->filter_set_by_sw_if_index);
+  limit = vec_len (cm->classify_table_index_by_sw_if_index);
 
   for (i = -1; i < limit; i++)
     {
-      if (i < 0)
-	set_index = vlib_global_main.trace_filter.trace_filter_set_index;
-      else
-	set_index = cm->filter_set_by_sw_if_index[i];
-
-      if (set_index == ~0)
-	continue;
-
-      set = pool_elt_at_index (cm->filter_sets, set_index);
-
       switch (i)
 	{
 	case -1:
+	  table_index = vlib_global_main.trace_filter.classify_table_index;
 	  name = format (0, "packet tracer:");
 	  break;
+
 	case 0:
+	  table_index = cm->classify_table_index_by_sw_if_index[i];
 	  name = format (0, "pcap rx/tx/drop:");
 	  break;
+
 	default:
+	  table_index = cm->classify_table_index_by_sw_if_index[i];
 	  name = format (0, "%U:", format_vnet_sw_if_index_name, vnm, i);
 	  break;
 	}
 
       if (verbose)
 	{
-	  u32 table_index;
-
-	  for (j = 0; j < vec_len (set->table_indices); j++)
+	  vnet_classify_table_t *t;
+	  j = table_index;
+	  do
 	    {
-	      table_index = set->table_indices[j];
-	      if (table_index != ~0)
-		s = format (s, " %u", table_index);
-	      else
+	      if (j == ~0)
 		s = format (s, " none");
+	      else
+		{
+		  s = format (s, " %u", j);
+		  t = pool_elt_at_index (cm->tables, j);
+		  j = t->next_table_index;
+		}
 	    }
+	  while (j != ~0);
 
 	  vlib_cli_output (vm, "%-30v table(s)%v", name, s);
 	  vec_reset_length (s);
 	}
       else
 	{
-	  table_index = set->table_indices ? set->table_indices[0] : ~0;
-
 	  if (table_index != ~0)
 	    s = format (s, " %u", table_index);
 	  else
@@ -2942,7 +3012,6 @@ static clib_error_t *
 vnet_classify_init (vlib_main_t * vm)
 {
   vnet_classify_main_t *cm = &vnet_classify_main;
-  vnet_classify_filter_set_t *set;
 
   cm->vlib_main = vm;
   cm->vnet_main = vnet_get_main ();
@@ -2960,14 +3029,7 @@ vnet_classify_init (vlib_main_t * vm)
 
   vnet_classify_register_unformat_acl_next_index_fn (unformat_acl_next_node);
 
-  /* Filter set 0 is grounded... */
-  pool_get_zero (cm->filter_sets, set);
-  set->refcnt = 0x7FFFFFFF;
-  /* Initialize the pcap filter set */
-  vec_validate (cm->filter_set_by_sw_if_index, 0);
-  cm->filter_set_by_sw_if_index[0] = 0;
-  /* Initialize the packet tracer filter set */
-  vlib_global_main.trace_filter.trace_filter_set_index = ~0;
+  vlib_global_main.trace_filter.classify_table_index = ~0;
 
   return 0;
 }
