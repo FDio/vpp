@@ -764,11 +764,11 @@ static clib_error_t *
 virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
 				 vnet_hw_if_rx_mode mode)
 {
+  vlib_main_t *vm = vnm->vlib_main;
   virtio_main_t *mm = &virtio_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
   virtio_vring_t *rx_vring = vec_elt_at_index (vif->rxq_vrings, qid);
-  virtio_vring_t *tx_vring = 0;
 
   if (vif->type == VIRTIO_IF_TYPE_PCI && !(vif->support_int_mode))
     {
@@ -778,31 +778,31 @@ virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
 
   if (mode == VNET_HW_IF_RX_MODE_POLLING)
     {
-      vec_foreach (tx_vring, vif->txq_vrings)
-      {
-	/* only enable packet coalesce in poll mode */
-	gro_flow_table_set_is_enable (tx_vring->flow_table, 1);
-	/* only enable packet buffering in poll mode */
-	virtio_vring_buffering_set_is_enable (tx_vring->buffering, 1);
-      }
+      if (vif->packet_coalesce || vif->packet_buffering)
+	{
+	  if (mm->packet_coalesce_count > 0)
+	    mm->packet_coalesce_count--;
+	  if (mm->packet_coalesce_count == 0)
+	    vlib_process_signal_event (vm,
+				       virtio_send_interrupt_node.index,
+				       VIRTIO_EVENT_STOP_TIMER, 0);
+	}
       rx_vring->avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
     }
   else
     {
       if (vif->packet_coalesce || vif->packet_buffering)
 	{
-	  virtio_log_warning (vif,
-			      "interface %U is in interrupt mode, disabling packet coalescing or buffering",
-			      format_vnet_sw_if_index_name, vnet_get_main (),
-			      vif->sw_if_index);
-	  vec_foreach (tx_vring, vif->txq_vrings)
-	  {
-	    gro_flow_table_set_is_enable (tx_vring->flow_table, 0);
-	    virtio_vring_buffering_set_is_enable (tx_vring->buffering, 0);
-	  }
+	  mm->packet_coalesce_count++;
+	  if (mm->packet_coalesce_count == 1)
+	    vlib_process_signal_event (vm,
+				       virtio_send_interrupt_node.index,
+				       VIRTIO_EVENT_START_TIMER, 0);
 	}
       rx_vring->avail->flags &= ~VRING_AVAIL_F_NO_INTERRUPT;
     }
+
+  rx_vring->mode = mode;
 
   return 0;
 }
