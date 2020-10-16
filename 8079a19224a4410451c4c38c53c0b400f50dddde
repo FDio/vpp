@@ -22,6 +22,30 @@
       "revId": "8079a19224a4410451c4c38c53c0b400f50dddde",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e247a1ef_da62bfce",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 530,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-10-16T08:37:32Z",
+      "side": 1,
+      "message": "And this is why: https://github.com/linux-rdma/rdma-core/blob/v28.0/libibverbs/verbs.h#L241-L242",
+      "parentUuid": "52ec8879_9eca2278",
+      "range": {
+        "startLine": 530,
+        "startChar": 38,
+        "endLine": 530,
+        "endChar": 64
+      },
+      "revId": "8079a19224a4410451c4c38c53c0b400f50dddde",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
