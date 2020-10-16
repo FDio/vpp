@@ -628,12 +628,6 @@ M:	Ole Troan <ot@cisco.com>
 F:	src/vpp/stats/
 F:	src/vpp-api/client/stat_client.[ch]
 
-VPP Object Model
-I:	vom
-M:	Neale Ranns <nranns@cisco.com>
-M:	Mohsin Kazmi <sykazmi@cisco.com>
-F:	extras/vom/vom/
-
 Plugin - Host Stack Applications
 I:	hsa
 M:	Florin Coras <fcoras@cisco.com>
