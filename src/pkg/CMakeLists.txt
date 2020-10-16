@@ -58,7 +58,7 @@ foreach(f copyright vpp.preinst vpp.postrm vpp.postinst vpp.service)
   )
 endforeach()
 
-file(WRITE ${CMAKE_BINARY_DIR}/debian/compat "9\n")
+file(WRITE ${CMAKE_BINARY_DIR}/debian/compat "10\n")
 
 add_custom_target(package-deb
   COMMENT "Building .deb packages..."
