@@ -159,7 +159,7 @@ Here are the contents of .../build-data/platforms/vpp.mk:
         # Uncomment to enable building unit tests
         # vpp_enable_tests = yes
      
-        vpp_root_packages = vpp vom
+        vpp_root_packages = vpp
      
         # DPDK configuration parameters
         # vpp_uses_dpdk_mlx4_pmd = yes
