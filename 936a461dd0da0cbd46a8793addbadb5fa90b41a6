@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c02d4967_db0b5ef5",
+        "filename": "src/plugins/tracedump/graph.api",
+        "patchSetId": 14
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1162
+      },
+      "writtenOn": "2020-10-16T13:28:51Z",
+      "side": 1,
+      "message": "Difference between `TRACE` and `TRACE_SUPPORTED`?",
+      "revId": "936a461dd0da0cbd46a8793addbadb5fa90b41a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5aeba814_7378ee39",
+        "filename": "src/plugins/tracedump/graph.api",
+        "patchSetId": 14
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 1162
+      },
+      "writtenOn": "2020-10-16T13:28:51Z",
+      "side": 1,
+      "message": "Should be `want_arcs`",
+      "revId": "936a461dd0da0cbd46a8793addbadb5fa90b41a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
