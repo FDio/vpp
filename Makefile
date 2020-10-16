@@ -191,8 +191,6 @@ help:
 	@echo " pkg-deb-debug        - build DEB debug packages"
 	@echo " pkg-snap             - build SNAP package"
 	@echo " snap-clean           - clean up snap build environment"
-	@echo " vom-pkg-deb          - build vom DEB packages"
-	@echo " vom-pkg-deb-debug    - build vom DEB debug packages"
 	@echo " pkg-rpm              - build RPM packages"
 	@echo " install-ext-dep[s]   - install external development dependencies"
 	@echo " ctags                - (re)generate ctags database"
@@ -407,13 +405,11 @@ test-gcov:
 
 .PHONY: test-all
 test-all:
-	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=vpp TAG=vpp vom-install,)
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp,test)
 
 .PHONY: test-all-debug
 test-all-debug:
-	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=vpp TAG=vpp_debug vom-install,)
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_debug,test)
 
@@ -459,7 +455,6 @@ test-wipe-doc:
 
 .PHONY: test-cov
 test-cov:
-	@make -C $(BR) PLATFORM=vpp TAG=vpp_gcov vom-install
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_gcov,cov)
 
@@ -564,17 +559,9 @@ snap-clean:
         snapcraft clean ;			\
 	rm -f *.snap *.tgz
 
-.PHONY: vom-pkg-deb
-vom-pkg-deb: pkg-deb
-	$(call make,$(PLATFORM),vom-package-deb)
-
 .PHONY: pkg-deb-debug
 pkg-deb-debug:
 	$(call make,$(PLATFORM)_debug,vpp-package-deb)
-
-.PHONY: vom-pkg-deb-debug
-vom-pkg-deb-debug: pkg-deb-debug
-	$(call make,$(PLATFORM)_debug,vom-package-deb)
 
 .PHONY: pkg-rpm
 pkg-rpm: dist
@@ -712,14 +699,8 @@ pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
 	@make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
 	$(call banner,"Building libmemif")
 	@make -C build-root PLATFORM=vpp TAG=vpp libmemif-install
-	$(call banner,"Building VOM")
-	@make -C build-root PLATFORM=vpp TAG=vpp vom-install
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
-ifeq ($(OS_ID),ubuntu)
-	$(call banner,"Building VOM $(PKG) package")
-	@make vom-pkg-deb
-endif
 
 MAKE_VERIFY_GATE_OS ?= ubuntu-18.04
 .PHONY: verify

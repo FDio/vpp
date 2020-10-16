@@ -20,7 +20,7 @@ ifeq ($(TARGET_PLATFORM),thunderx)
 vpp_dpdk_target = arm64-thunderx-linuxapp-gcc
 endif
 
-vpp_root_packages = vpp vom
+vpp_root_packages = vpp
 
 vpp_debug_TAG_BUILD_TYPE = debug
 vpp_TAG_BUILD_TYPE = release
