@@ -109,8 +109,6 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
       if (error)
 	{
 	  clib_error_free (error);
-	  lldp_delete_intf (lm, n);
-	  return lldp_internal_error;
 	}
 
       const vnet_sw_interface_t *sw =
