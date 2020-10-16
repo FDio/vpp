@@ -624,6 +624,9 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
 	  p -= CLIB_CACHE_LINE_BYTES;
 	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
+	  /* speculate that the trailer goes in the first buffer */
+	  CLIB_PREFETCH (vlib_buffer_get_tail (b[1]),
+			 CLIB_CACHE_LINE_BYTES, LOAD);
 	}
 
       if (is_tun)
@@ -646,6 +649,10 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  current_sa_packets = current_sa_bytes = 0;
 
 	  sa0 = pool_elt_at_index (im->sad, sa_index0);
+
+	  /* fetch the second cacheline ASAP */
+	  CLIB_PREFETCH (sa0->cacheline1, CLIB_CACHE_LINE_BYTES, LOAD);
+
 	  current_sa_index = sa_index0;
 	  spi = clib_net_to_host_u32 (sa0->spi);
 	  esp_align = sa0->esp_block_align;

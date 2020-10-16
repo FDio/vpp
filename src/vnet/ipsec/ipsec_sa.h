@@ -40,7 +40,7 @@ typedef enum
   foreach_ipsec_crypto_alg
 #undef _
     IPSEC_CRYPTO_N_ALG,
-} ipsec_crypto_alg_t;
+} __clib_packed ipsec_crypto_alg_t;
 
 #define IPSEC_CRYPTO_ALG_IS_GCM(_alg)                     \
   (((_alg == IPSEC_CRYPTO_ALG_AES_GCM_128) ||             \
@@ -62,13 +62,13 @@ typedef enum
   foreach_ipsec_integ_alg
 #undef _
     IPSEC_INTEG_N_ALG,
-} ipsec_integ_alg_t;
+} __clib_packed ipsec_integ_alg_t;
 
 typedef enum
 {
   IPSEC_PROTOCOL_AH = 0,
   IPSEC_PROTOCOL_ESP = 1
-} ipsec_protocol_t;
+} __clib_packed ipsec_protocol_t;
 
 #define IPSEC_KEY_MAX_LEN 128
 typedef struct ipsec_key_t_
@@ -149,9 +149,9 @@ typedef struct
     u64 crypto_op_data;
   };
 
-  /* data accessed by dataplane code should be above this comment */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
+  u64 gcm_iv_counter;
   union
   {
     ip4_header_t ip4_hdr;
@@ -159,31 +159,16 @@ typedef struct
   };
   udp_header_t udp_hdr;
 
-  fib_node_t node;
-  u32 id;
-  u32 stat_index;
-  ipsec_protocol_t protocol;
-
-  ipsec_crypto_alg_t crypto_alg;
-  ipsec_key_t crypto_key;
-  vnet_crypto_alg_t crypto_calg;
-
-  ipsec_integ_alg_t integ_alg;
-  ipsec_key_t integ_key;
-  vnet_crypto_alg_t integ_calg;
-
-  ip46_address_t tunnel_src_addr;
-  ip46_address_t tunnel_dst_addr;
-
-  fib_node_index_t fib_entry_index;
-  u32 sibling;
-
-  u32 tx_fib_index;
-
   /* Salt used in GCM modes - stored in network byte order */
   u32 salt;
-  u64 gcm_iv_counter;
 
+  ipsec_protocol_t protocol;
+  u8 __pad[3];
+
+  /* data accessed by dataplane code should be above this comment */
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
+
+  /* Elements with u64 size multiples */
   union
   {
     struct
@@ -205,9 +190,32 @@ typedef struct
     };
     u64 data;
   } async_op_data;
+
+  ip46_address_t tunnel_src_addr;
+  ip46_address_t tunnel_dst_addr;
+
+  fib_node_t node;
+
+  /* elements with u32 size */
+  u32 id;
+  u32 stat_index;
+  vnet_crypto_alg_t integ_calg;
+  vnet_crypto_alg_t crypto_calg;
+
+  fib_node_index_t fib_entry_index;
+  u32 sibling;
+  u32 tx_fib_index;
+
+  /* else u8 packed */
+  ipsec_crypto_alg_t crypto_alg;
+  ipsec_integ_alg_t integ_alg;
+
+  ipsec_key_t integ_key;
+  ipsec_key_t crypto_key;
 } ipsec_sa_t;
 
 STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline1, CLIB_CACHE_LINE_BYTES);
+STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline2, 2 * CLIB_CACHE_LINE_BYTES);
 
 #define _(a,v,s)                                                        \
   always_inline int                                                     \
