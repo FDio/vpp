@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "52ec8879_9eca2278",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 530,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-10-16T08:29:08Z",
+      "side": 1,
+      "message": "Tests failed, this appeared in the log [0].\n\n[0] https://logs.fd.io/production/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-2n-clx/131/csit_current/0/log.html.gz#s1-s1-s1-s2-s1-t1-k3-k3-k1",
+      "range": {
+        "startLine": 530,
+        "startChar": 38,
+        "endLine": 530,
+        "endChar": 64
+      },
+      "revId": "8079a19224a4410451c4c38c53c0b400f50dddde",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
