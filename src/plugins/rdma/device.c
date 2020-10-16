@@ -51,6 +51,93 @@ rdma_main_t rdma_main;
 	   format_vlib_pci_addr, &rd->pci_addr, ##__VA_ARGS__);     \
 };
 
+static struct ibv_flow *
+rdma_rxq_init_flow (const rdma_device_t * rd, struct ibv_qp *qp,
+		    const mac_address_t * mac, const mac_address_t * mask,
+		    u16 ether_type, u32 flags)
+{
+  struct ibv_flow *flow;
+  struct raw_eth_flow_attr
+  {
+    struct ibv_flow_attr attr;
+    struct ibv_flow_spec_eth spec_eth;
+  } __attribute__((packed)) fa;
+
+  memset (&fa, 0, sizeof (fa));
+  fa.attr.num_of_specs = 1;
+  fa.attr.port = 1;
+  fa.attr.flags = flags;
+  fa.spec_eth.type = IBV_FLOW_SPEC_ETH;
+  fa.spec_eth.size = sizeof (struct ibv_flow_spec_eth);
+
+  memcpy (fa.spec_eth.val.dst_mac, mac, sizeof (fa.spec_eth.val.dst_mac));
+  memcpy (fa.spec_eth.mask.dst_mac, mask, sizeof (fa.spec_eth.mask.dst_mac));
+
+  if (ether_type)
+    {
+      fa.spec_eth.val.ether_type = ether_type;
+      fa.spec_eth.mask.ether_type = 0xffff;
+    }
+
+  flow = ibv_create_flow (qp, &fa.attr);
+  if (!flow)
+    rdma_log_debug (rd, "ibv_create_flow() failed");
+  return flow;
+}
+
+static u32
+rdma_rxq_destroy_flow (const rdma_device_t * rd, struct ibv_flow **flow)
+{
+  if (!*flow)
+    return 0;
+
+  if (ibv_destroy_flow (*flow))
+    {
+      rdma_log_debug (rd, "ibv_destroy_flow() failed");
+      return ~0;
+    }
+
+  *flow = 0;
+  return 0;
+}
+
+static u32
+rdma_dev_set_ucast (rdma_device_t * rd)
+{
+  const mac_address_t ucast = {.bytes = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+  };
+  const mac_address_t mcast = {.bytes = {0x1, 0x0, 0x0, 0x0, 0x0, 0x0} };
+  int err;
+
+  err = rdma_rxq_destroy_flow (rd, &rd->flow_mcast6);
+  err |= rdma_rxq_destroy_flow (rd, &rd->flow_ucast6);
+  err |= rdma_rxq_destroy_flow (rd, &rd->flow_mcast4);
+  err |= rdma_rxq_destroy_flow (rd, &rd->flow_ucast4);
+  if (err)
+    return ~0;
+
+  rd->flow_ucast6 =
+    rdma_rxq_init_flow (rd, rd->rx_qp6, &rd->hwaddr, &ucast,
+			ntohs (ETH_P_IPV6), 0);
+  rd->flow_mcast6 =
+    rdma_rxq_init_flow (rd, rd->rx_qp6, &mcast, &mcast, ntohs (ETH_P_IPV6),
+			IBV_FLOW_ATTR_FLAGS_DONT_TRAP
+			/* let others receive mcast packet too (eg. Linux) */
+    );
+  rd->flow_ucast4 =
+    rdma_rxq_init_flow (rd, rd->rx_qp4, &rd->hwaddr, &ucast, 0, 0);
+  rd->flow_mcast4 =
+    rdma_rxq_init_flow (rd, rd->rx_qp4, &mcast, &mcast, 0,
+			IBV_FLOW_ATTR_FLAGS_DONT_TRAP
+			/* let others receive mcast packet too (eg. Linux) */
+    );
+  if (!rd->flow_ucast6 || !rd->flow_mcast6 || !rd->flow_ucast4
+      || !rd->flow_mcast4)
+    return ~0;
+
+  return 0;
+}
+
 static u32
 rdma_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
 {
@@ -241,8 +328,10 @@ rdma_dev_cleanup (rdma_device_t * rd)
        rdma_log_debug (rd, #fn "() failed (rv = %d)", rv); \
   }
 
-  _(ibv_destroy_flow, rd->flow_mcast);
-  _(ibv_destroy_flow, rd->flow_ucast);
+  _(ibv_destroy_flow, rd->flow_mcast6);
+  _(ibv_destroy_flow, rd->flow_ucast6);
+  _(ibv_destroy_flow, rd->flow_mcast4);
+  _(ibv_destroy_flow, rd->flow_ucast4);
   _(ibv_dereg_mr, rd->mr);
   vec_foreach (txq, rd->txqs)
   {
@@ -255,7 +344,8 @@ rdma_dev_cleanup (rdma_device_t * rd)
     _(ibv_destroy_cq, rxq->cq);
   }
   _(ibv_destroy_rwq_ind_table, rd->rx_rwq_ind_tbl);
-  _(ibv_destroy_qp, rd->rx_qp);
+  _(ibv_destroy_qp, rd->rx_qp6);
+  _(ibv_destroy_qp, rd->rx_qp4);
   _(ibv_dealloc_pd, rd->pd);
   _(ibv_close_device, rd->ctx);
 #undef _
@@ -266,33 +356,6 @@ rdma_dev_cleanup (rdma_device_t * rd)
   vec_free (rd->txqs);
   vec_free (rd->name);
   pool_put (rm->devices, rd);
-}
-
-static clib_error_t *
-rdma_rxq_init_flow (struct ibv_flow **flow, struct ibv_qp *qp,
-		    const mac_address_t * mac, const mac_address_t * mask,
-		    u32 flags)
-{
-  struct raw_eth_flow_attr
-  {
-    struct ibv_flow_attr attr;
-    struct ibv_flow_spec_eth spec_eth;
-  } __attribute__ ((packed)) fa;
-
-  memset (&fa, 0, sizeof (fa));
-  fa.attr.num_of_specs = 1;
-  fa.attr.port = 1;
-  fa.attr.flags = flags;
-  fa.spec_eth.type = IBV_FLOW_SPEC_ETH;
-  fa.spec_eth.size = sizeof (struct ibv_flow_spec_eth);
-
-  memcpy (fa.spec_eth.val.dst_mac, mac, sizeof (fa.spec_eth.val.dst_mac));
-  memcpy (fa.spec_eth.mask.dst_mac, mask, sizeof (fa.spec_eth.mask.dst_mac));
-
-  if ((*flow = ibv_create_flow (qp, &fa.attr)) == 0)
-    return clib_error_return_unix (0, "create Flow Failed");
-
-  return 0;
 }
 
 static clib_error_t *
@@ -332,11 +395,7 @@ rdma_rxq_finalize (vlib_main_t * vm, rdma_device_t * rd)
 {
   struct ibv_rwq_ind_table_init_attr rwqia;
   struct ibv_qp_init_attr_ex qpia;
-  const mac_address_t ucast = {.bytes = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
-  };
-  const mac_address_t mcast = {.bytes = {0x1, 0x0, 0x0, 0x0, 0x0, 0x0} };
   struct ibv_wq **ind_tbl;
-  clib_error_t *err;
   u32 i;
 
   ASSERT (is_pow2 (vec_len (rd->rxqs))
@@ -363,21 +422,23 @@ rdma_rxq_finalize (vlib_main_t * vm, rdma_device_t * rd)
   qpia.rx_hash_conf.rx_hash_key_len = sizeof (rdma_rss_hash_key);
   qpia.rx_hash_conf.rx_hash_key = rdma_rss_hash_key;
   qpia.rx_hash_conf.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ;
-  qpia.rx_hash_conf.rx_hash_fields_mask =
-    IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4;
-  if ((rd->rx_qp = ibv_create_qp_ex (rd->ctx, &qpia)) == 0)
-    return clib_error_return_unix (0, "Queue Pair create failed");
 
-  /* receive only packets with src = our MAC */
-  if ((err =
-       rdma_rxq_init_flow (&rd->flow_ucast, rd->rx_qp, &rd->hwaddr, &ucast,
-			   0)) != 0)
-    return err;
-  /* receive multicast packets */
-  return rdma_rxq_init_flow (&rd->flow_mcast, rd->rx_qp, &mcast, &mcast,
-			     IBV_FLOW_ATTR_FLAGS_DONT_TRAP
-			     /* let others receive mcast packet too (eg. Linux) */
-    );
+  qpia.rx_hash_conf.rx_hash_fields_mask =
+    IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4 | IBV_RX_HASH_SRC_PORT_TCP |
+    IBV_RX_HASH_DST_PORT_TCP;
+  if ((rd->rx_qp4 = ibv_create_qp_ex (rd->ctx, &qpia)) == 0)
+    return clib_error_return_unix (0, "IPv4 Queue Pair create failed");
+
+  qpia.rx_hash_conf.rx_hash_fields_mask =
+    IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6 | IBV_RX_HASH_SRC_PORT_TCP |
+    IBV_RX_HASH_DST_PORT_TCP;
+  if ((rd->rx_qp6 = ibv_create_qp_ex (rd->ctx, &qpia)) == 0)
+    return clib_error_return_unix (0, "IPv6 Queue Pair create failed");
+
+  if (rdma_dev_set_ucast (rd))
+    return clib_error_return_unix (0, "Set unicast mode failed");
+
+  return 0;
 }
 
 static clib_error_t *
