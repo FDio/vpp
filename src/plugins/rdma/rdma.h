@@ -172,10 +172,13 @@ typedef struct
   struct ibv_context *ctx;
   struct ibv_pd *pd;
   struct ibv_mr *mr;
-  struct ibv_qp *rx_qp;
+  struct ibv_qp *rx_qp4;
+  struct ibv_qp *rx_qp6;
   struct ibv_rwq_ind_table *rx_rwq_ind_tbl;
-  struct ibv_flow *flow_ucast;
-  struct ibv_flow *flow_mcast;
+  struct ibv_flow *flow_ucast4;
+  struct ibv_flow *flow_mcast4;
+  struct ibv_flow *flow_ucast6;
+  struct ibv_flow *flow_mcast6;
 
   clib_error_t *error;
 } rdma_device_t;
