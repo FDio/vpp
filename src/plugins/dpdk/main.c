@@ -99,7 +99,7 @@ VLIB_INIT_FUNCTION (dpdk_main_init) =
 /* *INDENT-ON* */
 
 
-clib_error_t *
+__clib_export clib_error_t *
 dpdk_early_init (vlib_main_t *vm)
 {
   int fd = -1;
