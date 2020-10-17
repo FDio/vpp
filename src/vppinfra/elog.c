@@ -611,7 +611,7 @@ elog_string (elog_main_t * em, char *fmt, ...)
   return offset;
 }
 
-elog_event_t *
+__clib_export elog_event_t *
 elog_get_events (elog_main_t * em)
 {
   vec_free (em->events);
