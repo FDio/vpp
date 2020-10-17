@@ -271,7 +271,7 @@ hash_memory32 (void *p, word n_bytes, u32 state)
 }
 #endif
 
-uword
+__clib_export uword
 hash_memory (void *p, word n_bytes, uword state)
 {
   uword *q = p;
@@ -628,7 +628,7 @@ lookup (void *v, uword key, enum lookup_opcode op,
 }
 
 /* Fetch value of key. */
-uword *
+__clib_export uword *
 _hash_get (void *v, uword key)
 {
   hash_t *h = hash_header (v);
@@ -647,7 +647,7 @@ _hash_get (void *v, uword key)
     return &p->value[0];
 }
 
-hash_pair_t *
+__clib_export hash_pair_t *
 _hash_get_pair (void *v, uword key)
 {
   return lookup (v, key, GET, 0, 0);
@@ -707,7 +707,7 @@ hash_next (void *v, hash_next_t * hn)
 }
 
 /* Remove key from table. */
-void *
+__clib_export void *
 _hash_unset (void *v, uword key, void *old_value)
 {
   hash_t *h;
@@ -728,7 +728,7 @@ _hash_unset (void *v, uword key, void *old_value)
   return v;
 }
 
-void *
+__clib_export void *
 _hash_create (uword elts, hash_t * h_user)
 {
   hash_t *h;
@@ -774,7 +774,7 @@ _hash_create (uword elts, hash_t * h_user)
   return v;
 }
 
-void *
+__clib_export void *
 _hash_free (void *v)
 {
   hash_t *h = hash_header (v);
@@ -830,13 +830,13 @@ hash_resize (void *old, uword new_size)
   return hash_resize_internal (old, new_size, 1);
 }
 
-void *
+__clib_export void *
 hash_dup (void *old)
 {
   return hash_resize_internal (old, vec_len (old), 0);
 }
 
-void *
+__clib_export void *
 _hash_set3 (void *v, uword key, void *value, void *old_value)
 {
   hash_t *h;
@@ -857,14 +857,14 @@ _hash_set3 (void *v, uword key, void *value, void *old_value)
   return v;
 }
 
-uword
+__clib_export uword
 vec_key_sum (hash_t * h, uword key)
 {
   void *v = uword_to_pointer (key, void *);
   return hash_memory (v, vec_len (v) * h->user, 0);
 }
 
-uword
+__clib_export uword
 vec_key_equal (hash_t * h, uword key1, uword key2)
 {
   void *v1 = uword_to_pointer (key1, void *);
@@ -874,7 +874,7 @@ vec_key_equal (hash_t * h, uword key1, uword key2)
   return l1 == l2 && 0 == memcmp (v1, v2, l1 * h->user);
 }
 
-u8 *
+__clib_export u8 *
 vec_key_format_pair (u8 * s, va_list * args)
 {
   void *CLIB_UNUSED (user_arg) = va_arg (*args, void *);
@@ -925,14 +925,14 @@ vec_key_format_pair (u8 * s, va_list * args)
   return s;
 }
 
-uword
+__clib_export uword
 mem_key_sum (hash_t * h, uword key)
 {
   uword *v = uword_to_pointer (key, void *);
   return hash_memory (v, h->user, 0);
 }
 
-uword
+__clib_export uword
 mem_key_equal (hash_t * h, uword key1, uword key2)
 {
   void *v1 = uword_to_pointer (key1, void *);
@@ -990,7 +990,7 @@ hash_format_pair_default (u8 * s, va_list * args)
   return s;
 }
 
-uword
+__clib_export uword
 hash_bytes (void *v)
 {
   uword i, bytes;
@@ -1098,13 +1098,13 @@ unformat_hash_string_internal (unformat_input_t * input,
   return p ? 1 : 0;
 }
 
-uword
+__clib_export uword
 unformat_hash_vec_string (unformat_input_t * input, va_list * va)
 {
   return unformat_hash_string_internal (input, va, /* is_vec */ 1);
 }
 
-uword
+__clib_export uword
 unformat_hash_string (unformat_input_t * input, va_list * va)
 {
   return unformat_hash_string_internal (input, va, /* is_vec */ 0);

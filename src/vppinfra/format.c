@@ -383,7 +383,7 @@ done:
   return f;
 }
 
-u8 *
+__clib_export u8 *
 va_format (u8 * s, const char *fmt, va_list * va)
 {
   const u8 *f = (u8 *) fmt, *g;
@@ -420,7 +420,7 @@ va_format (u8 * s, const char *fmt, va_list * va)
   return s;
 }
 
-u8 *
+__clib_export u8 *
 format (u8 * s, const char *fmt, ...)
 {
   va_list va;
@@ -434,7 +434,7 @@ format (u8 * s, const char *fmt, ...)
   return s;
 }
 
-word
+__clib_export word
 va_fformat (FILE * f, char *fmt, va_list * va)
 {
   word ret;
@@ -458,7 +458,7 @@ va_fformat (FILE * f, char *fmt, va_list * va)
   return ret;
 }
 
-word
+__clib_export word
 fformat (FILE * f, char *fmt, ...)
 {
   va_list va;
@@ -472,7 +472,7 @@ fformat (FILE * f, char *fmt, ...)
 }
 
 #ifdef CLIB_UNIX
-void
+__clib_export void
 fformat_append_cr (FILE * ofp, const char *fmt, ...)
 {
   va_list va;
@@ -483,7 +483,7 @@ fformat_append_cr (FILE * ofp, const char *fmt, ...)
   fformat (ofp, "\n");
 }
 
-word
+__clib_export word
 fdformat (int fd, char *fmt, ...)
 {
   word ret;

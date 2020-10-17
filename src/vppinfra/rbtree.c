@@ -166,7 +166,7 @@ rb_tree_insert (rb_tree_t * rt, rb_node_t * z)
   rb_tree_fixup_inline (rt, y, z);
 }
 
-rb_node_index_t
+__clib_export rb_node_index_t
 rb_tree_add (rb_tree_t * rt, u32 key)
 {
   rb_node_t *n;
@@ -178,7 +178,7 @@ rb_tree_add (rb_tree_t * rt, u32 key)
   return rb_node_index (rt, n);
 }
 
-rb_node_index_t
+__clib_export rb_node_index_t
 rb_tree_add2 (rb_tree_t * rt, u32 key, uword opaque)
 {
   rb_node_t *n;
@@ -191,7 +191,7 @@ rb_tree_add2 (rb_tree_t * rt, u32 key, uword opaque)
   return rb_node_index (rt, n);
 }
 
-rb_node_index_t
+__clib_export rb_node_index_t
 rb_tree_add_custom (rb_tree_t * rt, u32 key, uword opaque, rb_tree_lt_fn ltfn)
 {
   rb_node_index_t yi = 0, xi = rt->root;
@@ -227,7 +227,7 @@ rb_tree_add_custom (rb_tree_t * rt, u32 key, uword opaque, rb_tree_lt_fn ltfn)
   return rb_node_index (rt, z);
 }
 
-rb_node_t *
+__clib_export rb_node_t *
 rb_tree_search_subtree (rb_tree_t * rt, rb_node_t * x, u32 key)
 {
   while (rb_node_index (rt, x) != RBTREE_TNIL_INDEX && key != x->key)
@@ -238,7 +238,7 @@ rb_tree_search_subtree (rb_tree_t * rt, rb_node_t * x, u32 key)
   return x;
 }
 
-rb_node_t *
+__clib_export rb_node_t *
 rb_tree_search_subtree_custom (rb_tree_t * rt, rb_node_t * x, u32 key,
 			       rb_tree_lt_fn ltfn)
 {
@@ -250,7 +250,7 @@ rb_tree_search_subtree_custom (rb_tree_t * rt, rb_node_t * x, u32 key,
   return x;
 }
 
-rb_node_t *
+__clib_export rb_node_t *
 rb_tree_min_subtree (rb_tree_t * rt, rb_node_t * x)
 {
   while (x->left != RBTREE_TNIL_INDEX)
@@ -258,7 +258,7 @@ rb_tree_min_subtree (rb_tree_t * rt, rb_node_t * x)
   return x;
 }
 
-rb_node_t *
+__clib_export rb_node_t *
 rb_tree_max_subtree (rb_tree_t * rt, rb_node_t * x)
 {
   while (x->right != RBTREE_TNIL_INDEX)
@@ -266,7 +266,7 @@ rb_tree_max_subtree (rb_tree_t * rt, rb_node_t * x)
   return x;
 }
 
-rb_node_t *
+__clib_export rb_node_t *
 rb_tree_successor (rb_tree_t * rt, rb_node_t * x)
 {
   rb_node_t *y;
@@ -283,7 +283,7 @@ rb_tree_successor (rb_tree_t * rt, rb_node_t * x)
   return y;
 }
 
-rb_node_t *
+__clib_export rb_node_t *
 rb_tree_predecessor (rb_tree_t * rt, rb_node_t * x)
 {
   rb_node_t *y;
@@ -441,14 +441,14 @@ rb_tree_del_node_internal (rb_tree_t * rt, rb_node_t * z)
   x->color = RBTREE_BLACK;
 }
 
-void
+__clib_export void
 rb_tree_del_node (rb_tree_t * rt, rb_node_t * z)
 {
   rb_tree_del_node_internal (rt, z);
   pool_put (rt->nodes, z);
 }
 
-void
+__clib_export void
 rb_tree_del (rb_tree_t * rt, u32 key)
 {
   rb_node_t *n;
@@ -457,7 +457,7 @@ rb_tree_del (rb_tree_t * rt, u32 key)
     rb_tree_del_node (rt, n);
 }
 
-void
+__clib_export void
 rb_tree_del_custom (rb_tree_t * rt, u32 key, rb_tree_lt_fn ltfn)
 {
   rb_node_t *n;
@@ -466,20 +466,20 @@ rb_tree_del_custom (rb_tree_t * rt, u32 key, rb_tree_lt_fn ltfn)
     rb_tree_del_node (rt, n);
 }
 
-u32
+__clib_export u32
 rb_tree_n_nodes (rb_tree_t * rt)
 {
   return pool_elts (rt->nodes);
 }
 
-void
+__clib_export void
 rb_tree_free_nodes (rb_tree_t * rt)
 {
   pool_free (rt->nodes);
   rt->root = RBTREE_TNIL_INDEX;
 }
 
-void
+__clib_export void
 rb_tree_init (rb_tree_t * rt)
 {
   rb_node_t *tnil;
@@ -492,7 +492,7 @@ rb_tree_init (rb_tree_t * rt)
   tnil->color = RBTREE_BLACK;
 }
 
-int
+__clib_export int
 rb_tree_is_init (rb_tree_t * rt)
 {
   if (pool_elts (rt->nodes) == 0)

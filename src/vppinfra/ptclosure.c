@@ -15,7 +15,7 @@
 
 #include <vppinfra/ptclosure.h>
 
-u8 **
+__clib_export u8 **
 clib_ptclosure_alloc (int n)
 {
   u8 **rv = 0;
@@ -35,7 +35,7 @@ clib_ptclosure_alloc (int n)
   return rv;
 }
 
-void
+__clib_export void
 clib_ptclosure_free (u8 ** ptc)
 {
   u8 *row;
@@ -86,7 +86,7 @@ clib_ptclosure_copy (u8 ** dst, u8 ** src)
  *
  */
 
-u8 **
+__clib_export u8 **
 clib_ptclosure (u8 ** orig)
 {
   int i, j, k;

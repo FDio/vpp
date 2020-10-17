@@ -60,7 +60,7 @@ pmalloc_validate_numa_node (u32 * numa_node)
   return 0;
 }
 
-int
+__clib_export int
 clib_pmalloc_init (clib_pmalloc_main_t * pm, uword base_addr, uword size)
 {
   uword base, pagesize;
@@ -382,7 +382,7 @@ error:
   return 0;
 }
 
-void *
+__clib_export void *
 clib_pmalloc_create_shared_arena (clib_pmalloc_main_t * pm, char *name,
 				  uword size, u32 log2_page_sz, u32 numa_node)
 {
@@ -484,7 +484,7 @@ clib_pmalloc_alloc_inline (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
   return 0;
 }
 
-void *
+__clib_export void *
 clib_pmalloc_alloc_aligned_on_numa (clib_pmalloc_main_t * pm, uword size,
 				    uword align, u32 numa_node)
 {
@@ -528,7 +528,7 @@ pmalloc_chunks_mergeable (clib_pmalloc_arena_t * a, clib_pmalloc_page_t * pp,
   return 1;
 }
 
-void
+__clib_export void
 clib_pmalloc_free (clib_pmalloc_main_t * pm, void *va)
 {
   clib_pmalloc_page_t *pp;
@@ -617,7 +617,7 @@ format_pmalloc_page (u8 * s, va_list * va)
   return s;
 }
 
-u8 *
+__clib_export u8 *
 format_pmalloc (u8 * s, va_list * va)
 {
   clib_pmalloc_main_t *pm = va_arg (*va, clib_pmalloc_main_t *);
@@ -665,7 +665,7 @@ format_pmalloc (u8 * s, va_list * va)
   return s;
 }
 
-u8 *
+__clib_export u8 *
 format_pmalloc_map (u8 * s, va_list * va)
 {
   clib_pmalloc_main_t *pm = va_arg (*va, clib_pmalloc_main_t *);

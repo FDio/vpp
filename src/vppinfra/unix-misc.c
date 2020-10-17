@@ -45,8 +45,8 @@
 #include <fcntl.h>
 #include <stdio.h>		/* for sprintf */
 
-__thread uword __os_thread_index = 0;
-__thread uword __os_numa_index = 0;
+__clib_export __thread uword __os_thread_index = 0;
+__clib_export __thread uword __os_numa_index = 0;
 
 clib_error_t *
 clib_file_n_bytes (char *file, uword * result)
@@ -108,7 +108,7 @@ done:
   return error;
 }
 
-clib_error_t *
+__clib_export clib_error_t *
 clib_file_contents (char *file, u8 ** result)
 {
   uword n_bytes;
@@ -215,15 +215,13 @@ os_puts (u8 * string, uword string_length, uword is_error)
     ;
 }
 
-void os_out_of_memory (void) __attribute__ ((weak));
-void
+__clib_export __clib_weak void
 os_out_of_memory (void)
 {
   os_panic ();
 }
 
-uword os_get_nthreads (void) __attribute__ ((weak));
-uword
+__clib_export __clib_weak uword
 os_get_nthreads (void)
 {
   return 1;

@@ -15,7 +15,7 @@
 
 #include <vppinfra/time_range.h>
 
-void
+__clib_export void
 clib_timebase_init (clib_timebase_t * tb, i32 timezone_offset_in_hours,
 		    clib_timebase_daylight_time_t daylight_type,
 		    clib_time_t * clib_time)
@@ -100,7 +100,7 @@ const static char *day_names_calendar_order[] = {
 };
 
 
-void
+__clib_export void
 clib_timebase_time_to_components (f64 now, clib_timebase_component_t * cp)
 {
   u32 year, month, hours, minutes, seconds, nanoseconds;
@@ -181,7 +181,7 @@ clib_timebase_time_to_components (f64 now, clib_timebase_component_t * cp)
   cp->fractional_seconds = now;
 }
 
-f64
+__clib_export f64
 clib_timebase_components_to_time (clib_timebase_component_t * cp)
 {
   f64 now = 0;
@@ -217,7 +217,7 @@ clib_timebase_components_to_time (clib_timebase_component_t * cp)
   return (now);
 }
 
-f64
+__clib_export f64
 clib_timebase_find_sunday_midnight (f64 start_time)
 {
   clib_timebase_component_t _c, *cp = &_c;
@@ -256,7 +256,7 @@ clib_timebase_offset_from_sunday (u8 * day)
 }
 
 
-u8 *
+__clib_export u8 *
 format_clib_timebase_time (u8 * s, va_list * args)
 {
   f64 now = va_arg (*args, f64);
@@ -312,7 +312,7 @@ unformat_clib_timebase_range_hms (unformat_input_t * input, va_list * args)
   return 1;
 }
 
-uword
+__clib_export uword
 unformat_clib_timebase_range_vector (unformat_input_t * input, va_list * args)
 {
   clib_timebase_range_t **rpp = va_arg (*args, clib_timebase_range_t **);
@@ -387,7 +387,7 @@ unformat_clib_timebase_range_vector (unformat_input_t * input, va_list * args)
     }
 }
 
-f64
+__clib_export f64
 clib_timebase_summer_offset (clib_timebase_t * tb, f64 now)
 {
   clib_timebase_component_t _c, *cp = &_c;

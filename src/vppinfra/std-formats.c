@@ -205,7 +205,7 @@ format_time_interval (u8 * s, va_list * args)
 }
 
 /* Unparse memory size e.g. 100, 100k, 100m, 100g. */
-u8 *
+__clib_export u8 *
 format_memory_size (u8 * s, va_list * va)
 {
   uword size = va_arg (*va, uword);
@@ -234,7 +234,7 @@ format_memory_size (u8 * s, va_list * va)
 }
 
 /* Parse memory size e.g. 100, 100k, 100m, 100g. */
-uword
+__clib_export uword
 unformat_memory_size (unformat_input_t * input, va_list * va)
 {
   uword amount, shift, c;
@@ -269,7 +269,7 @@ unformat_memory_size (unformat_input_t * input, va_list * va)
 }
 
 /* Unparse memory page size e.g. 4K, 2M */
-u8 *
+__clib_export u8 *
 format_log2_page_size (u8 * s, va_list * va)
 {
   clib_mem_page_sz_t log2_page_sz = va_arg (*va, clib_mem_page_sz_t);
@@ -296,7 +296,7 @@ format_log2_page_size (u8 * s, va_list * va)
 }
 
 /* Parse memory page size e.g. 4K, 2M */
-uword
+__clib_export uword
 unformat_log2_page_size (unformat_input_t * input, va_list * va)
 {
   uword amount, shift, c;
@@ -338,7 +338,7 @@ unformat_log2_page_size (unformat_input_t * input, va_list * va)
 
 /* Format c identifier: e.g. a_name -> "a name".
    Works for both vector names and null terminated c strings. */
-u8 *
+__clib_export u8 *
 format_c_identifier (u8 * s, va_list * va)
 {
   u8 *id = va_arg (*va, u8 *);
@@ -361,7 +361,7 @@ format_c_identifier (u8 * s, va_list * va)
   return s;
 }
 
-u8 *
+__clib_export u8 *
 format_hexdump (u8 * s, va_list * args)
 {
   u8 *data = va_arg (*args, u8 *);

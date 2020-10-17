@@ -71,7 +71,7 @@ typedef struct
 
 static clib_error_handler_t *handlers = 0;
 
-void
+__clib_export void
 clib_error_register_handler (clib_error_handler_func_t func, void *arg)
 {
   clib_error_handler_t h = {.func = func,.arg = arg, };
@@ -108,7 +108,7 @@ dispatch_message (u8 * msg)
   return msg;
 }
 
-void
+__clib_export void
 _clib_error (int how_to_die,
 	     char *function_name, uword line_number, char *fmt, ...)
 {
@@ -145,7 +145,7 @@ _clib_error (int how_to_die,
     error_exit (1);
 }
 
-clib_error_t *
+__clib_export clib_error_t *
 _clib_error_return (clib_error_t * errors,
 		    any code, uword flags, char *where, char *fmt, ...)
 {
@@ -178,7 +178,7 @@ _clib_error_return (clib_error_t * errors,
   return errors;
 }
 
-void *
+__clib_export void *
 clib_error_free_vector (clib_error_t * errors)
 {
   clib_error_t *e;
@@ -187,7 +187,7 @@ clib_error_free_vector (clib_error_t * errors)
   return 0;
 }
 
-u8 *
+__clib_export u8 *
 format_clib_error (u8 * s, va_list * va)
 {
   clib_error_t *errors = va_arg (*va, clib_error_t *);
@@ -216,7 +216,7 @@ format_clib_error (u8 * s, va_list * va)
   return s;
 }
 
-clib_error_t *
+__clib_export clib_error_t *
 _clib_error_report (clib_error_t * errors)
 {
   if (errors)
