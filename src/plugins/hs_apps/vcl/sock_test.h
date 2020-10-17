@@ -29,36 +29,50 @@
 #define SOCK_TEST_BANNER_STRING \
   "============================================\n"
 
+#define stinf(_fmt, _args...)						\
+  printf ("st: " _fmt "\n", ##_args)
+#define stwrn(_fmt, _args...)						\
+  printf ("WARNING: " _fmt "\n", ##_args)
+#define sterr(_fn, _rv)							\
+{									\
+  errno = -_rv;								\
+  printf ("\nERROR: " _fn " failed (errno = %d)!\n", -_rv);		\
+}
+#define stfail(_fn, _rv)						\
+{									\
+  errno = -_rv;								\
+  perror ("ERROR when calling " _fn);					\
+  printf ("\nERROR: " _fn " failed (errno = %d)!\n", -_rv);		\
+  exit (1);								\
+}
+
 static inline int
-sock_test_read (int fd, uint8_t *buf, uint32_t nbytes,
-                vcl_test_stats_t *stats)
+sock_test_read (int fd, uint8_t * buf, uint32_t nbytes,
+		vcl_test_stats_t * stats)
 {
-  int rx_bytes, errno_val;
-  
+  int rx_bytes;
+
   do
     {
       if (stats)
-        stats->rx_xacts++;
+	stats->rx_xacts++;
       rx_bytes = read (fd, buf, nbytes);
       if (stats)
-        {
-          if ((rx_bytes == 0) ||
-              ((rx_bytes < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))))
-            stats->rx_eagain++;
-          else if (rx_bytes < nbytes)
-            stats->rx_incomp++;
-        }
+	{
+	  if ((rx_bytes == 0) ||
+	      ((rx_bytes < 0)
+	       && ((errno == EAGAIN) || (errno == EWOULDBLOCK))))
+	    stats->rx_eagain++;
+	  else if (rx_bytes < nbytes)
+	    stats->rx_incomp++;
+	}
     }
   while ((rx_bytes == 0) ||
-         ((rx_bytes < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))));
-  
+	 ((rx_bytes < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))));
+
   if (rx_bytes < 0)
     {
-      errno_val = errno;
-      perror ("ERROR in sock_test_read()");
-      fprintf (stderr, "SOCK_TEST: ERROR: socket read "
-               "failed (errno = %d)!\n", errno_val);
-      errno = errno_val;
+      stfail ("sock_test_read()", -errno);
     }
   else if (stats)
     stats->rx_bytes += rx_bytes;
@@ -67,56 +81,60 @@ sock_test_read (int fd, uint8_t *buf, uint32_t nbytes,
 }
 
 static inline int
-sock_test_write (int fd, uint8_t *buf, uint32_t nbytes,
-                 vcl_test_stats_t *stats, uint32_t verbose)
+sock_test_write (int fd, uint8_t * buf, uint32_t nbytes,
+		 vcl_test_stats_t * stats, uint32_t verbose)
 {
-  int tx_bytes = 0;
-  int nbytes_left = nbytes;
-  int rv, errno_val;
+  int tx_bytes = 0, nbytes_left = nbytes, rv;
 
   do
     {
       if (stats)
-        stats->tx_xacts++;
+	stats->tx_xacts++;
       rv = write (fd, buf, nbytes_left);
       if (rv < 0)
-        {
-          if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
-            {
-              if (stats)
-                stats->tx_eagain++;
-              continue;
-            }
-          else
-            break;
-        }
+	{
+	  if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+	    {
+	      if (stats)
+		stats->tx_eagain++;
+	      continue;
+	    }
+	  else
+	    break;
+	}
       tx_bytes += rv;
-     
+
       if (tx_bytes != nbytes)
-        {
-          nbytes_left = nbytes_left - rv;
-          if (stats)
-            stats->tx_incomp++;
-          if (verbose)
-            {
-              printf ("SOCK_TEST: WARNING: bytes written (%d) "
-                      "!= bytes to write (%d)!\n", tx_bytes, nbytes);
-            }
-        }
-     
-    } while (tx_bytes != nbytes);
+	{
+	  nbytes_left = nbytes_left - rv;
+	  if (stats)
+	    stats->tx_incomp++;
+	  if (verbose)
+	    {
+	      stinf ("bytes written (%d) != bytes to write (%d)!\n", tx_bytes,
+		     nbytes);
+	    }
+	}
+
+    }
+  while (tx_bytes != nbytes);
 
   if (tx_bytes < 0)
     {
-      errno_val = errno;
-      perror ("ERROR in sock_test_write()");
-      fprintf (stderr, "SOCK_TEST: ERROR: socket write failed "
-               "(errno = %d)!\n", errno_val);
+      stfail ("sock_test_write()", -errno);
     }
   else if (stats)
     stats->tx_bytes += tx_bytes;
-  
+
   return (tx_bytes);
 }
 
 #endif /* __sock_test_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
