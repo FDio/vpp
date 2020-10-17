@@ -112,7 +112,7 @@ typedef struct
   if (ldp->debug > _lvl)						\
     {									\
       int errno_saved = errno;						\
-      fprintf (stderr, "ldp<%d>: " _fmt, getpid(), ##_args);		\
+      fprintf (stderr, "ldp<%d>: " _fmt "\n", getpid(), ##_args);	\
       errno = errno_saved;						\
     }
 
