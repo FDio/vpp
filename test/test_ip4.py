@@ -21,6 +21,7 @@ from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_papi import VppEnum
 from vpp_neighbor import VppNeighbor
 from vpp_lo_interface import VppLoInterface
+from vpp_null_interface import VppNullInterface
 from vpp_policer import VppPolicer
 
 NUM_PKTS = 67
@@ -860,6 +861,28 @@ class TestIPNull(VppTestCase):
         self.send_and_assert_no_replies(self.pg0, p * NUM_PKTS, "Drop Route")
         r2.remove_vpp_config()
         rx = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
+
+        #
+        # drop via the null interface
+        #
+        null0 = VppNullInterface(self).add_vpp_config()
+        null0.admin_up()
+
+        r3 = VppIpRoute(self, "1.1.1.2", 32,
+                        [VppRoutePath("0.0.0.0",
+                                      null0.sw_if_index)])
+        r3.add_vpp_config()
+
+        p = (Ether(src=self.pg0.remote_mac,
+                   dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst="1.1.1.2") /
+             UDP(sport=1234, dport=1234) /
+             Raw(b'\xa6' * 100))
+
+        self.send_and_assert_no_replies(self.pg0, p * NUM_PKTS,
+                                        "Null interface")
+        # check null0 interface stats
+        self.assertEqual(null0.get_tx_stats()['packets'], NUM_PKTS)
 
 
 class TestIPDisabled(VppTestCase):

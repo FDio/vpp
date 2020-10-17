@@ -482,6 +482,10 @@ class VppInterface(object):
         c = self.test.statistics.get_counter("^/if/rx$")
         return c[0][self.sw_if_index]
 
+    def get_drop_stats(self):
+        c = self.test.statistics.get_counter("^/if/drops$")
+        return c[0][self.sw_if_index]
+
     def get_tx_stats(self):
         c = self.test.statistics.get_counter("^/if/tx$")
         return c[0][self.sw_if_index]

@@ -86,6 +86,7 @@ class VppBridgeDomain(VppObject):
                                               arp_ufwd=self.arp_ufwd,
                                               is_add=1)
         self._test.registry.register(self, self._test.logger)
+        return self
 
     def remove_vpp_config(self):
         self._test.vapi.bridge_domain_add_del(bd_id=self.bd_id, is_add=0)
@@ -111,6 +112,7 @@ class VppBridgeDomainPort(VppObject):
             rx_sw_if_index=self.itf.sw_if_index, bd_id=self.bd.bd_id,
             port_type=self.port_type, enable=1)
         self._test.registry.register(self, self._test.logger)
+        return self
 
     def remove_vpp_config(self):
         self._test.vapi.sw_interface_set_l2_bridge(
@@ -184,6 +186,7 @@ class VppL2FibEntry(VppObject):
             filter_mac=self.filter_mac,
             bvi_mac=self.bvi_mac)
         self._test.registry.register(self, self._test.logger)
+        return self
 
     def remove_vpp_config(self):
         self._test.vapi.l2fib_add_del(

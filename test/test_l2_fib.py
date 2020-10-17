@@ -70,6 +70,8 @@ from scapy.layers.inet import IP, UDP
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
 from vpp_papi import mac_pton, VppEnum
+from vpp_null_interface import VppNullInterface
+from vpp_l2 import VppL2FibEntry, VppBridgeDomainPort, VppBridgeDomain
 
 
 class TestL2fib(VppTestCase):
@@ -524,6 +526,54 @@ class TestL2fib(VppTestCase):
         for e in evs:
             self.assertLess(len(e), ev_macs * 10)
         self.assertEqual(len(learned_macs ^ macs), 0)
+
+
+class TestL2fibNull(VppTestCase):
+    """ L2 FIB Null Test Case """
+
+    def setUp(self):
+        super(TestL2fibNull, self).setUp()
+        self.create_pg_interfaces(range(2))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+
+    def tearDown(self):
+        """
+        Show various debug prints after each test.
+        """
+        super(TestL2fibNull, self).tearDown()
+
+    def test_l2_fib_null(self):
+        """ FIB entries to null0 """
+
+        NUM_PKTS = 63
+
+        bd = VppBridgeDomain(self, 1).add_vpp_config()
+        null0 = VppNullInterface(self).add_vpp_config()
+        null0.admin_up()
+        bp2 = VppBridgeDomainPort(self, bd, null0).add_vpp_config()
+
+        bp0 = VppBridgeDomainPort(self, bd, self.pg0).add_vpp_config()
+        bp1 = VppBridgeDomainPort(self, bd, self.pg1).add_vpp_config()
+
+        f1 = VppL2FibEntry(self, bd, "00:00:00:00:00:01", self.pg1)
+        f1..add_vpp_config()
+        f2 = VppL2FibEntry(self, bd, "00:00:00:00:00:02", null0)
+        f2..add_vpp_config()
+
+        p = (Ether(dst="00:00:00:00:00:01", src=self.pg0.remote_mac) /
+             Raw('0xa1' * 20))
+
+        self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
+        self.assertEqual(self.pg1.get_tx_stats()['packets'], NUM_PKTS)
+
+        p = (Ether(dst="00:00:00:00:00:02", src=self.pg0.remote_mac) /
+             Raw('0xa1' * 20))
+
+        self.send_and_assert_no_replies(self.pg0, p * NUM_PKTS,
+                                        "null interface")
+        self.assertEqual(null0.get_tx_stats()['packets'], NUM_PKTS)
 
 
 if __name__ == '__main__':

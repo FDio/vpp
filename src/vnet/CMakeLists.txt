@@ -1033,7 +1033,7 @@ list(APPEND VNET_API_FILES
 )
 
 ##############################################################################
-# tap interface (with virtio backend)
+# pipe interface
 ##############################################################################
 
 list(APPEND VNET_SOURCES
@@ -1046,6 +1046,21 @@ list(APPEND VNET_HEADERS
 )
 
 list(APPEND VNET_API_FILES devices/pipe/pipe.api)
+
+##############################################################################
+# null interface
+##############################################################################
+
+list(APPEND VNET_SOURCES
+  devices/null/null_api.c
+  devices/null/null.c
+)
+
+list(APPEND VNET_HEADERS
+  devices/null/null.h
+)
+
+list(APPEND VNET_API_FILES devices/null/null.api)
 
 ##############################################################################
 # session managmeent
