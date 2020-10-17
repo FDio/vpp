@@ -22,7 +22,7 @@
 #include <fcntl.h>
 #include <dirent.h>
 
-clib_error_t *
+__clib_export clib_error_t *
 clib_sysfs_write (char *file_name, char *fmt, ...)
 {
   u8 *s;
@@ -46,7 +46,7 @@ clib_sysfs_write (char *file_name, char *fmt, ...)
   return error;
 }
 
-clib_error_t *
+__clib_export clib_error_t *
 clib_sysfs_read (char *file_name, char *fmt, ...)
 {
   unformat_input_t input;
@@ -86,7 +86,7 @@ clib_sysfs_read (char *file_name, char *fmt, ...)
   return 0;
 }
 
-u8 *
+__clib_export u8 *
 clib_sysfs_link_to_name (char *link)
 {
   char *p, buffer[64];

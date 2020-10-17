@@ -38,7 +38,7 @@
 #include <vppinfra/format.h>
 
 /* Call user's function to fill input buffer. */
-uword
+__clib_export uword
 _unformat_fill_input (unformat_input_t * i)
 {
   uword l, first_mark;
@@ -87,7 +87,7 @@ is_white_space (uword c)
 }
 
 /* Format function for dumping input stream. */
-u8 *
+__clib_export u8 *
 format_unformat_error (u8 * s, va_list * va)
 {
   unformat_input_t *i = va_arg (*va, unformat_input_t *);
@@ -139,7 +139,7 @@ format_unformat_error (u8 * s, va_list * va)
 }
 
 /* Print everything: not just error context. */
-u8 *
+__clib_export u8 *
 format_unformat_input (u8 * s, va_list * va)
 {
   unformat_input_t *i = va_arg (*va, unformat_input_t *);
@@ -268,7 +268,7 @@ done:
   return 1;
 }
 
-uword
+__clib_export uword
 unformat_hex_string (unformat_input_t * input, va_list * va)
 {
   u8 **hexstring_return = va_arg (*va, u8 **);
@@ -317,14 +317,14 @@ unformat_hex_string (unformat_input_t * input, va_list * va)
 }
 
 /* unformat (input "foo%U", unformat_eof) matches terminal foo only */
-uword
+__clib_export uword
 unformat_eof (unformat_input_t * input, va_list * va)
 {
   return unformat_check_input (input) == UNFORMAT_END_OF_INPUT;
 }
 
 /* Parse a token containing given set of characters. */
-uword
+__clib_export uword
 unformat_token (unformat_input_t * input, va_list * va)
 {
   u8 *token_chars = va_arg (*va, u8 *);
@@ -379,7 +379,7 @@ unformat_token (unformat_input_t * input, va_list * va)
 
 /* Unformat (parse) function which reads a %s string and converts it
    to and unformat_input_t. */
-uword
+__clib_export uword
 unformat_input (unformat_input_t * i, va_list * args)
 {
   unformat_input_t *sub_input = va_arg (*args, unformat_input_t *);
@@ -395,7 +395,7 @@ unformat_input (unformat_input_t * i, va_list * args)
 }
 
 /* Parse a line ending with \n and return it. */
-uword
+__clib_export uword
 unformat_line (unformat_input_t * i, va_list * va)
 {
   u8 *line = 0, **result = va_arg (*va, u8 **);
@@ -411,7 +411,7 @@ unformat_line (unformat_input_t * i, va_list * va)
 }
 
 /* Parse a line ending with \n and return it as an unformat_input_t. */
-uword
+__clib_export uword
 unformat_line_input (unformat_input_t * i, va_list * va)
 {
   unformat_input_t *result = va_arg (*va, unformat_input_t *);
@@ -817,7 +817,7 @@ do_percent (unformat_input_t * input, va_list * va, const char *f)
   return n ? f : 0;
 }
 
-uword
+__clib_export uword
 unformat_skip_white_space (unformat_input_t * input)
 {
   uword n = 0;
@@ -974,7 +974,7 @@ parse_fail:
   return input_matches_format;
 }
 
-uword
+__clib_export uword
 unformat (unformat_input_t * input, const char *fmt, ...)
 {
   va_list va;
@@ -985,7 +985,7 @@ unformat (unformat_input_t * input, const char *fmt, ...)
   return result;
 }
 
-uword
+__clib_export uword
 unformat_user (unformat_input_t * input, unformat_function_t * func, ...)
 {
   va_list va;
@@ -1009,7 +1009,7 @@ unformat_user (unformat_input_t * input, unformat_function_t * func, ...)
 }
 
 /* Setup for unformat of Unix style command line. */
-void
+__clib_export void
 unformat_init_command_line (unformat_input_t * input, char *argv[])
 {
   uword i;
@@ -1025,7 +1025,7 @@ unformat_init_command_line (unformat_input_t * input, char *argv[])
     }
 }
 
-void
+__clib_export void
 unformat_init_string (unformat_input_t * input, char *string, int string_len)
 {
   unformat_init (input, 0, 0);
@@ -1033,7 +1033,7 @@ unformat_init_string (unformat_input_t * input, char *string, int string_len)
     vec_add (input->buffer, string, string_len);
 }
 
-void
+__clib_export void
 unformat_init_vector (unformat_input_t * input, u8 * vector_string)
 {
   unformat_init (input, 0, 0);
@@ -1060,7 +1060,7 @@ clib_file_fill_buffer (unformat_input_t * input)
     return input->index;
 }
 
-void
+__clib_export void
 unformat_init_clib_file (unformat_input_t * input, int file_descriptor)
 {
   unformat_init (input, clib_file_fill_buffer,
@@ -1077,7 +1077,7 @@ unformat_init_unix_env (unformat_input_t * input, char *var)
   return val != 0;
 }
 
-uword
+__clib_export uword
 unformat_data_size (unformat_input_t * input, va_list * args)
 {
   u64 _a;

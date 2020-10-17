@@ -91,7 +91,7 @@ clib_memswap (void *_a, void *_b, uword bytes)
     }
 }
 
-void
+__clib_export void
 clib_c11_violation (const char *s)
 {
   _clib_error (CLIB_ERROR_WARNING, (char *) __FUNCTION__, 0, (char *) s);
@@ -116,7 +116,7 @@ clib_c11_violation (const char *s)
  *         EINVAL     runtime constraint error
  *
  */
-errno_t
+__clib_export errno_t
 memcpy_s (void *__restrict__ dest, rsize_t dmax,
 	  const void *__restrict__ src, rsize_t n)
 {
@@ -295,7 +295,7 @@ strcpy_s (char *__restrict__ dest, rsize_t dmax, const char *__restrict__ src)
  *                    dest is null terminated.
  *
  */
-errno_t
+__clib_export errno_t
 strncpy_s (char *__restrict__ dest, rsize_t dmax,
 	   const char *__restrict__ src, rsize_t n)
 {

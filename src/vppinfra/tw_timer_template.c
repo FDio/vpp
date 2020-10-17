@@ -292,7 +292,7 @@ timer_add (TWT (tw_timer_wheel) * tw, TWT (tw_timer) * t, u64 interval)
  * @param u64 interval timer interval in ticks
  * @returns handle needed to cancel the timer
  */
-u32
+__clib_export u32
 TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 user_id, u32 timer_id,
 		     u64 interval)
 {
@@ -349,7 +349,7 @@ int TW (scan_for_handle) (TWT (tw_timer_wheel) * tw, u32 handle)
  * @param tw_timer_wheel_t * tw timer wheel object pointer
  * @param u32 handle timer cancellation returned by tw_timer_start
  */
-void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle)
+__clib_export void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle)
 {
   TWT (tw_timer) * t;
 
@@ -376,7 +376,8 @@ void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle)
   pool_put_index (tw->timers, handle);
 }
 
-int TW (tw_timer_handle_is_free) (TWT (tw_timer_wheel) * tw, u32 handle)
+__clib_export int
+TW (tw_timer_handle_is_free) (TWT (tw_timer_wheel) * tw, u32 handle)
 {
   return pool_is_free_index (tw->timers, handle);
 }
@@ -387,8 +388,8 @@ int TW (tw_timer_handle_is_free) (TWT (tw_timer_wheel) * tw, u32 handle)
  * @param u32 handle timer returned by tw_timer_start
  * @param u32 interval timer interval in ticks
  */
-void TW (tw_timer_update) (TWT (tw_timer_wheel) * tw, u32 handle,
-			   u64 interval)
+__clib_export void
+TW (tw_timer_update) (TWT (tw_timer_wheel) * tw, u32 handle, u64 interval)
 {
   TWT (tw_timer) * t;
   t = pool_elt_at_index (tw->timers, handle);
@@ -403,7 +404,7 @@ void TW (tw_timer_update) (TWT (tw_timer_wheel) * tw, u32 handle,
  *   expired timer handles. The callback is optional.
  * @param f64 timer_interval_in_seconds
  */
-void
+__clib_export void
 TW (tw_timer_wheel_init) (TWT (tw_timer_wheel) * tw,
 			  void *expired_timer_callback,
 			  f64 timer_interval_in_seconds, u32 max_expirations)
@@ -810,13 +811,14 @@ static inline
   return callback_vector;
 }
 
-u32 *TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now)
+__clib_export u32 *TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw,
+						f64 now)
 {
   return TW (tw_timer_expire_timers_internal) (tw, now, 0 /* no vector */ );
 }
 
-u32 *TW (tw_timer_expire_timers_vec) (TWT (tw_timer_wheel) * tw, f64 now,
-				      u32 * vec)
+__clib_export u32 *TW (tw_timer_expire_timers_vec) (TWT (tw_timer_wheel) * tw,
+						    f64 now, u32 * vec)
 {
   return TW (tw_timer_expire_timers_internal) (tw, now, vec);
 }
@@ -829,7 +831,8 @@ u32 *TW (tw_timer_expire_timers_vec) (TWT (tw_timer_wheel) * tw, f64 now,
  * when timers are removed from fast wheel slots.
  */
 
-u32 TW (tw_timer_first_expires_in_ticks) (TWT (tw_timer_wheel) * tw)
+__clib_export u32
+TW (tw_timer_first_expires_in_ticks) (TWT (tw_timer_wheel) * tw)
 {
   u32 first_expiring_index, fast_ring_index;
   i32 delta;

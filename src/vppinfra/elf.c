@@ -43,7 +43,7 @@ elf_swap_verneed_aux (elf_dynamic_version_need_aux_t * n)
 #undef _
 }
 
-clib_error_t *
+__clib_export clib_error_t *
 elf_get_section_by_name (elf_main_t * em, char *section_name,
 			 elf_section_t ** result)
 {
@@ -1325,7 +1325,7 @@ elf_parse_dynamic (elf_main_t * em)
 #include <sys/stat.h>
 #include <fcntl.h>
 
-clib_error_t *
+__clib_export clib_error_t *
 elf_read_file (elf_main_t * em, char *file_name)
 {
   int fd;

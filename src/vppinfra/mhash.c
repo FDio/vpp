@@ -164,7 +164,7 @@ mhash_sanitize_hash_user (mhash_t * mh)
   h->user = pointer_to_uword (mh);
 }
 
-void
+__clib_export void
 mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
 {
   static struct
@@ -243,7 +243,7 @@ mhash_set_tmp_key (mhash_t * h, const void *key)
   return ~0;
 }
 
-hash_pair_t *
+__clib_export hash_pair_t *
 mhash_get_pair (mhash_t * h, const void *key)
 {
   uword ikey;
@@ -260,7 +260,7 @@ typedef struct
   vec_header_t vec;
 } mhash_string_key_t;
 
-uword
+__clib_export uword
 mhash_set_mem (mhash_t * h, void *key, uword * new_value, uword * old_value)
 {
   u8 *k;
@@ -342,7 +342,7 @@ mhash_set_mem (mhash_t * h, void *key, uword * new_value, uword * old_value)
   return ikey;
 }
 
-uword
+__clib_export uword
 mhash_unset (mhash_t * h, void *key, uword * old_value)
 {
   hash_pair_t *p;

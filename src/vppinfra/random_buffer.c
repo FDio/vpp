@@ -38,7 +38,7 @@
 #include <vppinfra/random_buffer.h>
 
 /* Fill random buffer. */
-void
+__clib_export void
 clib_random_buffer_fill (clib_random_buffer_t * b, uword n_words)
 {
   uword *w, n = n_words;
@@ -58,7 +58,7 @@ clib_random_buffer_fill (clib_random_buffer_t * b, uword n_words)
   while (n > 0);
 }
 
-void
+__clib_export void
 clib_random_buffer_init (clib_random_buffer_t * b, uword seed)
 {
   uword i, j;
