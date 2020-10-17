@@ -4118,7 +4118,7 @@ void mspace_get_address_and_size (mspace msp, char **addrp, size_t *sizep)
   *sizep = this_seg->size;
 }
 
-CLIB_NOSANITIZE_ADDR
+CLIB_NOSANITIZE_ADDR __clib_export
 int mspace_is_heap_object (mspace msp, void *p)
 {
   msegment *this_seg;
@@ -4185,7 +4185,7 @@ int mspace_is_traced (mspace msp)
   return 0;
 }
 
-CLIB_NOSANITIZE_ADDR
+CLIB_NOSANITIZE_ADDR __clib_export
 void* mspace_get_aligned (mspace msp,
                           unsigned long n_user_data_bytes,
                           unsigned long align,
@@ -4286,7 +4286,7 @@ void* mspace_get_aligned (mspace msp,
   return (void *) searchp;
 }
 
-CLIB_NOSANITIZE_ADDR
+CLIB_NOSANITIZE_ADDR __clib_export
 void mspace_put (mspace msp, void *p_arg)
 {
   char *object_header;
@@ -4336,7 +4336,7 @@ void mspace_put_no_offset (mspace msp, void *p_arg)
   mspace_free (msp, p_arg);
 }
 
-CLIB_NOSANITIZE_ADDR
+CLIB_NOSANITIZE_ADDR __clib_export
 size_t mspace_usable_size_with_delta (const void *p)
 {
   size_t usable_size;

@@ -382,7 +382,7 @@ dealloc_elt (void *v, heap_elt_t * e)
     combine_free_blocks (v, p, n);
 }
 
-void *
+__clib_export void *
 _heap_alloc (void *v,
 	     uword size,
 	     uword align,
@@ -496,7 +496,7 @@ error:
   return v;
 }
 
-void
+__clib_export void
 heap_dealloc (void *v, uword handle)
 {
   heap_header_t *h = heap_header (v);
@@ -607,7 +607,7 @@ heap_len (void *v, word handle)
   return heap_elt_size (v, elt_at (h, handle));
 }
 
-void *
+__clib_export void *
 _heap_free (void *v)
 {
   heap_header_t *h = heap_header (v);

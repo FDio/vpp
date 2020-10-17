@@ -135,7 +135,7 @@ done:
   return cpu_freq;
 }
 
-f64
+__clib_export f64
 os_cpu_clock_frequency (void)
 {
 #if defined (__aarch64__)
@@ -203,7 +203,7 @@ os_cpu_clock_frequency (void)
 #endif /* CLIB_UNIX */
 
 /* Initialize time. */
-void
+__clib_export void
 clib_time_init (clib_time_t * c)
 {
   clib_memset (c, 0, sizeof (c[0]));
@@ -247,7 +247,7 @@ clib_time_init (clib_time_t * c)
   c->damping_constant = exp (-1.0 / 3.75);
 }
 
-void
+__clib_export void
 clib_time_verify_frequency (clib_time_t * c)
 {
   f64 now_reference, delta_reference, delta_reference_max;
@@ -328,7 +328,7 @@ clib_time_verify_frequency (clib_time_t * c)
 }
 
 
-u8 *
+__clib_export u8 *
 format_clib_time (u8 * s, va_list * args)
 {
   clib_time_t *c = va_arg (*args, clib_time_t *);

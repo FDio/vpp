@@ -19,9 +19,9 @@
 #include <vppinfra/format.h>
 #include <vppinfra/clib_error.h>
 
-clib_mem_main_t clib_mem_main;
+__clib_export clib_mem_main_t clib_mem_main;
 
-void *
+__clib_export void *
 clib_mem_vm_map (void *base, uword size, clib_mem_page_sz_t log2_page_sz,
 		 char *fmt, ...)
 {
@@ -38,7 +38,7 @@ clib_mem_vm_map (void *base, uword size, clib_mem_page_sz_t log2_page_sz,
   return rv;
 }
 
-void *
+__clib_export void *
 clib_mem_vm_map_stack (uword size, clib_mem_page_sz_t log2_page_sz,
 		       char *fmt, ...)
 {
@@ -55,7 +55,7 @@ clib_mem_vm_map_stack (uword size, clib_mem_page_sz_t log2_page_sz,
   return rv;
 }
 
-void *
+__clib_export void *
 clib_mem_vm_map_shared (void *base, uword size, int fd, uword offset,
 			char *fmt, ...)
 {

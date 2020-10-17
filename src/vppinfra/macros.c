@@ -40,7 +40,7 @@ builtin_eval (clib_macro_main_t * mm, i8 * varname, i32 complain)
   return (*fp) (mm, complain);
 }
 
-int
+__clib_export int
 clib_macro_unset (clib_macro_main_t * mm, char *name)
 {
   hash_pair_t *p;
@@ -60,7 +60,7 @@ clib_macro_unset (clib_macro_main_t * mm, char *name)
   return 0;
 }
 
-int
+__clib_export int
 clib_macro_set_value (clib_macro_main_t * mm, char *name, char *value)
 {
   u8 *key_copy, *value_copy;
@@ -91,7 +91,7 @@ clib_macro_get_value (clib_macro_main_t * mm, char *name)
  * eval: takes a string, returns a vector.
  * looks up $foobar in the variable table.
  */
-i8 *
+__clib_export i8 *
 clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain, u16 level,
 		 u16 max_level)
 {
@@ -209,7 +209,7 @@ clib_macro_eval_dollar (clib_macro_main_t * mm, i8 * s, i32 complain)
   return (rv);
 }
 
-void
+__clib_export void
 clib_macro_add_builtin (clib_macro_main_t * mm, char *name, void *eval_fn)
 {
   hash_set_mem (mm->the_builtin_eval_hash, name, (uword) eval_fn);
@@ -226,7 +226,7 @@ eval_hostname (clib_macro_main_t * mm, i32 complain)
 }
 #endif
 
-void
+__clib_export void
 clib_macro_init (clib_macro_main_t * mm)
 {
   if (mm->the_builtin_eval_hash != 0)
@@ -243,7 +243,7 @@ clib_macro_init (clib_macro_main_t * mm)
 #endif
 }
 
-void
+__clib_export void
 clib_macro_free (clib_macro_main_t * mm)
 {
   hash_pair_t *p;
@@ -282,7 +282,7 @@ name_compare (void *a1, void *a2)
 }
 
 
-u8 *
+__clib_export u8 *
 format_clib_macro_main (u8 * s, va_list * args)
 {
   clib_macro_main_t *mm = va_arg (*args, clib_macro_main_t *);

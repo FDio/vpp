@@ -91,7 +91,7 @@ clib_memswap (void *_a, void *_b, uword bytes)
     }
 }
 
-void
+__clib_export void
 clib_c11_violation (const char *s)
 {
   _clib_error (CLIB_ERROR_WARNING, (char *) __FUNCTION__, 0, (char *) s);
@@ -116,7 +116,7 @@ clib_c11_violation (const char *s)
  *         EINVAL     runtime constraint error
  *
  */
-errno_t
+__clib_export errno_t
 memcpy_s (void *__restrict__ dest, rsize_t dmax,
 	  const void *__restrict__ src, rsize_t n)
 {
@@ -141,7 +141,7 @@ memcpy_s (void *__restrict__ dest, rsize_t dmax,
  *         EINVAL     runtime constraint error
  *
  */
-errno_t
+__clib_export errno_t
 memset_s (void *s, rsize_t smax, int c, rsize_t n)
 {
   return memset_s_inline (s, smax, c, n);
@@ -174,7 +174,7 @@ memset_s (void *s, rsize_t smax, int c, rsize_t n)
  *         EINVAL runtime constraint error
  *
  */
-errno_t
+__clib_export errno_t
 memcmp_s (const void *s1, rsize_t s1max, const void *s2, rsize_t s2max,
 	  int *diff)
 {
@@ -209,7 +209,7 @@ memcmp_s (const void *s1, rsize_t s1max, const void *s2, rsize_t s2max,
  *         EINVAL     runtime constraint error
  *
  */
-errno_t
+__clib_export errno_t
 strcmp_s (const char *s1, rsize_t s1max, const char *s2, int *indicator)
 {
   return strcmp_s_inline (s1, s1max, s2, indicator);
@@ -242,7 +242,7 @@ strcmp_s (const char *s1, rsize_t s1max, const char *s2, int *indicator)
  *         EINVAL     runtime constraint error
  *
  */
-errno_t
+__clib_export errno_t
 strncmp_s (const char *s1, rsize_t s1max, const char *s2, rsize_t n,
 	   int *indicator)
 {
@@ -268,7 +268,7 @@ strncmp_s (const char *s1, rsize_t s1max, const char *s2, rsize_t n,
  *         EINVAL     runtime constraint error
  *
  */
-errno_t
+__clib_export errno_t
 strcpy_s (char *__restrict__ dest, rsize_t dmax, const char *__restrict__ src)
 {
   return strcpy_s_inline (dest, dmax, src);
@@ -295,7 +295,7 @@ strcpy_s (char *__restrict__ dest, rsize_t dmax, const char *__restrict__ src)
  *                    dest is null terminated.
  *
  */
-errno_t
+__clib_export errno_t
 strncpy_s (char *__restrict__ dest, rsize_t dmax,
 	   const char *__restrict__ src, rsize_t n)
 {
@@ -324,7 +324,7 @@ strncpy_s (char *__restrict__ dest, rsize_t dmax,
  *         EINVAL     runtime constraint error
  *
  */
-errno_t
+__clib_export errno_t
 strcat_s (char *__restrict__ dest, rsize_t dmax, const char *__restrict__ src)
 {
   return strcat_s_inline (dest, dmax, src);
@@ -354,7 +354,7 @@ strcat_s (char *__restrict__ dest, rsize_t dmax, const char *__restrict__ src)
  *                    dest is null terminated.
  *
  */
-errno_t
+__clib_export errno_t
 strncat_s (char *__restrict__ dest, rsize_t dmax,
 	   const char *__restrict__ src, rsize_t n)
 {
@@ -406,7 +406,7 @@ strncat_s (char *__restrict__ dest, rsize_t dmax,
  *   tok1 = "brevity", tok2 = "is", tok3 = "the", tok4 = "soul", tok5 = "of",
  *   tok6 = "wit", tok7 = null
  */
-char *
+__clib_export char *
 strtok_s (char *__restrict__ s1, rsize_t * __restrict__ s1max,
 	  const char *__restrict__ s2, char **__restrict__ ptr)
 {
@@ -429,7 +429,7 @@ strtok_s (char *__restrict__ s1, rsize_t * __restrict__ s1max,
  *                more than maxsize or 0 if there is a constraint error
  *
  */
-size_t
+__clib_export size_t
 strnlen_s (const char *s, size_t maxsize)
 {
   return strnlen_s_inline (s, maxsize);
@@ -466,7 +466,7 @@ strnlen_s (const char *s, size_t maxsize)
  * After the above call,
  *   sub = "failure is not fatal."
  */
-errno_t
+__clib_export errno_t
 strstr_s (char *s1, rsize_t s1max, const char *s2, rsize_t s2max,
 	  char **substring)
 {

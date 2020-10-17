@@ -259,7 +259,7 @@ add_section (struct dl_phdr_info *info, size_t size, void *opaque)
 
 static clib_elf_main_t clib_elf_main;
 
-void
+__clib_export void
 clib_elf_main_init (char *exec_path)
 {
   clib_elf_main_t *cem = &clib_elf_main;
@@ -351,7 +351,7 @@ format_clib_elf_symbol (u8 * s, va_list * args)
     }
 }
 
-u8 *
+__clib_export u8 *
 format_clib_elf_symbol_with_address (u8 * s, va_list * args)
 {
   uword address = va_arg (*args, uword);

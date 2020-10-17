@@ -61,7 +61,7 @@ elog_unlock (elog_main_t * em)
 }
 
 /* Non-inline version. */
-void *
+__clib_export void *
 elog_event_data (elog_main_t * em,
 		 elog_event_type_t * type, elog_track_t * track, u64 cpu_time)
 {
@@ -194,7 +194,7 @@ elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
   return l;
 }
 
-word
+__clib_export word
 elog_track_register (elog_main_t * em, elog_track_t * t)
 {
   word l;
@@ -292,7 +292,7 @@ done:
   return s;
 }
 
-u8 *
+__clib_export u8 *
 format_elog_event (u8 * s, va_list * va)
 {
   elog_main_t *em = va_arg (*va, elog_main_t *);
@@ -404,7 +404,7 @@ format_elog_track_name (u8 * s, va_list * va)
   return format (s, "%s", t->name);
 }
 
-u8 *
+__clib_export u8 *
 format_elog_track (u8 * s, va_list * args)
 {
   elog_main_t *em = va_arg (*args, elog_main_t *);
@@ -484,7 +484,7 @@ elog_nsec_per_clock (elog_main_t * em)
 					    &em->init_time));
 }
 
-void
+__clib_export void
 elog_alloc (elog_main_t * em, u32 n_events)
 {
   if (em->event_ring)
@@ -498,7 +498,7 @@ elog_alloc (elog_main_t * em, u32 n_events)
   vec_resize_aligned (em->event_ring, n_events, CLIB_CACHE_LINE_BYTES);
 }
 
-void
+__clib_export void
 elog_init (elog_main_t * em, u32 n_events)
 {
   clib_memset (em, 0, sizeof (em[0]));
@@ -542,7 +542,7 @@ elog_event_range (elog_main_t * em, uword * lo)
     }
 }
 
-elog_event_t *
+__clib_export elog_event_t *
 elog_peek_events (elog_main_t * em)
 {
   elog_event_t *e, *f, *es = 0;
@@ -567,7 +567,7 @@ elog_peek_events (elog_main_t * em)
 }
 
 /* Add a formatted string to the string table. */
-u32
+__clib_export u32
 elog_string (elog_main_t * em, char *fmt, ...)
 {
   u32 offset;
@@ -1098,7 +1098,7 @@ unserialize_elog_time_stamp (serialize_main_t * m, va_list * va)
 
 static char *elog_serialize_magic = "elog v0";
 
-void
+__clib_export void
 serialize_elog_main (serialize_main_t * m, va_list * va)
 {
   elog_main_t *em = va_arg (*va, elog_main_t *);

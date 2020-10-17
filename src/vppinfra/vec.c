@@ -40,7 +40,7 @@
 
 /* Vector resize operator.  Called as needed by various macros such as
    vec_add1() when we need to allocate memory. */
-void *
+__clib_export void *
 vec_resize_allocate_memory (void *v,
 			    word length_increment,
 			    uword data_bytes,

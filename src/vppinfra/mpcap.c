@@ -52,7 +52,7 @@
  * @return rc - clib_error_t
  *
  */
-clib_error_t *
+__clib_export clib_error_t *
 mpcap_close (mpcap_main_t * pm)
 {
   u64 actual_size = pm->current_va - pm->file_baseva;
@@ -81,7 +81,7 @@ mpcap_close (mpcap_main_t * pm)
  * @return rc - clib_error_t
  *
  */
-clib_error_t *
+__clib_export clib_error_t *
 mpcap_init (mpcap_main_t * pm)
 {
   mpcap_file_header_t *fh;

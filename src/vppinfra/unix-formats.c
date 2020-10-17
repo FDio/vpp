@@ -939,7 +939,7 @@ u8 * format_ucontext_pc (u8 * s, va_list * args)
     return format (s, "%p", regs[reg_no]);
 }
 
-uword
+__clib_export uword
 unformat_unix_gid (unformat_input_t * input, va_list * args)
 {
   gid_t *gid = va_arg (*args, gid_t *);
