@@ -80,28 +80,21 @@ conn_pool_expand (size_t expand_size)
   int i;
 
   conn_pool = realloc (ssm->conn_pool, new_size * sizeof (*ssm->conn_pool));
-  if (conn_pool)
-    {
-      for (i = ssm->conn_pool_size; i < new_size; i++)
-	{
-	  sock_server_conn_t *conn = &conn_pool[i];
-	  memset (conn, 0, sizeof (*conn));
-	  vcl_test_cfg_init (&conn->cfg);
-	  vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */ ,
-			      &conn->buf, &conn->buf_size);
-	  conn->cfg.txbuf_size = conn->cfg.rxbuf_size;
-	}
+  if (!conn_pool)
+    stfail ("conn_pool_expand()", -errno);
 
-      ssm->conn_pool = conn_pool;
-      ssm->conn_pool_size = new_size;
-    }
-  else
+  for (i = ssm->conn_pool_size; i < new_size; i++)
     {
-      int errno_val = errno;
-      perror ("ERROR in conn_pool_expand()");
-      fprintf (stderr, "SERVER: ERROR: Memory allocation "
-	       "failed (errno = %d)!\n", errno_val);
+      sock_server_conn_t *conn = &conn_pool[i];
+      memset(conn, 0, sizeof(*conn));
+      vcl_test_cfg_init (&conn->cfg);
+      vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */, &conn->buf,
+	                  &conn->buf_size);
+      conn->cfg.txbuf_size = conn->cfg.rxbuf_size;
     }
+
+  ssm->conn_pool = conn_pool;
+  ssm->conn_pool_size = new_size;
 }
 
 static inline sock_server_conn_t *
@@ -139,7 +132,7 @@ sync_config_and_reply (sock_server_conn_t * conn, vcl_test_cfg_t * rx_cfg)
 
   if (conn->cfg.verbose)
     {
-      printf ("\nSERVER (fd %d): Replying to cfg message!\n", conn->fd);
+      stinf ("SERVER (fd %d): Replying to cfg message!\n", conn->fd);
       vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */ );
     }
   (void) sock_test_write (conn->fd, (uint8_t *) & conn->cfg,
@@ -187,25 +180,25 @@ stream_test_server_start_stop (sock_server_conn_t * conn,
       vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */ );
       if (conn->cfg.verbose)
 	{
-	  printf ("  sock server main\n"
-		  VCL_TEST_SEPARATOR_STRING
-		  "       buf:  %p\n"
-		  "  buf size:  %u (0x%08x)\n"
-		  VCL_TEST_SEPARATOR_STRING,
-		  conn->buf, conn->buf_size, conn->buf_size);
+	  stinf ("  sock server main\n"
+		 VCL_TEST_SEPARATOR_STRING
+		 "       buf:  %p\n"
+		 "  buf size:  %u (0x%08x)\n"
+		 VCL_TEST_SEPARATOR_STRING,
+		 conn->buf, conn->buf_size, conn->buf_size);
 	}
 
       sync_config_and_reply (conn, rx_cfg);
-      printf ("\nSERVER (fd %d): %s-directional Stream Test Complete!\n"
-	      SOCK_TEST_BANNER_STRING "\n", conn->fd,
-	      test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
+      stinf ("SERVER (fd %d): %s-directional Stream Test Complete!\n"
+	     SOCK_TEST_BANNER_STRING "\n", conn->fd,
+	     test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
     }
   else
     {
-      printf ("\n" SOCK_TEST_BANNER_STRING
-	      "SERVER (fd %d): %s-directional Stream Test!\n"
-	      "  Sending client the test cfg to start streaming data...\n",
-	      client_fd, test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
+      stinf (SOCK_TEST_BANNER_STRING
+	     "SERVER (fd %d): %s-directional Stream Test!\n"
+	     "  Sending client the test cfg to start streaming data...\n",
+	     client_fd, test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
 
       rx_cfg->ctrl_handle = (rx_cfg->ctrl_handle == ~0) ? conn->fd :
 	rx_cfg->ctrl_handle;
@@ -239,65 +232,36 @@ static inline void
 af_unix_echo (void)
 {
   sock_server_main_t *ssm = &sock_server_main;
-  int af_unix_client_fd;
-  int rv;
-  int errno_val;
+  int af_unix_client_fd, rv;
   uint8_t buffer[256];
   size_t nbytes = strlen (SOCK_TEST_MIXED_EPOLL_DATA) + 1;
 
-#if HAVE_ACCEPT4
-  af_unix_client_fd = accept4 (ssm->af_unix_listen_fd,
-			       (struct sockaddr *) NULL, NULL, NULL);
-#else
   af_unix_client_fd = accept (ssm->af_unix_listen_fd,
 			      (struct sockaddr *) NULL, NULL);
-#endif
   if (af_unix_client_fd < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in af_unix_accept()");
-      fprintf (stderr, "SERVER: ERROR: accept failed "
-	       "(errno = %d)!\n", errno_val);
-      return;
-    }
+    stfail ("af_unix_echo accept()", af_unix_client_fd);
 
-  printf ("SERVER: Got an AF_UNIX connection -- fd = %d (0x%08x)!\n",
-	  af_unix_client_fd, af_unix_client_fd);
+  stinf ("SERVER: Got an AF_UNIX connection -- fd = %d (0x%08x)!\n",
+	 af_unix_client_fd, af_unix_client_fd);
 
   memset (buffer, 0, sizeof (buffer));
 
   rv = read (af_unix_client_fd, buffer, nbytes);
   if (rv < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in af_unix_echo(): read() failed");
-      fprintf (stderr, "SERVER: ERROR: read(af_unix_client_fd %d (0x%x), "
-	       "nbytes %lu) failed (errno = %d)!\n", af_unix_client_fd,
-	       af_unix_client_fd, nbytes, errno_val);
-      goto done;
-    }
+    stfail ("af_unix_echo read()", rv);
+
   /* Make the buffer is NULL-terminated. */
   buffer[sizeof (buffer) - 1] = 0;
-  printf ("SERVER (AF_UNIX): RX (%d bytes) - '%s'\n", rv, buffer);
+  stinf ("SERVER (AF_UNIX): RX (%d bytes) - '%s'\n", rv, buffer);
 
   if (!strncmp (SOCK_TEST_MIXED_EPOLL_DATA, (const char *) buffer, nbytes))
     {
       rv = write (af_unix_client_fd, buffer, nbytes);
       if (rv < 0)
-	{
-	  errno_val = errno;
-	  perror ("ERROR in af_unix_echo(): write() failed");
-	  fprintf (stderr,
-		   "SERVER: ERROR: write(af_unix_client_fd %d (0x%x), "
-		   "\"%s\", nbytes %ld) failed (errno = %d)!\n",
-		   af_unix_client_fd, af_unix_client_fd, buffer, nbytes,
-		   errno_val);
-	  goto done;
-	}
-      printf ("SERVER (AF_UNIX): TX (%d bytes) - '%s'\n", rv, buffer);
+	stfail ("af_unix_echo write()", rv);
+      stinf ("SERVER (AF_UNIX): TX (%d bytes) - '%s'\n", rv, buffer);
       ssm->af_unix_xacts++;
     }
-done:
   close (af_unix_client_fd);
 }
 
@@ -313,28 +277,14 @@ new_client (void)
 
   conn = conn_pool_alloc ();
   if (!conn)
-    {
-      fprintf (stderr, "\nSERVER: ERROR: No free connections!\n");
-      return;
-    }
+    stfail ("SERVER: No free connections!", 1);
 
-#if HAVE_ACCEPT4
-  client_fd = accept4 (ssm->listen_fd, (struct sockaddr *) NULL, NULL, NULL);
-#else
   client_fd = accept (ssm->listen_fd, (struct sockaddr *) NULL, NULL);
-#endif
   if (client_fd < 0)
-    {
-      int errno_val;
-      errno_val = errno;
-      perror ("ERROR in new_client()");
-      fprintf (stderr, "SERVER: ERROR: accept failed "
-	       "(errno = %d)!\n", errno_val);
-      return;
-    }
+    stfail ("new_client accept()", client_fd);
 
-  printf ("SERVER: Got a connection -- fd = %d (0x%08x)!\n",
-	  client_fd, client_fd);
+  stinf ("SERVER: Got a connection -- fd = %d (0x%08x)!\n",
+	 client_fd, client_fd);
 
   conn->fd = client_fd;
 
@@ -346,21 +296,15 @@ new_client (void)
   rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, client_fd, &ev);
 
   if (rv < 0)
-    {
-      int errno_val;
-      errno_val = errno;
-      perror ("ERROR in new_client()");
-      fprintf (stderr, "SERVER: ERROR: epoll_ctl failed (errno = %d)!\n",
-	       errno_val);
-    }
-  else
-    ssm->nfds++;
+    stfail ("new_client epoll_ctl()", rv);
+
+  ssm->nfds++;
 }
 
 static int
 socket_server_echo_af_unix_init (sock_server_main_t * ssm)
 {
-  int rv, errno_val;
+  int rv;
 
   if (ssm->af_unix_listen_fd > 0)
     return 0;
@@ -368,14 +312,7 @@ socket_server_echo_af_unix_init (sock_server_main_t * ssm)
   unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
   ssm->af_unix_listen_fd = socket (AF_UNIX, SOCK_STREAM, 0);
   if (ssm->af_unix_listen_fd < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in main(): socket(AF_UNIX) failed");
-      fprintf (stderr,
-	       "SERVER: ERROR: socket(AF_UNIX, SOCK_STREAM, 0) failed "
-	       "(errno = %d)!\n", errno_val);
-      return ssm->af_unix_listen_fd;
-    }
+    stfail ("echo_af_unix_init socket()", ssm->af_unix_listen_fd);
 
   memset (&ssm->serveraddr, 0, sizeof (ssm->serveraddr));
   ssm->serveraddr.sun_family = AF_UNIX;
@@ -385,46 +322,18 @@ socket_server_echo_af_unix_init (sock_server_main_t * ssm)
   rv = bind (ssm->af_unix_listen_fd, (struct sockaddr *) &ssm->serveraddr,
 	     SUN_LEN (&ssm->serveraddr));
   if (rv < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in main(): bind(SOCK_TEST_AF_UNIX_FILENAME) failed");
-      fprintf (stderr, "SERVER: ERROR: bind() fd %d, \"%s\": "
-	       "failed (errno = %d)!\n", ssm->af_unix_listen_fd,
-	       SOCK_TEST_AF_UNIX_FILENAME, errno_val);
-      close (ssm->af_unix_listen_fd);
-      unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
-      return rv;
-    }
+    stfail ("echo_af_unix_init bind()", rv);
 
   rv = listen (ssm->af_unix_listen_fd, 10);
   if (rv < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in main(): listen(AF_UNIX) failed");
-      fprintf (stderr, "SERVER: ERROR: listen() fd %d, \"%s\": "
-	       "failed (errno = %d)!\n", ssm->af_unix_listen_fd,
-	       SOCK_TEST_AF_UNIX_FILENAME, errno_val);
-      close (ssm->af_unix_listen_fd);
-      unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
-      return rv;
-    }
+    stfail ("echo_af_unix_init listen()", rv);
 
   ssm->af_unix_listen_ev.events = EPOLLIN;
   ssm->af_unix_listen_ev.data.u32 = SOCK_TEST_AF_UNIX_ACCEPT_DATA;
   rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->af_unix_listen_fd,
 		  &ssm->af_unix_listen_ev);
   if (rv < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in main(): mixed epoll_ctl(EPOLL_CTL_ADD)");
-      fprintf (stderr, "SERVER: ERROR: mixed epoll_ctl(epfd %d (0x%x), "
-	       "EPOLL_CTL_ADD, af_unix_listen_fd %d (0x%x), EPOLLIN) failed "
-	       "(errno = %d)!\n", ssm->epfd, ssm->epfd,
-	       ssm->af_unix_listen_fd, ssm->af_unix_listen_fd, errno_val);
-      close (ssm->af_unix_listen_fd);
-      unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
-      return rv;
-    }
+    stfail ("echo_af_unix_init epoll_ctl()", rv);
 
   return 0;
 }
@@ -441,19 +350,109 @@ print_usage_and_exit (void)
   exit (1);
 }
 
+
+static void
+sts_server_echo (sock_server_conn_t * conn, int rx_bytes)
+{
+  int tx_bytes, nbytes, pos;
+
+  /* If it looks vaguely like a string make sure it's terminated */
+  pos = rx_bytes < conn->buf_size ? rx_bytes : conn->buf_size - 1;
+  ((char *) conn->buf)[pos] = 0;
+
+  if (conn->cfg.verbose)
+    stinf ("(fd %d): Echoing back\n", conn->fd);
+
+  nbytes = strlen ((const char *) conn->buf) + 1;
+
+  tx_bytes = sock_test_write (conn->fd, conn->buf, nbytes, &conn->stats,
+			      conn->cfg.verbose);
+  if (tx_bytes >= 0)
+    stinf ("(fd %d): TX (%d bytes) - '%s'\n", conn->fd, tx_bytes, conn->buf);
+}
+
+static int
+sts_handle_cfg (vcl_test_cfg_t * rx_cfg, sock_server_conn_t * conn,
+		int rx_bytes)
+{
+  sock_server_main_t *ssm = &sock_server_main;
+
+  if (rx_cfg->verbose)
+    {
+      stinf ("(fd %d): Received a cfg message!\n", conn->fd);
+      vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
+    }
+
+  if (rx_bytes != sizeof (*rx_cfg))
+    {
+      stinf ("(fd %d): Invalid cfg message size (%d) expected %lu!", conn->fd,
+	     rx_bytes, sizeof (*rx_cfg));
+      conn->cfg.rxbuf_size = 0;
+      conn->cfg.num_writes = 0;
+      if (conn->cfg.verbose)
+	{
+	  stinf ("(fd %d): Replying to cfg message!\n", conn->fd);
+	  vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
+	}
+      sock_test_write (conn->fd, (uint8_t *) & conn->cfg, sizeof (conn->cfg),
+		       NULL, conn->cfg.verbose);
+      return -1;
+    }
+
+  switch (rx_cfg->test)
+    {
+    case VCL_TEST_TYPE_NONE:
+      sync_config_and_reply (conn, rx_cfg);
+      break;
+
+    case VCL_TEST_TYPE_ECHO:
+      if (socket_server_echo_af_unix_init (ssm))
+	goto done;
+
+      sync_config_and_reply (conn, rx_cfg);
+      break;
+
+    case VCL_TEST_TYPE_BI:
+    case VCL_TEST_TYPE_UNI:
+      stream_test_server_start_stop (conn, rx_cfg);
+      break;
+
+    case VCL_TEST_TYPE_EXIT:
+      stinf ("Have a great day connection %d!", conn->fd);
+      close (conn->fd);
+      conn_pool_free (conn);
+      stinf ("Closed client fd %d", conn->fd);
+      ssm->nfds--;
+      break;
+
+    default:
+      stinf ("ERROR: Unknown test type!\n");
+      vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
+      break;
+    }
+
+done:
+  return 0;
+}
+
+static int
+sts_conn_expect_config (sock_server_conn_t * conn)
+{
+  if (conn->cfg.test == VCL_TEST_TYPE_ECHO)
+    return 1;
+
+  return (conn->stats.rx_bytes < 128
+	  || conn->stats.rx_bytes > conn->cfg.total_bytes);
+}
+
 int
 main (int argc, char **argv)
 {
+  int client_fd, rv, main_rv = 0, rx_bytes, c, v, i;
   sock_server_main_t *ssm = &sock_server_main;
-  int client_fd, rv, main_rv = 0;
-  int tx_bytes, rx_bytes, nbytes;
   sock_server_conn_t *conn;
   vcl_test_cfg_t *rx_cfg;
-  uint32_t xtra = 0;
-  uint64_t xtra_bytes = 0;
   struct sockaddr_storage servaddr;
-  int errno_val;
-  int c, v, i;
   uint16_t port = VCL_TEST_SERVER_PORT;
   uint32_t servaddr_size;
 
@@ -474,11 +473,9 @@ main (int argc, char **argv)
 	  {
 	  default:
 	    if (isprint (optopt))
-	      fprintf (stderr, "SERVER: ERROR: Unknown "
-		       "option `-%c'.\n", optopt);
+	      stinf ("ERROR: Unknown option `-%c'", optopt);
 	    else
-	      fprintf (stderr, "SERVER: ERROR: Unknown "
-		       "option character `\\x%x'.\n", optopt);
+	      stinf ("ERROR: Unknown option character `\\x%x'.\n", optopt);
 	  }
 	/* fall thru */
       case 'h':
@@ -488,7 +485,7 @@ main (int argc, char **argv)
 
   if (argc < (optind + 1))
     {
-      fprintf (stderr, "SERVER: ERROR: Insufficient number of arguments!\n");
+      stinf ("ERROR: Insufficient number of arguments!\n");
       print_usage_and_exit ();
     }
 
@@ -496,7 +493,7 @@ main (int argc, char **argv)
     port = (uint16_t) v;
   else
     {
-      fprintf (stderr, "SERVER: ERROR: Invalid port (%s)!\n", argv[optind]);
+      stinf ("ERROR: Invalid port (%s)!\n", argv[optind]);
       print_usage_and_exit ();
     }
 
@@ -507,13 +504,7 @@ main (int argc, char **argv)
 			   0);
 
   if (ssm->listen_fd < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in main()");
-      fprintf (stderr, "SERVER: ERROR: socket() failed "
-	       "(errno = %d)!\n", errno_val);
-      return ssm->listen_fd;
-    }
+    stfail ("main listen()", ssm->listen_fd);
 
   memset (&servaddr, 0, sizeof (servaddr));
 
@@ -536,55 +527,28 @@ main (int argc, char **argv)
 
   rv = bind (ssm->listen_fd, (struct sockaddr *) &servaddr, servaddr_size);
   if (rv < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR bind returned");
-      fprintf (stderr, "SERVER: ERROR: bind failed (errno = %d)!\n",
-	       errno_val);
-      return rv;
-    }
-  if (fcntl (ssm->listen_fd, F_SETFL, O_NONBLOCK) < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR fcntl returned");
-      fprintf (stderr, "SERVER: ERROR: fcntl failed (errno = %d)!\n",
-	       errno_val);
-      return rv;
-    }
+    stfail ("main bind()", rv);
+
+  rv = fcntl (ssm->listen_fd, F_SETFL, O_NONBLOCK);
+  if (rv < 0)
+    stfail ("main fcntl()", rv);
+
   rv = listen (ssm->listen_fd, 10);
   if (rv < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in main()");
-      fprintf (stderr, "SERVER: ERROR: listen failed "
-	       "(errno = %d)!\n", errno_val);
-      return rv;
-    }
+    stfail ("main listen()", rv);
 
   ssm->epfd = epoll_create (1);
   if (ssm->epfd < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in main()");
-      fprintf (stderr, "SERVER: ERROR: epoll_create failed (errno = %d)!\n",
-	       errno_val);
-      return ssm->epfd;
-    }
+    stfail ("main epoll_create()", ssm->epfd);
 
   ssm->listen_ev.events = EPOLLIN;
   ssm->listen_ev.data.u32 = ~0;
 
   rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->listen_fd, &ssm->listen_ev);
   if (rv < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in main()");
-      fprintf (stderr, "SERVER: ERROR: epoll_ctl failed "
-	       "(errno = %d)!\n", errno_val);
-      return rv;
-    }
+    stfail ("main epoll_ctl()", rv);
 
-  printf ("\nSERVER: Waiting for a client to connect on port %d...\n", port);
+  stinf ("Waiting for a client to connect on port %d...\n", port);
 
   while (1)
     {
@@ -592,16 +556,11 @@ main (int argc, char **argv)
       num_ev = epoll_wait (ssm->epfd, ssm->wait_events,
 			   SOCK_SERVER_MAX_EPOLL_EVENTS, 60000);
       if (num_ev < 0)
-	{
-	  perror ("epoll_wait()");
-	  fprintf (stderr, "\nSERVER: ERROR: epoll_wait() "
-		   "failed -- aborting!\n");
-	  main_rv = -1;
-	  goto done;
-	}
+	stfail ("main epoll_wait()", num_ev);
+
       if (num_ev == 0)
 	{
-	  fprintf (stderr, "\nSERVER: epoll_wait() timeout!\n");
+	  stinf ("epoll_wait() timeout!\n");
 	  continue;
 	}
       for (i = 0; i < num_ev; i++)
@@ -630,145 +589,50 @@ main (int argc, char **argv)
 	    read_again:
 	      rx_bytes = sock_test_read (client_fd, conn->buf,
 					 conn->buf_size, &conn->stats);
-	      if (rx_bytes > 0)
-		{
-		  rx_cfg = (vcl_test_cfg_t *) conn->buf;
-		  if (rx_cfg->magic == VCL_TEST_CFG_CTRL_MAGIC)
-		    {
-		      if (rx_cfg->verbose)
-			{
-			  printf ("SERVER (fd %d): Received a cfg message!\n",
-				  client_fd);
-			  vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
-			}
 
-		      if (rx_bytes != sizeof (*rx_cfg))
-			{
-			  printf ("SERVER (fd %d): Invalid cfg message "
-				  "size (%d)!\n  Should be %lu bytes.\n",
-				  client_fd, rx_bytes, sizeof (*rx_cfg));
-			  conn->cfg.rxbuf_size = 0;
-			  conn->cfg.num_writes = 0;
-			  if (conn->cfg.verbose)
-			    {
-			      printf ("SERVER (fd %d): Replying to "
-				      "cfg message!\n", client_fd);
-			      vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
-			    }
-			  sock_test_write (client_fd, (uint8_t *) & conn->cfg,
-					   sizeof (conn->cfg), NULL,
-					   conn->cfg.verbose);
-			  continue;
-			}
-
-		      switch (rx_cfg->test)
-			{
-			case VCL_TEST_TYPE_NONE:
-			  sync_config_and_reply (conn, rx_cfg);
-			  break;
-
-			case VCL_TEST_TYPE_ECHO:
-			  if (socket_server_echo_af_unix_init (ssm))
-			    goto done;
-			  sync_config_and_reply (conn, rx_cfg);
-			  break;
-
-			case VCL_TEST_TYPE_BI:
-			case VCL_TEST_TYPE_UNI:
-			  stream_test_server_start_stop (conn, rx_cfg);
-			  break;
-
-			case VCL_TEST_TYPE_EXIT:
-			  printf ("SERVER: Have a great day, "
-				  "connection %d!\n", client_fd);
-			  close (client_fd);
-			  conn_pool_free (conn);
-			  printf ("SERVER: Closed client fd %d\n", client_fd);
-			  ssm->nfds--;
-			  if (!ssm->nfds)
-			    {
-			      printf ("SERVER: All client connections "
-				      "closed.\n\nSERVER: "
-				      "May the force be with you!\n\n");
-			      goto done;
-			    }
-			  break;
-
-			default:
-			  fprintf (stderr,
-				   "SERVER: ERROR: Unknown test type!\n");
-			  vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
-			  break;
-			}
-		      continue;
-		    }
-
-		  else if ((conn->cfg.test == VCL_TEST_TYPE_UNI) ||
-			   (conn->cfg.test == VCL_TEST_TYPE_BI))
-		    {
-		      stream_test_server (conn, rx_bytes);
-		      if (ioctl (conn->fd, FIONREAD))
-			goto read_again;
-		      continue;
-		    }
-
-		  else if (isascii (conn->buf[0]))
-		    {
-		      // If it looks vaguely like a string, make sure it's terminated
-		      ((char *) conn->buf)[rx_bytes <
-					   conn->buf_size ? rx_bytes :
-					   conn->buf_size - 1] = 0;
-		      printf ("SERVER (fd %d): RX (%d bytes) - '%s'\n",
-			      conn->fd, rx_bytes, conn->buf);
-		    }
-		}
-	      else		// rx_bytes < 0
+	      if (rx_bytes <= 0)
 		{
 		  if (errno == ECONNRESET)
 		    {
-		      printf ("\nSERVER: Connection reset by remote peer.\n"
-			      "  Y'all have a great day now!\n\n");
-		      break;
+		      stinf ("Connection reset by peer\n");
+		      main_rv = -1;
+		      goto done;
 		    }
 		  else
 		    continue;
 		}
 
-	      if (isascii (conn->buf[0]))
+	      if (sts_conn_expect_config (conn))
 		{
-		  /* If it looks vaguely like a string,
-		   * make sure it's terminated
-		   */
-		  ((char *) conn->buf)[rx_bytes <
-				       conn->buf_size ? rx_bytes :
-				       conn->buf_size - 1] = 0;
-		  if (xtra)
-		    fprintf (stderr, "SERVER: ERROR: "
-			     "FIFO not drained in previous test!\n"
-			     "       extra chunks %u (0x%x)\n"
-			     "        extra bytes %lu (0x%lx)\n",
-			     xtra, xtra, xtra_bytes, xtra_bytes);
-
-		  xtra = 0;
-		  xtra_bytes = 0;
-
-		  if (conn->cfg.verbose)
-		    printf ("SERVER (fd %d): Echoing back\n", client_fd);
-
-		  nbytes = strlen ((const char *) conn->buf) + 1;
-
-		  tx_bytes = sock_test_write (client_fd, conn->buf,
-					      nbytes, &conn->stats,
-					      conn->cfg.verbose);
-		  if (tx_bytes >= 0)
-		    printf ("SERVER (fd %d): TX (%d bytes) - '%s'\n",
-			    conn->fd, tx_bytes, conn->buf);
+		  rx_cfg = (vcl_test_cfg_t *) conn->buf;
+		  if (rx_cfg->magic == VCL_TEST_CFG_CTRL_MAGIC)
+		    {
+		      sts_handle_cfg (rx_cfg, conn, rx_bytes);
+		      if (!ssm->nfds)
+			{
+			  stinf ("All client connections closed.\n\nSERVER: "
+				 "May the force be with you!\n\n");
+			  goto done;
+			}
+		      continue;
+		    }
 		}
 
-	      else		// Extraneous read data from non-echo tests???
+	      if ((conn->cfg.test == VCL_TEST_TYPE_UNI)
+		  || (conn->cfg.test == VCL_TEST_TYPE_BI))
 		{
-		  xtra++;
-		  xtra_bytes += rx_bytes;
+		  stream_test_server (conn, rx_bytes);
+		  if (ioctl (conn->fd, FIONREAD))
+		    goto read_again;
+		  continue;
+		}
+	      else if (isascii (conn->buf[0]))
+		{
+		  sts_server_echo (conn, rx_bytes);
+		}
+	      else
+		{
+		  stwrn ("FIFO not drained! extra bytes %d", rx_bytes);
 		}
 	    }
 	}
