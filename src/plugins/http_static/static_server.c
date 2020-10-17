@@ -521,7 +521,7 @@ close_session (http_session_t * hs)
 
 /** \brief Register a builtin GET or POST handler
  */
-void http_static_server_register_builtin_handler
+__clib_export void http_static_server_register_builtin_handler
   (void *fp, char *url, int request_type)
 {
   http_static_server_main_t *hsm = &http_static_server_main;

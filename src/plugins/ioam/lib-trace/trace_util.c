@@ -20,7 +20,7 @@
 #include "trace_util.h"
 #include "trace_config.h"
 
-trace_main_t trace_main;
+__clib_export trace_main_t trace_main;
 
 static int
 trace_profile_cleanup (trace_profile * profile)
