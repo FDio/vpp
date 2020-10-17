@@ -61,7 +61,7 @@ session_mq_listen_handler (void *data)
   a->sep_ext.transport_flags = mp->flags;
 
   if ((rv = vnet_listen (a)))
-    clib_warning ("listen returned: %d", rv);
+    clib_warning ("listen returned: %U", format_session_error, rv);
 
   app_wrk = application_get_worker (app, mp->wrk_index);
   mq_send_session_bound_cb (app_wrk->wrk_index, mp->context, a->handle, rv);
