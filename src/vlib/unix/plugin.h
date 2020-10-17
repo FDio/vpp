@@ -150,7 +150,7 @@ u8 *vlib_get_vat_plugin_path (void);
 #define VLIB_PLUGIN_REGISTER() \
   vlib_plugin_registration_t vlib_plugin_registration \
   CLIB_NOSANITIZE_PLUGIN_REG_SECTION \
-  __attribute__((__section__(".vlib_plugin_registration")))
+  __clib_export __clib_section(".vlib_plugin_registration")
 
 /* Call a plugin init function: used for init function dependencies. */
 #define vlib_call_plugin_init_function(vm,p,x)                  \

@@ -359,7 +359,8 @@ acl_plugin_get_p_acl_main(void)
   return &acl_main;
 }
 
-clib_error_t *acl_plugin_methods_vtable_init(acl_plugin_methods_t *m)
+__clib_export clib_error_t *
+acl_plugin_methods_vtable_init(acl_plugin_methods_t *m)
 {
   m->p_acl_main = &acl_main;
 #define _(name) m->name = acl_plugin_ ## name;
