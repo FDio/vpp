@@ -27,7 +27,7 @@ l2_emulation_main_t l2_emulation_main;
  */
 static const l2_emulation_t ezero = { };
 
-void
+__clib_export void
 l2_emulation_enable (u32 sw_if_index)
 {
   l2_emulation_main_t *em = &l2_emulation_main;
@@ -49,7 +49,7 @@ l2_emulation_enable (u32 sw_if_index)
 }
 
 
-void
+__clib_export void
 l2_emulation_disable (u32 sw_if_index)
 {
   l2_emulation_main_t *em = &l2_emulation_main;
