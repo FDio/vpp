@@ -29,6 +29,24 @@
 #define SOCK_TEST_BANNER_STRING \
   "============================================\n"
 
+#define stinf(_fmt, _args...)						\
+  fprintf (stderr, "st: " _fmt "\n", ##_args)
+#define stwrn(_fmt, _args...)						\
+  printf ("\nWARNING: " _fmt "\n", ##_args)
+#define sterr(_fn, _rv)							\
+{									\
+  errno = -_rv;								\
+  printf ("\nERROR: " _fn " failed (errno = %d)!\n", -_rv);		\
+}
+
+#define stfail(_fn, _rv)						\
+{									\
+  errno = -_rv;								\
+  perror ("ERROR when calling " _fn);					\
+  printf ("\nERROR: " _fn " failed (errno = %d)!\n", -_rv);		\
+  exit (1);								\
+}
+
 static inline int
 sock_test_read (int fd, uint8_t *buf, uint32_t nbytes,
                 vcl_test_stats_t *stats)
