@@ -125,7 +125,7 @@ clib_valloc_add_chunk (clib_valloc_main_t * vam,
     @param template - clib_valloc_chunk_t * pointer to a template chunk which
     describes the initial virtual address range
 */
-void
+__clib_export void
 clib_valloc_init (clib_valloc_main_t * vam, clib_valloc_chunk_t * template,
 		  int need_lock)
 {
@@ -147,7 +147,7 @@ clib_valloc_init (clib_valloc_main_t * vam, clib_valloc_chunk_t * template,
     @os_out_of_memory_on_failure - 1=> panic on allocation failure
     @return uword allocated space, 0=> failure
 */
-uword
+__clib_export uword
 clib_valloc_alloc (clib_valloc_main_t * vam, uword size,
 		   int os_out_of_memory_on_failure)
 {
@@ -224,7 +224,7 @@ clib_valloc_alloc (clib_valloc_main_t * vam, uword size,
     @note the size is returned since we know it / in case the caller
     doesn't memorize chunk sizes
 */
-uword
+__clib_export uword
 clib_valloc_free (clib_valloc_main_t * vam, uword baseva)
 {
   clib_valloc_chunk_t *ch, *prev_ch, *next_ch, *n2_ch;

@@ -45,7 +45,7 @@
 
 #include <vppinfra/asm_mips.h>
 
-uword
+__clib_export uword
 clib_backtrace (uword * callers, uword max_callers, uword n_frames_to_skip)
 {
   u32 *pc;
@@ -222,7 +222,7 @@ backtrace_done:
 /* use glibc backtrace for stack trace */
 #include <execinfo.h>
 
-uword
+__clib_export uword
 clib_backtrace (uword * callers, uword max_callers, uword n_frames_to_skip)
 {
   int size;

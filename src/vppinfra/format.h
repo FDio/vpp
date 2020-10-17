@@ -87,7 +87,7 @@ format_get_indent (u8 * s)
   return indent;
 }
 
-#define _(f) u8 * f (u8 * s, va_list * va)
+#define _(f) __clib_export u8 * f (u8 * s, va_list * va)
 
 /* Standard user-defined formats. */
 _(format_vec32);

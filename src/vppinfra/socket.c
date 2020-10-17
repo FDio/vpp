@@ -54,7 +54,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
 
-void
+__clib_export void
 clib_socket_tx_add_formatted (clib_socket_t * s, char *fmt, ...)
 {
   va_list va;
@@ -380,7 +380,7 @@ socket_init_funcs (clib_socket_t * s)
     s->recvmsg_func = default_socket_recvmsg;
 }
 
-clib_error_t *
+__clib_export clib_error_t *
 clib_socket_init (clib_socket_t * s)
 {
   union
@@ -522,7 +522,7 @@ done:
   return error;
 }
 
-clib_error_t *
+__clib_export clib_error_t *
 clib_socket_accept (clib_socket_t * server, clib_socket_t * client)
 {
   clib_error_t *err = 0;

@@ -260,28 +260,28 @@ clib_mem_init_internal (void *base, uword size,
   return h;
 }
 
-void *
+__clib_export void *
 clib_mem_init (void *memory, uword memory_size)
 {
   return clib_mem_init_internal (memory, memory_size,
 				 CLIB_MEM_PAGE_SZ_DEFAULT);
 }
 
-void *
+__clib_export void *
 clib_mem_init_with_page_size (uword memory_size,
 			      clib_mem_page_sz_t log2_page_sz)
 {
   return clib_mem_init_internal (0, memory_size, log2_page_sz);
 }
 
-void *
+__clib_export void *
 clib_mem_init_thread_safe (void *memory, uword memory_size)
 {
   return clib_mem_init_internal (memory, memory_size,
 				 CLIB_MEM_PAGE_SZ_DEFAULT);
 }
 
-void
+__clib_export void
 clib_mem_destroy (void)
 {
   mheap_trace_main_t *tm = &mheap_trace_main;
@@ -416,7 +416,7 @@ format_mheap_trace (u8 * s, va_list * va)
   return s;
 }
 
-u8 *
+__clib_export u8 *
 format_clib_mem_heap (u8 * s, va_list * va)
 {
   clib_mem_heap_t *heap = va_arg (*va, clib_mem_heap_t *);
@@ -467,7 +467,7 @@ format_clib_mem_heap (u8 * s, va_list * va)
   return s;
 }
 
-void
+__clib_export void
 clib_mem_get_heap_usage (clib_mem_heap_t * heap, clib_mem_usage_t * usage)
 {
   struct dlmallinfo mi = mspace_mallinfo (heap->mspace);
@@ -485,7 +485,7 @@ clib_mem_get_heap_usage (clib_mem_heap_t * heap, clib_mem_usage_t * usage)
 /* Call serial number for debugger breakpoints. */
 uword clib_mem_validate_serial = 0;
 
-void
+__clib_export void
 mheap_trace (clib_mem_heap_t * h, int enable)
 {
   (void) mspace_enable_disable_trace (h->mspace, enable);
@@ -494,7 +494,7 @@ mheap_trace (clib_mem_heap_t * h, int enable)
     mheap_trace_main_free (&mheap_trace_main);
 }
 
-void
+__clib_export void
 clib_mem_trace (int enable)
 {
   mheap_trace_main_t *tm = &mheap_trace_main;
@@ -516,7 +516,7 @@ clib_mem_is_traced (void)
   return mspace_is_traced (h->mspace);
 }
 
-uword
+__clib_export uword
 clib_mem_trace_enable_disable (uword enable)
 {
   uword rv;
@@ -527,7 +527,7 @@ clib_mem_trace_enable_disable (uword enable)
   return rv;
 }
 
-clib_mem_heap_t *
+__clib_export clib_mem_heap_t *
 clib_mem_create_heap (void *base, uword size, int is_locked, char *fmt, ...)
 {
   clib_mem_page_sz_t log2_page_sz = clib_mem_get_log2_page_size ();
@@ -557,7 +557,7 @@ clib_mem_create_heap (void *base, uword size, int is_locked, char *fmt, ...)
   return h;
 }
 
-void
+__clib_export void
 clib_mem_destroy_heap (clib_mem_heap_t * h)
 {
   mheap_trace_main_t *tm = &mheap_trace_main;
@@ -570,20 +570,20 @@ clib_mem_destroy_heap (clib_mem_heap_t * h)
     clib_mem_vm_unmap (h->base);
 }
 
-uword
+__clib_export uword
 clib_mem_get_heap_free_space (clib_mem_heap_t * h)
 {
   struct dlmallinfo dlminfo = mspace_mallinfo (h->mspace);
   return dlminfo.fordblks;
 }
 
-void *
+__clib_export void *
 clib_mem_get_heap_base (clib_mem_heap_t * h)
 {
   return h->base;
 }
 
-uword
+__clib_export uword
 clib_mem_get_heap_size (clib_mem_heap_t * heap)
 {
   return heap->size;

@@ -70,7 +70,7 @@
  * @return rc - clib_error_t
  *
  */
-clib_error_t *
+__clib_export clib_error_t *
 pcap_close (pcap_main_t * pm)
 {
   close (pm->file_descriptor);
@@ -85,7 +85,7 @@ pcap_close (pcap_main_t * pm)
  * @return rc - clib_error_t
  *
  */
-clib_error_t *
+__clib_export clib_error_t *
 pcap_write (pcap_main_t * pm)
 {
   clib_error_t *error = 0;
@@ -172,7 +172,7 @@ done:
  * @return rc - clib_error_t
  *
  */
-clib_error_t *
+__clib_export clib_error_t *
 pcap_read (pcap_main_t * pm)
 {
   clib_error_t *error = 0;

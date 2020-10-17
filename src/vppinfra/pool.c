@@ -37,7 +37,7 @@
 
 #include <vppinfra/pool.h>
 
-void
+__clib_export void
 _pool_init_fixed (void **pool_ptr, u32 elt_size, u32 max_elts)
 {
   u8 *mmap_base;

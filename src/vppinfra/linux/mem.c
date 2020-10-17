@@ -62,7 +62,7 @@
 #define MAP_FIXED_NOREPLACE 0x100000
 #endif
 
-uword
+__clib_export uword
 clib_mem_get_default_hugepage_size (void)
 {
   unformat_input_t input;
@@ -163,7 +163,7 @@ done:
   munmap (va, page_size);
 }
 
-u64
+__clib_export u64
 clib_mem_get_fd_page_size (int fd)
 {
   struct stat st = { 0 };
@@ -172,14 +172,14 @@ clib_mem_get_fd_page_size (int fd)
   return st.st_blksize;
 }
 
-clib_mem_page_sz_t
+__clib_export clib_mem_page_sz_t
 clib_mem_get_fd_log2_page_size (int fd)
 {
   uword page_size = clib_mem_get_fd_page_size (fd);
   return page_size ? min_log2 (page_size) : CLIB_MEM_PAGE_SZ_UNKNOWN;
 }
 
-void
+__clib_export void
 clib_mem_vm_randomize_va (uword * requested_va,
 			  clib_mem_page_sz_t log2_page_size)
 {
@@ -246,7 +246,7 @@ legacy_memfd_create (u8 * name)
   return fd;
 }
 
-int
+__clib_export int
 clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
 {
   clib_mem_main_t *mm = &clib_mem_main;
@@ -370,7 +370,7 @@ clib_mem_vm_reserve (uword start, uword size, clib_mem_page_sz_t log2_page_sz)
   return (uword) base + sys_page_sz;
 }
 
-clib_mem_vm_map_hdr_t *
+__clib_export clib_mem_vm_map_hdr_t *
 clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t * hdr)
 {
   clib_mem_main_t *mm = &clib_mem_main;
@@ -488,7 +488,7 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
   return base;
 }
 
-int
+__clib_export int
 clib_mem_vm_unmap (void *base)
 {
   clib_mem_main_t *mm = &clib_mem_main;
@@ -526,7 +526,7 @@ clib_mem_vm_unmap (void *base)
   return 0;
 }
 
-void
+__clib_export void
 clib_mem_get_page_stats (void *start, clib_mem_page_sz_t log2_page_size,
 			 uword n_pages, clib_mem_page_stats_t * stats)
 {
@@ -566,7 +566,7 @@ clib_mem_get_page_stats (void *start, clib_mem_page_sz_t log2_page_size,
 }
 
 
-u64 *
+__clib_export u64 *
 clib_mem_vm_get_paddr (void *mem, clib_mem_page_sz_t log2_page_size,
 		       int n_pages)
 {
@@ -608,7 +608,7 @@ done:
   return r;
 }
 
-int
+__clib_export int
 clib_mem_set_numa_affinity (u8 numa_node, int force)
 {
   clib_mem_main_t *mm = &clib_mem_main;
@@ -643,7 +643,7 @@ error:
   return CLIB_MEM_ERROR;
 }
 
-int
+__clib_export int
 clib_mem_set_default_numa_affinity ()
 {
   clib_mem_main_t *mm = &clib_mem_main;

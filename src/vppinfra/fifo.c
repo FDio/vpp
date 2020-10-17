@@ -76,7 +76,7 @@
    fifo_free (f) frees fifo.
 */
 
-void *
+__clib_export void *
 _clib_fifo_resize (void *v_old, uword n_new_elts, uword elt_bytes)
 {
   void *v_new, *end, *head;

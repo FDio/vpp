@@ -82,7 +82,7 @@
  _(0x43, 0x0b1, "Marvell", "OCTEON TX2 CN98XX", 1) \
  _(0x43, 0x0b2, "Marvell", "OCTEON TX2 CN96XX", 1)
 
-u8 *
+__clib_export u8 *
 format_cpu_uarch (u8 * s, va_list * args)
 {
 #if __x86_64__
@@ -146,7 +146,7 @@ format(s, "[0x%x] %s ([0x%02x] %s) stepping 0x%x", f, a, m, c, stepping);
 #endif
 }
 
-u8 *
+__clib_export u8 *
 format_cpu_model_name (u8 * s, va_list * args)
 {
 #if __x86_64__
@@ -202,7 +202,7 @@ flag_skip_prefix (char const *flag, const char *pfx, int len)
   return flag;
 }
 
-u8 *
+__clib_export u8 *
 format_cpu_flags (u8 * s, va_list * args)
 {
 #if defined(__x86_64__)
