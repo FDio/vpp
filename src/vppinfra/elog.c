@@ -427,7 +427,7 @@ format_elog_track (u8 * s, va_list * args)
   return s;
 }
 
-char *
+__clib_export char *
 format_one_elog_event (void *em_arg, void *ep_arg)
 {
   elog_main_t *em = (elog_main_t *) em_arg;
