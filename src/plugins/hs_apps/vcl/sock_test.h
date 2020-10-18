@@ -38,11 +38,15 @@
   errno = -_rv;								\
   printf ("\nERROR: " _fn " failed (errno = %d)!\n", -_rv);		\
 }
-#define stfail(_fn, _rv)						\
+#define stabrt(_fmt, _args...)						\
 {									\
-  errno = -_rv;								\
+  printf ("\nERROR: " _fmt "\n", ##_args);				\
+  exit (1);								\
+}
+#define stfail(_fn)							\
+{									\
   perror ("ERROR when calling " _fn);					\
-  printf ("\nERROR: " _fn " failed (errno = %d)!\n", -_rv);		\
+  printf ("\nERROR: " _fn " failed (errno = %d)!\n", errno);		\
   exit (1);								\
 }
 
@@ -71,10 +75,9 @@ sock_test_read (int fd, uint8_t * buf, uint32_t nbytes,
 	 ((rx_bytes < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))));
 
   if (rx_bytes < 0)
-    {
-      stfail ("sock_test_read()", -errno);
-    }
-  else if (stats)
+    stfail ("sock_test_read()");
+
+  if (stats)
     stats->rx_bytes += rx_bytes;
 
   return (rx_bytes);
@@ -120,10 +123,9 @@ sock_test_write (int fd, uint8_t * buf, uint32_t nbytes,
   while (tx_bytes != nbytes);
 
   if (tx_bytes < 0)
-    {
-      stfail ("sock_test_write()", -errno);
-    }
-  else if (stats)
+    stfail ("sock_test_write()");
+
+  if (stats)
     stats->tx_bytes += tx_bytes;
 
   return (tx_bytes);
