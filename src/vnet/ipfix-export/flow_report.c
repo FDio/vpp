@@ -301,12 +301,13 @@ flow_report_process (vlib_main_t * vm,
 	if (rv < 0)
 	  continue;
 
-	nf = vlib_get_frame_to_node (vm, ip4_lookup_node_index);
-	nf->n_vectors = 0;
-	to_next = vlib_frame_vector_args (nf);
+	nf = NULL;
 
 	if (template_bi != ~0)
 	  {
+	    nf = vlib_get_frame_to_node (vm, ip4_lookup_node_index);
+	    nf->n_vectors = 0;
+	    to_next = vlib_frame_vector_args (nf);
 	    to_next[0] = template_bi;
 	    to_next++;
 	    nf->n_vectors++;
@@ -314,7 +315,7 @@ flow_report_process (vlib_main_t * vm,
 
 	nf = fr->flow_data_callback (frm, fr,
 				     nf, to_next, ip4_lookup_node_index);
-	if (nf)
+	if (nf && nf->n_vectors)
 	  vlib_put_frame_to_node (vm, ip4_lookup_node_index, nf);
       }
     }
