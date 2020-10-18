@@ -81,7 +81,7 @@ conn_pool_expand (size_t expand_size)
 
   conn_pool = realloc (ssm->conn_pool, new_size * sizeof (*ssm->conn_pool));
   if (!conn_pool)
-    stfail ("conn_pool_expand()", -errno);
+    stfail ("conn_pool_expand()");
 
   for (i = ssm->conn_pool_size; i < new_size; i++)
     {
@@ -239,7 +239,7 @@ af_unix_echo (void)
   af_unix_client_fd = accept (ssm->af_unix_listen_fd,
 			      (struct sockaddr *) NULL, NULL);
   if (af_unix_client_fd < 0)
-    stfail ("af_unix_echo accept()", af_unix_client_fd);
+    stfail ("af_unix_echo accept()");
 
   stinf ("Got an AF_UNIX connection -- fd = %d (0x%08x)!",
 	 af_unix_client_fd, af_unix_client_fd);
@@ -248,7 +248,7 @@ af_unix_echo (void)
 
   rv = read (af_unix_client_fd, buffer, nbytes);
   if (rv < 0)
-    stfail ("af_unix_echo read()", rv);
+    stfail ("af_unix_echo read()");
 
   /* Make the buffer is NULL-terminated. */
   buffer[sizeof (buffer) - 1] = 0;
@@ -258,7 +258,7 @@ af_unix_echo (void)
     {
       rv = write (af_unix_client_fd, buffer, nbytes);
       if (rv < 0)
-	stfail ("af_unix_echo write()", rv);
+	stfail ("af_unix_echo write()");
       stinf ("(AF_UNIX): TX (%d bytes) - '%s'\n", rv, buffer);
       ssm->af_unix_xacts++;
     }
@@ -277,11 +277,11 @@ new_client (void)
 
   conn = conn_pool_alloc ();
   if (!conn)
-    stfail ("No free connections!", 1);
+    stfail ("No free connections!");
 
   client_fd = accept (ssm->listen_fd, (struct sockaddr *) NULL, NULL);
   if (client_fd < 0)
-    stfail ("new_client accept()", client_fd);
+    stfail ("new_client accept()");
 
   stinf ("Got a connection -- fd = %d (0x%08x)!\n", client_fd, client_fd);
 
@@ -295,7 +295,7 @@ new_client (void)
   rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, client_fd, &ev);
 
   if (rv < 0)
-    stfail ("new_client epoll_ctl()", rv);
+    stfail ("new_client epoll_ctl()");
 
   ssm->nfds++;
 }
@@ -311,7 +311,7 @@ socket_server_echo_af_unix_init (sock_server_main_t * ssm)
   unlink ((const char *) SOCK_TEST_AF_UNIX_FILENAME);
   ssm->af_unix_listen_fd = socket (AF_UNIX, SOCK_STREAM, 0);
   if (ssm->af_unix_listen_fd < 0)
-    stfail ("echo_af_unix_init socket()", ssm->af_unix_listen_fd);
+    stfail ("echo_af_unix_init socket()");
 
   memset (&ssm->serveraddr, 0, sizeof (ssm->serveraddr));
   ssm->serveraddr.sun_family = AF_UNIX;
@@ -321,18 +321,18 @@ socket_server_echo_af_unix_init (sock_server_main_t * ssm)
   rv = bind (ssm->af_unix_listen_fd, (struct sockaddr *) &ssm->serveraddr,
 	     SUN_LEN (&ssm->serveraddr));
   if (rv < 0)
-    stfail ("echo_af_unix_init bind()", rv);
+    stfail ("echo_af_unix_init bind()");
 
   rv = listen (ssm->af_unix_listen_fd, 10);
   if (rv < 0)
-    stfail ("echo_af_unix_init listen()", rv);
+    stfail ("echo_af_unix_init listen()");
 
   ssm->af_unix_listen_ev.events = EPOLLIN;
   ssm->af_unix_listen_ev.data.u32 = SOCK_TEST_AF_UNIX_ACCEPT_DATA;
   rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->af_unix_listen_fd,
 		  &ssm->af_unix_listen_ev);
   if (rv < 0)
-    stfail ("echo_af_unix_init epoll_ctl()", rv);
+    stfail ("echo_af_unix_init epoll_ctl()");
 
   return 0;
 }
@@ -503,7 +503,7 @@ main (int argc, char **argv)
 			   0);
 
   if (ssm->listen_fd < 0)
-    stfail ("main listen()", ssm->listen_fd);
+    stfail ("main listen()");
 
   memset (&servaddr, 0, sizeof (servaddr));
 
@@ -526,26 +526,26 @@ main (int argc, char **argv)
 
   rv = bind (ssm->listen_fd, (struct sockaddr *) &servaddr, servaddr_size);
   if (rv < 0)
-    stfail ("main bind()", rv);
+    stfail ("main bind()");
 
   rv = fcntl (ssm->listen_fd, F_SETFL, O_NONBLOCK);
   if (rv < 0)
-    stfail ("main fcntl()", rv);
+    stfail ("main fcntl()");
 
   rv = listen (ssm->listen_fd, 10);
   if (rv < 0)
-    stfail ("main listen()", rv);
+    stfail ("main listen()");
 
   ssm->epfd = epoll_create (1);
   if (ssm->epfd < 0)
-    stfail ("main epoll_create()", ssm->epfd);
+    stfail ("main epoll_create()");
 
   ssm->listen_ev.events = EPOLLIN;
   ssm->listen_ev.data.u32 = ~0;
 
   rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->listen_fd, &ssm->listen_ev);
   if (rv < 0)
-    stfail ("main epoll_ctl()", rv);
+    stfail ("main epoll_ctl()");
 
   stinf ("Waiting for a client to connect on port %d...\n", port);
 
@@ -555,7 +555,7 @@ main (int argc, char **argv)
       num_ev = epoll_wait (ssm->epfd, ssm->wait_events,
 			   SOCK_SERVER_MAX_EPOLL_EVENTS, 60000);
       if (num_ev < 0)
-	stfail ("main epoll_wait()", num_ev);
+	stfail ("main epoll_wait()");
 
       if (num_ev == 0)
 	{

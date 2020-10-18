@@ -55,17 +55,13 @@ sock_test_cfg_sync (vcl_test_session_t * socket)
   ctrl->cfg.seq_num = ++scm->cfg_seq_num;
   if (socket->cfg.verbose)
     {
-      printf ("CLIENT (fd %d): Sending config sent to server.\n", socket->fd);
+      stinf ("(fd %d): Sending config sent to server.\n", socket->fd);
       vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
     }
   tx_bytes = sock_test_write (socket->fd, (uint8_t *) & ctrl->cfg,
 			      sizeof (ctrl->cfg), NULL, ctrl->cfg.verbose);
   if (tx_bytes < 0)
-    {
-      fprintf (stderr, "CLIENT (fd %d): ERROR: write test cfg failed (%d)!\n",
-	       socket->fd, tx_bytes);
-      return tx_bytes;
-    }
+    stabrt ("(fd %d): write test cfg failed (%d)!", socket->fd, tx_bytes);
 
   rx_bytes = sock_test_read (socket->fd, (uint8_t *) socket->rxbuf,
 			     sizeof (vcl_test_cfg_t), NULL);
@@ -73,33 +69,15 @@ sock_test_cfg_sync (vcl_test_session_t * socket)
     return rx_bytes;
 
   if (rl_cfg->magic != VCL_TEST_CFG_CTRL_MAGIC)
-    {
-      fprintf (stderr, "CLIENT (fd %d): ERROR: Bad server reply cfg "
-	       "-- aborting!\n", socket->fd);
-      return -1;
-    }
+    stabrt ("(fd %d): Bad server reply cfg -- aborting!\n", socket->fd);
+
   if ((rx_bytes != sizeof (vcl_test_cfg_t))
       || !vcl_test_cfg_verify (rl_cfg, &ctrl->cfg))
+    stabrt ("(fd %d): Invalid config received from server!\n", socket->fd);
+
+  if (socket->cfg.verbose)
     {
-      fprintf (stderr, "CLIENT (fd %d): ERROR: Invalid config received "
-	       "from server!\n", socket->fd);
-      if (rx_bytes != sizeof (vcl_test_cfg_t))
-	{
-	  fprintf (stderr, "\tRx bytes %d != cfg size %lu\n",
-		   rx_bytes, sizeof (vcl_test_cfg_t));
-	}
-      else
-	{
-	  vcl_test_cfg_dump (rl_cfg, 1 /* is_client */ );
-	  fprintf (stderr, "CLIENT (fd %d): Valid config sent to server.\n",
-		   socket->fd);
-	  vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
-	}
-      return -1;
-    }
-  else if (socket->cfg.verbose)
-    {
-      printf ("CLIENT (fd %d): Got config back from server.\n", socket->fd);
+      stinf ("(fd %d): Got config back from server.", socket->fd);
       vcl_test_cfg_dump (rl_cfg, 1 /* is_client */ );
     }
   ctrl->cfg.ctrl_handle = ((ctrl->cfg.ctrl_handle == ~0) ?
@@ -111,39 +89,25 @@ sock_test_cfg_sync (vcl_test_session_t * socket)
 static void
 sock_client_echo_af_unix (sock_client_main_t * scm)
 {
-  int fd, errno_val;
+  int fd, rv;
   struct sockaddr_un serveraddr;
   uint8_t buffer[256];
   size_t nbytes = strlen (SOCK_TEST_MIXED_EPOLL_DATA) + 1;
   struct timeval timeout;
-  int rv;
 
   /* Open AF_UNIX socket and send an echo to test mixed epoll on server.
    */
   fd = socket (AF_UNIX, SOCK_STREAM, 0);
   if (fd < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in echo_test_client(): socket(AF_UNIX) failed");
-      fprintf (stderr,
-	       "CLIENT: ERROR: socket(AF_UNIX, SOCK_STREAM, 0) failed "
-	       "(errno = %d)!\n", errno_val);
-      goto out;
-    }
+    stfail ("socket()");
+
   memset (&serveraddr, 0, sizeof (serveraddr));
   serveraddr.sun_family = AF_UNIX;
   strncpy (serveraddr.sun_path, SOCK_TEST_AF_UNIX_FILENAME,
 	   sizeof (serveraddr.sun_path));
   rv = connect (fd, (struct sockaddr *) &serveraddr, SUN_LEN (&serveraddr));
   if (rv < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in echo_test_client(): connect() failed");
-      fprintf (stderr, "CLIENT: ERROR: connect(fd %d, \"%s\", %lu) "
-	       "failed (errno = %d)!\n", fd, SOCK_TEST_AF_UNIX_FILENAME,
-	       SUN_LEN (&serveraddr), errno_val);
-      goto done;
-    }
+    stfail ("connect()");
 
   scm->af_unix_echo_tx++;
   strncpy ((char *) buffer, SOCK_TEST_MIXED_EPOLL_DATA, sizeof (buffer));
@@ -152,54 +116,33 @@ sock_client_echo_af_unix (sock_client_main_t * scm)
   select (0, NULL, NULL, NULL, &timeout);	/* delay .25 secs */
   rv = write (fd, buffer, nbytes);
   if (rv < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in echo_test_client(): write() failed");
-      fprintf (stderr, "CLIENT: ERROR: write(fd %d, \"%s\", %lu) "
-	       "failed (errno = %d)!\n", fd, buffer, nbytes, errno_val);
-      goto done;
-    }
-  else if (rv < nbytes)
-    {
-      fprintf (stderr, "CLIENT: ERROR: write(fd %d, \"%s\", %lu) "
-	       "returned %d!\n", fd, buffer, nbytes, rv);
-      goto done;
-    }
+    stfail ("write()");
 
-  printf ("CLIENT (AF_UNIX): TX (%d bytes) - '%s'\n", rv, buffer);
+  if (rv < nbytes)
+    stabrt ("write(fd %d, \"%s\", %lu) returned %d!", fd, buffer, nbytes, rv);
+
+  stinf ("(AF_UNIX): TX (%d bytes) - '%s'\n", rv, buffer);
   memset (buffer, 0, sizeof (buffer));
   rv = read (fd, buffer, nbytes);
   if (rv < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in echo_test_client(): read() failed");
-      fprintf (stderr, "CLIENT: ERROR: read(fd %d, %p, %lu) "
-	       "failed (errno = %d)!\n", fd, buffer, nbytes, errno_val);
-      goto done;
-    }
-  else if (rv < nbytes)
-    {
-      fprintf (stderr, "CLIENT: ERROR: read(fd %d, %p, %lu) "
-	       "returned %d!\n", fd, buffer, nbytes, rv);
-      goto done;
-    }
+    stfail ("read()");
+
+  if (rv < nbytes)
+    stabrt ("read(fd %d, %p, %lu) returned %d!\n", fd, buffer, nbytes, rv);
 
   if (!strncmp (SOCK_TEST_MIXED_EPOLL_DATA, (const char *) buffer, nbytes))
     {
-      printf ("CLIENT (AF_UNIX): RX (%d bytes) - '%s'\n", rv, buffer);
+      stinf ("(AF_UNIX): RX (%d bytes) - '%s'\n", rv, buffer);
       scm->af_unix_echo_rx++;
     }
   else
-    printf ("CLIENT (AF_UNIX): ERROR: RX (%d bytes) - '%s'\n", rv, buffer);
+    stabrt ("(AF_UNIX): RX (%d bytes) - '%s'\n", rv, buffer);
 
-done:
   close (fd);
-out:
-  ;
 }
 
 static void
-echo_test_client ()
+echo_test_client (void)
 {
   sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
@@ -245,13 +188,9 @@ echo_test_client ()
       rv = select (nfds, rfdset, wfdset, NULL, &timeout);
 
       if (rv < 0)
-	{
-	  perror ("select()");
-	  fprintf (stderr, "\nCLIENT: ERROR: select() failed -- "
-		   "aborting test!\n");
-	  return;
-	}
-      else if (rv == 0)
+	stfail ("select()");
+
+      if (rv == 0)
 	continue;
 
       for (i = 0; i < ctrl->cfg.num_test_sessions; i++)
@@ -263,20 +202,16 @@ echo_test_client ()
 
 	  if (FD_ISSET (tsock->fd, wfdset) &&
 	      (tsock->stats.tx_bytes < ctrl->cfg.total_bytes))
-
 	    {
 	      tx_bytes =
 		sock_test_write (tsock->fd, (uint8_t *) tsock->txbuf, nbytes,
 				 &tsock->stats, ctrl->cfg.verbose);
 	      if (tx_bytes < 0)
-		{
-		  fprintf (stderr, "\nCLIENT: ERROR: sock_test_write(%d) "
-			   "failed -- aborting test!\n", tsock->fd);
-		  return;
-		}
+		stabrt ("sock_test_write(%d) failed -- aborting test!",
+			tsock->fd);
 
-	      printf ("CLIENT (fd %d): TX (%d bytes) - '%s'\n",
-		      tsock->fd, tx_bytes, tsock->txbuf);
+	      stinf ("(fd %d): TX (%d bytes) - '%s'", tsock->fd, tx_bytes,
+		     tsock->txbuf);
 	    }
 
 	  if ((FD_ISSET (tsock->fd, rfdset)) &&
@@ -287,13 +222,11 @@ echo_test_client ()
 				nbytes, &tsock->stats);
 	      if (rx_bytes > 0)
 		{
-		  printf ("CLIENT (fd %d): RX (%d bytes)\n", tsock->fd,
-			  rx_bytes);
+		  stinf ("(fd %d): RX (%d bytes)\n", tsock->fd, rx_bytes);
 
 		  if (tsock->stats.rx_bytes != tsock->stats.tx_bytes)
-		    printf ("CLIENT: WARNING: bytes read (%lu) "
-			    "!= bytes written (%lu)!\n",
-			    tsock->stats.rx_bytes, tsock->stats.tx_bytes);
+		    stinf ("bytes read (%lu) != bytes written (%lu)!\n",
+			   tsock->stats.rx_bytes, tsock->stats.tx_bytes);
 		}
 	    }
 
@@ -335,17 +268,17 @@ echo_test_client ()
 
       if (ctrl->cfg.verbose > 1)
 	{
-	  printf ("  ctrl socket info\n"
-		  VCL_TEST_SEPARATOR_STRING
-		  "          fd:  %d (0x%08x)\n"
-		  "       rxbuf:  %p\n"
-		  "  rxbuf size:  %u (0x%08x)\n"
-		  "       txbuf:  %p\n"
-		  "  txbuf size:  %u (0x%08x)\n"
-		  VCL_TEST_SEPARATOR_STRING,
-		  ctrl->fd, (uint32_t) ctrl->fd,
-		  ctrl->rxbuf, ctrl->rxbuf_size, ctrl->rxbuf_size,
-		  ctrl->txbuf, ctrl->txbuf_size, ctrl->txbuf_size);
+	  stinf ("  ctrl socket info\n"
+		 VCL_TEST_SEPARATOR_STRING
+		 "          fd:  %d (0x%08x)\n"
+		 "       rxbuf:  %p\n"
+		 "  rxbuf size:  %u (0x%08x)\n"
+		 "       txbuf:  %p\n"
+		 "  txbuf size:  %u (0x%08x)\n"
+		 VCL_TEST_SEPARATOR_STRING,
+		 ctrl->fd, (uint32_t) ctrl->fd,
+		 ctrl->rxbuf, ctrl->rxbuf_size, ctrl->rxbuf_size,
+		 ctrl->txbuf, ctrl->txbuf_size, ctrl->txbuf_size);
 	}
     }
 }
@@ -356,10 +289,8 @@ stream_test_client (vcl_test_t test)
   sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
   vcl_test_session_t *tsock;
-  int tx_bytes;
+  int tx_bytes, rv, nfds = 0;;
   uint32_t i, n;
-  int rv;
-  int nfds = 0;
   fd_set wr_fdset, rd_fdset;
   fd_set _wfdset, *wfdset = &_wfdset;
   fd_set _rfdset, *rfdset = (test == VCL_TEST_TYPE_BI) ? &_rfdset : 0;
@@ -367,16 +298,13 @@ stream_test_client (vcl_test_t test)
   ctrl->cfg.total_bytes = ctrl->cfg.num_writes * ctrl->cfg.txbuf_size;
   ctrl->cfg.ctrl_handle = ~0;
 
-  printf ("\n" SOCK_TEST_BANNER_STRING
-	  "CLIENT (fd %d): %s-directional Stream Test!\n\n"
-	  "CLIENT (fd %d): Sending config to server on ctrl socket...\n",
-	  ctrl->fd, test == VCL_TEST_TYPE_BI ? "Bi" : "Uni", ctrl->fd);
+  stinf ("\n" SOCK_TEST_BANNER_STRING
+	 "CLIENT (fd %d): %s-directional Stream Test!\n\n"
+	 "CLIENT (fd %d): Sending config to server on ctrl socket...\n",
+	 ctrl->fd, test == VCL_TEST_TYPE_BI ? "Bi" : "Uni", ctrl->fd);
 
   if (sock_test_cfg_sync (ctrl))
-    {
-      fprintf (stderr, "CLIENT: ERROR: test cfg sync failed -- aborting!");
-      return;
-    }
+    stabrt ("test cfg sync failed -- aborting!");
 
   FD_ZERO (&wr_fdset);
   FD_ZERO (&rd_fdset);
@@ -386,8 +314,8 @@ stream_test_client (vcl_test_t test)
       tsock = &scm->test_socket[n];
       tsock->cfg = ctrl->cfg;
       vcl_test_session_buf_alloc (tsock);
-      printf ("CLIENT (fd %d): Sending config to server on "
-	      "test socket %d...\n", tsock->fd, n);
+      stinf ("(fd %d): Sending config to server on test socket %d...\n",
+	     tsock->fd, n);
       sock_test_cfg_sync (tsock);
 
       /* Fill payload with incrementing uint32's */
@@ -413,13 +341,9 @@ stream_test_client (vcl_test_t test)
       rv = select (nfds, rfdset, wfdset, NULL, &timeout);
 
       if (rv < 0)
-	{
-	  perror ("select()");
-	  fprintf (stderr, "\nCLIENT: ERROR: select() failed -- "
-		   "aborting test!\n");
-	  return;
-	}
-      else if (rv == 0)
+	stfail ("select()");
+
+      if (rv == 0)
 	continue;
 
       for (i = 0; i < ctrl->cfg.num_test_sessions; i++)
@@ -445,11 +369,8 @@ stream_test_client (vcl_test_t test)
 					  ctrl->cfg.txbuf_size, &tsock->stats,
 					  ctrl->cfg.verbose);
 	      if (tx_bytes < 0)
-		{
-		  fprintf (stderr, "\nCLIENT: ERROR: sock_test_write(%d) "
-			   "failed -- aborting test!\n", tsock->fd);
-		  return;
-		}
+		stabrt ("sock_test_write(%d) failed -- aborting test!",
+			tsock->fd);
 	    }
 
 	  if (((test == VCL_TEST_TYPE_UNI) &&
@@ -464,14 +385,10 @@ stream_test_client (vcl_test_t test)
     }
   clock_gettime (CLOCK_REALTIME, &ctrl->stats.stop);
 
-  printf ("CLIENT (fd %d): Sending config to server on ctrl socket...\n",
-	  ctrl->fd);
+  stinf ("(fd %d): Sending config to server on ctrl socket...\n", ctrl->fd);
 
   if (sock_test_cfg_sync (ctrl))
-    {
-      fprintf (stderr, "CLIENT: ERROR: test cfg sync failed -- aborting!");
-      return;
-    }
+    stabrt ("test cfg sync failed -- aborting!");
 
   for (i = 0; i < ctrl->cfg.num_test_sessions; i++)
     {
@@ -497,26 +414,26 @@ stream_test_client (vcl_test_t test)
 
   if (ctrl->cfg.verbose)
     {
-      printf ("  ctrl socket info\n"
-	      VCL_TEST_SEPARATOR_STRING
-	      "          fd:  %d (0x%08x)\n"
-	      "       rxbuf:  %p\n"
-	      "  rxbuf size:  %u (0x%08x)\n"
-	      "       txbuf:  %p\n"
-	      "  txbuf size:  %u (0x%08x)\n"
-	      VCL_TEST_SEPARATOR_STRING,
-	      ctrl->fd, (uint32_t) ctrl->fd,
-	      ctrl->rxbuf, ctrl->rxbuf_size, ctrl->rxbuf_size,
-	      ctrl->txbuf, ctrl->txbuf_size, ctrl->txbuf_size);
+      stinf ("  ctrl socket info\n"
+	     VCL_TEST_SEPARATOR_STRING
+	     "          fd:  %d (0x%08x)\n"
+	     "       rxbuf:  %p\n"
+	     "  rxbuf size:  %u (0x%08x)\n"
+	     "       txbuf:  %p\n"
+	     "  txbuf size:  %u (0x%08x)\n"
+	     VCL_TEST_SEPARATOR_STRING,
+	     ctrl->fd, (uint32_t) ctrl->fd,
+	     ctrl->rxbuf, ctrl->rxbuf_size, ctrl->rxbuf_size,
+	     ctrl->txbuf, ctrl->txbuf_size, ctrl->txbuf_size);
     }
 
   ctrl->cfg.test = VCL_TEST_TYPE_ECHO;
   if (sock_test_cfg_sync (ctrl))
-    fprintf (stderr, "CLIENT: ERROR: post-test cfg sync failed!");
+    stabrt ("post-test cfg sync failed!");
 
-  printf ("CLIENT (fd %d): %s-directional Stream Test Complete!\n"
-	  SOCK_TEST_BANNER_STRING "\n", ctrl->fd,
-	  test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
+  stinf ("(fd %d): %s-directional Stream Test Complete!\n"
+	 SOCK_TEST_BANNER_STRING "\n", ctrl->fd,
+	 test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
 }
 
 static void
@@ -527,8 +444,8 @@ exit_client (void)
   vcl_test_session_t *tsock;
   int i;
 
-  printf ("CLIENT: af_unix_echo_tx %d, af_unix_echo_rx %d\n",
-	  scm->af_unix_echo_tx, scm->af_unix_echo_rx);
+  stinf ("af_unix_echo_tx %d, af_unix_echo_rx %d\n",
+	 scm->af_unix_echo_tx, scm->af_unix_echo_rx);
   for (i = 0; i < ctrl->cfg.num_test_sessions; i++)
     {
       tsock = &scm->test_socket[i];
@@ -537,8 +454,7 @@ exit_client (void)
       /* coverity[COPY_PASTE_ERROR] */
       if (ctrl->cfg.verbose)
 	{
-	  printf ("\nCLIENT (fd %d): Sending exit cfg to server...\n",
-		  tsock->fd);
+	  stinf ("\(fd %d): Sending exit cfg to server...\n", tsock->fd);
 	  vcl_test_cfg_dump (&tsock->cfg, 1 /* is_client */ );
 	}
       (void) sock_test_write (tsock->fd, (uint8_t *) & tsock->cfg,
@@ -549,13 +465,13 @@ exit_client (void)
   ctrl->cfg.test = VCL_TEST_TYPE_EXIT;
   if (ctrl->cfg.verbose)
     {
-      printf ("\nCLIENT (fd %d): Sending exit cfg to server...\n", ctrl->fd);
+      stinf ("\(fd %d): Sending exit cfg to server...\n", ctrl->fd);
       vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
     }
   (void) sock_test_write (ctrl->fd, (uint8_t *) & ctrl->cfg,
 			  sizeof (ctrl->cfg), &ctrl->stats,
 			  ctrl->cfg.verbose);
-  printf ("\nCLIENT: So long and thanks for all the fish!\n\n");
+  stinf ("\nCLIENT: So long and thanks for all the fish!\n\n");
   sleep (1);
 }
 
@@ -565,7 +481,7 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
   sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
   vcl_test_session_t *tsock;
-  int i, rv, errno_val;
+  int i, rv;
 
   if (num_test_sockets < 1)
     {
@@ -589,13 +505,7 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
       tsock = realloc (scm->test_socket,
 		       sizeof (vcl_test_session_t) * num_test_sockets);
       if (!tsock)
-	{
-	  errno_val = errno;
-	  perror ("ERROR in sock_test_connect_test_sockets()");
-	  fprintf (stderr, "CLIENT: ERROR: socket failed (errno = %d)!\n",
-		   errno_val);
-	  return -1;
-	}
+	stfail ("realloc()");
 
       memset (&tsock[scm->num_test_sockets], 0,
 	      sizeof (vcl_test_session_t) * (num_test_sockets -
@@ -610,44 +520,27 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 			      SOCK_DGRAM : SOCK_STREAM, 0);
 
 	  if (tsock->fd < 0)
-	    {
-	      errno_val = errno;
-	      perror ("ERROR in sock_test_connect_test_sockets()");
-	      fprintf (stderr, "CLIENT: ERROR: socket failed (errno = %d)!\n",
-		       errno_val);
-	      return tsock->fd;
-	    }
+	    stfail ("socket()");
 
 	  rv = connect (tsock->fd, (struct sockaddr *) &scm->server_addr,
 			scm->server_addr_size);
 
 	  if (rv < 0)
-	    {
-	      errno_val = errno;
-	      perror ("ERROR in sock_test_connect_test_sockets()");
-	      fprintf (stderr, "CLIENT: ERROR: connect failed "
-		       "(errno = %d)!\n", errno_val);
-	      return -1;
-	    }
+	    stfail ("connect()");
+
 	  if (fcntl (tsock->fd, F_SETFL, O_NONBLOCK) < 0)
-	    {
-	      errno_val = errno;
-	      perror ("ERROR in sock_test_connect_test_sockets()");
-	      fprintf (stderr, "CLIENT: ERROR: fcntl failed (errno = %d)!\n",
-		       errno_val);
-	      return -1;
-	    }
+	    stfail ("fcntl");
+
 	  tsock->cfg = ctrl->cfg;
 	  vcl_test_session_buf_alloc (tsock);
 	  sock_test_cfg_sync (tsock);
 
-	  printf ("CLIENT (fd %d): Test socket %d connected.\n",
-		  tsock->fd, i);
+	  stinf ("(fd %d): Test socket %d connected", tsock->fd, i);
 	}
     }
 
   scm->num_test_sockets = num_test_sockets;
-  printf ("CLIENT: All sockets (%d) connected!\n", scm->num_test_sockets + 1);
+  stinf ("All sockets (%d) connected!\n", scm->num_test_sockets + 1);
   return 0;
 }
 
@@ -668,9 +561,8 @@ cfg_txbuf_size_set (void)
       vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
     }
   else
-    fprintf (stderr, "CLIENT: ERROR: Invalid txbuf size (%lu) < "
-	     "minimum buf size (%u)!\n",
-	     txbuf_size, VCL_TEST_CFG_BUF_SIZE_MIN);
+    stabrt ("Invalid txbuf size (%lu) < minimum buf size (%u)!",
+	    txbuf_size, VCL_TEST_CFG_BUF_SIZE_MIN);
 }
 
 static void
@@ -688,9 +580,7 @@ cfg_num_writes_set (void)
       vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
     }
   else
-    {
-      fprintf (stderr, "CLIENT: ERROR: invalid num writes: %u\n", num_writes);
-    }
+    stabrt ("Invalid num writes: %u", num_writes);
 }
 
 static void
@@ -710,11 +600,8 @@ cfg_num_test_sockets_set (void)
       vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
     }
   else
-    {
-      fprintf (stderr, "CLIENT: ERROR: invalid num test sockets: "
-	       "%u, (%d max)\n",
-	       num_test_sockets, VCL_TEST_CFG_MAX_TEST_SESS);
-    }
+    stabrt ("Invalid num test sockets: %u, (%d max)\n", num_test_sockets,
+	    VCL_TEST_CFG_MAX_TEST_SESS);
 }
 
 static void
@@ -733,9 +620,8 @@ cfg_rxbuf_size_set (void)
       vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
     }
   else
-    fprintf (stderr, "CLIENT: ERROR: Invalid rxbuf size (%lu) < "
-	     "minimum buf size (%u)!\n",
-	     rxbuf_size, VCL_TEST_CFG_BUF_SIZE_MIN);
+    stabrt ("Invalid rxbuf size (%lu) < minimum buf size (%u)!",
+	    rxbuf_size, VCL_TEST_CFG_BUF_SIZE_MIN);
 }
 
 static void
@@ -746,7 +632,6 @@ cfg_verbose_toggle (void)
 
   ctrl->cfg.verbose = ctrl->cfg.verbose ? 0 : 1;
   vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
-
 }
 
 static vcl_test_t
@@ -805,22 +690,21 @@ parse_input ()
 void
 print_usage_and_exit (void)
 {
-  fprintf (stderr,
-	   "sock_test_client [OPTIONS] <ipaddr> <port>\n"
-	   "  OPTIONS\n"
-	   "  -h               Print this message and exit.\n"
-	   "  -6               Use IPv6\n"
-	   "  -u               Use UDP transport layer\n"
-	   "  -c               Print test config before test.\n"
-	   "  -w <dir>         Write test results to <dir>.\n"
-	   "  -X               Exit after running test.\n"
-	   "  -E               Run Echo test.\n"
-	   "  -N <num-writes>  Test Cfg: number of writes.\n"
-	   "  -R <rxbuf-size>  Test Cfg: rx buffer size.\n"
-	   "  -T <txbuf-size>  Test Cfg: tx buffer size.\n"
-	   "  -U               Run Uni-directional test.\n"
-	   "  -B               Run Bi-directional test.\n"
-	   "  -V               Verbose mode.\n");
+  stinf ("sock_test_client [OPTIONS] <ipaddr> <port>\n"
+	 "  OPTIONS\n"
+	 "  -h               Print this message and exit.\n"
+	 "  -6               Use IPv6\n"
+	 "  -u               Use UDP transport layer\n"
+	 "  -c               Print test config before test.\n"
+	 "  -w <dir>         Write test results to <dir>.\n"
+	 "  -X               Exit after running test.\n"
+	 "  -E               Run Echo test.\n"
+	 "  -N <num-writes>  Test Cfg: number of writes.\n"
+	 "  -R <rxbuf-size>  Test Cfg: rx buffer size.\n"
+	 "  -T <txbuf-size>  Test Cfg: tx buffer size.\n"
+	 "  -U               Run Uni-directional test.\n"
+	 "  -B               Run Bi-directional test.\n"
+	 "  -V               Verbose mode.\n");
   exit (1);
 }
 
@@ -829,7 +713,7 @@ main (int argc, char **argv)
 {
   sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;
-  int c, rv, errno_val;
+  int c, rv;
   vcl_test_t post_test = VCL_TEST_TYPE_NONE;
 
   vcl_test_cfg_init (&ctrl->cfg);
@@ -847,23 +731,22 @@ main (int argc, char **argv)
 	if (sscanf (optarg, "0x%x", &ctrl->cfg.num_test_sessions) != 1)
 	  if (sscanf (optarg, "%u", &ctrl->cfg.num_test_sessions) != 1)
 	    {
-	      fprintf (stderr, "CLIENT: ERROR: Invalid value for "
-		       "option -%c!\n", c);
+	      stinf ("ERROR: Invalid value for option -%c!", c);
 	      print_usage_and_exit ();
 	    }
 	if (!ctrl->cfg.num_test_sessions ||
 	    (ctrl->cfg.num_test_sessions > FD_SETSIZE))
 	  {
-	    fprintf (stderr, "CLIENT: ERROR: Invalid number of "
-		     "sockets (%d) specified for option -%c!\n"
-		     "       Valid range is 1 - %d\n",
-		     ctrl->cfg.num_test_sessions, c, FD_SETSIZE);
+	    stinf ("ERROR: Invalid number of "
+		   "sockets (%d) specified for option -%c!\n"
+		   "       Valid range is 1 - %d\n",
+		   ctrl->cfg.num_test_sessions, c, FD_SETSIZE);
 	    print_usage_and_exit ();
 	  }
 	break;
 
       case 'w':
-	fprintf (stderr, "CLIENT: Writing test results to files is TBD.\n");
+	stinf ("Writing test results to files is TBD.\n");
 	break;
 
       case 'X':
@@ -873,9 +756,8 @@ main (int argc, char **argv)
       case 'E':
 	if (strlen (optarg) > ctrl->txbuf_size)
 	  {
-	    fprintf (stderr, "CLIENT: ERROR: Option -%c value "
-		     "larger than txbuf size (%d)!\n",
-		     optopt, ctrl->txbuf_size);
+	    stinf ("ERROR: Option -%c value larger than txbuf size (%d)!",
+		   optopt, ctrl->txbuf_size);
 	    print_usage_and_exit ();
 	  }
 	strncpy (ctrl->txbuf, optarg, ctrl->txbuf_size);
@@ -886,14 +768,13 @@ main (int argc, char **argv)
 	if (sscanf (optarg, "0x%x", &ctrl->cfg.num_test_sessions) != 1)
 	  if (sscanf (optarg, "%d", &ctrl->cfg.num_test_sessions) != 1)
 	    {
-	      fprintf (stderr, "CLIENT: ERROR: Invalid value for "
-		       "option -%c!\n", c);
+	      stinf ("ERROR: Invalid value for option -%c!\n", c);
 	      print_usage_and_exit ();
 	    }
 	if (ctrl->cfg.num_test_sessions > VCL_TEST_CFG_MAX_TEST_SESS)
 	  {
-	    fprintf (stderr, "CLIENT: ERROR: value greater than max "
-		     "number test sockets (%d)!", VCL_TEST_CFG_MAX_TEST_SESS);
+	    stinf ("ERROR: value greater than max number test sockets (%d)!",
+		   VCL_TEST_CFG_MAX_TEST_SESS);
 	    print_usage_and_exit ();
 	  }
 	break;
@@ -902,8 +783,7 @@ main (int argc, char **argv)
 	if (sscanf (optarg, "0x%lx", &ctrl->cfg.num_writes) != 1)
 	  if (sscanf (optarg, "%ld", &ctrl->cfg.num_writes) != 1)
 	    {
-	      fprintf (stderr, "CLIENT: ERROR: Invalid value for "
-		       "option -%c!\n", c);
+	      stinf ("ERROR: Invalid value for option -%c!", c);
 	      print_usage_and_exit ();
 	    }
 	ctrl->cfg.total_bytes = ctrl->cfg.num_writes * ctrl->cfg.txbuf_size;
@@ -913,8 +793,7 @@ main (int argc, char **argv)
 	if (sscanf (optarg, "0x%lx", &ctrl->cfg.rxbuf_size) != 1)
 	  if (sscanf (optarg, "%ld", &ctrl->cfg.rxbuf_size) != 1)
 	    {
-	      fprintf (stderr, "CLIENT: ERROR: Invalid value for "
-		       "option -%c!\n", c);
+	      stinf ("ERROR: Invalid value for option -%c!", c);
 	      print_usage_and_exit ();
 	    }
 	if (ctrl->cfg.rxbuf_size >= VCL_TEST_CFG_BUF_SIZE_MIN)
@@ -926,9 +805,8 @@ main (int argc, char **argv)
 	  }
 	else
 	  {
-	    fprintf (stderr, "CLIENT: ERROR: rxbuf size (%lu) "
-		     "less than minumum (%u)\n",
-		     ctrl->cfg.rxbuf_size, VCL_TEST_CFG_BUF_SIZE_MIN);
+	    stinf ("ERROR: rxbuf size (%lu) less than minumum (%u)\n",
+		   ctrl->cfg.rxbuf_size, VCL_TEST_CFG_BUF_SIZE_MIN);
 	    print_usage_and_exit ();
 	  }
 
@@ -938,8 +816,7 @@ main (int argc, char **argv)
 	if (sscanf (optarg, "0x%lx", &ctrl->cfg.txbuf_size) != 1)
 	  if (sscanf (optarg, "%ld", &ctrl->cfg.txbuf_size) != 1)
 	    {
-	      fprintf (stderr, "CLIENT: ERROR: Invalid value "
-		       "for option -%c!\n", c);
+	      stinf ("ERROR: Invalid value for option -%c!", c);
 	      print_usage_and_exit ();
 	    }
 	if (ctrl->cfg.txbuf_size >= VCL_TEST_CFG_BUF_SIZE_MIN)
@@ -953,9 +830,8 @@ main (int argc, char **argv)
 	  }
 	else
 	  {
-	    fprintf (stderr, "CLIENT: ERROR: txbuf size (%lu) "
-		     "less than minumum (%u)!\n",
-		     ctrl->cfg.txbuf_size, VCL_TEST_CFG_BUF_SIZE_MIN);
+	    stinf ("ERROR: txbuf size (%lu) less than minumum (%u)!",
+		   ctrl->cfg.txbuf_size, VCL_TEST_CFG_BUF_SIZE_MIN);
 	    print_usage_and_exit ();
 	  }
 	break;
@@ -989,17 +865,14 @@ main (int argc, char **argv)
 	  case 'R':
 	  case 'T':
 	  case 'w':
-	    fprintf (stderr, "CLIENT: ERROR: Option -%c "
-		     "requires an argument.\n", optopt);
+	    stinf ("ERROR: Option -%c requires an argument.\n", optopt);
 	    break;
 
 	  default:
 	    if (isprint (optopt))
-	      fprintf (stderr, "CLIENT: ERROR: Unknown "
-		       "option `-%c'.\n", optopt);
+	      stinf ("ERROR: Unknown option `-%c'.\n", optopt);
 	    else
-	      fprintf (stderr, "CLIENT: ERROR: Unknown "
-		       "option character `\\x%x'.\n", optopt);
+	      stinf ("ERROR: Unknown option character `\\x%x'.\n", optopt);
 	  }
 	/* fall thru */
       case 'h':
@@ -1009,7 +882,7 @@ main (int argc, char **argv)
 
   if (argc < (optind + 2))
     {
-      fprintf (stderr, "CLIENT: ERROR: Insufficient number of arguments!\n");
+      stinf ("ERROR: Insufficient number of arguments!\n");
       print_usage_and_exit ();
     }
 
@@ -1017,13 +890,7 @@ main (int argc, char **argv)
 		     ctrl->cfg.transport_udp ? SOCK_DGRAM : SOCK_STREAM, 0);
 
   if (ctrl->fd < 0)
-    {
-      errno_val = errno;
-      perror ("ERROR in main()");
-      fprintf (stderr, "CLIENT: ERROR: socket "
-	       "failed (errno = %d)!\n", errno_val);
-      return ctrl->fd;
-    }
+    stfail ("socket()");
 
   memset (&scm->server_addr, 0, sizeof (scm->server_addr));
   if (ctrl->cfg.address_ip6)
@@ -1047,22 +914,16 @@ main (int argc, char **argv)
 
   do
     {
-      printf ("\nCLIENT: Connecting to server...\n");
+      stinf ("\nConnecting to server...\n");
 
       rv = connect (ctrl->fd, (struct sockaddr *) &scm->server_addr,
 		    scm->server_addr_size);
 
       if (rv < 0)
-	{
-	  errno_val = errno;
-	  perror ("ERROR in main()");
-	  fprintf (stderr, "CLIENT: ERROR: connect failed (errno = %d)!\n",
-		   errno_val);
-	  return -1;
-	}
+	stfail ("connect()");
 
       sock_test_cfg_sync (ctrl);
-      printf ("CLIENT (fd %d): Control socket connected.\n", ctrl->fd);
+      stinf ("(fd %d): Control socket connected.\n", ctrl->fd);
     }
   while (rv < 0);
 
@@ -1123,14 +984,14 @@ main (int argc, char **argv)
       memset (ctrl->txbuf, 0, ctrl->txbuf_size);
       memset (ctrl->rxbuf, 0, ctrl->rxbuf_size);
 
-      printf ("\nCLIENT: Type some characters and hit <return>\n"
-	      "('" VCL_TEST_TOKEN_HELP "' for help): ");
+      stinf ("\nType some characters and hit <return>\n"
+	     "('" VCL_TEST_TOKEN_HELP "' for help): ");
 
       if (fgets (ctrl->txbuf, ctrl->txbuf_size, stdin) != NULL)
 	{
 	  if (strlen (ctrl->txbuf) == 1)
 	    {
-	      printf ("\nCLIENT: Nothing to send!  Please try again...\n");
+	      stinf ("\nNothing to send!  Please try again...\n");
 	      continue;
 	    }
 	  ctrl->txbuf[strlen (ctrl->txbuf) - 1] = 0;	// chomp the newline.
