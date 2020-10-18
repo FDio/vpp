@@ -261,15 +261,12 @@ fill_gso_buffer_flags (vlib_buffer_t * b0, virtio_net_hdr_v1_t * hdr,
 static_always_inline uword
 virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				vlib_frame_t * frame, virtio_if_t * vif,
-				u16 qid, virtio_if_type_t type,
+				virtio_vring_t * vring, virtio_if_type_t type,
 				int gso_enabled, int checksum_offload_enabled)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index = vm->thread_index;
   uword n_trace = vlib_get_trace_count (vm, node);
-  virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, qid);
-  u16 txq_id = thread_index % vif->num_txqs;
-  virtio_vring_t *txq_vring = vec_elt_at_index (vif->txq_vrings, txq_id);
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   const int hdr_sz = vif->virtio_net_hdr_sz;
   u32 *to_next = 0;
@@ -279,23 +276,8 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 last = vring->last_used_idx;
   u16 n_left = vring->used->idx - last;
 
-  if (clib_spinlock_trylock_if_init (&txq_vring->lockp))
-    {
-      if (vif->packet_coalesce)
-	vnet_gro_flow_table_schedule_node_on_dispatcher (vm,
-							 txq_vring->flow_table);
-      else if (vif->packet_buffering)
-	virtio_vring_buffering_schedule_node_on_dispatcher (vm,
-							    txq_vring->buffering);
-      clib_spinlock_unlock_if_init (&txq_vring->lockp);
-    }
-
-  if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0 &&
-      vring->last_kick_avail_idx != vring->avail->idx)
-    virtio_kick (vm, vring, vif);
-
   if (n_left == 0)
-    goto refill;
+    return 0;
 
   if (type == VIRTIO_IF_TYPE_TUN)
     next_index = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
@@ -432,9 +414,6 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				   vif->sw_if_index, n_rx_packets,
 				   n_rx_bytes);
 
-refill:
-  virtio_refill_vring (vm, vif, type, vring, hdr_sz, node->node_index);
-
   return n_rx_packets;
 }
 
@@ -443,17 +422,39 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    vlib_frame_t * frame, virtio_if_t * vif, u16 qid,
 			    virtio_if_type_t type)
 {
+  virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, qid);
+  const int hdr_sz = vif->virtio_net_hdr_sz;
+  u16 txq_id = vm->thread_index % vif->num_txqs;
+  virtio_vring_t *txq_vring = vec_elt_at_index (vif->txq_vrings, txq_id);
+  uword rv;
+
+  if (clib_spinlock_trylock_if_init (&txq_vring->lockp))
+    {
+      if (vif->packet_coalesce)
+	vnet_gro_flow_table_schedule_node_on_dispatcher
+	  (vm, txq_vring->flow_table);
+      else if (vif->packet_buffering)
+	virtio_vring_buffering_schedule_node_on_dispatcher
+	  (vm, txq_vring->buffering);
+      clib_spinlock_unlock_if_init (&txq_vring->lockp);
+    }
+
+  if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0 &&
+      vring->last_kick_avail_idx != vring->avail->idx)
+    virtio_kick (vm, vring, vif);
 
   if (vif->gso_enabled)
-    return virtio_device_input_gso_inline (vm, node, frame, vif,
-					   qid, type, 1, 1);
+    rv = virtio_device_input_gso_inline (vm, node, frame, vif, vring, type,
+					 1, 1);
   else if (vif->csum_offload_enabled)
-    return virtio_device_input_gso_inline (vm, node, frame, vif,
-					   qid, type, 0, 1);
+    rv = virtio_device_input_gso_inline (vm, node, frame, vif, vring, type,
+					 0, 1);
   else
-    return virtio_device_input_gso_inline (vm, node, frame, vif,
-					   qid, type, 0, 0);
-  return 0;
+    rv = virtio_device_input_gso_inline (vm, node, frame, vif, vring, type,
+					 0, 0);
+
+  virtio_refill_vring (vm, vif, type, vring, hdr_sz, node->node_index);
+  return rv;
 }
 
 VLIB_NODE_FN (virtio_input_node) (vlib_main_t * vm,
