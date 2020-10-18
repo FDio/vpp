@@ -260,7 +260,7 @@ flow_report_process (vlib_main_t * vm,
   vlib_node_t *ip4_lookup_node;
   vlib_frame_t *nf = 0;
   u32 template_bi;
-  u32 *to_next;
+  u32 *to_next = NULL;
   int send_template;
   f64 now;
   int rv;
@@ -301,20 +301,20 @@ flow_report_process (vlib_main_t * vm,
 	if (rv < 0)
 	  continue;
 
-	nf = vlib_get_frame_to_node (vm, ip4_lookup_node_index);
-	nf->n_vectors = 0;
-	to_next = vlib_frame_vector_args (nf);
+	nf = NULL;
 
 	if (template_bi != ~0)
 	  {
+	    nf = vlib_get_frame_to_node (vm, ip4_lookup_node_index);
+	    nf->n_vectors = 0;
+	    to_next = vlib_frame_vector_args (nf);
 	    to_next[0] = template_bi;
 	    to_next++;
 	    nf->n_vectors++;
 	  }
 
-	nf = fr->flow_data_callback (frm, fr,
-				     nf, to_next, ip4_lookup_node_index);
-	if (nf)
+	fr->flow_data_callback (frm, NULL, NULL, NULL, -1); 
+	if (nf && nf->n_vectors)
 	  vlib_put_frame_to_node (vm, ip4_lookup_node_index, nf);
       }
     }
