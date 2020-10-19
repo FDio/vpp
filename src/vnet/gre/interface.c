@@ -203,7 +203,7 @@ gre_teib_mk_key (const gre_tunnel_t * t,
 }
 
 /**
- * An NHRP entry has been added
+ * An TEIB entry has been added
  */
 static void
 gre_teib_entry_added (const teib_entry_t * ne)

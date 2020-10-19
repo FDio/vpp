@@ -724,8 +724,9 @@ ipsec_tun_protect_update (u32 sw_if_index,
 
       if (ip46_address_is_zero (&itp->itp_tun.src))
 	{
-	  /* must be one of thos pesky ipsec interfaces that has no encap.
-	   * the encap then MUST comefrom the tunnel mode SA.
+	  /*
+	   * must be one of those pesky ipsec interfaces that has no encap.
+	   * the encap then MUST come from the tunnel mode SA.
 	   */
 	  ipsec_sa_t *sa;
 

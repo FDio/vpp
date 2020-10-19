@@ -106,6 +106,10 @@ extern int ipsec_itf_delete (u32 sw_if_index);
 extern void ipsec_itf_adj_stack (adj_index_t ai, u32 sai);
 extern void ipsec_itf_adj_unstack (adj_index_t ai);
 
+extern u8 *format_ipsec_itf (u8 * s, va_list * a);
+
+extern ipsec_itf_t *ipsec_itf_get (index_t ii);
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
