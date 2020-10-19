@@ -23,6 +23,7 @@
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_tun.h>
+#include <vnet/ipsec/ipsec_itf.h>
 
 u8 *
 format_ipsec_policy_action (u8 * s, va_list * args)
@@ -423,6 +424,20 @@ format_ipsec6_tunnel_kv (u8 * s, va_list * args)
 	      clib_net_to_host_u32 (kv->key.spi),
 	      clib_net_to_host_u32 (kv->key.spi),
 	      kv->value.sa_index, kv->value.tun_index);
+
+  return (s);
+}
+
+u8 *
+format_ipsec_itf (u8 * s, va_list * a)
+{
+  index_t ii = va_arg (*a, index_t);
+  ipsec_itf_t *itf;
+
+  itf = ipsec_itf_get (ii);
+  s = format (s, "[%d] %U %U",
+	      ii, format_vnet_sw_if_index_name, vnet_get_main (),
+	      itf->ii_sw_if_index, format_tunnel_mode, itf->ii_mode);
 
   return (s);
 }
