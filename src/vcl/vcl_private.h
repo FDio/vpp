@@ -564,8 +564,7 @@ static inline u8
 vcl_session_is_open (vcl_session_t * s)
 {
   return ((vcl_session_is_ready (s))
-	  || (s->session_state == VCL_STATE_LISTEN
-	      && s->session_type == VPPCOM_PROTO_UDP));
+	  || (s->session_state == VCL_STATE_LISTEN && vcl_session_is_cl (s)));
 }
 
 static inline u8
