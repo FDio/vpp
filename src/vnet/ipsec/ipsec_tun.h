@@ -17,20 +17,31 @@
 
 #include <vnet/ipsec/ipsec.h>
 
+#define foreach_ipsec_protect_flags \
+  _(L2, 1, "l2")                    \
+  _(ENCAPED, 2, "encapped")         \
+  _(ITF, 4, "itf")                  \
+
+typedef enum ipsec_protect_flags_t_
+{
+  IPSEC_PROTECT_NONE = 0,
+#define _(a,b,c) IPSEC_PROTECT_##a = b,
+  foreach_ipsec_protect_flags
+#undef _
+} __clib_packed ipsec_protect_flags_t;
+
+extern u8 *format_ipsec_tun_protect_flags (u8 * s, va_list * args);
+
 /**
  * result of a lookup in the protection bihash
  */
 typedef struct ipsec_tun_lkup_result_t_
 {
-  union
-  {
-    struct
-    {
-      u32 tun_index;
-      u32 sa_index;
-    };
-    u64 as_u64;
-  };
+  u32 tun_index;
+  u32 sa_index;
+  u32 sw_if_index;
+  ipsec_protect_flags_t flags;
+  u8 __pad[3];
 } ipsec_tun_lkup_result_t;
 
 typedef struct ipsec4_tunnel_kv_t
@@ -43,9 +54,9 @@ typedef struct ipsec4_tunnel_kv_t
   ipsec_tun_lkup_result_t value;
 } __clib_packed ipsec4_tunnel_kv_t;
 
-STATIC_ASSERT_SIZEOF (ipsec4_tunnel_kv_t, sizeof (clib_bihash_kv_8_8_t));
+STATIC_ASSERT_SIZEOF (ipsec4_tunnel_kv_t, sizeof (clib_bihash_kv_8_16_t));
 STATIC_ASSERT_OFFSET_OF (ipsec4_tunnel_kv_t, value,
-			 STRUCT_OFFSET_OF (clib_bihash_kv_8_8_t, value));
+			 STRUCT_OFFSET_OF (clib_bihash_kv_8_16_t, value));
 
 static inline void
 ipsec4_tunnel_mk_key (ipsec4_tunnel_kv_t * k,
@@ -77,27 +88,12 @@ typedef struct ipsec6_tunnel_kv_t_
   ipsec_tun_lkup_result_t value;
 } __clib_packed ipsec6_tunnel_kv_t;
 
-STATIC_ASSERT_SIZEOF (ipsec6_tunnel_kv_t, sizeof (clib_bihash_kv_24_8_t));
+STATIC_ASSERT_SIZEOF (ipsec6_tunnel_kv_t, sizeof (clib_bihash_kv_24_16_t));
 STATIC_ASSERT_OFFSET_OF (ipsec6_tunnel_kv_t, value,
-			 STRUCT_OFFSET_OF (clib_bihash_kv_24_8_t, value));
+			 STRUCT_OFFSET_OF (clib_bihash_kv_24_16_t, value));
 
 extern u8 *format_ipsec4_tunnel_kv (u8 * s, va_list * args);
 extern u8 *format_ipsec6_tunnel_kv (u8 * s, va_list * args);
-
-#define foreach_ipsec_protect_flags \
-  _(L2, 1, "l2")                    \
-  _(ENCAPED, 2, "encapped")         \
-  _(ITF, 4, "itf")                  \
-
-typedef enum ipsec_protect_flags_t_
-{
-  IPSEC_PROTECT_NONE = 0,
-#define _(a,b,c) IPSEC_PROTECT_##a = b,
-  foreach_ipsec_protect_flags
-#undef _
-} __clib_packed ipsec_protect_flags_t;
-
-extern u8 *format_ipsec_tun_protect_flags (u8 * s, va_list * args);
 
 typedef struct ipsec_ep_t_
 {
