@@ -36,3 +36,4 @@ add_vpp_executable(test_vppapiclient NO_INSTALL
 
 add_subdirectory(vapi)
 add_subdirectory(python)
+add_subdirectory(pom)

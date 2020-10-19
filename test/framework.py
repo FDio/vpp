@@ -23,22 +23,20 @@ from logging import FileHandler, DEBUG, Formatter
 
 import scapy.compat
 from scapy.packet import Raw
-import hook as hookmodule
-from vpp_pg_interface import VppPGInterface
-from vpp_sub_interface import VppSubInterface
-from vpp_lo_interface import VppLoInterface
-from vpp_bvi_interface import VppBviInterface
-from vpp_papi_provider import VppPapiProvider
-import vpp_papi
-from vpp_papi.vpp_stats import VPPStats
-from vpp_papi.vpp_transport_shmem import VppTransportShmemIOError
-from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
-    get_logger, colorize
-from vpp_object import VppObjectRegistry
-from util import ppp, is_core_present
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
+
+import vpp_papi
+from vpp_papi.vpp_stats import VPPStats
+from vpp_papi.vpp_transport_shmem import VppTransportShmemIOError
+
+from vpp_pom import StepHook, PollHook, VppPGInterface, VppSubInterface, \
+    VppLoInterface, VppBviInterface, VppPapiProvider, VppObjectRegistry
+from vpp_pom.log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
+    get_logger, colorize
+from vpp_pom.util import ppp, is_core_present
+
 
 if os.name == 'posix' and sys.version_info[0] < 3:
     # using subprocess32 is recommended by python official documentation
@@ -578,9 +576,9 @@ class VppTestCase(unittest.TestCase):
             cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls,
                                        cls.vapi_response_timeout)
             if cls.step:
-                hook = hookmodule.StepHook(cls)
+                hook = StepHook(cls)
             else:
-                hook = hookmodule.PollHook(cls)
+                hook = PollHook(cls)
             cls.vapi.register_hook(hook)
             cls.statistics = VPPStats(socketname=cls.stats_sock)
             try:

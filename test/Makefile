@@ -115,6 +115,12 @@ PAPI_WIPE_DIST=$(WS_ROOT)/src/vpp-api/vapi/__pycache__ \
 	$(PAPI_PYTHON_SRC_DIR)/build \
 	$(PAPI_PYTHON_SRC_DIR)/vpp_papi.egg-info \
 	$(PAPI_PYTHON_SRC_DIR)/vpp_papi/__pycache__
+POM_INSTALL_DONE=$(VENV_RUN_DIR)/pom-install-$(PYTHON_VERSION).done
+POM_PYTHON_SRC_DIR=$(WS_ROOT)/src/vpp-api/pom
+POM_WIPE_DIST=$(WS_ROOT)/src/vpp-api/vapi/__pycache__ \
+	$(POM_PYTHON_SRC_DIR)/build \
+	$(POM_PYTHON_SRC_DIR)/vpp_pom.egg-info \
+	$(POM_PYTHON_SRC_DIR)/vpp_pom/__pycache__
 
 $(PIP_TOOLS_INSTALL_DONE):
 	@rm -rf $(VENV_PATH)
@@ -174,9 +180,11 @@ endef
 
 ifeq ($(SANITY),no)
 SANITY_IMPORT_VPP_PAPI_CMD=true
+SANITY_IMPORT_VPP_POM_CMD=true
 SANITY_RUN_VPP_CMD=true
 else
 SANITY_IMPORT_VPP_PAPI_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) $(BUILD_TEST_SRC)/sanity_import_vpp_papi.py
+SANITY_IMPORT_VPP_POM_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) $(BUILD_TEST_SRC)/sanity_import_vpp_pom.py
 SANITY_RUN_VPP_CMD=source $(VENV_PATH)/bin/activate && PYTHONPATH=$(BUILD_TEST_SRC) $(PYTHON_INTERP) $(BUILD_TEST_SRC)/sanity_run_vpp.py
 endif
 
@@ -205,6 +213,14 @@ sanity: test-dep verify-no-running-vpp
 		 echo \"* to debug: \" &&\
 		 echo \"* 1. enter test shell:   make test-shell\" &&\
 		 echo \"* 2. execute debugger:   gdb python -ex 'run sanity_import_vpp_papi.py'\" &&\
+	         echo \"*******************************************************************\" &&\
+		 false)"
+	@bash -c "$(SANITY_IMPORT_VPP_POM_CMD) ||\
+		(echo \"*******************************************************************\" &&\
+		 echo \"* Sanity check failed, cannot import vpp_pom\" &&\
+		 echo \"* to debug: \" &&\
+		 echo \"* 1. enter test shell:   make test-shell\" &&\
+		 echo \"* 2. execute debugger:   gdb python -ex 'run sanity_import_vpp_pom.py'\" &&\
 	         echo \"*******************************************************************\" &&\
 		 false)"
 	@bash -c "$(SANITY_RUN_VPP_CMD) ||\
