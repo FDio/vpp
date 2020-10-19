@@ -15,7 +15,7 @@ from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 from scapy.layers.inet6 import IPv6ExtHdrFragment
 from framework import VppTestCase, VppTestRunner
-from util import Host, ppp
+from vpp_pom.util import Host, ppp
 from template_classifier import TestClassifier
 
 
@@ -104,10 +104,10 @@ class TestClassifyAcl(TestClassifier):
 
             # Create BD with MAC learning and unknown unicast flooding disabled
             # and put interfaces to this BD
-            cls.vapi.bridge_domain_add_del(bd_id=cls.bd_id, uu_flood=1,
-                                           learn=1)
+            cls.vclient.bridge_domain_add_del(bd_id=cls.bd_id, uu_flood=1,
+                                              learn=1)
             for pg_if in cls.pg_interfaces:
-                cls.vapi.sw_interface_set_l2_bridge(
+                cls.vclient.sw_interface_set_l2_bridge(
                     rx_sw_if_index=pg_if.sw_if_index, bd_id=cls.bd_id)
 
             # Set up all interfaces
@@ -175,7 +175,7 @@ class TestClassifyAcl(TestClassifier):
             - create(1) or delete(0)
         """
         mask_match, mask_match_len = self._resolve_mask_match(match)
-        r = self.vapi.classify_add_del_session(
+        r = self.vclient.classify_add_del_session(
             is_add=is_add,
             table_index=table_index,
             match=mask_match,
@@ -322,7 +322,7 @@ class TestClassifyAcl(TestClassifier):
                 else:
                     payload_info = self.payload_to_info(packet[Raw])
                     payload = packet[self.proto_map[payload_info.proto]]
-            except:
+            except BaseException:
                 self.logger.error(ppp("Unexpected or invalid packet "
                                       "(outside network):", packet))
                 raise
@@ -337,7 +337,7 @@ class TestClassifyAcl(TestClassifier):
                     else:
                         self.assertEqual(payload.type, self.icmp6_type)
                         self.assertEqual(payload.code, self.icmp6_code)
-                except:
+                except BaseException:
                     self.logger.error(ppp("Unexpected or invalid packet "
                                           "(outside network):", packet))
                     raise
@@ -375,7 +375,7 @@ class TestClassifyAcl(TestClassifier):
                             UDP].sport)
                         self.assertEqual(udp.dport, saved_packet[
                             UDP].dport)
-                except:
+                except BaseException:
                     self.logger.error(ppp("Unexpected or invalid packet:",
                                           packet))
                     raise

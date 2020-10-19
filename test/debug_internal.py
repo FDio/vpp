@@ -1,7 +1,7 @@
 import gc
 import pprint
 import vpp_papi
-from vpp_papi_provider import VppPapiProvider
+from vpp_pom.vpp_papi_provider import VppPapiProvider
 import objgraph
 from pympler import tracker
 tr = tracker.SummaryTracker()
@@ -35,5 +35,5 @@ def on_tear_down_class(cls):
             for r in refs:
                 try:
                     f.write("%s\n" % pp.pformat(r))
-                except:
+                except BaseException:
                     f.write("%s\n" % type(r))

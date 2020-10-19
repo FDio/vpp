@@ -9,10 +9,10 @@ from framework import VppTestCase, VppTestRunner
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, TCP
-from util import ppp
+from vpp_pom.util import ppp
 from template_classifier import TestClassifier
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_ip import INVALID_INDEX
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip import INVALID_INDEX
 
 
 # Tests split to different test case classes because of issue reported in
@@ -537,7 +537,7 @@ class TestClassifierPBR(TestClassifier):
             self.build_ip_match(src_ip=self.pg0.remote_ip4),
             pbr_option, self.pbr_vrfid)
         self.assertTrue(self.verify_vrf(self.pbr_vrfid))
-        r = VppIpRoute(self, self.pg3.local_ip4, 24,
+        r = VppIpRoute(self.vclient, self.pg3.local_ip4, 24,
                        [VppRoutePath(self.pg3.remote_ip4,
                                      INVALID_INDEX)],
                        table_id=self.pbr_vrfid)
@@ -564,6 +564,7 @@ class TestClassifierPBR(TestClassifier):
 
         # and the table should be gone.
         self.assertFalse(self.verify_vrf(self.pbr_vrfid))
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

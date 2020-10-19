@@ -3,7 +3,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_gcov_tests
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
 class TestOffload(VppTestCase):
@@ -54,14 +54,14 @@ class TestOffload(VppTestCase):
                 "show error"]
 
         for cmd in cmds:
-            r = self.vapi.cli_return_response(cmd)
+            r = self.vclient.cli_return_response(cmd)
             if r.retval != 0:
                 if hasattr(r, 'reply'):
                     self.logger.info(cmd + " FAIL reply " + r.reply)
                 else:
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
 
-        r = self.vapi.cli_return_response("show trace")
+        r = self.vclient.cli_return_response("show trace")
         self.assertTrue(r.retval == 0)
         self.assertTrue(hasattr(r, 'reply'))
         rv = r.reply
@@ -69,6 +69,7 @@ class TestOffload(VppTestCase):
         self.assertFalse(look_here == -1)
         bad_checksum_index = rv[look_here:].find('should be')
         self.assertTrue(bad_checksum_index == -1)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

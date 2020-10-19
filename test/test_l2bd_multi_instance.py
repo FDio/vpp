@@ -70,7 +70,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
-from util import Host, ppp
+from vpp_pom.util import Host, ppp
 
 
 class TestL2bdMultiInst(VppTestCase):
@@ -144,8 +144,8 @@ class TestL2bdMultiInst(VppTestCase):
         """
         super(TestL2bdMultiInst, self).tearDown()
         if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show l2fib verbose"))
-            self.logger.info(self.vapi.ppcli("show bridge-domain"))
+            self.logger.info(self.vclient.ppcli("show l2fib verbose"))
+            self.logger.info(self.vclient.ppcli("show bridge-domain"))
 
     @classmethod
     def create_hosts(cls, hosts_per_if):
@@ -182,7 +182,7 @@ class TestL2bdMultiInst(VppTestCase):
             (Default value = 1)
         """
         for b in range(start, start + count):
-            self.vapi.bridge_domain_add_del(bd_id=b)
+            self.vclient.bridge_domain_add_del(bd_id=b)
             self.logger.info("Bridge domain ID %d created" % b)
             if self.bd_list.count(b) == 0:
                 self.bd_list.append(b)
@@ -190,7 +190,7 @@ class TestL2bdMultiInst(VppTestCase):
                 self.bd_deleted_list.remove(b)
             for j in self.bd_if_range(b):
                 pg_if = self.pg_interfaces[j]
-                self.vapi.sw_interface_set_l2_bridge(
+                self.vclient.sw_interface_set_l2_bridge(
                     rx_sw_if_index=pg_if.sw_if_index, bd_id=b)
                 self.logger.info("pg-interface %s added to bridge domain ID %d"
                                  % (pg_if.name, b))
@@ -201,8 +201,8 @@ class TestL2bdMultiInst(VppTestCase):
                 pg_if.add_stream(packets)
         self.logger.info("Sending broadcast eth frames for MAC learning")
         self.pg_start()
-        self.logger.info(self.vapi.ppcli("show bridge-domain"))
-        self.logger.info(self.vapi.ppcli("show l2fib"))
+        self.logger.info(self.vclient.ppcli("show bridge-domain"))
+        self.logger.info(self.vclient.ppcli("show l2fib"))
 
     def delete_bd(self, count, start=1):
         """
@@ -215,10 +215,10 @@ class TestL2bdMultiInst(VppTestCase):
         for b in range(start, start + count):
             for j in self.bd_if_range(b):
                 pg_if = self.pg_interfaces[j]
-                self.vapi.sw_interface_set_l2_bridge(
+                self.vclient.sw_interface_set_l2_bridge(
                     rx_sw_if_index=pg_if.sw_if_index, bd_id=b, enable=0)
                 self.pg_in_bd.remove(pg_if)
-            self.vapi.bridge_domain_add_del(bd_id=b, is_add=0)
+            self.vclient.bridge_domain_add_del(bd_id=b, is_add=0)
             self.bd_list.remove(b)
             self.bd_deleted_list.append(b)
             self.logger.info("Bridge domain ID %d deleted" % b)
@@ -281,7 +281,7 @@ class TestL2bdMultiInst(VppTestCase):
                 self.assertEqual(ip.dst, saved[IP].dst)
                 self.assertEqual(udp.sport, saved[UDP].sport)
                 self.assertEqual(udp.dport, saved[UDP].dport)
-            except:
+            except BaseException:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         s = ""
@@ -319,8 +319,8 @@ class TestL2bdMultiInst(VppTestCase):
             else:
                 raise ValueError("Unknown feature used: %s" % flag)
             is_set = 1 if args[flag] else 0
-            self.vapi.bridge_flags(bd_id=bd_id, is_set=is_set,
-                                   flags=feature_bitmap)
+            self.vclient.bridge_flags(bd_id=bd_id, is_set=is_set,
+                                      flags=feature_bitmap)
         self.logger.info("Bridge domain ID %d updated" % bd_id)
 
     def verify_bd(self, bd_id, **args):
@@ -335,7 +335,7 @@ class TestL2bdMultiInst(VppTestCase):
         :return: 1 if bridge domain is configured, otherwise return 0.
         :raise: ValueError in case of unknown feature in the input.
         """
-        bd_dump = self.vapi.bridge_domain_dump(bd_id)
+        bd_dump = self.vclient.bridge_domain_dump(bd_id)
         if len(bd_dump) == 0:
             self.logger.info("Bridge domain ID %d is not configured" % bd_id)
             return 0
@@ -403,7 +403,7 @@ class TestL2bdMultiInst(VppTestCase):
             self.assertEqual(self.verify_bd(bd_id), 1)
 
         # Test 1
-        # self.vapi.cli("clear trace")
+        # self.vclient.cli("clear trace")
         self.run_verify_test()
         self.delete_bd(5)
 
@@ -466,7 +466,7 @@ class TestL2bdMultiInst(VppTestCase):
             self.assertEqual(self.verify_bd(bd_id), 1)
 
         # Test 4
-        # self.vapi.cli("clear trace")
+        # self.vclient.cli("clear trace")
         self.run_verify_test()
         self.delete_bd(2)
 

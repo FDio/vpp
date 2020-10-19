@@ -49,7 +49,7 @@ class TestNodeVariant(VppTestCase):
         super(TestNodeVariant, self).tearDown()
 
     def getActiveVariant(self, node):
-        node_desc = self.vapi.cli("show node " + node)
+        node_desc = self.vclient.cli("show node " + node)
         self.logger.info(node_desc)
 
         match = re.search(r'\s+(\S+)\s+(\d+)\s+(:?yes)',

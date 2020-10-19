@@ -11,12 +11,13 @@ from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 from scapy.layers.inet6 import IPv6ExtHdrFragment
 from framework import VppTestCase, VppTestRunner
-from util import Host, ppp
+from vpp_pom.util import Host, ppp
 from ipaddress import IPv4Network, IPv6Network
 
-from vpp_lo_interface import VppLoInterface
-from vpp_acl import AclRule, VppAcl, VppAclInterface, VppEtypeWhitelist
-from vpp_ip import INVALID_INDEX
+from vpp_pom.vpp_lo_interface import VppLoInterface
+from vpp_pom.plugins.vpp_acl import AclRule, VppAcl, VppAclInterface, \
+    VppEtypeWhitelist
+from vpp_pom.vpp_ip import INVALID_INDEX
 
 
 class TestACLplugin(VppTestCase):
@@ -103,10 +104,10 @@ class TestACLplugin(VppTestCase):
 
             # Create BD with MAC learning and unknown unicast flooding disabled
             # and put interfaces to this BD
-            cls.vapi.bridge_domain_add_del(bd_id=cls.bd_id, uu_flood=1,
-                                           learn=1)
+            cls.vclient.bridge_domain_add_del(bd_id=cls.bd_id, uu_flood=1,
+                                              learn=1)
             for pg_if in cls.pg_interfaces:
-                cls.vapi.sw_interface_set_l2_bridge(
+                cls.vclient.sw_interface_set_l2_bridge(
                     rx_sw_if_index=pg_if.sw_if_index, bd_id=cls.bd_id)
 
             # Set up all interfaces
@@ -163,19 +164,19 @@ class TestACLplugin(VppTestCase):
 
     def show_commands_at_teardown(self):
         cli = "show vlib graph l2-input-feat-arc"
-        self.logger.info(self.vapi.ppcli(cli))
+        self.logger.info(self.vclient.ppcli(cli))
         cli = "show vlib graph l2-input-feat-arc-end"
-        self.logger.info(self.vapi.ppcli(cli))
+        self.logger.info(self.vclient.ppcli(cli))
         cli = "show vlib graph l2-output-feat-arc"
-        self.logger.info(self.vapi.ppcli(cli))
+        self.logger.info(self.vclient.ppcli(cli))
         cli = "show vlib graph l2-output-feat-arc-end"
-        self.logger.info(self.vapi.ppcli(cli))
-        self.logger.info(self.vapi.ppcli("show l2fib verbose"))
-        self.logger.info(self.vapi.ppcli("show acl-plugin acl"))
-        self.logger.info(self.vapi.ppcli("show acl-plugin interface"))
-        self.logger.info(self.vapi.ppcli("show acl-plugin tables"))
-        self.logger.info(self.vapi.ppcli("show bridge-domain %s detail"
-                                         % self.bd_id))
+        self.logger.info(self.vclient.ppcli(cli))
+        self.logger.info(self.vclient.ppcli("show l2fib verbose"))
+        self.logger.info(self.vclient.ppcli("show acl-plugin acl"))
+        self.logger.info(self.vclient.ppcli("show acl-plugin interface"))
+        self.logger.info(self.vclient.ppcli("show acl-plugin tables"))
+        self.logger.info(self.vclient.ppcli("show bridge-domain %s detail"
+                                            % self.bd_id))
 
     def create_rule(self, ip=0, permit_deny=0, ports=PORTS_ALL, proto=-1,
                     s_prefix=0, s_ip=0,
@@ -190,23 +191,26 @@ class TestACLplugin(VppTestCase):
                        src_prefix=src_prefix, dst_prefix=dst_prefix)
 
     def apply_rules(self, rules, tag=None):
-        acl = VppAcl(self, rules, tag=tag)
+        acl = VppAcl(self.vclient, rules, tag=tag)
         acl.add_vpp_config()
         self.logger.info("Dumped ACL: " + str(acl.dump()))
         # Apply a ACL on the interface as inbound
         for i in self.pg_interfaces:
             acl_if = VppAclInterface(
-                self, sw_if_index=i.sw_if_index, n_input=1, acls=[acl])
+                self.vclient, sw_if_index=i.sw_if_index, n_input=1, acls=[acl])
             acl_if.add_vpp_config()
         return acl.acl_index
 
     def apply_rules_to(self, rules, tag=None, sw_if_index=INVALID_INDEX):
-        acl = VppAcl(self, rules, tag=tag)
+        acl = VppAcl(self.vclient, rules, tag=tag)
         acl.add_vpp_config()
         self.logger.info("Dumped ACL: " + str(acl.dump()))
         # Apply a ACL on the interface as inbound
-        acl_if = VppAclInterface(self, sw_if_index=sw_if_index, n_input=1,
-                                 acls=[acl])
+        acl_if = VppAclInterface(
+            self.vclient,
+            sw_if_index=sw_if_index,
+            n_input=1,
+            acls=[acl])
         return acl.acl_index
 
     def etype_whitelist(self, whitelist, n_input, add=True):
@@ -214,9 +218,12 @@ class TestACLplugin(VppTestCase):
         if add:
             self._wl = []
             for i in self.pg_interfaces:
-                self._wl.append(VppEtypeWhitelist(
-                    self, sw_if_index=i.sw_if_index, whitelist=whitelist,
-                    n_input=n_input).add_vpp_config())
+                self._wl.append(
+                    VppEtypeWhitelist(
+                        self.vclient,
+                        sw_if_index=i.sw_if_index,
+                        whitelist=whitelist,
+                        n_input=n_input).add_vpp_config())
         else:
             if hasattr(self, "_wl"):
                 for wl in self._wl:
@@ -337,7 +344,7 @@ class TestACLplugin(VppTestCase):
                 else:
                     payload_info = self.payload_to_info(packet[Raw])
                     payload = packet[self.proto_map[payload_info.proto]]
-            except:
+            except BaseException:
                 self.logger.error(ppp("Unexpected or invalid packet "
                                       "(outside network):", packet))
                 raise
@@ -352,7 +359,7 @@ class TestACLplugin(VppTestCase):
                     else:
                         self.assertEqual(payload.type, self.icmp6_type)
                         self.assertEqual(payload.code, self.icmp6_code)
-                except:
+                except BaseException:
                     self.logger.error(ppp("Unexpected or invalid packet "
                                           "(outside network):", packet))
                     raise
@@ -390,7 +397,7 @@ class TestACLplugin(VppTestCase):
                             UDP].sport)
                         self.assertEqual(udp.dport, saved_packet[
                             UDP].dport)
-                except:
+                except BaseException:
                     self.logger.error(ppp("Unexpected or invalid packet:",
                                           packet))
                     raise
@@ -477,7 +484,7 @@ class TestACLplugin(VppTestCase):
     def test_0000_warmup_test(self):
         """ ACL plugin version check; learn MACs
         """
-        reply = self.vapi.papi.acl_plugin_get_version()
+        reply = self.vclient.papi.acl_plugin_get_version()
         self.assertEqual(reply.major, 1)
         self.logger.info("Working with ACL plugin version: %d.%d" % (
             reply.major, reply.minor))
@@ -492,7 +499,7 @@ class TestACLplugin(VppTestCase):
         # Create a permit-1234 ACL
         r = [AclRule(is_permit=1, proto=17, ports=1234, sport_to=1235)]
         # Test 1: add a new ACL
-        first_acl = VppAcl(self, rules=r, tag="permit 1234")
+        first_acl = VppAcl(self.vclient, rules=r, tag="permit 1234")
         first_acl.add_vpp_config()
         self.assertTrue(first_acl.query_vpp_config())
         # The very first ACL gets #0
@@ -514,19 +521,21 @@ class TestACLplugin(VppTestCase):
         # Create a deny-1234 ACL
         r_deny = [AclRule(is_permit=0, proto=17, ports=1234, sport_to=1235),
                   AclRule(is_permit=1, proto=17, ports=0)]
-        second_acl = VppAcl(self, rules=r_deny, tag="deny 1234;permit all")
+        second_acl = VppAcl(self.vclient, rules=r_deny,
+                            tag="deny 1234;permit all")
         second_acl.add_vpp_config()
         self.assertTrue(second_acl.query_vpp_config())
         # The second ACL gets #1
         self.assertEqual(second_acl.acl_index, 1)
 
         # Test 2: try to modify a nonexistent ACL
-        invalid_acl = VppAcl(self, acl_index=432, rules=r, tag="FFFF:FFFF")
+        invalid_acl = VppAcl(self.vclient, acl_index=432,
+                             rules=r, tag="FFFF:FFFF")
         reply = invalid_acl.add_vpp_config(expect_error=True)
 
         # apply an ACL on an interface inbound, try to delete ACL, must fail
         acl_if_list = VppAclInterface(
-            self, sw_if_index=self.pg0.sw_if_index, n_input=1,
+            self.vclient, sw_if_index=self.pg0.sw_if_index, n_input=1,
             acls=[first_acl])
         acl_if_list.add_vpp_config()
         first_acl.remove_vpp_config(expect_error=True)
@@ -536,7 +545,7 @@ class TestACLplugin(VppTestCase):
 
         # apply an ACL on an interface inbound, try to delete ACL, must fail
         acl_if_list = VppAclInterface(
-            self, sw_if_index=self.pg0.sw_if_index, n_input=0,
+            self.vclient, sw_if_index=self.pg0.sw_if_index, n_input=0,
             acls=[second_acl])
         acl_if_list.add_vpp_config()
         second_acl.remove_vpp_config(expect_error=True)
@@ -546,7 +555,7 @@ class TestACLplugin(VppTestCase):
 
         # try to apply a nonexistent ACL - must fail
         acl_if_list = VppAclInterface(
-            self, sw_if_index=self.pg0.sw_if_index, n_input=0,
+            self.vclient, sw_if_index=self.pg0.sw_if_index, n_input=0,
             acls=[invalid_acl])
         acl_if_list.add_vpp_config(expect_error=True)
 
@@ -567,23 +576,24 @@ class TestACLplugin(VppTestCase):
         acl_idx = self.apply_rules(rules, "permit per-flow")
 
         # enable counters
-        reply = self.vapi.papi.acl_stats_intf_counters_enable(enable=1)
+        reply = self.vclient.papi.acl_stats_intf_counters_enable(enable=1)
 
         # Traffic should still pass
         self.run_verify_test(self.IP, self.IPV4, -1)
 
-        matches = self.statistics.get_counter('/acl/%d/matches' % acl_idx)
+        matches = self.vclient.statistics.get_counter(
+            '/acl/%d/matches' % acl_idx)
         self.logger.info("stat segment counters: %s" % repr(matches))
         cli = "show acl-plugin acl"
-        self.logger.info(self.vapi.ppcli(cli))
+        self.logger.info(self.vclient.ppcli(cli))
         cli = "show acl-plugin tables"
-        self.logger.info(self.vapi.ppcli(cli))
+        self.logger.info(self.vclient.ppcli(cli))
 
         total_hits = matches[0][0]['packets'] + matches[0][1]['packets']
         self.assertEqual(total_hits, 64)
 
         # disable counters
-        reply = self.vapi.papi.acl_stats_intf_counters_enable(enable=0)
+        reply = self.vclient.papi.acl_stats_intf_counters_enable(enable=0)
 
         self.logger.info("ACLP_TEST_FINISH_0002")
 
@@ -604,21 +614,22 @@ class TestACLplugin(VppTestCase):
         acl_idx = self.apply_rules(rules, "deny per-flow;permit all")
 
         # enable counters
-        reply = self.vapi.papi.acl_stats_intf_counters_enable(enable=1)
+        reply = self.vclient.papi.acl_stats_intf_counters_enable(enable=1)
 
         # Traffic should not pass
         self.run_verify_negat_test(self.IP, self.IPV4,
                                    self.proto[self.IP][self.UDP])
 
-        matches = self.statistics.get_counter('/acl/%d/matches' % acl_idx)
+        matches = self.vclient.statistics.get_counter(
+            '/acl/%d/matches' % acl_idx)
         self.logger.info("stat segment counters: %s" % repr(matches))
         cli = "show acl-plugin acl"
-        self.logger.info(self.vapi.ppcli(cli))
+        self.logger.info(self.vclient.ppcli(cli))
         cli = "show acl-plugin tables"
-        self.logger.info(self.vapi.ppcli(cli))
+        self.logger.info(self.vclient.ppcli(cli))
         self.assertEqual(matches[0][0]['packets'], 64)
         # disable counters
-        reply = self.vapi.papi.acl_stats_intf_counters_enable(enable=0)
+        reply = self.vclient.papi.acl_stats_intf_counters_enable(enable=0)
         self.logger.info("ACLP_TEST_FINISH_0003")
         # self.assertEqual(, 0)
 
@@ -866,7 +877,7 @@ class TestACLplugin(VppTestCase):
         for i in range(len(r)):
             rules.append(self.create_rule(r[i][0], r[i][1], r[i][2], r[i][3]))
 
-        acl = VppAcl(self, rules=rules)
+        acl = VppAcl(self.vclient, rules=rules)
         acl.add_vpp_config()
         result = acl.dump()
 
@@ -885,22 +896,22 @@ class TestACLplugin(VppTestCase):
                     else:
                         if dr.proto == self.proto[self.IP][self.TCP]:
                             self.assertGreater(dr.srcport_or_icmptype_first,
-                                               self.tcp_sport_from-1)
+                                               self.tcp_sport_from - 1)
                             self.assertLess(dr.srcport_or_icmptype_first,
-                                            self.tcp_sport_to+1)
+                                            self.tcp_sport_to + 1)
                             self.assertGreater(dr.dstport_or_icmpcode_last,
-                                               self.tcp_dport_from-1)
+                                               self.tcp_dport_from - 1)
                             self.assertLess(dr.dstport_or_icmpcode_last,
-                                            self.tcp_dport_to+1)
+                                            self.tcp_dport_to + 1)
                         elif dr.proto == self.proto[self.IP][self.UDP]:
                             self.assertGreater(dr.srcport_or_icmptype_first,
-                                               self.udp_sport_from-1)
+                                               self.udp_sport_from - 1)
                             self.assertLess(dr.srcport_or_icmptype_first,
-                                            self.udp_sport_to+1)
+                                            self.udp_sport_to + 1)
                             self.assertGreater(dr.dstport_or_icmpcode_last,
-                                               self.udp_dport_from-1)
+                                               self.udp_dport_from - 1)
                             self.assertLess(dr.dstport_or_icmpcode_last,
-                                            self.udp_dport_to+1)
+                                            self.udp_dport_to + 1)
                 i += 1
 
         self.logger.info("ACLP_TEST_FINISH_0014")
@@ -1421,7 +1432,8 @@ class TestACLplugin(VppTestCase):
 
         # create an interface
         intf = []
-        intf.append(VppLoInterface(self))
+        intf.append(VppLoInterface(self.vclient))
+        intf[0].add_vpp_config()
 
         # Apply rules
         self.apply_rules_to(rules, "permit ipv4 tcp", intf[0].sw_if_index)

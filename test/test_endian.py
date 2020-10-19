@@ -13,7 +13,7 @@
 #  limitations under the License.
 
 import framework
-import vpp_papi_provider
+import vpp_pom.vpp_papi_provider as vpp_papi_provider
 
 F64_ONE = 1.0
 
@@ -23,7 +23,7 @@ class TestEndian(framework.VppTestCase):
 
     def test_f64_endian_value(self):
         try:
-            rv = self.vapi.get_f64_endian_value(f64_one=F64_ONE)
+            rv = self.vclient.get_f64_endian_value(f64_one=F64_ONE)
             self.assertEqual(rv.f64_one_result, F64_ONE,
                              "client incorrectly deserializes f64 values.  "
                              "Expected: %r. Received: %r." % (
@@ -33,6 +33,6 @@ class TestEndian(framework.VppTestCase):
 
     def test_get_f64_increment_by_one(self):
         expected = 43.0
-        rv = self.vapi.get_f64_increment_by_one(f64_value=42.0)
+        rv = self.vclient.get_f64_increment_by_one(f64_value=42.0)
         self.assertEqual(rv.f64_value, expected, 'Expected %r, received:%r.'
                          % (expected, rv.f64_value))

@@ -7,12 +7,12 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import ICMP, IP, TCP, UDP
 from scapy.layers.ipsec import SecurityAssociation, ESP
 
-from util import ppp, ppc
+from vpp_pom.util import ppp, ppc
 from template_ipsec import TemplateIpsec
-from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry,\
-        VppIpsecSpdItfBinding
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_ip import DpoProto
+from vpp_pom.vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry,\
+    VppIpsecSpdItfBinding
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip import DpoProto
 from vpp_papi import VppEnum
 
 
@@ -50,17 +50,17 @@ class IPSecNATTestCase(TemplateIpsec):
         super(IPSecNATTestCase, self).setUp()
         self.tun_if = self.pg0
 
-        self.tun_spd = VppIpsecSpd(self, self.tun_spd_id)
+        self.tun_spd = VppIpsecSpd(self.vclient, self.tun_spd_id)
         self.tun_spd.add_vpp_config()
-        VppIpsecSpdItfBinding(self, self.tun_spd,
+        VppIpsecSpdItfBinding(self.vclient, self.tun_spd,
                               self.tun_if).add_vpp_config()
 
         p = self.ipv4_params
         self.config_esp_tun(p)
-        self.logger.info(self.vapi.ppcli("show ipsec all"))
+        self.logger.info(self.vclient.ppcli("show ipsec all"))
 
         d = DpoProto.DPO_PROTO_IP6 if p.is_ipv6 else DpoProto.DPO_PROTO_IP4
-        VppIpRoute(self,  p.remote_tun_if_host, p.addr_len,
+        VppIpRoute(self.vclient, p.remote_tun_if_host, p.addr_len,
                    [VppRoutePath(self.tun_if.remote_addr[p.addr_type],
                                  0xffffffff,
                                  proto=d)]).add_vpp_config()
@@ -169,14 +169,14 @@ class IPSecNATTestCase(TemplateIpsec):
                  IPSEC_API_SAD_FLAG_UDP_ENCAP)
         e = VppEnum.vl_api_ipsec_spd_action_t
 
-        VppIpsecSA(self, scapy_tun_sa_id, scapy_tun_spi,
+        VppIpsecSA(self.vclient, scapy_tun_sa_id, scapy_tun_spi,
                    auth_algo_vpp_id, auth_key,
                    crypt_algo_vpp_id, crypt_key,
                    self.vpp_esp_protocol,
                    self.pg1.remote_addr[addr_type],
                    self.tun_if.remote_addr[addr_type],
                    flags=flags).add_vpp_config()
-        VppIpsecSA(self, vpp_tun_sa_id, vpp_tun_spi,
+        VppIpsecSA(self.vclient, vpp_tun_sa_id, vpp_tun_spi,
                    auth_algo_vpp_id, auth_key,
                    crypt_algo_vpp_id, crypt_key,
                    self.vpp_esp_protocol,
@@ -184,29 +184,29 @@ class IPSecNATTestCase(TemplateIpsec):
                    self.pg1.remote_addr[addr_type],
                    flags=flags).add_vpp_config()
 
-        VppIpsecSpdEntry(self, self.tun_spd, scapy_tun_sa_id,
+        VppIpsecSpdEntry(self.vclient, self.tun_spd, scapy_tun_sa_id,
                          addr_any, addr_bcast,
                          addr_any, addr_bcast,
                          socket.IPPROTO_ESP).add_vpp_config()
-        VppIpsecSpdEntry(self, self.tun_spd, scapy_tun_sa_id,
+        VppIpsecSpdEntry(self.vclient, self.tun_spd, scapy_tun_sa_id,
                          addr_any, addr_bcast,
                          addr_any, addr_bcast,
                          socket.IPPROTO_ESP,
                          is_outbound=0).add_vpp_config()
-        VppIpsecSpdEntry(self, self.tun_spd, scapy_tun_sa_id,
+        VppIpsecSpdEntry(self.vclient, self.tun_spd, scapy_tun_sa_id,
                          addr_any, addr_bcast,
                          addr_any, addr_bcast,
                          socket.IPPROTO_UDP,
                          remote_port_start=4500,
                          remote_port_stop=4500).add_vpp_config()
-        VppIpsecSpdEntry(self, self.tun_spd, scapy_tun_sa_id,
+        VppIpsecSpdEntry(self.vclient, self.tun_spd, scapy_tun_sa_id,
                          addr_any, addr_bcast,
                          addr_any, addr_bcast,
                          socket.IPPROTO_UDP,
                          remote_port_start=4500,
                          remote_port_stop=4500,
                          is_outbound=0).add_vpp_config()
-        VppIpsecSpdEntry(self, self.tun_spd, vpp_tun_sa_id,
+        VppIpsecSpdEntry(self.vclient, self.tun_spd, vpp_tun_sa_id,
                          self.tun_if.remote_addr[addr_type],
                          self.tun_if.remote_addr[addr_type],
                          self.pg1.remote_addr[addr_type],
@@ -214,7 +214,7 @@ class IPSecNATTestCase(TemplateIpsec):
                          0, priority=10,
                          policy=e.IPSEC_API_SPD_ACTION_PROTECT,
                          is_outbound=0).add_vpp_config()
-        VppIpsecSpdEntry(self, self.tun_spd, scapy_tun_sa_id,
+        VppIpsecSpdEntry(self.vclient, self.tun_spd, scapy_tun_sa_id,
                          self.pg1.remote_addr[addr_type],
                          self.pg1.remote_addr[addr_type],
                          self.tun_if.remote_addr[addr_type],

@@ -4,15 +4,16 @@ from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsLabel, VppIpTable
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsLabel, \
+    VppIpTable
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
-from vpp_object import VppObject
+from vpp_pom.vpp_object import VppObject
 
 NUM_PKTS = 67
 
@@ -20,7 +21,7 @@ NUM_PKTS = 67
 def find_l3xc(test, sw_if_index, dump_sw_if_index=None):
     if not dump_sw_if_index:
         dump_sw_if_index = sw_if_index
-    xcs = test.vapi.l3xc_dump(dump_sw_if_index)
+    xcs = test.vclient.l3xc_dump(dump_sw_if_index)
     for xc in xcs:
         if sw_if_index == xc.l3xc.sw_if_index:
             return True
@@ -29,7 +30,7 @@ def find_l3xc(test, sw_if_index, dump_sw_if_index=None):
 
 class VppL3xc(VppObject):
 
-    def __init__(self,  test, intf, paths, is_ip6=False):
+    def __init__(self, test, intf, paths, is_ip6=False):
         self._test = test
         self.intf = intf
         self.is_ip6 = is_ip6
@@ -39,7 +40,7 @@ class VppL3xc(VppObject):
             self.encoded_paths.append(path.encode())
 
     def add_vpp_config(self):
-        self._test.vapi.l3xc_update(
+        self._test.vclient.l3xc_update(
             l3xc={
                 'is_ip6': self.is_ip6,
                 'sw_if_index': self.intf.sw_if_index,
@@ -49,7 +50,7 @@ class VppL3xc(VppObject):
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.l3xc_del(
+        self._test.vclient.l3xc_del(
             is_ip6=self.is_ip6,
             sw_if_index=self.intf.sw_if_index)
 
@@ -121,7 +122,7 @@ class TestL3xc(VppTestCase):
 
         self.assertTrue(find_l3xc(self, self.pg2.sw_if_index, 0xffffffff))
 
-        self.logger.info(self.vapi.cli("sh l3xc"))
+        self.logger.info(self.vclient.cli("sh l3xc"))
 
         #
         # fire in packets. If it's forwarded then the L3XC was successful,

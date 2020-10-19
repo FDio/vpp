@@ -3,7 +3,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_gcov_tests
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
 class TestAdl(VppTestCase):
@@ -80,24 +80,25 @@ class TestAdl(VppTestCase):
                 "pa en\n"]
 
         for cmd in cmds:
-            r = self.vapi.cli_return_response(cmd)
+            r = self.vclient.cli_return_response(cmd)
             if r.retval != 0:
                 if hasattr(r, 'reply'):
                     self.logger.info(cmd + " FAIL reply " + r.reply)
                 else:
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
 
-        total_pkts = self.statistics.get_err_counter(
+        total_pkts = self.vclient.statistics.get_err_counter(
             "/err/adl-input/Allow/Deny packets processed")
 
         self.assertEqual(total_pkts, 200)
 
-        ip4_allow = self.statistics.get_err_counter(
+        ip4_allow = self.vclient.statistics.get_err_counter(
             "/err/ip4-adl-allowlist/ip4 allowlist allowed")
         self.assertEqual(ip4_allow, 12)
-        ip6_allow = self.statistics.get_err_counter(
+        ip6_allow = self.vclient.statistics.get_err_counter(
             "/err/ip6-adl-allowlist/ip6 allowlist allowed")
         self.assertEqual(ip6_allow, 50)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import socket
-from util import ip4_range, reassemble4_ether
+from vpp_pom.util import ip4_range, reassemble4_ether
 import unittest
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
@@ -11,8 +11,8 @@ from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_ip import INVALID_INDEX
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip import INVALID_INDEX
 
 
 class TestVxlanGbp(VppTestCase):
@@ -43,7 +43,7 @@ class TestVxlanGbp(VppTestCase):
                 IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
                 UDP(sport=self.dport, dport=self.dport, chksum=0) /
                 VXLAN(vni=vni, flags=self.flags, gpflags=self.gpflags,
-                gpid=self.sclass) / pkt)
+                      gpid=self.sclass) / pkt)
 
     def ip_range(self, start, end):
         """ range of remote ip's """
@@ -98,12 +98,12 @@ class TestVxlanGbp(VppTestCase):
                                   ip_range_start,
                                   ip_range_end):
             # add host route so dest_ip4 will not be resolved
-            rip = VppIpRoute(cls, dest_ip4, 32,
+            rip = VppIpRoute(cls.vclient, dest_ip4, 32,
                              [VppRoutePath(next_hop_address,
                                            INVALID_INDEX)],
                              register=False)
             rip.add_vpp_config()
-            r = cls.vapi.vxlan_gbp_tunnel_add_del(
+            r = cls.vclient.vxlan_gbp_tunnel_add_del(
                 tunnel={
                     'src': cls.pg0.local_ip4,
                     'dst': dest_ip4,
@@ -114,8 +114,8 @@ class TestVxlanGbp(VppTestCase):
                 },
                 is_add=1
             )
-            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                                bd_id=vni)
+            cls.vclient.sw_interface_set_l2_bridge(
+                rx_sw_if_index=r.sw_if_index, bd_id=vni)
 
     # Class method to start the VXLAN GBP test case.
     #  Overrides setUpClass method in VppTestCase class.
@@ -147,7 +147,7 @@ class TestVxlanGbp(VppTestCase):
             # pg1 into BD.
             cls.single_tunnel_bd = 1
             cls.single_tunnel_vni = 0xabcde
-            r = cls.vapi.vxlan_gbp_tunnel_add_del(
+            r = cls.vclient.vxlan_gbp_tunnel_add_del(
                 tunnel={
                     'src': cls.pg0.local_ip4,
                     'dst': cls.pg0.remote_ip4,
@@ -158,9 +158,9 @@ class TestVxlanGbp(VppTestCase):
                 },
                 is_add=1
             )
-            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                                bd_id=cls.single_tunnel_bd)
-            cls.vapi.sw_interface_set_l2_bridge(
+            cls.vclient.sw_interface_set_l2_bridge(
+                rx_sw_if_index=r.sw_if_index, bd_id=cls.single_tunnel_bd)
+            cls.vclient.sw_interface_set_l2_bridge(
                 rx_sw_if_index=cls.pg1.sw_if_index,
                 bd_id=cls.single_tunnel_bd)
 
@@ -170,7 +170,7 @@ class TestVxlanGbp(VppTestCase):
             cls.ucast_flood_bd = 3
             cls.create_vxlan_gbp_flood_test_bd(cls.ucast_flood_bd,
                                                cls.n_ucast_tunnels)
-            cls.vapi.sw_interface_set_l2_bridge(
+            cls.vclient.sw_interface_set_l2_bridge(
                 rx_sw_if_index=cls.pg3.sw_if_index,
                 bd_id=cls.ucast_flood_bd)
         except Exception:
@@ -255,7 +255,8 @@ class TestVxlanGbp(VppTestCase):
         Verify receipt of encapsulated frames on pg0
         """
 
-        self.vapi.sw_interface_set_mtu(self.pg0.sw_if_index, [1500, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(
+            self.pg0.sw_if_index, [1500, 0, 0, 0])
 
         frame = (Ether(src='00:00:00:00:00:02', dst='00:00:00:00:00:01') /
                  IP(src='4.3.2.1', dst='1.2.3.4') /
@@ -283,10 +284,10 @@ class TestVxlanGbp(VppTestCase):
         super(TestVxlanGbp, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show bridge-domain 1 detail"))
-        self.logger.info(self.vapi.cli("show bridge-domain 3 detail"))
-        self.logger.info(self.vapi.cli("show vxlan-gbp tunnel"))
-        self.logger.info(self.vapi.cli("show error"))
+        self.logger.info(self.vclient.cli("show bridge-domain 1 detail"))
+        self.logger.info(self.vclient.cli("show bridge-domain 3 detail"))
+        self.logger.info(self.vclient.cli("show vxlan-gbp tunnel"))
+        self.logger.info(self.vclient.cli("show error"))
 
 
 if __name__ == '__main__':
