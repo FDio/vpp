@@ -500,7 +500,7 @@ class LDPThruHostStackBidirNsock(VCLTestCase):
         super(LDPThruHostStackBidirNsock, self).setUp()
 
         self.thru_host_stack_setup()
-        self.client_bi_dir_nsock_timeout = 20
+        self.client_bi_dir_nsock_timeout = 2000
         self.client_bi_dir_nsock_test_args = ["-N", "1000", "-B", "-X",
                                               # OUCH! Host Stack Bug?
                                               # Only fails when running
