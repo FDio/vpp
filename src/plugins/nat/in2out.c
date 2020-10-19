@@ -1911,9 +1911,9 @@ VLIB_NODE_FN (snat_in2out_fast_node) (vlib_main_t * vm,
 	    }
 
 	  /* Hairpinning */
-	  snat_hairpinning (vm, node, sm, b0, ip0, udp0, tcp0, proto0, 0,
-			    0 /* do_trace */ );
-	  is_hairpinning = 1;
+	  is_hairpinning =
+	    snat_hairpinning (vm, node, sm, b0, ip0, udp0, tcp0, proto0, 0,
+			      0 /* do_trace */ );
 
 	trace0:
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
