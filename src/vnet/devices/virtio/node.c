@@ -267,7 +267,7 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index = vm->thread_index;
   uword n_trace = vlib_get_trace_count (vm, node);
-  u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+  u32 next_index;
   const int hdr_sz = vif->virtio_net_hdr_sz;
   u32 *to_next = 0;
   u32 n_rx_packets = 0;
@@ -275,12 +275,24 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 mask = vring->size - 1;
   u16 last = vring->last_used_idx;
   u16 n_left = vring->used->idx - last;
+  vlib_buffer_t bt;
 
   if (n_left == 0)
     return 0;
 
   if (type == VIRTIO_IF_TYPE_TUN)
-    next_index = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
+    {
+      next_index = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
+    }
+  else
+    {
+      next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+      if (PREDICT_FALSE (vif->per_interface_next_index != ~0))
+	next_index = vif->per_interface_next_index;
+
+      /* only for l2, redirect if feature path enabled */
+      vnet_feature_start_device_input_x1 (vif->sw_if_index, &next_index, &bt);
+    }
 
   while (n_left)
     {
@@ -361,16 +373,16 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  next0 = VNET_DEVICE_INPUT_NEXT_DROP;
 		  break;
 		}
+
+	      if (PREDICT_FALSE (vif->per_interface_next_index != ~0))
+		next0 = vif->per_interface_next_index;
 	    }
-
-	  if (PREDICT_FALSE (vif->per_interface_next_index != ~0))
-	    next0 = vif->per_interface_next_index;
-
-	  if (type != VIRTIO_IF_TYPE_TUN)
+	  else
 	    {
-	      /* only for l2, redirect if feature path enabled */
-	      vnet_feature_start_device_input_x1 (vif->sw_if_index, &next0,
-						  b0);
+	      /* copy feature arc data from template */
+	      b0->current_config_index = bt.current_config_index;
+	      vnet_buffer (b0)->feature_arc_index =
+		vnet_buffer (&bt)->feature_arc_index;
 	    }
 
 	  /* trace */
@@ -397,9 +409,10 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  n_left--;
 	  last++;
 
-	  /* enqueue */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					   n_left_to_next, bi0, next0);
+	  /* only tun interfaces may have different next index */
+	  if (type == VIRTIO_IF_TYPE_TUN)
+	    vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					     n_left_to_next, bi0, next0);
 
 	  /* next packet */
 	  n_rx_packets++;
