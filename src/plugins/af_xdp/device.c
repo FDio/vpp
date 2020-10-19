@@ -271,7 +271,7 @@ af_xdp_get_numa (const char *ifname)
   if (!fptr)
     return 0;
 
-  if (fscanf (fptr, "%d\n", &numa) != 1)
+  if (fscanf (fptr, "%d\n", &numa) != 1 || numa < 0)
     numa = 0;
 
   fclose (fptr);
