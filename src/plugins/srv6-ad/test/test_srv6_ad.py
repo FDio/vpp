@@ -5,10 +5,10 @@ import binascii
 from socket import AF_INET6
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
-from vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, VppSRv6Policy, \
-    SRv6PolicyType, VppSRv6Steering, SRv6PolicySteeringTypes
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
+from vpp_pom.plugins.vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, \
+    VppSRv6Policy, SRv6PolicyType, VppSRv6Steering, SRv6PolicySteeringTypes
 
 import scapy.compat
 from scapy.packet import Raw
@@ -16,7 +16,7 @@ from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet6 import IPv6, UDP, IPv6ExtHdrSegmentRouting
 from scapy.layers.inet import IP, UDP
 
-from util import ppp
+from vpp_pom.util import ppp
 
 
 class TestSRv6(VppTestCase):
@@ -113,11 +113,11 @@ class TestSRv6(VppTestCase):
                                      ipv6_table_id[i], ipv4_table_id[i])
 
         if any(ipv6):
-            self.logger.debug(self.vapi.cli("show ip6 neighbors"))
+            self.logger.debug(self.vclient.cli("show ip6 neighbors"))
         if any(ipv4):
-            self.logger.debug(self.vapi.cli("show ip4 neighbors"))
-        self.logger.debug(self.vapi.cli("show interface"))
-        self.logger.debug(self.vapi.cli("show hardware"))
+            self.logger.debug(self.vclient.cli("show ip4 neighbors"))
+        self.logger.debug(self.vclient.cli("show interface"))
+        self.logger.debug(self.vclient.cli("show hardware"))
 
         return self.pg_interfaces
 
@@ -146,7 +146,9 @@ class TestSRv6(VppTestCase):
         self.setup_interfaces(ipv6=[True, True])
 
         # configure route to next segment
-        route = VppIpRoute(self, self.sid_list[self.test_sid_index + 1], 128,
+        route = VppIpRoute(self.vclient,
+                           self.sid_list[self.test_sid_index + 1],
+                           128,
                            [VppRoutePath(self.pg0.remote_ip6,
                                          self.pg0.sw_if_index,
                                          proto=DpoProto.DPO_PROTO_IP6)])
@@ -159,10 +161,10 @@ class TestSRv6(VppTestCase):
                   " nh " + self.pg1.remote_ip6 + \
                   " oif " + self.pg1.name + \
                   " iif " + self.pg1.name
-        self.vapi.cli(cli_str)
+        self.vclient.cli(cli_str)
 
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vclient.cli("show sr localsid"))
 
         # send one packet per packet size
         count = len(self.pg_packet_sizes)
@@ -182,7 +184,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AD_IPv6_out)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # prepare IPv6 header for returning packets
         packet_header2 = self.create_packet_header_IPv6()
@@ -196,12 +198,12 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AD_IPv6_in)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SRv6 localSIDs
         cli_str = "sr localsid del address " + \
                   self.sid_list[self.test_sid_index]
-        self.vapi.cli(cli_str)
+        self.vclient.cli(cli_str)
 
         # cleanup interfaces
         self.teardown_interfaces()
@@ -280,7 +282,9 @@ class TestSRv6(VppTestCase):
         self.setup_interfaces(ipv6=[True, False], ipv4=[False, True])
 
         # configure route to next segment
-        route = VppIpRoute(self, self.sid_list[self.test_sid_index + 1], 128,
+        route = VppIpRoute(self.vclient,
+                           self.sid_list[self.test_sid_index + 1],
+                           128,
                            [VppRoutePath(self.pg0.remote_ip6,
                                          self.pg0.sw_if_index,
                                          proto=DpoProto.DPO_PROTO_IP6)])
@@ -293,10 +297,10 @@ class TestSRv6(VppTestCase):
                   " nh " + self.pg1.remote_ip4 + \
                   " oif " + self.pg1.name + \
                   " iif " + self.pg1.name
-        self.vapi.cli(cli_str)
+        self.vclient.cli(cli_str)
 
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vclient.cli("show sr localsid"))
 
         # send one packet per packet size
         count = len(self.pg_packet_sizes)
@@ -316,7 +320,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AD_IPv4_out)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # prepare IPv6 header for returning packets
         packet_header2 = self.create_packet_header_IPv4()
@@ -330,12 +334,12 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AD_IPv4_in)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SRv6 localSIDs
         cli_str = "sr localsid del address " + \
                   self.sid_list[self.test_sid_index]
-        self.vapi.cli(cli_str)
+        self.vclient.cli(cli_str)
 
         # cleanup interfaces
         self.teardown_interfaces()
@@ -422,7 +426,9 @@ class TestSRv6(VppTestCase):
         self.setup_interfaces(ipv6=[True, False])
 
         # configure route to next segment
-        route = VppIpRoute(self, self.sid_list[self.test_sid_index + 1], 128,
+        route = VppIpRoute(self.vclient,
+                           self.sid_list[self.test_sid_index + 1],
+                           128,
                            [VppRoutePath(self.pg0.remote_ip6,
                                          self.pg0.sw_if_index,
                                          proto=DpoProto.DPO_PROTO_IP6)])
@@ -434,10 +440,10 @@ class TestSRv6(VppTestCase):
                   " behavior end.ad" + \
                   " oif " + self.pg1.name + \
                   " iif " + self.pg1.name
-        self.vapi.cli(cli_str)
+        self.vclient.cli(cli_str)
 
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vclient.cli("show sr localsid"))
 
         # send one packet per packet size
         count = len(self.pg_packet_sizes)
@@ -458,7 +464,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AD_L2_out)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # prepare L2 header for returning packets
         packet_header2 = self.create_packet_header_L2()
@@ -472,12 +478,12 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AD_L2_in)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SRv6 localSIDs
         cli_str = "sr localsid del address " + \
                   self.sid_list[self.test_sid_index]
-        self.vapi.cli(cli_str)
+        self.vclient.cli(cli_str)
 
         # cleanup interfaces
         self.teardown_interfaces()
@@ -731,7 +737,7 @@ class TestSRv6(VppTestCase):
         try:
             payload_info = self.payload_to_info(packet[Raw])
 
-        except:
+        except BaseException:
             # remote L2 header from packet[Raw]:
             # take packet[Raw], convert it to an Ether layer
             # and then extract Raw from it
@@ -792,7 +798,7 @@ class TestSRv6(VppTestCase):
                 # compare rcvd packet with expected packet using compare_func
                 compare_func(txed_packet, packet)
 
-            except:
+            except BaseException:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
 

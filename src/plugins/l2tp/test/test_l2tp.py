@@ -29,19 +29,19 @@ class TestL2tp(VppTestCase):
         self.pg_start()
 
         # l2tp should not accept packets
-        err = self.statistics.get_counter(
+        err = self.vclient.statistics.get_counter(
             '/err/l2tp-decap-local/l2tpv3 session not found')[0]
         self.assertEqual(err, 0)
         err_count = err
 
-        self.vapi.l2tpv3_create_tunnel(client_address=self.pg0.local_ip6,
-                                       our_address=self.pg0.remote_ip6)
+        self.vclient.l2tpv3_create_tunnel(client_address=self.pg0.local_ip6,
+                                          our_address=self.pg0.remote_ip6)
 
         self.pg0.add_stream(pkt)
         self.pg_start()
 
         # l2tp accepts packets
-        err = self.statistics.get_counter(
+        err = self.vclient.statistics.get_counter(
             '/err/l2tp-decap-local/l2tpv3 session not found')[0]
         self.assertEqual(err, 1)
         err_count = err

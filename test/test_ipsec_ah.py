@@ -13,10 +13,10 @@ from template_ipsec import TemplateIpsec, IpsecTra46Tests, IpsecTun46Tests, \
     IpsecTra4, IpsecTun4, IpsecTra6, IpsecTun6, \
     IpsecTun6HandoffTests, IpsecTun4HandoffTests
 from template_ipsec import IpsecTcpTests
-from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry,\
-        VppIpsecSpdItfBinding
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_ip import DpoProto
+from vpp_pom.vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry,\
+    VppIpsecSpdItfBinding
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip import DpoProto
 from vpp_papi import VppEnum
 
 
@@ -69,21 +69,21 @@ class ConfigIpsecAH(TemplateIpsec):
         self.net_objs = []
         self.tun_if = self.pg0
         self.tra_if = self.pg2
-        self.logger.info(self.vapi.ppcli("show int addr"))
+        self.logger.info(self.vclient.ppcli("show int addr"))
 
-        self.tra_spd = VppIpsecSpd(self, self.tra_spd_id)
+        self.tra_spd = VppIpsecSpd(self.vclient, self.tra_spd_id)
         self.tra_spd.add_vpp_config()
         self.net_objs.append(self.tra_spd)
-        self.tun_spd = VppIpsecSpd(self, self.tun_spd_id)
+        self.tun_spd = VppIpsecSpd(self.vclient, self.tun_spd_id)
         self.tun_spd.add_vpp_config()
         self.net_objs.append(self.tun_spd)
 
-        b = VppIpsecSpdItfBinding(self, self.tra_spd,
+        b = VppIpsecSpdItfBinding(self.vclient, self.tra_spd,
                                   self.tra_if)
         b.add_vpp_config()
         self.net_objs.append(b)
 
-        b = VppIpsecSpdItfBinding(self, self.tun_spd,
+        b = VppIpsecSpdItfBinding(self.vclient, self.tun_spd,
                                   self.tun_if)
         b.add_vpp_config()
         self.net_objs.append(b)
@@ -96,13 +96,13 @@ class ConfigIpsecAH(TemplateIpsec):
             config_tun_params(p, self.encryption_type, self.tun_if)
         for p in params:
             d = DpoProto.DPO_PROTO_IP6 if p.is_ipv6 else DpoProto.DPO_PROTO_IP4
-            r = VppIpRoute(self,  p.remote_tun_if_host, p.addr_len,
+            r = VppIpRoute(self.vclient, p.remote_tun_if_host, p.addr_len,
                            [VppRoutePath(self.tun_if.remote_addr[p.addr_type],
                                          0xffffffff,
                                          proto=d)])
             r.add_vpp_config()
             self.net_objs.append(r)
-        self.logger.info(self.vapi.ppcli("show ipsec all"))
+        self.logger.info(self.vclient.ppcli("show ipsec all"))
 
     def unconfig_network(self):
         for o in reversed(self.net_objs):
@@ -127,45 +127,59 @@ class ConfigIpsecAH(TemplateIpsec):
         e = VppEnum.vl_api_ipsec_spd_action_t
         objs = []
 
-        params.tun_sa_in = VppIpsecSA(self, scapy_tun_sa_id, scapy_tun_spi,
-                                      auth_algo_vpp_id, auth_key,
-                                      crypt_algo_vpp_id, crypt_key,
-                                      self.vpp_ah_protocol,
-                                      self.tun_if.local_addr[addr_type],
-                                      self.tun_if.remote_addr[addr_type],
-                                      tun_flags=tun_flags,
-                                      flags=flags,
-                                      dscp=params.dscp)
+        params.tun_sa_in = VppIpsecSA(
+            self.vclient,
+            scapy_tun_sa_id,
+            scapy_tun_spi,
+            auth_algo_vpp_id,
+            auth_key,
+            crypt_algo_vpp_id,
+            crypt_key,
+            self.vpp_ah_protocol,
+            self.tun_if.local_addr[addr_type],
+            self.tun_if.remote_addr[addr_type],
+            tun_flags=tun_flags,
+            flags=flags,
+            dscp=params.dscp)
 
-        params.tun_sa_out = VppIpsecSA(self, vpp_tun_sa_id, vpp_tun_spi,
-                                       auth_algo_vpp_id, auth_key,
-                                       crypt_algo_vpp_id, crypt_key,
-                                       self.vpp_ah_protocol,
-                                       self.tun_if.remote_addr[addr_type],
-                                       self.tun_if.local_addr[addr_type],
-                                       tun_flags=tun_flags,
-                                       flags=flags,
-                                       dscp=params.dscp)
+        params.tun_sa_out = VppIpsecSA(
+            self.vclient,
+            vpp_tun_sa_id,
+            vpp_tun_spi,
+            auth_algo_vpp_id,
+            auth_key,
+            crypt_algo_vpp_id,
+            crypt_key,
+            self.vpp_ah_protocol,
+            self.tun_if.remote_addr[addr_type],
+            self.tun_if.local_addr[addr_type],
+            tun_flags=tun_flags,
+            flags=flags,
+            dscp=params.dscp)
 
         objs.append(params.tun_sa_in)
         objs.append(params.tun_sa_out)
 
-        params.spd_policy_in_any = VppIpsecSpdEntry(self, self.tun_spd,
+        params.spd_policy_in_any = VppIpsecSpdEntry(self.vclient, self.tun_spd,
                                                     vpp_tun_sa_id,
                                                     addr_any, addr_bcast,
                                                     addr_any, addr_bcast,
                                                     socket.IPPROTO_AH)
-        params.spd_policy_out_any = VppIpsecSpdEntry(self, self.tun_spd,
-                                                     vpp_tun_sa_id,
-                                                     addr_any, addr_bcast,
-                                                     addr_any, addr_bcast,
-                                                     socket.IPPROTO_AH,
-                                                     is_outbound=0)
+        params.spd_policy_out_any = VppIpsecSpdEntry(
+            self.vclient,
+            self.tun_spd,
+            vpp_tun_sa_id,
+            addr_any,
+            addr_bcast,
+            addr_any,
+            addr_bcast,
+            socket.IPPROTO_AH,
+            is_outbound=0)
 
         objs.append(params.spd_policy_out_any)
         objs.append(params.spd_policy_in_any)
 
-        e1 = VppIpsecSpdEntry(self, self.tun_spd, vpp_tun_sa_id,
+        e1 = VppIpsecSpdEntry(self.vclient, self.tun_spd, vpp_tun_sa_id,
                               remote_tun_if_host,
                               remote_tun_if_host,
                               self.pg1.remote_addr[addr_type],
@@ -173,14 +187,14 @@ class ConfigIpsecAH(TemplateIpsec):
                               0, priority=10,
                               policy=e.IPSEC_API_SPD_ACTION_PROTECT,
                               is_outbound=0)
-        e2 = VppIpsecSpdEntry(self, self.tun_spd, scapy_tun_sa_id,
+        e2 = VppIpsecSpdEntry(self.vclient, self.tun_spd, scapy_tun_sa_id,
                               self.pg1.remote_addr[addr_type],
                               self.pg1.remote_addr[addr_type],
                               remote_tun_if_host,
                               remote_tun_if_host,
                               0, policy=e.IPSEC_API_SPD_ACTION_PROTECT,
                               priority=10)
-        e3 = VppIpsecSpdEntry(self, self.tun_spd, vpp_tun_sa_id,
+        e3 = VppIpsecSpdEntry(self.vclient, self.tun_spd, vpp_tun_sa_id,
                               remote_tun_if_host,
                               remote_tun_if_host,
                               self.pg0.local_addr[addr_type],
@@ -188,7 +202,7 @@ class ConfigIpsecAH(TemplateIpsec):
                               0, priority=20,
                               policy=e.IPSEC_API_SPD_ACTION_PROTECT,
                               is_outbound=0)
-        e4 = VppIpsecSpdEntry(self, self.tun_spd, scapy_tun_sa_id,
+        e4 = VppIpsecSpdEntry(self.vclient, self.tun_spd, scapy_tun_sa_id,
                               self.pg0.local_addr[addr_type],
                               self.pg0.local_addr[addr_type],
                               remote_tun_if_host,
@@ -220,30 +234,46 @@ class ConfigIpsecAH(TemplateIpsec):
         e = VppEnum.vl_api_ipsec_spd_action_t
         objs = []
 
-        params.tra_sa_in = VppIpsecSA(self, scapy_tra_sa_id, scapy_tra_spi,
-                                      auth_algo_vpp_id, auth_key,
-                                      crypt_algo_vpp_id, crypt_key,
-                                      self.vpp_ah_protocol,
-                                      flags=flags)
-        params.tra_sa_out = VppIpsecSA(self, vpp_tra_sa_id, vpp_tra_spi,
-                                       auth_algo_vpp_id, auth_key,
-                                       crypt_algo_vpp_id, crypt_key,
-                                       self.vpp_ah_protocol,
-                                       flags=flags)
+        params.tra_sa_in = VppIpsecSA(
+            self.vclient,
+            scapy_tra_sa_id,
+            scapy_tra_spi,
+            auth_algo_vpp_id,
+            auth_key,
+            crypt_algo_vpp_id,
+            crypt_key,
+            self.vpp_ah_protocol,
+            flags=flags)
+        params.tra_sa_out = VppIpsecSA(
+            self.vclient,
+            vpp_tra_sa_id,
+            vpp_tra_spi,
+            auth_algo_vpp_id,
+            auth_key,
+            crypt_algo_vpp_id,
+            crypt_key,
+            self.vpp_ah_protocol,
+            flags=flags)
 
         objs.append(params.tra_sa_in)
         objs.append(params.tra_sa_out)
 
-        objs.append(VppIpsecSpdEntry(self, self.tra_spd, vpp_tra_sa_id,
+        objs.append(VppIpsecSpdEntry(self.vclient, self.tra_spd, vpp_tra_sa_id,
                                      addr_any, addr_bcast,
                                      addr_any, addr_bcast,
                                      socket.IPPROTO_AH))
-        objs.append(VppIpsecSpdEntry(self, self.tra_spd, scapy_tra_sa_id,
-                                     addr_any, addr_bcast,
-                                     addr_any, addr_bcast,
-                                     socket.IPPROTO_AH,
-                                     is_outbound=0))
-        objs.append(VppIpsecSpdEntry(self, self.tra_spd, vpp_tra_sa_id,
+        objs.append(
+            VppIpsecSpdEntry(
+                self.vclient,
+                self.tra_spd,
+                scapy_tra_sa_id,
+                addr_any,
+                addr_bcast,
+                addr_any,
+                addr_bcast,
+                socket.IPPROTO_AH,
+                is_outbound=0))
+        objs.append(VppIpsecSpdEntry(self.vclient, self.tra_spd, vpp_tra_sa_id,
                                      self.tra_if.local_addr[addr_type],
                                      self.tra_if.local_addr[addr_type],
                                      self.tra_if.remote_addr[addr_type],
@@ -251,13 +281,18 @@ class ConfigIpsecAH(TemplateIpsec):
                                      0, priority=10,
                                      policy=e.IPSEC_API_SPD_ACTION_PROTECT,
                                      is_outbound=0))
-        objs.append(VppIpsecSpdEntry(self, self.tra_spd, scapy_tra_sa_id,
-                                     self.tra_if.local_addr[addr_type],
-                                     self.tra_if.local_addr[addr_type],
-                                     self.tra_if.remote_addr[addr_type],
-                                     self.tra_if.remote_addr[addr_type],
-                                     0, policy=e.IPSEC_API_SPD_ACTION_PROTECT,
-                                     priority=10))
+        objs.append(
+            VppIpsecSpdEntry(
+                self.vclient,
+                self.tra_spd,
+                scapy_tra_sa_id,
+                self.tra_if.local_addr[addr_type],
+                self.tra_if.local_addr[addr_type],
+                self.tra_if.remote_addr[addr_type],
+                self.tra_if.remote_addr[addr_type],
+                0,
+                policy=e.IPSEC_API_SPD_ACTION_PROTECT,
+                priority=10))
 
         for o in objs:
             o.add_vpp_config()
@@ -437,7 +472,7 @@ class TestIpsecAhAll(ConfigIpsecAH,
         # loop through the VPP engines
         #
         for engine in engines:
-            self.vapi.cli("set crypto handler all %s" % engine)
+            self.vclient.cli("set crypto handler all %s" % engine)
             #
             # loop through each of the algorithms
             #

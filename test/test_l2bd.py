@@ -8,8 +8,8 @@ from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
-from util import Host, ppp
-from vpp_sub_interface import VppDot1QSubint, VppDot1ADSubint
+from vpp_pom.util import Host, ppp
+from vpp_pom.vpp_sub_interface import VppDot1QSubint, VppDot1ADSubint
 
 
 class TestL2bd(VppTestCase):
@@ -53,8 +53,8 @@ class TestL2bd(VppTestCase):
 
             # create 2 sub-interfaces for pg1 and pg2
             cls.sub_interfaces = [
-                VppDot1QSubint(cls, cls.pg1, cls.dot1q_tag),
-                VppDot1ADSubint(cls, cls.pg2, cls.dot1ad_sub_id,
+                VppDot1QSubint(cls.vclient, cls.pg1, cls.dot1q_tag),
+                VppDot1ADSubint(cls.vclient, cls.pg2, cls.dot1ad_sub_id,
                                 cls.dot1ad_outer_tag, cls.dot1ad_inner_tag)]
 
             # packet flows mapping pg0 -> pg1, pg2, etc.
@@ -75,8 +75,8 @@ class TestL2bd(VppTestCase):
             for pg_if in cls.pg_interfaces:
                 sw_if_index = pg_if.sub_if.sw_if_index \
                     if hasattr(pg_if, 'sub_if') else pg_if.sw_if_index
-                cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=sw_if_index,
-                                                    bd_id=cls.bd_id)
+                cls.vclient.sw_interface_set_l2_bridge(
+                    rx_sw_if_index=sw_if_index, bd_id=cls.bd_id)
 
             # setup all interfaces
             for i in cls.interfaces:
@@ -88,7 +88,7 @@ class TestL2bd(VppTestCase):
             # create test host entries and inject packets to learn MAC entries
             # in the bridge-domain
             cls.create_hosts_and_learn(cls.mac_entries_count)
-            cls.logger.info(cls.vapi.ppcli("show l2fib"))
+            cls.logger.info(cls.vclient.ppcli("show l2fib"))
 
         except Exception:
             super(TestL2bd, cls).tearDownClass()
@@ -111,9 +111,11 @@ class TestL2bd(VppTestCase):
         """
         super(TestL2bd, self).tearDown()
         if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show l2fib verbose"))
-            self.logger.info(self.vapi.ppcli("show bridge-domain %s detail" %
-                                             self.bd_id))
+            self.logger.info(self.vclient.ppcli("show l2fib verbose"))
+            self.logger.info(
+                self.vclient.ppcli(
+                    "show bridge-domain %s detail" %
+                    self.bd_id))
 
     @classmethod
     def create_hosts_and_learn(cls, count):
@@ -219,7 +221,7 @@ class TestL2bd(VppTestCase):
                 self.assertEqual(ip.dst, saved_packet[IP].dst)
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
-            except:
+            except BaseException:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.pg_interfaces:

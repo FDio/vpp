@@ -59,7 +59,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
-from util import Host, ppp
+from vpp_pom.util import Host, ppp
 
 
 class TestL2xcMultiInst(VppTestCase):
@@ -130,7 +130,7 @@ class TestL2xcMultiInst(VppTestCase):
         super(TestL2xcMultiInst, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show l2patch"))
+        self.logger.info(self.vclient.ppcli("show l2patch"))
 
     @classmethod
     def create_hosts(cls, count):
@@ -167,8 +167,8 @@ class TestL2xcMultiInst(VppTestCase):
             rx_if = self.pg_interfaces[i + start]
             delta = 1 if i % 2 == 0 else -1
             tx_if = self.pg_interfaces[i + start + delta]
-            self.vapi.sw_interface_set_l2_xconnect(rx_if.sw_if_index,
-                                                   tx_if.sw_if_index, 1)
+            self.vclient.sw_interface_set_l2_xconnect(rx_if.sw_if_index,
+                                                      tx_if.sw_if_index, 1)
             self.logger.info("Cross-connect from %s to %s created"
                              % (tx_if.name, rx_if.name))
             if self.pg_in_xc.count(rx_if) == 0:
@@ -189,8 +189,8 @@ class TestL2xcMultiInst(VppTestCase):
             rx_if = self.pg_interfaces[i + start]
             delta = 1 if i % 2 == 0 else -1
             tx_if = self.pg_interfaces[i + start + delta]
-            self.vapi.sw_interface_set_l2_xconnect(rx_if.sw_if_index,
-                                                   tx_if.sw_if_index, 0)
+            self.vclient.sw_interface_set_l2_xconnect(rx_if.sw_if_index,
+                                                      tx_if.sw_if_index, 0)
             self.logger.info("Cross-connect from %s to %s deleted"
                              % (tx_if.name, rx_if.name))
             if self.pg_not_in_xc.count(rx_if) == 0:
@@ -260,7 +260,7 @@ class TestL2xcMultiInst(VppTestCase):
                 self.assertEqual(ip.dst, saved_packet[IP].dst)
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
-            except:
+            except BaseException:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.pg_interfaces:

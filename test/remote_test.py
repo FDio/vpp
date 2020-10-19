@@ -16,6 +16,25 @@ else:
     from enum import IntEnum, IntFlag
 
 
+class RemoteVclient:
+    """
+    Wrapper for accessing vclient on remote test.
+    """
+
+    def __init__(self, remote_test):
+        self.remote_test = remote_test
+
+    def __getattr__(self, name):
+        try:
+            """
+            In order to access vclient we need to call
+            __getattr__ on remote_test
+            """
+            return self.remote_test.vclient.__getattr__(name)
+        except AttributeError as e:
+            raise e
+
+
 class SerializableClassCopy(object):
     """
     Empty class used as a basis for a serializable copy of another class.
@@ -122,7 +141,7 @@ class RemoteClass(Process):
         return self.RemoteClassAttr(self, None)()
 
     def __getattr__(self, attr):
-        if attr[0] == '_' or not self.is_alive():
+        if attr[0] == '_':
             if not (attr.startswith('__') and attr.endswith('__')):
                 if hasattr(super(RemoteClass, self), '__getattr__'):
                     return super(RemoteClass, self).__getattr__(attr)
@@ -158,7 +177,7 @@ class RemoteClass(Process):
         timeout = self._timeout
         # adjust timeout specifically for the .sleep method
         if path is not None and path.split('.')[-1] == 'sleep':
-            if args and isinstance(args[0], (long, int)):
+            if args and isinstance(args[0], (int, int)):
                 timeout += args[0]
             elif 'timeout' in kwargs:
                 timeout += kwargs['timeout']
@@ -220,7 +239,7 @@ class RemoteClass(Process):
         try:
             dumps(obj)
             return True
-        except:
+        except BaseException:
             return False
 
     def _make_obj_serializable(self, obj):
@@ -237,7 +256,7 @@ class RemoteClass(Process):
         Dictionaries can hold complex values, so we split keys and values into
         separate lists and serialize them individually.
         """
-        if (type(obj) is dict):
+        if (isinstance(obj, dict)):
             copy.type = type(obj)
             copy.k_list = list()
             copy.v_list = list()
@@ -268,11 +287,11 @@ class RemoteClass(Process):
         Make a serializable copy of an object or a list/tuple of objects.
         Members which are difficult/impossible to serialize are stripped.
         """
-        if (type(obj) is list) or (type(obj) is tuple):
+        if (isinstance(obj, list)) or (isinstance(obj, tuple)):
             rv = []
             for item in obj:
                 rv.append(self._make_serializable(item))
-            if type(obj) is tuple:
+            if isinstance(obj, tuple):
                 rv = tuple(rv)
             return rv
         elif (isinstance(obj, IntEnum) or isinstance(obj, IntFlag)):
@@ -290,11 +309,11 @@ class RemoteClass(Process):
         return obj
 
     def _deserialize(self, obj):
-        if (type(obj) is list) or (type(obj) is tuple):
+        if (isinstance(obj, list)) or (isinstance(obj, tuple)):
             rv = []
             for item in obj:
                 rv.append(self._deserialize(item))
-            if type(obj) is tuple:
+            if isinstance(obj, tuple):
                 rv = tuple(rv)
             return rv
         else:
@@ -392,11 +411,11 @@ class RemoteVppTestCase(VppTestCase):
     # Note: __del__ is a 'Finalizer" not a 'Destructor'.
     # https://docs.python.org/3/reference/datamodel.html#object.__del__
     def __del__(self):
-        if hasattr(self, "vpp"):
-            self.vpp.poll()
-            if self.vpp.returncode is None:
-                self.vpp.terminate()
-                self.vpp.communicate()
+        if hasattr(self, "vpp_process"):
+            self.vpp_process.poll()
+            if self.vpp_process.returncode is None:
+                self.vpp_process.terminate()
+                self.vpp_process.communicate()
 
     @classmethod
     def setUpClass(cls, tempdir):
