@@ -923,7 +923,7 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
     case SESSION_IO_EVT_RX:
     case SESSION_IO_EVT_TX:
       s = vcl_session_get (wrk, e->session_index);
-      if (!s || !(vcl_session_is_ready (s)))
+      if (!s || !vcl_session_is_open (s))
 	break;
       vec_add1 (wrk->unhandled_evts_vector, *e);
       break;
@@ -1356,7 +1356,7 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * s,
 	      vppcom_retval_str (rv));
       return rv;
     }
-  else if ((vcl_session_is_ready (s))
+  else if (vcl_session_is_ready (s)
 	   || (vcl_session_is_connectable_listener (wrk, s)))
     {
       rv = vppcom_session_disconnect (sh);
