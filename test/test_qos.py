@@ -3,9 +3,9 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_sub_interface import VppDot1QSubint
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
+from vpp_pom.vpp_sub_interface import VppDot1QSubint
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsLabel, VppMplsTable, FibPathProto
 
 import scapy.compat
@@ -15,7 +15,7 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 from vpp_papi import VppEnum
-from vpp_qos import VppQosRecord, VppQosEgressMap, VppQosMark, VppQosStore
+from vpp_pom.vpp_qos import VppQosRecord, VppQosEgressMap, VppQosMark, VppQosStore
 
 NUM_PKTS = 67
 
@@ -43,7 +43,7 @@ class TestQOS(VppTestCase):
 
         self.create_pg_interfaces(range(5))
 
-        tbl = VppMplsTable(self, 0)
+        tbl = VppMplsTable(self.vclient, 0)
         tbl.add_vpp_config()
 
         for i in self.pg_interfaces:
@@ -78,7 +78,7 @@ class TestQOS(VppTestCase):
                 {'outputs': os},
                 {'outputs': os}]
 
-        qem1 = VppQosEgressMap(self, 1, rows).add_vpp_config()
+        qem1 = VppQosEgressMap(self.vclient, 1, rows).add_vpp_config()
 
         #
         # For table 2 (and up) use the value n for everything
@@ -90,7 +90,7 @@ class TestQOS(VppTestCase):
                 {'outputs': os},
                 {'outputs': os}]
 
-        qem2 = VppQosEgressMap(self, 2, rows).add_vpp_config()
+        qem2 = VppQosEgressMap(self.vclient, 2, rows).add_vpp_config()
 
         output = [scapy.compat.chb(3)] * 256
         os = b''.join(output)
@@ -99,7 +99,7 @@ class TestQOS(VppTestCase):
                 {'outputs': os},
                 {'outputs': os}]
 
-        qem3 = VppQosEgressMap(self, 3, rows).add_vpp_config()
+        qem3 = VppQosEgressMap(self.vclient, 3, rows).add_vpp_config()
 
         output = [scapy.compat.chb(4)] * 256
         os = b''.join(output)
@@ -108,28 +108,28 @@ class TestQOS(VppTestCase):
                 {'outputs': os},
                 {'outputs': os}]
 
-        qem4 = VppQosEgressMap(self, 4, rows).add_vpp_config()
-        qem5 = VppQosEgressMap(self, 5, rows).add_vpp_config()
-        qem6 = VppQosEgressMap(self, 6, rows).add_vpp_config()
-        qem7 = VppQosEgressMap(self, 7, rows).add_vpp_config()
+        qem4 = VppQosEgressMap(self.vclient, 4, rows).add_vpp_config()
+        qem5 = VppQosEgressMap(self.vclient, 5, rows).add_vpp_config()
+        qem6 = VppQosEgressMap(self.vclient, 6, rows).add_vpp_config()
+        qem7 = VppQosEgressMap(self.vclient, 7, rows).add_vpp_config()
 
         self.assertTrue(qem7.query_vpp_config())
-        self.logger.info(self.vapi.cli("sh qos eg map"))
+        self.logger.info(self.vclient.cli("sh qos eg map"))
 
         #
         # Bind interface pgN to table n
         #
-        qm1 = VppQosMark(self, self.pg1, qem1,
+        qm1 = VppQosMark(self.vclient, self.pg1, qem1,
                          self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
-        qm2 = VppQosMark(self, self.pg2, qem2,
+        qm2 = VppQosMark(self.vclient, self.pg2, qem2,
                          self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
-        qm3 = VppQosMark(self, self.pg3, qem3,
+        qm3 = VppQosMark(self.vclient, self.pg3, qem3,
                          self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
-        qm4 = VppQosMark(self, self.pg4, qem4,
+        qm4 = VppQosMark(self.vclient, self.pg4, qem4,
                          self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
         self.assertTrue(qm3.query_vpp_config())
 
-        self.logger.info(self.vapi.cli("sh qos mark"))
+        self.logger.info(self.vclient.cli("sh qos mark"))
 
         #
         # packets ingress on Pg0
@@ -158,10 +158,10 @@ class TestQOS(VppTestCase):
         #
         # Enable QoS recording on IP input for pg0
         #
-        qr1 = VppQosRecord(self, self.pg0,
+        qr1 = VppQosRecord(self.vclient, self.pg0,
                            self.QOS_SOURCE.QOS_API_SOURCE_IP)
         qr1.add_vpp_config()
-        self.logger.info(self.vapi.cli("sh qos record"))
+        self.logger.info(self.vclient.cli("sh qos record"))
 
         #
         # send the same packets, this time expect the input TOS of 1
@@ -219,10 +219,10 @@ class TestQOS(VppTestCase):
         #
         qm2.remove_vpp_config()
         qm3.remove_vpp_config()
-        self.logger.info(self.vapi.cli("sh qos mark"))
+        self.logger.info(self.vclient.cli("sh qos mark"))
 
         self.assertFalse(qm3.query_vpp_config())
-        self.logger.info(self.vapi.cli("sh int feat pg2"))
+        self.logger.info(self.vclient.cli("sh int feat pg2"))
 
         p_v4[IP].dst = self.pg2.remote_ip4
         rx = self.send_and_expect(self.pg0, p_v4 * NUM_PKTS, self.pg2)
@@ -258,10 +258,10 @@ class TestQOS(VppTestCase):
         #
         # enable QoS stroe instead of record
         #
-        qst1 = VppQosStore(self, self.pg0,
+        qst1 = VppQosStore(self.vclient, self.pg0,
                            self.QOS_SOURCE.QOS_API_SOURCE_IP,
                            5).add_vpp_config()
-        self.logger.info(self.vapi.cli("sh qos store"))
+        self.logger.info(self.vclient.cli("sh qos store"))
 
         p_v4[IP].dst = self.pg1.remote_ip4
         rx = self.send_and_expect(self.pg0, p_v4 * NUM_PKTS, self.pg1)
@@ -317,12 +317,12 @@ class TestQOS(VppTestCase):
                 {'outputs': os3},
                 {'outputs': os4}]
 
-        qem1 = VppQosEgressMap(self, 1, rows).add_vpp_config()
+        qem1 = VppQosEgressMap(self.vclient, 1, rows).add_vpp_config()
 
         #
         # a route with 1 MPLS label
         #
-        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+        route_10_0_0_1 = VppIpRoute(self.vclient, "10.0.0.1", 32,
                                     [VppRoutePath(self.pg1.remote_ip4,
                                                   self.pg1.sw_if_index,
                                                   labels=[32])])
@@ -331,7 +331,7 @@ class TestQOS(VppTestCase):
         #
         # a route with 3 MPLS labels
         #
-        route_10_0_0_3 = VppIpRoute(self, "10.0.0.3", 32,
+        route_10_0_0_3 = VppIpRoute(self.vclient, "10.0.0.3", 32,
                                     [VppRoutePath(self.pg1.remote_ip4,
                                                   self.pg1.sw_if_index,
                                                   labels=[63, 33, 34])])
@@ -341,9 +341,9 @@ class TestQOS(VppTestCase):
         # enable IP QoS recording on the input Pg0 and MPLS egress marking
         # on Pg1
         #
-        qr1 = VppQosRecord(self, self.pg0,
+        qr1 = VppQosRecord(self.vclient, self.pg0,
                            self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
-        qm1 = VppQosMark(self, self.pg1, qem1,
+        qm1 = VppQosMark(self.vclient, self.pg1, qem1,
                          self.QOS_SOURCE.QOS_API_SOURCE_MPLS).add_vpp_config()
 
         #
@@ -387,16 +387,16 @@ class TestQOS(VppTestCase):
         # on Pg1
         #
         qr2 = VppQosRecord(
-            self, self.pg0,
+            self.vclient, self.pg0,
             self.QOS_SOURCE.QOS_API_SOURCE_MPLS).add_vpp_config()
         qm2 = VppQosMark(
-            self, self.pg1, qem1,
+            self.vclient, self.pg1, qem1,
             self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
 
         #
         # MPLS x-connect - COS according to pg1 map
         #
-        route_32_eos = VppMplsRoute(self, 32, 1,
+        route_32_eos = VppMplsRoute(self.vclient, 32, 1,
                                     [VppRoutePath(self.pg1.remote_ip4,
                                                   self.pg1.sw_if_index,
                                                   labels=[VppMplsLabel(33)])])
@@ -417,13 +417,13 @@ class TestQOS(VppTestCase):
         #
         # MPLS deag - COS is copied from MPLS to IP
         #
-        route_33_eos = VppMplsRoute(self, 33, 1,
+        route_33_eos = VppMplsRoute(self.vclient, 33, 1,
                                     [VppRoutePath("0.0.0.0",
                                                   0xffffffff,
                                                   nh_table_id=0)])
         route_33_eos.add_vpp_config()
 
-        route_10_0_0_4 = VppIpRoute(self, "10.0.0.4", 32,
+        route_10_0_0_4 = VppIpRoute(self.vclient, "10.0.0.4", 32,
                                     [VppRoutePath(self.pg1.remote_ip4,
                                                   self.pg1.sw_if_index)])
         route_10_0_0_4.add_vpp_config()
@@ -454,9 +454,9 @@ class TestQOS(VppTestCase):
                 {'outputs': os},
                 {'outputs': os}]
 
-        qem1 = VppQosEgressMap(self, 1, rows).add_vpp_config()
+        qem1 = VppQosEgressMap(self.vclient, 1, rows).add_vpp_config()
 
-        sub_if = VppDot1QSubint(self, self.pg0, 11)
+        sub_if = VppDot1QSubint(self.vclient, self.pg0, 11)
 
         sub_if.admin_up()
         sub_if.config_ip4()
@@ -468,38 +468,38 @@ class TestQOS(VppTestCase):
         # enable VLAN QoS recording/marking on the input Pg0 subinterface and
         #
         qr_v = VppQosRecord(
-            self, sub_if,
+            self.vclient, sub_if,
             self.QOS_SOURCE.QOS_API_SOURCE_VLAN).add_vpp_config()
         qm_v = VppQosMark(
-            self, sub_if, qem1,
+            self.vclient, sub_if, qem1,
             self.QOS_SOURCE.QOS_API_SOURCE_VLAN).add_vpp_config()
 
         #
         # IP marking/recording on pg1
         #
         qr_ip = VppQosRecord(
-            self, self.pg1,
+            self.vclient, self.pg1,
             self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
         qm_ip = VppQosMark(
-            self, self.pg1, qem1,
+            self.vclient, self.pg1, qem1,
             self.QOS_SOURCE.QOS_API_SOURCE_IP).add_vpp_config()
 
         #
         # a routes to/from sub-interface
         #
-        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+        route_10_0_0_1 = VppIpRoute(self.vclient, "10.0.0.1", 32,
                                     [VppRoutePath(sub_if.remote_ip4,
                                                   sub_if.sw_if_index)])
         route_10_0_0_1.add_vpp_config()
-        route_10_0_0_2 = VppIpRoute(self, "10.0.0.2", 32,
+        route_10_0_0_2 = VppIpRoute(self.vclient, "10.0.0.2", 32,
                                     [VppRoutePath(self.pg1.remote_ip4,
                                                   self.pg1.sw_if_index)])
         route_10_0_0_2.add_vpp_config()
-        route_2001_1 = VppIpRoute(self, "2001::1", 128,
+        route_2001_1 = VppIpRoute(self.vclient, "2001::1", 128,
                                   [VppRoutePath(sub_if.remote_ip6,
                                                 sub_if.sw_if_index)])
         route_2001_1.add_vpp_config()
-        route_2001_2 = VppIpRoute(self, "2001::2", 128,
+        route_2001_2 = VppIpRoute(self.vclient, "2001::2", 128,
                                   [VppRoutePath(self.pg1.remote_ip6,
                                                 self.pg1.sw_if_index)])
         route_2001_2.add_vpp_config()

@@ -10,7 +10,7 @@ from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet import IPerror, UDPerror
 from scapy.layers.l2 import Ether
-from util import ppp
+from vpp_pom.util import ppp
 
 
 class TestDET44(VppTestCase):
@@ -19,7 +19,7 @@ class TestDET44(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(TestDET44, cls).setUpClass()
-        cls.vapi.cli("set log class det44 level debug")
+        cls.vclient.cli("set log class det44 level debug")
 
         cls.tcp_port_in = 6303
         cls.tcp_external_port = 6303
@@ -45,18 +45,18 @@ class TestDET44(VppTestCase):
 
     def setUp(self):
         super(TestDET44, self).setUp()
-        self.vapi.det44_plugin_enable_disable(enable=1)
+        self.vclient.det44_plugin_enable_disable(enable=1)
 
     def tearDown(self):
         super(TestDET44, self).tearDown()
         if not self.vpp_dead:
-            self.vapi.det44_plugin_enable_disable(enable=0)
+            self.vclient.det44_plugin_enable_disable(enable=0)
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show det44 interfaces"))
-        self.logger.info(self.vapi.cli("show det44 timeouts"))
-        self.logger.info(self.vapi.cli("show det44 mappings"))
-        self.logger.info(self.vapi.cli("show det44 sessions"))
+        self.logger.info(self.vclient.cli("show det44 interfaces"))
+        self.logger.info(self.vclient.cli("show det44 timeouts"))
+        self.logger.info(self.vclient.cli("show det44 mappings"))
+        self.logger.info(self.vclient.cli("show det44 sessions"))
 
     def verify_capture_in(self, capture, in_if):
         """
@@ -114,7 +114,7 @@ class TestDET44(VppTestCase):
         p = (Ether(src=in_if.remote_mac, dst=in_if.local_mac) /
              IP(src=in_if.remote_ip4, dst=out_if.remote_ip4) /
              TCP(sport=self.tcp_port_in, dport=self.tcp_external_port,
-             flags="S"))
+                 flags="S"))
         in_if.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -126,7 +126,7 @@ class TestDET44(VppTestCase):
         p = (Ether(src=out_if.remote_mac, dst=out_if.local_mac) /
              IP(src=out_if.remote_ip4, dst=self.nat_addr) /
              TCP(sport=self.tcp_external_port, dport=self.tcp_port_out,
-             flags="SA"))
+                 flags="SA"))
         out_if.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -136,7 +136,7 @@ class TestDET44(VppTestCase):
         p = (Ether(src=in_if.remote_mac, dst=in_if.local_mac) /
              IP(src=in_if.remote_ip4, dst=out_if.remote_ip4) /
              TCP(sport=self.tcp_port_in, dport=self.tcp_external_port,
-             flags="A"))
+                 flags="A"))
         in_if.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -234,17 +234,17 @@ class TestDET44(VppTestCase):
         in_plen = 24
         out_plen = 32
 
-        self.vapi.det44_add_del_map(is_add=1, in_addr=in_addr,
-                                    in_plen=in_plen, out_addr=out_addr,
-                                    out_plen=out_plen)
+        self.vclient.det44_add_del_map(is_add=1, in_addr=in_addr,
+                                       in_plen=in_plen, out_addr=out_addr,
+                                       out_plen=out_plen)
 
-        rep1 = self.vapi.det44_forward(in_addr_t)
+        rep1 = self.vclient.det44_forward(in_addr_t)
         self.assertEqual(str(rep1.out_addr), out_addr)
-        rep2 = self.vapi.det44_reverse(rep1.out_port_hi, out_addr)
+        rep2 = self.vclient.det44_reverse(rep1.out_port_hi, out_addr)
 
         self.assertEqual(str(rep2.in_addr), in_addr_t)
 
-        deterministic_mappings = self.vapi.det44_map_dump()
+        deterministic_mappings = self.vclient.det44_map_dump()
         self.assertEqual(len(deterministic_mappings), 1)
         dsm = deterministic_mappings[0]
         self.assertEqual(in_addr, str(dsm.in_addr))
@@ -254,15 +254,15 @@ class TestDET44(VppTestCase):
 
     def test_set_timeouts(self):
         """ Set deterministic NAT timeouts """
-        timeouts_before = self.vapi.det44_get_timeouts()
+        timeouts_before = self.vclient.det44_get_timeouts()
 
-        self.vapi.det44_set_timeouts(
+        self.vclient.det44_set_timeouts(
             udp=timeouts_before.udp + 10,
             tcp_established=timeouts_before.tcp_established + 10,
             tcp_transitory=timeouts_before.tcp_transitory + 10,
             icmp=timeouts_before.icmp + 10)
 
-        timeouts_after = self.vapi.det44_get_timeouts()
+        timeouts_after = self.vclient.det44_get_timeouts()
 
         self.assertNotEqual(timeouts_before.udp, timeouts_after.udp)
         self.assertNotEqual(timeouts_before.icmp, timeouts_after.icmp)
@@ -276,15 +276,15 @@ class TestDET44(VppTestCase):
 
         nat_ip = "10.0.0.10"
 
-        self.vapi.det44_add_del_map(is_add=1, in_addr=self.pg0.remote_ip4,
-                                    in_plen=32,
-                                    out_addr=socket.inet_aton(nat_ip),
-                                    out_plen=32)
+        self.vclient.det44_add_del_map(is_add=1, in_addr=self.pg0.remote_ip4,
+                                       in_plen=32,
+                                       out_addr=socket.inet_aton(nat_ip),
+                                       out_plen=32)
 
-        self.vapi.det44_interface_add_del_feature(
+        self.vclient.det44_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             is_add=1, is_inside=1)
-        self.vapi.det44_interface_add_del_feature(
+        self.vclient.det44_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1, is_inside=0)
 
@@ -305,7 +305,7 @@ class TestDET44(VppTestCase):
         self.verify_capture_in(capture, self.pg0)
 
         # session dump test
-        sessions = self.vapi.det44_session_dump(self.pg0.remote_ip4)
+        sessions = self.vclient.det44_session_dump(self.pg0.remote_ip4)
         self.assertEqual(len(sessions), 3)
 
         # TCP session
@@ -338,13 +338,13 @@ class TestDET44(VppTestCase):
         host0 = self.pg0.remote_hosts[0]
         host1 = self.pg0.remote_hosts[1]
 
-        self.vapi.det44_add_del_map(is_add=1, in_addr=host0.ip4, in_plen=24,
-                                    out_addr=socket.inet_aton(nat_ip),
-                                    out_plen=32)
-        self.vapi.det44_interface_add_del_feature(
+        self.vclient.det44_add_del_map(is_add=1, in_addr=host0.ip4, in_plen=24,
+                                       out_addr=socket.inet_aton(nat_ip),
+                                       out_plen=32)
+        self.vclient.det44_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             is_add=1, is_inside=1)
-        self.vapi.det44_interface_add_del_feature(
+        self.vclient.det44_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1, is_inside=0)
 
@@ -388,7 +388,7 @@ class TestDET44(VppTestCase):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        dms = self.vapi.det44_map_dump()
+        dms = self.vclient.det44_map_dump()
         self.assertEqual(1, len(dms))
         self.assertEqual(2, dms[0].ses_num)
 
@@ -433,30 +433,31 @@ class TestDET44(VppTestCase):
             raise
 
         # session close api test
-        self.vapi.det44_close_session_out(socket.inet_aton(nat_ip),
-                                          port_out1,
-                                          self.pg1.remote_ip4,
-                                          external_port)
-        dms = self.vapi.det44_map_dump()
+        self.vclient.det44_close_session_out(socket.inet_aton(nat_ip),
+                                             port_out1,
+                                             self.pg1.remote_ip4,
+                                             external_port)
+        dms = self.vclient.det44_map_dump()
         self.assertEqual(dms[0].ses_num, 1)
 
-        self.vapi.det44_close_session_in(host0.ip4,
-                                         port_in,
-                                         self.pg1.remote_ip4,
-                                         external_port)
-        dms = self.vapi.det44_map_dump()
+        self.vclient.det44_close_session_in(host0.ip4,
+                                            port_in,
+                                            self.pg1.remote_ip4,
+                                            external_port)
+        dms = self.vclient.det44_map_dump()
         self.assertEqual(dms[0].ses_num, 0)
 
     def test_tcp_session_close_detection_in(self):
         """ DET44 TCP session close from inside network """
-        self.vapi.det44_add_del_map(is_add=1, in_addr=self.pg0.remote_ip4,
-                                    in_plen=32,
-                                    out_addr=socket.inet_aton(self.nat_addr),
-                                    out_plen=32)
-        self.vapi.det44_interface_add_del_feature(
+        self.vclient.det44_add_del_map(is_add=1, in_addr=self.pg0.remote_ip4,
+                                       in_plen=32,
+                                       out_addr=socket.inet_aton(
+                                           self.nat_addr),
+                                       out_plen=32)
+        self.vclient.det44_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             is_add=1, is_inside=1)
-        self.vapi.det44_interface_add_del_feature(
+        self.vclient.det44_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1, is_inside=0)
 
@@ -506,7 +507,7 @@ class TestDET44(VppTestCase):
             self.pg1.get_capture(1)
 
             # Check if deterministic NAT44 closed the session
-            dms = self.vapi.det44_map_dump()
+            dms = self.vclient.det44_map_dump()
             self.assertEqual(0, dms[0].ses_num)
         except:
             self.logger.error("TCP session termination failed")
@@ -514,14 +515,15 @@ class TestDET44(VppTestCase):
 
     def test_tcp_session_close_detection_out(self):
         """ Deterministic NAT TCP session close from outside network """
-        self.vapi.det44_add_del_map(is_add=1, in_addr=self.pg0.remote_ip4,
-                                    in_plen=32,
-                                    out_addr=socket.inet_aton(self.nat_addr),
-                                    out_plen=32)
-        self.vapi.det44_interface_add_del_feature(
+        self.vclient.det44_add_del_map(is_add=1, in_addr=self.pg0.remote_ip4,
+                                       in_plen=32,
+                                       out_addr=socket.inet_aton(
+                                           self.nat_addr),
+                                       out_plen=32)
+        self.vclient.det44_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             is_add=1, is_inside=1)
-        self.vapi.det44_interface_add_del_feature(
+        self.vclient.det44_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1, is_inside=0)
 
@@ -571,7 +573,7 @@ class TestDET44(VppTestCase):
             self.pg0.get_capture(1)
 
             # Check if deterministic NAT44 closed the session
-            dms = self.vapi.det44_map_dump()
+            dms = self.vclient.det44_map_dump()
             self.assertEqual(0, dms[0].ses_num)
         except:
             self.logger.error("TCP session termination failed")
@@ -580,20 +582,21 @@ class TestDET44(VppTestCase):
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_session_timeout(self):
         """ Deterministic NAT session timeouts """
-        self.vapi.det44_add_del_map(is_add=1, in_addr=self.pg0.remote_ip4,
-                                    in_plen=32,
-                                    out_addr=socket.inet_aton(self.nat_addr),
-                                    out_plen=32)
-        self.vapi.det44_interface_add_del_feature(
+        self.vclient.det44_add_del_map(is_add=1, in_addr=self.pg0.remote_ip4,
+                                       in_plen=32,
+                                       out_addr=socket.inet_aton(
+                                           self.nat_addr),
+                                       out_plen=32)
+        self.vclient.det44_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             is_add=1, is_inside=1)
-        self.vapi.det44_interface_add_del_feature(
+        self.vclient.det44_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1, is_inside=0)
 
         self.initiate_tcp_session(self.pg0, self.pg1)
-        self.vapi.det44_set_timeouts(udp=5, tcp_established=5,
-                                     tcp_transitory=5, icmp=5)
+        self.vclient.det44_set_timeouts(udp=5, tcp_established=5,
+                                        tcp_transitory=5, icmp=5)
         pkts = self.create_stream_in(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
@@ -601,29 +604,30 @@ class TestDET44(VppTestCase):
         self.pg1.get_capture(len(pkts))
         sleep(15)
 
-        dms = self.vapi.det44_map_dump()
+        dms = self.vclient.det44_map_dump()
         self.assertEqual(0, dms[0].ses_num)
 
     # TODO: ipfix needs to be separated from NAT base plugin
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_session_limit_per_user(self):
         """ Deterministic NAT maximum sessions per user limit """
-        self.vapi.det44_add_del_map(is_add=1, in_addr=self.pg0.remote_ip4,
-                                    in_plen=32,
-                                    out_addr=socket.inet_aton(self.nat_addr),
-                                    out_plen=32)
-        self.vapi.det44_interface_add_del_feature(
+        self.vclient.det44_add_del_map(is_add=1, in_addr=self.pg0.remote_ip4,
+                                       in_plen=32,
+                                       out_addr=socket.inet_aton(
+                                           self.nat_addr),
+                                       out_plen=32)
+        self.vclient.det44_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             is_add=1, is_inside=1)
-        self.vapi.det44_interface_add_del_feature(
+        self.vclient.det44_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1, is_inside=0)
-        self.vapi.set_ipfix_exporter(collector_address=self.pg2.remote_ip4,
-                                     src_address=self.pg2.local_ip4,
-                                     path_mtu=512,
-                                     template_interval=10)
-        self.vapi.nat_ipfix_enable_disable(domain_id=1, src_port=4739,
-                                           enable=1)
+        self.vclient.set_ipfix_exporter(collector_address=self.pg2.remote_ip4,
+                                        src_address=self.pg2.local_ip4,
+                                        path_mtu=512,
+                                        template_interval=10)
+        self.vclient.nat_ipfix_enable_disable(domain_id=1, src_port=4739,
+                                              enable=1)
 
         pkts = []
         for port in range(1025, 2025):
@@ -657,12 +661,12 @@ class TestDET44(VppTestCase):
         self.assertEqual(inner_ip[UDPerror].sport, 3001)
         self.assertEqual(inner_ip[UDPerror].dport, 3002)
 
-        dms = self.vapi.det44_map_dump()
+        dms = self.vclient.det44_map_dump()
 
         self.assertEqual(1000, dms[0].ses_num)
 
         # verify IPFIX logging
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         sleep(1)
         capture = self.pg2.get_capture(2)
         ipfix = IPFIXDecoder()
@@ -678,5 +682,5 @@ class TestDET44(VppTestCase):
                 self.verify_ipfix_max_entries_per_user(data,
                                                        1000,
                                                        self.pg0.remote_ip4)
-        self.vapi.nat_ipfix_enable_disable(domain_id=1, src_port=4739,
-                                           enable=0)
+        self.vclient.nat_ipfix_enable_disable(domain_id=1, src_port=4739,
+                                              enable=0)

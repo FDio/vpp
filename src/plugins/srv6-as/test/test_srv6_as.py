@@ -5,8 +5,8 @@ import binascii
 from socket import AF_INET6
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto, VppIpTable
-from vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, VppSRv6Policy, \
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto, VppIpTable
+from vpp_pom.plugins.vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, VppSRv6Policy, \
     SRv6PolicyType, VppSRv6Steering, SRv6PolicySteeringTypes
 
 import scapy.compat
@@ -15,7 +15,7 @@ from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet6 import IPv6, UDP, IPv6ExtHdrSegmentRouting
 from scapy.layers.inet import IP, UDP
 
-from util import ppp
+from vpp_pom.util import ppp
 
 
 class TestSRv6(VppTestCase):
@@ -112,11 +112,11 @@ class TestSRv6(VppTestCase):
                                      ipv6_table_id[i], ipv4_table_id[i])
 
         if any(ipv6):
-            self.logger.debug(self.vapi.cli("show ip6 neighbors"))
+            self.logger.debug(self.vclient.cli("show ip6 neighbors"))
         if any(ipv4):
-            self.logger.debug(self.vapi.cli("show ip4 neighbors"))
-        self.logger.debug(self.vapi.cli("show interface"))
-        self.logger.debug(self.vapi.cli("show hardware"))
+            self.logger.debug(self.vclient.cli("show ip4 neighbors"))
+        self.logger.debug(self.vclient.cli("show interface"))
+        self.logger.debug(self.vclient.cli("show hardware"))
 
         return self.pg_interfaces
 
@@ -192,7 +192,7 @@ class TestSRv6(VppTestCase):
         self.setup_interfaces(ipv6=[True, False])
 
         # configure route to next segment
-        route = VppIpRoute(self, sid_list[test_sid_index + 1], 128,
+        route = VppIpRoute(self.vclient, sid_list[test_sid_index + 1], 128,
                            [VppRoutePath(self.pg0.remote_ip6,
                                          self.pg0.sw_if_index)])
         route.add_vpp_config()
@@ -205,19 +205,19 @@ class TestSRv6(VppTestCase):
             + " src " + self.rewrite_src_addr
         for s in self.rewrite_sid_list:
             cli_str += " next " + s
-        self.vapi.cli(cli_str)
+        self.vclient.cli(cli_str)
 
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vclient.cli("show sr localsid"))
 
         # send one packet per packet size
         count = len(self.pg_packet_sizes)
 
         # prepare L2 in SRv6 headers
         packet_header1 = self.create_packet_header_IPv6_SRH_L2(
-                        sidlist=sid_list[::-1],
-                        segleft=len(sid_list) - test_sid_index - 1,
-                        vlan=0)
+            sidlist=sid_list[::-1],
+            segleft=len(sid_list) - test_sid_index - 1,
+            vlan=0)
 
         # generate packets (pg0->pg1)
         pkts1 = self.create_stream(self.pg0, self.pg1, packet_header1,
@@ -228,7 +228,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AS_L2_out)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # prepare L2 header for returning packets
         packet_header2 = self.create_packet_header_L2()
@@ -242,10 +242,10 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AS_L2_in)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SRv6 localSIDs
-        self.vapi.cli("sr localsid del address " + sid_list[test_sid_index])
+        self.vclient.cli("sr localsid del address " + sid_list[test_sid_index])
 
         # cleanup interfaces
         self.teardown_interfaces()
@@ -261,7 +261,7 @@ class TestSRv6(VppTestCase):
         self.setup_interfaces(ipv6=[True, True])
 
         # configure route to next segment
-        route = VppIpRoute(self, sid_list[test_sid_index + 1], 128,
+        route = VppIpRoute(self.vclient, sid_list[test_sid_index + 1], 128,
                            [VppRoutePath(self.pg0.remote_ip6,
                                          self.pg0.sw_if_index)])
         route.add_vpp_config()
@@ -275,18 +275,18 @@ class TestSRv6(VppTestCase):
             + " src " + self.rewrite_src_addr
         for s in self.rewrite_sid_list:
             cli_str += " next " + s
-        self.vapi.cli(cli_str)
+        self.vclient.cli(cli_str)
 
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vclient.cli("show sr localsid"))
 
         # send one packet per packet size
         count = len(self.pg_packet_sizes)
 
         # prepare IPv6 in SRv6 headers
         packet_header1 = self.create_packet_header_IPv6_SRH_IPv6(
-                        sidlist=sid_list[::-1],
-                        segleft=len(sid_list) - test_sid_index - 1)
+            sidlist=sid_list[::-1],
+            segleft=len(sid_list) - test_sid_index - 1)
 
         # generate packets (pg0->pg1)
         pkts1 = self.create_stream(self.pg0, self.pg1, packet_header1,
@@ -297,7 +297,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AS_IPv6_out)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # prepare IPv6 header for returning packets
         packet_header2 = self.create_packet_header_IPv6()
@@ -311,10 +311,10 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AS_IPv6_in)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SRv6 localSIDs
-        self.vapi.cli("sr localsid del address " + sid_list[test_sid_index])
+        self.vclient.cli("sr localsid del address " + sid_list[test_sid_index])
 
         # cleanup interfaces
         self.teardown_interfaces()
@@ -330,7 +330,7 @@ class TestSRv6(VppTestCase):
         self.setup_interfaces(ipv6=[True, False], ipv4=[True, True])
 
         # configure route to next segment
-        route = VppIpRoute(self, sid_list[test_sid_index + 1], 128,
+        route = VppIpRoute(self.vclient, sid_list[test_sid_index + 1], 128,
                            [VppRoutePath(self.pg0.remote_ip6,
                                          self.pg0.sw_if_index)])
         route.add_vpp_config()
@@ -344,18 +344,18 @@ class TestSRv6(VppTestCase):
             + " src " + self.rewrite_src_addr
         for s in self.rewrite_sid_list:
             cli_str += " next " + s
-        self.vapi.cli(cli_str)
+        self.vclient.cli(cli_str)
 
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vclient.cli("show sr localsid"))
 
         # send one packet per packet size
         count = len(self.pg_packet_sizes)
 
         # prepare IPv4 in SRv6 headers
         packet_header1 = self.create_packet_header_IPv6_SRH_IPv4(
-                        sidlist=sid_list[::-1],
-                        segleft=len(sid_list) - test_sid_index - 1)
+            sidlist=sid_list[::-1],
+            segleft=len(sid_list) - test_sid_index - 1)
 
         # generate packets (pg0->pg1)
         pkts1 = self.create_stream(self.pg0, self.pg1, packet_header1,
@@ -366,7 +366,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AS_IPv4_out)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # prepare IPv6 header for returning packets
         packet_header2 = self.create_packet_header_IPv4()
@@ -380,10 +380,10 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_AS_IPv4_in)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SRv6 localSIDs
-        self.vapi.cli("sr localsid del address " + sid_list[test_sid_index])
+        self.vclient.cli("sr localsid del address " + sid_list[test_sid_index])
 
         # cleanup interfaces
         self.teardown_interfaces()

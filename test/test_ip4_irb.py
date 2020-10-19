@@ -32,7 +32,7 @@ from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
 from vpp_papi import MACAddress
-from vpp_l2 import L2_PORT_TYPE
+from vpp_pom.vpp_l2 import L2_PORT_TYPE
 
 
 class TestIpIrb(VppTestCase):
@@ -65,13 +65,13 @@ class TestIpIrb(VppTestCase):
             i.admin_up()
 
         # Create BD with MAC learning enabled and put interfaces to this BD
-        cls.vapi.sw_interface_set_l2_bridge(
+        cls.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=cls.bvi0.sw_if_index, bd_id=cls.bd_id,
             port_type=L2_PORT_TYPE.BVI)
-        cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=cls.pg0.sw_if_index,
-                                            bd_id=cls.bd_id)
-        cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=cls.pg1.sw_if_index,
-                                            bd_id=cls.bd_id)
+        cls.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=cls.pg0.sw_if_index,
+                                               bd_id=cls.bd_id)
+        cls.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=cls.pg1.sw_if_index,
+                                               bd_id=cls.bd_id)
 
         # Configure IPv4 addresses on BVI interface and routed interface
         cls.bvi0.config_ip4()
@@ -101,11 +101,11 @@ class TestIpIrb(VppTestCase):
         super(TestIpIrb, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show l2patch"))
-        self.logger.info(self.vapi.cli("show l2fib verbose"))
-        self.logger.info(self.vapi.cli("show bridge-domain %s detail" %
-                                       self.bd_id))
-        self.logger.info(self.vapi.cli("show ip neighbors"))
+        self.logger.info(self.vclient.cli("show l2patch"))
+        self.logger.info(self.vclient.cli("show l2fib verbose"))
+        self.logger.info(self.vclient.cli("show bridge-domain %s detail" %
+                                          self.bd_id))
+        self.logger.info(self.vclient.cli("show ip neighbors"))
 
     def create_stream(self, src_ip_if, dst_ip_if, packet_sizes):
         pkts = []
@@ -251,7 +251,7 @@ class TestIpIrb(VppTestCase):
             self.pg0, self.bvi0, self.pg2, self.pg_if_packet_sizes)
         stream2 = self.create_stream_l2_to_ip(
             self.pg1, self.bvi0, self.pg2, self.pg_if_packet_sizes)
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         self.pg0.add_stream(stream1)
         self.pg1.add_stream(stream2)
 

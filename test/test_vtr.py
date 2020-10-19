@@ -7,9 +7,9 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
 
-from util import Host
+from vpp_pom.util import Host
 from framework import VppTestCase, VppTestRunner
-from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint, VppDot1ADSubint
+from vpp_pom.vpp_sub_interface import L2_VTR_OP, VppDot1QSubint, VppDot1ADSubint
 from collections import namedtuple
 
 Tag = namedtuple('Tag', ['dot1', 'vlan'])
@@ -36,9 +36,9 @@ class TestVtr(VppTestCase):
             cls.create_pg_interfaces(ifs)
 
             cls.sub_interfaces = [
-                VppDot1ADSubint(cls, cls.pg1, cls.dot1ad_sub_id,
+                VppDot1ADSubint(cls.vclient, cls.pg1, cls.dot1ad_sub_id,
                                 cls.Btag, cls.Atag),
-                VppDot1QSubint(cls, cls.pg2, cls.Btag)]
+                VppDot1QSubint(cls.vclient, cls.pg2, cls.Btag)]
 
             interfaces = list(cls.pg_interfaces)
             interfaces.extend(cls.sub_interfaces)
@@ -48,8 +48,8 @@ class TestVtr(VppTestCase):
             for pg_if in cls.pg_interfaces:
                 sw_if_index = pg_if.sub_if.sw_if_index \
                     if hasattr(pg_if, 'sub_if') else pg_if.sw_if_index
-                cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=sw_if_index,
-                                                    bd_id=cls.bd_id)
+                cls.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=sw_if_index,
+                                                       bd_id=cls.bd_id)
 
             # setup all interfaces
             for i in interfaces:
@@ -61,7 +61,7 @@ class TestVtr(VppTestCase):
             # create test host entries and inject packets to learn MAC entries
             # in the bridge-domain
             cls.create_hosts_and_learn(cls.mac_entries_count)
-            cls.logger.info(cls.vapi.ppcli("show l2fib"))
+            cls.logger.info(cls.vclient.ppcli("show l2fib"))
 
         except Exception:
             super(TestVtr, cls).tearDownClass()
@@ -85,9 +85,9 @@ class TestVtr(VppTestCase):
         super(TestVtr, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show l2fib verbose"))
-        self.logger.info(self.vapi.ppcli("show bridge-domain %s detail" %
-                                         self.bd_id))
+        self.logger.info(self.vclient.ppcli("show l2fib verbose"))
+        self.logger.info(self.vclient.ppcli("show bridge-domain %s detail" %
+                                            self.bd_id))
 
     @classmethod
     def create_hosts_and_learn(cls, count):
@@ -171,9 +171,9 @@ class TestVtr(VppTestCase):
         if not tags:
             return
 
-        i = VppDot1QSubint(self, self.pg0, tags[0].vlan)
-        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
-                                             bd_id=self.bd_id, enable=1)
+        i = VppDot1QSubint(self.vclient, self.pg0, tags[0].vlan)
+        self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                bd_id=self.bd_id, enable=1)
         i.admin_up()
 
         p = self.create_packet(self.pg0, swif, do_dot1=False)
@@ -185,8 +185,8 @@ class TestVtr(VppTestCase):
         swif.sub_if.remove_dot1_layer(rx[0])
         self.assertTrue(Dot1Q not in rx[0])
 
-        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
-                                             bd_id=self.bd_id, enable=0)
+        self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                bd_id=self.bd_id, enable=0)
         i.remove_vpp_config()
 
     def test_1ad_vtr_pop_1(self):
@@ -335,20 +335,20 @@ class TestVtr(VppTestCase):
         """ Disable VTR on non-sub-interfaces
         """
         # First set the VTR fields to junk
-        self.vapi.l2_interface_vlan_tag_rewrite(
+        self.vclient.l2_interface_vlan_tag_rewrite(
             sw_if_index=self.pg0.sw_if_index, vtr_op=L2_VTR_OP.L2_PUSH_2,
             push_dot1q=1, tag1=19, tag2=630)
 
-        if_state = self.vapi.sw_interface_dump(
+        if_state = self.vclient.sw_interface_dump(
             sw_if_index=self.pg0.sw_if_index)
         self.assertEqual(if_state[0].sw_if_index, self.pg0.sw_if_index)
         self.assertNotEqual(if_state[0].vtr_op, L2_VTR_OP.L2_DISABLED)
 
         # Then ensure that a request to disable VTR is honored.
-        self.vapi.l2_interface_vlan_tag_rewrite(
+        self.vclient.l2_interface_vlan_tag_rewrite(
             sw_if_index=self.pg0.sw_if_index, vtr_op=L2_VTR_OP.L2_DISABLED)
 
-        if_state = self.vapi.sw_interface_dump(
+        if_state = self.vclient.sw_interface_dump(
             sw_if_index=self.pg0.sw_if_index)
         self.assertEqual(if_state[0].sw_if_index, self.pg0.sw_if_index)
         self.assertEqual(if_state[0].vtr_op, L2_VTR_OP.L2_DISABLED)
@@ -356,11 +356,11 @@ class TestVtr(VppTestCase):
     def test_if_vtr_push_1q(self):
         """ 1Q VTR push 1 on non-sub-interfaces
         """
-        self.vapi.l2_interface_vlan_tag_rewrite(
+        self.vclient.l2_interface_vlan_tag_rewrite(
             sw_if_index=self.pg0.sw_if_index, vtr_op=L2_VTR_OP.L2_PUSH_1,
             push_dot1q=1, tag1=150)
 
-        if_state = self.vapi.sw_interface_dump(
+        if_state = self.vclient.sw_interface_dump(
             sw_if_index=self.pg0.sw_if_index)
         self.assertEqual(if_state[0].sw_if_index, self.pg0.sw_if_index)
         self.assertEqual(if_state[0].vtr_op, L2_VTR_OP.L2_PUSH_1)
@@ -370,17 +370,18 @@ class TestVtr(VppTestCase):
     def test_if_vtr_push_2ad(self):
         """ 1AD VTR push 2 on non-sub-interfaces
         """
-        self.vapi.l2_interface_vlan_tag_rewrite(
+        self.vclient.l2_interface_vlan_tag_rewrite(
             sw_if_index=self.pg0.sw_if_index, vtr_op=L2_VTR_OP.L2_PUSH_2,
             push_dot1q=0, tag1=450, tag2=350)
 
-        if_state = self.vapi.sw_interface_dump(
+        if_state = self.vclient.sw_interface_dump(
             sw_if_index=self.pg0.sw_if_index)
         self.assertEqual(if_state[0].sw_if_index, self.pg0.sw_if_index)
         self.assertEqual(if_state[0].vtr_op, L2_VTR_OP.L2_PUSH_2)
         self.assertEqual(if_state[0].vtr_tag1, 450)         # outer
         self.assertEqual(if_state[0].vtr_tag2, 350)         # inner
         self.assertEqual(if_state[0].vtr_push_dot1q, 0)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

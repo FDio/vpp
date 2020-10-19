@@ -2,8 +2,8 @@
 import unittest
 from framework import VppTestCase, VppTestRunner
 
-from vpp_udp_encap import find_udp_encap, VppUdpEncap
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, VppMplsLabel, \
+from vpp_pom.vpp_udp_encap import find_udp_encap, VppUdpEncap
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, VppMplsLabel, \
     FibPathType
 
 from scapy.packet import Raw
@@ -41,10 +41,10 @@ class TestUdpEncap(VppTestCase):
             i.admin_up()
 
             if table_id != 0:
-                tbl = VppIpTable(self, table_id)
+                tbl = VppIpTable(self.vclient, table_id)
                 tbl.add_vpp_config()
                 self.tables.append(tbl)
-                tbl = VppIpTable(self, table_id, is_ip6=1)
+                tbl = VppIpTable(self.vclient, table_id, is_ip6=1)
                 tbl.add_vpp_config()
                 self.tables.append(tbl)
 
@@ -98,21 +98,21 @@ class TestUdpEncap(VppTestCase):
         # construct a UDP encap object through each of the peers
         # v4 through the first two peers, v6 through the second.
         #
-        udp_encap_0 = VppUdpEncap(self,
+        udp_encap_0 = VppUdpEncap(self.vclient,
                                   self.pg0.local_ip4,
                                   self.pg0.remote_ip4,
                                   330, 440)
-        udp_encap_1 = VppUdpEncap(self,
+        udp_encap_1 = VppUdpEncap(self.vclient,
                                   self.pg1.local_ip4,
                                   self.pg1.remote_ip4,
                                   331, 441,
                                   table_id=1)
-        udp_encap_2 = VppUdpEncap(self,
+        udp_encap_2 = VppUdpEncap(self.vclient,
                                   self.pg2.local_ip6,
                                   self.pg2.remote_ip6,
                                   332, 442,
                                   table_id=2)
-        udp_encap_3 = VppUdpEncap(self,
+        udp_encap_3 = VppUdpEncap(self.vclient,
                                   self.pg3.local_ip6,
                                   self.pg3.remote_ip6,
                                   333, 443,
@@ -122,36 +122,36 @@ class TestUdpEncap(VppTestCase):
         udp_encap_2.add_vpp_config()
         udp_encap_3.add_vpp_config()
 
-        self.logger.info(self.vapi.cli("sh udp encap"))
+        self.logger.info(self.vclient.cli("sh udp encap"))
 
-        self.assertTrue(find_udp_encap(self, udp_encap_2))
-        self.assertTrue(find_udp_encap(self, udp_encap_3))
-        self.assertTrue(find_udp_encap(self, udp_encap_0))
-        self.assertTrue(find_udp_encap(self, udp_encap_1))
+        self.assertTrue(find_udp_encap(self.vclient, udp_encap_2))
+        self.assertTrue(find_udp_encap(self.vclient, udp_encap_3))
+        self.assertTrue(find_udp_encap(self.vclient, udp_encap_0))
+        self.assertTrue(find_udp_encap(self.vclient, udp_encap_1))
 
         #
         # Routes via each UDP encap object - all combinations of v4 and v6.
         #
         route_4o4 = VppIpRoute(
-            self, "1.1.0.1", 32,
+            self.vclient, "1.1.0.1", 32,
             [VppRoutePath("0.0.0.0",
                           0xFFFFFFFF,
                           type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
                           next_hop_id=udp_encap_0.id)])
         route_4o6 = VppIpRoute(
-            self, "1.1.2.1", 32,
+            self.vclient, "1.1.2.1", 32,
             [VppRoutePath("0.0.0.0",
                           0xFFFFFFFF,
                           type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
                           next_hop_id=udp_encap_2.id)])
         route_6o4 = VppIpRoute(
-            self, "2001::1", 128,
+            self.vclient, "2001::1", 128,
             [VppRoutePath("0.0.0.0",
                           0xFFFFFFFF,
                           type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
                           next_hop_id=udp_encap_1.id)])
         route_6o6 = VppIpRoute(
-            self, "2001::3", 128,
+            self.vclient, "2001::3", 128,
             [VppRoutePath("0.0.0.0",
                           0xFFFFFFFF,
                           type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
@@ -226,7 +226,7 @@ class TestUdpEncap(VppTestCase):
         # the TTL of the inner packet is decremented on LSP ingress
         #
         route_4oMPLSo4 = VppIpRoute(
-            self, "1.1.2.22", 32,
+            self.vclient, "1.1.2.22", 32,
             [VppRoutePath("0.0.0.0",
                           0xFFFFFFFF,
                           type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
@@ -260,7 +260,7 @@ class TestUDP(VppTestCase):
 
     def setUp(self):
         super(TestUDP, self).setUp()
-        self.vapi.session_enable_disable(is_enabled=1)
+        self.vclient.session_enable_disable(is_enabled=1)
         self.create_loopback_interfaces(2)
 
         table_id = 0
@@ -269,7 +269,7 @@ class TestUDP(VppTestCase):
             i.admin_up()
 
             if table_id != 0:
-                tbl = VppIpTable(self, table_id)
+                tbl = VppIpTable(self.vclient, table_id)
                 tbl.add_vpp_config()
 
             i.set_table_ip4(table_id)
@@ -277,28 +277,28 @@ class TestUDP(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add_del(namespace_id="0",
-                                        sw_if_index=self.loop0.sw_if_index)
-        self.vapi.app_namespace_add_del(namespace_id="1",
-                                        sw_if_index=self.loop1.sw_if_index)
+        self.vclient.app_namespace_add_del(namespace_id="0",
+                                           sw_if_index=self.loop0.sw_if_index)
+        self.vclient.app_namespace_add_del(namespace_id="1",
+                                           sw_if_index=self.loop1.sw_if_index)
 
     def tearDown(self):
         for i in self.lo_interfaces:
             i.unconfig_ip4()
             i.set_table_ip4(0)
             i.admin_down()
-        self.vapi.session_enable_disable(is_enabled=0)
+        self.vclient.session_enable_disable(is_enabled=0)
         super(TestUDP, self).tearDown()
 
     def test_udp_transfer(self):
         """ UDP echo client/server transfer """
 
         # Add inter-table routes
-        ip_t01 = VppIpRoute(self, self.loop1.local_ip4, 32,
+        ip_t01 = VppIpRoute(self.vclient, self.loop1.local_ip4, 32,
                             [VppRoutePath("0.0.0.0",
                                           0xffffffff,
                                           nh_table_id=1)])
-        ip_t10 = VppIpRoute(self, self.loop0.local_ip4, 32,
+        ip_t10 = VppIpRoute(self.vclient, self.loop0.local_ip4, 32,
                             [VppRoutePath("0.0.0.0",
                                           0xffffffff,
                                           nh_table_id=0)], table_id=1)
@@ -307,20 +307,20 @@ class TestUDP(VppTestCase):
 
         # Start builtin server and client
         uri = "udp://" + self.loop0.local_ip4 + "/1234"
-        error = self.vapi.cli("test echo server appns 0 fifo-size 4 no-echo" +
-                              "uri " + uri)
+        error = self.vclient.cli("test echo server appns 0 fifo-size 4 no-echo" +
+                                 "uri " + uri)
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
-        error = self.vapi.cli("test echo client mbytes 10 appns 1 " +
-                              "fifo-size 4 no-output test-bytes " +
-                              "syn-timeout 2 no-return uri " + uri)
+        error = self.vclient.cli("test echo client mbytes 10 appns 1 " +
+                                 "fifo-size 4 no-output test-bytes " +
+                                 "syn-timeout 2 no-return uri " + uri)
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vclient.cli("show session verbose 2"))
 
         # Delete inter-table routes
         ip_t01.remove_vpp_config()

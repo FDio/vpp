@@ -8,7 +8,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
-from util import Host, ppp
+from vpp_pom.util import Host, ppp
 
 
 class TestL2xc(VppTestCase):
@@ -51,15 +51,15 @@ class TestL2xc(VppTestCase):
             cls.interfaces = list(cls.pg_interfaces)
 
             # Create bi-directional cross-connects between pg0 and pg1
-            cls.vapi.sw_interface_set_l2_xconnect(
+            cls.vclient.sw_interface_set_l2_xconnect(
                 cls.pg0.sw_if_index, cls.pg1.sw_if_index, enable=1)
-            cls.vapi.sw_interface_set_l2_xconnect(
+            cls.vclient.sw_interface_set_l2_xconnect(
                 cls.pg1.sw_if_index, cls.pg0.sw_if_index, enable=1)
 
             # Create bi-directional cross-connects between pg2 and pg3
-            cls.vapi.sw_interface_set_l2_xconnect(
+            cls.vclient.sw_interface_set_l2_xconnect(
                 cls.pg2.sw_if_index, cls.pg3.sw_if_index, enable=1)
-            cls.vapi.sw_interface_set_l2_xconnect(
+            cls.vclient.sw_interface_set_l2_xconnect(
                 cls.pg3.sw_if_index, cls.pg2.sw_if_index, enable=1)
 
             # mapping between packet-generator index and lists of test hosts
@@ -91,7 +91,7 @@ class TestL2xc(VppTestCase):
         super(TestL2xc, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show l2patch"))
+        self.logger.info(self.vclient.ppcli("show l2patch"))
 
     @classmethod
     def create_host_lists(cls, count):

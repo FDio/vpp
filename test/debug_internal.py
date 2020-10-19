@@ -1,7 +1,7 @@
 import gc
 import pprint
 import vpp_papi
-from vpp_papi_provider import VppPapiProvider
+from vpp_pom.vpp_papi_provider import VppPapiProvider
 import objgraph
 from pympler import tracker
 tr = tracker.SummaryTracker()

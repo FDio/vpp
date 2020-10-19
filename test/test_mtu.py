@@ -12,10 +12,10 @@ import unittest
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, ICMPv6PacketTooBig
 from scapy.layers.inet import ICMP
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
 from socket import AF_INET, AF_INET6, inet_pton
-from util import reassemble4
+from vpp_pom.util import reassemble4
 
 
 """ Test_mtu is a subclass of VPPTestCase classes.
@@ -65,7 +65,7 @@ class TestMTU(VppTestCase):
         return 'x' * len
 
     def get_mtu(self, sw_if_index):
-        rv = self.vapi.sw_interface_dump(sw_if_index=sw_if_index)
+        rv = self.vclient.sw_interface_dump(sw_if_index=sw_if_index)
         for i in rv:
             if i.sw_if_index == sw_if_index:
                 return i.mtu[0]
@@ -91,7 +91,7 @@ class TestMTU(VppTestCase):
             self.validate(p[1], p4_reply)
 
         # MTU
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [576, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(self.pg1.sw_if_index, [576, 0, 0, 0])
         self.assertEqual(576, self.get_mtu(self.pg1.sw_if_index))
 
         # Should fail. Too large MTU
@@ -149,8 +149,8 @@ class TestMTU(VppTestCase):
         '''
 
         # Reset MTU
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
-                                       [current_mtu, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(self.pg1.sw_if_index,
+                                          [current_mtu, 0, 0, 0])
 
     def test_ip6_mtu(self):
         """ IP6 MTU test """
@@ -171,7 +171,8 @@ class TestMTU(VppTestCase):
             self.validate(p[1], p6_reply)
 
         # MTU (only checked on encap)
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [1280, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(
+            self.pg1.sw_if_index, [1280, 0, 0, 0])
         self.assertEqual(1280, self.get_mtu(self.pg1.sw_if_index))
 
         # Should fail. Too large MTU
@@ -190,8 +191,8 @@ class TestMTU(VppTestCase):
             self.validate_bytes(bytes(p[1]), icmp6_reply_str)
 
         # Reset MTU
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
-                                       [current_mtu, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(self.pg1.sw_if_index,
+                                          [current_mtu, 0, 0, 0])
 
 
 if __name__ == '__main__':

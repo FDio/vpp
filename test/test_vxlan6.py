@@ -10,10 +10,10 @@ from scapy.packet import Raw
 from scapy.layers.inet6 import IP, IPv6, UDP
 from scapy.layers.vxlan import VXLAN
 
-import util
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_vxlan_tunnel import VppVxlanTunnel
-from vpp_ip import INVALID_INDEX
+import vpp_pom.util as util
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_pom.vpp_vxlan_tunnel import VppVxlanTunnel
+from vpp_pom.vpp_ip import INVALID_INDEX
 
 
 class TestVxlan6(BridgeDomain, VppTestCase):
@@ -93,14 +93,14 @@ class TestVxlan6(BridgeDomain, VppTestCase):
         end = start + n_ucast_tunnels
         for dest_ip6 in cls.ip_range(start, end):
             # add host route so dest ip will not be resolved
-            rip = VppIpRoute(cls, dest_ip6, 128,
+            rip = VppIpRoute(cls.vclient, dest_ip6, 128,
                              [VppRoutePath(cls.pg0.remote_ip6, INVALID_INDEX)],
                              register=False)
             rip.add_vpp_config()
-            r = VppVxlanTunnel(cls, src=cls.pg0.local_ip6,
+            r = VppVxlanTunnel(cls.vclient, src=cls.pg0.local_ip6,
                                dst=dest_ip6, vni=vni)
             r.add_vpp_config()
-            cls.vapi.sw_interface_set_l2_bridge(r.sw_if_index, bd_id=vni)
+            cls.vclient.sw_interface_set_l2_bridge(r.sw_if_index, bd_id=vni)
 
     @classmethod
     def add_mcast_tunnels_load(cls):
@@ -151,13 +151,13 @@ class TestVxlan6(BridgeDomain, VppTestCase):
         #  into BD.
         self.single_tunnel_vni = 0x12345
         self.single_tunnel_bd = 1
-        r = VppVxlanTunnel(self, src=self.pg0.local_ip6,
+        r = VppVxlanTunnel(self.vclient, src=self.pg0.local_ip6,
                            dst=self.pg0.remote_ip6,
                            vni=self.single_tunnel_vni)
         r.add_vpp_config()
-        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                             bd_id=self.single_tunnel_bd)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
+                                                bd_id=self.single_tunnel_bd)
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg1.sw_if_index, bd_id=self.single_tunnel_bd)
 
         # Setup vni 2 to test multicast flooding
@@ -165,19 +165,19 @@ class TestVxlan6(BridgeDomain, VppTestCase):
         self.mcast_flood_bd = 2
         self.create_vxlan_flood_test_bd(self.mcast_flood_bd,
                                         self.n_ucast_tunnels)
-        r = VppVxlanTunnel(self, src=self.pg0.local_ip6, dst=self.mcast_ip6,
+        r = VppVxlanTunnel(self.vclient, src=self.pg0.local_ip6, dst=self.mcast_ip6,
                            mcast_sw_if_index=1, vni=self.mcast_flood_bd)
         r.add_vpp_config()
-        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                             bd_id=self.mcast_flood_bd)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
+                                                bd_id=self.mcast_flood_bd)
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg2.sw_if_index, bd_id=self.mcast_flood_bd)
 
         # Setup vni 3 to test unicast flooding
         self.ucast_flood_bd = 3
         self.create_vxlan_flood_test_bd(self.ucast_flood_bd,
                                         self.n_ucast_tunnels)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg3.sw_if_index, bd_id=self.ucast_flood_bd)
 
     # Method to define VPP actions before tear down of the test case.
@@ -187,10 +187,10 @@ class TestVxlan6(BridgeDomain, VppTestCase):
         super(TestVxlan6, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show bridge-domain 1 detail"))
-        self.logger.info(self.vapi.cli("show bridge-domain 2 detail"))
-        self.logger.info(self.vapi.cli("show bridge-domain 3 detail"))
-        self.logger.info(self.vapi.cli("show vxlan tunnel"))
+        self.logger.info(self.vclient.cli("show bridge-domain 1 detail"))
+        self.logger.info(self.vclient.cli("show bridge-domain 2 detail"))
+        self.logger.info(self.vclient.cli("show bridge-domain 3 detail"))
+        self.logger.info(self.vclient.cli("show vxlan tunnel"))
 
     def test_encap_fragmented_packet(self):
         """ Encapsulation test send fragments from pg1

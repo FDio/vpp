@@ -4,8 +4,8 @@ import unittest
 import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_l2 import L2_PORT_TYPE, BRIDGE_FLAGS
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_pom.vpp_l2 import L2_PORT_TYPE, BRIDGE_FLAGS
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -57,24 +57,24 @@ class TestL2Flood(VppTestCase):
         #
         # Create a single bridge Domain
         #
-        self.vapi.bridge_domain_add_del(bd_id=1)
+        self.vclient.bridge_domain_add_del(bd_id=1)
 
         #
         # add each interface to the BD. 3 interfaces per split horizon group
         #
         for i in self.pg_interfaces[0:4]:
-            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
-                                                 bd_id=1, shg=0)
+            self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                    bd_id=1, shg=0)
         for i in self.pg_interfaces[4:8]:
-            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
-                                                 bd_id=1, shg=1)
+            self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                    bd_id=1, shg=1)
         for i in self.pg_interfaces[8:12]:
-            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
-                                                 bd_id=1, shg=2)
+            self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                    bd_id=1, shg=2)
         for i in self.bvi_interfaces:
-            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
-                                                 bd_id=1, shg=2,
-                                                 port_type=L2_PORT_TYPE.BVI)
+            self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                    bd_id=1, shg=2,
+                                                    port_type=L2_PORT_TYPE.BVI)
 
         p = (Ether(dst="ff:ff:ff:ff:ff:ff",
                    src="00:00:de:ad:be:ef") /
@@ -112,12 +112,12 @@ class TestL2Flood(VppTestCase):
         #
         # An IP route so the packet that hits the BVI is sent out of pg12
         #
-        ip_route = VppIpRoute(self, "1.1.1.1", 32,
+        ip_route = VppIpRoute(self.vclient, "1.1.1.1", 32,
                               [VppRoutePath(self.pg12.remote_ip4,
                                             self.pg12.sw_if_index)])
         ip_route.add_vpp_config()
 
-        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
+        self.logger.info(self.vclient.cli("sh bridge 1 detail"))
 
         #
         # input on pg0 expect copies on pg1->12
@@ -150,15 +150,15 @@ class TestL2Flood(VppTestCase):
         # cleanup
         #
         for i in self.pg_interfaces[:12]:
-            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
-                                                 bd_id=1, enable=0)
+            self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                    bd_id=1, enable=0)
         for i in self.bvi_interfaces:
-            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
-                                                 bd_id=1, shg=2,
-                                                 port_type=L2_PORT_TYPE.BVI,
-                                                 enable=0)
+            self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                    bd_id=1, shg=2,
+                                                    port_type=L2_PORT_TYPE.BVI,
+                                                    enable=0)
 
-        self.vapi.bridge_domain_add_del(bd_id=1, is_add=0)
+        self.vclient.bridge_domain_add_del(bd_id=1, is_add=0)
 
     def test_flood_one(self):
         """ L2 no-Flood Test """
@@ -166,15 +166,15 @@ class TestL2Flood(VppTestCase):
         #
         # Create a single bridge Domain
         #
-        self.vapi.bridge_domain_add_del(bd_id=1)
+        self.vclient.bridge_domain_add_del(bd_id=1)
 
         #
         # add 2 interfaces to the BD. this means a flood goes to only
         # one member
         #
         for i in self.pg_interfaces[:2]:
-            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
-                                                 bd_id=1, shg=0)
+            self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                    bd_id=1, shg=0)
 
         p = (Ether(dst="ff:ff:ff:ff:ff:ff",
                    src="00:00:de:ad:be:ef") /
@@ -191,9 +191,9 @@ class TestL2Flood(VppTestCase):
         # cleanup
         #
         for i in self.pg_interfaces[:2]:
-            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
-                                                 bd_id=1, enable=0)
-        self.vapi.bridge_domain_add_del(bd_id=1, is_add=0)
+            self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                    bd_id=1, enable=0)
+        self.vclient.bridge_domain_add_del(bd_id=1, is_add=0)
 
     def test_uu_fwd(self):
         """ UU Flood """
@@ -201,14 +201,14 @@ class TestL2Flood(VppTestCase):
         #
         # Create a single bridge Domain
         #
-        self.vapi.bridge_domain_add_del(bd_id=1, uu_flood=1)
+        self.vclient.bridge_domain_add_del(bd_id=1, uu_flood=1)
 
         #
         # add each interface to the BD. 3 interfaces per split horizon group
         #
         for i in self.pg_interfaces[0:4]:
-            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
-                                                 bd_id=1, shg=0)
+            self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                    bd_id=1, shg=0)
 
         #
         # an unknown unicast and broadcast packets
@@ -244,7 +244,7 @@ class TestL2Flood(VppTestCase):
         #
         # use pg8 as the uu-fwd interface
         #
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg8.sw_if_index, bd_id=1, shg=0,
             port_type=L2_PORT_TYPE.UU_FWD)
 
@@ -270,7 +270,7 @@ class TestL2Flood(VppTestCase):
         #
         # remove the uu-fwd interface and expect UU to be flooded again
         #
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg8.sw_if_index, bd_id=1, shg=0,
             port_type=L2_PORT_TYPE.UU_FWD, enable=0)
 
@@ -284,17 +284,18 @@ class TestL2Flood(VppTestCase):
         #
         # change the BD config to not support UU-flood
         #
-        self.vapi.bridge_flags(bd_id=1, is_set=0, flags=BRIDGE_FLAGS.UU_FLOOD)
+        self.vclient.bridge_flags(
+            bd_id=1, is_set=0, flags=BRIDGE_FLAGS.UU_FLOOD)
 
         self.send_and_assert_no_replies(self.pg0, p_uu)
 
         #
         # re-add the uu-fwd interface
         #
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg8.sw_if_index, bd_id=1, shg=0,
             port_type=L2_PORT_TYPE.UU_FWD)
-        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
+        self.logger.info(self.vclient.cli("sh bridge 1 detail"))
 
         self.pg0.add_stream(p_uu*NUM_PKTS)
         self.pg_enable_capture(self.pg_interfaces)
@@ -308,7 +309,7 @@ class TestL2Flood(VppTestCase):
         #
         # remove the uu-fwd interface
         #
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg8.sw_if_index, bd_id=1, shg=0,
             port_type=L2_PORT_TYPE.UU_FWD, enable=0)
         self.send_and_assert_no_replies(self.pg0, p_uu)
@@ -317,10 +318,10 @@ class TestL2Flood(VppTestCase):
         # cleanup
         #
         for i in self.pg_interfaces[:4]:
-            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
-                                                 bd_id=1, enable=0)
+            self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                                    bd_id=1, enable=0)
 
-        self.vapi.bridge_domain_add_del(bd_id=1, is_add=0)
+        self.vclient.bridge_domain_add_del(bd_id=1, is_add=0)
 
 
 if __name__ == '__main__':

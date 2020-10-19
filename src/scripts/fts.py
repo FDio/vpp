@@ -81,12 +81,14 @@ def filelist_from_git_ls():
             filelist.append(l)
     return filelist
 
+
 def version_from_git():
     git_describe = 'git describe'
     rv = run(git_describe.split(), stdout=PIPE, stderr=PIPE)
     if rv.returncode != 0:
         sys.exit(rv.returncode)
     return rv.stdout.decode('ascii').split('\n')[0]
+
 
 class MarkDown():
     _dispatch = {}
@@ -165,6 +167,7 @@ class MarkDown():
         else:
             write('NOT IMPLEMENTED: {t}\n')
 
+
 def output_toc(toc, stream):
     write = stream.write
     write('## VPP Feature list:\n')
@@ -173,8 +176,10 @@ def output_toc(toc, stream):
         ref = t.lower().replace(' ', '-')
         write('[{t}](#{ref})  \n'.format(t=t, ref=ref))
 
+
 def featuresort(k):
     return k[1]['name']
+
 
 def featurelistsort(k):
     orderedfields = {
@@ -188,6 +193,7 @@ def featurelistsort(k):
         'code': 7,
     }
     return orderedfields[k[0]]
+
 
 def output_markdown(features, fields, notfields):
     stream = StringIO()
@@ -210,6 +216,7 @@ def output_markdown(features, fields, notfields):
     tocstream = StringIO()
     output_toc(m.toc, tocstream)
     return tocstream, stream
+
 
 def main():
     parser = argparse.ArgumentParser(description='VPP Feature List.')
@@ -254,7 +261,7 @@ def main():
         try:
             validate(instance=cfg, schema=schema)
         except exceptions.ValidationError:
-            print('File does not validate: {featurefile}' \
+            print('File does not validate: {featurefile}'
                   .format(featurefile=featurefile), file=sys.stderr)
             raise
         features[featurefile] = cfg

@@ -4,9 +4,9 @@ import ipaddress
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from util import fragment_rfc791, fragment_rfc8200
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_pom.util import fragment_rfc791, fragment_rfc8200
 
 import scapy.compat
 from scapy.layers.l2 import Ether
@@ -78,15 +78,15 @@ class TestMAP(VppTestCase):
         map_src = '3000::1/128'
         client_pfx = '192.168.0.0/16'
         tag = 'MAP-E tag.'
-        index = self.vapi.map_add_domain(ip4_prefix=client_pfx,
-                                         ip6_prefix=map_dst,
-                                         ip6_src=map_src,
-                                         tag=tag).index
-        rv = self.vapi.map_domain_dump()
+        index = self.vclient.map_add_domain(ip4_prefix=client_pfx,
+                                            ip6_prefix=map_dst,
+                                            ip6_src=map_src,
+                                            tag=tag).index
+        rv = self.vclient.map_domain_dump()
 
         # restore the state early so as to not impact subsequent tests.
         # If an assert fails, we will not get the chance to do it at the end.
-        self.vapi.map_del_domain(index=index)
+        self.vclient.map_del_domain(index=index)
 
         self.assertGreater(len(rv), 0,
                            "Expected output from 'map_domain_dump'")
@@ -106,9 +106,10 @@ class TestMAP(VppTestCase):
         mod = ip4_pfx.num_addresses / 1024
         indicies = []
         for i in range(ip4_pfx.num_addresses):
-            rv = self.vapi.map_add_domain(ip6_prefix=ip6_pfx_str,
-                                          ip4_prefix=str(ip4_pfx[i]) + "/32",
-                                          ip6_src=ip6_src_str)
+            rv = self.vclient.map_add_domain(ip6_prefix=ip6_pfx_str,
+                                             ip4_prefix=str(
+                                                 ip4_pfx[i]) + "/32",
+                                             ip6_src=ip6_src_str)
             indicies.append(rv.index)
         return indicies
 
@@ -122,25 +123,25 @@ class TestMAP(VppTestCase):
         cursor = 0
 
         # Invalid cursor
-        rv, details = self.vapi.map_domains_get(cursor=1234)
+        rv, details = self.vclient.map_domains_get(cursor=1234)
         self.assertEqual(rv.retval, -7)
 
         # Delete a domain in the middle of walk
-        rv, details = self.vapi.map_domains_get(cursor=0)
+        rv, details = self.vclient.map_domains_get(cursor=0)
         self.assertEqual(rv.retval, -165)
-        self.vapi.map_del_domain(index=rv.cursor)
+        self.vclient.map_del_domain(index=rv.cursor)
         domains.remove(rv.cursor)
 
         # Continue at point of deleted cursor
-        rv, details = self.vapi.map_domains_get(cursor=rv.cursor)
+        rv, details = self.vclient.map_domains_get(cursor=rv.cursor)
         self.assertEqual(rv.retval, -165)
 
-        d = list(self.vapi.vpp.details_iter(self.vapi.map_domains_get))
+        d = list(self.vclient.vpp.details_iter(self.vclient.map_domains_get))
         self.assertEqual(len(d), 255)
 
         # Clean up
         for i in domains:
-            self.vapi.map_del_domain(index=i)
+            self.vclient.map_del_domain(index=i)
 
     def test_map_e_udp(self):
         """ MAP-E UDP"""
@@ -150,7 +151,7 @@ class TestMAP(VppTestCase):
         #
         map_br_pfx = "2001::"
         map_br_pfx_len = 32
-        map_route = VppIpRoute(self,
+        map_route = VppIpRoute(self.vclient,
                                map_br_pfx,
                                map_br_pfx_len,
                                [VppRoutePath(self.pg1.remote_ip6,
@@ -165,20 +166,20 @@ class TestMAP(VppTestCase):
         client_pfx = '192.168.0.0/16'
         map_translated_addr = '2001:0:101:7000:0:c0a8:101:7'
         tag = 'MAP-E tag.'
-        self.vapi.map_add_domain(ip4_prefix=client_pfx,
-                                 ip6_prefix=map_dst,
-                                 ip6_src=map_src,
-                                 ea_bits_len=20,
-                                 psid_offset=4,
-                                 psid_length=4,
-                                 tag=tag)
+        self.vclient.map_add_domain(ip4_prefix=client_pfx,
+                                    ip6_prefix=map_dst,
+                                    ip6_src=map_src,
+                                    ea_bits_len=20,
+                                    psid_offset=4,
+                                    psid_length=4,
+                                    tag=tag)
 
-        self.vapi.map_param_set_security_check(enable=1, fragments=1)
+        self.vclient.map_param_set_security_check(enable=1, fragments=1)
 
         # Enable MAP on interface.
-        self.vapi.map_if_enable_disable(is_enable=1,
-                                        sw_if_index=self.pg0.sw_if_index,
-                                        is_translation=0)
+        self.vclient.map_if_enable_disable(is_enable=1,
+                                           sw_if_index=self.pg0.sw_if_index,
+                                           is_translation=0)
 
         # Ensure MAP doesn't steal all packets!
         v4 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
@@ -215,9 +216,9 @@ class TestMAP(VppTestCase):
         self.send_and_assert_encapped(frags, "3000::1", map_translated_addr)
 
         # Enable MAP on interface.
-        self.vapi.map_if_enable_disable(is_enable=1,
-                                        sw_if_index=self.pg1.sw_if_index,
-                                        is_translation=0)
+        self.vclient.map_if_enable_disable(is_enable=1,
+                                           sw_if_index=self.pg1.sw_if_index,
+                                           is_translation=0)
 
         # Ensure MAP doesn't steal all packets
         v6 = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
@@ -303,7 +304,7 @@ class TestMAP(VppTestCase):
         #
         # Pre-resolve. No API for this!!
         #
-        self.vapi.ppcli("map params pre-resolve ip6-nh 4001::1")
+        self.vclient.ppcli("map params pre-resolve ip6-nh 4001::1")
 
         self.send_and_assert_no_replies(self.pg0, v4,
                                         "resolved via default route")
@@ -312,7 +313,7 @@ class TestMAP(VppTestCase):
         # Add a route to 4001::1. Expect the encapped traffic to be
         # sent via that routes next-hop
         #
-        pre_res_route = VppIpRoute(self, "4001::1", 128,
+        pre_res_route = VppIpRoute(self.vclient, "4001::1", 128,
                                    [VppRoutePath(self.pg1.remote_hosts[2].ip6,
                                                  self.pg1.sw_if_index)])
         pre_res_route.add_vpp_config()
@@ -337,7 +338,7 @@ class TestMAP(VppTestCase):
         # the route is really gone and thus that the unresolve worked.
         #
         pre_res_route.remove_vpp_config()
-        self.vapi.ppcli("map params pre-resolve del ip6-nh 4001::1")
+        self.vclient.ppcli("map params pre-resolve del ip6-nh 4001::1")
 
     def test_map_e_inner_frag(self):
         """ MAP-E Inner fragmentation """
@@ -347,7 +348,7 @@ class TestMAP(VppTestCase):
         #
         map_br_pfx = "2001::"
         map_br_pfx_len = 32
-        map_route = VppIpRoute(self,
+        map_route = VppIpRoute(self.vclient,
                                map_br_pfx,
                                map_br_pfx_len,
                                [VppRoutePath(self.pg1.remote_ip6,
@@ -362,22 +363,22 @@ class TestMAP(VppTestCase):
         client_pfx = '192.168.0.0/16'
         map_translated_addr = '2001:0:101:7000:0:c0a8:101:7'
         tag = 'MAP-E tag.'
-        self.vapi.map_add_domain(ip4_prefix=client_pfx,
-                                 ip6_prefix=map_dst,
-                                 ip6_src=map_src,
-                                 ea_bits_len=20,
-                                 psid_offset=4,
-                                 psid_length=4,
-                                 mtu=1000,
-                                 tag=tag)
+        self.vclient.map_add_domain(ip4_prefix=client_pfx,
+                                    ip6_prefix=map_dst,
+                                    ip6_src=map_src,
+                                    ea_bits_len=20,
+                                    psid_offset=4,
+                                    psid_length=4,
+                                    mtu=1000,
+                                    tag=tag)
 
         # Enable MAP on interface.
-        self.vapi.map_if_enable_disable(is_enable=1,
-                                        sw_if_index=self.pg0.sw_if_index,
-                                        is_translation=0)
+        self.vclient.map_if_enable_disable(is_enable=1,
+                                           sw_if_index=self.pg0.sw_if_index,
+                                           is_translation=0)
 
         # Enable inner fragmentation
-        self.vapi.map_param_set_fragmentation(inner=1)
+        self.vclient.map_param_set_fragmentation(inner=1)
 
         v4 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
               IP(src=self.pg0.remote_ip4, dst='192.168.1.1') /
@@ -417,7 +418,7 @@ class TestMAP(VppTestCase):
         #
         map_br_pfx = "2001::"
         map_br_pfx_len = 32
-        map_route = VppIpRoute(self,
+        map_route = VppIpRoute(self.vclient,
                                map_br_pfx,
                                map_br_pfx_len,
                                [VppRoutePath(self.pg1.remote_ip6,
@@ -432,27 +433,27 @@ class TestMAP(VppTestCase):
         client_pfx = '192.168.0.0/16'
         map_translated_addr = '2001:0:101:5000:0:c0a8:101:5'
         tag = 'MAP-E TCP tag.'
-        self.vapi.map_add_domain(ip4_prefix=client_pfx,
-                                 ip6_prefix=map_dst,
-                                 ip6_src=map_src,
-                                 ea_bits_len=20,
-                                 psid_offset=4,
-                                 psid_length=4,
-                                 tag=tag)
+        self.vclient.map_add_domain(ip4_prefix=client_pfx,
+                                    ip6_prefix=map_dst,
+                                    ip6_src=map_src,
+                                    ea_bits_len=20,
+                                    psid_offset=4,
+                                    psid_length=4,
+                                    tag=tag)
 
         # Enable MAP on pg0 interface.
-        self.vapi.map_if_enable_disable(is_enable=1,
-                                        sw_if_index=self.pg0.sw_if_index,
-                                        is_translation=0)
+        self.vclient.map_if_enable_disable(is_enable=1,
+                                           sw_if_index=self.pg0.sw_if_index,
+                                           is_translation=0)
 
         # Enable MAP on pg1 interface.
-        self.vapi.map_if_enable_disable(is_enable=1,
-                                        sw_if_index=self.pg1.sw_if_index,
-                                        is_translation=0)
+        self.vclient.map_if_enable_disable(is_enable=1,
+                                           sw_if_index=self.pg1.sw_if_index,
+                                           is_translation=0)
 
         # TCP MSS clamping
         mss_clamp = 1300
-        self.vapi.map_param_set_tcp(mss_clamp)
+        self.vclient.map_param_set_tcp(mss_clamp)
 
         #
         # Send a v4 packet that will be encapped.
@@ -531,22 +532,22 @@ class TestMAP(VppTestCase):
         ip4_pfx = '192.168.0.0/24'
         tag = 'MAP-T Tag.'
 
-        self.vapi.map_add_domain(ip6_prefix=map_dst,
-                                 ip4_prefix=ip4_pfx,
-                                 ip6_src=map_src,
-                                 ea_bits_len=16,
-                                 psid_offset=6,
-                                 psid_length=4,
-                                 mtu=1500,
-                                 tag=tag)
+        self.vclient.map_add_domain(ip6_prefix=map_dst,
+                                    ip4_prefix=ip4_pfx,
+                                    ip6_src=map_src,
+                                    ea_bits_len=16,
+                                    psid_offset=6,
+                                    psid_length=4,
+                                    mtu=1500,
+                                    tag=tag)
 
         # Enable MAP-T on interfaces.
-        self.vapi.map_if_enable_disable(is_enable=1,
-                                        sw_if_index=self.pg0.sw_if_index,
-                                        is_translation=1)
-        self.vapi.map_if_enable_disable(is_enable=1,
-                                        sw_if_index=self.pg1.sw_if_index,
-                                        is_translation=1)
+        self.vclient.map_if_enable_disable(is_enable=1,
+                                           sw_if_index=self.pg0.sw_if_index,
+                                           is_translation=1)
+        self.vclient.map_if_enable_disable(is_enable=1,
+                                           sw_if_index=self.pg1.sw_if_index,
+                                           is_translation=1)
 
         # Ensure MAP doesn't steal all packets!
         v4 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
@@ -569,7 +570,7 @@ class TestMAP(VppTestCase):
         for p in rx:
             self.validate(p[1], v6_reply)
 
-        map_route = VppIpRoute(self,
+        map_route = VppIpRoute(self.vclient,
                                "2001:db8::",
                                32,
                                [VppRoutePath(self.pg1.remote_ip6,
@@ -758,7 +759,7 @@ class TestMAP(VppTestCase):
         self.validate_frag_payload_len6(rx, ICMPv6EchoRequest, payload_len)
 
         # TCP MSS clamping
-        self.vapi.map_param_set_tcp(1300)
+        self.vclient.map_param_set_tcp(1300)
 
         #
         # Send a v4 TCP SYN packet that will be translated and MSS clamped
@@ -792,11 +793,11 @@ class TestMAP(VppTestCase):
             self.validate(p[1], p4_translated)
 
         # TCP MSS clamping cleanup
-        self.vapi.map_param_set_tcp(0)
+        self.vclient.map_param_set_tcp(0)
 
         # Enable icmp6 param to get back ICMPv6 unreachable messages in case
         # of security check fails
-        self.vapi.map_param_set_icmp6(enable_unreachable=1)
+        self.vclient.map_param_set_icmp6(enable_unreachable=1)
 
         # Send back an IPv6 packet that will be droppped due to security
         # check fail
@@ -819,7 +820,7 @@ class TestMAP(VppTestCase):
             self.validate(p[1], icmp6_reply)
 
         # ICMPv6 unreachable messages cleanup
-        self.vapi.map_param_set_icmp6(enable_unreachable=0)
+        self.vclient.map_param_set_icmp6(enable_unreachable=0)
 
     def test_map_t_ip6_psid(self):
         """ MAP-T v6->v4 PSID validation"""
@@ -832,24 +833,24 @@ class TestMAP(VppTestCase):
         ip4_pfx = '192.168.0.0/24'
         tag = 'MAP-T Test Domain'
 
-        self.vapi.map_add_domain(ip6_prefix=map_dst,
-                                 ip4_prefix=ip4_pfx,
-                                 ip6_src=map_src,
-                                 ea_bits_len=16,
-                                 psid_offset=6,
-                                 psid_length=4,
-                                 mtu=1500,
-                                 tag=tag)
+        self.vclient.map_add_domain(ip6_prefix=map_dst,
+                                    ip4_prefix=ip4_pfx,
+                                    ip6_src=map_src,
+                                    ea_bits_len=16,
+                                    psid_offset=6,
+                                    psid_length=4,
+                                    mtu=1500,
+                                    tag=tag)
 
         # Enable MAP-T on interfaces.
-        self.vapi.map_if_enable_disable(is_enable=1,
-                                        sw_if_index=self.pg0.sw_if_index,
-                                        is_translation=1)
-        self.vapi.map_if_enable_disable(is_enable=1,
-                                        sw_if_index=self.pg1.sw_if_index,
-                                        is_translation=1)
+        self.vclient.map_if_enable_disable(is_enable=1,
+                                           sw_if_index=self.pg0.sw_if_index,
+                                           is_translation=1)
+        self.vclient.map_if_enable_disable(is_enable=1,
+                                           sw_if_index=self.pg1.sw_if_index,
+                                           is_translation=1)
 
-        map_route = VppIpRoute(self,
+        map_route = VppIpRoute(self.vclient,
                                "2001:db8::",
                                32,
                                [VppRoutePath(self.pg1.remote_ip6,
@@ -886,38 +887,38 @@ class TestMAP(VppTestCase):
         ip4_pfx = '192.168.0.0/24'
         tag = 'MAP-T Test Domain.'
 
-        self.vapi.map_add_domain(ip6_prefix=map_dst,
-                                 ip4_prefix=ip4_pfx,
-                                 ip6_src=map_src,
-                                 ea_bits_len=16,
-                                 psid_offset=6,
-                                 psid_length=4,
-                                 mtu=1500,
-                                 tag=tag)
+        self.vclient.map_add_domain(ip6_prefix=map_dst,
+                                    ip4_prefix=ip4_pfx,
+                                    ip6_src=map_src,
+                                    ea_bits_len=16,
+                                    psid_offset=6,
+                                    psid_length=4,
+                                    mtu=1500,
+                                    tag=tag)
 
         # Enable MAP-T on interfaces.
-        self.vapi.map_if_enable_disable(is_enable=1,
-                                        sw_if_index=self.pg0.sw_if_index,
-                                        is_translation=1)
-        self.vapi.map_if_enable_disable(is_enable=1,
-                                        sw_if_index=self.pg1.sw_if_index,
-                                        is_translation=1)
+        self.vclient.map_if_enable_disable(is_enable=1,
+                                           sw_if_index=self.pg0.sw_if_index,
+                                           is_translation=1)
+        self.vclient.map_if_enable_disable(is_enable=1,
+                                           sw_if_index=self.pg1.sw_if_index,
+                                           is_translation=1)
 
         # Enable pre-resolve option
-        self.vapi.map_param_add_del_pre_resolve(ip4_nh_address="10.1.2.3",
-                                                ip6_nh_address="4001::1",
-                                                is_add=1)
+        self.vclient.map_param_add_del_pre_resolve(ip4_nh_address="10.1.2.3",
+                                                   ip6_nh_address="4001::1",
+                                                   is_add=1)
 
         # Add a route to 4001::1 and expect the translated traffic to be
         # sent via that route next-hop.
-        pre_res_route6 = VppIpRoute(self, "4001::1", 128,
+        pre_res_route6 = VppIpRoute(self.vclient, "4001::1", 128,
                                     [VppRoutePath(self.pg1.remote_hosts[2].ip6,
                                                   self.pg1.sw_if_index)])
         pre_res_route6.add_vpp_config()
 
         # Add a route to 10.1.2.3 and expect the "untranslated" traffic to be
         # sent via that route next-hop.
-        pre_res_route4 = VppIpRoute(self, "10.1.2.3", 32,
+        pre_res_route4 = VppIpRoute(self.vclient, "10.1.2.3", 32,
                                     [VppRoutePath(self.pg0.remote_hosts[1].ip4,
                                                   self.pg0.sw_if_index)])
         pre_res_route4.add_vpp_config()
@@ -954,9 +955,9 @@ class TestMAP(VppTestCase):
             self.validate(p[1], p4_translated)
 
         # Cleanup pre-resolve option
-        self.vapi.map_param_add_del_pre_resolve(ip4_nh_address="10.1.2.3",
-                                                ip6_nh_address="4001::1",
-                                                is_add=0)
+        self.vclient.map_param_add_del_pre_resolve(ip4_nh_address="10.1.2.3",
+                                                   ip6_nh_address="4001::1",
+                                                   is_add=0)
 
 
 if __name__ == '__main__':

@@ -21,7 +21,7 @@ from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogSeverity
-from util import ppc, ppp
+from vpp_pom.util import ppc, ppp
 from vpp_papi import VppEnum
 
 
@@ -59,7 +59,7 @@ class TestNAT64(VppTestCase):
         cls.ip6_interfaces.append(cls.pg_interfaces[2])
         cls.ip4_interfaces = list(cls.pg_interfaces[1:2])
 
-        cls.vapi.ip_table_add_del(is_add=1,
+        cls.vclient.ip_table_add_del(is_add=1,
                                   table={'table_id': cls.vrf1_id,
                                          'is_ip6': 1})
 
@@ -92,20 +92,20 @@ class TestNAT64(VppTestCase):
 
     def setUp(self):
         super(TestNAT64, self).setUp()
-        self.vapi.nat64_plugin_enable_disable(enable=1,
+        self.vclient.nat64_plugin_enable_disable(enable=1,
                                               bib_buckets=128, st_buckets=256)
 
     def tearDown(self):
         super(TestNAT64, self).tearDown()
         if not self.vpp_dead:
-            self.vapi.nat64_plugin_enable_disable(enable=0)
+            self.vclient.nat64_plugin_enable_disable(enable=0)
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show nat64 pool"))
-        self.logger.info(self.vapi.cli("show nat64 interfaces"))
-        self.logger.info(self.vapi.cli("show nat64 prefix"))
-        self.logger.info(self.vapi.cli("show nat64 bib all"))
-        self.logger.info(self.vapi.cli("show nat64 session table all"))
+        self.logger.info(self.vclient.cli("show nat64 pool"))
+        self.logger.info(self.vclient.cli("show nat64 interfaces"))
+        self.logger.info(self.vclient.cli("show nat64 prefix"))
+        self.logger.info(self.vclient.cli("show nat64 bib all"))
+        self.logger.info(self.vclient.cli("show nat64 session table all"))
 
     def create_stream_in_ip6(self, in_if, out_if, hlim=64, pref=None, plen=0):
         """
@@ -597,7 +597,7 @@ class TestNAT64(VppTestCase):
         """ NAT64 inside interface handles Neighbor Advertisement """
 
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg5.sw_if_index)
 
         # Try to send ping
@@ -651,30 +651,30 @@ class TestNAT64(VppTestCase):
         """ Add/delete address to NAT64 pool """
         nat_addr = '1.2.3.4'
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=nat_addr,
                                                 end_addr=nat_addr,
                                                 vrf_id=0xFFFFFFFF, is_add=1)
 
-        addresses = self.vapi.nat64_pool_addr_dump()
+        addresses = self.vclient.nat64_pool_addr_dump()
         self.assertEqual(len(addresses), 1)
         self.assertEqual(str(addresses[0].address), nat_addr)
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=nat_addr,
                                                 end_addr=nat_addr,
                                                 vrf_id=0xFFFFFFFF, is_add=0)
 
-        addresses = self.vapi.nat64_pool_addr_dump()
+        addresses = self.vclient.nat64_pool_addr_dump()
         self.assertEqual(len(addresses), 0)
 
     def test_interface(self):
         """ Enable/disable NAT64 feature on the interface """
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
 
-        interfaces = self.vapi.nat64_interface_dump()
+        interfaces = self.vclient.nat64_interface_dump()
         self.assertEqual(len(interfaces), 2)
         pg0_found = False
         pg1_found = False
@@ -688,17 +688,17 @@ class TestNAT64(VppTestCase):
         self.assertTrue(pg0_found)
         self.assertTrue(pg1_found)
 
-        features = self.vapi.cli("show interface features pg0")
+        features = self.vclient.cli("show interface features pg0")
         self.assertIn('nat64-in2out', features)
-        features = self.vapi.cli("show interface features pg1")
+        features = self.vclient.cli("show interface features pg1")
         self.assertIn('nat64-out2in', features)
 
-        self.vapi.nat64_add_del_interface(is_add=0, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=0, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=0, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=0, flags=flags,
                                           sw_if_index=self.pg1.sw_if_index)
 
-        interfaces = self.vapi.nat64_interface_dump()
+        interfaces = self.vclient.nat64_interface_dump()
         self.assertEqual(len(interfaces), 0)
 
     def test_static_bib(self):
@@ -709,10 +709,10 @@ class TestNAT64(VppTestCase):
         out_port = 5678
         proto = IP_PROTOS.tcp
 
-        self.vapi.nat64_add_del_static_bib(i_addr=in_addr, o_addr=out_addr,
+        self.vclient.nat64_add_del_static_bib(i_addr=in_addr, o_addr=out_addr,
                                            i_port=in_port, o_port=out_port,
                                            proto=proto, vrf_id=0, is_add=1)
-        bib = self.vapi.nat64_bib_dump(proto=IP_PROTOS.tcp)
+        bib = self.vclient.nat64_bib_dump(proto=IP_PROTOS.tcp)
         static_bib_num = 0
         for bibe in bib:
             if bibe.flags & self.config_flags.NAT_IS_STATIC:
@@ -722,34 +722,34 @@ class TestNAT64(VppTestCase):
                 self.assertEqual(bibe.i_port, in_port)
                 self.assertEqual(bibe.o_port, out_port)
         self.assertEqual(static_bib_num, 1)
-        bibs = self.statistics.get_counter('/nat64/total-bibs')
+        bibs = self.vclient.statistics.get_counter('/nat64/total-bibs')
         self.assertEqual(bibs[0][0], 1)
 
-        self.vapi.nat64_add_del_static_bib(i_addr=in_addr, o_addr=out_addr,
+        self.vclient.nat64_add_del_static_bib(i_addr=in_addr, o_addr=out_addr,
                                            i_port=in_port, o_port=out_port,
                                            proto=proto, vrf_id=0, is_add=0)
-        bib = self.vapi.nat64_bib_dump(proto=IP_PROTOS.tcp)
+        bib = self.vclient.nat64_bib_dump(proto=IP_PROTOS.tcp)
         static_bib_num = 0
         for bibe in bib:
             if bibe.flags & self.config_flags.NAT_IS_STATIC:
                 static_bib_num += 1
         self.assertEqual(static_bib_num, 0)
-        bibs = self.statistics.get_counter('/nat64/total-bibs')
+        bibs = self.vclient.statistics.get_counter('/nat64/total-bibs')
         self.assertEqual(bibs[0][0], 0)
 
     def test_set_timeouts(self):
         """ Set NAT64 timeouts """
         # verify default values
-        timeouts = self.vapi.nat64_get_timeouts()
+        timeouts = self.vclient.nat64_get_timeouts()
         self.assertEqual(timeouts.udp, 300)
         self.assertEqual(timeouts.icmp, 60)
         self.assertEqual(timeouts.tcp_transitory, 240)
         self.assertEqual(timeouts.tcp_established, 7440)
 
         # set and verify custom values
-        self.vapi.nat64_set_timeouts(udp=200, tcp_established=7450,
+        self.vclient.nat64_set_timeouts(udp=200, tcp_established=7450,
                                      tcp_transitory=250, icmp=30)
-        timeouts = self.vapi.nat64_get_timeouts()
+        timeouts = self.vclient.nat64_get_timeouts()
         self.assertEqual(timeouts.udp, 200)
         self.assertEqual(timeouts.icmp, 30)
         self.assertEqual(timeouts.tcp_transitory, 250)
@@ -763,21 +763,21 @@ class TestNAT64(VppTestCase):
 
         ses_num_start = self.nat64_get_ses_num()
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
 
         # in2out
-        tcpn = self.statistics.get_counter('/nat64/in2out/tcp')[0]
-        udpn = self.statistics.get_counter('/nat64/in2out/udp')[0]
-        icmpn = self.statistics.get_counter('/nat64/in2out/icmp')[0]
-        drops = self.statistics.get_counter('/nat64/in2out/drops')[0]
+        tcpn = self.vclient.statistics.get_counter('/nat64/in2out/tcp')[0]
+        udpn = self.vclient.statistics.get_counter('/nat64/in2out/udp')[0]
+        icmpn = self.vclient.statistics.get_counter('/nat64/in2out/icmp')[0]
+        drops = self.vclient.statistics.get_counter('/nat64/in2out/drops')[0]
 
         pkts = self.create_stream_in_ip6(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
@@ -788,20 +788,20 @@ class TestNAT64(VppTestCase):
                                 dst_ip=self.pg1.remote_ip4)
 
         if_idx = self.pg0.sw_if_index
-        cnt = self.statistics.get_counter('/nat64/in2out/tcp')[0]
+        cnt = self.vclient.statistics.get_counter('/nat64/in2out/tcp')[0]
         self.assertEqual(cnt[if_idx] - tcpn[if_idx], 1)
-        cnt = self.statistics.get_counter('/nat64/in2out/udp')[0]
+        cnt = self.vclient.statistics.get_counter('/nat64/in2out/udp')[0]
         self.assertEqual(cnt[if_idx] - udpn[if_idx], 1)
-        cnt = self.statistics.get_counter('/nat64/in2out/icmp')[0]
+        cnt = self.vclient.statistics.get_counter('/nat64/in2out/icmp')[0]
         self.assertEqual(cnt[if_idx] - icmpn[if_idx], 1)
-        cnt = self.statistics.get_counter('/nat64/in2out/drops')[0]
+        cnt = self.vclient.statistics.get_counter('/nat64/in2out/drops')[0]
         self.assertEqual(cnt[if_idx] - drops[if_idx], 0)
 
         # out2in
-        tcpn = self.statistics.get_counter('/nat64/out2in/tcp')[0]
-        udpn = self.statistics.get_counter('/nat64/out2in/udp')[0]
-        icmpn = self.statistics.get_counter('/nat64/out2in/icmp')[0]
-        drops = self.statistics.get_counter('/nat64/out2in/drops')[0]
+        tcpn = self.vclient.statistics.get_counter('/nat64/out2in/tcp')[0]
+        udpn = self.vclient.statistics.get_counter('/nat64/out2in/udp')[0]
+        icmpn = self.vclient.statistics.get_counter('/nat64/out2in/icmp')[0]
+        drops = self.vclient.statistics.get_counter('/nat64/out2in/drops')[0]
 
         pkts = self.create_stream_out(self.pg1, dst_ip=self.nat_addr)
         self.pg1.add_stream(pkts)
@@ -812,18 +812,18 @@ class TestNAT64(VppTestCase):
         self.verify_capture_in_ip6(capture, ip[IPv6].src, self.pg0.remote_ip6)
 
         if_idx = self.pg1.sw_if_index
-        cnt = self.statistics.get_counter('/nat64/out2in/tcp')[0]
+        cnt = self.vclient.statistics.get_counter('/nat64/out2in/tcp')[0]
         self.assertEqual(cnt[if_idx] - tcpn[if_idx], 2)
-        cnt = self.statistics.get_counter('/nat64/out2in/udp')[0]
+        cnt = self.vclient.statistics.get_counter('/nat64/out2in/udp')[0]
         self.assertEqual(cnt[if_idx] - udpn[if_idx], 1)
-        cnt = self.statistics.get_counter('/nat64/out2in/icmp')[0]
+        cnt = self.vclient.statistics.get_counter('/nat64/out2in/icmp')[0]
         self.assertEqual(cnt[if_idx] - icmpn[if_idx], 1)
-        cnt = self.statistics.get_counter('/nat64/out2in/drops')[0]
+        cnt = self.vclient.statistics.get_counter('/nat64/out2in/drops')[0]
         self.assertEqual(cnt[if_idx] - drops[if_idx], 0)
 
-        bibs = self.statistics.get_counter('/nat64/total-bibs')
+        bibs = self.vclient.statistics.get_counter('/nat64/total-bibs')
         self.assertEqual(bibs[0][0], 3)
-        sessions = self.statistics.get_counter('/nat64/total-sessions')
+        sessions = self.vclient.statistics.get_counter('/nat64/total-sessions')
         self.assertEqual(sessions[0][0], 3)
 
         # in2out
@@ -848,11 +848,11 @@ class TestNAT64(VppTestCase):
         self.assertEqual(ses_num_end - ses_num_start, 3)
 
         # tenant with specific VRF
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.vrf1_nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.vrf1_nat_addr,
                                                 end_addr=self.vrf1_nat_addr,
                                                 vrf_id=self.vrf1_id, is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg2.sw_if_index)
 
         pkts = self.create_stream_in_ip6(self.pg2, self.pg1)
@@ -881,29 +881,29 @@ class TestNAT64(VppTestCase):
 
         ses_num_start = self.nat64_get_ses_num()
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
 
-        self.vapi.nat64_add_del_static_bib(i_addr=self.pg0.remote_ip6,
+        self.vclient.nat64_add_del_static_bib(i_addr=self.pg0.remote_ip6,
                                            o_addr=self.nat_addr,
                                            i_port=self.tcp_port_in,
                                            o_port=self.tcp_port_out,
                                            proto=IP_PROTOS.tcp, vrf_id=0,
                                            is_add=1)
-        self.vapi.nat64_add_del_static_bib(i_addr=self.pg0.remote_ip6,
+        self.vclient.nat64_add_del_static_bib(i_addr=self.pg0.remote_ip6,
                                            o_addr=self.nat_addr,
                                            i_port=self.udp_port_in,
                                            o_port=self.udp_port_out,
                                            proto=IP_PROTOS.udp, vrf_id=0,
                                            is_add=1)
-        self.vapi.nat64_add_del_static_bib(i_addr=self.pg0.remote_ip6,
+        self.vclient.nat64_add_del_static_bib(i_addr=self.pg0.remote_ip6,
                                            o_addr=self.nat_addr,
                                            i_port=self.icmp_id_in,
                                            o_port=self.icmp_id_out,
@@ -936,16 +936,16 @@ class TestNAT64(VppTestCase):
     def test_session_timeout(self):
         """ NAT64 session timeout """
         self.icmp_id_in = 1234
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
-        self.vapi.nat64_set_timeouts(udp=300, tcp_established=5,
+        self.vclient.nat64_set_timeouts(udp=300, tcp_established=5,
                                      tcp_transitory=5,
                                      icmp=5)
 
@@ -969,14 +969,14 @@ class TestNAT64(VppTestCase):
         self.udp_port_in = 6304
         self.icmp_id_in = 6305
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
 
         # send some packets to create sessions
@@ -1073,23 +1073,23 @@ class TestNAT64(VppTestCase):
         ip = IPv6(src=''.join(['64:ff9b::', self.nat_addr]))
         nat_addr_ip6 = ip.src
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
 
-        self.vapi.nat64_add_del_static_bib(i_addr=server.ip6n,
+        self.vclient.nat64_add_del_static_bib(i_addr=server.ip6n,
                                            o_addr=self.nat_addr,
                                            i_port=server_tcp_in_port,
                                            o_port=server_tcp_out_port,
                                            proto=IP_PROTOS.tcp, vrf_id=0,
                                            is_add=1)
-        self.vapi.nat64_add_del_static_bib(i_addr=server.ip6n,
+        self.vclient.nat64_add_del_static_bib(i_addr=server.ip6n,
                                            o_addr=self.nat_addr,
                                            i_port=server_udp_in_port,
                                            o_port=server_udp_out_port,
@@ -1191,29 +1191,29 @@ class TestNAT64(VppTestCase):
     def test_prefix(self):
         """ NAT64 Network-Specific Prefix """
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.vrf1_nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.vrf1_nat_addr,
                                                 end_addr=self.vrf1_nat_addr,
                                                 vrf_id=self.vrf1_id, is_add=1)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg2.sw_if_index)
 
         # Add global prefix
         global_pref64 = "2001:db8::"
         global_pref64_len = 32
         global_pref64_str = "{}/{}".format(global_pref64, global_pref64_len)
-        self.vapi.nat64_add_del_prefix(prefix=global_pref64_str, vrf_id=0,
+        self.vclient.nat64_add_del_prefix(prefix=global_pref64_str, vrf_id=0,
                                        is_add=1)
 
-        prefix = self.vapi.nat64_prefix_dump()
+        prefix = self.vclient.nat64_prefix_dump()
         self.assertEqual(len(prefix), 1)
         self.assertEqual(str(prefix[0].prefix), global_pref64_str)
         self.assertEqual(prefix[0].vrf_id, 0)
@@ -1222,10 +1222,10 @@ class TestNAT64(VppTestCase):
         vrf1_pref64 = "2001:db8:122:300::"
         vrf1_pref64_len = 56
         vrf1_pref64_str = "{}/{}".format(vrf1_pref64, vrf1_pref64_len)
-        self.vapi.nat64_add_del_prefix(prefix=vrf1_pref64_str,
+        self.vclient.nat64_add_del_prefix(prefix=vrf1_pref64_str,
                                        vrf_id=self.vrf1_id, is_add=1)
 
-        prefix = self.vapi.nat64_prefix_dump()
+        prefix = self.vclient.nat64_prefix_dump()
         self.assertEqual(len(prefix), 2)
 
         # Global prefix
@@ -1275,14 +1275,14 @@ class TestNAT64(VppTestCase):
     def test_unknown_proto(self):
         """ NAT64 translate packet with unknown protocol """
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
         remote_ip6 = self.compose_ip6(self.pg1.remote_ip4, '64:ff9b::', 96)
 
@@ -1347,30 +1347,30 @@ class TestNAT64(VppTestCase):
         server_nat_ip6 = self.compose_ip6(server_nat_ip, '64:ff9b::', 96)
         client_nat_ip6 = self.compose_ip6(client_nat_ip, '64:ff9b::', 96)
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=server_nat_ip,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=server_nat_ip,
                                                 end_addr=client_nat_ip,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
 
-        self.vapi.nat64_add_del_static_bib(i_addr=server.ip6n,
+        self.vclient.nat64_add_del_static_bib(i_addr=server.ip6n,
                                            o_addr=server_nat_ip,
                                            i_port=server_tcp_in_port,
                                            o_port=server_tcp_out_port,
                                            proto=IP_PROTOS.tcp, vrf_id=0,
                                            is_add=1)
 
-        self.vapi.nat64_add_del_static_bib(i_addr=server.ip6n,
+        self.vclient.nat64_add_del_static_bib(i_addr=server.ip6n,
                                            o_addr=server_nat_ip, i_port=0,
                                            o_port=0,
                                            proto=IP_PROTOS.gre, vrf_id=0,
                                            is_add=1)
 
-        self.vapi.nat64_add_del_static_bib(i_addr=client.ip6n,
+        self.vclient.nat64_add_del_static_bib(i_addr=client.ip6n,
                                            o_addr=client_nat_ip,
                                            i_port=client_tcp_in_port,
                                            o_port=client_tcp_out_port,
@@ -1430,14 +1430,14 @@ class TestNAT64(VppTestCase):
                                            '64:ff9b::',
                                            96)
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg3.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg3.sw_if_index)
 
         # in2out
@@ -1487,14 +1487,14 @@ class TestNAT64(VppTestCase):
         """ NAT64 translate fragments arriving in order """
         self.tcp_port_in = random.randint(1025, 65535)
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
 
         # in2out
@@ -1541,18 +1541,18 @@ class TestNAT64(VppTestCase):
         ip = IPv6(src=''.join(['64:ff9b::', self.nat_addr]))
         nat_addr_ip6 = ip.src
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
 
         # add static BIB entry for server
-        self.vapi.nat64_add_del_static_bib(i_addr=server.ip6n,
+        self.vclient.nat64_add_del_static_bib(i_addr=server.ip6n,
                                            o_addr=self.nat_addr,
                                            i_port=server_in_port,
                                            o_port=server_out_port,
@@ -1579,14 +1579,14 @@ class TestNAT64(VppTestCase):
         """ NAT64 translate fragments arriving out of order """
         self.tcp_port_in = random.randint(1025, 65535)
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
 
         # in2out
@@ -1626,17 +1626,17 @@ class TestNAT64(VppTestCase):
 
     def test_interface_addr(self):
         """ Acquire NAT64 pool addresses from interface """
-        self.vapi.nat64_add_del_interface_addr(
+        self.vclient.nat64_add_del_interface_addr(
             is_add=1,
             sw_if_index=self.pg4.sw_if_index)
 
         # no address in NAT64 pool
-        addresses = self.vapi.nat44_address_dump()
+        addresses = self.vclient.nat44_address_dump()
         self.assertEqual(0, len(addresses))
 
         # configure interface address and check NAT64 address pool
         self.pg4.config_ip4()
-        addresses = self.vapi.nat64_pool_addr_dump()
+        addresses = self.vclient.nat64_pool_addr_dump()
         self.assertEqual(len(addresses), 1)
 
         self.assertEqual(str(addresses[0].address),
@@ -1644,7 +1644,7 @@ class TestNAT64(VppTestCase):
 
         # remove interface address and check NAT64 address pool
         self.pg4.unconfig_ip4()
-        addresses = self.vapi.nat64_pool_addr_dump()
+        addresses = self.vclient.nat64_pool_addr_dump()
         self.assertEqual(0, len(addresses))
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
@@ -1656,14 +1656,14 @@ class TestNAT64(VppTestCase):
                                            '64:ff9b::',
                                            96)
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
 
         pkts = []
@@ -1683,11 +1683,11 @@ class TestNAT64(VppTestCase):
         self.pg_start()
         self.pg1.get_capture(max_sessions)
 
-        self.vapi.set_ipfix_exporter(collector_address=self.pg3.remote_ip4,
+        self.vclient.set_ipfix_exporter(collector_address=self.pg3.remote_ip4,
                                      src_address=self.pg3.local_ip4,
                                      path_mtu=512,
                                      template_interval=10)
-        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+        self.vclient.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
                                            src_port=self.ipfix_src_port,
                                            enable=1)
 
@@ -1699,7 +1699,7 @@ class TestNAT64(VppTestCase):
         self.pg_start()
         self.pg1.assert_nothing_captured()
         sleep(1)
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         capture = self.pg3.get_capture(7)
         ipfix = IPFIXDecoder()
         # first load template
@@ -1727,7 +1727,7 @@ class TestNAT64(VppTestCase):
         self.pg_start()
         self.pg1.assert_nothing_captured()
         sleep(1)
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         capture = self.pg3.get_capture(1)
         # verify events in data set
         for p in capture:
@@ -1749,20 +1749,20 @@ class TestNAT64(VppTestCase):
                                            '64:ff9b::',
                                            96)
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
-        self.vapi.set_ipfix_exporter(collector_address=self.pg3.remote_ip4,
+        self.vclient.set_ipfix_exporter(collector_address=self.pg3.remote_ip4,
                                      src_address=self.pg3.local_ip4,
                                      path_mtu=512,
                                      template_interval=10)
-        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+        self.vclient.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
                                            src_port=self.ipfix_src_port,
                                            enable=1)
 
@@ -1775,7 +1775,7 @@ class TestNAT64(VppTestCase):
         self.pg_start()
         p = self.pg1.get_capture(1)
         self.tcp_port_out = p[0][TCP].sport
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         capture = self.pg3.get_capture(8)
         ipfix = IPFIXDecoder()
         # first load template
@@ -1806,11 +1806,11 @@ class TestNAT64(VppTestCase):
 
         # Delete
         self.pg_enable_capture(self.pg_interfaces)
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=0)
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         capture = self.pg3.get_capture(2)
         # verify events in data set
         for p in capture:
@@ -1841,18 +1841,18 @@ class TestNAT64(VppTestCase):
                                            '64:ff9b::',
                                            96)
 
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=1)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat64_add_del_interface(is_add=1, flags=flags,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=flags,
                                           sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat64_add_del_interface(is_add=1, flags=0,
+        self.vclient.nat64_add_del_interface(is_add=1, flags=0,
                                           sw_if_index=self.pg1.sw_if_index)
-        self.vapi.syslog_set_filter(
+        self.vclient.syslog_set_filter(
             self.SYSLOG_SEVERITY.SYSLOG_API_SEVERITY_INFO)
-        self.vapi.syslog_set_sender(self.pg3.local_ip4, self.pg3.remote_ip4)
+        self.vclient.syslog_set_sender(self.pg3.local_ip4, self.pg3.remote_ip4)
 
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IPv6(src=self.pg0.remote_ip6, dst=remote_host_ip6) /
@@ -1867,7 +1867,7 @@ class TestNAT64(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        self.vapi.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
+        self.vclient.nat64_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                 end_addr=self.nat_addr,
                                                 vrf_id=0xFFFFFFFF,
                                                 is_add=0)
@@ -1878,34 +1878,34 @@ class TestNAT64(VppTestCase):
         """
         Return number of active NAT64 sessions.
         """
-        st = self.vapi.nat64_st_dump(proto=255)
+        st = self.vclient.nat64_st_dump(proto=255)
         return len(st)
 
     def clear_nat64(self):
         """
         Clear NAT64 configuration.
         """
-        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+        self.vclient.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
                                            src_port=self.ipfix_src_port,
                                            enable=0)
         self.ipfix_src_port = 4739
         self.ipfix_domain_id = 1
 
-        self.vapi.syslog_set_filter(
+        self.vclient.syslog_set_filter(
             self.SYSLOG_SEVERITY.SYSLOG_API_SEVERITY_EMERG)
 
-        self.vapi.nat64_set_timeouts(udp=300, tcp_established=7440,
+        self.vclient.nat64_set_timeouts(udp=300, tcp_established=7440,
                                      tcp_transitory=240, icmp=60)
 
-        interfaces = self.vapi.nat64_interface_dump()
+        interfaces = self.vclient.nat64_interface_dump()
         for intf in interfaces:
-            self.vapi.nat64_add_del_interface(is_add=0, flags=intf.flags,
+            self.vclient.nat64_add_del_interface(is_add=0, flags=intf.flags,
                                               sw_if_index=intf.sw_if_index)
 
-        bib = self.vapi.nat64_bib_dump(proto=255)
+        bib = self.vclient.nat64_bib_dump(proto=255)
         for bibe in bib:
             if bibe.flags & self.config_flags.NAT_IS_STATIC:
-                self.vapi.nat64_add_del_static_bib(i_addr=bibe.i_addr,
+                self.vclient.nat64_add_del_static_bib(i_addr=bibe.i_addr,
                                                    o_addr=bibe.o_addr,
                                                    i_port=bibe.i_port,
                                                    o_port=bibe.o_port,
@@ -1913,21 +1913,21 @@ class TestNAT64(VppTestCase):
                                                    vrf_id=bibe.vrf_id,
                                                    is_add=0)
 
-        adresses = self.vapi.nat64_pool_addr_dump()
+        adresses = self.vclient.nat64_pool_addr_dump()
         for addr in adresses:
-            self.vapi.nat64_add_del_pool_addr_range(start_addr=addr.address,
+            self.vclient.nat64_add_del_pool_addr_range(start_addr=addr.address,
                                                     end_addr=addr.address,
                                                     vrf_id=addr.vrf_id,
                                                     is_add=0)
 
-        prefixes = self.vapi.nat64_prefix_dump()
+        prefixes = self.vclient.nat64_prefix_dump()
         for prefix in prefixes:
-            self.vapi.nat64_add_del_prefix(prefix=str(prefix.prefix),
+            self.vclient.nat64_add_del_prefix(prefix=str(prefix.prefix),
                                            vrf_id=prefix.vrf_id, is_add=0)
 
-        bibs = self.statistics.get_counter('/nat64/total-bibs')
+        bibs = self.vclient.statistics.get_counter('/nat64/total-bibs')
         self.assertEqual(bibs[0][0], 0)
-        sessions = self.statistics.get_counter('/nat64/total-sessions')
+        sessions = self.vclient.statistics.get_counter('/nat64/total-sessions')
         self.assertEqual(sessions[0][0], 0)
 
 

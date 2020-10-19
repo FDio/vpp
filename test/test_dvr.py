@@ -2,10 +2,10 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathType
-from vpp_l2 import L2_PORT_TYPE
-from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
-from vpp_acl import AclRule, VppAcl, VppAclInterface
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, FibPathType
+from vpp_pom.vpp_l2 import L2_PORT_TYPE
+from vpp_pom.vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
+from vpp_pom.plugins.vpp_acl import AclRule, VppAcl, VppAclInterface
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
@@ -88,30 +88,30 @@ class TestDVR(VppTestCase):
         #
         # Two sub-interfaces so we can test VLAN tag push/pop
         #
-        sub_if_on_pg2 = VppDot1QSubint(self, self.pg2, 92)
-        sub_if_on_pg3 = VppDot1QSubint(self, self.pg3, 93)
+        sub_if_on_pg2 = VppDot1QSubint(self.vclient, self.pg2, 92)
+        sub_if_on_pg3 = VppDot1QSubint(self.vclient, self.pg3, 93)
         sub_if_on_pg2.admin_up()
         sub_if_on_pg3.admin_up()
 
         #
         # Put all the interfaces into a new bridge domain
         #
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg0.sw_if_index, bd_id=1)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg1.sw_if_index, bd_id=1)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=sub_if_on_pg2.sw_if_index, bd_id=1)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=sub_if_on_pg3.sw_if_index, bd_id=1)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.loop0.sw_if_index, bd_id=1,
             port_type=L2_PORT_TYPE.BVI)
 
-        self.vapi.l2_interface_vlan_tag_rewrite(
+        self.vclient.l2_interface_vlan_tag_rewrite(
             sw_if_index=sub_if_on_pg2.sw_if_index, vtr_op=L2_VTR_OP.L2_POP_1,
             push_dot1q=92)
-        self.vapi.l2_interface_vlan_tag_rewrite(
+        self.vclient.l2_interface_vlan_tag_rewrite(
             sw_if_index=sub_if_on_pg3.sw_if_index, vtr_op=L2_VTR_OP.L2_POP_1,
             push_dot1q=93)
 
@@ -119,7 +119,7 @@ class TestDVR(VppTestCase):
         # Add routes to bridge the traffic via a tagged an nontagged interface
         #
         route_no_tag = VppIpRoute(
-            self, ip_non_tag_bridged, 32,
+            self.vclient, ip_non_tag_bridged, 32,
             [VppRoutePath("0.0.0.0",
                           self.pg1.sw_if_index,
                           type=FibPathType.FIB_PATH_TYPE_DVR)])
@@ -137,7 +137,7 @@ class TestDVR(VppTestCase):
         # Add routes to bridge the traffic via a tagged interface
         #
         route_with_tag = VppIpRoute(
-            self, ip_tag_bridged, 32,
+            self.vclient, ip_tag_bridged, 32,
             [VppRoutePath("0.0.0.0",
                           sub_if_on_pg3.sw_if_index,
                           type=FibPathType.FIB_PATH_TYPE_DVR)])
@@ -191,13 +191,13 @@ class TestDVR(VppTestCase):
         rule_1 = AclRule(is_permit=0, proto=17, ports=1234,
                          src_prefix=IPv4Network((any_src_addr, 32)),
                          dst_prefix=IPv4Network((ip_non_tag_bridged, 32)))
-        acl = VppAcl(self, rules=[rule_1])
+        acl = VppAcl(self.vclient, rules=[rule_1])
         acl.add_vpp_config()
 
         #
         # Apply the ACL on the output interface
         #
-        acl_if1 = VppAclInterface(self, sw_if_index=self.pg1.sw_if_index,
+        acl_if1 = VppAclInterface(self.vclient, sw_if_index=self.pg1.sw_if_index,
                                   n_input=0, acls=[acl])
         acl_if1.add_vpp_config()
 
@@ -213,22 +213,22 @@ class TestDVR(VppTestCase):
         acl_if1.remove_vpp_config()
         acl.remove_vpp_config()
 
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg0.sw_if_index, bd_id=1, enable=0)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg1.sw_if_index, bd_id=1, enable=0)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=sub_if_on_pg2.sw_if_index, bd_id=1, enable=0)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=sub_if_on_pg3.sw_if_index, bd_id=1, enable=0)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.loop0.sw_if_index, bd_id=1,
             port_type=L2_PORT_TYPE.BVI, enable=0)
 
         #
         # Do a FIB dump to make sure the paths are correctly reported as DVR
         #
-        routes = self.vapi.ip_route_dump(0)
+        routes = self.vclient.ip_route_dump(0)
 
         for r in routes:
             if (ip_tag_bridged == str(r.route.prefix.network_address)):
@@ -294,26 +294,26 @@ class TestDVR(VppTestCase):
         #
         # A couple of sub-interfaces for tags
         #
-        sub_if_on_pg2 = VppDot1QSubint(self, self.pg2, 92)
-        sub_if_on_pg3 = VppDot1QSubint(self, self.pg3, 93)
+        sub_if_on_pg2 = VppDot1QSubint(self.vclient, self.pg2, 92)
+        sub_if_on_pg3 = VppDot1QSubint(self.vclient, self.pg3, 93)
         sub_if_on_pg2.admin_up()
         sub_if_on_pg3.admin_up()
 
         #
         # Put all the interfaces into a new bridge domain
         #
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg0.sw_if_index, bd_id=1)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg1.sw_if_index, bd_id=1)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=sub_if_on_pg2.sw_if_index, bd_id=1)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=sub_if_on_pg3.sw_if_index, bd_id=1)
-        self.vapi.l2_interface_vlan_tag_rewrite(
+        self.vclient.l2_interface_vlan_tag_rewrite(
             sw_if_index=sub_if_on_pg2.sw_if_index, vtr_op=L2_VTR_OP.L2_POP_1,
             push_dot1q=92)
-        self.vapi.l2_interface_vlan_tag_rewrite(
+        self.vclient.l2_interface_vlan_tag_rewrite(
             sw_if_index=sub_if_on_pg3.sw_if_index, vtr_op=L2_VTR_OP.L2_POP_1,
             push_dot1q=93)
 
@@ -321,19 +321,19 @@ class TestDVR(VppTestCase):
         # Disable UU flooding, learning and ARP termination. makes this test
         # easier as unicast packets are dropped if not extracted.
         #
-        self.vapi.bridge_flags(bd_id=1, is_set=0,
-                               flags=(1 << 0) | (1 << 3) | (1 << 4))
+        self.vclient.bridge_flags(bd_id=1, is_set=0,
+                                  flags=(1 << 0) | (1 << 3) | (1 << 4))
 
         #
         # Add a DVR route to steer traffic at L3
         #
         route_1 = VppIpRoute(
-            self, "1.1.1.1", 32,
+            self.vclient, "1.1.1.1", 32,
             [VppRoutePath("0.0.0.0",
                           self.pg1.sw_if_index,
                           type=FibPathType.FIB_PATH_TYPE_DVR)])
         route_2 = VppIpRoute(
-            self, "1.1.1.2", 32,
+            self.vclient, "1.1.1.2", 32,
             [VppRoutePath("0.0.0.0",
                           sub_if_on_pg2.sw_if_index,
                           type=FibPathType.FIB_PATH_TYPE_DVR)])
@@ -348,10 +348,10 @@ class TestDVR(VppTestCase):
         #
         # Enable L3 extraction on pgs
         #
-        self.vapi.l2_emulation(self.pg0.sw_if_index)
-        self.vapi.l2_emulation(self.pg1.sw_if_index)
-        self.vapi.l2_emulation(sub_if_on_pg2.sw_if_index)
-        self.vapi.l2_emulation(sub_if_on_pg3.sw_if_index)
+        self.vclient.l2_emulation(self.pg0.sw_if_index)
+        self.vclient.l2_emulation(self.pg1.sw_if_index)
+        self.vclient.l2_emulation(sub_if_on_pg2.sw_if_index)
+        self.vclient.l2_emulation(sub_if_on_pg3.sw_if_index)
 
         #
         # now we expect the packet forward according to the DVR route
@@ -382,22 +382,22 @@ class TestDVR(VppTestCase):
         #
         # cleanup
         #
-        self.vapi.l2_emulation(self.pg0.sw_if_index,
-                               enable=0)
-        self.vapi.l2_emulation(self.pg1.sw_if_index,
-                               enable=0)
-        self.vapi.l2_emulation(sub_if_on_pg2.sw_if_index,
-                               enable=0)
-        self.vapi.l2_emulation(sub_if_on_pg3.sw_if_index,
-                               enable=0)
+        self.vclient.l2_emulation(self.pg0.sw_if_index,
+                                  enable=0)
+        self.vclient.l2_emulation(self.pg1.sw_if_index,
+                                  enable=0)
+        self.vclient.l2_emulation(sub_if_on_pg2.sw_if_index,
+                                  enable=0)
+        self.vclient.l2_emulation(sub_if_on_pg3.sw_if_index,
+                                  enable=0)
 
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg0.sw_if_index, bd_id=1, enable=0)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg1.sw_if_index, bd_id=1, enable=0)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=sub_if_on_pg2.sw_if_index, bd_id=1, enable=0)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=sub_if_on_pg3.sw_if_index, bd_id=1, enable=0)
 
         route_1.remove_vpp_config()

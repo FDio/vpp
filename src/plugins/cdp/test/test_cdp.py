@@ -11,7 +11,7 @@ from framework import VppTestCase
 from scapy.all import raw
 from re import compile
 from time import sleep
-from util import ppp
+from vpp_pom.util import ppp
 import platform
 import sys
 import unittest
@@ -78,14 +78,14 @@ class TestCDP(VppTestCase):
         super(TestCDP, cls).tearDownClass()
 
     def test_enable_cdp(self):
-        self.logger.info(self.vapi.cdp_enable_disable(enable_disable=1))
-        ret = self.vapi.cli("show cdp")
+        self.logger.info(self.vclient.cdp_enable_disable(enable_disable=1))
+        ret = self.vclient.cli("show cdp")
         self.logger.info(ret)
         not_enabled = self.nen_ptr.search(ret)
         self.assertFalse(not_enabled, "CDP isn't enabled")
 
     def test_send_cdp_packet(self):
-        self.logger.info(self.vapi.cdp_enable_disable(enable_disable=1))
+        self.logger.info(self.vclient.cdp_enable_disable(enable_disable=1))
         self.send_packet(self.create_packet())
 
         neighbors = list(self.show_cdp())
@@ -105,10 +105,10 @@ class TestCDP(VppTestCase):
         self.send_bad_packet(8, ".")
 
     def send_bad_packet(self, l, v):
-        self.logger.info(self.vapi.cdp_enable_disable(enable_disable=1))
+        self.logger.info(self.vclient.cdp_enable_disable(enable_disable=1))
         self.send_packet(self.create_bad_packet(l, v))
 
-        err = self.statistics.get_err_counter(
+        err = self.vclient.statistics.get_err_counter(
             '/err/cdp-input/cdp packets with bad TLVs')
         self.assertTrue(err >= 1, "CDP didn't drop bad packet")
 
@@ -140,7 +140,7 @@ class TestCDP(VppTestCase):
         return packet
 
     def process_cli(self, exp, ptr):
-        for line in self.vapi.cli(exp).split('\n')[1:]:
+        for line in self.vclient.cli(exp).split('\n')[1:]:
             m = ptr.match(line.strip())
             if m:
                 yield m.groups()

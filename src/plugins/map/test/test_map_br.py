@@ -4,9 +4,9 @@ import ipaddress
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from util import fragment_rfc791, fragment_rfc8200
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_pom.util import fragment_rfc791, fragment_rfc8200
 
 import scapy.compat
 from scapy.layers.l2 import Ether
@@ -89,7 +89,7 @@ class TestMAPBR(VppTestCase):
         #
         # Add an IPv6 route to the MAP-BR.
         #
-        map_route = VppIpRoute(self,
+        map_route = VppIpRoute(self.vclient,
                                self.map_br_prefix,
                                self.map_br_prefix_len,
                                [VppRoutePath(self.pg1.remote_ip6,
@@ -99,7 +99,7 @@ class TestMAPBR(VppTestCase):
         #
         # Add a MAP BR domain that maps from pg0 to pg1.
         #
-        self.vapi.map_add_domain(ip4_prefix=self.ip4_prefix,
+        self.vclient.map_add_domain(ip4_prefix=self.ip4_prefix,
                                  ip6_prefix=self.ip6_prefix,
                                  ip6_src=self.ip6_src,
                                  ea_bits_len=self.ea_bits_len,
@@ -111,23 +111,23 @@ class TestMAPBR(VppTestCase):
         #
         # Set BR parameters.
         #
-        self.vapi.map_param_set_fragmentation(inner=1, ignore_df=0)
-        self.vapi.map_param_set_fragmentation(inner=0, ignore_df=0)
-        self.vapi.map_param_set_icmp(ip4_err_relay_src=self.pg0.local_ip4)
-        self.vapi.map_param_set_traffic_class(copy=1)
+        self.vclient.map_param_set_fragmentation(inner=1, ignore_df=0)
+        self.vclient.map_param_set_fragmentation(inner=0, ignore_df=0)
+        self.vclient.map_param_set_icmp(ip4_err_relay_src=self.pg0.local_ip4)
+        self.vclient.map_param_set_traffic_class(copy=1)
 
         #
         # Enable MAP-T on interfaces.
         #
-        self.vapi.map_if_enable_disable(is_enable=1,
+        self.vclient.map_if_enable_disable(is_enable=1,
                                         sw_if_index=self.pg0.sw_if_index,
                                         is_translation=1)
 
-        self.vapi.map_if_enable_disable(is_enable=1,
+        self.vclient.map_if_enable_disable(is_enable=1,
                                         sw_if_index=self.pg1.sw_if_index,
                                         is_translation=1)
 
-        self.vapi.map_if_enable_disable(is_enable=1,
+        self.vclient.map_if_enable_disable(is_enable=1,
                                         sw_if_index=self.pg1.sw_if_index,
                                         is_translation=1)
 

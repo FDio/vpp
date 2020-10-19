@@ -78,10 +78,10 @@ class TestURPF(VppTestCase):
         #
         # apply loose uRPF check on pg0 rx
         #
-        self.vapi.urpf_update(is_input=True,
-                              mode=e.vl_api_urpf_mode_t.URPF_API_MODE_LOOSE,
-                              af=e.vl_api_address_family_t.ADDRESS_IP4,
-                              sw_if_index=self.pg0.sw_if_index)
+        self.vclient.urpf_update(is_input=True,
+                                 mode=e.vl_api_urpf_mode_t.URPF_API_MODE_LOOSE,
+                                 af=e.vl_api_address_family_t.ADDRESS_IP4,
+                                 sw_if_index=self.pg0.sw_if_index)
 
         # good packets still pass
         self.send_and_expect(self.pg0, p_good, self.pg1)
@@ -95,10 +95,10 @@ class TestURPF(VppTestCase):
         #
         # crank it up to strict mode
         #
-        self.vapi.urpf_update(is_input=True,
-                              mode=e.vl_api_urpf_mode_t.URPF_API_MODE_STRICT,
-                              af=e.vl_api_address_family_t.ADDRESS_IP4,
-                              sw_if_index=self.pg0.sw_if_index)
+        self.vclient.urpf_update(is_input=True,
+                                 mode=e.vl_api_urpf_mode_t.URPF_API_MODE_STRICT,
+                                 af=e.vl_api_address_family_t.ADDRESS_IP4,
+                                 sw_if_index=self.pg0.sw_if_index)
 
         # good packets still pass
         self.send_and_expect(self.pg0, p_good, self.pg1)
@@ -111,10 +111,10 @@ class TestURPF(VppTestCase):
         #
         # disable uRPF, all traffic should pass
         #
-        self.vapi.urpf_update(is_input=True,
-                              mode=e.vl_api_urpf_mode_t.URPF_API_MODE_OFF,
-                              af=e.vl_api_address_family_t.ADDRESS_IP4,
-                              sw_if_index=self.pg0.sw_if_index)
+        self.vclient.urpf_update(is_input=True,
+                                 mode=e.vl_api_urpf_mode_t.URPF_API_MODE_OFF,
+                                 af=e.vl_api_address_family_t.ADDRESS_IP4,
+                                 sw_if_index=self.pg0.sw_if_index)
 
         self.send_and_expect(self.pg0, p_good, self.pg1)
         self.send_and_expect(self.pg0, p_spoof_strict, self.pg1)
@@ -127,10 +127,10 @@ class TestURPF(VppTestCase):
         #  for strict they should not be forwarded if they would be
         #  forwarded thru that interface.
         #
-        self.vapi.urpf_update(is_input=False,
-                              mode=e.vl_api_urpf_mode_t.URPF_API_MODE_LOOSE,
-                              af=e.vl_api_address_family_t.ADDRESS_IP4,
-                              sw_if_index=self.pg1.sw_if_index)
+        self.vclient.urpf_update(is_input=False,
+                                 mode=e.vl_api_urpf_mode_t.URPF_API_MODE_LOOSE,
+                                 af=e.vl_api_address_family_t.ADDRESS_IP4,
+                                 sw_if_index=self.pg1.sw_if_index)
 
         self.send_and_expect(self.pg0, p_good, self.pg1)
         self.send_and_expect(self.pg0, p_spoof_strict, self.pg1)
@@ -138,10 +138,10 @@ class TestURPF(VppTestCase):
 
         self.assert_error_counter_equal("ip4-tx-urpf-loose", N_PKTS)
 
-        self.vapi.urpf_update(is_input=False,
-                              mode=e.vl_api_urpf_mode_t.URPF_API_MODE_STRICT,
-                              af=e.vl_api_address_family_t.ADDRESS_IP4,
-                              sw_if_index=self.pg1.sw_if_index)
+        self.vclient.urpf_update(is_input=False,
+                                 mode=e.vl_api_urpf_mode_t.URPF_API_MODE_STRICT,
+                                 af=e.vl_api_address_family_t.ADDRESS_IP4,
+                                 sw_if_index=self.pg1.sw_if_index)
 
         self.send_and_expect(self.pg0, p_good, self.pg1)
         # the strict packet, from a peer is allowed, since it does
@@ -163,10 +163,10 @@ class TestURPF(VppTestCase):
         self.assert_error_counter_equal("ip4-tx-urpf-strict", 2 * N_PKTS)
 
         # cleanup
-        self.vapi.urpf_update(is_input=False,
-                              mode=e.vl_api_urpf_mode_t.URPF_API_MODE_OFF,
-                              af=e.vl_api_address_family_t.ADDRESS_IP4,
-                              sw_if_index=self.pg1.sw_if_index)
+        self.vclient.urpf_update(is_input=False,
+                                 mode=e.vl_api_urpf_mode_t.URPF_API_MODE_OFF,
+                                 af=e.vl_api_address_family_t.ADDRESS_IP4,
+                                 sw_if_index=self.pg1.sw_if_index)
 
     def test_urpf6(self):
         """ uRPF IP6 """
@@ -200,10 +200,10 @@ class TestURPF(VppTestCase):
         #
         # apply loose uRPF check on pg0 rx
         #
-        self.vapi.urpf_update(is_input=True,
-                              mode=e.vl_api_urpf_mode_t.URPF_API_MODE_LOOSE,
-                              af=e.vl_api_address_family_t.ADDRESS_IP6,
-                              sw_if_index=self.pg0.sw_if_index)
+        self.vclient.urpf_update(is_input=True,
+                                 mode=e.vl_api_urpf_mode_t.URPF_API_MODE_LOOSE,
+                                 af=e.vl_api_address_family_t.ADDRESS_IP6,
+                                 sw_if_index=self.pg0.sw_if_index)
 
         # good packets still pass
         self.send_and_expect(self.pg0, p_good, self.pg1)
@@ -217,10 +217,10 @@ class TestURPF(VppTestCase):
         #
         # crank it up to strict mode
         #
-        self.vapi.urpf_update(is_input=True,
-                              mode=e.vl_api_urpf_mode_t.URPF_API_MODE_STRICT,
-                              af=e.vl_api_address_family_t.ADDRESS_IP6,
-                              sw_if_index=self.pg0.sw_if_index)
+        self.vclient.urpf_update(is_input=True,
+                                 mode=e.vl_api_urpf_mode_t.URPF_API_MODE_STRICT,
+                                 af=e.vl_api_address_family_t.ADDRESS_IP6,
+                                 sw_if_index=self.pg0.sw_if_index)
 
         # good packets still pass
         self.send_and_expect(self.pg0, p_good, self.pg1)
@@ -233,10 +233,10 @@ class TestURPF(VppTestCase):
         #
         # disable uRPF, all traffic should pass
         #
-        self.vapi.urpf_update(is_input=True,
-                              mode=e.vl_api_urpf_mode_t.URPF_API_MODE_OFF,
-                              af=e.vl_api_address_family_t.ADDRESS_IP6,
-                              sw_if_index=self.pg0.sw_if_index)
+        self.vclient.urpf_update(is_input=True,
+                                 mode=e.vl_api_urpf_mode_t.URPF_API_MODE_OFF,
+                                 af=e.vl_api_address_family_t.ADDRESS_IP6,
+                                 sw_if_index=self.pg0.sw_if_index)
 
         self.send_and_expect(self.pg0, p_good, self.pg1)
         self.send_and_expect(self.pg0, p_spoof_strict, self.pg1)
@@ -249,10 +249,10 @@ class TestURPF(VppTestCase):
         #  for strict they should not be forwarded if they would be
         #  forwarded thru that interface.
         #
-        self.vapi.urpf_update(is_input=False,
-                              mode=e.vl_api_urpf_mode_t.URPF_API_MODE_LOOSE,
-                              af=e.vl_api_address_family_t.ADDRESS_IP6,
-                              sw_if_index=self.pg1.sw_if_index)
+        self.vclient.urpf_update(is_input=False,
+                                 mode=e.vl_api_urpf_mode_t.URPF_API_MODE_LOOSE,
+                                 af=e.vl_api_address_family_t.ADDRESS_IP6,
+                                 sw_if_index=self.pg1.sw_if_index)
 
         self.send_and_expect(self.pg0, p_good, self.pg1)
         self.send_and_expect(self.pg0, p_spoof_strict, self.pg1)
@@ -260,10 +260,10 @@ class TestURPF(VppTestCase):
 
         self.assert_error_counter_equal("ip6-tx-urpf-loose", N_PKTS)
 
-        self.vapi.urpf_update(is_input=False,
-                              mode=e.vl_api_urpf_mode_t.URPF_API_MODE_STRICT,
-                              af=e.vl_api_address_family_t.ADDRESS_IP6,
-                              sw_if_index=self.pg1.sw_if_index)
+        self.vclient.urpf_update(is_input=False,
+                                 mode=e.vl_api_urpf_mode_t.URPF_API_MODE_STRICT,
+                                 af=e.vl_api_address_family_t.ADDRESS_IP6,
+                                 sw_if_index=self.pg1.sw_if_index)
 
         self.send_and_expect(self.pg0, p_good, self.pg1)
         # the strict packet, from a peer is allowed, since it does
@@ -285,10 +285,10 @@ class TestURPF(VppTestCase):
         self.assert_error_counter_equal("ip6-tx-urpf-strict", 2 * N_PKTS)
 
         # cleanup
-        self.vapi.urpf_update(is_input=False,
-                              mode=e.vl_api_urpf_mode_t.URPF_API_MODE_OFF,
-                              af=e.vl_api_address_family_t.ADDRESS_IP6,
-                              sw_if_index=self.pg1.sw_if_index)
+        self.vclient.urpf_update(is_input=False,
+                                 mode=e.vl_api_urpf_mode_t.URPF_API_MODE_OFF,
+                                 af=e.vl_api_address_family_t.ADDRESS_IP6,
+                                 sw_if_index=self.pg1.sw_if_index)
 
 
 if __name__ == '__main__':

@@ -3,14 +3,14 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, \
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, \
     VppMplsTable, VppIpMRoute, VppMRoutePath, VppIpTable, \
     MPLS_LABEL_INVALID, \
     VppMplsLabel, FibPathProto, FibPathType
-from vpp_bier import BIER_HDR_PAYLOAD, VppBierImp, VppBierDispEntry, \
+from vpp_pom.vpp_bier import BIER_HDR_PAYLOAD, VppBierImp, VppBierDispEntry, \
     VppBierDispTable, VppBierTable, VppBierTableID, VppBierRoute
-from vpp_udp_encap import VppUdpEncap
+from vpp_pom.vpp_udp_encap import VppUdpEncap
 from vpp_papi import VppEnum
 
 import scapy.compat
@@ -29,7 +29,7 @@ class TestBFIB(VppTestCase):
 
     def test_bfib(self):
         """ BFIB Unit Tests """
-        error = self.vapi.cli("test bier")
+        error = self.vclient.cli("test bier")
 
         if error:
             self.logger.critical(error)
@@ -47,11 +47,11 @@ class TestBier(VppTestCase):
 
         # create the default MPLS table
         self.tables = []
-        tbl = VppMplsTable(self, 0)
+        tbl = VppMplsTable(self.vclient, 0)
         tbl.add_vpp_config()
         self.tables.append(tbl)
 
-        tbl = VppIpTable(self, 10)
+        tbl = VppIpTable(self.vclient, 10)
         tbl.add_vpp_config()
         self.tables.append(tbl)
 
@@ -79,7 +79,7 @@ class TestBier(VppTestCase):
         # Add a BIER table for sub-domain 0, set 0, and BSL 256
         #
         bti = VppBierTableID(0, 0, hdr_len_id)
-        bt = VppBierTable(self, bti, 77)
+        bt = VppBierTable(self.vclient, bti, 77)
         bt.add_vpp_config()
 
         #
@@ -106,14 +106,14 @@ class TestBier(VppTestCase):
         for i in range(1, max_bp+1):
             nh = "10.0.%d.%d" % (i / 255, i % 255)
             nh_routes.append(
-                VppIpRoute(self, nh, 32,
+                VppIpRoute(self.vclient, nh, 32,
                            [VppRoutePath(self.pg1.remote_ip4,
                                          self.pg1.sw_if_index,
                                          labels=[VppMplsLabel(2000+i)])]))
             nh_routes[-1].add_vpp_config()
 
             bier_routes.append(
-                VppBierRoute(self, bti, i,
+                VppBierRoute(self.vclient, bti, i,
                              [VppRoutePath(nh, 0xffffffff,
                                            labels=[VppMplsLabel(100+i)])]))
             bier_routes[-1].add_vpp_config()
@@ -214,7 +214,7 @@ class TestBier(VppTestCase):
         # Add a BIER table for sub-domain 0, set 0, and BSL 256
         #
         bti = VppBierTableID(0, 0, BIERLength.BIER_LEN_64)
-        bt = VppBierTable(self, bti, 77)
+        bt = VppBierTable(self.vclient, bti, 77)
         bt.add_vpp_config()
 
         #
@@ -243,14 +243,14 @@ class TestBier(VppTestCase):
 
         for nh in nhs:
             ipr = VppIpRoute(
-                self, nh['ip'], 32,
+                self.vclient, nh['ip'], 32,
                 [VppRoutePath(self.pg1.remote_ip4,
                               self.pg1.sw_if_index,
                               labels=[VppMplsLabel(nh['label'])])])
             ipr.add_vpp_config()
 
         bier_route = VppBierRoute(
-            self, bti, 1,
+            self.vclient, bti, 1,
             [VppRoutePath(nhs[0]['ip'], 0xffffffff,
                           labels=[VppMplsLabel(101)]),
              VppRoutePath(nhs[1]['ip'], 0xffffffff,
@@ -312,7 +312,7 @@ class TestBier(VppTestCase):
         # Add a BIER table for sub-domain 0, set 0, and BSL 256
         #
         bti = VppBierTableID(0, 0, BIERLength.BIER_LEN_256)
-        bt = VppBierTable(self, bti, 77)
+        bt = VppBierTable(self.vclient, bti, 77)
         bt.add_vpp_config()
 
         #
@@ -320,21 +320,21 @@ class TestBier(VppTestCase):
         #
         nh1 = "10.0.0.1"
         nh2 = "10.0.0.2"
-        ip_route_1 = VppIpRoute(self, nh1, 32,
+        ip_route_1 = VppIpRoute(self.vclient, nh1, 32,
                                 [VppRoutePath(self.pg1.remote_ip4,
                                               self.pg1.sw_if_index,
                                               labels=[VppMplsLabel(2001)])])
-        ip_route_2 = VppIpRoute(self, nh2, 32,
+        ip_route_2 = VppIpRoute(self.vclient, nh2, 32,
                                 [VppRoutePath(self.pg1.remote_ip4,
                                               self.pg1.sw_if_index,
                                               labels=[VppMplsLabel(2002)])])
         ip_route_1.add_vpp_config()
         ip_route_2.add_vpp_config()
 
-        bier_route_1 = VppBierRoute(self, bti, 1,
+        bier_route_1 = VppBierRoute(self.vclient, bti, 1,
                                     [VppRoutePath(nh1, 0xffffffff,
                                                   labels=[VppMplsLabel(101)])])
-        bier_route_2 = VppBierRoute(self, bti, 2,
+        bier_route_2 = VppBierRoute(self.vclient, bti, 2,
                                     [VppRoutePath(nh2, 0xffffffff,
                                                   labels=[VppMplsLabel(102)])])
         bier_route_1.add_vpp_config()
@@ -343,14 +343,14 @@ class TestBier(VppTestCase):
         #
         # An imposition object with both bit-positions set
         #
-        bi = VppBierImp(self, bti, 333, scapy.compat.chb(0x3) * 32)
+        bi = VppBierImp(self.vclient, bti, 333, scapy.compat.chb(0x3) * 32)
         bi.add_vpp_config()
 
         #
         # Add a multicast route that will forward into the BIER doamin
         #
         route_ing_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -411,20 +411,20 @@ class TestBier(VppTestCase):
         # Add a BIER table for sub-domain 0, set 0, and BSL 256
         #
         bti = VppBierTableID(0, 0, BIERLength.BIER_LEN_256)
-        bt = VppBierTable(self, bti, 77)
+        bt = VppBierTable(self.vclient, bti, 77)
         bt.add_vpp_config()
 
         #
         # disposition table
         #
-        bdt = VppBierDispTable(self, 8)
+        bdt = VppBierDispTable(self.vclient, 8)
         bdt.add_vpp_config()
 
         #
         # BIER route in table that's for-us
         #
         bier_route_1 = VppBierRoute(
-            self, bti, 1,
+            self.vclient, bti, 1,
             [VppRoutePath("0.0.0.0",
                           0xffffffff,
                           proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
@@ -434,7 +434,7 @@ class TestBier(VppTestCase):
         #
         # An entry in the disposition table
         #
-        bier_de_1 = VppBierDispEntry(self, bdt.id, 99,
+        bier_de_1 = VppBierDispEntry(self.vclient, bdt.id, 99,
                                      BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
                                      FibPathProto.FIB_PATH_NH_PROTO_BIER,
                                      "0.0.0.0", 0, rpf_id=8192)
@@ -444,7 +444,7 @@ class TestBier(VppTestCase):
         # A multicast route to forward post BIER disposition
         #
         route_eg_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -484,7 +484,7 @@ class TestBier(VppTestCase):
         #
         # Add the default route to the disposition table
         #
-        bier_de_2 = VppBierDispEntry(self, bdt.id, 0,
+        bier_de_2 = VppBierDispEntry(self.vclient, bdt.id, 0,
                                      BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
                                      FibPathProto.FIB_PATH_NH_PROTO_BIER,
                                      "0.0.0.0", 0, rpf_id=8192)
@@ -499,11 +499,11 @@ class TestBier(VppTestCase):
         # A multicast route to forward post BIER disposition that needs
         # a check against sending back into the BIER core
         #
-        bi = VppBierImp(self, bti, 333, scapy.compat.chb(0x3) * 32)
+        bi = VppBierImp(self.vclient, bti, 333, scapy.compat.chb(0x3) * 32)
         bi.add_vpp_config()
 
         route_eg_232_1_1_2 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.2", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -537,7 +537,7 @@ class TestBier(VppTestCase):
         # Add a BIER table for sub-domain 0, set 0, and BSL 256
         #
         bti = VppBierTableID(0, 0, hdr_len_id)
-        bt = VppBierTable(self, bti, 77)
+        bt = VppBierTable(self.vclient, bti, 77)
         bt.add_vpp_config()
 
         lowest = [b'\0'] * (n_bytes)
@@ -548,16 +548,16 @@ class TestBier(VppTestCase):
         #
         # Impostion Sets bit strings
         #
-        bi_low = VppBierImp(self, bti, 333, lowest)
+        bi_low = VppBierImp(self.vclient, bti, 333, lowest)
         bi_low.add_vpp_config()
-        bi_high = VppBierImp(self, bti, 334, highest)
+        bi_high = VppBierImp(self.vclient, bti, 334, highest)
         bi_high.add_vpp_config()
 
         #
         # Add a multicast route that will forward into the BIER doamin
         #
         route_ing_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -570,7 +570,7 @@ class TestBier(VppTestCase):
                                  bier_imp=bi_low.bi_index)])
         route_ing_232_1_1_1.add_vpp_config()
         route_ing_232_1_1_2 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.2", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -586,7 +586,7 @@ class TestBier(VppTestCase):
         #
         # disposition table 8
         #
-        bdt = VppBierDispTable(self, 8)
+        bdt = VppBierDispTable(self.vclient, 8)
         bdt.add_vpp_config()
 
         #
@@ -594,14 +594,14 @@ class TestBier(VppTestCase):
         # disp table 8.
         #
         bier_route_1 = VppBierRoute(
-            self, bti, 1,
+            self.vclient, bti, 1,
             [VppRoutePath("0.0.0.0",
                           0xffffffff,
                           proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
                           nh_table_id=8)])
         bier_route_1.add_vpp_config()
         bier_route_max = VppBierRoute(
-            self, bti, max_bp,
+            self.vclient, bti, max_bp,
             [VppRoutePath("0.0.0.0",
                           0xffffffff,
                           proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
@@ -612,12 +612,12 @@ class TestBier(VppTestCase):
         # An entry in the disposition table for sender 333
         #  lookup in VRF 10
         #
-        bier_de_1 = VppBierDispEntry(self, bdt.id, 333,
+        bier_de_1 = VppBierDispEntry(self.vclient, bdt.id, 333,
                                      BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
                                      FibPathProto.FIB_PATH_NH_PROTO_BIER,
                                      "0.0.0.0", 10, rpf_id=8192)
         bier_de_1.add_vpp_config()
-        bier_de_1 = VppBierDispEntry(self, bdt.id, 334,
+        bier_de_1 = VppBierDispEntry(self.vclient, bdt.id, 334,
                                      BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
                                      FibPathProto.FIB_PATH_NH_PROTO_BIER,
                                      "0.0.0.0", 10, rpf_id=8193)
@@ -628,7 +628,7 @@ class TestBier(VppTestCase):
         # post-disposition
         #
         route_eg_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -638,7 +638,7 @@ class TestBier(VppTestCase):
         route_eg_232_1_1_1.add_vpp_config()
         route_eg_232_1_1_1.update_rpf_id(8192)
         route_eg_232_1_1_2 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.2", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -708,27 +708,27 @@ class TestBier(VppTestCase):
         # Add a BIER table for sub-domain 1, set 0, and BSL 256
         #
         bti = VppBierTableID(1, 0, BIERLength.BIER_LEN_256)
-        bt = VppBierTable(self, bti, 77)
+        bt = VppBierTable(self.vclient, bti, 77)
         bt.add_vpp_config()
 
         #
         # 1 bit positions via 1 next hops
         #
         nh1 = "10.0.0.1"
-        ip_route = VppIpRoute(self, nh1, 32,
+        ip_route = VppIpRoute(self.vclient, nh1, 32,
                               [VppRoutePath(self.pg1.remote_ip4,
                                             self.pg1.sw_if_index,
                                             labels=[VppMplsLabel(2001)])])
         ip_route.add_vpp_config()
 
-        udp_encap = VppUdpEncap(self,
+        udp_encap = VppUdpEncap(self.vclient,
                                 self.pg0.local_ip4,
                                 nh1,
                                 330, 8138)
         udp_encap.add_vpp_config()
 
         bier_route = VppBierRoute(
-            self, bti, 1,
+            self.vclient, bti, 1,
             [VppRoutePath("0.0.0.0",
                           0xFFFFFFFF,
                           type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
@@ -740,16 +740,16 @@ class TestBier(VppTestCase):
         # only use the second, but creating 2 tests with a non-zero
         # value index in the route add
         #
-        bi = VppBierImp(self, bti, 333, scapy.compat.chb(0xff) * 32)
+        bi = VppBierImp(self.vclient, bti, 333, scapy.compat.chb(0xff) * 32)
         bi.add_vpp_config()
-        bi2 = VppBierImp(self, bti, 334, scapy.compat.chb(0xff) * 32)
+        bi2 = VppBierImp(self.vclient, bti, 334, scapy.compat.chb(0xff) * 32)
         bi2.add_vpp_config()
 
         #
         # Add a multicast route that will forward into the BIER doamin
         #
         route_ing_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -799,20 +799,20 @@ class TestBier(VppTestCase):
         # Add a BIER table for sub-domain 0, set 0, and BSL 256
         #
         bti = VppBierTableID(1, 0, BIERLength.BIER_LEN_256)
-        bt = VppBierTable(self, bti, MPLS_LABEL_INVALID)
+        bt = VppBierTable(self.vclient, bti, MPLS_LABEL_INVALID)
         bt.add_vpp_config()
 
         #
         # disposition table
         #
-        bdt = VppBierDispTable(self, 8)
+        bdt = VppBierDispTable(self.vclient, 8)
         bdt.add_vpp_config()
 
         #
         # BIER route in table that's for-us
         #
         bier_route_1 = VppBierRoute(
-            self, bti, 1,
+            self.vclient, bti, 1,
             [VppRoutePath("0.0.0.0",
                           0xffffffff,
                           proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
@@ -822,7 +822,7 @@ class TestBier(VppTestCase):
         #
         # An entry in the disposition table
         #
-        bier_de_1 = VppBierDispEntry(self, bdt.id, 99,
+        bier_de_1 = VppBierDispEntry(self.vclient, bdt.id, 99,
                                      BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
                                      FibPathProto.FIB_PATH_NH_PROTO_BIER,
                                      "0.0.0.0", 0, rpf_id=8192)
@@ -832,7 +832,7 @@ class TestBier(VppTestCase):
         # A multicast route to forward post BIER disposition
         #
         route_eg_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,

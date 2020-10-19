@@ -4,13 +4,13 @@ import unittest
 import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto, INVALID_INDEX
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
+from vpp_pom.vpp_ip import DpoProto, INVALID_INDEX
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsIpBind, VppIpMRoute, VppMRoutePath, \
     VppIpTable, VppMplsTable, \
     VppMplsLabel, MplsLspMode, find_mpls_route, \
     FibPathProto, FibPathType, FibPathFlags, VppMplsLabel, MplsLspMode
-from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
+from vpp_pom.vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 from vpp_papi import VppEnum
 
 import scapy.compat
@@ -81,7 +81,7 @@ class TestMPLS(VppTestCase):
         table_id = 0
         self.tables = []
 
-        tbl = VppMplsTable(self, 0)
+        tbl = VppMplsTable(self.vclient, 0)
         tbl.add_vpp_config()
         self.tables.append(tbl)
 
@@ -89,10 +89,10 @@ class TestMPLS(VppTestCase):
             i.admin_up()
 
             if table_id != 0:
-                tbl = VppIpTable(self, table_id)
+                tbl = VppIpTable(self.vclient, table_id)
                 tbl.add_vpp_config()
                 self.tables.append(tbl)
-                tbl = VppIpTable(self, table_id, is_ip6=1)
+                tbl = VppIpTable(self.vclient, table_id, is_ip6=1)
                 tbl.add_vpp_config()
                 self.tables.append(tbl)
 
@@ -418,14 +418,14 @@ class TestMPLS(VppTestCase):
         #
         # A simple MPLS xconnect - eos label in label out
         #
-        route_32_eos = VppMplsRoute(self, 32, 1,
+        route_32_eos = VppMplsRoute(self.vclient, 32, 1,
                                     [VppRoutePath(self.pg0.remote_ip4,
                                                   self.pg0.sw_if_index,
                                                   labels=[VppMplsLabel(33)])])
         route_32_eos.add_vpp_config()
 
         self.assertTrue(
-            find_mpls_route(self, 0, 32, 1,
+            find_mpls_route(self.vclient, 0, 32, 1,
                             [VppRoutePath(self.pg0.remote_ip4,
                                           self.pg0.sw_if_index,
                                           labels=[VppMplsLabel(33)])]))
@@ -445,7 +445,7 @@ class TestMPLS(VppTestCase):
         #
         # A simple MPLS xconnect - non-eos label in label out
         #
-        route_32_neos = VppMplsRoute(self, 32, 0,
+        route_32_neos = VppMplsRoute(self.vclient, 32, 0,
                                      [VppRoutePath(self.pg0.remote_ip4,
                                                    self.pg0.sw_if_index,
                                                    labels=[VppMplsLabel(33)])])
@@ -468,7 +468,7 @@ class TestMPLS(VppTestCase):
         # A simple MPLS xconnect - non-eos label in label out, uniform mode
         #
         route_42_neos = VppMplsRoute(
-            self, 42, 0,
+            self.vclient, 42, 0,
             [VppRoutePath(self.pg0.remote_ip4,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(43, MplsLspMode.UNIFORM)])])
@@ -485,7 +485,7 @@ class TestMPLS(VppTestCase):
         #
         # An MPLS xconnect - EOS label in IP out
         #
-        route_33_eos = VppMplsRoute(self, 33, 1,
+        route_33_eos = VppMplsRoute(self.vclient, 33, 1,
                                     [VppRoutePath(self.pg0.remote_ip4,
                                                   self.pg0.sw_if_index,
                                                   labels=[])])
@@ -508,7 +508,7 @@ class TestMPLS(VppTestCase):
         # An MPLS xconnect - EOS label in IP out, uniform mode
         #
         route_3333_eos = VppMplsRoute(
-            self, 3333, 1,
+            self.vclient, 3333, 1,
             [VppRoutePath(self.pg0.remote_ip4,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(3, MplsLspMode.UNIFORM)])])
@@ -529,7 +529,7 @@ class TestMPLS(VppTestCase):
         # An MPLS xconnect - EOS label in IPv6 out
         #
         route_333_eos = VppMplsRoute(
-            self, 333, 1,
+            self.vclient, 333, 1,
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
                           labels=[])],
@@ -554,7 +554,7 @@ class TestMPLS(VppTestCase):
         # An MPLS xconnect - EOS label in IPv6 out w imp-null
         #
         route_334_eos = VppMplsRoute(
-            self, 334, 1,
+            self.vclient, 334, 1,
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(3)])],
@@ -570,7 +570,7 @@ class TestMPLS(VppTestCase):
         # An MPLS xconnect - EOS label in IPv6 out w imp-null in uniform mode
         #
         route_335_eos = VppMplsRoute(
-            self, 335, 1,
+            self.vclient, 335, 1,
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(3, MplsLspMode.UNIFORM)])],
@@ -596,7 +596,7 @@ class TestMPLS(VppTestCase):
         # An MPLS xconnect - non-EOS label in IP out - an invalid configuration
         # so this traffic should be dropped.
         #
-        route_33_neos = VppMplsRoute(self, 33, 0,
+        route_33_neos = VppMplsRoute(self.vclient, 33, 0,
                                      [VppRoutePath(self.pg0.remote_ip4,
                                                    self.pg0.sw_if_index,
                                                    labels=[])])
@@ -613,14 +613,14 @@ class TestMPLS(VppTestCase):
         # A recursive EOS x-connect, which resolves through another x-connect
         # in pipe mode
         #
-        route_34_eos = VppMplsRoute(self, 34, 1,
+        route_34_eos = VppMplsRoute(self.vclient, 34, 1,
                                     [VppRoutePath("0.0.0.0",
                                                   0xffffffff,
                                                   nh_via_label=32,
                                                   labels=[VppMplsLabel(44),
                                                           VppMplsLabel(45)])])
         route_34_eos.add_vpp_config()
-        self.logger.info(self.vapi.cli("sh mpls fib 34"))
+        self.logger.info(self.vclient.cli("sh mpls fib 34"))
 
         tx = self.create_stream_labelled_ip4(self.pg0,
                                              [VppMplsLabel(34, ttl=3)])
@@ -638,7 +638,7 @@ class TestMPLS(VppTestCase):
         # in uniform mode
         #
         route_35_eos = VppMplsRoute(
-            self, 35, 1,
+            self.vclient, 35, 1,
             [VppRoutePath("0.0.0.0",
                           0xffffffff,
                           nh_via_label=42,
@@ -656,7 +656,7 @@ class TestMPLS(VppTestCase):
         # A recursive non-EOS x-connect, which resolves through another
         # x-connect
         #
-        route_34_neos = VppMplsRoute(self, 34, 0,
+        route_34_neos = VppMplsRoute(self.vclient, 34, 0,
                                      [VppRoutePath("0.0.0.0",
                                                    0xffffffff,
                                                    nh_via_label=32,
@@ -679,7 +679,7 @@ class TestMPLS(VppTestCase):
         # an recursive IP route that resolves through the recursive non-eos
         # x-connect
         #
-        ip_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+        ip_10_0_0_1 = VppIpRoute(self.vclient, "10.0.0.1", 32,
                                  [VppRoutePath("0.0.0.0",
                                                0xffffffff,
                                                nh_via_label=34,
@@ -709,14 +709,14 @@ class TestMPLS(VppTestCase):
         #
         # Add a non-recursive route with a single out label
         #
-        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+        route_10_0_0_1 = VppIpRoute(self.vclient, "10.0.0.1", 32,
                                     [VppRoutePath(self.pg0.remote_ip4,
                                                   self.pg0.sw_if_index,
                                                   labels=[VppMplsLabel(45)])])
         route_10_0_0_1.add_vpp_config()
 
         # bind a local label to the route
-        binding = VppMplsIpBind(self, 44, "10.0.0.1", 32)
+        binding = VppMplsIpBind(self.vclient, 44, "10.0.0.1", 32)
         binding.add_vpp_config()
 
         # non-EOS stream
@@ -751,7 +751,7 @@ class TestMPLS(VppTestCase):
         #
         # Add a non-recursive route with a single out label
         #
-        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+        route_10_0_0_1 = VppIpRoute(self.vclient, "10.0.0.1", 32,
                                     [VppRoutePath(self.pg0.remote_ip4,
                                                   self.pg0.sw_if_index,
                                                   labels=[VppMplsLabel(32)])])
@@ -768,7 +768,7 @@ class TestMPLS(VppTestCase):
         #
         # Add a non-recursive route with a 3 out labels
         #
-        route_10_0_0_2 = VppIpRoute(self, "10.0.0.2", 32,
+        route_10_0_0_2 = VppIpRoute(self.vclient, "10.0.0.2", 32,
                                     [VppRoutePath(self.pg0.remote_ip4,
                                                   self.pg0.sw_if_index,
                                                   labels=[VppMplsLabel(32),
@@ -789,7 +789,7 @@ class TestMPLS(VppTestCase):
         # Add a non-recursive route with a single out label in uniform mode
         #
         route_10_0_0_3 = VppIpRoute(
-            self, "10.0.0.3", 32,
+            self.vclient, "10.0.0.3", 32,
             [VppRoutePath(self.pg0.remote_ip4,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(32,
@@ -807,7 +807,7 @@ class TestMPLS(VppTestCase):
         # uniform mode
         #
         route_2001_3 = VppIpRoute(
-            self, "2001::3", 128,
+            self.vclient, "2001::3", 128,
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(32,
@@ -823,7 +823,7 @@ class TestMPLS(VppTestCase):
         #
         # add a recursive path, with output label, via the 1 label route
         #
-        route_11_0_0_1 = VppIpRoute(self, "11.0.0.1", 32,
+        route_11_0_0_1 = VppIpRoute(self.vclient, "11.0.0.1", 32,
                                     [VppRoutePath("10.0.0.1",
                                                   0xffffffff,
                                                   labels=[VppMplsLabel(44)])])
@@ -844,7 +844,7 @@ class TestMPLS(VppTestCase):
         #
         # add a recursive path, with 2 labels, via the 3 label route
         #
-        route_11_0_0_2 = VppIpRoute(self, "11.0.0.2", 32,
+        route_11_0_0_2 = VppIpRoute(self.vclient, "11.0.0.2", 32,
                                     [VppRoutePath("10.0.0.2",
                                                   0xffffffff,
                                                   labels=[VppMplsLabel(44),
@@ -890,7 +890,7 @@ class TestMPLS(VppTestCase):
         #
         # Add a ipv4 non-recursive route with a single out label
         #
-        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+        route_10_0_0_1 = VppIpRoute(self.vclient, "10.0.0.1", 32,
                                     [VppRoutePath(self.pg0.remote_ip4,
                                                   self.pg0.sw_if_index,
                                                   labels=[VppMplsLabel(32)])])
@@ -923,7 +923,7 @@ class TestMPLS(VppTestCase):
         # Create a tunnel with two out labels
         #
         mpls_tun = VppMPLSTunnelInterface(
-            self,
+            self.vclient,
             [VppRoutePath(self.pg0.remote_ip4,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(44),
@@ -934,12 +934,12 @@ class TestMPLS(VppTestCase):
         #
         # add an unlabelled route through the new tunnel
         #
-        route_10_0_0_3 = VppIpRoute(self, "10.0.0.3", 32,
+        route_10_0_0_3 = VppIpRoute(self.vclient, "10.0.0.3", 32,
                                     [VppRoutePath("0.0.0.0",
                                                   mpls_tun._sw_if_index)])
         route_10_0_0_3.add_vpp_config()
 
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "10.0.0.3")
         self.pg0.add_stream(tx)
 
@@ -954,13 +954,13 @@ class TestMPLS(VppTestCase):
         #
         # add a labelled route through the new tunnel
         #
-        route_10_0_0_4 = VppIpRoute(self, "10.0.0.4", 32,
+        route_10_0_0_4 = VppIpRoute(self.vclient, "10.0.0.4", 32,
                                     [VppRoutePath("0.0.0.0",
                                                   mpls_tun._sw_if_index,
                                                   labels=[33])])
         route_10_0_0_4.add_vpp_config()
 
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "10.0.0.4")
         self.pg0.add_stream(tx)
 
@@ -1013,7 +1013,7 @@ class TestMPLS(VppTestCase):
         # The label stack is specified here from outer to inner
         #
         mpls_tun = VppMPLSTunnelInterface(
-            self,
+            self.vclient,
             [VppRoutePath(self.pg0.remote_ip4,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(44, ttl=32),
@@ -1024,12 +1024,12 @@ class TestMPLS(VppTestCase):
         #
         # add an unlabelled route through the new tunnel
         #
-        route_10_0_0_3 = VppIpRoute(self, "10.0.0.3", 32,
+        route_10_0_0_3 = VppIpRoute(self.vclient, "10.0.0.3", 32,
                                     [VppRoutePath("0.0.0.0",
                                                   mpls_tun._sw_if_index)])
         route_10_0_0_3.add_vpp_config()
 
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "10.0.0.3", ip_ttl=24)
         self.pg0.add_stream(tx)
 
@@ -1045,13 +1045,13 @@ class TestMPLS(VppTestCase):
         # add a labelled route through the new tunnel
         #
         route_10_0_0_4 = VppIpRoute(
-            self, "10.0.0.4", 32,
+            self.vclient, "10.0.0.4", 32,
             [VppRoutePath("0.0.0.0",
                           mpls_tun._sw_if_index,
                           labels=[VppMplsLabel(33, ttl=47)])])
         route_10_0_0_4.add_vpp_config()
 
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "10.0.0.4")
         self.pg0.add_stream(tx)
 
@@ -1069,7 +1069,7 @@ class TestMPLS(VppTestCase):
 
         for ii in range(10):
             mpls_tun = VppMPLSTunnelInterface(
-                self,
+                self.vclient,
                 [VppRoutePath(self.pg0.remote_ip4,
                               self.pg0.sw_if_index,
                               labels=[VppMplsLabel(44, ttl=32),
@@ -1132,7 +1132,7 @@ class TestMPLS(VppTestCase):
         #
         # A de-agg route - next-hop lookup in default table
         #
-        route_34_eos = VppMplsRoute(self, 34, 1,
+        route_34_eos = VppMplsRoute(self.vclient, 34, 1,
                                     [VppRoutePath("0.0.0.0",
                                                   0xffffffff,
                                                   nh_table_id=0)])
@@ -1152,7 +1152,7 @@ class TestMPLS(VppTestCase):
         #
         # A de-agg route - next-hop lookup in non-default table
         #
-        route_35_eos = VppMplsRoute(self, 35, 1,
+        route_35_eos = VppMplsRoute(self.vclient, 35, 1,
                                     [VppRoutePath("0.0.0.0",
                                                   0xffffffff,
                                                   nh_table_id=1)])
@@ -1171,7 +1171,7 @@ class TestMPLS(VppTestCase):
         #
         # Double pop
         #
-        route_36_neos = VppMplsRoute(self, 36, 0,
+        route_36_neos = VppMplsRoute(self.vclient, 36, 0,
                                      [VppRoutePath("0.0.0.0",
                                                    0xffffffff)])
         route_36_neos.add_vpp_config()
@@ -1194,7 +1194,7 @@ class TestMPLS(VppTestCase):
         # Add a non-recursive route that will forward the traffic
         # post-interface-rx
         #
-        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+        route_10_0_0_1 = VppIpRoute(self.vclient, "10.0.0.1", 32,
                                     table_id=1,
                                     paths=[VppRoutePath(self.pg1.remote_ip4,
                                                         self.pg1.sw_if_index)])
@@ -1209,7 +1209,7 @@ class TestMPLS(VppTestCase):
         # so as to have matched the route in table 1
         #
         route_34_eos = VppMplsRoute(
-            self, 34, 1,
+            self.vclient, 34, 1,
             [VppRoutePath("0.0.0.0",
                           self.pg1.sw_if_index,
                           type=FibPathType.FIB_PATH_TYPE_INTERFACE_RX)])
@@ -1232,7 +1232,7 @@ class TestMPLS(VppTestCase):
         # Add a non-recursive route that will forward the traffic
         # post-interface-rx
         #
-        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+        route_10_0_0_1 = VppIpRoute(self.vclient, "10.0.0.1", 32,
                                     table_id=1,
                                     paths=[VppRoutePath(self.pg1.remote_ip4,
                                                         self.pg1.sw_if_index)])
@@ -1243,7 +1243,7 @@ class TestMPLS(VppTestCase):
         # and replicate to a interface-rx (like a bud node would)
         #
         route_3400_eos = VppMplsRoute(
-            self, 3400, 1,
+            self.vclient, 3400, 1,
             [VppRoutePath(self.pg2.remote_ip4,
                           self.pg2.sw_if_index,
                           labels=[VppMplsLabel(3401)]),
@@ -1260,7 +1260,7 @@ class TestMPLS(VppTestCase):
         # ping an interface in the default table
         # PG0 is in the default table
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_labelled_ip4(self.pg0,
                                              [VppMplsLabel(3400, ttl=64)],
                                              n=257,
@@ -1290,7 +1290,7 @@ class TestMPLS(VppTestCase):
         # Create a multicast tunnel with two replications
         #
         mpls_tun = VppMPLSTunnelInterface(
-            self,
+            self.vclient,
             [VppRoutePath(self.pg2.remote_ip4,
                           self.pg2.sw_if_index,
                           labels=[VppMplsLabel(42)]),
@@ -1304,12 +1304,12 @@ class TestMPLS(VppTestCase):
         #
         # add an unlabelled route through the new tunnel
         #
-        route_10_0_0_3 = VppIpRoute(self, "10.0.0.3", 32,
+        route_10_0_0_3 = VppIpRoute(self.vclient, "10.0.0.3", 32,
                                     [VppRoutePath("0.0.0.0",
                                                   mpls_tun._sw_if_index)])
         route_10_0_0_3.add_vpp_config()
 
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "10.0.0.3")
         self.pg0.add_stream(tx)
 
@@ -1327,7 +1327,7 @@ class TestMPLS(VppTestCase):
         # one accepting interface, pg0, 1 forwarding interface via the tunnel
         #
         route_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -1336,9 +1336,9 @@ class TestMPLS(VppTestCase):
              VppMRoutePath(mpls_tun._sw_if_index,
                            MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)])
         route_232_1_1_1.add_vpp_config()
-        self.logger.info(self.vapi.cli("sh ip mfib index 0"))
+        self.logger.info(self.vclient.cli("sh ip mfib index 0"))
 
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "232.1.1.1")
         self.pg0.add_stream(tx)
 
@@ -1361,7 +1361,7 @@ class TestMPLS(VppTestCase):
         # post-disposition
         #
         route_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -1379,7 +1379,7 @@ class TestMPLS(VppTestCase):
         # table 1
         #
         route_34_eos = VppMplsRoute(
-            self, 34, 1,
+            self.vclient, 34, 1,
             [VppRoutePath("0.0.0.0",
                           0xffffffff,
                           nh_table_id=1,
@@ -1392,7 +1392,7 @@ class TestMPLS(VppTestCase):
         #
         # Drop due to interface lookup miss
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_labelled_ip4(self.pg0, [VppMplsLabel(34)],
                                              dst_ip="232.1.1.1", n=1)
         self.send_and_assert_no_replies(self.pg0, tx, "RPF-ID drop none")
@@ -1401,7 +1401,7 @@ class TestMPLS(VppTestCase):
         # set the RPF-ID of the entry to match the input packet's
         #
         route_232_1_1_1.update_rpf_id(55)
-        self.logger.info(self.vapi.cli("sh ip mfib index 1 232.1.1.1"))
+        self.logger.info(self.vclient.cli("sh ip mfib index 1 232.1.1.1"))
 
         tx = self.create_stream_labelled_ip4(self.pg0, [VppMplsLabel(34)],
                                              dst_ip="232.1.1.1")
@@ -1435,7 +1435,7 @@ class TestMPLS(VppTestCase):
         # post-disposition
         #
         route_ff = VppIpMRoute(
-            self,
+            self.vclient,
             "::",
             "ff01::1", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -1454,7 +1454,7 @@ class TestMPLS(VppTestCase):
         # table 1
         #
         route_34_eos = VppMplsRoute(
-            self, 34, 1,
+            self.vclient, 34, 1,
             [VppRoutePath("::",
                           0xffffffff,
                           nh_table_id=1,
@@ -1506,21 +1506,21 @@ class TestMPLS(VppTestCase):
         #
         # Add a non-recursive route with a single out label
         #
-        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+        route_10_0_0_1 = VppIpRoute(self.vclient, "10.0.0.1", 32,
                                     [VppRoutePath(self.pg0.remote_ip4,
                                                   self.pg0.sw_if_index,
                                                   labels=[VppMplsLabel(45)])])
         route_10_0_0_1.add_vpp_config()
 
         # bind a local label to the route
-        binding = VppMplsIpBind(self, 44, "10.0.0.1", 32)
+        binding = VppMplsIpBind(self.vclient, 44, "10.0.0.1", 32)
         binding.add_vpp_config()
 
         #
         # a labelled v6 route that resolves through the v4
         #
         route_2001_3 = VppIpRoute(
-            self, "2001::3", 128,
+            self.vclient, "2001::3", 128,
             [VppRoutePath("10.0.0.1",
                           INVALID_INDEX,
                           labels=[VppMplsLabel(32)])])
@@ -1537,7 +1537,7 @@ class TestMPLS(VppTestCase):
         # and a v4 recursive via the v6
         #
         route_20_3 = VppIpRoute(
-            self, "20.0.0.3", 32,
+            self.vclient, "20.0.0.3", 32,
             [VppRoutePath("2001::3",
                           INVALID_INDEX,
                           labels=[VppMplsLabel(99)])])
@@ -1569,7 +1569,7 @@ class TestMPLSDisabled(VppTestCase):
         # create 2 pg interfaces
         self.create_pg_interfaces(range(2))
 
-        self.tbl = VppMplsTable(self, 0)
+        self.tbl = VppMplsTable(self.vclient, 0)
         self.tbl.add_vpp_config()
 
         # PG0 is MPLS enabled
@@ -1602,7 +1602,7 @@ class TestMPLSDisabled(VppTestCase):
         #
         # A simple MPLS xconnect - eos label in label out
         #
-        route_32_eos = VppMplsRoute(self, 32, 1,
+        route_32_eos = VppMplsRoute(self.vclient, 32, 1,
                                     [VppRoutePath(self.pg0.remote_ip4,
                                                   self.pg0.sw_if_index,
                                                   labels=[33])])
@@ -1656,11 +1656,11 @@ class TestMPLSPIC(VppTestCase):
         # create 2 pg interfaces
         self.create_pg_interfaces(range(4))
 
-        mpls_tbl = VppMplsTable(self, 0)
+        mpls_tbl = VppMplsTable(self.vclient, 0)
         mpls_tbl.add_vpp_config()
-        tbl4 = VppIpTable(self, 1)
+        tbl4 = VppIpTable(self.vclient, 1)
         tbl4.add_vpp_config()
-        tbl6 = VppIpTable(self, 1, is_ip6=1)
+        tbl6 = VppIpTable(self.vclient, 1, is_ip6=1)
         tbl6.add_vpp_config()
 
         # core links
@@ -1714,13 +1714,13 @@ class TestMPLSPIC(VppTestCase):
         #
         # IGP+LDP core routes
         #
-        core_10_0_0_45 = VppIpRoute(self, "10.0.0.45", 32,
+        core_10_0_0_45 = VppIpRoute(self.vclient, "10.0.0.45", 32,
                                     [VppRoutePath(self.pg0.remote_ip4,
                                                   self.pg0.sw_if_index,
                                                   labels=[45])])
         core_10_0_0_45.add_vpp_config()
 
-        core_10_0_0_46 = VppIpRoute(self, "10.0.0.46", 32,
+        core_10_0_0_46 = VppIpRoute(self.vclient, "10.0.0.46", 32,
                                     [VppRoutePath(self.pg1.remote_ip4,
                                                   self.pg1.sw_if_index,
                                                   labels=[46])])
@@ -1735,7 +1735,7 @@ class TestMPLSPIC(VppTestCase):
         for ii in range(NUM_PKTS):
             dst = "192.168.1.%d" % ii
             vpn_routes.append(VppIpRoute(
-                self, dst, 32,
+                self.vclient, dst, 32,
                 [VppRoutePath(
                     "10.0.0.45",
                     0xffffffff,
@@ -1779,7 +1779,7 @@ class TestMPLSPIC(VppTestCase):
         # will prevent the FIB converging the VPN routes and thus allow
         # us to probe the interim (post-fail, pre-converge) state
         #
-        self.vapi.ppcli("test fib-walk-process disable")
+        self.vclient.ppcli("test fib-walk-process disable")
 
         #
         # Withdraw one of the IGP routes
@@ -1789,7 +1789,7 @@ class TestMPLSPIC(VppTestCase):
         #
         # now all packets should be forwarded through the remaining peer
         #
-        self.vapi.ppcli("clear trace")
+        self.vclient.ppcli("clear trace")
         self.pg2.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -1802,7 +1802,7 @@ class TestMPLSPIC(VppTestCase):
         #
         # enable the FIB walk process to converge the FIB
         #
-        self.vapi.ppcli("test fib-walk-process enable")
+        self.vclient.ppcli("test fib-walk-process enable")
 
         #
         # packets should still be forwarded through the remaining peer
@@ -1852,7 +1852,7 @@ class TestMPLSPIC(VppTestCase):
             dst = "192.168.1.%d" % ii
             local_label = 1600 + ii
             vpn_routes.append(VppIpRoute(
-                self, dst, 32,
+                self.vclient, dst, 32,
                 [VppRoutePath(
                     self.pg2.remote_ip4,
                     0xffffffff,
@@ -1866,7 +1866,7 @@ class TestMPLSPIC(VppTestCase):
                 table_id=1))
             vpn_routes[ii].add_vpp_config()
 
-            vpn_bindings.append(VppMplsIpBind(self, local_label, dst, 32,
+            vpn_bindings.append(VppMplsIpBind(self.vclient, local_label, dst, 32,
                                               ip_table_id=1))
             vpn_bindings[ii].add_vpp_config()
 
@@ -1901,7 +1901,7 @@ class TestMPLSPIC(VppTestCase):
         # will prevent the FIB converging the VPN routes and thus allow
         # us to probe the interim (post-fail, pre-converge) state
         #
-        self.vapi.ppcli("test fib-walk-process disable")
+        self.vclient.ppcli("test fib-walk-process disable")
 
         #
         # withdraw the connected prefix on the interface.
@@ -1923,7 +1923,7 @@ class TestMPLSPIC(VppTestCase):
         #
         # enable the FIB walk process to converge the FIB
         #
-        self.vapi.ppcli("test fib-walk-process enable")
+        self.vclient.ppcli("test fib-walk-process enable")
 
         #
         # packets should still be forwarded through the remaining peer
@@ -1974,7 +1974,7 @@ class TestMPLSPIC(VppTestCase):
             dst = "3000::%d" % ii
             local_label = 1600 + ii
             vpn_routes.append(VppIpRoute(
-                self, dst, 128,
+                self.vclient, dst, 128,
                 [VppRoutePath(
                     self.pg2.remote_ip6,
                     0xffffffff,
@@ -1988,7 +1988,7 @@ class TestMPLSPIC(VppTestCase):
                 table_id=1))
             vpn_routes[ii].add_vpp_config()
 
-            vpn_bindings.append(VppMplsIpBind(self, local_label, dst, 128,
+            vpn_bindings.append(VppMplsIpBind(self.vclient, local_label, dst, 128,
                                               ip_table_id=1))
             vpn_bindings[ii].add_vpp_config()
 
@@ -1998,7 +1998,7 @@ class TestMPLSPIC(VppTestCase):
                         IPv6(src=self.pg0.remote_ip6, dst=dst) /
                         UDP(sport=1234, dport=1234) /
                         Raw(b'\xa5' * 100))
-            self.logger.info(self.vapi.cli("sh ip6 fib %s" % dst))
+            self.logger.info(self.vclient.cli("sh ip6 fib %s" % dst))
 
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
@@ -2017,7 +2017,7 @@ class TestMPLSPIC(VppTestCase):
         # will prevent the FIB converging the VPN routes and thus allow
         # us to probe the interim (post-fail, pre-converge) state
         #
-        self.vapi.ppcli("test fib-walk-process disable")
+        self.vclient.ppcli("test fib-walk-process disable")
 
         #
         # withdraw the connected prefix on the interface.
@@ -2041,7 +2041,7 @@ class TestMPLSPIC(VppTestCase):
         #
         # enable the FIB walk process to converge the FIB
         #
-        self.vapi.ppcli("test fib-walk-process enable")
+        self.vclient.ppcli("test fib-walk-process enable")
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -2054,7 +2054,7 @@ class TestMPLSPIC(VppTestCase):
         #
         # put the connected routes back
         #
-        self.logger.info(self.vapi.cli("sh log"))
+        self.logger.info(self.vclient.cli("sh log"))
         self.pg2.admin_up()
         self.pg2.config_ip6()
         self.pg2.resolve_ndp()
@@ -2091,7 +2091,7 @@ class TestMPLSL2(VppTestCase):
 
         # create the default MPLS table
         self.tables = []
-        tbl = VppMplsTable(self, 0)
+        tbl = VppMplsTable(self.vclient, 0)
         tbl.add_vpp_config()
         self.tables.append(tbl)
 
@@ -2156,7 +2156,7 @@ class TestMPLSL2(VppTestCase):
         # information is not in the packet, but we test it works anyway
         #
         mpls_tun_1 = VppMPLSTunnelInterface(
-            self,
+            self.vclient,
             [VppRoutePath(self.pg0.remote_ip4,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(42, MplsLspMode.UNIFORM)])],
@@ -2168,7 +2168,7 @@ class TestMPLSL2(VppTestCase):
         # Create a label entry to for 55 that does L2 input to the tunnel
         #
         route_55_eos = VppMplsRoute(
-            self, 55, 1,
+            self.vclient, 55, 1,
             [VppRoutePath("0.0.0.0",
                           mpls_tun_1.sw_if_index,
                           type=FibPathType.FIB_PATH_TYPE_INTERFACE_RX,
@@ -2179,12 +2179,12 @@ class TestMPLSL2(VppTestCase):
         #
         # Cross-connect the tunnel with one of the customers L2 interfaces
         #
-        self.vapi.sw_interface_set_l2_xconnect(self.pg1.sw_if_index,
-                                               mpls_tun_1.sw_if_index,
-                                               enable=1)
-        self.vapi.sw_interface_set_l2_xconnect(mpls_tun_1.sw_if_index,
-                                               self.pg1.sw_if_index,
-                                               enable=1)
+        self.vclient.sw_interface_set_l2_xconnect(self.pg1.sw_if_index,
+                                                  mpls_tun_1.sw_if_index,
+                                                  enable=1)
+        self.vclient.sw_interface_set_l2_xconnect(mpls_tun_1.sw_if_index,
+                                                  self.pg1.sw_if_index,
+                                                  enable=1)
 
         #
         # inject a packet from the core
@@ -2237,7 +2237,7 @@ class TestMPLSL2(VppTestCase):
         # Create a L2 MPLS tunnels
         #
         mpls_tun1 = VppMPLSTunnelInterface(
-            self,
+            self.vclient,
             [VppRoutePath(self.pg0.remote_ip4,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(42)])],
@@ -2246,7 +2246,7 @@ class TestMPLSL2(VppTestCase):
         mpls_tun1.admin_up()
 
         mpls_tun2 = VppMPLSTunnelInterface(
-            self,
+            self.vclient,
             [VppRoutePath(self.pg0.remote_ip4,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(43)])],
@@ -2259,7 +2259,7 @@ class TestMPLSL2(VppTestCase):
         # the latter includes a Psuedo Wire Control Word
         #
         route_55_eos = VppMplsRoute(
-            self, 55, 1,
+            self.vclient, 55, 1,
             [VppRoutePath("0.0.0.0",
                           mpls_tun1.sw_if_index,
                           type=FibPathType.FIB_PATH_TYPE_INTERFACE_RX,
@@ -2267,7 +2267,7 @@ class TestMPLSL2(VppTestCase):
             eos_proto=FibPathProto.FIB_PATH_NH_PROTO_ETHERNET)
 
         route_56_eos = VppMplsRoute(
-            self, 56, 1,
+            self.vclient, 56, 1,
             [VppRoutePath("0.0.0.0",
                           mpls_tun2.sw_if_index,
                           type=FibPathType.FIB_PATH_TYPE_INTERFACE_RX,
@@ -2279,16 +2279,16 @@ class TestMPLSL2(VppTestCase):
         route_56_eos.add_vpp_config()
         route_55_eos.add_vpp_config()
 
-        self.logger.info(self.vapi.cli("sh mpls fib 56"))
+        self.logger.info(self.vclient.cli("sh mpls fib 56"))
 
         #
         # add to tunnel to the customers bridge-domain
         #
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=mpls_tun1.sw_if_index, bd_id=1)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=mpls_tun2.sw_if_index, bd_id=1)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg1.sw_if_index, bd_id=1)
 
         #
@@ -2357,11 +2357,11 @@ class TestMPLSL2(VppTestCase):
         #
         # remove interfaces from customers bridge-domain
         #
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=mpls_tun1.sw_if_index, bd_id=1, enable=0)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=mpls_tun2.sw_if_index, bd_id=1, enable=0)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg1.sw_if_index, bd_id=1, enable=0)
 
 

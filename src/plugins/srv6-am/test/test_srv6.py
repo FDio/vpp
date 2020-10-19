@@ -5,8 +5,8 @@ import binascii
 from socket import AF_INET6
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto, VppIpTable
-from vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, VppSRv6Policy, \
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto, VppIpTable
+from vpp_pom.plugins.vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, VppSRv6Policy, \
     SRv6PolicyType, VppSRv6Steering, SRv6PolicySteeringTypes
 
 import scapy.compat
@@ -15,7 +15,7 @@ from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet6 import IPv6, UDP, IPv6ExtHdrSegmentRouting
 from scapy.layers.inet import IP, UDP
 
-from util import ppp
+from vpp_pom.util import ppp
 
 
 class TestSRv6(VppTestCase):
@@ -112,11 +112,11 @@ class TestSRv6(VppTestCase):
                                      ipv6_table_id[i], ipv4_table_id[i])
 
         if any(ipv6):
-            self.logger.debug(self.vapi.cli("show ip6 neighbors"))
+            self.logger.debug(self.vclient.cli("show ip6 neighbors"))
         if any(ipv4):
-            self.logger.debug(self.vapi.cli("show ip4 neighbors"))
-        self.logger.debug(self.vapi.cli("show interface"))
-        self.logger.debug(self.vapi.cli("show hardware"))
+            self.logger.debug(self.vclient.cli("show ip4 neighbors"))
+        self.logger.debug(self.vclient.cli("show interface"))
+        self.logger.debug(self.vclient.cli("show hardware"))
 
         return self.pg_interfaces
 
@@ -142,7 +142,7 @@ class TestSRv6(VppTestCase):
         self.setup_interfaces(ipv6=[True, True])
 
         # configure FIB entries
-        route = VppIpRoute(self, "a4::", 64,
+        route = VppIpRoute(self.vclient, "a4::", 64,
                            [VppRoutePath(self.pg1.remote_ip6,
                                          self.pg1.sw_if_index)])
         route.add_vpp_config()
@@ -150,13 +150,13 @@ class TestSRv6(VppTestCase):
         # configure encaps IPv6 source address
         # needs to be done before SR Policy config
         # TODO: API?
-        self.vapi.cli("set sr encaps source addr a3::")
+        self.vclient.cli("set sr encaps source addr a3::")
 
         bsid = 'a3::9999:1'
         # configure SRv6 Policy
         # Note: segment list order: first -> last
         sr_policy = VppSRv6Policy(
-            self, bsid=bsid,
+            self.vclient, bsid=bsid,
             is_encap=1,
             sr_type=SRv6PolicyType.SR_POLICY_TYPE_DEFAULT,
             weight=1, fib_table=0,
@@ -166,21 +166,21 @@ class TestSRv6(VppTestCase):
         self.sr_policy = sr_policy
 
         # log the sr policies
-        self.logger.info(self.vapi.cli("show sr policies"))
+        self.logger.info(self.vclient.cli("show sr policies"))
 
         # steer IPv6 traffic to a7::/64 into SRv6 Policy
         # use the bsid of the above self.sr_policy
         pol_steering = VppSRv6Steering(
-                        self,
-                        bsid=self.sr_policy.bsid,
-                        prefix="a7::", mask_width=64,
-                        traffic_type=SRv6PolicySteeringTypes.SR_STEER_IPV6,
-                        sr_policy_index=0, table_id=0,
-                        sw_if_index=0)
+            self.vclient,
+            bsid=self.sr_policy.bsid,
+            prefix="a7::", mask_width=64,
+            traffic_type=SRv6PolicySteeringTypes.SR_STEER_IPV6,
+            sr_policy_index=0, table_id=0,
+            sw_if_index=0)
         pol_steering.add_vpp_config()
 
         # log the sr steering policies
-        self.logger.info(self.vapi.cli("show sr steering policies"))
+        self.logger.info(self.vclient.cli("show sr steering policies"))
 
         # create packets
         count = len(self.pg_packet_sizes)
@@ -217,15 +217,15 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_T_Encaps)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SR steering
         pol_steering.remove_vpp_config()
-        self.logger.info(self.vapi.cli("show sr steering policies"))
+        self.logger.info(self.vclient.cli("show sr steering policies"))
 
         # remove SR Policies
         self.sr_policy.remove_vpp_config()
-        self.logger.info(self.vapi.cli("show sr policies"))
+        self.logger.info(self.vclient.cli("show sr policies"))
 
         # remove FIB entries
         # done by tearDown
@@ -242,7 +242,7 @@ class TestSRv6(VppTestCase):
         self.setup_interfaces(ipv6=[True, True])
 
         # configure FIB entries
-        route = VppIpRoute(self, "a4::", 64,
+        route = VppIpRoute(self.vclient, "a4::", 64,
                            [VppRoutePath(self.pg1.remote_ip6,
                                          self.pg1.sw_if_index)])
         route.add_vpp_config()
@@ -250,13 +250,13 @@ class TestSRv6(VppTestCase):
         # configure encaps IPv6 source address
         # needs to be done before SR Policy config
         # TODO: API?
-        self.vapi.cli("set sr encaps source addr a3::")
+        self.vclient.cli("set sr encaps source addr a3::")
 
         bsid = 'a3::9999:1'
         # configure SRv6 Policy
         # Note: segment list order: first -> last
         sr_policy = VppSRv6Policy(
-            self, bsid=bsid,
+            self.vclient, bsid=bsid,
             is_encap=0,
             sr_type=SRv6PolicyType.SR_POLICY_TYPE_DEFAULT,
             weight=1, fib_table=0,
@@ -266,21 +266,21 @@ class TestSRv6(VppTestCase):
         self.sr_policy = sr_policy
 
         # log the sr policies
-        self.logger.info(self.vapi.cli("show sr policies"))
+        self.logger.info(self.vclient.cli("show sr policies"))
 
         # steer IPv6 traffic to a7::/64 into SRv6 Policy
         # use the bsid of the above self.sr_policy
         pol_steering = VppSRv6Steering(
-                        self,
-                        bsid=self.sr_policy.bsid,
-                        prefix="a7::", mask_width=64,
-                        traffic_type=SRv6PolicySteeringTypes.SR_STEER_IPV6,
-                        sr_policy_index=0, table_id=0,
-                        sw_if_index=0)
+            self.vclient,
+            bsid=self.sr_policy.bsid,
+            prefix="a7::", mask_width=64,
+            traffic_type=SRv6PolicySteeringTypes.SR_STEER_IPV6,
+            sr_policy_index=0, table_id=0,
+            sw_if_index=0)
         pol_steering.add_vpp_config()
 
         # log the sr steering policies
-        self.logger.info(self.vapi.cli("show sr steering policies"))
+        self.logger.info(self.vclient.cli("show sr steering policies"))
 
         # create packets
         count = len(self.pg_packet_sizes)
@@ -307,15 +307,15 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_T_Insert)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SR steering
         pol_steering.remove_vpp_config()
-        self.logger.info(self.vapi.cli("show sr steering policies"))
+        self.logger.info(self.vclient.cli("show sr steering policies"))
 
         # remove SR Policies
         self.sr_policy.remove_vpp_config()
-        self.logger.info(self.vapi.cli("show sr policies"))
+        self.logger.info(self.vclient.cli("show sr policies"))
 
         # remove FIB entries
         # done by tearDown
@@ -333,7 +333,7 @@ class TestSRv6(VppTestCase):
         self.setup_interfaces(ipv6=[False, True], ipv4=[True, False])
 
         # configure FIB entries
-        route = VppIpRoute(self, "a4::", 64,
+        route = VppIpRoute(self.vclient, "a4::", 64,
                            [VppRoutePath(self.pg1.remote_ip6,
                                          self.pg1.sw_if_index)])
         route.add_vpp_config()
@@ -341,13 +341,13 @@ class TestSRv6(VppTestCase):
         # configure encaps IPv6 source address
         # needs to be done before SR Policy config
         # TODO: API?
-        self.vapi.cli("set sr encaps source addr a3::")
+        self.vclient.cli("set sr encaps source addr a3::")
 
         bsid = 'a3::9999:1'
         # configure SRv6 Policy
         # Note: segment list order: first -> last
         sr_policy = VppSRv6Policy(
-            self, bsid=bsid,
+            self.vclient, bsid=bsid,
             is_encap=1,
             sr_type=SRv6PolicyType.SR_POLICY_TYPE_DEFAULT,
             weight=1, fib_table=0,
@@ -357,21 +357,21 @@ class TestSRv6(VppTestCase):
         self.sr_policy = sr_policy
 
         # log the sr policies
-        self.logger.info(self.vapi.cli("show sr policies"))
+        self.logger.info(self.vclient.cli("show sr policies"))
 
         # steer IPv4 traffic to 7.1.1.0/24 into SRv6 Policy
         # use the bsid of the above self.sr_policy
         pol_steering = VppSRv6Steering(
-                        self,
-                        bsid=self.sr_policy.bsid,
-                        prefix="7.1.1.0", mask_width=24,
-                        traffic_type=SRv6PolicySteeringTypes.SR_STEER_IPV4,
-                        sr_policy_index=0, table_id=0,
-                        sw_if_index=0)
+            self.vclient,
+            bsid=self.sr_policy.bsid,
+            prefix="7.1.1.0", mask_width=24,
+            traffic_type=SRv6PolicySteeringTypes.SR_STEER_IPV4,
+            sr_policy_index=0, table_id=0,
+            sw_if_index=0)
         pol_steering.add_vpp_config()
 
         # log the sr steering policies
-        self.logger.info(self.vapi.cli("show sr steering policies"))
+        self.logger.info(self.vclient.cli("show sr steering policies"))
 
         # create packets
         count = len(self.pg_packet_sizes)
@@ -389,15 +389,15 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_T_Encaps_IPv4)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SR steering
         pol_steering.remove_vpp_config()
-        self.logger.info(self.vapi.cli("show sr steering policies"))
+        self.logger.info(self.vclient.cli("show sr steering policies"))
 
         # remove SR Policies
         self.sr_policy.remove_vpp_config()
-        self.logger.info(self.vapi.cli("show sr policies"))
+        self.logger.info(self.vclient.cli("show sr policies"))
 
         # remove FIB entries
         # done by tearDown
@@ -415,7 +415,7 @@ class TestSRv6(VppTestCase):
         self.setup_interfaces(ipv6=[False, True], ipv4=[False, False])
 
         # configure FIB entries
-        route = VppIpRoute(self, "a4::", 64,
+        route = VppIpRoute(self.vclient, "a4::", 64,
                            [VppRoutePath(self.pg1.remote_ip6,
                                          self.pg1.sw_if_index)])
         route.add_vpp_config()
@@ -423,13 +423,13 @@ class TestSRv6(VppTestCase):
         # configure encaps IPv6 source address
         # needs to be done before SR Policy config
         # TODO: API?
-        self.vapi.cli("set sr encaps source addr a3::")
+        self.vclient.cli("set sr encaps source addr a3::")
 
         bsid = 'a3::9999:1'
         # configure SRv6 Policy
         # Note: segment list order: first -> last
         sr_policy = VppSRv6Policy(
-            self, bsid=bsid,
+            self.vclient, bsid=bsid,
             is_encap=1,
             sr_type=SRv6PolicyType.SR_POLICY_TYPE_DEFAULT,
             weight=1, fib_table=0,
@@ -439,21 +439,21 @@ class TestSRv6(VppTestCase):
         self.sr_policy = sr_policy
 
         # log the sr policies
-        self.logger.info(self.vapi.cli("show sr policies"))
+        self.logger.info(self.vclient.cli("show sr policies"))
 
         # steer L2 traffic into SRv6 Policy
         # use the bsid of the above self.sr_policy
         pol_steering = VppSRv6Steering(
-                        self,
-                        bsid=self.sr_policy.bsid,
-                        prefix="::", mask_width=0,
-                        traffic_type=SRv6PolicySteeringTypes.SR_STEER_L2,
-                        sr_policy_index=0, table_id=0,
-                        sw_if_index=self.pg0.sw_if_index)
+            self.vclient,
+            bsid=self.sr_policy.bsid,
+            prefix="::", mask_width=0,
+            traffic_type=SRv6PolicySteeringTypes.SR_STEER_L2,
+            sr_policy_index=0, table_id=0,
+            sw_if_index=self.pg0.sw_if_index)
         pol_steering.add_vpp_config()
 
         # log the sr steering policies
-        self.logger.info(self.vapi.cli("show sr steering policies"))
+        self.logger.info(self.vclient.cli("show sr steering policies"))
 
         # create packets
         count = len(self.pg_packet_sizes)
@@ -476,15 +476,15 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_T_Encaps_L2)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SR steering
         pol_steering.remove_vpp_config()
-        self.logger.info(self.vapi.cli("show sr steering policies"))
+        self.logger.info(self.vclient.cli("show sr steering policies"))
 
         # remove SR Policies
         self.sr_policy.remove_vpp_config()
-        self.logger.info(self.vapi.cli("show sr policies"))
+        self.logger.info(self.vclient.cli("show sr policies"))
 
         # remove FIB entries
         # done by tearDown
@@ -500,23 +500,23 @@ class TestSRv6(VppTestCase):
         self.setup_interfaces(ipv6=[True, True])
 
         # configure FIB entries
-        route = VppIpRoute(self, "a4::", 64,
+        route = VppIpRoute(self.vclient, "a4::", 64,
                            [VppRoutePath(self.pg1.remote_ip6,
                                          self.pg1.sw_if_index)])
         route.add_vpp_config()
 
         # configure SRv6 localSID End without PSP behavior
         localsid = VppSRv6LocalSID(
-                        self, localsid='A3::0',
-                        behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_END,
-                        nh_addr=0,
-                        end_psp=0,
-                        sw_if_index=0,
-                        vlan_index=0,
-                        fib_table=0)
+            self.vclient, localsid='A3::0',
+            behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_END,
+            nh_addr=0,
+            end_psp=0,
+            sw_if_index=0,
+            vlan_index=0,
+            fib_table=0)
         localsid.add_vpp_config()
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vclient.cli("show sr localsid"))
 
         # create IPv6 packets with SRH (SL=2, SL=1, SL=0)
         # send one packet per SL value per packet size
@@ -527,18 +527,18 @@ class TestSRv6(VppTestCase):
 
         # packets with segments-left 2, active segment a3::
         packet_header = self.create_packet_header_IPv6_SRH_IPv6(
-                dst_inner,
-                sidlist=['a5::', 'a4::', 'a3::'],
-                segleft=2)
+            dst_inner,
+            sidlist=['a5::', 'a4::', 'a3::'],
+            segleft=2)
         # create traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
 
         # packets with segments-left 1, active segment a3::
         packet_header = self.create_packet_header_IPv6_SRH_IPv6(
-                dst_inner,
-                sidlist=['a4::', 'a3::', 'a2::'],
-                segleft=1)
+            dst_inner,
+            sidlist=['a4::', 'a3::', 'a2::'],
+            segleft=1)
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
@@ -559,7 +559,7 @@ class TestSRv6(VppTestCase):
                                   expected_count=expected_count)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SRv6 localSIDs
         localsid.remove_vpp_config()
@@ -578,23 +578,23 @@ class TestSRv6(VppTestCase):
         self.setup_interfaces(ipv6=[True, True])
 
         # configure FIB entries
-        route = VppIpRoute(self, "a4::", 64,
+        route = VppIpRoute(self.vclient, "a4::", 64,
                            [VppRoutePath(self.pg1.remote_ip6,
                                          self.pg1.sw_if_index)])
         route.add_vpp_config()
 
         # configure SRv6 localSID End with PSP behavior
         localsid = VppSRv6LocalSID(
-                        self, localsid='A3::0',
-                        behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_END,
-                        nh_addr=0,
-                        end_psp=1,
-                        sw_if_index=0,
-                        vlan_index=0,
-                        fib_table=0)
+            self.vclient, localsid='A3::0',
+            behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_END,
+            nh_addr=0,
+            end_psp=1,
+            sw_if_index=0,
+            vlan_index=0,
+            fib_table=0)
         localsid.add_vpp_config()
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vclient.cli("show sr localsid"))
 
         # create IPv6 packets with SRH (SL=2, SL=1)
         # send one packet per SL value per packet size
@@ -605,18 +605,18 @@ class TestSRv6(VppTestCase):
 
         # packets with segments-left 2, active segment a3::
         packet_header = self.create_packet_header_IPv6_SRH_IPv6(
-                    dst_inner,
-                    sidlist=['a5::', 'a4::', 'a3::'],
-                    segleft=2)
+            dst_inner,
+            sidlist=['a5::', 'a4::', 'a3::'],
+            segleft=2)
         # create traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
 
         # packets with segments-left 1, active segment a3::
         packet_header = self.create_packet_header_IPv6_SRH_IPv6(
-                    dst_inner,
-                    sidlist=['a4::', 'a3::', 'a2::'],
-                    segleft=1)
+            dst_inner,
+            sidlist=['a4::', 'a3::', 'a2::'],
+            segleft=1)
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
@@ -626,7 +626,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_PSP)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SRv6 localSIDs
         localsid.remove_vpp_config()
@@ -646,27 +646,27 @@ class TestSRv6(VppTestCase):
 
         # configure FIB entries
         # a4::/64 via pg1 and pg2
-        route = VppIpRoute(self, "a4::", 64,
+        route = VppIpRoute(self.vclient, "a4::", 64,
                            [VppRoutePath(self.pg1.remote_ip6,
                                          self.pg1.sw_if_index),
                             VppRoutePath(self.pg2.remote_ip6,
                                          self.pg2.sw_if_index)])
         route.add_vpp_config()
-        self.logger.debug(self.vapi.cli("show ip6 fib"))
+        self.logger.debug(self.vclient.cli("show ip6 fib"))
 
         # configure SRv6 localSID End.X without PSP behavior
         # End.X points to interface pg1
         localsid = VppSRv6LocalSID(
-                        self, localsid='A3::C4',
-                        behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_X,
-                        nh_addr=self.pg1.remote_ip6,
-                        end_psp=0,
-                        sw_if_index=self.pg1.sw_if_index,
-                        vlan_index=0,
-                        fib_table=0)
+            self.vclient, localsid='A3::C4',
+            behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_X,
+            nh_addr=self.pg1.remote_ip6,
+            end_psp=0,
+            sw_if_index=self.pg1.sw_if_index,
+            vlan_index=0,
+            fib_table=0)
         localsid.add_vpp_config()
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vclient.cli("show sr localsid"))
 
         # create IPv6 packets with SRH (SL=2, SL=1)
         # send one packet per SL value per packet size
@@ -677,18 +677,18 @@ class TestSRv6(VppTestCase):
 
         # packets with segments-left 2, active segment a3::c4
         packet_header = self.create_packet_header_IPv6_SRH_IPv6(
-                    dst_inner,
-                    sidlist=['a5::', 'a4::', 'a3::c4'],
-                    segleft=2)
+            dst_inner,
+            sidlist=['a5::', 'a4::', 'a3::c4'],
+            segleft=2)
         # create traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
 
         # packets with segments-left 1, active segment a3::c4
         packet_header = self.create_packet_header_IPv6_SRH_IPv6(
-                    dst_inner,
-                    sidlist=['a4::', 'a3::c4', 'a2::'],
-                    segleft=1)
+            dst_inner,
+            sidlist=['a4::', 'a3::c4', 'a2::'],
+            segleft=1)
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
@@ -702,7 +702,7 @@ class TestSRv6(VppTestCase):
         self.pg2.assert_nothing_captured("mis-directed packet(s)")
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SRv6 localSIDs
         localsid.remove_vpp_config()
@@ -722,7 +722,7 @@ class TestSRv6(VppTestCase):
 
         # configure FIB entries
         # a4::/64 via pg1 and pg2
-        route = VppIpRoute(self, "a4::", 64,
+        route = VppIpRoute(self.vclient, "a4::", 64,
                            [VppRoutePath(
                                self.pg1.remote_ip6,
                                self.pg1.sw_if_index),
@@ -732,16 +732,16 @@ class TestSRv6(VppTestCase):
 
         # configure SRv6 localSID End with PSP behavior
         localsid = VppSRv6LocalSID(
-                        self, localsid='A3::C4',
-                        behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_X,
-                        nh_addr=self.pg1.remote_ip6,
-                        end_psp=1,
-                        sw_if_index=self.pg1.sw_if_index,
-                        vlan_index=0,
-                        fib_table=0)
+            self.vclient, localsid='A3::C4',
+            behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_X,
+            nh_addr=self.pg1.remote_ip6,
+            end_psp=1,
+            sw_if_index=self.pg1.sw_if_index,
+            vlan_index=0,
+            fib_table=0)
         localsid.add_vpp_config()
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vclient.cli("show sr localsid"))
 
         # create IPv6 packets with SRH (SL=2, SL=1)
         # send one packet per SL value per packet size
@@ -752,18 +752,18 @@ class TestSRv6(VppTestCase):
 
         # packets with segments-left 2, active segment a3::
         packet_header = self.create_packet_header_IPv6_SRH_IPv6(
-                    dst_inner,
-                    sidlist=['a5::', 'a4::', 'a3::c4'],
-                    segleft=2)
+            dst_inner,
+            sidlist=['a5::', 'a4::', 'a3::c4'],
+            segleft=2)
         # create traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
 
         # packets with segments-left 1, active segment a3::
         packet_header = self.create_packet_header_IPv6_SRH_IPv6(
-                    dst_inner,
-                    sidlist=['a4::', 'a3::c4', 'a2::'],
-                    segleft=1)
+            dst_inner,
+            sidlist=['a4::', 'a3::c4', 'a2::'],
+            segleft=1)
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
@@ -777,7 +777,7 @@ class TestSRv6(VppTestCase):
         self.pg2.assert_nothing_captured("mis-directed packet(s)")
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SRv6 localSIDs
         localsid.remove_vpp_config()
@@ -797,16 +797,16 @@ class TestSRv6(VppTestCase):
 
         # configure SRv6 localSID End.DX6 behavior
         localsid = VppSRv6LocalSID(
-                        self, localsid='A3::C4',
-                        behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DX6,
-                        nh_addr=self.pg1.remote_ip6,
-                        end_psp=0,
-                        sw_if_index=self.pg1.sw_if_index,
-                        vlan_index=0,
-                        fib_table=0)
+            self.vclient, localsid='A3::C4',
+            behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DX6,
+            nh_addr=self.pg1.remote_ip6,
+            end_psp=0,
+            sw_if_index=self.pg1.sw_if_index,
+            vlan_index=0,
+            fib_table=0)
         localsid.add_vpp_config()
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vclient.cli("show sr localsid"))
 
         # create IPv6 packets with SRH (SL=0)
         # send one packet per packet size
@@ -816,9 +816,9 @@ class TestSRv6(VppTestCase):
 
         # packets with SRH, segments-left 0, active segment a3::c4
         packet_header = self.create_packet_header_IPv6_SRH_IPv6(
-                        dst_inner,
-                        sidlist=['a3::c4', 'a2::', 'a1::'],
-                        segleft=0)
+            dst_inner,
+            sidlist=['a3::c4', 'a2::', 'a1::'],
+            segleft=0)
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
@@ -826,8 +826,8 @@ class TestSRv6(VppTestCase):
         # packets without SRH, IPv6 in IPv6
         # outer IPv6 dest addr is the localsid End.DX6
         packet_header = self.create_packet_header_IPv6_IPv6(
-                                            dst_inner,
-                                            dst_outer='a3::c4')
+            dst_inner,
+            dst_outer='a3::c4')
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
@@ -837,7 +837,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_DX6)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SRv6 localSIDs
         localsid.remove_vpp_config()
@@ -853,7 +853,7 @@ class TestSRv6(VppTestCase):
         # source interface in global FIB (0)
         # destination interfaces in global and vrf
         vrf_1 = 1
-        ipt = VppIpTable(self, vrf_1, is_ip6=True)
+        ipt = VppIpTable(self.vclient, vrf_1, is_ip6=True)
         ipt.add_vpp_config()
         self.setup_interfaces(ipv6=[True, True, True],
                               ipv6_table_id=[0, 0, vrf_1])
@@ -862,35 +862,35 @@ class TestSRv6(VppTestCase):
         # a4::/64 is reachable
         #     via pg1 in table 0 (global)
         #     and via pg2 in table vrf_1
-        route0 = VppIpRoute(self, "a4::", 64,
+        route0 = VppIpRoute(self.vclient, "a4::", 64,
                             [VppRoutePath(self.pg1.remote_ip6,
                                           self.pg1.sw_if_index,
                                           nh_table_id=0)],
                             table_id=0)
         route0.add_vpp_config()
-        route1 = VppIpRoute(self, "a4::", 64,
+        route1 = VppIpRoute(self.vclient, "a4::", 64,
                             [VppRoutePath(self.pg2.remote_ip6,
                                           self.pg2.sw_if_index,
                                           nh_table_id=vrf_1)],
                             table_id=vrf_1)
         route1.add_vpp_config()
-        self.logger.debug(self.vapi.cli("show ip6 fib"))
+        self.logger.debug(self.vclient.cli("show ip6 fib"))
 
         # configure SRv6 localSID End.DT6 behavior
         # Note:
         # fib_table: where the localsid is installed
         # sw_if_index: in T-variants of localsid this is the vrf table_id
         localsid = VppSRv6LocalSID(
-                        self, localsid='A3::C4',
-                        behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DT6,
-                        nh_addr=0,
-                        end_psp=0,
-                        sw_if_index=vrf_1,
-                        vlan_index=0,
-                        fib_table=0)
+            self.vclient, localsid='A3::C4',
+            behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DT6,
+            nh_addr=0,
+            end_psp=0,
+            sw_if_index=vrf_1,
+            vlan_index=0,
+            fib_table=0)
         localsid.add_vpp_config()
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vclient.cli("show sr localsid"))
 
         # create IPv6 packets with SRH (SL=0)
         # send one packet per packet size
@@ -900,9 +900,9 @@ class TestSRv6(VppTestCase):
 
         # packets with SRH, segments-left 0, active segment a3::c4
         packet_header = self.create_packet_header_IPv6_SRH_IPv6(
-                        dst_inner,
-                        sidlist=['a3::c4', 'a2::', 'a1::'],
-                        segleft=0)
+            dst_inner,
+            sidlist=['a3::c4', 'a2::', 'a1::'],
+            segleft=0)
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg2, packet_header,
                                        self.pg_packet_sizes, count))
@@ -910,8 +910,8 @@ class TestSRv6(VppTestCase):
         # packets without SRH, IPv6 in IPv6
         # outer IPv6 dest addr is the localsid End.DT6
         packet_header = self.create_packet_header_IPv6_IPv6(
-                                            dst_inner,
-                                            dst_outer='a3::c4')
+            dst_inner,
+            dst_outer='a3::c4')
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg2, packet_header,
                                        self.pg_packet_sizes, count))
@@ -925,7 +925,7 @@ class TestSRv6(VppTestCase):
         self.pg1.assert_nothing_captured("mis-directed packet(s)")
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SRv6 localSIDs
         localsid.remove_vpp_config()
@@ -946,16 +946,16 @@ class TestSRv6(VppTestCase):
 
         # configure SRv6 localSID End.DX4 behavior
         localsid = VppSRv6LocalSID(
-                        self, localsid='A3::C4',
-                        behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DX4,
-                        nh_addr=self.pg1.remote_ip4,
-                        end_psp=0,
-                        sw_if_index=self.pg1.sw_if_index,
-                        vlan_index=0,
-                        fib_table=0)
+            self.vclient, localsid='A3::C4',
+            behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DX4,
+            nh_addr=self.pg1.remote_ip4,
+            end_psp=0,
+            sw_if_index=self.pg1.sw_if_index,
+            vlan_index=0,
+            fib_table=0)
         localsid.add_vpp_config()
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vclient.cli("show sr localsid"))
 
         # send one packet per packet size
         count = len(self.pg_packet_sizes)
@@ -964,9 +964,9 @@ class TestSRv6(VppTestCase):
 
         # packets with SRH, segments-left 0, active segment a3::c4
         packet_header = self.create_packet_header_IPv6_SRH_IPv4(
-                        dst_inner,
-                        sidlist=['a3::c4', 'a2::', 'a1::'],
-                        segleft=0)
+            dst_inner,
+            sidlist=['a3::c4', 'a2::', 'a1::'],
+            segleft=0)
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
@@ -974,8 +974,8 @@ class TestSRv6(VppTestCase):
         # packets without SRH, IPv4 in IPv6
         # outer IPv6 dest addr is the localsid End.DX4
         packet_header = self.create_packet_header_IPv6_IPv4(
-                                            dst_inner,
-                                            dst_outer='a3::c4')
+            dst_inner,
+            dst_outer='a3::c4')
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
@@ -985,7 +985,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_DX4)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SRv6 localSIDs
         localsid.remove_vpp_config()
@@ -1002,7 +1002,7 @@ class TestSRv6(VppTestCase):
         # source interface in global FIB (0)
         # destination interfaces in global and vrf
         vrf_1 = 1
-        ipt = VppIpTable(self, vrf_1)
+        ipt = VppIpTable(self.vclient, vrf_1)
         ipt.add_vpp_config()
         self.setup_interfaces(ipv6=[True, False, False],
                               ipv4=[False, True, True],
@@ -1013,35 +1013,35 @@ class TestSRv6(VppTestCase):
         # 4.1.1.0/24 is reachable
         #     via pg1 in table 0 (global)
         #     and via pg2 in table vrf_1
-        route0 = VppIpRoute(self, "4.1.1.0", 24,
+        route0 = VppIpRoute(self.vclient, "4.1.1.0", 24,
                             [VppRoutePath(self.pg1.remote_ip4,
                                           self.pg1.sw_if_index,
                                           nh_table_id=0)],
                             table_id=0)
         route0.add_vpp_config()
-        route1 = VppIpRoute(self, "4.1.1.0", 24,
+        route1 = VppIpRoute(self.vclient, "4.1.1.0", 24,
                             [VppRoutePath(self.pg2.remote_ip4,
                                           self.pg2.sw_if_index,
                                           nh_table_id=vrf_1)],
                             table_id=vrf_1)
         route1.add_vpp_config()
-        self.logger.debug(self.vapi.cli("show ip fib"))
+        self.logger.debug(self.vclient.cli("show ip fib"))
 
         # configure SRv6 localSID End.DT6 behavior
         # Note:
         # fib_table: where the localsid is installed
         # sw_if_index: in T-variants of localsid: vrf table_id
         localsid = VppSRv6LocalSID(
-                        self, localsid='A3::C4',
-                        behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DT4,
-                        nh_addr=0,
-                        end_psp=0,
-                        sw_if_index=vrf_1,
-                        vlan_index=0,
-                        fib_table=0)
+            self.vclient, localsid='A3::C4',
+            behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DT4,
+            nh_addr=0,
+            end_psp=0,
+            sw_if_index=vrf_1,
+            vlan_index=0,
+            fib_table=0)
         localsid.add_vpp_config()
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vclient.cli("show sr localsid"))
 
         # create IPv6 packets with SRH (SL=0)
         # send one packet per packet size
@@ -1051,9 +1051,9 @@ class TestSRv6(VppTestCase):
 
         # packets with SRH, segments-left 0, active segment a3::c4
         packet_header = self.create_packet_header_IPv6_SRH_IPv4(
-                        dst_inner,
-                        sidlist=['a3::c4', 'a2::', 'a1::'],
-                        segleft=0)
+            dst_inner,
+            sidlist=['a3::c4', 'a2::', 'a1::'],
+            segleft=0)
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg2, packet_header,
                                        self.pg_packet_sizes, count))
@@ -1061,8 +1061,8 @@ class TestSRv6(VppTestCase):
         # packets without SRH, IPv6 in IPv6
         # outer IPv6 dest addr is the localsid End.DX4
         packet_header = self.create_packet_header_IPv6_IPv4(
-                                            dst_inner,
-                                            dst_outer='a3::c4')
+            dst_inner,
+            dst_outer='a3::c4')
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg2, packet_header,
                                        self.pg_packet_sizes, count))
@@ -1076,7 +1076,7 @@ class TestSRv6(VppTestCase):
         self.pg1.assert_nothing_captured("mis-directed packet(s)")
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SRv6 localSIDs
         localsid.remove_vpp_config()
@@ -1096,16 +1096,16 @@ class TestSRv6(VppTestCase):
 
         # configure SRv6 localSID End.DX2 behavior
         localsid = VppSRv6LocalSID(
-                        self, localsid='A3::C4',
-                        behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DX2,
-                        nh_addr=0,
-                        end_psp=0,
-                        sw_if_index=self.pg1.sw_if_index,
-                        vlan_index=0,
-                        fib_table=0)
+            self.vclient, localsid='A3::C4',
+            behavior=SRv6LocalSIDBehaviors.SR_BEHAVIOR_DX2,
+            nh_addr=0,
+            end_psp=0,
+            sw_if_index=self.pg1.sw_if_index,
+            vlan_index=0,
+            fib_table=0)
         localsid.add_vpp_config()
         # log the localsids
-        self.logger.debug(self.vapi.cli("show sr localsid"))
+        self.logger.debug(self.vclient.cli("show sr localsid"))
 
         # send one packet per packet size
         count = len(self.pg_packet_sizes)
@@ -1114,9 +1114,9 @@ class TestSRv6(VppTestCase):
         # packets with SRH, segments-left 0, active segment a3::c4
         # L2 has no dot1q header
         packet_header = self.create_packet_header_IPv6_SRH_L2(
-                            sidlist=['a3::c4', 'a2::', 'a1::'],
-                            segleft=0,
-                            vlan=0)
+            sidlist=['a3::c4', 'a2::', 'a1::'],
+            segleft=0,
+            vlan=0)
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
@@ -1124,9 +1124,9 @@ class TestSRv6(VppTestCase):
         # packets with SRH, segments-left 0, active segment a3::c4
         # L2 has dot1q header
         packet_header = self.create_packet_header_IPv6_SRH_L2(
-                            sidlist=['a3::c4', 'a2::', 'a1::'],
-                            segleft=0,
-                            vlan=123)
+            sidlist=['a3::c4', 'a2::', 'a1::'],
+            segleft=0,
+            vlan=123)
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
@@ -1135,8 +1135,8 @@ class TestSRv6(VppTestCase):
         # outer IPv6 dest addr is the localsid End.DX2
         # L2 has no dot1q header
         packet_header = self.create_packet_header_IPv6_L2(
-                                            dst_outer='a3::c4',
-                                            vlan=0)
+            dst_outer='a3::c4',
+            vlan=0)
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
@@ -1145,8 +1145,8 @@ class TestSRv6(VppTestCase):
         # outer IPv6 dest addr is the localsid End.DX2
         # L2 has dot1q header
         packet_header = self.create_packet_header_IPv6_L2(
-                                            dst_outer='a3::c4',
-                                            vlan=123)
+            dst_outer='a3::c4',
+            vlan=123)
         # add to traffic stream pg0->pg1
         pkts.extend(self.create_stream(self.pg0, self.pg1, packet_header,
                                        self.pg_packet_sizes, count))
@@ -1156,7 +1156,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_DX2)
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove SRv6 localSIDs
         localsid.remove_vpp_config()
@@ -1174,7 +1174,7 @@ class TestSRv6(VppTestCase):
         self.setup_interfaces(ipv6=[False, False, False, True, True])
 
         # configure FIB entries
-        route = VppIpRoute(self, "a4::", 64,
+        route = VppIpRoute(self.vclient, "a4::", 64,
                            [VppRoutePath(
                                self.pg4.remote_ip6,
                                self.pg4.sw_if_index)])
@@ -1183,13 +1183,13 @@ class TestSRv6(VppTestCase):
         # configure encaps IPv6 source address
         # needs to be done before SR Policy config
         # TODO: API?
-        self.vapi.cli("set sr encaps source addr a3::")
+        self.vclient.cli("set sr encaps source addr a3::")
 
         bsid = 'a3::9999:1'
         # configure SRv6 Policy
         # Note: segment list order: first -> last
         sr_policy = VppSRv6Policy(
-            self, bsid=bsid,
+            self.vclient, bsid=bsid,
             is_encap=0,
             sr_type=SRv6PolicyType.SR_POLICY_TYPE_DEFAULT,
             weight=1, fib_table=0,
@@ -1199,12 +1199,12 @@ class TestSRv6(VppTestCase):
         self.sr_policy = sr_policy
 
         # log the sr policies
-        self.logger.info(self.vapi.cli("show sr policies"))
+        self.logger.info(self.vclient.cli("show sr policies"))
 
         # add classify table
         # mask on dst ip address prefix a7::/8
         mask = '{!s:0<16}'.format('ff')
-        r = self.vapi.classify_add_del_table(
+        r = self.vclient.classify_add_del_table(
             1,
             binascii.unhexlify(mask),
             match_n_vectors=(len(mask) - 1) // 32 + 1,
@@ -1214,12 +1214,12 @@ class TestSRv6(VppTestCase):
         table_index = r.new_table_index
 
         # add the source routing node as a ip6 inacl netxt node
-        r = self.vapi.add_node_next('ip6-inacl',
-                                    'sr-pl-rewrite-insert')
+        r = self.vclient.add_node_next('ip6-inacl',
+                                       'sr-pl-rewrite-insert')
         inacl_next_node_index = r.node_index
 
         match = '{!s:0<16}'.format('a7')
-        r = self.vapi.classify_add_del_session(
+        r = self.vclient.classify_add_del_session(
             1,
             table_index,
             binascii.unhexlify(match),
@@ -1229,9 +1229,9 @@ class TestSRv6(VppTestCase):
         self.assertIsNotNone(r, 'No response msg for add_del_session')
 
         # log the classify table used in the steering policy
-        self.logger.info(self.vapi.cli("show classify table"))
+        self.logger.info(self.vclient.cli("show classify table"))
 
-        r = self.vapi.input_acl_set_interface(
+        r = self.vclient.input_acl_set_interface(
             is_add=1,
             sw_if_index=self.pg3.sw_if_index,
             ip6_table_index=table_index)
@@ -1239,7 +1239,7 @@ class TestSRv6(VppTestCase):
                              'No response msg for input_acl_set_interface')
 
         # log the ip6 inacl
-        self.logger.info(self.vapi.cli("show inacl type ip6"))
+        self.logger.info(self.vclient.cli("show inacl type ip6"))
 
         # create packets
         count = len(self.pg_packet_sizes)
@@ -1266,7 +1266,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_T_Insert)
 
         # remove the interface l2 input feature
-        r = self.vapi.input_acl_set_interface(
+        r = self.vclient.input_acl_set_interface(
             is_add=0,
             sw_if_index=self.pg3.sw_if_index,
             ip6_table_index=table_index)
@@ -1274,33 +1274,33 @@ class TestSRv6(VppTestCase):
                              'No response msg for input_acl_set_interface')
 
         # log the ip6 inacl after cleaning
-        self.logger.info(self.vapi.cli("show inacl type ip6"))
+        self.logger.info(self.vclient.cli("show inacl type ip6"))
 
         # log the localsid counters
-        self.logger.info(self.vapi.cli("show sr localsid"))
+        self.logger.info(self.vclient.cli("show sr localsid"))
 
         # remove classifier SR steering
         # classifier_steering.remove_vpp_config()
-        self.logger.info(self.vapi.cli("show sr steering policies"))
+        self.logger.info(self.vclient.cli("show sr steering policies"))
 
         # remove SR Policies
         self.sr_policy.remove_vpp_config()
-        self.logger.info(self.vapi.cli("show sr policies"))
+        self.logger.info(self.vclient.cli("show sr policies"))
 
         # remove classify session and table
-        r = self.vapi.classify_add_del_session(
+        r = self.vclient.classify_add_del_session(
             0,
             table_index,
             binascii.unhexlify(match))
         self.assertIsNotNone(r, 'No response msg for add_del_session')
 
-        r = self.vapi.classify_add_del_table(
+        r = self.vclient.classify_add_del_table(
             0,
             binascii.unhexlify(mask),
             table_index=table_index)
         self.assertIsNotNone(r, 'No response msg for add_del_table')
 
-        self.logger.info(self.vapi.cli("show classify table"))
+        self.logger.info(self.vclient.cli("show classify table"))
 
         # remove FIB entries
         # done by tearDown

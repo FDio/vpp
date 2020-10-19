@@ -11,7 +11,7 @@ import time
 import socket
 from socket import inet_pton, inet_ntop
 
-from vpp_object import VppObject
+from vpp_pom.vpp_object import VppObject
 from vpp_papi import VppEnum
 
 from scapy.packet import raw
@@ -24,7 +24,7 @@ from scapy.contrib.igmpv3 import IGMPv3, IGMPv3mr, IGMPv3gr
 from scapy.layers.vrrp import IPPROTO_VRRP, VRRPv3
 from scapy.utils6 import in6_getnsma, in6_getnsmac
 from framework import VppTestCase, VppTestRunner, running_extended_tests
-from util import ip6_normalize
+from vpp_pom.util import ip6_normalize
 
 VRRP_VR_FLAG_PREEMPT = 1
 VRRP_VR_FLAG_ACCEPT = 2
@@ -96,7 +96,7 @@ class VppVRRPVirtualRouter(VppObject):
         self._tracked_ifs = []
 
     def add_vpp_config(self):
-        self._test.vapi.vrrp_vr_add_del(is_add=1,
+        self._test.vclient.vrrp_vr_add_del(is_add=1,
                                         sw_if_index=self._intf.sw_if_index,
                                         vr_id=self._vr_id,
                                         priority=self._prio,
@@ -106,7 +106,7 @@ class VppVRRPVirtualRouter(VppObject):
                                         addrs=self._vips)
 
     def query_vpp_config(self):
-        vrs = self._test.vapi.vrrp_vr_dump(sw_if_index=self._intf.sw_if_index)
+        vrs = self._test.vclient.vrrp_vr_dump(sw_if_index=self._intf.sw_if_index)
         for vr in vrs:
             if vr.config.vr_id != self._vr_id:
                 continue
@@ -120,7 +120,7 @@ class VppVRRPVirtualRouter(VppObject):
         return None
 
     def remove_vpp_config(self):
-        self._test.vapi.vrrp_vr_add_del(is_add=0,
+        self._test.vclient.vrrp_vr_add_del(is_add=0,
                                         sw_if_index=self._intf.sw_if_index,
                                         vr_id=self._vr_id,
                                         priority=self._prio,
@@ -130,7 +130,7 @@ class VppVRRPVirtualRouter(VppObject):
                                         addrs=self._vips)
 
     def start_stop(self, is_start):
-        self._test.vapi.vrrp_vr_start_stop(is_start=is_start,
+        self._test.vclient.vrrp_vr_start_stop(is_start=is_start,
                                            sw_if_index=self._intf.sw_if_index,
                                            vr_id=self._vr_id,
                                            is_ipv6=self._is_ipv6)
@@ -145,7 +145,7 @@ class VppVRRPVirtualRouter(VppObject):
             'n_ifs': 1,
             'ifs': [{'sw_if_index': sw_if_index, 'priority': prio}]
         }
-        self._test.vapi.vrrp_vr_track_if_add_del(**args)
+        self._test.vclient.vrrp_vr_track_if_add_del(**args)
         self._tracked_ifs.append(args['ifs'][0])
 
     def set_unicast_peers(self, addrs):
@@ -156,7 +156,7 @@ class VppVRRPVirtualRouter(VppObject):
             'n_addrs': len(addrs),
             'addrs': addrs
         }
-        self._test.vapi.vrrp_vr_set_peers(**args)
+        self._test.vclient.vrrp_vr_set_peers(**args)
         self._unicast_peers = addrs
 
     def vrrp_adv_packet(self, prio=None, src_ip=None):
@@ -324,9 +324,9 @@ class TestVRRP4(VppTestCase):
 
         vr.add_vpp_config()
         vr.start_stop(is_start=1)
-        self.logger.info(self.vapi.cli("show vrrp vr"))
+        self.logger.info(self.vclient.cli("show vrrp vr"))
         vr.start_stop(is_start=0)
-        self.logger.info(self.vapi.cli("show vrrp vr"))
+        self.logger.info(self.vclient.cli("show vrrp vr"))
 
         pkts = self.pg0.get_capture(4)
 
@@ -373,10 +373,10 @@ class TestVRRP4(VppTestCase):
         pkts = [vr.vrrp_adv_packet(prio=prio+10, src_ip=src_ip)]
         while time.time() < end_time:
             self.send_and_assert_no_replies(self.pg0, pkts, timeout=intvl_s)
-            self.logger.info(self.vapi.cli("show trace"))
+            self.logger.info(self.vclient.cli("show trace"))
 
         vr.start_stop(is_start=0)
-        self.logger.info(self.vapi.cli("show vrrp vr"))
+        self.logger.info(self.vclient.cli("show vrrp vr"))
         vr.remove_vpp_config()
         self._vrs = []
 
@@ -513,7 +513,7 @@ class TestVRRP4(VppTestCase):
         pkts = [vr.vrrp_adv_packet(prio=prio-10, src_ip=src_ip)]
         while time.time() + intvl_s < end_time:
             self.send_and_assert_no_replies(self.pg0, pkts, timeout=intvl_s)
-            self.logger.info(self.vapi.cli("show trace"))
+            self.logger.info(self.vclient.cli("show trace"))
 
         # when timer expires, VR should take over as master
         self.pg0.enable_capture()
@@ -856,11 +856,11 @@ class TestVRRP6(VppTestCase):
         self._vrs.append(vr)
 
         vr.add_vpp_config()
-        self.logger.info(self.vapi.cli("show vrrp vr"))
+        self.logger.info(self.vclient.cli("show vrrp vr"))
         vr.start_stop(is_start=1)
-        self.logger.info(self.vapi.cli("show vrrp vr"))
+        self.logger.info(self.vclient.cli("show vrrp vr"))
         vr.start_stop(is_start=0)
-        self.logger.info(self.vapi.cli("show vrrp vr"))
+        self.logger.info(self.vclient.cli("show vrrp vr"))
 
         pkts = self.pg0.get_capture(4, filter_out_fn=None)
 
@@ -905,14 +905,14 @@ class TestVRRP6(VppTestCase):
         src_ip = self.pg0.remote_ip6_ll
         num_advs = 5
         pkts = [vr.vrrp_adv_packet(prio=prio+10, src_ip=src_ip)]
-        self.logger.info(self.vapi.cli("show vlib graph"))
+        self.logger.info(self.vclient.cli("show vlib graph"))
         while time.time() < end_time:
             self.send_and_assert_no_replies(self.pg0, pkts, timeout=intvl_s)
-            self.logger.info(self.vapi.cli("show trace"))
+            self.logger.info(self.vclient.cli("show trace"))
             num_advs -= 1
 
         vr.start_stop(is_start=0)
-        self.logger.info(self.vapi.cli("show vrrp vr"))
+        self.logger.info(self.vclient.cli("show vrrp vr"))
         vr.remove_vpp_config()
         self._vrs = []
 
@@ -1051,7 +1051,7 @@ class TestVRRP6(VppTestCase):
         pkts = [vr.vrrp_adv_packet(prio=prio-10, src_ip=src_ip)]
         while (time.time() + intvl_s) < end_time:
             self.send_and_assert_no_replies(self.pg0, pkts, timeout=intvl_s)
-            self.logger.info(self.vapi.cli("show trace"))
+            self.logger.info(self.vclient.cli("show trace"))
 
         # when timer expires, VR should take over as master
         self.pg0.enable_capture()

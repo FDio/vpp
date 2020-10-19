@@ -7,7 +7,7 @@ from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
 
-from util import ip4_range
+from vpp_pom.util import ip4_range
 
 
 @six.add_metaclass(abc.ABCMeta)
