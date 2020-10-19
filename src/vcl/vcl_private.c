@@ -225,46 +225,18 @@ vcl_worker_ctrl_mq (vcl_worker_t * wrk)
   return wrk->ctrl_mq;
 }
 
-int
-vcl_session_read_ready (vcl_session_t * s)
+static inline int
+vcl_session_max_deq (vcl_session_t *s)
 {
-  u32 max_deq;
-
-  /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
-  if (PREDICT_FALSE (s->is_vep))
-    {
-      VDBG (0, "ERROR: session %u: cannot read from an epoll session!",
-	    s->session_index);
-      return VPPCOM_EBADFD;
-    }
-
-  if (PREDICT_FALSE (!(vcl_session_is_ready (s)
-		       || s->session_state == VCL_STATE_LISTEN)))
-    {
-      vcl_session_state_t state = s->session_state;
-      int rv;
-
-      rv = (state == VCL_STATE_DISCONNECT) ?
-	VPPCOM_ECONNRESET : VPPCOM_ENOTCONN;
-
-      VDBG (1, "session %u [0x%llx]: not open! state 0x%x (%s), ret %d (%s)",
-	    s->session_index, s->vpp_handle, state,
-	    vppcom_session_state_str (state), rv, vppcom_retval_str (rv));
-      return rv;
-    }
-
-  if (s->session_state == VCL_STATE_LISTEN)
-    return clib_fifo_elts (s->accept_evts_fifo);
-
   if (vcl_session_is_ct (s))
     return svm_fifo_max_dequeue_cons (s->ct_rx_fifo);
-
-  max_deq = svm_fifo_max_dequeue_cons (s->rx_fifo);
 
   if (s->is_dgram)
     {
       session_dgram_pre_hdr_t ph;
+      u32 max_deq;
 
+      max_deq = svm_fifo_max_dequeue_cons (s->rx_fifo);
       if (max_deq <= SESSION_CONN_HDR_LEN)
 	return 0;
       if (svm_fifo_peek (s->rx_fifo, 0, sizeof (ph), (u8 *) & ph) < 0)
@@ -275,7 +247,73 @@ vcl_session_read_ready (vcl_session_t * s)
       return ph.data_length;
     }
 
-  return max_deq;
+  return svm_fifo_max_dequeue_cons (s->rx_fifo);
+}
+
+int
+vcl_session_read_ready (vcl_session_t * s)
+{
+//  u32 max_deq;
+
+  if (PREDICT_FALSE (s->is_vep))
+    {
+      VDBG (0, "ERROR: session %u: cannot read from an epoll session!",
+	    s->session_index);
+      return VPPCOM_EBADFD;
+    }
+
+  if (vcl_session_is_ready (s) || vcl_session_is_cl (s))
+    {
+      return vcl_session_max_deq (s);
+    }
+  else if (s->session_state == VCL_STATE_LISTEN)
+    {
+      return clib_fifo_elts (s->accept_evts_fifo);
+    }
+  else
+    {
+      return (s->session_state == VCL_STATE_DISCONNECT) ?
+	      VPPCOM_ECONNRESET : VPPCOM_ENOTCONN;
+    }
+
+//  if (PREDICT_FALSE (!(vcl_session_is_ready (s)
+//		       || s->session_state == VCL_STATE_LISTEN)))
+//    {
+//      vcl_session_state_t state = s->session_state;
+//      int rv;
+//
+//      rv = (state == VCL_STATE_DISCONNECT) ?
+//	VPPCOM_ECONNRESET : VPPCOM_ENOTCONN;
+//
+//      VDBG (1, "session %u [0x%llx]: not open! state 0x%x (%s), ret %d (%s)",
+//	    s->session_index, s->vpp_handle, state,
+//	    vppcom_session_state_str (state), rv, vppcom_retval_str (rv));
+//      return rv;
+//    }
+//
+//  if (s->session_state == VCL_STATE_LISTEN)
+//    return clib_fifo_elts (s->accept_evts_fifo);
+//
+//  if (vcl_session_is_ct (s))
+//    return svm_fifo_max_dequeue_cons (s->ct_rx_fifo);
+//
+//  max_deq = svm_fifo_max_dequeue_cons (s->rx_fifo);
+//
+//  if (s->is_dgram)
+//    {
+//      session_dgram_pre_hdr_t ph;
+//
+//      if (max_deq <= SESSION_CONN_HDR_LEN)
+//	return 0;
+//      if (svm_fifo_peek (s->rx_fifo, 0, sizeof (ph), (u8 *) & ph) < 0)
+//	return 0;
+//      if (ph.data_length + SESSION_CONN_HDR_LEN > max_deq)
+//	return 0;
+//
+//      return ph.data_length;
+//    }
+//
+//  return max_deq;
 }
 
 int
