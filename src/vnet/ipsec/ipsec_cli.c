@@ -76,8 +76,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 			     vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  ip46_address_t tun_src = { }, tun_dst =
-  {
+  ip46_address_t tun_src = { }, tun_dst = {
   };
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
@@ -1040,7 +1039,7 @@ VLIB_CLI_COMMAND (ipsec_tun_protect_show_node, static) =
 /* *INDENT-ON* */
 
 static int
-ipsec_tun_protect4_hash_show_one (clib_bihash_kv_8_8_t * kv, void *arg)
+ipsec_tun_protect4_hash_show_one (clib_bihash_kv_8_16_t * kv, void *arg)
 {
   ipsec4_tunnel_kv_t *ikv = (ipsec4_tunnel_kv_t *) kv;
   vlib_main_t *vm = arg;
@@ -1051,7 +1050,7 @@ ipsec_tun_protect4_hash_show_one (clib_bihash_kv_8_8_t * kv, void *arg)
 }
 
 static int
-ipsec_tun_protect6_hash_show_one (clib_bihash_kv_24_8_t * kv, void *arg)
+ipsec_tun_protect6_hash_show_one (clib_bihash_kv_24_16_t * kv, void *arg)
 {
   ipsec6_tunnel_kv_t *ikv = (ipsec6_tunnel_kv_t *) kv;
   vlib_main_t *vm = arg;
@@ -1071,12 +1070,12 @@ ipsec_tun_protect_hash_show (vlib_main_t * vm,
   {
     vlib_cli_output (vm, "IPv4:");
 
-    clib_bihash_foreach_key_value_pair_8_8
+    clib_bihash_foreach_key_value_pair_8_16
       (&im->tun4_protect_by_key, ipsec_tun_protect4_hash_show_one, vm);
 
     vlib_cli_output (vm, "IPv6:");
 
-    clib_bihash_foreach_key_value_pair_24_8
+    clib_bihash_foreach_key_value_pair_24_16
       (&im->tun6_protect_by_key, ipsec_tun_protect6_hash_show_one, vm);
   }
 
