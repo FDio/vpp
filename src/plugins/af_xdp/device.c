@@ -22,6 +22,7 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
+#include <vppinfra/linux/sysfs.h>
 #include <vppinfra/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include "af_xdp.h"
@@ -260,21 +261,18 @@ err0:
 static int
 af_xdp_get_numa (const char *ifname)
 {
-  FILE *fptr;
+  char *path;
+  clib_error_t *err;
   int numa;
-  char *s;
 
-  s = (char *) format (0, "/sys/class/net/%s/device/numa_node%c", ifname, 0);
-  fptr = fopen (s, "rb");
-  vec_free (s);
-
-  if (!fptr)
-    return 0;
-
-  if (fscanf (fptr, "%d\n", &numa) != 1)
+  path =
+    (char *) format (0, "/sys/class/net/%s/device/numa_node%c", ifname, 0);
+  err = clib_sysfs_read (path, "%d", &numa);
+  if (err || numa < 0)
     numa = 0;
 
-  fclose (fptr);
+  clib_error_free (err);
+  vec_free (path);
   return numa;
 }
 
