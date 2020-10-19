@@ -72,7 +72,7 @@ from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
-from util import ppp
+from vpp_pom.util import ppp
 from vrf import VRFState
 
 
@@ -166,8 +166,8 @@ class TestIp4VrfMultiInst(VppTestCase):
         super(TestIp4VrfMultiInst, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show ip fib"))
-        self.logger.info(self.vapi.ppcli("show ip4 neighbors"))
+        self.logger.info(self.vclient.ppcli("show ip fib"))
+        self.logger.info(self.vclient.ppcli("show ip4 neighbors"))
 
     def create_vrf_and_assign_interfaces(self, count, start=1):
         """
@@ -182,7 +182,7 @@ class TestIp4VrfMultiInst(VppTestCase):
         for i in range(count):
             vrf_id = i + start
             pg_if = self.pg_if_by_vrf_id[vrf_id][0]
-            self.vapi.ip_table_add_del(is_add=1, table={'table_id': vrf_id})
+            self.vclient.ip_table_add_del(is_add=1, table={'table_id': vrf_id})
             self.logger.info("IPv4 VRF ID %d created" % vrf_id)
             if vrf_id not in self.vrf_list:
                 self.vrf_list.append(vrf_id)
@@ -199,8 +199,8 @@ class TestIp4VrfMultiInst(VppTestCase):
                     self.pg_not_in_vrf.remove(pg_if)
                 pg_if.config_ip4()
                 pg_if.configure_ipv4_neighbors()
-        self.logger.debug(self.vapi.ppcli("show ip fib"))
-        self.logger.debug(self.vapi.ppcli("show ip4 neighbors"))
+        self.logger.debug(self.vclient.ppcli("show ip fib"))
+        self.logger.debug(self.vclient.ppcli("show ip4 neighbors"))
 
     def reset_vrf_and_remove_from_vrf_list(self, vrf_id):
         """
@@ -208,7 +208,7 @@ class TestIp4VrfMultiInst(VppTestCase):
 
         :param int vrf_id: The FIB table / VRF ID to be reset.
         """
-        self.vapi.ip_table_flush(table={'table_id': vrf_id})
+        self.vclient.ip_table_flush(table={'table_id': vrf_id})
         if vrf_id in self.vrf_list:
             self.vrf_list.remove(vrf_id)
         if vrf_id not in self.vrf_reset_list:
@@ -221,9 +221,9 @@ class TestIp4VrfMultiInst(VppTestCase):
             if pg_if not in self.pg_not_in_vrf:
                 self.pg_not_in_vrf.append(pg_if)
         self.logger.info("IPv4 VRF ID %d reset finished" % vrf_id)
-        self.logger.debug(self.vapi.ppcli("show ip fib"))
-        self.logger.debug(self.vapi.ppcli("show ip neighbors"))
-        self.vapi.ip_table_add_del(is_add=0, table={'table_id': vrf_id})
+        self.logger.debug(self.vclient.ppcli("show ip fib"))
+        self.logger.debug(self.vclient.ppcli("show ip neighbors"))
+        self.vclient.ip_table_add_del(is_add=0, table={'table_id': vrf_id})
 
     def create_stream(self, src_if, packet_sizes):
         """
@@ -316,7 +316,7 @@ class TestIp4VrfMultiInst(VppTestCase):
                 self.assertEqual(ip.dst, saved_packet[IP].dst)
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
-            except:
+            except BaseException:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.pg_interfaces:
@@ -334,7 +334,7 @@ class TestIp4VrfMultiInst(VppTestCase):
         :param int vrf_id: The FIB table / VRF ID to be verified.
         :return: 1 if the FIB table / VRF ID is configured, otherwise return 0.
         """
-        ip_fib_dump = self.vapi.ip_route_dump(vrf_id)
+        ip_fib_dump = self.vclient.ip_route_dump(vrf_id)
         vrf_exist = len(ip_fib_dump)
         vrf_count = 0
         for ip_fib_details in ip_fib_dump:

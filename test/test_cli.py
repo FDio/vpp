@@ -17,7 +17,7 @@ class TestCLI(VppTestCase):
     @classmethod
     def setUpClass(cls):
         # using the framework default
-        cls.vapi_response_timeout = 5
+        cls.vclient_response_timeout = 5
         super(TestCLI, cls).setUpClass()
 
     @classmethod
@@ -32,21 +32,21 @@ class TestCLI(VppTestCase):
 
     def test_cli_retval(self):
         """ CLI inband retval """
-        rv = self.vapi.papi.cli_inband(cmd='this command does not exist')
+        rv = self.vclient.papi.cli_inband(cmd='this command does not exist')
         self.assertNotEqual(rv.retval, 0)
 
-        rv = self.vapi.papi.cli_inband(cmd='show version')
+        rv = self.vclient.papi.cli_inband(cmd='show version')
         self.assertEqual(rv.retval, 0)
 
     def test_long_cli_delay(self):
         """ Test that VppApiClient raises VppTransportShmemIOError if timeout."""  # noqa
         with self.assertRaises(
                 vpp_transport_shmem.VppTransportShmemIOError) as ctx:
-            rv = self.vapi.papi.cli_inband(cmd='wait 10')
+            rv = self.vclient.papi.cli_inband(cmd='wait 10')
 
     def test_long_cli_delay_override(self):
         """ Test per-command _timeout option."""  # noqa
-        rv = self.vapi.papi.cli_inband(cmd='wait 10', _timeout=15)
+        rv = self.vclient.papi.cli_inband(cmd='wait 10', _timeout=15)
         self.assertEqual(rv.retval, 0)
 
 
@@ -55,9 +55,9 @@ class TestCLIExtendedVapiTimeout(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.vapi_response_timeout = 15
+        cls.vclient_response_timeout = 15
         cls.__doc__ = " CLI Test Case w/ Extended (%ssec) Vapi Timeout " \
-                      % cls.vapi_response_timeout
+                      % cls.vclient_response_timeout
         super(TestCLIExtendedVapiTimeout, cls).setUpClass()
 
     @classmethod
@@ -72,13 +72,14 @@ class TestCLIExtendedVapiTimeout(VppTestCase):
 
     def test_long_cli_delay(self):
         """ Test that delayed result returns with extended timeout."""
-        wait_secs = self.vapi_response_timeout - 1
+        self.vclient_response_timeout = 10
+        wait_secs = self.vclient_response_timeout - 1
 
         # get vpp time as float
-        start = self.vapi.papi.show_vpe_system_time(
+        start = self.vclient.papi.show_vpe_system_time(
             _no_type_conversion=True).vpe_system_time
-        rv = self.vapi.papi.cli_inband(cmd='wait %s' % wait_secs)
-        now = self.vapi.papi.show_vpe_system_time(
+        rv = self.vclient.papi.cli_inband(cmd='wait %s' % wait_secs)
+        now = self.vclient.papi.show_vpe_system_time(
             _no_type_conversion=True).vpe_system_time
 
         # assume that the overhead of the measurement is not more that .5 sec.

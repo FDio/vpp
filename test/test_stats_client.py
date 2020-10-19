@@ -20,9 +20,9 @@ class StatsClientTestCase(VppTestCase):
 
     def test_set_errors(self):
         """Test set errors"""
-        self.assertEqual(self.statistics.set_errors(), {})
-        self.assertEqual(self.statistics.get_counter('/err/ethernet-input/no'),
-                         [0])
+        self.assertEqual(self.vclient.statistics.set_errors(), {})
+        self.assertEqual(self.vclient.statistics.get_counter(
+            '/err/ethernet-input/no'), [0])
 
     def test_client_fd_leak(self):
         """Test file descriptor count - VPP-1486"""
@@ -47,19 +47,20 @@ class StatsClientTestCase(VppTestCase):
         def loop():
             print('Running loop')
             for i in range(50):
-                rv = self.vapi.papi.tap_create_v2(id=i, use_random_mac=1)
+                rv = self.vclient.papi.tap_create_v2(id=i, use_random_mac=1)
                 self.assertEqual(rv.retval, 0)
-                rv = self.vapi.papi.tap_delete_v2(sw_if_index=rv.sw_if_index)
+                rv = self.vclient.papi.tap_delete_v2(
+                    sw_if_index=rv.sw_if_index)
                 self.assertEqual(rv.retval, 0)
 
-        before = self.statistics.get_counter('/mem/statseg/used')
+        before = self.vclient.statistics.get_counter('/mem/statseg/used')
         loop()
-        self.vapi.cli("memory-trace on stats-segment")
+        self.vclient.cli("memory-trace on stats-segment")
         for j in range(100):
             loop()
-        print(self.vapi.cli("show memory stats-segment verbose"))
+        print(self.vclient.cli("show memory stats-segment verbose"))
         print('AFTER', before,
-              self.statistics.get_counter('/mem/statseg/used'))
+              self.vclient.statistics.get_counter('/mem/statseg/used'))
 
 
 if __name__ == '__main__':

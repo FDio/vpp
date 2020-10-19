@@ -476,7 +476,7 @@ class VPPApiClient(object):
                     setattr(self._api, name, FuncWrapper(f))
             else:
                 self.logger.debug(
-                    'No such message type or failed CRC checksum: %s', n)
+                    'No such message type or failed CRC checksum: %s' % n)
 
     def connect_internal(self, name, msg_handler, chroot_prefix, rx_qlen,
                          do_async):

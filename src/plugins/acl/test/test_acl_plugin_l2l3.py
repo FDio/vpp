@@ -39,10 +39,11 @@ from scapy.layers.inet6 import ICMPv6EchoReply, IPv6ExtHdrRouting
 from scapy.layers.inet6 import IPv6ExtHdrFragment
 
 from framework import VppTestCase, VppTestRunner
-from vpp_l2 import L2_PORT_TYPE
+from vpp_pom.vpp_l2 import L2_PORT_TYPE
 import time
 
-from vpp_acl import AclRule, VppAcl, VppAclInterface
+from vpp_pom.plugins.vpp_acl import AclRule, VppAcl, VppAclInterface, \
+    VppAclPlugin
 
 
 class TestACLpluginL2L3(VppTestCase):
@@ -75,13 +76,13 @@ class TestACLpluginL2L3(VppTestCase):
             i.admin_up()
 
         # Create BD with MAC learning enabled and put interfaces to this BD
-        cls.vapi.sw_interface_set_l2_bridge(
+        cls.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=cls.loop0.sw_if_index, bd_id=cls.bd_id,
             port_type=L2_PORT_TYPE.BVI)
-        cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=cls.pg0.sw_if_index,
-                                            bd_id=cls.bd_id)
-        cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=cls.pg1.sw_if_index,
-                                            bd_id=cls.bd_id)
+        cls.vclient.sw_interface_set_l2_bridge(
+            rx_sw_if_index=cls.pg0.sw_if_index, bd_id=cls.bd_id)
+        cls.vclient.sw_interface_set_l2_bridge(
+            rx_sw_if_index=cls.pg1.sw_if_index, bd_id=cls.bd_id)
 
         # Configure IPv4 addresses on loopback interface and routed interface
         cls.loop0.config_ip4()
@@ -107,11 +108,13 @@ class TestACLpluginL2L3(VppTestCase):
         half = cls.remote_hosts_count // 2
         cls.pg0.remote_hosts = cls.loop0.remote_hosts[:half]
         cls.pg1.remote_hosts = cls.loop0.remote_hosts[half:]
-        reply = cls.vapi.papi.acl_stats_intf_counters_enable(enable=1)
+
+        cls.acl_plugin = VppAclPlugin(cls.vclient)
+        cls.acl_plugin.enable_intf_counters = True
 
     @classmethod
     def tearDownClass(cls):
-        reply = cls.vapi.papi.acl_stats_intf_counters_enable(enable=0)
+        cls.acl_plugin.enable_intf_counters = False
         super(TestACLpluginL2L3, cls).tearDownClass()
 
     def tearDown(self):
@@ -122,17 +125,17 @@ class TestACLpluginL2L3(VppTestCase):
         super(TestACLpluginL2L3, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show l2patch"))
-        self.logger.info(self.vapi.cli("show classify tables"))
-        self.logger.info(self.vapi.cli("show l2fib verbose"))
-        self.logger.info(self.vapi.cli("show bridge-domain %s detail" %
-                                       self.bd_id))
-        self.logger.info(self.vapi.cli("show ip neighbors"))
+        self.logger.info(self.vclient.cli("show l2patch"))
+        self.logger.info(self.vclient.cli("show classify tables"))
+        self.logger.info(self.vclient.cli("show l2fib verbose"))
+        self.logger.info(self.vclient.cli("show bridge-domain %s detail" %
+                                          self.bd_id))
+        self.logger.info(self.vclient.cli("show ip neighbors"))
         cmd = "show acl-plugin sessions verbose 1"
-        self.logger.info(self.vapi.cli(cmd))
-        self.logger.info(self.vapi.cli("show acl-plugin acl"))
-        self.logger.info(self.vapi.cli("show acl-plugin interface"))
-        self.logger.info(self.vapi.cli("show acl-plugin tables"))
+        self.logger.info(self.vclient.cli(cmd))
+        self.logger.info(self.vclient.cli("show acl-plugin acl"))
+        self.logger.info(self.vclient.cli("show acl-plugin interface"))
+        self.logger.info(self.vclient.cli("show acl-plugin tables"))
 
     def create_stream(self, src_ip_if, dst_ip_if, reverse, packet_sizes,
                       is_ip6, expect_blocked, expect_established,
@@ -143,7 +146,7 @@ class TestACLpluginL2L3(VppTestCase):
         permit_and_reflect_rules = []
         total_packet_count = 8
         for i in range(0, total_packet_count):
-            modulo = (i//2) % 2
+            modulo = (i // 2) % 2
             icmp_type_delta = i % 2
             icmp_code = i
             is_udp_packet = (modulo == 0)
@@ -231,7 +234,7 @@ class TestACLpluginL2L3(VppTestCase):
                          ulp /
                          Raw(payload))
                 else:
-                    ulp_l4 = ICMP(type=8 - 8*icmp_type_delta, code=icmp_code)
+                    ulp_l4 = ICMP(type=8 - 8 * icmp_type_delta, code=icmp_code)
                     ulp = ulp_l4
                     p = (Ether(dst=dst_mac, src=src_mac) /
                          IP(src=src_ip4, dst=dst_ip4) /
@@ -368,15 +371,15 @@ class TestACLpluginL2L3(VppTestCase):
 
         # Add a few ACLs made from shuffled rules
         shuffle(all_rules)
-        acl1 = VppAcl(self, rules=all_rules[::2], tag="shuffle 1. acl")
+        acl1 = VppAcl(self.vclient, rules=all_rules[::2], tag="shuffle 1. acl")
         acl1.add_vpp_config()
 
         shuffle(all_rules)
-        acl2 = VppAcl(self, rules=all_rules[::3], tag="shuffle 2. acl")
+        acl2 = VppAcl(self.vclient, rules=all_rules[::3], tag="shuffle 2. acl")
         acl2.add_vpp_config()
 
         shuffle(all_rules)
-        acl3 = VppAcl(self, rules=all_rules[::2], tag="shuffle 3. acl")
+        acl3 = VppAcl(self.vclient, rules=all_rules[::2], tag="shuffle 3. acl")
         acl3.add_vpp_config()
 
         # apply the shuffle ACLs in front
@@ -400,13 +403,13 @@ class TestACLpluginL2L3(VppTestCase):
         # change the ACLs a few times
         for i in range(1, 10):
             shuffle(all_rules)
-            acl1.modify_vpp_config(all_rules[::1+(i % 2)])
+            acl1.modify_vpp_config(all_rules[::1 + (i % 2)])
 
             shuffle(all_rules)
-            acl2.modify_vpp_config(all_rules[::1+(i % 3)])
+            acl2.modify_vpp_config(all_rules[::1 + (i % 3)])
 
             shuffle(all_rules)
-            acl3.modify_vpp_config(all_rules[::1+(i % 5)])
+            acl3.modify_vpp_config(all_rules[::1 + (i % 5)])
 
         # restore to how it was before and clean up
         acl_if.n_input = saved_n_input
@@ -423,9 +426,9 @@ class TestACLpluginL2L3(VppTestCase):
         r_permit = stream_dict['permit_rules']
         r_permit_reflect = stream_dict['permit_and_reflect_rules']
         r_action = r_permit_reflect if is_reflect else r
-        action_acl = VppAcl(self, rules=r_action, tag="act. acl")
+        action_acl = VppAcl(self.vclient, rules=r_action, tag="act. acl")
         action_acl.add_vpp_config()
-        permit_acl = VppAcl(self, rules=r_permit, tag="perm. acl")
+        permit_acl = VppAcl(self.vclient, rules=r_permit, tag="perm. acl")
         permit_acl.add_vpp_config()
 
         return {'L2': action_acl if test_l2_action else permit_acl,
@@ -448,16 +451,28 @@ class TestACLpluginL2L3(VppTestCase):
         n_input_l3 = 0 if bridged_to_routed else 1
         n_input_l2 = 1 if bridged_to_routed else 0
 
-        acl_if_pg2 = VppAclInterface(self, sw_if_index=self.pg2.sw_if_index,
-                                     n_input=n_input_l3, acls=[acl_idx['L3']])
+        acl_if_pg2 = VppAclInterface(
+            self.vclient,
+            sw_if_index=self.pg2.sw_if_index,
+            n_input=n_input_l3,
+            acls=[
+                acl_idx['L3']])
         acl_if_pg2.add_vpp_config()
 
-        acl_if_pg0 = VppAclInterface(self, sw_if_index=self.pg0.sw_if_index,
-                                     n_input=n_input_l2, acls=[acl_idx['L2']])
+        acl_if_pg0 = VppAclInterface(
+            self.vclient,
+            sw_if_index=self.pg0.sw_if_index,
+            n_input=n_input_l2,
+            acls=[
+                acl_idx['L2']])
         acl_if_pg0.add_vpp_config()
 
-        acl_if_pg1 = VppAclInterface(self, sw_if_index=self.pg1.sw_if_index,
-                                     n_input=n_input_l2, acls=[acl_idx['L2']])
+        acl_if_pg1 = VppAclInterface(
+            self.vclient,
+            sw_if_index=self.pg1.sw_if_index,
+            n_input=n_input_l2,
+            acls=[
+                acl_idx['L2']])
         acl_if_pg1.add_vpp_config()
 
         self.applied_acl_shuffle(acl_if_pg0)
@@ -506,19 +521,31 @@ class TestACLpluginL2L3(VppTestCase):
         else:
             outbound_l3_acl = acl_idx_rev['L3']
 
-        acl_if_pg2 = VppAclInterface(self, sw_if_index=self.pg2.sw_if_index,
-                                     n_input=1,
-                                     acls=[inbound_l3_acl, outbound_l3_acl])
+        acl_if_pg2 = VppAclInterface(
+            self.vclient,
+            sw_if_index=self.pg2.sw_if_index,
+            n_input=1,
+            acls=[
+                inbound_l3_acl,
+                outbound_l3_acl])
         acl_if_pg2.add_vpp_config()
 
-        acl_if_pg0 = VppAclInterface(self, sw_if_index=self.pg0.sw_if_index,
-                                     n_input=1,
-                                     acls=[inbound_l2_acl, outbound_l2_acl])
+        acl_if_pg0 = VppAclInterface(
+            self.vclient,
+            sw_if_index=self.pg0.sw_if_index,
+            n_input=1,
+            acls=[
+                inbound_l2_acl,
+                outbound_l2_acl])
         acl_if_pg0.add_vpp_config()
 
-        acl_if_pg1 = VppAclInterface(self, sw_if_index=self.pg1.sw_if_index,
-                                     n_input=1,
-                                     acls=[inbound_l2_acl, outbound_l2_acl])
+        acl_if_pg1 = VppAclInterface(
+            self.vclient,
+            sw_if_index=self.pg1.sw_if_index,
+            n_input=1,
+            acls=[
+                inbound_l2_acl,
+                outbound_l2_acl])
         acl_if_pg1.add_vpp_config()
 
         self.applied_acl_shuffle(acl_if_pg0)
@@ -535,7 +562,8 @@ class TestACLpluginL2L3(VppTestCase):
                                           is_reflect, add_eh)
 
     def verify_acl_packet_count(self, acl_idx, packet_count):
-        matches = self.statistics.get_counter('/acl/%d/matches' % acl_idx)
+        matches = self.vclient.statistics.get_counter(
+            '/acl/%d/matches' % acl_idx)
         self.logger.info("stat seg for ACL %d: %s" % (acl_idx, repr(matches)))
         total_count = 0
         for p in matches[0]:
@@ -629,19 +657,19 @@ class TestACLpluginL2L3(VppTestCase):
         """ ACL plugin prepare"""
         if not self.vpp_dead:
             cmd = "set acl-plugin session timeout udp idle 2000"
-            self.logger.info(self.vapi.ppcli(cmd))
+            self.logger.info(self.vclient.ppcli(cmd))
             # uncomment to not skip past the routing header
             # and watch the EH tests fail
-            # self.logger.info(self.vapi.ppcli(
+            # self.logger.info(self.vclient.ppcli(
             #    "set acl-plugin skip-ipv6-extension-header 43 0"))
             # uncomment to test the session limit (stateful tests will fail)
-            # self.logger.info(self.vapi.ppcli(
+            # self.logger.info(self.vclient.ppcli(
             #    "set acl-plugin session table max-entries 1"))
             # new datapath is the default, but just in case
-            # self.logger.info(self.vapi.ppcli(
+            # self.logger.info(self.vclient.ppcli(
             #    "set acl-plugin l2-datapath new"))
             # If you want to see some tests fail, uncomment the next line
-            # self.logger.info(self.vapi.ppcli(
+            # self.logger.info(self.vclient.ppcli(
             #    "set acl-plugin l2-datapath old"))
 
     def test_0001_ip6_irb_1(self):
