@@ -128,6 +128,46 @@ esp_aad_fill (u8 * data, const esp_header_t * esp, const ipsec_sa_t * sa)
     }
 }
 
+/* Special case to drop or hand off packets for sync/async modes.
+ *
+ * Different than sync mode, async mode only enqueue drop or hand-off packets
+ * to next nodes.
+ */
+always_inline void
+esp_set_next_index (int is_async, u32 * from, u16 * nexts, u32 bi,
+		    u16 * drop_index, u16 drop_next, u16 * next)
+{
+  if (is_async)
+    {
+      from[*drop_index] = bi;
+      nexts[*drop_index] = drop_next;
+      *drop_index += 1;
+    }
+  else
+    next[0] = drop_next;
+}
+
+/* when submitting a frame is failed, drop all buffers in the frame */
+always_inline void
+esp_async_recycle_failed_submit (vnet_crypto_async_frame_t * f,
+				 vlib_buffer_t ** b, u32 * from, u16 * nexts,
+				 u16 * n_dropped, u16 drop_next_index,
+				 vlib_error_t err)
+{
+  u32 n_drop = f->n_elts;
+  u32 *bi = f->buffer_indices;
+  b -= n_drop;
+  while (n_drop--)
+    {
+      b[0]->error = err;
+      esp_set_next_index (1, from, nexts, bi[0], n_dropped, drop_next_index,
+			  NULL);
+      bi++;
+      b++;
+    }
+  vnet_crypto_async_reset_frame (f);
+}
+
 /**
  * The post data structure to for esp_encrypt/decrypt_inline to write to
  * vib_buffer_t opaque unused field, and for post nodes to pick up after
