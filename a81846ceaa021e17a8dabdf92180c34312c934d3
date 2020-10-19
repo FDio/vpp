@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3801d459_47a915a8",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-10-19T13:15:17Z",
+      "side": 1,
+      "message": "why you dont use clib_sysfs_read()?",
+      "revId": "a81846ceaa021e17a8dabdf92180c34312c934d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
