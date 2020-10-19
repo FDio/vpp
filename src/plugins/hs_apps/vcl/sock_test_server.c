@@ -284,6 +284,8 @@ new_client (void)
     stfail ("new_client accept()");
 
   stinf ("Got a connection -- fd = %d (0x%08x)!\n", client_fd, client_fd);
+  if (fcntl (client_fd, F_SETFL, O_NONBLOCK) < 0)
+    stfail ("fcntl()");
 
   conn->fd = client_fd;
 
