@@ -48,7 +48,7 @@ do {							\
 #define CLIB_SPINLOCK_IS_LOCKED(_p) (*(_p))->lock
 #define CLIB_SPINLOCK_ASSERT_LOCKED(_p) ASSERT(CLIB_SPINLOCK_IS_LOCKED((_p)))
 
-typedef struct
+struct clib_spinlock_s
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 lock;
@@ -57,7 +57,9 @@ typedef struct
   uword thread_index;
   void *frame_address;
 #endif
-} *clib_spinlock_t;
+};
+
+typedef struct clib_spinlock_s *clib_spinlock_t;
 
 static inline void
 clib_spinlock_init (clib_spinlock_t * p)
