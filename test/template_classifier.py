@@ -12,7 +12,7 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, TCP
 from scapy.layers.inet6 import IPv6
-from util import ppp
+from vpp_pom.util import ppp
 
 
 class TestClassifier(VppTestCase):
@@ -89,14 +89,14 @@ class TestClassifier(VppTestCase):
         """Run standard test teardown and acl related log."""
         if self.af is not None and not self.vpp_dead:
             if self.af == AF_INET:
-                self.logger.info(self.vapi.ppcli("show inacl type ip4"))
-                self.logger.info(self.vapi.ppcli("show outacl type ip4"))
+                self.logger.info(self.vclient.ppcli("show inacl type ip4"))
+                self.logger.info(self.vclient.ppcli("show outacl type ip4"))
             elif self.af == AF_INET6:
-                self.logger.info(self.vapi.ppcli("show inacl type ip6"))
-                self.logger.info(self.vapi.ppcli("show outacl type ip6"))
+                self.logger.info(self.vclient.ppcli("show inacl type ip6"))
+                self.logger.info(self.vclient.ppcli("show outacl type ip6"))
 
-            self.logger.info(self.vapi.cli("show classify table verbose"))
-            self.logger.info(self.vapi.cli("show ip fib"))
+            self.logger.info(self.vclient.cli("show classify table verbose"))
+            self.logger.info(self.vclient.cli("show ip fib"))
 
             acl_active_table = 'ip_out'
             if self.af == AF_INET6:
@@ -314,7 +314,7 @@ class TestClassifier(VppTestCase):
         :param int data_offset:
         """
         mask_match, mask_match_len = self._resolve_mask_match(mask)
-        r = self.vapi.classify_add_del_table(
+        r = self.vclient.classify_add_del_table(
             is_add=1,
             mask=mask_match,
             mask_len=mask_match_len,
@@ -337,7 +337,7 @@ class TestClassifier(VppTestCase):
             - create(1) or delete(0)
         """
         mask_match, mask_match_len = self._resolve_mask_match(match)
-        r = self.vapi.classify_add_del_session(
+        r = self.vclient.classify_add_del_session(
             is_add=is_add,
             table_index=table_index,
             match=mask_match,
@@ -357,17 +357,17 @@ class TestClassifier(VppTestCase):
         """
         r = None
         if self.af == AF_INET:
-            r = self.vapi.input_acl_set_interface(
+            r = self.vclient.input_acl_set_interface(
                 is_add,
                 intf.sw_if_index,
                 ip4_table_index=table_index)
         elif self.af == AF_INET6:
-            r = self.vapi.input_acl_set_interface(
+            r = self.vclient.input_acl_set_interface(
                 is_add,
                 intf.sw_if_index,
                 ip6_table_index=table_index)
         else:
-            r = self.vapi.input_acl_set_interface(
+            r = self.vclient.input_acl_set_interface(
                 is_add,
                 intf.sw_if_index,
                 l2_table_index=table_index)
@@ -383,17 +383,17 @@ class TestClassifier(VppTestCase):
         """
         r = None
         if self.af == AF_INET:
-            r = self.vapi.output_acl_set_interface(
+            r = self.vclient.output_acl_set_interface(
                 is_add,
                 intf.sw_if_index,
                 ip4_table_index=table_index)
         elif self.af == AF_INET6:
-            r = self.vapi.output_acl_set_interface(
+            r = self.vclient.output_acl_set_interface(
                 is_add,
                 intf.sw_if_index,
                 ip6_table_index=table_index)
         else:
-            r = self.vapi.output_acl_set_interface(
+            r = self.vclient.output_acl_set_interface(
                 is_add,
                 intf.sw_if_index,
                 l2_table_index=table_index)
@@ -406,7 +406,7 @@ class TestClassifier(VppTestCase):
 
         """
         addr_len = 24
-        self.vapi.ip_add_del_route(dst_address=intf.local_ip4,
+        self.vclient.ip_add_del_route(dst_address=intf.local_ip4,
                                    dst_address_length=addr_len,
                                    next_hop_address=intf.remote_ip4,
                                    table_id=self.pbr_vrfid, is_add=is_add)
@@ -418,7 +418,7 @@ class TestClassifier(VppTestCase):
         :param int vrf_id: The FIB table / VRF ID to be verified.
         :return: 1 if the FIB table / VRF ID is configured, otherwise return 0.
         """
-        ip_fib_dump = self.vapi.ip_route_dump(vrf_id, False)
+        ip_fib_dump = self.vclient.ip_route_dump(vrf_id, False)
         vrf_count = len(ip_fib_dump)
         if vrf_count == 0:
             self.logger.info("IPv4 VRF ID %d is not configured" % vrf_id)

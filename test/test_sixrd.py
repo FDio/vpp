@@ -6,8 +6,8 @@ from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6
 from scapy.packet import Raw
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
 from socket import AF_INET, AF_INET6, inet_pton
 
 """ Test6rd is a subclass of  VPPTestCase classes.
@@ -32,8 +32,8 @@ class Test6RD(VppTestCase):
 
     def setUp(self):
         super(Test6RD, self).setUp()
-        t4 = VppIpTable(self, 10)
-        t6 = VppIpTable(self, 20, True)
+        t4 = VppIpTable(self.vclient, 10)
+        t6 = VppIpTable(self.vclient, 20, True)
 
         t4.add_vpp_config()
         t6.add_vpp_config()
@@ -89,7 +89,7 @@ class Test6RD(VppTestCase):
         p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
         p_ip6 = IPv6(src="1::1", dst="2002:AC10:0202::1", nh='UDP')
 
-        rv = self.vapi.ipip_6rd_add_tunnel(ip6_table_id=0,
+        rv = self.vclient.ipip_6rd_add_tunnel(ip6_table_id=0,
                                            ip4_table_id=0,
                                            ip6_prefix='2002::/16',
                                            ip4_prefix='0.0.0.0/0',
@@ -98,7 +98,7 @@ class Test6RD(VppTestCase):
 
         self.tunnel_index = rv.sw_if_index
 
-        self.vapi.cli("show ip6 fib")
+        self.vclient.cli("show ip6 fib")
         p_payload = UDP(sport=1234, dport=1234)
         p = (p_ether / p_ip6 / p_payload)
 
@@ -119,21 +119,21 @@ class Test6RD(VppTestCase):
                       proto='ipv6') / p_ip6)
 
         rx = self.send_and_assert_no_replies(self.pg0, p * 10)
-        self.vapi.ipip_6rd_del_tunnel(self.tunnel_index)
+        self.vclient.ipip_6rd_del_tunnel(self.tunnel_index)
 
     def test_6rd_ip6_to_ip4_vrf(self):
         """ ip6 -> ip4 (encap) 6rd VRF test """
         p_ether = Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
         p_ip6 = IPv6(src="1::1", dst="2002:AC10:0402::1", nh='UDP')
 
-        rv = self.vapi.ipip_6rd_add_tunnel(ip6_table_id=20, ip4_table_id=10,
+        rv = self.vclient.ipip_6rd_add_tunnel(ip6_table_id=20, ip4_table_id=10,
                                            ip6_prefix='2002::/16',
                                            ip4_prefix='0.0.0.0/0',
                                            ip4_src=self.pg2.local_ip4,
                                            security_check=True)
         self.tunnel_index = rv.sw_if_index
 
-        self.vapi.cli("show ip6 fib")
+        self.vclient.cli("show ip6 fib")
         p_payload = UDP(sport=1234, dport=1234)
         p = (p_ether / p_ip6 / p_payload)
 
@@ -154,20 +154,20 @@ class Test6RD(VppTestCase):
                       proto='ipv6') / p_ip6)
 
         rx = self.send_and_assert_no_replies(self.pg0, p * 10)
-        self.vapi.ipip_6rd_del_tunnel(self.tunnel_index)
+        self.vclient.ipip_6rd_del_tunnel(self.tunnel_index)
 
     def test_6rd_ip4_to_ip6(self):
         """ ip4 -> ip6 (decap) 6rd test """
 
-        rv = self.vapi.ipip_6rd_add_tunnel(ip6_table_id=0,
+        rv = self.vclient.ipip_6rd_add_tunnel(ip6_table_id=0,
                                            ip4_table_id=0,
                                            ip6_prefix='2002::/16',
                                            ip4_prefix='0.0.0.0/0',
                                            ip4_src=self.pg0.local_ip4,
                                            security_check=True)
         self.tunnel_index = rv.sw_if_index
-        rv = self.vapi.ipip_6rd_del_tunnel(rv.sw_if_index)
-        rv = self.vapi.ipip_6rd_add_tunnel(ip6_table_id=0,
+        rv = self.vclient.ipip_6rd_del_tunnel(rv.sw_if_index)
+        rv = self.vclient.ipip_6rd_add_tunnel(ip6_table_id=0,
                                            ip4_table_id=0,
                                            ip6_prefix='2002::/16',
                                            ip4_prefix='0.0.0.0/0',
@@ -188,27 +188,27 @@ class Test6RD(VppTestCase):
         rx = self.send_and_expect(self.pg0, p * 10, self.pg1)
         for p in rx:
             self.validate_4in6(p, p_reply)
-        self.vapi.ipip_6rd_del_tunnel(self.tunnel_index)
+        self.vclient.ipip_6rd_del_tunnel(self.tunnel_index)
 
     def test_6rd_ip4_to_ip6_vrf(self):
         """ ip4 -> ip6 (decap) 6rd VRF test """
 
-        rv = self.vapi.ipip_6rd_add_tunnel(ip6_table_id=20,
+        rv = self.vclient.ipip_6rd_add_tunnel(ip6_table_id=20,
                                            ip4_table_id=10,
                                            ip6_prefix='2002::/16',
                                            ip4_prefix='0.0.0.0/0',
                                            ip4_src=self.pg2.local_ip4,
                                            security_check=True)
         self.tunnel_index = rv.sw_if_index
-        rv = self.vapi.ipip_6rd_del_tunnel(rv.sw_if_index)
-        rv = self.vapi.ipip_6rd_add_tunnel(ip6_table_id=20,
+        rv = self.vclient.ipip_6rd_del_tunnel(rv.sw_if_index)
+        rv = self.vclient.ipip_6rd_add_tunnel(ip6_table_id=20,
                                            ip4_table_id=10,
                                            ip6_prefix='2002::/16',
                                            ip4_prefix='0.0.0.0/0',
                                            ip4_src=self.pg2.local_ip4,
                                            security_check=True)
         self.tunnel_index = rv.sw_if_index
-        self.vapi.sw_interface_set_table(self.tunnel_index, 1, 20)
+        self.vclient.sw_interface_set_table(self.tunnel_index, 1, 20)
 
         p_ip6 = (IPv6(src="2002:AC10:0402::1", dst=self.pg3.remote_ip6) /
                  UDP(sport=1234, dport=1234))
@@ -223,21 +223,21 @@ class Test6RD(VppTestCase):
         rx = self.send_and_expect(self.pg2, p * 10, self.pg3)
         for p in rx:
             self.validate_4in6(p, p_reply)
-        self.vapi.sw_interface_set_table(self.tunnel_index, 1, 0)
-        self.vapi.ipip_6rd_del_tunnel(self.tunnel_index)
+        self.vclient.sw_interface_set_table(self.tunnel_index, 1, 0)
+        self.vclient.ipip_6rd_del_tunnel(self.tunnel_index)
 
     def test_6rd_ip4_to_ip6_multiple(self):
         """ ip4 -> ip6 (decap) 6rd test """
 
         self.tunnel_index = []
-        rv = self.vapi.ipip_6rd_add_tunnel(ip6_table_id=0,
+        rv = self.vclient.ipip_6rd_add_tunnel(ip6_table_id=0,
                                            ip4_table_id=0,
                                            ip6_prefix='2002::/16',
                                            ip4_prefix='0.0.0.0/0',
                                            ip4_src=self.pg0.local_ip4,
                                            security_check=True)
         self.tunnel_index.append(rv.sw_if_index)
-        rv = self.vapi.ipip_6rd_add_tunnel(ip6_table_id=0,
+        rv = self.vclient.ipip_6rd_add_tunnel(ip6_table_id=0,
                                            ip4_table_id=0,
                                            ip6_prefix='2003::/16',
                                            ip4_prefix='0.0.0.0/0',
@@ -246,7 +246,7 @@ class Test6RD(VppTestCase):
 
         self.tunnel_index.append(rv.sw_if_index)
 
-        self.vapi.cli("show ip6 fib")
+        self.vclient.cli("show ip6 fib")
         p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
         p_ip4 = IP(src=self.pg1.remote_ip4, dst=self.pg0.local_ip4)
         p_ip6_1 = (IPv6(src="2002:AC10:0202::1", dst=self.pg1.remote_ip6) /
@@ -264,12 +264,12 @@ class Test6RD(VppTestCase):
         for p in rx:
             self.validate_4in6(p, p_ip6_2)
         for i in self.tunnel_index:
-            self.vapi.ipip_6rd_del_tunnel(i)
+            self.vclient.ipip_6rd_del_tunnel(i)
 
     def test_6rd_ip4_to_ip6_suffix(self):
         """ ip4 -> ip6 (decap) 6rd test """
 
-        rv = self.vapi.ipip_6rd_add_tunnel(ip6_table_id=0,
+        rv = self.vclient.ipip_6rd_add_tunnel(ip6_table_id=0,
                                            ip4_table_id=0,
                                            ip6_prefix='2002::/16',
                                            ip4_prefix='172.0.0.0/8',
@@ -277,7 +277,7 @@ class Test6RD(VppTestCase):
                                            security_check=True)
         self.tunnel_index = rv.sw_if_index
 
-        self.vapi.cli("show ip6 fib")
+        self.vclient.cli("show ip6 fib")
         p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
         p_ip4 = IP(src=self.pg1.remote_ip4, dst=self.pg0.local_ip4)
         p_ip6 = (IPv6(src="2002:1002:0200::1", dst=self.pg1.remote_ip6) /
@@ -287,12 +287,12 @@ class Test6RD(VppTestCase):
         rx = self.send_and_expect(self.pg0, p * 10, self.pg1)
         for p in rx:
             self.validate_4in6(p, p_ip6)
-        self.vapi.ipip_6rd_del_tunnel(self.tunnel_index)
+        self.vclient.ipip_6rd_del_tunnel(self.tunnel_index)
 
     def test_6rd_ip4_to_ip6_sec_check(self):
         """ ip4 -> ip6 (decap) security check 6rd test """
 
-        rv = self.vapi.ipip_6rd_add_tunnel(ip6_table_id=0,
+        rv = self.vclient.ipip_6rd_add_tunnel(ip6_table_id=0,
                                            ip4_table_id=0,
                                            ip6_prefix='2002::/16',
                                            ip4_prefix='0.0.0.0/0',
@@ -300,7 +300,7 @@ class Test6RD(VppTestCase):
                                            security_check=True)
         self.tunnel_index = rv.sw_if_index
 
-        self.vapi.cli("show ip6 fib")
+        self.vclient.cli("show ip6 fib")
         p_ip6 = (IPv6(src="2002:AC10:0202::1", dst=self.pg1.remote_ip6) /
                  UDP(sport=1234, dport=1234))
         p_ip6_fail = (IPv6(src="2002:DEAD:0202::1", dst=self.pg1.remote_ip6) /
@@ -322,12 +322,12 @@ class Test6RD(VppTestCase):
              IP(src=self.pg1.remote_ip4, dst=self.pg0.local_ip4) /
              p_ip6_fail)
         rx = self.send_and_assert_no_replies(self.pg0, p * 10)
-        self.vapi.ipip_6rd_del_tunnel(self.tunnel_index)
+        self.vclient.ipip_6rd_del_tunnel(self.tunnel_index)
 
     def test_6rd_bgp_tunnel(self):
         """ 6rd BGP tunnel """
 
-        rv = self.vapi.ipip_6rd_add_tunnel(ip6_table_id=0,
+        rv = self.vclient.ipip_6rd_add_tunnel(ip6_table_id=0,
                                            ip4_table_id=0,
                                            ip6_prefix='2002::/16',
                                            ip4_prefix='0.0.0.0/0',
@@ -336,12 +336,12 @@ class Test6RD(VppTestCase):
 
         self.tunnel_index = rv.sw_if_index
 
-        default_route = VppIpRoute(self, "DEAD::", 16,
+        default_route = VppIpRoute(self.vclient, "DEAD::", 16,
                                    [VppRoutePath("2002:0808:0808::",
                                                  self.tunnel_index)])
         default_route.add_vpp_config()
 
-        ip4_route = VppIpRoute(self, "8.0.0.0", 8,
+        ip4_route = VppIpRoute(self.vclient, "8.0.0.0", 8,
                                [VppRoutePath(self.pg1.remote_ip4, 0xFFFFFFFF)])
         ip4_route.add_vpp_config()
 
@@ -374,7 +374,7 @@ class Test6RD(VppTestCase):
             self.validate_4in6(p, p_reply)
         ip4_route.remove_vpp_config()
         default_route.remove_vpp_config()
-        self.vapi.ipip_6rd_del_tunnel(self.tunnel_index)
+        self.vclient.ipip_6rd_del_tunnel(self.tunnel_index)
 
 
 if __name__ == '__main__':

@@ -6,13 +6,13 @@ import socket
 from ipaddress import IPv4Address, IPv6Address, AddressValueError
 
 from framework import VppTestCase, VppTestRunner
-from util import ppp
+from vpp_pom.util import ppp
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath
 
 try:
     text_type = unicode
@@ -75,8 +75,8 @@ class TestECMP(VppTestCase):
         super(TestECMP, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show ip4 neighbors"))
-        self.logger.info(self.vapi.ppcli("show ip6 neighbors"))
+        self.logger.info(self.vclient.ppcli("show ip4 neighbors"))
+        self.logger.info(self.vclient.ppcli("show ip6 neighbors"))
 
     def get_ip_address(self, ip_addr_start, ip_prefix_len):
         """
@@ -187,13 +187,13 @@ class TestECMP(VppTestCase):
                 paths.append(VppRoutePath(nh_host_ip,
                                           pg_if.sw_if_index))
 
-        rip = VppIpRoute(self, dst_ip_net, dst_prefix_len, paths)
+        rip = VppIpRoute(self.vclient, dst_ip_net, dst_prefix_len, paths)
         rip.add_vpp_config()
         self.logger.info("Route via %s on %s created" %
                          (nh_host_ip, pg_if.name))
 
-        self.logger.debug(self.vapi.ppcli("show ip fib"))
-        self.logger.debug(self.vapi.ppcli("show ip6 fib"))
+        self.logger.debug(self.vclient.ppcli("show ip fib"))
+        self.logger.debug(self.vclient.ppcli("show ip6 fib"))
 
     def test_ip_ecmp(self):
         """ IP equal-cost multi-path routing test """

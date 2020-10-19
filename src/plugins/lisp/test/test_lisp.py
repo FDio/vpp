@@ -12,7 +12,7 @@ from scapy.layers.inet6 import IPv6
 from framework import VppTestCase, VppTestRunner
 from lisp import VppLocalMapping, VppLispAdjacency, VppLispLocator, \
     VppLispLocatorSet, VppRemoteMapping, LispRemoteLocator
-from util import ppp, ForeignAddressFactory
+from vpp_pom.util import ppp, ForeignAddressFactory
 
 # From py_lispnetworking.lisp.py:  # GNU General Public License v2.0
 
@@ -151,7 +151,7 @@ class TestLisp(VppTestCase):
 
     def setUp(self):
         super(TestLisp, self).setUp()
-        self.vapi.lisp_enable_disable(is_enable=1)
+        self.vclient.lisp_enable_disable(is_enable=1)
 
     def test_lisp_basic_encap(self):
         """Test case for basic encapsulation"""
@@ -197,7 +197,7 @@ class TestLispUT(VppTestCase):
 
     def test_fib(self):
         """ LISP Unit Tests """
-        error = self.vapi.cli("test lisp cp")
+        error = self.vclient.cli("test lisp cp")
 
         if error:
             self.logger.critical(error)

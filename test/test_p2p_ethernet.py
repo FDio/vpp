@@ -10,9 +10,9 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner
-from vpp_sub_interface import VppP2PSubint
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_pom.vpp_sub_interface import VppP2PSubint
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import mac_pton
 
 
@@ -37,11 +37,11 @@ class P2PEthernetAPI(VppTestCase):
         super(P2PEthernetAPI, cls).tearDownClass()
 
     def create_p2p_ethernet(self, parent_if, sub_id, remote_mac):
-        p2p = VppP2PSubint(self, parent_if, sub_id, mac_pton(remote_mac))
+        p2p = VppP2PSubint(self.vclient, parent_if, sub_id, mac_pton(remote_mac))
         self.p2p_sub_ifs.append(p2p)
 
     def delete_p2p_ethernet(self, parent_if, remote_mac):
-        self.vapi.p2p_ethernet_del(parent_if.sw_if_index,
+        self.vclient.p2p_ethernet_del(parent_if.sw_if_index,
                                    mac_pton(remote_mac))
 
     def test_api(self):
@@ -50,7 +50,7 @@ class P2PEthernetAPI(VppTestCase):
 
         self.create_p2p_ethernet(self.pg0, 1, "de:ad:00:00:00:01")
         self.create_p2p_ethernet(self.pg0, 2, "de:ad:00:00:00:02")
-        intfs = self.vapi.cli("show interface")
+        intfs = self.vclient.cli("show interface")
 
         self.assertIn('pg0.1', intfs)
         self.assertIn('pg0.2', intfs)
@@ -58,12 +58,12 @@ class P2PEthernetAPI(VppTestCase):
 
         # create pg2.5 subif
         self.create_p2p_ethernet(self.pg0, 5, "de:ad:00:00:00:ff")
-        intfs = self.vapi.cli("show interface")
+        intfs = self.vclient.cli("show interface")
         self.assertIn('pg0.5', intfs)
         # delete pg2.5 subif
         self.delete_p2p_ethernet(self.pg0, "de:ad:00:00:00:ff")
 
-        intfs = self.vapi.cli("show interface")
+        intfs = self.vclient.cli("show interface")
 
         self.assertIn('pg0.1', intfs)
         self.assertIn('pg0.2', intfs)
@@ -83,7 +83,7 @@ class P2PEthernetAPI(VppTestCase):
             try:
                 macs.append(':'.join(re.findall('..', '{:02x}'.format(
                     mac+i))))
-                self.vapi.p2p_ethernet_add(self.pg2.sw_if_index,
+                self.vclient.p2p_ethernet_add(self.pg2.sw_if_index,
                                            mac_pton(macs[i-1]),
                                            i)
             except Exception:
@@ -91,7 +91,7 @@ class P2PEthernetAPI(VppTestCase):
                     i, macs[i-1]))
                 raise
 
-        intfs = self.vapi.cli("show interface").split("\n")
+        intfs = self.vclient.cli("show interface").split("\n")
         count = 0
         for intf in intfs:
             if intf.startswith('pg2.'):
@@ -143,7 +143,7 @@ class P2PEthernetIPV6(VppTestCase):
         self.p2p_sub_ifs.append(
             self.create_p2p_ethernet(self.pg0, 2,
                                      self.pg0._remote_hosts[1].mac))
-        self.vapi.cli("trace add p2p-ethernet-input 50")
+        self.vclient.cli("trace add p2p-ethernet-input 50")
 
     def tearDown(self):
         while len(self.p2p_sub_ifs):
@@ -153,7 +153,7 @@ class P2PEthernetIPV6(VppTestCase):
         super(P2PEthernetIPV6, self).tearDown()
 
     def create_p2p_ethernet(self, parent_if, sub_id, remote_mac):
-        p2p = VppP2PSubint(self, parent_if, sub_id, mac_pton(remote_mac))
+        p2p = VppP2PSubint(self.vclient, parent_if, sub_id, mac_pton(remote_mac))
         p2p.admin_up()
         p2p.config_ip6()
         p2p.disable_ipv6_ra()
@@ -162,7 +162,7 @@ class P2PEthernetIPV6(VppTestCase):
     def delete_p2p_ethernet(self, p2p):
         p2p.unconfig_ip6()
         p2p.admin_down()
-        self.vapi.p2p_ethernet_del(p2p.parent.sw_if_index,
+        self.vclient.p2p_ethernet_del(p2p.parent.sw_if_index,
                                    p2p.p2p_remote_mac)
 
     def create_stream(self, src_mac=None, dst_mac=None,
@@ -190,7 +190,7 @@ class P2PEthernetIPV6(VppTestCase):
         """standard routing without p2p subinterfaces"""
         self.logger.info("FFP_TEST_START_0001")
 
-        route_8000 = VppIpRoute(self, "8000::", 64,
+        route_8000 = VppIpRoute(self.vclient, "8000::", 64,
                                 [VppRoutePath(self.pg0.remote_ip6,
                                               self.pg0.sw_if_index)])
         route_8000.add_vpp_config()
@@ -208,7 +208,7 @@ class P2PEthernetIPV6(VppTestCase):
         """receive ipv6 packet via p2p subinterface"""
         self.logger.info("FFP_TEST_START_0002")
 
-        route_9001 = VppIpRoute(self, "9001::", 64,
+        route_9001 = VppIpRoute(self.vclient, "9001::", 64,
                                 [VppRoutePath(self.pg1.remote_ip6,
                                               self.pg1.sw_if_index)])
         route_9001.add_vpp_config()
@@ -231,7 +231,7 @@ class P2PEthernetIPV6(VppTestCase):
 
         self.pg0.config_ip6()
 
-        route_3 = VppIpRoute(self, "9000::", 64,
+        route_3 = VppIpRoute(self.vclient, "9000::", 64,
                              [VppRoutePath(self.pg1._remote_hosts[0].ip6,
                                            self.pg1.sw_if_index)])
         route_3.add_vpp_config()
@@ -254,7 +254,7 @@ class P2PEthernetIPV6(VppTestCase):
         """drop rx packet not matching p2p subinterface"""
         self.logger.info("FFP_TEST_START_0004")
 
-        route_9001 = VppIpRoute(self, "9000::", 64,
+        route_9001 = VppIpRoute(self.vclient, "9000::", 64,
                                 [VppRoutePath(self.pg1._remote_hosts[0].ip6,
                                               self.pg1.sw_if_index)])
         route_9001.add_vpp_config()
@@ -273,16 +273,16 @@ class P2PEthernetIPV6(VppTestCase):
         """send packet via p2p subinterface"""
         self.logger.info("FFP_TEST_START_0005")
 
-        route_8000 = VppIpRoute(self, "8000::", 64,
+        route_8000 = VppIpRoute(self.vclient, "8000::", 64,
                                 [VppRoutePath(self.pg0.remote_ip6,
                                               self.pg0.sw_if_index)])
         route_8000.add_vpp_config()
-        route_8001 = VppIpRoute(self, "8001::", 64,
+        route_8001 = VppIpRoute(self.vclient, "8001::", 64,
                                 [VppRoutePath(
                                     self.p2p_sub_ifs[0].remote_ip6,
                                     self.p2p_sub_ifs[0].sw_if_index)])
         route_8001.add_vpp_config()
-        route_8002 = VppIpRoute(self, "8002::", 64,
+        route_8002 = VppIpRoute(self.vclient, "8002::", 64,
                                 [VppRoutePath(
                                     self.p2p_sub_ifs[1].remote_ip6,
                                     self.p2p_sub_ifs[1].sw_if_index)])
@@ -360,7 +360,7 @@ class P2PEthernetIPV4(VppTestCase):
         self.p2p_sub_ifs.append(
             self.create_p2p_ethernet(self.pg0, 2,
                                      self.pg0._remote_hosts[1].mac))
-        self.vapi.cli("trace add p2p-ethernet-input 50")
+        self.vclient.cli("trace add p2p-ethernet-input 50")
 
     def tearDown(self):
         while len(self.p2p_sub_ifs):
@@ -390,7 +390,7 @@ class P2PEthernetIPV4(VppTestCase):
         return dst_if.get_capture(count)
 
     def create_p2p_ethernet(self, parent_if, sub_id, remote_mac):
-        p2p = VppP2PSubint(self, parent_if, sub_id, mac_pton(remote_mac))
+        p2p = VppP2PSubint(self.vclient, parent_if, sub_id, mac_pton(remote_mac))
         p2p.admin_up()
         p2p.config_ip4()
         return p2p
@@ -398,14 +398,14 @@ class P2PEthernetIPV4(VppTestCase):
     def delete_p2p_ethernet(self, p2p):
         p2p.unconfig_ip4()
         p2p.admin_down()
-        self.vapi.p2p_ethernet_del(p2p.parent.sw_if_index,
+        self.vclient.p2p_ethernet_del(p2p.parent.sw_if_index,
                                    p2p.p2p_remote_mac)
 
     def test_ip4_rx_p2p_subif(self):
         """receive ipv4 packet via p2p subinterface"""
         self.logger.info("FFP_TEST_START_0002")
 
-        route_9000 = VppIpRoute(self, "9.0.0.0", 16,
+        route_9000 = VppIpRoute(self.vclient, "9.0.0.0", 16,
                                 [VppRoutePath(self.pg1.remote_ip4,
                                               self.pg1.sw_if_index)])
         route_9000.add_vpp_config()
@@ -427,7 +427,7 @@ class P2PEthernetIPV4(VppTestCase):
         """route rx packet not matching p2p subinterface"""
         self.logger.info("FFP_TEST_START_0003")
 
-        route_9001 = VppIpRoute(self, "9.0.0.0", 24,
+        route_9001 = VppIpRoute(self.vclient, "9.0.0.0", 24,
                                 [VppRoutePath(self.pg1.remote_ip4,
                                               self.pg1.sw_if_index)])
         route_9001.add_vpp_config()
@@ -448,17 +448,17 @@ class P2PEthernetIPV4(VppTestCase):
         """send ip4 packet via p2p subinterface"""
         self.logger.info("FFP_TEST_START_0005")
 
-        route_9100 = VppIpRoute(self, "9.1.0.100", 24,
+        route_9100 = VppIpRoute(self.vclient, "9.1.0.100", 24,
                                 [VppRoutePath(self.pg0.remote_ip4,
                                               self.pg0.sw_if_index,
                                               )])
         route_9100.add_vpp_config()
-        route_9200 = VppIpRoute(self, "9.2.0.100", 24,
+        route_9200 = VppIpRoute(self.vclient, "9.2.0.100", 24,
                                 [VppRoutePath(self.p2p_sub_ifs[0].remote_ip4,
                                               self.p2p_sub_ifs[0].sw_if_index,
                                               )])
         route_9200.add_vpp_config()
-        route_9300 = VppIpRoute(self, "9.3.0.100", 24,
+        route_9300 = VppIpRoute(self.vclient, "9.3.0.100", 24,
                                 [VppRoutePath(self.p2p_sub_ifs[1].remote_ip4,
                                               self.p2p_sub_ifs[1].sw_if_index
                                               )])

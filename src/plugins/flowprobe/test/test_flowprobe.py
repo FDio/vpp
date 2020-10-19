@@ -13,11 +13,11 @@ from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_object import VppObject
-from vpp_pg_interface import CaptureTimeoutError
-from util import ppp
+from vpp_pom.vpp_object import VppObject
+from vpp_pom.vpp_pg_interface import CaptureTimeoutError
+from vpp_pom.util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi.macaddress import mac_ntop
 from socket import inet_ntop
 from vpp_papi import VppEnum
@@ -55,35 +55,35 @@ class VppCFLOW(VppObject):
         if 'l4' in self._collect.lower():
             l4_flag = (VppEnum.vl_api_flowprobe_record_flags_t.
                        FLOWPROBE_RECORD_FLAG_L4)
-        self._test.vapi.flowprobe_params(
+        self._test.vclient.flowprobe_params(
             record_flags=(l2_flag | l3_flag | l4_flag),
             active_timer=self._active, passive_timer=self._passive)
         self.enable_flowprobe_feature()
-        self._test.vapi.cli("ipfix flush")
+        self._test.vclient.cli("ipfix flush")
         self._configured = True
 
     def remove_vpp_config(self):
         self.disable_exporter()
         self.disable_flowprobe_feature()
-        self._test.vapi.cli("ipfix flush")
+        self._test.vclient.cli("ipfix flush")
         self._configured = False
 
     def enable_exporter(self):
-        self._test.vapi.set_ipfix_exporter(
+        self._test.vclient.set_ipfix_exporter(
             collector_address=self._test.pg0.remote_ip4,
             src_address=self._test.pg0.local_ip4,
             path_mtu=self._mtu,
             template_interval=self._timeout)
 
     def enable_flowprobe_feature(self):
-        self._test.vapi.ppcli("flowprobe feature add-del %s %s" %
+        self._test.vclient.ppcli("flowprobe feature add-del %s %s" %
                               (self._intf, self._datapath))
 
     def disable_exporter(self):
-        self._test.vapi.cli("set ipfix exporter collector 0.0.0.0")
+        self._test.vclient.cli("set ipfix exporter collector 0.0.0.0")
 
     def disable_flowprobe_feature(self):
-        self._test.vapi.cli("flowprobe feature add-del %s %s disable" %
+        self._test.vclient.cli("flowprobe feature add-del %s %s disable" %
                             (self._intf, self._datapath))
 
     def object_id(self):
@@ -139,10 +139,10 @@ class MethodHolder(VppTestCase):
 
             # Create BD with MAC learning and unknown unicast flooding disabled
             # and put interfaces to this BD
-            cls.vapi.bridge_domain_add_del(bd_id=1, uu_flood=1, learn=1)
-            cls.vapi.sw_interface_set_l2_bridge(
+            cls.vclient.bridge_domain_add_del(bd_id=1, uu_flood=1, learn=1)
+            cls.vclient.sw_interface_set_l2_bridge(
                 rx_sw_if_index=cls.pg1._sw_if_index, bd_id=1)
-            cls.vapi.sw_interface_set_l2_bridge(
+            cls.vclient.sw_interface_set_l2_bridge(
                 rx_sw_if_index=cls.pg2._sw_if_index, bd_id=1)
 
             # Set up all interfaces
@@ -315,7 +315,7 @@ class MethodHolder(VppTestCase):
         self.logger.info("IPFIX: Waiting for CFLOW packet")
         deadline = time.time() + timeout
         counter = 0
-        # self.logger.debug(self.vapi.ppcli("show flow table"))
+        # self.logger.debug(self.vclient.ppcli("show flow table"))
         while True:
             counter += 1
             # sanity check
@@ -323,13 +323,13 @@ class MethodHolder(VppTestCase):
             time_left = deadline - time.time()
             try:
                 if time_left < 0 and expected:
-                    # self.logger.debug(self.vapi.ppcli("show flow table"))
+                    # self.logger.debug(self.vclient.ppcli("show flow table"))
                     raise CaptureTimeoutError(
                           "Packet did not arrive within timeout")
                 p = collector_intf.wait_for_packet(timeout=time_left)
             except CaptureTimeoutError:
                 if expected:
-                    # self.logger.debug(self.vapi.ppcli("show flow table"))
+                    # self.logger.debug(self.vclient.ppcli("show flow table"))
                     raise CaptureTimeoutError(
                           "Packet did not arrive within timeout")
                 else:
@@ -337,7 +337,7 @@ class MethodHolder(VppTestCase):
             if not expected:
                 raise CaptureTimeoutError("Packet arrived even not expected")
             self.assertEqual(p[Set].setID, set_id)
-            # self.logger.debug(self.vapi.ppcli("show flow table"))
+            # self.logger.debug(self.vclient.ppcli("show flow table"))
             self.logger.debug(ppp("IPFIX: Got packet:", p))
             break
         return p
@@ -420,7 +420,7 @@ class Flowprobe(MethodHolder):
                          layer='l2 l3 l4', active=2)
         ipfix.add_vpp_config()
 
-        route_9001 = VppIpRoute(self, "9.0.0.0", 24,
+        route_9001 = VppIpRoute(self.vclient, "9.0.0.0", 24,
                                 [VppRoutePath(self.pg8._remote_hosts[0].ip4,
                                               self.pg8.sw_if_index)])
         route_9001.add_vpp_config()
@@ -505,7 +505,7 @@ class Datapath(MethodHolder):
         ipfix.add_vpp_config()
 
         # template packet should arrive immediately
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         ipfix.verify_templates(timeout=3, count=1)
         self.collector.get_capture(1)
 
@@ -529,7 +529,7 @@ class Datapath(MethodHolder):
         capture = self.send_packets()
 
         # make sure the one packet we expect actually showed up
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         cflow = self.wait_for_cflow_packet(self.collector, templates[0])
         self.verify_cflow_data_detail(ipfix_decoder, capture, cflow,
                                       {2: 'packets', 256: 8})
@@ -555,7 +555,7 @@ class Datapath(MethodHolder):
         capture = self.send_packets()
 
         # make sure the one packet we expect actually showed up
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         cflow = self.wait_for_cflow_packet(self.collector, templates[0])
         self.verify_cflow_data_detail(ipfix_decoder, capture, cflow,
                                       {2: 'packets', 4: 17,
@@ -583,7 +583,7 @@ class Datapath(MethodHolder):
         capture = self.send_packets()
 
         # make sure the one packet we expect actually showed up
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         cflow = self.wait_for_cflow_packet(self.collector, templates[0])
         self.verify_cflow_data_detail(ipfix_decoder, capture, cflow,
                                       {2: 'packets', 7: 'sport', 11: 'dport'})
@@ -603,7 +603,7 @@ class Datapath(MethodHolder):
         ipfix.add_vpp_config()
 
         # template packet should arrive immediately
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         ipfix.verify_templates(timeout=3, count=1)
         self.collector.get_capture(1)
 
@@ -628,7 +628,7 @@ class Datapath(MethodHolder):
         capture = self.send_packets(src_if=self.pg3, dst_if=self.pg4)
 
         # make sure the one packet we expect actually showed up
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         cflow = self.wait_for_cflow_packet(self.collector, templates[0])
         self.verify_cflow_data_detail(ipfix_decoder, capture, cflow,
                                       {2: 'packets', 256: 8})
@@ -656,7 +656,7 @@ class Datapath(MethodHolder):
         capture = self.send_packets(src_if=self.pg3, dst_if=self.pg4)
 
         # make sure the one packet we expect actually showed up
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         cflow = self.wait_for_cflow_packet(self.collector, templates[0])
         self.verify_cflow_data_detail(ipfix_decoder, capture, cflow,
                                       {1: 'octets', 2: 'packets',
@@ -685,7 +685,7 @@ class Datapath(MethodHolder):
         capture = self.send_packets(src_if=self.pg3, dst_if=self.pg4)
 
         # make sure the one packet we expect actually showed up
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         cflow = self.wait_for_cflow_packet(self.collector, templates[0])
         self.verify_cflow_data_detail(ipfix_decoder, capture, cflow,
                                       {2: 'packets', 7: 'sport', 11: 'dport'})
@@ -730,7 +730,7 @@ class Datapath(MethodHolder):
         capture = self.send_packets(src_if=self.pg5, dst_if=self.pg6)
 
         # make sure the one packet we expect actually showed up
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         cflow = self.wait_for_cflow_packet(self.collector, templates[0])
         self.verify_cflow_data_detail(ipfix_decoder, capture, cflow,
                                       {2: 'packets', 256: 56710},
@@ -760,7 +760,7 @@ class Datapath(MethodHolder):
         capture = self.send_packets(src_if=self.pg5, dst_if=self.pg6)
 
         # make sure the one packet we expect actually showed up
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         cflow = self.wait_for_cflow_packet(self.collector, templates[0])
         self.verify_cflow_data_detail(ipfix_decoder, capture, cflow,
                                       {2: 'packets',
@@ -791,7 +791,7 @@ class Datapath(MethodHolder):
         capture = self.send_packets(src_if=self.pg5, dst_if=self.pg6)
 
         # make sure the one packet we expect actually showed up
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         cflow = self.wait_for_cflow_packet(self.collector, templates[0])
         self.verify_cflow_data_detail(ipfix_decoder, capture, cflow,
                                       {2: 'packets', 7: 'sport', 11: 'dport'},
@@ -820,7 +820,7 @@ class Datapath(MethodHolder):
         capture = self.send_packets()
 
         # make sure the one packet we expect actually showed up
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         cflow = self.wait_for_cflow_packet(self.collector, templates[1])
         self.verify_cflow_data_notimer(ipfix_decoder, capture, [cflow])
         self.collector.get_capture(4)
@@ -839,7 +839,7 @@ class Datapath(MethodHolder):
 
         ipfix_decoder = IPFIXDecoder()
         # template packet should arrive immediately
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         templates = ipfix.verify_templates(ipfix_decoder)
 
         self.create_stream(packets=6)
@@ -847,7 +847,7 @@ class Datapath(MethodHolder):
 
         # make sure the one packet we expect actually showed up
         cflows = []
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         cflows.append(self.wait_for_cflow_packet(self.collector,
                                                  templates[1]))
         cflows.append(self.wait_for_cflow_packet(self.collector,
@@ -888,7 +888,7 @@ class DisableIPFIX(MethodHolder):
         self.send_packets()
 
         # make sure the one packet we expect actually showed up
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         self.wait_for_cflow_packet(self.collector, templates[1])
         self.collector.get_capture(4)
 
@@ -899,7 +899,7 @@ class DisableIPFIX(MethodHolder):
         self.send_packets()
 
         # make sure no one packet arrived in 1 minute
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         self.wait_for_cflow_packet(self.collector, templates[1],
                                    expected=False)
         self.collector.get_capture(0)
@@ -938,19 +938,19 @@ class ReenableIPFIX(MethodHolder):
         self.send_packets()
 
         # make sure the one packet we expect actually showed up
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         self.wait_for_cflow_packet(self.collector, templates[1])
         self.collector.get_capture(4)
 
         # disable IPFIX
         ipfix.disable_exporter()
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         self.pg_enable_capture([self.collector])
 
         self.send_packets()
 
         # make sure no one packet arrived in active timer span
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         self.wait_for_cflow_packet(self.collector, templates[1],
                                    expected=False)
         self.collector.get_capture(0)
@@ -1005,7 +1005,7 @@ class DisableFP(MethodHolder):
         self.send_packets()
 
         # make sure the one packet we expect actually showed up
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         self.wait_for_cflow_packet(self.collector, templates[1])
         self.collector.get_capture(4)
 
@@ -1016,7 +1016,7 @@ class DisableFP(MethodHolder):
         self.send_packets()
 
         # make sure no one packet arrived in active timer span
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         self.wait_for_cflow_packet(self.collector, templates[1],
                                    expected=False)
         self.collector.get_capture(0)
@@ -1049,14 +1049,14 @@ class ReenableFP(MethodHolder):
 
         ipfix_decoder = IPFIXDecoder()
         # template packet should arrive immediately
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         templates = ipfix.verify_templates(ipfix_decoder, timeout=3)
 
         self.create_stream()
         self.send_packets()
 
         # make sure the one packet we expect actually showed up
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         self.wait_for_cflow_packet(self.collector, templates[1], 5)
         self.collector.get_capture(4)
 
@@ -1067,21 +1067,21 @@ class ReenableFP(MethodHolder):
         self.send_packets()
 
         # make sure no one packet arrived in active timer span
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         self.wait_for_cflow_packet(self.collector, templates[1], 5,
                                    expected=False)
         self.collector.get_capture(0)
 
         # enable FPP feature
         ipfix.enable_flowprobe_feature()
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         templates = ipfix.verify_templates(ipfix_decoder, timeout=3)
 
         self.send_packets()
 
         # make sure the next packets (templates and data) we expect actually
         # showed up
-        self.vapi.ipfix_flush()
+        self.vclient.ipfix_flush()
         self.wait_for_cflow_packet(self.collector, templates[1], 5)
         self.collector.get_capture(4)
 

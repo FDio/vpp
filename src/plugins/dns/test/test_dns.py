@@ -3,7 +3,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 from ipaddress import *
 
 import scapy.compat
@@ -71,21 +71,21 @@ class TestDns(VppTestCase):
         """ DNS Name Resolver Basic Functional Test """
 
         # Set up an upstream name resolver. We won't actually go there
-        self.vapi.dns_name_server_add_del(
+        self.vclient.dns_name_server_add_del(
             is_ip6=0, is_add=1, server_address=IPv4Address(u'8.8.8.8').packed)
 
         # Enable name resolution
-        self.vapi.dns_enable_disable(enable=1)
+        self.vclient.dns_enable_disable(enable=1)
 
         # Manually add a static dns cache entry
-        self.logger.info(self.vapi.cli("dns cache add bozo.clown.org 1.2.3.4"))
+        self.logger.info(self.vclient.cli("dns cache add bozo.clown.org 1.2.3.4"))
 
         # Test the binary API
-        rv = self.vapi.dns_resolve_name(name=b'bozo.clown.org')
+        rv = self.vclient.dns_resolve_name(name=b'bozo.clown.org')
         self.assertEqual(rv.ip4_address, IPv4Address(u'1.2.3.4').packed)
 
         # Configure 127.0.0.1/8 on the pg interface
-        self.vapi.sw_interface_add_del_address(
+        self.vclient.sw_interface_add_del_address(
             sw_if_index=self.pg0.sw_if_index,
             prefix="127.0.0.1/8")
 
@@ -101,7 +101,7 @@ class TestDns(VppTestCase):
         self.verify_capture(self.pg0, pkts)
 
         # Make sure that the cache contents are correct
-        str = self.vapi.cli("show dns cache verbose")
+        str = self.vclient.cli("show dns cache verbose")
         self.assertIn('1.2.3.4', str)
         self.assertIn('[P] no.clown.org:', str)
 

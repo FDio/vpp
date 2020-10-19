@@ -22,7 +22,7 @@ class TestBuffers(VppTestCase):
 
     def test_linearize(self):
         """ Chained Buffer Linearization """
-        error = self.vapi.cli("test chained-buffer-linearization")
+        error = self.vclient.cli("test chained-buffer-linearization")
 
         if error:
             self.logger.critical(error)

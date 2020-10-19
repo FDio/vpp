@@ -8,10 +8,10 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 
 from framework import VppTestCase, VppTestRunner
-from util import Host, ppp
-from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint, VppDot1ADSubint
-from vpp_gre_interface import VppGreInterface
-from vpp_vxlan_tunnel import VppVxlanTunnel
+from vpp_pom.util import Host, ppp
+from vpp_pom.vpp_sub_interface import L2_VTR_OP, VppDot1QSubint, VppDot1ADSubint
+from vpp_pom.vpp_gre_interface import VppGreInterface
+from vpp_pom.vpp_vxlan_tunnel import VppVxlanTunnel
 from collections import namedtuple
 from vpp_papi import VppEnum
 
@@ -33,11 +33,11 @@ class TestSpan(VppTestCase):
         cls.create_pg_interfaces(range(3))
 
         cls.bd_id = 55
-        cls.sub_if = VppDot1QSubint(cls, cls.pg0, 100)
-        cls.vlan_sub_if = VppDot1QSubint(cls, cls.pg2, 300)
+        cls.sub_if = VppDot1QSubint(cls.vclient, cls.pg0, 100)
+        cls.vlan_sub_if = VppDot1QSubint(cls.vclient, cls.pg2, 300)
         cls.vlan_sub_if.set_vtr(L2_VTR_OP.L2_POP_1, tag=300)
 
-        cls.qinq_sub_if = VppDot1ADSubint(cls, cls.pg2, 33, 400, 500)
+        cls.qinq_sub_if = VppDot1ADSubint(cls.vclient, cls.pg2, 33, 400, 500)
         cls.qinq_sub_if.set_vtr(L2_VTR_OP.L2_POP_2, outer=500, inner=400)
 
         # packet flows mapping pg0 -> pg1, pg2 -> pg3, etc.
@@ -56,7 +56,7 @@ class TestSpan(VppTestCase):
 
     def setUp(self):
         super(TestSpan, self).setUp()
-        self.vxlan = VppVxlanTunnel(self, src=self.pg2.local_ip4,
+        self.vxlan = VppVxlanTunnel(self.vclient, src=self.pg2.local_ip4,
                                     dst=self.pg2.remote_ip4, vni=1111)
         self.vxlan.add_vpp_config()
         self.reset_packet_infos()
@@ -65,14 +65,14 @@ class TestSpan(VppTestCase):
         super(TestSpan, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show interface span"))
+        self.logger.info(self.vclient.ppcli("show interface span"))
 
     def xconnect(self, a, b, is_add=1):
-        self.vapi.sw_interface_set_l2_xconnect(a, b, enable=is_add)
-        self.vapi.sw_interface_set_l2_xconnect(b, a, enable=is_add)
+        self.vclient.sw_interface_set_l2_xconnect(a, b, enable=is_add)
+        self.vclient.sw_interface_set_l2_xconnect(b, a, enable=is_add)
 
     def bridge(self, sw_if_index, is_add=1):
-        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=sw_if_index,
+        self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=sw_if_index,
                                              bd_id=self.bd_id, enable=is_add)
 
     def _remove_tag(self, packet, vlan, tag_type):
@@ -175,10 +175,10 @@ class TestSpan(VppTestCase):
         self.pg0.add_stream(pkts)
 
         # Enable SPAN on pg0 (mirrored to pg2)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.pg0.sw_if_index, self.pg2.sw_if_index)
 
-        self.logger.info(self.vapi.ppcli("show interface span"))
+        self.logger.info(self.vclient.ppcli("show interface span"))
         # Enable packet capturing and start packet sending
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -189,7 +189,7 @@ class TestSpan(VppTestCase):
         pg2_pkts = self.pg2.get_capture(n_pkts)
 
         # Disable SPAN on pg0 (mirrored to pg2)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.pg0.sw_if_index, self.pg2.sw_if_index, state=0)
         self.xconnect(self.pg0.sw_if_index, self.pg1.sw_if_index, is_add=0)
 
@@ -209,10 +209,10 @@ class TestSpan(VppTestCase):
         self.pg0.add_stream(pkts)
 
         # Enable SPAN on pg0 (mirrored to pg2)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.pg2.sw_if_index, is_l2=1)
 
-        self.logger.info(self.vapi.ppcli("show interface span"))
+        self.logger.info(self.vclient.ppcli("show interface span"))
         # Enable packet capturing and start packet sending
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -224,7 +224,7 @@ class TestSpan(VppTestCase):
         self.bridge(self.pg2.sw_if_index, is_add=0)
 
         # Disable SPAN on pg0 (mirrored to pg2)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.pg2.sw_if_index, state=0, is_l2=1)
         self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
 
@@ -234,7 +234,7 @@ class TestSpan(VppTestCase):
         """ SPAN l2 rx mirror into vxlan """
 
         self.sub_if.admin_up()
-        self.vapi.sw_interface_set_flags(self.vxlan.sw_if_index,
+        self.vclient.sw_interface_set_flags(self.vxlan.sw_if_index,
                                          flags=1)
 
         self.bridge(self.vxlan.sw_if_index, is_add=1)
@@ -246,10 +246,10 @@ class TestSpan(VppTestCase):
         self.pg0.add_stream(pkts)
 
         # Enable SPAN on pg0 sub if (mirrored to vxlan)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.vxlan.sw_if_index, is_l2=1)
 
-        self.logger.info(self.vapi.ppcli("show interface span"))
+        self.logger.info(self.vclient.ppcli("show interface span"))
         # Enable packet capturing and start packet sending
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -261,7 +261,7 @@ class TestSpan(VppTestCase):
 
         self.bridge(self.vxlan.sw_if_index, is_add=0)
         # Disable SPAN on pg0 sub if (mirrored to vxlan)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.vxlan.sw_if_index, state=0, is_l2=1)
         self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
         self.verify_capture(pg1_pkts, pg2_pkts)
@@ -271,7 +271,7 @@ class TestSpan(VppTestCase):
 
         self.sub_if.admin_up()
 
-        gre_if = VppGreInterface(self, self.pg2.local_ip4,
+        gre_if = VppGreInterface(self.vclient, self.pg2.local_ip4,
                                  self.pg2.remote_ip4,
                                  session=543,
                                  type=(VppEnum.vl_api_gre_tunnel_type_t.
@@ -290,7 +290,7 @@ class TestSpan(VppTestCase):
         self.pg0.add_stream(pkts)
 
         # Enable SPAN on pg0 sub if (mirrored to gre-erspan)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, gre_if.sw_if_index, is_l2=1)
 
         # Enable packet capturing and start packet sending
@@ -308,7 +308,7 @@ class TestSpan(VppTestCase):
         self.bridge(gre_if.sw_if_index, is_add=0)
 
         # Disable SPAN on pg0 sub if
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, gre_if.sw_if_index, state=0, is_l2=1)
         gre_if.remove_vpp_config()
         self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
@@ -320,7 +320,7 @@ class TestSpan(VppTestCase):
 
         self.sub_if.admin_up()
 
-        gre_if = VppGreInterface(self, self.pg2.local_ip4,
+        gre_if = VppGreInterface(self.vclient, self.pg2.local_ip4,
                                  self.pg2.remote_ip4,
                                  type=(VppEnum.vl_api_gre_tunnel_type_t.
                                        GRE_API_TUNNEL_TYPE_TEB))
@@ -328,7 +328,7 @@ class TestSpan(VppTestCase):
         gre_if.add_vpp_config()
         gre_if.admin_up()
 
-        gre_sub_if = VppDot1QSubint(self, gre_if, 500)
+        gre_sub_if = VppDot1QSubint(self.vclient, gre_if, 500)
         gre_sub_if.set_vtr(L2_VTR_OP.L2_POP_1, tag=500)
         gre_sub_if.admin_up()
 
@@ -342,7 +342,7 @@ class TestSpan(VppTestCase):
         self.pg0.add_stream(pkts)
 
         # Enable SPAN on pg0 sub if (mirrored to gre sub if)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, gre_sub_if.sw_if_index, is_l2=1)
 
         # Enable packet capturing and start packet sending
@@ -361,7 +361,7 @@ class TestSpan(VppTestCase):
         self.bridge(gre_sub_if.sw_if_index, is_add=0)
 
         # Disable SPAN on pg0 sub if
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, gre_sub_if.sw_if_index, state=0, is_l2=1)
         gre_if.remove_vpp_config()
         self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
@@ -383,7 +383,7 @@ class TestSpan(VppTestCase):
             self.pg0, self.pg_if_packet_sizes, do_dot1=True)
         self.pg0.add_stream(pkts)
 
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.vlan_sub_if.sw_if_index, is_l2=1)
 
         # Enable packet capturing and start packet sending
@@ -399,7 +399,7 @@ class TestSpan(VppTestCase):
 
         self.bridge(self.vlan_sub_if.sw_if_index, is_add=0)
         # Disable SPAN on pg0 sub if (mirrored to vxlan)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.vlan_sub_if.sw_if_index, state=0,
             is_l2=1)
         self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
@@ -421,7 +421,7 @@ class TestSpan(VppTestCase):
             self.pg0, self.pg_if_packet_sizes, do_dot1=True)
         self.pg0.add_stream(pkts)
 
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.qinq_sub_if.sw_if_index, is_l2=1)
 
         # Enable packet capturing and start packet sending
@@ -438,7 +438,7 @@ class TestSpan(VppTestCase):
 
         self.bridge(self.qinq_sub_if.sw_if_index, is_add=0)
         # Disable SPAN on pg0 sub if (mirrored to vxlan)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.qinq_sub_if.sw_if_index, state=0,
             is_l2=1)
         self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
@@ -458,10 +458,10 @@ class TestSpan(VppTestCase):
         self.pg0.add_stream(pkts)
 
         # Enable SPAN on pg1 (mirrored to pg2)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.pg1.sw_if_index, self.pg2.sw_if_index, is_l2=1, state=2)
 
-        self.logger.info(self.vapi.ppcli("show interface span"))
+        self.logger.info(self.vclient.ppcli("show interface span"))
         # Enable packet capturing and start packet sending
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -472,7 +472,7 @@ class TestSpan(VppTestCase):
         pg2_pkts = self.pg2.get_capture(n_pkts)
         self.bridge(self.pg2.sw_if_index, is_add=0)
         # Disable SPAN on pg0 (mirrored to pg2)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.pg1.sw_if_index, self.pg2.sw_if_index, state=0, is_l2=1)
         self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
 
@@ -495,9 +495,9 @@ class TestSpan(VppTestCase):
         self.pg1.add_stream(pg1_pkts)
 
         # Enable SPAN on pg0 (mirrored to pg2)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.pg2.sw_if_index, is_l2=1, state=3)
-        self.logger.info(self.vapi.ppcli("show interface span"))
+        self.logger.info(self.vclient.ppcli("show interface span"))
 
         # Enable packet capturing and start packet sending
         self.pg_enable_capture(self.pg_interfaces)
@@ -514,7 +514,7 @@ class TestSpan(VppTestCase):
 
         self.bridge(self.pg2.sw_if_index, is_add=0)
         # Disable SPAN on pg0 (mirrored to pg2)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.pg2.sw_if_index, state=0, is_l2=1)
         self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
 
@@ -527,9 +527,9 @@ class TestSpan(VppTestCase):
         self.bridge(self.pg2.sw_if_index)
 
         # Create bi-directional cross-connects between pg0 and pg1
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.sub_if.sw_if_index, bd_id=99, enable=1)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg1.sw_if_index, bd_id=99, enable=1)
 
         # Create incoming packet streams for packet-generator interfaces
@@ -541,9 +541,9 @@ class TestSpan(VppTestCase):
         self.pg1.add_stream(pg1_pkts)
 
         # Enable SPAN on pg0 (mirrored to pg2)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.pg2.sw_if_index, is_l2=1, state=3)
-        self.logger.info(self.vapi.ppcli("show interface span"))
+        self.logger.info(self.vclient.ppcli("show interface span"))
 
         # Enable packet capturing and start packet sending
         self.pg_enable_capture(self.pg_interfaces)
@@ -559,12 +559,12 @@ class TestSpan(VppTestCase):
         pg2_pkts = self.pg2.get_capture(pg2_expected)
 
         self.bridge(self.pg2.sw_if_index, is_add=0)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.sub_if.sw_if_index, bd_id=99, enable=0)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg1.sw_if_index, bd_id=99, enable=0)
         # Disable SPAN on pg0 (mirrored to pg2)
-        self.vapi.sw_interface_span_enable_disable(
+        self.vclient.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.pg2.sw_if_index, state=0, is_l2=1)
 
         self.verify_capture(pg0_pkts + pg1_pkts, pg2_pkts)

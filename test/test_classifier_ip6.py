@@ -9,7 +9,7 @@ from framework import VppTestCase, VppTestRunner
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet6 import IPv6, UDP, TCP
-from util import ppp
+from vpp_pom.util import ppp
 from template_classifier import TestClassifier
 
 

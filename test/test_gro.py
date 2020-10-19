@@ -16,8 +16,8 @@ from scapy.layers.inet import TCP, ICMP
 from scapy.data import ETH_P_IP, ETH_P_IPV6, ETH_P_ARP
 
 from framework import VppTestCase, VppTestRunner
-from vpp_object import VppObject
-from vpp_interface import VppInterface
+from vpp_pom.vpp_object import VppObject
+from vpp_pom.vpp_interface import VppInterface
 
 
 """ Test_gro is a subclass of VPPTestCase classes.

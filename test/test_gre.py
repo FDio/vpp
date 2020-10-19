@@ -10,14 +10,14 @@ from scapy.layers.inet6 import IPv6
 from scapy.volatile import RandMAC, RandIP
 
 from framework import VppTestCase, VppTestRunner
-from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
-from vpp_gre_interface import VppGreInterface
-from vpp_teib import VppTeib
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto, \
+from vpp_pom.vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
+from vpp_pom.vpp_gre_interface import VppGreInterface
+from vpp_pom.vpp_teib import VppTeib
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto, \
     VppMplsLabel
-from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
-from util import ppp, ppc
+from vpp_pom.vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
+from vpp_pom.util import ppp, ppc
 from vpp_papi import VppEnum
 
 
@@ -49,19 +49,19 @@ class TestGREInputNodes(VppTestCase):
         self.pg0.add_stream(pkt)
         self.pg_start()
         # no tunnel created, gre-input not registered
-        err = self.statistics.get_counter(
+        err = self.vclient.statistics.get_counter(
             '/err/ip4-local/unknown ip protocol')[0]
         self.assertEqual(err, 1)
         err_count = err
 
         # create gre tunnel
-        gre_if = VppGreInterface(self, self.pg0.local_ip4, "1.1.1.2")
+        gre_if = VppGreInterface(self.vclient, self.pg0.local_ip4, "1.1.1.2")
         gre_if.add_vpp_config()
 
         self.pg0.add_stream(pkt)
         self.pg_start()
         # tunnel created, gre-input registered
-        err = self.statistics.get_counter(
+        err = self.vclient.statistics.get_counter(
             '/err/ip4-local/unknown ip protocol')[0]
         # expect no new errors
         self.assertEqual(err, err_count)
@@ -84,7 +84,7 @@ class TestGRE(VppTestCase):
         # create 3 pg interfaces - set one in a non-default table.
         self.create_pg_interfaces(range(5))
 
-        self.tbl = VppIpTable(self, 1)
+        self.tbl = VppIpTable(self.vclient, 1)
         self.tbl.add_vpp_config()
         self.pg1.set_table_ip4(1)
 
@@ -501,7 +501,7 @@ class TestGRE(VppTestCase):
         #  - assign an IP Addres
         #  - Add a route via the tunnel
         #
-        gre_if = VppGreInterface(self,
+        gre_if = VppGreInterface(self.vclient,
                                  self.pg0.local_ip4,
                                  "1.1.1.2")
         gre_if.add_vpp_config()
@@ -520,7 +520,7 @@ class TestGRE(VppTestCase):
         gre_if.admin_up()
         gre_if.config_ip4()
 
-        route_via_tun = VppIpRoute(self, "4.4.4.4", 32,
+        route_via_tun = VppIpRoute(self.vclient, "4.4.4.4", 32,
                                    [VppRoutePath("0.0.0.0",
                                                  gre_if.sw_if_index)])
 
@@ -539,7 +539,7 @@ class TestGRE(VppTestCase):
         #
         # Add a route that resolves the tunnel's destination
         #
-        route_tun_dst = VppIpRoute(self, "1.1.1.2", 32,
+        route_tun_dst = VppIpRoute(self.vclient, "1.1.1.2", 32,
                                    [VppRoutePath(self.pg0.remote_ip4,
                                                  self.pg0.sw_if_index)])
         route_tun_dst.add_vpp_config()
@@ -568,7 +568,7 @@ class TestGRE(VppTestCase):
         #
         # Send tunneled packets that do not match the tunnel's src
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_tunnel_stream_4o4(self.pg0,
                                            "1.1.1.3",
                                            self.pg0.local_ip4,
@@ -619,7 +619,7 @@ class TestGRE(VppTestCase):
         # Send v6 packets for v4 encap
         #
         route6_via_tun = VppIpRoute(
-            self, "2001::1", 128,
+            self.vclient, "2001::1", 128,
             [VppRoutePath("::",
                           gre_if.sw_if_index,
                           proto=DpoProto.DPO_PROTO_IP6)])
@@ -634,7 +634,7 @@ class TestGRE(VppTestCase):
         #
         # add a labelled route through the tunnel
         #
-        label_via_tun = VppIpRoute(self, "5.4.3.2", 32,
+        label_via_tun = VppIpRoute(self.vclient, "5.4.3.2", 32,
                                    [VppRoutePath("0.0.0.0",
                                                  gre_if.sw_if_index,
                                                  labels=[VppMplsLabel(33)])])
@@ -650,7 +650,7 @@ class TestGRE(VppTestCase):
         # the mpls tunnel
         #
         mpls_tun = VppMPLSTunnelInterface(
-            self,
+            self.vclient,
             [VppRoutePath("0.0.0.0",
                           gre_if.sw_if_index,
                           labels=[VppMplsLabel(44),
@@ -658,7 +658,7 @@ class TestGRE(VppTestCase):
         mpls_tun.add_vpp_config()
         mpls_tun.admin_up()
 
-        label_via_mpls = VppIpRoute(self, "5.4.3.1", 32,
+        label_via_mpls = VppIpRoute(self.vclient, "5.4.3.1", 32,
                                     [VppRoutePath("0.0.0.0",
                                                   mpls_tun.sw_if_index,
                                                   labels=[VppMplsLabel(33)])])
@@ -670,7 +670,7 @@ class TestGRE(VppTestCase):
                                  self.pg0.local_ip4, "1.1.1.2")
 
         mpls_tun_l2 = VppMPLSTunnelInterface(
-            self,
+            self.vclient,
             [VppRoutePath("0.0.0.0",
                           gre_if.sw_if_index,
                           labels=[VppMplsLabel(44),
@@ -705,14 +705,14 @@ class TestGRE(VppTestCase):
         #  - assign an IP Address
         #  - Add a route via the tunnel
         #
-        gre_if = VppGreInterface(self,
+        gre_if = VppGreInterface(self.vclient,
                                  self.pg2.local_ip6,
                                  "1002::1")
         gre_if.add_vpp_config()
         gre_if.admin_up()
         gre_if.config_ip6()
 
-        route_via_tun = VppIpRoute(self, "4004::1", 128,
+        route_via_tun = VppIpRoute(self.vclient, "4004::1", 128,
                                    [VppRoutePath("0::0",
                                                  gre_if.sw_if_index)])
 
@@ -732,7 +732,7 @@ class TestGRE(VppTestCase):
         #
         # Add a route that resolves the tunnel's destination
         #
-        route_tun_dst = VppIpRoute(self, "1002::1", 128,
+        route_tun_dst = VppIpRoute(self.vclient, "1002::1", 128,
                                    [VppRoutePath(self.pg2.remote_ip6,
                                                  self.pg2.sw_if_index)])
         route_tun_dst.add_vpp_config()
@@ -765,7 +765,7 @@ class TestGRE(VppTestCase):
         #
         # Send v4 over v6
         #
-        route4_via_tun = VppIpRoute(self, "1.1.1.1", 32,
+        route4_via_tun = VppIpRoute(self.vclient, "1.1.1.1", 32,
                                     [VppRoutePath("0.0.0.0",
                                                   gre_if.sw_if_index)])
         route4_via_tun.add_vpp_config()
@@ -800,7 +800,7 @@ class TestGRE(VppTestCase):
         #  - assign an IP Addres
         #
         gre_if = VppGreInterface(
-            self, self.pg1.local_ip4,
+            self.vclient, self.pg1.local_ip4,
             "2.2.2.2",
             outer_table_id=1,
             flags=(e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP |
@@ -813,7 +813,7 @@ class TestGRE(VppTestCase):
         #
         # Add a route via the tunnel - in the overlay
         #
-        route_via_tun = VppIpRoute(self, "9.9.9.9", 32,
+        route_via_tun = VppIpRoute(self.vclient, "9.9.9.9", 32,
                                    [VppRoutePath("0.0.0.0",
                                                  gre_if.sw_if_index)])
         route_via_tun.add_vpp_config()
@@ -822,7 +822,7 @@ class TestGRE(VppTestCase):
         # Add a route that resolves the tunnel's destination - in the
         # underlay table
         #
-        route_tun_dst = VppIpRoute(self, "2.2.2.2", 32, table_id=1,
+        route_tun_dst = VppIpRoute(self.vclient, "2.2.2.2", 32, table_id=1,
                                    paths=[VppRoutePath(self.pg1.remote_ip4,
                                                        self.pg1.sw_if_index)])
         route_tun_dst.add_vpp_config()
@@ -832,7 +832,7 @@ class TestGRE(VppTestCase):
         # packets are sent in on pg0 which is in the default table
         #  - packets are GRE encapped
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "5.5.5.5", "9.9.9.9",
                                     dscp=5, ecn=3)
         rx = self.send_and_expect(self.pg0, tx, self.pg1)
@@ -845,7 +845,7 @@ class TestGRE(VppTestCase):
         # are decapped and forwarded. This tests the decap lookup
         # does not happen in the encap table
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_tunnel_stream_4o4(self.pg1,
                                            "2.2.2.2",
                                            self.pg1.local_ip4,
@@ -862,7 +862,7 @@ class TestGRE(VppTestCase):
         # IP not being enabled.
         #
         self.pg2.config_ip4()
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_tunnel_stream_4o4(self.pg2,
                                            "2.2.2.2",
                                            self.pg1.local_ip4,
@@ -887,10 +887,10 @@ class TestGRE(VppTestCase):
         #
         # Add routes to resolve the tunnel destinations
         #
-        route_tun1_dst = VppIpRoute(self, "2.2.2.2", 32,
+        route_tun1_dst = VppIpRoute(self.vclient, "2.2.2.2", 32,
                                     [VppRoutePath(self.pg0.remote_ip4,
                                                   self.pg0.sw_if_index)])
-        route_tun2_dst = VppIpRoute(self, "2.2.2.3", 32,
+        route_tun2_dst = VppIpRoute(self.vclient, "2.2.2.3", 32,
                                     [VppRoutePath(self.pg0.remote_ip4,
                                                   self.pg0.sw_if_index)])
 
@@ -900,11 +900,11 @@ class TestGRE(VppTestCase):
         #
         # Create 2 L2 GRE tunnels and x-connect them
         #
-        gre_if1 = VppGreInterface(self, self.pg0.local_ip4,
+        gre_if1 = VppGreInterface(self.vclient, self.pg0.local_ip4,
                                   "2.2.2.2",
                                   type=(VppEnum.vl_api_gre_tunnel_type_t.
                                         GRE_API_TUNNEL_TYPE_TEB))
-        gre_if2 = VppGreInterface(self, self.pg0.local_ip4,
+        gre_if2 = VppGreInterface(self.vclient, self.pg0.local_ip4,
                                   "2.2.2.3",
                                   type=(VppEnum.vl_api_gre_tunnel_type_t.
                                         GRE_API_TUNNEL_TYPE_TEB))
@@ -914,10 +914,10 @@ class TestGRE(VppTestCase):
         gre_if1.admin_up()
         gre_if2.admin_up()
 
-        self.vapi.sw_interface_set_l2_xconnect(gre_if1.sw_if_index,
+        self.vclient.sw_interface_set_l2_xconnect(gre_if1.sw_if_index,
                                                gre_if2.sw_if_index,
                                                enable=1)
-        self.vapi.sw_interface_set_l2_xconnect(gre_if2.sw_if_index,
+        self.vclient.sw_interface_set_l2_xconnect(gre_if2.sw_if_index,
                                                gre_if1.sw_if_index,
                                                enable=1)
 
@@ -941,10 +941,10 @@ class TestGRE(VppTestCase):
                                   self.pg0.local_ip4,
                                   "2.2.2.2")
 
-        self.vapi.sw_interface_set_l2_xconnect(gre_if1.sw_if_index,
+        self.vclient.sw_interface_set_l2_xconnect(gre_if1.sw_if_index,
                                                gre_if2.sw_if_index,
                                                enable=0)
-        self.vapi.sw_interface_set_l2_xconnect(gre_if2.sw_if_index,
+        self.vclient.sw_interface_set_l2_xconnect(gre_if2.sw_if_index,
                                                gre_if1.sw_if_index,
                                                enable=0)
 
@@ -952,8 +952,8 @@ class TestGRE(VppTestCase):
         # Create a VLAN sub-interfaces on the GRE TEB interfaces
         # then x-connect them
         #
-        gre_if_11 = VppDot1QSubint(self, gre_if1, 11)
-        gre_if_12 = VppDot1QSubint(self, gre_if2, 12)
+        gre_if_11 = VppDot1QSubint(self.vclient, gre_if1, 11)
+        gre_if_12 = VppDot1QSubint(self.vclient, gre_if2, 12)
 
         # gre_if_11.add_vpp_config()
         # gre_if_12.add_vpp_config()
@@ -961,10 +961,10 @@ class TestGRE(VppTestCase):
         gre_if_11.admin_up()
         gre_if_12.admin_up()
 
-        self.vapi.sw_interface_set_l2_xconnect(gre_if_11.sw_if_index,
+        self.vclient.sw_interface_set_l2_xconnect(gre_if_11.sw_if_index,
                                                gre_if_12.sw_if_index,
                                                enable=1)
-        self.vapi.sw_interface_set_l2_xconnect(gre_if_12.sw_if_index,
+        self.vclient.sw_interface_set_l2_xconnect(gre_if_12.sw_if_index,
                                                gre_if_11.sw_if_index,
                                                enable=1)
 
@@ -972,10 +972,10 @@ class TestGRE(VppTestCase):
         # Configure both to pop thier respective VLAN tags,
         # so that during the x-coonect they will subsequently push
         #
-        self.vapi.l2_interface_vlan_tag_rewrite(
+        self.vclient.l2_interface_vlan_tag_rewrite(
             sw_if_index=gre_if_12.sw_if_index, vtr_op=L2_VTR_OP.L2_POP_1,
             push_dot1q=12)
-        self.vapi.l2_interface_vlan_tag_rewrite(
+        self.vclient.l2_interface_vlan_tag_rewrite(
             sw_if_index=gre_if_11.sw_if_index, vtr_op=L2_VTR_OP.L2_POP_1,
             push_dot1q=11)
 
@@ -1021,7 +1021,7 @@ class TestGRE(VppTestCase):
         #  - set it admin up
         #  - assign an IP Addres
         #
-        gre_if = VppGreInterface(self,
+        gre_if = VppGreInterface(self.vclient,
                                  self.pg0.local_ip4,
                                  "1.1.1.2")
         gre_if.add_vpp_config()
@@ -1033,7 +1033,7 @@ class TestGRE(VppTestCase):
         # through the tunnel, hence forming a loop in the forwarding
         # graph
         #
-        route_dst = VppIpRoute(self, "1.1.1.2", 32,
+        route_dst = VppIpRoute(self.vclient, "1.1.1.2", 32,
                                [VppRoutePath("0.0.0.0",
                                              gre_if.sw_if_index)])
         route_dst.add_vpp_config()
@@ -1044,7 +1044,7 @@ class TestGRE(VppTestCase):
         tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "1.1.1.2")
         self.send_and_assert_no_replies(self.pg2, tx)
 
-        self.logger.info(self.vapi.ppcli("sh adj 7"))
+        self.logger.info(self.vclient.ppcli("sh adj 7"))
 
         #
         # break the loop
@@ -1058,7 +1058,8 @@ class TestGRE(VppTestCase):
         #
         # a good route throught the tunnel to check it restacked
         #
-        route_via_tun_2 = VppIpRoute(self, "2.2.2.2", 32,
+        route_via_tun_2 = VppIpRoute(
+            self.vclient, "2.2.2.2", 32,
                                      [VppRoutePath("0.0.0.0",
                                                    gre_if.sw_if_index)])
         route_via_tun_2.add_vpp_config()
@@ -1090,7 +1091,7 @@ class TestGRE(VppTestCase):
             #  - assign an IP Addres
             #  - Add a route via the tunnel
             #
-            gre_if = VppGreInterface(self,
+            gre_if = VppGreInterface(self.vclient,
                                      itf.local_ip4,
                                      "0.0.0.0",
                                      mode=(VppEnum.vl_api_tunnel_mode_t.
@@ -1100,8 +1101,8 @@ class TestGRE(VppTestCase):
             gre_if.config_ip4()
             gre_if.generate_remote_hosts(4)
 
-            self.logger.info(self.vapi.cli("sh adj"))
-            self.logger.info(self.vapi.cli("sh ip fib"))
+            self.logger.info(self.vclient.cli("sh adj"))
+            self.logger.info(self.vclient.cli("sh ip fib"))
 
             #
             # ensure we don't match to the tunnel if the source address
@@ -1124,7 +1125,7 @@ class TestGRE(VppTestCase):
                 # route traffic via the peer
                 #
                 route_via_tun = VppIpRoute(
-                    self, route_addr, 32,
+                    self.vclient, route_addr, 32,
                     [VppRoutePath(gre_if._remote_hosts[ii].ip4,
                                   gre_if.sw_if_index)])
                 route_via_tun.add_vpp_config()
@@ -1132,7 +1133,7 @@ class TestGRE(VppTestCase):
                 #
                 # Add a TEIB entry resolves the peer
                 #
-                teib = VppTeib(self, gre_if,
+                teib = VppTeib(self.vclient, gre_if,
                                gre_if._remote_hosts[ii].ip4,
                                itf._remote_hosts[ii].ip4)
                 teib.add_vpp_config()
@@ -1196,7 +1197,7 @@ class TestGRE(VppTestCase):
             #  - Add a route via the tunnel
             #
             gre_if = VppGreInterface(
-                self,
+                self.vclient,
                 itf.local_ip6,
                 "::",
                 mode=(VppEnum.vl_api_tunnel_mode_t.
@@ -1217,7 +1218,7 @@ class TestGRE(VppTestCase):
                 #
                 # Add a TEIB entry resolves the peer
                 #
-                teib = VppTeib(self, gre_if,
+                teib = VppTeib(self.vclient, gre_if,
                                gre_if._remote_hosts[ii].ip6,
                                itf._remote_hosts[ii].ip6)
                 teib.add_vpp_config()
@@ -1226,7 +1227,7 @@ class TestGRE(VppTestCase):
                 # route traffic via the peer
                 #
                 route_via_tun = VppIpRoute(
-                    self, route_addr, 128,
+                    self.vclient, route_addr, 128,
                     [VppRoutePath(gre_if._remote_hosts[ii].ip6,
                                   gre_if.sw_if_index)])
                 route_via_tun.add_vpp_config()

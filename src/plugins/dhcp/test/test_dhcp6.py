@@ -10,7 +10,7 @@ from scapy.utils6 import in6_mactoifaceid
 
 from framework import VppTestCase
 from vpp_papi import VppEnum
-import util
+import vpp_pom.util as util
 import os
 
 
@@ -49,14 +49,14 @@ class TestDHCPv6DataPlane(VppTestCase):
     def test_dhcp_ia_na_send_solicit_receive_advertise(self):
         """ Verify DHCPv6 IA NA Solicit packet and Advertise event """
 
-        self.vapi.dhcp6_clients_enable_disable(enable=1)
+        self.vclient.dhcp6_clients_enable_disable(enable=1)
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         address = {'address': '1:2:3::5',
                    'preferred_time': 60,
                    'valid_time': 120}
-        self.vapi.dhcp6_send_client_message(
+        self.vclient.dhcp6_send_client_message(
             server_index=0xffffffff,
             mrc=1,
             msg_type=VppEnum.vl_api_dhcpv6_msg_type_t.DHCPV6_MSG_API_SOLICIT,
@@ -91,7 +91,7 @@ class TestDHCPv6DataPlane(VppTestCase):
         self.assert_equal(address.preflft, 60)
         self.assert_equal(address.validlft, 120)
 
-        self.vapi.want_dhcp6_reply_events(enable_disable=1,
+        self.vclient.want_dhcp6_reply_events(enable_disable=1,
                                           pid=os.getpid())
 
         try:
@@ -111,7 +111,7 @@ class TestDHCPv6DataPlane(VppTestCase):
             self.pg0.add_stream([p])
             self.pg_start()
 
-            ev = self.vapi.wait_for_event(1, "dhcp6_reply_event")
+            ev = self.vclient.wait_for_event(1, "dhcp6_reply_event")
 
             self.assert_equal(ev.preference, 7)
             self.assert_equal(ev.status_code, 1)
@@ -127,13 +127,13 @@ class TestDHCPv6DataPlane(VppTestCase):
                               ia_na_opts.getfieldval("validlft"))
 
         finally:
-            self.vapi.want_dhcp6_reply_events(enable_disable=0)
-        self.vapi.dhcp6_clients_enable_disable(enable=0)
+            self.vclient.want_dhcp6_reply_events(enable_disable=0)
+        self.vclient.dhcp6_clients_enable_disable(enable=0)
 
     def test_dhcp_pd_send_solicit_receive_advertise(self):
         """ Verify DHCPv6 PD Solicit packet and Advertise event """
 
-        self.vapi.dhcp6_clients_enable_disable(enable=1)
+        self.vclient.dhcp6_clients_enable_disable(enable=1)
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -142,7 +142,7 @@ class TestDHCPv6DataPlane(VppTestCase):
                   'preferred_time': 60,
                   'valid_time': 120}
         prefixes = [prefix]
-        self.vapi.dhcp6_pd_send_client_message(
+        self.vclient.dhcp6_pd_send_client_message(
             server_index=0xffffffff,
             mrc=1,
             msg_type=VppEnum.vl_api_dhcpv6_msg_type_t.DHCPV6_MSG_API_SOLICIT,
@@ -177,7 +177,7 @@ class TestDHCPv6DataPlane(VppTestCase):
         self.assert_equal(prefix.preflft, 60)
         self.assert_equal(prefix.validlft, 120)
 
-        self.vapi.want_dhcp6_pd_reply_events(enable_disable=1,
+        self.vclient.want_dhcp6_pd_reply_events(enable_disable=1,
                                              pid=os.getpid())
 
         try:
@@ -197,7 +197,7 @@ class TestDHCPv6DataPlane(VppTestCase):
             self.pg0.add_stream([p])
             self.pg_start()
 
-            ev = self.vapi.wait_for_event(1, "dhcp6_pd_reply_event")
+            ev = self.vclient.wait_for_event(1, "dhcp6_pd_reply_event")
 
             self.assert_equal(ev.preference, 7)
             self.assert_equal(ev.status_code, 1)
@@ -216,8 +216,8 @@ class TestDHCPv6DataPlane(VppTestCase):
                               ia_pd_opts.getfieldval("validlft"))
 
         finally:
-            self.vapi.want_dhcp6_pd_reply_events(enable_disable=0)
-        self.vapi.dhcp6_clients_enable_disable(enable=0)
+            self.vclient.want_dhcp6_pd_reply_events(enable_disable=0)
+        self.vclient.dhcp6_clients_enable_disable(enable=0)
 
 
 class TestDHCPv6IANAControlPlane(VppTestCase):
@@ -248,18 +248,18 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.T1 = 1
         self.T2 = 2
 
-        fib = self.vapi.ip_route_dump(0, True)
+        fib = self.vclient.ip_route_dump(0, True)
         self.initial_addresses = set(self.get_interface_addresses(fib,
                                                                   self.pg0))
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        self.vapi.dhcp6_client_enable_disable(sw_if_index=self.pg0.sw_if_index,
+        self.vclient.dhcp6_client_enable_disable(sw_if_index=self.pg0.sw_if_index,
                                               enable=1)
 
     def tearDown(self):
-        self.vapi.dhcp6_client_enable_disable(sw_if_index=self.pg0.sw_if_index,
+        self.vclient.dhcp6_client_enable_disable(sw_if_index=self.pg0.sw_if_index,
                                               enable=0)
 
         for i in self.interfaces:
@@ -278,7 +278,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         return lst
 
     def get_addresses(self):
-        fib = self.vapi.ip_route_dump(0, True)
+        fib = self.vclient.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         return addresses.difference(self.initial_addresses)
 
@@ -405,7 +405,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.sleep(2)
 
         # check that the address is deleted
-        fib = self.vapi.ip_route_dump(0, True)
+        fib = self.vclient.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         new_addresses = addresses.difference(self.initial_addresses)
         self.assertEqual(len(new_addresses), 0)
@@ -454,7 +454,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.sleep(0.5)
 
         # check FIB contains no addresses
-        fib = self.vapi.ip_route_dump(0, True)
+        fib = self.vclient.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         new_addresses = addresses.difference(self.initial_addresses)
         self.assertEqual(len(new_addresses), 0)
@@ -471,7 +471,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.sleep(0.5)
 
         # check FIB contains no addresses
-        fib = self.vapi.ip_route_dump(0, True)
+        fib = self.vclient.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg0))
         new_addresses = addresses.difference(self.initial_addresses)
         self.assertEqual(len(new_addresses), 0)
@@ -501,7 +501,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         self.T1 = 1
         self.T2 = 2
 
-        fib = self.vapi.ip_route_dump(0, True)
+        fib = self.vclient.ip_route_dump(0, True)
         self.initial_addresses = set(self.get_interface_addresses(fib,
                                                                   self.pg1))
 
@@ -510,13 +510,13 @@ class TestDHCPv6PDControlPlane(VppTestCase):
 
         self.prefix_group = 'my-pd-prefix-group'
 
-        self.vapi.dhcp6_pd_client_enable_disable(
+        self.vclient.dhcp6_pd_client_enable_disable(
             enable=1,
             sw_if_index=self.pg0.sw_if_index,
             prefix_group=self.prefix_group)
 
     def tearDown(self):
-        self.vapi.dhcp6_pd_client_enable_disable(self.pg0.sw_if_index,
+        self.vclient.dhcp6_pd_client_enable_disable(self.pg0.sw_if_index,
                                                  enable=0)
 
         for i in self.interfaces:
@@ -535,7 +535,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         return lst
 
     def get_addresses(self):
-        fib = self.vapi.ip_route_dump(0, True)
+        fib = self.vclient.ip_route_dump(0, True)
         addresses = set(self.get_interface_addresses(fib, self.pg1))
         return addresses.difference(self.initial_addresses)
 
@@ -647,7 +647,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         address1 = '::2:0:0:0:405/60'
         address2 = '::76:0:0:0:406/62'
         try:
-            self.vapi.ip6_add_del_address_using_prefix(
+            self.vclient.ip6_add_del_address_using_prefix(
                 sw_if_index=self.pg1.sw_if_index,
                 address_with_prefix=address1,
                 prefix_group=self.prefix_group)
@@ -669,7 +669,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
 
             self.sleep(1)
 
-            self.vapi.ip6_add_del_address_using_prefix(
+            self.vclient.ip6_add_del_address_using_prefix(
                 sw_if_index=self.pg1.sw_if_index,
                 address_with_prefix=address2,
                 prefix_group=self.prefix_group)
@@ -677,7 +677,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             self.sleep(1)
 
             # check FIB contains 2 addresses
-            fib = self.vapi.ip_route_dump(0, True)
+            fib = self.vclient.ip_route_dump(0, True)
             addresses = set(self.get_interface_addresses(fib, self.pg1))
             new_addresses = addresses.difference(self.initial_addresses)
             self.assertEqual(len(new_addresses), 2)
@@ -691,19 +691,19 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             self.sleep(1)
 
             # check that the addresses are deleted
-            fib = self.vapi.ip_route_dump(0, True)
+            fib = self.vclient.ip_route_dump(0, True)
             addresses = set(self.get_interface_addresses(fib, self.pg1))
             new_addresses = addresses.difference(self.initial_addresses)
             self.assertEqual(len(new_addresses), 0)
 
         finally:
             if address1 is not None:
-                self.vapi.ip6_add_del_address_using_prefix(
+                self.vclient.ip6_add_del_address_using_prefix(
                     sw_if_index=self.pg1.sw_if_index,
                     address_with_prefix=address1,
                     prefix_group=self.prefix_group, is_add=0)
             if address2 is not None:
-                self.vapi.ip6_add_del_address_using_prefix(
+                self.vclient.ip6_add_del_address_using_prefix(
                     sw_if_index=self.pg1.sw_if_index,
                     address_with_prefix=address2,
                     prefix_group=self.prefix_group, is_add=0)
@@ -745,7 +745,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
 
         address1 = '::2:0:0:0:405/60'
         try:
-            self.vapi.ip6_add_del_address_using_prefix(
+            self.vclient.ip6_add_del_address_using_prefix(
                 sw_if_index=self.pg1.sw_if_index,
                 address_with_prefix=address1,
                 prefix_group=self.prefix_group)
@@ -760,13 +760,13 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             self.sleep(0.5)
 
             # check FIB contains no addresses
-            fib = self.vapi.ip_route_dump(0, True)
+            fib = self.vclient.ip_route_dump(0, True)
             addresses = set(self.get_interface_addresses(fib, self.pg1))
             new_addresses = addresses.difference(self.initial_addresses)
             self.assertEqual(len(new_addresses), 0)
 
         finally:
-            self.vapi.ip6_add_del_address_using_prefix(
+            self.vclient.ip6_add_del_address_using_prefix(
                 sw_if_index=self.pg1.sw_if_index,
                 address_with_prefix=address1,
                 prefix_group=self.prefix_group,
@@ -777,7 +777,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
 
         address1 = '::2:0:0:0:405/60'
         try:
-            self.vapi.ip6_add_del_address_using_prefix(
+            self.vclient.ip6_add_del_address_using_prefix(
                 sw_if_index=self.pg1.sw_if_index,
                 address_with_prefix=address1,
                 prefix_group=self.prefix_group)
@@ -792,13 +792,13 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             self.sleep(0.5)
 
             # check FIB contains no addresses
-            fib = self.vapi.ip_route_dump(0, True)
+            fib = self.vclient.ip_route_dump(0, True)
             addresses = set(self.get_interface_addresses(fib, self.pg1))
             new_addresses = addresses.difference(self.initial_addresses)
             self.assertEqual(len(new_addresses), 0)
 
         finally:
-            self.vapi.ip6_add_del_address_using_prefix(
+            self.vclient.ip6_add_del_address_using_prefix(
                 sw_if_index=self.pg1.sw_if_index,
                 prefix_group=self.prefix_group,
                 address_with_prefix=address1,

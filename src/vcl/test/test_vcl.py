@@ -7,7 +7,7 @@ import subprocess
 import signal
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, FibPathProto
+from vpp_pom.vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, FibPathProto
 
 iperf3 = '/usr/bin/iperf3'
 
@@ -80,10 +80,10 @@ class VCLTestCase(VppTestCase):
         super(VCLTestCase, self).setUp()
 
     def cut_thru_setup(self):
-        self.vapi.session_enable_disable(is_enabled=1)
+        self.vclient.session_enable_disable(is_enabled=1)
 
     def cut_thru_tear_down(self):
-        self.vapi.session_enable_disable(is_enabled=0)
+        self.vclient.session_enable_disable(is_enabled=0)
 
     def cut_thru_test(self, server_app, server_args, client_app, client_args):
         self.env = {'VCL_VPP_API_SOCKET': self.api_sock,
@@ -103,7 +103,7 @@ class VCLTestCase(VppTestCase):
         self.sleep(self.post_test_sleep)
 
     def thru_host_stack_setup(self):
-        self.vapi.session_enable_disable(is_enabled=1)
+        self.vclient.session_enable_disable(is_enabled=1)
         self.create_loopback_interfaces(2)
 
         table_id = 1
@@ -112,7 +112,7 @@ class VCLTestCase(VppTestCase):
             i.admin_up()
 
             if table_id != 0:
-                tbl = VppIpTable(self, table_id)
+                tbl = VppIpTable(self.vclient, table_id)
                 tbl.add_vpp_config()
 
             i.set_table_ip4(table_id)
@@ -120,23 +120,23 @@ class VCLTestCase(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add_del(namespace_id="1", secret=1234,
+        self.vclient.app_namespace_add_del(namespace_id="1", secret=1234,
                                         sw_if_index=self.loop0.sw_if_index)
-        self.vapi.app_namespace_add_del(namespace_id="2", secret=5678,
+        self.vclient.app_namespace_add_del(namespace_id="2", secret=5678,
                                         sw_if_index=self.loop1.sw_if_index)
 
         # Add inter-table routes
-        ip_t01 = VppIpRoute(self, self.loop1.local_ip4, 32,
+        ip_t01 = VppIpRoute(self.vclient, self.loop1.local_ip4, 32,
                             [VppRoutePath("0.0.0.0",
                                           0xffffffff,
                                           nh_table_id=2)], table_id=1)
-        ip_t10 = VppIpRoute(self, self.loop0.local_ip4, 32,
+        ip_t10 = VppIpRoute(self.vclient, self.loop0.local_ip4, 32,
                             [VppRoutePath("0.0.0.0",
                                           0xffffffff,
                                           nh_table_id=1)], table_id=2)
         ip_t01.add_vpp_config()
         ip_t10.add_vpp_config()
-        self.logger.debug(self.vapi.cli("show ip fib"))
+        self.logger.debug(self.vclient.cli("show ip fib"))
 
     def thru_host_stack_tear_down(self):
         for i in self.lo_interfaces:
@@ -145,7 +145,7 @@ class VCLTestCase(VppTestCase):
             i.admin_down()
 
     def thru_host_stack_ipv6_setup(self):
-        self.vapi.session_enable_disable(is_enabled=1)
+        self.vclient.session_enable_disable(is_enabled=1)
         self.create_loopback_interfaces(2)
 
         table_id = 1
@@ -153,7 +153,7 @@ class VCLTestCase(VppTestCase):
         for i in self.lo_interfaces:
             i.admin_up()
 
-            tbl = VppIpTable(self, table_id, is_ip6=1)
+            tbl = VppIpTable(self.vclient, table_id, is_ip6=1)
             tbl.add_vpp_config()
 
             i.set_table_ip6(table_id)
@@ -161,24 +161,24 @@ class VCLTestCase(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add_del(namespace_id="1", secret=1234,
+        self.vclient.app_namespace_add_del(namespace_id="1", secret=1234,
                                         sw_if_index=self.loop0.sw_if_index)
-        self.vapi.app_namespace_add_del(namespace_id="2", secret=5678,
+        self.vclient.app_namespace_add_del(namespace_id="2", secret=5678,
                                         sw_if_index=self.loop1.sw_if_index)
 
         # Add inter-table routes
-        ip_t01 = VppIpRoute(self, self.loop1.local_ip6, 128,
+        ip_t01 = VppIpRoute(self.vclient, self.loop1.local_ip6, 128,
                             [VppRoutePath("::0", 0xffffffff,
                                           nh_table_id=2)],
                             table_id=1)
-        ip_t10 = VppIpRoute(self, self.loop0.local_ip6, 128,
+        ip_t10 = VppIpRoute(self.vclient, self.loop0.local_ip6, 128,
                             [VppRoutePath("::0", 0xffffffff,
                                           nh_table_id=1)],
                             table_id=2)
         ip_t01.add_vpp_config()
         ip_t10.add_vpp_config()
-        self.logger.debug(self.vapi.cli("show interface addr"))
-        self.logger.debug(self.vapi.cli("show ip6 fib"))
+        self.logger.debug(self.vclient.cli("show interface addr"))
+        self.logger.debug(self.vclient.cli("show ip6 fib"))
 
     def thru_host_stack_ipv6_tear_down(self):
         for i in self.lo_interfaces:
@@ -186,7 +186,7 @@ class VCLTestCase(VppTestCase):
             i.set_table_ip6(0)
             i.admin_down()
 
-        self.vapi.session_enable_disable(is_enabled=0)
+        self.vclient.session_enable_disable(is_enabled=0)
 
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
     def thru_host_stack_test(self, server_app, server_args,
@@ -279,7 +279,7 @@ class LDPCutThruTestCase(VCLTestCase):
         self.cut_thru_tear_down()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vclient.cli("show session verbose 2"))
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ldp_cut_thru_echo(self):
@@ -349,7 +349,7 @@ class VCLCutThruTestCase(VCLTestCase):
         super(VCLCutThruTestCase, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vclient.cli("show session verbose 2"))
 
     def test_vcl_cut_thru_echo(self):
         """ run VCL cut thru echo test """
@@ -403,8 +403,8 @@ class VCLThruHostStackEcho(VCLTestCase):
         super(VCLThruHostStackEcho, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.cli("show app server"))
-        self.logger.debug(self.vapi.cli("show session verbose"))
+        self.logger.debug(self.vclient.cli("show app server"))
+        self.logger.debug(self.vclient.cli("show session verbose"))
 
 
 class VCLThruHostStackTLS(VCLTestCase):
@@ -441,8 +441,8 @@ class VCLThruHostStackTLS(VCLTestCase):
         super(VCLThruHostStackTLS, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.cli("show app server"))
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vclient.cli("show app server"))
+        self.logger.debug(self.vclient.cli("show session verbose 2"))
 
 
 class VCLThruHostStackBidirNsock(VCLTestCase):
@@ -474,7 +474,7 @@ class VCLThruHostStackBidirNsock(VCLTestCase):
         super(VCLThruHostStackBidirNsock, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vclient.cli("show session verbose 2"))
 
     def test_vcl_thru_host_stack_bi_dir_nsock(self):
         """ run VCL thru host stack bi-directional (multiple sockets) test """
@@ -515,7 +515,7 @@ class LDPThruHostStackBidirNsock(VCLTestCase):
         super(LDPThruHostStackBidirNsock, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vclient.cli("show session verbose 2"))
 
     def test_ldp_thru_host_stack_bi_dir_nsock(self):
         """ run LDP thru host stack bi-directional (multiple sockets) test """
@@ -630,7 +630,7 @@ class LDPThruHostStackIperf(VCLTestCase):
         super(LDPThruHostStackIperf, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vclient.cli("show session verbose 2"))
 
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
     def test_ldp_thru_host_stack_iperf3(self):
@@ -666,7 +666,7 @@ class LDPThruHostStackIperfUdp(VCLTestCase):
         super(LDPThruHostStackIperfUdp, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vclient.cli("show session verbose 2"))
 
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
     def test_ldp_thru_host_stack_iperf3_udp(self):

@@ -1,7 +1,7 @@
 import socket
 from ipaddress import ip_network
 
-from vpp_object import VppObject
+from vpp_pom.vpp_object import VppObject
 
 
 class VppLispLocatorSet(VppObject):
@@ -20,11 +20,11 @@ class VppLispLocatorSet(VppObject):
         return self._ls_name
 
     def add_vpp_config(self):
-        self.test.vapi.lisp_add_del_locator_set(locator_set_name=self._ls_name)
+        self.test.vclient.lisp_add_del_locator_set(locator_set_name=self._ls_name)
         self._test.registry.register(self, self.test.logger)
 
     def get_lisp_locator_sets_dump_entry(self):
-        result = self.test.vapi.lisp_locator_set_dump()
+        result = self.test.vclient.lisp_locator_set_dump()
         for ls in result:
             if ls.ls_name.strip('\x00') == self._ls_name:
                 return ls
@@ -34,7 +34,7 @@ class VppLispLocatorSet(VppObject):
         return self.get_lisp_locator_sets_dump_entry() is not None
 
     def remove_vpp_config(self):
-        self.test.vapi.lisp_add_del_locator_set(locator_set_name=self._ls_name,
+        self.test.vclient.lisp_add_del_locator_set(locator_set_name=self._ls_name,
                                                 is_add=0)
 
     def object_id(self):
@@ -74,14 +74,14 @@ class VppLispLocator(VppObject):
         return self._weight
 
     def add_vpp_config(self):
-        self.test.vapi.lisp_add_del_locator(locator_set_name=self._ls_name,
+        self.test.vclient.lisp_add_del_locator(locator_set_name=self._ls_name,
                                             sw_if_index=self._sw_if_index,
                                             priority=self._priority,
                                             weight=self._weight)
         self._test.registry.register(self, self.test.logger)
 
     def get_lisp_locator_dump_entry(self):
-        locators = self.test.vapi.lisp_locator_dump(
+        locators = self.test.vclient.lisp_locator_dump(
                 is_index_set=0, ls_name=self._ls_name)
         for locator in locators:
             if locator.sw_if_index == self._sw_if_index:
@@ -93,7 +93,7 @@ class VppLispLocator(VppObject):
         return locator is not None
 
     def remove_vpp_config(self):
-        self.test.vapi.lisp_add_del_locator(
+        self.test.vclient.lisp_add_del_locator(
                 locator_set_name=self._ls_name, sw_if_index=self._sw_if_index,
                 priority=self._priority, weight=self._weight, is_add=0)
         self._test.registry.register(self, self.test.logger)
@@ -197,7 +197,7 @@ class VppLispMapping(VppObject):
         return self._weight
 
     def get_lisp_mapping_dump_entry(self):
-        return self.test.vapi.lisp_eid_table_dump(
+        return self.test.vclient.lisp_eid_table_dump(
             eid_set=1, vni=self._vni, eid=self._eid.packed)
 
     def query_vpp_config(self):
@@ -230,13 +230,13 @@ class VppLocalMapping(VppLispMapping):
         return self._key
 
     def add_vpp_config(self):
-        self.test.vapi.lisp_add_del_local_eid(
+        self.test.vclient.lisp_add_del_local_eid(
                 locator_set_name=self._ls_name, eid=self._eid.packed,
                 vni=self._vni, key=self._key.packed)
         self._test.registry.register(self, self.test.logger)
 
     def remove_vpp_config(self):
-        self.test.vapi.lisp_add_del_local_eid(
+        self.test.vclient.lisp_add_del_local_eid(
                 locator_set_name=self._ls_name, eid=self._eid.packed,
                 vni=self._vni, is_add=0)
 
@@ -271,13 +271,13 @@ class VppRemoteMapping(VppLispMapping):
         return rlocs
 
     def add_vpp_config(self):
-        self.test.vapi.lisp_add_del_remote_mapping(
+        self.test.vclient.lisp_add_del_remote_mapping(
                 rlocs=self.rlocs, deid=self._eid.packed,
                 vni=self._vni, rloc_num=len(self._rlocs))
         self._test.registry.register(self, self.test.logger)
 
     def remove_vpp_config(self):
-        self.test.vapi.lisp_add_del_remote_mapping(
+        self.test.vclient.lisp_add_del_remote_mapping(
                 deid=self._eid.packed, vni=self._vni, is_add=0, rloc_num=0)
 
     def object_id(self):
@@ -313,7 +313,7 @@ class VppLispAdjacency(VppObject):
         return self._vni
 
     def add_vpp_config(self):
-        self.test.vapi.lisp_add_del_adjacency(
+        self.test.vclient.lisp_add_del_adjacency(
                 leid=self._leid.packed, reid=self._reid.packed, vni=self._vni)
         self._test.registry.register(self, self.test.logger)
 
@@ -332,7 +332,7 @@ class VppLispAdjacency(VppObject):
         return True
 
     def query_vpp_config(self):
-        res = self.test.vapi.lisp_adjacencies_get(vni=self._vni)
+        res = self.test.vclient.lisp_adjacencies_get(vni=self._vni)
         for adj in res.adjacencies:
             if self.eid_equal(self._leid, adj.leid) and \
                     self.eid_equal(self._reid, adj.reid):
@@ -340,7 +340,7 @@ class VppLispAdjacency(VppObject):
         return False
 
     def remove_vpp_config(self):
-        self.test.vapi.lisp_add_del_adjacency(
+        self.test.vclient.lisp_add_del_adjacency(
                 leid=self._leid.packed, reid=self._reid.packed,
                 vni=self._vni, is_add=0)
 

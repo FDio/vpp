@@ -3,7 +3,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
 class TestSparseVec(VppTestCase):
@@ -25,7 +25,7 @@ class TestSparseVec(VppTestCase):
 
     def test_string_unittest(self):
         """ SparseVec unit tests """
-        error = self.vapi.cli("test sparse_vec")
+        error = self.vclient.cli("test sparse_vec")
         if error.find("failed") != -1:
             self.logger.critical("FAILURE in the sparse_vec test")
         self.assertNotIn("failed", error)

@@ -3,7 +3,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
 class TestString(VppTestCase):
@@ -36,7 +36,7 @@ class TestString(VppTestCase):
                  "strnlen_s", "strstr_s", "strtok_s", "clib_count_equal"]
 
         for name in names:
-            error = self.vapi.cli("test string " + name)
+            error = self.vclient.cli("test string " + name)
             if error.find("failed") != -1:
                 self.logger.critical("FAILURE in the " + name + " test")
                 self.assertNotIn("failed", error)

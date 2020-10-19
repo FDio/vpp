@@ -1,6 +1,6 @@
 """ VRF Status codes """
 
-from util import NumericConstant
+from vpp_pom.util import NumericConstant
 
 
 class VRFState(NumericConstant):

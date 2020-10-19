@@ -6,7 +6,7 @@ import re
 import subprocess
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
 def checkQat():
@@ -65,7 +65,7 @@ class TestTLS(VppTestCase):
     def setUp(self):
         super(TestTLS, self).setUp()
 
-        self.vapi.session_enable_disable(is_enabled=1)
+        self.vclient.session_enable_disable(is_enabled=1)
         self.create_loopback_interfaces(2)
 
         table_id = 0
@@ -74,7 +74,7 @@ class TestTLS(VppTestCase):
             i.admin_up()
 
             if table_id != 0:
-                tbl = VppIpTable(self, table_id)
+                tbl = VppIpTable(self.vclient, table_id)
                 tbl.add_vpp_config()
 
             i.set_table_ip4(table_id)
@@ -82,9 +82,9 @@ class TestTLS(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add_del(namespace_id="0",
+        self.vclient.app_namespace_add_del(namespace_id="0",
                                         sw_if_index=self.loop0.sw_if_index)
-        self.vapi.app_namespace_add_del(namespace_id="1",
+        self.vclient.app_namespace_add_del(namespace_id="1",
                                         sw_if_index=self.loop1.sw_if_index)
 
     def tearDown(self):
@@ -92,7 +92,7 @@ class TestTLS(VppTestCase):
             i.unconfig_ip4()
             i.set_table_ip4(0)
             i.admin_down()
-        self.vapi.session_enable_disable(is_enabled=0)
+        self.vclient.session_enable_disable(is_enabled=0)
         super(TestTLS, self).tearDown()
 
     @unittest.skipUnless(checkAll(),
@@ -101,12 +101,12 @@ class TestTLS(VppTestCase):
         """ TLS qat echo client/server transfer """
 
         # Add inter-table routes
-        ip_t01 = VppIpRoute(self, self.loop1.local_ip4, 32,
+        ip_t01 = VppIpRoute(self.vclient, self.loop1.local_ip4, 32,
                             [VppRoutePath("0.0.0.0",
                                           0xffffffff,
                                           nh_table_id=1)])
 
-        ip_t10 = VppIpRoute(self, self.loop0.local_ip4, 32,
+        ip_t10 = VppIpRoute(self.vclient, self.loop0.local_ip4, 32,
                             [VppRoutePath("0.0.0.0",
                                           0xffffffff,
                                           nh_table_id=0)], table_id=1)
@@ -114,7 +114,7 @@ class TestTLS(VppTestCase):
         ip_t10.add_vpp_config()
 
         # Enable QAT engine and TLS async
-        r = self.vapi.tls_openssl_set_engine(
+        r = self.vclient.tls_openssl_set_engine(
                 async_enable=1,
                 engine="qat",
                 algorithm="RSA,PKEY_CRYPTO",
@@ -124,14 +124,14 @@ class TestTLS(VppTestCase):
 
         # Start builtin server and client
         uri = "tls://" + self.loop0.local_ip4 + "/1234"
-        error = self.vapi.cli("test echo server appns 0 fifo-size 4 "
+        error = self.vclient.cli("test echo server appns 0 fifo-size 4 "
                               "tls-engine 1 uri " +
                               uri)
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
-        error = self.vapi.cli("test echo client mbytes 10 appns 1 "
+        error = self.vclient.cli("test echo client mbytes 10 appns 1 "
                               "fifo-size 4 no-output test-bytes "
                               "tls-engine 1 "
                               "syn-timeout 2 uri " + uri)

@@ -7,8 +7,8 @@ from scapy.contrib.lacp import LACP, SlowProtocol, MarkerProtocol
 from scapy.layers.l2 import Ether
 
 from framework import VppTestCase, VppTestRunner
-from vpp_memif import remove_all_memif_vpp_config, VppSocketFilename, VppMemif
-from vpp_bond_interface import VppBondInterface
+from vpp_pom.plugins.vpp_memif import remove_all_memif_vpp_config, VppSocketFilename, VppMemif
+from vpp_pom.vpp_bond_interface import VppBondInterface
 from vpp_papi import VppEnum, MACAddress
 
 bond_mac = "02:02:02:02:02:02"
@@ -47,7 +47,7 @@ class TestMarker(VppTestCase):
         super().tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show interface"))
+        self.logger.info(self.vclient.ppcli("show interface"))
 
     def test_marker_request(self):
         """ Marker Request test """
@@ -63,19 +63,19 @@ class TestMarker(VppTestCase):
         #             +-+      +-+
 
         socket1 = VppSocketFilename(
-            self,
+            self.vclient,
             socket_id=1,
             socket_filename="%s/memif.sock1" % self.tempdir)
         socket1.add_vpp_config()
 
         socket11 = VppSocketFilename(
-            self,
+            self.vclient,
             socket_id=2,
             socket_filename="%s/memif.sock1" % self.tempdir)
         socket11.add_vpp_config()
 
         memif1 = VppMemif(
-            self,
+            self.vclient,
             role=VppEnum.vl_api_memif_role_t.MEMIF_ROLE_API_MASTER,
             mode=VppEnum.vl_api_memif_mode_t.MEMIF_MODE_API_ETHERNET,
             socket_id=1)
@@ -83,7 +83,7 @@ class TestMarker(VppTestCase):
         memif1.admin_up()
 
         memif11 = VppMemif(
-            self,
+            self.vclient,
             role=VppEnum.vl_api_memif_role_t.MEMIF_ROLE_API_SLAVE,
             mode=VppEnum.vl_api_memif_mode_t.MEMIF_MODE_API_ETHERNET,
             socket_id=2)
@@ -91,7 +91,7 @@ class TestMarker(VppTestCase):
         memif11.admin_up()
 
         bond0 = VppBondInterface(
-            self,
+            self.vclient,
             mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_LACP,
             use_custom_mac=1,
             mac_address=bond_mac)
@@ -100,7 +100,7 @@ class TestMarker(VppTestCase):
         bond0.admin_up()
 
         bond1 = VppBondInterface(
-            self,
+            self.vclient,
             mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_LACP)
         bond1.add_vpp_config()
         bond1.admin_up()
@@ -113,18 +113,18 @@ class TestMarker(VppTestCase):
         self.assertEqual(memif11.wait_for_link_up(10), True)
 
         # verify memif1 in bond0
-        intfs = self.vapi.sw_member_interface_dump(
+        intfs = self.vclient.sw_member_interface_dump(
             sw_if_index=bond0.sw_if_index)
         for intf in intfs:
             self.assertEqual(intf.sw_if_index, memif1.sw_if_index)
 
         # verify memif11 in bond1
-        intfs = self.vapi.sw_member_interface_dump(
+        intfs = self.vclient.sw_member_interface_dump(
             sw_if_index=bond1.sw_if_index)
         for intf in intfs:
             self.assertEqual(intf.sw_if_index, memif11.sw_if_index)
 
-        self.vapi.ppcli("trace add memif-input 100")
+        self.vclient.ppcli("trace add memif-input 100")
 
         # create marker request
         marker = (Ether(src=bond_mac, dst=lacp_dst_mac) /
@@ -139,7 +139,7 @@ class TestMarker(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        show_trace = self.vapi.ppcli("show trace max 100")
+        show_trace = self.vclient.ppcli("show trace max 100")
         self.assertIn("Marker Information TLV:", show_trace)
 
         bond0.remove_vpp_config()
@@ -166,11 +166,11 @@ class TestLACP(VppTestCase):
         super().tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show interface"))
+        self.logger.info(self.vclient.ppcli("show interface"))
 
     def wait_for_lacp_connect(self, timeout, step=1):
         while 1:
-            intfs = self.vapi.sw_interface_lacp_dump()
+            intfs = self.vclient.sw_interface_lacp_dump()
             all_good = 1
             for intf in intfs:
                 if ((intf.actor_state !=
@@ -187,7 +187,7 @@ class TestLACP(VppTestCase):
 
     def wait_for_member_detach(self, bond, timeout, count, step=1):
         while 1:
-            intfs = self.vapi.sw_bond_interface_dump(
+            intfs = self.vclient.sw_bond_interface_dump(
                 sw_if_index=bond.sw_if_index)
             for intf in intfs:
                 if ((intf.members == count) and
@@ -213,31 +213,31 @@ class TestLACP(VppTestCase):
         #             +-+      +-+
 
         socket1 = VppSocketFilename(
-            self,
+            self.vclient,
             socket_id=1,
             socket_filename="%s/memif.sock1" % self.tempdir)
         socket1.add_vpp_config()
 
         socket11 = VppSocketFilename(
-            self,
+            self.vclient,
             socket_id=2,
             socket_filename="%s/memif.sock1" % self.tempdir)
         socket11.add_vpp_config()
 
         socket2 = VppSocketFilename(
-            self,
+            self.vclient,
             socket_id=3,
             socket_filename="%s/memif.sock2" % self.tempdir)
         socket2.add_vpp_config()
 
         socket22 = VppSocketFilename(
-            self,
+            self.vclient,
             socket_id=4,
             socket_filename="%s/memif.sock2" % self.tempdir)
         socket22.add_vpp_config()
 
         memif1 = VppMemif(
-            self,
+            self.vclient,
             role=VppEnum.vl_api_memif_role_t.MEMIF_ROLE_API_MASTER,
             mode=VppEnum.vl_api_memif_mode_t.MEMIF_MODE_API_ETHERNET,
             socket_id=1)
@@ -245,7 +245,7 @@ class TestLACP(VppTestCase):
         memif1.admin_up()
 
         memif11 = VppMemif(
-            self,
+            self.vclient,
             role=VppEnum.vl_api_memif_role_t.MEMIF_ROLE_API_SLAVE,
             mode=VppEnum.vl_api_memif_mode_t.MEMIF_MODE_API_ETHERNET,
             socket_id=2)
@@ -253,7 +253,7 @@ class TestLACP(VppTestCase):
         memif11.admin_up()
 
         memif2 = VppMemif(
-            self,
+            self.vclient,
             role=VppEnum.vl_api_memif_role_t.MEMIF_ROLE_API_MASTER,
             mode=VppEnum.vl_api_memif_mode_t.MEMIF_MODE_API_ETHERNET,
             socket_id=3)
@@ -261,16 +261,16 @@ class TestLACP(VppTestCase):
         memif2.admin_up()
 
         memif12 = VppMemif(
-            self,
+            self.vclient,
             role=VppEnum.vl_api_memif_role_t.MEMIF_ROLE_API_SLAVE,
             mode=VppEnum.vl_api_memif_mode_t.MEMIF_MODE_API_ETHERNET,
             socket_id=4)
         memif12.add_vpp_config()
         memif12.admin_up()
 
-        self.logger.info(self.vapi.ppcli("debug lacp on"))
+        self.logger.info(self.vclient.ppcli("debug lacp on"))
         bond0 = VppBondInterface(
-            self,
+            self.vclient,
             mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_LACP,
             use_custom_mac=1,
             mac_address=bond_mac)
@@ -279,7 +279,7 @@ class TestLACP(VppTestCase):
         bond0.admin_up()
 
         bond1 = VppBondInterface(
-            self,
+            self.vclient,
             mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_LACP)
         bond1.add_vpp_config()
         bond1.admin_up()
@@ -299,14 +299,14 @@ class TestLACP(VppTestCase):
         self.assertEqual(memif12.wait_for_link_up(10), True)
 
         # verify memif1 and memif2 in bond0
-        intfs = self.vapi.sw_member_interface_dump(
+        intfs = self.vclient.sw_member_interface_dump(
             sw_if_index=bond0.sw_if_index)
         for intf in intfs:
             self.assertIn(
                 intf.sw_if_index, (memif1.sw_if_index, memif2.sw_if_index))
 
         # verify memif11 and memif12 in bond1
-        intfs = self.vapi.sw_member_interface_dump(
+        intfs = self.vclient.sw_member_interface_dump(
             sw_if_index=bond1.sw_if_index)
         for intf in intfs:
             self.assertIn(
@@ -317,28 +317,28 @@ class TestLACP(VppTestCase):
         # Let LACP create the bundle
         self.wait_for_lacp_connect(30)
 
-        intfs = self.vapi.sw_interface_lacp_dump()
+        intfs = self.vclient.sw_interface_lacp_dump()
         for intf in intfs:
             self.assertEqual(
                 intf.actor_state, LACP_COLLECTION_AND_DISTRIBUTION_STATE)
             self.assertEqual(
                 intf.partner_state, LACP_COLLECTION_AND_DISTRIBUTION_STATE)
 
-        intfs = self.vapi.sw_bond_interface_dump(sw_if_index=0xFFFFFFFF)
+        intfs = self.vclient.sw_bond_interface_dump(sw_if_index=0xFFFFFFFF)
         for intf in intfs:
             self.assertEqual(intf.members, 2)
             self.assertEqual(intf.active_members, 2)
             self.assertEqual(
                 intf.mode, VppEnum.vl_api_bond_mode_t.BOND_API_MODE_LACP)
 
-        self.logger.info(self.vapi.ppcli("show lacp"))
-        self.logger.info(self.vapi.ppcli("show lacp details"))
+        self.logger.info(self.vclient.ppcli("show lacp"))
+        self.logger.info(self.vclient.ppcli("show lacp details"))
 
         # detach member memif1
         bond0.detach_vpp_bond_interface(sw_if_index=memif1.sw_if_index)
 
         self.wait_for_member_detach(bond0, timeout=10, count=1)
-        intfs = self.vapi.sw_bond_interface_dump(
+        intfs = self.vclient.sw_bond_interface_dump(
             sw_if_index=bond0.sw_if_index)
         for intf in intfs:
             self.assertEqual(intf.members, 1)
@@ -350,7 +350,7 @@ class TestLACP(VppTestCase):
         bond0.detach_vpp_bond_interface(sw_if_index=memif2.sw_if_index)
         self.wait_for_member_detach(bond0, timeout=10, count=0)
 
-        intfs = self.vapi.sw_bond_interface_dump(
+        intfs = self.vclient.sw_bond_interface_dump(
             sw_if_index=bond0.sw_if_index)
         for intf in intfs:
             self.assertEqual(intf.members, 0)

@@ -2,7 +2,7 @@
 
 import unittest
 from framework import VppTestCase, VppTestRunner
-from util import ppp
+from vpp_pom.util import ppp
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
 from syslog_rfc5424_parser import SyslogMessage, ParseError
@@ -68,7 +68,7 @@ class TestSyslog(VppTestCase):
                     cli_str += " sd-param %s %s" % (name, value)
         if msg is not None:
             cli_str += " %s" % (msg)
-        self.vapi.cli(cli_str)
+        self.vclient.cli(cli_str)
 
     def syslog_verify(self, data, facility, severity, appname, msgid, sd=None,
                       msg=None):
@@ -103,9 +103,9 @@ class TestSyslog(VppTestCase):
 
     def test_syslog(self):
         """ Syslog Protocol test """
-        self.vapi.syslog_set_sender(src_address=self.pg0.local_ip4,
+        self.vclient.syslog_set_sender(src_address=self.pg0.local_ip4,
                                     collector_address=self.pg0.remote_ip4)
-        config = self.vapi.syslog_get_sender()
+        config = self.vclient.syslog_get_sender()
         self.assertEqual(str(config.collector_address),
                          self.pg0.remote_ip4)
         self.assertEqual(config.collector_port, 514)
@@ -149,9 +149,9 @@ class TestSyslog(VppTestCase):
                            msg)
 
         self.pg_enable_capture(self.pg_interfaces)
-        self.vapi.syslog_set_filter(
+        self.vclient.syslog_set_filter(
             self.SYSLOG_SEVERITY.SYSLOG_API_SEVERITY_WARN)
-        filter = self.vapi.syslog_get_filter()
+        filter = self.vclient.syslog_get_filter()
         self.assertEqual(filter.severity,
                          self.SYSLOG_SEVERITY.SYSLOG_API_SEVERITY_WARN)
         self.syslog_generate(SyslogFacility.local7,
@@ -178,10 +178,10 @@ class TestSyslog(VppTestCase):
                            sd1,
                            msg)
 
-        self.vapi.syslog_set_sender(self.pg0.local_ip4,
+        self.vclient.syslog_set_sender(self.pg0.local_ip4,
                                     self.pg0.remote_ip4,
                                     collector_port=12345)
-        config = self.vapi.syslog_get_sender()
+        config = self.vclient.syslog_get_sender()
         self.assertEqual(config.collector_port, 12345)
 
         self.pg_enable_capture(self.pg_interfaces)

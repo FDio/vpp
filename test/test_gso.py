@@ -18,14 +18,14 @@ from scapy.layers.vxlan import VXLAN
 from scapy.data import ETH_P_IP, ETH_P_IPV6, ETH_P_ARP
 
 from framework import VppTestCase, VppTestRunner
-from vpp_object import VppObject
-from vpp_interface import VppInterface
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
-from vpp_ipip_tun_interface import VppIpIpTunInterface
-from vpp_vxlan_tunnel import VppVxlanTunnel
+from vpp_pom.vpp_object import VppObject
+from vpp_pom.vpp_interface import VppInterface
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
+from vpp_pom.vpp_ipip_tun_interface import VppIpIpTunInterface
+from vpp_pom.vpp_vxlan_tunnel import VppVxlanTunnel
 from socket import AF_INET, AF_INET6, inet_pton
-from util import reassemble4
+from vpp_pom.util import reassemble4
 
 
 """ Test_gso is a subclass of VPPTestCase classes.
@@ -65,17 +65,17 @@ class TestGSO(VppTestCase):
             i.resolve_ndp()
 
         self.single_tunnel_bd = 10
-        self.vxlan = VppVxlanTunnel(self, src=self.pg0.local_ip4,
+        self.vxlan = VppVxlanTunnel(self.vclient, src=self.pg0.local_ip4,
                                     dst=self.pg0.remote_ip4,
                                     vni=self.single_tunnel_bd)
 
-        self.vxlan2 = VppVxlanTunnel(self, src=self.pg0.local_ip6,
+        self.vxlan2 = VppVxlanTunnel(self.vclient, src=self.pg0.local_ip6,
                                      dst=self.pg0.remote_ip6,
                                      vni=self.single_tunnel_bd)
 
-        self.ipip4 = VppIpIpTunInterface(self, self.pg0, self.pg0.local_ip4,
+        self.ipip4 = VppIpIpTunInterface(self.vclient, self.pg0, self.pg0.local_ip4,
                                          self.pg0.remote_ip4)
-        self.ipip6 = VppIpIpTunInterface(self, self.pg0, self.pg0.local_ip6,
+        self.ipip6 = VppIpIpTunInterface(self.vclient, self.pg0, self.pg0.local_ip6,
                                          self.pg0.remote_ip6)
 
     def tearDown(self):
@@ -148,7 +148,7 @@ class TestGSO(VppTestCase):
         # Send jumbo frame with gso enabled and DF bit is set
         # input and output interfaces support GSO
         #
-        self.vapi.feature_gso_enable_disable(self.pg3.sw_if_index)
+        self.vclient.feature_gso_enable_disable(self.pg3.sw_if_index)
         p41 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
                IP(src=self.pg2.remote_ip4, dst=self.pg3.remote_ip4,
                   flags='DF') /
@@ -190,7 +190,7 @@ class TestGSO(VppTestCase):
         # and DF bit is set. GSO packet will be chunked into gso_size
         # data payload
         #
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index)
+        self.vclient.feature_gso_enable_disable(self.pg0.sw_if_index)
         p42 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
                IP(src=self.pg2.remote_ip4, dst=self.pg0.remote_ip4,
                   flags='DF') /
@@ -240,8 +240,8 @@ class TestGSO(VppTestCase):
         # Send jumbo frame with gso enabled only on input interface
         # and DF bit is unset. GSO packet will be fragmented.
         #
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [576, 0, 0, 0])
-        self.vapi.feature_gso_enable_disable(self.pg1.sw_if_index)
+        self.vclient.sw_interface_set_mtu(self.pg1.sw_if_index, [576, 0, 0, 0])
+        self.vclient.feature_gso_enable_disable(self.pg1.sw_if_index)
 
         p43 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
                IP(src=self.pg2.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -265,7 +265,7 @@ class TestGSO(VppTestCase):
         # Send jumbo frame with gso enabled only on input interface.
         # ICMPv6 Packet Too Big will be sent back to sender.
         #
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [1280, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(self.pg1.sw_if_index, [1280, 0, 0, 0])
         p63 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
                IPv6(src=self.pg2.remote_ip6, dst=self.pg1.remote_ip6) /
                TCP(sport=1234, dport=1234) /
@@ -289,8 +289,8 @@ class TestGSO(VppTestCase):
         # and DF bit is unset. GSO packet will be fragmented. MSS is 8960. GSO
         # size will be min(MSS, 2048 - 14 - 20) vlib_buffer_t size
         #
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [9000, 0, 0, 0])
-        self.vapi.sw_interface_set_mtu(self.pg4.sw_if_index, [9000, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(self.pg1.sw_if_index, [9000, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(self.pg4.sw_if_index, [9000, 0, 0, 0])
         p44 = (Ether(src=self.pg4.remote_mac, dst=self.pg4.local_mac) /
                IP(src=self.pg4.remote_ip4, dst=self.pg1.remote_ip4) /
                TCP(sport=1234, dport=1234) /
@@ -331,14 +331,14 @@ class TestGSO(VppTestCase):
             size += payload_len
         self.assertEqual(size, 65200*5)
 
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index,
+        self.vclient.feature_gso_enable_disable(self.pg0.sw_if_index,
                                              enable_disable=0)
-        self.vapi.feature_gso_enable_disable(self.pg1.sw_if_index,
+        self.vclient.feature_gso_enable_disable(self.pg1.sw_if_index,
                                              enable_disable=0)
 
     def test_gso_vxlan(self):
         """ GSO VXLAN test """
-        self.logger.info(self.vapi.cli("sh int addr"))
+        self.logger.info(self.vclient.cli("sh int addr"))
         #
         # Send jumbo frame with gso enabled only on input interface and
         # create VXLAN VTEP on VPP pg0, and put vxlan_tunnel0 and pg2
@@ -349,11 +349,11 @@ class TestGSO(VppTestCase):
         # enable ipv4/vxlan
         #
         self.vxlan.add_vpp_config()
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.vxlan.sw_if_index, bd_id=self.single_tunnel_bd)
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg2.sw_if_index, bd_id=self.single_tunnel_bd)
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index)
+        self.vclient.feature_gso_enable_disable(self.pg0.sw_if_index)
 
         #
         # IPv4/IPv4 - VXLAN
@@ -425,7 +425,7 @@ class TestGSO(VppTestCase):
         # enable ipv6/vxlan
         #
         self.vxlan2.add_vpp_config()
-        self.vapi.sw_interface_set_l2_bridge(
+        self.vclient.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.vxlan2.sw_if_index,
             bd_id=self.single_tunnel_bd)
 
@@ -493,17 +493,17 @@ class TestGSO(VppTestCase):
         #
         self.vxlan2.remove_vpp_config()
 
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index,
+        self.vclient.feature_gso_enable_disable(self.pg0.sw_if_index,
                                              enable_disable=0)
 
     def test_gso_ipip(self):
         """ GSO IPIP test """
-        self.logger.info(self.vapi.cli("sh int addr"))
+        self.logger.info(self.vclient.cli("sh int addr"))
         #
         # Send jumbo frame with gso enabled only on input interface and
         # create IPIP tunnel on VPP pg0.
         #
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index)
+        self.vclient.feature_gso_enable_disable(self.pg0.sw_if_index)
 
         #
         # enable ipip4
@@ -516,7 +516,7 @@ class TestGSO(VppTestCase):
 
         # Add IPv4 routes via tunnel interface
         self.ip4_via_ip4_tunnel = VppIpRoute(
-                self, "172.16.10.0", 24,
+                self.vclient, "172.16.10.0", 24,
                 [VppRoutePath("0.0.0.0",
                               self.ipip4.sw_if_index,
                               proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)])
@@ -551,7 +551,7 @@ class TestGSO(VppTestCase):
         self.assertEqual(size, 65200*5)
 
         self.ip6_via_ip4_tunnel = VppIpRoute(
-                self, "fd01:10::", 64,
+                self.vclient, "fd01:10::", 64,
                 [VppRoutePath("::",
                               self.ipip4.sw_if_index,
                               proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
@@ -588,9 +588,9 @@ class TestGSO(VppTestCase):
         # create IPIP tunnel on VPP pg0. Enable gso feature node on ipip
         # tunnel - IPSec use case
         #
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index,
+        self.vclient.feature_gso_enable_disable(self.pg0.sw_if_index,
                                              enable_disable=0)
-        self.vapi.feature_gso_enable_disable(self.ipip4.sw_if_index)
+        self.vclient.feature_gso_enable_disable(self.ipip4.sw_if_index)
 
         rxs = self.send_and_expect(self.pg2, 5*[p47], self.pg0, 225)
         size = 0
@@ -615,7 +615,7 @@ class TestGSO(VppTestCase):
         #
         # disable ipip4
         #
-        self.vapi.feature_gso_enable_disable(self.ipip4.sw_if_index,
+        self.vclient.feature_gso_enable_disable(self.ipip4.sw_if_index,
                                              enable_disable=0)
         self.ip4_via_ip4_tunnel.remove_vpp_config()
         self.ip6_via_ip4_tunnel.remove_vpp_config()
@@ -624,7 +624,7 @@ class TestGSO(VppTestCase):
         #
         # enable ipip6
         #
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index)
+        self.vclient.feature_gso_enable_disable(self.pg0.sw_if_index)
         self.ipip6.add_vpp_config()
 
         # Set interface up and enable IP on it
@@ -633,7 +633,7 @@ class TestGSO(VppTestCase):
 
         # Add IPv4 routes via tunnel interface
         self.ip4_via_ip6_tunnel = VppIpRoute(
-                self, "172.16.10.0", 24,
+                self.vclient, "172.16.10.0", 24,
                 [VppRoutePath("0.0.0.0",
                               self.ipip6.sw_if_index,
                               proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)])
@@ -667,7 +667,7 @@ class TestGSO(VppTestCase):
         self.assertEqual(size, 65200*5)
 
         self.ip6_via_ip6_tunnel = VppIpRoute(
-                self, "fd01:10::", 64,
+                self.vclient, "fd01:10::", 64,
                 [VppRoutePath("::",
                               self.ipip6.sw_if_index,
                               proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
@@ -706,7 +706,7 @@ class TestGSO(VppTestCase):
         self.ip6_via_ip6_tunnel.remove_vpp_config()
         self.ipip6.remove_vpp_config()
 
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index,
+        self.vclient.feature_gso_enable_disable(self.pg0.sw_if_index,
                                              enable_disable=0)
 
 if __name__ == '__main__':

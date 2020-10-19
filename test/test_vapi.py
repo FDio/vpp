@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" VAPI test """
+""" vapi test """
 
 import unittest
 import os
@@ -7,19 +7,19 @@ import signal
 from framework import VppTestCase, running_on_centos, VppTestRunner, Worker
 
 
-class VAPITestCase(VppTestCase):
-    """ VAPI test """
+class vapiTestCase(VppTestCase):
+    """ vapi test """
 
     @classmethod
     def setUpClass(cls):
-        super(VAPITestCase, cls).setUpClass()
+        super(vapiTestCase, cls).setUpClass()
 
     @classmethod
     def tearDownClass(cls):
-        super(VAPITestCase, cls).tearDownClass()
+        super(vapiTestCase, cls).tearDownClass()
 
     def test_vapi_c(self):
-        """ run C VAPI tests """
+        """ run C vapi tests """
         var = "TEST_BR"
         built_root = os.getenv(var, None)
         self.assertIsNotNone(built_root,
@@ -49,7 +49,7 @@ class VAPITestCase(VppTestCase):
 
     @unittest.skipIf(running_on_centos, "Centos's gcc can't compile our C++")
     def test_vapi_cpp(self):
-        """ run C++ VAPI tests """
+        """ run C++ vapi tests """
         var = "TEST_BR"
         built_root = os.getenv(var, None)
         self.assertIsNotNone(built_root,

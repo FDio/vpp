@@ -8,9 +8,9 @@ from scapy.layers.inet import IP, IPOption
 from scapy.contrib.igmpv3 import IGMPv3, IGMPv3gr, IGMPv3mq, IGMPv3mr
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_igmp import find_igmp_state, IGMP_FILTER, IgmpRecord, IGMP_MODE, \
+from vpp_pom.plugins.vpp_igmp import find_igmp_state, IGMP_FILTER, IgmpRecord, IGMP_MODE, \
     IgmpSG, VppHostState, wait_for_igmp_event
-from vpp_ip_route import find_mroute, VppIpTable
+from vpp_pom.vpp_ip_route import find_mroute, VppIpTable
 
 
 class IgmpMode:
@@ -37,7 +37,7 @@ class TestIgmp(VppTestCase):
         self.config_list = []
 
         self.ip_addr = []
-        self.ip_table = VppIpTable(self, 1)
+        self.ip_table = VppIpTable(self.vclient, 1)
         self.ip_table.add_vpp_config()
 
         for pg in self.pg_interfaces[2:]:
@@ -49,7 +49,7 @@ class TestIgmp(VppTestCase):
 
     def tearDown(self):
         for pg in self.pg_interfaces:
-            self.vapi.igmp_clear_interface(pg.sw_if_index)
+            self.vclient.igmp_clear_interface(pg.sw_if_index)
             pg.unconfig_ip4()
             pg.set_table_ip4(0)
             pg.admin_down()
@@ -72,29 +72,29 @@ class TestIgmp(VppTestCase):
 
         check for the addition/removal of the IGMP mroutes """
 
-        self.vapi.igmp_enable_disable(self.pg0.sw_if_index, 1, IGMP_MODE.HOST)
-        self.vapi.igmp_enable_disable(self.pg1.sw_if_index, 1, IGMP_MODE.HOST)
+        self.vclient.igmp_enable_disable(self.pg0.sw_if_index, 1, IGMP_MODE.HOST)
+        self.vclient.igmp_enable_disable(self.pg1.sw_if_index, 1, IGMP_MODE.HOST)
 
-        self.assertTrue(find_mroute(self, "224.0.0.1", "0.0.0.0", 32))
-        self.assertTrue(find_mroute(self, "224.0.0.22", "0.0.0.0", 32))
+        self.assertTrue(find_mroute(self.vclient, "224.0.0.1", "0.0.0.0", 32))
+        self.assertTrue(find_mroute(self.vclient, "224.0.0.22", "0.0.0.0", 32))
 
-        self.vapi.igmp_enable_disable(self.pg2.sw_if_index, 1, IGMP_MODE.HOST)
-        self.vapi.igmp_enable_disable(self.pg3.sw_if_index, 1, IGMP_MODE.HOST)
+        self.vclient.igmp_enable_disable(self.pg2.sw_if_index, 1, IGMP_MODE.HOST)
+        self.vclient.igmp_enable_disable(self.pg3.sw_if_index, 1, IGMP_MODE.HOST)
 
-        self.assertTrue(find_mroute(self, "224.0.0.1", "0.0.0.0", 32,
+        self.assertTrue(find_mroute(self.vclient, "224.0.0.1", "0.0.0.0", 32,
                                     table_id=1))
-        self.assertTrue(find_mroute(self, "224.0.0.22", "0.0.0.0", 32,
+        self.assertTrue(find_mroute(self.vclient, "224.0.0.22", "0.0.0.0", 32,
                                     table_id=1))
-        self.vapi.igmp_enable_disable(self.pg0.sw_if_index, 0, IGMP_MODE.HOST)
-        self.vapi.igmp_enable_disable(self.pg1.sw_if_index, 0, IGMP_MODE.HOST)
-        self.vapi.igmp_enable_disable(self.pg2.sw_if_index, 0, IGMP_MODE.HOST)
-        self.vapi.igmp_enable_disable(self.pg3.sw_if_index, 0, IGMP_MODE.HOST)
+        self.vclient.igmp_enable_disable(self.pg0.sw_if_index, 0, IGMP_MODE.HOST)
+        self.vclient.igmp_enable_disable(self.pg1.sw_if_index, 0, IGMP_MODE.HOST)
+        self.vclient.igmp_enable_disable(self.pg2.sw_if_index, 0, IGMP_MODE.HOST)
+        self.vclient.igmp_enable_disable(self.pg3.sw_if_index, 0, IGMP_MODE.HOST)
 
-        self.assertTrue(find_mroute(self, "224.0.0.1", "0.0.0.0", 32))
-        self.assertFalse(find_mroute(self, "224.0.0.22", "0.0.0.0", 32))
-        self.assertTrue(find_mroute(self, "224.0.0.1", "0.0.0.0", 32,
+        self.assertTrue(find_mroute(self.vclient, "224.0.0.1", "0.0.0.0", 32))
+        self.assertFalse(find_mroute(self.vclient, "224.0.0.22", "0.0.0.0", 32))
+        self.assertTrue(find_mroute(self.vclient, "224.0.0.1", "0.0.0.0", 32,
                                     table_id=1))
-        self.assertFalse(find_mroute(self, "224.0.0.22", "0.0.0.0", 32,
+        self.assertFalse(find_mroute(self.vclient, "224.0.0.22", "0.0.0.0", 32,
                                      table_id=1))
 
     def verify_general_query(self, p):
@@ -145,7 +145,7 @@ class TestIgmp(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        hs = VppHostState(self,
+        hs = VppHostState(self.vclient,
                           IGMP_FILTER.INCLUDE,
                           itf.sw_if_index,
                           sg)
@@ -177,7 +177,7 @@ class TestIgmp(VppTestCase):
         #
         # Enable interface for host functions
         #
-        self.vapi.igmp_enable_disable(self.pg0.sw_if_index,
+        self.vclient.igmp_enable_disable(self.pg0.sw_if_index,
                                       1,
                                       IGMP_MODE.HOST)
 
@@ -188,7 +188,7 @@ class TestIgmp(VppTestCase):
         h1 = self.add_group(self.pg0, IgmpSG("239.1.1.1", ["1.1.1.1"]))
 
         # search for the corresponding state created in VPP
-        dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
+        dump = self.vclient.igmp_dump(self.pg0.sw_if_index)
         self.assertEqual(len(dump), 1)
         self.assertTrue(find_igmp_state(dump, self.pg0,
                                         "239.1.1.1", "1.1.1.1"))
@@ -308,7 +308,7 @@ class TestIgmp(VppTestCase):
         #
         self.remove_group(h1)
 
-        dump = self.vapi.igmp_dump()
+        dump = self.vclient.igmp_dump()
         self.assertFalse(dump)
 
         #
@@ -319,7 +319,7 @@ class TestIgmp(VppTestCase):
                                    ["1.1.1.1", "1.1.1.2", "1.1.1.3"]))
 
         # search for the corresponding state created in VPP
-        dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
+        dump = self.vclient.igmp_dump(self.pg0.sw_if_index)
         self.assertEqual(len(dump), 3)
         for s in h2.sg.saddrs:
             self.assertTrue(find_igmp_state(dump, self.pg0,
@@ -427,7 +427,7 @@ class TestIgmp(VppTestCase):
         # consumes the link MTU. We should therefore see multiple state
         # state reports when queried.
         #
-        self.vapi.sw_interface_set_mtu(self.pg0.sw_if_index, [560, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(self.pg0.sw_if_index, [560, 0, 0, 0])
 
         src_list = []
         for i in range(128):
@@ -458,12 +458,12 @@ class TestIgmp(VppTestCase):
         #
         # drop the MTU further (so a 128 sized group won't fit)
         #
-        self.vapi.sw_interface_set_mtu(self.pg0.sw_if_index, [512, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(self.pg0.sw_if_index, [512, 0, 0, 0])
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        h10 = VppHostState(self,
+        h10 = VppHostState(self.vclient,
                            IGMP_FILTER.INCLUDE,
                            self.pg0.sw_if_index,
                            IgmpSG("238.1.1.3", src_list))
@@ -477,7 +477,7 @@ class TestIgmp(VppTestCase):
         # remove state, expect the report for the removal
         # the dump should be empty
         #
-        self.vapi.sw_interface_set_mtu(self.pg0.sw_if_index, [600, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(self.pg0.sw_if_index, [600, 0, 0, 0])
         self.remove_group(h8)
         self.remove_group(h9)
         self.remove_group(h2)
@@ -488,15 +488,15 @@ class TestIgmp(VppTestCase):
         self.remove_group(h7)
         self.remove_group(h10)
 
-        self.logger.info(self.vapi.cli("sh igmp config"))
-        self.assertFalse(self.vapi.igmp_dump())
+        self.logger.info(self.vclient.cli("sh igmp config"))
+        self.assertFalse(self.vclient.igmp_dump())
 
         #
         # TODO
         #  ADD STATE ON MORE INTERFACES
         #
 
-        self.vapi.igmp_enable_disable(self.pg0.sw_if_index,
+        self.vclient.igmp_enable_disable(self.pg0.sw_if_index,
                                       0,
                                       IGMP_MODE.HOST)
 
@@ -524,28 +524,28 @@ class TestIgmp(VppTestCase):
                         maddr="239.1.1.1", srcaddrs=["10.1.1.1", "10.1.1.2"]))
 
         self.send(self.pg0, p_j)
-        self.assertFalse(self.vapi.igmp_dump())
+        self.assertFalse(self.vclient.igmp_dump())
 
         #
         # drop the default timer values so these tests execute in a
         # reasonable time frame
         #
-        self.vapi.cli("test igmp timers query 1 src 3 leave 1")
+        self.vclient.cli("test igmp timers query 1 src 3 leave 1")
 
         #
         # enable router functions on the interface
         #
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        self.vapi.igmp_enable_disable(self.pg0.sw_if_index,
+        self.vclient.igmp_enable_disable(self.pg0.sw_if_index,
                                       1,
                                       IGMP_MODE.ROUTER)
-        self.vapi.want_igmp_events(1)
+        self.vclient.want_igmp_events(1)
 
         #
         # wait for router to send general query
         #
-        for ii in range(3):
+        for _ in range(3):
             capture = self.pg0.get_capture(1, timeout=2)
             self.verify_general_query(capture[0])
             self.pg_enable_capture(self.pg_interfaces)
@@ -557,11 +557,11 @@ class TestIgmp(VppTestCase):
         #
         self.send(self.pg0, p_j)
 
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 1, self.pg0,
                                             "239.1.1.1", "10.1.1.1", 1))
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 1, self.pg0,
                                             "239.1.1.1", "10.1.1.2", 1))
-        dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
+        dump = self.vclient.igmp_dump(self.pg0.sw_if_index)
         self.assertEqual(len(dump), 2)
         self.assertTrue(find_igmp_state(dump, self.pg0,
                                         "239.1.1.1", "10.1.1.1"))
@@ -573,11 +573,11 @@ class TestIgmp(VppTestCase):
         # the state should be reaped
         # VPP sends a notification that the group has been left
         #
-        self.assertTrue(wait_for_igmp_event(self, 4, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 4, self.pg0,
                                             "239.1.1.1", "10.1.1.1", 0))
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 1, self.pg0,
                                             "239.1.1.1", "10.1.1.2", 0))
-        self.assertFalse(self.vapi.igmp_dump())
+        self.assertFalse(self.vclient.igmp_dump())
 
         #
         # resend the join. wait for two queries and then send a current-state
@@ -587,11 +587,11 @@ class TestIgmp(VppTestCase):
         # expired in 3 seconds.
         #
         self.send(self.pg0, p_j)
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 1, self.pg0,
                                             "239.1.1.1", "10.1.1.1", 1))
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 1, self.pg0,
                                             "239.1.1.1", "10.1.1.2", 1))
-        dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
+        dump = self.vclient.igmp_dump(self.pg0.sw_if_index)
         self.assertEqual(len(dump), 2)
 
         capture = self.pg0.get_capture(2, timeout=3)
@@ -610,7 +610,7 @@ class TestIgmp(VppTestCase):
         self.send(self.pg0, p_cs)
 
         self.sleep(2)
-        dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
+        dump = self.vclient.igmp_dump(self.pg0.sw_if_index)
         self.assertEqual(len(dump), 2)
         self.assertTrue(find_igmp_state(dump, self.pg0,
                                         "239.1.1.1", "10.1.1.1"))
@@ -621,11 +621,11 @@ class TestIgmp(VppTestCase):
         # wait for the per-source timer to expire
         # the state should be reaped
         #
-        self.assertTrue(wait_for_igmp_event(self, 4, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 4, self.pg0,
                                             "239.1.1.1", "10.1.1.1", 0))
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 1, self.pg0,
                                             "239.1.1.1", "10.1.1.2", 0))
-        self.assertFalse(self.vapi.igmp_dump())
+        self.assertFalse(self.vclient.igmp_dump())
 
         #
         # resend the join, then a leave. Router sends a group+source
@@ -633,11 +633,11 @@ class TestIgmp(VppTestCase):
         #
         self.send(self.pg0, p_j)
 
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 1, self.pg0,
                                             "239.1.1.1", "10.1.1.1", 1))
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 1, self.pg0,
                                             "239.1.1.1", "10.1.1.2", 1))
-        dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
+        dump = self.vclient.igmp_dump(self.pg0.sw_if_index)
         self.assertEqual(len(dump), 2)
 
         self.send(self.pg0, p_l)
@@ -648,12 +648,12 @@ class TestIgmp(VppTestCase):
         #
         # the group specific query drops the timeout to leave (=1) seconds
         #
-        self.assertTrue(wait_for_igmp_event(self, 2, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 2, self.pg0,
                                             "239.1.1.1", "10.1.1.1", 0))
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 1, self.pg0,
                                             "239.1.1.1", "10.1.1.2", 0))
-        self.assertFalse(self.vapi.igmp_dump())
-        self.assertFalse(self.vapi.igmp_dump())
+        self.assertFalse(self.vclient.igmp_dump())
+        self.assertFalse(self.vclient.igmp_dump())
 
         #
         # a TO_EX({}) / IN_EX({}) is treated like a (*,G) join
@@ -668,7 +668,7 @@ class TestIgmp(VppTestCase):
 
         self.send(self.pg0, p_j)
 
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 1, self.pg0,
                                             "239.1.1.2", "0.0.0.0", 1))
 
         p_j = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
@@ -681,7 +681,7 @@ class TestIgmp(VppTestCase):
 
         self.send(self.pg0, p_j)
 
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 1, self.pg0,
                                             "239.1.1.3", "0.0.0.0", 1))
 
         #
@@ -698,7 +698,7 @@ class TestIgmp(VppTestCase):
 
         self.send(self.pg0, p_j)
 
-        dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
+        dump = self.vclient.igmp_dump(self.pg0.sw_if_index)
         self.assertTrue(find_igmp_state(dump, self.pg0,
                                         "239.1.1.2", "0.0.0.0"))
         self.assertTrue(find_igmp_state(dump, self.pg0,
@@ -709,7 +709,7 @@ class TestIgmp(VppTestCase):
         #
         # a TO_IN({}) and IS_IN({}) are treated like a (*,G) leave
         #
-        self.vapi.cli("set logging class igmp level debug")
+        self.vclient.cli("set logging class igmp level debug")
         p_l = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
                IP(src=self.pg0.remote_ip4, dst="224.0.0.22", tos=0xc0, ttl=1,
                   options=[IPOption(copy_flag=1, optclass="control",
@@ -719,7 +719,7 @@ class TestIgmp(VppTestCase):
                IGMPv3gr(rtype="Change To Include Mode", maddr="239.1.1.2"))
 
         self.send(self.pg0, p_l)
-        self.assertTrue(wait_for_igmp_event(self, 2, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 2, self.pg0,
                                             "239.1.1.2", "0.0.0.0", 0))
 
         p_l = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
@@ -732,14 +732,14 @@ class TestIgmp(VppTestCase):
 
         self.send(self.pg0, p_l)
 
-        self.assertTrue(wait_for_igmp_event(self, 2, self.pg0,
+        self.assertTrue(wait_for_igmp_event(self.vclient, 2, self.pg0,
                                             "239.1.1.3", "0.0.0.0", 0))
-        self.assertFalse(self.vapi.igmp_dump(self.pg0.sw_if_index))
+        self.assertFalse(self.vclient.igmp_dump(self.pg0.sw_if_index))
 
         #
         # disable router config
         #
-        self.vapi.igmp_enable_disable(self.pg0.sw_if_index,
+        self.vclient.igmp_enable_disable(self.pg0.sw_if_index,
                                       0,
                                       IGMP_MODE.ROUTER)
 
@@ -762,20 +762,20 @@ class TestIgmp(VppTestCase):
         self.pg2.config_ip4()
         self.pg2.admin_up()
 
-        self.vapi.cli('test igmp timers query 10 src 3 leave 1')
+        self.vclient.cli('test igmp timers query 10 src 3 leave 1')
 
         # enable IGMP
-        self.vapi.igmp_enable_disable(self.pg0.sw_if_index, 1, IGMP_MODE.HOST)
-        self.vapi.igmp_enable_disable(self.pg1.sw_if_index, 1,
+        self.vclient.igmp_enable_disable(self.pg0.sw_if_index, 1, IGMP_MODE.HOST)
+        self.vclient.igmp_enable_disable(self.pg1.sw_if_index, 1,
                                       IGMP_MODE.ROUTER)
-        self.vapi.igmp_enable_disable(self.pg2.sw_if_index, 1,
+        self.vclient.igmp_enable_disable(self.pg2.sw_if_index, 1,
                                       IGMP_MODE.ROUTER)
 
         # create IGMP proxy device
-        self.vapi.igmp_proxy_device_add_del(0, self.pg0.sw_if_index, 1)
-        self.vapi.igmp_proxy_device_add_del_interface(0,
+        self.vclient.igmp_proxy_device_add_del(0, self.pg0.sw_if_index, 1)
+        self.vclient.igmp_proxy_device_add_del_interface(0,
                                                       self.pg1.sw_if_index, 1)
-        self.vapi.igmp_proxy_device_add_del_interface(0,
+        self.vclient.igmp_proxy_device_add_del_interface(0,
                                                       self.pg2.sw_if_index, 1)
 
         # send join on pg1. join should be proxied by pg0
@@ -786,7 +786,7 @@ class TestIgmp(VppTestCase):
         capture = self.pg0.get_capture(1, timeout=1)
         self.verify_report(capture[0], [IgmpRecord(IgmpSG("239.1.1.1",
                            ["10.1.1.1", "10.1.1.2"]), "Allow New Sources")])
-        self.assertTrue(find_mroute(self, "239.1.1.1", "0.0.0.0", 32))
+        self.assertTrue(find_mroute(self.vclient, "239.1.1.1", "0.0.0.0", 32))
 
         # send join on pg2. join should be proxied by pg0.
         # the group should contain only 10.1.1.3 as
@@ -798,7 +798,7 @@ class TestIgmp(VppTestCase):
         capture = self.pg0.get_capture(1, timeout=1)
         self.verify_report(capture[0], [IgmpRecord(IgmpSG("239.1.1.1",
                            ["10.1.1.3"]), "Allow New Sources")])
-        self.assertTrue(find_mroute(self, "239.1.1.1", "0.0.0.0", 32))
+        self.assertTrue(find_mroute(self.vclient, "239.1.1.1", "0.0.0.0", 32))
 
         # send leave on pg2. leave for 10.1.1.3 should be proxyed
         # as pg2 was the only interface interested in 10.1.1.3
@@ -809,26 +809,26 @@ class TestIgmp(VppTestCase):
         capture = self.pg0.get_capture(1, timeout=2)
         self.verify_report(capture[0], [IgmpRecord(IgmpSG("239.1.1.1",
                            ["10.1.1.3"]), "Block Old Sources")])
-        self.assertTrue(find_mroute(self, "239.1.1.1", "0.0.0.0", 32))
+        self.assertTrue(find_mroute(self.vclient, "239.1.1.1", "0.0.0.0", 32))
 
         # disable igmp on pg1 (also removes interface from proxy device)
         # proxy leave for 10.1.1.2. pg2 is still interested in 10.1.1.1
         self.pg_enable_capture(self.pg_interfaces)
-        self.vapi.igmp_enable_disable(self.pg1.sw_if_index, 0,
+        self.vclient.igmp_enable_disable(self.pg1.sw_if_index, 0,
                                       IGMP_MODE.ROUTER)
 
         capture = self.pg0.get_capture(1, timeout=1)
         self.verify_report(capture[0], [IgmpRecord(IgmpSG("239.1.1.1",
                            ["10.1.1.2"]), "Block Old Sources")])
-        self.assertTrue(find_mroute(self, "239.1.1.1", "0.0.0.0", 32))
+        self.assertTrue(find_mroute(self.vclient, "239.1.1.1", "0.0.0.0", 32))
 
         # disable IGMP on pg0 and pg1.
         #   disabling IGMP on pg0 (proxy device upstream interface)
         #   removes this proxy device
-        self.vapi.igmp_enable_disable(self.pg0.sw_if_index, 0, IGMP_MODE.HOST)
-        self.vapi.igmp_enable_disable(self.pg2.sw_if_index, 0,
+        self.vclient.igmp_enable_disable(self.pg0.sw_if_index, 0, IGMP_MODE.HOST)
+        self.vclient.igmp_enable_disable(self.pg2.sw_if_index, 0,
                                       IGMP_MODE.ROUTER)
-        self.assertFalse(find_mroute(self, "239.1.1.1", "0.0.0.0", 32))
+        self.assertFalse(find_mroute(self.vclient, "239.1.1.1", "0.0.0.0", 32))
 
 
 if __name__ == '__main__':

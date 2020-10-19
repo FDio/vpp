@@ -13,7 +13,7 @@ from scapy.layers.inet6 import ICMPv6EchoReply, IPv6ExtHdrRouting
 from scapy.layers.inet6 import IPv6ExtHdrFragment
 from pprint import pprint
 from random import randint
-from util import L4_Conn
+from vpp_pom.util import L4_Conn
 
 
 class Conn(L4_Conn):
@@ -47,7 +47,7 @@ class ContainerIntegrationTestCase(VppTestCase):
         super(ContainerIntegrationTestCase, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show ip neighbors"))
+        self.logger.info(self.vclient.cli("show ip neighbors"))
 
     def run_basic_conn_test(self, af, acl_side):
         """ Basic connectivity test """
@@ -101,9 +101,9 @@ class ContainerIntegrationTestCase(VppTestCase):
         for i in range(2):
             for addr in [self.pg_interfaces[i].remote_ip4,
                          self.pg_interfaces[i].remote_ip6]:
-                self.vapi.ppcli("ip container " + addr + " " +
+                self.vclient.ppcli("ip container " + addr + " " +
                                 self.pg_interfaces[i].name)
-                self.vapi.ppcli("stn rule address " + addr +
+                self.vclient.ppcli("stn rule address " + addr +
                                 " interface " + self.pg_interfaces[i].name)
 
     def test_0210_basic_conn_test(self):
@@ -119,10 +119,10 @@ class ContainerIntegrationTestCase(VppTestCase):
         for i in range(2):
             for addr in [self.pg_interfaces[i].remote_ip4,
                          self.pg_interfaces[i].remote_ip6]:
-                self.vapi.ppcli("ip container " + addr + " " +
+                self.vclient.ppcli("ip container " + addr + " " +
                                 self.pg_interfaces[i].name +
                                 " del")
-                self.vapi.ppcli("stn rule address " + addr +
+                self.vclient.ppcli("stn rule address " + addr +
                                 " interface " + self.pg_interfaces[i].name +
                                 " del")
 

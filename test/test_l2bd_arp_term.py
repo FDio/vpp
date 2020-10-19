@@ -18,7 +18,7 @@ from scapy.layers.inet6 import IPv6, UDP, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, ICMPv6DestUnreach, icmp6types
 
 from framework import VppTestCase, VppTestRunner
-from util import Host, ppp
+from vpp_pom.util import Host, ppp
 
 
 class TestL2bdArpTerm(VppTestCase):
@@ -68,16 +68,16 @@ class TestL2bdArpTerm(VppTestCase):
         super(TestL2bdArpTerm, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show l2fib verbose"))
+        self.logger.info(self.vclient.ppcli("show l2fib verbose"))
         # many tests delete bridge-domain 1 as the last task.  don't output
         # the details of a non-existent bridge-domain.
-        if self.vapi.l2_fib_table_dump(bd_id=1):
-            self.logger.info(self.vapi.ppcli("show bridge-domain 1 detail"))
+        if self.vclient.l2_fib_table_dump(bd_id=1):
+            self.logger.info(self.vclient.ppcli("show bridge-domain 1 detail"))
 
     def add_del_arp_term_hosts(self, entries, bd_id=1, is_add=1, is_ipv6=0):
         for e in entries:
             ip = e.ip4 if is_ipv6 == 0 else e.ip6
-            self.vapi.bd_ip_mac_add_del(is_add=is_add,
+            self.vclient.bd_ip_mac_add_del(is_add=is_add,
                                         entry={
                                             'bd_id': bd_id,
                                             'ip': ip,
@@ -115,13 +115,13 @@ class TestL2bdArpTerm(VppTestCase):
 
     def bd_add_del(self, bd_id=1, is_add=1):
         if is_add:
-            self.vapi.bridge_domain_add_del(bd_id=bd_id, is_add=is_add)
+            self.vclient.bridge_domain_add_del(bd_id=bd_id, is_add=is_add)
         for swif in self.bd_swifs(bd_id):
             swif_idx = swif.sw_if_index
-            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=swif_idx,
+            self.vclient.sw_interface_set_l2_bridge(rx_sw_if_index=swif_idx,
                                                  bd_id=bd_id, enable=is_add)
         if not is_add:
-            self.vapi.bridge_domain_add_del(bd_id=bd_id, is_add=is_add)
+            self.vclient.bridge_domain_add_del(bd_id=bd_id, is_add=is_add)
 
     @classmethod
     def arp_req(cls, src_host, host):
@@ -236,7 +236,7 @@ class TestL2bdArpTerm(VppTestCase):
             else:
                 raise ValueError("Unknown feature used: %s" % flag)
             is_set = 1 if args[flag] else 0
-            self.vapi.bridge_flags(bd_id=bd_id, is_set=is_set,
+            self.vclient.bridge_flags(bd_id=bd_id, is_set=is_set,
                                    flags=feature_bitmap)
         self.logger.info("Bridge domain ID %d updated" % bd_id)
 
@@ -391,7 +391,7 @@ class TestL2bdArpTerm(VppTestCase):
     def test_l2bd_arp_term_09(self):
         """ L2BD arp term - send garps, verify arp event reports
         """
-        self.vapi.want_l2_arp_term_events(enable=1)
+        self.vclient.want_l2_arp_term_events(enable=1)
         self.bd_add_del(1, is_add=1)
         self.set_bd_flags(1, arp_term=True, flood=False,
                           uu_flood=False, learn=False)
@@ -403,7 +403,7 @@ class TestL2bdArpTerm(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        evs = [self.vapi.wait_for_event(1, "l2_arp_term_event")
+        evs = [self.vclient.wait_for_event(1, "l2_arp_term_event")
                for i in range(len(hosts))]
         ev_hosts = self.arp_event_hosts(evs)
         self.assertEqual(len(ev_hosts ^ hosts), 0)
@@ -421,7 +421,7 @@ class TestL2bdArpTerm(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        evs = [self.vapi.wait_for_event(1, "l2_arp_term_event")
+        evs = [self.vclient.wait_for_event(1, "l2_arp_term_event")
                for i in range(len(hosts))]
         ev_hosts = self.arp_event_hosts(evs)
         self.assertEqual(len(ev_hosts ^ hosts), 0)
@@ -429,7 +429,7 @@ class TestL2bdArpTerm(VppTestCase):
     def test_l2bd_arp_term_11(self):
         """ L2BD arp term - disable ip4 arp events,send garps, verify no events
         """
-        self.vapi.want_l2_arp_term_events(enable=0)
+        self.vclient.want_l2_arp_term_events(enable=0)
         macs = self.mac_list(range(90, 95))
         hosts = self.ip4_hosts(5, 1, macs)
 
@@ -439,13 +439,13 @@ class TestL2bdArpTerm(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.sleep(1)
-        self.assertEqual(len(self.vapi.collect_events()), 0)
+        self.assertEqual(len(self.vclient.collect_events()), 0)
         self.bd_add_del(1, is_add=0)
 
     def test_l2bd_arp_term_12(self):
         """ L2BD ND term - send NS packets verify reports
         """
-        self.vapi.want_l2_arp_term_events(enable=1)
+        self.vclient.want_l2_arp_term_events(enable=1)
         dst_host = self.ip6_host(50, 50, "00:00:11:22:33:44")
         self.bd_add_del(1, is_add=1)
         self.set_bd_flags(1, arp_term=True, flood=False,
@@ -457,7 +457,7 @@ class TestL2bdArpTerm(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        evs = [self.vapi.wait_for_event(2, "l2_arp_term_event")
+        evs = [self.vclient.wait_for_event(2, "l2_arp_term_event")
                for i in range(len(hosts))]
         ev_hosts = self.nd_event_hosts(evs)
         self.assertEqual(len(ev_hosts ^ hosts), 0)
@@ -473,7 +473,7 @@ class TestL2bdArpTerm(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        evs = [self.vapi.wait_for_event(2, "l2_arp_term_event")
+        evs = [self.vclient.wait_for_event(2, "l2_arp_term_event")
                for i in range(len(hosts))]
         ev_hosts = self.nd_event_hosts(evs)
         self.assertEqual(len(ev_hosts ^ hosts), 0)
@@ -481,7 +481,7 @@ class TestL2bdArpTerm(VppTestCase):
     def test_l2bd_arp_term_14(self):
         """ L2BD ND term - disable ip4 arp events,send ns, verify no events
         """
-        self.vapi.want_l2_arp_term_events(enable=0)
+        self.vclient.want_l2_arp_term_events(enable=0)
         dst_host = self.ip6_host(50, 50, "00:00:11:22:33:44")
         macs = self.mac_list(range(10, 15))
         hosts = self.ip6_hosts(5, 1, macs)
@@ -491,7 +491,7 @@ class TestL2bdArpTerm(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.sleep(1)
-        self.assertEqual(len(self.vapi.collect_events()), 0)
+        self.assertEqual(len(self.vclient.collect_events()), 0)
         self.bd_add_del(1, is_add=0)
 
 

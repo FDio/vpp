@@ -3,10 +3,10 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal, \
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal, \
     VppIpTable, FibPathProto
-from vpp_gre_interface import VppGreInterface
+from vpp_pom.vpp_gre_interface import VppGreInterface
 from vpp_papi import VppEnum
 
 from scapy.packet import Raw
@@ -40,7 +40,7 @@ class TestMFIB(VppTestCase):
 
     def test_mfib(self):
         """ MFIB Unit Tests """
-        error = self.vapi.cli("test mfib")
+        error = self.vclient.cli("test mfib")
 
         if error:
             self.logger.critical(error)
@@ -73,12 +73,12 @@ class TestIPMcast(VppTestCase):
             i.resolve_ndp()
 
         # one more in a vrf
-        tbl4 = VppIpTable(self, 10)
+        tbl4 = VppIpTable(self.vclient, 10)
         tbl4.add_vpp_config()
         self.pg8.set_table_ip4(10)
         self.pg8.config_ip4()
 
-        tbl6 = VppIpTable(self, 10, is_ip6=1)
+        tbl6 = VppIpTable(self.vclient, 10, is_ip6=1)
         tbl6.add_vpp_config()
         self.pg8.set_table_ip6(10)
         self.pg8.config_ip6()
@@ -192,14 +192,14 @@ class TestIPMcast(VppTestCase):
         #
         # a stream that matches the default route. gets dropped.
         #
-        self.vapi.cli("clear trace")
-        self.vapi.cli("packet mac-filter pg0 on")
-        self.vapi.cli("packet mac-filter pg1 on")
-        self.vapi.cli("packet mac-filter pg2 on")
-        self.vapi.cli("packet mac-filter pg4 on")
-        self.vapi.cli("packet mac-filter pg5 on")
-        self.vapi.cli("packet mac-filter pg6 on")
-        self.vapi.cli("packet mac-filter pg7 on")
+        self.vclient.cli("clear trace")
+        self.vclient.cli("packet mac-filter pg0 on")
+        self.vclient.cli("packet mac-filter pg1 on")
+        self.vclient.cli("packet mac-filter pg2 on")
+        self.vclient.cli("packet mac-filter pg4 on")
+        self.vclient.cli("packet mac-filter pg5 on")
+        self.vclient.cli("packet mac-filter pg6 on")
+        self.vclient.cli("packet mac-filter pg7 on")
 
         tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
         self.pg0.add_stream(tx)
@@ -217,7 +217,7 @@ class TestIPMcast(VppTestCase):
         #  needs to use extra cache lines for the buckets.
         #
         route_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -244,7 +244,7 @@ class TestIPMcast(VppTestCase):
         # one accepting interface, pg0, 2 forwarding interfaces
         #
         route_1_1_1_1_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "1.1.1.1",
             "232.1.1.1", 27,  # any grp-len is ok when src is set
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -262,7 +262,7 @@ class TestIPMcast(VppTestCase):
         # that use unicast next-hops
         #
         route_1_1_1_1_232_1_1_2 = VppIpMRoute(
-            self,
+            self.vclient,
             "1.1.1.1",
             "232.1.1.2", 64,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -281,7 +281,7 @@ class TestIPMcast(VppTestCase):
         # one accepting interface, pg0, 1 forwarding interfaces
         #
         route_232 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.0.0.0", 8,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -295,7 +295,7 @@ class TestIPMcast(VppTestCase):
         # a stream that matches the route for (1.1.1.1,232.1.1.1)
         #  small packets
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
         self.pg0.add_stream(tx)
 
@@ -319,7 +319,7 @@ class TestIPMcast(VppTestCase):
         # a stream that matches the route for (1.1.1.1,232.1.1.1)
         #  large packets
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1",
                                     payload_size=1024)
         self.pg0.add_stream(tx)
@@ -343,7 +343,7 @@ class TestIPMcast(VppTestCase):
         #
         # a stream to the unicast next-hops
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.2")
         self.pg0.add_stream(tx)
 
@@ -365,7 +365,7 @@ class TestIPMcast(VppTestCase):
         # Send packets with the 9th bit set so we test the correct clearing
         # of that bit in the mac rewrite
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.255.255.255")
         self.pg0.add_stream(tx)
 
@@ -387,7 +387,7 @@ class TestIPMcast(VppTestCase):
         #
         # a stream that matches the route for (*,232.1.1.1)
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "1.1.1.2", "232.1.1.1")
         self.pg0.add_stream(tx)
 
@@ -407,31 +407,31 @@ class TestIPMcast(VppTestCase):
         self.pg0.assert_nothing_captured(
             remark="IP multicast packets forwarded on PG0")
 
-        self.vapi.cli("packet mac-filter pg0 off")
-        self.vapi.cli("packet mac-filter pg1 off")
-        self.vapi.cli("packet mac-filter pg2 off")
-        self.vapi.cli("packet mac-filter pg4 off")
-        self.vapi.cli("packet mac-filter pg5 off")
-        self.vapi.cli("packet mac-filter pg6 off")
-        self.vapi.cli("packet mac-filter pg7 off")
+        self.vclient.cli("packet mac-filter pg0 off")
+        self.vclient.cli("packet mac-filter pg1 off")
+        self.vclient.cli("packet mac-filter pg2 off")
+        self.vclient.cli("packet mac-filter pg4 off")
+        self.vclient.cli("packet mac-filter pg5 off")
+        self.vclient.cli("packet mac-filter pg6 off")
+        self.vclient.cli("packet mac-filter pg7 off")
 
     def test_ip6_mcast(self):
         """ IPv6 Multicast Replication """
-
+        
         MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
         MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
-
-        self.vapi.cli("packet mac-filter pg0 on")
-        self.vapi.cli("packet mac-filter pg1 on")
-        self.vapi.cli("packet mac-filter pg2 on")
-        self.vapi.cli("packet mac-filter pg4 on")
-        self.vapi.cli("packet mac-filter pg5 on")
-        self.vapi.cli("packet mac-filter pg6 on")
-        self.vapi.cli("packet mac-filter pg7 on")
+        
+        self.vclient.cli("packet mac-filter pg0 on")
+        self.vclient.cli("packet mac-filter pg1 on")
+        self.vclient.cli("packet mac-filter pg2 on")
+        self.vclient.cli("packet mac-filter pg4 on")
+        self.vclient.cli("packet mac-filter pg5 on")
+        self.vclient.cli("packet mac-filter pg6 on")
+        self.vclient.cli("packet mac-filter pg7 on")
         #
         # a stream that matches the default route. gets dropped.
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip6(self.pg0, "2001::1", "ff01::1")
         self.pg0.add_stream(tx)
 
@@ -446,7 +446,7 @@ class TestIPMcast(VppTestCase):
         # one accepting interface, pg0, 3 forwarding interfaces
         #
         route_ff01_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "::",
             "ff01::1", 128,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -469,7 +469,7 @@ class TestIPMcast(VppTestCase):
         # one accepting interface, pg0, 2 forwarding interfaces
         #
         route_2001_ff01_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "2001::1",
             "ff01::1", 0,  # any grp-len is ok when src is set
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -489,7 +489,7 @@ class TestIPMcast(VppTestCase):
         # one accepting interface, pg0, 1 forwarding interface
         #
         route_ff01 = VppIpMRoute(
-            self,
+            self.vclient,
             "::",
             "ff01::", 16,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -505,7 +505,7 @@ class TestIPMcast(VppTestCase):
         # a stream that matches the route for (*, ff01::/16)
         # sent on the non-accepting interface
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip6(self.pg1, "2002::1", "ff01:2::255")
         self.send_and_assert_no_replies(self.pg1, tx, "RPF miss")
 
@@ -513,7 +513,7 @@ class TestIPMcast(VppTestCase):
         # a stream that matches the route for (*, ff01::/16)
         # sent on the accepting interface
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip6(self.pg0, "2002::1", "ff01:2::255")
         self.pg0.add_stream(tx)
 
@@ -550,7 +550,7 @@ class TestIPMcast(VppTestCase):
         #
         # a stream that matches the route for (*,ff01::1)
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip6(self.pg0, "2002::2", "ff01::1")
         self.pg0.add_stream(tx)
 
@@ -569,7 +569,7 @@ class TestIPMcast(VppTestCase):
         #
         # a stream that matches the route for (2001::1, ff00::1)
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip6(self.pg0, "2001::1", "ff01::1")
         self.pg0.add_stream(tx)
 
@@ -586,16 +586,16 @@ class TestIPMcast(VppTestCase):
         self.pg3.assert_nothing_captured(
             remark="IP multicast packets forwarded on PG3")
 
-        self.vapi.cli("packet mac-filter pg0 off")
-        self.vapi.cli("packet mac-filter pg1 off")
-        self.vapi.cli("packet mac-filter pg2 off")
-        self.vapi.cli("packet mac-filter pg4 off")
-        self.vapi.cli("packet mac-filter pg5 off")
-        self.vapi.cli("packet mac-filter pg6 off")
-        self.vapi.cli("packet mac-filter pg7 off")
+        self.vclient.cli("packet mac-filter pg0 off")
+        self.vclient.cli("packet mac-filter pg1 off")
+        self.vclient.cli("packet mac-filter pg2 off")
+        self.vclient.cli("packet mac-filter pg4 off")
+        self.vclient.cli("packet mac-filter pg5 off")
+        self.vclient.cli("packet mac-filter pg6 off")
+        self.vclient.cli("packet mac-filter pg7 off")
 
     def _mcast_connected_send_stream(self, dst_ip):
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0,
                                     self.pg0.remote_ip4,
                                     dst_ip)
@@ -620,7 +620,7 @@ class TestIPMcast(VppTestCase):
         # one accepting interface, pg0, 1 forwarding interfaces
         #
         route_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -641,7 +641,7 @@ class TestIPMcast(VppTestCase):
         #
         # Constrct a representation of the signal we expect on pg0
         #
-        signal_232_1_1_1_itf_0 = VppMFibSignal(self,
+        signal_232_1_1_1_itf_0 = VppMFibSignal(self.vclient,
                                                route_232_1_1_1,
                                                self.pg0.sw_if_index,
                                                tx[0])
@@ -649,7 +649,7 @@ class TestIPMcast(VppTestCase):
         #
         # read the only expected signal
         #
-        signals = self.vapi.mfib_signal_dump()
+        signals = self.vclient.mfib_signal_dump()
 
         self.assertEqual(1, len(signals))
 
@@ -661,7 +661,7 @@ class TestIPMcast(VppTestCase):
         #
         tx = self._mcast_connected_send_stream("232.1.1.1")
 
-        signals = self.vapi.mfib_signal_dump()
+        signals = self.vclient.mfib_signal_dump()
         self.assertEqual(1, len(signals))
         signal_232_1_1_1_itf_0.compare(signals[0])
 
@@ -670,7 +670,7 @@ class TestIPMcast(VppTestCase):
         # one accepting interface, pg0, 1 forwarding interfaces
         #
         route_232_1_1_2 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.2", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -686,7 +686,7 @@ class TestIPMcast(VppTestCase):
         #
         # Send traffic to both entries. One read should net us two signals
         #
-        signal_232_1_1_2_itf_0 = VppMFibSignal(self,
+        signal_232_1_1_2_itf_0 = VppMFibSignal(self.vclient,
                                                route_232_1_1_2,
                                                self.pg0.sw_if_index,
                                                tx[0])
@@ -696,7 +696,7 @@ class TestIPMcast(VppTestCase):
         #
         # read the only expected signal
         #
-        signals = self.vapi.mfib_signal_dump()
+        signals = self.vclient.mfib_signal_dump()
 
         self.assertEqual(2, len(signals))
 
@@ -719,7 +719,7 @@ class TestIPMcast(VppTestCase):
         # one accepting interface, pg0, 1 forwarding interfaces
         #
         route_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -741,7 +741,7 @@ class TestIPMcast(VppTestCase):
         #
         # Constrct a representation of the signal we expect on pg0
         #
-        signal_232_1_1_1_itf_0 = VppMFibSignal(self,
+        signal_232_1_1_1_itf_0 = VppMFibSignal(self.vclient,
                                                route_232_1_1_1,
                                                self.pg0.sw_if_index,
                                                tx[0])
@@ -749,7 +749,7 @@ class TestIPMcast(VppTestCase):
         #
         # read the only expected signal
         #
-        signals = self.vapi.mfib_signal_dump()
+        signals = self.vclient.mfib_signal_dump()
 
         self.assertEqual(1, len(signals))
 
@@ -761,7 +761,7 @@ class TestIPMcast(VppTestCase):
         #
         tx = self._mcast_connected_send_stream("232.1.1.1")
 
-        signals = self.vapi.mfib_signal_dump()
+        signals = self.vclient.mfib_signal_dump()
         self.assertEqual(1, len(signals))
         signal_232_1_1_1_itf_0.compare(signals[0])
 
@@ -774,10 +774,10 @@ class TestIPMcast(VppTestCase):
             (MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT |
              MRouteItfFlags.MFIB_API_ITF_FLAG_NEGATE_SIGNAL))
 
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self._mcast_connected_send_stream("232.1.1.1")
 
-        signals = self.vapi.mfib_signal_dump()
+        signals = self.vclient.mfib_signal_dump()
         self.assertEqual(0, len(signals))
 
         #
@@ -789,7 +789,7 @@ class TestIPMcast(VppTestCase):
 
         tx = self._mcast_connected_send_stream("232.1.1.1")
 
-        signals = self.vapi.mfib_signal_dump()
+        signals = self.vclient.mfib_signal_dump()
         self.assertEqual(1, len(signals))
         signal_232_1_1_1_itf_0.compare(signals[0])
 
@@ -802,7 +802,7 @@ class TestIPMcast(VppTestCase):
             MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT)
 
         tx = self._mcast_connected_send_stream("232.1.1.1")
-        signals = self.vapi.mfib_signal_dump()
+        signals = self.vclient.mfib_signal_dump()
         self.assertEqual(0, len(signals))
 
     def test_ip_mcast_vrf(self):
@@ -816,7 +816,7 @@ class TestIPMcast(VppTestCase):
         # one accepting interface, pg0, 2 forwarding interfaces
         #
         route_1_1_1_1_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "1.1.1.1",
             "232.1.1.1", 64,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -833,7 +833,7 @@ class TestIPMcast(VppTestCase):
         # a stream that matches the route for (1.1.1.1,232.1.1.1)
         #  small packets
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip4(self.pg8, "1.1.1.1", "232.1.1.1")
         self.pg8.add_stream(tx)
 
@@ -851,15 +851,15 @@ class TestIPMcast(VppTestCase):
         MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
 
         gre_if_1 = VppGreInterface(
-            self,
+            self.vclient,
             self.pg1.local_ip4,
             self.pg1.remote_ip4).add_vpp_config()
         gre_if_2 = VppGreInterface(
-            self,
+            self.vclient,
             self.pg2.local_ip4,
             self.pg2.remote_ip4).add_vpp_config()
         gre_if_3 = VppGreInterface(
-            self,
+            self.vclient,
             self.pg3.local_ip4,
             self.pg3.remote_ip4).add_vpp_config()
 
@@ -875,7 +875,7 @@ class TestIPMcast(VppTestCase):
         # one accepting interface, pg0, 2 forwarding interfaces
         #
         route_1_1_1_1_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "1.1.1.1",
             "232.2.2.2", 64,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -900,7 +900,7 @@ class TestIPMcast(VppTestCase):
               UDP(sport=1234, dport=1234) /
               Raw(b'\a5' * 64)) * 63
 
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         self.pg1.add_stream(tx)
 
         self.pg_enable_capture(self.pg_interfaces)
@@ -931,7 +931,7 @@ class TestIPMcast(VppTestCase):
         # one accepting interface, pg0, 2 forwarding interfaces
         #
         route_2001_ff01_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "2001::1",
             "ff01::1", 256,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -950,7 +950,7 @@ class TestIPMcast(VppTestCase):
         #
         # a stream that matches the route for (2001::1, ff00::1)
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         tx = self.create_stream_ip6(self.pg8, "2001::1", "ff01::1")
         self.pg8.add_stream(tx)
 
@@ -971,7 +971,7 @@ class TestIPMcast(VppTestCase):
         # A (*,G). The set of accepting interfaces matching the forwarding
         #
         route_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,

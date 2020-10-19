@@ -18,7 +18,7 @@ from scapy.layers.inet6 import IPv6
 from scapy.packet import raw, Raw
 from scapy.utils import long_converter
 from framework import VppTestCase, VppTestRunner
-from vpp_ikev2 import Profile, IDType, AuthMethod
+from vpp_pom.plugins.vpp_ikev2 import Profile, IDType, AuthMethod
 from vpp_papi import VppEnum
 
 try:
@@ -569,9 +569,9 @@ class IkePeer(VppTestCase):
             self.initiate_del_sa_from_responder()
         else:
             self.initiate_del_sa_from_initiator()
-        r = self.vapi.ikev2_sa_dump()
+        r = self.vclient.ikev2_sa_dump()
         self.assertEqual(len(r), 0)
-        sas = self.vapi.ipsec_sa_dump()
+        sas = self.vclient.ipsec_sa_dump()
         self.assertEqual(len(sas), 0)
         self.p.remove_vpp_config()
         self.assertIsNone(self.p.query_vpp_config())
@@ -583,8 +583,8 @@ class IkePeer(VppTestCase):
         self.assertIsNotNone(self.p.query_vpp_config())
         if self.sa.is_initiator:
             self.sa.generate_dh_data()
-        self.vapi.cli('ikev2 set logging level 4')
-        self.vapi.cli('event-lo clear')
+        self.vclient.cli('ikev2 set logging level 4')
+        self.vclient.cli('event-lo clear')
 
     def create_packet(self, src_if, msg, sport=500, dport=500, natt=False,
                       use_ip6=False):
@@ -672,7 +672,7 @@ class IkePeer(VppTestCase):
             self.assertNotIn(e.IPSEC_API_SAD_FLAG_UDP_ENCAP, ipsec_sa.flags)
 
     def verify_ipsec_sas(self, is_rekey=False):
-        sas = self.vapi.ipsec_sa_dump()
+        sas = self.vclient.ipsec_sa_dump()
         if is_rekey:
             # after rekey there is a short period of time in which old
             # inbound SA is still present
@@ -739,7 +739,7 @@ class IkePeer(VppTestCase):
         self.assertEqual(bytes(api_id.data, 'ascii'), exp_id.type)
 
     def verify_ike_sas(self):
-        r = self.vapi.ikev2_sa_dump()
+        r = self.vclient.ikev2_sa_dump()
         self.assertEqual(len(r), 1)
         sa = r[0].sa
         self.assertEqual(self.sa.ispi, (sa.ispi).to_bytes(8, 'big'))
@@ -773,7 +773,7 @@ class IkePeer(VppTestCase):
         self.assertEqual(bytes(sa.i_id.data, 'ascii'), self.sa.i_id)
         self.assertEqual(bytes(sa.r_id.data, 'ascii'), self.sa.r_id)
 
-        r = self.vapi.ikev2_child_sa_dump(sa_index=sa.sa_index)
+        r = self.vclient.ikev2_child_sa_dump(sa_index=sa.sa_index)
         self.assertEqual(len(r), 1)
         csa = r[0].child_sa
         self.assertEqual(csa.sa_index, sa.sa_index)
@@ -789,23 +789,23 @@ class IkePeer(VppTestCase):
         tsi, tsr = self.sa.generate_ts(self.p.ts_is_ip4)
         tsi = tsi[0]
         tsr = tsr[0]
-        r = self.vapi.ikev2_traffic_selector_dump(
+        r = self.vclient.ikev2_traffic_selector_dump(
                 is_initiator=True, sa_index=sa.sa_index,
                 child_sa_index=csa.child_sa_index)
         self.assertEqual(len(r), 1)
         ts = r[0].ts
         self.verify_ts(r[0].ts, tsi[0], True)
 
-        r = self.vapi.ikev2_traffic_selector_dump(
+        r = self.vclient.ikev2_traffic_selector_dump(
                 is_initiator=False, sa_index=sa.sa_index,
                 child_sa_index=csa.child_sa_index)
         self.assertEqual(len(r), 1)
         self.verify_ts(r[0].ts, tsr[0], False)
 
-        n = self.vapi.ikev2_nonce_get(is_initiator=True,
+        n = self.vclient.ikev2_nonce_get(is_initiator=True,
                                       sa_index=sa.sa_index)
         self.verify_nonce(n, self.sa.i_nonce)
-        n = self.vapi.ikev2_nonce_get(is_initiator=False,
+        n = self.vclient.ikev2_nonce_get(is_initiator=False,
                                       sa_index=sa.sa_index)
         self.verify_nonce(n, self.sa.r_nonce)
 
@@ -841,7 +841,7 @@ class TemplateInitiator(IkePeer):
         ispi = int.from_bytes(self.sa.ispi, 'little')
         self.pg0.enable_capture()
         self.pg_start()
-        self.vapi.ikev2_initiate_del_ike_sa(ispi=ispi)
+        self.vclient.ikev2_initiate_del_ike_sa(ispi=ispi)
         capture = self.pg0.get_capture(1)
         ih = self.get_ike_header(capture[0])
         self.assertNotIn('Response', ih.flags)
@@ -1007,7 +1007,7 @@ class TemplateInitiator(IkePeer):
     def initiate_sa_init(self):
         self.pg0.enable_capture()
         self.pg_start()
-        self.vapi.ikev2_initiate_sa_init(name=self.p.profile_name)
+        self.vclient.ikev2_initiate_sa_init(name=self.p.profile_name)
 
         capture = self.pg0.get_capture(1)
         self.verify_sa_init_request(capture[0])
@@ -1072,7 +1072,7 @@ class TemplateResponder(IkePeer):
     def initiate_del_sa_from_responder(self):
         self.pg0.enable_capture()
         self.pg_start()
-        self.vapi.ikev2_initiate_del_ike_sa(
+        self.vclient.ikev2_initiate_del_ike_sa(
                 ispi=int.from_bytes(self.sa.ispi, 'little'))
         capture = self.pg0.get_capture(1)
         ih = self.get_ike_header(capture[0])
@@ -1196,6 +1196,7 @@ class TemplateResponder(IkePeer):
                  ikev2.IKEv2_payload_SA(next_payload='TSi', prop=props) /
                  ikev2.IKEv2_payload_TSi(next_payload='TSr',
                  number_of_TSs=len(tsi), traffic_selector=tsi) /
+                 
                  ikev2.IKEv2_payload_TSr(next_payload=last_payload,
                  number_of_TSs=len(tsr), traffic_selector=tsr))
 
@@ -1292,17 +1293,17 @@ class Ikev2Params(object):
         dpd_disabled = True if 'dpd_disabled' not in params else\
             params['dpd_disabled']
         if dpd_disabled:
-            self.vapi.cli('ikev2 dpd disable')
+            self.vclient.cli('ikev2 dpd disable')
         self.del_sa_from_responder = False if 'del_sa_from_responder'\
             not in params else params['del_sa_from_responder']
         is_natt = 'natt' in params and params['natt'] or False
-        self.p = Profile(self, 'pr1')
+        self.p = Profile(self.vclient, 'pr1')
         self.ip6 = False if 'ip6' not in params else params['ip6']
 
         if 'auth' in params and params['auth'] == 'rsa-sig':
             auth_method = 'rsa-sig'
             work_dir = os.getenv('BR') + '/../src/plugins/ikev2/test/certs/'
-            self.vapi.ikev2_set_local_key(
+            self.vclient.ikev2_set_local_key(
                     key_file=work_dir + params['server-key'])
 
             client_file = work_dir + params['client-cert']
@@ -1392,11 +1393,11 @@ class TestApi(VppTestCase):
         super(TestApi, self).tearDown()
         self.p1.remove_vpp_config()
         self.p2.remove_vpp_config()
-        r = self.vapi.ikev2_profile_dump()
+        r = self.vclient.ikev2_profile_dump()
         self.assertEqual(len(r), 0)
 
     def configure_profile(self, cfg):
-        p = Profile(self, cfg['name'])
+        p = Profile(self.vclient, cfg['name'])
         p.add_local_id(id_type=cfg['loc_id'][0], data=cfg['loc_id'][1])
         p.add_remote_id(id_type=cfg['rem_id'][0], data=cfg['rem_id'][1])
         p.add_local_ts(**cfg['loc_ts'])
@@ -1499,7 +1500,7 @@ class TestApi(VppTestCase):
         self.p1 = self.configure_profile(conf['p1'])
         self.p2 = self.configure_profile(conf['p2'])
 
-        r = self.vapi.ikev2_profile_dump()
+        r = self.vclient.ikev2_profile_dump()
         self.assertEqual(len(r), 2)
         self.verify_profile(r[0].profile, conf['p1'])
         self.verify_profile(r[1].profile, conf['p2'])
@@ -1598,7 +1599,7 @@ class TestInitiatorRekey(TestInitiatorPsk):
         ispi = int.from_bytes(self.sa.child_sas[0].ispi, 'little')
         self.pg0.enable_capture()
         self.pg_start()
-        self.vapi.ikev2_initiate_rekey_child_sa(ispi=ispi)
+        self.vclient.ikev2_initiate_rekey_child_sa(ispi=ispi)
         capture = self.pg0.get_capture(1)
         ih = self.get_ike_header(capture[0])
         self.assertEqual(ih.exch_type, 36)  # CHILD_SA
@@ -1678,7 +1679,7 @@ class TestResponderDpd(TestResponderPsk):
         pass
 
     def test_responder(self):
-        self.vapi.ikev2_profile_set_liveness(period=2, max_retries=1)
+        self.vclient.ikev2_profile_set_liveness(period=2, max_retries=1)
         super(TestResponderDpd, self).test_responder()
         self.pg0.enable_capture()
         self.pg_start()
@@ -1690,9 +1691,9 @@ class TestResponderDpd(TestResponderPsk):
         self.assertEqual(plain, b'')
         # wait for SA expiration
         time.sleep(3)
-        ike_sas = self.vapi.ikev2_sa_dump()
+        ike_sas = self.vclient.ikev2_sa_dump()
         self.assertEqual(len(ike_sas), 0)
-        ipsec_sas = self.vapi.ipsec_sa_dump()
+        ipsec_sas = self.vclient.ipsec_sa_dump()
         self.assertEqual(len(ipsec_sas), 0)
 
 
@@ -1827,7 +1828,7 @@ class TestMalformedMessages(TemplateResponder, Ikev2Params):
 
     def assert_counter(self, count, name, version='ip4'):
         node_name = '/err/ikev2-%s/' % version + name
-        self.assertEqual(count, self.statistics.get_err_counter(node_name))
+        self.assertEqual(count, self.vclient.statistics.get_err_counter(node_name))
 
     def create_ike_init_msg(self, length=None, payload=None):
         msg = ikev2.IKEv2(length=length, init_SPI='\x11' * 8,

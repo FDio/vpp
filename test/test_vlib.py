@@ -6,7 +6,7 @@ import time
 import signal
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from framework import running_gcov_tests
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
 class TestVlib(VppTestCase):
@@ -62,7 +62,7 @@ class TestVlib(VppTestCase):
                 ]
 
         for cmd in cmds:
-            r = self.vapi.cli_return_response(cmd)
+            r = self.vclient.cli_return_response(cmd)
             if r.retval != 0:
                 if hasattr(r, 'reply'):
                     self.logger.info(cmd + " FAIL reply " + r.reply)
@@ -107,7 +107,7 @@ class TestVlib(VppTestCase):
                 ]
 
         for cmd in cmds:
-            r = self.vapi.cli_return_response(cmd)
+            r = self.vclient.cli_return_response(cmd)
             if r.retval != 0:
                 if hasattr(r, 'reply'):
                     self.logger.info(cmd + " FAIL reply " + r.reply)
@@ -163,7 +163,7 @@ class TestVlib(VppTestCase):
                 ]
 
         for cmd in cmds:
-            r = self.vapi.cli_return_response(cmd)
+            r = self.vclient.cli_return_response(cmd)
             if r.retval != 0:
                 if hasattr(r, 'reply'):
                     self.logger.info(cmd + " FAIL reply " + r.reply)
@@ -181,7 +181,7 @@ class TestVlib(VppTestCase):
                 ]
 
         for cmd in cmds:
-            r = self.vapi.cli_return_response(cmd)
+            r = self.vclient.cli_return_response(cmd)
             if r.retval != 0:
                 if hasattr(r, 'reply'):
                     self.logger.info(cmd + " FAIL reply " + r.reply)

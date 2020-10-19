@@ -5,13 +5,13 @@ import unittest
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, IPv6ExtHdrFragment, Raw
 from scapy.all import fragment, fragment6, RandShort, defragment6
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
-from vpp_ipip_tun_interface import VppIpIpTunInterface
-from vpp_teib import VppTeib
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto
+from vpp_pom.vpp_ipip_tun_interface import VppIpIpTunInterface
+from vpp_pom.vpp_teib import VppTeib
 from vpp_papi import VppEnum
 from socket import AF_INET, AF_INET6, inet_pton
-from util import reassemble4
+from vpp_pom.util import reassemble4
 
 """ Testipip is a subclass of  VPPTestCase classes.
 
@@ -23,7 +23,7 @@ IPIP tests.
 def ipip_add_tunnel(test, src, dst, table_id=0, dscp=0x0,
                     flags=0):
     """ Add a IPIP tunnel """
-    return test.vapi.ipip_add_tunnel(
+    return test.vclient.ipip_add_tunnel(
         tunnel={
             'src': src,
             'dst': dst,
@@ -54,7 +54,7 @@ class TestIPIP(VppTestCase):
 
     def setUp(self):
         super(TestIPIP, self).setUp()
-        self.table = VppIpTable(self, 1, register=False)
+        self.table = VppIpTable(self.vclient, 1, register=False)
         self.table.add_vpp_config()
 
         for i in self.interfaces:
@@ -139,7 +139,7 @@ class TestIPIP(VppTestCase):
 
         # IPv4 transport that copies the DCSP from the payload
         tun_dscp = VppIpIpTunInterface(
-            self,
+            self.vclient,
             self.pg0,
             self.pg0.local_ip4,
             self.pg1.remote_hosts[0].ip4,
@@ -147,7 +147,7 @@ class TestIPIP(VppTestCase):
         tun_dscp.add_vpp_config()
         # IPv4 transport that copies the DCSP and ECN from the payload
         tun_dscp_ecn = VppIpIpTunInterface(
-            self,
+            self.vclient,
             self.pg0,
             self.pg0.local_ip4,
             self.pg1.remote_hosts[1].ip4,
@@ -157,7 +157,7 @@ class TestIPIP(VppTestCase):
         # IPv4 transport that copies the ECN from the payload and sets the
         # DF bit on encap. copies the ECN on decap
         tun_ecn = VppIpIpTunInterface(
-            self,
+            self.vclient,
             self.pg0,
             self.pg0.local_ip4,
             self.pg1.remote_hosts[2].ip4,
@@ -168,7 +168,7 @@ class TestIPIP(VppTestCase):
         # IPv4 transport that sets a fixed DSCP in the encap and copies
         # the DF bit
         tun = VppIpIpTunInterface(
-            self,
+            self.vclient,
             self.pg0,
             self.pg0.local_ip4,
             self.pg1.remote_hosts[3].ip4,
@@ -196,8 +196,8 @@ class TestIPIP(VppTestCase):
         # Configure each tunnel
         for i, t in enumerate(tuns):
             # Set interface up and enable IP on it
-            self.vapi.sw_interface_set_flags(t.sw_if_index, 1)
-            self.vapi.sw_interface_set_unnumbered(
+            self.vclient.sw_interface_set_flags(t.sw_if_index, 1)
+            self.vclient.sw_interface_set_unnumbered(
                 sw_if_index=self.pg0.sw_if_index,
                 unnumbered_sw_if_index=t.sw_if_index)
 
@@ -207,14 +207,14 @@ class TestIPIP(VppTestCase):
 
             # Add IPv4 and IPv6 routes via tunnel interface
             ip4_via_tunnel = VppIpRoute(
-                self, a4s[i], 24,
+                self.vclient, a4s[i], 24,
                 [VppRoutePath("0.0.0.0",
                               t.sw_if_index,
                               proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)])
             ip4_via_tunnel.add_vpp_config()
 
             ip6_via_tunnel = VppIpRoute(
-                self, a6s[i], 64,
+                self.vclient, a6s[i], 64,
                 [VppRoutePath("::",
                               t.sw_if_index,
                               proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
@@ -307,7 +307,7 @@ class TestIPIP(VppTestCase):
                 self.validate(p[1], p4_reply)
                 self.assert_packet_checksums_valid(p)
 
-        err = self.statistics.get_err_counter(
+        err = self.vclient.statistics.get_err_counter(
             '/err/ipip4-input/packets decapsulated')
         self.assertEqual(err, n_packets_decapped)
 
@@ -328,7 +328,7 @@ class TestIPIP(VppTestCase):
                 self.validate(p[1], p4_reply)
                 self.assert_packet_checksums_valid(p)
 
-        err = self.statistics.get_err_counter(
+        err = self.vclient.statistics.get_err_counter(
             '/err/ipip4-input/packets decapsulated')
         self.assertEqual(err, n_packets_decapped)
 
@@ -351,7 +351,7 @@ class TestIPIP(VppTestCase):
                 self.validate(p[1], p6_reply)
                 self.assert_packet_checksums_valid(p)
 
-        err = self.statistics.get_err_counter(
+        err = self.vclient.statistics.get_err_counter(
             '/err/ipip4-input/packets decapsulated')
         self.assertEqual(err, n_packets_decapped)
 
@@ -374,18 +374,18 @@ class TestIPIP(VppTestCase):
                 self.validate(p[1], p6_reply)
                 self.assert_packet_checksums_valid(p)
 
-        err = self.statistics.get_err_counter(
+        err = self.vclient.statistics.get_err_counter(
             '/err/ipip4-input/packets decapsulated')
         self.assertEqual(err, n_packets_decapped)
 
         #
         # Fragmentation / Reassembly and Re-fragmentation
         #
-        rv = self.vapi.ip_reassembly_enable_disable(
+        rv = self.vclient.ip_reassembly_enable_disable(
             sw_if_index=self.pg1.sw_if_index,
             enable_ip4=1)
 
-        self.vapi.ip_reassembly_set(timeout_ms=1000, max_reassemblies=1000,
+        self.vclient.ip_reassembly_set(timeout_ms=1000, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=10000,
                                     is_ip6=0)
@@ -404,7 +404,7 @@ class TestIPIP(VppTestCase):
         for p in rx:
             self.validate(p[1], p4_reply)
 
-        err = self.statistics.get_err_counter(
+        err = self.vclient.statistics.get_err_counter(
             '/err/ipip4-input/packets decapsulated')
         self.assertEqual(err, n_packets_decapped)
 
@@ -428,7 +428,7 @@ class TestIPIP(VppTestCase):
         # Send fragments to tunnel head-end, for the tunnel head end
         # to reassemble and then refragment
         #
-        self.vapi.sw_interface_set_mtu(self.pg0.sw_if_index, [576, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(self.pg0.sw_if_index, [576, 0, 0, 0])
         frags, p4_reply = self.generate_ip4_frags(3123, 1200)
         self.pg_enable_capture()
         self.pg1.add_stream(frags)
@@ -438,7 +438,7 @@ class TestIPIP(VppTestCase):
         p4_reply.id = 256
         self.validate(reass_pkt, p4_reply)
 
-        self.vapi.sw_interface_set_mtu(self.pg0.sw_if_index, [1600, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(self.pg0.sw_if_index, [1600, 0, 0, 0])
         frags, p4_reply = self.generate_ip4_frags(3123, 1200)
         self.pg_enable_capture()
         self.pg1.add_stream(frags)
@@ -449,7 +449,7 @@ class TestIPIP(VppTestCase):
         self.validate(reass_pkt, p4_reply)
 
         # send large packets through the tunnel, expect them to be fragmented
-        self.vapi.sw_interface_set_mtu(tun_dscp.sw_if_index, [600, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(tun_dscp.sw_if_index, [600, 0, 0, 0])
 
         p4 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
               IP(src="1.2.3.4", dst="130.67.0.1", tos=42) /
@@ -467,16 +467,16 @@ class TestIPIP(VppTestCase):
         """ ipip create / delete interface test """
         rv = ipip_add_tunnel(self, '1.2.3.4', '2.3.4.5')
         sw_if_index = rv.sw_if_index
-        self.vapi.ipip_del_tunnel(sw_if_index)
+        self.vclient.ipip_del_tunnel(sw_if_index)
 
     def test_ipip_vrf_create(self):
         """ ipip create / delete interface VRF test """
 
-        t = VppIpTable(self, 20)
+        t = VppIpTable(self.vclient, 20)
         t.add_vpp_config()
         rv = ipip_add_tunnel(self, '1.2.3.4', '2.3.4.5', table_id=20)
         sw_if_index = rv.sw_if_index
-        self.vapi.ipip_del_tunnel(sw_if_index)
+        self.vclient.ipip_del_tunnel(sw_if_index)
 
     def payload(self, len):
         return 'x' * len
@@ -497,7 +497,7 @@ class TestIPIP(VppTestCase):
             #  - assign an IP Addres
             #  - Add a route via the tunnel
             #
-            ipip_if = VppIpIpTunInterface(self, itf,
+            ipip_if = VppIpIpTunInterface(self.vclient, itf,
                                           itf.local_ip4,
                                           "0.0.0.0",
                                           mode=(VppEnum.vl_api_tunnel_mode_t.
@@ -507,8 +507,8 @@ class TestIPIP(VppTestCase):
             ipip_if.config_ip4()
             ipip_if.generate_remote_hosts(4)
 
-            self.logger.info(self.vapi.cli("sh adj"))
-            self.logger.info(self.vapi.cli("sh ip fib"))
+            self.logger.info(self.vclient.cli("sh adj"))
+            self.logger.info(self.vclient.cli("sh ip fib"))
 
             #
             # ensure we don't match to the tunnel if the source address
@@ -531,7 +531,7 @@ class TestIPIP(VppTestCase):
                 # route traffic via the peer
                 #
                 route_via_tun = VppIpRoute(
-                    self, route_addr, 32,
+                    self.vclient, route_addr, 32,
                     [VppRoutePath(ipip_if._remote_hosts[ii].ip4,
                                   ipip_if.sw_if_index)])
                 route_via_tun.add_vpp_config()
@@ -539,11 +539,11 @@ class TestIPIP(VppTestCase):
                 #
                 # Add a TEIB entry resolves the peer
                 #
-                teib = VppTeib(self, ipip_if,
+                teib = VppTeib(self.vclient, ipip_if,
                                ipip_if._remote_hosts[ii].ip4,
                                itf._remote_hosts[ii].ip4)
                 teib.add_vpp_config()
-                self.logger.info(self.vapi.cli("sh adj nbr ipip0 %s" %
+                self.logger.info(self.vclient.cli("sh adj nbr ipip0 %s" %
                                                ipip_if._remote_hosts[ii].ip4))
 
                 #
@@ -571,7 +571,7 @@ class TestIPIP(VppTestCase):
                          UDP(sport=1234, dport=1234) /
                          Raw(b'0x44' * 100)) for x in range(63)]
 
-                self.logger.info(self.vapi.cli("sh ipip tunnel-hash"))
+                self.logger.info(self.vclient.cli("sh ipip tunnel-hash"))
                 rx = self.send_and_expect(self.pg0, tx_i, self.pg0)
 
                 #
@@ -604,7 +604,7 @@ class TestIPIP(VppTestCase):
             # with all of the peers in place, swap the ip-table of
             # the ipip interface
             #
-            table = VppIpTable(self, 2)
+            table = VppIpTable(self.vclient, 2)
             table.add_vpp_config()
 
             ipip_if.unconfig_ip4()
@@ -669,21 +669,21 @@ class TestIPIP6(VppTestCase):
 
         sw_if_index = rv.sw_if_index
         self.tunnel_if_index = sw_if_index
-        self.vapi.sw_interface_set_flags(sw_if_index, 1)
-        self.vapi.sw_interface_set_unnumbered(
+        self.vclient.sw_interface_set_flags(sw_if_index, 1)
+        self.vclient.sw_interface_set_unnumbered(
             sw_if_index=self.pg0.sw_if_index,
             unnumbered_sw_if_index=sw_if_index)
 
         # Add IPv4 and IPv6 routes via tunnel interface
         ip4_via_tunnel = VppIpRoute(
-            self, "130.67.0.0", 16,
+            self.vclient, "130.67.0.0", 16,
             [VppRoutePath("0.0.0.0",
                           sw_if_index,
                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)])
         ip4_via_tunnel.add_vpp_config()
 
         ip6_via_tunnel = VppIpRoute(
-            self, "dead::", 16,
+            self.vclient, "dead::", 16,
             [VppRoutePath("::",
                           sw_if_index,
                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
@@ -697,7 +697,7 @@ class TestIPIP6(VppTestCase):
         self.tunnel_ip4_via_tunnel.remove_vpp_config()
         self.tunnel_ip6_via_tunnel.remove_vpp_config()
 
-        rv = self.vapi.ipip_del_tunnel(sw_if_index=self.tunnel_if_index)
+        rv = self.vclient.ipip_del_tunnel(sw_if_index=self.tunnel_if_index)
 
     def validate(self, rx, expected):
         self.assertEqual(rx, expected.__class__(expected))
@@ -830,7 +830,7 @@ class TestIPIP6(VppTestCase):
 
         # IPv4 transport that copies the DCSP from the payload
         tun_dscp = VppIpIpTunInterface(
-            self,
+            self.vclient,
             self.pg0,
             self.pg0.local_ip6,
             self.pg1.remote_hosts[0].ip6,
@@ -838,7 +838,7 @@ class TestIPIP6(VppTestCase):
         tun_dscp.add_vpp_config()
         # IPv4 transport that copies the DCSP and ECN from the payload
         tun_dscp_ecn = VppIpIpTunInterface(
-            self,
+            self.vclient,
             self.pg0,
             self.pg0.local_ip6,
             self.pg1.remote_hosts[1].ip6,
@@ -848,7 +848,7 @@ class TestIPIP6(VppTestCase):
         # IPv4 transport that copies the ECN from the payload and sets the
         # DF bit on encap. copies the ECN on decap
         tun_ecn = VppIpIpTunInterface(
-            self,
+            self.vclient,
             self.pg0,
             self.pg0.local_ip6,
             self.pg1.remote_hosts[2].ip6,
@@ -859,7 +859,7 @@ class TestIPIP6(VppTestCase):
         # IPv4 transport that sets a fixed DSCP in the encap and copies
         # the DF bit
         tun = VppIpIpTunInterface(
-            self,
+            self.vclient,
             self.pg0,
             self.pg0.local_ip6,
             self.pg1.remote_hosts[3].ip6,
@@ -887,8 +887,8 @@ class TestIPIP6(VppTestCase):
         # Configure each tunnel
         for i, t in enumerate(tuns):
             # Set interface up and enable IP on it
-            self.vapi.sw_interface_set_flags(t.sw_if_index, 1)
-            self.vapi.sw_interface_set_unnumbered(
+            self.vclient.sw_interface_set_flags(t.sw_if_index, 1)
+            self.vclient.sw_interface_set_unnumbered(
                 sw_if_index=self.pg0.sw_if_index,
                 unnumbered_sw_if_index=t.sw_if_index)
 
@@ -898,14 +898,14 @@ class TestIPIP6(VppTestCase):
 
             # Add IPv4 and IPv6 routes via tunnel interface
             ip4_via_tunnel = VppIpRoute(
-                self, a4s[i], 24,
+                self.vclient, a4s[i], 24,
                 [VppRoutePath("0.0.0.0",
                               t.sw_if_index,
                               proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)])
             ip4_via_tunnel.add_vpp_config()
 
             ip6_via_tunnel = VppIpRoute(
-                self, a6s[i], 64,
+                self.vclient, a6s[i], 64,
                 [VppRoutePath("::",
                               t.sw_if_index,
                               proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
@@ -958,7 +958,7 @@ class TestIPIP6(VppTestCase):
         #
         # Decapsulation
         #
-        n_packets_decapped = self.statistics.get_err_counter(
+        n_packets_decapped = self.vclient.statistics.get_err_counter(
             '/err/ipip6-input/packets decapsulated')
 
         self.p_ether = Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
@@ -984,7 +984,7 @@ class TestIPIP6(VppTestCase):
                 self.validate(p[1], p4_reply)
                 self.assert_packet_checksums_valid(p)
 
-        err = self.statistics.get_err_counter(
+        err = self.vclient.statistics.get_err_counter(
             '/err/ipip6-input/packets decapsulated')
         self.assertEqual(err, n_packets_decapped)
 
@@ -1005,7 +1005,7 @@ class TestIPIP6(VppTestCase):
                 self.validate(p[1], p4_reply)
                 self.assert_packet_checksums_valid(p)
 
-        err = self.statistics.get_err_counter(
+        err = self.vclient.statistics.get_err_counter(
             '/err/ipip6-input/packets decapsulated')
         self.assertEqual(err, n_packets_decapped)
 
@@ -1026,7 +1026,7 @@ class TestIPIP6(VppTestCase):
                 self.validate(p[1], p6_reply)
                 self.assert_packet_checksums_valid(p)
 
-        err = self.statistics.get_err_counter(
+        err = self.vclient.statistics.get_err_counter(
             '/err/ipip6-input/packets decapsulated')
         self.assertEqual(err, n_packets_decapped)
 
@@ -1049,7 +1049,7 @@ class TestIPIP6(VppTestCase):
                 self.validate(p[1], p6_reply)
                 self.assert_packet_checksums_valid(p)
 
-        err = self.statistics.get_err_counter(
+        err = self.vclient.statistics.get_err_counter(
             '/err/ipip6-input/packets decapsulated')
         self.assertEqual(err, n_packets_decapped)
 
@@ -1064,17 +1064,17 @@ class TestIPIP6(VppTestCase):
         #
         # Fragmentation / Reassembly and Re-fragmentation
         #
-        rv = self.vapi.ip_reassembly_enable_disable(
+        rv = self.vclient.ip_reassembly_enable_disable(
             sw_if_index=self.pg1.sw_if_index,
             enable_ip6=1)
 
-        self.vapi.ip_reassembly_set(timeout_ms=1000, max_reassemblies=1000,
+        self.vclient.ip_reassembly_set(timeout_ms=1000, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=10000,
                                     is_ip6=1)
 
         # Send lots of fragments, verify reassembled packet
-        before_cnt = self.statistics.get_err_counter(
+        before_cnt = self.vclient.statistics.get_err_counter(
             '/err/ipip6-input/packets decapsulated')
         frags, p6_reply = self.generate_ip6_frags(3131, 1400)
         f = []
@@ -1088,7 +1088,7 @@ class TestIPIP6(VppTestCase):
         for p in rx:
             self.validate(p[1], p6_reply)
 
-        cnt = self.statistics.get_err_counter(
+        cnt = self.vclient.statistics.get_err_counter(
             '/err/ipip6-input/packets decapsulated')
         self.assertEqual(cnt, before_cnt + 1000)
 
@@ -1110,7 +1110,7 @@ class TestIPIP6(VppTestCase):
 
         # Simple fragmentation
         p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [1280, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(self.pg1.sw_if_index, [1280, 0, 0, 0])
 
         # IPv6 in to IPv6 tunnel
         p_payload = UDP(sport=1234, dport=1234) / self.payload(1300)
@@ -1137,7 +1137,7 @@ class TestIPIP6(VppTestCase):
         # to reassemble and then refragment out the tunnel again.
         # Hair-pinning
         #
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [1280, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(self.pg1.sw_if_index, [1280, 0, 0, 0])
         frags, p6_reply = self.generate_ip6_hairpin_frags(8000, 1200)
         self.pg_enable_capture()
         self.pg1.add_stream(frags)
@@ -1152,16 +1152,16 @@ class TestIPIP6(VppTestCase):
         """ ipip create / delete interface test """
         rv = ipip_add_tunnel(self, '1.2.3.4', '2.3.4.5')
         sw_if_index = rv.sw_if_index
-        self.vapi.ipip_del_tunnel(sw_if_index)
+        self.vclient.ipip_del_tunnel(sw_if_index)
 
     def test_ipip_vrf_create(self):
         """ ipip create / delete interface VRF test """
 
-        t = VppIpTable(self, 20)
+        t = VppIpTable(self.vclient, 20)
         t.add_vpp_config()
         rv = ipip_add_tunnel(self, '1.2.3.4', '2.3.4.5', table_id=20)
         sw_if_index = rv.sw_if_index
-        self.vapi.ipip_del_tunnel(sw_if_index)
+        self.vclient.ipip_del_tunnel(sw_if_index)
 
     def payload(self, len):
         return 'x' * len

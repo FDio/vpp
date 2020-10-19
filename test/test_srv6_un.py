@@ -64,22 +64,22 @@ class TestSRv6uSIDSRH(VppTestCase):
         """ test_srv6_usid_srh """
         pkts = self.create_packets([("A::1", "B::1"), ("C::1", "D::1")])
 
-        self.vapi.cli("set sr encaps source addr A1::1")
-        self.vapi.cli(
+        self.vclient.cli("set sr encaps source addr A1::1")
+        self.vclient.cli(
             "sr localsid prefix 1111:2222:aaaa::/48 behavior un 16")
-        self.vapi.cli(
+        self.vclient.cli(
             "ip route add 1111:2222:bbbb::/48 via {}".format(self.ip6_nhop))
 
-        self.logger.info(self.vapi.cli("show sr localsids"))
+        self.logger.info(self.vclient.cli("show sr localsids"))
 
-        self.vapi.cli("clear errors")
+        self.vclient.cli("clear errors")
 
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        self.logger.info(self.vapi.cli("show errors"))
-        self.logger.info(self.vapi.cli("show int address"))
+        self.logger.info(self.vclient.cli("show errors"))
+        self.logger.info(self.vclient.cli("show int address"))
 
         capture = self.pg1.get_capture(len(pkts))
 
@@ -140,22 +140,22 @@ class TestSRv6uSID(VppTestCase):
         """ test_srv6_usid """
         pkts = self.create_packets([("A::1", "B::1"), ("C::1", "D::1")])
 
-        self.vapi.cli("set sr encaps source addr A1::1")
-        self.vapi.cli(
+        self.vclient.cli("set sr encaps source addr A1::1")
+        self.vclient.cli(
             "sr localsid prefix 1111:2222:aaaa::/48 behavior un 16")
-        self.vapi.cli(
+        self.vclient.cli(
             "ip route add 1111:2222:bbbb::/48 via {}".format(self.ip6_nhop))
 
-        self.logger.info(self.vapi.cli("show sr localsids"))
+        self.logger.info(self.vclient.cli("show sr localsids"))
 
-        self.vapi.cli("clear errors")
+        self.vclient.cli("clear errors")
 
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        self.logger.info(self.vapi.cli("show errors"))
-        self.logger.info(self.vapi.cli("show int address"))
+        self.logger.info(self.vclient.cli("show errors"))
+        self.logger.info(self.vclient.cli("show int address"))
 
         capture = self.pg1.get_capture(len(pkts))
 
@@ -222,22 +222,22 @@ class TestSRv6uSIDFlexSRH(VppTestCase):
         """ test_srv6_usid_flex_srh """
         pkts = self.create_packets([("A::1", "B::1"), ("C::1", "D::1")])
 
-        self.vapi.cli("set sr encaps source addr A1::1")
-        self.vapi.cli(
+        self.vclient.cli("set sr encaps source addr A1::1")
+        self.vclient.cli(
             "sr localsid prefix 1111:2222:aaaa::/48 behavior un.flex 16")
-        self.vapi.cli(
+        self.vclient.cli(
             "ip route add 1111:2222:bbbb::/48 via {}".format(self.ip6_nhop))
 
-        self.logger.info(self.vapi.cli("show sr localsids"))
+        self.logger.info(self.vclient.cli("show sr localsids"))
 
-        self.vapi.cli("clear errors")
+        self.vclient.cli("clear errors")
 
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        self.logger.info(self.vapi.cli("show errors"))
-        self.logger.info(self.vapi.cli("show int address"))
+        self.logger.info(self.vclient.cli("show errors"))
+        self.logger.info(self.vclient.cli("show int address"))
 
         capture = self.pg1.get_capture(len(pkts))
 
@@ -298,22 +298,22 @@ class TestSRv6uSIDFlex(VppTestCase):
         """ test_srv6_usid_flex """
         pkts = self.create_packets([("A::1", "B::1"), ("C::1", "D::1")])
 
-        self.vapi.cli("set sr encaps source addr A1::1")
-        self.vapi.cli(
+        self.vclient.cli("set sr encaps source addr A1::1")
+        self.vclient.cli(
             "sr localsid prefix 1111:2222:aaaa::/48 behavior un.flex 16")
-        self.vapi.cli(
+        self.vclient.cli(
             "ip route add 1111:2222:bbbb::/48 via {}".format(self.ip6_nhop))
 
-        self.logger.info(self.vapi.cli("show sr localsids"))
+        self.logger.info(self.vclient.cli("show sr localsids"))
 
-        self.vapi.cli("clear errors")
+        self.vclient.cli("clear errors")
 
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        self.logger.info(self.vapi.cli("show errors"))
-        self.logger.info(self.vapi.cli("show int address"))
+        self.logger.info(self.vclient.cli("show errors"))
+        self.logger.info(self.vclient.cli("show int address"))
 
         capture = self.pg1.get_capture(len(pkts))
 

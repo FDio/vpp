@@ -6,7 +6,7 @@ from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 
 from framework import VppTestCase
-from util import ppp
+from vpp_pom.util import ppp
 
 """ TestPing is a subclass of  VPPTestCase classes.
 
@@ -44,19 +44,19 @@ class TestPing(VppTestCase):
         super(TestPing, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show hardware"))
+        self.logger.info(self.vclient.cli("show hardware"))
 
     def test_ping_basic(self):
         """ basic ping test """
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
-            self.logger.info(self.vapi.cli("show ip4 neighbors"))
-            self.logger.info(self.vapi.cli("show ip6 neighbors"))
+            self.logger.info(self.vclient.cli("show ip4 neighbors"))
+            self.logger.info(self.vclient.cli("show ip6 neighbors"))
 
             remote_ip4 = self.pg1.remote_ip4
             ping_cmd = "ping " + remote_ip4 + " interval 0.01 repeat 10"
-            ret = self.vapi.cli(ping_cmd)
+            ret = self.vclient.cli(ping_cmd)
             self.logger.info(ret)
             out = self.pg1.get_capture(10)
             icmp_id = None
@@ -80,18 +80,18 @@ class TestPing(VppTestCase):
                 else:
                     self.assertEqual(icmp.id, icmp_id)
         finally:
-            self.vapi.cli("show error")
+            self.vclient.cli("show error")
 
     def test_ping_burst(self):
         """ burst ping test """
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
-            self.logger.info(self.vapi.cli("show ip neighbors"))
+            self.logger.info(self.vclient.cli("show ip neighbors"))
 
             remote_ip4 = self.pg1.remote_ip4
             ping_cmd = "ping " + remote_ip4 + " interval 0.01 burst 3"
-            ret = self.vapi.cli(ping_cmd)
+            ret = self.vclient.cli(ping_cmd)
             self.logger.info(ret)
             out = self.pg1.get_capture(3*5)
             icmp_id = None
@@ -119,4 +119,4 @@ class TestPing(VppTestCase):
                 else:
                     self.assertEqual(icmp.id, icmp_id)
         finally:
-            self.vapi.cli("show error")
+            self.vclient.cli("show error")

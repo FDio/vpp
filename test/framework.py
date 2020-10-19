@@ -23,22 +23,20 @@ from logging import FileHandler, DEBUG, Formatter
 
 import scapy.compat
 from scapy.packet import Raw
-import hook as hookmodule
-from vpp_pg_interface import VppPGInterface
-from vpp_sub_interface import VppSubInterface
-from vpp_lo_interface import VppLoInterface
-from vpp_bvi_interface import VppBviInterface
-from vpp_papi_provider import VppPapiProvider
-import vpp_papi
-from vpp_papi.vpp_stats import VPPStats
-from vpp_papi.vpp_transport_shmem import VppTransportShmemIOError
-from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
-    get_logger, colorize
-from vpp_object import VppObjectRegistry
-from util import ppp, is_core_present
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
+
+import vpp_papi
+from vpp_papi.vpp_transport_shmem import VppTransportShmemIOError
+
+from vpp_pom import StepHook, PollHook, VppPGInterface, VppSubInterface, \
+    VppLoInterface, VppBviInterface, VppPapiProvider, VppObjectRegistry, VppClient
+from vpp_pom.log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
+    get_logger, colorize
+from vpp_pom.util import ppp, is_core_present
+from vpp_pom.vpp_pg_interface import is_ipv6_misc
+
 
 if os.name == 'posix' and sys.version_info[0] < 3:
     # using subprocess32 is recommended by python official documentation
@@ -95,6 +93,38 @@ if debug_framework:
   The module provides a set of tools for constructing and running tests and
   representing the results.
 """
+
+
+class MyVppPGInterface(VppPGInterface):
+    """ 
+    Use packet infos to get expected packet count.
+    """
+    def __init__(self, test, pg_index, gso, gso_size):
+        """ Create VPP packet-generator interface """
+        self._test = test
+        super(MyVppPGInterface, self).__init__(self._test.vclient, pg_index, gso, gso_size)
+
+
+    def get_capture(self, expected_count=None, remark=None, timeout=1,
+                    filter_out_fn=is_ipv6_misc):
+        """
+        Use packet infos to get expected packet count.
+        """
+        name = self.name if remark is None else "%s (%s)" % (self.name, remark)
+        based_on = "based on provided argument"
+        if expected_count is None:
+            expected_count = \
+                self._test.get_packet_count_for_if_idx(self.sw_if_index)
+            based_on = "based on stored packet_infos"
+            if expected_count == 0:
+                raise Exception(
+                    "Internal error, expected packet count for %s is 0!" %
+                    name)
+        self.vclient.logger.debug("Expecting to capture %s (%s) packets on %s" % (
+            expected_count, based_on, name))
+        return super(MyVppPGInterface, self).get_capture(expected_count=expected_count,
+                                                  remark=remark, timeout=timeout,
+                                                  filter_out_fn=filter_out_fn)
 
 
 class VppDiedError(Exception):
@@ -160,12 +190,12 @@ def pump_output(testclass):
     stdout_fragment = ""
     stderr_fragment = ""
     while not testclass.pump_thread_stop_flag.is_set():
-        readable = select.select([testclass.vpp.stdout.fileno(),
-                                  testclass.vpp.stderr.fileno(),
+        readable = select.select([testclass.vpp_process.stdout.fileno(),
+                                  testclass.vpp_process.stderr.fileno(),
                                   testclass.pump_thread_wakeup_pipe[0]],
                                  [], [])[0]
-        if testclass.vpp.stdout.fileno() in readable:
-            read = os.read(testclass.vpp.stdout.fileno(), 102400)
+        if testclass.vpp_process.stdout.fileno() in readable:
+            read = os.read(testclass.vpp_process.stdout.fileno(), 102400)
             if len(read) > 0:
                 split = read.decode('ascii',
                                     errors='backslashreplace').splitlines(True)
@@ -181,8 +211,8 @@ def pump_output(testclass):
                     for line in split[:limit]:
                         testclass.logger.info(
                             "VPP STDOUT: %s" % line.rstrip("\n"))
-        if testclass.vpp.stderr.fileno() in readable:
-            read = os.read(testclass.vpp.stderr.fileno(), 102400)
+        if testclass.vpp_process.stderr.fileno() in readable:
+            read = os.read(testclass.vpp_process.stderr.fileno(), 102400)
             if len(read) > 0:
                 split = read.decode('ascii',
                                     errors='backslashreplace').splitlines(True)
@@ -272,7 +302,7 @@ class KeepAliveReporter(object):
         else:
             desc = test.id()
 
-        self.pipe.send((desc, test.vpp_bin, test.tempdir, test.vpp.pid))
+        self.pipe.send((desc, test.vpp_bin, test.tempdir, test.vpp_process.pid))
 
 
 class VppTestCase(unittest.TestCase):
@@ -283,7 +313,7 @@ class VppTestCase(unittest.TestCase):
     extra_vpp_punt_config = []
     extra_vpp_plugin_config = []
     logger = null_logger
-    vapi_response_timeout = 5
+    vclient_response_timeout = 5
 
     @property
     def packet_infos(self):
@@ -438,12 +468,12 @@ class VppTestCase(unittest.TestCase):
     def wait_for_enter(cls):
         if cls.debug_gdbserver:
             print(double_line_delim)
-            print("Spawned GDB server with PID: %d" % cls.vpp.pid)
+            print("Spawned GDB server with PID: %d" % cls.vpp_process.pid)
         elif cls.debug_gdb:
             print(double_line_delim)
-            print("Spawned VPP with PID: %d" % cls.vpp.pid)
+            print("Spawned VPP with PID: %d" % cls.vpp_process.pid)
         else:
-            cls.logger.debug("Spawned VPP with PID: %d" % cls.vpp.pid)
+            cls.logger.debug("Spawned VPP with PID: %d" % cls.vpp_process.pid)
             return
         print(single_line_delim)
         print("You can debug VPP using:")
@@ -456,7 +486,7 @@ class VppTestCase(unittest.TestCase):
                   "within gdb by issuing the 'continue' command")
             cls.gdbserver_port += 1
         elif cls.debug_gdb:
-            print("sudo gdb " + cls.vpp_bin + " -ex 'attach %s'" % cls.vpp.pid)
+            print("sudo gdb " + cls.vpp_bin + " -ex 'attach %s'" % cls.vpp_process.pid)
             print("Now is the time to attach gdb by running the above "
                   "command and set up breakpoints etc., then resume VPP from"
                   " within gdb by issuing the 'continue' command")
@@ -479,7 +509,7 @@ class VppTestCase(unittest.TestCase):
             cls.logger.info("Gdbserver cmdline is %s", " ".join(cmdline))
 
         try:
-            cls.vpp = subprocess.Popen(cmdline,
+            cls.vpp_process = subprocess.Popen(cmdline,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
         except subprocess.CalledProcessError as e:
@@ -553,10 +583,9 @@ class VppTestCase(unittest.TestCase):
         cls.logger.debug("Random seed is %s" % seed)
         cls.setUpConstants()
         cls.reset_packet_infos()
-        cls._captures = []
         cls.verbose = 0
         cls.vpp_dead = False
-        cls.registry = VppObjectRegistry()
+        cls.registry = VppObjectRegistry(cls.logger)
         cls.vpp_startup_failed = False
         cls.reporter = KeepAliveReporter()
         # need to catch exceptions here because if we raise, then the cleanup
@@ -565,7 +594,7 @@ class VppTestCase(unittest.TestCase):
             cls.run_vpp()
             cls.reporter.send_keep_alive(cls, 'setUpClass')
             VppTestResult.current_test_case_info = TestCaseInfo(
-                cls.logger, cls.tempdir, cls.vpp.pid, cls.vpp_bin)
+                cls.logger, cls.tempdir, cls.vpp_process.pid, cls.vpp_bin)
             cls.vpp_stdout_deque = deque()
             cls.vpp_stderr_deque = deque()
             cls.pump_thread_stop_flag = Event()
@@ -574,15 +603,17 @@ class VppTestCase(unittest.TestCase):
             cls.pump_thread.daemon = True
             cls.pump_thread.start()
             if cls.debug_gdb or cls.debug_gdbserver:
-                cls.vapi_response_timeout = 0
-            cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls,
-                                       cls.vapi_response_timeout)
+                cls.vclient_response_timeout = 0
+            VppClient.tempdir = cls.tempdir
+            cls.vclient = VppClient(cls.shm_prefix, cls.shm_prefix, logger=cls.logger,
+                                       read_timeout=cls.vclient_response_timeout,
+                                       vpp_install_path=os.getenv('VPP_INSTALL_PATH'),
+                                       stats_socket=cls.stats_sock)
             if cls.step:
-                hook = hookmodule.StepHook(cls)
+                hook = StepHook(cls)
             else:
-                hook = hookmodule.PollHook(cls)
-            cls.vapi.register_hook(hook)
-            cls.statistics = VPPStats(socketname=cls.stats_sock)
+                hook = PollHook(cls)
+            cls.vclient.register_hook(hook)
             try:
                 hook.poll_vpp()
             except VppDiedError:
@@ -592,10 +623,10 @@ class VppTestCase(unittest.TestCase):
                     " output to standard error for possible cause")
                 raise
             try:
-                cls.vapi.connect()
+                cls.vclient.connect()
             except vpp_papi.VPPIOError as e:
-                cls.logger.debug("Exception connecting to vapi: %s" % e)
-                cls.vapi.disconnect()
+                cls.logger.debug("Exception connecting to vclient: %s" % e)
+                cls.vclient.disconnect()
 
                 if cls.debug_gdbserver:
                     print(colorize("You're running VPP inside gdbserver but "
@@ -615,9 +646,9 @@ class VppTestCase(unittest.TestCase):
     def _debug_quit(cls):
         if (cls.debug_gdbserver or cls.debug_gdb):
             try:
-                cls.vpp.poll()
+                cls.vpp_process.poll()
 
-                if cls.vpp.returncode is None:
+                if cls.vpp_process.returncode is None:
                     print()
                     print(double_line_delim)
                     print("VPP or GDB server is still running")
@@ -646,25 +677,25 @@ class VppTestCase(unittest.TestCase):
             cls.logger.debug("Waiting for stderr pump to stop")
             cls.vpp_stderr_reader_thread.join()
 
-        if hasattr(cls, 'vpp'):
-            if hasattr(cls, 'vapi'):
-                cls.logger.debug(cls.vapi.vpp.get_stats())
-                cls.logger.debug("Disconnecting class vapi client on %s",
+        if hasattr(cls, 'vpp_process'):
+            if hasattr(cls, 'vclient'):
+                cls.logger.debug(cls.vclient.vpp.get_stats())
+                cls.logger.debug("Disconnecting class vclient client on %s",
                                  cls.__name__)
-                cls.vapi.disconnect()
-                cls.logger.debug("Deleting class vapi attribute on %s",
+                cls.vclient.disconnect()
+                cls.logger.debug("Deleting class vclient attribute on %s",
                                  cls.__name__)
-                del cls.vapi
-            cls.vpp.poll()
-            if cls.vpp.returncode is None:
+                del cls.vclient
+            cls.vpp_process.poll()
+            if cls.vpp_process.returncode is None:
                 cls.wait_for_coredump()
                 cls.logger.debug("Sending TERM to vpp")
-                cls.vpp.terminate()
+                cls.vpp_process.terminate()
                 cls.logger.debug("Waiting for vpp to die")
-                cls.vpp.communicate()
+                cls.vpp_process.communicate()
             cls.logger.debug("Deleting class vpp attribute on %s",
                              cls.__name__)
-            del cls.vpp
+            del cls.vpp_process
 
         if cls.vpp_startup_failed:
             stdout_log = cls.logger.info
@@ -717,26 +748,26 @@ class VppTestCase(unittest.TestCase):
 
         try:
             if not self.vpp_dead:
-                self.logger.debug(self.vapi.cli("show trace max 1000"))
-                self.logger.info(self.vapi.ppcli("show interface"))
-                self.logger.info(self.vapi.ppcli("show hardware"))
-                self.logger.info(self.statistics.set_errors_str())
-                self.logger.info(self.vapi.ppcli("show run"))
-                self.logger.info(self.vapi.ppcli("show log"))
-                self.logger.info(self.vapi.ppcli("show bihash"))
+                self.logger.debug(self.vclient.cli("show trace max 1000"))
+                self.logger.info(self.vclient.ppcli("show interface"))
+                self.logger.info(self.vclient.ppcli("show hardware"))
+                self.logger.info(self.vclient.statistics.set_errors_str())
+                self.logger.info(self.vclient.ppcli("show run"))
+                self.logger.info(self.vclient.ppcli("show log"))
+                self.logger.info(self.vclient.ppcli("show bihash"))
                 self.logger.info("Logging testcase specific show commands.")
                 self.show_commands_at_teardown()
                 self.registry.remove_vpp_config(self.logger)
             # Save/Dump VPP api trace log
             m = self._testMethodName
-            api_trace = "vpp_api_trace.%s.%d.log" % (m, self.vpp.pid)
+            api_trace = "vpp_api_trace.%s.%d.log" % (m, self.vpp_process.pid)
             tmp_api_trace = "/tmp/%s" % api_trace
             vpp_api_trace_log = "%s/%s" % (self.tempdir, api_trace)
-            self.logger.info(self.vapi.ppcli("api trace save %s" % api_trace))
+            self.logger.info(self.vclient.ppcli("api trace save %s" % api_trace))
             self.logger.info("Moving %s to %s\n" % (tmp_api_trace,
                                                     vpp_api_trace_log))
             os.rename(tmp_api_trace, vpp_api_trace_log)
-            self.logger.info(self.vapi.ppcli("api trace custom-dump %s" %
+            self.logger.info(self.vclient.ppcli("api trace custom-dump %s" %
                                              vpp_api_trace_log))
         except VppTransportShmemIOError:
             self.logger.debug("VppTransportShmemIOError: Vpp dead. "
@@ -762,7 +793,7 @@ class VppTestCase(unittest.TestCase):
             "--- test setUp() for %s.%s(%s) starts here ---\n" %
             (self.__class__.__name__, self._testMethodName,
              self._testMethodDoc))
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         # store the test instance inside the test class - so that objects
         # holding the class can access instance methods (like assertEqual)
         type(self).test_instance = self
@@ -785,13 +816,13 @@ class VppTestCase(unittest.TestCase):
     def register_capture(cls, cap_name):
         """ Register a capture in the testclass """
         # add to the list of captures with current timestamp
-        cls._captures.append((time.time(), cap_name))
+        cls.vclient.register_capture(cap_name)
 
     @classmethod
     def get_vpp_time(cls):
         # processes e.g. "Time now 2.190522, Wed, 11 Mar 2020 17:29:54 GMT"
         # returns float("2.190522")
-        timestr = cls.vapi.cli('show clock')
+        timestr = cls.vclient.cli('show clock')
         head, sep, tail = timestr.partition(',')
         head, sep, tail = head.partition('Time now')
         return float(tail)
@@ -809,21 +840,7 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def pg_start(cls):
         """ Enable the PG, wait till it is done, then clean up """
-        cls.vapi.cli("trace add pg-input 1000")
-        cls.vapi.cli('packet-generator enable')
-        # PG, when starts, runs to completion -
-        # so let's avoid a race condition,
-        # and wait a little till it's done.
-        # Then clean it up  - and then be gone.
-        deadline = time.time() + 300
-        while cls.vapi.cli('show packet-generator').find("Yes") != -1:
-            cls.sleep(0.01)  # yield
-            if time.time() > deadline:
-                cls.logger.error("Timeout waiting for pg to stop")
-                break
-        for stamp, cap_name in cls._captures:
-            cls.vapi.cli('packet-generator delete %s' % cap_name)
-        cls._captures = []
+        cls.vclient.pg_start()
 
     @classmethod
     def create_pg_interfaces(cls, interfaces, gso=0, gso_size=0):
@@ -836,7 +853,7 @@ class VppTestCase(unittest.TestCase):
         """
         result = []
         for i in interfaces:
-            intf = VppPGInterface(cls, i, gso, gso_size)
+            intf = MyVppPGInterface(cls, i, gso, gso_size)
             setattr(cls, intf.name, intf)
             result.append(intf)
         cls.pg_interfaces = result
@@ -850,7 +867,7 @@ class VppTestCase(unittest.TestCase):
         :param count: number of interfaces created.
         :returns: List of created interfaces.
         """
-        result = [VppLoInterface(cls) for i in range(count)]
+        result = [VppLoInterface(cls.vclient) for i in range(count)]
         for intf in result:
             setattr(cls, intf.name, intf)
         cls.lo_interfaces = result
@@ -864,7 +881,7 @@ class VppTestCase(unittest.TestCase):
         :param count: number of interfaces created.
         :returns: List of created interfaces.
         """
-        result = [VppBviInterface(cls) for i in range(count)]
+        result = [VppBviInterface(cls.vclient) for i in range(count)]
         for intf in result:
             setattr(cls, intf.name, intf)
         cls.bvi_interfaces = result
@@ -1126,9 +1143,9 @@ class VppTestCase(unittest.TestCase):
 
     def get_packet_counter(self, counter):
         if counter.startswith("/"):
-            counter_value = self.statistics.get_counter(counter)
+            counter_value = self.vclient.statistics.get_counter(counter)
         else:
-            counters = self.vapi.cli("sh errors").split('\n')
+            counters = self.vclient.cli("sh errors").split('\n')
             counter_value = 0
             for i in range(1, len(counters) - 1):
                 results = counters[i].split()
@@ -1143,7 +1160,7 @@ class VppTestCase(unittest.TestCase):
                           "packet counter `%s'" % counter)
 
     def assert_error_counter_equal(self, counter, expected_value):
-        counter_value = self.statistics.get_err_counter(counter)
+        counter_value = self.vclient.statistics.get_err_counter(counter)
         self.assert_equal(counter_value, expected_value,
                           "error counter `%s'" % counter)
 
@@ -1176,7 +1193,7 @@ class VppTestCase(unittest.TestCase):
                 remark, after - before, timeout)
 
     def pg_send(self, intf, pkts, worker=None):
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         intf.add_stream(pkts, worker=worker)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()

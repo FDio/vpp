@@ -20,11 +20,11 @@ from framework import VppTestRunner, running_extended_tests, VppTestCase, \
     get_testcase_doc_name, get_test_description, PASS, FAIL, ERROR, SKIP, \
     TEST_RUN
 from debug import spawn_gdb
-from log import get_parallel_logger, double_line_delim, RED, YELLOW, GREEN, \
+from vpp_pom.log import get_parallel_logger, double_line_delim, RED, YELLOW, GREEN, \
     colorize, single_line_delim
 from discover_tests import discover_tests
 from subprocess import check_output, CalledProcessError
-from util import check_core_path, get_core_path, is_core_present
+from vpp_pom.util import check_core_path, get_core_path, is_core_present
 
 # timeout which controls how long the child has to finish after seeing
 # a core dump in test temporary directory. If this is exceeded, parent assumes

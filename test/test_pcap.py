@@ -3,7 +3,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_gcov_tests
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 from os import path, remove
 
 
@@ -71,7 +71,7 @@ class TestPcap(VppTestCase):
                 "match l3 ip4 src 11.22.33.44"]
 
         for cmd in cmds:
-            r = self.vapi.cli_return_response(cmd)
+            r = self.vclient.cli_return_response(cmd)
             if r.retval != 0:
                 if hasattr(r, 'reply'):
                     self.logger.info(cmd + " FAIL reply " + r.reply)
