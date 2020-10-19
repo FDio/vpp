@@ -25,14 +25,14 @@ class TestLbEmptyApi(framework.VppTestCase):
 
         # no records should  normally return [], but
         # lb initializes with a default VIP
-        rv = self.vapi.lb_vip_dump()
+        rv = self.vclient.lb_vip_dump()
         # print(rv)
         self.assertEqual(rv, [], 'Expected: [] Received: %r.' % rv)
 
     def test_lb_empty_as_dump(self):
 
         # no records should return []
-        rv = self.vapi.lb_as_dump()
+        rv = self.vclient.lb_as_dump()
         # print(rv)
         self.assertEqual(rv, [], 'Expected: [] Received: %r.' % rv)
 
@@ -42,17 +42,17 @@ class TestLbApi(framework.VppTestCase):
 
     def test_lb_vip_dump(self):
         # add some vips
-        # rv = self.vapi.lb_add_del_vip(pfx=ipaddress.IPv4Network(u'1.2.3.0/24'),  # noqa
+        # rv = self.vclient.lb_add_del_vip(pfx=ipaddress.IPv4Network(u'1.2.3.0/24'),  # noqa
         #                               protocol=17,
         #                               encap=0)
         # print(rv)
-        self.vapi.cli("lb vip 2001::/16 encap gre6")
-        rv = self.vapi.lb_vip_dump()
+        self.vclient.cli("lb vip 2001::/16 encap gre6")
+        rv = self.vclient.lb_vip_dump()
         # print(rv)
         self.assertEqual(str(rv[-1].vip.pfx), "2001::/16",
                          'Expected: 2001::/16 Received: %r.' % rv[-1].vip.pfx)
 
-        self.vapi.cli("lb vip 2001::/16 del")
+        self.vclient.cli("lb vip 2001::/16 del")
 
 
 class TestLbAsApi(framework.VppTestCase):
@@ -60,15 +60,15 @@ class TestLbAsApi(framework.VppTestCase):
 
     def test_lb_as_dump(self):
         # add some vips
-        self.vapi.cli("lb vip 2001::/16 encap gre6")
-        self.vapi.cli("lb as 2001::/16 2000::1")
+        self.vclient.cli("lb vip 2001::/16 encap gre6")
+        self.vclient.cli("lb as 2001::/16 2000::1")
         # add some as's for the vips
-        # rv = self.vapi.lb_add_del_as(
+        # rv = self.vclient.lb_add_del_as(
         #     pfx=ipaddress.IPv4Network(u"10.0.0.0/24"),
         #     as_address=ipaddress.IPv4Address(u"192.168.1.1"))
 
         # print(rv)
-        rv = self.vapi.lb_as_dump()
+        rv = self.vclient.lb_as_dump()
         # print(rv)
         self.assertEqual(str(rv[0].vip.pfx), "2001::/16",
                          'Expected: "2001::/16" Received: %r.' % rv[0].vip.pfx)

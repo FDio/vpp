@@ -35,7 +35,7 @@ class IpsecApiTestCase(VppTestCase):
 
     def test_backend_dump(self):
         """ backend dump """
-        d = self.vapi.ipsec_backend_dump()
+        d = self.vclient.ipsec_backend_dump()
         self.assert_equal(len(d), 2, "number of ipsec backends in dump")
         self.assert_equal(d[0].protocol, self.vpp_ah_protocol,
                           "ipsec protocol in dump entry")
@@ -48,15 +48,15 @@ class IpsecApiTestCase(VppTestCase):
 
     def test_select_valid_backend(self):
         """ select valid backend """
-        self.vapi.ipsec_select_backend(self.vpp_ah_protocol, 0)
-        self.vapi.ipsec_select_backend(self.vpp_esp_protocol, 0)
+        self.vclient.ipsec_select_backend(self.vpp_ah_protocol, 0)
+        self.vclient.ipsec_select_backend(self.vpp_esp_protocol, 0)
 
     def test_select_invalid_backend(self):
         """ select invalid backend """
-        with self.vapi.assert_negative_api_retval():
-            self.vapi.ipsec_select_backend(self.vpp_ah_protocol, 200)
-        with self.vapi.assert_negative_api_retval():
-            self.vapi.ipsec_select_backend(self.vpp_esp_protocol, 200)
+        with self.vclient.assert_negative_api_retval():
+            self.vclient.ipsec_select_backend(self.vpp_ah_protocol, 200)
+        with self.vclient.assert_negative_api_retval():
+            self.vclient.ipsec_select_backend(self.vpp_esp_protocol, 200)
 
     def test_select_backend_in_use(self):
         """ attempt to change backend while sad configured """
@@ -70,7 +70,7 @@ class IpsecApiTestCase(VppTestCase):
         crypt_algo_vpp_id = params.crypt_algo_vpp_id
         crypt_key = params.crypt_key
 
-        self.vapi.ipsec_sad_entry_add_del(
+        self.vclient.ipsec_sad_entry_add_del(
             is_add=1,
             entry={
                 'sad_id': scapy_tun_sa_id,
@@ -89,11 +89,11 @@ class IpsecApiTestCase(VppTestCase):
                 'tunnel_src': self.pg0.local_addr[addr_type],
                 'tunnel_dst': self.pg0.remote_addr[addr_type]
             })
-        with self.vapi.assert_negative_api_retval():
-            self.vapi.ipsec_select_backend(
+        with self.vclient.assert_negative_api_retval():
+            self.vclient.ipsec_select_backend(
                 protocol=self.vpp_ah_protocol, index=0)
 
-        self.vapi.ipsec_sad_entry_add_del(
+        self.vclient.ipsec_sad_entry_add_del(
             is_add=0,
             entry={
                 'sad_id': scapy_tun_sa_id,
@@ -112,7 +112,7 @@ class IpsecApiTestCase(VppTestCase):
                 'tunnel_src': self.pg0.local_addr[addr_type],
                 'tunnel_dst': self.pg0.remote_addr[addr_type]
             })
-        self.vapi.ipsec_select_backend(
+        self.vclient.ipsec_select_backend(
             protocol=self.vpp_ah_protocol, index=0)
 
 

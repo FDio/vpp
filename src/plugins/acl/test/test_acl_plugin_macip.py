@@ -18,12 +18,12 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_lo_interface import VppLoInterface
-from vpp_l2 import L2_PORT_TYPE
-from vpp_sub_interface import L2_VTR_OP, VppSubInterface, VppDot1QSubint, \
-    VppDot1ADSubint
-from vpp_acl import AclRule, VppAcl, VppAclInterface, VppEtypeWhitelist, \
-    VppMacipAclInterface, VppMacipAcl, MacipRule
+from vpp_pom.vpp_lo_interface import VppLoInterface
+from vpp_pom.vpp_l2 import L2_PORT_TYPE
+from vpp_pom.vpp_sub_interface import L2_VTR_OP, VppSubInterface, \
+    VppDot1QSubint, VppDot1ADSubint
+from vpp_pom.plugins.vpp_acl import AclRule, VppAcl, VppAclInterface, \
+    VppEtypeWhitelist, VppMacipAclInterface, VppMacipAcl, MacipRule
 from vpp_papi import MACAddress
 
 
@@ -76,10 +76,10 @@ class MethodHolder(VppTestCase):
 
             # create 2 subinterfaces
             cls.subifs = [
-                VppDot1QSubint(cls, cls.pg1, 10),
-                VppDot1ADSubint(cls, cls.pg2, 20, 300, 400),
-                VppDot1QSubint(cls, cls.pg3, 30),
-                VppDot1ADSubint(cls, cls.pg3, 40, 600, 700)]
+                VppDot1QSubint(cls.vclient, cls.pg1, 10),
+                VppDot1ADSubint(cls.vclient, cls.pg2, 20, 300, 400),
+                VppDot1QSubint(cls.vclient, cls.pg3, 30),
+                VppDot1ADSubint(cls.vclient, cls.pg3, 40, 600, 700)]
 
             cls.subifs[0].set_vtr(L2_VTR_OP.L2_POP_1,
                                   inner=10, push1q=1)
@@ -98,16 +98,16 @@ class MethodHolder(VppTestCase):
                 i.admin_up()
 
             # Create BD with MAC learning enabled and put interfaces to this BD
-            cls.vapi.sw_interface_set_l2_bridge(
+            cls.vclient.sw_interface_set_l2_bridge(
                 rx_sw_if_index=cls.loop0.sw_if_index, bd_id=cls.bd_id,
                 port_type=L2_PORT_TYPE.BVI)
-            cls.vapi.sw_interface_set_l2_bridge(
+            cls.vclient.sw_interface_set_l2_bridge(
                 rx_sw_if_index=cls.pg0.sw_if_index, bd_id=cls.bd_id)
-            cls.vapi.sw_interface_set_l2_bridge(
+            cls.vclient.sw_interface_set_l2_bridge(
                 rx_sw_if_index=cls.pg1.sw_if_index, bd_id=cls.bd_id)
-            cls.vapi.sw_interface_set_l2_bridge(
+            cls.vclient.sw_interface_set_l2_bridge(
                 rx_sw_if_index=cls.subifs[0].sw_if_index, bd_id=cls.bd_id)
-            cls.vapi.sw_interface_set_l2_bridge(
+            cls.vclient.sw_interface_set_l2_bridge(
                 rx_sw_if_index=cls.subifs[1].sw_if_index, bd_id=cls.bd_id)
 
             # Configure IPv4/6 addresses on loop interface and routed interface
@@ -122,7 +122,7 @@ class MethodHolder(VppTestCase):
             cls.loop0.generate_remote_hosts(cls.remote_hosts_count)
             # Modify host mac addresses to have different OUI parts
             for i in range(2, cls.remote_hosts_count + 2):
-                mac = cls.loop0.remote_hosts[i-2]._mac.split(':')
+                mac = cls.loop0.remote_hosts[i - 2]._mac.split(':')
                 mac[2] = format(int(mac[2], 16) + i, "02x")
                 cls.loop0.remote_hosts[i - 2]._mac = ":".join(mac)
 
@@ -164,21 +164,21 @@ class MethodHolder(VppTestCase):
         self.reset_packet_infos()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show interface address"))
-        self.logger.info(self.vapi.ppcli("show hardware"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin macip interface"))
-        self.logger.info(self.vapi.ppcli("sh classify tables verbose"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin acl"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin interface"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin tables"))
-        # print(self.vapi.ppcli("show interface address"))
-        # print(self.vapi.ppcli("show hardware"))
-        # print(self.vapi.ppcli("sh acl-plugin macip interface"))
-        # print(self.vapi.ppcli("sh acl-plugin macip acl"))
+        self.logger.info(self.vclient.ppcli("show interface address"))
+        self.logger.info(self.vclient.ppcli("show hardware"))
+        self.logger.info(self.vclient.ppcli("sh acl-plugin macip acl"))
+        self.logger.info(self.vclient.ppcli("sh acl-plugin macip interface"))
+        self.logger.info(self.vclient.ppcli("sh classify tables verbose"))
+        self.logger.info(self.vclient.ppcli("sh acl-plugin acl"))
+        self.logger.info(self.vclient.ppcli("sh acl-plugin interface"))
+        self.logger.info(self.vclient.ppcli("sh acl-plugin tables"))
+        # print(self.vclient.ppcli("show interface address"))
+        # print(self.vclient.ppcli("show hardware"))
+        # print(self.vclient.ppcli("sh acl-plugin macip interface"))
+        # print(self.vclient.ppcli("sh acl-plugin macip acl"))
 
     def macip_acl_dump_debug(self):
-        acls = self.vapi.macip_acl_dump()
+        acls = self.vclient.macip_acl_dump()
         if self.DEBUG:
             for acl in acls:
                 # print("ACL #"+str(acl.acl_index))
@@ -204,7 +204,7 @@ class MethodHolder(VppTestCase):
         if rules_count is None:
             rules_count = [1]
         src_mac = int("220000dead00", 16)
-        for acl in range(2, (acl_count+1) * 2):
+        for acl in range(2, (acl_count + 1) * 2):
             rules = []
             host = random.choice(self.loop0.remote_hosts)
             is_ip6 = acl % 2
@@ -242,7 +242,7 @@ class MethodHolder(VppTestCase):
                     mac = "00:00:00:00:00:00"
                 elif mac_type == self.OUI_MAC:
                     mac = ':'.join(re.findall('..', '{:02x}'.format(
-                        src_mac))[:3])+":00:00:00"
+                        src_mac))[:3]) + ":00:00:00"
                 else:
                     mac = ':'.join(re.findall(
                         '..', '{:02x}'.format(src_mac)))
@@ -274,22 +274,22 @@ class MethodHolder(VppTestCase):
     def apply_macip_rules(self, acls):
         macip_acls = []
         for acl in acls:
-            macip_acl = VppMacipAcl(self, rules=acl)
+            macip_acl = VppMacipAcl(self.vclient, rules=acl)
             macip_acl.add_vpp_config()
             macip_acls.append(macip_acl)
         return macip_acls
 
     def verify_macip_acls(self, acl_count, rules_count, expected_count=2):
         reply = self.macip_acl_dump_debug()
-        for acl in range(2, (acl_count+1) * 2):
-            self.assertEqual(reply[acl - 2].count, rules_count[acl//2-1])
+        for acl in range(2, (acl_count + 1) * 2):
+            self.assertEqual(reply[acl - 2].count, rules_count[acl // 2 - 1])
 
-        self.vapi.macip_acl_interface_get()
+        self.vclient.macip_acl_interface_get()
 
-        self.vapi.macip_acl_interface_add_del(sw_if_index=0, acl_index=0)
-        self.vapi.macip_acl_interface_add_del(sw_if_index=1, acl_index=1)
+        self.vclient.macip_acl_interface_add_del(sw_if_index=0, acl_index=0)
+        self.vclient.macip_acl_interface_add_del(sw_if_index=1, acl_index=1)
 
-        reply = self.vapi.macip_acl_interface_get()
+        reply = self.vclient.macip_acl_interface_get()
         self.assertEqual(reply.count, expected_count)
 
     def create_stream(self, mac_type, ip_type, packet_count,
@@ -338,7 +338,7 @@ class MethodHolder(VppTestCase):
                     mac_permit = src_mac
                 if denyMAC:
                     mac = src_mac.split(':')
-                    mac[0] = format(int(mac[0], 16)+1, "02x")
+                    mac[0] = format(int(mac[0], 16) + 1, "02x")
                     src_mac = ":".join(mac)
                     if is_ip6:
                         src_ip6 = ip_permit
@@ -420,13 +420,13 @@ class MethodHolder(VppTestCase):
                         sub_ip[3] = random.randint(200, 255)
                     elif ip_type == self.SUBNET_IP:
                         if denyIP:
-                            sub_ip[1] = int(sub_ip[1])+1
+                            sub_ip[1] = int(sub_ip[1]) + 1
                         sub_ip[2] = random.randint(100, 199)
                         sub_ip[3] = random.randint(200, 255)
                     src_ip4 = '.'.join(['{!s}'.format(x) for x in sub_ip])
                 packet /= IP(src=src_ip4, dst=dst_ip4, frag=0, flags=0)
 
-            packet /= UDP(sport=src_port, dport=dst_port)/Raw(payload)
+            packet /= UDP(sport=src_port, dport=dst_port) / Raw(payload)
 
             packet[Raw].load += b" mac:%s" % src_mac.encode('utf-8')
 
@@ -626,14 +626,16 @@ class MethodHolder(VppTestCase):
 
         if apply_rules:
             if isMACIP:
-                self.acl = VppMacipAcl(self, rules=test_dict['macip_rules'])
+                self.acl = VppMacipAcl(
+                    self.vclient, rules=test_dict['macip_rules'])
             else:
-                self.acl = VppAcl(self, rules=test_dict['acl_rules'])
+                self.acl = VppAcl(self.vclient, rules=test_dict['acl_rules'])
             self.acl.add_vpp_config()
 
             if isMACIP:
                 self.acl_if = VppMacipAclInterface(
-                    self, sw_if_index=tx_if.sw_if_index, acls=[self.acl])
+                    self.vclient, sw_if_index=tx_if.sw_if_index,
+                    acls=[self.acl])
                 self.acl_if.add_vpp_config()
 
                 dump = self.acl_if.dump()
@@ -641,7 +643,7 @@ class MethodHolder(VppTestCase):
                 self.assertEqual(dump[0].acls[0], self.acl.acl_index)
             else:
                 self.acl_if = VppAclInterface(
-                    self, sw_if_index=tx_if.sw_if_index, n_input=1,
+                    self.vclient, sw_if_index=tx_if.sw_if_index, n_input=1,
                     acls=[self.acl])
                 self.acl_if.add_vpp_config()
         else:
@@ -1069,8 +1071,8 @@ class TestMACIP(MethodHolder):
         # verify changes
         self.assertEqual(len(acls_before), len(acls_after))
         for acl1, acl2 in zip(
-                acls_before[:2]+acls_before[4:],
-                acls_after[:2]+acls_after[4:]):
+                acls_before[:2] + acls_before[4:],
+                acls_after[:2] + acls_after[4:]):
             self.assertEqual(len(acl1), len(acl2))
 
             self.assertEqual(len(acl1.r), len(acl2.r))
@@ -1091,73 +1093,78 @@ class TestMACIP(MethodHolder):
         """ MACIP ACL delete intf with acl
         """
 
-        intf_count = len(self.interfaces)+1
+        intf_count = len(self.interfaces) + 1
         intf = []
         macip_alcs = self.apply_macip_rules(
             self.create_rules(acl_count=3, rules_count=[3, 5, 4]))
 
-        intf.append(VppLoInterface(self))
-        intf.append(VppLoInterface(self))
+        intf.append(VppLoInterface(self.vclient))
+        intf[0].add_vpp_config()
+        intf.append(VppLoInterface(self.vclient))
+        intf[1].add_vpp_config()
 
         sw_if_index0 = intf[0].sw_if_index
         macip_acl_if0 = VppMacipAclInterface(
-            self, sw_if_index=sw_if_index0, acls=[macip_alcs[1]])
+            self.vclient, sw_if_index=sw_if_index0, acls=[macip_alcs[1]])
         macip_acl_if0.add_vpp_config()
 
-        reply = self.vapi.macip_acl_interface_get()
-        self.assertEqual(reply.count, intf_count+1)
+        reply = self.vclient.macip_acl_interface_get()
+        self.assertEqual(reply.count, intf_count + 1)
         self.assertEqual(reply.acls[sw_if_index0], 1)
 
         sw_if_index1 = intf[1].sw_if_index
         macip_acl_if1 = VppMacipAclInterface(
-            self, sw_if_index=sw_if_index1, acls=[macip_alcs[0]])
+            self.vclient, sw_if_index=sw_if_index1, acls=[macip_alcs[0]])
         macip_acl_if1.add_vpp_config()
 
-        reply = self.vapi.macip_acl_interface_get()
-        self.assertEqual(reply.count, intf_count+2)
+        reply = self.vclient.macip_acl_interface_get()
+        self.assertEqual(reply.count, intf_count + 2)
         self.assertEqual(reply.acls[sw_if_index1], 0)
 
         intf[0].remove_vpp_config()
-        reply = self.vapi.macip_acl_interface_get()
-        self.assertEqual(reply.count, intf_count+2)
+        reply = self.vclient.macip_acl_interface_get()
+        self.assertEqual(reply.count, intf_count + 2)
         self.assertEqual(reply.acls[sw_if_index0], 4294967295)
         self.assertEqual(reply.acls[sw_if_index1], 0)
 
-        intf.append(VppLoInterface(self))
-        intf.append(VppLoInterface(self))
+        intf.append(VppLoInterface(self.vclient))
+        intf[2].add_vpp_config()
+        intf.append(VppLoInterface(self.vclient))
+        intf[3].add_vpp_config()
         sw_if_index2 = intf[2].sw_if_index
         sw_if_index3 = intf[3].sw_if_index
         macip_acl_if2 = VppMacipAclInterface(
-            self, sw_if_index=sw_if_index2, acls=[macip_alcs[1]])
+            self.vclient, sw_if_index=sw_if_index2, acls=[macip_alcs[1]])
         macip_acl_if2.add_vpp_config()
         macip_acl_if3 = VppMacipAclInterface(
-            self, sw_if_index=sw_if_index3, acls=[macip_alcs[1]])
+            self.vclient, sw_if_index=sw_if_index3, acls=[macip_alcs[1]])
         macip_acl_if3.add_vpp_config()
 
-        reply = self.vapi.macip_acl_interface_get()
-        self.assertEqual(reply.count, intf_count+3)
+        reply = self.vclient.macip_acl_interface_get()
+        self.assertEqual(reply.count, intf_count + 3)
         self.assertEqual(reply.acls[sw_if_index1], 0)
         self.assertEqual(reply.acls[sw_if_index2], 1)
         self.assertEqual(reply.acls[sw_if_index3], 1)
         self.logger.info("MACIP ACL on multiple interfaces:")
-        self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl index 1234"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl index 1"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl index 0"))
-        self.logger.info(self.vapi.ppcli("sh acl-plugin macip interface"))
+        self.logger.info(self.vclient.ppcli("sh acl-plugin macip acl"))
+        self.logger.info(self.vclient.ppcli(
+            "sh acl-plugin macip acl index 1234"))
+        self.logger.info(self.vclient.ppcli("sh acl-plugin macip acl index 1"))
+        self.logger.info(self.vclient.ppcli("sh acl-plugin macip acl index 0"))
+        self.logger.info(self.vclient.ppcli("sh acl-plugin macip interface"))
 
         intf[2].remove_vpp_config()
         intf[1].remove_vpp_config()
 
-        reply = self.vapi.macip_acl_interface_get()
-        self.assertEqual(reply.count, intf_count+3)
+        reply = self.vclient.macip_acl_interface_get()
+        self.assertEqual(reply.count, intf_count + 3)
         self.assertEqual(reply.acls[sw_if_index0], 4294967295)
         self.assertEqual(reply.acls[sw_if_index1], 4294967295)
         self.assertEqual(reply.acls[sw_if_index2], 4294967295)
         self.assertEqual(reply.acls[sw_if_index3], 1)
 
         intf[3].remove_vpp_config()
-        reply = self.vapi.macip_acl_interface_get()
+        reply = self.vclient.macip_acl_interface_get()
 
         self.assertEqual(len([x for x in reply.acls if x != 4294967295]), 0)
 

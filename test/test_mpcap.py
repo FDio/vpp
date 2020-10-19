@@ -3,7 +3,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 import os
 
 
@@ -43,13 +43,14 @@ class TestMpcap(VppTestCase):
                 "show error"]
 
         for cmd in cmds:
-            self.logger.info(self.vapi.cli(cmd))
+            self.logger.info(self.vclient.cli(cmd))
 
         size = os.path.getsize("/tmp/mpcap_unittest.pcap")
         os.remove("/tmp/mpcap_unittest.pcap")
         if size != 2184:
             self.logger.critical("BUG: file size %d not 2184" % size)
             self.assertNotIn('WrongMPCAPFileSize', 'WrongMPCAPFileSize')
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

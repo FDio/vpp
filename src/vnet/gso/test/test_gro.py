@@ -16,8 +16,8 @@ from scapy.layers.inet import TCP, ICMP
 from scapy.data import ETH_P_IP, ETH_P_IPV6, ETH_P_ARP
 
 from framework import VppTestCase, VppTestRunner
-from vpp_object import VppObject
-from vpp_interface import VppInterface
+from vpp_pom.vpp_object import VppObject
+from vpp_pom.vpp_interface import VppInterface
 
 
 """ Test_gro is a subclass of VPPTestCase classes.
@@ -110,14 +110,15 @@ class TestGRO(VppTestCase):
             self.assertEqual(rx[IP].len, 64280)  # 1460 * 44 + 40 < 65536
             self.assertEqual(rx[TCP].sport, 1234)
             self.assertEqual(rx[TCP].dport, 4321)
-            self.assertEqual(rx[TCP].ack, (44*i - 1))
+            self.assertEqual(rx[TCP].ack, (44 * i - 1))
 
         p4_temp = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
                    IP(src=self.pg2.remote_ip4, dst=self.pg0.remote_ip4,
                       flags='DF') /
                    TCP(sport=1234, dport=4321, flags='F'))
 
-        rxs = self.send_and_expect(self.pg2, 100*[p4_temp], self.pg0, n_rx=100)
+        rxs = self.send_and_expect(
+            self.pg2, 100 * [p4_temp], self.pg0, n_rx=100)
         rx_coalesce = self.pg2.get_capture(1, timeout=1)
 
         rx0 = rx_coalesce[0]
@@ -137,6 +138,7 @@ class TestGRO(VppTestCase):
             self.assertEqual(rx[IP].len, 40)
             self.assertEqual(rx[TCP].sport, 1234)
             self.assertEqual(rx[TCP].dport, 4321)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

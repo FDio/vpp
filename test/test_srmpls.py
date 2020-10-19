@@ -4,10 +4,10 @@ import unittest
 import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppIpTable, VppMplsTable, VppMplsLabel
-from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
+from vpp_pom.vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -68,7 +68,7 @@ class TestSRMPLS(VppTestCase):
         table_id = 0
         self.tables = []
 
-        tbl = VppMplsTable(self, 0)
+        tbl = VppMplsTable(self.vclient, 0)
         tbl.add_vpp_config()
         self.tables.append(tbl)
 
@@ -126,7 +126,7 @@ class TestSRMPLS(VppTestCase):
                 else:
                     self.assertEqual(rx_ip.ttl, ip_ttl)
 
-        except:
+        except BaseException:
             raise
 
     def verify_capture_tunneled_ip4(self, src_if, capture, sent, mpls_labels):
@@ -148,7 +148,7 @@ class TestSRMPLS(VppTestCase):
                 # IP processing post pop has decremented the TTL
                 self.assertEqual(rx_ip.ttl + 1, tx_ip.ttl)
 
-        except:
+        except BaseException:
             raise
 
     def test_sr_mpls(self):
@@ -157,7 +157,7 @@ class TestSRMPLS(VppTestCase):
         #
         # A simple MPLS xconnect - neos label in label out
         #
-        route_32_eos = VppMplsRoute(self, 32, 0,
+        route_32_eos = VppMplsRoute(self.vclient, 32, 0,
                                     [VppRoutePath(self.pg0.remote_ip4,
                                                   self.pg0.sw_if_index,
                                                   labels=[VppMplsLabel(32)])])
@@ -166,12 +166,12 @@ class TestSRMPLS(VppTestCase):
         #
         # A binding SID with only one label
         #
-        self.vapi.sr_mpls_policy_add(999, 1, 0, [32])
+        self.vclient.sr_mpls_policy_add(999, 1, 0, [32])
 
         #
         # A labeled IP route that resolves thru the binding SID
         #
-        ip_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+        ip_10_0_0_1 = VppIpRoute(self.vclient, "10.0.0.1", 32,
                                  [VppRoutePath("0.0.0.0",
                                                0xffffffff,
                                                nh_via_label=999,
@@ -187,7 +187,7 @@ class TestSRMPLS(VppTestCase):
         #
         # An unlabeled IP route that resolves thru the binding SID
         #
-        ip_10_0_0_1 = VppIpRoute(self, "10.0.0.2", 32,
+        ip_10_0_0_1 = VppIpRoute(self.vclient, "10.0.0.2", 32,
                                  [VppRoutePath("0.0.0.0",
                                                0xffffffff,
                                                nh_via_label=999)])
@@ -198,12 +198,12 @@ class TestSRMPLS(VppTestCase):
         self.verify_capture_labelled_ip4(self.pg0, rx, tx,
                                          [VppMplsLabel(32)])
 
-        self.vapi.sr_mpls_policy_del(999)
+        self.vclient.sr_mpls_policy_del(999)
 
         #
         # this time the SID has many labels pushed
         #
-        self.vapi.sr_mpls_policy_add(999, 1, 0, [32, 33, 34])
+        self.vclient.sr_mpls_policy_add(999, 1, 0, [32, 33, 34])
 
         tx = self.create_stream_ip4(self.pg1, "10.0.0.1")
         rx = self.send_and_expect(self.pg1, tx, self.pg0)
@@ -223,7 +223,7 @@ class TestSRMPLS(VppTestCase):
         # Resolve an MPLS tunnel via the SID
         #
         mpls_tun = VppMPLSTunnelInterface(
-            self,
+            self.vclient,
             [VppRoutePath("0.0.0.0",
                           0xffffffff,
                           nh_via_label=999,
@@ -235,12 +235,12 @@ class TestSRMPLS(VppTestCase):
         #
         # add an unlabelled route through the new tunnel
         #
-        route_10_0_0_3 = VppIpRoute(self, "10.0.0.3", 32,
+        route_10_0_0_3 = VppIpRoute(self.vclient, "10.0.0.3", 32,
                                     [VppRoutePath("0.0.0.0",
                                                   mpls_tun._sw_if_index)])
         route_10_0_0_3.add_vpp_config()
-        self.logger.info(self.vapi.cli("sh mpls tun 0"))
-        self.logger.info(self.vapi.cli("sh adj 21"))
+        self.logger.info(self.vclient.cli("sh mpls tun 0"))
+        self.logger.info(self.vclient.cli("sh adj 21"))
 
         tx = self.create_stream_ip4(self.pg1, "10.0.0.3")
         rx = self.send_and_expect(self.pg1, tx, self.pg0)
@@ -254,7 +254,7 @@ class TestSRMPLS(VppTestCase):
         #
         # add a labelled route through the new tunnel
         #
-        route_10_0_0_3 = VppIpRoute(self, "10.0.0.4", 32,
+        route_10_0_0_3 = VppIpRoute(self.vclient, "10.0.0.4", 32,
                                     [VppRoutePath("0.0.0.0",
                                                   mpls_tun._sw_if_index,
                                                   labels=[VppMplsLabel(55)])])
@@ -270,7 +270,7 @@ class TestSRMPLS(VppTestCase):
                                           VppMplsLabel(46),
                                           VppMplsLabel(55)])
 
-        self.vapi.sr_mpls_policy_del(999)
+        self.vclient.sr_mpls_policy_del(999)
 
 
 if __name__ == '__main__':

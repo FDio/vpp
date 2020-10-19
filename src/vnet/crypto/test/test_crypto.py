@@ -18,11 +18,12 @@ class TestCrypto(VppTestCase):
 
     def test_crypto(self):
         """ Crypto Unit Tests """
-        error = self.vapi.cli("test crypto")
+        error = self.vclient.cli("test crypto")
 
         if error:
             self.logger.critical(error)
         self.assertNotIn("FAIL", error)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

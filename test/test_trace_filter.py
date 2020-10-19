@@ -3,7 +3,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 from scapy.contrib.geneve import GENEVE
 from scapy.packet import Raw
@@ -38,7 +38,7 @@ class TestTracefilter(VppTestCase):
             i.admin_down()
 
     def cli(self, cmd):
-        r = self.vapi.cli_return_response(cmd)
+        r = self.vclient.cli_return_response(cmd)
         if r.retval != 0:
             if hasattr(r, 'reply'):
                 self.logger.info(cmd + " FAIL reply " + r.reply)

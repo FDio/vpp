@@ -3,7 +3,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_gcov_tests
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 from os import path, remove
 
 
@@ -70,7 +70,7 @@ class TestPcap(VppTestCase):
                 "classify filter pcap del mask l3 ip4 src"]
 
         for cmd in cmds:
-            r = self.vapi.cli_return_response(cmd)
+            r = self.vclient.cli_return_response(cmd)
             if r.retval != 0:
                 if hasattr(r, 'reply'):
                     self.logger.info(cmd + " FAIL reply " + r.reply)
@@ -83,6 +83,7 @@ class TestPcap(VppTestCase):
         os.remove('/tmp/dispatch.pcap')
         os.remove('/tmp/rxtx.pcap')
         os.remove('/tmp/filt.pcap')
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

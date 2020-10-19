@@ -98,6 +98,9 @@ compile_commands.json
 /src/vpp-api/python/build
 /src/vpp-api/python/dist
 /src/vpp-api/python/vpp_papi.egg-info
+/src/vpp-api/pom/build
+/src/vpp-api/pom/dist
+/src/vpp-api/pom/vpp_pom.egg-info
 /src/vpp_api/.tox
 /src/vpp_api/.stestr
 

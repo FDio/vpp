@@ -16,17 +16,17 @@ from scapy.layers.inet6 import ICMPv6DestUnreach, IPerror6, IPv6ExtHdrFragment
 from scapy.layers.l2 import Ether, ARP, GRE
 from scapy.data import IP_PROTOS
 from scapy.packet import bind_layers, Raw
-from util import ppp
+from vpp_pom.util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from time import sleep
-from util import ip4_range
+from vpp_pom.util import ip4_range
 from vpp_papi import mac_pton
 from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogFacility, SyslogSeverity
 from io import BytesIO
 from vpp_papi import VppEnum
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathType
-from vpp_neighbor import VppNeighbor
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, FibPathType
+from vpp_pom.vpp_neighbor import VppNeighbor
 from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
     IPField, IntField, LongField, XByteField, FlagsField, FieldLenField, \
     PacketListField
@@ -88,16 +88,16 @@ class TestDSlite(VppTestCase):
 
     def test_dslite(self):
         """ Test DS-Lite """
-        nat_config = self.vapi.nat_show_config()
+        nat_config = self.vclient.nat_show_config()
         self.assertEqual(0, nat_config.dslite_ce)
 
-        self.vapi.dslite_add_del_pool_addr_range(start_addr=self.nat_addr,
-                                                 end_addr=self.nat_addr,
-                                                 is_add=1)
+        self.vclient.dslite_add_del_pool_addr_range(start_addr=self.nat_addr,
+                                                    end_addr=self.nat_addr,
+                                                    is_add=1)
         aftr_ip4 = '192.0.0.1'
         aftr_ip6 = '2001:db8:85a3::8a2e:370:1'
-        self.vapi.dslite_set_aftr_addr(ip4_addr=aftr_ip4, ip6_addr=aftr_ip6)
-        self.vapi.syslog_set_sender(self.pg2.local_ip4, self.pg2.remote_ip4)
+        self.vclient.dslite_set_aftr_addr(ip4_addr=aftr_ip4, ip6_addr=aftr_ip6)
+        self.vclient.syslog_set_sender(self.pg2.local_ip4, self.pg2.remote_ip4)
 
         # UDP
         p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
@@ -216,19 +216,20 @@ class TestDSlite(VppTestCase):
         self.assertEqual(capture[IPv6].dst, self.pg1.remote_hosts[1].ip6)
         self.assertTrue(capture.haslayer(ICMPv6EchoReply))
 
-        b4s = self.statistics.get_counter('/dslite/total-b4s')
+        b4s = self.vclient.statistics.get_counter('/dslite/total-b4s')
         self.assertEqual(b4s[0][0], 2)
-        sessions = self.statistics.get_counter('/dslite/total-sessions')
+        sessions = self.vclient.statistics.get_counter(
+            '/dslite/total-sessions')
         self.assertEqual(sessions[0][0], 3)
 
     def tearDown(self):
         super(TestDSlite, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show dslite pool"))
+        self.logger.info(self.vclient.cli("show dslite pool"))
         self.logger.info(
-            self.vapi.cli("show dslite aftr-tunnel-endpoint-address"))
-        self.logger.info(self.vapi.cli("show dslite sessions"))
+            self.vclient.cli("show dslite aftr-tunnel-endpoint-address"))
+        self.logger.info(self.vclient.cli("show dslite sessions"))
 
 
 class TestDSliteCE(VppTestCase):
@@ -265,19 +266,19 @@ class TestDSliteCE(VppTestCase):
         """ Test DS-Lite CE """
 
         # TODO: add message to retrieve dslite config
-        # nat_config = self.vapi.nat_show_config()
+        # nat_config = self.vclient.nat_show_config()
         # self.assertEqual(1, nat_config.dslite_ce)
 
         b4_ip4 = '192.0.0.2'
         b4_ip6 = '2001:db8:62aa::375e:f4c1:1'
-        self.vapi.dslite_set_b4_addr(ip4_addr=b4_ip4, ip6_addr=b4_ip6)
+        self.vclient.dslite_set_b4_addr(ip4_addr=b4_ip4, ip6_addr=b4_ip6)
 
         aftr_ip4 = '192.0.0.1'
         aftr_ip6 = '2001:db8:85a3::8a2e:370:1'
         aftr_ip6_n = socket.inet_pton(socket.AF_INET6, aftr_ip6)
-        self.vapi.dslite_set_aftr_addr(ip4_addr=aftr_ip4, ip6_addr=aftr_ip6)
+        self.vclient.dslite_set_aftr_addr(ip4_addr=aftr_ip4, ip6_addr=aftr_ip6)
 
-        r1 = VppIpRoute(self, aftr_ip6, 128,
+        r1 = VppIpRoute(self.vclient, aftr_ip6, 128,
                         [VppRoutePath(self.pg1.remote_ip6,
                                       self.pg1.sw_if_index)])
         r1.add_vpp_config()
@@ -334,6 +335,6 @@ class TestDSliteCE(VppTestCase):
 
     def show_commands_at_teardown(self):
         self.logger.info(
-            self.vapi.cli("show dslite aftr-tunnel-endpoint-address"))
+            self.vclient.cli("show dslite aftr-tunnel-endpoint-address"))
         self.logger.info(
-            self.vapi.cli("show dslite b4-tunnel-endpoint-address"))
+            self.vclient.cli("show dslite b4-tunnel-endpoint-address"))

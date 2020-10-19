@@ -7,7 +7,7 @@ import subprocess
 import signal
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
 class QUICAppWorker(Worker):
@@ -69,7 +69,7 @@ class QUICTestCase(VppTestCase):
             i.admin_up()
 
             if table_id != 0:
-                tbl = VppIpTable(self, table_id)
+                tbl = VppIpTable(self.vclient, table_id)
                 tbl.add_vpp_config()
 
             i.set_table_ip4(table_id)
@@ -77,23 +77,23 @@ class QUICTestCase(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add_del(namespace_id="server",
-                                        sw_if_index=self.loop0.sw_if_index)
-        self.vapi.app_namespace_add_del(namespace_id="client",
-                                        sw_if_index=self.loop1.sw_if_index)
+        self.vclient.app_namespace_add_del(namespace_id="server",
+                                           sw_if_index=self.loop0.sw_if_index)
+        self.vclient.app_namespace_add_del(namespace_id="client",
+                                           sw_if_index=self.loop1.sw_if_index)
 
         # Add inter-table routes
-        self.ip_t01 = VppIpRoute(self, self.loop1.local_ip4, 32,
+        self.ip_t01 = VppIpRoute(self.vclient, self.loop1.local_ip4, 32,
                                  [VppRoutePath("0.0.0.0",
                                                0xffffffff,
                                                nh_table_id=2)], table_id=1)
-        self.ip_t10 = VppIpRoute(self, self.loop0.local_ip4, 32,
+        self.ip_t10 = VppIpRoute(self.vclient, self.loop0.local_ip4, 32,
                                  [VppRoutePath("0.0.0.0",
                                                0xffffffff,
                                                nh_table_id=1)], table_id=2)
         self.ip_t01.add_vpp_config()
         self.ip_t10.add_vpp_config()
-        self.logger.debug(self.vapi.cli("show ip fib"))
+        self.logger.debug(self.vclient.cli("show ip fib"))
 
     def tearDown(self):
         # Delete inter-table routes
@@ -122,7 +122,7 @@ class QUICEchoIntTestCase(QUICTestCase):
         super(QUICEchoIntTestCase, self).tearDown()
 
     def server(self, *args):
-        error = self.vapi.cli(
+        error = self.vclient.cli(
             "test echo server %s %s" %
             (self.server_args, ' '.join(args)))
         if error:
@@ -130,7 +130,7 @@ class QUICEchoIntTestCase(QUICTestCase):
             self.assertNotIn("failed", error)
 
     def client(self, *args):
-        error = self.vapi.cli(
+        error = self.vclient.cli(
             "test echo client %s %s" %
             (self.client_args, ' '.join(args)))
         if error:
@@ -140,6 +140,7 @@ class QUICEchoIntTestCase(QUICTestCase):
 
 class QUICEchoIntTransferTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal Transfer Test Case"""
+
     def test_quic_int_transfer(self):
         """QUIC internal transfer"""
         self.server()
@@ -148,6 +149,7 @@ class QUICEchoIntTransferTestCase(QUICEchoIntTestCase):
 
 class QUICEchoIntSerialTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal Serial Transfer Test Case"""
+
     def test_quic_serial_int_transfer(self):
         """QUIC serial internal transfer"""
         self.server()
@@ -160,6 +162,7 @@ class QUICEchoIntSerialTestCase(QUICEchoIntTestCase):
 
 class QUICEchoIntMStreamTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal MultiStream Test Case"""
+
     def test_quic_int_multistream_transfer(self):
         """QUIC internal multi-stream transfer"""
         self.server()
@@ -206,7 +209,7 @@ class QUICEchoExtTestCase(QUICTestCase):
         self.client_echo_test_args = common_args + \
             ["client", "appns", "client", "fifo-size",
              f"{self.client_fifo_size}"]
-        error = self.vapi.cli("quic set fifo-size 2M")
+        error = self.vclient.cli("quic set fifo-size 2M")
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)

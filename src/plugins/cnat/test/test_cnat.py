@@ -3,7 +3,8 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto, INVALID_INDEX
+from vpp_pom.vpp_ip import DpoProto, INVALID_INDEX
+from vpp_pom.plugins.vpp_cnat import VppCNatTranslation
 from itertools import product
 
 from scapy.packet import Raw
@@ -18,7 +19,6 @@ import struct
 from ipaddress import ip_address, ip_network, \
     IPv4Address, IPv6Address, IPv4Network, IPv6Network
 
-from vpp_object import VppObject
 from vpp_papi import VppEnum
 
 N_PKTS = 15
@@ -76,67 +76,6 @@ class EpTuple(object):
         return ("%s->%s" % (self.src, self.dst))
 
 
-class VppCNatTranslation(VppObject):
-
-    def __init__(self, test, iproto, vip, paths):
-        self._test = test
-        self.vip = vip
-        self.iproto = iproto
-        self.paths = paths
-        self.encoded_paths = []
-        for path in self.paths:
-            self.encoded_paths.append(path.encode())
-
-    def __str__(self):
-        return ("%s %s %s" % (self.vip, self.iproto, self.paths))
-
-    @property
-    def vl4_proto(self):
-        ip_proto = VppEnum.vl_api_ip_proto_t
-        return {
-            UDP: ip_proto.IP_API_PROTO_UDP,
-            TCP: ip_proto.IP_API_PROTO_TCP,
-        }[self.iproto]
-
-    def add_vpp_config(self):
-        r = self._test.vapi.cnat_translation_update(
-            {'vip': self.vip.encode(),
-             'ip_proto': self.vl4_proto,
-             'n_paths': len(self.paths),
-             'paths': self.encoded_paths})
-        self._test.registry.register(self, self._test.logger)
-        self.id = r.id
-
-    def modify_vpp_config(self, paths):
-        self.paths = paths
-        self.encoded_paths = []
-        for path in self.paths:
-            self.encoded_paths.append(path.encode())
-
-        r = self._test.vapi.cnat_translation_update(
-            {'vip': self.vip.encode(),
-             'ip_proto': self.vl4_proto,
-             'n_paths': len(self.paths),
-             'paths': self.encoded_paths})
-        self._test.registry.register(self, self._test.logger)
-
-    def remove_vpp_config(self):
-        self._test.vapi.cnat_translation_del(id=self.id)
-
-    def query_vpp_config(self):
-        for t in self._test.vapi.cnat_translation_dump():
-            if self.id == t.translation.id:
-                return t.translation
-        return None
-
-    def object_id(self):
-        return ("cnat-translation-%s" % (self.vip))
-
-    def get_stats(self):
-        c = self._test.statistics.get_counter("/net/cnat-translation")
-        return c[0][self.id]
-
-
 class TestCNatTranslation(VppTestCase):
     """ CNat Translation """
     extra_vpp_punt_config = ["cnat", "{",
@@ -178,7 +117,7 @@ class TestCNatTranslation(VppTestCase):
         dep = Ep(getattr(self.pg1.remote_hosts[nbr], ip_v), 4000 + nbr)
         sep = Ep("::", 0) if vip.isV6 else Ep("0.0.0.0", 0)
         t1 = VppCNatTranslation(
-            self, vip.l4p, vip,
+            self.vclient, vip.l4p, vip,
             [EpTuple(sep, dep), EpTuple(sep, dep)])
         t1.add_vpp_config()
         return t1
@@ -200,11 +139,11 @@ class TestCNatTranslation(VppTestCase):
                       vip.l4p(sport=sport, dport=vip.port) /
                       Raw())
 
-                self.vapi.cli("trace add pg-input 1")
+                self.vclient.cli("trace add pg-input 1")
                 rxs = self.send_and_expect(self.pg0,
                                            p1 * N_PKTS,
                                            self.pg1)
-                self.logger.info(self.vapi.cli("show trace max 1"))
+                self.logger.info(self.vclient.cli("show trace max 1"))
 
                 for rx in rxs:
                     self.assert_packet_checksums_valid(rx)
@@ -329,16 +268,16 @@ class TestCNatTranslation(VppTestCase):
         # turn the scanner off whilst testing otherwise sessions
         # will time out
         #
-        self.vapi.cli("test cnat scanner off")
+        self.vclient.cli("test cnat scanner off")
 
-        sessions = self.vapi.cnat_session_dump()
+        sessions = self.vclient.cnat_session_dump()
 
         trs = []
         for nbr, vip in enumerate(vips):
             trs.append(self.cnat_create_translation(vip, nbr))
 
-        self.logger.info(self.vapi.cli("sh cnat client"))
-        self.logger.info(self.vapi.cli("sh cnat translation"))
+        self.logger.info(self.vclient.cli("sh cnat client"))
+        self.logger.info(self.vclient.cli("sh cnat translation"))
 
         #
         # translations
@@ -347,29 +286,29 @@ class TestCNatTranslation(VppTestCase):
             self.cnat_test_translation(trs[nbr], nbr, sports, isV6=isV6)
             self.cnat_test_translation_update(trs[nbr], sports, isV6=isV6)
             if isV6:
-                self.logger.info(self.vapi.cli(
+                self.logger.info(self.vclient.cli(
                     "sh ip6 fib %s" % self.pg0.remote_ip6))
             else:
-                self.logger.info(self.vapi.cli(
+                self.logger.info(self.vclient.cli(
                     "sh ip fib %s" % self.pg0.remote_ip4))
-            self.logger.info(self.vapi.cli("sh cnat session verbose"))
+            self.logger.info(self.vclient.cli("sh cnat session verbose"))
 
         #
         # turn the scanner back on and wait until the sessions
         # all disapper
         #
-        self.vapi.cli("test cnat scanner on")
+        self.vclient.cli("test cnat scanner on")
 
         n_tries = 0
-        sessions = self.vapi.cnat_session_dump()
+        sessions = self.vclient.cnat_session_dump()
         while (len(sessions) and n_tries < 100):
             n_tries += 1
-            sessions = self.vapi.cnat_session_dump()
+            sessions = self.vclient.cnat_session_dump()
             self.sleep(2)
-            self.logger.info(self.vapi.cli("show cnat session verbose"))
+            self.logger.info(self.vclient.cli("show cnat session verbose"))
 
         self.assertTrue(n_tries < 100)
-        self.vapi.cli("test cnat scanner off")
+        self.vclient.cli("test cnat scanner off")
 
         #
         # load some flows again and purge
@@ -390,9 +329,9 @@ class TestCNatTranslation(VppTestCase):
         for tr in trs:
             tr.remove_vpp_config()
 
-        self.assertTrue(self.vapi.cnat_session_dump())
-        self.vapi.cnat_session_purge()
-        self.assertFalse(self.vapi.cnat_session_dump())
+        self.assertTrue(self.vclient.cnat_session_dump())
+        self.vclient.cnat_session_purge()
+        self.assertFalse(self.vclient.cnat_session_dump())
 
     def test_icmp(self):
         vips = [
@@ -412,13 +351,13 @@ class TestCNatTranslation(VppTestCase):
         self.pg1.configure_ipv6_neighbors()
         self.pg1.configure_ipv4_neighbors()
 
-        self.vapi.cli("test cnat scanner off")
+        self.vclient.cli("test cnat scanner off")
         trs = []
         for nbr, vip in enumerate(vips):
             trs.append(self.cnat_create_translation(vip, nbr))
 
-        self.logger.info(self.vapi.cli("sh cnat client"))
-        self.logger.info(self.vapi.cli("sh cnat translation"))
+        self.logger.info(self.vclient.cli("sh cnat client"))
+        self.logger.info(self.vclient.cli("sh cnat translation"))
 
         for nbr, vip in enumerate(vips):
             if vip.isV6:
@@ -495,7 +434,7 @@ class TestCNatTranslation(VppTestCase):
                 self.assertEqual(rx[ICMP46][IP46error]
                                  [TCPUDPError].dport, vip.port)
 
-        self.vapi.cnat_session_purge()
+        self.vclient.cnat_session_purge()
 
     def test_cnat6(self):
         # """ CNat Translation ipv6 """
@@ -561,23 +500,23 @@ class TestCNatSourceNAT(VppTestCase):
         self.pg1.configure_ipv4_neighbors()
         self.pg1.configure_ipv6_neighbors()
 
-        self.vapi.cli("test cnat scanner off")
-        self.vapi.cnat_set_snat_addresses(
+        self.vclient.cli("test cnat scanner off")
+        self.vclient.cnat_set_snat_addresses(
             snat_ip4=self.pg2.remote_hosts[0].ip4,
             snat_ip6=self.pg2.remote_hosts[0].ip6)
-        self.vapi.feature_enable_disable(
+        self.vclient.feature_enable_disable(
             enable=1,
             arc_name="ip6-unicast",
             feature_name="ip6-cnat-snat",
             sw_if_index=self.pg0.sw_if_index)
-        self.vapi.feature_enable_disable(
+        self.vclient.feature_enable_disable(
             enable=1,
             arc_name="ip4-unicast",
             feature_name="ip4-cnat-snat",
             sw_if_index=self.pg0.sw_if_index)
 
     def tearDown(self):
-        self.vapi.cnat_session_purge()
+        self.vclient.cnat_session_purge()
         for i in self.pg_interfaces:
             i.unconfig_ip4()
             i.unconfig_ip6()
@@ -776,12 +715,12 @@ class TestCNatSourceNAT(VppTestCase):
                 l4p(sport=sports[nbr], dport=dports[nbr]) /
                 Raw())
 
-            self.vapi.cli("trace add pg-input 1")
+            self.vclient.cli("trace add pg-input 1")
             rxs = self.send_and_expect(
                 self.pg0,
                 p1 * N_PKTS,
                 self.pg1)
-            self.logger.info(self.vapi.cli("show trace max 1"))
+            self.logger.info(self.vclient.cli("show trace max 1"))
 
             for rx in rxs:
                 self.assert_packet_checksums_valid(rx)
@@ -811,8 +750,9 @@ class TestCNatSourceNAT(VppTestCase):
                 self.assertEqual(rx[IP46].src, remote_addr)
 
             # add remote host to exclude list
-            self.vapi.cnat_add_del_snat_prefix(prefix=exclude_prefix, is_add=1)
-            self.vapi.cnat_session_purge()
+            self.vclient.cnat_add_del_snat_prefix(
+                prefix=exclude_prefix, is_add=1)
+            self.vclient.cnat_session_purge()
 
             rxs = self.send_and_expect(
                 self.pg0,
@@ -825,8 +765,9 @@ class TestCNatSourceNAT(VppTestCase):
                 self.assertEqual(rx[IP46].src, client_addr)
 
             # remove remote host from exclude list
-            self.vapi.cnat_add_del_snat_prefix(prefix=exclude_prefix, is_add=0)
-            self.vapi.cnat_session_purge()
+            self.vclient.cnat_add_del_snat_prefix(
+                prefix=exclude_prefix, is_add=0)
+            self.vclient.cnat_session_purge()
 
             rxs = self.send_and_expect(
                 self.pg0,
@@ -839,7 +780,7 @@ class TestCNatSourceNAT(VppTestCase):
                 self.assertEqual(rx[l4p].dport, dports[nbr])
                 self.assertEqual(rx[IP46].src, src_nat_addr)
 
-            self.vapi.cnat_session_purge()
+            self.vclient.cnat_session_purge()
 
 
 class TestCNatDHCP(VppTestCase):
@@ -872,7 +813,7 @@ class TestCNatDHCP(VppTestCase):
                 Ep.from_pg(src_pg, is_v6=is_v6),
                 Ep.from_pg(dst_pg, is_v6=is_v6)
             ))
-        t1 = VppCNatTranslation(self, TCP, vip, paths)
+        t1 = VppCNatTranslation(self.vclient, TCP, vip, paths)
         t1.add_vpp_config()
         return t1
 
@@ -902,7 +843,7 @@ class TestCNatDHCP(VppTestCase):
 
     def config_ips(self, rng, is_add=1, is_v6=False):
         for pg, i in product(self.pg_interfaces, rng):
-            self.vapi.sw_interface_add_del_address(
+            self.vclient.sw_interface_add_del_address(
                 sw_if_index=pg.sw_if_index,
                 prefix=self.make_prefix(pg.sw_if_index, i, is_v6),
                 is_add=is_add)
@@ -939,10 +880,10 @@ class TestCNatDHCP(VppTestCase):
         self.create_pg_interfaces(range(1))
         for i in self.pg_interfaces:
             i.admin_up()
-        self.vapi.cnat_set_snat_addresses(sw_if_index=self.pg0.sw_if_index)
+        self.vclient.cnat_set_snat_addresses(sw_if_index=self.pg0.sw_if_index)
         self.config_ips([0], is_v6=False)
         self.config_ips([0], is_v6=True)
-        r = self.vapi.cnat_get_snat_addresses()
+        r = self.vclient.cnat_get_snat_addresses()
         self.assertEqual(str(r.snat_ip4), self.make_addr(
             self.pg0.sw_if_index, 0, False))
         self.assertEqual(str(r.snat_ip6), self.make_addr(
@@ -951,7 +892,7 @@ class TestCNatDHCP(VppTestCase):
         self.config_ips([1], is_v6=True)
         self.config_ips([0], is_add=0, is_v6=False)
         self.config_ips([0], is_add=0, is_v6=True)
-        r = self.vapi.cnat_get_snat_addresses()
+        r = self.vclient.cnat_get_snat_addresses()
         self.assertEqual(str(r.snat_ip4), self.make_addr(
             self.pg0.sw_if_index, 1, False))
         self.assertEqual(str(r.snat_ip6), self.make_addr(

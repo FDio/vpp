@@ -12,16 +12,17 @@ from scapy.packet import Raw
 from six import moves
 
 from framework import VppTestCase, VppTestRunner
-from util import ppp
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
+from vpp_pom.util import ppp
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppMRoutePath, VppMplsIpBind, \
     VppMplsTable, VppIpTable, FibPathType, find_route, \
     VppIpInterfaceAddress, find_route_in_dump, find_mroute_in_dump
-from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
+from vpp_pom.vpp_sub_interface import VppSubInterface, VppDot1QSubint, \
+    VppDot1ADSubint
 from vpp_papi import VppEnum
-from vpp_neighbor import VppNeighbor
-from vpp_lo_interface import VppLoInterface
-from vpp_policer import VppPolicer
+from vpp_pom.vpp_neighbor import VppNeighbor
+from vpp_pom.vpp_lo_interface import VppLoInterface
+from vpp_pom.vpp_policer import VppPolicer
 
 NUM_PKTS = 67
 
@@ -62,8 +63,8 @@ class TestIPv4(VppTestCase):
 
         # create 2 subinterfaces for pg1 and pg2
         self.sub_interfaces = [
-            VppDot1QSubint(self, self.pg1, 100),
-            VppDot1ADSubint(self, self.pg2, 200, 300, 400)]
+            VppDot1QSubint(self.vclient, self.pg1, 100),
+            VppDot1ADSubint(self.vclient, self.pg2, 200, 300, 400)]
 
         # packet flows mapping pg0 -> pg1.sub, pg2.sub, etc.
         self.flows = dict()
@@ -90,8 +91,8 @@ class TestIPv4(VppTestCase):
         super(TestIPv4, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show ip4 neighbors"))
-        # info(self.vapi.cli("show ip fib"))  # many entries
+        self.logger.info(self.vclient.cli("show ip4 neighbors"))
+        # info(self.vclient.cli("show ip fib"))  # many entries
 
     def modify_packet(self, src_if, packet_size, pkt):
         """Add load, set destination IP and extend packet to required packet
@@ -105,7 +106,7 @@ class TestIPv4(VppTestCase):
         dst_if = self.flows[src_if][dst_if_idx]
         info = self.create_packet_info(src_if, dst_if)
         payload = self.info_to_payload(info)
-        p = pkt/Raw(payload)
+        p = pkt / Raw(payload)
         p[IP].dst = dst_if.remote_ip4
         info.data = p.copy()
         if isinstance(src_if, VppSubInterface):
@@ -176,7 +177,7 @@ class TestIPv4(VppTestCase):
                 self.assertEqual(ip.dst, saved_packet[IP].dst)
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
-            except:
+            except BaseException:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.interfaces:
@@ -219,12 +220,12 @@ class TestIPv4RouteLookup(VppTestCase):
     routes = []
 
     def route_lookup(self, prefix, exact):
-        return self.vapi.api(self.vapi.papi.ip_route_lookup,
-                             {
-                                 'table_id': 0,
-                                 'exact': exact,
-                                 'prefix': prefix,
-                             })
+        return self.vclient.api(self.vclient.papi.ip_route_lookup,
+                                {
+                                    'table_id': 0,
+                                    'exact': exact,
+                                    'prefix': prefix,
+                                })
 
     @classmethod
     def setUpClass(cls):
@@ -241,15 +242,15 @@ class TestIPv4RouteLookup(VppTestCase):
                                type=FibPathType.FIB_PATH_TYPE_DROP)
 
         # Add 3 routes
-        r = VppIpRoute(self, "1.1.0.0", 16, [drop_nh])
+        r = VppIpRoute(self.vclient, "1.1.0.0", 16, [drop_nh])
         r.add_vpp_config()
         self.routes.append(r)
 
-        r = VppIpRoute(self, "1.1.1.0", 24, [drop_nh])
+        r = VppIpRoute(self.vclient, "1.1.1.0", 24, [drop_nh])
         r.add_vpp_config()
         self.routes.append(r)
 
-        r = VppIpRoute(self, "1.1.1.1", 32, [drop_nh])
+        r = VppIpRoute(self.vclient, "1.1.1.1", 32, [drop_nh])
         r.add_vpp_config()
         self.routes.append(r)
 
@@ -272,7 +273,7 @@ class TestIPv4RouteLookup(VppTestCase):
         assert (prefix == str(result.route.prefix))
 
         # Verify we do not find an available LPM.
-        with self.vapi.assert_negative_api_retval():
+        with self.vclient.assert_negative_api_retval():
             self.route_lookup("1.1.1.2/32", True)
 
     def test_longest_prefix_match(self):
@@ -332,39 +333,41 @@ class TestIPv4IfAddrRoute(VppTestCase):
         """
 
         # create two addresses, verify route not present
-        if_addr1 = VppIpInterfaceAddress(self, self.pg0, "10.10.10.10", 24)
-        if_addr2 = VppIpInterfaceAddress(self, self.pg0, "10.10.10.20", 24)
+        if_addr1 = VppIpInterfaceAddress(
+            self.vclient, self.pg0, "10.10.10.10", 24)
+        if_addr2 = VppIpInterfaceAddress(
+            self.vclient, self.pg0, "10.10.10.20", 24)
         self.assertFalse(if_addr1.query_vpp_config())  # 10.10.10.10/24
-        self.assertFalse(find_route(self, "10.10.10.10", 32))
-        self.assertFalse(find_route(self, "10.10.10.20", 32))
-        self.assertFalse(find_route(self, "10.10.10.255", 32))
-        self.assertFalse(find_route(self, "10.10.10.0", 32))
+        self.assertFalse(find_route(self.vclient, "10.10.10.10", 32))
+        self.assertFalse(find_route(self.vclient, "10.10.10.20", 32))
+        self.assertFalse(find_route(self.vclient, "10.10.10.255", 32))
+        self.assertFalse(find_route(self.vclient, "10.10.10.0", 32))
 
         # configure first address, verify route present
         if_addr1.add_vpp_config()
         self.assertTrue(if_addr1.query_vpp_config())  # 10.10.10.10/24
-        self.assertTrue(find_route(self, "10.10.10.10", 32))
-        self.assertFalse(find_route(self, "10.10.10.20", 32))
-        self.assertTrue(find_route(self, "10.10.10.255", 32))
-        self.assertTrue(find_route(self, "10.10.10.0", 32))
+        self.assertTrue(find_route(self.vclient, "10.10.10.10", 32))
+        self.assertFalse(find_route(self.vclient, "10.10.10.20", 32))
+        self.assertTrue(find_route(self.vclient, "10.10.10.255", 32))
+        self.assertTrue(find_route(self.vclient, "10.10.10.0", 32))
 
         # configure second address, delete first, verify route not removed
         if_addr2.add_vpp_config()
         if_addr1.remove_vpp_config()
         self.assertFalse(if_addr1.query_vpp_config())  # 10.10.10.10/24
         self.assertTrue(if_addr2.query_vpp_config())  # 10.10.10.20/24
-        self.assertFalse(find_route(self, "10.10.10.10", 32))
-        self.assertTrue(find_route(self, "10.10.10.20", 32))
-        self.assertTrue(find_route(self, "10.10.10.255", 32))
-        self.assertTrue(find_route(self, "10.10.10.0", 32))
+        self.assertFalse(find_route(self.vclient, "10.10.10.10", 32))
+        self.assertTrue(find_route(self.vclient, "10.10.10.20", 32))
+        self.assertTrue(find_route(self.vclient, "10.10.10.255", 32))
+        self.assertTrue(find_route(self.vclient, "10.10.10.0", 32))
 
         # delete second address, verify route removed
         if_addr2.remove_vpp_config()
         self.assertFalse(if_addr2.query_vpp_config())  # 10.10.10.20/24
-        self.assertFalse(find_route(self, "10.10.10.10", 32))
-        self.assertFalse(find_route(self, "10.10.10.20", 32))
-        self.assertFalse(find_route(self, "10.10.10.255", 32))
-        self.assertFalse(find_route(self, "10.10.10.0", 32))
+        self.assertFalse(find_route(self.vclient, "10.10.10.10", 32))
+        self.assertFalse(find_route(self.vclient, "10.10.10.20", 32))
+        self.assertFalse(find_route(self.vclient, "10.10.10.255", 32))
+        self.assertFalse(find_route(self.vclient, "10.10.10.0", 32))
 
     def test_ipv4_ifaddr_route(self):
         """ IPv4 Interface Address Route test
@@ -391,24 +394,24 @@ class TestIPv4IfAddrRoute(VppTestCase):
         lo_if.config_ip4()
 
         # The intf was down when addr was added -> entry not in FIB
-        fib4_dump = self.vapi.ip_route_dump(0)
+        fib4_dump = self.vclient.ip_route_dump(0)
         self.assertFalse(lo_if.is_ip4_entry_in_fib_dump(fib4_dump))
 
         # When intf is brought up, entry is added
         lo_if.admin_up()
-        fib4_dump = self.vapi.ip_route_dump(0)
+        fib4_dump = self.vclient.ip_route_dump(0)
         self.assertTrue(lo_if.is_ip4_entry_in_fib_dump(fib4_dump))
 
         # When intf is brought down, entry is removed
         lo_if.admin_down()
-        fib4_dump = self.vapi.ip_route_dump(0)
+        fib4_dump = self.vclient.ip_route_dump(0)
         self.assertFalse(lo_if.is_ip4_entry_in_fib_dump(fib4_dump))
 
         # Remove addr, bring up interface, re-add -> entry in FIB
         lo_if.unconfig_ip4()
         lo_if.admin_up()
         lo_if.config_ip4()
-        fib4_dump = self.vapi.ip_route_dump(0)
+        fib4_dump = self.vclient.ip_route_dump(0)
         self.assertTrue(lo_if.is_ip4_entry_in_fib_dump(fib4_dump))
 
     def test_ipv4_ifaddr_del(self):
@@ -423,8 +426,8 @@ class TestIPv4IfAddrRoute(VppTestCase):
         #
         # try and remove pg0's subnet from lo
         #
-        with self.vapi.assert_negative_api_retval():
-            self.vapi.sw_interface_add_del_address(
+        with self.vclient.assert_negative_api_retval():
+            self.vclient.sw_interface_add_del_address(
                 sw_if_index=lo.sw_if_index,
                 prefix=self.pg0.local_ip4_prefix,
                 is_add=0)
@@ -521,7 +524,7 @@ class TestIPv4FibCrud(VppTestCase):
         """
         routes = []
         for i in range(count):
-            r = VppIpRoute(self, start_dest_addr % (i + start), 32,
+            r = VppIpRoute(self.vclient, start_dest_addr % (i + start), 32,
                            [VppRoutePath(next_hop_addr, 0xffffffff)])
             r.add_vpp_config()
             routes.append(r)
@@ -532,7 +535,7 @@ class TestIPv4FibCrud(VppTestCase):
 
         routes = []
         for i in range(count):
-            r = VppIpRoute(self, start_dest_addr % (i + start), 32,
+            r = VppIpRoute(self.vclient, start_dest_addr % (i + start), 32,
                            [VppRoutePath(next_hop_addr, 0xffffffff)])
             r.remove_vpp_config()
             routes.append(r)
@@ -582,13 +585,13 @@ class TestIPv4FibCrud(VppTestCase):
 
     def verify_route_dump(self, routes):
         for r in routes:
-            self.assertTrue(find_route(self,
+            self.assertTrue(find_route(self.vclient,
                                        r.prefix.network_address,
                                        r.prefix.prefixlen))
 
     def verify_not_in_route_dump(self, routes):
         for r in routes:
-            self.assertFalse(find_route(self,
+            self.assertFalse(find_route(self.vclient,
                                         r.prefix.network_address,
                                         r.prefix.prefixlen))
 
@@ -773,7 +776,7 @@ class TestIPNull(VppTestCase):
         # A route via IP NULL that will reply with ICMP unreachables
         #
         ip_unreach = VppIpRoute(
-            self, "10.0.0.1", 32,
+            self.vclient, "10.0.0.1", 32,
             [VppRoutePath("0.0.0.0",
                           0xffffffff,
                           type=FibPathType.FIB_PATH_TYPE_ICMP_UNREACH)])
@@ -806,7 +809,7 @@ class TestIPNull(VppTestCase):
         # A route via IP NULL that will reply with ICMP prohibited
         #
         ip_prohibit = VppIpRoute(
-            self, "10.0.0.2", 32,
+            self.vclient, "10.0.0.2", 32,
             [VppRoutePath("0.0.0.0",
                           0xffffffff,
                           type=FibPathType.FIB_PATH_TYPE_ICMP_PROHIBIT)])
@@ -841,7 +844,7 @@ class TestIPNull(VppTestCase):
              UDP(sport=1234, dport=1234) /
              Raw(b'\xa5' * 100))
 
-        r1 = VppIpRoute(self, "1.1.1.0", 24,
+        r1 = VppIpRoute(self.vclient, "1.1.1.0", 24,
                         [VppRoutePath(self.pg1.remote_ip4,
                                       self.pg1.sw_if_index)])
         r1.add_vpp_config()
@@ -851,7 +854,7 @@ class TestIPNull(VppTestCase):
         #
         # insert a more specific as a drop
         #
-        r2 = VppIpRoute(self, "1.1.1.1", 32,
+        r2 = VppIpRoute(self.vclient, "1.1.1.1", 32,
                         [VppRoutePath("0.0.0.0",
                                       0xffffffff,
                                       type=FibPathType.FIB_PATH_TYPE_DROP)])
@@ -904,7 +907,7 @@ class TestIPDisabled(VppTestCase):
         # one accepting interface, pg0, 2 forwarding interfaces
         #
         route_232_1_1_1 = VppIpMRoute(
-            self,
+            self.vclient,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
@@ -998,7 +1001,7 @@ class TestIPSubNets(VppTestCase):
         # Configure a covering route to forward so we know
         # when we are dropping
         #
-        cover_route = VppIpRoute(self, "10.0.0.0", 8,
+        cover_route = VppIpRoute(self.vclient, "10.0.0.0", 8,
                                  [VppRoutePath(self.pg1.remote_ip4,
                                                self.pg1.sw_if_index)])
         cover_route.add_vpp_config()
@@ -1019,7 +1022,7 @@ class TestIPSubNets(VppTestCase):
         #
         ip_addr_n = socket.inet_pton(socket.AF_INET, "10.10.10.10")
 
-        self.vapi.sw_interface_add_del_address(
+        self.vclient.sw_interface_add_del_address(
             sw_if_index=self.pg0.sw_if_index,
             prefix="10.10.10.10/16")
 
@@ -1038,7 +1041,7 @@ class TestIPSubNets(VppTestCase):
         self.send_and_assert_no_replies(self.pg1, pb, "IP Broadcast address")
 
         # remove the sub-net and we are forwarding via the cover again
-        self.vapi.sw_interface_add_del_address(
+        self.vclient.sw_interface_add_del_address(
             sw_if_index=self.pg0.sw_if_index,
             prefix="10.10.10.10/16",
             is_add=0)
@@ -1058,7 +1061,7 @@ class TestIPSubNets(VppTestCase):
         #
         ip_addr_n = socket.inet_pton(socket.AF_INET, "10.10.10.10")
 
-        self.vapi.sw_interface_add_del_address(
+        self.vclient.sw_interface_add_del_address(
             sw_if_index=self.pg0.sw_if_index,
             prefix="10.10.10.10/31")
 
@@ -1075,7 +1078,7 @@ class TestIPSubNets(VppTestCase):
         rx[ARP]
 
         # remove the sub-net and we are forwarding via the cover again
-        self.vapi.sw_interface_add_del_address(
+        self.vclient.sw_interface_add_del_address(
             sw_if_index=self.pg0.sw_if_index,
             prefix="10.10.10.10/31", is_add=0)
 
@@ -1100,7 +1103,7 @@ class TestIPLoadBalance(VppTestCase):
         super(TestIPLoadBalance, self).setUp()
 
         self.create_pg_interfaces(range(5))
-        mpls_tbl = VppMplsTable(self, 0)
+        mpls_tbl = VppMplsTable(self.vclient, 0)
         mpls_tbl.add_vpp_config()
 
         for i in self.pg_interfaces:
@@ -1172,14 +1175,14 @@ class TestIPLoadBalance(VppTestCase):
                                   MPLS(label=66, ttl=2) /
                                   src_ip_hdr))
 
-        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+        route_10_0_0_1 = VppIpRoute(self.vclient, "10.0.0.1", 32,
                                     [VppRoutePath(self.pg1.remote_ip4,
                                                   self.pg1.sw_if_index),
                                      VppRoutePath(self.pg2.remote_ip4,
                                                   self.pg2.sw_if_index)])
         route_10_0_0_1.add_vpp_config()
 
-        binding = VppMplsIpBind(self, 66, "10.0.0.1", 32)
+        binding = VppMplsIpBind(self.vclient, 66, "10.0.0.1", 32)
         binding.add_vpp_config()
 
         #
@@ -1205,7 +1208,7 @@ class TestIPLoadBalance(VppTestCase):
         #  - now only the stream with differing source address will
         #    load-balance
         #
-        self.vapi.set_ip_flow_hash(vrf_id=0, src=1, dst=1, sport=0, dport=0)
+        self.vclient.set_ip_flow_hash(vrf_id=0, src=1, dst=1, sport=0, dport=0)
 
         self.send_and_expect_load_balancing(self.pg0, src_ip_pkts,
                                             [self.pg1, self.pg2])
@@ -1217,7 +1220,7 @@ class TestIPLoadBalance(VppTestCase):
         #
         # change the flow hash config back to defaults
         #
-        self.vapi.set_ip_flow_hash(vrf_id=0, src=1, dst=1, sport=1, dport=1)
+        self.vclient.set_ip_flow_hash(vrf_id=0, src=1, dst=1, sport=1, dport=1)
 
         #
         # Recursive prefixes
@@ -1239,14 +1242,14 @@ class TestIPLoadBalance(VppTestCase):
                              UDP(sport=1234, dport=1234) /
                              Raw(b'\xa5' * 100)))
 
-        route_10_0_0_2 = VppIpRoute(self, "10.0.0.2", 32,
+        route_10_0_0_2 = VppIpRoute(self.vclient, "10.0.0.2", 32,
                                     [VppRoutePath(self.pg3.remote_ip4,
                                                   self.pg3.sw_if_index),
                                      VppRoutePath(self.pg4.remote_ip4,
                                                   self.pg4.sw_if_index)])
         route_10_0_0_2.add_vpp_config()
 
-        route_1_1_1_1 = VppIpRoute(self, "1.1.1.1", 32,
+        route_1_1_1_1 = VppIpRoute(self.vclient, "1.1.1.1", 32,
                                    [VppRoutePath("10.0.0.2", 0xffffffff),
                                     VppRoutePath("10.0.0.1", 0xffffffff)])
         route_1_1_1_1.add_vpp_config()
@@ -1254,7 +1257,7 @@ class TestIPLoadBalance(VppTestCase):
         #
         # inject the packet on pg0 - expect load-balancing across all 4 paths
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         self.send_and_expect_load_balancing(self.pg0, port_pkts,
                                             [self.pg1, self.pg2,
                                              self.pg3, self.pg4])
@@ -1322,19 +1325,19 @@ class TestIPLoadBalance(VppTestCase):
                               UDP(sport=1234, dport=1234 + ii) /
                               Raw(b'\xa5' * 100)))
 
-        route_10_0_0_3 = VppIpRoute(self, "10.0.0.3", 32,
+        route_10_0_0_3 = VppIpRoute(self.vclient, "10.0.0.3", 32,
                                     [VppRoutePath(self.pg3.remote_ip4,
                                                   self.pg3.sw_if_index)])
         route_10_0_0_3.add_vpp_config()
 
-        route_1_1_1_2 = VppIpRoute(self, "1.1.1.2", 32,
+        route_1_1_1_2 = VppIpRoute(self.vclient, "1.1.1.2", 32,
                                    [VppRoutePath("10.0.0.3", 0xffffffff)])
         route_1_1_1_2.add_vpp_config()
 
         #
         # inject the packet on pg0 - rx only on via routes output interface
         #
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         self.send_and_expect_one_itf(self.pg0, port_pkts, self.pg3)
 
         #
@@ -1343,7 +1346,7 @@ class TestIPLoadBalance(VppTestCase):
         #
         self.pg3.link_down()
 
-        route_10_0_0_3 = VppIpRoute(self, "10.0.0.3", 32,
+        route_10_0_0_3 = VppIpRoute(self.vclient, "10.0.0.3", 32,
                                     [VppRoutePath(self.pg3.remote_ip4,
                                                   self.pg3.sw_if_index),
                                      VppRoutePath(self.pg4.remote_ip4,
@@ -1383,7 +1386,7 @@ class TestIPVlan0(VppTestCase):
         super(TestIPVlan0, self).setUp()
 
         self.create_pg_interfaces(range(2))
-        mpls_tbl = VppMplsTable(self, 0)
+        mpls_tbl = VppMplsTable(self.vclient, 0)
         mpls_tbl.add_vpp_config()
 
         for i in self.pg_interfaces:
@@ -1463,7 +1466,7 @@ class TestIPPunt(VppTestCase):
             }
         }
 
-        self.vapi.set_punt(is_add=1, punt=punt_udp)
+        self.vclient.set_punt(is_add=1, punt=punt_udp)
 
         p = (Ether(src=self.pg0.remote_mac,
                    dst=self.pg0.local_mac) /
@@ -1477,20 +1480,21 @@ class TestIPPunt(VppTestCase):
         # Configure a punt redirect via pg1.
         #
         nh_addr = self.pg1.remote_ip4
-        self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
-                                   self.pg1.sw_if_index,
-                                   nh_addr)
+        self.vclient.ip_punt_redirect(self.pg0.sw_if_index,
+                                      self.pg1.sw_if_index,
+                                      nh_addr)
 
         self.send_and_expect(self.pg0, pkts, self.pg1)
 
         #
         # add a policer
         #
-        policer = VppPolicer(self, "ip4-punt", 400, 0, 10, 0, rate_type=1)
+        policer = VppPolicer(self.vclient, "ip4-punt",
+                             400, 0, 10, 0, rate_type=1)
         policer.add_vpp_config()
-        self.vapi.ip_punt_police(policer.policer_index)
+        self.vclient.ip_punt_police(policer.policer_index)
 
-        self.vapi.cli("clear trace")
+        self.vclient.cli("clear trace")
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -1506,32 +1510,32 @@ class TestIPPunt(VppTestCase):
         #
         # remove the policer. back to full rx
         #
-        self.vapi.ip_punt_police(policer.policer_index, is_add=0)
+        self.vclient.ip_punt_police(policer.policer_index, is_add=0)
         policer.remove_vpp_config()
         self.send_and_expect(self.pg0, pkts, self.pg1)
 
         #
         # remove the redirect. expect full drop.
         #
-        self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
-                                   self.pg1.sw_if_index,
-                                   nh_addr,
-                                   is_add=0)
+        self.vclient.ip_punt_redirect(self.pg0.sw_if_index,
+                                      self.pg1.sw_if_index,
+                                      nh_addr,
+                                      is_add=0)
         self.send_and_assert_no_replies(self.pg0, pkts,
                                         "IP no punt config")
 
         #
         # Add a redirect that is not input port selective
         #
-        self.vapi.ip_punt_redirect(0xffffffff,
-                                   self.pg1.sw_if_index,
-                                   nh_addr)
+        self.vclient.ip_punt_redirect(0xffffffff,
+                                      self.pg1.sw_if_index,
+                                      nh_addr)
         self.send_and_expect(self.pg0, pkts, self.pg1)
 
-        self.vapi.ip_punt_redirect(0xffffffff,
-                                   self.pg1.sw_if_index,
-                                   nh_addr,
-                                   is_add=0)
+        self.vclient.ip_punt_redirect(0xffffffff,
+                                      self.pg1.sw_if_index,
+                                      nh_addr,
+                                      is_add=0)
 
     def test_ip_punt_dump(self):
         """ IP4 punt redirect dump"""
@@ -1540,27 +1544,27 @@ class TestIPPunt(VppTestCase):
         # Configure a punt redirects
         #
         nh_address = self.pg3.remote_ip4
-        self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
-                                   self.pg3.sw_if_index,
-                                   nh_address)
-        self.vapi.ip_punt_redirect(self.pg1.sw_if_index,
-                                   self.pg3.sw_if_index,
-                                   nh_address)
-        self.vapi.ip_punt_redirect(self.pg2.sw_if_index,
-                                   self.pg3.sw_if_index,
-                                   '0.0.0.0')
+        self.vclient.ip_punt_redirect(self.pg0.sw_if_index,
+                                      self.pg3.sw_if_index,
+                                      nh_address)
+        self.vclient.ip_punt_redirect(self.pg1.sw_if_index,
+                                      self.pg3.sw_if_index,
+                                      nh_address)
+        self.vclient.ip_punt_redirect(self.pg2.sw_if_index,
+                                      self.pg3.sw_if_index,
+                                      '0.0.0.0')
 
         #
         # Dump pg0 punt redirects
         #
-        punts = self.vapi.ip_punt_redirect_dump(self.pg0.sw_if_index)
+        punts = self.vclient.ip_punt_redirect_dump(self.pg0.sw_if_index)
         for p in punts:
             self.assertEqual(p.punt.rx_sw_if_index, self.pg0.sw_if_index)
 
         #
         # Dump punt redirects for all interfaces
         #
-        punts = self.vapi.ip_punt_redirect_dump(0xffffffff)
+        punts = self.vclient.ip_punt_redirect_dump(0xffffffff)
         self.assertEqual(len(punts), 3)
         for p in punts:
             self.assertEqual(p.punt.tx_sw_if_index, self.pg3.sw_if_index)
@@ -1603,8 +1607,8 @@ class TestIPDeag(VppTestCase):
         #  1 - another destination address lookup
         #  2 - a source address lookup
         #
-        table_dst = VppIpTable(self, 1)
-        table_src = VppIpTable(self, 2)
+        table_dst = VppIpTable(self.vclient, 1)
+        table_src = VppIpTable(self.vclient, 2)
         table_dst.add_vpp_config()
         table_src.add_vpp_config()
 
@@ -1612,12 +1616,12 @@ class TestIPDeag(VppTestCase):
         # Add a route in the default table to point to a deag/
         # second lookup in each of these tables
         #
-        route_to_dst = VppIpRoute(self, "1.1.1.1", 32,
+        route_to_dst = VppIpRoute(self.vclient, "1.1.1.1", 32,
                                   [VppRoutePath("0.0.0.0",
                                                 0xffffffff,
                                                 nh_table_id=1)])
         route_to_src = VppIpRoute(
-            self, "1.1.1.2", 32,
+            self.vclient, "1.1.1.2", 32,
             [VppRoutePath("0.0.0.0",
                           0xffffffff,
                           nh_table_id=2,
@@ -1650,7 +1654,7 @@ class TestIPDeag(VppTestCase):
         #
         # add a route in the dst table to forward via pg1
         #
-        route_in_dst = VppIpRoute(self, "1.1.1.1", 32,
+        route_in_dst = VppIpRoute(self.vclient, "1.1.1.1", 32,
                                   [VppRoutePath(self.pg1.remote_ip4,
                                                 self.pg1.sw_if_index)],
                                   table_id=1)
@@ -1661,7 +1665,7 @@ class TestIPDeag(VppTestCase):
         #
         # add a route in the src table to forward via pg2
         #
-        route_in_src = VppIpRoute(self, "2.2.2.2", 32,
+        route_in_src = VppIpRoute(self.vclient, "2.2.2.2", 32,
                                   [VppRoutePath(self.pg2.remote_ip4,
                                                 self.pg2.sw_if_index)],
                                   table_id=2)
@@ -1671,7 +1675,7 @@ class TestIPDeag(VppTestCase):
         #
         # loop in the lookup DP
         #
-        route_loop = VppIpRoute(self, "2.2.2.3", 32,
+        route_loop = VppIpRoute(self.vclient, "2.2.2.3", 32,
                                 [VppRoutePath("0.0.0.0",
                                               0xffffffff,
                                               nh_table_id=0)])
@@ -1822,7 +1826,8 @@ class TestIPInput(VppTestCase):
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 2000))
 
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [1500, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(
+            self.pg1.sw_if_index, [1500, 0, 0, 0])
 
         rx = self.send_and_expect(self.pg0, p_mtu * NUM_PKTS, self.pg0)
         rx = rx[0]
@@ -1834,11 +1839,13 @@ class TestIPInput(VppTestCase):
         self.assertEqual(icmp.src, self.pg0.remote_ip4)
         self.assertEqual(icmp.dst, self.pg1.remote_ip4)
 
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [2500, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(
+            self.pg1.sw_if_index, [2500, 0, 0, 0])
         rx = self.send_and_expect(self.pg0, p_mtu * NUM_PKTS, self.pg1)
 
         # Reset MTU for subsequent tests
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [9000, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(
+            self.pg1.sw_if_index, [9000, 0, 0, 0])
 
         #
         # source address 0.0.0.0 and 25.255.255.255 and for-us
@@ -1890,7 +1897,7 @@ class TestIPDirectedBroadcast(VppTestCase):
         #
         # set the directed broadcast on pg0 first, then config IP4 addresses
         # for pg1 directed broadcast is always disabled
-        self.vapi.sw_interface_set_ip_directed_broadcast(
+        self.vclient.sw_interface_set_ip_directed_broadcast(
             self.pg0.sw_if_index, 1)
 
         p0 = (Ether(src=self.pg1.remote_mac,
@@ -1923,12 +1930,12 @@ class TestIPDirectedBroadcast(VppTestCase):
         #
         # toggle directed broadcast on pg0
         #
-        self.vapi.sw_interface_set_ip_directed_broadcast(
+        self.vclient.sw_interface_set_ip_directed_broadcast(
             self.pg0.sw_if_index, 0)
         self.send_and_assert_no_replies(self.pg1, p0 * NUM_PKTS,
                                         "directed broadcast disabled")
 
-        self.vapi.sw_interface_set_ip_directed_broadcast(
+        self.vclient.sw_interface_set_ip_directed_broadcast(
             self.pg0.sw_if_index, 1)
         rx = self.send_and_expect(self.pg1, p0 * NUM_PKTS, self.pg0)
 
@@ -1966,11 +1973,11 @@ class TestIPLPM(VppTestCase):
     def test_ip_lpm(self):
         """ IP longest Prefix Match """
 
-        s_24 = VppIpRoute(self, "10.1.2.0", 24,
+        s_24 = VppIpRoute(self.vclient, "10.1.2.0", 24,
                           [VppRoutePath(self.pg1.remote_ip4,
                                         self.pg1.sw_if_index)])
         s_24.add_vpp_config()
-        s_8 = VppIpRoute(self, "10.0.0.0", 8,
+        s_8 = VppIpRoute(self.vclient, "10.0.0.0", 8,
                          [VppRoutePath(self.pg2.remote_ip4,
                                        self.pg2.sw_if_index)])
         s_8.add_vpp_config()
@@ -1988,7 +1995,7 @@ class TestIPLPM(VppTestCase):
                 UDP(sport=1234, dport=1234) /
                 Raw(b'\xa5' * 2000))
 
-        self.logger.info(self.vapi.cli("sh ip fib mtrie"))
+        self.logger.info(self.vclient.cli("sh ip fib mtrie"))
         rx = self.send_and_expect(self.pg0, p_8 * NUM_PKTS, self.pg2)
         rx = self.send_and_expect(self.pg0, p_24 * NUM_PKTS, self.pg1)
 
@@ -2017,7 +2024,7 @@ class TestIPv4Frag(VppTestCase):
     def test_frag_large_packets(self):
         """ Fragmentation of large packets """
 
-        self.vapi.cli("adjacency counters enable")
+        self.vclient.cli("adjacency counters enable")
 
         p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
              IP(src=self.src_if.remote_ip4, dst=self.dst_if.remote_ip4) /
@@ -2025,15 +2032,15 @@ class TestIPv4Frag(VppTestCase):
         self.extend_packet(p, 6000, "abcde")
         saved_payload = p[Raw].load
 
-        nbr = VppNeighbor(self,
+        nbr = VppNeighbor(self.vclient,
                           self.dst_if.sw_if_index,
                           self.dst_if.remote_mac,
                           self.dst_if.remote_ip4).add_vpp_config()
 
         # Force fragmentation by setting MTU of output interface
         # lower than packet size
-        self.vapi.sw_interface_set_mtu(self.dst_if.sw_if_index,
-                                       [5000, 0, 0, 0])
+        self.vclient.sw_interface_set_mtu(self.dst_if.sw_if_index,
+                                          [5000, 0, 0, 0])
 
         self.pg_enable_capture()
         self.src_if.add_stream(p)
@@ -2081,7 +2088,8 @@ class TestIPReplace(VppTestCase):
             i.config_ip4()
             i.resolve_arp()
             i.generate_remote_hosts(2)
-            self.tables.append(VppIpTable(self, table_id).add_vpp_config())
+            self.tables.append(VppIpTable(
+                self.vclient, table_id).add_vpp_config())
             table_id += 1
 
     def tearDown(self):
@@ -2103,14 +2111,14 @@ class TestIPReplace(VppTestCase):
         for ii, t in enumerate(self.tables):
             for jj in range(N_ROUTES):
                 uni = VppIpRoute(
-                    self, "10.0.0.%d" % jj, 32,
+                    self.vclient, "10.0.0.%d" % jj, 32,
                     [VppRoutePath(links[ii].remote_hosts[0].ip4,
                                   links[ii].sw_if_index),
                      VppRoutePath(links[ii].remote_hosts[1].ip4,
                                   links[ii].sw_if_index)],
                     table_id=t.table_id).add_vpp_config()
                 multi = VppIpMRoute(
-                    self, "0.0.0.0",
+                    self.vclient, "0.0.0.0",
                     "239.0.0.%d" % jj, 32,
                     MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
                     [VppMRoutePath(self.pg0.sw_if_index,
@@ -2213,7 +2221,8 @@ class TestIPCover(VppTestCase):
             i.config_ip4()
             i.resolve_arp()
             i.generate_remote_hosts(2)
-            self.tables.append(VppIpTable(self, table_id).add_vpp_config())
+            self.tables.append(VppIpTable(
+                self.vclient, table_id).add_vpp_config())
             table_id += 1
 
     def tearDown(self):
@@ -2226,24 +2235,26 @@ class TestIPCover(VppTestCase):
         """ IP Table Cover """
 
         # add a loop back with a /32 prefix
-        lo = VppLoInterface(self)
+        lo = VppLoInterface(self.vclient)
+        lo.add_vpp_config()
         lo.admin_up()
-        a = VppIpInterfaceAddress(self, lo, "127.0.0.1", 32).add_vpp_config()
+        a = VppIpInterfaceAddress(
+            self.vclient, lo, "127.0.0.1", 32).add_vpp_config()
 
         # add a neighbour that matches the loopback's /32
-        nbr = VppNeighbor(self,
+        nbr = VppNeighbor(self.vclient,
                           lo.sw_if_index,
                           lo.remote_mac,
                           "127.0.0.1").add_vpp_config()
 
         # add the default route which will be the cover for /32
-        r = VppIpRoute(self, "0.0.0.0", 0,
+        r = VppIpRoute(self.vclient, "0.0.0.0", 0,
                        [VppRoutePath("127.0.0.1",
                                      lo.sw_if_index)],
                        register=False).add_vpp_config()
 
         # add/remove/add a longer mask cover
-        r = VppIpRoute(self, "127.0.0.0", 8,
+        r = VppIpRoute(self.vclient, "127.0.0.0", 8,
                        [VppRoutePath("127.0.0.1",
                                      lo.sw_if_index)]).add_vpp_config()
         r.remove_vpp_config()
@@ -2278,7 +2289,7 @@ class TestIP4Replace(VppTestCase):
             i.admin_down()
 
     def get_n_pfxs(self, intf):
-        return len(self.vapi.ip_address_dump(intf.sw_if_index))
+        return len(self.vclient.ip_address_dump(intf.sw_if_index))
 
     def test_replace(self):
         """ IP interface address replace """
@@ -2291,17 +2302,20 @@ class TestIP4Replace(VppTestCase):
 
             # 172.16.x.1/24
             addr = "172.16.%d.1" % intf.sw_if_index
-            a = VppIpInterfaceAddress(self, intf, addr, 24).add_vpp_config()
+            a = VppIpInterfaceAddress(
+                self.vclient, intf, addr, 24).add_vpp_config()
             intf_pfxs[i].append(a)
 
             # 172.16.x.2/24 - a different address in the same subnet as above
             addr = "172.16.%d.2" % intf.sw_if_index
-            a = VppIpInterfaceAddress(self, intf, addr, 24).add_vpp_config()
+            a = VppIpInterfaceAddress(
+                self.vclient, intf, addr, 24).add_vpp_config()
             intf_pfxs[i].append(a)
 
             # 172.15.x.2/24 - a different address and subnet
             addr = "172.15.%d.2" % intf.sw_if_index
-            a = VppIpInterfaceAddress(self, intf, addr, 24).add_vpp_config()
+            a = VppIpInterfaceAddress(
+                self.vclient, intf, addr, 24).add_vpp_config()
             intf_pfxs[i].append(a)
 
         # a dump should n_address in it
@@ -2311,8 +2325,8 @@ class TestIP4Replace(VppTestCase):
         #
         # remove all the address thru a replace
         #
-        self.vapi.sw_interface_address_replace_begin()
-        self.vapi.sw_interface_address_replace_end()
+        self.vclient.sw_interface_address_replace_begin()
+        self.vclient.sw_interface_address_replace_end()
         for intf in self.pg_interfaces:
             self.assertEqual(self.get_n_pfxs(intf), 0)
 
@@ -2329,13 +2343,13 @@ class TestIP4Replace(VppTestCase):
         # replace again, but this time update/re-add the address on the first
         # two interfaces
         #
-        self.vapi.sw_interface_address_replace_begin()
+        self.vclient.sw_interface_address_replace_begin()
 
         for p in intf_pfxs[:2]:
             for v in p:
                 v.add_vpp_config()
 
-        self.vapi.sw_interface_address_replace_end()
+        self.vclient.sw_interface_address_replace_end()
 
         # on the first two the address still exist,
         # on the other two they do not
@@ -2359,16 +2373,16 @@ class TestIP4Replace(VppTestCase):
         #
         # replace again, this time add different prefixes on all the interfaces
         #
-        self.vapi.sw_interface_address_replace_begin()
+        self.vclient.sw_interface_address_replace_begin()
 
         pfxs = []
         for intf in self.pg_interfaces:
             # 172.18.x.1/24
             addr = "172.18.%d.1" % intf.sw_if_index
-            pfxs.append(VppIpInterfaceAddress(self, intf, addr,
+            pfxs.append(VppIpInterfaceAddress(self.vclient, intf, addr,
                                               24).add_vpp_config())
 
-        self.vapi.sw_interface_address_replace_end()
+        self.vclient.sw_interface_address_replace_end()
 
         # only .18 should exist on each interface
         for intf in self.pg_interfaces:
@@ -2379,8 +2393,8 @@ class TestIP4Replace(VppTestCase):
         #
         # remove everything
         #
-        self.vapi.sw_interface_address_replace_begin()
-        self.vapi.sw_interface_address_replace_end()
+        self.vclient.sw_interface_address_replace_begin()
+        self.vclient.sw_interface_address_replace_end()
         for intf in self.pg_interfaces:
             self.assertEqual(self.get_n_pfxs(intf), 0)
 
@@ -2393,20 +2407,21 @@ class TestIP4Replace(VppTestCase):
         for intf in self.pg_interfaces:
             # 172.18.x.1/24
             addr = "172.18.%d.1" % intf.sw_if_index
-            VppIpInterfaceAddress(self, intf, addr, 24).add_vpp_config()
+            VppIpInterfaceAddress(self.vclient, intf,
+                                  addr, 24).add_vpp_config()
 
-        self.vapi.sw_interface_address_replace_begin()
+        self.vclient.sw_interface_address_replace_begin()
 
         pfxs = []
         for intf in self.pg_interfaces:
             # 172.18.x.1/24
             addr = "172.18.%d.1" % (intf.sw_if_index + 1)
-            pfxs.append(VppIpInterfaceAddress(self, intf,
+            pfxs.append(VppIpInterfaceAddress(self.vclient, intf,
                                               addr, 24).add_vpp_config())
 
-        self.vapi.sw_interface_address_replace_end()
+        self.vclient.sw_interface_address_replace_end()
 
-        self.logger.info(self.vapi.cli("sh int addr"))
+        self.logger.info(self.vclient.cli("sh int addr"))
 
         for intf in self.pg_interfaces:
             self.assertEqual(self.get_n_pfxs(intf), 1)

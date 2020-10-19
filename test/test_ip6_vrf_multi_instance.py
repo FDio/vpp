@@ -75,7 +75,7 @@ from scapy.utils6 import in6_ismaddr, in6_isllsnmaddr, in6_getAddrType
 from scapy.pton_ntop import inet_ntop
 
 from framework import VppTestCase, VppTestRunner
-from util import ppp
+from vpp_pom.util import ppp
 from vrf import VRFState
 
 
@@ -178,8 +178,8 @@ class TestIP6VrfMultiInst(VppTestCase):
         super(TestIP6VrfMultiInst, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show ip6 fib"))
-        self.logger.info(self.vapi.ppcli("show ip6 neighbors"))
+        self.logger.info(self.vclient.ppcli("show ip6 fib"))
+        self.logger.info(self.vclient.ppcli("show ip6 neighbors"))
 
     def create_vrf_and_assign_interfaces(self, count, start=1):
         """
@@ -193,8 +193,9 @@ class TestIP6VrfMultiInst(VppTestCase):
         for i in range(count):
             vrf_id = i + start
             pg_if = self.pg_if_by_vrf_id[vrf_id][0]
-            self.vapi.ip_table_add_del(is_add=1,
-                                       table={'table_id': vrf_id, 'is_ip6': 1})
+            self.vclient.ip_table_add_del(
+                is_add=1, table={
+                    'table_id': vrf_id, 'is_ip6': 1})
             self.logger.info("IPv6 VRF ID %d created" % vrf_id)
             if vrf_id not in self.vrf_list:
                 self.vrf_list.append(vrf_id)
@@ -212,8 +213,8 @@ class TestIP6VrfMultiInst(VppTestCase):
                 pg_if.config_ip6()
                 pg_if.disable_ipv6_ra()
                 pg_if.configure_ipv6_neighbors()
-        self.logger.debug(self.vapi.ppcli("show ip6 fib"))
-        self.logger.debug(self.vapi.ppcli("show ip6 neighbors"))
+        self.logger.debug(self.vclient.ppcli("show ip6 fib"))
+        self.logger.debug(self.vclient.ppcli("show ip6 neighbors"))
 
     def reset_vrf_and_remove_from_vrf_list(self, vrf_id):
         """
@@ -221,7 +222,7 @@ class TestIP6VrfMultiInst(VppTestCase):
 
         :param int vrf_id: The FIB table / VRF ID to be reset.
         """
-        self.vapi.ip_table_flush(table={'table_id': vrf_id, 'is_ip6': 1})
+        self.vclient.ip_table_flush(table={'table_id': vrf_id, 'is_ip6': 1})
         if vrf_id in self.vrf_list:
             self.vrf_list.remove(vrf_id)
         if vrf_id not in self.vrf_reset_list:
@@ -234,10 +235,10 @@ class TestIP6VrfMultiInst(VppTestCase):
             if pg_if not in self.pg_not_in_vrf:
                 self.pg_not_in_vrf.append(pg_if)
         self.logger.info("IPv6 VRF ID %d reset finished" % vrf_id)
-        self.logger.debug(self.vapi.ppcli("show ip6 fib"))
-        self.logger.debug(self.vapi.ppcli("show ip6 neighbors"))
-        self.vapi.ip_table_add_del(is_add=0,
-                                   table={'table_id': vrf_id, 'is_ip6': 1})
+        self.logger.debug(self.vclient.ppcli("show ip6 fib"))
+        self.logger.debug(self.vclient.ppcli("show ip6 neighbors"))
+        self.vclient.ip_table_add_del(is_add=0,
+                                      table={'table_id': vrf_id, 'is_ip6': 1})
 
     def create_stream(self, src_if, packet_sizes):
         """
@@ -330,7 +331,7 @@ class TestIP6VrfMultiInst(VppTestCase):
                 self.assertEqual(ip.dst, saved_packet[IPv6].dst)
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
-            except:
+            except BaseException:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.pg_interfaces:
@@ -348,7 +349,7 @@ class TestIP6VrfMultiInst(VppTestCase):
         :param int vrf_id: The FIB table / VRF ID to be verified.
         :return: 1 if the FIB table / VRF ID is configured, otherwise return 0.
         """
-        ip6_fib_dump = self.vapi.ip_route_dump(vrf_id, True)
+        ip6_fib_dump = self.vclient.ip_route_dump(vrf_id, True)
         vrf_exist = len(ip6_fib_dump)
         vrf_count = 0
         for ip6_fib_details in ip6_fib_dump:

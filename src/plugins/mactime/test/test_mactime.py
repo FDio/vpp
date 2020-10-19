@@ -3,7 +3,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_gcov_tests
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_pom.vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
 class TestMactime(VppTestCase):
@@ -25,7 +25,7 @@ class TestMactime(VppTestCase):
 
     def test_mactime_range_unittest(self):
         """ Time Range Test """
-        error = self.vapi.cli("test time-range")
+        error = self.vclient.cli("test time-range")
 
         if error:
             self.logger.critical(error)
@@ -149,12 +149,13 @@ class TestMactime(VppTestCase):
                 "show error"]
 
         for cmd in cmds:
-            r = self.vapi.cli_return_response(cmd)
+            r = self.vclient.cli_return_response(cmd)
             if r.retval != 0:
                 if hasattr(r, 'reply'):
                     self.logger.info(cmd + " FAIL reply " + r.reply)
                 else:
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

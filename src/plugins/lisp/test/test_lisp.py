@@ -12,7 +12,7 @@ from scapy.layers.inet6 import IPv6
 from framework import VppTestCase, VppTestRunner
 from lisp import VppLocalMapping, VppLispAdjacency, VppLispLocator, \
     VppLispLocatorSet, VppRemoteMapping, LispRemoteLocator
-from util import ppp, ForeignAddressFactory
+from vpp_pom.util import ppp, ForeignAddressFactory
 
 # From py_lispnetworking.lisp.py:  # GNU General Public License v2.0
 
@@ -25,6 +25,8 @@ class LISP_GPE_Header(Packet):
         ByteField("next_proto", 0),
         IntField("iid", 0),
     ]
+
+
 bind_layers(UDP, LISP_GPE_Header, dport=4341)
 bind_layers(UDP, LISP_GPE_Header, sport=4341)
 bind_layers(LISP_GPE_Header, IP, next_proto=1)
@@ -42,6 +44,7 @@ class Driver(object):
                     'adjacencies']
 
     """ Basic class for data driven testing """
+
     def __init__(self, test, test_cases):
         self._test_cases = test_cases
         self._test = test
@@ -74,6 +77,7 @@ class Driver(object):
 
 class SimpleDriver(Driver):
     """ Implements simple test procedure """
+
     def __init__(self, test, test_cases):
         super(SimpleDriver, self).__init__(test, test_cases)
 
@@ -103,9 +107,9 @@ class SimpleDriver(Driver):
                                   "unexpected source EID!")
             self.test.assertEqual(ih.dst, self.test.deid_ip4,
                                   "unexpected dest EID!")
-        except:
+        except BaseException:
             self.test.logger.error(ppp("Unexpected or invalid packet:",
-                                   packet))
+                                       packet))
             raise
 
     def configure_tc(self, tc):
@@ -151,7 +155,7 @@ class TestLisp(VppTestCase):
 
     def setUp(self):
         super(TestLisp, self).setUp()
-        self.vapi.lisp_enable_disable(is_enable=1)
+        self.vclient.lisp_enable_disable(is_enable=1)
 
     def test_lisp_basic_encap(self):
         """Test case for basic encapsulation"""
@@ -197,7 +201,7 @@ class TestLispUT(VppTestCase):
 
     def test_fib(self):
         """ LISP Unit Tests """
-        error = self.vapi.cli("test lisp cp")
+        error = self.vclient.cli("test lisp cp")
 
         if error:
             self.logger.critical(error)

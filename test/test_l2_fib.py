@@ -68,7 +68,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
-from util import Host, ppp
+from vpp_pom.util import Host, ppp
 from vpp_papi import mac_pton, VppEnum
 
 
@@ -112,11 +112,11 @@ class TestL2fib(VppTestCase):
             for bd_id in n_brs:
                 # Create BD with MAC learning and unknown unicast flooding
                 # disabled and put interfaces to this BD
-                cls.vapi.bridge_domain_add_del(bd_id=bd_id, uu_flood=0,
-                                               learn=0)
+                cls.vclient.bridge_domain_add_del(bd_id=bd_id, uu_flood=0,
+                                                  learn=0)
                 ifs = [cls.pg_interfaces[i] for i in cls.bd_ifs(bd_id)]
                 for pg_if in ifs:
-                    cls.vapi.sw_interface_set_l2_bridge(
+                    cls.vclient.sw_interface_set_l2_bridge(
                         rx_sw_if_index=pg_if.sw_if_index, bd_id=bd_id)
 
             # Set up all interfaces
@@ -141,11 +141,13 @@ class TestL2fib(VppTestCase):
         super(TestL2fib, self).tearDown()
         if not self.vpp_dead:
             for bd_id in self.n_brs:
-                self.logger.info(self.vapi.ppcli("show bridge-domain %s detail"
-                                                 % bd_id))
+                self.logger.info(
+                    self.vclient.ppcli(
+                        "show bridge-domain %s detail" %
+                        bd_id))
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.ppcli("show l2fib verbose"))
+        self.logger.info(self.vclient.ppcli("show l2fib verbose"))
 
     def create_hosts(self, n_hosts_per_if, subnet):
         """
@@ -184,7 +186,7 @@ class TestL2fib(VppTestCase):
         :param int bd_id: BD to teach
         :param dict hosts: dict of hosts per interface
         """
-        self.vapi.bridge_flags(bd_id=bd_id, is_set=1, flags=1)
+        self.vclient.bridge_flags(bd_id=bd_id, is_set=1, flags=1)
         ifs = [self.pg_interfaces[i] for i in self.bd_ifs(bd_id)]
         for pg_if in ifs:
             swif = pg_if.sw_if_index
@@ -206,7 +208,7 @@ class TestL2fib(VppTestCase):
         for pg_if in ifs:
             swif = pg_if.sw_if_index
             for host in hosts[swif]:
-                self.vapi.l2fib_add_del(
+                self.vclient.l2fib_add_del(
                     mac_pton(host.mac), bd_id, swif, static_mac=1)
 
     def delete_l2_fib_entry(self, bd_id, hosts):
@@ -219,7 +221,7 @@ class TestL2fib(VppTestCase):
         for pg_if in ifs:
             swif = pg_if.sw_if_index
             for host in hosts[swif]:
-                self.vapi.l2fib_add_del(
+                self.vclient.l2fib_add_del(
                     mac_pton(host.mac), bd_id, swif, is_add=0)
 
     def flush_int(self, swif, learned_hosts):
@@ -229,7 +231,7 @@ class TestL2fib(VppTestCase):
         :param int swif: sw if index.
         """
         flushed = dict()
-        self.vapi.l2fib_flush_int(swif)
+        self.vclient.l2fib_flush_int(swif)
         flushed[swif] = learned_hosts[swif]
         learned_hosts[swif] = []
         return flushed
@@ -240,7 +242,7 @@ class TestL2fib(VppTestCase):
 
         :param int bd_id: Bridge Domain id.
         """
-        self.vapi.l2fib_flush_bd(bd_id)
+        self.vclient.l2fib_flush_bd(bd_id)
         flushed = dict()
         ifs = [self.pg_interfaces[i] for i in self.bd_ifs(bd_id)]
         for pg_if in ifs:
@@ -253,7 +255,7 @@ class TestL2fib(VppTestCase):
         """
         Flush All L2 FIB entries.
         """
-        self.vapi.l2fib_flush_all()
+        self.vclient.l2fib_flush_all()
 
     def create_stream(self, src_if, packet_sizes, if_src_hosts, if_dst_hosts):
         """
@@ -344,7 +346,7 @@ class TestL2fib(VppTestCase):
             if pkts:
                 i.add_stream(pkts)
 
-        self.vapi.bridge_flags(bd_id=bd_id, is_set=0, flags=1)
+        self.vclient.bridge_flags(bd_id=bd_id, is_set=0, flags=1)
         # Enable packet capture and start packet sending
         self.pg_enable_capture(ifs)
         self.pg_start()
@@ -372,7 +374,7 @@ class TestL2fib(VppTestCase):
             if pkts:
                 i.add_stream(pkts)
 
-        self.vapi.bridge_flags(bd_id=bd_id, is_set=0, flags=1)
+        self.vclient.bridge_flags(bd_id=bd_id, is_set=0, flags=1)
         # Enable packet capture and start packet sending
         self.pg_enable_capture(ifs)
         self.pg_start()
@@ -483,19 +485,19 @@ class TestL2fib(VppTestCase):
         bd1 = 1
         hosts = self.create_hosts(10, subnet=39)
 
-        self.vapi.want_l2_macs_events()
+        self.vclient.want_l2_macs_events()
         self.learn_hosts(bd1, hosts)
 
         self.sleep(1)
-        self.logger.info(self.vapi.ppcli("show l2fib"))
-        evs = self.vapi.collect_events()
+        self.logger.info(self.vclient.ppcli("show l2fib"))
+        evs = self.vclient.collect_events()
         action = VppEnum.vl_api_mac_event_action_t.MAC_EVENT_ACTION_API_ADD
         learned_macs = {
             e.mac[i].mac_addr.packed for e in evs for i in range(e.n_macs)
             if e.mac[i].action == action}
         macs = {h.bin_mac for swif in self.bd_ifs(bd1)
                 for h in hosts[self.pg_interfaces[swif].sw_if_index]}
-        self.vapi.want_l2_macs_events(enable_disable=0)
+        self.vclient.want_l2_macs_events(enable_disable=0)
         self.assertEqual(len(learned_macs ^ macs), 0)
 
     def test_l2_fib_macs_learn_max(self):
@@ -505,13 +507,13 @@ class TestL2fib(VppTestCase):
         hosts = self.create_hosts(10, subnet=40)
 
         ev_macs = 1
-        self.vapi.want_l2_macs_events(max_macs_in_event=ev_macs)
+        self.vclient.want_l2_macs_events(max_macs_in_event=ev_macs)
         self.learn_hosts(bd1, hosts)
 
         self.sleep(1)
-        self.logger.info(self.vapi.ppcli("show l2fib"))
-        evs = self.vapi.collect_events()
-        self.vapi.want_l2_macs_events(enable_disable=0)
+        self.logger.info(self.vclient.ppcli("show l2fib"))
+        evs = self.vclient.collect_events()
+        self.vclient.want_l2_macs_events(enable_disable=0)
 
         self.assertGreater(len(evs), 0)
         action = VppEnum.vl_api_mac_event_action_t.MAC_EVENT_ACTION_API_ADD

@@ -3,7 +3,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpTable
+from vpp_pom.vpp_ip_route import VppIpTable
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -38,9 +38,9 @@ class TestSVS(VppTestCase):
             i.admin_up()
 
             if table_id != 0:
-                tbl = VppIpTable(self, table_id)
+                tbl = VppIpTable(self.vclient, table_id)
                 tbl.add_vpp_config()
-                tbl = VppIpTable(self, table_id, is_ip6=1)
+                tbl = VppIpTable(self.vclient, table_id, is_ip6=1)
                 tbl.add_vpp_config()
 
             i.set_table_ip4(table_id)
@@ -105,23 +105,23 @@ class TestSVS(VppTestCase):
         table_ids = [101, 102]
 
         for table_id in table_ids:
-            self.vapi.svs_table_add_del(
+            self.vclient.svs_table_add_del(
                 VppEnum.vl_api_address_family_t.ADDRESS_IP4, table_id)
 
             #
             # map X.0.0.0/8 to each SVS table for lookup in table X
             #
             for i in range(1, 4):
-                self.vapi.svs_route_add_del(
+                self.vclient.svs_route_add_del(
                     table_id, "%d.0.0.0/8" % i, i)
 
         #
         # Enable SVS on pg0/pg1 using table 1001/1002
         #
-        self.vapi.svs_enable_disable(
+        self.vclient.svs_enable_disable(
             VppEnum.vl_api_address_family_t.ADDRESS_IP4, table_ids[0],
             self.pg0.sw_if_index)
-        self.vapi.svs_enable_disable(
+        self.vclient.svs_enable_disable(
             VppEnum.vl_api_address_family_t.ADDRESS_IP4, table_ids[1],
             self.pg1.sw_if_index)
 
@@ -154,7 +154,7 @@ class TestSVS(VppTestCase):
         #
         # dump the SVS configs
         #
-        ss = self.vapi.svs_dump()
+        ss = self.vclient.svs_dump()
 
         self.assertEqual(ss[0].table_id, table_ids[0])
         self.assertEqual(ss[0].sw_if_index, self.pg0.sw_if_index)
@@ -166,12 +166,12 @@ class TestSVS(VppTestCase):
         #
         # cleanup
         #
-        self.vapi.svs_enable_disable(
+        self.vclient.svs_enable_disable(
             VppEnum.vl_api_address_family_t.ADDRESS_IP4,
             table_ids[0],
             self.pg0.sw_if_index,
             is_enable=0)
-        self.vapi.svs_enable_disable(
+        self.vclient.svs_enable_disable(
             VppEnum.vl_api_address_family_t.ADDRESS_IP4,
             table_ids[1],
             self.pg1.sw_if_index,
@@ -179,10 +179,10 @@ class TestSVS(VppTestCase):
 
         for table_id in table_ids:
             for i in range(1, 4):
-                self.vapi.svs_route_add_del(
+                self.vclient.svs_route_add_del(
                     table_id, "%d.0.0.0/8" % i,
                     0, is_add=0)
-            self.vapi.svs_table_add_del(
+            self.vclient.svs_table_add_del(
                 VppEnum.vl_api_address_family_t.ADDRESS_IP4,
                 table_id,
                 is_add=0)
@@ -232,25 +232,25 @@ class TestSVS(VppTestCase):
         table_ids = [101, 102]
 
         for table_id in table_ids:
-            self.vapi.svs_table_add_del(
+            self.vclient.svs_table_add_del(
                 VppEnum.vl_api_address_family_t.ADDRESS_IP6, table_id)
 
             #
             # map X.0.0.0/8 to each SVS table for lookup in table X
             #
             for i in range(1, 4):
-                self.vapi.svs_route_add_del(
+                self.vclient.svs_route_add_del(
                     table_id, "2001:%d::/32" % i,
                     i)
 
         #
         # Enable SVS on pg0/pg1 using table 1001/1002
         #
-        self.vapi.svs_enable_disable(
+        self.vclient.svs_enable_disable(
             VppEnum.vl_api_address_family_t.ADDRESS_IP6,
             table_ids[0],
             self.pg0.sw_if_index)
-        self.vapi.svs_enable_disable(
+        self.vclient.svs_enable_disable(
             VppEnum.vl_api_address_family_t.ADDRESS_IP6,
             table_ids[1],
             self.pg1.sw_if_index)
@@ -284,7 +284,7 @@ class TestSVS(VppTestCase):
         #
         # dump the SVS configs
         #
-        ss = self.vapi.svs_dump()
+        ss = self.vclient.svs_dump()
 
         self.assertEqual(ss[0].table_id, table_ids[0])
         self.assertEqual(ss[0].sw_if_index, self.pg0.sw_if_index)
@@ -296,22 +296,22 @@ class TestSVS(VppTestCase):
         #
         # cleanup
         #
-        self.vapi.svs_enable_disable(
+        self.vclient.svs_enable_disable(
             VppEnum.vl_api_address_family_t.ADDRESS_IP6,
             table_ids[0],
             self.pg0.sw_if_index,
             is_enable=0)
-        self.vapi.svs_enable_disable(
+        self.vclient.svs_enable_disable(
             VppEnum.vl_api_address_family_t.ADDRESS_IP6,
             table_ids[1],
             self.pg1.sw_if_index,
             is_enable=0)
         for table_id in table_ids:
             for i in range(1, 4):
-                self.vapi.svs_route_add_del(
+                self.vclient.svs_route_add_del(
                     table_id, "2001:%d::/32" % i,
                     0, is_add=0)
-            self.vapi.svs_table_add_del(
+            self.vclient.svs_table_add_del(
                 VppEnum.vl_api_address_family_t.ADDRESS_IP6,
                 table_id,
                 is_add=0)

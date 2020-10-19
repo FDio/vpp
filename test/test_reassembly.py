@@ -13,10 +13,10 @@ from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import HBHOptUnknown, ICMPv6ParamProblem,\
     ICMPv6TimeExceeded, IPv6, IPv6ExtHdrFragment, IPv6ExtHdrHopByHop
 from framework import VppTestCase, VppTestRunner
-from util import ppp, ppc, fragment_rfc791, fragment_rfc8200
-from vpp_gre_interface import VppGreInterface
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
+from vpp_pom.util import ppp, ppc, fragment_rfc791, fragment_rfc8200
+from vpp_pom.vpp_gre_interface import VppGreInterface
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
 from vpp_papi import VppEnum
 
 # 35 is enough to have >257 400-byte fragments
@@ -56,22 +56,25 @@ class TestIPv4Reassembly(VppTestCase):
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv4Reassembly, self).setUp()
-        self.vapi.ip_reassembly_enable_disable(
+        self.vclient.ip_reassembly_enable_disable(
             sw_if_index=self.src_if.sw_if_index, enable_ip4=True)
-        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=10)
+        self.vclient.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                       max_reassembly_length=1000,
+                                       expire_walk_interval_ms=10)
         self.sleep(.25)
-        self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=10000)
+        self.vclient.ip_reassembly_set(
+            timeout_ms=1000000,
+            max_reassemblies=1000,
+            max_reassembly_length=1000,
+            expire_walk_interval_ms=10000)
 
     def tearDown(self):
         super(TestIPv4Reassembly, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
+        self.logger.debug(self.vclient.ppcli(
+            "show ip4-full-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
 
     @classmethod
     def create_stream(cls, packet_sizes, packet_count=test_packet_count):
@@ -200,11 +203,11 @@ class TestIPv4Reassembly(VppTestCase):
         error_cnt_str = \
             "/err/ip4-full-reassembly-feature/fragment chain too long (drop)"
 
-        error_cnt = self.statistics.get_err_counter(error_cnt_str)
+        error_cnt = self.vclient.statistics.get_err_counter(error_cnt_str)
 
-        self.vapi.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
-                                    max_reassembly_length=3,
-                                    expire_walk_interval_ms=50)
+        self.vclient.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
+                                       max_reassembly_length=3,
+                                       expire_walk_interval_ms=50)
 
         p1 = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
               IP(id=1000, src=self.src_if.remote_ip4,
@@ -227,7 +230,7 @@ class TestIPv4Reassembly(VppTestCase):
 
     def test_5737(self):
         """ fragment length + ip header size > 65535 """
-        self.vapi.cli("clear errors")
+        self.vclient.cli("clear errors")
         raw = b'''E\x00\x00\x88,\xf8\x1f\xfe@\x01\x98\x00\xc0\xa8\n-\xc0\xa8\n\
 \x01\x08\x00\xf0J\xed\xcb\xf1\xf5Test-group: IPv4.IPv4.ipv4-message.\
 Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737'''
@@ -242,14 +245,14 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737'''
         valid_fragments = fragment_rfc791(p, 400)
 
         counter = "/err/ip4-full-reassembly-feature/malformed packets"
-        error_counter = self.statistics.get_err_counter(counter)
+        error_counter = self.vclient.statistics.get_err_counter(counter)
         self.pg_enable_capture()
         self.src_if.add_stream([malformed_packet] + valid_fragments)
         self.pg_start()
 
         self.dst_if.get_capture(1)
-        self.logger.debug(self.vapi.ppcli("show error"))
-        self.assertEqual(self.statistics.get_err_counter(counter),
+        self.logger.debug(self.vclient.ppcli("show error"))
+        self.assertEqual(self.vclient.statistics.get_err_counter(counter),
                          error_counter + 1)
 
     def test_44924(self):
@@ -285,7 +288,7 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737'''
 
     def test_frag_1(self):
         """ fragment of size 1 """
-        self.vapi.cli("clear errors")
+        self.vclient.cli("clear errors")
         malformed_packets = [(Ether(dst=self.src_if.local_mac,
                                     src=self.src_if.remote_mac) /
                               IP(id=7, len=21, flags="MF", frag=0, ttl=64,
@@ -430,9 +433,9 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737'''
             index for (index, frags, _, _) in self.pkt_infos if len(frags) > 1
         )
 
-        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
-                                    max_reassembly_length=3,
-                                    expire_walk_interval_ms=10000)
+        self.vclient.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                       max_reassembly_length=3,
+                                       expire_walk_interval_ms=10000)
 
         self.pg_enable_capture()
         self.src_if.add_stream(self.fragments_400)
@@ -461,9 +464,9 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737'''
             index for (index, frags_400, _, _) in self.pkt_infos
             if len(frags_400) > 1)
 
-        self.vapi.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=50)
+        self.vclient.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
+                                       max_reassembly_length=1000,
+                                       expire_walk_interval_ms=50)
 
         self.pg_enable_capture()
         self.src_if.add_stream(fragments)
@@ -486,9 +489,9 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737'''
             index for (index, frags_400, _, _) in self.pkt_infos
             if len(frags_400) > 1)
 
-        self.vapi.ip_reassembly_set(timeout_ms=1000, max_reassemblies=0,
-                                    max_reassembly_length=3,
-                                    expire_walk_interval_ms=10000)
+        self.vclient.ip_reassembly_set(timeout_ms=1000, max_reassemblies=0,
+                                       max_reassembly_length=3,
+                                       expire_walk_interval_ms=10000)
 
         self.pg_enable_capture()
         self.src_if.add_stream(self.fragments_400)
@@ -520,16 +523,16 @@ class TestIPv4SVReassembly(VppTestCase):
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv4SVReassembly, self).setUp()
-        self.vapi.ip_reassembly_enable_disable(
+        self.vclient.ip_reassembly_enable_disable(
             sw_if_index=self.src_if.sw_if_index, enable_ip4=True,
             type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL)
-        self.vapi.ip_reassembly_set(
+        self.vclient.ip_reassembly_set(
             timeout_ms=0, max_reassemblies=1000,
             max_reassembly_length=1000,
             type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL,
             expire_walk_interval_ms=10)
         self.sleep(.25)
-        self.vapi.ip_reassembly_set(
+        self.vclient.ip_reassembly_set(
             timeout_ms=1000000, max_reassemblies=1000,
             max_reassembly_length=1000,
             type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL,
@@ -537,8 +540,8 @@ class TestIPv4SVReassembly(VppTestCase):
 
     def tearDown(self):
         super(TestIPv4SVReassembly, self).tearDown()
-        self.logger.debug(self.vapi.ppcli("show ip4-sv-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
+        self.logger.debug(self.vclient.ppcli("show ip4-sv-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
 
     def test_basic(self):
         """ basic reassembly """
@@ -554,15 +557,15 @@ class TestIPv4SVReassembly(VppTestCase):
                 dst=self.dst_if.remote_ip4) /
              UDP(sport=1234, dport=5678) /
              Raw(payload))
-        fragments = fragment_rfc791(p, payload_len/4)
+        fragments = fragment_rfc791(p, payload_len / 4)
 
         # send fragment #2 - should be cached inside reassembly
         self.pg_enable_capture()
         self.src_if.add_stream(fragments[1])
         self.pg_start()
-        self.logger.debug(self.vapi.ppcli("show ip4-sv-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
-        self.logger.debug(self.vapi.ppcli("show trace"))
+        self.logger.debug(self.vclient.ppcli("show ip4-sv-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
+        self.logger.debug(self.vclient.ppcli("show trace"))
         self.dst_if.assert_nothing_captured()
 
         # send fragment #1 - reassembly is finished now and both fragments
@@ -570,9 +573,9 @@ class TestIPv4SVReassembly(VppTestCase):
         self.pg_enable_capture()
         self.src_if.add_stream(fragments[0])
         self.pg_start()
-        self.logger.debug(self.vapi.ppcli("show ip4-sv-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
-        self.logger.debug(self.vapi.ppcli("show trace"))
+        self.logger.debug(self.vclient.ppcli("show ip4-sv-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
+        self.logger.debug(self.vclient.ppcli("show trace"))
         c = self.dst_if.get_capture(2)
         for sent, recvd in zip([fragments[1], fragments[0]], c):
             self.assertEqual(sent[IP].src, recvd[IP].src)
@@ -603,9 +606,9 @@ class TestIPv4SVReassembly(VppTestCase):
                 dst=self.dst_if.remote_ip4) /
              UDP(sport=1234, dport=5678) /
              Raw(payload))
-        fragments = fragment_rfc791(p, payload_len/4)
+        fragments = fragment_rfc791(p, payload_len / 4)
 
-        self.vapi.ip_reassembly_set(
+        self.vclient.ip_reassembly_set(
             timeout_ms=100, max_reassemblies=1000,
             max_reassembly_length=1000,
             expire_walk_interval_ms=50,
@@ -615,9 +618,9 @@ class TestIPv4SVReassembly(VppTestCase):
         self.pg_enable_capture()
         self.src_if.add_stream(fragments[0:2])
         self.pg_start()
-        self.logger.debug(self.vapi.ppcli("show ip4-sv-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
-        self.logger.debug(self.vapi.ppcli("show trace"))
+        self.logger.debug(self.vclient.ppcli("show ip4-sv-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
+        self.logger.debug(self.vclient.ppcli("show trace"))
         c = self.dst_if.get_capture(2)
         for sent, recvd in zip([fragments[1], fragments[0]], c):
             self.assertEqual(sent[IP].src, recvd[IP].src)
@@ -636,7 +639,7 @@ class TestIPv4SVReassembly(VppTestCase):
     def test_lru(self):
         """ reassembly reuses LRU element """
 
-        self.vapi.ip_reassembly_set(
+        self.vclient.ip_reassembly_set(
             timeout_ms=1000000, max_reassemblies=1,
             max_reassembly_length=1000,
             type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL,
@@ -659,7 +662,7 @@ class TestIPv4SVReassembly(VppTestCase):
                                    dst=self.dst_if.remote_ip4) /
                                UDP(sport=1234, dport=5678) /
                                Raw(payload))
-                     for f in fragment_rfc791(p, payload_len/4)]
+                     for f in fragment_rfc791(p, payload_len / 4)]
 
         self.pg_enable_capture()
         self.src_if.add_stream(fragments)
@@ -688,9 +691,9 @@ class TestIPv4SVReassembly(VppTestCase):
         self.pg_enable_capture()
         self.src_if.add_stream(stream)
         self.pg_start()
-        self.logger.debug(self.vapi.ppcli("show ip4-sv-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
-        self.logger.debug(self.vapi.ppcli("show trace"))
+        self.logger.debug(self.vclient.ppcli("show ip4-sv-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
+        self.logger.debug(self.vclient.ppcli("show trace"))
         self.dst_if.get_capture(len(stream))
 
     def test_mixed(self):
@@ -745,7 +748,7 @@ class TestIPv4MWReassembly(VppTestCase):
     def setUpClass(cls):
         super(TestIPv4MWReassembly, cls).setUpClass()
 
-        cls.create_pg_interfaces(range(worker_count+1))
+        cls.create_pg_interfaces(range(worker_count + 1))
         cls.src_if = cls.pg0
         cls.send_ifs = cls.pg_interfaces[:-1]
         cls.dst_if = cls.pg_interfaces[-1]
@@ -759,8 +762,8 @@ class TestIPv4MWReassembly(VppTestCase):
         # packets sizes reduced here because we are generating packets without
         # Ethernet headers, which are added later (diff fragments go via
         # different interfaces)
-        cls.packet_sizes = [64-len(Ether()), 512-len(Ether()),
-                            1518-len(Ether()), 9018-len(Ether())]
+        cls.packet_sizes = [64 - len(Ether()), 512 - len(Ether()),
+                            1518 - len(Ether()), 9018 - len(Ether())]
         cls.padding = " abcdefghijklmn"
         cls.create_stream(cls.packet_sizes)
         cls.create_fragments()
@@ -773,22 +776,25 @@ class TestIPv4MWReassembly(VppTestCase):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv4MWReassembly, self).setUp()
         for intf in self.send_ifs:
-            self.vapi.ip_reassembly_enable_disable(
+            self.vclient.ip_reassembly_enable_disable(
                 sw_if_index=intf.sw_if_index, enable_ip4=True)
-        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=10)
+        self.vclient.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                       max_reassembly_length=1000,
+                                       expire_walk_interval_ms=10)
         self.sleep(.25)
-        self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=10000)
+        self.vclient.ip_reassembly_set(
+            timeout_ms=1000000,
+            max_reassemblies=1000,
+            max_reassembly_length=1000,
+            expire_walk_interval_ms=10000)
 
     def tearDown(self):
         super(TestIPv4MWReassembly, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
+        self.logger.debug(self.vclient.ppcli(
+            "show ip4-full-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
 
     @classmethod
     def create_stream(cls, packet_sizes, packet_count=test_packet_count):
@@ -899,10 +905,11 @@ class TestIPv4MWReassembly(VppTestCase):
         for send_if in self.send_ifs:
             send_if.assert_nothing_captured()
 
-        self.logger.debug(self.vapi.ppcli("show trace"))
-        self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
-        self.vapi.cli("clear trace")
+        self.logger.debug(self.vclient.ppcli("show trace"))
+        self.logger.debug(self.vclient.ppcli(
+            "show ip4-full-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
+        self.vclient.cli("clear trace")
 
         self.pg_enable_capture()
         self.send_packets(first_packets)
@@ -945,24 +952,29 @@ class TestIPv6Reassembly(VppTestCase):
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv6Reassembly, self).setUp()
-        self.vapi.ip_reassembly_enable_disable(
+        self.vclient.ip_reassembly_enable_disable(
             sw_if_index=self.src_if.sw_if_index, enable_ip6=True)
-        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=10, is_ip6=1)
+        self.vclient.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                       max_reassembly_length=1000,
+                                       expire_walk_interval_ms=10, is_ip6=1)
         self.sleep(.25)
-        self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=10000, is_ip6=1)
-        self.logger.debug(self.vapi.ppcli("show ip6-full-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
+        self.vclient.ip_reassembly_set(
+            timeout_ms=1000000,
+            max_reassemblies=1000,
+            max_reassembly_length=1000,
+            expire_walk_interval_ms=10000,
+            is_ip6=1)
+        self.logger.debug(self.vclient.ppcli(
+            "show ip6-full-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
 
     def tearDown(self):
         super(TestIPv6Reassembly, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.ppcli("show ip6-full-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
+        self.logger.debug(self.vclient.ppcli(
+            "show ip6-full-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
 
     @classmethod
     def create_stream(cls, packet_sizes, packet_count=test_packet_count):
@@ -1143,11 +1155,11 @@ class TestIPv6Reassembly(VppTestCase):
         error_cnt_str = \
             "/err/ip6-full-reassembly-feature/fragment chain too long (drop)"
 
-        error_cnt = self.statistics.get_err_counter(error_cnt_str)
+        error_cnt = self.vclient.statistics.get_err_counter(error_cnt_str)
 
-        self.vapi.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
-                                    max_reassembly_length=3,
-                                    expire_walk_interval_ms=50, is_ip6=1)
+        self.vclient.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
+                                       max_reassembly_length=3,
+                                       expire_walk_interval_ms=50, is_ip6=1)
 
         p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
              IPv6(src=self.src_if.remote_ip6,
@@ -1226,9 +1238,9 @@ class TestIPv6Reassembly(VppTestCase):
             index for (index, frags, _) in self.pkt_infos if len(frags) > 1
         )
 
-        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
-                                    max_reassembly_length=3,
-                                    expire_walk_interval_ms=10000, is_ip6=1)
+        self.vclient.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                       max_reassembly_length=3,
+                                       expire_walk_interval_ms=10000, is_ip6=1)
 
         self.pg_enable_capture()
         self.src_if.add_stream(self.fragments_400)
@@ -1263,13 +1275,13 @@ class TestIPv6Reassembly(VppTestCase):
             index for (index, frags_400, _) in self.pkt_infos
             if len(frags_400) > 1)
 
-        self.vapi.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=50)
+        self.vclient.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
+                                       max_reassembly_length=1000,
+                                       expire_walk_interval_ms=50)
 
-        self.vapi.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=50, is_ip6=1)
+        self.vclient.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
+                                       max_reassembly_length=1000,
+                                       expire_walk_interval_ms=50, is_ip6=1)
 
         self.pg_enable_capture()
         self.src_if.add_stream(fragments)
@@ -1298,9 +1310,9 @@ class TestIPv6Reassembly(VppTestCase):
             index for (index, frags_400, _) in self.pkt_infos
             if len(frags_400) > 1)
 
-        self.vapi.ip_reassembly_set(timeout_ms=1000, max_reassemblies=0,
-                                    max_reassembly_length=3,
-                                    expire_walk_interval_ms=10000, is_ip6=1)
+        self.vclient.ip_reassembly_set(timeout_ms=1000, max_reassemblies=0,
+                                       max_reassembly_length=3,
+                                       expire_walk_interval_ms=10000, is_ip6=1)
 
         self.pg_enable_capture()
         self.src_if.add_stream(self.fragments_400)
@@ -1378,7 +1390,7 @@ class TestIPv6MWReassembly(VppTestCase):
     def setUpClass(cls):
         super(TestIPv6MWReassembly, cls).setUpClass()
 
-        cls.create_pg_interfaces(range(worker_count+1))
+        cls.create_pg_interfaces(range(worker_count + 1))
         cls.src_if = cls.pg0
         cls.send_ifs = cls.pg_interfaces[:-1]
         cls.dst_if = cls.pg_interfaces[-1]
@@ -1392,8 +1404,8 @@ class TestIPv6MWReassembly(VppTestCase):
         # packets sizes reduced here because we are generating packets without
         # Ethernet headers, which are added later (diff fragments go via
         # different interfaces)
-        cls.packet_sizes = [64-len(Ether()), 512-len(Ether()),
-                            1518-len(Ether()), 9018-len(Ether())]
+        cls.packet_sizes = [64 - len(Ether()), 512 - len(Ether()),
+                            1518 - len(Ether()), 9018 - len(Ether())]
         cls.padding = " abcdefghijklmn"
         cls.create_stream(cls.packet_sizes)
         cls.create_fragments()
@@ -1406,22 +1418,26 @@ class TestIPv6MWReassembly(VppTestCase):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv6MWReassembly, self).setUp()
         for intf in self.send_ifs:
-            self.vapi.ip_reassembly_enable_disable(
+            self.vclient.ip_reassembly_enable_disable(
                 sw_if_index=intf.sw_if_index, enable_ip6=True)
-        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=10, is_ip6=1)
+        self.vclient.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                       max_reassembly_length=1000,
+                                       expire_walk_interval_ms=10, is_ip6=1)
         self.sleep(.25)
-        self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=1000, is_ip6=1)
+        self.vclient.ip_reassembly_set(
+            timeout_ms=1000000,
+            max_reassemblies=1000,
+            max_reassembly_length=1000,
+            expire_walk_interval_ms=1000,
+            is_ip6=1)
 
     def tearDown(self):
         super(TestIPv6MWReassembly, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.ppcli("show ip6-full-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
+        self.logger.debug(self.vclient.ppcli(
+            "show ip6-full-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
 
     @classmethod
     def create_stream(cls, packet_sizes, packet_count=test_packet_count):
@@ -1532,10 +1548,11 @@ class TestIPv6MWReassembly(VppTestCase):
         for send_if in self.send_ifs:
             send_if.assert_nothing_captured()
 
-        self.logger.debug(self.vapi.ppcli("show trace"))
-        self.logger.debug(self.vapi.ppcli("show ip6-full-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
-        self.vapi.cli("clear trace")
+        self.logger.debug(self.vclient.ppcli("show trace"))
+        self.logger.debug(self.vclient.ppcli(
+            "show ip6-full-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
+        self.vclient.cli("clear trace")
 
         self.pg_enable_capture()
         self.send_packets(first_packets)
@@ -1568,16 +1585,16 @@ class TestIPv6SVReassembly(VppTestCase):
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv6SVReassembly, self).setUp()
-        self.vapi.ip_reassembly_enable_disable(
+        self.vclient.ip_reassembly_enable_disable(
             sw_if_index=self.src_if.sw_if_index, enable_ip6=True,
             type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL)
-        self.vapi.ip_reassembly_set(
+        self.vclient.ip_reassembly_set(
             timeout_ms=0, max_reassemblies=1000,
             max_reassembly_length=1000,
             type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL,
             expire_walk_interval_ms=10, is_ip6=1)
         self.sleep(.25)
-        self.vapi.ip_reassembly_set(
+        self.vclient.ip_reassembly_set(
             timeout_ms=1000000, max_reassemblies=1000,
             max_reassembly_length=1000,
             type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL,
@@ -1585,8 +1602,8 @@ class TestIPv6SVReassembly(VppTestCase):
 
     def tearDown(self):
         super(TestIPv6SVReassembly, self).tearDown()
-        self.logger.debug(self.vapi.ppcli("show ip6-sv-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
+        self.logger.debug(self.vclient.ppcli("show ip6-sv-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
 
     def test_basic(self):
         """ basic reassembly """
@@ -1601,15 +1618,15 @@ class TestIPv6SVReassembly(VppTestCase):
              IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6) /
              UDP(sport=1234, dport=5678) /
              Raw(payload))
-        fragments = fragment_rfc8200(p, 1, payload_len/4)
+        fragments = fragment_rfc8200(p, 1, payload_len / 4)
 
         # send fragment #2 - should be cached inside reassembly
         self.pg_enable_capture()
         self.src_if.add_stream(fragments[1])
         self.pg_start()
-        self.logger.debug(self.vapi.ppcli("show ip6-sv-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
-        self.logger.debug(self.vapi.ppcli("show trace"))
+        self.logger.debug(self.vclient.ppcli("show ip6-sv-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
+        self.logger.debug(self.vclient.ppcli("show trace"))
         self.dst_if.assert_nothing_captured()
 
         # send fragment #1 - reassembly is finished now and both fragments
@@ -1617,9 +1634,9 @@ class TestIPv6SVReassembly(VppTestCase):
         self.pg_enable_capture()
         self.src_if.add_stream(fragments[0])
         self.pg_start()
-        self.logger.debug(self.vapi.ppcli("show ip6-sv-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
-        self.logger.debug(self.vapi.ppcli("show trace"))
+        self.logger.debug(self.vclient.ppcli("show ip6-sv-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
+        self.logger.debug(self.vclient.ppcli("show trace"))
         c = self.dst_if.get_capture(2)
         for sent, recvd in zip([fragments[1], fragments[0]], c):
             self.assertEqual(sent[IPv6].src, recvd[IPv6].src)
@@ -1649,9 +1666,9 @@ class TestIPv6SVReassembly(VppTestCase):
              IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6) /
              UDP(sport=1234, dport=5678) /
              Raw(payload))
-        fragments = fragment_rfc8200(p, 1, payload_len/4)
+        fragments = fragment_rfc8200(p, 1, payload_len / 4)
 
-        self.vapi.ip_reassembly_set(
+        self.vclient.ip_reassembly_set(
             timeout_ms=100, max_reassemblies=1000,
             max_reassembly_length=1000,
             expire_walk_interval_ms=50,
@@ -1662,9 +1679,9 @@ class TestIPv6SVReassembly(VppTestCase):
         self.pg_enable_capture()
         self.src_if.add_stream(fragments[0:2])
         self.pg_start()
-        self.logger.debug(self.vapi.ppcli("show ip4-sv-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
-        self.logger.debug(self.vapi.ppcli("show trace"))
+        self.logger.debug(self.vclient.ppcli("show ip4-sv-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
+        self.logger.debug(self.vclient.ppcli("show trace"))
         c = self.dst_if.get_capture(2)
         for sent, recvd in zip([fragments[1], fragments[0]], c):
             self.assertEqual(sent[IPv6].src, recvd[IPv6].src)
@@ -1683,7 +1700,7 @@ class TestIPv6SVReassembly(VppTestCase):
     def test_lru(self):
         """ reassembly reuses LRU element """
 
-        self.vapi.ip_reassembly_set(
+        self.vclient.ip_reassembly_set(
             timeout_ms=1000000, max_reassemblies=1,
             max_reassembly_length=1000,
             type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL,
@@ -1706,7 +1723,7 @@ class TestIPv6SVReassembly(VppTestCase):
                                     dst=self.dst_if.remote_ip6) /
                                UDP(sport=1234, dport=5678) /
                                Raw(payload))
-                     for f in fragment_rfc8200(p, i, payload_len/4)]
+                     for f in fragment_rfc8200(p, i, payload_len / 4)]
 
         self.pg_enable_capture()
         self.src_if.add_stream(fragments)
@@ -1745,20 +1762,23 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv4ReassemblyLocalNode, self).setUp()
-        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=10)
+        self.vclient.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                       max_reassembly_length=1000,
+                                       expire_walk_interval_ms=10)
         self.sleep(.25)
-        self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=10000)
+        self.vclient.ip_reassembly_set(
+            timeout_ms=1000000,
+            max_reassemblies=1000,
+            max_reassembly_length=1000,
+            expire_walk_interval_ms=10000)
 
     def tearDown(self):
         super(TestIPv4ReassemblyLocalNode, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
+        self.logger.debug(self.vclient.ppcli(
+            "show ip4-full-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
 
     @classmethod
     def create_stream(cls, packet_count=test_packet_count):
@@ -1872,33 +1892,40 @@ class TestFIFReassembly(VppTestCase):
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestFIFReassembly, self).setUp()
-        self.vapi.ip_reassembly_enable_disable(
+        self.vclient.ip_reassembly_enable_disable(
             sw_if_index=self.src_if.sw_if_index, enable_ip4=True,
             enable_ip6=True)
-        self.vapi.ip_reassembly_enable_disable(
+        self.vclient.ip_reassembly_enable_disable(
             sw_if_index=self.dst_if.sw_if_index, enable_ip4=True,
             enable_ip6=True)
-        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=10)
-        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=10, is_ip6=1)
+        self.vclient.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                       max_reassembly_length=1000,
+                                       expire_walk_interval_ms=10)
+        self.vclient.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                       max_reassembly_length=1000,
+                                       expire_walk_interval_ms=10, is_ip6=1)
         self.sleep(.25)
-        self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=10000)
-        self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
-                                    max_reassembly_length=1000,
-                                    expire_walk_interval_ms=10000, is_ip6=1)
+        self.vclient.ip_reassembly_set(
+            timeout_ms=1000000,
+            max_reassemblies=1000,
+            max_reassembly_length=1000,
+            expire_walk_interval_ms=10000)
+        self.vclient.ip_reassembly_set(
+            timeout_ms=1000000,
+            max_reassemblies=1000,
+            max_reassembly_length=1000,
+            expire_walk_interval_ms=10000,
+            is_ip6=1)
 
     def tearDown(self):
         super(TestFIFReassembly, self).tearDown()
 
     def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show ip6-full-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
+        self.logger.debug(self.vclient.ppcli(
+            "show ip4-full-reassembly details"))
+        self.logger.debug(self.vclient.ppcli(
+            "show ip6-full-reassembly details"))
+        self.logger.debug(self.vclient.ppcli("show buffers"))
 
     def verify_capture(self, capture, ip_class, dropped_packet_indexes=[]):
         """Verify captured packet stream.
@@ -1944,15 +1971,16 @@ class TestFIFReassembly(VppTestCase):
         # it shared for multiple test cases
         self.tun_ip4 = "1.1.1.2"
 
-        self.gre4 = VppGreInterface(self, self.src_if.local_ip4, self.tun_ip4)
+        self.gre4 = VppGreInterface(
+            self.vclient, self.src_if.local_ip4, self.tun_ip4)
         self.gre4.add_vpp_config()
         self.gre4.admin_up()
         self.gre4.config_ip4()
 
-        self.vapi.ip_reassembly_enable_disable(
+        self.vclient.ip_reassembly_enable_disable(
             sw_if_index=self.gre4.sw_if_index, enable_ip4=True)
 
-        self.route4 = VppIpRoute(self, self.tun_ip4, 32,
+        self.route4 = VppIpRoute(self.vclient, self.tun_ip4, 32,
                                  [VppRoutePath(self.src_if.remote_ip4,
                                                self.src_if.sw_if_index)])
         self.route4.add_vpp_config()
@@ -1999,7 +2027,7 @@ class TestFIFReassembly(VppTestCase):
         # TODO remove gre vpp config by hand until VppIpRoute gets fixed
         # so that it's query_vpp_config() works as it should
         self.gre4.remove_vpp_config()
-        self.logger.debug(self.vapi.ppcli("show interface"))
+        self.logger.debug(self.vclient.ppcli("show interface"))
 
     def test_fif6(self):
         """ Fragments in fragments (6o6) """
@@ -2009,15 +2037,16 @@ class TestFIFReassembly(VppTestCase):
         # it shared for multiple test cases
         self.tun_ip6 = "1002::1"
 
-        self.gre6 = VppGreInterface(self, self.src_if.local_ip6, self.tun_ip6)
+        self.gre6 = VppGreInterface(
+            self.vclient, self.src_if.local_ip6, self.tun_ip6)
         self.gre6.add_vpp_config()
         self.gre6.admin_up()
         self.gre6.config_ip6()
 
-        self.vapi.ip_reassembly_enable_disable(
+        self.vclient.ip_reassembly_enable_disable(
             sw_if_index=self.gre6.sw_if_index, enable_ip6=True)
 
-        self.route6 = VppIpRoute(self, self.tun_ip6, 128,
+        self.route6 = VppIpRoute(self.vclient, self.tun_ip6, 128,
                                  [VppRoutePath(
                                      self.src_if.remote_ip6,
                                      self.src_if.sw_if_index)])

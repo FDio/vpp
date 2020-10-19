@@ -24,11 +24,11 @@ from scapy.layers.l2 import Ether, ARP, GRE
 from scapy.packet import Raw
 from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogSeverity
-from util import ip4_range
-from util import ppc, ppp
-from vpp_acl import AclRule, VppAcl, VppAclInterface
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_neighbor import VppNeighbor
+from vpp_pom.util import ip4_range
+from vpp_pom.util import ppc, ppp
+from vpp_pom.plugins.vpp_acl import AclRule, VppAcl, VppAclInterface
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_pom.vpp_neighbor import VppNeighbor
 from vpp_papi import VppEnum
 
 
@@ -63,11 +63,11 @@ class TestNAT66(MethodHolder):
     def test_static(self):
         """ 1:1 NAT66 test """
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat66_add_del_interface(is_add=1, flags=flags,
-                                          sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat66_add_del_interface(is_add=1,
-                                          sw_if_index=self.pg1.sw_if_index)
-        self.vapi.nat66_add_del_static_mapping(
+        self.vclient.nat66_add_del_interface(is_add=1, flags=flags,
+                                             sw_if_index=self.pg0.sw_if_index)
+        self.vclient.nat66_add_del_interface(is_add=1,
+                                             sw_if_index=self.pg1.sw_if_index)
+        self.vclient.nat66_add_del_static_mapping(
             local_ip_address=self.pg0.remote_ip6,
             external_ip_address=self.nat_addr,
             is_add=1)
@@ -100,7 +100,7 @@ class TestNAT66(MethodHolder):
                 self.assertEqual(packet[IPv6].src, self.nat_addr)
                 self.assertEqual(packet[IPv6].dst, self.pg1.remote_ip6)
                 self.assert_packet_checksums_valid(packet)
-            except:
+            except BaseException:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
 
@@ -131,22 +131,22 @@ class TestNAT66(MethodHolder):
                 self.assertEqual(packet[IPv6].src, self.pg1.remote_ip6)
                 self.assertEqual(packet[IPv6].dst, self.pg0.remote_ip6)
                 self.assert_packet_checksums_valid(packet)
-            except:
+            except BaseException:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
 
-        sm = self.vapi.nat66_static_mapping_dump()
+        sm = self.vclient.nat66_static_mapping_dump()
         self.assertEqual(len(sm), 1)
         self.assertEqual(sm[0].total_pkts, 8)
 
     def test_check_no_translate(self):
         """ NAT66 translate only when egress interface is outside interface """
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat66_add_del_interface(is_add=1, flags=flags,
-                                          sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat66_add_del_interface(is_add=1, flags=flags,
-                                          sw_if_index=self.pg1.sw_if_index)
-        self.vapi.nat66_add_del_static_mapping(
+        self.vclient.nat66_add_del_interface(is_add=1, flags=flags,
+                                             sw_if_index=self.pg0.sw_if_index)
+        self.vclient.nat66_add_del_interface(is_add=1, flags=flags,
+                                             sw_if_index=self.pg1.sw_if_index)
+        self.vclient.nat66_add_del_static_mapping(
             local_ip_address=self.pg0.remote_ip6,
             external_ip_address=self.nat_addr,
             is_add=1)
@@ -163,7 +163,7 @@ class TestNAT66(MethodHolder):
         try:
             self.assertEqual(packet[IPv6].src, self.pg0.remote_ip6)
             self.assertEqual(packet[IPv6].dst, self.pg1.remote_ip6)
-        except:
+        except BaseException:
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
             raise
 
@@ -171,14 +171,14 @@ class TestNAT66(MethodHolder):
         """
         Clear NAT66 configuration.
         """
-        interfaces = self.vapi.nat66_interface_dump()
+        interfaces = self.vclient.nat66_interface_dump()
         for intf in interfaces:
-            self.vapi.nat66_add_del_interface(is_add=0, flags=intf.flags,
-                                              sw_if_index=intf.sw_if_index)
+            self.vclient.nat66_add_del_interface(is_add=0, flags=intf.flags,
+                                                 sw_if_index=intf.sw_if_index)
 
-        static_mappings = self.vapi.nat66_static_mapping_dump()
+        static_mappings = self.vclient.nat66_static_mapping_dump()
         for sm in static_mappings:
-            self.vapi.nat66_add_del_static_mapping(
+            self.vclient.nat66_add_del_static_mapping(
                 local_ip_address=sm.local_ip_address,
                 external_ip_address=sm.external_ip_address, vrf_id=sm.vrf_id,
                 is_add=0)
@@ -188,8 +188,8 @@ class TestNAT66(MethodHolder):
         self.clear_nat66()
 
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show nat66 interfaces"))
-        self.logger.info(self.vapi.cli("show nat66 static mappings"))
+        self.logger.info(self.vclient.cli("show nat66 interfaces"))
+        self.logger.info(self.vclient.cli("show nat66 static mappings"))
 
 
 if __name__ == '__main__':

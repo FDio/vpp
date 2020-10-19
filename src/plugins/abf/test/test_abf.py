@@ -4,10 +4,10 @@ from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsLabel, \
+from vpp_pom.vpp_ip import DpoProto
+from vpp_pom.vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsLabel, \
     VppIpTable, FibPathProto
-from vpp_acl import AclRule, VppAcl
+from vpp_pom.plugins.vpp_acl import AclRule, VppAcl
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -15,13 +15,13 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from ipaddress import IPv4Network, IPv6Network
 
-from vpp_object import VppObject
+from vpp_pom.vpp_object import VppObject
 
 NUM_PKTS = 67
 
 
 def find_abf_policy(test, id):
-    policies = test.vapi.abf_policy_dump()
+    policies = test.vclient.abf_policy_dump()
     for p in policies:
         if id == p.policy.policy_id:
             return True
@@ -29,7 +29,7 @@ def find_abf_policy(test, id):
 
 
 def find_abf_itf_attach(test, id, sw_if_index):
-    attachs = test.vapi.abf_itf_attach_dump()
+    attachs = test.vclient.abf_itf_attach_dump()
     for a in attachs:
         if id == a.attach.policy_id and \
            sw_if_index == a.attach.sw_if_index:
@@ -53,7 +53,7 @@ class VppAbfPolicy(VppObject):
             self.encoded_paths.append(path.encode())
 
     def add_vpp_config(self):
-        self._test.vapi.abf_policy_add_del(
+        self._test.vclient.abf_policy_add_del(
             1,
             {'policy_id': self.policy_id,
              'acl_index': self.acl.acl_index,
@@ -62,7 +62,7 @@ class VppAbfPolicy(VppObject):
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.abf_policy_add_del(
+        self._test.vclient.abf_policy_add_del(
             0,
             {'policy_id': self.policy_id,
              'acl_index': self.acl.acl_index,
@@ -91,7 +91,7 @@ class VppAbfAttach(VppObject):
         self.is_ipv6 = is_ipv6
 
     def add_vpp_config(self):
-        self._test.vapi.abf_itf_attach_add_del(
+        self._test.vclient.abf_itf_attach_add_del(
             1,
             {'policy_id': self.policy_id,
              'sw_if_index': self.sw_if_index,
@@ -100,7 +100,7 @@ class VppAbfAttach(VppObject):
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.abf_itf_attach_add_del(
+        self._test.vclient.abf_itf_attach_add_del(
             0,
             {'policy_id': self.policy_id,
              'sw_if_index': self.sw_if_index,
@@ -166,7 +166,7 @@ class TestAbf(VppTestCase):
         rule_1 = AclRule(is_permit=1, proto=17, ports=1234,
                          src_prefix=IPv4Network("1.1.1.1/32"),
                          dst_prefix=IPv4Network("1.1.1.2/32"))
-        acl_1 = VppAcl(self, rules=[rule_1])
+        acl_1 = VppAcl(self.vclient, rules=[rule_1])
         acl_1.add_vpp_config()
 
         #
@@ -192,7 +192,7 @@ class TestAbf(VppTestCase):
                IP(src="1.1.1.1", dst="1.1.1.2") /
                UDP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 100))
-        self.send_and_expect(self.pg0, p_1*NUM_PKTS, self.pg1)
+        self.send_and_expect(self.pg0, p_1 * NUM_PKTS, self.pg1)
 
         #
         # Attach a 'better' priority policy to the same interface
@@ -204,7 +204,7 @@ class TestAbf(VppTestCase):
         attach_2 = VppAbfAttach(self, 11, self.pg0.sw_if_index, 40)
         attach_2.add_vpp_config()
 
-        self.send_and_expect(self.pg0, p_1*NUM_PKTS, self.pg2)
+        self.send_and_expect(self.pg0, p_1 * NUM_PKTS, self.pg2)
 
         #
         # Attach a policy with priority in the middle
@@ -216,13 +216,13 @@ class TestAbf(VppTestCase):
         attach_3 = VppAbfAttach(self, 12, self.pg0.sw_if_index, 45)
         attach_3.add_vpp_config()
 
-        self.send_and_expect(self.pg0, p_1*NUM_PKTS, self.pg2)
+        self.send_and_expect(self.pg0, p_1 * NUM_PKTS, self.pg2)
 
         #
         # remove the best priority
         #
         attach_2.remove_vpp_config()
-        self.send_and_expect(self.pg0, p_1*NUM_PKTS, self.pg3)
+        self.send_and_expect(self.pg0, p_1 * NUM_PKTS, self.pg3)
 
         #
         # Attach one of the same policies to Pg1
@@ -247,7 +247,7 @@ class TestAbf(VppTestCase):
         #
         # Swap to route via a next-hop in the non-default table
         #
-        table_20 = VppIpTable(self, 20)
+        table_20 = VppIpTable(self.vclient, 20)
         table_20.add_vpp_config()
 
         self.pg4.set_table_ip4(table_20.table_id)
@@ -263,7 +263,7 @@ class TestAbf(VppTestCase):
         attach_5 = VppAbfAttach(self, 13, self.pg0.sw_if_index, 30)
         attach_5.add_vpp_config()
 
-        self.send_and_expect(self.pg0, p_1*NUM_PKTS, self.pg4)
+        self.send_and_expect(self.pg0, p_1 * NUM_PKTS, self.pg4)
 
         self.pg4.unconfig_ip4()
         self.pg4.set_table_ip4(0)
@@ -282,7 +282,7 @@ class TestAbf(VppTestCase):
         rule_1 = AclRule(is_permit=1, proto=17, ports=1234,
                          src_prefix=IPv6Network("2001::2/128"),
                          dst_prefix=IPv6Network("2001::1/128"))
-        acl_1 = VppAcl(self, rules=[rule_1])
+        acl_1 = VppAcl(self.vclient, rules=[rule_1])
         acl_1.add_vpp_config()
 
         #
@@ -315,7 +315,7 @@ class TestAbf(VppTestCase):
         #
         # add a route resolving the next-hop
         #
-        route = VppIpRoute(self, "3001::1", 32,
+        route = VppIpRoute(self.vclient, "3001::1", 32,
                            [VppRoutePath(self.pg1.remote_ip6,
                                          self.pg1.sw_if_index)])
         route.add_vpp_config()
