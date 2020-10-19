@@ -20,9 +20,10 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ip-neighbor/ip_neighbor_dp.h>
 
-#include <vnet/fib/ip6_fib.h>
 #include <vnet/ip/ip6_link.h>
 #include <vnet/ip/ip6_ll_table.h>
+
+#include <vnet/ethernet/ethernet.h>
 
 /**
  * @file

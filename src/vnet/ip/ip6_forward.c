@@ -2809,24 +2809,6 @@ ip6_lookup_init (vlib_main_t * vm)
 
   ip_lookup_init (&im->lookup_main, /* is_ip6 */ 1);
 
-  if (im->lookup_table_nbuckets == 0)
-    im->lookup_table_nbuckets = IP6_FIB_DEFAULT_HASH_NUM_BUCKETS;
-
-  im->lookup_table_nbuckets = 1 << max_log2 (im->lookup_table_nbuckets);
-
-  if (im->lookup_table_size == 0)
-    im->lookup_table_size = IP6_FIB_DEFAULT_HASH_MEMORY_SIZE;
-
-  clib_bihash_init_24_8 (&(im->ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash),
-			 "ip6 FIB fwding table",
-			 im->lookup_table_nbuckets, im->lookup_table_size);
-  clib_bihash_init_24_8 (&im->ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash,
-			 "ip6 FIB non-fwding table",
-			 im->lookup_table_nbuckets, im->lookup_table_size);
-  clib_bihash_init_40_8 (&im->ip6_mtable.ip6_mhash,
-			 "ip6 mFIB table",
-			 im->lookup_table_nbuckets, im->lookup_table_size);
-
   /* Create FIB with index 0 and table id of 0. */
   fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, 0,
 				     FIB_SOURCE_DEFAULT_ROUTE);
@@ -3165,34 +3147,6 @@ VLIB_CLI_COMMAND (set_ip6_classify_command, static) =
   .function = set_ip6_classify_command_fn,
 };
 /* *INDENT-ON* */
-
-static clib_error_t *
-ip6_config (vlib_main_t * vm, unformat_input_t * input)
-{
-  ip6_main_t *im = &ip6_main;
-  uword heapsize = 0;
-  u32 tmp;
-  u32 nbuckets = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "hash-buckets %d", &tmp))
-	nbuckets = tmp;
-      else if (unformat (input, "heap-size %U",
-			 unformat_memory_size, &heapsize))
-	;
-      else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
-    }
-
-  im->lookup_table_nbuckets = nbuckets;
-  im->lookup_table_size = heapsize;
-
-  return 0;
-}
-
-VLIB_EARLY_CONFIG_FUNCTION (ip6_config, "ip6");
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -22,6 +22,54 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/ip/lookup.h>
 #include <vnet/dpo/load_balance.h>
+#include <vppinfra/bihash_24_8.h>
+#include <vppinfra/bihash_template.h>
+
+/*
+ * Default size of the ip6 fib hash table
+ */
+#define IP6_FIB_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
+#define IP6_FIB_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+
+/**
+ * Enumeration of the FIB table instance types
+ */
+typedef enum ip6_fib_table_instance_type_t_
+{
+    /**
+     * This table stores the routes that are used to forward traffic.
+     * The key is the prefix, the result the adjacency to forward on.
+     */
+  IP6_FIB_TABLE_FWDING,
+    /**
+     * The table that stores ALL routes learned by the DP.
+     * Some of these routes may not be ready to install in forwarding
+     * at a given time.
+     * The key in this table is the prefix, the result is the fib_entry_t
+     */
+  IP6_FIB_TABLE_NON_FWDING,
+} ip6_fib_table_instance_type_t;
+
+#define IP6_FIB_NUM_TABLES (IP6_FIB_TABLE_NON_FWDING+1)
+
+/**
+ * A representation of a single IP6 table
+ */
+typedef struct ip6_fib_table_instance_t_
+{
+  /* The hash table */
+  clib_bihash_24_8_t ip6_hash;
+
+  /* bitmap / refcounts / vector of mask widths to search */
+  uword *non_empty_dst_address_length_bitmap;
+  u8 *prefix_lengths_in_search_order;
+  i32 dst_address_length_refcounts[129];
+} ip6_fib_table_instance_t;
+
+/**
+ * The two FIB tables; fwding and non-fwding
+ */
+extern ip6_fib_table_instance_t ip6_fib_table[IP6_FIB_NUM_TABLES];
 
 extern fib_node_index_t ip6_fib_table_lookup(u32 fib_index,
 					     const ip6_address_t *addr,
@@ -73,7 +121,7 @@ ip6_fib_table_fwding_lookup (u32 fib_index,
     int rv;
     u64 fib;
 
-    table = &ip6_main.ip6_table[IP6_FIB_TABLE_FWDING];
+    table = &ip6_fib_table[IP6_FIB_TABLE_FWDING];
     len = vec_len (table->prefix_lengths_in_search_order);
 
     kv.key[0] = dst->as_u64[0];

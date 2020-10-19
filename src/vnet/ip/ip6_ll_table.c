@@ -232,7 +232,6 @@ ip6_ll_show_fib (vlib_main_t * vm,
 		 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   count_routes_in_fib_at_prefix_length_arg_t _ca, *ca = &_ca;
-  ip6_main_t *im6 = &ip6_main;
   fib_table_t *fib_table;
   int verbose, matching;
   ip6_address_t matching_address;
@@ -302,7 +301,7 @@ ip6_ll_show_fib (vlib_main_t * vm,
     if (!verbose)
       {
 	clib_bihash_24_8_t *h =
-	  &im6->ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash;
+	  &ip6_fib_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash;
 	int len;
 
 	vlib_cli_output (vm, "%=20s%=16s", "Prefix length", "Count");

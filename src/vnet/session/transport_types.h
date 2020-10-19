@@ -19,6 +19,8 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/tcp/tcp_debug.h>
+#include <vppinfra/bihash_24_8.h>
+
 
 #define TRANSPORT_MAX_HDRS_LEN    140	/* Max number of bytes for headers */
 

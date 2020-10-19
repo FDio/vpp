@@ -18,8 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/gre/gre.h>
 #include <vnet/ip/format.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/ip6_fib.h>
+#include <vnet/fib/fib_table.h>
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/mpls/mpls.h>
@@ -529,10 +528,9 @@ vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t * a,
 {
   u32 outer_fib_index;
 
-  if (!a->is_ipv6)
-    outer_fib_index = ip4_fib_index_from_table_id (a->outer_table_id);
-  else
-    outer_fib_index = ip6_fib_index_from_table_id (a->outer_table_id);
+  outer_fib_index = fib_table_find ((a->is_ipv6 ?
+				     FIB_PROTOCOL_IP6 :
+				     FIB_PROTOCOL_IP4), a->outer_table_id);
 
   if (~0 == outer_fib_index)
     return VNET_API_ERROR_NO_SUCH_FIB;

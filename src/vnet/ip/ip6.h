@@ -49,17 +49,8 @@
 #include <vnet/ip/lookup.h>
 #include <vnet/ip/ip_interface.h>
 #include <stdbool.h>
-#include <vppinfra/bihash_24_8.h>
-#include <vppinfra/bihash_40_8.h>
-#include <vppinfra/bihash_template.h>
 #include <vnet/util/radix.h>
 #include <vnet/util/throttle.h>
-
-/*
- * Default size of the ip6 fib hash table
- */
-#define IP6_FIB_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
-#define IP6_FIB_DEFAULT_HASH_MEMORY_SIZE (32<<20)
 
 typedef struct
 {
@@ -117,67 +108,8 @@ typedef struct
   uword function_opaque;
 } ip6_table_bind_callback_t;
 
-/**
- * Enumeration of the FIB table instance types
- */
-typedef enum ip6_fib_table_instance_type_t_
-{
-    /**
-     * This table stores the routes that are used to forward traffic.
-     * The key is the prefix, the result the adjacency to forward on.
-     */
-  IP6_FIB_TABLE_FWDING,
-    /**
-     * The table that stores ALL routes learned by the DP.
-     * Some of these routes may not be ready to install in forwarding
-     * at a given time.
-     * The key in this table is the prefix, the result is the fib_entry_t
-     */
-  IP6_FIB_TABLE_NON_FWDING,
-} ip6_fib_table_instance_type_t;
-
-#define IP6_FIB_NUM_TABLES (IP6_FIB_TABLE_NON_FWDING+1)
-
-/**
- * A representation of a single IP6 table
- */
-typedef struct ip6_fib_table_instance_t_
-{
-  /* The hash table */
-  clib_bihash_24_8_t ip6_hash;
-
-  /* bitmap / refcounts / vector of mask widths to search */
-  uword *non_empty_dst_address_length_bitmap;
-  u8 *prefix_lengths_in_search_order;
-  i32 dst_address_length_refcounts[129];
-} ip6_fib_table_instance_t;
-
-/**
- * A representation of a single IP6 mfib table
- */
-typedef struct ip6_mfib_table_instance_t_
-{
-  /* The hash table */
-  clib_bihash_40_8_t ip6_mhash;
-
-  /* bitmap / refcounts / vector of mask widths to search */
-  uword *non_empty_dst_address_length_bitmap;
-  u16 *prefix_lengths_in_search_order;
-  i32 dst_address_length_refcounts[257];
-} ip6_mfib_table_instance_t;
-
 typedef struct ip6_main_t
 {
-  /**
-   * The two FIB tables; fwding and non-fwding
-   */
-  ip6_fib_table_instance_t ip6_table[IP6_FIB_NUM_TABLES];
-
-  /**
-   * the single MFIB table
-   */
-  ip6_mfib_table_instance_t ip6_mtable;
-
   ip_lookup_main_t lookup_main;
 
   /* Pool of FIBs. */
@@ -218,10 +150,6 @@ typedef struct ip6_main_t
 
   /** Functions to call when interface to table biding changes. */
   ip6_table_bind_callback_t *table_bind_callbacks;
-
-  /* ip6 lookup table config parameters */
-  u32 lookup_table_nbuckets;
-  uword lookup_table_size;
 
   /* Seed for Jenkins hash used to compute ip6 flow hash. */
   u32 flow_hash_seed;
