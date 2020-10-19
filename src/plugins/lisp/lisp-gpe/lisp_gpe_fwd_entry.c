@@ -20,8 +20,6 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_path_list.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/fib/ip4_fib.h>
 #include <vnet/dpo/drop_dpo.h>
 #include <vnet/dpo/lookup_dpo.h>
 #include <vnet/dpo/load_balance.h>

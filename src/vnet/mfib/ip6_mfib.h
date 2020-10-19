@@ -25,10 +25,39 @@
 #ifndef __IP6_MFIB_H__
 #define __IP6_MFIB_H__
 
+#include <vppinfra/bihash_40_8.h>
+#include <vppinfra/bihash_template.h>
+
 #include <vlib/vlib.h>
 #include <vnet/ip/ip.h>
 
 #include <vnet/mfib/mfib_table.h>
+
+/*
+ * Default size of the ip6 fib hash table
+ */
+#define IP6_MFIB_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
+#define IP6_MFIB_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+
+
+/**
+ * A representation of a single IP6 mfib table
+ */
+typedef struct ip6_mfib_table_instance_t_
+{
+  /* The hash table */
+  clib_bihash_40_8_t ip6_mhash;
+
+  /* bitmap / refcounts / vector of mask widths to search */
+  uword *non_empty_dst_address_length_bitmap;
+  u16 *prefix_lengths_in_search_order;
+  i32 dst_address_length_refcounts[257];
+} ip6_mfib_table_instance_t;
+
+/**
+ * the single MFIB table
+ */
+extern ip6_mfib_table_instance_t ip6_mfib_table;
 
 extern fib_node_index_t ip6_mfib_table_lookup(const ip6_mfib_t *fib,
                                               const ip6_address_t *src,

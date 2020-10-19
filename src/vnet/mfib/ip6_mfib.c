@@ -19,6 +19,8 @@
 #include <vnet/mfib/mfib_entry.h>
 #include <vnet/fib/ip6_fib.h>
 
+ip6_mfib_table_instance_t ip6_mfib_table;
+
 /**
  * Key and mask for radix
  */
@@ -333,7 +335,7 @@ ip6_mfib_table_lookup_exact_match (const ip6_mfib_t *mfib,
 
     IP6_MFIB_MK_KEY(mfib, grp, src, len, key);
 
-    rv = clib_bihash_search_inline_2_40_8(&ip6_main.ip6_mtable.ip6_mhash,
+    rv = clib_bihash_search_inline_2_40_8(&ip6_mfib_table.ip6_mhash,
                                           &key, &value);
     if (rv == 0)
 	return value.value;
@@ -356,7 +358,7 @@ ip6_mfib_table_fwd_lookup (const ip6_mfib_t *mfib,
     int i, n, len;
     int rv;
 
-    table = &ip6_main.ip6_mtable;
+    table = &ip6_mfib_table;
     n = vec_len (table->prefix_lengths_in_search_order);
 
     for (i = 0; i < n; i++)
@@ -421,7 +423,7 @@ ip6_mfib_table_lookup (const ip6_mfib_t *mfib,
     ip6_mfib_key_t key, value;
     int i, n, rv;
 
-    table = &ip6_main.ip6_mtable;
+    table = &ip6_mfib_table;
     n = vec_len (table->prefix_lengths_in_search_order);
 
     /*
@@ -471,7 +473,7 @@ ip6_mfib_table_entry_insert (ip6_mfib_t *mfib,
     ip6_mfib_table_instance_t *table;
     ip6_mfib_key_t key;
 
-    table = &ip6_main.ip6_mtable;
+    table = &ip6_mfib_table;
     IP6_MFIB_MK_KEY(mfib, grp, src, len, key);
     key.value = mfib_entry_index;
 
@@ -497,7 +499,7 @@ ip6_mfib_table_entry_remove (ip6_mfib_t *mfib,
 
     IP6_MFIB_MK_KEY(mfib, grp, src, len, key);
 
-    table = &ip6_main.ip6_mtable;
+    table = &ip6_mfib_table;
     clib_bihash_add_del_40_8(&table->ip6_mhash, &key, 0);
 
     ASSERT (table->dst_address_length_refcounts[len] > 0);
@@ -523,7 +525,7 @@ format_ip6_mfib_table_memory (u8 * s, va_list * args)
 {
     u64 bytes_inuse;
 
-    bytes_inuse = alloc_arena_next(&(ip6_main.ip6_mtable.ip6_mhash));
+    bytes_inuse = alloc_arena_next(&(ip6_mfib_table.ip6_mhash));
 
     s = format(s, "%=30s %=6d %=12ld\n",
                "IPv6 multicast",
@@ -634,7 +636,7 @@ ip6_mfib_table_walk (ip6_mfib_t *mfib,
     };
 
     clib_bihash_foreach_key_value_pair_40_8(
-        &ip6_main.ip6_mtable.ip6_mhash,
+        &ip6_mfib_table.ip6_mhash,
         ip6_mfib_walk_cb,
         &ctx);
 }
@@ -778,3 +780,19 @@ VLIB_CLI_COMMAND (ip6_show_fib_command, static) = {
     .function = ip6_show_mfib,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+ip6_mfib_init (vlib_main_t * vm)
+{
+    clib_bihash_init_40_8 (&ip6_mfib_table.ip6_mhash,
+                           "ip6 mFIB table",
+                           IP6_MFIB_DEFAULT_HASH_NUM_BUCKETS,
+                           IP6_MFIB_DEFAULT_HASH_MEMORY_SIZE);
+
+    return (NULL);
+}
+
+VLIB_INIT_FUNCTION (ip6_mfib_init) =
+{
+  .runs_before = VLIB_INITS("ip6_lookup_init"),
+};

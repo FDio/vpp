@@ -39,9 +39,9 @@
 
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
-#include <vnet/fib/ip6_fib.h>
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_mcast.h>
+#include <vnet/ip/ip.h>
 
 typedef enum vnet_interface_helper_flags_t_
 {

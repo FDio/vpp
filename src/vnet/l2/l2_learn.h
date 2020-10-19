@@ -19,6 +19,7 @@
 #define included_l2learn_h
 
 #include <vlib/vlib.h>
+#include <vppinfra/bihash_8_8.h>
 #include <vnet/ethernet/ethernet.h>
 
 
