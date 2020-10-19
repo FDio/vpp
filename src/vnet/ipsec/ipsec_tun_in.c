@@ -149,10 +149,10 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   };
   ipsec4_tunnel_kv_t last_key4;
   ipsec6_tunnel_kv_t last_key6;
+  ipsec_tun_lkup_result_t itr0;
 
   vlib_combined_counter_main_t *rx_counter;
   vlib_combined_counter_main_t *drop_counter;
-  ipsec_tun_protect_t *itp0;
 
   if (is_ip6)
     clib_memset (&last_key6, 0xff, sizeof (last_key6));
@@ -165,9 +165,8 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   while (n_left_from > 0)
     {
       u32 sw_if_index0, len0, hdr_sz0;
-      ipsec_tun_lkup_result_t itr0;
-      clib_bihash_kv_24_8_t bkey60;
-      clib_bihash_kv_8_8_t bkey40;
+      clib_bihash_kv_24_16_t bkey60;
+      clib_bihash_kv_8_16_t bkey40;
       ipsec4_tunnel_kv_t *key40;
       ipsec6_tunnel_kv_t *key60;
       ip4_header_t *ip40;
@@ -231,17 +230,18 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (memcmp (key60, &last_key6, sizeof (last_key6)) == 0)
 	    {
-	      itr0 = last_result;
+	      clib_memcpy_fast (&itr0, &last_result, sizeof (itr0));
 	    }
 	  else
 	    {
 	      int rv =
-		clib_bihash_search_inline_24_8 (&im->tun6_protect_by_key,
-						&bkey60);
+		clib_bihash_search_inline_24_16 (&im->tun6_protect_by_key,
+						 &bkey60);
 	      if (!rv)
 		{
-		  itr0.as_u64 = bkey60.value;
-		  last_result = itr0;
+		  clib_memcpy_fast (&itr0, &bkey60.value, sizeof (itr0));
+		  clib_memcpy_fast (&last_result, &bkey60.value,
+				    sizeof (last_result));
 		  clib_memcpy_fast (&last_key6, key60, sizeof (last_key6));
 		}
 	      else
@@ -258,17 +258,18 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (key40->key == last_key4.key)
 	    {
-	      itr0 = last_result;
+	      clib_memcpy_fast (&itr0, &last_result, sizeof (itr0));
 	    }
 	  else
 	    {
 	      int rv =
-		clib_bihash_search_inline_8_8 (&im->tun4_protect_by_key,
-					       &bkey40);
+		clib_bihash_search_inline_8_16 (&im->tun4_protect_by_key,
+						&bkey40);
 	      if (!rv)
 		{
-		  itr0.as_u64 = bkey40.value;
-		  last_result = itr0;
+		  clib_memcpy_fast (&itr0, &bkey40.value, sizeof (itr0));
+		  clib_memcpy_fast (&last_result, &bkey40.value,
+				    sizeof (last_result));
 		  last_key4.key = key40->key;
 		}
 	      else
@@ -281,11 +282,10 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	}
 
-      itp0 = pool_elt_at_index (ipsec_tun_protect_pool, itr0.tun_index);
       vnet_buffer (b[0])->ipsec.sad_index = itr0.sa_index;
       vnet_buffer (b[0])->ipsec.protect_index = itr0.tun_index;
 
-      sw_if_index0 = itp0->itp_sw_if_index;
+      sw_if_index0 = itr0.sw_if_index;
       vnet_buffer (b[0])->sw_if_index[VLIB_RX] = sw_if_index0;
 
       if (PREDICT_FALSE (!vnet_sw_interface_is_admin_up (vnm, sw_if_index0)))
@@ -306,7 +306,7 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      if (n_packets && !(itp0->itp_flags & IPSEC_PROTECT_ENCAPED))
+	      if (n_packets && !(itr0.flags & IPSEC_PROTECT_ENCAPED))
 		{
 		  vlib_increment_combined_counter
 		    (rx_counter, thread_index, last_sw_if_index,
@@ -344,12 +344,10 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       n_left_from -= 1;
     }
 
-  if (n_packets && !(itp0->itp_flags & IPSEC_PROTECT_ENCAPED))
-    {
-      vlib_increment_combined_counter (rx_counter,
-				       thread_index,
-				       last_sw_if_index, n_packets, n_bytes);
-    }
+  if (n_packets && !(itr0.flags & IPSEC_PROTECT_ENCAPED))
+    vlib_increment_combined_counter (rx_counter,
+				     thread_index,
+				     last_sw_if_index, n_packets, n_bytes);
 
   vlib_node_increment_counter (vm, node->node_index,
 			       IPSEC_TUN_PROTECT_INPUT_ERROR_RX,

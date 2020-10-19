@@ -23,6 +23,12 @@
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/teib/teib.h>
 
+/* instantiate the bihash functions */
+#include <vppinfra/bihash_8_16.h>
+#include <vppinfra/bihash_template.c>
+#include <vppinfra/bihash_24_16.h>
+#include <vppinfra/bihash_template.c>
+
 #define IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
 #define IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE 512 << 20
 
@@ -224,6 +230,8 @@ ipsec_tun_protect_rx_db_add (ipsec_main_t * im,
       ipsec_tun_lkup_result_t res = {
         .tun_index = itp - ipsec_tun_protect_pool,
         .sa_index = sai,
+        .flags = itp->itp_flags,
+        .sw_if_index = itp->itp_sw_if_index,
       };
 
       /*
@@ -235,18 +243,18 @@ ipsec_tun_protect_rx_db_add (ipsec_main_t * im,
           ipsec4_tunnel_kv_t key = {
             .value = res,
           };
-          clib_bihash_kv_8_8_t *bkey = (clib_bihash_kv_8_8_t*)&key;
+          clib_bihash_kv_8_16_t *bkey = (clib_bihash_kv_8_16_t*)&key;
 
           ipsec4_tunnel_mk_key(&key, &itp->itp_crypto.dst.ip4,
                                clib_host_to_net_u32 (sa->spi));
 
           if (!im->tun4_protect_by_key.nbuckets)
-              clib_bihash_init_8_8 (&im->tun4_protect_by_key,
+              clib_bihash_init_8_16 (&im->tun4_protect_by_key,
 			"IPSec IPv4 tunnels",
 			IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS,
 			IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE);
 
-          clib_bihash_add_del_8_8 (&im->tun4_protect_by_key, bkey, 1);
+          clib_bihash_add_del_8_16 (&im->tun4_protect_by_key, bkey, 1);
           ipsec_tun_register_nodes(AF_IP4);
         }
       else
@@ -258,14 +266,14 @@ ipsec_tun_protect_rx_db_add (ipsec_main_t * im,
             },
             .value = res,
           };
-          clib_bihash_kv_24_8_t *bkey = (clib_bihash_kv_24_8_t*)&key;
+          clib_bihash_kv_24_16_t *bkey = (clib_bihash_kv_24_16_t*)&key;
 
           if (!im->tun4_protect_by_key.nbuckets)
-            clib_bihash_init_24_8 (&im->tun6_protect_by_key,
+            clib_bihash_init_24_16 (&im->tun6_protect_by_key,
                                    "IPSec IPv6 tunnels",
                                    IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS,
                                    IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE);
-          clib_bihash_add_del_24_8 (&im->tun6_protect_by_key, bkey, 1);
+          clib_bihash_add_del_24_16 (&im->tun6_protect_by_key, bkey, 1);
           ipsec_tun_register_nodes(AF_IP6);
         }
   }))
@@ -355,14 +363,14 @@ ipsec_tun_protect_rx_db_remove (ipsec_main_t * im,
     if (ip46_address_is_ip4 (&itp->itp_crypto.dst))
       {
           ipsec4_tunnel_kv_t key;
-          clib_bihash_kv_8_8_t res, *bkey = (clib_bihash_kv_8_8_t*)&key;
+          clib_bihash_kv_8_16_t res, *bkey = (clib_bihash_kv_8_16_t*)&key;
 
           ipsec4_tunnel_mk_key(&key, &itp->itp_crypto.dst.ip4,
                                clib_host_to_net_u32 (sa->spi));
 
-          if (!clib_bihash_search_8_8 (&im->tun4_protect_by_key, bkey, &res))
+          if (!clib_bihash_search_8_16 (&im->tun4_protect_by_key, bkey, &res))
             {
-              clib_bihash_add_del_8_8 (&im->tun4_protect_by_key, bkey, 0);
+              clib_bihash_add_del_8_16 (&im->tun4_protect_by_key, bkey, 0);
               ipsec_tun_unregister_nodes(AF_IP4);
             }
       }
@@ -374,11 +382,11 @@ ipsec_tun_protect_rx_db_remove (ipsec_main_t * im,
             .spi = clib_host_to_net_u32 (sa->spi),
           },
         };
-        clib_bihash_kv_24_8_t res, *bkey = (clib_bihash_kv_24_8_t*)&key;
+        clib_bihash_kv_24_16_t res, *bkey = (clib_bihash_kv_24_16_t*)&key;
 
-        if (!clib_bihash_search_24_8 (&im->tun6_protect_by_key, bkey, &res))
+        if (!clib_bihash_search_24_16 (&im->tun6_protect_by_key, bkey, &res))
           {
-            clib_bihash_add_del_24_8 (&im->tun6_protect_by_key, bkey, 0);
+            clib_bihash_add_del_24_16 (&im->tun6_protect_by_key, bkey, 0);
             ipsec_tun_unregister_nodes(AF_IP6);
           }
       }
@@ -971,11 +979,11 @@ ipsec_tun_table_init (ip_address_family_t af, uword table_size, u32 n_buckets)
   im = &ipsec_main;
 
   if (AF_IP4 == af)
-    clib_bihash_init_8_8 (&im->tun4_protect_by_key,
-			  "IPSec IPv4 tunnels", n_buckets, table_size);
+    clib_bihash_init_8_16 (&im->tun4_protect_by_key,
+			   "IPSec IPv4 tunnels", n_buckets, table_size);
   else
-    clib_bihash_init_24_8 (&im->tun6_protect_by_key,
-			   "IPSec IPv6 tunnels", n_buckets, table_size);
+    clib_bihash_init_24_16 (&im->tun6_protect_by_key,
+			    "IPSec IPv6 tunnels", n_buckets, table_size);
 }
 
 clib_error_t *
@@ -984,14 +992,14 @@ ipsec_tunnel_protect_init (vlib_main_t * vm)
   ipsec_main_t *im;
 
   im = &ipsec_main;
-  clib_bihash_init_24_8 (&im->tun6_protect_by_key,
-			 "IPSec IPv6 tunnels",
+  clib_bihash_init_24_16 (&im->tun6_protect_by_key,
+			  "IPSec IPv6 tunnels",
+			  IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS,
+			  IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE);
+  clib_bihash_init_8_16 (&im->tun4_protect_by_key,
+			 "IPSec IPv4 tunnels",
 			 IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS,
 			 IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE);
-  clib_bihash_init_8_8 (&im->tun4_protect_by_key,
-			"IPSec IPv4 tunnels",
-			IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS,
-			IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE);
 
   /* set up feature nodes to drop outbound packets with no crypto alg set */
   im->esp4_no_crypto_tun_node_index =
