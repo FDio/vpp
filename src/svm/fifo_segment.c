@@ -784,6 +784,7 @@ fsh_slice_collect_chunks (fifo_segment_header_t * fsh,
 
   while (c)
     {
+      CLIB_MEM_UNPOISON (c, sizeof (*c));
       next = c->next;
       fl_index = fs_freelist_for_size (c->length);
       c->next = fss->free_chunks[fl_index];
