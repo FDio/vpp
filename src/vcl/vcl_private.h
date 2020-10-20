@@ -131,56 +131,41 @@ typedef enum
   VCL_SESS_ATTR_MAX
 } vppcom_session_attr_t;
 
-#define VCL_SESS_ATTR_SET(ATTR, VAL)            \
-do {                                            \
-  (ATTR) |= 1 << (VAL);                         \
- } while (0)
-
-#define VCL_SESS_ATTR_CLR(ATTR, VAL)            \
-do {                                            \
-  (ATTR) &= ~(1 << (VAL));                      \
- } while (0)
-
-#define VCL_SESS_ATTR_TEST(ATTR, VAL)           \
-  ((ATTR) & (1 << (VAL)) ? 1 : 0)
-
 typedef enum vcl_session_flags_
 {
   VCL_SESSION_F_CONNECTED = 1 << 0,
   VCL_SESSION_F_IS_VEP = 1 << 1,
   VCL_SESSION_F_IS_VEP_SESSION = 1 << 2,
+  VCL_SESSION_F_HAS_RX_EVT = 1 << 3,
 } __clib_packed vcl_session_flags_t;
 
-typedef struct
+typedef struct vcl_session_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
 #define _(type, name) type name;
   foreach_app_session_field
 #undef _
-  u32 sndbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_SNDBUF)
-  u32 rcvbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_RCVBUF)
-  u32 user_mss;			// VPP-TBD: Hack until support setsockopt(TCP_MAXSEG)
-  u64 vpp_handle;
-  u32 vpp_thread_index;
+  vcl_session_flags_t flags;	/**< see @ref vcl_session_flags_t */
+  u32 rx_bytes_pending;		/**< bytes rx-ed as segs but not yet freed */
 
   svm_fifo_t *ct_rx_fifo;
   svm_fifo_t *ct_tx_fifo;
-
-  /* Socket configuration state */
-  vcl_session_flags_t flags;
-  /* VCL session index of the listening session (if any) */
-  u32 listener_index;
-  /* Accepted sessions on this listener */
-  int n_accepted_sessions;
-  u8 has_rx_evt;
-  u32 attr;
-  u64 parent_handle;
-  vppcom_epoll_t vep;
-  int libc_epfd;
-  svm_msg_q_t *our_evt_q;
   vcl_session_msg_t *accept_evts_fifo;
-  /** bytes delivered as segment but not yet freed */
-  u32 rx_bytes_pending;
+
+  u64 vpp_handle;
+  u32 vpp_thread_index;
+  u32 listener_index;		/**< index of parent listener (if any) */
+  int n_accepted_sessions;	/**< sessions accepted by this listener */
+  u32 attributes;		/**< see @ref vppcom_session_attr_t */
+  u64 parent_handle;
+  int libc_epfd;
+  vppcom_epoll_t vep;
+
+  u32 sndbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_SNDBUF)
+  u32 rcvbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_RCVBUF)
+  u32 user_mss;			// VPP-TBD: Hack until support setsockopt(TCP_MAXSEG)
+
 #if VCL_ELOG
   elog_track_t elog_track;
 #endif
@@ -617,6 +602,24 @@ static inline int
 vcl_proto_is_dgram (uint8_t proto)
 {
   return proto == VPPCOM_PROTO_UDP;
+}
+
+static inline u8
+vcl_session_has_attr (vcl_session_t * s, u8 attr)
+{
+  return (s->attributes & (1 << attr)) ? 1 : 0;
+}
+
+static inline void
+vcl_session_set_attr (vcl_session_t * s, u8 attr)
+{
+  s->attributes |= 1 << attr;
+}
+
+static inline void
+vcl_session_clear_attr (vcl_session_t * s, u8 attr)
+{
+  s->attributes &= ~(1 << attr);
 }
 
 /*
