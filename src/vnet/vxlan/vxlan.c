@@ -22,6 +22,7 @@
 #include <vnet/adj/rewrite.h>
 #include <vnet/interface.h>
 #include <vnet/flow/flow.h>
+#include <vnet/udp/udp_local.h>
 #include <vlib/vlib.h>
 
 /**

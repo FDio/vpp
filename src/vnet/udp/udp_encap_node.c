@@ -14,6 +14,7 @@
  */
 
 #include <vnet/udp/udp_encap.h>
+#include <vnet/udp/udp.h>
 
 typedef struct udp4_encap_trace_t_
 {

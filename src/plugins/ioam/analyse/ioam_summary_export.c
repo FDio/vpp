@@ -15,6 +15,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/udp/udp_local.h>
 #include <ioam/analyse/ioam_summary_export.h>
 #include <ioam/analyse/ip6/ip6_ioam_analyse.h>
 

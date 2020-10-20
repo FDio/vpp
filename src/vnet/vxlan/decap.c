@@ -17,6 +17,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/vxlan/vxlan.h>
+#include <vnet/udp/udp_local.h>
 
 #ifndef CLIB_MARCH_VARIANT
 vlib_node_registration_t vxlan4_input_node;

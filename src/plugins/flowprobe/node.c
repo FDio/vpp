@@ -20,6 +20,7 @@
 #include <vppinfra/error.h>
 #include <flowprobe/flowprobe.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/udp/udp_local.h>
 #include <vlibmemory/api.h>
 
 static void flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e);

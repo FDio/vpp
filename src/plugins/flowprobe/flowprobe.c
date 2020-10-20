@@ -26,6 +26,7 @@
 #include <vnet/vnet.h>
 #include <vpp/app/version.h>
 #include <vnet/plugin/plugin.h>
+#include <vnet/udp/udp_local.h>
 #include <flowprobe/flowprobe.h>
 
 #include <vlibapi/api.h>
