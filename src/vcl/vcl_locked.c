@@ -896,14 +896,15 @@ vls_mt_session_migrate (vcl_locked_session_t * vls)
   VDBG (1, "migrate session of worker (session): %u (%u) -> %u (%u)",
 	vls->owner_vcl_wrk_index, src_sid, wrk_index, sid);
 
-  if (PREDICT_FALSE (session->is_vep && session->vep.next_sh != ~0))
+  if (PREDICT_FALSE ((session->flags & VCL_SESSION_F_IS_VEP)
+		     && session->vep.next_sh != ~0))
     {
       /* TODO: rollback? */
       VERR ("can't migrate nonempty epoll session");
       ASSERT (0);
       return;
     }
-  else if (PREDICT_FALSE (!session->is_vep &&
+  else if (PREDICT_FALSE (!(session->flags & VCL_SESSION_F_IS_VEP) &&
 			  session->session_state != VCL_STATE_CLOSED))
     {
       /* TODO: rollback? */
