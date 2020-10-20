@@ -76,7 +76,7 @@ ipsec_itf_adj_stack (adj_index_t ai, u32 sai)
       };
       /* *INDENT-ON* */
 
-      adj_midchain_delegate_stack (ai, 0, &dst);
+      adj_midchain_delegate_stack (ai, sa->tx_fib_index, &dst);
     }
   else
     adj_midchain_delegate_unstack (ai);
