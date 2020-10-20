@@ -161,8 +161,8 @@ noise_create_initiation (vlib_main_t * vm, noise_remote_t * r,
   *s_idx = hs->hs_local_index;
   ret = true;
 error:
-  vnet_crypto_key_del (vm, key_idx);
   secure_zero_memory (key, NOISE_SYMMETRIC_KEY_LEN);
+  vnet_crypto_key_del (vm, key_idx);
   return ret;
 }
 
@@ -244,8 +244,8 @@ noise_consume_initiation (vlib_main_t * vm, noise_local_t * l,
   ret = true;
 
 error:
-  vnet_crypto_key_del (vm, key_idx);
   secure_zero_memory (key, NOISE_SYMMETRIC_KEY_LEN);
+  vnet_crypto_key_del (vm, key_idx);
   secure_zero_memory (&hs, sizeof (hs));
   return ret;
 }
@@ -297,8 +297,8 @@ noise_create_response (vlib_main_t * vm, noise_remote_t * r, uint32_t * s_idx,
   *s_idx = hs->hs_local_index;
   ret = true;
 error:
-  vnet_crypto_key_del (vm, key_idx);
   secure_zero_memory (key, NOISE_SYMMETRIC_KEY_LEN);
+  vnet_crypto_key_del (vm, key_idx);
   secure_zero_memory (e, NOISE_PUBLIC_KEY_LEN);
   return ret;
 }
@@ -358,9 +358,9 @@ noise_consume_response (vlib_main_t * vm, noise_remote_t * r, uint32_t s_idx,
       ret = true;
     }
 error:
-  vnet_crypto_key_del (vm, key_idx);
   secure_zero_memory (&hs, sizeof (hs));
   secure_zero_memory (key, NOISE_SYMMETRIC_KEY_LEN);
+  vnet_crypto_key_del (vm, key_idx);
   return ret;
 }
 
