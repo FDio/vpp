@@ -794,7 +794,7 @@ vls_mt_acq_locks (vcl_locked_session_t * vls, vls_mt_ops_t op, int *locks_acq)
       s = vcl_session_get (wrk, vls->session_index);
       if (PREDICT_FALSE (!s))
 	return;
-      is_nonblk = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
+      is_nonblk = vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK);
     }
 
   switch (op)
