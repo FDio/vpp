@@ -1557,7 +1557,7 @@ nat64_plugin_disable ()
   int rv = 0;
 
   nat64_address_t *a;
-  nat64_interface_t *i, *interfaces;
+  nat64_interface_t *i, *interfaces = 0;
 
   if (plugin_enabled () == 0)
     {
@@ -1566,16 +1566,21 @@ nat64_plugin_disable ()
     }
   nm->enabled = 0;
 
-  interfaces = vec_dup (nm->interfaces);
+  /* *INDENT-OFF* */
+  pool_foreach (i, nm->interfaces,
+  ({
+    vec_add1 (interfaces, *i);
+  }));
+  /* *INDENT-ON* */
   vec_foreach (i, interfaces)
   {
-    rv = nat64_interface_add_del (i->sw_if_index, i->flags, 1);
+    rv = nat64_interface_add_del (i->sw_if_index, i->flags, 0);
     if (rv)
       {
 	nat64_log_err ("%U %s interface del failed",
-		       unformat_vnet_sw_interface,
+		       format_vnet_sw_if_index_name, vnm, i->sw_if_index,
 		       i->flags & NAT64_INTERFACE_FLAG_IS_INSIDE ?
-		       "inside" : "outside", vnm, i->sw_if_index);
+		       "inside" : "outside");
       }
   }
   vec_free (interfaces);
