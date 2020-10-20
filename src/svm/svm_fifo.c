@@ -70,6 +70,8 @@ CLIB_MARCH_FN (svm_fifo_copy_from_chunk, void, svm_fifo_t * f,
       c = c->next;
       while ((to_copy -= n_chunk))
 	{
+	  CLIB_MEM_UNPOISON (c, sizeof (*c));
+	  CLIB_MEM_UNPOISON (c->data, c->length);
 	  n_chunk = clib_min (c->length, to_copy);
 	  clib_memcpy_fast (dst + (len - to_copy), &c->data[0], n_chunk);
 	  c = c->length <= to_copy ? c->next : c;
@@ -1054,6 +1056,7 @@ svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 len, u8 * dst)
   len = clib_min (cursize - offset, len);
   head_idx = head + offset;
 
+  CLIB_MEM_UNPOISON (f->ooo_deq, sizeof (*f->ooo_deq));
   if (!f->ooo_deq || !f_chunk_includes_pos (f->ooo_deq, head_idx))
     f_update_ooo_deq (f, head_idx, head_idx + len);
 

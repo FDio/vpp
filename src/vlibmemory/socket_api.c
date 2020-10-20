@@ -645,6 +645,11 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
   if ((rv = ssvm_master_init_memfd (memfd)))
     goto reply;
 
+  /* delete the unused heap created in ssvm_server_init_memfd and mark it
+   * accessible again for ASAN */
+  clib_mem_destroy_mspace (memfd->sh->heap);
+  CLIB_MEM_UNPOISON ((void *) memfd->sh->ssvm_va, memfd->ssvm_size);
+
   /* Remember to close this fd when the socket connection goes away */
   vec_add1 (regp->additional_fds_to_close, memfd->fd);
 
