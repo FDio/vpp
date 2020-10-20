@@ -40,6 +40,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/ethernet/packet.h>
+#include <vnet/ip/format.h>
 #include <vnet/ip/ip4.h>
 #include <vnet/ip/ip6.h>
 #include <vnet/udp/udp_packet.h>
