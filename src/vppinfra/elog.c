@@ -1184,7 +1184,7 @@ elog_write_file_not_inline (elog_main_t * em, char *clib_file, int flush_ring)
   return error;
 }
 
-clib_error_t *
+__clib_export clib_error_t *
 elog_read_file_not_inline (elog_main_t * em, char *clib_file)
 {
   serialize_main_t m;
