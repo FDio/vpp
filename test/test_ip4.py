@@ -14,7 +14,7 @@ from six import moves
 from framework import VppTestCase, VppTestRunner
 from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
-    VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
+    VppMRoutePath, VppMplsIpBind, \
     VppMplsTable, VppIpTable, FibPathType, find_route, \
     VppIpInterfaceAddress, find_route_in_dump, find_mroute_in_dump
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint

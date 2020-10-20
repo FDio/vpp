@@ -23,7 +23,7 @@ from framework import VppTestCase, VppTestRunner
 from util import ppp, ip6_normalize, mk_ll_addr
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
-    VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
+    VppMRoutePath, VppMplsIpBind, \
     VppMplsRoute, VppMplsTable, VppIpTable, FibPathType, FibPathProto, \
     VppIpInterfaceAddress, find_route_in_dump, find_mroute_in_dump, \
     VppIp6LinkLocalAddress
