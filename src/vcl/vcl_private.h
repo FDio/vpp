@@ -147,6 +147,8 @@ do {                                            \
 typedef enum vcl_session_flags_
 {
   VCL_SESSION_F_CONNECTED = 1 << 0,
+  VCL_SESSION_F_IS_VEP = 1 << 1,
+  VCL_SESSION_F_IS_VEP_SESSION = 1 << 2,
 } __clib_packed vcl_session_flags_t;
 
 typedef struct
@@ -165,8 +167,6 @@ typedef struct
   svm_fifo_t *ct_tx_fifo;
 
   /* Socket configuration state */
-  u8 is_vep;
-  u8 is_vep_session;
   vcl_session_flags_t flags;
   /* VCL session index of the listening session (if any) */
   u32 listener_index;

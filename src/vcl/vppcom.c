@@ -1302,57 +1302,47 @@ int
 vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * s,
 		     vcl_session_handle_t sh, u8 do_disconnect)
 {
-  vcl_session_state_t state;
-  u32 next_sh, vep_sh;
   int rv = VPPCOM_OK;
-  u64 vpp_handle;
-  u8 is_vep;
 
-  is_vep = s->is_vep;
-  next_sh = s->vep.next_sh;
-  vep_sh = s->vep.vep_sh;
-  state = s->session_state;
-  vpp_handle = s->vpp_handle;
+  VDBG (1, "session %u [0x%llx] closing", s->session_index, s->vpp_handle);
 
-  VDBG (1, "session %u [0x%llx] closing", s->session_index, vpp_handle);
-
-  if (is_vep)
+  if (s->flags & VCL_SESSION_F_IS_VEP)
     {
+      u32 next_sh = s->vep.next_sh;
       while (next_sh != ~0)
 	{
 	  rv = vppcom_epoll_ctl (sh, EPOLL_CTL_DEL, next_sh, 0);
 	  if (PREDICT_FALSE (rv < 0))
 	    VDBG (0, "vpp handle 0x%llx, sh %u: EPOLL_CTL_DEL vep_idx %u"
-		  " failed! rv %d (%s)", vpp_handle, next_sh, vep_sh, rv,
-		  vppcom_retval_str (rv));
-
+		  " failed! rv %d (%s)", s->vpp_handle, next_sh,
+		  s->vep.vep_sh, rv, vppcom_retval_str (rv));
 	  next_sh = s->vep.next_sh;
 	}
       goto cleanup;
     }
 
-  if (s->is_vep_session)
+  if (s->flags & VCL_SESSION_F_IS_VEP_SESSION)
     {
-      rv = vppcom_epoll_ctl (vep_sh, EPOLL_CTL_DEL, sh, 0);
+      rv = vppcom_epoll_ctl (s->vep.vep_sh, EPOLL_CTL_DEL, sh, 0);
       if (rv < 0)
 	VDBG (0, "session %u [0x%llx]: EPOLL_CTL_DEL vep_idx %u "
-	      "failed! rv %d (%s)", s->session_index, vpp_handle,
-	      vep_sh, rv, vppcom_retval_str (rv));
+	      "failed! rv %d (%s)", s->session_index, s->vpp_handle,
+	      s->vep.vep_sh, rv, vppcom_retval_str (rv));
     }
 
   if (!do_disconnect)
     {
       VDBG (1, "session %u [0x%llx] disconnect skipped",
-	    s->session_index, vpp_handle);
+	    s->session_index, s->vpp_handle);
       goto cleanup;
     }
 
-  if (state == VCL_STATE_LISTEN)
+  if (s->session_state == VCL_STATE_LISTEN)
     {
       rv = vppcom_session_unbind (sh);
       if (PREDICT_FALSE (rv < 0))
 	VDBG (0, "session %u [0x%llx]: listener unbind failed! "
-	      "rv %d (%s)", s->session_index, vpp_handle, rv,
+	      "rv %d (%s)", s->session_index, s->vpp_handle, rv,
 	      vppcom_retval_str (rv));
       return rv;
     }
@@ -1362,16 +1352,16 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * s,
       rv = vppcom_session_disconnect (sh);
       if (PREDICT_FALSE (rv < 0))
 	VDBG (0, "ERROR: session %u [0x%llx]: disconnect failed!"
-	      " rv %d (%s)", s->session_index, vpp_handle,
+	      " rv %d (%s)", s->session_index, s->vpp_handle,
 	      rv, vppcom_retval_str (rv));
     }
-  else if (state == VCL_STATE_DISCONNECT)
+  else if (s->session_state == VCL_STATE_DISCONNECT)
     {
       svm_msg_q_t *mq = vcl_session_vpp_evt_q (wrk, s);
       vcl_send_session_reset_reply (mq, wrk->api_client_handle,
 				    s->vpp_handle, 0);
     }
-  else if (state == VCL_STATE_DETACHED)
+  else if (s->session_state == VCL_STATE_DETACHED)
     {
       /* Should not happen. VPP cleaned up before app confirmed close */
       VDBG (0, "vpp freed session %d before close", s->session_index);
@@ -1384,7 +1374,7 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * s,
   return rv;
 
 cleanup:
-  vcl_session_table_del_vpp_handle (wrk, vpp_handle);
+  vcl_session_table_del_vpp_handle (wrk, s->vpp_handle);
 free_session:
   vcl_session_free (wrk, s);
   vcl_evt (VCL_EVT_CLOSE, s, rv);
@@ -1418,7 +1408,7 @@ vppcom_session_bind (uint32_t session_handle, vppcom_endpt_t * ep)
   if (!session)
     return VPPCOM_EBADFD;
 
-  if (session->is_vep)
+  if (session->flags & VCL_SESSION_F_IS_VEP)
     {
       VDBG (0, "ERROR: cannot bind to epoll session %u!",
 	    session->session_index);
@@ -1458,7 +1448,7 @@ vppcom_session_listen (uint32_t listen_sh, uint32_t q_len)
   int rv;
 
   listen_session = vcl_session_get_w_handle (wrk, listen_sh);
-  if (!listen_session || listen_session->is_vep)
+  if (!listen_session || (listen_session->flags & VCL_SESSION_F_IS_VEP))
     return VPPCOM_EBADFD;
 
   if (q_len == 0 || q_len == ~0)
@@ -1497,7 +1487,7 @@ vppcom_session_listen (uint32_t listen_sh, uint32_t q_len)
 static int
 validate_args_session_accept_ (vcl_worker_t * wrk, vcl_session_t * ls)
 {
-  if (ls->is_vep)
+  if (ls->flags & VCL_SESSION_F_IS_VEP)
     {
       VDBG (0, "ERROR: cannot accept on epoll session %u!",
 	    ls->session_index);
@@ -1507,8 +1497,7 @@ validate_args_session_accept_ (vcl_worker_t * wrk, vcl_session_t * ls)
   if ((ls->session_state != VCL_STATE_LISTEN)
       && (!vcl_session_is_connectable_listener (wrk, ls)))
     {
-      VDBG (0,
-	    "ERROR: session [0x%llx]: not in listen state! state 0x%x"
+      VDBG (0, "ERROR: session [0x%llx]: not in listen state! state 0x%x"
 	    " (%s)", ls->vpp_handle, ls->session_state,
 	    vppcom_session_state_str (ls->session_state));
       return VPPCOM_EBADFD;
@@ -1662,7 +1651,7 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
     return VPPCOM_EBADFD;
   session_index = session->session_index;
 
-  if (PREDICT_FALSE (session->is_vep))
+  if (PREDICT_FALSE (session->flags & VCL_SESSION_F_IS_VEP))
     {
       VDBG (0, "ERROR: cannot connect epoll session %u!",
 	    session->session_index);
@@ -1750,7 +1739,7 @@ vppcom_session_stream_connect (uint32_t session_handle,
 
   session_index = session->session_index;
   parent_session_index = parent_session->session_index;
-  if (PREDICT_FALSE (session->is_vep))
+  if (PREDICT_FALSE (session->flags & VCL_SESSION_F_IS_VEP))
     {
       VDBG (0, "ERROR: cannot connect epoll session %u!",
 	    session->session_index);
@@ -1819,7 +1808,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
     return VPPCOM_EINVAL;
 
   s = vcl_session_get_w_handle (wrk, session_handle);
-  if (PREDICT_FALSE (!s || s->is_vep))
+  if (PREDICT_FALSE (!s || (s->flags & VCL_SESSION_F_IS_VEP)))
     return VPPCOM_EBADFD;
 
   if (PREDICT_FALSE (!vcl_session_is_open (s)))
@@ -1934,7 +1923,7 @@ vppcom_session_read_segments (uint32_t session_handle,
   u8 is_ct;
 
   s = vcl_session_get_w_handle (wrk, session_handle);
-  if (PREDICT_FALSE (!s || s->is_vep))
+  if (PREDICT_FALSE (!s || (s->flags & VCL_SESSION_F_IS_VEP)))
     return VPPCOM_EBADFD;
 
   if (PREDICT_FALSE (!vcl_session_is_open (s)))
@@ -2005,7 +1994,7 @@ vppcom_session_free_segments (uint32_t session_handle, uint32_t n_bytes)
   vcl_session_t *s;
 
   s = vcl_session_get_w_handle (wrk, session_handle);
-  if (PREDICT_FALSE (!s || s->is_vep))
+  if (PREDICT_FALSE (!s || (s->flags & VCL_SESSION_F_IS_VEP)))
     return;
 
   svm_fifo_dequeue_drop (s->rx_fifo, n_bytes);
@@ -2045,7 +2034,7 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
   if (PREDICT_FALSE (!buf || n == 0))
     return VPPCOM_EINVAL;
 
-  if (PREDICT_FALSE (s->is_vep))
+  if (PREDICT_FALSE (s->flags & VCL_SESSION_F_IS_VEP))
     {
       VDBG (0, "ERROR: session %u [0x%llx]: cannot write to an epoll"
 	    " session!", s->session_index, s->vpp_handle);
@@ -2477,55 +2466,55 @@ check_mq:
 static inline void
 vep_verify_epoll_chain (vcl_worker_t * wrk, u32 vep_handle)
 {
-  vcl_session_t *session;
   vppcom_epoll_t *vep;
   u32 sh = vep_handle;
+  vcl_session_t *s;
 
   if (VPPCOM_DEBUG <= 2)
     return;
 
-  session = vcl_session_get_w_handle (wrk, vep_handle);
-  if (PREDICT_FALSE (!session))
+  s = vcl_session_get_w_handle (wrk, vep_handle);
+  if (PREDICT_FALSE (!s))
     {
       VDBG (0, "ERROR: Invalid vep_sh (%u)!", vep_handle);
       goto done;
     }
-  if (PREDICT_FALSE (!session->is_vep))
+  if (PREDICT_FALSE (!(s->flags & VCL_SESSION_F_IS_VEP)))
     {
       VDBG (0, "ERROR: vep_sh (%u) is not a vep!", vep_handle);
       goto done;
     }
-  vep = &session->vep;
+  vep = &s->vep;
   VDBG (0, "vep_sh (%u): Dumping epoll chain\n"
 	"{\n"
 	"   is_vep         = %u\n"
 	"   is_vep_session = %u\n"
 	"   next_sh        = 0x%x (%u)\n"
-	"}\n", vep_handle, session->is_vep, session->is_vep_session,
-	vep->next_sh, vep->next_sh);
+	"}\n", vep_handle, s->flags & VCL_SESSION_F_IS_VEP,
+	s->flags & VCL_SESSION_F_IS_VEP_SESSION, vep->next_sh, vep->next_sh);
 
   for (sh = vep->next_sh; sh != ~0; sh = vep->next_sh)
     {
-      session = vcl_session_get_w_handle (wrk, sh);
-      if (PREDICT_FALSE (!session))
+      s = vcl_session_get_w_handle (wrk, sh);
+      if (PREDICT_FALSE (!s))
 	{
 	  VDBG (0, "ERROR: Invalid sh (%u)!", sh);
 	  goto done;
 	}
-      if (PREDICT_FALSE (session->is_vep))
+      if (PREDICT_FALSE (s->flags & VCL_SESSION_F_IS_VEP))
 	{
 	  VDBG (0, "ERROR: sh (%u) is a vep!", vep_handle);
 	}
-      else if (PREDICT_FALSE (!session->is_vep_session))
+      else if (PREDICT_FALSE (!(s->flags & VCL_SESSION_F_IS_VEP_SESSION)))
 	{
 	  VDBG (0, "ERROR: sh (%u) is not a vep session handle!", sh);
 	  goto done;
 	}
-      vep = &session->vep;
+      vep = &s->vep;
       if (PREDICT_FALSE (vep->vep_sh != vep_handle))
 	VDBG (0, "ERROR: session (%u) vep_sh (%u) != vep_sh (%u)!",
-	      sh, session->vep.vep_sh, vep_handle);
-      if (session->is_vep_session)
+	      sh, s->vep.vep_sh, vep_handle);
+      if (s->flags & VCL_SESSION_F_IS_VEP_SESSION)
 	{
 	  VDBG (0, "vep_sh[%u]: sh 0x%x (%u)\n"
 		"{\n"
@@ -2554,7 +2543,7 @@ vppcom_epoll_create (void)
 
   vep_session = vcl_session_alloc (wrk);
 
-  vep_session->is_vep = 1;
+  vep_session->flags |= VCL_SESSION_F_IS_VEP;
   vep_session->vep.vep_sh = ~0;
   vep_session->vep.next_sh = ~0;
   vep_session->vep.prev_sh = ~0;
@@ -2588,7 +2577,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       VDBG (0, "Invalid vep_sh (%u)!", vep_handle);
       return VPPCOM_EBADFD;
     }
-  if (PREDICT_FALSE (!vep_session->is_vep))
+  if (PREDICT_FALSE (!(vep_session->flags & VCL_SESSION_F_IS_VEP)))
     {
       VDBG (0, "vep_sh (%u) is not a vep!", vep_handle);
       return VPPCOM_EINVAL;
@@ -2603,7 +2592,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       VDBG (0, "Invalid session_handle (%u)!", session_handle);
       return VPPCOM_EBADFD;
     }
-  if (PREDICT_FALSE (s->is_vep))
+  if (PREDICT_FALSE (s->flags & VCL_SESSION_F_IS_VEP))
     {
       VDBG (0, "session_handle (%u) is a vep!", vep_handle);
       return VPPCOM_EINVAL;
@@ -2636,8 +2625,8 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       s->vep.vep_sh = vep_handle;
       s->vep.et_mask = VEP_DEFAULT_ET_MASK;
       s->vep.ev = *event;
-      s->is_vep = 0;
-      s->is_vep_session = 1;
+      s->flags &= ~VCL_SESSION_F_IS_VEP;
+      s->flags |= VCL_SESSION_F_IS_VEP_SESSION;
       vep_session->vep.next_sh = session_handle;
 
       txf = vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo;
@@ -2672,7 +2661,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	  rv = VPPCOM_EINVAL;
 	  goto done;
 	}
-      else if (PREDICT_FALSE (!s->is_vep_session))
+      else if (PREDICT_FALSE (!(s->flags & VCL_SESSION_F_IS_VEP_SESSION)))
 	{
 	  VDBG (0, "sh %u EPOLL_CTL_MOD: not a vep session!", session_handle);
 	  rv = VPPCOM_EINVAL;
@@ -2707,7 +2696,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       break;
 
     case EPOLL_CTL_DEL:
-      if (PREDICT_FALSE (!s->is_vep_session))
+      if (PREDICT_FALSE (!(s->flags & VCL_SESSION_F_IS_VEP_SESSION)))
 	{
 	  VDBG (0, "EPOLL_CTL_DEL: %u not a vep session!", session_handle);
 	  rv = VPPCOM_EINVAL;
@@ -2754,7 +2743,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       s->vep.next_sh = ~0;
       s->vep.prev_sh = ~0;
       s->vep.vep_sh = ~0;
-      s->is_vep_session = 0;
+      s->flags &= ~VCL_SESSION_F_IS_VEP_SESSION;
 
       txf = vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo;
       if (txf)
@@ -3035,7 +3024,7 @@ vppcom_epoll_wait (uint32_t vep_handle, struct epoll_event *events,
   if (!vep_session)
     return VPPCOM_EBADFD;
 
-  if (PREDICT_FALSE (!vep_session->is_vep))
+  if (PREDICT_FALSE (!(vep_session->flags & VCL_SESSION_F_IS_VEP)))
     {
       VDBG (0, "ERROR: vep_idx (%u) is not a vep!", vep_handle);
       return VPPCOM_EINVAL;
