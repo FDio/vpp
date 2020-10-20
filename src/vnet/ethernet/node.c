@@ -694,8 +694,10 @@ ethernet_input_inline_dmac_check (vnet_hw_interface_t * hi,
 				  u32 n_packets, ethernet_interface_t * ei,
 				  u8 have_sec_dmac)
 {
-  u64 hwaddr = (*(u64 *) hi->hw_address) & DMAC_MASK;
+  u64 hwaddr = ei->address.as_u64;
   u8 bad = 0;
+
+  ASSERT (0 == ei->address.zero);
 
   dmacs_bad[0] = is_dmac_bad (dmacs[0], hwaddr);
   dmacs_bad[1] = ((n_packets > 1) & is_dmac_bad (dmacs[1], hwaddr));
@@ -704,11 +706,12 @@ ethernet_input_inline_dmac_check (vnet_hw_interface_t * hi,
 
   if (PREDICT_FALSE (bad && have_sec_dmac))
     {
-      mac_address_t *sec_addr;
+      ethernet_interface_address_t *sec_addr;
 
       vec_foreach (sec_addr, ei->secondary_addrs)
       {
-	hwaddr = (*(u64 *) sec_addr) & DMAC_MASK;
+	ASSERT (0 == sec_addr->zero);
+	hwaddr = sec_addr->as_u64;
 
 	bad = (eth_input_sec_dmac_check_x1 (hwaddr, dmacs, dmacs_bad) |
 	       eth_input_sec_dmac_check_x1 (hwaddr, dmacs + 1,
@@ -726,11 +729,13 @@ eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
 				    u32 n_packets, ethernet_interface_t * ei,
 				    u8 have_sec_dmac)
 {
-  u64 hwaddr = (*(u64 *) hi->hw_address) & DMAC_MASK;
+  u64 hwaddr = ei->address.as_u64;
   u64 *dmac = dmacs;
   u8 *dmac_bad = dmacs_bad;
   u32 bad = 0;
   i32 n_left = n_packets;
+
+  ASSERT (0 == ei->address.zero);
 
 #ifdef CLIB_HAVE_VEC256
   while (n_left > 0)
@@ -760,14 +765,16 @@ eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
 
   if (have_sec_dmac && bad)
     {
-      mac_address_t *addr;
+      ethernet_interface_address_t *addr;
 
       vec_foreach (addr, ei->secondary_addrs)
       {
-	u64 hwaddr = ((u64 *) addr)[0] & DMAC_MASK;
+	u64 hwaddr = addr->as_u64;
 	i32 n_left = n_packets;
 	u64 *dmac = dmacs;
 	u8 *dmac_bad = dmacs_bad;
+
+	ASSERT (0 == addr->zero);
 
 	bad = 0;
 

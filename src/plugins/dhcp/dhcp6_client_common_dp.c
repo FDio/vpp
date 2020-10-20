@@ -71,7 +71,7 @@ generate_client_duid (void)
   /* *INDENT-ON* */
 
   if (eth_if)
-    clib_memcpy (client_duid.lla, eth_if->address, 6);
+    clib_memcpy (client_duid.lla, &eth_if->address, 6);
   else
     {
       clib_warning ("Failed to find any Ethernet interface, "

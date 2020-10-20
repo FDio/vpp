@@ -132,6 +132,17 @@ typedef u32 (ethernet_flag_change_function_t)
 #define ETHERNET_MIN_PACKET_BYTES  64
 #define ETHERNET_MAX_PACKET_BYTES  9216
 
+/* ethernet dataplane loads mac address as u64 for efficiency */
+typedef union ethernet_interface_address
+{
+  struct
+  {
+    mac_address_t mac;
+    u16 zero;
+  };
+  u64 as_u64;
+} ethernet_interface_address_t;
+
 /* Ethernet interface instance. */
 typedef struct ethernet_interface
 {
@@ -160,10 +171,10 @@ typedef struct ethernet_interface
   u32 driver_instance;
 
   /* Ethernet (MAC) address for this interface. */
-  u8 address[6];
+  ethernet_interface_address_t address;
 
   /* Secondary MAC addresses for this interface */
-  mac_address_t *secondary_addrs;
+  ethernet_interface_address_t *secondary_addrs;
 } ethernet_interface_t;
 
 extern vnet_hw_interface_class_t ethernet_hw_interface_class;

@@ -144,7 +144,7 @@ ethernet_build_rewrite (vnet_main_t * vnm,
   vec_validate (rewrite, n_bytes - 1);
   h = (ethernet_header_t *) rewrite;
   ei = pool_elt_at_index (em->interfaces, hw->hw_instance);
-  clib_memcpy (h->src_address, ei->address, sizeof (h->src_address));
+  clib_memcpy (h->src_address, &ei->address, sizeof (h->src_address));
   if (is_p2p)
     {
       clib_memcpy (h->dst_address, sub_sw->p2p.client_mac,
@@ -268,6 +268,27 @@ ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
     }
 }
 
+static void
+ethernet_interface_address_copy (ethernet_interface_address_t * dst,
+				 const u8 * mac)
+{
+  clib_memcpy (&dst->mac, (u8 *) mac, sizeof (dst->mac));
+  /*
+   * ethernet dataplane loads mac as u64, makes sure the last 2 bytes are 0
+   * for comparison purpose
+   */
+  dst->zero = 0;
+}
+
+static void
+ethernet_set_mac (vnet_hw_interface_t * hi, ethernet_interface_t * ei,
+		  const u8 * mac_address)
+{
+  vec_validate (hi->hw_address, sizeof (mac_address_t) - 1);
+  clib_memcpy (hi->hw_address, mac_address, sizeof (mac_address_t));
+  ethernet_interface_address_copy (&ei->address, mac_address);
+}
+
 static clib_error_t *
 ethernet_mac_change (vnet_hw_interface_t * hi,
 		     const u8 * old_address, const u8 * mac_address)
@@ -278,11 +299,7 @@ ethernet_mac_change (vnet_hw_interface_t * hi,
   em = &ethernet_main;
   ei = pool_elt_at_index (em->interfaces, hi->hw_instance);
 
-  vec_validate (hi->hw_address,
-		STRUCT_SIZE_OF (ethernet_header_t, src_address) - 1);
-  clib_memcpy (hi->hw_address, mac_address, vec_len (hi->hw_address));
-
-  clib_memcpy (ei->address, (u8 *) mac_address, sizeof (ei->address));
+  ethernet_set_mac (hi, ei, mac_address);
 
   {
     ethernet_address_change_ctx_t *cb;
@@ -362,9 +379,7 @@ ethernet_register_interface (vnet_main_t * vnm,
   /* Default ethernet MTU, 9000 unless set by ethernet_config see below */
   vnet_sw_interface_set_mtu (vnm, hi->sw_if_index, em->default_mtu);
 
-  clib_memcpy (ei->address, address, sizeof (ei->address));
-  vec_add (hi->hw_address, address, sizeof (ei->address));
-  CLIB_MEM_UNPOISON (hi->hw_address, 8);
+  ethernet_set_mac (hi, ei, address);
 
   if (error)
     {
@@ -979,7 +994,8 @@ ethernet_interface_add_del_address (ethernet_main_t * em,
 				    u8 is_add)
 {
   ethernet_interface_t *ei = ethernet_get_interface (em, hw_if_index);
-  mac_address_t *if_addr = 0;
+  ethernet_interface_address_t *if_addr = 0;
+  int found = 0;
 
   /* return if there is not an ethernet interface for this hw interface */
   if (!ei)
@@ -988,36 +1004,29 @@ ethernet_interface_add_del_address (ethernet_main_t * em,
   /* determine whether the address is configured on the interface */
   vec_foreach (if_addr, ei->secondary_addrs)
   {
-    if (!ethernet_mac_address_equal (if_addr->bytes, address))
-      continue;
-
-    break;
+    if (ethernet_mac_address_equal (if_addr->mac.bytes, address))
+      {
+	found = 1;
+	break;
+      }
   }
 
-  if (if_addr && vec_is_member (ei->secondary_addrs, if_addr))
+  if (is_add)
     {
-      /* delete found address */
-      if (!is_add)
+      if (!found)
 	{
-	  vec_delete (ei->secondary_addrs, 1, if_addr - ei->secondary_addrs);
-	  if_addr = 0;
-	}
-      /* address already found, so nothing needs to be done if adding */
-    }
-  else
-    {
-      /* if_addr could be 0 or past the end of the vector. reset to 0 */
-      if_addr = 0;
-
-      /* add new address */
-      if (is_add)
-	{
+	  /* address not found yet: add it */
 	  vec_add2 (ei->secondary_addrs, if_addr, 1);
-	  clib_memcpy (&if_addr->bytes, address, sizeof (if_addr->bytes));
+	  ethernet_interface_address_copy (if_addr, address);
 	}
+      return &if_addr->mac;
     }
 
-  return if_addr;
+  /* delete case */
+  if (found)
+    vec_delete (ei->secondary_addrs, 1, if_addr - ei->secondary_addrs);
+
+  return 0;
 }
 
 int

@@ -1233,11 +1233,11 @@ show_interface_sec_mac_addr_fn (vlib_main_t * vm, unformat_input_t * input,
 
     if (ei && ei->secondary_addrs)
       {
-	mac_address_t *sec_addr;
+	ethernet_interface_address_t *sec_addr;
 
 	vec_foreach (sec_addr, ei->secondary_addrs)
 	{
-	  vlib_cli_output (vm, "  %U", format_mac_address_t, sec_addr);
+	  vlib_cli_output (vm, "  %U", format_mac_address_t, &sec_addr->mac);
 	}
       }
   }
