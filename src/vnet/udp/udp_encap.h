@@ -17,7 +17,7 @@
 #define __UDP_ENCAP_H__
 
 #include <vnet/ip/ip.h>
-#include <vnet/udp/udp.h>
+#include <vnet/udp/udp_packet.h>
 #include <vnet/fib/fib_node.h>
 
 /**

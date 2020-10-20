@@ -17,7 +17,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <vnet/api_errno.h>
-#include <vnet/udp/udp.h>
+#include <vnet/udp/udp_local.h>
 #include <vppinfra/lock.h>
 
 //GC runs at most once every so many seconds

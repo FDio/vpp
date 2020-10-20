@@ -23,7 +23,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/fib/ip4_fib.h>
-#include <vnet/udp/udp.h>
+#include <vnet/udp/udp_local.h>
 #include <nat/nat.h>
 #include <nat/lib/ipfix_logging.h>
 #include <nat/nat_inlines.h>

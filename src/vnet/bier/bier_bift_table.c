@@ -15,7 +15,7 @@
 
 #include <vnet/bier/bier_bift_table.h>
 #include <vnet/dpo/drop_dpo.h>
-#include <vnet/udp/udp.h>
+#include <vnet/udp/udp_local.h>
 
 typedef enum {
 #define bier_error(n,s) BIER_INPUT_ERROR_##n,

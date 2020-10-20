@@ -26,6 +26,7 @@
 #include <lisp/lisp-gpe/lisp_gpe_tunnel.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/adj/adj_midchain.h>
+#include <vnet/udp/udp_inlines.h>
 #include <vppinfra/bihash_24_8.h>
 #include <vppinfra/bihash_template.h>
 

@@ -18,7 +18,7 @@
 #include <vnet/ipsec/ipsec_tun.h>
 #include <vnet/ipsec/ipsec_itf.h>
 #include <vnet/ipsec/esp.h>
-#include <vnet/udp/udp.h>
+#include <vnet/udp/udp_local.h>
 #include <vnet/adj/adj_delegate.h>
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/teib/teib.h>

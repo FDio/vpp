@@ -16,6 +16,8 @@
 #include <vnet/ipfix-export/flow_report.h>
 #include <ioam/analyse/ioam_summary_export.h>
 #include <vnet/api_errno.h>
+#include <vnet/ip/ip4.h>
+#include <vnet/udp/udp_local.h>
 #include <ioam/udp-ping/udp_ping.h>
 
 #define UDP_PING_EXPORT_RECORD_SIZE 400

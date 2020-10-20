@@ -26,6 +26,7 @@
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/interface.h>
+#include <vnet/udp/udp_local.h>
 #include <vlib/vlib.h>
 
 /**

@@ -22,8 +22,8 @@
 #include <vlib/buffer.h>
 #include <vnet/ip/format.h>
 #include <vnet/ethernet/packet.h>
+#include <vnet/udp/udp_local.h>
 #include <vnet/udp/udp_packet.h>
-#include <vnet/udp/udp.h>
 #include <vnet/ip/lookup.h>
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/ip/ip4.h>

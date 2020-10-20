@@ -17,7 +17,6 @@
 #include <vnet/plugin/plugin.h>
 #include <vnet/ipip/ipip.h>
 #include <vpp/app/version.h>
-#include <vnet/udp/udp.h>
 
 #include <wireguard/wireguard_send.h>
 #include <wireguard/wireguard_key.h>
