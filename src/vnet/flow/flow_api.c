@@ -25,6 +25,7 @@
 #include <vnet/api_errno.h>
 #include <vnet/flow/flow.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/udp/udp_local.h>
 #include <vnet/tunnel/tunnel_types_api.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/vnet_msg_enum.h>
@@ -251,6 +252,7 @@ out:
   ({
     rmp->flow_index = ntohl (flow_index);
   }));
+  /* *INDENT-ON* */
 }
 
 static void
@@ -259,8 +261,8 @@ vl_api_flow_del_t_handler (vl_api_flow_del_t * mp)
   vl_api_flow_add_reply_t *rmp;
   int rv = 0;
 
-  vnet_main_t *vnm = vnet_get_main();
-  rv = vnet_flow_del(vnm, ntohl(mp->flow_index));
+  vnet_main_t *vnm = vnet_get_main ();
+  rv = vnet_flow_del (vnm, ntohl (mp->flow_index));
 
   REPLY_MACRO (VL_API_FLOW_DEL_REPLY);
 }
@@ -271,8 +273,9 @@ vl_api_flow_enable_t_handler (vl_api_flow_enable_t * mp)
   vl_api_flow_add_reply_t *rmp;
   int rv = 0;
 
-  vnet_main_t *vnm = vnet_get_main();
-  rv = vnet_flow_enable(vnm, ntohl(mp->flow_index), ntohl(mp->hw_if_index));
+  vnet_main_t *vnm = vnet_get_main ();
+  rv =
+    vnet_flow_enable (vnm, ntohl (mp->flow_index), ntohl (mp->hw_if_index));
 
   REPLY_MACRO (VL_API_FLOW_ENABLE_REPLY);
 }
@@ -283,8 +286,9 @@ vl_api_flow_disable_t_handler (vl_api_flow_disable_t * mp)
   vl_api_flow_add_reply_t *rmp;
   int rv = 0;
 
-  vnet_main_t *vnm = vnet_get_main();
-  rv = vnet_flow_disable(vnm, ntohl(mp->flow_index), ntohl(mp->hw_if_index));
+  vnet_main_t *vnm = vnet_get_main ();
+  rv =
+    vnet_flow_disable (vnm, ntohl (mp->flow_index), ntohl (mp->hw_if_index));
 
   REPLY_MACRO (VL_API_FLOW_DISABLE_REPLY);
 }

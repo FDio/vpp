@@ -16,7 +16,7 @@
  */
 
 #include <dhcp/client.h>
-#include <vnet/udp/udp.h>
+#include <vnet/udp/udp_local.h>
 
 #define foreach_dhcp_client_detect                    \
   _(EXTRACT, "Extract")

@@ -20,6 +20,7 @@
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
 #include <vnet/ip/ip_types_api.h>
+#include <vnet/udp/udp_local.h>
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>

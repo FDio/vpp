@@ -16,7 +16,7 @@
 #include <nat/nat64/nat64.h>
 #include <vnet/ip/ip4_to_ip6.h>
 #include <vnet/fib/ip4_fib.h>
-#include <vnet/udp/udp.h>
+#include <vnet/udp/udp_local.h>
 
 typedef struct
 {

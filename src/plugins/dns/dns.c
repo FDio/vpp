@@ -14,7 +14,7 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/udp/udp.h>
+#include <vnet/udp/udp_local.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/fib/fib_table.h>
 #include <dns/dns.h>

@@ -14,7 +14,7 @@
  */
 
 #include "nat_ha.h"
-#include <vnet/udp/udp.h>
+#include <vnet/udp/udp_local.h>
 #include <nat/nat.h>
 #include <vppinfra/atomics.h>
 

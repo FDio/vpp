@@ -16,7 +16,6 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip6_link.h>
-#include <vnet/udp/udp.h>
 #include <vppinfra/error.h>
 #include <vlibmemory/api.h>
 #include <wireguard/wireguard.h>
