@@ -14,7 +14,7 @@ from six import moves
 from framework import VppTestCase, VppTestRunner
 from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
-    VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
+    VppMRoutePath, VppMplsIpBind, \
     VppMplsTable, VppIpTable, FibPathType, find_route, \
     VppIpInterfaceAddress, find_route_in_dump, find_mroute_in_dump
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
@@ -896,6 +896,9 @@ class TestIPDisabled(VppTestCase):
     def test_ip_disabled(self):
         """ IP Disabled """
 
+        MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
+        MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
+
         #
         # An (S,G).
         # one accepting interface, pg0, 2 forwarding interfaces
@@ -904,11 +907,11 @@ class TestIPDisabled(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
             [VppMRoutePath(self.pg1.sw_if_index,
-                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                           MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT),
              VppMRoutePath(self.pg0.sw_if_index,
-                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                           MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)])
         route_232_1_1_1.add_vpp_config()
 
         pu = (Ether(src=self.pg1.remote_mac,
@@ -2090,6 +2093,8 @@ class TestIPReplace(VppTestCase):
     def test_replace(self):
         """ IP Table Replace """
 
+        MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
+        MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
         N_ROUTES = 20
         links = [self.pg0, self.pg1, self.pg2, self.pg3]
         routes = [[], [], [], []]
@@ -2107,15 +2112,15 @@ class TestIPReplace(VppTestCase):
                 multi = VppIpMRoute(
                     self, "0.0.0.0",
                     "239.0.0.%d" % jj, 32,
-                    MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+                    MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
                     [VppMRoutePath(self.pg0.sw_if_index,
-                                   MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                                   MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT),
                      VppMRoutePath(self.pg1.sw_if_index,
-                                   MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+                                   MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD),
                      VppMRoutePath(self.pg2.sw_if_index,
-                                   MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+                                   MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD),
                      VppMRoutePath(self.pg3.sw_if_index,
-                                   MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)],
+                                   MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)],
                     table_id=t.table_id).add_vpp_config()
                 routes[ii].append({'uni': uni,
                                    'multi': multi})

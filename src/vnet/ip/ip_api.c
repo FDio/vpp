@@ -745,6 +745,7 @@ api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp,
 {
   fib_route_path_t *rpath, *rpaths = NULL;
   fib_node_index_t mfib_entry_index;
+  mfib_entry_flags_t eflags;
   mfib_prefix_t pfx;
   u32 fib_index;
   int rv;
@@ -769,10 +770,11 @@ api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp,
 	goto out;
     }
 
+  eflags = mfib_api_path_entry_flags_decode (mp->route.entry_flags);
   mfib_entry_index = mroute_add_del_handler (mp->is_add,
 					     mp->is_add,
 					     fib_index, &pfx,
-					     ntohl (mp->route.entry_flags),
+					     eflags,
 					     ntohl (mp->route.rpf_id),
 					     rpaths);
 

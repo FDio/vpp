@@ -6,11 +6,12 @@ from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, \
     VppMplsTable, VppIpMRoute, VppMRoutePath, VppIpTable, \
-    MRouteEntryFlags, MRouteItfFlags, MPLS_LABEL_INVALID, \
+    MPLS_LABEL_INVALID, \
     VppMplsLabel, FibPathProto, FibPathType
 from vpp_bier import BIER_HDR_PAYLOAD, VppBierImp, VppBierDispEntry, \
     VppBierDispTable, VppBierTable, VppBierTableID, VppBierRoute
 from vpp_udp_encap import VppUdpEncap
+from vpp_papi import VppEnum
 
 import scapy.compat
 from scapy.packet import Raw
@@ -304,6 +305,9 @@ class TestBier(VppTestCase):
     def test_bier_head(self):
         """BIER head"""
 
+        MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
+        MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
+
         #
         # Add a BIER table for sub-domain 0, set 0, and BSL 256
         #
@@ -349,11 +353,11 @@ class TestBier(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
             paths=[VppMRoutePath(self.pg0.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT),
                    VppMRoutePath(0xffffffff,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
                                  proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
                                  type=FibPathType.FIB_PATH_TYPE_BIER_IMP,
                                  bier_imp=bi.bi_index)])
@@ -400,6 +404,9 @@ class TestBier(VppTestCase):
     def test_bier_tail(self):
         """BIER Tail"""
 
+        MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
+        MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
+
         #
         # Add a BIER table for sub-domain 0, set 0, and BSL 256
         #
@@ -440,9 +447,9 @@ class TestBier(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
             paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)])
         route_eg_232_1_1_1.add_vpp_config()
         route_eg_232_1_1_1.update_rpf_id(8192)
 
@@ -499,14 +506,14 @@ class TestBier(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.2", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
             paths=[VppMRoutePath(0xffffffff,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
                                  proto=DpoProto.DPO_PROTO_BIER,
                                  type=FibPathType.FIB_PATH_TYPE_BIER_IMP,
                                  bier_imp=bi.bi_index),
                    VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)])
         route_eg_232_1_1_2.add_vpp_config()
         route_eg_232_1_1_2.update_rpf_id(8192)
 
@@ -522,6 +529,9 @@ class TestBier(VppTestCase):
 
     def bier_e2e(self, hdr_len_id, n_bytes, max_bp):
         """ BIER end-to-end"""
+
+        MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
+        MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
 
         #
         # Add a BIER table for sub-domain 0, set 0, and BSL 256
@@ -550,11 +560,11 @@ class TestBier(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
             paths=[VppMRoutePath(self.pg0.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT),
                    VppMRoutePath(0xffffffff,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
                                  proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
                                  type=FibPathType.FIB_PATH_TYPE_BIER_IMP,
                                  bier_imp=bi_low.bi_index)])
@@ -563,11 +573,11 @@ class TestBier(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.2", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
             paths=[VppMRoutePath(self.pg0.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT),
                    VppMRoutePath(0xffffffff,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
                                  proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
                                  type=FibPathType.FIB_PATH_TYPE_BIER_IMP,
                                  bier_imp=bi_high.bi_index)])
@@ -621,20 +631,20 @@ class TestBier(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
             table_id=10,
             paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)])
         route_eg_232_1_1_1.add_vpp_config()
         route_eg_232_1_1_1.update_rpf_id(8192)
         route_eg_232_1_1_2 = VppIpMRoute(
             self,
             "0.0.0.0",
             "232.1.1.2", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
             table_id=10,
             paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)])
         route_eg_232_1_1_2.add_vpp_config()
         route_eg_232_1_1_2.update_rpf_id(8193)
 
@@ -691,6 +701,9 @@ class TestBier(VppTestCase):
     def test_bier_head_o_udp(self):
         """BIER head over UDP"""
 
+        MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
+        MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
+
         #
         # Add a BIER table for sub-domain 1, set 0, and BSL 256
         #
@@ -739,11 +752,11 @@ class TestBier(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
             paths=[VppMRoutePath(self.pg0.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT),
                    VppMRoutePath(0xffffffff,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
                                  proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
                                  type=FibPathType.FIB_PATH_TYPE_BIER_IMP,
                                  bier_imp=bi2.bi_index)])
@@ -778,6 +791,9 @@ class TestBier(VppTestCase):
 
     def test_bier_tail_o_udp(self):
         """BIER Tail over UDP"""
+
+        MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
+        MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
 
         #
         # Add a BIER table for sub-domain 0, set 0, and BSL 256
@@ -819,9 +835,9 @@ class TestBier(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
             paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)])
         route_eg_232_1_1_1.add_vpp_config()
         route_eg_232_1_1_1.update_rpf_id(8192)
 

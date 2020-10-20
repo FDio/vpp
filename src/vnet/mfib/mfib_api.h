@@ -17,6 +17,7 @@
 #define __MFIB_API_H__
 
 #include <vnet/mfib/mfib_types.h>
+#include <vnet/ip/ip.api_types.h>
 
 /**
  * Forward declare the API type, no need to include the generated api headers
@@ -27,9 +28,11 @@ struct _vl_api_mfib_path;
  * Encode and decode functions from the API types to internal types
  */
 extern void mfib_api_path_encode(const fib_route_path_t *in,
-                                 struct _vl_api_mfib_path *out);
-extern int mfib_api_path_decode(struct _vl_api_mfib_path *in,
+                                 vl_api_mfib_path_t *out);
+extern int mfib_api_path_decode(vl_api_mfib_path_t *in,
                                 fib_route_path_t *out);
+
+extern mfib_entry_flags_t mfib_api_path_entry_flags_decode (vl_api_mfib_entry_flags_t in);
 
 extern int mfib_api_table_id_decode(fib_protocol_t fproto,
                                     u32 table_id,
