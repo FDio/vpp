@@ -304,7 +304,7 @@ define ip_mtable_details
 typedef ip_mroute
 {
   u32 table_id;
-  u32 entry_flags;
+  vl_api_mfib_entry_flags_t entry_flags;
   u32 rpf_id;
   vl_api_mprefix_t prefix;
   u8 n_paths;

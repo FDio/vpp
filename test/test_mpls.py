@@ -7,10 +7,11 @@ from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto, INVALID_INDEX
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsIpBind, VppIpMRoute, VppMRoutePath, \
-    MRouteItfFlags, MRouteEntryFlags, VppIpTable, VppMplsTable, \
+    VppIpTable, VppMplsTable, \
     VppMplsLabel, MplsLspMode, find_mpls_route, \
     FibPathProto, FibPathType, FibPathFlags, VppMplsLabel, MplsLspMode
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
+from vpp_papi import VppEnum
 
 import scapy.compat
 from scapy.packet import Raw
@@ -1282,6 +1283,9 @@ class TestMPLS(VppTestCase):
     def test_mcast_head(self):
         """ MPLS Multicast Head-end """
 
+        MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
+        MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
+
         #
         # Create a multicast tunnel with two replications
         #
@@ -1326,11 +1330,11 @@ class TestMPLS(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
             [VppMRoutePath(self.pg0.sw_if_index,
-                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                           MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT),
              VppMRoutePath(mpls_tun._sw_if_index,
-                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                           MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)])
         route_232_1_1_1.add_vpp_config()
         self.logger.info(self.vapi.cli("sh ip mfib index 0"))
 
@@ -1349,6 +1353,9 @@ class TestMPLS(VppTestCase):
     def test_mcast_ip4_tail(self):
         """ MPLS IPv4 Multicast Tail """
 
+        MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
+        MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
+
         #
         # Add a multicast route that will forward the traffic
         # post-disposition
@@ -1357,10 +1364,10 @@ class TestMPLS(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
             table_id=1,
             paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)])
         route_232_1_1_1.add_vpp_config()
 
         #
@@ -1420,6 +1427,9 @@ class TestMPLS(VppTestCase):
     def test_mcast_ip6_tail(self):
         """ MPLS IPv6 Multicast Tail """
 
+        MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
+        MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
+
         #
         # Add a multicast route that will forward the traffic
         # post-disposition
@@ -1428,10 +1438,10 @@ class TestMPLS(VppTestCase):
             self,
             "::",
             "ff01::1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
             table_id=1,
             paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
+                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
                                  proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         route_ff.add_vpp_config()
 

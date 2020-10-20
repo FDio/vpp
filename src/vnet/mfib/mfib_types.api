@@ -16,6 +16,15 @@
 import "vnet/fib/fib_types.api";
 import "vnet/ip/ip_types.api";
 
+enum mfib_entry_flags
+{
+    MFIB_API_ENTRY_FLAG_NONE = 0,
+    MFIB_API_ENTRY_FLAG_SIGNAL = 0x1,
+    MFIB_API_ENTRY_FLAG_DROP = 0x2,
+    MFIB_API_ENTRY_FLAG_CONNECTED = 0x4,
+    MFIB_API_ENTRY_FLAG_ACCEPT_ALL_ITF = 0x8,
+};
+
 enum mfib_itf_flags
 {
     MFIB_API_ITF_FLAG_NONE = 0,
