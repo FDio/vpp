@@ -262,8 +262,8 @@ send_sw_interface_details (vpe_api_main_t * am,
       ethernet_interface_t *ei;
 
       ei = pool_elt_at_index (em->interfaces, hi->hw_instance);
-      ASSERT (sizeof (mp->l2_address) >= sizeof (ei->address));
-      mac_address_encode ((mac_address_t *) ei->address, mp->l2_address);
+      ASSERT (sizeof (mp->l2_address) >= sizeof (ei->address.mac));
+      mac_address_encode (&ei->address.mac, mp->l2_address);
     }
   else if (swif->sup_sw_if_index != swif->sw_if_index)
     {
@@ -993,7 +993,7 @@ static void vl_api_sw_interface_get_mac_address_t_handler
   rmp->context = mp->context;
   rmp->retval = htonl (rv);
   if (!rv && eth_if)
-    mac_address_encode ((mac_address_t *) eth_if->address, rmp->mac_address);
+    mac_address_encode (&eth_if->address.mac, rmp->mac_address);
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 

@@ -204,7 +204,8 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
 	}
       else
 	{
-	  ip6_link_local_address_from_mac (&il->il_ll_addr, eth->address);
+	  ip6_link_local_address_from_mac (&il->il_ll_addr,
+					   eth->address.mac.bytes);
 	}
 
       {
