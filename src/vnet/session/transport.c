@@ -647,8 +647,8 @@ spacer_max_burst (spacer_t * pacer, clib_us_time_t time_now)
   if (PREDICT_FALSE (n_periods > pacer->idle_timeout_us))
     {
       pacer->last_update = time_now;
-      pacer->bucket = TRANSPORT_PACER_MIN_BURST;
-      return TRANSPORT_PACER_MIN_BURST;
+      pacer->bucket = 5 * TRANSPORT_PACER_MIN_BURST;
+      return pacer->bucket;
     }
 
   if ((inc = (f32) n_periods * pacer->tokens_per_period) > 10)
