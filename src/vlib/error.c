@@ -131,10 +131,11 @@ vlib_register_errors (vlib_main_t * vm,
   if (n->n_errors > 0)
     heap_dealloc (em->counters_heap, n->error_heap_handle);
 
+  n->n_errors = n_errors;
+  n->error_counters = counters;
+
   if (n_errors == 0)
     return;
-
-  n->n_errors = n_errors;
 
   /*  Legacy node */
   if (!counters)
@@ -148,8 +149,6 @@ vlib_register_errors (vlib_main_t * vm,
 	  counters[i].severity = VL_COUNTER_SEVERITY_ERROR;
 	}
     }
-
-  n->error_counters = counters;
 
   n->error_heap_index =
     heap_alloc (em->counters_heap, n_errors, n->error_heap_handle);
