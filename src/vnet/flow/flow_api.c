@@ -25,6 +25,7 @@
 #include <vnet/api_errno.h>
 #include <vnet/flow/flow.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/udp/udp_local.h>
 #include <vnet/tunnel/tunnel_types_api.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/vnet_msg_enum.h>

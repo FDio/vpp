@@ -17,6 +17,7 @@
  */
 #include <vnet/ipfix-export/flow_report.h>
 #include <vnet/api_errno.h>
+#include <vnet/udp/udp.h>
 
 flow_report_main_t flow_report_main;
 
