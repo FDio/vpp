@@ -32,7 +32,6 @@
 #define TCP_FIB_RECHECK_PERIOD	1 * THZ	/**< Recheck every 1s */
 #define TCP_MAX_OPTION_SPACE 40
 #define TCP_CC_DATA_SZ 24
-#define TCP_MAX_GSO_SZ 65536
 #define TCP_RXT_MAX_BURST 10
 
 #define TCP_DUPACK_THRESHOLD 	3

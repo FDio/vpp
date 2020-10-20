@@ -20,7 +20,7 @@
 #include <vnet/gso/gro.h>
 #include <vnet/gso/hdr_offset_parser.h>
 #include <vnet/udp/udp_packet.h>
-#include <vnet/tcp/tcp.h>
+#include <vnet/tcp/tcp_packet.h>
 #include <vnet/vnet.h>
 
 static_always_inline u8
