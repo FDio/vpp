@@ -206,10 +206,10 @@ done:
  * @cliexcmd{set interface ip address GigabitEthernet2/0/0 @::a:1:1:0:7/126}
  *
  * To delete a specific interface ip address:
- * @cliexcmd{set interface ip address GigabitEthernet2/0/0 172.16.2.12/24 del}
+ * @cliexcmd{set interface ip address del GigabitEthernet2/0/0 172.16.2.12/24}
  *
  * To delete all interfaces addresses (IPv4 and IPv6):
- * @cliexcmd{set interface ip address GigabitEthernet2/0/0 del all}
+ * @cliexcmd{set interface ip address del GigabitEthernet2/0/0 all}
  * @endparblock
  ?*/
 /* *INDENT-OFF* */
