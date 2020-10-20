@@ -172,6 +172,7 @@ typedef struct
 #define TCP_MAX_WND_SCALE               14	/* See RFC 1323 */
 #define TCP_OPTS_ALIGN                  4
 #define TCP_OPTS_MAX_SACK_BLOCKS        3
+#define TCP_MAX_GSO_SZ 			65536
 
 /* Modulo arithmetic for TCP sequence numbers */
 #define seq_lt(_s1, _s2) ((i32)((_s1)-(_s2)) < 0)
