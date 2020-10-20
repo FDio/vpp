@@ -525,7 +525,7 @@ udp_unregister_dst_port (vlib_main_t * vm, udp_dst_port_t dst_port, u8 is_ip4)
   n[0] = UDP_NO_NODE_SET;
 }
 
-bool
+u8
 udp_is_valid_dst_port (udp_dst_port_t dst_port, u8 is_ip4)
 {
   udp_main_t *um = &udp_main;

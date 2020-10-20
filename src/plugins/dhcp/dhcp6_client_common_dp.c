@@ -19,7 +19,8 @@
 #include <dhcp/dhcp6_ia_na_client_dp.h>
 #include <dhcp/dhcp6_pd_client_dp.h>
 #include <dhcp/dhcp6_packet.h>
-#include <vnet/udp/udp.h>
+#include <vnet/udp/udp_local.h>
+#include <vnet/udp/udp_packet.h>
 
 dhcp6_client_common_main_t dhcp6_client_common_main;
 dhcpv6_duid_ll_string_t client_duid;

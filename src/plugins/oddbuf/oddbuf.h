@@ -20,7 +20,6 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
-#include <vnet/udp/udp.h>
 #include <vnet/ethernet/ethernet.h>
 
 #include <vppinfra/hash.h>

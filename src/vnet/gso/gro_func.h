@@ -19,6 +19,8 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/gso/gro.h>
 #include <vnet/gso/hdr_offset_parser.h>
+#include <vnet/ip/ip4.h>
+#include <vnet/ip/ip6.h>
 #include <vnet/udp/udp_packet.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/vnet.h>

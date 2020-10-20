@@ -18,6 +18,8 @@
 #ifndef included_nat_inlines_h__
 #define included_nat_inlines_h__
 
+#include <vnet/ip/icmp46_packet.h>
+
 always_inline nat_protocol_t
 ip_proto_to_nat_proto (u8 ip_proto)
 {
