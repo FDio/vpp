@@ -16,6 +16,7 @@
  */
 
 #include <vnet/ipfix-export/flow_report.h>
+#include <vnet/udp/udp.h>
 #include <vlibmemory/api.h>
 #include <vppinfra/atomics.h>
 #include <nat/lib/ipfix_logging.h>
