@@ -230,8 +230,8 @@ pg_interface_enable_disable_coalesce (pg_interface_t * pi, u8 enable,
 }
 
 u32
-pg_interface_add_or_get (pg_main_t * pg, uword if_id, u8 gso_enabled,
-			 u32 gso_size, u8 coalesce_enabled)
+pg_interface_add_or_get (pg_main_t * pg, uword if_id, u32 sw_if_index,
+			 u8 gso_enabled, u32 gso_size, u8 coalesce_enabled)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
@@ -248,23 +248,26 @@ pg_interface_add_or_get (pg_main_t * pg, uword if_id, u8 gso_enabled,
     }
   else
     {
-      u8 hw_addr[6];
-      f64 now = vlib_time_now (vm);
-      u32 rnd;
-
       pool_get (pg->interfaces, pi);
       i = pi - pg->interfaces;
 
-      rnd = (u32) (now * 1e6);
-      rnd = random_u32 (&rnd);
-      clib_memcpy_fast (hw_addr + 2, &rnd, sizeof (rnd));
-      hw_addr[0] = 2;
-      hw_addr[1] = 0xfe;
-
       pi->id = if_id;
-      ethernet_register_interface (vnm, pg_dev_class.index, i, hw_addr,
-				   &pi->hw_if_index, pg_eth_flag_change);
-      hi = vnet_get_hw_interface (vnm, pi->hw_if_index);
+
+      hi = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
+      if (!hi)
+	{
+	  u8 hw_addr[6];
+	  f64 now = vlib_time_now (vm);
+	  u32 rnd = (u32) (now * 1e6);
+	  rnd = random_u32 (&rnd);
+	  clib_memcpy_fast (hw_addr + 2, &rnd, sizeof (rnd));
+	  hw_addr[0] = 2;
+	  hw_addr[1] = 0xfe;
+	  ethernet_register_interface (vnm, pg_dev_class.index, i, hw_addr,
+				       &pi->hw_if_index, pg_eth_flag_change);
+	  hi = vnet_get_hw_interface (vnm, pi->hw_if_index);
+	}
+
       if (gso_enabled)
 	{
 	  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
@@ -511,7 +514,8 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
 
   /* Find an interface to use. */
   s->pg_if_index =
-    pg_interface_add_or_get (pg, s->if_id, 0 /* gso_enabled */ ,
+    pg_interface_add_or_get (pg, s->if_id, s->sw_if_index[VLIB_RX],
+			     0 /* gso_enabled */ ,
 			     0 /* gso_size */ , 0 /* coalesce_enabled */ );
 
   if (s->sw_if_index[VLIB_RX] == ~0)

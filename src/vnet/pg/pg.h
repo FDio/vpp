@@ -371,7 +371,7 @@ void pg_interface_enable_disable_coalesce (pg_interface_t * pi, u8 enable,
 
 /* Find/create free packet-generator interface index. */
 u32 pg_interface_add_or_get (pg_main_t * pg, uword stream_index,
-			     u8 gso_enabled, u32 gso_size,
+			     u32 sw_if_index, u8 gso_enabled, u32 gso_size,
 			     u8 coalesce_enabled);
 
 always_inline pg_node_t *

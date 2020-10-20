@@ -692,7 +692,7 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 	}
     }
 
-  pg_interface_add_or_get (pg, if_id, gso_enabled, gso_size,
+  pg_interface_add_or_get (pg, if_id, ~0, gso_enabled, gso_size,
 			   coalesce_enabled);
 
 done:

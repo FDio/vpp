@@ -1626,8 +1626,8 @@ pg_generate_packets (vlib_node_runtime_t * node,
   pg_interface_t *pi;
   int i;
 
-  pi = pool_elt_at_index (pg->interfaces,
-			  pg->if_id_by_sw_if_index[s->sw_if_index[VLIB_RX]]);
+  pi = pool_elt_at_index (pg->interfaces, s->pg_if_index);
+
   bi0 = s->buffer_indices;
 
   n_packets_in_fifo = pg_stream_fill (pg, s, n_packets_to_generate);
