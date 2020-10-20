@@ -228,7 +228,7 @@ vcl_worker_ctrl_mq (vcl_worker_t * wrk)
 int
 vcl_session_read_ready (vcl_session_t * s)
 {
-  if (PREDICT_FALSE (s->is_vep))
+  if (PREDICT_FALSE (s->flags & VCL_SESSION_F_IS_VEP))
     {
       VDBG (0, "ERROR: session %u: cannot read from an epoll session!",
 	    s->session_index);
@@ -272,7 +272,7 @@ vcl_session_read_ready (vcl_session_t * s)
 int
 vcl_session_write_ready (vcl_session_t * s)
 {
-  if (PREDICT_FALSE (s->is_vep))
+  if (PREDICT_FALSE (s->flags & VCL_SESSION_F_IS_VEP))
     {
       VDBG (0, "session %u [0x%llx]: cannot write to an epoll session!",
 	    s->session_index, s->vpp_handle);
