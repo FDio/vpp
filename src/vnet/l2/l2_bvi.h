@@ -32,7 +32,7 @@ static_always_inline u32
 l2_to_bvi_dmac_check (vnet_hw_interface_t * hi, u8 * dmac,
 		      ethernet_interface_t * ei, u8 have_sec_dmac)
 {
-  mac_address_t *sec_addr;
+  ethernet_interface_address_t *sec_addr;
 
   if (ethernet_mac_address_equal (dmac, hi->hw_address))
     return TO_BVI_ERR_OK;
@@ -41,7 +41,7 @@ l2_to_bvi_dmac_check (vnet_hw_interface_t * hi, u8 * dmac,
     {
       vec_foreach (sec_addr, ei->secondary_addrs)
       {
-	if (ethernet_mac_address_equal (dmac, (u8 *) sec_addr))
+	if (ethernet_mac_address_equal (dmac, sec_addr->mac.bytes))
 	  return TO_BVI_ERR_OK;
       }
     }

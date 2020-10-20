@@ -265,7 +265,7 @@ bond_member_add_del_mac_addrs (bond_if_t * bif, u32 mif_sw_if_index,
 {
   vnet_main_t *vnm = vnet_get_main ();
   ethernet_interface_t *b_ei;
-  mac_address_t *sec_mac;
+  ethernet_interface_address_t *sec_mac;
   vnet_hw_interface_t *s_hwif;
 
   b_ei = ethernet_get_interface (&ethernet_main, bif->hw_if_index);
@@ -276,7 +276,7 @@ bond_member_add_del_mac_addrs (bond_if_t * bif, u32 mif_sw_if_index,
 
   vec_foreach (sec_mac, b_ei->secondary_addrs)
     vnet_hw_interface_add_del_mac_address (vnm, s_hwif->hw_if_index,
-					   sec_mac->bytes, is_add);
+					   sec_mac->mac.bytes, is_add);
 }
 
 static void

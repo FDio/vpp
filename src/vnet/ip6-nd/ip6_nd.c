@@ -263,7 +263,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 		ethernet_get_interface (&ethernet_main, sw_if0->hw_if_index);
 	      if (eth_if0 && o0)
 		{
-		  clib_memcpy (o0->ethernet_address, eth_if0->address, 6);
+		  clib_memcpy (o0->ethernet_address, &eth_if0->address, 6);
 		  o0->header.type =
 		    ICMP6_NEIGHBOR_DISCOVERY_OPTION_target_link_layer_address;
 		}
@@ -284,7 +284,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	      eth0 = vlib_buffer_get_current (p0);
 	      clib_memcpy (eth0->dst_address, eth0->src_address, 6);
 	      if (eth_if0)
-		clib_memcpy (eth0->src_address, eth_if0->address, 6);
+		clib_memcpy (eth0->src_address, &eth_if0->address, 6);
 
 	      /* Setup input and output sw_if_index for packet */
 	      ASSERT (vnet_buffer (p0)->sw_if_index[VLIB_RX] == sw_if_index0);
