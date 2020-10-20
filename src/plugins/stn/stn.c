@@ -18,9 +18,8 @@
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <vnet/ip/format.h>
+#include <vnet/ip/punt.h>
 #include <vnet/ethernet/packet.h>
-#include <vnet/udp/udp.h>
-#include <vnet/tcp/tcp.h>
 
 stn_main_t stn_main;
 static vlib_node_registration_t stn_ip4_punt;
@@ -313,10 +312,23 @@ int stn_rule_add_del (stn_rule_add_del_args_t *args)
             vnet_feature_enable_disable("ip4-punt", "stn-ip4-punt",
                                         0, 1, 0, 0);
 
-	  udp_punt_unknown(vm, 0, 1);
-	  udp_punt_unknown(vm, 1, 1);
-	  tcp_punt_unknown(vm, 0, 1);
-	  tcp_punt_unknown(vm, 1, 1);
+            punt_reg_t pr = {
+              .punt = {
+                .l4 = {
+                  .af = AF_IP4,
+                  .port = ~0,
+                  .protocol = IP_PROTOCOL_UDP,
+                },
+              },
+              .type = PUNT_TYPE_L4,
+            };
+            vnet_punt_add_del (vm, &pr, 1 /* is_add */);
+            pr.punt.l4.af = AF_IP6;
+            vnet_punt_add_del (vm, &pr, 1 /* is_add */);
+            pr.punt.l4.protocol = IP_PROTOCOL_TCP;
+            vnet_punt_add_del (vm, &pr, 1 /* is_add */);
+            pr.punt.l4.af = AF_IP4;
+            vnet_punt_add_del (vm, &pr, 1 /* is_add */);
 	}
     }
 
