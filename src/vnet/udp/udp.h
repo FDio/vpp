@@ -17,6 +17,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/udp/udp_packet.h>
+#include <vnet/udp/udp_local.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip4.h>
 #include <vnet/ip/ip4_packet.h>
@@ -64,57 +65,6 @@ typedef struct
   u8 flags;				/**< connection flags */
   u16 mss;				/**< connection mss */
 } udp_connection_t;
-
-#define foreach_udp4_dst_port			\
-_ (53, dns)					\
-_ (67, dhcp_to_server)                          \
-_ (68, dhcp_to_client)                          \
-_ (500, ikev2)                                  \
-_ (2152, GTPU)					\
-_ (3784, bfd4)                                  \
-_ (3785, bfd_echo4)                             \
-_ (4341, lisp_gpe)                              \
-_ (4342, lisp_cp)                          	\
-_ (4500, ipsec)                                 \
-_ (4739, ipfix)                                 \
-_ (4789, vxlan)					\
-_ (4789, vxlan6)				\
-_ (48879, vxlan_gbp)				\
-_ (4790, VXLAN_GPE)				\
-_ (6633, vpath_3)				\
-_ (6081, geneve)				\
-_ (53053, dns_reply)
-
-
-#define foreach_udp6_dst_port                   \
-_ (53, dns6)					\
-_ (547, dhcpv6_to_server)                       \
-_ (546, dhcpv6_to_client)			\
-_ (2152, GTPU6)					\
-_ (3784, bfd6)                                  \
-_ (3785, bfd_echo6)                             \
-_ (4341, lisp_gpe6)                             \
-_ (4342, lisp_cp6)                          	\
-_ (48879, vxlan6_gbp)				\
-_ (4790, VXLAN6_GPE)                            \
-_ (6633, vpath6_3)				\
-_ (6081, geneve6)				\
-_ (8138, BIER)		         		\
-_ (53053, dns_reply6)
-
-typedef enum
-{
-#define _(n,f) UDP_DST_PORT_##f = n,
-  foreach_udp4_dst_port foreach_udp6_dst_port
-#undef _
-} udp_dst_port_t;
-
-typedef enum
-{
-#define _(n,f) UDP6_DST_PORT_##f = n,
-  foreach_udp6_dst_port
-#undef _
-} udp6_dst_port_t;
 
 typedef struct
 {
@@ -179,6 +129,9 @@ extern vlib_node_registration_t udp4_input_node;
 extern vlib_node_registration_t udp6_input_node;
 extern vlib_node_registration_t udp4_local_node;
 extern vlib_node_registration_t udp6_local_node;
+
+void udp_add_dst_port (udp_main_t * um, udp_dst_port_t dst_port,
+		       char *dst_port_name, u8 is_ip4);
 
 always_inline udp_connection_t *
 udp_connection_get (u32 conn_index, u32 thread_index)
@@ -282,14 +235,6 @@ format_function_t format_udp_connection;
 unformat_function_t unformat_udp_header;
 unformat_function_t unformat_udp_port;
 
-void udp_add_dst_port (udp_main_t * um, udp_dst_port_t dst_port,
-		       char *dst_port_name, u8 is_ip4);
-void udp_register_dst_port (vlib_main_t * vm,
-			    udp_dst_port_t dst_port,
-			    u32 node_index, u8 is_ip4);
-void udp_unregister_dst_port (vlib_main_t * vm,
-			      udp_dst_port_t dst_port, u8 is_ip4);
-bool udp_is_valid_dst_port (udp_dst_port_t dst_port, u8 is_ip4);
 void udp_connection_share_port (u16 lcl_port, u8 is_ip4);
 
 void udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);

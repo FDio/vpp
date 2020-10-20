@@ -30,7 +30,8 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
-#include <vnet/udp/udp.h>
+#include <vnet/udp/udp_packet.h>
+#include <vnet/udp/udp_local.h>
 #include <vnet/dpo/dpo.h>
 #include <vnet/adj/adj_types.h>
 #include <vnet/fib/fib_table.h>

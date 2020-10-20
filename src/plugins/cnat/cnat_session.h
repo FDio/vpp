@@ -16,7 +16,7 @@
 #ifndef __CNAT_SESSION_H__
 #define __CNAT_SESSION_H__
 
-#include <vnet/udp/udp.h>
+#include <vnet/udp/udp_packet.h>
 
 #include <cnat/cnat_types.h>
 #include <cnat/cnat_client.h>

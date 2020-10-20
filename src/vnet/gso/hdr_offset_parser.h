@@ -17,9 +17,9 @@
 #define included_hdr_offset_parser_h
 
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/udp/udp.h>
+#include <vnet/ip/ip4.h>
+#include <vnet/ip/ip6.h>
+#include <vnet/udp/udp_local.h>
 #include <vnet/udp/udp_packet.h>
 #include <vnet/vnet.h>
 #include <vnet/vxlan/vxlan_packet.h>

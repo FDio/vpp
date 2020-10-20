@@ -30,6 +30,7 @@
 #include <vnet/vxlan/vxlan.h>
 #include <vnet/gre/gre.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <vnet/udp/udp_local.h>
 
 #include <vpp/api/vpe_msg_enum.h>
 #include <vnet/l2/l2_classify.h>

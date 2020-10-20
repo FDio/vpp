@@ -52,6 +52,7 @@
 #include <vnet/feature/feature.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/udp/udp.h>
 #include <vnet/udp/udp_packet.h>
 #include <vnet/devices/devices.h>
 #include <vnet/gso/gro_func.h>

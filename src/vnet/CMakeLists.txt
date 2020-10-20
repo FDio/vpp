@@ -672,6 +672,7 @@ list(APPEND VNET_HEADERS
   udp/udp_error.def
   udp/udp.h
   udp/udp_packet.h
+  udp/udp_local.h
 )
 
 list(APPEND VNET_API_FILES udp/udp.api)
