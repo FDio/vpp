@@ -1823,7 +1823,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   is_ct = vcl_session_is_ct (s);
   mq = wrk->app_event_queue;
   rx_fifo = is_ct ? s->ct_rx_fifo : s->rx_fifo;
-  s->has_rx_evt = 0;
+  s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
 
   if (svm_fifo_is_empty_cons (rx_fifo))
     {
@@ -1931,9 +1931,9 @@ vppcom_session_read_segments (uint32_t session_handle,
 
   is_nonblocking = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
   is_ct = vcl_session_is_ct (s);
-  mq = is_ct ? s->our_evt_q : wrk->app_event_queue;
+  mq = wrk->app_event_queue;
   rx_fifo = s->rx_fifo;
-  s->has_rx_evt = 0;
+  s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
 
   if (is_ct)
     svm_fifo_unset_event (s->rx_fifo);
@@ -2785,12 +2785,13 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	break;
       vcl_fifo_rx_evt_valid_or_break (session);
       session_events = session->vep.ev.events;
-      if (!(EPOLLIN & session->vep.ev.events) || session->has_rx_evt)
+      if (!(EPOLLIN & session->vep.ev.events)
+	  || (session->flags & VCL_SESSION_F_HAS_RX_EVT))
 	break;
       add_event = 1;
       events[*num_ev].events |= EPOLLIN;
       session_evt_data = session->vep.ev.data.u64;
-      session->has_rx_evt = 1;
+      session->flags |= VCL_SESSION_F_HAS_RX_EVT;
       break;
     case SESSION_IO_EVT_TX:
       sid = e->session_index;
