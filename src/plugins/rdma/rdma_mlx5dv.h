@@ -21,7 +21,8 @@
 #undef always_inline
 #include <infiniband/mlx5dv.h>
 #define always_inline static_always_inline
-
+#include <vppinfra/types.h>
+#include <vppinfra/error.h>
 /* CQE flags - bits 16-31 of qword at offset 0x1c */
 #define CQE_FLAG_L4_OK			10
 #define CQE_FLAG_L3_OK			9
@@ -35,6 +36,11 @@
 #define CQE_FLAG_L3_HDR_TYPE_IP6	2
 #define CQE_FLAG_IP_EXT_OPTS		1
 
+/* CQE byte count (Striding RQ) */
+#define CQE_BC_FILLER_MASK (1 << 31)
+#define CQE_BC_CONSUMED_STRIDES_SHIFT (16)
+#define CQE_BC_CONSUMED_STRIDES_MASK (0x3fff << CQE_BC_CONSUMED_STRIDES_SHIFT)
+#define CQE_BC_BYTE_COUNT_MASK (0xffff)
 typedef struct
 {
   struct
@@ -47,7 +53,9 @@ typedef struct
       u32 byte_cnt;
       u32 mini_cqe_num;
     };
-    u8 pad3[15];
+    u8 pad3[12];
+    u16 wqe_counter;
+    u8 signature;
     u8 opcode_cqefmt_se_owner;
   };
 } mlx5dv_cqe_t;
@@ -68,7 +76,15 @@ typedef struct
 {
   u64 dsz_and_lkey;
   u64 addr;
-} mlx5dv_rwq_t;
+} mlx5dv_wqe_ds_t;		/* a WQE data segment */
+
+typedef struct
+{
+  u8 rsvd0[2];
+  u16 next_wqe_index;
+  u8 signature;
+  u8 rsvd1[11];
+} mlx5dv_wqe_srq_next_t;
 
 #define foreach_cqe_rx_field \
   _(0x1c, 26, 26, l4_ok)	\
