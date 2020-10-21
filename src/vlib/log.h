@@ -22,7 +22,7 @@
   _(0, EMERG, emerg) \
   _(1, ALERT, alert) \
   _(2, CRIT, crit) \
-  _(3, ERR, err) \
+  _(3, ERR, error) \
   _(4, WARNING, warn) \
   _(5, NOTICE, notice) \
   _(6, INFO, info) \
@@ -79,7 +79,7 @@ typedef struct
   int default_log_level;
   int default_syslog_log_level;
   int unthrottle_time;
-  u32 indent;
+  u32 max_class_name_length;
 
   /* time zero */
   struct timeval time_zero_timeval;
@@ -93,11 +93,11 @@ vlib_log_class_t vlib_log_register_class (char *vlass, char *subclass);
 vlib_log_class_t
 vlib_log_register_class_rate_limit (char *class, char *subclass,
 				    u32 rate_limit);
-u32 vlib_log_get_indent ();
 void vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
 	       ...);
 int last_log_entry ();
 u8 *format_vlib_log_class (u8 * s, va_list * args);
+u8 *format_vlib_log_level (u8 * s, va_list * args);
 
 #define vlib_log_emerg(...) vlib_log(VLIB_LOG_LEVEL_EMERG, __VA_ARGS__)
 #define vlib_log_alert(...) vlib_log(VLIB_LOG_LEVEL_ALERT, __VA_ARGS__)

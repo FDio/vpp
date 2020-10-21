@@ -862,7 +862,8 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
     d = vlib_pci_get_device_info (vm, addr, &error);
     if (error)
     {
-      clib_error_report (error);
+      vlib_log_warn (dpdk_main.log_default, "%U", format_clib_error, error);
+      clib_error_free (error);
       continue;
     }
 
@@ -1507,7 +1508,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
   vec_terminate_c_string (conf->eal_init_args_str);
 
-  dpdk_log_warn ("EAL init args: %s", conf->eal_init_args_str);
+  dpdk_log_notice ("EAL init args: %s", conf->eal_init_args_str);
   ret = rte_eal_init (vec_len (conf->eal_init_args),
 		      (char **) conf->eal_init_args);
 
@@ -1636,7 +1637,10 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
   error = dpdk_cryptodev_init (vm);
   if (error)
-    clib_error_report (error);
+    {
+      vlib_log_warn (dpdk_main.log_cryptodev, "%U", format_clib_error, error);
+      clib_error_free (error);
+    }
 
   tm->worker_thread_release = 1;
 
@@ -1720,6 +1724,8 @@ dpdk_init (vlib_main_t * vm)
   dm->link_state_poll_interval = DPDK_LINK_POLL_INTERVAL;
 
   dm->log_default = vlib_log_register_class ("dpdk", 0);
+  dm->log_cryptodev = vlib_log_register_class ("dpdk", "cryptodev");
+  dm->log_ipsec = vlib_log_register_class ("dpdk", "ipsec");
 
   return error;
 }

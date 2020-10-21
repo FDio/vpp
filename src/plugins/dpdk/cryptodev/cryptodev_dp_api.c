@@ -1348,10 +1348,7 @@ cryptodev_get_session_sz (vlib_main_t *vm, u32 n_workers)
   u32 sess_data_sz = 0, i;
 
   if (rte_cryptodev_count () == 0)
-    {
-      clib_warning ("Failed");
-      return -1;
-    }
+    return -1;
 
   for (i = 0; i < rte_cryptodev_count (); i++)
     {
