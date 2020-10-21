@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "97efc045_f4378217",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-10-21T23:00:43Z",
+      "side": 1,
+      "message": "I must confess that I am not entirely sure why I need to register a 512GB VM mapping, and define the base virt addr as the beginning of the 256GB slice centered in the 512GB. But with smaller numbers, an overlap invariably occurs with DPDK",
+      "revId": "4a8c14ca5adfd99caee4f35cdc2b4ffc91deabb0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
