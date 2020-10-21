@@ -314,7 +314,7 @@ clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
   return fd;
 }
 
-uword
+__clib_export uword
 clib_mem_vm_reserve (uword start, uword size, clib_mem_page_sz_t log2_page_sz)
 {
   clib_mem_main_t *mm = &clib_mem_main;

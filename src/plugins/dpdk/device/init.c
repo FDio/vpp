@@ -42,7 +42,7 @@
 #include <dpdk/device/dpdk_priv.h>
 
 #define ETHER_MAX_LEN   1518  /**< Maximum frame len, including CRC. */
-
+#define DPDK_RESERVED_MEM (256ULL << 30)
 dpdk_main_t dpdk_main;
 dpdk_config_main_t dpdk_config_main;
 
@@ -1174,6 +1174,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   vlib_pci_addr_t pci_addr;
   unformat_input_t sub_input;
   uword default_hugepage_sz, x;
+  uword base_virtaddr;
   u8 *s, *tmp = 0;
   int ret, i;
   int num_whitelisted = 0;
@@ -1471,6 +1472,18 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   if (socket_mem)
     clib_warning ("socket-mem argument is deprecated");
 
+  /* Reserve some memory for DPDK
+     Trick: Reserve a mapping twice the necessary size,
+     and use the area in the center for DPDK. */
+  if ((base_virtaddr =
+       clib_mem_vm_reserve (0, DPDK_RESERVED_MEM << 1, 30)) != ~(uword) 0)
+    {
+      munmap ((void *) base_virtaddr, DPDK_RESERVED_MEM << 1);
+      base_virtaddr += DPDK_RESERVED_MEM >> 1;
+      tmp = format (0, "--base-virtaddr=0x%lx", base_virtaddr);
+      vec_add1 (conf->eal_init_args, tmp);
+    }
+
   /* NULL terminate the "argv" vector, in case of stupidity */
   vec_add1 (conf->eal_init_args, 0);
   _vec_len (conf->eal_init_args) -= 1;
@@ -1509,6 +1522,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   vec_terminate_c_string (conf->eal_init_args_str);
 
   dpdk_log_notice ("EAL init args: %s", conf->eal_init_args_str);
+
   ret = rte_eal_init (vec_len (conf->eal_init_args),
 		      (char **) conf->eal_init_args);
 
