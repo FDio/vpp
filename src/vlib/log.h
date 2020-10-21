@@ -68,6 +68,14 @@ typedef struct
 
 typedef struct
 {
+  vlib_log_level_t level;
+  vlib_log_level_t syslog_level;
+  int rate_limit;
+  char *name;
+} vlib_log_class_config_t;
+
+typedef struct
+{
   vlib_log_entry_t *entries;
   vlib_log_class_data_t *classes;
   int size, next, count;
@@ -85,6 +93,9 @@ typedef struct
   struct timeval time_zero_timeval;
   f64 time_zero;
 
+  /* config */
+  vlib_log_class_config_t *configs;
+  uword *config_index_by_name;
 } vlib_log_main_t;
 
 extern vlib_log_main_t log_main;
