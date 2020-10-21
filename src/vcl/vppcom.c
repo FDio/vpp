@@ -3683,21 +3683,28 @@ vppcom_session_sendto (uint32_t session_handle, void *buffer,
 
   if (ep)
     {
-      if (s->session_type != VPPCOM_PROTO_UDP
-	  || (s->flags & VCL_SESSION_F_CONNECTED))
+      if (!vcl_session_is_cl (s))
 	return VPPCOM_EINVAL;
 
       /* Session not connected/bound in vpp. Create it by 'connecting' it */
       if (PREDICT_FALSE (s->session_state == VCL_STATE_CLOSED))
 	{
+	  u32 session_index = s->session_index;
+	  f64 timeout = vcm->cfg.session_timeout;
+	  int rv;
+
 	  vcl_send_session_connect (wrk, s);
+	  rv = vppcom_wait_for_session_state_change (session_index,
+						     VCL_STATE_READY,
+						     timeout);
+	  if (rv < 0)
+	    return rv;
+	  s = vcl_session_get (wrk, session_index);
 	}
-      else
-	{
-	  s->transport.is_ip4 = ep->is_ip4;
-	  s->transport.rmt_port = ep->port;
-	  vcl_ip_copy_from_ep (&s->transport.rmt_ip, ep);
-	}
+
+      s->transport.is_ip4 = ep->is_ip4;
+      s->transport.rmt_port = ep->port;
+      vcl_ip_copy_from_ep (&s->transport.rmt_ip, ep);
     }
 
   if (flags)
