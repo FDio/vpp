@@ -287,6 +287,26 @@ vlib_pci_bus_master_enable (vlib_main_t * vm, vlib_pci_dev_handle_t h)
   return vlib_pci_write_config_u16 (vm, h, 4, &command);
 }
 
+static inline clib_error_t *
+vlib_pci_memory_enable (vlib_main_t * vm, vlib_pci_dev_handle_t h)
+{
+  clib_error_t *err;
+  u16 command;
+
+  /* Set memory enable */
+  err = vlib_pci_read_config_u16 (vm, h, 4, &command);
+
+  if (err)
+    return err;
+
+  if (command & PCI_COMMAND_MEMORY)
+    return 0;
+
+  command |= PCI_COMMAND_MEMORY;
+
+  return vlib_pci_write_config_u16 (vm, h, 4, &command);
+}
+
 clib_error_t *vlib_pci_device_open (vlib_main_t * vm, vlib_pci_addr_t * addr,
 				    pci_device_id_t ids[],
 				    vlib_pci_dev_handle_t * handle);

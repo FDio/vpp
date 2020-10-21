@@ -1535,6 +1535,10 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 
   vlib_pci_set_private_data (vm, h, ad->dev_instance);
 
+/* See https://lkml.org/lkml/2020/6/25/628 */
+  if ((error = vlib_pci_memory_enable (vm, h)))
+    goto error;
+
   if ((error = vlib_pci_bus_master_enable (vm, h)))
     goto error;
 
