@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a21da4f5_81a18d49",
+        "filename": "src/vlib/unix/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 611,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-10-21T11:16:34Z",
+      "side": 1,
+      "message": "+nocolor?",
+      "revId": "8d4263e5a9c3a290e4e0acf9dc8102e7d28c4641",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
