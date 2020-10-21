@@ -194,6 +194,17 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
 }
 
 static clib_error_t *
+memif_int_fd_write_ready (clib_file_t * uf)
+{
+  memif_main_t *mm = &memif_main;
+  u16 qid = uf->private_data & 0xFFFF;
+  memif_if_t *mif = vec_elt_at_index (mm->interfaces, uf->private_data >> 16);
+
+  memif_log_warn (mif, "unexpected EPOLLOUT on RX for queue %u", qid);
+  return 0;
+}
+
+static clib_error_t *
 memif_int_fd_read_ready (clib_file_t * uf)
 {
   memif_main_t *mm = &memif_main;
@@ -255,6 +266,7 @@ memif_connect (memif_if_t * mif)
   /* *INDENT-ON* */
 
   template.read_function = memif_int_fd_read_ready;
+  template.write_function = memif_int_fd_write_ready;
 
   /* *INDENT-OFF* */
   vec_foreach_index (i, mif->tx_queues)
