@@ -101,8 +101,13 @@ _time_now_nsec (void)
 static inline void *
 stat_segment_adjust (stat_client_main_t * sm, void *data)
 {
-  return (void *) ((char *) sm->shared_header +
-		   ((char *) data - (char *) sm->shared_header->base));
+  void *p = (void *) ((char *) sm->shared_header +
+		      ((char *) data - (char *) sm->shared_header->base));
+  if ((char *) p > (char *) sm->shared_header &&
+      (((char *) p + sizeof (p)) <
+       ((char *) sm->shared_header + sm->memory_size)))
+    return p;
+  return 0;
 }
 
 /*

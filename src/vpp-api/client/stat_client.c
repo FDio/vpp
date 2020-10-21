@@ -192,6 +192,16 @@ stat_segment_heartbeat (void)
   return stat_segment_heartbeat_r (sm);
 }
 
+#define stat_vec_dup(S,V)                             \
+  ({                                                  \
+  __typeof__ ((V)[0]) * _v(v) = 0;                    \
+  if (V && ((void *)V > (void *)S->shared_header) &&  \
+      (((void*)V + vec_bytes(V)) <                    \
+       ((void *)S->shared_header + S->memory_size)))  \
+    _v(v) = vec_dup(V);                               \
+   _v(v);                                             \
+})
+
 static stat_segment_data_t
 copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
 {
@@ -213,21 +223,21 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
 
     case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
       simple_c = stat_segment_adjust (sm, ep->data);
-      result.simple_counter_vec = vec_dup (simple_c);
+      result.simple_counter_vec = stat_vec_dup (sm, simple_c);
       for (i = 0; i < vec_len (simple_c); i++)
 	{
 	  counter_t *cb = stat_segment_adjust (sm, simple_c[i]);
-	  result.simple_counter_vec[i] = vec_dup (cb);
+	  result.simple_counter_vec[i] = stat_vec_dup (sm, cb);
 	}
       break;
 
     case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
       combined_c = stat_segment_adjust (sm, ep->data);
-      result.combined_counter_vec = vec_dup (combined_c);
+      result.combined_counter_vec = stat_vec_dup (sm, combined_c);
       for (i = 0; i < vec_len (combined_c); i++)
 	{
 	  vlib_counter_t *cb = stat_segment_adjust (sm, combined_c[i]);
-	  result.combined_counter_vec[i] = vec_dup (cb);
+	  result.combined_counter_vec[i] = stat_vec_dup (sm, cb);
 	}
       break;
 
@@ -246,11 +256,11 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
     case STAT_DIR_TYPE_NAME_VECTOR:
       {
 	uint8_t **name_vector = stat_segment_adjust (sm, ep->data);
-	result.name_vector = vec_dup (name_vector);
+	result.name_vector = stat_vec_dup (sm, name_vector);
 	for (i = 0; i < vec_len (name_vector); i++)
 	  {
 	    u8 *name = stat_segment_adjust (sm, name_vector[i]);
-	    result.name_vector[i] = vec_dup (name);
+	    result.name_vector[i] = stat_vec_dup (sm, name);
 	  }
       }
       break;
@@ -289,6 +299,8 @@ stat_segment_data_free (stat_segment_data_t * res)
 	  break;
 	case STAT_DIR_TYPE_ERROR_INDEX:
 	  vec_free (res[i].error_vector);
+	  break;
+	case STAT_DIR_TYPE_SCALAR_INDEX:
 	  break;
 	default:
 	  assert (0);
