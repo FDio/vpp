@@ -1134,8 +1134,20 @@ vlib_pci_map_region_int (vlib_main_t * vm, vlib_pci_dev_handle_t h,
   clib_error_t *error;
   int flags = MAP_SHARED;
   u64 size = 0, offset = 0;
+  u16 command;
 
   pci_log_debug (vm, p, "map region %u to va %p", bar, addr);
+
+  if ((error = vlib_pci_read_config_u16 (vm, h, 4, &command)))
+    return error;
+
+  if (!(command & PCI_COMMAND_MEMORY))
+    {
+      pci_log_debug (vm, p, "setting memory enable bit");
+      command |= PCI_COMMAND_MEMORY;
+      if ((error = vlib_pci_write_config_u16 (vm, h, 4, &command)))
+	return error;
+    }
 
   if ((error = vlib_pci_region (vm, h, bar, &fd, &size, &offset)))
     return error;
