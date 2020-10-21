@@ -187,6 +187,49 @@ vl_api_vmxnet3_dump_t_handler (vl_api_vmxnet3_dump_t * mp)
   vec_free (if_name);
 }
 
+/**
+ * @brief Message handler for vmxnet3_dump API.
+ * @param mp vl_api_vmxnet3_dump_t * mp the api message
+ */
+static void vl_api_sw_vmxnet3_interface_dump_t_handler
+  (vl_api_sw_vmxnet3_interface_dump_t * mp)
+{
+  vmxnet3_main_t *vmxm = &vmxnet3_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_sw_interface_t *swif;
+  vmxnet3_device_t *vd;
+  u8 *if_name = 0;
+  vl_api_registration_t *reg;
+  u32 filter_sw_if_index;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  filter_sw_if_index = htonl (mp->sw_if_index);
+  if ((filter_sw_if_index != ~0) &&
+      (vnet_sw_interface_is_api_valid (vnm, filter_sw_if_index) == 0))
+    goto bad_sw_if_index;
+
+  /* *INDENT-OFF* */
+  pool_foreach (vd, vmxm->devices,
+    ({
+      if ((filter_sw_if_index == ~0) ||
+	  (vd->sw_if_index == filter_sw_if_index))
+	{
+	  swif = vnet_get_sw_interface (vnm, vd->sw_if_index);
+	  if_name = format (if_name, "%U%c", format_vnet_sw_interface_name, vnm,
+			    swif, 0);
+	  send_vmxnet3_details (reg, vd, swif, if_name, mp->context);
+	  _vec_len (if_name) = 0;
+	}
+    }));
+  /* *INDENT-ON* */
+
+  BAD_SW_IF_INDEX_LABEL;
+  vec_free (if_name);
+}
+
 /* set tup the API message handling tables */
 #include <vmxnet3/vmxnet3.api.c>
 clib_error_t *

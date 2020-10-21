@@ -15,7 +15,7 @@
  *------------------------------------------------------------------
  */
 
-option version = "1.1.0";
+option version = "1.2.0";
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
 
@@ -148,8 +148,52 @@ define vmxnet3_details
 */
 define vmxnet3_dump
 {
+  option deprecated;
   u32 client_index;
   u32 context;
+};
+
+/** \brief Dump vmxnet3 interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param vl_api_interface_index_t sw_if_index [default=0xffffffff];
+*/
+define sw_vmxnet3_interface_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
+};
+
+/** \brief Reply for vmxnet3_interface_dump
+    @param context - sender context, to match reply w/ request (memif_dump)
+    @param sw_if_index - index of the interface
+    @param if_name - name of the interface
+    @param hw_addr - interface MAC address
+    @param pci_addr - pci address of the interface
+    @param version - vmxnet3 hardware version
+    @param admin_up_down - interface administrative status
+    @param rx_count - number of elements in rx_list
+    @param rx_list - list of vmxnet3_rx_list
+    @param tx_count - number of elements in tx_list
+    @param tx_list - list of vmnxnet3_tx_list
+*/
+define sw_vmxnet3_interface_details
+{
+  u32 context;
+
+  vl_api_interface_index_t sw_if_index;
+  string if_name[64];
+  vl_api_mac_address_t hw_addr;
+  u32 pci_addr;
+  u8 version;
+  bool admin_up_down;
+
+  u8 rx_count;
+  vl_api_vmxnet3_rx_list_t rx_list[16];
+
+  u8 tx_count;
+  vl_api_vmxnet3_tx_list_t tx_list[8];
 };
 
 /*
