@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1b72380a_c599e131",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-10-21T09:49:29Z",
+      "side": 1,
+      "message": "maybe rename this counter as it concerns both gro and buffering? Eg. something like \u0027interrupt_mode_count\u0027?",
+      "revId": "68b61ffcf3107232af4a007835b8dbc35535407d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
