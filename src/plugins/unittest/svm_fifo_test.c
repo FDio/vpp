@@ -190,11 +190,13 @@ static svm_fifo_t *
 fifo_prepare (fifo_segment_t * fs, u32 fifo_size)
 {
   svm_fifo_t *f;
+  svm_fifo_chunk_t *c;
 
   f = fifo_segment_alloc_fifo (fs, fifo_size, FIFO_SEGMENT_RX_FIFO);
 
-  /* Paint fifo data vector with -1's */
-  clib_memset (svm_fifo_head_chunk (f)->data, 0xFF, fifo_size);
+  /* Paint 1st fifo chunk with -1's */
+  c = svm_fifo_head_chunk (f);
+  clib_memset (c->data, 0xFF, c->length);
 
   svm_fifo_init_ooo_lookup (f, 1 /* deq ooo */ );
   return f;
@@ -2726,8 +2728,8 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
   int res = 0;
   char *str;
 
-  clib_warning ("high mem %lu", HIGH_SEGMENT_BASEVA << 1);
-  fifo_segment_main_init (&segment_main, HIGH_SEGMENT_BASEVA << 1, 5);
+  clib_warning ("high mem %lu", HIGH_SEGMENT_BASEVA);
+  fifo_segment_main_init (&segment_main, HIGH_SEGMENT_BASEVA, 5);
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "fifo1"))
