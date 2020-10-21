@@ -19,7 +19,7 @@ PLATFORM?=vpp
 SAMPLE_PLUGIN?=no
 STARTUP_DIR?=$(PWD)
 MACHINE=$(shell uname -m)
-SUDO?=sudo
+SUDO?=sudo -E
 DPDK_CONFIG?=no-pci
 
 ,:=,
