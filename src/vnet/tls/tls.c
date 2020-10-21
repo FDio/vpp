@@ -573,6 +573,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
   ctx->parent_app_wrk_index = sep->app_wrk_index;
   ctx->parent_app_api_context = sep->opaque;
   ctx->tcp_is_ip4 = sep->is_ip4;
+  ctx->ckpair_index = sep->ckpair_index;
   if (sep->hostname)
     {
       ctx->srv_hostname = format (0, "%v", sep->hostname);
