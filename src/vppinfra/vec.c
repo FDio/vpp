@@ -134,7 +134,7 @@ vec_resize_allocate_memory (void *v,
   return v + header_bytes;
 }
 
-uword
+__clib_export uword
 clib_mem_is_vec_h (void *v, uword header_bytes)
 {
   return clib_mem_is_heap_object (vec_header (v, header_bytes));
