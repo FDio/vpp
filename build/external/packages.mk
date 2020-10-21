@@ -79,7 +79,7 @@ $(B)/.$1.patch.ok: $(B)/.$1.extract.ok
 ifneq ($$(wildcard $$($1_patch_dir)/*.patch),)
 	@for f in $$($1_patch_dir)/*.patch ; do \
 		echo "Applying patch: $$$$(basename $$$$f)" ; \
-		patch -p1 -d $$($1_src_dir) < $$$$f ; \
+		patch -p1 -d $$($1_src_dir) --no-backup-if-mismatch < $$$$f ; \
 	done
 endif
 	@touch $$@
