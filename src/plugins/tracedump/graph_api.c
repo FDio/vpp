@@ -254,8 +254,6 @@ graph_api_hookup (vlib_main_t * vm)
 
   am->is_mp_safe[gmp->msg_id_base + VL_API_GRAPH_NODE_GET] = 1;
 
-  am->is_autoendian[gmp->msg_id_base + VL_API_GRAPH_NODE_DETAILS] = 1;
-
   return 0;
 }
 
