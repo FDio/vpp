@@ -472,6 +472,7 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
   else
     mm->first_map = hdr;
 
+  CLIB_MEM_UNPOISON (hdr, sys_page_sz);
   hdr->next = 0;
   hdr->prev = mm->last_map;
   mm->last_map = hdr;
