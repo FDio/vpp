@@ -402,6 +402,8 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	um->flags |= UNIX_FLAG_NODAEMON;
       else if (unformat (input, "nosyslog"))
 	um->flags |= UNIX_FLAG_NOSYSLOG;
+      else if (unformat (input, "nocolor"))
+	um->flags |= UNIX_FLAG_NOCOLOR;
       else if (unformat (input, "cli-prompt %s", &cli_prompt))
 	vlib_unix_cli_set_prompt (cli_prompt);
       else
