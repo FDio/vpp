@@ -210,7 +210,9 @@ format_clib_error (u8 * s, va_list * va)
 	vec_free (where);
       }
 
-    s = format (s, "%v\n", e->what);
+    s = format (s, "%v", e->what);
+    if ((vec_end (errors) - 1) != e)
+      s = format (s, "\n");
   }
 
   return s;

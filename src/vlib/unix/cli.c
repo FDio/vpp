@@ -1263,9 +1263,9 @@ unix_cli_file_welcome (unix_cli_main_t * cm, unix_cli_file_t * cf)
    */
   unix_cli_add_pending_output (uf, cf, (u8 *) "\r", 1);
 
-  if (!um->cli_no_banner)
+  if (!um->cli_no_banner && (um->flags & UNIX_FLAG_NOBANNER) == 0)
     {
-      if (cf->ansi_capable)
+      if (cf->ansi_capable && (um->flags & UNIX_FLAG_NOCOLOR) == 0)
 	{
 	  banner = unix_cli_banner_color;
 	  len = ARRAY_LEN (unix_cli_banner_color);

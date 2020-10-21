@@ -1250,7 +1250,7 @@ dhcp_client_init (vlib_main_t * vm)
   dcm->seed = (u32) clib_cpu_time_now ();
 
   dhcp_logger = vlib_log_register_class ("dhcp", "client");
-  DHCP_INFO ("plugin initialized");
+  DHCP_DBG ("plugin initialized");
 
   return 0;
 }

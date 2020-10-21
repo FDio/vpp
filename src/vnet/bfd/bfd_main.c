@@ -1983,34 +1983,28 @@ u8 *
 format_bfd_session (u8 * s, va_list * args)
 {
   const bfd_session_t *bs = va_arg (*args, bfd_session_t *);
-  u32 indent = format_get_indent (s) + vlib_log_get_indent ();
   s = format (s, "bs_idx=%u local-state=%s remote-state=%s\n"
-	      "%Ulocal-discriminator=%u remote-discriminator=%u\n"
-	      "%Ulocal-diag=%s echo-active=%s\n"
-	      "%Udesired-min-tx=%u required-min-rx=%u\n"
-	      "%Urequired-min-echo-rx=%u detect-mult=%u\n"
-	      "%Uremote-min-rx=%u remote-min-echo-rx=%u\n"
-	      "%Uremote-demand=%s poll-state=%s\n"
-	      "%Uauth: local-seq-num=%u remote-seq-num=%u\n"
-	      "%U      is-delayed=%s\n"
-	      "%U      curr-key=%U\n"
-	      "%U      next-key=%U",
+	      "local-discriminator=%u remote-discriminator=%u\n"
+	      "local-diag=%s echo-active=%s\n"
+	      "desired-min-tx=%u required-min-rx=%u\n"
+	      "required-min-echo-rx=%u detect-mult=%u\n"
+	      "remote-min-rx=%u remote-min-echo-rx=%u\n"
+	      "remote-demand=%s poll-state=%s\n"
+	      "auth: local-seq-num=%u remote-seq-num=%u\n"
+	      "      is-delayed=%s\n"
+	      "      curr-key=%U\n"
+	      "      next-key=%U",
 	      bs->bs_idx, bfd_state_string (bs->local_state),
-	      bfd_state_string (bs->remote_state), format_white_space, indent,
-	      bs->local_discr, bs->remote_discr, format_white_space, indent,
-	      bfd_diag_code_string (bs->local_diag),
-	      (bs->echo ? "yes" : "no"), format_white_space, indent,
-	      bs->config_desired_min_tx_usec, bs->config_required_min_rx_usec,
-	      format_white_space, indent, 1, bs->local_detect_mult,
-	      format_white_space, indent, bs->remote_min_rx_usec,
-	      bs->remote_min_echo_rx_usec, format_white_space, indent,
+	      bfd_state_string (bs->remote_state), bs->local_discr,
+	      bs->remote_discr, bfd_diag_code_string (bs->local_diag),
+	      (bs->echo ? "yes" : "no"), bs->config_desired_min_tx_usec,
+	      bs->config_required_min_rx_usec, 1, bs->local_detect_mult,
+	      bs->remote_min_rx_usec, bs->remote_min_echo_rx_usec,
 	      (bs->remote_demand ? "yes" : "no"),
-	      bfd_poll_state_string (bs->poll_state), format_white_space,
-	      indent, bs->auth.local_seq_number, bs->auth.remote_seq_number,
-	      format_white_space, indent,
-	      (bs->auth.is_delayed ? "yes" : "no"), format_white_space,
-	      indent, format_bfd_auth_key, bs->auth.curr_key,
-	      format_white_space, indent, format_bfd_auth_key,
+	      bfd_poll_state_string (bs->poll_state),
+	      bs->auth.local_seq_number, bs->auth.remote_seq_number,
+	      (bs->auth.is_delayed ? "yes" : "no"),
+	      format_bfd_auth_key, bs->auth.curr_key, format_bfd_auth_key,
 	      bs->auth.next_key);
   return s;
 }
