@@ -234,7 +234,18 @@ vlib_log_register_class_internal (char *class, char *subclass, u32 limit)
   vlib_log_class_data_t *c = NULL;
   vlib_log_subclass_data_t *s;
   vlib_log_class_data_t *tmp;
+  vlib_log_class_config_t *cc = 0, *scc = 0;
+  uword *p;
+  u8 *str;
   u32 length = 0;
+
+  if ((p = hash_get_mem (lm->config_index_by_name, class)))
+    cc = vec_elt_at_index (lm->configs, p[0]);
+
+  str = format (0, "%s/%s%c", class, subclass, 0);
+  if ((p = hash_get_mem (lm->config_index_by_name, (char *) str)))
+    scc = vec_elt_at_index (lm->configs, p[0]);
+  vec_free (str);
 
   vec_foreach (tmp, lm->classes)
   {
@@ -257,9 +268,30 @@ vlib_log_register_class_internal (char *class, char *subclass, u32 limit)
   vec_add2 (c->subclasses, s, 1);
   s->index = s - c->subclasses;
   s->name = subclass ? format (0, "%s", subclass) : 0;
-  s->rate_limit = (limit == 0) ? lm->default_rate_limit : limit;
-  s->level = lm->default_log_level;
-  s->syslog_level = lm->default_syslog_log_level;
+
+  if (scc && scc->rate_limit != ~0)
+    s->rate_limit = scc->rate_limit;
+  else if (cc && cc->rate_limit != ~0)
+    s->rate_limit = cc->rate_limit;
+  else if (limit)
+    s->rate_limit = limit;
+  else
+    s->rate_limit = lm->default_rate_limit;
+
+  if (scc && scc->level != ~0)
+    s->level = scc->level;
+  else if (cc && cc->level != ~0)
+    s->level = cc->level;
+  else
+    s->level = lm->default_log_level;
+
+  if (scc && scc->syslog_level != ~0)
+    s->syslog_level = scc->syslog_level;
+  else if (cc && cc->syslog_level != ~0)
+    s->syslog_level = cc->syslog_level;
+  else
+    s->syslog_level = lm->default_syslog_log_level;
+
   if (subclass)
     length += 1 + vec_len (s->name);
   if (length > lm->max_class_name_length)
@@ -712,9 +744,50 @@ VLIB_CLI_COMMAND (cli_test_log, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
+log_config_class (vlib_main_t * vm, char *name, unformat_input_t * input)
+{
+  vlib_log_main_t *lm = &log_main;
+  vlib_log_class_config_t *cc, tmp;
+  uword *p;
+
+  if (lm->config_index_by_name == 0)
+    lm->config_index_by_name = hash_create_string (0, sizeof (uword));
+
+  p = hash_get_mem (lm->config_index_by_name, name);
+
+  if (p)
+    return clib_error_return (0, "logging class '%s' already configured",
+			      name);
+
+  clib_memset_u8 (&tmp, 0xff, sizeof (vlib_log_class_config_t));
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "level %U", unformat_vlib_log_level, &tmp.level))
+	;
+      else if (unformat (input, "syslog-level %U", unformat_vlib_log_level,
+			 &tmp.syslog_level))
+	;
+      else if (unformat (input, "rate-limit %u", &tmp.rate_limit))
+	;
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, input);
+    }
+
+  vec_add2 (lm->configs, cc, 1);
+  clib_memcpy_fast (cc, &tmp, sizeof (vlib_log_class_config_t));
+  cc->name = name;
+  hash_set_mem (lm->config_index_by_name, name, cc - lm->configs);
+  return 0;
+}
+
+static clib_error_t *
 log_config (vlib_main_t * vm, unformat_input_t * input)
 {
   vlib_log_main_t *lm = &log_main;
+  unformat_input_t sub_input;
+  u8 *class = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -729,6 +802,16 @@ log_config (vlib_main_t * vm, unformat_input_t * input)
 			 unformat_vlib_log_level,
 			 &lm->default_syslog_log_level))
 	;
+      else if (unformat (input, "class %s %U", &class,
+			 unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  clib_error_t *err;
+	  err = log_config_class (vm, (char *) class, &sub_input);
+	  class = 0;
+	  unformat_free (&sub_input);
+	  if (err)
+	    return err;
+	}
       else
 	{
 	  return unformat_parse_error (input);
