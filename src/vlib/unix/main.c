@@ -402,6 +402,10 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	um->flags |= UNIX_FLAG_NODAEMON;
       else if (unformat (input, "nosyslog"))
 	um->flags |= UNIX_FLAG_NOSYSLOG;
+      else if (unformat (input, "nocolor"))
+	um->flags |= UNIX_FLAG_NOCOLOR;
+      else if (unformat (input, "nobanner"))
+	um->flags |= UNIX_FLAG_NOBANNER;
       else if (unformat (input, "cli-prompt %s", &cli_prompt))
 	vlib_unix_cli_set_prompt (cli_prompt);
       else
@@ -575,6 +579,12 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
  * Do not send e.g. clib_warning(...) output to syslog. Used
  * when invoking VPP applications from a process monitor which
  * pipe stdout/stderr to a dedicated logger service.
+ *
+ * @cfgcmd{nocolor}
+ * Do not use colors in outputs.
+ * *
+ * @cfgcmd{nobanner}
+ * Do not display startup banner.
  *
  * @cfgcmd{exec, &lt;filename&gt;}
  * @par <code>startup-config &lt;filename&gt;</code>

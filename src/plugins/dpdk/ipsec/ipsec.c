@@ -17,6 +17,7 @@
 #include <vnet/api_errno.h>
 #include <vnet/ipsec/ipsec.h>
 #include <vlib/node_funcs.h>
+#include <vlib/log.h>
 
 #include <dpdk/device/dpdk.h>
 #include <dpdk/buffer.h>
@@ -1028,7 +1029,8 @@ dpdk_ipsec_main_init (vlib_main_t * vm)
 
   if (!(dcm->enabled))
     {
-      clib_warning ("not enough DPDK crypto resources, default to OpenSSL");
+      vlib_log_warn (dpdk_main.log_default,
+		     "not enough DPDK crypto resources");
       crypto_disable ();
       return 0;
     }

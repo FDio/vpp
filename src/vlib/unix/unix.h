@@ -60,6 +60,8 @@ typedef struct
 #define UNIX_FLAG_INTERACTIVE (1 << 0)
 #define UNIX_FLAG_NODAEMON (1 << 1)
 #define UNIX_FLAG_NOSYSLOG (1 << 2)
+#define UNIX_FLAG_NOCOLOR (1 << 3)
+#define UNIX_FLAG_NOBANNER (1 << 4)
 
 
   /* CLI listen socket. */

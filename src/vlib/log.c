@@ -16,6 +16,7 @@
 #include <stdbool.h>
 #include <vlib/vlib.h>
 #include <vlib/log.h>
+#include <vlib/unix/unix.h>
 #include <syslog.h>
 
 vlib_log_main_t log_main = {
@@ -24,6 +25,17 @@ vlib_log_main_t log_main = {
   .unthrottle_time = 3,
   .size = 512,
   .default_rate_limit = 50,
+};
+
+static const int colors[] = {
+  [VLIB_LOG_LEVEL_EMERG] = 1,	/* red */
+  [VLIB_LOG_LEVEL_ALERT] = 1,	/* red */
+  [VLIB_LOG_LEVEL_CRIT] = 1,	/* red */
+  [VLIB_LOG_LEVEL_ERR] = 1,	/* red */
+  [VLIB_LOG_LEVEL_WARNING] = 3,	/* yellow */
+  [VLIB_LOG_LEVEL_NOTICE] = 2,	/* green */
+  [VLIB_LOG_LEVEL_INFO] = 4,	/* blue */
+  [VLIB_LOG_LEVEL_DEBUG] = 6,	/* cyan */
 };
 
 int
@@ -82,6 +94,34 @@ format_vlib_log_class (u8 * s, va_list * args)
     return format (s, "%v", c->name, 0);
 }
 
+u8 *
+format_indent (u8 * s, va_list * args)
+{
+  u8 *v = va_arg (*args, u8 *);
+  u32 indent = va_arg (*args, u32);
+  u8 *c;
+
+  /* *INDENT-OFF* */
+  vec_foreach (c, v)
+    {
+      vec_add (s, c, 1);
+      if (c[0] == '\n')
+	for (u32 i = 0; i < indent; i++)
+	  vec_add1 (s, (u8) ' ');
+    }
+  /* *INDENT-ON* */
+  return s;
+}
+
+static int
+log_level_is_enabled (vlib_log_level_t level, vlib_log_level_t configured)
+{
+  if (configured == VLIB_LOG_LEVEL_DISABLED)
+    return 0;
+  if (level > configured)
+    return 0;
+  return 1;
+}
 
 void
 vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
@@ -93,19 +133,18 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
   va_list va;
   f64 t = vlib_time_now (vm);
   f64 delta = t - sc->last_event_timestamp;
+  int log_enabled = log_level_is_enabled (level, sc->level);
+  int syslog_enabled = log_level_is_enabled (level, sc->syslog_level);
   u8 *s = 0;
-  bool use_formatted_log_entry = true;
 
-  vec_validate (lm->entries, lm->size);
   /* make sure we are running on the main thread to avoid use in dataplane
      code, for dataplane logging consider use of event-logger */
   ASSERT (vlib_get_thread_index () == 0);
 
-  if (level > sc->level)
-    {
-      use_formatted_log_entry = false;
-      goto syslog;
-    }
+  if ((log_enabled || syslog_enabled) == 0)
+    return;
+
+  vec_validate (lm->entries, lm->size);
 
   if ((delta > lm->unthrottle_time) ||
       (sc->is_throttling == 0 && (delta > 1)))
@@ -122,7 +161,7 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
       else if (sc->last_sec_count == sc->rate_limit)
 	{
 	  vec_reset_length (s);
-	  s = format (0, "--- message(s) throttled ---");
+	  s = format (s, "--- message(s) throttled ---");
 	  sc->is_throttling = 1;
 	}
     }
@@ -134,42 +173,58 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
       va_end (va);
     }
 
-  e = vec_elt_at_index (lm->entries, lm->next);
-  vec_free (e->string);
-  e->level = level;
-  e->class = class;
-  e->string = s;
-  e->timestamp = t;
-
-  lm->next = (lm->next + 1) % lm->size;
-  if (lm->size > lm->count)
-    lm->count++;
-
-syslog:
-  if (sc->syslog_level != VLIB_LOG_LEVEL_DISABLED &&
-      level <= sc->syslog_level)
+  if (syslog_enabled)
     {
-      u8 *tmp = format (NULL, "%U", format_vlib_log_class, class);
-      if (use_formatted_log_entry)
+      u8 *l = 0;
+      if (unix_main.flags & (UNIX_FLAG_INTERACTIVE | UNIX_FLAG_NOSYSLOG))
 	{
-	  syslog (vlib_log_level_to_syslog_priority (level), "%.*s: %.*s",
-		  (int) vec_len (tmp), tmp,
-		  (int) (vec_len (s) -
-			 (vec_c_string_is_terminated (s) ? 1 : 0)), s);
+	  int indent = 0;
+	  int with_colors = (unix_main.flags & UNIX_FLAG_NOCOLOR) == 0;
+	  u8 *fmt;
+	  if (with_colors)
+	    {
+	      l = format (l, "\x1b[%um", 90 + colors[level]);
+	      indent = vec_len (l);
+	    }
+	  fmt = format (0, "%%-%uU [%%-6U]: ", lm->max_class_name_length);
+	  l = format (l, (char *) fmt, format_vlib_log_class, class,
+		      format_vlib_log_level, level);
+	  vec_free (fmt);
+	  indent = vec_len (l) - indent;
+	  if (with_colors)
+	    l = format (l, "\x1b[0m");
+	  l = format (l, "%U", format_indent, s, indent);
+	  fformat (stderr, "%v\n", l);
+	  fflush (stderr);
 	}
       else
 	{
-	  tmp = format (tmp, ": ");
-	  va_start (va, fmt);
-	  tmp = va_format (tmp, fmt, &va);
-	  va_end (va);
-	  syslog (vlib_log_level_to_syslog_priority (level), "%.*s",
-		  (int) (vec_len (tmp) -
-			 (vec_c_string_is_terminated (tmp) ? 1 : 0)), tmp);
+	  l = format (l, "%U", format_vlib_log_class, class);
+	  int prio = vlib_log_level_to_syslog_priority (level);
+	  int is_term = vec_c_string_is_terminated (l) ? 1 : 0;
+
+	  syslog (prio, "%.*s: %.*s", (int) vec_len (l), l,
+		  (int) vec_len (s) - is_term, s);
 	}
-      vec_free (tmp);
+      vec_free (l);
     }
 
+  if (log_enabled)
+    {
+      e = vec_elt_at_index (lm->entries, lm->next);
+      vec_free (e->string);
+      e->level = level;
+      e->class = class;
+      e->string = s;
+      e->timestamp = t;
+      s = 0;
+
+      lm->next = (lm->next + 1) % lm->size;
+      if (lm->size > lm->count)
+	lm->count++;
+    }
+
+  vec_free (s);
 }
 
 static vlib_log_class_t
@@ -179,6 +234,8 @@ vlib_log_register_class_internal (char *class, char *subclass, u32 limit)
   vlib_log_class_data_t *c = NULL;
   vlib_log_subclass_data_t *s;
   vlib_log_class_data_t *tmp;
+  u32 length = 0;
+
   vec_foreach (tmp, lm->classes)
   {
     if (vec_len (tmp->name) != strlen (class))
@@ -194,6 +251,7 @@ vlib_log_register_class_internal (char *class, char *subclass, u32 limit)
       vec_add2 (lm->classes, c, 1);
       c->index = c - lm->classes;
       c->name = format (0, "%s", class);
+      length = vec_len (c->name);
     }
 
   vec_add2 (c->subclasses, s, 1);
@@ -202,6 +260,10 @@ vlib_log_register_class_internal (char *class, char *subclass, u32 limit)
   s->rate_limit = (limit == 0) ? lm->default_rate_limit : limit;
   s->level = lm->default_log_level;
   s->syslog_level = lm->default_syslog_log_level;
+  if (subclass)
+    length += 1 + vec_len (s->name);
+  if (length > lm->max_class_name_length)
+    lm->max_class_name_length = length;
   return (c->index << 16) | (s->index);
 }
 
@@ -236,12 +298,6 @@ format_vlib_log_level (u8 * s, va_list * args)
   return format (s, "%s", t);
 }
 
-u32
-vlib_log_get_indent ()
-{
-  return log_main.indent;
-}
-
 static clib_error_t *
 vlib_log_init (vlib_main_t * vm)
 {
@@ -252,10 +308,6 @@ vlib_log_init (vlib_main_t * vm)
 
   vec_validate (lm->entries, lm->size);
   lm->log_class = vlib_log_register_class ("log", 0);
-  u8 *tmp = format (NULL, "%U %-10U %-10U ", format_time_float, 0, (f64) 0,
-		    format_white_space, 255, format_white_space, 255);
-  log_main.indent = vec_len (tmp);
-  vec_free (tmp);
   return 0;
 }
 
