@@ -282,7 +282,8 @@ stat_set_simple_counter (stat_segment_directory_entry_t * ep,
 			 u32 thread_index, u32 index, u64 value)
 {
   ASSERT (ep->data);
-  counter_t *cb = ep->data;
+  counter_t **counters = ep->data;
+  counter_t *cb = counters[thread_index];
   cb[index] = value;
 }
 
