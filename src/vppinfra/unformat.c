@@ -835,7 +835,7 @@ unformat_skip_white_space (unformat_input_t * input)
   return n;
 }
 
-uword
+__clib_export uword
 va_unformat (unformat_input_t * input, const char *fmt, va_list * va)
 {
   const char *f;
