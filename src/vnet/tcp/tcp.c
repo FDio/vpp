@@ -916,7 +916,10 @@ tcp_snd_space_inline (tcp_connection_t * tc)
 {
   int snd_space;
 
-  if (PREDICT_FALSE (tcp_in_fastrecovery (tc)
+  /* Fast path is disabled when recovery is on. @ref tcp_session_custom_tx
+   * controls both retransmits and the sending of new data while congested
+   */
+  if (PREDICT_FALSE (tcp_in_cong_recovery (tc)
 		     || tc->state == TCP_STATE_CLOSED))
     return 0;
 
