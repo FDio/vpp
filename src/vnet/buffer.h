@@ -453,12 +453,13 @@ typedef struct
   u16 gso_l4_hdr_sz;
 
   /* The union below has a u64 alignment, so this space is unused */
-  u32 __unused2[1];
+  u16 __unused2[1];
 
   struct
   {
     u32 arc_next;
     u32 ed_out2in_nat_session_index;
+    u16 thread_next;
   } nat;
 
   union
