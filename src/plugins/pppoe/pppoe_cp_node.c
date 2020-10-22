@@ -158,6 +158,12 @@ VLIB_NODE_FN (pppoe_cp_dispatch_node) (vlib_main_t * vm,
             }
           else
             {
+              if (PREDICT_FALSE (tx_sw_if_index0 == ~0))
+    	        {
+    	          error0 = PPPOE_ERROR_NO_CP_IF_CONFIGURED;
+    	          next0 = PPPOE_INPUT_NEXT_DROP;
+    	          goto trace00;
+    	        }
     	      pppoe_lookup_1 (&pem->link_table, &cached_key, &cached_result,
     			      h0->src_address, 0,
     			      &key0, &bucket0, &result0);
