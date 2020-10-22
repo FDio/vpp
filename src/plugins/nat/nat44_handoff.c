@@ -33,25 +33,11 @@ typedef struct
   u8 output;
 } nat44_handoff_trace_t;
 
-#define foreach_nat44_handoff_error                       \
-_(CONGESTION_DROP, "congestion drop")                     \
-_(SAME_WORKER, "same worker")                             \
-_(DO_HANDOFF, "do handoff")
-
-typedef enum
-{
-#define _(sym,str) NAT44_HANDOFF_ERROR_##sym,
-  foreach_nat44_handoff_error
-#undef _
-    NAT44_HANDOFF_N_ERROR,
-} nat44_handoff_error_t;
-
 static char *nat44_handoff_error_strings[] = {
 #define _(sym,string) string,
   foreach_nat44_handoff_error
 #undef _
 };
-
 
 static u8 *
 format_nat44_handoff_trace (u8 * s, va_list * args)
