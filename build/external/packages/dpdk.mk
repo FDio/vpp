@@ -148,7 +148,9 @@ DPDK_MESON_ARGS = \
 	"-Ddisable_libs=$(DPDK_LIBS_DISABLED)" \
 	-Db_pie=true \
 	-Dmachine=$(DPDK_MACHINE) \
-	--buildtype=$(DPDK_BUILD_TYPE) 
+	--buildtype=$(DPDK_BUILD_TYPE)
+
+PIP_DOWNLOAD_DIR = $(CURDIR)/downloads/
 
 define dpdk_config_cmds
 	cd $(dpdk_build_dir) && \
@@ -156,7 +158,8 @@ define dpdk_config_cmds
 	mkdir -p ../dpdk-meson-venv && \
 	python3 -m venv ../dpdk-meson-venv && \
 	source ../dpdk-meson-venv/bin/activate && \
-	pip3 install meson==0.54 && \
+	(if ! ls $(PIP_DOWNLOAD_DIR)meson* ; then pip3 download -d $(PIP_DOWNLOAD_DIR) -f $(DL_CACHE_DIR) meson==0.54 setuptools wheel; fi) && \
+	pip3 install --no-index --find-links=$(PIP_DOWNLOAD_DIR) meson==0.54 && \
 	meson setup $(dpdk_src_dir) \
 		$(dpdk_build_dir) \
 		$(DPDK_MESON_ARGS) \
@@ -182,8 +185,7 @@ define dpdk_install_cmds
 	cd $(dpdk_install_dir)/lib && \
 	echo "GROUP ( $$(ls librte*.a ) )" > libdpdk.a && \
 	rm -rf librte*.so librte*.so.* dpdk/*/librte*.so dpdk/*/librte*.so.* && \
-	deactivate && \
-	rm -rf $(dpdk_build_dir)/../dpdk-meson-venv
+	deactivate
 endef
 
 $(eval $(call package,dpdk))
