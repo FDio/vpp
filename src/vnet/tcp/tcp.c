@@ -20,6 +20,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <vnet/session/session.h>
 #include <vnet/fib/fib.h>
 #include <vnet/dpo/load_balance.h>
@@ -302,6 +303,13 @@ tcp_connection_alloc (u8 thread_index)
   clib_memset (tc, 0, sizeof (*tc));
   tc->c_c_index = tc - wrk->connections;
   tc->c_thread_index = thread_index;
+  clib_memset (&tc->rack, 0, sizeof (tcp_rack_t));
+  clib_memset (&tc->tlp, 0, sizeof (tcp_tlp_t));
+  tc->rack.reo_wnd_mult = 1;
+  tc->rack.minrtt_window_size = tcp_cfg.minrtt_window_size;
+  vec_validate (tc->rack.rtt_window, tc->rack.minrtt_window_size - 1);
+  tc->tlp.max_ack_delay = tcp_cfg.delack_time;
+  tlp_init (tc);
   return tc;
 }
 
@@ -315,6 +323,13 @@ tcp_connection_alloc_w_base (u8 thread_index, tcp_connection_t * base)
   clib_memcpy_fast (tc, base, sizeof (*tc));
   tc->c_c_index = tc - wrk->connections;
   tc->c_thread_index = thread_index;
+  clib_memset (&tc->rack, 0, sizeof (tcp_rack_t));
+  clib_memset (&tc->tlp, 0, sizeof (tcp_tlp_t));
+  tc->rack.reo_wnd_mult = 1;
+  tc->rack.minrtt_window_size = tcp_cfg.minrtt_window_size;
+  vec_validate (tc->rack.rtt_window, tc->rack.minrtt_window_size - 1);
+  tc->tlp.max_ack_delay = tcp_cfg.delack_time;
+  tlp_init (tc);
   return tc;
 }
 
@@ -720,6 +735,9 @@ tcp_connection_init_vars (tcp_connection_t * tc)
       || tcp_cfg.enable_tx_pacing)
     tcp_enable_pacing (tc);
 
+  if (tcp_cfg.enable_rack)
+    tc->cfg_flags |= TCP_CFG_F_RATE_SAMPLE;
+
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_init (tc);
 
@@ -1072,6 +1090,8 @@ static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] =
     tcp_timer_persist_handler,
     tcp_timer_waitclose_handler,
     tcp_timer_retransmit_syn_handler,
+    tlp_timeout_handler,
+    rack_reo_timeout_handler,
 };
 /* *INDENT-ON* */
 
@@ -1217,7 +1237,8 @@ tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
 void
 tcp_reschedule (tcp_connection_t * tc)
 {
-  if (tcp_in_cong_recovery (tc) || tcp_snd_space_inline (tc))
+  if (tcp_in_cong_recovery (tc) || tcp_snd_space_inline (tc)
+      || tc->rack.reordering_seen)
     transport_connection_reschedule (&tc->connection);
 }
 
@@ -1420,15 +1441,18 @@ tcp_configuration_init (void)
   tcp_cfg.cc_algo = TCP_CC_CUBIC;
   tcp_cfg.rwnd_min_update_ack = 1;
   tcp_cfg.max_gso_size = TCP_MAX_GSO_SZ;
+  tcp_cfg.enable_rack = 0;
+  tcp_cfg.minrtt_window_size = TCP_RACK_MINRTT_WINDOW;
 
   /* Time constants defined as timer tick (100ms) multiples */
-  tcp_cfg.delack_time = 1;	/* 0.1s */
-  tcp_cfg.closewait_time = 20;	/* 2s */
-  tcp_cfg.timewait_time = 100;	/* 10s */
-  tcp_cfg.finwait1_time = 600;	/* 60s */
-  tcp_cfg.lastack_time = 300;	/* 30s */
-  tcp_cfg.finwait2_time = 300;	/* 30s */
-  tcp_cfg.closing_time = 300;	/* 30s */
+  tcp_cfg.delack_time = 100;	/* 0.1s */
+  tcp_cfg.closewait_time = 2000;	/* 2s */
+  tcp_cfg.timewait_time = 10000;	/* 10s */
+  tcp_cfg.finwait1_time = 60000;	/* 60s */
+  tcp_cfg.lastack_time = 30000;	/* 30s */
+  tcp_cfg.finwait2_time = 30000;	/* 30s */
+  tcp_cfg.closing_time = 30000;	/* 30s */
+  /*This value is seconds */
   tcp_cfg.cleanup_time = 0.1;	/* 100ms */
 }
 

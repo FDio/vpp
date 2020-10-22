@@ -488,6 +488,8 @@ void session_register_transport (transport_proto_t transport_proto,
 				 const transport_proto_vft_t * vft, u8 is_ip4,
 				 u32 output_node);
 transport_proto_t session_add_transport_proto (void);
+int session_tx_fifo_num_unsent_bytes (transport_connection_t * tc,
+				      u32 offset);
 int session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 				u32 offset, u32 max_bytes);
 u32 session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes);

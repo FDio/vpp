@@ -95,6 +95,10 @@ tcp_flight_size (const tcp_connection_t * tc)
 {
   int flight_size;
 
+  /* TODO revisit */
+  if (tc->flags & TCP_CONN_RACK_APPLIED)
+    return (tc->snd_nxt - tc->snd_una);
+
   flight_size = (int) (tc->snd_nxt - tc->snd_una) - tcp_bytes_out (tc)
     + tc->snd_rxt_bytes - tc->rxt_delivered;
 

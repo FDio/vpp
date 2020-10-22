@@ -550,6 +550,22 @@ session_enqueue_dgram_connection (session_t * s,
 }
 
 int
+session_tx_fifo_num_unsent_bytes (transport_connection_t * tc, u32 offset)
+{
+  session_t *s = session_get (tc->s_index, tc->thread_index);
+  svm_fifo_t *f = s->tx_fifo;
+  u32 tail, head, cursize;
+
+  f_load_head_tail_cons (f, &head, &tail);
+  cursize = f_cursize (f, head, tail);
+
+  if (PREDICT_FALSE (cursize < offset))
+    return 0;
+
+  return cursize - offset;
+}
+
+int
 session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 			    u32 offset, u32 max_bytes)
 {

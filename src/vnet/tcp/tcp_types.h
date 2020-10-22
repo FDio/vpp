@@ -38,6 +38,7 @@
 #define TCP_IW_N_SEGMENTS 	10
 #define TCP_ALWAYS_ACK		1	/**< On/off delayed acks */
 #define TCP_USE_SACKS		1	/**< Disable only for testing */
+#define TCP_RACK_MINRTT_WINDOW  10	/*window size for min rtt calculation */
 
 /** TCP FSM state definitions as per RFC793. */
 #define foreach_tcp_fsm_state   \
@@ -67,6 +68,8 @@ typedef enum _tcp_state
   _(PERSIST, "PERSIST")                 \
   _(WAITCLOSE, "WAIT CLOSE")            \
   _(RETRANSMIT_SYN, "RETRANSMIT SYN")   \
+  _(TLP, "TAIL LOSS PROBE")             \
+  _(REORDER, "REORDERING TIMER")        \
 
 typedef enum _tcp_timers
 {
@@ -82,6 +85,7 @@ typedef enum _tcp_timers
 #define TCP_TO_TIMER_TICK       TCP_TICK*10000	/**< Factor for converting
 						     ticks to timer ticks */
 
+#define TCP_TIMER_TICKS_PER_SECOND (u32) (1/TCP_TIMER_TICK) /**< Timer ticks per second */
 #define TCP_RTO_MAX 60 * THZ	/* Min max RTO (60s) as per RFC6298 */
 #define TCP_RTO_MIN 0.2 * THZ	/* Min RTO (200ms) - lower than standard */
 #define TCP_RTT_MAX 30 * THZ	/* 30s (probably too much) */
@@ -129,6 +133,7 @@ typedef enum tcp_cfg_flag_
   _(PSH_PENDING, "PSH pending")			\
   _(FINRCVD, "FIN received")			\
   _(ZERO_RWND_SENT, "Zero RWND sent")		\
+  _(RACK_APPLIED, "RACK applied")		\
 
 typedef enum tcp_connection_flag_bits_
 {
@@ -200,7 +205,8 @@ typedef enum tcp_bts_flags_
   TCP_BTS_IS_RXT = 1,
   TCP_BTS_IS_APP_LIMITED = 1 << 1,
   TCP_BTS_IS_SACKED = 1 << 2,
-  TCP_BTS_IS_RXT_LOST = 1 << 3,
+  TCP_BTS_IS_LOST = 1 << 3,
+  TCP_BTS_IS_RXT_LOST = 1 << 4,
 } __clib_packed tcp_bts_flags_t;
 
 typedef struct tcp_bt_sample_
@@ -242,6 +248,41 @@ typedef struct tcp_byte_tracker_
   u32 tail;			/**< Tail of samples linked list */
   u32 last_ooo;			/**< Cached last ooo sample */
 } tcp_byte_tracker_t;
+
+/* https://tools.ietf.org/html/draft-ietf-tcpm-rack-10 */
+typedef struct _tcp_rack
+{
+//  tcp_bt_sample_t *bts;        // RACK.segment
+  f64 xmit_ts;			// RACK.xmit_ts : tc.rack.bts->tx_time
+  u32 end_seq;			// RACK.end_seq : tc.rack.bts->max_seq
+  f64 ack_ts;			// RACK.ack_ts : tc.rack.bts->delivered_time
+#if 0
+  u32 segs_sacked;		// RACK.segs_sacked : varint of tc.sack_sb.sacked_bytes
+#endif
+  u32 fack;			// RACK.fack : tc.sack_sb.high_sacked ... redundant
+  f64 min_rtt;			// RACK.min_RTT : min of (tc.rack.rtt)
+  f64 rtt;			// RACK.rtt : calculated tcp_rate_sample_t::rtt_time
+  u8 reordering_seen;		// RACK.reordering_seen
+  f64 reo_wnd;			// RACK.reo_wnd
+#if 0				/* DSACK is not supported by VPP TCP Stack so far */
+  u8 dsack;			// RACK.dsack
+#endif
+  u32 reo_wnd_mult;		// RACK.reo_wnd_mult
+  u32 reo_wnd_persist;		// RACK.reo_wnd_persist
+  u32 rtt_seq;			// RACK.rtt_seq : tc.snd_nxt
+  u16 minrtt_window_size;
+  f64 *rtt_window;  /**array to store last few RTTs for windowed minRTT calculation*/
+
+  u32 lost_bytes;		// lost detected by RACK
+} tcp_rack_t;
+
+/* https://tools.ietf.org/html/draft-ietf-tcpm-rack-10 */
+typedef struct _tcp_tlp
+{
+  u8 is_retrans;		// TLP.is_retrans
+  u32 end_seq;			// TLP.end_seq : tc.snd_nxt
+  u16 max_ack_delay;		// TLP.max_ack_delay : cfg.delack_time (defined in TCP_TIMER_TICK)
+} tcp_tlp_t;
 
 typedef enum _tcp_cc_algorithm_type
 {
@@ -285,6 +326,7 @@ typedef struct _tcp_connection
   u16 flags;			/**< Connection flags (see tcp_conn_flags_e) */
   u32 timers[TCP_N_TIMERS];	/**< Timer handles into timer wheel */
   u32 pending_timers;		/**< Expired timers not yet handled */
+  f64 expire_at[TCP_N_TIMERS];	/** TBD */
 
   u64 segs_in;		/** RFC4022/4898 tcpHCInSegs/tcpEStatsPerfSegsIn */
   u64 bytes_in;		/** RFC4898 tcpEStatsPerfHCDataOctetsIn */
@@ -324,6 +366,9 @@ typedef struct _tcp_connection
   u8 snd_sack_pos;		/**< Position in vec of first block to send */
   sack_block_t *snd_sacks_fl;	/**< Vector for building new list */
   sack_scoreboard_t sack_sb;	/**< SACK "scoreboard" that tracks holes */
+
+  tcp_rack_t rack;	/** TBD */
+  tcp_tlp_t tlp;	/** TBD */
 
   u16 rcv_dupacks;	/**< Number of recent DUPACKs received */
   u32 dupacks_in;	/**< RFC4898 tcpEStatsStackDupAcksIn*/

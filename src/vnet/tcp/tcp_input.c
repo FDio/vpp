@@ -18,6 +18,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <vnet/session/session.h>
 #include <math.h>
 
@@ -479,7 +480,8 @@ tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
   if (tcp_in_cong_recovery (tc))
     {
       /* Accept rtt estimates for samples that have not been retransmitted */
-      if (!(tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+      if (!(tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE ||
+	    tc->flags & TCP_CONN_RACK_APPLIED)
 	  || (rs->flags & TCP_BTS_IS_RXT))
 	goto done;
       if (rs->rtt_time)
@@ -593,7 +595,9 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
 
       /* If everything has been acked, stop retransmit timer
        * otherwise update. */
-      tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
+      if (!(tc->flags & TCP_CONN_RACK_APPLIED)	/* TODO TLP-applied should be better */
+	  || !tcp_timer_is_active (tc, TCP_TIMER_TLP))
+	tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
 
       /* Update pacer based on our new cwnd estimate */
       tcp_connection_tx_pacer_update (tc);
@@ -682,6 +686,8 @@ tcp_cc_init_congestion (tcp_connection_t * tc)
   tc->prev_ssthresh = tc->ssthresh;
   tc->prev_cwnd = tc->cwnd;
 
+  tlp_init (tc);
+
   tc->snd_rxt_ts = tcp_tstamp (tc);
   tcp_cc_congestion (tc);
 
@@ -723,6 +729,10 @@ tcp_cc_is_spurious_retransmit (tcp_connection_t * tc)
 static inline u8
 tcp_should_fastrecover (tcp_connection_t * tc, u8 has_sack)
 {
+  /* not in fastrecovery, but recently reordering_seen is flagged */
+  if (!tcp_in_fastrecovery (tc) && tc->rack.reordering_seen)
+    return 1;
+
   if (!has_sack)
     {
       /* If of of the two conditions lower hold, reset dupacks because
@@ -790,6 +800,8 @@ tcp_cc_recover (tcp_connection_t * tc)
   tcp_fastrecovery_off (tc);
   tcp_fastrecovery_first_off (tc);
   tcp_recovery_off (tc);
+  rack_update_reo_wnd (tc);
+
   TCP_EVT (TCP_EVT_CC_EVT, tc, 3);
 
   ASSERT (tc->rto_boff == 0);
@@ -838,11 +850,17 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
    */
   if (!tcp_in_cong_recovery (tc))
     {
-      ASSERT (is_dack);
-
-      tc->rcv_dupacks++;
-      TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
-      tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
+      /* should be is_dack or rack.reordering_seen */
+      if (is_dack)
+	{
+	  tc->rcv_dupacks++;
+	  TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
+	  tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
+	}
+      else
+	{
+	  ASSERT (tc->rack.reordering_seen);
+	}
 
       if (tcp_should_fastrecover (tc, has_sack))
 	{
@@ -854,6 +872,9 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
 	  tcp_program_retransmit (tc);
 	}
+
+      if (tcp_is_descheduled (tc))
+	tcp_reschedule (tc);
 
       return;
     }
@@ -899,8 +920,13 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 
   /*
    * See if we can exit and stop retransmitting
+   * Conditions are ...
+   *   non-RACK : tc->snd_una <= tc->snd_congestion
+   *   RACK : rack.reordering_seen == 0
    */
-  if (seq_geq (tc->snd_una, tc->snd_congestion))
+  if ((!(tc->flags & TCP_CONN_RACK_APPLIED)
+       && seq_geq (tc->snd_una, tc->snd_congestion))
+      || ((tc->flags & TCP_CONN_RACK_APPLIED) && !tc->rack.reordering_seen))
     {
       /* If spurious return, we've already updated everything */
       if (tcp_cc_recover (tc))
@@ -947,7 +973,8 @@ tcp_handle_old_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
   tc->bytes_acked = 0;
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE ||
+      tc->flags & TCP_CONN_RACK_APPLIED)
     tcp_bt_sample_delivery_rate (tc, rs);
 
   tcp_cc_handle_event (tc, rs, 1);
@@ -978,7 +1005,7 @@ tcp_ack_is_cc_event (tcp_connection_t * tc, vlib_buffer_t * b,
   *is_dack = tc->sack_sb.last_sacked_bytes
     || tcp_ack_is_dupack (tc, b, prev_snd_wnd, prev_snd_una);
 
-  return (*is_dack || tcp_in_cong_recovery (tc));
+  return (*is_dack || tcp_in_cong_recovery (tc) || tc->rack.reordering_seen);
 }
 
 /**
@@ -993,6 +1020,9 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   u8 is_dack;
 
   TCP_EVT (TCP_EVT_CC_STAT, tc);
+
+  if (tc->flags & TCP_CONN_RACK_APPLIED)
+    rack_update_min_rtt (tc, vnet_buffer (b)->tcp.ack_number);
 
   /* If the ACK acks something not yet sent (SEG.ACK > SND.NXT) */
   if (PREDICT_FALSE (seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_nxt)))
@@ -1022,6 +1052,7 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
       if (seq_lt (vnet_buffer (b)->tcp.ack_number, tc->snd_una - tc->rcv_wnd))
 	return -1;
 
+      /* Note this can turn off recovery/fast-recovery */
       tcp_handle_old_ack (tc, &rs);
 
       /* Don't drop yet */
@@ -1046,7 +1077,9 @@ process_ack:
   tc->snd_una = vnet_buffer (b)->tcp.ack_number;
   tcp_validate_txf_size (tc, tc->bytes_acked);
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  /* going to update bytes tracker */
+  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE ||
+      tc->flags & TCP_CONN_RACK_APPLIED)
     tcp_bt_sample_delivery_rate (tc, &rs);
 
   if (tc->bytes_acked + tc->sack_sb.last_sacked_bytes)
@@ -1076,6 +1109,11 @@ process_ack:
 	return 0;
       return -1;
     }
+
+  if (tcp_in_cong_recovery (tc) || tc->rack.reordering_seen)
+    tcp_program_retransmit (tc);
+  else
+    tlp_schedule_loss_probe (tc);
 
   /*
    * Update congestion control (slow start/congestion avoidance)
@@ -1526,6 +1564,14 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  TCP_EVT (TCP_EVT_SEG_INVALID, tc0, vnet_buffer (b0)->tcp);
 	  goto done;
+	}
+
+      /* TBD */
+      if (tcp_cfg.enable_rack &&
+	  !(tc0->flags & TCP_CONN_RACK_APPLIED) &&
+	  tcp_opts_sack_permitted (&tc0->rcv_opts))
+	{
+	  tc0->flags |= TCP_CONN_RACK_APPLIED;
 	}
 
       /* 5: check the ACK field  */

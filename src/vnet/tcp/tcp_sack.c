@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vnet/tcp/tcp_rack.h>
 #include <vnet/tcp/tcp_sack.h>
 
 static void
@@ -327,17 +328,27 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 {
   sack_scoreboard_hole_t *hole, *next_hole;
   sack_scoreboard_t *sb = &tc->sack_sb;
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_rack_t *rack = &tc->rack;
   sack_block_t *blk, *rcv_sacks;
   u32 blk_index = 0, i, j, high_sacked;
   u8 has_rxt;
+  u32 most_recent_ack = ack;
+  tcp_bt_sample_t *bts;
 
   sb->last_sacked_bytes = 0;
   sb->last_bytes_delivered = 0;
   sb->rxt_sacked = 0;
 
+  /* tlp_process_ack should be called regardless of SACK option */
+  if (tc->flags & TCP_CONN_RACK_APPLIED)	/* TODO check TLP-applied instead of RACK-applied */
+    tlp_process_ack (tc, ack);
+
   if (!tcp_opts_sack (&tc->rcv_opts) && !sb->sacked_bytes
       && sb->head == TCP_INVALID_SACK_HOLE_INDEX)
-    return;
+    {
+      return;
+    }
 
   has_rxt = tcp_in_cong_recovery (tc);
 
@@ -366,7 +377,14 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
     }
 
   if (vec_len (tc->rcv_opts.sacks) == 0)
-    return;
+    {
+      if (tc->flags & TCP_CONN_RACK_APPLIED)
+	{
+	  rack_update_reo_wnd (tc);
+	  rack_detect_reordering (tc, __FILE__, __LINE__);
+	}
+      return;
+    }
 
   tcp_scoreboard_trace_add (tc, ack);
 
@@ -391,12 +409,25 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	    {
 	      /* No progress made so return */
 	      if (seq_leq (ack, tc->snd_una))
-		return;
+		{
+		  if (tc->flags & TCP_CONN_RACK_APPLIED)
+		    {
+		      rack_update_reo_wnd (tc);
+		      rack_detect_reordering (tc, __FILE__, __LINE__);
+		    }
+		  return;
+		}
 
 	      /* Update sacked bytes delivered and return */
 	      sb->last_bytes_delivered = ack - tc->snd_una;
 	      sb->sacked_bytes -= sb->last_bytes_delivered;
 	      sb->is_reneging = seq_lt (ack, sb->high_sacked);
+	      if (tc->flags & TCP_CONN_RACK_APPLIED)
+		{
+		  rack_update_reo_wnd (tc);
+		  rack_detect_reordering (tc, __FILE__, __LINE__);
+		}
+
 	      return;
 	    }
 
@@ -453,6 +484,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   while (hole && blk_index < vec_len (rcv_sacks))
     {
       blk = &rcv_sacks[blk_index];
+      most_recent_ack = clib_max (most_recent_ack, blk->end);
       if (seq_leq (blk->start, hole->start))
 	{
 	  /* Block covers hole. Remove hole */
@@ -520,10 +552,31 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	    }
 	  hole = scoreboard_next_hole (sb, hole);
 	}
+
+      if (tc->flags & TCP_CONN_RACK_APPLIED && !rack->reordering_seen)
+	{
+	  bts = bt_lookup_seq (bt, blk->start);
+	  while (!rack->reordering_seen && bts && bts->min_seq < blk->end)
+	    {
+	      rack_update_state (tc, bts);
+	      rack_detect_reordering_i (tc, sb, bts);
+	      bts = bt_next_sample (bt, bts);
+	    }
+	}
     }
 
   sb->high_sacked = high_sacked;
   scoreboard_update_bytes (sb, ack, tc->snd_mss);
+
+  if (tc->flags & TCP_CONN_RACK_APPLIED)
+    rack_update_reo_wnd (tc);
+
+#ifdef DEBUG_LOG_VERBOSE
+  clib_warning
+    ("tc=%p, [tcp_rcv_sacks end] reordering_seen=%d, tcp_in_cong_recovery=%d, snd_una=%u, snd_nxt=%u, fack=%u",
+     tc, rack->reordering_seen, tcp_in_cong_recovery (tc) > 0, tc->snd_una,
+     tc->snd_nxt, tc->sack_sb.high_sacked);
+#endif
 
   ASSERT (sb->last_sacked_bytes <= sb->sacked_bytes || tcp_in_recovery (tc));
   ASSERT (sb->sacked_bytes == 0 || tcp_in_recovery (tc)

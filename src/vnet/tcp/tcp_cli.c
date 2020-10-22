@@ -1052,6 +1052,7 @@ static clib_error_t *
 tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
   u32 cwnd_multiplier, tmp_time, mtu, max_gso_size;
+  f64 tmp_float_time;
   uword memory_size;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1089,9 +1090,15 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	}
       else if (unformat (input, "mtu %u", &mtu))
 	tcp_cfg.default_mtu = mtu;
+      else
+	if (unformat
+	    (input, "minrtt-window-size %u", &tcp_cfg.minrtt_window_size))
+	;
       else if (unformat (input, "rwnd-min-update-ack %d",
 			 &tcp_cfg.rwnd_min_update_ack))
 	;
+      else if (unformat (input, "rack"))
+	tcp_cfg.enable_rack = 1;
       else if (unformat (input, "initial-cwnd-multiplier %u",
 			 &cwnd_multiplier))
 	tcp_cfg.initial_cwnd_multiplier = cwnd_multiplier;
@@ -1108,6 +1115,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "%U", unformat_tcp_cc_algo_cfg))
 	;
+      else if (unformat (input, "max-ack-delay %f", &tmp_float_time))
+	tcp_cfg.delack_time = (u16) (tmp_float_time / (f64) TCP_TIMER_TICK);
       else if (unformat (input, "closewait-time %u", &tmp_time))
 	tcp_cfg.closewait_time = tmp_time / TCP_TIMER_TICK;
       else if (unformat (input, "timewait-time %u", &tmp_time))

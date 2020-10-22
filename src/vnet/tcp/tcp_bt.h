@@ -22,6 +22,19 @@
 
 #include <vnet/tcp/tcp_types.h>
 
+/* TBD */
+tcp_bt_sample_t *bt_get_sample (tcp_byte_tracker_t * bt, u32 bts_index);
+
+/* TBD */
+tcp_bt_sample_t *bt_next_sample (tcp_byte_tracker_t * bt,
+				 tcp_bt_sample_t * bts);
+
+/* TBD */
+u32 bt_sample_index (tcp_byte_tracker_t * bt, tcp_bt_sample_t * bts);
+
+/* TBD */
+tcp_bt_sample_t *bt_lookup_seq (tcp_byte_tracker_t * bt, u32 seq);
+
 /**
  * Byte tracker initialize
  *
@@ -45,8 +58,9 @@ void tcp_bt_flush_samples (tcp_connection_t * tc);
  * Track a tcp tx burst
  *
  * @param tc	tcp connection
+ * TODO update comment
  */
-void tcp_bt_track_tx (tcp_connection_t * tc, u32 len);
+tcp_bt_sample_t *tcp_bt_track_tx (tcp_connection_t * tc, u32 len);
 /**
  * Track a tcp retransmission
  *
