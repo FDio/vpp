@@ -839,7 +839,8 @@ tcp_send_synack (tcp_connection_t * tc)
   vlib_buffer_t *b;
   u32 bi;
 
-  tcp_retransmit_timer_force_update (&wrk->timer_wheel, tc);
+  ASSERT (tc->snd_una != tc->snd_nxt);
+  tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
@@ -889,7 +890,6 @@ tcp_send_fin (tcp_connection_t * tc)
   if ((tc->flags & TCP_CONN_SNDACK) && !tc->pending_dupacks)
     tc->flags &= ~TCP_CONN_SNDACK;
 
-  tcp_retransmit_timer_force_update (&wrk->timer_wheel, tc);
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
   tcp_make_fin (tc, b);
@@ -897,6 +897,7 @@ tcp_send_fin (tcp_connection_t * tc)
   TCP_EVT (TCP_EVT_FIN_SENT, tc);
   /* Account for the FIN */
   tc->snd_nxt += 1;
+  tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
   if (!fin_snt)
     {
       tc->flags |= TCP_CONN_FINSNT;
@@ -1325,11 +1326,8 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 	  return;
 	}
 
-      /* Shouldn't be here. This condition is tricky because it has to take
-       * into account boff > 0 due to persist timeout. */
-      if ((tc->rto_boff == 0 && tc->snd_una == tc->snd_nxt)
-	  || (tc->rto_boff > 0 && seq_geq (tc->snd_una, tc->snd_congestion)
-	      && !tcp_flight_size (tc)))
+      /* Shouldn't be here */
+      if (tc->snd_una == tc->snd_nxt)
 	{
 	  ASSERT (!tcp_in_recovery (tc));
 	  tc->rto_boff = 0;
@@ -1379,7 +1377,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 
       tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
-      tcp_retransmit_timer_force_update (&wrk->timer_wheel, tc);
+      tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
 
       tc->rto_boff += 1;
       if (tc->rto_boff == 1)
@@ -1422,7 +1420,8 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       if (tc->rto_boff > TCP_RTO_SYN_RETRIES)
 	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
-      tcp_retransmit_timer_force_update (&wrk->timer_wheel, tc);
+      ASSERT (tc->snd_una != tc->snd_nxt);
+      tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
 
       b = vlib_get_buffer (vm, bi);
       tcp_init_buffer (vm, b);
