@@ -216,9 +216,9 @@ ssvm_delete_shm (ssvm_private_t * ssvm)
 int
 ssvm_server_init_memfd (ssvm_private_t * memfd)
 {
-  int log2_page_size, n_pages;
-  uword page_size;
+  uword page_size, n_pages;
   ssvm_shared_header_t *sh;
+  int log2_page_size;
   void *oldheap;
 
   if (memfd->ssvm_size == 0)
