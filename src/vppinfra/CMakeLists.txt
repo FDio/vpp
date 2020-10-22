@@ -97,6 +97,8 @@ set(VPPINFRA_HEADERS
   bihash_40_8.h
   bihash_48_8.h
   bihash_8_8.h
+  bihash_8_16.h
+  bihash_24_16.h
   bihash_template.c
   bihash_template.h
   bihash_vec8_8.h
