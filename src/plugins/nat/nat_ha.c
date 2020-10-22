@@ -1057,7 +1057,7 @@ typedef enum
 #define _(sym,str) NAT_HA_HANDOFF_ERROR_##sym,
   foreach_nat_ha_handoff_error
 #undef _
-    NAT44_HANDOFF_N_ERROR,
+    NAT_HA_HANDOFF_N_ERROR,
 } nat_ha_handoff_error_t;
 
 static char *nat_ha_handoff_error_strings[] = {
