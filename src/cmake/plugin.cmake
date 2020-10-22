@@ -57,6 +57,14 @@ macro(add_vpp_plugin name)
   set_target_properties(${plugin_name} PROPERTIES
     PREFIX ""
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/vpp_plugins)
+
+  if (VPP_USE_LTO)
+     set_property(TARGET ${plugin_name} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+     target_compile_options (${plugin_name} PRIVATE "-ffunction-sections")
+     target_compile_options (${plugin_name} PRIVATE "-fdata-sections")
+     target_link_libraries (${plugin_name} "-Wl,--gc-sections")
+  endif()
+
   if(PLUGIN_MULTIARCH_SOURCES)
     vpp_library_set_multiarch_sources(${plugin_name} "${deps}" ${PLUGIN_MULTIARCH_SOURCES})
   endif()
