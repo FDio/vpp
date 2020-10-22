@@ -164,25 +164,25 @@ typedef struct tcp_configuration_
   u32 rwnd_min_update_ack;
 
   /** Delayed ack time (disabled) */
-  u16 delack_time;
+  u32 delack_time;
 
   /** Timer ticks to wait for close from app */
-  u16 closewait_time;
+  u32 closewait_time;
 
   /** Timer ticks to wait in time-wait. Also known as 2MSL */
-  u16 timewait_time;
+  u32 timewait_time;
 
   /** Timer ticks to wait in fin-wait1 to send fin and rcv fin-ack */
-  u16 finwait1_time;
+  u32 finwait1_time;
 
   /** Timer ticks to wait in last ack for ack */
-  u16 lastack_time;
+  u32 lastack_time;
 
   /** Timer ticks to wait in fin-wait2 for fin */
-  u16 finwait2_time;
+  u32 finwait2_time;
 
   /** Timer ticks to wait in closing for fin ack */
-  u16 closing_time;
+  u32 closing_time;
 
   /** Time to wait (sec) before cleaning up the connection */
   f32 cleanup_time;
