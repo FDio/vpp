@@ -187,6 +187,7 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
 	      indent = vec_len (l);
 	    }
 	  fmt = format (0, "%%-%uU [%%-6U]: ", lm->max_class_name_length);
+	  vec_terminate_c_string (fmt);
 	  l = format (l, (char *) fmt, format_vlib_log_class, class,
 		      format_vlib_log_level, level);
 	  vec_free (fmt);
