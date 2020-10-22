@@ -11,13 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_C_COMPILER_NAMES clang-11 clang-10 clang-9 gcc-10 gcc-9 cc)
 
 project(vpp C)
 
 include(CheckCCompilerFlag)
+include(CheckIPOSupported)
 include(cmake/misc.cmake)
 include(cmake/cpu.cmake)
 include(cmake/ccache.cmake)
@@ -104,6 +105,16 @@ string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_UC)
 string(REPLACE ";" " " BUILD_TYPES "${BUILD_TYPES}")
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
 	     HELPSTRING "Build type - valid options are: ${BUILD_TYPES}")
+
+##############################################################################
+# link time optimizations
+##############################################################################
+if (CMAKE_BUILD_TYPE_UC STREQUAL "RELEASE")
+  check_ipo_supported(RESULT _result)
+  if (_result)
+    option(VPP_USE_LTO "Link time optimization of release binaries" ON)
+  endif()
+endif()
 
 ##############################################################################
 # sanitizers
