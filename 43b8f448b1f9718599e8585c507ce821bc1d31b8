@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "75de7091_6368de06",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 553,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-22T07:10:59Z",
+      "side": 1,
+      "message": "Thanks!",
+      "parentUuid": "5a47575d_ec402c4c",
+      "range": {
+        "startLine": 553,
+        "startChar": 0,
+        "endLine": 553,
+        "endChar": 32
+      },
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "dfab6bb4_2efc09d2",
         "filename": "src/vnet/tcp/tcp.c",
         "patchSetId": 1
@@ -84,6 +108,30 @@
       "side": 1,
       "message": "Done:\nhttps://gerrit.fd.io/r/c/vpp/+/29590",
       "parentUuid": "dfab6bb4_2efc09d2",
+      "range": {
+        "startLine": 1448,
+        "startChar": 0,
+        "endLine": 1454,
+        "endChar": 41
+      },
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "91f57d88_b57245bd",
+        "filename": "src/vnet/tcp/tcp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1454,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-22T07:10:59Z",
+      "side": 1,
+      "message": "Thanks!",
+      "parentUuid": "c367cbed_a423b293",
       "range": {
         "startLine": 1448,
         "startChar": 0,
@@ -194,6 +242,30 @@
     },
     {
       "key": {
+        "uuid": "4322875c_ed37dc05",
+        "filename": "src/vnet/tcp/tcp_timer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-22T07:10:59Z",
+      "side": 1,
+      "message": "I might have to better understand how this works, i.e., read the code and maybe have a chat afterwards. What do other implementations do?",
+      "parentUuid": "12fb278a_aba44657",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 33
+      },
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "85775f28_c9ec6af6",
         "filename": "src/vnet/tcp/tcp_timer.h",
         "patchSetId": 1
@@ -246,6 +318,30 @@
       "side": 1,
       "message": "They are different:\n  THZ \u003d 1/TCP_TICK \u003d 1/0.000001 \u003d 10^6\n  TCP_TIMER_TICKS_PER_SECOND \u003d 1/TCP_TIMER_TICK \u003d 1/0.0001 \u003d 10^4\n\nPerhaps, the units of timer related variables should be (more) consistent. At this moment, some are u32 in TCP_TIMER_TICK, and others are f64 in seconds.",
       "parentUuid": "b39dda07_f0d8009e",
+      "range": {
+        "startLine": 88,
+        "startChar": 8,
+        "endLine": 88,
+        "endChar": 34
+      },
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "05ba0c39_54f6eafa",
+        "filename": "src/vnet/tcp/tcp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-22T07:10:59Z",
+      "side": 1,
+      "message": "Ow, I missed that. Maybe call it TCP_TIMER_HZ, to be similar to THZ. So everything that has to be used with timers, should be in ticks. As for the floats, if you\u0027re thinking about tcp_cfg.cleanup_time, that is not used with timers. I know, not very convincing ...",
+      "parentUuid": "4af84bec_b1a6f27d",
       "range": {
         "startLine": 88,
         "startChar": 8,
