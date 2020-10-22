@@ -198,6 +198,7 @@ add_vpp_library(vppinfra
   LINK_LIBRARIES m
   INSTALL_HEADERS ${VPPINFRA_HEADERS}
   COMPONENT libvppinfra
+  LTO
 )
 
 ##############################################################################
