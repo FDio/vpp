@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5a47575d_ec402c4c",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 553,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-10-22T06:51:15Z",
+      "side": 1,
+      "message": "Oh yes. I added almost redundant function. Let me remove it.\nIt is equivalent to `transport_max_tx_dequeue (tc) - offset`.",
+      "parentUuid": "d5fc19fb_5faa4a7b",
+      "range": {
+        "startLine": 553,
+        "startChar": 0,
+        "endLine": 553,
+        "endChar": 32
+      },
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "dfab6bb4_2efc09d2",
         "filename": "src/vnet/tcp/tcp.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2020-10-22T02:15:52Z",
       "side": 1,
       "message": "Could you push a patch with this now because it\u0027s broken on master?",
+      "range": {
+        "startLine": 1448,
+        "startChar": 0,
+        "endLine": 1454,
+        "endChar": 41
+      },
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c367cbed_a423b293",
+        "filename": "src/vnet/tcp/tcp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1454,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-10-22T06:51:15Z",
+      "side": 1,
+      "message": "Done:\nhttps://gerrit.fd.io/r/c/vpp/+/29590",
+      "parentUuid": "dfab6bb4_2efc09d2",
       "range": {
         "startLine": 1448,
         "startChar": 0,
@@ -122,6 +170,30 @@
     },
     {
       "key": {
+        "uuid": "12fb278a_aba44657",
+        "filename": "src/vnet/tcp/tcp_timer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-10-22T06:51:15Z",
+      "side": 1,
+      "message": "session.h is included to use `transport_time_now`.\nBut I agree that having `expire_at` and updating it would be not a good idea at all.\n\nWhat alternative approach would you recommend to achieve \"if RTO timer is set, cancel it and set TLP timer with the same expiration time\"?\n\nOne approach would be to abolish the RTO (retransmit) timer and introduce a general timer, whose behavior would change upon another parameter.\n\nvoid\ntcp_timer_general_handler (tcp_connection_t * tc)\n{\n  if (tc-\u003etimer_mode \u003d\u003d TLP)\n    tcp_timer_tlp_handler (tc);\n  else if (tc-\u003etimer_mode \u003d\u003d REO)\n    tcp_timer_reo_handler (tc);\n  else if (tc-\u003etimer_mode \u003d\u003d RTO)\n    tcp_timer_retransmit_handler (tc);\n}",
+      "parentUuid": "a46174af_cdd78409",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 33
+      },
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "85775f28_c9ec6af6",
         "filename": "src/vnet/tcp/tcp_timer.h",
         "patchSetId": 1
@@ -150,6 +222,30 @@
       "writtenOn": "2020-10-22T02:34:35Z",
       "side": 1,
       "message": "This is THZ above, no?",
+      "range": {
+        "startLine": 88,
+        "startChar": 8,
+        "endLine": 88,
+        "endChar": 34
+      },
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4af84bec_b1a6f27d",
+        "filename": "src/vnet/tcp/tcp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-10-22T06:51:15Z",
+      "side": 1,
+      "message": "They are different:\n  THZ \u003d 1/TCP_TICK \u003d 1/0.000001 \u003d 10^6\n  TCP_TIMER_TICKS_PER_SECOND \u003d 1/TCP_TIMER_TICK \u003d 1/0.0001 \u003d 10^4\n\nPerhaps, the units of timer related variables should be (more) consistent. At this moment, some are u32 in TCP_TIMER_TICK, and others are f64 in seconds.",
+      "parentUuid": "b39dda07_f0d8009e",
       "range": {
         "startLine": 88,
         "startChar": 8,
@@ -199,6 +295,30 @@
       "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "216981ab_a5844392",
+        "filename": "src/vnet/tcp/tcp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 329,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-10-22T06:51:15Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "08dc81b5_c357941c",
+      "range": {
+        "startLine": 329,
+        "startChar": 6,
+        "endLine": 329,
+        "endChar": 15
+      },
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
