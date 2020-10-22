@@ -88,6 +88,7 @@ typedef enum
   NAT_NEXT_IN2OUT_ED_OUTPUT_SLOW_PATH,
   NAT_NEXT_OUT2IN_ED_FAST_PATH,
   NAT_NEXT_OUT2IN_ED_SLOW_PATH,
+  NAT_NEXT_OUT2IN_ED_HANDOFF,
   NAT_NEXT_IN2OUT_CLASSIFY,
   NAT_NEXT_OUT2IN_CLASSIFY,
   NAT_N_NEXT,
@@ -161,6 +162,19 @@ typedef enum
 #undef _
     NAT_IN2OUT_ED_N_ERROR,
 } nat_in2out_ed_error_t;
+
+#define foreach_nat44_handoff_error                       \
+_(CONGESTION_DROP, "congestion drop")                     \
+_(SAME_WORKER, "same worker")                             \
+_(DO_HANDOFF, "do handoff")
+
+typedef enum
+{
+#define _(sym,str) NAT44_HANDOFF_ERROR_##sym,
+  foreach_nat44_handoff_error
+#undef _
+    NAT44_HANDOFF_N_ERROR,
+} nat44_handoff_error_t;
 
 #define foreach_nat_out2in_ed_error                     \
 _(UNSUPPORTED_PROTOCOL, "unsupported protocol")         \
