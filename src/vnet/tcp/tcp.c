@@ -1421,14 +1421,16 @@ tcp_configuration_init (void)
   tcp_cfg.rwnd_min_update_ack = 1;
   tcp_cfg.max_gso_size = TCP_MAX_GSO_SZ;
 
-  /* Time constants defined as timer tick (100ms) multiples */
-  tcp_cfg.delack_time = 1;	/* 0.1s */
-  tcp_cfg.closewait_time = 20;	/* 2s */
-  tcp_cfg.timewait_time = 100;	/* 10s */
-  tcp_cfg.finwait1_time = 600;	/* 60s */
-  tcp_cfg.lastack_time = 300;	/* 30s */
-  tcp_cfg.finwait2_time = 300;	/* 30s */
-  tcp_cfg.closing_time = 300;	/* 30s */
+  /* Time constants defined as timer tick (100us) multiples */
+  tcp_cfg.delack_time = 1000;	/* 0.1s */
+  tcp_cfg.closewait_time = 20000;	/* 2s */
+  tcp_cfg.timewait_time = 100000;	/* 10s */
+  tcp_cfg.finwait1_time = 600000;	/* 60s */
+  tcp_cfg.lastack_time = 300000;	/* 30s */
+  tcp_cfg.finwait2_time = 300000;	/* 30s */
+  tcp_cfg.closing_time = 300000;	/* 30s */
+
+  /* This value is seconds */
   tcp_cfg.cleanup_time = 0.1;	/* 100ms */
 }
 
