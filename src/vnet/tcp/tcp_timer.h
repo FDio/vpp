@@ -66,14 +66,6 @@ tcp_retransmit_timer_reset (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 }
 
 always_inline void
-tcp_retransmit_timer_force_update (tcp_timer_wheel_t * tw,
-				   tcp_connection_t * tc)
-{
-  tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT,
-		    clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
-}
-
-always_inline void
 tcp_persist_timer_set (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
   /* Reuse RTO. It's backed off in handler */
