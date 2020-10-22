@@ -186,9 +186,11 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
 	      l = format (l, "\x1b[%um", 90 + colors[level]);
 	      indent = vec_len (l);
 	    }
-	  fmt = format (0, "%%-%uU [%%-6U]: ", lm->max_class_name_length);
-	  l = format (l, (char *) fmt, format_vlib_log_class, class,
-		      format_vlib_log_level, level);
+	  fmt =
+	    format (0, "%%-%uU [%%-6U]: %c", lm->max_class_name_length, 0);
+	  l =
+	    format (l, (char *) fmt, format_vlib_log_class, class,
+		    format_vlib_log_level, level);
 	  vec_free (fmt);
 	  indent = vec_len (l) - indent;
 	  if (with_colors)
