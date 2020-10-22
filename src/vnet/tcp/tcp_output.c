@@ -15,7 +15,48 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <math.h>
+
+always_inline void
+tcp_cc_recover_rack_rto (tcp_connection_t * tc)
+{
+  ASSERT (tcp_in_cong_recovery (tc));
+
+  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
+  tc->rcv_dupacks = 0;
+  tc->rxt_delivered = 0;
+  tc->snd_rxt_bytes = 0;
+  tc->snd_rxt_ts = 0;
+  tc->prr_delivered = 0;
+  tc->rtt_ts = 0;
+  tcp_recovery_off (tc);
+  rack_update_reo_wnd (tc);
+
+  /* TODO correct */
+  TCP_EVT (TCP_EVT_CC_EVT, tc, 3);
+}
+
+always_inline void
+tcp_cc_recover_rack_fast (tcp_connection_t * tc)
+{
+  ASSERT (tcp_in_cong_recovery (tc));
+
+  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
+  tc->rcv_dupacks = 0;
+  tc->rxt_delivered = 0;
+  tc->snd_rxt_bytes = 0;
+  tc->snd_rxt_ts = 0;
+  tc->prr_delivered = 0;
+  tc->rtt_ts = 0;
+
+  tcp_fastrecovery_off (tc);
+  tcp_fastrecovery_first_off (tc);
+  rack_update_reo_wnd (tc);
+
+  /* TODO correct */
+  TCP_EVT (TCP_EVT_CC_EVT, tc, 3);
+}
 
 typedef enum _tcp_output_next
 {
@@ -552,7 +593,7 @@ tcp_enqueue_to_ip_lookup (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
     session_queue_run_on_main_thread (wrk->vm);
 }
 
-static void
+/*static*/ void
 tcp_enqueue_to_output (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
 		       u8 is_ip4)
 {
@@ -843,6 +884,12 @@ tcp_send_synack (tcp_connection_t * tc)
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
+      if (tc->flags & TCP_CONN_RACK_APPLIED)	/* TODO check TLP-applied instead of RACK-applied */
+	{
+	  /* In this case, RTO with 1ms hsould be priority */
+	  tcp_reordering_timer_reset (&wrk->timer_wheel, tc);
+	  tcp_tlp_timer_reset (&wrk->timer_wheel, tc);
+	}
       tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
       tcp_worker_stats_inc (wrk, no_buffer, 1);
       return;
@@ -875,6 +922,12 @@ tcp_send_fin (tcp_connection_t * tc)
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
       /* Out of buffers so program fin retransmit ASAP */
+      if (tc->flags & TCP_CONN_RACK_APPLIED)	/* TODO check TLP-applied instead of RACK-applied */
+	{
+	  /* In this case, RTO with 1ms hsould be priority */
+	  tcp_reordering_timer_reset (&wrk->timer_wheel, tc);
+	  tcp_tlp_timer_reset (&wrk->timer_wheel, tc);
+	}
       tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
       if (fin_snt)
 	tc->snd_nxt += 1;
@@ -987,7 +1040,8 @@ tcp_session_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
 {
   tcp_connection_t *tc = (tcp_connection_t *) tconn;
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE ||
+      tc->flags & TCP_CONN_RACK_APPLIED)
     tcp_bt_track_tx (tc, tcp_buffer_len (b));
 
   tcp_push_hdr_i (tc, b, tc->snd_nxt, /* compute opts */ 0, /* burst */ 1,
@@ -1007,6 +1061,10 @@ tcp_session_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
       tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
       tc->rto_boff = 0;
     }
+
+  if (tc->flags & TCP_CONN_RACK_APPLIED)	/* TODO check TLP-applied instead of RACK-applied */
+    tlp_schedule_loss_probe (tc);
+
   tcp_trajectory_add_start (b, 3);
   return 0;
 }
@@ -1056,7 +1114,13 @@ tcp_program_dupack (tcp_connection_t * tc)
 void
 tcp_program_retransmit (tcp_connection_t * tc)
 {
+#if 0
+  /* TODO verify if this can cause any bad side effect.
+   * If this condition is enabled, some custom_tx_event can be lost.
+   * It looks like a conflict between tcp_program_XXX ().
+   */
   if (!(tc->flags & TCP_CONN_RXT_PENDING))
+#endif
     {
       session_add_self_custom_tx_evt (&tc->connection, 0);
       tc->flags |= TCP_CONN_RXT_PENDING;
@@ -1096,12 +1160,14 @@ tcp_send_window_update_ack (tcp_connection_t * tc)
  * @return 	the number of bytes in the segment or 0 if buffer cannot be
  * 		allocated or no data available
  */
-static int
+/*static*/ int
 tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 		     u32 offset, u32 max_deq_bytes, vlib_buffer_t ** b)
 {
   u32 bytes_per_buffer = vnet_get_tcp_main ()->bytes_per_buffer;
   vlib_main_t *vm = wrk->vm;
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *bts = NULL;
   u32 bi, seg_size;
   int n_bytes = 0;
   u8 *data;
@@ -1129,7 +1195,10 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       data = tcp_init_buffer (vm, *b);
       n_bytes = session_tx_fifo_peek_bytes (&tc->connection, data, offset,
 					    max_deq_bytes);
-      ASSERT (n_bytes == max_deq_bytes);
+      if (!n_bytes)
+	return 0;
+
+      ASSERT (n_bytes <= max_deq_bytes);
       b[0]->current_length = n_bytes;
       tcp_push_hdr_i (tc, *b, tc->snd_una + offset, /* compute opts */ 0,
 		      /* burst */ 0, /* update_snd_nxt */ 0);
@@ -1203,6 +1272,13 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   ASSERT (n_bytes > 0);
   ASSERT (((*b)->current_data + (*b)->current_length) <= bytes_per_buffer);
 
+  if (tc->flags & TCP_CONN_RACK_APPLIED)
+    {
+      bts = bt_lookup_seq (bt, tc->snd_una + offset);
+      if (bts)
+	rack_transmit_data (tc, bts);
+    }
+
   return n_bytes;
 }
 
@@ -1218,6 +1294,8 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
 				u32 max_deq_bytes, vlib_buffer_t ** b)
 {
   u32 start, available_bytes;
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *bts = NULL;
   int n_bytes = 0;
 
   ASSERT (tc->state >= TCP_STATE_ESTABLISHED);
@@ -1244,7 +1322,8 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
 
   tc->snd_rxt_bytes += n_bytes;
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE ||
+      tc->flags & TCP_CONN_RACK_APPLIED)
     tcp_bt_track_rxt (tc, start, start + n_bytes);
 
   tc->bytes_retrans += n_bytes;
@@ -1252,7 +1331,47 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
   tcp_worker_stats_inc (wrk, rxt_segs, 1);
   TCP_EVT (TCP_EVT_CC_RTX, tc, offset, n_bytes);
 
+  if (tc->flags & TCP_CONN_RACK_APPLIED)
+    {
+      bts = bt_lookup_seq (bt, tc->snd_una + offset);
+      if (bts)
+	rack_retransmit_data (tc, bts);
+    }
+
   return n_bytes;
+}
+
+/* TBD */
+/*static*/ u32
+tcp_prepare_retransmit_bts (tcp_worker_ctx_t * wrk,
+			    tcp_connection_t * tc,
+			    tcp_bt_sample_t * bts, vlib_buffer_t ** b)
+{
+  u32 offset, max_deq_bytes;
+
+  ASSERT (tc->state >= TCP_STATE_ESTABLISHED);
+  ASSERT (bts != 0);
+
+  if (bts->max_seq < tc->snd_una)
+    {
+      return 0;
+    }
+
+  if (tc->snd_una <= bts->min_seq)
+    {
+      offset = bts->min_seq - tc->snd_una;
+      max_deq_bytes = bts->max_seq - bts->min_seq;
+    }
+  else
+    {
+      offset = 0;
+      max_deq_bytes = clib_max (bts->max_seq - tc->snd_una, 0);
+    }
+
+  if (!max_deq_bytes)
+    return 0;
+
+  return tcp_prepare_retransmit_segment (wrk, tc, offset, max_deq_bytes, b);
 }
 
 static void
@@ -1271,7 +1390,7 @@ tcp_check_sack_reneging (tcp_connection_t * tc)
 /**
  * Reset congestion control, switch cwnd to loss window and try again.
  */
-static void
+/*static*/ void
 tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
 {
   TCP_EVT (TCP_EVT_CC_EVT, tc, 6);
@@ -1291,6 +1410,7 @@ tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
   tc->cwnd_acc_bytes = 0;
   tc->tr_occurences += 1;
   tc->sack_sb.reorder = TCP_DUPACK_THRESHOLD;
+  tlp_init (tc);
   tcp_recovery_on (tc);
 }
 
@@ -1365,18 +1485,98 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       /* Update send congestion to make sure that rxt has data to send */
       tc->snd_congestion = tc->snd_nxt;
 
-      /* Send the first unacked segment. If we're short on buffers, return
-       * as soon as possible */
-      n_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
-      n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, n_bytes, &b);
-      if (!n_bytes)
+      /* Note: I suppose we should disarm REO/TLP timers if nothing in flight -- R Shibuya */
+      if (tc->flags & TCP_CONN_RACK_APPLIED && tc->snd_nxt == tc->snd_una)
 	{
-	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
+	  tcp_reordering_timer_reset (&wrk->timer_wheel, tc);
+	  tcp_tlp_timer_reset (&wrk->timer_wheel, tc);
 	  return;
 	}
 
-      bi = vlib_get_buffer_index (vm, b);
-      tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
+
+      if (tc->flags & TCP_CONN_RACK_APPLIED)
+	{
+	  /* Section 6.3 */
+	  tcp_rack_t *rack = &tc->rack;
+	  tcp_byte_tracker_t *bt = tc->bt;
+	  tcp_bt_sample_t *bts;
+	  f64 now = tcp_time_now_us (tc->c_thread_index);
+	  u32 retransmit = 0;
+	  u32 total = 0;
+	  u8 aborted = 0;
+
+	  bts = bt_get_sample (bt, bt->head);
+
+	  if (bts)
+	    {
+	      while (bts)
+		{
+		  if (bts->flags & TCP_BTS_IS_SACKED)
+		    {
+		      bts = bt_next_sample (bt, bts);
+		      continue;
+		    }
+		  if (bts->min_seq == tc->snd_una ||
+		      bts->tx_time + rack->rtt + rack->reo_wnd <= now)
+		    {
+		      tc->rto_boff += 1;
+		      if (tc->rto_boff == 1)
+			{
+			  tcp_cc_init_rxt_timeout (tc);
+			  tc->snd_rxt_ts = tcp_tstamp (tc);	/* still needed */
+			}
+
+		      u32 to_send = bts->max_seq - bts->min_seq;
+		      u32 n_bytes = tcp_retransmit_bts (wrk, tc, bts);
+		      retransmit += 1;
+		      total += n_bytes;
+		      if (n_bytes < to_send)
+			{
+			  /* REO/TLP timers should have not set, since we are in RTO handler */
+			  tcp_timer_update (&wrk->timer_wheel, tc,
+					    TCP_TIMER_RETRANSMIT, 1);
+			  aborted = 1;
+			  break;
+			}
+		    }
+		  bts = bt_next_sample (bt, bts);
+		}
+	    }
+
+	  if (tc->rto_boff > 0 && !aborted)
+	    tcp_cc_recover_rack_rto (tc);
+
+	  if (!retransmit)
+	    {
+	      tlp_init (tc);
+	    }
+	}
+      else			/* non-RACK */
+	{
+	  /* Send the first unacked segment. If we're short on buffers, return
+	   * as soon as possible */
+	  n_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
+	  if (!n_bytes)
+	    {
+	      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
+				1);
+	      return;
+	    }
+
+	  if (n_bytes)
+	    n_bytes =
+	      tcp_prepare_retransmit_segment (wrk, tc, 0, n_bytes, &b);
+
+	  if (!n_bytes)
+	    {
+	      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
+				1);
+	      return;
+	    }
+
+	  bi = vlib_get_buffer_index (vm, b);
+	  tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
+	}			/* non-RACK */
 
       tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
       tcp_retransmit_timer_force_update (&wrk->timer_wheel, tc);
@@ -1564,7 +1764,8 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
 			   || tc->snd_nxt == tc->snd_una_max
 			   || tc->rto_boff > 1));
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE ||
+      tc->flags & TCP_CONN_RACK_APPLIED)
     {
       tcp_bt_check_app_limited (tc);
       tcp_bt_track_tx (tc, n_bytes);
@@ -1577,7 +1778,10 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
   tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 
   /* Just sent new data, enable retransmit */
-  tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
+  if (tc->flags & TCP_CONN_RACK_APPLIED)
+    tlp_schedule_loss_probe (tc);	/* this could internally call tcp_retransmit_timer_update instead */
+  else
+    tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
 
   return;
 
@@ -1606,16 +1810,49 @@ tcp_retransmit_first_unacked (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
   bi = vlib_get_buffer_index (vm, b);
   tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 
+  if (tc->flags & TCP_CONN_RACK_APPLIED)
+    {
+      tcp_byte_tracker_t *bt = tc->bt;
+      tcp_bt_sample_t *bts = bt_lookup_seq (bt, tc->snd_una);
+      if (bts)
+	rack_retransmit_data (tc, bts);
+    }
+
   return 0;
 }
 
-static int
+int
+tcp_retransmit_bts (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
+		    tcp_bt_sample_t * bts)
+{
+  vlib_main_t *vm = wrk->vm;
+  vlib_buffer_t *b;
+  u32 bi, n_bytes;
+
+  TCP_EVT (TCP_EVT_CC_EVT, tc, 1);
+
+  if (!bts)
+    return 0;
+
+  /* rack_retransmit_data() is called in tcp_prepare_retransmit_segment() */
+  n_bytes = tcp_prepare_retransmit_bts (wrk, tc, bts, &b);
+  if (!n_bytes)
+    return 0;
+
+  bi = vlib_get_buffer_index (vm, b);
+  tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
+
+  return n_bytes;
+}
+
+/*static*/ int
 tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 		     u32 burst_size)
 {
   u32 offset, n_segs = 0, n_written, bi, available_wnd;
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *b = 0;
+  tcp_bt_sample_t *bts;
 
   offset = tc->snd_nxt - tc->snd_una;
   available_wnd = tc->snd_wnd - offset;
@@ -1635,9 +1872,18 @@ tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       offset += n_written;
       n_segs += 1;
 
-      if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-	tcp_bt_track_tx (tc, n_written);
+      if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE ||
+	  tc->flags & TCP_CONN_RACK_APPLIED)
+	{
+	  bts = tcp_bt_track_tx (tc, n_written);
+	  if (tc->flags & TCP_CONN_RACK_APPLIED)
+	    {
+	      rack_transmit_data (tc, bts);
+	    }
+	}
 
+      offset += n_written;
+      n_segs += 1;
       tc->snd_nxt += n_written;
       tc->snd_una_max = seq_max (tc->snd_nxt, tc->snd_una_max);
     }
@@ -1847,6 +2093,9 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
 done:
 
+  if (tc->flags & TCP_CONN_RACK_APPLIED)	/* TODO check TLP-applied instead of RACK-applied */
+    tlp_schedule_loss_probe (tc);
+
   transport_connection_tx_pacer_reset_bucket (&tc->connection, 0);
   return n_segs;
 }
@@ -1990,7 +2239,7 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
     }
 }
 
-static int
+/*static*/ int
 tcp_do_retransmit (tcp_connection_t * tc, u32 max_burst_size)
 {
   tcp_worker_ctx_t *wrk;
@@ -2001,7 +2250,22 @@ tcp_do_retransmit (tcp_connection_t * tc, u32 max_burst_size)
 
   wrk = tcp_get_worker (tc->c_thread_index);
 
-  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+  if (tc->flags & TCP_CONN_RACK_APPLIED && tc->rack.reordering_seen)
+    {
+      n_segs = rack_detect_loss_and_arm_timer (wrk, tc, max_burst_size);
+      /* Section 6.2. Step 4
+       *   Otherwise, if some reordering has been observed, then RACK does not
+       *   trigger Fast Recovery based on DupThresh.
+       */
+
+      if (!n_segs && tcp_in_fastrecovery (tc))
+	tcp_program_retransmit (tc);
+
+      /* TODO revisit. maybe need to correct the condition to end congestion for tcp_retransmit_sack */
+      if (!n_segs && !tc->rack.reordering_seen)
+	tcp_cc_recover_rack_fast (tc);
+    }
+  else if (tcp_opts_sack_permitted (&tc->rcv_opts))
     n_segs = tcp_retransmit_sack (wrk, tc, max_burst_size);
   else
     n_segs = tcp_retransmit_no_sack (wrk, tc, max_burst_size);

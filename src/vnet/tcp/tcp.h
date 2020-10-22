@@ -58,6 +58,8 @@ typedef struct _tcp_lookup_dispatch
   _(tr_abort, u32, "timer retransmit abort")			\
   _(rst_unread, u32, "reset on close due to unread data")	\
   _(no_buffer, u32, "out of buffers")				\
+  _(rack_retransmit, u64, "rack teransmitted data")		\
+  _(tlp_sent, u32, "tail loss probe sent")			\
 
 typedef struct tcp_wrk_stats_
 {
@@ -156,6 +158,9 @@ typedef struct tcp_configuration_
   /** Set if csum offloading is enabled */
   u8 csum_offload;
 
+  /** TBD */
+  u8 enable_rack;
+
   /** Default congestion control algorithm type */
   tcp_cc_algorithm_type_e cc_algo;
 
@@ -183,6 +188,9 @@ typedef struct tcp_configuration_
 
   /** Timer ticks to wait in closing for fin ack */
   u32 closing_time;
+
+  /** Window size for min RTT */
+  u16 minrtt_window_size;
 
   /** Time to wait (sec) before cleaning up the connection */
   f32 cleanup_time;
@@ -346,6 +354,27 @@ int tcp_configure_v6_source_address_range (vlib_main_t * vm,
 					   ip6_address_t * end, u32 table_id);
 
 clib_error_t *vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en);
+
+int
+tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
+		     u32 offset, u32 max_deq_bytes, vlib_buffer_t ** b);
+
+void
+tcp_enqueue_to_output (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
+		       u8 is_ip4);
+
+void tcp_cc_init_rxt_timeout (tcp_connection_t * tc);
+
+
+int
+tcp_retransmit_bts (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
+		    tcp_bt_sample_t * bts);
+
+int
+tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
+		     u32 burst_size);
+
+int tcp_do_retransmit (tcp_connection_t * tc, u32 max_burst_size);
 
 format_function_t format_tcp_state;
 format_function_t format_tcp_flags;

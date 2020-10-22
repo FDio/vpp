@@ -20,6 +20,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <vnet/session/session.h>
 #include <vnet/fib/fib.h>
 #include <vnet/dpo/load_balance.h>
@@ -720,6 +721,12 @@ tcp_connection_init_vars (tcp_connection_t * tc)
       || tcp_cfg.enable_tx_pacing)
     tcp_enable_pacing (tc);
 
+  if (tcp_cfg.enable_rack)
+    {
+      tcp_rack_init (tc);
+      tc->cfg_flags |= TCP_CFG_F_RATE_SAMPLE;
+    }
+
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_init (tc);
 
@@ -1075,6 +1082,8 @@ static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] =
     tcp_timer_persist_handler,
     tcp_timer_waitclose_handler,
     tcp_timer_retransmit_syn_handler,
+    tlp_timeout_handler,
+    rack_reo_timeout_handler,
 };
 /* *INDENT-ON* */
 
@@ -1220,7 +1229,8 @@ tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
 void
 tcp_reschedule (tcp_connection_t * tc)
 {
-  if (tcp_in_cong_recovery (tc) || tcp_snd_space_inline (tc))
+  if (tcp_in_cong_recovery (tc) || tcp_snd_space_inline (tc)
+      || tc->rack.reordering_seen)
     transport_connection_reschedule (&tc->connection);
 }
 
@@ -1423,6 +1433,8 @@ tcp_configuration_init (void)
   tcp_cfg.cc_algo = TCP_CC_CUBIC;
   tcp_cfg.rwnd_min_update_ack = 1;
   tcp_cfg.max_gso_size = TCP_MAX_GSO_SZ;
+  tcp_cfg.enable_rack = 0;
+  tcp_cfg.minrtt_window_size = TCP_RACK_MINRTT_WINDOW;
 
   /* Time constants defined as timer tick (100us) multiples */
   tcp_cfg.delack_time = 1000;	/* 0.1s */
