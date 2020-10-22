@@ -573,6 +573,24 @@
     },
     {
       "key": {
+        "uuid": "c4a83766_070aa98f",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1122,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-22T16:26:15Z",
+      "side": 1,
+      "message": "I bundled the first reply to this with the bt review. Let\u0027s deal with it after the first set of cleanups go in but, intuitively, it should not be needed.",
+      "parentUuid": "571ef0f9_8db0f1fe",
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a46174af_cdd78409",
         "filename": "src/vnet/tcp/tcp_timer.h",
         "patchSetId": 1
@@ -661,6 +679,24 @@
     },
     {
       "key": {
+        "uuid": "8f1c9c5d_9f53f502",
+        "filename": "src/vnet/tcp/tcp_timer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-22T16:26:15Z",
+      "side": 1,
+      "message": "This forces the timer update in that it doesn\u0027t check and reset the timer if tc-\u003esnd_una \u003d\u003d tc-\u003esnd_nxt. It\u0027s used for syn/fin when retransmit timer pops. The latter should not needed it, I think, on the data path. I\u0027ll have to check on the syn retransmit path. \n\nI\u0027ll push a patch for data path, but for syns/fins we might be stuck needing it.",
+      "parentUuid": "85775f28_c9ec6af6",
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b39dda07_f0d8009e",
         "filename": "src/vnet/tcp/tcp_types.h",
         "patchSetId": 1
@@ -743,6 +779,24 @@
       "writtenOn": "2020-10-22T01:51:34Z",
       "side": 1,
       "message": "In the current revision, RACK (byte-tracker based) and non-RACK (scoreboard based) are using a common TCP_CONN_FAST_RECOVERY flag. So the condition to express in-FastRecovery-by-RACK is not very intuitive: It is like `(tc-\u003erack.reordering_seen)`.\n\nI\u0027m thinking to add another flag TCP_CONN_RACK_RECOVERY. Then, it will be easier to manage the congestion state.",
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6c01897f_a5422211",
+        "filename": "src/vnet/tcp/tcp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-22T16:26:15Z",
+      "side": 1,
+      "message": "Not sure at this point. Ideally, the architecture of the congestion control should be independent of the intricacies of how congestion is detected. That is, we have flags for fast (FAST_RECOVERY) and timer based recovery (RECOVERY) and then within the \"guts\" of the code we decide how to handle those. \n\nThis has the advantage that externally (from outside cc), it\u0027s easy to understand tcp\u0027s state",
+      "parentUuid": "0a42637a_0d4f78f1",
       "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
