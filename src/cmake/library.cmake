@@ -13,7 +13,7 @@
 
 macro(add_vpp_library lib)
   cmake_parse_arguments(ARG
-    ""
+    "LTO"
     "COMPONENT"
     "SOURCES;MULTIARCH_SOURCES;API_FILES;LINK_LIBRARIES;INSTALL_HEADERS;DEPENDS"
     ${ARGN}
@@ -37,6 +37,13 @@ macro(add_vpp_library lib)
     DESTINATION ${VPP_LIBRARY_DIR}
     COMPONENT ${ARG_COMPONENT}
   )
+
+  if (ARG_LTO AND VPP_USE_LTO)
+     set_property(TARGET ${lib} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+     target_compile_options (${lib} PRIVATE "-ffunction-sections")
+     target_compile_options (${lib} PRIVATE "-fdata-sections")
+     target_link_libraries (${lib} "-Wl,--gc-sections")
+  endif()
 
   if(ARG_MULTIARCH_SOURCES)
     vpp_library_set_multiarch_sources(${lib} "${ARG_DEPENDS}" ${ARG_MULTIARCH_SOURCES})
