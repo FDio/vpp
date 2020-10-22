@@ -514,16 +514,24 @@ create_bypass_for_fwd (snat_main_t * sm, vlib_buffer_t * b, ip4_header_t * ip,
   nat44_session_update_lru (sm, s, thread_index);
 }
 
-static inline void
-create_bypass_for_fwd_worker (snat_main_t * sm, vlib_buffer_t * b,
-			      ip4_header_t * ip, u32 rx_fib_index)
+static_always_inline int
+create_bypass_for_fwd_worker (snat_main_t * sm,
+			      vlib_buffer_t * b, ip4_header_t * ip,
+			      u32 rx_fib_index, u32 thread_index)
 {
-  ip4_header_t ip_wkr = {
+  ip4_header_t ip = {
     .src_address = ip->dst_address,
   };
-  u32 thread_index = sm->worker_in2out_cb (&ip_wkr, rx_fib_index, 0);
+  u32 index = sm->worker_in2out_cb (&ip, rx_fib_index, 0);
+
+  if (index != thread_index)
+    {
+      vnet_buffer2 (b[0])->nat.thread_next = index;
+      return 1;
+    }
 
   create_bypass_for_fwd (sm, b, ip, rx_fib_index, thread_index);
+  return 0;
 }
 
 #ifndef CLIB_MARCH_VARIANT
@@ -590,11 +598,18 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 		}
 	      else
 		{
-		  if (sm->num_workers > 1)
-		    create_bypass_for_fwd_worker (sm, b, ip, rx_fib_index);
+		  if ((sm->num_workers > 1)
+		      && create_bypass_for_fwd_worker (sm, b, ip,
+						       rx_fib_index,
+						       thread_index))
+		    {
+		      next = NAT_NEXT_OUT2IN_ED_HANDOFF;
+		    }
 		  else
-		    create_bypass_for_fwd (sm, b, ip, rx_fib_index,
-					   thread_index);
+		    {
+		      create_bypass_for_fwd (sm, b, ip, rx_fib_index,
+					     thread_index);
+		    }
 		}
 	    }
 	  goto out;
@@ -1070,6 +1085,9 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
 
+  // only for special case
+  u16 thread_indices[VLIB_FRAME_SIZE], *ti = thread_indices;
+
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
   vlib_get_buffers (vm, from, b, n_left_from);
@@ -1206,12 +1224,18 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 		    }
 		  else
 		    {
-		      if (sm->num_workers > 1)
-			create_bypass_for_fwd_worker (sm, b0, ip0,
-						      rx_fib_index0);
+		      if ((sm->num_workers > 1)
+			  && create_bypass_for_fwd_worker (sm, b0, ip0,
+							   rx_fib_index0,
+							   thread_index))
+			{
+			  next[0] = NAT_NEXT_OUT2IN_ED_HANDOFF;
+			}
 		      else
-			create_bypass_for_fwd (sm, b0, ip0, rx_fib_index0,
-					       thread_index);
+			{
+			  create_bypass_for_fwd (sm, b0, ip0, rx_fib_index0,
+						 thread_index);
+			}
 		    }
 		}
 	      goto trace0;
@@ -1372,8 +1396,111 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
       b++;
     }
 
+  /*
+   * vlib_buffer_enqueue_to_thread (vlib_main_t * vm,
+   *                                u32 frame_queue_index,
+   u32 * buffer_indices,
+   u16 * thread_indices,
+   u32 n_packets,
+   int drop_on_congestion)
+
+   vlib_buffer_enqueue_to_next (vlib_main_t * vm,
+   vlib_node_runtime_t * node,
+   u32 * buffers, u16 * nexts, uword count)
+
+   from -- is the same in both cases
+   thread_indices <--> nexts -- these have the same use in both
+   to direct packets
+   n_packets == count -- is the same in both cases
+
+   */
+
+
   vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
 			       frame->n_vectors);
+
+  return frame->n_vectors;
+}
+
+
+static inline uword
+nat_handoff_node_fn_inline (vlib_main_t * vm,
+			    vlib_node_runtime_t * node,
+			    vlib_frame_t * frame, u32 fq_index)
+{
+  u32 n_enq, n_left_from, *from;
+
+  u16 thread_indices[VLIB_FRAME_SIZE], *ti = thread_indices;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  vlib_get_buffers (vm, from, b, n_left_from);
+
+  while (n_left_from >= 4)
+    {
+      if (PREDICT_TRUE (n_left_from >= 8))
+	{
+	  vlib_prefetch_buffer_header (b[4], LOAD);
+	  vlib_prefetch_buffer_header (b[5], LOAD);
+	  vlib_prefetch_buffer_header (b[6], LOAD);
+	  vlib_prefetch_buffer_header (b[7], LOAD);
+	  CLIB_PREFETCH (&b[4]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (&b[5]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (&b[6]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (&b[7]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	}
+
+      ti[0] = vnet_buffer2 (b[0])->nat.thread_next;
+      ti[1] = vnet_buffer2 (b[1])->nat.thread_next;
+      ti[2] = vnet_buffer2 (b[2])->nat.thread_next;
+      ti[3] = vnet_buffer2 (b[3])->nat.thread_next;
+
+      b += 4;
+      ti += 4;
+      n_left_from -= 4;
+    }
+
+  while (n_left_from > 0)
+    {
+      ti[0] = vnet_buffer2 (b[0])->nat.thread_next;
+
+      b += 1;
+      ti += 1;
+      n_left_from -= 1;
+    }
+
+  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
+    {
+      u32 i;
+      b = bufs;
+      ti = thread_indices;
+
+      for (i = 0; i < frame->n_vectors; i++)
+	{
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      nat_out2in_ed_handoff_trace_t *t =
+		vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      t->thread_next_index = ti[0];
+	      b += 1;
+	      ti += 1;
+	    }
+	  else
+	    break;
+	}
+    }
+
+  n_enq = vlib_buffer_enqueue_to_thread (vm, fq_index, from, thread_indices,
+					 frame->n_vectors, 1);
+
+  if (n_enq < frame->n_vectors)
+    {
+      vlib_node_increment_counter (vm, node->node_index,
+				   NAT44_HANDOFF_ERROR_CONGESTION_DROP,
+				   frame->n_vectors - n_enq);
+    }
 
   return frame->n_vectors;
 }
@@ -1422,6 +1549,35 @@ VLIB_REGISTER_NODE (nat44_ed_out2in_slowpath_node) = {
   .n_errors = ARRAY_LEN(nat_out2in_ed_error_strings),
   .error_strings = nat_out2in_ed_error_strings,
   .runtime_data_bytes = sizeof (snat_runtime_t),
+};
+/* *INDENT-ON* */
+
+static u8 *
+format_nat_out2in_ed_handoff_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  nat_out2in_ed_handoff_trace_t *t = va_arg (*args, nat_pre_trace_t *);
+  return format (s, "out2in ed handoff thread_next_index %d",
+		 t->thread_next_index);
+}
+
+VLIB_NODE_FN (nat_out2in_ed_handoff_node) (vlib_main_t * vm,
+					   vlib_node_runtime_t * node,
+					   vlib_frame_t * frame)
+{
+  return nat_handoff_node_fn_inline (vm, node, frame,
+				     snat_main.ed_out2in_node_index);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (nat_out2in_ed_handoff_node) = {
+  .name = "nat-ed-out2in-handoff",
+  .vector_size = sizeof (u32),
+  .sibling_of = "nat-default",
+  .format_trace = format_nat_out2in_ed_handoff_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = 0,
 };
 /* *INDENT-ON* */
 
