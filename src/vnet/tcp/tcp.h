@@ -163,9 +163,6 @@ typedef struct tcp_configuration_
    * a zero rwnd advertisement */
   u32 rwnd_min_update_ack;
 
-  /** Delayed ack time (disabled) */
-  u32 delack_time;
-
   /** Timer ticks to wait for close from app */
   u32 closewait_time;
 
