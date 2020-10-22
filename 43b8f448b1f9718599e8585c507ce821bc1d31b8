@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "d5fc19fb_5faa4a7b",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 553,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-22T02:34:35Z",
+      "side": 1,
+      "message": "I suspect this could be replaced with: transport_max_tx_dequeue (tc) - tc-\u003esnd_nxt",
+      "range": {
+        "startLine": 553,
+        "startChar": 0,
+        "endLine": 553,
+        "endChar": 32
+      },
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "dfab6bb4_2efc09d2",
         "filename": "src/vnet/tcp/tcp.c",
         "patchSetId": 1
@@ -76,6 +99,29 @@
     },
     {
       "key": {
+        "uuid": "a46174af_cdd78409",
+        "filename": "src/vnet/tcp/tcp_timer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-22T02:34:35Z",
+      "side": 1,
+      "message": "Haven\u0027t read the details but this doesn\u0027t look too good. As much as possible, let\u0027s avoid dependencies on session layer. That is, the timer code should not need to understand that there\u0027s such a thing as a session layer, if possible.",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 33
+      },
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "85775f28_c9ec6af6",
         "filename": "src/vnet/tcp/tcp_timer.h",
         "patchSetId": 1
@@ -93,6 +139,29 @@
     },
     {
       "key": {
+        "uuid": "b39dda07_f0d8009e",
+        "filename": "src/vnet/tcp/tcp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-22T02:34:35Z",
+      "side": 1,
+      "message": "This is THZ above, no?",
+      "range": {
+        "startLine": 88,
+        "startChar": 8,
+        "endLine": 88,
+        "endChar": 34
+      },
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "0a42637a_0d4f78f1",
         "filename": "src/vnet/tcp/tcp_types.h",
         "patchSetId": 1
@@ -104,6 +173,29 @@
       "writtenOn": "2020-10-22T01:51:34Z",
       "side": 1,
       "message": "In the current revision, RACK (byte-tracker based) and non-RACK (scoreboard based) are using a common TCP_CONN_FAST_RECOVERY flag. So the condition to express in-FastRecovery-by-RACK is not very intuitive: It is like `(tc-\u003erack.reordering_seen)`.\n\nI\u0027m thinking to add another flag TCP_CONN_RACK_RECOVERY. Then, it will be easier to manage the congestion state.",
+      "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "08dc81b5_c357941c",
+        "filename": "src/vnet/tcp/tcp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 329,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-22T02:34:35Z",
+      "side": 1,
+      "message": "Ouch, would love to be able to avoid this.",
+      "range": {
+        "startLine": 329,
+        "startChar": 6,
+        "endLine": 329,
+        "endChar": 15
+      },
       "revId": "43b8f448b1f9718599e8585c507ce821bc1d31b8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
