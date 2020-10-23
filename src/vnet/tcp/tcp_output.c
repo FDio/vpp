@@ -902,7 +902,6 @@ tcp_send_fin (tcp_connection_t * tc)
     {
       tc->flags |= TCP_CONN_FINSNT;
       tc->flags &= ~TCP_CONN_FINPNDG;
-      tc->snd_una_max = seq_max (tc->snd_una_max, tc->snd_nxt);
     }
 }
 
@@ -994,8 +993,7 @@ tcp_session_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
   tcp_push_hdr_i (tc, b, tc->snd_nxt, /* compute opts */ 0, /* burst */ 1,
 		  /* update_snd_nxt */ 1);
 
-  tc->snd_una_max = seq_max (tc->snd_nxt, tc->snd_una_max);
-  tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
+  tcp_validate_txf_size (tc, tc->snd_nxt - tc->snd_una);
   /* If not tracking an ACK, start tracking */
   if (tc->rtt_ts == 0 && !tcp_in_cong_recovery (tc))
     {
@@ -1560,7 +1558,7 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
 					max_snd_bytes);
   b->current_length = n_bytes;
   ASSERT (n_bytes != 0 && (tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT)
-			   || tc->snd_nxt == tc->snd_una_max
+			   || tc->snd_una == tc->snd_nxt
 			   || tc->rto_boff > 1));
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
@@ -1571,8 +1569,7 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
 
   tcp_push_hdr_i (tc, b, tc->snd_nxt, /* compute opts */ 0,
 		  /* burst */ 0, /* update_snd_nxt */ 1);
-  tc->snd_una_max = seq_max (tc->snd_nxt, tc->snd_una_max);
-  tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
+  tcp_validate_txf_size (tc, tc->snd_nxt - tc->snd_una);
   tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 
   /* Just sent new data, enable retransmit */
@@ -1638,7 +1635,6 @@ tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	tcp_bt_track_tx (tc, n_written);
 
       tc->snd_nxt += n_written;
-      tc->snd_una_max = seq_max (tc->snd_nxt, tc->snd_una_max);
     }
 
 done:

@@ -88,7 +88,6 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   tc->flags |= TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
   tc->snd_una = 0;
-  tc->snd_una_max = 1000;
   tc->snd_nxt = 1000;
   tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
   tc->snd_mss = 150;
@@ -317,7 +316,6 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   block.end = 1300;
   vec_add1 (tc->rcv_opts.sacks, block);
 
-  tc->snd_una_max = 1500;
   tc->snd_una = 1000;
   tc->snd_nxt = 1500;
   tcp_rcv_sacks (tc, 1000);
@@ -366,7 +364,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    */
   vec_reset_length (tc->rcv_opts.sacks);
   tc->snd_una = 1300;
-  tc->snd_nxt = tc->snd_una_max = 1900;
+  tc->snd_nxt = 1900;
   for (i = 0; i < 5; i++)
     {
       block.start = i * 100 + 1200;
@@ -390,7 +388,6 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    */
 
   tc->snd_una = 0;
-  tc->snd_una_max = 1000;
   tc->snd_nxt = 1000;
   vec_reset_length (tc->rcv_opts.sacks);
   for (i = 0; i < 5; i++)
@@ -434,7 +431,6 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    */
 
   tc->snd_una = 0;
-  tc->snd_una_max = 1000;
   tc->snd_nxt = 1000;
 
   block.start = 100;
@@ -472,7 +468,6 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    */
   scoreboard_clear (sb);
   tc->snd_una = 0;
-  tc->snd_una_max = 1000;
   tc->snd_nxt = 1000;
 
   block.start = 500;
@@ -575,7 +570,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    * snd_una = 1000 and snd_una_max = 1600
    */
   tc->snd_una = 1000;
-  tc->snd_nxt = tc->snd_una_max = 1600;
+  tc->snd_nxt = 1600;
   vec_reset_length (tc->rcv_opts.sacks);
   block.start = 1200;
   block.end = 1500;
@@ -609,7 +604,6 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   tc->flags |= TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
   tc->snd_una = 0;
-  tc->snd_una_max = 1000;
   tc->snd_nxt = 1000;
   sb->high_rxt = 0;
 
