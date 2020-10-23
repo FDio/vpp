@@ -606,7 +606,9 @@ cscope: cscope.files
 
 .PHONY: compdb
 compdb:
-	@ninja -C build-root/build-vpp_debug-native/vpp -t compdb > compile_commands.json
+	@ninja -C build-root/build-vpp_debug-native/vpp build.ninja
+	@ninja -C build-root/build-vpp_debug-native/vpp -t compdb | \
+	  extras/scripts/compdb_cleanup.py > compile_commands.json
 
 .PHONY: checkstyle
 checkstyle: checkfeaturelist
