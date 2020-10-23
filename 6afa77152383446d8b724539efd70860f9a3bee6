@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c60a8e48_2a887f51",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 697,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-10-23T16:15:21Z",
+      "side": 1,
+      "message": "Could the last 2 bytes be set to 0 by ethernet_set_mac() instead of having to mask them off here (and below for the secondary addresses)? Previously MAC addresses were being stored in 6 byte data structures so when we retrieved them by casting to a u64 *, we had to mask off the last 2 bytes. Since an ethernet_interface_address_t now has 8 bytes, it seems like those last 2 bytes could be zeroed when the address is stored and these operations which mask those bytes off could be eliminated.",
+      "revId": "6afa77152383446d8b724539efd70860f9a3bee6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
