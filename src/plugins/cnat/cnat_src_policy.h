@@ -32,9 +32,8 @@ typedef enum
 
 typedef enum cnat_source_policy_errors_
 {
-  CNAT_SOURCE_ERROR_EXHAUSTED_PORTS,
-  CNAT_SOURCE_ERROR_USE_DEFAULT,
-  CNAT_SOURCE_N_ERRORS,
+  CNAT_SOURCE_ERROR_EXHAUSTED_PORTS = 1,
+  CNAT_SOURCE_ERROR_USE_DEFAULT = 2,
 } cnat_source_policy_errors_t;
 
 typedef struct cnat_src_port_allocator_
