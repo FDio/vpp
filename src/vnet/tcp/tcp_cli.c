@@ -188,9 +188,8 @@ format_tcp_vars (u8 * s, va_list * args)
   s = format (s, " index: %u cfg: %U flags: %U timers: %U\n", tc->c_c_index,
 	      format_tcp_cfg_flags, tc, format_tcp_connection_flags, tc,
 	      format_tcp_timers, tc);
-  s = format (s, " snd_una %u snd_nxt %u snd_una_max %u",
-	      tc->snd_una - tc->iss, tc->snd_nxt - tc->iss,
-	      tc->snd_una_max - tc->iss);
+  s = format (s, " snd_una %u snd_nxt %u", tc->snd_una - tc->iss,
+	      tc->snd_nxt - tc->iss);
   s = format (s, " rcv_nxt %u rcv_las %u\n",
 	      tc->rcv_nxt - tc->irs, tc->rcv_las - tc->irs);
   s = format (s, " snd_wnd %u rcv_wnd %u rcv_wscale %u ",
@@ -717,7 +716,7 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
       if (trace[i].ack != 0)
 	{
 	  placeholder_tc->snd_una = trace[i].ack - 1448;
-	  placeholder_tc->snd_una_max = trace[i].ack;
+	  placeholder_tc->snd_nxt = trace[i].ack;
 	}
     }
 
@@ -733,8 +732,8 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
 	    {
 	      if (verbose)
 		s = format (s, "Adding ack %u, snd_una_max %u, segs: ",
-			    trace[left].ack, trace[left].snd_una_max);
-	      placeholder_tc->snd_una_max = trace[left].snd_una_max;
+			    trace[left].ack, trace[left].snd_nxt);
+	      placeholder_tc->snd_nxt = trace[left].snd_nxt;
 	      next_ack = trace[left].ack;
 	      has_new_ack = 1;
 	    }

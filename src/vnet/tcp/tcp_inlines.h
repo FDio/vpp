@@ -182,7 +182,7 @@ tcp_available_cc_snd_space (const tcp_connection_t * tc)
 always_inline u8
 tcp_is_lost_fin (tcp_connection_t * tc)
 {
-  if ((tc->flags & TCP_CONN_FINSNT) && (tc->snd_una_max - tc->snd_una == 1))
+  if ((tc->flags & TCP_CONN_FINSNT) && (tc->snd_nxt - tc->snd_una == 1))
     return 1;
   return 0;
 }

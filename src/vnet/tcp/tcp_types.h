@@ -156,7 +156,7 @@ typedef struct _scoreboard_trace_elt
   u32 start;
   u32 end;
   u32 ack;
-  u32 snd_una_max;
+  u32 snd_nxt;
   u32 group;
 } scoreboard_trace_elt_t;
 
@@ -293,7 +293,6 @@ typedef struct _tcp_connection
 
   /** Send sequence variables RFC793 */
   u32 snd_una;		/**< oldest unacknowledged sequence number */
-  u32 snd_una_max;	/**< newest unacknowledged sequence number + 1*/
   u32 snd_wnd;		/**< send window */
   u32 snd_wl1;		/**< seq number used for last snd.wnd update */
   u32 snd_wl2;		/**< ack number used for last snd.wnd update */
@@ -345,7 +344,7 @@ typedef struct _tcp_connection
   u32 rxt_delivered;	/**< Rxt bytes delivered during current cc event */
   u32 rxt_head;		/**< snd_una last time we re rxted the head */
   u32 tsecr_last_ack;	/**< Timestamp echoed to us in last healthy ACK */
-  u32 snd_congestion;	/**< snd_una_max when congestion is detected */
+  u32 snd_congestion;	/**< snd_nxt when congestion is detected */
   u32 tx_fifo_size;	/**< Tx fifo size. Used to constrain cwnd */
   tcp_cc_algorithm_t *cc_algo;	/**< Congestion control algorithm */
   u8 cc_data[TCP_CC_DATA_SZ];	/**< Congestion control algo private data */
