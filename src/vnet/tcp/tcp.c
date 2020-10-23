@@ -680,7 +680,6 @@ tcp_init_snd_vars (tcp_connection_t * tc)
   tc->iss = tcp_generate_random_iss (tc);
   tc->snd_una = tc->iss;
   tc->snd_nxt = tc->iss + 1;
-  tc->snd_una_max = tc->snd_nxt;
   tc->srtt = 0.1 * THZ;		/* 100 ms */
 
   if (!tcp_cfg.csum_offload)
