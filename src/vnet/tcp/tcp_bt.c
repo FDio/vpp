@@ -306,6 +306,7 @@ tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
 
   tail = bt_get_sample (bt, bt->tail);
   if (tail && tail->max_seq == tc->snd_nxt
+      && !(tail->flags & TCP_BTS_IS_SACKED)
       && tail->tx_time == tcp_time_now_us (tc->c_thread_index))
     {
       tail->max_seq += len;
@@ -504,7 +505,10 @@ tcp_bt_walk_samples (tcp_connection_t * tc, tcp_rate_sample_t * rs)
     }
 
   if (cur && seq_lt (cur->min_seq, tc->snd_una))
-    tcp_bt_sample_to_rate_sample (tc, cur, rs);
+    {
+      bt_update_sample (bt, cur, tc->snd_una);
+      tcp_bt_sample_to_rate_sample (tc, cur, rs);
+    }
 }
 
 static void
