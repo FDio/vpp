@@ -231,7 +231,7 @@ segment_manager_get_segment_if_valid (segment_manager_t * sm,
  * Removes segment after acquiring writer lock
  */
 static inline void
-segment_manager_lock_and_del_segment (segment_manager_t * sm, u32 fs_index)
+sm_lock_and_del_segment_inline (segment_manager_t * sm, u32 fs_index)
 {
   fifo_segment_t *fs;
   u8 is_prealloc;
@@ -250,6 +250,12 @@ segment_manager_lock_and_del_segment (segment_manager_t * sm, u32 fs_index)
 
 done:
   clib_rwlock_writer_unlock (&sm->segments_rwlock);
+}
+
+void
+segment_manager_lock_and_del_segment (segment_manager_t * sm, u32 fs_index)
+{
+  sm_lock_and_del_segment_inline (sm, fs_index);
 }
 
 /**
@@ -774,7 +780,7 @@ segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
 
       /* Remove segment if it holds no fifos or first but not protected */
       if (segment_index != 0 || !sm->first_is_protected)
-	segment_manager_lock_and_del_segment (sm, segment_index);
+	sm_lock_and_del_segment_inline (sm, segment_index);
 
       /* Remove segment manager if no sessions and detached from app */
       if (segment_manager_app_detached (sm)
