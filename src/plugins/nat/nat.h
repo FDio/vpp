@@ -248,6 +248,9 @@ typedef CLIB_PACKED(struct
 
   nat_protocol_t nat_proto;
 
+  /* vector of flow indexes for this session */
+  u32 *flows;
+
   /* Flags */
   u32 flags;
 
@@ -421,14 +424,78 @@ typedef struct
   u8 *tag;
 } snat_static_map_resolve_t;
 
+
+typedef struct
+{
+  ip4_address_t saddr, daddr;
+  u32 fib_index;
+  u16 sport, dport;
+  u16 icmp_id;
+  u8 proto;
+} nat_6t;
+
+typedef struct
+{
+  nat_6t match;
+#define NAT_FLOW_OP_SADDR_REWRITE (1<<1)
+#define NAT_FLOW_OP_SPORT_REWRITE (1<<2)
+#define NAT_FLOW_OP_DADDR_REWRITE (1<<3)
+#define NAT_FLOW_OP_DPORT_REWRITE (1<<4)
+#define NAT_FLOW_OP_TXFIB_REWRITE (1<<5)
+#define NAT_FLOW_OP_ICMP_ID_REWRITE (1<<6)
+  int ops;
+  u32 thread_idx;
+  u32 session_idx;
+  nat_6t rwr;
+} nat_6t_flow_t;
+
+always_inline void
+nat_6t_flow_saddr_rewrite_set (nat_6t_flow_t * f, u32 saddr)
+{
+  f->ops |= NAT_FLOW_OP_SADDR_REWRITE;
+  f->rwr.saddr.as_u32 = saddr;
+}
+
+always_inline void
+nat_6t_flow_daddr_rewrite_set (nat_6t_flow_t * f, u32 daddr)
+{
+  f->ops |= NAT_FLOW_OP_DADDR_REWRITE;
+  f->rwr.daddr.as_u32 = daddr;
+}
+
+always_inline void
+nat_6t_flow_sport_rewrite_set (nat_6t_flow_t * f, u32 sport)
+{
+  f->ops |= NAT_FLOW_OP_SPORT_REWRITE;
+  f->rwr.sport = sport;
+}
+
+always_inline void
+nat_6t_flow_dport_rewrite_set (nat_6t_flow_t * f, u32 dport)
+{
+  f->ops |= NAT_FLOW_OP_DPORT_REWRITE;
+  f->rwr.dport = dport;
+}
+
+always_inline void
+nat_6t_flow_txfib_rewrite_set (nat_6t_flow_t * f, u32 tx_fib_index)
+{
+  f->ops |= NAT_FLOW_OP_TXFIB_REWRITE;
+  f->rwr.fib_index = tx_fib_index;
+}
+
+always_inline void
+nat_6t_flow_icmp_id_rewrite_set (nat_6t_flow_t * f, u16 id)
+{
+  f->ops |= NAT_FLOW_OP_ICMP_ID_REWRITE;
+  f->rwr.icmp_id = id;
+}
+
 typedef struct
 {
   /* Main lookup tables */
   clib_bihash_8_8_t out2in;
   clib_bihash_8_8_t in2out;
-
-  /* Endpoint dependent sessions lookup tables */
-  clib_bihash_16_8_t in2out_ed;
 
   /* Find-a-user => src address lookup */
   clib_bihash_8_8_t user_hash;
@@ -438,6 +505,9 @@ typedef struct
 
   /* Session pool */
   snat_session_t *sessions;
+
+  /* flow pool */
+  nat_6t_flow_t *flows;
 
   /* Pool of doubly-linked list elements */
   dlist_elt_t *list_pool;
@@ -524,8 +594,8 @@ typedef struct snat_main_s
   /* Static mapping pool */
   snat_static_mapping_t *static_mappings;
 
-  /* Endpoint-dependent out2in mappings */
-  clib_bihash_16_8_t out2in_ed;
+  /* Endpoint dependent lookup table */
+  clib_bihash_16_8_t flow_hash;
 
   /* Interface pool */
   snat_interface_t *interfaces;
@@ -604,9 +674,6 @@ typedef struct snat_main_s
   u32 hairpinning_node_index;
   u32 hairpin_dst_node_index;
   u32 hairpin_src_node_index;
-  u32 ed_hairpinning_node_index;
-  u32 ed_hairpin_dst_node_index;
-  u32 ed_hairpin_src_node_index;
 
   nat44_config_t rconfig;
   //nat44_config_t cconfig;
@@ -1088,18 +1155,6 @@ u32 icmp_match_out2in_slow (snat_main_t * sm, vlib_node_runtime_t * node,
 			    nat_protocol_t * proto, void *d, void *e,
 			    u8 * dont_translate);
 
-/* ICMP endpoint-dependent session match functions */
-u32 icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
-			  u32 thread_index, vlib_buffer_t * b0,
-			  ip4_header_t * ip0, ip4_address_t * addr,
-			  u16 * port, u32 * fib_index, nat_protocol_t * proto,
-			  void *d, void *e, u8 * dont_translate);
-u32 icmp_match_in2out_ed (snat_main_t * sm, vlib_node_runtime_t * node,
-			  u32 thread_index, vlib_buffer_t * b0,
-			  ip4_header_t * ip0, ip4_address_t * addr,
-			  u16 * port, u32 * fib_index, nat_protocol_t * proto,
-			  void *d, void *e, u8 * dont_translate);
-
 u32 icmp_in2out (snat_main_t * sm, vlib_buffer_t * b0, ip4_header_t * ip0,
 		 icmp46_header_t * icmp0, u32 sw_if_index0, u32 rx_fib_index0,
 		 vlib_node_runtime_t * node, u32 next0, u32 thread_index,
@@ -1112,8 +1167,10 @@ u32 icmp_out2in (snat_main_t * sm, vlib_buffer_t * b0, ip4_header_t * ip0,
 
 /* hairpinning functions */
 u32 snat_icmp_hairpinning (snat_main_t * sm, vlib_buffer_t * b0,
-			   ip4_header_t * ip0, icmp46_header_t * icmp0,
-			   int is_ed);
+			   ip4_header_t * ip0, icmp46_header_t * icmp0);
+u32 snat_ed_icmp_hairpinning (snat_main_t * sm, vlib_buffer_t * b0,
+			      ip4_header_t * ip0, icmp46_header_t * icmp0);
+
 void nat_hairpinning_sm_unknown_proto (snat_main_t * sm, vlib_buffer_t * b,
 				       ip4_header_t * ip);
 void nat44_ed_hairpinning_unknown_proto (snat_main_t * sm, vlib_buffer_t * b,
@@ -1121,12 +1178,14 @@ void nat44_ed_hairpinning_unknown_proto (snat_main_t * sm, vlib_buffer_t * b,
 int snat_hairpinning (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      snat_main_t * sm, vlib_buffer_t * b0,
 		      ip4_header_t * ip0, udp_header_t * udp0,
-		      tcp_header_t * tcp0, u32 proto0, int is_ed,
-		      int do_trace);
+		      tcp_header_t * tcp0, u32 proto0, int do_trace);
+
+int snat_ed_hairpinning (vlib_main_t * vm, vlib_node_runtime_t * node,
+			 snat_main_t * sm, vlib_buffer_t * b0,
+			 ip4_header_t * ip0, udp_header_t * udp0,
+			 tcp_header_t * tcp0, u32 proto0, int do_trace);
 
 /* Call back functions for clib_bihash_add_or_overwrite_stale */
-int nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg);
-int nat44_o2i_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg);
 int nat44_i2o_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg);
 int nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg);
 
@@ -1563,6 +1622,20 @@ typedef struct
 } tcp_udp_header_t;
 
 u8 *format_user_kvp (u8 * s, va_list * args);
+
+nat_6t_flow_t *nat_6t_flow_alloc (snat_main_t * sm, u32 thread_idx,
+				  snat_session_t * s, ip4_address_t saddr,
+				  u16 sport, ip4_address_t daddr, u16 dport,
+				  u32 fib_index, u8 proto);
+
+
+void nat_6t_flow_to_ed_kv (snat_main_per_thread_data_t * tsm,
+			   nat_6t_flow_t * f, clib_bihash_kv_16_8_t * kv);
+
+int
+nat_6t_flow_translate_buf (snat_main_t * sm, vlib_buffer_t * b,
+			   ip4_header_t * ip, nat_6t_flow_t * f,
+			   nat_protocol_t proto);
 
 #endif /* __included_nat_h__ */
 /*
