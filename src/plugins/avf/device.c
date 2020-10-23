@@ -34,6 +34,12 @@
 #define PCI_DEVICE_ID_INTEL_X710_VF		0x154c
 #define PCI_DEVICE_ID_INTEL_X722_VF		0x37cd
 
+/* *INDENT-OFF* */
+VLIB_REGISTER_LOG_CLASS (avf_log) = {
+  .class_name = "avf",
+};
+/* *INDENT-ON* */
+
 avf_main_t avf_main;
 void avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier);
 
@@ -1017,7 +1023,6 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
 void
 avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 {
-  avf_main_t *am = &avf_main;
   vnet_main_t *vnm = vnet_get_main ();
   virtchnl_pf_event_t *e;
   u32 r;
@@ -1157,7 +1162,7 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 error:
   ad->flags |= AVF_DEVICE_F_ERROR;
   ASSERT (ad->error != 0);
-  vlib_log_err (am->log_class, "%U", format_clib_error, ad->error);
+  vlib_log_err (avf_log.class, "%U", format_clib_error, ad->error);
 }
 
 static clib_error_t *
@@ -1779,9 +1784,6 @@ avf_init (vlib_main_t * vm)
 
   vec_validate_aligned (am->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
-
-  am->log_class = vlib_log_register_class ("avf", 0);
-  vlib_log_debug (am->log_class, "initialized");
 
   return 0;
 }

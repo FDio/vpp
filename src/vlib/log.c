@@ -27,6 +27,12 @@ vlib_log_main_t log_main = {
   .default_rate_limit = 50,
 };
 
+/* *INDENT-OFF* */
+VLIB_REGISTER_LOG_CLASS (log_log, static) = {
+  .class_name = "log",
+};
+/* *INDENT-ON* */
+
 static const int colors[] = {
   [VLIB_LOG_LEVEL_EMERG] = 1,	/* red */
   [VLIB_LOG_LEVEL_ALERT] = 1,	/* red */
@@ -36,6 +42,18 @@ static const int colors[] = {
   [VLIB_LOG_LEVEL_NOTICE] = 2,	/* green */
   [VLIB_LOG_LEVEL_INFO] = 4,	/* blue */
   [VLIB_LOG_LEVEL_DEBUG] = 6,	/* cyan */
+};
+
+static const int log_level_to_syslog_priority[] = {
+  [VLIB_LOG_LEVEL_EMERG] = LOG_EMERG,
+  [VLIB_LOG_LEVEL_ALERT] = LOG_ALERT,
+  [VLIB_LOG_LEVEL_CRIT] = LOG_CRIT,
+  [VLIB_LOG_LEVEL_ERR] = LOG_ERR,
+  [VLIB_LOG_LEVEL_WARNING] = LOG_WARNING,
+  [VLIB_LOG_LEVEL_NOTICE] = LOG_NOTICE,
+  [VLIB_LOG_LEVEL_INFO] = LOG_INFO,
+  [VLIB_LOG_LEVEL_DEBUG] = LOG_DEBUG,
+  [VLIB_LOG_LEVEL_DISABLED] = LOG_DEBUG,
 };
 
 int
@@ -63,22 +81,6 @@ get_subclass_data (vlib_log_class_t ci)
 {
   vlib_log_class_data_t *c = get_class_data (ci);
   return vec_elt_at_index (c->subclasses, (ci & 0xffff));
-}
-
-static int
-vlib_log_level_to_syslog_priority (vlib_log_level_t level)
-{
-  switch (level)
-    {
-#define LOG_DISABLED LOG_DEBUG
-#define _(n,uc,lc) \
-    case VLIB_LOG_LEVEL_##uc:\
-      return LOG_##uc;
-      foreach_vlib_log_level
-#undef _
-#undef LOG_DISABLED
-    }
-  return LOG_DEBUG;
 }
 
 u8 *
@@ -201,7 +203,7 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
       else
 	{
 	  l = format (l, "%U", format_vlib_log_class, class);
-	  int prio = vlib_log_level_to_syslog_priority (level);
+	  int prio = log_level_to_syslog_priority[level];
 	  int is_term = vec_c_string_is_terminated (l) ? 1 : 0;
 
 	  syslog (prio, "%.*s: %.*s", (int) vec_len (l), l,
@@ -263,8 +265,8 @@ vlib_log_register_class_internal (char *class, char *subclass, u32 limit)
       vec_add2 (lm->classes, c, 1);
       c->index = c - lm->classes;
       c->name = format (0, "%s", class);
-      length = vec_len (c->name);
     }
+  length = vec_len (c->name);
 
   vec_add2 (c->subclasses, s, 1);
   s->index = s - c->subclasses;
@@ -322,7 +324,7 @@ format_vlib_log_level (u8 * s, va_list * args)
 
   switch (i)
     {
-#define _(v,uc,lc) case VLIB_LOG_LEVEL_##uc: t = #lc; break;
+#define _(uc,lc) case VLIB_LOG_LEVEL_##uc: t = #lc; break;
       foreach_vlib_log_level
 #undef _
     default:
@@ -335,12 +337,29 @@ static clib_error_t *
 vlib_log_init (vlib_main_t * vm)
 {
   vlib_log_main_t *lm = &log_main;
+  vlib_log_class_registration_t *r = lm->registrations;
 
   gettimeofday (&lm->time_zero_timeval, 0);
   lm->time_zero = vlib_time_now (vm);
 
   vec_validate (lm->entries, lm->size);
-  lm->log_class = vlib_log_register_class ("log", 0);
+
+  while (r)
+    {
+      r->class = vlib_log_register_class (r->class_name, r->subclass_name);
+      if (r->default_level)
+	get_subclass_data (r->class)->level = r->default_level;
+      if (r->default_syslog_level)
+	get_subclass_data (r->class)->syslog_level = r->default_syslog_level;
+      r = r->next;
+    }
+
+  r = lm->registrations;
+  while (r)
+    {
+      vlib_log_debug (r->class, "initialized");
+      r = r->next;
+    }
   return 0;
 }
 
@@ -449,7 +468,7 @@ clear_log (vlib_main_t * vm,
 
   lm->count = 0;
   lm->next = 0;
-  vlib_log_info (lm->log_class, "log cleared");
+  vlib_log_info (log_log.class, "log cleared");
   return error;
 }
 
@@ -469,11 +488,11 @@ unformat_vlib_log_level (unformat_input_t * input, va_list * args)
   uword rv = 1;
   if (unformat (input, "%s", &level_str))
     {
-#define _(v, uc, lc)                                   \
+#define _(uc, lc)                                      \
   const char __##uc[] = #lc;                           \
-  if (!strcmp ((const char *) level_str, __##uc))	\
+  if (!strcmp ((const char *) level_str, __##uc))      \
     {                                                  \
-      *level = VLIB_LOG_LEVEL_##uc;                 \
+      *level = VLIB_LOG_LEVEL_##uc;                    \
       rv = 1;                                          \
       goto done;                                       \
     }
