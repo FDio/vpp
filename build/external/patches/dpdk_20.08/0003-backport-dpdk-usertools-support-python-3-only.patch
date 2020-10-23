@@ -57,9 +57,9 @@ diff --git a/usertools/dpdk-devbind.py b/usertools/dpdk-devbind.py
 index 094c2ffc8..8278a748d 100755
 --- a/usertools/dpdk-devbind.py
 +++ b/usertools/dpdk-devbind.py
-@@ -1,9 +1,8 @@
+@@ -1,4 +1,4 @@
 -#! /usr/bin/env python
-+#!/usr/bin/env python3
++#! /usr/bin/env python3
  # SPDX-License-Identifier: BSD-3-Clause
  # Copyright(c) 2010-2014 Intel Corporation
  #
