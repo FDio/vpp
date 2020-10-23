@@ -180,7 +180,7 @@ mq_send_session_accepted_cb (session_t * s)
       mp->rmt.is_ip4 = session_type_is_ip4 (listener->session_type);
       mp->rmt.port = ct->c_rmt_port;
       mp->handle = session_handle (s);
-      vpp_queue = session_main_get_vpp_event_queue (0);
+      vpp_queue = session_main_get_vpp_event_queue (s->thread_index);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
     }
   svm_msg_q_add_and_unlock (app_mq, msg);
@@ -318,7 +318,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       mp->handle = session_handle (s);
       mp->lcl.port = cct->c_lcl_port;
       mp->lcl.is_ip4 = cct->c_is_ip4;
-      vpp_mq = session_main_get_vpp_event_queue (0);
+      vpp_mq = session_main_get_vpp_event_queue (s->thread_index);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
       mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);
       mp->server_tx_fifo = pointer_to_uword (s->tx_fifo);
