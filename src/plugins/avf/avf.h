@@ -50,18 +50,20 @@
 #define AVF_TXD_CMD_RS			AVF_TXD_CMD(1)
 #define AVF_TXD_CMD_RSV			AVF_TXD_CMD(2)
 
+extern vlib_log_class_registration_t avf_log;
+
 #define avf_log_err(dev, f, ...)                        \
-  vlib_log (VLIB_LOG_LEVEL_ERR, avf_main.log_class, "%U: " f, \
+  vlib_log (VLIB_LOG_LEVEL_ERR, avf_log.class, "%U: " f, \
             format_vlib_pci_addr, &dev->pci_addr, \
             ## __VA_ARGS__)
 
 #define avf_log_warn(dev, f, ...)                        \
-  vlib_log (VLIB_LOG_LEVEL_WARNING, avf_main.log_class, "%U: " f, \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, avf_log.class, "%U: " f, \
             format_vlib_pci_addr, &dev->pci_addr, \
             ## __VA_ARGS__)
 
 #define avf_log_debug(dev, f, ...)                        \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, avf_main.log_class, "%U: " f, \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, avf_log.class, "%U: " f, \
             format_vlib_pci_addr, &dev->pci_addr, \
             ## __VA_ARGS__)
 
@@ -245,8 +247,6 @@ typedef struct
 
   avf_device_t **devices;
   avf_per_thread_data_t *per_thread_data;
-
-  vlib_log_class_t log_class;
 } avf_main_t;
 
 extern avf_main_t avf_main;
