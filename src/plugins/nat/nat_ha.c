@@ -81,6 +81,8 @@ typedef struct
   u32 fib_index;
   u32 total_pkts;
   u64 total_bytes;
+  nat_6t_flow_t i2o_flow;
+  nat_6t_flow_t o2i_flow;
 } __attribute__ ((packed)) nat_ha_event_t;
 
 typedef enum
@@ -440,7 +442,8 @@ nat_ha_recv_add (nat_ha_event_t * event, f64 now, u32 thread_index)
 
   ha->sadd_cb (&in_addr, event->in_port, &out_addr, event->out_port, &eh_addr,
 	       event->eh_port, &ehn_addr, event->ehn_port, event->protocol,
-	       fib_index, flags, thread_index);
+	       fib_index, flags, thread_index, &event->i2o_flow,
+	       &event->o2i_flow);
 }
 
 static_always_inline void
@@ -692,7 +695,8 @@ void
 nat_ha_sadd (ip4_address_t * in_addr, u16 in_port, ip4_address_t * out_addr,
 	     u16 out_port, ip4_address_t * eh_addr, u16 eh_port,
 	     ip4_address_t * ehn_addr, u16 ehn_port, u8 proto, u32 fib_index,
-	     u16 flags, u32 thread_index, u8 is_resync)
+	     u16 flags, u32 thread_index, u8 is_resync,
+	     nat_6t_flow_t * i2o_flow, nat_6t_flow_t * o2i_flow)
 {
   nat_ha_event_t event;
 
@@ -711,6 +715,8 @@ nat_ha_sadd (ip4_address_t * in_addr, u16 in_port, ip4_address_t * out_addr,
   event.ehn_port = ehn_port;
   event.fib_index = clib_host_to_net_u32 (fib_index);
   event.protocol = proto;
+  clib_memcpy (&event.i2o_flow, i2o_flow, sizeof (event.i2o_flow));
+  clib_memcpy (&event.o2i_flow, o2i_flow, sizeof (event.o2i_flow));
   nat_ha_event_add (&event, 0, thread_index, is_resync);
 }
 

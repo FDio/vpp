@@ -249,7 +249,8 @@ create_session_for_static_mapping (snat_main_t * sm,
   nat_ha_sadd (&s->in2out.addr, s->in2out.port, &s->out2in.addr,
 	       s->out2in.port, &s->ext_host_addr, s->ext_host_port,
 	       &s->ext_host_nat_addr, s->ext_host_nat_port,
-	       s->nat_proto, s->in2out.fib_index, s->flags, thread_index, 0);
+	       s->nat_proto, s->in2out.fib_index, s->flags, thread_index, 0,
+	       &s->i2o, &s->o2i);
 
   return s;
 }
