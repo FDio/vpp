@@ -458,7 +458,7 @@ typedef struct
   struct
   {
     u32 arc_next;
-    u32 ed_out2in_nat_session_index;
+    u32 ed_out2in_nat_flow_index;
   } nat;
 
   union

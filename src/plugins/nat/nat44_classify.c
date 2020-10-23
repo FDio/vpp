@@ -294,8 +294,6 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
   nat44_classify_next_t next_index;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
-  u32 thread_index = vm->thread_index;
-  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   u32 next_in2out = 0, next_out2in = 0;
 
   from = vlib_frame_vector_args (frame);
@@ -348,7 +346,7 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 			 rx_fib_index0, ip0->protocol);
 	      /* process whole packet */
 	      if (!clib_bihash_search_16_8
-		  (&tsm->in2out_ed, &ed_kv0, &ed_value0))
+		  (&sm->flow_hash, &ed_kv0, &ed_value0))
 		goto enqueue0;
 	      /* session doesn't exist so continue in code */
 	    }

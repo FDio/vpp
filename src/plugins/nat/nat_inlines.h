@@ -479,7 +479,7 @@ ed_value_get_thread_index (clib_bihash_kv_16_8_t * value)
 }
 
 always_inline u32
-ed_value_get_session_index (clib_bihash_kv_16_8_t * value)
+  ed_value_get_flow_index (clib_bihash_kv_16_8_t * value)
 {
   return value->value & ~(u32) 0;
 }
