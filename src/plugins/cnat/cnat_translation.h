@@ -222,7 +222,7 @@ cnat_find_translation (index_t cti, u16 port, ip_protocol_t proto)
   u64 key;
   int rv;
 
-  key = (proto << 24) | port;
+  key = ((u64) proto << 24) | port;
   key = key << 32 | (u32) cti;
 
   bkey.key = key;

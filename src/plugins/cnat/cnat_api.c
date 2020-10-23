@@ -43,25 +43,31 @@ static u32 cnat_base_msg_id;
 
 #include <vlibapi/api_helper_macros.h>
 
-static void
+static int
 cnat_endpoint_decode (const vl_api_cnat_endpoint_t * in,
 		      cnat_endpoint_t * out)
 {
+  int rv = 0;
   out->ce_port = clib_net_to_host_u16 (in->port);
   out->ce_sw_if_index = clib_net_to_host_u32 (in->sw_if_index);
   out->ce_flags = 0;
   if (out->ce_sw_if_index == INDEX_INVALID)
     ip_address_decode2 (&in->addr, &out->ce_ip);
   else
-    ip_address_family_decode (in->if_af, &out->ce_ip.version);
+    rv = ip_address_family_decode (in->if_af, &out->ce_ip.version);
+  return rv;
 }
 
-static void
+static int
 cnat_endpoint_tuple_decode (const vl_api_cnat_endpoint_tuple_t * in,
 			    cnat_endpoint_tuple_t * out)
 {
-  cnat_endpoint_decode (&in->src_ep, &out->src_ep);
-  cnat_endpoint_decode (&in->dst_ep, &out->dst_ep);
+  int rv = 0;
+  rv = cnat_endpoint_decode (&in->src_ep, &out->src_ep);
+  if (rv)
+    return rv;
+  rv = cnat_endpoint_decode (&in->dst_ep, &out->dst_ep);
+  return rv;
 }
 
 static void
@@ -101,9 +107,14 @@ vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
   for (pi = 0; pi < n_paths; pi++)
     {
       path = &paths[pi];
-      cnat_endpoint_tuple_decode (&mp->translation.paths[pi], path);
+      rv = cnat_endpoint_tuple_decode (&mp->translation.paths[pi], path);
+      if (rv)
+	goto done;
     }
-  cnat_endpoint_decode (&mp->translation.vip, &vip);
+
+  rv = cnat_endpoint_decode (&mp->translation.vip, &vip);
+  if (rv)
+    goto done;
 
   flags = mp->translation.flags;
   if (!mp->translation.is_real_ip)
@@ -217,6 +228,8 @@ cnat_session_send_details (const cnat_session_t * session, void *args)
   /* fill in the message */
   mp->context = ctx->context;
 
+  ep.ce_sw_if_index = INDEX_INVALID;
+  ep.ce_flags = CNAT_EP_FLAG_RESOLVED;
   ip_address2_from_46 (&session->value.cs_ip[VLIB_TX], session->key.cs_af,
 		       &ep.ce_ip);
   ep.ce_port = clib_host_to_net_u16 (session->value.cs_port[VLIB_TX]);
