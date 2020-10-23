@@ -240,6 +240,7 @@ trace:
       if (t->has_tr)
 	clib_memcpy (&t->tr, ct, sizeof (cnat_translation_t));
     }
+
   return next0;
 }
 

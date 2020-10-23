@@ -14,6 +14,7 @@
  */
 
 #include <vnet/fib/fib_table.h>
+#include <vlibmemory/api.h>
 #include <vnet/dpo/drop_dpo.h>
 
 #include <cnat/cnat_client.h>
@@ -40,9 +41,10 @@ cnat_client_db_remove (cnat_client_t * cc)
     hash_unset_mem_free (&cnat_client_db.crd_cip6, &ip_addr_v6 (&cc->cc_ip));
 }
 
-static void
-cnat_client_destroy (cnat_client_t * cc)
+void
+cnat_client_destroy (const index_t * cci)
 {
+  cnat_client_t *cc = cnat_client_get (*cci);
   ASSERT (!cnat_client_is_clone (cc));
   if (!(cc->flags & CNAT_FLAG_EXCLUSIVE))
     {
@@ -58,13 +60,16 @@ void
 cnat_client_free_by_ip (ip46_address_t * ip, u8 af)
 {
   cnat_client_t *cc;
+  index_t cci;
   cc = (AF_IP4 == af ?
 	cnat_client_ip4_find (&ip->ip4) : cnat_client_ip6_find (&ip->ip6));
   ASSERT (NULL != cc);
+  cci = cc - cnat_client_pool;
 
   if ((0 == cnat_client_uncnt_session (cc))
       && (cc->flags & CNAT_FLAG_EXPIRES) && (0 == cc->tr_refcnt))
-    cnat_client_destroy (cc);
+    vl_api_rpc_call_main_thread (cnat_client_destroy, (u8 *) & cci,
+				 sizeof (cci));
 }
 
 void
@@ -129,7 +134,8 @@ cnat_client_translation_deleted (index_t cci)
   cc->tr_refcnt--;
 
   if (0 == cc->tr_refcnt && 0 == cc->session_refcnt)
-    cnat_client_destroy (cc);
+    vl_api_rpc_call_main_thread (cnat_client_destroy, (u8 *) & cci,
+				 sizeof (cci));
 }
 
 static void
