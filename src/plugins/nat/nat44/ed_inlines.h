@@ -51,6 +51,67 @@ nat_ed_lru_insert (snat_main_per_thread_data_t * tsm,
   return 1;
 }
 
+static_always_inline void
+nat_6t_flow_to_ed_k (clib_bihash_kv_16_8_t * kv, nat_6t_flow_t * f)
+{
+  init_ed_k (kv, f->match.saddr, f->match.sport,
+	     f->match.daddr, f->match.dport,
+	     f->match.fib_index, f->match.proto);
+}
+
+static_always_inline void
+nat_6t_flow_to_ed_kv (clib_bihash_kv_16_8_t * kv, nat_6t_flow_t * f,
+		      u32 thread_idx, u32 session_idx)
+{
+  init_ed_kv (kv, f->match.saddr, f->match.sport,
+	      f->match.daddr, f->match.dport,
+	      f->match.fib_index, f->match.proto, thread_idx, session_idx);
+}
+
+static_always_inline int
+nat_ed_ses_i2o_flow_hash_add_del (snat_main_t * sm, u32 thread_idx,
+				  snat_session_t * s, int is_add)
+{
+  snat_main_per_thread_data_t *tsm =
+    vec_elt_at_index (sm->per_thread_data, thread_idx);
+  clib_bihash_kv_16_8_t kv;
+  if (0 == is_add)
+    {
+      nat_6t_flow_to_ed_k (&kv, &s->i2o);
+    }
+  else
+    {
+      nat_6t_flow_to_ed_kv (&kv, &s->i2o, thread_idx, s - tsm->sessions);
+    }
+  if (is_add)
+    clib_warning ("i2o flow hash add: %U", format_nat_6t_flow, &s->i2o);
+  else
+    clib_warning ("i2o flow hash del: %U", format_nat_6t_flow, &s->i2o);
+  return clib_bihash_add_del_16_8 (&sm->flow_hash, &kv, is_add);
+}
+
+static_always_inline int
+nat_ed_ses_o2i_flow_hash_add_del (snat_main_t * sm, u32 thread_idx,
+				  snat_session_t * s, int is_add)
+{
+  snat_main_per_thread_data_t *tsm =
+    vec_elt_at_index (sm->per_thread_data, thread_idx);
+  clib_bihash_kv_16_8_t kv;
+  if (0 == is_add)
+    {
+      nat_6t_flow_to_ed_k (&kv, &s->o2i);
+    }
+  else
+    {
+      nat_6t_flow_to_ed_kv (&kv, &s->o2i, thread_idx, s - tsm->sessions);
+    }
+  if (is_add)
+    clib_warning ("o2i flow hash add: %U", format_nat_6t_flow, &s->o2i);
+  else
+    clib_warning ("o2i flow hash del: %U", format_nat_6t_flow, &s->o2i);
+  return clib_bihash_add_del_16_8 (&sm->flow_hash, &kv, is_add);
+}
+
 always_inline void
 nat_ed_session_delete (snat_main_t * sm, snat_session_t * ses,
 		       u32 thread_index, int lru_delete
@@ -64,6 +125,10 @@ nat_ed_session_delete (snat_main_t * sm, snat_session_t * ses,
       clib_dlist_remove (tsm->lru_pool, ses->lru_index);
     }
   pool_put_index (tsm->lru_pool, ses->lru_index);
+  if (nat_ed_ses_i2o_flow_hash_add_del (sm, thread_index, ses, 0))
+    nat_elog_warn ("flow hash del failed");
+  if (nat_ed_ses_o2i_flow_hash_add_del (sm, thread_index, ses, 0))
+    nat_elog_warn ("flow hash del failed");
   pool_put (tsm->sessions, ses);
   vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			   pool_elts (tsm->sessions));
@@ -225,10 +290,10 @@ per_vrf_sessions_unregister_session (snat_session_t * s, u32 thread_index)
   per_vrf_sessions_t *per_vrf_sessions;
 
   ASSERT (s->per_vrf_sessions_index != ~0);
-  
+
   tsm = vec_elt_at_index (sm->per_thread_data, thread_index);
   per_vrf_sessions = vec_elt_at_index (tsm->per_vrf_sessions_vec,
-                                       s->per_vrf_sessions_index);
+				       s->per_vrf_sessions_index);
 
   ASSERT (per_vrf_sessions->ses_count != 0);
 
@@ -248,8 +313,56 @@ per_vrf_sessions_is_expired (snat_session_t * s, u32 thread_index)
 
   tsm = vec_elt_at_index (sm->per_thread_data, thread_index);
   per_vrf_sessions = vec_elt_at_index (tsm->per_vrf_sessions_vec,
-                                       s->per_vrf_sessions_index);
+				       s->per_vrf_sessions_index);
   return per_vrf_sessions->expired;
+}
+
+static_always_inline void
+nat_6t_flow_init (nat_6t_flow_t * f, u32 thread_idx,
+		  ip4_address_t saddr, u16 sport, ip4_address_t daddr,
+		  u16 dport, u32 fib_index, u8 proto, u32 session_idx)
+{
+  clib_memset (f, 0, sizeof (*f));
+  f->match.saddr = saddr;
+  f->match.sport = sport;
+  f->match.daddr = daddr;
+  f->match.dport = dport;
+  f->match.proto = proto;
+  f->match.fib_index = fib_index;
+}
+
+static_always_inline void
+nat_6t_i2o_flow_init (snat_main_t * sm, u32 thread_idx, snat_session_t * s,
+		      ip4_address_t saddr, u16 sport, ip4_address_t daddr,
+		      u16 dport, u32 fib_index, u8 proto)
+{
+  snat_main_per_thread_data_t *tsm =
+    vec_elt_at_index (sm->per_thread_data, thread_idx);
+  nat_6t_flow_init (&s->i2o, thread_idx, saddr, sport, daddr, dport,
+		    fib_index, proto, s - tsm->sessions);
+}
+
+static_always_inline void
+nat_6t_o2i_flow_init (snat_main_t * sm, u32 thread_idx, snat_session_t * s,
+		      ip4_address_t saddr, u16 sport, ip4_address_t daddr,
+		      u16 dport, u32 fib_index, u8 proto)
+{
+  snat_main_per_thread_data_t *tsm =
+    vec_elt_at_index (sm->per_thread_data, thread_idx);
+  nat_6t_flow_init (&s->o2i, thread_idx, saddr, sport, daddr, dport,
+		    fib_index, proto, s - tsm->sessions);
+}
+
+static_always_inline int
+nat_6t_flow_match (nat_6t_flow_t * f, vlib_buffer_t * b, ip4_address_t saddr,
+		   u16 sport, ip4_address_t daddr, u16 dport, u8 protocol,
+		   u32 fib_index)
+{
+  return f->match.daddr.as_u32 == daddr.as_u32
+    && f->match.dport == vnet_buffer (b)->ip.reass.l4_dst_port
+    && f->match.proto == protocol && f->match.fib_index == fib_index
+    && f->match.saddr.as_u32 == saddr.as_u32
+    && f->match.sport == vnet_buffer (b)->ip.reass.l4_src_port;
 }
 
 #endif

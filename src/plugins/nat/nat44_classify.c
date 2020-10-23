@@ -22,6 +22,7 @@
 #include <vnet/fib/ip4_fib.h>
 #include <nat/nat.h>
 #include <nat/nat_inlines.h>
+#include <nat/nat44/ed_inlines.h>
 
 #define foreach_nat44_classify_error                      \
 _(NEXT_IN2OUT, "next in2out")                             \
@@ -294,8 +295,6 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
   nat44_classify_next_t next_index;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
-  u32 thread_index = vm->thread_index;
-  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   u32 next_in2out = 0, next_out2in = 0;
 
   from = vlib_frame_vector_args (frame);
@@ -348,8 +347,31 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 			 rx_fib_index0, ip0->protocol);
 	      /* process whole packet */
 	      if (!clib_bihash_search_16_8
-		  (&tsm->in2out_ed, &ed_kv0, &ed_value0))
-		goto enqueue0;
+		  (&sm->flow_hash, &ed_kv0, &ed_value0))
+		{
+		  ASSERT (vm->thread_index ==
+			  ed_value_get_thread_index (&ed_value0));
+		  snat_main_per_thread_data_t *tsm =
+		    &sm->per_thread_data[vm->thread_index];
+		  snat_session_t *s = pool_elt_at_index (tsm->sessions,
+							 ed_value_get_session_index
+							 (&ed_value0));
+		  clib_bihash_kv_16_8_t i2o_kv;
+		  nat_6t_flow_to_ed_k (&i2o_kv, &s->i2o);
+		  vnet_buffer2 (b0)->nat.cached_session_index =
+		    ed_value_get_session_index (&ed_value0);
+		  if (i2o_kv.key[0] == ed_kv0.key[0]
+		      && i2o_kv.key[1] == ed_kv0.key[1])
+		    {
+		      next0 = NAT_NEXT_IN2OUT_ED_FAST_PATH;
+		    }
+		  else
+		    {
+		      next0 = NAT_NEXT_OUT2IN_ED_FAST_PATH;
+		    }
+
+		  goto enqueue0;
+		}
 	      /* session doesn't exist so continue in code */
 	    }
 
