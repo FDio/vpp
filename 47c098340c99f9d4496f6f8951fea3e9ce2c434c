@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8b1c9dc2_2ad3f652",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-10-24T09:12:13Z",
+      "side": 1,
+      "message": "Why shell? should be enough to use $(CWD)",
+      "revId": "47c098340c99f9d4496f6f8951fea3e9ce2c434c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f761056e_a1e71e10",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-10-24T09:12:13Z",
+      "side": 1,
+      "message": "It also needs to look at $(VPP_CACHE_DIR)",
+      "revId": "47c098340c99f9d4496f6f8951fea3e9ce2c434c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
