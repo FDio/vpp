@@ -25,6 +25,32 @@ static init_fn client_init_fns[SSVM_N_SEGMENT_TYPES] =
 static delete_fn delete_fns[SSVM_N_SEGMENT_TYPES] =
   { ssvm_delete_shm, ssvm_delete_memfd, ssvm_delete_private };
 
+static clib_spinlock_t server_map_lock;
+
+static void *
+ssvm_map_server_memory (void *base, uword size, int fd, uword offset,
+			char *fmt)
+{
+  void *rv;
+
+  if (PREDICT_FALSE (!server_map_lock))
+    clib_spinlock_init (&server_map_lock);
+
+  clib_spinlock_lock (&server_map_lock);
+  rv = clib_mem_vm_map_shared (base, size, fd, offset, fmt);
+  clib_spinlock_unlock (&server_map_lock);
+
+  return rv;
+}
+
+static void
+ssvm_unmap_server_memory (void *base)
+{
+  clib_spinlock_lock (&server_map_lock);
+  clib_mem_vm_unmap (base);
+  clib_spinlock_unlock (&server_map_lock);
+}
+
 int
 ssvm_server_init_shm (ssvm_private_t * ssvm)
 {
@@ -83,7 +109,7 @@ ssvm_server_init_shm (ssvm_private_t * ssvm)
       clib_mem_vm_randomize_va (&requested_va, min_log2 (page_size));
     }
 
-  sh = clib_mem_vm_map_shared (uword_to_pointer (requested_va, void *),
+  sh = ssvm_map_server_memory (uword_to_pointer (requested_va, void *),
 			       ssvm->ssvm_size, ssvm_fd, 0,
 			       (char *) ssvm->name);
   if (sh == CLIB_MEM_VM_MAP_FAILED)
@@ -205,7 +231,7 @@ ssvm_delete_shm (ssvm_private_t * ssvm)
   vec_free (ssvm->name);
 
   if (ssvm->is_server)
-    clib_mem_vm_unmap (ssvm->sh);
+    ssvm_unmap_server_memory (ssvm->sh);
   else
     munmap ((void *) ssvm->sh, ssvm->ssvm_size);
 }
@@ -250,7 +276,7 @@ ssvm_server_init_memfd (ssvm_private_t * memfd)
       return SSVM_API_ERROR_CREATE_FAILURE;
     }
 
-  sh = clib_mem_vm_map_shared (uword_to_pointer (memfd->requested_va, void *),
+  sh = ssvm_map_server_memory (uword_to_pointer (memfd->requested_va, void *),
 			       memfd->ssvm_size, memfd->fd, 0,
 			       (char *) memfd->name);
   if (sh == CLIB_MEM_VM_MAP_FAILED)
@@ -348,7 +374,7 @@ ssvm_delete_memfd (ssvm_private_t * memfd)
 {
   vec_free (memfd->name);
   if (memfd->is_server)
-    clib_mem_vm_unmap (memfd->sh);
+    ssvm_unmap_server_memory (memfd->sh);
   else
     munmap (memfd->sh, memfd->ssvm_size);
   close (memfd->fd);
@@ -426,7 +452,7 @@ ssvm_delete_private (ssvm_private_t * ssvm)
 {
   vec_free (ssvm->name);
   clib_mem_destroy_heap (ssvm->sh->heap);
-  clib_mem_vm_unmap (ssvm->sh);
+  ssvm_unmap_server_memory (ssvm->sh);
 }
 
 int
