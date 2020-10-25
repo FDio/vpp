@@ -877,8 +877,57 @@ tls_transport_listener_endpoint_get (u32 ctx_handle,
   session_get_endpoint (tls_listener, tep, is_lcl);
 }
 
+static clib_error_t *
+tls_enable (vlib_main_t * vm, u8 is_en)
+{
+  u32 add_segment_size = 256 << 20, first_seg_size = 32 << 20;
+  vnet_app_detach_args_t _da, *da = &_da;
+  vnet_app_attach_args_t _a, *a = &_a;
+  u64 options[APP_OPTIONS_N_OPTIONS];
+  tls_main_t *tm = &tls_main;
+  u32 fifo_size = 128 << 12;
+
+  if (!is_en)
+    {
+      da->app_index = tm->app_index;
+      da->api_client_index = APP_INVALID_INDEX;
+      vnet_application_detach (da);
+      return 0;
+    }
+
+  first_seg_size = tm->first_seg_size ? tm->first_seg_size : first_seg_size;
+  fifo_size = tm->fifo_size ? tm->fifo_size : fifo_size;
+
+  clib_memset (a, 0, sizeof (*a));
+  clib_memset (options, 0, sizeof (options));
+
+  a->session_cb_vft = &tls_app_cb_vft;
+  a->api_client_index = APP_INVALID_INDEX;
+  a->options = options;
+  a->name = format (0, "tls");
+  a->options[APP_OPTIONS_SEGMENT_SIZE] = first_seg_size;
+  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = add_segment_size;
+  a->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
+  a->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
+  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+  a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_IS_TRANSPORT_APP;
+
+  if (vnet_application_attach (a))
+    {
+      clib_warning ("failed to attach tls app");
+      return clib_error_return (0, "failed to attach tls app");
+    }
+
+  tm->app_index = a->app_index;
+  vec_free (a->name);
+
+  return 0;
+}
+
 /* *INDENT-OFF* */
 static const transport_proto_vft_t tls_proto = {
+  .enable = tls_enable,
   .connect = tls_connect,
   .close = tls_disconnect,
   .start_listen = tls_start_listen,
@@ -910,42 +959,15 @@ tls_register_engine (const tls_engine_vft_t * vft, crypto_engine_type_t type)
 static clib_error_t *
 tls_init (vlib_main_t * vm)
 {
-  u32 add_segment_size = 256 << 20, first_seg_size = 32 << 20;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  u32 num_threads, fifo_size = 128 << 12;
-  vnet_app_attach_args_t _a, *a = &_a;
-  u64 options[APP_OPTIONS_N_OPTIONS];
   tls_main_t *tm = &tls_main;
+  u32 num_threads;
 
-  first_seg_size = tm->first_seg_size ? tm->first_seg_size : first_seg_size;
-  fifo_size = tm->fifo_size ? tm->fifo_size : fifo_size;
   num_threads = 1 /* main thread */  + vtm->n_threads;
-
-  clib_memset (a, 0, sizeof (*a));
-  clib_memset (options, 0, sizeof (options));
-
-  a->session_cb_vft = &tls_app_cb_vft;
-  a->api_client_index = APP_INVALID_INDEX;
-  a->options = options;
-  a->name = format (0, "tls");
-  a->options[APP_OPTIONS_SEGMENT_SIZE] = first_seg_size;
-  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = add_segment_size;
-  a->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
-  a->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
-  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
-  a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
-  a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_IS_TRANSPORT_APP;
-
-  if (vnet_application_attach (a))
-    {
-      clib_warning ("failed to attach tls app");
-      return clib_error_return (0, "failed to attach tls app");
-    }
 
   if (!tm->ca_cert_path)
     tm->ca_cert_path = TLS_CA_CERT_PATH;
 
-  tm->app_index = a->app_index;
   clib_rwlock_init (&tm->half_open_rwlock);
 
   vec_validate (tm->rx_bufs, num_threads - 1);
@@ -955,7 +977,6 @@ tls_init (vlib_main_t * vm)
 			       FIB_PROTOCOL_IP4, ~0);
   transport_register_protocol (TRANSPORT_PROTO_TLS, &tls_proto,
 			       FIB_PROTOCOL_IP6, ~0);
-  vec_free (a->name);
   return 0;
 }
 
