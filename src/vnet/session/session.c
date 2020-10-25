@@ -1665,6 +1665,10 @@ session_manager_main_enable (vlib_main_t * vm)
   session_worker_t *wrk;
   int i;
 
+  /* We only initialize once and do not de-initialized on disable */
+  if (smm->is_initialized)
+    goto done;
+
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
   if (num_threads < 1)
@@ -1721,6 +1725,9 @@ session_manager_main_enable (vlib_main_t * vm)
   session_lookup_init ();
   app_namespaces_init ();
   transport_init ();
+  smm->is_initialized = 1;
+
+done:
 
   smm->is_enabled = 1;
 
@@ -1729,6 +1736,12 @@ session_manager_main_enable (vlib_main_t * vm)
   session_debug_init ();
 
   return 0;
+}
+
+static void
+session_manager_main_disable (vlib_main_t * vm)
+{
+  transport_enable_disable (vm, 0 /* is_en */ );
 }
 
 void
@@ -1742,10 +1755,10 @@ session_node_enable_disable (u8 is_en)
   foreach_vlib_main (({
     if (have_workers && ii == 0)
       {
-	vlib_node_set_state (this_vlib_main, session_queue_process_node.index,
-	                     state);
 	if (is_en)
 	  {
+	    vlib_node_set_state (this_vlib_main,
+	                         session_queue_process_node.index, state);
 	    vlib_node_t *n = vlib_get_node (this_vlib_main,
 	                                    session_queue_process_node.index);
 	    vlib_start_process (this_vlib_main, n->runtime_index);
@@ -1780,6 +1793,7 @@ vnet_session_enable_disable (vlib_main_t * vm, u8 is_en)
   else
     {
       session_main.is_enabled = 0;
+      session_manager_main_disable (vm);
       session_node_enable_disable (is_en);
     }
 
