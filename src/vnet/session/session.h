@@ -164,6 +164,8 @@ typedef struct session_main_
 
   /** Session manager is enabled */
   u8 is_enabled;
+  u8 is_initialized;
+
   /** Enable session manager at startup */
   u8 session_enable_asap;
 
