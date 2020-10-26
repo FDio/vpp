@@ -1464,6 +1464,27 @@ fib_entry_get_resolving_interface (fib_node_index_t entry_index)
     return (fib_path_list_get_resolving_interface(fib_entry->fe_parent));
 }
 
+u32
+fib_entry_get_any_resolving_interface (fib_node_index_t entry_index)
+{
+    const fib_entry_src_t *src;
+    fib_entry_t *fib_entry;
+    fib_source_t source;
+    u32 sw_if_index;
+
+    fib_entry = fib_entry_get(entry_index);
+
+    FOR_EACH_SRC_ADDED(fib_entry, src, source,
+    ({
+        sw_if_index = fib_entry_get_resolving_interface_for_source (entry_index,
+                                                                    source);
+
+        if (~0 != sw_if_index)
+            break;
+    }));
+    return (sw_if_index);
+}
+
 fib_source_t
 fib_entry_get_best_source (fib_node_index_t entry_index)
 {
