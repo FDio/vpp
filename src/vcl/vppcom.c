@@ -988,7 +988,11 @@ static int
 vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
 {
   session_disconnected_msg_t *disconnected_msg;
+  session_connected_msg_t *connected_msg;
+  session_reset_msg_t *reset_msg;
+  session_event_t *ecpy;
   vcl_session_t *s;
+  u32 sid;
 
   switch (e->event_type)
     {
@@ -999,26 +1003,57 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
 	break;
       vec_add1 (wrk->unhandled_evts_vector, *e);
       break;
+    case SESSION_CTRL_EVT_BOUND:
+      /* We can only wait for only one listen so not postponed */
+      vcl_session_bound_handler (wrk, (session_bound_msg_t *) e->data);
+      break;
     case SESSION_CTRL_EVT_ACCEPTED:
-      vcl_session_accepted (wrk, (session_accepted_msg_t *) e->data);
+      s = vcl_session_accepted (wrk, (session_accepted_msg_t *) e->data);
+      if (vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK))
+	{
+	  vec_add2 (wrk->unhandled_evts_vector, ecpy, 1);
+	  *ecpy = *e;
+	  ecpy->postponed = 1;
+	  ecpy->session_index = s->session_index;
+	}
       break;
     case SESSION_CTRL_EVT_CONNECTED:
-      vcl_session_connected_handler (wrk,
-				     (session_connected_msg_t *) e->data);
+      connected_msg = (session_connected_msg_t *) e->data;
+      sid = vcl_session_connected_handler (wrk, connected_msg);
+      if (!(s = vcl_session_get (wrk, sid)))
+	break;
+      if (vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK))
+	{
+	  vec_add2 (wrk->unhandled_evts_vector, ecpy, 1);
+	  *ecpy = *e;
+	  ecpy->postponed = 1;
+	  ecpy->session_index = s->session_index;
+	}
       break;
     case SESSION_CTRL_EVT_DISCONNECTED:
       disconnected_msg = (session_disconnected_msg_t *) e->data;
-      s = vcl_session_disconnected_handler (wrk, disconnected_msg);
-      if (!s)
+      if (!(s = vcl_session_get_w_vpp_handle (wrk, disconnected_msg->handle)))
+	break;
+      if (vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK))
+	{
+	  vec_add1 (wrk->unhandled_evts_vector, *e);
+	  break;
+	}
+      if (!(s = vcl_session_disconnected_handler (wrk, disconnected_msg)))
 	break;
       VDBG (0, "disconnected session %u [0x%llx]", s->session_index,
 	    s->vpp_handle);
       break;
     case SESSION_CTRL_EVT_RESET:
+      reset_msg = (session_reset_msg_t *) e->data;
+      if (!(s = vcl_session_get_w_vpp_handle (wrk, reset_msg->handle)))
+	break;
+      if (vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK))
+	{
+	  vec_add1 (wrk->unhandled_evts_vector, *e);
+	  break;
+	}
       vcl_session_reset_handler (wrk, (session_reset_msg_t *) e->data);
-      break;
-    case SESSION_CTRL_EVT_BOUND:
-      vcl_session_bound_handler (wrk, (session_bound_msg_t *) e->data);
       break;
     case SESSION_CTRL_EVT_UNLISTEN_REPLY:
       vcl_session_unlisten_reply_handler (wrk, e->data);
@@ -2178,17 +2213,17 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 {
   session_disconnected_msg_t *disconnected_msg;
   session_connected_msg_t *connected_msg;
-  vcl_session_t *session;
+  vcl_session_t *s;
   u32 sid;
 
   switch (e->event_type)
     {
     case SESSION_IO_EVT_RX:
       sid = e->session_index;
-      session = vcl_session_get (wrk, sid);
-      if (!session || !vcl_session_is_open (session))
+      s = vcl_session_get (wrk, sid);
+      if (!s || !vcl_session_is_open (s))
 	break;
-      vcl_fifo_rx_evt_valid_or_break (session);
+      vcl_fifo_rx_evt_valid_or_break (s);
       if (sid < n_bits && read_map)
 	{
 	  clib_bitmap_set_no_check ((uword *) read_map, sid, 1);
@@ -2197,8 +2232,8 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       break;
     case SESSION_IO_EVT_TX:
       sid = e->session_index;
-      session = vcl_session_get (wrk, sid);
-      if (!session || !vcl_session_is_open (session))
+      s = vcl_session_get (wrk, sid);
+      if (!s || !vcl_session_is_open (s))
 	break;
       if (sid < n_bits && write_map)
 	{
@@ -2207,11 +2242,13 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	}
       break;
     case SESSION_CTRL_EVT_ACCEPTED:
-      session = vcl_session_accepted (wrk,
-				      (session_accepted_msg_t *) e->data);
-      if (!session)
+      if (!e->postponed)
+	s = vcl_session_accepted (wrk, (session_accepted_msg_t *) e->data);
+      else
+	s = vcl_session_get (wrk, e->session_index);
+      if (!s)
 	break;
-      sid = session->session_index;
+      sid = s->session_index;
       if (sid < n_bits && read_map)
 	{
 	  clib_bitmap_set_no_check ((uword *) read_map, sid, 1);
@@ -2219,8 +2256,13 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	}
       break;
     case SESSION_CTRL_EVT_CONNECTED:
-      connected_msg = (session_connected_msg_t *) e->data;
-      sid = vcl_session_connected_handler (wrk, connected_msg);
+      if (!e->postponed)
+	{
+	  connected_msg = (session_connected_msg_t *) e->data;
+	  sid = vcl_session_connected_handler (wrk, connected_msg);
+	}
+      else
+	sid = e->session_index;
       if (sid == VCL_INVALID_SESSION_INDEX)
 	break;
       if (sid < n_bits && write_map)
@@ -2231,10 +2273,10 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       break;
     case SESSION_CTRL_EVT_DISCONNECTED:
       disconnected_msg = (session_disconnected_msg_t *) e->data;
-      session = vcl_session_disconnected_handler (wrk, disconnected_msg);
-      if (!session)
+      s = vcl_session_disconnected_handler (wrk, disconnected_msg);
+      if (!s)
 	break;
-      sid = session->session_index;
+      sid = s->session_index;
       if (sid < n_bits && except_map)
 	{
 	  clib_bitmap_set_no_check ((uword *) except_map, sid, 1);
@@ -2791,89 +2833,96 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
   session_connected_msg_t *connected_msg;
   u32 sid = ~0, session_events;
   u64 session_evt_data = ~0;
-  vcl_session_t *session;
+  vcl_session_t *s;
   u8 add_event = 0;
 
   switch (e->event_type)
     {
     case SESSION_IO_EVT_RX:
       sid = e->session_index;
-      session = vcl_session_get (wrk, sid);
-      if (vcl_session_is_closed (session))
+      s = vcl_session_get (wrk, sid);
+      if (vcl_session_is_closed (s))
 	break;
-      vcl_fifo_rx_evt_valid_or_break (session);
-      session_events = session->vep.ev.events;
-      if (!(EPOLLIN & session->vep.ev.events)
-	  || (session->flags & VCL_SESSION_F_HAS_RX_EVT))
+      vcl_fifo_rx_evt_valid_or_break (s);
+      session_events = s->vep.ev.events;
+      if (!(EPOLLIN & s->vep.ev.events)
+	  || (s->flags & VCL_SESSION_F_HAS_RX_EVT))
 	break;
       add_event = 1;
       events[*num_ev].events |= EPOLLIN;
-      session_evt_data = session->vep.ev.data.u64;
-      session->flags |= VCL_SESSION_F_HAS_RX_EVT;
+      session_evt_data = s->vep.ev.data.u64;
+      s->flags |= VCL_SESSION_F_HAS_RX_EVT;
       break;
     case SESSION_IO_EVT_TX:
       sid = e->session_index;
-      session = vcl_session_get (wrk, sid);
-      if (vcl_session_is_closed (session))
+      s = vcl_session_get (wrk, sid);
+      if (vcl_session_is_closed (s))
 	break;
-      session_events = session->vep.ev.events;
+      session_events = s->vep.ev.events;
       if (!(EPOLLOUT & session_events))
 	break;
       add_event = 1;
       events[*num_ev].events |= EPOLLOUT;
-      session_evt_data = session->vep.ev.data.u64;
-      svm_fifo_reset_has_deq_ntf (vcl_session_is_ct (session) ?
-				  session->ct_tx_fifo : session->tx_fifo);
+      session_evt_data = s->vep.ev.data.u64;
+      svm_fifo_reset_has_deq_ntf (vcl_session_is_ct (s) ?
+				  s->ct_tx_fifo : s->tx_fifo);
       break;
     case SESSION_CTRL_EVT_ACCEPTED:
-      session = vcl_session_accepted (wrk,
-				      (session_accepted_msg_t *) e->data);
-      if (!session)
+      if (!e->postponed)
+	s = vcl_session_accepted (wrk, (session_accepted_msg_t *) e->data);
+      else
+	s = vcl_session_get (wrk, e->session_index);
+      if (!s)
 	break;
-
-      session_events = session->vep.ev.events;
+      session_events = s->vep.ev.events;
+      sid = s->session_index;
       if (!(EPOLLIN & session_events))
 	break;
-
       add_event = 1;
       events[*num_ev].events |= EPOLLIN;
-      session_evt_data = session->vep.ev.data.u64;
+      session_evt_data = s->vep.ev.data.u64;
       break;
     case SESSION_CTRL_EVT_CONNECTED:
-      connected_msg = (session_connected_msg_t *) e->data;
-      sid = vcl_session_connected_handler (wrk, connected_msg);
-      /* Generate EPOLLOUT because there's no connected event */
-      session = vcl_session_get (wrk, sid);
-      if (vcl_session_is_closed (session))
+      if (!e->postponed)
+	{
+	  connected_msg = (session_connected_msg_t *) e->data;
+	  sid = vcl_session_connected_handler (wrk, connected_msg);
+	}
+      else
+	sid = e->session_index;
+      s = vcl_session_get (wrk, sid);
+      if (vcl_session_is_closed (s))
 	break;
-      session_events = session->vep.ev.events;
+      session_events = s->vep.ev.events;
+      /* Generate EPOLLOUT because there's no connected event */
       if (!(EPOLLOUT & session_events))
 	break;
       add_event = 1;
       events[*num_ev].events |= EPOLLOUT;
-      session_evt_data = session->vep.ev.data.u64;
-      if (session->session_state == VCL_STATE_DETACHED)
+      session_evt_data = s->vep.ev.data.u64;
+      if (s->session_state == VCL_STATE_DETACHED)
 	events[*num_ev].events |= EPOLLHUP;
       break;
     case SESSION_CTRL_EVT_DISCONNECTED:
       disconnected_msg = (session_disconnected_msg_t *) e->data;
-      session = vcl_session_disconnected_handler (wrk, disconnected_msg);
-      if (vcl_session_is_closed (session))
+      s = vcl_session_disconnected_handler (wrk, disconnected_msg);
+      if (vcl_session_is_closed (s))
 	break;
-      session_events = session->vep.ev.events;
+      sid = s->session_index;
+      session_events = s->vep.ev.events;
       add_event = 1;
       events[*num_ev].events |= EPOLLHUP | EPOLLRDHUP;
-      session_evt_data = session->vep.ev.data.u64;
+      session_evt_data = s->vep.ev.data.u64;
       break;
     case SESSION_CTRL_EVT_RESET:
       sid = vcl_session_reset_handler (wrk, (session_reset_msg_t *) e->data);
-      session = vcl_session_get (wrk, sid);
-      if (vcl_session_is_closed (session))
+      s = vcl_session_get (wrk, sid);
+      if (vcl_session_is_closed (s))
 	break;
-      session_events = session->vep.ev.events;
+      session_events = s->vep.ev.events;
       add_event = 1;
       events[*num_ev].events |= EPOLLHUP | EPOLLRDHUP;
-      session_evt_data = session->vep.ev.data.u64;
+      session_evt_data = s->vep.ev.data.u64;
       break;
     case SESSION_CTRL_EVT_UNLISTEN_REPLY:
       vcl_session_unlisten_reply_handler (wrk, e->data);
@@ -2909,8 +2958,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       events[*num_ev].data.u64 = session_evt_data;
       if (EPOLLONESHOT & session_events)
 	{
-	  session = vcl_session_get (wrk, sid);
-	  session->vep.ev.events = 0;
+	  s = vcl_session_get (wrk, sid);
+	  s->vep.ev.events = 0;
 	}
       *num_ev += 1;
     }

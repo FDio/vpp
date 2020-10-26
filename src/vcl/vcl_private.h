@@ -298,6 +298,11 @@ typedef struct vcl_worker_
   volatile int rpc_done;
 } vcl_worker_t;
 
+STATIC_ASSERT (sizeof (session_disconnected_msg_t) <= 16,
+	       "disconnected must fit in session_event_t");
+STATIC_ASSERT (sizeof (session_reset_msg_t) <= 16,
+	       "disconnected must fit in session_event_t");
+
 typedef void (vcl_rpc_fn_t) (void *args);
 
 typedef struct vppcom_main_t_
