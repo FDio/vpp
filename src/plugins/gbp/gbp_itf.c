@@ -17,6 +17,8 @@
 #include <plugins/gbp/gbp_bridge_domain.h>
 #include <plugins/gbp/gbp_route_domain.h>
 
+#include <vnet/ip/ip.h>
+
 #define foreach_gbp_itf_mode  \
   _(L2, "l2")                 \
   _(L3, "L3")

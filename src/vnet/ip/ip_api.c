@@ -45,6 +45,7 @@
 #include <vnet/ip/reass/ip6_sv_reass.h>
 #include <vnet/ip/reass/ip6_full_reass.h>
 #include <vnet/ip/ip_table.h>
+#include <vnet/ip/ip_container_proxy.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -850,7 +851,7 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
   ip_lookup_main_t *lm4 = &im4->lookup_main;
   ip_interface_address_t *ia = 0;
   u32 sw_if_index = ~0;
-  int rv __attribute__ ((unused)) = 0;
+  int rv __attribute__((unused)) = 0;
 
   VALIDATE_SW_IF_INDEX (mp);
 
@@ -920,7 +921,7 @@ vl_api_ip_unnumbered_dump_t_handler (vl_api_ip_unnumbered_dump_t * mp)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
-  int rv __attribute__ ((unused)) = 0;
+  int rv __attribute__((unused)) = 0;
   vpe_api_main_t *am = &vpe_api_main;
   vl_api_registration_t *reg;
   vnet_sw_interface_t *si;

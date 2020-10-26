@@ -41,12 +41,13 @@
 #define included_ip_ip4_h
 
 #include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip_flow_hash.h>
+
 #include <vnet/ip/lookup.h>
 #include <vnet/ip/ip_interface.h>
 #include <vnet/buffer.h>
 #include <vnet/feature/feature.h>
 #include <vnet/ip/icmp46_packet.h>
-#include <vnet/util/throttle.h>
 
 typedef struct ip4_mfib_t
 {
@@ -163,10 +164,6 @@ typedef struct ip4_main_t
 
     u8 pad[2];
   } host_config;
-
-  /** ARP throttling */
-  throttle_t arp_throttle;
-
 } ip4_main_t;
 
 #define ARP_THROTTLE_BITS	(512)
@@ -295,56 +292,6 @@ void ip4_punt_redirect_add_paths (u32 rx_sw_if_index,
 
 void ip4_punt_redirect_del (u32 rx_sw_if_index);
 
-/* Compute flow hash.  We'll use it to select which adjacency to use for this
-   flow.  And other things. */
-always_inline u32
-ip4_compute_flow_hash (const ip4_header_t * ip,
-		       flow_hash_config_t flow_hash_config)
-{
-  tcp_header_t *tcp = (void *) (ip + 1);
-  u32 a, b, c, t1, t2;
-  uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP
-		      || ip->protocol == IP_PROTOCOL_UDP);
-
-  t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR)
-    ? ip->src_address.data_u32 : 0;
-  t2 = (flow_hash_config & IP_FLOW_HASH_DST_ADDR)
-    ? ip->dst_address.data_u32 : 0;
-
-  a = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t2 : t1;
-  b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
-
-  t1 = is_tcp_udp ? tcp->src : 0;
-  t2 = is_tcp_udp ? tcp->dst : 0;
-
-  t1 = (flow_hash_config & IP_FLOW_HASH_SRC_PORT) ? t1 : 0;
-  t2 = (flow_hash_config & IP_FLOW_HASH_DST_PORT) ? t2 : 0;
-
-  if (flow_hash_config & IP_FLOW_HASH_SYMMETRIC)
-    {
-      if (b < a)
-	{
-	  c = a;
-	  a = b;
-	  b = c;
-	}
-      if (t2 < t1)
-	{
-	  t2 += t1;
-	  t1 = t2 - t1;
-	  t2 = t2 - t1;
-	}
-    }
-
-  b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? ip->protocol : 0;
-  c = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ?
-    (t1 << 16) | t2 : (t2 << 16) | t1;
-
-  hash_v3_mix32 (a, b, c);
-  hash_v3_finalize32 (a, b, c);
-
-  return c;
-}
 
 void
 ip4_forward_next_trace (vlib_main_t * vm,
@@ -356,66 +303,6 @@ u8 *format_ip4_forward_next_trace (u8 * s, va_list * args);
 
 u32 ip4_tcp_udp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0);
 
-#define IP_DF 0x4000		/* don't fragment */
-
-always_inline void *
-vlib_buffer_push_ip4_custom (vlib_main_t * vm, vlib_buffer_t * b,
-			     ip4_address_t * src, ip4_address_t * dst,
-			     int proto, u8 csum_offload, u8 is_df)
-{
-  ip4_header_t *ih;
-
-  /* make some room */
-  ih = vlib_buffer_push_uninit (b, sizeof (ip4_header_t));
-
-  ih->ip_version_and_header_length = 0x45;
-  ih->tos = 0;
-  ih->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b));
-
-  /* No fragments */
-  ih->flags_and_fragment_offset = is_df ? clib_host_to_net_u16 (IP_DF) : 0;
-  ih->ttl = 255;
-  ih->protocol = proto;
-  ih->src_address.as_u32 = src->as_u32;
-  ih->dst_address.as_u32 = dst->as_u32;
-
-  vnet_buffer (b)->l3_hdr_offset = (u8 *) ih - b->data;
-  b->flags |= VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
-
-  /* Offload ip4 header checksum generation */
-  if (csum_offload)
-    {
-      ih->checksum = 0;
-      b->flags |= VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
-    }
-  else
-    ih->checksum = ip4_header_checksum (ih);
-
-  return ih;
-}
-
-/**
- * Push IPv4 header to buffer
- *
- * This does not support fragmentation.
- *
- * @param vm - vlib_main
- * @param b - buffer to write the header to
- * @param src - source IP
- * @param dst - destination IP
- * @param prot - payload proto
- *
- * @return - pointer to start of IP header
- */
-always_inline void *
-vlib_buffer_push_ip4 (vlib_main_t * vm, vlib_buffer_t * b,
-		      ip4_address_t * src, ip4_address_t * dst, int proto,
-		      u8 csum_offload)
-{
-  return vlib_buffer_push_ip4_custom (vm, b, src, dst, proto, csum_offload,
-				      1 /* is_df */ );
-}
-
 always_inline u32
 vlib_buffer_get_ip4_fib_index (vlib_buffer_t * b)
 {
@@ -425,6 +312,7 @@ vlib_buffer_get_ip4_fib_index (vlib_buffer_t * b)
   return (fib_index == (u32) ~ 0) ?
     vec_elt (ip4_main.fib_index_by_sw_if_index, sw_if_index) : fib_index;
 }
+
 #endif /* included_ip_ip4_h */
 
 /*

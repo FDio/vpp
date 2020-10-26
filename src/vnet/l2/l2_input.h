@@ -18,12 +18,15 @@
 #ifndef included_vnet_l2_input_h
 #define included_vnet_l2_input_h
 
+#include <stdbool.h>
+
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/l2/l2_bd.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ethernet/packet.h>
-#include <vnet/ip/ip.h>
+#include <vnet/ip/ip4_inlines.h>
+#include <vnet/ip/ip6_inlines.h>
 
 /* l2 connection type */
 typedef enum l2_input_flags_t_
@@ -38,7 +41,7 @@ typedef enum l2_input_flags_t_
 /* Per-subinterface L2 feature configuration */
 typedef struct
 {
-  u8 __force_u64_alignement[0] __attribute__ ((aligned (8)));
+  u8 __force_u64_alignement[0] __attribute__((aligned (8)));
 
   union
   {

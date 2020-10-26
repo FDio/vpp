@@ -15,7 +15,8 @@
 
 #include <vnet/bier/bier_imp.h>
 #include <vnet/bier/bier_hdr_inlines.h>
-#include <vnet/ip/ip.h>
+#include <vnet/ip/ip4_inlines.h>
+#include <vnet/ip/ip6_inlines.h>
 
 /**
  * @brief A struct to hold tracing information for the BIER imposition

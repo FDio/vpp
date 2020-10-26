@@ -19,6 +19,8 @@
 #include <vnet/mpls/mpls.h>
 #include <vnet/ip/ip.h>
 #include <vnet/bier/bier_fwd.h>
+#include <vnet/ip/ip4_inlines.h>
+#include <vnet/ip/ip6_inlines.h>
 
 /**
  * The arc/edge from the MPLS lookup node to the MPLS replicate node

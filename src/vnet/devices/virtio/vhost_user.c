@@ -33,8 +33,6 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 
-#include <vnet/ip/ip.h>
-
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
@@ -229,7 +227,7 @@ vhost_user_set_interrupt_pending (vhost_user_intf_t * vui, u32 ifq)
 static clib_error_t *
 vhost_user_callfd_read_ready (clib_file_t * uf)
 {
-  __attribute__ ((unused)) int n;
+  __attribute__((unused)) int n;
   u8 buff[8];
 
   n = read (uf->file_descriptor, ((char *) &buff), 8);
@@ -252,7 +250,7 @@ vhost_user_thread_placement (vhost_user_intf_t * vui, u32 qid)
 static clib_error_t *
 vhost_user_kickfd_read_ready (clib_file_t * uf)
 {
-  __attribute__ ((unused)) int n;
+  __attribute__((unused)) int n;
   u8 buff[8];
   vhost_user_intf_t *vui =
     pool_elt_at_index (vhost_user_main.vhost_user_interfaces,
@@ -790,7 +788,7 @@ vhost_user_socket_read (clib_file_t * uf)
 	    msg.state.num & 0x7fff;
 	  /* avail wrap counter at bit 15 */
 	  vui->vrings[msg.state.index].avail_wrap_counter =
-	    ! !(msg.state.num & (1 << 15));
+	    !!(msg.state.num & (1 << 15));
 
 	  /*
 	   * Although last_used_idx is passed in the upper 16 bits in qemu
@@ -831,10 +829,10 @@ vhost_user_socket_read (clib_file_t * uf)
 	{
 	  msg.state.num =
 	    (vui->vrings[msg.state.index].last_avail_idx & 0x7fff) |
-	    (! !vui->vrings[msg.state.index].avail_wrap_counter << 15);
+	    (!!vui->vrings[msg.state.index].avail_wrap_counter << 15);
 	  msg.state.num |=
 	    ((vui->vrings[msg.state.index].last_used_idx & 0x7fff) |
-	     (! !vui->vrings[msg.state.index].used_wrap_counter << 15)) << 16;
+	     (!!vui->vrings[msg.state.index].used_wrap_counter << 15)) << 16;
 	}
       msg.flags |= 4;
       msg.size = sizeof (msg.state);

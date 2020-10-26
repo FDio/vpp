@@ -20,6 +20,7 @@
 
 #include <vnet/ip/ip_format_fns.h>
 #include <vnet/ethernet/ethernet_format_fns.h>
+#include <vnet/ethernet/mac_address.h>
 #include <lisp/lisp-cp/lisp_types.h>
 
 /* define message IDs */
@@ -61,7 +62,7 @@ typedef struct
 {
   u32 spi;
   u8 si;
-} __attribute__ ((__packed__)) lisp_nsh_api_t;
+} __attribute__((__packed__)) lisp_nsh_api_t;
 
 static uword
 unformat_nsh_address (unformat_input_t * input, va_list * args)

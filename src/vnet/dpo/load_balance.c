@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include <vnet/ip/lookup.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/load_balance_map.h>
 #include <vnet/dpo/drop_dpo.h>
@@ -23,6 +22,8 @@
 #include <vnet/fib/fib_urpf_list.h>
 #include <vnet/bier/bier_fwd.h>
 #include <vnet/fib/mpls_fib.h>
+#include <vnet/ip/ip4_inlines.h>
+#include <vnet/ip/ip6_inlines.h>
 
 /*
  * distribution error tolerance for load-balancing
