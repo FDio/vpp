@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1b37984c_80cc390d",
+        "filename": "src/plugins/vmxnet3/vmxnet3.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-10-26T13:13:26Z",
+      "side": 1,
+      "message": "Should be also deprecated, to match line 151.",
+      "range": {
+        "startLine": 127,
+        "startChar": 14,
+        "endLine": 127,
+        "endChar": 22
+      },
+      "revId": "490e077fb9a2295d704db3c1bee5901823d2441b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
