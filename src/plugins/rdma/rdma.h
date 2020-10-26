@@ -200,9 +200,9 @@ typedef struct
     u16x8 cqe_flags8[VLIB_FRAME_SIZE / 8];
     u16x16 cqe_flags16[VLIB_FRAME_SIZE / 16];
   };
-  vlib_buffer_t buffer_template;
   u32 current_segs[VLIB_FRAME_SIZE];
   u32 to_free_buffers[VLIB_FRAME_SIZE];
+  vlib_buffer_t buffer_template;
 } rdma_per_thread_data_t;
 
 typedef struct
