@@ -145,6 +145,9 @@ typedef struct
   /* memory maps */
   clib_mem_vm_map_hdr_t *first_map, *last_map;
 
+  /* map lock */
+  u8 map_lock;
+
   /* last error */
   clib_error_t *error;
 } clib_mem_main_t;

@@ -26,6 +26,7 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/mem.h>
+#include <vppinfra/lock.h>
 #include <vppinfra/time.h>
 #include <vppinfra/format.h>
 #include <vppinfra/clib_error.h>
@@ -61,6 +62,19 @@
 #ifndef MAP_FIXED_NOREPLACE
 #define MAP_FIXED_NOREPLACE 0x100000
 #endif
+
+static void
+map_lock ()
+{
+  while (clib_atomic_test_and_set (&clib_mem_main.map_lock))
+    CLIB_PAUSE ();
+}
+
+static void
+map_unlock ()
+{
+  clib_atomic_release (&clib_mem_main.map_lock);
+}
 
 __clib_export uword
 clib_mem_get_default_hugepage_size (void)
@@ -463,6 +477,8 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
       return CLIB_MEM_VM_MAP_FAILED;
     }
 
+  map_lock ();
+
   if (mm->last_map)
     {
       mprotect (mm->last_map, sys_page_sz, PROT_READ | PROT_WRITE);
@@ -476,6 +492,8 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
   hdr->next = 0;
   hdr->prev = mm->last_map;
   mm->last_map = hdr;
+
+  map_unlock ();
 
   hdr->base_addr = (uword) base;
   hdr->log2_page_sz = log2_page_sz;
@@ -503,6 +521,8 @@ clib_mem_vm_unmap (void *base)
   if (munmap ((void *) hdr->base_addr, size) != 0)
     return CLIB_MEM_ERROR;
 
+  map_lock ();
+
   if (hdr->next)
     {
       mprotect (hdr->next, sys_page_sz, PROT_READ | PROT_WRITE);
@@ -520,6 +540,8 @@ clib_mem_vm_unmap (void *base)
     }
   else
     mm->first_map = hdr->next;
+
+  map_unlock ();
 
   if (munmap (hdr, sys_page_sz) != 0)
     return CLIB_MEM_ERROR;
