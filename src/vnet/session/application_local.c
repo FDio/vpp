@@ -341,6 +341,7 @@ ct_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   ct->c_is_ip4 = sep->is_ip4;
   clib_memcpy (&ct->c_lcl_ip, &sep->ip, sizeof (sep->ip));
   ct->c_lcl_port = sep->port;
+  ct->c_s_index = app_listener_index;
   ct->actual_tp = sep->transport_proto;
   ct_enable_disable_main_pre_input_node (1 /* is_add */ );
   return ct->c_c_index;
