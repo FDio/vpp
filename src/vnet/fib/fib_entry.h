@@ -440,6 +440,7 @@ extern u32 fib_entry_child_add(fib_node_index_t fib_entry_index,
 extern void fib_entry_child_remove(fib_node_index_t fib_entry_index,
 				   u32 sibling_index);
 extern u32 fib_entry_get_resolving_interface(fib_node_index_t fib_entry_index);
+extern u32 fib_entry_get_any_resolving_interface(fib_node_index_t fib_entry_index);
 extern u32 fib_entry_get_resolving_interface_for_source(
     fib_node_index_t fib_entry_index,
     fib_source_t source);
