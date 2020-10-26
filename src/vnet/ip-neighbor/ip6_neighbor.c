@@ -16,6 +16,10 @@
  */
 
 #include <vnet/ip-neighbor/ip6_neighbor.h>
+#include <vnet/util/throttle.h>
+
+/** ND throttling */
+static throttle_t nd_throttle;
 
 void
 ip6_neighbor_probe_dst (const ip_adjacency_t * adj, const ip6_address_t * dst)
@@ -121,7 +125,6 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 			      vlib_frame_t * frame, int is_glean)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  ip6_main_t *im = &ip6_main;
   u32 *from, *to_next_drop;
   uword n_left_from, n_left_to_next_drop;
   u64 seed;
@@ -130,7 +133,7 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip6_forward_next_trace (vm, node, frame, VLIB_TX);
 
-  seed = throttle_seed (&im->nd_throttle, thread_index, vlib_time_now (vm));
+  seed = throttle_seed (&nd_throttle, thread_index, vlib_time_now (vm));
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -173,7 +176,7 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 	  /* combine the address and interface for a hash */
 	  r0 = ip6_address_hash_to_u64 (&ip0->dst_address) ^ sw_if_index0;
 
-	  drop0 = throttle_check (&im->nd_throttle, thread_index, r0, seed);
+	  drop0 = throttle_check (&nd_throttle, thread_index, r0, seed);
 
 	  from += 1;
 	  n_left_from -= 1;
@@ -328,6 +331,18 @@ ip6_neighbor_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (ip6_neighbor_init);
+
+static clib_error_t *
+ip6_nd_main_loop_enter (vlib_main_t * vm)
+{
+  vlib_thread_main_t *tm = &vlib_thread_main;
+
+  throttle_init (&nd_throttle, tm->n_vlib_mains, 1e-3);
+
+  return 0;
+}
+
+VLIB_MAIN_LOOP_ENTER_FUNCTION (ip6_nd_main_loop_enter);
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -32,6 +32,7 @@
 #include <vnet/ip/reass/ip4_sv_reass.h>
 #include <vppinfra/bihash_16_8.h>
 #include <nat/nat44/ed_inlines.h>
+#include <vnet/ip/ip_table.h>
 
 #include <vpp/app/version.h>
 

@@ -22,7 +22,6 @@
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
-#include <vnet/ip/ip.h>
 #include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/virtio/pci.h>
 #include <vlib/pci/pci_types_api.h>

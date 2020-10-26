@@ -16,7 +16,8 @@
 #include <vnet/udp/udp.h>
 #include <vnet/session/session.h>
 #include <vnet/dpo/load_balance.h>
-#include <vnet/fib/ip4_fib.h>
+#include <vnet/ip/ip4_inlines.h>
+#include <vnet/ip/ip6_inlines.h>
 #include <vppinfra/sparse_vec.h>
 
 udp_main_t udp_main;

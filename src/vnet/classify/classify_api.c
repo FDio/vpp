@@ -28,6 +28,8 @@
 #include <vnet/classify/policer_classify.h>
 #include <vnet/classify/flow_classify.h>
 #include <vnet/l2/l2_classify.h>
+#include <vnet/ip/ip6.h>
+#include <vnet/ip/ip4.h>
 
 #include <vnet/vnet_msg_enum.h>
 

@@ -22,6 +22,10 @@
 #include <vnet/l2/feat_bitmap.h>
 
 #include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/icmp6.h>
+#include <vnet/ip/ip6.h>
+#include <vnet/ip/format.h>
 #include <vnet/ethernet/arp_packet.h>
 
 static const u8 vrrp_prefix[] = { 0x00, 0x00, 0x5E, 0x00, 0x01 };

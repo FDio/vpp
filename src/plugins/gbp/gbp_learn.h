@@ -18,6 +18,8 @@
 
 #include <plugins/gbp/gbp.h>
 
+#include <vnet/util/throttle.h>
+
 /**
  * The maximum learning rate per-hashed EP
  */

@@ -39,6 +39,10 @@
 
 #include <vnet/ip-neighbor/ip4_neighbor.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/util/throttle.h>
+
+/** ARP throttling */
+static throttle_t arp_throttle;
 
 void
 ip4_neighbor_probe_dst (const ip_adjacency_t * adj, const ip4_address_t * dst)
@@ -128,7 +132,7 @@ ip4_arp_inline (vlib_main_t * vm,
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip4_forward_next_trace (vm, node, frame, VLIB_TX);
 
-  seed = throttle_seed (&im->arp_throttle, thread_index, vlib_time_now (vm));
+  seed = throttle_seed (&arp_throttle, thread_index, vlib_time_now (vm));
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -186,7 +190,7 @@ ip4_arp_inline (vlib_main_t * vm,
 	  r0 = (u64) resolve0.data_u32 << 32;
 	  r0 |= sw_if_index0;
 
-	  if (throttle_check (&im->arp_throttle, thread_index, r0, seed))
+	  if (throttle_check (&arp_throttle, thread_index, r0, seed))
 	    {
 	      p0->error = node->errors[IP4_ARP_ERROR_THROTTLED];
 	      continue;
@@ -309,6 +313,20 @@ arp_notrace_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (arp_notrace_init);
+
+static clib_error_t *
+ip4_neighbor_main_loop_enter (vlib_main_t * vm)
+{
+  vlib_thread_main_t *tm = &vlib_thread_main;
+  u32 n_vlib_mains = tm->n_vlib_mains;
+
+  throttle_init (&arp_throttle, n_vlib_mains, 1e-3);
+
+  return (NULL);
+}
+
+VLIB_MAIN_LOOP_ENTER_FUNCTION (ip4_neighbor_main_loop_enter);
+
 
 /*
  * fd.io coding-style-patch-verification: ON

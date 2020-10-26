@@ -20,6 +20,7 @@
 #include <vnet/ipsec/ipsec_tun.h>
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/adj/adj_midchain.h>
+#include <vnet/ethernet/mac_address.h>
 
 /* bitmap of Allocated IPSEC_ITF instances */
 static uword *ipsec_itf_instances;
