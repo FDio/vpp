@@ -280,19 +280,6 @@ ip6_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ip6_init);
 
-static clib_error_t *
-ip6_main_loop_enter (vlib_main_t * vm)
-{
-  ip6_main_t *im = &ip6_main;
-  vlib_thread_main_t *tm = &vlib_thread_main;
-
-  throttle_init (&im->nd_throttle, tm->n_vlib_mains, 1e-3);
-
-  return 0;
-}
-
-VLIB_MAIN_LOOP_ENTER_FUNCTION (ip6_main_loop_enter);
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

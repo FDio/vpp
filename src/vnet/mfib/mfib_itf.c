@@ -18,6 +18,7 @@
 #include <vnet/mfib/mfib_itf.h>
 #include <vnet/mfib/mfib_signal.h>
 #include <vnet/fib/fib_path.h>
+#include <vnet/ethernet/mac_address.h>
 
 mfib_itf_t *mfib_itf_pool;
 

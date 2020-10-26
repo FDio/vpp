@@ -42,6 +42,7 @@
 
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/dpo/load_balance_map.h>
+#include <vnet/ip/ip6_inlines.h>
 
 /**
  * @file

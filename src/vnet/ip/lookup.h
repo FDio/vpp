@@ -48,40 +48,16 @@
 #ifndef included_ip_lookup_h
 #define included_ip_lookup_h
 
-#include <vnet/vnet.h>
+//#include <vnet/vnet.h>
+#include <vlib/vlib.h>
 #include <vlib/buffer.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip_types.h>
 #include <vnet/fib/fib_node.h>
 #include <vnet/adj/adj.h>
 #include <vnet/dpo/dpo.h>
-#include <vnet/feature/feature.h>
-
-/** Flow hash configuration */
-#define IP_FLOW_HASH_SRC_ADDR (1<<0)
-#define IP_FLOW_HASH_DST_ADDR (1<<1)
-#define IP_FLOW_HASH_PROTO (1<<2)
-#define IP_FLOW_HASH_SRC_PORT (1<<3)
-#define IP_FLOW_HASH_DST_PORT (1<<4)
-#define IP_FLOW_HASH_REVERSE_SRC_DST (1<<5)
-#define IP_FLOW_HASH_SYMMETRIC (1<<6)
-
-/** Default: 5-tuple without the "reverse" bit */
-#define IP_FLOW_HASH_DEFAULT (0x1F)
-
-#define foreach_flow_hash_bit                   \
-_(src, IP_FLOW_HASH_SRC_ADDR)                   \
-_(dst, IP_FLOW_HASH_DST_ADDR)                   \
-_(sport, IP_FLOW_HASH_SRC_PORT)                 \
-_(dport, IP_FLOW_HASH_DST_PORT)                 \
-_(proto, IP_FLOW_HASH_PROTO)	                \
-_(reverse, IP_FLOW_HASH_REVERSE_SRC_DST)	\
-_(symmetric, IP_FLOW_HASH_SYMMETRIC)
-
-/**
- * A flow hash configuration is a mask of the flow hash options
- */
-typedef u32 flow_hash_config_t;
+///#include <vnet/feature/feature.h>
 
 /* An all zeros address */
 extern const ip46_address_t zero_addr;
@@ -201,20 +177,6 @@ ip_lookup_set_buffer_fib_index (u32 * fib_index_by_sw_if_index,
      vnet_buffer (b)->sw_if_index[VLIB_TX]);
   /* *INDENT-ON* */
 }
-
-typedef struct _vnet_ip_container_proxy_args
-{
-  fib_prefix_t prefix;
-  u32 sw_if_index;
-  u8 is_add;
-} vnet_ip_container_proxy_args_t;
-
-clib_error_t *vnet_ip_container_proxy_add_del (vnet_ip_container_proxy_args_t
-					       * args);
-
-typedef int (*ip_container_proxy_cb_t) (const fib_prefix_t * pfx,
-					u32 sw_if_index, void *ctx);
-void ip_container_proxy_walk (ip_container_proxy_cb_t cb, void *ctx);
 
 void ip_lookup_init (ip_lookup_main_t * lm, u32 ip_lookup_node_index);
 

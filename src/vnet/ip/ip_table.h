@@ -16,14 +16,7 @@
 #ifndef included_ip_table_h
 #define included_ip_table_h
 
-#include <vlib/vlib.h>
-
-/* ip table add delete callback */
-typedef struct _vnet_ip_table_function_list_elt
-{
-  struct _vnet_ip_table_function_list_elt *next_ip_table_function;
-  clib_error_t *(*fp) (struct vnet_main_t * vnm, u32 table_id, u32 flags);
-} _vnet_ip_table_function_list_elt_t;
+#include <vnet/vnet.h>
 
 typedef enum vnet_ip_table_function_priority_t_
 {

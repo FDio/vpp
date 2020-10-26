@@ -21,6 +21,7 @@
 #include <vnet/fib/fib_source.h>
 #include <vnet/ip/ip_types.h>
 #include <vnet/ip/ip.h>
+#include <vnet/util/throttle.h>
 
 /* only in the default table for v4 and v6 */
 #define CNAT_FIB_TABLE 0

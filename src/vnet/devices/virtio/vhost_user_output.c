@@ -34,8 +34,6 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 
-#include <vnet/ip/ip.h>
-
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>

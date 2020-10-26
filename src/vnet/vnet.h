@@ -49,7 +49,13 @@
 #include <vnet/config.h>
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
-#include <vnet/ip/ip_table.h>
+
+/* ip table add delete callback */
+typedef struct _vnet_ip_table_function_list_elt
+{
+  struct _vnet_ip_table_function_list_elt *next_ip_table_function;
+  clib_error_t *(*fp) (struct vnet_main_t * vnm, u32 table_id, u32 flags);
+} _vnet_ip_table_function_list_elt_t;
 
 typedef struct vnet_main_t
 {
