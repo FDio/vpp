@@ -2994,8 +2994,7 @@ nat44_plugin_enable (nat44_config_t c)
 
   sm->enabled = 1;
 
-
-  nat_log_err ("nat44 enable");
+  nat_log_info ("nat44 enable");
 
   return 0;
 }
