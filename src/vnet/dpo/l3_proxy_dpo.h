@@ -22,7 +22,6 @@
 #define __L3_PROXY_DPO_H__
 
 #include <vnet/dpo/dpo.h>
-#include <vnet/ip/ip6.h>
 
 typedef struct l3_proxy_dpo_t_
 {

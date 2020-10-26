@@ -451,20 +451,6 @@ ip4_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ip4_init);
 
-static clib_error_t *
-ip4_main_loop_enter (vlib_main_t * vm)
-{
-  ip4_main_t *im = &ip4_main;
-  vlib_thread_main_t *tm = &vlib_thread_main;
-  u32 n_vlib_mains = tm->n_vlib_mains;
-
-  throttle_init (&im->arp_throttle, n_vlib_mains, 1e-3);
-
-  return (NULL);
-}
-
-VLIB_MAIN_LOOP_ENTER_FUNCTION (ip4_main_loop_enter);
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

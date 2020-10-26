@@ -17,7 +17,6 @@
 #define __FIB_TYPES_H__
 
 #include <stdbool.h>
-#include <vlib/vlib.h>
 #include <vnet/ip/ip46_address.h>
 #include <vnet/mpls/packet.h>
 #include <vnet/dpo/dpo.h>

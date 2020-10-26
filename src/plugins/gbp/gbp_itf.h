@@ -18,6 +18,7 @@
 
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_output.h>
+#include <vnet/dpo/dpo.h>
 
 
 #define foreach_gdb_l3_feature                  \

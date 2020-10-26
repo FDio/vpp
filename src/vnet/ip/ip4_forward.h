@@ -43,6 +43,7 @@
 #include <vppinfra/cache.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/dpo/load_balance_map.h>
+#include <vnet/ip/ip4_inlines.h>
 
 /**
  * @file

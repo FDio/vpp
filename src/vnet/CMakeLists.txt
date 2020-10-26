@@ -406,6 +406,7 @@ list(APPEND VNET_SOURCES
   ip/reass/ip6_sv_reass.c
   ip/ip_api.c
   ip/ip_checksum.c
+  ip/ip_container_proxy.c
   ip/ip_frag.c
   ip/ip.c
   ip/ip_interface.c
@@ -444,14 +445,18 @@ list(APPEND VNET_HEADERS
   ip/ip4_error.h
   ip/ip4.h
   ip/ip4_mtrie.h
+  ip/ip4_inlines.h
   ip/ip4_packet.h
   ip/ip46_address.h
   ip/ip6_error.h
   ip/ip6.h
   ip/ip6_hop_by_hop.h
   ip/ip6_hop_by_hop_packet.h
+  ip/ip6_inlines.h
   ip/ip6_packet.h
   ip/ip.h
+  ip/ip_container_proxy.h
+  ip/ip_flow_hash.h
   ip/ip_table.h
   ip/ip_interface.h
   ip/ip_packet.h

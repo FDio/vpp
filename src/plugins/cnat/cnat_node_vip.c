@@ -22,6 +22,9 @@
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/load_balance_map.h>
 
+#include <vnet/ip/ip4_inlines.h>
+#include <vnet/ip/ip6_inlines.h>
+
 typedef struct cnat_translation_trace_t_
 {
   cnat_session_t session;

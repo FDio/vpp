@@ -18,8 +18,7 @@
 
 #include <vppinfra/hash.h>
 #include <vnet/ip/ip.h>
-#include <vnet/ip/ip4.h>
-#include <vnet/ip/ip6.h>
+#include <vnet/ip/ip46_address.h>
 
 /**
  * @brief Tunnel endpoint key (IPv4)

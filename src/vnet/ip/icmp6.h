@@ -15,6 +15,8 @@
 #ifndef included_vnet_icmp6_h
 #define included_vnet_icmp6_h
 
+#include <vnet/ip/icmp46_packet.h>
+
 #define foreach_icmp6_error                                             \
   _ (NONE, "valid packets")                                             \
   _ (UNKNOWN_TYPE, "unknown type")                                      \

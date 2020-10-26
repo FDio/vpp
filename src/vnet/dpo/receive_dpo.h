@@ -21,7 +21,7 @@
 #define __RECEIVE_DPO_H__
 
 #include <vnet/dpo/dpo.h>
-#include <vnet/ip/ip6.h>
+#include <vnet/ip/ip46_address.h>
 
 typedef struct receive_dpo_t_
 {

@@ -23,6 +23,8 @@
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/fib_walk.h>
 #include <vnet/fib/fib_entry.h>
+#include <vnet/ip/ip4_inlines.h>
+#include <vnet/ip/ip6_inlines.h>
 
 /**
  * @brief Trace data for packets traversing the midchain tx node

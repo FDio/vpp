@@ -45,6 +45,7 @@
 #include <vnet/ip/reass/ip6_sv_reass.h>
 #include <vnet/ip/reass/ip6_full_reass.h>
 #include <vnet/ip/ip_table.h>
+#include <vnet/ip/ip_container_proxy.h>
 
 #include <vnet/vnet_msg_enum.h>
 
