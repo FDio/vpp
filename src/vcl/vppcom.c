@@ -765,6 +765,60 @@ vcl_session_disconnected_handler (vcl_worker_t * wrk,
   return session;
 }
 
+static int
+vppcom_session_disconnect (u32 session_handle)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  svm_msg_q_t *vpp_evt_q;
+  vcl_session_t *session, *listen_session;
+  vcl_session_state_t state;
+  u64 vpp_handle;
+
+  session = vcl_session_get_w_handle (wrk, session_handle);
+  if (!session)
+    return VPPCOM_EBADFD;
+
+  vpp_handle = session->vpp_handle;
+  state = session->session_state;
+
+  VDBG (1, "session %u [0x%llx] state 0x%x (%s)", session->session_index,
+	vpp_handle, state, vppcom_session_state_str (state));
+
+  if (PREDICT_FALSE (state == VCL_STATE_LISTEN))
+    {
+      VDBG (0, "ERROR: Cannot disconnect a listen socket!");
+      return VPPCOM_EBADFD;
+    }
+
+  if (state == VCL_STATE_VPP_CLOSING)
+    {
+      vpp_evt_q = vcl_session_vpp_evt_q (wrk, session);
+      vcl_send_session_disconnected_reply (vpp_evt_q, wrk->api_client_handle,
+					   vpp_handle, 0);
+      VDBG (1, "session %u [0x%llx]: sending disconnect REPLY...",
+	    session->session_index, vpp_handle);
+    }
+  else
+    {
+      /* Session doesn't have an event queue yet. Probably a non-blocking
+       * connect. Wait for the reply */
+      if (PREDICT_FALSE (!session->vpp_evt_q))
+	return VPPCOM_OK;
+
+      VDBG (1, "session %u [0x%llx]: sending disconnect...",
+	    session->session_index, vpp_handle);
+      vcl_send_session_disconnect (wrk, session);
+    }
+
+  if (session->listener_index != VCL_INVALID_SESSION_INDEX)
+    {
+      listen_session = vcl_session_get (wrk, session->listener_index);
+      listen_session->n_accepted_sessions--;
+    }
+
+  return VPPCOM_OK;
+}
+
 static void
 vcl_session_cleanup_handler (vcl_worker_t * wrk, void *data)
 {
@@ -783,21 +837,26 @@ vcl_session_cleanup_handler (vcl_worker_t * wrk, void *data)
     {
       /* Transport was cleaned up before we confirmed close. Probably the
        * app is still waiting for some data that cannot be delivered.
-       * Confirm close to make sure everything is cleaned up */
-      if (session->session_state == VCL_STATE_VPP_CLOSING
-	  || session->session_state == VCL_STATE_DISCONNECT)
+       * Confirm close to make sure everything is cleaned up.
+       * Move to undetermined state to ensure that the session is not
+       * removed before both vpp and the app cleanup.
+       * - If the app closes first, the session is moved to CLOSED state
+       *   and the session cleanup notification from vpp removes the
+       *   session.
+       * - If vpp cleans up the session first, the session is moved to
+       *   DETACHED state lower and subsequently the close from the app
+       *   frees the session
+       */
+      if (session->session_state == VCL_STATE_VPP_CLOSING)
 	{
-	  vcl_session_cleanup (wrk, session, vcl_session_handle (session),
-			       1 /* do_disconnect */ );
-	  /* Move to undetermined state to ensure that the session is not
-	   * removed before both vpp and the app cleanup.
-	   * - If the app closes first, the session is moved to CLOSED state
-	   *   and the session cleanup notification from vpp removes the
-	   *   session.
-	   * - If vpp cleans up the session first, the session is moved to
-	   *   DETACHED state lower and subsequently the close from the app
-	   *   frees the session
-	   */
+	  vppcom_session_disconnect (vcl_session_handle (session));
+	  session->session_state = VCL_STATE_UPDATED;
+	}
+      else if (session->session_state == VCL_STATE_DISCONNECT)
+	{
+	  vcl_send_session_reset_reply (vcl_session_vpp_evt_q (wrk, session),
+					wrk->api_client_handle,
+					session->vpp_handle, 0);
 	  session->session_state = VCL_STATE_UPDATED;
 	}
       return;
@@ -1115,60 +1174,6 @@ vppcom_session_unbind (u32 session_handle)
 
   session->vpp_handle = ~0;
   session->session_state = VCL_STATE_DISCONNECT;
-
-  return VPPCOM_OK;
-}
-
-static int
-vppcom_session_disconnect (u32 session_handle)
-{
-  vcl_worker_t *wrk = vcl_worker_get_current ();
-  svm_msg_q_t *vpp_evt_q;
-  vcl_session_t *session, *listen_session;
-  vcl_session_state_t state;
-  u64 vpp_handle;
-
-  session = vcl_session_get_w_handle (wrk, session_handle);
-  if (!session)
-    return VPPCOM_EBADFD;
-
-  vpp_handle = session->vpp_handle;
-  state = session->session_state;
-
-  VDBG (1, "session %u [0x%llx] state 0x%x (%s)", session->session_index,
-	vpp_handle, state, vppcom_session_state_str (state));
-
-  if (PREDICT_FALSE (state == VCL_STATE_LISTEN))
-    {
-      VDBG (0, "ERROR: Cannot disconnect a listen socket!");
-      return VPPCOM_EBADFD;
-    }
-
-  if (state == VCL_STATE_VPP_CLOSING)
-    {
-      vpp_evt_q = vcl_session_vpp_evt_q (wrk, session);
-      vcl_send_session_disconnected_reply (vpp_evt_q, wrk->api_client_handle,
-					   vpp_handle, 0);
-      VDBG (1, "session %u [0x%llx]: sending disconnect REPLY...",
-	    session->session_index, vpp_handle);
-    }
-  else
-    {
-      /* Session doesn't have an event queue yet. Probably a non-blocking
-       * connect. Wait for the reply */
-      if (PREDICT_FALSE (!session->vpp_evt_q))
-	return VPPCOM_OK;
-
-      VDBG (1, "session %u [0x%llx]: sending disconnect...",
-	    session->session_index, vpp_handle);
-      vcl_send_session_disconnect (wrk, session);
-    }
-
-  if (session->listener_index != VCL_INVALID_SESSION_INDEX)
-    {
-      listen_session = vcl_session_get (wrk, session->listener_index);
-      listen_session->n_accepted_sessions--;
-    }
 
   return VPPCOM_OK;
 }
