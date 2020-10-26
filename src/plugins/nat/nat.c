@@ -200,8 +200,6 @@ snat_get_worker_in2out_cb (ip4_header_t * ip0, u32 rx_fib_index0,
 
 static u32 nat_calc_bihash_buckets (u32 n_elts);
 
-static u32 nat_calc_bihash_memory (u32 n_buckets, uword kv_size);
-
 u8 *format_static_mapping_kvp (u8 * s, va_list * args);
 
 u8 *format_ed_session_kvp (u8 * s, va_list * args);
@@ -2886,13 +2884,6 @@ nat44_plugin_enable (nat44_config_t c)
   sm->max_users_per_thread = c.users;
   sm->user_buckets = nat_calc_bihash_buckets (c.users);
 
-  if (!c.user_memory)
-    {
-      c.user_memory =
-	nat_calc_bihash_memory (c.users, sizeof (clib_bihash_8_8_t));
-    }
-  sm->user_memory_size = c.user_memory;
-
   if (!c.sessions)
     {
       // default value based on legacy setting of load factor 10 * default
@@ -2902,13 +2893,6 @@ nat44_plugin_enable (nat44_config_t c)
   sm->max_translations_per_thread = c.sessions;
   sm->translation_buckets = nat_calc_bihash_buckets (c.sessions);
 
-  if (!c.session_memory)
-    {
-      c.session_memory =
-	nat_calc_bihash_memory
-	(sm->translation_buckets, sizeof (clib_bihash_16_8_t));
-    }
-  sm->translation_memory_size = c.session_memory;
   vec_add1 (sm->max_translations_per_fib, sm->max_translations_per_thread);
   sm->max_translations_per_user
     = c.user_sessions ? c.user_sessions : sm->max_translations_per_thread;
@@ -2934,8 +2918,7 @@ nat44_plugin_enable (nat44_config_t c)
       sm->icmp_match_in2out_cb = icmp_match_in2out_ed;
 
       clib_bihash_init_16_8 (&sm->out2in_ed, "out2in-ed",
-			     sm->translation_buckets,
-			     sm->translation_memory_size);
+			     sm->translation_buckets, 0);
       clib_bihash_set_kvp_format_fn_16_8 (&sm->out2in_ed,
 					  format_ed_session_kvp);
 
@@ -4283,13 +4266,21 @@ nat_ha_sref_ed_cb (ip4_address_t * out_addr, u16 out_port,
 static u32
 nat_calc_bihash_buckets (u32 n_elts)
 {
-  return 1 << (max_log2 (n_elts >> 1) + 1);
-}
-
-static u32
-nat_calc_bihash_memory (u32 n_buckets, uword kv_size)
-{
-  return n_buckets * (8 + kv_size * 4);
+  n_elts = n_elts / 2.5;
+  u64 lower_pow2 = 1;
+  while (lower_pow2 * 2 < n_elts)
+    {
+      lower_pow2 = 2 * lower_pow2;
+    }
+  u64 upper_pow2 = 2 * lower_pow2;
+  if ((upper_pow2 - n_elts) < (n_elts - lower_pow2))
+    {
+      if (upper_pow2 <= UINT32_MAX)
+	{
+	  return upper_pow2;
+	}
+    }
+  return lower_pow2;
 }
 
 u32
@@ -4337,13 +4328,6 @@ nat44_update_session_limit (u32 session_limit, u32 vrf_id)
   sm->translation_buckets =
     nat_calc_bihash_buckets (sm->max_translations_per_thread);
 
-  if (!sm->translation_memory_size_set)
-    {
-      sm->translation_memory_size =
-	nat_calc_bihash_memory (sm->translation_buckets,
-				sizeof (clib_bihash_16_8_t));
-    }
-
   nat44_sessions_clear ();
   return 0;
 }
@@ -4381,29 +4365,25 @@ nat44_db_init (snat_main_per_thread_data_t * tsm)
   if (sm->endpoint_dependent)
     {
       clib_bihash_init_16_8 (&tsm->in2out_ed, "in2out-ed",
-			     sm->translation_buckets,
-			     sm->translation_memory_size);
+			     sm->translation_buckets, 0);
       clib_bihash_set_kvp_format_fn_16_8 (&tsm->in2out_ed,
 					  format_ed_session_kvp);
 
     }
   else
     {
-      clib_bihash_init_8_8 (&tsm->in2out, "in2out",
-			    sm->translation_buckets,
-			    sm->translation_memory_size);
+      clib_bihash_init_8_8 (&tsm->in2out, "in2out", sm->translation_buckets,
+			    0);
       clib_bihash_set_kvp_format_fn_8_8 (&tsm->in2out, format_session_kvp);
-      clib_bihash_init_8_8 (&tsm->out2in, "out2in",
-			    sm->translation_buckets,
-			    sm->translation_memory_size);
+      clib_bihash_init_8_8 (&tsm->out2in, "out2in", sm->translation_buckets,
+			    0);
       clib_bihash_set_kvp_format_fn_8_8 (&tsm->out2in, format_session_kvp);
     }
 
   // TODO: ED nat is not using these
   // before removal large refactor required
   pool_alloc (tsm->list_pool, sm->max_translations_per_thread);
-  clib_bihash_init_8_8 (&tsm->user_hash, "users", sm->user_buckets,
-			sm->user_memory_size);
+  clib_bihash_init_8_8 (&tsm->user_hash, "users", sm->user_buckets, 0);
   clib_bihash_set_kvp_format_fn_8_8 (&tsm->user_hash, format_user_kvp);
 }
 
@@ -4442,10 +4422,9 @@ nat44_sessions_clear ()
     {
       clib_bihash_free_16_8 (&sm->out2in_ed);
       clib_bihash_init_16_8 (&sm->out2in_ed, "out2in-ed",
-			     clib_max (1, sm->num_workers) *
-			     sm->translation_buckets,
-			     clib_max (1, sm->num_workers) *
-			     sm->translation_memory_size);
+			     clib_max (1,
+				       sm->num_workers) *
+			     sm->translation_buckets, 0);
       clib_bihash_set_kvp_format_fn_16_8 (&sm->out2in_ed,
 					  format_ed_session_kvp);
     }
