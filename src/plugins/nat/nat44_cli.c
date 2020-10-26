@@ -79,9 +79,7 @@ nat44_enable_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "inside-vrf %u", &c.inside_vrf));
       else if (unformat (line_input, "outside-vrf %u", &c.outside_vrf));
       else if (unformat (line_input, "users %u", &c.users));
-      else if (unformat (line_input, "user-memory %u", &c.user_memory));
       else if (unformat (line_input, "sessions %u", &c.sessions));
-      else if (unformat (line_input, "session-memory %u", &c.session_memory));
       else if (unformat (line_input, "user-sessions %u", &c.user_sessions));
       else
 	{
@@ -91,11 +89,9 @@ nat44_enable_command_fn (vlib_main_t * vm,
 	}
     }
 
-  if (c.sessions && c.session_memory)
+  if (!c.sessions)
     {
-      error =
-	clib_error_return (0,
-			   "either number of sessions or size of the memory is required");
+      error = clib_error_return (0, "number of sessions is required");
       goto done;
     }
 
@@ -331,13 +327,9 @@ nat44_show_hash_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   vlib_cli_output (vm, "-------- hash table parameters --------\n");
   vlib_cli_output (vm, "translation buckets: %u", sm->translation_buckets);
-  vlib_cli_output (vm, "translation memory size: %U",
-		   format_memory_size, sm->translation_memory_size);
   if (!sm->endpoint_dependent)
     {
       vlib_cli_output (vm, "user buckets: %u", sm->user_buckets);
-      vlib_cli_output (vm, "user memory size: %U",
-		       format_memory_size, sm->user_memory_size);
     }
   return 0;
 }
@@ -1994,17 +1986,13 @@ VLIB_CLI_COMMAND (nat44_debug_fib_registration_command, static) = {
  *  vpp# nat44 enable sessions <n> out2in-dpo
  * To enable nat44 endpoint-dependent, use:
  *  vpp# nat44 enable sessions <n> endpoint-dependent
- * To overwrite user hash configuration, use:
- *  vpp# nat44 enable sessions <n> user-memory <n>
- * To overwrite session hash configuration, use:
- *  vpp# nat44 enable session-memory <n>
  * To set inside-vrf outside-vrf, use:
  *  vpp# nat44 enable sessions <n> inside-vrf <id> outside-vrf <id>
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (nat44_enable_command, static) = {
   .path = "nat44 enable",
-  .short_help = "nat44 enable sessions <max-number> [users <max-number>] [static-mappig-only [connection-tracking]|out2in-dpo|endpoint-dependent] [inside-vrf <vrf-id>] [outside-vrf <vrf-id>] [user-memory <number>] [session-memory <number>] [user-sessions <max-number>]",
+  .short_help = "nat44 enable sessions <max-number> [users <max-number>] [static-mappig-only [connection-tracking]|out2in-dpo|endpoint-dependent] [inside-vrf <vrf-id>] [outside-vrf <vrf-id>] [user-sessions <max-number>]",
   .function = nat44_enable_command_fn,
 };
 
