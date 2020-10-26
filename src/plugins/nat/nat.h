@@ -76,11 +76,9 @@ typedef struct
 
   /* maximum number of users */
   u32 users;
-  u32 user_memory;
 
   /* maximum number of sessions */
   u32 sessions;
-  u32 session_memory;
 
   /* maximum number of ssessions per user */
   u32 user_sessions;
@@ -631,12 +629,10 @@ typedef struct snat_main_s
   u8 translation_memory_size_set;
 
   u32 translation_buckets;
-  uword translation_memory_size;
   u32 max_translations_per_thread;
   u32 *max_translations_per_fib;
   u32 max_users_per_thread;
   u32 user_buckets;
-  uword user_memory_size;
   u32 max_translations_per_user;
 
   u32 outside_vrf_id;

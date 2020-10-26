@@ -1178,22 +1178,6 @@ class TestNATMisc(MethodHolder):
             self.vapi.nat44_plugin_enable_disable(enable=0)
             self.vapi.cli("clear logging")
 
-    def test_show_config(self):
-        """ NAT config translation memory """
-
-        nat_config = self.vapi.nat_show_config()
-        mem = nat_config.translation_memory_size
-        self.assertTrue(mem > 0)
-        self.logger.info("max translation memory: %d" % mem)
-
-    def test_show_config_2(self):
-        """ NAT config2 translation memory """
-
-        nat_config = self.vapi.nat_show_config_2()
-        mem = nat_config.translation_memory_size
-        self.assertTrue(mem > 0)
-        self.logger.info("max translation memory: %d" % mem)
-
     def test_show_max_translations(self):
         """ API test - max translations per thread """
         nat_config = self.vapi.nat_show_config_2()

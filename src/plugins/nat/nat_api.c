@@ -102,12 +102,9 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
   REPLY_MACRO2 (VL_API_NAT_SHOW_CONFIG_REPLY,
   ({
     rmp->translation_buckets = htonl (sm->translation_buckets);
-    rmp->translation_memory_size = clib_host_to_net_u32 (
-		    sm->translation_memory_size > 0xffffffffULL
-		    ? 0xffffffffUL
-		    : (u32)sm->translation_memory_size);
+    rmp->translation_memory_size = 0;
     rmp->user_buckets = htonl (sm->user_buckets);
-    rmp->user_memory_size = clib_host_to_net_u64 (sm->user_memory_size);
+    rmp->user_memory_size = 0;
     rmp->max_translations_per_user = htonl (sm->max_translations_per_user);
     rmp->outside_vrf_id = htonl (sm->outside_vrf_id);
     rmp->inside_vrf_id = htonl (sm->inside_vrf_id);
@@ -148,9 +145,9 @@ vl_api_nat_show_config_2_t_handler (vl_api_nat_show_config_2_t * mp)
   REPLY_MACRO2 (VL_API_NAT_SHOW_CONFIG_2_REPLY,
   ({
     rmp->translation_buckets = htonl (sm->translation_buckets);
-    rmp->translation_memory_size = clib_host_to_net_u64 (sm->translation_memory_size);
+    rmp->translation_memory_size = 0;
     rmp->user_buckets = htonl (sm->user_buckets);
-    rmp->user_memory_size = clib_host_to_net_u64 (sm->user_memory_size);
+    rmp->user_memory_size = 0;
     rmp->max_translations_per_user = htonl (sm->max_translations_per_user);
     rmp->outside_vrf_id = htonl (sm->outside_vrf_id);
     rmp->inside_vrf_id = htonl (sm->inside_vrf_id);
@@ -353,10 +350,8 @@ static void
       c.outside_vrf = ntohl (mp->outside_vrf);
 
       c.users = ntohl (mp->users);
-      c.user_memory = ntohl (mp->user_memory);
 
       c.sessions = ntohl (mp->sessions);
-      c.session_memory = ntohl (mp->session_memory);
 
       c.user_sessions = ntohl (mp->user_sessions);
 
@@ -1768,8 +1763,7 @@ nat_ed_users_destroy (snat_main_per_thread_data_t * tsm)
   pool_flush (u, tsm->users, { });
   /* *INDENT-ON* */
   clib_bihash_free_8_8 (&tsm->user_hash);
-  clib_bihash_init_8_8 (&tsm->user_hash, "users", snat_main.user_buckets,
-			snat_main.user_memory_size);
+  clib_bihash_init_8_8 (&tsm->user_hash, "users", snat_main.user_buckets, 0);
   clib_bihash_set_kvp_format_fn_8_8 (&tsm->user_hash, format_user_kvp);
 }
 
