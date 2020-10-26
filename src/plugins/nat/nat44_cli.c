@@ -76,13 +76,13 @@ nat44_enable_command_fn (vlib_main_t * vm,
 	  mode_set = 1;
 	  c.endpoint_dependent = 1;
 	}
-      else if (unformat (input, "inside-vrf %u", &c.inside_vrf));
-      else if (unformat (input, "outside-vrf %u", &c.outside_vrf));
-      else if (unformat (input, "users %u", &c.users));
-      else if (unformat (input, "user-memory %u", &c.user_memory));
-      else if (unformat (input, "sessions %u", &c.sessions));
-      else if (unformat (input, "session-memory %u", &c.session_memory));
-      else if (unformat (input, "user-sessions %u", &c.user_sessions));
+      else if (unformat (line_input, "inside-vrf %u", &c.inside_vrf));
+      else if (unformat (line_input, "outside-vrf %u", &c.outside_vrf));
+      else if (unformat (line_input, "users %u", &c.users));
+      else if (unformat (line_input, "user-memory %u", &c.user_memory));
+      else if (unformat (line_input, "sessions %u", &c.sessions));
+      else if (unformat (line_input, "session-memory %u", &c.session_memory));
+      else if (unformat (line_input, "user-sessions %u", &c.user_sessions));
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
@@ -91,7 +91,7 @@ nat44_enable_command_fn (vlib_main_t * vm,
 	}
     }
 
-  if (!(c.sessions && c.session_memory))
+  if (c.sessions && c.session_memory)
     {
       error =
 	clib_error_return (0,
@@ -113,7 +113,7 @@ nat44_disable_command_fn (vlib_main_t * vm,
   snat_main_t *sm = &snat_main;
   clib_error_t *error = 0;
 
-  if (sm->enabled)
+  if (!sm->enabled)
     return clib_error_return (0, "nat44 already disabled");
 
   if (nat44_plugin_disable () != 0)
