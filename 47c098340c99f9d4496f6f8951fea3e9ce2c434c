@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "445b0be2_83256c8a",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-10-26T09:57:22Z",
+      "side": 1,
+      "message": "Replaced with $(CURDIR) in patchset 2",
+      "parentUuid": "8b1c9dc2_2ad3f652",
+      "revId": "47c098340c99f9d4496f6f8951fea3e9ce2c434c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "f761056e_a1e71e10",
         "filename": "build/external/packages/dpdk.mk",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2020-10-24T09:12:13Z",
       "side": 1,
       "message": "It also needs to look at $(VPP_CACHE_DIR)",
+      "revId": "47c098340c99f9d4496f6f8951fea3e9ce2c434c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c7e0b4ee_fbbf2df0",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-10-26T09:57:22Z",
+      "side": 1,
+      "message": "actually, through the -f flag, pip3 download checks the $(DL_CACHE_DIR) for the required files, and copy them to PIP_DOWNLOAD_DIR. If they are not found in $(DL_CACHE_DIR), they are simply downloaded into $(PIP_DOWNLOAD_DIR).",
+      "parentUuid": "f761056e_a1e71e10",
       "revId": "47c098340c99f9d4496f6f8951fea3e9ce2c434c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
