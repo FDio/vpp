@@ -39,6 +39,8 @@ from util import ppp, is_core_present
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
+from pathlib import Path
+from existing_vpp import exists_vpp, RUNNING_VPP
 
 if os.name == 'posix' and sys.version_info[0] < 3:
     # using subprocess32 is recommended by python official documentation
@@ -465,6 +467,21 @@ class VppTestCase(unittest.TestCase):
 
     @classmethod
     def run_vpp(cls):
+        # If VPP is running, don't start another instance.
+        # Point to it and return
+        if RUNNING_VPP:
+            cls.vpp = exists_vpp
+            cls.vpp_bin = cls.vpp.vpp_bin
+            cls.stats_sock = cls.vpp.data['stats_sock']
+            cls.api_sock = cls.vpp.data['api_sock']
+            cls.shm_prefix = cls.vpp.data['shm_prefix']
+            cls.runtime_dir = cls.vpp.data['runtime_dir']
+            if cls.runtime_dir:
+                os.chdir(cls.runtime_dir)
+            cls.logger.info("using_running_vpp_instance {}".format(
+                cls.vpp.vpp_instance))
+            return
+
         cmdline = cls.vpp_cmdline
 
         if cls.debug_gdbserver:
@@ -533,11 +550,12 @@ class VppTestCase(unittest.TestCase):
         if hasattr(cls, 'parallel_handler'):
             cls.logger.addHandler(cls.parallel_handler)
             cls.logger.propagate = False
-
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-%s-' % cls.__name__)
         cls.stats_sock = "%s/stats.sock" % cls.tempdir
         cls.api_sock = "%s/api.sock" % cls.tempdir
+        # shm_prefix could be empty for an existing VPP, set cls.name for papi
+        cls.name = os.path.basename(cls.tempdir)
         cls.file_handler = FileHandler("%s/log.txt" % cls.tempdir)
         cls.file_handler.setFormatter(
             Formatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
@@ -575,7 +593,7 @@ class VppTestCase(unittest.TestCase):
             cls.pump_thread.start()
             if cls.debug_gdb or cls.debug_gdbserver:
                 cls.vapi_response_timeout = 0
-            cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls,
+            cls.vapi = VppPapiProvider(cls.name, cls.shm_prefix, cls,
                                        cls.vapi_response_timeout)
             if cls.step:
                 hook = hookmodule.StepHook(cls)
@@ -735,6 +753,11 @@ class VppTestCase(unittest.TestCase):
             self.logger.info(self.vapi.ppcli("api trace save %s" % api_trace))
             self.logger.info("Moving %s to %s\n" % (tmp_api_trace,
                                                     vpp_api_trace_log))
+            # Ensure correct ownership of the trace file created
+            # by an existing VPP process before renaming
+            tmp_owner = Path(self.tempdir).stat().st_uid
+            if tmp_owner != Path(tmp_api_trace).stat().st_uid:
+                os.system('sudo chown %s %s' % (tmp_owner, tmp_api_trace))
             os.rename(tmp_api_trace, vpp_api_trace_log)
             self.logger.info(self.vapi.ppcli("api trace custom-dump %s" %
                                              vpp_api_trace_log))
