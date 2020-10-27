@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "471748ac_f8d4c064",
+        "filename": "src/vnet/ipsec/ipsec_types.api",
+        "patchSetId": 9
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-10-27T17:46:50Z",
+      "side": 1,
+      "message": "Create a separate comment block for each type (or message).",
+      "range": {
+        "startLine": 112,
+        "startChar": 4,
+        "endLine": 112,
+        "endChar": 10
+      },
+      "revId": "04a8f05e9e9e0f46972e22d8e9eea493b7d0b133",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
