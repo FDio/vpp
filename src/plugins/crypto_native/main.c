@@ -115,6 +115,9 @@ crypto_native_init (vlib_main_t * vm)
       if (error)
 	goto error;
     }
+# if defined(__SHA__)
+  crypto_native_hmac_sha256_init (vm);
+# endif
 #endif
 #if __aarch64__
   if (crypto_native_aes_gcm_init_neon)

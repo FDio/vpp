@@ -20,7 +20,7 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
   if(compiler_flag_march_icelake_client AND compiler_flag_mprefer_vector_width)
     list(APPEND VARIANTS "icl\;-march=icelake-client -mprefer-vector-width=512")
   endif()
-  set (COMPILE_FILES aes_cbc.c aes_gcm.c)
+  set (COMPILE_FILES aes_cbc.c aes_gcm.c hmac_sha256.c)
   set (COMPILE_OPTS -Wall -fno-common -maes)
 endif()
 

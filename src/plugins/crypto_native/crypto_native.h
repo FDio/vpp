@@ -49,6 +49,8 @@ clib_error_t __clib_weak *crypto_native_aes_gcm_init_##v (vlib_main_t * vm); \
 foreach_crypto_native_march_variant;
 #undef _
 
+clib_error_t __clib_weak *crypto_native_hmac_sha256_init (vlib_main_t * vm);
+
 #endif /* __crypto_native_h__ */
 
 /*
