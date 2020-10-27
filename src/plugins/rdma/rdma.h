@@ -90,9 +90,26 @@ typedef struct
   u32 wqe_cnt;
   u32 wq_stride;
   u32 buf_sz;
-  u32 striding_wqe_tail;
+  union
+  {
+    struct
+    {
+      u32 striding_wqe_tail;	/* Striding RQ: number of released whole WQE */
+      u8 log_stride_per_wqe;	/* Striding RQ: number of strides in a single WQE */
+    };
+
+    struct
+    {
+      u8 n_ds_per_wqe;		/* Legacy RQ: number of nonnull data segs per WQE */
+      u8 *n_used_per_chain;	/* Legacy RQ: for each buffer chain, how many additional segments are needed */
+      u16 n_total_additional_segs;
+      u32 *second_bufs;		/* Legacy RQ: ring of second buffers of each chain */
+      u32 incomplete_tail;	/* Legacy RQ: tail index in bufs,
+				   corresponds to buffer chains with recycled valid head buffer,
+				   but whose other buffers are not yet recycled (due to pool exhaustion). */
+    };
+  };
   u8 log_wqe_sz;		/* log-size of a single WQE (in data segments) */
-  u8 log_stride_per_wqe;	/* Striding RQ: number of strides in a single WQE */
 } rdma_rxq_t;
 
 typedef struct
@@ -200,8 +217,20 @@ typedef struct
     u16x8 cqe_flags8[VLIB_FRAME_SIZE / 8];
     u16x16 cqe_flags16[VLIB_FRAME_SIZE / 16];
   };
-  u32 current_segs[VLIB_FRAME_SIZE];
-  u32 to_free_buffers[VLIB_FRAME_SIZE];
+  union
+  {
+    struct
+    {
+      u32 current_segs[VLIB_FRAME_SIZE];
+      u32 to_free_buffers[VLIB_FRAME_SIZE];
+    };				/* Specific to STRIDING RQ mode */
+    struct
+    {
+      u32 tmp_bi[VLIB_FRAME_SIZE];
+      vlib_buffer_t *tmp_bufs[VLIB_FRAME_SIZE];
+    };				/* Specific to LEGACY RQ mode */
+  };
+
   vlib_buffer_t buffer_template;
 } rdma_per_thread_data_t;
 
@@ -230,6 +259,9 @@ typedef struct
   u32 txq_size;
   u32 rxq_num;
   rdma_mode_t mode;
+  u8 disable_legacy_chained_bufs;
+  u8 disable_striding_rq;
+  u16 max_pktlen_override;
 
   /* return */
   int rv;

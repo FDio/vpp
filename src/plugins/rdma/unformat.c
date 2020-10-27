@@ -24,7 +24,7 @@ unformat_rdma_create_if_args (unformat_input_t * input, va_list * vargs)
   rdma_create_if_args_t *args = va_arg (*vargs, rdma_create_if_args_t *);
   unformat_input_t _line_input, *line_input = &_line_input;
   uword ret = 1;
-
+  u32 tmp;
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
@@ -48,6 +48,12 @@ unformat_rdma_create_if_args (unformat_input_t * input, va_list * vargs)
 	args->mode = RDMA_MODE_IBV;
       else if (unformat (line_input, "mode dv"))
 	args->mode = RDMA_MODE_DV;
+      else if (unformat (line_input, "no-striding"))
+	args->disable_striding_rq = 1;
+      else if (unformat (line_input, "no-legacy"))
+	args->disable_legacy_chained_bufs = 1;
+      else if (unformat (line_input, "max-pktlen %u", &tmp))
+	args->max_pktlen_override = tmp;
       else
 	{
 	  /* return failure on unknown input */

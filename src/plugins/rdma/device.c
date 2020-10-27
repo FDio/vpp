@@ -419,7 +419,8 @@ rdma_dev_cleanup (rdma_device_t * rd)
 }
 
 static clib_error_t *
-rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
+rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc,
+	       u8 disable_legacy_chained_bufs, u16 max_pktlen_override)
 {
   rdma_rxq_t *rxq;
   struct ibv_wq_init_attr wqia;
@@ -427,17 +428,18 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   struct ibv_wq_attr wqa;
   struct ibv_cq_ex *cqex;
   struct mlx5dv_wq_init_attr dv_wqia = { };
+  int is_mlx5dv = ! !(rd->flags & RDMA_DEVICE_F_MLX5DV);
+  int is_striding = ! !(rd->flags & RDMA_DEVICE_F_STRIDING_RQ);
 
   vec_validate_aligned (rd->rxqs, qid, CLIB_CACHE_LINE_BYTES);
   rxq = vec_elt_at_index (rd->rxqs, qid);
   rxq->size = n_desc;
   rxq->log_wqe_sz = 0;
-  rxq->log_stride_per_wqe = 0;
   rxq->buf_sz = vlib_buffer_get_default_data_size (vm);
   vec_validate_aligned (rxq->bufs, n_desc - 1, CLIB_CACHE_LINE_BYTES);
 
   cqa.cqe = n_desc;
-  if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+  if (is_mlx5dv)
     {
       struct mlx5dv_cq_init_attr dvcq = { };
       dvcq.comp_mask = MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
@@ -460,14 +462,14 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   wqia.max_sge = 1;
   wqia.pd = rd->pd;
   wqia.cq = rxq->cq;
-  if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+  if (is_mlx5dv)
     {
-      if (rd->flags & RDMA_DEVICE_F_STRIDING_RQ)
+      if (is_striding)
 	{
 	  /* In STRIDING_RQ mode, map a descriptor to a stride, not a full WQE buffer */
 	  uword data_seg_log2_sz =
 	    min_log2 (vlib_buffer_get_default_data_size (vm));
-
+	  rxq->buf_sz = 1 << data_seg_log2_sz;
 	  /* The trick is also to map a descriptor to a data segment in the WQE SG list
 	     The number of strides per WQE and the size of a WQE (in 16-bytes words) both
 	     must be powers of two.
@@ -478,24 +480,44 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 	     a stride, and a vlib_buffer)
 	     - RDMA_RXQ_MAX_CHAIN_SZ-1 null data segments
 	   */
-
-	  wqia.max_sge = RDMA_RXQ_MAX_CHAIN_SZ;
+	  int max_chain_log_sz =
+	    max_pktlen_override ? max_log2 ((max_pktlen_override /
+					     (rxq->buf_sz)) +
+					    1) : RDMA_RXQ_MAX_CHAIN_LOG_SZ;
+	  max_chain_log_sz = clib_max (max_chain_log_sz, 3);
+	  wqia.max_sge = 1 << max_chain_log_sz;
 	  dv_wqia.comp_mask = MLX5DV_WQ_INIT_ATTR_MASK_STRIDING_RQ;
 	  dv_wqia.striding_rq_attrs.two_byte_shift_en = 0;
 	  dv_wqia.striding_rq_attrs.single_wqe_log_num_of_strides =
-	    RDMA_RXQ_MAX_CHAIN_LOG_SZ;
+	    max_chain_log_sz;
 	  dv_wqia.striding_rq_attrs.single_stride_log_num_of_bytes =
 	    data_seg_log2_sz;
-	  wqia.max_wr >>= RDMA_RXQ_MAX_CHAIN_LOG_SZ;
-	  rxq->log_wqe_sz = RDMA_RXQ_MAX_CHAIN_LOG_SZ + 1;
-	  rxq->log_stride_per_wqe = RDMA_RXQ_MAX_CHAIN_LOG_SZ;
-	  rxq->buf_sz = 1 << data_seg_log2_sz;
+	  wqia.max_wr >>= max_chain_log_sz;
+	  rxq->log_wqe_sz = max_chain_log_sz + 1;
+	  rxq->log_stride_per_wqe = max_chain_log_sz;
 	}
       else
 	{
-	  /* For now, in non STRIDING_RQ mode, SG operations/chained buffers
-	     are not supported */
-	  wqia.max_sge = 1;
+	  /* In non STRIDING_RQ mode, each WQE is a SG list of data
+	     segments, each pointing to a vlib_buffer.  */
+	  if (disable_legacy_chained_bufs)
+	    {
+	      wqia.max_sge = 1;
+	      rxq->log_wqe_sz = 0;
+	      rxq->n_ds_per_wqe = 1;
+	    }
+	  else
+	    {
+	      int max_chain_sz =
+		max_pktlen_override ? (max_pktlen_override /
+				       (rxq->buf_sz)) +
+		1 : RDMA_RXQ_LEGACY_MODE_MAX_CHAIN_SZ;
+	      int max_chain_log_sz = max_log2 (max_chain_sz);
+	      wqia.max_sge = 1 << max_chain_log_sz;
+	      rxq->log_wqe_sz = max_chain_log_sz;
+	      rxq->n_ds_per_wqe = max_chain_sz;
+	    }
+
 	}
 
       if ((rxq->wq = mlx5dv_create_wq (rd->ctx, &wqia, &dv_wqia)))
@@ -516,13 +538,14 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   if (ibv_modify_wq (rxq->wq, &wqa) != 0)
     return clib_error_return_unix (0, "Modify WQ (RDY) Failed");
 
-  if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+  if (is_mlx5dv)
     {
       struct mlx5dv_obj obj = { };
       struct mlx5dv_cq dv_cq;
       struct mlx5dv_rwq dv_rwq;
       u64 qw0;
       u64 qw0_nullseg;
+      u32 wqe_sz_mask = (1 << rxq->log_wqe_sz) - 1;
 
       obj.cq.in = rxq->cq;
       obj.cq.out = &dv_cq;
@@ -550,19 +573,36 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
       qw0 |= (u64) clib_host_to_net_u32 (rd->lkey) << 32;
       qw0_nullseg |= (u64) clib_host_to_net_u32 (rd->lkey) << 32;
 
-/* Prefill the different 16 bytes words of the WQ. If not in striding RQ mode,
-   init with qw0 only with segments of rxq->buf_sz. Otherwise, for each WQE, the
-   RDMA_RXQ_MAX_CHAIN_SZ + 1 first 16-bytes words are initialised with qw0, the rest
-   are null segments */
+/* Prefill the different 16 bytes words of the WQ.
+        - If not in striding RQ mode, for each WQE, init with qw0 the first
+            RDMA_RXQ_LEGACY_MODE_MAX_CHAIN_SZ, and init the rest of the WQE
+            with null segments.
+        - If in striding RQ mode, for each WQE, the RDMA_RXQ_MAX_CHAIN_SZ + 1
+        first 16-bytes words are initialised with qw0, the rest are null segments */
+
       for (int i = 0; i < rxq->wqe_cnt << rxq->log_wqe_sz; i++)
-	if (!(rd->flags & RDMA_DEVICE_F_STRIDING_RQ)
-	    || (i == 0) || !(((i - 1) >> rxq->log_stride_per_wqe) & 0x1))
+	if ((!is_striding
+	     && ((i & wqe_sz_mask) < rxq->n_ds_per_wqe))
+	    || (is_striding
+		&& ((i == 0)
+		    || !(((i - 1) >> rxq->log_stride_per_wqe) & 0x1))))
 	  rxq->wqes[i].dsz_and_lkey = qw0;
 	else
 	  rxq->wqes[i].dsz_and_lkey = qw0_nullseg;
 
       for (int i = 0; i < (1 << rxq->log2_cq_size); i++)
 	rxq->cqes[i].opcode_cqefmt_se_owner = 0xff;
+
+      if (!is_striding)
+	{
+	  vec_validate_aligned (rxq->second_bufs, n_desc - 1,
+				CLIB_CACHE_LINE_BYTES);
+	  vec_validate_aligned (rxq->n_used_per_chain, n_desc - 1,
+				CLIB_CACHE_LINE_BYTES);
+	  rxq->n_total_additional_segs = n_desc * (rxq->n_ds_per_wqe - 1);
+	  for (int i = 0; i < n_desc; i++)
+	    rxq->n_used_per_chain[i] = rxq->n_ds_per_wqe - 1;
+	}
     }
 
   return 0;
@@ -719,12 +759,15 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 }
 
 static clib_error_t *
-rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd, u32 rxq_size,
-	       u32 txq_size, u32 rxq_num)
+rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd,
+	       rdma_create_if_args_t * args)
 {
   clib_error_t *err;
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+  u32 rxq_num = args->rxq_num;
+  u32 rxq_size = args->rxq_size;
+  u32 txq_size = args->txq_size;
   u32 i;
 
   if (rd->ctx == 0)
@@ -758,7 +801,10 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd, u32 rxq_size,
       return err;
 
   for (i = 0; i < rxq_num; i++)
-    if ((err = rdma_rxq_init (vm, rd, i, rxq_size)))
+    if ((err =
+	 rdma_rxq_init (vm, rd, i, rxq_size,
+			args->disable_legacy_chained_bufs,
+			args->max_pktlen_override)))
       return err;
   if ((err = rdma_rxq_finalize (vm, rd)))
     return err;
@@ -799,7 +845,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
   args->rxq_size = args->rxq_size ? args->rxq_size : 1024;
   args->txq_size = args->txq_size ? args->txq_size : 1024;
-  args->rxq_num = args->rxq_num ? args->rxq_num : 1;
+  args->rxq_num = args->rxq_num ? args->rxq_num : 2;
 
   if (!is_pow2 (args->rxq_num))
     {
@@ -896,7 +942,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 	  if ((mlx5dv_attrs.flags & MLX5DV_CONTEXT_FLAGS_CQE_V1))
 	    rd->flags |= RDMA_DEVICE_F_MLX5DV;
 
-	  if (data_seg_log2_sz <=
+	  if (!args->disable_striding_rq && data_seg_log2_sz <=
 	      mlx5dv_attrs.striding_rq_caps.max_single_stride_log_num_of_bytes
 	      && data_seg_log2_sz >=
 	      mlx5dv_attrs.striding_rq_caps.min_single_stride_log_num_of_bytes
@@ -917,8 +963,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 	}
     }
 
-  if ((args->error = rdma_dev_init (vm, rd, args->rxq_size, args->txq_size,
-				    args->rxq_num)))
+  if ((args->error = rdma_dev_init (vm, rd, args)))
     goto err2;
 
   if ((args->error = rdma_register_interface (vnm, rd)))
