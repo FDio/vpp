@@ -664,7 +664,7 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     return virtio_interface_tx_gso_inline (vm, node, vif, type, vring,
 					   buffers, n_left, 1 /* do_gso */ ,
 					   1 /* checksum offload */ );
-  else if (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD)
+  else if (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD)
     return virtio_interface_tx_gso_inline (vm, node, vif, type, vring,
 					   buffers, n_left,
 					   0 /* no do_gso */ ,

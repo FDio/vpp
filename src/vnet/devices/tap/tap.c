@@ -722,11 +722,13 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   if (args->tap_flags & TAP_FLAG_GSO)
     {
       hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
-	VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+	VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD;
+      hw->oflags |= VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L4_CKSUM;
     }
   else if (args->tap_flags & TAP_FLAG_CSUM_OFFLOAD)
     {
-      hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+      hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD;
+      hw->oflags |= VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L4_CKSUM;
     }
   if ((args->tap_flags & TAP_FLAG_GSO)
       && (args->tap_flags & TAP_FLAG_GRO_COALESCE))
@@ -840,18 +842,18 @@ tap_csum_offload_enable_disable (vlib_main_t * vm, u32 sw_if_index,
 
   if (enable_disable)
     {
-      if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD) ==
-	  0)
+      if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD) == 0)
 	{
-	  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+	  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD;
+	  hw->oflags |= VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L4_CKSUM;
 	}
     }
   else
     {
-      if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD) !=
-	  0)
+      if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD) != 0)
 	{
-	  hw->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+	  hw->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD;
+	  hw->oflags &= ~VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L4_CKSUM;
 	}
     }
 
@@ -895,7 +897,8 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable,
       if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0)
 	{
 	  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
-	    VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+	    VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD;
+	  hw->oflags |= VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L4_CKSUM;
 	}
       if (is_packet_coalesce)
 	{
@@ -907,7 +910,8 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable,
       if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) != 0)
 	{
 	  hw->flags &= ~(VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
-			 VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
+			 VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD);
+	  hw->oflags &= ~VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L4_CKSUM;
 	}
       vif->packet_coalesce = 0;
     }
