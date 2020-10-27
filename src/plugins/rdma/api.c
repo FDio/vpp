@@ -45,6 +45,37 @@ rdma_api_mode (vl_api_rdma_mode_t mode)
 }
 
 static void
+vl_api_rdma_create_v2_t_handler (vl_api_rdma_create_v2_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  rdma_main_t *rm = &rdma_main;
+  vl_api_rdma_create_v2_reply_t *rmp;
+  rdma_create_if_args_t args;
+  int rv;
+
+  clib_memset (&args, 0, sizeof (rdma_create_if_args_t));
+
+  args.ifname = mp->host_if;
+  args.name = mp->name;
+  args.rxq_num = ntohs (mp->rxq_num);
+  args.rxq_size = ntohs (mp->rxq_size);
+  args.txq_size = ntohs (mp->txq_size);
+  args.mode = rdma_api_mode (mp->mode);
+  args.disable_striding_rq = 0;
+  args.no_multi_seg = mp->no_multi_seg;
+  args.max_pktlen = ntohs (mp->max_pktlen);
+  rdma_create_if (vm, &args);
+  rv = args.rv;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_RDMA_CREATE_V2_REPLY + rm->msg_id_base,
+    ({
+      rmp->sw_if_index = ntohl (args.sw_if_index);
+    }));
+  /* *INDENT-ON* */
+}
+
+static void
 vl_api_rdma_create_t_handler (vl_api_rdma_create_t * mp)
 {
   vlib_main_t *vm = vlib_get_main ();
@@ -61,6 +92,9 @@ vl_api_rdma_create_t_handler (vl_api_rdma_create_t * mp)
   args.rxq_size = ntohs (mp->rxq_size);
   args.txq_size = ntohs (mp->txq_size);
   args.mode = rdma_api_mode (mp->mode);
+  args.disable_striding_rq = 0;
+  args.no_multi_seg = 1;
+  args.max_pktlen = 0;
 
   rdma_create_if (vm, &args);
   rv = args.rv;
