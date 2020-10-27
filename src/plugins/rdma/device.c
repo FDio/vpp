@@ -427,17 +427,18 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   struct ibv_wq_attr wqa;
   struct ibv_cq_ex *cqex;
   struct mlx5dv_wq_init_attr dv_wqia = { };
+  int is_mlx5dv = ! !(rd->flags & RDMA_DEVICE_F_MLX5DV);
+  int is_striding = ! !(rd->flags & RDMA_DEVICE_F_STRIDING_RQ);
 
   vec_validate_aligned (rd->rxqs, qid, CLIB_CACHE_LINE_BYTES);
   rxq = vec_elt_at_index (rd->rxqs, qid);
   rxq->size = n_desc;
   rxq->log_wqe_sz = 0;
-  rxq->log_stride_per_wqe = 0;
   rxq->buf_sz = vlib_buffer_get_default_data_size (vm);
   vec_validate_aligned (rxq->bufs, n_desc - 1, CLIB_CACHE_LINE_BYTES);
 
   cqa.cqe = n_desc;
-  if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+  if (is_mlx5dv)
     {
       struct mlx5dv_cq_init_attr dvcq = { };
       dvcq.comp_mask = MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
@@ -460,9 +461,9 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   wqia.max_sge = 1;
   wqia.pd = rd->pd;
   wqia.cq = rxq->cq;
-  if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+  if (is_mlx5dv)
     {
-      if (rd->flags & RDMA_DEVICE_F_STRIDING_RQ)
+      if (is_striding)
 	{
 	  /* In STRIDING_RQ mode, map a descriptor to a stride, not a full WQE buffer */
 	  uword data_seg_log2_sz =
@@ -493,9 +494,11 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 	}
       else
 	{
-	  /* For now, in non STRIDING_RQ mode, SG operations/chained buffers
-	     are not supported */
-	  wqia.max_sge = 1;
+	  /* In non STRIDING_RQ mode, each WQE is a SG list of data
+	     segments, each pointing to a vlib_buffer.  */
+	  wqia.max_sge = RDMA_RXQ_MAX_CHAIN_SZ;
+	  rxq->log_wqe_sz = RDMA_RXQ_MAX_CHAIN_LOG_SZ;
+	  rxq->n_ds_per_wqe = RDMA_RXQ_LEGACY_MODE_MAX_CHAIN_SZ;
 	}
 
       if ((rxq->wq = mlx5dv_create_wq (rd->ctx, &wqia, &dv_wqia)))
@@ -516,13 +519,14 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   if (ibv_modify_wq (rxq->wq, &wqa) != 0)
     return clib_error_return_unix (0, "Modify WQ (RDY) Failed");
 
-  if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+  if (is_mlx5dv)
     {
       struct mlx5dv_obj obj = { };
       struct mlx5dv_cq dv_cq;
       struct mlx5dv_rwq dv_rwq;
       u64 qw0;
       u64 qw0_nullseg;
+      u32 wqe_sz_mask = (1 << rxq->log_wqe_sz) - 1;
 
       obj.cq.in = rxq->cq;
       obj.cq.out = &dv_cq;
@@ -550,19 +554,36 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
       qw0 |= (u64) clib_host_to_net_u32 (rd->lkey) << 32;
       qw0_nullseg |= (u64) clib_host_to_net_u32 (rd->lkey) << 32;
 
-/* Prefill the different 16 bytes words of the WQ. If not in striding RQ mode,
-   init with qw0 only with segments of rxq->buf_sz. Otherwise, for each WQE, the
-   RDMA_RXQ_MAX_CHAIN_SZ + 1 first 16-bytes words are initialised with qw0, the rest
-   are null segments */
+/* Prefill the different 16 bytes words of the WQ.
+        - If not in striding RQ mode, for each WQE, init with qw0 the first
+            RDMA_RXQ_LEGACY_MODE_MAX_CHAIN_SZ, and init the rest of the WQE
+            with null segments.
+        - If in striding RQ mode, for each WQE, the RDMA_RXQ_MAX_CHAIN_SZ + 1
+        first 16-bytes words are initialised with qw0, the rest are null segments */
+
       for (int i = 0; i < rxq->wqe_cnt << rxq->log_wqe_sz; i++)
-	if (!(rd->flags & RDMA_DEVICE_F_STRIDING_RQ)
-	    || (i == 0) || !(((i - 1) >> rxq->log_stride_per_wqe) & 0x1))
+	if ((!is_striding
+	     && ((i & wqe_sz_mask) < rxq->n_ds_per_wqe))
+	    || (is_striding
+		&& ((i == 0)
+		    || !(((i - 1) >> rxq->log_stride_per_wqe) & 0x1))))
 	  rxq->wqes[i].dsz_and_lkey = qw0;
 	else
 	  rxq->wqes[i].dsz_and_lkey = qw0_nullseg;
 
       for (int i = 0; i < (1 << rxq->log2_cq_size); i++)
 	rxq->cqes[i].opcode_cqefmt_se_owner = 0xff;
+
+      if (!is_striding)
+	{
+	  vec_validate_aligned (rxq->second_bufs, n_desc - 1,
+				CLIB_CACHE_LINE_BYTES);
+	  vec_validate_aligned (rxq->n_used_per_chain, n_desc - 1,
+				CLIB_CACHE_LINE_BYTES);
+	  rxq->n_total_additional_segs = n_desc * (rxq->n_ds_per_wqe - 1);
+	  for (int i = 0; i < n_desc; i++)
+	    rxq->n_used_per_chain[i] = rxq->n_ds_per_wqe - 1;
+	}
     }
 
   return 0;
