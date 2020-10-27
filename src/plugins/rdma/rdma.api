@@ -15,7 +15,7 @@
  *------------------------------------------------------------------
  */
 
-option version = "1.0.0";
+option version = "2.0.0";
 import "vnet/interface_types.api";
 
 enum rdma_mode
@@ -39,6 +39,7 @@ enum rdma_mode
 
 define rdma_create
 {
+  option deprecated="21.01";
   u32 client_index;
   u32 context;
 
@@ -52,12 +53,55 @@ define rdma_create
 };
 
 /** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param host_if - Linux netdev interface name
+    @param name - new rdma interface name
+    @param rxq_num - number of receive queues (optional)
+    @param rxq_size - receive queue size (optional)
+    @param txq_size - transmit queue size (optional)
+    @param mode - operation mode (optional)
+    @param no_multi_seg (optional) - disable chained buffer RX
+    @param max_pktlen (optional) - maximal RX packet size.
+*/
+
+define rdma_create_v2
+{
+  u32 client_index;
+  u32 context;
+
+  string host_if[64];
+  string name[64];
+  u16 rxq_num [default=1];
+  u16 rxq_size [default=1024];
+  u16 txq_size [default=1024];
+  vl_api_rdma_mode_t mode [default=0];
+  u8 no_multi_seg [default=0];
+  u16 max_pktlen [default=0];
+  option vat_help = "<host-if ifname> [name <name>] [rx-queue-size <size>] [tx-queue-size <size>] [num-rx-queues <size>] [mode <auto|ibv|dv>] [no-multi-seg] [max-pktlen <size>]";
+};
+
+
+/** \brief
     @param context - sender context, to match reply w/ request
     @param retval - return value for request
     @param sw_if_index - software index for the new rdma interface
 */
 
 define rdma_create_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+    @param sw_if_index - software index for the new rdma interface
+*/
+
+define rdma_create_v2_reply
 {
   u32 context;
   i32 retval;
