@@ -179,6 +179,22 @@ class TestPPPoE(VppTestCase):
                 self.logger.error(ppp("Tx:", tx))
                 raise
 
+    def verify_captured_pppoe(self, src_if, capture, sent, session_id):
+        self.assertEqual(len(capture), len(sent))
+
+        for i in range(len(capture)):
+            try:
+                tx = sent[i]
+                rx = capture[i]
+
+                self.assertEqual(Raw(tx), Raw(rx))
+
+            except Exception as e:
+                self.logger.error(f"Catched error: {e}")
+                self.logger.error(ppp("Rx:", rx))
+                self.logger.error(ppp("Tx:", tx))
+                raise
+
     def test_PPPoE_Decap(self):
         """ PPPoE Decap Test """
 
@@ -601,6 +617,48 @@ class TestPPPoE(VppTestCase):
 
         # Delete a route that resolves the server's destination
         route_sever_dst.remove_vpp_config()
+
+    def test_PPPoE_Control_Send(self):
+        """ PPPoE Send contol packets to CP interface Test """
+
+        self.vapi.cli("clear trace")
+
+        # Set up this interface as cp interface for pppoe
+        self.logger.info(f"Configuring CP interface: {self.pg1.sw_if_index}")
+        self.vapi.pppoe_add_del_cp(self.pg1.sw_if_index, 1)
+
+        # Send PPPoE Discovery
+        self.logger.info("Send PPPoE Discovery")
+        tx0 = self.create_stream_pppoe_discovery(self.pg0, self.pg1,
+                                                 self.pg0.remote_mac)
+        self.pg0.add_stream(tx0)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx0 = self.pg1.get_capture(len(tx0))
+        self.verify_captured_pppoe(self.pg1, rx0, tx0, self.session_id)
+
+        # Send PPPoE PPP LCP
+        self.logger.info("Send PPPoE PPP LCP")
+        tx1 = self.create_stream_pppoe_lcp(self.pg0, self.pg1,
+                                           self.pg0.remote_mac,
+                                           self.session_id)
+        self.pg0.add_stream(tx1)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx1 = self.pg1.get_capture(len(tx1))
+        self.verify_captured_pppoe(self.pg1, rx1, tx1, self.session_id)
+
+        # Set up this interface as cp interface for pppoe
+        self.logger.info(f"Deconfiguring CP interface: {self.pg1.sw_if_index}")
+        self.vapi.pppoe_add_del_cp(self.pg1.sw_if_index, 0)
+
+        self.logger.info(self.vapi.cli("show pppoe fib"))
+        self.logger.info(self.vapi.cli("show pppoe session"))
+        self.logger.info(self.vapi.cli("show ip fib"))
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

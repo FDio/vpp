@@ -171,10 +171,16 @@ VLIB_NODE_FN (pppoe_cp_dispatch_node) (vlib_main_t * vm,
 				   &key0, &cached_key,
     			           &bucket0, &result0);
 
+              if (PREDICT_FALSE (pem->cp_if_index == ~0))
+              {
+                error0 = PPPOE_ERROR_NO_CP_IF_CONFIGURED;
+                next0 = PPPOE_INPUT_NEXT_DROP;
+                goto trace00;
+              }
+
               next0 = PPPOE_CP_NEXT_INTERFACE;
               vnet_buffer(b0)->sw_if_index[VLIB_TX] = pem->cp_if_index;
             }
-
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 
           pkts_decapsulated ++;
