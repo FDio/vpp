@@ -39,6 +39,8 @@ from util import ppp, is_core_present
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
+from pathlib import Path
+from existing_vpp import ExistingVPP
 
 if os.name == 'posix' and sys.version_info[0] < 3:
     # using subprocess32 is recommended by python official documentation
@@ -65,6 +67,9 @@ ERROR = 2
 SKIP = 3
 TEST_RUN = 4
 
+# Detect any existing VPP
+exists_vpp = ExistingVPP()
+RUNNING_VPP = exists_vpp.running
 
 class BoolEnvironmentVariable(object):
 
@@ -404,35 +409,38 @@ class VppTestCase(unittest.TestCase):
         if api_fuzzing is None:
             api_fuzzing = 'off'
 
-        cls.vpp_cmdline = [cls.vpp_bin, "unix",
-                           "{", "nodaemon", debug_cli, "full-coredump",
-                           coredump_size, "runtime-dir", cls.tempdir, "}",
-                           "api-trace", "{", "on", "}", "api-segment", "{",
-                           "prefix", cls.shm_prefix, "}", "cpu", "{",
-                           "main-core", str(cpu_core_number),
-                           cls.worker_config, "}",
-                           "physmem", "{", "max-size", "32m", "}",
-                           "statseg", "{", "socket-name", cls.stats_sock, "}",
-                           "socksvr", "{", "socket-name", cls.api_sock, "}",
-                           "node { ", default_variant, "}",
-                           "api-fuzz {", api_fuzzing, "}",
-                           "plugins",
-                           "{", "plugin", "dpdk_plugin.so", "{", "disable",
-                           "}", "plugin", "rdma_plugin.so", "{", "disable",
-                           "}", "plugin", "lisp_unittest_plugin.so", "{",
-                           "enable",
-                           "}", "plugin", "unittest_plugin.so", "{", "enable",
-                           "}"] + cls.extra_vpp_plugin_config + ["}", ]
+        # Setup VPP cmdline args to run VPP, only if we need it
+        if not RUNNING_VPP:
+            cls.vpp_cmdline = [
+                cls.vpp_bin, "unix",
+                "{", "nodaemon", debug_cli, "full-coredump",
+                coredump_size, "runtime-dir", cls.tempdir, "}",
+                "api-trace", "{", "on", "}", "api-segment", "{",
+                "prefix", cls.shm_prefix, "}", "cpu", "{",
+                "main-core", str(cpu_core_number),
+                cls.worker_config, "}",
+                "physmem", "{", "max-size", "32m", "}",
+                "statseg", "{", "socket-name", cls.stats_sock, "}",
+                "socksvr", "{", "socket-name", cls.api_sock, "}",
+                "node { ", default_variant, "}",
+                "api-fuzz {", api_fuzzing, "}",
+                "plugins",
+                "{", "plugin", "dpdk_plugin.so", "{", "disable",
+                "}", "plugin", "rdma_plugin.so", "{", "disable",
+                "}", "plugin", "lisp_unittest_plugin.so", "{",
+                "enable",
+                "}", "plugin", "unittest_plugin.so", "{", "enable",
+                "}"] + cls.extra_vpp_plugin_config + ["}", ]
 
-        if cls.extra_vpp_punt_config is not None:
-            cls.vpp_cmdline.extend(cls.extra_vpp_punt_config)
-        if plugin_path is not None:
-            cls.vpp_cmdline.extend(["plugin_path", plugin_path])
-        if cls.test_plugin_path is not None:
-            cls.vpp_cmdline.extend(["test_plugin_path", cls.test_plugin_path])
+            if cls.extra_vpp_punt_config is not None:
+                cls.vpp_cmdline.extend(cls.extra_vpp_punt_config)
+            if plugin_path is not None:
+                cls.vpp_cmdline.extend(["plugin_path", plugin_path])
+            if cls.test_plugin_path is not None:
+                cls.vpp_cmdline.extend(["test_plugin_path", cls.test_plugin_path])
 
-        cls.logger.info("vpp_cmdline args: %s" % cls.vpp_cmdline)
-        cls.logger.info("vpp_cmdline: %s" % " ".join(cls.vpp_cmdline))
+            cls.logger.info("vpp_cmdline args: %s" % cls.vpp_cmdline)
+            cls.logger.info("vpp_cmdline: %s" % " ".join(cls.vpp_cmdline))
 
     @classmethod
     def wait_for_enter(cls):
@@ -533,11 +541,32 @@ class VppTestCase(unittest.TestCase):
         if hasattr(cls, 'parallel_handler'):
             cls.logger.addHandler(cls.parallel_handler)
             cls.logger.propagate = False
-
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-%s-' % cls.__name__)
-        cls.stats_sock = "%s/stats.sock" % cls.tempdir
-        cls.api_sock = "%s/api.sock" % cls.tempdir
+        # Adjust attributes if an instance of VPP is detected
+        if RUNNING_VPP:
+            # Test framework will not control an existing VPP.
+            # The developer has full control over the VPP & TestCases
+            # The test will run against the running VPP and will write trace
+            # outputs from it for debugging purposes into the /tmp dir.
+            cls.vpp = exists_vpp
+            # Notify during sanity run about the existing VPP
+            if cls.__name__ == 'SanityTestCase':
+                print("@@@@@ An instance of VPP is already running @@@@@")
+                print("Tests will run against the below VPP instance")
+                print(cls.vpp.vpp_instance)
+            cls.vpp_bin = cls.vpp.vpp_bin
+            cls.stats_sock = cls.vpp.data['stats_sock']
+            cls.api_sock = cls.vpp.data['api_sock']
+            cls.shm_prefix = cls.vpp.data['shm_prefix']
+            cls.runtime_dir = cls.vpp.data['runtime_dir']
+        else:
+            cls.stats_sock = "%s/stats.sock" % cls.tempdir
+            cls.api_sock = "%s/api.sock" % cls.tempdir
+            cls.shm_prefix = os.path.basename(cls.tempdir)
+            cls.runtime_dir = cls.tempdir
+        # shm_prefix could be empty for an existing VPP, set cls.name for papi
+        cls.name = os.path.basename(cls.tempdir)
         cls.file_handler = FileHandler("%s/log.txt" % cls.tempdir)
         cls.file_handler.setFormatter(
             Formatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
@@ -546,10 +575,10 @@ class VppTestCase(unittest.TestCase):
         cls.logger.addHandler(cls.file_handler)
         cls.logger.debug("--- setUpClass() for %s called ---" %
                          cls.__name__)
-        cls.shm_prefix = os.path.basename(cls.tempdir)
-        os.chdir(cls.tempdir)
-        cls.logger.info("Temporary dir is %s, shm prefix is %s",
-                        cls.tempdir, cls.shm_prefix)
+        if cls.runtime_dir:
+            os.chdir(cls.runtime_dir)
+        cls.logger.info("Runtime dir is %s, shm prefix is %s",
+                        cls.runtime_dir, cls.shm_prefix)
         cls.logger.debug("Random seed is %s" % seed)
         cls.setUpConstants()
         cls.reset_packet_infos()
@@ -562,7 +591,8 @@ class VppTestCase(unittest.TestCase):
         # need to catch exceptions here because if we raise, then the cleanup
         # doesn't get called and we might end with a zombie vpp
         try:
-            cls.run_vpp()
+            if not RUNNING_VPP:  # Run VPP only if not already running
+                cls.run_vpp()
             cls.reporter.send_keep_alive(cls, 'setUpClass')
             VppTestResult.current_test_case_info = TestCaseInfo(
                 cls.logger, cls.tempdir, cls.vpp.pid, cls.vpp_bin)
@@ -575,7 +605,7 @@ class VppTestCase(unittest.TestCase):
             cls.pump_thread.start()
             if cls.debug_gdb or cls.debug_gdbserver:
                 cls.vapi_response_timeout = 0
-            cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls,
+            cls.vapi = VppPapiProvider(cls.name, cls.shm_prefix, cls,
                                        cls.vapi_response_timeout)
             if cls.step:
                 hook = hookmodule.StepHook(cls)
@@ -735,6 +765,11 @@ class VppTestCase(unittest.TestCase):
             self.logger.info(self.vapi.ppcli("api trace save %s" % api_trace))
             self.logger.info("Moving %s to %s\n" % (tmp_api_trace,
                                                     vpp_api_trace_log))
+            # Ensure the process owner has ownership of the trace file created
+            # by an existing VPP process
+            p_owner = os.getlogin()
+            if p_owner != Path(tmp_api_trace).owner():
+                os.system('sudo chown %s %s' % (p_owner, tmp_api_trace))  
             os.rename(tmp_api_trace, vpp_api_trace_log)
             self.logger.info(self.vapi.ppcli("api trace custom-dump %s" %
                                              vpp_api_trace_log))

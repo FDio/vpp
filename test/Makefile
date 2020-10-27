@@ -192,7 +192,7 @@ else
 PARALLEL_ILLEGAL=1
 endif
 
-sanity: test-dep verify-no-running-vpp
+sanity: test-dep
 	@sys_req/dev_shm_size.sh
 	@bash -c "test $(PARALLEL_ILLEGAL) -eq 0 ||\
 	    (echo \"*******************************************************************\" &&\
