@@ -505,7 +505,7 @@ typedef enum vnet_hw_interface_flags_t_
   VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE = (1 << 16),
 
   /* tx checksum offload */
-  VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD = (1 << 17),
+  VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD = (1 << 17),
 
   /* gso */
   VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO = (1 << 18),
@@ -516,6 +516,15 @@ typedef enum vnet_hw_interface_flags_t_
   /* hw/driver can switch between l2-promisc and l3-dmac-filter modes */
   VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER = (1 << 20),
 } vnet_hw_interface_flags_t;
+
+typedef enum vnet_hw_interface_offload_flags_t_
+{
+  VNET_HW_INTERFACE_OFFLOAD_FLAG_NONE,
+  VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L3_CKSUM = (1 << 0),
+  VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L4_CKSUM = (1 << 1),
+  VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L3_OUTER_CKSUM = (1 << 2),
+  VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L4_OUTER_CKSUM = (1 << 3),
+} vnet_hw_interface_offload_flags_t;
 
 #define VNET_HW_INTERFACE_FLAG_DUPLEX_SHIFT 1
 #define VNET_HW_INTERFACE_FLAG_SPEED_SHIFT  3
@@ -617,6 +626,9 @@ typedef struct vnet_hw_interface_t
   i32 n_trace;
 
   u32 trace_classify_table_index;
+
+  /* offload flags */
+  vnet_hw_interface_offload_flags_t oflags;
 } vnet_hw_interface_t;
 
 extern vnet_device_class_t vnet_local_interface_device_class;

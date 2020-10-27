@@ -809,9 +809,11 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vd->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
   if (vd->gso_enable)
-    hw->flags |= (VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
-		  VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
-
+    {
+      hw->flags |= (VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
+		    VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD);
+      hw->oflags |= VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L4_CKSUM;
+    }
   vnet_hw_interface_set_input_node (vnm, vd->hw_if_index,
 				    vmxnet3_input_node.index);
   /* Disable interrupts */

@@ -465,7 +465,8 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   if (args->gso)
     {
       hw->flags |= (VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
-		    VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
+		    VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD);
+      hw->oflags |= VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L4_CKSUM;
     }
   if (vlib_get_thread_main ()->n_vlib_mains > 1)
     clib_spinlock_init (&bif->lockp);

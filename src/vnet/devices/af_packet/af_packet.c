@@ -490,10 +490,15 @@ af_packet_set_l4_cksum_offload (vlib_main_t * vm, u32 sw_if_index, u8 set)
     return VNET_API_ERROR_INVALID_INTERFACE;
 
   if (set)
-    hw->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+    {
+      hw->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD;
+      hw->oflags &= ~VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L4_CKSUM;
+    }
   else
-    hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
-
+    {
+      hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD;
+      hw->oflags |= VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L4_CKSUM;
+    }
   return 0;
 }
 

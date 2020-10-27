@@ -374,7 +374,9 @@ virtio_pci_offloads (vlib_main_t * vm, virtio_if_t * vif, int gso_enabled,
 	      vif->gso_enabled = 1;
 	      vif->csum_offload_enabled = 0;
 	      hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
-		VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+		VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD;
+	      hw->oflags |=
+		VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L4_CKSUM;
 	    }
 	}
       else if (csum_offload_enabled
@@ -389,8 +391,9 @@ virtio_pci_offloads (vlib_main_t * vm, virtio_if_t * vif, int gso_enabled,
 	      vif->csum_offload_enabled = 1;
 	      vif->gso_enabled = 0;
 	      hw->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
-	      hw->flags |=
-		VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+	      hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD;
+	      hw->oflags |=
+		VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L4_CKSUM;
 	    }
 	}
       else
@@ -404,7 +407,9 @@ virtio_pci_offloads (vlib_main_t * vm, virtio_if_t * vif, int gso_enabled,
 	      vif->csum_offload_enabled = 0;
 	      vif->gso_enabled = 0;
 	      hw->flags &= ~(VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
-			     VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
+			     VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_CKSUM_OFFLOAD);
+	      hw->oflags &=
+		~VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_TX_L4_CKSUM;
 	    }
 	}
     }
