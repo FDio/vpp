@@ -192,7 +192,7 @@ else
 PARALLEL_ILLEGAL=1
 endif
 
-sanity: test-dep verify-no-running-vpp
+sanity: test-dep
 	@sys_req/dev_shm_size.sh
 	@bash -c "test $(PARALLEL_ILLEGAL) -eq 0 ||\
 	    (echo \"*******************************************************************\" &&\
@@ -403,6 +403,10 @@ help:
 	@echo " SOCKET=1               - Communicate with VPP over Unix domain socket instead of SHM"
 	@echo ""
 	@echo " RND_SEED=seed          - Seed RND with given seed"
+	@echo ""
+	@echo ""
+	@echo " USE_RUNNING=1          - run tests in a test file against an existing VPP instance"
+	@echo "                          e.g. make test TEST=test_bfd USE_RUNNING=1"
 	@echo ""
 	@echo "Creating test documentation"
 	@echo " test-doc               - generate documentation for test framework"
