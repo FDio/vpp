@@ -391,7 +391,7 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   vnet_hw_interface_assign_rx_thread (vnm, apif->hw_if_index, 0,	/* queue */
 				      ~0 /* any cpu */ );
 
-  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
+  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
   vnet_hw_interface_set_flags (vnm, apif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
 
@@ -490,10 +490,17 @@ af_packet_set_l4_cksum_offload (vlib_main_t * vm, u32 sw_if_index, u8 set)
     return VNET_API_ERROR_INVALID_INTERFACE;
 
   if (set)
-    hw->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+    {
+      hw->caps &=
+	~(VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
+	  VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM);
+    }
   else
-    hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
-
+    {
+      hw->caps |=
+	(VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
+	 VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM);
+    }
   return 0;
 }
 
