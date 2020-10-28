@@ -376,7 +376,18 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
 
   /* wait for stuff to happen */
   while (connected_session_index == ~0 && ++tries < 100)
-    vlib_process_suspend (vm, 100e-3);
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 100e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+  while (accepted_session_index == ~0 && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 100e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+
   clib_warning ("waited %.1f seconds for connections", tries / 10.0);
   SESSION_TEST ((connected_session_index != ~0), "session should exist");
   SESSION_TEST ((connected_session_thread != ~0), "thread should exist");
@@ -422,7 +433,7 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
 static int
 session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 {
-  u64 options[APP_OPTIONS_N_OPTIONS], placeholder_secret = 1234;
+  u64 options[APP_OPTIONS_N_OPTIONS], placeholder_secret = 1234, tries;
   u32 server_index, server_st_index, server_local_st_index;
   u32 placeholder_port = 1234, client_index, server_wrk_index;
   u32 placeholder_api_context = 4321, placeholder_client_api_index = ~0;
@@ -609,6 +620,19 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   connect_args.sep.ip.ip4.as_u8[0] = 127;
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error == 0), "client connect should not return error code");
+
+  /* wait for accept */
+  if (vlib_num_workers ())
+    {
+      tries = 0;
+      while (!placeholder_accept && ++tries < 100)
+	{
+	  vlib_worker_thread_barrier_release (vm);
+	  vlib_process_suspend (vm, 100e-3);
+	  vlib_worker_thread_barrier_sync (vm);
+	}
+    }
+
   SESSION_TEST ((placeholder_segment_count == 1),
 		"should've received request to map new segment");
   SESSION_TEST ((placeholder_accept == 1),
