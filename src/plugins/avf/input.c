@@ -125,7 +125,15 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
       n_alloc -= 8;
     }
 
+#if __x86_64__
+  if (rxq->use_wc_store)
+	  avf_wc_store (rxq->qrx_tail, slot);
+  else
+      clib_atomic_store_rel_n (rxq->qrx_tail, slot);
+#else
   clib_atomic_store_rel_n (rxq->qrx_tail, slot);
+#endif
+
 }
 
 
