@@ -257,8 +257,22 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
       d[0].qword[1] |= AVF_TXD_CMD_RS;
     }
 
+#if __x86_64__
+  if (txq->use_wc_store)
+    {
+	  avf_wc_store (txq->qtx_tail, next & mask);
+      txq->next = next & mask;
+    }
+  else
+    {
+      txq->next = next & mask;
+      clib_atomic_store_rel_n (txq->qtx_tail, txq->next);
+    }
+#else
   txq->next = next & mask;
   clib_atomic_store_rel_n (txq->qtx_tail, txq->next);
+#endif
+
   txq->n_enqueued += n_desc;
   return n_packets - n_packets_left;
 }
