@@ -518,10 +518,16 @@ ct_custom_tx (void *session, transport_send_params_t * sp)
   session_t *s = (session_t *) session;
   if (session_has_transport (s))
     return 0;
-  /* As all other sessions, cut-throughs are scheduled by vpp for tx so let
-   * the scheduler's custom tx logic decide when to deschedule, i.e., after
-   * fifo is emptied. */
-  return ct_session_tx (s);
+  /* If event enqueued towards peer, remove from scheduler and
+   * remove session tx flag, i.e., accept new tx events */
+  if (!ct_session_tx (s))
+    {
+      sp->flags = TRANSPORT_SND_F_DESCHED;
+      svm_fifo_unset_event (s->tx_fifo);
+    }
+  /* The scheduler uses packet count as a means of upper bounding the amount
+   * of work done per dispatch. So make it look like we have sent something */
+  return 1;
 }
 
 static int
@@ -632,10 +638,7 @@ ct_session_tx (session_t * s)
   peer_s = session_get (peer_ct->c_s_index, peer_ct->c_thread_index);
   if (peer_s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return 0;
-  session_enqueue_notify (peer_s);
-  /* The scheduler uses packet count as a means of upper bounding the amount
-   * of work done per dispatch. So make it look like we have sent something */
-  return 1;
+  return session_enqueue_notify (peer_s);
 }
 
 static clib_error_t *
