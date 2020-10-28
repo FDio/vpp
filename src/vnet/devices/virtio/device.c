@@ -723,7 +723,7 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
     }
   if (n_left)
     virtio_interface_drop_inline (vm, node->node_index,
-				  buffers, n_left,
+				  buffers + frame->n_vectors - n_left, n_left,
 				  VIRTIO_TX_ERROR_NO_FREE_SLOTS);
 
   clib_spinlock_unlock_if_init (&vring->lockp);
