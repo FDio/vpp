@@ -1371,7 +1371,7 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * s,
 		  s->vep.vep_sh, rv, vppcom_retval_str (rv));
 	  next_sh = s->vep.next_sh;
 	}
-      goto cleanup;
+      goto free_session;
     }
 
   if (s->flags & VCL_SESSION_F_IS_VEP_SESSION)
