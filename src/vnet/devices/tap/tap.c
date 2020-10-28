@@ -109,8 +109,11 @@ tap_free (vlib_main_t * vm, virtio_if_t * vif)
     virtio_vring_free_tx (vm, vif, TX_QUEUE (i));
   /* *INDENT-ON* */
 
-  _IOCTL (vif->tap_fds[0], TUNSETPERSIST, (void *) (uintptr_t) 0);
-  tap_log_dbg (vif, "TUNSETPERSIST: unset");
+  if (vif->tap_fds)
+    {
+      _IOCTL (vif->tap_fds[0], TUNSETPERSIST, (void *) (uintptr_t) 0);
+      tap_log_dbg (vif, "TUNSETPERSIST: unset");
+    }
 error:
   vec_foreach_index (i, vif->tap_fds) close (vif->tap_fds[i]);
 
