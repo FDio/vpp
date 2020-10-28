@@ -274,6 +274,7 @@ ct_accept_rpc_wrk_handler (void *accept_args)
   clib_memcpy (&cct->c_rmt_ip, &args->ip, sizeof (args->ip));
   cct->actual_tp = ll_ct->actual_tp;
   cct->is_client = 1;
+  cct->c_s_index = ~0;
 
   /*
    * Init server transport
@@ -465,7 +466,11 @@ ct_session_close (u32 ct_index, u32 thread_index)
   if (peer_ct)
     {
       peer_ct->peer_index = ~0;
-      session_transport_closing_notify (&peer_ct->connection);
+      /* Make sure session was allocated */
+      if (peer_ct->c_s_index != ~0)
+	session_transport_closing_notify (&peer_ct->connection);
+      else
+	ct_connection_free (peer_ct);
     }
 
   s = session_get (ct->c_s_index, ct->c_thread_index);
