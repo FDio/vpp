@@ -521,6 +521,8 @@ ct_custom_tx (void *session, transport_send_params_t * sp)
   /* As all other sessions, cut-throughs are scheduled by vpp for tx so let
    * the scheduler's custom tx logic decide when to deschedule, i.e., after
    * fifo is emptied. */
+  sp->flags = TRANSPORT_SND_F_DESCHED;
+  svm_fifo_unset_event (s->tx_fifo);
   return ct_session_tx (s);
 }
 
