@@ -135,6 +135,8 @@ _ (vpclmulqdq, 7, ecx, 10)   \
 _ (avx512_vnni, 7, ecx, 11)   \
 _ (avx512_bitalg, 7, ecx, 12)   \
 _ (avx512_vpopcntdq, 7, ecx, 14)   \
+_ (movdiri, 7, ecx, 27)   \
+_ (movdir64b, 7, ecx, 28)   \
 _ (invariant_tsc, 0x80000007, edx, 8)
 
 
