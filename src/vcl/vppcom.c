@@ -1884,7 +1884,9 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 	{
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
-	  svm_fifo_unset_event (s->rx_fifo);
+	  if (is_ct)
+	    svm_fifo_unset_event (s->rx_fifo);
+	  svm_fifo_unset_event (rx_fifo);
 	  return VPPCOM_EWOULDBLOCK;
 	}
       while (svm_fifo_is_empty_cons (rx_fifo))
@@ -1892,7 +1894,9 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
 
-	  svm_fifo_unset_event (s->rx_fifo);
+	  if (is_ct)
+	    svm_fifo_unset_event (s->rx_fifo);
+	  svm_fifo_unset_event (rx_fifo);
 	  svm_msg_q_lock (mq);
 	  if (svm_msg_q_is_empty (mq))
 	    svm_msg_q_wait (mq);
@@ -1918,9 +1922,11 @@ read_again:
 
   if (svm_fifo_is_empty_cons (rx_fifo))
     {
-      svm_fifo_unset_event (s->rx_fifo);
+      if (is_ct)
+	svm_fifo_unset_event (s->rx_fifo);
+      svm_fifo_unset_event (rx_fifo);
       if (!svm_fifo_is_empty_cons (rx_fifo)
-	  && svm_fifo_set_event (s->rx_fifo) && is_nonblocking)
+	  && svm_fifo_set_event (rx_fifo) && is_nonblocking)
 	{
 	  vec_add2 (wrk->unhandled_evts_vector, e, 1);
 	  e->event_type = SESSION_IO_EVT_RX;
