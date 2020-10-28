@@ -129,6 +129,7 @@ typedef struct
   volatile u32 *qrx_tail;
   u16 next;
   u16 size;
+  u8 use_wc_store;
   avf_rx_desc_t *descs;
   u32 *bufs;
   u16 n_enqueued;
@@ -142,6 +143,7 @@ typedef struct
   volatile u32 *qtx_tail;
   u16 next;
   u16 size;
+  u8 use_wc_store;
   clib_spinlock_t lock;
   avf_tx_desc_t *descs;
   u32 *bufs;
@@ -339,6 +341,15 @@ avf_reg_flush (avf_device_t * ad)
 {
   avf_reg_read (ad, AVFGEN_RSTAT);
   asm volatile ("":::"memory");
+}
+
+static inline void
+avf_wc_store (volatile u32 * addr, u32 val)
+{
+  _mm_sfence ();
+  asm volatile (
+		 /* MOVDIRI */
+		 ".byte 0x40, 0x0f, 0x38, 0xf9, 0x02"::"a" (val), "d" (addr));
 }
 
 static_always_inline int

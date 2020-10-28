@@ -271,6 +271,12 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
   vec_validate_aligned (rxq->bufs, rxq->size, CLIB_CACHE_LINE_BYTES);
   rxq->qrx_tail = ad->bar0 + AVF_QRX_TAIL (qid);
 
+#if __x86_64__
+  rxq->use_wc_store = clib_cpu_supports_movdiri ();
+#else
+  rxq->use_wc_store = 0;
+#endif
+
   n_alloc = vlib_buffer_alloc_from_pool (vm, rxq->bufs, rxq->size - 8,
 					 rxq->buffer_pool_index);
 
@@ -325,6 +331,12 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
 
   vec_validate_aligned (txq->bufs, txq->size, CLIB_CACHE_LINE_BYTES);
   txq->qtx_tail = ad->bar0 + AVF_QTX_TAIL (qid);
+
+#if __x86_64__
+  txq->use_wc_store = clib_cpu_supports_movdiri ();
+#else
+  txq->use_wc_store = 0;
+#endif
 
   /* initialize ring of pending RS slots */
   clib_ring_new_aligned (txq->rs_slots, 32, CLIB_CACHE_LINE_BYTES);
