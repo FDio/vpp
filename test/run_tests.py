@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import functools
 import sys
 import shutil
 import os
@@ -15,6 +15,8 @@ import multiprocessing
 from multiprocessing import Process, Pipe, cpu_count
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
+
+import debug_internal
 import framework
 from framework import VppTestRunner, running_extended_tests, VppTestCase, \
     get_testcase_doc_name, get_test_description, PASS, FAIL, ERROR, SKIP, \
@@ -509,14 +511,26 @@ def run_forked(testcase_suites):
 
 
 class SplitToSuitesCallback:
+
+    debug_framework = framework.BoolEnvironmentVariable('TEST_DEBUG')
+
     def __init__(self, filter_callback):
         self.suites = {}
         self.suite_name = 'default'
         self.filter_callback = filter_callback
         self.filtered = unittest.TestSuite()
 
+    @classmethod
+    @functools.lru_cache(maxsize=1)
+    def cast_test(cls, test_cls):
+        if cls.debug_framework and isinstance(test_cls, framework.VppTestCase):
+            test_method = debug_internal.DebugInternalVppTestCase
+        else:
+            test_method = test_cls
+        return test_method
+
     def __call__(self, file_name, cls, method):
-        test_method = cls(method)
+        test_method = self.__class__.cast_test(cls)(method)
         if self.filter_callback(file_name, cls.__name__, method):
             self.suite_name = file_name + cls.__name__
             if self.suite_name not in self.suites:

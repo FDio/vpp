@@ -85,9 +85,6 @@ class BoolEnvironmentVariable(object):
                (self.name, self.default, self.true_values)
 
 
-debug_framework = BoolEnvironmentVariable('TEST_DEBUG')
-if debug_framework:
-    import debug_internal
 
 """
   Test framework module.
@@ -702,8 +699,6 @@ class VppTestCase(unittest.TestCase):
         cls.quit()
         cls.file_handler.close()
         cls.reset_packet_infos()
-        if debug_framework:
-            debug_internal.on_tear_down_class(cls)
 
     def show_commands_at_teardown(self):
         """ Allow subclass specific teardown logging additions."""
