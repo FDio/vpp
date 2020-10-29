@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6ebe1fa3_92e44b1e",
+        "filename": "src/plugins/nat/nat64/nat64.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1583,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-10-29T21:52:55Z",
+      "side": 1,
+      "message": "Are the parameters vnm, i-\u003esw_if_index used? I mean the second set of those parameters near the end of line 1583.\nIt looks like the %U in the format string is expanded using the 3 arguments on line 1581 (format_vnet_sw_if_index_name, vnm, i-\u003esw_if_index) and the %s is expanded using line 1582 and the first part of line 1583 (i-\u003eflags \u0026 NAT64_INTERFACE_FLAG_IS_INSIDE ? \"inside\" : \"outside\"). Then there is another vnm, i-\u003esw_if_index at the end of line 1583. It looks like there is no matching format specifier for those arguments.",
+      "revId": "5fdbbab6ef8ad8c5800095d0e602ca89ca15aaa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
