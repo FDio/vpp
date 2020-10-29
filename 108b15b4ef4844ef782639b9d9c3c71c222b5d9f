@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a0493f5_f21f97be",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-29T19:44:50Z",
+      "side": 0,
+      "message": "This looks like a flag day for everybody plugins built on older vpps. Now, those who need csum offloading will be broken either way, but everybody else should be fine. So maybe just mark slots 11 and 12 as \"available\"?",
+      "range": {
+        "startLine": 59,
+        "startChar": 0,
+        "endLine": 69,
+        "endChar": 57
+      },
+      "revId": "108b15b4ef4844ef782639b9d9c3c71c222b5d9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
