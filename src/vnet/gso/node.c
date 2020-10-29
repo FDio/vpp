@@ -143,7 +143,7 @@ tso_segment_vxlan_tunnel_headers_fixup (vlib_main_t * vm, vlib_buffer_t * b,
 	{
 	  udp->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip4);
 	}
-      b->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+      vnet_buffer2 (b)->oflags &= ~VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
     }
 }
 
@@ -281,7 +281,7 @@ tso_fixup_segmented_buf (vlib_main_t * vm, vlib_buffer_t * b0, u8 tcp_flags,
 	  tcp->checksum = 0;
 	  tcp->checksum =
 	    ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip6, &bogus);
-	  b0->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+	  b0->flags &= ~VNET_BUFFER_F_OFFLOAD_CKSUM;
 	}
     }
   else
@@ -295,8 +295,7 @@ tso_fixup_segmented_buf (vlib_main_t * vm, vlib_buffer_t * b0, u8 tcp_flags,
 	  tcp->checksum = 0;
 	  tcp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip4);
 	}
-      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
-      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
+      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_CKSUM;
     }
 
   if (!is_l2 && ((gho->gho_flags & GHO_F_TUNNEL) == 0))

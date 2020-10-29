@@ -226,7 +226,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
       to_ip4->checksum = ip4_header_checksum (to_ip4);
 
       /* we've just done the IP checksum .. */
-      to_b->flags &= ~VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
+      vnet_buffer2 (to_b)->oflags &= ~VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
 
       rem -= len;
       fo += len;
