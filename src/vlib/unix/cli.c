@@ -3306,12 +3306,14 @@ VLIB_CLI_COMMAND (unix_cli_quit_command, static) = {
   .path = "quit",
   .short_help = "Exit CLI",
   .function = unix_cli_quit,
+  .is_mp_safe = 1,
 };
 
 VLIB_CLI_COMMAND (unix_cli_q_command, static) = {
   .path = "q",
   .short_help = "Exit CLI",
   .function = unix_cli_quit,
+  .is_mp_safe = 1,
 };
 
 VLIB_CLI_COMMAND (unix_cli_exit_command, static) = {
