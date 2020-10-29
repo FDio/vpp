@@ -1442,17 +1442,20 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
       rekey->tsi = tsi;
       rekey->tsr = tsr;
       /* update Ni */
-      vec_free (sa->i_nonce);
+      vec_reset_length (sa->i_nonce);
       vec_add (sa->i_nonce, nonce, IKEV2_NONCE_SIZE);
       /* generate new Nr */
       vec_validate (sa->r_nonce, IKEV2_NONCE_SIZE - 1);
       RAND_bytes ((u8 *) sa->r_nonce, IKEV2_NONCE_SIZE);
-      vec_free (n);
     }
+  vec_free (n);
   return 1;
 
 cleanup_and_exit:
   vec_free (n);
+  vec_free (proposal);
+  vec_free (tsi);
+  vec_free (tsr);
   return 0;
 }
 
@@ -3146,7 +3149,7 @@ ikev2_node_internal (vlib_main_t * vm,
 		      ikev2_create_tunnel_interface (vm, sa0, child, p[0],
 						     child - sa0->childs, 1);
 		    }
-		  if (sa0->is_initiator)
+		  if (ike_hdr_is_response (ike0))
 		    {
 		      vec_free (sa0->rekey);
 		    }
@@ -4379,6 +4382,7 @@ ikev2_rekey_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   vlib_buffer_t *b0;
   u32 bi0 = 0;
   int len;
+  ip_address_t *src, *dst;
 
   bi0 = ikev2_get_new_ike_header_buff (vm, &b0);
   if (!bi0)
@@ -4408,9 +4412,20 @@ ikev2_rekey_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   if (~0 == len)
     return;
 
+  if (sa->is_initiator)
+    {
+      src = &sa->iaddr;
+      dst = &sa->raddr;
+    }
+  else
+    {
+      dst = &sa->iaddr;
+      src = &sa->raddr;
+    }
+
   if (sa->natt)
     len = ikev2_insert_non_esp_marker (ike0, len);
-  ikev2_send_ike (vm, &sa->iaddr, &sa->raddr, bi0, len,
+  ikev2_send_ike (vm, src, dst, bi0, len,
 		  ikev2_get_port (sa), ikev2_get_port (sa), sa->sw_if_index);
   vec_free (proposals);
 }
@@ -4867,6 +4882,13 @@ ikev2_send_informational_request (ikev2_sa_t * sa)
 		  sa->sw_if_index);
 }
 
+void
+ikev2_enable_disable_dpd (u32 is_enable)
+{
+  ikev2_main_t *km = &ikev2_main;
+  km->dpd_disabled = !is_enable;
+}
+
 static_always_inline int
 ikev2_mngr_process_responder_sas (ikev2_sa_t * sa)
 {
@@ -4902,8 +4924,7 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
   while (1)
     {
-      u8 req_sent = 0;
-      vlib_process_wait_for_event_or_clock (vm, 1);
+      vlib_process_wait_for_event_or_clock (vm, 2);
       vlib_process_get_events (vm, NULL);
 
       /* process ike child sas */
@@ -4930,11 +4951,9 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
             sa->old_id_expiration -= 1;
 
           vec_foreach (c, sa->childs)
-            {
-            req_sent |= ikev2_mngr_process_child_sa(sa, c, del_old_ids);
-            }
+            ikev2_mngr_process_child_sa(sa, c, del_old_ids);
 
-          if (ikev2_mngr_process_responder_sas (sa))
+          if (!km->dpd_disabled && ikev2_mngr_process_responder_sas (sa))
             vec_add1 (to_be_deleted, sa - tkm->sas);
         }));
         /* *INDENT-ON* */
@@ -4973,14 +4992,6 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
       /* *INDENT-ON* */
 
       ikev2_process_pending_sa_init (km);
-
-      if (req_sent)
-	{
-	  vlib_process_wait_for_event_or_clock (vm, 5);
-	  vlib_process_get_events (vm, NULL);
-	  req_sent = 0;
-	}
-
     }
   return 0;
 }
