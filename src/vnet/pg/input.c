@@ -1538,6 +1538,7 @@ fill_buffer_offload_flags (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
     {
       vlib_buffer_t *b0 = vlib_get_buffer (vm, buffers[i]);
       u8 l4_proto = 0;
+      u32 oflags = 0;
 
       ethernet_header_t *eh =
 	(ethernet_header_t *) vlib_buffer_get_current (b0);
@@ -1568,10 +1569,11 @@ fill_buffer_offload_flags (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	  vnet_buffer (b0)->l4_hdr_offset = l2hdr_sz + ip4_header_bytes (ip4);
 	  l4_proto = ip4->protocol;
 	  b0->flags |=
-	    (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_OFFLOAD_IP_CKSUM);
-	  b0->flags |= (VNET_BUFFER_F_L2_HDR_OFFSET_VALID
-			| VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
-			VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+	    (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_OFFLOAD_CKSUM |
+	     VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+	     VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+	     VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+	  oflags |= VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
 	}
       else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
 	{
@@ -1588,7 +1590,8 @@ fill_buffer_offload_flags (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 
       if (l4_proto == IP_PROTOCOL_TCP)
 	{
-	  b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+	  oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
+	  b0->flags |= VNET_BUFFER_F_OFFLOAD_CKSUM;
 
 	  /* only set GSO flag for chained buffers */
 	  if (gso_enabled && (b0->flags & VLIB_BUFFER_NEXT_PRESENT))
@@ -1603,8 +1606,10 @@ fill_buffer_offload_flags (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	}
       else if (l4_proto == IP_PROTOCOL_UDP)
 	{
-	  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+	  oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
+	  b0->flags |= VNET_BUFFER_F_OFFLOAD_CKSUM;
 	}
+      vnet_buffer2 (b0)->oflags = oflags;
     }
 }
 
@@ -1704,10 +1709,7 @@ pg_generate_packets (vlib_node_runtime_t * node,
 	    vnet_buffer (b)->feature_arc_index = feature_arc_index;
 	  }
 
-      if (pi->gso_enabled ||
-	  (s->buffer_flags & (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
-			      VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
-			      VNET_BUFFER_F_OFFLOAD_IP_CKSUM)))
+      if (pi->gso_enabled || (s->buffer_flags & VNET_BUFFER_F_OFFLOAD_CKSUM))
 	{
 	  fill_buffer_offload_flags (vm, to_next, n_this_frame,
 				     pi->gso_enabled, pi->gso_size);
