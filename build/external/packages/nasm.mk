@@ -11,11 +11,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-nasm_version            := 2.14.02
-nasm_tarball            := nasm-$(nasm_version).tar.xz
-nasm_tarball_md5sum     := 6390bd67b07ff1df9fe628b6929c0353
+nasm_version            := 2.15.05
+nasm_tarball            := nasm-$(nasm_version).tar.gz
+nasm_tarball_md5sum     := 2e154a96a13bf937d5247467d986bbde
 nasm_tarball_strip_dirs := 1
-nasm_url                := https://ftp.osuosl.org/pub/blfs/conglomeration/nasm/$(nasm_tarball)
+nasm_url                := https://github.com/netwide-assembler/nasm/archive/$(nasm_tarball)
 nasm_cflags             := -Wno-implicit-fallthrough -std=c11
+
+define  nasm_config_cmds
+	cd $(nasm_src_dir) && sh autogen.sh && sh configure --prefix=$(nasm_install_dir)
+endef
+
+define  nasm_build_cmds
+	make -C $(nasm_src_dir) -j
+	make -C $(nasm_src_dir) -j manpages
+endef
+
+define  nasm_install_cmds
+	make -C $(nasm_src_dir) install
+endef
 
 $(eval $(call package,nasm))
