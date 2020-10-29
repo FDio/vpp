@@ -56,24 +56,24 @@
   _( 7, LOCALLY_ORIGINATED, "local", 1)                 \
   _( 8, IS_IP4, "ip4", 1)                               \
   _( 9, IS_IP6, "ip6", 1)                               \
-  _(10, OFFLOAD_IP_CKSUM, "offload-ip-cksum", 1)        \
-  _(11, OFFLOAD_TCP_CKSUM, "offload-tcp-cksum", 1)      \
-  _(12, OFFLOAD_UDP_CKSUM, "offload-udp-cksum", 1)      \
-  _(13, IS_NATED, "natted", 1)                          \
-  _(14, L2_HDR_OFFSET_VALID, "l2_hdr_offset_valid", 0)  \
-  _(15, L3_HDR_OFFSET_VALID, "l3_hdr_offset_valid", 0)  \
-  _(16, L4_HDR_OFFSET_VALID, "l4_hdr_offset_valid", 0)  \
-  _(17, FLOW_REPORT, "flow-report", 1)                  \
-  _(18, IS_DVR, "dvr", 1)                               \
-  _(19, QOS_DATA_VALID, "qos-data-valid", 0)            \
-  _(20, GSO, "gso", 0)                                  \
-  _(21, AVAIL1, "avail1", 1)                            \
-  _(22, AVAIL2, "avail2", 1)                            \
-  _(23, AVAIL3, "avail3", 1)                            \
-  _(24, AVAIL4, "avail4", 1)                            \
-  _(25, AVAIL5, "avail5", 1)                            \
-  _(26, AVAIL6, "avail6", 1)                            \
-  _(27, AVAIL7, "avail7", 1)
+  _(10, OFFLOAD, "offload", 0)                          \
+  _(11, IS_NATED, "natted", 1)                          \
+  _(12, L2_HDR_OFFSET_VALID, "l2_hdr_offset_valid", 0)  \
+  _(13, L3_HDR_OFFSET_VALID, "l3_hdr_offset_valid", 0)  \
+  _(14, L4_HDR_OFFSET_VALID, "l4_hdr_offset_valid", 0)  \
+  _(15, FLOW_REPORT, "flow-report", 1)                  \
+  _(16, IS_DVR, "dvr", 1)                               \
+  _(17, QOS_DATA_VALID, "qos-data-valid", 0)            \
+  _(18, GSO, "gso", 0)                                  \
+  _(19, AVAIL1, "avail1", 1)                            \
+  _(20, AVAIL2, "avail2", 1)                            \
+  _(21, AVAIL3, "avail3", 1)                            \
+  _(22, AVAIL4, "avail4", 1)                            \
+  _(23, AVAIL5, "avail5", 1)                            \
+  _(24, AVAIL6, "avail6", 1)                            \
+  _(25, AVAIL7, "avail7", 1)                            \
+  _(26, AVAIL8, "avail8", 1)                            \
+  _(27, AVAIL9, "avail9", 1)
 
 /*
  * Please allocate the FIRST available bit, redefine
@@ -84,7 +84,7 @@
 #define VNET_BUFFER_FLAGS_ALL_AVAIL                                     \
   (VNET_BUFFER_F_AVAIL1 | VNET_BUFFER_F_AVAIL2 | VNET_BUFFER_F_AVAIL3 | \
    VNET_BUFFER_F_AVAIL4 | VNET_BUFFER_F_AVAIL5 | VNET_BUFFER_F_AVAIL6 | \
-   VNET_BUFFER_F_AVAIL7)
+   VNET_BUFFER_F_AVAIL7 | VNET_BUFFER_F_AVAIL8 | VNET_BUFFER_F_AVAIL9)
 
 #define VNET_BUFFER_FLAGS_VLAN_BITS \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)
@@ -416,6 +416,21 @@ STATIC_ASSERT (sizeof (vnet_buffer_opaque_t) <=
 
 #define vnet_buffer(b) ((vnet_buffer_opaque_t *) (b)->opaque)
 
+#define foreach_vnet_buffer_offload_flag                    \
+  _( 0, IP_CKSUM, "offload-ip-cksum", 1)                    \
+  _( 1, TCP_CKSUM, "offload-tcp-cksum", 1)                  \
+  _( 2, UDP_CKSUM, "offload-udp-cksum", 1)                  \
+  _( 3, OUTER_IP_CKSUM, "offload-outer-ip-cksum", 1)        \
+  _( 4, OUTER_TCP_CKSUM, "offload-outer-tcp-cksum", 1)      \
+  _( 5, OUTER_UDP_CKSUM, "offload-outer-udp-cksum", 1)
+
+enum
+{
+#define _(bit, name, s, v) VNET_BUFFER_OFFLOAD_F_##name  = (1 << bit),
+  foreach_vnet_buffer_offload_flag
+#undef _
+};
+
 /* Full cache line (64 bytes) of additional space */
 typedef struct
 {
@@ -448,12 +463,15 @@ typedef struct
    * in case the egress interface is not GSO-enabled - then we need to perform
    * the segmentation, and use this value to cut the payload appropriately.
    */
-  u16 gso_size;
-  /* size of L4 prototol header */
-  u16 gso_l4_hdr_sz;
+  struct
+  {
+    u16 gso_size;
+    /* size of L4 prototol header */
+    u16 gso_l4_hdr_sz;
 
-  /* The union below has a u64 alignment, so this space is unused */
-  u32 __unused2[1];
+    /* offload flags */
+    u32 oflags;
+  };
 
   struct
   {
@@ -496,6 +514,22 @@ STATIC_ASSERT (sizeof (vnet_buffer_opaque2_t) <=
 
 
 format_function_t format_vnet_buffer;
+format_function_t format_vnet_buffer_offload;
+
+static_always_inline void
+vnet_buffer_offload_flags_set (vlib_buffer_t * b, u32 oflags)
+{
+  vnet_buffer2 (b)->oflags |= oflags;
+  b->flags |= VNET_BUFFER_F_OFFLOAD;
+}
+
+static_always_inline void
+vnet_buffer_offload_flags_clear (vlib_buffer_t * b, u32 oflags)
+{
+  vnet_buffer2 (b)->oflags &= ~oflags;
+  if (0 == vnet_buffer2 (b)->oflags)
+    b->flags &= ~VNET_BUFFER_F_OFFLOAD;
+}
 
 #endif /* included_vnet_buffer_h */
 

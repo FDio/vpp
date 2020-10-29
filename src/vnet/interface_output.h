@@ -46,16 +46,16 @@
 static_always_inline void
 vnet_calc_ip4_checksums (vlib_main_t * vm, vlib_buffer_t * b,
 			 ip4_header_t * ip4, tcp_header_t * th,
-			 udp_header_t * uh)
+			 udp_header_t * uh, u32 oflags)
 {
-  if (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM)
+  if (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
     ip4->checksum = ip4_header_checksum (ip4);
-  if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
+  if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
     {
       th->checksum = 0;
       th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip4);
     }
-  if (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)
+  if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
     {
       uh->checksum = 0;
       uh->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip4);
@@ -65,15 +65,15 @@ vnet_calc_ip4_checksums (vlib_main_t * vm, vlib_buffer_t * b,
 static_always_inline void
 vnet_calc_ip6_checksums (vlib_main_t * vm, vlib_buffer_t * b,
 			 ip6_header_t * ip6, tcp_header_t * th,
-			 udp_header_t * uh)
+			 udp_header_t * uh, u32 oflags)
 {
   int bogus;
-  if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
+  if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
     {
       th->checksum = 0;
       th->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
     }
-  if (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)
+  if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
     {
       uh->checksum = 0;
       uh->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
@@ -88,6 +88,7 @@ vnet_calc_checksums_inline (vlib_main_t * vm, vlib_buffer_t * b,
   ip6_header_t *ip6;
   tcp_header_t *th;
   udp_header_t *uh;
+  u32 oflags = vnet_buffer2 (b)->oflags;
 
   ASSERT (!(is_ip4 && is_ip6));
 
@@ -98,16 +99,17 @@ vnet_calc_checksums_inline (vlib_main_t * vm, vlib_buffer_t * b,
 
   if (is_ip4)
     {
-      vnet_calc_ip4_checksums (vm, b, ip4, th, uh);
+      vnet_calc_ip4_checksums (vm, b, ip4, th, uh, oflags);
     }
   else if (is_ip6)
     {
-      vnet_calc_ip6_checksums (vm, b, ip6, th, uh);
+      vnet_calc_ip6_checksums (vm, b, ip6, th, uh, oflags);
     }
 
-  b->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
-  b->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-  b->flags &= ~VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
+  vnet_buffer_offload_flags_clear (b,
+				   (VNET_BUFFER_OFFLOAD_F_IP_CKSUM |
+				    VNET_BUFFER_OFFLOAD_F_UDP_CKSUM |
+				    VNET_BUFFER_OFFLOAD_F_TCP_CKSUM));
 }
 
 #endif

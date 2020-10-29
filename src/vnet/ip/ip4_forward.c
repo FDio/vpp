@@ -1457,8 +1457,9 @@ ip4_local_l4_csum_validate (vlib_main_t * vm, vlib_buffer_t * p,
 }
 
 #define ip4_local_csum_is_offloaded(_b)					\
-    _b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM				\
-	|| _b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM
+    (_b->flags & VNET_BUFFER_F_OFFLOAD &&                         \
+    vnet_buffer2(_b)->oflags & (VNET_BUFFER_OFFLOAD_F_TCP_CKSUM		\
+	| VNET_BUFFER_OFFLOAD_F_UDP_CKSUM))
 
 #define ip4_local_need_csum_check(is_tcp_udp, _b) 			\
     (is_tcp_udp && !(_b->flags & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED 	\
@@ -2105,7 +2106,7 @@ ip4_ttl_and_checksum_check (vlib_buffer_t * b, ip4_header_t * ip, u16 * next,
 
   /* Verify checksum. */
   ASSERT (ip4_header_checksum_is_valid (ip) ||
-	  (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM));
+	  (vnet_buffer2 (b)->oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM));
 }
 
 

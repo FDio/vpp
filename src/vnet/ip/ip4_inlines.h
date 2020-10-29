@@ -124,7 +124,7 @@ vlib_buffer_push_ip4_custom (vlib_main_t * vm, vlib_buffer_t * b,
   if (csum_offload)
     {
       ih->checksum = 0;
-      b->flags |= VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
+      vnet_buffer_offload_flags_set (b, VNET_BUFFER_OFFLOAD_F_IP_CKSUM);
     }
   else
     ih->checksum = ip4_header_checksum (ih);

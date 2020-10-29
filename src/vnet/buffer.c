@@ -16,6 +16,18 @@
 #include <vlib/vlib.h>
 #include <vnet/buffer.h>
 
+u8 *
+format_vnet_buffer_offload (u8 * s, va_list * args)
+{
+  vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
+
+#define _(bit,name,ss,v)                      \
+  if (v && (vnet_buffer2(b)->oflags & VNET_BUFFER_OFFLOAD_F_##name)) \
+    s = format (s, "%s ", ss);
+  foreach_vnet_buffer_offload_flag
+#undef _
+    return s;
+}
 
 u8 *
 format_vnet_buffer (u8 * s, va_list * args)
@@ -29,7 +41,10 @@ format_vnet_buffer (u8 * s, va_list * args)
     a = format (a, "%s ", ss);
   foreach_vnet_buffer_flag
 #undef _
-    if (b->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID)
+    if (b->flags & VNET_BUFFER_F_OFFLOAD)
+    a = format (a, "%U ", format_vnet_buffer_offload, b);
+
+  if (b->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID)
     a = format (a, "l2-hdr-offset %d ", vnet_buffer (b)->l2_hdr_offset);
 
   if (b->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID)
@@ -37,6 +52,9 @@ format_vnet_buffer (u8 * s, va_list * args)
 
   if (b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID)
     a = format (a, "l4-hdr-offset %d ", vnet_buffer (b)->l4_hdr_offset);
+
+  if (b->flags & VNET_BUFFER_F_GSO)
+    a = format (a, "gso gso-size %d", vnet_buffer2 (b)->gso_size);
 
   if (b->flags & VNET_BUFFER_F_QOS_DATA_VALID)
     a = format (a, "qos %d.%d ",

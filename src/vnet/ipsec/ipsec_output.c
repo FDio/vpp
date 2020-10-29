@@ -309,45 +309,52 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		next_node_index = im->ah4_encrypt_node_index;
 	      vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
 
-	      if (is_ipv6)
+	      if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_OFFLOAD))
 		{
-		  if (PREDICT_FALSE
-		      (b0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM))
+		  u32 oflags = vnet_buffer2 (b0)->oflags;
+
+		  /*
+		   * Clearing offload flags before checksum is computed
+		   * It guarantees the cache hit!
+		   */
+		  vnet_buffer_offload_flags_clear (b0, oflags);
+
+		  if (is_ipv6)
 		    {
-		      tcp0->checksum =
-			ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip6_0,
-							   &bogus);
-		      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+		      if (PREDICT_FALSE
+			  (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM))
+			{
+			  tcp0->checksum =
+			    ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip6_0,
+							       &bogus);
+			}
+		      if (PREDICT_FALSE
+			  (b0->flags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM))
+			{
+			  udp0->checksum =
+			    ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip6_0,
+							       &bogus);
+			}
 		    }
-		  if (PREDICT_FALSE
-		      (b0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
+		  else
 		    {
-		      udp0->checksum =
-			ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip6_0,
-							   &bogus);
-		      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-		    }
-		}
-	      else
-		{
-		  if (b0->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM)
-		    {
-		      ip0->checksum = ip4_header_checksum (ip0);
-		      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
-		    }
-		  if (PREDICT_FALSE
-		      (b0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM))
-		    {
-		      tcp0->checksum =
-			ip4_tcp_udp_compute_checksum (vm, b0, ip0);
-		      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
-		    }
-		  if (PREDICT_FALSE
-		      (b0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
-		    {
-		      udp0->checksum =
-			ip4_tcp_udp_compute_checksum (vm, b0, ip0);
-		      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+		      if (PREDICT_FALSE
+			  (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM))
+			{
+			  ip0->checksum = ip4_header_checksum (ip0);
+			}
+		      if (PREDICT_FALSE
+			  (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM))
+			{
+			  tcp0->checksum =
+			    ip4_tcp_udp_compute_checksum (vm, b0, ip0);
+			}
+		      if (PREDICT_FALSE
+			  (b0->flags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM))
+			{
+			  udp0->checksum =
+			    ip4_tcp_udp_compute_checksum (vm, b0, ip0);
+			}
 		    }
 		}
 	      vlib_buffer_advance (b0, iph_offset);

@@ -449,6 +449,7 @@ format_function_t format_vnet_sw_interface_flags;
 unformat_function_t unformat_vnet_sw_interface;
 unformat_function_t unformat_vnet_hw_interface;
 unformat_function_t unformat_vnet_buffer_flags;
+unformat_function_t unformat_vnet_buffer_offload_flags;
 
 /* Parses interface flags (up, down, enable, disable, etc.) */
 unformat_function_t unformat_vnet_hw_interface_flags;

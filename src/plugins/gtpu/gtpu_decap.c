@@ -1259,11 +1259,13 @@ static char *gtpu_flow_error_strings[] = {
 
 #define gtpu_local_need_csum_check(_b) 			\
     (!(_b->flags & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED 	\
-	|| _b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
+     || (_b->flags & VNET_BUFFER_F_OFFLOAD &&     \
+    vnet_buffer2 (_b)->oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)))
 
-#define gtpu_local_csum_is_valid(_b)  \
-    ((_b->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT \
-	|| _b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM) != 0)
+#define gtpu_local_csum_is_valid(_b)                   \
+    ((_b->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT    \
+	|| (_b->flags & VNET_BUFFER_F_OFFLOAD && \
+    vnet_buffer2 (_b)->oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)) != 0)
 
 static_always_inline u8
 gtpu_validate_udp_csum (vlib_main_t * vm, vlib_buffer_t *b)

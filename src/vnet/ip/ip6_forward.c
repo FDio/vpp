@@ -1331,15 +1331,25 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  flags[0] = b[0]->flags;
 	  flags[1] = b[1]->flags;
 
+	  u32 oflags[2];
+	  oflags[0] = vnet_buffer2 (b[0])->oflags;
+	  oflags[1] = vnet_buffer2 (b[1])->oflags;
+
+	  u32 l4_offload[2];
+	  l4_offload[0] = (flags[0] & VNET_BUFFER_F_OFFLOAD)
+	    && (oflags[0] &
+		(VNET_BUFFER_OFFLOAD_F_TCP_CKSUM |
+		 VNET_BUFFER_OFFLOAD_F_UDP_CKSUM));
+	  l4_offload[1] = (flags[1] & VNET_BUFFER_F_OFFLOAD)
+	    && (oflags[1] &
+		(VNET_BUFFER_OFFLOAD_F_TCP_CKSUM |
+		 VNET_BUFFER_OFFLOAD_F_UDP_CKSUM));
+
 	  u32 good_l4_csum[2];
 	  good_l4_csum[0] =
-	    flags[0] & (VNET_BUFFER_F_L4_CHECKSUM_CORRECT |
-			VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
-			VNET_BUFFER_F_OFFLOAD_UDP_CKSUM);
+	    (flags[0] & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) | l4_offload[0];
 	  good_l4_csum[1] =
-	    flags[1] & (VNET_BUFFER_F_L4_CHECKSUM_CORRECT |
-			VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
-			VNET_BUFFER_F_OFFLOAD_UDP_CKSUM);
+	    (flags[1] & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) | l4_offload[1];
 
 	  u32 udp_offset[2] = { };
 	  u8 is_tcp_udp[2];
@@ -1513,11 +1523,16 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u8 type = lm->builtin_protocol_by_ip_protocol[ip->protocol];
 
 	  u32 flags = b[0]->flags;
-	  u32 good_l4_csum =
-	    flags & (VNET_BUFFER_F_L4_CHECKSUM_CORRECT |
-		     VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
-		     VNET_BUFFER_F_OFFLOAD_UDP_CKSUM);
 
+	  u32 oflags = vnet_buffer2 (b[0])->oflags;
+
+	  u32 l4_offload = (flags & VNET_BUFFER_F_OFFLOAD)
+	    && (oflags &
+		(VNET_BUFFER_OFFLOAD_F_TCP_CKSUM |
+		 VNET_BUFFER_OFFLOAD_F_UDP_CKSUM));
+
+	  u32 good_l4_csum =
+	    (flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) | l4_offload;
 	  u32 udp_offset;
 	  i16 len_diff = 0;
 	  u8 is_tcp_udp = ip6_next_proto_is_tcp_udp (b[0], ip, &udp_offset);
@@ -1537,8 +1552,8 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  good_l4_csum |= type == IP_BUILTIN_PROTOCOL_UNKNOWN;
 	  len_diff = type == IP_BUILTIN_PROTOCOL_UDP ? len_diff : 0;
 
-	  u8 need_csum = type != IP_BUILTIN_PROTOCOL_UNKNOWN && !good_l4_csum
-	    && !(flags & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
+	  u8 need_csum = type != IP_BUILTIN_PROTOCOL_UNKNOWN
+	    && !good_l4_csum && !(flags & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
 	  if (PREDICT_FALSE (need_csum))
 	    {
 	      flags = ip6_tcp_udp_icmp_validate_checksum (vm, b[0]);
@@ -1554,7 +1569,6 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 
 	  error = len_diff < 0 ? IP6_ERROR_UDP_LENGTH : error;
-
 	  STATIC_ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_UDP ==
 			 IP6_ERROR_UDP_CHECKSUM,
 			 "Wrong IP6 errors constants");
@@ -1880,8 +1894,6 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	  if (p1->flags & VNET_BUFFER_F_GSO)
 	    ip1_len = gso_mtu_sz (p1);
 
-
-
 	  ip6_mtu_check (p0, ip0_len,
 			 adj0[0].rewrite_header.max_l3_packet_bytes,
 			 is_locally_originated0, &next0, is_midchain,
@@ -1890,18 +1902,15 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 			 adj1[0].rewrite_header.max_l3_packet_bytes,
 			 is_locally_originated1, &next1, is_midchain,
 			 &error1);
-
 	  /* Don't adjust the buffer for hop count issue; icmp-error node
 	   * wants to see the IP header */
 	  if (PREDICT_TRUE (error0 == IP6_ERROR_NONE))
 	    {
 	      p0->current_data -= rw_len0;
 	      p0->current_length += rw_len0;
-
 	      tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = tx_sw_if_index0;
 	      next0 = adj0[0].rewrite_header.next_index;
-
 	      if (PREDICT_FALSE
 		  (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
 		vnet_feature_arc_start_w_cfg_index
@@ -2068,7 +2077,6 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 			 adj0[0].rewrite_header.max_l3_packet_bytes,
 			 is_locally_originated0, &next0, is_midchain,
 			 &error0);
-
 	  /* Don't adjust the buffer for hop count issue; icmp-error node
 	   * wants to see the IP header */
 	  if (PREDICT_TRUE (error0 == IP6_ERROR_NONE))
@@ -2287,7 +2295,6 @@ format_ip6_hop_by_hop_ext_hdr (u8 * s, va_list * args)
   ip6_hop_by_hop_option_t *opt0, *limit0;
   ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
   u8 type0;
-
   s = format (s, "IP6_HOP_BY_HOP: next protocol %d len %d total %d",
 	      hbh0->protocol, (hbh0->length + 1) << 3, total_len);
 
@@ -2310,9 +2317,8 @@ format_ip6_hop_by_hop_ext_hdr (u8 * s, va_list * args)
 	    }
 	  else
 	    {
-	      s =
-		format (s, "\n    unrecognized option %d length %d", type0,
-			opt0->length);
+	      s = format (s, "\n    unrecognized option %d length %d", type0,
+			  opt0->length);
 	    }
 	  opt0 =
 	    (ip6_hop_by_hop_option_t *) (((u8 *) opt0) + opt0->length +
@@ -2360,9 +2366,8 @@ format_ip6_hop_by_hop_trace (u8 * s, va_list * args)
 	    }
 	  else
 	    {
-	      s =
-		format (s, "\n    unrecognized option %d length %d", type0,
-			opt0->length);
+	      s = format (s, "\n    unrecognized option %d length %d", type0,
+			  opt0->length);
 	    }
 	  opt0 =
 	    (ip6_hop_by_hop_option_t *) (((u8 *) opt0) + opt0->length +
@@ -3025,8 +3030,8 @@ VLIB_CLI_COMMAND (show_ip6_local, static) =
 
 #ifndef CLIB_MARCH_VARIANT
 int
-vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
-			     u32 table_index)
+vnet_set_ip6_classify_intfc (vlib_main_t * vm,
+			     u32 sw_if_index, u32 table_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
@@ -3057,17 +3062,13 @@ vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 
       fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
 						       sw_if_index);
-
-
       if (table_index != (u32) ~ 0)
 	{
 	  dpo_id_t dpo = DPO_INVALID;
-
 	  dpo_set (&dpo,
 		   DPO_CLASSIFY,
 		   DPO_PROTO_IP6,
 		   classify_dpo_create (DPO_PROTO_IP6, table_index));
-
 	  fib_table_entry_special_dpo_add (fib_index,
 					   &pfx,
 					   FIB_SOURCE_CLASSIFY,

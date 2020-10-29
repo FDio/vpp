@@ -252,6 +252,7 @@ vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
   ethernet_header_t *eh = (ethernet_header_t *) b0_data;
   u16 ethertype = clib_net_to_host_u16 (eh->type);
   u16 l2hdr_sz = sizeof (ethernet_header_t);
+  u32 oflags = 0;
 
   if (ethernet_frame_is_tagged (ethertype))
     {
@@ -277,7 +278,8 @@ vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
     {
       ip4_header_t *ip4 = (ip4_header_t *) (b0_data + l2hdr_sz);
       l4_proto = ip4->protocol;
-      b0->flags |= VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
+      b0->flags |= VNET_BUFFER_F_IS_IP4;
+      oflags |= VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
     }
   else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
     {
@@ -291,12 +293,12 @@ vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
       tcp_header_t *tcp = (tcp_header_t *)
 	(b0_data + vnet_buffer (b0)->l4_hdr_offset);
       l4_hdr_sz = tcp_header_bytes (tcp);
-      b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+      oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
     }
   else if (l4_proto == IP_PROTOCOL_UDP)
     {
       l4_hdr_sz = sizeof (udp_header_t);
-      b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+      oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
     }
 
   if (hdr->gso_type == VIRTIO_NET_HDR_GSO_UDP)
@@ -317,6 +319,9 @@ vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
       vnet_buffer2 (b0)->gso_l4_hdr_sz = l4_hdr_sz;
       b0->flags |= (VNET_BUFFER_F_GSO | VNET_BUFFER_F_IS_IP6);
     }
+
+  if (oflags)
+    vnet_buffer_offload_flags_set (b0, oflags);
 }
 
 static_always_inline void

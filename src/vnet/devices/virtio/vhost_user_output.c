@@ -236,10 +236,11 @@ vhost_user_handle_tx_offload (vhost_user_intf_t * vui, vlib_buffer_t * b,
   generic_header_offset_t gho = { 0 };
   int is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
   int is_ip6 = b->flags & VNET_BUFFER_F_IS_IP6;
+  u32 oflags = vnet_buffer2 (b)->oflags;
 
   ASSERT (!(is_ip4 && is_ip6));
   vnet_generic_header_offset_parser (b, &gho, 1 /* l2 */ , is_ip4, is_ip6);
-  if (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM)
+  if (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
     {
       ip4_header_t *ip4;
 
@@ -249,13 +250,13 @@ vhost_user_handle_tx_offload (vhost_user_intf_t * vui, vlib_buffer_t * b,
     }
 
   /* checksum offload */
-  if (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)
+  if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
     {
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
       hdr->csum_start = gho.l4_hdr_offset;
       hdr->csum_offset = offsetof (udp_header_t, checksum);
     }
-  else if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
+  else if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
     {
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
       hdr->csum_start = gho.l4_hdr_offset;
@@ -265,7 +266,7 @@ vhost_user_handle_tx_offload (vhost_user_intf_t * vui, vlib_buffer_t * b,
   /* GSO offload */
   if (b->flags & VNET_BUFFER_F_GSO)
     {
-      if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
+      if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
 	{
 	  if (is_ip4 &&
 	      (vui->features & VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO4)))
@@ -281,7 +282,7 @@ vhost_user_handle_tx_offload (vhost_user_intf_t * vui, vlib_buffer_t * b,
 	    }
 	}
       else if ((vui->features & VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_UFO)) &&
-	       (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
+	       (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM))
 	{
 	  hdr->gso_size = vnet_buffer2 (b)->gso_size;
 	  hdr->gso_type = VIRTIO_NET_HDR_GSO_UDP;
@@ -487,9 +488,7 @@ retry:
       hdr->hdr.gso_type = VIRTIO_NET_HDR_GSO_NONE;
       hdr->num_buffers = 1;
 
-      or_flags = (b0->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM) ||
-	(b0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM) ||
-	(b0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM);
+      or_flags = (b0->flags & VNET_BUFFER_F_OFFLOAD);
 
       /* Guest supports csum offload and buffer requires checksum offload? */
       if (or_flags &&
@@ -823,9 +822,7 @@ retry:
 	hdr->hdr.gso_type = VIRTIO_NET_HDR_GSO_NONE;
 	hdr->num_buffers = 1;	//This is local, no need to check
 
-	or_flags = (b0->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM) ||
-	  (b0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM) ||
-	  (b0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM);
+	or_flags = (b0->flags & VNET_BUFFER_F_OFFLOAD);
 
 	/* Guest supports csum offload and buffer requires checksum offload? */
 	if (or_flags

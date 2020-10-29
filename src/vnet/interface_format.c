@@ -706,7 +706,7 @@ unformat_vnet_buffer_flags (unformat_input_t * input, va_list * args)
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       /* Red herring, there is no such buffer flag */
-      if (unformat (input, "avail8"))
+      if (unformat (input, "avail10"))
 	return 0;
 #define _(bit,enum,str,verbose)                                 \
       else if (unformat (input, str))                           \
@@ -721,6 +721,34 @@ unformat_vnet_buffer_flags (unformat_input_t * input, va_list * args)
     }
   if (rv)
     *flagp = flags;
+  return rv;
+}
+
+uword
+unformat_vnet_buffer_offload_flags (unformat_input_t * input, va_list * args)
+{
+  u32 *flagp = va_arg (*args, u32 *);
+  int rv = 0;
+  u32 oflags = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      /* Red herring, there is no such buffer flag */
+      if (unformat (input, "avail10"))
+	return 0;
+#define _(bit,enum,str,verbose)                                 \
+      else if (unformat (input, str))                           \
+        {                                                       \
+          oflags |= (1 << bit);                                 \
+          rv = 1;                                               \
+        }
+      foreach_vnet_buffer_offload_flag
+#undef _
+	else
+	break;
+    }
+  if (rv)
+    *flagp = oflags;
   return rv;
 }
 

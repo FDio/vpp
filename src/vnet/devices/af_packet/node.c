@@ -112,6 +112,7 @@ static_always_inline void
 mark_tcp_udp_cksum_calc (vlib_buffer_t * b)
 {
   ethernet_header_t *eth = vlib_buffer_get_current (b);
+  u32 oflags = 0;
   if (clib_net_to_host_u16 (eth->type) == ETHERNET_TYPE_IP4)
     {
       ip4_header_t *ip4 =
@@ -119,7 +120,7 @@ mark_tcp_udp_cksum_calc (vlib_buffer_t * b)
       b->flags |= VNET_BUFFER_F_IS_IP4;
       if (ip4->protocol == IP_PROTOCOL_TCP)
 	{
-	  b->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+	  oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
 	  ((tcp_header_t
 	    *) (vlib_buffer_get_current (b) +
 		sizeof (ethernet_header_t) +
@@ -127,7 +128,7 @@ mark_tcp_udp_cksum_calc (vlib_buffer_t * b)
 	}
       else if (ip4->protocol == IP_PROTOCOL_UDP)
 	{
-	  b->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+	  oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
 	  ((udp_header_t
 	    *) (vlib_buffer_get_current (b) +
 		sizeof (ethernet_header_t) +
@@ -136,6 +137,8 @@ mark_tcp_udp_cksum_calc (vlib_buffer_t * b)
       vnet_buffer (b)->l3_hdr_offset = sizeof (ethernet_header_t);
       vnet_buffer (b)->l4_hdr_offset =
 	sizeof (ethernet_header_t) + ip4_header_bytes (ip4);
+      if (oflags)
+	vnet_buffer_offload_flags_set (b, oflags);
     }
   else if (clib_net_to_host_u16 (eth->type) == ETHERNET_TYPE_IP6)
     {
@@ -155,14 +158,14 @@ mark_tcp_udp_cksum_calc (vlib_buffer_t * b)
 	}
       if (ip6->protocol == IP_PROTOCOL_TCP)
 	{
-	  b->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+	  oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
 	  ((tcp_header_t
 	    *) (vlib_buffer_get_current (b) +
 		sizeof (ethernet_header_t) + ip6_hdr_len))->checksum = 0;
 	}
       else if (ip6->protocol == IP_PROTOCOL_UDP)
 	{
-	  b->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+	  oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
 	  ((udp_header_t
 	    *) (vlib_buffer_get_current (b) +
 		sizeof (ethernet_header_t) + ip6_hdr_len))->checksum = 0;
@@ -170,6 +173,8 @@ mark_tcp_udp_cksum_calc (vlib_buffer_t * b)
       vnet_buffer (b)->l3_hdr_offset = sizeof (ethernet_header_t);
       vnet_buffer (b)->l4_hdr_offset =
 	sizeof (ethernet_header_t) + ip6_hdr_len;
+      if (oflags)
+	vnet_buffer_offload_flags_set (b, oflags);
     }
 }
 

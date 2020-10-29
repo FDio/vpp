@@ -147,7 +147,7 @@ gro_validate_checksum (vlib_main_t * vm, vlib_buffer_t * b0,
 {
   u32 flags = 0;
 
-  if (b0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
+  if (b0->flags & VNET_BUFFER_F_OFFLOAD)
     return VNET_BUFFER_F_L4_CHECKSUM_CORRECT;
   vlib_buffer_advance (b0, gho0->l3_hdr_offset);
   if (is_ip4)
@@ -353,9 +353,10 @@ gro_fixup_header (vlib_main_t * vm, vlib_buffer_t * b0, u32 ack_number,
       ip4->length =
 	clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
 			      gho0.l3_hdr_offset);
-      b0->flags |=
-	(VNET_BUFFER_F_GSO | VNET_BUFFER_F_IS_IP4 |
-	 VNET_BUFFER_F_OFFLOAD_TCP_CKSUM | VNET_BUFFER_F_OFFLOAD_IP_CKSUM);
+      b0->flags |= (VNET_BUFFER_F_GSO | VNET_BUFFER_F_IS_IP4);
+      vnet_buffer_offload_flags_set (b0,
+				     (VNET_BUFFER_OFFLOAD_F_TCP_CKSUM |
+				      VNET_BUFFER_OFFLOAD_F_IP_CKSUM));
     }
   else if (gho0.gho_flags & GHO_F_IP6)
     {
@@ -364,9 +365,8 @@ gro_fixup_header (vlib_main_t * vm, vlib_buffer_t * b0, u32 ack_number,
       ip6->payload_length =
 	clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
 			      gho0.l4_hdr_offset);
-      b0->flags |=
-	(VNET_BUFFER_F_GSO | VNET_BUFFER_F_IS_IP6 |
-	 VNET_BUFFER_F_OFFLOAD_TCP_CKSUM);
+      b0->flags |= (VNET_BUFFER_F_GSO | VNET_BUFFER_F_IS_IP6);
+      vnet_buffer_offload_flags_set (b0, VNET_BUFFER_OFFLOAD_F_TCP_CKSUM);
     }
 
   tcp_header_t *tcp0 =

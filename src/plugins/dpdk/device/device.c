@@ -218,16 +218,17 @@ static_always_inline void
 dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
 			struct rte_mbuf *mb)
 {
-  u32 ip_cksum = b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
-  u32 tcp_cksum = b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
-  u32 udp_cksum = b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
   int is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
   u32 tso = b->flags & VNET_BUFFER_F_GSO;
-  u64 ol_flags;
-
   /* Is there any work for us? */
-  if (PREDICT_TRUE ((ip_cksum | tcp_cksum | udp_cksum | tso) == 0))
+  if (PREDICT_TRUE (((b->flags & VNET_BUFFER_F_OFFLOAD) | tso) == 0))
     return;
+
+  u32 oflags = vnet_buffer2 (b)->oflags;
+  u32 ip_cksum = oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
+  u32 tcp_cksum = oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
+  u32 udp_cksum = oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
+  u64 ol_flags;
 
   mb->l2_len = vnet_buffer (b)->l3_hdr_offset - b->current_data;
   mb->l3_len = vnet_buffer (b)->l4_hdr_offset -
@@ -325,10 +326,7 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
 	}
 
       if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD) &&
-			 (or_flags &
-			  (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
-			   | VNET_BUFFER_F_OFFLOAD_IP_CKSUM
-			   | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))))
+			 (or_flags & VNET_BUFFER_F_OFFLOAD)))
 	{
 	  dpdk_buffer_tx_offload (xd, b[0], mb[0]);
 	  dpdk_buffer_tx_offload (xd, b[1], mb[1]);
@@ -385,10 +383,7 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
 	}
 
       if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD) &&
-			 (or_flags &
-			  (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
-			   | VNET_BUFFER_F_OFFLOAD_IP_CKSUM
-			   | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))))
+			 (or_flags & VNET_BUFFER_F_OFFLOAD)))
 	{
 	  dpdk_buffer_tx_offload (xd, b[0], mb[0]);
 	  dpdk_buffer_tx_offload (xd, b[1], mb[1]);

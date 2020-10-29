@@ -155,6 +155,7 @@ virtio_needs_csum (vlib_buffer_t * b0, virtio_net_hdr_v1_t * hdr,
   if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
     {
       u16 ethertype = 0, l2hdr_sz = 0;
+      u32 oflags = 0;
 
       if (type == VIRTIO_IF_TYPE_TUN)
 	{
@@ -200,10 +201,9 @@ virtio_needs_csum (vlib_buffer_t * b0, virtio_net_hdr_v1_t * hdr,
 	    (ip4_header_t *) (vlib_buffer_get_current (b0) + l2hdr_sz);
 	  vnet_buffer (b0)->l4_hdr_offset = l2hdr_sz + ip4_header_bytes (ip4);
 	  *l4_proto = ip4->protocol;
+	  oflags |= VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
 	  b0->flags |=
-	    (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_OFFLOAD_IP_CKSUM);
-	  b0->flags |=
-	    (VNET_BUFFER_F_L2_HDR_OFFSET_VALID
+	    (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID
 	     | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
 	     VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
 	}
@@ -221,7 +221,7 @@ virtio_needs_csum (vlib_buffer_t * b0, virtio_net_hdr_v1_t * hdr,
 	}
       if (*l4_proto == IP_PROTOCOL_TCP)
 	{
-	  b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+	  oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
 	  tcp_header_t *tcp = (tcp_header_t *) (vlib_buffer_get_current (b0) +
 						vnet_buffer
 						(b0)->l4_hdr_offset);
@@ -229,12 +229,14 @@ virtio_needs_csum (vlib_buffer_t * b0, virtio_net_hdr_v1_t * hdr,
 	}
       else if (*l4_proto == IP_PROTOCOL_UDP)
 	{
-	  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+	  oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
 	  udp_header_t *udp = (udp_header_t *) (vlib_buffer_get_current (b0) +
 						vnet_buffer
 						(b0)->l4_hdr_offset);
 	  *l4_hdr_sz = sizeof (*udp);
 	}
+      if (oflags)
+	vnet_buffer_offload_flags_set (b0, oflags);
     }
 }
 
