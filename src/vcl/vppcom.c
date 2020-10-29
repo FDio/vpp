@@ -1991,16 +1991,15 @@ vppcom_session_read_segments (uint32_t session_handle,
   is_nonblocking = vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK);
   is_ct = vcl_session_is_ct (s);
   mq = wrk->app_event_queue;
-  rx_fifo = s->rx_fifo;
+  rx_fifo = is_ct ? s->ct_rx_fifo : s->rx_fifo;
   s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
-
-  if (is_ct)
-    svm_fifo_unset_event (s->rx_fifo);
 
   if (svm_fifo_is_empty_cons (rx_fifo))
     {
       if (is_nonblocking)
 	{
+	  if (is_ct)
+	    svm_fifo_unset_event (s->rx_fifo);
 	  svm_fifo_unset_event (rx_fifo);
 	  return VPPCOM_EWOULDBLOCK;
 	}
@@ -2009,6 +2008,8 @@ vppcom_session_read_segments (uint32_t session_handle,
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
 
+	  if (is_ct)
+	    svm_fifo_unset_event (s->rx_fifo);
 	  svm_fifo_unset_event (rx_fifo);
 	  svm_msg_q_lock (mq);
 	  if (svm_msg_q_is_empty (mq))
@@ -2030,9 +2031,11 @@ vppcom_session_read_segments (uint32_t session_handle,
 
   if (svm_fifo_max_dequeue_cons (rx_fifo) == n_read)
     {
-      svm_fifo_unset_event (s->rx_fifo);
+      if (is_ct)
+	svm_fifo_unset_event (s->rx_fifo);
+      svm_fifo_unset_event (rx_fifo);
       if (svm_fifo_max_dequeue_cons (rx_fifo) != n_read
-	  && svm_fifo_set_event (s->rx_fifo)
+	  && svm_fifo_set_event (rx_fifo)
 	  && vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK))
 	{
 	  session_event_t *e;
@@ -2051,12 +2054,14 @@ vppcom_session_free_segments (uint32_t session_handle, uint32_t n_bytes)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vcl_session_t *s;
+  u8 is_ct;
 
   s = vcl_session_get_w_handle (wrk, session_handle);
   if (PREDICT_FALSE (!s || (s->flags & VCL_SESSION_F_IS_VEP)))
     return;
 
-  svm_fifo_dequeue_drop (s->rx_fifo, n_bytes);
+  is_ct = vcl_session_is_ct (s);
+  svm_fifo_dequeue_drop (is_ct ? s->ct_rx_fifo : s->rx_fifo, n_bytes);
 
   ASSERT (s->rx_bytes_pending < n_bytes);
   s->rx_bytes_pending -= n_bytes;
