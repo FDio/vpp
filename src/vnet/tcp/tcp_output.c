@@ -423,7 +423,8 @@ tcp_compute_checksum (tcp_connection_t * tc, vlib_buffer_t * b)
     }
   else
     {
-      b->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+      b->flags |= VNET_BUFFER_F_OFFLOAD_CKSUM;
+      vnet_buffer2 (b)->oflags = VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
     }
   return checksum;
 }

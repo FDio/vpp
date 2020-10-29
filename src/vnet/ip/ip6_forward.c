@@ -1327,19 +1327,23 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  type[0] = lm->builtin_protocol_by_ip_protocol[ip[0]->protocol];
 	  type[1] = lm->builtin_protocol_by_ip_protocol[ip[1]->protocol];
 
-	  u32 flags[2];
+	  u32 flags[2], oflags[2];
 	  flags[0] = b[0]->flags;
 	  flags[1] = b[1]->flags;
+	  oflags[0] = vnet_buffer2 (b[0])->oflags;
+	  oflags[1] = vnet_buffer2 (b[1])->oflags;
 
 	  u32 good_l4_csum[2];
 	  good_l4_csum[0] =
-	    flags[0] & (VNET_BUFFER_F_L4_CHECKSUM_CORRECT |
-			VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
-			VNET_BUFFER_F_OFFLOAD_UDP_CKSUM);
+	    (flags[0] & (VNET_BUFFER_F_L4_CHECKSUM_CORRECT |
+			 VNET_BUFFER_F_OFFLOAD_CKSUM)
+	     && oflags[0] & (VNET_BUFFER_OFFLOAD_F_TCP_CKSUM |
+			     VNET_BUFFER_OFFLOAD_F_UDP_CKSUM));
 	  good_l4_csum[1] =
-	    flags[1] & (VNET_BUFFER_F_L4_CHECKSUM_CORRECT |
-			VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
-			VNET_BUFFER_F_OFFLOAD_UDP_CKSUM);
+	    (flags[1] &
+	     (VNET_BUFFER_F_L4_CHECKSUM_CORRECT | VNET_BUFFER_F_OFFLOAD_CKSUM)
+	     && oflags[1] & (VNET_BUFFER_OFFLOAD_F_TCP_CKSUM |
+			     VNET_BUFFER_OFFLOAD_F_UDP_CKSUM));
 
 	  u32 udp_offset[2] = { };
 	  u8 is_tcp_udp[2];
@@ -1513,10 +1517,12 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u8 type = lm->builtin_protocol_by_ip_protocol[ip->protocol];
 
 	  u32 flags = b[0]->flags;
+	  u32 oflags = vnet_buffer2 (b[0])->oflags;
 	  u32 good_l4_csum =
-	    flags & (VNET_BUFFER_F_L4_CHECKSUM_CORRECT |
-		     VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
-		     VNET_BUFFER_F_OFFLOAD_UDP_CKSUM);
+	    (flags & (VNET_BUFFER_F_L4_CHECKSUM_CORRECT |
+		      VNET_BUFFER_F_OFFLOAD_CKSUM)
+	     && oflags & (VNET_BUFFER_OFFLOAD_F_TCP_CKSUM |
+			  VNET_BUFFER_OFFLOAD_F_UDP_CKSUM));
 
 	  u32 udp_offset;
 	  i16 len_diff = 0;
