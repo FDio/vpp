@@ -1443,17 +1443,22 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
       rekey->tsi = tsi;
       rekey->tsr = tsr;
       /* update Ni */
-      vec_free (sa->i_nonce);
+      vec_reset_length (sa->i_nonce);
       vec_add (sa->i_nonce, nonce, IKEV2_NONCE_SIZE);
       /* generate new Nr */
       vec_validate (sa->r_nonce, IKEV2_NONCE_SIZE - 1);
       RAND_bytes ((u8 *) sa->r_nonce, IKEV2_NONCE_SIZE);
-      vec_free (n);
     }
+  else
+    goto cleanup_and_exit;
+  vec_free (n);
   return 1;
 
 cleanup_and_exit:
   vec_free (n);
+  vec_free (proposal);
+  vec_free (tsr);
+  vec_free (tsi);
   return 0;
 }
 
