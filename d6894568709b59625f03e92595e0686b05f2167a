@@ -142,6 +142,30 @@
       "revId": "d6894568709b59625f03e92595e0686b05f2167a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e941193e_dc1ca05c",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-10-30T18:24:15Z",
+      "side": 1,
+      "message": "\u003e session_node is not the average input or inner node in that it does more types of work.\n\nMaybe it should be split into several nodes. Instruction caching will probably improve, and it would be more clear what unit of work (vector) is being processed, and how.\nI guess in ct_custom_tx, \"vector\" equals \"io event\".\n\n\u003e Finally, the comment is just a move of a previous comment, not a new one.\n\nFair, sorry if I am too distracting with my questions.\n\n\u003e scheduler uses packet counts to bound work per dispatch\n\nNow I understand \"scheduler\" here means not the general graph scheduler, but the loop (or two) in session_queue_node_fn.\n(One more reason to split the node, so scheduling is done by the graph scheduler.)\n\n\u003e The unit we picked was packets ...\n\u003e ... that doesn\u0027t cover all corner cases.\n\u003e Not sure how that is shady.\n\n\"make it look like\" is faking, which is shady in general.\nIn this case it perhaps is not shady, as we understand \"packet sent\" as a unit of work, not necessarily a literal packet being sent by the function.\n\nBut I agree, for now it is not worth renaming \"packet count\" to \"action count\" nor \"vector count\" here.",
+      "parentUuid": "87cdba32_3fa46fe8",
+      "range": {
+        "startLine": 528,
+        "startChar": 24,
+        "endLine": 528,
+        "endChar": 36
+      },
+      "revId": "d6894568709b59625f03e92595e0686b05f2167a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
