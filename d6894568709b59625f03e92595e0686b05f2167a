@@ -46,6 +46,30 @@
       "revId": "d6894568709b59625f03e92595e0686b05f2167a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "205314e6_613f7658",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-10-30T16:06:40Z",
+      "side": 1,
+      "message": "\u003e the session scheduler which uses packets sent to limit work/dispatch.\n\nIt seems the limiting quantity is something more general than packets (directly) sent.\nI created a small edit to show what I mean: https://gerrit.fd.io/r/c/vpp/+/29700\nMaybe some of edited places should still refer to packets, but the return value is not one of them.\n\nNow I see this value directly affects the return value of function for node session_queue_node, and those (node function return values in general) probably already have a specific meaning attached already (I just do not know which documentation to consult yet).",
+      "parentUuid": "a5504171_d7269c82",
+      "range": {
+        "startLine": 528,
+        "startChar": 24,
+        "endLine": 528,
+        "endChar": 36
+      },
+      "revId": "d6894568709b59625f03e92595e0686b05f2167a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
