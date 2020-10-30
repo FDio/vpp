@@ -70,6 +70,30 @@
       "revId": "d6894568709b59625f03e92595e0686b05f2167a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f9daa560_fc784874",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-30T16:15:35Z",
+      "side": 1,
+      "message": "That meaning is vectors (i.e, packets) generated. Yes it serves multiple purposes, as it will show up in show run as the number of vectors generated/dispatch. But as explained in the comment here, it also serves as a means of limiting total work/dispatch in the scheduler as it won\u0027t generate more than a max number of packets/dispatch (currently that value is a full vlib frame).",
+      "parentUuid": "205314e6_613f7658",
+      "range": {
+        "startLine": 528,
+        "startChar": 24,
+        "endLine": 528,
+        "endChar": 36
+      },
+      "revId": "d6894568709b59625f03e92595e0686b05f2167a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
