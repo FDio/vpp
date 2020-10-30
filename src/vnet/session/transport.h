@@ -88,6 +88,10 @@ typedef struct _transport_proto_vft
 		      transport_send_params_t *sp);
   void (*update_time) (f64 time_now, u8 thread_index);
   void (*flush_data) (transport_connection_t *tconn);
+  /* The return value us number of actions executed.
+   * An action is usually a packet sent, but it may be anything else
+   * that needs to be limited in dispatch cycle.
+   */
   int (*custom_tx) (void *session, transport_send_params_t *sp);
   int (*app_rx_evt) (transport_connection_t *tconn);
 

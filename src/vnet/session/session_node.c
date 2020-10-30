@@ -927,7 +927,7 @@ always_inline int
 session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 				vlib_node_runtime_t * node,
 				session_evt_elt_t * elt,
-				int *n_tx_packets, u8 peek_data)
+				int *n_tx_actions, u8 peek_data)
 {
   u32 n_trace, n_left, pbi, next_index, max_burst;
   session_tx_context_t *ctx = &wrk->ctx;
@@ -946,7 +946,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     }
 
   next_index = smm->session_type_to_next[ctx->s->session_type];
-  max_burst = VLIB_FRAME_SIZE - *n_tx_packets;
+  max_burst = VLIB_FRAME_SIZE - *n_tx_actions;
 
   tp = session_get_transport_proto (ctx->s);
   ctx->transport_vft = transport_protocol_get_vft (tp);
@@ -965,7 +965,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       ctx->s->flags &= ~SESSION_F_CUSTOM_TX;
       ctx->sp.max_burst_size = max_burst;
       n_custom_tx = ctx->transport_vft->custom_tx (ctx->tc, &ctx->sp);
-      *n_tx_packets += n_custom_tx;
+      *n_tx_actions += n_custom_tx;
       if (PREDICT_FALSE
 	  (ctx->s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
 	return SESSION_TX_OK;
@@ -1107,7 +1107,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   if (PREDICT_FALSE (n_bufs))
     vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
 
-  *n_tx_packets += ctx->n_segs_per_evt;
+  *n_tx_actions += ctx->n_segs_per_evt;
 
   SESSION_EVT (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd, ctx->max_dequeue,
 	       ctx->s->tx_fifo->has_event, wrk->last_vlib_time);
