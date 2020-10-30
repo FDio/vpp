@@ -3152,7 +3152,7 @@ ikev2_node_internal (vlib_main_t * vm,
 		      ikev2_create_tunnel_interface (vm, sa0, child, p[0],
 						     child - sa0->childs, 1);
 		    }
-		  if (sa0->is_initiator)
+		  if (ike_hdr_is_response (ike0))
 		    {
 		      vec_free (sa0->rekey);
 		    }
