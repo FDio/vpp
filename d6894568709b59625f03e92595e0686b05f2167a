@@ -94,6 +94,30 @@
       "revId": "d6894568709b59625f03e92595e0686b05f2167a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "208fe564_aa7e0c52",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-10-30T17:06:23Z",
+      "side": 1,
+      "message": "Together with [0] I gained a partial understanding. VPP processes vectors (called frames) of data units (called vectors, usually packets but can be anything). Node function return value is basically used only for bumping node \"vectors\" counter, as the graph algorithm decides how many vectors will subsequent nodes get to process. And tx nodes have no subsequent nodes.\nSome nodes (mainly input ones) are processing data from various outside sources. If they pass non-trivial data to subsequent nodes, their output size is limited by max frame size, which prevents them for spinning too long. But sometimes the data is trivial (just a notification that other thread has done its work). Maybe here it is worth to count those as vectors even if nothing is passed to subsequent nodes?\n\nsession_queue_node seems to be an input node which can also send packets (or process notifications). So those are not visible in the subsequent nodes, and we have freedom on how to count them. We could have two independent counters (one to show real vectors processed, one to prevent infinte loop), but it is nice to use a single counter for that, just so that \"vectors per call\" value tracks how busy the node was in a familiar way.\n\nI think the comment can say something along \"1 vector worth of work has been done\", which sounds less shady than \"make it look like we have sent something\".\n\n[0] https://gerrit.fd.io/r/c/vpp/+/29700/2#message-2804973058ef3d093efc78e4180386cdd0bcfb30",
+      "parentUuid": "f9daa560_fc784874",
+      "range": {
+        "startLine": 528,
+        "startChar": 24,
+        "endLine": 528,
+        "endChar": 36
+      },
+      "revId": "d6894568709b59625f03e92595e0686b05f2167a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
