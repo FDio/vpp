@@ -502,10 +502,9 @@ create_bypass_for_fwd (snat_main_t * sm, vlib_buffer_t * b, ip4_header_t * ip,
   if (ip->protocol == IP_PROTOCOL_TCP)
     {
       tcp_header_t *tcp = ip4_next_header (ip);
-      if (nat44_set_tcp_session_state_o2i
-	  (sm, now, s, tcp->flags, tcp->ack_number, tcp->seq_number,
-	   thread_index))
-	return;
+      nat44_set_tcp_session_state_o2i (sm, now, s, tcp->flags,
+				       tcp->ack_number, tcp->seq_number,
+				       thread_index);
     }
 
   /* Accounting */
@@ -969,11 +968,14 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	    }
 	  vlib_increment_simple_counter (&sm->counters.fastpath.out2in_ed.tcp,
 					 thread_index, sw_if_index0, 1);
-	  if (nat44_set_tcp_session_state_o2i
-	      (sm, now, s0, vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags,
-	       vnet_buffer (b0)->ip.reass.tcp_ack_number,
-	       vnet_buffer (b0)->ip.reass.tcp_seq_number, thread_index))
-	    goto trace0;
+	  nat44_set_tcp_session_state_o2i (sm, now, s0,
+					   vnet_buffer (b0)->ip.
+					   reass.icmp_type_or_tcp_flags,
+					   vnet_buffer (b0)->ip.
+					   reass.tcp_ack_number,
+					   vnet_buffer (b0)->ip.
+					   reass.tcp_seq_number,
+					   thread_index);
 	}
       else if (!vnet_buffer (b0)->ip.reass.is_non_first_fragment
 	       && udp0->checksum)
@@ -1291,11 +1293,14 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	    }
 	  vlib_increment_simple_counter (&sm->counters.slowpath.out2in_ed.tcp,
 					 thread_index, sw_if_index0, 1);
-	  if (nat44_set_tcp_session_state_o2i
-	      (sm, now, s0, vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags,
-	       vnet_buffer (b0)->ip.reass.tcp_ack_number,
-	       vnet_buffer (b0)->ip.reass.tcp_seq_number, thread_index))
-	    goto trace0;
+	  nat44_set_tcp_session_state_o2i (sm, now, s0,
+					   vnet_buffer (b0)->ip.
+					   reass.icmp_type_or_tcp_flags,
+					   vnet_buffer (b0)->ip.
+					   reass.tcp_ack_number,
+					   vnet_buffer (b0)->ip.
+					   reass.tcp_seq_number,
+					   thread_index);
 	}
       else if (!vnet_buffer (b0)->ip.reass.is_non_first_fragment
 	       && udp0->checksum)

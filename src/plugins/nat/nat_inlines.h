@@ -309,10 +309,7 @@ nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
     }
 }
 
-/** \brief Set TCP session state.
-    @return 1 if session was closed, otherwise 0
-*/
-always_inline int
+always_inline void
 nat44_set_tcp_session_state_i2o (snat_main_t * sm, f64 now,
 				 snat_session_t * ses, vlib_buffer_t * b,
 				 u32 thread_index)
@@ -359,10 +356,9 @@ nat44_set_tcp_session_state_i2o (snat_main_t * sm, f64 now,
     }
   clib_dlist_remove (tsm->lru_pool, ses->lru_index);
   clib_dlist_addtail (tsm->lru_pool, ses->lru_head_index, ses->lru_index);
-  return 0;
 }
 
-always_inline int
+always_inline void
 nat44_set_tcp_session_state_o2i (snat_main_t * sm, f64 now,
 				 snat_session_t * ses, u8 tcp_flags,
 				 u32 tcp_ack_number, u32 tcp_seq_number,
@@ -404,7 +400,6 @@ nat44_set_tcp_session_state_o2i (snat_main_t * sm, f64 now,
     }
   clib_dlist_remove (tsm->lru_pool, ses->lru_index);
   clib_dlist_addtail (tsm->lru_pool, ses->lru_head_index, ses->lru_index);
-  return 0;
 }
 
 always_inline u32
