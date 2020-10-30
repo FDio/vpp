@@ -1393,6 +1393,8 @@ class TestApi(VppTestCase):
             p.set_lifetime_data(cfg['lifetime_data'])
         if 'tun_itf' in cfg:
             p.set_tunnel_interface(cfg['tun_itf'])
+        if 'natt_disabled' in cfg and cfg['natt_disabled']:
+            p.disable_natt()
         p.add_vpp_config()
         return p
 
@@ -1431,6 +1433,7 @@ class TestApi(VppTestCase):
         conf = {
             'p1': {
                 'name': 'p1',
+                'natt_disabled': True,
                 'loc_id': ('fqdn', b'vpp.home'),
                 'rem_id': ('fqdn', b'roadwarrior.example.com'),
                 'loc_ts': loc_ts4,
@@ -1534,6 +1537,9 @@ class TestApi(VppTestCase):
         self.verify_ike_transforms(ap.ike_ts, cp['ike_ts'])
         self.verify_esp_transforms(ap.esp_ts, cp['esp_ts'])
         self.verify_auth(ap.auth, cp['auth'])
+        natt_dis = False if 'natt_disabled' not in cp else cp['natt_disabled']
+        self.assertTrue(natt_dis == ap.natt_disabled)
+
         if 'lifetime_data' in cp:
             self.verify_lifetime_data(ap, cp['lifetime_data'])
         self.assertEqual(ap.ipsec_over_udp_port, cp['ipsec_over_udp_port'])

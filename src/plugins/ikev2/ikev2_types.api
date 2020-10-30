@@ -84,6 +84,7 @@ typedef ikev2_profile
   u16 ipsec_over_udp_port;
   u32 tun_itf;
   bool udp_encap;
+  bool natt_disabled;
   vl_api_ikev2_auth_t auth;
 };
 
