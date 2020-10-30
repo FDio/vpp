@@ -46,6 +46,7 @@ typedef struct
   vat_main_t *vat_main;
 } ikev2_test_main_t;
 
+static const char *valid_chars = "a-zA-Z0-9_";
 ikev2_test_main_t ikev2_test_main;
 
 uword
@@ -192,6 +193,47 @@ format_ikev2_sa_transform (u8 * s, va_list * args)
 }
 
 static int
+api_ikev2_profile_disable_natt (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ikev2_profile_disable_natt_t *mp;
+  u8 *name = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_token, valid_chars, &name))
+	vec_add1 (name, 0);
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (!vec_len (name))
+    {
+      errmsg ("profile name must be specified");
+      return -99;
+    }
+
+  if (vec_len (name) > 64)
+    {
+      errmsg ("profile name too long");
+      return -99;
+    }
+
+  M (IKEV2_PROFILE_DISABLE_NATT, mp);
+
+  clib_memcpy (mp->name, name, vec_len (name));
+  vec_free (name);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
 api_ikev2_profile_dump (vat_main_t * vam)
 {
   ikev2_test_main_t *ik = &ikev2_test_main;
@@ -279,6 +321,9 @@ static void vl_api_ikev2_profile_details_t_handler
 
   if (p->udp_encap)
     fformat (vam->ofp, "  udp-encap\n");
+
+  if (p->natt_disabled)
+    fformat (vam->ofp, "  NAT-T disabled\n");
 
   u32 ipsec_over_udp_port = clib_net_to_host_u16 (p->ipsec_over_udp_port);
   if (ipsec_over_udp_port != IPSEC_UDP_PORT_NONE)
@@ -674,8 +719,6 @@ api_ikev2_profile_add_del (vat_main_t * vam)
   u8 *name = 0;
   int ret;
 
-  const char *valid_chars = "a-zA-Z0-9_";
-
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "del"))
@@ -722,8 +765,6 @@ api_ikev2_profile_set_auth (vat_main_t * vam)
   u32 auth_method = 0;
   u8 is_hex = 0;
   int ret;
-
-  const char *valid_chars = "a-zA-Z0-9_";
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -793,8 +834,6 @@ api_ikev2_profile_set_id (vat_main_t * vam)
   u32 id_type = 0;
   ip_address_t ip;
   int ret;
-
-  const char *valid_chars = "a-zA-Z0-9_";
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -871,8 +910,6 @@ api_ikev2_profile_set_ts (vat_main_t * vam)
   u32 proto = 0, start_port = 0, end_port = (u32) ~ 0;
   ip_address_t start_addr, end_addr;
   u8 start_addr_set = 0, end_addr_set = 0;
-
-  const char *valid_chars = "a-zA-Z0-9_";
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -984,8 +1021,6 @@ api_ikev2_profile_set_udp_encap (vat_main_t * vam)
   int ret;
   u8 *name = 0;
 
-  const char *valid_chars = "a-zA-Z0-9_";
-
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "%U udp-encap", unformat_token, valid_chars, &name))
@@ -1035,8 +1070,6 @@ api_ikev2_set_responder (vat_main_t * vam)
   u32 sw_if_index = ~0;
   ip_address_t address;
 
-  const char *valid_chars = "a-zA-Z0-9_";
-
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat
@@ -1083,8 +1116,6 @@ api_ikev2_set_ike_transforms (vat_main_t * vam)
   int ret;
   u8 *name = 0;
   u32 crypto_alg, crypto_key_size, integ_alg, dh_group;
-
-  const char *valid_chars = "a-zA-Z0-9_";
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -1134,8 +1165,6 @@ api_ikev2_set_esp_transforms (vat_main_t * vam)
   u8 *name = 0;
   u32 crypto_alg, crypto_key_size, integ_alg;
 
-  const char *valid_chars = "a-zA-Z0-9_";
-
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "%U %d %d %d", unformat_token, valid_chars, &name,
@@ -1183,8 +1212,6 @@ api_ikev2_set_sa_lifetime (vat_main_t * vam)
   u64 lifetime, lifetime_maxdata;
   u32 lifetime_jitter, handover;
 
-  const char *valid_chars = "a-zA-Z0-9_";
-
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "%U %lu %u %u %lu", unformat_token, valid_chars, &name,
@@ -1231,8 +1258,6 @@ api_ikev2_initiate_sa_init (vat_main_t * vam)
   vl_api_ikev2_initiate_sa_init_t *mp;
   int ret;
   u8 *name = 0;
-
-  const char *valid_chars = "a-zA-Z0-9_";
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {

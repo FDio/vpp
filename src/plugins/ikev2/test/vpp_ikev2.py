@@ -27,6 +27,10 @@ class Profile(VppObject):
         self.vapi = test.vapi
         self.profile_name = profile_name
         self.udp_encap = False
+        self.natt = True
+
+    def disable_natt(self):
+        self.natt = False
 
     def add_auth(self, method, data, is_hex=False):
         if isinstance(method, int):
@@ -155,6 +159,9 @@ class Profile(VppObject):
         if hasattr(self, 'tun_itf'):
             self.vapi.ikev2_set_tunnel_interface(name=self.profile_name,
                                                  sw_if_index=self.tun_itf)
+
+        if not self.natt:
+            self.vapi.ikev2_profile_disable_natt(name=self.profile_name)
 
     def query_vpp_config(self):
         res = self.vapi.ikev2_profile_dump()

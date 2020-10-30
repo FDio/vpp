@@ -106,7 +106,7 @@ typedef u32 ikev2_non_esp_marker;
 static_always_inline u16
 ikev2_get_port (ikev2_sa_t * sa)
 {
-  return sa->natt ? IKEV2_PORT_NATT : IKEV2_PORT;
+  return ikev2_natt_active (sa) ? IKEV2_PORT_NATT : IKEV2_PORT;
 }
 
 static_always_inline int
@@ -428,6 +428,7 @@ ikev2_complete_sa_data (ikev2_sa_t * sa, ikev2_sa_t * sai)
   sa->profile_index = sai->profile_index;
   sa->tun_itf = sai->tun_itf;
   sa->is_tun_itf_set = sai->is_tun_itf_set;
+  sa->natt_state = sai->natt_state;
   sa->i_id.data = _(sai->i_id.data);
   sa->r_id.data = _(sai->r_id.data);
   sa->i_auth.method = sai->i_auth.method;
@@ -744,7 +745,8 @@ ikev2_process_sa_init_req (vlib_main_t * vm,
 						    udp->src_port);
 	      if (clib_memcmp (src_sha, n->data, vec_len (src_sha)))
 		{
-		  sa->natt = 1;
+		  if (sa->natt_state == IKEV2_NATT_ENABLED)
+		    sa->natt_state = IKEV2_NATT_ACTIVE;
 		  ikev2_elog_uint (IKEV2_LOG_DEBUG, "ispi %lx initiator"
 				   " behind NAT", sa->ispi);
 		}
@@ -757,7 +759,8 @@ ikev2_process_sa_init_req (vlib_main_t * vm,
 						    udp->dst_port);
 	      if (clib_memcmp (dst_sha, n->data, vec_len (dst_sha)))
 		{
-		  sa->natt = 1;
+		  if (sa->natt_state == IKEV2_NATT_ENABLED)
+		    sa->natt_state = IKEV2_NATT_ACTIVE;
 		  ikev2_elog_uint (IKEV2_LOG_DEBUG, "ispi %lx responder"
 				   " (self) behind NAT", sa->ispi);
 		}
@@ -870,7 +873,8 @@ ikev2_process_sa_init_resp (vlib_main_t * vm,
 						    udp->dst_port);
 	      if (clib_memcmp (dst_sha, n->data, vec_len (dst_sha)))
 		{
-		  sa->natt = 1;
+		  if (sa->natt_state == IKEV2_NATT_ENABLED)
+		    sa->natt_state = IKEV2_NATT_ACTIVE;
 		  ikev2_elog_uint (IKEV2_LOG_DEBUG, "ispi %lx initiator"
 				   " (self) behind NAT", sa->ispi);
 		}
@@ -1921,7 +1925,7 @@ ikev2_create_tunnel_interface (vlib_main_t * vm,
       a.flags |= IPSEC_SA_FLAG_IS_TUNNEL;
       a.flags |= IPSEC_SA_FLAG_UDP_ENCAP;
     }
-  if (sa->natt)
+  if (ikev2_natt_active (sa))
     a.flags |= IPSEC_SA_FLAG_UDP_ENCAP;
   a.is_rekey = is_rekey;
 
@@ -2047,7 +2051,8 @@ ikev2_create_tunnel_interface (vlib_main_t * vm,
 	  a.salt_remote = child->salt_ei;
 	  a.salt_local = child->salt_er;
 	}
-      a.dst_port = sa->natt ? sa->dst_port : sa->ipsec_over_udp_port;
+      a.dst_port =
+	ikev2_natt_active (sa) ? sa->dst_port : sa->ipsec_over_udp_port;
       a.src_port = sa->ipsec_over_udp_port;
     }
 
@@ -3194,7 +3199,7 @@ ikev2_node_internal (vlib_main_t * vm,
 		clib_net_to_host_u16 (ikev2_get_port (sa0));
 
 	      if (udp0->dst_port == clib_net_to_host_u16 (IKEV2_PORT_NATT)
-		  && sa0->natt)
+		  && ikev2_natt_active (sa0))
 		{
 		  if (!has_non_esp_marker)
 		    slen = ikev2_insert_non_esp_marker (ike0, slen);
@@ -3632,7 +3637,7 @@ ikev2_initiate_delete_ike_sa_internal (vlib_main_t * vm,
       if (~0 == len)
 	return;
 
-      if (sa->natt)
+      if (ikev2_natt_active (sa))
 	len = ikev2_insert_non_esp_marker (ike0, len);
 
       if (sa->is_initiator)
@@ -4150,6 +4155,8 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
   sa.state = IKEV2_STATE_SA_INIT;
   sa.tun_itf = p->tun_itf;
   sa.udp_encap = p->udp_encap;
+  if (p->natt_disabled)
+    sa.natt_state = IKEV2_NATT_DISABLED;
   sa.ipsec_over_udp_port = p->ipsec_over_udp_port;
   sa.is_tun_itf_set = 1;
   sa.initial_contact = 1;
@@ -4289,7 +4296,7 @@ ikev2_delete_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   if (~0 == len)
     return;
 
-  if (sa->natt)
+  if (ikev2_natt_active (sa))
     len = ikev2_insert_non_esp_marker (ike0, len);
   ikev2_send_ike (vm, &sa->iaddr, &sa->raddr, bi0, len,
 		  ikev2_get_port (sa), sa->dst_port, sa->sw_if_index);
@@ -4414,7 +4421,7 @@ ikev2_rekey_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   if (~0 == len)
     return;
 
-  if (sa->natt)
+  if (ikev2_natt_active (sa))
     len = ikev2_insert_non_esp_marker (ike0, len);
   ikev2_send_ike (vm, &sa->iaddr, &sa->raddr, bi0, len,
 		  ikev2_get_port (sa), ikev2_get_port (sa), sa->sw_if_index);
@@ -4717,6 +4724,17 @@ ikev2_set_liveness_params (u32 period, u32 max_retries)
   return 0;
 }
 
+clib_error_t *
+ikev2_profile_natt_disable (u8 * name)
+{
+  ikev2_profile_t *p = ikev2_profile_index_by_name (name);
+  if (!p)
+    return clib_error_return (0, "unknown profile %v", name);
+
+  p->natt_disabled = 1;
+  return 0;
+}
+
 static void
 ikev2_mngr_process_ipsec_sa (ipsec_sa_t * ipsec_sa)
 {
@@ -4854,7 +4872,7 @@ ikev2_send_informational_request (ikev2_sa_t * sa)
   if (~0 == len)
     return;
 
-  if (sa->natt)
+  if (ikev2_natt_active (sa))
     len = ikev2_insert_non_esp_marker (ike0, len);
 
   if (sa->is_initiator)
