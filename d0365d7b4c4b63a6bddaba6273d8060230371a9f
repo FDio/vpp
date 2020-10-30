@@ -34,6 +34,24 @@
       "revId": "d0365d7b4c4b63a6bddaba6273d8060230371a9f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7dfb3711_28e1993a",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1008,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-10-30T11:22:05Z",
+      "side": 1,
+      "message": "Hi Matthew,\nUnderstood. Thanks for detailed descriptions.\nTap driver in VPP should have knowledge of current \u0027carrier state\u0027. Can you please add carrier field in virtio_if_t data structure (in tun/tap interface struct) and update it here with the given value of carrier_up. It will be good to print the status in virtio_show().",
+      "parentUuid": "005e79c6_e309c80d",
+      "revId": "d0365d7b4c4b63a6bddaba6273d8060230371a9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
