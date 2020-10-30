@@ -118,6 +118,30 @@
       "revId": "d6894568709b59625f03e92595e0686b05f2167a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "87cdba32_3fa46fe8",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-30T17:48:09Z",
+      "side": 1,
+      "message": "Actually, what\u0027s reported in show run is the vectors/call, i.e. packets/call. A vlib frame can have up to 256 vectors. Now, notably, the session_node is not the average input or inner node in that it does more types of work. Specifically, for the point we\u0027re now excessively debating, it acts like a dispatcher for various types of transports and at one point the node needs to yield the cpu. So it needs feedback from those transport in terms of how much work they did. The unit we picked was packets because that\u0027s the first unit of work that was supported when this started (first transport added 4 years ago was tcp) but, as it can be gathered from this conversation, that doesn\u0027t cover all corner cases. Also, the total packets/dispatch are reported as work done by the node as a whole, but that\u0027s just stats. \n\nFinally, the comment is just a move of a previous comment, not a new one. Nonetheless, it pretty clearly states that 1) scheduler uses packet counts to bound work per dispatch 2) we make it look like we sent 1 packet (although we didn\u0027t). Not sure how that is shady.",
+      "parentUuid": "208fe564_aa7e0c52",
+      "range": {
+        "startLine": 528,
+        "startChar": 24,
+        "endLine": 528,
+        "endChar": 36
+      },
+      "revId": "d6894568709b59625f03e92595e0686b05f2167a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
