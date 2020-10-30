@@ -225,7 +225,7 @@ identify_subint (ethernet_main_t * em,
       // A unicast packet arriving on an L3 interface must have a dmac
       // matching the interface mac. If interface has STATUS_L3 bit set
       // mac filter is already done.
-      if (!(*is_l2 || (ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)))
+      if (!(*is_l2 || (ei && ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)))
 	{
 	  u64 dmacs[2];
 	  u8 dmacs_bad[2];
@@ -1087,7 +1087,7 @@ eth_input_single_int (vlib_main_t * vm, vlib_node_runtime_t * node,
   subint_config_t *subint0 = &intf0->untagged_subint;
 
   int main_is_l3 = (subint0->flags & SUBINT_CONFIG_L2) == 0;
-  int int_is_l3 = ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3;
+  int int_is_l3 = ei && ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3;
 
   if (main_is_l3)
     {
@@ -1333,7 +1333,7 @@ ethernet_input_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  if (ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)
+		  if (ei && ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)
 		    goto skip_dmac_check01;
 
 		  dmacs[0] = *(u64 *) e0;
@@ -1577,7 +1577,7 @@ ethernet_input_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  if (ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)
+		  if (ei && ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)
 		    goto skip_dmac_check0;
 
 		  dmacs[0] = *(u64 *) e0;
