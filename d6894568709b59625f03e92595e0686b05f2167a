@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a8546094_d132147a",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-10-30T09:25:26Z",
+      "side": 1,
+      "message": "Rename the value to something like \"action count\", so you no longer need comments for any action different from \"packet sent\".",
+      "range": {
+        "startLine": 528,
+        "startChar": 24,
+        "endLine": 528,
+        "endChar": 36
+      },
+      "revId": "d6894568709b59625f03e92595e0686b05f2167a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
