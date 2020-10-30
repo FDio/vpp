@@ -347,7 +347,23 @@ typedef struct
 
   u32 tun_itf;
   u8 udp_encap;
+  u8 natt_disabled;
 } ikev2_profile_t;
+
+typedef enum
+{
+  /* SA will switch to port 4500 when NAT is detected.
+   * This is the default. */
+  IKEV2_NATT_ENABLED,
+
+  /* Do nothing when NAT is detected */
+  IKEV2_NATT_DISABLED,
+
+  /* NAT was detected and port switched to 4500 */
+  IKEV2_NATT_ACTIVE,
+} ikev2_natt_state_t;
+
+#define ikev2_natt_active(_sa) ((_sa)->natt_state == IKEV2_NATT_ACTIVE)
 
 typedef struct
 {
@@ -428,7 +444,7 @@ typedef struct
   u32 sw_if_index;
 
   /* is NAT traversal mode */
-  u8 natt;
+  ikev2_natt_state_t natt_state;
   u8 keys_generated;
 } ikev2_sa_t;
 
@@ -575,6 +591,7 @@ ikev2_notify_t *ikev2_parse_notify_payload (ike_payload_header_t * ikep,
 int ikev2_set_log_level (ikev2_log_level_t log_level);
 u8 *ikev2_find_ike_notify_payload (ike_header_t * ike, u32 msg_type);
 void ikev2_disable_dpd (void);
+clib_error_t *ikev2_profile_natt_disable (u8 * name);
 
 static_always_inline ikev2_main_per_thread_data_t *
 ikev2_get_per_thread_data ()
