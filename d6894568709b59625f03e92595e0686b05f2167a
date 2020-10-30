@@ -22,6 +22,30 @@
       "revId": "d6894568709b59625f03e92595e0686b05f2167a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a5504171_d7269c82",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-30T15:08:09Z",
+      "side": 1,
+      "message": "Not sure I understand the comment. This function is called from the session scheduler which uses packets sent to limit work/dispatch. Other functions, e.g., handlers for tcp/udp, will return actual packets sent to the network but cut-through sessions do not generate packets (they don\u0027t interact with the network actually), instead they only pass notifications around in vpp. \n\nThe comment is meant to explain the 1, which we can tweak going forward in case we don\u0027t want to handle a max of 256 cut-through sessions/dispatch.",
+      "parentUuid": "a8546094_d132147a",
+      "range": {
+        "startLine": 528,
+        "startChar": 24,
+        "endLine": 528,
+        "endChar": 36
+      },
+      "revId": "d6894568709b59625f03e92595e0686b05f2167a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
