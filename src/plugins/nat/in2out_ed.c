@@ -565,9 +565,7 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
 	{
 	  if (ip->protocol == IP_PROTOCOL_TCP)
 	    {
-	      if (nat44_set_tcp_session_state_i2o
-		  (sm, now, s, b, thread_index))
-		return 1;
+	      nat44_set_tcp_session_state_i2o (sm, now, s, b, thread_index);
 	    }
 	  /* Accounting */
 	  nat44_session_update_counters (s, now,
@@ -1114,8 +1112,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 	    }
 	  vlib_increment_simple_counter (&sm->counters.fastpath.in2out_ed.tcp,
 					 thread_index, sw_if_index0, 1);
-	  if (nat44_set_tcp_session_state_i2o (sm, now, s0, b0, thread_index))
-	    goto trace0;
+	  nat44_set_tcp_session_state_i2o (sm, now, s0, b0, thread_index);
 	}
       else if (!vnet_buffer (b0)->ip.reass.is_non_first_fragment
 	       && udp0->checksum)
@@ -1400,8 +1397,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	    }
 	  vlib_increment_simple_counter (&sm->counters.slowpath.in2out_ed.tcp,
 					 thread_index, sw_if_index0, 1);
-	  if (nat44_set_tcp_session_state_i2o (sm, now, s0, b0, thread_index))
-	    goto trace0;
+	  nat44_set_tcp_session_state_i2o (sm, now, s0, b0, thread_index);
 	}
       else if (!vnet_buffer (b0)->ip.reass.is_non_first_fragment
 	       && udp0->checksum)
