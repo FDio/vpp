@@ -4873,6 +4873,13 @@ ikev2_send_informational_request (ikev2_sa_t * sa)
 		  sa->sw_if_index);
 }
 
+void
+ikev2_disable_dpd (void)
+{
+  ikev2_main_t *km = &ikev2_main;
+  km->dpd_disabled = 1;
+}
+
 static_always_inline int
 ikev2_mngr_process_responder_sas (ikev2_sa_t * sa)
 {
@@ -4940,7 +4947,7 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
             req_sent |= ikev2_mngr_process_child_sa(sa, c, del_old_ids);
             }
 
-          if (ikev2_mngr_process_responder_sas (sa))
+          if (!km->dpd_disabled && ikev2_mngr_process_responder_sas (sa))
             vec_add1 (to_be_deleted, sa - tkm->sas);
         }));
         /* *INDENT-ON* */

@@ -496,6 +496,9 @@ typedef struct
 
   /* max number of retries before considering peer dead */
   u32 liveness_max_retries;
+
+  /* dead peer detection */
+  u8 dpd_disabled;
 } ikev2_main_t;
 
 extern ikev2_main_t ikev2_main;
@@ -571,6 +574,7 @@ ikev2_notify_t *ikev2_parse_notify_payload (ike_payload_header_t * ikep,
 					    u32 rlen);
 int ikev2_set_log_level (ikev2_log_level_t log_level);
 u8 *ikev2_find_ike_notify_payload (ike_header_t * ike, u32 msg_type);
+void ikev2_disable_dpd (void);
 
 static_always_inline ikev2_main_per_thread_data_t *
 ikev2_get_per_thread_data ()
