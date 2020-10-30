@@ -858,6 +858,28 @@ static void
 }
 
 static void
+  vl_api_ikev2_profile_disable_natt_t_handler
+  (vl_api_ikev2_profile_disable_natt_t * mp)
+{
+  vl_api_ikev2_profile_disable_natt_reply_t *rmp;
+  int rv = 0;
+
+#if WITH_LIBSSL > 0
+  clib_error_t *error;
+
+  u8 *tmp = format (0, "%s", mp->name);
+  error = ikev2_profile_natt_disable (tmp);
+  vec_free (tmp);
+  if (error)
+    rv = VNET_API_ERROR_UNSPECIFIED;
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  REPLY_MACRO (VL_API_IKEV2_PROFILE_DISABLE_NATT_REPLY);
+}
+
+static void
   vl_api_ikev2_initiate_rekey_child_sa_t_handler
   (vl_api_ikev2_initiate_rekey_child_sa_t * mp)
 {
