@@ -4915,8 +4915,7 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
   while (1)
     {
-      u8 req_sent = 0;
-      vlib_process_wait_for_event_or_clock (vm, 1);
+      vlib_process_wait_for_event_or_clock (vm, 2);
       vlib_process_get_events (vm, NULL);
 
       /* process ike child sas */
@@ -4943,9 +4942,7 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
             sa->old_id_expiration -= 1;
 
           vec_foreach (c, sa->childs)
-            {
-            req_sent |= ikev2_mngr_process_child_sa(sa, c, del_old_ids);
-            }
+            ikev2_mngr_process_child_sa(sa, c, del_old_ids);
 
           if (!km->dpd_disabled && ikev2_mngr_process_responder_sas (sa))
             vec_add1 (to_be_deleted, sa - tkm->sas);
@@ -4986,14 +4983,6 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
       /* *INDENT-ON* */
 
       ikev2_process_pending_sa_init (km);
-
-      if (req_sent)
-	{
-	  vlib_process_wait_for_event_or_clock (vm, 5);
-	  vlib_process_get_events (vm, NULL);
-	  req_sent = 0;
-	}
-
     }
   return 0;
 }
