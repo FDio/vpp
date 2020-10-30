@@ -163,7 +163,7 @@ send_profile (ikev2_profile_t * profile, vl_api_registration_t * reg,
 
   rmp->profile.udp_encap = profile->udp_encap;
   rmp->profile.tun_itf = profile->tun_itf;
-
+  rmp->profile.natt_disabled = profile->natt_disabled;
   rmp->profile.ipsec_over_udp_port = profile->ipsec_over_udp_port;
 
   rmp->profile.lifetime = profile->lifetime;
@@ -855,6 +855,28 @@ static void
 #endif
 
   REPLY_MACRO (VL_API_IKEV2_INITIATE_DEL_CHILD_SA_REPLY);
+}
+
+static void
+  vl_api_ikev2_profile_disable_natt_t_handler
+  (vl_api_ikev2_profile_disable_natt_t * mp)
+{
+  vl_api_ikev2_profile_disable_natt_reply_t *rmp;
+  int rv = 0;
+
+#if WITH_LIBSSL > 0
+  clib_error_t *error;
+
+  u8 *tmp = format (0, "%s", mp->name);
+  error = ikev2_profile_natt_disable (tmp);
+  vec_free (tmp);
+  if (error)
+    rv = VNET_API_ERROR_UNSPECIFIED;
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  REPLY_MACRO (VL_API_IKEV2_PROFILE_DISABLE_NATT_REPLY);
 }
 
 static void
