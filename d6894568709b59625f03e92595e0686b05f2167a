@@ -166,6 +166,30 @@
       "revId": "d6894568709b59625f03e92595e0686b05f2167a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "67327702_7b15ac6a",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-10-30T18:58:34Z",
+      "side": 1,
+      "message": "\u003e \u003e session_node is not the average input or inner node in that it does more types of work.\n\u003e \n\u003e Maybe it should be split into several nodes. Instruction caching will probably improve, and it would be more clear what unit of work (vector) is being processed, and how.\n\nI think I might have caught another point of confusion: this is a session (as in flow) scheduler not a node scheduler. And no, transports are not nodes, otherwise we\u0027d end up with a lot of input nodes competing for underlying nic/network resources. This component tries to make sure that all flows have a chance to send (and gives priority to new/mice as opposed to elephants) and at the same time tries to roughly ensure that sessions don\u0027t generate absurdly large bursts of packets towards the nics. \n\n\u003e I guess in ct_custom_tx, \"vector\" equals \"io event\".\n\nYes, at least for now. If we decide we don\u0027t want to give that much priority to cut-through sessions in the future, it could change. \n\n\u003e \n\u003e \u003e Finally, the comment is just a move of a previous comment, not a new one.\n\u003e \n\u003e Fair, sorry if I am too distracting with my questions.\n\u003e \n\nNo worries. Better to clarify things. \n\n\u003e \u003e scheduler uses packet counts to bound work per dispatch\n\u003e \n\u003e Now I understand \"scheduler\" here means not the general graph scheduler, but the loop (or two) in session_queue_node_fn.\n\nOw. I should\u0027ve been more clear that I was talking about the session layer tx scheduler not the main graph scheduler. \n\n\u003e (One more reason to split the node, so scheduling is done by the graph scheduler.)\n\nAs per above, this is session scheduling not vlib node scheduling. So it\u0027s a different problem. \n\n\u003e \n\u003e \u003e The unit we picked was packets ...\n\u003e \u003e ... that doesn\u0027t cover all corner cases.\n\u003e \u003e Not sure how that is shady.\n\u003e \n\u003e \"make it look like\" is faking, which is shady in general.\n\u003e In this case it perhaps is not shady, as we understand \"packet sent\" as a unit of work, not necessarily a literal packet being sent by the function.\n\u003e \n\u003e But I agree, for now it is not worth renaming \"packet count\" to \"action count\" nor \"vector count\" here.\n\nAck",
+      "parentUuid": "e941193e_dc1ca05c",
+      "range": {
+        "startLine": 528,
+        "startChar": 24,
+        "endLine": 528,
+        "endChar": 36
+      },
+      "revId": "d6894568709b59625f03e92595e0686b05f2167a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
