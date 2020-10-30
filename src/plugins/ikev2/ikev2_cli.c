@@ -247,6 +247,39 @@ VLIB_CLI_COMMAND (show_ikev2_sa_command, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+ikev2_enable_disable_dpd_command_fn (vlib_main_t * vm,
+				     unformat_input_t * input,
+				     vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 is_enable = 1;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "enable"))
+	is_enable = 1;
+      else if (unformat (line_input, "disable"))
+	is_enable = 0;
+      else
+	break;
+    }
+  ikev2_enable_disable_dpd (is_enable);
+  unformat_free (line_input);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ikev2_cli_enable_disable_dpd_command, static) = {
+    .path = "ikev2 dpd",
+    .short_help = "ikev2 dpd [enable|disable]",
+    .function = ikev2_enable_disable_dpd_command_fn,
+};
+/* *INDENT-ON* */
+
 static uword
 unformat_ikev2_token (unformat_input_t * input, va_list * va)
 {
@@ -775,7 +808,7 @@ VLIB_CLI_COMMAND (ikev2_initiate_command, static) = {
         "ikev2 initiate sa-init <profile id>\n"
         "ikev2 initiate del-child-sa <child sa ispi>\n"
         "ikev2 initiate del-sa <sa ispi>\n"
-        "ikev2 initiate rekey-child-sa <profile id> <child sa ispi>\n",
+        "ikev2 initiate rekey-child-sa <child sa ispi>\n",
     .function = ikev2_initiate_command_fn,
 };
 /* *INDENT-ON* */
