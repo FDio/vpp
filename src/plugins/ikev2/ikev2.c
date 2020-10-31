@@ -436,6 +436,7 @@ ikev2_complete_sa_data (ikev2_sa_t * sa, ikev2_sa_t * sai)
   sa->i_auth.data = _(sai->i_auth.data);
   sa->i_auth.key = _(sai->i_auth.key);
   sa->last_sa_init_req_packet_data = _(sai->last_sa_init_req_packet_data);
+  sa->last_init_msg_id = sai->last_init_msg_id;
   sa->childs = _(sai->childs);
   sa->udp_encap = sai->udp_encap;
   sa->ipsec_over_udp_port = sai->ipsec_over_udp_port;
@@ -1409,7 +1410,8 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
       p += plen;
     }
 
-  if (sa->is_initiator && proposal->protocol_id == IKEV2_PROTOCOL_ESP)
+  if (sa->is_initiator && proposal
+      && proposal->protocol_id == IKEV2_PROTOCOL_ESP)
     {
       ikev2_rekey_t *rekey = &sa->rekey[0];
       rekey->protocol_id = proposal->protocol_id;
@@ -2460,11 +2462,6 @@ ikev2_generate_message (vlib_buffer_t * b, ikev2_sa_t * sa,
   if (sa->is_initiator)
     ike->flags |= IKEV2_HDR_FLAG_INITIATOR;
 
-  if (ike_hdr_is_request (ike))
-    {
-      sa->last_init_msg_id = clib_net_to_host_u32 (ike->msgid);
-    }
-
   if (ike->exchange == IKEV2_EXCHANGE_SA_INIT)
     {
       tlen += vec_len (chain->data);
@@ -2958,6 +2955,9 @@ ikev2_node_internal (vlib_main_t * vm,
 			  ikev2_calc_keys (sa0);
 			  ikev2_sa_auth_init (sa0);
 			  ike0->flags = IKEV2_HDR_FLAG_INITIATOR;
+			  ike0->msgid =
+			    clib_net_to_host_u32 (sai->last_init_msg_id);
+			  sa0->last_init_msg_id = sai->last_init_msg_id + 1;
 			  slen =
 			    ikev2_generate_message (b0, sa0, ike0, 0, udp0);
 			  if (~0 == slen)
@@ -3030,6 +3030,7 @@ ikev2_node_internal (vlib_main_t * vm,
 		}
 	      else
 		{
+		  ike0->flags = IKEV2_HDR_FLAG_RESPONSE;
 		  slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
 		  if (~0 == slen)
 		    vlib_node_increment_counter (vm, node->node_index,
@@ -3630,8 +3631,8 @@ ikev2_initiate_delete_ike_sa_internal (vlib_main_t * vm,
       ike0->ispi = clib_host_to_net_u64 (sa->ispi);
       ike0->rspi = clib_host_to_net_u64 (sa->rspi);
       ike0->flags = 0;
-      ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id + 1);
-      sa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
+      ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id);
+      sa->last_init_msg_id += 1;
       len = ikev2_generate_message (b0, sa, ike0, 0, 0);
       if (~0 == len)
 	return;
@@ -4213,6 +4214,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
   ike0->ispi = clib_host_to_net_u64 (sa.ispi);
   ike0->rspi = 0;
   ike0->msgid = 0;
+  sa.last_init_msg_id += 1;
 
   /* store whole IKE payload - needed for PSK auth */
   vec_reset_length (sa.last_sa_init_req_packet_data);
@@ -4289,8 +4291,8 @@ ikev2_delete_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   vec_resize (sa->del, 1);
   sa->del->protocol_id = IKEV2_PROTOCOL_ESP;
   sa->del->spi = csa->i_proposals->spi;
-  ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id + 1);
-  sa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
+  ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id);
+  sa->last_init_msg_id += 1;
   len = ikev2_generate_message (b0, sa, ike0, 0, 0);
   if (~0 == len)
     return;
@@ -4405,8 +4407,8 @@ ikev2_rekey_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   ike0->exchange = IKEV2_EXCHANGE_CREATE_CHILD_SA;
   ike0->ispi = clib_host_to_net_u64 (sa->ispi);
   ike0->rspi = clib_host_to_net_u64 (sa->rspi);
-  ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id + 1);
-  sa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
+  ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id);
+  sa->last_init_msg_id += 1;
 
   ikev2_rekey_t *rekey;
   vec_add2 (sa->rekey, rekey, 1);
@@ -4864,9 +4866,9 @@ ikev2_send_informational_request (ikev2_sa_t * sa)
   ike0->exchange = IKEV2_EXCHANGE_INFORMATIONAL;
   ike0->ispi = clib_host_to_net_u64 (sa->ispi);
   ike0->rspi = clib_host_to_net_u64 (sa->rspi);
-  ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id + 1);
+  ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id);
   ike0->flags = 0;
-  sa->last_init_msg_id = clib_net_to_host_u32 (ike0->msgid);
+  sa->last_init_msg_id += 1;
   len = ikev2_generate_message (b0, sa, ike0, 0, 0);
   if (~0 == len)
     return;
