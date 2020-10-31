@@ -552,11 +552,6 @@ virtio_interface_tx_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 sz = vring->size;
   u16 mask = sz - 1;
   u16 n_vectors = n_left;
-  u16 retry_count = 2;
-
-retry:
-  /* free consumed buffers */
-  virtio_free_used_device_desc (vm, vring, node->node_index);
 
   used = vring->desc_in_use;
   next = vring->desc_next;
@@ -645,9 +640,6 @@ retry:
 	virtio_kick (vm, vring, vif);
     }
 
-  if (n_left && retry_count--)
-    goto retry;
-
   return n_left;
 }
 
@@ -701,6 +693,12 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
       buffers = to;
     }
 
+  u16 retry_count = 2;
+
+retry:
+  /* free consumed buffers */
+  virtio_free_used_device_desc (vm, vring, node->node_index);
+
   if (vif->type == VIRTIO_IF_TYPE_TAP)
     n_left = virtio_interface_tx_inline (vm, node, vif, vring,
 					 VIRTIO_IF_TYPE_TAP, buffers, n_left);
@@ -712,6 +710,9 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
 					 VIRTIO_IF_TYPE_TUN, buffers, n_left);
   else
     ASSERT (0);
+
+  if (n_left && retry_count--)
+    goto retry;
 
   if (vif->packet_buffering && n_left)
     {
