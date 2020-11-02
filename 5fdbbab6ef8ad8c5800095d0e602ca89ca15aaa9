@@ -34,6 +34,24 @@
       "revId": "5fdbbab6ef8ad8c5800095d0e602ca89ca15aaa9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d3e91192_9f788ff0",
+        "filename": "src/plugins/nat/nat64/nat64.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1583,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-02T12:29:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "efd680cb_153493fa",
+      "revId": "5fdbbab6ef8ad8c5800095d0e602ca89ca15aaa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
