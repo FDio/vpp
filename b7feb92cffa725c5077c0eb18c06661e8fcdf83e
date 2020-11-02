@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e47c5d4f_d80ca037",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-02T09:23:11Z",
+      "side": 1,
+      "message": "it looks to me there a lot more in this patch: multiple bugfixes, new cli for dpd, new tests.\nCan you update the commit message to describe it better?\nAlso type should not be improvement but fix in my opinion",
+      "revId": "b7feb92cffa725c5077c0eb18c06661e8fcdf83e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
