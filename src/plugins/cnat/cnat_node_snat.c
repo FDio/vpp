@@ -55,17 +55,17 @@ format_cnat_snat_trace (u8 * s, va_list * args)
 /* CNat sub for source NAT as a feature arc on ip[46]-unicast
    This node's sub shouldn't apply to the same flows as
    cnat_vip_inline */
-always_inline uword
-cnat_snat_inline (vlib_main_t * vm,
-		  vlib_node_runtime_t * node,
-		  vlib_buffer_t * b,
-		  cnat_node_ctx_t * ctx, int rv, cnat_session_t * session)
+static uword
+cnat_snat_node_fn (vlib_main_t * vm,
+		   vlib_node_runtime_t * node,
+		   vlib_buffer_t * b,
+		   cnat_node_ctx_t * ctx, int rv, cnat_session_t * session)
 {
   cnat_main_t *cm = &cnat_main;
   int created_session = 0;
-  ip4_header_t *ip4;
+  ip4_header_t *ip4 = NULL;
   ip_protocol_t iproto;
-  ip6_header_t *ip6;
+  ip6_header_t *ip6 = NULL;
   udp_header_t *udp0;
   u32 arc_next0;
   u16 next0;
@@ -182,9 +182,9 @@ VLIB_NODE_FN (cnat_snat_ip4_node) (vlib_main_t * vm,
 				   vlib_frame_t * frame)
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
-    return cnat_node_inline (vm, node, frame, cnat_snat_inline, AF_IP4,
+    return cnat_node_inline (vm, node, frame, cnat_snat_node_fn, AF_IP4,
 			     1 /* do_trace */ );
-  return cnat_node_inline (vm, node, frame, cnat_snat_inline, AF_IP4,
+  return cnat_node_inline (vm, node, frame, cnat_snat_node_fn, AF_IP4,
 			   0 /* do_trace */ );
 }
 
@@ -193,9 +193,9 @@ VLIB_NODE_FN (cnat_snat_ip6_node) (vlib_main_t * vm,
 				   vlib_frame_t * frame)
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
-    return cnat_node_inline (vm, node, frame, cnat_snat_inline, AF_IP6,
+    return cnat_node_inline (vm, node, frame, cnat_snat_node_fn, AF_IP6,
 			     1 /* do_trace */ );
-  return cnat_node_inline (vm, node, frame, cnat_snat_inline, AF_IP6,
+  return cnat_node_inline (vm, node, frame, cnat_snat_node_fn, AF_IP6,
 			   0 /* do_trace */ );
 }
 
