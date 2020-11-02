@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "815e5f0b_b4a3943c",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1439,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-02T12:14:03Z",
+      "side": 1,
+      "message": "just to be sure: are proposal, tsr and tsi vectors read-only once set? Otherwise saving their pointers (rekey-\u003ei_proposal, rekey-\u003etsi etc) might be wrong when they are resized (because they could move)",
+      "revId": "b8bc2f1ef3332a795880f11f1c45a77b1b7851f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
