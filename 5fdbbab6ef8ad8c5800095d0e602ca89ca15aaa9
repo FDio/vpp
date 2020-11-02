@@ -16,6 +16,24 @@
       "revId": "5fdbbab6ef8ad8c5800095d0e602ca89ca15aaa9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "efd680cb_153493fa",
+        "filename": "src/plugins/nat/nat64/nat64.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1583,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-02T09:45:26Z",
+      "side": 1,
+      "message": "good catch, I\u0027ll update my patch",
+      "parentUuid": "6ebe1fa3_92e44b1e",
+      "revId": "5fdbbab6ef8ad8c5800095d0e602ca89ca15aaa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
