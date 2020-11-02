@@ -26,7 +26,7 @@ add_vpp_library(nat
 add_vpp_plugin(nat
   SOURCES
   nat.c
-  nat_api.c
+  nat44_api.c
   in2out.c
   in2out_ed.c
   out2in.c
@@ -51,15 +51,8 @@ add_vpp_plugin(nat
   out2in_ed.c
 
   API_FILES
-  nat.api
+  nat44.api
   nat_types.api
-
-  API_TEST_SOURCES
-  nat_test.c
-
-  INSTALL_HEADERS
-  nat_all_api_h.h
-  nat_msg_enum.h
 
   LINK_LIBRARIES nat
 )

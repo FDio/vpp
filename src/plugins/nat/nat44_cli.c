@@ -1696,11 +1696,11 @@ nat44_del_user_command_fn (vlib_main_t * vm,
 	}
     }
 
-  rv = nat44_user_del (&addr, fib_index);
+  rv = nat44_ei_user_del (&addr, fib_index);
 
   if (!rv)
     {
-      error = clib_error_return (0, "nat44_user_del returned %d", rv);
+      error = clib_error_return (0, "nat44_ei_user_del returned %d", rv);
     }
 
 done:
