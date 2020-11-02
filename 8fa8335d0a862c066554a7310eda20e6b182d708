@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f3e22a05_3fcddae6",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3196,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-02T14:29:54Z",
+      "side": 1,
+      "message": "should use ikev2_natt_active (sa0) instead?",
+      "revId": "8fa8335d0a862c066554a7310eda20e6b182d708",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
