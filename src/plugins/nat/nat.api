@@ -227,10 +227,11 @@ enum nat_log_level : u8
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
 */
-autoreply define nat44_session_cleanup {
+/*autoreply define nat44_session_cleanup {
+  option deprecated;
   u32 client_index;
   u32 context;
-};
+};*/
 
 /** \brief NAT44 set session limit
     @param client_index - opaque cookie to identify the sender
