@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,56 +15,33 @@
  */
 /**
  * @file
- * @brief NAT plugin API implementation
+ * @brief NAT44 plugin API implementation
  */
 
-#include <nat/nat.h>
-#include <nat/nat_inlines.h>
-#include <nat/nat44/inlines.h>
-#include <nat/lib/nat_inlines.h>
-#include <nat/nat_ha.h>
-#include <vlibapi/api.h>
+#define vl_api_nat44_lb_static_mapping_details_t_endian vl_noop_handler
+#define vl_api_nat44_add_del_lb_static_mapping_t_endian vl_noop_handler
+
+#include <vnet/ip/ip_types_api.h>
 #include <vlibmemory/api.h>
 
-#include <nat/nat_msg_enum.h>
 #include <vnet/fib/fib_table.h>
-#include <vnet/ip/ip_types_api.h>
-#include <nat/nat44/ed_inlines.h>
+
+#include <nat/lib/nat_inlines.h>
 #include <nat/lib/ipfix_logging.h>
 
-#define vl_api_nat44_add_del_lb_static_mapping_t_endian vl_noop_handler
-#define vl_api_nat44_nat44_lb_static_mapping_details_t_endian vl_noop_handler
+#include <nat/nat.h>
 
-/* define message structures */
-#define vl_typedefs
-#include <nat/nat_all_api_h.h>
-#undef vl_typedefs
+#include <nat/nat44.api_enum.h>
+#include <nat/nat44.api_types.h>
 
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <nat/nat_all_api_h.h>
-#undef vl_endianfun
+#include <nat/nat_ha.h>
+#include <nat/nat_inlines.h>
 
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
+#include <nat/nat44/inlines.h>
+#include <nat/nat44/ed_inlines.h>
 
 #define REPLY_MSG_ID_BASE sm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <nat/nat_all_api_h.h>
-#undef vl_api_version
-
-/* Macro to finish up custom dump fns */
-#define FINISH                                  \
-    vec_add1 (s, 0);                            \
-    vl_print (handle, (char *)s);               \
-    vec_free (s);                               \
-    return handle;
-
-/******************************/
-/*** Common NAT plugin APIs ***/
-/******************************/
 
 static void
 vl_api_nat_control_ping_t_handler (vl_api_nat_control_ping_t * mp)
@@ -81,16 +58,6 @@ vl_api_nat_control_ping_t_handler (vl_api_nat_control_ping_t * mp)
   /* *INDENT-ON* */
 }
 
-static void *
-vl_api_nat_control_ping_t_print (vl_api_nat_control_ping_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_control_ping ");
-
-  FINISH;
-}
-
 static void
 vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
 {
@@ -99,12 +66,10 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
   int rv = 0;
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_NAT_SHOW_CONFIG_REPLY,
+  REPLY_MACRO2_ZERO (VL_API_NAT_SHOW_CONFIG_REPLY,
   ({
     rmp->translation_buckets = htonl (sm->translation_buckets);
-    rmp->translation_memory_size = 0;
     rmp->user_buckets = htonl (sm->user_buckets);
-    rmp->user_memory_size = 0;
     rmp->max_translations_per_user = htonl (sm->max_translations_per_user);
     rmp->outside_vrf_id = htonl (sm->outside_vrf_id);
     rmp->inside_vrf_id = htonl (sm->inside_vrf_id);
@@ -113,25 +78,8 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
       sm->static_mapping_connection_tracking;
     rmp->endpoint_dependent = sm->endpoint_dependent;
     rmp->out2in_dpo = sm->out2in_dpo;
-    // these are obsolete
-    rmp->dslite_ce = 0;
-    rmp->deterministic = 0;
-    rmp->nat64_bib_buckets = 0;
-    rmp->nat64_bib_memory_size = 0;
-    rmp->nat64_st_buckets = 0;
-    rmp->nat64_st_memory_size = 0;
   }));
   /* *INDENT-ON* */
-}
-
-static void *
-vl_api_nat_show_config_t_print (vl_api_nat_show_config_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_show_config ");
-
-  FINISH;
 }
 
 static void
@@ -142,12 +90,10 @@ vl_api_nat_show_config_2_t_handler (vl_api_nat_show_config_2_t * mp)
   int rv = 0;
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_NAT_SHOW_CONFIG_2_REPLY,
+  REPLY_MACRO2_ZERO (VL_API_NAT_SHOW_CONFIG_2_REPLY,
   ({
     rmp->translation_buckets = htonl (sm->translation_buckets);
-    rmp->translation_memory_size = 0;
     rmp->user_buckets = htonl (sm->user_buckets);
-    rmp->user_memory_size = 0;
     rmp->max_translations_per_user = htonl (sm->max_translations_per_user);
     rmp->outside_vrf_id = htonl (sm->outside_vrf_id);
     rmp->inside_vrf_id = htonl (sm->inside_vrf_id);
@@ -158,25 +104,44 @@ vl_api_nat_show_config_2_t_handler (vl_api_nat_show_config_2_t * mp)
     rmp->out2in_dpo = sm->out2in_dpo;
     rmp->max_translations_per_thread = clib_net_to_host_u32(sm->max_translations_per_thread);
     rmp->max_users_per_thread = clib_net_to_host_u32(sm->max_users_per_thread);
-    // these are obsolete
-    rmp->dslite_ce = 0;
-    rmp->deterministic = 0;
-    rmp->nat64_bib_buckets = 0;
-    rmp->nat64_bib_memory_size = 0;
-    rmp->nat64_st_buckets = 0;
-    rmp->nat64_st_memory_size = 0;
   }));
   /* *INDENT-ON* */
 }
 
-static void *
-vl_api_nat_show_config_2_t_print (vl_api_nat_show_config_t * mp, void *handle)
+static void
+vl_api_nat44_show_running_config_t_handler (vl_api_nat44_show_running_config_t
+					    * mp)
 {
-  u8 *s;
+  vl_api_nat44_show_running_config_reply_t *rmp;
+  snat_main_t *sm = &snat_main;
+  nat44_config_t *rc = &sm->rconfig;
+  int rv = 0;
 
-  s = format (0, "SCRIPT: nat_show_config_2 ");
+  /* *INDENT-OFF* */
+  REPLY_MACRO2_ZERO (VL_API_NAT44_SHOW_RUNNING_CONFIG_REPLY,
+  ({
+    rmp->inside_vrf = htonl (rc->inside_vrf);
+    rmp->outside_vrf = htonl (rc->outside_vrf);
+    rmp->users = htonl (rc->users);
+    rmp->sessions = htonl (rc->sessions);
+    rmp->user_sessions = htonl (rc->user_sessions);
 
-  FINISH;
+    rmp->user_buckets = htonl (sm->user_buckets);
+    rmp->translation_buckets = htonl (sm->translation_buckets);
+
+    if (rc->endpoint_dependent)
+      rmp->flags |= NAT44_IS_ENDPOINT_DEPENDENT;
+    else
+      rmp->flags |= NAT44_IS_ENDPOINT_INDEPENDENT;
+
+    if (rc->static_mapping_only)
+      rmp->flags |= NAT44_IS_STATIC_MAPPING_ONLY;
+    if (rc->connection_tracking)
+      rmp->flags |= NAT44_IS_CONNECTION_TRACKING;
+    if (rc->out2in_dpo)
+      rmp->flags |= NAT44_IS_OUT2IN_DPO;
+  }));
+  /* *INDENT-ON* */
 }
 
 static void
@@ -202,31 +167,6 @@ vl_api_nat_set_workers_t_handler (vl_api_nat_set_workers_t * mp)
 
 send_reply:
   REPLY_MACRO (VL_API_NAT_SET_WORKERS_REPLY);
-}
-
-static void *
-vl_api_nat_set_workers_t_print (vl_api_nat_set_workers_t * mp, void *handle)
-{
-  u8 *s;
-  uword *bitmap = 0;
-  u8 first = 1;
-  int i;
-  u64 mask = clib_net_to_host_u64 (mp->worker_mask);
-
-  s = format (0, "SCRIPT: nat_set_workers ");
-  bitmap = clib_bitmap_set_multiple (bitmap, 0, mask, BITS (mask));
-  /* *INDENT-OFF* */
-  clib_bitmap_foreach (i, bitmap,
-    ({
-      if (first)
-        s = format (s, "%d", i);
-      else
-        s = format (s, ",%d", i);
-      first = 0;
-    }));
-  /* *INDENT-ON* */
-  clib_bitmap_free (bitmap);
-  FINISH;
 }
 
 static void
@@ -266,14 +206,13 @@ vl_api_nat_worker_dump_t_handler (vl_api_nat_worker_dump_t * mp)
   /* *INDENT-ON* */
 }
 
-static void *
-vl_api_nat_worker_dump_t_print (vl_api_nat_worker_dump_t * mp, void *handle)
+static void
+vl_api_nat44_session_cleanup_t_handler (vl_api_nat44_session_cleanup_t * mp)
 {
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_worker_dump ");
-
-  FINISH;
+  snat_main_t *sm = &snat_main;
+  vl_api_nat44_session_cleanup_reply_t *rmp;
+  int rv = 0;
+  REPLY_MACRO (VL_API_NAT44_SESSION_CLEANUP_REPLY);
 }
 
 static void
@@ -287,20 +226,7 @@ vl_api_nat44_set_session_limit_t_handler (vl_api_nat44_set_session_limit_t *
   rv = nat44_set_session_limit
     (ntohl (mp->session_limit), ntohl (mp->vrf_id));
 
-  REPLY_MACRO (VL_API_NAT_SET_WORKERS_REPLY);
-}
-
-static void *
-vl_api_nat44_set_session_limit_t_print (vl_api_nat44_set_session_limit_t *
-					mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_set_session_limit ");
-  s = format (s, "session_limit %d", ntohl (mp->session_limit));
-  s = format (s, "vrf_id %d", ntohl (mp->vrf_id));
-
-  FINISH;
+  REPLY_MACRO (VL_API_NAT44_SET_SESSION_LIMIT_REPLY);
 }
 
 static void
@@ -316,18 +242,6 @@ vl_api_nat_set_log_level_t_handler (vl_api_nat_set_log_level_t * mp)
     sm->log_level = mp->log_level;
 
   REPLY_MACRO (VL_API_NAT_SET_WORKERS_REPLY);
-}
-
-static void *
-vl_api_nat_set_log_level_t_print (vl_api_nat_set_log_level_t *
-				  mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_set_log_level ");
-  s = format (s, "log_level %d", mp->log_level);
-
-  FINISH;
 }
 
 static void
@@ -363,54 +277,6 @@ static void
   REPLY_MACRO (VL_API_NAT44_PLUGIN_ENABLE_DISABLE_REPLY);
 }
 
-static void *vl_api_nat44_plugin_enable_disable_t_print
-  (vl_api_nat44_plugin_enable_disable_t * mp, void *handle)
-{
-  u8 *s;
-  u32 val;
-
-  s = format (0, "SCRIPT: nat44_plugin_enable_disable ");
-  if (mp->enable)
-    {
-      s = format (s, "enable ");
-      if (mp->flags & NAT44_API_IS_ENDPOINT_DEPENDENT)
-	s = format (s, "endpoint-dependent ");
-      else
-	s = format (s, "endpoint-indepenednet ");
-      if (mp->flags & NAT44_API_IS_STATIC_MAPPING_ONLY)
-	s = format (s, "static_mapping_only ");
-      if (mp->flags & NAT44_API_IS_CONNECTION_TRACKING)
-	s = format (s, "connection_tracking ");
-      if (mp->flags & NAT44_API_IS_OUT2IN_DPO)
-	s = format (s, "out2in_dpo ");
-      val = ntohl (mp->inside_vrf);
-      if (val)
-	s = format (s, "inside_vrf %u ", val);
-      val = ntohl (mp->outside_vrf);
-      if (val)
-	s = format (s, "outside_vrf %u ", val);
-      val = ntohl (mp->users);
-      if (val)
-	s = format (s, "users %u ", val);
-      val = ntohl (mp->user_memory);
-      if (val)
-	s = format (s, "user_memory %u ", val);
-      val = ntohl (mp->sessions);
-      if (val)
-	s = format (s, "sessions %u ", val);
-      val = ntohl (mp->session_memory);
-      if (val)
-	s = format (s, "session_memory %u ", val);
-      val = ntohl (mp->user_sessions);
-      if (val)
-	s = format (s, "user_sessions %u ", val);
-    }
-  else
-    s = format (s, "disable ");
-
-  FINISH;
-}
-
 static void
 vl_api_nat_ipfix_enable_disable_t_handler (vl_api_nat_ipfix_enable_disable_t *
 					   mp)
@@ -427,23 +293,6 @@ vl_api_nat_ipfix_enable_disable_t_handler (vl_api_nat_ipfix_enable_disable_t *
   REPLY_MACRO (VL_API_NAT_IPFIX_ENABLE_DISABLE_REPLY);
 }
 
-static void *
-vl_api_nat_ipfix_enable_disable_t_print (vl_api_nat_ipfix_enable_disable_t *
-					 mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_ipfix_enable_disable ");
-  if (mp->domain_id)
-    s = format (s, "domain %d ", clib_net_to_host_u32 (mp->domain_id));
-  if (mp->src_port)
-    s = format (s, "src_port %d ", clib_net_to_host_u16 (mp->src_port));
-  if (!mp->enable)
-    s = format (s, "disable ");
-
-  FINISH;
-}
-
 static void
 vl_api_nat_set_timeouts_t_handler (vl_api_nat_set_timeouts_t * mp)
 {
@@ -457,20 +306,6 @@ vl_api_nat_set_timeouts_t_handler (vl_api_nat_set_timeouts_t * mp)
   sm->icmp_timeout = ntohl (mp->icmp);
 
   REPLY_MACRO (VL_API_NAT_SET_TIMEOUTS_REPLY);
-}
-
-static void *
-vl_api_nat_set_timeouts_t_print (vl_api_nat_set_timeouts_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_set_timeouts ");
-  s = format (s, "udp %d tcp_established %d tcp_transitory %d icmp %d\n",
-	      ntohl (mp->udp),
-	      ntohl (mp->tcp_established),
-	      ntohl (mp->tcp_transitory), ntohl (mp->icmp));
-
-  FINISH;
 }
 
 static void
@@ -489,16 +324,6 @@ vl_api_nat_get_timeouts_t_handler (vl_api_nat_get_timeouts_t * mp)
     rmp->icmp = htonl (sm->icmp_timeout);
   }))
   /* *INDENT-ON* */
-}
-
-static void *
-vl_api_nat_get_timeouts_t_print (vl_api_nat_get_timeouts_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_get_timeouts");
-
-  FINISH;
 }
 
 static void
@@ -538,21 +363,6 @@ send_reply:
   REPLY_MACRO (VL_API_NAT_SET_ADDR_AND_PORT_ALLOC_ALG_REPLY);
 }
 
-static void *vl_api_nat_set_addr_and_port_alloc_alg_t_print
-  (vl_api_nat_set_addr_and_port_alloc_alg_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_set_addr_and_port_alloc_alg ");
-  s = format (s, "alg %d psid_offset %d psid_length %d psid %d start_port %d "
-	      "end_port %d\n",
-	      ntohl (mp->alg), ntohl (mp->psid_offset),
-	      ntohl (mp->psid_length), ntohs (mp->psid),
-	      ntohs (mp->start_port), ntohs (mp->end_port));
-
-  FINISH;
-}
-
 static void
   vl_api_nat_get_addr_and_port_alloc_alg_t_handler
   (vl_api_nat_get_addr_and_port_alloc_alg_t * mp)
@@ -574,16 +384,6 @@ static void
   /* *INDENT-ON* */
 }
 
-static void *vl_api_nat_get_addr_and_port_alloc_alg_t_print
-  (vl_api_nat_get_addr_and_port_alloc_alg_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_get_addr_and_port_alloc_alg");
-
-  FINISH;
-}
-
 static void
 vl_api_nat_set_mss_clamping_t_handler (vl_api_nat_set_mss_clamping_t * mp)
 {
@@ -597,18 +397,6 @@ vl_api_nat_set_mss_clamping_t_handler (vl_api_nat_set_mss_clamping_t * mp)
     sm->mss_clamping = 0;
 
   REPLY_MACRO (VL_API_NAT_SET_MSS_CLAMPING_REPLY);
-}
-
-static void *
-vl_api_nat_set_mss_clamping_t_print (vl_api_nat_set_mss_clamping_t * mp,
-				     void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_set_mss_clamping enable %d mss_value %d\n",
-	      mp->enable, ntohs (mp->mss_value));
-
-  FINISH;
 }
 
 static void
@@ -627,17 +415,6 @@ vl_api_nat_get_mss_clamping_t_handler (vl_api_nat_get_mss_clamping_t * mp)
   /* *INDENT-ON* */
 }
 
-static void *
-vl_api_nat_get_mss_clamping_t_print (vl_api_nat_get_mss_clamping_t * mp,
-				     void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_get_mss_clamping");
-
-  FINISH;
-}
-
 static void
 vl_api_nat_ha_set_listener_t_handler (vl_api_nat_ha_set_listener_t * mp)
 {
@@ -652,20 +429,6 @@ vl_api_nat_ha_set_listener_t_handler (vl_api_nat_ha_set_listener_t * mp)
 			 clib_net_to_host_u32 (mp->path_mtu));
 
   REPLY_MACRO (VL_API_NAT_HA_SET_LISTENER_REPLY);
-}
-
-static void *
-vl_api_nat_ha_set_listener_t_print (vl_api_nat_ha_set_listener_t * mp,
-				    void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_ha_set_listener ");
-  s = format (s, "ip_address %U ", format_ip4_address, mp->ip_address);
-  s = format (s, "port %d ", clib_net_to_host_u16 (mp->port));
-  s = format (s, "path_mtu %d", clib_net_to_host_u32 (mp->path_mtu));
-
-  FINISH;
 }
 
 static void
@@ -690,17 +453,6 @@ vl_api_nat_ha_get_listener_t_handler (vl_api_nat_ha_get_listener_t * mp)
   /* *INDENT-ON* */
 }
 
-static void *
-vl_api_nat_ha_get_listener_t_print (vl_api_nat_ha_get_listener_t * mp,
-				    void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_ha_get_listener");
-
-  FINISH;
-}
-
 static void
 vl_api_nat_ha_set_failover_t_handler (vl_api_nat_ha_set_failover_t * mp)
 {
@@ -715,19 +467,6 @@ vl_api_nat_ha_set_failover_t_handler (vl_api_nat_ha_set_failover_t * mp)
 			 clib_net_to_host_u32 (mp->session_refresh_interval));
 
   REPLY_MACRO (VL_API_NAT_HA_SET_FAILOVER_REPLY);
-}
-
-static void *
-vl_api_nat_ha_set_failover_t_print (vl_api_nat_ha_set_failover_t * mp,
-				    void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_ha_set_failover ");
-  s = format (s, "ip_address %U ", format_ip4_address, mp->ip_address);
-  s = format (s, "port %d ", clib_net_to_host_u16 (mp->port));
-
-  FINISH;
 }
 
 static void
@@ -752,17 +491,6 @@ vl_api_nat_ha_get_failover_t_handler (vl_api_nat_ha_get_failover_t * mp)
   /* *INDENT-ON* */
 }
 
-static void *
-vl_api_nat_ha_get_failover_t_print (vl_api_nat_ha_get_failover_t * mp,
-				    void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_ha_get_failover");
-
-  FINISH;
-}
-
 static void
 vl_api_nat_ha_flush_t_handler (vl_api_nat_ha_flush_t * mp)
 {
@@ -773,16 +501,6 @@ vl_api_nat_ha_flush_t_handler (vl_api_nat_ha_flush_t * mp)
   nat_ha_flush (0);
 
   REPLY_MACRO (VL_API_NAT_HA_FLUSH_REPLY);
-}
-
-static void *
-vl_api_nat_ha_flush_t_print (vl_api_nat_ha_flush_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_ha_flush ");
-
-  FINISH;
 }
 
 static void
@@ -822,22 +540,6 @@ vl_api_nat_ha_resync_t_handler (vl_api_nat_ha_resync_t * mp)
   REPLY_MACRO (VL_API_NAT_HA_RESYNC_REPLY);
 }
 
-static void *
-vl_api_nat_ha_resync_t_print (vl_api_nat_ha_resync_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat_ha_resync ");
-  s =
-    format (s, "want_resync_event %d pid %d", mp->want_resync_event,
-	    clib_host_to_net_u32 (mp->pid));
-
-  FINISH;
-}
-
-/*************/
-/*** NAT44 ***/
-/*************/
 static void
 vl_api_nat44_del_user_t_handler (vl_api_nat44_del_user_t * mp)
 {
@@ -846,18 +548,8 @@ vl_api_nat44_del_user_t_handler (vl_api_nat44_del_user_t * mp)
   ip4_address_t addr;
   int rv;
   memcpy (&addr.as_u8, mp->ip_address, 4);
-  rv = nat44_user_del (&addr, ntohl (mp->fib_index));
+  rv = nat44_ei_user_del (&addr, ntohl (mp->fib_index));
   REPLY_MACRO (VL_API_NAT44_DEL_USER_REPLY);
-}
-
-static void *vl_api_nat44_del_user_t_print
-  (vl_api_nat44_del_user_t * mp, void *handle)
-{
-  u8 *s;
-  s = format (0, "SCRIPT: nat44_del_user ");
-  s = format (s, "ip_address %U fib_index %U ",
-	      format_ip4_address, mp->ip_address, ntohl (mp->fib_index));
-  FINISH;
 }
 
 static void
@@ -919,21 +611,6 @@ send_reply:
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_ADDRESS_RANGE_REPLY);
 }
 
-static void *vl_api_nat44_add_del_address_range_t_print
-  (vl_api_nat44_add_del_address_range_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_add_address_range ");
-  s = format (s, "%U ", format_ip4_address, mp->first_ip_address);
-  if (memcmp (mp->first_ip_address, mp->last_ip_address, 4))
-    {
-      s = format (s, " - %U ", format_ip4_address, mp->last_ip_address);
-    }
-  s = format (s, "twice_nat %d ", mp->flags & NAT_API_IS_TWICE_NAT);
-  FINISH;
-}
-
 static void
 send_nat44_address_details (snat_address_t * a,
 			    vl_api_registration_t * reg, u32 context,
@@ -979,17 +656,6 @@ vl_api_nat44_address_dump_t_handler (vl_api_nat44_address_dump_t * mp)
   /* *INDENT-ON* */
 }
 
-static void *
-vl_api_nat44_address_dump_t_print (vl_api_nat44_address_dump_t * mp,
-				   void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_address_dump ");
-
-  FINISH;
-}
-
 static void
   vl_api_nat44_interface_add_del_feature_t_handler
   (vl_api_nat44_interface_add_del_feature_t * mp)
@@ -1011,20 +677,6 @@ static void
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_NAT44_INTERFACE_ADD_DEL_FEATURE_REPLY);
-}
-
-static void *vl_api_nat44_interface_add_del_feature_t_print
-  (vl_api_nat44_interface_add_del_feature_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_interface_add_del_feature ");
-  s = format (s, "sw_if_index %d %s %s",
-	      clib_host_to_net_u32 (mp->sw_if_index),
-	      mp->flags & NAT_API_IS_INSIDE ? "in" : "out",
-	      mp->is_add ? "" : "del");
-
-  FINISH;
 }
 
 static void
@@ -1068,17 +720,6 @@ vl_api_nat44_interface_dump_t_handler (vl_api_nat44_interface_dump_t * mp)
   /* *INDENT-ON* */
 }
 
-static void *
-vl_api_nat44_interface_dump_t_print (vl_api_nat44_interface_dump_t * mp,
-				     void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_interface_dump ");
-
-  FINISH;
-}
-
 static void
   vl_api_nat44_interface_add_del_output_feature_t_handler
   (vl_api_nat44_interface_add_del_output_feature_t * mp)
@@ -1096,20 +737,6 @@ static void
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_NAT44_INTERFACE_ADD_DEL_OUTPUT_FEATURE_REPLY);
-}
-
-static void *vl_api_nat44_interface_add_del_output_feature_t_print
-  (vl_api_nat44_interface_add_del_output_feature_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_interface_add_del_output_feature ");
-  s = format (s, "sw_if_index %d %s %s",
-	      clib_host_to_net_u32 (mp->sw_if_index),
-	      mp->flags & NAT_API_IS_INSIDE ? "in" : "out",
-	      mp->is_add ? "" : "del");
-
-  FINISH;
 }
 
 static void
@@ -1151,16 +778,6 @@ static void
     send_nat44_interface_output_feature_details(i, reg, mp->context);
   }));
   /* *INDENT-ON* */
-}
-
-static void *vl_api_nat44_interface_output_feature_dump_t_print
-  (vl_api_nat44_interface_output_feature_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_interface_output_feature_dump ");
-
-  FINISH;
 }
 
 static void
@@ -1256,68 +873,6 @@ static void
   vec_free (tag);
 
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_STATIC_MAPPING_V2_REPLY);
-}
-
-static void *vl_api_nat44_add_del_static_mapping_t_print
-  (vl_api_nat44_add_del_static_mapping_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_add_del_static_mapping ");
-  s = format (s, "protocol %d local_addr %U external_addr %U ",
-	      mp->protocol,
-	      format_ip4_address, mp->local_ip_address,
-	      format_ip4_address, mp->external_ip_address);
-
-  if (!(mp->flags & NAT_API_IS_ADDR_ONLY))
-    s = format (s, "local_port %d external_port %d ",
-		clib_net_to_host_u16 (mp->local_port),
-		clib_net_to_host_u16 (mp->external_port));
-
-  s = format (s, "twice_nat %d out2in_only %d ",
-	      mp->flags & NAT_API_IS_TWICE_NAT,
-	      mp->flags & NAT_API_IS_OUT2IN_ONLY);
-
-  if (mp->vrf_id != ~0)
-    s = format (s, "vrf %d", clib_net_to_host_u32 (mp->vrf_id));
-
-  if (mp->external_sw_if_index != ~0)
-    s = format (s, "external_sw_if_index %d",
-		clib_net_to_host_u32 (mp->external_sw_if_index));
-  FINISH;
-}
-
-static void *vl_api_nat44_add_del_static_mapping_v2_t_print
-  (vl_api_nat44_add_del_static_mapping_v2_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_add_del_static_mapping_v2 ");
-  s = format (s, "protocol %d local_addr %U external_addr %U ",
-	      mp->protocol,
-	      format_ip4_address, mp->local_ip_address,
-	      format_ip4_address, mp->external_ip_address);
-
-  if (!(mp->flags & NAT_API_IS_ADDR_ONLY))
-    s = format (s, "local_port %d external_port %d ",
-		clib_net_to_host_u16 (mp->local_port),
-		clib_net_to_host_u16 (mp->external_port));
-
-  s = format (s, "twice_nat %d out2in_only %d ",
-	      mp->flags & NAT_API_IS_TWICE_NAT,
-	      mp->flags & NAT_API_IS_OUT2IN_ONLY);
-
-  if (mp->vrf_id != ~0)
-    s = format (s, "vrf %d", clib_net_to_host_u32 (mp->vrf_id));
-
-  if (mp->external_sw_if_index != ~0)
-    s = format (s, "external_sw_if_index %d",
-		clib_net_to_host_u32 (mp->external_sw_if_index));
-  if (mp->match_pool)
-    s = format (s, "match pool address %U",
-		format_ip4_address, mp->pool_ip_address);
-
-  FINISH;
 }
 
 static void
@@ -1430,17 +985,6 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
     }
 }
 
-static void *
-vl_api_nat44_static_mapping_dump_t_print (vl_api_nat44_static_mapping_dump_t *
-					  mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_static_mapping_dump ");
-
-  FINISH;
-}
-
 static void
   vl_api_nat44_add_del_identity_mapping_t_handler
   (vl_api_nat44_add_del_identity_mapping_t * mp)
@@ -1476,28 +1020,6 @@ static void
   vec_free (tag);
 
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_IDENTITY_MAPPING_REPLY);
-}
-
-static void *vl_api_nat44_add_del_identity_mapping_t_print
-  (vl_api_nat44_add_del_identity_mapping_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_add_del_identity_mapping ");
-  if (mp->sw_if_index != ~0)
-    s = format (s, "sw_if_index %d", clib_net_to_host_u32 (mp->sw_if_index));
-  else
-    s = format (s, "addr %U", format_ip4_address, mp->ip_address);
-
-  if (!(mp->flags & NAT_API_IS_ADDR_ONLY))
-    s =
-      format (s, " protocol %d port %d", mp->protocol,
-	      clib_net_to_host_u16 (mp->port));
-
-  if (mp->vrf_id != ~0)
-    s = format (s, " vrf %d", clib_net_to_host_u32 (mp->vrf_id));
-
-  FINISH;
 }
 
 static void
@@ -1590,16 +1112,6 @@ static void
     }
 }
 
-static void *vl_api_nat44_identity_mapping_dump_t_print
-  (vl_api_nat44_identity_mapping_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_identity_mapping_dump ");
-
-  FINISH;
-}
-
 static void
   vl_api_nat44_add_del_interface_addr_t_handler
   (vl_api_nat44_add_del_interface_addr_t * mp)
@@ -1619,19 +1131,6 @@ static void
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_INTERFACE_ADDR_REPLY);
-}
-
-static void *vl_api_nat44_add_del_interface_addr_t_print
-  (vl_api_nat44_add_del_interface_addr_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_add_del_interface_addr ");
-  s = format (s, "sw_if_index %d twice_nat %d %s",
-	      clib_host_to_net_u32 (mp->sw_if_index),
-	      mp->flags & NAT_API_IS_TWICE_NAT, mp->is_add ? "" : "del");
-
-  FINISH;
 }
 
 static void
@@ -1673,17 +1172,6 @@ vl_api_nat44_interface_addr_dump_t_handler (vl_api_nat44_interface_addr_dump_t
   vec_foreach (i, sm->auto_add_sw_if_indices_twice_nat)
     send_nat44_interface_addr_details(*i, reg, mp->context, 1);
   /* *INDENT-ON* */
-}
-
-static void *
-vl_api_nat44_interface_addr_dump_t_print (vl_api_nat44_interface_addr_dump_t *
-					  mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_interface_addr_dump ");
-
-  FINISH;
 }
 
 static void
@@ -1796,16 +1284,6 @@ vl_api_nat44_user_dump_t_handler (vl_api_nat44_user_dump_t * mp)
 	}
     }
   /* *INDENT-ON* */
-}
-
-static void *
-vl_api_nat44_user_dump_t_print (vl_api_nat44_user_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_user_dump ");
-
-  FINISH;
 }
 
 static void
@@ -1927,20 +1405,6 @@ vl_api_nat44_user_session_dump_t_handler (vl_api_nat44_user_session_dump_t *
     }
 }
 
-static void *
-vl_api_nat44_user_session_dump_t_print (vl_api_nat44_user_session_dump_t * mp,
-					void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_user_session_dump ");
-  s = format (s, "ip_address %U vrf_id %d\n",
-	      format_ip4_address, mp->ip_address,
-	      clib_net_to_host_u32 (mp->vrf_id));
-
-  FINISH;
-}
-
 static nat44_lb_addr_port_t *
 unformat_nat44_lb_addr_port (vl_api_nat44_lb_addr_port_t * addr_port_pairs,
 			     u32 addr_port_pair_num)
@@ -2011,20 +1475,6 @@ send_reply:
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_LB_STATIC_MAPPING_REPLY);
 }
 
-static void *vl_api_nat44_add_del_lb_static_mapping_t_print
-  (vl_api_nat44_add_del_lb_static_mapping_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_add_del_lb_static_mapping ");
-  s = format (s, "is_add %d twice_nat %d out2in_only %d ",
-	      mp->is_add,
-	      mp->flags & NAT_API_IS_TWICE_NAT,
-	      mp->flags & NAT_API_IS_OUT2IN_ONLY);
-
-  FINISH;
-}
-
 static void
   vl_api_nat44_lb_static_mapping_add_del_local_t_handler
   (vl_api_nat44_lb_static_mapping_add_del_local_t * mp)
@@ -2058,17 +1508,6 @@ static void
 
 send_reply:
   REPLY_MACRO (VL_API_NAT44_LB_STATIC_MAPPING_ADD_DEL_LOCAL_REPLY);
-}
-
-static void *vl_api_nat44_lb_static_mapping_add_del_local_t_print
-  (vl_api_nat44_lb_static_mapping_add_del_local_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_lb_static_mapping_add_del_local ");
-  s = format (s, "is_add %d", mp->is_add);
-
-  FINISH;
 }
 
 static void
@@ -2145,16 +1584,6 @@ static void
   /* *INDENT-ON* */
 }
 
-static void *vl_api_nat44_lb_static_mapping_dump_t_print
-  (vl_api_nat44_lb_static_mapping_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_lb_static_mapping_dump ");
-
-  FINISH;
-}
-
 static void
 vl_api_nat44_del_session_t_handler (vl_api_nat44_del_session_t * mp)
 {
@@ -2184,26 +1613,6 @@ vl_api_nat44_del_session_t_handler (vl_api_nat44_del_session_t * mp)
     rv = nat44_del_session (sm, &addr, port, proto, vrf_id, is_in);
 
   REPLY_MACRO (VL_API_NAT44_DEL_SESSION_REPLY);
-}
-
-static void *
-vl_api_nat44_del_session_t_print (vl_api_nat44_del_session_t * mp,
-				  void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_add_del_session ");
-  s = format (s, "addr %U port %d protocol %d vrf_id %d is_in %d",
-	      format_ip4_address, mp->address,
-	      clib_net_to_host_u16 (mp->port),
-	      mp->protocol, clib_net_to_host_u32 (mp->vrf_id),
-	      mp->flags & NAT_API_IS_INSIDE);
-  if (mp->flags & NAT_API_IS_EXT_HOST_VALID)
-    s = format (s, "ext_host_address %U ext_host_port %d",
-		format_ip4_address, mp->ext_host_address,
-		clib_net_to_host_u16 (mp->ext_host_port));
-
-  FINISH;
 }
 
 static void
@@ -2254,17 +1663,6 @@ static void
   REPLY_MACRO (VL_API_NAT44_FORWARDING_ENABLE_DISABLE_REPLY);
 }
 
-static void *vl_api_nat44_forwarding_enable_disable_t_print
-  (vl_api_nat44_forwarding_enable_disable_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_forwarding_enable_disable ");
-  s = format (s, "enable %d", mp->enable != 0);
-
-  FINISH;
-}
-
 static void
   vl_api_nat44_forwarding_is_enabled_t_handler
   (vl_api_nat44_forwarding_is_enabled_t * mp)
@@ -2288,129 +1686,17 @@ static void
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
-static void *vl_api_nat44_forwarding_is_enabled_t_print
-  (vl_api_nat44_forwarding_is_enabled_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: nat44_forwarding_is_enabled ");
-
-  FINISH;
-}
-
-/* List of message types that this plugin understands */
-#define foreach_snat_plugin_api_msg                                     \
-_(NAT_CONTROL_PING, nat_control_ping)                                   \
-_(NAT_SHOW_CONFIG, nat_show_config)                                     \
-_(NAT_SHOW_CONFIG_2, nat_show_config_2)                                 \
-_(NAT_SET_WORKERS, nat_set_workers)                                     \
-_(NAT_WORKER_DUMP, nat_worker_dump)                                     \
-_(NAT44_PLUGIN_ENABLE_DISABLE, nat44_plugin_enable_disable)             \
-_(NAT44_DEL_USER, nat44_del_user)                                       \
-_(NAT44_SET_SESSION_LIMIT, nat44_set_session_limit)                     \
-_(NAT_SET_LOG_LEVEL, nat_set_log_level)                                 \
-_(NAT_IPFIX_ENABLE_DISABLE, nat_ipfix_enable_disable)                   \
-_(NAT_SET_TIMEOUTS, nat_set_timeouts)                                   \
-_(NAT_GET_TIMEOUTS, nat_get_timeouts)                                   \
-_(NAT_SET_ADDR_AND_PORT_ALLOC_ALG, nat_set_addr_and_port_alloc_alg)     \
-_(NAT_GET_ADDR_AND_PORT_ALLOC_ALG, nat_get_addr_and_port_alloc_alg)     \
-_(NAT_SET_MSS_CLAMPING, nat_set_mss_clamping)                           \
-_(NAT_GET_MSS_CLAMPING, nat_get_mss_clamping)                           \
-_(NAT_HA_SET_LISTENER, nat_ha_set_listener)                             \
-_(NAT_HA_SET_FAILOVER, nat_ha_set_failover)                             \
-_(NAT_HA_GET_LISTENER, nat_ha_get_listener)                             \
-_(NAT_HA_GET_FAILOVER, nat_ha_get_failover)                             \
-_(NAT_HA_FLUSH, nat_ha_flush)                                           \
-_(NAT_HA_RESYNC, nat_ha_resync)                                         \
-_(NAT44_ADD_DEL_ADDRESS_RANGE, nat44_add_del_address_range)             \
-_(NAT44_INTERFACE_ADD_DEL_FEATURE, nat44_interface_add_del_feature)     \
-_(NAT44_ADD_DEL_STATIC_MAPPING, nat44_add_del_static_mapping)           \
-_(NAT44_ADD_DEL_STATIC_MAPPING_V2, nat44_add_del_static_mapping_v2)     \
-_(NAT44_ADD_DEL_IDENTITY_MAPPING, nat44_add_del_identity_mapping)       \
-_(NAT44_STATIC_MAPPING_DUMP, nat44_static_mapping_dump)                 \
-_(NAT44_IDENTITY_MAPPING_DUMP, nat44_identity_mapping_dump)             \
-_(NAT44_ADDRESS_DUMP, nat44_address_dump)                               \
-_(NAT44_INTERFACE_DUMP, nat44_interface_dump)                           \
-_(NAT44_ADD_DEL_INTERFACE_ADDR, nat44_add_del_interface_addr)           \
-_(NAT44_INTERFACE_ADDR_DUMP, nat44_interface_addr_dump)                 \
-_(NAT44_USER_DUMP, nat44_user_dump)                                     \
-_(NAT44_USER_SESSION_DUMP, nat44_user_session_dump)                     \
-_(NAT44_INTERFACE_ADD_DEL_OUTPUT_FEATURE,                               \
-  nat44_interface_add_del_output_feature)                               \
-_(NAT44_INTERFACE_OUTPUT_FEATURE_DUMP,                                  \
-  nat44_interface_output_feature_dump)                                  \
-_(NAT44_ADD_DEL_LB_STATIC_MAPPING, nat44_add_del_lb_static_mapping)     \
-_(NAT44_LB_STATIC_MAPPING_ADD_DEL_LOCAL,                                \
-  nat44_lb_static_mapping_add_del_local)                                \
-_(NAT44_LB_STATIC_MAPPING_DUMP, nat44_lb_static_mapping_dump)           \
-_(NAT44_DEL_SESSION, nat44_del_session)                                 \
-_(NAT44_FORWARDING_ENABLE_DISABLE, nat44_forwarding_enable_disable)     \
-_(NAT44_FORWARDING_IS_ENABLED, nat44_forwarding_is_enabled)
+/* API definitions */
+#include <vnet/format_fns.h>
+#include <nat/nat44.api.c>
 
 /* Set up the API message handling tables */
-static clib_error_t *
-snat_plugin_api_hookup (vlib_main_t * vm)
-{
-  snat_main_t *sm __attribute__ ((unused)) = &snat_main;
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
-                           #n,					\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_snat_plugin_api_msg;
-#undef _
-
-  return 0;
-}
-
-#define vl_msg_name_crc_list
-#include <nat/nat_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (snat_main_t * sm, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
-  foreach_vl_msg_name_crc_nat;
-#undef _
-}
-
-static void
-plugin_custom_dump_configure (snat_main_t * sm)
-{
-#define _(n,f) sm->api_main->msg_print_handlers \
-  [VL_API_##n + sm->msg_id_base]                \
-    = (void *) vl_api_##f##_t_print;
-  foreach_snat_plugin_api_msg;
-#undef _
-}
-
 clib_error_t *
-snat_api_init (vlib_main_t * vm, snat_main_t * sm)
+nat44_api_hookup (vlib_main_t * vm)
 {
-  u8 *name;
-  clib_error_t *error = 0;
-
-  name = format (0, "nat_%08x%c", api_version, 0);
-
-  /* Ask for a correctly-sized block of API message decode slots */
-  sm->msg_id_base =
-    vl_msg_api_get_msg_ids ((char *) name, VL_MSG_FIRST_AVAILABLE);
-
-  error = snat_plugin_api_hookup (vm);
-
-  /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (sm, sm->api_main);
-
-  plugin_custom_dump_configure (sm);
-
-  vec_free (name);
-
-  return error;
+  snat_main_t *sm = &snat_main;
+  sm->msg_id_base = setup_message_id_table ();
+  return 0;
 }
 
 /*

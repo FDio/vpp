@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -614,6 +614,9 @@ typedef struct snat_main_s
   u32 ed_hairpin_dst_node_index;
   u32 ed_hairpin_src_node_index;
 
+  nat44_config_t rconfig;
+  //nat44_config_t cconfig;
+
   /* If forwarding is enabled */
   u8 forwarding_enabled;
 
@@ -719,6 +722,9 @@ typedef struct snat_main_s
   api_main_t *api_main;
   ip4_main_t *ip4_main;
   ip_lookup_main_t *ip4_lookup_main;
+
+  fib_source_t fib_src_hi;
+  fib_source_t fib_src_low;
 
   /* nat44 plugin enabled */
   u8 enabled;
@@ -1242,7 +1248,7 @@ int nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
 					   nat_protocol_t proto, u32 vrf_id,
 					   u8 probability, u8 is_add);
 
-clib_error_t *snat_api_init (vlib_main_t * vm, snat_main_t * sm);
+clib_error_t *nat44_api_hookup (vlib_main_t * vm);
 
 /**
  * @brief Set NAT plugin workers
@@ -1346,16 +1352,6 @@ int nat44_set_session_limit (u32 session_limit, u32 vrf_id);
  * @return 0 on success, non-zero value otherwise
  */
 int nat44_update_session_limit (u32 session_limit, u32 vrf_id);
-/**
- * @brief Free NAT44 ED session data (lookup keys, external address port)
- *
- * @param s            NAT session
- * @param thread_index thread index
- * @param is_ha        is HA event
- */
-void
-nat44_free_session_data (snat_main_t * sm, snat_session_t * s,
-			 u32 thread_index, u8 is_ha);
 
 /**
  * @brief Initialize NAT44 data
@@ -1371,6 +1367,17 @@ void nat44_db_init (snat_main_per_thread_data_t * tsm);
  */
 void nat44_db_free (snat_main_per_thread_data_t * tsm);
 
+/**
+ * @brief Delete specific NAT44 EI user and his sessions
+ *
+ * @param addr         IPv4 address
+ * @param fib_index    FIB table index
+ */
+int nat44_ei_user_del (ip4_address_t * addr, u32 fib_index);
+
+/**
+ * @brief Free all NAT44 sessions
+ */
 void nat44_sessions_clear ();
 
 /**
@@ -1507,6 +1514,46 @@ int snat_static_mapping_match (snat_main_t * sm,
  */
 void snat_add_del_addr_to_fib (ip4_address_t * addr,
 			       u8 p_len, u32 sw_if_index, int is_add);
+
+void
+nat_ha_sadd_cb (ip4_address_t * in_addr, u16 in_port,
+		ip4_address_t * out_addr, u16 out_port,
+		ip4_address_t * eh_addr, u16 eh_port,
+		ip4_address_t * ehn_addr, u16 ehn_port, u8 proto,
+		u32 fib_index, u16 flags, u32 thread_index);
+
+void
+nat_ha_sdel_cb (ip4_address_t * out_addr, u16 out_port,
+		ip4_address_t * eh_addr, u16 eh_port, u8 proto, u32 fib_index,
+		u32 ti);
+
+void
+nat_ha_sref_cb (ip4_address_t * out_addr, u16 out_port,
+		ip4_address_t * eh_addr, u16 eh_port, u8 proto, u32 fib_index,
+		u32 total_pkts, u64 total_bytes, u32 thread_index);
+
+void
+nat_ha_sadd_ed_cb (ip4_address_t * in_addr, u16 in_port,
+		   ip4_address_t * out_addr, u16 out_port,
+		   ip4_address_t * eh_addr, u16 eh_port,
+		   ip4_address_t * ehn_addr, u16 ehn_port, u8 proto,
+		   u32 fib_index, u16 flags, u32 thread_index);
+
+void
+nat_ha_sdel_ed_cb (ip4_address_t * out_addr, u16 out_port,
+		   ip4_address_t * eh_addr, u16 eh_port, u8 proto,
+		   u32 fib_index, u32 ti);
+
+void
+nat_ha_sdel_ed_cb (ip4_address_t * out_addr, u16 out_port,
+		   ip4_address_t * eh_addr, u16 eh_port, u8 proto,
+		   u32 fib_index, u32 ti);
+
+void
+nat_ha_sref_ed_cb (ip4_address_t * out_addr, u16 out_port,
+		   ip4_address_t * eh_addr, u16 eh_port, u8 proto,
+		   u32 fib_index, u32 total_pkts, u64 total_bytes,
+		   u32 thread_index);
 
 /*
  * Why is this here? Because we don't need to touch this layer to

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -79,6 +79,7 @@ autoreply define nat44_plugin_enable_disable {
 */
 define nat_control_ping
 {
+  option deprecated;
   u32 client_index;
   u32 context;
 };
@@ -91,6 +92,7 @@ define nat_control_ping
 */
 define nat_control_ping_reply
 {
+  option deprecated;
   u32 context;
   i32 retval;
   u32 client_index;
@@ -213,6 +215,55 @@ define nat_show_config_2_reply
   u32 max_users_per_thread;
 };
 
+/** \brief Show NAT44 plugin running config
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_show_running_config
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Show NAT44 plugin running config reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param inside_vrf - default inside VRF id
+    @param outside_vrf - outside VRF id
+    @param users - maximum number of users per worker thread
+                  (NAT44_IS_ENDPOINT_INDEPENDENT)
+    @param sessions - maximum number of sessions per worker thread
+    @param user_sessions - maximum number of sessions per user
+                          (NAT44_IS_ENDPOINT_INDEPENDENT)
+    @param user_buckets - number of user hash buckets
+                         (NAT44_IS_ENDPOINT_INDEPENDENT)
+    @param translation_buckets - number of translation hash buckets
+    @param flags - flag NAT44_IS_ENDPOINT_INDEPENDENT,
+                        NAT44_IS_ENDPOINT_DEPENDENT,
+                        NAT44_IS_STATIC_MAPPING_ONLY,
+                        NAT44_IS_CONNECTION_TRACKING,
+                        NAT44_IS_OUT2IN_DPO
+*/
+define nat44_show_running_config_reply
+{
+  option in_progress;
+  u32 context;
+  i32 retval;
+
+  u32 inside_vrf;
+  u32 outside_vrf;
+
+  u32 users;
+  u32 sessions;
+  u32 user_sessions;
+
+  u32 user_buckets;
+  u32 translation_buckets;
+
+  vl_api_nat44_config_flags_t flags;
+};
+
 enum nat_log_level : u8
 {
   NAT_LOG_NONE = 0x00,
@@ -228,6 +279,7 @@ enum nat_log_level : u8
     @param context - sender context, to match reply w/ request
 */
 autoreply define nat44_session_cleanup {
+  option deprecated;
   u32 client_index;
   u32 context;
 };
@@ -754,7 +806,7 @@ autoreply define nat44_add_del_static_mapping {
     @param tag - opaque string tag
 */
 autoreply define nat44_add_del_static_mapping_v2 {
-  option status="in_progress";
+  option in_progress;
   u32 client_index;
   u32 context;
   bool is_add;
