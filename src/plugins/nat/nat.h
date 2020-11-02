@@ -1246,7 +1246,7 @@ int nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
 					   nat_protocol_t proto, u32 vrf_id,
 					   u8 probability, u8 is_add);
 
-clib_error_t *snat_api_init (vlib_main_t * vm, snat_main_t * sm);
+clib_error_t *nat44_api_hookup (vlib_main_t * vm);
 
 /**
  * @brief Set NAT plugin workers

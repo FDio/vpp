@@ -228,6 +228,7 @@ enum nat_log_level : u8
     @param context - sender context, to match reply w/ request
 */
 autoreply define nat44_session_cleanup {
+  option deprecated;
   u32 client_index;
   u32 context;
 };
@@ -754,7 +755,7 @@ autoreply define nat44_add_del_static_mapping {
     @param tag - opaque string tag
 */
 autoreply define nat44_add_del_static_mapping_v2 {
-  option status="in_progress";
+  option in_progress;
   u32 client_index;
   u32 context;
   bool is_add;

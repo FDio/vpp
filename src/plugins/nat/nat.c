@@ -2709,7 +2709,6 @@ static clib_error_t *
 nat_init (vlib_main_t * vm)
 {
   snat_main_t *sm = &snat_main;
-  clib_error_t *error = 0;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_thread_registration_t *tr;
   ip4_add_del_interface_address_callback_t cbi = { 0 };
@@ -2825,8 +2824,7 @@ nat_init (vlib_main_t * vm)
   nat_ha_init (vm, sm->num_workers, num_threads);
 
   test_key_calc_split ();
-  error = snat_api_init (vm, sm);
-  return error;
+  return nat44_api_hookup (vm);
 }
 
 VLIB_INIT_FUNCTION (nat_init);
