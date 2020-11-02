@@ -16,6 +16,24 @@
       "revId": "b8bc2f1ef3332a795880f11f1c45a77b1b7851f6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f474ad18_b0a5baf7",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1439,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2020-11-02T12:48:31Z",
+      "side": 1,
+      "message": "correct, they are constructed once and only read afterwards.\nIn this case rekey struct is freed anyway in the calling fn",
+      "parentUuid": "815e5f0b_b4a3943c",
+      "revId": "b8bc2f1ef3332a795880f11f1c45a77b1b7851f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
