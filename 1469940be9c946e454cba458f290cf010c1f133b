@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2e49f502_700483ae",
+        "filename": "src/plugins/ikev2/ikev2_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 268,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-02T12:21:26Z",
+      "side": 1,
+      "message": "this should return an error instead:\n  return clib_error_return (0, \"unknown input `%U\u0027\", format_unformat_error, input);",
+      "revId": "1469940be9c946e454cba458f290cf010c1f133b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9e5a380b_6f66b202",
+        "filename": "src/plugins/ikev2/ikev2_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 278,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-02T12:21:26Z",
+      "side": 1,
+      "message": "we should enforce either enable or disable here I think",
+      "revId": "1469940be9c946e454cba458f290cf010c1f133b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8211190a_f29a3247",
+        "filename": "src/plugins/ikev2/ikev2_priv.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 501,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-02T12:21:26Z",
+      "side": 1,
+      "message": "u8 should be enough",
+      "revId": "1469940be9c946e454cba458f290cf010c1f133b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
