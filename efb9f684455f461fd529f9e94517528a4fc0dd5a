@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eb1fa3ba_958785a1",
+        "filename": "src/plugins/rdma/rdma.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-11-02T13:02:24Z",
+      "side": 1,
+      "message": "Add an updated copy of L29-L38.",
+      "range": {
+        "startLine": 55,
+        "startChar": 0,
+        "endLine": 55,
+        "endChar": 6
+      },
+      "revId": "efb9f684455f461fd529f9e94517528a4fc0dd5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e600dbce_06ec96bc",
+        "filename": "src/plugins/rdma/rdma.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-11-02T13:02:24Z",
+      "side": 1,
+      "message": "Add a copy of L73-L77.",
+      "range": {
+        "startLine": 86,
+        "startChar": 0,
+        "endLine": 86,
+        "endChar": 6
+      },
+      "revId": "efb9f684455f461fd529f9e94517528a4fc0dd5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
