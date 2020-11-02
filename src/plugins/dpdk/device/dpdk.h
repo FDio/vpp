@@ -76,7 +76,7 @@ extern vlib_node_registration_t admin_up_down_process_node;
   _ ("net_fm10k", FM10K)          \
   _ ("net_cxgbe", CXGBE)          \
   _ ("net_mlx4", MLX4)            \
-  _ ("net_mlx5", MLX5)            \
+  _ ("mlx5_pci", MLX5)            \
   _ ("net_dpaa2", DPAA2)          \
   _ ("net_virtio_user", VIRTIO_USER) \
   _ ("net_vhost", VHOST_ETHER)    \
