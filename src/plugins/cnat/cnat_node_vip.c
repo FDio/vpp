@@ -65,11 +65,11 @@ format_cnat_translation_trace (u8 * s, va_list * args)
 }
 
 /* CNat sub for NAT behind a fib entry (VIP or interposed real IP) */
-always_inline uword
-cnat_vip_inline (vlib_main_t * vm,
-		 vlib_node_runtime_t * node,
-		 vlib_buffer_t * b,
-		 cnat_node_ctx_t * ctx, int rv, cnat_session_t * session)
+static uword
+cnat_vip_node_fn (vlib_main_t * vm,
+		  vlib_node_runtime_t * node,
+		  vlib_buffer_t * b,
+		  cnat_node_ctx_t * ctx, int rv, cnat_session_t * session)
 {
   vlib_combined_counter_main_t *cntm = &cnat_translation_counters;
   const cnat_translation_t *ct = NULL;
@@ -251,9 +251,9 @@ VLIB_NODE_FN (cnat_vip_ip4_node) (vlib_main_t * vm,
 				  vlib_frame_t * frame)
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
-    return cnat_node_inline (vm, node, frame, cnat_vip_inline, AF_IP4,
+    return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP4,
 			     1 /* do_trace */ );
-  return cnat_node_inline (vm, node, frame, cnat_vip_inline, AF_IP4,
+  return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP4,
 			   0 /* do_trace */ );
 }
 
@@ -262,9 +262,9 @@ VLIB_NODE_FN (cnat_vip_ip6_node) (vlib_main_t * vm,
 				  vlib_frame_t * frame)
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
-    return cnat_node_inline (vm, node, frame, cnat_vip_inline, AF_IP6,
+    return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP6,
 			     1 /* do_trace */ );
-  return cnat_node_inline (vm, node, frame, cnat_vip_inline, AF_IP6,
+  return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP6,
 			   0 /* do_trace */ );
 }
 
