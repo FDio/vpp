@@ -155,10 +155,11 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t * vm,
   u32 sq_mask = pow2_mask (txq->dv_sq_log2sz);
   u32 mask = pow2_mask (txq->bufs_log2sz);
   u32 dseg_mask = RDMA_TXQ_DV_DSEG_SZ (txq) - 1;
-  const u32 lkey = wqe[0].dseg.lkey;
+  const u32 lkey = clib_host_to_net_u32 (rd->lkey);
 
-  vlib_buffer_copy_indices (txq->bufs + (txq->tail & mask), bi,
-			    n_left_from - n);
+  vlib_buffer_copy_indices_to_ring (txq->bufs, bi, txq->tail & mask,
+				    RDMA_TXQ_BUF_SZ (txq), n_left_from - n);
+  bi += n_left_from - n;
 
   while (n >= 1 && wqe_n >= 1)
     {
@@ -264,10 +265,10 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t * vm,
       n -= 1;
     }
 
-  if (n == n_left_from)
-    return 0;			/* we fail to enqueue even a single packet */
+  if (n != n_left_from)
+    rdma_device_output_tx_mlx5_doorbell (txq, last, tail, sq_mask);
 
-  rdma_device_output_tx_mlx5_doorbell (txq, last, tail, sq_mask);
+  txq->tail = tail;
   return n_left_from - n;
 }
 
@@ -343,6 +344,9 @@ wrap_around:
     }
 
   rdma_device_output_tx_mlx5_doorbell (txq, &wqe[-1], tail, sq_mask);
+  vlib_buffer_copy_indices_to_ring (txq->bufs, bi, txq->tail & mask,
+				    RDMA_TXQ_BUF_SZ (txq), n_left_from);
+  txq->tail = tail;
   return n_left_from;
 }
 
@@ -389,6 +393,7 @@ rdma_device_output_tx_ibverb (vlib_main_t * vm,
 			      const rdma_device_t * rd, rdma_txq_t * txq,
 			      u32 n_left_from, u32 * bi, vlib_buffer_t ** b)
 {
+  const u32 mask = pow2_mask (txq->bufs_log2sz);
   struct ibv_send_wr wr[VLIB_FRAME_SIZE], *w = wr;
   struct ibv_sge sge[VLIB_FRAME_SIZE], *s = sge;
   u32 n = n_left_from;
@@ -474,7 +479,9 @@ rdma_device_output_tx_ibverb (vlib_main_t * vm,
 			n_left_from - (w - wr));
       n_left_from = w - wr;
     }
-
+  vlib_buffer_copy_indices_to_ring (txq->bufs, bi, txq->tail & mask,
+				    RDMA_TXQ_BUF_SZ (txq), n_left_from);
+  txq->tail += n_left_from;
   return n_left_from;
 }
 
@@ -498,7 +505,6 @@ rdma_device_output_tx_try (vlib_main_t * vm, const vlib_node_runtime_t * node,
 			   u32 n_left_from, u32 * bi, int is_mlx5dv)
 {
   vlib_buffer_t *b[VLIB_FRAME_SIZE];
-  const u32 mask = pow2_mask (txq->bufs_log2sz);
 
   /* do not enqueue more packet than ring space */
   n_left_from = clib_min (n_left_from, RDMA_TXQ_AVAIL_SZ (txq, txq->head,
@@ -510,12 +516,11 @@ rdma_device_output_tx_try (vlib_main_t * vm, const vlib_node_runtime_t * node,
   vlib_get_buffers (vm, bi, b, n_left_from);
 
   n_left_from = is_mlx5dv ?
-    rdma_device_output_tx_mlx5 (vm, node, rd, txq, n_left_from, bi, b) :
-    rdma_device_output_tx_ibverb (vm, node, rd, txq, n_left_from, bi, b);
-
-  vlib_buffer_copy_indices_to_ring (txq->bufs, bi, txq->tail & mask,
-				    RDMA_TXQ_BUF_SZ (txq), n_left_from);
-  txq->tail += n_left_from;
+    rdma_device_output_tx_mlx5 (vm, node, rd, txq, n_left_from, bi,
+				b) : rdma_device_output_tx_ibverb (vm, node,
+								   rd, txq,
+								   n_left_from,
+								   bi, b);
 
   return n_left_from;
 }
