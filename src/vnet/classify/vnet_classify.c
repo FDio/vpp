@@ -1850,7 +1850,13 @@ classify_filter_command_fn (vlib_main_t * vm,
     }
 
   if (is_add == 0)
-    return 0;
+    {
+      u8 *v = 0;
+      unformat_user (input, unformat_line, &v);
+      if (v != 0)
+	vlib_cli_output (vm, "ignored '%v'", v);
+      return 0;
+    }
 
   /* Remember the table */
   vec_add1 (set->table_indices, table_index);
