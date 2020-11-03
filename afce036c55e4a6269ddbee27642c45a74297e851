@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b709afe0_2fac53a7",
+        "filename": "src/plugins/nat/out2in_ed.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 615,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-11-03T17:50:49Z",
+      "side": 1,
+      "message": "If create_bypass_for_fwd_worker() returns 0, create_bypass_for_fwd() will be called here. But in the case where create_bypass_for_fwd_worker() returns 0, create_bypass_for_fwd() was already called in create_bypass_for_fwd_worker().\nIt seems like create_bypass_for_fwd_worker() should not call create_bypass_for_fwd(). Or the conditions on the if/else here should be changed. E.g. -\n\nif (sm-\u003enum_workers \u003e 1)\n  {\n    /* either session created for current thread, or we should handoff */\n    if (create_bypass_for_fwd_worker (sm, b, ip, rx_fib_index, thread_index))\n      next \u003d NAT_NEXT_OUT2IN_ED_HANDOFF;\n  }\nelse\n  {\n    create_bypass_for_fwd (sm, b, ip, rx_fib_index, thread_index);\n  }",
+      "revId": "afce036c55e4a6269ddbee27642c45a74297e851",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
