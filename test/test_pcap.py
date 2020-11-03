@@ -67,8 +67,7 @@ class TestPcap(VppTestCase):
                 "show cla t",
                 "pa en",
                 "pcap trace rx tx off",
-                "classify filter pcap del mask l3 ip4 src "
-                "match l3 ip4 src 11.22.33.44"]
+                "classify filter pcap del mask l3 ip4 src"]
 
         for cmd in cmds:
             r = self.vapi.cli_return_response(cmd)
