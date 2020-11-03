@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2f705ad2_24dc7a2c",
+        "filename": "src/vnet/classify/vnet_classify.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1702,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-11-03T23:16:36Z",
+      "side": 1,
+      "message": "Since you\u0027re working on this bit of code, how about \n\n unformat_input_t _line_input, *line_input \u003d \u0026_line_input;\n\n  /* Get a line of input. */\n  if (!unformat_user (input, unformat_line_input, line_input))\n    return 0;\n\n  \u003cparse args\u003e\n\n  unformat_free(line_input)\n\n\ninstead of the ignore hack below?",
+      "revId": "0590c0c44e0fd549ff7f6eba9fd6778c5603dc35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "50cbefd0_5c43eebb",
+        "filename": "src/vnet/classify/vnet_classify.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1854,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-11-03T23:16:36Z",
+      "side": 1,
+      "message": "See comment above",
+      "revId": "0590c0c44e0fd549ff7f6eba9fd6778c5603dc35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
