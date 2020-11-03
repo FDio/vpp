@@ -201,6 +201,15 @@ filter_accept (vlib_trace_main_t * tm, vlib_trace_header_t * h)
   if (tm->filter_flag == 0)
     return 1;
 
+  /*
+   * When capturing a post-mortem dispatch trace,
+   * toss all existing traces once per dispatch cycle.
+   * So we can trace 4 billion pkts without running out of
+   * memory...
+   */
+  if (tm->filter_flag == FILTER_FLAG_POST_MORTEM)
+    return 0;
+
   if (tm->filter_flag == FILTER_FLAG_INCLUDE)
     {
       while (h < e)

@@ -399,13 +399,13 @@ test_plugin_path_config (vlib_main_t * vm, unformat_input_t * input)
 VLIB_CONFIG_FUNCTION (test_plugin_path_config, "test_plugin_path");
 
 void vl_msg_api_post_mortem_dump (void);
-void elog_post_mortem_dump (void);
+void vlib_post_mortem_dump (void);
 
 void
 os_panic (void)
 {
   vl_msg_api_post_mortem_dump ();
-  elog_post_mortem_dump ();
+  vlib_post_mortem_dump ();
   abort ();
 }
 
@@ -428,7 +428,7 @@ os_exit (int code)
       recursion_block = 1;
 
       vl_msg_api_post_mortem_dump ();
-      elog_post_mortem_dump ();
+      vlib_post_mortem_dump ();
       vhost_user_unmap_all ();
       abort ();
     }

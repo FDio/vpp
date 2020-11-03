@@ -194,15 +194,13 @@ vlib_get_trace_count (vlib_main_t * vm, vlib_node_runtime_t * rt)
 {
   vlib_trace_main_t *tm = &vm->trace_main;
   vlib_trace_node_t *tn;
-  int n;
 
   if (rt->node_index >= vec_len (tm->nodes))
     return 0;
   tn = tm->nodes + rt->node_index;
-  n = tn->limit - tn->count;
-  ASSERT (n >= 0);
+  ASSERT (tn->count <= tn->limit);
 
-  return n;
+  return tn->limit - tn->count;
 }
 
 always_inline void

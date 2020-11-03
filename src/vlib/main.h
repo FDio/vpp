@@ -197,6 +197,7 @@ typedef struct vlib_main_t
   /* Pcap dispatch trace main */
   pcap_main_t dispatch_pcap_main;
   uword dispatch_pcap_enable;
+  uword dispatch_pcap_postmortem;
   u32 *dispatch_buffer_trace_nodes;
   u8 *pcap_buffer;
 
@@ -483,6 +484,7 @@ typedef struct
   u8 *filename;
   int enable;
   int status;
+  int post_mortem;
   u32 packets_to_capture;
   u32 buffer_trace_node_index;
   u32 buffer_traces_to_capture;
