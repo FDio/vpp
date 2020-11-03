@@ -634,7 +634,7 @@ format_transport_pacer (u8 * s, va_list * args)
   diff = now - pacer->last_update;
   s = format (s, "rate %lu bucket %lu t/p %.3f last_update %U idle %u",
 	      pacer->bytes_per_sec, pacer->bucket, pacer->tokens_per_period,
-	      format_clib_us_time, diff, pacer->idle_timeout_us);
+	      format_clib_us_time, diff, pacer->max_burst);
   return s;
 }
 
@@ -644,20 +644,13 @@ spacer_max_burst (spacer_t * pacer, clib_us_time_t time_now)
   u64 n_periods = (time_now - pacer->last_update);
   u64 inc;
 
-  if (PREDICT_FALSE (n_periods > pacer->idle_timeout_us))
-    {
-      pacer->last_update = time_now;
-      pacer->bucket = TRANSPORT_PACER_MIN_BURST;
-      return TRANSPORT_PACER_MIN_BURST;
-    }
-
   if ((inc = (f32) n_periods * pacer->tokens_per_period) > 10)
     {
       pacer->last_update = time_now;
-      pacer->bucket = clib_min (pacer->bucket + inc, pacer->bytes_per_sec);
+      pacer->bucket = clib_min (pacer->bucket + inc, pacer->max_burst);
     }
 
-  return clib_min (pacer->bucket, TRANSPORT_PACER_MAX_BURST);
+  return pacer->bucket > 0 ? pacer->max_burst : 0;
 }
 
 static inline void
@@ -674,8 +667,19 @@ spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
   ASSERT (rate_bytes_per_sec != 0);
   pacer->bytes_per_sec = rate_bytes_per_sec;
   pacer->tokens_per_period = rate_bytes_per_sec * CLIB_US_TIME_PERIOD;
-  pacer->idle_timeout_us = clib_max (rtt * TRANSPORT_PACER_IDLE_FACTOR,
-				     TRANSPORT_PACER_MIN_IDLE);
+
+//  pacer->max_burst = 10 * TRANSPORT_PACER_MIN_BURST;
+
+//  vlib_main_t *vm = vlib_get_main ();
+//  pacer->max_burst = (rate_bytes_per_sec * vm->seconds_per_loop) * 1.2;
+
+  clib_us_time_t max_time = clib_min (clib_max (rtt, 20) / 20, 1000);
+  pacer->max_burst = (rate_bytes_per_sec * max_time) * CLIB_US_TIME_PERIOD;
+
+//  pacer->max_burst = (rtt * rate_bytes_per_sec) / (20 * CLIB_US_TIME_FREQ);
+
+  pacer->max_burst = clib_max (pacer->max_burst, TRANSPORT_PACER_MIN_BURST);
+  pacer->max_burst = clib_min (pacer->max_burst, TRANSPORT_PACER_MAX_BURST);
 }
 
 static inline u64
