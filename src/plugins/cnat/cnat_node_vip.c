@@ -106,17 +106,15 @@ cnat_vip_node_fn (vlib_main_t * vm,
       goto trace;
     }
 
-  ct = cnat_find_translation (cc->parent_cci,
-			      clib_host_to_net_u16 (udp0->dst_port), iproto);
-
   if (!rv)
     {
       /* session table hit */
       cnat_timestamp_update (session->value.cs_ts_index, ctx->now);
 
-      if (NULL != ct)
+      if (INDEX_INVALID != session->value.cs_lbi)
 	{
 	  /* Translate & follow the translation given LB */
+	  ct = cnat_translation_get (session->value.ct_index);
 	  next0 = ct->ct_lb.dpoi_next_node;
 	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = session->value.cs_lbi;
 	}
@@ -135,6 +133,9 @@ cnat_vip_node_fn (vlib_main_t * vm,
     }
   else
     {
+      ct =
+	cnat_find_translation (cc->parent_cci,
+			       clib_host_to_net_u16 (udp0->dst_port), iproto);
       if (NULL == ct)
 	{
 	  /* Dont translate & Follow the fib programming */
@@ -192,7 +193,7 @@ cnat_vip_node_fn (vlib_main_t * vm,
       session->value.cs_port[VLIB_RX] =
 	clib_host_to_net_u16 (trk0->ct_ep[VLIB_RX].ce_port);
 
-      session->value.flags = 0;
+      session->value.ct_index = ct - cnat_translation_pool;
       session->value.cs_lbi = dpo0->dpoi_index;
 
       rv = cspm->vip_policy (vm, b, session, &rsession_flags, ct, ctx);

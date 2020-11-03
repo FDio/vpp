@@ -91,18 +91,36 @@ typedef struct cnat_session_t_
      * Timestamp index this session was last used
      */
     u32 cs_ts_index;
-    /**
-     * Indicates a return path session that was source NATed
-     * on the way in.
-     */
-    u32 flags;
+
+    union
+    {
+	/**
+	 * session flags if cs_lbi == INDEX_INVALID
+	 */
+      u32 flags;
+	/**
+	 * Persist translation->ct_lb.dpoi_next_node
+	 * when cs_lbi != INDEX_INVALID
+	 */
+      u32 ct_index;
+    };
   } value;
 } cnat_session_t;
 
 typedef enum cnat_session_flag_t_
 {
+  /**
+   * Indicates a return path session that was source NATed
+   * on the way in.
+   */
   CNAT_SESSION_FLAG_HAS_SNAT = (1 << 0),
+  /**
+   * This session source port was allocated, free it on cleanup
+   */
   CNAT_SESSION_FLAG_ALLOC_PORT = (1 << 1),
+  /**
+   * This session doesn't have a client, do not attempt to free it
+   */
   CNAT_SESSION_FLAG_NO_CLIENT = (1 << 2),
 } cnat_session_flag_t;
 
