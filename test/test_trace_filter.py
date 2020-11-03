@@ -71,7 +71,7 @@ class TestTracefilter(VppTestCase):
                 "      incrementing 286\n"
                 "     }\n"
                 "}\n",
-                "classify filter trace mask l3 ip4 src\n"
+                "classify filter trace mask l3 ip4 src"
                 " match l3 ip4 src 192.168.1.15",
                 "trace add pg-input 100 filter",
                 "pa en classifyme"]
@@ -84,8 +84,7 @@ class TestTracefilter(VppTestCase):
 
         # cleanup
         self.cli("pa de classifyme")
-        self.cli("classify filter trace del mask l3 ip4 src "
-                 "match l3 ip4 src 192.168.1.15")
+        self.cli("classify filter trace del mask l3 ip4 src")
 
     # install a classify rule, inject traffic and check for hits
     def assert_classify(self, mask, match, packets, n=None):
@@ -100,8 +99,8 @@ class TestTracefilter(VppTestCase):
         self.assert_hits(n if n is not None else len(packets))
         self.cli("clear trace")
         self.cli(
-            "classify filter trace del mask hex %s match hex %s" %
-            (mask, match))
+            "classify filter trace del mask hex %s" %
+            (mask))
 
     def test_encap(self):
         """ Packet Tracer Filter Test with encap """

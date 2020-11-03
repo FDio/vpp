@@ -1699,27 +1699,34 @@ classify_filter_command_fn (vlib_main_t * vm,
   int rv = 0;
   vnet_classify_filter_set_t *set = 0;
   u32 set_index = ~0;
+  clib_error_t *err = 0;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  unformat_input_t _line_input, *line_input = &_line_input;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "del"))
+      if (unformat (line_input, "del"))
 	is_add = 0;
-      else if (unformat (input, "pcap %=", &pcap, 1))
+      else if (unformat (line_input, "pcap %=", &pcap, 1))
 	sw_if_index = 0;
-      else if (unformat (input, "trace"))
+      else if (unformat (line_input, "trace"))
 	pkt_trace = 1;
-      else if (unformat (input, "%U",
+      else if (unformat (line_input, "%U",
 			 unformat_vnet_sw_interface, vnm, &sw_if_index))
 	{
 	  if (sw_if_index == 0)
 	    return clib_error_return (0, "Local interface not supported...");
 	}
-      else if (unformat (input, "buckets %d", &nbuckets))
+      else if (unformat (line_input, "buckets %d", &nbuckets))
 	;
-      else if (unformat (input, "mask %U", unformat_classify_mask,
+      else if (unformat (line_input, "mask %U", unformat_classify_mask,
 			 &mask, &skip, &match))
 	;
-      else if (unformat (input, "memory-size %U", unformat_memory_size,
+      else if (unformat (line_input, "memory-size %U", unformat_memory_size,
 			 &memory_size))
 	;
       else
@@ -1727,27 +1734,32 @@ classify_filter_command_fn (vlib_main_t * vm,
     }
 
   if (is_add && mask == 0 && table_index == ~0)
-    return clib_error_return (0, "Mask required");
+    err = clib_error_return (0, "Mask required");
 
-  if (is_add && skip == ~0 && table_index == ~0)
-    return clib_error_return (0, "skip count required");
+  else if (is_add && skip == ~0 && table_index == ~0)
+    err = clib_error_return (0, "skip count required");
 
-  if (is_add && match == ~0 && table_index == ~0)
-    return clib_error_return (0, "match count required");
+  else if (is_add && match == ~0 && table_index == ~0)
+    err = clib_error_return (0, "match count required");
 
-  if (sw_if_index == ~0 && pkt_trace == 0 && pcap == 0)
-    return clib_error_return (0, "Must specify trace, pcap or interface...");
+  else if (sw_if_index == ~0 && pkt_trace == 0 && pcap == 0)
+    err = clib_error_return (0, "Must specify trace, pcap or interface...");
 
-  if (pkt_trace && pcap)
-    return clib_error_return
+  else if (pkt_trace && pcap)
+    err = clib_error_return
       (0, "Packet trace and pcap are mutually exclusive...");
 
-  if (pkt_trace && sw_if_index != ~0)
-    return clib_error_return (0, "Packet trace filter is per-system");
+  else if (pkt_trace && sw_if_index != ~0)
+    err = clib_error_return (0, "Packet trace filter is per-system");
+
+  if (err)
+    {
+      unformat_free (line_input);
+      return err;
+    }
 
   if (!is_add)
     {
-
       if (pkt_trace)
 	set_index = vlib_global_main.trace_filter.trace_filter_set_index;
       else if (sw_if_index < vec_len (cm->filter_set_by_sw_if_index))
@@ -1756,14 +1768,16 @@ classify_filter_command_fn (vlib_main_t * vm,
       if (set_index == ~0)
 	{
 	  if (pkt_trace)
-	    return clib_error_return (0,
-				      "No pkt trace classify filter set...");
-	  if (sw_if_index == 0)
-	    return clib_error_return (0, "No pcap classify filter set...");
+	    err =
+	      clib_error_return (0, "No pkt trace classify filter set...");
+	  else if (sw_if_index == 0)
+	    err = clib_error_return (0, "No pcap classify filter set...");
 	  else
-	    return clib_error_return (0, "No classify filter set for %U...",
-				      format_vnet_sw_if_index_name, vnm,
-				      sw_if_index);
+	    err = clib_error_return (0, "No classify filter set for %U...",
+				     format_vnet_sw_if_index_name, vnm,
+				     sw_if_index);
+	  unformat_free (line_input);
+	  return err;
 	}
 
       set = pool_elt_at_index (cm->filter_sets, set_index);
@@ -1820,7 +1834,7 @@ classify_filter_command_fn (vlib_main_t * vm,
 	  if (t->match_n_vectors != match || t->skip_n_vectors != skip)
 	    continue;
 	  /* Masks aren't congruent, can't use this table */
-	  if (vec_len (t->mask) != vec_len (mask))
+	  if (vec_len (t->mask) * sizeof (u32x4) != vec_len (mask))
 	    continue;
 	  /* Masks aren't bit-for-bit identical, can't use this table */
 	  if (memcmp (t->mask, mask, vec_len (mask)))
@@ -1839,18 +1853,18 @@ classify_filter_command_fn (vlib_main_t * vm,
 				    is_add, del_chain);
   vec_free (mask);
 
-  switch (rv)
+  if (rv != 0)
     {
-    case 0:
-      break;
-
-    default:
+      unformat_free (line_input);
       return clib_error_return (0, "vnet_classify_add_del_table returned %d",
 				rv);
     }
 
   if (is_add == 0)
-    return 0;
+    {
+      unformat_free (line_input);
+      return 0;
+    }
 
   /* Remember the table */
   vec_add1 (set->table_indices, table_index);
@@ -1889,7 +1903,7 @@ classify_filter_command_fn (vlib_main_t * vm,
 found_table:
 
   /* Now try to parse a session */
-  if (unformat (input, "match %U", unformat_classify_match,
+  if (unformat (line_input, "match %U", unformat_classify_match,
 		cm, &match_vector, table_index) == 0)
     return 0;
 
