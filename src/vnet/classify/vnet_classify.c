@@ -227,7 +227,7 @@ static inline void make_working_copy
   (vnet_classify_table_t * t, vnet_classify_bucket_t * b)
 {
   vnet_classify_entry_t *v;
-  vnet_classify_bucket_t working_bucket __attribute__ ((aligned (8)));
+  vnet_classify_bucket_t working_bucket __attribute__((aligned (8)));
   void *oldheap;
   vnet_classify_entry_t *working_copy;
   u32 thread_index = vlib_get_thread_index ();
@@ -1850,7 +1850,13 @@ classify_filter_command_fn (vlib_main_t * vm,
     }
 
   if (is_add == 0)
-    return 0;
+    {
+      u8 *v = 0;
+      unformat_user (input, unformat_line, &v);
+      if (v != 0)
+	vlib_cli_output (vm, "ignored '%v'", v);
+      return 0;
+    }
 
   /* Remember the table */
   vec_add1 (set->table_indices, table_index);
@@ -2662,7 +2668,7 @@ vnet_classify_add_del_session (vnet_classify_main_t * cm,
 			       u8 action, u32 metadata, int is_add)
 {
   vnet_classify_table_t *t;
-  vnet_classify_entry_5_t _max_e __attribute__ ((aligned (16)));
+  vnet_classify_entry_5_t _max_e __attribute__((aligned (16)));
   vnet_classify_entry_t *e;
   int i, rv;
 
