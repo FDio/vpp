@@ -18,12 +18,14 @@
 #include <picotls/openssl.h>
 #include <picotls.h>
 
-#include "pico_vpp_crypto.h"
+#include <tlspicotls/pico_vpp_crypto.h>
+#include <tlspicotls/tls_picotls.h>
 
 typedef void (*ptls_vpp_do_transform_fn) (ptls_cipher_context_t *, void *,
 					  const void *, size_t);
 
 vnet_crypto_main_t *cm = &crypto_main;
+extern picotls_main_t picotls_main;
 
 struct cipher_context_t
 {
@@ -117,8 +119,10 @@ ptls_vpp_crypto_cipher_setup_crypto (ptls_cipher_context_t * _ctx, int is_enc,
       assert (0);
     }
 
+  clib_rwlock_writer_lock (&picotls_main.crypto_keys_rw_lock);
   ctx->key_index = vnet_crypto_key_add (vm, algo,
 					(u8 *) key, _ctx->algo->key_size);
+  clib_rwlock_writer_unlock (&picotls_main.crypto_keys_rw_lock);
 
   return 0;
 }
@@ -232,8 +236,10 @@ ptls_vpp_crypto_aead_setup_crypto (ptls_aead_context_t * _ctx, int is_enc,
 
   ctx->alg = alg;
 
+  clib_rwlock_writer_lock (&picotls_main.crypto_keys_rw_lock);
   ctx->op.key_index =
     vnet_crypto_key_add (vm, ctx->alg, (void *) key, key_len);
+  clib_rwlock_writer_unlock (&picotls_main.crypto_keys_rw_lock);
   ctx->chunk_index = 0;
 
   ctx->super.do_decrypt = ptls_vpp_crypto_aead_decrypt;
