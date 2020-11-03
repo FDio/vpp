@@ -1037,7 +1037,8 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       return SESSION_TX_NO_BUFFERS;
     }
 
-  transport_connection_update_tx_bytes (ctx->tc, ctx->max_len_to_snd);
+  if (transport_connection_is_tx_paced (ctx->tc))
+    transport_connection_tx_pacer_update_bytes (ctx->tc, ctx->max_len_to_snd);
 
   ctx->left_to_snd = ctx->max_len_to_snd;
   n_left = ctx->n_segs_per_evt;
