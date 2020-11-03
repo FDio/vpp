@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cd9862fa_4d730032",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-03T15:09:42Z",
+      "side": 1,
+      "message": "I wonder if we should not merge TX_CSUM and GSO flags into a single TX_OFFLOAD flag.\nThat way GSO (that we should probably rename TSO at this point...) becomes an offload as any other. Plus, we have the same issue for TSO: some hw can support TSO also with tunnel encaps (vxlan...). We\u0027ll need to split the flag to support it.",
+      "revId": "f0a0c425173d09bb1796a3dbe7828f7c5dde004c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
