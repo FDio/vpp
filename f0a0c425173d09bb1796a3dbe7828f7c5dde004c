@@ -16,6 +16,24 @@
       "revId": "f0a0c425173d09bb1796a3dbe7828f7c5dde004c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "500eb925_2c31fb36",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-03T15:52:46Z",
+      "side": 1,
+      "message": "This patch is only address the checksum offload. I\u0027ll surely change this flag, when we will add/update TSO/GSO offloads.",
+      "parentUuid": "cd9862fa_4d730032",
+      "revId": "f0a0c425173d09bb1796a3dbe7828f7c5dde004c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
