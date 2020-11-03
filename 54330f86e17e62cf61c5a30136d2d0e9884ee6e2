@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8efcc187_c2e70c14",
+        "filename": "src/plugins/tlspicotls/pico_vpp_crypto.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-11-03T21:39:23Z",
+      "side": 1,
+      "message": "This might avoid the issue temporarily but unfortunately the issue is the fact that the api is probably not thread safe. Moreover, others could be calling this from other threads. Would it be possible to rpc this to main? If not, I guess we could do this in the interim with a comment above that warns about the issue.",
+      "range": {
+        "startLine": 122,
+        "startChar": 2,
+        "endLine": 122,
+        "endChar": 25
+      },
+      "revId": "54330f86e17e62cf61c5a30136d2d0e9884ee6e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
