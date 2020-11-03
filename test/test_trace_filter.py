@@ -100,8 +100,8 @@ class TestTracefilter(VppTestCase):
         self.assert_hits(n if n is not None else len(packets))
         self.cli("clear trace")
         self.cli(
-            "classify filter trace del mask hex %s match hex %s" %
-            (mask, match))
+            "classify filter trace del mask hex %s" %
+            (mask))
 
     def test_encap(self):
         """ Packet Tracer Filter Test with encap """
