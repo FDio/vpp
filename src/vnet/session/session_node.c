@@ -946,7 +946,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     }
 
   next_index = smm->session_type_to_next[ctx->s->session_type];
-  max_burst = VLIB_FRAME_SIZE - *n_tx_packets;
+  max_burst = SESSION_NODE_FRAME_SIZE - *n_tx_packets;
 
   tp = session_get_transport_proto (ctx->s);
   ctx->transport_vft = transport_protocol_get_vft (tp);
@@ -1160,7 +1160,7 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
   /* Clear custom-tx flag used to request reschedule for tx */
   s->flags &= ~SESSION_F_CUSTOM_TX;
 
-  sp->max_burst_size = clib_min (VLIB_FRAME_SIZE - *n_tx_packets,
+  sp->max_burst_size = clib_min (SESSION_NODE_FRAME_SIZE - *n_tx_packets,
 				 TRANSPORT_PACER_MAX_BURST_PKTS);
 
   n_packets = transport_custom_tx (session_get_transport_proto (s), s, sp);
@@ -1455,7 +1455,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   old_ti = clib_llist_prev_index (old_he, evt_list);
 
   ei = clib_llist_next_index (new_he, evt_list);
-  while (ei != wrk->new_head && n_tx_packets < VLIB_FRAME_SIZE)
+  while (ei != wrk->new_head && n_tx_packets < SESSION_NODE_FRAME_SIZE)
     {
       elt = pool_elt_at_index (wrk->event_elts, ei);
       ei = clib_llist_next_index (elt, evt_list);
@@ -1474,7 +1474,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       old_he = pool_elt_at_index (wrk->event_elts, wrk->old_head);
       ei = clib_llist_next_index (old_he, evt_list);
 
-      while (n_tx_packets < VLIB_FRAME_SIZE)
+      while (n_tx_packets < SESSION_NODE_FRAME_SIZE)
 	{
 	  elt = pool_elt_at_index (wrk->event_elts, ei);
 	  next_ei = clib_llist_next_index (elt, evt_list);
