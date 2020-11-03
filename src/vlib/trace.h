@@ -91,6 +91,7 @@ typedef struct
 #define FILTER_FLAG_NONE    0
 #define FILTER_FLAG_INCLUDE 1
 #define FILTER_FLAG_EXCLUDE 2
+#define FILTER_FLAG_POST_MORTEM 3
   u32 filter_count;
 
   /* set on trace add, cleared on clear trace */
