@@ -332,6 +332,14 @@ extract_bits (uword x, int start, int count)
   _x < _y ? _x : _y;				\
 })
 
+#define clib_clamp(x,lo,hi)			\
+({						\
+  __typeof__ (x) _x = (x);			\
+  __typeof__ (lo) _lo = (lo);			\
+  __typeof__ (hi) _hi = (hi);			\
+  _x < _lo ? _lo : (_x > _hi ? _hi : _x);	\
+})
+
 #define clib_abs(x)				\
 ({						\
   __typeof__ (x) _x = (x);			\
