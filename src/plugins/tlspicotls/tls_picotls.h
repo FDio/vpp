@@ -45,6 +45,7 @@ typedef struct picotls_main_
 {
   picotls_ctx_t ***ctx_pool;
   picotls_listen_ctx_t *lctx_pool;
+  clib_rwlock_t crypto_keys_rw_lock;
 } picotls_main_t;
 
 #endif /* __included_quic_certs_h__ */

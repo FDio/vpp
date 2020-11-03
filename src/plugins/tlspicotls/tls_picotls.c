@@ -1,8 +1,8 @@
 #include <math.h>
 
-#include "certs.h"
-#include "tls_picotls.h"
-#include "pico_vpp_crypto.h"
+#include <tlspicotls/certs.h>
+#include <tlspicotls/tls_picotls.h>
+#include <tlspicotls/pico_vpp_crypto.h>
 
 picotls_main_t picotls_main;
 
@@ -573,6 +573,8 @@ tls_picotls_init (vlib_main_t * vm)
   num_threads = 1 + vtm->n_threads;
 
   vec_validate (pm->ctx_pool, num_threads - 1);
+
+  clib_rwlock_init (&picotls_main.crypto_keys_rw_lock);
 
   tls_register_engine (&picotls_engine, CRYPTO_ENGINE_PICOTLS);
 
