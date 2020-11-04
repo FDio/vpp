@@ -387,7 +387,7 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
   vsm->cfg.proto = VPPCOM_PROTO_TCP;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "6DLsw:p:")) != -1)
+  while ((c = getopt (argc, argv, "6DLsw:hp:")) != -1)
     switch (c)
       {
       case '6':
