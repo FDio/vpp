@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "895246c6_bc20f471",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-04T08:13:49Z",
+      "side": 1,
+      "message": "we should mark it as in progress for the time being I think",
+      "revId": "e2119549bc14204058f12aa5161887eb5920bf03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b0f64761_08264532",
+        "filename": "src/plugins/ikev2/ikev2_test.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-04T08:13:49Z",
+      "side": 1,
+      "message": "should be declared as static too",
+      "revId": "e2119549bc14204058f12aa5161887eb5920bf03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
