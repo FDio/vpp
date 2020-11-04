@@ -36,6 +36,24 @@
     },
     {
       "key": {
+        "uuid": "0514cbe2_d6c378ed",
+        "filename": "src/plugins/rdma/rdma.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-04T13:47:38Z",
+      "side": 1,
+      "message": "Fair, I am not strongly opinionated about that, but if we disable jumbo frames by default, we probably need to do so for striding rq as well, for better readability (it would be weird to have jumbo frames enabled for CX5 and above and disabled for CX4 by default). Also, I am not sure if having some interfaces with default jumbo frame support and others that need to be explicitly enabled is ideal...\nIt all boils down to: default for feature or for performance? imho, default for feature as performance will probably need tuning anyways...",
+      "parentUuid": "9ec145d4_51eee416",
+      "revId": "9325c16abc61d909cd676319283ab76b21e0ee59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "23b798ae_4f4c4a93",
         "filename": "src/plugins/rdma/unformat.c",
         "patchSetId": 5
@@ -47,6 +65,24 @@
       "writtenOn": "2020-11-04T13:33:24Z",
       "side": 1,
       "message": "why not use args-\u003emax_pktlen_override directly?",
+      "revId": "9325c16abc61d909cd676319283ab76b21e0ee59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "91b06faa_778faa84",
+        "filename": "src/plugins/rdma/unformat.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-04T13:47:38Z",
+      "side": 1,
+      "message": "max_pktlen_override is a u16 and unformat doesn\u0027t like u16 it seems.",
+      "parentUuid": "23b798ae_4f4c4a93",
       "revId": "9325c16abc61d909cd676319283ab76b21e0ee59",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
