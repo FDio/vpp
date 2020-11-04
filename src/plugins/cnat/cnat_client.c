@@ -20,10 +20,10 @@
 #include <cnat/cnat_translation.h>
 
 cnat_client_t *cnat_client_pool;
-
 cnat_client_db_t cnat_client_db;
-
 dpo_type_t cnat_client_dpo;
+fib_source_t cnat_fib_source;
+throttle_t cnat_throttle;
 
 static_always_inline u8
 cnat_client_is_clone (cnat_client_t * cc)
@@ -73,13 +73,11 @@ cnat_client_throttle_pool_process ()
   /* This processes ips stored in the throttle pool
      to update session refcounts
      and should be called before cnat_client_free_by_ip */
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  cnat_main_t *cm = &cnat_main;
   cnat_client_t *cc;
-  int nthreads;
   u32 *del_vec = NULL, *ai;
   ip_address_t *addr;
-  nthreads = tm->n_threads + 1;
-  for (int i = 0; i < nthreads; i++)
+  for (int i = 0; i < cm->n_threads; i++)
     {
       vec_reset_length (del_vec);
       clib_spinlock_lock (&cnat_client_db.throttle_pool_lock[i]);
@@ -241,13 +239,11 @@ cnat_client_dpo_interpose (const dpo_id_t * original,
 int
 cnat_client_purge (void)
 {
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  int nthreads;
-  nthreads = tm->n_threads + 1;
+  cnat_main_t *cm = &cnat_main;
   ASSERT (0 == hash_elts (cnat_client_db.crd_cip6));
   ASSERT (0 == hash_elts (cnat_client_db.crd_cip4));
   ASSERT (0 == pool_elts (cnat_client_pool));
-  for (int i = 0; i < nthreads; i++)
+  for (int i = 0; i < cm->n_threads; i++)
     {
       ASSERT (0 == pool_elts (cnat_client_db.throttle_pool[i]));
     }
@@ -300,14 +296,14 @@ cnat_client_show (vlib_main_t * vm,
 
   if (INDEX_INVALID == cci)
     {
+      vlib_cli_output (vm, "CNat clients %d elements",
+		       pool_elts (cnat_client_pool));
+
       /* *INDENT-OFF* */
       pool_foreach_index(cci, cnat_client_pool, ({
         vlib_cli_output(vm, "%U", format_cnat_client, cci, 0);
       }))
       /* *INDENT-ON* */
-
-      vlib_cli_output (vm, "%d clients", pool_elts (cnat_client_pool));
-      vlib_cli_output (vm, "%d timestamps", pool_elts (cnat_timestamps));
     }
   else
     {
@@ -388,9 +384,10 @@ const static dpo_vft_t cnat_client_dpo_vft = {
 static clib_error_t *
 cnat_client_init (vlib_main_t * vm)
 {
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  int nthreads = tm->n_threads + 1;
-  int i;
+  vlib_thread_main_t *tm = &vlib_thread_main;
+  cnat_main_t *cm = &cnat_main;
+  cm->n_threads = tm->n_threads + 1;
+
   cnat_client_dpo = dpo_register_new_type (&cnat_client_dpo_vft,
 					   cnat_client_dpo_nodes);
 
@@ -398,9 +395,14 @@ cnat_client_init (vlib_main_t * vm)
 					     sizeof (ip6_address_t),
 					     sizeof (uword));
 
-  vec_validate (cnat_client_db.throttle_pool, nthreads);
-  vec_validate (cnat_client_db.throttle_pool_lock, nthreads);
-  for (i = 0; i < nthreads; i++)
+  cnat_fib_source = fib_source_allocate ("cnat",
+					 CNAT_FIB_SOURCE_PRIORITY,
+					 FIB_SOURCE_BH_SIMPLE);
+
+  throttle_init (&cnat_throttle, tm->n_vlib_mains, 1e-3);
+  vec_validate (cnat_client_db.throttle_pool, cm->n_threads);
+  vec_validate (cnat_client_db.throttle_pool_lock, cm->n_threads);
+  for (int i = 0; i < cm->n_threads; i++)
     clib_spinlock_init (&cnat_client_db.throttle_pool_lock[i]);
 
   return (NULL);

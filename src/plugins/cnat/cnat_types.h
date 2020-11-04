@@ -124,9 +124,6 @@ typedef struct cnat_main_
   /* delay in seconds between two scans of session/clients tables */
   f64 scanner_timeout;
 
-  /* Lock for the timestamp pool */
-  clib_rwlock_t ts_lock;
-
   /* Ip4 Address to use for source NATing */
   cnat_endpoint_t snat_ip4;
 
@@ -144,6 +141,9 @@ typedef struct cnat_main_
 
   /* Enable or Disable the scanner on startup */
   u8 default_scanner_state;
+
+  /* Convenience vlib_thread_main->n_threads + 1 */
+  int n_threads;
 } cnat_main_t;
 
 typedef struct cnat_timestamp_t_
@@ -155,6 +155,23 @@ typedef struct cnat_timestamp_t_
   /* Users refcount, initially 3 (session, rsession, dpo) */
   u16 refcnt;
 } cnat_timestamp_t;
+
+/* Create the first pool with 1 << CNAT_TS_BASE_SIZE elts */
+#define CNAT_TS_BASE_SIZE (8)
+/* reserve the top CNAT_TS_MPOOL_BITS bits for finding the pool */
+#define CNAT_TS_MPOOL_BITS (6)
+
+typedef struct cnat_timestamp_mpool_t_
+{
+  /* Increasing fixed size pools of timestamps */
+  cnat_timestamp_t *ts_pools[1 << CNAT_TS_MPOOL_BITS];
+  /* Bitmap of pools with free space */
+  uword *ts_free;
+  /* Index of next pool to init */
+  u8 next_empty_pool_idx;
+  /* ts creation lock */
+  clib_spinlock_t ts_lock;
+} cnat_timestamp_mpool_t;
 
 typedef struct cnat_node_ctx_
 {
@@ -170,10 +187,8 @@ extern u8 *format_cnat_endpoint (u8 * s, va_list * args);
 extern uword unformat_cnat_ep_tuple (unformat_input_t * input,
 				     va_list * args);
 extern uword unformat_cnat_ep (unformat_input_t * input, va_list * args);
-extern cnat_timestamp_t *cnat_timestamps;
-extern fib_source_t cnat_fib_source;
+extern cnat_timestamp_mpool_t cnat_timestamps;
 extern cnat_main_t cnat_main;
-extern throttle_t cnat_throttle;
 
 extern char *cnat_error_strings[];
 
@@ -203,9 +218,13 @@ extern void cnat_lazy_init ();
 extern void cnat_enable_disable_scanner (cnat_scanner_cmd_t event_type);
 
 /**
- * Resolve endpoint address
+ * Resolve endpoint (Get interface first ip address from sw_if_index & af)
  */
 extern u8 cnat_resolve_ep (cnat_endpoint_t * ep);
+
+/**
+ * Get interface first ip address from sw_if_index & af
+ */
 extern u8 cnat_resolve_addr (u32 sw_if_index, ip_address_family_t af,
 			     ip_address_t * addr);
 
