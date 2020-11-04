@@ -118,12 +118,12 @@ void nat_ipfix_logging_nat44_ses_create (u32 thread_index, u32 src_ip,
                                           u32 nat_src_ip,
                                           nat_protocol_t nat_proto,
                                           u16 src_port, u16 nat_src_port,
-                                          u32 vrf_id);
+                                          u32 fib_index);
 void nat_ipfix_logging_nat44_ses_delete (u32 thread_index, u32 src_ip,
                                           u32 nat_src_ip,
                                           nat_protocol_t nat_proto,
                                           u16 src_port, u16 nat_src_port,
-                                          u32 vrf_id);
+                                          u32 fib_index);
 void nat_ipfix_logging_addresses_exhausted(u32 thread_index, u32 pool_id);
 void nat_ipfix_logging_max_entries_per_user(u32 thread_index,
                                              u32 limit, u32 src_ip);
