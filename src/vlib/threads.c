@@ -799,6 +799,7 @@ start_workers (vlib_main_t * vm)
 	      _vec_len (vm_clone->pending_rpc_requests) = 0;
 	      clib_memset (&vm_clone->random_buffer, 0,
 			   sizeof (vm_clone->random_buffer));
+         clib_random_buffer_init (&vm_clone->random_buffer, vlib_mains[0]->random_seed);
 	      clib_spinlock_init
 		(&vm_clone->worker_thread_main_loop_callback_lock);
 	      clib_callback_data_init
