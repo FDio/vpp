@@ -37,7 +37,7 @@ vnet_feature_register (vnet_feature_update_cb_t cb, void *data)
 }
 
 static void
-vent_feature_reg_invoke (u32 sw_if_index, u8 arc_index, u8 is_enable)
+vnet_feature_reg_invoke (u32 sw_if_index, u8 arc_index, u8 is_enable)
 {
   vnet_feature_upd_registration_t *reg;
 
@@ -293,7 +293,7 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   fm->sw_if_index_has_features[arc_index] =
     clib_bitmap_set (fm->sw_if_index_has_features[arc_index], sw_if_index,
 		     (feature_count > 0));
-  vent_feature_reg_invoke (sw_if_index, arc_index, (feature_count > 0));
+  vnet_feature_reg_invoke (sw_if_index, arc_index, (feature_count > 0));
 
   fm->feature_count_by_sw_if_index[arc_index][sw_if_index] = feature_count;
   return 0;
@@ -515,9 +515,7 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index, int verbose)
       vlib_cli_output (vm, "\n%s:", areg->arc_name);
       areg = areg->next;
 
-      if (NULL == cm[feature_arc].config_index_by_sw_if_index ||
-	  vec_len (cm[feature_arc].config_index_by_sw_if_index) <=
-	  sw_if_index)
+      if (!vnet_have_features (feature_arc, sw_if_index))
 	{
 	  vlib_cli_output (vm, "  none configured");
 	  continue;
@@ -525,17 +523,8 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index, int verbose)
 
       current_config_index =
 	vec_elt (cm[feature_arc].config_index_by_sw_if_index, sw_if_index);
-
-      if (current_config_index == ~0)
-	{
-	  vlib_cli_output (vm, "  none configured");
-	  continue;
-	}
-
-      ASSERT (current_config_index
-	      < vec_len (vcm->config_pool_index_by_user_index));
-
-      cfg_index = vcm->config_pool_index_by_user_index[current_config_index];
+      cfg_index =
+	vec_elt (vcm->config_pool_index_by_user_index, current_config_index);
       cfg = pool_elt_at_index (vcm->config_pool, cfg_index);
 
       for (i = 0; i < vec_len (cfg->features); i++)
@@ -661,6 +650,52 @@ VLIB_CLI_COMMAND (set_interface_feature_command, static) = {
   .function = set_interface_features_command_fn,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+vnet_feature_add_del_sw_interface (vnet_main_t * vnm, u32 sw_if_index,
+				   u32 is_add)
+{
+  vnet_feature_main_t *fm = &feature_main;
+  const vnet_feature_arc_registration_t *far;
+
+  if (is_add)
+    return 0;
+
+  /*
+   * remove all enabled features from an interface on deletion
+   */
+  for (far = fm->next_arc; far != 0; far = far->next)
+    {
+      const u8 arc_index = far->feature_arc_index;
+      vnet_feature_config_main_t *cm =
+	vec_elt_at_index (fm->feature_config_mains, arc_index);
+      const u32 ci =
+	vec_len (cm->config_index_by_sw_if_index) <=
+	sw_if_index ? ~0 : vec_elt (cm->config_index_by_sw_if_index,
+				    sw_if_index);
+
+      if (~0 == ci)
+	continue;
+
+      fm->sw_if_index_has_features[arc_index] =
+	clib_bitmap_set (fm->sw_if_index_has_features[arc_index], sw_if_index,
+			 0);
+
+      vnet_feature_reg_invoke (sw_if_index, arc_index, 0);
+
+      if (vec_len (fm->feature_count_by_sw_if_index[arc_index]) > sw_if_index)
+	vec_elt (fm->feature_count_by_sw_if_index[arc_index], sw_if_index) =
+	  0;
+
+      vec_elt (cm->config_index_by_sw_if_index, sw_if_index) = ~0;
+      vnet_config_del (&cm->config_main, ci);
+    }
+
+  return 0;
+}
+
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION_PRIO (vnet_feature_add_del_sw_interface,
+					 VNET_ITF_FUNC_PRIORITY_HIGH);
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -241,6 +241,14 @@ vnet_get_config_heap (vnet_config_main_t * cm, u32 ci)
   return heap_elt_at_index (cm->config_string_heap, ci);
 }
 
+void
+vnet_config_del (vnet_config_main_t * cm, u32 config_id)
+{
+  u32 *p = vnet_get_config_heap (cm, config_id);
+  vnet_config_t *old = pool_elt_at_index (cm->config_pool, p[-1]);
+  remove_reference (cm, old);
+}
+
 u32
 vnet_config_modify_end_node (vlib_main_t * vm,
 			     vnet_config_main_t * cm,
