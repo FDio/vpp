@@ -70,6 +70,30 @@
       "revId": "54330f86e17e62cf61c5a30136d2d0e9884ee6e2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0c979461_39fb6666",
+        "filename": "src/plugins/tlspicotls/pico_vpp_crypto.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 888
+      },
+      "writtenOn": "2020-11-04T02:29:08Z",
+      "side": 1,
+      "message": "Yes, the reason that I\u0027m not using rpc call is the concern of performance, this function is a callback of session accept which will be called frequently especially in CPS test. I think the best way should be make vent_crypto_key_add thread safe or provide a global lock in crypto module which could be used by all other modules?",
+      "parentUuid": "91a35b64_606f9e59",
+      "range": {
+        "startLine": 122,
+        "startChar": 2,
+        "endLine": 122,
+        "endChar": 25
+      },
+      "revId": "54330f86e17e62cf61c5a30136d2d0e9884ee6e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
