@@ -780,7 +780,7 @@ nat_ipfix_logging_max_entries_per_usr (u32 thread_index,
   vlib_main_t *vm = vlib_get_main ();
   u64 now;
   u8 nat_event = QUOTA_EXCEEDED;
-  u32 quota_event = MAX_ENTRIES_PER_USER;
+  u32 quota_event = clib_host_to_net_u32 (MAX_ENTRIES_PER_USER);
   u16 template_id;
 
   now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
@@ -835,6 +835,7 @@ nat_ipfix_logging_max_entries_per_usr (u32 thread_index,
       clib_memcpy_fast (b0->data + offset, &quota_event, sizeof (quota_event));
       offset += sizeof (quota_event);
 
+      limit = clib_host_to_net_u32 (limit);
       clib_memcpy_fast (b0->data + offset, &limit, sizeof (limit));
       offset += sizeof (limit);
 
@@ -871,7 +872,7 @@ nat_ipfix_logging_max_ses (u32 thread_index, u32 limit, int do_flush)
   vlib_main_t *vm = vlib_get_main ();
   u64 now;
   u8 nat_event = QUOTA_EXCEEDED;
-  u32 quota_event = MAX_SESSION_ENTRIES;
+  u32 quota_event = clib_host_to_net_u32 (MAX_SESSION_ENTRIES);
   u16 template_id;
 
   now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
@@ -926,6 +927,7 @@ nat_ipfix_logging_max_ses (u32 thread_index, u32 limit, int do_flush)
       clib_memcpy_fast (b0->data + offset, &quota_event, sizeof (quota_event));
       offset += sizeof (quota_event);
 
+      limit = clib_host_to_net_u32 (limit);
       clib_memcpy_fast (b0->data + offset, &limit, sizeof (limit));
       offset += sizeof (limit);
 
@@ -959,7 +961,7 @@ nat_ipfix_logging_max_bib (u32 thread_index, u32 limit, int do_flush)
   vlib_main_t *vm = vlib_get_main ();
   u64 now;
   u8 nat_event = QUOTA_EXCEEDED;
-  u32 quota_event = MAX_BIB_ENTRIES;
+  u32 quota_event = clib_host_to_net_u32 (MAX_BIB_ENTRIES);
   u16 template_id;
 
   now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
@@ -1014,6 +1016,7 @@ nat_ipfix_logging_max_bib (u32 thread_index, u32 limit, int do_flush)
       clib_memcpy_fast (b0->data + offset, &quota_event, sizeof (quota_event));
       offset += sizeof (quota_event);
 
+      limit = clib_host_to_net_u32 (limit);
       clib_memcpy_fast (b0->data + offset, &limit, sizeof (limit));
       offset += sizeof (limit);
 
