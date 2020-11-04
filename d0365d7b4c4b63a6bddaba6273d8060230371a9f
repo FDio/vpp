@@ -70,6 +70,24 @@
       "revId": "d0365d7b4c4b63a6bddaba6273d8060230371a9f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "49c75ca4_29cfe2ba",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1008,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2020-11-04T15:55:22Z",
+      "side": 1,
+      "message": "Hi Mohsin,\n\nPatchset 2 has the requested addition. Let me know if that\u0027s what you had in mind.\nThanks!\n\n-Matt",
+      "parentUuid": "d037443b_8dc8fee9",
+      "revId": "d0365d7b4c4b63a6bddaba6273d8060230371a9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
