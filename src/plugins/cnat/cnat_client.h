@@ -86,8 +86,6 @@ extern void cnat_client_free_by_ip (ip46_address_t * addr, u8 af);
 extern cnat_client_t *cnat_client_pool;
 extern dpo_type_t cnat_client_dpo;
 
-#define CC_INDEX_INVALID ((u32)(~0))
-
 static_always_inline cnat_client_t *
 cnat_client_get (index_t i)
 {
