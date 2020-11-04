@@ -14,6 +14,7 @@
  */
 
 #include <cnat/cnat_session.h>
+#include <vlibmemory/api.h>
 #include <cnat/cnat_client.h>
 
 static uword
