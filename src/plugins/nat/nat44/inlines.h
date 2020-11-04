@@ -42,28 +42,6 @@ nat44_ed_maximum_sessions_exceeded (snat_main_t * sm,
   return translations >= sm->max_translations_per_fib[fib_index];
 }
 
-static_always_inline snat_session_t *
-nat44_session_reuse_old (snat_main_t * sm, snat_user_t * u,
-			 snat_session_t * s, u32 thread_index, f64 now)
-{
-  nat44_free_session_data (sm, s, thread_index, 0);
-  if (snat_is_session_static (s))
-    u->nstaticsessions--;
-  else
-    u->nsessions--;
-  s->flags = 0;
-  s->total_bytes = 0;
-  s->total_pkts = 0;
-  s->state = 0;
-  s->ext_host_addr.as_u32 = 0;
-  s->ext_host_port = 0;
-  s->ext_host_nat_addr.as_u32 = 0;
-  s->ext_host_nat_port = 0;
-  s->tcp_closed_timestamp = 0;
-  s->ha_last_refreshed = now;
-  return s;
-}
-
 static_always_inline void
 nat44_user_del_sessions (snat_user_t * u, u32 thread_index)
 {
