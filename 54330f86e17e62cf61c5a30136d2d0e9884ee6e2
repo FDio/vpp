@@ -46,6 +46,30 @@
       "revId": "54330f86e17e62cf61c5a30136d2d0e9884ee6e2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "91a35b64_606f9e59",
+        "filename": "src/plugins/tlspicotls/pico_vpp_crypto.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-11-04T02:12:22Z",
+      "side": 1,
+      "message": "The RPC will take worker barrier and should therefore ensure thread safety. Any other place calling this api from workers, even with per component locks, is likely to crash as the components are probably using independent locks.\n\nAs far as I can tell the crypto functions are registered as callbacks during listen. Does this mean they get called when a new connection is accepted? If yes, rpc-ing from a worker to main to call the function and subsequently back to continue the accept seems rather slow and complicated ...\n\nI wonder if we could make vnet_crypto_key_add thread safe although I see consumers like wg put in the extra effort to avoid calling the function from workers.",
+      "parentUuid": "1e56d7f9_919a94fa",
+      "range": {
+        "startLine": 122,
+        "startChar": 2,
+        "endLine": 122,
+        "endChar": 25
+      },
+      "revId": "54330f86e17e62cf61c5a30136d2d0e9884ee6e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
