@@ -94,6 +94,30 @@
       "revId": "54330f86e17e62cf61c5a30136d2d0e9884ee6e2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ddb209cd_9906e315",
+        "filename": "src/plugins/tlspicotls/pico_vpp_crypto.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-11-04T02:57:43Z",
+      "side": 1,
+      "message": "Okay, let\u0027s merge this and ask Damjan if there\u0027s any reason why the api is not thread safe.",
+      "parentUuid": "0c979461_39fb6666",
+      "range": {
+        "startLine": 122,
+        "startChar": 2,
+        "endLine": 122,
+        "endChar": 25
+      },
+      "revId": "54330f86e17e62cf61c5a30136d2d0e9884ee6e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
