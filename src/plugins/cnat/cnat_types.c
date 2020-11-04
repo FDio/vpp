@@ -16,8 +16,7 @@
 #include <cnat/cnat_types.h>
 
 cnat_main_t cnat_main;
-fib_source_t cnat_fib_source;
-cnat_timestamp_t *cnat_timestamps;
+cnat_timestamp_mpool_t cnat_timestamps;
 
 char *cnat_error_strings[] = {
 #define cnat_error(n,s) s,
@@ -152,19 +151,6 @@ format_cnat_endpoint (u8 * s, va_list * args)
   return (s);
 }
 
-static clib_error_t *
-cnat_types_init (vlib_main_t * vm)
-{
-  cnat_fib_source = fib_source_allocate ("cnat",
-					 CNAT_FIB_SOURCE_PRIORITY,
-					 FIB_SOURCE_BH_SIMPLE);
-
-
-  clib_rwlock_init (&cnat_main.ts_lock);
-
-  return (NULL);
-}
-
 void
 cnat_enable_disable_scanner (cnat_scanner_cmd_t event_type)
 {
@@ -258,7 +244,6 @@ cnat_get_main ()
 }
 
 VLIB_EARLY_CONFIG_FUNCTION (cnat_config, "cnat");
-VLIB_INIT_FUNCTION (cnat_types_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -94,7 +94,8 @@ format_cnat_session (u8 * s, va_list * args)
   cnat_session_t *sess = va_arg (*args, cnat_session_t *);
   CLIB_UNUSED (int verbose) = va_arg (*args, int);
   f64 ts = 0;
-  if (!pool_is_free_index (cnat_timestamps, sess->value.cs_ts_index))
+
+  if (!cnat_ts_is_free_index (sess->value.cs_ts_index))
     ts = cnat_timestamp_exp (sess->value.cs_ts_index);
 
   s = format (
@@ -279,6 +280,12 @@ cnat_session_init (vlib_main_t * vm)
 			 cm->session_hash_memory);
   BV (clib_bihash_set_kvp_format_fn) (&cnat_session_db, format_cnat_session);
 
+  cnat_timestamps.next_empty_pool_idx = 0;
+  clib_bitmap_alloc (cnat_timestamps.ts_free, 1 << CNAT_TS_MPOOL_BITS);
+  clib_bitmap_set_region (cnat_timestamps.ts_free, 0, 1,
+			  1 << CNAT_TS_MPOOL_BITS);
+  clib_spinlock_init (&cnat_timestamps.ts_lock);
+
   return (NULL);
 }
 
@@ -289,21 +296,38 @@ cnat_timestamp_show (vlib_main_t * vm,
 		     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   cnat_timestamp_t *ts;
-  clib_rwlock_reader_lock (&cnat_main.ts_lock);
-  pool_foreach (ts, cnat_timestamps)
+  int ts_cnt = 0, cnt;
+  u8 verbose = 0;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      vlib_cli_output (vm, "[%d] last_seen:%f lifetime:%u ref:%u",
-		       ts - cnat_timestamps, ts->last_seen, ts->lifetime,
-		       ts->refcnt);
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	return (clib_error_return (0, "unknown input '%U'",
+				   format_unformat_error, input));
     }
-  clib_rwlock_reader_unlock (&cnat_main.ts_lock);
+
+  for (int i = 0; i < cnat_timestamps.next_empty_pool_idx; i++)
+    {
+      cnt = pool_elts (cnat_timestamps.ts_pools[i]);
+      ts_cnt += cnt;
+      vlib_cli_output (vm, "-- Pool %d [%d/%d]", i, cnt,
+		       pool_header (cnat_timestamps.ts_pools[i])->max_elts);
+      if (!verbose)
+	continue;
+      pool_foreach (ts, cnat_timestamps.ts_pools[i])
+	vlib_cli_output (vm, "[%d] last_seen:%f lifetime:%u ref:%u",
+			 ts - cnat_timestamps.ts_pools[i], ts->last_seen,
+			 ts->lifetime, ts->refcnt);
+    }
+  vlib_cli_output (vm, "Total timestamps %d", ts_cnt);
   return (NULL);
 }
 
 VLIB_CLI_COMMAND (cnat_timestamp_show_cmd, static) = {
   .path = "show cnat timestamp",
   .function = cnat_timestamp_show,
-  .short_help = "show cnat timestamp",
+  .short_help = "show cnat timestamp [verbose]",
   .is_mp_safe = 1,
 };
 
