@@ -20,10 +20,9 @@
 #include <cnat/cnat_translation.h>
 
 cnat_client_t *cnat_client_pool;
-
 cnat_client_db_t cnat_client_db;
-
 dpo_type_t cnat_client_dpo;
+fib_source_t cnat_fib_source;
 
 static_always_inline u8
 cnat_client_is_clone (cnat_client_t * cc)
@@ -302,7 +301,6 @@ cnat_client_show (vlib_main_t * vm,
         vlib_cli_output(vm, "%U", format_cnat_client, cci, 0);
 
       vlib_cli_output (vm, "%d clients", pool_elts (cnat_client_pool));
-      vlib_cli_output (vm, "%d timestamps", pool_elts (cnat_timestamps));
     }
   else
     {
@@ -388,6 +386,9 @@ cnat_client_init (vlib_main_t * vm)
 
   clib_bihash_init_16_8 (&cnat_client_db.cc_ip_id_hash, "CNat client DB",
 			 cm->client_hash_buckets, cm->client_hash_memory);
+
+  cnat_fib_source = fib_source_allocate ("cnat", CNAT_FIB_SOURCE_PRIORITY,
+					 FIB_SOURCE_BH_SIMPLE);
 
   clib_spinlock_init (&cnat_client_db.throttle_lock);
   cnat_client_db.throttle_mem =
