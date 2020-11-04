@@ -623,9 +623,9 @@ class MethodHolder(VppTestCase):
         # natEvent
         self.assertEqual(scapy.compat.orb(record[230]), 13)
         # natQuotaExceededEvent
-        self.assertEqual(struct.pack("I", 1), record[466])
+        self.assertEqual(struct.pack("!I", 1), record[466])
         # maxSessionEntries
-        self.assertEqual(struct.pack("I", limit), record[471])
+        self.assertEqual(struct.pack("!I", limit), record[471])
 
     def verify_no_nat44_user(self):
         """ Verify that there is no NAT44EI user """
