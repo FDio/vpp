@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ee962dad_945234a9",
+        "filename": "src/vnet/feature/feature.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 518,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-11-04T18:15:17Z",
+      "side": 1,
+      "message": "This looks like a typo. I suspect that you meant \"if (!vnet_have_features(...))\"...",
+      "revId": "0bf805b95e3781f8ed30bcd4968431e81702d7e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
