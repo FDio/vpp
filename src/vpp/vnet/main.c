@@ -102,25 +102,9 @@ vpe_main_init (vlib_main_t * vm)
  */
 char *vlib_default_runtime_dir = "vpp";
 
-int
-main (int argc, char *argv[])
+static void
+cpu_check (void)
 {
-  int i;
-  vlib_main_t *vm = &vlib_global_main;
-  void vl_msg_api_set_first_available_msg_id (u16);
-  uword main_heap_size = (1ULL << 30);
-  u8 *sizep;
-  u32 size;
-  clib_mem_page_sz_t main_heap_log2_page_sz = CLIB_MEM_PAGE_SZ_DEFAULT;
-  unformat_input_t input, sub_input;
-  u8 *s = 0, *v = 0;
-  int main_core = 1;
-  cpu_set_t cpuset;
-  void *early_heap, *main_heap;
-
-  /* temporary heap */
-  early_heap = clib_mem_init_early ();
-
 #if __x86_64__
   CLIB_UNUSED (const char *msg)
     = "ERROR: This binary requires CPU with %s extensions.\n";
@@ -151,136 +135,129 @@ main (int argc, char *argv[])
 #endif
 #undef _
 #endif
-    /*
-     * Load startup config from file.
-     * usage: vpp -c /etc/vpp/startup.conf
-     */
-    if ((argc == 3) && !strncmp (argv[1], "-c", 2))
+}
+
+static void
+startup_conf_load (int *argc, char ***argv)
+{
+  FILE *fp;
+  char inbuf[4096];
+  int argc_ = 1;
+  char **argv_ = NULL;
+  char *arg = NULL;
+  char *p;
+
+  fp = fopen ((*argv)[2], "r");
+  if (fp == NULL)
     {
-      FILE *fp;
-      char inbuf[4096];
-      int argc_ = 1;
-      char **argv_ = NULL;
-      char *arg = NULL;
-      char *p;
-
-      fp = fopen (argv[2], "r");
-      if (fp == NULL)
-	{
-	  fprintf (stderr, "open configuration file '%s' failed\n", argv[2]);
-	  return 1;
-	}
-      argv_ = calloc (1, sizeof (char *));
-      if (argv_ == NULL)
-	{
-	  fclose (fp);
-	  return 1;
-	}
-      arg = strndup (argv[0], 1024);
-      if (arg == NULL)
-	{
-	  fclose (fp);
-	  free (argv_);
-	  return 1;
-	}
-      argv_[0] = arg;
-
-      while (1)
-	{
-	  if (fgets (inbuf, 4096, fp) == 0)
-	    break;
-	  p = strtok (inbuf, " \t\n");
-	  while (p != NULL)
-	    {
-	      if (*p == '#')
-		break;
-	      argc_++;
-	      char **tmp = realloc (argv_, argc_ * sizeof (char *));
-	      if (tmp == NULL)
-		return 1;
-	      argv_ = tmp;
-	      arg = strndup (p, 1024);
-	      if (arg == NULL)
-		return 1;
-	      argv_[argc_ - 1] = arg;
-	      p = strtok (NULL, " \t\n");
-	    }
-	}
-
-      fclose (fp);
-
-      char **tmp = realloc (argv_, (argc_ + 1) * sizeof (char *));
-      if (tmp == NULL)
-	return 1;
-      argv_ = tmp;
-      argv_[argc_] = NULL;
-
-      argc = argc_;
-      argv = argv_;
+      fprintf (stderr, "open configuration file '%s' failed\n", (*argv)[2]);
+      exit (1);
     }
+
+  argv_ = calloc (1, sizeof (char *));
+  if (argv_ == NULL)
+    {
+      fclose (fp);
+      exit (1);
+    }
+
+  arg = strndup ((*argv)[0], 1024);
+  if (arg == NULL)
+    {
+      fclose (fp);
+      free (argv_);
+      exit (1);
+    }
+  argv_[0] = arg;
+
+  while (1)
+    {
+      if (fgets (inbuf, 4096, fp) == 0)
+	break;
+      p = strtok (inbuf, " \t\n");
+      while (p != NULL)
+	{
+	  if (*p == '#')
+	    break;
+	  argc_++;
+	  char **tmp = realloc (argv_, argc_ * sizeof (char *));
+	  if (tmp == NULL)
+	    exit (1);
+	  argv_ = tmp;
+	  arg = strndup (p, 1024);
+	  if (arg == NULL)
+	    exit (1);
+	  argv_[argc_ - 1] = arg;
+	  p = strtok (NULL, " \t\n");
+	}
+    }
+
+  fclose (fp);
+
+  char **tmp = realloc (argv_, (argc_ + 1) * sizeof (char *));
+  if (tmp == NULL)
+    exit (1);
+  argv_ = tmp;
+  argv_[argc_] = NULL;
+
+  *argc = argc_;
+  *argv = argv_;
+}
+
+int
+main (int argc, char *argv[])
+{
+  vlib_main_t *vm = &vlib_global_main;
+  void vl_msg_api_set_first_available_msg_id (u16);
+  uword main_heap_size = (1ULL << 30);
+  clib_mem_page_sz_t main_heap_log2_page_sz = CLIB_MEM_PAGE_SZ_DEFAULT;
+  unformat_input_t input, sub_input;
+  u8 *s = 0, *v = 0;
+  int main_core = 1;
+  cpu_set_t cpuset;
+  void *early_heap, *main_heap;
+
+  /* temporary heap */
+  early_heap = clib_mem_init_early ();
+
+  cpu_check ();
 
   /*
-   * Look for and parse the "heapsize" config parameter.
-   * Manual since none of the clib infra has been bootstrapped yet.
-   *
-   * Format: heapsize <nn>[mM][gG]
+   * Load startup config from file.
+   * usage: vpp -c /etc/vpp/startup.conf
    */
-
-  for (i = 1; i < (argc - 1); i++)
-    {
-      if (!strncmp (argv[i], "plugin_path", 11))
-	{
-	  if (i < (argc - 1))
-	    vlib_plugin_path = argv[++i];
-	}
-      if (!strncmp (argv[i], "test_plugin_path", 16))
-	{
-	  if (i < (argc - 1))
-	    vat_plugin_path = argv[++i];
-	}
-      else if (!strncmp (argv[i], "heapsize", 8))
-	{
-	  sizep = (u8 *) argv[i + 1];
-	  size = 0;
-	  while (*sizep >= '0' && *sizep <= '9')
-	    {
-	      size *= 10;
-	      size += *sizep++ - '0';
-	    }
-	  if (size == 0)
-	    {
-	      fprintf
-		(stderr,
-		 "warning: heapsize parse error '%s', use default %lld\n",
-		 argv[i], (long long int) main_heap_size);
-	      goto defaulted;
-	    }
-
-	  main_heap_size = size;
-
-	  if (*sizep == 'g' || *sizep == 'G')
-	    main_heap_size <<= 30;
-	  else if (*sizep == 'm' || *sizep == 'M')
-	    main_heap_size <<= 20;
-	}
-      else if (!strncmp (argv[i], "main-core", 9))
-	{
-	  if (i < (argc - 1))
-	    {
-	      errno = 0;
-	      unsigned long x = strtol (argv[++i], 0, 0);
-	      if (errno == 0)
-		main_core = x;
-	    }
-	}
-    }
-defaulted:
+  if ((argc == 3) && !strncmp (argv[1], "-c", 2))
+    startup_conf_load (&argc, &argv);
 
   unformat_init_command_line (&input, (char **) argv);
 
   while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (&input, "memory %v", &v))
+      if (unformat (&input, "plugin_path %s", &vlib_plugin_path))
+	;
+      else if (unformat (&input, "test_plugin_path %s", &vat_plugin_path))
+	;
+      else
+	if (unformat
+	    (&input, "heapsize %U", unformat_memory_size, &main_heap_size))
+	;
+      else if (unformat (&input, "cpu %v", &v))
+	{
+	  unformat_init_vector (&sub_input, v);
+	  v = 0;
+	  while (unformat_check_input (&sub_input) != UNFORMAT_END_OF_INPUT)
+	    {
+	      if (unformat (&sub_input, "main-core %d", &main_core))
+		break;
+	      else if (!unformat (&sub_input, "%s %v", &s, &v))
+		break;
+
+	      vec_reset_length (s);
+	      vec_reset_length (v);
+	    }
+	  unformat_free (&sub_input);
+	}
+      else if (unformat (&input, "memory %v", &v))
 	{
 	  unformat_init_vector (&sub_input, v);
 	  v = 0;
@@ -299,7 +276,6 @@ defaulted:
 			   format_unformat_error, &sub_input);
 		  exit (1);
 		}
-
 	    }
 	  unformat_free (&sub_input);
 	}
@@ -314,38 +290,34 @@ defaulted:
 
   unformat_free (&input);
 
+  /* destroy temporary heap and create main one */
+  main_heap =
+    clib_mem_init_with_page_size (main_heap_size, main_heap_log2_page_sz);
+  if (!main_heap)
+    {
+      fprintf (stderr, "Main heap allocation failure!\n");
+      exit (1);
+    }
+
+  clib_mem_destroy_early (early_heap);
+
   /* set process affinity for main thread */
   CPU_ZERO (&cpuset);
   CPU_SET (main_core, &cpuset);
   pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
 
+  /* Figure out which numa runs the main thread */
+  __os_numa_index = clib_get_current_numa_node ();
+
+  /* and use the main heap as that numa's numa heap */
+  clib_mem_set_per_numa_heap (main_heap);
+
   /* Set up the plugin message ID allocator right now... */
   vl_msg_api_set_first_available_msg_id (VL_MSG_FIRST_AVAILABLE);
 
-  /* destroy temporary heap and create main one */
-  if ((main_heap = clib_mem_init_with_page_size (main_heap_size,
-						 main_heap_log2_page_sz)))
-    {
-      clib_mem_destroy_early (early_heap);
-
-      /* Figure out which numa runs the main thread */
-      __os_numa_index = clib_get_current_numa_node ();
-
-      /* and use the main heap as that numa's numa heap */
-      clib_mem_set_per_numa_heap (main_heap);
-
-      vm->init_functions_called = hash_create (0, /* value bytes */ 0);
-      vpe_main_init (vm);
-      return vlib_unix_main (argc, argv);
-    }
-  else
-    {
-      {
-	int rv __attribute__ ((unused)) =
-	  write (2, "Main heap allocation failure!\r\n", 31);
-      }
-      return 1;
-    }
+  vm->init_functions_called = hash_create (0, /* value bytes */ 0);
+  vpe_main_init (vm);
+  return vlib_unix_main (argc, argv);
 }
 
 static clib_error_t *
