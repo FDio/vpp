@@ -120,7 +120,6 @@ ct_session_connect_notify (session_t * ss)
   cs = session_alloc (thread_index);
   ss = session_get (ss_index, thread_index);
   cs->session_type = ss->session_type;
-  cs->connection_index = sct->c_c_index;
   cs->listener_handle = SESSION_INVALID_HANDLE;
   cs->session_state = SESSION_STATE_CONNECTING;
   cs->app_wrk_index = client_wrk->wrk_index;
@@ -211,6 +210,8 @@ ct_init_accepted_session (app_worker_t * server_wrk,
   sm_index = segment_manager_index (sm);
   ls->rx_fifo->master_session_index = ls->session_index;
   ls->tx_fifo->master_session_index = ls->session_index;
+  ls->rx_fifo->master_thread_index = ls->thread_index;
+  ls->tx_fifo->master_thread_index = ls->thread_index;
   ls->rx_fifo->segment_manager = sm_index;
   ls->tx_fifo->segment_manager = sm_index;
   ls->rx_fifo->segment_index = seg_index;
