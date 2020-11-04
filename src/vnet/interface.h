@@ -179,6 +179,8 @@ static __clib_unused void * __clib_unused_##f = f;
   _VNET_INTERFACE_FUNCTION_DECL(f,sw_interface_mtu_change)
 #define VNET_SW_INTERFACE_ADD_DEL_FUNCTION(f)			\
   _VNET_INTERFACE_FUNCTION_DECL(f,sw_interface_add_del)
+#define VNET_SW_INTERFACE_ADD_DEL_FUNCTION_PRIO(f,p)		\
+  _VNET_INTERFACE_FUNCTION_DECL_PRIO(f,sw_interface_add_del,p)
 #define VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION(f)		\
   _VNET_INTERFACE_FUNCTION_DECL(f,sw_interface_admin_up_down)
 #define VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION_PRIO(f,p)     	\
