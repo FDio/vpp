@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+#include <vnet/fib/fib_table.h>
 #include <vnet/ipfix-export/flow_report.h>
 #include <vnet/ip/ip4.h>
 #include <vnet/udp/udp_local.h>
@@ -577,7 +578,7 @@ nat_ipfix_send (u32 thread_index, flow_report_main_t * frm,
 static void
 nat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
                               u32 nat_src_ip, nat_protocol_t nat_proto,
-                              u16 src_port, u16 nat_src_port, u32 vrf_id,
+                              u16 src_port, u16 nat_src_port, u32 fib_index,
                               int do_flush)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
@@ -591,6 +592,7 @@ nat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
   u64 now;
   u8 proto;
   u16 template_id;
+  u32 vrf_id;
 
   proto = nat_proto_to_ip_proto (nat_proto);
 
@@ -658,6 +660,7 @@ nat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
       clib_memcpy_fast (b0->data + offset, &nat_src_port, sizeof (nat_src_port));
       offset += sizeof (nat_src_port);
 
+      vrf_id = fib_table_get_table_id (fib_index, FIB_PROTOCOL_IP4);
       vrf_id = clib_host_to_net_u32 (vrf_id);
       clib_memcpy_fast (b0->data + offset, &vrf_id, sizeof (vrf_id));
       offset += sizeof (vrf_id);
@@ -1316,13 +1319,13 @@ nat_ipfix_logging_nat44_ses_create (u32 thread_index,
 				     u32 nat_src_ip,
 				     nat_protocol_t nat_proto,
 				     u16 src_port,
-				     u16 nat_src_port, u32 vrf_id)
+				     u16 nat_src_port, u32 fib_index)
 {
   skip_if_disabled ();
 
   nat_ipfix_logging_nat44_ses (thread_index, NAT44_SESSION_CREATE, src_ip,
                                 nat_src_ip, nat_proto, src_port, nat_src_port,
-				vrf_id, 0);
+				fib_index, 0);
 }
 
 /**
@@ -1342,13 +1345,13 @@ nat_ipfix_logging_nat44_ses_delete (u32 thread_index,
 				     u32 nat_src_ip,
 				     nat_protocol_t nat_proto,
 				     u16 src_port,
-				     u16 nat_src_port, u32 vrf_id)
+				     u16 nat_src_port, u32 fib_index)
 {
   skip_if_disabled ();
 
   nat_ipfix_logging_nat44_ses (thread_index, NAT44_SESSION_DELETE, src_ip,
                                 nat_src_ip, nat_proto, src_port, nat_src_port,
-				vrf_id, 0);
+				fib_index, 0);
 }
 
 /**
