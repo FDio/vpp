@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "03db5b8c_28181aad",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-04T13:14:05Z",
+      "side": 1,
+      "message": "maybe we can rewrite this as this instead:\n  if (n !\u003d n_left_from)\n    rdma_device_output_tx_mlx5_doorbell (txq, last, tail, sq_mask);\n  *new_tail \u003d tail;\n  return n_left_from - n;",
+      "revId": "2029c2f3af36036f44e589e560e0606c78ad1289",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "53e6ae83_dd84e0bd",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 534,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-04T13:14:05Z",
+      "side": 1,
+      "message": "can we update new_tail in rdma_device_output_tx_ibverb() instead? That way this line becomes unnecessary both dv and ibv functions are more symmetric",
+      "revId": "2029c2f3af36036f44e589e560e0606c78ad1289",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
