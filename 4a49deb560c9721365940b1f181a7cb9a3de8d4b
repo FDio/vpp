@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "12372d25_a39f5eed",
+        "filename": "src/vppinfra/mem_dlmalloc.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-11-04T18:06:26Z",
+      "side": 1,
+      "message": "Why do this work with mheap_trace_main locked?",
+      "revId": "4a49deb560c9721365940b1f181a7cb9a3de8d4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
