@@ -855,17 +855,8 @@ static clib_error_t *
 vnet_arp_add_del_sw_interface (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 {
   ethernet_arp_main_t *am = &ethernet_arp_main;
-
-  if (!is_add && sw_if_index != ~0)
-    {
-      arp_disable (am, sw_if_index);
-    }
-  else if (is_add)
-    {
-      vnet_feature_enable_disable ("arp", "arp-disabled",
-				   sw_if_index, 1, NULL, 0);
-    }
-
+  if (is_add)
+    arp_disable (am, sw_if_index);
   return (NULL);
 }
 

@@ -147,6 +147,8 @@ void vnet_config_init (vlib_main_t * vm,
 		       int n_start_node_names,
 		       char *feature_node_names[], int n_feature_node_names);
 
+void vnet_config_del (vnet_config_main_t * cm, u32 config_id);
+
 /* Calls to add/delete features from configurations. */
 u32 vnet_config_add_feature (vlib_main_t * vm,
 			     vnet_config_main_t * cm,
