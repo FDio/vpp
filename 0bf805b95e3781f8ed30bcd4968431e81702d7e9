@@ -16,6 +16,24 @@
       "revId": "0bf805b95e3781f8ed30bcd4968431e81702d7e9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "79207ede_a5cab9ae",
+        "filename": "src/vnet/feature/feature.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 518,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-05T12:42:57Z",
+      "side": 1,
+      "message": "good catch, thanks!",
+      "parentUuid": "ee962dad_945234a9",
+      "revId": "0bf805b95e3781f8ed30bcd4968431e81702d7e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
