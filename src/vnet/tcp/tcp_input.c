@@ -1298,6 +1298,10 @@ tcp_segment_rcv (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   ASSERT (n_data_bytes);
   tc->data_segs_in += 1;
 
+  /* Make sure we don't consume trailing bytes */
+  if (PREDICT_FALSE (b->current_length != n_data_bytes))
+    b->current_length = n_data_bytes;
+
   /* Handle out-of-order data */
   if (PREDICT_FALSE (vnet_buffer (b)->tcp.seq_number != tc->rcv_nxt))
     {
