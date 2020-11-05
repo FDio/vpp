@@ -4200,28 +4200,7 @@ void* mspace_get_aligned (mspace msp,
    * the base of the dlmalloc object
    */
   n_user_data_bytes += sizeof(unsigned);
-
-  /*
-   * Alignment requests less than the size of an mmx vector are ignored
-   */
-  if (align < sizeof (uword)) {
-    rv = mspace_malloc (msp, n_user_data_bytes);
-    if (rv == 0)
-        return rv;
-
-    if (use_trace(ms)) {
-      mchunkptr p  = mem2chunk(rv);
-      size_t psize = chunksize(p);
-
-      mheap_get_trace ((unsigned long)rv + sizeof (unsigned), psize);
-    }
-
-    wwp = (unsigned *)rv;
-    *wwp = 0;
-    rv += sizeof (unsigned);
-
-    return rv;
-  }
+  align = align < MALLOC_ALIGNMENT ? MALLOC_ALIGNMENT : align;
 
   /*
    * Alignment requests greater than 4K must be at offset zero,
