@@ -218,10 +218,13 @@ typedef struct session_
     u32 al_index;
   };
 
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
   /** Opaque, for general use */
   u32 opaque;
 
-    CLIB_CACHE_LINE_ALIGN_MARK (pad);
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+
 } session_t;
 
 always_inline session_type_t
