@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e5a35ffe_a72ba680",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 5
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-05T12:35:33Z",
+      "side": 1,
+      "message": "wrong format, if it applies to multiple components just use whitespace. There should be just one \u0027:\u0027 at th end....",
+      "revId": "a11168bb63b486ef96e21a945b69949e873d9a8e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
