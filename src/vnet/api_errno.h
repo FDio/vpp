@@ -158,6 +158,7 @@ _(IKE_NO_PORT, -163, "port not managed by IKE")                         \
 _(UDP_PORT_TAKEN, -164, "UDP port already taken")                       \
 _(EAGAIN, -165, "Retry stream call with cursor")                        \
 _(INVALID_VALUE_4, -166, "Invalid value #4")                           	\
+_(INVALID_THREAD, -167, "Invalid thread index")                         \
 
 typedef enum
 {

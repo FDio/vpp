@@ -1727,13 +1727,12 @@ VLIB_CLI_COMMAND (show_interface_rx_placement, static) = {
 };
 /* *INDENT-ON* */
 
-clib_error_t *
+int
 set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
 			       u32 thread_index, u8 is_main)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
-  clib_error_t *error = 0;
   vnet_hw_if_rx_mode mode = VNET_HW_IF_RX_MODE_UNKNOWN;
   int rv;
 
@@ -1743,24 +1742,21 @@ set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
     thread_index += vdm->first_worker_thread_index;
 
   if (thread_index > vdm->last_worker_thread_index)
-    return clib_error_return (0,
-			      "please specify valid worker thread or main");
+    return VNET_API_ERROR_INVALID_THREAD;
 
   rv = vnet_hw_interface_get_rx_mode (vnm, hw_if_index, queue_id, &mode);
-
   if (rv)
-    return clib_error_return (0, "not found");
+    return rv;
 
   rv = vnet_hw_interface_unassign_rx_thread (vnm, hw_if_index, queue_id);
-
   if (rv)
-    return clib_error_return (0, "not found");
+    return rv;
 
   vnet_hw_interface_assign_rx_thread (vnm, hw_if_index, queue_id,
 				      thread_index);
   vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
 
-  return (error);
+  return (0);
 }
 
 static clib_error_t *
@@ -1774,6 +1770,7 @@ set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
   u32 queue_id = (u32) 0;
   u32 thread_index = (u32) ~ 0;
   u8 is_main = 0;
+  int rv;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -1785,7 +1782,7 @@ set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "queue %d", &queue_id))
 	;
-      else if (unformat (line_input, "main", &thread_index))
+      else if (unformat (line_input, "main"))
 	is_main = 1;
       else if (unformat (line_input, "worker %d", &thread_index))
 	;
@@ -1803,8 +1800,10 @@ set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
   if (hw_if_index == (u32) ~ 0)
     return clib_error_return (0, "please specify valid interface name");
 
-  error = set_hw_interface_rx_placement (hw_if_index, queue_id, thread_index,
-					 is_main);
+  rv = set_hw_interface_rx_placement (hw_if_index, queue_id, thread_index,
+				      is_main);
+  if (rv)
+    return clib_error_return (0, "Error: %U", format_vnet_api_errno, rv);
 
   return (error);
 }
