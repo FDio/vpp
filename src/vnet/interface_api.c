@@ -1134,7 +1134,6 @@ static void vl_api_sw_interface_set_rx_placement_t_handler
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = ntohl (mp->sw_if_index);
   vnet_sw_interface_t *si;
-  clib_error_t *error = 0;
   int rv = 0;
 
   VALIDATE_SW_IF_INDEX (mp);
@@ -1146,15 +1145,11 @@ static void vl_api_sw_interface_set_rx_placement_t_handler
       goto bad_sw_if_index;
     }
 
-  error = set_hw_interface_rx_placement (si->hw_if_index,
-					 ntohl (mp->queue_id),
-					 ntohl (mp->worker_id), mp->is_main);
-  if (error)
-    {
-      rv = VNET_API_ERROR_UNIMPLEMENTED;
-      clib_error_report (error);
-      goto out;
-    }
+  rv = set_hw_interface_rx_placement (si->hw_if_index,
+				      ntohl (mp->queue_id),
+				      ntohl (mp->worker_id), mp->is_main);
+  if (rv)
+    goto out;
 
   BAD_SW_IF_INDEX_LABEL;
 out:
