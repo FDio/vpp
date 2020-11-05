@@ -658,6 +658,7 @@ nat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
       clib_memcpy_fast (b0->data + offset, &nat_src_port, sizeof (nat_src_port));
       offset += sizeof (nat_src_port);
 
+      vrf_id = clib_host_to_net_u32 (vrf_id);
       clib_memcpy_fast (b0->data + offset, &vrf_id, sizeof (vrf_id));
       offset += sizeof (vrf_id);
 
@@ -1111,6 +1112,7 @@ nat_ipfix_logging_nat64_bibe (u32 thread_index, u8 nat_event,
       clib_memcpy_fast (b0->data + offset, &nat_src_port, sizeof (nat_src_port));
       offset += sizeof (nat_src_port);
 
+      vrf_id = clib_host_to_net_u32 (vrf_id);
       clib_memcpy_fast (b0->data + offset, &vrf_id, sizeof (vrf_id));
       offset += sizeof (vrf_id);
 
@@ -1226,6 +1228,7 @@ nat_ipfix_logging_nat64_ses (u32 thread_index, u8 nat_event,
       clib_memcpy_fast (b0->data + offset, &nat_dst_port, sizeof (nat_dst_port));
       offset += sizeof (nat_dst_port);
 
+      vrf_id = clib_host_to_net_u32 (vrf_id);
       clib_memcpy_fast (b0->data + offset, &vrf_id, sizeof (vrf_id));
       offset += sizeof (vrf_id);
 
