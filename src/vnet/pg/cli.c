@@ -118,7 +118,14 @@ enable_disable_stream (vlib_main_t * vm,
   int is_enable = cmd->function_arg != 0;
   u32 stream_index = ~0;
 
-  if (!unformat_user (input, unformat_line_input, line_input))
+  /* packet-generator enable/disable will consume the full line. When use in a
+   * file ('exec'), if there are other commands following we must not consume
+   * the next line or we'll try to parse the next command.
+   * To prevent that, we check if the last input char was a newline
+   */
+  unformat_put_input (input);
+  if (unformat_get_input (input) == '\n'
+      || !unformat_user (input, unformat_line_input, line_input))
     goto doit;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
