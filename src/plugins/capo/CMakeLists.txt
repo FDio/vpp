@@ -17,6 +17,8 @@ add_vpp_plugin(capo
   capo_policy.c
   capo_rule.c
   capo_ipset.c
+  capo_match.c
+  capo_interface.c
 
   API_TEST_SOURCES
   capo_test.c
