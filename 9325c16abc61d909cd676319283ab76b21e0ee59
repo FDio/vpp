@@ -54,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "4d0bfbe1_6ee38d9d",
+        "filename": "src/plugins/rdma/rdma.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-11-05T17:00:22Z",
+      "side": 1,
+      "message": "\u003e default for feature or for performance?\n\nFor comparison, dpdk plugin defaults for feature.\nIn CSIT we are adding no-multi-seg to startup.conf in tests with no jumbo frames.",
+      "parentUuid": "0514cbe2_d6c378ed",
+      "revId": "9325c16abc61d909cd676319283ab76b21e0ee59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "23b798ae_4f4c4a93",
         "filename": "src/plugins/rdma/unformat.c",
         "patchSetId": 5
