@@ -163,6 +163,7 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u8 buffer_pool_index;
+  u32 queue_index;
 } dpdk_rx_queue_t;
 
 typedef struct

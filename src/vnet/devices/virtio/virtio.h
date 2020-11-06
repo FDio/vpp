@@ -82,6 +82,7 @@ typedef struct
   u32 *buffers;
   u16 size;
   u16 queue_id;
+  u32 queue_index;
   u16 desc_in_use;
   u16 desc_next;
   u16 last_used_idx;
@@ -230,8 +231,7 @@ clib_error_t *virtio_vring_free_rx (vlib_main_t * vm, virtio_if_t * vif,
 				    u32 idx);
 clib_error_t *virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif,
 				    u32 idx);
-void virtio_vring_set_numa_node (vlib_main_t * vm, virtio_if_t * vif,
-				 u32 idx);
+void virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif);
 extern void virtio_free_buffers (vlib_main_t * vm, virtio_vring_t * vring);
 extern void virtio_set_net_hdr_size (virtio_if_t * vif);
 extern void virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
