@@ -1196,6 +1196,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  vec_add1 (conf->eal_init_args, (u8 *) "--no-huge");
 	}
+      else if (unformat (input, "telemetry"))
+	conf->enable_telemetry = 1;
 
       else if (unformat (input, "enable-tcp-udp-checksum"))
 	conf->enable_tcp_udp_checksum = 1;
@@ -1359,6 +1361,12 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	clib_error_report (e);
   }));
   /* *INDENT-ON* */
+
+  /* on/off dpdk's telemetry thread */
+  if (conf->enable_telemetry == 0)
+    {
+      vec_add1 (conf->eal_init_args, (u8 *) "--no-telemetry");
+    }
 
   if (!file_prefix)
     {
