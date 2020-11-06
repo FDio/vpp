@@ -700,7 +700,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       sw = vnet_get_hw_sw_interface (dm->vnet_main, xd->hw_if_index);
       xd->sw_if_index = sw->sw_if_index;
-      vnet_hw_interface_set_input_node (dm->vnet_main, xd->hw_if_index,
+      vnet_hw_if_set_input_node (dm->vnet_main, xd->hw_if_index,
 					dpdk_input_node.index);
 
       if (devconf->workers)

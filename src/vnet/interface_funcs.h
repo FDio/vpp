@@ -501,6 +501,8 @@ u8 *format_vnet_interface_output_trace (u8 * s, va_list * va);
 serialize_function_t serialize_vnet_interface_state,
   unserialize_vnet_interface_state;
 
+void vnet_hw_if_set_input_node (vnet_main_t * vnm, u32 hw_if_index,
+				u32 node_index);
 #endif /* included_vnet_interface_funcs_h */
 
 /*

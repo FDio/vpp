@@ -75,14 +75,6 @@ extern vlib_node_registration_t device_input_node;
 extern const u32 device_input_next_node_advance[];
 extern const u32 device_input_next_node_flags[];
 
-static inline void
-vnet_hw_interface_set_input_node (vnet_main_t * vnm, u32 hw_if_index,
-				  u32 node_index)
-{
-  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
-  hw->input_node_index = node_index;
-}
-
 void vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
 					 u16 queue_id, uword thread_index);
 int vnet_hw_interface_unassign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
