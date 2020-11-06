@@ -21,6 +21,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ethernet/arp_packet.h>
+#include <vnet/interface/rx_queue_funcs.h>
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
@@ -122,11 +123,8 @@ dpdk_device_setup (dpdk_device_t * xd)
   for (j = 0; j < xd->rx_q_used; j++)
     {
       dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, j);
-      uword tidx = vnet_get_device_input_thread_index (dm->vnet_main,
-						       xd->hw_if_index, j);
-      unsigned lcore = vlib_worker_threads[tidx].cpu_id;
-      u16 socket_id = rte_lcore_to_socket_id (lcore);
-      u8 bpidx = vlib_buffer_pool_get_default_for_numa (vm, socket_id);
+      u8 bpidx = vlib_buffer_pool_get_default_for_numa
+	(vm, vnet_hw_if_get_rx_queue_numa_node (vnm, rxq->queue_index));
       vlib_buffer_pool_t *bp = vlib_get_buffer_pool (vm, bpidx);
       struct rte_mempool *mp = dpdk_mempool_by_buffer_pool_index[bpidx];
 

@@ -18,6 +18,7 @@
 #include <math.h>
 #include <vppinfra/format.h>
 #include <vppinfra/time_range.h>
+#include <vppinfra/interrupt.h>
 #include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
 
@@ -863,6 +864,9 @@ start_workers (vlib_main_t * vm)
 	      nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT] =
 		vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
 				 CLIB_CACHE_LINE_BYTES);
+	      clib_interrupt_init
+		(&nm_clone->interrupts,
+		 vec_len (nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT]));
 	      vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
 	      {
 		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
@@ -1178,6 +1182,9 @@ vlib_worker_thread_node_refork (void)
   nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT] =
     vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
 		     CLIB_CACHE_LINE_BYTES);
+  clib_interrupt_resize (&nm_clone->interrupts,
+			 vec_len (nm_clone->nodes_by_type
+				  [VLIB_NODE_TYPE_INPUT]));
 
   vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
   {

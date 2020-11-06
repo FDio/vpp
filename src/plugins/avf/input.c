@@ -19,7 +19,7 @@
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/devices.h>
+#include <vnet/interface/rx_queue_funcs.h>
 
 #include <avf/avf.h>
 
@@ -447,17 +447,18 @@ VLIB_NODE_FN (avf_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       vlib_frame_t * frame)
 {
   u32 n_rx = 0;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
-  vnet_device_and_queue_t *dq;
+  vnet_hw_if_rxq_poll_vector_t *pv;
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
-  {
-    avf_device_t *ad;
-    ad = avf_get_device (dq->dev_instance);
-    if ((ad->flags & AVF_DEVICE_F_ADMIN_UP) == 0)
-      continue;
-    n_rx += avf_device_input_inline (vm, node, frame, ad, dq->queue_id);
-  }
+  pv = vnet_hw_if_get_rxq_poll_vector (vm, node);
+
+  for (int i = 0; i < vec_len (pv); i++)
+    {
+      avf_device_t *ad = avf_get_device (pv[i].dev_instance);
+      if ((ad->flags & AVF_DEVICE_F_ADMIN_UP) == 0)
+	continue;
+      n_rx += avf_device_input_inline (vm, node, frame, ad, pv[i].queue_id);
+    }
+
   return n_rx;
 }
 

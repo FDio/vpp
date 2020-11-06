@@ -516,6 +516,7 @@ typedef struct
   u16 size;
   u8 int_mode;
   u8 buffer_pool_index;
+  u32 queue_index;
   vmxnet3_rx_ring rx_ring[VMXNET3_RX_RING_SIZE];
   vmxnet3_rx_desc *rx_desc[VMXNET3_RX_RING_SIZE];
   vmxnet3_rx_comp *rx_comp;

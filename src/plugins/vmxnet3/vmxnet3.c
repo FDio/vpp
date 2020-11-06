@@ -19,7 +19,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
-
+#include <vnet/interface/rx_queue_funcs.h>
 #include <vmxnet3/vmxnet3.h>
 
 #define PCI_VENDOR_ID_VMWARE				0x15ad
@@ -540,9 +540,10 @@ vmxnet3_rxq_irq_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
   uword pd = vlib_pci_get_private_data (vm, h);
   vmxnet3_device_t *vd = pool_elt_at_index (vmxm->devices, pd);
   u16 qid = line;
+  vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, qid);
 
   if (vec_len (vd->rxqs) > qid && vd->rxqs[qid].int_mode != 0)
-    vnet_device_input_set_interrupt_pending (vnm, vd->hw_if_index, qid);
+    vnet_hw_if_rx_queue_set_int_pending (vnm, rxq->queue_index);
 }
 
 static void
@@ -812,25 +813,26 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
     hw->flags |= (VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
 		  VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
 
-  vnet_hw_interface_set_input_node (vnm, vd->hw_if_index,
-				    vmxnet3_input_node.index);
+  vnet_hw_if_set_input_node (vnm, vd->hw_if_index, vmxnet3_input_node.index);
   /* Disable interrupts */
   vmxnet3_disable_interrupt (vd);
   vec_foreach_index (qid, vd->rxqs)
   {
     vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, qid);
-    u32 thread_index;
-    u32 numa_node;
+    u32 qi, fi;
 
-    vnet_hw_interface_assign_rx_thread (vnm, vd->hw_if_index, qid, ~0);
-    thread_index = vnet_get_device_input_thread_index (vnm, vd->hw_if_index,
-						       qid);
-    numa_node = vlib_mains[thread_index]->numa_node;
+    qi = vnet_hw_if_register_rx_queue (vnm, vd->hw_if_index, qid,
+				       VNET_HW_IF_RXQ_THREAD_ANY);
+    fi = vlib_pci_get_msix_file_index (vm, vd->pci_dev_handle, qid);
+    vnet_hw_if_set_rx_queue_file_index (vnm, qi, fi);
+    rxq->queue_index = qi;
     rxq->buffer_pool_index =
-      vlib_buffer_pool_get_default_for_numa (vm, numa_node);
+      vlib_buffer_pool_get_default_for_numa (vm, rxq->queue_index);
     vmxnet3_rxq_refill_ring0 (vm, vd, rxq);
     vmxnet3_rxq_refill_ring1 (vm, vd, rxq);
   }
+  vnet_hw_if_update_runtime_data (vnm, vd->hw_if_index);
+
   vd->flags |= VMXNET3_DEVICE_F_INITIALIZED;
   vmxnet3_enable_interrupt (vd);
 
