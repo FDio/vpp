@@ -1700,24 +1700,42 @@ vl_api_send_pending_rpc_requests (vlib_main_t * vm)
 {
 }
 
-static_always_inline u64
-dispatch_pending_interrupts (vlib_main_t * vm, vlib_node_main_t * nm,
-			     u64 cpu_time_now,
-			     vlib_node_interrupt_t * interrupts)
+clib_bitmap_t *
+prepare_pending_interrupts (clib_bitmap_t * bmp, vlib_node_main_t * nm,
+			    vlib_node_interrupt_t * interrupts)
 {
-  vlib_node_runtime_t *n;
-
   for (int i = 0; i < _vec_len (interrupts); i++)
     {
-      vlib_node_interrupt_t *in;
-      in = vec_elt_at_index (interrupts, i);
+      vlib_node_runtime_t *n;
+      vlib_node_interrupt_t *in = vec_elt_at_index (interrupts, i);
+      bmp = clib_bitmap_set (bmp, in->node_runtime_index, 1);
       n = vec_elt_at_index (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
 			    in->node_runtime_index);
-      n->interrupt_data = in->data;
-      cpu_time_now = dispatch_node (vm, n, VLIB_NODE_TYPE_INPUT,
-				    VLIB_NODE_STATE_INTERRUPT, /* frame */ 0,
-				    cpu_time_now);
+      vec_add1 (n->interrupt_data, in->data);
     }
+
+  return bmp;
+}
+
+static_always_inline u64
+dispatch_pending_interrupts (vlib_main_t * vm, vlib_node_main_t * nm,
+			     u64 cpu_time_now, clib_bitmap_t * bmp)
+{
+  vlib_node_runtime_t *n;
+  int i;
+
+  /* *INDENT-OFF* */
+  clib_bitmap_foreach (i, bmp, ({
+    n = vec_elt_at_index (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT], i);
+    cpu_time_now = dispatch_node (vm, n, VLIB_NODE_TYPE_INPUT,
+				  VLIB_NODE_STATE_INTERRUPT, /* frame */ 0,
+				  cpu_time_now);
+    if (vec_len (n->interrupt_data) > 32)
+      vec_free (n->interrupt_data);
+    else
+      vec_reset_length (n->interrupt_data);
+  }));
+  /* *INDENT-ON* */
   return cpu_time_now;
 }
 
@@ -1745,6 +1763,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   vlib_frame_queue_main_t *fqm;
   u32 frame_queue_check_counter = 0;
   vlib_node_interrupt_t *empty_int_list = 0;
+  clib_bitmap_t *node_int_bmp = 0;
 
   /* Initialize pending node vector. */
   if (is_main)
@@ -1871,8 +1890,8 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	{
 	  vlib_node_interrupt_t *interrupts = nm->pending_local_interrupts;
 	  nm->pending_local_interrupts = empty_int_list;
-	  cpu_time_now = dispatch_pending_interrupts (vm, nm, cpu_time_now,
-						      interrupts);
+	  node_int_bmp = prepare_pending_interrupts (node_int_bmp, nm,
+						     interrupts);
 	  empty_int_list = interrupts;
 	  vec_reset_length (empty_int_list);
 	}
@@ -1891,10 +1910,17 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	  *nm->pending_remote_interrupts_notify = 0;
 	  clib_spinlock_unlock (&nm->pending_interrupt_lock);
 
-	  cpu_time_now = dispatch_pending_interrupts (vm, nm, cpu_time_now,
-						      interrupts);
+	  node_int_bmp = prepare_pending_interrupts (node_int_bmp, nm,
+						     interrupts);
 	  empty_int_list = interrupts;
 	  vec_reset_length (empty_int_list);
+	}
+
+      if (clib_bitmap_is_zero (node_int_bmp) == 0)
+	{
+	  cpu_time_now = dispatch_pending_interrupts (vm, nm, cpu_time_now,
+						      node_int_bmp);
+	  clib_bitmap_reset (node_int_bmp);
 	}
 
       /* Input nodes may have added work to the pending vector.

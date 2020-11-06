@@ -525,6 +525,26 @@ typedef enum vnet_hw_interface_flags_t_
   (VNET_HW_INTERFACE_FLAG_HALF_DUPLEX |		\
    VNET_HW_INTERFACE_FLAG_FULL_DUPLEX)
 
+typedef struct
+{
+  /* hw interface index */
+  u32 hw_if_index;
+
+  /* index of thread pollling this queue */
+  u32 thread_index;
+
+  /* file index of queue interrupt line */
+  u32 file_index;
+
+  /* hardware queue identifier */
+  u16 queue_id;
+
+  /* mode */
+  vnet_hw_if_rx_mode mode:8;
+#define VNET_HW_IF_RXQ_THREAD_ANY ~0
+#define VNET_HW_IF_RXQ_NO_RX_INTERRUPT ~0
+} vnet_hw_if_rx_queue_t;
+
 /* Hardware-interface.  This corresponds to a physical wire
    that packets flow over. */
 typedef struct vnet_hw_interface_t
@@ -608,6 +628,9 @@ typedef struct vnet_hw_interface_t
 
   /* device input device_and_queue runtime index */
   uword *dq_runtime_index_by_queue;
+
+  /* rx queues */
+  u32 *rx_queue_indices;
 
   /* numa node that hardware device connects to */
   u8 numa_node;
@@ -856,6 +879,10 @@ typedef struct
 {
   /* Hardware interfaces. */
   vnet_hw_interface_t *hw_interfaces;
+
+  /* Hardware interface RX queues */
+  vnet_hw_if_rx_queue_t *hw_if_rx_queues;
+  uword *rxq_index_by_hw_if_index_and_queue_id;
 
   /* Hash table mapping HW interface name to index. */
   uword *hw_interface_by_name;

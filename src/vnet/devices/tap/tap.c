@@ -39,6 +39,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/devices/netlink.h>
 #include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/tap/tap.h>
@@ -739,8 +740,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     {
       virtio_set_packet_coalesce (vif);
     }
-  vnet_hw_interface_set_input_node (vnm, vif->hw_if_index,
-				    virtio_input_node.index);
+  vnet_hw_if_set_input_node (vnm, vif->hw_if_index, virtio_input_node.index);
 
   for (i = 0; i < vif->num_rxqs; i++)
     {
