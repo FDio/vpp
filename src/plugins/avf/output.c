@@ -20,7 +20,6 @@
 #include <vlib/pci/pci.h>
 #include <vppinfra/ring.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/devices.h>
 
 #include <avf/avf.h>
 
