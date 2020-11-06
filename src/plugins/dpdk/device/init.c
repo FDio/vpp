@@ -22,6 +22,7 @@
 #include <vlib/log.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/interface/rx_queue_funcs.h>
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/cryptodev/cryptodev.h>
@@ -390,6 +391,9 @@ dpdk_lib_init (dpdk_main_t * dm)
       else
 	xd->rx_q_used = 1;
 
+      vec_validate_aligned (xd->rx_queues, xd->rx_q_used - 1,
+			    CLIB_CACHE_LINE_BYTES);
+
       xd->flags |= DPDK_DEVICE_FLAG_PMD;
 
       /* workaround for drivers not setting driver_name */
@@ -700,7 +704,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       sw = vnet_get_hw_sw_interface (dm->vnet_main, xd->hw_if_index);
       xd->sw_if_index = sw->sw_if_index;
-      vnet_hw_interface_set_input_node (dm->vnet_main, xd->hw_if_index,
+      vnet_hw_if_set_input_node (dm->vnet_main, xd->hw_if_index,
 					dpdk_input_node.index);
 
       if (devconf->workers)
@@ -708,15 +712,18 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  int i;
 	  q = 0;
 	  clib_bitmap_foreach (i, devconf->workers, ({
-	    vnet_hw_interface_assign_rx_thread (dm->vnet_main, xd->hw_if_index, q++,
-					     vdm->first_worker_thread_index + i);
+            dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
+	    rxq->queue_index = vnet_hw_if_register_rx_queue
+	      (dm->vnet_main, xd->hw_if_index, q++,
+	       vdm->first_worker_thread_index + i);
 	  }));
 	}
       else
 	for (q = 0; q < xd->rx_q_used; q++)
 	  {
-	    vnet_hw_interface_assign_rx_thread (dm->vnet_main, xd->hw_if_index, q,	/* any */
-						~1);
+            dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
+	    rxq->queue_index = vnet_hw_if_register_rx_queue
+	      (dm->vnet_main, xd->hw_if_index, q, VNET_HW_IF_RXQ_THREAD_ANY);
 	  }
 
       /*Get vnet hardware interface */
