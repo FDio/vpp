@@ -36,6 +36,7 @@ set_interface_spd_command_fn (vlib_main_t * vm,
   u32 spd_id;
   int is_add = 1;
   clib_error_t *error = NULL;
+  int err;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -53,7 +54,16 @@ set_interface_spd_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  ipsec_set_interface_spd (vm, sw_if_index, spd_id, is_add);
+  err = ipsec_set_interface_spd (vm, sw_if_index, spd_id, is_add);
+  switch (err)
+    {
+    case VNET_API_ERROR_SYSCALL_ERROR_1:
+      error = clib_error_return (0, "no such spd-id");
+      break;
+    case VNET_API_ERROR_SYSCALL_ERROR_2:
+      error = clib_error_return (0, "spd already assigned");
+      break;
+    }
 
 done:
   unformat_free (line_input);
@@ -90,6 +100,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   u16 udp_src, udp_dst;
   int is_add, rv;
   u32 m_args = 0;
+  u32 tx_table_id;
 
   salt = 0;
   error = NULL;
@@ -99,6 +110,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   integ_alg = IPSEC_INTEG_ALG_NONE;
   crypto_alg = IPSEC_CRYPTO_ALG_NONE;
   udp_src = udp_dst = IPSEC_UDP_PORT_NONE;
+  tx_table_id = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -144,6 +156,8 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "tunnel-dst %U",
 			 unformat_ip46_address, &tun_dst, IP46_TYPE_ANY))
 	;
+      else if (unformat (line_input, "tx-table-id %d", &tx_table_id))
+	;
       else if (unformat (line_input, "inbound"))
 	flags |= IPSEC_SA_FLAG_IS_INBOUND;
       else if (unformat (line_input, "use-anti-replay"))
@@ -181,7 +195,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	}
       rv = ipsec_sa_add_and_lock (id, spi, proto, crypto_alg,
 				  &ck, integ_alg, &ik, flags,
-				  0, clib_host_to_net_u32 (salt),
+				  tx_table_id, clib_host_to_net_u32 (salt),
 				  &tun_src, &tun_dst, &sai, udp_src, udp_dst);
     }
   else
