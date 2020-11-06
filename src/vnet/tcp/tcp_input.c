@@ -1014,7 +1014,8 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
       *error = TCP_ERROR_ACK_OLD;
       TCP_EVT (TCP_EVT_ACK_RCV_ERR, tc, 1, vnet_buffer (b)->tcp.ack_number);
 
-      if (seq_lt (vnet_buffer (b)->tcp.ack_number, tc->snd_una - tc->rcv_wnd))
+      if (seq_lt (vnet_buffer (b)->tcp.ack_number,
+		  tc->snd_una - tc->snd_wnd_max))
 	return -1;
 
       tcp_handle_old_ack (tc, &rs);
