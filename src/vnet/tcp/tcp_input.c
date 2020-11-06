@@ -2384,6 +2384,9 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	case TCP_STATE_FIN_WAIT_2:
 	  if (vnet_buffer (b0)->tcp.data_len)
 	    error0 = tcp_segment_rcv (wrk, tc0, b0);
+	  /* Don't accept out of order fins lower */
+	  if (vnet_buffer (b0)->tcp.seq_end != tc0->rcv_nxt)
+	    goto drop;
 	  break;
 	case TCP_STATE_CLOSE_WAIT:
 	case TCP_STATE_CLOSING:
