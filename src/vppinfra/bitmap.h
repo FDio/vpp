@@ -86,6 +86,11 @@ clib_bitmap_is_equal (uword * a, uword * b)
 */
 #define clib_bitmap_dup(v) vec_dup(v)
 
+/** Reset a bitmap
+    @param v - pointer to the bitmap to reset
+*/
+#define clib_bitmap_reset(v) vec_reset_length(v)
+
 /** Free a bitmap
     @param v - pointer to the bitmap to free
 */

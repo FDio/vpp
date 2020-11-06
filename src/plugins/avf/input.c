@@ -443,20 +443,54 @@ done:
   return n_rx_packets;
 }
 
+
+static_always_inline vnet_hw_if_rxq_poll_vector_t *
+vnet_hw_if_get_rxq_poll_vector (vlib_main_t * vm, vlib_node_runtime_t * node)
+{
+  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 i;
+
+  if (PREDICT_TRUE (node->state == VLIB_NODE_STATE_POLLING))
+    return rt->rxq_poll_vector;
+
+  ASSERT (node->state == VLIB_NODE_STATE_INTERRUPT);
+
+  clib_bitmap_reset (rt->rxq_int_bitmap);
+  for (i = 0; i < vec_len (node->interrupt_data); i++)
+    rt->rxq_int_bitmap = clib_bitmap_set (rt->rxq_int_bitmap,
+					  node->interrupt_data[i], 1);
+  vec_reset_length (rt->rxq_poll_vector);
+
+  /* *INDENT-OFF* */
+  clib_bitmap_foreach (i, rt->rxq_int_bitmap,(
+    {
+      vnet_hw_if_rx_queue_t *rxq = vnet_hw_if_get_rx_queue (vnm, i);
+      vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, rxq->hw_if_index);
+      vnet_hw_if_rxq_poll_vector_t *pv;
+
+      vec_add2 (rt->rxq_poll_vector, pv, 1);
+      pv->dev_instance = hi->dev_instance;
+      pv->queue_id = rxq->queue_id;
+    }));
+  /* *INDENT-ON* */
+
+  return rt->rxq_poll_vector;
+}
+
 VLIB_NODE_FN (avf_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       vlib_frame_t * frame)
 {
   u32 n_rx = 0;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
-  vnet_device_and_queue_t *dq;
+  vnet_hw_if_rxq_poll_vector_t *pd;
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
+  vec_foreach (pd, vnet_hw_if_get_rxq_poll_vector (vm, node))
   {
-    avf_device_t *ad;
-    ad = avf_get_device (dq->dev_instance);
+    //fformat (stderr, "thread %u dev_instance %d queue %d\n", vm->thread_index, pd->dev_instance, pd->queue_id);
+    avf_device_t *ad = avf_get_device (pd->dev_instance);
     if ((ad->flags & AVF_DEVICE_F_ADMIN_UP) == 0)
       continue;
-    n_rx += avf_device_input_inline (vm, node, frame, ad, dq->queue_id);
+    n_rx += avf_device_input_inline (vm, node, frame, ad, pd->queue_id);
   }
   return n_rx;
 }
