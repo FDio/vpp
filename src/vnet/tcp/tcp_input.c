@@ -582,12 +582,6 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
       session_tx_fifo_dequeue_drop (&tc->connection, tc->burst_acked);
       tcp_validate_txf_size (tc, tc->snd_nxt - tc->snd_una);
 
-      if (PREDICT_FALSE (tc->flags & TCP_CONN_PSH_PENDING))
-	{
-	  if (seq_leq (tc->psh_seq, tc->snd_una))
-	    tc->flags &= ~TCP_CONN_PSH_PENDING;
-	}
-
       if (tcp_is_descheduled (tc))
 	tcp_reschedule (tc);
 
