@@ -20,6 +20,7 @@
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/interface/rx_queue_funcs.h>
 
 #include <avf/avf.h>
 
@@ -1373,6 +1374,7 @@ avf_irq_n_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
   vnet_main_t *vnm = vnet_get_main ();
   uword pd = vlib_pci_get_private_data (vm, h);
   avf_device_t *ad = avf_get_device (pd);
+  avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, line - 1);
 
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
@@ -1396,8 +1398,8 @@ avf_irq_n_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 
   line--;
 
-  if (ad->flags & AVF_DEVICE_F_RX_INT && ad->rxqs[line].int_mode)
-    vnet_device_input_set_interrupt_pending (vnm, ad->hw_if_index, line);
+  if (ad->flags & AVF_DEVICE_F_RX_INT && rxq->int_mode)
+    vnet_hw_if_rx_queue_set_int_pending (vnm, rxq->queue_index);
   avf_irq_n_set_state (ad, line, AVF_IRQ_STATE_ENABLED);
 }
 
@@ -1415,7 +1417,6 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier)
       if (with_barrier)
 	vlib_worker_thread_barrier_sync (vm);
       vnet_hw_interface_set_flags (vnm, ad->hw_if_index, 0);
-      vnet_hw_interface_unassign_rx_thread (vnm, ad->hw_if_index, 0);
       ethernet_delete_interface (vnm, ad->hw_if_index);
       if (with_barrier)
 	vlib_worker_thread_barrier_release (vm);
@@ -1660,11 +1661,22 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, ad->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
-  vnet_hw_interface_set_input_node (vnm, ad->hw_if_index,
-				    avf_input_node.index);
+  vnet_hw_if_set_input_node (vnm, ad->hw_if_index, avf_input_node.index);
 
   for (i = 0; i < ad->n_rx_queues; i++)
-    vnet_hw_interface_assign_rx_thread (vnm, ad->hw_if_index, i, ~0);
+    {
+      u32 qi, fi;
+      qi = vnet_hw_if_register_rx_queue (vnm, ad->hw_if_index, i,
+					 VNET_HW_IF_RXQ_THREAD_ANY);
+
+      if (ad->flags & AVF_DEVICE_F_RX_INT)
+	{
+	  fi = vlib_pci_get_msix_file_index (vm, ad->pci_dev_handle, i + 1);
+	  vnet_hw_if_set_rx_queue_file_index (vnm, qi, fi);
+	}
+      ad->rxqs[i].queue_index = qi;
+    }
+  vnet_hw_if_update_runtime_data (vnm, ad->hw_if_index);
 
   if (pool_elts (am->devices) == 1)
     vlib_process_signal_event (vm, avf_process_node.index,
