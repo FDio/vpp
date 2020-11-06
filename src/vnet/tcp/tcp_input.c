@@ -582,12 +582,6 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
       session_tx_fifo_dequeue_drop (&tc->connection, tc->burst_acked);
       tcp_validate_txf_size (tc, tc->snd_nxt - tc->snd_una);
 
-      if (PREDICT_FALSE (tc->flags & TCP_CONN_PSH_PENDING))
-	{
-	  if (seq_leq (tc->psh_seq, tc->snd_una))
-	    tc->flags &= ~TCP_CONN_PSH_PENDING;
-	}
-
       if (tcp_is_descheduled (tc))
 	tcp_reschedule (tc);
 
@@ -631,6 +625,7 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
       tc->snd_wnd = snd_wnd;
       tc->snd_wl1 = seq;
       tc->snd_wl2 = ack;
+      tc->snd_wnd_max = clib_max (tc->snd_wnd_max, snd_wnd);
       TCP_EVT (TCP_EVT_SND_WND, tc);
 
       if (PREDICT_FALSE (tc->snd_wnd < tc->snd_mss))
