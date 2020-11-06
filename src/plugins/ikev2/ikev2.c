@@ -1815,7 +1815,6 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   ikev2_main_t *km = &ikev2_main;
   u32 sw_if_index;
   int rv = 0;
-  ip46_address_t zero_addr = ip46_address_initializer;
 
   if (~0 == a->sw_if_index)
     {
@@ -1864,16 +1863,16 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 			       a->local_spi,
 			       IPSEC_PROTOCOL_ESP, a->encr_type,
 			       &a->loc_ckey, a->integ_type, &a->loc_ikey,
-			       a->flags, 0, a->salt_local, &zero_addr,
-			       &zero_addr, TUNNEL_ENCAP_DECAP_FLAG_NONE,
+			       a->flags, 0, a->salt_local, &a->local_ip,
+			       &a->remote_ip, TUNNEL_ENCAP_DECAP_FLAG_NONE,
 			       IP_DSCP_CS0, NULL, a->src_port, a->dst_port);
 
   rv |= ipsec_sa_add_and_lock (a->remote_sa_id, a->remote_spi,
 			       IPSEC_PROTOCOL_ESP, a->encr_type, &a->rem_ckey,
 			       a->integ_type, &a->rem_ikey,
 			       (a->flags | IPSEC_SA_FLAG_IS_INBOUND), 0,
-			       a->salt_remote, &zero_addr,
-			       &zero_addr, TUNNEL_ENCAP_DECAP_FLAG_NONE,
+			       a->salt_remote, &a->remote_ip,
+			       &a->local_ip, TUNNEL_ENCAP_DECAP_FLAG_NONE,
 			       IP_DSCP_CS0, NULL,
 			       a->ipsec_over_udp_port,
 			       a->ipsec_over_udp_port);
