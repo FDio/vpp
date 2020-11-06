@@ -502,10 +502,6 @@ typedef struct vlib_node_runtime_t
 
   u16 state;				/**< Input node state. */
 
-  u32 interrupt_data;			/**< Data passed together with interrupt.
-					  Valid only when state is
-					  VLIB_NODE_STATE_INTERRUPT */
-
   u16 n_next_nodes;
 
   u16 cached_next_index;		/**< Next frame index that vector
@@ -670,12 +666,6 @@ vlib_timing_wheel_data_get_index (u32 d)
 
 typedef struct
 {
-  u32 node_runtime_index;
-  u32 data;
-} vlib_node_interrupt_t;
-
-typedef struct
-{
   /* Public nodes. */
   vlib_node_t **nodes;
 
@@ -690,10 +680,8 @@ typedef struct
   vlib_node_runtime_t *nodes_by_type[VLIB_N_NODE_TYPE];
 
   /* Node runtime indices for input nodes with pending interrupts. */
-  vlib_node_interrupt_t *pending_local_interrupts;
-  vlib_node_interrupt_t *pending_remote_interrupts;
-  volatile u32 *pending_remote_interrupts_notify;
-  clib_spinlock_t pending_interrupt_lock;
+  void *interrupts;
+  volatile u32 *pending_interrupts;
 
   /* Input nodes are switched from/to interrupt to/from polling mode
      when average vector length goes above/below polling/interrupt
