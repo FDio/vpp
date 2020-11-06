@@ -53,6 +53,7 @@
 #include <vnet/l2/l2_output.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/classify/vnet_classify.h>
+#include <vnet/interface/rx_queue_funcs.h>
 
 static int
 compare_interface_names (void *a1, void *a2)
@@ -1537,24 +1538,55 @@ set_hw_interface_change_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
 {
   clib_error_t *error = 0;
   vnet_hw_interface_t *hw;
+  u32 *queue_indices = 0;
   int i;
 
   hw = vnet_get_hw_interface (vnm, hw_if_index);
 
-  if (queue_id_valid == 0)
+  /* to be deprecated */
+  if (vec_len (hw->rx_queue_indices) == 0)
     {
-      for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
+      if (queue_id_valid == 0)
 	{
-	  error = set_hw_interface_rx_mode (vnm, hw_if_index, i, mode);
-	  if (error)
-	    break;
+	  for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
+	    {
+	      error = set_hw_interface_rx_mode (vnm, hw_if_index, i, mode);
+	      if (error)
+		break;
+	    }
+	  hw->default_rx_mode = mode;
 	}
-      hw->default_rx_mode = mode;
+      else
+	error = set_hw_interface_rx_mode (vnm, hw_if_index, queue_id, mode);
+
+      return (error);
+    }
+
+  if (queue_id_valid)
+    {
+      u32 queue_index;
+      queue_index = vnet_hw_if_get_rx_queue_index_by_id (vnm, hw_if_index,
+							 queue_id);
+      if (queue_index == ~0)
+	return clib_error_return (0, "unknown queue %u on interface %s",
+				  queue_id, hw->name);
+      vec_add1 (queue_indices, queue_index);
     }
   else
-    error = set_hw_interface_rx_mode (vnm, hw_if_index, queue_id, mode);
+    queue_indices = hw->rx_queue_indices;
 
-  return (error);
+  for (int i = 0; i < vec_len (queue_indices); i++)
+    {
+      int rv = vnet_hw_if_set_rx_queue_mode (vnm, queue_indices[i], mode);
+      if (rv)
+	goto done;
+    }
+
+done:
+  if (queue_indices != hw->rx_queue_indices)
+    vec_free (queue_indices);
+  vnet_hw_if_update_runtime_data (vnm, hw_if_index);
+  return error;
 }
 
 static clib_error_t *
@@ -1733,8 +1765,8 @@ set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
-  clib_error_t *error = 0;
-  vnet_hw_if_rx_mode mode = VNET_HW_IF_RX_MODE_UNKNOWN;
+  vnet_hw_interface_t *hw;
+  u32 queue_index;
   int rv;
 
   if (is_main)
@@ -1746,21 +1778,38 @@ set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
     return clib_error_return (0,
 			      "please specify valid worker thread or main");
 
-  rv = vnet_hw_interface_get_rx_mode (vnm, hw_if_index, queue_id, &mode);
+  hw = vnet_get_hw_interface (vnm, hw_if_index);
 
-  if (rv)
-    return clib_error_return (0, "not found");
+  /* to be deprecated */
+  if (vec_len (hw->rx_queue_indices) == 0)
+    {
+      clib_error_t *error = 0;
+      vnet_hw_if_rx_mode mode = VNET_HW_IF_RX_MODE_UNKNOWN;
+      rv = vnet_hw_interface_get_rx_mode (vnm, hw_if_index, queue_id, &mode);
 
-  rv = vnet_hw_interface_unassign_rx_thread (vnm, hw_if_index, queue_id);
+      if (rv)
+	return clib_error_return (0, "not found");
 
-  if (rv)
-    return clib_error_return (0, "not found");
+      rv = vnet_hw_interface_unassign_rx_thread (vnm, hw_if_index, queue_id);
 
-  vnet_hw_interface_assign_rx_thread (vnm, hw_if_index, queue_id,
-				      thread_index);
-  vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
+      if (rv)
+	return clib_error_return (0, "not found");
 
-  return (error);
+      vnet_hw_interface_assign_rx_thread (vnm, hw_if_index, queue_id,
+					  thread_index);
+      vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
+
+      return (error);
+    }
+
+  queue_index = vnet_hw_if_get_rx_queue_index_by_id (vnm, hw_if_index,
+						     queue_id);
+  if (queue_index == ~0)
+    return clib_error_return (0, "unknown queue %u on interface %s", queue_id,
+			      hw->name);
+  vnet_hw_if_set_rx_queue_thread_index (vnm, queue_index, thread_index);
+  vnet_hw_if_update_runtime_data (vnm, hw_if_index);
+  return 0;
 }
 
 static clib_error_t *

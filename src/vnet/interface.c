@@ -42,15 +42,18 @@
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/ip/ip.h>
+#include <vnet/interface/rx_queue_funcs.h>
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_LOG_CLASS (if_default_log, static) = {
   .class_name = "interface",
+  .default_syslog_level = VLIB_LOG_LEVEL_DEBUG,
 };
 /* *INDENT-ON* */
 
 #define log_debug(fmt,...) vlib_log_debug(if_default_log.class, fmt, __VA_ARGS__)
 #define log_err(fmt,...) vlib_log_err(if_default_log.class, fmt, __VA_ARGS__)
+
 typedef enum vnet_interface_helper_flags_t_
 {
   VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE = (1 << 0),
@@ -493,6 +496,7 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 						hi->flags &
 						~VNET_HW_INTERFACE_FLAG_LINK_UP,
 						helper_flags);
+	  vnet_hw_if_update_runtime_data (vnm, si->hw_if_index);
 	}
     }
 
@@ -1022,6 +1026,10 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
   /* Call delete callbacks. */
   call_hw_interface_add_del_callbacks (vnm, hw_if_index, /* is_create */ 0);
 
+  /* delete rx queues */
+  vnet_hw_if_unregister_all_rx_queues (vnm, hw_if_index);
+  vnet_hw_if_update_runtime_data (vnm, hw_if_index);
+
   /* Delete any sub-interfaces. */
   {
     u32 id, sw_if_index;
@@ -1072,7 +1080,7 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
   vec_free (hw->hw_address);
   vec_free (hw->input_node_thread_index_by_queue);
   vec_free (hw->dq_runtime_index_by_queue);
-
+  vec_free (hw->rx_queue_indices);
   pool_put (im->hw_interfaces, hw);
 }
 
@@ -1376,6 +1384,8 @@ vnet_interface_init (vlib_main_t * vm)
   im->hw_interface_class_by_name = hash_create_string ( /* size */ 0,
 						       sizeof (uword));
 
+  im->rxq_index_by_hw_if_index_and_queue_id =
+    hash_create_mem (0, sizeof (u64), sizeof (u32));
   im->sw_if_index_by_sup_and_sub = hash_create_mem (0, sizeof (u64),
 						    sizeof (uword));
   {
