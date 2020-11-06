@@ -907,6 +907,30 @@ tcp_send_fin (tcp_connection_t * tc)
     }
 }
 
+static u8
+tcp_should_push (tcp_connection_t * tc, u32 snd_nxt, u32 data_len)
+{
+  u32 end_seq = snd_nxt + data_len;
+
+  /* Push sequence still in the future */
+  if (seq_leq (end_seq, tc->psh_seq))
+    return 0;
+
+  /* Not enough data sent since last push */
+  if (seq_lt (tc->psh_seq, tc->snd_nxt)
+      && seq_lt (end_seq, tc->psh_seq + (tc->snd_wnd_max >> 1)))
+    return 0;
+
+  /* Update psh sequence */
+  tc->psh_seq = tc->snd_una + transport_max_tx_dequeue (&tc->connection) - 1;
+
+  /* This is the last segment in the tx fifo */
+  if (seq_lt (tc->psh_seq, end_seq))
+    return 1;
+
+  return 0;
+}
+
 /**
  * Push TCP header and update connection variables. Should only be called
  * for segments with data, not for 'control' packets.
@@ -939,8 +963,7 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b, u32 snd_nxt,
 
   if (PREDICT_FALSE (tc->flags & TCP_CONN_PSH_PENDING))
     {
-      if (seq_geq (tc->psh_seq, snd_nxt)
-	  && seq_lt (tc->psh_seq, snd_nxt + data_len))
+      if (tcp_should_push (tc, snd_nxt, data_len))
 	flags |= TCP_FLAG_PSH;
     }
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, snd_nxt,

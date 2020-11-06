@@ -294,6 +294,7 @@ typedef struct _tcp_connection
   /** Send sequence variables RFC793 */
   u32 snd_una;		/**< oldest unacknowledged sequence number */
   u32 snd_wnd;		/**< send window */
+  u32 snd_wnd_max;	/**< max send window we've seen */
   u32 snd_wl1;		/**< seq number used for last snd.wnd update */
   u32 snd_wl2;		/**< ack number used for last snd.wnd update */
   u32 snd_nxt;		/**< next seq number to be sent */
