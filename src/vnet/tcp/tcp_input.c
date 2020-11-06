@@ -2403,6 +2403,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       switch (tc0->state)
 	{
 	case TCP_STATE_ESTABLISHED:
+	  if (vnet_buffer (b0)->tcp.seq_end != tc0->rcv_nxt)
+	    goto drop;
 	  /* Account for the FIN and send ack */
 	  tc0->rcv_nxt += 1;
 	  tcp_program_ack (tc0);
@@ -2428,6 +2430,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* move along .. */
 	  break;
 	case TCP_STATE_FIN_WAIT_1:
+	  if (vnet_buffer (b0)->tcp.seq_end != tc0->rcv_nxt)
+	    goto drop;
 	  tc0->rcv_nxt += 1;
 
 	  if (tc0->flags & TCP_CONN_FINPNDG)
@@ -2449,6 +2453,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  break;
 	case TCP_STATE_FIN_WAIT_2:
+	  if (vnet_buffer (b0)->tcp.seq_end != tc0->rcv_nxt)
+	    goto drop;
 	  /* Got FIN, send ACK! Be more aggressive with resource cleanup */
 	  tc0->rcv_nxt += 1;
 	  tcp_connection_set_state (tc0, TCP_STATE_TIME_WAIT);
