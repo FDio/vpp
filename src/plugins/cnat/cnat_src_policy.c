@@ -21,7 +21,7 @@
 
 cnat_src_policy_main_t cnat_src_policy_main;
 
-void
+__clib_export void
 cnat_register_vip_src_policy (cnat_vip_source_policy_t fp)
 {
   cnat_src_policy_main.vip_policy = fp;
@@ -105,7 +105,7 @@ cnat_free_port (u16 port, ip_protocol_t iproto)
   clib_spinlock_unlock (&ca->lock);
 }
 
-int
+__clib_export int
 cnat_allocate_port (u16 * port, ip_protocol_t iproto)
 {
   *port = clib_net_to_host_u16 (*port);

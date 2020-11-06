@@ -229,7 +229,7 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
-cnat_main_t *
+__clib_export cnat_main_t *
 cnat_get_main ()
 {
   return &cnat_main;
