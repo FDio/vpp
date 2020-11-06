@@ -19,7 +19,13 @@
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
 #include <vppinfra/ring.h>
+
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip6_packet.h>
+#include <vnet/udp/udp_packet.h>
+#include <vnet/tcp/tcp_packet.h>
+
 #include <vnet/devices/devices.h>
 
 #include <avf/avf.h>
@@ -30,12 +36,97 @@ avf_tx_desc_get_dtyp (avf_tx_desc_t * d)
   return d->qword[1] & 0x0f;
 }
 
+struct avf_ip4_psh
+{
+  u32 src;
+  u32 dst;
+  u8 zero;
+  u8 proto;
+  u16 l4len;
+};
+
+struct avf_ip6_psh
+{
+  u32 src[4];
+  u32 dst[4];
+  u32 l4len;
+  u32 proto;
+};
+
+static_always_inline u64
+avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
+{
+  u64 flags = 0;
+  if (!is_tso && !(b->flags & ((VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
+				VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+				VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))))
+    return 0;
+  u32 is_tcp = is_tso || b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+  u32 is_udp = !is_tso && b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+  u32 is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
+  u32 is_ip6 = b->flags & VNET_BUFFER_F_IS_IP6;
+  ASSERT (!is_tcp || !is_udp);
+  ASSERT (is_ip4 || is_ip6);
+  i16 l2_hdr_offset = vnet_buffer (b)->l2_hdr_offset;
+  i16 l3_hdr_offset = vnet_buffer (b)->l3_hdr_offset;
+  i16 l4_hdr_offset = vnet_buffer (b)->l4_hdr_offset;
+  u16 l2_len = l3_hdr_offset - l2_hdr_offset;
+  u16 l3_len = l4_hdr_offset - l3_hdr_offset;
+  ip4_header_t *ip4 = (void *) (b->data + l3_hdr_offset);
+  ip6_header_t *ip6 = (void *) (b->data + l3_hdr_offset);
+  tcp_header_t *tcp = (void *) (b->data + l4_hdr_offset);
+  udp_header_t *udp = (void *) (b->data + l4_hdr_offset);
+  u16 l4_len =
+    is_tcp ? tcp_header_bytes (tcp) : is_udp ? sizeof (udp_header_t) : 0;
+  u16 sum = 0;
+
+  flags |= AVF_TXD_OFFSET_MACLEN (l2_len) |
+    AVF_TXD_OFFSET_IPLEN (l3_len) | AVF_TXD_OFFSET_L4LEN (l4_len);
+  flags |= is_ip4 ? AVF_TXD_CMD_IIPT_IPV4 : AVF_TXD_CMD_IIPT_IPV6;
+  flags |= is_tcp ? AVF_TXD_CMD_L4T_TCP : is_udp ? AVF_TXD_CMD_L4T_UDP : 0;
+
+  if (is_ip4)
+    ip4->checksum = 0;
+
+  if (is_tcp || is_udp)
+    {
+      if (is_ip4)
+	{
+	  struct avf_ip4_psh psh = { 0 };
+	  psh.src = ip4->src_address.as_u32;
+	  psh.dst = ip4->dst_address.as_u32;
+	  psh.proto = ip4->protocol;
+	  psh.l4len =
+	    is_tso ? 0 :
+	    clib_host_to_net_u16 (clib_net_to_host_u16 (ip4->length) -
+				  (l4_hdr_offset - l3_hdr_offset));
+	  sum = ~ip_csum (&psh, sizeof (psh));
+	}
+      else
+	{
+	  struct avf_ip6_psh psh = { 0 };
+	  clib_memcpy_fast (&psh.src, &ip6->src_address, 32);
+	  psh.proto = clib_host_to_net_u32 ((u32) ip6->protocol);
+	  psh.l4len = is_tso ? 0 : ip6->payload_length;
+	  sum = ~ip_csum (&psh, sizeof (psh));
+	}
+    }
+  /* ip_csum does a byte swap for some reason... */
+  sum = clib_net_to_host_u16 (sum);
+  if (is_tcp)
+    tcp->checksum = sum;
+  else if (is_udp)
+    udp->checksum = sum;
+  return flags;
+}
+
 static_always_inline u16
 avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
 		u32 * buffers, u32 n_packets, int use_va_dma)
 {
   u16 next = txq->next;
   u64 bits = AVF_TXD_CMD_EOP | AVF_TXD_CMD_RSV;
+  u64 one_by_one_offload_flags = 0;
   u16 n_desc = 0;
   u16 *slot, n_desc_left, n_packets_left = n_packets;
   u16 mask = txq->size - 1;
@@ -69,7 +160,7 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
 
       or_flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
 
-      if (or_flags & VLIB_BUFFER_NEXT_PRESENT)
+      if (or_flags & (VLIB_BUFFER_NEXT_PRESENT))
 	goto one_by_one;
 
       vlib_buffer_copy_indices (txq->bufs + next, buffers, 4);
@@ -94,6 +185,17 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
       d[2].qword[1] = ((u64) b[2]->current_length) << 34 | bits;
       d[3].qword[1] = ((u64) b[3]->current_length) << 34 | bits;
 
+      if (PREDICT_FALSE (or_flags &
+			 (VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
+			  VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+			  VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)))
+	{
+	  d[0].qword[1] |= avf_tx_prepare_cksum (b[0], 0 /* no TSO */ );
+	  d[1].qword[1] |= avf_tx_prepare_cksum (b[1], 0 /* no TSO */ );
+	  d[2].qword[1] |= avf_tx_prepare_cksum (b[2], 0 /* no TSO */ );
+	  d[3].qword[1] |= avf_tx_prepare_cksum (b[3], 0 /* no TSO */ );
+	}
+
       next += 4;
       n_desc += 4;
       buffers += 4;
@@ -103,8 +205,15 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
       continue;
 
     one_by_one:
+      one_by_one_offload_flags = 0;
       txq->bufs[next] = buffers[0];
       b[0] = vlib_get_buffer (vm, buffers[0]);
+
+      if (PREDICT_FALSE (b[0]->flags & (VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
+					VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+					VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)))
+	one_by_one_offload_flags |=
+	  avf_tx_prepare_cksum (b[0], 0 /* no TSO */ );
 
       /* Deal with chain buffer if present */
       if (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
@@ -145,7 +254,7 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
 		d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
 
 	      d[0].qword[1] = (((u64) b[0]->current_length) << 34) |
-		AVF_TXD_CMD_RSV;
+		AVF_TXD_CMD_RSV | one_by_one_offload_flags;
 
 	      next += 1;
 	      n_desc += 1;
@@ -162,7 +271,9 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
       else
 	d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
 
-      d[0].qword[1] = (((u64) b[0]->current_length) << 34) | bits;
+      d[0].qword[1] =
+	(((u64) b[0]->current_length) << 34) | bits |
+	one_by_one_offload_flags;
 
       next += 1;
       n_desc += 1;
@@ -185,8 +296,16 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
 
       while (n_packets_left && n_desc_left)
 	{
+
 	  txq->bufs[next & mask] = buffers[0];
 	  b[0] = vlib_get_buffer (vm, buffers[0]);
+
+	  one_by_one_offload_flags = 0;
+	  if (PREDICT_FALSE (b[0]->flags & (VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
+					    VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+					    VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)))
+	    one_by_one_offload_flags |=
+	      avf_tx_prepare_cksum (b[0], 0 /* no TSO */ );
 
 	  /* Deal with chain buffer if present */
 	  if (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
@@ -222,7 +341,7 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
 		    d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
 
 		  d[0].qword[1] = (((u64) b[0]->current_length) << 34) |
-		    AVF_TXD_CMD_RSV;
+		    AVF_TXD_CMD_RSV | one_by_one_offload_flags;
 
 		  next += 1;
 		  n_desc += 1;
@@ -239,7 +358,9 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
 	  else
 	    d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
 
-	  d[0].qword[1] = (((u64) b[0]->current_length) << 34) | bits;
+	  d[0].qword[1] =
+	    (((u64) b[0]->current_length) << 34) | bits |
+	    one_by_one_offload_flags;
 
 	  next += 1;
 	  n_desc += 1;

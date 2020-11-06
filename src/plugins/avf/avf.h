@@ -46,9 +46,25 @@
 #define AVF_RXD_ERROR_L4E		(1ULL << (AVF_RXD_ERROR_SHIFT + 4))
 
 #define AVF_TXD_CMD(x)			(1 << (x + 4))
+#define AVF_TXD_CMD_EXT(x, val)         ((u64)val << (x + 4))
 #define AVF_TXD_CMD_EOP			AVF_TXD_CMD(0)
 #define AVF_TXD_CMD_RS			AVF_TXD_CMD(1)
 #define AVF_TXD_CMD_RSV			AVF_TXD_CMD(2)
+
+#define AVF_TXD_CMD_IIPT_NONE           AVF_TXD_CMD_EXT(5, 0)
+#define AVF_TXD_CMD_IIPT_IPV6           AVF_TXD_CMD_EXT(5, 1)
+#define AVF_TXD_CMD_IIPT_IPV4_NO_CSUM   AVF_TXD_CMD_EXT(5, 2)
+#define AVF_TXD_CMD_IIPT_IPV4           AVF_TXD_CMD_EXT(5, 3)
+
+#define AVF_TXD_CMD_L4T_UNKNOWN         AVF_TXD_CMD_EXT(8, 0)
+#define AVF_TXD_CMD_L4T_TCP             AVF_TXD_CMD_EXT(8, 1)
+#define AVF_TXD_CMD_L4T_SCTP            AVF_TXD_CMD_EXT(8, 2)
+#define AVF_TXD_CMD_L4T_UDP             AVF_TXD_CMD_EXT(8, 3)
+
+#define AVF_TXD_OFFSET(x,factor,val)    (((u64)val/(u64)factor) << (16 + x))
+#define AVF_TXD_OFFSET_MACLEN(val)      AVF_TXD_OFFSET( 0, 2, val)
+#define AVF_TXD_OFFSET_IPLEN(val)       AVF_TXD_OFFSET( 7, 4, val)
+#define AVF_TXD_OFFSET_L4LEN(val)       AVF_TXD_OFFSET(14, 4, val)
 
 extern vlib_log_class_registration_t avf_log;
 

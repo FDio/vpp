@@ -1629,7 +1629,9 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   /* Indicate ability to support L3 DMAC filtering and
    * initialize interface to L3 non-promisc mode */
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, ad->hw_if_index);
-  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER;
+  hi->flags |=
+    VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER |
+    VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
   ethernet_set_flags (vnm, ad->hw_if_index,
 		      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
 
