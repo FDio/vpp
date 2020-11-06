@@ -23,7 +23,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/udp/udp_packet.h>
-
+#include <vnet/interface/rx_queue_funcs.h>
 #include <vmxnet3/vmxnet3.h>
 
 #define foreach_vmxnet3_input_error \
@@ -469,16 +469,17 @@ VLIB_NODE_FN (vmxnet3_input_node) (vlib_main_t * vm,
 {
   u32 n_rx = 0;
   vmxnet3_main_t *vmxm = &vmxnet3_main;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
-  vnet_device_and_queue_t *dq;
+  vnet_hw_if_rxq_poll_vector_t *pv =
+    vnet_hw_if_get_rxq_poll_vector (vm, node);
+  vnet_hw_if_rxq_poll_vector_t *pve;
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
+  vec_foreach (pve, pv)
   {
     vmxnet3_device_t *vd;
-    vd = vec_elt_at_index (vmxm->devices, dq->dev_instance);
+    vd = vec_elt_at_index (vmxm->devices, pve->dev_instance);
     if ((vd->flags & VMXNET3_DEVICE_F_ADMIN_UP) == 0)
       continue;
-    n_rx += vmxnet3_device_input_inline (vm, node, frame, vd, dq->queue_id);
+    n_rx += vmxnet3_device_input_inline (vm, node, frame, vd, pve->queue_id);
   }
   return n_rx;
 }
