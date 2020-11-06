@@ -95,7 +95,7 @@ format_ipsec_crypto_alg (u8 * s, va_list * args)
 uword
 unformat_ipsec_crypto_alg (unformat_input_t * input, va_list * args)
 {
-  u32 *r = va_arg (*args, u32 *);
+  ipsec_crypto_alg_t *r = va_arg (*args, ipsec_crypto_alg_t *);
 
   if (0);
 #define _(v,f,s) else if (unformat (input, s)) *r = IPSEC_CRYPTO_ALG_##f;
@@ -127,7 +127,7 @@ format_ipsec_integ_alg (u8 * s, va_list * args)
 uword
 unformat_ipsec_integ_alg (unformat_input_t * input, va_list * args)
 {
-  u32 *r = va_arg (*args, u32 *);
+  ipsec_integ_alg_t *r = va_arg (*args, ipsec_integ_alg_t *);
 
   if (0);
 #define _(v,f,s) else if (unformat (input, s)) *r = IPSEC_INTEG_ALG_##f;
