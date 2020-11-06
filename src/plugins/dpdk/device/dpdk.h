@@ -277,6 +277,7 @@ typedef struct
   u8 no_multi_seg;
   u8 enable_tcp_udp_checksum;
   u8 no_tx_checksum_offload;
+  u8 enable_telemetry;
 
   /* Required config parameters */
   u8 coremask_set_manually;
