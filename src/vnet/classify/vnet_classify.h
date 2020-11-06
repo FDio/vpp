@@ -182,7 +182,6 @@ typedef struct
 
 typedef struct
 {
-  int refcnt;
   u32 *table_indices;
 } vnet_classify_filter_set_t;
 

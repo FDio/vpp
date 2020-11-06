@@ -1747,7 +1747,6 @@ classify_filter_command_fn (vlib_main_t * vm,
 
   if (!is_add)
     {
-
       if (pkt_trace)
 	set_index = vlib_global_main.trace_filter.trace_filter_set_index;
       else if (sw_if_index < vec_len (cm->filter_set_by_sw_if_index))
@@ -1758,8 +1757,6 @@ classify_filter_command_fn (vlib_main_t * vm,
 	  if (pkt_trace)
 	    return clib_error_return (0,
 				      "No pkt trace classify filter set...");
-	  if (sw_if_index == 0)
-	    return clib_error_return (0, "No pcap classify filter set...");
 	  else
 	    return clib_error_return (0, "No classify filter set for %U...",
 				      format_vnet_sw_if_index_name, vnm,
@@ -1768,12 +1765,23 @@ classify_filter_command_fn (vlib_main_t * vm,
 
       set = pool_elt_at_index (cm->filter_sets, set_index);
 
-      set->refcnt--;
-      ASSERT (set->refcnt >= 0);
-      if (set->refcnt == 0)
+      /* check for the special case where we want to reset the pcap filter */
+      if (!pkt_trace && 0 == sw_if_index)
 	{
-	  del_chain = 1;
-	  table_index = set->table_indices[0];
+	  if (0 == vec_len (set->table_indices))
+	    {
+	      return clib_error_return (0, "No pcap classify filter set...");
+	    }
+	  else
+	    {
+	      /* restore default (empty) filter */
+	      table_index = vec_elt (set->table_indices, 0);
+	      vec_free (set->table_indices);
+	    }
+	}
+      else
+	{
+	  table_index = vec_elt (set->table_indices, 0);
 	  vec_reset_length (set->table_indices);
 	  pool_put (cm->filter_sets, set);
 	  if (pkt_trace)
@@ -1784,14 +1792,13 @@ classify_filter_command_fn (vlib_main_t * vm,
 	  else
 	    {
 	      cm->filter_set_by_sw_if_index[sw_if_index] = ~0;
-	      if (sw_if_index > 0)
-		{
-		  vnet_hw_interface_t *hi =
-		    vnet_get_sup_hw_interface (vnm, sw_if_index);
-		  hi->trace_classify_table_index = ~0;
-		}
+	      vnet_hw_interface_t *hi =
+		vnet_get_sup_hw_interface (vnm, sw_if_index);
+	      hi->trace_classify_table_index = ~0;
 	    }
 	}
+
+      del_chain = 1;
     }
 
   if (is_add)
@@ -1806,7 +1813,6 @@ classify_filter_command_fn (vlib_main_t * vm,
 	{
 	  pool_get (cm->filter_sets, set);
 	  set_index = set - cm->filter_sets;
-	  set->refcnt = 1;
 	}
       else
 	set = pool_elt_at_index (cm->filter_sets, set_index);
@@ -2059,6 +2065,8 @@ show_classify_filter_command_fn (vlib_main_t * vm,
 	  name = format (0, "packet tracer:");
 	  break;
 	case 0:
+	  if (0 == vec_len (set->table_indices))
+	    continue;
 	  name = format (0, "pcap rx/tx/drop:");
 	  break;
 	default:
@@ -2948,7 +2956,6 @@ vnet_classify_init (vlib_main_t * vm)
 
   /* Filter set 0 is grounded... */
   pool_get_zero (cm->filter_sets, set);
-  set->refcnt = 0x7FFFFFFF;
   /* Initialize the pcap filter set */
   vec_validate (cm->filter_set_by_sw_if_index, 0);
   cm->filter_set_by_sw_if_index[0] = 0;
