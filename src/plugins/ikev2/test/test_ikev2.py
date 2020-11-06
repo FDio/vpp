@@ -181,7 +181,9 @@ class IKEv2SA(object):
     def __init__(self, test, is_initiator=True, i_id=None, r_id=None,
                  spi=b'\x01\x02\x03\x04\x05\x06\x07\x08', id_type='fqdn',
                  nonce=None, auth_data=None, local_ts=None, remote_ts=None,
-                 auth_method='shared-key', priv_key=None, natt=False):
+                 auth_method='shared-key', priv_key=None, natt=False,
+                 udp_encap=False):
+        self.udp_encap = udp_encap
         self.natt = natt
         if natt:
             self.sport = 4500
@@ -662,6 +664,13 @@ class IkePeer(VppTestCase):
         assert(len(res) == tlen)
         return res
 
+    def verify_udp_encap(self, ipsec_sa):
+        e = VppEnum.vl_api_ipsec_sad_flags_t
+        if self.sa.udp_encap or self.sa.natt:
+            self.assertIn(e.IPSEC_API_SAD_FLAG_UDP_ENCAP, ipsec_sa.flags)
+        else:
+            self.assertNotIn(e.IPSEC_API_SAD_FLAG_UDP_ENCAP, ipsec_sa.flags)
+
     def verify_ipsec_sas(self, is_rekey=False):
         sas = self.vapi.ipsec_sa_dump()
         if is_rekey:
@@ -671,7 +680,6 @@ class IkePeer(VppTestCase):
         else:
             sa_count = 2
         self.assertEqual(len(sas), sa_count)
-        e = VppEnum.vl_api_ipsec_sad_flags_t
         if self.sa.is_initiator:
             if is_rekey:
                 sa0 = sas[0].entry
@@ -689,6 +697,8 @@ class IkePeer(VppTestCase):
 
         c = self.sa.child_sas[0]
 
+        self.verify_udp_encap(sa0)
+        self.verify_udp_encap(sa1)
         vpp_crypto_alg = self.vpp_enums[self.sa.vpp_esp_cypto_alg]
         self.assertEqual(sa0.crypto_algorithm, vpp_crypto_alg)
         self.assertEqual(sa1.crypto_algorithm, vpp_crypto_alg)
@@ -1332,13 +1342,17 @@ class Ikev2Params(object):
         if 'esp_transforms' in params:
             self.p.add_esp_transforms(params['esp_transforms'])
 
+        udp_encap = False if 'udp_encap' not in params else\
+            params['udp_encap']
+        if udp_encap:
+            self.p.set_udp_encap(True)
+
         self.sa = IKEv2SA(self, i_id=idi['data'], r_id=idr['data'],
                           is_initiator=is_init,
                           id_type=self.p.local_id['id_type'], natt=is_natt,
                           priv_key=client_priv, auth_method=auth_method,
-                          auth_data=auth_data,
+                          auth_data=auth_data, udp_encap=udp_encap,
                           local_ts=self.p.remote_ts, remote_ts=self.p.local_ts)
-
         if is_init:
             ike_crypto = ('AES-CBC', 32) if 'ike-crypto' not in params else\
                 params['ike-crypto']
@@ -1687,6 +1701,7 @@ class TestResponderRsaSign(TemplateResponder, Ikev2Params):
     """ test ikev2 responder - cert based auth """
     def config_tc(self):
         self.config_params({
+            'udp_encap': True,
             'auth': 'rsa-sig',
             'server-key': 'server-key.pem',
             'client-key': 'client-key.pem',
