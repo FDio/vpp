@@ -323,6 +323,13 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
       tcp_cc_event (tc, TCP_CC_EVT_START_TX);
       tcp_connection_tx_pacer_reset (tc, tc->cwnd, TRANSPORT_PACER_MIN_BURST);
     }
+
+  if (tc->flags & TCP_CONN_PSH_PENDING)
+    {
+      u32 max_deq = transport_max_tx_dequeue (&tc->connection);
+      /* Last byte marked for push */
+      tc->psh_seq = tc->snd_una + max_deq - 1;
+    }
 }
 
 #endif /* CLIB_MARCH_VARIANT */
