@@ -68,6 +68,7 @@ typedef struct
 {
   vnet_device_and_queue_t *devices_and_queues;
   vlib_node_state_t enabled_node_state;
+  u32 pad;
 } vnet_device_input_runtime_t;
 
 extern vnet_device_main_t vnet_device_main;

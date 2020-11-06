@@ -31,6 +31,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/virtio/pci.h>
+#include <vnet/interface/rx_queue_funcs.h>
 
 virtio_main_t virtio_main;
 
@@ -44,17 +45,11 @@ virtio_main_t virtio_main;
 static clib_error_t *
 call_read_ready (clib_file_t * uf)
 {
-  virtio_main_t *nm = &virtio_main;
   vnet_main_t *vnm = vnet_get_main ();
-  u16 qid = uf->private_data & 0xFFFF;
-  virtio_if_t *vif =
-    vec_elt_at_index (nm->interfaces, uf->private_data >> 16);
   u64 b;
 
   CLIB_UNUSED (ssize_t size) = read (uf->file_descriptor, &b, sizeof (b));
-  if ((qid & 1) == 0)
-    vnet_device_input_set_interrupt_pending (vnm, vif->hw_if_index,
-					     RX_QUEUE_ACCESS (qid));
+  vnet_hw_if_rx_queue_set_int_pending (vnm, uf->private_data);
 
   return 0;
 }
@@ -64,7 +59,6 @@ clib_error_t *
 virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
 {
   virtio_vring_t *vring;
-  clib_file_t t = { 0 };
   int i;
 
   if (!is_pow2 (sz))
@@ -122,13 +116,6 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   vring->kick_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
   virtio_log_debug (vif, "vring %u size %u call_fd %d kick_fd %d", idx,
 		    vring->size, vring->call_fd, vring->kick_fd);
-
-  t.read_function = call_read_ready;
-  t.file_descriptor = vring->call_fd;
-  t.private_data = vif->dev_instance << 16 | idx;
-  t.description = format (0, "%U vring %u", format_virtio_device_name,
-			  vif->dev_instance, idx);
-  vring->call_file_index = clib_file_add (&file_main, &t);
 
   return 0;
 }
@@ -233,19 +220,41 @@ virtio_set_packet_buffering (virtio_if_t * vif, u16 buffering_size)
 }
 
 void
-virtio_vring_set_numa_node (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
+virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  u32 thread_index;
-  virtio_vring_t *vring =
-    vec_elt_at_index (vif->rxq_vrings, RX_QUEUE_ACCESS (idx));
-  thread_index =
-    vnet_get_device_input_thread_index (vnm, vif->hw_if_index,
-					RX_QUEUE_ACCESS (idx));
-  vring->buffer_pool_index =
-    vlib_buffer_pool_get_default_for_numa (vm,
-					   vlib_mains
-					   [thread_index]->numa_node);
+  virtio_vring_t *vring;
+
+  vnet_hw_if_set_input_node (vnm, vif->hw_if_index, virtio_input_node.index);
+
+  vec_foreach (vring, vif->rxq_vrings)
+    {
+      vring->queue_index = vnet_hw_if_register_rx_queue (
+	vnm, vif->hw_if_index, RX_QUEUE_ACCESS (vring->queue_id),
+	VNET_HW_IF_RXQ_THREAD_ANY);
+      vring->buffer_pool_index = vlib_buffer_pool_get_default_for_numa (
+	vm, vnet_hw_if_get_rx_queue_numa_node (vnm, vring->queue_index));
+      //    }
+      //  vnet_hw_if_update_runtime_data (vnm, vif->hw_if_index);
+      if (vif->type == VIRTIO_IF_TYPE_TAP || vif->type == VIRTIO_IF_TYPE_TUN)
+	//  vec_foreach (vring, vif->rxq_vrings)
+	{
+
+	  clib_file_t f = {
+	    .read_function = call_read_ready,
+	    .flags = UNIX_FILE_EVENT_EDGE_TRIGGERED,
+	    .file_descriptor = vring->call_fd,
+	    .private_data = vring->queue_index,
+	    .description = format (0, "%U vring %u", format_virtio_device_name,
+				   vif->dev_instance, vring->queue_id),
+	  };
+
+	  vring->call_file_index = clib_file_add (&file_main, &f);
+	  vnet_hw_if_set_rx_queue_file_index (vnm, vring->queue_index,
+					      vring->call_file_index);
+	}
+    }
+  vnet_hw_if_update_runtime_data (vnm, vif->hw_if_index);
 }
 
 inline void
