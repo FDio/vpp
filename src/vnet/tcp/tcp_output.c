@@ -907,6 +907,22 @@ tcp_send_fin (tcp_connection_t * tc)
     }
 }
 
+static u8
+tcp_should_push (tcp_connection_t * tc, u32 data_len)
+{
+  u32 max_deq = transport_max_tx_dequeue (&tc->connection);
+  u32 flight_size = tc->snd_nxt - tc->snd_una;
+
+  /* Update psh sequence because more data has been enqueued */
+  if (max_deq > flight_size + data_len)
+    {
+      tc->psh_seq = tc->snd_una + max_deq - 1;
+      return 0;
+    }
+
+  return 1;
+}
+
 /**
  * Push TCP header and update connection variables. Should only be called
  * for segments with data, not for 'control' packets.
@@ -940,7 +956,8 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b, u32 snd_nxt,
   if (PREDICT_FALSE (tc->flags & TCP_CONN_PSH_PENDING))
     {
       if (seq_geq (tc->psh_seq, snd_nxt)
-	  && seq_lt (tc->psh_seq, snd_nxt + data_len))
+	  && seq_lt (tc->psh_seq, snd_nxt + data_len)
+	  && tcp_should_push (tc, data_len))
 	flags |= TCP_FLAG_PSH;
     }
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, snd_nxt,
