@@ -502,7 +502,7 @@ typedef struct vlib_node_runtime_t
 
   u16 state;				/**< Input node state. */
 
-  u32 interrupt_data;			/**< Data passed together with interrupt.
+  u32 *interrupt_data;			/**< Data passed together with interrupt.
 					  Valid only when state is
 					  VLIB_NODE_STATE_INTERRUPT */
 

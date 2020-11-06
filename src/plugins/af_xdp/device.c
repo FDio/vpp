@@ -25,6 +25,7 @@
 #include <vppinfra/linux/sysfs.h>
 #include <vppinfra/unix.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/interface/rx_queue_funcs.h>
 #include "af_xdp.h"
 
 af_xdp_main_t af_xdp_main;
@@ -412,8 +413,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   args->sw_if_index = ad->sw_if_index = sw->sw_if_index;
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
 
-  vnet_hw_interface_set_input_node (vnm, ad->hw_if_index,
-				    af_xdp_input_node.index);
+  vnet_hw_if_set_input_node (vnm, ad->hw_if_index, af_xdp_input_node.index);
 
   for (i = 0; i < vec_len (ad->rxqs); i++)
     {

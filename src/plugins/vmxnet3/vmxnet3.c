@@ -17,6 +17,7 @@
 #include <vlib/vlib.h>
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 
@@ -812,8 +813,7 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
     hw->flags |= (VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
 		  VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
 
-  vnet_hw_interface_set_input_node (vnm, vd->hw_if_index,
-				    vmxnet3_input_node.index);
+  vnet_hw_if_set_input_node (vnm, vd->hw_if_index, vmxnet3_input_node.index);
   /* Disable interrupts */
   vmxnet3_disable_interrupt (vd);
   vec_foreach_index (qid, vd->rxqs)

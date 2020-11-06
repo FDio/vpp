@@ -26,6 +26,7 @@
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/interface/rx_queue_funcs.h>
 
 #include <rdma/rdma.h>
 
@@ -936,8 +937,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
    * vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, rd->hw_if_index);
    * hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
    */
-  vnet_hw_interface_set_input_node (vnm, rd->hw_if_index,
-				    rdma_input_node.index);
+  vnet_hw_if_set_input_node (vnm, rd->hw_if_index, rdma_input_node.index);
   vec_foreach_index (qid, rd->rxqs)
     vnet_hw_interface_assign_rx_thread (vnm, rd->hw_if_index, qid, ~0);
 

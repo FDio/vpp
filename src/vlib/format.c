@@ -210,6 +210,27 @@ unformat_vlib_tmpfile (unformat_input_t * input, va_list * args)
   return 1;
 }
 
+u8 *
+format_vlib_thread_name (u8 * s, va_list * args)
+{
+  u32 thread_index = va_arg (*args, u32);
+
+  if (thread_index == 0)
+    return format (s, "main");
+
+  if (thread_index < vec_len (vlib_worker_threads))
+    return format (s, "%s", vlib_worker_threads[thread_index].name);
+  return s;
+}
+
+u8 *
+format_vlib_thread_name_and_index (u8 * s, va_list * args)
+{
+  u32 thread_index = va_arg (*args, u32);
+
+  return format (s, "%U (%u)", format_vlib_thread_name, thread_index,
+		 thread_index);
+}
 
 /*
  * fd.io coding-style-patch-verification: ON

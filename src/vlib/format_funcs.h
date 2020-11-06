@@ -47,6 +47,12 @@ u8 *format_vlib_read_write (u8 * s, va_list * args);
 /* Formats buffer data as printable ascii or as hex. */
 u8 *format_vlib_buffer_data (u8 * s, va_list * args);
 
+/* Formats thread name */
+u8 *format_vlib_thread_name (u8 * s, va_list * args);
+
+/* Formats thread name and thread index */
+u8 *format_vlib_thread_name_and_index (u8 * s, va_list * args);
+
 /* Enable/on => 1; disable/off => 0. */
 uword unformat_vlib_enable_disable (unformat_input_t * input, va_list * args);
 
