@@ -1,0 +1,72 @@
+
+create packet-generator interface pg0
+set int mac addr pg0 4.5.6
+
+create sub-interfaces pg0 1
+create sub-interfaces pg0 2
+create sub-interfaces pg0 3
+
+ip table add 1
+ip table add 2
+ip table add 3
+
+set int ip table pg0.1 1
+set int ip table pg0.2 2
+set int ip table pg0.3 3
+
+set int ip address pg0.1 192.168.0.1/24
+set int ip address pg0.2 192.168.0.1/24
+set int ip address pg0.3 192.168.0.1/24
+
+set int state pg0 up
+set int state pg0.1 up
+set int state pg0.2 up
+set int state pg0.3 up
+
+ipsec sa add 2 spi 2 crypto-key 6541686776336961656264656f6f6579 crypto-alg aes-cbc-128 tunnel-src 192.168.0.1 tunnel-dst 192.168.0.2 tx-table-id 2
+ipsec sa add 3 spi 3 crypto-key 6541686776336961656264656f6f6579 crypto-alg aes-cbc-128 tunnel-src 192.168.0.1 tunnel-dst 192.168.0.2 tx-table-id 3
+
+ipsec spd add 1
+set interface ipsec spd pg0.1 1
+ipsec policy add spd 1 priority 100 outbound action bypass protocol 50
+ipsec policy add spd 1 priority 10 outbound action protect sa 2 local-ip-range 10.5.0.0 - 10.5.0.255 remote-ip-range 10.6.0.0 - 10.6.0.16
+ipsec policy add spd 1 priority 10 outbound action protect sa 3 local-ip-range 10.5.0.0 - 10.5.0.255 remote-ip-range 10.6.0.17 - 10.6.0.32
+
+ip route table 1 add 10.6.0.0/16 via 192.168.0.2 pg0.1
+set ip neighbor pg0.1 192.168.0.2 00:11:22:33:44:55
+set ip neighbor pg0.2 192.168.0.2 00:11:22:33:44:55
+set ip neighbor pg0.3 192.168.0.2 00:11:22:33:44:55
+
+trace add pg-input 100
+
+packet-generator new {
+  name ipsec2
+  limit 1
+  rate 1e4
+  node ethernet-input
+  interface pg0
+  size 100-100
+  data {
+   IP4: 1.2.3 -> 4.5.6 vlan 1
+   UDP: 10.5.0.1 -> 10.6.0.1
+   UDP: 4321 -> 1234
+    length 72
+    incrementing 100
+  }
+}
+
+packet-generator new {
+  name ipsec3
+  limit 1
+  rate 1e4
+  node ethernet-input
+  interface pg0
+  size 100-100
+  data {
+   IP4: 1.2.3 -> 4.5.6 vlan 1
+   UDP: 10.5.0.1 -> 10.6.0.22
+   UDP: 4321 -> 1234
+    length 72
+    incrementing 100
+  }
+}

@@ -77,7 +77,7 @@ ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
 
   p = hash_get (im->spd_index_by_sw_if_index, sw_if_index);
   if (p && is_add)
-    return VNET_API_ERROR_SYSCALL_ERROR_1;	/* spd already assigned */
+    return VNET_API_ERROR_SYSCALL_ERROR_2;	/* spd already assigned */
 
   if (is_add)
     {
