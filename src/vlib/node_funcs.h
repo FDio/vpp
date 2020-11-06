@@ -47,6 +47,7 @@
 
 #include <vppinfra/fifo.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
+#include <vppinfra/interrupt.h>
 
 #ifdef CLIB_SANITIZE_ADDR
 #include <sanitizer/asan_interface.h>
@@ -224,37 +225,19 @@ vlib_node_get_state (vlib_main_t * vm, u32 node_index)
 }
 
 always_inline void
-vlib_node_set_interrupt_pending_with_data (vlib_main_t * vm, u32 node_index,
-					   u32 data)
+vlib_node_set_interrupt_pending (vlib_main_t * vm, u32 node_index)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n = vec_elt (nm->nodes, node_index);
-  vlib_node_interrupt_t *i;
+
   ASSERT (n->type == VLIB_NODE_TYPE_INPUT);
 
-  if (vm == vlib_get_main ())
-    {
-      /* local thread */
-      vec_add2 (nm->pending_local_interrupts, i, 1);
-      i->node_runtime_index = n->runtime_index;
-      i->data = data;
-    }
+  if (vm != vlib_get_main ())
+    clib_interrupt_set_atomic (nm->interrupts, n->runtime_index);
   else
-    {
-      /* remote thread */
-      clib_spinlock_lock (&nm->pending_interrupt_lock);
-      vec_add2 (nm->pending_remote_interrupts, i, 1);
-      i->node_runtime_index = n->runtime_index;
-      i->data = data;
-      *nm->pending_remote_interrupts_notify = 1;
-      clib_spinlock_unlock (&nm->pending_interrupt_lock);
-    }
-}
+    clib_interrupt_set (nm->interrupts, n->runtime_index);
 
-always_inline void
-vlib_node_set_interrupt_pending (vlib_main_t * vm, u32 node_index)
-{
-  vlib_node_set_interrupt_pending_with_data (vm, node_index, 0);
+  __atomic_store_n (nm->pending_interrupts, 1, __ATOMIC_RELEASE);
 }
 
 always_inline vlib_process_t *
