@@ -1638,8 +1638,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, ad->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
-  vnet_hw_interface_set_input_node (vnm, ad->hw_if_index,
-				    avf_input_node.index);
+  vnet_hw_if_set_input_node (vnm, ad->hw_if_index, avf_input_node.index);
 
   for (i = 0; i < ad->n_rx_queues; i++)
     vnet_hw_interface_assign_rx_thread (vnm, ad->hw_if_index, i, ~0);

@@ -301,8 +301,8 @@ mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args)
   ppif->sw_if_index = sw->sw_if_index;
   ppif->per_interface_next_index = ~0;
   args->sw_if_index = sw->sw_if_index;
-  vnet_hw_interface_set_input_node (vnm, ppif->hw_if_index,
-				    mrvl_pp2_input_node.index);
+  vnet_hw_if_set_input_node (vnm, ppif->hw_if_index,
+			     mrvl_pp2_input_node.index);
   vnet_hw_interface_assign_rx_thread (vnm, ppif->hw_if_index, 0, ~0);
   vnet_hw_interface_set_rx_mode (vnm, ppif->hw_if_index, 0,
 				 VNET_HW_IF_RX_MODE_POLLING);

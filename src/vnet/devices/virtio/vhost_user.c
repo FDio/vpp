@@ -165,8 +165,8 @@ vhost_user_rx_thread_placement (vhost_user_intf_t * vui, u32 qid)
 
   ASSERT ((qid & 1) == 1);	// should be odd
   // Assign new queue mappings for the interface
-  vnet_hw_interface_set_input_node (vnm, vui->hw_if_index,
-				    vhost_user_input_node.index);
+  vnet_hw_if_set_input_node (vnm, vui->hw_if_index,
+			     vhost_user_input_node.index);
   vnet_hw_interface_assign_rx_thread (vnm, vui->hw_if_index, q, ~0);
   if (txvq->mode == VNET_HW_IF_RX_MODE_UNKNOWN)
     /* Set polling as the default */

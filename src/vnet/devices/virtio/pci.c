@@ -1181,8 +1181,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 	}
     }
 
-  vnet_hw_interface_set_input_node (vnm, vif->hw_if_index,
-				    virtio_input_node.index);
+  vnet_hw_if_set_input_node (vnm, vif->hw_if_index, virtio_input_node.index);
   u32 i = 0;
   vec_foreach_index (i, vif->rxq_vrings)
   {
