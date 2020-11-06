@@ -22,7 +22,7 @@ ipsec sa add 20 spi 200 crypto-key 6541686776336961656264656f6f6579 crypto-alg a
 ipsec sa add 30 spi 300 crypto-key 6541686776336961656264656f6f6579 crypto-alg aes-cbc-128
 
 create ipip tunnel src 10.0.0.1 dst 10.0.0.2
-create ipip tunnel src 10.0.0.2 dst 10.0.0.1
+create ipip tunnel src 10.0.0.2 dst 10.0.0.1 outer-table-id 1
 
 ipsec tunnel protect ipip0 sa-in 20 sa-out 30
 ipsec tunnel protect ipip1 sa-in 30 sa-out 20
