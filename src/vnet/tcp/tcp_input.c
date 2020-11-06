@@ -555,6 +555,27 @@ tcp_estimate_initial_rtt (tcp_connection_t * tc)
   tcp_update_rto (tc);
 }
 
+static void
+tcp_update_push (tcp_connection_t * tc)
+{
+  u32 max_deq;
+
+  if (seq_gt (tc->psh_seq, tc->snd_una))
+    return;
+
+  max_deq = transport_max_tx_dequeue (&tc->connection);
+
+  /* No pending tx data. Clear push flag */
+  if (max_deq == tc->snd_nxt - tc->snd_una)
+    {
+      tc->flags &= ~TCP_CONN_PSH_PENDING;
+      return;
+    }
+
+  /* Push still needed for pending data so advance sequence */
+  tc->psh_seq = tc->snd_una + max_deq - 1;
+}
+
 /**
  * Dequeue bytes for connections that have received acks in last burst
  */
@@ -583,10 +604,7 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
       tcp_validate_txf_size (tc, tc->snd_nxt - tc->snd_una);
 
       if (PREDICT_FALSE (tc->flags & TCP_CONN_PSH_PENDING))
-	{
-	  if (seq_leq (tc->psh_seq, tc->snd_una))
-	    tc->flags &= ~TCP_CONN_PSH_PENDING;
-	}
+	tcp_update_push (tc);
 
       if (tcp_is_descheduled (tc))
 	tcp_reschedule (tc);
