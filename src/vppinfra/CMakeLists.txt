@@ -59,6 +59,7 @@ set(VPPINFRA_SRCS
   graph.c
   hash.c
   heap.c
+  interrupt.c
   longjmp.S
   macros.c
   maplog.c
@@ -133,6 +134,7 @@ set(VPPINFRA_HEADERS
   graph.h
   hash.h
   heap.h
+  interrupt.h
   lb_hash_hash.h
   llist.h
   lock.h
