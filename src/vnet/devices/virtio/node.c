@@ -26,14 +26,13 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 #include <vnet/gso/gro_func.h>
+#include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/udp/udp_packet.h>
 #include <vnet/devices/virtio/virtio.h>
-
 
 #define foreach_virtio_input_error \
   _(BUFFER_ALLOC, "buffer alloc error") \
@@ -638,30 +637,27 @@ VLIB_NODE_FN (virtio_input_node) (vlib_main_t * vm,
 				  vlib_frame_t * frame)
 {
   u32 n_rx = 0;
-  virtio_main_t *nm = &virtio_main;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
-  vnet_device_and_queue_t *dq;
+  virtio_main_t *vim = &virtio_main;
+  vnet_hw_if_rxq_poll_vector_t *p,
+    *pv = vnet_hw_if_get_rxq_poll_vector (vm, node);
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
-  {
-    virtio_if_t *vif;
-    vif = vec_elt_at_index (nm->interfaces, dq->dev_instance);
-    if (vif->flags & VIRTIO_IF_FLAG_ADMIN_UP)
-      {
-	if (vif->type == VIRTIO_IF_TYPE_TAP)
-	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
-					      dq->queue_id,
-					      VIRTIO_IF_TYPE_TAP);
-	else if (vif->type == VIRTIO_IF_TYPE_PCI)
-	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
-					      dq->queue_id,
-					      VIRTIO_IF_TYPE_PCI);
-	else if (vif->type == VIRTIO_IF_TYPE_TUN)
-	  n_rx += virtio_device_input_inline (vm, node, frame, vif,
-					      dq->queue_id,
-					      VIRTIO_IF_TYPE_TUN);
-      }
-  }
+  vec_foreach (p, pv)
+    {
+      virtio_if_t *vif;
+      vif = vec_elt_at_index (vim->interfaces, p->dev_instance);
+      if (vif->flags & VIRTIO_IF_FLAG_ADMIN_UP)
+	{
+	  if (vif->type == VIRTIO_IF_TYPE_TAP)
+	    n_rx += virtio_device_input_inline (
+	      vm, node, frame, vif, p->queue_id, VIRTIO_IF_TYPE_TAP);
+	  else if (vif->type == VIRTIO_IF_TYPE_PCI)
+	    n_rx += virtio_device_input_inline (
+	      vm, node, frame, vif, p->queue_id, VIRTIO_IF_TYPE_PCI);
+	  else if (vif->type == VIRTIO_IF_TYPE_TUN)
+	    n_rx += virtio_device_input_inline (
+	      vm, node, frame, vif, p->queue_id, VIRTIO_IF_TYPE_TUN);
+	}
+    }
 
   return n_rx;
 }
