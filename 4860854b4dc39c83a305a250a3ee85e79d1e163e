@@ -16,6 +16,24 @@
       "revId": "4860854b4dc39c83a305a250a3ee85e79d1e163e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "19b219d0_046bd142",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1580,
+      "author": {
+        "id": 2115
+      },
+      "writtenOn": "2020-11-07T05:40:54Z",
+      "side": 1,
+      "message": "Thank you Matthew Smith for reviewing the patch \nACK",
+      "parentUuid": "bd49d0ca_9ace1078",
+      "revId": "4860854b4dc39c83a305a250a3ee85e79d1e163e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
