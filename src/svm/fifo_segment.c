@@ -865,12 +865,6 @@ fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs, u32 slice_index,
     {
       fss_fifo_add_active_list (fss, f);
       f->flags |= SVM_FIFO_F_LL_TRACKED;
-
-      svm_fifo_init_ooo_lookup (f, 0 /* ooo enq */ );
-    }
-  else
-    {
-      svm_fifo_init_ooo_lookup (f, 1 /* ooo deq */ );
     }
 
   fsh_active_fifos_update (fsh, 1);

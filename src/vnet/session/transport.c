@@ -770,6 +770,14 @@ transport_connection_reschedule (transport_connection_t * tc)
 }
 
 void
+transport_fifos_init_ooo (transport_connection_t * tc)
+{
+  session_t *s = session_get (tc->s_index, tc->thread_index);
+  svm_fifo_init_ooo_lookup (s->rx_fifo, 0 /* ooo enq */ );
+  svm_fifo_init_ooo_lookup (s->tx_fifo, 1 /* ooo deq */ );
+}
+
+void
 transport_update_time (clib_time_type_t time_now, u8 thread_index)
 {
   transport_proto_vft_t *vft;
