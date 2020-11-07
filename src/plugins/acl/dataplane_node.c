@@ -462,120 +462,119 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 		    }
 		}
 	    }
+	}
 
-	  if (acl_check_needed)
-	    {
-	      if (is_input)
-		lc_index0 = am->input_lc_index_by_sw_if_index[sw_if_index[0]];
-	      else
-		lc_index0 =
-		  am->output_lc_index_by_sw_if_index[sw_if_index[0]];
+	if (acl_check_needed)
+	  {
+	    if (is_input)
+	      lc_index0 = am->input_lc_index_by_sw_if_index[sw_if_index[0]];
+	    else
+	      lc_index0 =
+		am->output_lc_index_by_sw_if_index[sw_if_index[0]];
 
-	      action = 0;	/* deny by default */
-	      int is_match = acl_plugin_match_5tuple_inline (am, lc_index0,
-							     (fa_5tuple_opaque_t *) & fa_5tuple[0], is_ip6,
-							     &action,
-							     &match_acl_pos,
-							     &match_acl_in_index,
-							     &match_rule_index,
-							     &trace_bitmap);
-	      if (PREDICT_FALSE
-		  (is_match && am->interface_acl_counters_enabled))
-		{
-		  u32 buf_len = vlib_buffer_length_in_chain (vm, b[0]);
-		  vlib_increment_combined_counter (am->combined_acl_counters +
-						   saved_matched_acl_index,
-						   thread_index,
-						   saved_matched_ace_index,
-						   saved_packet_count,
-						   saved_byte_count);
-		  saved_matched_acl_index = match_acl_in_index;
-		  saved_matched_ace_index = match_rule_index;
-		  saved_packet_count = 1;
-		  saved_byte_count = buf_len;
-		  /* prefetch the counter that we are going to increment */
-		  vlib_prefetch_combined_counter (am->combined_acl_counters +
-						  saved_matched_acl_index,
-						  thread_index,
-						  saved_matched_ace_index);
-		}
-
-	      b[0]->error = error_node->errors[action];
-
-	      if (1 == action)
-		pkts_acl_permit++;
-
-	      if (2 == action)
-		{
-		  if (!acl_fa_can_add_session (am, is_input, sw_if_index[0]))
-		    acl_fa_try_recycle_session (am, is_input,
+	    action = 0;	/* deny by default */
+	    int is_match = acl_plugin_match_5tuple_inline (am, lc_index0,
+							   (fa_5tuple_opaque_t *) & fa_5tuple[0], is_ip6,
+							   &action,
+							   &match_acl_pos,
+							   &match_acl_in_index,
+							   &match_rule_index,
+							   &trace_bitmap);
+	    if (PREDICT_FALSE
+		(is_match && am->interface_acl_counters_enabled))
+	      {
+		u32 buf_len = vlib_buffer_length_in_chain (vm, b[0]);
+		vlib_increment_combined_counter (am->combined_acl_counters +
+						 saved_matched_acl_index,
+						 thread_index,
+						 saved_matched_ace_index,
+						 saved_packet_count,
+						 saved_byte_count);
+		saved_matched_acl_index = match_acl_in_index;
+		saved_matched_ace_index = match_rule_index;
+		saved_packet_count = 1;
+		saved_byte_count = buf_len;
+		/* prefetch the counter that we are going to increment */
+		vlib_prefetch_combined_counter (am->combined_acl_counters +
+						saved_matched_acl_index,
 						thread_index,
-						sw_if_index[0], now);
+						saved_matched_ace_index);
+	      }
 
-		  if (acl_fa_can_add_session (am, is_input, sw_if_index[0]))
-		    {
-		      u16 current_policy_epoch =
-			get_current_policy_epoch (am, is_input,
-						  sw_if_index[0]);
-		      fa_full_session_id_t f_sess_id =
-			acl_fa_add_session (am, is_input, is_ip6,
-					    sw_if_index[0],
-					    now, &fa_5tuple[0],
-					    current_policy_epoch);
+	    b[0]->error = error_node->errors[action];
+
+	    if (1 == action)
+	      pkts_acl_permit++;
+
+	    if (2 == action)
+	      {
+		if (!acl_fa_can_add_session (am, is_input, sw_if_index[0]))
+		  acl_fa_try_recycle_session (am, is_input,
+					      thread_index,
+					      sw_if_index[0], now);
+
+		if (acl_fa_can_add_session (am, is_input, sw_if_index[0]))
+		  {
+		    u16 current_policy_epoch =
+		      get_current_policy_epoch (am, is_input,
+						sw_if_index[0]);
+		    fa_full_session_id_t f_sess_id =
+		      acl_fa_add_session (am, is_input, is_ip6,
+					  sw_if_index[0],
+					  now, &fa_5tuple[0],
+					  current_policy_epoch);
 
 		      /* perform the accounting for the newly added session */
-		      process_established_session (vm, am,
-						   node->node_index,
-						   is_input, now,
-						   f_sess_id,
-						   &sw_if_index[0],
-						   &fa_5tuple[0],
-						   b[0]->current_length,
-						   node_trace_on,
-						   &trace_bitmap);
-		      pkts_new_session++;
-		      /*
-		       * If the next 5tuple is the same and we just added the session,
-		       * the f_sess_id_next can not be ~0. Correct it.
-		       */
-		      if ((f_sess_id_next.as_u64 == ~0ULL)
-			  && 0 == memcmp (&fa_5tuple[1], &fa_5tuple[0],
-					  sizeof (fa_5tuple[1])))
-			f_sess_id_next = f_sess_id;
-		    }
-		  else
-		    {
-		      action = 0;
-		      b[0]->error =
-			error_node->errors
-			[ACL_FA_ERROR_ACL_TOO_MANY_SESSIONS];
-		    }
-		}
+		    process_established_session (vm, am,
+						 node->node_index,
+						 is_input, now,
+						 f_sess_id,
+						 &sw_if_index[0],
+						 &fa_5tuple[0],
+						 b[0]->current_length,
+						 node_trace_on,
+						 &trace_bitmap);
+		    pkts_new_session++;
+		    /*
+		     * If the next 5tuple is the same and we just added the session,
+		     * the f_sess_id_next can not be ~0. Correct it.
+		     */
+		    if ((f_sess_id_next.as_u64 == ~0ULL)
+			&& 0 == memcmp (&fa_5tuple[1], &fa_5tuple[0],
+					sizeof (fa_5tuple[1])))
+		      f_sess_id_next = f_sess_id;
+		  }
+		else
+		  {
+		    action = 0;
+		    b[0]->error =
+		      error_node->errors[ACL_FA_ERROR_ACL_TOO_MANY_SESSIONS];
+		  }
+	      }
 
 	    }
 
+	{
+	  /* speculatively get the next0 */
+	  vnet_feature_next_u16 (&next[0], b[0]);
+	  /* if the action is not deny - then use that next */
+	  next[0] = action ? next[0] : 0;
+	}
+
+	if (node_trace_on)	// PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
 	  {
-	    /* speculatively get the next0 */
-	    vnet_feature_next_u16 (&next[0], b[0]);
-	    /* if the action is not deny - then use that next */
-	    next[0] = action ? next[0] : 0;
+	    maybe_trace_buffer (vm, node, b[0], sw_if_index[0], lc_index0,
+				next[0], match_acl_in_index,
+				match_rule_index, &fa_5tuple[0], action,
+				trace_bitmap);
 	  }
 
-	  if (node_trace_on)	// PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-	    {
-	      maybe_trace_buffer (vm, node, b[0], sw_if_index[0], lc_index0,
-				  next[0], match_acl_in_index,
-				  match_rule_index, &fa_5tuple[0], action,
-				  trace_bitmap);
-	    }
-
-	  next++;
-	  b++;
-	  fa_5tuple++;
-	  sw_if_index++;
-	  hash++;
-	  n_left -= 1;
-	}
+	next++;
+	b++;
+	fa_5tuple++;
+	sw_if_index++;
+	hash++;
+	n_left -= 1;
     }
 
   /*
