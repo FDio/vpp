@@ -1967,6 +1967,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto cleanup_ho;
 	    }
 
+	  transport_fifos_init_ooo (&new_tc0->connection);
 	  new_tc0->tx_fifo_size =
 	    transport_tx_fifo_size (&new_tc0->connection);
 	  /* Update rtt with the syn-ack sample */
@@ -1990,6 +1991,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto cleanup_ho;
 	    }
 
+	  transport_fifos_init_ooo (&new_tc0->connection);
 	  new_tc0->tx_fifo_size =
 	    transport_tx_fifo_size (&new_tc0->connection);
 	  new_tc0->rtt_ts = 0;
@@ -2646,6 +2648,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  goto done;
 	}
 
+      transport_fifos_init_ooo (&child->connection);
       child->tx_fifo_size = transport_tx_fifo_size (&child->connection);
 
       tcp_send_synack (child);
