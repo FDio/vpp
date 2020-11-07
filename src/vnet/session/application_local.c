@@ -217,10 +217,6 @@ ct_init_accepted_session (app_worker_t * server_wrk,
   ls->rx_fifo->segment_index = seg_index;
   ls->tx_fifo->segment_index = seg_index;
 
-  /* Disable ooo lookups on the cut-through fifos. TODO remove once init of
-   * chunk lookup rbtrees is delegated to transports */
-  svm_fifo_free_chunk_lookup (ls->tx_fifo);
-
   segment_handle = segment_manager_segment_handle (sm, seg);
   if ((rv = app_worker_add_segment_notify (server_wrk, segment_handle)))
     {

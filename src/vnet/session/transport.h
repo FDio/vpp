@@ -217,6 +217,7 @@ transport_connection_is_cless (transport_connection_t * tc)
 }
 
 void transport_connection_reschedule (transport_connection_t * tc);
+void transport_fifos_init_ooo (transport_connection_t * tc);
 
 /**
  * Register transport virtual function table.
