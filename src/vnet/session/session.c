@@ -1818,6 +1818,7 @@ session_main_init (vlib_main_t * vm)
 #endif
 
   smm->last_transport_proto_type = TRANSPORT_PROTO_QUIC;
+  smm->evt_qs_use_memfd_seg = 1;
 
   return 0;
 }
