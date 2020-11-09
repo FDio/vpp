@@ -16,6 +16,24 @@
       "revId": "62f55796c9ad56ca7b94e745e6e79e0712d43735",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "62b9fe67_de10d770",
+        "filename": "src/vnet/classify/vnet_classify.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1733,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-11-09T20:14:50Z",
+      "side": 1,
+      "message": "I don\u0027t think we can use this approach.\nWe have to allow the \"match\" pieces to linger until later processing.\nUsing this will thwart that design.",
+      "parentUuid": "f79333f2_80ea1d2d",
+      "revId": "62f55796c9ad56ca7b94e745e6e79e0712d43735",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
