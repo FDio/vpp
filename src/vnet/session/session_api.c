@@ -614,6 +614,12 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
       rv = VNET_API_ERROR_FEATURE_DISABLED;
       goto done;
     }
+  /* Only support binary api with socket transport */
+  if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
+    {
+      rv = VNET_API_ERROR_APP_UNSUPPORTED_CFG;
+      goto done;
+    }
 
   STATIC_ASSERT (sizeof (u64) * APP_OPTIONS_N_OPTIONS <=
 		 sizeof (mp->options),
@@ -623,7 +629,6 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
   a->api_client_index = mp->client_index;
   a->options = mp->options;
   a->session_cb_vft = &session_mq_cb_vft;
-
   a->namespace_id = vl_api_from_api_to_new_vec (mp, &mp->namespace_id);
 
   if ((rv = vnet_application_attach (a)))

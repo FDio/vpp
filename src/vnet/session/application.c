@@ -484,7 +484,6 @@ application_alloc_and_init (app_init_args_t * a)
 {
   ssvm_segment_type_t seg_type = SSVM_SEGMENT_MEMFD;
   segment_manager_props_t *props;
-  vl_api_registration_t *reg;
   application_t *app;
   u64 *options;
 
@@ -494,17 +493,7 @@ application_alloc_and_init (app_init_args_t * a)
    * Make sure we support the requested configuration
    */
   if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_IS_BUILTIN)
-    {
-      seg_type = SSVM_SEGMENT_PRIVATE;
-    }
-  else if (!a->use_sock_api)
-    {
-      reg = vl_api_client_index_to_registration (a->api_client_index);
-      if (!reg)
-	return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
-      if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
-	seg_type = SSVM_SEGMENT_SHM;
-    }
+    seg_type = SSVM_SEGMENT_PRIVATE;
 
   if ((options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
       && seg_type != SSVM_SEGMENT_MEMFD)
@@ -855,8 +844,8 @@ vnet_application_attach (vnet_app_attach_args_t * a)
 	}
 
       secret = a->options[APP_OPTIONS_NAMESPACE_SECRET];
-      if ((rv =
-	   app_validate_namespace (a->namespace_id, secret, &app_ns_index)))
+      if ((rv = app_validate_namespace (a->namespace_id, secret,
+					&app_ns_index)))
 	return rv;
       a->options[APP_OPTIONS_NAMESPACE] = app_ns_index;
     }
