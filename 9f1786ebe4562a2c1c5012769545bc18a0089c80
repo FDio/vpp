@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "542d6f6c_f5eb441b",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-11-09T16:26:27Z",
+      "side": 1,
+      "message": "I have a patch that removes the entire \"set\" structure here as it is not needed.\nFurthermore, I have a patch I am ready to submit that adds support for API calls\nthat allow PCAP and Trace management as well.",
+      "range": {
+        "startLine": 183,
+        "startChar": 0,
+        "endLine": 187,
+        "endChar": 0
+      },
+      "revId": "9f1786ebe4562a2c1c5012769545bc18a0089c80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
