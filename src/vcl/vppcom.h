@@ -36,7 +36,6 @@ extern "C"
 #define VPPCOM_CONF_DEFAULT                  	"/etc/vpp/vcl.conf"
 #define VPPCOM_ENV_CONF                      	"VCL_CONFIG"
 #define VPPCOM_ENV_DEBUG                     	"VCL_DEBUG"
-#define VPPCOM_ENV_API_PREFIX                	"VCL_API_PREFIX"
 #define VPPCOM_ENV_APP_PROXY_TRANSPORT_TCP   	"VCL_APP_PROXY_TRANSPORT_TCP"
 #define VPPCOM_ENV_APP_PROXY_TRANSPORT_UDP   	"VCL_APP_PROXY_TRANSPORT_UDP"
 #define VPPCOM_ENV_APP_NAMESPACE_ID          	"VCL_APP_NAMESPACE_ID"
@@ -44,6 +43,7 @@ extern "C"
 #define VPPCOM_ENV_APP_SCOPE_LOCAL           	"VCL_APP_SCOPE_LOCAL"
 #define VPPCOM_ENV_APP_SCOPE_GLOBAL          	"VCL_APP_SCOPE_GLOBAL"
 #define VPPCOM_ENV_VPP_API_SOCKET           	"VCL_VPP_API_SOCKET"
+#define VPPCOM_ENV_VPP_SAPI_SOCKET		"VCL_VPP_SAPI_SOCKET"
 
 typedef enum
 {

@@ -197,9 +197,7 @@ typedef struct vppcom_cfg_t_
   u32 event_ring_size;
   char *event_log_path;
   u8 *vpp_app_socket_api;	/**< app socket api socket file name */
-  u8 *vpp_bapi_filename;	/**< bapi shm transport file name */
   u8 *vpp_bapi_socket_name;	/**< bapi socket transport socket name */
-  u8 *vpp_bapi_chroot;
   u32 tls_engine;
   u8 mt_wrk_supported;
 } vppcom_cfg_t;
@@ -290,7 +288,6 @@ typedef struct vcl_worker_
 
   clib_socket_t app_api_sock;
   socket_client_main_t bapi_sock_ctx;
-  memory_client_main_t bapi_shm_ctx;
   api_main_t bapi_api_ctx;
 
   /** vcl needs next epoll_create to go to libc_epoll */
