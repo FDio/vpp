@@ -12,6 +12,31 @@ table. Whereas for IPv4 this is an mtrie and for IPv6 a hash table,
 for MPLS it is a flat array indexed by a 21 bit key (label & EOS
 bit). This implementation is chosen to favour packet forwarding speed.
 
+It can be the case in MPLS forwarding that packets received with the
+EOS bit set in the MPLS label need to be forwarded differently from
+those without. The most common example of this is if the path set
+contains a path that does not have an output label. In this case the
+non-EOS packets cannot take this path, because to do so would expose
+the neighbouring router to a label that it did not allocate.
+
+The desgin choice to make with an MPLS FIB table is therefore:
+- 20 bit key: label only. When the EOS and non-EOS actions differ the result is a 'EOS-choice' object.
+- 21 bit key: label and EOS-bit. The result is then the specific action based on EOS-bit.
+
+20 bit key
+  - Advantages:lower memory overhead, since there are few DB entries.
+  - Disadvantages: slower DP performance in the case the path-lists
+    differ, as more objects are encounterd in the switch path
+
+21 bit key
+  - Advantages: faster DP performance
+    Disadvantages: increased memory footprint.
+
+Switching between schemes based on observed/measured action similarity
+is not considered on the grounds of complexity and flip-flopping.
+
+VPP mantra - favour performance over memory. We choose a 21 bit key.
+
 Basics
 ^^^^^^
 
@@ -48,7 +73,7 @@ Entries in the MPLS FIB can be displayed with:
 There is a tight coupling between IP and MPLS forwarding. MPLS
 forwarding equivalence classes (FECs) are often an IP prefix – that is
 to say that traffic matching a given IP prefix is routed into a MPLS
-label switch path (LSP). It is thus necessary to be able to associated
+label switch path (LSP). It is thus necessary to be able to associate
 a given prefix/route with an [out-going] MPLS label that will be
 imposed when the packet is forwarded. This is configured as:
 
@@ -78,7 +103,7 @@ packets to that local-label forwarded equivalently to the prefix do;
 In the API this action is called a ‘bind’.
 The router receiving the MPLS encapsulated packets needs to be
 programmed with actions associated which each label value – this is
-the role of the MPLS FIB. The MPLS FIB Is a table, whose key is the
+the role of the MPLS FIB. The MPLS FIB is a table, whose key is the
 MPLS label value and end-of-stack (EOS) bit, which stores the action
 to perform on packets with matching encapsulation. Currently supported
 actions are:
@@ -107,7 +132,7 @@ and IP lookup only to an eos packet.
 MPLS VPN
 ^^^^^^^^
 
-To configure an MPLS VPN for a PE the follow example can be used.
+To configure an MPLS VPN for a PE the following example can be used.
 
 Step 1; Configure routes to the iBGP peers - note these route MUST
 have out-going labels;

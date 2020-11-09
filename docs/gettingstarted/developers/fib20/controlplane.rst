@@ -12,10 +12,11 @@ information.
 
 .. toctree::
 
-   arpentries
+   neighbors
    routes
    attachedexport
    graphwalks
+   marknsweep
 
 .. rubric:: Footnotes:
 

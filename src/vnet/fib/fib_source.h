@@ -20,8 +20,11 @@
 
 /**
  * The different sources that can create a route.
- * The sources are defined here with their relative priority order.
- * The lower the value the higher the priority
+ *
+ * A source is a combination of two concepts; priority and behaviour.
+ * Priority determines whether the source is contributing forwarding.
+ * Behaviour determines how FIB entries with this source interact with
+ * other elements of FIB.
  */
 typedef enum fib_source_t_ {
     /**
@@ -171,7 +174,7 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
 }
 
 /**
- * Each source is assigned a priority. lower priority is beeter.
+ * Each source is assigned a priority. lower priority is better.
  * the source with the best source with have its contribution added
  * to forwarding. the lesser sources will be 'remembered' by FIB and
  * added to forwarding should the best source be removed.
@@ -190,12 +193,14 @@ typedef enum fib_source_priority_cmp_t_
 
 /**
  * Each source has a defined behaviour that controls how entries
- * behave that have that source
+ * behave that have that source.
+ * Sources with non-default behaviour may have a private data area
+ * in the fib_entry_src_t union.
  */
 typedef enum fib_source_behaviour_t_
 {
     /**
-     * If your adding a new source from a plugin pick one of these
+     * If you're adding a new source from a plugin pick one of these
      */
     /** Default behaviour - always install a drop */
     FIB_SOURCE_BH_DROP,
@@ -216,7 +221,13 @@ typedef enum fib_source_behaviour_t_
     FIB_SOURCE_BH_INTERFACE,
     /** interpose */
     FIB_SOURCE_BH_INTERPOSE,
-    /** simple + source fib tracking */
+    /**
+     * simple behaviour, plus the source specific data stores the
+     * FIB index that is used for subsequent lookups using the
+     * packet's source address.
+     * This doesn't need to be a LISP specific source, it's just
+     * 'simple' behaviour with a u32 stored in the source specific data.
+     */
     FIB_SOURCE_BH_LISP,
     /** adj w/ cover tracking + refinement */
     FIB_SOURCE_BH_ADJ,

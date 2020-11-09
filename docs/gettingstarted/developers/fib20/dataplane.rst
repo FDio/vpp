@@ -71,24 +71,25 @@ The diagrams above show that for any given route the full data-plane graph is
 known before any packet arrives. If that graph is composed of n objects, then the
 packet will visit n nodes and thus incur a forwarding cost of approximately n
 times the graph node cost. This could be reduced if the graph were *collapsed*
-into a single DPO and associated node. However, collapsing a graph removes the
-indirection objects that provide fast convergence (see section Fast Convergence). To
-collapse is then a trade-off between faster forwarding and fast convergence; VPP
-favours the latter.
+into fewer DPOs and nodes. There are two ways we might consider doing
+this:
 
-This DPO model effectively exists today but is informally defined. Presently the
-only object that is in the data-plane is the ip_adjacency_t, however, features
-(like ILA, OAM hop-by-hop, SR, MAP, etc) sub-type the adjacency. The member
-lookup_next_index is equivalent to defining a new sub-type. Adding to the
-existing union, or casting sub-type specific data into the opaque member, or
-even over the rewrite string (e.g. the new port range checker), is equivalent
-defining a new C-struct type. Fortunately, at this time, all these sub-types are
-smaller in memory than the ip_adjacency_t. It is now possible to dynamically
-register new adjacency sub-types with ip_register_adjacency() and provide a
-custom format function.
+- write custom DPOs/nodes for combinded functions, e.g. pop MPLS label
+  and lookup in v4 table. This has the disadvantage that the number of
+  such nodes would be, well, combinatorial, and resolving a path via
+  a combined DPO would be more difficult as it would involve a
+  forward walk of the graph to determine what the combination
+  is. However, VPP power users might consider this option for a
+  limited set of their use cases where performance is truely king.
+- collapse multiple levels of load-balancing into one. For example,
+  if there were two levels of load-balancing each with two choices,
+  this could equally be represented by one level with 4 choices.
 
-In my opinion a strongly defined object model will be easier for contributors to
-understand, and more robust to implement. 
+In either case a disadvantage to collapsing the graph is that it
+removes the indirection objects that provide fast convergence (see
+section Fast Convergence). To collapse is then a trade-off between
+faster forwarding and fast convergence; VPP favours the latter.
+
 
 .. rubric:: Footnotes:
 

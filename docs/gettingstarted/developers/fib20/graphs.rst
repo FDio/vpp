@@ -26,9 +26,9 @@ The many to one relationship between child and parent means that the lifetime of
 parent object must extend to the lifetime of its children. If the control plane
 removes a parent object before its children, then the parent must remain, in an
 **incomplete** state, until the children are themselves removed. Likewise if a child
-is created before its parent, the parent is completed in an *incomplete* state. These
+is created before its parent, the parent is created in an *incomplete* state. These
 incomplete objects are needed to maintain the graph dependencies. Without them when
-the parent is added finding the affected children would be search through many
+the parent is added finding the affected children would require a search through many
 databases for those children. To extend the lifetime of parents all children thereof
 hold a **lock** on the parent. This is a simple reference count. Children then follow
 the add-or-lock/unlock semantics for finding a parent, as opposed to a malloc/free.
