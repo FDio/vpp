@@ -12,7 +12,7 @@ information.
 
 .. toctree::
 
-   arpentries
+   neighbors
    routes
    attachedexport
    graphwalks
