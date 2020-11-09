@@ -8,13 +8,13 @@ susceptible to memory re-allocation, therefore the use of a bare "C" pointer to 
 to a child or parent is not possible. Instead there is the concept of a *fib_node_ptr_t*
 which is a tuple of type,index. The type indicates what type of object it is
 (and hence which pool to use) and the index is the index in that pool. This allows
-for the safe retrieval of any object type. 
+for the safe retrieval of any object type.
 
 When a child resolves via a parent it does so knowing the type of that parent. The
 child to parent relationship is thus fully known to the child, and hence a forward
 walk of the graph (from child to parent) is trivial. However, a parent does not choose
 its children, it does not even choose the type. All object types that form part of the
-FIB control plane graph all inherit from a single base class14; *fib_node_t*. A *fib_node_t*
+FIB control plane graph all inherit from a single base class; *fib_node_t*. A *fib_node_t*
 identifies the object's index and its associated virtual function table provides the
 parent a mechanism to visit that object during the walk. The reason for a back-walk
 is to inform all children that the state of the parent has changed in some way, and
@@ -32,7 +32,7 @@ contains a *fib_node_ptr_t*. The VPP pool memory model applies to the list eleme
 they are also identified by an index. When a child is added to a list it is returned the
 index of the element. Using this index the element can be removed in constant time.
 The list supports 'push-front' and 'push-back' semantics for ordering. To walk the children
-of a parent is then to iterate of this list.
+of a parent is then to iterate this list.
 
 A back-walk of the graph is a depth first search where all children in all levels of the
 hierarchy are visited. Such walks can therefore encounter all object instances in the
@@ -59,11 +59,14 @@ same parent instance before the fib-walk process can run. FIB is a 'final state'
 If a parent changes n times, it is not necessary for the children to also update n
 times, instead it is only necessary that this child updates to the latest, or final,
 state. Consequently when multiple walks on a parent (and hence potential updates to a
-child) are queued, these walks can be merged into a single walk. 
+child) are queued, these walks can be merged into a single walk. This
+is the main reason the walks are designed this way, to eliminate (as
+much as possible) redundant work and thus converge the system as fast
+as possible.
 
 Choosing between a synchronous and an asynchronous walk is therefore a trade-off between
 time it takes to propagate a change in the parent to all of its children, versus the
-time it takes to act on a single route update. For example, if a route update where to
+time it takes to act on a single route update. For example, if a route update were to
 affect millions of child recursive routes, then the rate at which such updates could be
 processed would be dependent on the number of child recursive route which would not be
 good. At the time of writing FIB2.0 uses synchronous walk in all locations except when

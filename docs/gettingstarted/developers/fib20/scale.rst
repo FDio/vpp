@@ -4,20 +4,17 @@ Scale
 -----
 
 The only limiting factor on FIB scale is the amount of memory
-allocated to each heap the FIB uses, and there are 4:
+allocated to each heap the FIB uses, and there are 2:
 
-* The IP4 heap
-* The IP6 heap
 * The main heap
 * The stats heap
 
 
-IP4 Heap
---------
+Main Heap
+^^^^^^^^^
 
-The IPv4 heap is used to allocate the memory needed for the
-data-structures within which the IPv4 prefixes are stored. Each
-table, created by the user, i.e. with;
+The main heap is used to allocate all memory needed for the FIB
+data-structures. Each table, created by the user, i.e. with;
 
 .. code-block:: console
 
@@ -85,17 +82,11 @@ Below the output having added 1M, 2M and 4M routes respectively:
      max total allocated 1.00G
  no traced allocations
 
-VPP was started with a 1G IP4 heap.
 
-IP6 Heap
---------
-
-The IPv6 heap is used to allocate the memory needed for the
-data-structure within which the IPv6 prefixes are stored. IPv6 also
-has the concept of forwarding and non-forwarding entries, however for
-IPv6 all the forwarding entries are stored in a single hash table
-(same goes for the non-forwarding). The key to the hash table includes
-the IPv6 table-id.
+IPv6 also has the concept of forwarding and non-forwarding entries,
+however for IPv6 all the forwarding entries are stored in a single
+hash table (same goes for the non-forwarding). The key to the hash
+table includes the IPv6 table-id.
 
 To see the amount of memory consumed by the IPv4 tables use:
 
@@ -194,10 +185,6 @@ and 1M:
 as can be seen from the output the IPv6 heap in this case was scaled
 to 1GB and 1million prefixes has used 56MB of it.
 
-
-Main Heap
----------
-
 The main heap is used to allocate objects that represent the FIB
 entries in the control and data plane (see :ref:`controlplane` and
 :ref:`dataplane`) such as *fib_entry_t* and *load_balance_t*. These come
@@ -263,7 +250,7 @@ requires will increase.
 
 
 Stats Heap
-----------
+^^^^^^^^^^
 
 VPP collects statistics for each route. For each route VPP collects
 byte and packet counters for packets sent to the prefix (i.e. the
@@ -279,5 +266,4 @@ Below shows the size of the stats segment with 1M, 2M and 4M routes.
  total: 1023.99M, used: 234.14M, free: 789.85M, trimmable: 668.15M
  total: 1023.99M, used: 456.83M, free: 567.17M, trimmable: 388.91M
 
-VPP was started with a 1G stats heap.
 
