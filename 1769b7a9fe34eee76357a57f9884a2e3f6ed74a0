@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "32b744a7_1b585adc",
+        "filename": "src/plugins/avf/output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-09T11:04:40Z",
+      "side": 1,
+      "message": "i\u0027m fine with this patch if this disappears. you can extend line 163 which checks for VLIB_BUFFER_NEXT_PRESENT to also bail out to one_by_one if one of those flags are set....",
+      "revId": "1769b7a9fe34eee76357a57f9884a2e3f6ed74a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
