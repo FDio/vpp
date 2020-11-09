@@ -11,6 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# NOP: Force update of vpp-ext-deps version to test modifications to
+#      ci-management/jjb/scripts/packagecloud_push.sh
+
 # Scripts require non-POSIX parts of bash
 SHELL := /bin/bash
 
