@@ -301,21 +301,6 @@ static session_cb_vft_t echo_server_session_cb_vft = {
   .session_reset_callback = echo_server_session_reset_callback
 };
 
-/* Abuse VPP's input queue */
-static int
-create_api_loopback (vlib_main_t * vm)
-{
-  echo_server_main_t *esm = &echo_server_main;
-  api_main_t *am = vlibapi_get_main ();
-  vl_shmem_hdr_t *shmem_hdr;
-
-  shmem_hdr = am->shmem_hdr;
-  esm->vl_input_queue = shmem_hdr->vl_input_queue;
-  esm->my_client_index = vl_api_memclnt_create_internal ("echo_server",
-							 esm->vl_input_queue);
-  return 0;
-}
-
 static int
 echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 {
@@ -342,7 +327,8 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   if (esm->private_segment_size)
     segment_size = esm->private_segment_size;
 
-  a->api_client_index = esm->my_client_index;
+  a->api_client_index = ~0;
+  a->name = format (0, "echo_server");
   a->session_cb_vft = &echo_server_session_cb_vft;
   a->options = options;
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
@@ -369,6 +355,7 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
       return -1;
     }
   esm->app_index = a->app_index;
+  vec_free (a->name);
 
   clib_memset (a_cert, 0, sizeof (*a_cert));
   a_cert->app_index = a->app_index;
@@ -432,15 +419,6 @@ echo_server_create (vlib_main_t * vm, u8 * appns_id, u64 appns_flags,
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads;
   int i;
-
-  if (esm->my_client_index == (u32) ~ 0)
-    {
-      if (create_api_loopback (vm))
-	{
-	  clib_warning ("failed to create api loopback");
-	  return -1;
-	}
-    }
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
   vec_validate (echo_server_main.vpp_queue, num_threads - 1);
