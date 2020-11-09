@@ -28,7 +28,7 @@
 #include <nat/lib/ipfix_logging.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat44/inlines.h>
-#include <nat/nat_syslog.h>
+#include <nat/lib/nat_syslog.h>
 #include <nat/nat_ha.h>
 
 #include <vppinfra/hash.h>

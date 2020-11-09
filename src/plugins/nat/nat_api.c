@@ -510,6 +510,12 @@ static void
   int rv = 0;
   u16 port_start, port_end;
 
+  if (sm->endpoint_dependent)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      goto send_reply;
+    }
+
   switch (mp->alg)
     {
     case NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT:

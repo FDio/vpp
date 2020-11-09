@@ -227,16 +227,6 @@ is_interface_addr (snat_main_t * sm, vlib_node_runtime_t * node,
     return 0;
 }
 
-always_inline u8
-maximum_sessions_exceeded (snat_main_t * sm, u32 thread_index)
-{
-  if (pool_elts (sm->per_thread_data[thread_index].sessions) >=
-      sm->max_translations_per_thread)
-    return 1;
-
-  return 0;
-}
-
 always_inline void
 user_session_increment (snat_main_t * sm, snat_user_t * u, u8 is_static)
 {
@@ -492,20 +482,6 @@ always_inline u32
 ed_value_get_session_index (clib_bihash_kv_16_8_t * value)
 {
   return value->value & ~(u32) 0;
-}
-
-always_inline void
-split_ed_value (clib_bihash_kv_16_8_t * value, u32 * thread_index,
-		u32 * session_index)
-{
-  if (thread_index)
-    {
-      *thread_index = ed_value_get_thread_index (value);
-    }
-  if (session_index)
-    {
-      *session_index = ed_value_get_session_index (value);
-    }
 }
 
 always_inline void

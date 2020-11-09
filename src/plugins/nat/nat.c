@@ -22,10 +22,10 @@
 #include <nat/nat.h>
 #include <nat/nat_dpo.h>
 #include <nat/lib/ipfix_logging.h>
+#include <nat/lib/nat_syslog.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat44/inlines.h>
 #include <nat/nat_affinity.h>
-#include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
@@ -1368,7 +1368,7 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
   uword *bitmap = 0;
 
   if (!sm->endpoint_dependent)
-    return VNET_API_ERROR_FEATURE_DISABLED;
+    return VNET_API_ERROR_UNSUPPORTED;
 
   init_nat_k (&kv, e_addr, e_port, 0, proto);
   if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
