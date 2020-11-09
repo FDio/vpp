@@ -360,6 +360,7 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 		    u32 sw_if_index, u8 traffic_type);
 
 extern void sr_set_source (ip6_address_t * address);
+extern ip6_address_t *sr_get_encaps_source ();
 
 extern void sr_set_hop_limit (u8 hop_limit);
 extern u8 sr_get_hop_limit (void);

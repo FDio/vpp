@@ -119,6 +119,12 @@ sr_set_source (ip6_address_t * address)
   clib_memcpy_fast (&sr_pr_encaps_src, address, sizeof (sr_pr_encaps_src));
 }
 
+ip6_address_t *
+sr_get_encaps_source ()
+{
+  return &sr_pr_encaps_src;
+}
+
 static clib_error_t *
 set_sr_src_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		       vlib_cli_command_t * cmd)
@@ -1159,6 +1165,27 @@ VLIB_CLI_COMMAND (show_sr_policies_command, static) = {
   .path = "show sr policies",
   .short_help = "show sr policies",
   .function = show_sr_policies_command_fn,
+};
+/* *INDENT-ON* */
+
+/**
+ * @brief CLI to display onscreen the SR encaps source addr
+ */
+static clib_error_t *
+show_sr_encaps_source_command_fn (vlib_main_t * vm, unformat_input_t * input,
+				  vlib_cli_command_t * cmd)
+{
+  vlib_cli_output (vm, "SR encaps source addr = %U", format_ip6_address,
+		   sr_get_encaps_source ());
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_sr_encaps_source_command, static) = {
+  .path = "show sr encaps source addr",
+  .short_help = "show sr encaps source addr",
+  .function = show_sr_encaps_source_command_fn,
 };
 /* *INDENT-ON* */
 
