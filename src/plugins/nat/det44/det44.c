@@ -188,10 +188,7 @@ void
 det44_reset_timeouts ()
 {
   det44_main_t *dm = &det44_main;
-  dm->timeouts.udp = 300;
-  dm->timeouts.tcp.established = 7440;
-  dm->timeouts.tcp.transitory = 240;
-  dm->timeouts.icmp = 60;
+  nat_reset_timeouts (&dm->timeouts);
 }
 
 int

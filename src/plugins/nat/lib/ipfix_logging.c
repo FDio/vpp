@@ -1269,6 +1269,13 @@ nat_ipfix_flush (u32 thread_index)
                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, do_flush);
 }
 
+int
+nat_ipfix_logging_enabled ()
+{
+  nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
+  return !clib_atomic_fetch_or(&silm->enabled, 0);
+}
+
 void
 nat_ipfix_flush_from_main (void)
 {

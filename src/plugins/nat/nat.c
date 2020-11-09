@@ -22,10 +22,10 @@
 #include <nat/nat.h>
 #include <nat/nat_dpo.h>
 #include <nat/lib/ipfix_logging.h>
+#include <nat/lib/nat_syslog.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat44/inlines.h>
 #include <nat/nat_affinity.h>
-#include <nat/nat_syslog.h>
 #include <nat/nat_ha.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
@@ -1379,7 +1379,7 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
   uword *bitmap = 0;
 
   if (!sm->endpoint_dependent)
-    return VNET_API_ERROR_FEATURE_DISABLED;
+    return VNET_API_ERROR_UNSUPPORTED;
 
   init_nat_k (&kv, e_addr, e_port, 0, proto);
   if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
@@ -2875,10 +2875,7 @@ nat44_plugin_enable (nat44_config_t c)
   sm->alloc_addr_and_port = nat_alloc_addr_and_port_default;
   sm->addr_and_port_alloc_alg = NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT;
   //
-  sm->udp_timeout = SNAT_UDP_TIMEOUT;
-  sm->icmp_timeout = SNAT_ICMP_TIMEOUT;
-  sm->tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
-  sm->tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
+  nat_reset_timeouts (&sm->timeouts);
 
   // nat44 feature configuration
   sm->endpoint_dependent = c.endpoint_dependent;

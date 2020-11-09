@@ -19,15 +19,11 @@ import "vnet/interface_types.api";
 import "plugins/nat/nat_types.api";
 
 /**
- * @file nat.api
+ * @file nat44.api
  * @brief VPP control-plane API messages.
  *
  * This file defines VPP control-plane API messages which are generally
  * called through a shared memory interface.
- */
-
-/*
- * Common NAT plugin APIs
  */
 
 enum nat44_config_flags : u8
@@ -250,28 +246,18 @@ define nat44_show_running_config_reply
   option in_progress;
   u32 context;
   i32 retval;
-
   u32 inside_vrf;
   u32 outside_vrf;
-
   u32 users;
   u32 sessions;
   u32 user_sessions;
-
   u32 user_buckets;
   u32 translation_buckets;
-
+  bool forwarding_enabled;
+  bool ipfix_logging_enabled;
+  vl_api_nat_timeouts_t timeouts;
+  vl_api_nat_log_level_t log_level;
   vl_api_nat44_config_flags_t flags;
-};
-
-enum nat_log_level : u8
-{
-  NAT_LOG_NONE = 0x00,
-  NAT_LOG_ERROR = 0x01,
-  NAT_LOG_WARNING = 0x02,
-  NAT_LOG_NOTICE = 0x03,
-  NAT_LOG_INFO = 0x04,
-  NAT_LOG_DEBUG = 0x05,
 };
 
 /** \brief Run nat44 garbage collection
@@ -303,6 +289,7 @@ autoreply define nat44_set_session_limit {
     @param log_level - logging level
 */
 autoreply define nat_set_log_level {
+  option deprecated;
   u32 client_index;
   u32 context;
   vl_api_nat_log_level_t log_level;
@@ -349,6 +336,7 @@ define nat_worker_details {
     @param enable - true if enable, false if disable
 */
 autoreply define nat_ipfix_enable_disable {
+  option deprecated;
   u32 client_index;
   u32 context;
   u32 domain_id;
@@ -365,6 +353,7 @@ autoreply define nat_ipfix_enable_disable {
     @param icmp - ICMP timeout (default 60sec)
 */
 autoreply define nat_set_timeouts {
+  option deprecated;
   u32 client_index;
   u32 context;
   u32 udp;
@@ -378,6 +367,7 @@ autoreply define nat_set_timeouts {
     @param context - sender context, to match reply w/ request
 */
 define nat_get_timeouts {
+  option deprecated;
   u32 client_index;
   u32 context;
 };
@@ -391,6 +381,7 @@ define nat_get_timeouts {
     @param icmp - ICMP timeout
 */
 define nat_get_timeouts_reply {
+  option deprecated;
   u32 context;
   i32 retval;
   u32 udp;
@@ -609,10 +600,6 @@ define nat_ha_resync_completed_event
 service {
   rpc nat_ha_resync returns nat_ha_resync_reply events nat_ha_resync_completed_event;
 };
-
-/*
- * NAT44 APIs
- */
 
 /** \brief Del NAT44 user
     @param client_index - opaque cookie to identify the sender
@@ -1164,6 +1151,7 @@ autoreply define nat44_del_session {
     @param enable - true for enable, false for disable
 */
 autoreply define nat44_forwarding_enable_disable {
+  option deprecated;
   u32 client_index;
   u32 context;
   bool enable;
@@ -1174,6 +1162,7 @@ autoreply define nat44_forwarding_enable_disable {
     @param context - sender context, to match reply w/ request
 */
 define nat44_forwarding_is_enabled {
+  option deprecated;
   u32 client_index;
   u32 context;
 };
@@ -1183,6 +1172,7 @@ define nat44_forwarding_is_enabled {
     @param enabled - true if enabled, false if disabled
 */
 define nat44_forwarding_is_enabled_reply {
+  option deprecated;
   u32 context;
   bool enabled;
 };

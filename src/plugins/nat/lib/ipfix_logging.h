@@ -112,6 +112,8 @@ typedef struct {
 
 extern nat_ipfix_logging_main_t nat_ipfix_logging_main;
 
+int nat_ipfix_logging_enabled ();
+
 void nat_ipfix_logging_init (vlib_main_t * vm);
 int nat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port);
 void nat_ipfix_logging_nat44_ses_create (u32 thread_index, u32 src_ip,

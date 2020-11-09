@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 #include <nat/dslite/dslite.h>
-#include <nat/nat_syslog.h>
+#include <nat/lib/nat_syslog.h>
 
 typedef enum
 {

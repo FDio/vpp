@@ -15,7 +15,7 @@
 
 #include <vnet/fib/fib_table.h>
 #include <nat/lib/ipfix_logging.h>
-#include <nat/nat_syslog.h>
+#include <nat/lib/nat_syslog.h>
 #include <nat/lib/inlines.h>
 #include <nat/nat64/nat64_db.h>
 

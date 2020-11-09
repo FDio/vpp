@@ -80,20 +80,6 @@ typedef struct
   u32 cached_ip4_address;
 } det44_runtime_t;
 
-typedef struct nat_timeouts_s
-{
-  u32 udp;
-
-  struct
-  {
-    u32 transitory;
-    u32 established;
-  } tcp;
-
-  u32 icmp;
-
-} nat_timeouts_t;
-
 /* deterministic session outside key */
 typedef struct
 {

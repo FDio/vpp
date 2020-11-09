@@ -67,11 +67,33 @@ typedef enum
 #undef _
 } nat_protocol_t;
 
-/* default session timeouts */
+/* default protocol timeouts */
 #define NAT_UDP_TIMEOUT 300
 #define NAT_TCP_TRANSITORY_TIMEOUT 240
 #define NAT_TCP_ESTABLISHED_TIMEOUT 7440
 #define NAT_ICMP_TIMEOUT 60
+
+typedef struct
+{
+  struct
+  {
+    u32 established;
+    u32 transitory;
+  } tcp;
+
+  u32 udp;
+  u32 icmp;
+
+} nat_timeouts_t;
+
+static_always_inline void
+nat_reset_timeouts (nat_timeouts_t * timeouts)
+{
+  timeouts->udp = NAT_UDP_TIMEOUT;
+  timeouts->tcp.established = NAT_TCP_ESTABLISHED_TIMEOUT;
+  timeouts->tcp.transitory = NAT_TCP_TRANSITORY_TIMEOUT;
+  timeouts->icmp = NAT_ICMP_TIMEOUT;
+}
 
 // TODO: move common formating definitions here
 
