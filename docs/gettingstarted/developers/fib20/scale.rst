@@ -4,20 +4,17 @@ Scale
 -----
 
 The only limiting factor on FIB scale is the amount of memory
-allocated to each heap the FIB uses, and there are 4:
+allocated to each heap the FIB uses, and there are 2:
 
-* The IP4 heap
-* The IP6 heap
 * The main heap
 * The stats heap
 
 
-IP4 Heap
---------
+Main Heap
+^^^^^^^^^
 
-The IPv4 heap is used to allocate the memory needed for the
-data-structures within which the IPv4 prefixes are stored. Each
-table, created by the user, i.e. with;
+The main heap is used to allocate all memory needed for the FIB
+data-structures. Each table, created by the user, i.e. with;
 
 .. code-block:: console
 
@@ -36,18 +33,12 @@ To see the amount of memory consumed by the IPv4 tables use:
 .. code-block:: console
                 
  vpp# sh ip fib mem
- ipv4-VRF:0 mtrie:333056 hash:3523
- ipv4-VRF:1 mtrie:333056 hash:3523
- totals: mtrie:666112 hash:7046 all:673158
-
- Mtrie Mheap Usage: total: 32.06M, used: 662.44K, free: 31.42M, trimmable: 31.09M
-     free chunks 3 free fastbin blks 0
-     max total allocated 32.06M
- no traced allocations
+ ipv4-VRF:0 mtrie:335744 hash:4663
+ ipv4-VRF:1 mtrie:333056 hash:3499
+ totals: mtrie:668800 hash:8162 all:676962
 
 this output shows two 'empty' (i.e. no added routes) tables. Each
-mtrie uses about 150k of memory, so each table about 300k. the total
-heap usage statistics for the IP4 heap are shown at the end.
+mtrie uses about 150k of memory, so each table about 300k.
 
 
 Below the output having added 1M, 2M and 4M routes respectively:
@@ -58,21 +49,11 @@ Below the output having added 1M, 2M and 4M routes respectively:
  ipv4-VRF:0 mtrie:335744 hash:4695
  totals: mtrie:335744 hash:4695 all:340439
 
- Mtrie Mheap Usage: total: 1.00G, used: 335.20K, free: 1023.74M, trimmable: 1023.72M
-     free chunks 3 free fastbin blks 0
-     max total allocated 1.00G
- no traced allocations
-
 .. code-block:: console
 
  vpp# sh ip fib mem
  ipv4-VRF:0 mtrie:5414720 hash:41177579
  totals: mtrie:5414720 hash:41177579 all:46592299
-
- Mtrie Mheap Usage: total: 1.00G, used: 46.87M, free: 977.19M, trimmable: 955.93M
-     free chunks 61 free fastbin blks 0
-     max total allocated 1.00G
- no traced allocations
 
 .. code-block:: console
 
@@ -80,22 +61,11 @@ Below the output having added 1M, 2M and 4M routes respectively:
  ipv4-VRF:0 mtrie:22452608 hash:168544508
  totals: mtrie:22452608 hash:168544508 all:190997116
 
- Mtrie Mheap Usage: total: 1.00G, used: 198.37M, free: 825.69M, trimmable: 748.24M
-     free chunks 219 free fastbin blks 0
-     max total allocated 1.00G
- no traced allocations
 
-VPP was started with a 1G IP4 heap.
-
-IP6 Heap
---------
-
-The IPv6 heap is used to allocate the memory needed for the
-data-structure within which the IPv6 prefixes are stored. IPv6 also
-has the concept of forwarding and non-forwarding entries, however for
-IPv6 all the forwarding entries are stored in a single hash table
-(same goes for the non-forwarding). The key to the hash table includes
-the IPv6 table-id.
+IPv6 also has the concept of forwarding and non-forwarding entries,
+however for IPv6 all the forwarding entries are stored in a single
+hash table (same goes for the non-forwarding). The key to the hash
+table includes the IPv6 table-id.
 
 To see the amount of memory consumed by the IPv4 tables use:
 
@@ -191,14 +161,10 @@ and 1M:
      arena: base 7fedba514000, next 3882740
             used 59254592 b (56 Mbytes) of 1073741824 b (1024 Mbytes)
 
-as can be seen from the output the IPv6 heap in this case was scaled
+as can be seen from the output the IPv6 hash-table in this case was scaled
 to 1GB and 1million prefixes has used 56MB of it.
 
-
-Main Heap
----------
-
-The main heap is used to allocate objects that represent the FIB
+The main heap is also used to allocate objects that represent the FIB
 entries in the control and data plane (see :ref:`controlplane` and
 :ref:`dataplane`) such as *fib_entry_t* and *load_balance_t*. These come
 from the main heap because they are not protocol specific
@@ -263,7 +229,7 @@ requires will increase.
 
 
 Stats Heap
-----------
+^^^^^^^^^^
 
 VPP collects statistics for each route. For each route VPP collects
 byte and packet counters for packets sent to the prefix (i.e. the
@@ -278,6 +244,4 @@ Below shows the size of the stats segment with 1M, 2M and 4M routes.
  total: 1023.99M, used: 127.89M, free: 896.10M, trimmable: 830.94M
  total: 1023.99M, used: 234.14M, free: 789.85M, trimmable: 668.15M
  total: 1023.99M, used: 456.83M, free: 567.17M, trimmable: 388.91M
-
-VPP was started with a 1G stats heap.
 

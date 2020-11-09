@@ -10,5 +10,9 @@ FIB 2.0 Hierarchical, Protocol, Independent
    tunnels
    mplsfib
    multicast
+   debugging
    fastconvergence
    scale
+   barnacles
+   hacking
+   missing
