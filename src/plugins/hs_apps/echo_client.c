@@ -321,28 +321,12 @@ VLIB_REGISTER_NODE (echo_clients_node) =
 /* *INDENT-ON* */
 
 static int
-create_api_loopback (echo_client_main_t * ecm)
-{
-  api_main_t *am = vlibapi_get_main ();
-  vl_shmem_hdr_t *shmem_hdr;
-
-  shmem_hdr = am->shmem_hdr;
-  ecm->vl_input_queue = shmem_hdr->vl_input_queue;
-  ecm->my_client_index = vl_api_memclnt_create_internal ("echo_client",
-							 ecm->vl_input_queue);
-  return 0;
-}
-
-static int
 echo_clients_init (vlib_main_t * vm)
 {
   echo_client_main_t *ecm = &echo_client_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads;
   int i;
-
-  if (create_api_loopback (ecm))
-    return -1;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
@@ -648,7 +632,8 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   clib_memset (a, 0, sizeof (*a));
   clib_memset (options, 0, sizeof (options));
 
-  a->api_client_index = ecm->my_client_index;
+  a->api_client_index = ~0;
+  a->name = format (0, "echo_client");
   if (ecm->transport_proto == TRANSPORT_PROTO_QUIC)
     echo_clients.session_connected_callback =
       quic_echo_clients_session_connected_callback;
@@ -681,6 +666,7 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
     return clib_error_return (0, "attach returned %d", rv);
 
   ecm->app_index = a->app_index;
+  vec_free (a->name);
 
   clib_memset (a_cert, 0, sizeof (*a_cert));
   a_cert->app_index = a->app_index;
