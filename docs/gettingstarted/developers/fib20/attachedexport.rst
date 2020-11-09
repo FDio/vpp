@@ -3,8 +3,8 @@
 Attached Export
 ^^^^^^^^^^^^^^^^
 
-Extranets make prefixes in VRF A also reachable from VRF B. VRF A is the export VRF,
-B the import. Consider this route in the export VRF;
+Extranets make prefixes in table A also reachable from table B. Table A is the export table,
+B the import. Consider this route in the export table;
 
 .. code-block:: console
 
@@ -26,7 +26,7 @@ attached prefix is exported, so are the adj-fibs and local prefixes that it
 covers, and only the adj-fibs and locals, not any covered more specific
 (sourced e.g. by API). The imported FIB entries are sourced as *attached-export*
 this is a low priority source, so if those prefixes already exist in the import
-VRF, sourced by the API, then they will continue to forward with that information.
+table, sourced by the API, then they will continue to forward with that information.
 
 .. figure:: /_images/fib20fig6.png
 
