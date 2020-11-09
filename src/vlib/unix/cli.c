@@ -3359,10 +3359,14 @@ unix_cli_exec (vlib_main_t * vm,
   int fd;
   unformat_input_t sub_input;
   clib_error_t *error;
-
+  unix_cli_main_t *cm = &unix_cli_main;
+  unix_cli_file_t *cf;
+  u8 *file_data = 0;
   file_name = 0;
   fd = -1;
   error = 0;
+  struct stat s;
+
 
   if (!unformat (input, "%s", &file_name))
     {
@@ -3379,23 +3383,63 @@ unix_cli_exec (vlib_main_t * vm,
     }
 
   /* Make sure its a regular file. */
-  {
-    struct stat s;
+  if (fstat (fd, &s) < 0)
+    {
+      error = clib_error_return_unix (0, "failed to stat `%s'", file_name);
+      goto done;
+    }
 
-    if (fstat (fd, &s) < 0)
-      {
-	error = clib_error_return_unix (0, "failed to stat `%s'", file_name);
-	goto done;
-      }
+  if (!(S_ISREG (s.st_mode) || S_ISLNK (s.st_mode)))
+    {
+      error = clib_error_return (0, "not a regular file `%s'", file_name);
+      goto done;
+    }
 
-    if (!(S_ISREG (s.st_mode) || S_ISLNK (s.st_mode)))
-      {
-	error = clib_error_return (0, "not a regular file `%s'", file_name);
-	goto done;
-      }
-  }
+  /* Read the file */
+  vec_validate (file_data, s.st_size);
 
-  unformat_init_clib_file (&sub_input, fd);
+  if (read (fd, file_data, s.st_size) != s.st_size)
+    {
+      error = clib_error_return_unix (0, "Failed to read %d bytes from '%s'",
+				      s.st_size, file_name);
+      vec_free (file_data);
+      goto done;
+    }
+
+  /* The macro expander expects a c string... */
+  vec_add1 (file_data, 0);
+
+  unformat_init_vector (&sub_input, file_data);
+
+  /* Run the file contents through the macro processor */
+  if (vec_len (sub_input.buffer) > 1)
+    {
+      u8 *expanded;
+      clib_macro_main_t *mm = 0;
+
+      /* Initial config process? Use the global macro table. */
+      if (pool_is_free_index
+	  (cm->cli_file_pool, cm->current_input_file_index))
+	mm = &cm->macro_main;
+      else
+	{
+	  /* Otherwise, use the per-cli-process macro table */
+	  cf = pool_elt_at_index (cm->cli_file_pool,
+				  cm->current_input_file_index);
+	  mm = &cf->macro_main;
+	}
+
+      expanded = (u8 *) clib_macro_eval (mm,
+					 (i8 *) sub_input.buffer,
+					 1 /* complain */ ,
+					 0 /* level */ ,
+					 8 /* max_level */ );
+      /* Macro processor NULL terminates the return */
+      _vec_len (expanded) -= 1;
+      vec_reset_length (sub_input.buffer);
+      vec_append (sub_input.buffer, expanded);
+      vec_free (expanded);
+    }
 
   vlib_cli_input (vm, &sub_input, 0, 0);
   unformat_free (&sub_input);
