@@ -282,13 +282,6 @@ vppcom_cfg_read_file (char *conf_fname)
 	      VCFG_DBG (0, "VCL<%d>: configured max-workers %u", getpid (),
 			vcl_cfg->max_workers);
 	    }
-	  else if (unformat (line_input, "api-prefix %s",
-			     &vcl_cfg->vpp_bapi_chroot))
-	    {
-	      vec_terminate_c_string (vcl_cfg->vpp_bapi_chroot);
-	      VCFG_DBG (0, "VCL<%d>: configured api-prefix (%s) ", getpid (),
-			vcl_cfg->vpp_bapi_chroot);
-	    }
 	  else if (unformat (line_input, "api-socket-name %s",
 			     &vcl_cfg->vpp_bapi_socket_name))
 	    {
@@ -571,14 +564,6 @@ vppcom_cfg (vppcom_cfg_t * vcl_cfg)
 
   /* Regrab cfg after heap initialization */
   vcl_cfg = &vcm->cfg;
-  env_var_str = getenv (VPPCOM_ENV_API_PREFIX);
-  if (env_var_str)
-    {
-      vcl_cfg->vpp_bapi_chroot = format (0, "%s", env_var_str);
-      vec_terminate_c_string (vcl_cfg->vpp_bapi_chroot);
-      VCFG_DBG (0, "VCL<%d>: configured api prefix (%s) from "
-		VPPCOM_ENV_API_PREFIX "!", getpid (), env_var_str);
-    }
   env_var_str = getenv (VPPCOM_ENV_APP_NAMESPACE_ID);
   if (env_var_str)
     {
@@ -644,6 +629,13 @@ vppcom_cfg (vppcom_cfg_t * vcl_cfg)
       vcm->cfg.vpp_bapi_socket_name = format (0, "%s%c", env_var_str, 0);
       VCFG_DBG (0, "VCL<%d>: configured api-socket-name (%s)", getpid (),
 		vcl_cfg->vpp_bapi_socket_name);
+    }
+  env_var_str = getenv (VPPCOM_ENV_VPP_SAPI_SOCKET);
+  if (env_var_str)
+    {
+      vcm->cfg.vpp_app_socket_api = format (0, "%s%c", env_var_str, 0);
+      VCFG_DBG (0, "VCL<%d>: configured app-socket-api (%s)", getpid (),
+		vcl_cfg->vpp_app_socket_api);
     }
 }
 

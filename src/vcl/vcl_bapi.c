@@ -473,47 +473,30 @@ vcl_bapi_connect_to_vpp (void)
   vcl_bapi_cleanup ();
 
   vlibapi_set_main (&wrk->bapi_api_ctx);
-  vlibapi_set_memory_client_main (&wrk->bapi_shm_ctx);
   vcl_bapi_hookup ();
 
-  if (vcl_cfg->vpp_bapi_socket_name)
+  if (!vcl_cfg->vpp_bapi_socket_name)
     {
-      if (vl_socket_client_connect2 (&wrk->bapi_sock_ctx,
-				     (char *) vcl_cfg->vpp_bapi_socket_name,
-				     (char *) wrk_name,
-				     0 /* default rx/tx buffer */ ))
-	{
-	  VERR ("app (%s) socket connect failed!", wrk_name);
-	  rv = VPPCOM_ECONNREFUSED;
-	  goto error;
-	}
-
-      if (vl_socket_client_init_shm2 (&wrk->bapi_sock_ctx, 0,
-				      1 /* want_pthread */ ))
-	{
-	  VERR ("app (%s) init shm failed!", wrk_name);
-	  rv = VPPCOM_ECONNREFUSED;
-	  goto error;
-	}
+      rv = VPPCOM_EINVAL;
+      goto error;
     }
-  else
+
+  if (vl_socket_client_connect2 (&wrk->bapi_sock_ctx,
+				 (char *) vcl_cfg->vpp_bapi_socket_name,
+				 (char *) wrk_name,
+				 0 /* default rx/tx buffer */ ))
     {
-      if (!vcl_cfg->vpp_bapi_filename)
-	vcl_cfg->vpp_bapi_filename = format (0, "/vpe-api%c", 0);
+      VERR ("app (%s) socket connect failed!", wrk_name);
+      rv = VPPCOM_ECONNREFUSED;
+      goto error;
+    }
 
-      vl_set_memory_root_path ((char *) vcl_cfg->vpp_bapi_chroot);
-
-      VDBG (0, "app (%s) connecting to VPP api (%s)...",
-	    wrk_name, vcl_cfg->vpp_bapi_filename);
-
-      if (vl_client_connect_to_vlib ((char *) vcl_cfg->vpp_bapi_filename,
-				     (char *) wrk_name,
-				     vcm->cfg.vpp_api_q_length) < 0)
-	{
-	  VERR ("app (%s) connect failed!", wrk_name);
-	  rv = VPPCOM_ECONNREFUSED;
-	  goto error;
-	}
+  if (vl_socket_client_init_shm2 (&wrk->bapi_sock_ctx, 0,
+				  1 /* want_pthread */ ))
+    {
+      VERR ("app (%s) init shm failed!", wrk_name);
+      rv = VPPCOM_ECONNREFUSED;
+      goto error;
     }
 
   am = vlibapi_get_main ();
