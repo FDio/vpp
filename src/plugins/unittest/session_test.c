@@ -1821,8 +1821,6 @@ session_test_mq_speed (vlib_main_t * vm, unformat_input_t * input)
   /* Shut up coverity */
   if (reg == 0)
     abort ();
-  if (!session_main.evt_qs_use_memfd_seg)
-    reg->clib_file_index = VL_API_INVALID_FI;
 
   vnet_app_attach_args_t attach_args = {
     .api_client_index = api_index,

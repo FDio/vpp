@@ -142,7 +142,7 @@ typedef struct session_main_
   /** Worker contexts */
   session_worker_t *wrk;
 
-  /** Event queues memfd segment initialized only if so configured */
+  /** Event queues memfd segment */
   ssvm_private_t evt_qs_segment;
 
   /** Unique segment name counter */
@@ -178,7 +178,6 @@ typedef struct session_main_
   uword session_baseva;
   uword session_va_space_size;
   uword evt_qs_segment_size;
-  u8 evt_qs_use_memfd_seg;
 
   /** Session table size parameters */
   u32 configured_v4_session_table_buckets;
