@@ -91,6 +91,7 @@ format_vnet_interface_output_trace (u8 * s, va_list * va)
     }
   return s;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static void
 vnet_interface_output_trace (vlib_main_t * vm,
@@ -427,7 +428,6 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 				   rt->sw_if_index, n_packets, n_bytes);
   return n_buffers;
 }
-#endif /* CLIB_MARCH_VARIANT */
 
 static_always_inline void vnet_interface_pcap_tx_trace
   (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
@@ -486,11 +486,12 @@ static_always_inline void vnet_interface_pcap_tx_trace
     }
 }
 
-#ifndef CLIB_MARCH_VARIANT
+static vlib_node_function_t CLIB_MULTIARCH_FN (vnet_interface_output_node);
 
-uword
-vnet_interface_output_node (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    vlib_frame_t * frame)
+static uword
+CLIB_MULTIARCH_FN (vnet_interface_output_node) (vlib_main_t * vm,
+						vlib_node_runtime_t * node,
+						vlib_frame_t * frame)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi;
@@ -506,6 +507,15 @@ vnet_interface_output_node (vlib_main_t * vm, vlib_node_runtime_t * node,
   else
     return vnet_interface_output_node_inline (vm, node, frame, vnm, hi,
 					      /* do_tx_offloads */ 1);
+}
+
+CLIB_MARCH_FN_REGISTRATION (vnet_interface_output_node);
+
+#ifndef CLIB_MARCH_VARIANT
+vlib_node_function_t *
+vnet_interface_output_node_get (void)
+{
+  return CLIB_MARCH_FN_POINTER (vnet_interface_output_node);
 }
 #endif /* CLIB_MARCH_VARIANT */
 
