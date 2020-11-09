@@ -129,6 +129,15 @@ vl_api_nat44_show_running_config_t_handler (vl_api_nat44_show_running_config_t
     rmp->user_buckets = htonl (sm->user_buckets);
     rmp->translation_buckets = htonl (sm->translation_buckets);
 
+    rmp->timeouts.udp = htonl (sm->timeouts.udp);
+    rmp->timeouts.tcp_established = htonl (sm->timeouts.tcp.established);
+    rmp->timeouts.tcp_transitory = htonl (sm->timeouts.tcp.transitory);
+    rmp->timeouts.icmp = htonl (sm->timeouts.icmp);
+
+    rmp->forwarding_enabled = sm->forwarding_enabled == 1;
+    // consider how to split functionality between subplugins
+    rmp->ipfix_logging_enabled = nat_ipfix_logging_enabled ();
+
     if (rc->endpoint_dependent)
       rmp->flags |= NAT44_IS_ENDPOINT_DEPENDENT;
     else
@@ -300,10 +309,10 @@ vl_api_nat_set_timeouts_t_handler (vl_api_nat_set_timeouts_t * mp)
   vl_api_nat_set_timeouts_reply_t *rmp;
   int rv = 0;
 
-  sm->udp_timeout = ntohl (mp->udp);
-  sm->tcp_established_timeout = ntohl (mp->tcp_established);
-  sm->tcp_transitory_timeout = ntohl (mp->tcp_transitory);
-  sm->icmp_timeout = ntohl (mp->icmp);
+  sm->timeouts.udp = ntohl (mp->udp);
+  sm->timeouts.tcp.established = ntohl (mp->tcp_established);
+  sm->timeouts.tcp.transitory = ntohl (mp->tcp_transitory);
+  sm->timeouts.icmp = ntohl (mp->icmp);
 
   REPLY_MACRO (VL_API_NAT_SET_TIMEOUTS_REPLY);
 }
@@ -318,10 +327,10 @@ vl_api_nat_get_timeouts_t_handler (vl_api_nat_get_timeouts_t * mp)
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_NAT_GET_TIMEOUTS_REPLY,
   ({
-    rmp->udp = htonl (sm->udp_timeout);
-    rmp->tcp_established = htonl (sm->tcp_established_timeout);
-    rmp->tcp_transitory = htonl (sm->tcp_transitory_timeout);
-    rmp->icmp = htonl (sm->icmp_timeout);
+    rmp->udp = htonl (sm->timeouts.udp);
+    rmp->tcp_established = htonl (sm->timeouts.tcp.established);
+    rmp->tcp_transitory = htonl (sm->timeouts.tcp.transitory);
+    rmp->icmp = htonl (sm->timeouts.icmp);
   }))
   /* *INDENT-ON* */
 }
@@ -334,6 +343,12 @@ static void
   vl_api_nat_set_addr_and_port_alloc_alg_reply_t *rmp;
   int rv = 0;
   u16 port_start, port_end;
+
+  if (sm->endpoint_dependent)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      goto send_reply;
+    }
 
   switch (mp->alg)
     {

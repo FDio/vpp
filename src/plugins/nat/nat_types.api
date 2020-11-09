@@ -15,6 +15,24 @@
 
 option version = "0.0.1";
 
+typedef nat_timeouts
+{
+  u32 udp;
+  u32 tcp_established;
+  u32 tcp_transitory;
+  u32 icmp;
+};
+
+enum nat_log_level : u8
+{
+  NAT_LOG_NONE = 0x00,
+  NAT_LOG_ERROR = 0x01,
+  NAT_LOG_WARNING = 0x02,
+  NAT_LOG_NOTICE = 0x03,
+  NAT_LOG_INFO = 0x04,
+  NAT_LOG_DEBUG = 0x05,
+};
+
 enum nat_config_flags : u8
 {
   NAT_IS_NONE = 0x00,

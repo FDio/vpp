@@ -227,16 +227,6 @@ is_interface_addr (snat_main_t * sm, vlib_node_runtime_t * node,
     return 0;
 }
 
-always_inline u8
-maximum_sessions_exceeded (snat_main_t * sm, u32 thread_index)
-{
-  if (pool_elts (sm->per_thread_data[thread_index].sessions) >=
-      sm->max_translations_per_thread)
-    return 1;
-
-  return 0;
-}
-
 always_inline void
 user_session_increment (snat_main_t * sm, snat_user_t * u, u8 is_static)
 {
@@ -339,7 +329,7 @@ nat44_set_tcp_session_state_i2o (snat_main_t * sm, f64 now,
 	  ses->state |= NAT44_SES_O2I_FIN_ACK;
 	  if (nat44_is_ses_closed (ses))
 	    {			// if session is now closed, save the timestamp
-	      ses->tcp_closed_timestamp = now + sm->tcp_transitory_timeout;
+	      ses->tcp_closed_timestamp = now + sm->timeouts.tcp.transitory;
 	      ses->last_lru_update = now;
 	    }
 	}
@@ -385,7 +375,7 @@ nat44_set_tcp_session_state_o2i (snat_main_t * sm, f64 now,
 	ses->state |= NAT44_SES_I2O_FIN_ACK;
       if (nat44_is_ses_closed (ses))
 	{			// if session is now closed, save the timestamp
-	  ses->tcp_closed_timestamp = now + sm->tcp_transitory_timeout;
+	  ses->tcp_closed_timestamp = now + sm->timeouts.tcp.transitory;
 	  ses->last_lru_update = now;
 	}
     }
@@ -408,18 +398,18 @@ nat44_session_get_timeout (snat_main_t * sm, snat_session_t * s)
   switch (s->nat_proto)
     {
     case NAT_PROTOCOL_ICMP:
-      return sm->icmp_timeout;
+      return sm->timeouts.icmp;
     case NAT_PROTOCOL_UDP:
-      return sm->udp_timeout;
+      return sm->timeouts.udp;
     case NAT_PROTOCOL_TCP:
       {
 	if (s->state)
-	  return sm->tcp_transitory_timeout;
+	  return sm->timeouts.tcp.transitory;
 	else
-	  return sm->tcp_established_timeout;
+	  return sm->timeouts.tcp.established;
       }
     default:
-      return sm->udp_timeout;
+      return sm->timeouts.udp;
     }
 
   return 0;
@@ -492,20 +482,6 @@ always_inline u32
 ed_value_get_session_index (clib_bihash_kv_16_8_t * value)
 {
   return value->value & ~(u32) 0;
-}
-
-always_inline void
-split_ed_value (clib_bihash_kv_16_8_t * value, u32 * thread_index,
-		u32 * session_index)
-{
-  if (thread_index)
-    {
-      *thread_index = ed_value_get_thread_index (value);
-    }
-  if (session_index)
-    {
-      *session_index = ed_value_get_session_index (value);
-    }
 }
 
 always_inline void

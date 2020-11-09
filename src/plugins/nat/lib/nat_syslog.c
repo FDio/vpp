@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -20,7 +20,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/syslog/syslog.h>
 
-#include <nat/nat_syslog.h>
+#include <nat/lib/nat_syslog.h>
 #include <nat/lib/inlines.h>
 
 #define NAT_FACILITY SYSLOG_FACILITY_LOCAL0

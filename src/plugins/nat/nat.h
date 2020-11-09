@@ -36,12 +36,6 @@
 #include <nat/lib/lib.h>
 #include <nat/lib/inlines.h>
 
-/* default session timeouts */
-#define SNAT_UDP_TIMEOUT 300
-#define SNAT_TCP_TRANSITORY_TIMEOUT 240
-#define SNAT_TCP_ESTABLISHED_TIMEOUT 7440
-#define SNAT_ICMP_TIMEOUT 60
-
 /* number of worker handoff frame queue elements */
 #define NAT_FQ_NELTS 64
 
@@ -643,11 +637,7 @@ typedef struct snat_main_s
   u32 inside_vrf_id;
   u32 inside_fib_index;
 
-  /* values of various timeouts */
-  u32 udp_timeout;
-  u32 tcp_transitory_timeout;
-  u32 tcp_established_timeout;
-  u32 icmp_timeout;
+  nat_timeouts_t timeouts;
 
   /* TCP MSS clamping */
   u16 mss_clamping;

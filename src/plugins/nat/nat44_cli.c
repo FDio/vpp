@@ -342,6 +342,10 @@ nat44_set_alloc_addr_and_port_alg_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   u32 psid, psid_offset, psid_length, port_start, port_end;
+  snat_main_t *sm = &snat_main;
+
+  if (sm->endpoint_dependent)
+    return clib_error_return (0, UNSUPPORTED_IN_ED_MODE_STR);
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1857,19 +1861,14 @@ set_timeout_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "udp %u", &sm->udp_timeout));
+      if (unformat (line_input, "udp %u", &sm->timeouts.udp));
       else if (unformat (line_input, "tcp-established %u",
-			 &sm->tcp_established_timeout));
+			 &sm->timeouts.tcp.established));
       else if (unformat (line_input, "tcp-transitory %u",
-			 &sm->tcp_transitory_timeout));
-      else if (unformat (line_input, "icmp %u", &sm->icmp_timeout));
+			 &sm->timeouts.tcp.transitory));
+      else if (unformat (line_input, "icmp %u", &sm->timeouts.icmp));
       else if (unformat (line_input, "reset"))
-	{
-	  sm->udp_timeout = SNAT_UDP_TIMEOUT;
-	  sm->tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
-	  sm->tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
-	  sm->icmp_timeout = SNAT_ICMP_TIMEOUT;
-	}
+	nat_reset_timeouts (&sm->timeouts);
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
@@ -1889,12 +1888,12 @@ nat_show_timeouts_command_fn (vlib_main_t * vm,
 {
   snat_main_t *sm = &snat_main;
 
-  vlib_cli_output (vm, "udp timeout: %dsec", sm->udp_timeout);
+  vlib_cli_output (vm, "udp timeout: %dsec", sm->timeouts.udp);
   vlib_cli_output (vm, "tcp-established timeout: %dsec",
-		   sm->tcp_established_timeout);
+		   sm->timeouts.tcp.established);
   vlib_cli_output (vm, "tcp-transitory timeout: %dsec",
-		   sm->tcp_transitory_timeout);
-  vlib_cli_output (vm, "icmp timeout: %dsec", sm->icmp_timeout);
+		   sm->timeouts.tcp.transitory);
+  vlib_cli_output (vm, "icmp timeout: %dsec", sm->timeouts.icmp);
 
   return 0;
 }
