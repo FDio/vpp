@@ -2708,6 +2708,7 @@ unix_cli_kill (unix_cli_main_t * cm, uword cli_file_index)
     vec_free (cf->command_history[i]);
 
   vec_free (cf->command_history);
+  vec_free (cf->input_vector);
 
   clib_file_del (fm, uf);
 

@@ -1601,19 +1601,23 @@ ip6_ra_process_timer_event (vlib_main_t * vm,
 }
 
 static void
-ip6_ra_handle_report (const ip6_ra_report_t * rap)
+ip6_ra_handle_report (ip6_ra_report_t * rap)
 {
   u32 ii;
 
   vec_foreach_index (ii, ip6_ra_listeners) ip6_ra_listeners[ii] (rap);
+  vec_free (rap->prefixes);
+  clib_mem_free (rap);
 }
 
 static uword
 ip6_ra_event_process (vlib_main_t * vm,
 		      vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  ip6_ra_report_t *r, *rs;
+  ip6_ra_report_t *r;
   uword event_type;
+  uword *event_data = 0;
+  int i;
 
   /* init code here */
 
@@ -1621,9 +1625,9 @@ ip6_ra_event_process (vlib_main_t * vm,
     {
       vlib_process_wait_for_event_or_clock (vm, 1. /* seconds */ );
 
-      rs = vlib_process_get_event_data (vm, &event_type);
+      event_type = vlib_process_get_events (vm, &event_data);
 
-      if (NULL == rs)
+      if (event_type == ~0)
 	{
 	  /* No events found: timer expired. */
 	  /* process interface list and send RAs as appropriate, update timer info */
@@ -1631,17 +1635,25 @@ ip6_ra_event_process (vlib_main_t * vm,
 	}
       else
 	{
-	  vec_foreach (r, rs) ip6_ra_handle_report (r);
-	  vec_reset_length (rs);
+	  for (i = 0; i < vec_len (event_data); i++)
+	    {
+	      r = (void *) (event_data[i]);
+	      ip6_ra_handle_report (r);
+	    }
+	  vec_reset_length (event_data);
 	}
     }
   return frame->n_vectors;
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_ra_process_node) =
 {
-.function = ip6_ra_event_process,.name = "ip6-ra-process",.type =
-    VLIB_NODE_TYPE_PROCESS,};
+ .function = ip6_ra_event_process,
+ .name = "ip6-ra-process",
+ .type = VLIB_NODE_TYPE_PROCESS,
+};
+/* *INDENT-ON* */
 
 static void
 ip6_ra_signal_report (ip6_ra_report_t * r)
@@ -1652,10 +1664,10 @@ ip6_ra_signal_report (ip6_ra_report_t * r)
   if (!vec_len (ip6_ra_listeners))
     return;
 
-  q = vlib_process_signal_event_data (vm,
-				      ip6_ra_process_node.index,
-				      0, 1, sizeof *q);
+  q = clib_mem_alloc (sizeof (*q));
   *q = *r;
+
+  vlib_process_signal_event (vm, ip6_ra_process_node.index, 0, (uword) q);
 }
 
 static int
