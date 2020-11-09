@@ -1469,11 +1469,8 @@ session_transport_cleanup (session_t * s)
 /**
  * Allocate event queues in the shared-memory segment
  *
- * That can either be a newly created memfd segment, that will need to be
- * mapped by all stack users, or the binary api's svm region. The latter is
- * assumed to be already mapped. NOTE that this assumption DOES NOT hold if
- * api clients bootstrap shm api over sockets (i.e. use memfd segments) and
- * vpp uses api svm region for event queues.
+ * That can only be a newly created memfd segment, that must be
+ * mapped by all apps/stack users.
  */
 void
 session_vpp_event_queues_allocate (session_main_t * smm)
@@ -1488,28 +1485,22 @@ session_vpp_event_queues_allocate (session_main_t * smm)
   if (smm->configured_event_queue_length)
     evt_q_length = smm->configured_event_queue_length;
 
-  if (smm->evt_qs_use_memfd_seg)
+  if (smm->evt_qs_segment_size)
+    eqs_size = smm->evt_qs_segment_size;
+
+  eqs->ssvm_size = eqs_size;
+  eqs->my_pid = vpp_pid;
+  eqs->name = format (0, "%s%c", "session: evt-qs-segment", 0);
+  /* clib_mem_vm_map_shared consumes first page before requested_va */
+  eqs->requested_va = smm->session_baseva + clib_mem_get_page_size ();
+
+  if (ssvm_server_init (eqs, SSVM_SEGMENT_MEMFD))
     {
-      if (smm->evt_qs_segment_size)
-	eqs_size = smm->evt_qs_segment_size;
-
-      eqs->ssvm_size = eqs_size;
-      eqs->my_pid = vpp_pid;
-      eqs->name = format (0, "%s%c", "session: evt-qs-segment", 0);
-      /* clib_mem_vm_map_shared consumes first page before requested_va */
-      eqs->requested_va = smm->session_baseva + clib_mem_get_page_size ();
-
-      if (ssvm_server_init (eqs, SSVM_SEGMENT_MEMFD))
-	{
-	  clib_warning ("failed to initialize queue segment");
-	  return;
-	}
+      clib_warning ("failed to initialize queue segment");
+      return;
     }
 
-  if (smm->evt_qs_use_memfd_seg)
-    oldheap = ssvm_push_heap (eqs->sh);
-  else
-    oldheap = vl_msg_push_heap ();
+  oldheap = ssvm_push_heap (eqs->sh);
 
   for (i = 0; i < vec_len (smm->wrk); i++)
     {
@@ -1524,26 +1515,17 @@ session_vpp_event_queues_allocate (session_main_t * smm)
       cfg->q_nitems = evt_q_length;
       cfg->ring_cfgs = rc;
       smm->wrk[i].vpp_event_queue = svm_msg_q_alloc (cfg);
-      if (smm->evt_qs_use_memfd_seg)
-	{
-	  if (svm_msg_q_alloc_consumer_eventfd (smm->wrk[i].vpp_event_queue))
-	    clib_warning ("eventfd returned");
-	}
+      if (svm_msg_q_alloc_consumer_eventfd (smm->wrk[i].vpp_event_queue))
+	clib_warning ("eventfd returned");
     }
 
-  if (smm->evt_qs_use_memfd_seg)
-    ssvm_pop_heap (oldheap);
-  else
-    vl_msg_pop_heap (oldheap);
+  ssvm_pop_heap (oldheap);
 }
 
 ssvm_private_t *
 session_main_get_evt_q_segment (void)
 {
-  session_main_t *smm = &session_main;
-  if (smm->evt_qs_use_memfd_seg)
-    return &smm->evt_qs_segment;
-  return 0;
+  return &session_main.evt_qs_segment;
 }
 
 u64
@@ -1818,7 +1800,6 @@ session_main_init (vlib_main_t * vm)
 #endif
 
   smm->last_transport_proto_type = TRANSPORT_PROTO_QUIC;
-  smm->evt_qs_use_memfd_seg = 1;
 
   return 0;
 }
@@ -1913,8 +1894,9 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "local-endpoints-table-buckets %d",
 			 &smm->local_endpoints_table_buckets))
 	;
+      /* Deprecated but maintained for compatibility */
       else if (unformat (input, "evt_qs_memfd_seg"))
-	smm->evt_qs_use_memfd_seg = 1;
+	;
       else if (unformat (input, "evt_qs_seg_size %U", unformat_memory_size,
 			 &smm->evt_qs_segment_size))
 	;
