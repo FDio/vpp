@@ -14,6 +14,7 @@
  */
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
+#include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
@@ -119,11 +120,11 @@ vxlan_gpe_add_unregister_option (u8 option)
 
 int
 vxlan_gpe_ioam_register_option (u8 option,
-				int options (vlib_buffer_t * b,
-					     vxlan_gpe_ioam_option_t * opt,
-					     u8 is_ipv4, u8 use_adj),
-				u8 * trace (u8 * s,
-					    vxlan_gpe_ioam_option_t * opt))
+                                int options (vlib_buffer_t * b,
+                                vxlan_gpe_ioam_option_t * opt,
+                                u8 is_ipv4, u8 use_adj),
+                                u8 * trace (u8 * s,
+                                vxlan_gpe_ioam_option_t * opt))
 {
   vxlan_gpe_ioam_main_t *im = &vxlan_gpe_ioam_main;
 
@@ -174,39 +175,38 @@ format_ioam_data_list_element (u8 * s, va_list * args)
   u8 *trace_type_p = va_arg (*args, u8 *);
   u8 trace_type = *trace_type_p;
 
+  if (trace_type & IOAM_BIT_TTL_NODEID_SHORT)
+  {
+    u32 ttl_node_id_host_byte_order = clib_net_to_host_u32 (*elt);
+    s = format (s, "ttl 0x%x node id 0x%x ",
+    ttl_node_id_host_byte_order >> 24,
+    ttl_node_id_host_byte_order & 0x00FFFFFF);
 
-  if (trace_type & BIT_TTL_NODEID)
-    {
-      u32 ttl_node_id_host_byte_order = clib_net_to_host_u32 (*elt);
-      s = format (s, "ttl 0x%x node id 0x%x ",
-		  ttl_node_id_host_byte_order >> 24,
-		  ttl_node_id_host_byte_order & 0x00FFFFFF);
+    elt++;
+  }
 
-      elt++;
-    }
+  if (trace_type & IOAM_BIT_ING_EGR_INT_SHORT)
+  {
+    u32 ingress_host_byte_order = clib_net_to_host_u32 (*elt);
+    s = format (s, "ingress 0x%x egress 0x%x ",
+    ingress_host_byte_order >> 16,
+    ingress_host_byte_order & 0xFFFF);
+    elt++;
+  }
 
-  if (trace_type & BIT_ING_INTERFACE && trace_type & BIT_ING_INTERFACE)
-    {
-      u32 ingress_host_byte_order = clib_net_to_host_u32 (*elt);
-      s = format (s, "ingress 0x%x egress 0x%x ",
-		  ingress_host_byte_order >> 16,
-		  ingress_host_byte_order & 0xFFFF);
-      elt++;
-    }
+  if (trace_type & IOAM_BIT_TIMESTAMP_SEC)
+  {
+    u32 ts_in_host_byte_order = clib_net_to_host_u32 (*elt);
+    s = format (s, "ts 0x%x \n", ts_in_host_byte_order);
+    elt++;
+  }
 
-  if (trace_type & BIT_TIMESTAMP)
-    {
-      u32 ts_in_host_byte_order = clib_net_to_host_u32 (*elt);
-      s = format (s, "ts 0x%x \n", ts_in_host_byte_order);
-      elt++;
-    }
-
-  if (trace_type & BIT_APPDATA)
-    {
-      u32 appdata_in_host_byte_order = clib_net_to_host_u32 (*elt);
-      s = format (s, "app 0x%x ", appdata_in_host_byte_order);
-      elt++;
-    }
+  if (trace_type & IOAM_BIT_APPDATA_SHORT_DATA)
+  {
+    u32 appdata_in_host_byte_order = clib_net_to_host_u32 (*elt);
+    s = format (s, "app 0x%x ", appdata_in_host_byte_order);
+    elt++;
+  }
 
   return s;
 }
@@ -217,7 +217,7 @@ int
 vxlan_gpe_ioam_trace_rewrite_handler (u8 * rewrite_string, u8 * rewrite_size)
 {
   vxlan_gpe_ioam_trace_option_t *trace_option = NULL;
-  u8 trace_data_size = 0;
+  u32 trace_data_size = 0;
   u8 trace_option_elts = 0;
   trace_profile *profile = NULL;
 
@@ -233,12 +233,12 @@ vxlan_gpe_ioam_trace_rewrite_handler (u8 * rewrite_string, u8 * rewrite_size)
     return -1;
 
   trace_option_elts = profile->num_elts;
-  trace_data_size = fetch_trace_data_size (profile->trace_type);
+  trace_data_size = fetch_trace_data_size (profile);
   trace_option = (vxlan_gpe_ioam_trace_option_t *) rewrite_string;
   trace_option->hdr.type = VXLAN_GPE_OPTION_TYPE_IOAM_TRACE;
   trace_option->hdr.length = 2 /*ioam_trace_type,data_list_elts_left */  +
-    trace_option_elts * trace_data_size;
-  trace_option->ioam_trace_type = profile->trace_type & TRACE_TYPE_MASK;
+                            trace_option_elts * trace_data_size;
+  trace_option->ioam_trace_type = profile->trace_type & IOAM_INSTR_BITMAP_MASK;
   trace_option->data_list_elts_left = trace_option_elts;
   *rewrite_size =
     sizeof (vxlan_gpe_ioam_trace_option_t) +
@@ -250,11 +250,11 @@ vxlan_gpe_ioam_trace_rewrite_handler (u8 * rewrite_string, u8 * rewrite_size)
 
 int
 vxlan_gpe_ioam_trace_data_list_handler (vlib_buffer_t * b,
-					vxlan_gpe_ioam_option_t * opt,
-					u8 is_ipv4, u8 use_adj)
+                                        vxlan_gpe_ioam_option_t * opt,
+                                        u8 is_ipv4, u8 use_adj)
 {
   u8 elt_index = 0;
-  vxlan_gpe_ioam_trace_option_t *trace =
+  vxlan_gpe_ioam_trace_option_t *trace = 
     (vxlan_gpe_ioam_trace_option_t *) opt;
   time_u64_t time_u64;
   u32 *elt;
@@ -274,18 +274,17 @@ vxlan_gpe_ioam_trace_data_list_handler (vlib_buffer_t * b,
   time_u64.as_u64 = 0;
 
   if (PREDICT_TRUE (trace->data_list_elts_left))
-    {
-      trace->data_list_elts_left--;
-      /* fetch_trace_data_size returns in bytes. Convert it to 4-bytes
-       * to skip to this node's location.
-       */
-      elt_index =
-	trace->data_list_elts_left *
-	fetch_trace_data_size (trace->ioam_trace_type) / 4;
-      elt = &trace->elts[elt_index];
-      if (is_ipv4)
-	{
-	  if (trace->ioam_trace_type & BIT_TTL_NODEID)
+  {
+    trace->data_list_elts_left--;
+    /* fetch_trace_data_size returns in bytes. Convert it to 4-bytes
+      * to skip to this node's location.
+    */
+    elt_index = 
+      trace->data_list_elts_left * fetch_trace_data_size (profile) / 4;
+    elt = &trace->elts[elt_index];
+    if (is_ipv4)
+	  {
+	    if (trace->ioam_trace_type & IOAM_BIT_TTL_NODEID_SHORT)
 	    {
 	      ip4_header_t *ip0 = vlib_buffer_get_current (b);
 	      /* The transit case is the only case where the TTL decrement happens
@@ -293,82 +292,82 @@ vxlan_gpe_ioam_trace_data_list_handler (vlib_buffer_t * b,
 	       * We can probably use a separate flag instead of overloading the use_adj flag.
 	       */
 	      *elt = clib_host_to_net_u32 (((ip0->ttl - 1 + use_adj) << 24) |
-					   profile->node_id);
-	      elt++;
+					   profile->node_id_short);
+        elt++;
 	    }
 
-	  if (trace->ioam_trace_type & BIT_ING_INTERFACE)
+	    if (trace->ioam_trace_type & IOAM_BIT_ING_EGR_INT_SHORT)
 	    {
 	      u16 tx_if = 0;
 	      u32 adj_index = vnet_buffer (b)->ip.adj_index[VLIB_TX];
 
 	      if (use_adj)
-		{
-		  ip_adjacency_t *adj = adj_get (adj_index);
-		  tx_if = adj->rewrite_header.sw_if_index & 0xFFFF;
-		}
+        {
+          ip_adjacency_t *adj = adj_get (adj_index);
+          tx_if = adj->rewrite_header.sw_if_index & 0xFFFF;
+        }
 
 	      *elt =
 		(vnet_buffer (b)->sw_if_index[VLIB_RX] & 0xFFFF) << 16 |
 		tx_if;
-	      *elt = clib_host_to_net_u32 (*elt);
+    *elt = clib_host_to_net_u32 (*elt);
 	      elt++;
 	    }
-	}
-      else
-	{
-	  if (trace->ioam_trace_type & BIT_TTL_NODEID)
+	  }
+    else
+	  {
+	    if (trace->ioam_trace_type & IOAM_BIT_TTL_NODEID_SHORT)
 	    {
 	      ip6_header_t *ip0 = vlib_buffer_get_current (b);
 	      *elt = clib_host_to_net_u32 ((ip0->hop_limit << 24) |
-					   profile->node_id);
-	      elt++;
+					   profile->node_id_short);
+        elt++;
 	    }
-	  if (trace->ioam_trace_type & BIT_ING_INTERFACE)
+	    if (trace->ioam_trace_type & IOAM_BIT_ING_EGR_INT_SHORT)
 	    {
 	      u16 tx_if = 0;
 	      u32 adj_index = vnet_buffer (b)->ip.adj_index[VLIB_TX];
 
-	      if (use_adj)
-		{
-		  ip_adjacency_t *adj = adj_get (adj_index);
-		  tx_if = adj->rewrite_header.sw_if_index & 0xFFFF;
-		}
+        if (use_adj)
+        {
+          ip_adjacency_t *adj = adj_get (adj_index);
+          tx_if = adj->rewrite_header.sw_if_index & 0xFFFF;
+        }
 
 	      *elt =
 		(vnet_buffer (b)->sw_if_index[VLIB_RX] & 0xFFFF) << 16 |
 		tx_if;
-	      *elt = clib_host_to_net_u32 (*elt);
+        *elt = clib_host_to_net_u32 (*elt);
 	      elt++;
 	    }
-	}
+	  }
 
-      if (trace->ioam_trace_type & BIT_TIMESTAMP)
-	{
-	  /* Send least significant 32 bits */
-	  f64 time_f64 =
-	    (f64) (((f64) hm->unix_time_0) +
-		   (vlib_time_now (hm->vlib_main) - hm->vlib_time_0));
+    if (trace->ioam_trace_type & IOAM_BIT_TIMESTAMP_SEC)
+    {
+      /* Send least significant 32 bits */
+      f64 time_f64 =
+        (f64) (((f64) hm->unix_time_0) +
+        (vlib_time_now (hm->vlib_main) - hm->vlib_time_0));
 
-	  time_u64.as_u64 = time_f64 * trace_tsp_mul[profile->trace_tsp];
-	  *elt = clib_host_to_net_u32 (time_u64.as_u32[0]);
-	  elt++;
-	}
+      time_u64.as_u64 = time_f64 * trace_tsp_mul[profile->ts_format];
+      *elt = clib_host_to_net_u32 (time_u64.as_u32[0]);
+      elt++;
+    }
 
-      if (trace->ioam_trace_type & BIT_APPDATA)
-	{
-	  /* $$$ set elt0->app_data */
-	  *elt = clib_host_to_net_u32 (profile->app_data);
-	  elt++;
-	}
+    if (trace->ioam_trace_type & IOAM_BIT_APPDATA_SHORT_DATA)
+    {
+      /* $$$ set elt0->app_data */
+      *elt = clib_host_to_net_u32 (profile->app_data_short);
+      elt++;
+    }
       vxlan_gpe_ioam_trace_stats_increment_counter
-	(VXLAN_GPE_IOAM_TRACE_SUCCESS, 1);
+	      (VXLAN_GPE_IOAM_TRACE_SUCCESS, 1);
     }
   else
-    {
-      vxlan_gpe_ioam_trace_stats_increment_counter
-	(VXLAN_GPE_IOAM_TRACE_FAILED, 1);
-    }
+  {
+    vxlan_gpe_ioam_trace_stats_increment_counter
+	    (VXLAN_GPE_IOAM_TRACE_FAILED, 1);
+  }
   return (rv);
 }
 
@@ -377,7 +376,7 @@ vxlan_gpe_ioam_trace_data_list_trace_handler (u8 * s,
 					      vxlan_gpe_ioam_option_t * opt)
 {
   vxlan_gpe_ioam_trace_option_t *trace;
-  u8 trace_data_size_in_words = 0;
+  u32 trace_data_size_in_words = 0;
   u32 *elt;
   int elt_index = 0;
 
@@ -386,35 +385,35 @@ vxlan_gpe_ioam_trace_data_list_trace_handler (u8 * s,
     format (s, "  Trace Type 0x%x , %d elts left\n", trace->ioam_trace_type,
 	    trace->data_list_elts_left);
   trace_data_size_in_words =
-    fetch_trace_data_size (trace->ioam_trace_type) / 4;
+    fetch_trace_data_size (trace_profile_find()) / 4;
   elt = &trace->elts[0];
   while ((u8 *) elt < ((u8 *) (&trace->elts[0]) + trace->hdr.length - 2
 		       /* -2 accounts for ioam_trace_type,elts_left */ ))
-    {
-      s = format (s, "    [%d] %U\n", elt_index,
-		  format_ioam_data_list_element,
-		  elt, &trace->ioam_trace_type);
-      elt_index++;
-      elt += trace_data_size_in_words;
-    }
+  {
+    s = format (s, "    [%d] %U\n", elt_index,
+    format_ioam_data_list_element,
+    elt, &trace->ioam_trace_type);
+    elt_index++;
+    elt += trace_data_size_in_words;
+  }
   return (s);
 }
 
 
 static clib_error_t *
 vxlan_gpe_show_ioam_trace_cmd_fn (vlib_main_t * vm,
-				  unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
+                                  unformat_input_t * input,
+                                  vlib_cli_command_t * cmd)
 {
   vxlan_gpe_ioam_trace_main_t *hm = &vxlan_gpe_ioam_trace_main;
   u8 *s = 0;
   int i = 0;
 
   for (i = 0; i < VXLAN_GPE_IOAM_TRACE_N_STATS; i++)
-    {
-      s = format (s, " %s - %lu\n", vxlan_gpe_ioam_trace_stats_strings[i],
-		  hm->counters[i]);
-    }
+  {
+    s = format (s, " %s - %lu\n", vxlan_gpe_ioam_trace_stats_strings[i],
+    hm->counters[i]);
+  }
 
   vlib_cli_output (vm, "%v", s);
   vec_free (s);
@@ -483,7 +482,7 @@ static int
 vxlan_gpe_ioam_trace_get_sizeof_handler (u32 * result)
 {
   u16 size = 0;
-  u8 trace_data_size = 0;
+  u32 trace_data_size = 0;
   trace_profile *profile = NULL;
 
   *result = 0;
@@ -491,11 +490,11 @@ vxlan_gpe_ioam_trace_get_sizeof_handler (u32 * result)
   profile = trace_profile_find ();
 
   if (PREDICT_FALSE (!profile))
-    {
-      return (-1);
-    }
+  {
+    return (-1);
+  }
 
-  trace_data_size = fetch_trace_data_size (profile->trace_type);
+  trace_data_size = fetch_trace_data_size (profile);
   if (PREDICT_FALSE (trace_data_size == 0))
     return VNET_API_ERROR_INVALID_VALUE;
 
@@ -523,9 +522,9 @@ vxlan_gpe_trace_profile_setup (void)
   profile = trace_profile_find ();
 
   if (PREDICT_FALSE (!profile))
-    {
-      return (-1);
-    }
+  {
+    return (-1);
+  }
 
 
   if (vxlan_gpe_ioam_trace_get_sizeof_handler (&trace_size) < 0)

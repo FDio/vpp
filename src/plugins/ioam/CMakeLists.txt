@@ -10,7 +10,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+##############################################################################
+# iOAM plugin and friends
+##############################################################################
 add_vpp_plugin(ioam
   SOURCES
   # iOAM Proof of Transit
@@ -65,6 +67,9 @@ add_vpp_plugin(ioam
   udp-ping/udp_ping_export.c
   udp-ping/udp_ping_api.c
 
+  # ioam lib device driver info
+  lib-device-driver-info/device_driver_info.c
+  
   MULTIARCH_SOURCES
   ip6/ioam_cache_node.c
   ip6/ioam_cache_tunnel_select_node.c
@@ -77,6 +82,7 @@ add_vpp_plugin(ioam
   export-vxlan-gpe/vxlan_gpe_ioam_export.api
   ip6/ioam_cache.api
   udp-ping/udp_ping.api
+  lib-device-driver-info/device_driver_info.api
 
   INSTALL_HEADERS
   lib-pot/pot_util.h
@@ -94,6 +100,7 @@ add_vpp_plugin(ioam
   udp-ping/udp_ping_packet.h
   udp-ping/udp_ping.h
   udp-ping/udp_ping_util.h
+  lib-device-driver-info/device_driver_info.h
 
   API_TEST_SOURCES
   ioam_test.c
@@ -104,4 +111,3 @@ add_vpp_plugin(ioam
   lib-vxlan-gpe/vxlan_gpe_test.c
   udp-ping/udp_ping_test.c
 )
-

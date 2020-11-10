@@ -480,7 +480,7 @@ udp_ping_analyse_hbh (vlib_buffer_t * b0,
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
 	  trace = (ioam_trace_option_t *) opt0;
 	  if (PREDICT_FALSE
-	      (trace->trace_hdr.ioam_trace_type & BIT_LOOPBACK_REPLY))
+	      ((trace->trace_hdr.trace_type & IOAM_FLAGS_MASK) && IOAM_BIT_FLAG_LOOPBACK_REPLY))
 	    {
 	      ip6_ioam_analyse_hbh_trace_loopback (data, &trace->trace_hdr,
 						   (trace->hdr.length - 2));

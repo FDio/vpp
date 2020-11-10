@@ -26,11 +26,19 @@ option version = "1.0.0";
 autoreply define trace_profile_add {
   u32 client_index;
   u32 context;
-  u8 trace_type;
+  u16 namespace_id;
   u8 num_elts;
-  u8 trace_tsp;
-  u32 node_id;
-  u32 app_data;
+  u32 node_id_short;
+  u64 node_id_wide;
+  u32 app_data_short;
+  u64 app_data_wide;
+  u8 option_type;
+  u32 trace_type;
+  u8 node_type;
+  u8 ts_format;
+  u8 queue_depth_type;
+  u8 opaque_len;
+  u32 opaque_id;
 };
 
 /** \brief Delete trace Profile
@@ -63,9 +71,17 @@ define trace_profile_show_config {
 define trace_profile_show_config_reply {
   u32 context;
   i32 retval;
-  u8 trace_type;
+  u16 namespace_id;
   u8 num_elts;
-  u8 trace_tsp;
-  u32 node_id;
-  u32 app_data;
+  u32 node_id_short;
+  u64 node_id_wide;
+  u32 app_data_short;
+  u64 app_data_wide;
+  u8 option_type;
+  u32 trace_type;
+  u8 node_type;
+  u8 ts_format;
+  u8 queue_depth_type;
+  u8 opaque_len;
+  u32 opaque_id;
 };
