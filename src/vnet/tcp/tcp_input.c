@@ -1299,7 +1299,7 @@ tcp_segment_rcv (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   tc->data_segs_in += 1;
 
   /* Make sure we don't consume trailing bytes */
-  if (PREDICT_FALSE (b->current_length != n_data_bytes))
+  if (PREDICT_FALSE (b->current_length > n_data_bytes))
     b->current_length = n_data_bytes;
 
   /* Handle out-of-order data */
