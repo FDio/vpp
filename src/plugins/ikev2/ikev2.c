@@ -1861,25 +1861,41 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
       vec_add1 (sas_in, a->old_remote_sa_id);
     }
 
-  rv |= ipsec_sa_add_and_lock (a->local_sa_id,
-			       a->local_spi,
-			       IPSEC_PROTOCOL_ESP, a->encr_type,
-			       &a->loc_ckey, a->integ_type, &a->loc_ikey,
-			       a->flags, 0, a->salt_local, &a->local_ip,
-			       &a->remote_ip, TUNNEL_ENCAP_DECAP_FLAG_NONE,
-			       IP_DSCP_CS0, NULL, a->src_port, a->dst_port);
+  rv = ipsec_sa_add_and_lock (a->local_sa_id,
+			      a->local_spi,
+			      IPSEC_PROTOCOL_ESP, a->encr_type,
+			      &a->loc_ckey, a->integ_type, &a->loc_ikey,
+			      a->flags, 0, a->salt_local, &a->local_ip,
+			      &a->remote_ip, TUNNEL_ENCAP_DECAP_FLAG_NONE,
+			      IP_DSCP_CS0, NULL, a->src_port, a->dst_port);
+  if (rv)
+    {
+      vec_free (sas_in);
+      return;
+    }
 
-  rv |= ipsec_sa_add_and_lock (a->remote_sa_id, a->remote_spi,
-			       IPSEC_PROTOCOL_ESP, a->encr_type, &a->rem_ckey,
-			       a->integ_type, &a->rem_ikey,
-			       (a->flags | IPSEC_SA_FLAG_IS_INBOUND), 0,
-			       a->salt_remote, &a->remote_ip,
-			       &a->local_ip, TUNNEL_ENCAP_DECAP_FLAG_NONE,
-			       IP_DSCP_CS0, NULL,
-			       a->ipsec_over_udp_port,
-			       a->ipsec_over_udp_port);
+  rv = ipsec_sa_add_and_lock (a->remote_sa_id, a->remote_spi,
+			      IPSEC_PROTOCOL_ESP, a->encr_type, &a->rem_ckey,
+			      a->integ_type, &a->rem_ikey,
+			      (a->flags | IPSEC_SA_FLAG_IS_INBOUND), 0,
+			      a->salt_remote, &a->remote_ip,
+			      &a->local_ip, TUNNEL_ENCAP_DECAP_FLAG_NONE,
+			      IP_DSCP_CS0, NULL,
+			      a->ipsec_over_udp_port, a->ipsec_over_udp_port);
+  if (rv)
+    {
+      ipsec_sa_unlock_id (a->local_sa_id);
+      vec_free (sas_in);
+      return;
+    }
 
-  rv |= ipsec_tun_protect_update (sw_if_index, NULL, a->local_sa_id, sas_in);
+  rv = ipsec_tun_protect_update (sw_if_index, NULL, a->local_sa_id, sas_in);
+  if (rv)
+    {
+      ipsec_sa_unlock_id (a->remote_sa_id);
+      ipsec_sa_unlock_id (a->local_sa_id);
+      vec_free (sas_in);
+    }
 }
 
 static int
@@ -4692,7 +4708,10 @@ ikev2_mngr_process_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * csa,
       u32 *sas_in = NULL;
       vec_add1 (sas_in, csa->remote_sa_id);
       vlib_worker_thread_barrier_sync (vm);
-      ipsec_tun_protect_update (sw_if_index, NULL, csa->local_sa_id, sas_in);
+      int rv = ipsec_tun_protect_update (sw_if_index, NULL,
+					 csa->local_sa_id, sas_in);
+      if (rv)
+	vec_free (sas_in);
       ipsec_sa_unlock_id (ikev2_flip_alternate_sa_bit (csa->remote_sa_id));
       vlib_worker_thread_barrier_release (vm);
     }
