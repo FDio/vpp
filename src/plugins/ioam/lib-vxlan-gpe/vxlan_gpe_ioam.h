@@ -58,11 +58,6 @@ typedef struct vxlan_gpe_ioam_main_
 #define PPC_DECAP 2
   u8 has_ppc_option;
 
-#define TSP_SECONDS              0
-#define TSP_MILLISECONDS         1
-#define TSP_MICROSECONDS         2
-#define TSP_NANOSECONDS          3
-
   /* Array of function pointers to ADD and POP VxLAN-GPE iOAM option handling routines */
   u8 options_size[256];
   int (*add_options[256]) (u8 * rewrite_string, u8 * rewrite_size);
