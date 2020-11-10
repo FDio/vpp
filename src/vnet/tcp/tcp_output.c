@@ -323,13 +323,6 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
       tcp_cc_event (tc, TCP_CC_EVT_START_TX);
       tcp_connection_tx_pacer_reset (tc, tc->cwnd, TRANSPORT_PACER_MIN_BURST);
     }
-
-  if (tc->flags & TCP_CONN_PSH_PENDING)
-    {
-      u32 max_deq = transport_max_tx_dequeue (&tc->connection);
-      /* Last byte marked for push */
-      tc->psh_seq = tc->snd_una + max_deq - 1;
-    }
 }
 
 #endif /* CLIB_MARCH_VARIANT */
@@ -944,12 +937,10 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b, u32 snd_nxt,
   else
     advertise_wnd = tcp_window_to_advertise (tc, TCP_STATE_ESTABLISHED);
 
-  if (PREDICT_FALSE (tc->flags & TCP_CONN_PSH_PENDING))
-    {
-      if (seq_geq (tc->psh_seq, snd_nxt)
-	  && seq_lt (tc->psh_seq, snd_nxt + data_len))
-	flags |= TCP_FLAG_PSH;
-    }
+  if (PREDICT_FALSE (seq_lt (tc->psh_seq, snd_nxt + data_len)
+		     && seq_geq (tc->psh_seq, snd_nxt)))
+    flags |= TCP_FLAG_PSH;
+
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, snd_nxt,
 			     tc->rcv_nxt, tcp_hdr_opts_len, flags,
 			     advertise_wnd);
