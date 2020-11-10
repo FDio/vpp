@@ -124,15 +124,15 @@ typedef struct vlib_config_function_runtime_t
 vlib_init_function_t * _VLIB_INIT_FUNCTION_SYMBOL (x, tag) = x;         \
 static void __vlib_add_##tag##_function_##x (void)                      \
     __attribute__((__constructor__)) ;                                  \
-static _vlib_init_function_list_elt_t _vlib_init_function_##tag_##x;    \
+static _vlib_init_function_list_elt_t _vlib_init_function_##tag##_##x;    \
 static void __vlib_add_##tag##_function_##x (void)                      \
 {                                                                       \
  vlib_main_t * vm = vlib_get_main();                                    \
- _vlib_init_function_##tag_##x.next_init_function                       \
+ _vlib_init_function_##tag##_##x.next_init_function                       \
     = vm->tag##_function_registrations;                                 \
-  vm->tag##_function_registrations = &_vlib_init_function_##tag_##x;    \
- _vlib_init_function_##tag_##x.f = &x;                                  \
- _vlib_init_function_##tag_##x.name = #x;                               \
+  vm->tag##_function_registrations = &_vlib_init_function_##tag##_##x;    \
+ _vlib_init_function_##tag##_##x.f = &x;                                  \
+ _vlib_init_function_##tag##_##x.name = #x;                               \
 }                                                                       \
 static void __vlib_rm_##tag##_function_##x (void)                       \
     __attribute__((__destructor__)) ;                                   \
@@ -162,7 +162,7 @@ static void __vlib_rm_##tag##_function_##x (void)                       \
       this = this->next_init_function;                                  \
     }                                                                   \
 }									\
-static _vlib_init_function_list_elt_t _vlib_init_function_##tag_##x
+static _vlib_init_function_list_elt_t _vlib_init_function_##tag##_##x
 #else
 /* create unused pointer to silence compiler warnings and get whole
    function optimized out */
