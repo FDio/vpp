@@ -46,7 +46,6 @@ typedef struct session_tx_context_
   transport_proto_vft_t *transport_vft;
   transport_connection_t *tc;
   transport_send_params_t sp;
-  u32 max_dequeue;
   u32 left_to_snd;
   u32 max_len_to_snd;
   u16 deq_per_first_buf;
