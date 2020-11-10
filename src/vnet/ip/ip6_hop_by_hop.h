@@ -46,7 +46,7 @@ typedef struct
 } ip6_local_hop_by_hop_runtime_t;
 
 typedef struct
-{ 
+{
   /* The current rewrite we're using */
   u8 *rewrite;
 
@@ -87,7 +87,7 @@ typedef struct
   int (*config_handler[MAX_IP6_HBH_OPTION]) (void *data, u8 disable);
 
   /* Array of function pointers to handle hbh options being used with classifier */
-  u32 (*flow_handler[MAX_IP6_HBH_OPTION]) (u32 flow_ctx, u8 add);
+    u32 (*flow_handler[MAX_IP6_HBH_OPTION]) (u32 flow_ctx, u8 add);
   flow_data_t *flows;
 
   ip6_local_hop_by_hop_runtime_t *ip6_local_hbh_runtime;
@@ -227,17 +227,17 @@ ioam_flow_add (u8 encap, u8 * flow_name)
   strncpy ((char *) flow->flow_name, (char *) flow_name, 31);
 
   if (!encap)
-  {
-    IOAM_SET_DECAP (index);
-  }
-    
-  for (i = 0; i < 255; i++)
-  {
-    if (hm->flow_handler[i])
     {
-      flow->ctx[i] = hm->flow_handler[i] (index, 1);
+      IOAM_SET_DECAP (index);
     }
-  }
+
+  for (i = 0; i < 255; i++)
+    {
+      if (hm->flow_handler[i])
+	{
+	  flow->ctx[i] = hm->flow_handler[i] (index, 1);
+	}
+    }
   return (index);
 }
 
@@ -256,26 +256,26 @@ ip6_hbh_get_option (ip6_hop_by_hop_header_t * hbh0, u8 option_to_search)
 
   /* Scan the set of h-b-h options, process ones that we understand */
   while (opt0 < limit0)
-  {
-    type0 = opt0->type;
-    switch (type0)
     {
-      case 0:		/* Pad1 */
-        opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0) + 1;
-        continue;
-      case 1:		/* PadN */
-        break;
-      default:
-        if (type0 == option_to_search)
-        {
-          return opt0;
-        }
-        break;
+      type0 = opt0->type;
+      switch (type0)
+	{
+	case 0:		/* Pad1 */
+	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0) + 1;
+	  continue;
+	case 1:		/* PadN */
+	  break;
+	default:
+	  if (type0 == option_to_search)
+	    {
+	      return opt0;
+	    }
+	  break;
+	}
+      opt0 =
+	(ip6_hop_by_hop_option_t *) (((u8 *) opt0) + opt0->length +
+				     sizeof (ip6_hop_by_hop_option_t));
     }
-    opt0 =
-	      (ip6_hop_by_hop_option_t *) (((u8 *) opt0) + opt0->length +
-				              sizeof (ip6_hop_by_hop_option_t));
-  }
   return NULL;
 }
 

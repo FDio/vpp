@@ -37,8 +37,8 @@ format_timestamp_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   timestamp_trace_t *t = va_arg (*args, timestamp_trace_t *);
 
-  s = format (s, "TIMESTAMP: sw_if_index %d, next_index %d, sec %Lx", 
-                            t->sw_if_index, t->next_index, t->stamp);
+  s = format (s, "TIMESTAMP: sw_if_index %d, next_index %d, sec %Lx",
+	      t->sw_if_index, t->next_index, t->stamp);
   return s;
 }
 
@@ -78,117 +78,133 @@ typedef union
  * Node costs 30 clocks/pkt at a vector size of 51
  */
 static uword
-timestamp_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame, u8 egress)
+timestamp_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+		       vlib_frame_t * frame, u8 egress)
 {
   u32 n_left_from, *from, *to_next;
   timestamp_next_t next_index;
   u32 pkts_stamped = 0;
-  vnet_main_t * vnm = vnet_get_main();
-  vnet_interface_main_t * im = & vnm -> interface_main;
-  u8 arc = im -> output_feature_arc_index;
-  vnet_feature_config_main_t * fcm;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  u8 arc = im->output_feature_arc_index;
+  vnet_feature_config_main_t *fcm;
 
   if (egress)
-    fcm = vnet_feature_get_config_main(arc);
+    fcm = vnet_feature_get_config_main (arc);
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
 
   while (n_left_from > 0)
-  {
-    u32 n_left_to_next;
-
-    vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-     // Single loop
-    while (n_left_from > 0 && n_left_to_next > 0)
     {
-      u32 bi0;
-      vlib_buffer_t *b0;
-      u32 next0;
-      u64 stamp;
+      u32 n_left_to_next;
 
-      /* speculatively enqueue b0 to the current next frame */
-      bi0 = from[0];
-      to_next[0] = bi0;
-      from += 1;
-      to_next += 1;
-      n_left_from -= 1;
-      n_left_to_next -= 1;
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      // Single loop
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  vlib_buffer_t *b0;
+	  u32 next0;
+	  u64 stamp;
 
-      b0 = vlib_get_buffer (vm, bi0);
-      // Stamp
-      stamp = unix_time_now_nsec();
+	  /* speculatively enqueue b0 to the current next frame */
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
 
-      /* Pass the timestamp, thanks to the vnet_buffer->opaque2 unused metadata field */
-      /* Set next0 to e.g. interface-tx */
-      timestamp_meta_t *time_meta = (void *)  &vnet_buffer2 (b0)->unused[0];
-      if (egress)
-      {
-        vnet_get_config_data(&fcm->config_main, &b0->current_config_index, &next0,/* # bytes of config data */0);
-        // Save egress timestamp
-        time_meta->timestamp_egress = stamp;
-        // If we have all 3, then ioam data must be inserted
-        if(time_meta->ptr_to_ioam_transit_delay && time_meta->timestamp_ingress && time_meta->timestamp_egress)
-        {
-          time_u64_t transit_delay;
-          transit_delay.as_u64 = time_meta->timestamp_egress - time_meta->timestamp_ingress;
-          // overflow
-          if (transit_delay.as_u32[1])
-          {
-            transit_delay.as_u32[0] = 0x80000000; // overflow as per IETF
-          }
-          *time_meta->ptr_to_ioam_transit_delay = clib_host_to_net_u32(transit_delay.as_u32[0]);
-          // Clear
-          time_meta->ptr_to_ioam_transit_delay = NULL;
-        }
-      }
-      else
-      {
-        next0 = TIMESTAMP_NEXT_ETHERNET_INPUT;
-        time_meta->timestamp_ingress = stamp;
-      }
-      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-            && (b0->flags & VLIB_BUFFER_IS_TRACED)))
-      {
-        timestamp_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-        t->next_index = next0;
-        if(egress)
-        {
-          t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-          t->stamp = time_meta->timestamp_egress;
-        }
-        else
-        {
-          t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-          t->stamp = time_meta->timestamp_ingress;
-        }
-      }
+	  b0 = vlib_get_buffer (vm, bi0);
+	  // Stamp
+	  stamp = unix_time_now_nsec ();
 
-      pkts_stamped += 1;
+	  /* Pass the timestamp, thanks to the vnet_buffer->opaque2 unused metadata field */
+	  /* Set next0 to e.g. interface-tx */
+	  timestamp_meta_t *time_meta =
+	    (void *) &vnet_buffer2 (b0)->unused[0];
+	  if (egress)
+	    {
+	      vnet_get_config_data (&fcm->config_main,
+				    &b0->current_config_index, &next0,
+				    /* # bytes of config data */ 0);
+	      // Save egress timestamp
+	      time_meta->timestamp_egress = stamp;
+	      // If we have all 3, then ioam data must be inserted
+	      if (time_meta->ptr_to_ioam_transit_delay
+		  && time_meta->timestamp_ingress
+		  && time_meta->timestamp_egress)
+		{
+		  time_u64_t transit_delay;
+		  transit_delay.as_u64 =
+		    time_meta->timestamp_egress -
+		    time_meta->timestamp_ingress;
+		  // overflow
+		  if (transit_delay.as_u32[1])
+		    {
+		      transit_delay.as_u32[0] = 0x80000000;	// overflow as per IETF
+		    }
+		  *time_meta->ptr_to_ioam_transit_delay =
+		    clib_host_to_net_u32 (transit_delay.as_u32[0]);
+		  // Clear
+		  time_meta->ptr_to_ioam_transit_delay = NULL;
+		}
+	    }
+	  else
+	    {
+	      next0 = TIMESTAMP_NEXT_ETHERNET_INPUT;
+	      time_meta->timestamp_ingress = stamp;
+	    }
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	    {
+	      timestamp_trace_t *t =
+		vlib_add_trace (vm, node, b0, sizeof (*t));
+	      t->next_index = next0;
+	      if (egress)
+		{
+		  t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+		  t->stamp = time_meta->timestamp_egress;
+		}
+	      else
+		{
+		  t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+		  t->stamp = time_meta->timestamp_ingress;
+		}
+	    }
 
-      /* verify speculative enqueue, maybe switch current next frame */
-      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-                                      to_next, n_left_to_next,
-                                      bi0, next0);
-	  }
-    vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-  }
+	  pkts_stamped += 1;
+
+	  /* verify speculative enqueue, maybe switch current next frame */
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
+	}
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
 
   if (egress)
-  {
-    vlib_node_increment_counter (vm, node->node_index, TIMESTAMP_ERROR_EGRESS_STAMPED, pkts_stamped);
-  }
+    {
+      vlib_node_increment_counter (vm, node->node_index,
+				   TIMESTAMP_ERROR_EGRESS_STAMPED,
+				   pkts_stamped);
+    }
   else
-  {
-    vlib_node_increment_counter (vm, node->node_index, TIMESTAMP_ERROR_INGRESS_STAMPED, pkts_stamped);
-  }
+    {
+      vlib_node_increment_counter (vm, node->node_index,
+				   TIMESTAMP_ERROR_INGRESS_STAMPED,
+				   pkts_stamped);
+    }
   return frame->n_vectors;
 }
+
 static uword
-timestamp_ingress_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+timestamp_ingress_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+			   vlib_frame_t * frame)
 {
-  return timestamp_node_inline (vm, node, frame, 0); /* ingress */
+  return timestamp_node_inline (vm, node, frame, 0);	/* ingress */
 }
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (timestamp_ingress_node) =
@@ -230,7 +246,7 @@ VLIB_REGISTER_NODE (timestamp_egress_node) =
 
   /* edit / add dispositions here */
   .next_nodes = {
-    [TIMESTAMP_NEXT_DROP] = "error-drop", 
+    [TIMESTAMP_NEXT_DROP] = "error-drop",
     [TIMESTAMP_NEXT_ETHERNET_INPUT] = "ethernet-input", /* not used */
   },
 };
