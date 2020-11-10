@@ -114,14 +114,10 @@ vl_api_trace_profile_show_config_t_handler (vl_api_trace_profile_show_config_t
   else
     {
       REPLY_MACRO2 (VL_API_TRACE_PROFILE_SHOW_CONFIG_REPLY,
-		    rmp->namespace_id = 0;
-		    rmp->num_elts = 0;
-		    rmp->node_id_short = 0;
-		    rmp->node_id_wide = 0;
-		    rmp->app_data_short = 0;
-		    rmp->app_data_wide = 0;
-		    rmp->option_type = 0;
-		    rmp->trace_type = 0;
+		    rmp->namespace_id = 0; rmp->num_elts = 0;
+		    rmp->node_id_short = 0; rmp->node_id_wide = 0;
+		    rmp->app_data_short = 0; rmp->app_data_wide = 0;
+		    rmp->option_type = 0; rmp->trace_type = 0;
 		    rmp->node_type = 0; rmp->ts_format = 0;
 		    rmp->queue_depth_type = 0; rmp->opaque_len = 0;
 		    rmp->opaque_id = 0;
