@@ -82,9 +82,9 @@ typedef struct svm_map_region_args_
  */
 #if __WORDSIZE == 64
 #ifdef CLIB_SANITIZE_ADDR
-#define HIGH_SEGMENT_BASEVA 0x300000000000
+#define HIGH_SEGMENT_BASEVA 0x2000000000
 #else /* CLIB_SANITIZE_ADDR */
-#define HIGH_SEGMENT_BASEVA (8ULL   << 30)	/* 8GB */
+#define HIGH_SEGMENT_BASEVA (128ULL << 30)	/* 128GB */
 #endif /* CLIB_SANITIZE_ADDR */
 #elif __WORDSIZE == 32
 #define HIGH_SEGMENT_BASEVA (3584UL << 20)	/* 3.5GB */
