@@ -20,7 +20,14 @@
 
 #include <avf/virtchnl.h>
 
+#include <vppinfra/types.h>
+#include <vppinfra/error_bootstrap.h>
+#include <vppinfra/lock.h>
+
 #include <vlib/log.h>
+#include <vlib/pci/pci.h>
+
+#include <vnet/interface.h>
 
 #define AVF_QUEUE_SZ_MAX                4096
 #define AVF_QUEUE_SZ_MIN                64
@@ -65,6 +72,13 @@
 #define AVF_TXD_OFFSET_MACLEN(val)      AVF_TXD_OFFSET( 0, 2, val)
 #define AVF_TXD_OFFSET_IPLEN(val)       AVF_TXD_OFFSET( 7, 4, val)
 #define AVF_TXD_OFFSET_L4LEN(val)       AVF_TXD_OFFSET(14, 4, val)
+
+#define AVF_TXD_DTYP_CTX                0x1ULL
+#define AVF_TXD_CTX_CMD_TSO             AVF_TXD_CMD(0)
+#define AVF_TXD_CTX_SEG(val,x)          (((u64)val) << (30 + x))
+#define AVF_TXD_CTX_SEG_TLEN(val)       AVF_TXD_CTX_SEG(val,0)
+#define AVF_TXD_CTX_SEG_MSS(val)        AVF_TXD_CTX_SEG(val,20)
+
 
 extern vlib_log_class_registration_t avf_log;
 
@@ -158,6 +172,7 @@ typedef struct
   volatile u32 *qtx_tail;
   u16 next;
   u16 size;
+  u32 ctx_desc_placeholder_bi;
   clib_spinlock_t lock;
   avf_tx_desc_t *descs;
   u32 *bufs;
