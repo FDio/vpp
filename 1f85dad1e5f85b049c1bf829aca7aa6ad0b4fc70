@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b91d66e8_81f43413",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1302,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-11-10T02:44:17Z",
+      "side": 1,
+      "message": "Can this condition be as following?\n  if (PREDICT_FALSE (b-\u003ecurrent_length \u003e n_data_bytes))\n\nIn my test with proxy (plugins/hs_apps/proxy.c), I observed the cases that b-\u003ecurrent_length\u003d1982 and n_data_bytes\u003d7240, where n_data_bytes is correct according to pcap analysis. If b-\u003ecurrent_length is updated to be equal to n_data_bytes (\u003d7240 in this example), by this patch, the transaction would stall. I couldn\u0027t find how this stall is caused, but the issue seems related to this patch somehow.",
+      "revId": "1f85dad1e5f85b049c1bf829aca7aa6ad0b4fc70",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
