@@ -34,7 +34,6 @@ vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
 
   vcl_cfg->heapsize = (256ULL << 20);
   vcl_cfg->max_workers = 16;
-  vcl_cfg->vpp_api_q_length = 1024;
   vcl_cfg->segment_baseva = HIGH_SEGMENT_BASEVA;
   vcl_cfg->segment_size = (256 << 20);
   vcl_cfg->add_segment_size = (128 << 20);
@@ -230,7 +229,7 @@ vppcom_cfg_read_file (char *conf_fname)
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 vc_cfg_input = 0;
   struct stat s;
-  u32 uid, gid, q_len;
+  u32 uid, gid;
 
   fd = open (conf_fname, O_RDONLY);
   if (fd < 0)
@@ -295,23 +294,6 @@ vppcom_cfg_read_file (char *conf_fname)
 	      vec_terminate_c_string (vcl_cfg->vpp_app_socket_api);
 	      VCFG_DBG (0, "VCL<%d>: configured app-socket-api (%s)",
 			getpid (), vcl_cfg->vpp_app_socket_api);
-	    }
-	  else if (unformat (line_input, "vpp-api-q-length %d", &q_len))
-	    {
-	      if (q_len < vcl_cfg->vpp_api_q_length)
-		{
-		  fprintf (stderr,
-			   "VCL<%d>: ERROR: configured vpp-api-q-length "
-			   "(%u) is too small! Using default: %u ", getpid (),
-			   q_len, vcl_cfg->vpp_api_q_length);
-		}
-	      else
-		{
-		  vcl_cfg->vpp_api_q_length = q_len;
-
-		  VCFG_DBG (0, "VCL<%d>: configured vpp-api-q-length %u",
-			    getpid (), vcl_cfg->vpp_api_q_length);
-		}
 	    }
 	  else if (unformat (line_input, "uid %d", &uid))
 	    {
