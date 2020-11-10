@@ -227,12 +227,16 @@ ioam_flow_add (u8 encap, u8 * flow_name)
   strncpy ((char *) flow->flow_name, (char *) flow_name, 31);
 
   if (!encap)
-    IOAM_SET_DECAP (index);
+    {
+      IOAM_SET_DECAP (index);
+    }
 
   for (i = 0; i < 255; i++)
     {
       if (hm->flow_handler[i])
-	flow->ctx[i] = hm->flow_handler[i] (index, 1);
+	{
+	  flow->ctx[i] = hm->flow_handler[i] (index, 1);
+	}
     }
   return (index);
 }
@@ -263,7 +267,9 @@ ip6_hbh_get_option (ip6_hop_by_hop_header_t * hbh0, u8 option_to_search)
 	  break;
 	default:
 	  if (type0 == option_to_search)
-	    return opt0;
+	    {
+	      return opt0;
+	    }
 	  break;
 	}
       opt0 =

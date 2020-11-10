@@ -89,9 +89,10 @@ get_flow_name_from_flow_ctx (u32 flow_ctx)
   u32 index;
 
   index = IOAM_MASK_DECAP_BIT (flow_ctx);
-
   if (pool_is_free_index (hm->flows, index))
-    return NULL;
+    {
+      return NULL;
+    }
 
   flow = pool_elt_at_index (hm->flows, index);
   return (flow->flow_name);
@@ -324,6 +325,7 @@ VLIB_NODE_FN (ip6_add_hop_by_hop_node) (vlib_main_t * vm,
 
 	  hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
 	  hbh1 = (ip6_hop_by_hop_header_t *) (ip1 + 1);
+
 	  /* $$$ tune, rewrite_length is a multiple of 8 */
 	  clib_memcpy_fast (hbh0, rewrite, rewrite_length);
 	  clib_memcpy_fast (hbh1, rewrite, rewrite_length);
@@ -435,6 +437,7 @@ VLIB_NODE_FN (ip6_add_hop_by_hop_node) (vlib_main_t * vm,
 
   vlib_node_increment_counter (vm, ip6_add_hop_by_hop_node.index,
 			       IP6_ADD_HOP_BY_HOP_ERROR_PROCESSED, processed);
+
   return frame->n_vectors;
 }
 
@@ -473,6 +476,7 @@ format_ip6_pop_hop_by_hop_trace (u8 * s, va_list * args)
     va_arg (*args, ip6_pop_hop_by_hop_trace_t *);
 
   s = format (s, "IP6_POP_HOP_BY_HOP: next index %d", t->next_index);
+
   return s;
 }
 
@@ -508,6 +512,7 @@ ip6_hbh_pop_unregister_option (u8 option)
     return (-1);
 
   hm->pop_options[option] = NULL;
+
   return (0);
 }
 #endif /* CLIB_MARCH_VARIANT */
@@ -775,6 +780,7 @@ VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
 			       IP6_POP_HOP_BY_HOP_ERROR_PROCESSED, processed);
   vlib_node_increment_counter (vm, ip6_pop_hop_by_hop_node.index,
 			       IP6_POP_HOP_BY_HOP_ERROR_NO_HOHO, no_header);
+
   return frame->n_vectors;
 }
 
@@ -1048,7 +1054,6 @@ show_ip6_hbh_command_fn (vlib_main_t * vm,
 	  vlib_cli_output (vm, "[%3d] %v", i, next_n->name);
 	}
     }
-
   return 0;
 }
 
@@ -1121,6 +1126,7 @@ ip6_local_hop_by_hop_register_protocol (u32 protocol, u32 node_index)
     = hm->ip6_local_hbh_runtime;
   u32 old_next_index;
 
+
   ASSERT (protocol < ARRAY_LEN (local_hbh_runtime->next_index_by_protocol));
 
   old_next_index = local_hbh_runtime->next_index_by_protocol[protocol];
@@ -1131,7 +1137,9 @@ ip6_local_hop_by_hop_register_protocol (u32 protocol, u32 node_index)
   /* Someone will eventually do this. Trust me. */
   if (old_next_index &&
       (old_next_index != local_hbh_runtime->next_index_by_protocol[protocol]))
-    clib_warning ("WARNING: replaced next index for protocol %d", protocol);
+    {
+      clib_warning ("WARNING: replaced next index for protocol %d", protocol);
+    }
 }
 
 int
@@ -1179,6 +1187,7 @@ ip6_ioam_set_rewrite (u8 ** rwp, int has_trace_option,
 
   hbh = (ip6_hop_by_hop_header_t *) rewrite;
   /* Length of header in 8 octet units, not incl first 8 octets */
+  // LENGTH_SET_HERE
   hbh->length = (rnd_size >> 3) - 1;
   current = (u8 *) (hbh + 1);
 
@@ -1192,7 +1201,9 @@ ip6_ioam_set_rewrite (u8 ** rwp, int has_trace_option,
 	  if (0 ==
 	      hm->add_options[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] (current,
 								     trace_data_size))
-	    current += *trace_data_size;
+	    {
+	      current += *trace_data_size;
+	    }
 	}
     }
   if (has_pot_option
@@ -1203,9 +1214,10 @@ ip6_ioam_set_rewrite (u8 ** rwp, int has_trace_option,
       if (0 ==
 	  hm->add_options[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] (current,
 								  pot_data_size))
-	current += *pot_data_size;
+	{
+	  current += *pot_data_size;
+	}
     }
-
   if (has_seqno_option &&
       (hm->add_options[HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE] != 0))
     {
@@ -1213,9 +1225,10 @@ ip6_ioam_set_rewrite (u8 ** rwp, int has_trace_option,
 								   &
 								   (hm->options_size
 								    [HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE])))
-	current += hm->options_size[HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE];
+	{
+	  current += hm->options_size[HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE];
+	}
     }
-
   *rwp = rewrite;
   return 0;
 }
@@ -1243,7 +1256,6 @@ clear_ioam_rewrite_fn (void)
 							     &hm->has_analyse_option,
 							     1);
     }
-
   return 0;
 }
 
@@ -1288,16 +1300,20 @@ ip6_ioam_enable (int has_trace_option, int has_pot_option,
 	{
 	  hm->has_trace_option = has_trace_option;
 	  if (hm->config_handler[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST])
-	    hm->config_handler[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] (NULL,
-								      0);
+	    {
+	      hm->config_handler[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] (NULL,
+									0);
+	    }
 	}
 
       if (has_pot_option)
 	{
 	  hm->has_pot_option = has_pot_option;
 	  if (hm->config_handler[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT])
-	    hm->config_handler[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] (NULL,
-								       0);
+	    {
+	      hm->config_handler[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] (NULL,
+									 0);
+	    }
 	}
       hm->has_analyse_option = has_analyse_option;
       if (has_seqno_option)
@@ -1316,7 +1332,6 @@ ip6_ioam_enable (int has_trace_option, int has_pot_option,
       return clib_error_return_code (0, rv, 0,
 				     "ip6_ioam_set_rewrite returned %d", rv);
     }
-
   return 0;
 }
 
@@ -1349,7 +1364,6 @@ ip6_set_ioam_rewrite_command_fn (vlib_main_t * vm,
 
   rv = ip6_ioam_enable (has_trace_option, has_pot_option,
 			has_seqno_option, has_analyse_option);
-
   return rv;
 }
 
