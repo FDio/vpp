@@ -29,6 +29,8 @@
 
 #include <dpdk/device/dpdk_priv.h>
 
+#include <vnet/ip/ip6.h>
+
 static char *dpdk_error_strings[] = {
 #define _(n,s) s,
   foreach_dpdk_error
@@ -159,6 +161,55 @@ dpdk_ol_flags_extract (struct rte_mbuf **mb, u16 * flags, int count)
   return rv;
 }
 
+/*
+ * Inserts TX queue size and number of available descriptors
+*/
+static_always_inline void
+dpdk_insert_tx_ring_stats (vlib_buffer_t * b, dpdk_main_t * dm)
+{
+  /* Find the TX interface and get its queue */
+  u32 adj_index = vnet_buffer (b)->ip.adj_index[VLIB_TX];
+  ip_adjacency_t *adj = adj_get (adj_index);
+  if (adj)
+    {
+      // Get TX hardware interface index
+      u32 txid = adj->rewrite_header.sw_if_index;
+      txid = (vnet_get_sup_hw_interface (dm->vnet_main, txid))->hw_if_index;
+      // Get the device associated with the hardware index provided
+      vnet_hw_interface_t *hw = vnet_get_hw_interface (dm->vnet_main, txid);
+      if (hw)
+	{
+	  dpdk_device_t *txd =
+	    vec_elt_at_index (dm->devices, hw->dev_instance);
+	  if (txd)
+	    {
+	      u16 ring_size = txd->nb_tx_desc;
+	      u16 tx_port_id = txd->port_id;
+
+	      u16 tx_queue_id = dm->vlib_main->thread_index % txd->tx_q_used;
+	      u16 num_desc = 0;
+	      u16 tx_ring_desc_avai = 0;
+	      // Find number of available descriptors
+	      do
+		{
+		  if (rte_eth_tx_descriptor_status
+		      (tx_port_id, tx_queue_id,
+		       num_desc) == RTE_ETH_TX_DESC_DONE)
+		    {
+		      tx_ring_desc_avai++;
+		    }
+		}
+	      while (++num_desc < ring_size);
+	      // Now put into buffer opaque2, 32-bit = [ring_size][descriptors available]
+	      u32 *opaque = &vnet_buffer2 (b)->unused[7];	// 8, 32-bit words in opaque2, use last
+	      *opaque =
+		clib_host_to_net_u32 (((u32) ring_size << 16) |
+				      tx_ring_desc_avai);
+	    }
+	}
+    }
+}
+
 static_always_inline uword
 dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
 		       uword n_rx_packets, int maybe_multiseg,
@@ -173,6 +224,8 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
 
   mb = ptd->mbufs;
   flags = ptd->flags;
+
+  dpdk_main_t *dm = &dpdk_main;
 
   /* copy template into local variable - will save per packet load */
   vlib_buffer_copy_template (&bt, &ptd->buffer_template);
@@ -220,6 +273,11 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[2]);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[3]);
 
+      dpdk_insert_tx_ring_stats (b[0], dm);
+      dpdk_insert_tx_ring_stats (b[1], dm);
+      dpdk_insert_tx_ring_stats (b[2], dm);
+      dpdk_insert_tx_ring_stats (b[3], dm);
+
       /* next */
       mb += 4;
       n_left -= 4;
@@ -238,6 +296,8 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
       if (maybe_multiseg)
 	n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0], &bt);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
+
+      dpdk_insert_tx_ring_stats (b[0], dm);
 
       /* next */
       mb += 1;

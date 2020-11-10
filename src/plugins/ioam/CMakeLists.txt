@@ -10,7 +10,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+##############################################################################
+# iOAM plugin and friends
+##############################################################################
 add_vpp_plugin(ioam
   SOURCES
   # iOAM Proof of Transit
@@ -64,7 +66,7 @@ add_vpp_plugin(ioam
   udp-ping/udp_ping_util.c
   udp-ping/udp_ping_export.c
   udp-ping/udp_ping_api.c
-
+  
   MULTIARCH_SOURCES
   ip6/ioam_cache_node.c
   ip6/ioam_cache_tunnel_select_node.c
@@ -104,4 +106,3 @@ add_vpp_plugin(ioam
   lib-vxlan-gpe/vxlan_gpe_test.c
   udp-ping/udp_ping_test.c
 )
-

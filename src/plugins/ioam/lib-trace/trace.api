@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "1.1.0";
 
 /** \brief iOAM6 Trace - Set the iOAM6 trace profile
     @param trace_type - Type of trace requested

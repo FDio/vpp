@@ -73,9 +73,9 @@ api_trace_profile_add (vat_main_t * vam)
   M (TRACE_PROFILE_ADD, mp);
 
   mp->trace_type = trace_type;
-  mp->trace_tsp = trace_tsp;
-  mp->node_id = htonl (node_id);
-  mp->app_data = htonl (app_data);
+  mp->ts_format = trace_tsp;
+  mp->node_id_short = htonl (node_id);
+  mp->app_data_short = htonl (app_data);
   mp->num_elts = num_elts;
 
   S (mp);
