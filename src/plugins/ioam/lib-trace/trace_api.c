@@ -122,8 +122,7 @@ vl_api_trace_profile_show_config_t_handler (vl_api_trace_profile_show_config_t
 		    rmp->app_data_wide = 0;
 		    rmp->option_type = 0;
 		    rmp->trace_type = 0;
-		    rmp->node_type = 0;
-		    rmp->ts_format = 0;
+		    rmp->node_type = 0; rmp->ts_format = 0;
 		    rmp->queue_depth_type = 0; rmp->opaque_len = 0;
 		    rmp->opaque_id = 0;
 	);
