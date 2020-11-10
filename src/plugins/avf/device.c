@@ -298,6 +298,8 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
 {
   clib_error_t *err;
   avf_txq_t *txq;
+  u8 bpi = vlib_buffer_pool_get_default_for_numa (vm,
+						  ad->numa_node);
 
   if (qid >= ad->num_queue_pairs)
     {
@@ -313,6 +315,14 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
   txq = vec_elt_at_index (ad->txqs, qid);
   txq->size = txq_size;
   txq->next = 0;
+
+  /* Prepare a placeholder buffer to maintain a 1-1
+     relationship between bufs and descs when a context
+     descriptor is added in descs */
+  if (!vlib_buffer_alloc_from_pool
+      (vm, &txq->ctx_desc_placeholder_bi, 1, bpi))
+    return clib_error_return (0, "buffer allocation error");
+
   txq->descs = vlib_physmem_alloc_aligned_on_numa (vm, txq->size *
 						   sizeof (avf_tx_desc_t),
 						   2 * CLIB_CACHE_LINE_BYTES,
@@ -1442,6 +1452,8 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier)
 	  vlib_buffer_free_from_ring (vm, txq->bufs, first, txq->size,
 				      txq->n_enqueued);
 	}
+      /* Free the placeholder buffer */
+      vlib_buffer_free_one(vm, txq->ctx_desc_placeholder_bi);
       vec_free (txq->bufs);
       clib_ring_free (txq->rs_slots);
     }
@@ -1638,7 +1650,8 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, ad->hw_if_index);
   hi->flags |=
     VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER |
-    VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+    VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD |
+    VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
   ethernet_set_flags (vnm, ad->hw_if_index,
 		      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
 
