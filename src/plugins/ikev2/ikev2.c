@@ -1879,7 +1879,8 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 			       a->ipsec_over_udp_port,
 			       a->ipsec_over_udp_port);
 
-  rv |= ipsec_tun_protect_update (sw_if_index, NULL, a->local_sa_id, sas_in);
+  if (ipsec_tun_protect_update (sw_if_index, NULL, a->local_sa_id, sas_in))
+    vec_free (sas_in);
 }
 
 static int
@@ -4692,7 +4693,10 @@ ikev2_mngr_process_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * csa,
       u32 *sas_in = NULL;
       vec_add1 (sas_in, csa->remote_sa_id);
       vlib_worker_thread_barrier_sync (vm);
-      ipsec_tun_protect_update (sw_if_index, NULL, csa->local_sa_id, sas_in);
+      int rv = ipsec_tun_protect_update (sw_if_index, NULL,
+					 csa->local_sa_id, sas_in);
+      if (rv)
+	vec_free (sas_in);
       ipsec_sa_unlock_id (ikev2_flip_alternate_sa_bit (csa->remote_sa_id));
       vlib_worker_thread_barrier_release (vm);
     }
