@@ -34,6 +34,24 @@
       "revId": "de448ac593f307e65fcbdd1ec1d0fa9c8002310d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f5351b33_0212d2a5",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1882,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-10T16:20:27Z",
+      "side": 1,
+      "message": "I just updated the code a bit to simplify the error management\nIf you\u0027re ok with that, I\u0027ll merge it once verified\nThx!",
+      "parentUuid": "dbfc6245_4f016e0b",
+      "revId": "de448ac593f307e65fcbdd1ec1d0fa9c8002310d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
