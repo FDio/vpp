@@ -1189,6 +1189,27 @@ VLIB_CLI_COMMAND (show_sr_encaps_source_command, static) = {
 };
 /* *INDENT-ON* */
 
+/**
+ * @brief CLI to display onscreen the hop-limit value used for SRv6 encapsulation
+ */
+static clib_error_t *
+show_sr_encaps_hop_limit_command_fn (vlib_main_t * vm,
+				     unformat_input_t * input,
+				     vlib_cli_command_t * cmd)
+{
+  vlib_cli_output (vm, "SR encaps hop-limit = %u", sr_get_hop_limit ());
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_sr_encaps_hop_limit_command, static) = {
+  .path = "show sr encaps hop-limit",
+  .short_help = "show sr encaps hop-limit",
+  .function = show_sr_encaps_hop_limit_command_fn,
+};
+/* *INDENT-ON* */
+
 /*************************** SR rewrite graph node ****************************/
 /**
  * @brief Trace for the SR Policy Rewrite graph node
