@@ -49,6 +49,7 @@ typedef struct transport_send_params_
     /* Used to retrieve snd params from transports */
     struct
     {
+      u32 max_dequeue;
       u32 snd_space;
       u32 tx_offset;
       u16 snd_mss;
