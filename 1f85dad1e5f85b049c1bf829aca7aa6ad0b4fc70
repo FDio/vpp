@@ -52,6 +52,24 @@
       "revId": "1f85dad1e5f85b049c1bf829aca7aa6ad0b4fc70",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "96434e4c_a54e8504",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1302,
+      "author": {
+        "id": 1561
+      },
+      "writtenOn": "2020-11-10T08:22:30Z",
+      "side": 1,
+      "message": "Hi Florin,\nI got a test report: It solves the original issue as well.",
+      "parentUuid": "f0002c9d_7776cb38",
+      "revId": "1f85dad1e5f85b049c1bf829aca7aa6ad0b4fc70",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
