@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "01911ca7_738553e8",
+        "filename": "src/vnet/l2/l2_output.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-11-10T09:40:45Z",
+      "side": 1,
+      "message": "missing cdo +\u003d 8",
+      "revId": "2148236dbdf17401575cc6569575153d23b6889e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
