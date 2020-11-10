@@ -43,6 +43,7 @@ trace_test_main_t trace_test_main;
 static int
 api_trace_profile_add (vat_main_t * vam)
 {
+  /*
   unformat_input_t *input = vam->input;
   vl_api_trace_profile_add_t *mp;
   u8 trace_type = 0;
@@ -81,9 +82,51 @@ api_trace_profile_add (vat_main_t * vam)
   S (mp);
   W (ret);
   return ret;
+  */
+  return 0;
 }
 
+static int
+api_trace_profile_add_v2 (vat_main_t *vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_trace_profile_add_v2_t *mp;
+  u8 trace_type = 0;
+  u8 num_elts = 0;
+  u32 node_id_short = 0;
+  u32 app_data_short = 0;
+  u8 ts_format = 0;
+  int ret;
 
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "trace-type 0x%x", &trace_type))
+	;
+      else if (unformat (input, "trace-elts %d", &num_elts))
+	;
+      else if (unformat (input, "trace-tsp %d", &ts_format))
+	;
+      else if (unformat (input, "node-id 0x%x", &node_id_short))
+	;
+      else if (unformat (input, "app-data 0x%x", &app_data_short))
+	;
+
+      else
+	break;
+    }
+
+  M (TRACE_PROFILE_ADD_V2, mp);
+
+  mp->trace_type = trace_type;
+  mp->ts_format = ts_format;
+  mp->node_id_short = htonl (node_id_short);
+  mp->app_data_short = htonl (app_data_short);
+  mp->num_elts = num_elts;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
 
 static int
 api_trace_profile_del (vat_main_t * vam)
@@ -111,6 +154,24 @@ api_trace_profile_show_config (vat_main_t * vam)
 
 static int
 vl_api_trace_profile_show_config_reply_t_handler (vat_main_t * vam)
+{
+  return -1;
+}
+
+static int
+api_trace_profile_show_config_v2 (vat_main_t *vam)
+{
+  vl_api_trace_profile_show_config_v2_t *mp;
+  int ret;
+
+  M (TRACE_PROFILE_SHOW_CONFIG_V2, mp);
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+vl_api_trace_profile_show_config_v2_reply_t_handler (vat_main_t *vam)
 {
   return -1;
 }
