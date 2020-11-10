@@ -16,6 +16,24 @@
       "revId": "1f85dad1e5f85b049c1bf829aca7aa6ad0b4fc70",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "94dd30da_02353567",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1302,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-11-10T03:04:58Z",
+      "side": 1,
+      "message": "I assume you\u0027re testing with GRO on which maybe is the source of this issue. Does this https://gerrit.fd.io/r/c/vpp/+/29857 solve the problem? If yes, could you maybe ask Shaligram to test this?",
+      "parentUuid": "b91d66e8_81f43413",
+      "revId": "1f85dad1e5f85b049c1bf829aca7aa6ad0b4fc70",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
