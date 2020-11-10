@@ -975,8 +975,10 @@ tcp_session_send_params (transport_connection_t * trans_conn,
   ASSERT (seq_geq (tc->snd_nxt, tc->snd_una));
   /* This still works if fast retransmit is on */
   sp->tx_offset = tc->snd_nxt - tc->snd_una;
-
   sp->flags = sp->snd_space ? 0 : TRANSPORT_SND_F_DESCHED;
+
+  /* Track last byte in tx fifo as potential psh sequence */
+  tc->psh_seq = tc->snd_una + sp->max_dequeue - 1;
 
   return 0;
 }
@@ -1155,11 +1157,7 @@ tcp_update_time (f64 now, u8 thread_index)
 static void
 tcp_session_flush_data (transport_connection_t * tconn)
 {
-  tcp_connection_t *tc = (tcp_connection_t *) tconn;
-  if (tc->flags & TCP_CONN_PSH_PENDING)
-    return;
-  tc->flags |= TCP_CONN_PSH_PENDING;
-  tc->psh_seq = tc->snd_una + transport_max_tx_dequeue (tconn) - 1;
+  /* Noop as the last segment is always sent with PSH flag on */
 }
 
 /* *INDENT-OFF* */

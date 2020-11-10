@@ -297,6 +297,7 @@ typedef struct _tcp_connection
   u32 snd_wl1;		/**< seq number used for last snd.wnd update */
   u32 snd_wl2;		/**< ack number used for last snd.wnd update */
   u32 snd_nxt;		/**< next seq number to be sent */
+  u32 psh_seq;		/**< max seq buffered that may be pushed */
   u16 snd_mss;		/**< Effective send max seg (data) size */
 
   u64 data_segs_in;	/** RFC4898 tcpEStatsPerfDataSegsIn */
@@ -364,7 +365,6 @@ typedef struct _tcp_connection
   f64 rtt_ts;		/**< Timestamp for tracked ACK */
   f64 mrtt_us;		/**< High precision mrtt from tracked acks */
 
-  u32 psh_seq;		/**< Add psh header for seg that includes this */
   u32 next_node_index;	/**< Can be used to control next node in output */
   u32 next_node_opaque;	/**< Opaque to pass to next node */
   u32 limited_transmit;	/**< snd_nxt when limited transmit starts */
