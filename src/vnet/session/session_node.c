@@ -798,17 +798,17 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
   u32 n_bytes_per_buf, n_bytes_per_seg;
 
   n_bytes_per_buf = vlib_buffer_get_default_data_size (vm);
-  ctx->max_dequeue = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
+//  ctx->max_dequeue = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
 
   if (peek_data)
     {
       /* Offset in rx fifo from where to peek data */
-      if (PREDICT_FALSE (ctx->sp.tx_offset >= ctx->max_dequeue))
+      if (PREDICT_FALSE (ctx->sp.tx_offset >= ctx->sp.max_dequeue))
 	{
 	  ctx->max_len_to_snd = 0;
 	  return;
 	}
-      ctx->max_dequeue -= ctx->sp.tx_offset;
+      ctx->sp.max_dequeue -= ctx->sp.tx_offset;
     }
   else
     {
@@ -816,7 +816,7 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 	{
 	  u32 len, chain_limit;
 
-	  if (ctx->max_dequeue <= sizeof (ctx->hdr))
+	  if (ctx->sp.max_dequeue <= sizeof (ctx->hdr))
 	    {
 	      ctx->max_len_to_snd = 0;
 	      return;
@@ -840,7 +840,7 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 	      ctx->sp.snd_mss = clib_min (ctx->sp.snd_mss, len);
 	      offset = ctx->hdr.data_length + sizeof (session_dgram_hdr_t);
 	      first_dgram_len = len;
-	      max_offset = clib_min (ctx->max_dequeue, 16 << 10);
+	      max_offset = clib_min (ctx->sp.max_dequeue, 16 << 10);
 
 	      while (offset < max_offset)
 		{
@@ -848,7 +848,7 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 				 (u8 *) & hdr);
 		  ASSERT (hdr.data_length > hdr.data_offset);
 		  dgram_len = hdr.data_length - hdr.data_offset;
-		  if (len + dgram_len > ctx->max_dequeue
+		  if (len + dgram_len > ctx->sp.max_dequeue
 		      || first_dgram_len != dgram_len)
 		    break;
 		  len += dgram_len;
@@ -856,18 +856,18 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 		}
 	    }
 
-	  ctx->max_dequeue = len;
+	  ctx->sp.max_dequeue = len;
 	}
     }
-  ASSERT (ctx->max_dequeue > 0);
+  ASSERT (ctx->sp.max_dequeue > 0);
 
   /* Ensure we're not writing more than transport window allows */
-  if (ctx->max_dequeue < ctx->sp.snd_space)
+  if (ctx->sp.max_dequeue < ctx->sp.snd_space)
     {
       /* Constrained by tx queue. Try to send only fully formed segments */
-      ctx->max_len_to_snd = (ctx->max_dequeue > ctx->sp.snd_mss) ?
-	(ctx->max_dequeue - (ctx->max_dequeue % ctx->sp.snd_mss)) :
-	ctx->max_dequeue;
+      ctx->max_len_to_snd = (ctx->sp.max_dequeue > ctx->sp.snd_mss) ?
+	(ctx->sp.max_dequeue - (ctx->sp.max_dequeue % ctx->sp.snd_mss)) :
+	ctx->sp.max_dequeue;
       /* TODO Nagle ? */
     }
   else
@@ -929,7 +929,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 				session_evt_elt_t * elt,
 				int *n_tx_packets, u8 peek_data)
 {
-  u32 n_trace, n_left, pbi, next_index, max_burst;
+  u32 n_trace, n_left, pbi, next_index, max_burst, snd_space = ~0;
   session_tx_context_t *ctx = &wrk->ctx;
   session_main_t *smm = &session_main;
   session_event_t *e = &elt->evt;
@@ -977,6 +977,18 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 	}
     }
 
+  if (transport_connection_is_tx_paced (ctx->tc))
+    {
+      snd_space = transport_connection_tx_pacer_burst (ctx->tc);
+      /* Session is limited by pacer. Add to old list and return */
+      if (snd_space < TRANSPORT_PACER_MIN_BURST)
+	{
+	  session_evt_add_head_old (wrk, elt);
+	  return SESSION_TX_NO_DATA;
+	}
+    }
+
+  ctx->sp.max_dequeue = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
   transport_connection_snd_params (ctx->tc, &ctx->sp);
 
   if (!ctx->sp.snd_space)
@@ -997,18 +1009,9 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       return SESSION_TX_NO_DATA;
     }
 
-  if (transport_connection_is_tx_paced (ctx->tc))
-    {
-      u32 snd_space = transport_connection_tx_pacer_burst (ctx->tc);
-      if (snd_space < TRANSPORT_PACER_MIN_BURST)
-	{
-	  session_evt_add_head_old (wrk, elt);
-	  return SESSION_TX_NO_DATA;
-	}
-      snd_space = clib_min (ctx->sp.snd_space, snd_space);
-      ctx->sp.snd_space = snd_space >= ctx->sp.snd_mss ?
-	snd_space - snd_space % ctx->sp.snd_mss : snd_space;
-    }
+  snd_space = clib_min (ctx->sp.snd_space, snd_space);
+  ctx->sp.snd_space = snd_space >= ctx->sp.snd_mss ?
+    snd_space - snd_space % ctx->sp.snd_mss : snd_space;
 
   /* Check how much we can pull. */
   session_tx_set_dequeue_params (vm, ctx, max_burst, peek_data);
@@ -1109,14 +1112,15 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
   *n_tx_packets += ctx->n_segs_per_evt;
 
-  SESSION_EVT (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd, ctx->max_dequeue,
-	       ctx->s->tx_fifo->has_event, wrk->last_vlib_time);
+  SESSION_EVT (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd,
+	       ctx->sp.max_dequeue, ctx->s->tx_fifo->has_event,
+	       wrk->last_vlib_time);
 
   ASSERT (ctx->left_to_snd == 0);
 
   /* If we couldn't dequeue all bytes reschedule as old flow. Otherwise,
    * check if application enqueued more data and reschedule accordingly */
-  if (ctx->max_len_to_snd < ctx->max_dequeue)
+  if (ctx->max_len_to_snd < ctx->sp.max_dequeue)
     session_evt_add_old (wrk, elt);
   else
     session_tx_maybe_reschedule (wrk, ctx, elt);

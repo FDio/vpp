@@ -975,8 +975,11 @@ tcp_session_send_params (transport_connection_t * trans_conn,
   ASSERT (seq_geq (tc->snd_nxt, tc->snd_una));
   /* This still works if fast retransmit is on */
   sp->tx_offset = tc->snd_nxt - tc->snd_una;
-
   sp->flags = sp->snd_space ? 0 : TRANSPORT_SND_F_DESCHED;
+
+  /* Last byte marked for push */
+  if (tc->flags & TCP_CONN_PSH_PENDING)
+    tc->psh_seq = tc->snd_una + sp->max_dequeue - 1;
 
   return 0;
 }
