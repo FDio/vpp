@@ -767,7 +767,7 @@ avf_op_add_del_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count,
 		     format_ethernet_address, &al->list[i].addr);
     }
   return avf_send_to_pf (vm, ad, is_add ? VIRTCHNL_OP_ADD_ETH_ADDR :
-			 VIRTCHNL_OP_ADD_ETH_ADDR, msg, msg_len, 0, 0);
+			 VIRTCHNL_OP_DEL_ETH_ADDR, msg, msg_len, 0, 0);
 }
 
 clib_error_t *
