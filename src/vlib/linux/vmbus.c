@@ -118,7 +118,7 @@ linux_vmbus_main_t linux_vmbus_main;
  * "f2c086b2-ff2e-11e8-88de-7bad0a57de05" and convert
  * it to u8[16]
  */
-static uword
+uword
 unformat_vlib_vmbus_addr (unformat_input_t * input, va_list * args)
 {
   vlib_vmbus_addr_t *addr = va_arg (*args, vlib_vmbus_addr_t *);
@@ -137,7 +137,7 @@ unformat_vlib_vmbus_addr (unformat_input_t * input, va_list * args)
 }
 
 /* Convert bus address to standard UUID string */
-static u8 *
+u8 *
 format_vlib_vmbus_addr (u8 * s, va_list * va)
 {
   vlib_vmbus_addr_t *addr = va_arg (*va, vlib_vmbus_addr_t *);
