@@ -1911,7 +1911,7 @@ pg_input_mac_filter_cfg (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
-  int is_enable;
+  int is_enable = 1;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
