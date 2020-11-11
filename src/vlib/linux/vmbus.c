@@ -118,7 +118,7 @@ linux_vmbus_main_t linux_vmbus_main;
  * "f2c086b2-ff2e-11e8-88de-7bad0a57de05" and convert
  * it to u8[16]
  */
-static uword
+uword
 unformat_vlib_vmbus_addr (unformat_input_t * input, va_list * args)
 {
   vlib_vmbus_addr_t *addr = va_arg (*args, vlib_vmbus_addr_t *);
@@ -137,7 +137,7 @@ unformat_vlib_vmbus_addr (unformat_input_t * input, va_list * args)
 }
 
 /* Convert bus address to standard UUID string */
-static u8 *
+u8 *
 format_vlib_vmbus_addr (u8 * s, va_list * va)
 {
   vlib_vmbus_addr_t *addr = va_arg (*va, vlib_vmbus_addr_t *);
@@ -297,15 +297,12 @@ vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
       vec_reset_length (s);
       s = format (s, "%s/%s/new_id%c", sysfs_vmbus_drv_path, uio_drv_name, 0);
       error = clib_sysfs_write ((char *) s, "%s", netvsc_uuid);
-
       if (error)
 	{
 	  close (fd);
 	  goto done;
 	}
-
       uio_new_id_needed = 0;
-
     }
 
   error = vlib_vmbus_raise_lower (fd, ifname);
