@@ -707,13 +707,19 @@ retry:
 
   if (vif->type == VIRTIO_IF_TYPE_TAP)
     n_left = virtio_interface_tx_inline (vm, node, vif, vring,
-					 VIRTIO_IF_TYPE_TAP, buffers, n_left);
+					 VIRTIO_IF_TYPE_TAP,
+					 &buffers[frame->n_vectors - n_left],
+					 n_left);
   else if (vif->type == VIRTIO_IF_TYPE_PCI)
     n_left = virtio_interface_tx_inline (vm, node, vif, vring,
-					 VIRTIO_IF_TYPE_PCI, buffers, n_left);
+					 VIRTIO_IF_TYPE_PCI,
+					 &buffers[frame->n_vectors - n_left],
+					 n_left);
   else if (vif->type == VIRTIO_IF_TYPE_TUN)
     n_left = virtio_interface_tx_inline (vm, node, vif, vring,
-					 VIRTIO_IF_TYPE_TUN, buffers, n_left);
+					 VIRTIO_IF_TYPE_TUN,
+					 &buffers[frame->n_vectors - n_left],
+					 n_left);
   else
     ASSERT (0);
 
@@ -722,15 +728,17 @@ retry:
 
   if (vif->packet_buffering && n_left)
     {
-      u16 n_buffered =
-	virtio_vring_buffering_store_packets (vring->buffering, buffers,
-					      n_left);
+      u16 n_buffered = virtio_vring_buffering_store_packets (vring->buffering,
+							     &buffers
+							     [frame->n_vectors
+							      - n_left],
+							     n_left);
       buffers += n_buffered;
       n_left -= n_buffered;
     }
   if (n_left)
     virtio_interface_drop_inline (vm, node->node_index,
-				  buffers + frame->n_vectors - n_left, n_left,
+				  &buffers[frame->n_vectors - n_left], n_left,
 				  VIRTIO_TX_ERROR_NO_FREE_SLOTS);
 
   clib_spinlock_unlock_if_init (&vring->lockp);
