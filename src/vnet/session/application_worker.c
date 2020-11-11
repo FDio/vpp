@@ -388,17 +388,15 @@ app_worker_init_connected (app_worker_t * app_wrk, session_t * s)
   application_t *app = application_get (app_wrk->app_index);
   segment_manager_t *sm;
 
-  /* Allocate fifos for session, unless the app is a builtin proxy */
-  if (!application_is_builtin_proxy (app))
-    {
-      sm = app_worker_get_connect_segment_manager (app_wrk);
-      return app_worker_alloc_session_fifos (sm, s);
-    }
-
   if (app->cb_fns.fifo_tuning_callback)
     s->flags |= SESSION_F_CUSTOM_FIFO_TUNING;
 
-  return 0;
+  /* Allocate fifos for session, unless the app is a builtin proxy */
+  if (application_is_builtin_proxy (app))
+    return 0;
+
+  sm = app_worker_get_connect_segment_manager (app_wrk);
+  return app_worker_alloc_session_fifos (sm, s);
 }
 
 int
