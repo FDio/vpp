@@ -52,6 +52,7 @@
 #endif
 
 #include <vlib/pci/pci.h>
+#include <vlib/vmbus/vmbus.h>
 #include <vnet/flow/flow.h>
 
 extern vnet_device_class_t dpdk_device_class;
@@ -244,9 +245,18 @@ typedef struct
   _ (num_tx_desc) \
   _ (rss_fn)
 
+typedef enum
+{
+  VNET_DEV_ADDR_PCI,
+  VNET_DEV_ADDR_VMBUS,
+  VNET_DEV_ADDR_ANY,
+} dpdk_device_addr_type_t;
+
 typedef struct
 {
   vlib_pci_addr_t pci_addr;
+  vlib_vmbus_addr_t vmbus_addr;
+  dpdk_device_addr_type_t dev_addr_type;
   u8 *name;
   u8 is_blacklisted;
   u8 vlan_strip_offload;
@@ -295,9 +305,12 @@ typedef struct
   dpdk_device_config_t default_devconf;
   dpdk_device_config_t *dev_confs;
   uword *device_config_index_by_pci_addr;
+  uword *device_config_index_by_vmbus_addr;
 
   /* devices blacklist by pci vendor_id, device_id */
   u32 *blacklist_by_pci_vendor_and_device;
+  /* devices blacklist by VMBUS address */
+  u32 *blacklist_by_vmbus_addr;
 
 } dpdk_config_main_t;
 
@@ -452,6 +465,7 @@ clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
 
 struct rte_pci_device *dpdk_get_pci_device (const struct rte_eth_dev_info
 					    *info);
+int dpdk_rte_is_vmbus_device (const struct rte_eth_dev_info *info);
 void dpdk_cli_reference (void);
 
 #if CLI_DEBUG

@@ -252,6 +252,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       dpdk_portid_t next_port_id;
       dpdk_device_config_t *devconf = 0;
       vlib_pci_addr_t pci_addr;
+      vlib_vmbus_addr_t vmbus_addr;
       uword *p = 0;
 
       if (!rte_eth_dev_is_valid_port(i))
@@ -277,6 +278,17 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  p = hash_get (dm->conf->device_config_index_by_pci_addr,
 			pci_addr.as_u32);
 	}
+      else if (dpdk_rte_is_vmbus_device(&dev_info))
+  {
+    unformat_input_t input_vmbus;
+
+    unformat_init_vector (&input_vmbus, (u8 *) dev_info.device->name);
+    if (unformat
+	    (&input_vmbus, "%U", unformat_vlib_vmbus_addr, &vmbus_addr))
+      {
+        p = hash_get (dm->conf->device_config_index_by_vmbus_addr, vmbus_addr.clock_and_node);
+      }
+  }
 
 
       /* Create vnet interface */
@@ -876,7 +888,7 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
 
 	if (!p)
           {
-          skipped:
+          skipped_pci:
             continue;
           }
 
@@ -903,7 +915,7 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
                           devconf - conf->dev_confs);
                 devconf->pci_addr.as_u32 = addr->as_u32;
                 devconf->is_blacklisted = 1;
-                goto skipped;
+                goto skipped_pci;
               }
             else /* explicitly whitelisted, ignore the device blacklist  */
               break;
@@ -1016,53 +1028,123 @@ dpdk_bind_vmbus_devices_to_uio (dpdk_config_main_t * conf)
 {
   clib_error_t *error;
   vlib_vmbus_addr_t *addrs, *addr = 0;
+  int num_whitelisted = vec_len (conf->dev_confs);
+  int i;
 
   addrs = vlib_vmbus_get_all_dev_addrs ();
 
   /* *INDENT-OFF* */
   vec_foreach (addr, addrs)
     {
-      error = vlib_vmbus_bind_to_uio (addr);
+      dpdk_device_config_t * devconf = 0;
+      if (num_whitelisted)
+      {
+      uword * p = hash_get (conf->device_config_index_by_vmbus_addr, addr->clock_and_node);
+      if (!p) {
+        skipped_vmbus:
+        continue;
+      }
 
+      devconf = pool_elt_at_index (conf->dev_confs, p[0]);
+      }
+    /* Enforce Device blacklist by vmbus_addr */
+    for (i = 0; i < vec_len (conf->blacklist_by_vmbus_addr); i++)
+      {
+            if (devconf == 0)
+              {
+                /* Device is blacklisted */
+                pool_get (conf->dev_confs, devconf);
+                hash_set (conf->device_config_index_by_vmbus_addr, addr->clock_and_node,
+                          devconf - conf->dev_confs);
+                devconf->vmbus_addr = *addr;
+                devconf->is_blacklisted = 1;
+                goto skipped_vmbus;
+              }
+            else /* explicitly whitelisted, ignore the device blacklist  */
+              break;
+      }
+
+      error = vlib_vmbus_bind_to_uio (addr);
       if (error)
 	{
-	  clib_error_report (error);
+	if (devconf == 0)
+	  {
+	    pool_get (conf->dev_confs, devconf);
+	    hash_set (conf->device_config_index_by_vmbus_addr, addr->clock_and_node,
+		      devconf - conf->dev_confs);
+	    devconf->vmbus_addr = *addr;
+	  }
+	devconf->is_blacklisted = 1;
+	clib_error_report (error);
 	}
     }
   /* *INDENT-ON* */
 }
 
 static clib_error_t *
-dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
+dpdk_device_config (dpdk_config_main_t * conf, void *addr,
+		    dpdk_device_addr_type_t addr_type,
 		    unformat_input_t * input, u8 is_default)
 {
   clib_error_t *error = 0;
   uword *p;
-  dpdk_device_config_t *devconf;
+  dpdk_device_config_t *devconf = 0;
   unformat_input_t sub_input;
 
   if (is_default)
     {
       devconf = &conf->default_devconf;
     }
-  else
+  else if (addr_type == VNET_DEV_ADDR_PCI)
     {
-      p = hash_get (conf->device_config_index_by_pci_addr, pci_addr.as_u32);
+      p =
+	hash_get (conf->device_config_index_by_pci_addr,
+		  ((vlib_pci_addr_t *) (addr))->as_u32);
 
       if (!p)
 	{
 	  pool_get (conf->dev_confs, devconf);
-	  hash_set (conf->device_config_index_by_pci_addr, pci_addr.as_u32,
+	  hash_set (conf->device_config_index_by_pci_addr,
+		    ((vlib_pci_addr_t *) (addr))->as_u32,
 		    devconf - conf->dev_confs);
 	}
       else
 	return clib_error_return (0,
 				  "duplicate configuration for PCI address %U",
-				  format_vlib_pci_addr, &pci_addr);
+				  format_vlib_pci_addr, addr);
+    }
+  else if (addr_type == VNET_DEV_ADDR_VMBUS)
+    {
+      p =
+	hash_get (conf->device_config_index_by_vmbus_addr,
+		  ((vlib_vmbus_addr_t *) (addr))->clock_and_node);
+
+      if (!p)
+	{
+	  pool_get (conf->dev_confs, devconf);
+	  hash_set (conf->device_config_index_by_vmbus_addr,
+		    ((vlib_vmbus_addr_t *) (addr))->clock_and_node,
+		    devconf - conf->dev_confs);
+	}
+      else
+	return clib_error_return (0,
+				  "duplicate configuration for VMBUS address %U",
+				  format_vlib_vmbus_addr, addr);
     }
 
-  devconf->pci_addr.as_u32 = pci_addr.as_u32;
-  devconf->tso = DPDK_DEVICE_TSO_DEFAULT;
+  if (addr_type == VNET_DEV_ADDR_PCI)
+    {
+      devconf->pci_addr.as_u32 = ((vlib_pci_addr_t *) (addr))->as_u32;
+      devconf->tso = DPDK_DEVICE_TSO_DEFAULT;
+      devconf->dev_addr_type = VNET_DEV_ADDR_PCI;
+    }
+  else if (addr_type == VNET_DEV_ADDR_VMBUS)
+    {
+      devconf->vmbus_addr = *((vlib_vmbus_addr_t *) (addr));
+      devconf->tso = DPDK_DEVICE_TSO_DEFAULT;
+      devconf->dev_addr_type = VNET_DEV_ADDR_VMBUS;
+    }
+
 
   if (!input)
     return 0;
@@ -1128,7 +1210,7 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
       clib_error_return (0,
 			 "%U: number of worker threads must be "
 			 "equal to number of rx queues", format_vlib_pci_addr,
-			 &pci_addr);
+			 addr);
 
   return error;
 }
@@ -1171,7 +1253,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   dpdk_config_main_t *conf = &dpdk_config_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   dpdk_device_config_t *devconf;
-  vlib_pci_addr_t pci_addr;
+  vlib_pci_addr_t pci_addr = { 0 };
+  vlib_vmbus_addr_t vmbus_addr = { 0 };
   unformat_input_t sub_input;
   uword default_hugepage_sz, x;
   u8 *s, *tmp = 0;
@@ -1188,6 +1271,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     format (0, "%s/hugepages%c", vlib_unix_get_runtime_dir (), 0);
 
   conf->device_config_index_by_pci_addr = hash_create (0, sizeof (uword));
+  conf->device_config_index_by_vmbus_addr = hash_create (0, sizeof (uword));
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1213,8 +1297,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 			 &sub_input))
 	{
 	  error =
-	    dpdk_device_config (conf, (vlib_pci_addr_t) (u32) ~ 1, &sub_input,
-				1);
+	    dpdk_device_config (conf, 0, VNET_DEV_ADDR_ANY, &sub_input, 1);
 
 	  if (error)
 	    return error;
@@ -1224,7 +1307,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	    (input, "dev %U %U", unformat_vlib_pci_addr, &pci_addr,
 	     unformat_vlib_cli_sub_input, &sub_input))
 	{
-	  error = dpdk_device_config (conf, pci_addr, &sub_input, 0);
+	  error =
+	    dpdk_device_config (conf, &pci_addr, VNET_DEV_ADDR_PCI,
+				&sub_input, 0);
 
 	  if (error)
 	    return error;
@@ -1233,7 +1318,33 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	}
       else if (unformat (input, "dev %U", unformat_vlib_pci_addr, &pci_addr))
 	{
-	  error = dpdk_device_config (conf, pci_addr, 0, 0);
+	  error =
+	    dpdk_device_config (conf, &pci_addr, VNET_DEV_ADDR_PCI, 0, 0);
+
+	  if (error)
+	    return error;
+
+	  num_whitelisted++;
+	}
+      else
+	if (unformat
+	    (input, "dev %U %U", unformat_vlib_vmbus_addr, &vmbus_addr,
+	     unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  error =
+	    dpdk_device_config (conf, &vmbus_addr, VNET_DEV_ADDR_VMBUS,
+				&sub_input, 0);
+
+	  if (error)
+	    return error;
+
+	  num_whitelisted++;
+	}
+      else
+	if (unformat (input, "dev %U", unformat_vlib_vmbus_addr, &vmbus_addr))
+	{
+	  error =
+	    dpdk_device_config (conf, &vmbus_addr, VNET_DEV_ADDR_VMBUS, 0, 0);
 
 	  if (error)
 	    return error;
@@ -1254,6 +1365,12 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  no_pci = 1;
 	  tmp = format (0, "--no-pci%c", 0);
 	  vec_add1 (conf->eal_init_args, tmp);
+	}
+      else
+	if (unformat
+	    (input, "blacklist %U", unformat_vlib_vmbus_addr, &vmbus_addr))
+	{
+	  vec_add1 (conf->blacklist_by_vmbus_addr, vmbus_addr.clock_and_node);
 	}
       else
 	if (unformat
@@ -1435,7 +1552,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	_(rss_queues)
 
     /* add DPDK EAL whitelist/blacklist entry */
-    if (num_whitelisted > 0 && devconf->is_blacklisted == 0)
+    if (num_whitelisted > 0 && devconf->is_blacklisted == 0 && devconf->dev_addr_type == VNET_DEV_ADDR_PCI)
     {
 	  tmp = format (0, "-w%c", 0);
 	  vec_add1 (conf->eal_init_args, tmp);
