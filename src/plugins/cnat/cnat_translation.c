@@ -696,11 +696,11 @@ cnat_translation_init (vlib_main_t * vm)
 			cm->translation_hash_buckets,
 			cm->translation_hash_memory);
 
-  ip4_add_del_interface_address_callback_t cb4;
+  ip4_add_del_interface_address_callback_t cb4 = { 0 };
   cb4.function = cnat_ip4_if_addr_add_del_callback;
   vec_add1 (i4m->add_del_interface_address_callbacks, cb4);
 
-  ip6_add_del_interface_address_callback_t cb6;
+  ip6_add_del_interface_address_callback_t cb6 = { 0 };
   cb6.function = cnat_ip6_if_addr_add_del_callback;
   vec_add1 (i6m->add_del_interface_address_callbacks, cb6);
 
