@@ -30,6 +30,18 @@ vlib_vmbus_addr_t * __attribute__ ((weak)) vlib_vmbus_get_all_dev_addrs ()
   return NULL;
 }
 
+u8 * __attribute__ ((weak)) format_vlib_vmbus_addr (u8 * s, va_list * va)
+{
+  return 0;
+}
+
+uword
+  __attribute__ ((weak)) unformat_vlib_vmbus_addr (unformat_input_t * input,
+                                                  va_list * args)
+{
+  return 0;
+}
+
 clib_error_t *
 vmbus_bus_init (vlib_main_t * vm)
 {
