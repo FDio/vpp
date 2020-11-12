@@ -1165,23 +1165,6 @@ error:
   vlib_log_err (avf_log.class, "%U", format_clib_error, ad->error);
 }
 
-static clib_error_t *
-avf_process_request (vlib_main_t * vm, avf_process_req_t * req)
-{
-  uword *event_data = 0;
-  req->calling_process_index = vlib_get_current_process_node_index (vm);
-  vlib_process_signal_event_pointer (vm, avf_process_node.index,
-				     AVF_PROCESS_EVENT_REQ, req);
-
-  vlib_process_wait_for_event_or_clock (vm, 5.0);
-
-  if (vlib_process_get_events (vm, &event_data) != 0)
-    clib_panic ("avf process node failed to reply in 5 seconds");
-  vec_free (event_data);
-
-  return req->error;
-}
-
 static void
 avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
 {
@@ -1195,7 +1178,31 @@ avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
   else
     clib_panic ("BUG: unknown avf proceess request type");
 
-  vlib_process_signal_event (vm, req->calling_process_index, 0, 0);
+  if (req->calling_process_index != avf_process_node.index)
+    vlib_process_signal_event (vm, req->calling_process_index, 0, 0);
+}
+
+static clib_error_t *
+avf_process_request (vlib_main_t * vm, avf_process_req_t * req)
+{
+  uword *event_data = 0;
+  req->calling_process_index = vlib_get_current_process_node_index (vm);
+
+  if (req->calling_process_index != avf_process_node.index)
+    {
+      vlib_process_signal_event_pointer (vm, avf_process_node.index,
+					 AVF_PROCESS_EVENT_REQ, req);
+
+      vlib_process_wait_for_event_or_clock (vm, 5.0);
+
+      if (vlib_process_get_events (vm, &event_data) != 0)
+	clib_panic ("avf process node failed to reply in 5 seconds");
+      vec_free (event_data);
+    }
+  else
+    avf_process_handle_request (vm, req);
+
+  return req->error;
 }
 
 static u32
