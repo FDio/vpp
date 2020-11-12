@@ -2816,7 +2816,13 @@ ikev2_node_internal (vlib_main_t * vm,
       int ip_hdr_sz = 0;
       int is_req = 0, has_non_esp_marker = 0;
 
-      if (b0->punt_reason == ipsec_punt_reason[IPSEC_PUNT_IP4_SPI_UDP_0])
+      ASSERT (0 == b0->punt_reason
+	      || (is_ip4
+		  && b0->punt_reason ==
+		  ipsec_punt_reason[IPSEC_PUNT_IP4_SPI_UDP_0]));
+
+      if (is_ip4
+	  && b0->punt_reason == ipsec_punt_reason[IPSEC_PUNT_IP4_SPI_UDP_0])
 	{
 	  u8 *ptr = vlib_buffer_get_current (b0);
 	  ip40 = (ip4_header_t *) ptr;
