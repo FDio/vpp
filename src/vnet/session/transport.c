@@ -632,7 +632,7 @@ format_transport_pacer (u8 * s, va_list * args)
 
   now = transport_us_time_now (thread_index);
   diff = now - pacer->last_update;
-  s = format (s, "rate %lu bucket %lu t/p %.3f last_update %U burst %u",
+  s = format (s, "rate %lu bucket %ld t/p %.3f last_update %U burst %u",
 	      pacer->bytes_per_sec, pacer->bucket, pacer->tokens_per_period,
 	      format_clib_us_time, diff, pacer->max_burst);
   return s;
@@ -661,7 +661,7 @@ spacer_update_bucket (spacer_t * pacer, u32 bytes)
 
 static inline void
 spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
-		      clib_us_time_t rtt)
+		      clib_us_time_t rtt, clib_time_type_t sec_per_loop)
 {
   clib_us_time_t max_time;
 
@@ -678,7 +678,8 @@ spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
    *
    * Max "time-length" of a burst cannot be less than 1us or more than 1ms.
    */
-  max_time = rtt / TRANSPORT_PACER_BURSTS_PER_RTT;
+  max_time = clib_max (rtt / TRANSPORT_PACER_BURSTS_PER_RTT,
+		       (clib_us_time_t) (sec_per_loop * CLIB_US_TIME_FREQ));
   max_time = clib_clamp (max_time, 1 /* 1us */ , 1000 /* 1ms */ );
   pacer->max_burst = (rate_bytes_per_sec * max_time) * CLIB_US_TIME_PERIOD;
   pacer->max_burst = clib_clamp (pacer->max_burst, TRANSPORT_PACER_MIN_BURST,
@@ -703,7 +704,8 @@ transport_connection_tx_pacer_reset (transport_connection_t * tc,
 				     u64 rate_bytes_per_sec, u32 start_bucket,
 				     clib_us_time_t rtt)
 {
-  spacer_set_pace_rate (&tc->pacer, rate_bytes_per_sec, rtt);
+  spacer_set_pace_rate (&tc->pacer, rate_bytes_per_sec, rtt,
+			transport_seconds_per_loop (tc->thread_index));
   spacer_reset (&tc->pacer, transport_us_time_now (tc->thread_index),
 		start_bucket);
 }
@@ -729,7 +731,8 @@ void
 transport_connection_tx_pacer_update (transport_connection_t * tc,
 				      u64 bytes_per_sec, clib_us_time_t rtt)
 {
-  spacer_set_pace_rate (&tc->pacer, bytes_per_sec, rtt);
+  spacer_set_pace_rate (&tc->pacer, bytes_per_sec, rtt,
+			transport_seconds_per_loop (tc->thread_index));
 }
 
 u32
