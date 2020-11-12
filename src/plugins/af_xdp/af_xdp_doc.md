@@ -63,7 +63,7 @@ kernel interface in promiscuous mode:
 
 ## Security considerations
 When creating an AF_XDP interface, it will receive all packets arriving
-to the NIC RX queue [0, num_rx_queues[`. You need to configure the Linux
+to the NIC RX queue `[0, num_rx_queues[`. You need to configure the Linux
 kernel NIC driver properly to ensure that only intented packets will
 arrive in this queue. There is no way to filter the packets after-the-fact
 using eg. netfilter or eBPF.
