@@ -552,6 +552,12 @@ transport_us_time_now (u32 thread_index)
   return session_main.wrk[thread_index].last_vlib_us_time;
 }
 
+always_inline clib_time_type_t
+transport_seconds_per_loop (u32 thread_index)
+{
+  return session_main.wrk[thread_index].vm->seconds_per_loop;
+}
+
 always_inline void
 transport_add_tx_event (transport_connection_t * tc)
 {
