@@ -106,16 +106,7 @@ typedef enum fib_path_type_t_ {
      * via a DVR.
      */
     FIB_PATH_TYPE_DVR,
-    /**
-     * Marker. Add new types before this one, then update it.
-     */
-    FIB_PATH_TYPE_LAST = FIB_PATH_TYPE_BIER_FMASK,
 } __attribute__ ((packed)) fib_path_type_t;
-
-/**
- * The maximum number of path_types
- */
-#define FIB_PATH_TYPE_MAX (FIB_PATH_TYPE_LAST + 1)
 
 #define FIB_PATH_TYPES {					\
     [FIB_PATH_TYPE_ATTACHED_NEXT_HOP] = "attached-nexthop",	\
@@ -132,11 +123,6 @@ typedef enum fib_path_type_t_ {
     [FIB_PATH_TYPE_BIER_FMASK]        = "bier-fmask",	        \
     [FIB_PATH_TYPE_DVR]               = "dvr",   	        \
 }
-
-#define FOR_EACH_FIB_PATH_TYPE(_item)           \
-    for (_item = FIB_PATH_TYPE_FIRST;           \
-         _item <= FIB_PATH_TYPE_LAST;           \
-         _item++)
 
 /**
  * Enurmeration of path operational (i.e. derived) attributes
