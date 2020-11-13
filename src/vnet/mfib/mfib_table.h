@@ -99,7 +99,7 @@ typedef struct mfib_table_t_
     /**
      * number of locks on the table
      */
-    u16 mft_locks[MFIB_TABLE_N_LOCKS];
+    u32 mft_locks[MFIB_TABLE_N_LOCKS];
 
     /**
      * Table ID (hash key) for this FIB.
