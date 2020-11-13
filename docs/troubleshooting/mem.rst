@@ -19,11 +19,13 @@ where memory leaks happen.
 To enable memory traces on main-heap:
 
 .. code-block:: console
+
     $ vppctl memory-trace on main-heap
 
 To dump memory traces for analysis:
 
 .. code-block:: console
+
     $ vppctl show memory-trace on main-heap
     Thread 0 vpp_main
       base 0x7fffb6422000, size 1g, locked, unmap-on-destroy, name 'main heap'
@@ -79,6 +81,7 @@ main-heap.
 To use it, you need to use the `LD_PRELOAD` mechanism, eg.
 
 .. code-block:: console
+
     ~# LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libvppmem_preload.so /usr/bin/vpp -c /etc/vpp/startup.conf
 
 You can then use tools such as memory traces as usual.
