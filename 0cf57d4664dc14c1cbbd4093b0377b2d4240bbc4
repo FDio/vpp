@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6e5b6431_cf36eaa4",
+        "filename": "src/plugins/rdma/rdma.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-13T15:13:29Z",
+      "side": 1,
+      "message": "structure members should be sorted by size to avoid alignment padding. If I am not mistaken this would reduce rdma_rxq_t from 3 cachelines to 2",
+      "revId": "0cf57d4664dc14c1cbbd4093b0377b2d4240bbc4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
