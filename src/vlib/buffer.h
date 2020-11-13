@@ -155,8 +155,8 @@ typedef union
     /** part of buffer metadata which is initialized on alloc ends here. */
       STRUCT_MARK (template_end);
 
-    /** start of 2nd cache line */
-      CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+    /** start of 2nd half (2nd cacheline on systems where cacheline size is 64) */
+      CLIB_ALIGN_MARK (second_half, 64);
 
     /** Specifies trace buffer handle if VLIB_PACKET_IS_TRACED flag is
       * set. */
@@ -169,8 +169,8 @@ typedef union
     /**< More opaque data, see ../vnet/vnet/buffer.h */
     u32 opaque2[14];
 
-    /** start of third cache line */
-      CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
+    /** start of buffer headroom */
+      CLIB_ALIGN_MARK (headroom, 64);
 
     /** Space for inserting data before buffer start.  Packet rewrite string
       * will be rewritten backwards and may extend back before
@@ -190,6 +190,10 @@ typedef union
   u8x64 as_u8x64[1];
 #endif
 } vlib_buffer_t;
+
+STATIC_ASSERT_SIZEOF (vlib_buffer_t, 128 + VLIB_BUFFER_PRE_DATA_SIZE);
+STATIC_ASSERT (VLIB_BUFFER_PRE_DATA_SIZE % CLIB_CACHE_LINE_BYTES == 0,
+	       "VLIB_BUFFER_PRE_DATA_SIZE must be divisible by cache line size");
 
 #define VLIB_BUFFER_HDR_SIZE  (sizeof(vlib_buffer_t) - VLIB_BUFFER_PRE_DATA_SIZE)
 
