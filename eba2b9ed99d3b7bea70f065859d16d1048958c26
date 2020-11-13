@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "70365744_dd9357c0",
+        "filename": "src/vnet/interface_types.api",
+        "patchSetId": 32
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-11-13T10:27:48Z",
+      "side": 1,
+      "message": "Both flag types fit into u8.\nAre there any plans to add more flags soon-ish? If not, size can be reduced.",
+      "range": {
+        "startLine": 91,
+        "startChar": 42,
+        "endLine": 91,
+        "endChar": 52
+      },
+      "revId": "eba2b9ed99d3b7bea70f065859d16d1048958c26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
