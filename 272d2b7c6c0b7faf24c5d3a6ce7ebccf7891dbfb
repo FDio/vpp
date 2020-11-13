@@ -33,6 +33,24 @@
       "revId": "272d2b7c6c0b7faf24c5d3a6ce7ebccf7891dbfb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ab95c9e6_7fefbfcc",
+        "filename": "src/plugins/avf/output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 264,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-11-13T12:19:36Z",
+      "side": 1,
+      "message": "There is a mfence in the avf_wc_store, I was thinking that this way there may be some cycles gained if we have the txq-\u003enext written after it.",
+      "parentUuid": "50f61540_fd59c3ba",
+      "revId": "272d2b7c6c0b7faf24c5d3a6ce7ebccf7891dbfb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
