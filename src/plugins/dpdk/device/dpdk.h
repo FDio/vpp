@@ -58,6 +58,12 @@ extern vnet_device_class_t dpdk_device_class;
 extern vlib_node_registration_t dpdk_input_node;
 extern vlib_node_registration_t admin_up_down_process_node;
 
+#if RTE_VERSION < RTE_VERSION_NUM(20, 8, 0, 0)
+#define DPDK_MLX5_PMD_NAME "net_mlx5"
+#else
+#define DPDK_MLX5_PMD_NAME "mlx5_pci"
+#endif
+
 #define foreach_dpdk_pmd          \
   _ ("net_thunderx", THUNDERX)    \
   _ ("net_e1000_em", E1000EM)     \
@@ -76,7 +82,7 @@ extern vlib_node_registration_t admin_up_down_process_node;
   _ ("net_fm10k", FM10K)          \
   _ ("net_cxgbe", CXGBE)          \
   _ ("net_mlx4", MLX4)            \
-  _ ("net_mlx5", MLX5)            \
+  _ (DPDK_MLX5_PMD_NAME, MLX5)    \
   _ ("net_dpaa2", DPAA2)          \
   _ ("net_virtio_user", VIRTIO_USER) \
   _ ("net_vhost", VHOST_ETHER)    \
