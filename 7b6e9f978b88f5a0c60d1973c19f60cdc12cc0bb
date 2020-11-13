@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e6105df3_64b1fbe9",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-13T17:32:04Z",
+      "side": 1,
+      "message": "s/unerstand/understand/",
+      "revId": "7b6e9f978b88f5a0c60d1973c19f60cdc12cc0bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f6dbf7f7_a340fc71",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-13T17:32:04Z",
+      "side": 1,
+      "message": "what is [#f1] ?",
+      "revId": "7b6e9f978b88f5a0c60d1973c19f60cdc12cc0bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "90e27849_2531bab9",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-13T17:32:04Z",
+      "side": 1,
+      "message": "what are SAFI and AFI?",
+      "revId": "7b6e9f978b88f5a0c60d1973c19f60cdc12cc0bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3ec3ef74_0f78013a",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-13T17:32:04Z",
+      "side": 1,
+      "message": "maybe document other prefix types such as FIB_PATH_TYPE_DVR too?",
+      "revId": "7b6e9f978b88f5a0c60d1973c19f60cdc12cc0bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a1190491_cab24ba9",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-13T17:32:04Z",
+      "side": 1,
+      "message": "I am not sure I really get what happens for Attached prefix if it is not a p2p link: is it basically gleaning for each packets? Is it installing new Attached nex-hop path after each resolution?\nWith a p2p interface, I suppose the path is not marked as glean and is fully resolve, the rewrite being that of the tunnel?",
+      "revId": "7b6e9f978b88f5a0c60d1973c19f60cdc12cc0bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
