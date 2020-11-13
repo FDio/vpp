@@ -22,6 +22,30 @@
       "revId": "b60b340079229d75de3d6edf382804ee4a5b6490",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "92fc259c_832c5d7b",
+        "filename": "src/plugins/rdma/rdma.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-13T16:58:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "90cc7e5a_f56e7078",
+      "range": {
+        "startLine": 79,
+        "startChar": 2,
+        "endLine": 79,
+        "endChar": 4
+      },
+      "revId": "b60b340079229d75de3d6edf382804ee4a5b6490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
