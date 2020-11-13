@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "24abb60c_292b70f4",
+        "filename": "src/plugins/avf/avf.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 347,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-11-13T11:23:01Z",
+      "side": 1,
+      "message": "I am not sure this is the right home, I thought may be somewhere in vppinfra.\n\n@dmarion will know.",
+      "revId": "272d2b7c6c0b7faf24c5d3a6ce7ebccf7891dbfb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "50f61540_fd59c3ba",
+        "filename": "src/plugins/avf/output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 264,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2020-11-13T11:23:01Z",
+      "side": 1,
+      "message": "Why not ...\n\ntxq-\u003enext \u003d next \u0026 mask;\navf_wc_store (txq-\u003eqtx_tail, txq-\u003enext);",
+      "revId": "272d2b7c6c0b7faf24c5d3a6ce7ebccf7891dbfb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
