@@ -44,6 +44,7 @@
 
 #define foreach_vpe_api_msg                             \
 _(POLICER_ADD_DEL, policer_add_del)                     \
+_(SET_POLICER_INTFC_ADD_DEL, set_policer_intfc_add_del) \
 _(POLICER_DUMP, policer_dump)
 
 static void
@@ -94,6 +95,30 @@ vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
       rmp->policer_index = ~0;
   }));
   /* *INDENT-ON* */
+}
+
+static void
+vl_api_set_policer_intfc_add_del_t_handler (vl_api_set_policer_intfc_add_del_t
+					    * mp)
+{
+  vl_api_set_policer_intfc_add_del_reply_t *rmp;
+  int rv = -1;
+
+  switch (mp->direction)
+    {
+    case POLICER_INTFC_TX:
+      rv =
+	set_policer_add_del (mp->sw_if_index, mp->name, mp->is_add,
+			     VNET_POLICER_INDEX_IF_TX);
+      break;
+    case POLICER_INTFC_RX:
+      rv =
+	set_policer_add_del (mp->sw_if_index, mp->name, mp->is_add,
+			     VNET_POLICER_INDEX_IF_RX);
+      break;
+    }
+
+  REPLY_MACRO (VL_API_SET_POLICER_INTFC_ADD_DEL_REPLY);
 }
 
 static void
