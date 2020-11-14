@@ -39,6 +39,10 @@ typedef struct
   /* Policer by sw_if_index vector */
   u32 *policer_index_by_sw_if_index;
 
+  /* Policer by interface tx and rx vector */
+  u32 *policer_index_by_if_tx;
+  u32 *policer_index_by_if_rx;
+
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -48,9 +52,9 @@ extern vnet_policer_main_t vnet_policer_main;
 
 typedef enum
 {
-  VNET_POLICER_INDEX_BY_SW_IF_INDEX,
   VNET_POLICER_INDEX_BY_OPAQUE,
-  VNET_POLICER_INDEX_BY_EITHER,
+  VNET_POLICER_INDEX_IF_TX,
+  VNET_POLICER_INDEX_IF_RX,
 } vnet_policer_index_t;
 
 typedef enum
@@ -95,6 +99,10 @@ clib_error_t *policer_add_del (vlib_main_t * vm,
 			       u8 * name,
 			       sse2_qos_pol_cfg_params_st * cfg,
 			       u32 * policer_index, u8 is_add);
+
+int
+set_policer_add_del (u32 rx_sw_if_index, u8 * config_name, int is_add,
+		     vnet_policer_index_t index);
 
 #endif /* __included_policer_h__ */
 

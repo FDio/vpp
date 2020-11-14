@@ -16,6 +16,7 @@
 option version = "2.0.0";
 
 import "vnet/policer/policer_types.api";
+import "vnet/interface_types.api";
 
 /** \brief Add/del policer
     @param client_index - opaque cookie to identify the sender
@@ -130,6 +131,25 @@ define policer_details
   u32 extended_limit;
   u32 extended_bucket;
   u64 last_update_time;
+};
+
+/** \brief Set policer on interface (tx or/and rx)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param name - policer name
+    @param sw_if_index - interface to set/unset policer
+    @param direction - direction of policer: tx or rx
+    @param is_add - set policer on interface if non-zero, else delete
+*/
+autoreply define set_policer_intfc_add_del
+{
+  u32 client_index;
+  u32 context;
+
+  string name[64];
+  vl_api_interface_index_t sw_if_index;
+  vl_api_policer_intfc_direction_t direction;
+  bool is_add;
 };
 
 /*

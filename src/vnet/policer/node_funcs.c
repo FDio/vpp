@@ -25,7 +25,6 @@
 #include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_input.h>
 
-
 /* Dispatch functions meant to be instantiated elsewhere */
 
 typedef struct
@@ -127,27 +126,20 @@ vnet_policer_inline (vlib_main_t * vm,
 	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
 	  next1 = VNET_POLICER_NEXT_TRANSMIT;
 
-
-	  if (which == VNET_POLICER_INDEX_BY_SW_IF_INDEX)
+	  switch (which)
 	    {
-	      pi0 = pm->policer_index_by_sw_if_index[sw_if_index0];
-	      pi1 = pm->policer_index_by_sw_if_index[sw_if_index1];
-	    }
-
-	  if (which == VNET_POLICER_INDEX_BY_OPAQUE)
-	    {
+	    case VNET_POLICER_INDEX_IF_TX:
+	      pi0 = pm->policer_index_by_if_tx[sw_if_index0];
+	      pi1 = pm->policer_index_by_if_tx[sw_if_index1];
+	      break;
+	    case VNET_POLICER_INDEX_IF_RX:
+	      pi0 = pm->policer_index_by_if_rx[sw_if_index0];
+	      pi1 = pm->policer_index_by_if_rx[sw_if_index1];
+	      break;
+	    case VNET_POLICER_INDEX_BY_OPAQUE:
 	      pi0 = vnet_buffer (b0)->policer.index;
 	      pi1 = vnet_buffer (b1)->policer.index;
-	    }
-
-	  if (which == VNET_POLICER_INDEX_BY_EITHER)
-	    {
-	      pi0 = vnet_buffer (b0)->policer.index;
-	      pi0 = (pi0 != ~0) ? pi0 :
-		pm->policer_index_by_sw_if_index[sw_if_index0];
-	      pi1 = vnet_buffer (b1)->policer.index;
-	      pi1 = (pi1 != ~0) ? pi1 :
-		pm->policer_index_by_sw_if_index[sw_if_index1];
+	      break;
 	    }
 
 	  act0 = vnet_policer_police (vm, b0, pi0, time_in_policer_periods,
@@ -176,7 +168,6 @@ vnet_policer_inline (vlib_main_t * vm,
 	      transmitted++;
 	    }
 
-
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
 	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
@@ -196,9 +187,9 @@ vnet_policer_inline (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueues, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -222,17 +213,17 @@ vnet_policer_inline (vlib_main_t * vm,
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  next0 = VNET_POLICER_NEXT_TRANSMIT;
 
-	  if (which == VNET_POLICER_INDEX_BY_SW_IF_INDEX)
-	    pi0 = pm->policer_index_by_sw_if_index[sw_if_index0];
-
-	  if (which == VNET_POLICER_INDEX_BY_OPAQUE)
-	    pi0 = vnet_buffer (b0)->policer.index;
-
-	  if (which == VNET_POLICER_INDEX_BY_EITHER)
+	  switch (which)
 	    {
+	    case VNET_POLICER_INDEX_IF_TX:
+	      pi0 = pm->policer_index_by_if_tx[sw_if_index0];
+	      break;
+	    case VNET_POLICER_INDEX_IF_RX:
+	      pi0 = pm->policer_index_by_if_rx[sw_if_index0];
+	      break;
+	    case VNET_POLICER_INDEX_BY_OPAQUE:
 	      pi0 = vnet_buffer (b0)->policer.index;
-	      pi0 = (pi0 != ~0) ? pi0 :
-		pm->policer_index_by_sw_if_index[sw_if_index0];
+	      break;
 	    }
 
 	  act0 = vnet_policer_police (vm, b0, pi0, time_in_policer_periods,
@@ -272,12 +263,16 @@ vnet_policer_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (policer_by_sw_if_index_node) (vlib_main_t * vm,
-					    vlib_node_runtime_t * node,
-					    vlib_frame_t * frame)
+VLIB_NODE_FN (policer_interface_rx_node)
+  (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return vnet_policer_inline (vm, node, frame,
-			      VNET_POLICER_INDEX_BY_SW_IF_INDEX);
+  return vnet_policer_inline (vm, node, frame, VNET_POLICER_INDEX_IF_RX);
+}
+
+VLIB_NODE_FN (policer_interface_tx_node)
+  (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return vnet_policer_inline (vm, node, frame, VNET_POLICER_INDEX_IF_TX);
 }
 
 #ifndef CLIB_MARCH_VARIANT
@@ -288,48 +283,66 @@ vnet_policer_by_opaque (vlib_main_t * vm,
   return vnet_policer_inline (vm, node, frame, VNET_POLICER_INDEX_BY_OPAQUE);
 }
 
-uword
-vnet_policer_by_either (vlib_main_t * vm,
-			vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  return vnet_policer_inline (vm, node, frame, VNET_POLICER_INDEX_BY_EITHER);
-}
-
 void
 vnet_policer_node_funcs_reference (void)
 {
 }
 #endif /* CLIB_MARCH_VARIANT */
 
-
-#define TEST_CODE 1
-
-#ifdef TEST_CODE
-
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (policer_by_sw_if_index_node) = {
-  .name = "policer-by-sw-if-index",
-  .vector_size = sizeof (u32),
-  .format_trace = format_policer_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
+VLIB_REGISTER_NODE (policer_interface_rx_node) = {
+    .vector_size = sizeof (u32),
+    .format_trace = format_policer_trace,
+    .type = VLIB_NODE_TYPE_INTERNAL,
+    .n_errors = ARRAY_LEN (vnet_policer_error_strings),
+    .error_strings = vnet_policer_error_strings,
 
-  .n_errors = ARRAY_LEN(vnet_policer_error_strings),
-  .error_strings = vnet_policer_error_strings,
+    .n_next_nodes = VNET_POLICER_N_NEXT,
 
-  .n_next_nodes = VNET_POLICER_N_NEXT,
+    /* edit / add dispositions here */
+    .next_nodes =
+        {
+            [VNET_POLICER_NEXT_TRANSMIT] = "ethernet-input",
+            [VNET_POLICER_NEXT_DROP] = "error-drop",
+        },
+    .name = "policer-interface-rx",
+};
 
-  /* edit / add dispositions here */
-  .next_nodes = {
-    [VNET_POLICER_NEXT_TRANSMIT] = "ethernet-input",
-    [VNET_POLICER_NEXT_DROP] = "error-drop",
-  },
+VLIB_REGISTER_NODE (policer_interface_tx_node) = {
+    .vector_size = sizeof (u32),
+    .format_trace = format_policer_trace,
+    .type = VLIB_NODE_TYPE_INTERNAL,
+    .n_errors = ARRAY_LEN (vnet_policer_error_strings),
+    .error_strings = vnet_policer_error_strings,
+
+    .n_next_nodes = VNET_POLICER_N_NEXT,
+
+    /* edit / add dispositions here */
+    .next_nodes =
+        {
+            [VNET_POLICER_NEXT_TRANSMIT] = "interface-tx",
+            [VNET_POLICER_NEXT_DROP] = "error-drop",
+        },
+    .name = "policer-interface-tx",
+};
+
+VNET_FEATURE_INIT (policer_interface_rx_node, static) = {
+    .arc_name = "device-input",
+    .node_name = "policer-interface-rx",
+    .runs_before = VNET_FEATURES ("ethernet-input"),
+};
+
+VNET_FEATURE_INIT (policer_interface_tx_node, static) = {
+    .arc_name = "interface-output",
+    .node_name = "policer-interface-tx",
+    .runs_before = VNET_FEATURES ("interface-tx"),
 };
 /* *INDENT-ON* */
 
-
 #ifndef CLIB_MARCH_VARIANT
 int
-test_policer_add_del (u32 rx_sw_if_index, u8 * config_name, int is_add)
+set_policer_add_del (u32 rx_sw_if_index, u8 * config_name, int is_add,
+		     vnet_policer_index_t index)
 {
   vnet_policer_main_t *pm = &vnet_policer_main;
   policer_read_response_type_st *template;
@@ -352,36 +365,80 @@ test_policer_add_del (u32 rx_sw_if_index, u8 * config_name, int is_add)
 	return -2;
 
       template = pool_elt_at_index (pm->policer_templates, p[0]);
-
-      vnet_hw_interface_rx_redirect_to_node
-	(pm->vnet_main, rxhi->hw_if_index, policer_by_sw_if_index_node.index);
-
       pool_get_aligned (pm->policers, policer, CLIB_CACHE_LINE_BYTES);
-
       policer[0] = template[0];
 
-      vec_validate (pm->policer_index_by_sw_if_index, rx_sw_if_index);
-      pm->policer_index_by_sw_if_index[rx_sw_if_index]
-	= policer - pm->policers;
+      if (index == VNET_POLICER_INDEX_IF_RX)
+	{
+
+	  vec_validate (pm->policer_index_by_if_tx, rx_sw_if_index);
+	  if (pm->policer_index_by_if_tx[rx_sw_if_index] == 0)
+	    {
+	      pm->policer_index_by_if_tx[rx_sw_if_index] =
+		policer - pm->policers;
+
+	      vnet_feature_enable_disable ("device-input",
+					   "policer-interface-rx",
+					   rx_sw_if_index, is_add, 0, 0);
+	    }
+	}
+
+      if (index == VNET_POLICER_INDEX_IF_TX)
+	{
+
+	  vec_validate (pm->policer_index_by_if_rx, rx_sw_if_index);
+	  if (pm->policer_index_by_if_rx[rx_sw_if_index] == 0)
+	    {
+	      pm->policer_index_by_if_rx[rx_sw_if_index] =
+		policer - pm->policers;
+
+	      vnet_feature_enable_disable ("interface-output",
+					   "policer-interface-tx",
+					   rx_sw_if_index, is_add, 0, 0);
+	    }
+	}
     }
   else
     {
       u32 pi;
-      vnet_hw_interface_rx_redirect_to_node (pm->vnet_main,
-					     rxhi->hw_if_index,
-					     ~0 /* disable */ );
 
-      pi = pm->policer_index_by_sw_if_index[rx_sw_if_index];
-      pm->policer_index_by_sw_if_index[rx_sw_if_index] = ~0;
-      pool_put_index (pm->policers, pi);
+      if (index == VNET_POLICER_INDEX_IF_RX)
+	{
+	  vnet_feature_enable_disable ("device-input", "policer-interface-rx",
+				       rx_sw_if_index, is_add, 0, 0);
+
+	  if (vec_len (pm->policer_index_by_if_tx) < rx_sw_if_index)
+	    {
+	      return -3;
+	    }
+	  pi = pm->policer_index_by_if_tx[rx_sw_if_index];
+	  pm->policer_index_by_if_tx[rx_sw_if_index] = 0;
+	}
+
+      if (index == VNET_POLICER_INDEX_IF_TX)
+	{
+	  vnet_feature_enable_disable ("interface-output",
+				       "policer-interface-tx", rx_sw_if_index,
+				       is_add, 0, 0);
+
+	  if (vec_len (pm->policer_index_by_if_rx) < rx_sw_if_index)
+	    {
+	      return -3;
+	    }
+	  pi = pm->policer_index_by_if_rx[rx_sw_if_index];
+	  pm->policer_index_by_if_rx[rx_sw_if_index] = 0;
+	}
+
+      if (pi != ~0)
+	pool_put_index (pm->policers, pi);
     }
 
   return 0;
 }
 
 static clib_error_t *
-test_policer_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+set_policer_command_fn (vlib_main_t * vm,
+			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_policer_main_t *pm = &vnet_policer_main;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -391,6 +448,8 @@ test_policer_command_fn (vlib_main_t * vm,
   int rx_set = 0;
   int is_add = 1;
   int is_show = 0;
+  int ingress = 0;
+  int egress = 0;
   clib_error_t *error = NULL;
 
   /* Get a line of input. */
@@ -408,6 +467,15 @@ test_policer_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "del"))
 	is_add = 0;
+      else if (unformat (line_input, "egress"))
+	egress = 1;
+      else if (unformat (line_input, "ingress"))
+	ingress = 1;
+      else if (unformat (line_input, "both"))
+	{
+	  ingress = 1;
+	  egress = 1;
+	}
       else
 	break;
     }
@@ -434,19 +502,43 @@ test_policer_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  rv = test_policer_add_del (rx_sw_if_index, config_name, is_add);
-
-  switch (rv)
+  if (ingress)
     {
-    case 0:
-      break;
+      rv = set_policer_add_del (rx_sw_if_index, config_name, is_add,
+				VNET_POLICER_INDEX_IF_RX);
 
-    default:
-      error = clib_error_return
-	(0, "WARNING: vnet_vnet_policer_add_del returned %d", rv);
-      goto done;
+      switch (rv)
+	{
+	case 0:
+	  break;
+
+	default:
+	  error =
+	    clib_error_return (0,
+			       "WARNING: vnet_vnet_policer_add_del returned %d",
+			       rv);
+	  goto done;
+	}
     }
 
+  if (egress)
+    {
+      rv = set_policer_add_del (rx_sw_if_index, config_name, is_add,
+				VNET_POLICER_INDEX_IF_TX);
+
+      switch (rv)
+	{
+	case 0:
+	  break;
+
+	default:
+	  error =
+	    clib_error_return (0,
+			       "WARNING: vnet_vnet_policer_add_del returned %d",
+			       rv);
+	  goto done;
+	}
+    }
 done:
   unformat_free (line_input);
 
@@ -454,17 +546,15 @@ done:
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_patch_command, static) = {
-    .path = "test policer",
+VLIB_CLI_COMMAND (set_policer_command, static) = {
+    .path = "set policer",
     .short_help =
-    "intfc <intfc> policer <policer-config-name> [del]",
-    .function = test_policer_command_fn,
+		"intfc <intfc> policer <policer-config-name> "
+        "[ingress|egress|both] [del]",
+    .function = set_policer_command_fn,
 };
 /* *INDENT-ON* */
 #endif /* CLIB_MARCH_VARIANT */
-
-#endif /* TEST_CODE */
-
 
 typedef struct
 {
