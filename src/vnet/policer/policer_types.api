@@ -55,6 +55,12 @@ typedef sse2_qos_action
   u8 dscp;
 };
 
+enum policer_intfc_direction : u8
+{
+  POLICER_INTFC_TX = 0,
+  POLICER_INTFC_RX,
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
