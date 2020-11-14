@@ -1850,7 +1850,8 @@ session_test_mq_speed (vlib_main_t * vm, unformat_input_t * input)
   s.rx_fifo = rx_fifo;
   s.tx_fifo = tx_fifo;
   s.session_state = SESSION_STATE_READY;
-  counter = (u64 *) rx_fifo->head_chunk->data;
+//  counter = (u64 *) rx_fifo->head_chunk->data;
+  counter = (u64 *) svm_fifo_head_chunk (rx_fifo)->data;
   start = vlib_time_now (vm);
 
   pid = fork ();

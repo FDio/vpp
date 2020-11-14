@@ -901,7 +901,8 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
   fsh_slice_collect_chunks (fsh, fss, f->start_chunk);
 
   f->start_chunk = f->end_chunk = 0;
-  f->head_chunk = f->tail_chunk = f->ooo_enq = f->ooo_deq = 0;
+//  f->head_chunk = f->tail_chunk = f->ooo_enq = f->ooo_deq = 0;
+  f->tail_chunk = f->ooo_enq = f->ooo_deq = 0;
 
   /* not allocated on segment heap */
   svm_fifo_free_chunk_lookup (f);

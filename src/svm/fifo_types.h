@@ -76,7 +76,7 @@ typedef struct _svm_fifo
 
     CLIB_CACHE_LINE_ALIGN_MARK (consumer);
   rb_tree_t ooo_deq_lookup;	/**< rbtree for ooo deq chunk lookup */
-  svm_fifo_chunk_t *head_chunk;	/**< tracks chunk where head lands */
+//  svm_fifo_chunk_t *head_chunk;       /**< tracks chunk where head lands */
   svm_fifo_chunk_t *ooo_deq;	/**< last chunk used for ooo dequeue */
   u32 head;			/**< fifo head position/byte */
   volatile u32 want_deq_ntf;	/**< producer wants nudge */

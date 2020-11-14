@@ -571,6 +571,15 @@ u32 svm_fifo_max_read_chunk (svm_fifo_t * f);
  */
 u32 svm_fifo_max_write_chunk (svm_fifo_t * f);
 
+static inline svm_fifo_chunk_t *
+f_start_chunk (svm_fifo_t * f, u32 head)
+{
+  ASSERT (f_chunk_includes_pos (f->start_chunk, head) || !f->start_chunk->next
+	  || f_chunk_includes_pos (f->start_chunk->next, head));
+  return f_chunk_includes_pos (f->start_chunk, head) ?
+    f->start_chunk : f->start_chunk->next;
+}
+
 /**
  * Fifo head chunk getter
  *
@@ -580,7 +589,8 @@ u32 svm_fifo_max_write_chunk (svm_fifo_t * f);
 static inline svm_fifo_chunk_t *
 svm_fifo_head_chunk (svm_fifo_t * f)
 {
-  return f->head_chunk;
+//  return f->head_chunk;
+  return f_start_chunk (f, f->head);
 }
 
 /**
@@ -592,10 +602,15 @@ svm_fifo_head_chunk (svm_fifo_t * f)
 static inline u8 *
 svm_fifo_head (svm_fifo_t * f)
 {
-  if (!f->head_chunk)
+  svm_fifo_chunk_t *start_chunk = f_start_chunk (f, f->head);
+  if (!start_chunk)
     return 0;
   /* load-relaxed: consumer owned index */
-  return (f->head_chunk->data + (f->head - f->head_chunk->start_byte));
+  return (start_chunk->data + (f->head - start_chunk->start_byte));
+//  if (!f->head_chunk)
+//    return 0;
+//  /* load-relaxed: consumer owned index */
+//  return (f->head_chunk->data + (f->head - f->head_chunk->start_byte));
 }
 
 /**
