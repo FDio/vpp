@@ -2,6 +2,207 @@
   "comments": [
     {
       "key": {
+        "uuid": "1713037a_a475b67d",
+        "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "White space",
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a2cdd2aa_9dffa042",
+        "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "if not, the",
+      "range": {
+        "startLine": 29,
+        "startChar": 10,
+        "endLine": 29,
+        "endChar": 21
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "732dbedf_7fce52fc",
+        "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "??",
+      "range": {
+        "startLine": 36,
+        "startChar": 29,
+        "endLine": 36,
+        "endChar": 36
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2ba49380_08d615ce",
+        "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "this,",
+      "range": {
+        "startLine": 66,
+        "startChar": 0,
+        "endLine": 66,
+        "endChar": 4
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fe54728d_c3553fda",
+        "filename": "docs/gettingstarted/developers/fib20/dataplane.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "combined",
+      "range": {
+        "startLine": 77,
+        "startChar": 30,
+        "endLine": 77,
+        "endChar": 38
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "73675c47_be00b786",
+        "filename": "docs/gettingstarted/developers/fib20/dataplane.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "number",
+      "range": {
+        "startLine": 78,
+        "startChar": 61,
+        "endLine": 78,
+        "endChar": 66
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cfe2251a_122457f8",
+        "filename": "docs/gettingstarted/developers/fib20/dataplane.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "disadvantage",
+      "range": {
+        "startLine": 88,
+        "startChar": 17,
+        "endLine": 88,
+        "endChar": 29
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6261ccec_4ee7dd57",
+        "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "meaning",
+      "range": {
+        "startLine": 61,
+        "startChar": 42,
+        "endLine": 61,
+        "endChar": 49
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9fb495e6_5db46e55",
+        "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "white space",
+      "range": {
+        "startLine": 90,
+        "startChar": 0,
+        "endLine": 90,
+        "endChar": 8
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "71f80021_7a4bed09",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -501,6 +702,155 @@
         "startChar": 16,
         "endLine": 534,
         "endChar": 17
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "895ed16d_06e86a83",
+        "filename": "docs/gettingstarted/developers/fib20/graphwalks.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "white space",
+      "range": {
+        "startLine": 11,
+        "startChar": 42,
+        "endLine": 11,
+        "endChar": 43
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b417d493_cf455117",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "White space",
+      "range": {
+        "startLine": 33,
+        "startChar": 36,
+        "endLine": 33,
+        "endChar": 37
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3439754e_f68061bd",
+        "filename": "docs/gettingstarted/developers/fib20/mplsfib.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "white space",
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "df074612_29efd388",
+        "filename": "docs/gettingstarted/developers/fib20/mplsfib.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "white space",
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "14183b42_15773d40",
+        "filename": "docs/gettingstarted/developers/fib20/mplsfib.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "white space",
+      "range": {
+        "startLine": 37,
+        "startChar": 0,
+        "endLine": 37,
+        "endChar": 1
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2d61e9d0_1d0b3026",
+        "filename": "docs/gettingstarted/developers/fib20/multicast.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "only",
+      "range": {
+        "startLine": 18,
+        "startChar": 32,
+        "endLine": 18,
+        "endChar": 36
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "946f9929_47d379b9",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-15T05:15:41Z",
+      "side": 1,
+      "message": "white space",
+      "range": {
+        "startLine": 34,
+        "startChar": 86,
+        "endLine": 34,
+        "endChar": 88
       },
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
