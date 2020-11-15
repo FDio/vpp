@@ -20,7 +20,6 @@ SAMPLE_PLUGIN?=no
 STARTUP_DIR?=$(PWD)
 MACHINE=$(shell uname -m)
 SUDO?=sudo -E
-DPDK_CONFIG?=no-pci
 
 ,:=,
 define disable_plugins
