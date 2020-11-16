@@ -628,6 +628,41 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
 #define DMAC_MASK clib_net_to_host_u64 (0xFFFFFFFFFFFF0000)
 #define DMAC_IGBIT clib_net_to_host_u64 (0x0100000000000000)
 
+#ifdef CLIB_HAVE_VEC_SCALABLE
+static_always_inline u32
+is_dmac_bad_xn (u64 * dmac, u8 * dmac_bad, i32 n_left, u64 hwaddr)
+{
+  u32 bad = 0;
+  i32 i;
+  i32 eno;
+  boolxn e_m;
+  /* *INDENT-OFF* */
+  scalable_vector_foreach (i, eno, e_m, n_left, 64,
+  ({
+    u64xn mac, mac_mask, mac_igbit, hwmac, mac_bad;
+
+    hwmac = u64xn_splat_zero (e_m, hwaddr);
+    mac_mask = u64xn_splat_zero (e_m, DMAC_MASK);
+    mac_igbit = u64xn_splat_zero (e_m, DMAC_IGBIT);
+	mac = u64xn_load_unaligned (e_m, (u64 *) dmac);
+    mac = u64xn_and (e_m, mac, mac_mask);
+    mac_igbit = u64xn_and (e_m, mac_igbit, mac);
+
+    boolxn r0 = u64xn_unequal (e_m, mac, hwmac);
+    boolxn r1 = u64xn_equal (e_m, mac_igbit, u64xn_splat_zero (e_m, (u64) 0));
+    r0 = boolxn_and (e_m, r0, r1);
+    mac_bad = u64xn_splat_zero (r0, (u64) ~0);
+    u64xn_store_u8 (e_m, mac_bad, (u8 *) dmac_bad);
+    bad |= (u32) u64xn_reduction_or (e_m, mac_bad);
+    /* next */
+    dmac += eno;
+    dmac_bad += eno;
+  }));
+  /* *INDENT-ON* */
+  return bad;
+}
+#endif
+
 #ifdef CLIB_HAVE_VEC256
 static_always_inline u32
 is_dmac_bad_x4 (u64 * dmacs, u64 hwaddr)
@@ -834,7 +869,9 @@ eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
 
   ASSERT (0 == ei->address.zero);
 
-#ifdef CLIB_HAVE_VEC256
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  bad = is_dmac_bad_xn (dmac, dmac_bad, n_left, hwaddr);
+#elif defined (CLIB_HAVE_VEC256)
   while (n_left > 0)
     {
       bad |= *(u32 *) (dmac_bad + 0) = is_dmac_bad_x4 (dmac + 0, hwaddr);
