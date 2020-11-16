@@ -327,6 +327,138 @@ STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_buffer_opaque_t, l2_hdr_offset) ==
 	       STRUCT_OFFSET_OF (vnet_buffer_opaque_t, l3_hdr_offset) - 2,
 	       "l3_hdr_offset must follow l2_hdr_offset");
 
+#ifdef CLIB_HAVE_VEC_SCALABLE
+static_always_inline i32
+eth_input_adv_and_flags_xn (vlib_buffer_t ** b, i32 n_left, u16 * etype,
+			    u64 * tag, u64 * dmac, int main_is_l3)
+{
+  i32 i = 0;
+  i32 eno = (i32) u64xn_max_elts ();
+  i32 enoh = eno * 2;
+  i32 enod = eno * 1;
+  boolxn ph_m, pd_m, b_m;
+
+  while (i < n_left)
+    {
+      u64xn ph_addr, pd_addr, buf_addr;
+      u64xn current_data_addr, current_length_addr;
+      u64xn data_addr, current_addr, flags_addr;
+      i64xn current_data;
+      u64xn current_length, flags;
+      u64xn dmacx, tagx, etypex;
+      u64xn opaque_addr, l2_hdr_offset_addr, l3_hdr_offset_addr;
+      i64 offset;
+      i16 adv = sizeof (ethernet_header_t);
+
+      /* compute predict registers */
+      ph_m = u64xn_elt_mask (i + enoh, n_left);
+      pd_m = u64xn_elt_mask (i + enod, n_left);
+      b_m = u64xn_elt_mask (i, n_left);
+
+      ph_addr = u64xn_load_unaligned (ph_m, (u64 *) (b + enoh));
+      pd_addr = u64xn_load_unaligned (pd_m, (u64 *) (b + enod));
+      buf_addr = u64xn_load_unaligned (b_m, (u64 *) b);
+
+      /* prefetch buffer header */
+      u64xn_prefetch_vector (ph_m, ph_addr);
+
+      /* prefetch buffer data */
+      offset = STRUCT_OFFSET_OF (vlib_buffer_t, current_data);
+      current_data = i64xn_gather_offset_i16 (pd_m, pd_addr, offset);
+      data_addr = u64xn_add_n (pd_m, pd_addr, sizeof (vlib_buffer_t));
+      current_addr =
+	u64xn_from_i64xn (i64xn_add
+			  (pd_m, i64xn_from_u64xn (data_addr), current_data));
+      u64xn_prefetch_vector (pd_m, current_addr);
+
+      /* process buffers */
+      offset = STRUCT_OFFSET_OF (vlib_buffer_t, current_data);
+      current_data_addr = u64xn_add_n (b_m, buf_addr, offset);
+      current_data = i64xn_gather_offset_i16 (b_m, current_data_addr, 0);
+      data_addr = u64xn_add_n (b_m, buf_addr, sizeof (vlib_buffer_t));
+      current_addr =
+	u64xn_from_i64xn (i64xn_add
+			  (b_m, i64xn_from_u64xn (data_addr), current_data));
+
+      /* parse and store ethernet type, destination mac into arrays */
+      dmacx = u64xn_gather_offset_u64 (b_m, current_addr, 0);
+      u64xn_store_unaligned (b_m, dmacx, dmac);
+
+      offset = sizeof (ethernet_header_t);
+      tagx = u64xn_gather_offset_u64 (b_m, current_addr, offset);
+      u64xn_store_unaligned (b_m, tagx, tag);
+
+      offset = STRUCT_OFFSET_OF (ethernet_header_t, type);
+      etypex = u64xn_gather_offset_u16 (b_m, current_addr, offset);
+      u64xn_store_u16 (b_m, etypex, etype);
+
+      /* vnet_buffer (b[i])->l2_hdr_offset = b[0]->current_data; */
+      /* vnet_buffer (b[i])->l3_hdr_offset = b[0]->current_data + adv; */
+      offset = STRUCT_OFFSET_OF (vlib_buffer_t, opaque);
+      opaque_addr = u64xn_add_n (b_m, buf_addr, offset);
+
+      offset = STRUCT_OFFSET_OF (vnet_buffer_opaque_t, l2_hdr_offset);
+      l2_hdr_offset_addr = u64xn_add_n (b_m, opaque_addr, offset);
+      i64xn_scatter_u16 (b_m, l2_hdr_offset_addr, current_data);
+
+      offset = STRUCT_OFFSET_OF (vnet_buffer_opaque_t, l3_hdr_offset);
+      l3_hdr_offset_addr = u64xn_add_n (b_m, opaque_addr, offset);
+      i64xn_scatter_u16 (b_m, l3_hdr_offset_addr,
+			 i64xn_add_n (b_m, current_data, (i64) adv));
+
+      /* update current_data & current_length in vlib_buffer_t */
+      if (main_is_l3)
+	{
+	  i64xn_scatter_u16 (b_m, current_data_addr,
+			     i64xn_add_n (b_m, current_data, (i64) adv));
+
+	  offset = STRUCT_OFFSET_OF (vlib_buffer_t, current_length);
+	  current_length_addr = u64xn_add_n (b_m, buf_addr, offset);
+	  current_length =
+	    u64xn_gather_offset_u16 (b_m, current_length_addr, 0);
+	  u64xn_scatter_u16 (b_m, current_length_addr,
+			     u64xn_sub_n (b_m, current_length, (u64) adv));
+	}
+
+      /* update flags in vlib_buffer_t */
+      u32 flag =
+	VNET_BUFFER_F_L2_HDR_OFFSET_VALID | VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+
+      offset = STRUCT_OFFSET_OF (vlib_buffer_t, flags);
+      flags_addr = u64xn_add_n (b_m, buf_addr, offset);
+      flags = u64xn_gather_offset_u32 (b_m, flags_addr, 0);
+      flags = u64xn_or_n (b_m, flags, (u64) flag);
+      u64xn_scatter_u32 (b_m, flags_addr, flags);
+
+      /* vnet_buffer (b[0])->l2.l2_len = adv; */
+      if (!main_is_l3)
+	{
+	  u64xn l2_addr, l2_len_addr;
+
+	  offset = STRUCT_OFFSET_OF (vnet_buffer_opaque_t, l2);
+	  l2_addr = u64xn_add_n (b_m, opaque_addr, offset);
+
+	  offset = STRUCT_OFFSET_OF (struct opaque_l2, l2_len);
+	  l2_len_addr = u64xn_add_n (b_m, l2_addr, offset);
+
+	  u64xn_scatter_u8 (b_m, l2_len_addr, u64xn_splat ((u64) adv));
+	}
+
+      /* next */
+      b += eno;
+      i += eno;
+      etype += eno;
+      tag += eno;
+      dmac += eno;
+    }
+
+  i -= (eno - u64xn_active_eno (b_m, b_m));
+  n_left -= i;
+  ASSERT (n_left == 0);
+  return n_left;
+}
+#endif
+
 static_always_inline void
 eth_input_adv_and_flags_x4 (vlib_buffer_t ** b, int is_l3)
 {
@@ -1088,6 +1220,11 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
   ethernet_interface_t *ei = ethernet_get_interface (em, hi->hw_if_index);
 
   vlib_get_buffers (vm, buffer_indices, b, n_left);
+
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  n_left =
+    eth_input_adv_and_flags_xn (b, n_left, etype, tag, dmac, main_is_l3);
+#endif
 
   while (n_left >= 20)
     {
