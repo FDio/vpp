@@ -69,6 +69,7 @@ typedef struct
   int server_rotor;
   int server_af;
   int server_fails;
+  int is_ip6;
   f64 retry_timer;
 
   /** Cached dns response */
@@ -168,7 +169,8 @@ typedef enum
     DNS46_REPLY_N_ERROR,
 } dns46_reply_error_t;
 
-void vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep);
+void vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep,
+			    int is_aaaa);
 int
 vnet_dns_cname_indirection_nolock (dns_main_t * dm, u32 ep_index, u8 * reply);
 

@@ -536,7 +536,7 @@ vnet_dns_labels_to_name (u8 * label, u8 * full_text, u8 ** parse_from_here)
 }
 
 void
-vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
+vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep, int is_aaaa)
 {
   dns_header_t *h;
   dns_query_t *qp;
@@ -565,22 +565,25 @@ vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
        * it turns out that sending 2x requests - one for an A-record
        * and another for a AAAA-record - seems to work better than
        * sending a DNS_TYPE_ALL request.
+       *
+       * At least it used to.
+       *
+       * Remove the AAAA request since gold-standard dns servers
+       * have stopped answering more than one question per request.
        */
 
       /* Add space for the query header */
-      vec_validate (request, 2 * qp_offset + 2 * sizeof (dns_query_t) - 1);
+      vec_validate (request, 2 * qp_offset + sizeof (dns_query_t) - 1);
 
       qp = (dns_query_t *) (request + qp_offset);
 
-      qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
+      qp->type = is_aaaa ? clib_host_to_net_u16 (DNS_TYPE_AAAA) :
+	clib_host_to_net_u16 (DNS_TYPE_A);
       qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
       qp++;
       clib_memcpy (qp, name_copy, vec_len (name_copy));
       qp = (dns_query_t *) (((u8 *) qp) + vec_len (name_copy));
       vec_free (name_copy);
-
-      qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
-      qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
 
       /* Punch in space for the dns_header_t */
       vec_insert (request, sizeof (dns_header_t), 0);
@@ -593,7 +596,7 @@ vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
       /* Ask for a recursive lookup */
       tmp = DNS_RD | DNS_OPCODE_QUERY;
       h->flags = clib_host_to_net_u16 (tmp);
-      h->qdcount = clib_host_to_net_u16 (2);
+      h->qdcount = clib_host_to_net_u16 (1);
       h->nscount = 0;
       h->arcount = 0;
 
@@ -950,7 +953,7 @@ re_resolve:
       clib_memcpy (pr->dst_address, t->dst_address, count);
     }
 
-  vnet_send_dns_request (dm, ep);
+  vnet_send_dns_request (dm, ep, t->is_ip6);
   dns_cache_unlock (dm);
   return 0;
 }
@@ -1095,6 +1098,7 @@ found_last_request:
   ep = pool_elt_at_index (dm->entries, ep_index);
 
   clib_memset (next_ep, 0, sizeof (*next_ep));
+  next_ep->is_ip6 = ep->is_ip6;
   next_ep->name = vec_dup (cname);
   vec_add1 (next_ep->name, 0);
   _vec_len (next_ep->name) -= 1;
@@ -1117,18 +1121,16 @@ found_last_request:
   qp_offset = vec_len (request);
 
   /* Add space for the query header */
-  vec_validate (request, 2 * qp_offset + 2 * sizeof (dns_query_t) - 1);
+  vec_validate (request, 2 * qp_offset + sizeof (dns_query_t) - 1);
 
   qp = (dns_query_t *) (request + qp_offset);
 
-  qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
+  qp->type = next_ep->is_ip6 ? clib_host_to_net_u16 (DNS_TYPE_AAAA) :
+    clib_host_to_net_u16 (DNS_TYPE_A);
   qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
   clib_memcpy (qp, name_copy, vec_len (name_copy));
   qp = (dns_query_t *) (((u8 *) qp) + vec_len (name_copy));
   vec_free (name_copy);
-
-  qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
-  qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
 
   /* Punch in space for the dns_header_t */
   vec_insert (request, sizeof (dns_header_t), 0);
@@ -1140,7 +1142,7 @@ found_last_request:
 
   /* Ask for a recursive lookup */
   h->flags = clib_host_to_net_u16 (DNS_RD | DNS_OPCODE_QUERY);
-  h->qdcount = clib_host_to_net_u16 (2);
+  h->qdcount = clib_host_to_net_u16 (1);
   h->nscount = 0;
   h->arcount = 0;
 
@@ -1154,7 +1156,7 @@ found_last_request:
    */
 
   vec_add1 (dm->unresolved_entries, next_ep - dm->entries);
-  vnet_send_dns_request (dm, next_ep);
+  vnet_send_dns_request (dm, next_ep, next_ep->is_ip6);
   return (1);
 }
 
@@ -1450,7 +1452,7 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
   t0->request_type = DNS_API_PENDING_NAME_TO_IP;
   t0->client_index = mp->client_index;
   t0->client_context = mp->context;
-
+  t0->is_ip6 = 0;		/*$$$$$ FIXME */
   rv = vnet_dns_resolve_name (dm, mp->name, t0, &ep);
 
   /* Error, e.g. not enabled? Tell the user */

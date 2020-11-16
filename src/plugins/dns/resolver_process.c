@@ -297,7 +297,7 @@ retry_scan (dns_main_t * dm, f64 now)
       ep = pool_elt_at_index (dm->entries, dm->unresolved_entries[i]);
 
       ASSERT ((ep->flags & DNS_CACHE_ENTRY_FLAG_VALID) == 0);
-      vnet_send_dns_request (dm, ep);
+      vnet_send_dns_request (dm, ep, ep->is_ip6);
       dns_cache_unlock (dm);
     }
 }
