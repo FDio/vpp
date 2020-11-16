@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "8dee448b_6f6e26b9",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e6105df3_64b1fbe9",
+      "revId": "7b6e9f978b88f5a0c60d1973c19f60cdc12cc0bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f6dbf7f7_a340fc71",
         "filename": "docs/gettingstarted/developers/fib20/routes.rst",
         "patchSetId": 3
@@ -33,6 +51,24 @@
       "revId": "7b6e9f978b88f5a0c60d1973c19f60cdc12cc0bb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "296787fe_af0f3edd",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "it\u0027s a bad reference.",
+      "parentUuid": "f6dbf7f7_a340fc71",
+      "revId": "7b6e9f978b88f5a0c60d1973c19f60cdc12cc0bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "bfd990b1_dc728526",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "[sub] address family.\nAbbreviation added in the previous sentence.",
+      "parentUuid": "90e27849_2531bab9",
+      "revId": "7b6e9f978b88f5a0c60d1973c19f60cdc12cc0bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3ec3ef74_0f78013a",
         "filename": "docs/gettingstarted/developers/fib20/routes.rst",
         "patchSetId": 3
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "9e0ffcba_699827ae",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "I don\u0027t want to enumerate them all here. I\u0027ll point the reader to read code to find out about the others.",
+      "parentUuid": "3ec3ef74_0f78013a",
+      "revId": "7b6e9f978b88f5a0c60d1973c19f60cdc12cc0bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a1190491_cab24ba9",
         "filename": "docs/gettingstarted/developers/fib20/routes.rst",
         "patchSetId": 3
@@ -84,6 +156,24 @@
       "revId": "7b6e9f978b88f5a0c60d1973c19f60cdc12cc0bb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6bb82a8b_0c46db1a",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "it will glean for each packet. If the ARP gets a response back then an ip_neighbor_t will be added and so a /32 with an attached-nexthop will be added. if no response is received (probably because proxy ARP is not enabled on a peer) then it will ust keep ARPing.\ni added a bit more on P@P interfaces.",
+      "parentUuid": "a1190491_cab24ba9",
+      "revId": "7b6e9f978b88f5a0c60d1973c19f60cdc12cc0bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }

@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "e4c01821_dbbfe02d",
+        "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1713037a_a475b67d",
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "61952bbc_4b729cc1",
         "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
         "patchSetId": 4
@@ -42,6 +60,30 @@
     },
     {
       "key": {
+        "uuid": "43584120_d75f2290",
+        "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "https://www.aje.com/arc/editing-tip-indefinite-article-use-abbreviations/",
+      "parentUuid": "61952bbc_4b729cc1",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 2
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a2cdd2aa_9dffa042",
         "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
         "patchSetId": 4
@@ -62,6 +104,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a37c3065_6e5f6a5c",
+        "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a2cdd2aa_9dffa042",
+      "range": {
+        "startLine": 29,
+        "startChar": 10,
+        "endLine": 29,
+        "endChar": 21
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -112,6 +178,30 @@
     },
     {
       "key": {
+        "uuid": "12f4b0e2_72a6d8aa",
+        "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0524b8a6_712a4ac4",
+      "range": {
+        "startLine": 36,
+        "startChar": 29,
+        "endLine": 36,
+        "endChar": 36
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "55f91511_2a64392c",
         "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
         "patchSetId": 4
@@ -132,6 +222,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0102d8c8_22dea563",
+        "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "55f91511_2a64392c",
+      "range": {
+        "startLine": 37,
+        "startChar": 6,
+        "endLine": 37,
+        "endChar": 11
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -182,6 +296,30 @@
     },
     {
       "key": {
+        "uuid": "c63cf82c_519c7c46",
+        "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "82697b3c_13546272",
+      "range": {
+        "startLine": 66,
+        "startChar": 0,
+        "endLine": 66,
+        "endChar": 4
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "892f2ac1_776053ce",
         "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
         "patchSetId": 4
@@ -228,6 +366,54 @@
     },
     {
       "key": {
+        "uuid": "a57d5df8_78864a7d",
+        "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "892f2ac1_776053ce",
+      "range": {
+        "startLine": 68,
+        "startChar": 53,
+        "endLine": 68,
+        "endChar": 57
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "15a0caa6_5acbbdd5",
+        "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4718522d_050f1ea3",
+      "range": {
+        "startLine": 68,
+        "startChar": 58,
+        "endLine": 68,
+        "endChar": 60
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "31ceb040_fffd0b62",
         "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
         "patchSetId": 4
@@ -248,6 +434,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "be803878_b0666471",
+        "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "31ceb040_fffd0b62",
+      "range": {
+        "startLine": 69,
+        "startChar": 9,
+        "endLine": 69,
+        "endChar": 61
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -274,6 +484,30 @@
     },
     {
       "key": {
+        "uuid": "037d6c36_0afc365e",
+        "filename": "docs/gettingstarted/developers/fib20/dataplane.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fe54728d_c3553fda",
+      "range": {
+        "startLine": 77,
+        "startChar": 30,
+        "endLine": 77,
+        "endChar": 38
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "73675c47_be00b786",
         "filename": "docs/gettingstarted/developers/fib20/dataplane.rst",
         "patchSetId": 4
@@ -294,6 +528,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b88701fc_d0a97e66",
+        "filename": "docs/gettingstarted/developers/fib20/dataplane.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "73675c47_be00b786",
+      "range": {
+        "startLine": 78,
+        "startChar": 61,
+        "endLine": 78,
+        "endChar": 66
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -320,6 +578,30 @@
     },
     {
       "key": {
+        "uuid": "01399a26_e485c9d7",
+        "filename": "docs/gettingstarted/developers/fib20/dataplane.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cfe2251a_122457f8",
+      "range": {
+        "startLine": 88,
+        "startChar": 17,
+        "endLine": 88,
+        "endChar": 29
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "432fbbac_431f1b71",
         "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
         "patchSetId": 4
@@ -340,6 +622,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3620e0a7_7ba14f00",
+        "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "432fbbac_431f1b71",
+      "range": {
+        "startLine": 39,
+        "startChar": 40,
+        "endLine": 40,
+        "endChar": 45
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -366,6 +672,30 @@
     },
     {
       "key": {
+        "uuid": "6c38c8d7_86e6e3fb",
+        "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ab0dc651_88b67662",
+      "range": {
+        "startLine": 48,
+        "startChar": 34,
+        "endLine": 48,
+        "endChar": 36
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d1629842_218f77b6",
         "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
         "patchSetId": 4
@@ -386,6 +716,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bf8ec138_0f052561",
+        "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d1629842_218f77b6",
+      "range": {
+        "startLine": 50,
+        "startChar": 0,
+        "endLine": 50,
+        "endChar": 45
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -412,6 +766,30 @@
     },
     {
       "key": {
+        "uuid": "2dcf9891_708c8ec6",
+        "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0960a61c_8e139018",
+      "range": {
+        "startLine": 52,
+        "startChar": 34,
+        "endLine": 52,
+        "endChar": 36
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6261ccec_4ee7dd57",
         "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
         "patchSetId": 4
@@ -432,6 +810,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1717d7dc_4dc2d18a",
+        "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6261ccec_4ee7dd57",
+      "range": {
+        "startLine": 61,
+        "startChar": 42,
+        "endLine": 61,
+        "endChar": 49
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -458,6 +860,30 @@
     },
     {
       "key": {
+        "uuid": "0478345a_e6db68f6",
+        "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "db43ddc3_4d893840",
+      "range": {
+        "startLine": 63,
+        "startChar": 53,
+        "endLine": 63,
+        "endChar": 64
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6366d5e9_354e7f4a",
         "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
         "patchSetId": 4
@@ -478,6 +904,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f4bb97cf_0f617ef8",
+        "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6366d5e9_354e7f4a",
+      "range": {
+        "startLine": 74,
+        "startChar": 31,
+        "endLine": 74,
+        "endChar": 36
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -504,6 +954,30 @@
     },
     {
       "key": {
+        "uuid": "9d93ea3e_09c2c4b3",
+        "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0c84f95e_8efe7cb1",
+      "range": {
+        "startLine": 86,
+        "startChar": 47,
+        "endLine": 86,
+        "endChar": 53
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "14dd8671_72769d39",
         "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
         "patchSetId": 4
@@ -524,6 +998,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a18efa29_62dc208e",
+        "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "14dd8671_72769d39",
+      "range": {
+        "startLine": 87,
+        "startChar": 64,
+        "endLine": 87,
+        "endChar": 66
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -550,6 +1048,30 @@
     },
     {
       "key": {
+        "uuid": "25aed554_3556ab06",
+        "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a6d898b_097e0461",
+      "range": {
+        "startLine": 89,
+        "startChar": 35,
+        "endLine": 89,
+        "endChar": 37
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9fb495e6_5db46e55",
         "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
         "patchSetId": 4
@@ -570,6 +1092,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "20c03314_17d21bff",
+        "filename": "docs/gettingstarted/developers/fib20/debugging.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9fb495e6_5db46e55",
+      "range": {
+        "startLine": 90,
+        "startChar": 0,
+        "endLine": 90,
+        "endChar": 8
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -596,6 +1142,30 @@
     },
     {
       "key": {
+        "uuid": "70d52d83_816d8298",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "71f80021_7a4bed09",
+      "range": {
+        "startLine": 39,
+        "startChar": 33,
+        "endLine": 39,
+        "endChar": 38
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4b723f1c_084a054b",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -616,6 +1186,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0c9bccdb_50af0b2c",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4b723f1c_084a054b",
+      "range": {
+        "startLine": 45,
+        "startChar": 60,
+        "endLine": 45,
+        "endChar": 66
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -642,6 +1236,30 @@
     },
     {
       "key": {
+        "uuid": "3fdb8422_b68519c9",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "012da8f7_0abd6e97",
+      "range": {
+        "startLine": 48,
+        "startChar": 13,
+        "endLine": 48,
+        "endChar": 18
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "72ab9d70_8f50fc14",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -662,6 +1280,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ee1005d3_3b94329e",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "https://www.aje.com/arc/editing-tip-indefinite-article-use-abbreviations/",
+      "parentUuid": "72ab9d70_8f50fc14",
+      "range": {
+        "startLine": 53,
+        "startChar": 0,
+        "endLine": 53,
+        "endChar": 2
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -711,6 +1353,54 @@
     },
     {
       "key": {
+        "uuid": "744ef8c8_d951dab0",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1628e4a8_e5dfaa17",
+      "range": {
+        "startLine": 67,
+        "startChar": 68,
+        "endLine": 67,
+        "endChar": 70
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "de9f5f21_d85f4aae",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d52cb32b_ac573244",
+      "range": {
+        "startLine": 67,
+        "startChar": 52,
+        "endLine": 67,
+        "endChar": 56
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "99b1296b_87e32fde",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -731,6 +1421,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b47a6e96_d027e650",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "try again next year :)",
+      "parentUuid": "99b1296b_87e32fde",
+      "range": {
+        "startLine": 68,
+        "startChar": 44,
+        "endLine": 68,
+        "endChar": 69
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -757,6 +1471,30 @@
     },
     {
       "key": {
+        "uuid": "5570672e_2fdd69c3",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6e0a4373_c6404fb6",
+      "range": {
+        "startLine": 69,
+        "startChar": 18,
+        "endLine": 69,
+        "endChar": 24
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0a624e92_07d25c37",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -777,6 +1515,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "63e732f2_53753202",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0a624e92_07d25c37",
+      "range": {
+        "startLine": 72,
+        "startChar": 36,
+        "endLine": 72,
+        "endChar": 37
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -803,6 +1565,30 @@
     },
     {
       "key": {
+        "uuid": "901487b9_699b2ac9",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "42587ab9_c599c671",
+      "range": {
+        "startLine": 83,
+        "startChar": 9,
+        "endLine": 83,
+        "endChar": 15
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8fd0db90_496d623c",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -823,6 +1609,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f78085e4_aba802e7",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8fd0db90_496d623c",
+      "range": {
+        "startLine": 90,
+        "startChar": 16,
+        "endLine": 90,
+        "endChar": 57
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -849,6 +1659,30 @@
     },
     {
       "key": {
+        "uuid": "f5109f4d_acbbd82b",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3460fe46_a868b845",
+      "range": {
+        "startLine": 106,
+        "startChar": 0,
+        "endLine": 106,
+        "endChar": 2
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a1265657_9892d70f",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -869,6 +1703,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6931a295_180b17d6",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "yes it should",
+      "parentUuid": "a1265657_9892d70f",
+      "range": {
+        "startLine": 183,
+        "startChar": 14,
+        "endLine": 183,
+        "endChar": 30
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -895,6 +1753,30 @@
     },
     {
       "key": {
+        "uuid": "43d76205_2521105a",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f8afb413_f5139a6a",
+      "range": {
+        "startLine": 185,
+        "startChar": 25,
+        "endLine": 185,
+        "endChar": 26
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dca04b5e_aaa81c45",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -918,6 +1800,30 @@
     },
     {
       "key": {
+        "uuid": "eef18a18_5e94d74b",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dca04b5e_aaa81c45",
+      "range": {
+        "startLine": 216,
+        "startChar": 42,
+        "endLine": 216,
+        "endChar": 45
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f5c1d7e0_f2cd4337",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -938,6 +1844,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2fe59b8e_20fc43d0",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "changed to:\n\"In the FIB vernacular we say it has been \u0027in-place\nmodified\u0027, a somewhat linguistically redundant expression, but one that serves\nto emphasise that it was changed whilst still be part of the graph, it\nwas never at any point removed from the graph and re-added, and it was\nmodified without worker barrier lock held.\"",
+      "parentUuid": "f5c1d7e0_f2cd4337",
+      "range": {
+        "startLine": 217,
+        "startChar": 58,
+        "endLine": 218,
+        "endChar": 8
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -987,6 +1917,54 @@
     },
     {
       "key": {
+        "uuid": "7ffd3ae9_104bdef0",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9c669657_c070f29e",
+      "range": {
+        "startLine": 231,
+        "startChar": 25,
+        "endLine": 231,
+        "endChar": 37
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7792f3b1_474f1248",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "00e3418a_f76c40eb",
+      "range": {
+        "startLine": 231,
+        "startChar": 39,
+        "endLine": 231,
+        "endChar": 40
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f1f26d75_1e08e5d9",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1007,6 +1985,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "613931db_02cb1859",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "the former",
+      "parentUuid": "f1f26d75_1e08e5d9",
+      "range": {
+        "startLine": 237,
+        "startChar": 52,
+        "endLine": 237,
+        "endChar": 58
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1033,6 +2035,30 @@
     },
     {
       "key": {
+        "uuid": "db4f79b4_f1e66810",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 246,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "33ca5a24_70a0995a",
+      "range": {
+        "startLine": 246,
+        "startChar": 0,
+        "endLine": 246,
+        "endChar": 8
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d3ae22ec_f66a2fe0",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1053,6 +2079,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c465f46b_5eed0859",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d3ae22ec_f66a2fe0",
+      "range": {
+        "startLine": 255,
+        "startChar": 0,
+        "endLine": 255,
+        "endChar": 25
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1079,6 +2129,30 @@
     },
     {
       "key": {
+        "uuid": "73662597_1643b747",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 278,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "good spot ;)",
+      "parentUuid": "a961235a_d66b1b1e",
+      "range": {
+        "startLine": 278,
+        "startChar": 0,
+        "endLine": 278,
+        "endChar": 9
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "66bd5789_f216248b",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1099,6 +2173,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "61862eba_bc435561",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "66bd5789_f216248b",
+      "range": {
+        "startLine": 287,
+        "startChar": 10,
+        "endLine": 287,
+        "endChar": 24
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1125,6 +2223,30 @@
     },
     {
       "key": {
+        "uuid": "251c22a2_f40d9577",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "17ec454f_887f25e2",
+      "range": {
+        "startLine": 288,
+        "startChar": 34,
+        "endLine": 288,
+        "endChar": 35
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6e8f5fa2_faad0f01",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1145,6 +2267,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "53e6bb50_166f1726",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "second though quoted.",
+      "parentUuid": "6e8f5fa2_faad0f01",
+      "range": {
+        "startLine": 289,
+        "startChar": 36,
+        "endLine": 289,
+        "endChar": 59
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1171,6 +2317,30 @@
     },
     {
       "key": {
+        "uuid": "b66fb920_9ad540ae",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 296,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c85bd92b_2de163b7",
+      "range": {
+        "startLine": 296,
+        "startChar": 17,
+        "endLine": 296,
+        "endChar": 24
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1c09c8cc_b2de794f",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1182,6 +2352,30 @@
       "writtenOn": "2020-11-16T05:41:38Z",
       "side": 1,
       "message": "Isn\u0027t this specific to an IPv4 BGP peer?",
+      "range": {
+        "startLine": 299,
+        "startChar": 14,
+        "endLine": 299,
+        "endChar": 17
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "00edf5d0_8153619c",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 299,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "I\u0027m not sure I follow what you want me to make more explicit here.\na /32 is certainly a description of a BGP peer known via an IPv4 address :) but this whole section is also applicable to v6 (I have added a note to that effect at the top).",
+      "parentUuid": "1c09c8cc_b2de794f",
       "range": {
         "startLine": 299,
         "startChar": 14,
@@ -1217,6 +2411,30 @@
     },
     {
       "key": {
+        "uuid": "2a1385e4_654bc78d",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 361,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d02d837a_4ea92952",
+      "range": {
+        "startLine": 361,
+        "startChar": 10,
+        "endLine": 361,
+        "endChar": 13
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "02797e15_ac7e43fb",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1237,6 +2455,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "49928803_703832b8",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 365,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "02797e15_ac7e43fb",
+      "range": {
+        "startLine": 365,
+        "startChar": 39,
+        "endLine": 365,
+        "endChar": 41
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1263,6 +2505,30 @@
     },
     {
       "key": {
+        "uuid": "f44e8ba3_a9d1b46f",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 366,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6c91d9ad_6459c47d",
+      "range": {
+        "startLine": 366,
+        "startChar": 31,
+        "endLine": 366,
+        "endChar": 36
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3e99449b_f59bc017",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1283,6 +2549,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "af6923a4_6e7e7a91",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 375,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3e99449b_f59bc017",
+      "range": {
+        "startLine": 375,
+        "startChar": 11,
+        "endLine": 375,
+        "endChar": 16
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1309,6 +2599,30 @@
     },
     {
       "key": {
+        "uuid": "9d7817a5_8a2f4e55",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0c111135_f933dabc",
+      "range": {
+        "startLine": 376,
+        "startChar": 23,
+        "endLine": 376,
+        "endChar": 24
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "48eb321c_cbb89aa6",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1329,6 +2643,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "884d206d_ede1870d",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "48eb321c_cbb89aa6",
+      "range": {
+        "startLine": 380,
+        "startChar": 41,
+        "endLine": 380,
+        "endChar": 42
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1378,6 +2716,54 @@
     },
     {
       "key": {
+        "uuid": "8b5a20ef_31824a45",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 433,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8e569e3a_f1e0fa9b",
+      "range": {
+        "startLine": 433,
+        "startChar": 30,
+        "endLine": 433,
+        "endChar": 33
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e133074d_2dd21317",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 433,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c5b3dac5_3ef8acdf",
+      "range": {
+        "startLine": 433,
+        "startChar": 51,
+        "endLine": 433,
+        "endChar": 59
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c2cf0c80_29b3c0c0",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1398,6 +2784,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f566cd51_f32b4988",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 434,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "the shame....",
+      "parentUuid": "c2cf0c80_29b3c0c0",
+      "range": {
+        "startLine": 434,
+        "startChar": 12,
+        "endLine": 434,
+        "endChar": 16
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1424,6 +2834,30 @@
     },
     {
       "key": {
+        "uuid": "aedd0158_b1fae2a3",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 438,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "i prefer it the way it is.",
+      "parentUuid": "bf1c89b9_31dabd98",
+      "range": {
+        "startLine": 438,
+        "startChar": 52,
+        "endLine": 438,
+        "endChar": 56
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2bea8703_24e7ae0c",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1444,6 +2878,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "058222b8_237d6abe",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "let\u0027s never speak of this again ...",
+      "parentUuid": "2bea8703_24e7ae0c",
+      "range": {
+        "startLine": 439,
+        "startChar": 28,
+        "endLine": 439,
+        "endChar": 32
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1470,6 +2928,30 @@
     },
     {
       "key": {
+        "uuid": "51753f43_f5f3224e",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bb05e3c1_e400857a",
+      "range": {
+        "startLine": 440,
+        "startChar": 18,
+        "endLine": 440,
+        "endChar": 19
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d7e98a4b_7716adb6",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1490,6 +2972,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "03ac34ff_e5fc3a7f",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 447,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d7e98a4b_7716adb6",
+      "range": {
+        "startLine": 447,
+        "startChar": 17,
+        "endLine": 447,
+        "endChar": 19
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1516,6 +3022,30 @@
     },
     {
       "key": {
+        "uuid": "e8e12acd_d5a0ab82",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 448,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "updated.",
+      "parentUuid": "eb714e0d_5806ef6e",
+      "range": {
+        "startLine": 448,
+        "startChar": 62,
+        "endLine": 448,
+        "endChar": 64
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0219bb1c_617971bb",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1536,6 +3066,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "25fcb2bc_782cdf89",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 453,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0219bb1c_617971bb",
+      "range": {
+        "startLine": 453,
+        "startChar": 14,
+        "endLine": 453,
+        "endChar": 15
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1562,6 +3116,30 @@
     },
     {
       "key": {
+        "uuid": "c1124bfd_162c9dfc",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 455,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fac2a1ec_425af002",
+      "range": {
+        "startLine": 455,
+        "startChar": 0,
+        "endLine": 455,
+        "endChar": 1
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0e27badc_75c2ad79",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1582,6 +3160,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6857972e_64d5ef20",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 456,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0e27badc_75c2ad79",
+      "range": {
+        "startLine": 456,
+        "startChar": 22,
+        "endLine": 456,
+        "endChar": 24
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1631,6 +3233,54 @@
     },
     {
       "key": {
+        "uuid": "c23616ba_7e4d4dda",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 457,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "79753a04_f41c77c8",
+      "range": {
+        "startLine": 457,
+        "startChar": 55,
+        "endLine": 457,
+        "endChar": 57
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a209be88_6f361ab4",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 457,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5f7145ae_93a1b9ae",
+      "range": {
+        "startLine": 457,
+        "startChar": 0,
+        "endLine": 457,
+        "endChar": 1
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5d4dc19c_fda48a8e",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1651,6 +3301,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "524f78c6_a253bc29",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 458,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5d4dc19c_fda48a8e",
+      "range": {
+        "startLine": 458,
+        "startChar": 19,
+        "endLine": 458,
+        "endChar": 23
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1677,6 +3351,30 @@
     },
     {
       "key": {
+        "uuid": "bfb54ba2_79699065",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 464,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6c2cc7aa_b71deaf1",
+      "range": {
+        "startLine": 464,
+        "startChar": 0,
+        "endLine": 464,
+        "endChar": 1
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2364ddc6_e9457013",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1697,6 +3395,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8e8156be_b2921593",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2364ddc6_e9457013",
+      "range": {
+        "startLine": 467,
+        "startChar": 23,
+        "endLine": 467,
+        "endChar": 24
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1723,6 +3445,30 @@
     },
     {
       "key": {
+        "uuid": "a8c8c47b_73e4db07",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 478,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b08efa22_8229653e",
+      "range": {
+        "startLine": 475,
+        "startChar": 4,
+        "endLine": 478,
+        "endChar": 30
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "df1af2eb_250f1f15",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1743,6 +3489,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1c1656d1_f3501e67",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 490,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "df1af2eb_250f1f15",
+      "range": {
+        "startLine": 490,
+        "startChar": 31,
+        "endLine": 490,
+        "endChar": 32
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1769,6 +3539,30 @@
     },
     {
       "key": {
+        "uuid": "224a4e03_9f40e241",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "updated so it\u0027s less rambling.",
+      "parentUuid": "60f13385_3f0f5982",
+      "range": {
+        "startLine": 492,
+        "startChar": 53,
+        "endLine": 496,
+        "endChar": 52
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "00d0e3d0_c6b6e636",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1789,6 +3583,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "65e05830_103208ba",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 500,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "00d0e3d0_c6b6e636",
+      "range": {
+        "startLine": 500,
+        "startChar": 27,
+        "endLine": 500,
+        "endChar": 30
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1815,6 +3633,30 @@
     },
     {
       "key": {
+        "uuid": "bf425948_fd918fc0",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cc538ffc_f725c40b",
+      "range": {
+        "startLine": 502,
+        "startChar": 6,
+        "endLine": 502,
+        "endChar": 14
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "64ccf583_911ab752",
         "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
         "patchSetId": 4
@@ -1835,6 +3677,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7e72b291_7558472e",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 524,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "64ccf583_911ab752",
+      "range": {
+        "startLine": 524,
+        "startChar": 38,
+        "endLine": 524,
+        "endChar": 41
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1861,6 +3727,30 @@
     },
     {
       "key": {
+        "uuid": "c25a0865_274322f3",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 534,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d72a0104_087ed2c8",
+      "range": {
+        "startLine": 534,
+        "startChar": 16,
+        "endLine": 534,
+        "endChar": 17
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b9387276_420c5998",
         "filename": "docs/gettingstarted/developers/fib20/graphs.rst",
         "patchSetId": 4
@@ -1881,6 +3771,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "574ab984_903644fe",
+        "filename": "docs/gettingstarted/developers/fib20/graphs.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b9387276_420c5998",
+      "range": {
+        "startLine": 31,
+        "startChar": 50,
+        "endLine": 31,
+        "endChar": 58
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1907,6 +3821,30 @@
     },
     {
       "key": {
+        "uuid": "62052b5b_22305483",
+        "filename": "docs/gettingstarted/developers/fib20/graphwalks.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "895ed16d_06e86a83",
+      "range": {
+        "startLine": 11,
+        "startChar": 42,
+        "endLine": 11,
+        "endChar": 43
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "62916997_c931f85e",
         "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
         "patchSetId": 4
@@ -1927,6 +3865,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0c9c1d72_c402c0d2",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "62916997_c931f85e",
+      "range": {
+        "startLine": 12,
+        "startChar": 8,
+        "endLine": 12,
+        "endChar": 12
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -1953,6 +3915,30 @@
     },
     {
       "key": {
+        "uuid": "5b0dd793_1a0909ea",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "changed.",
+      "parentUuid": "82a52e03_ab49357a",
+      "range": {
+        "startLine": 16,
+        "startChar": 35,
+        "endLine": 17,
+        "endChar": 41
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "43d3907c_6071c066",
         "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
         "patchSetId": 4
@@ -1973,6 +3959,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3fb47d7f_0d94ae0a",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "an english-ism rather than an american-ism?",
+      "parentUuid": "43d3907c_6071c066",
+      "range": {
+        "startLine": 22,
+        "startChar": 10,
+        "endLine": 22,
+        "endChar": 17
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2045,6 +4055,30 @@
     },
     {
       "key": {
+        "uuid": "184e844d_d90563b2",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b417d493_cf455117",
+      "range": {
+        "startLine": 33,
+        "startChar": 36,
+        "endLine": 33,
+        "endChar": 37
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6196b14c_7fb4012f",
         "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
         "patchSetId": 4
@@ -2091,6 +4125,54 @@
     },
     {
       "key": {
+        "uuid": "7d643d7b_46598a9b",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5084ffce_ac0f5457",
+      "range": {
+        "startLine": 35,
+        "startChar": 4,
+        "endLine": 35,
+        "endChar": 8
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7ca9a9fc_e4c6feba",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6196b14c_7fb4012f",
+      "range": {
+        "startLine": 35,
+        "startChar": 29,
+        "endLine": 35,
+        "endChar": 35
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a33b0a5_4b03dda6",
         "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
         "patchSetId": 4
@@ -2111,6 +4193,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "afa16c3c_0dee5539",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1a33b0a5_4b03dda6",
+      "range": {
+        "startLine": 40,
+        "startChar": 56,
+        "endLine": 40,
+        "endChar": 57
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2137,6 +4243,30 @@
     },
     {
       "key": {
+        "uuid": "ed68aaa0_29d11d27",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "71429e30_61238d89",
+      "range": {
+        "startLine": 51,
+        "startChar": 0,
+        "endLine": 51,
+        "endChar": 13
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1665b659_a281c5b7",
         "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
         "patchSetId": 4
@@ -2157,6 +4287,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "06e4a75e_2d6d5b91",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1665b659_a281c5b7",
+      "range": {
+        "startLine": 54,
+        "startChar": 3,
+        "endLine": 54,
+        "endChar": 6
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2183,6 +4337,30 @@
     },
     {
       "key": {
+        "uuid": "fdc5c4a8_f63f75c5",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "in?",
+      "parentUuid": "8a2a5856_00271a21",
+      "range": {
+        "startLine": 57,
+        "startChar": 7,
+        "endLine": 57,
+        "endChar": 9
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2f844b61_dde05a4f",
         "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
         "patchSetId": 4
@@ -2203,6 +4381,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3a69b814_a0979914",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2f844b61_dde05a4f",
+      "range": {
+        "startLine": 63,
+        "startChar": 5,
+        "endLine": 63,
+        "endChar": 12
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2229,6 +4431,30 @@
     },
     {
       "key": {
+        "uuid": "c75c849e_a7c568fb",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e9068ef1_63a80f4f",
+      "range": {
+        "startLine": 65,
+        "startChar": 52,
+        "endLine": 65,
+        "endChar": 56
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c4db6d19_ccd5c72d",
         "filename": "docs/gettingstarted/developers/fib20/mplsfib.rst",
         "patchSetId": 4
@@ -2249,6 +4475,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ec65f3be_acbd9dfe",
+        "filename": "docs/gettingstarted/developers/fib20/mplsfib.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c4db6d19_ccd5c72d",
+      "range": {
+        "startLine": 15,
+        "startChar": 51,
+        "endLine": 15,
+        "endChar": 59
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2275,6 +4525,30 @@
     },
     {
       "key": {
+        "uuid": "844e4f9a_fad373bd",
+        "filename": "docs/gettingstarted/developers/fib20/mplsfib.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c440a790_973ff423",
+      "range": {
+        "startLine": 16,
+        "startChar": 24,
+        "endLine": 16,
+        "endChar": 29
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "044168b8_7af474e6",
         "filename": "docs/gettingstarted/developers/fib20/mplsfib.rst",
         "patchSetId": 4
@@ -2298,6 +4572,30 @@
     },
     {
       "key": {
+        "uuid": "a03508bf_1a0726df",
+        "filename": "docs/gettingstarted/developers/fib20/mplsfib.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "044168b8_7af474e6",
+      "range": {
+        "startLine": 18,
+        "startChar": 52,
+        "endLine": 18,
+        "endChar": 54
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3439754e_f68061bd",
         "filename": "docs/gettingstarted/developers/fib20/mplsfib.rst",
         "patchSetId": 4
@@ -2315,6 +4613,24 @@
     },
     {
       "key": {
+        "uuid": "7cec1bc2_7f0459e0",
+        "filename": "docs/gettingstarted/developers/fib20/mplsfib.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3439754e_f68061bd",
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "df074612_29efd388",
         "filename": "docs/gettingstarted/developers/fib20/mplsfib.rst",
         "patchSetId": 4
@@ -2329,6 +4645,24 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1ac0e08e_f08e0129",
+        "filename": "docs/gettingstarted/developers/fib20/mplsfib.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "df074612_29efd388",
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2355,6 +4689,30 @@
     },
     {
       "key": {
+        "uuid": "583b90e0_a585106b",
+        "filename": "docs/gettingstarted/developers/fib20/mplsfib.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "14183b42_15773d40",
+      "range": {
+        "startLine": 37,
+        "startChar": 0,
+        "endLine": 37,
+        "endChar": 1
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bfbcbebe_eec81457",
         "filename": "docs/gettingstarted/developers/fib20/mplsfib.rst",
         "patchSetId": 4
@@ -2375,6 +4733,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "173bf20e_8216145b",
+        "filename": "docs/gettingstarted/developers/fib20/mplsfib.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "one is not so discourteous to ones \u0027u\u0027s 😊",
+      "parentUuid": "bfbcbebe_eec81457",
+      "range": {
+        "startLine": 38,
+        "startChar": 13,
+        "endLine": 38,
+        "endChar": 19
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2401,6 +4783,30 @@
     },
     {
       "key": {
+        "uuid": "d208af33_55fcb568",
+        "filename": "docs/gettingstarted/developers/fib20/multicast.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f1d36fda_17fec0bc",
+      "range": {
+        "startLine": 12,
+        "startChar": 7,
+        "endLine": 12,
+        "endChar": 8
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2d61e9d0_1d0b3026",
         "filename": "docs/gettingstarted/developers/fib20/multicast.rst",
         "patchSetId": 4
@@ -2421,6 +4827,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3cda5511_fe55a206",
+        "filename": "docs/gettingstarted/developers/fib20/multicast.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2d61e9d0_1d0b3026",
+      "range": {
+        "startLine": 18,
+        "startChar": 32,
+        "endLine": 18,
+        "endChar": 36
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2447,6 +4877,30 @@
     },
     {
       "key": {
+        "uuid": "cff4d083_7927ecef",
+        "filename": "docs/gettingstarted/developers/fib20/multicast.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0a41e05d_b129be65",
+      "range": {
+        "startLine": 29,
+        "startChar": 18,
+        "endLine": 29,
+        "endChar": 28
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "476e443a_4b780617",
         "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
         "patchSetId": 4
@@ -2467,6 +4921,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a2f16e07_20396b2c",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "indeed, I bowed to pressure and/or precedent to drop the \"u\"s in the code. But in this documentation I favour the Queen\u0027s form of neighbour to add some colour.",
+      "parentUuid": "476e443a_4b780617",
+      "range": {
+        "startLine": 8,
+        "startChar": 10,
+        "endLine": 8,
+        "endChar": 19
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2493,6 +4971,30 @@
     },
     {
       "key": {
+        "uuid": "ae589843_a28f57ab",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "58b32d7a_6544bbf7",
+      "range": {
+        "startLine": 12,
+        "startChar": 11,
+        "endLine": 12,
+        "endChar": 13
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3b418d21_876ac218",
         "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
         "patchSetId": 4
@@ -2513,6 +5015,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "77a96be6_a0908920",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3b418d21_876ac218",
+      "range": {
+        "startLine": 16,
+        "startChar": 64,
+        "endLine": 16,
+        "endChar": 68
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2539,6 +5065,30 @@
     },
     {
       "key": {
+        "uuid": "aefde188_a290ec1b",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "444318ca_c2eb25d1",
+      "range": {
+        "startLine": 22,
+        "startChar": 91,
+        "endLine": 22,
+        "endChar": 95
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c091472b_e9960cc4",
         "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
         "patchSetId": 4
@@ -2559,6 +5109,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "73e207f0_bd933461",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c091472b_e9960cc4",
+      "range": {
+        "startLine": 29,
+        "startChar": 0,
+        "endLine": 29,
+        "endChar": 5
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2585,6 +5159,30 @@
     },
     {
       "key": {
+        "uuid": "4b57e5ae_595cf3e2",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "946f9929_47d379b9",
+      "range": {
+        "startLine": 34,
+        "startChar": 86,
+        "endLine": 34,
+        "endChar": 88
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4718c642_d04a983d",
         "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
         "patchSetId": 4
@@ -2605,6 +5203,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c051a632_5cbe3ad9",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4718c642_d04a983d",
+      "range": {
+        "startLine": 39,
+        "startChar": 42,
+        "endLine": 39,
+        "endChar": 48
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2631,6 +5253,30 @@
     },
     {
       "key": {
+        "uuid": "838bfa25_0f44c104",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "much more regal :)",
+      "parentUuid": "bc1a7d56_9ac80da1",
+      "range": {
+        "startLine": 49,
+        "startChar": 50,
+        "endLine": 49,
+        "endChar": 61
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "cbda4b43_db8bd0eb",
         "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
         "patchSetId": 4
@@ -2651,6 +5297,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "181e8951_7d65629c",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "what\u0027s inside the parenthesis is not a complete sentence, so the full stop goes outside.",
+      "parentUuid": "cbda4b43_db8bd0eb",
+      "range": {
+        "startLine": 55,
+        "startChar": 15,
+        "endLine": 55,
+        "endChar": 17
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2677,6 +5347,30 @@
     },
     {
       "key": {
+        "uuid": "a3138254_66a1ddfd",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1247ed24_0091cd06",
+      "range": {
+        "startLine": 72,
+        "startChar": 48,
+        "endLine": 72,
+        "endChar": 52
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "410ea305_03ed0c11",
         "filename": "docs/gettingstarted/developers/fib20/routes.rst",
         "patchSetId": 4
@@ -2697,6 +5391,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2d197d52_12893ea7",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "410ea305_03ed0c11",
+      "range": {
+        "startLine": 9,
+        "startChar": 37,
+        "endLine": 9,
+        "endChar": 46
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2723,6 +5441,30 @@
     },
     {
       "key": {
+        "uuid": "36d51ab8_81753337",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1ee8ec8a_0d73e3c2",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 2
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7d89c9d0_c4181840",
         "filename": "docs/gettingstarted/developers/fib20/routes.rst",
         "patchSetId": 4
@@ -2743,6 +5485,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6ea21c74_88f0910c",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7d89c9d0_c4181840",
+      "range": {
+        "startLine": 29,
+        "startChar": 27,
+        "endLine": 29,
+        "endChar": 35
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2769,6 +5535,30 @@
     },
     {
       "key": {
+        "uuid": "35164984_b1d4db7b",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "i abhor a dangling preposition as much as a dangling pointer ;)",
+      "parentUuid": "4c25d34d_0af25303",
+      "range": {
+        "startLine": 46,
+        "startChar": 31,
+        "endLine": 46,
+        "endChar": 53
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "557ff3da_9e2b4f80",
         "filename": "docs/gettingstarted/developers/fib20/routes.rst",
         "patchSetId": 4
@@ -2789,6 +5579,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1aafd017_e9dba589",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "557ff3da_9e2b4f80",
+      "range": {
+        "startLine": 63,
+        "startChar": 34,
+        "endLine": 63,
+        "endChar": 55
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2838,6 +5652,54 @@
     },
     {
       "key": {
+        "uuid": "770699da_9468998a",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "258014f1_5ff5a6a9",
+      "range": {
+        "startLine": 72,
+        "startChar": 56,
+        "endLine": 72,
+        "endChar": 74
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4596d514_69e35c50",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "65235a9a_576f38ea",
+      "range": {
+        "startLine": 72,
+        "startChar": 40,
+        "endLine": 72,
+        "endChar": 54
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c02d1457_7f1c58ff",
         "filename": "docs/gettingstarted/developers/fib20/routes.rst",
         "patchSetId": 4
@@ -2858,6 +5720,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "91d6ebc5_477ff397",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c02d1457_7f1c58ff",
+      "range": {
+        "startLine": 74,
+        "startChar": 0,
+        "endLine": 74,
+        "endChar": 1
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2907,6 +5793,54 @@
     },
     {
       "key": {
+        "uuid": "ab983ab3_d1681f86",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "582c1c0a_9f76a4f5",
+      "range": {
+        "startLine": 91,
+        "startChar": 362,
+        "endLine": 91,
+        "endChar": 371
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3ffda216_de2c5664",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c8d4f8ab_948a1a9b",
+      "range": {
+        "startLine": 91,
+        "startChar": 326,
+        "endLine": 91,
+        "endChar": 335
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0b0b6664_edaa5e5c",
         "filename": "docs/gettingstarted/developers/fib20/routes.rst",
         "patchSetId": 4
@@ -2927,6 +5861,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8a7e9b2a_d99a9f55",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0b0b6664_edaa5e5c",
+      "range": {
+        "startLine": 137,
+        "startChar": 63,
+        "endLine": 137,
+        "endChar": 64
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -2953,6 +5911,30 @@
     },
     {
       "key": {
+        "uuid": "a0f0ee4d_5316444a",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ef560d0a_4d862b1a",
+      "range": {
+        "startLine": 138,
+        "startChar": 68,
+        "endLine": 138,
+        "endChar": 75
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7a13f96b_4268e00a",
         "filename": "docs/gettingstarted/developers/fib20/routes.rst",
         "patchSetId": 4
@@ -2973,6 +5955,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "46538fbb_f4eb7ff6",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-16T09:50:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7a13f96b_4268e00a",
+      "range": {
+        "startLine": 169,
+        "startChar": 0,
+        "endLine": 169,
+        "endChar": 2
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
