@@ -661,6 +661,103 @@ is_sec_dmac_bad_x4 (u64 * dmacs, u64 hwaddr)
 }
 #endif
 
+#ifdef CLIB_HAVE_VEC_SCALABLE
+static_always_inline u32
+eth_input_sec_dmac_check_xn (u64 * dmac, u8 * dmac_bad, i32 n_left,
+			     u64 hwaddr)
+{
+  u32 bad = 0;
+  i32 i = 0;
+  i32 eno_b8 = (i32) u8xn_max_elts ();
+  i32 eno_b64 = (i32) u64xn_max_elts ();
+  while (i < n_left)
+    {
+      u64xn mac_mask, hwmac;
+      boolxn mac_m0, mac_m1, mac_m2, mac_m3;
+      boolxn mac_m4, mac_m5, mac_m6, mac_m7;
+      u64xn mac0, mac1, mac2, mac3, mac4, mac5, mac6, mac7;
+      boolxn r0, r1, r2, r3, r4, r5, r6, r7;
+      u64xn mac_bad0, mac_bad1, mac_bad2, mac_bad3;
+      u64xn mac_bad4, mac_bad5, mac_bad6, mac_bad7;
+      boolxn mac_m;
+      u8xn mac_bad;
+
+      mac_m = u8xn_elt_mask (i, n_left);
+      mac_bad = u8xn_load_unaligned (mac_m, (u8 *) dmac_bad);
+
+      /* skip any that have already matched */
+      if (!u8xn_reduction_or (mac_m, mac_bad))
+	{
+	  dmac += eno_b8;
+	  dmac_bad += eno_b8;
+	  i += eno_b8;
+	  continue;
+	}
+
+      /* handle unmaptched */
+      hwmac = u64xn_splat (hwaddr);
+      mac_mask = u64xn_splat (DMAC_MASK);
+
+      mac_m0 = u64xn_elt_mask (i + eno_b64 * 0, n_left);
+      mac_m1 = u64xn_elt_mask (i + eno_b64 * 1, n_left);
+      mac_m2 = u64xn_elt_mask (i + eno_b64 * 2, n_left);
+      mac_m3 = u64xn_elt_mask (i + eno_b64 * 3, n_left);
+      mac_m4 = u64xn_elt_mask (i + eno_b64 * 4, n_left);
+      mac_m5 = u64xn_elt_mask (i + eno_b64 * 5, n_left);
+      mac_m6 = u64xn_elt_mask (i + eno_b64 * 6, n_left);
+      mac_m7 = u64xn_elt_mask (i + eno_b64 * 7, n_left);
+      mac0 = u64xn_load_unaligned (mac_m0, (u64 *) dmac + eno_b64 * 0);
+      mac1 = u64xn_load_unaligned (mac_m1, (u64 *) dmac + eno_b64 * 1);
+      mac2 = u64xn_load_unaligned (mac_m2, (u64 *) dmac + eno_b64 * 2);
+      mac3 = u64xn_load_unaligned (mac_m3, (u64 *) dmac + eno_b64 * 3);
+      mac4 = u64xn_load_unaligned (mac_m4, (u64 *) dmac + eno_b64 * 4);
+      mac5 = u64xn_load_unaligned (mac_m5, (u64 *) dmac + eno_b64 * 5);
+      mac6 = u64xn_load_unaligned (mac_m6, (u64 *) dmac + eno_b64 * 6);
+      mac7 = u64xn_load_unaligned (mac_m7, (u64 *) dmac + eno_b64 * 7);
+      mac0 = u64xn_and (mac_m0, mac0, mac_mask);
+      mac1 = u64xn_and (mac_m1, mac1, mac_mask);
+      mac2 = u64xn_and (mac_m2, mac2, mac_mask);
+      mac3 = u64xn_and (mac_m3, mac3, mac_mask);
+      mac4 = u64xn_and (mac_m4, mac4, mac_mask);
+      mac5 = u64xn_and (mac_m5, mac5, mac_mask);
+      mac6 = u64xn_and (mac_m6, mac6, mac_mask);
+      mac7 = u64xn_and (mac_m7, mac7, mac_mask);
+      r0 = u64xn_unequal (mac_m0, mac0, hwmac);
+      r1 = u64xn_unequal (mac_m1, mac1, hwmac);
+      r2 = u64xn_unequal (mac_m2, mac2, hwmac);
+      r3 = u64xn_unequal (mac_m3, mac3, hwmac);
+      r4 = u64xn_unequal (mac_m4, mac4, hwmac);
+      r5 = u64xn_unequal (mac_m5, mac5, hwmac);
+      r6 = u64xn_unequal (mac_m6, mac6, hwmac);
+      r7 = u64xn_unequal (mac_m7, mac7, hwmac);
+      mac_bad0 = u64xn_splat_zero (r0, (u64) ~ 0);
+      mac_bad1 = u64xn_splat_zero (r1, (u64) ~ 0);
+      mac_bad2 = u64xn_splat_zero (r2, (u64) ~ 0);
+      mac_bad3 = u64xn_splat_zero (r3, (u64) ~ 0);
+      mac_bad4 = u64xn_splat_zero (r4, (u64) ~ 0);
+      mac_bad5 = u64xn_splat_zero (r5, (u64) ~ 0);
+      mac_bad6 = u64xn_splat_zero (r6, (u64) ~ 0);
+      mac_bad7 = u64xn_splat_zero (r7, (u64) ~ 0);
+      u64xn_store_u8 (mac_m0, mac_bad0, (u8 *) dmac_bad + eno_b64 * 0);
+      u64xn_store_u8 (mac_m1, mac_bad1, (u8 *) dmac_bad + eno_b64 * 1);
+      u64xn_store_u8 (mac_m2, mac_bad2, (u8 *) dmac_bad + eno_b64 * 2);
+      u64xn_store_u8 (mac_m3, mac_bad3, (u8 *) dmac_bad + eno_b64 * 3);
+      u64xn_store_u8 (mac_m4, mac_bad4, (u8 *) dmac_bad + eno_b64 * 4);
+      u64xn_store_u8 (mac_m5, mac_bad5, (u8 *) dmac_bad + eno_b64 * 5);
+      u64xn_store_u8 (mac_m6, mac_bad6, (u8 *) dmac_bad + eno_b64 * 6);
+      u64xn_store_u8 (mac_m7, mac_bad7, (u8 *) dmac_bad + eno_b64 * 7);
+      mac_bad = u8xn_load_unaligned (mac_m, (u8 *) dmac_bad);
+      bad |= u8xn_reduction_or (mac_m, mac_bad);
+
+      /* next */
+      dmac += eno_b8;
+      dmac_bad += eno_b8;
+      i += eno_b8;
+    }
+  return bad;
+}
+#endif
+
 static_always_inline u8
 eth_input_sec_dmac_check_x1 (u64 hwaddr, u64 * dmac, u8 * dmac_bad)
 {
@@ -778,6 +875,9 @@ eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
 
 	bad = 0;
 
+#ifdef CLIB_HAVE_VEC_SCALABLE
+	bad = eth_input_sec_dmac_check_xn (dmac, dmac_bad, n_left, hwaddr);
+#else
 	while (n_left > 0)
 	  {
 	    int adv = 0;
@@ -815,6 +915,7 @@ eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
 	    dmac_bad += adv;
 	    n_left -= adv;
 	  }
+#endif
 
 	if (!bad)		/* can stop looping if everything matched */
 	  break;
