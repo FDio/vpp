@@ -822,6 +822,100 @@ eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
     }
 }
 
+#ifdef CLIB_HAVE_VEC_SCALABLE
+static_always_inline i32
+eth_input_next_determine_xn (u16 * etype, u16 * next, i32 n_left,
+			     u16 * slowpath_indices, u16 * n_spath,
+			     int main_is_l3, u16 next_ip4, u16 next_ip6,
+			     u16 next_mpls, u16 next_l2, u16 et_ip4,
+			     u16 et_ip6, u16 et_mpls, u16 et_vlan,
+			     u16 et_dot1ad)
+{
+  u16xn etxn_ip4 = u16xn_splat (et_ip4);
+  u16xn etxn_ip6 = u16xn_splat (et_ip6);
+  u16xn etxn_mpls = u16xn_splat (et_mpls);
+  u16xn etxn_vlan = u16xn_splat (et_vlan);
+  u16xn etxn_dot1ad = u16xn_splat (et_dot1ad);
+  u16xn nextxn_ip4 = u16xn_splat (next_ip4);
+  u16xn nextxn_ip6 = u16xn_splat (next_ip6);
+  u16xn nextxn_mpls = u16xn_splat (next_mpls);
+  u16xn nextxn_l2 = u16xn_splat (next_l2);
+  u16xn zero, r, isl3, l3true, l3false, etypexn;
+  u16xn r_ip4, r_ip6, r_mpls, r_l2;
+  u16xn base, stair;
+  boolxn e_m, l3_m, l3n_m, r_m, s_m, all_m;
+  u16 n_slowpath = *n_spath;
+  i32 i = 0;
+  i32 eno_b16 = (i32) u16xn_max_elts ();
+
+  zero = u16xn_splat (0);
+  isl3 = u16xn_splat (main_is_l3);
+  l3true = u16xn_splat (1);
+  l3false = u16xn_splat (0);
+
+  all_m = u16xn_eltall_mask ();
+  l3_m = u16xn_equal (all_m, isl3, l3true);
+  l3n_m = u16xn_equal (all_m, isl3, l3false);
+
+  stair = u16xn_create_indexes (0, 1);
+
+  while (i < n_left)
+    {
+      r = u16xn_splat (0);
+      e_m = u16xn_elt_mask (i, n_left);
+
+      etypexn = u16xn_load_unaligned (e_m, etype);
+
+      /* set ip4-next if ethernet type is ip4 */
+      r_m = u16xn_equal (e_m, etypexn, etxn_ip4);
+      r_m = boolxn_and (e_m, r_m, l3_m);
+      r_ip4 = u16xn_or (r_m, nextxn_ip4, zero);
+      r = u16xn_or (e_m, r, r_ip4);
+
+      /* set ip6-next if ethernet type is ip6 */
+      r_m = u16xn_equal (e_m, etypexn, etxn_ip6);
+      r_m = boolxn_and (e_m, r_m, l3_m);
+      r_ip6 = u16xn_or (r_m, nextxn_ip6, zero);
+      r = u16xn_or (e_m, r, r_ip6);
+
+      /* set mpls-next if ethernet type is mpls */
+      r_m = u16xn_equal (e_m, etypexn, etxn_mpls);
+      r_m = boolxn_and (e_m, r_m, l3_m);
+      r_mpls = u16xn_or (r_m, nextxn_mpls, zero);
+      r = u16xn_or (e_m, r, r_mpls);
+
+      /* set l2-next if ethernet type is not vlan or dot1ad */
+      r_m = u16xn_unequal (e_m, etypexn, etxn_vlan);
+      s_m = u16xn_unequal (e_m, etypexn, etxn_dot1ad);
+      r_m = boolxn_and (e_m, r_m, l3n_m);
+      r_m = boolxn_and (e_m, r_m, s_m);
+      r_l2 = u16xn_or (r_m, nextxn_l2, zero);
+      r = u16xn_or (e_m, r, r_l2);
+
+      u16xn_store_unaligned (e_m, r, next);
+
+      if (!u16xn_eltmin (e_m, r))
+	{
+	  base = u16xn_splat (i);
+	  base = u16xn_add (e_m, base, stair);
+	  r_m = u16xn_equal (e_m, r, zero);
+	  u16xn_compact_store (r_m, base, slowpath_indices + n_slowpath);
+	  n_slowpath += u16xn_active_eno (e_m, r_m);
+	}
+
+      /* next */
+      etype += eno_b16;
+      next += eno_b16;
+      i += eno_b16;
+    }
+  i -= (eno_b16 - u16xn_active_eno (e_m, e_m));
+  n_left -= i;
+  ASSERT (n_left == 0);
+  *n_spath = n_slowpath;
+  return n_left;
+}
+#endif
+
 /* process frame of buffers, store ethertype into array and update
    buffer metadata fields depending on interface being l2 or l3 assuming that
    packets are untagged. For tagged packets those fields are updated later.
@@ -955,6 +1049,13 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* fastpath - in l3 mode hadles ip4, ip6 and mpls packets, other packets
      are considered as slowpath, in l2 mode all untagged packets are
      considered as fastpath */
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  n_left =
+    eth_input_next_determine_xn (etype, next, n_left, slowpath_indices,
+				 &n_slowpath, main_is_l3, next_ip4, next_ip6,
+				 next_mpls, next_l2, et_ip4, et_ip6, et_mpls,
+				 et_vlan, et_dot1ad);
+#endif
   while (n_left > 0)
     {
 #ifdef CLIB_HAVE_VEC256
@@ -2264,8 +2365,8 @@ next_by_ethertype_register (next_by_ethertype_t * l3_next,
 void
 ethernet_input_init (vlib_main_t * vm, ethernet_main_t * em)
 {
-  __attribute__ ((unused)) vlan_table_t *invalid_vlan_table;
-  __attribute__ ((unused)) qinq_table_t *invalid_qinq_table;
+  __attribute__((unused)) vlan_table_t *invalid_vlan_table;
+  __attribute__((unused)) qinq_table_t *invalid_qinq_table;
 
   ethernet_setup_node (vm, ethernet_input_node.index);
   ethernet_setup_node (vm, ethernet_input_type_node.index);
