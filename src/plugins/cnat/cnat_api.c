@@ -278,6 +278,7 @@ vl_api_cnat_session_purge_t_handler (vl_api_cnat_session_purge_t * mp)
   cnat_client_throttle_pool_process ();
   rv = cnat_session_purge ();
   rv |= cnat_translation_purge ();
+  rv |= cnat_client_purge ();
 
   REPLY_MACRO (VL_API_CNAT_SESSION_PURGE_REPLY);
 }

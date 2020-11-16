@@ -159,7 +159,6 @@ typedef struct cnat_timestamp_t_
 typedef struct cnat_node_ctx_
 {
   f64 now;
-  u64 seed;
   u32 thread_index;
   ip_address_family_t af;
   u8 do_trace;
@@ -173,7 +172,6 @@ extern uword unformat_cnat_ep (unformat_input_t * input, va_list * args);
 extern cnat_timestamp_t *cnat_timestamps;
 extern fib_source_t cnat_fib_source;
 extern cnat_main_t cnat_main;
-extern throttle_t cnat_throttle;
 
 extern char *cnat_error_strings[];
 
