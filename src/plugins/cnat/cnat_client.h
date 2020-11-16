@@ -93,11 +93,6 @@ cnat_client_get (index_t i)
   return (pool_elt_at_index (cnat_client_pool, i));
 }
 
-typedef struct cnat_learn_arg_t_
-{
-  ip_address_t addr;
-} cnat_learn_arg_t;
-
 /**
  * A translation that references this VIP was deleted
  */
@@ -111,7 +106,7 @@ extern void cnat_client_translation_added (index_t cci);
  * Called in the main thread by RPC from the workers to learn a
  * new client
  */
-extern void cnat_client_learn (const cnat_learn_arg_t * l);
+extern void cnat_client_learn (const ip_address_t * addr);
 
 extern index_t cnat_client_add (const ip_address_t * ip, u8 flags);
 
@@ -127,8 +122,6 @@ typedef enum
 {
   /* IP already present in the FIB, need to interpose dpo */
   CNAT_FLAG_EXCLUSIVE = (1 << 1),
-  /* Prune this entry */
-  CNAT_FLAG_EXPIRES = (1 << 2),
 } cnat_entry_flag_t;
 
 
@@ -144,8 +137,8 @@ typedef struct cnat_client_db_t_
   /* Pool of addresses that have been throttled
      and need to be refcounted before calling
      cnat_client_free_by_ip */
-  ip_address_t **throttle_pool;
-  clib_spinlock_t *throttle_pool_lock;
+  clib_spinlock_t throttle_lock;
+  uword *throttle_mem;
 } cnat_client_db_t;
 
 extern cnat_client_db_t cnat_client_db;

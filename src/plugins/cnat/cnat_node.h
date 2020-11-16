@@ -738,37 +738,31 @@ cnat_session_create (cnat_session_t * session, cnat_node_ctx_t * ctx,
 
   if (NULL == cc)
     {
-      u64 r0 = 17;
-      if (AF_IP4 == ctx->af)
-	r0 = (u64) session->value.cs_ip[VLIB_RX].ip4.as_u32;
-      else
-	{
-	  r0 = r0 * 31 + session->value.cs_ip[VLIB_RX].ip6.as_u64[0];
-	  r0 = r0 * 31 + session->value.cs_ip[VLIB_RX].ip6.as_u64[1];
-	}
+      ip_address_t addr;
+      uword *p;
+      u32 refcnt;
 
-      /* Rate limit */
-      if (!throttle_check (&cnat_throttle, ctx->thread_index, r0, ctx->seed))
+      addr.version = ctx->af;
+      ip46_address_copy (&addr.ip, &session->value.cs_ip[VLIB_RX]);
+
+      /* Throttle */
+      clib_spinlock_lock (&cnat_client_db.throttle_lock);
+
+      p = hash_get_mem (cnat_client_db.throttle_mem, &addr);
+      if (p)
 	{
-	  cnat_learn_arg_t l;
-	  l.addr.version = ctx->af;
-	  ip46_address_copy (&l.addr.ip, &session->value.cs_ip[VLIB_RX]);
-	  /* fire client create to the main thread */
-	  vl_api_rpc_call_main_thread (cnat_client_learn,
-				       (u8 *) & l, sizeof (l));
+	  refcnt = p[0] + 1;
+	  hash_set_mem (cnat_client_db.throttle_mem, &addr, refcnt);
 	}
       else
-	{
-	  /* Will still need to count those for session refcnt */
-	  ip_address_t *addr;
-	  clib_spinlock_lock (&cnat_client_db.throttle_pool_lock
-			      [ctx->thread_index]);
-	  pool_get (cnat_client_db.throttle_pool[ctx->thread_index], addr);
-	  addr->version = ctx->af;
-	  ip46_address_copy (&addr->ip, &session->value.cs_ip[VLIB_RX]);
-	  clib_spinlock_unlock (&cnat_client_db.throttle_pool_lock
-				[ctx->thread_index]);
-	}
+	hash_set_mem_alloc (&cnat_client_db.throttle_mem, &addr, 0);
+
+      clib_spinlock_unlock (&cnat_client_db.throttle_lock);
+
+      /* fire client create to the main thread */
+      if (!p)
+	vl_api_rpc_call_main_thread (cnat_client_learn, (u8 *) & addr,
+				     sizeof (addr));
     }
   else
     {
@@ -823,7 +817,6 @@ cnat_node_inline (vlib_main_t * vm,
   vlib_buffer_t **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next;
   f64 now;
-  u64 seed;
 
   thread_index = vm->thread_index;
   from = vlib_frame_vector_args (frame);
@@ -831,13 +824,12 @@ cnat_node_inline (vlib_main_t * vm,
   next = nexts;
   vlib_get_buffers (vm, from, bufs, n_left);
   now = vlib_time_now (vm);
-  seed = throttle_seed (&cnat_throttle, thread_index, vlib_time_now (vm));
   cnat_session_t *session[4];
   clib_bihash_kv_40_48_t bkey[4], bvalue[4];
   u64 hash[4];
   int rv[4];
 
-  cnat_node_ctx_t ctx = { now, seed, thread_index, af, do_trace };
+  cnat_node_ctx_t ctx = { now, thread_index, af, do_trace };
 
   if (n_left >= 8)
     {
