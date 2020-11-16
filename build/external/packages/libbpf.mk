@@ -13,8 +13,9 @@
 
 LIBBPF_DEBUG?=n
 
-libbpf_version             := 0.1.0
+libbpf_version             := 0.2
 libbpf_tarball             := v$(libbpf_version).tar.gz
+libbpf_tarball_md5sum_0.2  := cd0f82d76a9830c1e66b1a249393d5a8
 libbpf_tarball_md5sum_0.1.0 := 00b991a6e2d28d797a56ab1575ed40e1
 libbpf_tarball_md5sum      := $(libbpf_tarball_md5sum_$(libbpf_version))
 libbpf_tarball_strip_dirs  := 1
