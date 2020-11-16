@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "59af6ea8_06d54788",
+        "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
+        "patchSetId": 5
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 259
+      },
+      "writtenOn": "2020-11-16T20:57:38Z",
+      "side": 1,
+      "message": "You cited https://www.aje.com/arc/editing-tip-indefinite-article-use-abbreviations/\nWhich is fine.  I\u0027m OK with \u0027an\u0027, but it wants to be capitalized, as it starts the sentence.  This \"Capital A\" was all I was recommending last time.",
+      "revId": "04de7fe867f983c60f8b65a4d318aabc0cf1f3be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
