@@ -18,7 +18,6 @@
 cnat_main_t cnat_main;
 fib_source_t cnat_fib_source;
 cnat_timestamp_t *cnat_timestamps;
-throttle_t cnat_throttle;
 
 char *cnat_error_strings[] = {
 #define cnat_error(n,s) s,
@@ -144,15 +143,12 @@ format_cnat_endpoint (u8 * s, va_list * args)
 static clib_error_t *
 cnat_types_init (vlib_main_t * vm)
 {
-  vlib_thread_main_t *tm = &vlib_thread_main;
-  u32 n_vlib_mains = tm->n_vlib_mains;
   cnat_fib_source = fib_source_allocate ("cnat",
 					 CNAT_FIB_SOURCE_PRIORITY,
 					 FIB_SOURCE_BH_SIMPLE);
 
 
   clib_rwlock_init (&cnat_main.ts_lock);
-  throttle_init (&cnat_throttle, n_vlib_mains, 1e-3);
 
   return (NULL);
 }
