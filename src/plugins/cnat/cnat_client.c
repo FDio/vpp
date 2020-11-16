@@ -44,11 +44,10 @@ static void
 cnat_client_destroy (cnat_client_t * cc)
 {
   ASSERT (!cnat_client_is_clone (cc));
-  if (!(cc->flags & CNAT_FLAG_EXCLUSIVE))
-    {
-      ASSERT (fib_entry_is_sourced (cc->cc_fei, cnat_fib_source));
-      fib_table_entry_delete_index (cc->cc_fei, cnat_fib_source);
-    }
+
+  ASSERT (fib_entry_is_sourced (cc->cc_fei, cnat_fib_source));
+  fib_table_entry_delete_index (cc->cc_fei, cnat_fib_source);
+
   cnat_client_db_remove (cc);
   dpo_reset (&cc->cc_parent);
   pool_put (cnat_client_pool, cc);
@@ -62,8 +61,7 @@ cnat_client_free_by_ip (ip46_address_t * ip, u8 af)
 	cnat_client_ip4_find (&ip->ip4) : cnat_client_ip6_find (&ip->ip6));
   ASSERT (NULL != cc);
 
-  if ((0 == cnat_client_uncnt_session (cc))
-      && (cc->flags & CNAT_FLAG_EXPIRES) && (0 == cc->tr_refcnt))
+  if (0 == cnat_client_uncnt_session (cc) && 0 == cc->tr_refcnt)
     cnat_client_destroy (cc);
 }
 
@@ -73,36 +71,30 @@ cnat_client_throttle_pool_process ()
   /* This processes ips stored in the throttle pool
      to update session refcounts
      and should be called before cnat_client_free_by_ip */
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
   cnat_client_t *cc;
-  int nthreads;
-  u32 *del_vec = NULL, *ai;
-  ip_address_t *addr;
-  nthreads = tm->n_threads + 1;
-  for (int i = 0; i < nthreads; i++)
-    {
-      vec_reset_length (del_vec);
-      clib_spinlock_lock (&cnat_client_db.throttle_pool_lock[i]);
-      /* *INDENT-OFF* */
-      pool_foreach(addr, cnat_client_db.throttle_pool[i], ({
-	cc = (AF_IP4 == addr->version ?
-	      cnat_client_ip4_find (&ip_addr_v4(addr)) :
-	      cnat_client_ip6_find (&ip_addr_v6(addr)));
-	/* Client might not already be created */
-	if (NULL != cc)
-	  {
-	    cnat_client_cnt_session (cc);
-	    vec_add1(del_vec, addr - cnat_client_db.throttle_pool[i]);
-	  }
-      }));
-      /* *INDENT-ON* */
-      vec_foreach (ai, del_vec)
+  ip_address_t *addr, *del_vec = NULL;
+  u32 refcnt;
+
+  vec_reset_length (del_vec);
+  clib_spinlock_lock (&cnat_client_db.throttle_lock);
+  /* *INDENT-OFF* */
+  hash_foreach_mem (addr, refcnt, cnat_client_db.throttle_mem,
+  {
+    cc = (AF_IP4 == addr->version ?
+	  cnat_client_ip4_find (&ip_addr_v4(addr)) :
+	  cnat_client_ip6_find (&ip_addr_v6(addr)));
+    /* Client might not already be created */
+    if (NULL != cc)
       {
-	addr = pool_elt_at_index (cnat_client_db.throttle_pool[i], *ai);
-	pool_put (cnat_client_db.throttle_pool[i], addr);
+	cnat_client_t *ccp = cnat_client_get (cc->parent_cci);
+	clib_atomic_add_fetch (&ccp->session_refcnt, refcnt);
+	vec_add1(del_vec, *addr);
       }
-      clib_spinlock_unlock (&cnat_client_db.throttle_pool_lock[i]);
-    }
+  });
+  /* *INDENT-ON* */
+  vec_foreach (addr, del_vec)
+    hash_unset_mem_free (&cnat_client_db.throttle_mem, addr);
+  clib_spinlock_unlock (&cnat_client_db.throttle_lock);
 }
 
 void
@@ -113,7 +105,6 @@ cnat_client_translation_added (index_t cci)
     return;
 
   cc = cnat_client_get (cci);
-  ASSERT (!(cc->flags & CNAT_FLAG_EXPIRES));
   cc->tr_refcnt++;
 }
 
@@ -125,7 +116,6 @@ cnat_client_translation_deleted (index_t cci)
     return;
 
   cc = cnat_client_get (cci);
-  ASSERT (!(cc->flags & CNAT_FLAG_EXPIRES));
   cc->tr_refcnt--;
 
   if (0 == cc->tr_refcnt && 0 == cc->session_refcnt)
@@ -199,12 +189,12 @@ cnat_client_add (const ip_address_t * ip, u8 flags)
 }
 
 void
-cnat_client_learn (const cnat_learn_arg_t * l)
+cnat_client_learn (const ip_address_t * addr)
 {
   /* RPC call to add a client from the dataplane */
   index_t cci;
   cnat_client_t *cc;
-  cci = cnat_client_add (&l->addr, CNAT_FLAG_EXPIRES);
+  cci = cnat_client_add (addr, 0 /* flags */ );
   cc = pool_elt_at_index (cnat_client_pool, cci);
   cnat_client_cnt_session (cc);
   /* Process throttled calls if any */
@@ -241,17 +231,20 @@ cnat_client_dpo_interpose (const dpo_id_t * original,
 int
 cnat_client_purge (void)
 {
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  int nthreads;
-  nthreads = tm->n_threads + 1;
-  ASSERT (0 == hash_elts (cnat_client_db.crd_cip6));
-  ASSERT (0 == hash_elts (cnat_client_db.crd_cip4));
-  ASSERT (0 == pool_elts (cnat_client_pool));
-  for (int i = 0; i < nthreads; i++)
-    {
-      ASSERT (0 == pool_elts (cnat_client_db.throttle_pool[i]));
-    }
-  return (0);
+  int rv = 0, rrv = 0;
+  if ((rv = hash_elts (cnat_client_db.crd_cip6)))
+    clib_warning ("len(crd_cip6) isnt 0 but %d", rv);
+  rrv |= rv;
+  if ((rv = hash_elts (cnat_client_db.crd_cip4)))
+    clib_warning ("len(crd_cip4) isnt 0 but %d", rv);
+  rrv |= rv;
+  if ((rv = pool_elts (cnat_client_pool)))
+    clib_warning ("len(cnat_client_pool) isnt 0 but %d", rv);
+  rrv |= rv;
+  if ((rv = hash_elts (cnat_client_db.throttle_mem)))
+    clib_warning ("len(throttle_mem) isnt 0 but %d", rv);
+  rrv |= rv;
+  return (rrv);
 }
 
 u8 *
@@ -265,8 +258,6 @@ format_cnat_client (u8 * s, va_list * args)
   s = format (s, "[%d] cnat-client:[%U] tr:%d sess:%d", cci,
 	      format_ip_address, &cc->cc_ip,
 	      cc->tr_refcnt, cc->session_refcnt);
-  if (cc->flags & CNAT_FLAG_EXPIRES)
-    s = format (s, " expires");
 
   if (cc->flags & CNAT_FLAG_EXCLUSIVE)
     s = format (s, " exclusive");
@@ -363,6 +354,7 @@ cnat_client_dpo_unlock (dpo_id_t * dpo)
   if (0 == cc->cc_locks)
     {
       ASSERT (cnat_client_is_clone (cc));
+      dpo_reset (&cc->cc_parent);
       pool_put (cnat_client_pool, cc);
     }
 }
@@ -388,9 +380,6 @@ const static dpo_vft_t cnat_client_dpo_vft = {
 static clib_error_t *
 cnat_client_init (vlib_main_t * vm)
 {
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  int nthreads = tm->n_threads + 1;
-  int i;
   cnat_client_dpo = dpo_register_new_type (&cnat_client_dpo_vft,
 					   cnat_client_dpo_nodes);
 
@@ -398,10 +387,9 @@ cnat_client_init (vlib_main_t * vm)
 					     sizeof (ip6_address_t),
 					     sizeof (uword));
 
-  vec_validate (cnat_client_db.throttle_pool, nthreads);
-  vec_validate (cnat_client_db.throttle_pool_lock, nthreads);
-  for (i = 0; i < nthreads; i++)
-    clib_spinlock_init (&cnat_client_db.throttle_pool_lock[i]);
+  clib_spinlock_init (&cnat_client_db.throttle_lock);
+  cnat_client_db.throttle_mem =
+    hash_create_mem (0, sizeof (ip_address_t), sizeof (uword));
 
   return (NULL);
 }
