@@ -64,29 +64,46 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   clib_spinlock_t lockp;
-  vring_desc_t *desc;
-  vring_used_t *used;
-  vring_avail_t *avail;
+  union
+  {
+    struct
+    {
+      vring_desc_t *desc;
+      vring_used_t *used;
+      vring_avail_t *avail;
+    };
+    struct
+    {
+      vring_packed_desc_t *packed_desc;
+      vring_desc_event_t *driver_event;
+      vring_desc_event_t *device_event;
+    };
+  };
+  u32 *buffers;
+  u16 size;
+  u16 queue_id;
   u16 desc_in_use;
   u16 desc_next;
+  u16 last_used_idx;
+  u16 last_kick_avail_idx;
   union
   {
     struct
     {
       int kick_fd;
       int call_fd;
+      u32 call_file_index;
     };
-    u16 queue_notify_offset;
+    struct
+    {
+      u16 avail_wrap_counter;
+      u16 used_wrap_counter;
+      u16 queue_notify_offset;
+    };
   };
-  u8 buffer_pool_index;
-  u16 size;
-  u16 queue_id;
 #define VRING_TX_OUT_OF_ORDER 1
   u16 flags;
-  u32 *buffers;
-  u16 last_used_idx;
-  u16 last_kick_avail_idx;
-  u32 call_file_index;
+  u8 buffer_pool_index;
   vnet_hw_if_rx_mode mode;
   virtio_vring_buffering_t *buffering;
   gro_flow_table_t *flow_table;
@@ -190,6 +207,7 @@ typedef struct
     };
   };
   const virtio_pci_func_t *virtio_pci_func;
+  int is_packed;
 } virtio_if_t;
 
 typedef struct
@@ -214,8 +232,7 @@ clib_error_t *virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif,
 				    u32 idx);
 void virtio_vring_set_numa_node (vlib_main_t * vm, virtio_if_t * vif,
 				 u32 idx);
-extern void virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring);
-extern void virtio_free_rx_buffers (vlib_main_t * vm, virtio_vring_t * vring);
+extern void virtio_free_buffers (vlib_main_t * vm, virtio_vring_t * vring);
 extern void virtio_set_net_hdr_size (virtio_if_t * vif);
 extern void virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
 			 u32 type);
