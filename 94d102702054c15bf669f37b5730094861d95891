@@ -1,0 +1,259 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c34cf7df_989fdc17",
+        "filename": "src/vpp-api/pom/requirements.txt",
+        "patchSetId": 6
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-16T18:40:00Z",
+      "side": 1,
+      "message": "First, I\u0027m not sure that papi is semantically versioned, because if it is this number is very low - Ole will know. But either way you should have an upper limit that specified the first version of PAPI that is not going to be compatible with your use.\n\nSecond, you\u0027re also dependent on the specific version of the API files, which is more of a problem since they don\u0027t usually take the form of a python package.  Though they could - even despite the fact that they\u0027re not actually .py files they could be packaged that way, as package resources, which would allow you to explicitly express a dependency on the protocol version.",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cc8bd4fa_9c54dcbc",
+        "filename": "src/vpp-api/pom/setup.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-16T18:40:00Z",
+      "side": 1,
+      "message": "Your choice - and it doesn\u0027t play well with the repo structure of VPP - but you might check out the PBR Python package.",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8ba44ca0_eac41806",
+        "filename": "src/vpp-api/pom/vpp_pom/hook.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-16T18:40:00Z",
+      "side": 1,
+      "message": "Hm, enumming the package and finding textually matching items is a weird way to do this. Look at signal.Signals",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ae957614_cbb4e231",
+        "filename": "src/vpp-api/pom/vpp_pom/hook.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-16T18:40:00Z",
+      "side": 1,
+      "message": "I sense this model will introduce inefficiency whenever it\u0027s used.  Depends on what calls hooks, but if you put an \u0027are there any hooks\u0027 check into the VPP call code it\u0027s not going to be good.",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "794a2d88_e0334b6a",
+        "filename": "src/vpp-api/pom/vpp_pom/hook.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-16T18:40:00Z",
+      "side": 1,
+      "message": "@abstractmethod",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "391ff101_55382ee7",
+        "filename": "src/vpp-api/pom/vpp_pom/hook.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-16T18:40:00Z",
+      "side": 1,
+      "message": "args, kwargs?",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b5f3c8e6_cf3dccc5",
+        "filename": "src/vpp-api/pom/vpp_pom/hook.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-16T18:40:00Z",
+      "side": 1,
+      "message": "... and the args?",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "70493d87_c576d33d",
+        "filename": "src/vpp-api/pom/vpp_pom/hook.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-16T18:40:00Z",
+      "side": 1,
+      "message": "... type of vapi is...",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "de1ce45e_f30e90be",
+        "filename": "src/vpp-api/pom/vpp_pom/plugins/__init__.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-16T18:40:00Z",
+      "side": 1,
+      "message": "Really not worth the bother of saying this to python programmers",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "609a927d_ba2db369",
+        "filename": "src/vpp-api/pom/vpp_pom/plugins/vpp_acl.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-16T18:40:00Z",
+      "side": 1,
+      "message": "You\u0027re assuming no-one else modifies VPP state if you cache things.  You haven\u0027t stated that anywhere.",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1cf3c762_d889ae76",
+        "filename": "src/vpp-api/pom/vpp_pom/plugins/vpp_acl.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-16T18:40:00Z",
+      "side": 1,
+      "message": "I\u0027d probably subclass typing.NamedTuple",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8f8d28b2_3bc7a27e",
+        "filename": "src/vpp-api/pom/vpp_pom/plugins/vpp_acl.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-16T18:40:00Z",
+      "side": 1,
+      "message": "Literally no idea where these constants have come from.  Some don\u0027t look much like constants.",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9530f014_7c3438a8",
+        "filename": "src/vpp-api/pom/vpp_pom/plugins/vpp_acl.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-16T18:40:00Z",
+      "side": 1,
+      "message": "I think an immutable type makes more sense",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fda8223e_3886b8af",
+        "filename": "src/vpp-api/pom/vpp_pom/plugins/vpp_acl.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-16T18:40:00Z",
+      "side": 1,
+      "message": "Is this an interface (that is, in Python, an abstract base class that we might find on multiple  types)?  Should there be a decode as well?",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d729b80f_02d7ff74",
+        "filename": "src/vpp-api/pom/vpp_pom/plugins/vpp_wireguard.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-16T18:40:00Z",
+      "side": 1,
+      "message": "General statement - don\u0027t need _vpp_ in there.  Also, I\u0027m not sure about an interface with add_config and remove_config calls, the name doesn\u0027t seem to make much sense.  What are you doing with these objects - you\u0027re adding and removing them from the VPP behaviour, yes, but you don\u0027t need a fully populated object to remove the config, typically (I can, for instance, delete an interface with just its ID and no idea what it\u0027s doing).\n\nI think it would be more typical coding form to use a collection of WgInterfaces that has the \u0027add\u0027 and \u0027remove\u0027 functions on it - the WgInterfaces in this collection would have a key (all I need to remove it / the difference between an \u0027add\u0027 and an \u0027update\u0027) and a value (the interface properties).",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
