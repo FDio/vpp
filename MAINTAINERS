@@ -639,6 +639,7 @@ F:	src/plugins/hs_apps/
 Python binding for the VPP API
 I:	papi
 M:	Ole Troan <ot@cisco.com>
+M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
 F:	src/vpp-api/python
 
 Cisco Discovery Protocol
