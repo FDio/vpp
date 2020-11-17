@@ -60,6 +60,11 @@ typedef enum vnet_rewrite_flags_t_
    * this adj performs IP4 over IP4 fixup
    */
   VNET_REWRITE_FIXUP_IP4_O_4 = (1 << 1),
+
+  /**
+   * this adj performs the flow hash fixup
+   */
+  VNET_REWRITE_FIXUP_FLOW_HASH = (1 << 2),
 } __attribute__ ((packed)) vnet_rewrite_flags_t;
 
 typedef struct vnet_rewrite_header_t_

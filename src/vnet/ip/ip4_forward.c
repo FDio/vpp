@@ -2304,9 +2304,9 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       if (is_midchain)
 	{
 	  if (error0 == IP4_ERROR_NONE)
-	    adj_midchain_fixup (vm, adj0, b[0]);
+	    adj_midchain_fixup (vm, adj0, b[0], VNET_LINK_IP4);
 	  if (error1 == IP4_ERROR_NONE)
-	    adj_midchain_fixup (vm, adj1, b[1]);
+	    adj_midchain_fixup (vm, adj1, b[1], VNET_LINK_IP4);
 	}
 
       if (is_mcast)
@@ -2438,7 +2438,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 							   b[0]) + rw_len0);
 
 	  if (is_midchain)
-	    adj_midchain_fixup (vm, adj0, b[0]);
+	    adj_midchain_fixup (vm, adj0, b[0], VNET_LINK_IP4);
 
 	  if (is_mcast)
 	    /* copy bytes from the IP address into the MAC rewrite */
