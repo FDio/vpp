@@ -133,6 +133,30 @@ fsh_check_mem (fifo_segment_header_t * fsh)
   fsh_update_free_bytes (fsh);
 }
 
+static void
+fss_chunk_free_list_push (fifo_segment_slice_t *fss, u32 fl_index,
+                          svm_fifo_chunk_t *c)
+{
+  c->next = fss->free_chunks[fl_index];
+  fss->free_chunks[fl_index] = c;
+}
+
+static svm_fifo_chunk_t *
+fss_chunk_free_list_pop (fifo_segment_slice_t *fss, u32 fl_index)
+{
+  svm_fifo_chunk_t *c;
+
+  ASSERT (vec_len (fss->free_chunks) > fl_index);
+
+  if (!fss->free_chunks[fl_index])
+    return 0;
+
+  c = fss->free_chunks[fl_index];
+  fss->free_chunks[fl_index] = c->next;
+//  c->next = 0;
+  return c;
+}
+
 /**
  * Initialize fifo segment shared header
  */
@@ -325,13 +349,17 @@ fs_try_alloc_fifo_freelist (fifo_segment_slice_t * fss, u32 fl_index)
   svm_fifo_t *f;
 
   f = fss->free_fifos;
-  c = fss->free_chunks[fl_index];
+  if (!f)
+    return 0;
 
-  if (!f || !c)
+//  c = fss->free_chunks[fl_index];
+  c = fss_chunk_free_list_pop (fss, fl_index);
+  if (!c)
     return 0;
 
   fss->free_fifos = f->next;
-  fss->free_chunks[fl_index] = c->next;
+
+//  fss->free_chunks[fl_index] = c->next;
   c->next = 0;
   c->start_byte = 0;
   memset (f, 0, sizeof (*f));
@@ -357,10 +385,11 @@ fs_try_alloc_multi_chunk (fifo_segment_header_t * fsh,
 
   while (req_bytes)
     {
-      c = fss->free_chunks[fl_index];
+      c = fss_chunk_free_list_pop (fss, fl_index);
+//      c = fss->free_chunks[fl_index];
       if (c)
 	{
-	  fss->free_chunks[fl_index] = c->next;
+//	  fss->free_chunks[fl_index] = c->next;
 	  c->next = first;
 	  first = c;
 	  n_alloc += fl_size;
@@ -378,9 +407,10 @@ fs_try_alloc_multi_chunk (fifo_segment_header_t * fsh,
 		  fl_index = fs_freelist_for_size (c->length);
 		  fl_size = fs_freelist_index_to_size (fl_index);
 		  next = c->next;
-		  c->next = fss->free_chunks[fl_index];
-		  fss->free_chunks[fl_index] = c;
-		  fss->n_fl_chunk_bytes += fl_size;
+//		  c->next = fss->free_chunks[fl_index];
+//		  fss->free_chunks[fl_index] = c;
+		  fss_chunk_free_list_push (fss, fl_index, c);
+//		  fss->n_fl_chunk_bytes += fl_size;
 		  c = next;
 		}
 	      n_alloc = 0;
@@ -441,10 +471,11 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_header_t * fsh,
 
   while (data_bytes)
     {
-      c = fss->free_chunks[fl_index];
+      c = fss_chunk_free_list_pop (fss, fl_index);
+//      c = fss->free_chunks[fl_index];
       if (c)
 	{
-	  fss->free_chunks[fl_index] = c->next;
+//	  fss->free_chunks[fl_index] = c->next;
 	  if (!last)
 	    last = c;
 	  c->next = first;
@@ -464,9 +495,10 @@ fs_try_alloc_fifo_freelist_multi_chunk (fifo_segment_header_t * fsh,
 		  fl_index = fs_freelist_for_size (c->length);
 		  fl_size = fs_freelist_index_to_size (fl_index);
 		  next = c->next;
-		  c->next = fss->free_chunks[fl_index];
-		  fss->free_chunks[fl_index] = c;
-		  fss->n_fl_chunk_bytes += fl_size;
+//		  c->next = fss->free_chunks[fl_index];
+//		  fss->free_chunks[fl_index] = c;
+		  fss_chunk_free_list_push (fss, fl_index, c);
+//		  fss->n_fl_chunk_bytes += fl_size;
 		  n_alloc -= fl_size;
 		  data_bytes += fl_size;
 		  c = next;
@@ -529,8 +561,9 @@ fsh_try_alloc_chunk_batch (fifo_segment_header_t * fsh,
       c->length = rounded_data_size;
       c->enq_rb_index = RBTREE_TNIL_INDEX;
       c->deq_rb_index = RBTREE_TNIL_INDEX;
-      c->next = fss->free_chunks[fl_index];
-      fss->free_chunks[fl_index] = c;
+//      c->next = fss->free_chunks[fl_index];
+//      fss->free_chunks[fl_index] = c;
+      fss_chunk_free_list_push (fss, fl_index, c);
       cmem += sizeof (*c) + rounded_data_size;
     }
 
@@ -587,8 +620,9 @@ fs_try_alloc_fifo_batch (fifo_segment_header_t * fsh,
       c->length = rounded_data_size;
       c->enq_rb_index = RBTREE_TNIL_INDEX;
       c->deq_rb_index = RBTREE_TNIL_INDEX;
-      c->next = fss->free_chunks[fl_index];
-      fss->free_chunks[fl_index] = c;
+//      c->next = fss->free_chunks[fl_index];
+//      fss->free_chunks[fl_index] = c;
+      fss_chunk_free_list_push (fss, fl_index, c);
       fmem += sizeof (svm_fifo_chunk_t) + rounded_data_size;
     }
 
@@ -626,15 +660,15 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
 
   clib_spinlock_lock (&fss->chunk_lock);
 
-  if (fss->free_fifos && fss->free_chunks[fl_index])
-    {
+//  if (fss->free_fifos && fss->free_chunks[fl_index])
+//    {
       f = fs_try_alloc_fifo_freelist (fss, fl_index);
       if (f)
 	{
 	  fsh_cached_bytes_sub (fsh, fs_freelist_index_to_size (fl_index));
 	  goto done;
 	}
-    }
+//    }
 
   fifo_sz = sizeof (svm_fifo_t) + sizeof (svm_fifo_chunk_t);
   fifo_sz += 1 << max_log2 (min_size);
@@ -700,12 +734,13 @@ fsh_alloc_chunk (fifo_segment_header_t * fsh, u32 slice_index, u32 chunk_size)
 
   clib_spinlock_lock (&fss->chunk_lock);
 
-  ASSERT (vec_len (fss->free_chunks) > fl_index);
-  c = fss->free_chunks[fl_index];
+  c = fss_chunk_free_list_pop (fss, fl_index);
+//  ASSERT (vec_len (fss->free_chunks) > fl_index);
+//  c = fss->free_chunks[fl_index];
 
   if (c)
     {
-      fss->free_chunks[fl_index] = c->next;
+//      fss->free_chunks[fl_index] = c->next;
       c->next = 0;
       fss->n_fl_chunk_bytes -= fs_freelist_index_to_size (fl_index);
       fsh_cached_bytes_sub (fsh, fs_freelist_index_to_size (fl_index));
@@ -784,10 +819,11 @@ fsh_slice_collect_chunks (fifo_segment_header_t * fsh,
       CLIB_MEM_UNPOISON (c, sizeof (*c));
       next = c->next;
       fl_index = fs_freelist_for_size (c->length);
-      c->next = fss->free_chunks[fl_index];
+//      c->next = fss->free_chunks[fl_index];
       c->enq_rb_index = RBTREE_TNIL_INDEX;
       c->deq_rb_index = RBTREE_TNIL_INDEX;
-      fss->free_chunks[fl_index] = c;
+//      fss->free_chunks[fl_index] = c;
+      fss_chunk_free_list_push (fss, fl_index, c);
       n_collect += fs_freelist_index_to_size (fl_index);
       c = next;
     }
@@ -1050,8 +1086,9 @@ fifo_segment_prealloc_fifo_chunks (fifo_segment_t * fs, u32 slice_index,
       c = (svm_fifo_chunk_t *) cmem;
       c->start_byte = 0;
       c->length = rounded_data_size;
-      c->next = fss->free_chunks[fl_index];
-      fss->free_chunks[fl_index] = c;
+      fss_chunk_free_list_push (fss, fl_index, c);
+//      c->next = fss->free_chunks[fl_index];
+//      fss->free_chunks[fl_index] = c;
       cmem += sizeof (*c) + rounded_data_size;
       fsh_cached_bytes_add (fsh, rounded_data_size);
     }
