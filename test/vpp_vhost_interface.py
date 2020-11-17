@@ -6,8 +6,8 @@ class VppVhostInterface(VppInterface):
 
     def __init__(self, test, sock_filename, is_server=0, renumber=0,
                  disable_mrg_rxbuf=0, disable_indirect_desc=0, gso=0,
-                 packed_ring=0, custom_dev_instance=0, use_custom_mac=0,
-                 mac_address='', tag=''):
+                 packed_ring=0, event_idx=0, custom_dev_instance=~0,
+                 use_custom_mac=0, mac_address='', tag=''):
 
         """ Create VPP Vhost interface """
         super(VppVhostInterface, self).__init__(test)
@@ -18,6 +18,7 @@ class VppVhostInterface(VppInterface):
         self.disable_indirect_desc = disable_indirect_desc
         self.gso = gso
         self.packed_ring = packed_ring
+        self.event_idx = event_idx
         self.custom_dev_instance = custom_dev_instance
         self.use_custom_mac = use_custom_mac
         self.mac_address = mac_address
@@ -31,6 +32,7 @@ class VppVhostInterface(VppInterface):
                                                 self.disable_indirect_desc,
                                                 self.gso,
                                                 self.packed_ring,
+                                                self.event_idx,
                                                 self.custom_dev_instance,
                                                 self.use_custom_mac,
                                                 self.mac_address,

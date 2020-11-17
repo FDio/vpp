@@ -48,6 +48,8 @@
 #define foreach_vpe_api_msg                                             \
 _(CREATE_VHOST_USER_IF, create_vhost_user_if)                           \
 _(MODIFY_VHOST_USER_IF, modify_vhost_user_if)                           \
+_(CREATE_VHOST_USER_IF_V2, create_vhost_user_if_v2)                     \
+_(MODIFY_VHOST_USER_IF_V2, modify_vhost_user_if_v2)                     \
 _(DELETE_VHOST_USER_IF, delete_vhost_user_if)                           \
 _(SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)
 
@@ -56,14 +58,13 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
 {
   int rv = 0;
   vl_api_create_vhost_user_if_reply_t *rmp;
-  u32 sw_if_index = (u32) ~ 0;
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
-  u64 features = (u64) ~ (0ULL);
   u64 disabled_features = (u64) (0ULL);
-  mac_address_t mac;
-  u8 *mac_p = NULL;
+  vhost_user_create_if_args_t args = { 0 };
 
+  args.sw_if_index = (u32) ~ 0;
+  args.feature_mask = (u64) ~ (0ULL);
   if (mp->disable_mrg_rxbuf)
     disabled_features = VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF);
 
@@ -77,18 +78,21 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
    */
   disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS |
     VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
-  features &= ~disabled_features;
+
+  /* EVENT_IDX is disabled by default */
+  disabled_features |= VIRTIO_FEATURE (VIRTIO_RING_F_EVENT_IDX);
+  args.feature_mask &= ~disabled_features;
 
   if (mp->use_custom_mac)
-    {
-      mac_address_decode (mp->mac_address, &mac);
-      mac_p = (u8 *) & mac;
-    }
+    mac_address_decode (mp->mac_address, (mac_address_t *) args.hwaddr);
 
-  rv = vhost_user_create_if (vnm, vm, (char *) mp->sock_filename,
-			     mp->is_server, &sw_if_index, features,
-			     mp->renumber, ntohl (mp->custom_dev_instance),
-			     mac_p, mp->enable_gso, mp->enable_packed);
+  args.is_server = mp->is_server;
+  args.sock_filename = (char *) mp->sock_filename;
+  args.renumber = mp->renumber;
+  args.custom_dev_instance = ntohl (mp->custom_dev_instance);
+  args.enable_gso = mp->enable_gso;
+  args.enable_packed = mp->enable_packed;
+  rv = vhost_user_create_if (vnm, vm, &args);
 
   /* Remember an interface tag for the new interface */
   if (rv == 0)
@@ -99,14 +103,14 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
 	  /* Make sure it's a proper C-string */
 	  mp->tag[ARRAY_LEN (mp->tag) - 1] = 0;
 	  u8 *tag = format (0, "%s%c", mp->tag, 0);
-	  vnet_set_sw_interface_tag (vnm, tag, sw_if_index);
+	  vnet_set_sw_interface_tag (vnm, tag, args.sw_if_index);
 	}
     }
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_CREATE_VHOST_USER_IF_REPLY,
   ({
-    rmp->sw_if_index = ntohl (sw_if_index);
+    rmp->sw_if_index = ntohl (args.sw_if_index);
   }));
   /* *INDENT-ON* */
 }
@@ -116,12 +120,54 @@ vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t * mp)
 {
   int rv = 0;
   vl_api_modify_vhost_user_if_reply_t *rmp;
-  u32 sw_if_index = ntohl (mp->sw_if_index);
-  u64 features = (u64) ~ (0ULL);
   u64 disabled_features = (u64) (0ULL);
-
+  vhost_user_create_if_args_t args = { 0 };
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
+
+  args.feature_mask = (u64) ~ (0ULL);
+  /*
+   * GSO and PACKED are not supported by feature mask via binary API. We
+   * disable GSO and PACKED feature in the feature mask. They may be enabled
+   * explicitly via enable_gso and enable_packed argument
+   */
+  disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS |
+    VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
+
+  /* EVENT_IDX is disabled by default */
+  disabled_features |= VIRTIO_FEATURE (VIRTIO_RING_F_EVENT_IDX);
+  args.feature_mask &= ~disabled_features;
+
+  args.sw_if_index = ntohl (mp->sw_if_index);
+  args.sock_filename = (char *) mp->sock_filename;
+  args.is_server = mp->is_server;
+  args.renumber = mp->renumber;
+  args.custom_dev_instance = ntohl (mp->custom_dev_instance);
+  args.enable_gso = mp->enable_gso;
+  args.enable_packed = mp->enable_packed;
+  rv = vhost_user_modify_if (vnm, vm, &args);
+
+  REPLY_MACRO (VL_API_MODIFY_VHOST_USER_IF_REPLY);
+}
+
+static void
+vl_api_create_vhost_user_if_v2_t_handler (vl_api_create_vhost_user_if_v2_t *
+					  mp)
+{
+  int rv = 0;
+  vl_api_create_vhost_user_if_v2_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  vlib_main_t *vm = vlib_get_main ();
+  u64 disabled_features = (u64) (0ULL);
+  vhost_user_create_if_args_t args = { 0 };
+
+  args.sw_if_index = (u32) ~ 0;
+  args.feature_mask = (u64) ~ (0ULL);
+  if (mp->disable_mrg_rxbuf)
+    disabled_features = VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF);
+
+  if (mp->disable_indirect_desc)
+    disabled_features |= VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC);
 
   /*
    * GSO and PACKED are not supported by feature mask via binary API. We
@@ -130,14 +176,79 @@ vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t * mp)
    */
   disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS |
     VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
-  features &= ~disabled_features;
 
-  rv = vhost_user_modify_if (vnm, vm, (char *) mp->sock_filename,
-			     mp->is_server, sw_if_index, features,
-			     mp->renumber, ntohl (mp->custom_dev_instance),
-			     mp->enable_gso, mp->enable_packed);
+  /* EVENT_IDX is disabled by default */
+  disabled_features |= VIRTIO_FEATURE (VIRTIO_RING_F_EVENT_IDX);
+  args.feature_mask &= ~disabled_features;
 
-  REPLY_MACRO (VL_API_MODIFY_VHOST_USER_IF_REPLY);
+  if (mp->use_custom_mac)
+    mac_address_decode (mp->mac_address, (mac_address_t *) args.hwaddr);
+
+  args.is_server = mp->is_server;
+  args.sock_filename = (char *) mp->sock_filename;
+  args.renumber = mp->renumber;
+  args.custom_dev_instance = ntohl (mp->custom_dev_instance);
+  args.enable_gso = mp->enable_gso;
+  args.enable_packed = mp->enable_packed;
+  args.enable_event_idx = mp->enable_event_idx;
+  rv = vhost_user_create_if (vnm, vm, &args);
+
+  /* Remember an interface tag for the new interface */
+  if (rv == 0)
+    {
+      /* If a tag was supplied... */
+      if (mp->tag[0])
+	{
+	  /* Make sure it's a proper C-string */
+	  mp->tag[ARRAY_LEN (mp->tag) - 1] = 0;
+	  u8 *tag = format (0, "%s%c", mp->tag, 0);
+	  vnet_set_sw_interface_tag (vnm, tag, args.sw_if_index);
+	}
+    }
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_CREATE_VHOST_USER_IF_V2_REPLY,
+  ({
+    rmp->sw_if_index = ntohl (args.sw_if_index);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_modify_vhost_user_if_v2_t_handler (vl_api_modify_vhost_user_if_v2_t *
+					  mp)
+{
+  int rv = 0;
+  vl_api_modify_vhost_user_if_v2_reply_t *rmp;
+  u64 disabled_features = (u64) (0ULL);
+  vhost_user_create_if_args_t args = { 0 };
+  vnet_main_t *vnm = vnet_get_main ();
+  vlib_main_t *vm = vlib_get_main ();
+
+  args.feature_mask = (u64) ~ (0ULL);
+  /*
+   * GSO and PACKED are not supported by feature mask via binary API. We
+   * disable GSO and PACKED feature in the feature mask. They may be enabled
+   * explicitly via enable_gso and enable_packed argument
+   */
+  disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS |
+    VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
+
+  /* EVENT_IDX is disabled by default */
+  disabled_features |= VIRTIO_FEATURE (VIRTIO_RING_F_EVENT_IDX);
+  args.feature_mask &= ~disabled_features;
+
+  args.sw_if_index = ntohl (mp->sw_if_index);
+  args.sock_filename = (char *) mp->sock_filename;
+  args.is_server = mp->is_server;
+  args.renumber = mp->renumber;
+  args.custom_dev_instance = ntohl (mp->custom_dev_instance);
+  args.enable_gso = mp->enable_gso;
+  args.enable_packed = mp->enable_packed;
+  args.enable_event_idx = mp->enable_event_idx;
+  rv = vhost_user_modify_if (vnm, vm, &args);
+
+  REPLY_MACRO (VL_API_MODIFY_VHOST_USER_IF_V2_REPLY);
 }
 
 static void
@@ -263,6 +374,7 @@ vhost_user_api_hookup (vlib_main_t * vm)
 
   /* Mark CREATE_VHOST_USER_IF as mp safe */
   am->is_mp_safe[VL_API_CREATE_VHOST_USER_IF] = 1;
+  am->is_mp_safe[VL_API_CREATE_VHOST_USER_IF_V2] = 1;
 
   /*
    * Set up the (msg_name, crc, message-id) table
