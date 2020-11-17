@@ -185,6 +185,12 @@ typedef enum adj_attr_t_
      * the fixup function is standard IP4o4 header
      */
     ADJ_ATTR_MIDCHAIN_FIXUP_IP4O4_HDR,
+    /**
+     * the fixup function performs the flow hash
+     * this means the flow hash is performed on the inner
+     * header, where the entropy is higher.
+     */
+    ADJ_ATTR_MIDCHAIN_FIXUP_FLOW_HASH,
 }  adj_attr_t;
 
 #define ADJ_ATTR_NAMES {                                        \
@@ -193,11 +199,12 @@ typedef enum adj_attr_t_
     [ADJ_ATTR_MIDCHAIN_IP_STACK] = "midchain-ip-stack",         \
     [ADJ_ATTR_MIDCHAIN_LOOPED] = "midchain-looped",             \
     [ADJ_ATTR_MIDCHAIN_FIXUP_IP4O4_HDR] = "midchain-ip4o4-hdr-fixup",   \
+    [ADJ_ATTR_MIDCHAIN_FIXUP_FLOW_HASH] = "midchain-flow-hash",   \
 }
 
 #define FOR_EACH_ADJ_ATTR(_attr)                        \
     for (_attr = ADJ_ATTR_SYNC_WALK_ACTIVE;             \
-	 _attr <= ADJ_ATTR_MIDCHAIN_FIXUP_IP4O4_HDR;    \
+	 _attr <= ADJ_ATTR_MIDCHAIN_FIXUP_FLOW_HASH;    \
 	 _attr++)
 
 /**
@@ -211,6 +218,7 @@ typedef enum adj_flags_t_
     ADJ_FLAG_MIDCHAIN_IP_STACK = (1 << ADJ_ATTR_MIDCHAIN_IP_STACK),
     ADJ_FLAG_MIDCHAIN_LOOPED = (1 << ADJ_ATTR_MIDCHAIN_LOOPED),
     ADJ_FLAG_MIDCHAIN_FIXUP_IP4O4_HDR = (1 << ADJ_ATTR_MIDCHAIN_FIXUP_IP4O4_HDR),
+    ADJ_FLAG_MIDCHAIN_FIXUP_FLOW_HASH = (1 << ADJ_ATTR_MIDCHAIN_FIXUP_FLOW_HASH),
 }  __attribute__ ((packed)) adj_flags_t;
 
 /**
