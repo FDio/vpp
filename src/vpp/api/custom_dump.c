@@ -1667,6 +1667,57 @@ static void *vl_api_modify_vhost_user_if_t_print
   FINISH;
 }
 
+static void *vl_api_create_vhost_user_if_v2_t_print
+  (vl_api_create_vhost_user_if_v2_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: create_vhost_user_if_v2 ");
+
+  s = format (s, "socket %s ", mp->sock_filename);
+  if (mp->is_server)
+    s = format (s, "server ");
+  if (mp->renumber)
+    s = format (s, "renumber %d ", (mp->custom_dev_instance));
+  if (mp->disable_mrg_rxbuf)
+    s = format (s, "disable_mrg_rxbuf ");
+  if (mp->disable_indirect_desc)
+    s = format (s, "disable_indirect_desc ");
+  if (mp->tag[0])
+    s = format (s, "tag %s ", mp->tag);
+  if (mp->enable_gso)
+    s = format (s, "gso ");
+  if (mp->enable_event_idx)
+    s = format (s, "event-idx ");
+  if (mp->enable_packed)
+    s = format (s, "packed");
+
+  FINISH;
+}
+
+static void *vl_api_modify_vhost_user_if_v2_t_print
+  (vl_api_modify_vhost_user_if_v2_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: modify_vhost_user_if_v2 ");
+
+  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
+  s = format (s, "socket %s ", mp->sock_filename);
+  if (mp->is_server)
+    s = format (s, "server ");
+  if (mp->renumber)
+    s = format (s, "renumber %d ", (mp->custom_dev_instance));
+  if (mp->enable_gso)
+    s = format (s, "gso ");
+  if (mp->enable_event_idx)
+    s = format (s, "event-idx ");
+  if (mp->enable_packed)
+    s = format (s, "packed");
+
+  FINISH;
+}
+
 static void *vl_api_delete_vhost_user_if_t_print
   (vl_api_delete_vhost_user_if_t * mp, void *handle)
 {
@@ -3099,6 +3150,8 @@ _(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                     \
 _(L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite)         \
 _(CREATE_VHOST_USER_IF, create_vhost_user_if)				\
 _(MODIFY_VHOST_USER_IF, modify_vhost_user_if)				\
+_(CREATE_VHOST_USER_IF_V2, create_vhost_user_if_v2)			\
+_(MODIFY_VHOST_USER_IF_V2, modify_vhost_user_if_v2)     		\
 _(DELETE_VHOST_USER_IF, delete_vhost_user_if)				\
 _(SW_INTERFACE_DUMP, sw_interface_dump)					\
 _(CONTROL_PING, control_ping)						\

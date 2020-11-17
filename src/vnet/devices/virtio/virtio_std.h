@@ -77,9 +77,17 @@ typedef enum
 #define VRING_DESC_F_AVAIL              (1 << 7)
 #define VRING_DESC_F_USED               (1 << 15)
 
-#define VRING_EVENT_F_ENABLE            0x0
-#define VRING_EVENT_F_DISABLE           0x1
-#define VRING_EVENT_F_DESC              0x2
+#define foreach_virtio_event_idx_flags      \
+  _ (VRING_EVENT_F_ENABLE, 0)  \
+  _ (VRING_EVENT_F_DISABLE, 1) \
+  _ (VRING_EVENT_F_DESC, 2)
+
+typedef enum
+{
+#define _(f,n) f = n,
+  foreach_virtio_event_idx_flags
+#undef _
+} virtio_event_idx_flags_t;
 
 #define VRING_USED_F_NO_NOTIFY  1
 #define VRING_AVAIL_F_NO_INTERRUPT 1
