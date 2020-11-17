@@ -320,16 +320,17 @@ vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
 }
 
 static_always_inline void
-vhost_user_input_do_interrupt (vlib_main_t * vm, vhost_user_vring_t * txvq,
+vhost_user_input_do_interrupt (vlib_main_t * vm, vhost_user_intf_t * vui,
+			       vhost_user_vring_t * txvq,
 			       vhost_user_vring_t * rxvq)
 {
   f64 now = vlib_time_now (vm);
 
   if ((txvq->n_since_last_int) && (txvq->int_deadline < now))
-    vhost_user_send_call (vm, txvq);
+    vhost_user_send_call (vm, vui, txvq);
 
   if ((rxvq->n_since_last_int) && (rxvq->int_deadline < now))
-    vhost_user_send_call (vm, rxvq);
+    vhost_user_send_call (vm, vui, rxvq);
 }
 
 static_always_inline void
@@ -400,7 +401,7 @@ vhost_user_if_input (vlib_main_t * vm,
   {
     /* do we have pending interrupts ? */
     vhost_user_vring_t *rxvq = &vui->vrings[VHOST_VRING_IDX_RX (qid)];
-    vhost_user_input_do_interrupt (vm, txvq, rxvq);
+    vhost_user_input_do_interrupt (vm, vui, txvq, rxvq);
   }
 
   /*
@@ -742,7 +743,7 @@ stop:
       txvq->n_since_last_int += n_rx_packets;
 
       if (txvq->n_since_last_int > vum->coalesce_frames)
-	vhost_user_send_call (vm, txvq);
+	vhost_user_send_call (vm, vui, txvq);
     }
 
   /* increase rx counters */
@@ -1116,7 +1117,7 @@ vhost_user_if_input_packed (vlib_main_t * vm, vhost_user_main_t * vum,
 
   /* do we have pending interrupts ? */
   vhost_user_vring_t *rxvq = &vui->vrings[VHOST_VRING_IDX_RX (qid)];
-  vhost_user_input_do_interrupt (vm, txvq, rxvq);
+  vhost_user_input_do_interrupt (vm, vui, txvq, rxvq);
 
   /*
    * For adaptive mode, it is optimized to reduce interrupts.
@@ -1389,7 +1390,7 @@ vhost_user_if_input_packed (vlib_main_t * vm, vhost_user_main_t * vum,
     {
       txvq->n_since_last_int += n_rx_packets;
       if (txvq->n_since_last_int > vum->coalesce_frames)
-	vhost_user_send_call (vm, txvq);
+	vhost_user_send_call (vm, vui, txvq);
     }
 
   /* increase rx counters */
