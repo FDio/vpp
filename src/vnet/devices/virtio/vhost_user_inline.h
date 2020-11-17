@@ -248,8 +248,20 @@ format_vhost_trace (u8 * s, va_list * va)
   return s;
 }
 
+static_always_inline u64
+vhost_user_is_packed_ring_supported (vhost_user_intf_t * vui)
+{
+  return (vui->features & VIRTIO_FEATURE (VIRTIO_F_RING_PACKED));
+}
+
+static_always_inline u64
+vhost_user_is_event_idx_supported (vhost_user_intf_t * vui)
+{
+  return (vui->features & VIRTIO_FEATURE (VIRTIO_RING_F_EVENT_IDX));
+}
+
 static_always_inline void
-vhost_user_send_call (vlib_main_t * vm, vhost_user_vring_t * vq)
+vhost_user_kick (vlib_main_t * vm, vhost_user_vring_t * vq)
 {
   vhost_user_main_t *vum = &vhost_user_main;
   u64 x = 1;
@@ -257,7 +269,7 @@ vhost_user_send_call (vlib_main_t * vm, vhost_user_vring_t * vq)
   int rv;
 
   rv = write (fd, &x, sizeof (x));
-  if (rv <= 0)
+  if (PREDICT_FALSE (rv <= 0))
     {
       clib_unix_warning
 	("Error: Could not write to unix socket for callfd %d", fd);
@@ -266,6 +278,101 @@ vhost_user_send_call (vlib_main_t * vm, vhost_user_vring_t * vq)
 
   vq->n_since_last_int = 0;
   vq->int_deadline = vlib_time_now (vm) + vum->coalesce_time;
+}
+
+static_always_inline u16
+vhost_user_avail_event_idx (vhost_user_vring_t * vq)
+{
+  volatile u16 *event_idx = (u16 *) & (vq->used->ring[vq->qsz_mask + 1]);
+
+  return *event_idx;
+}
+
+static_always_inline u16
+vhost_user_used_event_idx (vhost_user_vring_t * vq)
+{
+  volatile u16 *event_idx = (u16 *) & (vq->avail->ring[vq->qsz_mask + 1]);
+
+  return *event_idx;
+}
+
+static_always_inline u16
+vhost_user_need_event (u16 event_idx, u16 new_idx, u16 old_idx)
+{
+  return ((u16) (new_idx - event_idx - 1) < (u16) (new_idx - old_idx));
+}
+
+static_always_inline void
+vhost_user_send_call_event_idx (vlib_main_t * vm, vhost_user_vring_t * vq)
+{
+  vhost_user_main_t *vum = &vhost_user_main;
+  u8 first_kick = vq->first_kick;
+  u16 event_idx = vhost_user_used_event_idx (vq);
+
+  vq->first_kick = 1;
+  if (vhost_user_need_event (event_idx, vq->last_used_idx, vq->last_kick) ||
+      PREDICT_FALSE (!first_kick))
+    {
+      vhost_user_kick (vm, vq);
+      vq->last_kick = event_idx;
+    }
+  else
+    {
+      vq->n_since_last_int = 0;
+      vq->int_deadline = vlib_time_now (vm) + vum->coalesce_time;
+    }
+}
+
+static_always_inline void
+vhost_user_send_call_event_idx_packed (vlib_main_t * vm,
+				       vhost_user_vring_t * vq)
+{
+  vhost_user_main_t *vum = &vhost_user_main;
+  u8 first_kick = vq->first_kick;
+  u16 off_wrap;
+  u16 event_idx;
+  u16 new_idx = vq->last_used_idx;
+  u16 old_idx = vq->last_kick;
+
+  if (PREDICT_TRUE (vq->avail_event->flags == VRING_EVENT_F_DESC))
+    {
+      CLIB_COMPILER_BARRIER ();
+      off_wrap = vq->avail_event->off_wrap;
+      event_idx = off_wrap & 0x7fff;
+      if (vq->used_wrap_counter != (off_wrap >> 15))
+	event_idx -= (vq->qsz_mask + 1);
+
+      if (new_idx <= old_idx)
+	old_idx -= (vq->qsz_mask + 1);
+
+      vq->first_kick = 1;
+      vq->last_kick = event_idx;
+      if (vhost_user_need_event (event_idx, new_idx, old_idx) ||
+	  PREDICT_FALSE (!first_kick))
+	vhost_user_kick (vm, vq);
+      else
+	{
+	  vq->n_since_last_int = 0;
+	  vq->int_deadline = vlib_time_now (vm) + vum->coalesce_time;
+	}
+    }
+  else
+    vhost_user_kick (vm, vq);
+}
+
+static_always_inline void
+vhost_user_send_call (vlib_main_t * vm, vhost_user_intf_t * vui,
+		      vhost_user_vring_t * vq)
+{
+  if (vhost_user_is_event_idx_supported (vui))
+    {
+      if (vhost_user_is_packed_ring_supported (vui))
+	vhost_user_send_call_event_idx_packed (vm, vq);
+      else
+	vhost_user_send_call_event_idx (vm, vq);
+    }
+  else
+    vhost_user_kick (vm, vq);
 }
 
 static_always_inline u8
@@ -305,7 +412,10 @@ vhost_user_advance_last_avail_idx (vhost_user_vring_t * vring)
 {
   vring->last_avail_idx++;
   if (PREDICT_FALSE ((vring->last_avail_idx & vring->qsz_mask) == 0))
-    vring->avail_wrap_counter ^= VRING_DESC_F_AVAIL;
+    {
+      vring->avail_wrap_counter ^= VRING_DESC_F_AVAIL;
+      vring->last_avail_idx = 0;
+    }
 }
 
 static_always_inline void
@@ -331,7 +441,11 @@ vhost_user_undo_advanced_last_avail_idx (vhost_user_vring_t * vring)
 {
   if (PREDICT_FALSE ((vring->last_avail_idx & vring->qsz_mask) == 0))
     vring->avail_wrap_counter ^= VRING_DESC_F_AVAIL;
-  vring->last_avail_idx--;
+
+  if (PREDICT_FALSE (vring->last_avail_idx == 0))
+    vring->last_avail_idx = vring->qsz_mask;
+  else
+    vring->last_avail_idx--;
 }
 
 static_always_inline void
@@ -362,13 +476,10 @@ vhost_user_advance_last_used_idx (vhost_user_vring_t * vring)
 {
   vring->last_used_idx++;
   if (PREDICT_FALSE ((vring->last_used_idx & vring->qsz_mask) == 0))
-    vring->used_wrap_counter ^= 1;
-}
-
-static_always_inline u64
-vhost_user_is_packed_ring_supported (vhost_user_intf_t * vui)
-{
-  return (vui->features & VIRTIO_FEATURE (VIRTIO_F_RING_PACKED));
+    {
+      vring->used_wrap_counter ^= 1;
+      vring->last_used_idx = 0;
+    }
 }
 
 #endif

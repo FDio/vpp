@@ -2466,6 +2466,41 @@ static void vl_api_create_vhost_user_if_reply_t_handler_json
   vam->result_ready = 1;
 }
 
+static void vl_api_create_vhost_user_if_v2_reply_t_handler
+  (vl_api_create_vhost_user_if_v2_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->sw_if_index = ntohl (mp->sw_if_index);
+      vam->result_ready = 1;
+    }
+  vam->regenerate_interface_table = 1;
+}
+
+static void vl_api_create_vhost_user_if_v2_reply_t_handler_json
+  (vl_api_create_vhost_user_if_v2_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
 static void vl_api_ip_address_details_t_handler
   (vl_api_ip_address_details_t * mp)
 {
@@ -3284,6 +3319,7 @@ _(l2_fib_clear_table_reply)                             \
 _(l2_interface_efp_filter_reply)                        \
 _(l2_interface_vlan_tag_rewrite_reply)                  \
 _(modify_vhost_user_if_reply)                           \
+_(modify_vhost_user_if_v2_reply)                        \
 _(delete_vhost_user_if_reply)                           \
 _(want_l2_macs_events_reply)                            \
 _(input_acl_set_interface_reply)                        \
@@ -3459,6 +3495,8 @@ _(L2_INTERFACE_VLAN_TAG_REWRITE_REPLY, l2_interface_vlan_tag_rewrite_reply) \
 _(SW_INTERFACE_VHOST_USER_DETAILS, sw_interface_vhost_user_details)     \
 _(CREATE_VHOST_USER_IF_REPLY, create_vhost_user_if_reply)               \
 _(MODIFY_VHOST_USER_IF_REPLY, modify_vhost_user_if_reply)               \
+_(CREATE_VHOST_USER_IF_V2_REPLY, create_vhost_user_if_v2_reply)         \
+_(MODIFY_VHOST_USER_IF_V2_REPLY, modify_vhost_user_if_v2_reply)		\
 _(DELETE_VHOST_USER_IF_REPLY, delete_vhost_user_if_reply)               \
 _(SHOW_VERSION_REPLY, show_version_reply)                               \
 _(SHOW_THREADS_REPLY, show_threads_reply)                               \
@@ -10059,13 +10097,11 @@ api_create_vhost_user_if (vat_main_t * vam)
   mp->disable_indirect_desc = disable_indirect_desc;
   mp->enable_gso = enable_gso;
   mp->enable_packed = enable_packed;
+  mp->custom_dev_instance = ntohl (custom_dev_instance);
   clib_memcpy (mp->sock_filename, file_name, vec_len (file_name));
   vec_free (file_name);
   if (custom_dev_instance != ~0)
-    {
-      mp->renumber = 1;
-      mp->custom_dev_instance = ntohl (custom_dev_instance);
-    }
+    mp->renumber = 1;
 
   mp->use_custom_mac = use_custom_mac;
   clib_memcpy (mp->mac_address, hwaddr, 6);
@@ -10140,13 +10176,176 @@ api_modify_vhost_user_if (vat_main_t * vam)
   mp->is_server = is_server;
   mp->enable_gso = enable_gso;
   mp->enable_packed = enable_packed;
+  mp->custom_dev_instance = ntohl (custom_dev_instance);
   clib_memcpy (mp->sock_filename, file_name, vec_len (file_name));
   vec_free (file_name);
   if (custom_dev_instance != ~0)
+    mp->renumber = 1;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_create_vhost_user_if_v2 (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_create_vhost_user_if_v2_t *mp;
+  u8 *file_name;
+  u8 is_server = 0;
+  u8 file_name_set = 0;
+  u32 custom_dev_instance = ~0;
+  u8 hwaddr[6];
+  u8 use_custom_mac = 0;
+  u8 disable_mrg_rxbuf = 0;
+  u8 disable_indirect_desc = 0;
+  u8 *tag = 0;
+  u8 enable_gso = 0;
+  u8 enable_packed = 0;
+  u8 enable_event_idx = 0;
+  int ret;
+
+  /* Shut up coverity */
+  clib_memset (hwaddr, 0, sizeof (hwaddr));
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      mp->renumber = 1;
-      mp->custom_dev_instance = ntohl (custom_dev_instance);
+      if (unformat (i, "socket %s", &file_name))
+	{
+	  file_name_set = 1;
+	}
+      else if (unformat (i, "renumber %" PRIu32, &custom_dev_instance))
+	;
+      else if (unformat (i, "mac %U", unformat_ethernet_address, hwaddr))
+	use_custom_mac = 1;
+      else if (unformat (i, "server"))
+	is_server = 1;
+      else if (unformat (i, "disable_mrg_rxbuf"))
+	disable_mrg_rxbuf = 1;
+      else if (unformat (i, "disable_indirect_desc"))
+	disable_indirect_desc = 1;
+      else if (unformat (i, "gso"))
+	enable_gso = 1;
+      else if (unformat (i, "packed"))
+	enable_packed = 1;
+      else if (unformat (i, "event-idx"))
+	enable_event_idx = 1;
+      else if (unformat (i, "tag %s", &tag))
+	;
+      else
+	break;
     }
+
+  if (file_name_set == 0)
+    {
+      errmsg ("missing socket file name");
+      return -99;
+    }
+
+  if (vec_len (file_name) > 255)
+    {
+      errmsg ("socket file name too long");
+      return -99;
+    }
+  vec_add1 (file_name, 0);
+
+  M (CREATE_VHOST_USER_IF_V2, mp);
+
+  mp->is_server = is_server;
+  mp->disable_mrg_rxbuf = disable_mrg_rxbuf;
+  mp->disable_indirect_desc = disable_indirect_desc;
+  mp->enable_gso = enable_gso;
+  mp->enable_packed = enable_packed;
+  mp->enable_event_idx = enable_event_idx;
+  mp->custom_dev_instance = ntohl (custom_dev_instance);
+  clib_memcpy (mp->sock_filename, file_name, vec_len (file_name));
+  vec_free (file_name);
+  if (custom_dev_instance != ~0)
+    mp->renumber = 1;
+
+  mp->use_custom_mac = use_custom_mac;
+  clib_memcpy (mp->mac_address, hwaddr, 6);
+  if (tag)
+    strncpy ((char *) mp->tag, (char *) tag, ARRAY_LEN (mp->tag) - 1);
+  vec_free (tag);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_modify_vhost_user_if_v2 (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_modify_vhost_user_if_v2_t *mp;
+  u8 *file_name;
+  u8 is_server = 0;
+  u8 file_name_set = 0;
+  u32 custom_dev_instance = ~0;
+  u8 sw_if_index_set = 0;
+  u32 sw_if_index = (u32) ~ 0;
+  u8 enable_gso = 0;
+  u8 enable_packed = 0;
+  u8 enable_event_idx = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "socket %s", &file_name))
+	{
+	  file_name_set = 1;
+	}
+      else if (unformat (i, "renumber %" PRIu32, &custom_dev_instance))
+	;
+      else if (unformat (i, "server"))
+	is_server = 1;
+      else if (unformat (i, "gso"))
+	enable_gso = 1;
+      else if (unformat (i, "packed"))
+	enable_packed = 1;
+      else if (unformat (i, "event-idx"))
+	enable_event_idx = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing sw_if_index or interface name");
+      return -99;
+    }
+
+  if (file_name_set == 0)
+    {
+      errmsg ("missing socket file name");
+      return -99;
+    }
+
+  if (vec_len (file_name) > 255)
+    {
+      errmsg ("socket file name too long");
+      return -99;
+    }
+  vec_add1 (file_name, 0);
+
+  M (MODIFY_VHOST_USER_IF_V2, mp);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->is_server = is_server;
+  mp->enable_gso = enable_gso;
+  mp->enable_packed = enable_packed;
+  mp->enable_event_idx = enable_event_idx;
+  mp->custom_dev_instance = ntohl (custom_dev_instance);
+  clib_memcpy (mp->sock_filename, file_name, vec_len (file_name));
+  vec_free (file_name);
+  if (custom_dev_instance != ~0)
+    mp->renumber = 1;
 
   S (mp);
   W (ret);
@@ -15235,6 +15434,13 @@ _(create_vhost_user_if,                                                 \
 _(modify_vhost_user_if,                                                 \
         "<intfc> | sw_if_index <nn> socket <filename>\n"                \
         "[server] [renumber <dev_instance>] [gso] [packed]")            \
+_(create_vhost_user_if_v2,                                              \
+        "socket <filename> [server] [renumber <dev_instance>] "         \
+        "[disable_mrg_rxbuf] [disable_indirect_desc] [gso] "            \
+        "[mac <mac_address>] [packed] [event-idx]")                     \
+_(modify_vhost_user_if_v2,                                              \
+        "<intfc> | sw_if_index <nn> socket <filename>\n"                \
+        "[server] [renumber <dev_instance>] [gso] [packed] [event-idx]")\
 _(delete_vhost_user_if, "<intfc> | sw_if_index <nn>")                   \
 _(sw_interface_vhost_user_dump, "<intfc> | sw_if_index <nn>")           \
 _(show_version, "")                                                     \

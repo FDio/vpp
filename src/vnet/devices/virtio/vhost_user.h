@@ -90,16 +90,27 @@ typedef enum
   (FEATURE_VIRTIO_NET_F_HOST_TSO_FEATURE_BITS |		 \
    FEATURE_VIRTIO_NET_F_GUEST_TSO_FEATURE_BITS)
 
+
+typedef struct
+{
+  char *sock_filename;
+  u64 feature_mask;
+  u32 custom_dev_instance;
+  u8 hwaddr[6];
+  u8 renumber;
+  u8 is_server;
+  u8 enable_gso;
+  u8 enable_packed;
+  u8 enable_event_idx;
+
+  /* return */
+  u32 sw_if_index;
+} vhost_user_create_if_args_t;
+
 int vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
-			  const char *sock_filename, u8 is_server,
-			  u32 * sw_if_index, u64 feature_mask,
-			  u8 renumber, u32 custom_dev_instance, u8 * hwaddr,
-			  u8 enable_gso, u8 enable_packed);
+			  vhost_user_create_if_args_t * args);
 int vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
-			  const char *sock_filename, u8 is_server,
-			  u32 sw_if_index, u64 feature_mask,
-			  u8 renumber, u32 custom_dev_instance,
-			  u8 enable_gso, u8 enable_packed);
+			  vhost_user_create_if_args_t * args);
 int vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm,
 			  u32 sw_if_index);
 
@@ -207,6 +218,9 @@ typedef struct
 
   u16 used_wrap_counter;
   u16 avail_wrap_counter;
+
+  u16 last_kick;
+  u8 first_kick;
 } vhost_user_vring_t;
 
 #define VHOST_USER_EVENT_START_TIMER 1
@@ -256,6 +270,7 @@ typedef struct
   /* Packed ring configured */
   u8 enable_packed;
 
+  u8 enable_event_idx;
 } vhost_user_intf_t;
 
 typedef struct
