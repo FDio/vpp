@@ -18,6 +18,9 @@
 
 #include <vnet/adj/adj.h>
 #include <vnet/tunnel/tunnel_dp.h>
+#include <vnet/ip/ip4_inlines.h>
+#include <vnet/ip/ip6_inlines.h>
+#include <vnet/mpls/mpls_lookup.h>
 
 static_always_inline void
 adj_midchain_ipip44_fixup (vlib_main_t * vm,
@@ -54,13 +57,32 @@ adj_midchain_ipip44_fixup (vlib_main_t * vm,
 static_always_inline void
 adj_midchain_fixup (vlib_main_t *vm,
                     const ip_adjacency_t *adj,
-                    vlib_buffer_t * b)
+                    vlib_buffer_t * b,
+                    vnet_link_t lt)
 {
-    if (PREDICT_TRUE(adj->rewrite_header.flags & VNET_REWRITE_FIXUP_IP4_O_4))
+    if (PREDICT_TRUE(adj->rewrite_header.flags &
+                     VNET_REWRITE_FIXUP_IP4_O_4))
         adj_midchain_ipip44_fixup (vm, adj, b);
     else if (adj->sub_type.midchain.fixup_func)
         adj->sub_type.midchain.fixup_func
             (vm, adj, b, adj->sub_type.midchain.fixup_data);
+
+    if (PREDICT_FALSE(adj->rewrite_header.flags &
+                      VNET_REWRITE_FIXUP_FLOW_HASH))
+    {
+        if (VNET_LINK_IP4 == lt)
+            vnet_buffer (b)->ip.flow_hash =
+                ip4_compute_flow_hash (vlib_buffer_get_current (b),
+                                       IP_FLOW_HASH_DEFAULT);
+        else if (VNET_LINK_IP6 == lt)
+            vnet_buffer (b)->ip.flow_hash =
+                ip6_compute_flow_hash (vlib_buffer_get_current (b),
+                                       IP_FLOW_HASH_DEFAULT);
+        else if (VNET_LINK_MPLS == lt)
+            vnet_buffer (b)->ip.flow_hash =
+                mpls_compute_flow_hash (vlib_buffer_get_current (b),
+                                       IP_FLOW_HASH_DEFAULT);
+    }
 }
 
 #endif

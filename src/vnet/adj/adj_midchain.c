@@ -403,6 +403,10 @@ adj_midchain_setup (adj_index_t adj_index,
     {
         adj->rewrite_header.flags &= ~VNET_REWRITE_FIXUP_IP4_O_4;
     }
+    if (!(flags & ADJ_FLAG_MIDCHAIN_FIXUP_FLOW_HASH))
+    {
+        adj->rewrite_header.flags &= ~VNET_REWRITE_FIXUP_FLOW_HASH;
+    }
 
     tx_node = adj_nbr_midchain_get_tx_node(adj);
 
@@ -582,39 +586,47 @@ adj_nbr_midchain_stack_on_fib_entry (adj_index_t ai,
     {
         fib_entry_contribute_forwarding (fei, fct, &tmp);
 
-        if ((adj->ia_flags & ADJ_FLAG_MIDCHAIN_IP_STACK) &&
-            (DPO_LOAD_BALANCE == tmp.dpoi_type))
+        if (DPO_LOAD_BALANCE == tmp.dpoi_type)
         {
-            /*
-             * do that hash now and stack on the choice.
-             * If the choice is an incomplete adj then we will need a poke when
-             * it becomes complete. This happens since the adj update walk propagates
-             * as far a recursive paths.
-             */
-            const dpo_id_t *choice;
             load_balance_t *lb;
-            int hash;
 
             lb = load_balance_get (tmp.dpoi_index);
 
-            if (FIB_FORW_CHAIN_TYPE_UNICAST_IP4 == fct)
+            if ((adj->ia_flags & ADJ_FLAG_MIDCHAIN_IP_STACK) ||
+                lb->lb_n_buckets == 1)
             {
-                hash = ip4_compute_flow_hash ((ip4_header_t *) adj_get_rewrite (ai),
-                                              lb->lb_hash_config);
-            }
-            else if (FIB_FORW_CHAIN_TYPE_UNICAST_IP6 == fct)
-            {
-                hash = ip6_compute_flow_hash ((ip6_header_t *) adj_get_rewrite (ai),
-                                              lb->lb_hash_config);
-            }
-            else
-            {
-                hash = 0;
-                ASSERT(0);
-            }
+                /*
+                 * do that hash now and stack on the choice.
+                 * If the choice is an incomplete adj then we will need a poke when
+                 * it becomes complete. This happens since the adj update walk propagates
+                 * as far a recursive paths.
+                 */
+                const dpo_id_t *choice;
+                int hash;
 
-            choice = load_balance_get_bucket_i (lb, hash & lb->lb_n_buckets_minus_1);
-            dpo_copy (&tmp, choice);
+                if (FIB_FORW_CHAIN_TYPE_UNICAST_IP4 == fct)
+                {
+                    hash = ip4_compute_flow_hash ((ip4_header_t *) adj_get_rewrite (ai),
+                                                  lb->lb_hash_config);
+                }
+                else if (FIB_FORW_CHAIN_TYPE_UNICAST_IP6 == fct)
+                {
+                    hash = ip6_compute_flow_hash ((ip6_header_t *) adj_get_rewrite (ai),
+                                                  lb->lb_hash_config);
+                }
+                else
+                {
+                    hash = 0;
+                    ASSERT(0);
+                }
+
+                choice = load_balance_get_bucket_i (lb, hash & lb->lb_n_buckets_minus_1);
+                dpo_copy (&tmp, choice);
+            }
+            else if (adj->ia_flags & ADJ_FLAG_MIDCHAIN_FIXUP_FLOW_HASH)
+            {
+                adj->rewrite_header.flags |= VNET_REWRITE_FIXUP_FLOW_HASH;
+            }
         }
     }
     adj_nbr_midchain_stack (ai, &tmp);
