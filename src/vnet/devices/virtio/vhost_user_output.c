@@ -290,7 +290,8 @@ vhost_user_handle_tx_offload (vhost_user_intf_t * vui, vlib_buffer_t * b,
 }
 
 static_always_inline void
-vhost_user_mark_desc_available (vlib_main_t * vm, vhost_user_vring_t * rxvq,
+vhost_user_mark_desc_available (vlib_main_t * vm, vhost_user_intf_t * vui,
+				vhost_user_vring_t * rxvq,
 				u16 * n_descs_processed, u8 chained,
 				vlib_frame_t * frame, u32 n_left)
 {
@@ -345,7 +346,7 @@ vhost_user_mark_desc_available (vlib_main_t * vm, vhost_user_vring_t * rxvq,
 
       rxvq->n_since_last_int += frame->n_vectors - n_left;
       if (rxvq->n_since_last_int > vum->coalesce_frames)
-	vhost_user_send_call (vm, rxvq);
+	vhost_user_send_call (vm, vui, rxvq);
     }
 }
 
@@ -656,7 +657,7 @@ retry:
 	  copy_len = 0;
 
 	  /* give buffers back to driver */
-	  vhost_user_mark_desc_available (vm, rxvq, &n_descs_processed,
+	  vhost_user_mark_desc_available (vm, vui, rxvq, &n_descs_processed,
 					  chained, frame, n_left);
 	}
 
@@ -671,8 +672,8 @@ done:
 	vlib_error_count (vm, node->node_index,
 			  VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL, 1);
 
-      vhost_user_mark_desc_available (vm, rxvq, &n_descs_processed, chained,
-				      frame, n_left);
+      vhost_user_mark_desc_available (vm, vui, rxvq, &n_descs_processed,
+				      chained, frame, n_left);
     }
 
   /*
@@ -1030,7 +1031,7 @@ done:
       rxvq->n_since_last_int += frame->n_vectors - n_left;
 
       if (rxvq->n_since_last_int > vum->coalesce_frames)
-	vhost_user_send_call (vm, rxvq);
+	vhost_user_send_call (vm, vui, rxvq);
     }
 
   vhost_user_vring_unlock (vui, qid);
