@@ -32,6 +32,7 @@ import "vnet/devices/virtio/virtio_types.api";
 */
 define create_vhost_user_if
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   bool is_server;
@@ -54,6 +55,7 @@ define create_vhost_user_if
 */
 define create_vhost_user_if_reply
 {
+  option deprecated;
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
@@ -68,6 +70,7 @@ define create_vhost_user_if_reply
 */
 autoreply define modify_vhost_user_if
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
@@ -76,6 +79,74 @@ autoreply define modify_vhost_user_if
   bool renumber;
   bool enable_gso;
   bool enable_packed;
+  u32 custom_dev_instance;
+};
+
+/** \brief vhost-user interface create request
+    @param client_index - opaque cookie to identify the sender
+    @param is_server - our side is socket server
+    @param sock_filename - unix socket filename, used to speak with frontend
+    @param use_custom_mac - enable or disable the use of the provided hardware address
+    @param disable_mrg_rxbuf - disable the use of merge receive buffers
+    @param disable_indirect_desc - disable the use of indirect descriptors which driver can use
+    @param enable_gso - enable gso support (default 0)
+    @param enable_packed - enable packed ring support (default 0)
+    @param enable_event_idx - enable event_idx support (default 0)
+    @param mac_address - hardware address to use if 'use_custom_mac' is set
+    @param renumber - if true, use custom_dev_instance is valid
+    @param custom_dev_instance - custom device instance number
+*/
+define create_vhost_user_if_v2
+{
+  u32 client_index;
+  u32 context;
+  bool is_server;
+  string sock_filename[256];
+  bool renumber;
+  bool disable_mrg_rxbuf;
+  bool disable_indirect_desc;
+  bool enable_gso;
+  bool enable_packed;
+  bool enable_event_idx;
+  u32 custom_dev_instance;
+  bool use_custom_mac;
+  vl_api_mac_address_t mac_address;
+  string tag[64];
+};
+
+/** \brief vhost-user interface create response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param sw_if_index - interface the operation is applied to
+*/
+define create_vhost_user_if_v2_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief vhost-user interface modify request
+    @param client_index - opaque cookie to identify the sender
+    @param is_server - our side is socket server
+    @param sock_filename - unix socket filename, used to speak with frontend
+    @param enable_gso - enable gso support (default 0)
+    @param enable_packed - enable packed ring support (default 0)
+    @param enable_event_idx - enable event idx support (default 0)
+    @param renumber - if true, use custom_dev_instance is valid
+    @param custom_dev_instance - custom device instance number
+*/
+autoreply define modify_vhost_user_if_v2
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool is_server;
+  string sock_filename[256];
+  bool renumber;
+  bool enable_gso;
+  bool enable_packed;
+  bool enable_event_idx;
   u32 custom_dev_instance;
 };
 

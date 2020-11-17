@@ -113,6 +113,12 @@ M:	Steven Luong <sluong@cisco.com>
 M:	Mohsin Kazmi <sykazmi@cisco.com>
 F:	src/vnet/devices/tap/
 
+VNET Vhost User Driver
+I:	vhost
+Y:	src/vnet/devices/virtio/FEATURE.yaml
+M:	Steven Luong <sluong@cisco.com>
+F:	src/vnet/devices/virtio/vhost_user*
+
 VNET Native Virtio Drivers
 I:	virtio
 Y:	src/vnet/devices/virtio/FEATURE.yaml
