@@ -108,6 +108,7 @@ typedef struct fifo_segment_slice_
   uword n_fl_chunk_bytes;		/**< Chunk bytes on freelist */
   uword virtual_mem;			/**< Slice sum of all fifo sizes */
   clib_spinlock_t chunk_lock;
+  svm_fifo_chunk_t *to_collect;
 } fifo_segment_slice_t;
 
 struct fifo_segment_header_
