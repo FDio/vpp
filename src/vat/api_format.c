@@ -10199,10 +10199,9 @@ static void vl_api_sw_interface_vhost_user_details_t_handler
 						    (mp->features_last_32) <<
 						    32);
 
-  print (vam->ofp, "%-25s %3" PRIu32 " %6" PRIu32 " %8x %6d %7d %s",
-	 (char *) mp->interface_name,
-	 ntohl (mp->sw_if_index), ntohl (mp->virtio_net_hdr_sz),
-	 features, mp->is_server,
+  print (vam->ofp, "%-25s %3" PRIu32 " %6" PRIu32 " %16llx %6d %7d %s",
+	 (char *) mp->interface_name, ntohl (mp->sw_if_index),
+	 ntohl (mp->virtio_net_hdr_sz), features, mp->is_server,
 	 ntohl (mp->num_regions), (char *) mp->sock_filename);
   print (vam->ofp, "    Status: '%s'", strerror (ntohl (mp->sock_errno)));
 }
@@ -10255,8 +10254,8 @@ api_sw_interface_vhost_user_dump (vat_main_t * vam)
 	break;
     }
 
-  print (vam->ofp,
-	 "Interface name            idx hdr_sz features server regions filename");
+  print (vam->ofp, "Interface name            idx hdr_sz         features "
+		   "server regions filename");
 
   /* Get list of vhost-user interfaces */
   M (SW_INTERFACE_VHOST_USER_DUMP, mp);
