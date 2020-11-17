@@ -389,11 +389,13 @@ svm_fifo_init (svm_fifo_t * f, u32 size)
    */
   f->start_chunk->start_byte = 0;
   prev = f->start_chunk;
+  prev->enq_rb_index = prev->deq_rb_index = RBTREE_TNIL_INDEX;
   c = prev->next;
 
   while (c)
     {
       c->start_byte = prev->start_byte + prev->length;
+      c->enq_rb_index = c->deq_rb_index = RBTREE_TNIL_INDEX;
       prev = c;
       c = c->next;
     }
