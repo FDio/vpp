@@ -512,8 +512,6 @@ fsh_try_alloc_chunk_batch (fifo_segment_header_t * fsh,
     {
       c->start_byte = 0;
       c->length = rounded_data_size;
-      c->enq_rb_index = RBTREE_TNIL_INDEX;
-      c->deq_rb_index = RBTREE_TNIL_INDEX;
       c->next = head;
       head = c;
       cmem += sizeof (*c) + rounded_data_size;
@@ -708,8 +706,6 @@ fsh_slice_collect_chunks (fifo_segment_header_t * fsh,
       CLIB_MEM_UNPOISON (c, sizeof (*c));
       next = c->next;
       fl_index = fs_freelist_for_size (c->length);
-      c->enq_rb_index = RBTREE_TNIL_INDEX;
-      c->deq_rb_index = RBTREE_TNIL_INDEX;
       fss_chunk_free_list_push (fss, fl_index, c);
       n_collect += fs_freelist_index_to_size (fl_index);
       c = next;
