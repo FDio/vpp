@@ -1,0 +1,42 @@
+From a1412e05caa2678757156d4de2755ab5140ecc24 Mon Sep 17 00:00:00 2001
+From: Vipul Ashri <vipul.ashri@oracle.com>
+Date: Fri, 18 Sep 2020 15:25:04 +0530
+Subject: [PATCH] net/virtio: fix variable assignment in helper macro
+
+Inside Macro ASSIGN_UNLESS_EQUAL(var, val), assignment to var is always
+failing as assignment done using var_ having local scope only.
+This leads to TX packets not going out and found broken due to cleanup
+malfunctioning. This patch fixes the wrong variable assignment.
+
+Fixes: 57f90f894588 ("net/virtio: reuse packed ring functions")
+Cc: stable@dpdk.org
+
+Signed-off-by: Vipul Ashri <vipul.ashri@oracle.com>
+Acked-by: Andrew Rybchenko <arybchenko@solarflare.com>
+Reviewed-by: Maxime Coquelin <maxime.coquelin@redhat.com>
+---
+ drivers/net/virtio/virtqueue.h | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/virtio/virtqueue.h b/drivers/net/virtio/virtqueue.h
+index 105a9c00c..6ed50648c 100644
+--- a/drivers/net/virtio/virtqueue.h
++++ b/drivers/net/virtio/virtqueue.h
+@@ -607,10 +607,10 @@ virtqueue_notify(struct virtqueue *vq)
+ 
+ /* avoid write operation when necessary, to lessen cache issues */
+ #define ASSIGN_UNLESS_EQUAL(var, val) do {	\
+-	typeof(var) var_ = (var);		\
+-	typeof(val) val_ = (val);		\
+-	if ((var_) != (val_))			\
+-		(var_) = (val_);		\
++	typeof(var) *const var_ = &(var);	\
++	typeof(val)  const val_ = (val);	\
++	if (*var_ != val_)			\
++		*var_ = val_;			\
+ } while (0)
+ 
+ #define virtqueue_clear_net_hdr(hdr) do {		\
+-- 
+2.18.4
+
