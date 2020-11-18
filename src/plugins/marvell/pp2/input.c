@@ -263,7 +263,7 @@ mrvl_pp2_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      n_rx_bytes += mrvl_pp2_next_from_desc (node, d, b0, &next0);
 	      vnet_feature_start_device_input_x1 (ppif->sw_if_index, &next0,
-						  b0);
+						  b0, 1);
 	    }
 	  else
 	    {

@@ -341,7 +341,7 @@ vnet_device_input_have_features (u32 sw_if_index)
 
 static_always_inline void
 vnet_feature_start_device_input_x1 (u32 sw_if_index, u32 * next0,
-				    vlib_buffer_t * b0)
+				    vlib_buffer_t * b0, u8 is_adv)
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm;
@@ -356,10 +356,13 @@ vnet_feature_start_device_input_x1 (u32 sw_if_index, u32 * next0,
        * Save next0 so that the last feature in the chain
        * can skip ethernet-input if indicated...
        */
-      u16 adv;
+      if (is_adv)
+	{
+	  u16 adv;
 
-      adv = device_input_next_node_advance[*next0];
-      vlib_buffer_advance (b0, -adv);
+	  adv = device_input_next_node_advance[*next0];
+	  vlib_buffer_advance (b0, -adv);
+	}
 
       vnet_buffer (b0)->feature_arc_index = feature_arc_index;
       b0->current_config_index =

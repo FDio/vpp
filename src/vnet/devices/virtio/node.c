@@ -397,14 +397,19 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 mask = vring->size - 1;
   u16 last = vring->last_used_idx;
   u16 n_left = virtio_n_left_to_process (vring, packed);
-  vlib_buffer_t bt;
+  vlib_buffer_t bt, bt4, bt6;
 
   if (n_left == 0)
     return 0;
 
   if (type == VIRTIO_IF_TYPE_TUN)
     {
+      next_index = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
+      vnet_feature_start_device_input_x1 (vif->sw_if_index, &next_index, &bt6,
+					  0);
       next_index = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
+      vnet_feature_start_device_input_x1 (vif->sw_if_index, &next_index, &bt4,
+					  0);
     }
   else
     {
@@ -413,7 +418,8 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	next_index = vif->per_interface_next_index;
 
       /* only for l2, redirect if feature path enabled */
-      vnet_feature_start_device_input_x1 (vif->sw_if_index, &next_index, &bt);
+      vnet_feature_start_device_input_x1 (vif->sw_if_index, &next_index, &bt,
+					  1);
     }
 
   while (n_left)
@@ -450,8 +456,8 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    num_buffers = hdr->num_buffers;
 
 	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
-	  b0->current_data = 0;
-	  b0->current_length = len;
+	  b0->current_data = bt.current_data;
+	  b0->current_length = len + bt.current_length;
 
 	  if (checksum_offload_enabled)
 	    virtio_needs_csum (b0, hdr, &l4_proto, &l4_hdr_sz, type);
@@ -501,9 +507,15 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		case 0x40:
 		  next0 = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
+		  b0->current_config_index = bt4.current_config_index;
+		  vnet_buffer (b0)->feature_arc_index =
+		    vnet_buffer (&bt4)->feature_arc_index;
 		  break;
 		case 0x60:
 		  next0 = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
+		  b0->current_config_index = bt6.current_config_index;
+		  vnet_buffer (b0)->feature_arc_index =
+		    vnet_buffer (&bt6)->feature_arc_index;
 		  break;
 		default:
 		  next0 = VNET_DEVICE_INPUT_NEXT_DROP;

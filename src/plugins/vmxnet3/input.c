@@ -382,7 +382,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      (vnet_device_input_have_features (vd->sw_if_index)))
 	    {
 	      vnet_feature_start_device_input_x1 (vd->sw_if_index,
-						  &next_index, hb);
+						  &next_index, hb, 1);
 	      known_next = 1;
 	    }
 
