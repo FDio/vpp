@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "834878cc_e82a353d",
+        "filename": "docs/gettingstarted/developers/fib20/scale.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-18T18:14:29Z",
+      "side": 1,
+      "message": "I think this heap stats should be removed as it is no longer in use (same for other output examples below)",
+      "revId": "77402be675c743e1b16d9af7122b2e100cf9282f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0ece6431_db2ea4ad",
+        "filename": "docs/gettingstarted/developers/fib20/scale.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-18T18:14:29Z",
+      "side": 1,
+      "message": "I think it should be removed as there is no longer an ip4 heap",
+      "revId": "77402be675c743e1b16d9af7122b2e100cf9282f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5ee157ca_7a202268",
+        "filename": "docs/gettingstarted/developers/fib20/scale.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-18T18:14:29Z",
+      "side": 1,
+      "message": "same here no longer a dedicated ip6 heap",
+      "revId": "77402be675c743e1b16d9af7122b2e100cf9282f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
