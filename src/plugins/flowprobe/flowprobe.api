@@ -30,7 +30,7 @@ enum flowprobe_record_flags : u8
     @param which - flags indicating forwarding path
     @param sw_if_index - index of the interface
 */
-autoreply manual_print define flowprobe_tx_interface_add_del
+autoreply define flowprobe_tx_interface_add_del
 {
   /* Client identifier, set from api_main.my_client_index */
   u32 client_index;
