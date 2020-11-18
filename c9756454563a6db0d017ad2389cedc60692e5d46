@@ -108,6 +108,30 @@
     },
     {
       "key": {
+        "uuid": "610e94a1_d25ea5cb",
+        "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-18T11:17:57Z",
+      "side": 1,
+      "message": "didn\u0027t see that. done.",
+      "parentUuid": "75c14acb_cf571b98",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 2
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a2cdd2aa_9dffa042",
         "filename": "docs/gettingstarted/developers/fib20/barnacles.rst",
         "patchSetId": 4
@@ -4033,6 +4057,30 @@
     },
     {
       "key": {
+        "uuid": "d1d2c04f_e3fa3fe0",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-18T11:17:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b883d29a_cb5971a5",
+      "range": {
+        "startLine": 25,
+        "startChar": 6,
+        "endLine": 25,
+        "endChar": 14
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d7b43a7e_8bdc0aa7",
         "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
         "patchSetId": 4
@@ -4053,6 +4101,30 @@
       "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a54a6bca_599a3eba",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-18T11:17:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d7b43a7e_8bdc0aa7",
+      "range": {
+        "startLine": 27,
+        "startChar": 47,
+        "endLine": 27,
+        "endChar": 54
+      },
+      "revId": "c9756454563a6db0d017ad2389cedc60692e5d46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
