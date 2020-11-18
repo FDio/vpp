@@ -669,7 +669,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				    ipsec_sa_assign_thread (thread_index));
 	}
 
-      if (PREDICT_TRUE (thread_index != sa0->encrypt_thread_index))
+      if (PREDICT_FALSE (thread_index != sa0->encrypt_thread_index))
 	{
 	  esp_set_next_index (is_async, from, nexts, from[b - bufs],
 			      &n_async_drop,
