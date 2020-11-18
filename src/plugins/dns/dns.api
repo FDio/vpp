@@ -21,7 +21,7 @@ option version = "1.0.0";
     @param context - sender context, to match reply w/ request
     @param is_enable - 1 = enable, 0 = disable
 */
-autoreply manual_print define dns_enable_disable {
+autoreply define dns_enable_disable {
     u32 client_index;
     u32 context;
     u8 enable;
@@ -36,7 +36,7 @@ autoreply manual_print define dns_enable_disable {
     @param is_add - add = 1, delete = 0
     @param server_address - server ip address
 */
-autoreply manual_print define dns_name_server_add_del {
+autoreply define dns_name_server_add_del {
     u32 client_index;
     u32 context;
     u8 is_ip6;
@@ -51,7 +51,7 @@ autoreply manual_print define dns_name_server_add_del {
     @param context - sender context, to match reply w/ request
     @param name - the name to resolve
 */
-manual_print define dns_resolve_name {
+define dns_resolve_name {
     u32 client_index;
     u32 context;
     u8 name[256];
@@ -84,7 +84,7 @@ define dns_resolve_name_reply {
     @param is_ip6 - set if the reverse-DNS request is an ip6 address
     @param address - the address to map to a name
 */
-manual_print define dns_resolve_ip {
+define dns_resolve_ip {
     u32 client_index;
     u32 context;
     u8 is_ip6;
