@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d5cacc99_d5bc085f",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1389,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-18T16:46:27Z",
+      "side": 0,
+      "message": "A general comment about all the infra: we rearm interrupts immediately after processing the interrupt handler. If interrupts are received on the same thread as the corresponding worker: fine. Otherwise, I think we need a way to not rearm interrupts immediately, but to keep them masked until we are done with the corresponding node (i.e., until it has no more packets to process).\nIf we don\u0027t do that, then at high rates we have a uselessly high interrupt rate... The problem with the current infra, is that if we rearm at the end of the input node, it is possible (highly improbable, but possible), that the node is reinterrupted before even finishing it\u0027s execution. This is bad because we are going to fall in a deadlock into this node until we exhaust all our buffers and we don\u0027t progress in the graph. A driver needs a place to put interrupt unmasking where:\n- we are certain that the node has completed execution\n- we are certain that the node won\u0027t be rescheduled in the current loop",
+      "revId": "ccbb0665ae7e388e08390c8318a48a9f32659ecd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

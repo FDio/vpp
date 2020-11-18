@@ -1,0 +1,113 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "53b42d22_5f4f91c6",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1663,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-18T16:46:27Z",
+      "side": 1,
+      "message": "Why do I need it?",
+      "range": {
+        "startLine": 1663,
+        "startChar": 6,
+        "endLine": 1663,
+        "endChar": 35
+      },
+      "revId": "318cf9d60210955c81ee6c8067fde922ab2fd55c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0e59d100_045713d2",
+        "filename": "src/plugins/avf/input.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 450,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-18T16:46:27Z",
+      "side": 1,
+      "message": "#define foreach_poll_vector(pv, vm, node) \\\nfor (vnet_hw_if_rxq_poll_vector_t *eov \u003d ({pv \u003d vnet_hw_if_get_rxq_poll_vector (vm, node); pv + vec_len(pv);}); pv \u003c eov; pv++) \\\n\nand replace all \"pv[i].\" with \"pv-\u003e\"\n?",
+      "revId": "318cf9d60210955c81ee6c8067fde922ab2fd55c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a0877727_5ea34a42",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 539,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-18T16:46:27Z",
+      "side": 1,
+      "message": "device-scope and not vnet-scope right?",
+      "range": {
+        "startLine": 539,
+        "startChar": 2,
+        "endLine": 539,
+        "endChar": 33
+      },
+      "revId": "318cf9d60210955c81ee6c8067fde922ab2fd55c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "35077323_1b4fa036",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 540,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-18T16:46:27Z",
+      "side": 1,
+      "message": "u32 for consistency? But it eats an additional 32bits word...",
+      "range": {
+        "startLine": 540,
+        "startChar": 2,
+        "endLine": 540,
+        "endChar": 15
+      },
+      "revId": "318cf9d60210955c81ee6c8067fde922ab2fd55c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f2465c7f_7a6cf554",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 650,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-18T16:46:27Z",
+      "side": 1,
+      "message": "u16? This us the device scope one right?",
+      "range": {
+        "startLine": 650,
+        "startChar": 6,
+        "endLine": 650,
+        "endChar": 15
+      },
+      "revId": "318cf9d60210955c81ee6c8067fde922ab2fd55c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
