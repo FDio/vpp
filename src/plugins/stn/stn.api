@@ -30,7 +30,7 @@ import "vnet/ip/ip_types.api";
     @param sw_if_index - Interface index
     @param is_add - 1 if add, 0 if delete
 */
-autoreply manual_print define stn_add_del_rule {
+autoreply define stn_add_del_rule {
   u32 client_index;
   u32 context;
   vl_api_address_t ip_address;

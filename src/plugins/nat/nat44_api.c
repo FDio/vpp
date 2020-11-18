@@ -18,9 +18,6 @@
  * @brief NAT44 plugin API implementation
  */
 
-#define vl_api_nat44_lb_static_mapping_details_t_endian vl_noop_handler
-#define vl_api_nat44_add_del_lb_static_mapping_t_endian vl_noop_handler
-
 #include <vnet/ip/ip_types_api.h>
 #include <vlibmemory/api.h>
 

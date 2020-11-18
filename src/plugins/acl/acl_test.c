@@ -37,7 +37,6 @@ uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 #include <acl/acl.api_enum.h>
 #include <acl/acl.api_types.h>
 #define vl_print(handle, ...)
-#include <acl/manual_fns.h>
 #undef vl_print
 #define vl_endianfun            /* define message structures */
 #include <acl/acl.api.h>

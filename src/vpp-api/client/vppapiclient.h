@@ -27,7 +27,7 @@ int vac_read(char **data, int *l, unsigned short timeout);
 int vac_write(char *data, int len);
 void vac_free(void * msg);
 
-int vac_get_msg_index(unsigned char * name);
+int vac_get_msg_index(char * name);
 int vac_msg_table_size(void);
 int vac_msg_table_max_index(void);
 
