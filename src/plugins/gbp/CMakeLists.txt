@@ -51,5 +51,4 @@ add_vpp_plugin(gbp
 
   INSTALL_HEADERS
   gbp.h
-  gbp_api_print.h
 )

@@ -23,13 +23,32 @@ function(vpp_generate_api_c_header file)
   if (VPP_INCLUDE_DIR)
     set(includedir "--includedir" ${VPP_INCLUDE_DIR})
   endif()
-  add_custom_command (OUTPUT ${output_name}
+
+  set(OUTPUT_HEADERS
+    "${CMAKE_CURRENT_BINARY_DIR}/${file}.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/${file}_fromjson.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/${file}_tojson.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/${file}_enum.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/${file}_types.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/${file}.c"
+    "${CMAKE_CURRENT_BINARY_DIR}/${file}_test.c"
+    "${CMAKE_CURRENT_BINARY_DIR}/${file}_test2.c"
+  )
+
+  add_custom_command (
+    OUTPUT ${OUTPUT_HEADERS}
     COMMAND mkdir -p ${output_dir}
     COMMAND ${VPP_APIGEN}
     ARGS ${includedir} --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} --outputdir ${output_dir} --output ${output_name}
     DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${file}
     COMMENT "Generating API header ${output_name}"
   )
+  get_filename_component(barename ${file} NAME)
+  set(t ${barename}_deps)
+  if (NOT TARGET ${t})
+    add_custom_target(${t} ALL DEPENDS ${OUTPUT_HEADERS})
+    add_dependencies(api_headers ${t})
+  endif()
 endfunction()
 
 function(vpp_generate_api_json_header file dir component)

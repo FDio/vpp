@@ -864,7 +864,6 @@ list(APPEND VNET_HEADERS
 
 list(APPEND VNET_API_FILES
   srmpls/sr_mpls.api
-  srv6/sr_types.api
 )
 
 ##############################################################################
@@ -1498,6 +1497,13 @@ add_vpp_library(vnet
 add_vpp_library (vatclient
   SOURCES ip/ip_types_api.c
   DEPENDS api_headers
+)
+
+##############################################################################
+# VAT2 plugins
+##############################################################################
+add_vpp_test_library(vnet
+  ${VNET_API_FILES}
 )
 
 ##############################################################################
