@@ -37,24 +37,6 @@
     vec_free (s);                               \
     return handle;
 
-/**
- * @brief API message custom-dump function
- * @param mp vl_api_stn_add_del_rule_t * mp the api message
- * @param handle void * print function handle
- * @returns u8 * output string
- */
-static void *vl_api_stn_add_del_rule_t_print
-  (vl_api_stn_add_del_rule_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: stn_add_del_rule ");
-  s = format (s, "address %U ", format_ip46_address, mp->ip_address);
-  s = format (s, "sw_if_index %d is_add %d", mp->sw_if_index, mp->is_add);
-
-  FINISH;
-}
-
 static void
 vl_api_stn_add_del_rule_t_handler (vl_api_stn_add_del_rule_t * mp)
 {

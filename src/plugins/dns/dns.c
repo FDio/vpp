@@ -2992,59 +2992,6 @@ found_src_address:
     }
 }
 
-static void *vl_api_dns_enable_disable_t_print
-  (vl_api_dns_enable_disable_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: dns_enable_disable ");
-  s = format (s, "%s ", mp->enable ? "enable" : "disable");
-
-  FINISH;
-}
-
-static void *vl_api_dns_name_server_add_del_t_print
-  (vl_api_dns_name_server_add_del_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: dns_name_server_add_del ");
-  if (mp->is_ip6)
-    s = format (s, "%U ", format_ip6_address,
-		(ip6_address_t *) mp->server_address);
-  else
-    s = format (s, "%U ", format_ip4_address,
-		(ip4_address_t *) mp->server_address);
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
-  FINISH;
-}
-
-static void *vl_api_dns_resolve_name_t_print
-  (vl_api_dns_resolve_name_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: dns_resolve_name ");
-  s = format (s, "%s ", mp->name);
-  FINISH;
-}
-
-static void *vl_api_dns_resolve_ip_t_print
-  (vl_api_dns_resolve_ip_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: dns_resolve_ip ");
-  if (mp->is_ip6)
-    s = format (s, "%U ", format_ip6_address, mp->address);
-  else
-    s = format (s, "%U ", format_ip4_address, mp->address);
-  FINISH;
-}
-
 #include <dns/dns.api.c>
 static clib_error_t *
 dns_init (vlib_main_t * vm)

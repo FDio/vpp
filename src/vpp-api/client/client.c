@@ -402,7 +402,7 @@ vac_disconnect (void)
 
   vl_client_disconnect();
   vl_client_api_unmap();
-  vac_callback = 0;
+  //vac_callback = 0;
 
   cleanup();
 
@@ -534,9 +534,9 @@ vac_write (char *p, int l)
 }
 
 int
-vac_get_msg_index (unsigned char * name)
+vac_get_msg_index (char * name)
 {
-  return vl_msg_api_get_msg_index (name);
+  return vl_msg_api_get_msg_index ((u8 *)name);
 }
 
 int

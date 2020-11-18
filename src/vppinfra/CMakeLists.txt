@@ -38,6 +38,11 @@ install(
 
 add_definitions(-fvisibility=hidden)
 
+# Ensure symbols from cJSON are exported
+set_source_files_properties( cJSON.c PROPERTIES
+  COMPILE_DEFINITIONS " CJSON_API_VISIBILITY " )
+
+
 ##############################################################################
 # vppinfra sources
 ##############################################################################
@@ -88,6 +93,7 @@ set(VPPINFRA_SRCS
   valloc.c
   vec.c
   vector.c
+  cJSON.c
 )
 
 set(VPPINFRA_HEADERS
@@ -108,6 +114,7 @@ set(VPPINFRA_HEADERS
   cache.h
   callback.h
   callback_data.h
+  cJSON.h
   clib_error.h
   clib.h
   cpu.h
