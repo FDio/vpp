@@ -143,8 +143,10 @@ static void
 fss_chunk_free_list_push (fifo_segment_slice_t * fss, u32 fl_index,
 			  svm_fifo_chunk_t * c)
 {
+  clib_spinlock_lock (&fss->chunk_lock);
   c->next = fss->free_chunks[fl_index];
   fss->free_chunks[fl_index] = c;
+  clib_spinlock_unlock (&fss->chunk_lock);
 }
 
 static void
@@ -152,8 +154,10 @@ fss_chunk_free_list_push_list (fifo_segment_slice_t * fss, u32 fl_index,
 			       svm_fifo_chunk_t * head,
 			       svm_fifo_chunk_t * tail)
 {
+  clib_spinlock_lock (&fss->chunk_lock);
   tail->next = fss->free_chunks[fl_index];
   fss->free_chunks[fl_index] = head;
+  clib_spinlock_unlock (&fss->chunk_lock);
 }
 
 static svm_fifo_chunk_t *
@@ -163,11 +167,18 @@ fss_chunk_free_list_pop (fifo_segment_slice_t * fss, u32 fl_index)
 
   ASSERT (fss_chunk_fl_index_is_valid (fss, fl_index));
 
+  clib_spinlock_lock (&fss->chunk_lock);
+
   if (!fss->free_chunks[fl_index])
-    return 0;
+    {
+      clib_spinlock_unlock (&fss->chunk_lock);
+      return 0;
+    }
 
   c = fss->free_chunks[fl_index];
   fss->free_chunks[fl_index] = c->next;
+
+  clib_spinlock_unlock (&fss->chunk_lock);
 
   return c;
 }
@@ -195,6 +206,24 @@ fss_fifo_del_active_list (fifo_segment_slice_t * fss, svm_fifo_t * f)
       if (f->next)
 	f->next->prev = f->prev;
     }
+}
+
+static inline uword
+fss_fl_chunk_bytes (fifo_segment_slice_t * fss)
+{
+  return clib_atomic_load_relax_n (&fss->n_fl_chunk_bytes);
+}
+
+static inline void
+fss_fl_chunk_bytes_add (fifo_segment_slice_t * fss, uword size)
+{
+  clib_atomic_fetch_add_relax (&fss->n_fl_chunk_bytes, size);
+}
+
+static inline void
+fss_fl_chunk_bytes_sub (fifo_segment_slice_t * fss, uword size)
+{
+  clib_atomic_fetch_sub_relax (&fss->n_fl_chunk_bytes, size);
 }
 
 /**
@@ -441,7 +470,7 @@ fs_try_alloc_multi_chunk (fifo_segment_header_t * fsh,
     }
 
 done:
-  fss->n_fl_chunk_bytes -= n_alloc;
+  fss_fl_chunk_bytes_sub (fss, n_alloc);
   fsh_cached_bytes_sub (fsh, n_alloc);
   return first;
 }
@@ -520,7 +549,7 @@ fsh_try_alloc_chunk_batch (fifo_segment_header_t * fsh,
 
   fss_chunk_free_list_push_list (fss, fl_index, head, tail);
   fss->num_chunks[fl_index] += batch_size;
-  fss->n_fl_chunk_bytes += batch_size * rounded_data_size;
+  fss_fl_chunk_bytes_add (fss, batch_size * rounded_data_size);
   fsh_cached_bytes_add (fsh, batch_size * rounded_data_size);
   fsh_free_bytes_sub (fsh, size);
 
@@ -570,7 +599,7 @@ free_list:
   if (c)
     {
       c->next = 0;
-      fss->n_fl_chunk_bytes -= fs_freelist_index_to_size (fl_index);
+      fss_fl_chunk_bytes_sub (fss, fs_freelist_index_to_size (fl_index));
       fsh_cached_bytes_sub (fsh, fs_freelist_index_to_size (fl_index));
     }
   else
@@ -589,7 +618,7 @@ free_list:
 	}
       /* Failed to allocate larger chunk, try to allocate multi-chunk
        * that is close to what was actually requested */
-      if (data_bytes <= fss->n_fl_chunk_bytes)
+      if (data_bytes <= fss_fl_chunk_bytes (fss))
 	{
 	  c = fs_try_alloc_multi_chunk (fsh, fss, data_bytes);
 	  if (c)
@@ -601,11 +630,11 @@ free_list:
 	      goto done;
 	    }
 	}
-      if (data_bytes <= fss->n_fl_chunk_bytes + n_free)
+      if (data_bytes <= fss_fl_chunk_bytes (fss) + n_free)
 	{
 	  u32 min_size = FIFO_SEGMENT_MIN_FIFO_SIZE;
 
-	  batch = (data_bytes - fss->n_fl_chunk_bytes) / min_size;
+	  batch = (data_bytes - fss_fl_chunk_bytes (fss)) / min_size;
 	  batch = clib_min (batch + 1, n_free / min_size);
 	  if (fsh_try_alloc_chunk_batch (fsh, fss, 0, batch))
 	    {
@@ -634,10 +663,9 @@ static svm_fifo_t *
 fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
 		   u32 data_bytes)
 {
-  u32 fl_index;
+  u32 fl_index, min_size;
   svm_fifo_chunk_t *c;
   svm_fifo_t *f = 0;
-  u32 min_size;
 
   min_size = clib_max ((fsh->pct_first_alloc * data_bytes) / 100, 4096);
   fl_index = fs_freelist_for_size (min_size);
@@ -645,35 +673,25 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
   if (!fss_chunk_fl_index_is_valid (fss, fl_index))
     return 0;
 
-  clib_spinlock_lock (&fss->chunk_lock);
-
   f = fsh_try_alloc_fifo_hdr (fsh, fss);
   if (!f)
-    goto done;
+    return 0;
 
   c = fsh_try_alloc_chunk (fsh, fss, min_size);
-  if (c)
-    {
-      f->start_chunk = c;
-      while (c->next)
-	c = c->next;
-      f->end_chunk = c;
-    }
-  else
+  if (!c)
     {
       f->next = fss->free_fifos;
       fss->free_fifos = f;
-      f = 0;
+      return 0;
     }
 
-done:
-  clib_spinlock_unlock (&fss->chunk_lock);
+  f->start_chunk = c;
+  while (c->next)
+    c = c->next;
+  f->end_chunk = c;
+  f->size = data_bytes;
+  f->fs_hdr = fsh;
 
-  if (f)
-    {
-      f->size = data_bytes;
-      f->fs_hdr = fsh;
-    }
   return f;
 }
 
@@ -684,10 +702,7 @@ fsh_alloc_chunk (fifo_segment_header_t * fsh, u32 slice_index, u32 chunk_size)
   svm_fifo_chunk_t *c;
 
   fss = fsh_slice_get (fsh, slice_index);
-
-  clib_spinlock_lock (&fss->chunk_lock);
   c = fsh_try_alloc_chunk (fsh, fss, chunk_size);
-  clib_spinlock_unlock (&fss->chunk_lock);
 
   return c;
 }
@@ -699,8 +714,6 @@ fsh_slice_collect_chunks (fifo_segment_header_t * fsh,
   u32 n_collect = 0, fl_index;
   svm_fifo_chunk_t *next;
 
-  clib_spinlock_lock (&fss->chunk_lock);
-
   while (c)
     {
       CLIB_MEM_UNPOISON (c, sizeof (*c));
@@ -711,10 +724,8 @@ fsh_slice_collect_chunks (fifo_segment_header_t * fsh,
       c = next;
     }
 
-  fss->n_fl_chunk_bytes += n_collect;
+  fss_fl_chunk_bytes_add (fss, n_collect);
   fsh_cached_bytes_add (fsh, n_collect);
-
-  clib_spinlock_unlock (&fss->chunk_lock);
 }
 
 void
@@ -1141,7 +1152,7 @@ fifo_segment_fl_chunk_bytes (fifo_segment_t * fs)
   for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
     {
       fss = fsh_slice_get (fsh, slice_index);
-      n_bytes += fss->n_fl_chunk_bytes;
+      n_bytes += fss_fl_chunk_bytes (fss);
     }
 
   return n_bytes;
