@@ -62,43 +62,45 @@ enum
 #define AVF_AQ_F_EI  (1 << 14)
 #define AVF_AQ_F_FE  (1 << 15)
 
-
-#define foreach_virtchnl_op \
-  _(0, UNKNOWN)					\
-  _(1, VERSION)					\
-  _(2, RESET_VF)				\
-  _(3, GET_VF_RESOURCES)			\
-  _(4, CONFIG_TX_QUEUE)				\
-  _(5, CONFIG_RX_QUEUE)				\
-  _(6, CONFIG_VSI_QUEUES)			\
-  _(7, CONFIG_IRQ_MAP)				\
-  _(8, ENABLE_QUEUES)				\
-  _(9, DISABLE_QUEUES)				\
-  _(10, ADD_ETH_ADDR)				\
-  _(11, DEL_ETH_ADDR)				\
-  _(12, ADD_VLAN)				\
-  _(13, DEL_VLAN)				\
-  _(14, CONFIG_PROMISCUOUS_MODE)		\
-  _(15, GET_STATS)				\
-  _(16, RSVD)					\
-  _(17, EVENT)					\
-  _(18, UNDEF_18)				\
-  _(19, UNDEF_19)				\
-  _(20, IWARP)					\
-  _(21, CONFIG_IWARP_IRQ_MAP)			\
-  _(22, RELEASE_IWARP_IRQ_MAP)			\
-  _(23, CONFIG_RSS_KEY)				\
-  _(24, CONFIG_RSS_LUT)				\
-  _(25, GET_RSS_HENA_CAPS)			\
-  _(26, SET_RSS_HENA)				\
-  _(27, ENABLE_VLAN_STRIPPING)			\
-  _(28, DISABLE_VLAN_STRIPPING)			\
-  _(29, REQUEST_QUEUES)				\
-  _(30, ENABLE_CHANNELS)			\
-  _(31, DISABLE_CHANNELS)			\
-  _(32, ADD_CLOUD_FILTER)			\
-  _(33, DEL_CLOUD_FILTER)
-
+#define foreach_virtchnl_op                                                   \
+  _ (0, UNKNOWN)                                                              \
+  _ (1, VERSION)                                                              \
+  _ (2, RESET_VF)                                                             \
+  _ (3, GET_VF_RESOURCES)                                                     \
+  _ (4, CONFIG_TX_QUEUE)                                                      \
+  _ (5, CONFIG_RX_QUEUE)                                                      \
+  _ (6, CONFIG_VSI_QUEUES)                                                    \
+  _ (7, CONFIG_IRQ_MAP)                                                       \
+  _ (8, ENABLE_QUEUES)                                                        \
+  _ (9, DISABLE_QUEUES)                                                       \
+  _ (10, ADD_ETH_ADDR)                                                        \
+  _ (11, DEL_ETH_ADDR)                                                        \
+  _ (12, ADD_VLAN)                                                            \
+  _ (13, DEL_VLAN)                                                            \
+  _ (14, CONFIG_PROMISCUOUS_MODE)                                             \
+  _ (15, GET_STATS)                                                           \
+  _ (16, RSVD)                                                                \
+  _ (17, EVENT)                                                               \
+  _ (18, UNDEF_18)                                                            \
+  _ (19, UNDEF_19)                                                            \
+  _ (20, IWARP)                                                               \
+  _ (21, CONFIG_IWARP_IRQ_MAP)                                                \
+  _ (22, RELEASE_IWARP_IRQ_MAP)                                               \
+  _ (23, CONFIG_RSS_KEY)                                                      \
+  _ (24, CONFIG_RSS_LUT)                                                      \
+  _ (25, GET_RSS_HENA_CAPS)                                                   \
+  _ (26, SET_RSS_HENA)                                                        \
+  _ (27, ENABLE_VLAN_STRIPPING)                                               \
+  _ (28, DISABLE_VLAN_STRIPPING)                                              \
+  _ (29, REQUEST_QUEUES)                                                      \
+  _ (30, ENABLE_CHANNELS)                                                     \
+  _ (31, DISABLE_CHANNELS)                                                    \
+  _ (32, ADD_CLOUD_FILTER)                                                    \
+  _ (33, DEL_CLOUD_FILTER)                                                    \
+  _ (44, GET_SUPPORTED_RXDIDS)                                                \
+  _ (47, ADD_FDIR_FILTER)                                                     \
+  _ (48, DEL_FDIR_FILTER)                                                     \
+  _ (49, QUERY_FDIR_FILTER)
 
 typedef enum
 {
@@ -120,23 +122,25 @@ typedef enum
   VIRTCHNL_STATUS_NOT_SUPPORTED = -64,
 } virtchnl_status_code_t;
 
-#define foreach_avf_vf_cap_flag \
-  _( 0, OFFLOAD_L2, "l2") \
-  _( 1, OFFLOAD_IWARP, "iwarp") \
-  _( 2, OFFLOAD_RSVD, "rsvd") \
-  _( 3, OFFLOAD_RSS_AQ, "rss-aq") \
-  _( 4, OFFLOAD_RSS_REG, "rss-reg") \
-  _( 5, OFFLOAD_WB_ON_ITR, "wb-on-itr") \
-  _( 6, OFFLOAD_REQ_QUEUES, "req-queues") \
-  _( 7, CAP_ADV_LINK_SPEED, "adv-link-speed") \
-  _(16, OFFLOAD_VLAN, "vlan") \
-  _(17, OFFLOAD_RX_POLLING, "rx-polling") \
-  _(18, OFFLOAD_RSS_PCTYPE_V2, "rss-pctype-v2") \
-  _(19, OFFLOAD_RSS_PF, "rss-pf") \
-  _(20, OFFLOAD_ENCAP, "encap") \
-  _(21, OFFLOAD_ENCAP_CSUM, "encap-csum") \
-  _(22, OFFLOAD_RX_ENCAP_CSUM, "rx-encap-csum") \
-  _(23, OFFLOAD_ADQ, "offload-adq")
+#define foreach_avf_vf_cap_flag                                               \
+  _ (0, OFFLOAD_L2, "l2")                                                     \
+  _ (1, OFFLOAD_IWARP, "iwarp")                                               \
+  _ (2, OFFLOAD_RSVD, "rsvd")                                                 \
+  _ (3, OFFLOAD_RSS_AQ, "rss-aq")                                             \
+  _ (4, OFFLOAD_RSS_REG, "rss-reg")                                           \
+  _ (5, OFFLOAD_WB_ON_ITR, "wb-on-itr")                                       \
+  _ (6, OFFLOAD_REQ_QUEUES, "req-queues")                                     \
+  _ (7, CAP_ADV_LINK_SPEED, "adv-link-speed")                                 \
+  _ (16, OFFLOAD_VLAN, "vlan")                                                \
+  _ (17, OFFLOAD_RX_POLLING, "rx-polling")                                    \
+  _ (18, OFFLOAD_RSS_PCTYPE_V2, "rss-pctype-v2")                              \
+  _ (19, OFFLOAD_RSS_PF, "rss-pf")                                            \
+  _ (20, OFFLOAD_ENCAP, "encap")                                              \
+  _ (21, OFFLOAD_ENCAP_CSUM, "encap-csum")                                    \
+  _ (22, OFFLOAD_RX_ENCAP_CSUM, "rx-encap-csum")                              \
+  _ (23, OFFLOAD_ADQ, "offload-adq")                                          \
+  _ (27, OFFLOAD_ADV_RSS_PF, "offload-adv-rss-pf")                            \
+  _ (28, OFFLOAD_FDIR_PF, "offload-fdir-pf")
 
 typedef enum
 {
