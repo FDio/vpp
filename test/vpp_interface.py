@@ -438,8 +438,8 @@ class VppInterface(object):
     def set_proxy_arp(self, enable=1):
         """ Set the interface to enable/disable Proxy ARP """
         self.test.vapi.proxy_arp_intfc_enable_disable(
-            self.sw_if_index,
-            enable)
+            sw_if_index=self.sw_if_index,
+            enable=enable)
         return self
 
     def query_vpp_config(self):
