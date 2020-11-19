@@ -502,6 +502,8 @@ app_worker_migrate_notify (app_worker_t * app_wrk, session_t * s,
 			   session_handle_t new_sh)
 {
   application_t *app = application_get (app_wrk->app_index);
+  clib_warning ("migrate notify %d:%d new sh 0x%lx", s->thread_index,
+		s->session_index, new_sh);
   app->cb_fns.session_migrate_callback (s, new_sh);
   return 0;
 }
