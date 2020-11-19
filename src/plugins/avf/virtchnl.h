@@ -97,8 +97,11 @@ enum
   _(30, ENABLE_CHANNELS)			\
   _(31, DISABLE_CHANNELS)			\
   _(32, ADD_CLOUD_FILTER)			\
-  _(33, DEL_CLOUD_FILTER)
-
+  _(33, DEL_CLOUD_FILTER)			\
+  _(44, GET_SUPPORTED_RXDIDS) 			\
+  _(47, ADD_FDIR_FILTER) 			\
+  _(48, DEL_FDIR_FILTER) 			\
+  _(49, QUERY_FDIR_FILTER)
 
 typedef enum
 {
@@ -136,7 +139,9 @@ typedef enum
   _(20, OFFLOAD_ENCAP, "encap") \
   _(21, OFFLOAD_ENCAP_CSUM, "encap-csum") \
   _(22, OFFLOAD_RX_ENCAP_CSUM, "rx-encap-csum") \
-  _(23, OFFLOAD_ADQ, "offload-adq")
+  _(23, OFFLOAD_ADQ, "offload-adq")	\
+  _(27, OFFLOAD_ADV_RSS_PF, "offload-adv-rss-pf") \
+  _(28, OFFLOAD_FDIR_PF, "offload-fdir-pf")
 
 typedef enum
 {
