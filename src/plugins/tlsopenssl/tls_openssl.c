@@ -550,7 +550,7 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
   const SSL_METHOD *method;
   int rv, err;
 
-  method = SSLv23_client_method ();
+  method = TLS_client_method ();
   if (method == NULL)
     {
       TLS_DBG (1, "SSLv23_method returned null");
@@ -663,7 +663,7 @@ openssl_start_listen (tls_ctx_t * lctx)
       return -1;
     }
 
-  method = SSLv23_method ();
+  method = TLS_server_method ();
   ssl_ctx = SSL_CTX_new (method);
   if (!ssl_ctx)
     {
