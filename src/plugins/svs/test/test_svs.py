@@ -106,24 +106,33 @@ class TestSVS(VppTestCase):
 
         for table_id in table_ids:
             self.vapi.svs_table_add_del(
-                VppEnum.vl_api_address_family_t.ADDRESS_IP4, table_id)
+                is_add=1,
+                af=VppEnum.vl_api_address_family_t.ADDRESS_IP4,
+                table_id=table_id)
 
             #
             # map X.0.0.0/8 to each SVS table for lookup in table X
             #
             for i in range(1, 4):
                 self.vapi.svs_route_add_del(
-                    table_id, "%d.0.0.0/8" % i, i)
+                    is_add=1,
+                    prefix="%d.0.0.0/8" % i,
+                    table_id=table_id,
+                    source_table_id=i)
 
         #
         # Enable SVS on pg0/pg1 using table 1001/1002
         #
         self.vapi.svs_enable_disable(
-            VppEnum.vl_api_address_family_t.ADDRESS_IP4, table_ids[0],
-            self.pg0.sw_if_index)
+            is_enable=1,
+            af=VppEnum.vl_api_address_family_t.ADDRESS_IP4,
+            table_id=table_ids[0],
+            sw_if_index=self.pg0.sw_if_index)
         self.vapi.svs_enable_disable(
-            VppEnum.vl_api_address_family_t.ADDRESS_IP4, table_ids[1],
-            self.pg1.sw_if_index)
+            is_enable=1,
+            af=VppEnum.vl_api_address_family_t.ADDRESS_IP4,
+            table_id=table_ids[1],
+            sw_if_index=self.pg1.sw_if_index)
 
         #
         # now all the packets should be delivered out the respective interface
@@ -167,25 +176,28 @@ class TestSVS(VppTestCase):
         # cleanup
         #
         self.vapi.svs_enable_disable(
-            VppEnum.vl_api_address_family_t.ADDRESS_IP4,
-            table_ids[0],
-            self.pg0.sw_if_index,
-            is_enable=0)
+            is_enable=0,
+            af=VppEnum.vl_api_address_family_t.ADDRESS_IP4,
+            table_id=table_ids[0],
+            sw_if_index=self.pg0.sw_if_index)
         self.vapi.svs_enable_disable(
-            VppEnum.vl_api_address_family_t.ADDRESS_IP4,
-            table_ids[1],
-            self.pg1.sw_if_index,
-            is_enable=0)
+            is_enable=0,
+            af=VppEnum.vl_api_address_family_t.ADDRESS_IP4,
+            table_id=table_ids[1],
+            sw_if_index=self.pg1.sw_if_index)
 
         for table_id in table_ids:
             for i in range(1, 4):
                 self.vapi.svs_route_add_del(
-                    table_id, "%d.0.0.0/8" % i,
-                    0, is_add=0)
+                    is_add=0,
+                    prefix="%d.0.0.0/8" % i,
+                    table_id=table_id,
+                    source_table_id=0)
+
             self.vapi.svs_table_add_del(
-                VppEnum.vl_api_address_family_t.ADDRESS_IP4,
-                table_id,
-                is_add=0)
+                is_add=0,
+                af=VppEnum.vl_api_address_family_t.ADDRESS_IP4,
+                table_id=table_id)
 
     def test_svs6(self):
         """ Source VRF Select IP6 """
@@ -233,27 +245,33 @@ class TestSVS(VppTestCase):
 
         for table_id in table_ids:
             self.vapi.svs_table_add_del(
-                VppEnum.vl_api_address_family_t.ADDRESS_IP6, table_id)
+                is_add=1,
+                af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+                table_id=table_id)
 
             #
             # map X.0.0.0/8 to each SVS table for lookup in table X
             #
             for i in range(1, 4):
                 self.vapi.svs_route_add_del(
-                    table_id, "2001:%d::/32" % i,
-                    i)
+                    is_add=1,
+                    prefix="2001:%d::/32" % i,
+                    table_id=table_id,
+                    source_table_id=i)
 
         #
         # Enable SVS on pg0/pg1 using table 1001/1002
         #
         self.vapi.svs_enable_disable(
-            VppEnum.vl_api_address_family_t.ADDRESS_IP6,
-            table_ids[0],
-            self.pg0.sw_if_index)
+            is_enable=1,
+            af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+            table_id=table_ids[0],
+            sw_if_index=self.pg0.sw_if_index)
         self.vapi.svs_enable_disable(
-            VppEnum.vl_api_address_family_t.ADDRESS_IP6,
-            table_ids[1],
-            self.pg1.sw_if_index)
+            is_enable=1,
+            af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+            table_id=table_ids[1],
+            sw_if_index=self.pg1.sw_if_index)
 
         #
         # now all the packets should be delivered out the respective interface
@@ -297,25 +315,28 @@ class TestSVS(VppTestCase):
         # cleanup
         #
         self.vapi.svs_enable_disable(
-            VppEnum.vl_api_address_family_t.ADDRESS_IP6,
-            table_ids[0],
-            self.pg0.sw_if_index,
-            is_enable=0)
+            is_enable=0,
+            af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+            table_id=table_ids[0],
+            sw_if_index=self.pg0.sw_if_index)
         self.vapi.svs_enable_disable(
-            VppEnum.vl_api_address_family_t.ADDRESS_IP6,
-            table_ids[1],
-            self.pg1.sw_if_index,
-            is_enable=0)
+            is_enable=0,
+            af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+            table_id=table_ids[1],
+            sw_if_index=self.pg1.sw_if_index)
+
         for table_id in table_ids:
             for i in range(1, 4):
                 self.vapi.svs_route_add_del(
-                    table_id, "2001:%d::/32" % i,
-                    0, is_add=0)
-            self.vapi.svs_table_add_del(
-                VppEnum.vl_api_address_family_t.ADDRESS_IP6,
-                table_id,
-                is_add=0)
+                    is_add=0,
+                    prefix="2001:%d::/32" % i,
+                    table_id=table_id,
+                    source_table_id=0)
 
+            self.vapi.svs_table_add_del(
+                is_add=0,
+                af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+                table_id=table_id)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
