@@ -197,6 +197,7 @@ vcl_send_session_listen (vcl_worker_t * wrk, vcl_session_t * s)
   clib_memcpy_fast (&mp->ip, &s->transport.lcl_ip, sizeof (mp->ip));
   mp->port = s->transport.lcl_port;
   mp->proto = s->session_type;
+  clib_warning ("listen proto %u", s->session_type);
   if (s->flags & VCL_SESSION_F_CONNECTED)
     mp->flags = TRANSPORT_CFG_F_CONNECTED;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
@@ -653,7 +654,7 @@ vcl_session_unlisten_reply_handler (vcl_worker_t * wrk, void *data)
   if (s->session_state != VCL_STATE_DISCONNECT)
     {
       /* Connected udp listener */
-      if (s->session_type == VPPCOM_PROTO_UDP
+      if ((s->session_type == VPPCOM_PROTO_UDP)
 	  && s->session_state == VCL_STATE_CLOSED)
 	return;
 
@@ -1577,6 +1578,10 @@ vppcom_unformat_proto (uint8_t * proto, char *proto_str)
     *proto = VPPCOM_PROTO_QUIC;
   else if (!strcmp (proto_str, "quic"))
     *proto = VPPCOM_PROTO_QUIC;
+  else if (!strcmp (proto_str, "DTLS"))
+    *proto = VPPCOM_PROTO_DTLS;
+  else if (!strcmp (proto_str, "dtls"))
+    *proto = VPPCOM_PROTO_DTLS;
   else
     return 1;
   return 0;
@@ -3998,6 +4003,9 @@ vppcom_proto_str (vppcom_proto_t proto)
       break;
     case VPPCOM_PROTO_QUIC:
       proto_str = "QUIC";
+      break;
+    case VPPCOM_PROTO_DTLS:
+      proto_str = "DTLS";
       break;
     default:
       proto_str = "UNKNOWN";

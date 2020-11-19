@@ -256,12 +256,15 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (s0->session_state == SESSION_STATE_OPENED)
 	{
+	  clib_warning ("packet %u", n_left_from);
 	  u8 queue_event = 1;
 	  uc0 = udp_connection_from_transport (session_get_transport (s0));
 	  if (uc0->flags & UDP_CONN_F_CONNECTED)
 	    {
+	      clib_warning ("connected %u", n_left_from);
 	      if (s0->thread_index != thread_index)
 		{
+		  clib_warning ("needs clone %u", n_left_from);
 		  /*
 		   * Clone the transport. It will be cleaned up with the
 		   * session once we notify the session layer.

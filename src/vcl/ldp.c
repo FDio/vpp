@@ -275,7 +275,9 @@ ldp_init (void)
   env_var_str = getenv (LDP_ENV_TLS_TRANS);
   if (env_var_str)
     {
-      ldp->transparent_tls = 1;
+      u32 sb;
+      if (sscanf (env_var_str, "%u", &sb) == 1)
+	ldp->transparent_tls = sb;
     }
 
   /* *INDENT-OFF* */
@@ -979,31 +981,32 @@ socket (int domain, int type, int protocol)
       ((sock_type == SOCK_STREAM) || (sock_type == SOCK_DGRAM)))
     {
       u8 proto;
-      if (ldp->transparent_tls)
-	{
-	  proto = VPPCOM_PROTO_TLS;
-	}
+      if (ldp->transparent_tls == 1 && sock_type == SOCK_STREAM)
+	proto = VPPCOM_PROTO_TLS;
+      if (ldp->transparent_tls == 2 && sock_type == SOCK_DGRAM)
+	proto = VPPCOM_PROTO_DTLS;
       else
-	proto = ((sock_type == SOCK_DGRAM) ?
-		 VPPCOM_PROTO_UDP : VPPCOM_PROTO_TCP);
+	proto = ((sock_type == SOCK_DGRAM)
+		 ? VPPCOM_PROTO_UDP : VPPCOM_PROTO_TCP);
 
-      LDBG (0, "calling vls_create: proto %u (%s), is_nonblocking %u",
-	    proto, vppcom_proto_str (proto), is_nonblocking);
+      fprintf (stderr, "ldp var %u sock %u proto is %u dtls %u\n",
+	       ldp->transparent_tls, sock_type, proto, VPPCOM_PROTO_DTLS);
+      LDBG (0, "calling vls_create: proto %u (%s), is_nonblocking %u", proto,
+	    vppcom_proto_str (proto), is_nonblocking);
 
       vlsh = vls_create (proto, is_nonblocking);
       if (vlsh < 0)
 	{
 	  errno = -vlsh;
 	  rv = -1;
+	  clib_warning ("failed to create");
 	}
       else
 	{
 	  if (ldp->transparent_tls)
 	    {
 	      if (load_tls_cert (vlsh) < 0 || load_tls_key (vlsh) < 0)
-		{
-		  return -1;
-		}
+		return -1;
 	    }
 	  rv = ldp_vlsh_to_fd (vlsh);
 	}
