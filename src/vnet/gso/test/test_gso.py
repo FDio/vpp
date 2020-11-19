@@ -148,7 +148,8 @@ class TestGSO(VppTestCase):
         # Send jumbo frame with gso enabled and DF bit is set
         # input and output interfaces support GSO
         #
-        self.vapi.feature_gso_enable_disable(self.pg3.sw_if_index)
+        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg3.sw_if_index,
+                                             enable_disable=1)
         p41 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
                IP(src=self.pg2.remote_ip4, dst=self.pg3.remote_ip4,
                   flags='DF') /
@@ -190,7 +191,8 @@ class TestGSO(VppTestCase):
         # and DF bit is set. GSO packet will be chunked into gso_size
         # data payload
         #
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index)
+        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
+                                             enable_disable=1)
         p42 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
                IP(src=self.pg2.remote_ip4, dst=self.pg0.remote_ip4,
                   flags='DF') /
@@ -241,7 +243,8 @@ class TestGSO(VppTestCase):
         # and DF bit is unset. GSO packet will be fragmented.
         #
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [576, 0, 0, 0])
-        self.vapi.feature_gso_enable_disable(self.pg1.sw_if_index)
+        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg1.sw_if_index,
+                                             enable_disable=1)
 
         p43 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
                IP(src=self.pg2.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -331,9 +334,9 @@ class TestGSO(VppTestCase):
             size += payload_len
         self.assertEqual(size, 65200*5)
 
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index,
+        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
                                              enable_disable=0)
-        self.vapi.feature_gso_enable_disable(self.pg1.sw_if_index,
+        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg1.sw_if_index,
                                              enable_disable=0)
 
     def test_gso_vxlan(self):
@@ -353,7 +356,8 @@ class TestGSO(VppTestCase):
             rx_sw_if_index=self.vxlan.sw_if_index, bd_id=self.single_tunnel_bd)
         self.vapi.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg2.sw_if_index, bd_id=self.single_tunnel_bd)
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index)
+        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
+                                             enable_disable=1)
 
         #
         # IPv4/IPv4 - VXLAN
@@ -493,7 +497,7 @@ class TestGSO(VppTestCase):
         #
         self.vxlan2.remove_vpp_config()
 
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index,
+        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
                                              enable_disable=0)
 
     def test_gso_ipip(self):
@@ -503,7 +507,8 @@ class TestGSO(VppTestCase):
         # Send jumbo frame with gso enabled only on input interface and
         # create IPIP tunnel on VPP pg0.
         #
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index)
+        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
+                                             enable_disable=1)
 
         #
         # enable ipip4
@@ -588,9 +593,11 @@ class TestGSO(VppTestCase):
         # create IPIP tunnel on VPP pg0. Enable gso feature node on ipip
         # tunnel - IPSec use case
         #
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index,
+        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
                                              enable_disable=0)
-        self.vapi.feature_gso_enable_disable(self.ipip4.sw_if_index)
+        self.vapi.feature_gso_enable_disable(
+            sw_if_index=self.ipip4.sw_if_index,
+            enable_disable=1)
 
         rxs = self.send_and_expect(self.pg2, 5*[p47], self.pg0, 225)
         size = 0
@@ -615,8 +622,9 @@ class TestGSO(VppTestCase):
         #
         # disable ipip4
         #
-        self.vapi.feature_gso_enable_disable(self.ipip4.sw_if_index,
-                                             enable_disable=0)
+        self.vapi.feature_gso_enable_disable(
+            sw_if_index=self.ipip4.sw_if_index,
+            enable_disable=0)
         self.ip4_via_ip4_tunnel.remove_vpp_config()
         self.ip6_via_ip4_tunnel.remove_vpp_config()
         self.ipip4.remove_vpp_config()
@@ -624,7 +632,8 @@ class TestGSO(VppTestCase):
         #
         # enable ipip6
         #
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index)
+        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
+                                             enable_disable=1)
         self.ipip6.add_vpp_config()
 
         # Set interface up and enable IP on it
@@ -706,7 +715,7 @@ class TestGSO(VppTestCase):
         self.ip6_via_ip6_tunnel.remove_vpp_config()
         self.ipip6.remove_vpp_config()
 
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index,
+        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
                                              enable_disable=0)
 
 if __name__ == '__main__':
