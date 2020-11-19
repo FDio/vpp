@@ -1524,6 +1524,10 @@ vppcom_unformat_proto (uint8_t * proto, char *proto_str)
     *proto = VPPCOM_PROTO_QUIC;
   else if (!strcmp (proto_str, "quic"))
     *proto = VPPCOM_PROTO_QUIC;
+  else if (!strcmp (proto_str, "DTLS"))
+    *proto = VPPCOM_PROTO_DTLS;
+  else if (!strcmp (proto_str, "dtls"))
+    *proto = VPPCOM_PROTO_DTLS;
   else
     return 1;
   return 0;
@@ -1886,7 +1890,8 @@ read_again:
        * or fill the buffer. Avoid doing that for dgrams */
       buf += rv;
       n -= rv;
-      goto read_again;
+      if (!s->is_dgram)
+	goto read_again;
     }
 
   if (PREDICT_FALSE (svm_fifo_needs_deq_ntf (rx_fifo, n_read)))
@@ -4002,6 +4007,9 @@ vppcom_proto_str (vppcom_proto_t proto)
       break;
     case VPPCOM_PROTO_QUIC:
       proto_str = "QUIC";
+      break;
+    case VPPCOM_PROTO_DTLS:
+      proto_str = "DTLS";
       break;
     default:
       proto_str = "UNKNOWN";

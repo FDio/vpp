@@ -1105,7 +1105,8 @@ main (int argc, char **argv)
   if (ctrl->fd < 0)
     vtfail ("vppcom_session_create()", ctrl->fd);
 
-  if (vcm->proto == VPPCOM_PROTO_TLS || vcm->proto == VPPCOM_PROTO_QUIC)
+  if (vcm->proto == VPPCOM_PROTO_TLS || vcm->proto == VPPCOM_PROTO_QUIC ||
+      vcm->proto == VPPCOM_PROTO_DTLS)
     {
       vppcom_cert_key_pair_t ckpair;
       uint32_t ckp_len;
