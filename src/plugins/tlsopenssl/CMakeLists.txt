@@ -20,6 +20,7 @@ if(OPENSSL_FOUND AND OPENSSL_VERSION VERSION_GREATER_EQUAL "1.1.0")
     tls_openssl.c
     tls_openssl_api.c
     tls_async.c
+    dtls_bio.c
 
     API_FILES
     tls_openssl.api
