@@ -45,6 +45,11 @@ void nat_ha_enable (nat_ha_sadd_cb_t sadd_cb, nat_ha_sdel_cb_t sdel_cb,
 		    nat_ha_sref_cb_t sref_cb);
 
 /**
+ * @brief Disable NAT HA
+ */
+void nat_ha_disable ();
+
+/**
  * @brief Initialize NAT HA
  */
 void nat_ha_init (vlib_main_t * vm, u32 num_workers, u32 num_threads);
