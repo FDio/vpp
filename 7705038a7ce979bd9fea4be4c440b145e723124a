@@ -19,6 +19,40 @@
     },
     {
       "key": {
+        "uuid": "2d625e0c_e22537a4",
+        "filename": "src/plugins/dpdk/device/dpdk.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-19T13:41:48Z",
+      "side": 1,
+      "message": "maybe we could have a union?\n  union\n  {\n    vlib_pci_addr_t pci_addr;\n    vlib_vmbus_addr_t vmbus_addr;\n  };",
+      "revId": "7705038a7ce979bd9fea4be4c440b145e723124a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "093a32c2_ef3cc38a",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1039,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-19T13:41:48Z",
+      "side": 1,
+      "message": "could we share the logic for blacklist/whitelist between pci and vmbus device? If I am not mistaken it should be the same logic, only the addr and hashtable differ",
+      "revId": "7705038a7ce979bd9fea4be4c440b145e723124a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "6a5c69f0_1b583a7b",
         "filename": "src/vlib/vmbus/vmbus.c",
         "patchSetId": 8
