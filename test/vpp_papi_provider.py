@@ -84,15 +84,10 @@ defaultmapping = {
                                  'l2_table_index': 4294967295, },
     'pppoe_add_del_session': {'is_add': 1, },
     'policer_add_del': {'is_add': 1, 'conform_action': {'type': 1}, },
-    'proxy_arp_add_del': {'is_add': 1, },
-    'proxy_arp_intfc_enable_disable': {'is_enable': 1, },
     'set_ip_flow_hash': {'src': 1, 'dst': 1, 'sport': 1, 'dport': 1,
                          'proto': 1, },
     'set_ipfix_exporter': {'collector_port': 4739, },
     'sr_policy_add': {'weight': 1, 'is_encap': 1, },
-    'svs_enable_disable': {'is_enable': 1, },
-    'svs_route_add_del': {'is_add': 1, },
-    'svs_table_add_del': {'is_add': 1, },
     'sw_interface_add_del_address': {'is_add': 1, },
     'sw_interface_ip6nd_ra_prefix': {'val_lifetime': 4294967295,
                                      'pref_lifetime': 4294967295, },
@@ -447,44 +442,6 @@ class VppPapiProvider(object):
                     'ip_address': ip_address
                 }
             }
-        )
-
-    def proxy_arp_add_del(self,
-                          low,
-                          hi,
-                          table_id=0,
-                          is_add=1):
-        """ Config Proxy Arp Range.
-
-        :param low_address: Start address in the rnage to Proxy for
-        :param hi_address: End address in the rnage to Proxy for
-        :param vrf_id: The VRF/table in which to proxy
-        """
-
-        return self.api(
-            self.papi.proxy_arp_add_del,
-            {'proxy':
-                {
-                    'table_id': table_id,
-                    'low': low,
-                    'hi': hi,
-                },
-                'is_add': is_add})
-
-    def proxy_arp_intfc_enable_disable(self,
-                                       sw_if_index,
-                                       is_enable=1):
-        """ Enable/Disable an interface for proxy ARP requests
-
-        :param sw_if_index: Interface
-        :param enable_disable: Enable/Disable
-        """
-
-        return self.api(
-            self.papi.proxy_arp_intfc_enable_disable,
-            {'sw_if_index': sw_if_index,
-             'enable': is_enable
-             }
         )
 
     def udp_encap_add(self,
@@ -1319,36 +1276,3 @@ class VppPapiProvider(object):
     def pipe_delete(self, parent_sw_if_index):
         return self.api(self.papi.pipe_delete,
                         {'parent_sw_if_index': parent_sw_if_index})
-
-    def svs_table_add_del(self, af, table_id, is_add=1):
-        return self.api(self.papi.svs_table_add_del,
-                        {
-                            'table_id': table_id,
-                            'is_add': is_add,
-                            'af': af,
-                        })
-
-    def svs_route_add_del(self, table_id, prefix, src_table_id, is_add=1):
-        return self.api(self.papi.svs_route_add_del,
-                        {
-                            'table_id': table_id,
-                            'source_table_id': src_table_id,
-                            'prefix': prefix,
-                            'is_add': is_add,
-                        })
-
-    def svs_enable_disable(self, af, table_id, sw_if_index, is_enable=1):
-        return self.api(self.papi.svs_enable_disable,
-                        {
-                            'af': af,
-                            'table_id': table_id,
-                            'sw_if_index': sw_if_index,
-                            'is_enable': is_enable,
-                        })
-
-    def feature_gso_enable_disable(self, sw_if_index, enable_disable=1):
-        return self.api(self.papi.feature_gso_enable_disable,
-                        {
-                            'sw_if_index': sw_if_index,
-                            'enable_disable': enable_disable,
-                        })

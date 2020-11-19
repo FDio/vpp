@@ -763,8 +763,10 @@ class ARPTestCase(VppTestCase):
         #
         # Configure Proxy ARP for the subnet on PG0addresses on pg0
         #
-        self.vapi.proxy_arp_add_del(self.pg0._local_ip4_subnet,
-                                    self.pg0._local_ip4_bcast)
+        self.vapi.proxy_arp_add_del(proxy={'table_id': 0,
+                                           'low': self.pg0._local_ip4_subnet,
+                                           'hi': self.pg0._local_ip4_bcast},
+                                    is_add=1)
 
         # Make pg2 un-numbered to pg0
         #
@@ -838,9 +840,9 @@ class ARPTestCase(VppTestCase):
         #
         # cleanup
         #
-        self.pg2.set_proxy_arp(0)
-        self.vapi.proxy_arp_add_del(self.pg0._local_ip4_subnet,
-                                    self.pg0._local_ip4_bcast,
+        self.vapi.proxy_arp_add_del(proxy={'table_id': 0,
+                                           'low': self.pg0._local_ip4_subnet,
+                                           'hi': self.pg0._local_ip4_bcast},
                                     is_add=0)
 
     def test_proxy_arp(self):
@@ -886,8 +888,10 @@ class ARPTestCase(VppTestCase):
         #
         # Configure Proxy ARP for 10.10.10.0 -> 10.10.10.124
         #
-        self.vapi.proxy_arp_add_del(inet_pton(AF_INET, "10.10.10.2"),
-                                    inet_pton(AF_INET, "10.10.10.124"))
+        self.vapi.proxy_arp_add_del(proxy={'table_id': 0,
+                                           'low': "10.10.10.2",
+                                           'hi': "10.10.10.124"},
+                                    is_add=1)
 
         #
         # No responses are sent when the interfaces are not enabled for proxy
