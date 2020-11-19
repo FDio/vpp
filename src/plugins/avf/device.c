@@ -24,7 +24,7 @@
 #include <avf/avf.h>
 
 #define AVF_MBOX_LEN 64
-#define AVF_MBOX_BUF_SZ 512
+#define AVF_MBOX_BUF_SZ 4096
 #define AVF_RXQ_SZ 512
 #define AVF_TXQ_SZ 512
 #define AVF_ITR_INT 250
@@ -548,7 +548,8 @@ avf_op_get_vf_resources (vlib_main_t * vm, avf_device_t * ad,
   u32 bitmap = (VIRTCHNL_VF_OFFLOAD_L2 | VIRTCHNL_VF_OFFLOAD_RSS_PF |
 		VIRTCHNL_VF_OFFLOAD_WB_ON_ITR | VIRTCHNL_VF_OFFLOAD_VLAN |
 		VIRTCHNL_VF_OFFLOAD_RX_POLLING |
-		VIRTCHNL_VF_CAP_ADV_LINK_SPEED);
+		VIRTCHNL_VF_CAP_ADV_LINK_SPEED |
+		VIRTCHNL_VF_OFFLOAD_FDIR_PF | VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF);
 
   avf_log_debug (ad, "get_vf_reqources: bitmap 0x%x", bitmap);
   err = avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_VF_RESOURCES, &bitmap,
@@ -1817,6 +1818,7 @@ VNET_DEVICE_CLASS (avf_device_class,) =
   .mac_addr_add_del_function = avf_add_del_mac_address,
   .tx_function_n_errors = AVF_TX_N_ERROR,
   .tx_function_error_strings = avf_tx_func_error_strings,
+  .flow_ops_function = avf_flow_ops_fn,
 };
 /* *INDENT-ON* */
 
