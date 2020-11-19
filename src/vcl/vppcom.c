@@ -3999,6 +3999,9 @@ vppcom_proto_str (vppcom_proto_t proto)
     case VPPCOM_PROTO_QUIC:
       proto_str = "QUIC";
       break;
+    case VPPCOM_PROTO_DTLS:
+      proto_str = "DTLS";
+      break;
     default:
       proto_str = "UNKNOWN";
       break;

@@ -275,7 +275,9 @@ ldp_init (void)
   env_var_str = getenv (LDP_ENV_TLS_TRANS);
   if (env_var_str)
     {
-      ldp->transparent_tls = 1;
+      u32 sb;
+      if (sscanf (env_var_str, "%u", &sb) == 1)
+	ldp->transparent_tls = sb;
     }
 
   /* *INDENT-OFF* */
@@ -981,7 +983,10 @@ socket (int domain, int type, int protocol)
       u8 proto;
       if (ldp->transparent_tls)
 	{
-	  proto = VPPCOM_PROTO_TLS;
+	  if (ldp->transparent_tls == 1 && sock_type == SOCK_STREAM)
+	    proto = VPPCOM_PROTO_TLS;
+	  if (ldp->transparent_tls == 2 && sock_type == SOCK_DGRAM)
+	    proto = VPPCOM_PROTO_DTLS;
 	}
       else
 	proto = ((sock_type == SOCK_DGRAM) ?
