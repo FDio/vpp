@@ -551,7 +551,8 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
     }
 
   if (vsm->cfg.proto == VPPCOM_PROTO_TLS
-      || vsm->cfg.proto == VPPCOM_PROTO_QUIC)
+      || vsm->cfg.proto == VPPCOM_PROTO_QUIC
+      || vsm->cfg.proto == VPPCOM_PROTO_DTLS)
     {
       vppcom_cert_key_pair_t ckpair;
       uint32_t ckp_len;
