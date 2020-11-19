@@ -545,6 +545,19 @@ static session_cb_vft_t tls_app_cb_vft = {
 };
 /* *INDENT-ON* */
 
+static transport_proto_t
+tls_transport_proto (transport_proto_t tls_type)
+{
+  return tls_type == TRANSPORT_PROTO_TLS ?
+    TRANSPORT_PROTO_TCP : TRANSPORT_PROTO_UDP;
+}
+
+static transport_proto_t
+tls_ctx_transport_proto (tls_ctx_t * ctx)
+{
+  return tls_transport_proto (ctx->tls_type);
+}
+
 int
 tls_connect (transport_endpoint_cfg_t * tep)
 {
@@ -574,6 +587,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
   ctx->parent_app_api_context = sep->opaque;
   ctx->tcp_is_ip4 = sep->is_ip4;
   ctx->ckpair_index = sep->ckpair_index;
+  ctx->tls_type = sep->transport_proto;
   if (sep->hostname)
     {
       ctx->srv_hostname = format (0, "%v", sep->hostname);
@@ -585,7 +599,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
   ctx->tls_ctx_engine = engine_type;
 
   clib_memcpy_fast (&cargs->sep, sep, sizeof (session_endpoint_t));
-  cargs->sep.transport_proto = TRANSPORT_PROTO_TCP;
+  cargs->sep.transport_proto = tls_ctx_transport_proto (ctx);
   cargs->app_index = tm->app_index;
   cargs->api_context = ctx_index;
   cargs->sep_ext.ns_index = app->ns_index;
@@ -637,7 +651,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   args->app_index = tm->app_index;
   args->sep_ext = *sep;
   args->sep_ext.ns_index = app->ns_index;
-  args->sep_ext.transport_proto = TRANSPORT_PROTO_TCP;
+  args->sep_ext.transport_proto = tls_transport_proto (sep->transport_proto);
   if (vnet_listen (args))
     return -1;
 
@@ -656,6 +670,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   lctx->tcp_is_ip4 = sep->is_ip4;
   lctx->tls_ctx_engine = engine_type;
   lctx->ckpair_index = sep->ckpair_index;
+  lctx->tls_type = sep->transport_proto;
 
   if (tls_vfts[engine_type].ctx_start_listen (lctx))
     {
@@ -976,6 +991,11 @@ tls_init (vlib_main_t * vm)
   transport_register_protocol (TRANSPORT_PROTO_TLS, &tls_proto,
 			       FIB_PROTOCOL_IP4, ~0);
   transport_register_protocol (TRANSPORT_PROTO_TLS, &tls_proto,
+			       FIB_PROTOCOL_IP6, ~0);
+
+  transport_register_protocol (TRANSPORT_PROTO_DTLS, &tls_proto,
+			       FIB_PROTOCOL_IP4, ~0);
+  transport_register_protocol (TRANSPORT_PROTO_DTLS, &tls_proto,
 			       FIB_PROTOCOL_IP6, ~0);
   return 0;
 }

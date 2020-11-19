@@ -81,6 +81,7 @@ typedef struct tls_ctx_
   u8 *srv_hostname;
   u32 evt_index;
   u32 ckpair_index;
+  transport_proto_t tls_type;
 } tls_ctx_t;
 
 typedef struct tls_main_
