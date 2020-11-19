@@ -72,6 +72,8 @@ typedef struct
   u8 n_slices;			/**< number of fifo segment slices */
   fifo_slice_private_t *slices; /**< private slice information */
   svm_msg_q_t *mqs;		/**< private vec of attached mqs */
+  clib_mem_bulk_handle_t detached_fifos;	/**< detached fifos */
+  clib_spinlock_t detached_lock;
 } fifo_segment_t;
 
 typedef struct
@@ -139,8 +141,8 @@ svm_fifo_t *fifo_segment_alloc_fifo_w_offset (fifo_segment_t *fs,
  */
 void fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f);
 
-void fifo_segment_detach_fifo (fifo_segment_t * fs, svm_fifo_t * f);
-void fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t * f,
+void fifo_segment_detach_fifo (fifo_segment_t * fs, svm_fifo_t ** f);
+void fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t ** f,
 			       u32 slice_index);
 uword fifo_segment_fifo_offset (svm_fifo_t *f);
 

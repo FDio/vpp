@@ -868,8 +868,8 @@ session_switch_pool_reply (void *arg)
 
   /* Attach fifos to the right session and segment slice */
   sm = app_worker_get_connect_segment_manager (app_wrk);
-  segment_manager_attach_fifo (sm, s->rx_fifo, s);
-  segment_manager_attach_fifo (sm, s->tx_fifo, s);
+  segment_manager_attach_fifo (sm, &s->rx_fifo, s);
+  segment_manager_attach_fifo (sm, &s->tx_fifo, s);
 
   /* Notify app that it has data on the new session */
   session_enqueue_notify (s);
@@ -910,8 +910,8 @@ session_switch_pool (void *cb_args)
     {
       /* Cleanup fifo segment slice state for fifos */
       sm = app_worker_get_connect_segment_manager (app_wrk);
-      segment_manager_detach_fifo (sm, s->rx_fifo);
-      segment_manager_detach_fifo (sm, s->tx_fifo);
+      segment_manager_detach_fifo (sm, &s->rx_fifo);
+      segment_manager_detach_fifo (sm, &s->tx_fifo);
 
       /* Notify app, using old session, about the migration event */
       app_worker_migrate_notify (app_wrk, s, new_sh);
@@ -944,7 +944,8 @@ session_dgram_connect_notify (transport_connection_t * tc,
   new_s->session_state = SESSION_STATE_READY;
   new_s->flags |= SESSION_F_IS_MIGRATING;
 
-  session_lookup_add_connection (tc, session_handle (new_s));
+  if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+    session_lookup_add_connection (tc, session_handle (new_s));
 
   /*
    * Ask thread owning the old session to clean it up and make us the tx
@@ -1827,7 +1828,7 @@ session_main_init (vlib_main_t * vm)
   smm->evt_qs_segment_size = 1 << 20;
 #endif
 
-  smm->last_transport_proto_type = TRANSPORT_PROTO_QUIC;
+  smm->last_transport_proto_type = TRANSPORT_PROTO_DTLS;
 
   return 0;
 }

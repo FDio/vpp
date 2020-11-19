@@ -800,27 +800,27 @@ segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
 }
 
 void
-segment_manager_detach_fifo (segment_manager_t * sm, svm_fifo_t * f)
+segment_manager_detach_fifo (segment_manager_t * sm, svm_fifo_t ** f)
 {
   fifo_segment_t *fs;
 
-  fs = segment_manager_get_segment_w_lock (sm, f->segment_index);
+  fs = segment_manager_get_segment_w_lock (sm, (*f)->segment_index);
   fifo_segment_detach_fifo (fs, f);
   segment_manager_segment_reader_unlock (sm);
 }
 
 void
-segment_manager_attach_fifo (segment_manager_t * sm, svm_fifo_t * f,
+segment_manager_attach_fifo (segment_manager_t * sm, svm_fifo_t ** f,
 			     session_t * s)
 {
   fifo_segment_t *fs;
 
-  fs = segment_manager_get_segment_w_lock (sm, f->segment_index);
+  fs = segment_manager_get_segment_w_lock (sm, (*f)->segment_index);
   fifo_segment_attach_fifo (fs, f, s->thread_index);
   segment_manager_segment_reader_unlock (sm);
 
-  f->shr->master_session_index = s->session_index;
-  f->master_thread_index = s->thread_index;
+  (*f)->shr->master_session_index = s->session_index;
+  (*f)->master_thread_index = s->thread_index;
 }
 
 u32
