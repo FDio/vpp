@@ -32,7 +32,13 @@ from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
 from vpp_papi import MACAddress
-from vpp_l2 import L2_PORT_TYPE
+from vpp_l2 import L2_PORT_TYPE, VppBridgeDomainPort, VppBridgeDomain, \
+    VppL2FibEntry
+from vpp_bvi_interface import VppBviInterface
+from vpp_lo_interface import VppLoInterface
+from vpp_sub_interface import VppDot1QSubint
+from vpp_neighbor import VppNeighbor
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 
 class TestIpIrb(VppTestCase):
@@ -275,6 +281,130 @@ class TestIpIrb(VppTestCase):
         self.send_and_verify_l2_to_ip()
         # check it wasn't flooded
         self.pg1.assert_nothing_captured(remark="UU Flood")
+
+
+class TestBVI(VppTestCase):
+    """BVI Test Case"""
+
+    def tearDown(self):
+        super(TestBVI, self).tearDown()
+
+    def setUp(self):
+        super(TestBVI, self).setUp()
+
+        # 4 pg interfaces
+        self.create_pg_interfaces(range(5))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+
+    def mk_lo(self, parent, i):
+        return VppLoInterface(self)
+
+    def mk_bvi(self, parent, i):
+        return VppBviInterface(self)
+
+    def mk_vlan(self, parent, i):
+        return VppDot1QSubint(self, parent, 100 + i)
+
+    def do_test(self, parent, bvi_generator):
+        #
+        # 4 BDs and 4 BVIs
+        #
+        bds = []
+        bvis = []
+        pkts = []
+
+        # another L3 interface to inject from
+        self.pg4.config_ip4()
+        self.pg4.resolve_arp()
+
+        for i in range(4):
+            # create the BD
+            bds.append(VppBridgeDomain(self, i+1).add_vpp_config())
+
+            # add the PG interface
+            VppBridgeDomainPort(self, bds[i],
+                                self.pg_interfaces[i]).add_vpp_config()
+
+            # create, configure and add the BVI
+            bvis.append(bvi_generator(parent, i))
+            bvis[i].admin_up()
+            bvis[i].config_ip4()
+            VppBridgeDomainPort(self, bds[i], bvis[i],
+                                port_type=L2_PORT_TYPE.BVI).add_vpp_config()
+
+            # a neighbor/host on the BVI/BD to route to
+            VppNeighbor(self,
+                        bvis[i].sw_if_index,
+                        bvis[i].remote_mac,
+                        bvis[i].remote_ip4).add_vpp_config()
+
+            # an L2 FIB entry for the host
+            VppL2FibEntry(self, bds[i],
+                          bvis[i].remote_mac,
+                          self.pg_interfaces[i]).add_vpp_config()
+
+            # route via neighbour
+            VppIpRoute(self, "10.0.0.%d" % i, 32,
+                       [VppRoutePath(bvis[i].remote_ip4,
+                                     bvis[i].sw_if_index)]).add_vpp_config()
+
+            pkts.append(Ether(dst=self.pg4.local_mac,
+                              src=self.pg4.remote_mac) /
+                        IP(src=self.pg4.remote_ip4,
+                           dst="10.0.0.%d" % i) /
+                        UDP(sport=1234, dport=1234) /
+                        Raw(b'\xa5' * 100))
+
+        # # all packets via bvi0
+        N_PKTS = 63
+        self.send_and_expect(self.pg4, pkts[0] * N_PKTS, self.pg0)
+
+        # alternate oackets to the different BVIs
+        tx = pkts + pkts + pkts + pkts
+
+        self.pg4.add_stream(tx)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        for i in range(4):
+            self.assertEqual(4, len(self.pg_interfaces[i].get_capture(4)))
+
+        # two BVIs at a time
+        tx = [pkts[0], pkts[0], pkts[1], pkts[1]]
+        tx += tx + tx + tx
+
+        self.logger.error(self.vapi.cli("clear trace"))
+        self.pg4.add_stream(tx)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        for i in range(2):
+            self.assertEqual(8, len(self.pg_interfaces[i].get_capture(8)))
+
+        self.pg4.unconfig_ip4()
+        self.pg4.admin_down()
+
+    def test_bvi_vlans(self):
+        """ BVI as VLAN on BVI interface type """
+        parent = VppBviInterface(self)
+        parent.admin_up()
+        self.do_test(parent, self.mk_vlan)
+
+    def test_lo_vlans(self):
+        """ BVI as VLAN on Loopback interface type """
+        parent = VppLoInterface(self)
+        parent.admin_up()
+        self.do_test(parent, self.mk_vlan)
+
+    def test_bvi(self):
+        """ BVI as BVI interface type """
+        self.do_test(None, self.mk_bvi)
+
+    def test_lo(self):
+        """ BVI as Loopback interface type """
+        self.do_test(None, self.mk_lo)
 
 
 if __name__ == '__main__':

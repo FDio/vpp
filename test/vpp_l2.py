@@ -86,6 +86,7 @@ class VppBridgeDomain(VppObject):
                                               arp_ufwd=self.arp_ufwd,
                                               is_add=1)
         self._test.registry.register(self, self._test.logger)
+        return self
 
     def remove_vpp_config(self):
         self._test.vapi.bridge_domain_add_del(bd_id=self.bd_id, is_add=0)
