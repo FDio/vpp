@@ -542,7 +542,8 @@ static inline u8
 vcl_session_has_crypto (vcl_session_t *s)
 {
   return (s->session_type == VPPCOM_PROTO_TLS ||
-	  s->session_type == VPPCOM_PROTO_QUIC);
+	  s->session_type == VPPCOM_PROTO_QUIC ||
+	  s->session_type == VPPCOM_PROTO_DTLS);
 }
 
 static inline u8
@@ -608,7 +609,7 @@ vcl_ip_copy_to_ep (ip46_address_t * ip, vppcom_endpt_t * ep, u8 is_ip4)
 static inline int
 vcl_proto_is_dgram (uint8_t proto)
 {
-  return proto == VPPCOM_PROTO_UDP;
+  return proto == VPPCOM_PROTO_UDP || proto == VPPCOM_PROTO_DTLS;
 }
 
 static inline u8
