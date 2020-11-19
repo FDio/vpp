@@ -1413,7 +1413,9 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
   if (sa->is_initiator && proposal
       && proposal->protocol_id == IKEV2_PROTOCOL_ESP)
     {
-      ikev2_rekey_t *rekey = &sa->rekey[0];
+      ikev2_rekey_t *rekey = sa->rekey;
+      if (vec_len (rekey) == 0)
+	goto cleanup_and_exit;
       rekey->protocol_id = proposal->protocol_id;
       rekey->i_proposal =
 	ikev2_select_proposal (proposal, IKEV2_PROTOCOL_ESP);
@@ -4433,6 +4435,7 @@ ikev2_rekey_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   sa->last_init_msg_id += 1;
 
   ikev2_rekey_t *rekey;
+  vec_reset_length (sa->rekey);
   vec_add2 (sa->rekey, rekey, 1);
   ikev2_sa_proposal_t *proposals = vec_dup (csa->i_proposals);
 
