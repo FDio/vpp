@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c8c17045_46827837",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-19T14:51:40Z",
+      "side": 0,
+      "message": "Can\u0027t we implement a function just like this one, but for vmbus so that we keep the code as close as possible to pci?",
+      "revId": "69842be389f8a14825e5a4145506b41de39a9d78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
