@@ -3017,6 +3017,8 @@ nat44_plugin_disable ()
       return 1;
     }
 
+  nat_ha_disable ();
+
   // first unregister all nodes from interfaces
   vec = vec_dup (sm->interfaces);
   /* *INDENT-OFF* */
