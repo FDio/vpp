@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6fdbf526_95dbcafb",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-19T09:51:02Z",
+      "side": 1,
+      "message": "why rte?",
+      "revId": "7705038a7ce979bd9fea4be4c440b145e723124a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6a5c69f0_1b583a7b",
+        "filename": "src/vlib/vmbus/vmbus.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-19T09:51:02Z",
+      "side": 1,
+      "message": "use __clib_weak instead, please also replace existing one above....",
+      "revId": "7705038a7ce979bd9fea4be4c440b145e723124a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "87e4cf08_77ac8915",
+        "filename": "src/vlib/vmbus/vmbus.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-19T09:51:02Z",
+      "side": 1,
+      "message": "Please indent properly. Hint: __clib_packed is more firendly to gnu indent than CLIB_PACKED().",
+      "revId": "7705038a7ce979bd9fea4be4c440b145e723124a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
