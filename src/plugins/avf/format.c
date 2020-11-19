@@ -137,9 +137,9 @@ format_avf_input_trace (u8 * s, va_list * args)
   u32 indent = format_get_indent (s);
   int i = 0;
 
-  s = format (s, "avf: %v (%d) qid %u next-node %U",
+  s = format (s, "avf: %v (%d) qid %u next-node %U flow-id %u",
 	      hi->name, t->hw_if_index, t->qid, format_vlib_next_node_name,
-	      vm, node->index, t->next_index);
+	      vm, node->index, t->next_index, t->flow_id);
 
   do
     {
