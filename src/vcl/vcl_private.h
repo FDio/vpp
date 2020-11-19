@@ -263,9 +263,6 @@ typedef struct vcl_worker_
   /** Our event message queue */
   svm_msg_q_t *app_event_queue;
 
-  /** VPP workers event message queues */
-  svm_msg_q_t **vpp_event_queues;
-
   /** For deadman timers */
   clib_time_t clib_time;
 
@@ -672,12 +669,6 @@ static inline u8
 vcl_n_workers (void)
 {
   return pool_elts (vcm->workers);
-}
-
-static inline svm_msg_q_t *
-vcl_session_vpp_evt_q (vcl_worker_t * wrk, vcl_session_t * s)
-{
-  return wrk->vpp_event_queues[s->vpp_thread_index];
 }
 
 static inline u64

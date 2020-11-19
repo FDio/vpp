@@ -59,8 +59,6 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
   wrk->api_client_handle = mp->api_client_handle;
   wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
   ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
-  vec_validate (wrk->vpp_event_queues, mp->vpp_ctrl_mq_thread);
-  wrk->vpp_event_queues[mp->vpp_ctrl_mq_thread] = ctrl_mq;
   vcm->ctrl_mq = wrk->ctrl_mq = ctrl_mq;
   segment_handle = mp->segment_handle;
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
