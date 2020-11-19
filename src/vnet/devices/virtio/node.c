@@ -402,6 +402,10 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (n_left == 0)
     return 0;
 
+  bt.flags = 0;
+  bt.current_data = 0;
+  bt.current_length = 0;
+
   if (type == VIRTIO_IF_TYPE_TUN)
     {
       next_index = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;

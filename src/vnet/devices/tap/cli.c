@@ -206,6 +206,7 @@ tap_offload_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int gso_enable = 0, gso_disable = 0, is_gro_coalesce = 0;
   int csum_offload_enable = 0, csum_offload_disable = 0;
   int rv = 0;
+  u8 feature = 0, enable;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -230,6 +231,14 @@ tap_offload_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	csum_offload_enable = 1;
       else if (unformat (line_input, "csum-offload-disable"))
 	csum_offload_disable = 1;
+      else if (unformat (line_input, "feature"))
+	{
+	  feature = 1;
+	  if (unformat (line_input, "enable"))
+	    enable = 1;
+	  else if (unformat (line_input, "disable"))
+	    enable = 0;
+	}
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -249,6 +258,11 @@ tap_offload_command_fn (vlib_main_t * vm, unformat_input_t * input,
   else if (csum_offload_disable)
     rv = tap_csum_offload_enable_disable (vm, sw_if_index, 0);
 
+  if (feature)
+    rv =
+      vnet_sw_interface_process_tun_packets_enable_disable (sw_if_index,
+							    enable);
+
   if (rv == VNET_API_ERROR_INVALID_SW_IF_INDEX)
     return clib_error_return (0, "not a tap interface");
   else if (rv != 0)
@@ -263,7 +277,7 @@ VLIB_CLI_COMMAND (tap_offload_command, static) =
   .path = "set tap offload",
   .short_help = "set tap offload {<interface> | sw_if_index <sw_idx>}"
     " <gso-enable [gro-coalesce]  | gso-disable | csum-offload-enable |"
-    "csum-offload-disable>",
+    "csum-offload-disable> [feature { enable | disable }]",
   .function = tap_offload_command_fn,
 };
 /* *INDENT-ON* */

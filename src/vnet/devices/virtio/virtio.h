@@ -247,6 +247,9 @@ extern void virtio_pci_modern_notify_queue (vlib_main_t * vm,
 format_function_t format_virtio_device_name;
 format_function_t format_virtio_log_name;
 
+int vnet_sw_interface_process_tun_packets_enable_disable (u32 sw_if_index,
+							  u8 enable);
+
 static_always_inline void
 virtio_kick (vlib_main_t * vm, virtio_vring_t * vring, virtio_if_t * vif)
 {
