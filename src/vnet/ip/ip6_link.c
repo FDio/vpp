@@ -155,28 +155,59 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
 
   if (NULL == il)
     {
-      const vnet_sw_interface_t *sw, *sw_sup;
-      const ethernet_interface_t *eth;
       vnet_main_t *vnm;
+      ip6_address_t ll_addr;
 
       vnm = vnet_get_main ();
 
       IP6_LINK_INFO ("enable: %U",
 		     format_vnet_sw_if_index_name, vnm, sw_if_index);
 
-      sw_sup = vnet_get_sup_sw_interface (vnm, sw_if_index);
-      if (sw_sup->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+      if (NULL == link_local_addr)
 	{
-	  rv = VNET_API_ERROR_UNSUPPORTED;
-	  goto out;
-	}
+	  const vnet_sw_interface_t *sw;
 
-      eth = ethernet_get_interface (&ethernet_main, sw_sup->hw_if_index);
+	  /* we need to generate a ll addr: update ll addr pointer with local
+	   * storage */
+	  link_local_addr = &ll_addr;
 
-      if (NULL == eth)
-	{
-	  rv = VNET_API_ERROR_UNSUPPORTED;
-	  goto out;
+	  sw = vnet_get_sup_sw_interface (vnm, sw_if_index);
+	  if (sw->type == VNET_SW_INTERFACE_TYPE_SUB ||
+	      sw->type == VNET_SW_INTERFACE_TYPE_PIPE ||
+	      sw->type == VNET_SW_INTERFACE_TYPE_P2P)
+	    {
+	      ll_addr.as_u64[0] =
+		clib_host_to_net_u64 (0xFE80000000000000ULL);
+
+	      /* make up an interface id */
+	      ll_addr.as_u64[1] = random_u64 (&il_randomizer);
+
+	      /* clear u bit */
+	      ll_addr.as_u8[8] &= 0xfd;
+	    }
+	  else
+	    {
+	      const vnet_sw_interface_t *sw_sup;
+	      const ethernet_interface_t *eth;
+
+	      sw_sup = vnet_get_sup_sw_interface (vnm, sw_if_index);
+	      if (sw_sup->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+		{
+		  rv = VNET_API_ERROR_UNSUPPORTED;
+		  goto out;
+		}
+
+	      eth =
+		ethernet_get_interface (&ethernet_main, sw_sup->hw_if_index);
+	      if (NULL == eth)
+		{
+		  rv = VNET_API_ERROR_UNSUPPORTED;
+		  goto out;
+		}
+
+	      ip6_link_local_address_from_mac (&ll_addr,
+					       eth->address.mac.bytes);
+	    }
 	}
 
       vec_validate (ip6_links, sw_if_index);
@@ -185,28 +216,7 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
       il->il_locks = 0;
       il->il_sw_if_index = sw_if_index;
 
-      sw = vnet_get_sup_sw_interface (vnm, sw_if_index);
-
-      if (NULL != link_local_addr)
-	ip6_address_copy (&il->il_ll_addr, link_local_addr);
-      else if (sw->type == VNET_SW_INTERFACE_TYPE_SUB ||
-	       sw->type == VNET_SW_INTERFACE_TYPE_PIPE ||
-	       sw->type == VNET_SW_INTERFACE_TYPE_P2P)
-	{
-	  il->il_ll_addr.as_u64[0] =
-	    clib_host_to_net_u64 (0xFE80000000000000ULL);
-
-	  /* make up an interface id */
-	  il->il_ll_addr.as_u64[1] = random_u64 (&il_randomizer);
-
-	  /* clear u bit */
-	  il->il_ll_addr.as_u8[8] &= 0xfd;
-	}
-      else
-	{
-	  ip6_link_local_address_from_mac (&il->il_ll_addr,
-					   eth->address.mac.bytes);
-	}
+      ip6_address_copy (&il->il_ll_addr, link_local_addr);
 
       {
 	ip6_ll_prefix_t ilp = {
