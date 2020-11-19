@@ -1176,6 +1176,19 @@ error:
   vlib_log_err (avf_log.class, "%U", format_clib_error, ad->error);
 }
 
+clib_error_t *
+avf_op_program_flow (vlib_main_t *vm, avf_device_t *ad, int is_create,
+		     u8 *rule, u32 rule_len, u8 *program_status, u32 staus_len)
+{
+  avf_log_debug (ad, "avf_op_program_flow: vsi_id %u is_create %u", ad->vsi_id,
+		 is_create);
+
+  return avf_send_to_pf (vm, ad,
+			 is_create ? VIRTCHNL_OP_ADD_FDIR_FILTER :
+				     VIRTCHNL_OP_DEL_FDIR_FILTER,
+			 rule, rule_len, program_status, staus_len);
+}
+
 static void
 avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
 {
@@ -1186,6 +1199,9 @@ avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
 					  req->is_add);
   else if (req->type == AVF_PROCESS_REQ_CONFIG_PROMISC_MDDE)
     req->error = avf_op_config_promisc_mode (vm, ad, req->is_enable);
+  else if (req->type == AVF_PROCESS_REQ_PROGRAM_FLOW)
+    req->error = avf_op_program_flow (vm, ad, req->event_op, req->in,
+				      req->in_len, req->out, req->out_len);
   else
     clib_panic ("BUG: unknown avf proceess request type");
 
@@ -1792,6 +1808,24 @@ avf_clear_hw_interface_counters (u32 instance)
   avf_device_t *ad = avf_get_device (instance);
   clib_memcpy_fast (&ad->last_cleared_eth_stats,
 		    &ad->eth_stats, sizeof (ad->eth_stats));
+}
+
+clib_error_t *
+avf_program_flow (u32 dev_instance, virtchnl_ops_t op, u8 *in, u32 in_len,
+		  u8 *out, u32 out_len)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  avf_process_req_t req;
+
+  req.dev_instance = dev_instance;
+  req.type = AVF_PROCESS_REQ_PROGRAM_FLOW;
+  req.event_op = op;
+  req.in = in;
+  req.in_len = in_len;
+  req.out = out;
+  req.out_len = out_len;
+
+  return avf_process_request (vm, &req);
 }
 
 /* *INDENT-OFF* */
