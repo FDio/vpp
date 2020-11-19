@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "e67f0801_48cb1c26",
+        "filename": "docs/gettingstarted/developers/fib20/scale.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-19T08:30:45Z",
+      "side": 1,
+      "message": "i will redo this section.\na good example of the docs rotting as the code changes.",
+      "parentUuid": "834878cc_e82a353d",
+      "revId": "77402be675c743e1b16d9af7122b2e100cf9282f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0ece6431_db2ea4ad",
         "filename": "docs/gettingstarted/developers/fib20/scale.rst",
         "patchSetId": 6
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "0e364a72_de7d0e70",
+        "filename": "docs/gettingstarted/developers/fib20/scale.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-19T08:30:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0ece6431_db2ea4ad",
+      "revId": "77402be675c743e1b16d9af7122b2e100cf9282f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5ee157ca_7a202268",
         "filename": "docs/gettingstarted/developers/fib20/scale.rst",
         "patchSetId": 6
@@ -50,6 +86,24 @@
       "revId": "77402be675c743e1b16d9af7122b2e100cf9282f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7b693d98_e02b0bd3",
+        "filename": "docs/gettingstarted/developers/fib20/scale.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-19T08:30:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5ee157ca_7a202268",
+      "revId": "77402be675c743e1b16d9af7122b2e100cf9282f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
