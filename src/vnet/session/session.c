@@ -917,6 +917,8 @@ session_dgram_connect_notify (transport_connection_t * tc,
   new_s->session_state = SESSION_STATE_READY;
   new_s->flags |= SESSION_F_IS_MIGRATING;
 
+  clib_warning ("new session on thread %u index %u", new_s->thread_index,
+		new_s->session_index);
   session_lookup_add_connection (tc, session_handle (new_s));
 
   /*
@@ -1799,7 +1801,7 @@ session_main_init (vlib_main_t * vm)
   smm->evt_qs_segment_size = 1 << 20;
 #endif
 
-  smm->last_transport_proto_type = TRANSPORT_PROTO_QUIC;
+  smm->last_transport_proto_type = TRANSPORT_PROTO_DTLS;
 
   return 0;
 }
