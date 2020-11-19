@@ -245,6 +245,7 @@ typedef enum
 {
   AVF_PROCESS_REQ_ADD_DEL_ETH_ADDR = 1,
   AVF_PROCESS_REQ_CONFIG_PROMISC_MDDE = 2,
+  AVF_PROCESS_REQ_GENERAL_VC = 3,
 } avf_process_req_type_t;
 
 typedef struct
@@ -254,6 +255,14 @@ typedef struct
   u32 calling_process_index;
   u8 eth_addr[6];
   int is_add, is_enable;
+
+  /* used for general virtchannel event */
+  virtchnl_ops_t event_op;
+  u8 *in;
+  u32 in_len;
+  u8 *out;
+  u32 out_len;
+
   clib_error_t *error;
 } avf_process_req_t;
 
@@ -301,6 +310,12 @@ void avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args);
 extern vlib_node_registration_t avf_input_node;
 extern vlib_node_registration_t avf_process_node;
 extern vnet_device_class_t avf_device_class;
+
+clib_error_t *avf_general_virtchnl_event_request (u32 dev_instance,
+						  virtchnl_ops_t op,
+						  u8 * in, u32 in_len,
+						  u8 * out, u32 out_len);
+
 
 /* format.c */
 format_function_t format_avf_device;
