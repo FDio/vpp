@@ -760,7 +760,6 @@ vls_worker_copy_on_fork (vcl_worker_t * parent_wrk)
   /*
    * init vcl worker
    */
-  wrk->vpp_event_queues = vec_dup (parent_wrk->vpp_event_queues);
   wrk->sessions = pool_dup (parent_wrk->sessions);
   wrk->session_index_by_vpp_handles =
     hash_dup (parent_wrk->session_index_by_vpp_handles);

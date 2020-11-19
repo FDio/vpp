@@ -79,8 +79,6 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 
   wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
   ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
-  vec_validate (wrk->vpp_event_queues, mp->vpp_ctrl_mq_thread);
-  wrk->vpp_event_queues[mp->vpp_ctrl_mq_thread] = ctrl_mq;
   vcm->ctrl_mq = wrk->ctrl_mq = ctrl_mq;
   segment_handle = clib_net_to_host_u64 (mp->segment_handle);
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
