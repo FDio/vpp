@@ -22,6 +22,9 @@
 
 #include <vlib/log.h>
 
+#include <vnet/devices/devices.h>
+#include <vnet/flow/flow.h>
+
 #define AVF_QUEUE_SZ_MAX                4096
 #define AVF_QUEUE_SZ_MIN                64
 
@@ -92,7 +95,8 @@ extern vlib_log_class_registration_t avf_log;
   _(5, SHARED_TXQ_LOCK, "shared-txq-lock") \
   _(6, ELOG, "elog") \
   _(7, PROMISC, "promisc") \
-  _(8, RX_INT, "rx-interrupts")
+  _(8, RX_INT, "rx-interrupts") \
+  _(9, RX_FLOW_OFFLOAD, "rx-flow-offload") \
 
 enum
 {
@@ -167,6 +171,20 @@ typedef struct
 
 typedef struct
 {
+  u32 flow_index;
+  u32 mark;
+  struct iavf_fdir_conf *rcfg;
+} avf_flow_entry_t;
+
+typedef struct
+{
+  u32 flow_id;
+  u16 next_index;
+  i16 buffer_advance;
+} avf_flow_lookup_entry_t;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 flags;
   u32 per_interface_next_index;
@@ -207,6 +225,10 @@ typedef struct
   u32 rss_lut_size;
   virtchnl_link_speed_t link_speed;
   vlib_pci_addr_t pci_addr;
+
+  /* flow */
+  avf_flow_entry_t *flow_entries;	/* pool */
+  avf_flow_lookup_entry_t *flow_lookup_entries;	/* pool */
 
   /* stats */
   virtchnl_eth_stats_t eth_stats;
@@ -296,6 +318,10 @@ extern vlib_node_registration_t avf_input_node;
 extern vlib_node_registration_t avf_process_node;
 extern vnet_device_class_t avf_device_class;
 
+int
+avf_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
+		 u32 flow_index, uword * private_data);
+
 clib_error_t *avf_general_virtchnl_event_request (u32 dev_instance,
 						  virtchnl_ops_t op,
 						  u8 * in, u32 in_len,
@@ -306,6 +332,7 @@ clib_error_t *avf_general_virtchnl_event_request (u32 dev_instance,
 format_function_t format_avf_device;
 format_function_t format_avf_device_name;
 format_function_t format_avf_input_trace;
+vnet_flow_dev_ops_function_t avf_flow_ops_fn;
 
 static_always_inline avf_device_t *
 avf_get_device (u32 dev_instance)
