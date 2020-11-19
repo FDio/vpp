@@ -1097,7 +1097,8 @@ main (int argc, char **argv)
   if (ctrl->fd < 0)
     vtfail ("vppcom_session_create()", ctrl->fd);
 
-  if (vcm->proto == VPPCOM_PROTO_TLS || vcm->proto == VPPCOM_PROTO_QUIC)
+  if (vcm->proto == VPPCOM_PROTO_TLS
+      || vcm->proto == VPPCOM_PROTO_QUIC || vcm->proto == VPPCOM_PROTO_DTLS)
     {
       vtinf ("Adding tls certs ...");
       vppcom_session_tls_add_cert (ctrl->fd, vcl_test_crt_rsa,
