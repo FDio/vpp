@@ -62,43 +62,44 @@ enum
 #define AVF_AQ_F_EI  (1 << 14)
 #define AVF_AQ_F_FE  (1 << 15)
 
-
-#define foreach_virtchnl_op \
-  _(0, UNKNOWN)					\
-  _(1, VERSION)					\
-  _(2, RESET_VF)				\
-  _(3, GET_VF_RESOURCES)			\
-  _(4, CONFIG_TX_QUEUE)				\
-  _(5, CONFIG_RX_QUEUE)				\
-  _(6, CONFIG_VSI_QUEUES)			\
-  _(7, CONFIG_IRQ_MAP)				\
-  _(8, ENABLE_QUEUES)				\
-  _(9, DISABLE_QUEUES)				\
-  _(10, ADD_ETH_ADDR)				\
-  _(11, DEL_ETH_ADDR)				\
-  _(12, ADD_VLAN)				\
-  _(13, DEL_VLAN)				\
-  _(14, CONFIG_PROMISCUOUS_MODE)		\
-  _(15, GET_STATS)				\
-  _(16, RSVD)					\
-  _(17, EVENT)					\
-  _(18, UNDEF_18)				\
-  _(19, UNDEF_19)				\
-  _(20, IWARP)					\
-  _(21, CONFIG_IWARP_IRQ_MAP)			\
-  _(22, RELEASE_IWARP_IRQ_MAP)			\
-  _(23, CONFIG_RSS_KEY)				\
-  _(24, CONFIG_RSS_LUT)				\
-  _(25, GET_RSS_HENA_CAPS)			\
-  _(26, SET_RSS_HENA)				\
-  _(27, ENABLE_VLAN_STRIPPING)			\
-  _(28, DISABLE_VLAN_STRIPPING)			\
-  _(29, REQUEST_QUEUES)				\
-  _(30, ENABLE_CHANNELS)			\
-  _(31, DISABLE_CHANNELS)			\
-  _(32, ADD_CLOUD_FILTER)			\
-  _(33, DEL_CLOUD_FILTER)
-
+#define foreach_virtchnl_op                                                   \
+  _ (0, UNKNOWN)                                                              \
+  _ (1, VERSION)                                                              \
+  _ (2, RESET_VF)                                                             \
+  _ (3, GET_VF_RESOURCES)                                                     \
+  _ (4, CONFIG_TX_QUEUE)                                                      \
+  _ (5, CONFIG_RX_QUEUE)                                                      \
+  _ (6, CONFIG_VSI_QUEUES)                                                    \
+  _ (7, CONFIG_IRQ_MAP)                                                       \
+  _ (8, ENABLE_QUEUES)                                                        \
+  _ (9, DISABLE_QUEUES)                                                       \
+  _ (10, ADD_ETH_ADDR)                                                        \
+  _ (11, DEL_ETH_ADDR)                                                        \
+  _ (12, ADD_VLAN)                                                            \
+  _ (13, DEL_VLAN)                                                            \
+  _ (14, CONFIG_PROMISCUOUS_MODE)                                             \
+  _ (15, GET_STATS)                                                           \
+  _ (16, RSVD)                                                                \
+  _ (17, EVENT)                                                               \
+  _ (18, UNDEF_18)                                                            \
+  _ (19, UNDEF_19)                                                            \
+  _ (20, IWARP)                                                               \
+  _ (21, CONFIG_IWARP_IRQ_MAP)                                                \
+  _ (22, RELEASE_IWARP_IRQ_MAP)                                               \
+  _ (23, CONFIG_RSS_KEY)                                                      \
+  _ (24, CONFIG_RSS_LUT)                                                      \
+  _ (25, GET_RSS_HENA_CAPS)                                                   \
+  _ (26, SET_RSS_HENA)                                                        \
+  _ (27, ENABLE_VLAN_STRIPPING)                                               \
+  _ (28, DISABLE_VLAN_STRIPPING)                                              \
+  _ (29, REQUEST_QUEUES)                                                      \
+  _ (30, ENABLE_CHANNELS)                                                     \
+  _ (31, DISABLE_CHANNELS)                                                    \
+  _ (32, ADD_CLOUD_FILTER)                                                    \
+  _ (33, DEL_CLOUD_FILTER)                                                    \
+  _ (47, ADD_FDIR_FILTER)                                                     \
+  _ (48, DEL_FDIR_FILTER)                                                     \
+  _ (49, QUERY_FDIR_FILTER)
 
 typedef enum
 {

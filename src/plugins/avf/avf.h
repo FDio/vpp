@@ -246,6 +246,7 @@ typedef enum
 {
   AVF_PROCESS_REQ_ADD_DEL_ETH_ADDR = 1,
   AVF_PROCESS_REQ_CONFIG_PROMISC_MDDE = 2,
+  AVF_PROCESS_REQ_PROGRAM_FLOW = 3,
 } avf_process_req_type_t;
 
 typedef struct
@@ -255,6 +256,13 @@ typedef struct
   u32 calling_process_index;
   u8 eth_addr[6];
   int is_add, is_enable;
+
+  /* below parameters are used for 'program flow' event */
+  u8 *rule;
+  u32 rule_len;
+  u8 *program_status;
+  u32 status_len;
+
   clib_error_t *error;
 } avf_process_req_t;
 
@@ -302,6 +310,10 @@ void avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args);
 extern vlib_node_registration_t avf_input_node;
 extern vlib_node_registration_t avf_process_node;
 extern vnet_device_class_t avf_device_class;
+
+clib_error_t *avf_program_flow (u32 dev_instance, int is_add, u8 *rule,
+				u32 rule_len, u8 *program_status,
+				u32 status_len);
 
 /* format.c */
 format_function_t format_avf_device;
