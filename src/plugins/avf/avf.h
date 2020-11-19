@@ -40,6 +40,7 @@
 #define AVF_RXD_STATUS(x)		(1ULL << x)
 #define AVF_RXD_STATUS_DD		AVF_RXD_STATUS(0)
 #define AVF_RXD_STATUS_EOP		AVF_RXD_STATUS(1)
+#define AVF_RXD_STATUS_FLM		AVF_RXD_STATUS(11)
 #define AVF_RXD_ERROR_SHIFT		19
 #define AVF_RXD_PTYPE_SHIFT		30
 #define AVF_RXD_LEN_SHIFT		38
@@ -120,6 +121,10 @@ typedef volatile struct
       u64 rsv2:3;
       u64 ptype:8;
       u64 length:26;
+
+      u64 rsv3:64;
+      u32 flex_lo;
+      u32 fdid_flex_hi;
     };
     u64 qword[4];
 #ifdef CLIB_HAVE_VEC256
@@ -283,7 +288,10 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   vlib_buffer_t *bufs[AVF_RX_VECTOR_SZ];
+  u32 buffers[AVF_RX_VECTOR_SZ];
+  u16 next[AVF_RX_VECTOR_SZ];
   u64 qw1s[AVF_RX_VECTOR_SZ];
+  u32 flow_ids[AVF_RX_VECTOR_SZ];
   avf_rx_tail_t tails[AVF_RX_VECTOR_SZ];
   vlib_buffer_t buffer_template;
 } avf_per_thread_data_t;
@@ -416,6 +424,7 @@ typedef struct
   u16 qid;
   u16 next_index;
   u32 hw_if_index;
+  u32 flow_id;
   u64 qw1s[AVF_RX_MAX_DESC_IN_CHAIN];
 } avf_input_trace_t;
 
