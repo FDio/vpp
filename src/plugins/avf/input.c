@@ -157,6 +157,37 @@ avf_rx_attach_tail (vlib_main_t * vm, vlib_buffer_t * bt, vlib_buffer_t * b,
   return tlnifb;
 }
 
+static_always_inline void
+avf_process_flow_offload (avf_device_t *ad, avf_per_thread_data_t *ptd,
+			  uword n_rx_packets)
+{
+  uword n;
+  avf_flow_lookup_entry_t *fle;
+
+  for (n = 0; n < n_rx_packets; n++)
+    {
+      if ((ptd->qw1s[n] & AVF_RXD_STATUS_FLM) == 0)
+	continue;
+
+      fle = pool_elt_at_index (ad->flow_lookup_entries, ptd->flow_ids[n]);
+
+      if (fle->next_index != (u16) ~0)
+	{
+	  ptd->next[n] = fle->next_index;
+	}
+
+      if (fle->flow_id != ~0)
+	{
+	  ptd->bufs[n]->flow_id = fle->flow_id;
+	}
+
+      if (fle->buffer_advance != ~0)
+	{
+	  vlib_buffer_advance (ptd->bufs[n], fle->buffer_advance);
+	}
+    }
+}
+
 static_always_inline uword
 avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      avf_per_thread_data_t * ptd, u32 n_left,
@@ -210,6 +241,7 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
       b += 4;
       n_left -= 4;
     }
+
   while (n_left)
     {
       vlib_buffer_copy_template (b[0], &bt);
@@ -231,8 +263,9 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline uword
-avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 vlib_frame_t * frame, avf_device_t * ad, u16 qid)
+avf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			 vlib_frame_t *frame, avf_device_t *ad, u16 qid,
+			 int with_flows)
 {
   avf_main_t *am = &avf_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -252,11 +285,14 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   avf_rx_desc_t *d, *fd = rxq->descs;
 #ifdef CLIB_HAVE_VEC256
   u64x4 q1x4, or_q1x4 = { 0 };
+  u32x4 fdidx4;
   u64x4 dd_eop_mask4 = u64x4_splat (AVF_RXD_STATUS_DD | AVF_RXD_STATUS_EOP);
 #elif defined(CLIB_HAVE_VEC128)
   u32x4 q1x4_lo, q1x4_hi, or_q1x4 = { 0 };
+  u32x4 fdidx4;
   u32x4 dd_eop_mask4 = u32x4_splat (AVF_RXD_STATUS_DD | AVF_RXD_STATUS_EOP);
 #endif
+  int single_next = 0;
 
   /* is there anything on the ring */
   d = fd + next;
@@ -302,6 +338,7 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	goto one_by_one;
 
       or_q1x4 |= q1x4;
+
       u64x4_store_unaligned (q1x4, ptd->qw1s + n_rx_packets);
 #elif defined(CLIB_HAVE_VEC128)
       if (n_rx_packets >= AVF_RX_VECTOR_SZ - 4 || next >= size - 4)
@@ -326,6 +363,15 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       ptd->qw1s[n_rx_packets + 3] = (u64) q1x4_hi[3] << 32 | (u64) q1x4_lo[3];
 #endif
 #if defined(CLIB_HAVE_VEC256) || defined(CLIB_HAVE_VEC128)
+
+      if (with_flows)
+	{
+	  fdidx4 = u32x4_gather (
+	    (void *) &d[0].fdid_flex_hi, (void *) &d[1].fdid_flex_hi,
+	    (void *) &d[2].fdid_flex_hi, (void *) &d[3].fdid_flex_hi);
+	  u32x4_store_unaligned (fdidx4, ptd->flow_ids + n_rx_packets);
+	}
+
       vlib_buffer_copy_indices (bi, rxq->bufs + next, 4);
 
       /* next */
@@ -370,6 +416,10 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       or_qw1 |= ptd->qw1s[n_rx_packets] = d[0].qword[1];
+      if (PREDICT_FALSE (with_flows))
+	{
+	  ptd->flow_ids[n_rx_packets] = d[0].fdid_flex_hi;
+	}
 
       /* next */
       next = (next + 1) & mask;
@@ -401,15 +451,58 @@ no_more_desc:
   else
     n_rx_bytes = avf_process_rx_burst (vm, node, ptd, n_rx_packets, 0);
 
+  /* if any MARKed packets */
+  if (PREDICT_FALSE (with_flows && (or_qw1 & AVF_RXD_STATUS_FLM)))
+    {
+      u32 n;
+      for (n = 0; n < n_rx_packets; n++)
+	ptd->next[n] = next_index;
+
+      avf_process_flow_offload (ad, ptd, n_rx_packets);
+
+      /* enqueue buffers to the next node */
+      vlib_buffer_enqueue_to_next (vm, node, to_next, ptd->next, n_rx_packets);
+    }
+  else
+    {
+      if (PREDICT_TRUE (next_index == VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT))
+	{
+	  vlib_next_frame_t *nf;
+	  vlib_frame_t *f;
+	  ethernet_input_frame_t *ef;
+	  nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
+	  f = vlib_get_frame (vm, nf->frame);
+	  f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
+
+	  ef = vlib_frame_scalar_args (f);
+	  ef->sw_if_index = ad->sw_if_index;
+	  ef->hw_if_index = ad->hw_if_index;
+
+	  if ((or_qw1 & AVF_RXD_ERROR_IPE) == 0)
+	    f->flags |= ETH_INPUT_FRAME_F_IP4_CKSUM_OK;
+	  vlib_frame_no_append (f);
+	}
+
+      n_left_to_next -= n_rx_packets;
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      single_next = 1;
+    }
+
   /* packet trace if enabled */
   if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node))))
     {
-      u32 n_left = n_rx_packets, i = 0, j;
-      bi = to_next;
+      u32 n_left = n_rx_packets;
+      u32 i, j;
+      vlib_buffer_t *b;
+      u16 *next_indices = ptd->next;
 
+      i = 0;
       while (n_trace && n_left)
 	{
-	  vlib_buffer_t *b = vlib_get_buffer (vm, bi[0]);
+	  b = ptd->bufs[i];
+	  if (single_next == 0)
+	    next_index = next_indices[0];
+
 	  if (PREDICT_TRUE
 	      (vlib_trace_buffer
 	       (vm, node, next_index, b, /* follow_chain */ 0)))
@@ -420,6 +513,8 @@ no_more_desc:
 	      tr->qid = qid;
 	      tr->hw_if_index = ad->hw_if_index;
 	      tr->qw1s[0] = ptd->qw1s[i];
+	      tr->flow_id =
+		(tr->qw1s[0] & AVF_RXD_STATUS_FLM) ? ptd->flow_ids[i] : 0;
 	      for (j = 1; j < AVF_RX_MAX_DESC_IN_CHAIN; j++)
 		tr->qw1s[j] = ptd->tails[i].qw1s[j - 1];
 
@@ -428,32 +523,11 @@ no_more_desc:
 
 	  /* next */
 	  n_left--;
-	  bi++;
 	  i++;
+	  next_indices++;
 	}
       vlib_set_trace_count (vm, node, n_trace);
     }
-
-  if (PREDICT_TRUE (next_index == VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT))
-    {
-      vlib_next_frame_t *nf;
-      vlib_frame_t *f;
-      ethernet_input_frame_t *ef;
-      nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
-      f = vlib_get_frame (vm, nf->frame);
-      f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
-
-      ef = vlib_frame_scalar_args (f);
-      ef->sw_if_index = ad->sw_if_index;
-      ef->hw_if_index = ad->hw_if_index;
-
-      if ((or_qw1 & AVF_RXD_ERROR_IPE) == 0)
-	f->flags |= ETH_INPUT_FRAME_F_IP4_CKSUM_OK;
-      vlib_frame_no_append (f);
-    }
-
-  n_left_to_next -= n_rx_packets;
-  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 
   vlib_increment_combined_counter (vnm->interface_main.combined_sw_if_counters
 				   + VNET_INTERFACE_COUNTER_RX, thr_idx,
@@ -482,7 +556,12 @@ VLIB_NODE_FN (avf_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
       avf_device_t *ad = avf_get_device (pv[i].dev_instance);
       if ((ad->flags & AVF_DEVICE_F_ADMIN_UP) == 0)
 	continue;
-      n_rx += avf_device_input_inline (vm, node, frame, ad, pv[i].queue_id);
+      if (PREDICT_FALSE (ad->flags & AVF_DEVICE_F_RX_FLOW_OFFLOAD))
+	n_rx +=
+	  avf_device_input_inline (vm, node, frame, ad, pv[i].queue_id, 1);
+      else
+	n_rx +=
+	  avf_device_input_inline (vm, node, frame, ad, pv[i].queue_id, 0);
     }
 
   return n_rx;
