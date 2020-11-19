@@ -1509,10 +1509,9 @@ static void
 
   rv =
     nat44_lb_static_mapping_add_del_local (e_addr,
-					   clib_net_to_host_u16
-					   (mp->external_port), l_addr,
-					   clib_net_to_host_u16 (mp->
-								 local.port),
+					   mp->external_port,
+					   l_addr,
+					   mp->local.port,
 					   proto,
 					   clib_net_to_host_u32 (mp->
 								 local.vrf_id),

@@ -124,6 +124,7 @@ typedef struct
 /* NAT HA settings */
 typedef struct nat_ha_main_s
 {
+  u8 enabled;
   /* local IP address and UDP port */
   ip4_address_t src_ip_address;
   u16 src_port;
@@ -318,6 +319,16 @@ nat_ha_enable (nat_ha_sadd_cb_t sadd_cb,
   ha->sadd_cb = sadd_cb;
   ha->sdel_cb = sdel_cb;
   ha->sref_cb = sref_cb;
+
+  ha->enabled = 1;
+}
+
+void
+nat_ha_disable ()
+{
+  nat_ha_main_t *ha = &nat_ha_main;
+  ha->dst_port = 0;
+  ha->enabled = 0;
 }
 
 void
@@ -749,12 +760,23 @@ nat_ha_sref (ip4_address_t * out_addr, u16 out_port, ip4_address_t * eh_addr,
   nat_ha_event_add (&event, 0, thread_index, 0);
 }
 
+static_always_inline u8
+plugin_enabled ()
+{
+  nat_ha_main_t *ha = &nat_ha_main;
+  return ha->enabled;
+}
+
 /* per thread process waiting for interrupt */
 static uword
 nat_ha_worker_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		  vlib_frame_t * f)
 {
   u32 thread_index = vm->thread_index;
+
+  if (plugin_enabled () == 0)
+    return 0;
+
   /* flush HA NAT data under construction */
   nat_ha_event_add (0, 1, thread_index, 0);
   /* scan if we need to resend some non-ACKed data */
