@@ -121,23 +121,25 @@ typedef enum
   VIRTCHNL_STATUS_NOT_SUPPORTED = -64,
 } virtchnl_status_code_t;
 
-#define foreach_avf_vf_cap_flag \
-  _( 0, OFFLOAD_L2, "l2") \
-  _( 1, OFFLOAD_IWARP, "iwarp") \
-  _( 2, OFFLOAD_RSVD, "rsvd") \
-  _( 3, OFFLOAD_RSS_AQ, "rss-aq") \
-  _( 4, OFFLOAD_RSS_REG, "rss-reg") \
-  _( 5, OFFLOAD_WB_ON_ITR, "wb-on-itr") \
-  _( 6, OFFLOAD_REQ_QUEUES, "req-queues") \
-  _( 7, CAP_ADV_LINK_SPEED, "adv-link-speed") \
-  _(16, OFFLOAD_VLAN, "vlan") \
-  _(17, OFFLOAD_RX_POLLING, "rx-polling") \
-  _(18, OFFLOAD_RSS_PCTYPE_V2, "rss-pctype-v2") \
-  _(19, OFFLOAD_RSS_PF, "rss-pf") \
-  _(20, OFFLOAD_ENCAP, "encap") \
-  _(21, OFFLOAD_ENCAP_CSUM, "encap-csum") \
-  _(22, OFFLOAD_RX_ENCAP_CSUM, "rx-encap-csum") \
-  _(23, OFFLOAD_ADQ, "offload-adq")
+#define foreach_avf_vf_cap_flag                                               \
+  _ (0, OFFLOAD_L2, "l2")                                                     \
+  _ (1, OFFLOAD_IWARP, "iwarp")                                               \
+  _ (2, OFFLOAD_RSVD, "rsvd")                                                 \
+  _ (3, OFFLOAD_RSS_AQ, "rss-aq")                                             \
+  _ (4, OFFLOAD_RSS_REG, "rss-reg")                                           \
+  _ (5, OFFLOAD_WB_ON_ITR, "wb-on-itr")                                       \
+  _ (6, OFFLOAD_REQ_QUEUES, "req-queues")                                     \
+  _ (7, CAP_ADV_LINK_SPEED, "adv-link-speed")                                 \
+  _ (16, OFFLOAD_VLAN, "vlan")                                                \
+  _ (17, OFFLOAD_RX_POLLING, "rx-polling")                                    \
+  _ (18, OFFLOAD_RSS_PCTYPE_V2, "rss-pctype-v2")                              \
+  _ (19, OFFLOAD_RSS_PF, "rss-pf")                                            \
+  _ (20, OFFLOAD_ENCAP, "encap")                                              \
+  _ (21, OFFLOAD_ENCAP_CSUM, "encap-csum")                                    \
+  _ (22, OFFLOAD_RX_ENCAP_CSUM, "rx-encap-csum")                              \
+  _ (23, OFFLOAD_ADQ, "offload-adq")                                          \
+  _ (27, OFFLOAD_ADV_RSS_PF, "offload-adv-rss-pf")                            \
+  _ (28, OFFLOAD_FDIR_PF, "offload-fdir-pf")
 
 typedef enum
 {
