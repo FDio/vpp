@@ -598,7 +598,7 @@ vcl_ip_copy_to_ep (ip46_address_t * ip, vppcom_endpt_t * ep, u8 is_ip4)
 static inline int
 vcl_proto_is_dgram (uint8_t proto)
 {
-  return proto == VPPCOM_PROTO_UDP;
+  return proto == VPPCOM_PROTO_UDP || proto == VPPCOM_PROTO_DTLS;
 }
 
 static inline u8

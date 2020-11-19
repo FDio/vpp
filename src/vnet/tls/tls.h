@@ -21,7 +21,7 @@
 #ifndef SRC_VNET_TLS_TLS_H_
 #define SRC_VNET_TLS_TLS_H_
 
-#define TLS_DEBUG 		0
+#define TLS_DEBUG 		1
 #define TLS_DEBUG_LEVEL_CLIENT 	0
 #define TLS_DEBUG_LEVEL_SERVER 	0
 
@@ -49,6 +49,7 @@ typedef struct tls_cxt_id_
   u32 listener_ctx_index;
   u8 tcp_is_ip4;
   u8 tls_engine_id;
+  void *migrate_ctx;
 } tls_ctx_id_t;
 /* *INDENT-ON* */
 
@@ -73,6 +74,7 @@ typedef struct tls_ctx_
   /* Temporary storage for session open opaque. Overwritten once
    * underlying tcp connection is established */
 #define parent_app_api_context c_tls_ctx_id.parent_app_api_ctx
+#define migration_ctx c_tls_ctx_id.migrate_ctx
 
   u8 is_passive_close;
   u8 resume;
@@ -81,6 +83,7 @@ typedef struct tls_ctx_
   u8 *srv_hostname;
   u32 evt_index;
   u32 ckpair_index;
+  transport_proto_t tls_type;
 } tls_ctx_t;
 
 typedef struct tls_main_
@@ -104,7 +107,10 @@ typedef struct tls_main_
 typedef struct tls_engine_vft_
 {
   u32 (*ctx_alloc) (void);
+  u32 (*ctx_alloc_w_thread) (u32 thread_index);
   void (*ctx_free) (tls_ctx_t * ctx);
+  void *(*ctx_detach) (tls_ctx_t * ctx);
+    u32 (*ctx_attach) (u32 thread_index, void *ctx);
   tls_ctx_t *(*ctx_get) (u32 ctx_index);
   tls_ctx_t *(*ctx_get_w_thread) (u32 ctx_index, u8 thread_index);
   int (*ctx_init_client) (tls_ctx_t * ctx);
