@@ -168,6 +168,13 @@ tls_ctx_half_open_index (tls_ctx_t * ctx)
   return (ctx - tls_main.half_open_ctx_pool);
 }
 
+static transport_proto_t
+tls_transport_proto (transport_proto_t tls_type)
+{
+  return tls_type == TRANSPORT_PROTO_TLS ?
+    TRANSPORT_PROTO_TCP : TRANSPORT_PROTO_UDP;
+}
+
 void
 tls_notify_app_enqueue (tls_ctx_t * ctx, session_t * app_session)
 {
@@ -212,6 +219,7 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
 {
   session_t *app_session;
   app_worker_t *app_wrk;
+  session_type_t st;
 
   app_wrk = app_worker_get_if_valid (ctx->parent_app_wrk_index);
   if (!app_wrk)
@@ -226,8 +234,8 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
   app_session = session_get (ctx->c_s_index, ctx->c_thread_index);
   app_session->app_wrk_index = ctx->parent_app_wrk_index;
   app_session->connection_index = ctx->tls_ctx_handle;
-  app_session->session_type =
-    session_type_from_proto_and_ip (TRANSPORT_PROTO_TLS, ctx->tcp_is_ip4);
+  st = session_type_from_proto_and_ip (ctx->tls_type, ctx->tcp_is_ip4);
+  app_session->session_type = st;
 
   if ((err = app_worker_init_connected (app_wrk, app_session)))
     goto failed;
@@ -276,6 +284,26 @@ tls_ctx_alloc (crypto_engine_type_t engine_type)
   u32 ctx_index;
   ctx_index = tls_vfts[engine_type].ctx_alloc ();
   return (((u32) engine_type << TLS_ENGINE_TYPE_SHIFT) | ctx_index);
+}
+
+static inline u32
+tls_ctx_alloc_w_thread (crypto_engine_type_t engine_type, u32 thread_index)
+{
+  u32 ctx_index;
+  ctx_index = tls_vfts[engine_type].ctx_alloc_w_thread (thread_index);
+  return (((u32) engine_type << TLS_ENGINE_TYPE_SHIFT) | ctx_index);
+}
+
+static inline u32
+tls_ctx_attach (crypto_engine_type_t engine_type, u32 thread_index, void *ctx)
+{
+  return tls_vfts[engine_type].ctx_attach (thread_index, ctx);
+}
+
+static inline void *
+tls_ctx_detach (tls_ctx_t * ctx)
+{
+  return tls_vfts[ctx->tls_ctx_engine].ctx_detach (ctx);
 }
 
 static inline tls_ctx_t *
@@ -431,6 +459,18 @@ tls_session_accept_callback (session_t * tls_session)
   app_session->session_state = SESSION_STATE_CREATED;
   ctx->c_s_index = app_session->session_index;
 
+  if (ctx->tls_type == TRANSPORT_PROTO_DTLS)
+    {
+      transport_connection_t *tc;
+      tls_session = session_get_from_handle (ctx->tls_session_handle);
+      tc = session_get_transport (tls_session);
+      ctx->at.lcl_port = tc->lcl_port;
+      ctx->at.rmt_port = tc->rmt_port;
+      ctx->at.is_ip4 = tc->is_ip4;
+      ip_copy (&ctx->at.rmt_ip, &tc->rmt_ip, tc->is_ip4);
+      ip_copy (&ctx->at.lcl_ip, &tc->lcl_ip, tc->is_ip4);
+    }
+
   TLS_DBG (1, "Accept on listener %u new connection [%u]%x",
 	   tls_listener->opaque, vlib_get_thread_index (), ctx_handle);
 
@@ -459,8 +499,8 @@ tls_app_tx_callback (session_t * tls_session)
 }
 
 int
-tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
-				session_t * tls_session, session_error_t err)
+tls_session_connected_cb_tls (u32 tls_app_index, u32 ho_ctx_index,
+			      session_t * tls_session, session_error_t err)
 {
   session_t *app_session;
   tls_ctx_t *ho_ctx, *ctx;
@@ -496,7 +536,7 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
 
   TLS_DBG (1, "TCP connect for %u returned %u. New connection [%u]%x",
-	   ho_ctx_index, is_fail, vlib_get_thread_index (),
+	   ho_ctx_index, err, vlib_get_thread_index (),
 	   (ctx) ? ctx_handle : ~0);
 
   ctx->tls_session_handle = session_handle (tls_session);
@@ -510,6 +550,50 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
   ctx->c_s_index = app_session->session_index;
 
   return tls_ctx_init_client (ctx);
+}
+
+int
+tls_session_connected_cb_dtls (u32 tls_app_index, u32 ctx_handle,
+			       session_t * us, session_error_t err)
+{
+  transport_connection_t *tc;
+  session_t *app_session;
+  tls_ctx_t *ctx;
+
+//  ctx = tls_ctx_half_open_get (ho_ctx_index);
+  ctx = tls_ctx_get_w_thread (ctx_handle, 1 /* because of udp */ );
+
+  tc = session_get_transport (us);
+  ctx->at.lcl_port = tc->lcl_port;
+  ctx->at.rmt_port = tc->rmt_port;
+  ctx->at.is_ip4 = tc->is_ip4;
+  ip_copy (&ctx->at.rmt_ip, &tc->rmt_ip, tc->is_ip4);
+  ip_copy (&ctx->at.lcl_ip, &tc->lcl_ip, tc->is_ip4);
+
+  ctx->tls_session_handle = session_handle (us);
+  us->opaque = ctx_handle;
+
+  /* Preallocate app session. Avoids allocating a session post handshake
+   * on tls_session rx and potentially invalidating the session pool */
+  app_session = session_alloc (ctx->c_thread_index);
+  app_session->session_state = SESSION_STATE_CREATED;
+  ctx->c_s_index = app_session->session_index;
+
+  clib_warning ("initializing connected");
+
+  return tls_ctx_init_client (ctx);
+}
+
+int
+tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
+				session_t * tls_session, session_error_t err)
+{
+  if (session_get_transport_proto (tls_session) == TRANSPORT_PROTO_TCP)
+    return tls_session_connected_cb_tls (tls_app_index, ho_ctx_index,
+					 tls_session, err);
+  else
+    return tls_session_connected_cb_dtls (tls_app_index, ho_ctx_index,
+					  tls_session, err);
 }
 
 static void
@@ -531,6 +615,42 @@ tls_app_session_cleanup (session_t * s, session_cleanup_ntf_t ntf)
   tls_ctx_free (ctx);
 }
 
+static void
+dtls_migrate_udp (void *arg)
+{
+  tls_ctx_t *ctx = (tls_ctx_t *) arg;
+  u32 ctx_handle, thread_index;
+  session_t *us;
+
+  thread_index = session_thread_from_handle (ctx->tls_session_handle);
+  ASSERT (thread_index == vlib_get_thread_index ());
+
+  ctx_handle = tls_ctx_attach (ctx->tls_ctx_engine, thread_index, ctx);
+  ctx = tls_ctx_get_w_thread (ctx_handle, thread_index);
+  clib_warning ("migrate handle %u", ctx_handle);
+  ctx->tls_ctx_handle = ctx_handle;
+
+  us = session_get_from_handle (ctx->tls_session_handle);
+  us->opaque = ctx_handle;
+  us->flags &= ~SESSION_F_IS_MIGRATING;
+  if (svm_fifo_max_dequeue (us->tx_fifo))
+    session_send_io_evt_to_thread (us->tx_fifo, SESSION_IO_EVT_TX);
+}
+
+static void
+dtls_session_migrate_callback (session_t * us, session_handle_t new_sh)
+{
+  u32 new_thread = session_thread_from_handle (new_sh);
+  tls_ctx_t *ctx;
+
+  clib_warning ("session about to migrate");
+  ctx = tls_ctx_get_w_thread (us->opaque, us->thread_index);
+  ctx->tls_session_handle = new_sh;
+  ctx = tls_ctx_detach (ctx);
+
+  session_send_rpc_evt_to_thread (new_thread, dtls_migrate_udp, (void *) ctx);
+}
+
 /* *INDENT-OFF* */
 static session_cb_vft_t tls_app_cb_vft = {
   .session_accept_callback = tls_session_accept_callback,
@@ -541,16 +661,23 @@ static session_cb_vft_t tls_app_cb_vft = {
   .del_segment_callback = tls_del_segment_callback,
   .builtin_app_rx_callback = tls_app_rx_callback,
   .builtin_app_tx_callback = tls_app_tx_callback,
+  .session_migrate_callback = dtls_session_migrate_callback,
   .session_cleanup_callback = tls_app_session_cleanup,
 };
 /* *INDENT-ON* */
+
+//static transport_proto_t
+//tls_ctx_transport_proto (tls_ctx_t * ctx)
+//{
+//  return tls_transport_proto (ctx->tls_type);
+//}
 
 int
 tls_connect (transport_endpoint_cfg_t * tep)
 {
   vnet_connect_args_t _cargs = { {}, }, *cargs = &_cargs;
-  session_endpoint_cfg_t *sep;
   crypto_engine_type_t engine_type;
+  session_endpoint_cfg_t *sep;
   tls_main_t *tm = &tls_main;
   app_worker_t *app_wrk;
   application_t *app;
@@ -574,6 +701,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
   ctx->parent_app_api_context = sep->opaque;
   ctx->tcp_is_ip4 = sep->is_ip4;
   ctx->ckpair_index = sep->ckpair_index;
+  ctx->tls_type = sep->transport_proto;
   if (sep->hostname)
     {
       ctx->srv_hostname = format (0, "%v", sep->hostname);
@@ -637,7 +765,8 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   args->app_index = tm->app_index;
   args->sep_ext = *sep;
   args->sep_ext.ns_index = app->ns_index;
-  args->sep_ext.transport_proto = TRANSPORT_PROTO_TCP;
+  args->sep_ext.transport_proto = tls_transport_proto (sep->transport_proto);
+  args->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
   if (vnet_listen (args))
     return -1;
 
@@ -656,6 +785,8 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   lctx->tcp_is_ip4 = sep->is_ip4;
   lctx->tls_ctx_engine = engine_type;
   lctx->ckpair_index = sep->ckpair_index;
+  lctx->tls_type = sep->transport_proto;
+  clib_warning ("lctx transport proto %u", lctx->tls_type);
 
   if (tls_vfts[engine_type].ctx_start_listen (lctx))
     {
@@ -748,13 +879,15 @@ format_tls_ctx (u8 * s, va_list * args)
 {
   u32 tcp_si, tcp_ti, ctx_index, ctx_engine;
   tls_ctx_t *ctx = va_arg (*args, tls_ctx_t *);
+  char *proto;
 
+  proto = ctx->tls_type == TRANSPORT_PROTO_TLS ? "TLS" : "DTLS";
   session_parse_handle (ctx->tls_session_handle, &tcp_si, &tcp_ti);
   tls_ctx_parse_handle (ctx->tls_ctx_handle, &ctx_index, &ctx_engine);
-  s = format (s, "[%d:%d][TLS] app_wrk %u index %u engine %u tcp %d:%d",
-	      ctx->c_thread_index, ctx->c_s_index,
-	      ctx->parent_app_wrk_index, ctx_index,
-	      ctx_engine, tcp_ti, tcp_si);
+  s = format (s, "[%d:%d][%s] app_wrk %u index %u engine %u ts %d:%d",
+	      ctx->c_thread_index, ctx->c_s_index, proto,
+	      ctx->parent_app_wrk_index, ctx_index, ctx_engine, tcp_ti,
+	      tcp_si);
 
   return s;
 }
@@ -765,13 +898,15 @@ format_tls_listener_ctx (u8 * s, va_list * args)
   session_t *tls_listener;
   app_listener_t *al;
   tls_ctx_t *ctx;
+  char *proto;
 
   ctx = va_arg (*args, tls_ctx_t *);
 
+  proto = ctx->tls_type == TRANSPORT_PROTO_TLS ? "TLS" : "DTLS";
   al = app_listener_get_w_handle (ctx->tls_session_handle);
   tls_listener = app_listener_get_session (al);
-  s = format (s, "[%d:%d][TLS] app_wrk %u engine %u tcp %d:%d",
-	      ctx->c_thread_index, ctx->c_s_index,
+  s = format (s, "[%d:%d][%s] app_wrk %u engine %u ts %d:%d",
+	      ctx->c_thread_index, ctx->c_s_index, proto,
 	      ctx->parent_app_wrk_index, ctx->tls_ctx_engine,
 	      tls_listener->thread_index, tls_listener->session_index);
 
@@ -949,6 +1084,87 @@ static const transport_proto_vft_t tls_proto = {
 };
 /* *INDENT-ON* */
 
+int
+dtls_connect (transport_endpoint_cfg_t * tep)
+{
+  vnet_connect_args_t _cargs = { {}, }, *cargs = &_cargs;
+  crypto_engine_type_t engine_type;
+  session_endpoint_cfg_t *sep;
+  tls_main_t *tm = &tls_main;
+  app_worker_t *app_wrk;
+  application_t *app;
+  tls_ctx_t *ctx;
+  u32 ctx_handle;
+  int rv;
+
+  sep = (session_endpoint_cfg_t *) tep;
+  app_wrk = app_worker_get (sep->app_wrk_index);
+  app = application_get (app_wrk->app_index);
+  engine_type = tls_get_engine_type (app->tls_engine);
+  if (engine_type == CRYPTO_ENGINE_NONE)
+    {
+      clib_warning ("No tls engine_type available");
+      return -1;
+    }
+
+//  ctx_index = tls_ctx_half_open_alloc ();
+//  ctx = tls_ctx_half_open_get (ctx_index);
+  ctx_handle = tls_ctx_alloc_w_thread (engine_type, 1 /* because of udp */ );
+  ctx = tls_ctx_get_w_thread (ctx_handle, 1);
+  ctx->parent_app_wrk_index = sep->app_wrk_index;
+  ctx->parent_app_api_context = sep->opaque;
+  ctx->tcp_is_ip4 = sep->is_ip4;
+  ctx->ckpair_index = sep->ckpair_index;
+  ctx->tls_type = sep->transport_proto;
+  ctx->tls_ctx_handle = ctx_handle;
+  if (sep->hostname)
+    {
+      ctx->srv_hostname = format (0, "%v", sep->hostname);
+      vec_terminate_c_string (ctx->srv_hostname);
+    }
+//  tls_ctx_half_open_reader_unlock ();
+
+  app_worker_alloc_connects_segment_manager (app_wrk);
+  ctx->tls_ctx_engine = engine_type;
+
+  clib_memcpy_fast (&cargs->sep, sep, sizeof (session_endpoint_t));
+  cargs->sep.transport_proto = TRANSPORT_PROTO_UDP;
+  cargs->app_index = tm->app_index;
+  cargs->api_context = ctx_handle;
+  cargs->sep_ext.ns_index = app->ns_index;
+  cargs->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
+  if ((rv = vnet_connect (cargs)))
+    return rv;
+
+  TLS_DBG (1, "New DTLS connect request %x engine %d", ctx_handle,
+	   engine_type);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+static const transport_proto_vft_t dtls_proto = {
+  .enable = 0,
+  .connect = dtls_connect,
+  .close = tls_disconnect,
+  .start_listen = tls_start_listen,
+  .stop_listen = tls_stop_listen,
+  .get_connection = tls_connection_get,
+  .get_listener = tls_listener_get,
+  .custom_tx = tls_custom_tx_callback,
+  .format_connection = format_tls_connection,
+  .format_half_open = format_tls_half_open,
+  .format_listener = format_tls_listener,
+  .get_transport_endpoint = tls_transport_endpoint_get,
+  .get_transport_listener_endpoint = tls_transport_listener_endpoint_get,
+  .transport_options = {
+    .name = "dtls",
+    .short_name = "D",
+    .tx_type = TRANSPORT_TX_INTERNAL,
+    .service_type = TRANSPORT_SERVICE_APP,
+  },
+};
+/* *INDENT-ON* */
+
 void
 tls_register_engine (const tls_engine_vft_t * vft, crypto_engine_type_t type)
 {
@@ -976,6 +1192,11 @@ tls_init (vlib_main_t * vm)
   transport_register_protocol (TRANSPORT_PROTO_TLS, &tls_proto,
 			       FIB_PROTOCOL_IP4, ~0);
   transport_register_protocol (TRANSPORT_PROTO_TLS, &tls_proto,
+			       FIB_PROTOCOL_IP6, ~0);
+
+  transport_register_protocol (TRANSPORT_PROTO_DTLS, &dtls_proto,
+			       FIB_PROTOCOL_IP4, ~0);
+  transport_register_protocol (TRANSPORT_PROTO_DTLS, &dtls_proto,
 			       FIB_PROTOCOL_IP6, ~0);
   return 0;
 }

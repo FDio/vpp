@@ -21,6 +21,8 @@
 #include <vpp/app/version.h>
 #include <vnet/tls/tls.h>
 
+#include <openssl/bio.h>
+
 typedef struct tls_ctx_openssl_
 {
   tls_ctx_t ctx;			/**< First */
@@ -70,6 +72,8 @@ clib_error_t *tls_openssl_api_init (vlib_main_t * vm);
 int tls_openssl_set_ciphers (char *ciphers);
 int vpp_openssl_is_inflight (tls_ctx_t * ctx);
 
+
+BIO *BIO_new_dtls (session_handle_t sh);
 /*
  * fd.io coding-style-patch-verification: ON
  *
