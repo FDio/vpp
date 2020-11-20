@@ -1042,7 +1042,6 @@ retry:
 							     [frame->n_vectors
 							      - n_left],
 							     n_left);
-      buffers += n_buffered;
       n_left -= n_buffered;
     }
   if (n_left)
