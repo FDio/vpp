@@ -29,18 +29,21 @@ endif
 BUILD_FILES := include/ \
 	       lib/statics/libibverbs.a \
 	       lib/statics/libmlx5.a \
-	       util/librdma_util.a
+	       lib/statics/libmlx4.a \
+	       lib/pkgconfig/ \
+	       util/librdma_util.a \
+	       ccan/libccan.a
 
 define  rdma-core_config_cmds
 	cd $(rdma-core_build_dir) && \
 	  $(CMAKE) -G Ninja $(rdma-core_src_dir) \
-	    -DENABLE_STATIC=1 -DENABLE_RESOLVE_NEIGH=0 -DNO_PYVERBS=1 -DENABLE_VALGRIND=0 -DIN_PLACE=1 \
-	    -DCMAKE_BUILD_TYPE=$(RDMA_BUILD_TYPE) \
+	    -DENABLE_STATIC=1 -DENABLE_RESOLVE_NEIGH=0 -DNO_PYVERBS=1 -DENABLE_VALGRIND=0\
+	    -DCMAKE_BUILD_TYPE=$(RDMA_BUILD_TYPE) -DCMAKE_INSTALL_PREFIX=$(rdma-core_install_dir) \
 	    -DCMAKE_C_FLAGS='-fPIC -fvisibility=hidden' > $(rdma-core_config_log)
 endef
 
 define  rdma-core_build_cmds
-	$(CMAKE) --build $(rdma-core_build_dir) -- libibverbs.a librdma_util.a libmlx5.a > $(rdma-core_build_log)
+	$(CMAKE) --build $(rdma-core_build_dir) -- libccan.a libibverbs.a librdma_util.a libmlx5.a libmlx4.a > $(rdma-core_build_log)
 endef
 
 define  rdma-core_install_cmds
@@ -48,6 +51,7 @@ define  rdma-core_install_cmds
 	tar -C $(rdma-core_build_dir) -hc $(BUILD_FILES) | tar -C $(rdma-core_install_dir) -xv > $(rdma-core_install_log)
 	find $(rdma-core_install_dir) -name '*.a' -exec mv -v {} $(rdma-core_install_dir)/lib \; >> $(rdma-core_install_log)
 	rmdir -v $(rdma-core_install_dir)/util $(rdma-core_install_dir)/lib/statics >> $(rdma-core_install_log)
+	sed '/Libs.private:/ s/$$/ -lrdma_util -lccan/' -i $(rdma-core_install_dir)/lib/pkgconfig/libibverbs.pc
 endef
 
 $(eval $(call package,rdma-core))
