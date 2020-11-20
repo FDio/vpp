@@ -27,7 +27,8 @@ extern void ip_neighbor_unwatch (const ip_address_t * ip,
 				 u32 sw_if_index,
 				 const ip_neighbor_watcher_t * watch);
 
-extern void ip_neighbor_publish (index_t ipni);
+extern void ip_neighbor_publish (index_t ipni,
+				 ip_neighbor_event_flags_t flags);
 
 #endif
 
