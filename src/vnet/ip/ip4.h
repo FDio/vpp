@@ -257,9 +257,6 @@ void ip4_unregister_protocol (u32 protocolx);
 
 serialize_function_t serialize_vnet_ip4_main, unserialize_vnet_ip4_main;
 
-int vnet_set_ip4_flow_hash (u32 table_id,
-			    flow_hash_config_t flow_hash_config);
-
 int vnet_set_ip4_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 				 u32 table_index);
 

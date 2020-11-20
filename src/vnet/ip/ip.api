@@ -231,6 +231,7 @@ define ip_route_lookup_reply
 */
 autoreply define set_ip_flow_hash
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   u32 vrf_id;
@@ -242,6 +243,38 @@ autoreply define set_ip_flow_hash
   bool proto;
   bool reverse;
   bool symmetric;
+};
+
+/**
+    @brief flow hash settings for an IP table
+    @param src - include src in flow hash
+    @param dst - include dst in flow hash
+    @param sport - include sport in flow hash
+    @param dport - include dport in flow hash
+    @param proto - include proto in flow hash
+    @param reverse - include reverse in flow hash
+    @param symmetric - include symmetry in flow hash
+    @param flowlabel - include flowlabel in flow hash
+*/
+enumflag ip_flow_hash_config
+{
+  IP_API_FLOW_HASH_SRC_IP = 0x01,
+  IP_API_FLOW_HASH_DST_IP = 0x02,
+  IP_API_FLOW_HASH_SRC_PORT = 0x04,
+  IP_API_FLOW_HASH_DST_PORT = 0x08,
+  IP_API_FLOW_HASH_PROTO = 0x10,
+  IP_API_FLOW_HASH_REVERSE = 0x20,
+  IP_API_FLOW_HASH_SYMETRIC = 0x40,
+  IP_API_FLOW_HASH_FLOW_LABEL = 0x80,
+};
+
+autoreply define set_ip_flow_hash_v2
+{
+  u32 client_index;
+  u32 context;
+  u32 table_id;
+  vl_api_address_family_t af;
+  vl_api_ip_flow_hash_config_t flow_hash_config;
 };
 
 /** \brief IPv6 interface enable / disable request
