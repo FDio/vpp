@@ -1138,6 +1138,9 @@ class TestIPLoadBalance(VppTestCase):
     def test_ip_load_balance(self):
         """ IP Load-Balancing """
 
+        fhc = VppEnum.vl_api_ip_flow_hash_config_t
+        af = VppEnum.vl_api_address_family_t
+
         #
         # An array of packets that differ only in the destination port
         #
@@ -1206,7 +1209,12 @@ class TestIPLoadBalance(VppTestCase):
         #  - now only the stream with differing source address will
         #    load-balance
         #
-        self.vapi.set_ip_flow_hash(vrf_id=0, src=1, dst=1, sport=0, dport=0)
+        self.vapi.set_ip_flow_hash_v2(
+            af=af.ADDRESS_IP4,
+            table_id=0,
+            flow_hash_config=(fhc.IP_API_FLOW_HASH_SRC_IP |
+                              fhc.IP_API_FLOW_HASH_DST_IP |
+                              fhc.IP_API_FLOW_HASH_PROTO))
 
         self.send_and_expect_load_balancing(self.pg0, src_ip_pkts,
                                             [self.pg1, self.pg2])
@@ -1218,7 +1226,8 @@ class TestIPLoadBalance(VppTestCase):
         #
         # change the flow hash config back to defaults
         #
-        self.vapi.set_ip_flow_hash(vrf_id=0, src=1, dst=1, sport=1, dport=1)
+        self.vapi.set_ip_flow_hash(vrf_id=0, src=1, dst=1,
+                                   proto=1, sport=1, dport=1)
 
         #
         # Recursive prefixes
