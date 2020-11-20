@@ -282,9 +282,6 @@ void ip6_local_hop_by_hop_register_protocol (u32 protocol, u32 node_index);
 
 serialize_function_t serialize_vnet_ip6_main, unserialize_vnet_ip6_main;
 
-int vnet_set_ip6_flow_hash (u32 table_id,
-			    flow_hash_config_t flow_hash_config);
-
 u8 *format_ip6_forward_next_trace (u8 * s, va_list * args);
 
 u32 ip6_tcp_udp_icmp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0);

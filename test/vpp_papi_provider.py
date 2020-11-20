@@ -82,8 +82,6 @@ defaultmapping = {
                                  'l2_table_index': 4294967295, },
     'pppoe_add_del_session': {'is_add': 1, },
     'policer_add_del': {'is_add': 1, 'conform_action': {'type': 1}, },
-    'set_ip_flow_hash': {'src': 1, 'dst': 1, 'sport': 1, 'dport': 1,
-                         'proto': 1, },
     'set_ipfix_exporter': {'collector_port': 4739, },
     'sr_policy_add': {'weight': 1, 'is_encap': 1, },
     'sw_interface_add_del_address': {'is_add': 1, },
