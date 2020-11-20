@@ -51,7 +51,7 @@ static int quic_reset_connection (u64 udp_session_handle,
 static void quic_proto_on_close (u32 ctx_index, u32 thread_index);
 
 static quicly_stream_open_t on_stream_open;
-static quicly_closed_by_peer_t on_closed_by_peer;
+static quicly_closed_by_remote_t on_closed_by_remote;
 static quicly_now_t quicly_vpp_now_cb;
 
 /* Crypto contexts */
@@ -90,33 +90,6 @@ quic_crypto_context_free_if_needed (crypto_context_t * crctx, u8 thread_index)
   clib_mem_free (crctx->data);
   pool_put (qm->wrk_ctx[thread_index].crypto_ctx_pool, crctx);
 }
-
-static quicly_datagram_t *
-quic_alloc_packet (quicly_packet_allocator_t * self, size_t payloadsize)
-{
-  quicly_datagram_t *packet;
-  if ((packet =
-       clib_mem_alloc (sizeof (*packet) + payloadsize +
-		       sizeof (quic_encrypt_cb_ctx))) == NULL)
-    return NULL;
-  packet->data.base =
-    (uint8_t *) packet + sizeof (*packet) + sizeof (quic_encrypt_cb_ctx);
-  quic_encrypt_cb_ctx *encrypt_cb_ctx =
-    (quic_encrypt_cb_ctx *) ((uint8_t *) packet + sizeof (*packet));
-
-  clib_memset (encrypt_cb_ctx, 0, sizeof (*encrypt_cb_ctx));
-  return packet;
-}
-
-static void
-quic_free_packet (quicly_packet_allocator_t * self,
-		  quicly_datagram_t * packet)
-{
-  clib_mem_free (packet);
-}
-
-quicly_packet_allocator_t quic_packet_allocator =
-  { quic_alloc_packet, quic_free_packet };
 
 static int
 quic_app_cert_key_pair_delete_callback (app_cert_key_pair_t * ckpair)
@@ -213,6 +186,35 @@ quic_set_max_packets_per_key_fn (vlib_main_t * vm,
   return 0;
 }
 
+static clib_error_t *
+quic_set_cc_fn (vlib_main_t * vm,
+		unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  quic_main_t *qm = &quic_main;
+  clib_error_t *e = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "reno"))
+	qm->default_quic_cc = QUIC_CC_RENO;
+      else if (unformat (line_input, "cubic"))
+	qm->default_quic_cc = QUIC_CC_CUBIC;
+      else
+	{
+	  e = clib_error_return (0, "unknown input '%U'",
+				 format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+done:
+  unformat_free (line_input);
+  return e;
+}
+
 static void
 quic_release_crypto_context (u32 crypto_context_index, u8 thread_index)
 {
@@ -261,20 +263,28 @@ quic_init_crypto_context (crypto_context_t * crctx, quic_ctx_t * ctx)
   ptls_ctx->encrypt_ticket = &qm->session_cache.super;
   clib_memcpy (quicly_ctx, &quicly_spec_context, sizeof (quicly_context_t));
 
-  quicly_ctx->max_packet_size = QUIC_MAX_PACKET_SIZE;
   quicly_ctx->max_packets_per_key = qm->max_packets_per_key;
   quicly_ctx->tls = ptls_ctx;
   quicly_ctx->stream_open = &on_stream_open;
-  quicly_ctx->closed_by_peer = &on_closed_by_peer;
+  quicly_ctx->closed_by_remote = &on_closed_by_remote;
   quicly_ctx->now = &quicly_vpp_now_cb;
   quicly_amend_ptls_context (quicly_ctx->tls);
 
-  quicly_ctx->packet_allocator = &quic_packet_allocator;
-  quicly_ctx->crypto_engine = &quic_crypto_engine;
+  if (qm->vnet_crypto_enabled
+      && qm->default_crypto_engine == CRYPTO_ENGINE_VPP)
+    quicly_ctx->crypto_engine = &quic_crypto_engine;
+  else
+    quicly_ctx->crypto_engine = &quicly_default_crypto_engine;
+
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
   quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
   quicly_ctx->transport_params.max_streams_bidi = (uint64_t) 1 << 60;
   quicly_ctx->transport_params.max_idle_timeout = qm->connection_timeout;
+
+  if (qm->default_quic_cc == QUIC_CC_CUBIC)
+    quicly_ctx->init_cc = &quicly_cc_cubic_init;
+  else if (qm->default_quic_cc == QUIC_CC_RENO)
+    quicly_ctx->init_cc = &quicly_cc_reno_init;
 
   app = application_get (ctx->parent_app_id);
   quicly_ctx->transport_params.max_stream_data.bidi_local =
@@ -283,6 +293,7 @@ quic_init_crypto_context (crypto_context_t * crctx, quic_ctx_t * ctx)
     app->sm_properties.tx_fifo_size - 1;
   quicly_ctx->transport_params.max_stream_data.uni = QUIC_INT_MAX;
 
+  quicly_ctx->transport_params.max_udp_payload_size = QUIC_MAX_PACKET_SIZE;
   if (!app->quic_iv_set)
     {
       ptls_openssl_random_bytes (app->quic_iv, QUIC_IV_LEN - 1);
@@ -632,7 +643,8 @@ quic_connection_closed (quic_ctx_t * ctx)
 }
 
 static int
-quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
+quic_send_datagram (session_t * udp_session, struct iovec *packet,
+		    quicly_address_t * dest, quicly_address_t * src)
 {
   u32 max_enqueue;
   session_dgram_hdr_t hdr;
@@ -640,7 +652,7 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
   svm_fifo_t *f;
   transport_connection_t *tc;
 
-  len = packet->data.len;
+  len = packet->iov_len;
   f = udp_session->tx_fifo;
   tc = session_get_transport (udp_session);
   max_enqueue = svm_fifo_max_enqueue (f);
@@ -661,15 +673,15 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
   /*  Read dest address from quicly-provided sockaddr */
   if (hdr.is_ip4)
     {
-      QUIC_ASSERT (packet->dest.sa.sa_family == AF_INET);
-      struct sockaddr_in *sa4 = (struct sockaddr_in *) &packet->dest.sa;
+      QUIC_ASSERT (dest->sa.sa_family == AF_INET);
+      struct sockaddr_in *sa4 = (struct sockaddr_in *) &dest->sa;
       hdr.rmt_port = sa4->sin_port;
       hdr.rmt_ip.ip4.as_u32 = sa4->sin_addr.s_addr;
     }
   else
     {
-      QUIC_ASSERT (packet->dest.sa.sa_family == AF_INET6);
-      struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *) &packet->dest.sa;
+      QUIC_ASSERT (dest->sa.sa_family == AF_INET6);
+      struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *) &dest->sa;
       hdr.rmt_port = sa6->sin6_port;
       clib_memcpy (&hdr.rmt_ip.ip6, &sa6->sin6_addr, 16);
     }
@@ -680,7 +692,7 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
       QUIC_ERR ("Not enough space to enqueue header");
       return QUIC_ERROR_FULL_FIFO;
     }
-  ret = svm_fifo_enqueue (f, len, packet->data.base);
+  ret = svm_fifo_enqueue (f, len, packet->iov_base);
   if (ret != len)
     {
       QUIC_ERR ("Not enough space to enqueue payload");
@@ -695,14 +707,18 @@ quic_send_datagram (session_t * udp_session, quicly_datagram_t * packet)
 static int
 quic_send_packets (quic_ctx_t * ctx)
 {
-  quic_main_t *qm = &quic_main;
-  quicly_datagram_t *packets[QUIC_SEND_PACKET_VEC_SIZE];
+  struct iovec packets[QUIC_SEND_PACKET_VEC_SIZE];
+  uint8_t buf[QUIC_SEND_PACKET_VEC_SIZE *
+	      quic_get_quicly_ctx_from_ctx (ctx)->
+	      transport_params.max_udp_payload_size];
   session_t *udp_session;
   quicly_conn_t *conn;
   size_t num_packets, i, max_packets;
-  quicly_packet_allocator_t *pa;
+  quicly_address_t dest, src;
+
+  num_packets = QUIC_SEND_PACKET_VEC_SIZE;
+
   int err = 0;
-  u32 thread_index = vlib_get_thread_index ();
 
   /* We have sctx, get qctx */
   if (quic_ctx_is_stream (ctx))
@@ -723,26 +739,24 @@ quic_send_packets (quic_ctx_t * ctx)
   if (quic_sendable_packet_count (udp_session) < 2)
     goto stop_sending;
 
-  pa = quic_get_quicly_ctx_from_ctx (ctx)->packet_allocator;
   do
     {
       max_packets = quic_sendable_packet_count (udp_session);
       if (max_packets < 2)
 	break;
       num_packets = max_packets;
-      if ((err = quicly_send (conn, packets, &num_packets)))
+      if ((err =
+	   quicly_send (conn, &dest, &src, packets, &num_packets, buf,
+			sizeof (buf))))
 	goto quicly_error;
-
-      quic_crypto_batch_tx_packets (&qm->wrk_ctx
-				    [thread_index].crypto_context_batch);
 
       for (i = 0; i != num_packets; ++i)
 	{
-	  quic_crypto_finalize_send_packet (packets[i]);
-	  if ((err = quic_send_datagram (udp_session, packets[i])))
+
+	  if ((err =
+	       quic_send_datagram (udp_session, &packets[i], &dest, &src)))
 	    goto quicly_error;
 
-	  pa->free_packet (pa, packets[i]);
 	}
     }
   while (num_packets > 0 && num_packets == max_packets);
@@ -1043,9 +1057,9 @@ quic_on_stream_open (quicly_stream_open_t * self, quicly_stream_t * stream)
 }
 
 static void
-quic_on_closed_by_peer (quicly_closed_by_peer_t * self, quicly_conn_t * conn,
-			int code, uint64_t frame_type,
-			const char *reason, size_t reason_len)
+quic_on_closed_by_remote (quicly_closed_by_remote_t * self,
+			  quicly_conn_t * conn, int code, uint64_t frame_type,
+			  const char *reason, size_t reason_len)
 {
   quic_ctx_t *ctx = quic_get_conn_ctx (conn);
 #if QUIC_DEBUG >= 2
@@ -1760,7 +1774,7 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
 				     session_t * udp_session,
 				     session_error_t err)
 {
-  QUIC_DBG (2, "QSession is now connected (id %u)",
+  QUIC_DBG (2, "UDP Session is now connected (id %u)",
 	    udp_session->session_index);
   /* This should always be called before quic_connect returns since UDP always
    * connects instantly. */
@@ -1793,8 +1807,7 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
   ctx->c_thread_index = thread_index;
   ctx->c_c_index = ctx_index;
 
-  QUIC_DBG (2, "Quic connect returned %u. New ctx [%u]%x",
-	    is_fail, thread_index, (ctx) ? ctx_index : ~0);
+  QUIC_DBG (2, "New ctx [%u]%x", thread_index, (ctx) ? ctx_index : ~0);
 
   ctx->udp_session_handle = session_handle (udp_session);
   udp_session->opaque = ctx_index;
@@ -2131,19 +2144,32 @@ quic_reset_connection (u64 udp_session_handle, quic_rx_packet_ctx_t * pctx)
    * CID, ... */
   QUIC_DBG (2, "Sending stateless reset");
   int rv;
-  quicly_datagram_t *dgram;
   session_t *udp_session;
   quicly_context_t *quicly_ctx;
   if (pctx->packet.cid.dest.plaintext.node_id != 0
       || pctx->packet.cid.dest.plaintext.thread_id != 0)
     return 0;
   quicly_ctx = quic_get_quicly_ctx_from_udp (udp_session_handle);
-  dgram = quicly_send_stateless_reset (quicly_ctx, &pctx->sa, NULL,
-				       &pctx->packet.cid.dest.plaintext);
-  if (dgram == NULL)
+  quic_ctx_t *qctx = quic_ctx_get (pctx->ctx_index, pctx->thread_index);
+
+  quicly_address_t src;
+  uint8_t payload[quicly_ctx->transport_params.max_udp_payload_size];
+  size_t payload_len =
+    quicly_send_stateless_reset (quicly_ctx, &src.sa, payload);
+  if (payload_len == 0)
     return 1;
+
+  struct iovec packet;
+  packet.iov_len = payload_len;
+  packet.iov_base = payload;
+
+  struct _st_quicly_conn_public_t *conn =
+    (struct _st_quicly_conn_public_t *) qctx->conn;
+
   udp_session = session_get_from_handle (udp_session_handle);
-  rv = quic_send_datagram (udp_session, dgram);
+  rv =
+    quic_send_datagram (udp_session, &packet, &conn->remote.address,
+			&conn->local.address);
   quic_set_udp_tx_evt (udp_session);
   return rv;
 }
@@ -2185,8 +2211,10 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
   quic_build_sockaddr (&pctx->sa, &pctx->salen, &pctx->ph.rmt_ip,
 		       pctx->ph.rmt_port, pctx->ph.is_ip4);
   quicly_ctx = quic_get_quicly_ctx_from_udp (udp_session_handle);
+
+  size_t off = 0;
   plen = quicly_decode_packet (quicly_ctx, &pctx->packet,
-			       pctx->data, pctx->ph.data_length);
+			       pctx->data, pctx->ph.data_length, &off);
 
   if (plen == SIZE_MAX)
     {
@@ -2197,7 +2225,9 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
   if (rv == QUIC_PACKET_TYPE_RECEIVE)
     {
       pctx->ptype = QUIC_PACKET_TYPE_RECEIVE;
-      if (quic_main.vnet_crypto_enabled)
+
+      if (quic_main.vnet_crypto_enabled
+	  && quic_main.default_crypto_engine == CRYPTO_ENGINE_VPP)
 	{
 	  quic_ctx_t *qctx = quic_ctx_get (pctx->ctx_index, thread_index);
 	  quic_crypto_decrypt_packet (qctx, pctx);
@@ -2227,7 +2257,6 @@ static int
 quic_udp_session_rx_callback (session_t * udp_session)
 {
   /*  Read data from UDP rx_fifo and pass it to the quicly conn. */
-  quic_main_t *qm = &quic_main;
   quic_ctx_t *ctx = NULL, *prev_ctx = NULL;
   svm_fifo_t *f = udp_session->rx_fifo;
   u32 max_deq;
@@ -2236,7 +2265,7 @@ quic_udp_session_rx_callback (session_t * udp_session)
   u32 thread_index = vlib_get_thread_index ();
   u32 cur_deq, fifo_offset, max_packets, i;
 
-  quic_rx_packet_ctx_t packets_ctx[QUIC_RCV_MAX_BATCH_PACKETS];
+  quic_rx_packet_ctx_t packets_ctx[QUIC_RCV_MAX_PACKETS];
 
   if (udp_session->flags & SESSION_F_IS_MIGRATING)
     {
@@ -2250,13 +2279,12 @@ rx_start:
     return 0;
 
   fifo_offset = 0;
-  max_packets = QUIC_RCV_MAX_BATCH_PACKETS;
+  max_packets = QUIC_RCV_MAX_PACKETS;
 
 #if CLIB_DEBUG > 0
   clib_memset (packets_ctx, 0xfa,
-	       QUIC_RCV_MAX_BATCH_PACKETS * sizeof (quic_rx_packet_ctx_t));
+	       QUIC_RCV_MAX_PACKETS * sizeof (quic_rx_packet_ctx_t));
 #endif
-
   for (i = 0; i < max_packets; i++)
     {
       packets_ctx[i].thread_index = UINT32_MAX;
@@ -2286,9 +2314,6 @@ rx_start:
 	  break;
 	}
     }
-
-  quic_crypto_batch_rx_packets (&qm->
-				wrk_ctx[thread_index].crypto_context_batch);
 
   for (i = 0; i < max_packets; i++)
     {
@@ -2424,7 +2449,8 @@ static const transport_proto_vft_t quic_proto = {
 /* *INDENT-ON* */
 
 static quicly_stream_open_t on_stream_open = { quic_on_stream_open };
-static quicly_closed_by_peer_t on_closed_by_peer = { quic_on_closed_by_peer };
+static quicly_closed_by_remote_t on_closed_by_remote =
+  { quic_on_closed_by_remote };
 static quicly_now_t quicly_vpp_now_cb = { quic_get_time };
 
 static void
@@ -2502,9 +2528,6 @@ quic_init (vlib_main_t * vm)
       tw->last_run_time = vlib_time_now (vlib_get_main ());
       clib_bihash_init_24_8 (&qm->wrk_ctx[i].crypto_context_hash,
 			     "quic crypto contexts", 64, 128 << 10);
-
-      qm->wrk_ctx[i].crypto_context_batch.nb_rx_packets = 0;
-      qm->wrk_ctx[i].crypto_context_batch.nb_tx_packets = 0;
     }
 
   clib_bihash_init_16_8 (&qm->connection_hash, "quic connections", 1024,
@@ -2522,18 +2545,26 @@ quic_init (vlib_main_t * vm)
 
   clib_bitmap_alloc (qm->available_crypto_engines,
 		     app_crypto_engine_n_types ());
-  quic_register_cipher_suite (CRYPTO_ENGINE_VPP, quic_crypto_cipher_suites);
   quic_register_cipher_suite (CRYPTO_ENGINE_PICOTLS,
 			      ptls_openssl_cipher_suites);
-  qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
-  qm->max_packets_per_key = DEFAULT_MAX_PACKETS_PER_KEY;
-  clib_rwlock_init (&qm->crypto_keys_quic_rw_lock);
+  qm->default_crypto_engine = CRYPTO_ENGINE_PICOTLS;
 
   vnet_crypto_main_t *cm = &crypto_main;
   if (vec_len (cm->engines) == 0)
     qm->vnet_crypto_enabled = 0;
   else
     qm->vnet_crypto_enabled = 1;
+  if (qm->vnet_crypto_enabled == 1)
+    {
+      quic_register_cipher_suite (CRYPTO_ENGINE_VPP,
+				  quic_crypto_cipher_suites);
+      qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
+    }
+
+  qm->max_packets_per_key = DEFAULT_MAX_PACKETS_PER_KEY;
+  clib_rwlock_init (&qm->crypto_keys_quic_rw_lock);
+
+  qm->default_quic_cc = QUIC_CC_RENO;
 
   vec_free (a->name);
   return 0;
@@ -2757,6 +2788,27 @@ quic_format_connection_ctx (u8 * s, va_list * args)
 	      quicly_stats.num_packets.received,
 	      quicly_stats.num_packets.lost,
 	      quicly_stats.num_packets.ack_received);
+  s = format (s, "\ncwnd:%u ssthresh:%u recovery_end:%lu",
+	      quicly_stats.cc.cwnd, quicly_stats.cc.ssthresh,
+	      quicly_stats.cc.recovery_end);
+
+  quicly_context_t *quicly_ctx = quic_get_quicly_ctx_from_ctx (ctx);
+  if (quicly_ctx->init_cc == &quicly_cc_cubic_init)
+    {
+      s =
+	format (s,
+		"\nk:%d w_max:%u w_last_max:%u avoidance_start:%ld last_sent_time:%ld",
+		quicly_stats.cc.state.cubic.k,
+		quicly_stats.cc.state.cubic.w_max,
+		quicly_stats.cc.state.cubic.w_last_max,
+		quicly_stats.cc.state.cubic.avoidance_start,
+		quicly_stats.cc.state.cubic.last_sent_time);
+    }
+  else if (quicly_ctx->init_cc == &quicly_cc_reno_init)
+    {
+      s = format (s, " stash:%u", quicly_stats.cc.state.reno.stash);
+    }
+
   return s;
 }
 
@@ -2843,7 +2895,7 @@ done:
 VLIB_CLI_COMMAND (quic_plugin_crypto_command, static) =
 {
   .path = "quic set crypto api",
-  .short_help = "quic set crypto api [picotls, vpp]",
+  .short_help = "quic set crypto api [picotls|vpp]",
   .function = quic_plugin_crypto_command_fn,
 };
 VLIB_CLI_COMMAND(quic_plugin_set_fifo_size_command, static)=
@@ -2869,6 +2921,12 @@ VLIB_CLI_COMMAND (quic_set_max_packets_per_key, static) =
   .path = "set quic max_packets_per_key",
   .short_help = "set quic max_packets_per_key 16777216",
   .function = quic_set_max_packets_per_key_fn,
+};
+VLIB_CLI_COMMAND (quic_set_cc, static) =
+{
+  .path = "set quic cc",
+  .short_help = "set quic cc [reno|cubic]",
+  .function = quic_set_cc_fn,
 };
 VLIB_PLUGIN_REGISTER () =
 {

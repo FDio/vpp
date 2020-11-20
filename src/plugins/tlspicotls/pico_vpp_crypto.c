@@ -42,6 +42,8 @@ struct vpp_aead_context_t
   vnet_crypto_alg_t alg;
   u32 key_index;
   u32 chunk_index;
+  uint8_t iv[PTLS_MAX_IV_SIZE];
+  uint8_t static_iv[PTLS_MAX_IV_SIZE];
 };
 
 static void
@@ -129,7 +131,7 @@ ptls_vpp_crypto_cipher_setup_crypto (ptls_cipher_context_t * _ctx, int is_enc,
 
 size_t
 ptls_vpp_crypto_aead_decrypt (ptls_aead_context_t * _ctx, void *_output,
-			      const void *input, size_t inlen, const void *iv,
+			      const void *input, size_t inlen, uint64_t seq,
 			      const void *aad, size_t aadlen)
 {
   vlib_main_t *vm = vlib_get_main ();
@@ -139,7 +141,7 @@ ptls_vpp_crypto_aead_decrypt (ptls_aead_context_t * _ctx, void *_output,
   ctx->op.dst = _output;
   ctx->op.src = (void *) input;
   ctx->op.len = inlen - tag_size;;
-  ctx->op.iv = (void *) iv;
+  ctx->op.iv = ctx->static_iv;
   ctx->op.aad = (void *) aad;
   ctx->op.aad_len = aadlen;
   ctx->op.tag = (void *) input + inlen - tag_size;
@@ -152,11 +154,13 @@ ptls_vpp_crypto_aead_decrypt (ptls_aead_context_t * _ctx, void *_output,
 }
 
 static void
-ptls_vpp_crypto_aead_encrypt_init (ptls_aead_context_t * _ctx, const void *iv,
+ptls_vpp_crypto_aead_encrypt_init (ptls_aead_context_t * _ctx, uint64_t seq,
 				   const void *aad, size_t aadlen)
 {
   struct vpp_aead_context_t *ctx = (struct vpp_aead_context_t *) _ctx;
-  ctx->op.iv = (void *) iv;
+  ctx->op.iv = ctx->iv;
+  ptls_aead__build_iv (ctx->super.algo, ctx->op.iv, ctx->static_iv, seq);
+  ctx->op.iv = ctx->static_iv;
   ctx->op.aad = (void *) aad;
   ctx->op.aad_len = aadlen;
   ctx->op.n_chunks = 2;
@@ -200,10 +204,10 @@ ptls_vpp_crypto_aead_dispose_crypto (ptls_aead_context_t * _ctx)
   /* Do nothing */
 }
 
-
 static int
 ptls_vpp_crypto_aead_setup_crypto (ptls_aead_context_t * _ctx, int is_enc,
-				   const void *key, vnet_crypto_alg_t alg)
+				   const void *key, const void *iv,
+				   vnet_crypto_alg_t alg)
 {
   struct vlib_main_t *vm = vlib_get_main ();
   struct vpp_aead_context_t *ctx = (struct vpp_aead_context_t *) _ctx;
@@ -241,6 +245,7 @@ ptls_vpp_crypto_aead_setup_crypto (ptls_aead_context_t * _ctx, int is_enc,
     vnet_crypto_key_add (vm, ctx->alg, (void *) key, key_len);
   clib_rwlock_writer_unlock (&picotls_main.crypto_keys_rw_lock);
   ctx->chunk_index = 0;
+  clib_memcpy (ctx->static_iv, iv, ctx->super.algo->iv_size);
 
   ctx->super.do_decrypt = ptls_vpp_crypto_aead_decrypt;
   ctx->super.do_encrypt_init = ptls_vpp_crypto_aead_encrypt_init;
@@ -269,17 +274,19 @@ ptls_vpp_crypto_aes256ctr_setup_crypto (ptls_cipher_context_t * ctx,
 
 static int
 ptls_vpp_crypto_aead_aes128gcm_setup_crypto (ptls_aead_context_t * ctx,
-					     int is_enc, const void *key)
+					     int is_enc, const void *key,
+					     const void *iv)
 {
-  return ptls_vpp_crypto_aead_setup_crypto (ctx, is_enc, key,
+  return ptls_vpp_crypto_aead_setup_crypto (ctx, is_enc, key, iv,
 					    VNET_CRYPTO_ALG_AES_128_GCM);
 }
 
 static int
 ptls_vpp_crypto_aead_aes256gcm_setup_crypto (ptls_aead_context_t * ctx,
-					     int is_enc, const void *key)
+					     int is_enc, const void *key,
+					     const void *iv)
 {
-  return ptls_vpp_crypto_aead_setup_crypto (ctx, is_enc, key,
+  return ptls_vpp_crypto_aead_setup_crypto (ctx, is_enc, key, iv,
 					    VNET_CRYPTO_ALG_AES_256_GCM);
 }
 
