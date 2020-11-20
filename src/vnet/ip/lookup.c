@@ -119,7 +119,9 @@ format_ip_flow_hash_config (u8 * s, va_list * args)
 {
   flow_hash_config_t flow_hash_config = va_arg (*args, u32);
 
-#define _(n,v) if (flow_hash_config & v) s = format (s, "%s ", #n);
+#define _(n, b, v)                                                            \
+  if (flow_hash_config & v)                                                   \
+    s = format (s, "%s ", #n);
   foreach_flow_hash_bit;
 #undef _
 

@@ -2832,24 +2832,6 @@ ip6_lookup_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ip6_lookup_init);
 
-#ifndef CLIB_MARCH_VARIANT
-int
-vnet_set_ip6_flow_hash (u32 table_id, u32 flow_hash_config)
-{
-  u32 fib_index;
-
-  fib_index = fib_table_find (FIB_PROTOCOL_IP6, table_id);
-
-  if (~0 == fib_index)
-    return VNET_API_ERROR_NO_SUCH_FIB;
-
-  fib_table_set_flow_hash_config (fib_index, FIB_PROTOCOL_IP6,
-				  flow_hash_config);
-
-  return 0;
-}
-#endif
-
 static clib_error_t *
 set_ip6_flow_hash_command_fn (vlib_main_t * vm,
 			      unformat_input_t * input,
@@ -2864,8 +2846,12 @@ set_ip6_flow_hash_command_fn (vlib_main_t * vm,
     {
       if (unformat (input, "table %d", &table_id))
 	matched = 1;
-#define _(a,v) \
-    else if (unformat (input, #a)) { flow_hash_config |= v; matched=1;}
+#define _(a, b, v)                                                            \
+  else if (unformat (input, #a))                                              \
+  {                                                                           \
+    flow_hash_config |= v;                                                    \
+    matched = 1;                                                              \
+  }
       foreach_flow_hash_bit
 #undef _
 	else
@@ -2876,7 +2862,7 @@ set_ip6_flow_hash_command_fn (vlib_main_t * vm,
     return clib_error_return (0, "unknown input `%U'",
 			      format_unformat_error, input);
 
-  rv = vnet_set_ip6_flow_hash (table_id, flow_hash_config);
+  rv = ip_flow_hash_set (AF_IP6, table_id, flow_hash_config);
   switch (rv)
     {
     case 0:
@@ -2969,11 +2955,10 @@ set_ip6_flow_hash_command_fn (vlib_main_t * vm,
  * @endparblock
 ?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_ip6_flow_hash_command, static) =
-{
+VLIB_CLI_COMMAND (set_ip6_flow_hash_command, static) = {
   .path = "set ip6 flow-hash",
-  .short_help =
-  "set ip6 flow-hash table <table-id> [src] [dst] [sport] [dport] [proto] [reverse]",
+  .short_help = "set ip6 flow-hash table <table-id> [src] [dst] [sport] "
+		"[dport] [proto] [reverse] [flowlabel]",
   .function = set_ip6_flow_hash_command_fn,
 };
 /* *INDENT-ON* */
