@@ -1,0 +1,188 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bc764ba6_04feeaaf",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-20T15:47:41Z",
+      "side": 1,
+      "message": "registered",
+      "range": {
+        "startLine": 59,
+        "startChar": 3,
+        "endLine": 59,
+        "endChar": 7
+      },
+      "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e2533c12_73e8b0c3",
+        "filename": "docs/gettingstarted/developers/fib20/missing.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-20T15:47:41Z",
+      "side": 1,
+      "message": "load",
+      "range": {
+        "startLine": 24,
+        "startChar": 38,
+        "endLine": 24,
+        "endChar": 42
+      },
+      "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d77886bb_245ffc30",
+        "filename": "docs/gettingstarted/developers/fib20/missing.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-20T15:47:41Z",
+      "side": 1,
+      "message": "hard",
+      "range": {
+        "startLine": 30,
+        "startChar": 34,
+        "endLine": 30,
+        "endChar": 39
+      },
+      "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bf4181f5_a6f16e00",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-20T15:47:41Z",
+      "side": 1,
+      "message": "worker",
+      "range": {
+        "startLine": 50,
+        "startChar": 20,
+        "endLine": 50,
+        "endChar": 26
+      },
+      "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3e17f24e_2f400bc3",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-20T15:47:41Z",
+      "side": 1,
+      "message": "This is confusing to me.  What is a BGP peer wrt VPP?  The fib knows MPLS, API, CLI sources, but there is no BGP fib source, per se.",
+      "range": {
+        "startLine": 306,
+        "startChar": 34,
+        "endLine": 306,
+        "endChar": 42
+      },
+      "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bb61fec2_df82873f",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-20T15:47:41Z",
+      "side": 1,
+      "message": "exactly",
+      "range": {
+        "startLine": 321,
+        "startChar": 28,
+        "endLine": 321,
+        "endChar": 35
+      },
+      "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "90c3be68_b08b0ea3",
+        "filename": "docs/gettingstarted/developers/fib20/scale.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-20T15:47:41Z",
+      "side": 1,
+      "message": "also",
+      "range": {
+        "startLine": 167,
+        "startChar": 17,
+        "endLine": 167,
+        "endChar": 21
+      },
+      "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "86af31bc_df356977",
+        "filename": "src/vnet/fib/fib_source.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-20T15:47:41Z",
+      "side": 1,
+      "message": "plus",
+      "range": {
+        "startLine": 225,
+        "startChar": 25,
+        "endLine": 225,
+        "endChar": 28
+      },
+      "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
