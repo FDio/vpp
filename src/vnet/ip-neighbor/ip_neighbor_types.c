@@ -17,6 +17,21 @@
 
 #include <vnet/ip-neighbor/ip_neighbor_types.h>
 
+void
+ip_neighbor_clone (const ip_neighbor_t * ipn, ip_neighbor_t * clone)
+{
+  clib_memcpy (clone, ipn, sizeof (*ipn));
+
+  clone->ipn_key = clib_mem_alloc (sizeof (ip_neighbor_key_t));
+  clib_memcpy (clone->ipn_key, ipn->ipn_key, sizeof (ip_neighbor_key_t));
+}
+
+void
+ip_neighbor_free (ip_neighbor_t * ipn)
+{
+  clib_mem_free (ipn->ipn_key);
+}
+
 u8 *
 format_ip_neighbor_flags (u8 * s, va_list * args)
 {

@@ -22,8 +22,6 @@
 
 #include <vnet/adj/adj.h>
 
-void ip_neighbor_scan_enable_disable (ip_neighbor_scan_arg_t * arg);
-
 
 /*****
  * APIs external modules can invoke on the neighbor subsystem
@@ -70,7 +68,7 @@ extern void ip_neighbor_sweep (ip46_type_t type);
 /**
  * From the watcher to the API to publish a new neighbor
  */
-extern void ip_neighbor_handle_event (const ip_neighbor_event_t * ipne);
+extern void ip_neighbor_handle_event (ip_neighbor_event_t * ipne);
 
 /**
  * The set of function that vnet requires from the IP neighbour module.

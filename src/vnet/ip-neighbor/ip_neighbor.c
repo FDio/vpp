@@ -371,10 +371,13 @@ ip_neighbor_mk_incomplete_walk (adj_index_t ai, void *ctx)
 }
 
 static void
-ip_neighbor_free (ip_neighbor_t * ipn)
+ip_neighbor_destroy (ip_neighbor_t * ipn)
 {
   IP_NEIGHBOR_DBG ("free: %U", format_ip_neighbor,
 		   ip_neighbor_get_index (ipn));
+
+  ip_neighbor_publish (ip_neighbor_get_index (ipn),
+		       IP_NEIGHBOR_EVENT_REMOVED);
 
   adj_nbr_walk_nh (ipn->ipn_key->ipnk_sw_if_index,
 		   fib_proto_from_ip46 (ipn->ipn_key->ipnk_type),
@@ -409,7 +412,7 @@ ip_neighbor_force_reuse (ip46_type_t type)
     return (false);
 
   elt = clib_llist_prev (ip_neighbor_elt_pool, ipne_anchor, head);
-  ip_neighbor_free (ip_neighbor_get (elt->ipne_index));
+  ip_neighbor_destroy (ip_neighbor_get (elt->ipne_index));
 
   return (true);
 }
@@ -540,7 +543,7 @@ ip_neighbor_add (const ip46_address_t * ip,
 
 check_customers:
   /* Customer(s) requesting event for this address? */
-  ip_neighbor_publish (ip_neighbor_get_index (ipn));
+  ip_neighbor_publish (ip_neighbor_get_index (ipn), IP_NEIGHBOR_EVENT_ADDED);
 
   if (stats_index)
     *stats_index = adj_nbr_find (fproto,
@@ -573,7 +576,7 @@ ip_neighbor_del (const ip46_address_t * ip, ip46_type_t type, u32 sw_if_index)
   if (NULL == ipn)
     return (VNET_API_ERROR_NO_SUCH_ENTRY);
 
-  ip_neighbor_free (ipn);
+  ip_neighbor_destroy (ipn);
 
   return (0);
 }
@@ -608,7 +611,8 @@ ip_neighbor_del_all (ip46_type_t type, u32 sw_if_index)
 
   ip_neighbor_walk (type, sw_if_index, ip_neighbor_del_all_walk_cb, &ctx);
 
-  vec_foreach (ipni, ctx.ipn_del) ip_neighbor_free (ip_neighbor_get (*ipni));
+  vec_foreach (ipni,
+	       ctx.ipn_del) ip_neighbor_destroy (ip_neighbor_get (*ipni));
   vec_free (ctx.ipn_del);
 }
 
@@ -1219,7 +1223,7 @@ ip_neighbor_flush (ip46_type_t type, u32 sw_if_index)
   }));
   /* *INDENT-ON* */
 
-  vec_foreach (ipni, ipnis) ip_neighbor_free (ip_neighbor_get (*ipni));
+  vec_foreach (ipni, ipnis) ip_neighbor_destroy (ip_neighbor_get (*ipni));
   vec_free (ipnis);
 }
 
@@ -1272,7 +1276,7 @@ ip_neighbor_sweep (ip46_type_t type)
 
   vec_foreach (ipni, ctx.ipnsc_stale)
   {
-    ip_neighbor_free (ip_neighbor_get (*ipni));
+    ip_neighbor_destroy (ip_neighbor_get (*ipni));
   }
   vec_free (ctx.ipnsc_stale);
 }
@@ -1395,7 +1399,7 @@ ip_neighbor_add_del_interface_address_v4 (ip4_main_t * im,
 			ip_neighbor_walk_covered, &ctx);
 
       vec_foreach (ipni, ctx.ipnis)
-	ip_neighbor_free (ip_neighbor_get (*ipni));
+	ip_neighbor_destroy (ip_neighbor_get (*ipni));
 
       vec_free (ctx.ipnis);
     }
@@ -1434,7 +1438,7 @@ ip_neighbor_add_del_interface_address_v6 (ip6_main_t * im,
 			ip_neighbor_walk_covered, &ctx);
 
       vec_foreach (ipni, ctx.ipnis)
-	ip_neighbor_free (ip_neighbor_get (*ipni));
+	ip_neighbor_destroy (ip_neighbor_get (*ipni));
 
       vec_free (ctx.ipnis);
     }
@@ -1607,7 +1611,7 @@ ip_neighbor_age_loop (vlib_main_t * vm,
             else if (IP_NEIGHBOR_AGE_DEAD == res) {
               /* the oldest neighbor is dead, pop it, then restart the walk
                * again from the back */
-              ip_neighbor_free (ip_neighbor_get(elt->ipne_index));
+              ip_neighbor_destroy (ip_neighbor_get(elt->ipne_index));
               goto restart;
             }
 

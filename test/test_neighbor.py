@@ -1959,15 +1959,50 @@ class NeighborAgeTestCase(VppTestCase):
         #
         # load up some neighbours again with 2s aging enabled
         # they should be removed after 10s (2s age + 4s for probes + gap)
+        # check for the add and remove events
         #
+        enum = VppEnum.vl_api_ip_neighbor_event_flags_t
+
+        self.vapi.want_ip_neighbor_events_v2(enable=1)
         for ii in range(10):
             VppNeighbor(self,
                         self.pg0.sw_if_index,
                         self.pg0.remote_hosts[ii].mac,
                         self.pg0.remote_hosts[ii].ip4).add_vpp_config()
+
+            e = self.vapi.wait_for_event(1, "ip_neighbor_event_v2")
+            self.assertEqual(e.flags,
+                             enum.IP_NEIGHBOR_API_EVENT_FLAG_ADDED)
+            self.assertEqual(str(e.neighbor.ip_address),
+                             self.pg0.remote_hosts[ii].ip4)
+            self.assertEqual(e.neighbor.mac_address,
+                             self.pg0.remote_hosts[ii].mac)
+
         self.sleep(10)
         self.assertFalse(self.vapi.ip_neighbor_dump(sw_if_index=0xffffffff,
                                                     af=vaf.ADDRESS_IP4))
+
+        evs = []
+        for ii in range(10):
+            e = self.vapi.wait_for_event(1, "ip_neighbor_event_v2")
+            self.assertEqual(e.flags,
+                             enum.IP_NEIGHBOR_API_EVENT_FLAG_REMOVED)
+            evs.append(e)
+
+        # check we got the correct mac/ip pairs - done separately
+        # because we don't care about the order the remove notifications
+        # arrive
+        for ii in range(10):
+            found = False
+            mac = self.pg0.remote_hosts[ii].mac
+            ip = self.pg0.remote_hosts[ii].ip4
+
+            for e in evs:
+                if (e.neighbor.mac_address == mac and
+                   str(e.neighbor.ip_address) == ip):
+                    found = True
+                    break
+            self.assertTrue(found)
 
         #
         # check if we can set age and recycle with empty neighbor list

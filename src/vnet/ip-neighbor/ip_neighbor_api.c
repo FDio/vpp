@@ -69,13 +69,12 @@ ip_neighbor_encode (vl_api_ip_neighbor_t * api, const ip_neighbor_t * ipn)
 }
 
 void
-ip_neighbor_handle_event (const ip_neighbor_event_t * ipne)
+ip_neighbor_handle_event (ip_neighbor_event_t * ipne)
 {
-  vl_api_ip_neighbor_event_t *mp;
   vl_api_registration_t *reg;
-  const ip_neighbor_t *ipn;
+  ip_neighbor_t *ipn;
 
-  ipn = ip_neighbor_get (ipne->ipne_index);
+  ipn = &ipne->ipne_nbr;
 
   if (NULL == ipn)
     /* Client can cancel, die, etc. */
@@ -88,15 +87,37 @@ ip_neighbor_handle_event (const ip_neighbor_event_t * ipne)
 
   if (vl_api_can_send_msg (reg))
     {
-      mp = vl_msg_api_alloc (sizeof (*mp));
-      clib_memset (mp, 0, sizeof (*mp));
-      mp->_vl_msg_id = ntohs (VL_API_IP_NEIGHBOR_EVENT + REPLY_MSG_ID_BASE);
-      mp->client_index = ipne->ipne_watch.ipw_client;
-      mp->pid = ipne->ipne_watch.ipw_pid;
+      if (1 == ipne->ipne_watch.ipw_api_version)
+	{
+	  vl_api_ip_neighbor_event_t *mp;
 
-      ip_neighbor_encode (&mp->neighbor, ipn);
+	  mp = vl_msg_api_alloc (sizeof (*mp));
+	  clib_memset (mp, 0, sizeof (*mp));
+	  mp->_vl_msg_id =
+	    ntohs (VL_API_IP_NEIGHBOR_EVENT + REPLY_MSG_ID_BASE);
+	  mp->client_index = ipne->ipne_watch.ipw_client;
+	  mp->pid = ipne->ipne_watch.ipw_pid;
 
-      vl_api_send_msg (reg, (u8 *) mp);
+	  ip_neighbor_encode (&mp->neighbor, ipn);
+
+	  vl_api_send_msg (reg, (u8 *) mp);
+	}
+      else if (2 == ipne->ipne_watch.ipw_api_version)
+	{
+	  vl_api_ip_neighbor_event_v2_t *mp;
+
+	  mp = vl_msg_api_alloc (sizeof (*mp));
+	  clib_memset (mp, 0, sizeof (*mp));
+	  mp->_vl_msg_id =
+	    ntohs (VL_API_IP_NEIGHBOR_EVENT_V2 + REPLY_MSG_ID_BASE);
+	  mp->client_index = ipne->ipne_watch.ipw_client;
+	  mp->pid = ipne->ipne_watch.ipw_pid;
+	  mp->flags = clib_host_to_net_u32 (ipne->ipne_flags);
+
+	  ip_neighbor_encode (&mp->neighbor, ipn);
+
+	  vl_api_send_msg (reg, (u8 *) mp);
+	}
     }
   else
     {
@@ -107,12 +128,14 @@ ip_neighbor_handle_event (const ip_neighbor_event_t * ipne)
        */
       if (vlib_time_now (vlib_get_main ()) > last_time + 10.0)
 	{
-	  clib_warning ("ip6 nd event for %U to pid %d: queue stuffed!",
+	  clib_warning ("neighbor event for %U to pid %d: queue stuffed!",
 			format_ip46_address, &ipn->ipn_key->ipnk_ip,
 			IP46_TYPE_ANY, ipne->ipne_watch.ipw_pid);
 	  last_time = vlib_time_now (vlib_get_main ());
 	}
     }
+
+  ip_neighbor_free (ipn);
 }
 
 typedef struct ip_neighbor_dump_ctx_t_
@@ -247,6 +270,7 @@ vl_api_want_ip_neighbor_events_t_handler (vl_api_want_ip_neighbor_events_t *
   ip_neighbor_watcher_t watch = {
     .ipw_client = mp->client_index,
     .ipw_pid = mp->pid,
+    .ipw_api_version = 1,
   };
 
   if (mp->enable)
@@ -256,6 +280,34 @@ vl_api_want_ip_neighbor_events_t_handler (vl_api_want_ip_neighbor_events_t *
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_WANT_IP_NEIGHBOR_EVENTS_REPLY);
+}
+
+static void
+  vl_api_want_ip_neighbor_events_v2_t_handler
+  (vl_api_want_ip_neighbor_events_v2_t * mp)
+{
+  vl_api_want_ip_neighbor_events_reply_t *rmp;
+  ip46_address_t ip;
+  ip46_type_t itype;
+  int rv = 0;
+
+  if (mp->sw_if_index != ~0)
+    VALIDATE_SW_IF_INDEX (mp);
+  itype = ip_address_decode (&mp->ip, &ip);
+
+  ip_neighbor_watcher_t watch = {
+    .ipw_client = mp->client_index,
+    .ipw_pid = mp->pid,
+    .ipw_api_version = 2,
+  };
+
+  if (mp->enable)
+    ip_neighbor_watch (&ip, itype, ntohl (mp->sw_if_index), &watch);
+  else
+    ip_neighbor_unwatch (&ip, itype, ntohl (mp->sw_if_index), &watch);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_WANT_IP_NEIGHBOR_EVENTS_V2_REPLY);
 }
 
 static void

@@ -179,8 +179,7 @@ autoreply define ip_neighbor_flush
   vl_api_interface_index_t sw_if_index [default=0xffffffff];
 };
 
-/** \brief Register for IP4 ARP resolution event on receiving ARP reply or
-           MAC/IP info from ARP requests in L2 BDs
+/** \brief Register for IP neighbour events creation
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param enable - 1 => register for events, 0 => cancel registration
@@ -190,6 +189,7 @@ autoreply define ip_neighbor_flush
 */
 autoreply define want_ip_neighbor_events
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   bool enable;
@@ -206,6 +206,7 @@ autoreply define want_ip_neighbor_events
 */
 define ip_neighbor_event
 {
+  option deprecated;
   u32 client_index;
   u32 pid;
   vl_api_ip_neighbor_t neighbor;
@@ -214,6 +215,53 @@ define ip_neighbor_event
 service {
   rpc want_ip_neighbor_events returns want_ip_neighbor_events_reply
     events ip_neighbor_event;
+};
+
+
+/** \brief Register for IP neighbour events (creation or deletion)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+    @param ip - exact IP address of interested neighbor resolution event
+    @param sw_if_index - interface on which the IP address is present.
+*/
+autoreply define want_ip_neighbor_events_v2
+{
+  u32 client_index;
+  u32 context;
+  bool enable;
+  u32 pid;
+  vl_api_address_t ip;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
+};
+
+enum ip_neighbor_event_flags
+{
+ /* The neighbor has been added/learned */
+ IP_NEIGHBOR_API_EVENT_FLAG_ADDED = 0x1,
+ /* The neighbor has been removed/expired */
+ IP_NEIGHBOR_API_EVENT_FLAG_REMOVED = 0x2,
+};
+
+/** \brief Tell client about an IP4 ARP resolution event or
+           MAC/IP info from ARP requests in L2 BDs
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param flags - Flags
+    @param neighbor -  neighbor
+*/
+define ip_neighbor_event_v2
+{
+  u32 client_index;
+  u32 pid;
+  vl_api_ip_neighbor_event_flags_t flags;
+  vl_api_ip_neighbor_t neighbor;
+};
+
+service {
+  rpc want_ip_neighbor_events_v2 returns want_ip_neighbor_events_v2_reply
+    events ip_neighbor_event_v2;
 };
 
 /*
