@@ -22,6 +22,7 @@ ipsec-mb_tarball_md5sum_0.55 := deca674bca7ae2282890e1fa7f953609
 ipsec-mb_tarball_md5sum      := $(ipsec-mb_tarball_md5sum_$(ipsec-mb_version))
 ipsec-mb_tarball_strip_dirs  := 1
 ipsec-mb_url                 := http://github.com/01org/intel-ipsec-mb/archive/$(ipsec-mb_tarball)
+ipsec-mb_depends             := nasm
 
 define  ipsec-mb_config_cmds
 	@true

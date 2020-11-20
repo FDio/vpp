@@ -20,6 +20,7 @@ DPDK_MLX5_COMMON_PMD         ?= n
 DPDK_TAP_PMD                 ?= n
 DPDK_FAILSAFE_PMD            ?= n
 DPDK_MACHINE                 ?= default
+DPDK_MLX_IBV_LINK            ?= static
 
 dpdk_version                 ?= 20.08
 dpdk_base_url                ?= http://fast.dpdk.org/rel
@@ -28,7 +29,7 @@ dpdk_tarball_md5sum_20.08    := 64badd32cd6bc0761befc8f2402c2148
 dpdk_tarball_md5sum          := $(dpdk_tarball_md5sum_$(dpdk_version))
 dpdk_url                     := $(dpdk_base_url)/$(dpdk_tarball)
 dpdk_tarball_strip_dirs      := 1
-
+dpdk_depends		     := rdma-core $(if $(ARCH_X86_64), ipsec-mb)
 # Debug or release
 
 DPDK_BUILD_TYPE:=release
@@ -90,15 +91,23 @@ DPDK_LIBS_DISABLED := acl,				\
 	rib,								\
 	table
 
+DPDK_MLX_CONFIG_FLAG :=
+
 # Adjust disabled pmd and libs depending on user provided variables
 ifeq ($(DPDK_MLX4_PMD), n)
 	DPDK_DRIVERS_DISABLED += ,net/mlx4
+else
+	DPDK_MLX_CONFIG_FLAG := -Dibverbs_link=${DPDK_MLX_IBV_LINK}
 endif
 ifeq ($(DPDK_MLX5_PMD), n)
 	DPDK_DRIVERS_DISABLED += ,net/mlx5
+else
+	DPDK_MLX_CONFIG_FLAG := -Dibverbs_link=${DPDK_MLX_IBV_LINK}
 endif
 ifeq ($(DPDK_MLX5_COMMON_PMD), n)
 	DPDK_DRIVERS_DISABLED += ,common/mlx5
+else
+	DPDK_MLX_CONFIG_FLAG := -Dibverbs_link=${DPDK_MLX_IBV_LINK}
 endif
 ifeq ($(DPDK_TAP_PMD), n)
 	DPDK_DRIVERS_DISABLED += ,net/tap
@@ -148,7 +157,8 @@ DPDK_MESON_ARGS = \
 	"-Ddisable_libs=$(DPDK_LIBS_DISABLED)" \
 	-Db_pie=true \
 	-Dmachine=$(DPDK_MACHINE) \
-	--buildtype=$(DPDK_BUILD_TYPE)
+	--buildtype=$(DPDK_BUILD_TYPE) \
+	${DPDK_MLX_CONFIG_FLAG}
 
 PIP_DOWNLOAD_DIR = $(CURDIR)/downloads/
 
@@ -160,7 +170,7 @@ define dpdk_config_cmds
 	source ../dpdk-meson-venv/bin/activate && \
 	(if ! ls $(PIP_DOWNLOAD_DIR)meson* ; then pip3 download -d $(PIP_DOWNLOAD_DIR) -f $(DL_CACHE_DIR) meson==0.54 setuptools wheel; fi) && \
 	pip3 install --no-index --find-links=$(PIP_DOWNLOAD_DIR) meson==0.54 && \
-	meson setup $(dpdk_src_dir) \
+	PKG_CONFIG_PATH=$(dpdk_install_dir)/lib/pkgconfig meson setup $(dpdk_src_dir) \
 		$(dpdk_build_dir) \
 		$(DPDK_MESON_ARGS) \
 			| tee $(dpdk_config_log) && \
