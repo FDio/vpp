@@ -67,40 +67,41 @@
 
 #include <vnet/format_fns.h>
 
-#define foreach_ip_api_msg                                              \
-_(SW_INTERFACE_IP6_ENABLE_DISABLE, sw_interface_ip6_enable_disable)     \
-_(IP_TABLE_DUMP, ip_table_dump)                                         \
-_(IP_ROUTE_DUMP, ip_route_dump)                                         \
-_(IP_MTABLE_DUMP, ip_mtable_dump)                                       \
-_(IP_MROUTE_DUMP, ip_mroute_dump)                                       \
-_(IP_MROUTE_ADD_DEL, ip_mroute_add_del)                                 \
-_(MFIB_SIGNAL_DUMP, mfib_signal_dump)                                   \
-_(IP_ADDRESS_DUMP, ip_address_dump)                                     \
-_(IP_UNNUMBERED_DUMP, ip_unnumbered_dump)                               \
-_(IP_DUMP, ip_dump)                                                     \
-_(IP_TABLE_REPLACE_BEGIN, ip_table_replace_begin)                       \
-_(IP_TABLE_REPLACE_END, ip_table_replace_end)                           \
-_(IP_TABLE_FLUSH, ip_table_flush)                                       \
-_(IP_ROUTE_ADD_DEL, ip_route_add_del)                                   \
-_(IP_ROUTE_LOOKUP, ip_route_lookup)                                     \
-_(IP_TABLE_ADD_DEL, ip_table_add_del)                                   \
-_(IP_PUNT_POLICE, ip_punt_police)                                       \
-_(IP_PUNT_REDIRECT, ip_punt_redirect)                                   \
-_(SET_IP_FLOW_HASH,set_ip_flow_hash)                                    \
-_(IP_CONTAINER_PROXY_ADD_DEL, ip_container_proxy_add_del)               \
-_(IP_CONTAINER_PROXY_DUMP, ip_container_proxy_dump)                     \
-_(IOAM_ENABLE, ioam_enable)                                             \
-_(IOAM_DISABLE, ioam_disable)                                           \
-_(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
-  ip_source_and_port_range_check_add_del)                               \
-_(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
-  ip_source_and_port_range_check_interface_add_del)                     \
- _(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS,                             \
-   sw_interface_ip6_set_link_local_address)                             \
-_(IP_REASSEMBLY_SET, ip_reassembly_set)                                 \
-_(IP_REASSEMBLY_GET, ip_reassembly_get)                                 \
-_(IP_REASSEMBLY_ENABLE_DISABLE, ip_reassembly_enable_disable)           \
-_(IP_PUNT_REDIRECT_DUMP, ip_punt_redirect_dump)
+#define foreach_ip_api_msg                                                    \
+  _ (SW_INTERFACE_IP6_ENABLE_DISABLE, sw_interface_ip6_enable_disable)        \
+  _ (IP_TABLE_DUMP, ip_table_dump)                                            \
+  _ (IP_ROUTE_DUMP, ip_route_dump)                                            \
+  _ (IP_MTABLE_DUMP, ip_mtable_dump)                                          \
+  _ (IP_MROUTE_DUMP, ip_mroute_dump)                                          \
+  _ (IP_MROUTE_ADD_DEL, ip_mroute_add_del)                                    \
+  _ (MFIB_SIGNAL_DUMP, mfib_signal_dump)                                      \
+  _ (IP_ADDRESS_DUMP, ip_address_dump)                                        \
+  _ (IP_UNNUMBERED_DUMP, ip_unnumbered_dump)                                  \
+  _ (IP_DUMP, ip_dump)                                                        \
+  _ (IP_TABLE_REPLACE_BEGIN, ip_table_replace_begin)                          \
+  _ (IP_TABLE_REPLACE_END, ip_table_replace_end)                              \
+  _ (IP_TABLE_FLUSH, ip_table_flush)                                          \
+  _ (IP_ROUTE_ADD_DEL, ip_route_add_del)                                      \
+  _ (IP_ROUTE_LOOKUP, ip_route_lookup)                                        \
+  _ (IP_TABLE_ADD_DEL, ip_table_add_del)                                      \
+  _ (IP_PUNT_POLICE, ip_punt_police)                                          \
+  _ (IP_PUNT_REDIRECT, ip_punt_redirect)                                      \
+  _ (SET_IP_FLOW_HASH, set_ip_flow_hash)                                      \
+  _ (SET_IP_FLOW_HASH_V2, set_ip_flow_hash_v2)                                \
+  _ (IP_CONTAINER_PROXY_ADD_DEL, ip_container_proxy_add_del)                  \
+  _ (IP_CONTAINER_PROXY_DUMP, ip_container_proxy_dump)                        \
+  _ (IOAM_ENABLE, ioam_enable)                                                \
+  _ (IOAM_DISABLE, ioam_disable)                                              \
+  _ (IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                                  \
+     ip_source_and_port_range_check_add_del)                                  \
+  _ (IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                        \
+     ip_source_and_port_range_check_interface_add_del)                        \
+  _ (SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS,                                 \
+     sw_interface_ip6_set_link_local_address)                                 \
+  _ (IP_REASSEMBLY_SET, ip_reassembly_set)                                    \
+  _ (IP_REASSEMBLY_GET, ip_reassembly_get)                                    \
+  _ (IP_REASSEMBLY_ENABLE_DISABLE, ip_reassembly_enable_disable)              \
+  _ (IP_PUNT_REDIRECT_DUMP, ip_punt_redirect_dump)
 
 static void
   vl_api_sw_interface_ip6_enable_disable_t_handler
@@ -1008,7 +1009,7 @@ vl_api_ip_dump_t_handler (vl_api_ip_dump_t * mp)
 }
 
 static void
-set_ip6_flow_hash (vl_api_set_ip_flow_hash_t * mp)
+vl_api_set_ip_flow_hash_t_handler (vl_api_set_ip_flow_hash_t *mp)
 {
   vl_api_set_ip_flow_hash_reply_t *rmp;
   int rv;
@@ -1018,41 +1019,29 @@ set_ip6_flow_hash (vl_api_set_ip_flow_hash_t * mp)
   table_id = ntohl (mp->vrf_id);
 
 #define _(a,b) if (mp->a) flow_hash_config |= b;
-  foreach_flow_hash_bit;
+  foreach_flow_hash_bit_v1;
 #undef _
 
-  rv = vnet_set_ip6_flow_hash (table_id, flow_hash_config);
+  rv = ip_flow_hash_set ((mp->is_ipv6 ? AF_IP6 : AF_IP4), table_id,
+			 flow_hash_config);
 
   REPLY_MACRO (VL_API_SET_IP_FLOW_HASH_REPLY);
 }
 
 static void
-set_ip4_flow_hash (vl_api_set_ip_flow_hash_t * mp)
+vl_api_set_ip_flow_hash_v2_t_handler (vl_api_set_ip_flow_hash_v2_t *mp)
 {
-  vl_api_set_ip_flow_hash_reply_t *rmp;
+  vl_api_set_ip_flow_hash_v2_reply_t *rmp;
+  ip_address_family_t af;
   int rv;
-  u32 table_id;
-  flow_hash_config_t flow_hash_config = 0;
 
-  table_id = ntohl (mp->vrf_id);
+  rv = ip_address_family_decode (mp->af, &af);
 
-#define _(a,b) if (mp->a) flow_hash_config |= b;
-  foreach_flow_hash_bit;
-#undef _
+  if (!rv)
+    rv = ip_flow_hash_set (af, htonl (mp->table_id),
+			   htonl (mp->flow_hash_config));
 
-  rv = vnet_set_ip4_flow_hash (table_id, flow_hash_config);
-
-  REPLY_MACRO (VL_API_SET_IP_FLOW_HASH_REPLY);
-}
-
-
-static void
-vl_api_set_ip_flow_hash_t_handler (vl_api_set_ip_flow_hash_t * mp)
-{
-  if (mp->is_ipv6 == 0)
-    set_ip4_flow_hash (mp);
-  else
-    set_ip6_flow_hash (mp);
+  REPLY_MACRO (VL_API_SET_IP_FLOW_HASH_V2_REPLY);
 }
 
 void

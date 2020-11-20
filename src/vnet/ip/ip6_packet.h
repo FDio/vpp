@@ -313,6 +313,7 @@ typedef struct
 #define IP6_PACKET_TC_MASK 0x0FF00000
 #define IP6_PACKET_DSCP_MASK 0x0FC00000
 #define IP6_PACKET_ECN_MASK 0x00300000
+#define IP6_PACKET_FL_MASK   0x000FFFFF
 
 always_inline ip_dscp_t
 ip6_traffic_class (const ip6_header_t * i)
