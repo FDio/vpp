@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "85f5902e_5abed250",
+        "filename": "docs/gettingstarted/developers/fib20/fastconvergence.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-20T16:36:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bc764ba6_04feeaaf",
+      "range": {
+        "startLine": 59,
+        "startChar": 3,
+        "endLine": 59,
+        "endChar": 7
+      },
+      "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e2533c12_73e8b0c3",
         "filename": "docs/gettingstarted/developers/fib20/missing.rst",
         "patchSetId": 7
@@ -45,6 +69,30 @@
       "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8246160e_9a8c6f2b",
+        "filename": "docs/gettingstarted/developers/fib20/missing.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-20T16:36:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e2533c12_73e8b0c3",
+      "range": {
+        "startLine": 24,
+        "startChar": 38,
+        "endLine": 24,
+        "endChar": 42
+      },
+      "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "d0170d9c_ab5503ec",
+        "filename": "docs/gettingstarted/developers/fib20/missing.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-20T16:36:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d77886bb_245ffc30",
+      "range": {
+        "startLine": 30,
+        "startChar": 34,
+        "endLine": 30,
+        "endChar": 39
+      },
+      "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bf4181f5_a6f16e00",
         "filename": "docs/gettingstarted/developers/fib20/routes.rst",
         "patchSetId": 7
@@ -91,6 +163,30 @@
       "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7d8acc62_bbc0c4a8",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-20T16:36:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bf4181f5_a6f16e00",
+      "range": {
+        "startLine": 50,
+        "startChar": 20,
+        "endLine": 50,
+        "endChar": 26
+      },
+      "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "d8e4b681_18f89de4",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-20T16:36:20Z",
+      "side": 1,
+      "message": "FIB doesn\u0027t know a fib_entry_t is a BGP peer, to FIB it\u0027s just a host-prefix with attached next-hops.\nHowever, if a host-prefix corresponds to a BGP peer then it might have recursive dependents that have labels and so it will need to contribute a non-EOS DPO for them.",
+      "parentUuid": "3e17f24e_2f400bc3",
+      "range": {
+        "startLine": 306,
+        "startChar": 34,
+        "endLine": 306,
+        "endChar": 42
+      },
+      "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bb61fec2_df82873f",
         "filename": "docs/gettingstarted/developers/fib20/routes.rst",
         "patchSetId": 7
@@ -140,6 +260,30 @@
     },
     {
       "key": {
+        "uuid": "51169790_fb80a988",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-20T16:36:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bb61fec2_df82873f",
+      "range": {
+        "startLine": 321,
+        "startChar": 28,
+        "endLine": 321,
+        "endChar": 35
+      },
+      "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "90c3be68_b08b0ea3",
         "filename": "docs/gettingstarted/developers/fib20/scale.rst",
         "patchSetId": 7
@@ -160,6 +304,30 @@
       "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1f65c8cb_9c552941",
+        "filename": "docs/gettingstarted/developers/fib20/scale.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-20T16:36:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "90c3be68_b08b0ea3",
+      "range": {
+        "startLine": 167,
+        "startChar": 17,
+        "endLine": 167,
+        "endChar": 21
+      },
+      "revId": "e98c554b80a83607cd926c5de9f2fbd465c0bc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
