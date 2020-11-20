@@ -920,6 +920,82 @@ class TestIPMcast(VppTestCase):
             self.assertEqual(rx[IP].dst, gre_if_3.t_dst)
             self.assert_packet_checksums_valid(rx)
 
+    def test_ip6_mcast_gre(self):
+        """ IP6 Multicast Replication over GRE"""
+
+        MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
+        MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
+
+        gre_if_1 = VppGreInterface(
+            self,
+            self.pg1.local_ip4,
+            self.pg1.remote_ip4).add_vpp_config()
+        gre_if_2 = VppGreInterface(
+            self,
+            self.pg2.local_ip4,
+            self.pg2.remote_ip4).add_vpp_config()
+        gre_if_3 = VppGreInterface(
+            self,
+            self.pg3.local_ip4,
+            self.pg3.remote_ip4).add_vpp_config()
+
+        gre_if_1.admin_up()
+        gre_if_1.config_ip6()
+        gre_if_2.admin_up()
+        gre_if_2.config_ip6()
+        gre_if_3.admin_up()
+        gre_if_3.config_ip6()
+
+        #
+        # An (S,G).
+        # one accepting interface, pg0, 2 forwarding interfaces
+        #
+        route_1_1_FF_1 = VppIpMRoute(
+            self,
+            "1::1",
+            "FF00::1", 256,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
+            [VppMRoutePath(gre_if_1.sw_if_index,
+                           MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT),
+             VppMRoutePath(gre_if_2.sw_if_index,
+                           MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD),
+             VppMRoutePath(gre_if_3.sw_if_index,
+                           MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)])
+        route_1_1_FF_1.add_vpp_config()
+
+        #
+        # a stream that matches the route for (1::1, FF::1)
+        #  small packets
+        #
+        tx = (Ether(dst=self.pg1.local_mac,
+                    src=self.pg1.remote_mac) /
+              IP(src=self.pg1.remote_ip4,
+                 dst=self.pg1.local_ip4) /
+              GRE() /
+              IPv6(src="1::1", dst="FF00::1") /
+              UDP(sport=1234, dport=1234) /
+              Raw(b'\a5' * 64)) * 63
+
+        self.vapi.cli("clear trace")
+        self.pg1.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # We expect replications on Pg2 & 3
+        # check the encap headers are as expected based on the egress tunnel
+        rxs = self.pg2.get_capture(len(tx))
+        for rx in rxs:
+            self.assertEqual(rx[IP].src, gre_if_2.t_src)
+            self.assertEqual(rx[IP].dst, gre_if_2.t_dst)
+            self.assert_packet_checksums_valid(rx)
+
+        rxs = self.pg3.get_capture(len(tx))
+        for rx in rxs:
+            self.assertEqual(rx[IP].src, gre_if_3.t_src)
+            self.assertEqual(rx[IP].dst, gre_if_3.t_dst)
+            self.assert_packet_checksums_valid(rx)
+
     def test_ip6_mcast_vrf(self):
         """ IPv6 Multicast Replication in non-default table"""
 
