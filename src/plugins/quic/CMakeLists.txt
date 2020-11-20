@@ -13,7 +13,7 @@
 # limitations under the License.
 
 unset(QUIC_LINK_LIBRARIES)
-set(EXPECTED_QUICLY_VERSION "0.1.0-vpp")
+set(EXPECTED_QUICLY_VERSION "0.1.2-vpp")
 
 find_path(QUICLY_INCLUDE_DIR NAMES quicly.h)
 find_path(PICOTLS_INCLUDE_DIR NAMES picotls.h)
