@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a2cbbb67_a5ff1497",
+        "filename": "src/vnet/classify/classify.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 461,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-20T15:15:23Z",
+      "side": 1,
+      "message": "maybe we should make the api independant from the simd vector size (u32x4 here) and use bytes instead: some day we might want to improve the classifier matching logic with other simd widths (eg. avx2 / avx512)",
+      "revId": "1fed0fa710ea15e3c02a0692a614c3d002c0be3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "20bb78b8_fa922746",
+        "filename": "src/vnet/classify/classify.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 546,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-20T15:15:23Z",
+      "side": 1,
+      "message": "same comment as above: I think we should use bytes and not vectors",
+      "revId": "1fed0fa710ea15e3c02a0692a614c3d002c0be3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dc39b9c9_19aaf919",
+        "filename": "src/vnet/classify/vnet_classify.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-20T15:15:23Z",
+      "side": 1,
+      "message": "this looks like debug leftover: the output should be removed and the test against pool_is_free_index (cm-\u003etables, table_index) below should take care of that",
+      "revId": "1fed0fa710ea15e3c02a0692a614c3d002c0be3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9042702d_bf866a15",
+        "filename": "src/vnet/classify/vnet_classify.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2023,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-20T15:15:23Z",
+      "side": 1,
+      "message": "shouldn\u0027t we check vlib_global_main.trace_filter.classify_table_index !\u003d ~0 before enabling?",
+      "revId": "1fed0fa710ea15e3c02a0692a614c3d002c0be3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
