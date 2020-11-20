@@ -633,6 +633,10 @@ configure_check_timestamp =						\
 	             $(PACKAGE_SOURCE))$(PACKAGE_SUBDIR)/configure)	\
        $(MU_BUILD_ROOT_DIR)/config.site" ;				\
   if [[ $(call find_newer_fn, $${conf}, $${dirs}, $?) ]]; then		\
+  : by default, for non-tools, remove any previously installed bits ;   \
+    $(if $(is_build_tool)$($(PACKAGE)_keep_instdir),                    \
+      true,						                \
+      rm -rf $(PACKAGE_INSTALL_DIR));		                        \
     $(configure_package) ;						\
     touch $${conf} ;							\
   else									\
@@ -701,10 +705,6 @@ build_check_timestamp =									\
 ######################################################################
 
 install_package =								\
-    : by default, for non-tools, remove any previously installed bits ;		\
-    $(if $(is_build_tool)$($(PACKAGE)_keep_instdir),				\
-         true,									\
-         rm -rf $(PACKAGE_INSTALL_DIR));					\
     mkdir -p $(PACKAGE_INSTALL_DIR) ;						\
     $(if $($(PACKAGE)_pre_install),$($(PACKAGE)_pre_install),true);		\
     $(if $($(PACKAGE)_install),							\
