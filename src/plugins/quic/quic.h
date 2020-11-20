@@ -47,8 +47,7 @@
 
 #define QUIC_MAX_COALESCED_PACKET 4
 
-#define QUIC_SEND_MAX_BATCH_PACKETS 16
-#define QUIC_RCV_MAX_BATCH_PACKETS 16
+#define QUIC_RCV_MAX_PACKETS 16
 
 #define QUIC_DEFAULT_CONN_TIMEOUT (30 * 1000)	/* 30 seconds */
 
@@ -134,6 +133,12 @@ typedef enum quic_ctx_flags_
   QUIC_F_IS_LISTENER = (1 << 1),
 } quic_ctx_flags_t;
 
+typedef enum quic_cc_type
+{
+  QUIC_CC_RENO,
+  QUIC_CC_CUBIC,
+} quic_cc_type_t;
+
 /* This structure is used to implement the concept of VPP connection for QUIC.
  * We create one per connection and one per stream. */
 typedef struct quic_ctx_
@@ -210,25 +215,6 @@ typedef struct quic_crypto_context_data_
   ptls_context_t ptls_ctx;
 } quic_crypto_context_data_t;
 
-typedef struct quic_encrypt_cb_ctx_
-{
-  quicly_datagram_t *packet;
-  struct quic_finalize_send_packet_cb_ctx_
-  {
-    size_t payload_from;
-    size_t first_byte_at;
-    ptls_cipher_context_t *hp;
-  } snd_ctx[QUIC_MAX_COALESCED_PACKET];
-  size_t snd_ctx_count;
-} quic_encrypt_cb_ctx;
-
-typedef struct quic_crypto_batch_ctx_
-{
-  vnet_crypto_op_t aead_crypto_tx_packets_ops[QUIC_SEND_MAX_BATCH_PACKETS],
-    aead_crypto_rx_packets_ops[QUIC_RCV_MAX_BATCH_PACKETS];
-  size_t nb_tx_packets, nb_rx_packets;
-} quic_crypto_batch_ctx_t;
-
 typedef struct quic_worker_ctx_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -237,7 +223,6 @@ typedef struct quic_worker_ctx_
   quicly_cid_plaintext_t next_cid;
   crypto_context_t *crypto_ctx_pool;		/**< per thread pool of crypto contexes */
   clib_bihash_24_8_t crypto_context_hash;	/**< per thread [params:crypto_ctx_index] hash */
-  quic_crypto_batch_ctx_t crypto_context_batch;
 } quic_worker_ctx_t;
 
 typedef struct quic_rx_packet_ctx_
@@ -268,6 +253,7 @@ typedef struct quic_main_
   uword *available_crypto_engines;	/**< Bitmap for registered engines */
   u8 default_crypto_engine;		/**< Used if you do connect with CRYPTO_ENGINE_NONE (0) */
   u64 max_packets_per_key;		/**< number of packets that can be sent without a key update */
+  u8 default_quic_cc;
 
   ptls_handshake_properties_t hs_properties;
   quic_session_cache_t session_cache;
