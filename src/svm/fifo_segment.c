@@ -63,13 +63,13 @@ fsh_update_free_bytes (fifo_segment_header_t * fsh)
 }
 
 static inline void
-fsh_cached_bytes_add (fifo_segment_header_t * fsh, int size)
+fsh_cached_bytes_add (fifo_segment_header_t * fsh, uword size)
 {
   clib_atomic_fetch_add_rel (&fsh->n_cached_bytes, size);
 }
 
 static inline void
-fsh_cached_bytes_sub (fifo_segment_header_t * fsh, int size)
+fsh_cached_bytes_sub (fifo_segment_header_t * fsh, uword size)
 {
   clib_atomic_fetch_sub_rel (&fsh->n_cached_bytes, size);
 }
@@ -515,8 +515,9 @@ fsh_try_alloc_chunk_batch (fifo_segment_header_t * fsh,
 			   fifo_segment_slice_t * fss,
 			   u32 fl_index, u32 batch_size)
 {
-  u32 rounded_data_size;
   svm_fifo_chunk_t *c, *head = 0, *tail;
+  u32 rounded_data_size;
+  u64 total_chunk_bytes;
   void *oldheap;
   uword size;
   u8 *cmem;
@@ -549,8 +550,9 @@ fsh_try_alloc_chunk_batch (fifo_segment_header_t * fsh,
 
   fss_chunk_free_list_push_list (fss, fl_index, head, tail);
   fss->num_chunks[fl_index] += batch_size;
-  fss_fl_chunk_bytes_add (fss, batch_size * rounded_data_size);
-  fsh_cached_bytes_add (fsh, batch_size * rounded_data_size);
+  total_chunk_bytes = (uword) batch_size *rounded_data_size;
+  fss_fl_chunk_bytes_add (fss, total_chunk_bytes);
+  fsh_cached_bytes_add (fsh, total_chunk_bytes);
   fsh_free_bytes_sub (fsh, size);
 
   return 0;
