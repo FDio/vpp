@@ -2069,8 +2069,8 @@ class TestIP6LoadBalance(VppTestCase):
         #  - now only the stream with differing source address will
         #    load-balance
         #
-        self.vapi.set_ip_flow_hash(vrf_id=0, src=1, dst=1, sport=0, dport=0,
-                                   is_ipv6=1)
+        self.vapi.set_ip_flow_hash(vrf_id=0, src=1, dst=1, proto=1,
+                                   sport=0, dport=0, is_ipv6=1)
 
         self.send_and_expect_load_balancing(self.pg0, src_ip_pkts,
                                             [self.pg1, self.pg2])
@@ -2082,7 +2082,7 @@ class TestIP6LoadBalance(VppTestCase):
         # change the flow hash config back to defaults
         #
         self.vapi.set_ip_flow_hash(vrf_id=0, src=1, dst=1, sport=1, dport=1,
-                                   is_ipv6=1)
+                                   proto=1, is_ipv6=1)
 
         #
         # Recursive prefixes
