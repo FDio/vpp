@@ -228,6 +228,7 @@ define ip_route_lookup_reply
     @param proto -if non-zero include proto in flow hash
     @param reverse - if non-zero include reverse in flow hash
     @param symmetric - if non-zero include symmetry in flow hash
+    @param flowlabel - if non-zero include flowlabel in flow hash
 */
 autoreply define set_ip_flow_hash
 {
@@ -242,6 +243,7 @@ autoreply define set_ip_flow_hash
   bool proto;
   bool reverse;
   bool symmetric;
+  bool flowlabel;
 };
 
 /** \brief IPv6 interface enable / disable request

@@ -2973,7 +2973,7 @@ VLIB_CLI_COMMAND (set_ip6_flow_hash_command, static) =
 {
   .path = "set ip6 flow-hash",
   .short_help =
-  "set ip6 flow-hash table <table-id> [src] [dst] [sport] [dport] [proto] [reverse]",
+  "set ip6 flow-hash table <table-id> [src] [dst] [sport] [dport] [proto] [reverse] [flowlabel]",
   .function = set_ip6_flow_hash_command_fn,
 };
 /* *INDENT-ON* */

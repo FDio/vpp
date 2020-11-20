@@ -24,9 +24,10 @@
 #define IP_FLOW_HASH_DST_PORT (1<<4)
 #define IP_FLOW_HASH_REVERSE_SRC_DST (1<<5)
 #define IP_FLOW_HASH_SYMMETRIC (1<<6)
+#define IP_FLOW_HASH_FL (1<<7)
 
-/** Default: 5-tuple without the "reverse" bit */
-#define IP_FLOW_HASH_DEFAULT (0x1F)
+/** Default: 5-tuple + flowlabel without the "reverse" bit */
+#define IP_FLOW_HASH_DEFAULT (0x9F)
 
 #define foreach_flow_hash_bit                   \
 _(src, IP_FLOW_HASH_SRC_ADDR)                   \
@@ -35,7 +36,8 @@ _(sport, IP_FLOW_HASH_SRC_PORT)                 \
 _(dport, IP_FLOW_HASH_DST_PORT)                 \
 _(proto, IP_FLOW_HASH_PROTO)	                \
 _(reverse, IP_FLOW_HASH_REVERSE_SRC_DST)	\
-_(symmetric, IP_FLOW_HASH_SYMMETRIC)
+_(symmetric, IP_FLOW_HASH_SYMMETRIC)            \
+_(flowlabel, IP_FLOW_HASH_FL)
 
 /**
  * A flow hash configuration is a mask of the flow hash options
