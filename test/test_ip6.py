@@ -33,6 +33,7 @@ from vpp_pg_interface import is_ipv6_misc
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from vpp_policer import VppPolicer
 from ipaddress import IPv6Network, IPv6Address
+from vpp_gre_interface import VppGreInterface
 
 AF_INET6 = socket.AF_INET6
 
@@ -336,6 +337,22 @@ class TestIPv6(TestIPv6ND):
             self.assertTrue(remaining_packet is None,
                             "Interface %s: Packet expected from interface %s "
                             "didn't arrive" % (dst_if.name, i.name))
+
+    def test_ip6_enable(self):
+        """ IPv6 enable test
+
+        Test scenario:
+            - ipv6 can be enabled on non-ethernet interface
+        """
+        gre_if = VppGreInterface(self,
+                                 self.pg0.local_ip6,
+                                 self.pg0.remote_ip6)
+        gre_if.add_vpp_config()
+
+        gre_if.ip6_enable()
+        gre_if.ip6_disable()
+
+        gre_if.remove_vpp_config()
 
     def test_next_header_anomaly(self):
         """ IPv6 next header anomaly test

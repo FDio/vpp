@@ -439,6 +439,7 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
 				 adj_flags_t flags,
 				 u8 *rewrite)
 {
+    ip_lookup_next_t adj_next_index;
     ip_adjacency_t *adj;
 
     ASSERT(ADJ_INDEX_INVALID != adj_index);
@@ -455,11 +456,22 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
         adj_midchain_setup(adj_index, fixup, fixup_data, flags);
     }
 
+    switch (adj->lookup_next_index)
+      {
+      case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+      case IP_LOOKUP_NEXT_MCAST:
+        adj_next_index = IP_LOOKUP_NEXT_MCAST_MIDCHAIN;
+        break;
+      default:
+        adj_next_index = IP_LOOKUP_NEXT_MIDCHAIN;
+        break;
+      }
+
     /*
      * update the rewrite with the workers paused.
      */
     adj_nbr_update_rewrite_internal(adj,
-				    IP_LOOKUP_NEXT_MIDCHAIN,
+				    adj_next_index,
 				    adj_get_midchain_node(adj->ia_link),
 				    adj_nbr_midchain_get_tx_node(adj),
 				    rewrite);

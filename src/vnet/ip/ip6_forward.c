@@ -717,12 +717,12 @@ ip6_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
       /* *INDENT-ON* */
       ip6_mfib_interface_enable_disable (sw_if_index, 0);
     }
-
-  vnet_feature_enable_disable ("ip6-unicast", "ip6-not-enabled", sw_if_index,
-			       is_add, 0, 0);
-
-  vnet_feature_enable_disable ("ip6-multicast", "ip6-not-enabled",
-			       sw_if_index, is_add, 0, 0);
+  else
+    {
+      /* IPv6 is disabled by default on new interfaces */
+      vnet_feature_enable_disable ("ip6-unicast", "ip6-not-enabled", sw_if_index, 1, 0, 0);
+      vnet_feature_enable_disable ("ip6-multicast", "ip6-not-enabled", sw_if_index, 1, 0, 0);
+    }
 
   return /* no error */ 0;
 }
