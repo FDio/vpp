@@ -16,6 +16,7 @@
  */
 
 #include <vnet/ip-neighbor/ip_neighbor.h>
+#include <vnet/ip-neighbor/ip_neighbor_watch.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/ethernet/ethernet_types_api.h>
 
@@ -178,7 +179,9 @@ ip_neighbor_unwatch (const ip46_address_t * ip,
 }
 
 static void
-ip_neighbor_signal (ip_neighbor_watcher_t *watchers, index_t ipni)
+ip_neighbor_signal (ip_neighbor_watcher_t *watchers,
+                    index_t ipni,
+                    ip_neighbor_event_flags_t flags)
 {
   ip_neighbor_watcher_t *watcher;
 
@@ -189,12 +192,14 @@ ip_neighbor_signal (ip_neighbor_watcher_t *watchers, index_t ipni)
                                            ip_neighbor_event_process_node.index,
                                            0, 1, sizeof(*ipne));
     ipne->ipne_watch = *watcher;
-    ipne->ipne_index = ipni;
+    ipne->ipne_flags = flags;
+    ip_neighbor_clone(ip_neighbor_get(ipni), &ipne->ipne_nbr);
   }
 }
 
 void
-ip_neighbor_publish (index_t ipni)
+ip_neighbor_publish (index_t ipni,
+                     ip_neighbor_event_flags_t flags)
 {
   const ip_neighbor_t *ipn;
   ip_neighbor_key_t key;
@@ -208,21 +213,21 @@ ip_neighbor_publish (index_t ipni)
   p = mhash_get (&ipnw_db.ipnwdb_hash, &key);
 
   if (p) {
-    ip_neighbor_signal ((ip_neighbor_watcher_t*) p[0], ipni);
+    ip_neighbor_signal ((ip_neighbor_watcher_t*) p[0], ipni, flags);
   }
 
   ip46_address_reset (&key.ipnk_ip);
   p = mhash_get (&ipnw_db.ipnwdb_hash, &key);
 
   if (p) {
-    ip_neighbor_signal ((ip_neighbor_watcher_t*) p[0], ipni);
+    ip_neighbor_signal ((ip_neighbor_watcher_t*) p[0], ipni, flags);
   }
 
   key.ipnk_sw_if_index = ~0;
   p = mhash_get (&ipnw_db.ipnwdb_hash, &key);
 
   if (p) {
-    ip_neighbor_signal ((ip_neighbor_watcher_t*) p[0], ipni);
+    ip_neighbor_signal ((ip_neighbor_watcher_t*) p[0], ipni, flags);
   }
 }
 
