@@ -1,0 +1,55 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index f5478d3..156df4c 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -91,6 +91,7 @@ IF (WITH_DTRACE)
+     ENDIF ()
+ ENDIF ()
+
++SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
+ ADD_LIBRARY(quicly ${QUICLY_LIBRARY_FILES})
+ TARGET_LINK_LIBRARIES(quicly LINK_PUBLIC m)
+
+@@ -116,6 +117,14 @@ ADD_EXECUTABLE(examples-echo ${PICOTLS_OPENSSL_FILES} examples/echo.c)
+ TARGET_LINK_LIBRARIES(examples-echo quicly ${OPENSSL_LIBRARIES} ${CMAKE_DL_LIBS})
+
+ ADD_EXECUTABLE(udpfw t/udpfw.c)
++INSTALL (
++    DIRECTORY ${CMAKE_SOURCE_DIR}/include/
++    DESTINATION include
++    FILES_MATCHING PATTERN "*.h")
++INSTALL(TARGETS quicly
++        RUNTIME DESTINATION bin
++        LIBRARY DESTINATION lib
++        ARCHIVE DESTINATION lib)
+
+ ADD_CUSTOM_TARGET(check env BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR} WITH_DTRACE=${WITH_DTRACE} prove --exec "sh -c" -v ${CMAKE_CURRENT_BINARY_DIR}/*.t t/*.t
+     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+Submodule deps/picotls contains untracked content
+Submodule deps/picotls contains modified content
+diff --git a/deps/picotls/CMakeLists.txt b/deps/picotls/CMakeLists.txt
+index 874b9be..14411e2 100644
+--- a/deps/picotls/CMakeLists.txt
++++ b/deps/picotls/CMakeLists.txt
+@@ -12,6 +12,7 @@ IF (WITH_DTRACE)
+     MESSAGE(STATUS "Enabling USDT support")
+ ENDIF ()
+
++SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
+ SET(CMAKE_C_FLAGS "-std=c99 -Wall -O2 -g ${CC_WARNING_FLAGS} ${CMAKE_C_FLAGS}")
+ INCLUDE_DIRECTORIES(
+     deps/cifra/src/ext
+@@ -131,6 +132,13 @@ ELSE ()
+     MESSAGE(WARNING "Disabling OpenSSL support (requires 1.0.1 or newer)")
+ ENDIF ()
+
++INSTALL (DIRECTORY ${CMAKE_SOURCE_DIR}/include/
++    DESTINATION include
++    FILES_MATCHING PATTERN "*.h")
++INSTALL(TARGETS picotls-core picotls-openssl
++        RUNTIME DESTINATION bin
++        LIBRARY DESTINATION lib
++        ARCHIVE DESTINATION lib)
+ IF ((CMAKE_SIZEOF_VOID_P EQUAL 8) AND
+     (CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64") OR
+      (CMAKE_SYSTEM_PROCESSOR STREQUAL "amd64") OR
