@@ -186,7 +186,22 @@ ip_feature_enable_disable (ip_address_family_t af,
 				 n_feature_config_bytes);
 }
 
+int
+ip_flow_hash_set (ip_address_family_t af, u32 table_id, u32 flow_hash_config)
+{
+  fib_protocol_t fproto;
+  u32 fib_index;
 
+  fproto = ip_address_family_to_fib_proto (af);
+  fib_index = fib_table_find (fproto, table_id);
+
+  if (~0 == fib_index)
+    return VNET_API_ERROR_NO_SUCH_FIB;
+
+  fib_table_set_flow_hash_config (fib_index, fproto, flow_hash_config);
+
+  return 0;
+}
 
 u8 *
 format_ip_address_family (u8 * s, va_list * args)
