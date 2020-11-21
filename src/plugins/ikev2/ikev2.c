@@ -357,7 +357,7 @@ ikev2_delete_sa (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa)
     }
 }
 
-static void
+static int
 ikev2_generate_sa_init_data (ikev2_sa_t * sa)
 {
   ikev2_sa_transform_t *t = 0, *t2;
@@ -365,7 +365,8 @@ ikev2_generate_sa_init_data (ikev2_sa_t * sa)
 
   if (sa->dh_group == IKEV2_TRANSFORM_DH_TYPE_NONE)
     {
-      return;
+      ikev2_log_error ("no DH group configured for IKE proposals!");
+      return -1;
     }
 
   /* check if received DH group is on our list of supported groups */
@@ -381,7 +382,8 @@ ikev2_generate_sa_init_data (ikev2_sa_t * sa)
   if (!t)
     {
       sa->dh_group = IKEV2_TRANSFORM_DH_TYPE_NONE;
-      return;
+      ikev2_log_error ("DH group not supported!");
+      return -1;
     }
 
   if (sa->is_initiator)
@@ -406,6 +408,7 @@ ikev2_generate_sa_init_data (ikev2_sa_t * sa)
   /* generate dh keys */
   ikev2_generate_dh (sa, t);
 
+  return 0;
 }
 
 static void
@@ -4184,7 +4187,10 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
   sa.is_tun_itf_set = 1;
   sa.initial_contact = 1;
   sa.dst_port = IKEV2_PORT;
-  ikev2_generate_sa_init_data (&sa);
+
+  if (ikev2_generate_sa_init_data (&sa) < 0)
+    return clib_error_return (0, "failed to initialize SA data!");
+
   ikev2_payload_add_ke (chain, sa.dh_group, sa.i_dh_data);
   ikev2_payload_add_nonce (chain, sa.i_nonce);
 
