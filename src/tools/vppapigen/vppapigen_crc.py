@@ -1,6 +1,9 @@
 # CRC generation
 import json
 
+process_imports = True
+
+
 #
 # Plugin entry point
 #

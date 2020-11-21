@@ -1401,43 +1401,6 @@ def main():
     else:
         logging.basicConfig()
 
-    parser = VPPAPI(debug=args.debug, filename=filename, logger=log,
-                    revision=args.git_revision)
-
-    try:
-        if not args.input:
-            parsed_objects = parser.parse_fd(sys.stdin, log)
-        else:
-            parsed_objects = parser.parse_filename(args.input, log)
-    except ParseError as e:
-        print('Parse error: ', e, file=sys.stderr)
-        sys.exit(1)
-
-    # Build a list of objects. Hash of lists.
-    result = []
-
-    if args.output_module == 'C':
-        s = parser.process(parsed_objects)
-    else:
-        result = parser.process_imports(parsed_objects, False, result)
-        s = parser.process(result)
-
-    # Add msg_id field
-    s['Define'] = add_msg_id(s['Define'])
-
-    # Fold up CRCs
-    foldup_crcs(s['Define'])
-
-    #
-    # Debug
-    if args.debug:
-        import pprint
-        pp = pprint.PrettyPrinter(indent=4, stream=sys.stderr)
-        for t in s['Define']:
-            pp.pprint([t.name, t.flags, t.block])
-        for t in s['types']:
-            pp.pprint([t.name, t.block])
-
     #
     # Generate representation
     #
@@ -1471,6 +1434,49 @@ def main():
         log.exception('Error importing output plugin: {}, {}'
                       .format(module_path, err))
         return 1
+
+    parser = VPPAPI(debug=args.debug, filename=filename, logger=log,
+                    revision=args.git_revision)
+
+    try:
+        if not args.input:
+            parsed_objects = parser.parse_fd(sys.stdin, log)
+        else:
+            parsed_objects = parser.parse_filename(args.input, log)
+    except ParseError as e:
+        print('Parse error: ', e, file=sys.stderr)
+        sys.exit(1)
+
+    # Build a list of objects. Hash of lists.
+    result = []
+
+    # if the variable is not set in the plugin, assume it to be false.
+    try:
+        plugin.process_imports
+    except AttributeError:
+        plugin.process_imports = False
+
+    if plugin.process_imports:
+        result = parser.process_imports(parsed_objects, False, result)
+        s = parser.process(result)
+    else:
+        s = parser.process(parsed_objects)
+
+    # Add msg_id field
+    s['Define'] = add_msg_id(s['Define'])
+
+    # Fold up CRCs
+    foldup_crcs(s['Define'])
+
+    #
+    # Debug
+    if args.debug:
+        import pprint
+        pp = pprint.PrettyPrinter(indent=4, stream=sys.stderr)
+        for t in s['Define']:
+            pp.pprint([t.name, t.flags, t.block])
+        for t in s['types']:
+            pp.pprint([t.name, t.block])
 
     result = plugin.run(args, filename, s)
     if result:

@@ -6,6 +6,8 @@ import sys
 from io import StringIO
 import shutil
 
+process_imports = False
+
 datestring = datetime.datetime.utcfromtimestamp(
     int(os.environ.get('SOURCE_DATE_EPOCH', time.time())))
 input_filename = 'inputfil'
