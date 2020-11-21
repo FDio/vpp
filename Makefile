@@ -273,6 +273,7 @@ bootstrap:
 
 .PHONY: install-dep
 install-dep:
+	@git submodule update
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 	@sudo -E apt-get update
 	@sudo -E apt-get $(APT_ARGS) $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)

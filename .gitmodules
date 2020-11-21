@@ -1,0 +1,3 @@
+[submodule "src/vpp-api/python"]
+	path = src/vpp-api/python
+	url = https://github.com/vinciconsulting/vpp_papi.git
