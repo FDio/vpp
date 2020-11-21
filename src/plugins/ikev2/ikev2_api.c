@@ -481,7 +481,11 @@ static void
   error = ikev2_set_liveness_params (clib_net_to_host_u32 (mp->period),
 				     clib_net_to_host_u32 (mp->max_retries));
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -502,7 +506,11 @@ vl_api_ikev2_profile_add_del_t_handler (vl_api_ikev2_profile_add_del_t * mp)
   error = ikev2_add_del_profile (vm, tmp, mp->is_add);
   vec_free (tmp);
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -528,7 +536,11 @@ static void
   vec_free (tmp);
   vec_free (data);
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -553,7 +565,11 @@ vl_api_ikev2_profile_set_id_t_handler (vl_api_ikev2_profile_set_id_t * mp)
   vec_free (tmp);
   vec_free (data);
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -575,7 +591,11 @@ static void
   error = ikev2_set_profile_udp_encap (vm, tmp);
   vec_free (tmp);
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -603,7 +623,11 @@ vl_api_ikev2_profile_set_ts_t_handler (vl_api_ikev2_profile_set_ts_t * mp)
 			  start_addr, end_addr, mp->ts.is_local);
   vec_free (tmp);
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -623,7 +647,11 @@ vl_api_ikev2_set_local_key_t_handler (vl_api_ikev2_set_local_key_t * mp)
 
   error = ikev2_set_local_key (vm, mp->key_file);
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -649,7 +677,11 @@ vl_api_ikev2_set_responder_t_handler (vl_api_ikev2_set_responder_t * mp)
   error = ikev2_set_profile_responder (vm, tmp, sw_if_index, ip);
   vec_free (tmp);
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -677,7 +709,11 @@ vl_api_ikev2_set_ike_transforms_t_handler (vl_api_ikev2_set_ike_transforms_t *
 				      ntohl (mp->tr.crypto_key_size));
   vec_free (tmp);
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -704,7 +740,11 @@ vl_api_ikev2_set_esp_transforms_t_handler (vl_api_ikev2_set_esp_transforms_t *
 				      ntohl (mp->tr.crypto_key_size));
   vec_free (tmp);
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -733,7 +773,11 @@ vl_api_ikev2_set_sa_lifetime_t_handler (vl_api_ikev2_set_sa_lifetime_t * mp)
 				   (mp->lifetime_maxdata));
   vec_free (tmp);
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -782,7 +826,11 @@ static void
 					      ntohl (mp->sw_if_index));
 
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
   vec_free (tmp);
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
@@ -807,7 +855,11 @@ vl_api_ikev2_initiate_sa_init_t_handler (vl_api_ikev2_initiate_sa_init_t * mp)
   error = ikev2_initiate_sa_init (vm, tmp);
   vec_free (tmp);
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -828,7 +880,11 @@ vl_api_ikev2_initiate_del_ike_sa_t_handler (vl_api_ikev2_initiate_del_ike_sa_t
 
   error = ikev2_initiate_delete_ike_sa (vm, mp->ispi);
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -849,7 +905,11 @@ static void
 
   error = ikev2_initiate_delete_child_sa (vm, mp->ispi);
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -871,7 +931,11 @@ static void
   error = ikev2_profile_natt_disable (tmp);
   vec_free (tmp);
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -892,7 +956,11 @@ static void
 
   error = ikev2_initiate_rekey_child_sa (vm, mp->ispi);
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
