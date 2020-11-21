@@ -149,7 +149,7 @@ $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 	touch $@
 
 $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
-	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install -e $(PAPI_PYTHON_SRC_DIR)"
+	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install git+https://github.com/vinciconsulting/vpp_papi.git@master#egg=vpp_papi"
 	@touch $@
 
 .PHONY: refresh-deps
