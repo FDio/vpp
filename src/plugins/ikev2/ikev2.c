@@ -61,6 +61,37 @@ format_ikev2_trace (u8 * s, va_list * args)
   return s;
 }
 
+#define IKEV2_GENERATE_SA_INIT_OK_str ""
+#define IKEV2_GENERATE_SA_INIT_OK_ERR_NO_DH_STR \
+  "no DH group configured for IKE proposals!"
+#define IKEV2_GENERATE_SA_INIT_OK_ERR_UNSUPP_STR \
+  "DH group not supported!"
+
+typedef enum
+{
+  IKEV2_GENERATE_SA_INIT_OK,
+  IKEV2_GENERATE_SA_INIT_ERR_NO_DH,
+  IKEV2_GENERATE_SA_INIT_ERR_UNSUPPORTED_DH,
+} ikev2_generate_sa_error_t;
+
+static u8 *
+format_ikev2_gen_sa_error (u8 * s, va_list * args)
+{
+  ikev2_generate_sa_error_t e = va_arg (*args, ikev2_generate_sa_error_t);
+  switch (e)
+    {
+    case IKEV2_GENERATE_SA_INIT_OK:
+      break;
+    case IKEV2_GENERATE_SA_INIT_ERR_NO_DH:
+      s = format (s, IKEV2_GENERATE_SA_INIT_OK_ERR_NO_DH_STR);
+      break;
+    case IKEV2_GENERATE_SA_INIT_ERR_UNSUPPORTED_DH:
+      s = format (s, IKEV2_GENERATE_SA_INIT_OK_ERR_UNSUPP_STR);
+      break;
+    }
+  return s;
+}
+
 #define foreach_ikev2_error \
 _(PROCESSED, "IKEv2 packets processed") \
 _(IKE_SA_INIT_RETRANSMIT, "IKE_SA_INIT retransmit ") \
@@ -357,16 +388,14 @@ ikev2_delete_sa (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa)
     }
 }
 
-static void
+static ikev2_generate_sa_error_t
 ikev2_generate_sa_init_data (ikev2_sa_t * sa)
 {
   ikev2_sa_transform_t *t = 0, *t2;
   ikev2_main_t *km = &ikev2_main;
 
   if (sa->dh_group == IKEV2_TRANSFORM_DH_TYPE_NONE)
-    {
-      return;
-    }
+    return IKEV2_GENERATE_SA_INIT_ERR_NO_DH;
 
   /* check if received DH group is on our list of supported groups */
   vec_foreach (t2, km->supported_transforms)
@@ -381,7 +410,7 @@ ikev2_generate_sa_init_data (ikev2_sa_t * sa)
   if (!t)
     {
       sa->dh_group = IKEV2_TRANSFORM_DH_TYPE_NONE;
-      return;
+      return IKEV2_GENERATE_SA_INIT_ERR_UNSUPPORTED_DH;
     }
 
   if (sa->is_initiator)
@@ -406,6 +435,7 @@ ikev2_generate_sa_init_data (ikev2_sa_t * sa)
   /* generate dh keys */
   ikev2_generate_dh (sa, t);
 
+  return IKEV2_GENERATE_SA_INIT_OK;
 }
 
 static void
@@ -2788,6 +2818,20 @@ ikev2_elog_uint_peers_addr (u32 exchange, ip4_header_t * ip4,
 			 exchange, src, dst);
 }
 
+static void
+ikev2_generate_sa_init_data_and_log (ikev2_sa_t * sa)
+{
+  ikev2_generate_sa_error_t rc = ikev2_generate_sa_init_data (sa);
+
+  if (PREDICT_TRUE (rc == IKEV2_GENERATE_SA_INIT_OK))
+    return;
+
+  if (rc == IKEV2_GENERATE_SA_INIT_ERR_NO_DH)
+    ikev2_elog_error (IKEV2_GENERATE_SA_INIT_OK_ERR_NO_DH_STR);
+  else if (rc == IKEV2_GENERATE_SA_INIT_ERR_UNSUPPORTED_DH)
+    ikev2_elog_error (IKEV2_GENERATE_SA_INIT_OK_ERR_UNSUPP_STR);
+}
+
 static_always_inline uword
 ikev2_node_internal (vlib_main_t * vm,
 		     vlib_node_runtime_t * node, vlib_frame_t * frame,
@@ -2925,7 +2969,7 @@ ikev2_node_internal (vlib_main_t * vm,
 		      sa0->r_proposals =
 			ikev2_select_proposal (sa0->i_proposals,
 					       IKEV2_PROTOCOL_IKE);
-		      ikev2_generate_sa_init_data (sa0);
+		      ikev2_generate_sa_init_data_and_log (sa0);
 		    }
 
 		  if (sa0->state == IKEV2_STATE_SA_INIT
@@ -4150,15 +4194,6 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
       valid_ip = 1;
     }
 
-  bi0 = ikev2_get_new_ike_header_buff (vm, &b0);
-  if (!bi0)
-    {
-      char *errmsg = "buffer alloc failure";
-      ikev2_log_error (errmsg);
-      return clib_error_return (0, errmsg);
-    }
-  ike0 = vlib_buffer_get_current (b0);
-
   /* Prepare the SA and the IKE payload */
   ikev2_sa_t sa;
   clib_memset (&sa, 0, sizeof (ikev2_sa_t));
@@ -4186,7 +4221,15 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
   sa.is_tun_itf_set = 1;
   sa.initial_contact = 1;
   sa.dst_port = IKEV2_PORT;
-  ikev2_generate_sa_init_data (&sa);
+
+  ikev2_generate_sa_error_t rc = ikev2_generate_sa_init_data (&sa);
+  if (rc != IKEV2_GENERATE_SA_INIT_OK)
+    {
+      ikev2_sa_free_all_vec (&sa);
+      ikev2_payload_destroy_chain (chain);
+      return clib_error_return (0, "%U", format_ikev2_gen_sa_error, rc);
+    }
+
   ikev2_payload_add_ke (chain, sa.dh_group, sa.i_dh_data);
   ikev2_payload_add_nonce (chain, sa.i_nonce);
 
@@ -4225,6 +4268,15 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
 			    IKEV2_NOTIFY_MSG_SIGNATURE_HASH_ALGORITHMS,
 			    sig_hash_algo);
   vec_free (sig_hash_algo);
+
+  bi0 = ikev2_get_new_ike_header_buff (vm, &b0);
+  if (!bi0)
+    {
+      char *errmsg = "buffer alloc failure";
+      ikev2_log_error (errmsg);
+      return clib_error_return (0, errmsg);
+    }
+  ike0 = vlib_buffer_get_current (b0);
 
   /* Buffer update and boilerplate */
   len += vec_len (chain->data);
@@ -5015,7 +5067,9 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	      p = pool_elt_at_index (km->profiles, sa->profile_index);
 	      if (p)
 		{
-		  ikev2_initiate_sa_init (vm, p->name);
+		  clib_error_t *e = ikev2_initiate_sa_init (vm, p->name);
+		  if (e)
+		    clib_error_free (e);
 		}
 	    }
 	}
