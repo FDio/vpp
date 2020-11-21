@@ -1,6 +1,8 @@
 # JSON generation
 import json
 
+process_imports = True
+
 
 def walk_imports(s):
     r = []
