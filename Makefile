@@ -66,7 +66,7 @@ DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd dh-python
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
 DEB_DEPENDS += python3-all python3-setuptools check
-DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
+DEB_DEPENDS += libboost-all-dev libffi-dev libmbedtls-dev
 DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml
 DEB_DEPENDS += python3-venv  # ensurepip
 DEB_DEPENDS += python3-dev   # needed for python3 -m pip install psutil
@@ -116,21 +116,19 @@ ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += subunit subunit-devel
 	RPM_DEPENDS += compat-openssl10-devel
 	RPM_DEPENDS += python3-devel  # needed for python3 -m pip install psutil
-	RPM_DEPENDS += python3-ply  # for vppapigen
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += cmake
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += compat-openssl10
-	RPM_DEPENDS += python2-devel python36-devel python3-ply
+	RPM_DEPENDS += python2-devel python36-devel
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += cmake
 	RPM_DEPENDS_GROUPS = 'Development Tools'
 else
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += openssl-devel
-	RPM_DEPENDS += python36-ply  # for vppapigen
 	RPM_DEPENDS += python3-devel python3-pip
 	RPM_DEPENDS += python-virtualenv python36-jsonschema
 	RPM_DEPENDS += devtoolset-9 devtoolset-9-libasan-devel

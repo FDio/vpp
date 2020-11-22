@@ -1358,31 +1358,16 @@ def foldup_crcs(s):
             if f.crc in fixup_crc_dict.get(f.name):
                 f.crc = fixup_crc_dict.get(f.name).get(f.crc)
 
+
 #
 # Main
 #
-def main():
+def main(args):
     if sys.version_info < (3, 5,):
         log.exception('vppapigen requires a supported version of python. '
                       'Please use version 3.5 or greater. '
                       'Using {}'.format(sys.version))
         return 1
-
-    cliparser = argparse.ArgumentParser(description='VPP API generator')
-    cliparser.add_argument('--pluginpath', default=""),
-    cliparser.add_argument('--includedir', action='append'),
-    cliparser.add_argument('--outputdir', action='store'),
-    cliparser.add_argument('--input')
-    cliparser.add_argument('--output', nargs='?',
-                           type=argparse.FileType('w', encoding='UTF-8'),
-                           default=sys.stdout)
-
-    cliparser.add_argument('output_module', nargs='?', default='C')
-    cliparser.add_argument('--debug', action='store_true')
-    cliparser.add_argument('--show-name', nargs=1)
-    cliparser.add_argument('--git-revision',
-                           help="Git revision to use for opening files")
-    args = cliparser.parse_args()
 
     dirlist_add(args.includedir)
     if not args.debug:
@@ -1488,5 +1473,25 @@ def main():
     return 0
 
 
+def cli():
+    cliparser = argparse.ArgumentParser(description='VPP API generator')
+    cliparser.add_argument('--pluginpath', default=""),
+    cliparser.add_argument('--includedir', action='append'),
+    cliparser.add_argument('--outputdir', action='store'),
+    cliparser.add_argument('--input')
+    cliparser.add_argument('--output', nargs='?',
+                           type=argparse.FileType('w', encoding='UTF-8'),
+                           default=sys.stdout)
+
+    cliparser.add_argument('output_module', nargs='?', default='C')
+    cliparser.add_argument('--debug', action='store_true')
+    cliparser.add_argument('--show-name', nargs=1)
+    cliparser.add_argument('--git-revision',
+                           help="Git revision to use for opening files")
+    args = cliparser.parse_args()
+
+    return main(args)
+
+
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(cli())
