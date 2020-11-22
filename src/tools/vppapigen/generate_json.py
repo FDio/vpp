@@ -18,8 +18,7 @@ import pathlib
 import subprocess
 BASE_DIR = subprocess.check_output('git rev-parse --show-toplevel',
                                    shell=True).strip().decode()
-vppapigen_bin = pathlib.Path(
-    '%s/src/tools/vppapigen/vppapigen.py' % BASE_DIR).as_posix()
+vppapigen_bin = pathlib.Path('/usr/local/bin/vppapigen.py').as_posix()
 
 src_dir_depth = 3
 output_path = pathlib.Path(
