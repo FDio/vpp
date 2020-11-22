@@ -248,6 +248,12 @@ l2_input_is_bvi (const l2_input_config_t * input)
   return (input->flags & L2_INPUT_FLAG_BVI);
 }
 
+static inline bool
+l2_input_is_valid (const l2_input_config_t * input)
+{
+  return (input->flags);
+}
+
 static_always_inline u8
 l2_input_seq_num (u32 sw_if_index)
 {

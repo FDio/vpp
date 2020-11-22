@@ -441,7 +441,9 @@ show_sw_interfaces (vlib_main_t * vm,
 	     (si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? "up" : "dn");
 
 	/* Display any L2 info */
-	vlib_cli_output (vm, "%U", format_l2_input, si->sw_if_index);
+	l2_input_config_t *l2_input = l2input_intf_config (si->sw_if_index);
+	if (l2_input_is_valid (l2_input))
+	  vlib_cli_output (vm, "%U", format_l2_input, si->sw_if_index);
 
 	/* *INDENT-OFF* */
 	/* Display any IP4 addressing info */
