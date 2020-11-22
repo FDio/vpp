@@ -170,8 +170,15 @@ ip4_arp_inline (vlib_main_t * vm,
 	    {
 	      /* resolve the packet's destination */
 	      ip4_header_t *ip0 = vlib_buffer_get_current (p0);
+	      ip_interface_address_t *ia;
+	      ip4_address_t *src;
 	      resolve0 = ip0->dst_address;
 	      src0 = adj0->sub_type.glean.receive_addr.ip4;
+
+	      src = ip4_interface_address_matching_destination
+		(&ip4_main, &resolve0, sw_if_index0, &ia);
+	      if (src)
+		src0 = *src;
 	    }
 	  else
 	    {
