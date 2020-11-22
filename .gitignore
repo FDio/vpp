@@ -94,6 +94,12 @@ compile_commands.json
 # Python bytecode
 *.pyc
 
+# VPPAPIGEN
+/src/tools/vppapigen/build
+/src/tools/vppapigen/dist
+/src/tools/vppapigen/vppapigen.egg-info
+/src/tools/vppapigen/__pycache__
+
 # Python api generator
 /src/vpp-api/python/build
 /src/vpp-api/python/dist
