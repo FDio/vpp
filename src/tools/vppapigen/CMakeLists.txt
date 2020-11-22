@@ -11,23 +11,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-install(
-  FILES vppapigen.py
-  RENAME vppapigen
-  DESTINATION ${VPP_RUNTIME_DIR}
-  PERMISSIONS
-    OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
-    WORLD_READ WORLD_EXECUTE
-  COMPONENT vpp-dev
-)
+# install(
+#   FILES vppapigen.py
+#   RENAME vppapigen
+#   DESTINATION ${VPP_RUNTIME_DIR}
+#   PERMISSIONS
+#     OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
+#     WORLD_READ WORLD_EXECUTE
+#   COMPONENT vpp-dev
+# )
 
-install(
-  FILES
-    vppapigen_c.py
-    vppapigen_json.py
-    generate_json.py
-  DESTINATION
-    share/vpp
-  COMPONENT
-    vpp-dev
-)
+# install(
+#   FILES
+#     vppapigen_c.py
+#    vppapigen_json.py
+#    generate_json.py
+#  DESTINATION
+#    share/vpp
+#  COMPONENT
+#    vpp-dev
+# )
