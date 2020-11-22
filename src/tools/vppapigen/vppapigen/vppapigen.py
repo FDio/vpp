@@ -6,6 +6,7 @@ import keyword
 import logging
 import binascii
 import os
+import pkg_resources
 from subprocess import Popen, PIPE
 import ply.lex as lex
 import ply.yacc as yacc
@@ -1370,32 +1371,22 @@ def foldup_crcs(s):
             if f.crc in fixup_crc_dict.get(f.name):
                 f.crc = fixup_crc_dict.get(f.name).get(f.crc)
 
+discovered_plugins = {
+    entry_point.name: entry_point.load()
+    for entry_point
+    in pkg_resources.iter_entry_points('vppapigen.emitters')
+}
+
 
 #
 # Main
 #
-def main():
+def main(args):
     if sys.version_info < (3, 5,):
         log.exception('vppapigen requires a supported version of python. '
                       'Please use version 3.5 or greater. '
                       'Using %s', sys.version)
         return 1
-
-    cliparser = argparse.ArgumentParser(description='VPP API generator')
-    cliparser.add_argument('--pluginpath', default="")
-    cliparser.add_argument('--includedir', action='append')
-    cliparser.add_argument('--outputdir', action='store')
-    cliparser.add_argument('--input')
-    cliparser.add_argument('--output', nargs='?',
-                           type=argparse.FileType('w', encoding='UTF-8'),
-                           default=sys.stdout)
-
-    cliparser.add_argument('output_module', nargs='?', default='C')
-    cliparser.add_argument('--debug', action='store_true')
-    cliparser.add_argument('--show-name', nargs=1)
-    cliparser.add_argument('--git-revision',
-                           help="Git revision to use for opening files")
-    args = cliparser.parse_args()
 
     dirlist_add(args.includedir)
     if not args.debug:
@@ -1417,36 +1408,8 @@ def main():
     #
     # Generate representation
     #
-    from importlib.machinery import SourceFileLoader
 
-    # Default path
-    pluginpath = ''
-    if not args.pluginpath:
-        cand = []
-        cand.append(os.path.dirname(os.path.realpath(__file__)))
-        cand.append(os.path.dirname(os.path.realpath(__file__)) +
-                    '/../share/vpp/')
-        for c in cand:
-            c += '/'
-            if os.path.isfile('{}vppapigen_{}.py'
-                              .format(c, args.output_module.lower())):
-                pluginpath = c
-                break
-    else:
-        pluginpath = args.pluginpath + '/'
-    if pluginpath == '':
-        log.exception('Output plugin not found')
-        return 1
-    module_path = '{}vppapigen_{}.py'.format(pluginpath,
-                                             args.output_module.lower())
-
-    try:
-        plugin = SourceFileLoader(args.output_module,
-                                  module_path).load_module()
-    except Exception as err:
-        log.exception('Error importing output plugin: %s, %s',
-                      module_path, err)
-        return 1
+    plugin = discovered_plugins[args.output_module]
 
     parser = VPPAPI(debug=args.debug, filename=filename, logger=log,
                     revision=args.git_revision)
@@ -1502,5 +1465,25 @@ def main():
     return 0
 
 
+def cli():
+    cliparser = argparse.ArgumentParser(description='VPP API generator')
+    cliparser.add_argument('--includedir', action='append')
+    cliparser.add_argument('--outputdir', action='store')
+    cliparser.add_argument('--input')
+    cliparser.add_argument('--output', nargs='?',
+                           type=argparse.FileType('w', encoding='UTF-8'),
+                           default=sys.stdout)
+
+    cliparser.add_argument('output_module', nargs='?', default='C',
+                           choices=list(discovered_plugins))
+    cliparser.add_argument('--debug', action='store_true')
+    cliparser.add_argument('--show-name', nargs=1)
+    cliparser.add_argument('--git-revision',
+                           help="Git revision to use for opening files")
+    args = cliparser.parse_args()
+
+    return main(args)
+
+
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(cli())
