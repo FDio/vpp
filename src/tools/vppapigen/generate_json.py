@@ -16,10 +16,11 @@
 import argparse
 import pathlib
 import subprocess
+import sys
+
 BASE_DIR = subprocess.check_output('git rev-parse --show-toplevel',
                                    shell=True).strip().decode()
-vppapigen_bin = pathlib.Path(
-    '%s/src/tools/vppapigen/vppapigen.py' % BASE_DIR).as_posix()
+vppapigen_bin = pathlib.Path('/usr/local/bin/vppapigen.py').as_posix()
 
 src_dir_depth = 3
 output_path = pathlib.Path(
@@ -63,17 +64,7 @@ def vppapigen(vppapigen_bin, output_path, src_dir, src_file):
         raise
 
 
-def main():
-    cliparser = argparse.ArgumentParser(
-        description='VPP API JSON definition generator')
-    cliparser.add_argument('--srcdir', action='store',
-                           default='%s/src' % BASE_DIR),
-    cliparser.add_argument('--output', action='store',
-                           help='directory to store files'),
-    cliparser.add_argument('--debug-target', action='store_true',
-                           default=False,
-                           help="'True' if -debug target"),
-    args = cliparser.parse_args()
+def main(args):
 
     src_dir = pathlib.Path(args.srcdir)
     output_target = output_path_debug if args.debug_target else output_path
@@ -92,7 +83,22 @@ def main():
     for f in api_files(src_dir):
         vppapigen(vppapigen_bin, output_dir, src_dir, f)
     print('json files written to: %s/.' % output_dir)
+    return 0
+
+
+def cli():
+    cliparser = argparse.ArgumentParser(
+        description='VPP API JSON definition generator')
+    cliparser.add_argument('--srcdir', action='store',
+                           default='%s/src' % BASE_DIR),
+    cliparser.add_argument('--output', action='store',
+                           help='directory to store files'),
+    cliparser.add_argument('--debug-target', action='store_true',
+                           default=False,
+                           help="'True' if -debug target"),
+    args = cliparser.parse_args()
+    return main(args)
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(cli())
