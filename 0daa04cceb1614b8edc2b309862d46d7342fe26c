@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "db282a8e_8ff1b8ed",
+        "filename": "src/vnet/ip-neighbor/ip4_neighbor.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-22T11:31:17Z",
+      "side": 1,
+      "message": "this API is not thread safe, you can\u0027t call it from a worker.",
+      "range": {
+        "startLine": 178,
+        "startChar": 13,
+        "endLine": 178,
+        "endChar": 55
+      },
+      "revId": "0daa04cceb1614b8edc2b309862d46d7342fe26c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
