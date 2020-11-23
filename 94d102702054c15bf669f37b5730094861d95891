@@ -55,6 +55,24 @@
     },
     {
       "key": {
+        "uuid": "b3d5b665_ea7b181b",
+        "filename": "src/vpp-api/pom/requirements.txt",
+        "patchSetId": 6
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-23T18:51:03Z",
+      "side": 1,
+      "message": "Agreed, We can also have a semver value, but it has to be managed/maintained in the code moving forward.  Versions have to be properly (semantically) bumped and pushed to pypi.  \nLook at https://gerrit.fd.io/r/c/vpp/+/30078 changeset 1.  vpp_papi from pypi is not usable in its current state.  \n\nIn that changeset, I started playing with moving vpp_papi into its own repo / submodule.  \n\nPapi doesn\u0027t have compiled C libraries, but it kinda does.  It uses cffi to wrap around c code which is inlined within the python module.  See: https://github.com/vinciconsulting/vpp_papi/blob/master/vpp_papi/vpp_transport_shmem.py",
+      "parentUuid": "0aa924be_f6ea4cb4",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "cc8bd4fa_9c54dcbc",
         "filename": "src/vpp-api/pom/setup.py",
         "patchSetId": 6
@@ -102,6 +120,24 @@
       "side": 1,
       "message": "Not quite sure how much the plugins have different dependencies, but you can package Python with conditional dependencies if that\u0027s any help.\n\nBut in this case, you\u0027re not really talking plugins so much as *mixins*, I think.",
       "parentUuid": "6c3db0e9_d411ba34",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "368af5ca_397837f0",
+        "filename": "src/vpp-api/pom/setup.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-23T18:51:03Z",
+      "side": 1,
+      "message": "Some plugins use other 3rd party libraries.  I am thinking specifically of syslog_rfc5424_parser, but I think there are others.\n\nWe need to use mixins instead of inheritance in many places.",
+      "parentUuid": "97754e3b_4510deab",
       "revId": "94d102702054c15bf669f37b5730094861d95891",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -330,6 +366,24 @@
       "side": 1,
       "message": "I have boilerplate tox to enable mypy testing if you want it. Mypy is very passive, so it will (nearly always) pass an unannotated file and you can add your annotations later.\n\nI also have a PEP8 block - what I just did for a project at the weekend was add a pep8 round of tests, then rather than fixing the code disable all failing tests for someone to add back; that\u0027s quite a good strategy for incremental improvement.\n\nI also wish so very hard that PAPI would give me a type-annotated interface, but I don\u0027t know if that\u0027s an easy thing to do without switching from the current \u0027create functions dynamically\u0027 model to a \u0027compile a VPP API\u0027 model, and I don\u0027t see that change being valuable.",
       "parentUuid": "646c90ec_2b1be887",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "66c2e495_0104c5b1",
+        "filename": "src/vpp-api/pom/vpp_pom/hook.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-23T18:51:03Z",
+      "side": 1,
+      "message": "I have one underway.  It currently emits:\n\n# dependent modules declared in .api file follow next.\nfrom plugins.ikev2 import ikev2_types\nfrom vnet import interface_types\nfrom vnet.ip import ip_types\n\nikev2.py:\n@dataclass\nclass ikev2_plugin_get_version_reply:\n    _vl_msg_id: u16\n    context: u32\n    major: u32\n    minor: u32\n\n\ndef ikev2_plugin_get_version() -\u003e ikev2_plugin_get_version_reply:  # noqa: E501\n\n    # Think of _vl_msg_id as a volatile variable.  It will be updated when \n    # we connect to a running process and reset to 0 upon disconnect hooks.\n    _vl_msg_id \u003d 0\n    _crc \u003d 1359445268  # computed by vppagigen_py from .api file\n\nor from af_packet.py:\n\ndef af_packet_create(*, hw_addr: mac_address, use_random_hw_addr: bool, host_if_name: string) -\u003e af_packet_create_reply:  # noqa: E501\n\nOle/I were chatting about when the server side CRC doesn\u0027t match.  I can raise a RuntimeError or log a warning, but was planning to only do so if the mismatched function was actually \"called\".\n\nMy thought is to register a hook in vpp_papi so that upon \"connect\", I can update _vl_api_id to the actual method identifier from the running VPP, and reset it to 0 upon a disconnect event.\n(this appears in vpp_papi named tuples as _0 because named tuple fields cannot begin with _ )",
+      "parentUuid": "fd018920_3b2f0d3f",
       "revId": "94d102702054c15bf669f37b5730094861d95891",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
