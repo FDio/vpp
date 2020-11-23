@@ -469,6 +469,7 @@ typedef struct
   u32 buffers_per_numa;
   u16 ext_hdr_size;
   u32 default_data_size;
+  clib_mem_page_sz_t log2_page_size;
 
   /* logging */
   vlib_log_class_t log_default;
