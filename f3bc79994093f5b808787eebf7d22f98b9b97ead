@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6a40e132_d44ccf91",
+        "filename": "src/plugins/avf/avf.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-23T10:55:51Z",
+      "side": 1,
+      "message": "probably not needed if you just read u32 from descriptor",
+      "revId": "f3bc79994093f5b808787eebf7d22f98b9b97ead",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bf0e0f72_348431cc",
+        "filename": "src/plugins/avf/avf.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-23T10:55:51Z",
+      "side": 1,
+      "message": "u32 flow_ids[AVF_RX_VECTOR_SZ];",
+      "revId": "f3bc79994093f5b808787eebf7d22f98b9b97ead",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "be924965_fea4c4cf",
+        "filename": "src/plugins/avf/input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-23T10:55:51Z",
+      "side": 1,
+      "message": "not needed if you just extract u32",
+      "revId": "f3bc79994093f5b808787eebf7d22f98b9b97ead",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "57910cfa_940aad3e",
+        "filename": "src/plugins/avf/input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 277,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-23T10:55:51Z",
+      "side": 1,
+      "message": "Intead of wasting clock cycles on parsing qw3 all the time, you can introduce new flag AVF_DEVICE_F_FLOWS and inline this funciton 2 times with constant \".., int with_flows)\"",
+      "revId": "f3bc79994093f5b808787eebf7d22f98b9b97ead",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7c6716fb_3a490dba",
+        "filename": "src/plugins/avf/input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 341,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-23T10:55:51Z",
+      "side": 1,
+      "message": "Why not gather just u32?",
+      "revId": "f3bc79994093f5b808787eebf7d22f98b9b97ead",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
