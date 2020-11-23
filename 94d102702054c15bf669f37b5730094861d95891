@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "0aa924be_f6ea4cb4",
+        "filename": "src/vpp-api/pom/requirements.txt",
+        "patchSetId": 6
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-23T18:00:25Z",
+      "side": 1,
+      "message": "Understood, though if you think about this papi is more of a grpc-alike, so I would recommend semantically versioning it independent of the VPP API if that\u0027s possible.  It should change version when it starts adding and removing things like typecasts or changing the wire protocol, not because the VPP API has changed (since it doesn\u0027t include the VPP API; it reads external files that describe the VPP API).\n\nI have no real opinion about wheels vs eggs and I couldn\u0027t really tell you the differences.  The results are about the same, I believe?  The only thing I\u0027d say is you wouldn\u0027t want to package compiled C libraries into a python module, if that\u0027s where the difference lies.",
+      "parentUuid": "978163f3_b14a732c",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "cc8bd4fa_9c54dcbc",
         "filename": "src/vpp-api/pom/setup.py",
         "patchSetId": 6
@@ -66,6 +84,24 @@
       "side": 1,
       "message": "My preference would be to have each plugin directory have its own setup.py that registers its existence.  This way, the *plugin* has its own dependencies injected via setup.py instead of a global requirements.txt file",
       "parentUuid": "cc8bd4fa_9c54dcbc",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "97754e3b_4510deab",
+        "filename": "src/vpp-api/pom/setup.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-23T18:00:25Z",
+      "side": 1,
+      "message": "Not quite sure how much the plugins have different dependencies, but you can package Python with conditional dependencies if that\u0027s any help.\n\nBut in this case, you\u0027re not really talking plugins so much as *mixins*, I think.",
+      "parentUuid": "6c3db0e9_d411ba34",
       "revId": "94d102702054c15bf669f37b5730094861d95891",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -212,6 +248,24 @@
     },
     {
       "key": {
+        "uuid": "a920619c_0cf9ef97",
+        "filename": "src/vpp-api/pom/vpp_pom/hook.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-23T18:00:25Z",
+      "side": 1,
+      "message": "You could have a decorator class that you subclass if you wanted to put some structure around this, but it seems like this is supporting one unusual use case.  If we\u0027re talking about \u0027how would we make this useful to anyone\u0027 then yes, it wants to die, or you just leave people doing evil things to monkeypatch their nastiness in rather than enabling them.",
+      "parentUuid": "0a47789c_2ae8eee5",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b5f3c8e6_cf3dccc5",
         "filename": "src/vpp-api/pom/vpp_pom/hook.py",
         "patchSetId": 6
@@ -258,6 +312,24 @@
       "side": 1,
       "message": "+100!  Type annotations anyone?",
       "parentUuid": "70493d87_c576d33d",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fd018920_3b2f0d3f",
+        "filename": "src/vpp-api/pom/vpp_pom/hook.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-23T18:00:25Z",
+      "side": 1,
+      "message": "I have boilerplate tox to enable mypy testing if you want it. Mypy is very passive, so it will (nearly always) pass an unannotated file and you can add your annotations later.\n\nI also have a PEP8 block - what I just did for a project at the weekend was add a pep8 round of tests, then rather than fixing the code disable all failing tests for someone to add back; that\u0027s quite a good strategy for incremental improvement.\n\nI also wish so very hard that PAPI would give me a type-annotated interface, but I don\u0027t know if that\u0027s an easy thing to do without switching from the current \u0027create functions dynamically\u0027 model to a \u0027compile a VPP API\u0027 model, and I don\u0027t see that change being valuable.",
+      "parentUuid": "646c90ec_2b1be887",
       "revId": "94d102702054c15bf669f37b5730094861d95891",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -328,6 +400,24 @@
       "side": 1,
       "message": "Agreed.  There is an abundance of property\u0027s used in the code because vpp_papi methods are dynamically generated after vpp_papi is init\u0027d and subsequently connect\u0027d to a running instance.  It is a way to access the deferred binding, otherwise the value at module load time is None.  The property cannot be accessed until the object is init\u0027d with a valid vpp_papi object.  Completely undocumented/unexplained until now.  \"Any competent c-programmer should be able to figure that out\", so I am told (Which I am not) ;)\n\nThank you for pointing this out.",
       "parentUuid": "609a927d_ba2db369",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fdffbf68_3d38f2e1",
+        "filename": "src/vpp-api/pom/vpp_pom/plugins/vpp_acl.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2020-11-23T18:00:25Z",
+      "side": 1,
+      "message": "The response to this would be \u0027any competent programmer would document what they\u0027re doing\u0027.  Code implements intention, it does not describe it. \u0027Use the source, Luke\u0027 requires that you do so.",
+      "parentUuid": "12e5d410_533f90af",
       "revId": "94d102702054c15bf669f37b5730094861d95891",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
