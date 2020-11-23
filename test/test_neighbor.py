@@ -1396,13 +1396,8 @@ class ARPTestCase(VppTestCase):
         #
         # change the interface's MAC
         #
-        mac = [scapy.compat.chb(0x00), scapy.compat.chb(0x00),
-               scapy.compat.chb(0x00), scapy.compat.chb(0x33),
-               scapy.compat.chb(0x33), scapy.compat.chb(0x33)]
-        mac_string = ''.join(mac)
-
         self.vapi.sw_interface_set_mac_address(self.pg1.sw_if_index,
-                                               mac_string)
+                                               "00:00:00:33:33:33")
 
         #
         # now ARP requests come from the new source mac
@@ -1428,7 +1423,7 @@ class ARPTestCase(VppTestCase):
         # configured subnet and thus no glean
         #
         self.vapi.sw_interface_set_mac_address(self.pg2.sw_if_index,
-                                               mac_string)
+                                               "00:00:00:33:33:33")
 
     def test_garp(self):
         """ GARP """
@@ -1559,7 +1554,7 @@ class ARPTestCase(VppTestCase):
         self.assertEqual(4, self.statistics.get_err_counter(
             "/err/arp-reply/IP4 destination address not local to subnet"))
 
-    def test_arp_incomplete(self):
+    def test_arp_incomplete2(self):
         """ Incomplete Entries """
 
         #
