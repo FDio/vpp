@@ -223,7 +223,18 @@ sparse_vec_index2 (void *v,
   *i1_return = is_member1 + d1;
 }
 
-#define sparse_vec_free(v) vec_free(v)
+always_inline void
+sparse_vec_free (void *v) {
+  sparse_vec_header_t *h;
+
+  if (!v)
+    return;
+
+  h = sparse_vec_header (v);
+  vec_free (h->is_member_bitmap);
+  vec_free (h->member_counts);
+  vec_free_h (v, sizeof (h[0]));
+}
 
 #define sparse_vec_elt_at_index(v,i) \
   vec_elt_at_index ((v), sparse_vec_index ((v), (i)))
