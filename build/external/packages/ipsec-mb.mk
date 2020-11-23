@@ -11,12 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ipsec-mb_version             := 0.54
+ipsec-mb_version             := 0.55
 ipsec-mb_tarball             := v$(ipsec-mb_version).tar.gz
 ipsec-mb_tarball_md5sum_0.49 := 3a2bee86f25f6c8ed720da5b4b8d4297
 ipsec-mb_tarball_md5sum_0.52 := 11ecfa6db4dc0c4ca6e5c616c141ac46
 ipsec-mb_tarball_md5sum_0.53 := e9b3507590efd1c23321518612b644cd
 ipsec-mb_tarball_md5sum_0.54 := 258941f7ba90c275fcf9d19c622d2d21
+ipsec-mb_tarball_md5sum_0.55 := deca674bca7ae2282890e1fa7f953609
+
 ipsec-mb_tarball_md5sum      := $(ipsec-mb_tarball_md5sum_$(ipsec-mb_version))
 ipsec-mb_tarball_strip_dirs  := 1
 ipsec-mb_url                 := http://github.com/01org/intel-ipsec-mb/archive/$(ipsec-mb_tarball)
@@ -36,8 +38,8 @@ endef
 define  ipsec-mb_install_cmds
 	@mkdir -p $(ipsec-mb_install_dir)/include
 	@mkdir -p $(ipsec-mb_install_dir)/lib
-	@cp $(ipsec-mb_src_dir)/intel-ipsec-mb.h $(ipsec-mb_install_dir)/include
-	@cp $(ipsec-mb_src_dir)/libIPSec_MB.a $(ipsec-mb_install_dir)/lib
+	@cp $(ipsec-mb_src_dir)/lib/intel-ipsec-mb.h $(ipsec-mb_install_dir)/include
+	@cp $(ipsec-mb_src_dir)/lib/libIPSec_MB.a $(ipsec-mb_install_dir)/lib
 endef
 
 $(eval $(call package,ipsec-mb))
