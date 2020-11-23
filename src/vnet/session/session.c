@@ -1158,16 +1158,18 @@ session_dgram_accept (transport_connection_t * tc, u32 listener_index,
       return rv;
     }
 
+  session_lookup_add_connection (tc, session_handle (s));
+
   app_wrk = app_worker_get (s->app_wrk_index);
   if ((rv = app_worker_accept_notify (app_wrk, s)))
     {
+      session_lookup_del_session (s);
       segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
       session_free (s);
       return rv;
     }
 
   s->session_state = SESSION_STATE_READY;
-  session_lookup_add_connection (tc, session_handle (s));
 
   return 0;
 }
