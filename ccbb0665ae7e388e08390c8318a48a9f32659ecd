@@ -16,6 +16,24 @@
       "revId": "ccbb0665ae7e388e08390c8318a48a9f32659ecd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bef7cfe5_52f57042",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1389,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-23T15:47:16Z",
+      "side": 0,
+      "message": "out of scope of this patch, we will address that later in avf specific improvements.",
+      "parentUuid": "d5cacc99_d5bc085f",
+      "revId": "ccbb0665ae7e388e08390c8318a48a9f32659ecd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
