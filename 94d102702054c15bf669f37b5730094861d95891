@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "978163f3_b14a732c",
+        "filename": "src/vpp-api/pom/requirements.txt",
+        "patchSetId": 6
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-23T17:45:07Z",
+      "side": 1,
+      "message": "Just FYI.\nOle/I are working through the possibility of releasing vpp_papi on pypi, versioned for each stable branch.  My private builds make wheels instead of eggs, but it is not clear to me if wheels alone are enough.",
+      "parentUuid": "c34cf7df_989fdc17",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "cc8bd4fa_9c54dcbc",
         "filename": "src/vpp-api/pom/setup.py",
         "patchSetId": 6
@@ -30,6 +48,24 @@
       "writtenOn": "2020-11-16T18:40:00Z",
       "side": 1,
       "message": "Your choice - and it doesn\u0027t play well with the repo structure of VPP - but you might check out the PBR Python package.",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6c3db0e9_d411ba34",
+        "filename": "src/vpp-api/pom/setup.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-23T17:45:07Z",
+      "side": 1,
+      "message": "My preference would be to have each plugin directory have its own setup.py that registers its existence.  This way, the *plugin* has its own dependencies injected via setup.py instead of a global requirements.txt file",
+      "parentUuid": "cc8bd4fa_9c54dcbc",
       "revId": "94d102702054c15bf669f37b5730094861d95891",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "20986763_3e6603d1",
+        "filename": "src/vpp-api/pom/vpp_pom/hook.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-23T17:45:07Z",
+      "side": 1,
+      "message": "This is using signal.signals.  I agree.  This is weird, but has been this way for years.  Maybe someone beyond me waving my arms can help to get this revisited?",
+      "parentUuid": "8ba44ca0_eac41806",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ae957614_cbb4e231",
         "filename": "src/vpp-api/pom/vpp_pom/hook.py",
         "patchSetId": 6
@@ -64,6 +118,24 @@
       "writtenOn": "2020-11-16T18:40:00Z",
       "side": 1,
       "message": "I sense this model will introduce inefficiency whenever it\u0027s used.  Depends on what calls hooks, but if you put an \u0027are there any hooks\u0027 check into the VPP call code it\u0027s not going to be good.",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "75ccba2c_8ea48e3b",
+        "filename": "src/vpp-api/pom/vpp_pom/hook.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-23T17:45:07Z",
+      "side": 1,
+      "message": "This code needs to ripped out completely.  It is a conflation of multiple independent things.",
+      "parentUuid": "ae957614_cbb4e231",
       "revId": "94d102702054c15bf669f37b5730094861d95891",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "69ee88fb_c8d9a422",
+        "filename": "src/vpp-api/pom/vpp_pom/hook.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-23T17:45:07Z",
+      "side": 1,
+      "message": "I disagree.  Remove completely and write a decorator around the api call.",
+      "parentUuid": "794a2d88_e0334b6a",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "391ff101_55382ee7",
         "filename": "src/vpp-api/pom/vpp_pom/hook.py",
         "patchSetId": 6
@@ -98,6 +188,24 @@
       "writtenOn": "2020-11-16T18:40:00Z",
       "side": 1,
       "message": "args, kwargs?",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0a47789c_2ae8eee5",
+        "filename": "src/vpp-api/pom/vpp_pom/hook.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-23T17:45:07Z",
+      "side": 1,
+      "message": "Agree in concept, but still think this should go away entirely.  This is a classic nit I have with contributors intentionally unpythonising python.",
+      "parentUuid": "391ff101_55382ee7",
       "revId": "94d102702054c15bf669f37b5730094861d95891",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -138,6 +246,24 @@
     },
     {
       "key": {
+        "uuid": "646c90ec_2b1be887",
+        "filename": "src/vpp-api/pom/vpp_pom/hook.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-23T17:45:07Z",
+      "side": 1,
+      "message": "+100!  Type annotations anyone?",
+      "parentUuid": "70493d87_c576d33d",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "de1ce45e_f30e90be",
         "filename": "src/vpp-api/pom/vpp_pom/plugins/__init__.py",
         "patchSetId": 6
@@ -155,6 +281,24 @@
     },
     {
       "key": {
+        "uuid": "010029ae_aea138cb",
+        "filename": "src/vpp-api/pom/vpp_pom/plugins/__init__.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-23T17:45:07Z",
+      "side": 1,
+      "message": "You hit the nail on the head!\nI explained this elsewhere.  This needs to be done via a setup.py which allows plugin to be registered.  There is no need to move the code.",
+      "parentUuid": "de1ce45e_f30e90be",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "609a927d_ba2db369",
         "filename": "src/vpp-api/pom/vpp_pom/plugins/vpp_acl.py",
         "patchSetId": 6
@@ -166,6 +310,24 @@
       "writtenOn": "2020-11-16T18:40:00Z",
       "side": 1,
       "message": "You\u0027re assuming no-one else modifies VPP state if you cache things.  You haven\u0027t stated that anywhere.",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "12e5d410_533f90af",
+        "filename": "src/vpp-api/pom/vpp_pom/plugins/vpp_acl.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-23T17:45:07Z",
+      "side": 1,
+      "message": "Agreed.  There is an abundance of property\u0027s used in the code because vpp_papi methods are dynamically generated after vpp_papi is init\u0027d and subsequently connect\u0027d to a running instance.  It is a way to access the deferred binding, otherwise the value at module load time is None.  The property cannot be accessed until the object is init\u0027d with a valid vpp_papi object.  Completely undocumented/unexplained until now.  \"Any competent c-programmer should be able to figure that out\", so I am told (Which I am not) ;)\n\nThank you for pointing this out.",
+      "parentUuid": "609a927d_ba2db369",
       "revId": "94d102702054c15bf669f37b5730094861d95891",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -240,6 +402,24 @@
     },
     {
       "key": {
+        "uuid": "8c05ca43_754b6e6b",
+        "filename": "src/vpp-api/pom/vpp_pom/plugins/vpp_acl.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-23T17:45:07Z",
+      "side": 1,
+      "message": "Yes.  All papi-derived typedefs need an encode to send over the wire to vpp.  Decode would be an alternate constructor (like say \u0027from_vpp\u0027) to handle the class/namedTuple that papi returns.\n\nar \u003d ACLRule.from_vpp_papi(vpp_return_type)",
+      "parentUuid": "fda8223e_3886b8af",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d729b80f_02d7ff74",
         "filename": "src/vpp-api/pom/vpp_pom/plugins/vpp_wireguard.py",
         "patchSetId": 6
@@ -251,6 +431,24 @@
       "writtenOn": "2020-11-16T18:40:00Z",
       "side": 1,
       "message": "General statement - don\u0027t need _vpp_ in there.  Also, I\u0027m not sure about an interface with add_config and remove_config calls, the name doesn\u0027t seem to make much sense.  What are you doing with these objects - you\u0027re adding and removing them from the VPP behaviour, yes, but you don\u0027t need a fully populated object to remove the config, typically (I can, for instance, delete an interface with just its ID and no idea what it\u0027s doing).\n\nI think it would be more typical coding form to use a collection of WgInterfaces that has the \u0027add\u0027 and \u0027remove\u0027 functions on it - the WgInterfaces in this collection would have a key (all I need to remove it / the difference between an \u0027add\u0027 and an \u0027update\u0027) and a value (the interface properties).",
+      "revId": "94d102702054c15bf669f37b5730094861d95891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b26b5b9f_4b57f0f7",
+        "filename": "src/vpp-api/pom/vpp_pom/plugins/vpp_wireguard.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-23T17:45:07Z",
+      "side": 1,
+      "message": "You are correct.  I have a prototype that refactors all this into the base class.  All we need to do is use class variables to hint to the api name required.  The harder part is getting the plugin owners to implement the missing methods.  (like \u0027get\u0027). Today, many only implement \u0027list\u0027 (\u0027dump/details\u0027 in vpp-speak) and then search through the list.",
+      "parentUuid": "d729b80f_02d7ff74",
       "revId": "94d102702054c15bf669f37b5730094861d95891",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
