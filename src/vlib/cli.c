@@ -703,6 +703,11 @@ vlib_cli_output (vlib_main_t * vm, char *fmt, ...)
   s = va_format (0, fmt, &va);
   va_end (va);
 
+  /* some format functions might return 0
+   * e.g. show int addr */
+  if (NULL == s)
+    return;
+
   /* Terminate with \n if not present. */
   if (vec_len (s) > 0 && s[vec_len (s) - 1] != '\n')
     vec_add1 (s, '\n');
