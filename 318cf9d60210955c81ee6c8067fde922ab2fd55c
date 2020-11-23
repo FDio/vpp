@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "e6fa59f0_9401fdad",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1663,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-23T15:46:07Z",
+      "side": 1,
+      "message": "for vnet_hw_if_rx_queue_set_int_pending()",
+      "parentUuid": "53b42d22_5f4f91c6",
+      "range": {
+        "startLine": 1663,
+        "startChar": 6,
+        "endLine": 1663,
+        "endChar": 35
+      },
+      "revId": "318cf9d60210955c81ee6c8067fde922ab2fd55c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "0e59d100_045713d2",
         "filename": "src/plugins/avf/input.c",
         "patchSetId": 6
@@ -42,6 +66,24 @@
     },
     {
       "key": {
+        "uuid": "94ee0e54_b6db776a",
+        "filename": "src/plugins/avf/input.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 450,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-23T15:46:07Z",
+      "side": 1,
+      "message": "as long as our indent is stupid enough that it cannot learn about custom loops, will prefer not to :)",
+      "parentUuid": "0e59d100_045713d2",
+      "revId": "318cf9d60210955c81ee6c8067fde922ab2fd55c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a0877727_5ea34a42",
         "filename": "src/vnet/interface.h",
         "patchSetId": 6
@@ -53,6 +95,30 @@
       "writtenOn": "2020-11-18T16:46:27Z",
       "side": 1,
       "message": "device-scope and not vnet-scope right?",
+      "range": {
+        "startLine": 539,
+        "startChar": 2,
+        "endLine": 539,
+        "endChar": 33
+      },
+      "revId": "318cf9d60210955c81ee6c8067fde922ab2fd55c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b7e927f5_d6030226",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 539,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-23T15:46:07Z",
+      "side": 1,
+      "message": "yes queue identifier (id) is device specific, queue index is vnet specific.",
+      "parentUuid": "a0877727_5ea34a42",
       "range": {
         "startLine": 539,
         "startChar": 2,
@@ -88,6 +154,30 @@
     },
     {
       "key": {
+        "uuid": "ff09a2bb_d0b674e9",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 540,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-23T15:46:07Z",
+      "side": 1,
+      "message": "fixed",
+      "parentUuid": "35077323_1b4fa036",
+      "range": {
+        "startLine": 540,
+        "startChar": 2,
+        "endLine": 540,
+        "endChar": 15
+      },
+      "revId": "318cf9d60210955c81ee6c8067fde922ab2fd55c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "f2465c7f_7a6cf554",
         "filename": "src/vnet/interface.h",
         "patchSetId": 6
@@ -99,6 +189,30 @@
       "writtenOn": "2020-11-18T16:46:27Z",
       "side": 1,
       "message": "u16? This us the device scope one right?",
+      "range": {
+        "startLine": 650,
+        "startChar": 6,
+        "endLine": 650,
+        "endChar": 15
+      },
+      "revId": "318cf9d60210955c81ee6c8067fde922ab2fd55c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "57379d59_7bfd54d7",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 650,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-23T15:46:07Z",
+      "side": 1,
+      "message": "it should be u32.",
+      "parentUuid": "f2465c7f_7a6cf554",
       "range": {
         "startLine": 650,
         "startChar": 6,
