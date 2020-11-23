@@ -225,7 +225,10 @@ sparse_vec_index2 (void *v,
     {                                                                         \
       if (V)                                                                  \
 	{                                                                     \
-	  clib_mem_free (sparse_vec_header (V));                              \
+	  sparse_vec_header_t *_h = sparse_vec_header (V);                    \
+	  vec_free (_h->is_member_bitmap);                                    \
+	  vec_free (_h->member_counts);                                       \
+	  clib_mem_free (_h);                                                 \
 	  V = 0;                                                              \
 	}                                                                     \
     }                                                                         \
