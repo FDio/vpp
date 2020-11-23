@@ -1127,12 +1127,14 @@ ip4_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
       /* *INDENT-ON* */
       ip4_mfib_interface_enable_disable (sw_if_index, 0);
     }
-
-  vnet_feature_enable_disable ("ip4-unicast", "ip4-not-enabled", sw_if_index,
-			       is_add, 0, 0);
-
-  vnet_feature_enable_disable ("ip4-multicast", "ip4-not-enabled",
-			       sw_if_index, is_add, 0, 0);
+  else
+    {
+      /* IPv4 is disabled by default on new interfaces */
+      vnet_feature_enable_disable ("ip4-unicast", "ip4-not-enabled",
+				   sw_if_index, 1, 0, 0);
+      vnet_feature_enable_disable ("ip4-multicast", "ip4-not-enabled",
+				   sw_if_index, 1, 0, 0);
+    }
 
   return /* no error */ 0;
 }
