@@ -1177,6 +1177,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   u8 *s, *tmp = 0;
   int ret, i;
   int num_whitelisted = 0;
+  int eal_no_hugetlb = 0;
   u8 no_pci = 0;
   u8 no_vmbus = 0;
   u8 file_prefix = 0;
@@ -1195,6 +1196,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       if (unformat (input, "no-hugetlb"))
 	{
 	  vec_add1 (conf->eal_init_args, (u8 *) "--no-huge");
+	  eal_no_hugetlb = 1;
 	}
       else if (unformat (input, "telemetry"))
 	conf->enable_telemetry = 1;
@@ -1345,22 +1347,27 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   if (!conf->uio_driver_name)
     conf->uio_driver_name = format (0, "auto%c", 0);
 
-  default_hugepage_sz = clib_mem_get_default_hugepage_size ();
-
-  /* *INDENT-OFF* */
-  clib_bitmap_foreach (x, tm->cpu_socket_bitmap, (
+  if (eal_no_hugetlb == 0)
     {
-      clib_error_t *e;
-      uword n_pages;
-      /* preallocate at least 16MB of hugepages per socket,
-	 if more is needed it is up to consumer to preallocate more */
-      n_pages = round_pow2 ((uword) 16 << 20, default_hugepage_sz);
-      n_pages /= default_hugepage_sz;
+      vec_add1 (conf->eal_init_args, (u8 *) "--in-memory");
 
-      if ((e = clib_sysfs_prealloc_hugepages(x, 0, n_pages)))
-	clib_error_report (e);
-  }));
-  /* *INDENT-ON* */
+      default_hugepage_sz = clib_mem_get_default_hugepage_size ();
+
+      /* *INDENT-OFF* */
+      clib_bitmap_foreach (x, tm->cpu_socket_bitmap, (
+	{
+	  clib_error_t *e;
+	  uword n_pages;
+	  /* preallocate at least 16MB of hugepages per socket,
+	    if more is needed it is up to consumer to preallocate more */
+	  n_pages = round_pow2 ((uword) 16 << 20, default_hugepage_sz);
+	  n_pages /= default_hugepage_sz;
+
+	  if ((e = clib_sysfs_prealloc_hugepages(x, 0, n_pages)))
+	    clib_error_report (e);
+      }));
+      /* *INDENT-ON* */
+    }
 
   /* on/off dpdk's telemetry thread */
   if (conf->enable_telemetry == 0)
@@ -1720,7 +1727,6 @@ dpdk_init (vlib_main_t * vm)
 
   dm->conf->nchannels = 4;
   vec_add1 (dm->conf->eal_init_args, (u8 *) "vnet");
-  vec_add1 (dm->conf->eal_init_args, (u8 *) "--in-memory");
 
   /* Default vlib_buffer_t flags, DISABLES tcp/udp checksumming... */
   dm->buffer_flags_template = (VLIB_BUFFER_TOTAL_LENGTH_VALID |
