@@ -579,6 +579,7 @@ The buffers Section
    buffers {
       buffers-per-numa 128000
       default data-size 2048
+      no-hugetlb
    }
 
 buffers-per-numa number
@@ -600,6 +601,15 @@ Size of buffer data area, default is 2048
 .. code-block:: console
 
    default data-size 2048
+
+no-hugetlb flag
+^^^^^^^^^^^^^^^
+
+Disable the use of hugepages even if available on the system
+
+.. code-block:: console
+
+   no-hugetlb
 
 
 The dpdk Section

@@ -698,7 +698,10 @@ vlib_buffer_main_init_numa_node (struct vlib_main_t *vm, u32 numa_node,
 					    (vm));
   u8 *name;
 
-  pagesize = clib_mem_get_default_hugepage_size ();
+  if (bm->no_hugetlb)
+    pagesize = clib_mem_get_page_size ();
+  else
+    pagesize = clib_mem_get_default_hugepage_size ();
   name = format (0, "buffers-numa-%d%c", numa_node, 0);
 
   buffers_per_numa = bm->buffers_per_numa ? bm->buffers_per_numa :
@@ -935,11 +938,14 @@ vlib_buffers_configure (vlib_main_t * vm, unformat_input_t * input)
   vlib_buffer_main_alloc (vm);
 
   bm = vm->buffer_main;
+  bm->no_hugetlb = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "buffers-per-numa %u", &bm->buffers_per_numa))
 	;
+      else if (unformat (input, "no-hugetlb"))
+	bm->no_hugetlb = 1;
       else if (unformat (input, "default data-size %u",
 			 &bm->default_data_size))
 	;
