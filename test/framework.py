@@ -392,7 +392,7 @@ class VppTestCase(unittest.TestCase):
 
         cpu_core_number = cls.get_least_used_cpu()
         if not hasattr(cls, "worker_config"):
-            cls.worker_config = ""
+            cls.worker_config = "workers 2"
 
         default_variant = os.getenv("VARIANT")
         if default_variant is not None:
