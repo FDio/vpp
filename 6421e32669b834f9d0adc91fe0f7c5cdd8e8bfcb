@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "6db9a271_fb7bebdf",
+        "filename": "src/vnet/gso/test/test_gso.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2020-11-24T09:52:15Z",
+      "side": 1,
+      "message": "Why not add these to VppInterface? Then we could simply do pg0.gso \u003d true. For test purpose we could always access the api directly.",
+      "parentUuid": "faf5bf1d_6cda64d8",
+      "range": {
+        "startLine": 194,
+        "startChar": 0,
+        "endLine": 195,
+        "endChar": 62
+      },
+      "revId": "6421e32669b834f9d0adc91fe0f7c5cdd8e8bfcb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8fa564ef_e1996cdb",
         "filename": "test/test_neighbor.py",
         "patchSetId": 4
