@@ -65,7 +65,7 @@ class TestTLS(VppTestCase):
     def setUp(self):
         super(TestTLS, self).setUp()
 
-        self.vapi.session_enable_disable(is_enabled=1)
+        self.vapi.session_enable_disable(is_enable=1)
         self.create_loopback_interfaces(2)
 
         table_id = 0
@@ -92,7 +92,7 @@ class TestTLS(VppTestCase):
             i.unconfig_ip4()
             i.set_table_ip4(0)
             i.admin_down()
-        self.vapi.session_enable_disable(is_enabled=0)
+        self.vapi.session_enable_disable(is_enable=0)
         super(TestTLS, self).tearDown()
 
     @unittest.skipUnless(checkAll(),

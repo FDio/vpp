@@ -260,7 +260,7 @@ class TestUDP(VppTestCase):
 
     def setUp(self):
         super(TestUDP, self).setUp()
-        self.vapi.session_enable_disable(is_enabled=1)
+        self.vapi.session_enable_disable(is_enable=1)
         self.create_loopback_interfaces(2)
 
         table_id = 0
@@ -287,7 +287,7 @@ class TestUDP(VppTestCase):
             i.unconfig_ip4()
             i.set_table_ip4(0)
             i.admin_down()
-        self.vapi.session_enable_disable(is_enabled=0)
+        self.vapi.session_enable_disable(is_enable=0)
         super(TestUDP, self).tearDown()
 
     def test_udp_transfer(self):

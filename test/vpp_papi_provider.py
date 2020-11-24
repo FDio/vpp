@@ -861,11 +861,6 @@ class VppPapiProvider(object):
             self.papi.bier_disp_entry_dump,
             {'bde_tbl_id': bdti})
 
-    def session_enable_disable(self, is_enabled):
-        return self.api(
-            self.papi.session_enable_disable,
-            {'is_enable': is_enabled})
-
     def ipsec_spd_add_del(self, spd_id, is_add=1):
         """ SPD add/del - Wrapper to add or del ipsec SPD
         Sample CLI : 'ipsec spd add 1'
@@ -1007,20 +1002,6 @@ class VppPapiProvider(object):
 
     def ipsec_backend_dump(self):
         return self.api(self.papi.ipsec_backend_dump, {})
-
-    def app_namespace_add_del(self,
-                              namespace_id,
-                              ip4_fib_id=0,
-                              ip6_fib_id=0,
-                              sw_if_index=0xFFFFFFFF,
-                              secret=0):
-        return self.api(
-            self.papi.app_namespace_add_del,
-            {'secret': secret,
-             'sw_if_index': sw_if_index,
-             'ip4_fib_id': ip4_fib_id,
-             'ip6_fib_id': ip6_fib_id,
-             'namespace_id': namespace_id})
 
     def punt_socket_register(self, reg, pathname,
                              header_version=1):
@@ -1246,33 +1227,3 @@ class VppPapiProvider(object):
     def want_igmp_events(self, enable=1):
         return self.api(self.papi.want_igmp_events, {'enable': enable,
                                                      'pid': os.getpid()})
-
-    def bond_create(
-            self,
-            mode,
-            lb,
-            numa_only,
-            use_custom_mac,
-            mac_address='',
-            interface_id=0xFFFFFFFF):
-        """
-        :param mode: mode
-        :param lb: load balance
-        :param numa_only: tx on local numa node for lacp mode
-        :param use_custom_mac: use custom mac
-        :param mac_address: mac address
-        :param interface_id: custom interface ID
-        """
-        return self.api(
-            self.papi.bond_create,
-            {'mode': mode,
-             'lb': lb,
-             'numa_only': numa_only,
-             'use_custom_mac': use_custom_mac,
-             'mac_address': mac_address,
-             'id': interface_id
-             })
-
-    def pipe_delete(self, parent_sw_if_index):
-        return self.api(self.papi.pipe_delete,
-                        {'parent_sw_if_index': parent_sw_if_index})

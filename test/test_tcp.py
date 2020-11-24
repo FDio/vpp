@@ -19,7 +19,7 @@ class TestTCP(VppTestCase):
 
     def setUp(self):
         super(TestTCP, self).setUp()
-        self.vapi.session_enable_disable(is_enabled=1)
+        self.vapi.session_enable_disable(is_enable=1)
         self.create_loopback_interfaces(2)
 
         table_id = 0
@@ -46,7 +46,7 @@ class TestTCP(VppTestCase):
             i.unconfig_ip4()
             i.set_table_ip4(0)
             i.admin_down()
-        self.vapi.session_enable_disable(is_enabled=0)
+        self.vapi.session_enable_disable(is_enable=0)
         super(TestTCP, self).tearDown()
 
     def test_tcp_transfer(self):
@@ -97,11 +97,11 @@ class TestTCPUnitTests(VppTestCase):
 
     def setUp(self):
         super(TestTCPUnitTests, self).setUp()
-        self.vapi.session_enable_disable(is_enabled=1)
+        self.vapi.session_enable_disable(is_enable=1)
 
     def tearDown(self):
         super(TestTCPUnitTests, self).tearDown()
-        self.vapi.session_enable_disable(is_enabled=0)
+        self.vapi.session_enable_disable(is_enable=0)
 
     def test_tcp_unittest(self):
         """ TCP Unit Tests """
