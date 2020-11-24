@@ -71,7 +71,7 @@ vnet_hw_if_update_runtime_data (vnet_main_t * vnm, u32 hw_if_index)
   clib_bitmap_t *pending_int = 0;
   int last_int = -1;
 
-  log_debug ("update node '%U' triggered by interface %s",
+  log_debug ("update node '%U' triggered by interface %v",
 	     format_vlib_node_name, vm, node_index, hi->name);
 
   vec_validate (d, n_threads - 1);
@@ -116,7 +116,7 @@ vnet_hw_if_update_runtime_data (vnet_main_t * vnm, u32 hw_if_index)
     flags = vnet_sw_interface_get_flags (vnm, hi->sw_if_index);
     if ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) == 0)
       {
-        log_debug ("skip interface %s (admin down)", hi->name);
+        log_debug ("skip interface %v (admin down)", hi->name);
         continue;
       }
 
