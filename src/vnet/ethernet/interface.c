@@ -459,7 +459,7 @@ ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
       switch (opn_flags)
 	{
 	case ETHERNET_INTERFACE_FLAG_DEFAULT_L3:
-	  if (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER)
+	  if (hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_MAC_FILTER)
 	    {
 	      if (ei->flag_change (vnm, hi, opn_flags) != ~0)
 		{

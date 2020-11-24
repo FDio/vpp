@@ -272,7 +272,7 @@ vnet_hw_interface_set_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
     return 0;
 
   if (mode != VNET_HW_IF_RX_MODE_POLLING &&
-      (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE) == 0)
+      (hw->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE) == 0)
     return VNET_API_ERROR_UNSUPPORTED;
 
   if ((vec_len (hw->input_node_thread_index_by_queue) < queue_id + 1) ||
