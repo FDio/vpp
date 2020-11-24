@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6b92ff57_5475e913",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-24T19:16:10Z",
+      "side": 1,
+      "message": "Should this come out?",
+      "range": {
+        "startLine": 202,
+        "startChar": 0,
+        "endLine": 208,
+        "endChar": 41
+      },
+      "revId": "f907d0309db9cfd0919179e3b5272189f50a1443",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5b60f880_d9b48e18",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-24T19:16:10Z",
+      "side": 1,
+      "message": "Same",
+      "range": {
+        "startLine": 224,
+        "startChar": 0,
+        "endLine": 233,
+        "endChar": 41
+      },
+      "revId": "f907d0309db9cfd0919179e3b5272189f50a1443",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8785f13b_69bc0511",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-24T19:16:10Z",
+      "side": 1,
+      "message": "same",
+      "range": {
+        "startLine": 285,
+        "startChar": 7,
+        "endLine": 288,
+        "endChar": 29
+      },
+      "revId": "f907d0309db9cfd0919179e3b5272189f50a1443",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "248f3377_800619b3",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 1027,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-24T19:16:10Z",
+      "side": 1,
+      "message": "Its better to use issubclass.  I consider Enum subclassable.\nclass foo:\n    pass\nissubclass(foo,foo) \u003d True",
+      "range": {
+        "startLine": 1027,
+        "startChar": 33,
+        "endLine": 1027,
+        "endChar": 43
+      },
+      "revId": "f907d0309db9cfd0919179e3b5272189f50a1443",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
