@@ -648,7 +648,8 @@ vnet_crypto_async_reset_frame (vnet_crypto_async_frame_t * f)
 {
   vnet_crypto_async_op_id_t opt;
   ASSERT (f != 0);
-  ASSERT (f->state == VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED);
+  ASSERT ((f->state == VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED
+	   || f->state == VNET_CRYPTO_FRAME_STATE_ELT_ERROR));
   opt = f->op;
   if (CLIB_DEBUG > 0)
     clib_memset (f, 0xfe, sizeof (*f));
