@@ -292,6 +292,17 @@ int svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len,
  */
 void svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len);
 /**
+ * Enqueue array of @ref svm_fifo_seg_t in order
+ *
+ * @param f		fifo
+ * @param segs		array of segments to enqueue
+ * @param n_segs	number of segments
+ * @param allow_partial	if set partial enqueues are allowed
+ * @return		len if enqueue was successful, error otherwise
+ */
+int svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
+			       u32 n_segs, u8 allow_partial);
+/**
  * Overwrite fifo head with new data
  *
  * This should be typically used by dgram transport protocols that need
