@@ -523,8 +523,10 @@ virtio_pci_offloads (vlib_main_t * vm, virtio_if_t * vif, int gso_enabled,
 	    {
 	      vif->gso_enabled = 1;
 	      vif->csum_offload_enabled = 0;
-	      hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
-		VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+	      hw->caps |=
+		VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
+		VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
+		VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM;
 	    }
 	}
       else if (csum_offload_enabled
@@ -538,9 +540,10 @@ virtio_pci_offloads (vlib_main_t * vm, virtio_if_t * vif, int gso_enabled,
 	    {
 	      vif->csum_offload_enabled = 1;
 	      vif->gso_enabled = 0;
-	      hw->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
-	      hw->flags |=
-		VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+	      hw->caps &= ~VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO;
+	      hw->caps |=
+		VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
+		VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM;
 	    }
 	}
       else
@@ -553,8 +556,9 @@ virtio_pci_offloads (vlib_main_t * vm, virtio_if_t * vif, int gso_enabled,
 	    {
 	      vif->csum_offload_enabled = 0;
 	      vif->gso_enabled = 0;
-	      hw->flags &= ~(VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
-			     VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
+	      hw->caps &=
+		~(VNET_HW_INTERFACE_OFFLOAD_FLAG_SUPPORTS_L4_TX_CKSUM |
+		  VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO);
 	    }
 	}
     }
@@ -1505,7 +1509,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   args->sw_if_index = sw->sw_if_index;
 
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
-  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
+  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
 
   if (args->virtio_flags & VIRTIO_FLAG_BUFFERING)
     {

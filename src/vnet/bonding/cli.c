@@ -464,8 +464,9 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
    */
   if (args->gso)
     {
-      hw->flags |= (VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
-		    VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
+      hw->caps |= (VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
+		   VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
+		   VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM);
     }
   if (vlib_get_thread_main ()->n_vlib_mains > 1)
     clib_spinlock_init (&bif->lockp);
@@ -631,7 +632,7 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
 	clib_error_return (0, "bond interface cannot be added as member");
       return;
     }
-  if (bif->gso && !(mif_hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO))
+  if (bif->gso && !(mif_hw->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO))
     {
       args->rv = VNET_API_ERROR_INVALID_INTERFACE;
       args->error =

@@ -1776,7 +1776,7 @@ tcp_check_tx_offload (tcp_connection_t * tc, int is_ipv4)
     return;
 
   hw_if = vnet_get_sup_hw_interface (vnm, sw_if_idx);
-  if (hw_if->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
+  if (hw_if->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO)
     tc->cfg_flags |= TCP_CFG_F_TSO;
 }
 
