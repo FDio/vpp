@@ -246,12 +246,12 @@ vcl_session_read_ready (vcl_session_t * s)
 	  u32 max_deq;
 
 	  max_deq = svm_fifo_max_dequeue_cons (s->rx_fifo);
-	  if (max_deq <= SESSION_CONN_HDR_LEN)
+	  if (max_deq < SESSION_CONN_HDR_LEN)
 	    return 0;
 	  if (svm_fifo_peek (s->rx_fifo, 0, sizeof (ph), (u8 *) & ph) < 0)
 	    return 0;
 	  if (ph.data_length + SESSION_CONN_HDR_LEN > max_deq)
-	    return 0;
+	    return svm_fifo_has_event (s->rx_fifo) ? ph.data_length : 0;
 
 	  return ph.data_length;
 	}
