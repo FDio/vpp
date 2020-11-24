@@ -955,6 +955,45 @@ svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len)
   clib_atomic_store_rel_n (&f->tail, tail);
 }
 
+/**
+ * Enqueue data without updating tail
+ *
+ * Either copies the entire data, or copies nothing. Can be paired with
+ * @ref svm_fifo_enqueue_nocopy to split data over multiple copies before
+ * updating tail
+ *
+ * Returns len if the entire data was copied
+ * Returns error if none of the data was copied due to lack of space
+ */
+int
+svm_fifo_enqueue_nocommit (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
+{
+  u32 tail, head, free_count, enq_pos;
+  svm_fifo_chunk_t *tail_chunk;
+
+  f_load_head_tail_prod (f, &head, &tail);
+
+  /* free space in fifo can only increase during enqueue: SPSC */
+  free_count = f_free_count (f, head, tail);
+
+  /* will this request fit? */
+  if ((len + offset) > free_count)
+    return SVM_FIFO_EFULL;
+
+  enq_pos = tail + offset;
+
+  if (f_pos_gt (enq_pos + len, f_chunk_end (f->end_chunk)))
+    {
+      if (PREDICT_FALSE (f_try_chunk_alloc (f, head, tail, offset + len)))
+	return SVM_FIFO_EGROW;
+    }
+
+  tail_chunk = svm_fifo_find_next_chunk (f, f->tail_chunk, enq_pos);
+  svm_fifo_copy_to_chunk (f, tail_chunk, enq_pos, src, len, &tail_chunk);
+
+  return len;
+}
+
 always_inline svm_fifo_chunk_t *
 f_unlink_chunks (svm_fifo_t * f, u32 end_pos, u8 maybe_ooo)
 {

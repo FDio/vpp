@@ -632,10 +632,13 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
   hdr.rmt_port = at->rmt_port;
   clib_memcpy_fast (&hdr.lcl_ip, &at->lcl_ip, sizeof (ip46_address_t));
   hdr.lcl_port = at->lcl_port;
-  rv = svm_fifo_enqueue (f, sizeof (hdr), (u8 *) & hdr);
-  ASSERT (rv == sizeof (hdr));
-
-  rv = svm_fifo_enqueue (f, actual_write, data);
+  rv = svm_fifo_enqueue_nocommit (f, 0, sizeof (hdr), (u8 *) & hdr);
+  if (PREDICT_FALSE (rv < 0))
+    return rv;
+  rv = svm_fifo_enqueue_nocommit (f, sizeof (hdr), actual_write, data);
+  if (PREDICT_FALSE (rv < 0))
+    return rv;
+  svm_fifo_enqueue_nocopy (f, sizeof (hdr) + rv);
   if (do_evt)
     {
       if (rv > 0 && svm_fifo_set_event (f))

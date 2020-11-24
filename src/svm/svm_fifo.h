@@ -292,6 +292,21 @@ int svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len,
  */
 void svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len);
 /**
+ * Enqueue data without updating tail
+ *
+ * Does not maintain an out-of-order list of segments. Instead it should be
+ * paired with @ref svm_fifo_enqueue_nocopy when data must be enqueued using
+ * multiple copies before being committed in bulk. Either copies all data, or
+ * copies nothing.
+ *
+ * @param f		fifo
+ * @param offset	offset at which to copy the data
+ * @param len		len of data to copy
+ * @param src		buffer from where to copy the data
+ * @return		len if enqueue was successful, error otherwise
+ */
+int svm_fifo_enqueue_nocommit (svm_fifo_t * f, u32 offset, u32 len, u8 * src);
+/**
  * Overwrite fifo head with new data
  *
  * This should be typically used by dgram transport protocols that need

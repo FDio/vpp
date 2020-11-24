@@ -521,9 +521,12 @@ session_enqueue_dgram_connection (session_t * s,
   ASSERT (svm_fifo_max_enqueue_prod (s->rx_fifo)
 	  >= b->current_length + sizeof (*hdr));
 
-  svm_fifo_enqueue (s->rx_fifo, sizeof (session_dgram_hdr_t), (u8 *) hdr);
-  enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length,
-			       vlib_buffer_get_current (b));
+  svm_fifo_enqueue_nocommit (s->rx_fifo, 0, sizeof (session_dgram_hdr_t),
+                             (u8 *) hdr);
+  enqueued = svm_fifo_enqueue_nocommit (s->rx_fifo, sizeof (*hdr),
+                                        b->current_length,
+                                        vlib_buffer_get_current (b));
+  svm_fifo_enqueue_nocopy (s->rx_fifo, sizeof (*hdr) + enqueued);
   if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && enqueued >= 0))
     {
       in_order_off = enqueued > b->current_length ? enqueued : 0;
