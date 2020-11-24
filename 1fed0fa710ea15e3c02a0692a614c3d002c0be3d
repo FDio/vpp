@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "ab32d386_4d710994",
+        "filename": "src/vnet/classify/classify.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 461,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-11-24T18:51:54Z",
+      "side": 1,
+      "message": "While I agree with the overall goal, this isn\u0027t the patch in which to do that change.\nI would be happy to make a follow-up patch that addressed the complete API change in\none uniform effort.   Would that be OK?",
+      "parentUuid": "a2cbbb67_a5ff1497",
+      "revId": "1fed0fa710ea15e3c02a0692a614c3d002c0be3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "20bb78b8_fa922746",
         "filename": "src/vnet/classify/classify.api",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2020-11-20T15:15:23Z",
       "side": 1,
       "message": "same comment as above: I think we should use bytes and not vectors",
+      "revId": "1fed0fa710ea15e3c02a0692a614c3d002c0be3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "47d028b1_c23ace4b",
+        "filename": "src/vnet/classify/classify.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 546,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-11-24T18:51:54Z",
+      "side": 1,
+      "message": "Yes, but right now these are consistent with the other API calls.\nThey should all be changed at the same time, along with the underlying code.",
+      "parentUuid": "20bb78b8_fa922746",
       "revId": "1fed0fa710ea15e3c02a0692a614c3d002c0be3d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "f1ae24d1_957a0c89",
+        "filename": "src/vnet/classify/vnet_classify.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-11-24T18:51:54Z",
+      "side": 1,
+      "message": "Indeed.",
+      "parentUuid": "dc39b9c9_19aaf919",
+      "revId": "1fed0fa710ea15e3c02a0692a614c3d002c0be3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "9042702d_bf866a15",
         "filename": "src/vnet/classify/vnet_classify.c",
         "patchSetId": 1
@@ -64,6 +118,24 @@
       "writtenOn": "2020-11-20T15:15:23Z",
       "side": 1,
       "message": "shouldn\u0027t we check vlib_global_main.trace_filter.classify_table_index !\u003d ~0 before enabling?",
+      "revId": "1fed0fa710ea15e3c02a0692a614c3d002c0be3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cebbe304_a68e6386",
+        "filename": "src/vnet/classify/vnet_classify.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2023,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2020-11-24T18:51:54Z",
+      "side": 1,
+      "message": "I verified that both conditions:\n    vnet_is_packet_traced_inline !\u003d ~0\n    vlib_global_main.trace_filter.trace_filter_enable \u003d\u003d 1\nare checked before a packet is actually traced, so technically it won\u0027t matter.\nThat is, if this enabled flag is ON, but the table is ~0, packets traces are rejected\nin vnet_is_packet_traced_inline() anyway:\n  /* This will happen... */\n  if (pool_is_free_index (vcm-\u003etables, classify_table_index))\n    return -1;\n\nHappy to add your suggested condition here, but it shouldn\u0027t be necessary.",
+      "parentUuid": "9042702d_bf866a15",
       "revId": "1fed0fa710ea15e3c02a0692a614c3d002c0be3d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
