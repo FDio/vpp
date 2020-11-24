@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8e58ffa4_a5c0be01",
+        "filename": "src/plugins/avf/input.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 454,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-24T16:00:26Z",
+      "side": 1,
+      "message": "why not vec_foreach() ?",
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7325938c_d03973e5",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 476,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-24T16:00:26Z",
+      "side": 1,
+      "message": "why not vec_foreach() ?",
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7a4ad16c_3bdccd99",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 478,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-24T16:00:26Z",
+      "side": 1,
+      "message": "should be pv[i]",
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "20364443_9682e0f2",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-24T16:00:26Z",
+      "side": 1,
+      "message": "should be pv[i]",
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e6a9587d_02f226db",
+        "filename": "src/vlib/node_funcs.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-24T16:00:26Z",
+      "side": 1,
+      "message": "shouldn\u0027t it be better to move it after setting nm-\u003einterrupts below in case of remote interrupt?\nAlso, maybe we should rename it to \u0027interrupts_notify\u0027",
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "38e7217e_64d6eb44",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-24T16:00:26Z",
+      "side": 1,
+      "message": "device instance",
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
