@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "83a0e617_9f841650",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1350,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-11-24T10:26:38Z",
+      "side": 1,
+      "message": "Sorry for being picky, but if the rest of the code uses \"if (var \u003d\u003d constant)\" can you do the same here?",
+      "revId": "ec7c343c5993e9a345e3dbd4d14a479cd1c86129",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
