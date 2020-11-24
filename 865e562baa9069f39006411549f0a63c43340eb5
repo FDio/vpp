@@ -101,6 +101,52 @@
       "revId": "865e562baa9069f39006411549f0a63c43340eb5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f5553e74_7b8b36b0",
+        "filename": "src/vnet/interface/rx_queue_funcs.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-24T16:52:29Z",
+      "side": 1,
+      "message": "As discussed, should be moved after the clib_interrupt_set_atomic",
+      "range": {
+        "startLine": 58,
+        "startChar": 2,
+        "endLine": 58,
+        "endChar": 61
+      },
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8c7cbc0b_6a840e10",
+        "filename": "src/vppinfra/interrupt.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-24T16:52:29Z",
+      "side": 1,
+      "message": "As discussed, change all __ATOMIC_RELAXED to __ATOMIC_ACQ_REL to avoid further headache (ARM...) and guarantee compile time ordering between node interrupts and queue interrupts",
+      "range": {
+        "startLine": 86,
+        "startChar": 2,
+        "endLine": 86,
+        "endChar": 50
+      },
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
