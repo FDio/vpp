@@ -615,35 +615,35 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
 		    svm_msg_q_t * vpp_evt_q, u8 * data, u32 len, u8 evt_type,
 		    u8 do_evt, u8 noblock)
 {
-  u32 max_enqueue, actual_write;
   session_dgram_hdr_t hdr;
   int rv;
 
-  max_enqueue = svm_fifo_max_enqueue_prod (f);
-  if (max_enqueue < (sizeof (session_dgram_hdr_t) + len))
+  if (svm_fifo_max_enqueue_prod (f) < (sizeof (session_dgram_hdr_t) + len))
     return 0;
 
-  max_enqueue -= sizeof (session_dgram_hdr_t);
-  actual_write = clib_min (len, max_enqueue);
-  hdr.data_length = actual_write;
+  hdr.data_length = len;
   hdr.data_offset = 0;
   clib_memcpy_fast (&hdr.rmt_ip, &at->rmt_ip, sizeof (ip46_address_t));
   hdr.is_ip4 = at->is_ip4;
   hdr.rmt_port = at->rmt_port;
   clib_memcpy_fast (&hdr.lcl_ip, &at->lcl_ip, sizeof (ip46_address_t));
   hdr.lcl_port = at->lcl_port;
-  rv = svm_fifo_enqueue (f, sizeof (hdr), (u8 *) & hdr);
-  ASSERT (rv == sizeof (hdr));
 
-  rv = svm_fifo_enqueue (f, actual_write, data);
+  /* *INDENT-OFF* */
+  svm_fifo_seg_t segs[2] = {{ (u8 *) &hdr, sizeof (hdr) }, { data, len }};
+  /* *INDENT-ON* */
+
+  rv = svm_fifo_enqueue_segments (f, segs, 2, 0 /* allow partial */ );
+  if (PREDICT_FALSE (rv < 0))
+    return 0;
+
   if (do_evt)
     {
-      if (rv > 0 && svm_fifo_set_event (f))
+      if (svm_fifo_set_event (f))
 	app_send_io_evt_to_vpp (vpp_evt_q, f->master_session_index, evt_type,
 				noblock);
     }
-  ASSERT (rv);
-  return rv;
+  return len;
 }
 
 always_inline int

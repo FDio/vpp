@@ -516,22 +516,49 @@ session_enqueue_dgram_connection (session_t * s,
 				  session_dgram_hdr_t * hdr,
 				  vlib_buffer_t * b, u8 proto, u8 queue_event)
 {
-  int enqueued = 0, rv, in_order_off;
+  int rv;
 
   ASSERT (svm_fifo_max_enqueue_prod (s->rx_fifo)
 	  >= b->current_length + sizeof (*hdr));
 
-  svm_fifo_enqueue (s->rx_fifo, sizeof (session_dgram_hdr_t), (u8 *) hdr);
-  enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length,
-			       vlib_buffer_get_current (b));
-  if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && enqueued >= 0))
+  if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
     {
-      in_order_off = enqueued > b->current_length ? enqueued : 0;
-      rv = session_enqueue_chain_tail (s, b, in_order_off, 1);
-      if (rv > 0)
-	enqueued += rv;
+      /* *INDENT-OFF* */
+      svm_fifo_seg_t segs[2] = {
+	  { (u8 *) hdr, sizeof (*hdr) },
+	  { vlib_buffer_get_current (b), b->current_length }
+      };
+      /* *INDENT-ON* */
+
+      rv = svm_fifo_enqueue_segments (s->rx_fifo, segs, 2,
+				      0 /* allow_partial */ );
     }
-  if (queue_event)
+  else
+    {
+      vlib_main_t *vm = vlib_get_main ();
+      svm_fifo_seg_t *segs = 0, *seg;
+      vlib_buffer_t *it = b;
+      u32 n_segs = 1;
+
+      vec_add2 (segs, seg, 1);
+      seg->data = (u8 *) hdr;
+      seg->len = sizeof (*hdr);
+      while (it)
+	{
+	  vec_add2 (segs, seg, 1);
+	  seg->data = vlib_buffer_get_current (it);
+	  seg->len = it->current_length;
+	  n_segs++;
+	  if (!(it->flags & VLIB_BUFFER_NEXT_PRESENT))
+	    break;
+	  it = vlib_get_buffer (vm, it->next_buffer);
+	}
+      rv = svm_fifo_enqueue_segments (s->rx_fifo, segs, n_segs,
+				      0 /* allow partial */ );
+      vec_free (segs);
+    }
+
+  if (queue_event && rv > 0)
     {
       /* Queue RX event on this fifo. Eventually these will need to be flushed
        * by calling stream_server_flush_enqueue_events () */
@@ -546,7 +573,7 @@ session_enqueue_dgram_connection (session_t * s,
 
       session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
     }
-  return enqueued;
+  return rv > 0 ? rv : 0;
 }
 
 int
