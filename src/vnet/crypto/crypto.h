@@ -566,13 +566,15 @@ vnet_crypto_async_submit_open_frame (vlib_main_t * vm,
   vnet_crypto_async_op_id_t opt = frame->op;
   u32 i = vlib_num_workers () > 0;
 
-  int ret = (cm->enqueue_handlers[frame->op]) (vm, frame);
+  frame->state = VNET_CRYPTO_FRAME_STATE_PENDING;
   frame->enqueue_thread_index = vm->thread_index;
+
+  int ret = (cm->enqueue_handlers[frame->op]) (vm, frame);
+
   clib_bitmap_set_no_check (cm->async_active_ids, opt, 1);
   if (PREDICT_TRUE (ret == 0))
     {
       vnet_crypto_async_frame_t *nf = 0;
-      frame->state = VNET_CRYPTO_FRAME_STATE_PENDING;
       pool_get_aligned (ct->frame_pool, nf, CLIB_CACHE_LINE_BYTES);
       if (CLIB_DEBUG > 0)
 	clib_memset (nf, 0xfe, sizeof (*nf));
@@ -580,6 +582,10 @@ vnet_crypto_async_submit_open_frame (vlib_main_t * vm,
       nf->op = opt;
       nf->n_elts = 0;
       ct->frames[opt] = nf;
+    }
+  else
+    {
+      frame->state = VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
     }
 
   if (cm->dispatch_mode == VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT)
