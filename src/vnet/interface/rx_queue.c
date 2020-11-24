@@ -89,7 +89,7 @@ vnet_hw_if_register_rx_queue (vnet_main_t *vnm, u32 hw_if_index, u32 queue_id,
   rxq->mode = VNET_HW_IF_RX_MODE_POLLING;
   rxq->file_index = ~0;
 
-  log_debug ("register: interface %s queue-id %u thread %u", hi->name,
+  log_debug ("register: interface %v queue-id %u thread %u", hi->name,
 	     queue_id, thread_index);
 
   return queue_index;
@@ -114,7 +114,7 @@ vnet_hw_if_unregister_rx_queue (vnet_main_t *vnm, u32 queue_index)
 	break;
       }
 
-  log_debug ("unregister: interface %s queue-id %u", hi->name, rxq->queue_id);
+  log_debug ("unregister: interface %v queue-id %u", hi->name, rxq->queue_id);
   pool_put_index (im->hw_if_rx_queues, queue_index);
 }
 
@@ -123,7 +123,7 @@ vnet_hw_if_unregister_all_rx_queues (vnet_main_t *vnm, u32 hw_if_index)
 {
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
 
-  log_debug ("unregister_all: interface %s", hi->name);
+  log_debug ("unregister_all: interface %v", hi->name);
 
   for (int i = 0; i < vec_len (hi->rx_queue_indices); i++)
     vnet_hw_if_unregister_rx_queue (vnm, hi->rx_queue_indices[i]);
@@ -140,7 +140,7 @@ vnet_hw_if_set_rx_queue_file_index (vnet_main_t *vnm, u32 queue_index,
 
   rxq->file_index = file_index;
   clib_file_set_polling_thread (&file_main, file_index, rxq->thread_index);
-  log_debug ("set_file_index: interface %s queue-id %u file-index %u",
+  log_debug ("set_file_index: interface %v queue-id %u file-index %u",
 	     hi->name, rxq->queue_id, file_index);
 }
 
@@ -150,7 +150,7 @@ vnet_hw_if_set_input_node (vnet_main_t *vnm, u32 hw_if_index, u32 node_index)
   vlib_main_t *vm = vlib_get_main ();
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
   hi->input_node_index = node_index;
-  log_debug ("set_input_node: node %U for interface %s", format_vlib_node_name,
+  log_debug ("set_input_node: node %U for interface %v", format_vlib_node_name,
 	     vm, node_index, hi->name);
 }
 
@@ -169,7 +169,7 @@ vnet_hw_if_set_rx_queue_mode (vnet_main_t *vnm, u32 queue_index,
 
   if (rxq->mode == mode)
     {
-      log_debug ("set_rx_queue_mode: interface %s queue-id %u mode "
+      log_debug ("set_rx_queue_mode: interface %v queue-id %u mode "
 		 "unchanged (%U)",
 		 hi->name, rxq->queue_id, format_vnet_hw_if_rx_mode, mode);
       return 0;
@@ -181,7 +181,7 @@ vnet_hw_if_set_rx_queue_mode (vnet_main_t *vnm, u32 queue_index,
 						       rxq->queue_id, mode);
       if (err)
 	{
-	  log_err ("setting rx mode on the interface %s queue-id %u failed.\n"
+	  log_err ("setting rx mode on the interface %v queue-id %u failed.\n"
 		   "   %U",
 		   hi->name, rxq->queue_id, format_clib_error, err);
 	  clib_error_free (err);
@@ -190,7 +190,7 @@ vnet_hw_if_set_rx_queue_mode (vnet_main_t *vnm, u32 queue_index,
     }
 
   rxq->mode = mode;
-  log_debug ("set_rx_queue_mode: interface %s queue-id %u mode set to %U",
+  log_debug ("set_rx_queue_mode: interface %v queue-id %u mode set to %U",
 	     hi->name, rxq->queue_id, format_vnet_hw_if_rx_mode, mode);
   return 0;
 }
@@ -214,7 +214,7 @@ vnet_hw_if_set_rx_queue_thread_index (vnet_main_t *vnm, u32 queue_index,
   if (rxq->file_index != ~0)
     clib_file_set_polling_thread (&file_main, rxq->file_index, thread_index);
 
-  log_debug ("set_rx_queue_thread_index: interface %s queue-id %u "
+  log_debug ("set_rx_queue_thread_index: interface %v queue-id %u "
 	     "thread-index set to %u",
 	     hi->name, rxq->queue_id, thread_index);
 }
