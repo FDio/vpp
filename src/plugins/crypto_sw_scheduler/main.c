@@ -88,10 +88,8 @@ crypto_sw_scheduler_frame_enqueue (vlib_main_t * vm,
       u32 n_elts = frame->n_elts, i;
       for (i = 0; i < n_elts; i++)
 	frame->elts[i].status = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
-      frame->state = VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
       return -1;
     }
-  frame->state = VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED;
   q->jobs[head & CRYPTO_SW_SCHEDULER_QUEUE_MASK] = frame;
   head += 1;
   CLIB_MEMORY_STORE_BARRIER ();

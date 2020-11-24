@@ -412,7 +412,6 @@ cryptodev_mark_frame_err_status (vnet_crypto_async_frame_t * f,
 
   for (i = 0; i < n_elts; i++)
     f->elts[i].status = s;
-  f->state = VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
 }
 
 static_always_inline rte_iova_t
