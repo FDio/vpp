@@ -218,8 +218,19 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
   ip6_mfib_interface_enable_disable (sw_if_index, 1);
   ip6_sw_interface_enable_disable (sw_if_index, 1);
 
-  il->il_mcast_adj = adj_mcast_add_or_lock (FIB_PROTOCOL_IP6,
-                                            VNET_LINK_IP6, sw_if_index);
+  /* create the adj needed for sending IPv6 multicast traffic */
+  if (vnet_sw_interface_is_p2p (vnm, sw_if_index))
+    {
+      /* point-2-point interfaces: install a rewrite/nbr adj instead */
+      const ip46_address_t zero = ip46_address_initializer;
+      il->il_mcast_adj = adj_nbr_add_or_lock (FIB_PROTOCOL_IP6, VNET_LINK_IP6,
+                                              &zero, sw_if_index);
+    }
+  else
+    {
+      il->il_mcast_adj = adj_mcast_add_or_lock (FIB_PROTOCOL_IP6,
+                                                VNET_LINK_IP6, sw_if_index);
+    }
 
   /* inform all register clients */
   ip6_link_delegate_id_t id;

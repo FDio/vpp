@@ -492,6 +492,37 @@ class TestGRE(VppTestCase):
                 self.logger.error(ppp("Tx:", tx))
                 raise
 
+    def test_ip6_enable(self):
+        """ GRE IPv6 enable test
+        Test scenario:
+            - ipv6 can be enabled on a GRE interface
+        """
+        gre_if = VppGreInterface(self,
+                                 self.pg0.local_ip6,
+                                 self.pg0.remote_ip6)
+        gre_if.add_vpp_config()
+
+        gre_if.admin_up()
+
+        gre_if.ip6_enable()
+
+        #
+        # An RS from a link source address
+        #  - expect an RA in return
+        #
+        gre_if.ip6_ra_config()
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(dst=self.pg0.local_ip6, src=self.pg0.remote_ip6) /
+             GRE() /
+             IPv6(dst=gre_if.local_ip6_ll, src=gre_if.remote_ip6_ll) /
+             ICMPv6ND_RS())
+        pkts = [p]
+        self.send_and_expect(self.pg0, pkts, self.pg0)
+
+        gre_if.ip6_disable()
+
+        gre_if.remove_vpp_config()
+
     def test_gre(self):
         """ GRE IPv4 tunnel Tests """
 

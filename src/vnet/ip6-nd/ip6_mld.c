@@ -368,14 +368,14 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
     ip6_link_get_mcast_adj (sw_if_index);
   b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
-  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "ip6-rewrite-mcast");
+  const ip_adjacency_t *adj = adj_get (vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 
-  f = vlib_get_frame_to_node (vm, node->index);
+  f = vlib_get_frame_to_node (vm, adj->ia_node_index);
   to_next = vlib_frame_vector_args (f);
   to_next[0] = bo0;
   f->n_vectors = 1;
 
-  vlib_put_frame_to_node (vm, node->index, f);
+  vlib_put_frame_to_node (vm, adj->ia_node_index, f);
   return;
 }
 
