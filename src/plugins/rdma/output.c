@@ -100,7 +100,7 @@ rdma_device_output_tx_mlx5_doorbell (rdma_txq_t * txq, rdma_mlx5_wqe_t * last,
   CLIB_MEMORY_STORE_BARRIER ();
   txq->dv_sq_dbrec[MLX5_SND_DBR] = htobe32 (tail);
   CLIB_COMPILER_BARRIER ();
-  txq->dv_sq_db[0] = *(u64 *) (txq->dv_sq_wqes + (txq->tail & sq_mask));
+  txq->dv_sq_db[0] = *(u64 *) last;
 }
 
 static_always_inline void
