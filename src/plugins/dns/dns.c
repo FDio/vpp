@@ -72,7 +72,7 @@ dns_enable_disable (dns_main_t * dm, int is_enable)
 {
   vlib_thread_main_t *tm = &vlib_thread_main;
   u32 n_vlib_mains = tm->n_vlib_mains;
-  vlib_main_t *vm = dm->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
 
   /* Create the resolver process if not done already */
   vnet_dns_create_resolver_process (dm);
@@ -221,7 +221,7 @@ void
 vnet_dns_send_dns4_request (dns_main_t * dm,
 			    dns_cache_entry_t * ep, ip4_address_t * server)
 {
-  vlib_main_t *vm = dm->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   f64 now = vlib_time_now (vm);
   u32 bi;
   vlib_buffer_t *b;
@@ -288,7 +288,7 @@ vnet_dns_send_dns4_request (dns_main_t * dm,
 found_src_address:
 
   /* Go get a buffer */
-  if (vlib_buffer_alloc (dm->vlib_main, &bi, 1) != 1)
+  if (vlib_buffer_alloc (vlib_get_main (), &bi, 1) != 1)
     return;
 
   b = vlib_get_buffer (vm, bi);
@@ -340,7 +340,7 @@ void
 vnet_dns_send_dns6_request (dns_main_t * dm,
 			    dns_cache_entry_t * ep, ip6_address_t * server)
 {
-  vlib_main_t *vm = dm->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   f64 now = vlib_time_now (vm);
   u32 bi;
   vlib_buffer_t *b;
@@ -397,7 +397,7 @@ vnet_dns_send_dns6_request (dns_main_t * dm,
 found_src_address:
 
   /* Go get a buffer */
-  if (vlib_buffer_alloc (dm->vlib_main, &bi, 1) != 1)
+  if (vlib_buffer_alloc (vlib_get_main (), &bi, 1) != 1)
     return;
 
   b = vlib_get_buffer (vm, bi);
@@ -654,7 +654,7 @@ vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
 
 out:
 
-  vlib_process_signal_event_mt (dm->vlib_main,
+  vlib_process_signal_event_mt (vlib_get_main (),
 				dm->resolver_process_node_index,
 				DNS_RESOLVER_EVENT_PENDING, 0);
 }
@@ -818,7 +818,7 @@ vnet_dns_resolve_name (dns_main_t * dm, u8 * name, dns_pending_request_t * t,
   dns_pending_request_t *pr;
   int count;
 
-  now = vlib_time_now (dm->vlib_main);
+  now = vlib_time_now (vlib_get_main ());
 
   /* In case we can't actually answer the question right now... */
   *retp = 0;
@@ -1074,7 +1074,7 @@ vnet_dns_cname_indirection_nolock (dns_main_t * dm, u32 ep_index, u8 * reply)
 
 found_last_request:
 
-  now = vlib_time_now (dm->vlib_main);
+  now = vlib_time_now (vlib_get_main ());
   cname = vnet_dns_labels_to_name (rr->rdata, reply, &pos2);
   /* Save the cname */
   vec_add1 (cname, 0);
@@ -2739,7 +2739,7 @@ void
 vnet_send_dns4_reply (dns_main_t * dm, dns_pending_request_t * pr,
 		      dns_cache_entry_t * ep, vlib_buffer_t * b0)
 {
-  vlib_main_t *vm = dm->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   u32 bi = 0;
   fib_prefix_t prefix;
   fib_node_index_t fei;
@@ -2998,7 +2998,6 @@ dns_init (vlib_main_t * vm)
 {
   dns_main_t *dm = &dns_main;
 
-  dm->vlib_main = vm;
   dm->vnet_main = vnet_get_main ();
   dm->name_cache_size = 1000;
   dm->max_ttl_in_seconds = 86400;

@@ -123,7 +123,6 @@ typedef struct
   u16 msg_id_base;
 
   /* convenience */
-  vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
   api_main_t *api_main;
 } dns_main_t;
