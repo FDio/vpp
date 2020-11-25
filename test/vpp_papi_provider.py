@@ -103,7 +103,6 @@ defaultmapping = {
     'vxlan_gpe_add_del_tunnel': {'mcast_sw_if_index': 4294967295, 'is_add': 1,
                                  'protocol': 3, },
     'want_bfd_events': {'enable_disable': 1, },
-    'want_igmp_events': {'enable': 1, },
     'want_interface_events': {'enable_disable': 1, },
     'want_l2_macs_events': {'enable_disable': 1, 'pid': os.getpid(), },
 }
@@ -1176,54 +1175,3 @@ class VppPapiProvider(object):
     def gbp_vxlan_tunnel_dump(self):
         """ GBP VXLAN tunnel add/del """
         return self.api(self.papi.gbp_vxlan_tunnel_dump, {})
-
-    def igmp_enable_disable(self, sw_if_index, enable, host):
-        """ Enable/disable IGMP on a given interface """
-        return self.api(self.papi.igmp_enable_disable,
-                        {'enable': enable,
-                         'mode': host,
-                         'sw_if_index': sw_if_index})
-
-    def igmp_proxy_device_add_del(self, vrf_id, sw_if_index, add):
-        """ Add/del IGMP proxy device """
-        return self.api(self.papi.igmp_proxy_device_add_del,
-                        {'vrf_id': vrf_id, 'sw_if_index': sw_if_index,
-                         'add': add})
-
-    def igmp_proxy_device_add_del_interface(self, vrf_id, sw_if_index, add):
-        """ Add/del interface to/from IGMP proxy device """
-        return self.api(self.papi.igmp_proxy_device_add_del_interface,
-                        {'vrf_id': vrf_id, 'sw_if_index': sw_if_index,
-                         'add': add})
-
-    def igmp_listen(self, filter, sw_if_index, saddrs, gaddr):
-        """ Listen for new (S,G) on specified interface
-
-        :param enable: add/del
-        :param sw_if_index: interface sw index
-        :param saddr: source ip4 addr
-        :param gaddr: group ip4 addr
-        """
-        return self.api(self.papi.igmp_listen,
-                        {
-                            'group':
-                                {
-                                    'filter': filter,
-                                    'sw_if_index': sw_if_index,
-                                    'n_srcs': len(saddrs),
-                                    'saddrs': saddrs,
-                                    'gaddr': gaddr
-                                }
-                        })
-
-    def igmp_clear_interface(self, sw_if_index):
-        """ Remove all (S,G)s from specified interface
-            doesn't send IGMP report!
-        """
-        return self.api(
-            self.papi.igmp_clear_interface, {
-                'sw_if_index': sw_if_index})
-
-    def want_igmp_events(self, enable=1):
-        return self.api(self.papi.want_igmp_events, {'enable': enable,
-                                                     'pid': os.getpid()})
