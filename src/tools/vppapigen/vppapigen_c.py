@@ -32,6 +32,7 @@ import shutil
 
 process_imports = False
 
+
 ###############################################################################
 class ToJSON():
     '''Class to generate functions converting from VPP binary API to JSON.'''
