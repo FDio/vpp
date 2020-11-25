@@ -123,7 +123,6 @@ typedef struct
   u16 msg_id_base;
 
   /* convenience */
-  vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
   api_main_t *api_main;
 } dns_main_t;
@@ -168,33 +167,36 @@ typedef enum
     DNS46_REPLY_N_ERROR,
 } dns46_reply_error_t;
 
-void vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep);
-int
-vnet_dns_cname_indirection_nolock (dns_main_t * dm, u32 ep_index, u8 * reply);
+void vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
+			    dns_cache_entry_t * ep);
+int vnet_dns_cname_indirection_nolock (vlib_main_t * vm, dns_main_t * dm,
+				       u32 ep_index, u8 * reply);
 
 int vnet_dns_delete_entry_by_index_nolock (dns_main_t * dm, u32 index);
 
 int
-vnet_dns_resolve_name (dns_main_t * dm, u8 * name, dns_pending_request_t * t,
-		       dns_cache_entry_t ** retp);
+vnet_dns_resolve_name (vlib_main_t * vm, dns_main_t * dm, u8 * name,
+		       dns_pending_request_t * t, dns_cache_entry_t ** retp);
 
 void
-vnet_dns_send_dns6_request (dns_main_t * dm,
+vnet_dns_send_dns6_request (vlib_main_t * vm, dns_main_t * dm,
 			    dns_cache_entry_t * ep, ip6_address_t * server);
 void
-vnet_dns_send_dns4_request (dns_main_t * dm,
+vnet_dns_send_dns4_request (vlib_main_t * vm, dns_main_t * dm,
 			    dns_cache_entry_t * ep, ip4_address_t * server);
 
-void vnet_send_dns4_reply (dns_main_t * dm, dns_pending_request_t * t,
-			   dns_cache_entry_t * ep, vlib_buffer_t * b0);
+void vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
+			   dns_pending_request_t * t, dns_cache_entry_t * ep,
+			   vlib_buffer_t * b0);
 
-void vnet_send_dns6_reply (dns_main_t * dm, dns_pending_request_t * t,
-			   dns_cache_entry_t * ep, vlib_buffer_t * b0);
+void vnet_send_dns6_reply (vlib_main_t * vm, dns_main_t * dm,
+			   dns_pending_request_t * t, dns_cache_entry_t * ep,
+			   vlib_buffer_t * b0);
 
 u8 *vnet_dns_labels_to_name (u8 * label, u8 * full_text,
 			     u8 ** parse_from_here);
 
-void vnet_dns_create_resolver_process (dns_main_t * dm);
+void vnet_dns_create_resolver_process (vlib_main_t * vm, dns_main_t * dm);
 
 format_function_t format_dns_reply;
 

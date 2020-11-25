@@ -36,9 +36,8 @@ vnet_dns_response_to_name (u8 * response,
 			   u32 * min_ttlp);
 
 static void
-resolve_event (dns_main_t * dm, f64 now, u8 * reply)
+resolve_event (vlib_main_t * vm, dns_main_t * dm, f64 now, u8 * reply)
 {
-  vlib_main_t *vm = dm->vlib_main;
   dns_pending_request_t *pr;
   dns_header_t *d;
   u32 pool_index;
@@ -76,7 +75,7 @@ resolve_event (dns_main_t * dm, f64 now, u8 * reply)
     vec_free (ep->dns_response);
 
   /* Handle [sic] recursion AKA CNAME indirection */
-  rv = vnet_dns_cname_indirection_nolock (dm, pool_index, reply);
+  rv = vnet_dns_cname_indirection_nolock (vm, dm, pool_index, reply);
 
   /* CNAME found, further resolution pending, we're done here */
   if (rv > 0)
@@ -109,7 +108,7 @@ resolve_event (dns_main_t * dm, f64 now, u8 * reply)
 	    clib_warning ("Try server %U", format_ip6_address,
 			  dm->ip6_name_servers + ep->server_rotor);
 	  vnet_dns_send_dns6_request
-	    (dm, ep, dm->ip6_name_servers + ep->server_rotor);
+	    (vm, dm, ep, dm->ip6_name_servers + ep->server_rotor);
 	}
       else
 	{
@@ -132,7 +131,7 @@ resolve_event (dns_main_t * dm, f64 now, u8 * reply)
 	    clib_warning ("Try server %U", format_ip4_address,
 			  dm->ip4_name_servers + ep->server_rotor);
 	  vnet_dns_send_dns4_request
-	    (dm, ep, dm->ip4_name_servers + ep->server_rotor);
+	    (vm, dm, ep, dm->ip4_name_servers + ep->server_rotor);
 	}
       dns_cache_unlock (dm);
       return;
@@ -222,9 +221,9 @@ reply:
 	case DNS_PEER_PENDING_IP_TO_NAME:
 	case DNS_PEER_PENDING_NAME_TO_IP:
 	  if (pr->is_ip6)
-	    vnet_send_dns6_reply (dm, pr, ep, 0 /* allocate a buffer */ );
+	    vnet_send_dns6_reply (vm, dm, pr, ep, 0 /* allocate a buffer */ );
 	  else
-	    vnet_send_dns4_reply (dm, pr, ep, 0 /* allocate a buffer */ );
+	    vnet_send_dns4_reply (vm, dm, pr, ep, 0 /* allocate a buffer */ );
 	  break;
 	default:
 	  clib_warning ("request type %d unknown", pr->request_type);
@@ -286,7 +285,7 @@ reply:
 }
 
 static void
-retry_scan (dns_main_t * dm, f64 now)
+retry_scan (vlib_main_t * vm, dns_main_t * dm, f64 now)
 {
   int i;
   dns_cache_entry_t *ep;
@@ -297,7 +296,7 @@ retry_scan (dns_main_t * dm, f64 now)
       ep = pool_elt_at_index (dm->entries, dm->unresolved_entries[i]);
 
       ASSERT ((ep->flags & DNS_CACHE_ENTRY_FLAG_VALID) == 0);
-      vnet_send_dns_request (dm, ep);
+      vnet_send_dns_request (vm, dm, ep);
       dns_cache_unlock (dm);
     }
 }
@@ -330,11 +329,11 @@ dns_resolver_process (vlib_main_t * vm,
 
 	case DNS_RESOLVER_EVENT_RESOLVED:
 	  for (i = 0; i < vec_len (event_data); i++)
-	    resolve_event (dm, now, (u8 *) event_data[i]);
+	    resolve_event (vm, dm, now, (u8 *) event_data[i]);
 	  break;
 
 	case ~0:		/* timeout */
-	  retry_scan (dm, now);
+	  retry_scan (vm, dm, now);
 	  break;
 	}
       vec_reset_length (event_data);
@@ -347,7 +346,7 @@ dns_resolver_process (vlib_main_t * vm,
 }
 
 void
-vnet_dns_create_resolver_process (dns_main_t * dm)
+vnet_dns_create_resolver_process (vlib_main_t * vm, dns_main_t * dm)
 {
   /* Already created the resolver process? */
   if (dm->resolver_process_node_index > 0)
@@ -355,7 +354,7 @@ vnet_dns_create_resolver_process (dns_main_t * dm)
 
   /* No, create it now and make a note of the node index */
   dm->resolver_process_node_index = vlib_process_create
-    (dm->vlib_main, "dns-resolver-process",
+    (vm, "dns-resolver-process",
      dns_resolver_process, 16 /* log2_n_stack_bytes */ );
 }
 
