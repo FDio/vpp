@@ -27,12 +27,12 @@
 #define af_xdp_log(lvl, dev, f, ...) \
   vlib_log(lvl, af_xdp_main.log_class, "%v: " f, (dev)->name, ##__VA_ARGS__)
 
-#define foreach_af_xdp_device_flags \
-  _(0, INITIALIZED, "initialized") \
-  _(1, ERROR, "error") \
-  _(2, ADMIN_UP, "admin-up") \
-  _(4, LINK_UP, "link-up") \
-  _(8, ZEROCOPY, "zero-copy") \
+#define foreach_af_xdp_device_flags                                           \
+  _ (0, INITIALIZED, "initialized")                                           \
+  _ (1, ERROR, "error")                                                       \
+  _ (2, ADMIN_UP, "admin-up")                                                 \
+  _ (3, LINK_UP, "link-up")                                                   \
+  _ (4, ZEROCOPY, "zero-copy")
 
 enum
 {
@@ -62,6 +62,8 @@ typedef struct
   /* fields below are accessed in control-plane only (cold) */
 
   uword file_index;
+  u32 queue_index;
+  u8 is_polling;
 } af_xdp_rxq_t;
 
 typedef struct

@@ -25,6 +25,7 @@
 #include <vppinfra/linux/sysfs.h>
 #include <vppinfra/unix.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/interface/rx_queue_funcs.h>
 #include "af_xdp.h"
 
 af_xdp_main_t af_xdp_main;
@@ -98,7 +99,6 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
   if (ad->hw_if_index)
     {
       vnet_hw_interface_set_flags (vnm, ad->hw_if_index, 0);
-      vnet_hw_interface_unassign_rx_thread (vnm, ad->hw_if_index, 0);
       ethernet_delete_interface (vnm, ad->hw_if_index);
     }
 
@@ -292,13 +292,23 @@ af_xdp_get_numa (const char *ifname)
 static clib_error_t *
 af_xdp_device_rxq_read_ready (clib_file_t * f)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-  const af_xdp_main_t *am = &af_xdp_main;
-  const u32 dev_instance = f->private_data >> 16;
-  const u16 qid = f->private_data & 0xffff;
-  const af_xdp_device_t *ad = vec_elt_at_index (am->devices, dev_instance);
-  vnet_device_input_set_interrupt_pending (vnm, ad->hw_if_index, qid);
+  vnet_hw_if_rx_queue_set_int_pending (vnet_get_main (), f->private_data);
   return 0;
+}
+
+static void
+af_xdp_device_set_rxq_mode (af_xdp_rxq_t *rxq, int is_polling)
+{
+  clib_file_main_t *fm = &file_main;
+  clib_file_t *f;
+
+  if (rxq->is_polling == is_polling)
+    return;
+
+  f = clib_file_get (fm, rxq->file_index);
+  fm->file_update (f, is_polling ? UNIX_FILE_UPDATE_DELETE :
+				   UNIX_FILE_UPDATE_ADD);
+  rxq->is_polling = !!is_polling;
 }
 
 void
@@ -418,18 +428,24 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   for (i = 0; i < vec_len (ad->rxqs); i++)
     {
       af_xdp_rxq_t *rxq = vec_elt_at_index (ad->rxqs, i);
+      rxq->queue_index = vnet_hw_if_register_rx_queue (
+	vnm, ad->hw_if_index, i, VNET_HW_IF_RXQ_THREAD_ANY);
+      u8 *desc = format (0, "%U rxq %d", format_af_xdp_device_name,
+			 ad->dev_instance, i);
       clib_file_t f = {
 	.file_descriptor = rxq->xsk_fd,
 	.flags = UNIX_FILE_EVENT_EDGE_TRIGGERED,
-	.private_data = (uword) ad->dev_instance << 16 | (uword) i,
+	.private_data = rxq->queue_index,
 	.read_function = af_xdp_device_rxq_read_ready,
-	.description =
-	  format (0, "%U rxq %d", format_af_xdp_device_name, ad->dev_instance,
-		  i),
+	.description = desc,
       };
       rxq->file_index = clib_file_add (&file_main, &f);
-      vnet_hw_interface_assign_rx_thread (vnm, ad->hw_if_index, i, ~0);
+      vnet_hw_if_set_rx_queue_file_index (vnm, rxq->queue_index,
+					  rxq->file_index);
+      af_xdp_device_set_rxq_mode (rxq, 1 /* polling */);
     }
+
+  vnet_hw_if_update_runtime_data (vnm, ad->hw_if_index);
 
   /* buffer template */
   vec_validate_aligned (ad->buffer_template, 1, CLIB_CACHE_LINE_BYTES);
@@ -472,6 +488,37 @@ af_xdp_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return 0;
 }
 
+static clib_error_t *
+af_xdp_interface_rx_mode_change (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
+				 vnet_hw_if_rx_mode mode)
+{
+  af_xdp_main_t *am = &af_xdp_main;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  af_xdp_device_t *ad = pool_elt_at_index (am->devices, hw->dev_instance);
+  af_xdp_rxq_t *rxq = vec_elt_at_index (ad->rxqs, qid);
+
+  switch (mode)
+    {
+    case VNET_HW_IF_RX_MODE_UNKNOWN:
+    case VNET_HW_IF_NUM_RX_MODES: /* fallthrough */
+      return clib_error_create ("uknown rx mode - doing nothing");
+    case VNET_HW_IF_RX_MODE_DEFAULT:
+    case VNET_HW_IF_RX_MODE_POLLING: /* fallthrough */
+      if (rxq->is_polling)
+	break;
+      af_xdp_device_set_rxq_mode (rxq, 1 /* polling */);
+      break;
+    case VNET_HW_IF_RX_MODE_INTERRUPT:
+    case VNET_HW_IF_RX_MODE_ADAPTIVE: /* fallthrough */
+      if (0 == rxq->is_polling)
+	break;
+      af_xdp_device_set_rxq_mode (rxq, 0 /* interrupt */);
+      break;
+    }
+
+  return 0;
+}
+
 static void
 af_xdp_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
 				u32 node_index)
@@ -507,12 +554,12 @@ af_xdp_clear (u32 dev_instance)
 }
 
 /* *INDENT-OFF* */
-VNET_DEVICE_CLASS (af_xdp_device_class) =
-{
+VNET_DEVICE_CLASS (af_xdp_device_class) = {
   .name = "AF_XDP interface",
   .format_device = format_af_xdp_device,
   .format_device_name = format_af_xdp_device_name,
   .admin_up_down_function = af_xdp_interface_admin_up_down,
+  .rx_mode_change_function = af_xdp_interface_rx_mode_change,
   .rx_redirect_to_node = af_xdp_set_interface_next_node,
   .tx_function_n_errors = AF_XDP_TX_N_ERROR,
   .tx_function_error_strings = af_xdp_tx_func_error_strings,
