@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "433c365b_f871a7a5",
+        "filename": "extras/pg/checksum_offload.pg",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T15:18:38Z",
+      "side": 1,
+      "message": "shouldn\u0027t we also set individual offload types (eg. ip, tcp, udp)?",
+      "revId": "fd9c8b2036e7ea6b620458956871e585dc0d499e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "90a31ca3_122ce2b7",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T15:18:38Z",
+      "side": 1,
+      "message": "I think we need to check whether we need to clear the offload flag here?\nMaybe introducing helpers could be a good idea, eg.\n\n  static_always_inline void\n  vnet_buffer_offload_flags_set (vlib_buffer_t *b, u32 flags)\n  {\n    vnet_buffer2 (b)-\u003eoflags |\u003d flags;\n    b-\u003eflags |\u003d VNET_BUFFER_F_OFFLOAD;\n  }\n\n  static_always_inline void\n  vnet_buffer_offload_flags_clear (vlib_buffer_t *b, u32 flags)\n  {\n    vnet_buffer2 (b)-\u003eoflags \u0026\u003d ~flags;\n    if (0 \u003d\u003d vnet_buffer2 (b)-\u003eoflags)\n      b-\u003eflags \u0026\u003d ~VNET_BUFFER_F_OFFLOAD;\n  }",
+      "revId": "fd9c8b2036e7ea6b620458956871e585dc0d499e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cbb3638c_3b943525",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T15:18:38Z",
+      "side": 1,
+      "message": "we should rename it offload and not offload_cksum to avoid another renaming later",
+      "revId": "fd9c8b2036e7ea6b620458956871e585dc0d499e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fae94574_abccb9ef",
+        "filename": "src/vnet/interface_output.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T15:18:38Z",
+      "side": 1,
+      "message": "we should also clear vnet_buffer2 (b)-\u003eoflags\nwe must try to maintain consistency between b-\u003e flags and vnet_buffer2 (b)-\u003eoflags otherwise things will break in subtile way (hence the helpers might a good idea)",
+      "revId": "fd9c8b2036e7ea6b620458956871e585dc0d499e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "acafbfe8_ea62a804",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1338,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T15:18:38Z",
+      "side": 1,
+      "message": "this is hard to read. Maybe rewrite it such as:\n\n  u32 l4_offload[2];\n  l4_offload[0] \u003d (flags[0] \u0026 VNET_BUFFER_F_OFFLOAD) \u0026\u0026 (oflags[0] \u0026 (VNET_BUFFER_OFFLOAD_F_TCP_CKSUM|VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);\n    l4_offload[1] \u003d (flags[1] \u0026 VNET_BUFFER_F_OFFLOAD) \u0026\u0026 (oflags[1] \u0026 (VNET_BUFFER_OFFLOAD_F_TCP_CKSUM|VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);\n\n  u32 good_l4_csum[2];\n  good_l4_csum[0] \u003d (flags[0] \u0026 VNET_BUFFER_F_L4_CHECKSUM_CORRECT) | l4_offload[0];\n  good_l4_csum[1] \u003d (flags[1] \u0026 VNET_BUFFER_F_L4_CHECKSUM_CORRECT) | l4_offload[1];",
+      "revId": "fd9c8b2036e7ea6b620458956871e585dc0d499e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9ab8ad4e_777024a3",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1520,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T15:18:38Z",
+      "side": 1,
+      "message": "same as above, I find it hard to read",
+      "revId": "fd9c8b2036e7ea6b620458956871e585dc0d499e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cab1b594_fd0d317d",
+        "filename": "src/vnet/ip/ip_frag.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T15:18:38Z",
+      "side": 1,
+      "message": "we might need to update b-\u003eflags too",
+      "revId": "fd9c8b2036e7ea6b620458956871e585dc0d499e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
