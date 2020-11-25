@@ -101,6 +101,12 @@ format_ip4_icmp_header (u8 * s, va_list * args)
 	      format_ip4_icmp_type_and_code, icmp->type, icmp->code,
 	      clib_net_to_host_u16 (icmp->checksum));
 
+  if ((ICMP4_echo_request == icmp->type || ICMP4_echo_reply == icmp->type)
+      && sizeof (icmp[0]) + sizeof (u16) < max_header_bytes)
+    {
+      s = format (s, " id %u", clib_net_to_host_u16 (*(u16 *) (icmp + 1)));
+    }
+
   return s;
 }
 
