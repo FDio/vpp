@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f2b99f2e_6512b18f",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-25T20:44:31Z",
+      "side": 1,
+      "message": "Why are you adding these back?  On __init__, self.type is set to self.__class__.type defined on l 206.",
+      "range": {
+        "startLine": 210,
+        "startChar": 8,
+        "endLine": 210,
+        "endChar": 29
+      },
+      "revId": "1512b164b84fea356d82f6428fb8335f1fec85d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
