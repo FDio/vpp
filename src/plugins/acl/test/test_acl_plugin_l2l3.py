@@ -538,8 +538,9 @@ class TestACLpluginL2L3(VppTestCase):
         matches = self.statistics.get_counter('/acl/%d/matches' % acl_idx)
         self.logger.info("stat seg for ACL %d: %s" % (acl_idx, repr(matches)))
         total_count = 0
-        for p in matches[0]:
-            total_count = total_count + p['packets']
+        for m in matches:
+            for p in m:
+                total_count = total_count + p['packets']
         self.assertEqual(total_count, packet_count)
 
     def run_traffic_ip46_x_to_y(self, bridged_to_routed,
