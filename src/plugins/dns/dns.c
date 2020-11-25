@@ -1471,12 +1471,6 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
     rmp->retval = clib_host_to_net_u32 (rv);
   }));
   /* *INDENT-ON* */
-
-  /*
-   * dns_resolve_name leaves the cache locked when it returns
-   * a cached result, so unlock it here.
-   */
-  dns_cache_unlock (dm);
 }
 
 static void
@@ -1551,12 +1545,6 @@ vl_api_dns_resolve_ip_t_handler (vl_api_dns_resolve_ip_t * mp)
     rmp->retval = clib_host_to_net_u32 (rv);
   }));
   /* *INDENT-ON* */
-
-  /*
-   * vnet_dns_resolve_name leaves the cache locked when it returns
-   * a cached result, so unlock it here.
-   */
-  dns_cache_unlock (dm);
 }
 
 static clib_error_t *
