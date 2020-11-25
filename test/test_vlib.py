@@ -44,7 +44,7 @@ class TestVlib(VppTestCase):
                 "   incrementing 30\n"
                 "   }\n"
                 "}\n",
-                "elog trace dispatch",
+                "event-logger trace dispatch",
                 "event-logger stop",
                 "event-logger clear",
                 "event-logger resize 102400",
@@ -131,14 +131,14 @@ class TestVlib(VppTestCase):
                 "   incrementing 30\n"
                 "   }\n"
                 "}\n",
-                "elog trace",
-                "elog trace enable",
-                "elog trace api cli barrier",
+                "event-logger trace",
+                "event-logger trace enable",
+                "event-logger trace api cli barrier",
                 "pa en",
                 "show interface bogus",
-                "elog trace disable api cli barrier",
-                "elog trace circuit-node ethernet-input",
-                "elog trace circuit-node ethernet-input disable",
+                "event-logger trace disable api cli barrier",
+                "event-logger trace circuit-node ethernet-input",
+                "event-logger trace circuit-node ethernet-input disable",
                 "clear interfaces",
                 "test vlib",
                 "test vlib2",
