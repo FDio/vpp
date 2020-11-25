@@ -110,7 +110,7 @@ class QUICTestCase(VppTestCase):
 class QUICEchoIntTestCase(QUICTestCase):
     """QUIC Echo Internal Test Case"""
     test_bytes = ' test-bytes'
-    extra_vpp_punt_config = ["session", "{", "enable", "}"]
+    extra_vpp_punt_config = ["session", "{", "enable", "poll-main", "}"]
 
     def setUp(self):
         super(QUICEchoIntTestCase, self).setUp()
@@ -177,7 +177,7 @@ class QUICEchoExtTestCase(QUICTestCase):
     server_fifo_size = "1M"
     client_fifo_size = "4M"
     extra_vpp_punt_config = ["session", "{",
-                             "enable", "evt_qs_memfd_seg",
+                             "enable", "poll-main", "evt_qs_memfd_seg",
                              "evt_qs_seg_size", "64M",
                              "event-queue-length", f"{evt_q_len}",
                              "preallocated-sessions", "1024",
