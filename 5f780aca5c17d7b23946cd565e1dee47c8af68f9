@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9599e80e_087d216a",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T08:38:19Z",
+      "side": 1,
+      "message": "please remove that :)",
+      "revId": "5f780aca5c17d7b23946cd565e1dee47c8af68f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d7384a4a_0a381ed1",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T08:38:19Z",
+      "side": 1,
+      "message": "Good catch! But why not just\n    txq-\u003edv_sq_db[0] \u003d *(u64 *) last;",
+      "revId": "5f780aca5c17d7b23946cd565e1dee47c8af68f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
