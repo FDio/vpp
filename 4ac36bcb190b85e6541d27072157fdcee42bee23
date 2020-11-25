@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "63bc58ee_d759b2d5",
+        "filename": "src/plugins/dns/dns.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-11-25T16:22:31Z",
+      "side": 0,
+      "message": "You could leave this and continue to initialize it to \u0026vlib_global_main",
+      "revId": "4ac36bcb190b85e6541d27072157fdcee42bee23",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

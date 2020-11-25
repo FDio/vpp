@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cb740f99_2913a05c",
+        "filename": "src/plugins/dns/dns.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-11-25T16:22:31Z",
+      "side": 1,
+      "message": "Please use vm. vlib_get_main() is not free.",
+      "revId": "ca1dfc271390f6ab95a4a4365408beedd1e9754f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "69edaa9a_3a68fb21",
+        "filename": "src/plugins/dns/dns.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 400,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-11-25T16:22:31Z",
+      "side": 1,
+      "message": "please use vm. vlib_get_main() is not free",
+      "revId": "ca1dfc271390f6ab95a4a4365408beedd1e9754f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "089358a3_75b1aaed",
+        "filename": "src/plugins/dns/resolver_process.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-11-25T16:22:31Z",
+      "side": 1,
+      "message": "This won\u0027t hurt anything, but it\u0027s not necessary.",
+      "revId": "ca1dfc271390f6ab95a4a4365408beedd1e9754f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "22473d0c_83393e7f",
+        "filename": "src/plugins/dns/resolver_process.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 358,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2020-11-25T16:22:31Z",
+      "side": 1,
+      "message": "This won\u0027t hurt anything, but it\u0027s not necessary.",
+      "revId": "ca1dfc271390f6ab95a4a4365408beedd1e9754f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
