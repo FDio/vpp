@@ -96,6 +96,8 @@ def run(args, filename, s):
                               if o.__class__.__name__ == 'Union']))
     j['enums'] = (walk_enums([o for o in s['types']
                               if o.__class__.__name__ == 'Enum']))
+    j['enumflags'] = (walk_enums([o for o in s['types']
+                                  if o.__class__.__name__ == 'EnumFlag']))
     j['services'] = walk_services(s['Service'])
     j['options'] = s['Option']
     j['aliases'] = {o.name:o.alias for o in s['types'] if o.__class__.__name__ == 'Using'}
