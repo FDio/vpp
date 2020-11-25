@@ -38,7 +38,7 @@ vnet_dns_response_to_name (u8 * response,
 static void
 resolve_event (dns_main_t * dm, f64 now, u8 * reply)
 {
-  vlib_main_t *vm = dm->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   dns_pending_request_t *pr;
   dns_header_t *d;
   u32 pool_index;
@@ -355,7 +355,7 @@ vnet_dns_create_resolver_process (dns_main_t * dm)
 
   /* No, create it now and make a note of the node index */
   dm->resolver_process_node_index = vlib_process_create
-    (dm->vlib_main, "dns-resolver-process",
+    (vlib_get_main (), "dns-resolver-process",
      dns_resolver_process, 16 /* log2_n_stack_bytes */ );
 }
 
