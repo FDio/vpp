@@ -20,6 +20,7 @@
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
+#include <vnet/interface/rx_queue_funcs.h>
 
 #include <rdma/rdma.h>
 
@@ -1019,24 +1020,25 @@ VLIB_NODE_FN (rdma_input_node) (vlib_main_t * vm,
 {
   u32 n_rx = 0;
   rdma_main_t *rm = &rdma_main;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
-  vnet_device_and_queue_t *dq;
+  vnet_hw_if_rxq_poll_vector_t *pv;
+  pv = vnet_hw_if_get_rxq_poll_vector (vm, node);
+  for (int i = 0; i < vec_len (pv); i++)
+    {
+      rdma_device_t *rd;
+      rd = vec_elt_at_index (rm->devices, pv[i].dev_instance);
+      if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_ADMIN_UP) == 0)
+	continue;
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
-  {
-    rdma_device_t *rd;
-    rd = vec_elt_at_index (rm->devices, dq->dev_instance);
-    if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_ADMIN_UP) == 0)
-      continue;
+      if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_ERROR))
+	continue;
 
-    if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_ERROR))
-      continue;
-
-    if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
-      n_rx += rdma_device_input_inline (vm, node, frame, rd, dq->queue_id, 1);
-    else
-      n_rx += rdma_device_input_inline (vm, node, frame, rd, dq->queue_id, 0);
-  }
+      if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
+	n_rx +=
+	  rdma_device_input_inline (vm, node, frame, rd, pv[i].queue_id, 1);
+      else
+	n_rx +=
+	  rdma_device_input_inline (vm, node, frame, rd, pv[i].queue_id, 0);
+    }
   return n_rx;
 }
 
