@@ -22,6 +22,30 @@
       "revId": "5ed119de65737e254d3b1957670d63a714656ce1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "66625e28_b6162060",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1005,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T17:32:04Z",
+      "side": 1,
+      "message": "it happens when running\n  make test-debug VPP_EXTRA_CMAKE_ARGS\u003d-DVPP_ENABLE_SANITIZE_ADDR\u003dON CC\u003dgcc-10 TEST\u003dtest_session.TestSession.test_segment_manager_alloc\n\nwith Andrew \u0027workers 2\u0027 change in make test.\nWhen the crash happens, *n_fifo_pairs is 0 and pairs_to_alloc is 1, leading to a batch_size of 0.\nHowever *n_fifo_pairs has been decremented already, when entering the function it is 1.",
+      "parentUuid": "086a9f80_ffb5feec",
+      "range": {
+        "startLine": 1005,
+        "startChar": 6,
+        "endLine": 1005,
+        "endChar": 8
+      },
+      "revId": "5ed119de65737e254d3b1957670d63a714656ce1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
