@@ -103,6 +103,10 @@ tcp_debug_fn (vlib_main_t * vm, unformat_input_t * input,
 
   tdm->grp_dbg_lvl[group] = level;
 
+  /* Make sure LC is enabled otherwise tracks are not initialized */
+  if (!tdm->grp_dbg_lvl[TCP_EVT_GRP_LC])
+    tdm->grp_dbg_lvl[TCP_EVT_GRP_LC] = 1;
+
 done:
 
   unformat_free (line_input);
