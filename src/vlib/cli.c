@@ -1477,8 +1477,9 @@ done:
 #endif
 
 static clib_error_t *
-elog_trace_command_fn (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+event_logger_trace_command_fn (vlib_main_t * vm,
+			       unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   int enable = 1;
@@ -1567,21 +1568,32 @@ print_status:
  *
  * @cliexpar
  * @clistart
- * elog trace api cli barrier
- * elog trace api cli barrier disable
- * elog trace dispatch
- * elog trace circuit-node ethernet-input
- * elog trace
+ * event-logger trace api cli barrier
+ * event-logger trace api cli barrier disable
+ * event-logger trace dispatch
+ * event-logger trace circuit-node ethernet-input
  * @cliend
- * @cliexcmd{elog trace [api][cli][barrier][disable]}
+ * @cliexcmd{event-logger trace [api][cli][barrier][disable]}
 ?*/
 /* *INDENT-OFF* */
+VLIB_CLI_COMMAND (event_logger_trace_command, static) =
+{
+  .path = "event-logger trace",
+  .short_help = "event-logger trace [api][cli][barrier][dispatch]\n"
+  "[circuit-node <name> e.g. ethernet-input][disable]",
+  .function = event_logger_trace_command_fn,
+};
+
+/*
+ * CSIT unfortunately depends on "elog trace ...", so provide an alias
+ * This will be removed at some point, so please don't use it...
+ */
 VLIB_CLI_COMMAND (elog_trace_command, static) =
 {
   .path = "elog trace",
   .short_help = "elog trace [api][cli][barrier][dispatch]\n"
-  "[circuit-node <name> e.g. ethernet-input][disable]",
-  .function = elog_trace_command_fn,
+  "    [circuit-node <name> e.g. ethernet-input][disable]",
+  .function = event_logger_trace_command_fn,
 };
 /* *INDENT-ON* */
 
