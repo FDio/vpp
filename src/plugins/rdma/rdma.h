@@ -90,6 +90,7 @@ typedef struct
   u32 wqe_cnt;
   u32 wq_stride;
   u32 buf_sz;
+  u32 queue_index;
   union
   {
     struct
