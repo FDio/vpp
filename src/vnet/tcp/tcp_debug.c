@@ -53,6 +53,29 @@ tcp_debug_show_groups (void)
 		     tdm->grp_dbg_lvl[i]);
 }
 
+static void
+tcp_debug_check_lc (void)
+{
+  tcp_dbg_main_t *tdm = &tcp_dbg_main;
+  int i, have_enabled = 0;
+
+  if (tdm->grp_dbg_lvl[TCP_EVT_GRP_LC])
+    return;
+
+  for (i = 0; i < TCP_EVT_N_GRP; i++)
+    {
+      if (tdm->grp_dbg_lvl[i])
+	{
+	  have_enabled = 1;
+	  break;
+	}
+    }
+
+  /* Make sure LC is enabled for track initialization */
+  if (have_enabled)
+    tdm->grp_dbg_lvl[TCP_EVT_GRP_LC] = 1;
+}
+
 static clib_error_t *
 tcp_debug_fn (vlib_main_t * vm, unformat_input_t * input,
 	      vlib_cli_command_t * cmd)
@@ -102,6 +125,8 @@ tcp_debug_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   tdm->grp_dbg_lvl[group] = level;
+
+  tcp_debug_check_lc ();
 
 done:
 
