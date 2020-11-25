@@ -1,0 +1,276 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a3de2b42_fd58efe8",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1639,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "should be hi-\u003ecaps",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5d21599d_83cce94f",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1641,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "shouldn\u0027t it use the new flags instead?",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "949a3006_75cbfc8d",
+        "filename": "src/plugins/lldp/lldp_cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "hi-\u003ecaps",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "147b9147_394183c4",
+        "filename": "src/plugins/lldp/lldp_cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "hi-\u003ecaps",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4b7b8a53_dde48692",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 857,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "shouldn\u0027t it use the new flags instead?",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bf9b7e3a_edfa0a5c",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 861,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "shouldn\u0027t it use the new flags instead?",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f52a34c7_8de13eaf",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 904,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "shouldn\u0027t it use the new flags instead?",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f46f676f_868a4aa5",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 916,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "shouldn\u0027t it use the new flags instead?",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8833cb9d_f65c6548",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 968,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "hi-\u003ecaps",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "97407f9d_35573819",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 973,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "hi-\u003ecaps\nshouldn\u0027t it use the new flags instead?",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a3d98b0a_aac4828d",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 560,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "shouldn\u0027t it use the new flags instead?",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2b22de26_285d4e3d",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 512,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "shouldn\u0027t it use the new flags instead?",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b874f05e_089a9800",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "are those defines for backward compatibility? If so, I wonder if we want to keep them. Breaking at compile time is good :)",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5b211552_096ec6c7",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 557,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "RX",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4f1080f4_1ed7b39d",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 558,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "RX",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e4908c38_af2139f2",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T16:27:37Z",
+      "side": 1,
+      "message": "shouldn\u0027t it use the new flags instead?",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
