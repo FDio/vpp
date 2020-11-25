@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7b529eed_03903b7e",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T12:42:00Z",
+      "side": 1,
+      "message": "ikev2_generate_sa_init_data can be called from datapath (ikev2_node_internal), maybe a better alternative would be return an error code instead eg.\n\n  enum { IKEV2_GENERATE_SA_INIT_OK, IKEV2_GENERATE_SA_INIT_ERR_NO_DH, IKEV2_GENERATE_SA_INIT_ERR_UNSUPPORTED_DH }\n\nand then call log (ikev2_initiate_sa_init) or elog (ikev2_node_internal) in the caller",
+      "revId": "04d5cccb00ef9f276f495e9a9fb112db19cc69f5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8627c0eb_6bcf66fa",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 4192,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T12:42:00Z",
+      "side": 1,
+      "message": "this leaks resources in case of errors: we allocate a buffer and also do vector ops (vec_add() etc) above. Those must be freed in case of error I think",
+      "revId": "04d5cccb00ef9f276f495e9a9fb112db19cc69f5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
