@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "94df6da6_ab4c9b27",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-11-25T08:23:32Z",
+      "side": 1,
+      "message": "Why do you think so?\nThere are still manual_print types.\nCould possibly do more clean up of manual_endian, but I think that should be in a separate patch.",
+      "parentUuid": "6b92ff57_5475e913",
+      "range": {
+        "startLine": 202,
+        "startChar": 0,
+        "endLine": 208,
+        "endChar": 41
+      },
+      "revId": "f907d0309db9cfd0919179e3b5272189f50a1443",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5b60f880_d9b48e18",
         "filename": "src/tools/vppapigen/vppapigen.py",
         "patchSetId": 12
@@ -45,6 +69,30 @@
       "revId": "f907d0309db9cfd0919179e3b5272189f50a1443",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c611811d_0e9508f5",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-11-25T08:23:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5b60f880_d9b48e18",
+      "range": {
+        "startLine": 224,
+        "startChar": 0,
+        "endLine": 233,
+        "endChar": 41
+      },
+      "revId": "f907d0309db9cfd0919179e3b5272189f50a1443",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "6e95b145_a6ef540d",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-11-25T08:23:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8785f13b_69bc0511",
+      "range": {
+        "startLine": 285,
+        "startChar": 7,
+        "endLine": 288,
+        "endChar": 29
+      },
+      "revId": "f907d0309db9cfd0919179e3b5272189f50a1443",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "248f3377_800619b3",
         "filename": "src/tools/vppapigen/vppapigen.py",
         "patchSetId": 12
@@ -82,6 +154,30 @@
       "writtenOn": "2020-11-24T19:16:10Z",
       "side": 1,
       "message": "Its better to use issubclass.  I consider Enum subclassable.\nclass foo:\n    pass\nissubclass(foo,foo) \u003d True",
+      "range": {
+        "startLine": 1027,
+        "startChar": 33,
+        "endLine": 1027,
+        "endChar": 43
+      },
+      "revId": "f907d0309db9cfd0919179e3b5272189f50a1443",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b20202c2_ba08b474",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 1027,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-11-25T08:23:32Z",
+      "side": 1,
+      "message": "Should perhaps move away from isinstance altogether. Wouldn\u0027t do that as part of this patch though. As this is just repeating existing pattern.",
+      "parentUuid": "248f3377_800619b3",
       "range": {
         "startLine": 1027,
         "startChar": 33,
