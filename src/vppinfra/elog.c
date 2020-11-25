@@ -484,18 +484,29 @@ elog_nsec_per_clock (elog_main_t * em)
 					    &em->init_time));
 }
 
-__clib_export void
-elog_alloc (elog_main_t * em, u32 n_events)
+static void
+elog_alloc_internal (elog_main_t * em, u32 n_events, int free_ring)
 {
-  if (em->event_ring)
+  if (free_ring && em->event_ring)
     vec_free (em->event_ring);
 
   /* Ring size must be a power of 2. */
   em->event_ring_size = n_events = max_pow2 (n_events);
 
-  /* Leave an empty ievent at end so we can always speculatively write
-     and event there (possibly a long form event). */
-  vec_resize_aligned (em->event_ring, n_events, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (em->event_ring, n_events, CLIB_CACHE_LINE_BYTES);
+  _vec_len (em->event_ring) = n_events;
+}
+
+__clib_export void
+elog_alloc (elog_main_t * em, u32 n_events)
+{
+  elog_alloc_internal (em, n_events, 1 /* free ring */ );
+}
+
+__clib_export void
+elog_resize (elog_main_t * em, u32 n_events)
+{
+  elog_alloc_internal (em, n_events, 0 /* do not free ring */ );
 }
 
 __clib_export void

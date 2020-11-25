@@ -823,8 +823,8 @@ VLIB_CLI_COMMAND (elog_restart_cli, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-elog_resize (vlib_main_t * vm,
-	     unformat_input_t * input, vlib_cli_command_t * cmd)
+elog_resize_command_fn (vlib_main_t * vm,
+			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   elog_main_t *em = &vm->elog_main;
   u32 tmp;
@@ -848,7 +848,7 @@ elog_resize (vlib_main_t * vm,
 VLIB_CLI_COMMAND (elog_resize_cli, static) = {
   .path = "event-logger resize",
   .short_help = "event-logger resize <nnn>",
-  .function = elog_resize,
+  .function = elog_resize_command_fn,
 };
 /* *INDENT-ON* */
 
@@ -2051,8 +2051,9 @@ vlib_main_configure (vlib_main_t * vm, unformat_input_t * input)
 	turn_on_mem_trace = 1;
 
       else if (unformat (input, "elog-events %d",
-			 &vm->elog_main.event_ring_size))
-	;
+			 &vm->configured_elog_ring_size))
+	vm->configured_elog_ring_size =
+	  1 << max_log2 (vm->configured_elog_ring_size);
       else if (unformat (input, "elog-post-mortem-dump"))
 	vm->elog_post_mortem_dump = 1;
       else if (unformat (input, "buffer-alloc-success-rate %f",
@@ -2133,11 +2134,10 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 
   vm->queue_signal_callback = placeholder_queue_signal_callback;
 
-  /* Turn on event log. */
-  if (!vm->elog_main.event_ring_size)
-    vm->elog_main.event_ring_size = 128 << 10;
-  elog_init (&vm->elog_main, vm->elog_main.event_ring_size);
-  elog_enable_disable (&vm->elog_main, 1);
+  /* Reconfigure event log which is enabled very early */
+  if (vm->configured_elog_ring_size &&
+      vm->configured_elog_ring_size != vm->elog_main.event_ring_size)
+    elog_resize (&vm->elog_main, vm->configured_elog_ring_size);
   vl_api_set_elog_main (&vm->elog_main);
   (void) vl_api_set_elog_trace_api_messages (1);
 

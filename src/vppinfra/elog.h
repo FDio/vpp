@@ -526,6 +526,7 @@ void unserialize_elog_main (serialize_main_t * m, va_list * va);
 
 void elog_init (elog_main_t * em, u32 n_events);
 void elog_alloc (elog_main_t * em, u32 n_events);
+void elog_resize (elog_main_t * em, u32 n_events);
 
 #ifdef CLIB_UNIX
 always_inline clib_error_t *
