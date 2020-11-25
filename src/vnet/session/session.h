@@ -171,6 +171,9 @@ typedef struct session_main_
   /** Enable session manager at startup */
   u8 session_enable_asap;
 
+  /** Poll session node in main thread */
+  u8 poll_main;
+
   /** vpp fifo event queue configured length */
   u32 configured_event_queue_length;
 
