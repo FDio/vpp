@@ -1780,8 +1780,8 @@ session_node_enable_disable (u8 is_en)
 	                                  session_queue_process_node.index,
 	                                  SESSION_Q_PROCESS_STOP, 0);
 	  }
-
-	continue;
+	if (!session_main.poll_main)
+	  continue;
       }
     vlib_node_set_state (this_vlib_main, session_queue_node.index,
                          state);
@@ -1818,6 +1818,7 @@ session_main_init (vlib_main_t * vm)
 
   smm->is_enabled = 0;
   smm->session_enable_asap = 0;
+  smm->poll_main = 0;
   smm->session_baseva = HIGH_SEGMENT_BASEVA;
 
 #if (HIGH_SEGMENT_BASEVA > (4ULL << 30))
@@ -1935,6 +1936,8 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "use-app-socket-api"))
 	appns_sapi_enable ();
+      else if (unformat (input, "poll-main"))
+	smm->poll_main = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);

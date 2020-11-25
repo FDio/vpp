@@ -49,7 +49,8 @@ class VCLAppWorker(Worker):
 
 class VCLTestCase(VppTestCase):
     """ VCL Test Class """
-
+    extra_vpp_punt_config = ["session", "{", "poll-main", "}"]
+    
     @classmethod
     def setUpClass(cls):
         super(VCLTestCase, cls).setUpClass()
