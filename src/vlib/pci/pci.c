@@ -83,7 +83,7 @@ show_pci_fn (vlib_main_t * vm,
 				  format_unformat_error, input);
     }
 
-  vlib_cli_output (vm, "%-13s%-5s%-12s%-13s%-16s%-32s%s",
+  vlib_cli_output (vm, "%-13s%-5s%-12s%-14s%-16s%-32s%s",
 		   "Address", "Sock", "VID:PID", "Link Speed", "Driver",
 		   "Product Name", "Vital Product Data");
 
@@ -104,7 +104,7 @@ show_pci_fn (vlib_main_t * vm,
         if (d->numa_node >= 0)
 	  s = format (s, "  %d", d->numa_node);
 
-        vlib_cli_output (vm, "%-13U%-5v%04x:%04x   %-13U%-16s%-32v%U",
+        vlib_cli_output (vm, "%-13U%-5v%04x:%04x   %-14U%-16s%-32v%U",
 			 format_vlib_pci_addr, addr, s,
 			 d->vendor_id, d->device_id,
 			 format_vlib_pci_link_speed, d,
@@ -164,6 +164,8 @@ format_vlib_pci_link_speed (u8 * s, va_list * va)
     return format (s, "5.0 GT/s x%u", width);
   if ((r->link_status & 0xf) == 3)
     return format (s, "8.0 GT/s x%u", width);
+  if ((r->link_status & 0xf) == 4)
+    return format (s, "16.0 GT/s x%u", width);
   return format (s, "unknown");
 }
 
