@@ -485,6 +485,13 @@ fsh_try_alloc_fifo_hdr_batch (fifo_segment_header_t * fsh,
   u8 *fmem;
   int i;
 
+  ASSERT (batch_size != 0);
+  if (PREDICT_FALSE (0 == batch_size))
+    {
+      clib_warning ("BUG: batch_size == 0");
+      return -1;
+    }
+
   size = (uword) sizeof (*f) * batch_size;
 
   oldheap = ssvm_push_heap (fsh->ssvm_sh);
@@ -521,6 +528,13 @@ fsh_try_alloc_chunk_batch (fifo_segment_header_t * fsh,
   void *oldheap;
   u8 *cmem;
   int i;
+
+  ASSERT (batch_size != 0);
+  if (PREDICT_FALSE (0 == batch_size))
+    {
+      clib_warning ("BUG: batch_size == 0");
+      return -1;
+    }
 
   rounded_data_size = fs_freelist_index_to_size (fl_index);
   total_chunk_bytes = (uword) batch_size *rounded_data_size;
@@ -995,6 +1009,8 @@ fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
 
       /* Account for the pairs allocated */
       *n_fifo_pairs -= alloc_now;
+      if (0 == *n_fifo_pairs)
+	break;
     }
 }
 
