@@ -9,6 +9,7 @@ from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 from vpp_ip import DpoProto, INVALID_INDEX, VppIpAddressUnion, \
     VppIpMPrefix
 from ipaddress import ip_network, ip_address, IPv4Network, IPv6Network
+from vpp_papi.vpp_stats import combined_counter_sum
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
@@ -598,12 +599,14 @@ class VppIpRoute(VppObject):
                 self.prefix))
 
     def get_stats_to(self):
-        c = self._test.statistics.get_counter("/net/route/to")
-        return c[0][self.stats_index]
+        return combined_counter_sum(
+            self._test.statistics.get_counter("/net/route/to"),
+            self.stats_index)
 
     def get_stats_via(self):
-        c = self._test.statistics.get_counter("/net/route/via")
-        return c[0][self.stats_index]
+        return combined_counter_sum(
+            self._test.statistics.get_counter("/net/route/via"),
+            self.stats_index)
 
 
 class VppIpMRoute(VppObject):
@@ -687,8 +690,9 @@ class VppIpMRoute(VppObject):
                                    self.prefix.length))
 
     def get_stats(self):
-        c = self._test.statistics.get_counter("/net/mroute")
-        return c[0][self.stats_index]
+        return combined_counter_sum(
+            self._test.statistics.get_counter("/net/mroute"),
+            self.stats_index)
 
 
 class VppMFibSignal(object):
@@ -834,9 +838,11 @@ class VppMplsRoute(VppObject):
                    20 + self.eos_bit))
 
     def get_stats_to(self):
-        c = self._test.statistics.get_counter("/net/route/to")
-        return c[0][self.stats_index]
+        return combined_counter_sum(
+            self._test.statistics.get_counter("/net/route/to"),
+            self.stats_index)
 
     def get_stats_via(self):
-        c = self._test.statistics.get_counter("/net/route/via")
-        return c[0][self.stats_index]
+        return combined_counter_sum(
+            self._test.statistics.get_counter("/net/route/via"),
+            self.stats_index)

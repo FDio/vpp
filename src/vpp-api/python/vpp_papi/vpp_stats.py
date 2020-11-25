@@ -116,6 +116,13 @@ def simple_counter_vec_list(api, e):
     return vec
 
 
+def simple_counter_sum(cs):
+    s = 0
+    for c in cs:
+        s += c
+    return s
+
+
 def vlib_counter_dict(c):
     return {'packets': c.packets,
             'bytes': c.bytes}
@@ -129,6 +136,14 @@ def combined_counter_vec_list(api, e):
                          for interfaces in range(len_interfaces)]
         vec.append(if_per_thread)
     return vec
+
+
+def combined_counter_sum(cs, i):
+    s = {'packets': 0, 'bytes': 0}
+    for c in cs:
+        s['bytes'] += c[i]['bytes']
+        s['packets'] += c[i]['packets']
+    return s
 
 
 def error_vec_list(api, e):

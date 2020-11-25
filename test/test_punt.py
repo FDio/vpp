@@ -28,6 +28,7 @@ from scapy.layers.inet6 import IPv6, ICMPv6DestUnreach
 from scapy.contrib.ospf import OSPF_Hdr, OSPFv3_Hello
 from framework import VppTestCase, VppTestRunner
 
+from vpp_papi.vpp_stats import combined_counter_sum
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import VppEnum
@@ -1150,8 +1151,8 @@ class TestPunt(VppTestCase):
         self.assertEqual(stats, 2*NUM_PKTS)
 
         stats = self.statistics.get_counter("/net/punt")
-        self.assertEqual(stats[0][r4]['packets'], NUM_PKTS)
-        self.assertEqual(stats[0][r6]['packets'], NUM_PKTS)
+        self.assertEqual(combined_counter_sum(stats, r4)['packets'], NUM_PKTS)
+        self.assertEqual(combined_counter_sum(stats, r6)['packets'], NUM_PKTS)
 
         #
         # use the test CLI to test a client that punts exception
@@ -1178,8 +1179,10 @@ class TestPunt(VppTestCase):
             self.assertEqual(p6[IPv6].hlim, rx[IPv6].hlim)
 
         stats = self.statistics.get_counter("/net/punt")
-        self.assertEqual(stats[0][r4]['packets'], 2*NUM_PKTS)
-        self.assertEqual(stats[0][r6]['packets'], 2*NUM_PKTS)
+        self.assertEqual(combined_counter_sum(stats, r4)['packets'],
+                         2*NUM_PKTS)
+        self.assertEqual(combined_counter_sum(stats, r6)['packets'],
+                         2*NUM_PKTS)
 
         #
         # add another registration for the same reason to send packets
@@ -1225,8 +1228,10 @@ class TestPunt(VppTestCase):
             self.assertEqual(p6[IPv6].hlim, rx[IPv6].hlim)
 
         stats = self.statistics.get_counter("/net/punt")
-        self.assertEqual(stats[0][r4]['packets'], 3*NUM_PKTS)
-        self.assertEqual(stats[0][r6]['packets'], 3*NUM_PKTS)
+        self.assertEqual(combined_counter_sum(stats, r4)['packets'],
+                         3*NUM_PKTS)
+        self.assertEqual(combined_counter_sum(stats, r6)['packets'],
+                         3*NUM_PKTS)
 
         self.logger.info(self.vapi.cli("show vlib graph punt-dispatch"))
         self.logger.info(self.vapi.cli("show punt client"))

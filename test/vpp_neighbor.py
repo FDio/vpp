@@ -7,6 +7,7 @@
 from ipaddress import ip_address
 from vpp_object import VppObject
 from vpp_papi import mac_pton, VppEnum
+from vpp_papi.vpp_stats import combined_counter_sum
 try:
     text_type = unicode
 except NameError:
@@ -83,5 +84,6 @@ class VppNeighbor(VppObject):
         return ("%d:%s" % (self.sw_if_index, self.nbr_addr))
 
     def get_stats(self):
-        c = self._test.statistics.get_counter("/net/adjacency")
-        return c[0][self.stats_index]
+        return combined_counter_sum(
+            self._test.statistics.get_counter("/net/adjacency"),
+            self.stats_index)
