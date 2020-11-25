@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "086a9f80_ffb5feec",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1005,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-11-25T17:01:38Z",
+      "side": 1,
+      "message": "Break at this point if alloc_now is 0 and the rest of the code/checks are not needed. What config lead to this? That is, what\u0027s pairs_to_alloc and n_fifo_pairs?",
+      "range": {
+        "startLine": 1005,
+        "startChar": 6,
+        "endLine": 1005,
+        "endChar": 8
+      },
+      "revId": "5ed119de65737e254d3b1957670d63a714656ce1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
