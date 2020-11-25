@@ -125,6 +125,12 @@ static void
 fib_entry_src_adj_remove (fib_entry_src_t *src)
 {
     src->fes_pl = FIB_NODE_INDEX_INVALID;
+
+    if (FIB_NODE_INDEX_INVALID != src->u.adj.fesa_cover)
+    {
+        fib_entry_cover_untrack(fib_entry_get(src->u.adj.fesa_cover),
+                                src->u.adj.fesa_sibling);
+    }
 }
 
 /*
@@ -311,6 +317,7 @@ fib_entry_src_adj_deactivate (fib_entry_src_t *src,
     fib_attached_export_covered_removed(cover, fib_entry_get_index(fib_entry));
 
     src->u.adj.fesa_cover = FIB_NODE_INDEX_INVALID;
+    src->u.adj.fesa_sibling = FIB_NODE_INDEX_INVALID;
 }
 
 static u8*
@@ -341,9 +348,16 @@ fib_entry_src_adj_cover_change (fib_entry_src_t *src,
                                 const fib_entry_t *fib_entry)
 {
     fib_entry_src_cover_res_t res = {
-        .install = !0,
+        .install = 0,
         .bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
     };
+
+    /*
+     * not interested in a change to the cover if the cover
+     * is not being tracked, i.e. the source is not active
+     */
+    if (FIB_NODE_INDEX_INVALID == src->u.adj.fesa_cover)
+        return res;
 
     fib_entry_src_adj_deactivate(src, fib_entry);
 
