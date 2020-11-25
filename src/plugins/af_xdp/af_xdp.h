@@ -31,8 +31,8 @@
   _(0, INITIALIZED, "initialized") \
   _(1, ERROR, "error") \
   _(2, ADMIN_UP, "admin-up") \
-  _(4, LINK_UP, "link-up") \
-  _(8, ZEROCOPY, "zero-copy") \
+  _(3, LINK_UP, "link-up") \
+  _(4, ZEROCOPY, "zero-copy") \
 
 enum
 {
@@ -62,6 +62,8 @@ typedef struct
   /* fields below are accessed in control-plane only (cold) */
 
   uword file_index;
+  u32 queue_index;
+  u8 is_polling;
 } af_xdp_rxq_t;
 
 typedef struct
