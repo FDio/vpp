@@ -16,7 +16,7 @@ try:
 except ImportError:
     import unittest
 
-from util import ppp, ppc
+from util import ppp, ppc, stats_sum
 from re import compile
 import scapy.compat
 from scapy.packet import Raw
@@ -1150,8 +1150,8 @@ class TestPunt(VppTestCase):
         self.assertEqual(stats, 2*NUM_PKTS)
 
         stats = self.statistics.get_counter("/net/punt")
-        self.assertEqual(stats[0][r4]['packets'], NUM_PKTS)
-        self.assertEqual(stats[0][r6]['packets'], NUM_PKTS)
+        self.assertEqual(stats_sum(stats, r4)['packets'], NUM_PKTS)
+        self.assertEqual(stats_sum(stats, r6)['packets'], NUM_PKTS)
 
         #
         # use the test CLI to test a client that punts exception
@@ -1178,8 +1178,8 @@ class TestPunt(VppTestCase):
             self.assertEqual(p6[IPv6].hlim, rx[IPv6].hlim)
 
         stats = self.statistics.get_counter("/net/punt")
-        self.assertEqual(stats[0][r4]['packets'], 2*NUM_PKTS)
-        self.assertEqual(stats[0][r6]['packets'], 2*NUM_PKTS)
+        self.assertEqual(stats_sum(stats, r4)['packets'], 2*NUM_PKTS)
+        self.assertEqual(stats_sum(stats, r6)['packets'], 2*NUM_PKTS)
 
         #
         # add another registration for the same reason to send packets
@@ -1225,8 +1225,8 @@ class TestPunt(VppTestCase):
             self.assertEqual(p6[IPv6].hlim, rx[IPv6].hlim)
 
         stats = self.statistics.get_counter("/net/punt")
-        self.assertEqual(stats[0][r4]['packets'], 3*NUM_PKTS)
-        self.assertEqual(stats[0][r6]['packets'], 3*NUM_PKTS)
+        self.assertEqual(stats_sum(stats, r4)['packets'], 3*NUM_PKTS)
+        self.assertEqual(stats_sum(stats, r6)['packets'], 3*NUM_PKTS)
 
         self.logger.info(self.vapi.cli("show vlib graph punt-dispatch"))
         self.logger.info(self.vapi.cli("show punt client"))

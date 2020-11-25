@@ -113,6 +113,24 @@ def check_core_path(logger, core_path):
             "   current core pattern is: %s" % corefmt)
 
 
+def stats_sum(cs, i):
+    s = {'packets': 0, 'bytes': 0}
+
+    for c in cs:
+        s['bytes'] += c[i]['bytes']
+        s['packets'] += c[i]['packets']
+    return s
+
+
+def stats_sum_simple(cs):
+    s = 0
+
+    for c in cs:
+        s += c
+
+    return s
+
+
 class NumericConstant(object):
 
     desc_dict = {}

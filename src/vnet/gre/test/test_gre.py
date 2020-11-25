@@ -17,7 +17,7 @@ from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathProto, \
     VppMplsLabel
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
-from util import ppp, ppc
+from util import ppp, ppc, stats_sum_simple
 from vpp_papi import VppEnum
 
 
@@ -49,8 +49,8 @@ class TestGREInputNodes(VppTestCase):
         self.pg0.add_stream(pkt)
         self.pg_start()
         # no tunnel created, gre-input not registered
-        err = self.statistics.get_counter(
-            '/err/ip4-local/unknown ip protocol')[0]
+        err = stats_sum_simple(self.statistics.get_counter(
+            '/err/ip4-local/unknown ip protocol'))
         self.assertEqual(err, 1)
         err_count = err
 
@@ -61,8 +61,8 @@ class TestGREInputNodes(VppTestCase):
         self.pg0.add_stream(pkt)
         self.pg_start()
         # tunnel created, gre-input registered
-        err = self.statistics.get_counter(
-            '/err/ip4-local/unknown ip protocol')[0]
+        err = stats_sum_simple(self.statistics.get_counter(
+            '/err/ip4-local/unknown ip protocol'))
         # expect no new errors
         self.assertEqual(err, err_count)
 

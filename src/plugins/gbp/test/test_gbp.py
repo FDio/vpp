@@ -3,6 +3,7 @@
 from socket import AF_INET, AF_INET6, inet_pton, inet_ntop
 import unittest
 from ipaddress import ip_address, IPv4Network, IPv6Network
+from util import stats_sum
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP, Dot1Q
@@ -532,12 +533,14 @@ class VppGbpContract(VppObject):
         return False
 
     def get_drop_stats(self):
-        c = self._test.statistics.get_counter("/net/gbp/contract/drop")
-        return c[0][self.stats_index]
+        return stats_sum(
+            self._test.statistics.get_counter("/net/gbp/contract/drop"),
+            self.stats_index)
 
     def get_permit_stats(self):
-        c = self._test.statistics.get_counter("/net/gbp/contract/permit")
-        return c[0][self.stats_index]
+        return stats_sum(
+            self._test.statistics.get_counter("/net/gbp/contract/permit"),
+            self.stats_index)
 
 
 class VppGbpVxlanTunnel(VppInterface):

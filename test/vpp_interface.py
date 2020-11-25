@@ -5,7 +5,7 @@ import abc
 import six
 from six import moves
 
-from util import Host, mk_ll_addr
+from util import Host, mk_ll_addr, stats_sum
 from vpp_papi import mac_ntop, VppEnum
 from ipaddress import IPv4Network, IPv6Network
 
@@ -479,12 +479,12 @@ class VppInterface(object):
         return self.name
 
     def get_rx_stats(self):
-        c = self.test.statistics.get_counter("^/if/rx$")
-        return c[0][self.sw_if_index]
+        return stats_sum(self.test.statistics.get_counter("^/if/rx$"),
+                         self.sw_if_index)
 
     def get_tx_stats(self):
-        c = self.test.statistics.get_counter("^/if/tx$")
-        return c[0][self.sw_if_index]
+        return stats_sum(self.test.statistics.get_counter("^/if/tx$"),
+                         self.sw_if_index)
 
     def set_l3_mtu(self, mtu):
         self.test.vapi.sw_interface_set_mtu(self.sw_if_index, [mtu, 0, 0, 0])
