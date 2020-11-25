@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 import unittest
-from vppapigen import VPPAPI, Option, ParseError, Union, foldup_crcs, global_types
+from vppapigen import VPPAPI, Option, ParseError, Union, foldup_crcs, \
+    global_types
 import vppapigen
+
 
 # TODO
 # - test parsing of options, typedefs, enums, defines
@@ -18,6 +20,7 @@ class TestVersion(unittest.TestCase):
         version_string = 'option version = "1.0.0";'
         r = self.parser.parse_string(version_string)
         self.assertTrue(isinstance(r[0], Option))
+
 
 class TestUnion(unittest.TestCase):
     @classmethod
@@ -49,7 +52,6 @@ class TestUnion(unittest.TestCase):
         self.assertTrue(r[0].vla)
         s = self.parser.process(r)
 
-
         test_string2 = '''
         union foo_union_vla2 {
         u32 a;
@@ -73,6 +75,7 @@ class TestUnion(unittest.TestCase):
         };
         '''
         self.assertRaises(ValueError, self.parser.parse_string, test_string3)
+
 
 class TestTypedef(unittest.TestCase):
     @classmethod
@@ -169,7 +172,7 @@ class TestCRC(unittest.TestCase):
         '''
         crc = get_crc(test_string, 'foo')
 
-        # modify underlaying type
+        # modify underlying type
         test_string = '''
          typedef list { u8 foo2; };
          autoreply define foo { u8 foo;  vl_api_list_t l;};
@@ -254,6 +257,100 @@ autoreply define sr_policy_add
         crc2 = get_crc(test_string, 'sr_policy_add')
 
         self.assertNotEqual(crc, crc2)
+
+
+class TestEnum(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.parser = VPPAPI()
+
+    def test_enum_as_enum(self):
+        test_string = """\
+enum tunnel_mode : u8
+{
+  /** point-to-point */
+  TUNNEL_API_MODE_P2P = 0,
+  /** multi-point */
+  TUNNEL_API_MODE_MP,
+};
+"""
+        r = self.parser.parse_string(test_string)
+        self.assertIsNotNone(r)
+        s = self.parser.process(r)
+        for o in s['types']:
+            if o.type == 'Enum':
+                self.assertEqual(o.name, "tunnel_mode")
+                break
+        else:
+            self.fail()
+
+    def test_enumflag_as_enum(self):
+        test_string = """\
+enum virtio_flags {
+        VIRTIO_API_FLAG_GSO = 1, /* enable gso on the interface */
+        VIRTIO_API_FLAG_CSUM_OFFLOAD = 2, /* enable checksum offload without gso on the interface */
+        VIRTIO_API_FLAG_GRO_COALESCE = 4, /* enable packet coalescing on tx side, provided gso enabled */
+        VIRTIO_API_FLAG_PACKED = 8, /* enable packed ring support, provided it is available from backend */
+        VIRTIO_API_FLAG_IN_ORDER = 16, /* enable in order support, provided it is available from backend */
+        VIRTIO_API_FLAG_BUFFERING = 32 [backwards_compatible], /* enable buffering to handle backend jitter/delays */
+};"""
+        r = self.parser.parse_string(test_string)
+        self.assertIsNotNone(r)
+        s = self.parser.process(r)
+        for o in s['types']:
+            if o.type == 'Enum':
+                self.assertEqual(o.name, "virtio_flags")
+                break
+        else:
+            self.fail()
+
+
+class TestEnumFlag(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.parser = VPPAPI()
+
+    def test_enum_as_enumflag(self):
+        test_string = """\
+enumflag tunnel_mode_ef : u8
+{
+  /** point-to-point */
+  TUNNEL_API_MODE_P2P = 0,
+  /** multi-point */
+  TUNNEL_API_MODE_MP,
+};"""
+        r = self.parser.parse_string(test_string)
+        self.assertIsNotNone(r)
+        s = self.parser.process(r)
+        for o in s['types']:
+            if o.type == 'EnumFlag':
+                self.assertEqual(o.name, "tunnel_mode_ef")
+                break
+        else:
+            self.fail()
+
+    def test_enumflag_as_enumflag(self):
+        test_string = """\
+enumflag virtio_flags_ef {
+        VIRTIO_API_FLAG_GSO = 1, /* enable gso on the interface */
+        VIRTIO_API_FLAG_CSUM_OFFLOAD = 2, /* enable checksum offload without gso on the interface */
+        VIRTIO_API_FLAG_GRO_COALESCE = 4, /* enable packet coalescing on tx side, provided gso enabled */
+        VIRTIO_API_FLAG_PACKED = 8, /* enable packed ring support, provided it is available from backend */
+        VIRTIO_API_FLAG_IN_ORDER = 16, /* enable in order support, provided it is available from backend */
+        VIRTIO_API_FLAG_BUFFERING = 32 [backwards_compatible], /* enable buffering to handle backend jitter/delays */
+};"""
+        r = self.parser.parse_string(test_string)
+        self.assertIsNotNone(r)
+        s = self.parser.process(r)
+        for o in s['types']:
+            if o.type == 'EnumFlag':
+                self.assertEqual(o.name, "virtio_flags_ef")
+                break
+        else:
+            self.fail()
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
