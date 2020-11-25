@@ -196,7 +196,7 @@ autoreply define want_igmp_events
   u32 client_index;
   u32 context;
 
-  u32 enable;
+  u32 enable [default=1];
   u32 pid;
 };
 
