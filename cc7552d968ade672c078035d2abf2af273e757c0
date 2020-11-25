@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8e5d2507_483b2d31",
+        "filename": "test/framework.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-25T17:13:27Z",
+      "side": 1,
+      "message": "This should be declarative, not programatic.\n\nMove this to class variable:\n\nclass VppTestCase(unittest.TestCase):\n    ...\n    worker_config \u003d \"workers 2\"",
+      "range": {
+        "startLine": 394,
+        "startChar": 0,
+        "endLine": 395,
+        "endChar": 43
+      },
+      "revId": "cc7552d968ade672c078035d2abf2af273e757c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "10478444_f6ff710d",
+        "filename": "test/util.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-25T17:13:27Z",
+      "side": 1,
+      "message": "This belongs in vpp_stats.py",
+      "range": {
+        "startLine": 116,
+        "startChar": 0,
+        "endLine": 132,
+        "endChar": 0
+      },
+      "revId": "cc7552d968ade672c078035d2abf2af273e757c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
