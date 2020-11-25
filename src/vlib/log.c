@@ -18,12 +18,14 @@
 #include <vlib/log.h>
 #include <vlib/unix/unix.h>
 #include <syslog.h>
+#include <vppinfra/elog.h>
 
 vlib_log_main_t log_main = {
   .default_log_level = VLIB_LOG_LEVEL_NOTICE,
   .default_syslog_log_level = VLIB_LOG_LEVEL_WARNING,
   .unthrottle_time = 3,
   .size = 512,
+  .add_to_elog = 1,
   .default_rate_limit = 50,
 };
 
@@ -221,6 +223,36 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
       e->string = s;
       e->timestamp = t;
       s = 0;
+
+      if (lm->add_to_elog)
+	{
+          /* *INDENT-OFF* */
+          ELOG_TYPE_DECLARE(ee) =
+            {
+             .format = "log-%s: %s",
+             .format_args = "t4T4",
+             .n_enum_strings = 9,
+             .enum_strings = {
+                "emerg",
+                "alert",
+                "crit",
+                "err",
+                "warn",
+                "notice",
+                "info",
+                "debug",
+                "disabled",
+                },
+            };
+          struct {
+            u32 log_level;
+            u32 string_index;
+          } *ed;
+          /* *INDENT-ON* */
+	  ed = ELOG_DATA (&vm->elog_main, ee);
+	  ed->log_level = level;
+	  ed->string_index = elog_string (&vm->elog_main, (char *) e->string);
+	}
 
       lm->next = (lm->next + 1) % lm->size;
       if (lm->size > lm->count)
@@ -822,6 +854,8 @@ log_config (vlib_main_t * vm, unformat_input_t * input)
 			 unformat_vlib_log_level,
 			 &lm->default_syslog_log_level))
 	;
+      else if (unformat (input, "add-to-elog"))
+	lm->add_to_elog = 1;
       else if (unformat (input, "class %s %U", &class,
 			 unformat_vlib_cli_sub_input, &sub_input))
 	{

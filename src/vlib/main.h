@@ -223,6 +223,7 @@ typedef struct vlib_main_t
 
   /* Event logger. */
   elog_main_t elog_main;
+  u32 configured_elog_ring_size;
 
   /* Event logger trace flags */
   int elog_trace_api_messages;

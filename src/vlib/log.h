@@ -108,6 +108,7 @@ typedef struct
   /* config */
   vlib_log_class_config_t *configs;
   uword *config_index_by_name;
+  int add_to_elog;
 
   /* registrations */
   vlib_log_class_registration_t *registrations;
