@@ -532,12 +532,14 @@ class VppGbpContract(VppObject):
         return False
 
     def get_drop_stats(self):
-        c = self._test.statistics.get_counter("/net/gbp/contract/drop")
-        return c[0][self.stats_index]
+        return self._test.statistics.combined_counter_sum(
+            "/net/gbp/contract/drop",
+            self.stats_index)
 
     def get_permit_stats(self):
-        c = self._test.statistics.get_counter("/net/gbp/contract/permit")
-        return c[0][self.stats_index]
+        return self._test.statistics.combined_counter_sum(
+            "/net/gbp/contract/permit",
+            self.stats_index)
 
 
 class VppGbpVxlanTunnel(VppInterface):

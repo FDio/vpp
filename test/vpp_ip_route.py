@@ -598,12 +598,12 @@ class VppIpRoute(VppObject):
                 self.prefix))
 
     def get_stats_to(self):
-        c = self._test.statistics.get_counter("/net/route/to")
-        return c[0][self.stats_index]
+        return self._test.statistics.combined_counter_sum(
+            "/net/route/to", self.stats_index)
 
     def get_stats_via(self):
-        c = self._test.statistics.get_counter("/net/route/via")
-        return c[0][self.stats_index]
+        return self._test.statistics.combined_counter_sum(
+            "/net/route/via", self.stats_index)
 
 
 class VppIpMRoute(VppObject):
@@ -687,8 +687,8 @@ class VppIpMRoute(VppObject):
                                    self.prefix.length))
 
     def get_stats(self):
-        c = self._test.statistics.get_counter("/net/mroute")
-        return c[0][self.stats_index]
+        return self._test.statistics.combined_counter_sum(
+            "/net/mroute", self.stats_index)
 
 
 class VppMFibSignal(object):
@@ -834,9 +834,9 @@ class VppMplsRoute(VppObject):
                    20 + self.eos_bit))
 
     def get_stats_to(self):
-        c = self._test.statistics.get_counter("/net/route/to")
-        return c[0][self.stats_index]
+        return self._test.statistics.combined_counter_sum(
+            "/net/route/to", self.stats_index)
 
     def get_stats_via(self):
-        c = self._test.statistics.get_counter("/net/route/via")
-        return c[0][self.stats_index]
+        return self._test.statistics.combined_counter_sum(
+            "/net/route/via", self.stats_index)

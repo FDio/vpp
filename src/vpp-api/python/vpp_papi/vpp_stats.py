@@ -105,7 +105,7 @@ def make_string_list(api, vec):
     return [ffi.string(vec[i]) for i in range(vec_len)]
 
 
-# 2-dimensonal array of thread, index
+# 2-dimensional array of thread, index
 def simple_counter_vec_list(api, e):
     vec = []
     for thread in range(api.stat_segment_vec_len(e)):
@@ -284,6 +284,21 @@ class VPPStats(object):
         """Get an error counter. The errors from each worker thread
            are summed"""
         return sum(self.get_counter(name))
+
+    def simple_counter_sum(self, cs_name: str):  # -> int
+        s = 0
+        cs = self.get_counter(cs_name)
+        for c in cs:
+            s += c
+        return s
+
+    def combined_counter_sum(self, cs_name: str, i: int):  # -> dict
+        s = {"packets": 0, "bytes": 0}
+        cs = self.get_counter(cs_name)
+        for c in cs:
+            s["bytes"] += c[i]["bytes"]
+            s["packets"] += c[i]["packets"]
+        return s
 
     def disconnect(self):
         try:

@@ -479,12 +479,12 @@ class VppInterface(object):
         return self.name
 
     def get_rx_stats(self):
-        c = self.test.statistics.get_counter("^/if/rx$")
-        return c[0][self.sw_if_index]
+        return self.test.statistics.combined_counter_sum(
+            "^/if/rx$", self.sw_if_index)
 
     def get_tx_stats(self):
-        c = self.test.statistics.get_counter("^/if/tx$")
-        return c[0][self.sw_if_index]
+        return self.test.statistics.combined_counter_sum(
+            "^/if/tx$", self.sw_if_index)
 
     def set_l3_mtu(self, mtu):
         self.test.vapi.sw_interface_set_mtu(self.sw_if_index, [mtu, 0, 0, 0])
