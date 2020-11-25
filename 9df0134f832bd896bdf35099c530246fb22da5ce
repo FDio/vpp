@@ -84,6 +84,121 @@
       "revId": "9df0134f832bd896bdf35099c530246fb22da5ce",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "be8f8db5_55317c6d",
+        "filename": "src/vnet/interface/rx_queue_funcs.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-25T17:08:50Z",
+      "side": 1,
+      "message": "I am a bit worried about having a \"public\" vnet_hw_if_register_rx_queue function which leaves VPP in an \"incomplete\" state. It would be better imho to have this function as internal to the framework, and maybe add something like vnet_hw_if_register_all_rx_queues which would take all the queue_ids, generate all the queue_indexes at once, and do the update_runtime_data. It\u0027s a bit more complicated but ensures a \"clear\" semantic between the driver and the framework and prevents error such as \"I only half updated the state of vnet and forgot to update_runtime_data\".",
+      "range": {
+        "startLine": 22,
+        "startChar": 4,
+        "endLine": 22,
+        "endChar": 32
+      },
+      "revId": "9df0134f832bd896bdf35099c530246fb22da5ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ba52cf65_336e9e50",
+        "filename": "src/vnet/interface/rx_queue_funcs.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-25T17:08:50Z",
+      "side": 1,
+      "message": "Same, these functions require an update_runtime_data and shouldn\u0027t be usable from outside the framework (maybe in the future they can be hidden?).",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 25,
+        "endChar": 78
+      },
+      "revId": "9df0134f832bd896bdf35099c530246fb22da5ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "07bf9d94_d6c8b55a",
+        "filename": "src/vnet/interface/rx_queue_funcs.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-25T17:08:50Z",
+      "side": 1,
+      "message": "Same as before, this function shouldn\u0027t be exposed as it doesn\u0027t update_runtime_data.",
+      "range": {
+        "startLine": 30,
+        "startChar": 0,
+        "endLine": 31,
+        "endChar": 31
+      },
+      "revId": "9df0134f832bd896bdf35099c530246fb22da5ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "effe9340_80cb5ebc",
+        "filename": "src/vnet/interface/rx_queue_funcs.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-25T17:08:50Z",
+      "side": 1,
+      "message": "Same",
+      "range": {
+        "startLine": 34,
+        "startChar": 5,
+        "endLine": 34,
+        "endChar": 41
+      },
+      "revId": "9df0134f832bd896bdf35099c530246fb22da5ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "311e106f_22c19efe",
+        "filename": "src/vnet/interface/rx_queue_funcs.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-11-25T17:08:50Z",
+      "side": 1,
+      "message": "If the \"public\" functions exposed to the driver (and to the API/CLI layer) are properly doing the update_runtime_data, there is no reason that this function is exposed as well.",
+      "range": {
+        "startLine": 36,
+        "startChar": 5,
+        "endLine": 36,
+        "endChar": 35
+      },
+      "revId": "9df0134f832bd896bdf35099c530246fb22da5ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
