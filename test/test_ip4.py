@@ -2243,14 +2243,18 @@ class TestIPCover(VppTestCase):
                        register=False).add_vpp_config()
 
         # add/remove/add a longer mask cover
-        r = VppIpRoute(self, "127.0.0.0", 8,
-                       [VppRoutePath("127.0.0.1",
-                                     lo.sw_if_index)]).add_vpp_config()
-        r.remove_vpp_config()
-        r.add_vpp_config()
+        r8 = VppIpRoute(self, "127.0.0.0", 8,
+                        [VppRoutePath("127.0.0.1",
+                                      lo.sw_if_index)]).add_vpp_config()
+        r8.remove_vpp_config()
+        r8.add_vpp_config()
+        r8.remove_vpp_config()
 
         # remove the default route
         r.remove_vpp_config()
+
+        # remove the interface prefix
+        a.remove_vpp_config()
 
 
 class TestIP4Replace(VppTestCase):
