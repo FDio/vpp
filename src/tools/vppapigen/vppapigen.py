@@ -58,6 +58,7 @@ class VPPAPILexer(object):
         'define': 'DEFINE',
         'typedef': 'TYPEDEF',
         'enum': 'ENUM',
+        'enumflag': 'ENUMFLAG',
         'typeonly': 'TYPEONLY',
         'manual_print': 'MANUAL_PRINT',
         'manual_endian': 'MANUAL_ENDIAN',
@@ -182,7 +183,16 @@ def vla_is_last_check(name, block):
     return vla
 
 
-class Service():
+class Processable:
+    type = "<Invalid>"
+
+    def process(self, result):  # -> Dict
+        result[self.type].append(self)
+
+
+class Service(Processable):
+    type = 'Service'
+
     def __init__(self, caller, reply, events=None, stream_message=None,
                  stream=False):
         self.caller = caller
@@ -192,7 +202,9 @@ class Service():
         self.events = [] if events is None else events
 
 
-class Typedef():
+class Typedef(Processable):
+    type = 'Typedef'
+
     def __init__(self, name, flags, block):
         self.name = name
         self.type = 'Typedef'
@@ -211,11 +223,16 @@ class Typedef():
         self.vla = vla_is_last_check(name, block)
         vla_mark_length_field(self.block)
 
+    def process(self, result):
+        result['types'].append(self)
+
     def __repr__(self):
         return self.name + str(self.flags) + str(self.block)
 
 
-class Using():
+class Using(Processable):
+    type = 'Using'
+
     def __init__(self, name, flags, alias):
         self.name = name
         self.type = 'Using'
@@ -248,13 +265,17 @@ class Using():
         self.crc = str(self.block).encode()
         global_type_add(name, self)
 
+    def process(self, result):  # -> Dict
+        result['types'].append(self)
+
     def __repr__(self):
         return self.name + str(self.alias)
 
 
-class Union():
+class Union(Processable):
+    type = 'Union'
+
     def __init__(self, name, flags, block):
-        self.type = 'Union'
         self.manual_print = False
         self.manual_endian = False
         self.name = name
@@ -270,6 +291,9 @@ class Union():
         self.vla = vla_is_last_check(name, block)
 
         global_type_add(name, self)
+
+    def process(self, result):
+        result['types'].append(self)
 
     def __repr__(self):
         return str(self.block)
@@ -313,11 +337,27 @@ class Define():
 
         self.crc = str(block).encode()
 
+    def autoreply_block(self, name, parent):
+        block = [Field('u32', 'context'),
+                 Field('i32', 'retval')]
+        # inherit the parent's options
+        for k, v in parent.options.items():
+            block.append(Option(k, v))
+        return Define(name + '_reply', [], block)
+
+    def process(self, result):  # -> Dict
+        tname = self.__class__.__name__
+        result[tname].append(self)
+        if self.autoreply:
+            result[tname].append(self.autoreply_block(self.name, self))
+
     def __repr__(self):
         return self.name + str(self.flags) + str(self.block)
 
 
-class Enum():
+class Enum(Processable):
+    type = 'Enum'
+
     def __init__(self, name, block, enumtype='u32'):
         self.name = name
         self.enumtype = enumtype
@@ -350,12 +390,21 @@ class Enum():
         self.crc = str(block3).encode()
         global_type_add(name, self)
 
+    def process(self, result):
+        result['types'].append(self)
+
     def __repr__(self):
         return self.name + str(self.block)
 
 
-class Import():
+class EnumFlag(Enum):
+    type = 'EnumFlag'
+
+
+class Import(Processable):
+    type = 'Import'
     _initialized = False
+
     def __new__(cls, *args, **kwargs):
         if args[0] not in seen_imports:
             instance = super().__new__(cls)
@@ -383,12 +432,16 @@ class Import():
         return self.filename
 
 
-class Option():
+class Option(Processable):
+    type = 'Option'
+
     def __init__(self, option, value=None):
-        self.type = 'Option'
         self.option = option
         self.value = value
         self.crc = str(option).encode()
+
+    def process(self, result):  # -> Dict
+        result[self.type][self.option] = self.value
 
     def __repr__(self):
         return str(self.option)
@@ -398,8 +451,9 @@ class Option():
 
 
 class Array():
+    type = 'Array'
+
     def __init__(self, fieldtype, name, length, modern_vla=False):
-        self.type = 'Array'
         self.fieldtype = fieldtype
         self.fieldname = name
         self.modern_vla = modern_vla
@@ -418,8 +472,11 @@ class Array():
 
 
 class Field():
+    type = 'Field'
+
     def __init__(self, fieldtype, name, limit=None):
-        self.type = 'Field'
+        # limit field has been expanded to an options dict.
+
         self.fieldtype = fieldtype
         self.is_lengthfield = False
 
@@ -437,17 +494,27 @@ class Field():
         return str([self.fieldtype, self.fieldname])
 
 
-class Counter():
+class Counter(Processable):
+    type = 'Counter'
+
     def __init__(self, path, counter):
-        self.type = 'Counter'
         self.name = path
         self.block = counter
 
+    def process(self, result):  # -> Dict
+        result['Counters'].append(self)
 
-class Paths():
+
+class Paths(Processable):
+    type = 'Paths'
+
     def __init__(self, pathset):
-        self.type = 'Paths'
         self.paths = pathset
+
+    def __repr__(self):
+        return "%s(paths=%s)" % (
+            self.__class__.__name__, self.paths
+        )
 
 
 class Coord(object):
@@ -523,6 +590,7 @@ class VPPAPIParser(object):
                 | option
                 | import
                 | enum
+                | enumflag
                 | union
                 | service
                 | paths
@@ -642,6 +710,17 @@ class VPPAPIParser(object):
             p[0] = Enum(p[2], p[6], enumtype=p[4])
         else:
             p[0] = Enum(p[2], p[4])
+
+    def p_enumflag(self, p):
+        '''enumflag : ENUMFLAG ID '{' enum_statements '}' ';' '''
+        p[0] = EnumFlag(p[2], p[4])
+
+    def p_enumflag_type(self, p):
+        ''' enumflag : ENUMFLAG ID ':' enum_size '{' enum_statements '}' ';' '''  # noqa : E502
+        if len(p) == 9:
+            p[0] = EnumFlag(p[2], p[6], enumtype=p[4])
+        else:
+            p[0] = EnumFlag(p[2], p[4])
 
     def p_enum_size(self, p):
         ''' enum_size : U8
@@ -902,14 +981,6 @@ class VPPAPI():
                 print('File not found: {}'.format(filename), file=sys.stderr)
                 sys.exit(2)
 
-    def autoreply_block(self, name, parent):
-        block = [Field('u32', 'context'),
-                 Field('i32', 'retval')]
-        # inherhit the parent's options
-        for k, v in parent.options.items():
-            block.append(Option(k, v))
-        return Define(name + '_reply', [], block)
-
     def process(self, objs):
         s = {}
         s['Option'] = {}
@@ -921,32 +992,17 @@ class VPPAPI():
         s['Paths'] = []
         crc = 0
         for o in objs:
-            tname = o.__class__.__name__
             try:
                 crc = binascii.crc32(o.crc, crc) & 0xffffffff
             except AttributeError:
                 pass
-            if isinstance(o, Define):
-                s[tname].append(o)
-                if o.autoreply:
-                    s[tname].append(self.autoreply_block(o.name, o))
-            elif isinstance(o, Option):
-                s[tname][o.option] = o.value
-            elif type(o) is list:
+
+            if type(o) is list:
                 for o2 in o:
                     if isinstance(o2, Service):
-                        s['Service'].append(o2)
-            elif isinstance(o, (Enum, Typedef, Union, Using)):
-                s['types'].append(o)
-            elif isinstance(o, Counter):
-                s['Counters'].append(o)
-            elif isinstance(o, Paths):
-                s['Paths'].append(o)
+                        o2.process(s)
             else:
-                if tname not in s:
-                    raise ValueError('Unknown class type: {} {}'
-                                     .format(tname, o))
-                s[tname].append(o)
+                o.process(s)
 
         msgs = {d.name: d for d in s['Define']}
         svcs = {s.caller: s for s in s['Service']}
@@ -1021,7 +1077,7 @@ class VPPAPI():
 
         return s
 
-    def process_imports(self, objs, in_import, result):
+    def process_imports(self, objs, in_import, result):  # -> List
         for o in objs:
             # Only allow the following object types from imported file
             if in_import and not isinstance(o, (Enum, Import, Typedef,
