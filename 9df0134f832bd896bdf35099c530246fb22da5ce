@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "f64fa607_37965d69",
+        "filename": "src/vnet/interface/rx_queue.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-25T13:26:55Z",
+      "side": 1,
+      "message": "it should be queue_index instead of queue_id.",
+      "revId": "9df0134f832bd896bdf35099c530246fb22da5ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "0c362637_8fc52bea",
         "filename": "src/vnet/interface/rx_queue.c",
         "patchSetId": 12
