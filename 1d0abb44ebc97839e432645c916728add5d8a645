@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "81cb094c_9dc87c23",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1415,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T10:48:51Z",
+      "side": 1,
+      "message": "this is confusing especially with the addition of the test below, why not just\n  ikev2_rekey_t *rekey \u003d sa-\u003erekey;",
+      "revId": "1d0abb44ebc97839e432645c916728add5d8a645",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "718325d9_2a05661e",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1416,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-25T10:48:51Z",
+      "side": 1,
+      "message": "should we test for vec_len(rekey) \u003d\u003d 0 instead? I saw you add vec_reset_length(sa-\u003erekey) below",
+      "revId": "1d0abb44ebc97839e432645c916728add5d8a645",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
