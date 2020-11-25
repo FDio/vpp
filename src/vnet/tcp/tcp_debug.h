@@ -345,14 +345,13 @@ ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, _e, 			\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "syn-tx: iss %u snd_una %u snd_una_max %u snd_nxt %u",	\
-    .format_args = "i4i4i4i4",						\
+    .format = "syn-tx: iss %u snd_una %u snd_nxt %u",			\
+    .format_args = "i4i4i4",						\
   };									\
-  TCP_DECLARE_ETD(_tc, _e, 4);						\
+  TCP_DECLARE_ETD(_tc, _e, 3);						\
   ed->data[0] = _tc->iss;						\
   ed->data[1] = _tc->snd_una - _tc->iss;				\
-  ed->data[2] = _tc->snd_una_max - _tc->iss;				\
-  ed->data[3] = _tc->snd_nxt - _tc->iss;				\
+  ed->data[2] = _tc->snd_nxt - _tc->iss;				\
   TCP_EVT_STATE_CHANGE_HANDLER(_tc);					\
 }
 
@@ -548,8 +547,8 @@ if (_tc)								\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "ack-err: %s ack %u snd_una %u snd_nxt %u una_max %u",	\
-    .format_args = "t4i4i4i4i4",					\
+    .format = "ack-err: %s ack %u snd_una %u snd_nxt %u",		\
+    .format_args = "t4i4i4i4",						\
     .n_enum_strings = 3,						\
     .enum_strings = {                                           	\
       "invalid",                                                 	\
@@ -557,12 +556,11 @@ if (_tc)								\
       "future",								\
     }, 									\
   };									\
-  TCP_DECLARE_ETD(_tc, _e, 5);						\
+  TCP_DECLARE_ETD(_tc, _e, 4);						\
   ed->data[0] = _type;							\
   ed->data[1] = _ack - _tc->iss;					\
   ed->data[2] = _tc->snd_una - _tc->iss;				\
   ed->data[3] = _tc->snd_nxt - _tc->iss;				\
-  ed->data[4] = _tc->snd_una_max - _tc->iss;				\
 }
 
 #define TCP_EVT_RCV_WND_SHRUNK_HANDLER(_tc, _obs, _av, ...)		\
@@ -787,12 +785,12 @@ if (_av > 0) 								\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "pack: snd_una %u snd_una_max %u",			\
+    .format = "pack: snd_una %u snd_nxt %u",				\
     .format_args = "i4i4",						\
   };									\
   TCP_DECLARE_ETD(_tc, _e, 2);						\
   ed->data[0] = _tc->snd_una - _tc->iss;				\
-  ed->data[1] = _tc->snd_una_max - _tc->iss;				\
+  ed->data[1] = _tc->snd_nxt - _tc->iss;				\
 }
 #define TCP_EVT_CC_SCOREBOARD_HANDLER(_tc, ...)				\
 {									\
