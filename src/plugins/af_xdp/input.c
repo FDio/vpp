@@ -21,6 +21,7 @@
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
+#include <vnet/interface/rx_queue_funcs.h>
 #include "af_xdp.h"
 
 #define foreach_af_xdp_input_error \
@@ -326,22 +327,22 @@ VLIB_NODE_FN (af_xdp_input_node) (vlib_main_t * vm,
 {
   u32 n_rx = 0;
   af_xdp_main_t *am = &af_xdp_main;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
-  vnet_device_and_queue_t *dq;
+  vnet_hw_if_rxq_poll_vector_t *p,
+    *pv = vnet_hw_if_get_rxq_poll_vector (vm, node);
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
-  {
-    af_xdp_device_t *ad;
-    ad = vec_elt_at_index (am->devices, dq->dev_instance);
-    if ((ad->flags & AF_XDP_DEVICE_F_ADMIN_UP) == 0)
-      continue;
-    if (PREDICT_TRUE (ad->flags & AF_XDP_DEVICE_F_ZEROCOPY))
-      n_rx += af_xdp_device_input_inline (vm, node, frame, ad, dq->queue_id,
-					  /* copy */ 0);
-    else
-      n_rx += af_xdp_device_input_inline (vm, node, frame, ad, dq->queue_id,
-					  /* copy */ 1);
-  }
+  vec_foreach (p, pv)
+    {
+      af_xdp_device_t *ad = vec_elt_at_index (am->devices, p->dev_instance);
+      if ((ad->flags & AF_XDP_DEVICE_F_ADMIN_UP) == 0)
+	continue;
+      if (PREDICT_TRUE (ad->flags & AF_XDP_DEVICE_F_ZEROCOPY))
+	n_rx += af_xdp_device_input_inline (vm, node, frame, ad, p->queue_id,
+					    /* copy */ 0);
+      else
+	n_rx += af_xdp_device_input_inline (vm, node, frame, ad, p->queue_id,
+					    /* copy */ 1);
+    }
+
   return n_rx;
 }
 
