@@ -208,6 +208,7 @@ VNET_HW_INTERFACE_CLASS(ipsec_p2mp_hw_interface_class) = {
   .name = "IPSec",
   .build_rewrite = ipsec_itf_build_rewrite_i,
   .update_adjacency = ipsec_itf_update_adj,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_NBMA,
 };
 /* *INDENT-ON* */
 

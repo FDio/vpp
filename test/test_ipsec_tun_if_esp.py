@@ -2869,6 +2869,8 @@ class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
         p.tun_if.add_vpp_config()
         p.tun_if.admin_up()
         p.tun_if.config_ip4()
+        p.tun_if.unconfig_ip4()
+        p.tun_if.config_ip4()
         p.tun_if.generate_remote_hosts(N_NHS)
         self.pg0.generate_remote_hosts(N_NHS)
         self.pg0.configure_ipv4_neighbors()
