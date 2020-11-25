@@ -544,7 +544,7 @@ nat_ipfix_send (u32 thread_index, flow_report_main_t * frm,
   ipfix_set_header_t *s = 0;
   ip4_header_t *ip;
   udp_header_t *udp;
-  vlib_main_t *vm = vlib_mains[thread_index];
+  vlib_main_t *vm = vlib_get_main ();
 
   tp = vlib_buffer_get_current (b0);
   ip = (ip4_header_t *) & tp->ip4;
@@ -588,7 +588,7 @@ nat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
   vlib_buffer_t *b0 = 0;
   u32 bi0 = ~0;
   u32 offset;
-  vlib_main_t *vm = vlib_mains[thread_index];
+  vlib_main_t *vm = vlib_get_main ();
   u64 now;
   u8 proto;
   u16 template_id;
@@ -692,7 +692,7 @@ nat_ipfix_logging_addr_exhausted (u32 thread_index, u32 pool_id, int do_flush)
   vlib_buffer_t *b0 = 0;
   u32 bi0 = ~0;
   u32 offset;
-  vlib_main_t *vm = vlib_mains[thread_index];
+  vlib_main_t *vm = vlib_get_main ();
   u64 now;
   u8 nat_event = NAT_ADDRESSES_EXHAUTED;
   u16 template_id;
@@ -777,7 +777,7 @@ nat_ipfix_logging_max_entries_per_usr (u32 thread_index,
   vlib_buffer_t *b0 = 0;
   u32 bi0 = ~0;
   u32 offset;
-  vlib_main_t *vm = vlib_mains[thread_index];
+  vlib_main_t *vm = vlib_get_main ();
   u64 now;
   u8 nat_event = QUOTA_EXCEEDED;
   u32 quota_event = MAX_ENTRIES_PER_USER;
@@ -868,7 +868,7 @@ nat_ipfix_logging_max_ses (u32 thread_index, u32 limit, int do_flush)
   vlib_buffer_t *b0 = 0;
   u32 bi0 = ~0;
   u32 offset;
-  vlib_main_t *vm = vlib_mains[thread_index];
+  vlib_main_t *vm = vlib_get_main ();
   u64 now;
   u8 nat_event = QUOTA_EXCEEDED;
   u32 quota_event = MAX_SESSION_ENTRIES;
@@ -956,7 +956,7 @@ nat_ipfix_logging_max_bib (u32 thread_index, u32 limit, int do_flush)
   vlib_buffer_t *b0 = 0;
   u32 bi0 = ~0;
   u32 offset;
-  vlib_main_t *vm = vlib_mains[thread_index];
+  vlib_main_t *vm = vlib_get_main ();
   u64 now;
   u8 nat_event = QUOTA_EXCEEDED;
   u32 quota_event = MAX_BIB_ENTRIES;
@@ -1047,7 +1047,7 @@ nat_ipfix_logging_nat64_bibe (u32 thread_index, u8 nat_event,
   vlib_buffer_t *b0 = 0;
   u32 bi0 = ~0;
   u32 offset;
-  vlib_main_t *vm = vlib_mains[thread_index];
+  vlib_main_t *vm = vlib_get_main ();
   u64 now;
   u16 template_id;
 
@@ -1151,7 +1151,7 @@ nat_ipfix_logging_nat64_ses (u32 thread_index, u8 nat_event,
   vlib_buffer_t *b0 = 0;
   u32 bi0 = ~0;
   u32 offset;
-  vlib_main_t *vm = vlib_mains[thread_index];
+  vlib_main_t *vm = vlib_get_main ();
   u64 now;
   u16 template_id;
 
