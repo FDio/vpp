@@ -68,14 +68,13 @@ dns_cache_clear (dns_main_t * dm)
 }
 
 static int
-dns_enable_disable (dns_main_t * dm, int is_enable)
+dns_enable_disable (vlib_main_t * vm, dns_main_t * dm, int is_enable)
 {
   vlib_thread_main_t *tm = &vlib_thread_main;
   u32 n_vlib_mains = tm->n_vlib_mains;
-  vlib_main_t *vm = dm->vlib_main;
 
   /* Create the resolver process if not done already */
-  vnet_dns_create_resolver_process (dm);
+  vnet_dns_create_resolver_process (vm, dm);
 
   if (is_enable)
     {
@@ -122,10 +121,11 @@ static void vl_api_dns_enable_disable_t_handler
   (vl_api_dns_enable_disable_t * mp)
 {
   vl_api_dns_enable_disable_reply_t *rmp;
+  vlib_main_t *vm = vlib_get_main ();
   dns_main_t *dm = &dns_main;
   int rv;
 
-  rv = dns_enable_disable (dm, mp->enable);
+  rv = dns_enable_disable (vm, dm, mp->enable);
 
   REPLY_MACRO (VL_API_DNS_ENABLE_DISABLE_REPLY);
 }
@@ -218,10 +218,9 @@ static void vl_api_dns_name_server_add_del_t_handler
 }
 
 void
-vnet_dns_send_dns4_request (dns_main_t * dm,
+vnet_dns_send_dns4_request (vlib_main_t * vm, dns_main_t * dm,
 			    dns_cache_entry_t * ep, ip4_address_t * server)
 {
-  vlib_main_t *vm = dm->vlib_main;
   f64 now = vlib_time_now (vm);
   u32 bi;
   vlib_buffer_t *b;
@@ -288,7 +287,7 @@ vnet_dns_send_dns4_request (dns_main_t * dm,
 found_src_address:
 
   /* Go get a buffer */
-  if (vlib_buffer_alloc (dm->vlib_main, &bi, 1) != 1)
+  if (vlib_buffer_alloc (vm, &bi, 1) != 1)
     return;
 
   b = vlib_get_buffer (vm, bi);
@@ -337,10 +336,9 @@ found_src_address:
 }
 
 void
-vnet_dns_send_dns6_request (dns_main_t * dm,
+vnet_dns_send_dns6_request (vlib_main_t * vm, dns_main_t * dm,
 			    dns_cache_entry_t * ep, ip6_address_t * server)
 {
-  vlib_main_t *vm = dm->vlib_main;
   f64 now = vlib_time_now (vm);
   u32 bi;
   vlib_buffer_t *b;
@@ -397,7 +395,7 @@ vnet_dns_send_dns6_request (dns_main_t * dm,
 found_src_address:
 
   /* Go get a buffer */
-  if (vlib_buffer_alloc (dm->vlib_main, &bi, 1) != 1)
+  if (vlib_buffer_alloc (vm, &bi, 1) != 1)
     return;
 
   b = vlib_get_buffer (vm, bi);
@@ -536,7 +534,8 @@ vnet_dns_labels_to_name (u8 * label, u8 * full_text, u8 ** parse_from_here)
 }
 
 void
-vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
+vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
+		       dns_cache_entry_t * ep)
 {
   dns_header_t *h;
   dns_query_t *qp;
@@ -610,7 +609,7 @@ vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
 	  if (vec_len (dm->ip6_name_servers))
 	    {
 	      vnet_dns_send_dns6_request
-		(dm, ep, dm->ip6_name_servers + ep->server_rotor);
+		(vm, dm, ep, dm->ip6_name_servers + ep->server_rotor);
 	      goto out;
 	    }
 	  else
@@ -619,7 +618,7 @@ vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
       if (vec_len (dm->ip4_name_servers))
 	{
 	  vnet_dns_send_dns4_request
-	    (dm, ep, dm->ip4_name_servers + ep->server_rotor);
+	    (vm, dm, ep, dm->ip4_name_servers + ep->server_rotor);
 	  goto out;
 	}
     }
@@ -647,14 +646,14 @@ vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
 
   if (ep->server_af == 1 /* ip6 */ )
     vnet_dns_send_dns6_request
-      (dm, ep, dm->ip6_name_servers + ep->server_rotor);
+      (vm, dm, ep, dm->ip6_name_servers + ep->server_rotor);
   else
     vnet_dns_send_dns4_request
-      (dm, ep, dm->ip4_name_servers + ep->server_rotor);
+      (vm, dm, ep, dm->ip4_name_servers + ep->server_rotor);
 
 out:
 
-  vlib_process_signal_event_mt (dm->vlib_main,
+  vlib_process_signal_event_mt (vm,
 				dm->resolver_process_node_index,
 				DNS_RESOLVER_EVENT_PENDING, 0);
 }
@@ -808,8 +807,8 @@ dns_add_static_entry (dns_main_t * dm, u8 * name, u8 * dns_reply_data)
 }
 
 int
-vnet_dns_resolve_name (dns_main_t * dm, u8 * name, dns_pending_request_t * t,
-		       dns_cache_entry_t ** retp)
+vnet_dns_resolve_name (vlib_main_t * vm, dns_main_t * dm, u8 * name,
+		       dns_pending_request_t * t, dns_cache_entry_t ** retp)
 {
   dns_cache_entry_t *ep;
   int rv;
@@ -818,7 +817,7 @@ vnet_dns_resolve_name (dns_main_t * dm, u8 * name, dns_pending_request_t * t,
   dns_pending_request_t *pr;
   int count;
 
-  now = vlib_time_now (dm->vlib_main);
+  now = vlib_time_now (vm);
 
   /* In case we can't actually answer the question right now... */
   *retp = 0;
@@ -950,7 +949,7 @@ re_resolve:
       clib_memcpy (pr->dst_address, t->dst_address, count);
     }
 
-  vnet_send_dns_request (dm, ep);
+  vnet_send_dns_request (vm, dm, ep);
   dns_cache_unlock (dm);
   return 0;
 }
@@ -964,7 +963,8 @@ _(pending_requests)
  */
 
 int
-vnet_dns_cname_indirection_nolock (dns_main_t * dm, u32 ep_index, u8 * reply)
+vnet_dns_cname_indirection_nolock (vlib_main_t * vm, dns_main_t * dm,
+				   u32 ep_index, u8 * reply)
 {
   dns_header_t *h;
   dns_query_t *qp;
@@ -1074,7 +1074,7 @@ vnet_dns_cname_indirection_nolock (dns_main_t * dm, u32 ep_index, u8 * reply)
 
 found_last_request:
 
-  now = vlib_time_now (dm->vlib_main);
+  now = vlib_time_now (vm);
   cname = vnet_dns_labels_to_name (rr->rdata, reply, &pos2);
   /* Save the cname */
   vec_add1 (cname, 0);
@@ -1154,7 +1154,7 @@ found_last_request:
    */
 
   vec_add1 (dm->unresolved_entries, next_ep - dm->entries);
-  vnet_send_dns_request (dm, next_ep);
+  vnet_send_dns_request (vm, dm, next_ep);
   return (1);
 }
 
@@ -1438,6 +1438,7 @@ vnet_dns_response_to_name (u8 * response,
 static void
 vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
 {
+  vlib_main_t *vm = vlib_get_main ();
   dns_main_t *dm = &dns_main;
   vl_api_dns_resolve_name_reply_t *rmp;
   dns_cache_entry_t *ep;
@@ -1451,7 +1452,7 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
   t0->client_index = mp->client_index;
   t0->client_context = mp->context;
 
-  rv = vnet_dns_resolve_name (dm, mp->name, t0, &ep);
+  rv = vnet_dns_resolve_name (vm, dm, mp->name, t0, &ep);
 
   /* Error, e.g. not enabled? Tell the user */
   if (rv < 0)
@@ -1476,6 +1477,7 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
 static void
 vl_api_dns_resolve_ip_t_handler (vl_api_dns_resolve_ip_t * mp)
 {
+  vlib_main_t *vm = vlib_get_main ();
   dns_main_t *dm = &dns_main;
   vl_api_dns_resolve_ip_reply_t *rmp;
   dns_cache_entry_t *ep;
@@ -1523,7 +1525,7 @@ vl_api_dns_resolve_ip_t_handler (vl_api_dns_resolve_ip_t * mp)
   t0->client_index = mp->client_index;
   t0->client_context = mp->context;
 
-  rv = vnet_dns_resolve_name (dm, lookup_name, t0, &ep);
+  rv = vnet_dns_resolve_name (vm, dm, lookup_name, t0, &ep);
 
   vec_free (lookup_name);
 
@@ -2716,18 +2718,19 @@ VLIB_CLI_COMMAND (test_dns_expire_command) =
 #endif
 
 void
-vnet_send_dns6_reply (dns_main_t * dm, dns_pending_request_t * pr,
-		      dns_cache_entry_t * ep, vlib_buffer_t * b0)
+vnet_send_dns6_reply (vlib_main_t * vm, dns_main_t * dm,
+		      dns_pending_request_t * pr, dns_cache_entry_t * ep,
+		      vlib_buffer_t * b0)
 {
   clib_warning ("Unimplemented...");
 }
 
 
 void
-vnet_send_dns4_reply (dns_main_t * dm, dns_pending_request_t * pr,
-		      dns_cache_entry_t * ep, vlib_buffer_t * b0)
+vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
+		      dns_pending_request_t * pr, dns_cache_entry_t * ep,
+		      vlib_buffer_t * b0)
 {
-  vlib_main_t *vm = dm->vlib_main;
   u32 bi = 0;
   fib_prefix_t prefix;
   fib_node_index_t fei;
@@ -3039,7 +3042,6 @@ dns_init (vlib_main_t * vm)
 {
   dns_main_t *dm = &dns_main;
 
-  dm->vlib_main = vm;
   dm->vnet_main = vnet_get_main ();
   dm->name_cache_size = 1000;
   dm->max_ttl_in_seconds = 86400;

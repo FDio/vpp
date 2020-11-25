@@ -242,14 +242,14 @@ dns46_request_inline (vlib_main_t * vm,
 	    clib_memcpy_fast (t0->dst_address, ip40->src_address.as_u8,
 			      sizeof (ip4_address_t));
 
-	  vnet_dns_resolve_name (dm, name0, t0, &ep0);
+	  vnet_dns_resolve_name (vm, dm, name0, t0, &ep0);
 
 	  if (ep0)
 	    {
 	      if (is_ip6)
-		vnet_send_dns6_reply (dm, t0, ep0, b0);
+		vnet_send_dns6_reply (vm, dm, t0, ep0, b0);
 	      else
-		vnet_send_dns4_reply (dm, t0, ep0, b0);
+		vnet_send_dns4_reply (vm, dm, t0, ep0, b0);
 	      next0 = DNS46_REQUEST_NEXT_IP_LOOKUP;
 	    }
 	  else
