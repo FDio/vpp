@@ -85,7 +85,7 @@ vnet_hw_if_register_rx_queue (vnet_main_t * vnm, u32 hw_if_index,
   queue_index = rxq - im->hw_if_rx_queues;
   vec_add1 (hi->rx_queue_indices, queue_index);
   hash_set_mem_alloc (&im->rxq_index_by_hw_if_index_and_queue_id, &key,
-		      queue_id);
+		      queue_index);
   rxq->hw_if_index = hw_if_index;
   rxq->dev_instance = hi->dev_instance;
   rxq->queue_id = queue_id;
@@ -165,6 +165,7 @@ vnet_hw_if_set_rx_queue_mode (vnet_main_t * vnm, u32 queue_index,
   vnet_hw_if_rx_queue_t *rxq = vnet_hw_if_get_rx_queue (vnm, queue_index);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, rxq->hw_if_index);
   vnet_device_class_t *dc = vnet_get_device_class (vnm, hi->dev_class_index);
+  clib_file_main_t *fm = &file_main;
 
   ASSERT (mode != VNET_HW_IF_RX_MODE_UNKNOWN);
 
@@ -180,11 +181,12 @@ vnet_hw_if_set_rx_queue_mode (vnet_main_t * vnm, u32 queue_index,
     }
 
   if ((mode == VNET_HW_IF_RX_MODE_INTERRUPT ||
-       mode == VNET_HW_IF_RX_MODE_ADAPTIVE) && rxq->file_index == ~0)
+       mode == VNET_HW_IF_RX_MODE_ADAPTIVE) && rxq->file_index != ~0)
     {
+      clib_file_t *f = clib_file_get (fm, rxq->file_index);
+      fm->file_update (f, UNIX_FILE_UPDATE_ADD);
       log_debug ("set_rx_queue_mode: interface %v queue-id %u interrupt mode "
-		 "not supported", hi->name, rxq->queue_id);
-      return VNET_API_ERROR_UNSUPPORTED;
+		 "file added", hi->name, rxq->queue_id);
     }
 
   if (dc->rx_mode_change_function)
@@ -198,6 +200,14 @@ vnet_hw_if_set_rx_queue_mode (vnet_main_t * vnm, u32 queue_index,
 	  clib_error_free (err);
 	  return VNET_API_ERROR_UNSUPPORTED;
 	}
+    }
+
+  if (mode == VNET_HW_IF_RX_MODE_POLLING && rxq->file_index != ~0)
+    {
+      clib_file_t *f = clib_file_get (fm, rxq->file_index);
+      fm->file_update (f, UNIX_FILE_UPDATE_DELETE);
+      log_debug ("set_rx_queue_mode: interface %v queue-id %u interrupt mode "
+		 "file removed", hi->name, rxq->queue_id);
     }
 
   rxq->mode = mode;
