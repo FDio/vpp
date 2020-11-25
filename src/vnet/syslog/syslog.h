@@ -136,7 +136,6 @@ typedef struct
   u32 ip4_lookup_node_index;
 
   /** convenience variables */
-  vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
 } syslog_main_t;
 

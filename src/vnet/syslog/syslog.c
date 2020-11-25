@@ -143,8 +143,7 @@ void
 syslog_msg_init (syslog_msg_t * syslog_msg, syslog_facility_t facility,
 		 syslog_severity_t severity, char *app_name, char *msgid)
 {
-  syslog_main_t *sm = &syslog_main;
-  vlib_main_t *vm = sm->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
 
   syslog_msg->header.facility = facility;
   syslog_msg->header.severity = severity;
@@ -160,7 +159,7 @@ int
 syslog_msg_send (syslog_msg_t * syslog_msg)
 {
   syslog_main_t *sm = &syslog_main;
-  vlib_main_t *vm = sm->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   u32 bi, msg_len, *to_next;
   u8 *tmp;
   vlib_buffer_t *b;
@@ -611,7 +610,6 @@ syslog_init (vlib_main_t * vm)
   struct timeval timeval_0;
   vlib_node_t *ip4_lookup_node;
 
-  sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
 
   sm->procid = getpid ();
