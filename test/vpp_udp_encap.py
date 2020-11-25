@@ -58,5 +58,5 @@ class VppUdpEncap(VppObject):
         return ("udp-encap-%d" % self.id)
 
     def get_stats(self):
-        c = self._test.statistics.get_counter("/net/udp-encap")
-        return c[0][self.id]
+        return self._test.statistics.combined_counter_sum(
+            "/net/udp-encap", self.id)

@@ -24,6 +24,7 @@ from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort, \
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 from vpp_ip import DpoProto, get_dpo_proto
 from vpp_papi import VppEnum, MACAddress
+from vpp_papi.vpp_stats import combined_counter_sum
 from vpp_vxlan_gbp_tunnel import find_vxlan_gbp_tunnel, INDEX_INVALID, \
     VppVxlanGbpTunnel
 from vpp_neighbor import VppNeighbor
@@ -532,12 +533,14 @@ class VppGbpContract(VppObject):
         return False
 
     def get_drop_stats(self):
-        c = self._test.statistics.get_counter("/net/gbp/contract/drop")
-        return c[0][self.stats_index]
+        return combined_counter_sum(
+            self._test.statistics.get_counter("/net/gbp/contract/drop"),
+            self.stats_index)
 
     def get_permit_stats(self):
-        c = self._test.statistics.get_counter("/net/gbp/contract/permit")
-        return c[0][self.stats_index]
+        return combined_counter_sum(
+            self._test.statistics.get_counter("/net/gbp/contract/permit"),
+            self.stats_index)
 
 
 class VppGbpVxlanTunnel(VppInterface):

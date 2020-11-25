@@ -83,5 +83,5 @@ class VppNeighbor(VppObject):
         return ("%d:%s" % (self.sw_if_index, self.nbr_addr))
 
     def get_stats(self):
-        c = self._test.statistics.get_counter("/net/adjacency")
-        return c[0][self.stats_index]
+        return self._test.statistics.combined_counter_sum(
+            "/net/adjacency", self.stats_index)
