@@ -102,6 +102,55 @@ ip_set (ip46_address_t * dst, void *src, u8 is_ip4)
 		      sizeof (ip6_address_t));
 }
 
+/* *INDENT-OFF* */
+static const char *ip_input_arc_names[N_AF][N_SAFI] = {
+  [AF_IP4] = {
+    [SAFI_UNICAST] = "ip4-unicast",
+    [SAFI_MULTICAST] = "ip4-multicast",
+  },
+  [AF_IP6] = {
+    [SAFI_UNICAST] = "ip6-unicast",
+    [SAFI_MULTICAST] = "ip6-multicast",
+  },
+};
+
+static const char *ip_output_arc_names[N_AF] = {
+  [AF_IP4] = "ip4-output",
+  [AF_IP6] = "ip6-output",
+};
+/* *INDENT-ON* */
+
+void
+ip_feature_enable_disable (ip_address_family_t af,
+			   ip_sub_address_family_t safi,
+			   vlib_dir_t dir,
+			   const char *feature_name,
+			   u32 sw_if_index, int enable,
+			   void *feature_config, u32 n_feature_config_bytes)
+{
+  if (VLIB_RX == dir)
+    {
+      if (N_SAFI == safi)
+	FOR_EACH_IP_ADDRESS_SUB_FAMILY (safi)
+	  vnet_feature_enable_disable (ip_input_arc_names[af][safi],
+				       feature_name, sw_if_index,
+				       enable, feature_config,
+				       n_feature_config_bytes);
+      else
+	vnet_feature_enable_disable (ip_input_arc_names[af][safi],
+				     feature_name, sw_if_index,
+				     enable, feature_config,
+				     n_feature_config_bytes);
+    }
+  else
+    vnet_feature_enable_disable (ip_output_arc_names[af],
+				 feature_name, sw_if_index,
+				 enable, feature_config,
+				 n_feature_config_bytes);
+}
+
+
+
 u8 *
 format_ip_address_family (u8 * s, va_list * args)
 {
@@ -133,6 +182,40 @@ unformat_ip_address_family (unformat_input_t * input, va_list * args)
 	   unformat (input, "IP6") || unformat (input, "IPv6"))
     {
       *af = AF_IP6;
+      return (1);
+    }
+  return (0);
+}
+
+u8 *
+format_ip_sub_address_family (u8 * s, va_list * args)
+{
+  ip_sub_address_family_t safi = va_arg (*args, int);	// int promo ip_sub_address_family_t);
+
+  switch (safi)
+    {
+    case SAFI_UNICAST:
+      return (format (s, "unicast"));
+    case SAFI_MULTICAST:
+      return (format (s, "multicast"));
+    }
+
+  return (format (s, "unknown"));
+}
+
+uword
+unformat_ip_sub_address_family (unformat_input_t * input, va_list * args)
+{
+  ip_sub_address_family_t *safi = va_arg (*args, ip_sub_address_family_t *);
+
+  if (unformat (input, "unicast") || unformat (input, "uni"))
+    {
+      *safi = SAFI_UNICAST;
+      return (1);
+    }
+  else if (unformat (input, "multicast") || unformat (input, "multi"))
+    {
+      *safi = SAFI_MULTICAST;
       return (1);
     }
   return (0);
