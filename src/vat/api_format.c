@@ -28,7 +28,6 @@
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/vxlan/vxlan.h>
-#include <vnet/gre/gre.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/udp/udp_local.h>
 
@@ -2397,40 +2396,6 @@ static void vl_api_vxlan_gpe_add_del_tunnel_reply_t_handler_json
   vam->result_ready = 1;
 }
 
-static void vl_api_gre_tunnel_add_del_reply_t_handler
-  (vl_api_gre_tunnel_add_del_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->sw_if_index = ntohl (mp->sw_if_index);
-      vam->result_ready = 1;
-    }
-}
-
-static void vl_api_gre_tunnel_add_del_reply_t_handler_json
-  (vl_api_gre_tunnel_add_del_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
 static void vl_api_create_vhost_user_if_reply_t_handler
   (vl_api_create_vhost_user_if_reply_t * mp)
 {
@@ -3451,8 +3416,6 @@ _(ADD_NODE_NEXT_REPLY, add_node_next_reply)                             \
 _(VXLAN_ADD_DEL_TUNNEL_REPLY, vxlan_add_del_tunnel_reply)               \
 _(VXLAN_OFFLOAD_RX_REPLY, vxlan_offload_rx_reply)               \
 _(VXLAN_TUNNEL_DETAILS, vxlan_tunnel_details)                           \
-_(GRE_TUNNEL_ADD_DEL_REPLY, gre_tunnel_add_del_reply)                   \
-_(GRE_TUNNEL_DETAILS, gre_tunnel_details)                               \
 _(L2_FIB_CLEAR_TABLE_REPLY, l2_fib_clear_table_reply)                   \
 _(L2_INTERFACE_EFP_FILTER_REPLY, l2_interface_efp_filter_reply)         \
 _(L2_INTERFACE_VLAN_TAG_REWRITE_REPLY, l2_interface_vlan_tag_rewrite_reply) \
@@ -9710,165 +9673,6 @@ api_vxlan_tunnel_dump (vat_main_t * vam)
 }
 
 static int
-api_gre_tunnel_add_del (vat_main_t * vam)
-{
-  unformat_input_t *line_input = vam->input;
-  vl_api_address_t src = { }, dst =
-  {
-  };
-  vl_api_gre_tunnel_add_del_t *mp;
-  vl_api_gre_tunnel_type_t t_type;
-  u8 is_add = 1;
-  u8 src_set = 0;
-  u8 dst_set = 0;
-  u32 outer_table_id = 0;
-  u32 session_id = 0;
-  u32 instance = ~0;
-  int ret;
-
-  t_type = GRE_API_TUNNEL_TYPE_L3;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "del"))
-	is_add = 0;
-      else if (unformat (line_input, "instance %d", &instance))
-	;
-      else if (unformat (line_input, "src %U", unformat_vl_api_address, &src))
-	{
-	  src_set = 1;
-	}
-      else if (unformat (line_input, "dst %U", unformat_vl_api_address, &dst))
-	{
-	  dst_set = 1;
-	}
-      else if (unformat (line_input, "outer-table-id %d", &outer_table_id))
-	;
-      else if (unformat (line_input, "teb"))
-	t_type = GRE_API_TUNNEL_TYPE_TEB;
-      else if (unformat (line_input, "erspan %d", &session_id))
-	t_type = GRE_API_TUNNEL_TYPE_ERSPAN;
-      else
-	{
-	  errmsg ("parse error '%U'", format_unformat_error, line_input);
-	  return -99;
-	}
-    }
-
-  if (src_set == 0)
-    {
-      errmsg ("tunnel src address not specified");
-      return -99;
-    }
-  if (dst_set == 0)
-    {
-      errmsg ("tunnel dst address not specified");
-      return -99;
-    }
-
-  M (GRE_TUNNEL_ADD_DEL, mp);
-
-  clib_memcpy (&mp->tunnel.src, &src, sizeof (mp->tunnel.src));
-  clib_memcpy (&mp->tunnel.dst, &dst, sizeof (mp->tunnel.dst));
-
-  mp->tunnel.instance = htonl (instance);
-  mp->tunnel.outer_table_id = htonl (outer_table_id);
-  mp->is_add = is_add;
-  mp->tunnel.session_id = htons ((u16) session_id);
-  mp->tunnel.type = htonl (t_type);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static void vl_api_gre_tunnel_details_t_handler
-  (vl_api_gre_tunnel_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-
-  print (vam->ofp, "%11d%11d%24U%24U%13d%14d%12d",
-	 ntohl (mp->tunnel.sw_if_index),
-	 ntohl (mp->tunnel.instance),
-	 format_vl_api_address, &mp->tunnel.src,
-	 format_vl_api_address, &mp->tunnel.dst,
-	 mp->tunnel.type, ntohl (mp->tunnel.outer_table_id),
-	 ntohl (mp->tunnel.session_id));
-}
-
-static void vl_api_gre_tunnel_details_t_handler_json
-  (vl_api_gre_tunnel_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "sw_if_index",
-			    ntohl (mp->tunnel.sw_if_index));
-  vat_json_object_add_uint (node, "instance", ntohl (mp->tunnel.instance));
-
-  vat_json_object_add_address (node, "src", &mp->tunnel.src);
-  vat_json_object_add_address (node, "dst", &mp->tunnel.dst);
-  vat_json_object_add_uint (node, "tunnel_type", mp->tunnel.type);
-  vat_json_object_add_uint (node, "outer_table_id",
-			    ntohl (mp->tunnel.outer_table_id));
-  vat_json_object_add_uint (node, "session_id", mp->tunnel.session_id);
-}
-
-static int
-api_gre_tunnel_dump (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_gre_tunnel_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  u32 sw_if_index;
-  u8 sw_if_index_set = 0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      sw_if_index = ~0;
-    }
-
-  if (!vam->json_output)
-    {
-      print (vam->ofp, "%11s%11s%24s%24s%13s%14s%12s",
-	     "sw_if_index", "instance", "src_address", "dst_address",
-	     "tunnel_type", "outer_fib_id", "session_id");
-    }
-
-  /* Get list of gre-tunnel interfaces */
-  M (GRE_TUNNEL_DUMP, mp);
-
-  mp->sw_if_index = htonl (sw_if_index);
-
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  W (ret);
-  return ret;
-}
-
-static int
 api_l2_fib_clear_table (vat_main_t * vam)
 {
 //  unformat_input_t * i = vam->input;
@@ -15218,10 +15022,6 @@ _(vxlan_add_del_tunnel,                                                 \
   "{ <intfc> | mcast_sw_if_index <nn> } [instance <id>]}\n"		\
   "vni <vni> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]")           \
 _(vxlan_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    \
-_(gre_tunnel_add_del,                                                   \
-  "src <ip-addr> dst <ip-addr> [outer-fib-id <nn>] [instance <n>]\n"    \
-  "[teb | erspan <session-id>] [del]")                                	\
-_(gre_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                      \
 _(l2_fib_clear_table, "")                                               \
 _(l2_interface_efp_filter, "sw_if_index <nn> enable | disable")         \
 _(l2_interface_vlan_tag_rewrite,                                        \

@@ -18,7 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <nsh/nsh.h>
-#include <vnet/gre/gre.h>
+#include <vnet/gre/packet.h>
 #include <vnet/vxlan/vxlan.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/l2/l2_classify.h>
