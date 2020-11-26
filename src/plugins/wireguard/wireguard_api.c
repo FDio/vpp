@@ -94,6 +94,7 @@ typedef struct wg_deatils_walk_t_
 {
   vl_api_registration_t *reg;
   u32 context;
+  u8 show_private_key;
 } wg_deatils_walk_t;
 
 static walk_rc_t
@@ -111,8 +112,11 @@ wireguard_if_send_details (index_t wgii, void *data)
   rmp->_vl_msg_id = htons (VL_API_WIREGUARD_INTERFACE_DETAILS +
 			   wg_main.msg_id_base);
 
-  clib_memcpy (rmp->interface.private_key,
-	       local->l_private, NOISE_PUBLIC_KEY_LEN);
+  if (ctx->show_private_key)
+    clib_memcpy (rmp->interface.private_key,
+		 local->l_private, NOISE_PUBLIC_KEY_LEN);
+  clib_memcpy (rmp->interface.public_key,
+	       local->l_public, NOISE_PUBLIC_KEY_LEN);
   rmp->interface.sw_if_index = htonl (wgi->sw_if_index);
   rmp->interface.port = htons (wgi->port);
   ip_address_encode2 (&wgi->src_ip, &rmp->interface.src_ip);
@@ -140,6 +144,7 @@ vl_api_wireguard_interface_dump_t_handler (vl_api_wireguard_interface_dump_t *
   wg_deatils_walk_t ctx = {
     .reg = reg,
     .context = mp->context,
+    .show_private_key = mp->show_private_key,
   };
 
   wg_if_walk (wireguard_if_send_details, &ctx);
