@@ -45,6 +45,30 @@
       "revId": "cc7552d968ade672c078035d2abf2af273e757c0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5f89f5b7_a4b0b18c",
+        "filename": "test/util.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-26T10:43:19Z",
+      "side": 1,
+      "message": "i\u0027ve removed these changes from this patch. they\u0027re now in:\n  https://gerrit.fd.io/r/c/vpp/+/30141",
+      "parentUuid": "10478444_f6ff710d",
+      "range": {
+        "startLine": 116,
+        "startChar": 0,
+        "endLine": 132,
+        "endChar": 0
+      },
+      "revId": "cc7552d968ade672c078035d2abf2af273e757c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
