@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "54f5787f_518ae114",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 4277,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-26T11:55:29Z",
+      "side": 1,
+      "message": "can we leak sa resources here?",
+      "revId": "606f167721a7e2149f1e2b10cfbe78c159e51d81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e9567d8e_8ad198e8",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 5070,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-26T11:55:29Z",
+      "side": 1,
+      "message": "maybe log the error here?",
+      "revId": "606f167721a7e2149f1e2b10cfbe78c159e51d81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
