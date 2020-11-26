@@ -168,23 +168,28 @@ typedef enum dpo_type_t_ {
  * instance number/index of objects of that type
  */
 typedef struct dpo_id_t_ {
-    /**
-     * the type
-     */
-    dpo_type_t dpoi_type;
-    /**
-     * the data-path protocol of the type.
-     */
-    dpo_proto_t dpoi_proto;
-    /**
-     * The next VLIB node to follow.
-     */
-    u16 dpoi_next_node;
-    /**
-     * the index of objects of that type
-     */
-    index_t dpoi_index;
-} __attribute__ ((aligned(sizeof(u64)))) dpo_id_t;
+    union {
+        struct {
+            /**
+             * the type
+             */
+            dpo_type_t dpoi_type;
+            /**
+             * the data-path protocol of the type.
+             */
+            dpo_proto_t dpoi_proto;
+            /**
+             * The next VLIB node to follow.
+             */
+            u16 dpoi_next_node;
+            /**
+             * the index of objects of that type
+             */
+            index_t dpoi_index;
+        };
+        u64 as_u64;
+    };
+} dpo_id_t;
 
 STATIC_ASSERT(sizeof(dpo_id_t) <= sizeof(u64),
 	      "DPO ID is greater than sizeof u64 "
