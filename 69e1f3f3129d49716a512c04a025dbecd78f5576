@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f94b5e6d_2c93832d",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1639,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a3de2b42_fd58efe8",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5d21599d_83cce94f",
         "filename": "src/plugins/avf/device.c",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2020-11-25T16:27:37Z",
       "side": 1,
       "message": "shouldn\u0027t it use the new flags instead?",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e2dade70_29754823",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1641,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "It is a wrapper macro around new tx flags.",
+      "parentUuid": "5d21599d_83cce94f",
       "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "f6062195_3f88ad2a",
+        "filename": "src/plugins/lldp/lldp_cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "949a3006_75cbfc8d",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "147b9147_394183c4",
         "filename": "src/plugins/lldp/lldp_cli.c",
         "patchSetId": 4
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "eaefec21_d146ff63",
+        "filename": "src/plugins/lldp/lldp_cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "147b9147_394183c4",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4b7b8a53_dde48692",
         "filename": "src/vnet/devices/tap/tap.c",
         "patchSetId": 4
@@ -81,6 +153,24 @@
       "writtenOn": "2020-11-25T16:27:37Z",
       "side": 1,
       "message": "shouldn\u0027t it use the new flags instead?",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4973d759_e5cb8f04",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 857,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "It is a wrapper macro around new l4 tx checksum offload flags.",
+      "parentUuid": "4b7b8a53_dde48692",
       "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -104,6 +194,24 @@
     },
     {
       "key": {
+        "uuid": "c8272ab0_54aff924",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 861,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "It is a wrapper macro around new l4 tx checksum offload flags.",
+      "parentUuid": "bf9b7e3a_edfa0a5c",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "f52a34c7_8de13eaf",
         "filename": "src/vnet/devices/tap/tap.c",
         "patchSetId": 4
@@ -115,6 +223,24 @@
       "writtenOn": "2020-11-25T16:27:37Z",
       "side": 1,
       "message": "shouldn\u0027t it use the new flags instead?",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7f307bc0_758f2c3f",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 904,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "It is a wrapper macro around new l4 tx checksum offload flags.",
+      "parentUuid": "f52a34c7_8de13eaf",
       "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -138,6 +264,24 @@
     },
     {
       "key": {
+        "uuid": "173face3_fa31fb7f",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 916,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "It is a wrapper macro around new l4 tx checksum offload flags.",
+      "parentUuid": "f46f676f_868a4aa5",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8833cb9d_f65c6548",
         "filename": "src/vnet/devices/virtio/device.c",
         "patchSetId": 4
@@ -152,6 +296,24 @@
       "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d11237ea_8ac25d49",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 968,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8833cb9d_f65c6548",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -172,6 +334,24 @@
     },
     {
       "key": {
+        "uuid": "b9d69f10_50c50a02",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 973,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "97407f9d_35573819",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a3d98b0a_aac4828d",
         "filename": "src/vnet/devices/virtio/pci.c",
         "patchSetId": 4
@@ -183,6 +363,24 @@
       "writtenOn": "2020-11-25T16:27:37Z",
       "side": 1,
       "message": "shouldn\u0027t it use the new flags instead?",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c1424c4f_6019b446",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 560,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "It is a wrapper macro around new l4 tx checksum offload flags.",
+      "parentUuid": "a3d98b0a_aac4828d",
       "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -206,6 +404,24 @@
     },
     {
       "key": {
+        "uuid": "65b880e6_e6e841e4",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 512,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "It is a wrapper macro around new l4 tx checksum offload flags.",
+      "parentUuid": "2b22de26_285d4e3d",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b874f05e_089a9800",
         "filename": "src/vnet/interface.h",
         "patchSetId": 4
@@ -217,6 +433,24 @@
       "writtenOn": "2020-11-25T16:27:37Z",
       "side": 1,
       "message": "are those defines for backward compatibility? If so, I wonder if we want to keep them. Breaking at compile time is good :)",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2aab216c_9d12797e",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "No, these are not for backward compatibility. It is only for convenience. Mostly, l4 tx checksum includes both TCP and UCP offloads. It bundles them together.",
+      "parentUuid": "b874f05e_089a9800",
       "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -240,6 +474,24 @@
     },
     {
       "key": {
+        "uuid": "f709a2ae_83e8606f",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 557,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5b211552_096ec6c7",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4f1080f4_1ed7b39d",
         "filename": "src/vnet/interface.h",
         "patchSetId": 4
@@ -257,6 +509,24 @@
     },
     {
       "key": {
+        "uuid": "77d97e65_fe213d31",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 558,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4f1080f4_1ed7b39d",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e4908c38_af2139f2",
         "filename": "src/vnet/interface_output.c",
         "patchSetId": 4
@@ -268,6 +538,24 @@
       "writtenOn": "2020-11-25T16:27:37Z",
       "side": 1,
       "message": "shouldn\u0027t it use the new flags instead?",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5de9d13e_ac9b47a7",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2020-11-26T12:24:31Z",
+      "side": 1,
+      "message": "It is a wrapper macro around new l4 tx checksum offload flags.",
+      "parentUuid": "e4908c38_af2139f2",
       "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
