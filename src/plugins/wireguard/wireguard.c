@@ -54,6 +54,7 @@ VNET_FEATURE_INIT (wg_output_tun, static) =
 {
   .arc_name = "ip4-output",
   .node_name = "wg-output-tun",
+  .runs_after = VNET_FEATURES ("gso-ip4"),
 };
 
 VLIB_PLUGIN_REGISTER () =
