@@ -278,6 +278,25 @@ u8 ip_is_local (u32 fib_index, ip46_address_t * ip46_address, u8 is_ip4);
 void ip_copy (ip46_address_t * dst, ip46_address_t * src, u8 is_ip4);
 void ip_set (ip46_address_t * dst, void *src, u8 is_ip4);
 
+typedef enum ip_feature_location_t_
+{
+  IP_FEAT_INPUT,
+  IP_FEAT_OUTPUT,
+  IP_FEAT_LOCAL,
+  IP_FEAT_DROP,
+  IP_FEAT_PUNT,
+} __clib_packed ip_feature_location_t;
+
+#define N_IP_FEAT_LOCATIONS (IP_FEAT_PUNT+1)
+
+void ip_feature_enable_disable (ip_address_family_t af,
+				ip_sub_address_family_t safi,
+				ip_feature_location_t loc,
+				const char *feature,
+				u32 sw_if_index, int enable_disable,
+				void *feature_config,
+				u32 n_feature_config_bytes);
+
 always_inline u32 vlib_buffer_get_ip4_fib_index (vlib_buffer_t * b);
 always_inline u32 vlib_buffer_get_ip6_fib_index (vlib_buffer_t * b);
 always_inline u32

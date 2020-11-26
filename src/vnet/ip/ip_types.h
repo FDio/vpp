@@ -38,6 +38,21 @@ extern fib_protocol_t ip_address_family_to_fib_proto (ip_address_family_t af);
 extern ip_address_family_t ip_address_family_from_fib_proto (fib_protocol_t
 							     fp);
 
+typedef enum ip_sub_address_family_t_
+{
+  SAFI_UNICAST,
+  SAFI_MULTICAST,
+} __clib_packed ip_sub_address_family_t;
+
+#define N_SAFI (SAFI_MULTICAST+1)
+
+extern uword unformat_ip_sub_address_family (unformat_input_t * input,
+					     va_list * args);
+extern u8 *format_ip_sub_address_family (u8 * s, va_list * args);
+
+#define FOR_EACH_IP_ADDRESS_SUB_FAMILY(_safi) \
+  for (_safi = SAFI_UNICAST; _safi <= SAFI_MULTICAST; _safi++)
+
 #define u8_ptr_add(ptr, index) (((u8 *)ptr) + index)
 #define u16_net_add(u, val) clib_host_to_net_u16(clib_net_to_host_u16(u) + (val))
 

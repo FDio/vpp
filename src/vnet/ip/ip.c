@@ -102,6 +102,92 @@ ip_set (ip46_address_t * dst, void *src, u8 is_ip4)
 		      sizeof (ip6_address_t));
 }
 
+/* *INDENT-OFF* */
+static const char *ip_arc_names[N_IP_FEAT_LOCATIONS][N_AF][N_SAFI] = {
+  [IP_FEAT_INPUT] = {
+    [AF_IP4] = {
+      [SAFI_UNICAST] = "ip4-unicast",
+      [SAFI_MULTICAST] = "ip4-multicast",
+    },
+    [AF_IP6] = {
+      [SAFI_UNICAST] = "ip6-unicast",
+      [SAFI_MULTICAST] = "ip6-multicast",
+    },
+  },
+  [IP_FEAT_OUTPUT] = {
+    [AF_IP4] = {
+      [SAFI_UNICAST] = "ip4-output",
+      [SAFI_MULTICAST] = "ip4-output",
+    },
+    [AF_IP6] = {
+      [SAFI_UNICAST] = "ip6-output",
+      [SAFI_MULTICAST] = "ip6-output",
+    },
+  },
+  [IP_FEAT_LOCAL] = {
+    [AF_IP4] = {
+      [SAFI_UNICAST] = "ip4-local",
+      [SAFI_MULTICAST] = "ip4-local",
+    },
+    [AF_IP6] = {
+      [SAFI_UNICAST] = "ip6-local",
+      [SAFI_MULTICAST] = "ip6-local",
+    },
+  },
+  [IP_FEAT_PUNT] = {
+    [AF_IP4] = {
+      [SAFI_UNICAST] = "ip4-punt",
+      [SAFI_MULTICAST] = "ip4-punt",
+    },
+    [AF_IP6] = {
+      [SAFI_UNICAST] = "ip6-punt",
+      [SAFI_MULTICAST] = "ip6-punt",
+    },
+  },
+  [IP_FEAT_DROP] = {
+    [AF_IP4] = {
+      [SAFI_UNICAST] = "ip4-drop",
+      [SAFI_MULTICAST] = "ip4-drop",
+    },
+    [AF_IP6] = {
+      [SAFI_UNICAST] = "ip6-drop",
+      [SAFI_MULTICAST] = "ip6-drop",
+    },
+  },
+};
+/* *INDENT-ON* */
+
+void
+ip_feature_enable_disable (ip_address_family_t af,
+			   ip_sub_address_family_t safi,
+			   ip_feature_location_t loc,
+			   const char *feature_name,
+			   u32 sw_if_index, int enable,
+			   void *feature_config, u32 n_feature_config_bytes)
+{
+  if (IP_FEAT_INPUT == loc)
+    {
+      if (N_SAFI == safi)
+	FOR_EACH_IP_ADDRESS_SUB_FAMILY (safi)
+	  vnet_feature_enable_disable (ip_arc_names[loc][af][safi],
+				       feature_name, sw_if_index,
+				       enable, feature_config,
+				       n_feature_config_bytes);
+      else
+	vnet_feature_enable_disable (ip_arc_names[loc][af][safi],
+				     feature_name, sw_if_index,
+				     enable, feature_config,
+				     n_feature_config_bytes);
+    }
+  else
+    vnet_feature_enable_disable (ip_arc_names[loc][af][safi],
+				 feature_name, sw_if_index,
+				 enable, feature_config,
+				 n_feature_config_bytes);
+}
+
+
+
 u8 *
 format_ip_address_family (u8 * s, va_list * args)
 {
@@ -133,6 +219,40 @@ unformat_ip_address_family (unformat_input_t * input, va_list * args)
 	   unformat (input, "IP6") || unformat (input, "IPv6"))
     {
       *af = AF_IP6;
+      return (1);
+    }
+  return (0);
+}
+
+u8 *
+format_ip_sub_address_family (u8 * s, va_list * args)
+{
+  ip_sub_address_family_t safi = va_arg (*args, int);	// int promo ip_sub_address_family_t);
+
+  switch (safi)
+    {
+    case SAFI_UNICAST:
+      return (format (s, "unicast"));
+    case SAFI_MULTICAST:
+      return (format (s, "multicast"));
+    }
+
+  return (format (s, "unknown"));
+}
+
+uword
+unformat_ip_sub_address_family (unformat_input_t * input, va_list * args)
+{
+  ip_sub_address_family_t *safi = va_arg (*args, ip_sub_address_family_t *);
+
+  if (unformat (input, "unicast") || unformat (input, "uni"))
+    {
+      *safi = SAFI_UNICAST;
+      return (1);
+    }
+  else if (unformat (input, "multicast") || unformat (input, "multi"))
+    {
+      *safi = SAFI_MULTICAST;
       return (1);
     }
   return (0);

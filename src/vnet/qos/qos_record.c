@@ -34,14 +34,12 @@ qos_record_feature_config (u32 sw_if_index,
   switch (input_source)
     {
     case QOS_SOURCE_IP:
-      vnet_feature_enable_disable ("ip6-unicast", "ip6-qos-record",
-				   sw_if_index, enable, NULL, 0);
-      vnet_feature_enable_disable ("ip6-multicast", "ip6-qos-record",
-				   sw_if_index, enable, NULL, 0);
-      vnet_feature_enable_disable ("ip4-unicast", "ip4-qos-record",
-				   sw_if_index, enable, NULL, 0);
-      vnet_feature_enable_disable ("ip4-multicast", "ip4-qos-record",
-				   sw_if_index, enable, NULL, 0);
+      ip_feature_enable_disable (AF_IP6, N_SAFI, IP_FEAT_INPUT,
+				 "ip6-qos-record",
+				 sw_if_index, enable, NULL, 0);
+      ip_feature_enable_disable (AF_IP4, N_SAFI, IP_FEAT_INPUT,
+				 "ip4-qos-record",
+				 sw_if_index, enable, NULL, 0);
       l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_L2_IP_QOS_RECORD,
 				  enable);
       break;
@@ -50,14 +48,12 @@ qos_record_feature_config (u32 sw_if_index,
 				   sw_if_index, enable, NULL, 0);
       break;
     case QOS_SOURCE_VLAN:
-      vnet_feature_enable_disable ("ip6-unicast", "vlan-ip6-qos-record",
-				   sw_if_index, enable, NULL, 0);
-      vnet_feature_enable_disable ("ip6-multicast", "vlan-ip6-qos-record",
-				   sw_if_index, enable, NULL, 0);
-      vnet_feature_enable_disable ("ip4-unicast", "vlan-ip4-qos-record",
-				   sw_if_index, enable, NULL, 0);
-      vnet_feature_enable_disable ("ip4-multicast", "vlan-ip4-qos-record",
-				   sw_if_index, enable, NULL, 0);
+      ip_feature_enable_disable (AF_IP6, N_SAFI, IP_FEAT_INPUT,
+				 "vlan-ip6-qos-record",
+				 sw_if_index, enable, NULL, 0);
+      ip_feature_enable_disable (AF_IP4, N_SAFI, IP_FEAT_INPUT,
+				 "vlan-ip4-qos-record",
+				 sw_if_index, enable, NULL, 0);
       vnet_feature_enable_disable ("mpls-input", "vlan-mpls-qos-record",
 				   sw_if_index, enable, NULL, 0);
       break;
