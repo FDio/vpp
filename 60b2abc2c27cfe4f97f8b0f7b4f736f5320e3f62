@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "afe2f2b9_92da2dd9",
+        "filename": "src/plugins/wireguard/wireguard.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2020-11-26T13:19:04Z",
+      "side": 1,
+      "message": "Wireguard being a quite new feature in VPP, maybe marking the API as \u0027in-progress\u0027 would be best. Not returning the public key is quite a blocker for anyone wanting to use the API to generate keys.",
+      "parentUuid": "37c6a764_2453b3cc",
+      "revId": "60b2abc2c27cfe4f97f8b0f7b4f736f5320e3f62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "f2125893_578a7539",
         "filename": "src/plugins/wireguard/wireguard.api",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2020-11-26T11:26:38Z",
       "side": 1,
       "message": "this looks like an oddity to me: create interface API usually only returns sw_if_index. In my opinion, if you want the public_key, you should then query the interface with wireguard_interface_dump (as you need to do it for the private key today)",
+      "revId": "60b2abc2c27cfe4f97f8b0f7b4f736f5320e3f62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7d8b6952_003fbb0a",
+        "filename": "src/plugins/wireguard/wireguard.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2020-11-26T13:19:04Z",
+      "side": 1,
+      "message": "Right, I agree with the consistency concerns. Maybe a more elegant solution for this would be to have the create_interface return the whole `vl_api_wireguard_interface_t interface` object.\n\nWe can also use the dump API call, but that would require two API calls for every creation with generate_key\u003dtrue (which I assume would be the most frequent use-case)",
+      "parentUuid": "f2125893_578a7539",
       "revId": "60b2abc2c27cfe4f97f8b0f7b4f736f5320e3f62",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -50,6 +86,24 @@
       "revId": "60b2abc2c27cfe4f97f8b0f7b4f736f5320e3f62",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "427ae13a_3883f6a9",
+        "filename": "src/plugins/wireguard/wireguard_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2020-11-26T13:19:04Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "96258eed_8a240c24",
+      "revId": "60b2abc2c27cfe4f97f8b0f7b4f736f5320e3f62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
