@@ -372,7 +372,8 @@ fib_node_list_walk (fib_node_list_t list,
         elt = fib_node_list_elt_get(sibling);
         sibling = elt->fnle_next;
 
-        fn(&elt->fnle_owner, args);
+        if (WALK_STOP == fn(&elt->fnle_owner, args))
+            break;
     }
 }
 

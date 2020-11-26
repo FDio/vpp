@@ -161,7 +161,7 @@ fib_node_back_walk_one (fib_node_ptr_t *ptr,
     return (fn_vfts[ptr->fnp_type].fnv_back_walk(node, ctx));
 }
 
-static int
+static walk_rc_t
 fib_node_ptr_format_one_child (fib_node_ptr_t *ptr,
 			       void *arg)
 {
@@ -169,7 +169,7 @@ fib_node_ptr_format_one_child (fib_node_ptr_t *ptr,
 
     *s = fib_node_format(ptr, *s);
 
-    return (1);
+    return (WALK_CONTINUE);
 }
 
 u8*

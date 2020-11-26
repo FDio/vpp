@@ -72,7 +72,7 @@ typedef struct fib_enty_cover_walk_ctx_t_ {
     void *ctx;
 } fib_enty_cover_walk_ctx_t;
 
-static int
+static walk_rc_t
 fib_entry_cover_walk_node_ptr (fib_node_ptr_t *depend,
 			       void *args)
 {
@@ -80,8 +80,7 @@ fib_entry_cover_walk_node_ptr (fib_node_ptr_t *depend,
 
     ctx->walk(ctx->cover, depend->fnp_index, ctx->ctx);
 
-    /* continue */
-    return (1);
+    return (WALK_CONTINUE);
 }
 
 void
@@ -107,7 +106,7 @@ fib_entry_cover_walk (fib_entry_t *cover,
                        &ctx);
 }
 
-static int
+static walk_rc_t
 fib_entry_cover_change_one (fib_entry_t *cover,
 			    fib_node_index_t covered,
 			    void *args)
@@ -144,8 +143,7 @@ fib_entry_cover_change_one (fib_entry_t *cover,
 	    fib_entry_cover_changed(covered);
 	}
     }
-    /* continue */
-    return (1);
+    return (WALK_CONTINUE);
 }
 
 void
@@ -161,15 +159,14 @@ fib_entry_cover_change_notify (fib_node_index_t cover_index,
 			 uword_to_pointer(covered, void*));
 }
 
-static int
+static walk_rc_t
 fib_entry_cover_update_one (fib_entry_t *cover,
 			    fib_node_index_t covered,
 			    void *args)
 {
     fib_entry_cover_updated(covered);
 
-    /* continue */
-    return (1);
+    return (WALK_CONTINUE);
 }
 
 void
