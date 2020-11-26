@@ -28,27 +28,11 @@
 #include <vnet/tunnel/tunnel_types_api.h>
 #include <vnet/ip/ip_types_api.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/gre/gre.api_enum.h>
+#include <vnet/gre/gre.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE gre_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_vpe_api_msg                             \
-_(GRE_TUNNEL_ADD_DEL, gre_tunnel_add_del)               \
-_(GRE_TUNNEL_DUMP, gre_tunnel_dump)
 
 static int
 gre_tunnel_type_decode (vl_api_gre_tunnel_type_t in, gre_tunnel_type_t * out)
@@ -143,30 +127,28 @@ out:
 }
 
 static void send_gre_tunnel_details
-  (gre_tunnel_t * t, vl_api_registration_t * reg, u32 context)
+  (gre_tunnel_t * t, vl_api_gre_tunnel_dump_t * mp)
 {
   vl_api_gre_tunnel_details_t *rmp;
+  int rv = 0;
 
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = htons (VL_API_GRE_TUNNEL_DETAILS);
+  /* *INDENT-OFF* */
+  REPLY_MACRO_DETAILS2(VL_API_GRE_TUNNEL_DETAILS,
+  ({
+    ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
+    ip_address_encode (&t->tunnel_dst.fp_addr, IP46_TYPE_ANY, &rmp->tunnel.dst);
 
-  ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
-  ip_address_encode (&t->tunnel_dst.fp_addr, IP46_TYPE_ANY, &rmp->tunnel.dst);
+    rmp->tunnel.outer_table_id =
+      htonl (fib_table_get_table_id
+             (t->outer_fib_index, t->tunnel_dst.fp_proto));
 
-  rmp->tunnel.outer_table_id =
-    htonl (fib_table_get_table_id
-	   (t->outer_fib_index, t->tunnel_dst.fp_proto));
-
-  rmp->tunnel.type = gre_tunnel_type_encode (t->type);
-  rmp->tunnel.mode = tunnel_mode_encode (t->mode);
-  rmp->tunnel.instance = htonl (t->user_instance);
-  rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
-  rmp->tunnel.session_id = htons (t->session_id);
-
-  rmp->context = context;
-
-  vl_api_send_msg (reg, (u8 *) rmp);
+    rmp->tunnel.type = gre_tunnel_type_encode (t->type);
+    rmp->tunnel.mode = tunnel_mode_encode (t->mode);
+    rmp->tunnel.instance = htonl (t->user_instance);
+    rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
+    rmp->tunnel.session_id = htons (t->session_id);
+  }));
+  /* *INDENT-ON* */
 }
 
 static void
@@ -188,10 +170,11 @@ vl_api_gre_tunnel_dump_t_handler (vl_api_gre_tunnel_dump_t * mp)
       /* *INDENT-OFF* */
       pool_foreach (t, gm->tunnels,
       ({
-        send_gre_tunnel_details(t, reg, mp->context);
+        send_gre_tunnel_details(t, mp);
       }));
       /* *INDENT-ON* */
     }
+
   else
     {
       if ((sw_if_index >= vec_len (gm->tunnel_index_by_sw_if_index)) ||
@@ -200,7 +183,7 @@ vl_api_gre_tunnel_dump_t_handler (vl_api_gre_tunnel_dump_t * mp)
 	  return;
 	}
       t = &gm->tunnels[gm->tunnel_index_by_sw_if_index[sw_if_index]];
-      send_gre_tunnel_details (t, reg, mp->context);
+      send_gre_tunnel_details (t, mp);
     }
 }
 
@@ -211,37 +194,17 @@ vl_api_gre_tunnel_dump_t_handler (vl_api_gre_tunnel_dump_t * mp)
  * added the client registration handlers.
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_gre;
-#undef _
-}
+/* API definitions */
+#include <vnet/format_fns.h>
+#include <vnet/gre/gre.api.c>
 
 static clib_error_t *
 gre_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  gre_main.msg_id_base = setup_message_id_table ();
 
   return 0;
 }

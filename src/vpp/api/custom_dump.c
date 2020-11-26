@@ -27,7 +27,6 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/srv6/sr.h>
 #include <vnet/srmpls/sr_mpls.h>
-#include <vnet/gre/gre.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/classify/policer_classify.h>
 #include <vnet/policer/xlate.h>
@@ -1535,45 +1534,6 @@ static void *vl_api_sw_interface_set_vxlan_gbp_bypass_t_print
   s = format (s, "sw_if_index %d ", (mp->sw_if_index));
   s = format (s, "%s ", (mp->is_ipv6 != 0) ? "ipv6" : "ipv4");
   s = format (s, "%s ", (mp->enable != 0) ? "enable" : "disable");
-
-  FINISH;
-}
-
-static void *vl_api_gre_tunnel_add_del_t_print
-  (vl_api_gre_tunnel_add_del_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: gre_tunnel_add_del ");
-
-  s = format (s, "dst %U ", format_vl_api_address, &mp->tunnel.dst);
-  s = format (s, "src %U ", format_vl_api_address, &mp->tunnel.src);
-
-  s = format (s, "instance %d ", (mp->tunnel.instance));
-
-  if (mp->tunnel.type == GRE_API_TUNNEL_TYPE_TEB)
-    s = format (s, "teb ");
-
-  if (mp->tunnel.type == GRE_API_TUNNEL_TYPE_ERSPAN)
-    s = format (s, "erspan %d ", (mp->tunnel.session_id));
-
-  if (mp->tunnel.outer_table_id)
-    s = format (s, "outer-table-id %d ", mp->tunnel.outer_table_id);
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
-  FINISH;
-}
-
-static void *vl_api_gre_tunnel_dump_t_print
-  (vl_api_gre_tunnel_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: gre_tunnel_dump ");
-
-  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
 
   FINISH;
 }
@@ -3092,8 +3052,6 @@ _(ADD_NODE_NEXT, add_node_next)						\
 _(VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel)                           \
 _(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
 _(VXLAN_OFFLOAD_RX, vxlan_offload_rx)                                   \
-_(GRE_TUNNEL_ADD_DEL, gre_tunnel_add_del)                               \
-_(GRE_TUNNEL_DUMP, gre_tunnel_dump)                                     \
 _(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                               \
 _(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                     \
 _(L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite)         \

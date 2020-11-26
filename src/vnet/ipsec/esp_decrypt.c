@@ -25,7 +25,7 @@
 #include <vnet/ipsec/ipsec_io.h>
 #include <vnet/ipsec/ipsec_tun.h>
 
-#include <vnet/gre/gre.h>
+#include <vnet/gre/packet.h>
 
 #define foreach_esp_decrypt_next                \
 _(DROP, "error-drop")                           \

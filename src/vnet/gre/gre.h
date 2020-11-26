@@ -286,6 +286,8 @@ typedef struct
 
   /* Record used instances */
   uword *instance_used;
+
+  u16 msg_id_base;
 } gre_main_t;
 
 /**
