@@ -554,6 +554,29 @@
     },
     {
       "key": {
+        "uuid": "cee51a8c_121c0cd3",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T15:02:12Z",
+      "side": 1,
+      "message": "Missing description of *adj_db_t*, or is it somewhere else? (Sorry if noise, I\u0027m still reading next sections.)",
+      "range": {
+        "startLine": 87,
+        "startChar": 0,
+        "endLine": 88,
+        "endChar": 53
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "41c53add_a3615273",
         "filename": "docs/gettingstarted/developers/fib20/thedatamodel.rst",
         "patchSetId": 8
