@@ -577,6 +577,1133 @@
     },
     {
       "key": {
+        "uuid": "299de100_77722722",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "l3xc or L3XC",
+      "range": {
+        "startLine": 26,
+        "startChar": 11,
+        "endLine": 26,
+        "endChar": 15
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c62873ce_7503cf6d",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "path-lists?",
+      "range": {
+        "startLine": 29,
+        "startChar": 11,
+        "endLine": 29,
+        "endChar": 20
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2f58b03a_f6ebe536",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "Messy/unclear sentence.",
+      "range": {
+        "startLine": 29,
+        "startChar": 56,
+        "endLine": 31,
+        "endChar": 53
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d3c11cb4_36065a6a",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "out of",
+      "range": {
+        "startLine": 38,
+        "startChar": 37,
+        "endLine": 38,
+        "endChar": 39
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1f5c94df_c1077d56",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "Examples of actions on the FIB that are not thread safe?",
+      "range": {
+        "startLine": 46,
+        "startChar": 28,
+        "endLine": 47,
+        "endChar": 37
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c7c67dd0_6b4d24d4",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "Relation between IP Table and IP FIB?",
+      "range": {
+        "startLine": 58,
+        "startChar": 19,
+        "endLine": 58,
+        "endChar": 27
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "306ac5c0_e5a9be55",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "*ATTACHED_NEXT_HOP*",
+      "range": {
+        "startLine": 85,
+        "startChar": 6,
+        "endLine": 85,
+        "endChar": 23
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "46249960_6f892547",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "*ATTACHED* ?",
+      "range": {
+        "startLine": 87,
+        "startChar": 6,
+        "endLine": 87,
+        "endChar": 14
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "67c24626_59a00953",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "This is (soft) contradicting the previous sentence.",
+      "range": {
+        "startLine": 93,
+        "startChar": 11,
+        "endLine": 94,
+        "endChar": 66
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d6a5f816_a9435a72",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "ATTACHED_NEXT_HOP",
+      "range": {
+        "startLine": 95,
+        "startChar": 36,
+        "endLine": 95,
+        "endChar": 52
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5174d279_7886c386",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "*ATTACHED*",
+      "range": {
+        "startLine": 95,
+        "startChar": 23,
+        "endLine": 95,
+        "endChar": 31
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ad2dbcde_670acaef",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "Too many to list? 😉",
+      "range": {
+        "startLine": 106,
+        "startChar": 6,
+        "endLine": 106,
+        "endChar": 58
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e62f8d77_89eb4018",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "[#f2] Optimisations, meaning optimisations present/required/subject-to-/else?",
+      "range": {
+        "startLine": 108,
+        "startChar": 428,
+        "endLine": 108,
+        "endChar": 434
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1e22ee03_0fda3784",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "ATTACHED_NEXT_HOP",
+      "range": {
+        "startLine": 114,
+        "startChar": 46,
+        "endLine": 114,
+        "endChar": 63
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "68a9cec6_dbe4fef0",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": ", so",
+      "range": {
+        "startLine": 142,
+        "startChar": 0,
+        "endLine": 142,
+        "endChar": 2
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "78551d17_de75b730",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": ":",
+      "range": {
+        "startLine": 143,
+        "startChar": 23,
+        "endLine": 143,
+        "endChar": 24
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c45d3b8b_8672dfb8",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": ", the",
+      "range": {
+        "startLine": 143,
+        "startChar": 44,
+        "endLine": 143,
+        "endChar": 48
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "68bcf215_012eeaed",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "IOW \"behind\" each *fib_entry_t* instance is a sorted vector of *fib_entry_src_t* instances, yes?",
+      "range": {
+        "startLine": 144,
+        "startChar": 0,
+        "endLine": 145,
+        "endChar": 40
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3dfc13a9_1952c2f5",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "Understand that in this paragraph connected and *connected* are the same terms, and ** used for emphasis. Same for attached and *attached*. If so, the following paragraph is confusing, see my comment there.",
+      "range": {
+        "startLine": 153,
+        "startChar": 68,
+        "endLine": 154,
+        "endChar": 8
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c9c5e051_695826b1",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "local interface",
+      "range": {
+        "startLine": 155,
+        "startChar": 77,
+        "endLine": 155,
+        "endChar": 86
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "06ff6579_9be1a058",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "represented in src code as *FIB_ENTRY_ATTRIBUTE_FIRST*.",
+      "range": {
+        "startLine": 156,
+        "startChar": 18,
+        "endLine": 156,
+        "endChar": 37
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5ce10c90_779fd5a0",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "Not following this sentence. If it is related to the previous example than it is contradicting the configuration, cause the router has its own address 192.168.1.1/24 in the  192.16.1.0/24 sub-net. If it is related to the next example, it should be said so.",
+      "range": {
+        "startLine": 162,
+        "startChar": 0,
+        "endLine": 163,
+        "endChar": 24
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "072c533a_1ef1f0da",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "By \"these\" do you mean glean adjacency? If so, then it contradicts statement in the previous paragraph: \"Packets matching a connected prefix will\ngenerate an ARP request for the packets destination address, this process is known\nas a *glean*.\"",
+      "range": {
+        "startLine": 170,
+        "startChar": 21,
+        "endLine": 170,
+        "endChar": 47
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "23919fc7_c93698a2",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "Is this a valid configuration? If so, what would be the list of *fib_entry_src_t* instances for *fib_entry_t* of 10.0.0.1/32?",
+      "range": {
+        "startLine": 184,
+        "startChar": 5,
+        "endLine": 184,
+        "endChar": 71
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1d9c64f0_2bfff340",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "the local interface",
+      "range": {
+        "startLine": 186,
+        "startChar": 60,
+        "endLine": 186,
+        "endChar": 73
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "445dfabe_8795aab3",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "I don\u0027t see *adj-fibs* in src/vnet/fib/fib_entry.h. Is it somewhere else?",
+      "range": {
+        "startLine": 190,
+        "startChar": 34,
+        "endLine": 190,
+        "endChar": 44
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "117d751a_41a0cbb3",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "the API and CLI sources",
+      "range": {
+        "startLine": 191,
+        "startChar": 14,
+        "endLine": 191,
+        "endChar": 28
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d94a401d_1e0689b9",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "That is,",
+      "range": {
+        "startLine": 199,
+        "startChar": 63,
+        "endLine": 199,
+        "endChar": 70
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "eda85ad2_0c3842c3",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "How are adj-fibs distinguished in the code from non adj-fibs?",
+      "range": {
+        "startLine": 202,
+        "startChar": 22,
+        "endLine": 202,
+        "endChar": 30
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b3b88e47_f85846aa",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "The concept of \"adj-fib\" is unclear. From description I get it is for ARP\u0027able host entries on connected subnet, but then \"less specific covering prefix\" statement here doesn\u0027t make sense. Appreciate if you could un-confuse me here 😊.",
+      "range": {
+        "startLine": 203,
+        "startChar": 56,
+        "endLine": 203,
+        "endChar": 85
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "542270a5_c7b58324",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "*via-address*",
+      "range": {
+        "startLine": 230,
+        "startChar": 0,
+        "endLine": 230,
+        "endChar": 13
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c5e8ce32_bdd0180c",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "Not following this. The [#f6]_ use case makes sense and is correct. But what the RR source\u0027s priority compared to? Doesn\u0027t RR via-address lookup follow the rules that are explained earlier, or does it deserve any special treatment, and if so, why?",
+      "range": {
+        "startLine": 233,
+        "startChar": 13,
+        "endLine": 235,
+        "endChar": 16
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9415dbfd_63daaaa3",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "Do you mean the Neighbour Adjacency (key\u003d{interface\u003d{interface-of-connected-cover}, next-hop\u003d{via-address}, link-type\u003d\"IPv4\"}), yes?",
+      "range": {
+        "startLine": 239,
+        "startChar": 140,
+        "endLine": 239,
+        "endChar": 187
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b4434c64_cd3bed29",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "cover.",
+      "range": {
+        "startLine": 242,
+        "startChar": 74,
+        "endLine": 242,
+        "endChar": 79
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "55faa37e_8435b5db",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "when:",
+      "range": {
+        "startLine": 243,
+        "startChar": 30,
+        "endLine": 243,
+        "endChar": 35
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5e60646f_ad4b8684",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": ", its",
+      "range": {
+        "startLine": 245,
+        "startChar": 100,
+        "endLine": 245,
+        "endChar": 104
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "57045ac3_feac49cd",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": ", so",
+      "range": {
+        "startLine": 245,
+        "startChar": 124,
+        "endLine": 245,
+        "endChar": 127
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e24aa993_4034c888",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": ", whenever",
+      "range": {
+        "startLine": 245,
+        "startChar": 53,
+        "endLine": 245,
+        "endChar": 62
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7b4d7e34_20436b56",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 246,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "specific cover",
+      "range": {
+        "startLine": 246,
+        "startChar": 102,
+        "endLine": 246,
+        "endChar": 110
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "97618630_de0bd16d",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 261,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "There are many lines in this diagram that are not described in the text, e.g. the line connecting the left-most fib_entry_src_t to fib_path_list_t below, and so on. Need to re-read the text few more times to make sense of it 😊.",
+      "range": {
+        "startLine": 261,
+        "startChar": 0,
+        "endLine": 261,
+        "endChar": 41
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "124d34a0_d8d25bea",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 279,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "are?",
+      "range": {
+        "startLine": 279,
+        "startChar": 44,
+        "endLine": 279,
+        "endChar": 47
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2fbf0747_25aaffc2",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 279,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "[#f10] clearly makes sense, but the text does not explain how the recursion loop is prevented. Or are you saying it is not, and if configured it will be actually executed, IOW current code does not check against recursion loop?",
+      "range": {
+        "startLine": 278,
+        "startChar": 61,
+        "endLine": 279,
+        "endChar": 59
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fe0e97b6_b2b4a9e2",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "EOS \u003d end-of-stack?",
+      "range": {
+        "startLine": 305,
+        "startChar": 27,
+        "endLine": 305,
+        "endChar": 30
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "da1d0643_05ceada0",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "its remote end-point",
+      "range": {
+        "startLine": 317,
+        "startChar": 38,
+        "endLine": 317,
+        "endChar": 42
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3aea4bb4_47459182",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "doing it",
+      "range": {
+        "startLine": 321,
+        "startChar": 25,
+        "endLine": 321,
+        "endChar": 27
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9c0abe12_c14edfc3",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 333,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 333,
+        "startChar": 0,
+        "endLine": 333,
+        "endChar": 2
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "07efa199_7fb89f9e",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 345,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "src/vnet/fib/fib_entry.h",
+      "range": {
+        "startLine": 345,
+        "startChar": 62,
+        "endLine": 345,
+        "endChar": 87
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1d20fcae_78b7d2b7",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "for",
+      "range": {
+        "startLine": 348,
+        "startChar": 24,
+        "endLine": 348,
+        "endChar": 27
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3874a2dc_77bae950",
+        "filename": "docs/gettingstarted/developers/fib20/routes.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 353,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:12:47Z",
+      "side": 1,
+      "message": "MAC-VPN is similar I think (but I didn\u0027t re-check).",
+      "range": {
+        "startLine": 353,
+        "startChar": 65,
+        "endLine": 353,
+        "endChar": 70
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "41c53add_a3615273",
         "filename": "docs/gettingstarted/developers/fib20/thedatamodel.rst",
         "patchSetId": 8
