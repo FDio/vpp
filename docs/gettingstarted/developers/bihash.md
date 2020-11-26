@@ -11,17 +11,17 @@ implementation:
 * Template implementation, it's easy to support arbitrary (key,value) types
 
 Bounded-index extensible hashing has been widely used in databases for
-decades. 
+decades.
 
 Bihash uses a two-level data structure:
 
 ```
-    +-----------------+                                              
-    | bucket-0        |                                             
-    |  log2_size      |                                             
-    |  backing store  |                                             
-    +-----------------+                                             
-    | bucket-1        |                                             
+    +-----------------+
+    | bucket-0        |
+    |  log2_size      |
+    |  backing store  |
+    +-----------------+
+    | bucket-1        |
     |  log2_size      |           +--------------------------------+
     |  backing store  | --------> | KVP_PER_PAGE * key-value-pairs |
     +-----------------+           | page 0                         |
@@ -29,12 +29,12 @@ Bihash uses a two-level data structure:
     +-----------------+           | KVP_PER_PAGE * key-value-pairs |
     | bucket-2**N-1   |           | page 1                         |
     |  log2_size      |           +--------------------------------+
-    |  backing store  |                       ---                   
+    |  backing store  |                       ---
     +-----------------+           +--------------------------------+
                                   | KVP_PER_PAGE * key-value-pairs |
                                   | page 2**(log2(size)) - 1       |
                                   +--------------------------------+
-```                                  
+```
 
 Discussion of the algorithm
 ---------------------------
@@ -105,7 +105,7 @@ often in a subsystem header file:
 
 If you're building a standalone application, you'll need to define the
 various functions by #including the method implementation file in a C
-source file. 
+source file.
 
 The core vpp engine currently uses most if not all of the known bihash
 types, so you probably won't need to #include the method
@@ -123,9 +123,9 @@ Add an instance of the selected bihash data structure to e.g. a
     typedef struct
     {
       ...
-      BVT (clib_bihash) hash;
+      BVT (clib_bihash) hash_table;
       or
-      clib_bihash_8_8_t hash;
+      clib_bihash_8_8_t hash_table;
       ...
     } my_main_t;
 ```
@@ -147,7 +147,7 @@ stand no chance of working.
 Call the init function as shown. As a rough guide, pick a number of
 buckets which is approximately
 number_of_expected_records/BIHASH_KVP_PER_PAGE from the relevant
-template instance header-file.  See previous discussion. 
+template instance header-file.  See previous discussion.
 
 The amount of memory selected should easily contain all of the
 records, with a generous allowance for hash collisions. Bihash memory
@@ -160,10 +160,10 @@ For example:
 ```c
     my_main_t *mm = &my_main;
     clib_bihash_8_8_t *h;
-        
+
     h = &mm->hash_table;
 
-    clib_bihash_init_8_8 (h, "test", (u32) number_of_buckets, 
+    clib_bihash_init_8_8 (h, "test", (u32) number_of_buckets,
                            (uword) memory_size);
 ```
 
@@ -176,7 +176,7 @@ Use BV(clib_bihash_add_del), or the explicit type variant:
    clib_bihash_8_8_t * h;
    my_main_t *mm = &my_main;
    clib_bihash_8_8_t *h;
-        
+
    h = &mm->hash_table;
    kv.key = key_to_add_or_delete;
    kv.value = value_to_add_or_delete;
@@ -196,7 +196,7 @@ The simplest possible (key, value) search goes like so:
    clib_bihash_8_8_t * h;
    my_main_t *mm = &my_main;
    clib_bihash_8_8_t *h;
-        
+
    h = &mm->hash_table;
    search_kv.key = key_to_add_or_delete;
 
@@ -228,7 +228,7 @@ Dual-loop:
 * 4 packets ahead, form 2x record keys and call BV(clib_bihash_hash)
   or the explicit hash function to calculate the record hashes.
   Call 2x BV(clib_bihash_prefetch_bucket) to prefetch the buckets
-* 2 packets ahead, call 2x BV(clib_bihash_prefetch_data) to prefetch 
+* 2 packets ahead, call 2x BV(clib_bihash_prefetch_data) to prefetch
   2x (key,value) data pages.
 * In the processing section, call 2x BV(clib_bihash_search_inline_with_hash)
   to perform the search
@@ -270,7 +270,7 @@ For another, the iterator template is not safe under all conditions:
 iterator checks whether the current bucket has been freed after each
 _callback_fn(...)_ invocation.
 
-* It is __not OK to add__ entries during a table-walk. 
+* It is __not OK to add__ entries during a table-walk.
 
 The add-during-walk case involves a jackpot: while processing a
 key-value-pair in a particular bucket, add a certain number of
