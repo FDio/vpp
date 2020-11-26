@@ -40,23 +40,23 @@
 #include <vnet/ip-neighbor/ip4_neighbor.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/util/throttle.h>
+#include <vnet/fib/fib_sas.h>
 
 /** ARP throttling */
 static throttle_t arp_throttle;
 
 void
-ip4_neighbor_probe_dst (const ip_adjacency_t * adj, const ip4_address_t * dst)
+ip4_neighbor_probe_dst (u32 sw_if_index, const ip4_address_t * dst)
 {
-  ip_interface_address_t *ia;
-  ip4_address_t *src;
+  ip4_address_t src;
+  adj_index_t ai;
 
-  src = ip4_interface_address_matching_destination
-    (&ip4_main,
-     &adj->sub_type.nbr.next_hop.ip4, adj->rewrite_header.sw_if_index, &ia);
-  if (!src)
-    return;
+  /* any glean will do, it's just for the rewrite */
+  ai = adj_glean_get (FIB_PROTOCOL_IP4, sw_if_index, NULL);
 
-  ip4_neighbor_probe (vlib_get_main (), vnet_get_main (), adj, src, dst);
+  if (ADJ_INDEX_INVALID != ai && fib_sas4_get (sw_if_index, dst, &src))
+    ip4_neighbor_probe (vlib_get_main (),
+			vnet_get_main (), adj_get (ai), &src, dst);
 }
 
 void
@@ -67,11 +67,12 @@ ip4_neighbor_advertise (vlib_main_t * vm,
   vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
   ip4_main_t *i4m = &ip4_main;
   u8 *rewrite, rewrite_len;
+  ip4_address_t tmp;
 
   if (NULL == addr)
     {
-      ip4_main_t *i4m = &ip4_main;
-      addr = ip4_interface_first_address (i4m, sw_if_index, 0);
+      fib_sas4_get (sw_if_index, NULL, &tmp);
+      addr = &tmp;
     }
 
   if (addr)
@@ -122,8 +123,6 @@ ip4_arp_inline (vlib_main_t * vm,
 		vlib_frame_t * frame, int is_glean)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  ip4_main_t *im = &ip4_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
   u32 *from, *to_next_drop;
   uword n_left_from, n_left_to_next_drop, next_index;
   u32 thread_index = vm->thread_index;
@@ -171,14 +170,14 @@ ip4_arp_inline (vlib_main_t * vm,
 	      /* resolve the packet's destination */
 	      ip4_header_t *ip0 = vlib_buffer_get_current (p0);
 	      resolve0 = ip0->dst_address;
-	      src0 = adj0->sub_type.glean.receive_addr.ip4;
+	      src0 = adj0->sub_type.glean.rx_pfx.fp_addr.ip4;
 	    }
 	  else
 	    {
 	      /* resolve the incomplete adj */
 	      resolve0 = adj0->sub_type.nbr.next_hop.ip4;
 	      /* Src IP address in ARP header. */
-	      if (ip4_src_address_for_packet (lm, sw_if_index0, &src0))
+	      if (!fib_sas4_get (sw_if_index0, &resolve0, &src0))
 		{
 		  /* No source address available */
 		  p0->error = node->errors[IP4_ARP_ERROR_NO_SOURCE_ADDRESS];

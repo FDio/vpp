@@ -258,6 +258,8 @@ typedef struct fib_entry_src_vft_t_ {
 extern const fib_entry_src_vft_t*fib_entry_src_get_vft(
     const fib_entry_src_t *esrc);
 
+extern fib_entry_src_t * fib_entry_src_find (const fib_entry_t *fib_entry,
+                                             fib_source_t source);
 extern u8* fib_entry_src_format(fib_entry_t *entry,
 				fib_source_t source,
 				u8* s);

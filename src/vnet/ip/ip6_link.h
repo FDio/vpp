@@ -30,10 +30,6 @@ extern int ip6_link_set_local_address (u32 sw_if_index,
 				       const ip6_address_t * address);
 extern adj_index_t ip6_link_get_mcast_adj (u32 sw_if_index);
 
-extern int
-ip6_src_address_for_packet (u32 sw_if_index,
-			    const ip6_address_t * dst, ip6_address_t * src);
-
 /**
  * Delegates for the interfaces
  *

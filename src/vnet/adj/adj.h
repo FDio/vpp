@@ -297,7 +297,7 @@ typedef struct ip_adjacency_t_
      */
     struct
     {
-      ip46_address_t receive_addr;
+      fib_prefix_t rx_pfx;
     } glean;
   } sub_type;
 

@@ -12,6 +12,7 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_link.h>
 #include <vnet/ethernet/arp_packet.h>
+#include <vnet/fib/fib_sas.h>
 #include <vppinfra/error.h>
 #include <vrrp/vrrp.h>
 #include <vrrp/vrrp_packet.h>
@@ -119,8 +120,7 @@ vrrp_vr_addr_cmp (vrrp_vr_t * vr, vrrp_header_t * pkt)
       peer_addr = &(((ip4_header_t *) pkt) - 1)->src_address;
       local_addr = &addr.ip4;
       addr_size = 4;
-      ip4_src_address_for_packet (&ip4_main.lookup_main,
-				  vrc->sw_if_index, local_addr);
+      fib_sas4_get (vrc->sw_if_index, NULL, local_addr);
     }
 
   return memcmp (local_addr, peer_addr, addr_size);

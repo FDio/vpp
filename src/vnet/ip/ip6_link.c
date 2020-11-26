@@ -337,41 +337,6 @@ ip6_link_get_mcast_adj (u32 sw_if_index)
 }
 
 int
-ip6_src_address_for_packet (u32 sw_if_index,
-			    const ip6_address_t * dst, ip6_address_t * src)
-{
-  ip_lookup_main_t *lm;
-
-  lm = &ip6_main.lookup_main;
-
-  if (ip6_address_is_link_local_unicast (dst))
-    {
-      ip6_address_copy (src, ip6_get_link_local_address (sw_if_index));
-
-      return (!0);
-    }
-  else
-    {
-      u32 if_add_index =
-	lm->if_address_pool_index_by_sw_if_index[sw_if_index];
-      if (PREDICT_TRUE (if_add_index != ~0))
-	{
-	  ip_interface_address_t *if_add =
-	    pool_elt_at_index (lm->if_address_pool, if_add_index);
-	  ip6_address_t *if_ip =
-	    ip_interface_address_get_address (lm, if_add);
-	  *src = *if_ip;
-	  return (!0);
-	}
-    }
-
-  src->as_u64[0] = 0;
-  src->as_u64[1] = 0;
-
-  return (0);
-}
-
-int
 ip6_link_set_local_address (u32 sw_if_index, const ip6_address_t * address)
 {
   ip6_link_delegate_t *ild;

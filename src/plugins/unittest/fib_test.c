@@ -898,9 +898,6 @@ fib_test_v4 (void)
     adj = adj_get(ai);
     FIB_TEST((IP_LOOKUP_NEXT_GLEAN == adj->lookup_next_index),
              "attached interface adj is glean");
-    FIB_TEST((0 == ip46_address_cmp(&local_pfx.fp_addr,
-                                    &adj->sub_type.glean.receive_addr)),
-             "attached interface adj is receive ok");
 
     local_pfx.fp_len = 32;
     fib_table_entry_update_one_path(fib_index, &local_pfx,
@@ -937,6 +934,9 @@ fib_test_v4 (void)
                                              FIB_PROTOCOL_IP4,
                                              FIB_SOURCE_INTERFACE)),
              "2 Interface Source'd prefixes");
+    FIB_TEST((0 == ip46_address_cmp(&local_pfx.fp_addr,
+                                    &adj->sub_type.glean.rx_pfx.fp_addr)),
+             "attached interface adj is receive ok");
 
     /*
      * +2 interface routes +2 non-shared path-lists
@@ -4495,9 +4495,6 @@ fib_test_v6 (void)
     adj = adj_get(ai);
     FIB_TEST((IP_LOOKUP_NEXT_GLEAN == adj->lookup_next_index),
              "attached interface adj is glean");
-    FIB_TEST((0 == ip46_address_cmp(&local_pfx.fp_addr,
-                                    &adj->sub_type.glean.receive_addr)),
-             "attached interface adj is receive ok");
     dpo = fib_entry_contribute_ip_forwarding(fei);
     FIB_TEST((dpo->dpoi_index == ip6_fib_table_fwding_lookup(
                   1,
@@ -4535,6 +4532,9 @@ fib_test_v6 (void)
                   1,
                   &local_pfx.fp_addr.ip6)),
              "local-route; fwd and non-fwd tables match");
+    FIB_TEST((0 == ip46_address_cmp(&local_pfx.fp_addr,
+                                    &adj->sub_type.glean.rx_pfx.fp_addr)),
+             "attached interface adj is receive ok");
 
     /*
      * +2 entries. +2 unshared path-lists
@@ -5257,6 +5257,8 @@ fib_test_v6 (void)
 
     FIB_TEST((0 == adj_nbr_db_size()), "ADJ DB size is %d",
              adj_nbr_db_size());
+    FIB_TEST((0 == adj_glean_db_size()), "ADJ DB size is %d",
+             adj_glean_db_size());
 
     return (res);
 }

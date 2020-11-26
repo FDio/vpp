@@ -510,7 +510,7 @@ fib_table_route_path_fixup (const fib_prefix_t *prefix,
         (~0 == path->frp_sw_if_index) &&
         (0 == ip46_address_cmp(&path->frp_addr, &prefix->fp_addr)))
     {
-        /* Prefix recurses via itse;f */
+        /* Prefix recurses via itself */
 	path->frp_flags |= FIB_ROUTE_PATH_DROP;
     }
     if (!(path->frp_flags & FIB_ROUTE_PATH_LOCAL) &&
@@ -521,6 +521,15 @@ fib_table_route_path_fixup (const fib_prefix_t *prefix,
     {
 	path->frp_addr = prefix->fp_addr;
         path->frp_flags |= FIB_ROUTE_PATH_ATTACHED;
+    }
+    else if ((*eflags & FIB_ENTRY_FLAG_CONNECTED) &&
+             !(*eflags & FIB_ENTRY_FLAG_LOCAL))
+    {
+        if (ip46_address_is_zero(&path->frp_addr))
+        {
+            path->frp_flags |= FIB_ROUTE_PATH_GLEAN;
+            fib_prefix_normalize(prefix, &path->frp_connected);
+        }
     }
     if (*eflags & FIB_ENTRY_FLAG_DROP)
     {

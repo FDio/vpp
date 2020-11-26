@@ -1195,6 +1195,7 @@ list(APPEND VNET_SOURCES
   fib/fib_path_list.c
   fib/fib_path.c
   fib/fib_path_ext.c
+  fib/fib_sas.c
   fib/fib_source.c
   fib/fib_urpf_list.c
   fib/fib_attached_export.c
@@ -1213,6 +1214,7 @@ list(APPEND VNET_HEADERS
   fib/fib_node_list.h
   fib/fib_entry.h
   fib/fib_entry_delegate.h
+  fib/fib_sas.h
   fib/fib_source.h
 )
 

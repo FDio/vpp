@@ -120,8 +120,7 @@ extern void adj_nbr_remove(adj_index_t ai,
 			   vnet_link_t link_type,
 			   const ip46_address_t *nh_addr,
 			   u32 sw_if_index);
-extern void adj_glean_remove(fib_protocol_t proto,
-			     u32 sw_if_index);
+extern void adj_glean_remove(ip_adjacency_t *adj);
 extern void adj_mcast_remove(fib_protocol_t proto,
 			     u32 sw_if_index);
 extern void adj_midchain_teardown(ip_adjacency_t *adj);

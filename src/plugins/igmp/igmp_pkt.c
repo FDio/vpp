@@ -16,6 +16,7 @@
  */
 
 #include <igmp/igmp_pkt.h>
+#include <vnet/fib/fib_sas.h>
 
 static void
 vlib_buffer_append (vlib_buffer_t * b, uword l)
@@ -76,8 +77,7 @@ igmp_pkt_build_ip_header (igmp_pkt_build_t * bk,
   ip4->protocol = IP_PROTOCOL_IGMP;
   ip4->tos = 0xc0;
 
-  ip4_src_address_for_packet (&ip4_main.lookup_main,
-			      bk->sw_if_index, &ip4->src_address);
+  fib_sas4_get (bk->sw_if_index, NULL, &ip4->src_address);
 
   vlib_buffer_append (b, sizeof (*ip4));
   bk->n_avail -= sizeof (*ip4);

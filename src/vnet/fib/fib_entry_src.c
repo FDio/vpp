@@ -127,7 +127,7 @@ fib_entry_src_find_i (const fib_entry_t *fib_entry,
     return (NULL);
 }
 
-static fib_entry_src_t *
+fib_entry_src_t *
 fib_entry_src_find (const fib_entry_t *fib_entry,
 		    fib_source_t source)
 
@@ -1491,7 +1491,8 @@ fib_path_is_attached (const fib_route_path_t *rpath)
     {
 	return (!0);
     }
-    else if (rpath->frp_flags & FIB_ROUTE_PATH_ATTACHED)
+    else if (rpath->frp_flags & FIB_ROUTE_PATH_ATTACHED ||
+             rpath->frp_flags & FIB_ROUTE_PATH_GLEAN)
     {
         return (!0);
     }

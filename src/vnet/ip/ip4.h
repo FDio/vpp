@@ -201,26 +201,6 @@ ip4_destination_matches_interface (ip4_main_t * im,
   return ip4_destination_matches_route (im, key, a, ia->address_length);
 }
 
-always_inline int
-ip4_src_address_for_packet (ip_lookup_main_t * lm,
-			    u32 sw_if_index, ip4_address_t * src)
-{
-  u32 if_add_index = lm->if_address_pool_index_by_sw_if_index[sw_if_index];
-  if (PREDICT_TRUE (if_add_index != ~0))
-    {
-      ip_interface_address_t *if_add =
-	pool_elt_at_index (lm->if_address_pool, if_add_index);
-      ip4_address_t *if_ip = ip_interface_address_get_address (lm, if_add);
-      *src = *if_ip;
-      return 0;
-    }
-  else
-    {
-      src->as_u32 = 0;
-    }
-  return (!0);
-}
-
 /* Find interface address which matches destination. */
 always_inline ip4_address_t *
 ip4_interface_address_matching_destination (ip4_main_t * im,

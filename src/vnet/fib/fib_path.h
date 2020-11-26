@@ -100,9 +100,13 @@ typedef enum fib_path_cfg_attribute_t_ {
      */
     FIB_PATH_CFG_ATTRIBUTE_POP_PW_CW,
     /**
+     * The path is a glean
+     */
+    FIB_PATH_CFG_ATTRIBUTE_GLEAN,
+    /**
      * Marker. Add new types before this one, then update it.
      */
-    FIB_PATH_CFG_ATTRIBUTE_LAST = FIB_PATH_CFG_ATTRIBUTE_POP_PW_CW,
+    FIB_PATH_CFG_ATTRIBUTE_LAST = FIB_PATH_CFG_ATTRIBUTE_GLEAN,
 } __attribute__ ((packed)) fib_path_cfg_attribute_t;
 
 /**
@@ -123,7 +127,8 @@ typedef enum fib_path_cfg_attribute_t_ {
     [FIB_PATH_CFG_ATTRIBUTE_INTF_RX] = "interface-rx",	\
     [FIB_PATH_CFG_ATTRIBUTE_RPF_ID] = "rpf-id",         \
     [FIB_PATH_CFG_ATTRIBUTE_DEAG_SRC] = "deag-src",     \
-    [FIB_PATH_CFG_ATTRIBUTE_POP_PW_CW] = "pop-pw-cw",     \
+    [FIB_PATH_CFG_ATTRIBUTE_POP_PW_CW] = "pop-pw-cw",   \
+    [FIB_PATH_CFG_ATTRIBUTE_GLEAN] = "glean",           \
 }
 
 #define FOR_EACH_FIB_PATH_CFG_ATTRIBUTE(_item) \
@@ -149,6 +154,7 @@ typedef enum fib_path_cfg_flags_t_ {
     FIB_PATH_CFG_FLAG_RPF_ID = (1 << FIB_PATH_CFG_ATTRIBUTE_RPF_ID),
     FIB_PATH_CFG_FLAG_DEAG_SRC = (1 << FIB_PATH_CFG_ATTRIBUTE_DEAG_SRC),
     FIB_PATH_CFG_FLAG_POP_PW_CW = (1 << FIB_PATH_CFG_ATTRIBUTE_POP_PW_CW),
+    FIB_PATH_CFG_FLAG_GLEAN = (1 << FIB_PATH_CFG_ATTRIBUTE_GLEAN),
 } __attribute__ ((packed)) fib_path_cfg_flags_t;
 
 typedef enum fib_path_format_flags_t_

@@ -17,23 +17,19 @@
 
 #include <vnet/ip-neighbor/ip6_neighbor.h>
 #include <vnet/util/throttle.h>
+#include <vnet/fib/fib_sas.h>
 
 /** ND throttling */
 static throttle_t nd_throttle;
 
 void
-ip6_neighbor_probe_dst (const ip_adjacency_t * adj, const ip6_address_t * dst)
+ip6_neighbor_probe_dst (u32 sw_if_index, const ip6_address_t * dst)
 {
-  ip_interface_address_t *ia;
-  ip6_address_t *src;
+  ip6_address_t src;
 
-  src = ip6_interface_address_matching_destination
-    (&ip6_main, dst, adj->rewrite_header.sw_if_index, &ia);
-
-  if (!src)
-    return;
-
-  ip6_neighbor_probe (vlib_get_main (), vnet_get_main (), adj, src, dst);
+  if (fib_sas6_get (sw_if_index, dst, &src))
+    ip6_neighbor_probe (vlib_get_main (), vnet_get_main (),
+			sw_if_index, &src, dst);
 }
 
 void
@@ -210,15 +206,15 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 	   * Choose source address based on destination lookup
 	   * adjacency.
 	   */
-	  if (!ip6_src_address_for_packet (sw_if_index0,
-					   &ip0->dst_address, &src))
+	  if (!fib_sas6_get (sw_if_index0, &ip0->dst_address, &src))
 	    {
 	      /* There is no address on the interface */
 	      p0->error = node->errors[IP6_NBR_ERROR_NO_SOURCE_ADDRESS];
 	      continue;
 	    }
 
-	  b0 = ip6_neighbor_probe (vm, vnm, adj0, &src, &ip0->dst_address);
+	  b0 = ip6_neighbor_probe (vm, vnm, sw_if_index0,
+				   &src, &ip0->dst_address);
 
 	  if (PREDICT_TRUE (NULL != b0))
 	    {

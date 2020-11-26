@@ -19,10 +19,9 @@
 
 /*
  * The 'DB' of all glean adjs.
- * There is only one glean per-interface per-protocol, so this is a per-interface
- * vector
+ * There is one glean per-{interface, protocol, connected prefix}
  */
-static adj_index_t *adj_gleans[FIB_PROTOCOL_MAX];
+static uword **adj_gleans[FIB_PROTOCOL_IP_MAX];
 
 static inline u32
 adj_get_glean_node (fib_protocol_t proto)
@@ -39,6 +38,69 @@ adj_get_glean_node (fib_protocol_t proto)
     return (~0);
 }
 
+static adj_index_t
+adj_glean_db_lookup (fib_protocol_t proto,
+                     u32 sw_if_index,
+                     const ip46_address_t *nh_addr)
+{
+    uword *p;
+
+    if (vec_len(adj_gleans[proto]) <= sw_if_index)
+        return (ADJ_INDEX_INVALID);
+
+    p = hash_get_mem (adj_gleans[proto][sw_if_index], nh_addr);
+
+    if (p)
+        return (p[0]);
+
+    return (ADJ_INDEX_INVALID);
+}
+
+static void
+adj_glean_db_insert (fib_protocol_t proto,
+                     u32 sw_if_index,
+                     const ip46_address_t *nh_addr,
+                     adj_index_t ai)
+{
+    vlib_main_t *vm = vlib_get_main();
+
+    vlib_worker_thread_barrier_sync(vm);
+
+    vec_validate(adj_gleans[proto], sw_if_index);
+
+    if (NULL == adj_gleans[proto][sw_if_index])
+    {
+        adj_gleans[proto][sw_if_index] =
+            hash_create_mem (0, sizeof(ip46_address_t), sizeof(adj_index_t));
+    }
+
+    hash_set_mem_alloc (&adj_gleans[proto][sw_if_index],
+                        nh_addr, ai);
+
+    vlib_worker_thread_barrier_release(vm);
+}
+
+static void
+adj_glean_db_remove (fib_protocol_t proto,
+                     u32 sw_if_index,
+                     const ip46_address_t *nh_addr)
+{
+    vlib_main_t *vm = vlib_get_main();
+
+    vlib_worker_thread_barrier_sync(vm);
+
+    ASSERT(ADJ_INDEX_INVALID != adj_glean_db_lookup(proto, sw_if_index, nh_addr));
+    hash_unset_mem_free (&adj_gleans[proto][sw_if_index],
+                         nh_addr);
+
+    if (0 == hash_elts(adj_gleans[proto][sw_if_index]))
+    {
+        hash_free(adj_gleans[proto][sw_if_index]);
+        adj_gleans[proto][sw_if_index] = NULL;
+    }
+    vlib_worker_thread_barrier_release(vm);
+}
+
 /*
  * adj_glean_add_or_lock
  *
@@ -50,13 +112,14 @@ adj_index_t
 adj_glean_add_or_lock (fib_protocol_t proto,
                        vnet_link_t linkt,
 		       u32 sw_if_index,
-		       const ip46_address_t *nh_addr)
+		       const fib_prefix_t *conn)
 {
     ip_adjacency_t * adj;
+    adj_index_t ai;
 
-    vec_validate_init_empty(adj_gleans[proto], sw_if_index, ADJ_INDEX_INVALID);
+    ai = adj_glean_db_lookup(proto, sw_if_index, &conn->fp_addr);
 
-    if (ADJ_INDEX_INVALID == adj_gleans[proto][sw_if_index])
+    if (ADJ_INDEX_INVALID == ai)
     {
 	adj = adj_alloc(proto);
 
@@ -64,37 +127,33 @@ adj_glean_add_or_lock (fib_protocol_t proto,
 	adj->ia_nh_proto = proto;
         adj->ia_link = linkt;
         adj->ia_node_index = adj_get_glean_node(proto);
-	adj_gleans[proto][sw_if_index] = adj_get_index(adj);
+        ai = adj_get_index(adj);
+        adj_lock(ai);
 
-	if (NULL != nh_addr)
-	{
-	    adj->sub_type.glean.receive_addr = *nh_addr;
-	}
-        else
-        {
-            adj->sub_type.glean.receive_addr = zero_addr;
-        }
-
+	ASSERT(conn);
+        fib_prefix_normalize(conn, &adj->sub_type.glean.rx_pfx);
 	adj->rewrite_header.sw_if_index = sw_if_index;
 	adj->rewrite_header.data_bytes = 0;
         adj->rewrite_header.max_l3_packet_bytes =
 	  vnet_sw_interface_get_mtu(vnet_get_main(), sw_if_index,
                                     vnet_link_to_mtu(linkt));
-        adj_lock(adj_get_index(adj));
 
 	vnet_update_adjacency_for_sw_interface(vnet_get_main(),
                                                sw_if_index,
-                                               adj_get_index(adj));
+                                               ai);
+
+	adj_glean_db_insert(proto, sw_if_index,
+                            &adj->sub_type.glean.rx_pfx.fp_addr, ai);
     }
     else
     {
-	adj = adj_get(adj_gleans[proto][sw_if_index]);
-        adj_lock(adj_get_index(adj));
+	adj = adj_get(ai);
+        adj_lock(ai);
     }
 
     adj_delegate_adj_created(adj);
 
-    return (adj_get_index(adj));
+    return (ai);
 }
 
 /**
@@ -118,24 +177,143 @@ adj_glean_update_rewrite (adj_index_t adj_index)
                                   sizeof (adj->rewrite_data));
 }
 
+static adj_walk_rc_t
+adj_glean_update_rewrite_walk (adj_index_t ai,
+                               void *data)
+{
+    adj_glean_update_rewrite(ai);
+
+    return (ADJ_WALK_RC_CONTINUE);
+}
+
+void
+adj_glean_update_rewrite_itf (u32 sw_if_index)
+{
+    adj_glean_walk (sw_if_index, adj_glean_update_rewrite_walk, NULL);
+}
+
+void
+adj_glean_walk (u32 sw_if_index,
+                adj_walk_cb_t cb,
+                void *data)
+{
+    fib_protocol_t proto;
+
+    FOR_EACH_FIB_IP_PROTOCOL(proto)
+    {
+        adj_index_t ai, *aip, *ais = NULL;
+        ip46_address_t *conn;
+
+        if (vec_len(adj_gleans[proto]) <= sw_if_index ||
+            NULL == adj_gleans[proto][sw_if_index])
+            continue;
+
+        /*
+         * Walk first to collect the indices
+         * then walk the collection. This is safe
+         * to modifications of the hash table
+         */
+        hash_foreach_mem(conn, ai, adj_gleans[proto][sw_if_index],
+        ({
+            vec_add1(ais, ai);
+        }));
+
+        vec_foreach(aip, ais)
+        {
+            if (ADJ_WALK_RC_STOP == cb(*aip, data))
+                break;
+        }
+        vec_free(ais);
+    }
+}
+
 adj_index_t
 adj_glean_get (fib_protocol_t proto,
-               u32 sw_if_index)
+               u32 sw_if_index,
+               const ip46_address_t *nh)
 {
-    if (sw_if_index < vec_len(adj_gleans[proto]))
+    if (NULL != nh)
     {
-        return (adj_gleans[proto][sw_if_index]);
+        return adj_glean_db_lookup(proto, sw_if_index, nh);
+    }
+    else
+    {
+        ip46_address_t *conn;
+        adj_index_t ai;
+
+        if (vec_len(adj_gleans[proto]) <= sw_if_index ||
+            NULL == adj_gleans[proto][sw_if_index])
+            return (ADJ_INDEX_INVALID);
+
+        hash_foreach_mem(conn, ai, adj_gleans[proto][sw_if_index],
+        ({
+            return (ai);
+        }));
     }
     return (ADJ_INDEX_INVALID);
 }
 
-void
-adj_glean_remove (fib_protocol_t proto,
-		  u32 sw_if_index)
+const ip46_address_t *
+adj_glean_get_src (fib_protocol_t proto,
+                   u32 sw_if_index,
+                   const ip46_address_t *nh)
 {
-    ASSERT(sw_if_index < vec_len(adj_gleans[proto]));
+    const ip_adjacency_t *adj;
+    ip46_address_t *conn;
+    adj_index_t ai;
 
-    adj_gleans[proto][sw_if_index] = ADJ_INDEX_INVALID;
+    if (vec_len(adj_gleans[proto]) <= sw_if_index ||
+        NULL == adj_gleans[proto][sw_if_index])
+        return (NULL);
+
+    fib_prefix_t pfx = {
+        .fp_len = fib_prefix_get_host_length(proto),
+        .fp_proto = proto,
+    };
+
+    if (nh)
+        pfx.fp_addr = *nh;
+
+    hash_foreach_mem(conn, ai, adj_gleans[proto][sw_if_index],
+    ({
+        adj = adj_get(ai);
+
+        if (adj->sub_type.glean.rx_pfx.fp_len > 0)
+        {
+            /* if no destination is specified use the just glean */
+            if (NULL == nh)
+                return (&adj->sub_type.glean.rx_pfx.fp_addr);
+
+            /* check the clean covers the desintation */
+            if (fib_prefix_is_cover(&adj->sub_type.glean.rx_pfx, &pfx))
+                return (&adj->sub_type.glean.rx_pfx.fp_addr);
+        }
+    }));
+
+    return (NULL);
+}
+
+void
+adj_glean_remove (ip_adjacency_t *adj)
+{
+    fib_prefix_t norm;
+
+    fib_prefix_normalize(&adj->sub_type.glean.rx_pfx,
+                         &norm);
+    adj_glean_db_remove(adj->ia_nh_proto,
+                        adj->rewrite_header.sw_if_index,
+                        &norm.fp_addr);
+}
+
+static adj_walk_rc_t
+adj_glean_start_backwalk (adj_index_t ai,
+                          void *data)
+{
+    fib_node_back_walk_ctx_t bw_ctx = *(fib_node_back_walk_ctx_t*) data;
+
+    fib_walk_sync(FIB_NODE_TYPE_ADJ, ai, &bw_ctx);
+
+    return (ADJ_WALK_RC_CONTINUE);
 }
 
 static clib_error_t *
@@ -146,25 +324,13 @@ adj_glean_interface_state_change (vnet_main_t * vnm,
     /*
      * for each glean on the interface trigger a walk back to the children
      */
-    fib_protocol_t proto;
-    ip_adjacency_t *adj;
+    fib_node_back_walk_ctx_t bw_ctx = {
+        .fnbw_reason = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP ?
+                        FIB_NODE_BW_REASON_FLAG_INTERFACE_UP :
+                        FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN),
+    };
 
-    FOR_EACH_FIB_IP_PROTOCOL(proto)
-    {
-	if (sw_if_index >= vec_len(adj_gleans[proto]) ||
-	    ADJ_INDEX_INVALID == adj_gleans[proto][sw_if_index])
-	    continue;
-
-	adj = adj_get(adj_gleans[proto][sw_if_index]);
-
-	fib_node_back_walk_ctx_t bw_ctx = {
-	    .fnbw_reason = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP ?
-			    FIB_NODE_BW_REASON_FLAG_INTERFACE_UP :
-			    FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN),
-	};
-
-	fib_walk_sync(FIB_NODE_TYPE_ADJ, adj_get_index(adj), &bw_ctx);
-    }
+    adj_glean_walk (sw_if_index, adj_glean_start_backwalk, &bw_ctx);
 
     return (NULL);
 }
@@ -217,12 +383,6 @@ adj_glean_interface_delete (vnet_main_t * vnm,
 			    u32 sw_if_index,
 			    u32 is_add)
 {
-    /*
-     * for each glean on the interface trigger a walk back to the children
-     */
-    fib_protocol_t proto;
-    ip_adjacency_t *adj;
-
     if (is_add)
     {
 	/*
@@ -241,20 +401,14 @@ adj_glean_interface_delete (vnet_main_t * vnm,
 	return (NULL);
     }
 
-    FOR_EACH_FIB_IP_PROTOCOL(proto)
-    {
-	if (sw_if_index >= vec_len(adj_gleans[proto]) ||
-	    ADJ_INDEX_INVALID == adj_gleans[proto][sw_if_index])
-	    continue;
+    /*
+     * for each glean on the interface trigger a walk back to the children
+     */
+    fib_node_back_walk_ctx_t bw_ctx = {
+        .fnbw_reason =  FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE,
+    };
 
-	adj = adj_get(adj_gleans[proto][sw_if_index]);
-
-	fib_node_back_walk_ctx_t bw_ctx = {
-	    .fnbw_reason =  FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE,
-	};
-
-	fib_walk_sync(FIB_NODE_TYPE_ADJ, adj_get_index(adj), &bw_ctx);
-    }
+    adj_glean_walk (sw_if_index, adj_glean_start_backwalk, &bw_ctx);
 
     return (NULL);
 }
@@ -268,14 +422,34 @@ format_adj_glean (u8* s, va_list *ap)
     CLIB_UNUSED(u32 indent) = va_arg(*ap, u32);
     ip_adjacency_t * adj = adj_get(index);
 
-    s = format(s, "%U-glean: %U",
+    s = format(s, "%U-glean: [src:%U] %U",
                format_fib_protocol, adj->ia_nh_proto,
-		format_vnet_rewrite,
-		&adj->rewrite_header, sizeof (adj->rewrite_data), 0);
+               format_fib_prefix, &adj->sub_type.glean.rx_pfx,
+               format_vnet_rewrite,
+               &adj->rewrite_header, sizeof (adj->rewrite_data), 0);
 
     return (s);
 }
 
+u32
+adj_glean_db_size (void)
+{
+    fib_protocol_t proto;
+    u32 sw_if_index = 0;
+    u64 count = 0;
+
+    FOR_EACH_FIB_IP_PROTOCOL(proto)
+    {
+	vec_foreach_index(sw_if_index, adj_gleans[proto])
+	{
+	    if (NULL != adj_gleans[proto][sw_if_index])
+	    {
+		count += hash_elts(adj_gleans[proto][sw_if_index]);
+	    }
+	}
+    }
+    return (count);
+}
 
 static void
 adj_dpo_lock (dpo_id_t *dpo)

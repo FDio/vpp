@@ -19,7 +19,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/arp_packet.h>
 
-extern void ip4_neighbor_probe_dst (const ip_adjacency_t * adj,
+extern void ip4_neighbor_probe_dst (u32 sw_if_index,
 				    const ip4_address_t * dst);
 extern void ip4_neighbor_advertise (vlib_main_t * vm,
 				    vnet_main_t * vnm,
