@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f968bb5c_8aad8800",
+        "filename": "src/vlib/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1592,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-11-26T13:15:09Z",
+      "side": 1,
+      "message": "Not sure what is throwing the docs job off. Maybe this indentation?\nSource shows (line:2, col:2) is a curly bracket, but the output below shows a semicolon.\n\nProcessing siphon for markdown from clicmd.siphon...\nINFO:siphon.process.clicmd:Parsing items in file \"build-root/docs/siphon_fragments/clicmd.siphon\".\nERROR:siphon.process.clicmd:Exception parsing item: {\n    \"block\": \"VLIB_CLI_COMMAND (elog_trace_command, static) \u003d\\n ;\\n\",\n    \"directory\": \"src/vlib\",\n    \"file\": \"src/vlib/cli.c\",\n    \"line_end\": 1592,\n    \"line_start\": 1591,\n    \"siphon_block\": \"\"\n}\nVLIB_CLI_COMMAND (elog_trace_command, static) \u003d\n ;\n\nTraceback (most recent call last):\n(...)\npyparsing.ParseException: Expected \"{\" (at char 49), (line:2, col:2)\n\nhttps://logs.fd.io/production/vex-yul-rot-jenkins-1/vpp-docs-verify-master-ubuntu1804-x86_64/611/console.log.gz",
+      "range": {
+        "startLine": 1592,
+        "startChar": 0,
+        "endLine": 1592,
+        "endChar": 1
+      },
+      "revId": "f30b75ef0e1d7523253948d9e25d5608f75f59e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
