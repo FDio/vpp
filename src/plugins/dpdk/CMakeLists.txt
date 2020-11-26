@@ -99,49 +99,12 @@ endif()
 # DPDK plugin
 ##############################################################################
 
-if (${DPDK_VERSION} VERSION_LESS "20.8.0")
-add_vpp_plugin(dpdk
-  SOURCES
-  buffer.c
-  main.c
-  thread.c
-  device/cli.c
-  device/common.c
-  device/device.c
-  device/flow.c
-  device/format.c
-  device/init.c
-  device/node.c
-  ipsec/cli.c
-  ipsec/crypto_node.c
-  ipsec/esp_decrypt.c
-  ipsec/esp_encrypt.c
-  ipsec/ipsec.c
-  cryptodev/cryptodev.c
-
-  MULTIARCH_SOURCES
-  buffer.c
-  device/device.c
-  device/node.c
-  ipsec/crypto_node.c
-  ipsec/esp_decrypt.c
-  ipsec/esp_encrypt.c
-
-  INSTALL_HEADERS
-  device/dpdk.h
-  ipsec/ipsec.h
-
-  LINK_FLAGS
-  "${DPDK_LINK_FLAGS}"
-
-  LINK_LIBRARIES
-  ${DPDK_LINK_LIBRARIES}
-
-  COMPONENT
-  vpp-plugin-dpdk
-)
-
+if (${DPDK_VERSION} VERSION_EQUAL "20.8.0")
+  set(CRYPTODEV_SOURCE cryptodev_dp_api)
 else ()
+  set(CRYPTODEV_SOURCE cryptodev)
+endif ()
+
 add_vpp_plugin(dpdk
   SOURCES
   buffer.c
@@ -159,7 +122,7 @@ add_vpp_plugin(dpdk
   ipsec/esp_decrypt.c
   ipsec/esp_encrypt.c
   ipsec/ipsec.c
-  cryptodev/cryptodev_dp_api.c
+  cryptodev/${CRYPTODEV_SOURCE}.c
 
   MULTIARCH_SOURCES
   buffer.c
@@ -183,4 +146,4 @@ add_vpp_plugin(dpdk
   vpp-plugin-dpdk
 )
 
-endif ()
+
