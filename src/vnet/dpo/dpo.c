@@ -262,13 +262,15 @@ void
 dpo_copy (dpo_id_t *dst,
 	  const dpo_id_t *src)
 {
-    dpo_id_t tmp = *dst;
+    dpo_id_t tmp = {
+        .as_u64 = dst->as_u64
+    };
 
     /*
      * the destination is written in a single u64 write - hence atomically w.r.t
      * any packets inflight.
      */
-    *((u64*)dst) = *(u64*)src;
+    dst->as_u64 = src->as_u64;
 
     dpo_lock(dst);
     dpo_unlock(&tmp);
@@ -279,6 +281,9 @@ dpo_is_adj (const dpo_id_t *dpo)
 {
     return ((dpo->dpoi_type == DPO_ADJACENCY) ||
 	    (dpo->dpoi_type == DPO_ADJACENCY_INCOMPLETE) ||
+            (dpo->dpoi_type == DPO_ADJACENCY_GLEAN) ||
+            (dpo->dpoi_type == DPO_ADJACENCY_MCAST) ||
+            (dpo->dpoi_type == DPO_ADJACENCY_MCAST_MIDCHAIN) ||
 	    (dpo->dpoi_type == DPO_ADJACENCY_MIDCHAIN) ||
 	    (dpo->dpoi_type == DPO_ADJACENCY_GLEAN));
 }
