@@ -1909,10 +1909,10 @@ read_again:
 	  e->session_index = s->session_index;
 	}
     }
-  else if (PREDICT_FALSE (rv < n))
+  else if (PREDICT_FALSE (rv < n && !s->is_dgram))
     {
       /* More data enqueued while reading. Try to drain it
-       * or fill the buffer */
+       * or fill the buffer. Avoid doing that for dgrams */
       buf += rv;
       n -= rv;
       goto read_again;
