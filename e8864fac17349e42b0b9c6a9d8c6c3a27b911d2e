@@ -2,6 +2,167 @@
   "comments": [
     {
       "key": {
+        "uuid": "bb9aa349_58ade365",
+        "filename": "docs/gettingstarted/developers/fib20/attachedexport.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:57:43Z",
+      "side": 1,
+      "message": ", this",
+      "range": {
+        "startLine": 28,
+        "startChar": 0,
+        "endLine": 28,
+        "endChar": 4
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5577f637_86d37749",
+        "filename": "docs/gettingstarted/developers/fib20/attachedexport.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:57:43Z",
+      "side": 1,
+      "message": "it",
+      "range": {
+        "startLine": 37,
+        "startChar": 281,
+        "endLine": 37,
+        "endChar": 285
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ace24e38_29f085c1",
+        "filename": "docs/gettingstarted/developers/fib20/attachedexport.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:57:43Z",
+      "side": 1,
+      "message": "fib20fig7",
+      "range": {
+        "startLine": 40,
+        "startChar": 21,
+        "endLine": 40,
+        "endChar": 30
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4d48b01b_ed36417c",
+        "filename": "docs/gettingstarted/developers/fib20/attachedexport.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:57:43Z",
+      "side": 1,
+      "message": "Shouldn\u0027t the CLI last lines read:\nip route add table 2 64.10.1.0/24 via GigabitEthernet2/0/1\nip route add table 3 64.10.1.0/24 via GigabitEthernet2/0/1\n\ns/64.10.1.024/64.10.1.0\\/24/\n\nGraph in Figure 7. doesn\u0027t follow the graph template in Figure 6., e.g. both fib_export_t and fib_import_t connected to the same instance of exported\u0026imported fib_entry_t.\n\nQuestion: what is meant by \"source\u003dITF\"?",
+      "range": {
+        "startLine": 42,
+        "startChar": 10,
+        "endLine": 42,
+        "endChar": 40
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "747ea3cf_7c8ecda8",
+        "filename": "docs/gettingstarted/developers/fib20/attachedexport.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:57:43Z",
+      "side": 1,
+      "message": "connected prefix",
+      "range": {
+        "startLine": 44,
+        "startChar": 62,
+        "endLine": 44,
+        "endChar": 71
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "83cd5d20_9c95fa08",
+        "filename": "docs/gettingstarted/developers/fib20/attachedexport.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:57:43Z",
+      "side": 1,
+      "message": "removal of the",
+      "range": {
+        "startLine": 50,
+        "startChar": 0,
+        "endLine": 50,
+        "endChar": 11
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "51422ab5_d611418e",
+        "filename": "docs/gettingstarted/developers/fib20/attachedexport.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T18:57:43Z",
+      "side": 1,
+      "message": "I do not see it depicted in the figure, or I am misinterpreting the visual depiction 😊. The only *Cover Tracking* markup I see is in the table 1 with fib-adj entry covered by prefix 64.10.1.0/24. No markup in tables 2 and 3.",
+      "range": {
+        "startLine": 47,
+        "startChar": 60,
+        "endLine": 50,
+        "endChar": 38
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d72108b1_a6331c8a",
         "filename": "docs/gettingstarted/developers/fib20/controlplane.rst",
         "patchSetId": 8
