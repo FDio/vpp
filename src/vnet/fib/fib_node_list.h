@@ -52,8 +52,8 @@ extern u32 fib_node_list_get_size(fib_node_list_t head);
 /**
  * @brief Callback function invoked during a list walk
  */
-typedef int (*fib_node_list_walk_cb_t)(fib_node_ptr_t *owner,
-                                       void *args);
+typedef walk_rc_t (*fib_node_list_walk_cb_t)(fib_node_ptr_t *owner,
+                                             void *args);
 
 extern void fib_node_list_walk(fib_node_list_t head,
                                fib_node_list_walk_cb_t fn,

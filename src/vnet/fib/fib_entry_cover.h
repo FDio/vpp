@@ -21,9 +21,9 @@
 /**
  * callback function used when walking the covered entries
  */
-typedef int (*fib_entry_covered_walk_t)(fib_entry_t *cover,
-					fib_node_index_t covered,
-					void *ctx);
+typedef walk_rc_t (*fib_entry_covered_walk_t)(fib_entry_t *cover,
+                                              fib_node_index_t covered,
+                                              void *ctx);
 
 extern u32 fib_entry_cover_track(fib_entry_t *cover,
 				 fib_node_index_t covered);

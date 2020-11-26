@@ -205,7 +205,7 @@ fib_entry_import_add (fib_ae_import_t *import,
 /**
  * Call back when walking a connected prefix's covered prefixes for import
  */
-static int
+static walk_rc_t
 fib_entry_covered_walk_import (fib_entry_t *cover,
 			       fib_node_index_t covered,
 			       void *ctx)
@@ -214,7 +214,7 @@ fib_entry_covered_walk_import (fib_entry_t *cover,
 
     fib_entry_import_add(import, covered);
 
-    return (0);
+    return (WALK_CONTINUE);
 }
 
 /*

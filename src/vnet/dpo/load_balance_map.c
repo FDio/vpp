@@ -491,7 +491,7 @@ load_balance_map_unlock (index_t lbmi)
     }
 }
 
-static int
+static walk_rc_t
 load_balance_map_path_state_change_walk (fib_node_ptr_t *fptr,
                                          void *ctx)
 {
@@ -501,7 +501,7 @@ load_balance_map_path_state_change_walk (fib_node_ptr_t *fptr,
 
     load_balance_map_fill(lbm);
 
-    return (!0);
+    return (WALK_CONTINUE);
 }
 
 /**

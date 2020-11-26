@@ -71,7 +71,7 @@ typedef struct mfib_enty_cover_walk_ctx_t_ {
     void *ctx;
 } mfib_enty_cover_walk_ctx_t;
 
-static int
+static walk_rc_t
 mfib_entry_cover_walk_node_ptr (fib_node_ptr_t *depend,
                                 void *args)
 {
@@ -79,8 +79,7 @@ mfib_entry_cover_walk_node_ptr (fib_node_ptr_t *depend,
 
     ctx->walk(ctx->cover, depend->fnp_index, ctx->ctx);
 
-    /* continue */
-    return (1);
+    return (WALK_CONTINUE);
 }
 
 void
