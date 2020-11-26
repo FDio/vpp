@@ -38,6 +38,9 @@ extern int ip_proto_decode (vl_api_ip_proto_t ipp, ip_protocol_t * out);
 extern vl_api_ip_proto_t ip_proto_encode (ip_protocol_t ipp);
 extern ip_dscp_t ip_dscp_decode (vl_api_ip_dscp_t _dscp);
 extern vl_api_ip_dscp_t ip_dscp_encode (ip_dscp_t dscp);
+extern int ip_feature_location_decode (vl_api_ip_feature_location_t in,
+                                       ip_feature_location_t * out);
+extern vl_api_ip_feature_location_t ip_feature_location_encode (ip_feature_location_t f);
 
 /**
  * Decode/Encode for struct/union types
