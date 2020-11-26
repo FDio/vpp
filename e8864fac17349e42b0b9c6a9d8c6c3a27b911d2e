@@ -186,6 +186,420 @@
     },
     {
       "key": {
+        "uuid": "28672f1b_e5741464",
+        "filename": "docs/gettingstarted/developers/fib20/dataplane.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": "Nice diagram! Two typos there:\n\ns/LB:1.1..12/LB:1.1.1.2/\ns/LB:1.1.1.2/LB:1.1.1.1/",
+      "range": {
+        "startLine": 36,
+        "startChar": 0,
+        "endLine": 36,
+        "endChar": 34
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "620152fb_5ce98469",
+        "filename": "docs/gettingstarted/developers/fib20/dataplane.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": "Another nice diagram! And the same two typos there:\n\ns/LB:1.1..12/LB:1.1.1.2/\ns/LB:1.1.1.2/LB:1.1.1.1/",
+      "range": {
+        "startLine": 50,
+        "startChar": 0,
+        "endLine": 50,
+        "endChar": 34
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "597052f6_efd1ce28",
+        "filename": "docs/gettingstarted/developers/fib20/dataplane.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": "The same two typos there, or maybe not the same:\n\ns/FIB-entry:1.1.1.2/FIB-entry:1.1.1.1/\ns/FIB-entry:1.1.1.1/FIB-entry:1.1.1.2/",
+      "range": {
+        "startLine": 56,
+        "startChar": 0,
+        "endLine": 56,
+        "endChar": 35
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cf45a8d0_40ce2b71",
+        "filename": "docs/gettingstarted/developers/fib20/dataplane.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": "truly",
+      "range": {
+        "startLine": 83,
+        "startChar": 54,
+        "endLine": 83,
+        "endChar": 60
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "50924b49_7d100e31",
+        "filename": "docs/gettingstarted/developers/fib20/dataplane.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": "of",
+      "range": {
+        "startLine": 88,
+        "startChar": 30,
+        "endLine": 88,
+        "endChar": 32
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dec7c03e_43d5b71c",
+        "filename": "docs/gettingstarted/developers/fib20/dataplane.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": "vnet/vnet/dpo/*",
+      "range": {
+        "startLine": 98,
+        "startChar": 44,
+        "endLine": 98,
+        "endChar": 59
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7aecc054_52fcb02e",
+        "filename": "docs/gettingstarted/developers/fib20/graphwalks.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": ", that",
+      "range": {
+        "startLine": 16,
+        "startChar": 64,
+        "endLine": 16,
+        "endChar": 69
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a22f45ed_e8703faf",
+        "filename": "docs/gettingstarted/developers/fib20/graphwalks.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": ",",
+      "range": {
+        "startLine": 17,
+        "startChar": 23,
+        "endLine": 17,
+        "endChar": 27
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b02c96e0_a4583f7e",
+        "filename": "docs/gettingstarted/developers/fib20/graphwalks.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": ",",
+      "range": {
+        "startLine": 17,
+        "startChar": 60,
+        "endLine": 17,
+        "endChar": 61
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3b4b88b1_ae76b72c",
+        "filename": "docs/gettingstarted/developers/fib20/graphwalks.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": ").",
+      "range": {
+        "startLine": 27,
+        "startChar": 107,
+        "endLine": 27,
+        "endChar": 108
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ae07435d_e4c80cc6",
+        "filename": "docs/gettingstarted/developers/fib20/graphwalks.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": ", it returns",
+      "range": {
+        "startLine": 32,
+        "startChar": 69,
+        "endLine": 32,
+        "endChar": 84
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1236b1ee_1c9e3a85",
+        "filename": "docs/gettingstarted/developers/fib20/graphwalks.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": "What does exit early mean? Is there a warning, error, change of behaviour e.g. certain FIB entries excluded from forwarding? Or is it just walk exit with indeterministic consequences 😊.",
+      "range": {
+        "startLine": 39,
+        "startChar": 51,
+        "endLine": 41,
+        "endChar": 20
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "824b4012_1e018a06",
+        "filename": "docs/gettingstarted/developers/fib20/graphwalks.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": "to avoid blocking",
+      "range": {
+        "startLine": 56,
+        "startChar": 11,
+        "endLine": 56,
+        "endChar": 31
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bd24fca6_21d5a3ce",
+        "filename": "docs/gettingstarted/developers/fib20/graphwalks.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": ", numerous",
+      "range": {
+        "startLine": 57,
+        "startChar": 32,
+        "endLine": 57,
+        "endChar": 41
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "013e7a04_f7baa3ba",
+        "filename": "docs/gettingstarted/developers/fib20/graphwalks.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": "can complete full run?",
+      "range": {
+        "startLine": 58,
+        "startChar": 49,
+        "endLine": 58,
+        "endChar": 56
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d1e7283c_a039fe6f",
+        "filename": "docs/gettingstarted/developers/fib20/graphwalks.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": "routes, which",
+      "range": {
+        "startLine": 71,
+        "startChar": 62,
+        "endLine": 71,
+        "endChar": 73
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fa902932_e2a43603",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": "them",
+      "range": {
+        "startLine": 39,
+        "startChar": 46,
+        "endLine": 39,
+        "endChar": 50
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c7bbb484_2684fb17",
+        "filename": "docs/gettingstarted/developers/fib20/marknsweep.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T20:26:56Z",
+      "side": 1,
+      "message": "uploads?",
+      "range": {
+        "startLine": 42,
+        "startChar": 17,
+        "endLine": 42,
+        "endChar": 26
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c698087c_2a3d756a",
         "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
         "patchSetId": 8
