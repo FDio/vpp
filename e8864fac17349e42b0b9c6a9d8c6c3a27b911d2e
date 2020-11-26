@@ -1,0 +1,579 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d72108b1_a6331c8a",
+        "filename": "docs/gettingstarted/developers/fib20/controlplane.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "I am a far cry from being an UML addict, but on the first look, I do find this description a bit ambiguous. I do read it from left to right, and I do know ip neighbour can be reachable by one or more adjacencies, so I can work out meaning of the diagram. But I do not see arrow shape in /_images/ip-neighbor.png, but a diamond shape :). By arrow head I read you mean where the diamond symbol sits, okay, but it would be clearer to say just that. Maybe you could consider,  instead of diamond shapes, use the actual arrows to represent associations, per UML syntax, and do not use arrows as pointers for descriptions. Feel free to ignore this comment, both my UML skills and my visuals\u0027 reading ability may be well below par, after all ;)",
+      "range": {
+        "startLine": 23,
+        "startChar": 13,
+        "endLine": 23,
+        "endChar": 18
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c698087c_2a3d756a",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "Could you add explanation why there could be up to two *ip_adjacency_t* instances associated with *ip_neigbor_t* instance, as per Figure 1?",
+      "range": {
+        "startLine": 8,
+        "startChar": 0,
+        "endLine": 8,
+        "endChar": 30
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "472d0dd7_afa585c8",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "a peer (identified by an IPv4 or IPv6 address, *next_hop*) and its MAC address on a given\ninterface",
+      "range": {
+        "startLine": 11,
+        "startChar": 8,
+        "endLine": 12,
+        "endChar": 9
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8f5406e3_588ab890",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "But the *rewrite* is also present in the *ip_neighbor_t* data structure, so what\u0027s the difference here?",
+      "range": {
+        "startLine": 23,
+        "startChar": 75,
+        "endLine": 23,
+        "endChar": 82
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d2308924_4855085e",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "Missing description of *interface* and *next_hop*.",
+      "range": {
+        "startLine": 23,
+        "startChar": 29,
+        "endLine": 23,
+        "endChar": 69
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4b90212c_868a2fdd",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "ethertype",
+      "range": {
+        "startLine": 26,
+        "startChar": 21,
+        "endLine": 26,
+        "endChar": 31
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7ef3f21c_fb5aa0c6",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "field",
+      "range": {
+        "startLine": 26,
+        "startChar": 71,
+        "endLine": 26,
+        "endChar": 76
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1eda41bf_bc150c75",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "*rewrite*",
+      "range": {
+        "startLine": 27,
+        "startChar": 16,
+        "endLine": 27,
+        "endChar": 23
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "505dc0b7_16c91143",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "Can you add example with IPsec? It\u0027s much more widely used than LISP ;)",
+      "range": {
+        "startLine": 29,
+        "startChar": 46,
+        "endLine": 29,
+        "endChar": 50
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f8840c21_440c4a40",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "is",
+      "range": {
+        "startLine": 29,
+        "startChar": 0,
+        "endLine": 29,
+        "endChar": 5
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5050c496_8744ad3a",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "for MPLS, would *rewrite* contain MPLS label(s)?",
+      "range": {
+        "startLine": 34,
+        "startChar": 10,
+        "endLine": 34,
+        "endChar": 14
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "be377593_62f99b75",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "Why not just types not sub-types?",
+      "range": {
+        "startLine": 39,
+        "startChar": 16,
+        "endLine": 39,
+        "endChar": 25
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0cd9194b_74660dd4",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "Didn\u0027t see \"DPO\" acronym defined so far.",
+      "range": {
+        "startLine": 41,
+        "startChar": 9,
+        "endLine": 41,
+        "endChar": 13
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d5b8112e_4aece11a",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "But",
+      "range": {
+        "startLine": 41,
+        "startChar": 57,
+        "endLine": 41,
+        "endChar": 62
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8e73cf47_b87bd856",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "sub of sub-types, or just sub-types? 😊",
+      "range": {
+        "startLine": 45,
+        "startChar": 51,
+        "endLine": 45,
+        "endChar": 66
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3f7053de_94cc584a",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "next_hop",
+      "range": {
+        "startLine": 47,
+        "startChar": 41,
+        "endLine": 47,
+        "endChar": 49
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "40f804c6_b84024bc",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "link_type",
+      "range": {
+        "startLine": 47,
+        "startChar": 51,
+        "endLine": 47,
+        "endChar": 60
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e5462f34_b8951f5e",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "neighbour",
+      "range": {
+        "startLine": 51,
+        "startChar": 47,
+        "endLine": 51,
+        "endChar": 55
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fd066500_54f10eaa",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "So \"terminal\" is what goes on the wire, and \"mid-chain\" goes into payload that gets further looked up in the FIB and forwarded accordingly?",
+      "range": {
+        "startLine": 53,
+        "startChar": 24,
+        "endLine": 54,
+        "endChar": 24
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "eb52e837_d9f91b54",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "has",
+      "range": {
+        "startLine": 57,
+        "startChar": 35,
+        "endLine": 57,
+        "endChar": 40
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6fe2f7eb_d54fd0e8",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": ". An",
+      "range": {
+        "startLine": 58,
+        "startChar": 34,
+        "endLine": 58,
+        "endChar": 38
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e3efc65f_e663c601",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "Excellent and concise explanation!",
+      "range": {
+        "startLine": 59,
+        "startChar": 7,
+        "endLine": 68,
+        "endChar": 67
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f127601b_6b05adfb",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "undiscovered",
+      "range": {
+        "startLine": 72,
+        "startChar": 27,
+        "endLine": 72,
+        "endChar": 38
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ff51623a_6e6956dd",
+        "filename": "docs/gettingstarted/developers/fib20/neighbors.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "What is used for required but unresolved adjacency on an Ethernet interface, Glean or Incomplete Neighbour Adjacency? What if this Ethernet interface is configured as point-to-point?",
+      "range": {
+        "startLine": 76,
+        "startChar": 52,
+        "endLine": 78,
+        "endChar": 13
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "41c53add_a3615273",
+        "filename": "docs/gettingstarted/developers/fib20/thedatamodel.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-26T14:58:34Z",
+      "side": 1,
+      "message": "forwarded(?) (Switching in my people\u0027s minds is equivalent to forwarding based on packet\u0027s L2 header, similar to routing implying forwarding based on L3 header, and so on; forwarding on the other hand is generic enough).",
+      "range": {
+        "startLine": 9,
+        "startChar": 20,
+        "endLine": 9,
+        "endChar": 28
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
