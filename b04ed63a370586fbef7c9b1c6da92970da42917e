@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2d41872d_fa4254c3",
+        "filename": "src/plugins/linux-cp/lcp_routing.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 487,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2020-11-26T23:19:25Z",
+      "side": 1,
+      "message": "need to cast nh into an ip_address_t to match the current ip_neighbor_del() prototype.",
+      "revId": "b04ed63a370586fbef7c9b1c6da92970da42917e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "332f7457_a8abe0e9",
+        "filename": "src/plugins/linux-cp/lcp_routing.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 544,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2020-11-26T23:19:25Z",
+      "side": 1,
+      "message": "I needed to cast this into an ip_address_t.ip because at least at head, ip_neighbor_add (and _del used below) don\u0027t take the ip46_address_t and fib proto type.",
+      "revId": "b04ed63a370586fbef7c9b1c6da92970da42917e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
