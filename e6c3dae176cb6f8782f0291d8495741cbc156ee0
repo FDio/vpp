@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6b5baa37_f26b901f",
+        "filename": "src/plugins/rdma/input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1025,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-11-26T11:28:24Z",
+      "side": 1,
+      "message": "you could use vec_foreach instead",
+      "revId": "e6c3dae176cb6f8782f0291d8495741cbc156ee0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
