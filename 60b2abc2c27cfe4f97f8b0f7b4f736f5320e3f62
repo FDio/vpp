@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "2210908c_493b65d3",
+        "filename": "src/plugins/wireguard/wireguard.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-11-26T13:39:47Z",
+      "side": 1,
+      "message": "the API\u0027s version is \u003c1, so it\u0027s all experimental. changes are allowed.",
+      "parentUuid": "37c6a764_2453b3cc",
+      "revId": "60b2abc2c27cfe4f97f8b0f7b4f736f5320e3f62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "f2125893_578a7539",
         "filename": "src/plugins/wireguard/wireguard.api",
         "patchSetId": 1
