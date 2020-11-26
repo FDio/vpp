@@ -23,6 +23,7 @@ import "vnet/ip/ip_types.api";
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param private_key - private key in binary format of this device
+    @param public_key - public key in binary format of this device
     @param port - port of this device
     @param src_ip - packet sent through this interface us this
                     address as the IP source.
@@ -32,6 +33,7 @@ typedef wireguard_interface
   u32 user_instance [default=0xffffffff];
   vl_api_interface_index_t sw_if_index;
   u8 private_key[32];
+  u8 public_key[32];
   u16 port;
   vl_api_address_t src_ip;
 };
