@@ -246,6 +246,10 @@ typedef struct fib_path_t_ {
 	} attached_next_hop;
 	struct {
 	    /**
+	     * The Connected local address
+	     */
+	    fib_prefix_t fp_connected;
+	    /**
 	     * The interface
 	     */
 	    u32 fp_interface;
@@ -732,7 +736,7 @@ fib_path_attached_get_adj (fib_path_t *path,
 
         ai = adj_glean_add_or_lock(nh_proto, link,
                                    path->attached.fp_interface,
-                                   NULL);
+                                   &path->attached.fp_connected);
         dpo_set(dpo, DPO_ADJACENCY_GLEAN, vnet_link_to_dpo_proto(link), ai);
         adj_unlock(ai);
     }
@@ -1262,6 +1266,8 @@ fib_path_route_flags_to_cfg_flags (const fib_route_path_t *rpath)
 	cfg_flags |= FIB_PATH_CFG_FLAG_ICMP_UNREACH;
     if (rpath->frp_flags & FIB_ROUTE_PATH_ICMP_PROHIBIT)
 	cfg_flags |= FIB_PATH_CFG_FLAG_ICMP_PROHIBIT;
+    if (rpath->frp_flags & FIB_ROUTE_PATH_GLEAN)
+	cfg_flags |= FIB_PATH_CFG_FLAG_GLEAN;
 
     return (cfg_flags);
 }
@@ -1364,6 +1370,12 @@ fib_path_create (fib_node_index_t pl_index,
     {
         path->fp_type = FIB_PATH_TYPE_SPECIAL;
         path->classify.fp_classify_table_id = rpath->frp_classify_table_id;
+    }
+    else if (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_GLEAN)
+    {
+        path->fp_type = FIB_PATH_TYPE_ATTACHED;
+        path->attached.fp_interface = rpath->frp_sw_if_index;
+        path->attached.fp_connected = rpath->frp_connected;
     }
     else if (~0 != rpath->frp_sw_if_index)
     {
@@ -2105,7 +2117,7 @@ fib_path_resolve (fib_node_index_t path_index)
         break;
     }
     case FIB_PATH_TYPE_DVR:
-        dvr_dpo_add_or_lock(path->attached.fp_interface,
+        dvr_dpo_add_or_lock(path->dvr.fp_interface,
                             path->fp_nh_proto,
                             &path->fp_dpo);
         break;

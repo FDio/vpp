@@ -34,17 +34,18 @@ extern void ip6_neighbor_advertise (vlib_main_t * vm,
 				    u32 sw_if_index,
 				    const ip6_address_t * addr);
 
-extern void ip6_neighbor_probe_dst (const ip_adjacency_t * adj,
+extern void ip6_neighbor_probe_dst (u32 sw_if_index,
 				    const ip6_address_t * dst);
 
 always_inline vlib_buffer_t *
 ip6_neighbor_probe (vlib_main_t * vm,
 		    vnet_main_t * vnm,
-		    const ip_adjacency_t * adj,
+		    u32 sw_if_index,
 		    const ip6_address_t * src, const ip6_address_t * dst)
 {
   icmp6_neighbor_solicitation_header_t *h0;
   vnet_hw_interface_t *hw_if0;
+  const ip_adjacency_t *adj;
   vlib_buffer_t *b0;
   int bogus_length;
   u32 bi0 = 0;
@@ -52,17 +53,17 @@ ip6_neighbor_probe (vlib_main_t * vm,
   h0 = vlib_packet_template_get_packet
     (vm, &ip6_neighbor_packet_template, &bi0);
   if (!h0)
-    return NULL;;
+    return NULL;
 
   /* if the interface has been disabled for ip6, later steps to retrieve
    * an adjacency will result in a segv.
    */
-  if (!ip6_link_is_enabled (adj->rewrite_header.sw_if_index))
+  if (!ip6_link_is_enabled (sw_if_index))
     return NULL;
 
   b0 = vlib_get_buffer (vm, bi0);
 
-  hw_if0 = vnet_get_sup_hw_interface (vnm, adj->rewrite_header.sw_if_index);
+  hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index);
 
   /*
    * Destination address is a solicited node multicast address.
@@ -87,11 +88,11 @@ ip6_neighbor_probe (vlib_main_t * vm,
   ASSERT (bogus_length == 0);
   VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
-  vnet_buffer (b0)->sw_if_index[VLIB_TX] = adj->rewrite_header.sw_if_index;
+  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index;
 
   /* Use the link's mcast adj to ship the packet */
   vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
-    ip6_link_get_mcast_adj (adj->rewrite_header.sw_if_index);
+    ip6_link_get_mcast_adj (sw_if_index);
   adj = adj_get (vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 
   b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;

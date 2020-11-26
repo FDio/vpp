@@ -267,6 +267,13 @@ extern int fib_prefix_is_host(const fib_prefix_t *p);
 extern u8 fib_prefix_get_host_length (fib_protocol_t proto);
 
 /**
+ * normalise a prefix (i.e. mask the host bits according to the
+ * prefix length)
+ */
+extern void fib_prefix_normalize(const fib_prefix_t *p,
+                                 fib_prefix_t *out);
+
+/**
  * \brief Host prefix from ip
  */
 extern void fib_prefix_from_ip46_addr (const ip46_address_t *addr,
@@ -393,6 +400,10 @@ typedef enum fib_route_path_flags_t_
      * Pop a Psuedo Wire Control Word
      */
     FIB_ROUTE_PATH_POP_PW_CW = (1 << 18),
+    /**
+     * A path that resolves via a glean adjacency
+     */
+    FIB_ROUTE_PATH_GLEAN = (1 << 19),
 } fib_route_path_flags_t;
 
 /**
@@ -520,6 +531,11 @@ typedef struct fib_route_path_t_ {
                  * Present in an mfib path list
                  */
                 index_t frp_bier_imp;
+
+                /**
+                 * Glean prefix on a glean path
+                 */
+                fib_prefix_t frp_connected;
             };
 
             /**

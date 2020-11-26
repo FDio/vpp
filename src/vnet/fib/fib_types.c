@@ -260,6 +260,25 @@ fib_prefix_is_host (const fib_prefix_t *prefix)
     return (0);
 }
 
+void
+fib_prefix_normalize (const fib_prefix_t *p,
+                      fib_prefix_t *out)
+{
+    fib_prefix_copy (out, p);
+
+    switch (p->fp_proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	ip4_address_normalize(&out->fp_addr.ip4, out->fp_len);
+        break;
+    case FIB_PROTOCOL_IP6:
+	ip6_address_normalize(&out->fp_addr.ip6, out->fp_len);
+        break;
+    case FIB_PROTOCOL_MPLS:
+	break;
+    }
+}
+
 u8 *
 format_fib_prefix (u8 * s, va_list * args)
 {

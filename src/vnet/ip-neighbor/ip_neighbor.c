@@ -1011,22 +1011,19 @@ ip_neighbor_register (ip_address_family_t af, const ip_neighbor_vft_t * vft)
 }
 
 void
-ip_neighbor_probe_dst (const ip_adjacency_t * adj, const ip46_address_t * dst)
+ip_neighbor_probe_dst (u32 sw_if_index,
+		       ip_address_family_t af, const ip46_address_t * dst)
 {
-  if (!vnet_sw_interface_is_admin_up (vnet_get_main (),
-				      adj->rewrite_header.sw_if_index))
+  if (!vnet_sw_interface_is_admin_up (vnet_get_main (), sw_if_index))
     return;
 
-  switch (adj->ia_nh_proto)
+  switch (af)
     {
-    case FIB_PROTOCOL_IP6:
-      ip6_neighbor_probe_dst (adj, &dst->ip6);
+    case AF_IP6:
+      ip6_neighbor_probe_dst (sw_if_index, &dst->ip6);
       break;
-    case FIB_PROTOCOL_IP4:
-      ip4_neighbor_probe_dst (adj, &dst->ip4);
-      break;
-    case FIB_PROTOCOL_MPLS:
-      ASSERT (0);
+    case AF_IP4:
+      ip4_neighbor_probe_dst (sw_if_index, &dst->ip4);
       break;
     }
 }
@@ -1034,7 +1031,9 @@ ip_neighbor_probe_dst (const ip_adjacency_t * adj, const ip46_address_t * dst)
 void
 ip_neighbor_probe (const ip_adjacency_t * adj)
 {
-  ip_neighbor_probe_dst (adj, &adj->sub_type.nbr.next_hop);
+  ip_neighbor_probe_dst (adj->rewrite_header.sw_if_index,
+			 ip_address_family_from_fib_proto (adj->ia_nh_proto),
+			 &adj->sub_type.nbr.next_hop);
 }
 
 void
@@ -1147,7 +1146,6 @@ ip_neighbor_ethernet_change_mac (ethernet_main_t * em,
 				 u32 sw_if_index, uword opaque)
 {
   ip_neighbor_t *ipn;
-  adj_index_t ai;
 
   IP_NEIGHBOR_DBG ("mac-change: %U",
 		   format_vnet_sw_if_index_name, vnet_get_main (),
@@ -1165,10 +1163,7 @@ ip_neighbor_ethernet_change_mac (ethernet_main_t * em,
   }));
   /* *INDENT-ON* */
 
-  ai = adj_glean_get (FIB_PROTOCOL_IP4, sw_if_index);
-
-  if (ADJ_INDEX_INVALID != ai)
-    adj_glean_update_rewrite (ai);
+  adj_glean_update_rewrite_itf (sw_if_index);
 }
 
 void
@@ -1543,14 +1538,8 @@ ip_neighbour_age_out (index_t ipni, f64 now, f64 * wait)
 	}
       else
 	{
-	  adj_index_t ai;
-
-	  ai = adj_glean_get (ip_address_family_to_fib_proto (af),
-			      ip_neighbor_get_sw_if_index (ipn));
-
-	  if (ADJ_INDEX_INVALID != ai)
-	    ip_neighbor_probe_dst (adj_get (ai),
-				   &ip_addr_46 (&ipn->ipn_key->ipnk_ip));
+	  ip_neighbor_probe_dst (ip_neighbor_get_sw_if_index (ipn),
+				 af, &ip_addr_46 (&ipn->ipn_key->ipnk_ip));
 
 	  ipn->ipn_n_probes++;
 	  *wait = 1;

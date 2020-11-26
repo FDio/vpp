@@ -2173,26 +2173,6 @@ static void *vl_api_mpls_route_dump_t_print
   FINISH;
 }
 
-static void *vl_api_ip_table_dump_t_print
-  (vl_api_ip_table_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: ip_table_dump ");
-
-  FINISH;
-}
-
-static void *vl_api_ip_route_dump_t_print
-  (vl_api_ip_route_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: ip_route_dump ");
-
-  FINISH;
-}
-
 static void *vl_api_classify_table_ids_t_print
   (vl_api_classify_table_ids_t * mp, void *handle)
 {
@@ -3128,8 +3108,6 @@ _(FLOW_CLASSIFY_DUMP, flow_classify_dump)				\
 _(GET_FIRST_MSG_ID, get_first_msg_id)                                   \
 _(IOAM_ENABLE, ioam_enable)                                             \
 _(IOAM_DISABLE, ioam_disable)                                           \
-_(IP_TABLE_DUMP, ip_table_dump)                                         \
-_(IP_ROUTE_DUMP, ip_route_dump)                                         \
 _(FEATURE_ENABLE_DISABLE, feature_enable_disable)			\
 _(FEATURE_GSO_ENABLE_DISABLE, feature_gso_enable_disable)		\
 _(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)			\

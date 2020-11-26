@@ -46,7 +46,7 @@
 extern adj_index_t adj_glean_add_or_lock(fib_protocol_t proto,
                                          vnet_link_t linkt,
 					 u32 sw_if_index,
-					 const ip46_address_t *nh_addr);
+					 const fib_prefix_t *conn);
 
 /**
  * @brief Get an existing glean
@@ -54,7 +54,8 @@ extern adj_index_t adj_glean_add_or_lock(fib_protocol_t proto,
  * @return INVALID if it does not exist
  */
 extern adj_index_t adj_glean_get(fib_protocol_t proto,
-                                 u32 sw_if_index);
+                                 u32 sw_if_index,
+                                 const ip46_address_t *nh_addr);
 
 /**
  * adj_glean_update_rewrite
@@ -66,6 +67,14 @@ extern adj_index_t adj_glean_get(fib_protocol_t proto,
  * glean behaviour on an adjacency liked to a connected prefix.
  */
 extern void adj_glean_update_rewrite(adj_index_t adj_index);
+extern void adj_glean_update_rewrite_itf(u32 sw_if_index);
+
+/**
+ * Return the source address from the glean
+ */
+const ip46_address_t *adj_glean_get_src(fib_protocol_t proto,
+                                        u32 sw_if_index,
+                                        const ip46_address_t *nh_addr);
 
 /**
  * @brief Format/display a glean adjacency.
@@ -73,9 +82,22 @@ extern void adj_glean_update_rewrite(adj_index_t adj_index);
 extern u8* format_adj_glean(u8* s, va_list *ap);
 
 /**
+ * Walk all the gleans on an interface
+ */
+extern void adj_glean_walk (u32 sw_if_index,
+                            adj_walk_cb_t,
+                            void *);
+
+/**
  * @brief
  *  Module initialisation
  */
 extern void adj_glean_module_init(void);
+
+/**
+ * @brief
+ *  Return the size of the adjacency database. for testing purposes
+ */
+extern u32 adj_glean_db_size(void);
 
 #endif

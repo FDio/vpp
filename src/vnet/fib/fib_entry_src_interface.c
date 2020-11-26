@@ -48,6 +48,63 @@ static void
 fib_entry_src_interface_remove (fib_entry_src_t *src)
 {
     src->fes_pl = FIB_NODE_INDEX_INVALID;
+    ASSERT(src->u.interface.fesi_sibling == ~0);
+}
+
+static int
+fib_entry_src_interface_update_glean (fib_entry_t *cover,
+                                      const fib_entry_t *local)
+{
+    fib_entry_src_t *src;
+    adj_index_t ai;
+
+    src = fib_entry_src_find (cover, FIB_SOURCE_INTERFACE);
+
+    if (NULL == src)
+    {
+        /*
+         * The cover is not an interface source, no work
+         */
+        return 0;
+    }
+
+    ai = fib_path_list_get_adj(src->fes_pl,
+                               fib_entry_get_default_chain_type(cover));
+
+    if (INDEX_INVALID != ai)
+    {
+        ip_adjacency_t *adj;
+
+        adj = adj_get(ai);
+
+        if (IP_LOOKUP_NEXT_GLEAN == adj->lookup_next_index)
+        {
+            /*
+             * the connected prefix will link to a glean on a non-p2p
+             * interface.
+             * Ensure we are updating with a host in the connected's subnet
+             */
+            if (fib_prefix_is_cover(&adj->sub_type.glean.rx_pfx,
+                                    &local->fe_prefix))
+            {
+                adj->sub_type.glean.rx_pfx.fp_addr = local->fe_prefix.fp_addr;
+                return (1);
+            }
+        }
+    }
+
+    return (0);
+}
+
+static walk_rc_t
+fib_entry_src_interface_update_glean_walk (fib_entry_t *cover,
+                                           fib_node_index_t covered,
+                                           void *ctx)
+{
+    if (fib_entry_src_interface_update_glean(cover, fib_entry_get(covered)))
+        return (WALK_STOP);
+
+    return (WALK_CONTINUE);
 }
 
 static void
@@ -56,37 +113,7 @@ fib_entry_src_interface_path_swap (fib_entry_src_t *src,
 				   fib_path_list_flags_t pl_flags,
 				   const fib_route_path_t *paths)
 {
-    fib_node_index_t fib_entry_index;
-    ip_adjacency_t *adj;
-
-    fib_entry_index = fib_entry_get_index(entry);
     src->fes_pl = fib_path_list_create(pl_flags, paths);
-
-    /*
-     * this is a hack to get the entry's prefix into the glean adjacency
-     * so that it is available for fast retrieval in the switch path.
-     */
-    if (!(FIB_ENTRY_FLAG_LOCAL & src->fes_entry_flags))
-    {
-        adj_index_t ai;
-
-        ai = fib_path_list_get_adj(src->fes_pl,
-                                   fib_entry_get_default_chain_type(
-                                       fib_entry_get(fib_entry_index)));
-        if (INDEX_INVALID != ai)
-        {
-            adj = adj_get(ai);
-
-            if (IP_LOOKUP_NEXT_GLEAN == adj->lookup_next_index)
-            {
-                /*
-                 * the connected prefix will link to a glean on a non-p2p
-                 * u.interface.
-                 */
-                adj->sub_type.glean.receive_addr = entry->fe_prefix.fp_addr;
-            }
-        }
-    }
 }
 
 /*
@@ -116,6 +143,8 @@ fib_entry_src_interface_activate (fib_entry_src_t *src,
 
 	src->u.interface.fesi_sibling =
 	    fib_entry_cover_track(cover, fib_entry_get_index(fib_entry));
+
+        fib_entry_src_interface_update_glean(cover, fib_entry);
     }
 
     return (!0);
@@ -142,6 +171,11 @@ fib_entry_src_interface_deactivate (fib_entry_src_t *src,
 	fib_entry_cover_untrack(cover, src->u.interface.fesi_sibling);
 
 	src->u.interface.fesi_cover = FIB_NODE_INDEX_INVALID;
+	src->u.interface.fesi_sibling = ~0;
+
+        fib_entry_cover_walk(cover,
+                             fib_entry_src_interface_update_glean_walk,
+                             NULL);
     }
 }
 

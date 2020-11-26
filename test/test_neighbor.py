@@ -7,7 +7,7 @@ from socket import AF_INET, AF_INET6, inet_pton
 from framework import VppTestCase, VppTestRunner
 from vpp_neighbor import VppNeighbor, find_nbr
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, \
-    VppIpTable, DpoProto, FibPathType
+    VppIpTable, DpoProto, FibPathType, VppIpInterfaceAddress
 from vpp_papi import VppEnum
 
 import scapy.compat
@@ -1718,6 +1718,95 @@ class ARPTestCase(VppTestCase):
 
         self.pg1.unconfig_ip4()
         self.pg1.set_table_ip4(0)
+
+    def test_glean_src_select(self):
+        """ Multi Connecteds """
+
+        #
+        # configure multiple connected subnets on an interface
+        # and ensure that ARP requests for hosts on those subnets
+        # pick up the correct source address
+        #
+        conn1 = VppIpInterfaceAddress(self, self.pg1,
+                                      "10.0.0.1", 24).add_vpp_config()
+        conn2 = VppIpInterfaceAddress(self, self.pg1,
+                                      "10.0.1.1", 24).add_vpp_config()
+
+        p1 = (Ether(src=self.pg0.remote_mac,
+                    dst=self.pg0.local_mac) /
+              IP(src=self.pg1.remote_ip4,
+                 dst="10.0.0.128") /
+              Raw(b'0x5' * 100))
+
+        rxs = self.send_and_expect(self.pg0, [p1], self.pg1)
+        for rx in rxs:
+            self.verify_arp_req(rx,
+                                self.pg1.local_mac,
+                                "10.0.0.1",
+                                "10.0.0.128")
+
+        p2 = (Ether(src=self.pg0.remote_mac,
+                    dst=self.pg0.local_mac) /
+              IP(src=self.pg1.remote_ip4,
+                 dst="10.0.1.128") /
+              Raw(b'0x5' * 100))
+
+        rxs = self.send_and_expect(self.pg0, [p2], self.pg1)
+        for rx in rxs:
+            self.verify_arp_req(rx,
+                                self.pg1.local_mac,
+                                "10.0.1.1",
+                                "10.0.1.128")
+
+        #
+        # add a local address in the same subnet
+        #  the source addresses are equivalent. VPP happens to
+        #  choose the last one that was added
+        conn3 = VppIpInterfaceAddress(self, self.pg1,
+                                      "10.0.1.2", 24).add_vpp_config()
+
+        rxs = self.send_and_expect(self.pg0, [p2], self.pg1)
+        for rx in rxs:
+            self.verify_arp_req(rx,
+                                self.pg1.local_mac,
+                                "10.0.1.2",
+                                "10.0.1.128")
+
+        #
+        # remove
+        #
+        conn3.remove_vpp_config()
+        rxs = self.send_and_expect(self.pg0, [p2], self.pg1)
+        for rx in rxs:
+            self.verify_arp_req(rx,
+                                self.pg1.local_mac,
+                                "10.0.1.1",
+                                "10.0.1.128")
+
+        #
+        # add back, this time remove the first one
+        #
+        conn3 = VppIpInterfaceAddress(self, self.pg1,
+                                      "10.0.1.2", 24).add_vpp_config()
+
+        rxs = self.send_and_expect(self.pg0, [p2], self.pg1)
+        for rx in rxs:
+            self.verify_arp_req(rx,
+                                self.pg1.local_mac,
+                                "10.0.1.2",
+                                "10.0.1.128")
+
+        conn1.remove_vpp_config()
+        rxs = self.send_and_expect(self.pg0, [p2], self.pg1)
+        for rx in rxs:
+            self.verify_arp_req(rx,
+                                self.pg1.local_mac,
+                                "10.0.1.2",
+                                "10.0.1.128")
+
+        # cleanup
+        conn3.remove_vpp_config()
+        conn2.remove_vpp_config()
 
 
 class NeighborStatsTestCase(VppTestCase):

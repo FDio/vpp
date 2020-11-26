@@ -288,8 +288,7 @@ adj_last_lock_gone (ip_adjacency_t *adj)
 		       adj->rewrite_header.sw_if_index);
 	break;
     case IP_LOOKUP_NEXT_GLEAN:
-	adj_glean_remove(adj->ia_nh_proto,
-			 adj->rewrite_header.sw_if_index);
+	adj_glean_remove(adj);
 	break;
     case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
         adj_midchain_teardown(adj);

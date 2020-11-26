@@ -14,6 +14,7 @@
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_sas.h>
 #include <vnet/ip/igmp_packet.h>
 #include <vnet/ip/ip6_link.h>
 #include <vnet/ethernet/arp_packet.h>
@@ -107,8 +108,7 @@ vrrp_adv_l3_build (vrrp_vr_t * vr, vlib_buffer_t * b,
       ip4->ttl = 255;
       ip4->protocol = IP_PROTOCOL_VRRP;
       clib_memcpy (&ip4->dst_address, &dst->ip4, sizeof (dst->ip4));
-      ip4_src_address_for_packet (&ip4_main.lookup_main,
-				  vr->config.sw_if_index, &ip4->src_address);
+      fib_sas4_get (vr->config.sw_if_index, NULL, &ip4->src_address);
       ip4->length = clib_host_to_net_u16 (sizeof (*ip4) +
 					  vrrp_adv_payload_len (vr));
       ip4->checksum = ip4_header_checksum (ip4);
@@ -541,8 +541,7 @@ vrrp_igmp_pkt_build (vrrp_vr_t * vr, vlib_buffer_t * b)
 
   ip4 = vlib_buffer_get_current (b);
   clib_memcpy (ip4, &igmp_ip4_mcast, sizeof (*ip4));
-  ip4_src_address_for_packet (&ip4_main.lookup_main, vr->config.sw_if_index,
-			      &ip4->src_address);
+  fib_sas4_get (vr->config.sw_if_index, NULL, &ip4->src_address);
 
   vlib_buffer_chain_increase_length (b, b, sizeof (*ip4));
   vlib_buffer_advance (b, sizeof (*ip4));
