@@ -107,6 +107,32 @@ ip_dscp_encode (ip_dscp_t dscp)
   return ((vl_api_ip_dscp_t) dscp);
 }
 
+int
+ip_feature_location_decode (vl_api_ip_feature_location_t loc,
+			    ip_feature_location_t * out)
+{
+  /* Not all feature_locationcol are defined in vl_api_ip_feature_location_t
+   * so we must cast to a different type.
+   */
+  switch (loc)
+    {
+#define _(n,s)                                    \
+      case IP_API_FEATURE_##n:                    \
+        *out = IP_FEATURE_##n;                    \
+        return (0);
+      foreach_ip_feature_location
+#undef _
+    }
+  return (VNET_API_ERROR_FEATURE_DISABLED);
+}
+
+vl_api_ip_feature_location_t
+ip_feature_location_encode (ip_feature_location_t loc)
+{
+  return ((vl_api_ip_feature_location_t) (loc));
+}
+
+
 void
 ip6_address_encode (const ip6_address_t * in, vl_api_ip6_address_t out)
 {

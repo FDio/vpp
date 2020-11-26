@@ -23,6 +23,17 @@ enum address_family : u8 {
   ADDRESS_IP6,
 };
 
+/**
+ * @brief The location at which to apply a feature
+ */
+enum ip_feature_location: u8 {
+  IP_API_FEATURE_INPUT = 0,
+  IP_API_FEATURE_OUTPUT,
+  IP_API_FEATURE_LOCAL,
+  IP_API_FEATURE_PUNT,
+  IP_API_FEATURE_DROP,
+};
+
 /* ECN code points - RFC 3168
    https://tools.ietf.org/html/rfc3168
 */
