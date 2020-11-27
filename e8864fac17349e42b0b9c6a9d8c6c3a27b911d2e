@@ -186,6 +186,30 @@
     },
     {
       "key": {
+        "uuid": "8a896447_d992eeaa",
+        "filename": "docs/gettingstarted/developers/fib20/controlplane.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2020-11-27T09:19:44Z",
+      "side": 1,
+      "message": "Okay, I have now digested the rest of your UML diagrams, and have to admit they are clear and consistently representing the FIB data structures and associations. So please ignore my comment above, and apologies for noise 😊. Cheers!",
+      "parentUuid": "d72108b1_a6331c8a",
+      "range": {
+        "startLine": 23,
+        "startChar": 13,
+        "endLine": 23,
+        "endChar": 18
+      },
+      "revId": "e8864fac17349e42b0b9c6a9d8c6c3a27b911d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "28672f1b_e5741464",
         "filename": "docs/gettingstarted/developers/fib20/dataplane.rst",
         "patchSetId": 8
