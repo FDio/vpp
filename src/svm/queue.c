@@ -51,6 +51,8 @@ svm_queue_init (void *base, int nels, int elsize)
     clib_unix_warning ("mutexattr_init");
   if (pthread_mutexattr_setpshared (&attr, PTHREAD_PROCESS_SHARED))
     clib_unix_warning ("pthread_mutexattr_setpshared");
+  if (pthread_mutexattr_setrobust (&attr, PTHREAD_MUTEX_ROBUST))
+    clib_unix_warning ("setrobust");
   if (pthread_mutex_init (&q->mutex, &attr))
     clib_unix_warning ("mutex_init");
   if (pthread_mutexattr_destroy (&attr))
@@ -96,7 +98,9 @@ svm_queue_free (svm_queue_t * q)
 void
 svm_queue_lock (svm_queue_t * q)
 {
-  pthread_mutex_lock (&q->mutex);
+  int rv = pthread_mutex_lock (&q->mutex);
+  if (PREDICT_FALSE (rv == EOWNERDEAD))
+    pthread_mutex_consistent (&q->mutex);
 }
 
 void

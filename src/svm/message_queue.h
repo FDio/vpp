@@ -311,7 +311,10 @@ svm_msg_q_try_lock (svm_msg_q_t * mq)
 static inline int
 svm_msg_q_lock (svm_msg_q_t * mq)
 {
-  return pthread_mutex_lock (&mq->q->mutex);
+  int rv = pthread_mutex_lock (&mq->q->mutex);
+  if (PREDICT_FALSE (rv == EOWNERDEAD))
+    rv = pthread_mutex_consistent (&mq->q->mutex);
+  return rv;
 }
 
 /**
