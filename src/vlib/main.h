@@ -150,6 +150,9 @@ typedef struct vlib_main_t
   /* Main loop hw / sw performance counters */
   vlib_node_runtime_perf_callback_set_t vlib_node_runtime_perf_callbacks;
 
+  /* dispatch wrapper function */
+  vlib_node_function_t *dispatch_wrapper_fn;
+
   /* Every so often we switch to the next counter. */
 #define VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE 7
 
