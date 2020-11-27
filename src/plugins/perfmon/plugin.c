@@ -1,5 +1,7 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * perfmon_plugin.c - perf monitor plugin
+ *
+ * Copyright (c) <current-year> <your-organization>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,29 +15,16 @@
  * limitations under the License.
  */
 
-#ifndef included_clib_pmc_h
-#define included_clib_pmc_h
+#include <vnet/plugin/plugin.h>
+#include <vpp/app/version.h>
 
-#if defined (__x86_64__)
-
-always_inline u64
-clib_rdpmc (int counter_id)
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () =
 {
-  u32 a, d;
-
-  asm volatile ("rdpmc":"=a" (a), "=d" (d):"c" (counter_id));
-  return (u64) a + ((u64) d << (u64) 32);
-}
-
-#else
-always_inline u64
-clib_rdpmc (int counter_id)
-{
-  return 0ULL;
-}
-#endif /* __aarch64__ */
-
-#endif /* included_clib_pmc_h */
+  .version = VPP_BUILD_VER,
+  .description = "Performance Monitor",
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
