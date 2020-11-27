@@ -1,7 +1,5 @@
 /*
- * perfmon.c - skeleton vpp engine plug-in
- *
- * Copyright (c) <current-year> <your-organization>
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -16,76 +14,394 @@
  */
 
 #include <vnet/vnet.h>
-#include <perfmon/perfmon.h>
-#include <perfmon/perfmon_intel.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vpp/app/version.h>
 #include <linux/limits.h>
+#include <sys/ioctl.h>
+#include <linux/perf_event.h>
+
+#include <perfmon/perfmon.h>
 
 perfmon_main_t perfmon_main;
 
-void
-perfmon_register_intel_pmc (perfmon_intel_pmc_cpu_model_t * m, int n_models,
-			    perfmon_intel_pmc_event_t * e, int n_events)
+/* *INDENT-OFF* */
+VLIB_REGISTER_LOG_CLASS (if_default_log, static) = {
+  .class_name = "perfmon",
+  .default_syslog_level = VLIB_LOG_LEVEL_DEBUG,
+};
+/* *INDENT-ON* */
+
+#define log_debug(fmt,...) vlib_log_debug(if_default_log.class, fmt, __VA_ARGS__)
+#define log_warn(fmt,...) vlib_log_warn(if_default_log.class, fmt, __VA_ARGS__)
+#define log_err(fmt,...) vlib_log_err(if_default_log.class, fmt, __VA_ARGS__)
+
+static_always_inline void
+perfmon_read_pmcs (perfmon_thread_t * pt, u64 * counters)
 {
-  perfmon_main_t *pm = &perfmon_main;
-  perfmon_intel_pmc_registration_t r;
-
-  r.events = e;
-  r.models = m;
-  r.n_events = n_events;
-  r.n_models = n_models;
-
-  vec_add1 (pm->perfmon_tables, r);
+  switch (pt->n_events)
+    {
+    case 7:
+      counters[6] = _rdpmc (pt->pmc_index[6]);
+    case 6:
+      counters[5] = _rdpmc (pt->pmc_index[5]);
+    case 5:
+      counters[4] = _rdpmc (pt->pmc_index[4]);
+    case 4:
+      counters[3] = _rdpmc (pt->pmc_index[3]);
+    case 3:
+      counters[2] = _rdpmc (pt->pmc_index[2]);
+    case 2:
+      counters[1] = _rdpmc (pt->pmc_index[1]);
+    case 1:
+      counters[0] = _rdpmc (pt->pmc_index[0]);
+      break;
+    default:
+      return;
+    }
 }
 
-static inline u32
-get_cpuid (void)
+static inline int
+perfmon_calc_pmc_index (perfmon_thread_t * pt, int i)
 {
-#if defined(__x86_64__)
-  u32 cpuid;
-  asm volatile ("mov $1, %%eax; cpuid; mov %%eax, %0":"=r" (cpuid)::"%eax",
-		"%edx", "%ecx", "%rbx");
-  return cpuid;
-#else
-  return 0;
+  return (int) (pt->mmap_pages[i]->index + pt->mmap_pages[i]->offset);
+}
+
+static void
+perfmon_pre_dispatch_cb (vlib_main_t * vm, vlib_node_runtime_t * node)
+{
+  perfmon_main_t *pm = &perfmon_main;
+  perfmon_thread_t *pt = vec_elt_at_index (pm->threads, vm->thread_index);
+
+  switch (pt->n_events)
+    {
+    case 7:
+      pt->pmc_index[6] = perfmon_calc_pmc_index (pt, 6);
+    case 6:
+      pt->pmc_index[5] = perfmon_calc_pmc_index (pt, 5);
+    case 5:
+      pt->pmc_index[4] = perfmon_calc_pmc_index (pt, 4);
+    case 4:
+      pt->pmc_index[3] = perfmon_calc_pmc_index (pt, 3);
+    case 3:
+      pt->pmc_index[2] = perfmon_calc_pmc_index (pt, 2);
+    case 2:
+      pt->pmc_index[1] = perfmon_calc_pmc_index (pt, 1);
+    case 1:
+      pt->pmc_index[0] = perfmon_calc_pmc_index (pt, 0);
+      break;
+    default:
+      return;
+    }
+
+  perfmon_read_pmcs (pt, pt->node_pre_counters);
+}
+
+static void
+perfmon_post_dispatch_cb (vlib_main_t * vm, vlib_node_runtime_t * node,
+			  vlib_frame_t * frame, uword n)
+{
+  perfmon_node_counters_t *nc;
+  perfmon_main_t *pm = &perfmon_main;
+  perfmon_thread_t *pt = vec_elt_at_index (pm->threads, vm->thread_index);
+  u64 c[PERF_MAX_EVENTS];
+  perfmon_read_pmcs (pt, c);
+
+  if (n == 0)
+    return;
+
+  nc = perfmon_get_node_counters (pt, node->node_index);
+  nc->n_calls += 1;
+  nc->n_packets += n;
+
+  for (int i = 0; i < pt->n_events; i++)
+    nc->value[i] += c[i] - pt->node_pre_counters[i];
+}
+
+void
+vlib_node_add_pre_dispatch_cb (vlib_main_t * vm,
+			       vlib_node_pre_dispatch_cb_fn_t * cb)
+{
+  vec_add1 (vm->pre_dispatch_cb_fn, cb);
+}
+
+void
+vlib_node_add_post_dispatch_cb (vlib_main_t * vm,
+				vlib_node_post_dispatch_cb_fn_t * cb)
+{
+  vec_add1 (vm->post_dispatch_cb_fn, cb);
+}
+
+void
+vlib_node_del_pre_dispatch_cb (vlib_main_t * vm,
+			       vlib_node_pre_dispatch_cb_fn_t * cb)
+{
+  for (int i = vec_len (vm->pre_dispatch_cb_fn) - 1; i >= 0; i--)
+    if (vm->pre_dispatch_cb_fn[i] == cb)
+      vec_del1 (vm->pre_dispatch_cb_fn, i);
+}
+
+void
+vlib_node_del_post_dispatch_cb (vlib_main_t * vm,
+				vlib_node_post_dispatch_cb_fn_t * cb)
+{
+  for (int i = vec_len (vm->post_dispatch_cb_fn) - 1; i >= 0; i--)
+    if (vm->post_dispatch_cb_fn[i] == cb)
+      vec_del1 (vm->post_dispatch_cb_fn, i);
+}
+
+
+void
+perfmon_reset (vlib_main_t * vm)
+{
+  perfmon_main_t *pm = &perfmon_main;
+  pm->is_running = 0;
+  for (int i = 0; i < vec_len (pm->fds_to_close); i++)
+    close (pm->fds_to_close[i]);
+  vec_free (pm->fds_to_close);
+  vec_free (pm->group_fds);
+  if (pm->default_instance_type)
+    {
+      perfmon_instance_type_t *it = pm->default_instance_type;
+      for (int i = 0; i < vec_len (it->instances); i++)
+        vec_free (it->instances[i].name);
+      vec_free (it->instances);
+      vec_free (pm->default_instance_type);
+    }
+  pm->active_instance_type = 0;
+  pm->active_bundle = 0;
+#if 0
+  for (int j = 0; j < b->n_events; j++)
+    {
+      if (b->type == PERFMON_BUNDLE_TYPE_NODE &&
+	  pt->mmap_pages[j] != MAP_FAILED)
+	munmap (pt->mmap_pages[j], clib_mem_get_page_size ());
+    }
 #endif
 }
 
-static int
-perfmon_cpu_model_matches (perfmon_intel_pmc_cpu_model_t * mt,
-			   u32 n_models, u8 model, u8 stepping)
+clib_error_t *
+perfmon_set (vlib_main_t * vm, perfmon_bundle_t * b)
 {
-  u32 i;
-  for (i = 0; i < n_models; i++)
+  clib_error_t *err = 0;
+  perfmon_main_t *pm = &perfmon_main;
+  perfmon_source_t *s;
+  int is_node = 0;
+  u32 instance_type = 0;
+  perfmon_event_t *e;
+  perfmon_instance_type_t *it = 0;
+
+  perfmon_reset (vm);
+
+  s = b->src;
+  ASSERT (b->n_events);
+
+  if (b->type == PERFMON_BUNDLE_TYPE_NODE)
+    is_node = 1;
+
+  if (s->instances_by_type == 0)
     {
-      if (mt[i].model != model)
-	continue;
-
-      if (mt[i].has_stepping)
+      vec_add2 (pm->default_instance_type, it, 1);
+      it->name = "Thread";
+      for (int i = 0; i < vec_len (vlib_mains); i++)
 	{
-	  if (mt[i].stepping != stepping)
-	    continue;
+	  vlib_worker_thread_t *w = vlib_worker_threads + i;
+	  perfmon_instance_t *in;
+	  vec_add2 (it->instances, in, 1);
+	  in->cpu = w->cpu_id;
+	  in->pid = w->lwp;
+	  in->name = (char *) format (0, "%u (%s)%c", i, w->name, 0);
 	}
-
-      return 1;
     }
+  else
+    {
+      e = s->events + b->events[0];
+
+      if (e->type_from_instance)
+	{
+	  instance_type = e->instance_type;
+	  for (int i = 1; i < b->n_events; i++)
+	    {
+	      e = s->events + b->events[i];
+	      ASSERT (e->type_from_instance == 1 &&
+		      e->instance_type == instance_type);
+	    }
+	}
+      it = vec_elt_at_index (s->instances_by_type, instance_type);
+    }
+
+  pm->active_instance_type = it;
+
+  for (int i = 0; i < vec_len (it->instances); i++)
+    {
+      perfmon_instance_t *in = vec_elt_at_index (it->instances, i);
+
+      vec_validate (pm->group_fds, i);
+      pm->group_fds[i] = -1;
+
+      for (int j = 0; j < b->n_events; j++)
+	{
+	  int fd;
+	  perfmon_event_t *e = s->events + b->events[j];
+	  struct perf_event_attr pe = {
+	    .size = sizeof (struct perf_event_attr),
+	    .type = e->type_from_instance ? in->type : e->type,
+	    .config = e->config,
+	    .exclude_kernel = e->exclude_kernel,
+	    .read_format = (PERF_FORMAT_GROUP |
+			    PERF_FORMAT_TOTAL_TIME_ENABLED |
+			    PERF_FORMAT_TOTAL_TIME_RUNNING),
+	    .disabled = 1,
+	  };
+
+	  log_debug ("perf_event_open pe.type = 0x%x pe.config=0x%x pid=%d "
+		     "cpu=%d group_fd=%d", pe.type, pe.config,
+		     in->pid, in->cpu, pm->group_fds[i]);
+	  fd = syscall (__NR_perf_event_open, &pe, in->pid, in->cpu,
+			pm->group_fds[i], 0);
+
+	  if (fd == -1)
+	    {
+	      err = clib_error_return_unix (0, "perf_event_open");
+	      goto error;
+	    }
+
+	  vec_add1 (pm->fds_to_close, fd);
+
+	  if (pm->group_fds[i] == -1)
+	    pm->group_fds[i] = fd;
+	}
+    }
+
+#if 0
+  u32 n_threads = vec_len (vlib_mains);
+  u32 n_counters, alloc_sz;
+  n_counters = b->n_events + 2;
+  if (is_node)
+    n_counters *= vec_len (vm->node_main.nodes);
+
+  alloc_sz = round_pow2 (n_counters * sizeof (u64), CLIB_CACHE_LINE_BYTES);
+
+  if (b->type == PERFMON_BUNDLE_TYPE_SYSTEM)
+    n_threads = 1;
+
+  vec_validate_aligned (pm->threads, n_threads - 1, CLIB_CACHE_LINE_BYTES);
+
+  for (int i = 0; i < n_threads; i++)
+    {
+      perfmon_thread_t *pt = vec_elt_at_index (pm->threads, i);
+      vlib_worker_thread_t *w = vlib_worker_threads + i;
+      pt->n_events = b->n_events;
+      pt->group_fd = -1;
+
+      for (int j = 0; j < b->n_events; j++)
+	{
+	  int fd;
+
+	  if (pt->counters && clib_mem_size (pt->counters) < alloc_sz)
+	    {
+	      clib_mem_free (pt->counters);
+	      pt->counters = 0;
+	    }
+
+	  if (pt->counters == 0)
+	    pt->counters = clib_mem_alloc_aligned (alloc_sz,
+						   CLIB_CACHE_LINE_BYTES);
+
+	  if (pt->counters == 0)
+	    {
+	      err = clib_error_return (0, "failed to alloc %u bytes of "
+				       "memory", alloc_sz);
+	      goto error;
+	    }
+
+	  clib_memset_u8 (pt->counters, 0, alloc_sz);
+
+
+
+	  if (b->type == PERFMON_BUNDLE_TYPE_NODE)
+	    {
+	      pt->mmap_pages[j] = mmap (0, clib_mem_get_page_size (),
+					PROT_READ, MAP_SHARED, fd, 0);
+
+	      if (pt->mmap_pages[j] == MAP_FAILED)
+		{
+		  err = clib_error_return_unix (0, "mmap");
+		  goto error;
+		}
+	    }
+	}
+    }
+#endif
+
+  pm->active_bundle = b;
+
+error:
+  if (err)
+    {
+      log_err ("%U", format_clib_error, err);
+      perfmon_reset (vm);
+    }
+  return err;
+}
+
+clib_error_t *
+perfmon_start (vlib_main_t * vm)
+{
+  perfmon_main_t *pm = &perfmon_main;
+  int n_groups = vec_len (pm->group_fds);
+
+  if (n_groups == 0)
+    return clib_error_return (0, "no bundle configured");
+
+  if (pm->is_running == 1)
+    return clib_error_return (0, "already running");
+
+  for (int i = 0; i < n_groups; i++)
+    {
+      if (ioctl (pm->group_fds[i], PERF_EVENT_IOC_ENABLE,
+		 PERF_IOC_FLAG_GROUP) == -1)
+	{
+	  perfmon_reset (vm);
+	  return clib_error_return_unix (0, "ioctl(PERF_EVENT_IOC_ENABLE)");
+	}
+    }
+  if (pm->active_bundle->type == PERFMON_BUNDLE_TYPE_NODE)
+    {
+      vlib_node_add_pre_dispatch_cb (vm, perfmon_pre_dispatch_cb);
+      vlib_node_add_post_dispatch_cb (vm, perfmon_post_dispatch_cb);
+    }
+  pm->is_running = 1;
   return 0;
 }
 
-static perfmon_intel_pmc_event_t *
-perfmon_find_table_by_model_stepping (perfmon_main_t * pm,
-				      u8 model, u8 stepping)
+clib_error_t *
+perfmon_stop (vlib_main_t * vm)
 {
-  perfmon_intel_pmc_registration_t *rt;
+  perfmon_main_t *pm = &perfmon_main;
+  int n_groups = vec_len (pm->group_fds);
 
-  vec_foreach (rt, pm->perfmon_tables)
-  {
-    if (perfmon_cpu_model_matches (rt->models, rt->n_models, model, stepping))
-      return rt->events;
-  }
+  if (pm->is_running != 1)
+    return clib_error_return (0, "not running");
+
+  if (pm->active_bundle->type == PERFMON_BUNDLE_TYPE_NODE)
+    {
+      vlib_node_del_pre_dispatch_cb (vm, perfmon_pre_dispatch_cb);
+      vlib_node_del_post_dispatch_cb (vm, perfmon_post_dispatch_cb);
+    }
+
+  for (int i = 0; i < n_groups; i++)
+    {
+      if (ioctl (pm->group_fds[i], PERF_EVENT_IOC_DISABLE,
+		 PERF_IOC_FLAG_GROUP) == -1)
+	{
+	  perfmon_reset (vm);
+	  return clib_error_return_unix (0, "ioctl(PERF_EVENT_IOC_DISABLE)");
+	}
+    }
+
+  pm->is_running = 0;
   return 0;
 }
 
@@ -93,536 +409,65 @@ static clib_error_t *
 perfmon_init (vlib_main_t * vm)
 {
   perfmon_main_t *pm = &perfmon_main;
-  clib_error_t *error = 0;
-  u32 cpuid;
-  u8 model, stepping;
-  perfmon_intel_pmc_event_t *ev;
-  int i;
+  perfmon_source_t *s = pm->sources;
+  perfmon_bundle_t *b = pm->bundles;
 
-  pm->vlib_main = vm;
-  pm->vnet_main = vnet_get_main ();
-
-  pm->capture_by_thread_and_node_name =
-    hash_create_string (0, sizeof (uword));
-
-  pm->log_class = vlib_log_register_class ("perfmon", 0);
-
-  /* Default data collection interval */
-  pm->timeout_interval = 2.0;	/* seconds */
-
-  vec_validate (pm->threads, vlib_get_thread_main ()->n_vlib_mains - 1);
-  for (i = 0; i < vec_len (pm->threads); i++)
+  pm->source_by_name = hash_create_string (0, sizeof (uword));
+  while (s)
     {
-      perfmon_thread_t *pt = clib_mem_alloc_aligned
-	(sizeof (perfmon_thread_t), CLIB_CACHE_LINE_BYTES);
-      clib_memset (pt, 0, sizeof (*pt));
-      pm->threads[i] = pt;
-      pt->pm_fds[0] = -1;
-      pt->pm_fds[1] = -1;
-    }
-  pm->page_size = getpagesize ();
-
-  pm->perfmon_table = 0;
-  pm->pmc_event_by_name = 0;
-
-  cpuid = get_cpuid ();
-  model = ((cpuid >> 12) & 0xf0) | ((cpuid >> 4) & 0xf);
-  stepping = cpuid & 0xf;
-
-  pm->perfmon_table = perfmon_find_table_by_model_stepping (pm,
-							    model, stepping);
-
-  if (pm->perfmon_table == 0)
-    {
-      vlib_log_err (pm->log_class, "No table for cpuid %x", cpuid);
-      vlib_log_err (pm->log_class, "  model %x, stepping %x",
-		    model, stepping);
-    }
-  else
-    {
-      pm->pmc_event_by_name = hash_create_string (0, sizeof (u32));
-      ev = pm->perfmon_table;
-
-      for (; ev->event_name; ev++)
+      clib_error_t *err;
+      if (hash_get_mem (pm->source_by_name, s->name) != 0)
+	clib_panic ("duplicate source name '%s'", s->name);
+      if (s->init_fn && ((err = (s->init_fn) (vm, s))))
 	{
-	  hash_set_mem (pm->pmc_event_by_name, ev->event_name,
-			ev - pm->perfmon_table);
+	  log_warn ("skipping source '%s' - %U", s->name,
+		    format_clib_error, err);
+	  clib_error_free (err);
+	  s = s->next;
+	  continue;
 	}
+
+      hash_set_mem (pm->source_by_name, s->name, s);
+      log_debug ("source '%s' regisrtered", s->name);
+      s = s->next;
     }
 
-  return error;
+  pm->bundle_by_name = hash_create_string (0, sizeof (uword));
+  while (b)
+    {
+      clib_error_t *err;
+      uword *p;
+      if (hash_get_mem (pm->bundle_by_name, b->name) != 0)
+	clib_panic ("duplicate bundle name '%s'", b->name);
+
+      if ((p = hash_get_mem (pm->source_by_name, b->source)) == 0)
+	{
+	  log_debug ("missing source '%s', skipping bundle '%s'",
+		     b->source, b->name);
+	  b = b->next;
+	  continue;
+	}
+
+      b->src = (perfmon_source_t *) p[0];
+      if (b->init_fn && ((err = (b->init_fn) (vm, b))))
+	{
+	  log_warn ("skipping bundle '%s' - %U", b->name,
+		    format_clib_error, err);
+	  clib_error_free (err);
+	  b = b->next;
+	  continue;
+	}
+
+      hash_set_mem (pm->bundle_by_name, b->name, b);
+      log_debug ("bundle '%s' regisrtered", b->name);
+
+      b = b->next;
+    }
+
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (perfmon_init);
-
-uword
-unformat_processor_event (unformat_input_t * input, va_list * args)
-{
-  perfmon_main_t *pm = va_arg (*args, perfmon_main_t *);
-  perfmon_event_config_t *ep = va_arg (*args, perfmon_event_config_t *);
-  u8 *s = 0;
-  hash_pair_t *hp;
-  u32 idx;
-  u32 pe_config = 0;
-
-  if (pm->perfmon_table == 0 || pm->pmc_event_by_name == 0)
-    return 0;
-
-  if (!unformat (input, "%s", &s))
-    return 0;
-
-  hp = hash_get_pair_mem (pm->pmc_event_by_name, s);
-
-  vec_free (s);
-
-  if (hp == 0)
-    return 0;
-
-  idx = (u32) (hp->value[0]);
-
-  pe_config |= pm->perfmon_table[idx].event_code[0];
-  pe_config |= pm->perfmon_table[idx].umask << 8;
-  pe_config |= pm->perfmon_table[idx].edge << 18;
-  pe_config |= pm->perfmon_table[idx].anyt << 21;
-  pe_config |= pm->perfmon_table[idx].inv << 23;
-  pe_config |= pm->perfmon_table[idx].cmask << 24;
-
-  ep->name = (char *) hp->key;
-  ep->pe_type = PERF_TYPE_RAW;
-  ep->pe_config = pe_config;
-  return 1;
-}
-
-static clib_error_t *
-set_pmc_command_fn (vlib_main_t * vm,
-		    unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  perfmon_main_t *pm = &perfmon_main;
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  int num_threads = 1 + vtm->n_threads;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  perfmon_event_config_t ec;
-  f64 delay;
-  u32 timeout_seconds;
-  u32 deadman;
-  int last_set;
-  clib_error_t *error;
-
-  vec_reset_length (pm->single_events_to_collect);
-  vec_reset_length (pm->paired_events_to_collect);
-  pm->ipc_event_index = ~0;
-  pm->mispredict_event_index = ~0;
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "counter names required...");
-
-  clib_bitmap_zero (pm->thread_bitmap);
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "timeout %u", &timeout_seconds))
-	pm->timeout_interval = (f64) timeout_seconds;
-      else if (unformat (line_input, "instructions-per-clock"))
-	{
-	  ec.name = "instructions";
-	  ec.pe_type = PERF_TYPE_HARDWARE;
-	  ec.pe_config = PERF_COUNT_HW_INSTRUCTIONS;
-	  pm->ipc_event_index = vec_len (pm->paired_events_to_collect);
-	  vec_add1 (pm->paired_events_to_collect, ec);
-	  ec.name = "cpu-cycles";
-	  ec.pe_type = PERF_TYPE_HARDWARE;
-	  ec.pe_config = PERF_COUNT_HW_CPU_CYCLES;
-	  vec_add1 (pm->paired_events_to_collect, ec);
-	}
-      else if (unformat (line_input, "branch-mispredict-rate"))
-	{
-	  ec.name = "branch-misses";
-	  ec.pe_type = PERF_TYPE_HARDWARE;
-	  ec.pe_config = PERF_COUNT_HW_BRANCH_MISSES;
-	  pm->mispredict_event_index = vec_len (pm->paired_events_to_collect);
-	  vec_add1 (pm->paired_events_to_collect, ec);
-	  ec.name = "branches";
-	  ec.pe_type = PERF_TYPE_HARDWARE;
-	  ec.pe_config = PERF_COUNT_HW_BRANCH_INSTRUCTIONS;
-	  vec_add1 (pm->paired_events_to_collect, ec);
-	}
-      else if (unformat (line_input, "threads %U",
-			 unformat_bitmap_list, &pm->thread_bitmap))
-	;
-      else if (unformat (line_input, "thread %U",
-			 unformat_bitmap_list, &pm->thread_bitmap))
-	;
-      else if (unformat (line_input, "%U", unformat_processor_event, pm, &ec))
-	{
-	  vec_add1 (pm->single_events_to_collect, ec);
-	}
-#define _(type,event,str)                       \
-      else if (unformat (line_input, str))      \
-        {                                       \
-          ec.name = str;                        \
-          ec.pe_type = type;                    \
-          ec.pe_config = event;                 \
-          vec_add1 (pm->single_events_to_collect, ec); \
-        }
-      foreach_perfmon_event
-#undef _
-	else
-	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
-	  unformat_free (line_input);
-	  return error;
-	}
-    }
-
-  unformat_free (line_input);
-
-  last_set = clib_bitmap_last_set (pm->thread_bitmap);
-  if (last_set != ~0 && last_set >= num_threads)
-    return clib_error_return (0, "thread %d does not exist", last_set);
-
-  /* Stick paired events at the front of the (unified) list */
-  if (vec_len (pm->paired_events_to_collect) > 0)
-    {
-      perfmon_event_config_t *tmp;
-      /* first 2n events are pairs... */
-      vec_append (pm->paired_events_to_collect, pm->single_events_to_collect);
-      tmp = pm->single_events_to_collect;
-      pm->single_events_to_collect = pm->paired_events_to_collect;
-      pm->paired_events_to_collect = tmp;
-    }
-
-  if (vec_len (pm->single_events_to_collect) == 0)
-    return clib_error_return (0, "no events specified...");
-
-  /* Figure out how long data collection will take */
-  delay =
-    ((f64) vec_len (pm->single_events_to_collect)) * pm->timeout_interval;
-  delay /= 2.0;			/* collect 2 stats at once */
-
-  vlib_cli_output (vm, "Start collection for %d events, wait %.2f seconds",
-		   vec_len (pm->single_events_to_collect), delay);
-
-  vlib_process_signal_event (pm->vlib_main, perfmon_periodic_node.index,
-			     PERFMON_START, 0);
-
-  /* Coarse-grained wait */
-  vlib_process_suspend (vm, delay);
-
-  deadman = 0;
-  /* Reasonable to guess that collection may not be quite done... */
-  while (pm->state == PERFMON_STATE_RUNNING)
-    {
-      vlib_process_suspend (vm, 10e-3);
-      if (deadman++ > 200)
-	{
-	  vlib_cli_output (vm, "DEADMAN: collection still running...");
-	  break;
-	}
-    }
-
-  vlib_cli_output (vm, "Data collection complete...");
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_pmc_command, static) =
-{
-  .path = "set pmc",
-  .short_help = "set pmc [threads n,n1-n2] c1... [see \"show pmc events\"]",
-  .function = set_pmc_command_fn,
-  .is_mp_safe = 1,
-};
-/* *INDENT-ON* */
-
-static int
-capture_name_sort (void *a1, void *a2)
-{
-  perfmon_capture_t *c1 = a1;
-  perfmon_capture_t *c2 = a2;
-
-  return strcmp ((char *) c1->thread_and_node_name,
-		 (char *) c2->thread_and_node_name);
-}
-
-static u8 *
-format_capture (u8 * s, va_list * args)
-{
-  perfmon_main_t *pm = va_arg (*args, perfmon_main_t *);
-  perfmon_capture_t *c = va_arg (*args, perfmon_capture_t *);
-  int verbose __attribute__ ((unused)) = va_arg (*args, int);
-  f64 ticks_per_pkt;
-  int i;
-
-  if (c == 0)
-    {
-      s = format (s, "%=40s%=20s%=16s%=16s%=16s",
-		  "Name", "Counter", "Count", "Pkts", "Counts/Pkt");
-      return s;
-    }
-
-  for (i = 0; i < vec_len (c->counter_names); i++)
-    {
-      u8 *name;
-
-      if (i == 0)
-	name = c->thread_and_node_name;
-      else
-	{
-	  vec_add1 (s, '\n');
-	  name = (u8 *) "";
-	}
-
-      /* Deal with synthetic events right here */
-      if (i == pm->ipc_event_index)
-	{
-	  f64 ipc_rate;
-	  ASSERT ((i + 1) < vec_len (c->counter_names));
-
-	  if (c->counter_values[i + 1] > 0)
-	    ipc_rate = (f64) c->counter_values[i]
-	      / (f64) c->counter_values[i + 1];
-	  else
-	    ipc_rate = 0.0;
-
-	  s = format (s, "%-40s%+20s%+16llu%+16llu%+16.2e\n",
-		      name, "instructions-per-clock",
-		      c->counter_values[i],
-		      c->counter_values[i + 1], ipc_rate);
-	  name = (u8 *) "";
-	}
-
-      if (i == pm->mispredict_event_index)
-	{
-	  f64 mispredict_rate;
-	  ASSERT (i + 1 < vec_len (c->counter_names));
-
-	  if (c->counter_values[i + 1] > 0)
-	    mispredict_rate = (f64) c->counter_values[i]
-	      / (f64) c->counter_values[i + 1];
-	  else
-	    mispredict_rate = 0.0;
-
-	  s = format (s, "%-40s%+20s%+16llu%+16llu%+16.2e\n",
-		      name, "branch-mispredict-rate",
-		      c->counter_values[i],
-		      c->counter_values[i + 1], mispredict_rate);
-	  name = (u8 *) "";
-	}
-
-      if (c->vectors_this_counter[i])
-	ticks_per_pkt =
-	  ((f64) c->counter_values[i]) / ((f64) c->vectors_this_counter[i]);
-      else
-	ticks_per_pkt = 0.0;
-
-      s = format (s, "%-40s%+20s%+16llu%+16llu%+16.2e",
-		  name, c->counter_names[i],
-		  c->counter_values[i],
-		  c->vectors_this_counter[i], ticks_per_pkt);
-    }
-  return s;
-}
-
-static u8 *
-format_generic_events (u8 * s, va_list * args)
-{
-  int verbose = va_arg (*args, int);
-
-#define _(type,config,name)                             \
-  if (verbose == 0)                                     \
-    s = format (s, "\n  %s", name);                     \
-  else                                                  \
-    s = format (s, "\n  %s (%d, %d)", name, type, config);
-  foreach_perfmon_event;
-#undef _
-  return s;
-}
-
-typedef struct
-{
-  u8 *name;
-  u32 index;
-} sort_nvp_t;
-
-static int
-sort_nvps_by_name (void *a1, void *a2)
-{
-  sort_nvp_t *nvp1 = a1;
-  sort_nvp_t *nvp2 = a2;
-
-  return strcmp ((char *) nvp1->name, (char *) nvp2->name);
-}
-
-static u8 *
-format_pmc_event (u8 * s, va_list * args)
-{
-  perfmon_intel_pmc_event_t *ev = va_arg (*args, perfmon_intel_pmc_event_t *);
-
-  s = format (s, "%s\n", ev->event_name);
-  s = format (s, "  umask: 0x%x\n", ev->umask);
-  s = format (s, "  code:  0x%x", ev->event_code[0]);
-
-  if (ev->event_code[1])
-    s = format (s, " , 0x%x\n", ev->event_code[1]);
-  else
-    s = format (s, "\n");
-
-  return s;
-}
-
-static u8 *
-format_processor_events (u8 * s, va_list * args)
-{
-  perfmon_main_t *pm = va_arg (*args, perfmon_main_t *);
-  int verbose = va_arg (*args, int);
-  sort_nvp_t *sort_nvps = 0;
-  sort_nvp_t *sn;
-  u8 *key;
-  u32 value;
-
-  /* *INDENT-OFF* */
-  hash_foreach_mem (key, value, pm->pmc_event_by_name,
-  ({
-    vec_add2 (sort_nvps, sn, 1);
-    sn->name = key;
-    sn->index = value;
-  }));
-
-  vec_sort_with_function (sort_nvps, sort_nvps_by_name);
-
-  if (verbose == 0)
-    {
-      vec_foreach (sn, sort_nvps)
-        s = format (s, "\n  %s ", sn->name);
-    }
-  else
-    {
-      vec_foreach (sn, sort_nvps)
-        s = format(s, "%U", format_pmc_event, &pm->perfmon_table[sn->index]);
-    }
-  vec_free (sort_nvps);
-  return s;
-}
-
-
-static clib_error_t *
-show_pmc_command_fn (vlib_main_t * vm,
-		     unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  perfmon_main_t *pm = &perfmon_main;
-  int verbose = 0;
-  int events = 0;
-  int i;
-  perfmon_capture_t *c;
-  perfmon_capture_t *captures = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "events"))
-        events = 1;
-      else if (unformat (input, "verbose"))
-        verbose = 1;
-      else
-	break;
-    }
-
-  if (events)
-    {
-      vlib_cli_output (vm, "Generic Events %U",
-                       format_generic_events, verbose);
-      vlib_cli_output (vm, "Synthetic Events");
-      vlib_cli_output (vm, "  instructions-per-clock");
-      vlib_cli_output (vm, "  branch-mispredict-rate");
-      if (pm->perfmon_table)
-        vlib_cli_output (vm, "Processor Events %U",
-                         format_processor_events, pm, verbose);
-      return 0;
-    }
-
-  if (pm->state == PERFMON_STATE_RUNNING)
-    {
-      vlib_cli_output (vm, "Data collection in progress...");
-      return 0;
-    }
-
-  if (pool_elts (pm->capture_pool) == 0)
-    {
-      vlib_cli_output (vm, "No data...");
-      return 0;
-    }
-
-  /* *INDENT-OFF* */
-  pool_foreach (c, pm->capture_pool,
-  ({
-    vec_add1 (captures, *c);
-  }));
-  /* *INDENT-ON* */
-
-  vec_sort_with_function (captures, capture_name_sort);
-
-  vlib_cli_output (vm, "%U", format_capture, pm, 0 /* header */ ,
-		   0 /* verbose */ );
-
-  for (i = 0; i < vec_len (captures); i++)
-    {
-      c = captures + i;
-
-      vlib_cli_output (vm, "%U", format_capture, pm, c, verbose);
-    }
-
-  vec_free (captures);
-
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_pmc_command, static) =
-{
-  .path = "show pmc",
-  .short_help = "show pmc [verbose]",
-  .function = show_pmc_command_fn,
-  .is_mp_safe = 1,
-};
-/* *INDENT-ON* */
-
-static clib_error_t *
-clear_pmc_command_fn (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  perfmon_main_t *pm = &perfmon_main;
-  u8 *key;
-  u32 *value;
-
-  if (pm->state == PERFMON_STATE_RUNNING)
-    {
-      vlib_cli_output (vm, "Performance monitor is still running...");
-      return 0;
-    }
-
-  pool_free (pm->capture_pool);
-
-  /* *INDENT-OFF* */
-  hash_foreach_mem (key, value, pm->capture_by_thread_and_node_name,
-  ({
-    vec_free (key);
-  }));
-  /* *INDENT-ON* */
-  hash_free (pm->capture_by_thread_and_node_name);
-  pm->capture_by_thread_and_node_name =
-    hash_create_string (0, sizeof (uword));
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (clear_pmc_command, static) =
-{
-  .path = "clear pmc",
-  .short_help = "clear the performance monitor counters",
-  .function = clear_pmc_command_fn,
-};
-/* *INDENT-ON* */
-
 
 /*
  * fd.io coding-style-patch-verification: ON
