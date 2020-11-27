@@ -99,7 +99,7 @@ autoreply define set_punt {
 define punt_socket_register {
     u32 client_index;
     u32 context;
-    u32 header_version;
+    u32 header_version [default=1];
     vl_api_punt_t punt;
     string pathname[108]; /* Linux sun_path defined to be 108 bytes, see unix(7) */
 };

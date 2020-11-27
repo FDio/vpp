@@ -976,19 +976,6 @@ class VppPapiProvider(object):
     def ipsec_backend_dump(self):
         return self.api(self.papi.ipsec_backend_dump, {})
 
-    def punt_socket_register(self, reg, pathname,
-                             header_version=1):
-        """ Register punt socket """
-        return self.api(self.papi.punt_socket_register,
-                        {'header_version': header_version,
-                         'punt': reg,
-                         'pathname': pathname})
-
-    def punt_socket_deregister(self, reg):
-        """ Unregister punt socket """
-        return self.api(self.papi.punt_socket_deregister,
-                        {'punt': reg})
-
     def gbp_endpoint_add(self, sw_if_index, ips, mac, sclass, flags,
                          tun_src, tun_dst):
         """ GBP endpoint Add """
