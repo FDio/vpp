@@ -754,7 +754,7 @@ replicate_inline (vlib_main_t * vm,
             n_left_from -= 1;
 
             b0 = vlib_get_buffer (vm, bi0);
-            repi0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+            repi0 = vnet_buffer (b0)->ip.adj_index;
             rep0 = replicate_get(repi0);
 
             vlib_increment_combined_counter(
@@ -785,7 +785,7 @@ replicate_inline (vlib_main_t * vm,
 
                 dpo0 = replicate_get_bucket_i(rep0, bucket);
                 next0 = dpo0->dpoi_next_node;
-                vnet_buffer (c0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+                vnet_buffer (c0)->ip.adj_index = dpo0->dpoi_index;
 
                 if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
                 {

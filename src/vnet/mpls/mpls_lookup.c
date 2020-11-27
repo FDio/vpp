@@ -157,7 +157,7 @@ VLIB_NODE_FN (mpls_lookup_node) (vlib_main_t * vm,
           if (MPLS_IS_REPLICATE & lbi0)
           {
               next0 = mpls_lookup_to_replicate_edge;
-              vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
+              vnet_buffer (b0)->ip.adj_index =
                   (lbi0 & ~MPLS_IS_REPLICATE);
           }
           else
@@ -180,7 +180,7 @@ VLIB_NODE_FN (mpls_lookup_node) (vlib_main_t * vm,
               }
               next0 = dpo0->dpoi_next_node;
 
-              vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+              vnet_buffer (b0)->ip.adj_index = dpo0->dpoi_index;
 
               vlib_increment_combined_counter
                   (cm, thread_index, lbi0, 1,
@@ -189,7 +189,7 @@ VLIB_NODE_FN (mpls_lookup_node) (vlib_main_t * vm,
           if (MPLS_IS_REPLICATE & lbi1)
           {
               next1 = mpls_lookup_to_replicate_edge;
-              vnet_buffer (b1)->ip.adj_index[VLIB_TX] =
+              vnet_buffer (b1)->ip.adj_index =
                   (lbi1 & ~MPLS_IS_REPLICATE);
           }
           else
@@ -212,7 +212,7 @@ VLIB_NODE_FN (mpls_lookup_node) (vlib_main_t * vm,
               }
               next1 = dpo1->dpoi_next_node;
 
-              vnet_buffer (b1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+              vnet_buffer (b1)->ip.adj_index = dpo1->dpoi_index;
 
               vlib_increment_combined_counter
                   (cm, thread_index, lbi1, 1,
@@ -221,7 +221,7 @@ VLIB_NODE_FN (mpls_lookup_node) (vlib_main_t * vm,
           if (MPLS_IS_REPLICATE & lbi2)
           {
               next2 = mpls_lookup_to_replicate_edge;
-              vnet_buffer (b2)->ip.adj_index[VLIB_TX] =
+              vnet_buffer (b2)->ip.adj_index =
                   (lbi2 & ~MPLS_IS_REPLICATE);
           }
           else
@@ -244,7 +244,7 @@ VLIB_NODE_FN (mpls_lookup_node) (vlib_main_t * vm,
               }
               next2 = dpo2->dpoi_next_node;
 
-              vnet_buffer (b2)->ip.adj_index[VLIB_TX] = dpo2->dpoi_index;
+              vnet_buffer (b2)->ip.adj_index = dpo2->dpoi_index;
 
               vlib_increment_combined_counter
                   (cm, thread_index, lbi2, 1,
@@ -253,7 +253,7 @@ VLIB_NODE_FN (mpls_lookup_node) (vlib_main_t * vm,
           if (MPLS_IS_REPLICATE & lbi3)
           {
               next3 = mpls_lookup_to_replicate_edge;
-              vnet_buffer (b3)->ip.adj_index[VLIB_TX] =
+              vnet_buffer (b3)->ip.adj_index =
                   (lbi3 & ~MPLS_IS_REPLICATE);
           }
           else
@@ -276,7 +276,7 @@ VLIB_NODE_FN (mpls_lookup_node) (vlib_main_t * vm,
               }
               next3 = dpo3->dpoi_next_node;
 
-              vnet_buffer (b3)->ip.adj_index[VLIB_TX] = dpo3->dpoi_index;
+              vnet_buffer (b3)->ip.adj_index = dpo3->dpoi_index;
 
               vlib_increment_combined_counter
                   (cm, thread_index, lbi3, 1,
@@ -387,7 +387,7 @@ VLIB_NODE_FN (mpls_lookup_node) (vlib_main_t * vm,
           if (MPLS_IS_REPLICATE & lbi0)
           {
               next0 = mpls_lookup_to_replicate_edge;
-              vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
+              vnet_buffer (b0)->ip.adj_index =
                   (lbi0 & ~MPLS_IS_REPLICATE);
           }
           else
@@ -409,7 +409,7 @@ VLIB_NODE_FN (mpls_lookup_node) (vlib_main_t * vm,
                   dpo0 = load_balance_get_bucket_i (lb0, 0);
               }
               next0 = dpo0->dpoi_next_node;
-              vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+              vnet_buffer (b0)->ip.adj_index = dpo0->dpoi_index;
 
               vlib_increment_combined_counter
                   (cm, thread_index, lbi0, 1,
@@ -546,8 +546,8 @@ VLIB_NODE_FN (mpls_load_balance_node) (vlib_main_t * vm,
 
           mpls0 = vlib_buffer_get_current (p0);
           mpls1 = vlib_buffer_get_current (p1);
-          lbi0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-          lbi1 = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
+          lbi0 = vnet_buffer (p0)->ip.adj_index;
+          lbi1 = vnet_buffer (p1)->ip.adj_index;
 
           lb0 = load_balance_get(lbi0);
           lb1 = load_balance_get(lbi1);
@@ -597,8 +597,8 @@ VLIB_NODE_FN (mpls_load_balance_node) (vlib_main_t * vm,
           next0 = dpo0->dpoi_next_node;
           next1 = dpo1->dpoi_next_node;
 
-          vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-          vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+          vnet_buffer (p0)->ip.adj_index = dpo0->dpoi_index;
+          vnet_buffer (p1)->ip.adj_index = dpo1->dpoi_index;
 
           vlib_increment_combined_counter
               (cm, thread_index, lbi0, 1,
@@ -647,7 +647,7 @@ VLIB_NODE_FN (mpls_load_balance_node) (vlib_main_t * vm,
           p0 = vlib_get_buffer (vm, pi0);
 
           mpls0 = vlib_buffer_get_current (p0);
-          lbi0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+          lbi0 = vnet_buffer (p0)->ip.adj_index;
 
           lb0 = load_balance_get(lbi0);
 
@@ -670,7 +670,7 @@ VLIB_NODE_FN (mpls_load_balance_node) (vlib_main_t * vm,
           }
 
           next0 = dpo0->dpoi_next_node;
-          vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+          vnet_buffer (p0)->ip.adj_index = dpo0->dpoi_index;
 
           if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
           {

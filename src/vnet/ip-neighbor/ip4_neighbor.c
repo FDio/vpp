@@ -130,7 +130,7 @@ ip4_arp_inline (vlib_main_t * vm,
   u64 seed;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip4_forward_next_trace (vm, node, frame);
 
   seed = throttle_seed (&arp_throttle, thread_index, vlib_time_now (vm));
 
@@ -162,7 +162,7 @@ ip4_arp_inline (vlib_main_t * vm,
 	  to_next_drop += 1;
 	  n_left_to_next_drop -= 1;
 
-	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+	  adj_index0 = vnet_buffer (p0)->ip.adj_index;
 	  adj0 = adj_get (adj_index0);
 	  sw_if_index0 = adj0->rewrite_header.sw_if_index;
 

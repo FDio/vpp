@@ -122,8 +122,8 @@ nsh_output_inline (vlib_main_t * vm,
           p0 = vlib_get_buffer (vm, pi0);
           p1 = vlib_get_buffer (vm, pi1);
 
-          adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-          adj_index1 = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
+          adj_index0 = vnet_buffer (p0)->ip.adj_index;
+          adj_index1 = vnet_buffer (p1)->ip.adj_index;
 
           adj0 = adj_get(adj_index0);
           adj1 = adj_get(adj_index1);
@@ -214,14 +214,14 @@ nsh_output_inline (vlib_main_t * vm,
             {
               nsh_output_trace_t *tr = vlib_add_trace (vm, node,
                                                         p0, sizeof (*tr));
-              tr->adj_index = vnet_buffer(p0)->ip.adj_index[VLIB_TX];
+              tr->adj_index = vnet_buffer(p0)->ip.adj_index;
               tr->flow_hash = vnet_buffer(p0)->ip.flow_hash;
             }
           if (PREDICT_FALSE(p1->flags & VLIB_BUFFER_IS_TRACED))
             {
               nsh_output_trace_t *tr = vlib_add_trace (vm, node,
                                                         p1, sizeof (*tr));
-              tr->adj_index = vnet_buffer(p1)->ip.adj_index[VLIB_TX];
+              tr->adj_index = vnet_buffer(p1)->ip.adj_index;
               tr->flow_hash = vnet_buffer(p1)->ip.flow_hash;
             }
 
@@ -244,7 +244,7 @@ nsh_output_inline (vlib_main_t * vm,
 
           p0 = vlib_get_buffer (vm, pi0);
 
-          adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+          adj_index0 = vnet_buffer (p0)->ip.adj_index;
 
           adj0 = adj_get(adj_index0);
           hdr0 = vlib_buffer_get_current (p0);
@@ -300,7 +300,7 @@ nsh_output_inline (vlib_main_t * vm,
             {
               nsh_output_trace_t *tr = vlib_add_trace (vm, node,
                                                         p0, sizeof (*tr));
-              tr->adj_index = vnet_buffer(p0)->ip.adj_index[VLIB_TX];
+              tr->adj_index = vnet_buffer(p0)->ip.adj_index;
               tr->flow_hash = vnet_buffer(p0)->ip.flow_hash;
             }
 
@@ -442,7 +442,7 @@ VLIB_NODE_FN (nsh_adj_incomplete_node) (vlib_main_t * vm,
           to_next += 1;
           n_left_to_next -= 1;
 
-          adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+          adj_index0 = vnet_buffer (p0)->ip.adj_index;
 
           adj0 = adj_get(adj_index0);
 

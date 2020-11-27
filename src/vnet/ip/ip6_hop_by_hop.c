@@ -638,8 +638,8 @@ VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
 	  /* $$$$$ Dual loop: process 2 x packets here $$$$$ */
 	  ip0 = vlib_buffer_get_current (b0);
 	  ip1 = vlib_buffer_get_current (b1);
-	  adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-	  adj_index1 = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
+	  adj_index0 = vnet_buffer (b0)->ip.adj_index;
+	  adj_index1 = vnet_buffer (b1)->ip.adj_index;
 	  adj0 = adj_get (adj_index0);
 	  adj1 = adj_get (adj_index1);
 
@@ -728,7 +728,7 @@ VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 
 	  ip0 = vlib_buffer_get_current (b0);
-	  adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+	  adj_index0 = vnet_buffer (b0)->ip.adj_index;
 	  adj0 = adj_get (adj_index0);
 
 	  /* Default use the next_index from the adjacency. */

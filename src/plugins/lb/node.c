@@ -181,7 +181,7 @@ lb_node_get_hash (lb_main_t *lbm, vlib_buffer_t *p, u8 is_input_v4,
   clib_bihash_kv_8_8_t kv, value;
 
   /* For vip case, retrieve vip index for ip lookup */
-  *vip_idx = vnet_buffer (p)->ip.adj_index[VLIB_TX];
+  *vip_idx = vnet_buffer (p)->ip.adj_index;
 
   if (per_port_vip)
     {
@@ -546,7 +546,7 @@ lb_node_fn (vlib_main_t * vm,
             }
           next0 = lbm->ass[asindex0].dpo.dpoi_next_node;
           //Note that this is going to error if asindex0 == 0
-          vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
+          vnet_buffer (p0)->ip.adj_index =
               lbm->ass[asindex0].dpo.dpoi_index;
 
           if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
@@ -656,7 +656,7 @@ lb_nodeport_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
           entry0 = hash_get_mem(lbm->vip_index_by_nodeport, &(udp_0->dst_port));
 
           //Enqueue to next
-          vnet_buffer(p0)->ip.adj_index[VLIB_TX] = entry0 ? entry0[0]
+          vnet_buffer(p0)->ip.adj_index = entry0 ? entry0[0]
               : ADJ_INDEX_INVALID;
 
           if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))

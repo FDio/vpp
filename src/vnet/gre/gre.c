@@ -537,8 +537,8 @@ gre_encap_inline (vlib_main_t * vm,
 	  adj_index[1] = gt[1]->l2_adj_index;
 	}
 
-      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = adj_index[0];
-      vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = adj_index[1];
+      vnet_buffer (b[0])->ip.adj_index = adj_index[0];
+      vnet_buffer (b[1])->ip.adj_index = adj_index[1];
 
       if (type == GRE_TUNNEL_TYPE_ERSPAN)
 	{
@@ -605,7 +605,7 @@ gre_encap_inline (vlib_main_t * vm,
 	  adj_index[0] = gt[0]->l2_adj_index;
 	}
 
-      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = adj_index[0];
+      vnet_buffer (b[0])->ip.adj_index = adj_index[0];
 
       if (type == GRE_TUNNEL_TYPE_ERSPAN)
 	{

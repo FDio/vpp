@@ -47,7 +47,7 @@ bier_drop_trace (vlib_main_t * vm,
       {
           t0 = vlib_add_trace (vm, node, b0, sizeof(*t0));
 
-          t0->dpi = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+          t0->dpi = vnet_buffer (b0)->ip.adj_index;
       }
       from += 1;
       n_left -= 1;

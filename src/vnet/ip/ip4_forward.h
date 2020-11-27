@@ -215,13 +215,13 @@ ip4_lookup_inline (vlib_main_t * vm,
 	}
 
       next[0] = dpo0->dpoi_next_node;
-      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+      vnet_buffer (b[0])->ip.adj_index = dpo0->dpoi_index;
       next[1] = dpo1->dpoi_next_node;
-      vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+      vnet_buffer (b[1])->ip.adj_index = dpo1->dpoi_index;
       next[2] = dpo2->dpoi_next_node;
-      vnet_buffer (b[2])->ip.adj_index[VLIB_TX] = dpo2->dpoi_index;
+      vnet_buffer (b[2])->ip.adj_index = dpo2->dpoi_index;
       next[3] = dpo3->dpoi_next_node;
-      vnet_buffer (b[3])->ip.adj_index[VLIB_TX] = dpo3->dpoi_index;
+      vnet_buffer (b[3])->ip.adj_index = dpo3->dpoi_index;
 
       vlib_increment_combined_counter
 	(cm, thread_index, lb_index0, 1,
@@ -328,9 +328,9 @@ ip4_lookup_inline (vlib_main_t * vm,
 	}
 
       next[0] = dpo0->dpoi_next_node;
-      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+      vnet_buffer (b[0])->ip.adj_index = dpo0->dpoi_index;
       next[1] = dpo1->dpoi_next_node;
-      vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+      vnet_buffer (b[1])->ip.adj_index = dpo1->dpoi_index;
 
       vlib_increment_combined_counter
 	(cm, thread_index, lb_index0, 1,
@@ -391,7 +391,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 	}
 
       next[0] = dpo0->dpoi_next_node;
-      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+      vnet_buffer (b[0])->ip.adj_index = dpo0->dpoi_index;
 
       vlib_increment_combined_counter (cm, thread_index, lbi0, 1,
 				       vlib_buffer_length_in_chain (vm,
@@ -405,7 +405,7 @@ ip4_lookup_inline (vlib_main_t * vm,
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip4_forward_next_trace (vm, node, frame);
 
   return frame->n_vectors;
 }

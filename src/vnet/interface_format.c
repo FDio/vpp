@@ -481,9 +481,7 @@ format_vnet_buffer_opaque (u8 * s, va_list * args)
 	      (u32) (o->l4_hdr_offset), (u32) (o->feature_arc_index));
   vec_add1 (s, '\n');
 
-  s = format (s,
-	      "ip.adj_index[VLIB_RX]: %d, ip.adj_index[VLIB_TX]: %d",
-	      (u32) (o->ip.adj_index[0]), (u32) (o->ip.adj_index[1]));
+  s = format (s, "ip.adj_index: %d", o->ip.adj_index);
   vec_add1 (s, '\n');
 
   s = format (s,

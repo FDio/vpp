@@ -167,8 +167,8 @@ ip6_lookup_inline (vlib_main_t * vm,
 	      next1 = (dpo_is_adj (dpo1) && im->hbh_enabled) ?
 		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next1;
 	    }
-	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+	  vnet_buffer (p0)->ip.adj_index = dpo0->dpoi_index;
+	  vnet_buffer (p1)->ip.adj_index = dpo1->dpoi_index;
 
 	  vlib_increment_combined_counter
 	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
@@ -273,7 +273,7 @@ ip6_lookup_inline (vlib_main_t * vm,
 	      next0 = (dpo_is_adj (dpo0) && im->hbh_enabled) ?
 		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next0;
 	    }
-	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	  vnet_buffer (p0)->ip.adj_index = dpo0->dpoi_index;
 
 	  vlib_increment_combined_counter
 	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
@@ -299,7 +299,7 @@ ip6_lookup_inline (vlib_main_t * vm,
     }
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip6_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip6_forward_next_trace (vm, node, frame);
 
   return frame->n_vectors;
 }

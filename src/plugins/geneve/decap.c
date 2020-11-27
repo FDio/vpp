@@ -882,7 +882,7 @@ ip_geneve_bypass_inline (vlib_main_t * vm,
   vlib_get_buffers (vm, from, bufs, n_left_from);
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip4_forward_next_trace (vm, node, frame);
 
   if (is_ip4)
     vtep4_key_init (&last_vtep4);

@@ -2075,7 +2075,7 @@ tcp_output_handle_link_local (tcp_connection_t * tc0, vlib_buffer_t * b0,
       *next0 = TCP_OUTPUT_NEXT_DROP;
       *error0 = TCP_ERROR_LINK_LOCAL_RW;
     }
-  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ai;
+  vnet_buffer (b0)->ip.adj_index = ai;
 }
 
 static void

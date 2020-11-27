@@ -106,8 +106,8 @@ udp_encap_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  uei0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-	  uei1 = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
+	  uei0 = vnet_buffer (b0)->ip.adj_index;
+	  uei1 = vnet_buffer (b1)->ip.adj_index;
 
 	  vlib_increment_combined_counter (cm, thread_index, uei0, 1,
 					   vlib_buffer_length_in_chain (vm,
@@ -169,8 +169,8 @@ udp_encap_inline (vlib_main_t * vm,
 
 	  next0 = ue0->ue_dpo.dpoi_next_node;
 	  next1 = ue1->ue_dpo.dpoi_next_node;
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ue0->ue_dpo.dpoi_index;
-	  vnet_buffer (b1)->ip.adj_index[VLIB_TX] = ue1->ue_dpo.dpoi_index;
+	  vnet_buffer (b0)->ip.adj_index = ue0->ue_dpo.dpoi_index;
+	  vnet_buffer (b1)->ip.adj_index = ue1->ue_dpo.dpoi_index;
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -192,7 +192,7 @@ udp_encap_inline (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  uei0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+	  uei0 = vnet_buffer (b0)->ip.adj_index;
 
 	  /* Rewrite packet header and updates lengths. */
 	  ue0 = udp_encap_get (uei0);
@@ -235,7 +235,7 @@ udp_encap_inline (vlib_main_t * vm,
 	    }
 
 	  next0 = ue0->ue_dpo.dpoi_next_node;
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ue0->ue_dpo.dpoi_index;
+	  vnet_buffer (b0)->ip.adj_index = ue0->ue_dpo.dpoi_index;
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,

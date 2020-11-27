@@ -219,8 +219,8 @@ mpls_label_disposition_inline (vlib_main_t * vm,
             b1 = vlib_get_buffer(vm, bi1);
 
             /* dst lookup was done by ip4 lookup */
-            mddi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
-            mddi1 = vnet_buffer(b1)->ip.adj_index[VLIB_TX];
+            mddi0 = vnet_buffer(b0)->ip.adj_index;
+            mddi1 = vnet_buffer(b1)->ip.adj_index;
             mdd0 = mpls_disp_dpo_get(mddi0);
             mdd1 = mpls_disp_dpo_get(mddi1);
 
@@ -289,8 +289,8 @@ mpls_label_disposition_inline (vlib_main_t * vm,
                 }
             }
 
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mdd0->mdd_dpo.dpoi_index;
-            vnet_buffer(b1)->ip.adj_index[VLIB_TX] = mdd1->mdd_dpo.dpoi_index;
+            vnet_buffer(b0)->ip.adj_index = mdd0->mdd_dpo.dpoi_index;
+            vnet_buffer(b1)->ip.adj_index = mdd1->mdd_dpo.dpoi_index;
             vnet_buffer(b0)->ip.rpf_id = mdd0->mdd_rpf_id;
             vnet_buffer(b1)->ip.rpf_id = mdd1->mdd_rpf_id;
 
@@ -334,7 +334,7 @@ mpls_label_disposition_inline (vlib_main_t * vm,
             b0 = vlib_get_buffer(vm, bi0);
 
             /* dst lookup was done by ip4 lookup */
-            mddi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+            mddi0 = vnet_buffer(b0)->ip.adj_index;
             mdd0 = mpls_disp_dpo_get(mddi0);
             next0 = mdd0->mdd_dpo.dpoi_next_node;
 
@@ -386,7 +386,7 @@ mpls_label_disposition_inline (vlib_main_t * vm,
                 }
             }
 
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mdd0->mdd_dpo.dpoi_index;
+            vnet_buffer(b0)->ip.adj_index = mdd0->mdd_dpo.dpoi_index;
             vnet_buffer(b0)->ip.rpf_id = mdd0->mdd_rpf_id;
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))

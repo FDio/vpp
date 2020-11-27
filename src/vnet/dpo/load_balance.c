@@ -1132,7 +1132,7 @@ load_balance_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 
 	  /* lookup dst + src mac */
-	  lbi0 =  vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+	  lbi0 =  vnet_buffer (b0)->ip.adj_index;
 	  lb0 = load_balance_get(lbi0);
 
 	  if (is_l2)
@@ -1151,7 +1151,7 @@ load_balance_inline (vlib_main_t * vm,
 					   (lb0->lb_n_buckets_minus_1));
 
 	  next0 = dpo0->dpoi_next_node;
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	  vnet_buffer (b0)->ip.adj_index = dpo0->dpoi_index;
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -1237,7 +1237,7 @@ nsh_load_balance (vlib_main_t * vm,
 
           b0 = vlib_get_buffer (vm, bi0);
 
-          lbi0 =  vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+          lbi0 =  vnet_buffer (b0)->ip.adj_index;
           lb0 = load_balance_get(lbi0);
 
           /* SPI + SI are the second word of the NSH header */
@@ -1249,7 +1249,7 @@ nsh_load_balance (vlib_main_t * vm,
                                            (lb0->lb_n_buckets_minus_1));
 
           next0 = dpo0->dpoi_next_node;
-          vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+          vnet_buffer (b0)->ip.adj_index = dpo0->dpoi_index;
 
           if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
             {

@@ -130,7 +130,7 @@ end_am_processing (vlib_buffer_t * b0,
   ip0->dst_address.as_u64[1] = new_dst0->as_u64[1];
 
   /* Set Xconnect adjacency to VNF */
-  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
+  vnet_buffer (b0)->ip.adj_index = ls0->nh_adj;
 }
 
 /**
@@ -180,7 +180,7 @@ srv6_am_localsid_fn (vlib_main_t * vm,
 
 	  /* Lookup the SR End behavior based on IP DA (adj) */
 	  ls0 = pool_elt_at_index (sm->localsids,
-				   vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+				   vnet_buffer (b0)->ip.adj_index);
 
 	  /* SRH processing */
 	  end_am_processing (b0, ip0, sr0, ls0, &next0);

@@ -90,9 +90,9 @@ ip6_neighbor_probe (vlib_main_t * vm,
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = adj->rewrite_header.sw_if_index;
 
   /* Use the link's mcast adj to ship the packet */
-  vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
+  vnet_buffer (b0)->ip.adj_index =
     ip6_link_get_mcast_adj (adj->rewrite_header.sw_if_index);
-  adj = adj_get (vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+  adj = adj_get (vnet_buffer (b0)->ip.adj_index);
 
   b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 

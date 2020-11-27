@@ -112,7 +112,7 @@ bier_output (vlib_main_t * vm,
              * In the BIER Lookup node we squirrelled away the
              * BIER fmask index as the adj index
              */
-            bfmi0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+            bfmi0 = vnet_buffer (b0)->ip.adj_index;
             bfm0 = bier_fmask_get(bfmi0);
 
             vlib_increment_combined_counter(
@@ -155,7 +155,7 @@ bier_output (vlib_main_t * vm,
              * setup next graph node
              */
             next0 = bfm0->bfm_dpo.dpoi_next_node;
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = bfm0->bfm_dpo.dpoi_index;
+            vnet_buffer(b0)->ip.adj_index = bfm0->bfm_dpo.dpoi_index;
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {

@@ -145,8 +145,8 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
 
       ip0 = vlib_buffer_get_current (b[0]);
       ip1 = vlib_buffer_get_current (b[1]);
-      lbi0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
-      lbi1 = vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
+      lbi0 = vnet_buffer (b[0])->ip.adj_index;
+      lbi1 = vnet_buffer (b[1])->ip.adj_index;
 
       lb0 = load_balance_get (lbi0);
       lb1 = load_balance_get (lbi1);
@@ -201,8 +201,8 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
       next[0] = dpo0->dpoi_next_node;
       next[1] = dpo1->dpoi_next_node;
 
-      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-      vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+      vnet_buffer (b[0])->ip.adj_index = dpo0->dpoi_index;
+      vnet_buffer (b[1])->ip.adj_index = dpo1->dpoi_index;
 
       vlib_increment_combined_counter
 	(cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, b[0]));
@@ -222,7 +222,7 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
       u32 lbi0, hc0;
 
       ip0 = vlib_buffer_get_current (b[0]);
-      lbi0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
+      lbi0 = vnet_buffer (b[0])->ip.adj_index;
 
       lb0 = load_balance_get (lbi0);
 
@@ -248,7 +248,7 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
 	}
 
       next[0] = dpo0->dpoi_next_node;
-      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+      vnet_buffer (b[0])->ip.adj_index = dpo0->dpoi_index;
 
       vlib_increment_combined_counter
 	(cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, b[0]));
@@ -260,7 +260,7 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
 
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip4_forward_next_trace (vm, node, frame);
 
   return frame->n_vectors;
 }
@@ -1277,8 +1277,7 @@ format_ip4_rewrite_trace (u8 * s, va_list * args)
 /* Common trace function for all ip4-forward next nodes. */
 void
 ip4_forward_next_trace (vlib_main_t * vm,
-			vlib_node_runtime_t * node,
-			vlib_frame_t * frame, vlib_rx_or_tx_t which_adj_index)
+			vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   u32 *from, n_left;
   ip4_main_t *im = &ip4_main;
@@ -1305,7 +1304,7 @@ ip4_forward_next_trace (vlib_main_t * vm,
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
-	  t0->dpo_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
+	  t0->dpo_index = vnet_buffer (b0)->ip.adj_index;
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
 	  t0->fib_index =
 	    (vnet_buffer (b0)->sw_if_index[VLIB_TX] !=
@@ -1320,7 +1319,7 @@ ip4_forward_next_trace (vlib_main_t * vm,
       if (b1->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
-	  t1->dpo_index = vnet_buffer (b1)->ip.adj_index[which_adj_index];
+	  t1->dpo_index = vnet_buffer (b1)->ip.adj_index;
 	  t1->flow_hash = vnet_buffer (b1)->ip.flow_hash;
 	  t1->fib_index =
 	    (vnet_buffer (b1)->sw_if_index[VLIB_TX] !=
@@ -1347,7 +1346,7 @@ ip4_forward_next_trace (vlib_main_t * vm,
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
-	  t0->dpo_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
+	  t0->dpo_index = vnet_buffer (b0)->ip.adj_index;
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
 	  t0->fib_index =
 	    (vnet_buffer (b0)->sw_if_index[VLIB_TX] !=
@@ -1564,12 +1563,6 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
     vnet_buffer (b)->sw_if_index[VLIB_TX] != ~0 ?
     vnet_buffer (b)->sw_if_index[VLIB_TX] : vnet_buffer (b)->ip.fib_index;
 
-  /*
-   * vnet_buffer()->ip.adj_index[VLIB_RX] will be set to the index of the
-   *  adjacency for the destination address (the local interface address).
-   * vnet_buffer()->ip.adj_index[VLIB_TX] will be set to the index of the
-   *  adjacency for the source address (the remote sender's address)
-   */
   if (PREDICT_TRUE (last_check->src.as_u32 != ip0->src_address.as_u32) ||
       last_check->first)
     {
@@ -1579,9 +1572,7 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
       leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
       lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 
-      vnet_buffer (b)->ip.adj_index[VLIB_RX] =
-	vnet_buffer (b)->ip.adj_index[VLIB_TX];
-      vnet_buffer (b)->ip.adj_index[VLIB_TX] = lbi0;
+      vnet_buffer (b)->ip.adj_index = lbi0;
 
       lb0 = load_balance_get (lbi0);
       dpo0 = load_balance_get_bucket_i (lb0, 0);
@@ -1612,9 +1603,6 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
     }
   else
     {
-      vnet_buffer (b)->ip.adj_index[VLIB_RX] =
-	vnet_buffer (b)->ip.adj_index[VLIB_TX];
-      vnet_buffer (b)->ip.adj_index[VLIB_TX] = last_check->lbi;
       *error0 = last_check->error;
     }
 }
@@ -1644,12 +1632,6 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
     vnet_buffer (b[1])->sw_if_index[VLIB_TX] :
     vnet_buffer (b[1])->ip.fib_index;
 
-  /*
-   * vnet_buffer()->ip.adj_index[VLIB_RX] will be set to the index of the
-   *  adjacency for the destination address (the local interface address).
-   * vnet_buffer()->ip.adj_index[VLIB_TX] will be set to the index of the
-   *  adjacency for the source address (the remote sender's address)
-   */
   if (PREDICT_TRUE (not_last_hit))
     {
       mtrie[0] = &ip4_fib_get (vnet_buffer (b[0])->ip.fib_index)->mtrie;
@@ -1670,14 +1652,6 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
 
       lbi[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf[0]);
       lbi[1] = ip4_fib_mtrie_leaf_get_adj_index (leaf[1]);
-
-      vnet_buffer (b[0])->ip.adj_index[VLIB_RX] =
-	vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
-      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = lbi[0];
-
-      vnet_buffer (b[1])->ip.adj_index[VLIB_RX] =
-	vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
-      vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = lbi[1];
 
       lb[0] = load_balance_get (lbi[0]);
       lb[1] = load_balance_get (lbi[1]);
@@ -1708,14 +1682,6 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
     }
   else
     {
-      vnet_buffer (b[0])->ip.adj_index[VLIB_RX] =
-	vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
-      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = last_check->lbi;
-
-      vnet_buffer (b[1])->ip.adj_index[VLIB_RX] =
-	vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
-      vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = last_check->lbi;
-
       error[0] = last_check->error;
       error[1] = last_check->error;
     }
@@ -1784,7 +1750,7 @@ ip4_local_inline (vlib_main_t * vm,
   n_left_from = frame->n_vectors;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip4_forward_next_trace (vm, node, frame);
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
   b = bufs;
@@ -2151,8 +2117,8 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       vlib_prefetch_buffer_header (b[6], LOAD);
       vlib_prefetch_buffer_header (b[7], LOAD);
 
-      adj_index0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
-      adj_index1 = vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
+      adj_index0 = vnet_buffer (b[0])->ip.adj_index;
+      adj_index1 = vnet_buffer (b[1])->ip.adj_index;
 
       /*
        * pre-fetch the per-adjacency counters
@@ -2347,14 +2313,14 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	  vlib_prefetch_buffer_data (b[2], LOAD);
 
 	  /* Prefetch adj->rewrite_header */
-	  adj_index2 = vnet_buffer (b[2])->ip.adj_index[VLIB_TX];
+	  adj_index2 = vnet_buffer (b[2])->ip.adj_index;
 	  adj2 = adj_get (adj_index2);
 	  p = (u8 *) adj2;
 	  CLIB_PREFETCH (p + CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES,
 			 LOAD);
 	}
 
-      adj_index0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
+      adj_index0 = vnet_buffer (b[0])->ip.adj_index;
 
       /*
        * Prefetch the per-adjacency counters
@@ -2466,7 +2432,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       u32 rw_len0, adj_index0, error0;
       u32 tx_sw_if_index0;
 
-      adj_index0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
+      adj_index0 = vnet_buffer (b[0])->ip.adj_index;
 
       adj0 = adj_get (adj_index0);
 
@@ -2566,7 +2532,7 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 
   /* Need to do trace after rewrites to pick up new packet data. */
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip4_forward_next_trace (vm, node, frame);
 
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   return frame->n_vectors;
@@ -2598,7 +2564,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
     @par Graph mechanics: buffer metadata, next index usage
 
     @em Uses:
-    - <code>vnet_buffer(b)->ip.adj_index[VLIB_TX]</code>
+    - <code>vnet_buffer(b)->ip.adj_index</code>
         - the rewrite adjacency index
     - <code>adj->lookup_next_index</code>
         - Must be IP_LOOKUP_NEXT_REWRITE or IP_LOOKUP_NEXT_ARP, otherwise

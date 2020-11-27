@@ -100,8 +100,8 @@ VLIB_NODE_FN (mpls_tunnel_tx) (vlib_main_t * vm,
       mt1 = pool_elt_at_index(mpls_tunnel_pool,
                               mpls_tunnel_db[sw_if_index1]);
 
-      vnet_buffer(b[0])->ip.adj_index[VLIB_TX] = mt0->mt_l2_lb.dpoi_index;
-      vnet_buffer(b[1])->ip.adj_index[VLIB_TX] = mt1->mt_l2_lb.dpoi_index;
+      vnet_buffer(b[0])->ip.adj_index = mt0->mt_l2_lb.dpoi_index;
+      vnet_buffer(b[1])->ip.adj_index = mt1->mt_l2_lb.dpoi_index;
       next[0] = mt0->mt_l2_lb.dpoi_next_node;
       next[1] = mt1->mt_l2_lb.dpoi_next_node;
 
@@ -138,7 +138,7 @@ VLIB_NODE_FN (mpls_tunnel_tx) (vlib_main_t * vm,
       mt0 = pool_elt_at_index(mpls_tunnel_pool,
                               mpls_tunnel_db[sw_if_index0]);
 
-      vnet_buffer(b[0])->ip.adj_index[VLIB_TX] = mt0->mt_l2_lb.dpoi_index;
+      vnet_buffer(b[0])->ip.adj_index = mt0->mt_l2_lb.dpoi_index;
       next[0] = mt0->mt_l2_lb.dpoi_next_node;
 
       /* since we are coming out of the L2 world, where the vlib_buffer

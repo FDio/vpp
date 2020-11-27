@@ -278,8 +278,8 @@ interface_rx_dpo_inline (vlib_main_t * vm,
             b0 = vlib_get_buffer (vm, bi0);
             b1 = vlib_get_buffer (vm, bi1);
 
-            idoi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
-            idoi1 = vnet_buffer(b1)->ip.adj_index[VLIB_TX];
+            idoi0 = vnet_buffer(b0)->ip.adj_index;
+            idoi1 = vnet_buffer(b1)->ip.adj_index;
             ido0 = interface_rx_dpo_get(idoi0);
             ido1 = interface_rx_dpo_get(idoi1);
 
@@ -336,7 +336,7 @@ interface_rx_dpo_inline (vlib_main_t * vm,
 
             b0 = vlib_get_buffer (vm, bi0);
 
-            idoi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+            idoi0 = vnet_buffer(b0)->ip.adj_index;
             ido0 = interface_rx_dpo_get(idoi0);
 
             /* Swap the RX interface of the packet to the one the

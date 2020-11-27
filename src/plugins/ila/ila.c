@@ -302,9 +302,9 @@ ila_ila2sir (vlib_main_t * vm,
 	  sir_address0 = &ip60->dst_address;
 	  sir_address1 = &ip61->dst_address;
 	  ie0 = pool_elt_at_index (ilm->entries,
-				   vnet_buffer (p0)->ip.adj_index[VLIB_TX]);
+				   vnet_buffer (p0)->ip.adj_index);
 	  ie1 = pool_elt_at_index (ilm->entries,
-				   vnet_buffer (p1)->ip.adj_index[VLIB_TX]);
+				   vnet_buffer (p1)->ip.adj_index);
 
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -312,7 +312,7 @@ ila_ila2sir (vlib_main_t * vm,
 		vlib_add_trace (vm, node, p0, sizeof (*tr));
 	      tr->ila_index = ie0 - ilm->entries;
 	      tr->initial_dst = ip60->dst_address;
-	      tr->adj_index = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+	      tr->adj_index = vnet_buffer (p0)->ip.adj_index;
 	    }
 
 	  if (PREDICT_FALSE (p1->flags & VLIB_BUFFER_IS_TRACED))
@@ -321,7 +321,7 @@ ila_ila2sir (vlib_main_t * vm,
 		vlib_add_trace (vm, node, p1, sizeof (*tr));
 	      tr->ila_index = ie1 - ilm->entries;
 	      tr->initial_dst = ip61->dst_address;
-	      tr->adj_index = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
+	      tr->adj_index = vnet_buffer (p1)->ip.adj_index;
 	    }
 
 	  sir_address0 = (ie0->dir != ILA_DIR_SIR2ILA) ? &ie0->sir_address : sir_address0;
@@ -331,8 +331,8 @@ ila_ila2sir (vlib_main_t * vm,
 	  ip61->dst_address.as_u64[0] = sir_address1->as_u64[0];
 	  ip61->dst_address.as_u64[1] = sir_address1->as_u64[1];
 
-	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = ie0->ila_dpo.dpoi_index;
-	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = ie1->ila_dpo.dpoi_index;
+	  vnet_buffer (p0)->ip.adj_index = ie0->ila_dpo.dpoi_index;
+	  vnet_buffer (p1)->ip.adj_index = ie1->ila_dpo.dpoi_index;
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, pi1,
@@ -359,7 +359,7 @@ ila_ila2sir (vlib_main_t * vm,
 	  ip60 = vlib_buffer_get_current (p0);
 	  sir_address0 = &ip60->dst_address;
 	  ie0 = pool_elt_at_index (ilm->entries,
-				   vnet_buffer (p0)->ip.adj_index[VLIB_TX]);
+				   vnet_buffer (p0)->ip.adj_index);
 
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -367,13 +367,13 @@ ila_ila2sir (vlib_main_t * vm,
 		vlib_add_trace (vm, node, p0, sizeof (*tr));
 	      tr->ila_index = ie0 ? (ie0 - ilm->entries) : ~0;
 	      tr->initial_dst = ip60->dst_address;
-	      tr->adj_index = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+	      tr->adj_index = vnet_buffer (p0)->ip.adj_index;
 	    }
 
 	  sir_address0 = (ie0->dir != ILA_DIR_SIR2ILA) ? &ie0->sir_address : sir_address0;
 	  ip60->dst_address.as_u64[0] = sir_address0->as_u64[0];
 	  ip60->dst_address.as_u64[1] = sir_address0->as_u64[1];
-	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = ie0->ila_dpo.dpoi_index;
+	  vnet_buffer (p0)->ip.adj_index = ie0->ila_dpo.dpoi_index;
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0,

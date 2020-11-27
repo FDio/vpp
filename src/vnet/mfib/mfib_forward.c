@@ -72,14 +72,14 @@ mfib_forward_lookup_trace (vlib_main_t * vm,
         if (b0->flags & VLIB_BUFFER_IS_TRACED)
         {
             t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
-            t0->entry_index = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+            t0->entry_index = vnet_buffer (b0)->ip.adj_index;
             t0->fib_index = vec_elt (im->mfib_index_by_sw_if_index,
                                      vnet_buffer(b1)->sw_if_index[VLIB_RX]);
         }
         if (b1->flags & VLIB_BUFFER_IS_TRACED)
         {
             t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
-            t1->entry_index = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
+            t1->entry_index = vnet_buffer (b1)->ip.adj_index;
             t1->fib_index = vec_elt (im->mfib_index_by_sw_if_index,
                                      vnet_buffer(b1)->sw_if_index[VLIB_RX]);
         }
@@ -100,7 +100,7 @@ mfib_forward_lookup_trace (vlib_main_t * vm,
         if (b0->flags & VLIB_BUFFER_IS_TRACED)
         {
             t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
-            t0->entry_index = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+            t0->entry_index = vnet_buffer (b0)->ip.adj_index;
             t0->fib_index = vec_elt (im->mfib_index_by_sw_if_index,
                                      vnet_buffer(b0)->sw_if_index[VLIB_RX]);
         }
@@ -170,7 +170,7 @@ mfib_forward_lookup (vlib_main_t * vm,
                                                   &ip0->dst_address);
             }
 
-            vnet_buffer (p0)->ip.adj_index[VLIB_TX] = mfei0;
+            vnet_buffer (p0)->ip.adj_index = mfei0;
         }
 
         vlib_put_next_frame(vm, node,
@@ -367,7 +367,7 @@ mfib_forward_rpf (vlib_main_t * vm,
 
             error0 = IP4_ERROR_NONE;
             b0 = vlib_get_buffer (vm, pi0);
-            mfei0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+            mfei0 = vnet_buffer (b0)->ip.adj_index;
             mfe0 = mfib_entry_get(mfei0);
             mfi0 = mfib_entry_get_itf(mfe0,
                                       vnet_buffer(b0)->sw_if_index[VLIB_RX]);
@@ -435,7 +435,7 @@ mfib_forward_rpf (vlib_main_t * vm,
                  */
                 next0 = mfe0->mfe_rep.dpoi_next_node;
 
-                vnet_buffer(b0)->ip.adj_index[VLIB_TX] =
+                vnet_buffer(b0)->ip.adj_index =
                     mfe0->mfe_rep.dpoi_index;
             }
             else

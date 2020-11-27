@@ -885,7 +885,7 @@ end_srh_processing (vlib_node_runtime_t * node,
 
 	  if (ls0->behavior == SR_BEHAVIOR_X)
 	    {
-	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
+	      vnet_buffer (b0)->ip.adj_index = ls0->nh_adj;
 	      *next0 = SR_LOCALSID_NEXT_IP6_REWRITE;
 	    }
 	  else if (ls0->behavior == SR_BEHAVIOR_T)
@@ -903,7 +903,7 @@ end_srh_processing (vlib_node_runtime_t * node,
 
 	  if (ls0->behavior == SR_BEHAVIOR_X)
 	    {
-	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
+	      vnet_buffer (b0)->ip.adj_index = ls0->nh_adj;
 	      *next0 = SR_LOCALSID_NEXT_IP6_REWRITE;
 	    }
 	  else if (ls0->behavior == SR_BEHAVIOR_T)
@@ -1106,7 +1106,7 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
       if (ls0->behavior == SR_BEHAVIOR_DX6)
 	{
 	  vlib_buffer_advance (b0, total_size);
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
+	  vnet_buffer (b0)->ip.adj_index = ls0->nh_adj;
 	  *next0 = SR_LOCALSID_NEXT_IP6_REWRITE;
 	  return;
 	}
@@ -1122,7 +1122,7 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
       if (ls0->behavior == SR_BEHAVIOR_DX4)
 	{
 	  vlib_buffer_advance (b0, total_size);
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
+	  vnet_buffer (b0)->ip.adj_index = ls0->nh_adj;
 	  *next0 = SR_LOCALSID_NEXT_IP4_REWRITE;
 	  return;
 	}
@@ -1216,17 +1216,13 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b3 = vlib_get_buffer (vm, bi3);
 
 	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b0)->ip.adj_index);
 	  ls1 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b1)->ip.adj_index);
 	  ls2 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b2)->ip.adj_index);
 	  ls3 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b3)->ip.adj_index);
 
 	  ip0 = vlib_buffer_get_current (b0);
 	  ip1 = vlib_buffer_get_current (b1);
@@ -1390,8 +1386,7 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* Lookup the SR End behavior based on IP DA (adj) */
 	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b0)->ip.adj_index);
 
 	  /* Find SRH as well as previous header */
 	  sr0 =
@@ -1537,17 +1532,13 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    ip6_ext_header_find (vm, b3, ip3, IP_PROTOCOL_IPV6_ROUTE, &prev3);
 
 	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b0)->ip.adj_index);
 	  ls1 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b1)->ip.adj_index);
 	  ls2 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b2)->ip.adj_index);
 	  ls3 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b3)->ip.adj_index);
 
 	  end_srh_processing (node, b0, ip0, sr0, ls0, &next0, ls0->end_psp,
 			      prev0);
@@ -1704,8 +1695,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* Lookup the SR End behavior based on IP DA (adj) */
 	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b0)->ip.adj_index);
 
 	  /* SRH processing */
 	  end_srh_processing (node, b0, ip0, sr0, ls0, &next0, ls0->end_psp,
@@ -1847,17 +1837,13 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    ip6_ext_header_find (vm, b3, ip3, IP_PROTOCOL_IPV6_ROUTE, &prev3);
 
 	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b0)->ip.adj_index);
 	  ls1 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b1)->ip.adj_index);
 	  ls2 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b2)->ip.adj_index);
 	  ls3 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b3)->ip.adj_index);
 
 	  end_un_srh_processing (node, b0, ip0, sr0, ls0, &next0,
 				 ls0->end_psp, prev0);
@@ -2014,8 +2000,7 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* Lookup the SR End behavior based on IP DA (adj) */
 	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b0)->ip.adj_index);
 
 	  /* SRH processing */
 	  end_un_srh_processing (node, b0, ip0, sr0, ls0, &next0,
@@ -2143,17 +2128,13 @@ sr_localsid_un_perf_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip3 = vlib_buffer_get_current (b3);
 
 	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b0)->ip.adj_index);
 	  ls1 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b1)->ip.adj_index);
 	  ls2 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b2)->ip.adj_index);
 	  ls3 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b3)->ip.adj_index);
 
 	  end_un_processing (ip0, ls0);
 	  end_un_processing (ip1, ls1);
@@ -2242,8 +2223,7 @@ sr_localsid_un_perf_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* Lookup the SR End behavior based on IP DA (adj) */
 	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->localsids, vnet_buffer (b0)->ip.adj_index);
 
 	  /* SRH processing */
 	  end_un_processing (ip0, ls0);

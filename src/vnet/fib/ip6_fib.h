@@ -162,29 +162,25 @@ extern void ip6_fib_table_sub_tree_walk(u32 fib_index,
 /**
  * @brief return the DPO that the LB stacks on.
  */
-always_inline u32
+always_inline adj_index_t
 ip6_src_lookup_for_packet (ip6_main_t * im,
                            vlib_buffer_t * b,
                            ip6_header_t * i)
 {
-    if (vnet_buffer (b)->ip.adj_index[VLIB_RX] == ~0)
-    {
-        const dpo_id_t *dpo;
-        index_t lbi;
+    const dpo_id_t *dpo;
+    index_t lbi;
 
-        lbi = ip6_fib_table_fwding_lookup_with_if_index(
-                  im,
-                  vnet_buffer (b)->sw_if_index[VLIB_RX],
-                  &i->src_address);
+    lbi = ip6_fib_table_fwding_lookup_with_if_index(
+        im,
+        vnet_buffer (b)->sw_if_index[VLIB_RX],
+        &i->src_address);
 
-        dpo = load_balance_get_bucket_i(load_balance_get(lbi), 0);
+    dpo = load_balance_get_bucket_i(load_balance_get(lbi), 0);
 
-        if (dpo_is_adj(dpo))
-        {
-            vnet_buffer (b)->ip.adj_index[VLIB_RX] = dpo->dpoi_index;
-        }
-    }
-    return vnet_buffer (b)->ip.adj_index[VLIB_RX];
+    if (dpo_is_adj(dpo))
+        return (dpo->dpoi_index);
+
+    return (ADJ_INDEX_INVALID);
 }
 
 /**

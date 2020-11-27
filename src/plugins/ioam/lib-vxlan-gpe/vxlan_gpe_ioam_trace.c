@@ -300,7 +300,7 @@ vxlan_gpe_ioam_trace_data_list_handler (vlib_buffer_t * b,
 	  if (trace->ioam_trace_type & BIT_ING_INTERFACE)
 	    {
 	      u16 tx_if = 0;
-	      u32 adj_index = vnet_buffer (b)->ip.adj_index[VLIB_TX];
+	      u32 adj_index = vnet_buffer (b)->ip.adj_index;
 
 	      if (use_adj)
 		{
@@ -327,7 +327,7 @@ vxlan_gpe_ioam_trace_data_list_handler (vlib_buffer_t * b,
 	  if (trace->ioam_trace_type & BIT_ING_INTERFACE)
 	    {
 	      u16 tx_if = 0;
-	      u32 adj_index = vnet_buffer (b)->ip.adj_index[VLIB_TX];
+	      u32 adj_index = vnet_buffer (b)->ip.adj_index;
 
 	      if (use_adj)
 		{

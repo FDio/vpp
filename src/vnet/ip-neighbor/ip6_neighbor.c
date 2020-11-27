@@ -131,7 +131,7 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
   u32 thread_index = vm->thread_index;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip6_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip6_forward_next_trace (vm, node, frame);
 
   seed = throttle_seed (&nd_throttle, thread_index, vlib_time_now (vm));
 
@@ -156,7 +156,7 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 
 	  p0 = vlib_get_buffer (vm, pi0);
 
-	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+	  adj_index0 = vnet_buffer (p0)->ip.adj_index;
 
 	  ip0 = vlib_buffer_get_current (p0);
 

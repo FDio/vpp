@@ -72,7 +72,7 @@ bier_imp_dpo_inline (vlib_main_t * vm,
 
             b0 = vlib_get_buffer (vm, bi0);
 
-            bii0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+            bii0 = vnet_buffer(b0)->ip.adj_index;
             bimp0 = bier_imp_get(bii0);
 
             if (FIB_PROTOCOL_IP4 == fproto)
@@ -123,7 +123,7 @@ bier_imp_dpo_inline (vlib_main_t * vm,
             hdr0 = vlib_buffer_get_current(b0);
 
             /* RPF check */
-            if (PREDICT_FALSE(BIER_RX_ITF == vnet_buffer(b0)->ip.adj_index[VLIB_RX]))
+            if (PREDICT_FALSE(BIER_RX_ITF == vnet_buffer(b0)->mpls.rpf))
             {
                 next0 = 0;
             }
@@ -151,7 +151,7 @@ bier_imp_dpo_inline (vlib_main_t * vm,
 
                 /* next node */
                 next0 = bimp0->bi_dpo[fproto].dpoi_next_node;
-                vnet_buffer(b0)->ip.adj_index[VLIB_TX] =
+                vnet_buffer(b0)->ip.adj_index =
                     bimp0->bi_dpo[fproto].dpoi_index;
             }
 

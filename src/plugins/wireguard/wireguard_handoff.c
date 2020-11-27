@@ -98,9 +98,7 @@ wg_handoff (vlib_main_t * vm,
 	}
       else
 	{
-	  peeri =
-	    wg_peer_get_by_adj_index (vnet_buffer (b[0])->
-				      ip.adj_index[VLIB_TX]);
+	  peeri = wg_peer_get_by_adj_index (vnet_buffer (b[0])->ip.adj_index);
 	  peer = wg_peer_get (peeri);
 	  ti[0] = peer->output_thread_index;
 	}

@@ -220,7 +220,7 @@ gbp_fwd_dpo_inline (vlib_main_t * vm,
 
 	  if (PREDICT_TRUE (NULL != next_dpo0))
 	    {
-	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = next_dpo0->dpoi_index;
+	      vnet_buffer (b0)->ip.adj_index = next_dpo0->dpoi_index;
 	      next0 = GBP_FWD_FWD;
 	    }
 	  else

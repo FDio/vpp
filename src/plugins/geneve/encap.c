@@ -133,7 +133,7 @@ geneve_encap_inline (vlib_main_t * vm,
 
 	  ALWAYS_ASSERT (t0 != NULL);
 
-	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
+	  vnet_buffer (b[0])->ip.adj_index = t0->next_dpo.dpoi_index;
 
 	  /* Get next node index and adj index from tunnel next_dpo */
 	  if (sw_if_index1 != vnet_buffer (b[1])->sw_if_index[VLIB_TX])
@@ -147,7 +147,7 @@ geneve_encap_inline (vlib_main_t * vm,
 
 	  ALWAYS_ASSERT (t1 != NULL);
 
-	  vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = t1->next_dpo.dpoi_index;
+	  vnet_buffer (b[1])->ip.adj_index = t1->next_dpo.dpoi_index;
 
 	  /* Apply the rewrite string. $$$$ vnet_rewrite? */
 	  vlib_buffer_advance (b[0], -(word) _vec_len (t0->rewrite));
@@ -381,7 +381,7 @@ geneve_encap_inline (vlib_main_t * vm,
 
 	  ALWAYS_ASSERT (t0 != NULL);
 
-	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
+	  vnet_buffer (b[0])->ip.adj_index = t0->next_dpo.dpoi_index;
 
 	  /* Apply the rewrite string. $$$$ vnet_rewrite? */
 	  vlib_buffer_advance (b[0], -(word) _vec_len (t0->rewrite));

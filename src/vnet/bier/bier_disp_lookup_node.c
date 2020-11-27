@@ -77,7 +77,7 @@ bier_disp_lookup_inline (vlib_main_t * vm,
 
             b0 = vlib_get_buffer (vm, bi0);
 
-            bdti0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+            bdti0 = vnet_buffer(b0)->ip.adj_index;
             hdr0 = vlib_buffer_get_current(b0);
 
             /*
@@ -101,7 +101,7 @@ bier_disp_lookup_inline (vlib_main_t * vm,
                 }
             }
 
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = bdei0;
+            vnet_buffer(b0)->ip.adj_index = bdei0;
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {

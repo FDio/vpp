@@ -233,7 +233,7 @@ ip_null_dpo_switch (vlib_main_t * vm,
 	    p0 = vlib_get_buffer (vm, bi0);
 
 	    /* lookup dst + src mac */
-	    indi0 =  vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+	    indi0 =  vnet_buffer (p0)->ip.adj_index;
 	    ind0 = ip_null_dpo_get(indi0);
 	    next0 = IP_NULL_NEXT_DROP;
 
