@@ -347,6 +347,7 @@ icmp6_router_solicitation (vlib_main_t * vm,
 		{
 		  ip_adjacency_t *adj0 = adj_get (src_adj_index0);
 
+		  vnet_buffer (p0)->ip.adj_index = src_adj_index0;
 		  error0 = (adj0->rewrite_header.sw_if_index != sw_if_index0
 			    ?
 			    ICMP6_ERROR_ROUTER_SOLICITATION_SOURCE_NOT_ON_LINK
@@ -655,8 +656,7 @@ icmp6_router_solicitation (vlib_main_t * vm,
 			      next0 =
 				is_dropped ? next0 :
 				ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_RW;
-			      vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
-				adj_index0;
+			      vnet_buffer (p0)->ip.adj_index = adj_index0;
 			    }
 			}
 		      p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
@@ -1137,8 +1137,7 @@ create_buffer_for_rs (vlib_main_t * vm, ip6_ra_t * radv_info)
   vnet_buffer (p0)->sw_if_index[VLIB_RX] = sw_if_index;
   vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index;
 
-  vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
-    ip6_link_get_mcast_adj (sw_if_index);
+  vnet_buffer (p0)->ip.adj_index = ip6_link_get_mcast_adj (sw_if_index);
 
   rh = vlib_buffer_get_current (p0);
   p0->current_length = sizeof (*rh);

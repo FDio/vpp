@@ -145,10 +145,9 @@ typedef struct
     /* IP4/6 buffer opaque. */
     struct
     {
-      /* Adjacency from destination IP address lookup [VLIB_TX].
-         Adjacency from source IP address lookup [VLIB_RX].
-         This gets set to ~0 until source lookup is performed. */
-      u32 adj_index[VLIB_N_RX_TX];
+      u32 __pad_1;
+      /* Adjacency from destination IP address lookup */
+      u32 adj_index;
 
       union
       {
@@ -248,15 +247,16 @@ typedef struct
     {
       /* do not overlay w/ ip.adj_index[0,1] nor flow hash */
       u32 pad[VLIB_N_RX_TX + 1];
+      u32 rpf;
+      /* Rewrite length */
+      u8 save_rewrite_length;
+      /* Save the mpls header length including all label stack */
+      u8 mpls_hdr_length;
       u8 ttl;
       u8 exp;
       u8 first;
       u8 pyld_proto:3;		/* dpo_proto_t */
       u8 rsvd:5;
-      /* Rewrite length */
-      u8 save_rewrite_length;
-      /* Save the mpls header length including all label stack */
-      u8 mpls_hdr_length;
       /*
        * BIER - the number of bytes in the header.
        *  the len field in the header is not authoritative. It's the
@@ -309,6 +309,7 @@ typedef struct
     /* interface output features */
     struct
     {
+      u32 pad[2];		/* don't trash the adj */
       u32 sad_index;
       u32 protect_index;
     } ipsec;
@@ -353,6 +354,8 @@ typedef struct
     /* LISP */
     struct
     {
+      /* do not overlay w/ ip.adj_index[0,1] */
+      u32 pad[2];
       /* overlay address family */
       u16 overlay_afi;
     } lisp;

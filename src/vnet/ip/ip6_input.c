@@ -156,9 +156,6 @@ VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      next1 = IP6_INPUT_NEXT_LOOKUP;
 	    }
 
-	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
-	  vnet_buffer (p1)->ip.adj_index[VLIB_RX] = ~0;
-
 	  vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
 	  vnet_feature_arc_start (arc1, sw_if_index1, &next1, p1);
 
@@ -201,7 +198,6 @@ VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      next0 = IP6_INPUT_NEXT_LOOKUP;
 	    }
 
-	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
 	  vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
 
 	  vlib_increment_simple_counter (cm, thread_index, sw_if_index0, 1);

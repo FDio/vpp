@@ -222,7 +222,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	      /* we are on a ipsec tunnel's feature arc */
 	      vnet_buffer (b0)->ipsec.sad_index =
 		sa_index0 = ipsec_tun_protect_get_sa_out
-		(vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+		(vnet_buffer (b0)->ip.adj_index);
 	    }
 	  else
 	    sa_index0 = vnet_buffer (b0)->ipsec.sad_index;

@@ -81,7 +81,7 @@ VLIB_NODE_FN (ip6_drop_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			      vlib_frame_t * frame)
 {
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip6_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip6_forward_next_trace (vm, node, frame);
 
   return ip_drop_or_punt (vm, node, frame,
 			  vnet_feat_arc_ip6_drop.feature_arc_index);
@@ -93,7 +93,7 @@ VLIB_NODE_FN (ip6_not_enabled_node) (vlib_main_t * vm,
 				     vlib_frame_t * frame)
 {
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip6_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip6_forward_next_trace (vm, node, frame);
 
   return ip_drop_or_punt (vm, node, frame,
 			  vnet_feat_arc_ip6_drop.feature_arc_index);
@@ -104,7 +104,7 @@ VLIB_NODE_FN (ip6_punt_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			      vlib_frame_t * frame)
 {
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip6_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip6_forward_next_trace (vm, node, frame);
 
   return ip_drop_or_punt (vm, node, frame,
 			  vnet_feat_arc_ip6_punt.feature_arc_index);

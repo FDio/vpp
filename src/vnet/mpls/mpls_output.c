@@ -118,8 +118,8 @@ mpls_output_inline (vlib_main_t * vm,
           p0 = vlib_get_buffer (vm, pi0);
           p1 = vlib_get_buffer (vm, pi1);
 
-          adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-          adj_index1 = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
+          adj_index0 = vnet_buffer (p0)->ip.adj_index;
+          adj_index1 = vnet_buffer (p1)->ip.adj_index;
 
           adj0 = adj_get(adj_index0);
           adj1 = adj_get(adj_index1);
@@ -214,14 +214,14 @@ mpls_output_inline (vlib_main_t * vm,
             {
               mpls_output_trace_t *tr = vlib_add_trace (vm, node,
                                                         p0, sizeof (*tr));
-              tr->adj_index = vnet_buffer(p0)->ip.adj_index[VLIB_TX];
+              tr->adj_index = vnet_buffer(p0)->ip.adj_index;
               tr->flow_hash = vnet_buffer(p0)->ip.flow_hash;
             }
           if (PREDICT_FALSE(p1->flags & VLIB_BUFFER_IS_TRACED))
             {
               mpls_output_trace_t *tr = vlib_add_trace (vm, node,
                                                         p1, sizeof (*tr));
-              tr->adj_index = vnet_buffer(p1)->ip.adj_index[VLIB_TX];
+              tr->adj_index = vnet_buffer(p1)->ip.adj_index;
               tr->flow_hash = vnet_buffer(p1)->ip.flow_hash;
             }
 
@@ -242,7 +242,7 @@ mpls_output_inline (vlib_main_t * vm,
 
 	  p0 = vlib_get_buffer (vm, pi0);
 
-	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+	  adj_index0 = vnet_buffer (p0)->ip.adj_index;
 
 	  adj0 = adj_get(adj_index0);
 	  hdr0 = vlib_buffer_get_current (p0);
@@ -304,7 +304,7 @@ mpls_output_inline (vlib_main_t * vm,
             {
               mpls_output_trace_t *tr = vlib_add_trace (vm, node,
                                                         p0, sizeof (*tr));
-              tr->adj_index = vnet_buffer(p0)->ip.adj_index[VLIB_TX];
+              tr->adj_index = vnet_buffer(p0)->ip.adj_index;
               tr->flow_hash = vnet_buffer(p0)->ip.flow_hash;
             }
 
@@ -424,7 +424,7 @@ mpls_frag (vlib_main_t * vm,
             n_left_from -= 1;
             is_ip4 = vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4;
 
-            adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+            adj_index0 = vnet_buffer (p0)->ip.adj_index;
             adj0 = adj_get(adj_index0);
 
             /* the size of the MPLS stack */
@@ -571,8 +571,8 @@ typedef struct mpls_adj_incomplete_trace_t_
  * exception case.
  */
 VLIB_NODE_FN (mpls_adj_incomplete_node) (vlib_main_t * vm,
-                     vlib_node_runtime_t * node,
-                     vlib_frame_t * from_frame)
+                                         vlib_node_runtime_t * node,
+                                         vlib_frame_t * from_frame)
 {
     u32 n_left_from, next_index, * from, * to_next;
 
@@ -600,7 +600,7 @@ VLIB_NODE_FN (mpls_adj_incomplete_node) (vlib_main_t * vm,
 	  to_next += 1;
 	  n_left_to_next -= 1;
 
-          adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+          adj_index0 = vnet_buffer (p0)->ip.adj_index;
 
 	  adj0 = adj_get(adj_index0);
 

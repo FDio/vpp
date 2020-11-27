@@ -784,8 +784,8 @@ VLIB_NODE_FN (ip6_load_balance_node) (vlib_main_t * vm,
 
       ip0 = vlib_buffer_get_current (b[0]);
       ip1 = vlib_buffer_get_current (b[1]);
-      lbi0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
-      lbi1 = vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
+      lbi0 = vnet_buffer (b[0])->ip.adj_index;
+      lbi1 = vnet_buffer (b[1])->ip.adj_index;
 
       lb0 = load_balance_get (lbi0);
       lb1 = load_balance_get (lbi1);
@@ -853,8 +853,8 @@ VLIB_NODE_FN (ip6_load_balance_node) (vlib_main_t * vm,
 	    (ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next[1];
 	}
 
-      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-      vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+      vnet_buffer (b[0])->ip.adj_index = dpo0->dpoi_index;
+      vnet_buffer (b[1])->ip.adj_index = dpo1->dpoi_index;
 
       vlib_increment_combined_counter
 	(cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, b[0]));
@@ -874,7 +874,7 @@ VLIB_NODE_FN (ip6_load_balance_node) (vlib_main_t * vm,
       u32 lbi0, hc0;
 
       ip0 = vlib_buffer_get_current (b[0]);
-      lbi0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
+      lbi0 = vnet_buffer (b[0])->ip.adj_index;
 
       lb0 = load_balance_get (lbi0);
 
@@ -900,7 +900,7 @@ VLIB_NODE_FN (ip6_load_balance_node) (vlib_main_t * vm,
 	}
 
       next[0] = dpo0->dpoi_next_node;
-      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+      vnet_buffer (b[0])->ip.adj_index = dpo0->dpoi_index;
 
       /* Only process the HBH Option Header if explicitly configured to do so */
       if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
@@ -920,7 +920,7 @@ VLIB_NODE_FN (ip6_load_balance_node) (vlib_main_t * vm,
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip6_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip6_forward_next_trace (vm, node, frame);
 
   return frame->n_vectors;
 }
@@ -1005,8 +1005,7 @@ format_ip6_rewrite_trace (u8 * s, va_list * args)
 #ifndef CLIB_MARCH_VARIANT
 void
 ip6_forward_next_trace (vlib_main_t * vm,
-			vlib_node_runtime_t * node,
-			vlib_frame_t * frame, vlib_rx_or_tx_t which_adj_index)
+			vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   u32 *from, n_left;
   ip6_main_t *im = &ip6_main;
@@ -1033,7 +1032,7 @@ ip6_forward_next_trace (vlib_main_t * vm,
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
-	  t0->adj_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
+	  t0->adj_index = vnet_buffer (b0)->ip.adj_index;
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
 	  t0->fib_index =
 	    (vnet_buffer (b0)->sw_if_index[VLIB_TX] !=
@@ -1048,7 +1047,7 @@ ip6_forward_next_trace (vlib_main_t * vm,
       if (b1->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
-	  t1->adj_index = vnet_buffer (b1)->ip.adj_index[which_adj_index];
+	  t1->adj_index = vnet_buffer (b1)->ip.adj_index;
 	  t1->flow_hash = vnet_buffer (b1)->ip.flow_hash;
 	  t1->fib_index =
 	    (vnet_buffer (b1)->sw_if_index[VLIB_TX] !=
@@ -1077,7 +1076,7 @@ ip6_forward_next_trace (vlib_main_t * vm,
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
-	  t0->adj_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
+	  t0->adj_index = vnet_buffer (b0)->ip.adj_index;
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
 	  t0->fib_index =
 	    (vnet_buffer (b0)->sw_if_index[VLIB_TX] !=
@@ -1296,7 +1295,7 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   n_left_from = frame->n_vectors;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip6_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip6_forward_next_trace (vm, node, frame);
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
   b = bufs;
@@ -1786,8 +1785,8 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, pi0);
 	  p1 = vlib_get_buffer (vm, pi1);
 
-	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-	  adj_index1 = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
+	  adj_index0 = vnet_buffer (p0)->ip.adj_index;
+	  adj_index1 = vnet_buffer (p1)->ip.adj_index;
 
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
@@ -1998,7 +1997,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	  p0 = vlib_get_buffer (vm, pi0);
 
-	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+	  adj_index0 = vnet_buffer (p0)->ip.adj_index;
 
 	  adj0 = adj_get (adj_index0);
 
@@ -2125,7 +2124,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
   /* Need to do trace after rewrites to pick up new packet data. */
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip6_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip6_forward_next_trace (vm, node, frame);
 
   return frame->n_vectors;
 }
@@ -2509,9 +2508,9 @@ VLIB_NODE_FN (ip6_hop_by_hop_node) (vlib_main_t * vm,
 	  b1 = vlib_get_buffer (vm, bi1);
 
 	  /* Default use the next_index from the adjacency. A HBH option rarely redirects to a different node */
-	  u32 adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+	  u32 adj_index0 = vnet_buffer (b0)->ip.adj_index;
 	  ip_adjacency_t *adj0 = adj_get (adj_index0);
-	  u32 adj_index1 = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
+	  u32 adj_index1 = vnet_buffer (b1)->ip.adj_index;
 	  ip_adjacency_t *adj1 = adj_get (adj_index1);
 
 	  /* Default use the next_index from the adjacency. A HBH option rarely redirects to a different node */
@@ -2632,7 +2631,7 @@ VLIB_NODE_FN (ip6_hop_by_hop_node) (vlib_main_t * vm,
 	   * Default use the next_index from the adjacency.
 	   * A HBH option rarely redirects to a different node
 	   */
-	  u32 adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+	  u32 adj_index0 = vnet_buffer (b0)->ip.adj_index;
 	  ip_adjacency_t *adj0 = adj_get (adj_index0);
 	  next0 = adj0->lookup_next_index;
 

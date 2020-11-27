@@ -330,8 +330,7 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 		      e[0]->action == CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
 		    vnet_buffer (b[0])->sw_if_index[VLIB_TX] = e[0]->metadata;
 		  else if (e[0]->action == CLASSIFY_ACTION_SET_METADATA)
-		    vnet_buffer (b[0])->ip.adj_index[VLIB_TX] =
-		      e[0]->metadata;
+		    vnet_buffer (b[0])->ip.adj_index = e[0]->metadata;
 		}
 	    }
 	  else
@@ -406,8 +405,7 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 			      e[0]->metadata;
 			  else if (e[0]->action ==
 				   CLASSIFY_ACTION_SET_METADATA)
-			    vnet_buffer (b[0])->ip.adj_index[VLIB_TX] =
-			      e[0]->metadata;
+			    vnet_buffer (b[0])->ip.adj_index = e[0]->metadata;
 			}
 		      break;
 		    }
@@ -446,8 +444,7 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 		      e[1]->action == CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
 		    vnet_buffer (b[1])->sw_if_index[VLIB_TX] = e[1]->metadata;
 		  else if (e[1]->action == CLASSIFY_ACTION_SET_METADATA)
-		    vnet_buffer (b[1])->ip.adj_index[VLIB_TX] =
-		      e[1]->metadata;
+		    vnet_buffer (b[1])->ip.adj_index = e[1]->metadata;
 		}
 	    }
 	  else
@@ -522,8 +519,7 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 			      e[1]->metadata;
 			  else if (e[1]->action ==
 				   CLASSIFY_ACTION_SET_METADATA)
-			    vnet_buffer (b[1])->ip.adj_index[VLIB_TX] =
-			      e[1]->metadata;
+			    vnet_buffer (b[1])->ip.adj_index = e[1]->metadata;
 			}
 		      break;
 		    }
@@ -662,7 +658,7 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 		      e0->action == CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
 		    vnet_buffer (b[0])->sw_if_index[VLIB_TX] = e0->metadata;
 		  else if (e0->action == CLASSIFY_ACTION_SET_METADATA)
-		    vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = e0->metadata;
+		    vnet_buffer (b[0])->ip.adj_index = e0->metadata;
 		}
 	    }
 	  else
@@ -733,8 +729,7 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 			    vnet_buffer (b[0])->sw_if_index[VLIB_TX] =
 			      e0->metadata;
 			  else if (e0->action == CLASSIFY_ACTION_SET_METADATA)
-			    vnet_buffer (b[0])->ip.adj_index[VLIB_TX] =
-			      e0->metadata;
+			    vnet_buffer (b[0])->ip.adj_index = e0->metadata;
 			}
 		      break;
 		    }

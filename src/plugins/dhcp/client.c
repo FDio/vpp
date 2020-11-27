@@ -508,7 +508,7 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   if (is_broadcast)
     {
       node_index = ip4_rewrite_node.index;
-      vnet_buffer (b)->ip.adj_index[VLIB_TX] = c->ai_bcast;
+      vnet_buffer (b)->ip.adj_index = c->ai_bcast;
     }
   else
     node_index = dcm->ip4_lookup_node_index;

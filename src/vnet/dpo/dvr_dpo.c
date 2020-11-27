@@ -315,8 +315,8 @@ dvr_dpo_inline (vlib_main_t * vm,
             b0 = vlib_get_buffer (vm, bi0);
             b1 = vlib_get_buffer (vm, bi1);
 
-            ddi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
-            ddi1 = vnet_buffer(b1)->ip.adj_index[VLIB_TX];
+            ddi0 = vnet_buffer(b0)->ip.adj_index;
+            ddi1 = vnet_buffer(b1)->ip.adj_index;
             dd0 = dvr_dpo_get(ddi0);
             dd1 = dvr_dpo_get(ddi1);
 
@@ -383,7 +383,7 @@ dvr_dpo_inline (vlib_main_t * vm,
 
             b0 = vlib_get_buffer (vm, bi0);
 
-            ddi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+            ddi0 = vnet_buffer(b0)->ip.adj_index;
             dd0 = dvr_dpo_get(ddi0);
 
             vnet_buffer(b0)->sw_if_index[VLIB_TX] = dd0->dd_sw_if_index;
@@ -507,7 +507,7 @@ dvr_reinject_inline (vlib_main_t * vm,
 
             if (b0->flags & VNET_BUFFER_F_IS_DVR)
             {
-                ddi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+                ddi0 = vnet_buffer(b0)->ip.adj_index;
                 dd0 = dvr_dpo_get(ddi0);
                 next0 = (dd0->dd_reinject == DVR_REINJECT_L2 ?
                          DVR_REINJECT_NEXT_L2 :
@@ -518,7 +518,7 @@ dvr_reinject_inline (vlib_main_t * vm,
 
             if (b1->flags & VNET_BUFFER_F_IS_DVR)
             {
-                ddi1 = vnet_buffer(b1)->ip.adj_index[VLIB_TX];
+                ddi1 = vnet_buffer(b1)->ip.adj_index;
                 dd1 = dvr_dpo_get(ddi1);
                 next1 = (dd1->dd_reinject == DVR_REINJECT_L2 ?
                          DVR_REINJECT_NEXT_L2 :
@@ -565,7 +565,7 @@ dvr_reinject_inline (vlib_main_t * vm,
 
             if (b0->flags & VNET_BUFFER_F_IS_DVR)
             {
-                ddi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+                ddi0 = vnet_buffer(b0)->ip.adj_index;
                 dd0 = dvr_dpo_get(ddi0);
                 next0 = (dd0->dd_reinject == DVR_REINJECT_L2 ?
                          DVR_REINJECT_NEXT_L2 :

@@ -364,8 +364,7 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
   vnet_buffer (b0)->sw_if_index[VLIB_RX] =
     vnet_main.local_interface_sw_if_index;
 
-  vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
-    ip6_link_get_mcast_adj (sw_if_index);
+  vnet_buffer (b0)->ip.adj_index = ip6_link_get_mcast_adj (sw_if_index);
   b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
   vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "ip6-rewrite-mcast");

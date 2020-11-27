@@ -295,9 +295,7 @@ void ip4_punt_redirect_del (u32 rx_sw_if_index);
 
 void
 ip4_forward_next_trace (vlib_main_t * vm,
-			vlib_node_runtime_t * node,
-			vlib_frame_t * frame,
-			vlib_rx_or_tx_t which_adj_index);
+			vlib_node_runtime_t * node, vlib_frame_t * frame);
 
 u8 *format_ip4_forward_next_trace (u8 * s, va_list * args);
 

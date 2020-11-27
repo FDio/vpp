@@ -258,7 +258,7 @@ ip6_hbh_ioam_trace_data_list_handler (vlib_buffer_t * b, ip6_header_t * ip,
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
   u8 elt_index = 0;
   ioam_trace_option_t *trace = (ioam_trace_option_t *) opt;
-  u32 adj_index = vnet_buffer (b)->ip.adj_index[VLIB_TX];
+  u32 adj_index = vnet_buffer (b)->ip.adj_index;
   ip_adjacency_t *adj = adj_get (adj_index);
   time_u64_t time_u64;
   u32 *elt;

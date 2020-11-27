@@ -129,11 +129,11 @@ lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip_udp_fixup_one (lgm->vlib_main, b0, is_v4_0);
 
 	  /* Follow the DPO on which the midchain is stacked */
-	  adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+	  adj_index0 = vnet_buffer (b0)->ip.adj_index;
 	  adj0 = adj_get (adj_index0);
 	  dpo0 = &adj0->sub_type.midchain.next_dpo;
 	  next0 = dpo0->dpoi_next_node;
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	  vnet_buffer (b0)->ip.adj_index = dpo0->dpoi_index;
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -274,7 +274,7 @@ l2_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* lookup dst + src mac */
 	  lbi0 = lisp_l2_fib_lookup (lgm, vnet_buffer (b0)->l2.bd_index,
 				     e0->src_address, e0->dst_address);
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = lbi0;
+	  vnet_buffer (b0)->ip.adj_index = lbi0;
 
 	  vlib_increment_combined_counter (cm, thread_index, lbi0, 1,
 					   vlib_buffer_length_in_chain (vm,
@@ -381,7 +381,7 @@ nsh_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  dpo0 = lisp_nsh_fib_lookup (lgm, nsh0[1]);
 
 	  next0 = dpo0->dpoi_next_node;
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	  vnet_buffer (b0)->ip.adj_index = dpo0->dpoi_index;
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {

@@ -301,7 +301,7 @@ tso_fixup_segmented_buf (vlib_main_t * vm, vlib_buffer_t * b0, u8 tcp_flags,
 
   if (!is_l2 && ((gho->gho_flags & GHO_F_TUNNEL) == 0))
     {
-      u32 adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+      u32 adj_index0 = vnet_buffer (b0)->ip.adj_index;
 
       ip_adjacency_t *adj0 = adj_get (adj_index0);
 

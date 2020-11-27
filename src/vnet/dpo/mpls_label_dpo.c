@@ -425,10 +425,10 @@ mpls_label_imposition_inline (vlib_main_t * vm,
             b3 = vlib_get_buffer (vm, bi3);
 
             /* dst lookup was done by ip4 lookup */
-            mldi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
-            mldi1 = vnet_buffer(b1)->ip.adj_index[VLIB_TX];
-            mldi2 = vnet_buffer(b2)->ip.adj_index[VLIB_TX];
-            mldi3 = vnet_buffer(b3)->ip.adj_index[VLIB_TX];
+            mldi0 = vnet_buffer(b0)->ip.adj_index;
+            mldi1 = vnet_buffer(b1)->ip.adj_index;
+            mldi2 = vnet_buffer(b2)->ip.adj_index;
+            mldi3 = vnet_buffer(b3)->ip.adj_index;
             mld0 = mpls_label_dpo_get(mldi0);
             mld1 = mpls_label_dpo_get(mldi1);
             mld2 = mpls_label_dpo_get(mldi2);
@@ -687,10 +687,10 @@ mpls_label_imposition_inline (vlib_main_t * vm,
             next2 = mld2->mld_dpo.dpoi_next_node;
             next3 = mld3->mld_dpo.dpoi_next_node;
 
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mld0->mld_dpo.dpoi_index;
-            vnet_buffer(b1)->ip.adj_index[VLIB_TX] = mld1->mld_dpo.dpoi_index;
-            vnet_buffer(b2)->ip.adj_index[VLIB_TX] = mld2->mld_dpo.dpoi_index;
-            vnet_buffer(b3)->ip.adj_index[VLIB_TX] = mld3->mld_dpo.dpoi_index;
+            vnet_buffer(b0)->ip.adj_index = mld0->mld_dpo.dpoi_index;
+            vnet_buffer(b1)->ip.adj_index = mld1->mld_dpo.dpoi_index;
+            vnet_buffer(b2)->ip.adj_index = mld2->mld_dpo.dpoi_index;
+            vnet_buffer(b3)->ip.adj_index = mld3->mld_dpo.dpoi_index;
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
@@ -778,7 +778,7 @@ mpls_label_imposition_inline (vlib_main_t * vm,
             b0 = vlib_get_buffer (vm, bi0);
 
             /* dst lookup was done by ip4 lookup */
-            mldi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+            mldi0 = vnet_buffer(b0)->ip.adj_index;
             mld0 = mpls_label_dpo_get(mldi0);
 
             if (DPO_PROTO_MPLS != dproto)
@@ -882,7 +882,7 @@ mpls_label_imposition_inline (vlib_main_t * vm,
             }
 
             next0 = mld0->mld_dpo.dpoi_next_node;
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mld0->mld_dpo.dpoi_index;
+            vnet_buffer(b0)->ip.adj_index = mld0->mld_dpo.dpoi_index;
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {

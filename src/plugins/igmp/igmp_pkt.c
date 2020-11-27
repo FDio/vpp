@@ -155,7 +155,7 @@ igmp_pkt_tx (igmp_pkt_build_t * bk)
   vec_foreach_index (ii, bk->buffers)
   {
     b = vlib_get_buffer (vm, bk->buffers[ii]);
-    vnet_buffer (b)->ip.adj_index[VLIB_TX] = config->adj_index;
+    vnet_buffer (b)->ip.adj_index = config->adj_index;
     to_next[ii] = bk->buffers[ii];
     f->n_vectors++;
   }

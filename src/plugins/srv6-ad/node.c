@@ -186,7 +186,7 @@ end_ad_processing (vlib_buffer_t * b0,
   else
     {
       /* Set Xconnect adjacency to VNF */
-      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0_mem->nh_adj;
+      vnet_buffer (b0)->ip.adj_index = ls0_mem->nh_adj;
 
       /* Set next node to ip-rewrite */
       *next0 = (next_hdr == IP_PROTOCOL_IPV6) ?
@@ -239,7 +239,7 @@ srv6_ad_localsid_fn (vlib_main_t * vm,
 
 	  /* Lookup the SR End behavior based on IP DA (adj) */
 	  ls0 = pool_elt_at_index (sm->localsids,
-				   vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+				   vnet_buffer (b0)->ip.adj_index);
 
 	  /* SRH processing */
 	  end_ad_processing (b0, ip0, sr0, ls0, &next0);

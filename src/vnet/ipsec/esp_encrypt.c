@@ -618,7 +618,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* we are on a ipsec tunnel's feature arc */
 	  vnet_buffer (b[0])->ipsec.sad_index =
 	    sa_index0 = ipsec_tun_protect_get_sa_out
-	    (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
+	    (vnet_buffer (b[0])->ip.adj_index);
 	}
       else
 	sa_index0 = vnet_buffer (b[0])->ipsec.sad_index;
@@ -793,7 +793,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (!is_tun)
 	    {
 	      next[0] = dpo->dpoi_next_node;
-	      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo->dpoi_index;
+	      vnet_buffer (b[0])->ip.adj_index = dpo->dpoi_index;
 	    }
 	  else
 	    next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
@@ -1328,7 +1328,7 @@ esp_no_crypto_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       /* packets are always going to be dropped, but get the sa_index */
       sa_index0 = ipsec_tun_protect_get_sa_out
-	(vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
+	(vnet_buffer (b[0])->ip.adj_index);
 
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{

@@ -335,7 +335,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 			    sizeof (ip4_address_pair_t));
 
 	  next[0] = sa0->dpo.dpoi_next_node;
-	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = sa0->dpo.dpoi_index;
+	  vnet_buffer (b[0])->ip.adj_index = sa0->dpo.dpoi_index;
 	}
       else if (is_ip6 && ipsec_sa_is_set_IS_TUNNEL (sa0) &&
 	       ipsec_sa_is_set_IS_TUNNEL_V6 (sa0))
@@ -344,7 +344,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 			    &sa0->ip6_hdr.src_address,
 			    sizeof (ip6_address_t) * 2);
 	  next[0] = sa0->dpo.dpoi_next_node;
-	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = sa0->dpo.dpoi_index;
+	  vnet_buffer (b[0])->ip.adj_index = sa0->dpo.dpoi_index;
 	}
 
       if (PREDICT_TRUE (sa0->integ_op_id))

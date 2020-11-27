@@ -1318,17 +1318,13 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b3 = vlib_get_buffer (vm, bi3);
 
 	  sl0 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b0)->ip.adj_index);
 	  sl1 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b1)->ip.adj_index);
 	  sl2 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b2)->ip.adj_index);
 	  sl3 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b3)->ip.adj_index);
 
 	  ASSERT (b0->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
 		  vec_len (sl0->rewrite));
@@ -1435,8 +1431,7 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0 = vlib_get_buffer (vm, bi0);
 
 	  sl0 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b0)->ip.adj_index);
 	  ASSERT (b0->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
 		  vec_len (sl0->rewrite));
 
@@ -1602,17 +1597,13 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b3 = vlib_get_buffer (vm, bi3);
 
 	  sl0 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b0)->ip.adj_index);
 	  sl1 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b1)->ip.adj_index);
 	  sl2 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b2)->ip.adj_index);
 	  sl3 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b3)->ip.adj_index);
 	  ASSERT (b0->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
 		  vec_len (sl0->rewrite));
 	  ASSERT (b1->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
@@ -1719,8 +1710,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0 = vlib_get_buffer (vm, bi0);
 
 	  sl0 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b0)->ip.adj_index);
 	  ASSERT (b0->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
 		  vec_len (sl0->rewrite));
 
@@ -1918,57 +1908,53 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 							    [VLIB_RX]]);
 
 	  if (vec_len (sp0->segments_lists) == 1)
-	    vnet_buffer (b0)->ip.adj_index[VLIB_TX] = sp0->segments_lists[0];
+	    vnet_buffer (b0)->ip.adj_index = sp0->segments_lists[0];
 	  else
 	    {
 	      vnet_buffer (b0)->ip.flow_hash = l2_flow_hash (b0);
-	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
+	      vnet_buffer (b0)->ip.adj_index =
 		sp0->segments_lists[(vnet_buffer (b0)->ip.flow_hash &
 				     (vec_len (sp0->segments_lists) - 1))];
 	    }
 
 	  if (vec_len (sp1->segments_lists) == 1)
-	    vnet_buffer (b1)->ip.adj_index[VLIB_TX] = sp1->segments_lists[1];
+	    vnet_buffer (b1)->ip.adj_index = sp1->segments_lists[1];
 	  else
 	    {
 	      vnet_buffer (b1)->ip.flow_hash = l2_flow_hash (b1);
-	      vnet_buffer (b1)->ip.adj_index[VLIB_TX] =
+	      vnet_buffer (b1)->ip.adj_index =
 		sp1->segments_lists[(vnet_buffer (b1)->ip.flow_hash &
 				     (vec_len (sp1->segments_lists) - 1))];
 	    }
 
 	  if (vec_len (sp2->segments_lists) == 1)
-	    vnet_buffer (b2)->ip.adj_index[VLIB_TX] = sp2->segments_lists[2];
+	    vnet_buffer (b2)->ip.adj_index = sp2->segments_lists[2];
 	  else
 	    {
 	      vnet_buffer (b2)->ip.flow_hash = l2_flow_hash (b2);
-	      vnet_buffer (b2)->ip.adj_index[VLIB_TX] =
+	      vnet_buffer (b2)->ip.adj_index =
 		sp2->segments_lists[(vnet_buffer (b2)->ip.flow_hash &
 				     (vec_len (sp2->segments_lists) - 1))];
 	    }
 
 	  if (vec_len (sp3->segments_lists) == 1)
-	    vnet_buffer (b3)->ip.adj_index[VLIB_TX] = sp3->segments_lists[3];
+	    vnet_buffer (b3)->ip.adj_index = sp3->segments_lists[3];
 	  else
 	    {
 	      vnet_buffer (b3)->ip.flow_hash = l2_flow_hash (b3);
-	      vnet_buffer (b3)->ip.adj_index[VLIB_TX] =
+	      vnet_buffer (b3)->ip.adj_index =
 		sp3->segments_lists[(vnet_buffer (b3)->ip.flow_hash &
 				     (vec_len (sp3->segments_lists) - 1))];
 	    }
 
 	  sl0 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b0)->ip.adj_index);
 	  sl1 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b1)->ip.adj_index);
 	  sl2 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b2)->ip.adj_index);
 	  sl3 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b3)->ip.adj_index);
 
 	  ASSERT (b0->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
 		  vec_len (sl0->rewrite));
@@ -2124,17 +2110,16 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* In case there is more than one SL, LB among them */
 	  if (vec_len (sp0->segments_lists) == 1)
-	    vnet_buffer (b0)->ip.adj_index[VLIB_TX] = sp0->segments_lists[0];
+	    vnet_buffer (b0)->ip.adj_index = sp0->segments_lists[0];
 	  else
 	    {
 	      vnet_buffer (b0)->ip.flow_hash = l2_flow_hash (b0);
-	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
+	      vnet_buffer (b0)->ip.adj_index =
 		sp0->segments_lists[(vnet_buffer (b0)->ip.flow_hash &
 				     (vec_len (sp0->segments_lists) - 1))];
 	    }
 	  sl0 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b0)->ip.adj_index);
 	  ASSERT (b0->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
 		  vec_len (sl0->rewrite));
 
@@ -2277,17 +2262,13 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b3 = vlib_get_buffer (vm, bi3);
 
 	  sl0 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b0)->ip.adj_index);
 	  sl1 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b1)->ip.adj_index);
 	  sl2 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b2)->ip.adj_index);
 	  sl3 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b3)->ip.adj_index);
 	  ASSERT (b0->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
 		  vec_len (sl0->rewrite));
 	  ASSERT (b1->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
@@ -2531,8 +2512,7 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  sl0 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b0)->ip.adj_index);
 	  ASSERT (b0->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
 		  vec_len (sl0->rewrite));
 
@@ -2699,17 +2679,13 @@ sr_policy_rewrite_b_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b3 = vlib_get_buffer (vm, bi3);
 
 	  sl0 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b0)->ip.adj_index);
 	  sl1 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b1)->ip.adj_index);
 	  sl2 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b2)->ip.adj_index);
 	  sl3 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b3)->ip.adj_index);
 	  ASSERT (b0->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
 		  vec_len (sl0->rewrite_bsid));
 	  ASSERT (b1->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
@@ -2944,8 +2920,7 @@ sr_policy_rewrite_b_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  sl0 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b0)->ip.adj_index);
 	  ASSERT (b0->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
 		  vec_len (sl0->rewrite_bsid));
 
@@ -3142,17 +3117,13 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b3 = vlib_get_buffer (vm, bi3);
 
 	  sl0 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b0)->ip.adj_index);
 	  sl1 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b1)->ip.adj_index);
 	  sl2 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b2)->ip.adj_index);
 	  sl3 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b3)->ip.adj_index);
 	  ASSERT (b0->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
 		  vec_len (sl0->rewrite));
 	  ASSERT (b1->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
@@ -3277,8 +3248,7 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0 = vlib_get_buffer (vm, bi0);
 
 	  sl0 =
-	    pool_elt_at_index (sm->sid_lists,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	    pool_elt_at_index (sm->sid_lists, vnet_buffer (b0)->ip.adj_index);
 	  ASSERT (b0->current_data + VLIB_BUFFER_PRE_DATA_SIZE >=
 		  vec_len (sl0->rewrite));
 

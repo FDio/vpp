@@ -593,7 +593,7 @@ ip_vxlan_gbp_bypass_inline (vlib_main_t * vm,
   next_index = node->cached_next_index;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip4_forward_next_trace (vm, node, frame);
 
   if (is_ip4)
     addr4.data_u32 = ~0;

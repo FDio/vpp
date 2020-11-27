@@ -69,10 +69,10 @@ bier_disp_dispatch_inline (vlib_main_t * vm,
             n_left_to_next -= 1;
 
             b0 = vlib_get_buffer (vm, bi0);
-            bdei0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+            bdei0 = vnet_buffer(b0)->ip.adj_index;
             hdr0 = vlib_buffer_get_current(b0);
             bde0 = bier_disp_entry_get(bdei0);
-            vnet_buffer(b0)->ip.adj_index[VLIB_RX] = BIER_RX_ITF;
+            vnet_buffer(b0)->mpls.rpf = BIER_RX_ITF;
 
             /*
              * header is in network order - flip it, we are about to
@@ -97,7 +97,7 @@ bier_disp_dispatch_inline (vlib_main_t * vm,
              */
             dpo0 = &bde0->bde_fwd[pproto0].bde_dpo;
             next0 = dpo0->dpoi_next_node;
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+            vnet_buffer(b0)->ip.adj_index = dpo0->dpoi_index;
             vnet_buffer(b0)->ip.rpf_id = bde0->bde_fwd[pproto0].bde_rpf_id;
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))

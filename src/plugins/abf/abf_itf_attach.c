@@ -579,8 +579,7 @@ abf_input_inline (vlib_main_t * vm,
 	      aia0 = abf_itf_attach_get (attachments0[match_acl_pos]);
 
 	      next0 = aia0->aia_dpo.dpoi_next_node;
-	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
-		aia0->aia_dpo.dpoi_index;
+	      vnet_buffer (b0)->ip.adj_index = aia0->aia_dpo.dpoi_index;
 	      matches++;
 	    }
 	  else
@@ -599,7 +598,7 @@ abf_input_inline (vlib_main_t * vm,
 
 	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->next = next0;
-	      tr->index = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+	      tr->index = vnet_buffer (b0)->ip.adj_index;
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */

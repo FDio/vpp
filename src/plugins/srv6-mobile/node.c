@@ -364,7 +364,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e) (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ls0 =
 	    pool_elt_at_index (sm2->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+			       vnet_buffer (b0)->ip.adj_index);
 
 	  ls_param = (srv6_end_gtp4_param_t *) ls0->plugin_mem;
 
@@ -729,7 +729,7 @@ VLIB_NODE_FN (srv6_t_m_gtp4_d) (vlib_main_t * vm,
 
 	  sl0 =
 	    pool_elt_at_index (sm2->sid_lists,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+			       vnet_buffer (b0)->ip.adj_index);
 
 	  ls_param = (srv6_end_gtp4_param_t *) sl0->plugin_mem;
 
@@ -1286,7 +1286,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ls0 =
 	    pool_elt_at_index (sm2->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+			       vnet_buffer (b0)->ip.adj_index);
 
 	  ip6srv0 = vlib_buffer_get_current (b0);
 	  dst0 = ip6srv0->ip.dst_address;
@@ -1628,7 +1628,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ls0 =
 	    pool_elt_at_index (sm2->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+			       vnet_buffer (b0)->ip.adj_index);
 
 	  ls_param = (srv6_end_gtp6_param_t *) ls0->plugin_mem;
 
@@ -2133,7 +2133,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ls0 =
 	    pool_elt_at_index (sm2->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+			       vnet_buffer (b0)->ip.adj_index);
 
 	  ls_param = (srv6_end_gtp6_param_t *) ls0->plugin_mem;
 
@@ -2575,7 +2575,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_dt) (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ls0 =
 	    pool_elt_at_index (sm2->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+			       vnet_buffer (b0)->ip.adj_index);
 
 	  ls_param = (srv6_end_gtp6_dt_param_t *) ls0->plugin_mem;
 
@@ -2795,7 +2795,7 @@ VLIB_NODE_FN (srv6_t_m_gtp4_dt) (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ls0 =
 	    pool_elt_at_index (sm2->sid_lists,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+			       vnet_buffer (b0)->ip.adj_index);
 
 	  ls_param = (srv6_t_gtp4_dt_param_t *) ls0->plugin_mem;
 

@@ -712,7 +712,7 @@ vrrp_vr_multicast_group_join (vrrp_vr_t * vr)
   vnet_buffer (b)->sw_if_index[VLIB_TX] = vr->config.sw_if_index;
 
   intf = vrrp_intf_get (vr->config.sw_if_index);
-  vnet_buffer (b)->ip.adj_index[VLIB_TX] = intf->mcast_adj_index[is_ipv6];
+  vnet_buffer (b)->ip.adj_index = intf->mcast_adj_index[is_ipv6];
 
   if (is_ipv6)
     {

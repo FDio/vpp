@@ -142,7 +142,7 @@ VLIB_NODE_FN (ip4_drop_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			      vlib_frame_t * frame)
 {
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip4_forward_next_trace (vm, node, frame);
 
   return ip_drop_or_punt (vm, node, frame,
 			  vnet_feat_arc_ip4_drop.feature_arc_index);
@@ -154,7 +154,7 @@ VLIB_NODE_FN (ip4_not_enabled_node) (vlib_main_t * vm,
 				     vlib_frame_t * frame)
 {
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip4_forward_next_trace (vm, node, frame);
 
   return ip_drop_or_punt (vm, node, frame,
 			  vnet_feat_arc_ip4_drop.feature_arc_index);
@@ -164,7 +164,7 @@ static uword
 ip4_punt (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
+    ip4_forward_next_trace (vm, node, frame);
 
   return ip_drop_or_punt (vm, node, frame,
 			  vnet_feat_arc_ip4_punt.feature_arc_index);

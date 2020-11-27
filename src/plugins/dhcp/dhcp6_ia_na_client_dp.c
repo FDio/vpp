@@ -116,7 +116,7 @@ create_buffer_for_client_message (vlib_main_t * vm, u32 sw_if_index,
   client_state->adj_index = adj_mcast_add_or_lock (FIB_PROTOCOL_IP6,
 						   VNET_LINK_IP6,
 						   sw_if_index);
-  vnet_buffer (b)->ip.adj_index[VLIB_TX] = client_state->adj_index;
+  vnet_buffer (b)->ip.adj_index = client_state->adj_index;
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
   ip = (ip6_header_t *) vlib_buffer_get_current (b);

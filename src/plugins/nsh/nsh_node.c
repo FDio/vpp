@@ -348,7 +348,7 @@ nsh_input_map (vlib_main_t * vm,
 	  /* set up things for next node to transmit ie which node to handle it and where */
 	  next0 = map0->next_node;
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = map0->sw_if_index;
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = map0->adj_index;
+	  vnet_buffer (b0)->ip.adj_index = map0->adj_index;
 
 	  if (PREDICT_FALSE (map0->nsh_action == NSH_ACTION_POP))
 	    {
@@ -519,7 +519,7 @@ nsh_input_map (vlib_main_t * vm,
 	  /* set up things for next node to transmit ie which node to handle it and where */
 	  next1 = map1->next_node;
 	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = map1->sw_if_index;
-	  vnet_buffer (b1)->ip.adj_index[VLIB_TX] = map1->adj_index;
+	  vnet_buffer (b1)->ip.adj_index = map1->adj_index;
 
 	  if (PREDICT_FALSE (map1->nsh_action == NSH_ACTION_POP))
 	    {
@@ -729,7 +729,7 @@ nsh_input_map (vlib_main_t * vm,
 	  /* set up things for next node to transmit ie which node to handle it and where */
 	  next0 = map0->next_node;
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = map0->sw_if_index;
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = map0->adj_index;
+	  vnet_buffer (b0)->ip.adj_index = map0->adj_index;
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = map0->nsh_sw_if;
 
 	  if (PREDICT_FALSE (map0->nsh_action == NSH_ACTION_POP))

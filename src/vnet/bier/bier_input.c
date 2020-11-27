@@ -110,7 +110,7 @@ bier_input (vlib_main_t * vm,
              * In the MPLS decap node we squirrelled away the
              * index for the BIER table as the tx adjacency
              */
-            bt_index0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+            bt_index0 = vnet_buffer(b0)->ip.adj_index;
             bt0 = bier_table_get(bt_index0);
 
             if (PREDICT_TRUE(bier_hdr_validate(bh0, bt0->bt_id.bti_hdr_len)))

@@ -164,7 +164,7 @@ bier_bift_input (vlib_main_t * vm,
             vnet_buffer(b0)->mpls.ttl = vnet_mpls_uc_get_ttl(bift0);
 
             next0 = dpo0->dpoi_next_node;
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+            vnet_buffer(b0)->ip.adj_index = dpo0->dpoi_index;
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {

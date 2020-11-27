@@ -115,7 +115,7 @@ bier_lookup (vlib_main_t * vm,
 
             b0 = vlib_get_buffer (vm, bi0);
             bh0 = vlib_buffer_get_current (b0);
-            bti0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+            bti0 = vnet_buffer(b0)->ip.adj_index;
 
             /*
              * default to drop so that if no bits are matched then
@@ -127,7 +127,7 @@ bier_lookup (vlib_main_t * vm,
              * At the imposition or input node,
              * we stored the BIER Table index in the TX adjacency
              */
-            bt0 = bier_table_get(vnet_buffer(b0)->ip.adj_index[VLIB_TX]);
+            bt0 = bier_table_get(vnet_buffer(b0)->ip.adj_index);
 
             /*
              * we should only forward via one for the ECMP tables
@@ -241,7 +241,7 @@ bier_lookup (vlib_main_t * vm,
 
                     ci0 = blm->blm_clones[thread_index][clone];
                     c0 = vlib_get_buffer(vm, ci0);
-                    vnet_buffer(c0)->ip.adj_index[VLIB_TX] =
+                    vnet_buffer(c0)->ip.adj_index =
                         blm->blm_fmasks[thread_index][clone];
 
                     to_next[0] = ci0;

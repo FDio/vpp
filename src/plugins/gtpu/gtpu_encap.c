@@ -168,13 +168,13 @@ gtpu_encap_inline (vlib_main_t * vm,
 
 	  /* Note: change to always set next0 if it may be set to drop */
 	  next0 = t0->next_dpo.dpoi_next_node;
-          vnet_buffer(b0)->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
+          vnet_buffer(b0)->ip.adj_index = t0->next_dpo.dpoi_index;
 	  next1 = t1->next_dpo.dpoi_next_node;
-          vnet_buffer(b1)->ip.adj_index[VLIB_TX] = t1->next_dpo.dpoi_index;
+          vnet_buffer(b1)->ip.adj_index = t1->next_dpo.dpoi_index;
 	  next2 = t2->next_dpo.dpoi_next_node;
-          vnet_buffer(b2)->ip.adj_index[VLIB_TX] = t2->next_dpo.dpoi_index;
+          vnet_buffer(b2)->ip.adj_index = t2->next_dpo.dpoi_index;
 	  next3 = t3->next_dpo.dpoi_next_node;
-          vnet_buffer(b3)->ip.adj_index[VLIB_TX] = t3->next_dpo.dpoi_index;
+          vnet_buffer(b3)->ip.adj_index = t3->next_dpo.dpoi_index;
 
           /* Apply the rewrite string. $$$$ vnet_rewrite? */
           vlib_buffer_advance (b0, -(word)_vec_len(t0->rewrite));
@@ -530,7 +530,7 @@ gtpu_encap_inline (vlib_main_t * vm,
 	  t0 = &gtm->tunnels[hi0->dev_instance];
 	  /* Note: change to always set next0 if it may be set to drop */
 	  next0 = t0->next_dpo.dpoi_next_node;
-	  vnet_buffer(b0)->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
+	  vnet_buffer(b0)->ip.adj_index = t0->next_dpo.dpoi_index;
 
           /* Apply the rewrite string. $$$$ vnet_rewrite? */
           vlib_buffer_advance (b0, -(word)_vec_len(t0->rewrite));

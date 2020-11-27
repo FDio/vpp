@@ -89,10 +89,10 @@ l3xc_input_inline (vlib_main_t * vm,
       next[2] = l3xc2->l3xc_dpo.dpoi_next_node;
       next[3] = l3xc3->l3xc_dpo.dpoi_next_node;
 
-      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = l3xc0->l3xc_dpo.dpoi_index;
-      vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = l3xc1->l3xc_dpo.dpoi_index;
-      vnet_buffer (b[2])->ip.adj_index[VLIB_TX] = l3xc2->l3xc_dpo.dpoi_index;
-      vnet_buffer (b[3])->ip.adj_index[VLIB_TX] = l3xc3->l3xc_dpo.dpoi_index;
+      vnet_buffer (b[0])->ip.adj_index = l3xc0->l3xc_dpo.dpoi_index;
+      vnet_buffer (b[1])->ip.adj_index = l3xc1->l3xc_dpo.dpoi_index;
+      vnet_buffer (b[2])->ip.adj_index = l3xc2->l3xc_dpo.dpoi_index;
+      vnet_buffer (b[3])->ip.adj_index = l3xc3->l3xc_dpo.dpoi_index;
 
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	{
@@ -102,7 +102,7 @@ l3xc_input_inline (vlib_main_t * vm,
 
 	      tr = vlib_add_trace (vm, node, b[0], sizeof (*tr));
 	      tr->l3xci = l3xci0;
-	      tr->lbi = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
+	      tr->lbi = vnet_buffer (b[0])->ip.adj_index;
 	    }
 	  if (PREDICT_FALSE (b[1]->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -110,7 +110,7 @@ l3xc_input_inline (vlib_main_t * vm,
 
 	      tr = vlib_add_trace (vm, node, b[1], sizeof (*tr));
 	      tr->l3xci = l3xci1;
-	      tr->lbi = vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
+	      tr->lbi = vnet_buffer (b[1])->ip.adj_index;
 	    }
 	  if (PREDICT_FALSE (b[2]->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -118,7 +118,7 @@ l3xc_input_inline (vlib_main_t * vm,
 
 	      tr = vlib_add_trace (vm, node, b[2], sizeof (*tr));
 	      tr->l3xci = l3xci2;
-	      tr->lbi = vnet_buffer (b[2])->ip.adj_index[VLIB_TX];
+	      tr->lbi = vnet_buffer (b[2])->ip.adj_index;
 	    }
 	  if (PREDICT_FALSE (b[3]->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -126,7 +126,7 @@ l3xc_input_inline (vlib_main_t * vm,
 
 	      tr = vlib_add_trace (vm, node, b[3], sizeof (*tr));
 	      tr->l3xci = l3xci3;
-	      tr->lbi = vnet_buffer (b[3])->ip.adj_index[VLIB_TX];
+	      tr->lbi = vnet_buffer (b[3])->ip.adj_index;
 	    }
 	}
 
@@ -148,7 +148,7 @@ l3xc_input_inline (vlib_main_t * vm,
 
       next[0] = l3xc0->l3xc_dpo.dpoi_next_node;
 
-      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = l3xc0->l3xc_dpo.dpoi_index;
+      vnet_buffer (b[0])->ip.adj_index = l3xc0->l3xc_dpo.dpoi_index;
 
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{
@@ -156,7 +156,7 @@ l3xc_input_inline (vlib_main_t * vm,
 
 	  tr = vlib_add_trace (vm, node, b[0], sizeof (*tr));
 	  tr->l3xci = l3xci0;
-	  tr->lbi = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
+	  tr->lbi = vnet_buffer (b[0])->ip.adj_index;
 	}
 
       b += 1;

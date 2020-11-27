@@ -240,7 +240,7 @@ gbp_rule_l3_redirect (const gbp_rule_t * gu, vlib_buffer_t * b0, int is_ip6)
   dpo = &gu->gu_dpo[pnode][dproto];
 
   /* The flow hash is still valid as this is a IP packet being switched */
-  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo->dpoi_index;
+  vnet_buffer (b0)->ip.adj_index = dpo->dpoi_index;
 
   return (dpo->dpoi_next_node);
 }
@@ -287,8 +287,8 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  gpd0 = gbp_policy_dpo_get (vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = gpd0->gpd_dpo.dpoi_index;
+	  gpd0 = gbp_policy_dpo_get (vnet_buffer (b0)->ip.adj_index);
+	  vnet_buffer (b0)->ip.adj_index = gpd0->gpd_dpo.dpoi_index;
 
 	  /*
 	   * Reflection check; in and out on an ivxlan tunnel

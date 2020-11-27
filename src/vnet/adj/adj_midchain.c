@@ -73,10 +73,10 @@ adj_midchain_tx_inline (vlib_main_t * vm,
         }
 
         /* Follow the DPO on which the midchain is stacked */
-        adj_index0 = vnet_buffer(b[0])->ip.adj_index[VLIB_TX];
-        adj_index1 = vnet_buffer(b[1])->ip.adj_index[VLIB_TX];
-        adj_index2 = vnet_buffer(b[2])->ip.adj_index[VLIB_TX];
-        adj_index3 = vnet_buffer(b[3])->ip.adj_index[VLIB_TX];
+        adj_index0 = vnet_buffer(b[0])->ip.adj_index;
+        adj_index1 = vnet_buffer(b[1])->ip.adj_index;
+        adj_index2 = vnet_buffer(b[2])->ip.adj_index;
+        adj_index3 = vnet_buffer(b[3])->ip.adj_index;
 
         adj0 = adj_get(adj_index0);
         adj1 = adj_get(adj_index1);
@@ -93,10 +93,10 @@ adj_midchain_tx_inline (vlib_main_t * vm,
         next[2] = dpo2->dpoi_next_node;
         next[3] = dpo3->dpoi_next_node;
 
-        vnet_buffer(b[0])->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-        vnet_buffer(b[1])->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
-        vnet_buffer(b[2])->ip.adj_index[VLIB_TX] = dpo2->dpoi_index;
-        vnet_buffer(b[3])->ip.adj_index[VLIB_TX] = dpo3->dpoi_index;
+        vnet_buffer(b[0])->ip.adj_index = dpo0->dpoi_index;
+        vnet_buffer(b[1])->ip.adj_index = dpo1->dpoi_index;
+        vnet_buffer(b[2])->ip.adj_index = dpo2->dpoi_index;
+        vnet_buffer(b[3])->ip.adj_index = dpo3->dpoi_index;
 
         if (interface_count)
         {
@@ -165,11 +165,11 @@ adj_midchain_tx_inline (vlib_main_t * vm,
         u32 adj_index0;
 
         /* Follow the DPO on which the midchain is stacked */
-        adj_index0 = vnet_buffer(b[0])->ip.adj_index[VLIB_TX];
+        adj_index0 = vnet_buffer(b[0])->ip.adj_index;
         adj0 = adj_get(adj_index0);
         dpo0 = &adj0->sub_type.midchain.next_dpo;
         next[0] = dpo0->dpoi_next_node;
-        vnet_buffer(b[0])->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+        vnet_buffer(b[0])->ip.adj_index = dpo0->dpoi_index;
 
         if (interface_count)
         {

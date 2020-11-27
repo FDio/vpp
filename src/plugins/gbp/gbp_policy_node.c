@@ -62,7 +62,7 @@ gbp_rule_l2_redirect (const gbp_rule_t * gu, vlib_buffer_t * b0)
 
   /* save the LB index for the next node and reset the IP flow hash
    * so it's recalculated */
-  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo->dpoi_index;
+  vnet_buffer (b0)->ip.adj_index = dpo->dpoi_index;
   vnet_buffer (b0)->ip.flow_hash = 0;
 
   return (dpo->dpoi_next_node);

@@ -207,8 +207,8 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpoi_idx0;
-	  vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = dpoi_idx1;
+	  vnet_buffer (b[0])->ip.adj_index = dpoi_idx0;
+	  vnet_buffer (b[1])->ip.adj_index = dpoi_idx1;
 
 	  ASSERT (t0->rewrite_header.data_bytes == underlay_hdr_len);
 	  ASSERT (t1->rewrite_header.data_bytes == underlay_hdr_len);
@@ -414,7 +414,7 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 	      next0 = t0->next_dpo.dpoi_next_node;
 	      dpoi_idx0 = t0->next_dpo.dpoi_index;
 	    }
-	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpoi_idx0;
+	  vnet_buffer (b[0])->ip.adj_index = dpoi_idx0;
 
 	  ASSERT (t0->rewrite_header.data_bytes == underlay_hdr_len);
 	  vnet_rewrite_one_header (*t0, vlib_buffer_get_current (b[0]),

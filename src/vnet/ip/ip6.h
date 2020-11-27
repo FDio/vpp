@@ -182,8 +182,7 @@ extern vlib_node_registration_t ip6_punt_node;
 
 extern void ip6_forward_next_trace (vlib_main_t * vm,
 				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame,
-				    vlib_rx_or_tx_t which_adj_index);
+				    vlib_frame_t * frame);
 
 always_inline uword
 ip6_destination_matches_route (const ip6_main_t * im,

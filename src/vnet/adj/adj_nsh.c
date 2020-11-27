@@ -81,7 +81,7 @@ adj_nsh_rewrite_inline (vlib_main_t * vm,
             p0 = vlib_get_buffer (vm, pi0);
             h0 = vlib_buffer_get_current (p0);
 
-            adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+            adj_index0 = vnet_buffer (p0)->ip.adj_index;
 
             /* We should never rewrite a pkt using the MISS adjacency */
             ASSERT(adj_index0);
@@ -137,7 +137,7 @@ adj_nsh_rewrite_inline (vlib_main_t * vm,
             {
                 adj_nsh_trace_t *tr = vlib_add_trace (vm, node,
                                                      p0, sizeof (*tr));
-                tr->adj_index = vnet_buffer(p0)->ip.adj_index[VLIB_TX];
+                tr->adj_index = vnet_buffer(p0)->ip.adj_index;
             }
 
             vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

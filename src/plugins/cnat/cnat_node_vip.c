@@ -95,14 +95,14 @@ cnat_vip_node_fn (vlib_main_t * vm,
       udp0 = (udp_header_t *) (ip6 + 1);
     }
 
-  cc = cnat_client_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
+  cc = cnat_client_get (vnet_buffer (b)->ip.adj_index);
 
   if (iproto != IP_PROTOCOL_UDP && iproto != IP_PROTOCOL_TCP
       && iproto != IP_PROTOCOL_ICMP && iproto != IP_PROTOCOL_ICMP6)
     {
       /* Dont translate & follow the fib programming */
       next0 = cc->cc_parent.dpoi_next_node;
-      vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
+      vnet_buffer (b)->ip.adj_index = cc->cc_parent.dpoi_index;
       goto trace;
     }
 
@@ -116,7 +116,7 @@ cnat_vip_node_fn (vlib_main_t * vm,
 	  /* Translate & follow the translation given LB */
 	  ct = cnat_translation_get (session->value.ct_index);
 	  next0 = ct->ct_lb.dpoi_next_node;
-	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = session->value.cs_lbi;
+	  vnet_buffer (b)->ip.adj_index = session->value.cs_lbi;
 	}
       else if (session->value.flags & CNAT_SESSION_FLAG_HAS_SNAT)
 	{
@@ -128,7 +128,7 @@ cnat_vip_node_fn (vlib_main_t * vm,
 	{
 	  /* Translate & follow the fib programming */
 	  next0 = cc->cc_parent.dpoi_next_node;
-	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
+	  vnet_buffer (b)->ip.adj_index = cc->cc_parent.dpoi_index;
 	}
     }
   else
@@ -139,7 +139,7 @@ cnat_vip_node_fn (vlib_main_t * vm,
       if (NULL == ct)
 	{
 	  /* Dont translate & Follow the fib programming */
-	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
+	  vnet_buffer (b)->ip.adj_index = cc->cc_parent.dpoi_index;
 	  next0 = cc->cc_parent.dpoi_next_node;
 	  goto trace;
 	}
@@ -155,7 +155,7 @@ cnat_vip_node_fn (vlib_main_t * vm,
       if (!lb0->lb_n_buckets)
 	{
 	  /* Dont translate & Follow the fib programming */
-	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
+	  vnet_buffer (b)->ip.adj_index = cc->cc_parent.dpoi_index;
 	  next0 = cc->cc_parent.dpoi_next_node;
 	  goto trace;
 	}
@@ -214,7 +214,7 @@ cnat_vip_node_fn (vlib_main_t * vm,
       created_session = 1;
 
       next0 = ct->ct_lb.dpoi_next_node;
-      vnet_buffer (b)->ip.adj_index[VLIB_TX] = session->value.cs_lbi;
+      vnet_buffer (b)->ip.adj_index = session->value.cs_lbi;
     }
 
   if (AF_IP4 == ctx->af)

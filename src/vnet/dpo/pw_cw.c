@@ -177,16 +177,16 @@ pw_cw_pop_inline (vlib_main_t * vm,
             b1 = vlib_get_buffer(vm, bi1);
 
             /* get the next parent DPO for the next pop */
-            pwcwi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
-            pwcwi1 = vnet_buffer(b1)->ip.adj_index[VLIB_TX];
+            pwcwi0 = vnet_buffer(b0)->ip.adj_index;
+            pwcwi1 = vnet_buffer(b1)->ip.adj_index;
             pwcw0 = pw_cw_dpo_get(pwcwi0);
             pwcw1 = pw_cw_dpo_get(pwcwi1);
 
             next0 = pwcw0->pwcw_parent.dpoi_next_node;
             next1 = pwcw1->pwcw_parent.dpoi_next_node;
 
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = pwcw0->pwcw_parent.dpoi_index;
-            vnet_buffer(b1)->ip.adj_index[VLIB_TX] = pwcw1->pwcw_parent.dpoi_index;
+            vnet_buffer(b0)->ip.adj_index = pwcw0->pwcw_parent.dpoi_index;
+            vnet_buffer(b1)->ip.adj_index = pwcw1->pwcw_parent.dpoi_index;
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
@@ -226,10 +226,10 @@ pw_cw_pop_inline (vlib_main_t * vm,
 
             b0 = vlib_get_buffer(vm, bi0);
 
-            pwcwi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+            pwcwi0 = vnet_buffer(b0)->ip.adj_index;
             pwcw0 = pw_cw_dpo_get(pwcwi0);
             next0 = pwcw0->pwcw_parent.dpoi_next_node;
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = pwcw0->pwcw_parent.dpoi_index;
+            vnet_buffer(b0)->ip.adj_index = pwcw0->pwcw_parent.dpoi_index;
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {

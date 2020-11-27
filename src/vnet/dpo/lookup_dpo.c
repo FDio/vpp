@@ -396,8 +396,8 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 	    ip1 = vlib_buffer_get_current (b1);
 
 	    /* dst lookup was done by ip4 lookup */
-	    lkdi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
-	    lkdi1 = vnet_buffer(b1)->ip.adj_index[VLIB_TX];
+	    lkdi0 = vnet_buffer(b0)->ip.adj_index;
+	    lkdi1 = vnet_buffer(b1)->ip.adj_index;
 	    lkd0 = lookup_dpo_get(lkdi0);
 	    lkd1 = lookup_dpo_get(lkdi1);
 
@@ -471,8 +471,8 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 
 	    next0 = dpo0->dpoi_next_node;
 	    next1 = dpo1->dpoi_next_node;
-	    vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-	    vnet_buffer(b1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+	    vnet_buffer(b0)->ip.adj_index = dpo0->dpoi_index;
+	    vnet_buffer(b1)->ip.adj_index = dpo1->dpoi_index;
 
 	    vlib_increment_combined_counter
 		(cm, thread_index, lbi0, 1,
@@ -542,7 +542,7 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 	    ip0 = vlib_buffer_get_current (b0);
 
 	    /* dst lookup was done by ip4 lookup */
-	    lkdi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+	    lkdi0 = vnet_buffer(b0)->ip.adj_index;
 	    lkd0 = lookup_dpo_get(lkdi0);
 
 	    /*
@@ -593,7 +593,7 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 					      (lb0->lb_n_buckets_minus_1)));
 
 	    next0 = dpo0->dpoi_next_node;
-	    vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	    vnet_buffer(b0)->ip.adj_index = dpo0->dpoi_index;
 
 	    vlib_increment_combined_counter
 		(cm, thread_index, lbi0, 1,
@@ -753,8 +753,8 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 	    ip1 = vlib_buffer_get_current (b1);
 
 	    /* dst lookup was done by ip6 lookup */
-	    lkdi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
-	    lkdi1 = vnet_buffer(b1)->ip.adj_index[VLIB_TX];
+	    lkdi0 = vnet_buffer(b0)->ip.adj_index;
+	    lkdi1 = vnet_buffer(b1)->ip.adj_index;
 	    lkd0 = lookup_dpo_get(lkdi0);
 	    lkd1 = lookup_dpo_get(lkdi1);
 
@@ -848,8 +848,8 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 
 	    next0 = dpo0->dpoi_next_node;
 	    next1 = dpo1->dpoi_next_node;
-	    vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-	    vnet_buffer(b1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+	    vnet_buffer(b0)->ip.adj_index = dpo0->dpoi_index;
+	    vnet_buffer(b1)->ip.adj_index = dpo1->dpoi_index;
 
 	    vlib_increment_combined_counter
 		(cm, thread_index, lbi0, 1,
@@ -900,7 +900,7 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 	    ip0 = vlib_buffer_get_current (b0);
 
 	    /* dst lookup was done by ip6 lookup */
-	    lkdi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+	    lkdi0 = vnet_buffer(b0)->ip.adj_index;
 	    lkd0 = lookup_dpo_get(lkdi0);
 
 	    /*
@@ -953,7 +953,7 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 					      (lb0->lb_n_buckets_minus_1)));
 
 	    next0 = dpo0->dpoi_next_node;
-	    vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	    vnet_buffer(b0)->ip.adj_index = dpo0->dpoi_index;
 
             if (!(b0->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID)) {
                 vnet_buffer2(b0)->loop_counter = 0;
@@ -1071,7 +1071,7 @@ lookup_dpo_mpls_inline (vlib_main_t * vm,
             hdr0 = vlib_buffer_get_current (b0);
 
             /* dst lookup was done by mpls lookup */
-            lkdi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+            lkdi0 = vnet_buffer(b0)->ip.adj_index;
             lkd0 = lookup_dpo_get(lkdi0);
 
             /*
@@ -1095,13 +1095,13 @@ lookup_dpo_mpls_inline (vlib_main_t * vm,
             dpo0 = load_balance_get_bucket_i(lb0, 0);
 
             next0 = dpo0->dpoi_next_node;
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+            vnet_buffer(b0)->ip.adj_index = dpo0->dpoi_index;
 
 
             if (MPLS_IS_REPLICATE & lbi0)
             {
                 next0 = mpls_lookup_to_replicate_edge;
-                vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
+                vnet_buffer (b0)->ip.adj_index =
                     (lbi0 & ~MPLS_IS_REPLICATE);
             }
             else
@@ -1124,7 +1124,7 @@ lookup_dpo_mpls_inline (vlib_main_t * vm,
                 }
                 next0 = dpo0->dpoi_next_node;
 
-                vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+                vnet_buffer (b0)->ip.adj_index = dpo0->dpoi_index;
 
                 vlib_increment_combined_counter
                     (cm, thread_index, lbi0, 1,
@@ -1257,7 +1257,7 @@ lookup_dpo_ip_dst_mcast_inline (vlib_main_t * vm,
             b0 = vlib_get_buffer (vm, bi0);
 
             /* dst lookup was done by mpls lookup */
-            lkdi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+            lkdi0 = vnet_buffer(b0)->ip.adj_index;
             lkd0 = lookup_dpo_get(lkdi0);
             fib_index0 = lkd0->lkd_fib_index;
             next0 = LOOKUP_IP_DST_MCAST_NEXT_RPF;
@@ -1298,7 +1298,7 @@ lookup_dpo_ip_dst_mcast_inline (vlib_main_t * vm,
                 }
             }
 
-            vnet_buffer (b0)->ip.adj_index[VLIB_TX] = mfei0;
+            vnet_buffer (b0)->ip.adj_index = mfei0;
 
             if (!(b0->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID)) {
                 vnet_buffer2(b0)->loop_counter = 0;

@@ -283,8 +283,7 @@ _(l2_hdr_offset)                                \
 _(l3_hdr_offset)                                \
 _(l4_hdr_offset)                                \
 _(feature_arc_index)                            \
-_(ip.adj_index[0])                              \
-_(ip.adj_index[1])                              \
+_(ip.adj_index)                                 \
 _(ip.flow_hash)                                 \
 _(ip.save_protocol)                             \
 _(ip.fib_index)                                 \
