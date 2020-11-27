@@ -104,6 +104,13 @@ typedef void (*vlib_node_runtime_perf_callback_fp_t)
   (struct vlib_node_runtime_perf_callback_data_t * data,
    vlib_node_runtime_perf_callback_args_t * args);
 
+typedef void (vlib_node_pre_dispatch_cb_fn_t)
+  (struct vlib_main_t * vm, vlib_node_runtime_t * node);
+
+typedef void (vlib_node_post_dispatch_cb_fn_t)
+  (struct vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
+   uword n);
+
 typedef struct vlib_node_runtime_perf_callback_data_t
 {
   vlib_node_runtime_perf_callback_fp_t fp;
@@ -150,6 +157,10 @@ typedef struct vlib_main_t
 
   /* Main loop hw / sw performance counters */
   vlib_node_runtime_perf_callback_set_t vlib_node_runtime_perf_callbacks;
+
+  /* pre / post dispatch callbacks */
+  vlib_node_pre_dispatch_cb_fn_t **pre_dispatch_cb_fn;
+  vlib_node_post_dispatch_cb_fn_t **post_dispatch_cb_fn;
 
   /* Every so often we switch to the next counter. */
 #define VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE 7
@@ -458,6 +469,13 @@ vlib_node_runtime_perf_counter (vlib_main_t * vm, vlib_node_runtime_t * node,
       };
       clib_callback_data_call_vec (v, &args);
     }
+
+  if (call_type == VLIB_NODE_RUNTIME_PERF_BEFORE && vm->pre_dispatch_cb_fn)
+    for (int i = 0; i < vec_len (vm->pre_dispatch_cb_fn); i++)
+      (vm->pre_dispatch_cb_fn[i]) (vm, node);
+  if (call_type == VLIB_NODE_RUNTIME_PERF_AFTER && vm->post_dispatch_cb_fn)
+    for (int i = 0; i < vec_len (vm->post_dispatch_cb_fn); i++)
+      (vm->post_dispatch_cb_fn[i]) (vm, node, frame, n);
 }
 
 always_inline void vlib_set_queue_signal_callback
