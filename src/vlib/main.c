@@ -1208,13 +1208,21 @@ dispatch_node (vlib_main_t * vm,
 	}
       if (PREDICT_FALSE (vm->dispatch_pcap_enable))
 	dispatch_pcap_trace (vm, node, frame);
-      n = node->function (vm, node, frame);
+
+      if (PREDICT_TRUE (vm->dispatch_wrapper_fn == 0))
+	n = node->function (vm, node, frame);
+      else
+	n = vm->dispatch_wrapper_fn (vm, node, frame);
     }
   else
     {
       if (PREDICT_FALSE (vm->dispatch_pcap_enable))
 	dispatch_pcap_trace (vm, node, frame);
-      n = node->function (vm, node, frame);
+
+      if (PREDICT_TRUE (vm->dispatch_wrapper_fn == 0))
+	n = node->function (vm, node, frame);
+      else
+	n = vm->dispatch_wrapper_fn (vm, node, frame);
     }
 
   t = clib_cpu_time_now ();

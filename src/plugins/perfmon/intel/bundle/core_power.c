@@ -1,7 +1,5 @@
 /*
- * perfmon_plugin.c - perf monitor plugin
- *
- * Copyright (c) <current-year> <your-organization>
+ * Copyright (c) 2020 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -15,17 +13,22 @@
  * limitations under the License.
  */
 
-#include <vnet/plugin/plugin.h>
-#include <vpp/app/version.h>
+#include <vnet/vnet.h>
+#include <perfmon/perfmon.h>
+#include <perfmon/intel/core.h>
+
 
 /* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
-  .version = VPP_BUILD_VER,
-  .description = "Performance Monitor",
-#if !defined(__x86_64__)
-  .default_disabled = 1,
-#endif
+PERFMON_REGISTER_BUNDLE (core_power) = {
+  .name = "core-power",
+  .description = "core cycles per cpu core level",
+  .source = "intel-core",
+  .type = PERFMON_BUNDLE_TYPE_THREAD,
+  .events[0] = INTEL_CORE_E_CORE_POWER_LVL0_TURBO_LICENSE,
+  .events[1] = INTEL_CORE_E_CORE_POWER_LVL1_TURBO_LICENSE,
+  .events[2] = INTEL_CORE_E_CORE_POWER_LVL2_TURBO_LICENSE,
+  .events[3] = INTEL_CORE_E_CORE_POWER_THROTTLE,
+  .n_events = 4,
 };
 /* *INDENT-ON* */
 
