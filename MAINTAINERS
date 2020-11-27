@@ -461,7 +461,7 @@ F:	src/plugins/marvell/
 
 Plugin - performance counter
 I:	perfmon
-M:	Dave Barach <dave@barachs.net>
+M:	Damjan Marion <damarion@cisco.com>
 F:	src/plugins/perfmon/
 
 Plugin - PPPoE
