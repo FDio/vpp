@@ -55,6 +55,8 @@ svm_queue_init (void *base, int nels, int elsize)
     clib_unix_warning ("mutex_init");
   if (pthread_mutexattr_destroy (&attr))
     clib_unix_warning ("mutexattr_destroy");
+  if (pthread_mutexattr_setrobust (&attr, PTHREAD_MUTEX_ROBUST))
+    clib_unix_warning ("setrobust");
   if (pthread_condattr_init (&cattr))
     clib_unix_warning ("condattr_init");
   /* prints funny-looking messages in the Linux target */
@@ -96,7 +98,9 @@ svm_queue_free (svm_queue_t * q)
 void
 svm_queue_lock (svm_queue_t * q)
 {
-  pthread_mutex_lock (&q->mutex);
+  int rv = pthread_mutex_lock (&q->mutex);
+  if (PREDICT_FALSE (rv == EOWNERDEAD))
+    pthread_mutex_consistent (&q->mutex);
 }
 
 void
