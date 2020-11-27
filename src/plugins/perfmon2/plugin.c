@@ -23,9 +23,6 @@ VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
   .description = "Performance Monitor",
-#if !defined(__x86_64__)
-  .default_disabled = 1,
-#endif
 };
 /* *INDENT-ON* */
 
