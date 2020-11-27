@@ -226,11 +226,12 @@ vl_api_punt_socket_register_t_handler (vl_api_punt_socket_register_t * mp)
   clib_error_t *error;
   punt_reg_t pr;
   int rv;
+  char *p = NULL;
 
   rv = vl_api_punt_decode (&mp->punt, &pr);
 
   if (rv)
-    return;
+    goto reply;
 
   error = vnet_punt_socket_add (vm, ntohl (mp->header_version),
 				&pr, (char *) mp->pathname);
@@ -240,12 +241,14 @@ vl_api_punt_socket_register_t_handler (vl_api_punt_socket_register_t * mp)
       clib_error_report (error);
     }
 
-  char *p = vnet_punt_get_server_pathname ();
+  p = vnet_punt_get_server_pathname ();
 
+reply:
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_PUNT_SOCKET_REGISTER_REPLY,
   ({
-    memcpy ((char *) rmp->pathname, p, sizeof (rmp->pathname));
+    if (p != NULL)
+      memcpy ((char *) rmp->pathname, p, sizeof (rmp->pathname));
   }));
   /* *INDENT-ON* */
 }
