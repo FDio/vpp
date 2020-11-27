@@ -459,6 +459,11 @@ I:	marvell
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/plugins/marvell/
 
+Plugin - performance counter
+I:	perfmon
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/perfmon/
+
 Plugin - PPPoE
 I:	pppoe
 M:	Hongjun Ni <hongjun.ni@intel.com>
