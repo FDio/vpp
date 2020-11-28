@@ -1,0 +1,234 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "92d2b2f8_33f2a833",
+        "filename": "src/plugins/igmp/test/test_igmp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-28T05:16:19Z",
+      "side": 1,
+      "message": "this is the __eq__ method for the vppobject",
+      "range": {
+        "startLine": 17,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 16
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "77bba956_269e1bb6",
+        "filename": "src/plugins/igmp/test/vpp_igmp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-28T05:16:19Z",
+      "side": 1,
+      "message": "How do you guarantee that vapi is \"connect\u0027d\" before you execute these lines?",
+      "range": {
+        "startLine": 17,
+        "startChar": 0,
+        "endLine": 18,
+        "endChar": 65
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5d3f2681_19ad8099",
+        "filename": "src/plugins/igmp/test/vpp_igmp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-28T05:16:19Z",
+      "side": 1,
+      "message": "why not use functools.partial here?",
+      "range": {
+        "startLine": 40,
+        "startChar": 0,
+        "endLine": 60,
+        "endChar": 64
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2b41c740_525f37b2",
+        "filename": "src/plugins/igmp/test/vpp_igmp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-28T05:16:19Z",
+      "side": 1,
+      "message": "Should this be IgmpEvent(VppEvent)?",
+      "range": {
+        "startLine": 63,
+        "startChar": 6,
+        "endLine": 63,
+        "endChar": 16
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4bcf881b_590e021f",
+        "filename": "src/plugins/igmp/test/vpp_igmp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-28T05:16:19Z",
+      "side": 1,
+      "message": "@Ole.  I don\u0027t know the vapi code for this off the top of my head.  Does vapi support an on_event function?",
+      "range": {
+        "startLine": 76,
+        "startChar": 0,
+        "endLine": 86,
+        "endChar": 38
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "40acbff8_6ff51e0f",
+        "filename": "src/plugins/igmp/test/vpp_igmp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-28T05:16:19Z",
+      "side": 1,
+      "message": "What is missing from the api to complete this?",
+      "range": {
+        "startLine": 192,
+        "startChar": 8,
+        "endLine": 192,
+        "endChar": 29
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0c8b0fb3_6d92b329",
+        "filename": "src/plugins/igmp/test/vpp_igmp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-28T05:16:19Z",
+      "side": 1,
+      "message": "here, you are hardcoding a typedef.  It is cleaner if you follow the practice Neale set.  An example is:\nclass VppGbpContractNextHop():\n    def __init__(self, mac, bd, ip, rd):\n        self.mac \u003d mac\n        self.ip \u003d ip\n        self.bd \u003d bd\n        self.rd \u003d rd\n\n    def encode(self):\n        return {\u0027ip\u0027: self.ip,\n                \u0027mac\u0027: self.mac.packed,\n                \u0027bd_id\u0027: self.bd.bd.bd_id,\n                \u0027rd_id\u0027: self.rd.rd_id}",
+      "range": {
+        "startLine": 225,
+        "startChar": 0,
+        "endLine": 233,
+        "endChar": 48
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7e81dca6_7d788809",
+        "filename": "test/vpp_feature.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-28T05:16:19Z",
+      "side": 1,
+      "message": "Is this meant to be a Mixin?",
+      "range": {
+        "startLine": 4,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 55
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "35f87b2f_d401b162",
+        "filename": "test/vpp_feature.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-28T05:16:19Z",
+      "side": 1,
+      "message": "Why do we need this?\n(without it)\nx \u003d VppFeature()\nx._vapi \u003d vapi\n\n(With it)\nx \u003d VppFeature()\nx.init_feature_class(vapi)",
+      "range": {
+        "startLine": 10,
+        "startChar": 0,
+        "endLine": 17,
+        "endChar": 24
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aff24d50_338c9f4e",
+        "filename": "test/vpp_feature.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-28T05:16:19Z",
+      "side": 1,
+      "message": "This should probably be a RuntimeError.",
+      "range": {
+        "startLine": 23,
+        "startChar": 18,
+        "endLine": 23,
+        "endChar": 28
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e7d2bf32_fc0202c3",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-28T05:16:19Z",
+      "side": 0,
+      "message": "to delete this, you need to change the api to:\nautoreply define want_igmp_events\n{\n  u32 client_index;\n  u32 context;\n\n  u32 enable [default\u003d1];\n  u32 pid;\n};",
+      "range": {
+        "startLine": 106,
+        "startChar": 5,
+        "endLine": 106,
+        "endChar": 40
+      },
+      "revId": "cfe949dbf001d8fa18301ecc11c644f8cb39c5d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
