@@ -12,6 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef included_map_h
+#define included_map_h
+
 #include <stdbool.h>
 #include <vppinfra/error.h>
 #include <vnet/vnet.h>
@@ -493,6 +496,7 @@ ip6_map_ip4_lookup_bypass (vlib_buffer_t * p0, ip4_header_t * ip)
   return (false);
 }
 
+#endif
 /*
  * fd.io coding-style-patch-verification: ON
  *
