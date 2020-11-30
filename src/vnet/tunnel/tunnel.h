@@ -43,7 +43,8 @@ extern uword unformat_tunnel_mode (unformat_input_t * input, va_list * args);
   _(ENCAP_SET_DF, "encap-set-df", 0x2)              \
   _(ENCAP_COPY_DSCP, "encap-copy-dscp", 0x4)        \
   _(ENCAP_COPY_ECN, "encap-copy-ecn", 0x8)          \
-  _(DECAP_COPY_ECN, "decap-copy-ecn", 0x10)
+  _(DECAP_COPY_ECN, "decap-copy-ecn", 0x10)         \
+  _(ENCAP_INNER_HASH, "encap-inner-hash", 0x20)
 
 typedef enum tunnel_encap_decap_flags_t_
 {
