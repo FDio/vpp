@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "efaae714_d6a70d99",
+        "filename": "src/plugins/igmp/test/vpp_igmp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2020-11-30T09:46:10Z",
+      "side": 1,
+      "message": "Good point, I\u0027ll add checks to VppFeature class.",
+      "parentUuid": "77bba956_269e1bb6",
+      "range": {
+        "startLine": 17,
+        "startChar": 0,
+        "endLine": 18,
+        "endChar": 65
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "5d3f2681_19ad8099",
         "filename": "src/plugins/igmp/test/vpp_igmp.py",
         "patchSetId": 3
@@ -71,6 +95,30 @@
     },
     {
       "key": {
+        "uuid": "6d9f9e8c_766ff029",
+        "filename": "src/plugins/igmp/test/vpp_igmp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2020-11-30T09:46:10Z",
+      "side": 1,
+      "message": "What are the benefits of using functools.patrial here?",
+      "parentUuid": "5d3f2681_19ad8099",
+      "range": {
+        "startLine": 40,
+        "startChar": 0,
+        "endLine": 60,
+        "endChar": 64
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "2b41c740_525f37b2",
         "filename": "src/plugins/igmp/test/vpp_igmp.py",
         "patchSetId": 3
@@ -82,6 +130,30 @@
       "writtenOn": "2020-11-28T05:16:19Z",
       "side": 1,
       "message": "Should this be IgmpEvent(VppEvent)?",
+      "range": {
+        "startLine": 63,
+        "startChar": 6,
+        "endLine": 63,
+        "endChar": 16
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "294e1630_7691d97f",
+        "filename": "src/plugins/igmp/test/vpp_igmp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2020-11-30T09:46:10Z",
+      "side": 1,
+      "message": "Sounds good.",
+      "parentUuid": "2b41c740_525f37b2",
       "range": {
         "startLine": 63,
         "startChar": 6,
@@ -163,6 +235,30 @@
     },
     {
       "key": {
+        "uuid": "1e5c9981_0c26161c",
+        "filename": "src/plugins/igmp/test/vpp_igmp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2020-11-30T09:46:10Z",
+      "side": 1,
+      "message": "Right.",
+      "parentUuid": "0c8b0fb3_6d92b329",
+      "range": {
+        "startLine": 225,
+        "startChar": 0,
+        "endLine": 233,
+        "endChar": 48
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "7e81dca6_7d788809",
         "filename": "test/vpp_feature.py",
         "patchSetId": 3
@@ -186,6 +282,30 @@
     },
     {
       "key": {
+        "uuid": "b98d9b96_5e71bc37",
+        "filename": "test/vpp_feature.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2020-11-30T09:46:10Z",
+      "side": 1,
+      "message": "No. This is meant to be a base class for VPP features like igmp, punt, etc. or any other feature with APIs like: enable/disable feature, subscribe/unsubscribe to events...\n\nUsing add/remove_vpp_config does not match the usage of these APIs. One way would be to introduce update_vpp_config method in this class.\n\nBut I\u0027d prefer using:\n  Igmp.enable_on_interface(pg0)\nInstead of:\n  Igmp.add_interface(pg0)\n  Igmp.update_vpp_cnfig()",
+      "parentUuid": "7e81dca6_7d788809",
+      "range": {
+        "startLine": 4,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 55
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "35f87b2f_d401b162",
         "filename": "test/vpp_feature.py",
         "patchSetId": 3
@@ -197,6 +317,30 @@
       "writtenOn": "2020-11-28T05:16:19Z",
       "side": 1,
       "message": "Why do we need this?\n(without it)\nx \u003d VppFeature()\nx._vapi \u003d vapi\n\n(With it)\nx \u003d VppFeature()\nx.init_feature_class(vapi)",
+      "range": {
+        "startLine": 10,
+        "startChar": 0,
+        "endLine": 17,
+        "endChar": 24
+      },
+      "revId": "c34cbf7162b1210554188cb62ed1e49bdfda6d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9a9b3c30_9386266d",
+        "filename": "test/vpp_feature.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2020-11-30T09:46:10Z",
+      "side": 1,
+      "message": "As this is the base class for VPP features (as Igmp in this patch) this is used to initialize everything for the class. In Igmp case these are enums.\n\nThese features are supposed to be singletons. I\u0027m thinking of using this metod for all Vpp objects. Objects would get the vapi from their respective feature class. In case of multiple VPPs multiprocessing module would be used.",
+      "parentUuid": "35f87b2f_d401b162",
       "range": {
         "startLine": 10,
         "startChar": 0,
