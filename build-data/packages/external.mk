@@ -55,6 +55,6 @@ endif
 
 external_configure = echo
 
-external_make_args = $(DPDK_MAKE_ARGS) -C external ebuild-build
+external_build = echo
 
-external_install =  make $(DPDK_MAKE_ARGS) -C external ebuild-install
+external_install =  make $(DPDK_MAKE_ARGS) -C external ebuild-build ebuild-install
