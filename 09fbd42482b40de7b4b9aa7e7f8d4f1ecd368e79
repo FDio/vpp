@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bacc0842_d79b96e9",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-11-30T08:54:29Z",
+      "side": 1,
+      "message": "Since this function is implemented in many of the sub-classes does it improve readability to add another layer of redirection?",
+      "range": {
+        "startLine": 189,
+        "startChar": 1,
+        "endLine": 190,
+        "endChar": 38
+      },
+      "revId": "09fbd42482b40de7b4b9aa7e7f8d4f1ecd368e79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ff8df25d_cc76ac35",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-11-30T08:54:29Z",
+      "side": 1,
+      "message": "You could have a flags enum like:\nenum flags {\n  RED \u003d 0x1,\n  BLUE \u003d 0x2,\n  BOTH \u003d 0x3\n}\n\nCouldn\u0027t you? Where you for some reason want to name a combination of flags.",
+      "range": {
+        "startLine": 405,
+        "startChar": 1,
+        "endLine": 411,
+        "endChar": 26
+      },
+      "revId": "09fbd42482b40de7b4b9aa7e7f8d4f1ecd368e79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
