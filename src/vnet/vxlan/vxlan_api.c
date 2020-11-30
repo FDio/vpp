@@ -159,6 +159,8 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
     .vni = ntohl (mp->vni),
     .dst = dst,
     .src = src,
+    .dst_port = ntohs (mp->dst_port),
+    .src_port = ntohs (mp->src_port),
   };
 
   /* Check src & dst are different */
@@ -199,6 +201,8 @@ static void send_vxlan_tunnel_details
 
   ip_address_encode (&t->src, IP46_TYPE_ANY, &rmp->src_address);
   ip_address_encode (&t->dst, IP46_TYPE_ANY, &rmp->dst_address);
+  rmp->src_port = htons (t->src_port);
+  rmp->dst_port = htons (t->dst_port);
 
   if (ip46_address_is_ip4 (&t->dst))
     rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
