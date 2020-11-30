@@ -222,7 +222,7 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
   u32 tcp_cksum = b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
   u32 udp_cksum = b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
   int is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
-  u32 tso = b->flags & VNET_BUFFER_F_GSO;
+  u32 tso = b->flags & VNET_BUFFER_F_GSO, max_pkt_len;
   u64 ol_flags;
 
   /* Is there any work for us? */
@@ -238,13 +238,17 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
   ol_flags |= ip_cksum ? PKT_TX_IP_CKSUM : 0;
   ol_flags |= tcp_cksum ? PKT_TX_TCP_CKSUM : 0;
   ol_flags |= udp_cksum ? PKT_TX_UDP_CKSUM : 0;
-  ol_flags |= tso ? (tcp_cksum ? PKT_TX_TCP_SEG : PKT_TX_UDP_SEG) : 0;
 
   if (tso)
     {
       mb->l4_len = vnet_buffer2 (b)->gso_l4_hdr_sz;
       mb->tso_segsz = vnet_buffer2 (b)->gso_size;
     }
+
+  /* ensure packet is large enough to require tso */
+  max_pkt_len = mb->l2_len + mb->l3_len + mb->l4_len + mb->tso_segsz;
+  if (mb->tso_segsz != 0 && mb->pkt_len > max_pkt_len)
+	  ol_flags |= tso ? (tcp_cksum ? PKT_TX_TCP_SEG : PKT_TX_UDP_SEG) : 0;
 
   mb->ol_flags |= ol_flags;
 
