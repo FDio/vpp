@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "2.1.0";
+option version = "2.1.1";
 
 import "vnet/interface_types.api";
 import "vnet/tunnel/tunnel_types.api";
