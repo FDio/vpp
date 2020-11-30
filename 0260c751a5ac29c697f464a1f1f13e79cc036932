@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "99f44cd0_af0d766b",
+        "filename": "test/vpp_punt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2020-11-30T09:55:41Z",
+      "side": 1,
+      "message": "BasePunt represents the common implementation for l4, ip_proto and exception punt objects. THis class represents the punt feature of VPP. This class is to inherit from VppFeature (from my Igmp patch).",
+      "parentUuid": "17b1610d_3ae0f95c",
+      "range": {
+        "startLine": 5,
+        "startChar": 6,
+        "endLine": 5,
+        "endChar": 10
+      },
+      "revId": "0260c751a5ac29c697f464a1f1f13e79cc036932",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "653ab451_0a91ae40",
         "filename": "test/vpp_punt.py",
         "patchSetId": 1
@@ -82,6 +106,30 @@
       "writtenOn": "2020-11-30T00:53:30Z",
       "side": 1,
       "message": "Why do we need this redefinition?  Is it because the enum name is too long for pep8?\n\nHow do you ensure that this is only called after vapi has connected?\nvppenum is an empty class, built after connect.\n\nclass VppEnumType(type):\n    def __getattr__(cls, name):\n        t \u003d vpp_get_type(name)\n        return t.enum\n\n\n@metaclass(VppEnumType)\nclass VppEnum(object):\n    pass",
+      "range": {
+        "startLine": 41,
+        "startChar": 0,
+        "endLine": 43,
+        "endChar": 79
+      },
+      "revId": "0260c751a5ac29c697f464a1f1f13e79cc036932",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bb8664e4_c42c856d",
+        "filename": "test/vpp_punt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2020-11-30T09:55:41Z",
+      "side": 1,
+      "message": "This is to be used in the same way as Igmp in my other patch https://gerrit.fd.io/r/c/vpp/+/30125. I wanted to wait until we discuss the VppFeature class first before putting it here.",
+      "parentUuid": "62b0dfa4_3d09dfbf",
       "range": {
         "startLine": 41,
         "startChar": 0,
