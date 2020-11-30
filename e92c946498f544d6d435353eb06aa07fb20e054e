@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5b25acea_d3bdb969",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1007,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-30T00:53:30Z",
+      "side": 0,
+      "message": "Changing the default value sent to the server.  Update the default in the .api definition.",
+      "range": {
+        "startLine": 1007,
+        "startChar": 29,
+        "endLine": 1007,
+        "endChar": 46
+      },
+      "revId": "e92c946498f544d6d435353eb06aa07fb20e054e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

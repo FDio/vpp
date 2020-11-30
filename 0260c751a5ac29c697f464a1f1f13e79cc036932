@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e3c3c2da_deefb872",
+        "filename": "src/vnet/ip/punt_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 251,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-30T00:53:30Z",
+      "side": 1,
+      "message": "changing the return value increments the semver.",
+      "range": {
+        "startLine": 249,
+        "startChar": 4,
+        "endLine": 251,
+        "endChar": 65
+      },
+      "revId": "0260c751a5ac29c697f464a1f1f13e79cc036932",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "17b1610d_3ae0f95c",
+        "filename": "test/vpp_punt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-30T00:53:30Z",
+      "side": 1,
+      "message": "How does this relate to BasePunt?",
+      "range": {
+        "startLine": 5,
+        "startChar": 6,
+        "endLine": 5,
+        "endChar": 10
+      },
+      "revId": "0260c751a5ac29c697f464a1f1f13e79cc036932",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "653ab451_0a91ae40",
+        "filename": "test/vpp_punt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-30T00:53:30Z",
+      "side": 1,
+      "message": "Why do we need a custom string representation of the enum? This approach violates the open/closed principle.  Move the string value to the _str__ of the subclass.",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 16,
+        "endChar": 49
+      },
+      "revId": "0260c751a5ac29c697f464a1f1f13e79cc036932",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "62b0dfa4_3d09dfbf",
+        "filename": "test/vpp_punt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-30T00:53:30Z",
+      "side": 1,
+      "message": "Why do we need this redefinition?  Is it because the enum name is too long for pep8?\n\nHow do you ensure that this is only called after vapi has connected?\nvppenum is an empty class, built after connect.\n\nclass VppEnumType(type):\n    def __getattr__(cls, name):\n        t \u003d vpp_get_type(name)\n        return t.enum\n\n\n@metaclass(VppEnumType)\nclass VppEnum(object):\n    pass",
+      "range": {
+        "startLine": 41,
+        "startChar": 0,
+        "endLine": 43,
+        "endChar": 79
+      },
+      "revId": "0260c751a5ac29c697f464a1f1f13e79cc036932",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ea437267_1ca92aa0",
+        "filename": "test/vpp_punt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-30T00:53:30Z",
+      "side": 1,
+      "message": "What is the type of reason?",
+      "range": {
+        "startLine": 51,
+        "startChar": 0,
+        "endLine": 56,
+        "endChar": 42
+      },
+      "revId": "0260c751a5ac29c697f464a1f1f13e79cc036932",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "817fe515_92238f67",
+        "filename": "test/vpp_punt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-30T00:53:30Z",
+      "side": 1,
+      "message": "PY3. No need to inherit from object here.  Does this base class make sense when it delegates the logic to the factory methods in Punt?  Just have encode, __eq__, __str__ and __repr__ raise NotImplementedError or make this an abstract class.",
+      "range": {
+        "startLine": 59,
+        "startChar": 14,
+        "endLine": 59,
+        "endChar": 22
+      },
+      "revId": "0260c751a5ac29c697f464a1f1f13e79cc036932",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "80352eaa_8a083eed",
+        "filename": "test/vpp_punt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-30T00:53:30Z",
+      "side": 1,
+      "message": "In general, the repr should recreate the __init__ string.\nreturn \"%s(punt_type\u003d%s)\" % (self.__class__.__name__,self._type)",
+      "range": {
+        "startLine": 85,
+        "startChar": 5,
+        "endLine": 86,
+        "endChar": 33
+      },
+      "revId": "0260c751a5ac29c697f464a1f1f13e79cc036932",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
