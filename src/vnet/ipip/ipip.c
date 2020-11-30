@@ -288,7 +288,11 @@ ipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   if (!t)
     return;
 
-  af = ADJ_FLAG_MIDCHAIN_IP_STACK;
+  if (t->flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_INNER_HASH)
+    af = ADJ_FLAG_MIDCHAIN_FIXUP_FLOW_HASH;
+  else
+    af = ADJ_FLAG_MIDCHAIN_IP_STACK;
+
   if (VNET_LINK_ETHERNET == adj_get_link_type (ai))
     af |= ADJ_FLAG_MIDCHAIN_NO_COUNT;
 
@@ -316,6 +320,11 @@ mipip_mk_complete_walk (adj_index_t ai, void *data)
 
   af = ADJ_FLAG_NONE;
   fixup = ipip_get_fixup (ctx->t, adj_get_link_type (ai), &af);
+
+  if (ctx->t->flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_INNER_HASH)
+    af = ADJ_FLAG_MIDCHAIN_FIXUP_FLOW_HASH;
+  else
+    af = ADJ_FLAG_MIDCHAIN_IP_STACK;
 
   adj_nbr_midchain_update_rewrite
     (ai, fixup,

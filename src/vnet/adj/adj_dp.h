@@ -72,15 +72,15 @@ adj_midchain_fixup (vlib_main_t *vm,
     {
         if (VNET_LINK_IP4 == lt)
             vnet_buffer (b)->ip.flow_hash =
-                ip4_compute_flow_hash (vlib_buffer_get_current (b),
+                ip4_compute_flow_hash (vlib_buffer_get_current (b) + adj->rewrite_header.data_bytes,
                                        IP_FLOW_HASH_DEFAULT);
         else if (VNET_LINK_IP6 == lt)
             vnet_buffer (b)->ip.flow_hash =
-                ip6_compute_flow_hash (vlib_buffer_get_current (b),
+                ip6_compute_flow_hash (vlib_buffer_get_current (b) + adj->rewrite_header.data_bytes,
                                        IP_FLOW_HASH_DEFAULT);
         else if (VNET_LINK_MPLS == lt)
             vnet_buffer (b)->ip.flow_hash =
-                mpls_compute_flow_hash (vlib_buffer_get_current (b),
+                mpls_compute_flow_hash (vlib_buffer_get_current (b) + adj->rewrite_header.data_bytes,
                                        IP_FLOW_HASH_DEFAULT);
     }
 }
