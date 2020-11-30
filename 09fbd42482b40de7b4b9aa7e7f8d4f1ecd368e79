@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3f3be62c_5e7dabee",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-30T15:24:55Z",
+      "side": 1,
+      "message": "I put it here for DRY.  I really just want the interface.  I can set it to raise NotImplementedError and copy it to each subclass.  Whatever you prefer is fine with me.",
+      "parentUuid": "bacc0842_d79b96e9",
+      "range": {
+        "startLine": 189,
+        "startChar": 1,
+        "endLine": 190,
+        "endChar": 38
+      },
+      "revId": "09fbd42482b40de7b4b9aa7e7f8d4f1ecd368e79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ff8df25d_cc76ac35",
         "filename": "src/tools/vppapigen/vppapigen.py",
         "patchSetId": 7
@@ -36,6 +60,30 @@
       "writtenOn": "2020-11-30T08:54:29Z",
       "side": 1,
       "message": "You could have a flags enum like:\nenum flags {\n  RED \u003d 0x1,\n  BLUE \u003d 0x2,\n  BOTH \u003d 0x3\n}\n\nCouldn\u0027t you? Where you for some reason want to name a combination of flags.",
+      "range": {
+        "startLine": 405,
+        "startChar": 1,
+        "endLine": 411,
+        "endChar": 26
+      },
+      "revId": "09fbd42482b40de7b4b9aa7e7f8d4f1ecd368e79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6ca71db2_434c5167",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-11-30T15:24:55Z",
+      "side": 1,
+      "message": "That\u0027s what\u0027s still unclear to me.  \nThere are references that indicate that:\nBOTH \u003d flags.BLUE | flags.RED outside the enum.  I need to check the python sources and reread the docs.\n\nYou had asked if I could add validation of the flag.  \nI\u0027m still digging through the various definitions.  An enum flag in python is different from a enum intflag.  Do you have an idea in your mind for how you want to validate a flag?",
+      "parentUuid": "ff8df25d_cc76ac35",
       "range": {
         "startLine": 405,
         "startChar": 1,
