@@ -122,8 +122,6 @@ ip4_arp_inline (vlib_main_t * vm,
 		vlib_frame_t * frame, int is_glean)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  ip4_main_t *im = &ip4_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
   u32 *from, *to_next_drop;
   uword n_left_from, n_left_to_next_drop, next_index;
   u32 thread_index = vm->thread_index;
@@ -148,10 +146,11 @@ ip4_arp_inline (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next_drop > 0)
 	{
 	  u32 pi0, adj_index0, sw_if_index0;
-	  ip4_address_t resolve0, src0;
+	  ip4_address_t resolve0, *src0;
 	  vlib_buffer_t *p0, *b0;
 	  ip_adjacency_t *adj0;
 	  u64 r0;
+	  ip_interface_address_t *ia;
 
 	  pi0 = from[0];
 	  p0 = vlib_get_buffer (vm, pi0);
@@ -171,19 +170,19 @@ ip4_arp_inline (vlib_main_t * vm,
 	      /* resolve the packet's destination */
 	      ip4_header_t *ip0 = vlib_buffer_get_current (p0);
 	      resolve0 = ip0->dst_address;
-	      src0 = adj0->sub_type.glean.receive_addr.ip4;
 	    }
 	  else
 	    {
 	      /* resolve the incomplete adj */
 	      resolve0 = adj0->sub_type.nbr.next_hop.ip4;
-	      /* Src IP address in ARP header. */
-	      if (ip4_src_address_for_packet (lm, sw_if_index0, &src0))
-		{
-		  /* No source address available */
-		  p0->error = node->errors[IP4_ARP_ERROR_NO_SOURCE_ADDRESS];
-		  continue;
-		}
+	    }
+	  src0 = ip4_interface_address_matching_destination
+	    (&ip4_main, &resolve0, sw_if_index0, &ia);
+	  if (src0 == NULL)
+	    {
+	      /* No source address available */
+	      p0->error = node->errors[IP4_ARP_ERROR_NO_SOURCE_ADDRESS];
+	      continue;
 	    }
 
 	  /* combine the address and interface for the hash key */
@@ -218,7 +217,7 @@ ip4_arp_inline (vlib_main_t * vm,
 	    }
 
 	  /* Send ARP request. */
-	  b0 = ip4_neighbor_probe (vm, vnm, adj0, &src0, &resolve0);
+	  b0 = ip4_neighbor_probe (vm, vnm, adj0, src0, &resolve0);
 
 	  if (PREDICT_TRUE (NULL != b0))
 	    {

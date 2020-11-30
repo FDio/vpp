@@ -149,8 +149,9 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 	  vnet_hw_interface_t *hw_if0;
 	  vlib_buffer_t *p0, *b0;
 	  ip_adjacency_t *adj0;
-	  ip6_address_t src;
+	  const ip6_address_t *src;
 	  ip6_header_t *ip0;
+	  ip_interface_address_t *ia;
 
 	  pi0 = from[0];
 
@@ -210,15 +211,23 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 	   * Choose source address based on destination lookup
 	   * adjacency.
 	   */
-	  if (!ip6_src_address_for_packet (sw_if_index0,
-					   &ip0->dst_address, &src))
+	  if (ip6_address_is_link_local_unicast (&ip0->dst_address))
+	    {
+	      src = ip6_get_link_local_address (sw_if_index0);
+	    }
+	  else
+	    {
+	      src = ip6_interface_address_matching_destination
+		(&ip6_main, &ip0->dst_address, sw_if_index0, &ia);
+	    }
+	  if (src == NULL)
 	    {
 	      /* There is no address on the interface */
 	      p0->error = node->errors[IP6_NBR_ERROR_NO_SOURCE_ADDRESS];
 	      continue;
 	    }
 
-	  b0 = ip6_neighbor_probe (vm, vnm, adj0, &src, &ip0->dst_address);
+	  b0 = ip6_neighbor_probe (vm, vnm, adj0, src, &ip0->dst_address);
 
 	  if (PREDICT_TRUE (NULL != b0))
 	    {
