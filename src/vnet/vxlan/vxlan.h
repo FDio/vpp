@@ -93,6 +93,10 @@ typedef struct
   ip46_address_t src;
   ip46_address_t dst;
 
+  /* udp-ports */
+  u16 src_port;
+  u16 dst_port;
+
   /* mcast packet output intfc index (used only if dst is mcast) */
   u32 mcast_sw_if_index;
 
@@ -159,8 +163,10 @@ typedef struct
   vxlan_tunnel_t *tunnels;
 
   /* lookup tunnel by key */
-  clib_bihash_16_8_t vxlan4_tunnel_by_key;	/* keyed on ipv4.dst + fib + vni */
-  clib_bihash_24_8_t vxlan6_tunnel_by_key;	/* keyed on ipv6.dst + fib + vni */
+  clib_bihash_16_8_t
+    vxlan4_tunnel_by_key; /* keyed on ipv4.dst + src_port + fib + vni */
+  clib_bihash_24_8_t
+    vxlan6_tunnel_by_key; /* keyed on ipv6.dst + src_port + fib + vni */
 
   /* local VTEP IPs ref count used by vxlan-bypass node to check if
      received VXLAN packet DIP matches any local VTEP address */
@@ -208,6 +214,8 @@ typedef struct
   u32 encap_fib_index;
   u32 decap_next_index;
   u32 vni;
+  u16 src_port;
+  u16 dst_port;
 } vnet_vxlan_add_del_tunnel_args_t;
 
 int vnet_vxlan_add_del_tunnel
