@@ -62,10 +62,11 @@ format_vxlan_tunnel (u8 * s, va_list * args)
   vxlan_tunnel_t *t = va_arg (*args, vxlan_tunnel_t *);
 
   s = format (s,
-	      "[%d] instance %d src %U dst %U vni %d fib-idx %d sw-if-idx %d ",
+	      "[%d] instance %d src %U dst %U src_port %d dst_port %d vni %d fib-idx %d sw-if-idx %d ",
 	      t->dev_instance, t->user_instance,
 	      format_ip46_address, &t->src, IP46_TYPE_ANY,
 	      format_ip46_address, &t->dst, IP46_TYPE_ANY,
+	      t->src_port, t->dst_port,
 	      t->vni, t->encap_fib_index, t->sw_if_index);
 
   s = format (s, "encap-dpo-idx %d ", t->next_dpo.dpoi_index);
@@ -227,7 +228,9 @@ _(mcast_sw_if_index)                            \
 _(encap_fib_index)                              \
 _(decap_next_index)                             \
 _(src)                                          \
-_(dst)
+_(dst)                                          \
+_(src_port)                                     \
+_(dst_port)
 
 static void
 vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
@@ -272,8 +275,8 @@ vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
     }
 
   /* UDP header, randomize src port on something, maybe? */
-  udp->src_port = clib_host_to_net_u16 (4789);
-  udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_vxlan);
+  udp->src_port = clib_host_to_net_u16 (t->src_port);
+  udp->dst_port = clib_host_to_net_u16 (t->dst_port);
 
   /* VXLAN header */
   vnet_set_vni_and_flags (vxlan, t->vni);
@@ -389,6 +392,13 @@ int vnet_vxlan_add_del_tunnel
 	a->decap_next_index = VXLAN_INPUT_NEXT_L2_INPUT;
       if (!vxlan_decap_next_is_valid (vxm, is_ip6, a->decap_next_index))
 	return VNET_API_ERROR_INVALID_DECAP_NEXT;
+
+      /* Set udp-ports */
+      if (a->src_port == 0)
+	a->src_port = is_ip6 ? UDP_DST_PORT_vxlan6 : UDP_DST_PORT_vxlan;
+
+      if (a->dst_port == 0)
+	a->dst_port = is_ip6 ? UDP_DST_PORT_vxlan6 : UDP_DST_PORT_vxlan;
 
       vxlan_tunnel_t *t;
       pool_get_aligned (vxm->tunnels, t, CLIB_CACHE_LINE_BYTES);
@@ -614,11 +624,11 @@ int vnet_vxlan_add_del_tunnel
   if (a->is_add)
     {
       /* register udp ports */
-      if (!is_ip6 && !udp_is_valid_dst_port (UDP_DST_PORT_vxlan, 1))
-	udp_register_dst_port (vxm->vlib_main, UDP_DST_PORT_vxlan,
+      if (!is_ip6 && !udp_is_valid_dst_port (a->src_port, 1))
+	udp_register_dst_port (vxm->vlib_main, a->src_port,
 			       vxlan4_input_node.index, 1);
-      if (is_ip6 && !udp_is_valid_dst_port (UDP_DST_PORT_vxlan6, 0))
-	udp_register_dst_port (vxm->vlib_main, UDP_DST_PORT_vxlan6,
+      if (is_ip6 && !udp_is_valid_dst_port (a->src_port, 0))
+	udp_register_dst_port (vxm->vlib_main, a->src_port,
 			       vxlan6_input_node.index, 0);
     }
 
@@ -676,6 +686,8 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   u32 mcast_sw_if_index = ~0;
   u32 decap_next_index = VXLAN_INPUT_NEXT_L2_INPUT;
   u32 vni = 0;
+  u32 src_port = 0;
+  u32 dst_port = 0;
   u32 table_id;
   clib_error_t *parse_error = NULL;
 
@@ -720,6 +732,10 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 			 &decap_next_index, ipv4_set))
 	;
       else if (unformat (line_input, "vni %d", &vni))
+	;
+      else if (unformat (line_input, "src_port %d", &src_port))
+	;
+      else if (unformat (line_input, "dst_port %d", &dst_port))
 	;
       else
 	{
@@ -908,7 +924,7 @@ vnet_int_vxlan_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable)
 			  sw_if_index))
     return;
 
-  is_enable = ! !is_enable;
+  is_enable = !!is_enable;
 
   if (is_ip6)
     {
@@ -1120,7 +1136,7 @@ vnet_vxlan_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
 			  .dst_addr.addr = t->src.ip4,
 			  .src_addr.mask.as_u32 = ~0,
 			  .dst_addr.mask.as_u32 = ~0,
-			  .dst_port.port = UDP_DST_PORT_vxlan,
+			  .dst_port.port = t->src_port,
 			  .dst_port.mask = 0xFF,
 			  .vni = t->vni,
 			  }
