@@ -415,6 +415,9 @@ gre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   if (VNET_LINK_ETHERNET == adj_get_link_type (ai))
     af |= ADJ_FLAG_MIDCHAIN_NO_COUNT;
 
+  if (t->flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_INNER_HASH)
+    af |= ADJ_FLAG_MIDCHAIN_FIXUP_FLOW_HASH;
+
   adj_nbr_midchain_update_rewrite
     (ai, gre_get_fixup (t->tunnel_dst.fp_proto,
 			adj_get_link_type (ai)),
@@ -429,12 +432,16 @@ adj_walk_rc_t
 mgre_mk_complete_walk (adj_index_t ai, void *data)
 {
   mgre_walk_ctx_t *ctx = data;
+  adj_flags_t af = ADJ_FLAG_MIDCHAIN_IP_STACK;
+
+  if (ctx->t->flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_INNER_HASH)
+    af |= ADJ_FLAG_MIDCHAIN_FIXUP_FLOW_HASH;
 
   adj_nbr_midchain_update_rewrite
     (ai, gre_get_fixup (ctx->t->tunnel_dst.fp_proto,
 			adj_get_link_type (ai)),
      uword_to_pointer (ctx->t->flags, void *),
-     ADJ_FLAG_MIDCHAIN_IP_STACK,
+     af,
      gre_build_rewrite (vnet_get_main (),
 			ctx->t->sw_if_index,
 			adj_get_link_type (ai),
