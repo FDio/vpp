@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from framework import VppTestCase
 from ipaddress import IPv4Address
