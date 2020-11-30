@@ -44,7 +44,43 @@ define vxlan_add_del_tunnel
   u32 vni;
 };
 
+/** \brief Create or delete a VXLAN tunnel
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - Use 1 to create the tunnel, 0 to remove it
+    @param instance - optional unique custom device instance, else ~0.
+    @param src_address - Source IP address
+    @param dst_address - Destination IP address, can be multicast
+    @param src_address - Source UDP port
+    @param dst_address - Destination UDP port
+    @param mcast_sw_if_index - Interface for multicast destination
+    @param encap_vrf_id - Encap route table FIB index
+    @param decap_next_index - index of decap next graph node
+    @param vni - The VXLAN Network Identifier, uint24
+*/
+define vxlan_add_del_tunnel_v2
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  u32 instance;		/* If non-~0, specifies a custom dev instance */
+  vl_api_address_t src_address;
+  vl_api_address_t dst_address;
+  u16 src_port;
+  u16 dst_port;
+  vl_api_interface_index_t mcast_sw_if_index;
+  u32 encap_vrf_id;
+  u32 decap_next_index;
+  u32 vni;
+};
+
 define vxlan_add_del_tunnel_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+define vxlan_add_del_tunnel_v2_reply
 {
   u32 context;
   i32 retval;
@@ -52,6 +88,12 @@ define vxlan_add_del_tunnel_reply
 };
 
 define vxlan_tunnel_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+define vxlan_tunnel_v2_dump
 {
   u32 client_index;
   u32 context;
@@ -65,6 +107,20 @@ define vxlan_tunnel_details
   u32 instance;
   vl_api_address_t src_address;
   vl_api_address_t dst_address;
+  vl_api_interface_index_t mcast_sw_if_index;
+  u32 encap_vrf_id;
+  u32 decap_next_index;
+  u32 vni;
+};
+define vxlan_tunnel_v2_details
+{
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u32 instance;
+  vl_api_address_t src_address;
+  vl_api_address_t dst_address;
+  u16 src_port;
+  u16 dst_port;
   vl_api_interface_index_t mcast_sw_if_index;
   u32 encap_vrf_id;
   u32 decap_next_index;
