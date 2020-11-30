@@ -30,6 +30,8 @@ enum tunnel_encap_decap_flags : u8
   TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN = 0x8,
   /** at decap, copy the ECN bit of the tunnel header into the payload */
   TUNNEL_API_ENCAP_DECAP_FLAG_DECAP_COPY_ECN = 0x10,
+  /** at encap, compute flow hash on the inner packet for more entropy */
+  TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_INNER_HASH = 0x20 [backwards_compatible],
 };
 
 /**
