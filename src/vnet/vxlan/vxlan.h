@@ -93,6 +93,10 @@ typedef struct
   ip46_address_t src;
   ip46_address_t dst;
 
+  /* udp-ports */
+  u16 src_port;
+  u16 dst_port;
+
   /* mcast packet output intfc index (used only if dst is mcast) */
   u32 mcast_sw_if_index;
 
@@ -208,6 +212,8 @@ typedef struct
   u32 encap_fib_index;
   u32 decap_next_index;
   u32 vni;
+  u16 src_port;
+  u16 dst_port;
 } vnet_vxlan_add_del_tunnel_args_t;
 
 int vnet_vxlan_add_del_tunnel
