@@ -254,7 +254,7 @@ typedef struct
 {
   vlib_pci_addr_t pci_addr;
   u8 *name;
-  u8 is_blacklisted;
+  u8 is_blocked;
   u8 vlan_strip_offload;
 #define DPDK_DEVICE_VLAN_STRIP_DEFAULT 0
 #define DPDK_DEVICE_VLAN_STRIP_OFF 1
