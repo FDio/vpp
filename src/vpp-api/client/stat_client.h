@@ -103,8 +103,9 @@ stat_segment_adjust (stat_client_main_t * sm, void *data)
 {
   void *p = (void *) ((char *) sm->shared_header +
 		      ((char *) data - (char *) sm->shared_header->base));
-  if (p > (void *) sm->shared_header &&
-      ((p + sizeof (p)) < ((void *) sm->shared_header + sm->memory_size)))
+  if ((char *) p > (char *) sm->shared_header &&
+      (((char *) p + sizeof (p)) <
+       ((char *) sm->shared_header + sm->memory_size)))
     return p;
   return 0;
 }
