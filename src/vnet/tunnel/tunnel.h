@@ -55,9 +55,9 @@ typedef enum tunnel_encap_decap_flags_t_
 #define TUNNEL_FLAG_MASK (0x1f)
 
 extern u8 *format_tunnel_encap_decap_flags (u8 * s, va_list * args);
-
+extern uword
+unformat_tunnel_encap_decap_flags (unformat_input_t * input, va_list * args);
 #endif
-
 /*
  * fd.io coding-style-patch-verification: ON
  *
