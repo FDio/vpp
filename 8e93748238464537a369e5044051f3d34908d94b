@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eb733b87_8fe52bf8",
+        "filename": "test/vpp_punt.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-01T18:46:35Z",
+      "side": 1,
+      "message": "What is the type of punt_type? str or VppEnum.vl_api_punt_type_t. I know it\u0027s the latter because I dug through the code.  ;)  The fact that you cannot initialize this class until Punt.init_feature_class is a problem.  It\u0027s too tightly coupled and the code, effectively cannot be tested.",
+      "range": {
+        "startLine": 59,
+        "startChar": 0,
+        "endLine": 60,
+        "endChar": 30
+      },
+      "revId": "8e93748238464537a369e5044051f3d34908d94b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "66df827b_419797f7",
+        "filename": "test/vpp_punt.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-01T18:46:35Z",
+      "side": 1,
+      "message": "Why is this in the base class?  Move these to class variables in the subclasses.",
+      "range": {
+        "startLine": 66,
+        "startChar": 0,
+        "endLine": 75,
+        "endChar": 49
+      },
+      "revId": "8e93748238464537a369e5044051f3d34908d94b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6f39fdeb_edb2ca92",
+        "filename": "test/vpp_punt.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-01T18:46:35Z",
+      "side": 1,
+      "message": "-1\n__repr__ has to return -\u003e str.\nYou can simply return \"%s() % (self.__class__.__name__, self._type)\"",
+      "range": {
+        "startLine": 90,
+        "startChar": 4,
+        "endLine": 91,
+        "endChar": 29
+      },
+      "revId": "8e93748238464537a369e5044051f3d34908d94b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8001ce64_500ddf41",
+        "filename": "test/vpp_punt.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-01T18:46:35Z",
+      "side": 1,
+      "message": "This violates LSP.  It suggests that you add class variable of type to this class instead.",
+      "range": {
+        "startLine": 95,
+        "startChar": 4,
+        "endLine": 96,
+        "endChar": 61
+      },
+      "revId": "8e93748238464537a369e5044051f3d34908d94b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8d4eeace_a89d2f6c",
+        "filename": "test/vpp_punt.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-01T18:46:35Z",
+      "side": 1,
+      "message": "Return NotImplemented.",
+      "range": {
+        "startLine": 141,
+        "startChar": 15,
+        "endLine": 141,
+        "endChar": 20
+      },
+      "revId": "8e93748238464537a369e5044051f3d34908d94b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f47eb09b_f1539c6f",
+        "filename": "test/vpp_punt.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-01T18:46:35Z",
+      "side": 1,
+      "message": "same",
+      "range": {
+        "startLine": 165,
+        "startChar": 15,
+        "endLine": 165,
+        "endChar": 20
+      },
+      "revId": "8e93748238464537a369e5044051f3d34908d94b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a79ec7f3_adf7970a",
+        "filename": "test/vpp_punt.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-01T18:46:35Z",
+      "side": 1,
+      "message": "This is __eq__.  Move it to __eq__ and just compare d and self here.",
+      "range": {
+        "startLine": 202,
+        "startChar": 12,
+        "endLine": 204,
+        "endChar": 24
+      },
+      "revId": "8e93748238464537a369e5044051f3d34908d94b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
