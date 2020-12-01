@@ -35,6 +35,7 @@ create_ipip_tunnel_command_fn (vlib_main_t * vm,
   clib_error_t *error = NULL;
   bool ip4_set = false, ip6_set = false;
   tunnel_mode_t mode = TUNNEL_MODE_P2P;
+  tunnel_encap_decap_flags_t flags = TUNNEL_ENCAP_DECAP_FLAG_NONE;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -75,6 +76,11 @@ create_ipip_tunnel_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "outer-table-id %d", &table_id))
 	;
       else
+	if (unformat
+	    (line_input, "flags %U", unformat_tunnel_encap_decap_flags,
+	     &flags))
+	;
+      else
 	{
 	  error =
 	    clib_error_return (0, "unknown input `%U'", format_unformat_error,
@@ -109,8 +115,7 @@ create_ipip_tunnel_command_fn (vlib_main_t * vm,
 			    &src,
 			    &dst,
 			    fib_index,
-			    TUNNEL_ENCAP_DECAP_FLAG_NONE,
-			    IP_DSCP_CS0, mode, &sw_if_index);
+			    flags, IP_DSCP_CS0, mode, &sw_if_index);
     }
 
   switch (rv)
