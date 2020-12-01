@@ -16,6 +16,24 @@
       "revId": "afce036c55e4a6269ddbee27642c45a74297e851",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "77ac5927_4304a9e5",
+        "filename": "src/plugins/nat/out2in_ed.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 615,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2020-12-01T12:38:32Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b709afe0_2fac53a7",
+      "revId": "afce036c55e4a6269ddbee27642c45a74297e851",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
