@@ -285,7 +285,7 @@ class TestACLpluginL2L3(VppTestCase):
                 new_rule_permit_and_reflect.is_permit = is_permit
 
             permit_and_reflect_rules.append(new_rule_permit_and_reflect)
-            self.logger.info("create_stream pkt#%d: %s" % (i, payload))
+            self.logger.info("create_stream pkt#%d: %s : %s" % (i, repr(p), payload))
 
         return {'stream': pkts,
                 'rules': rules,

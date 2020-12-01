@@ -23,6 +23,8 @@ add_vpp_plugin(acl
   MULTIARCH_SOURCES
   dataplane_node.c
   dataplane_node_nonip.c
+  dataplane_session_check.c
+  dataplane_acl_check.c
 
   API_FILES
   acl.api
