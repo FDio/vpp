@@ -9,6 +9,7 @@ from vpp_neighbor import VppNeighbor, find_nbr
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, \
     VppIpTable, DpoProto, FibPathType
 from vpp_papi import VppEnum
+from vpp_ip import VppIpPuntRedirect
 
 import scapy.compat
 from scapy.packet import Raw
@@ -798,9 +799,9 @@ class ARPTestCase(VppTestCase):
         #
         # setup a punt redirect so packets from the uplink go to the tap
         #
-        self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
-                                   self.pg2.sw_if_index,
-                                   self.pg0.local_ip4)
+        redirect = VppIpPuntRedirect(self, self.pg0.sw_if_index,
+                                     self.pg2.sw_if_index, self.pg0.local_ip4)
+        redirect.add_vpp_config()
 
         p_tcp = (Ether(src=self.pg0.remote_mac,
                        dst=self.pg0.local_mac,) /
@@ -844,6 +845,7 @@ class ARPTestCase(VppTestCase):
                                            'low': self.pg0._local_ip4_subnet,
                                            'hi': self.pg0._local_ip4_bcast},
                                     is_add=0)
+        redirect.remove_vpp_config()
 
     def test_proxy_arp(self):
         """ Proxy ARP """
