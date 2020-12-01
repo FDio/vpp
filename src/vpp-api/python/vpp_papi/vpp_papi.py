@@ -33,6 +33,19 @@ from . vpp_format import verify_enum_hint
 from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType
 from . vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
 
+try:
+    import VppTransport
+except ModuleNotFoundError:
+    class V:
+        """placeholder for VppTransport as the implementation is dependent on
+        VPPAPIClient's initialization values
+        """
+
+    VppTransport = V
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
 if sys.version[0] == '2':
     import Queue as queue
 else:
@@ -218,7 +231,7 @@ class VPPApiJSONFiles(object):
         return None
 
     @classmethod
-    def find_api_files(cls, api_dir=None, patterns='*'):
+    def find_api_files(cls, api_dir=None, patterns='*'):  # -> list
         """Find API definition files from the given directory tree with the
         given pattern. If no directory is given then find_api_dir() is used
         to locate one. If no pattern is given then all definition files found
@@ -260,21 +273,49 @@ class VPPApiJSONFiles(object):
     @classmethod
     def process_json_file(self, apidef_file):
         api = json.load(apidef_file)
+        return self._process_json(api)
+
+    @classmethod
+    def process_json_str(self, json_str):
+        api = json.loads(json_str)
+        return self._process_json(api)
+
+    @staticmethod
+    def _process_json(api):  # -> Tuple[Dict, Dict]
         types = {}
         services = {}
         messages = {}
-        for t in api['enums']:
-            t[0] = 'vl_api_' + t[0] + '_t'
-            types[t[0]] = {'type': 'enum', 'data': t}
-        for t in api['unions']:
-            t[0] = 'vl_api_' + t[0] + '_t'
-            types[t[0]] = {'type': 'union', 'data': t}
-        for t in api['types']:
-            t[0] = 'vl_api_' + t[0] + '_t'
-            types[t[0]] = {'type': 'type', 'data': t}
-        for t, v in api['aliases'].items():
-            types['vl_api_' + t + '_t'] = {'type': 'alias', 'data': v}
-        services.update(api['services'])
+        try:
+            for t in api['enums']:
+                t[0] = 'vl_api_' + t[0] + '_t'
+                types[t[0]] = {'type': 'enum', 'data': t}
+        except KeyError:
+            pass
+
+        try:
+            for t in api['unions']:
+                t[0] = 'vl_api_' + t[0] + '_t'
+                types[t[0]] = {'type': 'union', 'data': t}
+        except KeyError:
+            pass
+
+        try:
+            for t in api['types']:
+                t[0] = 'vl_api_' + t[0] + '_t'
+                types[t[0]] = {'type': 'type', 'data': t}
+        except KeyError:
+            pass
+
+        try:
+            for t, v in api['aliases'].items():
+                types['vl_api_' + t + '_t'] = {'type': 'alias', 'data': v}
+        except KeyError:
+            pass
+
+        try:
+            services.update(api['services'])
+        except KeyError:
+            pass
 
         i = 0
         while True:
@@ -309,13 +350,15 @@ class VPPApiJSONFiles(object):
                                     .format(unresolved))
             types = unresolved
             i += 1
-
-        for m in api['messages']:
-            try:
-                messages[m[0]] = VPPMessage(m[0], m[1:])
-            except VPPNotImplementedError:
-                ### OLE FIXME
-                self.logger.error('Not implemented error for {}'.format(m[0]))
+        try:
+            for m in api['messages']:
+                try:
+                    messages[m[0]] = VPPMessage(m[0], m[1:])
+                except VPPNotImplementedError:
+                    ### OLE FIXME
+                    logger.error('Not implemented error for {}'.format(m[0]))
+        except KeyError:
+            pass
         return messages, services
 
 
@@ -389,7 +432,7 @@ class VPPApiClient(object):
             # Pick up API definitions from default directory
             try:
                 apifiles = VPPApiJSONFiles.find_api_files(self.apidir)
-            except RuntimeError:
+            except (RuntimeError, VPPApiError):
                 # In test mode we don't care that we can't find the API files
                 if testmode:
                     apifiles = []
