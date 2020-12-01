@@ -8,6 +8,7 @@ from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppIpTable, VppMplsTable, VppMplsLabel
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
+from vpp_srmpls import VppSrMplsPolicy
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -166,7 +167,8 @@ class TestSRMPLS(VppTestCase):
         #
         # A binding SID with only one label
         #
-        self.vapi.sr_mpls_policy_add(999, 1, 0, [32])
+        policy = VppSrMplsPolicy(self, 999, 1, [32])
+        policy.add_vpp_config()
 
         #
         # A labeled IP route that resolves thru the binding SID
@@ -198,12 +200,13 @@ class TestSRMPLS(VppTestCase):
         self.verify_capture_labelled_ip4(self.pg0, rx, tx,
                                          [VppMplsLabel(32)])
 
-        self.vapi.sr_mpls_policy_del(999)
+        policy.remove_vpp_config()
 
         #
         # this time the SID has many labels pushed
         #
-        self.vapi.sr_mpls_policy_add(999, 1, 0, [32, 33, 34])
+        policy = VppSrMplsPolicy(self, 999, 1, [32, 33, 34])
+        policy.add_vpp_config()
 
         tx = self.create_stream_ip4(self.pg1, "10.0.0.1")
         rx = self.send_and_expect(self.pg1, tx, self.pg0)
@@ -270,7 +273,7 @@ class TestSRMPLS(VppTestCase):
                                           VppMplsLabel(46),
                                           VppMplsLabel(55)])
 
-        self.vapi.sr_mpls_policy_del(999)
+        policy.remove_vpp_config()
 
 
 if __name__ == '__main__':

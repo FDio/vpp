@@ -712,18 +712,6 @@ class VppPapiProvider(object):
                          'decap_vrf_id': decap_vrf_id,
                          'client_mac': client_mac})
 
-    def sr_mpls_policy_add(self, bsid, weight, type, segments):
-        return self.api(self.papi.sr_mpls_policy_add,
-                        {'bsid': bsid,
-                         'weight': weight,
-                         'is_spray': type,
-                         'n_segments': len(segments),
-                         'segments': segments})
-
-    def sr_mpls_policy_del(self, bsid):
-        return self.api(self.papi.sr_mpls_policy_del,
-                        {'bsid': bsid})
-
     def ip_punt_police(self,
                        policer_index,
                        is_ip6=0,
