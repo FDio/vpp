@@ -21,10 +21,10 @@ DPDK_TAP_PMD                 ?= n
 DPDK_FAILSAFE_PMD            ?= n
 DPDK_MACHINE                 ?= default
 
-dpdk_version                 ?= 20.08
+dpdk_version                 ?= 20.11
 dpdk_base_url                ?= http://fast.dpdk.org/rel
 dpdk_tarball                 := dpdk-$(dpdk_version).tar.xz
-dpdk_tarball_md5sum_20.08    := 64badd32cd6bc0761befc8f2402c2148
+dpdk_tarball_md5sum_20.11    := 13a990dc3b300635f685e268b36918a3
 dpdk_tarball_md5sum          := $(dpdk_tarball_md5sum_$(dpdk_version))
 dpdk_url                     := $(dpdk_base_url)/$(dpdk_tarball)
 dpdk_tarball_strip_dirs      := 1
