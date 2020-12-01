@@ -62,6 +62,20 @@ format_tunnel_encap_decap_flags (u8 * s, va_list * args)
     return (s);
 }
 
+uword
+unformat_tunnel_encap_decap_flags (unformat_input_t * input, va_list * args)
+{
+  tunnel_encap_decap_flags_t *f =
+    va_arg (*args, tunnel_encap_decap_flags_t *);
+#define _(a,b,c) if (unformat(input, b)) {\
+  *f |= TUNNEL_ENCAP_DECAP_FLAG_##a;\
+  return 1;\
+  }
+  forech_tunnel_encap_decap_flag;
+#undef _
+  return 0;
+}
+
 
 /*
  * fd.io coding-style-patch-verification: ON

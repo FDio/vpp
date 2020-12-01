@@ -593,6 +593,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   u32 outer_table_id = 0;
   gre_tunnel_type_t t_type = GRE_TUNNEL_TYPE_L3;
   tunnel_mode_t t_mode = TUNNEL_MODE_P2P;
+  tunnel_encap_decap_flags_t flags = TUNNEL_ENCAP_DECAP_FLAG_NONE;
   u32 session_id = 0;
   int rv;
   u8 is_add = 1;
@@ -621,6 +622,11 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
 	t_type = GRE_TUNNEL_TYPE_TEB;
       else if (unformat (line_input, "erspan %d", &session_id))
 	t_type = GRE_TUNNEL_TYPE_ERSPAN;
+      else
+	if (unformat
+	    (line_input, "flags %U", unformat_tunnel_encap_decap_flags,
+	     &flags))
+	;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -662,6 +668,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   a->session_id = session_id;
   a->is_ipv6 = !ip46_address_is_ip4 (&src);
   a->instance = instance;
+  a->flags = flags;
   clib_memcpy (&a->src, &src, sizeof (a->src));
   clib_memcpy (&a->dst, &dst, sizeof (a->dst));
 
