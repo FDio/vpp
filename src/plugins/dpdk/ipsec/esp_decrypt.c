@@ -308,8 +308,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	  cipher_len = payload_len;
 
 	  u8 *digest = vlib_buffer_get_tail (b0) - trunc_size;
-	  u64 digest_paddr =
-	    mb0->buf_physaddr + digest - ((u8 *) mb0->buf_addr);
+	  u64 digest_paddr = mb0->buf_iova + digest - ((u8 *) mb0->buf_addr);
 
 	  if (!is_aead && cipher_alg->alg == RTE_CRYPTO_CIPHER_AES_CBC)
 	    clib_memcpy_fast (icb, iv, 16);

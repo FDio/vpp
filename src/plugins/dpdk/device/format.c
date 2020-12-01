@@ -56,8 +56,7 @@
   _ (PKT_RX_L4_CKSUM_GOOD, "L4 cksum of RX pkt. is valid")              \
   _ (PKT_RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")          \
   _ (PKT_RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")      \
-  _ (PKT_RX_QINQ_STRIPPED, "RX packet QinQ tags stripped") \
-  _ (PKT_RX_TIMESTAMP, "Timestamp field is valid")
+  _ (PKT_RX_QINQ_STRIPPED, "RX packet QinQ tags stripped")
 
 #define foreach_dpdk_pkt_type                                           \
   _ (L2, ETHER, "Ethernet packet")                                      \
@@ -109,6 +108,9 @@
 #define foreach_dpdk_pkt_offload_flag           \
   foreach_dpdk_pkt_rx_offload_flag              \
   foreach_dpdk_pkt_tx_offload_flag
+
+#define foreach_dpdk_pkt_dyn_rx_offload_flag				\
+  _ (RX_TIMESTAMP, 0, "Timestamp field is valid")
 
 u8 *
 format_dpdk_device_name (u8 * s, va_list * args)
@@ -814,7 +816,7 @@ static inline u8 *
 format_dpdk_pkt_types (u8 * s, va_list * va)
 {
   u32 *pkt_types = va_arg (*va, u32 *);
-  u32 indent __attribute__ ((unused)) = format_get_indent (s) + 2;
+  u32 indent __attribute__((unused)) = format_get_indent (s) + 2;
 
   if (!*pkt_types)
     return s;
@@ -838,6 +840,8 @@ format_dpdk_pkt_offload_flags (u8 * s, va_list * va)
 {
   u64 *ol_flags = va_arg (*va, u64 *);
   u32 indent = format_get_indent (s) + 2;
+  u64 rx_dynflag;
+  int rx_dynflag_offset;
 
   if (!*ol_flags)
     return s;
@@ -852,6 +856,22 @@ format_dpdk_pkt_offload_flags (u8 * s, va_list * va)
     }
 
   foreach_dpdk_pkt_offload_flag
+#undef _
+#define _(F, P, S)							\
+  {									\
+    rx_dynflag_offset = rte_mbuf_dynflag_lookup(RTE_MBUF_DYNFLAG_##F##_NAME, \
+						P);			\
+    if (rx_dynflag_offset >= 0)						\
+      {									\
+	rx_dynflag = (u64) 1 << rx_dynflag_offset;			\
+	if (*ol_flags & rx_dynflag)					\
+	  {								\
+	    s = format (s, "\n%U%s %s", format_white_space, indent,	\
+			#F, S);						\
+	  }								\
+      }									\
+  }
+    foreach_dpdk_pkt_dyn_rx_offload_flag
 #undef _
     return s;
 }
@@ -891,7 +911,7 @@ format_dpdk_rte_mbuf (u8 * s, va_list * va)
 	      mb->port, mb->nb_segs, mb->pkt_len,
 	      format_white_space, indent,
 	      mb->buf_len, mb->data_len, mb->ol_flags, mb->data_off,
-	      mb->buf_physaddr, format_white_space, indent, mb->packet_type,
+	      mb->buf_iova, format_white_space, indent, mb->packet_type,
 	      mb->l2_len, mb->l3_len, mb->outer_l2_len, mb->outer_l3_len,
 	      format_white_space, indent, mb->hash.rss, mb->hash.fdir.hi,
 	      mb->hash.fdir.lo);

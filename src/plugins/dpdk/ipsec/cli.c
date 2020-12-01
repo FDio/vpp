@@ -592,7 +592,7 @@ format_dpdk_mempool (u8 * s, va_list * args)
 	      count, mp->size - count, mp->size);
   s = format (s, "%Uphys_addr %p, flags %08x, nb_mem_chunks %u\n",
 	      format_white_space, indent + 2,
-	      mp->mz->phys_addr, mp->flags, mp->nb_mem_chunks);
+	      mp->mz->iova, mp->flags, mp->nb_mem_chunks);
   s = format (s, "%Uelt_size %4u, header_size %3u, trailer_size %u\n",
 	      format_white_space, indent + 2,
 	      mp->elt_size, mp->header_size, mp->trailer_size);

@@ -902,7 +902,7 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
                 hash_set (conf->device_config_index_by_pci_addr, addr->as_u32,
                           devconf - conf->dev_confs);
                 devconf->pci_addr.as_u32 = addr->as_u32;
-                devconf->is_blacklisted = 1;
+                devconf->is_blocked = 1;
                 goto skipped;
               }
             else /* explicitly whitelisted, ignore the device blacklist  */
@@ -928,7 +928,7 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
 	    hash_set (conf->device_config_index_by_pci_addr, addr->as_u32,
 		      devconf - conf->dev_confs);
 	    devconf->pci_addr.as_u32 = addr->as_u32;
-	    devconf->is_blacklisted = 1;
+	    devconf->is_blocked = 1;
 	  }
       }
     /* all Intel network devices */
@@ -1002,7 +1002,7 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
 		      devconf - conf->dev_confs);
 	    devconf->pci_addr.as_u32 = addr->as_u32;
 	  }
-	devconf->is_blacklisted = 1;
+	devconf->is_blocked = 1;
 	clib_error_report (error);
       }
   }
@@ -1450,9 +1450,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	_(rss_queues)
 
     /* add DPDK EAL whitelist/blacklist entry */
-    if (num_whitelisted > 0 && devconf->is_blacklisted == 0)
+    if (num_whitelisted > 0 && devconf->is_blocked == 0)
     {
-	  tmp = format (0, "-w%c", 0);
+	  tmp = format (0, "-a%c", 0);
 	  vec_add1 (conf->eal_init_args, tmp);
 	  if (devconf->devargs)
 	  {
@@ -1464,7 +1464,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  }
 	  vec_add1 (conf->eal_init_args, tmp);
     }
-    else if (num_whitelisted == 0 && devconf->is_blacklisted != 0)
+    else if (num_whitelisted == 0 && devconf->is_blocked != 0)
     {
 	  tmp = format (0, "-b%c", 0);
 	  vec_add1 (conf->eal_init_args, tmp);
@@ -1477,7 +1477,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 #undef _
 
   /* set master-lcore */
-  tmp = format (0, "--master-lcore%c", 0);
+  tmp = format (0, "--main-lcore%c", 0);
   vec_add1 (conf->eal_init_args, tmp);
   tmp = format (0, "%u%c", tm->main_lcore, 0);
   vec_add1 (conf->eal_init_args, tmp);
@@ -1564,11 +1564,11 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
   if (LINK_STATE_ELOGS)
     {
       vlib_main_t *vm = vlib_get_main ();
-      ELOG_TYPE_DECLARE (e) =
-      {
-      .format =
+      ELOG_TYPE_DECLARE (e) = {
+	.format =
 	  "update-link-state: sw_if_index %d, admin_up %d,"
-	  "old link_state %d new link_state %d",.format_args = "i4i1i1i1",};
+	  "old link_state %d new link_state %d",.format_args = "i4i1i1i1",
+      };
 
       struct
       {
@@ -1618,11 +1618,11 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	{
 	  vlib_main_t *vm = vlib_get_main ();
 
-	  ELOG_TYPE_DECLARE (e) =
-	  {
-	  .format =
+	  ELOG_TYPE_DECLARE (e) = {
+	    .format =
 	      "update-link-state: sw_if_index %d, new flags %d",.format_args
-	      = "i4i4",};
+	      = "i4i4",
+	  };
 
 	  struct
 	  {
