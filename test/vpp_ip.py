@@ -7,6 +7,7 @@ import logging
 from ipaddress import ip_address
 from socket import AF_INET, AF_INET6
 from vpp_papi import VppEnum
+from vpp_object import VppObject
 try:
     text_type = unicode
 except NameError:
@@ -133,3 +134,50 @@ class VppIpMPrefix():
                         self.gaddr == str(other.grp_address.ip6) and
                         self.saddr == str(other.src_address.ip6))
         return NotImplemented
+
+
+class VppIpPuntPolicer(VppObject):
+    def __init__(self, test, policer_index, is_ip6=False):
+        self._test = test
+        self._policer_index = policer_index
+        self._is_ip6 = is_ip6
+
+    def add_vpp_config(self):
+        self._test.vapi.ip_punt_police(policer_index=self._policer_index,
+                                       is_ip6=self._is_ip6, is_add=True)
+
+    def remove_vpp_config(self):
+        self._test.vapi.ip_punt_police(policer_index=self._policer_index,
+                                       is_ip6=self._is_ip6, is_add=False)
+
+    def query_vpp_config(self):
+        NotImplemented
+
+
+class VppIpPuntRedirect(VppObject):
+    def __init__(self, test, rx_index, tx_index, nh_addr):
+        self._test = test
+        self._rx_index = rx_index
+        self._tx_index = tx_index
+        self._nh_addr = ip_address(nh_addr)
+
+    def encode(self):
+        return {"rx_sw_if_index": self._rx_index,
+                "tx_sw_if_index": self._tx_index, "nh": self._nh_addr}
+
+    def add_vpp_config(self):
+        self._test.vapi.ip_punt_redirect(punt=self.encode(), is_add=True)
+        self._test.registry.register(self, self._test.logger)
+
+    def remove_vpp_config(self):
+        self._test.vapi.ip_punt_redirect(punt=self.encode(), is_add=False)
+
+    def get_vpp_config(self):
+        is_ipv6 = True if self._nh_addr.version == 6 else False
+        return self._test.vapi.ip_punt_redirect_dump(
+            sw_if_index=self._rx_index, is_ipv6=is_ipv6)
+
+    def query_vpp_config(self):
+        if self.get_vpp_config():
+            return True
+        return False

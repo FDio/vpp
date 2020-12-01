@@ -49,8 +49,6 @@ defaultmapping = {
                          'classify_table_index': 4294967295, 'is_add': 1, },
     'ip_mroute_add_del': {'is_add': 1, },
     'ip_neighbor_add_del': {'is_add': 1, },
-    'ip_punt_police': {'is_add': 1, },
-    'ip_punt_redirect': {'is_add': 1, },
     'ip_route_add_del': {'is_add': 1, },
     'ipsec_interface_add_del_spd': {'is_add': 1, },
     'ipsec_spd_add_del': {'is_add': 1, },
@@ -723,31 +721,6 @@ class VppPapiProvider(object):
     def sr_mpls_policy_del(self, bsid):
         return self.api(self.papi.sr_mpls_policy_del,
                         {'bsid': bsid})
-
-    def ip_punt_police(self,
-                       policer_index,
-                       is_ip6=0,
-                       is_add=1):
-        return self.api(self.papi.ip_punt_police,
-                        {'policer_index': policer_index,
-                         'is_add': is_add,
-                         'is_ip6': is_ip6})
-
-    def ip_punt_redirect(self,
-                         rx_sw_if_index,
-                         tx_sw_if_index,
-                         address,
-                         is_add=1):
-        return self.api(self.papi.ip_punt_redirect,
-                        {'punt': {'rx_sw_if_index': rx_sw_if_index,
-                                  'tx_sw_if_index': tx_sw_if_index,
-                                  'nh': address},
-                         'is_add': is_add})
-
-    def ip_punt_redirect_dump(self, sw_if_index, is_ipv6=0):
-        return self.api(self.papi.ip_punt_redirect_dump,
-                        {'sw_if_index': sw_if_index,
-                         'is_ipv6': is_ipv6})
 
     def bier_table_add_del(self,
                            bti,
