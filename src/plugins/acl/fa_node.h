@@ -232,6 +232,13 @@ typedef struct {
   u64 hashes[VLIB_FRAME_SIZE];
   u16 nexts[VLIB_FRAME_SIZE];
 
+  u8 actions[VLIB_FRAME_SIZE];
+  u8 match_policy_prios[VLIB_FRAME_SIZE];
+
+  u32 trace_bitmaps[VLIB_FRAME_SIZE];
+  u32 match_acl_indices[VLIB_FRAME_SIZE];
+  u32 match_rule_indices[VLIB_FRAME_SIZE];
+
 } acl_fa_per_worker_data_t;
 
 
