@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b87be084_dbc64619",
+        "filename": "src/plugins/wireguard/wireguard_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-12-01T16:49:04Z",
+      "side": 1,
+      "message": "if you feel like fixing my spelling errors, that\u0027s fine by me 😊",
+      "revId": "b90641c0f31990abde5977e0c16af119d8829f04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
