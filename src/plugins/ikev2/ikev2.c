@@ -457,7 +457,8 @@ ikev2_complete_sa_data (ikev2_sa_t * sa, ikev2_sa_t * sai)
   sa->profile_index = sai->profile_index;
   sa->tun_itf = sai->tun_itf;
   sa->is_tun_itf_set = sai->is_tun_itf_set;
-  sa->natt_state = sai->natt_state;
+  if (sai->natt_state == IKEV2_NATT_DISABLED)
+    sa->natt_state = IKEV2_NATT_DISABLED;
   sa->i_id.data = _(sai->i_id.data);
   sa->r_id.data = _(sai->r_id.data);
   sa->i_auth.method = sai->i_auth.method;
