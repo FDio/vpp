@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import unittest
-from vpp_papi.vpp_serializer import VPPType, VPPEnumType
+from vpp_papi.vpp_serializer import VPPType, VPPEnumType, VPPEnumFlagType
 from vpp_papi.vpp_serializer import VPPUnionType, VPPMessage
 from vpp_papi.vpp_serializer import VPPTypeAlias, VPPSerializerValueError
 from vpp_papi import MACAddress
@@ -607,6 +607,22 @@ class TestAddType(unittest.TestCase):
         nt, size = eid.unpack(b)
         self.assertEqual(str(nt.address.mac), 'aa:bb:cc:dd:ee:ff')
         self.assertIsNone(nt.address.prefix)
+
+    def test_enum_flag(self):
+        ef = VPPEnumFlagType('vl_api_address_family_t',
+                             [["ADDRESS_IP4", 0],
+                              ["ADDRESS_IP6", 1],
+                              {"enumtype": "u32"}])
+
+        self.assertIsInstance(ef, VPPEnumFlagType)
+        data = 1
+        b = ef.pack(data)
+        self.assertEqual(b'\x00\x00\x00\x01', b)
+        val = ef.unpack(b)
+        # unpack returns (data, size in bytes)
+        self.assertEqual(val, (1, 4))
+        # test the __repr__
+        self.assertTrue(str(repr(ef)).startswith("VPPEnumFlagType"))
 
 
 if __name__ == '__main__':

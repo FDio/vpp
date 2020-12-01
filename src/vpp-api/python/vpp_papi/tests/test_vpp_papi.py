@@ -15,7 +15,9 @@
 import ctypes
 import multiprocessing as mp
 import unittest
-from vpp_papi import vpp_papi
+from unittest import mock
+
+from vpp_papi import vpp_papi, vpp_transport_shmem
 
 
 class TestVppPapiVPPApiClient(unittest.TestCase):
@@ -50,4 +52,63 @@ class TestVppPapiVPPApiClientMp(unittest.TestCase):
 
         # AssertionError: 11 != 1
         self.assertEqual(11, c.get_context())
+
+
+class TestVppTypes(unittest.TestCase):
+
+    def test_enum_from_json(self):
+        json_api = """\
+{
+    "enums": [
+
+        [
+            "address_family",
+            [
+                "ADDRESS_IP4",
+                0
+            ],
+            [
+                "ADDRESS_IP6",
+                1
+            ],
+            {
+                "enumtype": "u8"
+            }
+        ],
+        [
+            "if_type",
+            [
+                "IF_API_TYPE_HARDWARE",
+                0
+            ],
+            [
+                "IF_API_TYPE_SUB",
+                1
+            ],
+            [
+                "IF_API_TYPE_P2P",
+                2
+            ],
+            [
+                "IF_API_TYPE_PIPE",
+                3
+            ],
+            {
+                "enumtype": "u32"
+            }
+        ]
+    ]
+}
+"""
+        processor = vpp_papi.VPPApiJSONFiles()
+
+        # add the types to vpp_serializer
+        processor.process_json_str(json_api)
+
+        vpp_transport_shmem.VppTransport = mock.MagicMock()
+        ac = vpp_papi.VPPApiClient(apifiles=[], testmode=True)
+        type_name = "vl_api_if_type_t"
+        t = ac.get_type(type_name)
+        self.assertTrue(str(t).startswith("VPPEnumType"))
+        self.assertEqual(t.name, type_name)
 

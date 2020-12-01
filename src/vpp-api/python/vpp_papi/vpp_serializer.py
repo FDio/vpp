@@ -57,8 +57,7 @@ def conversion_unpacker(data, field_type):
     return vpp_format.conversion_unpacker_table[field_type](data)
 
 
-# TODO: post 20.01, remove inherit from object.
-class Packer(object):
+class Packer:
     options = {}
 
     def pack(self, data, kwargs):
@@ -375,7 +374,7 @@ class VPPEnumType(Packer):
             e_hash[ename] = evalue
         self.enum = IntFlag(name, e_hash)
         types[name] = self
-        class_types[name] = VPPEnumType
+        class_types[name] = self.__class__.__name__
         self.options = options
 
     def __getattr__(self, name):
@@ -406,9 +405,16 @@ class VPPEnumType(Packer):
         return VPPEnumType(f_type, types[f_type].msgdef, options=options)
 
     def __repr__(self):
-        return "VPPEnumType(name=%s, msgdef=%s, options=%s)" % (
-            self.name, self.msgdef, self.options
+        return "%s(name=%s, msgdef=%s, options=%s)" % (
+            self.__class__.__name__, self.name, self.msgdef, self.options
         )
+
+
+class VPPEnumFlagType(VPPEnumType):
+
+    @staticmethod
+    def _get_packer_with_options(f_type, options):
+        return VPPEnumFlagType(f_type, types[f_type].msgdef, options=options)
 
 
 class VPPUnionType(Packer):

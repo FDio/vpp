@@ -2,7 +2,7 @@
 
 ## Overview
 
-VPP API module allows communicating with VPP over shared memory interface.
+VPP API module allows communicating with VPP over a shared memory interface.
 The API consists of 3 parts:
 
 * common code - low-level API
@@ -62,7 +62,7 @@ API headers. All the code is stored in the headers.
 ### Low-level API
 
 Refer to inline API documentation in doxygen format in `vapi.h` header
-for description of functions. It's recommened to use the safer, high-level
+for description of functions. It's recommended to use the safer, high-level
 API provided by specialized headers (e.g. `vpe.api.vapi.h`
 or `vpe.api.vapi.hpp`).
 
@@ -71,7 +71,7 @@ or `vpe.api.vapi.hpp`).
 ##### Callbacks
 
 The C high-level API is strictly callback-based for maximum efficiency.
-Whenever an operation is initiated a callback with a callback context is part
+Whenever an operation is initiated, a callback with a callback context is part
 of that operation. The callback is then invoked when the response (or multiple
 responses) arrive which are tied to the request. Also, callbacks are invoked
 whenever an event arrives, if such callback is registered. All the pointers
@@ -145,7 +145,7 @@ is consumed by vpp and inaccessible (set to nullptr) anymore.
 0. Create a `Connection` and execute the appropriate `Request` to subscribe to
    events (e.g. `Want_stats`)
 1. Create an `Event_registration` with a template argument being the type of
-   event you are insterested in.
+   event you are interested in.
 2. Call `dispatch()` or `wait_for_response()` to wait for the event. A callback
    will be called when an event occurs (if passed to `Event_registration()`
    constructor). Alternatively, read the result set.
