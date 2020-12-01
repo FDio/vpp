@@ -632,6 +632,7 @@ class IkePeer(VppTestCase):
     def get_ike_header(self, packet):
         try:
             ih = packet[ikev2.IKEv2]
+            ih = self.verify_and_remove_non_esp_marker(ih)
         except IndexError as e:
             # this is a workaround for getting IKEv2 layer as both ikev2 and
             # ipsec register for port 4500
@@ -933,6 +934,8 @@ class TemplateInitiator(IkePeer):
         self.assertEqual(s.load, dst_sha)
 
     def verify_sa_init_request(self, packet):
+        udp = packet[UDP]
+        self.sa.dport = udp.sport
         ih = packet[ikev2.IKEv2]
         self.assertNotEqual(ih.init_SPI, 8 * b'\x00')
         self.assertEqual(ih.exch_type, 34)  # SA_INIT
@@ -974,6 +977,8 @@ class TemplateInitiator(IkePeer):
             trans = trans.payload
 
     def verify_sa_auth_req(self, packet):
+        udp = packet[UDP]
+        self.sa.dport = udp.sport
         ih = self.get_ike_header(packet)
         self.assertEqual(ih.resp_SPI, self.sa.rspi)
         self.assertEqual(ih.init_SPI, self.sa.ispi)
@@ -1009,6 +1014,15 @@ class TemplateInitiator(IkePeer):
                  transform_id=self.sa.ike_dh))
         props = (ikev2.IKEv2_payload_Proposal(proposal=1, proto='IKEv2',
                  trans_nb=4, trans=trans))
+
+        src_address = inet_pton(socket.AF_INET, self.pg0.remote_ip4)
+        if self.sa.natt:
+            dst_address = b'\x0a\x0a\x0a\x0a'
+        else:
+            dst_address = inet_pton(socket.AF_INET, self.pg0.local_ip4)
+        src_nat = self.sa.compute_nat_sha1(src_address, self.sa.sport)
+        dst_nat = self.sa.compute_nat_sha1(dst_address, self.sa.dport)
+
         self.sa.init_resp_packet = (
             ikev2.IKEv2(init_SPI=self.sa.ispi, resp_SPI=self.sa.rspi,
                         exch_type='IKE_SA_INIT', flags='Response') /
@@ -1016,11 +1030,16 @@ class TemplateInitiator(IkePeer):
             ikev2.IKEv2_payload_KE(next_payload='Nonce',
                                    group=self.sa.ike_dh,
                                    load=self.sa.my_dh_pub_key) /
-            ikev2.IKEv2_payload_Nonce(load=self.sa.r_nonce))
+            ikev2.IKEv2_payload_Nonce(load=self.sa.r_nonce,
+                                      next_payload='Notify') /
+            ikev2.IKEv2_payload_Notify(
+                    type='NAT_DETECTION_SOURCE_IP', load=src_nat,
+                    next_payload='Notify') / ikev2.IKEv2_payload_Notify(
+                    type='NAT_DETECTION_DESTINATION_IP', load=dst_nat))
 
         ike_msg = self.create_packet(self.pg0, self.sa.init_resp_packet,
                                      self.sa.sport, self.sa.dport,
-                                     self.sa.natt, self.ip6)
+                                     False, self.ip6)
         self.pg_send(self.pg0, ike_msg)
         capture = self.pg0.get_capture(1)
         self.verify_sa_auth_req(capture[0])
@@ -1586,6 +1605,31 @@ class TestApi(VppTestCase):
             self.assertEqual(ap.tun_itf, cp['tun_itf'])
         else:
             self.assertEqual(ap.tun_itf, 0xffffffff)
+
+
+class TestInitiatorNATT(TemplateInitiator, Ikev2Params):
+    """ test ikev2 initiator - NAT traversal (intitiator behind NAT) """
+
+    def config_tc(self):
+        self.config_params({
+            'natt': True,
+            'is_initiator': False,  # seen from test case perspective
+                                    # thus vpp is initiator
+            'responder': {'sw_if_index': self.pg0.sw_if_index,
+                           'addr': self.pg0.remote_ip4},
+            'ike-crypto': ('AES-GCM-16ICV', 32),
+            'ike-integ': 'NULL',
+            'ike-dh': '3072MODPgr',
+            'ike_transforms': {
+                'crypto_alg': 20,  # "aes-gcm-16"
+                'crypto_key_size': 256,
+                'dh_group': 15,  # "modp-3072"
+            },
+            'esp_transforms': {
+                'crypto_alg': 12,  # "aes-cbc"
+                'crypto_key_size': 256,
+                # "hmac-sha2-256-128"
+                'integ_alg': 12}})
 
 
 class TestInitiatorPsk(TemplateInitiator, Ikev2Params):
