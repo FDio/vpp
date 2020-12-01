@@ -29,8 +29,12 @@ void vac_mem_init (size_t size);
 
 vpp_object = None
 
-# Barfs on failure, no need to check success.
-vpp_api = ffi.dlopen('libvppapiclient.so')
+# allow file to be imported so it can be mocked in tests.
+# If the shared library fails, VppTransport cannot be initialized.
+try:
+    vpp_api = ffi.dlopen('libvppapiclient.so')
+except OSError:
+    vpp_api = None
 
 
 @ffi.callback("void(unsigned char *, int)")
