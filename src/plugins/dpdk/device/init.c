@@ -1452,7 +1452,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     /* add DPDK EAL whitelist/blacklist entry */
     if (num_whitelisted > 0 && devconf->is_blacklisted == 0)
     {
-	  tmp = format (0, "-w%c", 0);
+	  tmp = format (0, "-a%c", 0);
 	  vec_add1 (conf->eal_init_args, tmp);
 	  if (devconf->devargs)
 	  {
@@ -1477,7 +1477,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 #undef _
 
   /* set master-lcore */
-  tmp = format (0, "--master-lcore%c", 0);
+  tmp = format (0, "--main-lcore%c", 0);
   vec_add1 (conf->eal_init_args, tmp);
   tmp = format (0, "%u%c", tm->main_lcore, 0);
   vec_add1 (conf->eal_init_args, tmp);
