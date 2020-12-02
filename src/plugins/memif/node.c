@@ -29,24 +29,7 @@
 
 #include <memif/memif.h>
 #include <memif/private.h>
-
-#define foreach_memif_input_error \
-  _(BUFFER_ALLOC_FAIL, "buffer allocation failed")		\
-  _(NOT_IP, "not ip packet")
-
-typedef enum
-{
-#define _(f,s) MEMIF_INPUT_ERROR_##f,
-  foreach_memif_input_error
-#undef _
-    MEMIF_INPUT_N_ERROR,
-} memif_input_error_t;
-
-static __clib_unused char *memif_input_error_strings[] = {
-#define _(n,s) s,
-  foreach_memif_input_error
-#undef _
-};
+#include <memif/memif.api_enum.h>
 
 typedef struct
 {
@@ -934,7 +917,7 @@ VLIB_REGISTER_NODE (memif_input_node) = {
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_INTERRUPT,
   .n_errors = MEMIF_INPUT_N_ERROR,
-  .error_strings = memif_input_error_strings,
+  .error_counters = memif_input_error_counters,
 };
 
 /* *INDENT-ON* */
