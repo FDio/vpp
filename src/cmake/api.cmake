@@ -166,6 +166,7 @@ function(vpp_add_api_files name dir component)
     )
   endforeach()
   add_custom_target(${target} DEPENDS ${header_files})
+  add_dependencies(api_headers ${target})
 endfunction()
 
 add_custom_target(api_headers
