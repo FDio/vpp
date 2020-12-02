@@ -67,8 +67,8 @@ typedef enum
 
 typedef enum
 {
-  IPSEC_PROTOCOL_AH = 0,
-  IPSEC_PROTOCOL_ESP = 1
+  IPSEC_PROTOCOL_ESP = 50,
+  IPSEC_PROTOCOL_AH = 51
 } __clib_packed ipsec_protocol_t;
 
 #define IPSEC_KEY_MAX_LEN 128
