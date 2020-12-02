@@ -6,6 +6,8 @@
 from cffi import FFI
 import cffi
 
+from .vpp_transport import BaseTransport
+
 ffi = FFI()
 ffi.cdef("""
 typedef void (*vac_callback_t)(unsigned char * data, int len);
@@ -58,7 +60,7 @@ class VppTransportShmemIOError(IOError):
         super(VppTransportShmemIOError, self).__init__(rv, descr)
 
 
-class VppTransport(object):
+class VppTransport(BaseTransport):
     VppTransportShmemIOError = VppTransportShmemIOError
 
     def __init__(self, parent, read_timeout, server_address):
