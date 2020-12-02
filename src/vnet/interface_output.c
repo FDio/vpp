@@ -513,9 +513,35 @@ CLIB_MARCH_FN_REGISTRATION (vnet_interface_output_node);
 
 #ifndef CLIB_MARCH_VARIANT
 vlib_node_function_t *
-vnet_interface_output_node_get (void)
+vnet_interface_output_node_get (vlib_main_t * vm)
 {
-  return CLIB_MARCH_FN_POINTER (vnet_interface_output_node);
+  vlib_node_function_t *fn = 0;
+  vlib_node_fn_registration_t *fnr;
+  char *name = 0;
+  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "interface-output");
+  ASSERT (node);
+
+  /* search for the same name */
+  fnr = node->node_fn_registrations;
+  while (fnr)
+    {
+      if (fnr->function == node->function)
+	{
+	  name = fnr->name;
+	  break;
+	}
+      fnr = fnr->next_registration;
+    }
+
+  if (name)
+    {
+      fn = CLIB_MARCH_FN_POINTER_BY_NAME (vnet_interface_output_node, name);
+    }
+  if (!fn)			/* revert to march type selection if search failed */
+    {
+      fn = CLIB_MARCH_FN_POINTER (vnet_interface_output_node);
+    }
+  return fn;
 }
 #endif /* CLIB_MARCH_VARIANT */
 

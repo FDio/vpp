@@ -40,6 +40,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <vlib/vlib.h>
+#include <vnet/vnet.h>
 
 typedef struct _vlib_node_march_variant
 {
@@ -89,9 +90,9 @@ unformat_vlib_node_variant (unformat_input_t * input, va_list * args)
 }
 
 static_always_inline void
-vlib_update_nr_variant_default (vlib_node_registration_t * nr, u8 * variant)
+vlib_update_nr_variant_default (vlib_node_fn_registration_t * fnr,
+				u8 * variant)
 {
-  vlib_node_fn_registration_t *fnr = nr->node_fn_registrations;
   vlib_node_fn_registration_t *p_reg = 0;
   vlib_node_fn_registration_t *v_reg = 0;
   u32 tmp;
@@ -127,6 +128,8 @@ vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
 {
   clib_error_t *error = 0;
   vlib_node_registration_t *nr, **all;
+  vnet_device_class_t *c;
+  vnet_main_t *vnm = vnet_get_main ();
   unformat_input_t sub_input;
   uword *hash = 0, *p;
   u8 *variant = 0;
@@ -161,8 +164,18 @@ vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
 	      nr = vm->node_main.node_registrations;
 	      while (nr)
 		{
-		  vlib_update_nr_variant_default (nr, variant);
+		  vlib_update_nr_variant_default (nr->node_fn_registrations,
+						  variant);
 		  nr = nr->next_registration;
+		}
+
+	      /* also apply it to interfaces */
+	      c = vnm->device_class_registrations;
+	      while (c)
+		{
+		  vlib_update_nr_variant_default (c->tx_fn_registrations,
+						  variant);
+		  c = c->next_class_registration;
 		}
 
 	      vec_free (variant);
@@ -192,7 +205,8 @@ vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
 					      "please specify a valid node variant");
 		  vec_add1 (variant, 0);
 
-		  vlib_update_nr_variant_default (nr, variant);
+		  vlib_update_nr_variant_default (nr->node_fn_registrations,
+						  variant);
 
 		  vec_free (variant);
 		}
