@@ -521,28 +521,28 @@ vnet_gso_node_inline (vlib_main_t * vm,
 	    if (PREDICT_FALSE (hi->sw_if_index != swif0))
 	      {
 		hi0 = vnet_get_sup_hw_interface (vnm, swif0);
-		if ((hi0->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0 &&
-		    (b[0]->flags & VNET_BUFFER_F_GSO))
+		if ((hi0->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) == 0
+		    && (b[0]->flags & VNET_BUFFER_F_GSO))
 		  break;
 	      }
 	    if (PREDICT_FALSE (hi->sw_if_index != swif1))
 	      {
 		hi1 = vnet_get_sup_hw_interface (vnm, swif1);
-		if (!(hi1->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) &&
+		if (!(hi1->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) &&
 		    (b[1]->flags & VNET_BUFFER_F_GSO))
 		  break;
 	      }
 	    if (PREDICT_FALSE (hi->sw_if_index != swif2))
 	      {
 		hi2 = vnet_get_sup_hw_interface (vnm, swif2);
-		if ((hi2->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0 &&
-		    (b[2]->flags & VNET_BUFFER_F_GSO))
+		if ((hi2->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) == 0
+		    && (b[2]->flags & VNET_BUFFER_F_GSO))
 		  break;
 	      }
 	    if (PREDICT_FALSE (hi->sw_if_index != swif3))
 	      {
 		hi3 = vnet_get_sup_hw_interface (vnm, swif3);
-		if (!(hi3->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) &&
+		if (!(hi3->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) &&
 		    (b[3]->flags & VNET_BUFFER_F_GSO))
 		  break;
 	      }
@@ -613,7 +613,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 	  if (PREDICT_FALSE (hi->sw_if_index != swif0))
 	    {
 	      hi0 = vnet_get_sup_hw_interface (vnm, swif0);
-	      if ((hi0->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0 &&
+	      if ((hi0->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) == 0 &&
 		  (b[0]->flags & VNET_BUFFER_F_GSO))
 		do_segmentation0 = 1;
 	    }
@@ -772,7 +772,7 @@ vnet_gso_inline (vlib_main_t * vm,
       hi = vnet_get_sup_hw_interface (vnm,
 				      vnet_buffer (b)->sw_if_index[VLIB_TX]);
 
-      if (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
+      if (hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO)
 	return vnet_gso_node_inline (vm, node, frame, vnm, hi,
 				     is_l2, is_ip4, is_ip6,
 				     /* do_segmentation */ 0);
