@@ -326,6 +326,7 @@ CLIB_MARCH_SFX (devclass##_tx_fn_multiarch_register) (void)		\
   vlib_node_fn_registration_t *r;					\
   r = &CLIB_MARCH_SFX (devclass##_tx_fn_registration);			\
   r->priority = CLIB_MARCH_FN_PRIORITY();				\
+  r->name = CLIB_MARCH_VARIANT_STR;					\
   r->next_registration = devclass.tx_fn_registrations;			\
   devclass.tx_fn_registrations = r;					\
 }									\
@@ -348,7 +349,7 @@ typedef enum vnet_link_t_
   VNET_LINK_ETHERNET,
   VNET_LINK_ARP,
   VNET_LINK_NSH,
-} __attribute__ ((packed)) vnet_link_t;
+} __attribute__((packed)) vnet_link_t;
 
 #define VNET_LINKS {                   \
     [VNET_LINK_ETHERNET] = "ethernet", \
@@ -726,7 +727,7 @@ typedef enum vnet_sw_interface_flags_t_
   /* Interface has IP configured directed broadcast */
   VNET_SW_INTERFACE_FLAG_DIRECTED_BCAST = (1 << 7),
 
-} __attribute__ ((packed)) vnet_sw_interface_flags_t;
+} __attribute__((packed)) vnet_sw_interface_flags_t;
 
 /* Software-interface.  This corresponds to a Ethernet VLAN, ATM vc, a
    tunnel, etc.  Configuration (e.g. IP address) gets attached to
@@ -918,7 +919,7 @@ void vnet_pcap_drop_trace_filter_add_del (u32 error_index, int is_add);
 
 int vnet_interface_name_renumber (u32 sw_if_index, u32 new_show_dev_instance);
 
-vlib_node_function_t *vnet_interface_output_node_get (void);
+vlib_node_function_t *vnet_interface_output_node_get (vlib_main_t * vm);
 
 void vnet_register_format_buffer_opaque_helper
   (vnet_buffer_opquae_formatter_t fn);
