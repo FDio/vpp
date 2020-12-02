@@ -182,6 +182,25 @@ define memif_dump
   u32 context;
 };
 
+counters memif_input {
+  buffer_alloc_fail {
+    severity error;
+    type counter64;
+    units "packets";
+    description "buffer allocation failed";
+  };
+  not_ip {
+    severity info;
+    type counter64;
+    units "packets";
+    description "not ip packet";
+  };
+};
+
+paths {
+  "/err/memif-input" "memif_input";
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
