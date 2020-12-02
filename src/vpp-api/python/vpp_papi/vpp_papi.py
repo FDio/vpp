@@ -917,7 +917,4 @@ class VPPApiClient:
                 break
             cursor = rv.cursor
 
-# Provide the old name for backward compatibility.
-VPP = VPPApiClient
-
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
