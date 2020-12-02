@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "88383e91_0600ccc6",
+        "filename": "src/svm/message_queue.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-12-02T06:09:09Z",
+      "side": 1,
+      "message": "Do we check return value and call pthread_mutex_consistent here?",
+      "range": {
+        "startLine": 305,
+        "startChar": 9,
+        "endLine": 305,
+        "endChar": 47
+      },
+      "revId": "2440a8a6e72a1fb156fce3f38ef3ae8cd2a527d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9720035c_c2bdb81f",
+        "filename": "src/svm/queue.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-12-02T06:09:09Z",
+      "side": 1,
+      "message": "Also, do we check return value and call pthread_mutex_consistent here?",
+      "range": {
+        "startLine": 259,
+        "startChar": 9,
+        "endLine": 259,
+        "endChar": 44
+      },
+      "revId": "2440a8a6e72a1fb156fce3f38ef3ae8cd2a527d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "92a4ab9c_60ad903e",
+        "filename": "src/svm/queue.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-12-02T06:09:09Z",
+      "side": 1,
+      "message": "Also, do we check return value and call pthread_mutex_consistent here?",
+      "range": {
+        "startLine": 309,
+        "startChar": 6,
+        "endLine": 309,
+        "endChar": 44
+      },
+      "revId": "2440a8a6e72a1fb156fce3f38ef3ae8cd2a527d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2e77400a_40c35b92",
+        "filename": "src/svm/queue.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 370,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-12-02T06:09:09Z",
+      "side": 1,
+      "message": "Also, do we check return value and call pthread_mutex_consistent here?",
+      "range": {
+        "startLine": 370,
+        "startChar": 6,
+        "endLine": 370,
+        "endChar": 44
+      },
+      "revId": "2440a8a6e72a1fb156fce3f38ef3ae8cd2a527d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
