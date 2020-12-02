@@ -114,3 +114,25 @@ class TestVppTypes(unittest.TestCase):
         self.assertTrue(str(t).startswith("VPPEnumType"))
         self.assertEqual(t.name, type_name)
 
+
+class TestVppPapiLogging(unittest.TestCase):
+
+    def test_logger(self):
+        class Transport:
+            connected = True
+
+        class Vpp:
+            transport = Transport()
+
+            def disconnect(self):
+                pass
+
+        client = Vpp
+        with self.assertLogs('vpp_papi', level='DEBUG') as cm:
+            vpp_papi.vpp_atexit(client)
+        self.assertEqual(cm.output, ['DEBUG:vpp_papi:Cleaning up VPP on exit'])
+
+        with self.assertRaises(AssertionError):
+            with self.assertLogs('vpp_papi.serializer', level='DEBUG') as cm:
+                vpp_papi.vpp_atexit(client)
+        self.assertEqual(cm.output, [])

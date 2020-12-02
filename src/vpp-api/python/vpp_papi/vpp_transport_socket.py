@@ -13,6 +13,9 @@ except ImportError:
 import logging
 from . import vpp_papi
 
+logger = logging.getLogger('vpp_papi.transport')
+logger.addHandler(logging.NullHandler())
+
 
 class VppTransportSocketIOError(IOError):
     # TODO: Document different values of error number (first numeric argument).

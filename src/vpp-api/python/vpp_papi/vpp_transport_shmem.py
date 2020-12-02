@@ -2,9 +2,13 @@
 # A transport class. With two implementations.
 # One for socket and one for shared memory.
 #
+import logging
 
 from cffi import FFI
 import cffi
+
+logger = logging.getLogger('vpp_papi.transport')
+logger.addHandler(logging.NullHandler())
 
 ffi = FFI()
 ffi.cdef("""
