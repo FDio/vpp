@@ -44,6 +44,7 @@ VLIB_NODE_FN(pnat_output_node)
     return pnat_node_inline(vm, node, frame, PNAT_IP4_OUTPUT, VLIB_TX);
 }
 
+#ifndef CLIB_MARCH_VARIANT
 VLIB_REGISTER_NODE(pnat_input_node) = {
     .name = "pnat-input",
     .vector_size = sizeof(u32),
@@ -67,6 +68,7 @@ VLIB_REGISTER_NODE(pnat_output_node) = {
     .error_counters = pnat_error_counters,
     .sibling_of = "pnat-input",
 };
+#endif
 
 /* Hook up features */
 VNET_FEATURE_INIT(pnat_input, static) = {
