@@ -189,7 +189,7 @@ class VPPStatsClientLoadError(RuntimeError):
     pass
 
 
-class VPPStats(object):
+class VPPStats:
     VPPStatsIOError = VPPStatsIOError
 
     default_socketname = '/run/vpp/stats.sock'

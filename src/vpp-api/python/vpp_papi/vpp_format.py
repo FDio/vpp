@@ -18,10 +18,6 @@ import socket
 import ipaddress
 from . import macaddress
 
-try:
-    text_type = unicode
-except NameError:
-    text_type = str
 
 # Copies from vl_api_address_t definition
 ADDRESS_IP4 = 0
@@ -51,7 +47,7 @@ def format_vl_api_address_t(args):
 def format_vl_api_prefix_t(args):
     if isinstance(args, (ipaddress.IPv4Network, ipaddress.IPv6Network)):
         return {'address': format_vl_api_address_t(
-            text_type(args.network_address)),
+            str(args.network_address)),
                 'len': int(args.prefixlen)}
     p, length = args.split('/')
     return {'address': format_vl_api_address_t(p),
@@ -61,7 +57,7 @@ def format_vl_api_prefix_t(args):
 def format_vl_api_address_with_prefix_t(args):
     if isinstance(args, (ipaddress.IPv4Interface, ipaddress.IPv6Interface)):
         return {'address': format_vl_api_address_t(
-            text_type(args.network_address)),
+            str(args.network_address)),
                 'len': int(args.prefixlen)}
     p, length = args.split('/')
     return {'address': format_vl_api_address_t(p),
