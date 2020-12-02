@@ -143,10 +143,14 @@ static void
 fss_chunk_free_list_push (fifo_segment_slice_t * fss, u32 fl_index,
 			  svm_fifo_chunk_t * c)
 {
-  clib_spinlock_lock (&fss->chunk_lock);
-  c->next = fss->free_chunks[fl_index];
-  fss->free_chunks[fl_index] = c;
-  clib_spinlock_unlock (&fss->chunk_lock);
+  svm_fifo_chunk_t *old_head;
+
+  __atomic_load (&fss->free_chunks[fl_index], &old_head, __ATOMIC_RELAXED);
+  c->next = old_head;
+
+  while (!clib_atomic_cmp_and_swap_acq_relax (&fss->free_chunks[fl_index],
+					      &old_head, &c, 1 /* weak */ ))
+    c->next = old_head;
 }
 
 static void
@@ -154,33 +158,36 @@ fss_chunk_free_list_push_list (fifo_segment_slice_t * fss, u32 fl_index,
 			       svm_fifo_chunk_t * head,
 			       svm_fifo_chunk_t * tail)
 {
-  clib_spinlock_lock (&fss->chunk_lock);
-  tail->next = fss->free_chunks[fl_index];
-  fss->free_chunks[fl_index] = head;
-  clib_spinlock_unlock (&fss->chunk_lock);
+  svm_fifo_chunk_t *old_head;
+
+  __atomic_load (&fss->free_chunks[fl_index], &old_head, __ATOMIC_RELAXED);
+  tail->next = old_head;
+
+  while (!clib_atomic_cmp_and_swap_acq_relax (&fss->free_chunks[fl_index],
+					      &old_head, &head,
+					      1 /* weak */ ))
+    tail->next = old_head;
 }
 
 static svm_fifo_chunk_t *
 fss_chunk_free_list_pop (fifo_segment_slice_t * fss, u32 fl_index)
 {
-  svm_fifo_chunk_t *c;
+  svm_fifo_chunk_t *old_head, *new_head;
 
-  ASSERT (fss_chunk_fl_index_is_valid (fss, fl_index));
+  __atomic_load (&fss->free_chunks[fl_index], &old_head, __ATOMIC_RELAXED);
+  if (!old_head)
+    return 0;
 
-  clib_spinlock_lock (&fss->chunk_lock);
+  new_head = old_head->next;
 
-  if (!fss->free_chunks[fl_index])
-    {
-      clib_spinlock_unlock (&fss->chunk_lock);
-      return 0;
-    }
+  /* ABA is a problem only if chunk is popped and pushed by the same thread.
+   * Can only happen if vpp allocates fifo and frees it shortly thereafter */
+  while (!clib_atomic_cmp_and_swap_acq_relax (&fss->free_chunks[fl_index],
+					      &old_head, &new_head,
+					      1 /* weak */ ))
+    new_head = old_head->next;
 
-  c = fss->free_chunks[fl_index];
-  fss->free_chunks[fl_index] = c->next;
-
-  clib_spinlock_unlock (&fss->chunk_lock);
-
-  return c;
+  return old_head;
 }
 
 static inline void
