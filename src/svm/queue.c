@@ -103,6 +103,15 @@ svm_queue_lock (svm_queue_t * q)
     pthread_mutex_consistent (&q->mutex);
 }
 
+static int
+svm_queue_trylock (svm_queue_t * q)
+{
+  int rv = pthread_mutex_trylock (&q->mutex);
+  if (PREDICT_FALSE (rv == EOWNERDEAD))
+    rv = pthread_mutex_consistent (&q->mutex);
+  return rv;
+}
+
 void
 svm_queue_unlock (svm_queue_t * q)
 {
@@ -256,7 +265,7 @@ svm_queue_add (svm_queue_t * q, u8 * elem, int nowait)
   if (nowait)
     {
       /* zero on success */
-      if (pthread_mutex_trylock (&q->mutex))
+      if (svm_queue_trylock (q))
 	{
 	  return (-1);
 	}
@@ -306,7 +315,7 @@ svm_queue_add2 (svm_queue_t * q, u8 * elem, u8 * elem2, int nowait)
   if (nowait)
     {
       /* zero on success */
-      if (pthread_mutex_trylock (&q->mutex))
+      if (svm_queue_trylock (q))
 	{
 	  return (-1);
 	}
@@ -367,7 +376,7 @@ svm_queue_sub (svm_queue_t * q, u8 * elem, svm_q_conditional_wait_t cond,
   if (cond == SVM_Q_NOWAIT)
     {
       /* zero on success */
-      if (pthread_mutex_trylock (&q->mutex))
+      if (svm_queue_trylock (q))
 	{
 	  return (-1);
 	}

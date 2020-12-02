@@ -21,6 +21,7 @@
 #define included_svm_queue_h
 
 #include <pthread.h>
+#include <vppinfra/clib.h>
 
 typedef struct _svm_queue
 {
