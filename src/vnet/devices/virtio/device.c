@@ -996,8 +996,10 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
 
   clib_spinlock_lock_if_init (&vring->lockp);
 
-  if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0 &&
-      (vring->last_kick_avail_idx != vring->avail->idx))
+  if (packed && (vring->device_event->flags != VRING_EVENT_F_DISABLE))
+    virtio_kick (vm, vring, vif);
+  else if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0 &&
+	   (vring->last_kick_avail_idx != vring->avail->idx))
     virtio_kick (vm, vring, vif);
 
   if (vif->packet_coalesce)
@@ -1078,6 +1080,24 @@ virtio_clear_hw_interface_counters (u32 instance)
   /* Nothing for now */
 }
 
+static_always_inline void
+virtio_set_rx_interrupt (virtio_if_t * vif, virtio_vring_t * vring)
+{
+  if (vif->is_packed)
+    vring->driver_event->flags &= ~VRING_EVENT_F_DISABLE;
+  else
+    vring->avail->flags &= ~VRING_AVAIL_F_NO_INTERRUPT;
+}
+
+static_always_inline void
+virtio_set_rx_polling (virtio_if_t * vif, virtio_vring_t * vring)
+{
+  if (vif->is_packed)
+    vring->driver_event->flags |= VRING_EVENT_F_DISABLE;
+  else
+    vring->avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
+}
+
 static clib_error_t *
 virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
 				 vnet_hw_if_rx_mode mode)
@@ -1090,7 +1110,7 @@ virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
 
   if (vif->type == VIRTIO_IF_TYPE_PCI && !(vif->support_int_mode))
     {
-      rx_vring->avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
+      virtio_set_rx_polling (vif, rx_vring);
       return clib_error_return (0, "interrupt mode is not supported");
     }
 
@@ -1105,7 +1125,7 @@ virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
 				       virtio_send_interrupt_node.index,
 				       VIRTIO_EVENT_STOP_TIMER, 0);
 	}
-      rx_vring->avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
+      virtio_set_rx_polling (vif, rx_vring);
     }
   else
     {
@@ -1117,7 +1137,7 @@ virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
 				       virtio_send_interrupt_node.index,
 				       VIRTIO_EVENT_START_TIMER, 0);
 	}
-      rx_vring->avail->flags &= ~VRING_AVAIL_F_NO_INTERRUPT;
+      virtio_set_rx_interrupt (vif, rx_vring);
     }
 
   rx_vring->mode = mode;
