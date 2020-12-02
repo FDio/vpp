@@ -145,6 +145,8 @@ add_vpp_plugin(pnat
   pnat/pnat.c
   pnat/pnat_cli.c
   pnat/pnat_api.c
+
+  MULTIARCH_SOURCES
   pnat/pnat_node.c
 
   API_FILES
