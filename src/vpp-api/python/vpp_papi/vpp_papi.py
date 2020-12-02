@@ -21,6 +21,7 @@ import ipaddress
 import sys
 import multiprocessing as mp
 import os
+import queue
 import logging
 import functools
 import json
@@ -46,11 +47,6 @@ except ModuleNotFoundError:
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-if sys.version[0] == '2':
-    import Queue as queue
-else:
-    import queue as queue
-
 __all__ = ('FuncWrapper', 'VPP', 'VppApiDynamicMethodHolder',
            'VppEnum', 'VppEnumType',
            'VPPIOError', 'VPPRuntimeError', 'VPPValueError',
@@ -72,7 +68,7 @@ class VppEnumType(type):
 
 
 @metaclass(VppEnumType)
-class VppEnum(object):
+class VppEnum:
     pass
 
 
@@ -84,12 +80,6 @@ def vpp_atexit(vpp_weakref):
         vpp_instance.disconnect()
 
 
-if sys.version[0] == '2':
-    def vpp_iterator(d):
-        return d.iteritems()
-else:
-    def vpp_iterator(d):
-        return d.items()
 
 
 def add_convenience_methods():
@@ -112,11 +102,11 @@ def add_convenience_methods():
     ipaddress._IPAddressBase.vapi_af_name = property(_vapi_af_name)
 
 
-class VppApiDynamicMethodHolder(object):
+class VppApiDynamicMethodHolder:
     pass
 
 
-class FuncWrapper(object):
+class FuncWrapper:
     def __init__(self, func):
         self._func = func
         self.__name__ = func.__name__
@@ -149,7 +139,7 @@ class VPPValueError(ValueError):
     pass
 
 
-class VPPApiJSONFiles(object):
+class VPPApiJSONFiles:
     @classmethod
     def find_api_dir(cls, dirs):
         """Attempt to find the best directory in which API definition
@@ -362,7 +352,7 @@ class VPPApiJSONFiles(object):
         return messages, services
 
 
-class VPPApiClient(object):
+class VPPApiClient:
     """VPP interface.
 
     This class provides the APIs to VPP.  The APIs are loaded
@@ -464,7 +454,7 @@ class VPPApiClient(object):
     def get_function(self, name):
         return getattr(self._api, name)
 
-    class ContextId(object):
+    class ContextId:
         """Multiprocessing-safe provider of unique context IDs."""
         def __init__(self):
             self.context = mp.Value(ctypes.c_uint, 0)
@@ -506,7 +496,7 @@ class VPPApiClient(object):
         self.id_names = [None] * (self.vpp_dictionary_maxid + 1)
         self.id_msgdef = [None] * (self.vpp_dictionary_maxid + 1)
         self._api = VppApiDynamicMethodHolder()
-        for name, msg in vpp_iterator(self.messages):
+        for name, msg in self.messages.items():
             n = name + '_' + msg.crc[2:]
             i = self.transport.get_msg_index(n)
             if i > 0:
