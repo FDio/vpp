@@ -102,6 +102,68 @@ mpcap_add_buffer (mpcap_main_t * pm,
 
   clib_spinlock_unlock_if_init (&pm->lock);
 }
+
+/**
+* @brief Add buffer (vlib_buffer_t) to the trace, with extra custom header
+*
+* @param *pm - mpcap_main_t
+* @param *vm - vlib_main_t
+* @param time_now - f64
+* @param buffer_index - u32
+* @param n_bytes_in_trace, excluding custom header - u32
+* @param *custom_header - u8
+* @param n_bytes_custom_header - u32
+*
+*/
+static inline void
+  mpcap_add_buffer_plus_custom_header
+  (mpcap_main_t * pm,
+   vlib_main_t * vm,
+   f64 time_now,
+   u32 buffer_index,
+   u32 n_bytes_in_trace, u8 * custom_header, u32 n_bytes_custom_header)
+{
+  vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);
+  u32 n = vlib_buffer_length_in_chain (vm, b);
+  i32 n_left = clib_min (n_bytes_in_trace, n);
+  void *d;
+
+  clib_spinlock_lock_if_init (&pm->lock);
+
+  d =
+    mpcap_add_packet (pm, time_now, n_left + n_bytes_custom_header,
+		      n + n_bytes_custom_header);
+  if (PREDICT_FALSE (d == 0))
+    {
+      mpcap_close (pm);
+      clib_spinlock_unlock_if_init (&pm->lock);
+      return;
+    }
+
+  if (PREDICT_TRUE (n_bytes_custom_header != 0))
+    {
+      ASSERT (custom_header);
+      clib_memcpy (d, custom_header, n_bytes_custom_header);
+      d += n_bytes_custom_header;
+    }
+
+  while (1)
+    {
+      u32 copy_length = clib_min ((u32) n_left, b->current_length);
+      clib_memcpy (d, b->data + b->current_data, copy_length);
+      n_left -= b->current_length;
+      if (n_left <= 0)
+	break;
+      d += b->current_length;
+      ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
+      b = vlib_get_buffer (vm, b->next_buffer);
+    }
+  if (pm->n_packets_captured >= pm->n_packets_to_capture)
+    mpcap_close (pm);
+
+  clib_spinlock_unlock_if_init (&pm->lock);
+}
+
 #endif /* included_vnet_mpcap_h */
 
 /*
