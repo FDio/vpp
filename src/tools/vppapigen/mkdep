@@ -1,0 +1,19 @@
+#!/bin/sh
+
+if test "$#" -ne 1; then
+    echo "Illegal number of parameters"
+    exit 1
+fi
+
+# Remove lines, output <filename>.api.h as a semi-colon list ofr cmake
+#grep -e "^import" $1 | sed 'N;s/\n/ /; s/import "//g; s/.api"/.api.h/g; s/ //g;'
+#grep -e "^import" $1 | sed 's/import "//g;s/.api"/.api.h/;s:.*/::;' | sed 'N;s/\n//g;'
+#grep -e "^import" $1 | sed 's/import "//g;s/.api";/.api_deps /;s:.*/::;' | sed 'N;s/\n.*//g;'
+#grep -e "^import" $1 | tr -d '\n' | sed 's/import "//g;s/.api";/.api_deps /;s:.*/::;'
+#grep -e "^import" $1 | sed 's/import "/\/\/vpp\/autogen\/build-root\/build-vpp_debug-native\/vpp\//g;s/.api"/.api.h/;' | sed 'N;s/\n//g;'
+#echo "y.api_headers;"
+
+#grep -e '^import' $1 | sed -e 's/import "//g' -e 's/";//g' | tr '\n' ' '
+grep -e '^import' $1 | sed -e 's/import "//g' -e 's/";/_deps/g' -e s':.*/::;' | tr '\n' ';'
+
+exit 0

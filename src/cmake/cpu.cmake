@@ -121,14 +121,21 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   endif()
 endif()
 
-macro(vpp_library_set_multiarch_sources lib deps)
+macro(vpp_library_set_multiarch_sources lib)
+  cmake_parse_arguments(ARG
+    ""
+    ""
+    "SOURCES;DEPENDS"
+    ${ARGN}
+  )
+
   foreach(V ${MARCH_VARIANTS})
     list(GET V 0 VARIANT)
     list(GET V 1 VARIANT_FLAGS)
     set(l ${lib}_${VARIANT})
-    add_library(${l} OBJECT ${ARGN})
-    if("${deps}")
-      add_dependencies(${l} ${deps})
+    add_library(${l} OBJECT ${ARG_SOURCES})
+    if(ARG_DEPENDS)
+      add_dependencies(${l} ${ARG_DEPENDS})
     endif()
     set_target_properties(${l} PROPERTIES POSITION_INDEPENDENT_CODE ON)
     target_compile_options(${l} PUBLIC "-DCLIB_MARCH_VARIANT=${VARIANT}")
