@@ -586,7 +586,7 @@ static_always_inline int
 nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
 				       u16 src_port, u16 dst_port,
 				       u32 thread_index, u32 rx_sw_if_index,
-				       u32 tx_sw_if_index)
+				       u32 tx_sw_if_index, f64 now)
 {
   clib_bihash_kv_16_8_t kv, value;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
@@ -604,13 +604,12 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
       s =
 	pool_elt_at_index (tsm->sessions,
 			   ed_value_get_session_index (&value));
-      if (nat44_is_ses_closed (s))
+      if (nat44_is_ses_closed (s)
+	  && (!s->tcp_closed_timestamp || now >= s->tcp_closed_timestamp))
 	{
 	  nat_free_session_data (sm, s, thread_index, 0);
 	  nat_ed_session_delete (sm, s, thread_index, 1);
 	}
-      else
-	s->flags |= SNAT_SESSION_FLAG_OUTPUT_FEATURE;
       return 1;
     }
 
@@ -658,6 +657,7 @@ icmp_match_in2out_ed (snat_main_t * sm, vlib_node_runtime_t * node,
   vlib_main_t *vm = vlib_get_main ();
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   *dont_translate = 0;
+  f64 now = vlib_time_now (vm);
 
   sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
   rx_fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
@@ -679,7 +679,7 @@ icmp_match_in2out_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 	  if (PREDICT_FALSE
 	      (nat44_ed_not_translate_output_feature
 	       (sm, ip, l_port, r_port, thread_index,
-		sw_if_index, vnet_buffer (b)->sw_if_index[VLIB_TX])))
+		sw_if_index, vnet_buffer (b)->sw_if_index[VLIB_TX], now)))
 	    {
 	      *dont_translate = 1;
 	      goto out;
@@ -1311,7 +1311,8 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 		  (nat44_ed_not_translate_output_feature
 		   (sm, ip0, vnet_buffer (b0)->ip.reass.l4_src_port,
 		    vnet_buffer (b0)->ip.reass.l4_dst_port, thread_index,
-		    sw_if_index0, vnet_buffer (b0)->sw_if_index[VLIB_TX])))
+		    sw_if_index0, vnet_buffer (b0)->sw_if_index[VLIB_TX],
+		    now)))
 		goto trace0;
 
 	      /*

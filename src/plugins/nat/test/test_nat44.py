@@ -5726,6 +5726,14 @@ class TestNAT44EndpointDependent(MethodHolder):
 
     def test_tcp_close(self):
         """ Close TCP session from inside network - output feature """
+        old_timeouts = self.vapi.nat_get_timeouts()
+        new_transitory = 2
+        self.vapi.nat_set_timeouts(
+                udp=old_timeouts.udp,
+                tcp_established=old_timeouts.tcp_established,
+                icmp=old_timeouts.icmp,
+                tcp_transitory=new_transitory)
+
         self.vapi.nat44_forwarding_enable_disable(enable=1)
         self.nat44_add_address(self.pg1.local_ip4)
         twice_nat_addr = '10.0.1.3'
@@ -5808,9 +5816,34 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.pg_start()
         self.pg1.get_capture(1)
 
-        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4,
-                                                     0)
+        # session now in transitory timeout
+        # try SYN packet out->in - should be dropped
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=service_ip) /
+             TCP(sport=33898, dport=80, flags="S"))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.sleep(new_transitory, "wait for transitory timeout")
+        self.pg0.assert_nothing_captured(0)
+
+        # session should still exist
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
+        self.assertEqual(len(sessions) - start_sessnum, 1)
+
+        # send FIN+ACK packet out -> in - will cause session to be wiped
+        # but won't create a new session
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=service_ip) /
+             TCP(sport=33898, dport=80, flags="FA", seq=300, ack=101))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - start_sessnum, 0)
+        self.pg0.assert_nothing_captured(0)
 
     def test_tcp_session_close_in(self):
         """ Close TCP session from inside network """
