@@ -24,6 +24,21 @@ function(vpp_generate_api_c_header file)
     set(includedir "--includedir" ${VPP_INCLUDE_DIR})
   endif()
 
+  set(VPP_APIGEN_DEPS ${CMAKE_SOURCE_DIR}/tools/vppapigen/mkdep)
+  execute_process(
+    COMMAND ${VPP_APIGEN_DEPS} ${CMAKE_CURRENT_SOURCE_DIR}/${file}
+    OUTPUT_VARIABLE DEPENDENCIES
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE RETURN_VALUE
+    ECHO_OUTPUT_VARIABLE
+  )
+  if (NOT RETURN_VALUE EQUAL 0)
+    message(FATAL_ERROR "Failed to get the dependencies")
+  endif()
+  foreach(f ${DEPENDENCIES})
+    list(APPEND d "${CMAKE_BINARY_DIR}/${f}")
+  endforeach()
+
   set(OUTPUT_HEADERS
     "${CMAKE_CURRENT_BINARY_DIR}/${file}.h"
     "${CMAKE_CURRENT_BINARY_DIR}/${file}_fromjson.h"
@@ -40,14 +55,13 @@ function(vpp_generate_api_c_header file)
     COMMAND mkdir -p ${output_dir}
     COMMAND ${VPP_APIGEN}
     ARGS ${includedir} --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} --outputdir ${output_dir} --output ${output_name}
-    DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${file}
+    DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${file} ${d}
     COMMENT "Generating API header ${output_name}"
   )
   get_filename_component(barename ${file} NAME)
   set(t ${barename}_deps)
   if (NOT TARGET ${t})
     add_custom_target(${t} ALL DEPENDS ${OUTPUT_HEADERS})
-    add_dependencies(api_headers ${t})
   endif()
 endfunction()
 
@@ -160,12 +174,15 @@ function(vpp_add_api_files name dir component)
     get_filename_component(name ${file} NAME)
     list(APPEND header_files
       ${file}.h
+      ${file}_enum.h
+      ${file}_types.h
       ${file}.json
       ${CMAKE_BINARY_DIR}/vpp-api/vapi/${name}.vapi.h
       ${CMAKE_BINARY_DIR}/vpp-api/vapi/${name}.vapi.hpp
     )
   endforeach()
   add_custom_target(${target} DEPENDS ${header_files})
+  add_dependencies(api_headers ${target})
 endfunction()
 
 add_custom_target(api_headers

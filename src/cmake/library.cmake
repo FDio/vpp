@@ -46,7 +46,7 @@ macro(add_vpp_library lib)
   endif()
 
   if(ARG_MULTIARCH_SOURCES)
-    vpp_library_set_multiarch_sources(${lib} "${ARG_DEPENDS}" ${ARG_MULTIARCH_SOURCES})
+    vpp_library_set_multiarch_sources(${lib} DEPENDS ${ARG_DEPENDS} SOURCES ${ARG_MULTIARCH_SOURCES})
   endif()
 
   if(ARG_API_FILES)
