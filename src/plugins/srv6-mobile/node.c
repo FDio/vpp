@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Arrcus Inc and/or its affiliates.
+ * Copyright (c) 2020 Arrcus Inc and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -1324,7 +1324,6 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 	      u8 ie_buf[GTPU_IE_MAX_SIZ];
 
 	      index = ls0->localsid_prefix_len;
-	      index += 8;
 	      offset = index / 8;
 	      shift = index % 8;
 
@@ -1332,22 +1331,25 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 
 	      if (PREDICT_TRUE (shift == 0))
 		{
+		  qfi = dst0.as_u8[offset];
+
 		  if (gtpu_type == GTPU_TYPE_ECHO_REQUEST
 		      || gtpu_type == GTPU_TYPE_ECHO_REPLY
 		      || gtpu_type == GTPU_TYPE_ERROR_INDICATION)
 		    {
-		      clib_memcpy_fast (&seq, &dst0.as_u8[offset], 2);
+		      clib_memcpy_fast (&seq, &dst0.as_u8[offset + 1], 2);
 		    }
 		  else
 		    {
-		      clib_memcpy_fast (teid8p, &dst0.as_u8[offset], 4);
+		      clib_memcpy_fast (teid8p, &dst0.as_u8[offset + 1], 4);
 		    }
-
-		  qfi = dst0.as_u8[offset + 4];
 		}
 	      else
 		{
 		  u8 *sp;
+
+		  qfi |= dst0.as_u8[offset] << shift;
+		  qfi |= dst0.as_u8[offset + 1] >> (8 - shift);
 
 		  if (gtpu_type == GTPU_TYPE_ECHO_REQUEST
 		      || gtpu_type == GTPU_TYPE_ECHO_REPLY
@@ -1356,24 +1358,21 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e) (vlib_main_t * vm,
 		      sp = (u8 *) & seq;
 		      for (index = 0; index < 2; index++)
 			{
-			  sp[index] = dst0.as_u8[offset + index] << shift;
+			  sp[index] = dst0.as_u8[offset + index + 1] << shift;
 			  sp[index] |=
-			    dst0.as_u8[offset + index + 1] >> (8 - shift);
+			    dst0.as_u8[offset + index + 2] >> (8 - shift);
 			}
 		    }
 		  else
 		    {
 		      for (index = 0; index < 4; index++)
 			{
-			  *teid8p = dst0.as_u8[offset + index] << shift;
+			  *teid8p = dst0.as_u8[offset + index + 1] << shift;
 			  *teid8p |=
-			    dst0.as_u8[offset + index + 1] >> (8 - shift);
+			    dst0.as_u8[offset + index + 2] >> (8 - shift);
 			  teid8p++;
 			}
 		    }
-
-		  qfi |= dst0.as_u8[offset + 4] << shift;
-		  qfi |= dst0.as_u8[offset + 5] >> (8 - shift);
 		}
 
 	      if (qfi)
@@ -1688,18 +1687,17 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 	      offset = ls_param->sr_prefixlen / 8;
 	      shift = ls_param->sr_prefixlen % 8;
 
-	      offset += 1;
 	      if (PREDICT_TRUE (shift == 0))
 		{
 		  if (gtpu_type == GTPU_TYPE_ECHO_REQUEST
 		      || gtpu_type == GTPU_TYPE_ECHO_REPLY
 		      || gtpu_type == GTPU_TYPE_ERROR_INDICATION)
 		    {
-		      clib_memcpy_fast (&seg0.as_u8[offset], seqp, 2);
+		      clib_memcpy_fast (&seg0.as_u8[offset + 1], seqp, 2);
 		    }
 		  else
 		    {
-		      clib_memcpy_fast (&seg0.as_u8[offset], teidp, 4);
+		      clib_memcpy_fast (&seg0.as_u8[offset + 1], teidp, 4);
 		    }
 
 		  if (qfip)
@@ -1713,7 +1711,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 			  qfi |= SRV6_PDU_SESSION_U_BIT_MASK;
 			}
 
-		      seg0.as_u8[offset + 4] = qfi;
+		      seg0.as_u8[offset] = qfi;
 		    }
 		}
 	      else
@@ -1726,8 +1724,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		    {
 		      for (idx = 0; idx < 2; idx++)
 			{
-			  seg0.as_u8[offset + idx] |= seqp[idx] >> shift;
-			  seg0.as_u8[offset + idx + 1] |=
+			  seg0.as_u8[offset + idx + 1] |= seqp[idx] >> shift;
+			  seg0.as_u8[offset + idx + 2] |=
 			    seqp[idx] << (8 - shift);
 			}
 		    }
@@ -1735,8 +1733,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 		    {
 		      for (idx = 0; idx < 4; idx++)
 			{
-			  seg0.as_u8[offset + idx] |= teidp[idx] >> shift;
-			  seg0.as_u8[offset + idx + 1] |=
+			  seg0.as_u8[offset + idx + 1] |= teidp[idx] >> shift;
+			  seg0.as_u8[offset + idx + 2] |=
 			    teidp[idx] << (8 - shift);
 			}
 		    }
@@ -1752,8 +1750,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d) (vlib_main_t * vm,
 			  qfi |= SRV6_PDU_SESSION_U_BIT_MASK;
 			}
 
-		      seg0.as_u8[offset + 4] |= qfi >> shift;
-		      seg0.as_u8[offset + 5] |= qfi << (8 - shift);
+		      seg0.as_u8[offset] |= qfi >> shift;
+		      seg0.as_u8[offset + 1] |= qfi << (8 - shift);
 		    }
 		}
 
@@ -2192,18 +2190,17 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 	      offset = ls_param->sr_prefixlen / 8;
 	      shift = ls_param->sr_prefixlen % 8;
 
-	      offset += 1;
 	      if (PREDICT_TRUE (shift == 0))
 		{
 		  if (gtpu_type == GTPU_TYPE_ECHO_REQUEST
 		      || gtpu_type == GTPU_TYPE_ECHO_REPLY
 		      || gtpu_type == GTPU_TYPE_ERROR_INDICATION)
 		    {
-		      clib_memcpy_fast (&seg0.as_u8[offset], seqp, 2);
+		      clib_memcpy_fast (&seg0.as_u8[offset + 1], seqp, 2);
 		    }
 		  else
 		    {
-		      clib_memcpy_fast (&seg0.as_u8[offset], teidp, 4);
+		      clib_memcpy_fast (&seg0.as_u8[offset + 1], teidp, 4);
 		    }
 
 		  if (qfip)
@@ -2217,7 +2214,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 			  qfi |= SRV6_PDU_SESSION_U_BIT_MASK;
 			}
 
-		      seg0.as_u8[offset + 4] = qfi;
+		      seg0.as_u8[offset] = qfi;
 		    }
 		}
 	      else
@@ -2230,8 +2227,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		    {
 		      for (idx = 0; idx < 2; idx++)
 			{
-			  seg0.as_u8[offset + idx] |= seqp[idx] >> shift;
-			  seg0.as_u8[offset + idx + 1] |=
+			  seg0.as_u8[offset + idx + 1] |= seqp[idx] >> shift;
+			  seg0.as_u8[offset + idx + 2] |=
 			    seqp[idx] << (8 - shift);
 			}
 		    }
@@ -2239,8 +2236,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 		    {
 		      for (idx = 0; idx < 4; idx++)
 			{
-			  seg0.as_u8[offset + idx] |= teidp[idx] >> shift;
-			  seg0.as_u8[offset + idx + 1] |=
+			  seg0.as_u8[offset + idx + 1] |= teidp[idx] >> shift;
+			  seg0.as_u8[offset + idx + 2] |=
 			    teidp[idx] << (8 - shift);
 			}
 		    }
@@ -2256,8 +2253,8 @@ VLIB_NODE_FN (srv6_end_m_gtp6_d_di) (vlib_main_t * vm,
 			  qfi |= SRV6_PDU_SESSION_U_BIT_MASK;
 			}
 
-		      seg0.as_u8[offset + 4] |= qfi >> shift;
-		      seg0.as_u8[offset + 5] |= qfi << (8 - shift);
+		      seg0.as_u8[offset] |= qfi >> shift;
+		      seg0.as_u8[offset + 1] |= qfi << (8 - shift);
 		    }
 		}
 

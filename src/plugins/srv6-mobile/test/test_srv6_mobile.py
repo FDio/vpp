@@ -203,7 +203,7 @@ class TestSRv6EndMGTP6E(VppTestCase):
             raise
 
     def create_packets(self, inner):
-        # 64bit prefix + 32bit TEID + 8bit QFI + 24bit
+        # 64bit prefix + 8bit QFI + 32bit TEID + 24bit
         dst = b'\xaa' * 8 + b'\x00' + \
             b'\xbb' * 4 + b'\x00' * 3
         ip6_dst = IPv6Address(dst)
@@ -337,4 +337,4 @@ class TestSRv6EndMGTP6D(VppTestCase):
             self.logger.info("GTP6.D Address={}".format(
                 str(pkt[IPv6ExtHdrSegmentRouting].addresses[0])))
             self.assertEqual(
-                str(pkt[IPv6ExtHdrSegmentRouting].addresses[0]), "d4::c800:0")
+                str(pkt[IPv6ExtHdrSegmentRouting].addresses[0]), "d4::c8:0")
