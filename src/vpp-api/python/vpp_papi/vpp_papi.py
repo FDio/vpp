@@ -43,7 +43,7 @@ except ModuleNotFoundError:
 
     VppTransport = V
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('vpp_papi')
 logger.addHandler(logging.NullHandler())
 
 if sys.version[0] == '2':
@@ -80,7 +80,7 @@ def vpp_atexit(vpp_weakref):
     """Clean up VPP connection on shutdown."""
     vpp_instance = vpp_weakref()
     if vpp_instance and vpp_instance.transport.connected:
-        vpp_instance.logger.debug('Cleaning up VPP on exit')
+        logger.debug('Cleaning up VPP on exit')
         vpp_instance.disconnect()
 
 
@@ -621,7 +621,7 @@ class VPPApiClient(object):
 
     def decode_incoming_msg(self, msg, no_type_conversion=False):
         if not msg:
-            self.logger.warning('vpp_api.read failed')
+            logger.warning('vpp_api.read failed')
             return
 
         (i, ci), size = self.header.unpack(msg, 0)

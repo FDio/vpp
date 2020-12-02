@@ -27,7 +27,7 @@ from . import vpp_format
 # logger = logging.getLogger('vpp_serializer')
 # logger.setLevel(logging.DEBUG)
 #
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('vpp_papi.serializer')
 
 if sys.version[0] == '2':
     def check(d): type(d) is dict
