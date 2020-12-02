@@ -179,7 +179,7 @@ openssl_engine_register (char *engine_name, char *algorithm, int async)
       if (engine_list[registered].thread_init)
 	session_send_rpc_evt_to_thread (i + 1,
 					engine_list[registered].thread_init,
-					(void *) &i);
+					uword_to_pointer (i, void *));
     }
 
   om->start_polling = 1;
@@ -376,7 +376,7 @@ void
 qat_init_thread (void *arg)
 {
   openssl_async_t *om = &openssl_async_main;
-  int thread_index = *(int *) arg;
+  int thread_index = pointer_to_uword (arg);
 
   ENGINE_ctrl_cmd (om->engine, "SET_INSTANCE_FOR_THREAD", thread_index,
 		   NULL, NULL, 0);
