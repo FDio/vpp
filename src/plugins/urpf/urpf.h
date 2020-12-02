@@ -34,9 +34,12 @@ typedef enum urpf_mode_t_
 
 extern u8 *format_urpf_mode (u8 * s, va_list * a);
 
+extern u8 *format_urpf_location (u8 * s, va_list * a);
+
 extern void urpf_update (urpf_mode_t mode,
 			 u32 sw_if_index,
-			 ip_address_family_t af, vlib_dir_t dir);
+			 ip_address_family_t af,
+			 ip_feature_location_t location);
 
 
 #endif

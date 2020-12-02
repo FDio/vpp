@@ -160,6 +160,18 @@ VNET_FEATURE_INIT (ip6_tx_urpf_strict_feat, static) =
   .arc_name = "ip6-output",
   .node_name = "ip6-tx-urpf-strict",
 };
+
+VNET_FEATURE_INIT (ip6_local_urpf_loose_feat, static) =
+{
+  .arc_name = "ip6-local",
+  .node_name = "ip6-rx-urpf-loose",
+};
+
+VNET_FEATURE_INIT (ip6_local_urpf_strict_feat, static) =
+{
+  .arc_name = "ip6-local",
+  .node_name = "ip6-rx-urpf-strict",
+};
 /* *INDENT-ON* */
 
 /*

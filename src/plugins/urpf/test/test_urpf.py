@@ -168,6 +168,37 @@ class TestURPF(VppTestCase):
                               af=e.vl_api_address_family_t.ADDRESS_IP4,
                               sw_if_index=self.pg1.sw_if_index)
 
+        # enable for for-us/local traffic
+        f = e.vl_api_ip_feature_location_t
+        p_echo_request = (Ether(src=self.pg0.remote_mac,
+                                dst=self.pg0.local_mac) /
+                          IP(src=self.pg0.remote_ip4,
+                             dst=self.pg0.local_ip4) /
+                          ICMP(id=1, seq=5) /
+                          Raw(b'\x0a' * 18))
+
+        self.send_and_expect(self.pg0, [p_echo_request], self.pg0)
+
+        self.vapi.urpf_update_v2(location=f.IP_API_FEATURE_LOCAL,
+                                 mode=e.vl_api_urpf_mode_t.URPF_API_MODE_LOOSE,
+                                 af=e.vl_api_address_family_t.ADDRESS_IP4,
+                                 sw_if_index=0)
+        self.send_and_expect(self.pg0, [p_echo_request], self.pg0)
+
+        # swap the source to an unroutable address
+        p_echo_request[IP].src = "1.1.1.1"
+
+        self.send_and_assert_no_replies(self.pg0, [p_echo_request])
+
+        self.vapi.urpf_update_v2(location=f.IP_API_FEATURE_LOCAL,
+                                 mode=e.vl_api_urpf_mode_t.URPF_API_MODE_OFF,
+                                 af=e.vl_api_address_family_t.ADDRESS_IP4,
+                                 sw_if_index=0)
+
+        self.send_and_assert_no_replies(self.pg0, [p_echo_request])
+        p_echo_request[IP].src = self.pg0.remote_ip4
+        self.send_and_expect(self.pg0, [p_echo_request], self.pg0)
+
     def test_urpf6(self):
         """ uRPF IP6 """
 

@@ -15,41 +15,38 @@
 
 #include <urpf/urpf.h>
 
+#include <vnet/ip/ip.h>
 #include <vnet/fib/fib_table.h>
 
 /* *INDENT-OFF* */
-static const char *urpf_feat_arcs[N_AF][VLIB_N_DIR] =
+static const char *urpf_feats[N_AF][N_IP_FEATURE_LOCATIONS][URPF_N_MODES] =
 {
   [AF_IP4] = {
-    [VLIB_RX] = "ip4-unicast",
-    [VLIB_TX] = "ip4-output",
-  },
-  [AF_IP6] = {
-    [VLIB_RX] = "ip6-unicast",
-    [VLIB_TX] = "ip6-output",
-  },
-};
-
-static const char *urpf_feats[N_AF][VLIB_N_DIR][URPF_N_MODES] =
-{
-  [AF_IP4] = {
-    [VLIB_RX] = {
+    [IP_FEATURE_INPUT] = {
       [URPF_MODE_STRICT] = "ip4-rx-urpf-strict",
       [URPF_MODE_LOOSE] = "ip4-rx-urpf-loose",
     },
-    [VLIB_TX] = {
+    [IP_FEATURE_OUTPUT] = {
       [URPF_MODE_STRICT] = "ip4-tx-urpf-strict",
       [URPF_MODE_LOOSE] = "ip4-tx-urpf-loose",
     },
+    [IP_FEATURE_LOCAL] = {
+      [URPF_MODE_STRICT] = "ip4-rx-urpf-strict",
+      [URPF_MODE_LOOSE] = "ip4-rx-urpf-loose",
+    },
   },
   [AF_IP6] = {
-    [VLIB_RX] = {
+    [IP_FEATURE_INPUT] = {
       [URPF_MODE_STRICT] = "ip6-rx-urpf-strict",
       [URPF_MODE_LOOSE] = "ip6-rx-urpf-loose",
     },
-    [VLIB_TX] = {
+    [IP_FEATURE_OUTPUT] = {
       [URPF_MODE_STRICT] = "ip6-tx-urpf-strict",
       [URPF_MODE_LOOSE] = "ip6-tx-urpf-loose",
+    },
+    [IP_FEATURE_LOCAL] = {
+      [URPF_MODE_STRICT] = "ip6-rx-urpf-strict",
+      [URPF_MODE_LOOSE] = "ip6-rx-urpf-loose",
     },
   },
 };
@@ -58,7 +55,7 @@ static const char *urpf_feats[N_AF][VLIB_N_DIR][URPF_N_MODES] =
 /**
  * Per-af, per-direction, per-interface uRPF configs
  */
-static urpf_mode_t *urpf_cfgs[N_AF][VLIB_N_DIR];
+static urpf_mode_t *urpf_cfgs[N_AF][N_IP_FEATURE_LOCATIONS];
 
 u8 *
 format_urpf_mode (u8 * s, va_list * a)
@@ -97,30 +94,31 @@ unformat_urpf_mode (unformat_input_t * input, va_list * args)
 
 void
 urpf_update (urpf_mode_t mode,
-	     u32 sw_if_index, ip_address_family_t af, vlib_dir_t dir)
+	     u32 sw_if_index,
+	     ip_address_family_t af, ip_feature_location_t loc)
 {
   urpf_mode_t old;
 
-  vec_validate_init_empty (urpf_cfgs[af][dir], sw_if_index, URPF_MODE_OFF);
-  old = urpf_cfgs[af][dir][sw_if_index];
+  vec_validate_init_empty (urpf_cfgs[af][loc], sw_if_index, URPF_MODE_OFF);
+  old = urpf_cfgs[af][loc][sw_if_index];
 
   if (mode != old)
     {
       if (URPF_MODE_OFF != old)
 	/* disable what we have */
-	vnet_feature_enable_disable (urpf_feat_arcs[af][dir],
-				     urpf_feats[af][dir][old],
-				     sw_if_index, 0, 0, 0);
+	ip_feature_enable_disable (af, N_SAFI, loc,
+				   urpf_feats[af][loc][old],
+				   sw_if_index, 0, 0, 0);
 
       if (URPF_MODE_OFF != mode)
 	/* enable what's new */
-	vnet_feature_enable_disable (urpf_feat_arcs[af][dir],
-				     urpf_feats[af][dir][mode],
-				     sw_if_index, 1, 0, 0);
+	ip_feature_enable_disable (af, N_SAFI, loc,
+				   urpf_feats[af][loc][mode],
+				   sw_if_index, 1, 0, 0);
     }
   /* else - no change to existing config */
 
-  urpf_cfgs[af][dir][sw_if_index] = mode;
+  urpf_cfgs[af][loc][sw_if_index] = mode;
 }
 
 static clib_error_t *

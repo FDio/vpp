@@ -37,14 +37,26 @@ enum urpf_mode:u8
  * @param context - sender context, to match reply w/ request
  * @param mode - Mode
  * @param af - Address Family
- * @param sw_if_index - Interface
+ * @param sw_if_index - Interface. if the feature location is LOCAL
+                        then 0 or ~0 mean all interfaces.
  * @param is_input - Direction.
+ * @param location - Location.
  */
 autoreply define urpf_update
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   bool is_input[default = true];
+  vl_api_urpf_mode_t mode;
+  vl_api_address_family_t af;
+  vl_api_interface_index_t sw_if_index;
+};
+autoreply define urpf_update_v2
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip_feature_location_t location;
   vl_api_urpf_mode_t mode;
   vl_api_address_family_t af;
   vl_api_interface_index_t sw_if_index;

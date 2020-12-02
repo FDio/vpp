@@ -916,6 +916,7 @@ ip4_directed_broadcast (u32 sw_if_index, u8 enable)
      }));
   /* *INDENT-ON* */
 }
+
 #endif
 
 static clib_error_t *
@@ -1541,152 +1542,6 @@ ip4_local_set_next_and_error (vlib_node_runtime_t * error_node,
     }
 }
 
-typedef struct
-{
-  ip4_address_t src;
-  u32 lbi;
-  u8 error;
-  u8 first;
-} ip4_local_last_check_t;
-
-static inline void
-ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
-		     ip4_local_last_check_t * last_check, u8 * error0)
-{
-  ip4_fib_mtrie_leaf_t leaf0;
-  ip4_fib_mtrie_t *mtrie0;
-  const dpo_id_t *dpo0;
-  load_balance_t *lb0;
-  u32 lbi0;
-
-  vnet_buffer (b)->ip.fib_index =
-    vnet_buffer (b)->sw_if_index[VLIB_TX] != ~0 ?
-    vnet_buffer (b)->sw_if_index[VLIB_TX] : vnet_buffer (b)->ip.fib_index;
-
-  if (PREDICT_TRUE (last_check->src.as_u32 != ip0->src_address.as_u32) ||
-      last_check->first)
-    {
-      mtrie0 = &ip4_fib_get (vnet_buffer (b)->ip.fib_index)->mtrie;
-      leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, &ip0->src_address);
-      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 2);
-      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
-      lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-
-      vnet_buffer (b)->ip.adj_index = lbi0;
-
-      lb0 = load_balance_get (lbi0);
-      dpo0 = load_balance_get_bucket_i (lb0, 0);
-
-      /*
-       * Must have a route to source otherwise we drop the packet.
-       * ip4 broadcasts are accepted, e.g. to make dhcp client work
-       *
-       * The checks are:
-       *  - the source is a recieve => it's from us => bogus, do this
-       *    first since it sets a different error code.
-       *  - uRPF check for any route to source - accept if passes.
-       *  - allow packets destined to the broadcast address from unknown sources
-       */
-
-      *error0 = ((*error0 == IP4_ERROR_UNKNOWN_PROTOCOL
-		  && dpo0->dpoi_type == DPO_RECEIVE) ?
-		 IP4_ERROR_SPOOFED_LOCAL_PACKETS : *error0);
-      *error0 = ((*error0 == IP4_ERROR_UNKNOWN_PROTOCOL
-		  && !fib_urpf_check_size (lb0->lb_urpf)
-		  && ip0->dst_address.as_u32 != 0xFFFFFFFF) ?
-		 IP4_ERROR_SRC_LOOKUP_MISS : *error0);
-
-      last_check->src.as_u32 = ip0->src_address.as_u32;
-      last_check->lbi = lbi0;
-      last_check->error = *error0;
-      last_check->first = 0;
-    }
-  else
-    {
-      *error0 = last_check->error;
-    }
-}
-
-static inline void
-ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
-			ip4_local_last_check_t * last_check, u8 * error)
-{
-  ip4_fib_mtrie_leaf_t leaf[2];
-  ip4_fib_mtrie_t *mtrie[2];
-  const dpo_id_t *dpo[2];
-  load_balance_t *lb[2];
-  u32 not_last_hit;
-  u32 lbi[2];
-
-  not_last_hit = last_check->first;
-  not_last_hit |= ip[0]->src_address.as_u32 ^ last_check->src.as_u32;
-  not_last_hit |= ip[1]->src_address.as_u32 ^ last_check->src.as_u32;
-
-  vnet_buffer (b[0])->ip.fib_index =
-    vnet_buffer (b[0])->sw_if_index[VLIB_TX] != ~0 ?
-    vnet_buffer (b[0])->sw_if_index[VLIB_TX] :
-    vnet_buffer (b[0])->ip.fib_index;
-
-  vnet_buffer (b[1])->ip.fib_index =
-    vnet_buffer (b[1])->sw_if_index[VLIB_TX] != ~0 ?
-    vnet_buffer (b[1])->sw_if_index[VLIB_TX] :
-    vnet_buffer (b[1])->ip.fib_index;
-
-  if (PREDICT_TRUE (not_last_hit))
-    {
-      mtrie[0] = &ip4_fib_get (vnet_buffer (b[0])->ip.fib_index)->mtrie;
-      mtrie[1] = &ip4_fib_get (vnet_buffer (b[1])->ip.fib_index)->mtrie;
-
-      leaf[0] = ip4_fib_mtrie_lookup_step_one (mtrie[0], &ip[0]->src_address);
-      leaf[1] = ip4_fib_mtrie_lookup_step_one (mtrie[1], &ip[1]->src_address);
-
-      leaf[0] = ip4_fib_mtrie_lookup_step (mtrie[0], leaf[0],
-					   &ip[0]->src_address, 2);
-      leaf[1] = ip4_fib_mtrie_lookup_step (mtrie[1], leaf[1],
-					   &ip[1]->src_address, 2);
-
-      leaf[0] = ip4_fib_mtrie_lookup_step (mtrie[0], leaf[0],
-					   &ip[0]->src_address, 3);
-      leaf[1] = ip4_fib_mtrie_lookup_step (mtrie[1], leaf[1],
-					   &ip[1]->src_address, 3);
-
-      lbi[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf[0]);
-      lbi[1] = ip4_fib_mtrie_leaf_get_adj_index (leaf[1]);
-
-      lb[0] = load_balance_get (lbi[0]);
-      lb[1] = load_balance_get (lbi[1]);
-
-      dpo[0] = load_balance_get_bucket_i (lb[0], 0);
-      dpo[1] = load_balance_get_bucket_i (lb[1], 0);
-
-      error[0] = ((error[0] == IP4_ERROR_UNKNOWN_PROTOCOL &&
-		   dpo[0]->dpoi_type == DPO_RECEIVE) ?
-		  IP4_ERROR_SPOOFED_LOCAL_PACKETS : error[0]);
-      error[0] = ((error[0] == IP4_ERROR_UNKNOWN_PROTOCOL &&
-		   !fib_urpf_check_size (lb[0]->lb_urpf) &&
-		   ip[0]->dst_address.as_u32 != 0xFFFFFFFF)
-		  ? IP4_ERROR_SRC_LOOKUP_MISS : error[0]);
-
-      error[1] = ((error[1] == IP4_ERROR_UNKNOWN_PROTOCOL &&
-		   dpo[1]->dpoi_type == DPO_RECEIVE) ?
-		  IP4_ERROR_SPOOFED_LOCAL_PACKETS : error[1]);
-      error[1] = ((error[1] == IP4_ERROR_UNKNOWN_PROTOCOL &&
-		   !fib_urpf_check_size (lb[1]->lb_urpf) &&
-		   ip[1]->dst_address.as_u32 != 0xFFFFFFFF)
-		  ? IP4_ERROR_SRC_LOOKUP_MISS : error[1]);
-
-      last_check->src.as_u32 = ip[1]->src_address.as_u32;
-      last_check->lbi = lbi[1];
-      last_check->error = error[1];
-      last_check->first = 0;
-    }
-  else
-    {
-      error[0] = last_check->error;
-      error[1] = last_check->error;
-    }
-}
-
 enum ip_local_packet_type_e
 {
   IP_LOCAL_PACKET_TYPE_L4,
@@ -1733,19 +1588,6 @@ ip4_local_inline (vlib_main_t * vm,
   ip4_header_t *ip[2];
   u8 error[2], pt[2];
 
-  ip4_local_last_check_t last_check = {
-    /*
-     * 0.0.0.0 can appear as the source address of an IP packet,
-     * as can any other address, hence the need to use the 'first'
-     * member to make sure the .lbi is initialised for the first
-     * packet.
-     */
-    .src = {.as_u32 = 0},
-    .lbi = ~0,
-    .error = IP4_ERROR_UNKNOWN_PROTOCOL,
-    .first = 1,
-  };
-
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
 
@@ -1788,19 +1630,16 @@ ip4_local_inline (vlib_main_t * vm,
       if (PREDICT_TRUE (not_batch == 0))
 	{
 	  ip4_local_check_l4_csum_x2 (vm, b, ip, error);
-	  ip4_local_check_src_x2 (b, ip, &last_check, error);
 	}
       else
 	{
 	  if (!pt[0])
 	    {
 	      ip4_local_check_l4_csum (vm, b[0], ip[0], &error[0]);
-	      ip4_local_check_src (b[0], ip[0], &last_check, &error[0]);
 	    }
 	  if (!pt[1])
 	    {
 	      ip4_local_check_l4_csum (vm, b[1], ip[1], &error[1]);
-	      ip4_local_check_src (b[1], ip[1], &last_check, &error[1]);
 	    }
 	}
 
@@ -1828,7 +1667,6 @@ ip4_local_inline (vlib_main_t * vm,
 	goto skip_check;
 
       ip4_local_check_l4_csum (vm, b[0], ip[0], &error[0]);
-      ip4_local_check_src (b[0], ip[0], &last_check, &error[0]);
 
     skip_check:
 

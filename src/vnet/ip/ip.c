@@ -157,6 +157,65 @@ static const char *ip_arc_names[N_IP_FEATURE_LOCATIONS][N_AF][N_SAFI] = {
 };
 /* *INDENT-ON* */
 
+typedef struct ip_feature_cfg_t_
+{
+  const char *feature_name;
+  void *feature_config;
+  u32 n_feature_config_bytes;
+  ip_address_family_t af;
+} ip_feature_cfg_t;
+
+typedef struct ip_feature_cfg_upd_t_
+{
+  ip_feature_cfg_t f;
+  u32 enabled;
+} ip_feature_cfg_upd_t;
+
+static ip_feature_cfg_t *ip_local_features[N_AF];
+
+static void
+ip4_local_feature_enable_disable_all (ip4_main_t * im,
+				      uword opaque,
+				      u32 sw_if_index, u32 is_enable)
+{
+  ip_feature_cfg_t *f;
+
+  vec_foreach (f, ip_local_features[AF_IP4])
+    vnet_feature_enable_disable (ip_arc_names[IP_FEATURE_LOCAL][AF_IP4]
+				 [SAFI_UNICAST], f->feature_name, sw_if_index,
+				 is_enable, f->feature_config,
+				 f->n_feature_config_bytes);
+}
+
+static void
+ip6_local_feature_enable_disable_all (ip6_main_t * im,
+				      uword opaque,
+				      u32 sw_if_index, u32 is_enable)
+{
+  ip_feature_cfg_t *f;
+
+  vec_foreach (f, ip_local_features[AF_IP6])
+    vnet_feature_enable_disable (ip_arc_names[IP_FEATURE_LOCAL][AF_IP6]
+				 [SAFI_UNICAST], f->feature_name, sw_if_index,
+				 is_enable, f->feature_config,
+				 f->n_feature_config_bytes);
+}
+
+static walk_rc_t
+ip_local_feature_enable_disable_one (vnet_main_t * vnm,
+				     vnet_sw_interface_t * si, void *ctx)
+{
+  ip_feature_cfg_upd_t *u = ctx;
+
+  vnet_feature_enable_disable (ip_arc_names[IP_FEATURE_LOCAL][u->f.af]
+			       [SAFI_UNICAST], u->f.feature_name,
+			       si->sw_if_index, u->enabled,
+			       u->f.feature_config,
+			       u->f.n_feature_config_bytes);
+
+  return (WALK_CONTINUE);
+}
+
 void
 ip_feature_enable_disable (ip_address_family_t af,
 			   ip_sub_address_family_t safi,
@@ -178,6 +237,52 @@ ip_feature_enable_disable (ip_address_family_t af,
 				     feature_name, sw_if_index,
 				     enable, feature_config,
 				     n_feature_config_bytes);
+    }
+  else if (IP_FEATURE_LOCAL == loc)
+    {
+      if (~0 == sw_if_index || 0 == sw_if_index)
+	{
+	  /* apply to all interfaces */
+	  if (enable && NULL == ip_local_features[af])
+	    {
+	      if (AF_IP4 == af)
+		{
+		  ip4_enable_disable_interface_callback_t cb = {
+		    .function = ip4_local_feature_enable_disable_all,
+		  };
+		  vec_add1 (ip4_main.enable_disable_interface_callbacks, cb);
+		}
+	      if (AF_IP6 == af)
+		{
+		  ip6_enable_disable_interface_callback_t cb = {
+		    .function = ip6_local_feature_enable_disable_all,
+		  };
+		  vec_add1 (ip6_main.enable_disable_interface_callbacks, cb);
+		}
+	    }
+
+	  ip_feature_cfg_upd_t u = {
+	    .f = {
+		  .feature_name = feature_name,
+		  .feature_config = feature_config,
+		  .n_feature_config_bytes = n_feature_config_bytes,
+		  .af = af,
+		  }
+	    ,
+	    .enabled = enable,
+	  };
+	  vec_add1 (ip_local_features[af], u.f);
+
+	  vnet_sw_interface_walk (vnet_get_main (),
+				  ip_local_feature_enable_disable_one, &u);
+	}
+      else
+	{
+	  vnet_feature_enable_disable (ip_arc_names[loc][af][SAFI_UNICAST],
+				       feature_name, sw_if_index,
+				       enable, feature_config,
+				       n_feature_config_bytes);
+	}
     }
   else
     vnet_feature_enable_disable (ip_arc_names[loc][af][SAFI_UNICAST],

@@ -245,9 +245,6 @@ ip4_input_inline (vlib_main_t * vm,
 	  vlib_prefetch_buffer_data (b[3], LOAD);
 	}
 
-      vnet_buffer (b[0])->ip.adj_index[VLIB_RX] = ~0;
-      vnet_buffer (b[1])->ip.adj_index[VLIB_RX] = ~0;
-
       sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
       sw_if_index[1] = vnet_buffer (b[1])->sw_if_index[VLIB_RX];
 

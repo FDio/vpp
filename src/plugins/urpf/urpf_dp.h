@@ -167,8 +167,10 @@ urpf_inline (vlib_main_t * vm,
 						   &ip0->src_address);
 	  lb_index1 = ip6_fib_table_fwding_lookup (fib_index1,
 						   &ip1->src_address);
-	  pass0 = ip6_address_is_multicast (&ip0->src_address);
-	  pass1 = ip6_address_is_multicast (&ip1->src_address);
+	  pass0 = (ip6_address_is_multicast (&ip0->src_address) |
+		   ip6_address_is_link_local_unicast (&ip0->src_address));
+	  pass1 = (ip6_address_is_multicast (&ip1->src_address) |
+		   ip6_address_is_link_local_unicast (&ip0->src_address));
 	}
 
       lb0 = load_balance_get (lb_index0);
@@ -280,7 +282,8 @@ urpf_inline (vlib_main_t * vm,
 
 	  lb_index0 = ip6_fib_table_fwding_lookup (fib_index0,
 						   &ip0->src_address);
-	  pass0 = ip6_address_is_multicast (&ip0->src_address);
+	  pass0 = (ip6_address_is_multicast (&ip0->src_address) |
+		   ip6_address_is_link_local_unicast (&ip0->src_address));
 	}
 
       lb0 = load_balance_get (lb_index0);
