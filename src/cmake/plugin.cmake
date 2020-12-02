@@ -34,7 +34,7 @@ macro(add_vpp_plugin name)
   vpp_add_api_files(${plugin_name} plugins ${PLUGIN_COMPONENT} ${PLUGIN_API_FILES})
   foreach(f ${PLUGIN_API_FILES})
     get_filename_component(dir ${f} DIRECTORY)
-    list(APPEND api_includes ${f}.h ${f}.json)
+    list(APPEND api_includes ${f}.h ${f}_enum.h ${f}_types.h ${f}.json)
     install(
       FILES ${CMAKE_CURRENT_BINARY_DIR}/${f}.h
       ${CMAKE_CURRENT_BINARY_DIR}/${f}_enum.h
@@ -43,7 +43,7 @@ macro(add_vpp_plugin name)
       COMPONENT ${PLUGIN_DEV_COMPONENT}
     )
   endforeach()
-  add_library(${plugin_name} SHARED ${PLUGIN_SOURCES} ${api_includes})
+  add_library(${plugin_name} SHARED ${api_includes} ${PLUGIN_SOURCES})
   set_target_properties(${plugin_name} PROPERTIES NO_SONAME 1)
   target_compile_options(${plugin_name} PRIVATE "-fvisibility=hidden")
   target_compile_options (${plugin_name} PRIVATE "-ffunction-sections")
