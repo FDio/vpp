@@ -1,4 +1,4 @@
-from .vpp_papi import FuncWrapper, VPP, VppApiDynamicMethodHolder  # noqa: F401
+from .vpp_papi import FuncWrapper, VppApiDynamicMethodHolder  # noqa: F401
 from .vpp_papi import VppEnum, VppEnumType  # noqa: F401
 from .vpp_papi import VPPIOError, VPPRuntimeError, VPPValueError  # noqa: F401
 from .vpp_papi import VPPApiClient  # noqa: F401
