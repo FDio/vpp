@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b7ac16be_b40410c2",
+        "filename": "src/vpp-api/python/vpp_papi/tests/test_vpp_papi.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2020-12-02T17:55:27Z",
+      "side": 1,
+      "message": "You can configure Gerrit WebUI to highlight trailing spaces.",
+      "range": {
+        "startLine": 60,
+        "startChar": 0,
+        "endLine": 60,
+        "endChar": 4
+      },
+      "revId": "46d6864b9de6d722c4b6eb72d231918b251e267d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
