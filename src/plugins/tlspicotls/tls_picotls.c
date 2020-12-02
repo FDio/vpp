@@ -117,13 +117,13 @@ picotls_start_listen (tls_ctx_t * lctx)
 #ifdef PTLS_OPENSSL_HAVE_X25519
     &ptls_openssl_x25519,
 #endif
-#ifdef PTLS_OPENSSL_HAVE_SECP256r1
+#ifdef PTLS_OPENSSL_HAVE_SECP256R1
     &ptls_openssl_secp256r1,
 #endif
-#ifdef PTLS_OPENSSL_HAVE_SECP384r1
+#ifdef PTLS_OPENSSL_HAVE_SECP384R1
     &ptls_openssl_secp384r1,
 #endif
-#ifdef PTLS_OPENSSL_HAVE_SECP521r1
+#ifdef PTLS_OPENSSL_HAVE_SECP521R1
     &ptls_openssl_secp521r1
 #endif
   };
