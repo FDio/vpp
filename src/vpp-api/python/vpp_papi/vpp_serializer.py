@@ -139,8 +139,8 @@ class String(Packer):
         self.fixed = True if num else False
         if self.fixed and not self.limit:
             raise VPPSerializerValueError(
-                "Invalid argument length for: {}, {} maximum {}".
-                format(list, len(list), self.limit))
+                "Invalid combination for: {}, {} fixed:{} limit:{}".
+                format(name, options, self.fixed, self.limit))
 
     def pack(self, list, kwargs=None):
         if not list:
