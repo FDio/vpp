@@ -326,6 +326,7 @@ CLIB_MARCH_SFX (devclass##_tx_fn_multiarch_register) (void)		\
   vlib_node_fn_registration_t *r;					\
   r = &CLIB_MARCH_SFX (devclass##_tx_fn_registration);			\
   r->priority = CLIB_MARCH_FN_PRIORITY();				\
+  r->name = CLIB_MARCH_VARIANT_STR;					\
   r->next_registration = devclass.tx_fn_registrations;			\
   devclass.tx_fn_registrations = r;					\
 }									\
@@ -918,7 +919,7 @@ void vnet_pcap_drop_trace_filter_add_del (u32 error_index, int is_add);
 
 int vnet_interface_name_renumber (u32 sw_if_index, u32 new_show_dev_instance);
 
-vlib_node_function_t *vnet_interface_output_node_get (void);
+vlib_node_function_t *vnet_interface_output_node_get (vlib_main_t * vm);
 
 void vnet_register_format_buffer_opaque_helper
   (vnet_buffer_opquae_formatter_t fn);
