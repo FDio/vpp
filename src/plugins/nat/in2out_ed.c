@@ -604,13 +604,6 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
       s =
 	pool_elt_at_index (tsm->sessions,
 			   ed_value_get_session_index (&value));
-      if (nat44_is_ses_closed (s))
-	{
-	  nat_free_session_data (sm, s, thread_index, 0);
-	  nat_ed_session_delete (sm, s, thread_index, 1);
-	}
-      else
-	s->flags |= SNAT_SESSION_FLAG_OUTPUT_FEATURE;
       return 1;
     }
 
