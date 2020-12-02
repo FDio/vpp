@@ -337,4 +337,4 @@ class TestSRv6EndMGTP6D(VppTestCase):
             self.logger.info("GTP6.D Address={}".format(
                 str(pkt[IPv6ExtHdrSegmentRouting].addresses[0])))
             self.assertEqual(
-                str(pkt[IPv6ExtHdrSegmentRouting].addresses[0]), "d4::c800:0")
+                str(pkt[IPv6ExtHdrSegmentRouting].addresses[0]), "d4::c8::")
