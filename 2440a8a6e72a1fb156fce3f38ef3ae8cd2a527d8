@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "426eae5a_f1bed494",
+        "filename": "src/svm/message_queue.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-12-02T15:27:41Z",
+      "side": 1,
+      "message": "Per man page, consistency should only be checked after pthread_mutex_lock. I assumed trylock would fail and that\u0027s fine from our perspective. If that\u0027s not the case, we do need to set the consistency. Did you hit any issue with this?",
+      "parentUuid": "88383e91_0600ccc6",
+      "range": {
+        "startLine": 305,
+        "startChar": 9,
+        "endLine": 305,
+        "endChar": 47
+      },
+      "revId": "2440a8a6e72a1fb156fce3f38ef3ae8cd2a527d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "9720035c_c2bdb81f",
         "filename": "src/svm/queue.c",
         "patchSetId": 4
