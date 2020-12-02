@@ -12,6 +12,7 @@ except ImportError:
     import Queue as queue
 import logging
 from . import vpp_papi
+from .vpp_transport import BaseTransport
 
 
 class VppTransportSocketIOError(IOError):
@@ -19,7 +20,7 @@ class VppTransportSocketIOError(IOError):
     pass
 
 
-class VppTransport(object):
+class VppTransport(BaseTransport):
     VppTransportSocketIOError = VppTransportSocketIOError
 
     def __init__(self, parent, read_timeout, server_address):
