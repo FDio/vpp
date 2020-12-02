@@ -160,6 +160,8 @@ function(vpp_add_api_files name dir component)
     get_filename_component(name ${file} NAME)
     list(APPEND header_files
       ${file}.h
+      ${file}_enum.h
+      ${file}_types.h
       ${file}.json
       ${CMAKE_BINARY_DIR}/vpp-api/vapi/${name}.vapi.h
       ${CMAKE_BINARY_DIR}/vpp-api/vapi/${name}.vapi.hpp
