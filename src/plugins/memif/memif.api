@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "3.0.0";
+option version = "3.0.1";
 
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -180,6 +180,25 @@ define memif_dump
 {
   u32 client_index;
   u32 context;
+};
+
+counters memif_input {
+  buffer_alloc_fail {
+    severity error;
+    type counter64;
+    units "packets";
+    description "buffer allocation failed";
+  };
+  not_ip {
+    severity info;
+    type counter64;
+    units "packets";
+    description "not ip packet";
+  };
+};
+
+paths {
+  "/err/memif-input" "memif_input";
 };
 
 /*
