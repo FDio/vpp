@@ -6,10 +6,7 @@ import struct
 import threading
 import select
 import multiprocessing
-try:
-    import queue as queue
-except ImportError:
-    import Queue as queue
+import queue
 import logging
 from . import vpp_papi
 
@@ -22,7 +19,7 @@ class VppTransportSocketIOError(IOError):
     pass
 
 
-class VppTransport(object):
+class VppTransport:
     VppTransportSocketIOError = VppTransportSocketIOError
 
     def __init__(self, parent, read_timeout, server_address):

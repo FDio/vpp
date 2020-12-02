@@ -66,7 +66,7 @@ class VppTransportShmemIOError(IOError):
         super(VppTransportShmemIOError, self).__init__(rv, descr)
 
 
-class VppTransport(object):
+class VppTransport:
     VppTransportShmemIOError = VppTransportShmemIOError
 
     def __init__(self, parent, read_timeout, server_address):

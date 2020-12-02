@@ -29,10 +29,9 @@ from . import vpp_format
 #
 logger = logging.getLogger('vpp_papi.serializer')
 
-if sys.version[0] == '2':
-    def check(d): type(d) is dict
-else:
-    def check(d): type(d) is dict or type(d) is bytes
+
+def check(d):
+    return type(d) is dict or type(d) is bytes
 
 
 def conversion_required(data, field_type):
@@ -57,8 +56,7 @@ def conversion_unpacker(data, field_type):
     return vpp_format.conversion_unpacker_table[field_type](data)
 
 
-# TODO: post 20.01, remove inherit from object.
-class Packer(object):
+class Packer:
     options = {}
 
     def pack(self, data, kwargs):
@@ -384,9 +382,6 @@ class VPPEnumType(Packer):
     def __bool__(self):
         return True
 
-    # TODO: Remove post 20.01.
-    if sys.version[0] == '2':
-        __nonzero__ = __bool__
 
     def pack(self, data, kwargs=None):
         if data is None:  # Default to zero if not specified
