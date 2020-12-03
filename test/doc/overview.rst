@@ -344,7 +344,7 @@ basic IPv4 forwarding.
      class IP4FwdTestCase(VppTestCase):
          """ IPv4 simple forwarding test case """
 
-2. Add a setUpClass function containing the setup needed for our test to run::
+3. Add a setUpClass function containing the setup needed for our test to run::
 
          @classmethod
          def setUpClass(self):
@@ -355,7 +355,7 @@ basic IPv4 forwarding.
                  i.config_ip4()  # configure IPv4 address on the interface
                  i.resolve_arp()  # resolve ARP, so that we know VPP MAC
 
-3. Create a helper method to create the packets to send::
+4. Create a helper method to create the packets to send::
 
          def create_stream(self, src_if, dst_if, count):
              packets = []
@@ -377,7 +377,7 @@ basic IPv4 forwarding.
              # return the created packet list
              return packets
 
-4. Create a helper method to verify the capture::
+5. Create a helper method to verify the capture::
 
          def verify_capture(self, src_if, dst_if, capture):
              packet_info = None
@@ -419,7 +419,7 @@ basic IPv4 forwarding.
                                "Interface %s: Packet expected from interface "
                                "%s didn't arrive" % (dst_if.name, src_if.name))
 
-5. Add the test code to test_basic function::
+6. Add the test code to test_basic function::
 
          def test_basic(self):
              count = 10
@@ -441,4 +441,5 @@ basic IPv4 forwarding.
              # verify capture
              self.verify_capture(self.pg0, self.pg1, capture)
 
-6. Run the test by issuing 'make test'.
+7. Run the test by issuing 'make test' or, to run only this specific
+   test, issue 'make test TEST=test_ip4_fwd'.
