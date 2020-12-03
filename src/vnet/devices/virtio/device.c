@@ -947,13 +947,11 @@ virtio_interface_tx_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (packed)
     return virtio_interface_tx_packed_gso_inline (vm, node, vif, type, vring,
 						  buffers, n_left,
-						  1 /* do_gso */ ,
-						  1 /* checksum offload */ );
+						  do_gso, csum_offload);
   else
     return virtio_interface_tx_split_gso_inline (vm, node, vif, type, vring,
 						 buffers, n_left,
-						 1 /* do_gso */ ,
-						 1 /* checksum offload */ );
+						 do_gso, csum_offload);
 }
 
 static_always_inline u16
