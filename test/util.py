@@ -5,7 +5,6 @@ import ipaddress
 import logging
 import socket
 from socket import AF_INET6
-import six
 import sys
 import os.path
 
