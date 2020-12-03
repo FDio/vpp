@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "bbc5a0f4_60fe9d20",
+        "filename": "src/plugins/avf/input.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 454,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-03T13:15:37Z",
+      "side": 1,
+      "message": "As thanks to our great indent tool it takes 3 lines vs one, and it is more to type.",
+      "parentUuid": "8e58ffa4_a5c0be01",
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7325938c_d03973e5",
         "filename": "src/plugins/dpdk/device/node.c",
         "patchSetId": 11
@@ -33,6 +51,24 @@
       "revId": "865e562baa9069f39006411549f0a63c43340eb5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5cae45e0_96f8816d",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 476,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-03T13:15:37Z",
+      "side": 1,
+      "message": "As thanks to our great indent tool it takes 3 lines vs one, and it is more to type.",
+      "parentUuid": "7325938c_d03973e5",
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "8804b0da_050aca58",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 478,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-03T13:15:37Z",
+      "side": 1,
+      "message": "fixed, thanks",
+      "parentUuid": "7a4ad16c_3bdccd99",
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "20364443_9682e0f2",
         "filename": "src/plugins/dpdk/device/node.c",
         "patchSetId": 11
@@ -67,6 +121,24 @@
       "revId": "865e562baa9069f39006411549f0a63c43340eb5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a92439c4_dd93201e",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-03T13:15:37Z",
+      "side": 1,
+      "message": "fixed, thanks",
+      "parentUuid": "20364443_9682e0f2",
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "c0585973_e2447205",
+        "filename": "src/vlib/node_funcs.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-03T13:15:37Z",
+      "side": 1,
+      "message": "done, also converted to atomic store with release ordering....",
+      "parentUuid": "e6a9587d_02f226db",
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "38e7217e_64d6eb44",
         "filename": "src/vnet/interface.h",
         "patchSetId": 11
@@ -104,6 +194,24 @@
     },
     {
       "key": {
+        "uuid": "c3d7562f_a8b22529",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-03T13:15:37Z",
+      "side": 1,
+      "message": "fixed, thanks",
+      "parentUuid": "38e7217e_64d6eb44",
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f8eb7afd_5738230b",
         "filename": "src/vnet/interface/runtime.c",
         "patchSetId": 11
@@ -115,6 +223,24 @@
       "writtenOn": "2020-11-25T01:34:34Z",
       "side": 1,
       "message": "This loop does not work when a thread has more than one interface belonging to the same node. In that case, the per_thread_node_state[i] always ends up with the last interface\u0027s rxq-\u003emode in the same thread of the same node.",
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a6c552f9_9e7e7015",
+        "filename": "src/vnet/interface/runtime.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-03T13:15:37Z",
+      "side": 1,
+      "message": "I dont see what you are saying in the code. It iterates over the global pool if rx-queues and there is no special treatment per hw_if_index.",
+      "parentUuid": "f8eb7afd_5738230b",
       "revId": "865e562baa9069f39006411549f0a63c43340eb5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -144,6 +270,30 @@
     },
     {
       "key": {
+        "uuid": "63f5d0b3_0d046052",
+        "filename": "src/vnet/interface/rx_queue_funcs.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-03T13:15:37Z",
+      "side": 1,
+      "message": "fixed, thanks",
+      "parentUuid": "f5553e74_7b8b36b0",
+      "range": {
+        "startLine": 58,
+        "startChar": 2,
+        "endLine": 58,
+        "endChar": 61
+      },
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8c7cbc0b_6a840e10",
         "filename": "src/vppinfra/interrupt.h",
         "patchSetId": 11
@@ -164,6 +314,30 @@
       "revId": "865e562baa9069f39006411549f0a63c43340eb5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "41d673ea_eeed6554",
+        "filename": "src/vppinfra/interrupt.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-03T13:15:37Z",
+      "side": 1,
+      "message": "fixed, tnx",
+      "parentUuid": "8c7cbc0b_6a840e10",
+      "range": {
+        "startLine": 86,
+        "startChar": 2,
+        "endLine": 86,
+        "endChar": 50
+      },
+      "revId": "865e562baa9069f39006411549f0a63c43340eb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
