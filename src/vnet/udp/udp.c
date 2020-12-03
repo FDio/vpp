@@ -124,6 +124,7 @@ void
 udp_connection_free (udp_connection_t * uc)
 {
   u32 thread_index = uc->c_thread_index;
+  clib_spinlock_free (&uc->rx_lock);
   if (CLIB_DEBUG)
     clib_memset (uc, 0xFA, sizeof (*uc));
   pool_put (udp_main.connections[thread_index], uc);
@@ -222,6 +223,7 @@ udp_session_unbind (u32 listener_index)
   listener = udp_listener_get (listener_index);
   udp_connection_unregister_port (clib_net_to_host_u16 (listener->c_lcl_port),
 				  listener->c_is_ip4);
+  clib_spinlock_free (&listener->rx_lock);
   pool_put (um->listener_pool, listener);
   return 0;
 }
