@@ -2904,5 +2904,4 @@ class TestIP6LinkLocal(VppTestCase):
         self.send_and_expect(self.pg1, [p_echo_request_3], self.pg1)
 
 
-if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+if __name__ == '__m
