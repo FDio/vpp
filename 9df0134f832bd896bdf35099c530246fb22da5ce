@@ -71,6 +71,24 @@
     },
     {
       "key": {
+        "uuid": "99c63ce9_88e1652f",
+        "filename": "src/vnet/interface/rx_queue.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-03T13:33:49Z",
+      "side": 1,
+      "message": "Sp how do you get interrupts in the interrupt mode?",
+      "parentUuid": "d074855f_922cc8e6",
+      "revId": "9df0134f832bd896bdf35099c530246fb22da5ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "0bdccd02_11097cdc",
         "filename": "src/vnet/interface/rx_queue.c",
         "patchSetId": 12
@@ -88,6 +106,24 @@
     },
     {
       "key": {
+        "uuid": "47103717_d5020859",
+        "filename": "src/vnet/interface/rx_queue.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-03T13:33:49Z",
+      "side": 1,
+      "message": "why?",
+      "parentUuid": "0bdccd02_11097cdc",
+      "revId": "9df0134f832bd896bdf35099c530246fb22da5ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b15c1a16_01268650",
         "filename": "src/vnet/interface/rx_queue.c",
         "patchSetId": 12
@@ -99,6 +135,24 @@
       "writtenOn": "2020-11-25T11:12:09Z",
       "side": 1,
       "message": "Please add the following code after calling the \u0027rx_mode_change_function\u0027. \n if (mode \u003d\u003d VNET_HW_IF_RX_MODE_POLLING \u0026\u0026 rxq-\u003efile_index !\u003d ~0)\n  {\n    clib_file_t *f \u003d clib_file_get (fm, rxq-\u003efile_index);\n    fm-\u003efile_update (f, UNIX_FILE_UPDATE_DELETE);\n  }",
+      "revId": "9df0134f832bd896bdf35099c530246fb22da5ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9aff51db_8172faaa",
+        "filename": "src/vnet/interface/rx_queue.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-03T13:33:49Z",
+      "side": 1,
+      "message": "why?",
+      "parentUuid": "b15c1a16_01268650",
       "revId": "9df0134f832bd896bdf35099c530246fb22da5ce",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
