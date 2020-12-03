@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "af2f10f1_e563865a",
+        "filename": "test/vpp_ip.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-03T05:15:20Z",
+      "side": 1,
+      "message": "Please fix this.  It is not valid python and is triggering a sonar error.",
+      "revId": "2df2f75ec52003e3b6addbde5f2e8254a9aee800",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
