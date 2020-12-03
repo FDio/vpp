@@ -211,6 +211,7 @@ class TestPPPoE(VppTestCase):
                                      self.pg0.remote_mac,
                                      self.session_id)
         pppoe_if.add_vpp_config()
+        pppoe_if.set_unnumbered(self.pg0.sw_if_index)
 
         #
         # Send tunneled packets that match the created tunnel and
@@ -274,6 +275,7 @@ class TestPPPoE(VppTestCase):
                                      self.pg0.remote_mac,
                                      self.session_id)
         pppoe_if.add_vpp_config()
+        pppoe_if.set_unnumbered(self.pg0.sw_if_index)
 
         #
         # Send a packet stream that is routed into the session
@@ -337,6 +339,7 @@ class TestPPPoE(VppTestCase):
                                      self.pg0.remote_mac,
                                      self.session_id)
         pppoe_if.add_vpp_config()
+        pppoe_if.set_unnumbered(self.pg0.sw_if_index)
 
         #
         # The double create (create the same session twice) should fail,
@@ -445,6 +448,7 @@ class TestPPPoE(VppTestCase):
                                       self.pg0.remote_mac,
                                       self.session_id)
         pppoe_if1.add_vpp_config()
+        pppoe_if1.set_unnumbered(self.pg0.sw_if_index)
 
         # Send PPPoE Discovery 2
         tx3 = self.create_stream_pppoe_discovery(self.pg2, self.pg1,
@@ -465,6 +469,7 @@ class TestPPPoE(VppTestCase):
                                       self.pg2.remote_mac,
                                       self.session_id + 1)
         pppoe_if2.add_vpp_config()
+        pppoe_if2.set_unnumbered(self.pg0.sw_if_index)
 
         #
         # Send tunneled packets that match the created tunnel and
