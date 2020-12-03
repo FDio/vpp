@@ -10,10 +10,7 @@ import six
 from six import moves
 import sys
 
-if sys.version_info < (3,):
-    from aenum import IntEnum, IntFlag
-else:
-    from enum import IntEnum, IntFlag
+from enum import IntEnum, IntFlag
 
 
 class SerializableClassCopy(object):
