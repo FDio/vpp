@@ -1670,19 +1670,4 @@ class TestDHCP(VppTestCase):
         #
         Client = VppDHCPClient(
             self,
-            vlan_100.sw_if_index,
-            hostname,
-            dscp=vdscp.IP_API_DSCP_EF)
-        Client.add_vpp_config()
-
-        rx = self.pg3.get_capture(1)
-
-        self.assertEqual(rx[0][Dot1Q].vlan, 100)
-        self.assertEqual(rx[0][Dot1Q].prio, 2)
-
-        self.verify_orig_dhcp_discover(rx[0], self.pg3, hostname,
-                                       dscp=vdscp.IP_API_DSCP_EF)
-
-
-if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+         

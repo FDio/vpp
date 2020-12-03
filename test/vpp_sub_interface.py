@@ -1,6 +1,5 @@
 from scapy.layers.l2 import Dot1Q
 import abc
-import six
 from vpp_pg_interface import VppPGInterface
 from vpp_interface import VppInterface
 from vpp_papi import VppEnum
@@ -18,8 +17,7 @@ class L2_VTR_OP:
     L2_TRANSLATE_2_2 = 8
 
 
-@six.add_metaclass(abc.ABCMeta)
-class VppSubInterface(VppPGInterface):
+class VppSubInterface(VppPGInterface, metaclass=abc.ABCMeta):
 
     @property
     def parent(self):

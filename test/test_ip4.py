@@ -2413,5 +2413,4 @@ class TestIP4Replace(VppTestCase):
             self.assertTrue(pfx.query_vpp_config())
 
 
-if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+if __name__ == '__m
