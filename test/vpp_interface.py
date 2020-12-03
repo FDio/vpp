@@ -2,9 +2,6 @@ import binascii
 import socket
 import abc
 
-import six
-from six import moves
-
 from util import Host, mk_ll_addr
 from vpp_papi import mac_ntop, VppEnum
 from ipaddress import IPv4Network, IPv6Network
@@ -15,8 +12,7 @@ except NameError:
     text_type = str
 
 
-@six.add_metaclass(abc.ABCMeta)
-class VppInterface(object):
+class VppInterface(metaclass=abc.ABCMeta):
     """Generic VPP interface."""
 
     @property

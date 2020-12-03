@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import six
 import unittest
 from random import shuffle, choice, randrange
 
@@ -95,7 +94,7 @@ class TestIPv4Reassembly(VppTestCase):
     def create_fragments(cls):
         infos = cls._packet_infos
         cls.pkt_infos = []
-        for index, info in six.iteritems(infos):
+        for index, info in infos.items():
             p = info.data
             # cls.logger.debug(ppp("Packet:",
             #                      p.__class__(scapy.compat.raw(p))))
@@ -811,7 +810,7 @@ class TestIPv4MWReassembly(VppTestCase):
     def create_fragments(cls):
         infos = cls._packet_infos
         cls.pkt_infos = []
-        for index, info in six.iteritems(infos):
+        for index, info in infos.items():
             p = info.data
             # cls.logger.debug(ppp("Packet:",
             #                      p.__class__(scapy.compat.raw(p))))
@@ -986,7 +985,7 @@ class TestIPv6Reassembly(VppTestCase):
     def create_fragments(cls):
         infos = cls._packet_infos
         cls.pkt_infos = []
-        for index, info in six.iteritems(infos):
+        for index, info in infos.items():
             p = info.data
             # cls.logger.debug(ppp("Packet:",
             #                      p.__class__(scapy.compat.raw(p))))
@@ -1444,7 +1443,7 @@ class TestIPv6MWReassembly(VppTestCase):
     def create_fragments(cls):
         infos = cls._packet_infos
         cls.pkt_infos = []
-        for index, info in six.iteritems(infos):
+        for index, info in infos.items():
             p = info.data
             # cls.logger.debug(ppp("Packet:",
             #                      p.__class__(scapy.compat.raw(p))))
@@ -1782,7 +1781,7 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
     def create_fragments(cls):
         infos = cls._packet_infos
         cls.pkt_infos = []
-        for index, info in six.iteritems(infos):
+        for index, info in infos.items():
             p = info.data
             # cls.logger.debug(ppp("Packet:",
             #                      p.__class__(scapy.compat.raw(p))))
@@ -1973,7 +1972,7 @@ class TestFIFReassembly(VppTestCase):
             self.extend_packet(p, size, self.padding)
             info.data = p[IP]  # use only IP part, without ethernet header
 
-        fragments = [x for _, p in six.iteritems(self._packet_infos)
+        fragments = [x for _, p in self._packet_infos.items()
                      for x in fragment_rfc791(p.data, 400)]
 
         encapped_fragments = \
@@ -2038,7 +2037,7 @@ class TestFIFReassembly(VppTestCase):
             self.extend_packet(p, size, self.padding)
             info.data = p[IPv6]  # use only IPv6 part, without ethernet header
 
-        fragments = [x for _, i in six.iteritems(self._packet_infos)
+        fragments = [x for _, i in self._packet_infos.items()
                      for x in fragment_rfc8200(
                          i.data, i.index, 400)]
 
