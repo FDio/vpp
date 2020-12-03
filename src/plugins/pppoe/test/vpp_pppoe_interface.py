@@ -17,6 +17,7 @@ class VppPppoeInterface(VppInterface):
         self.client_mac = client_mac
         self.session_id = session_id
         self.decap_vrf_id = decap_vrf_id
+        self.vpp_sw_if_index = -1
 
     def add_vpp_config(self):
         r = self.test.vapi.pppoe_add_del_session(
@@ -24,6 +25,7 @@ class VppPppoeInterface(VppInterface):
                 session_id=self.session_id,
                 decap_vrf_id=self.decap_vrf_id)
         self.set_sw_if_index(r.sw_if_index)
+        self.vpp_sw_if_index = r.sw_if_index
         self.generate_remote_hosts()
 
     def remove_vpp_config(self):
@@ -33,3 +35,6 @@ class VppPppoeInterface(VppInterface):
                 session_id=self.session_id,
                 decap_vrf_id=self.decap_vrf_id,
                 is_add=0)
+
+    def set_unnumbered(self, swif_iface ):
+        self.test.vapi.sw_interface_set_unnumbered(swif_iface,self.vpp_sw_if_index)
