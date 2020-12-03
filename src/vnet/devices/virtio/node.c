@@ -472,8 +472,8 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  increment_last (last, packed, vring);
 		  u16 cslot = virtio_get_slot_id (vring, packed, last, mask);
-		  u16 clen =
-		    virtio_get_len (vring, packed, hdr_sz, last, mask);
+		  /* hdr size is 0 after 1st packet in chain buffers */
+		  u16 clen = virtio_get_len (vring, packed, 0, last, mask);
 		  u32 cbi = vring->buffers[cslot];
 		  cb = vlib_get_buffer (vm, cbi);
 
