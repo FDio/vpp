@@ -134,7 +134,8 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
 {
   int wrote0;
 
-  clib_spinlock_lock (&uc0->rx_lock);
+  if (!(uc0->flags & UDP_CONN_F_CONNECTED))
+    clib_spinlock_lock (&uc0->rx_lock);
 
   if (svm_fifo_max_enqueue_prod (s0->rx_fifo)
       < hdr0->data_length + sizeof (session_dgram_hdr_t))
@@ -163,7 +164,8 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
 
 unlock_rx_lock:
 
-  clib_spinlock_unlock (&uc0->rx_lock);
+  if (!(uc0->flags & UDP_CONN_F_CONNECTED))
+    clib_spinlock_unlock (&uc0->rx_lock);
 }
 
 always_inline session_t *
@@ -282,9 +284,12 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		s0->session_state = SESSION_STATE_READY;
 	    }
+	  else
+	    {
+	      session_pool_remove_peeker (s0->thread_index);
+	    }
 	  udp_connection_enqueue (uc0, s0, &hdr0, thread_index, b[0],
 				  queue_event, &error0);
-	  session_pool_remove_peeker (s0->thread_index);
 	}
       else if (s0->session_state == SESSION_STATE_READY)
 	{
