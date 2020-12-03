@@ -134,7 +134,8 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
 {
   int wrote0;
 
-  clib_spinlock_lock (&uc0->rx_lock);
+  if (!(uc0->flags & UDP_CONN_F_CONNECTED))
+    clib_spinlock_lock (&uc0->rx_lock);
 
   if (svm_fifo_max_enqueue_prod (s0->rx_fifo)
       < hdr0->data_length + sizeof (session_dgram_hdr_t))
@@ -163,7 +164,8 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
 
 unlock_rx_lock:
 
-  clib_spinlock_unlock (&uc0->rx_lock);
+  if (!(uc0->flags & UDP_CONN_F_CONNECTED))
+    clib_spinlock_unlock (&uc0->rx_lock);
 }
 
 always_inline session_t *
