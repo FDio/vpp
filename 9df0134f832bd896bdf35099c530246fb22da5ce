@@ -128,6 +128,30 @@
     },
     {
       "key": {
+        "uuid": "96733853_237428e3",
+        "filename": "src/vnet/interface/rx_queue_funcs.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-03T13:29:42Z",
+      "side": 1,
+      "message": "Today we don\u0027t have \"public\" function, all are just \"functions\". Writing drivers requires significant understanding of the infra so I\u0027m sure driver writers will make it right.\n\nAnother argument here is that runtime data will also cover TX, so you want to do it once for both rx and tx queues.",
+      "parentUuid": "be8f8db5_55317c6d",
+      "range": {
+        "startLine": 22,
+        "startChar": 4,
+        "endLine": 22,
+        "endChar": 32
+      },
+      "revId": "9df0134f832bd896bdf35099c530246fb22da5ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba52cf65_336e9e50",
         "filename": "src/vnet/interface/rx_queue_funcs.h",
         "patchSetId": 12
