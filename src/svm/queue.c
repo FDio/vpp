@@ -166,8 +166,10 @@ static inline int
 svm_queue_timedwait_inline (svm_queue_t * q, double timeout)
 {
   struct timespec ts;
-  ts.tv_sec = unix_time_now () + (u32) timeout;
-  ts.tv_nsec = (timeout - (u32) timeout) * 1e9;
+  f64 when = unix_time_now () + timeout;
+
+  ts.tv_sec = (u32) when;
+  ts.tv_nsec = (when - (u32) when) * 1e9;
 
   if (q->producer_evtfd == -1)
     {
