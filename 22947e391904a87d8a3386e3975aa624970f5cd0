@@ -46,6 +46,30 @@
       "revId": "22947e391904a87d8a3386e3975aa624970f5cd0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "64bf87cc_3c840f04",
+        "filename": "test/vpp_srmpls.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-03T17:37:15Z",
+      "side": 1,
+      "message": "This is above your/my pay grade so to speak.  We should have this code downgraded to experimental status until dump/details (with a primary key for \u0027find\u0027 semantics) are added.  It is a minimum functionality.  Ole? Thoughts?",
+      "parentUuid": "687024b5_96740c6a",
+      "range": {
+        "startLine": 22,
+        "startChar": 4,
+        "endLine": 23,
+        "endChar": 29
+      },
+      "revId": "22947e391904a87d8a3386e3975aa624970f5cd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
