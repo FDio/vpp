@@ -203,19 +203,6 @@ class Host(object):
         self._ip6_ll = ip6_ll
 
 
-class ForeignAddressFactory(object):
-    count = 0
-    prefix_len = 24
-    net_template = '10.10.10.{}'
-    net = net_template.format(0) + '/' + str(prefix_len)
-
-    def get_ip4(self):
-        if self.count > 255:
-            raise Exception("Network host address exhaustion")
-        self.count += 1
-        return self.net_template.format(self.count)
-
-
 class L4_Conn():
     """ L4 'connection' tied to two VPP interfaces """
 
