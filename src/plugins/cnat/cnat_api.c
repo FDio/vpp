@@ -246,6 +246,7 @@ cnat_session_send_details (const cnat_session_t * session, void *args)
   cnat_endpoint_encode (&ep, &mp->session.dst);
 
   mp->session.ip_proto = ip_proto_encode (session->key.cs_proto);
+  mp->session.location = session->key.location;
 
   vl_api_send_msg (ctx->rp, (u8 *) mp);
 
