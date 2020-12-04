@@ -678,9 +678,12 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	    }
 	}
+      u32 tmp_sub_chain_bi = sub_chain_bi;
       sub_chain_bi =
 	vnet_buffer (vlib_get_buffer (vm, sub_chain_bi))->ip.
 	reass.next_range_bi;
+      vnet_buffer (vlib_get_buffer (vm, tmp_sub_chain_bi))->ip.
+	reass.next_range_bi = ~0;
     }
   while (~0 != sub_chain_bi);
 
