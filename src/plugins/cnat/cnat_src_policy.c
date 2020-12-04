@@ -27,6 +27,13 @@ cnat_register_vip_src_policy (cnat_vip_source_policy_t fp)
   cnat_src_policy_main.vip_policy = fp;
 }
 
+__clib_export void
+cnat_register_snat_policy (cnat_snat_policy_t fp)
+{
+  cnat_src_policy_main.snat_policy = fp;
+}
+
+
 cnat_source_policy_errors_t
 cnat_vip_default_source_policy (vlib_main_t * vm,
 				vlib_buffer_t * b,

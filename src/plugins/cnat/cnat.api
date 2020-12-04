@@ -102,6 +102,7 @@ typedef cnat_session
   vl_api_cnat_endpoint_t dst;
   vl_api_cnat_endpoint_t new;
   vl_api_ip_proto_t ip_proto;
+  u8 location;
   f64 timestamp;
 };
 

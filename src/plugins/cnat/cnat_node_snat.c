@@ -153,7 +153,8 @@ cnat_snat_node_fn (vlib_main_t * vm,
 	CNAT_SESSION_FLAG_NO_CLIENT | CNAT_SESSION_FLAG_ALLOC_PORT;
 
       created_session = 1;
-      cnat_session_create (session, ctx, CNAT_SESSION_FLAG_HAS_SNAT);
+      cnat_session_create (session, ctx, CNAT_LOCATION_FIB,
+			   CNAT_SESSION_FLAG_HAS_SNAT);
     }
 
 
@@ -183,9 +184,9 @@ VLIB_NODE_FN (cnat_snat_ip4_node) (vlib_main_t * vm,
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_node_inline (vm, node, frame, cnat_snat_node_fn, AF_IP4,
-			     1 /* do_trace */ );
+			     CNAT_LOCATION_FIB, 1 /* do_trace */ );
   return cnat_node_inline (vm, node, frame, cnat_snat_node_fn, AF_IP4,
-			   0 /* do_trace */ );
+			   CNAT_LOCATION_FIB, 0 /* do_trace */ );
 }
 
 VLIB_NODE_FN (cnat_snat_ip6_node) (vlib_main_t * vm,
@@ -194,15 +195,15 @@ VLIB_NODE_FN (cnat_snat_ip6_node) (vlib_main_t * vm,
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_node_inline (vm, node, frame, cnat_snat_node_fn, AF_IP6,
-			     1 /* do_trace */ );
+			     CNAT_LOCATION_FIB, 1 /* do_trace */ );
   return cnat_node_inline (vm, node, frame, cnat_snat_node_fn, AF_IP6,
-			   0 /* do_trace */ );
+			   CNAT_LOCATION_FIB, 0 /* do_trace */ );
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (cnat_snat_ip4_node) =
 {
-  .name = "ip4-cnat-snat",
+  .name = "cnat-snat-ip4",
   .vector_size = sizeof (u32),
   .format_trace = format_cnat_snat_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -217,7 +218,7 @@ VLIB_REGISTER_NODE (cnat_snat_ip4_node) =
 
 VLIB_REGISTER_NODE (cnat_snat_ip6_node) =
 {
-  .name = "ip6-cnat-snat",
+  .name = "cnat-snat-ip6",
   .vector_size = sizeof (u32),
   .format_trace = format_cnat_snat_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -233,13 +234,13 @@ VLIB_REGISTER_NODE (cnat_snat_ip6_node) =
 VNET_FEATURE_INIT (cnat_snat_ip4_node, static) =
 {
   .arc_name = "ip4-unicast",
-  .node_name = "ip4-cnat-snat",
+  .node_name = "cnat-snat-ip4",
 };
 
 VNET_FEATURE_INIT (cnat_snat_ip6_node, static) =
 {
   .arc_name = "ip6-unicast",
-  .node_name = "ip6-cnat-snat",
+  .node_name = "cnat-snat-ip6",
 };
 
 /* *INDENT-ON* */
