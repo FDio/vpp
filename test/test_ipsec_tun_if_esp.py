@@ -2942,4 +2942,4 @@ class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    unittest

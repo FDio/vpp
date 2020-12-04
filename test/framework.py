@@ -1633,5 +1633,4 @@ class Worker(Thread):
         self.result = self.process.returncode
 
 
-if __name__ == '__main__':
-    pass
+if _

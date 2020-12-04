@@ -12,7 +12,7 @@ import sys
 from enum import IntEnum, IntFlag
 
 
-class SerializableClassCopy(object):
+class SerializableClassCopy:
     """
     Empty class used as a basis for a serializable copy of another class.
     """
@@ -22,7 +22,7 @@ class SerializableClassCopy(object):
         return '<SerializableClassCopy dict=%s>' % self.__dict__
 
 
-class RemoteClassAttr(object):
+class RemoteClassAttr:
     """
     Wrapper around attribute of a remotely executed class.
     """

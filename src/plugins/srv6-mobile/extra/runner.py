@@ -2579,5 +2579,4 @@ def main(op=None, prefix=None, verbose=None,
     return rc
 
 
-if __name__ == "__main__":
-    sys.exit(main(**get_args()))
+if __name__ == "__ma

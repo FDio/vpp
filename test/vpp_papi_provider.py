@@ -1199,4 +1199,4 @@ class VppPapiProvider(object):
 
     def want_igmp_events(self, enable=1):
         return self.api(self.papi.want_igmp_events, {'enable': enable,
-                                                     'pid': os.getpid()})
+                                                     'pid': os.get

@@ -1944,4 +1944,4 @@ class TestMalformedMessages(TemplateResponder, Ikev2Params):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    

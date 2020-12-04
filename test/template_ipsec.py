@@ -1245,5 +1245,4 @@ class IpsecTun46Tests(IpsecTun4Tests, IpsecTun6Tests):
     pass
 
 
-if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+if __name__ == 

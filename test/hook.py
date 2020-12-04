@@ -10,7 +10,7 @@ from log import RED, single_line_delim, double_line_delim
 from util import check_core_path, get_core_path
 
 
-class Hook(object):
+class Hook:
     """
     Generic hooks before/after API/CLI calls
     """
