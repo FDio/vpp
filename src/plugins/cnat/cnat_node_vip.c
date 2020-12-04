@@ -114,8 +114,7 @@ cnat_vip_node_fn (vlib_main_t * vm,
       if (INDEX_INVALID != session->value.cs_lbi)
 	{
 	  /* Translate & follow the translation given LB */
-	  ct = cnat_translation_get (session->value.ct_index);
-	  next0 = ct->ct_lb.dpoi_next_node;
+	  next0 = session->value.dpoi_next_node;
 	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = session->value.cs_lbi;
 	}
       else if (session->value.flags & CNAT_SESSION_FLAG_HAS_SNAT)
@@ -193,7 +192,7 @@ cnat_vip_node_fn (vlib_main_t * vm,
       session->value.cs_port[VLIB_RX] =
 	clib_host_to_net_u16 (trk0->ct_ep[VLIB_RX].ce_port);
 
-      session->value.ct_index = ct - cnat_translation_pool;
+      session->value.dpoi_next_node = ct->ct_lb.dpoi_next_node;
       session->value.cs_lbi = dpo0->dpoi_index;
 
       rv = cspm->vip_policy (vm, b, session, &rsession_flags, ct, ctx);
