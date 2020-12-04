@@ -44,7 +44,7 @@ def exception_handler(exception_type, exception, traceback):
 #
 # Lexer
 #
-class VPPAPILexer(object):
+class VPPAPILexer:
     def __init__(self, filename):
         self.filename = filename
 
@@ -450,7 +450,7 @@ class Paths():
         self.paths = pathset
 
 
-class Coord(object):
+class Coord:
     """ Coordinates of a syntactic element. Consists of:
             - File name
             - Line number
@@ -477,7 +477,7 @@ class ParseError(Exception):
 #
 # Grammar rules
 #
-class VPPAPIParser(object):
+class VPPAPIParser:
     tokens = VPPAPILexer.tokens
 
     def __init__(self, filename, logger, revision=None):
