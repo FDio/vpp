@@ -698,6 +698,7 @@ fib_walk_async (fib_node_type_t parent_type,
 	 * The walk has reached the maximum depth. there is a loop in the graph.
 	 * bail.
 	 */
+	ctx->fnbw_depth--;
 	return;
     }
     if (0 == fib_node_get_n_children(parent_type,
@@ -706,6 +707,7 @@ fib_walk_async (fib_node_type_t parent_type,
         /*
          * no children to walk - quit now
          */
+        ctx->fnbw_depth--;
         return;
     }
     if (ctx->fnbw_flags & FIB_NODE_BW_FLAG_FORCE_SYNC)
@@ -714,7 +716,9 @@ fib_walk_async (fib_node_type_t parent_type,
          * the originator of the walk wanted it to be synchronous, but the
          * parent object chose async - denied.
          */
-        return (fib_walk_sync(parent_type, parent_index, ctx));
+        fib_walk_sync(parent_type, parent_index, ctx);
+        ctx->fnbw_depth--;
+        return;
     }
 
 
@@ -732,6 +736,7 @@ fib_walk_async (fib_node_type_t parent_type,
 
     FIB_WALK_DBG(fwalk, "async-start: %U",
                  format_fib_node_bw_reason, ctx->fnbw_reason);
+    ctx->fnbw_depth--;
 }
 
 /**
@@ -756,6 +761,7 @@ fib_walk_sync (fib_node_type_t parent_type,
 	 * The walk has reached the maximum depth. there is a loop in the graph.
 	 * bail.
 	 */
+	ctx->fnbw_depth--;
 	return;
     }
     if (0 == fib_node_get_n_children(parent_type,
@@ -764,6 +770,7 @@ fib_walk_sync (fib_node_type_t parent_type,
         /*
          * no children to walk - quit now
          */
+        ctx->fnbw_depth--;
         return;
     }
 
@@ -856,6 +863,8 @@ fib_walk_sync (fib_node_type_t parent_type,
                      ctx->fnbw_reason);
 	fib_walk_destroy(fwi);
     }
+
+    ctx->fnbw_depth--;
 }
 
 static fib_node_t *
