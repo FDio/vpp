@@ -1128,7 +1128,8 @@ set_async_mode_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			   vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  int async_enable = 0;
+  clib_error_t *error = NULL;
+  int async_enable = 0, rv;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -1144,11 +1145,22 @@ set_async_mode_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				   format_unformat_error, line_input));
     }
 
-  vnet_crypto_request_async_mode (async_enable);
-  ipsec_set_async_mode (async_enable);
+  rv = ipsec_set_async_mode (async_enable);
 
   unformat_free (line_input);
-  return (NULL);
+  switch (rv)
+    {
+    case 0:
+      break;
+    case VNET_API_ERROR_CANNOT_ENABLE_DISABLE_FEATURE:
+      error = clib_error_return (0,
+				 "Failed: Cannot enable IPSec async mode when sync-only SAs added.");
+      break;
+    default:
+      error = clib_error_return (0, "ipsec_set_async_mode returned %d", rv);
+    }
+
+  return (error);
 }
 
 /* *INDENT-OFF* */

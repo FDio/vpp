@@ -205,6 +205,7 @@ typedef struct
   u32 esp6_dec_tun_fq_index;
 
   u8 async_mode;
+  u32 sync_only_sa_count;
 } ipsec_main_t;
 
 typedef enum ipsec_format_flags_t_
@@ -284,7 +285,6 @@ int ipsec_select_ah_backend (ipsec_main_t * im, u32 ah_backend_idx);
 int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);
 
 clib_error_t *ipsec_rsc_in_use (ipsec_main_t * im);
-void ipsec_set_async_mode (u32 is_enabled);
 
 always_inline ipsec_sa_t *
 ipsec_sa_get (u32 sa_index)
@@ -295,7 +295,7 @@ ipsec_sa_get (u32 sa_index)
 void ipsec_add_feature (const char *arc_name, const char *node_name,
 			u32 * out_feature_index);
 
-void ipsec_set_async_mode (u32 is_enabled);
+int ipsec_set_async_mode (u32 is_enabled);
 extern void ipsec_register_udp_port (u16 udp_port);
 extern void ipsec_unregister_udp_port (u16 udp_port);
 

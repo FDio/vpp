@@ -335,12 +335,24 @@ ipsec_select_esp_backend (ipsec_main_t * im, u32 backend_idx)
   return 0;
 }
 
-void
+int
 ipsec_set_async_mode (u32 is_enabled)
 {
   ipsec_main_t *im = &ipsec_main;
   ipsec_sa_t *sa;
 
+  if (im->async_mode == is_enabled)
+    {
+      return 0;
+    }
+
+  if (is_enabled && im->sync_only_sa_count > 0)
+    {
+      return VNET_API_ERROR_CANNOT_ENABLE_DISABLE_FEATURE;
+    }
+
+  vnet_crypto_request_async_mode (is_enabled);
+  /* *INDENT-OFF* */
   /* lock all SAs before change im->async_mode */
   pool_foreach (sa, im->sad, (
 			       {
@@ -356,6 +368,8 @@ ipsec_set_async_mode (u32 is_enabled)
 			       sa->async_op_data.data : sa->sync_op_data.data;
 			       fib_node_unlock (&sa->node);
 			       }));
+  /* *INDENT-ON* */
+  return 0;
 }
 
 static void
@@ -568,6 +582,7 @@ ipsec_init (vlib_main_t * vm)
     vlib_frame_queue_main_init (esp6_decrypt_tun_node.index, 0);
 
   im->async_mode = 0;
+  im->sync_only_sa_count = 0;
   crypto_engine_backend_register_post_node (vm);
 
   return 0;

@@ -221,6 +221,13 @@ ipsec_sa_add_and_lock (u32 id,
   ipsec_sa_set_crypto_alg (sa, crypto_alg);
   ipsec_sa_set_async_op_ids (sa);
 
+  if (im->async_mode && !sa->async_op_data.crypto_async_enc_op_id)
+    {
+      clib_warning ("Cannot add sync-only SA when IPSec is in async mode.");
+      pool_put (im->sad, sa);
+      return VNET_API_ERROR_UNSUPPORTED;
+    }
+
   clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
   ip46_address_copy (&sa->tunnel_src_addr, tun_src);
   ip46_address_copy (&sa->tunnel_dst_addr, tun_dst);
@@ -354,6 +361,10 @@ ipsec_sa_add_and_lock (u32 id,
   if (sa_out_index)
     *sa_out_index = sa_index;
 
+  /* count sync-only SAs */
+  if (!sa->async_op_data.crypto_async_enc_op_id)
+    ++im->sync_only_sa_count;
+
   return (0);
 }
 
@@ -381,6 +392,11 @@ ipsec_sa_del (ipsec_sa_t * sa)
   vnet_crypto_key_del (vm, sa->crypto_key_index);
   if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
     vnet_crypto_key_del (vm, sa->integ_key_index);
+
+  /* count sync-only SAs */
+  if (!sa->async_op_data.crypto_async_enc_op_id)
+    --im->sync_only_sa_count;
+
   pool_put (im->sad, sa);
 }
 
