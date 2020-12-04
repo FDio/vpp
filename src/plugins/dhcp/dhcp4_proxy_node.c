@@ -955,6 +955,7 @@ dhcp4_proxy_set_command_fn (vlib_main_t * vm,
   else
     return clib_error_return (0, "parse error`%U'",
 			      format_unformat_error, input);
+  return clib_error_return (0, "BUG2: should not be reached?");
 }
 
 /* *INDENT-OFF* */
