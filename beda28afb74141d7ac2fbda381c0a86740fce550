@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bc596e19_3e29fb86",
+        "filename": "src/vnet/adj/adj_dp.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-04T18:34:37Z",
+      "side": 1,
+      "message": "The fixup function is called after rewrite and the negative vlib buffer advance... we need to compute the hash on vlib_buffer_get_current (b) + the encap header size",
+      "range": {
+        "startLine": 75,
+        "startChar": 38,
+        "endLine": 75,
+        "endChar": 66
+      },
+      "revId": "beda28afb74141d7ac2fbda381c0a86740fce550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "42d7d8b9_44fa207d",
+        "filename": "src/vnet/adj/adj_dp.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-04T18:34:37Z",
+      "side": 1,
+      "message": "same",
+      "range": {
+        "startLine": 79,
+        "startChar": 39,
+        "endLine": 79,
+        "endChar": 66
+      },
+      "revId": "beda28afb74141d7ac2fbda381c0a86740fce550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c1258268_764d2126",
+        "filename": "src/vnet/adj/adj_dp.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-04T18:34:37Z",
+      "side": 1,
+      "message": "same",
+      "range": {
+        "startLine": 83,
+        "startChar": 40,
+        "endLine": 83,
+        "endChar": 67
+      },
+      "revId": "beda28afb74141d7ac2fbda381c0a86740fce550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
