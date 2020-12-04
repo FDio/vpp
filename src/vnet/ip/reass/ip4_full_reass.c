@@ -464,6 +464,7 @@ ip4_full_reass_drop_all (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       vlib_buffer_free (vm, to_free, vec_len (to_free));
     }
+  vec_free(to_free);
 }
 
 always_inline void
