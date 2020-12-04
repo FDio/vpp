@@ -31,7 +31,7 @@ import weakref
 import atexit
 import time
 from . vpp_format import verify_enum_hint
-from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType
+from . vpp_serializer import VPPType, VPPEnumType, VPPEnumFlagType, VPPUnionType
 from . vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
 
 try:
@@ -48,7 +48,7 @@ logger = logging.getLogger('vpp_papi')
 logger.addHandler(logging.NullHandler())
 
 __all__ = ('FuncWrapper', 'VPP', 'VppApiDynamicMethodHolder',
-           'VppEnum', 'VppEnumType',
+           'VppEnum', 'VppEnumType', 'VppEnumFlag',
            'VPPIOError', 'VPPRuntimeError', 'VPPValueError',
            'VPPApiClient', )
 
@@ -72,14 +72,17 @@ class VppEnum:
     pass
 
 
+@metaclass(VppEnumType)
+class VppEnumFlag:
+    pass
+
+
 def vpp_atexit(vpp_weakref):
     """Clean up VPP connection on shutdown."""
     vpp_instance = vpp_weakref()
     if vpp_instance and vpp_instance.transport.connected:
         logger.debug('Cleaning up VPP on exit')
         vpp_instance.disconnect()
-
-
 
 
 def add_convenience_methods():
@@ -281,7 +284,12 @@ class VPPApiJSONFiles:
                 types[t[0]] = {'type': 'enum', 'data': t}
         except KeyError:
             pass
-
+        try:
+            for t in api['enumflags']:
+                t[0] = 'vl_api_' + t[0] + '_t'
+                types[t[0]] = {'type': 'enum', 'data': t}
+        except KeyError:
+            pass
         try:
             for t in api['unions']:
                 t[0] = 'vl_api_' + t[0] + '_t'
@@ -316,6 +324,12 @@ class VPPApiJSONFiles:
                     if v['type'] == 'enum':
                         try:
                             VPPEnumType(t[0], t[1:])
+                        except ValueError:
+                            unresolved[k] = v
+                if not vpp_get_type(k):
+                    if v['type'] == 'enumflag':
+                        try:
+                            VPPEnumFlagType(t[0], t[1:])
                         except ValueError:
                             unresolved[k] = v
                     elif v['type'] == 'union':

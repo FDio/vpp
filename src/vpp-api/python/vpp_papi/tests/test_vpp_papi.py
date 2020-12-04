@@ -23,7 +23,6 @@ from vpp_papi import vpp_transport_shmem
 
 
 class TestVppPapiVPPApiClient(unittest.TestCase):
-
     def test_getcontext(self):
         vpp_papi.VPPApiClient.apidir = '.'
         c = vpp_papi.VPPApiClient(testmode=True, use_socket=True)
@@ -57,7 +56,6 @@ class TestVppPapiVPPApiClientMp(unittest.TestCase):
 
 
 class TestVppTypes(unittest.TestCase):
-    
     def test_enum_from_json(self):
         json_api = """\
 {
@@ -114,9 +112,126 @@ class TestVppTypes(unittest.TestCase):
         self.assertTrue(str(t).startswith("VPPEnumType"))
         self.assertEqual(t.name, type_name)
 
+    def test_enumflagmixed_from_json(self):
+        json_api = """\
+{
+    "enums": [
+
+        [
+            "address_family",
+            [
+                "ADDRESS_IP4",
+                0
+            ],
+            [
+                "ADDRESS_IP6",
+                1
+            ],
+            {
+                "enumtype": "u8"
+            }
+        ]
+        ],
+    "enumflags": [
+
+        [
+            "if_type",
+            [
+                "IF_API_TYPE_HARDWARE",
+                0
+            ],
+            [
+                "IF_API_TYPE_SUB",
+                1
+            ],
+            [
+                "IF_API_TYPE_P2P",
+                2
+            ],
+            [
+                "IF_API_TYPE_PIPE",
+                3
+            ],
+            {
+                "enumtype": "u32"
+            }
+        ]
+    ]
+}
+"""
+
+        processor = vpp_papi.VPPApiJSONFiles()
+
+        # add the types to vpp_serializer
+        processor.process_json_str(json_api)
+
+        vpp_transport_shmem.VppTransport = mock.MagicMock()
+        ac = vpp_papi.VPPApiClient(apifiles=[], testmode=True)
+        print(ac)
+        type_name = "vl_api_if_type_t"
+        t = ac.get_type(type_name)
+        print(t)
+        self.assertTrue(str(t).startswith("VPPEnumType"))
+        self.assertEqual(t.name, type_name)
+
+    def test_enumflag_from_json(self):
+        json_api = """\
+{
+    "enumflags": [
+
+        [
+            "address_family",
+            [
+                "ADDRESS_IP4",
+                0
+            ],
+            [
+                "ADDRESS_IP6",
+                1
+            ],
+            {
+                "enumtype": "u8"
+            }
+        ],
+        [
+            "if_type",
+            [
+                "IF_API_TYPE_HARDWARE",
+                0
+            ],
+            [
+                "IF_API_TYPE_SUB",
+                1
+            ],
+            [
+                "IF_API_TYPE_P2P",
+                2
+            ],
+            [
+                "IF_API_TYPE_PIPE",
+                3
+            ],
+            {
+                "enumtype": "u32"
+            }
+        ]
+    ]
+}
+"""
+        processor = vpp_papi.VPPApiJSONFiles()
+
+        # add the types to vpp_serializer
+        processor.process_json_str(json_api)
+
+        vpp_transport_shmem.VppTransport = mock.MagicMock()
+        ac = vpp_papi.VPPApiClient(apifiles=[], testmode=True)
+        type_name = "vl_api_if_type_t"
+        t = ac.get_type(type_name)
+        self.assertTrue(str(t).startswith("VPPEnumType"))
+        self.assertEqual(t.name, type_name)
+
 
 class TestVppPapiLogging(unittest.TestCase):
-
     def test_logger(self):
         class Transport:
             connected = True

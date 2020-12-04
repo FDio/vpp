@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import unittest
-from vpp_papi.vpp_serializer import VPPType, VPPEnumType
+from vpp_papi.vpp_serializer import VPPType, VPPEnumType, VPPEnumFlagType
 from vpp_papi.vpp_serializer import VPPUnionType, VPPMessage
 from vpp_papi.vpp_serializer import VPPTypeAlias, VPPSerializerValueError
 from vpp_papi import MACAddress
@@ -122,6 +122,9 @@ class TestAddType(unittest.TestCase):
         af = VPPEnumType('vl_api_address_family_t', [["ADDRESS_IP4", 0],
                                                      ["ADDRESS_IP6", 1],
                                                      {"enumtype": "u32"}])
+        aff = VPPEnumFlagType('vl_api_address_family_flag_t', [["ADDRESS_IP4", 0],
+                                                               ["ADDRESS_IP6", 1],
+                                                               {"enumtype": "u32"}])
         ip4 = VPPTypeAlias('vl_api_ip4_address_t', {'type': 'u8',
                                                     'length': 4})
         ip6 = VPPTypeAlias('vl_api_ip6_address_t', {'type': 'u8',
