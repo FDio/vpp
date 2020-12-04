@@ -348,7 +348,7 @@ class VppIpInterfaceBind(VppObject):
         return "interface-bind-%s-%s" % (self.intf, self.table)
 
 
-class VppMplsLabel(object):
+class VppMplsLabel:
     def __init__(self, value, mode=MplsLspMode.PIPE, ttl=64, exp=0):
         self.value = value
         self.mode = mode
@@ -380,7 +380,7 @@ class VppMplsLabel(object):
         return not (self == other)
 
 
-class VppFibPathNextHop(object):
+class VppFibPathNextHop:
     def __init__(self, addr,
                  via_label=MPLS_LABEL_INVALID,
                  next_hop_id=INVALID_INDEX):
@@ -411,7 +411,7 @@ class VppFibPathNextHop(object):
                 self.obj_id == other.obj_id)
 
 
-class VppRoutePath(object):
+class VppRoutePath:
 
     def __init__(
             self,
@@ -691,7 +691,7 @@ class VppIpMRoute(VppObject):
         return c[0][self.stats_index]
 
 
-class VppMFibSignal(object):
+class VppMFibSignal:
     def __init__(self, test, route, interface, packet):
         self.route = route
         self.interface = interface

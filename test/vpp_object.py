@@ -48,7 +48,7 @@ class VppObject(metaclass=abc.ABCMeta):
         return not self.__eq__(other)
 
 
-class VppObjectRegistry(object):
+class VppObjectRegistry:
     """ Class which handles automatic configuration cleanup. """
     _shared_state = {}
 
