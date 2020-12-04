@@ -63,9 +63,11 @@ typedef struct cnat_session_t_
     u8 cs_af;
 
     /**
-     * spare space
+     * input / output / fib session
      */
-    u8 __cs_pad[2];
+    u8 location;
+
+    u8 pad;
   } key;
   /**
    * this value sits in the same memory location a 'value' in the bihash kvp

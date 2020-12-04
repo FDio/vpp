@@ -76,19 +76,17 @@ format_cnat_session (u8 * s, va_list * args)
   if (!pool_is_free_index (cnat_timestamps, sess->value.cs_ts_index))
     ts = cnat_timestamp_exp (sess->value.cs_ts_index);
 
-  s =
-    format (s,
-	    "session:[%U;%d -> %U;%d, %U] => %U;%d -> %U;%d lb:%d age:%f",
-	    format_ip46_address, &sess->key.cs_ip[VLIB_RX], IP46_TYPE_ANY,
-	    clib_host_to_net_u16 (sess->key.cs_port[VLIB_RX]),
-	    format_ip46_address, &sess->key.cs_ip[VLIB_TX], IP46_TYPE_ANY,
-	    clib_host_to_net_u16 (sess->key.cs_port[VLIB_TX]),
-	    format_ip_protocol, sess->key.cs_proto, format_ip46_address,
-	    &sess->value.cs_ip[VLIB_RX], IP46_TYPE_ANY,
-	    clib_host_to_net_u16 (sess->value.cs_port[VLIB_RX]),
-	    format_ip46_address, &sess->value.cs_ip[VLIB_TX], IP46_TYPE_ANY,
-	    clib_host_to_net_u16 (sess->value.cs_port[VLIB_TX]),
-	    sess->value.cs_lbi, ts);
+  s = format (
+    s, "session:[%U;%d -> %U;%d, %U] => %U;%d -> %U;%d loc:%d lb:%d age:%f",
+    format_ip46_address, &sess->key.cs_ip[VLIB_RX], IP46_TYPE_ANY,
+    clib_host_to_net_u16 (sess->key.cs_port[VLIB_RX]), format_ip46_address,
+    &sess->key.cs_ip[VLIB_TX], IP46_TYPE_ANY,
+    clib_host_to_net_u16 (sess->key.cs_port[VLIB_TX]), format_ip_protocol,
+    sess->key.cs_proto, format_ip46_address, &sess->value.cs_ip[VLIB_RX],
+    IP46_TYPE_ANY, clib_host_to_net_u16 (sess->value.cs_port[VLIB_RX]),
+    format_ip46_address, &sess->value.cs_ip[VLIB_TX], IP46_TYPE_ANY,
+    clib_host_to_net_u16 (sess->value.cs_port[VLIB_TX]), sess->key.location,
+    sess->value.cs_lbi, ts);
 
   return (s);
 }
