@@ -113,7 +113,8 @@ avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
       else
 	{
 	  struct avf_ip6_psh psh = { 0 };
-	  clib_memcpy_fast (&psh.src, &ip6->src_address, 32);
+	  clib_memcpy_fast (&psh.src, &ip6->src_address, 16);
+	  clib_memcpy_fast (&psh.dst, &ip6->dst_address, 16);
 	  psh.proto = clib_host_to_net_u32 ((u32) ip6->protocol);
 	  psh.l4len = is_tso ? 0 : ip6->payload_length;
 	  sum = ~ip_csum (&psh, sizeof (psh));
