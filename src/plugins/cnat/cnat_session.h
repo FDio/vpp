@@ -102,7 +102,7 @@ typedef struct cnat_session_t_
 	 * Persist translation->ct_lb.dpoi_next_node
 	 * when cs_lbi != INDEX_INVALID
 	 */
-      u32 ct_index;
+      u32 dpoi_next_node;
     };
   } value;
 } cnat_session_t;
