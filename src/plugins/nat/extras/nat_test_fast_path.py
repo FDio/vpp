@@ -1,7 +1,7 @@
 from trex_stl_lib.api import *
 
 
-class STLS1(object):
+class STLS1:
 
     def create_stream(self):
         # base_pkt = Ether()/IP(dst="2.2.0.1")/UDP(dport=12)
