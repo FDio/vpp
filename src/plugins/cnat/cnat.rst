@@ -96,7 +96,7 @@ address assigned to an interface)
 
   cnat snat with 30.0.0.1
   cnat snat exclude 20.0.0.0/24
-  set interface feature tap0 ip4-cnat-snat arc ip4-unicast
+  set interface feature tap0 cnat-snat-ip4 arc ip4-unicast
 
 Other parameters
 ----------------
