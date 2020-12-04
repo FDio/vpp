@@ -1199,10 +1199,9 @@ static void
 vl_api_ipsec_set_async_mode_t_handler (vl_api_ipsec_set_async_mode_t * mp)
 {
   vl_api_ipsec_set_async_mode_reply_t *rmp;
-  int rv = 0;
+  int rv;
 
-  vnet_crypto_request_async_mode (mp->async_enable);
-  ipsec_set_async_mode (mp->async_enable);
+  rv = ipsec_set_async_mode (mp->async_enable);
 
   REPLY_MACRO (VL_API_IPSEC_SET_ASYNC_MODE_REPLY);
 }
