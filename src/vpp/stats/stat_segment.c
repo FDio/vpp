@@ -330,13 +330,12 @@ vlib_map_stat_segment_init (void)
 
   mfd = clib_mem_vm_create_fd (sm->log2_page_sz, mem_name);
 
-  /* Set size */
-  if ((ftruncate (mfd, memory_size)) == -1)
-    return clib_error_return (0, "stat segment ftruncate failure");
-
   if (mfd == -1)
     return clib_error_return (0, "stat segment memory fd failure: %U",
 			      format_clib_error, clib_mem_get_last_error ());
+  /* Set size */
+  if ((ftruncate (mfd, memory_size)) == -1)
+    return clib_error_return (0, "stat segment ftruncate failure");
 
   memaddr = clib_mem_vm_map_shared (0, memory_size, mfd, 0, mem_name);
 
