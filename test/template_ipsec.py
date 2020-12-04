@@ -15,7 +15,7 @@ from util import ppp, reassemble4, fragment_rfc791, fragment_rfc8200
 from vpp_papi import VppEnum
 
 
-class IPsecIPv4Params(object):
+class IPsecIPv4Params:
 
     addr_type = socket.AF_INET
     addr_any = "0.0.0.0"
@@ -54,7 +54,7 @@ class IPsecIPv4Params(object):
         self.dscp = 0
 
 
-class IPsecIPv6Params(object):
+class IPsecIPv6Params:
 
     addr_type = socket.AF_INET6
     addr_any = "0::0"

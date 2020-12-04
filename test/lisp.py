@@ -102,19 +102,19 @@ class VppLispLocator(VppObject):
         return 'lisp-locator-%s-%d' % (self._ls_name, self._sw_if_index)
 
 
-class LispEIDType(object):
+class LispEIDType:
     PREFIX = 0
     MAC = 1
     NSH = 2
 
 
-class LispKeyIdType(object):
+class LispKeyIdType:
     NONE = 0
     SHA1 = 1
     SHA256 = 2
 
 
-class LispEID(object):
+class LispEID:
     """ Lisp endpoint identifier """
     def __init__(self, eid):
         self.eid = eid
@@ -155,7 +155,7 @@ class LispEID(object):
             return Exception('Unimplemented')
 
 
-class LispKey(object):
+class LispKey:
     """ Lisp Key """
     def __init__(self, key_type, key):
         self._key_type = key_type
@@ -244,7 +244,7 @@ class VppLocalMapping(VppLispMapping):
         return 'lisp-eid-local-mapping-%s[%d]' % (self._eid.address, self._vni)
 
 
-class LispRemoteLocator(object):
+class LispRemoteLocator:
     def __init__(self, addr, priority=1, weight=1):
         self.addr = addr
         self.priority = priority
