@@ -2374,6 +2374,94 @@ class TestNAT44(MethodHolder):
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
 
+    def test_hairpinning_avoid_inf_loop(self):
+        """ NAT44 hairpinning - 1:1 NAPT avoid infinite loop """
+
+        host = self.pg0.remote_hosts[0]
+        server = self.pg0.remote_hosts[1]
+        host_in_port = 1234
+        host_out_port = 0
+        server_in_port = 5678
+        server_out_port = 8765
+
+        self.nat44_add_address(self.nat_addr)
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            flags=flags, is_add=1)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1)
+
+        # add static mapping for server
+        self.nat44_add_static_mapping(server.ip4, self.nat_addr,
+                                      server_in_port, server_out_port,
+                                      proto=IP_PROTOS.tcp)
+
+        # add another static mapping that maps pg0.local_ip4 address to itself
+        self.nat44_add_static_mapping(self.pg0.local_ip4, self.pg0.local_ip4)
+
+        # send packet from host to VPP (the packet should get dropped)
+        p = (Ether(src=host.mac, dst=self.pg0.local_mac) /
+             IP(src=host.ip4, dst=self.pg0.local_ip4) /
+             TCP(sport=host_in_port, dport=server_out_port))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        # Here VPP used to crash due to an infinite loop
+
+        cnt = self.statistics.get_counter('/nat44/hairpinning')[0]
+        # send packet from host to server
+        p = (Ether(src=host.mac, dst=self.pg0.local_mac) /
+             IP(src=host.ip4, dst=self.nat_addr) /
+             TCP(sport=host_in_port, dport=server_out_port))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, self.nat_addr)
+            self.assertEqual(ip.dst, server.ip4)
+            self.assertNotEqual(tcp.sport, host_in_port)
+            self.assertEqual(tcp.dport, server_in_port)
+            self.assert_packet_checksums_valid(p)
+            host_out_port = tcp.sport
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        after = self.statistics.get_counter('/nat44/hairpinning')[0]
+        if_idx = self.pg0.sw_if_index
+        self.assertEqual(after[if_idx] - cnt[if_idx], 1)
+
+        # send reply from server to host
+        p = (Ether(src=server.mac, dst=self.pg0.local_mac) /
+             IP(src=server.ip4, dst=self.nat_addr) /
+             TCP(sport=server_in_port, dport=host_out_port))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, self.nat_addr)
+            self.assertEqual(ip.dst, host.ip4)
+            self.assertEqual(tcp.sport, server_out_port)
+            self.assertEqual(tcp.dport, host_in_port)
+            self.assert_packet_checksums_valid(p)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        after = self.statistics.get_counter('/nat44/hairpinning')[0]
+        if_idx = self.pg0.sw_if_index
+        self.assertEqual(after[if_idx] - cnt[if_idx], 2)
+
     def test_interface_addr(self):
         """ Acquire NAT44 addresses from interface """
         self.vapi.nat44_add_del_interface_addr(
