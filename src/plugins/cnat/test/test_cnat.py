@@ -271,11 +271,6 @@ class TestCNatTranslation(VppTestCase):
                                            p1 * N_PKTS,
                                            self.pg0)
 
-        self.assertEqual(t1.get_stats()['packets'],
-                         N_PKTS *
-                         len(sports) *
-                         len(self.pg0.remote_hosts))
-
     def cnat_test_translation_update(self, t1, sports, isV6=False):
         ip_v = "ip6" if isV6 else "ip4"
         ip_class = IPv6 if isV6 else IP
