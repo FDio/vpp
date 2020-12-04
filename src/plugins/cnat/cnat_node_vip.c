@@ -202,15 +202,19 @@ cnat_vip_node_fn (vlib_main_t * vm,
       if (rv)
 	{
 	  if (CNAT_SOURCE_ERROR_EXHAUSTED_PORTS == rv)
-	    vlib_node_increment_counter (vm, cnat_vip_ip4_node.index,
-					 CNAT_ERROR_EXHAUSTED_PORTS, 1);
+	    {
+	      vlib_node_registration_t *node =
+		(AF_IP4 == ctx->af) ? &cnat_vip_ip4_node : &cnat_vip_ip6_node;
+	      vlib_node_increment_counter (vm, node->index,
+					   CNAT_ERROR_EXHAUSTED_PORTS, 1);
+	    }
 	  next0 = CNAT_TRANSLATION_NEXT_DROP;
 	  goto trace;
 	}
 
       /* refcnt session in current client */
       cnat_client_cnt_session (cc);
-      cnat_session_create (session, ctx, rsession_flags);
+      cnat_session_create (session, ctx, CNAT_LOCATION_FIB, rsession_flags);
       created_session = 1;
 
       next0 = ct->ct_lb.dpoi_next_node;
@@ -253,9 +257,9 @@ VLIB_NODE_FN (cnat_vip_ip4_node) (vlib_main_t * vm,
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP4,
-			     1 /* do_trace */ );
+			     CNAT_LOCATION_FIB, 1 /* do_trace */ );
   return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP4,
-			   0 /* do_trace */ );
+			   CNAT_LOCATION_FIB, 0 /* do_trace */ );
 }
 
 VLIB_NODE_FN (cnat_vip_ip6_node) (vlib_main_t * vm,
@@ -264,9 +268,9 @@ VLIB_NODE_FN (cnat_vip_ip6_node) (vlib_main_t * vm,
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP6,
-			     1 /* do_trace */ );
+			     CNAT_LOCATION_FIB, 1 /* do_trace */ );
   return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP6,
-			   0 /* do_trace */ );
+			   CNAT_LOCATION_FIB, 0 /* do_trace */ );
 }
 
 /* *INDENT-OFF* */

@@ -568,12 +568,12 @@ class TestCNatSourceNAT(VppTestCase):
         self.vapi.feature_enable_disable(
             enable=1,
             arc_name="ip6-unicast",
-            feature_name="ip6-cnat-snat",
+            feature_name="cnat-snat-ip6",
             sw_if_index=self.pg0.sw_if_index)
         self.vapi.feature_enable_disable(
             enable=1,
             arc_name="ip4-unicast",
-            feature_name="ip4-cnat-snat",
+            feature_name="cnat-snat-ip4",
             sw_if_index=self.pg0.sw_if_index)
 
     def tearDown(self):

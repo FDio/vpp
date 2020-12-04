@@ -51,10 +51,18 @@ typedef cnat_source_policy_errors_t (*cnat_vip_source_policy_t)
    u32 * rsession_flags, const cnat_translation_t * ct,
    cnat_node_ctx_t * ctx);
 
+/* function to use to decide whether to snat connections in the output
+   feature */
+typedef cnat_source_policy_errors_t (*cnat_snat_policy_t)
+  (vlib_main_t * vm, vlib_buffer_t * b, cnat_session_t * session,
+   cnat_node_ctx_t * ctx, u8 * do_snat);
+
 typedef struct cnat_src_policy_main_
 {
   cnat_vip_source_policy_t vip_policy;
   cnat_vip_source_policy_t default_policy;
+
+  cnat_snat_policy_t snat_policy;
 
   /* Per proto source ports allocator for snat */
   cnat_src_port_allocator_t *src_ports;
@@ -63,6 +71,7 @@ typedef struct cnat_src_policy_main_
 extern cnat_src_policy_main_t cnat_src_policy_main;
 
 void cnat_register_vip_src_policy (cnat_vip_source_policy_t fp);
+void cnat_register_snat_policy (cnat_snat_policy_t fp);
 int cnat_allocate_port (u16 * port, ip_protocol_t iproto);
 void cnat_free_port (u16 port, ip_protocol_t iproto);
 
