@@ -732,42 +732,45 @@ cnat_session_create (cnat_session_t * session, cnat_node_ctx_t * ctx,
   clib_bihash_add_del_40_48 (&cnat_session_db, bkey, 1);
 
   /* is this the first time we've seen this source address */
-  cc = (AF_IP4 == ctx->af ?
-	cnat_client_ip4_find (&session->value.cs_ip[VLIB_RX].ip4) :
-	cnat_client_ip6_find (&session->value.cs_ip[VLIB_RX].ip6));
-
-  if (NULL == cc)
+  if (!(rsession_flags & CNAT_SESSION_FLAG_NO_CLIENT))
     {
-      ip_address_t addr;
-      uword *p;
-      u32 refcnt;
+      cc = (AF_IP4 == ctx->af ?
+	    cnat_client_ip4_find (&session->value.cs_ip[VLIB_RX].ip4) :
+	    cnat_client_ip6_find (&session->value.cs_ip[VLIB_RX].ip6));
 
-      addr.version = ctx->af;
-      ip46_address_copy (&addr.ip, &session->value.cs_ip[VLIB_RX]);
-
-      /* Throttle */
-      clib_spinlock_lock (&cnat_client_db.throttle_lock);
-
-      p = hash_get_mem (cnat_client_db.throttle_mem, &addr);
-      if (p)
+      if (NULL == cc)
 	{
-	  refcnt = p[0] + 1;
-	  hash_set_mem (cnat_client_db.throttle_mem, &addr, refcnt);
+	  ip_address_t addr;
+	  uword *p;
+	  u32 refcnt;
+
+	  addr.version = ctx->af;
+	  ip46_address_copy (&addr.ip, &session->value.cs_ip[VLIB_RX]);
+
+	  /* Throttle */
+	  clib_spinlock_lock (&cnat_client_db.throttle_lock);
+
+	  p = hash_get_mem (cnat_client_db.throttle_mem, &addr);
+	  if (p)
+	    {
+	      refcnt = p[0] + 1;
+	      hash_set_mem (cnat_client_db.throttle_mem, &addr, refcnt);
+	    }
+	  else
+	    hash_set_mem_alloc (&cnat_client_db.throttle_mem, &addr, 0);
+
+	  clib_spinlock_unlock (&cnat_client_db.throttle_lock);
+
+	  /* fire client create to the main thread */
+	  if (!p)
+	    vl_api_rpc_call_main_thread (cnat_client_learn, (u8 *) & addr,
+					 sizeof (addr));
 	}
       else
-	hash_set_mem_alloc (&cnat_client_db.throttle_mem, &addr, 0);
-
-      clib_spinlock_unlock (&cnat_client_db.throttle_lock);
-
-      /* fire client create to the main thread */
-      if (!p)
-	vl_api_rpc_call_main_thread (cnat_client_learn, (u8 *) & addr,
-				     sizeof (addr));
-    }
-  else
-    {
-      /* Refcount reverse session */
-      cnat_client_cnt_session (cc);
+	{
+	  /* Refcount reverse session */
+	  cnat_client_cnt_session (cc);
+	}
     }
 
   /* create the reverse flow key */
