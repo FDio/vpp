@@ -31,6 +31,29 @@ add_vpp_executable(vat2 ENABLE_EXPORTS NO_INSTALL
   rt m dl crypto
 )
 
+#
+# Unit test code. Call generator directly to avoid it being installed
+#set_source_files_properties(vat2_test.c PROPERTIES
+#  COMPILE_FLAGS " -fsanitize=address"
+#)
+
+vpp_generate_api_c_header (test/vat2_test.api)
+add_vpp_executable(test_vat2 ENABLE_EXPORTS NO_INSTALL
+  SOURCES
+  test/vat2_test.c
+  jsonconvert.c
+
+  DEPENDS api_headers
+
+  LINK_LIBRARIES
+  vlibmemoryclient
+  svm
+  vppinfra
+  vppapiclient
+  Threads::Threads
+  rt m dl crypto
+)
+#target_link_options(test_vat2 PUBLIC "LINKER:-fsanitize=address")
 ##############################################################################
 # vat2 headers
 ##############################################################################

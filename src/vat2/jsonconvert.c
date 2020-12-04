@@ -314,12 +314,12 @@ void *vl_api_address_t_fromjson(void *mp, int *len, cJSON *o, vl_api_address_t *
   char *p = cJSON_GetStringValue(o);
   if (!p) return 0;
   unformat_init_string (&input, p, strlen(p));
-  if (a->af == ADDRESS_IP4)
-    unformat(&input, "%U", unformat_ip4_address, &a->un.ip4);
-  else if (a->af == ADDRESS_IP6)
-    unformat(&input, "%U", unformat_ip6_address, &a->un.ip6);
+  if (unformat (&input, "%U", unformat_ip4_address, &a->un.ip4))
+    a->af = ADDRESS_IP4;
+  else if (unformat (&input, "%U", unformat_ip6_address, &a->un.ip6))
+    a->af = ADDRESS_IP6;
   else
-    return 0;
+    return (0);
   return mp;
 }
 
@@ -328,14 +328,17 @@ void *vl_api_prefix_t_fromjson(void *mp, int *len, cJSON *o, vl_api_prefix_t *a)
   unformat_input_t input;
 
   char *p = cJSON_GetStringValue(o);
+
   if (!p) return 0;
   unformat_init_string (&input, p, strlen(p));
-  if (a->address.af == ADDRESS_IP4)
-    unformat(&input, "%U/%d", unformat_ip4_address, &a->address.un.ip4, &a->len);
-  else if (a->address.af == ADDRESS_IP6)
-    unformat(&input, "%U/%d", unformat_ip6_address, &a->address.un.ip6, &a->len);
+  int plen;
+  if (unformat (&input, "%U/%d", unformat_ip4_address, &a->address.un.ip4, &plen))
+    a->address.af = ADDRESS_IP4;
+  else if (unformat (&input, "%U/%d", unformat_ip6_address, &a->address.un.ip6, &plen))
+    a->address.af = ADDRESS_IP6;
   else
-    return 0;
+    return (0);
+  a->len = plen;
   return mp;
 }
 

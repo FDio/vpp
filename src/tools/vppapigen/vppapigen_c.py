@@ -187,7 +187,21 @@ class ToJSON():
         write('}\n')
 
     _dispatch['Enum'] = print_enum
-    _dispatch['EnumFlag'] = print_enum
+
+    def print_enum_flag(self, o):
+        '''Create cJSON object (string) for VPP API enum'''
+        write = self.stream.write
+        write('static inline cJSON *vl_api_{name}_t_tojson '
+              '(vl_api_{name}_t a) {{\n'.format(name=o.name))
+        write('    cJSON *array = cJSON_CreateArray();\n')
+
+        for b in o.block:
+            write('    if (a & {})\n'.format(b[0]))
+            write('       cJSON_AddItemToArray(array, cJSON_CreateString("{}"));\n'.format(b[0]))
+        write('    return array;\n')
+        write('}\n')
+
+    _dispatch['EnumFlag'] = print_enum_flag
 
     def print_typedef(self, o):
         '''Create cJSON (dictionary) object from VPP API typedef'''
@@ -456,7 +470,27 @@ class FromJSON():
         write('}\n')
 
     _dispatch['Enum'] = print_enum
-    _dispatch['EnumFlag'] = print_enum
+
+    def print_enum_flag(self, o):
+        '''Convert to JSON enum(string) to VPP API enum (int)'''
+        write = self.stream.write
+        write('static inline void *vl_api_{n}_t_fromjson '
+              '(void *mp, int *len, cJSON *o, vl_api_{n}_t *a) {{\n'
+              .format(n=o.name))
+        write('   int i;\n')
+        write('   *a = 0;\n')
+        write('   for (i = 0; i < cJSON_GetArraySize(o); i++) {\n')
+        write('       cJSON *e = cJSON_GetArrayItem(o, i);\n')
+        write('       char *p = cJSON_GetStringValue(e);\n')
+        write('       if (!p) return 0;\n')
+        for b in o.block:
+            write('       if (strcmp(p, "{}") == 0) *a |= {};\n'
+                  .format(b[0], b[1]))
+        write('    }\n')
+        write('   return mp;\n')
+        write('}\n')
+
+    _dispatch['EnumFlag'] = print_enum_flag
 
     def print_typedef(self, o):
         '''Convert from JSON object to VPP API binary representation'''
