@@ -18,7 +18,7 @@
 import "vnet/ip/ip_types.api";
 import "vnet/ethernet/ethernet_types.api";
 
-enum acl_action : u8
+enumflag acl_action : u8
 {
   ACL_ACTION_API_DENY = 0,
   ACL_ACTION_API_PERMIT = 1,
