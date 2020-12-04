@@ -112,7 +112,7 @@ def check_core_path(logger, core_path):
             "   current core pattern is: %s" % corefmt)
 
 
-class NumericConstant(object):
+class NumericConstant:
 
     desc_dict = {}
 
@@ -131,7 +131,7 @@ class NumericConstant(object):
         return ""
 
 
-class Host(object):
+class Host:
     """ Generic test host "connected" to VPPs interface. """
 
     @property
@@ -203,7 +203,7 @@ class Host(object):
         self._ip6_ll = ip6_ll
 
 
-class ForeignAddressFactory(object):
+class ForeignAddressFactory:
     count = 0
     prefix_len = 24
     net_template = '10.10.10.{}'

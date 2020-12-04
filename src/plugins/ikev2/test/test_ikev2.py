@@ -12,6 +12,7 @@ from cryptography.hazmat.primitives.ciphers import (
     modes,
 )
 from ipaddress import IPv4Address, IPv6Address, ip_address
+import unittest
 from scapy.layers.ipsec import ESP
 from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6

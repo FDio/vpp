@@ -501,7 +501,7 @@ bind_layers(IPFIX, Set)
 bind_layers(UDP, IPFIX, dport=4739)
 
 
-class IPFIXDecoder(object):
+class IPFIXDecoder:
     """ IPFIX data set decoder """
 
     def __init__(self):

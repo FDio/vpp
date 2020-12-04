@@ -1,6 +1,6 @@
 from trex_stl_lib.api import *
 
-class STLS1(object):
+class STLS1:
 
     def __init__ (self):
         self.ip_range = {'local': {'start': "10.0.0.3", 'end': "10.1.255.255"},
