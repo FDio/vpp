@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "54327d11_21f11fcd",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_stats.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-05T19:35:13Z",
+      "side": 1,
+      "message": "This looks like you are trying to change the type from a list to a vector.  \nIn doing so, all consumers now have to handle a list of unions instead of a list of stat_segment_data_t.",
+      "range": {
+        "startLine": 142,
+        "startChar": 4,
+        "endLine": 143,
+        "endChar": 56
+      },
+      "revId": "f321672b7444c7827714f50c4102aae7257501e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
