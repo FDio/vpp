@@ -7,6 +7,7 @@ import sys
 import os
 import select
 import signal
+import subprocess
 import unittest
 import tempfile
 import time
@@ -39,19 +40,6 @@ from util import ppp, is_core_present
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
-
-if os.name == 'posix' and sys.version_info[0] < 3:
-    # using subprocess32 is recommended by python official documentation
-    # @ https://docs.python.org/2/library/subprocess.html
-    import subprocess32 as subprocess
-else:
-    import subprocess
-
-#  Python2/3 compatible
-try:
-    input = raw_input
-except NameError:
-    pass
 
 logger = logging.getLogger(__name__)
 
@@ -623,7 +611,7 @@ class VppTestCase(unittest.TestCase):
                     print("VPP or GDB server is still running")
                     print(single_line_delim)
                     input("When done debugging, press ENTER to kill the "
-                          "process and finish running the testcase...")
+                              "process and finish running the testcase...")
             except AttributeError:
                 pass
 
