@@ -1626,12 +1626,4 @@ class Worker(Thread):
         self.logger.info(out.decode('utf-8'))
         self.logger.info(single_line_delim)
         self.logger.info("Executable `{app}' wrote to stderr:"
-                         .format(app=self.app_name))
-        self.logger.info(single_line_delim)
-        self.logger.info(err.decode('utf-8'))
-        self.logger.info(single_line_delim)
-        self.result = self.process.returncode
-
-
-if __name__ == '__main__':
-    pass
+                         .format(app=self
