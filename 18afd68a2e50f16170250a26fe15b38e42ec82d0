@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1d242a18_d8c875ef",
+        "filename": "src/plugins/cnat/cnat.api",
+        "patchSetId": 24
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-05T19:47:55Z",
+      "side": 1,
+      "message": "bump the version",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 24
+      },
+      "revId": "18afd68a2e50f16170250a26fe15b38e42ec82d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
