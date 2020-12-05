@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fe4a67b0_6fce643a",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 29
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2020-12-05T13:24:17Z",
+      "side": 1,
+      "message": "typo -- s/add link/del link/",
+      "range": {
+        "startLine": 385,
+        "startChar": 47,
+        "endLine": 385,
+        "endChar": 50
+      },
+      "revId": "df596d269369f0257a1137affd51826cadd7f93e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bd4882a2_6cc49653",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 29
+      },
+      "lineNbr": 634,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2020-12-05T13:24:17Z",
+      "side": 1,
+      "message": "Not all branches below fully resolve vif_index, yielding a compiler warning in lcp_itf_pair_add on L790.\nPerhaps set vif_index\u003d0 and do a final check before attempting the lcp_itf_pair_add() below?",
+      "range": {
+        "startLine": 634,
+        "startChar": 15,
+        "endLine": 634,
+        "endChar": 16
+      },
+      "revId": "df596d269369f0257a1137affd51826cadd7f93e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d9ef994a_44007b2e",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 29
+      },
+      "lineNbr": 790,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2020-12-05T13:24:17Z",
+      "side": 1,
+      "message": "(here is where !vif_index ought to be checked).",
+      "revId": "df596d269369f0257a1137affd51826cadd7f93e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
