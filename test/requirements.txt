@@ -6,6 +6,7 @@ deprecation>=2.0.6                      # Apache-2.0
 faulthandler; python_version < '3.3' #  # BSD License (2 clause)
 flake8                                  # MIT
 ipaddress; python_version < '3.3'       # PSF
+noiseprotocol==0.3.1
 parameterized>=0.6.1                    # BSD
 pexpect                                 # ISC
 psutil                                  # BSD
