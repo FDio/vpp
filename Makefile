@@ -593,7 +593,7 @@ json-api-files-debug:
 
 .PHONY: ctags
 ctags: ctags.files
-	@ctags --totals --tag-relative -L $<
+	@ctags --totals --tag-relative=yes -L $<
 	@rm $<
 
 .PHONY: gtags
