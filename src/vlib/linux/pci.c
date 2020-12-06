@@ -523,9 +523,10 @@ vlib_pci_bind_to_uio (vlib_main_t * vm, vlib_pci_addr_t * addr,
 
       if (ifr.ifr_flags & IFF_UP)
 	{
-	  error = clib_error_return (0, "Skipping PCI device %U as host "
-				     "interface %s is up",
-				     format_vlib_pci_addr, addr, e->d_name);
+	  vlib_log (VLIB_LOG_LEVEL_WARNING, pci_main.log_default,
+		    "Skipping PCI device %U as host "
+		    "interface %s is up", format_vlib_pci_addr, addr,
+		    e->d_name);
 	  close (fd);
 	  goto done;
 	}
