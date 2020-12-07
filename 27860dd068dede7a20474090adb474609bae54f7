@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d7adb228_b031e14b",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 721,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-07T23:02:22Z",
+      "side": 0,
+      "message": "vnet_hw_if_update_runtime_data (vnm, xd-\u003ehw_if_index);",
+      "revId": "27860dd068dede7a20474090adb474609bae54f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
