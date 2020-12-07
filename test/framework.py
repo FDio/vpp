@@ -231,14 +231,6 @@ def _running_gcov_tests():
 running_gcov_tests = _running_gcov_tests()
 
 
-def _running_on_centos():
-    os_id = os.getenv("OS_ID", "")
-    return True if "centos" in os_id.lower() else False
-
-
-running_on_centos = _running_on_centos()
-
-
 class KeepAliveReporter(object):
     """
     Singleton object which reports test start to parent process
