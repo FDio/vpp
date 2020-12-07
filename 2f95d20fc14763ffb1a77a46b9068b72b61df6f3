@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "edb969b9_963dcd2f",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 729,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-07T23:35:06Z",
+      "side": 1,
+      "message": "Not vnm but dm-\u003evnet_main (this one is on me sorry...)",
+      "revId": "2f95d20fc14763ffb1a77a46b9068b72b61df6f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
