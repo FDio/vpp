@@ -59,6 +59,18 @@
 #define CLIB_HAVE_VEC128
 #endif
 
+#if defined (__ARM_FEATURE_SVE) && (__ARM_FEATURE_SVE_BITS == 128)
+#define CLIB_HAVE_VEC128
+#endif
+
+#if defined (__ARM_FEATURE_SVE) && (__ARM_FEATURE_SVE_BITS == 256)
+#define CLIB_HAVE_VEC256
+#endif
+
+#if defined (__ARM_FEATURE_SVE) && (__ARM_FEATURE_SVE_BITS == 512)
+#define CLIB_HAVE_VEC512
+#endif
+
 #if defined (__AVX2__)
 #define CLIB_HAVE_VEC256
 #if defined (__clang__)  && __clang_major__ < 4
@@ -189,7 +201,22 @@ foreach_vec
 #endif
 
 #if defined (__aarch64__)
+
+/* 128-bit SVE takes higher priority over NEON */
+#if defined (__ARM_FEATURE_SVE) && (__ARM_FEATURE_SVE_BITS == 128)
+#include <vppinfra/vector_sve128.h>
+#else
 #include <vppinfra/vector_neon.h>
+#endif
+
+#if defined (__ARM_FEATURE_SVE) && (__ARM_FEATURE_SVE_BITS == 256)
+#include <vppinfra/vector_sve256.h>
+#endif
+
+#if defined (__ARM_FEATURE_SVE) && (__ARM_FEATURE_SVE_BITS == 512)
+#include <vppinfra/vector_sve512.h>
+#endif
+
 #endif
 
 #if (defined(CLIB_HAVE_VEC128) || defined(CLIB_HAVE_VEC64))
