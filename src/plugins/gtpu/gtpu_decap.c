@@ -1447,8 +1447,8 @@ gtpu_flow_input (vlib_main_t * vm,
       	  vlib_buffer_advance (b0, gtpu_hdr_len0);
 
           /* assign the next node */
-          if (PREDICT_FALSE (t0->decap_next_index != GTPU_INPUT_NEXT_IP4_INPUT) &&
-              (t0->decap_next_index != GTPU_INPUT_NEXT_IP6_INPUT))
+          if (PREDICT_FALSE ((t0->decap_next_index != GTPU_INPUT_NEXT_IP4_INPUT) &&
+              (t0->decap_next_index != GTPU_INPUT_NEXT_IP6_INPUT)))
           {
             error0 = GTPU_FLOW_ERROR_PAYLOAD_ERROR;
             next0 = GTPU_INPUT_NEXT_DROP;
