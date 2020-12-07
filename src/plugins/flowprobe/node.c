@@ -305,7 +305,7 @@ flowprobe_hash (flowprobe_key_t * k)
 
 flowprobe_entry_t *
 flowprobe_lookup (u32 my_cpu_number, flowprobe_key_t * k, u32 * poolindex,
-		  bool * collision)
+		  bool *collision)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   flowprobe_entry_t *e;
@@ -569,8 +569,7 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
 
   /* FIXUP: message header export_time */
   h->export_time = (u32)
-    (((f64) frm->unix_time_0) +
-     (vlib_time_now (frm->vlib_main) - frm->vlib_time_0));
+    (((f64) frm->unix_time_0) + (vlib_time_now (vm) - frm->vlib_time_0));
   h->export_time = clib_host_to_net_u32 (h->export_time);
   h->domain_id = clib_host_to_net_u32 (stream->domain_id);
 
