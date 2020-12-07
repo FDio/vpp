@@ -91,11 +91,11 @@
 
 #define foreach_flow_entry_ip4_vxlan \
   foreach_flow_entry_ip4_n_tuple \
-  _fe(u16, vni)
+  _fe(u32, vni)
 
 #define foreach_flow_entry_ip6_vxlan \
   foreach_flow_entry_ip6_n_tuple \
-  _fe(u16, vni)
+  _fe(u32, vni)
 
 #define foreach_flow_entry_ip4_gtpc \
   foreach_flow_entry_ip4_n_tuple \

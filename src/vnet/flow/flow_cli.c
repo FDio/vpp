@@ -353,7 +353,7 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
   u32 hw_if_index = ~0, flow_index = ~0;
   int rv;
   u32 teid = 0, session_id = 0, spi = 0;
-  u16 vni = 0;
+  u32 vni = 0;
   vnet_flow_type_t type = VNET_FLOW_TYPE_UNKNOWN;
   ip4_address_and_mask_t ip4s = { };
   ip4_address_and_mask_t ip4d = { };
