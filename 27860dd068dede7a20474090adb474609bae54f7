@@ -16,6 +16,24 @@
       "revId": "27860dd068dede7a20474090adb474609bae54f7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5d38f26f_70f4f1a4",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 721,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-07T23:09:55Z",
+      "side": 0,
+      "message": "fixed, thanks",
+      "parentUuid": "d7adb228_b031e14b",
+      "revId": "27860dd068dede7a20474090adb474609bae54f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
