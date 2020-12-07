@@ -34,7 +34,9 @@ $(VAPI_CBIN).d: $(CSRC) $(VAPI_BINDIR)/fake.api.vapi.h
 
 
 ifeq ($(filter rhel centos,$(OS_ID)),$(OS_ID))
+ifeq ($(OS_VERSION_ID),7)
 VAPI_CPPBIN=
+endif
 else
 CPPSRC = $(TEST_EXT_DIR)/vapi_cpp_test.cpp
 
