@@ -67,6 +67,7 @@ typedef struct
 {
   ssvm_private_t ssvm;		/**< ssvm segment data */
   fifo_segment_header_t *h;	/**< fifo segment data */
+  uword max_byte_index;
   u8 n_slices;			/**< number of fifo segment slices */
 } fifo_segment_t;
 
@@ -206,6 +207,14 @@ u8 fsh_has_reached_mem_limit (fifo_segment_header_t * fsh);
 void fsh_reset_mem_limit (fifo_segment_header_t * fsh);
 
 /**
+ * Fifo segment reset mem limit flag
+ *
+ * @param fs            fifo segment
+ * @param size		size requested
+ * @return		pointer to memory allocated or 0
+ */
+void *fifo_segment_alloc (fifo_segment_t *fs, uword size);
+/**
  * Fifo segment allocated size
  *
  * Returns fifo segment's allocated size
@@ -226,16 +235,6 @@ uword fifo_segment_size (fifo_segment_t * fs);
  * @return		free bytes estimate
  */
 uword fifo_segment_free_bytes (fifo_segment_t * fs);
-
-/**
- * Update fifo segment free bytes estimate
- *
- * Forces fifo segment free bytes estimate synchronization with underlying
- * memory allocator.
- *
- * @param fs		fifo segment
- */
-void fifo_segment_update_free_bytes (fifo_segment_t * fs);
 
 /**
  * Fifo segment number of cached bytes
