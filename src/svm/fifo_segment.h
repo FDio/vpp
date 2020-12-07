@@ -67,6 +67,7 @@ typedef struct
 {
   ssvm_private_t ssvm;		/**< ssvm segment data */
   fifo_segment_header_t *h;	/**< fifo segment data */
+  uword max_byte_index;
   u8 n_slices;			/**< number of fifo segment slices */
 } fifo_segment_t;
 
@@ -205,6 +206,7 @@ u8 fsh_has_reached_mem_limit (fifo_segment_header_t * fsh);
  */
 void fsh_reset_mem_limit (fifo_segment_header_t * fsh);
 
+void * fifo_segment_alloc (fifo_segment_t * fs, uword size);
 /**
  * Fifo segment allocated size
  *

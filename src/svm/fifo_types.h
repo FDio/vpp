@@ -107,14 +107,17 @@ typedef struct fifo_segment_slice_
   u32 *num_chunks;			/**< Allocated chunks by chunk size */
   uword n_fl_chunk_bytes;		/**< Chunk bytes on freelist */
   uword virtual_mem;			/**< Slice sum of all fifo sizes */
-  clib_spinlock_t chunk_lock;
+//  clib_spinlock_t chunk_lock;
+  u32 n_chunk_lens;
+  CLIB_CACHE_LINE_ALIGN_MARK (lock);
+  u32 chunk_lock;
 } fifo_segment_slice_t;
 
 struct fifo_segment_header_
 {
   fifo_segment_slice_t *slices;		/** Fixed array of slices */
-  ssvm_shared_header_t *ssvm_sh;	/**< Pointer to fs ssvm shared hdr */
-  uword n_free_bytes;			/**< Segment free bytes */
+//  ssvm_shared_header_t *ssvm_sh;	/**< Pointer to fs ssvm shared hdr */
+//  uword n_free_bytes;			/**< Segment free bytes */
   uword n_cached_bytes;			/**< Cached bytes */
   u32 n_active_fifos;			/**< Number of active fifos */
   u32 n_reserved_bytes;			/**< Bytes not to be allocated */
@@ -124,6 +127,9 @@ struct fifo_segment_header_
   u8 high_watermark;			/**< Memory pressure watermark high */
   u8 low_watermark;			/**< Memory pressure watermark low */
   u8 pct_first_alloc;			/**< Pct of fifo size to alloc */
+  CLIB_CACHE_LINE_ALIGN_MARK (allocator);
+  uword byte_index;
+  uword max_byte_index;
 };
 
 void fsh_virtual_mem_update (fifo_segment_header_t * fsh, u32 slice_index,
