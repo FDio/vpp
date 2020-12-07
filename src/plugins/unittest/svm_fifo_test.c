@@ -2536,6 +2536,14 @@ sfifo_test_fifo_segment_mempig (int verbose)
 }
 
 static int
+approx_leq (uword a, uword b, u32 margin)
+{
+  if (a - margin <= b && b <= a)
+    return 1;
+  return 0;
+}
+
+static int
 sfifo_test_fifo_segment_prealloc (int verbose)
 {
   fifo_segment_create_args_t _a, *a = &_a;
@@ -2568,8 +2576,8 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   SFIFO_TEST (rv == 50, "prealloc chunks expected %u is %u", 50, rv);
   rv = fifo_segment_free_bytes (fs);
   free_space -= (sizeof (svm_fifo_chunk_t) + 4096) * 50;
-  SFIFO_TEST (rv == free_space, "free space expected %u is %u", free_space,
-	      rv);
+  SFIFO_TEST (rv < free_space, "free space expected %u is %u", free_space, rv);
+  free_space = rv;
   rv = fifo_segment_fl_chunk_bytes (fs);
   SFIFO_TEST (rv == 4096 * 50, "chunk free space expected %u is %u",
 	      4096 * 50, rv);
@@ -2580,8 +2588,9 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   SFIFO_TEST (rv == 50, "prealloc fifo hdrs expected %u is %u", 50, rv);
   rv = fifo_segment_free_bytes (fs);
   free_space -= sizeof (svm_fifo_t) * 50;
-  SFIFO_TEST (rv == free_space, "free space expected %u is %u", free_space,
-	      rv);
+  /* Memory alloc alignment accounts for the difference */
+  SFIFO_TEST (approx_leq (rv, free_space, 64), "free space expected %u is %u",
+	      free_space, rv);
 
   fifo_segment_update_free_bytes (fs);
   rv = fifo_segment_free_bytes (fs);
