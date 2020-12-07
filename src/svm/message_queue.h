@@ -78,6 +78,8 @@ typedef union
  * @return		message queue
  */
 svm_msg_q_t *svm_msg_q_alloc (svm_msg_q_cfg_t * cfg);
+svm_msg_q_t *svm_msg_q_init (void *base, svm_msg_q_cfg_t * cfg);
+uword svm_msg_q_size_to_alloc (svm_msg_q_cfg_t * cfg);
 
 /**
  * Free message queue
