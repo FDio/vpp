@@ -846,7 +846,8 @@ segment_manager_alloc_queue (fifo_segment_t * segment,
   u32 fifo_evt_size, session_evt_size = 256, notif_q_size;
   svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
   svm_msg_q_t *q;
-  void *oldheap;
+//  void *oldheap;
+  void *base;
 
   fifo_evt_size = sizeof (session_event_t);
   notif_q_size = clib_max (16, props->evt_q_size >> 4);
@@ -861,10 +862,12 @@ segment_manager_alloc_queue (fifo_segment_t * segment,
   cfg->q_nitems = props->evt_q_size;
   cfg->ring_cfgs = rc;
 
-  oldheap = ssvm_push_heap (segment->ssvm.sh);
-  q = svm_msg_q_alloc (cfg);
-  fifo_segment_update_free_bytes (segment);
-  ssvm_pop_heap (oldheap);
+  base = fifo_segment_alloc (segment, svm_msg_q_size_to_alloc (cfg));
+  q = svm_msg_q_init (base, cfg);
+//  oldheap = ssvm_push_heap (segment->ssvm.sh);
+//  q = svm_msg_q_alloc (cfg);
+//  fifo_segment_update_free_bytes (segment);
+//  ssvm_pop_heap (oldheap);
 
   if (props->use_mq_eventfd)
     {
