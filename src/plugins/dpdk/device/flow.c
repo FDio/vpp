@@ -74,6 +74,12 @@
 static const struct rte_flow_attr ingress = {.ingress = 1 };
 
 static inline bool
+ipv6_address_is_zero (ip6_address_t *addr)
+{
+  return ((addr->as_u64[0] == 0) && (addr->as_u64[1] == 0));
+}
+
+static inline bool
 mac_address_is_all_zero (const u8 addr[6])
 {
   int i = 0;
@@ -283,9 +289,9 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 
       item->type = RTE_FLOW_ITEM_TYPE_IPV6;
 
-      if ((ip6_ptr->src_addr.mask.as_u64[0] == 0) &&
-	  (ip6_ptr->src_addr.mask.as_u64[1] == 0) &&
-	  (!ip6_ptr->protocol.mask))
+      if ((ipv6_address_is_zero(&ip6_ptr->src_addr.mask)) &&
+          (ipv6_address_is_zero(&ip6_ptr->dst_addr.mask)) &&
+          (!ip6_ptr->protocol.mask))
 	{
 	  item->spec = NULL;
 	  item->mask = NULL;
