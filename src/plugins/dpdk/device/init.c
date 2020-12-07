@@ -371,6 +371,20 @@ dpdk_lib_init (dpdk_main_t * dm)
 	{
 	  xd->rx_q_used = devconf->num_rx_queues;
 	  xd->port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
+	  if (dev_info.reta_size) {
+	      xd->reta_conf =
+	          (struct rte_eth_rss_reta_entry64 *) clib_mem_alloc ((dev_info.reta_size /
+	                                               RTE_RETA_GROUP_SIZE) *
+	                                               sizeof (struct rte_eth_rss_reta_entry64));
+	      if (xd->reta_conf) {
+	          xd->reta_size = dev_info.reta_size;
+	          dm->loadbalance.lb_enabled = 1;
+	      } else {
+	          dpdk_log_warn ("LB: clib_mem_alloc failed");
+	      }
+	      dpdk_log_notice ("LB: Port id %d, RSS reta size %d",
+	                       xd->port_id, xd->reta_size);
+	  }
 	  if (devconf->rss_fn == 0)
 	    xd->port_conf.rx_adv_conf.rss_conf.rss_hf =
 	      ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP;
@@ -1665,6 +1679,10 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
     dpdk_update_link_state (xd, now);
   }
 
+  if (dm->loadbalance.lb_enabled) {
+      dpdk_loadbalance_init();
+  }
+
   while (1)
     {
       /*
@@ -1687,6 +1705,14 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	if ((now - xd->time_last_link_update) >= dm->link_state_poll_interval)
 	  dpdk_update_link_state (xd, now);
 
+      }
+
+      if (dm->loadbalance.lb_enabled) {
+          now = vlib_time_now (vm);
+          if ((now - dm->loadbalance.time_last_lb_update)
+               >= dm->loadbalance.lb_poll_interval) {
+              dpdk_loadbalance_update(now);
+          }
       }
     }
 
@@ -1736,6 +1762,7 @@ dpdk_init (vlib_main_t * vm)
 
   dm->stat_poll_interval = DPDK_STATS_POLL_INTERVAL;
   dm->link_state_poll_interval = DPDK_LINK_POLL_INTERVAL;
+  dm->loadbalance.lb_poll_interval = DPDK_LB_POLL_INTERVAL;
 
   dm->log_default = vlib_log_register_class ("dpdk", 0);
   dm->log_cryptodev = vlib_log_register_class ("dpdk", "cryptodev");

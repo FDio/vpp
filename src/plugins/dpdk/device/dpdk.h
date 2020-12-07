@@ -230,12 +230,39 @@ typedef struct
   f64 time_last_stats_update;
   dpdk_port_type_t port_type;
 
+  u16 reta_size;
+  struct rte_eth_rss_reta_entry64 *reta_conf;
+
   /* mac address */
   u8 *default_mac_address;
 
   /* error string */
   clib_error_t *errors;
 } dpdk_device_t;
+
+#define DPDK_LB_BALANCE_RATIO 5
+#define DPDK_LB_POLL_INTERVAL (120.0)
+#define DPDK_LB_LOAD_HIGH_TH  200
+#define DPDK_LB_LOAD_LOW_TH   50
+
+typedef struct
+{
+  vlib_main_t *stat_vm;
+  u32 dpdk_node_index;
+  uword thread_index;
+  u64 vectors;
+  u64 calls;
+  u16 load;
+  u16 ratio;
+} dpdk_loadbalance_worker_t;
+
+typedef struct
+{
+  u32 lb_enabled;
+  f64 lb_poll_interval;
+  f64 time_last_lb_update;
+  dpdk_loadbalance_worker_t *lb_workers;
+} dpdk_loadbalance_t;
 
 #define DPDK_STATS_POLL_INTERVAL      (10.0)
 #define DPDK_MIN_STATS_POLL_INTERVAL  (0.001)	/* 1msec */
@@ -343,6 +370,9 @@ typedef struct
   f64 link_state_poll_interval;
   f64 stat_poll_interval;
 
+  /* Load balance feature. */
+  dpdk_loadbalance_t loadbalance;
+
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -386,6 +416,9 @@ void dpdk_device_stop (dpdk_device_t * xd);
 int dpdk_port_state_callback (dpdk_portid_t port_id,
 			      enum rte_eth_event_type type,
 			      void *param, void *ret_param);
+
+void dpdk_loadbalance_init (void);
+void dpdk_loadbalance_update (f64 now);
 
 #define foreach_dpdk_error						\
   _(NONE, "no error")							\
