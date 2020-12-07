@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "0.0.2";
+option version = "0.0.3";
 import "vnet/ethernet/ethernet_types.api";
 import "vnet/ip/ip_types.api";
 
@@ -157,7 +157,7 @@ typedef flow_ip4_vxlan
   vl_api_ip_prot_and_mask_t protocol;
   vl_api_ip_port_and_mask_t src_port;
   vl_api_ip_port_and_mask_t dst_port;
-  u16 vni;
+  u32 vni;
 };
 
 typedef flow_ip6_vxlan
@@ -168,7 +168,7 @@ typedef flow_ip6_vxlan
   vl_api_ip_prot_and_mask_t protocol;
   vl_api_ip_port_and_mask_t src_port;
   vl_api_ip_port_and_mask_t dst_port;
-  u16 vni;
+  u32 vni;
 };
 
 typedef flow_ip4_gtpc
