@@ -89,13 +89,11 @@
   _fe(ip_port_and_mask_t, src_port) \
   _fe(ip_port_and_mask_t, dst_port)
 
-#define foreach_flow_entry_ip4_vxlan \
-  foreach_flow_entry_ip4_n_tuple \
-  _fe(u16, vni)
+#define foreach_flow_entry_ip4_vxlan                                          \
+  foreach_flow_entry_ip4_n_tuple _fe (u32, vni)
 
-#define foreach_flow_entry_ip6_vxlan \
-  foreach_flow_entry_ip6_n_tuple \
-  _fe(u16, vni)
+#define foreach_flow_entry_ip6_vxlan                                          \
+  foreach_flow_entry_ip6_n_tuple _fe (u32, vni)
 
 #define foreach_flow_entry_ip4_gtpc \
   foreach_flow_entry_ip4_n_tuple \
