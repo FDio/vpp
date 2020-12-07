@@ -570,7 +570,7 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
   /* FIXUP: message header export_time */
   h->export_time = (u32)
     (((f64) frm->unix_time_0) +
-     (vlib_time_now (frm->vlib_main) - frm->vlib_time_0));
+     (vlib_time_now (vm) - frm->vlib_time_0));
   h->export_time = clib_host_to_net_u32 (h->export_time);
   h->domain_id = clib_host_to_net_u32 (stream->domain_id);
 
