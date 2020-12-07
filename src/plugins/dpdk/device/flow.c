@@ -283,8 +283,8 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 
       item->type = RTE_FLOW_ITEM_TYPE_IPV6;
 
-      if ((ip6_ptr->src_addr.mask.as_u64[0] == 0) &&
-	  (ip6_ptr->src_addr.mask.as_u64[1] == 0) &&
+      if ((ip6_address_is_zero (&ip6_ptr->src_addr.mask)) &&
+	  (ip6_address_is_zero (&ip6_ptr->dst_addr.mask)) &&
 	  (!ip6_ptr->protocol.mask))
 	{
 	  item->spec = NULL;
