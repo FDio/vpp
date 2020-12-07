@@ -34,6 +34,7 @@ $(VAPI_CBIN).d: $(CSRC) $(VAPI_BINDIR)/fake.api.vapi.h
 
 
 ifeq ($(filter rhel centos,$(OS_ID)),$(OS_ID))
+ifeq ($(OS_VERSION_ID),7)
 VAPI_CPPBIN=
 else
 CPPSRC = $(TEST_EXT_DIR)/vapi_cpp_test.cpp
@@ -43,6 +44,7 @@ $(VAPI_CPPBIN): $(CPPSRC) $(VAPI_BINDIR)/fake.api.vapi.hpp | $(VAPI_BINDIR)
 
 $(VAPI_CPPBIN).d: $(CPPSRC) $(VAPI_BINDIR)/fake.api.vapi.hpp
 	$(CXX) -o $@ $(CPPFLAGS) -MM -MT '$(VAPI_CPPBIN)' $(CPPSRC) > $@
+endif
 endif
 
 .PHONY: test-apps
