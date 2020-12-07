@@ -168,7 +168,6 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_enqueue (tx_fifo, fifo_size - 1, data);
 
   /* 256KB+ / 2048KB+ => ~12% */
-  fifo_segment_update_free_bytes (fs);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -182,7 +181,6 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_enqueue (tx_fifo, fifo_size, data);
 
   /* 8 chunks : 49% */
-  fifo_segment_update_free_bytes (fs);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -192,7 +190,6 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_enqueue (tx_fifo, fifo_size, data);
 
   /* 10 chunks : 61% */
-  fifo_segment_update_free_bytes (fs);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_LOW_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -204,7 +201,6 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_enqueue (tx_fifo, fifo_size, data);
 
   /* 14 chunks : 85% */
-  fifo_segment_update_free_bytes (fs);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_HIGH_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -217,7 +213,6 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_dequeue_drop (tx_fifo, fifo_size);
 
   /* 10 chunks : 61% */
-  fifo_segment_update_free_bytes (fs);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_LOW_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -230,7 +225,6 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_enqueue (tx_fifo, fifo_size, data);
 
   /* 14 chunks : 85% */
-  fifo_segment_update_free_bytes (fs);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_HIGH_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -242,7 +236,6 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
 
 
   /* 10 chunks : 61% */
-  fifo_segment_update_free_bytes (fs);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_LOW_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -258,7 +251,6 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_dequeue_drop (tx_fifo, fifo_size);
 
   /* 2 chunks : 12% */
-  fifo_segment_update_free_bytes (fs);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -310,7 +302,6 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
 
   /* initial status : (0 / 2MB) */
   fs0 = segment_manager_get_segment (sm, 0);
-  fifo_segment_update_free_bytes (fs0);
   rv = fifo_segment_get_mem_status (fs0);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -338,7 +329,6 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
     }
 
   /* 510 chunks : 100% of 2MB */
-  fifo_segment_update_free_bytes (fs);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_HIGH_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -348,7 +338,6 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
   SEG_MGR_TEST ((rv == SVM_FIFO_EGROW), "svm_fifo_enqueue %d", rv);
 
   /* then, no-memory is detected */
-  fifo_segment_update_free_bytes (fs);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_MEMORY),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -363,7 +352,6 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
    * but the reached-mem-limit record is not reset
    * so the no-memory state lasts.
    */
-  fifo_segment_update_free_bytes (fs);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_MEMORY),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -375,7 +363,6 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
     }
 
   /* 356 chunks : 70% of 2MB */
-  fifo_segment_update_free_bytes (fs);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_LOW_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -387,7 +374,6 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
     }
 
   /* 2 chunks : 3% of 2MB */
-  fifo_segment_update_free_bytes (fs);
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
