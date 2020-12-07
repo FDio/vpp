@@ -38,33 +38,16 @@ svm_msg_q_ring_data (svm_msg_q_ring_t * ring, u32 elt_index)
 }
 
 svm_msg_q_t *
-svm_msg_q_alloc (svm_msg_q_cfg_t * cfg)
+svm_msg_q_init (void *base, svm_msg_q_cfg_t * cfg)
 {
-  svm_msg_q_ring_cfg_t *ring_cfg;
-  uword rings_sz = 0, mq_sz;
   svm_msg_q_ring_t *ring;
-  u8 *base, *rings_ptr;
   vec_header_t *vh;
-  u32 vec_sz, q_sz;
   svm_msg_q_t *mq;
+  u8 *rings_ptr;
+  u32 q_sz;
   int i;
 
-  ASSERT (cfg);
-
-  vec_sz = vec_header_bytes (0) + sizeof (svm_msg_q_ring_t) * cfg->n_rings;
-  for (i = 0; i < cfg->n_rings; i++)
-    {
-      if (cfg->ring_cfgs[i].data)
-	continue;
-      ring_cfg = &cfg->ring_cfgs[i];
-      rings_sz += (uword) ring_cfg->nitems * ring_cfg->elsize;
-    }
-
   q_sz = sizeof (svm_queue_t) + cfg->q_nitems * sizeof (svm_msg_q_msg_t);
-  mq_sz = sizeof (svm_msg_q_t) + vec_sz + rings_sz + q_sz;
-  base = clib_mem_alloc_aligned (mq_sz, CLIB_CACHE_LINE_BYTES);
-  if (!base)
-    return 0;
 
   mq = (svm_msg_q_t *) base;
   mq->q = svm_queue_init (base + sizeof (svm_msg_q_t), cfg->q_nitems,
@@ -90,6 +73,60 @@ svm_msg_q_alloc (svm_msg_q_cfg_t * cfg)
     }
 
   return mq;
+}
+
+uword
+svm_msg_q_size_to_alloc (svm_msg_q_cfg_t * cfg)
+{
+  svm_msg_q_ring_cfg_t *ring_cfg;
+  uword rings_sz = 0, mq_sz;
+  u32 vec_sz, q_sz;
+  int i;
+
+  ASSERT (cfg);
+
+  vec_sz = vec_header_bytes (0) + sizeof (svm_msg_q_ring_t) * cfg->n_rings;
+  for (i = 0; i < cfg->n_rings; i++)
+    {
+      if (cfg->ring_cfgs[i].data)
+	continue;
+      ring_cfg = &cfg->ring_cfgs[i];
+      rings_sz += (uword) ring_cfg->nitems * ring_cfg->elsize;
+    }
+
+  q_sz = sizeof (svm_queue_t) + cfg->q_nitems * sizeof (svm_msg_q_msg_t);
+  mq_sz = sizeof (svm_msg_q_t) + vec_sz + rings_sz + q_sz;
+
+  return mq_sz;
+}
+
+svm_msg_q_t *
+svm_msg_q_alloc (svm_msg_q_cfg_t * cfg)
+{
+  svm_msg_q_ring_cfg_t *ring_cfg;
+  uword rings_sz = 0, mq_sz;
+  u32 vec_sz, q_sz;
+  u8 *base;
+  int i;
+
+  ASSERT (cfg);
+
+  vec_sz = vec_header_bytes (0) + sizeof (svm_msg_q_ring_t) * cfg->n_rings;
+  for (i = 0; i < cfg->n_rings; i++)
+    {
+      if (cfg->ring_cfgs[i].data)
+	continue;
+      ring_cfg = &cfg->ring_cfgs[i];
+      rings_sz += (uword) ring_cfg->nitems * ring_cfg->elsize;
+    }
+
+  q_sz = sizeof (svm_queue_t) + cfg->q_nitems * sizeof (svm_msg_q_msg_t);
+  mq_sz = sizeof (svm_msg_q_t) + vec_sz + rings_sz + q_sz;
+  base = clib_mem_alloc_aligned (mq_sz, CLIB_CACHE_LINE_BYTES);
+  if (!base)
+    return 0;
+
+  return svm_msg_q_init (base, cfg);
 }
 
 void
