@@ -4,7 +4,7 @@
 import unittest
 import os
 import signal
-from framework import VppTestCase, running_on_centos, VppTestRunner, Worker
+from framework import VppTestCase, VppTestRunner, Worker
 
 
 class VAPITestCase(VppTestCase):
@@ -47,7 +47,6 @@ class VAPITestCase(VppTestCase):
                 "Timeout! Worker did not finish in %ss" % timeout)
         self.assert_equal(worker.result, 0, "Binary test return code")
 
-    @unittest.skipIf(running_on_centos, "Centos's gcc can't compile our C++")
     def test_vapi_cpp(self):
         """ run C++ VAPI tests """
         var = "TEST_BR"
