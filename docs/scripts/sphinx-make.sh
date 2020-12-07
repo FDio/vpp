@@ -11,6 +11,7 @@ fi
 
 # Get the OS
 OS_ID=$(grep '^ID=' /etc/os-release  | cut -f2- -d= | sed -e 's/\"//g')
+OS_VERSION=$(grep '^VERSION_ID=' /etc/os-release  | cut -f2- -d= | sed -e 's/\"//g')
 
 if [ "$1" == "venv" ]
 then
@@ -21,7 +22,12 @@ then
     fi
     if [ "$OS_ID" == "centos" ]
     then
-	sudo yum install $CONFIRM python3-venv
+	if [ "$OS_VERSION" == "8" ]
+	then
+	    sudo yum install $CONFIRM python3-virtualenv
+	else
+	    sudo yum install $CONFIRM python3-venv
+	fi
     fi
 
     # Install the virtual environment
