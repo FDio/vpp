@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bd42fa57_3f223ee0",
+        "filename": "src/plugins/dpdk/device/dpdk.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-07T17:34:49Z",
+      "side": 1,
+      "message": "I would keep the VPP data structures with the \"legacy\" terminology for consistency (otherwise, there is a lot of places in the DPDK code base where we need to do blacklisted-\u003eblocked whitelisted-\u003eallowed... So maybe we can keep calling it blacklist/whitelist for now, and only change the way it interfaces the DPDK API. For now.",
+      "range": {
+        "startLine": 257,
+        "startChar": 0,
+        "endLine": 257,
+        "endChar": 16
+      },
+      "revId": "023b3d755795b3bcbcf21252ee86cb3f488f7b9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
