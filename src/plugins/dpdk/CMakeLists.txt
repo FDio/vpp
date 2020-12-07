@@ -117,6 +117,7 @@ add_vpp_plugin(dpdk
   device/format.c
   device/init.c
   device/node.c
+  device/loadbalance.c
   ipsec/cli.c
   ipsec/crypto_node.c
   ipsec/esp_decrypt.c
