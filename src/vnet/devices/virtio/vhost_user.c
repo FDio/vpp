@@ -598,7 +598,8 @@ vhost_user_socket_read (clib_file_t * uf)
 
       if ((msg.state.num > 32768) ||	/* maximum ring size is 32768 */
 	  (msg.state.num == 0) ||	/* it cannot be zero */
-	  ((msg.state.num - 1) & msg.state.num))	/* must be power of 2 */
+	  ((msg.state.num - 1) & msg.state.num) ||	/* must be power of 2 */
+	  (msg.state.index >= VHOST_VRING_MAX_N))
 	goto close_socket;
       vui->vrings[msg.state.index].qsz_mask = msg.state.num - 1;
       break;
@@ -678,6 +679,8 @@ vhost_user_socket_read (clib_file_t * uf)
 		    vui->hw_if_index, msg.u64);
 
       q = (u8) (msg.u64 & 0xFF);
+      if (q >= VHOST_VRING_MAX_N)
+	goto close_socket;
 
       /* if there is old fd, delete and close it */
       if (vui->vrings[q].callfd_idx != ~0)
@@ -711,6 +714,8 @@ vhost_user_socket_read (clib_file_t * uf)
 		    vui->hw_if_index, msg.u64);
 
       q = (u8) (msg.u64 & 0xFF);
+      if (q >= VHOST_VRING_MAX_N)
+	goto close_socket;
 
       if (vui->vrings[q].kickfd_idx != ~0)
 	{
@@ -750,6 +755,8 @@ vhost_user_socket_read (clib_file_t * uf)
 		    vui->hw_if_index, msg.u64);
 
       q = (u8) (msg.u64 & 0xFF);
+      if (q >= VHOST_VRING_MAX_N)
+	goto close_socket;
 
       if (vui->vrings[q].errfd != -1)
 	close (vui->vrings[q].errfd);
@@ -769,6 +776,8 @@ vhost_user_socket_read (clib_file_t * uf)
       vu_log_debug (vui,
 		    "if %d msg VHOST_USER_SET_VRING_BASE idx %d num 0x%x",
 		    vui->hw_if_index, msg.state.index, msg.state.num);
+      if (msg.state.index >= VHOST_VRING_MAX_N)
+	goto close_socket;
       vlib_worker_thread_barrier_sync (vm);
       vui->vrings[msg.state.index].last_avail_idx = msg.state.num;
       if (vhost_user_is_packed_ring_supported (vui))
