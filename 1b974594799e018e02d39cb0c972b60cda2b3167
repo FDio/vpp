@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bdbfd022_9d484950",
+        "filename": "src/plugins/memif/memif.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-08T14:29:56Z",
+      "side": 1,
+      "message": "bump the patch level",
+      "range": {
+        "startLine": 17,
+        "startChar": 17,
+        "endLine": 17,
+        "endChar": 24
+      },
+      "revId": "1b974594799e018e02d39cb0c972b60cda2b3167",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
