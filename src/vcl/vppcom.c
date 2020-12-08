@@ -22,20 +22,20 @@
 
 __thread uword __vcl_worker_index = ~0;
 
-static int
-vcl_segment_is_not_mounted (vcl_worker_t * wrk, u64 segment_handle)
-{
-  u32 segment_index;
-
-  if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
-    return 0;
-
-  segment_index = vcl_segment_table_lookup (segment_handle);
-  if (segment_index != VCL_INVALID_SEGMENT_INDEX)
-    return 0;
-
-  return 1;
-}
+//static int
+//vcl_segment_is_not_mounted (vcl_worker_t * wrk, u64 segment_handle)
+//{
+//  u32 segment_index;
+//
+//  if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
+//    return 0;
+//
+//  segment_index = vcl_segment_table_lookup (segment_handle);
+//  if (segment_index != VCL_INVALID_SEGMENT_INDEX)
+//    return 0;
+//
+//  return 1;
+//}
 
 static inline int
 vcl_mq_dequeue_batch (vcl_worker_t * wrk, svm_msg_q_t * mq, u32 n_max_msg)
@@ -378,6 +378,7 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
 {
   vcl_session_t *session, *listen_session;
   svm_fifo_t *rx_fifo, *tx_fifo;
+  fifo_segment_t *fs;
   svm_msg_q_t *evt_q;
 
   session = vcl_session_alloc (wrk);
@@ -390,7 +391,7 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
       goto error;
     }
 
-  if (vcl_segment_is_not_mounted (wrk, mp->segment_handle))
+  if (!(fs = vcl_segment_get (mp->segment_handle)))
     {
       VDBG (0, "ERROR: segment for session %u is not mounted!",
 	    session->session_index);
@@ -405,6 +406,8 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
   tx_fifo->client_session_index = session->session_index;
   rx_fifo->client_thread_index = vcl_get_worker_index ();
   tx_fifo->client_thread_index = vcl_get_worker_index ();
+  rx_fifo->fs_hdr = fs->h;
+  tx_fifo->fs_hdr = fs->h;
 
   session->vpp_handle = mp->handle;
   session->rx_fifo = rx_fifo;
@@ -450,6 +453,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 {
   svm_fifo_t *rx_fifo, *tx_fifo;
   vcl_session_t *session = 0;
+  fifo_segment_t *fs;
   u32 session_index;
 
   session_index = mp->context;
@@ -474,7 +478,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 					 svm_msg_q_t *);
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
-  if (vcl_segment_is_not_mounted (wrk, mp->segment_handle))
+  if (!(fs = vcl_segment_get (mp->segment_handle)))
     {
       VDBG (0, "segment for session %u is not mounted!",
 	    session->session_index);
@@ -487,12 +491,14 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   tx_fifo->client_session_index = session_index;
   rx_fifo->client_thread_index = vcl_get_worker_index ();
   tx_fifo->client_thread_index = vcl_get_worker_index ();
+  rx_fifo->fs_hdr = fs->h;
+  tx_fifo->fs_hdr = fs->h;
 
   if (mp->ct_rx_fifo)
     {
       session->ct_rx_fifo = uword_to_pointer (mp->ct_rx_fifo, svm_fifo_t *);
       session->ct_tx_fifo = uword_to_pointer (mp->ct_tx_fifo, svm_fifo_t *);
-      if (vcl_segment_is_not_mounted (wrk, mp->ct_segment_handle))
+      if (!(fs = vcl_segment_get (mp->ct_segment_handle)))
 	{
 	  VDBG (0, "ct segment for session %u is not mounted!",
 		session->session_index);
@@ -500,6 +506,8 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 	  vcl_send_session_disconnect (wrk, session);
 	  return session_index;
 	}
+      session->ct_rx_fifo->fs_hdr = fs->h;
+      session->ct_tx_fifo->fs_hdr = fs->h;
     }
 
   session->rx_fifo = rx_fifo;
@@ -870,6 +878,7 @@ static void
 vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void *data)
 {
   session_worker_update_reply_msg_t *msg;
+  fifo_segment_t *fs;
   vcl_session_t *s;
 
   msg = (session_worker_update_reply_msg_t *) data;
@@ -879,7 +888,7 @@ vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void *data)
       VDBG (0, "unknown handle 0x%llx", msg->handle);
       return;
     }
-  if (vcl_segment_is_not_mounted (wrk, msg->segment_handle))
+  if (!(fs = vcl_segment_get (msg->segment_handle)))
     {
       clib_warning ("segment for session %u is not mounted!",
 		    s->session_index);
@@ -894,6 +903,8 @@ vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void *data)
       s->tx_fifo->client_session_index = s->session_index;
       s->rx_fifo->client_thread_index = wrk->wrk_index;
       s->tx_fifo->client_thread_index = wrk->wrk_index;
+      s->rx_fifo->fs_hdr = fs->h;
+      s->tx_fifo->fs_hdr = fs->h;
     }
   s->session_state = VCL_STATE_UPDATED;
 

@@ -21,6 +21,15 @@
 #include <vppinfra/rbtree.h>
 #include <vppinfra/lock.h>
 
+#define FS_MIN_LOG2_CHUNK_SZ	12	/**< also min fifo size */
+#define FS_MAX_LOG2_CHUNK_SZ	20	/**< 1MB max chunk size */
+#define FS_CHUNK_VEC_LEN	8	/**< difference max log2_chunk_sz
+					      and min log2_chunk_sz */
+#define FS_MAX_CHUNK_IDX 	7 	/**< max vec len - 1 */
+
+STATIC_ASSERT ((FS_MAX_LOG2_CHUNK_SZ - FS_MIN_LOG2_CHUNK_SZ)
+               == FS_CHUNK_VEC_LEN, "update chunk sizes");
+
 #define SVM_FIFO_TRACE 			(0)
 #define SVM_FIFO_MAX_EVT_SUBSCRIBERS	7
 
@@ -101,27 +110,25 @@ typedef struct _svm_fifo
 
 typedef struct fifo_segment_slice_
 {
+  svm_fifo_chunk_t *free_chunks[FS_CHUNK_VEC_LEN];/**< Free chunks by size */
   svm_fifo_t *fifos;			/**< Linked list of active RX fifos */
   svm_fifo_t *free_fifos;		/**< Freelists by fifo size  */
-  svm_fifo_chunk_t **free_chunks;	/**< Freelists by chunk size */
-  u32 *num_chunks;			/**< Allocated chunks by chunk size */
   uword n_fl_chunk_bytes;		/**< Chunk bytes on freelist */
   uword virtual_mem;			/**< Slice sum of all fifo sizes */
-//  clib_spinlock_t chunk_lock;
-  u32 n_chunk_lens;
+  u32 num_chunks[FS_CHUNK_VEC_LEN];	/**< Allocated chunks by chunk size */
+
   CLIB_CACHE_LINE_ALIGN_MARK (lock);
   u32 chunk_lock;
 } fifo_segment_slice_t;
 
 struct fifo_segment_header_
 {
-  fifo_segment_slice_t *slices;		/** Fixed array of slices */
 //  ssvm_shared_header_t *ssvm_sh;	/**< Pointer to fs ssvm shared hdr */
 //  uword n_free_bytes;			/**< Segment free bytes */
   uword n_cached_bytes;			/**< Cached bytes */
   u32 n_active_fifos;			/**< Number of active fifos */
   u32 n_reserved_bytes;			/**< Bytes not to be allocated */
-  u32 max_log2_chunk_size;		/**< Max log2(chunk size) for fs */
+  u32 max_log2_fifo_size;		/**< Max log2(chunk size) for fs */
   u8 flags;				/**< Segment flags */
   u8 n_slices;				/**< Number of slices */
   u8 high_watermark;			/**< Memory pressure watermark high */
@@ -130,6 +137,8 @@ struct fifo_segment_header_
   CLIB_CACHE_LINE_ALIGN_MARK (allocator);
   uword byte_index;
   uword max_byte_index;
+  CLIB_CACHE_LINE_ALIGN_MARK (slice);
+  fifo_segment_slice_t slices[0];	/** Fixed array of slices */
 };
 
 void fsh_virtual_mem_update (fifo_segment_header_t * fsh, u32 slice_index,
