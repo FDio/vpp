@@ -19,7 +19,7 @@
     the Linux kernel TAP device driver
 */
 
-option version = "4.0.0";
+option version = "4.0.1";
 
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -32,8 +32,8 @@ enum tap_flags {
         TAP_API_FLAG_ATTACH = 8,  /* attach to the existing persistence interface after vpp crash/restart */
         TAP_API_FLAG_TUN = 16,  /* create TUN interface instead of tap */
         TAP_API_FLAG_GRO_COALESCE = 32, /* enable packet coalescing on tx side, provided gso enabled */
-        TAP_API_FLAG_PACKED = 64 [backwards_compatible], /* enable packed ring support */
-        TAP_API_FLAG_IN_ORDER = 128 [backwards_compatible], /* enable in-order desc support */
+        TAP_API_FLAG_PACKED = 64, /* enable packed ring support */
+        TAP_API_FLAG_IN_ORDER = 128, /* enable in-order desc support */
 };
 
 /** \brief Initialize a new tap interface with the given parameters
