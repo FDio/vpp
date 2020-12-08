@@ -404,7 +404,7 @@ ssvm_server_init_private (ssvm_private_t * ssvm)
   clib_memset (sh, 0, sizeof (*sh));
   sh->heap = heap;
   sh->ssvm_size = rnd_size;
-  sh->ssvm_va = pointer_to_uword (heap);
+  sh->ssvm_va = pointer_to_uword (sh);
   sh->type = SSVM_SEGMENT_PRIVATE;
 
   oldheap = ssvm_push_heap (sh);
