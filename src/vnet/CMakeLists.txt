@@ -780,6 +780,24 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES mpls/mpls.api)
 
 ##############################################################################
+# Multi TXQ infra
+##############################################################################
+list(APPEND VNET_SOURCES
+  multi-txq/cli.c
+  multi-txq/multi_txq.c
+  multi-txq/multi_txq_api.c
+  multi-txq/node.c
+)
+
+list(APPEND VNET_API_FILES
+  multi-txq/multi_txq.api
+)
+
+list(APPEND VNET_HEADERS
+  multi-txq/multi_txq.h
+)
+
+##############################################################################
 # Tunnel protocol: vxlan-gbp
 ##############################################################################
 list(APPEND VNET_SOURCES
