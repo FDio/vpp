@@ -339,7 +339,6 @@ fifo_segment_init (fifo_segment_t * fs)
   fsh->max_log2_chunk_size = max_log2 (max_fifo);
 
   fsh->slices = fsh_alloc (fsh, sizeof (*fss) * fs->n_slices);
-//  fsh->slices = clib_mem_alloc (sizeof (*fss) * fs->n_slices);
   memset (fsh->slices, 0, sizeof (*fss) * fs->n_slices);
   max_chunk_sz = fsh->max_log2_chunk_size - FIFO_SEGMENT_MIN_LOG2_FIFO_SIZE;
 
@@ -410,6 +409,7 @@ fifo_segment_create (fifo_segment_main_t * sm, fifo_segment_create_args_t * a)
 int
 fifo_segment_attach (fifo_segment_main_t * sm, fifo_segment_create_args_t * a)
 {
+  fifo_segment_header_t *fsh;
   fifo_segment_t *fs;
   int rv;
 
@@ -431,9 +431,15 @@ fifo_segment_attach (fifo_segment_main_t * sm, fifo_segment_create_args_t * a)
     }
 
   /* Fish the segment header */
-  fs->h = fs->ssvm.sh->opaque[0];
-//  fs->max_byte_index = fs->h->max_byte_index;
+  fsh = fs->h = fs->ssvm.sh->opaque[0];
 
+  /* Probably a segment without fifos */
+  if (!fsh)
+    goto done;
+
+  fs->max_byte_index = fsh->max_byte_index;
+
+done:
   vec_add1 (a->new_segment_indices, fs - sm->segments);
   return (0);
 }
