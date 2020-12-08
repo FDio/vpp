@@ -1,0 +1,41 @@
+/*
+ * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+import "vnet/interface_types.api";
+
+/** \brief Enable or disable multi txq feature on interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - The interface to enable/disable multi txq feature.
+    @param enable_disable - set to 1 to enable, 0 to disable multi txq feature.
+    @param number_of_txqs - # of txqs per worker when multi txq feature is enabled.
+*/
+autoreply define feature_multi_txq_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool  enable_disable;
+  u32 number_of_txqs;
+  option vat_help = "<intfc> | sw_if_index <nn> [enable [txq <n>]| disable]";
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

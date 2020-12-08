@@ -932,7 +932,7 @@ vnet_register_interface (vnet_main_t * vnm,
       r.type = VLIB_NODE_TYPE_INTERNAL;
       r.runtime_data = &rt;
       r.runtime_data_bytes = sizeof (rt);
-      r.scalar_size = 0;
+      r.scalar_size = sizeof (u32);
       r.vector_size = sizeof (u32);
 
       r.flags = VLIB_NODE_FLAG_IS_OUTPUT;
