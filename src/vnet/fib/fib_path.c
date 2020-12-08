@@ -141,10 +141,6 @@ typedef enum fib_path_oper_attribute_t_ {
      */
     FIB_PATH_OPER_ATTRIBUTE_RESOLVED,
     /**
-     * The path is attached, despite what the next-hop may say.
-     */
-    FIB_PATH_OPER_ATTRIBUTE_ATTACHED,
-    /**
      * The path has become a permanent drop.
      */
     FIB_PATH_OPER_ATTRIBUTE_DROP,
@@ -178,7 +174,6 @@ typedef enum fib_path_oper_flags_t_ {
     FIB_PATH_OPER_FLAG_RECURSIVE_LOOP = (1 << FIB_PATH_OPER_ATTRIBUTE_RECURSIVE_LOOP),
     FIB_PATH_OPER_FLAG_DROP = (1 << FIB_PATH_OPER_ATTRIBUTE_DROP),
     FIB_PATH_OPER_FLAG_RESOLVED = (1 << FIB_PATH_OPER_ATTRIBUTE_RESOLVED),
-    FIB_PATH_OPER_FLAG_ATTACHED = (1 << FIB_PATH_OPER_ATTRIBUTE_ATTACHED),
 } __attribute__ ((packed)) fib_path_oper_flags_t;
 
 /**
