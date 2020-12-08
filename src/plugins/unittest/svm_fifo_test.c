@@ -2103,6 +2103,7 @@ sfifo_test_fifo_segment_hello_world (int verbose)
   clib_memset (a, 0, sizeof (*a));
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
+  a->segment_type = SSVM_SEGMENT_PRIVATE;
 
   rv = fifo_segment_create (sm, a);
   SFIFO_TEST (!rv, "svm_fifo_segment_create returned %d", rv);
@@ -2153,6 +2154,9 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
   a->segment_name = "fifo-test1";
   /* size chosen to be able to force multi chunk allocation lower */
   a->segment_size = 256 << 10;
+  /* overhead that reduces the amount of space dedicated to fifos */
+  a->segment_size += 1 << 14;
+  a->segment_type = SSVM_SEGMENT_PRIVATE;
 
   /* fifo allocation allocates chunks in batch */
   n_batch = FIFO_SEGMENT_ALLOC_BATCH_SIZE;
@@ -2490,6 +2494,7 @@ sfifo_test_fifo_segment_mempig (int verbose)
 
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
+  a->segment_type = SSVM_SEGMENT_PRIVATE;
 
   rv = fifo_segment_create (sm, a);
 
@@ -2546,18 +2551,21 @@ approx_leq (uword a, uword b, u32 margin)
 static int
 sfifo_test_fifo_segment_prealloc (int verbose)
 {
+  u32 max_pairs, pairs_req, free_space, pair_mem, overhead;
   fifo_segment_create_args_t _a, *a = &_a;
   fifo_segment_main_t *sm = &segment_main;
-  u32 max_pairs, pairs_req, free_space, pair_mem;
   svm_fifo_t *f, *tf, *old;
   fifo_segment_t *fs;
   int rv, alloc;
 
   clib_memset (a, 0, sizeof (*a));
 
+  /* Overhead due to segment internal headers and offsets. The magic 384
+   * bytes are the fsh->n_reserved_bytes after seg init */
+  overhead = (8 << 10) + 384;
   a->segment_name = "fifo-test-prealloc";
-  a->segment_size = 256 << 10;
-  a->segment_type = SSVM_SEGMENT_MEMFD;
+  a->segment_size = (256 << 10) + overhead;
+  a->segment_type = SSVM_SEGMENT_PRIVATE;
 
   rv = fifo_segment_create (sm, a);
   SFIFO_TEST (!rv, "svm_fifo_segment_create returned %d", rv);
@@ -2568,7 +2576,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
    * Prealloc chunks and headers
    */
   free_space = fifo_segment_free_bytes (fs);
-  SFIFO_TEST (free_space <= 256 << 10, "free space expected %u is %u",
+  SFIFO_TEST (free_space - 4096 <= 256 << 10, "free space expected %u is %u",
 	      256 << 10, free_space);
   rv = fifo_segment_prealloc_fifo_chunks (fs, 0, 4096, 50);
   SFIFO_TEST (rv == 0, "chunk prealloc should work");
@@ -2591,7 +2599,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   rv = fifo_segment_free_bytes (fs);
   free_space -= sizeof (svm_fifo_t) * 50;
   /* Memory alloc alignment accounts for the difference */
-  SFIFO_TEST (approx_leq (free_space, rv, 16), "free space expected %u is %u",
+  SFIFO_TEST (approx_leq (free_space, rv, 128), "free space expected %u is %u",
 	      free_space, rv);
   free_space = rv;
 
@@ -2666,7 +2674,6 @@ sfifo_test_fifo_segment_prealloc (int verbose)
    */
   fifo_segment_free_fifo (fs, old);
   fifo_segment_free_fifo (fs, tf);
-  close (fs->ssvm.fd);
   fifo_segment_delete (sm, fs);
   return 0;
 }
