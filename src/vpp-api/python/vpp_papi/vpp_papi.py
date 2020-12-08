@@ -16,6 +16,8 @@
 
 from __future__ import print_function
 from __future__ import absolute_import
+
+import collections
 import ctypes
 import ipaddress
 import sys
@@ -27,6 +29,7 @@ import functools
 import json
 import threading
 import fnmatch
+import typing
 import weakref
 import atexit
 import time
@@ -110,7 +113,7 @@ class VppApiDynamicMethodHolder:
 
 
 class FuncWrapper:
-    def __init__(self, func):
+    def __init__(self, func: typing.Callable) -> None:
         self._func = func
         self.__name__ = func.__name__
         self.__doc__ = func.__doc__
@@ -264,9 +267,15 @@ class VPPApiJSONFiles:
         return api_files
 
     @classmethod
-    def process_json_file(self, apidef_file):
-        api = json.load(apidef_file)
-        return self._process_json(api)
+    def process_json_file(self, apifiles):
+        messages, services = {}, {}
+        for file in apifiles:
+            with open(file) as apidef_file:
+                api = json.load(apidef_file)
+                m, s = self._process_json(api)
+                messages.update(m)
+                services.update(s)
+        return messages, services
 
     @classmethod
     def process_json_str(self, json_str):
@@ -385,7 +394,6 @@ class VPPApiClient:
     VPPNotImplementedError = VPPNotImplementedError
     VPPIOError = VPPIOError
 
-
     def __init__(self, apifiles=None, testmode=False, async_thread=True,
                  logger=None, loglevel=None,
                  read_timeout=5, use_socket=False,
@@ -411,8 +419,9 @@ class VPPApiClient:
 
         self.messages = {}
         self.services = {}
-        self.id_names = []
-        self.id_msgdef = []
+        self.id_names: typing.List[str] = []
+        self.id_msgdef: typing.List[typing.Union['vpp_serializer.Packer', None]] = []
+        self.id_funcwrapper: typing.List[typing.Union[FuncWrapper, None]] = []
         self.header = VPPType('header', [['u16', 'msgid'],
                                          ['u32', 'client_index']])
         self.apifiles = []
@@ -443,11 +452,7 @@ class VPPApiClient:
                 else:
                     raise VPPRuntimeError
 
-        for file in apifiles:
-            with open(file) as apidef_file:
-                m, s = VPPApiJSONFiles.process_json_file(apidef_file)
-                self.messages.update(m)
-                self.services.update(s)
+        self.messages, self.services = VPPApiJSONFiles.process_json_file(apifiles)
 
         self.apifiles = apifiles
 
@@ -465,7 +470,7 @@ class VPPApiClient:
 
         add_convenience_methods()
 
-    def get_function(self, name):
+    def get_function(self, name) -> FuncWrapper:
         return getattr(self._api, name)
 
     class ContextId:
@@ -474,7 +479,7 @@ class VPPApiClient:
             self.context = mp.Value(ctypes.c_uint, 0)
             self.lock = mp.Lock()
 
-        def __call__(self):
+        def __call__(self) -> int:
             """Get a new unique (or, at least, not recently used) context."""
             with self.lock:
                 self.context.value += 1
@@ -485,12 +490,12 @@ class VPPApiClient:
         return vpp_get_type(name)
 
     @property
-    def api(self):
+    def api(self) -> VppApiDynamicMethodHolder:
         if not hasattr(self, "_api"):
             raise VPPApiError("Not connected, api definitions not available")
         return self._api
 
-    def make_function(self, msg, i, multipart, do_async):
+    def make_function(self, msg, i: int, multipart, do_async: bool) -> typing.Callable:
         if (do_async):
             def f(**kwargs):
                 return self._call_vpp_async(i, msg, **kwargs)
@@ -506,10 +511,13 @@ class VPPApiClient:
 
         return f
 
-    def _register_functions(self, do_async=False):
+    def _register_functions(self, do_async: bool = False) -> None:
         self.id_names = [None] * (self.vpp_dictionary_maxid + 1)
         self.id_msgdef = [None] * (self.vpp_dictionary_maxid + 1)
+        self.id_funcwrapper: typing.List[typing.Union[FuncWrapper, None]] = [None] * (self.vpp_dictionary_maxid + 1)
         self._api = VppApiDynamicMethodHolder()
+
+        # str, typing.List (cannot annotate while unpacking)
         for name, msg in self.messages.items():
             n = name + '_' + msg.crc[2:]
             i = self.transport.get_msg_index(n)
@@ -520,13 +528,37 @@ class VPPApiClient:
                 # Create function for client side messages.
                 if name in self.services:
                     f = self.make_function(msg, i, self.services[name], do_async)
-                    setattr(self._api, name, FuncWrapper(f))
+                    fw = FuncWrapper(f)
+
+                    fw.liveness_check: typing.Callable = self._control_ping
+                    fw.is_modern: bool = False
+
+                    fw.is_stream: bool = 'stream' in self.services[name]
+                    if fw.is_stream:
+
+                        if 'stream_msg' in self.services[name]:
+                            """ Case 1 - New style stream message"""
+                            # New service['reply'] = _reply and service['stream_msg'] = _details
+                            fw.stream_message: str = self.services[name]['stream_msg']
+                            fw.is_modern = True
+                        else:
+                            """ Case 2 - Legacy stream message"""
+                            # Old  service['reply'] = _details
+                            fw.stream_message: str = self.services[name]['reply']
+
+                            fw.msgreply = 'control_ping_reply'
+                    else:
+                        """ Case 3 - non stream <name>/<name>_reply"""
+                        pass
+
+                    self.id_funcwrapper[i] = fw
+                    setattr(self._api, name, fw)
             else:
                 self.logger.debug(
                     'No such message type or failed CRC checksum: %s', n)
 
     def connect_internal(self, name, msg_handler, chroot_prefix, rx_qlen,
-                         do_async):
+                         do_async) -> int:
         pfx = chroot_prefix.encode('utf-8') if chroot_prefix else None
 
         rv = self.transport.connect(name, pfx,
@@ -550,7 +582,7 @@ class VPPApiClient:
             self.event_thread = None
         return rv
 
-    def connect(self, name, chroot_prefix=None, do_async=False, rx_qlen=32):
+    def connect(self, name, chroot_prefix=None, do_async=False, rx_qlen=32) -> int:
         """Attach to VPP.
 
         name - the name of the client.
@@ -563,7 +595,7 @@ class VPPApiClient:
         return self.connect_internal(name, msg_handler, chroot_prefix, rx_qlen,
                                      do_async)
 
-    def connect_sync(self, name, chroot_prefix=None, rx_qlen=32):
+    def connect_sync(self, name, chroot_prefix=None, rx_qlen=32) -> int:
         """Attach to VPP in synchronous mode. Application must poll for events.
 
         name - the name of the client.
@@ -575,14 +607,14 @@ class VPPApiClient:
         return self.connect_internal(name, None, chroot_prefix, rx_qlen,
                                      do_async=False)
 
-    def disconnect(self):
+    def disconnect(self) -> int:
         """Detach from VPP."""
         rv = self.transport.disconnect()
         if self.event_thread is not None:
             self.message_queue.put("terminate event thread")
         return rv
 
-    def msg_handler_sync(self, msg):
+    def msg_handler_sync(self, msg) -> None:
         """Process an incoming message from VPP in sync mode.
 
         The message may be a reply or it may be an async notification.
@@ -603,7 +635,7 @@ class VPPApiClient:
         else:
             raise VPPIOError(2, 'RPC reply message received in event handler')
 
-    def has_context(self, msg):
+    def has_context(self, msg) -> typing.Union[None, bool]:
         if len(msg) < 10:
             return False
 
@@ -623,7 +655,7 @@ class VPPApiClient:
             return True
         return False
 
-    def decode_incoming_msg(self, msg, no_type_conversion=False):
+    def decode_incoming_msg(self, msg, no_type_conversion=False) -> typing.Union[collections.namedtuple, None]:
         if not msg:
             logger.warning('vpp_api.read failed')
             return
@@ -642,7 +674,7 @@ class VPPApiClient:
         r, size = msgobj.unpack(msg, ntc=no_type_conversion)
         return r
 
-    def msg_handler_async(self, msg):
+    def msg_handler_async(self, msg) -> None:
         """Process a message from VPP in async mode.
 
         In async mode, all messages are returned to the callback.
@@ -656,19 +688,19 @@ class VPPApiClient:
         if self.event_callback:
             self.event_callback(msgname, r)
 
-    def _control_ping(self, context):
+    def _control_ping(self, context) -> None:
         """Send a ping command."""
         self._call_vpp_async(self.control_ping_index,
                              self.control_ping_msgdef,
                              context=context)
 
-    def validate_args(self, msg, kwargs):
+    def validate_args(self, msg, kwargs) -> None:
         d = set(kwargs.keys()) - set(msg.field_by_name.keys())
         if d:
             raise VPPValueError('Invalid argument {} to {}'
                                 .format(list(d), msg.name))
 
-    def _add_stat(self, name, ms):
+    def _add_stat(self, name, ms) -> None:
         if not name in self.stats:
             self.stats[name] = {'max': ms, 'count': 1, 'avg': ms}
         else:
@@ -678,7 +710,7 @@ class VPPApiClient:
             n = self.stats[name]['count']
             self.stats[name]['avg'] = self.stats[name]['avg'] * (n - 1) / n + ms / n
 
-    def get_stats(self):
+    def get_stats(self) -> str:
         s = '\n=== API PAPI STATISTICS ===\n'
         s += '{:<30} {:>4} {:>6} {:>6}\n'.format('message', 'cnt', 'avg', 'max')
         for n in sorted(self.stats.items(), key=lambda v: v[1]['avg'], reverse=True):
@@ -702,6 +734,7 @@ class VPPApiClient:
         no response within the timeout window.
         """
         ts = time.time()
+        fn: FuncWrapper = self.id_funcwrapper[i]
         if 'context' not in kwargs:
             context = self.get_context()
             kwargs['context'] = context
@@ -728,21 +761,15 @@ class VPPApiClient:
 
         self.transport.write(b)
 
-        msgreply = service['reply']
-        stream = True if 'stream' in service else False
-        if stream:
-            if 'stream_msg' in service:
-                # New service['reply'] = _reply and service['stream_message'] = _details
-                stream_message = service['stream_msg']
-                modern =True
-            else:
-                # Old  service['reply'] = _details
-                stream_message = msgreply
-                msgreply = 'control_ping_reply'
-                modern = False
-                # Send a ping after the request - we use its response
-                # to detect that we have seen all results.
-                self._control_ping(context)
+        try:
+            msgreply = fn.msgreply
+        except AttributeError:
+            msgreply = service['reply']
+
+        # Send a ping after the request - we use its response
+        # to detect that we have seen all results.
+        if fn.is_stream and not fn.is_modern:
+            self._control_ping(context)
 
         # Block until we get a reply.
         rl = []
@@ -755,13 +782,13 @@ class VPPApiClient:
                 # Message being queued
                 self.message_queue.put_nowait(r)
                 continue
-            if msgname != msgreply and (stream and (msgname != stream_message)):
-                print('REPLY MISMATCH', msgreply, msgname, stream_message, stream)
-            if not stream:
+            if msgname != msgreply and (fn.is_stream and (msgname != fn.stream_message)):
+                print('REPLY MISMATCH', msgreply, msgname, fn.stream_message, fn.is_stream)
+            if not fn.is_stream:
                 rl = r
                 break
             if msgname == msgreply:
-                if modern: # Return both reply and list
+                if fn.is_modern:  # Return both reply and list
                     rl = r, rl
                 break
 
@@ -775,9 +802,10 @@ class VPPApiClient:
         self.logger.debug(s)
         te = time.time()
         self._add_stat(msgdef.name, (te - ts) * 1000)
+
         return rl
 
-    def _call_vpp_async(self, i, msg, **kwargs):
+    def _call_vpp_async(self, i, msg, **kwargs) -> int:
         """Given a message, send the message and return the context.
 
         msgdef - the message packing definition
@@ -806,7 +834,7 @@ class VPPApiClient:
         self.transport.write(b)
         return context
 
-    def read_blocking(self, no_type_conversion=False, timeout=None):
+    def read_blocking(self, no_type_conversion=False, timeout=None) -> typing.Union[collections.namedtuple, None]:
         """Get next received message from transport within timeout, decoded.
 
         Note that notifications have context zero
@@ -834,7 +862,7 @@ class VPPApiClient:
             return None
         return self.decode_incoming_msg(msg, no_type_conversion)
 
-    def register_event_callback(self, callback):
+    def register_event_callback(self, callback) -> None:
         """Register a callback for async messages.
 
         This will be called for async notifications in sync mode,
@@ -852,7 +880,7 @@ class VPPApiClient:
         """
         self.event_callback = callback
 
-    def thread_msg_handler(self):
+    def thread_msg_handler(self) -> None:
         """Python thread calling the user registered message handler.
 
         This is to emulate the old style event callback scheme. Modern
@@ -867,7 +895,7 @@ class VPPApiClient:
             if self.event_callback:
                 self.event_callback(msgname, r)
 
-    def validate_message_table(self, namecrctable):
+    def validate_message_table(self, namecrctable) -> typing.List:
         """Take a dictionary of name_crc message names
         and returns an array of missing messages"""
 
@@ -878,11 +906,11 @@ class VPPApiClient:
                 missing_table.append(name_crc)
         return missing_table
 
-    def dump_message_table(self):
+    def dump_message_table(self) -> typing.Dict:
         """Return VPPs API message table as name_crc dictionary"""
         return self.transport.message_table
 
-    def dump_message_table_filtered(self, msglist):
+    def dump_message_table_filtered(self, msglist) -> typing.Dict:
         """Return VPPs API message table as name_crc dictionary,
         filtered by message name list."""
 
@@ -895,7 +923,7 @@ class VPPApiClient:
                     break
         return message_table_filtered
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<VPPApiClient apifiles=%s, testmode=%s, async_thread=%s, " \
                "logger=%s, read_timeout=%s, use_socket=%s, " \
                "server_address='%s'>" % (
@@ -903,7 +931,7 @@ class VPPApiClient:
                    self.logger, self.read_timeout, self.use_socket,
                    self.server_address)
 
-    def details_iter(self, f, **kwargs):
+    def details_iter(self, f, **kwargs) -> typing.Iterable[bytes]:
         cursor = 0
         while True:
             kwargs['cursor'] = cursor
