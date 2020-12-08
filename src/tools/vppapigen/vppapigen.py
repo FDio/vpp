@@ -308,7 +308,6 @@ class Define(Processable):
         self.manual_print = False
         self.manual_endian = False
         self.autoreply = False
-        self.singular = False
         self.options = {}
         for f in flags:
             if f == 'dont_trace':
@@ -323,10 +322,7 @@ class Define(Processable):
         remove = []
         for b in block:
             if isinstance(b, Option):
-                if b[1] == 'singular' and b[2] == 'true':
-                    self.singular = True
-                else:
-                    self.options[b.option] = b.value
+                self.options[b.option] = b.value
                 remove.append(b)
 
         block = [x for x in block if x not in remove]
@@ -1041,8 +1037,6 @@ class VPPAPI():
         # Create services implicitly
         for d in msgs:
             if d in seen_services:
-                continue
-            if msgs[d].singular is True:
                 continue
             if d.endswith('_reply'):
                 if d[:-6] in svcs:
