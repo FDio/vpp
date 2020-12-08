@@ -77,7 +77,7 @@ dpdk_device_balance_handler (dpdk_device_t * xd, u16 src_q_id, u16 dest_q_id, u1
   dpdk_log_notice ("LB: Loadbalance handling for port %d, src_q_id %d, dest_q_id %d, ratio %d",
                  xd->port_id, src_q_id, dest_q_id, ratio);
 
-  clib_memset (&xd->reta_conf[0], 0, 
+  clib_memset (&xd->reta_conf[0], 0,
                (xd->reta_size/RTE_RETA_GROUP_SIZE) * sizeof(xd->reta_conf[0]));
   for (i = 0; i < (xd->reta_size/RTE_RETA_GROUP_SIZE); i++) {
       xd->reta_conf[i].mask = UINT64_MAX;
@@ -213,16 +213,23 @@ dpdk_loadbalance_update (f64 now)
             continue;
         }
         vlib_node_sync_stats (lb_worker->stat_vm, dpdk_node);
-        v_diff = dpdk_node->stats_total.vectors - lb_worker->vectors;
-        c_diff = dpdk_node->stats_total.calls - lb_worker->calls;
         lb_worker->vectors = dpdk_node->stats_total.vectors;
         lb_worker->calls = dpdk_node->stats_total.calls;
+    }
+    vlib_worker_thread_barrier_release (vm);
+
+    vec_foreach (lb_worker, dm->loadbalance.lb_workers)
+    {
+        v_diff = lb_worker->vectors - lb_worker->old_vectors;
+        c_diff = lb_worker->calls - lb_worker->old_calls;
+        lb_worker->old_vectors = lb_worker->vectors;
+        lb_worker->old_calls = lb_worker->calls;
         if (!c_diff) {
-            dpdk_log_info ("LB: node %s, thread %d, no changed, calls %llu, vectors %llu, load %d",
-                       dpdk_node->name, lb_worker->thread_index,
-                       dpdk_node->stats_total.calls,
-                       dpdk_node->stats_total.vectors, lb_worker->load);
-            lb_worker->load = 0;
+            dpdk_log_info ("LB: thread %d, no changed, calls %llu, vectors %llu, load %d",
+                       lb_worker->thread_index,
+                       lb_worker->calls, lb_worker->vectors, lb_worker->load);
+            /* Give a medium value, then it will not join the balancing. */
+            lb_worker->load = (DPDK_LB_LOAD_HIGH_TH+DPDK_LB_LOAD_LOW_TH)/2;
         } else {
             lb_worker->load = v_diff/c_diff;
         }
@@ -236,12 +243,11 @@ dpdk_loadbalance_update (f64 now)
         }
 
         if (dpdk_lb_debug) {
-            dpdk_log_warn ("LB: node %s, thread %d, c_diff %llu, v_diff %llu, load %d",
-                       dpdk_node->name, lb_worker->thread_index,
+            dpdk_log_warn ("LB: thread %d, c_diff %llu, v_diff %llu, load %d",
+                       lb_worker->thread_index,
                        c_diff, v_diff, lb_worker->load);
         }
     }
-    vlib_worker_thread_barrier_release (vm);
 
     if (!highs || !lows) {
         /* no high or no low, doesn't balance. */
@@ -277,9 +283,8 @@ dpdk_loadbalance_update (f64 now)
 
     vec_foreach (xd, dm->devices)
     {
-        if ((xd->port_conf.rxmode.mq_mode != ETH_MQ_RX_RSS) ||
-            (xd->reta_size == 0)) {
-            dpdk_log_info ("LB: xd port id %d, no RSS enabled",
+        if (xd->loadbalance_enabled) {
+            dpdk_log_info ("LB: xd port id %d, no loadbalance enabled",
                    xd->port_id);
             continue;
         }

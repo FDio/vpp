@@ -111,6 +111,10 @@ dpdk {{
                 ## device specific init args
                 ## Default is NULL
 		# devargs safe-mode-support=1,pipeline-mode-support=1
+
+		## load balance feature for interface
+		## Default is off
+		# loadbalance
 	# }}
 
 	## Whitelist specific interface by specifying PCI address

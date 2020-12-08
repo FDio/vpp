@@ -232,6 +232,7 @@ typedef struct
 
   u16 reta_size;
   struct rte_eth_rss_reta_entry64 *reta_conf;
+  u32 loadbalance_enabled;
 
   /* mac address */
   u8 *default_mac_address;
@@ -243,7 +244,7 @@ typedef struct
 #define DPDK_LB_BALANCE_RATIO 5
 #define DPDK_LB_POLL_INTERVAL (120.0)
 #define DPDK_LB_LOAD_HIGH_TH  200
-#define DPDK_LB_LOAD_LOW_TH   50
+#define DPDK_LB_LOAD_LOW_TH   20
 
 typedef struct
 {
@@ -252,6 +253,8 @@ typedef struct
   uword thread_index;
   u64 vectors;
   u64 calls;
+  u64 old_vectors;
+  u64 old_calls;
   u16 load;
   u16 ratio;
 } dpdk_loadbalance_worker_t;
@@ -298,6 +301,7 @@ typedef struct
 #define DPDK_DEVICE_TSO_DEFAULT 0
 #define DPDK_DEVICE_TSO_OFF 1
 #define DPDK_DEVICE_TSO_ON  2
+  u32 loadbalance_enabled;
 } dpdk_device_config_t;
 
 typedef struct

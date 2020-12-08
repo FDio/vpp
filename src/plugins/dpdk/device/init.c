@@ -371,13 +371,14 @@ dpdk_lib_init (dpdk_main_t * dm)
 	{
 	  xd->rx_q_used = devconf->num_rx_queues;
 	  xd->port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
-	  if (dev_info.reta_size) {
+	  if (devconf->loadbalance_enabled && dev_info.reta_size) {
 	      xd->reta_conf =
 	          (struct rte_eth_rss_reta_entry64 *) clib_mem_alloc ((dev_info.reta_size /
 	                                               RTE_RETA_GROUP_SIZE) *
 	                                               sizeof (struct rte_eth_rss_reta_entry64));
 	      if (xd->reta_conf) {
 	          xd->reta_size = dev_info.reta_size;
+	          xd->loadbalance_enabled = 1;
 	          dm->loadbalance.lb_enabled = 1;
 	      } else {
 	          dpdk_log_warn ("LB: clib_mem_alloc failed");
@@ -1104,6 +1105,10 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
 	  error = unformat_rss_fn (&sub_input, &devconf->rss_fn);
 	  if (error)
 	    break;
+	}
+      else if (unformat (input, "loadbalance"))
+	{
+	  devconf->loadbalance_enabled = 1;
 	}
       else if (unformat (input, "vlan-strip-offload off"))
 	devconf->vlan_strip_offload = DPDK_DEVICE_VLAN_STRIP_OFF;
