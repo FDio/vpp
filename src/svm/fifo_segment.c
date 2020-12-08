@@ -51,6 +51,12 @@ fsh_slice_get (fifo_segment_header_t * fsh, u32 slice_index)
   return &fsh->slices[slice_index];
 }
 
+static inline fifo_segment_slice_t *
+fsh_slice_get2 (fifo_segment_t * fs, u32 slice_index)
+{
+  return &fs->slices[slice_index];
+}
+
 static char *fifo_segment_mem_status_strings[] = {
 #define _(sym,str) str,
   foreach_segment_mem_status
@@ -130,15 +136,15 @@ fsh_n_active_fifos (fifo_segment_header_t * fsh)
 }
 
 static inline uword
-fsh_virtual_mem (fifo_segment_header_t * fsh)
+fsh_virtual_mem (fifo_segment_t * fs)
 {
   fifo_segment_slice_t *fss;
   uword total_vm = 0;
   int i;
 
-  for (i = 0; i < fsh->n_slices; i++)
+  for (i = 0; i < fs->n_slices; i++)
     {
-      fss = fsh_slice_get (fsh, i);
+      fss = fsh_slice_get2 (fs, i);
       total_vm += clib_atomic_load_relax_n (&fss->virtual_mem);
     }
   return total_vm;
@@ -338,9 +344,9 @@ fifo_segment_init (fifo_segment_t * fs)
 		       FIFO_SEGMENT_MAX_FIFO_SIZE);
   fsh->max_log2_chunk_size = max_log2 (max_fifo);
 
-  fsh->slices = fsh_alloc (fsh, sizeof (*fss) * fs->n_slices);
-//  fsh->slices = clib_mem_alloc (sizeof (*fss) * fs->n_slices);
-  memset (fsh->slices, 0, sizeof (*fss) * fs->n_slices);
+  fs->slices = fsh_alloc (fsh, sizeof (*fss) * fs->n_slices);
+  fsh->slices = fs->slices;
+  memset (fs->slices, 0, sizeof (*fss) * fs->n_slices);
   max_chunk_sz = fsh->max_log2_chunk_size - FIFO_SEGMENT_MIN_LOG2_FIFO_SIZE;
 
   for (i = 0; i < fs->n_slices; i++)
@@ -849,7 +855,7 @@ fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs, u32 slice_index,
   if (PREDICT_FALSE (data_bytes > 1 << fsh->max_log2_chunk_size))
     return 0;
 
-  fss = fsh_slice_get (fsh, slice_index);
+  fss = fsh_slice_get2 (fs, slice_index);
   f = fs_try_alloc_fifo (fsh, fss, data_bytes);
   if (!f)
     goto done;
@@ -889,7 +895,7 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
   if (--f->refcnt > 0)
     return;
 
-  fss = fsh_slice_get (fsh, f->slice_index);
+  fss = fsh_slice_get2 (fs, f->slice_index);
 
   /* Remove from active list. Only rx fifos are tracked */
   if (f->flags & SVM_FIFO_F_LL_TRACKED)
@@ -933,7 +939,7 @@ fifo_segment_detach_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 
   ASSERT (f->refcnt == 1);
 
-  fss = fsh_slice_get (fs->h, f->slice_index);
+  fss = fsh_slice_get2 (fs, f->slice_index);
   fss->virtual_mem -= svm_fifo_size (f);
   if (f->flags & SVM_FIFO_F_LL_TRACKED)
     fss_fifo_del_active_list (fss, f);
@@ -956,7 +962,7 @@ fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t * f,
   u32 fl_index;
 
   f->slice_index = slice_index;
-  fss = fsh_slice_get (fs->h, f->slice_index);
+  fss = fsh_slice_get2 (fs, f->slice_index);
   fss->virtual_mem += svm_fifo_size (f);
   if (f->flags & SVM_FIFO_F_LL_TRACKED)
     fss_fifo_add_active_list (fss, f);
@@ -977,7 +983,7 @@ fifo_segment_prealloc_fifo_hdrs (fifo_segment_t * fs, u32 slice_index,
   fifo_segment_header_t *fsh = fs->h;
   fifo_segment_slice_t *fss;
 
-  fss = fsh_slice_get (fsh, slice_index);
+  fss = fsh_slice_get2 (fs, slice_index);
   return fsh_try_alloc_fifo_hdr_batch (fsh, fss, batch_size);
 }
 
@@ -996,7 +1002,7 @@ fifo_segment_prealloc_fifo_chunks (fifo_segment_t * fs, u32 slice_index,
     }
 
   fl_index = fs_freelist_for_size (chunk_size);
-  fss = fsh_slice_get (fsh, slice_index);
+  fss = fsh_slice_get2 (fs, slice_index);
 
   return fsh_try_alloc_chunk_batch (fsh, fss, fl_index, batch_size);
 }
@@ -1056,7 +1062,7 @@ fifo_segment_preallocate_fifo_pairs (fifo_segment_t * fs,
       if (0 == alloc_now)
 	break;
 
-      fss = fsh_slice_get (fsh, i);
+      fss = fsh_slice_get2 (fs, i);
       if (fs_try_alloc_fifo_batch (fsh, fss, rx_fl_index, alloc_now))
 	clib_warning ("rx prealloc failed: pairs %u", alloc_now);
       if (fs_try_alloc_fifo_batch (fsh, fss, tx_fl_index, alloc_now))
@@ -1097,14 +1103,13 @@ fs_slice_num_free_fifos (fifo_segment_slice_t * fss)
 u32
 fifo_segment_num_free_fifos (fifo_segment_t * fs)
 {
-  fifo_segment_header_t *fsh = fs->h;
   fifo_segment_slice_t *fss;
   int slice_index;
   u32 count = 0;
 
   for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
     {
-      fss = fsh_slice_get (fsh, slice_index);
+      fss = fsh_slice_get2 (fs, slice_index);
       count += fs_slice_num_free_fifos (fss);
     }
   return count;
@@ -1156,14 +1161,13 @@ fs_slice_num_free_chunks (fifo_segment_slice_t * fss, u32 size)
 u32
 fifo_segment_num_free_chunks (fifo_segment_t * fs, u32 size)
 {
-  fifo_segment_header_t *fsh = fs->h;
   fifo_segment_slice_t *fss;
   int slice_index;
   u32 count = 0;
 
   for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
     {
-      fss = fsh_slice_get (fsh, slice_index);
+      fss = fsh_slice_get2 (fs, slice_index);
       count += fs_slice_num_free_chunks (fss, size);
     }
   return count;
@@ -1220,14 +1224,13 @@ fifo_segment_available_bytes (fifo_segment_t * fs)
 uword
 fifo_segment_fl_chunk_bytes (fifo_segment_t * fs)
 {
-  fifo_segment_header_t *fsh = fs->h;
   fifo_segment_slice_t *fss;
   uword n_bytes = 0;
   int slice_index;
 
   for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
     {
-      fss = fsh_slice_get (fsh, slice_index);
+      fss = fsh_slice_get2 (fs, slice_index);
       n_bytes += fss_fl_chunk_bytes (fss);
     }
 
@@ -1243,10 +1246,9 @@ fifo_segment_has_fifos (fifo_segment_t * fs)
 svm_fifo_t *
 fifo_segment_get_slice_fifo_list (fifo_segment_t * fs, u32 slice_index)
 {
-  fifo_segment_header_t *fsh = fs->h;
   fifo_segment_slice_t *fss;
 
-  fss = fsh_slice_get (fsh, slice_index);
+  fss = fsh_slice_get2 (fs, slice_index);
   return fss->fifos;
 }
 
@@ -1370,7 +1372,7 @@ format_fifo_segment (u8 * s, va_list * args)
 
   for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
     {
-      fss = fsh_slice_get (fsh, slice_index);
+      fss = fsh_slice_get2 (fs, slice_index);
       for (i = 0; i < fss->n_chunk_lens; i++)
 	{
 	  c = fss->free_chunks[i];
@@ -1401,7 +1403,7 @@ format_fifo_segment (u8 * s, va_list * args)
   in_use = fifo_segment_size (fs) - est_free_seg_bytes - tracked_cached_bytes;
   usage = (100.0 * in_use) / allocated;
   mem_st = fifo_segment_get_mem_status (fs);
-  virt = fsh_virtual_mem (fsh);
+  virt = fsh_virtual_mem (fs);
   reserved = fsh->n_reserved_bytes;
 
   s = format (s, "\n%Useg free bytes: %U (%lu) estimated: %U (%lu) reserved:"
