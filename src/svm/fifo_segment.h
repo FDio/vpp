@@ -67,6 +67,7 @@ typedef struct
 {
   ssvm_private_t ssvm;		/**< ssvm segment data */
   fifo_segment_header_t *h;	/**< fifo segment data */
+  fifo_segment_slice_t *slices;		/** Fixed array of slices */
   uword max_byte_index;
   u8 n_slices;			/**< number of fifo segment slices */
 } fifo_segment_t;
