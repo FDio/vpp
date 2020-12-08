@@ -352,6 +352,18 @@ vcl_segment_table_lookup (u64 segment_handle)
   return ((u32) * seg_indexp);
 }
 
+fifo_segment_t *
+vcl_segment_get (u64 segment_handle)
+{
+  fifo_segment_main_t *sm = &vcm->segment_main;
+  u32 segment_index;
+
+  segment_index = vcl_segment_table_lookup (segment_handle);
+  if (segment_index == (u32) ~ 0)
+    return 0;
+  return fifo_segment_get_segment (sm, segment_index);
+}
+
 void
 vcl_segment_detach (u64 segment_handle)
 {
