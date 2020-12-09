@@ -4,8 +4,11 @@
 #
 import logging
 
+import typing
 from cffi import FFI
 import cffi
+
+from . import vpp_transport
 
 logger = logging.getLogger('vpp_papi.transport')
 logger.addHandler(logging.NullHandler())
@@ -31,8 +34,6 @@ void vac_set_error_handler(vac_error_callback_t);
 void vac_mem_init (size_t size);
 """)
 
-vpp_object = None
-
 # allow file to be imported so it can be mocked in tests.
 # If the shared library fails, VppTransport cannot be initialized.
 try:
@@ -41,22 +42,7 @@ except OSError:
     vpp_api = None
 
 
-@ffi.callback("void(unsigned char *, int)")
-def vac_callback_sync(data, len):
-    vpp_object.msg_handler_sync(ffi.buffer(data, len))
-
-
-@ffi.callback("void(unsigned char *, int)")
-def vac_callback_async(data, len):
-    vpp_object.msg_handler_async(ffi.buffer(data, len))
-
-
-@ffi.callback("void(void *, unsigned char *, int)")
-def vac_error_handler(arg, msg, msg_len):
-    vpp_object.logger.warning("VPP API client:: %s", ffi.string(msg, msg_len))
-
-
-class VppTransportShmemIOError(IOError):
+class VppTransportShmemIOError(vpp_transport.VPPIOError):
     """ exception communicating with vpp over shared memory """
 
     def __init__(self, rv, descr):
@@ -66,28 +52,25 @@ class VppTransportShmemIOError(IOError):
         super(VppTransportShmemIOError, self).__init__(rv, descr)
 
 
-class VppTransport:
+class VppTransport(vpp_transport.BaseVppTransport):
     VppTransportShmemIOError = VppTransportShmemIOError
 
-    def __init__(self, parent, read_timeout, server_address):
+    def __init__(self, *, parent: typing.Any, ctx: typing.Dict):
+        super(VppTransport, self).__init__(parent=parent, ctx=ctx)
         self.connected = False
-        self.read_timeout = read_timeout
+        self.read_timeout = ctx['read_timeout']
         self.parent = parent
-        global vpp_object
-        vpp_object = parent
 
         vpp_api.vac_mem_init(0)
 
         # Register error handler
-        vpp_api.vac_set_error_handler(vac_error_handler)
+        vpp_api.vac_set_error_handler(self.vac_error_handler)
 
         # Support legacy CFFI
         # from_buffer supported from 1.8.0
         (major, minor, patch) = [int(s) for s in
                                  cffi.__version__.split('.', 3)]
-        if major >= 1 and minor >= 8:
-            self.write = self._write_new_cffi
-        else:
+        if major <= 1 and minor <= 8:
             self.write = self._write_legacy_cffi
 
     def connect(self, name, pfx, msg_handler, rx_qlen):
@@ -107,7 +90,7 @@ class VppTransport:
         vpp_api.vac_rx_resume()
 
     def get_callback(self, do_async):
-        return vac_callback_sync if not do_async else vac_callback_async
+        return self.vac_callback_sync if not do_async else self.vac_callback_async
 
     def get_msg_index(self, name):
         return vpp_api.vac_get_msg_index(name.encode('ascii'))
@@ -115,7 +98,7 @@ class VppTransport:
     def msg_table_max_index(self):
         return vpp_api.vac_msg_table_max_index()
 
-    def _write_new_cffi(self, buf):
+    def write(self, buf):
         """Send a binary-packed message to VPP."""
         if not self.connected:
             raise VppTransportShmemIOError(1, 'Not connected')
@@ -141,3 +124,15 @@ class VppTransport:
         msg = bytes(ffi.buffer(mem[0], size[0]))
         vpp_api.vac_free(mem[0])
         return msg
+
+    @ffi.callback("void(unsigned char *, int)")
+    def vac_callback_sync(self, data, len):
+        self.parent.msg_handler_sync(ffi.buffer(data, len))
+
+    @ffi.callback("void(unsigned char *, int)")
+    def vac_callback_async(self, data, len):
+        self.parent.msg_handler_async(ffi.buffer(data, len))
+
+    @ffi.callback("void(void *, unsigned char *, int)")
+    def vac_error_handler(self, arg, msg, msg_len):
+        self.parent.logger.warning("VPP API client:: %s", ffi.string(msg, msg_len))
