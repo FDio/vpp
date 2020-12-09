@@ -171,6 +171,42 @@ f_chunk_includes_pos (svm_fifo_chunk_t * c, u32 pos)
 	  && f_pos_lt (pos, c->start_byte + c->length));
 }
 
+always_inline svm_fifo_chunk_t *
+f_start_chunk_ptr (svm_fifo_t *f)
+{
+  return fs_chunk_ptr (f->fs_hdr, f->f_shr->start_chunk);
+}
+
+always_inline svm_fifo_chunk_t *
+f_end_chunk_ptr (svm_fifo_t *f)
+{
+  return fs_chunk_ptr (f->fs_hdr, f->f_shr->end_chunk);
+}
+
+always_inline svm_fifo_chunk_t *
+f_head_chunk_ptr (svm_fifo_t *f)
+{
+  return fs_chunk_ptr (f->fs_hdr, f->f_shr->head_chunk);
+}
+
+always_inline svm_fifo_chunk_t *
+f_tail_chunk_ptr (svm_fifo_t *f)
+{
+  return fs_chunk_ptr (f->fs_hdr, f->f_shr->tail_chunk);
+}
+
+always_inline svm_fifo_chunk_t *
+f_chunk_ptr (svm_fifo_t *f, svm_fifo_chunk_ptr_t cp)
+{
+  return fs_chunk_ptr (f->fs_hdr, cp);
+}
+
+always_inline svm_fifo_chunk_ptr_t
+f_chunk_sptr (svm_fifo_t *f, svm_fifo_chunk_t *c)
+{
+  return fs_chunk_sptr (f->fs_hdr, c);
+}
+
 /**
  * Create fifo of requested size
  *
@@ -591,7 +627,7 @@ u32 svm_fifo_max_write_chunk (svm_fifo_t * f);
 static inline svm_fifo_chunk_t *
 svm_fifo_head_chunk (svm_fifo_t * f)
 {
-  return f->f_shr->head_chunk;
+  return f_head_chunk_ptr (f);
 }
 
 /**
@@ -603,10 +639,12 @@ svm_fifo_head_chunk (svm_fifo_t * f)
 static inline u8 *
 svm_fifo_head (svm_fifo_t * f)
 {
+  svm_fifo_chunk_t *head_chunk;
   if (!f->f_shr->head_chunk)
     return 0;
   /* load-relaxed: consumer owned index */
-  return (f->f_shr->head_chunk->data + (f->f_shr->head - f->f_shr->head_chunk->start_byte));
+  head_chunk = f_head_chunk_ptr (f);
+  return (head_chunk->data + (f->f_shr->head - head_chunk->start_byte));
 }
 
 /**
@@ -618,7 +656,7 @@ svm_fifo_head (svm_fifo_t * f)
 static inline svm_fifo_chunk_t *
 svm_fifo_tail_chunk (svm_fifo_t * f)
 {
-  return f->f_shr->tail_chunk;
+  return f_tail_chunk_ptr (f);
 }
 
 /**
@@ -630,8 +668,11 @@ svm_fifo_tail_chunk (svm_fifo_t * f)
 static inline u8 *
 svm_fifo_tail (svm_fifo_t * f)
 {
+  svm_fifo_chunk_t *tail_chunk;
+
   /* load-relaxed: producer owned index */
-  return (f->f_shr->tail_chunk->data + (f->f_shr->tail - f->f_shr->tail_chunk->start_byte));
+  tail_chunk = f_tail_chunk_ptr (f);
+  return (tail_chunk->data + (f->f_shr->tail - tail_chunk->start_byte));
 }
 
 /**

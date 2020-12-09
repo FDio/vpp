@@ -198,28 +198,31 @@ fss_chunk_fl_index_is_valid (fifo_segment_slice_t * fss, u32 fl_index)
 }
 
 static void
-fss_chunk_free_list_push (fifo_segment_slice_t * fss, u32 fl_index,
+fss_chunk_free_list_push (fifo_segment_header_t *fsh,
+                          fifo_segment_slice_t * fss, u32 fl_index,
 			  svm_fifo_chunk_t * c)
 {
   fss_chunk_freelist_lock (fss);
   c->next = fss->free_chunks[fl_index];
-  fss->free_chunks[fl_index] = c;
+  fss->free_chunks[fl_index] = fs_chunk_sptr (fsh, c);
   fss_chunk_freelist_unlock (fss);
 }
 
 static void
-fss_chunk_free_list_push_list (fifo_segment_slice_t * fss, u32 fl_index,
+fss_chunk_free_list_push_list (fifo_segment_header_t *fsh,
+                               fifo_segment_slice_t * fss, u32 fl_index,
 			       svm_fifo_chunk_t * head,
 			       svm_fifo_chunk_t * tail)
 {
   fss_chunk_freelist_lock (fss);
   tail->next = fss->free_chunks[fl_index];
-  fss->free_chunks[fl_index] = head;
+  fss->free_chunks[fl_index] = fs_chunk_sptr (fsh, head);
   fss_chunk_freelist_unlock (fss);
 }
 
 static svm_fifo_chunk_t *
-fss_chunk_free_list_pop (fifo_segment_slice_t * fss, u32 fl_index)
+fss_chunk_free_list_pop (fifo_segment_header_t * fsh,
+                         fifo_segment_slice_t * fss, u32 fl_index)
 {
   svm_fifo_chunk_t *c;
 
@@ -233,7 +236,7 @@ fss_chunk_free_list_pop (fifo_segment_slice_t * fss, u32 fl_index)
       return 0;
     }
 
-  c = fss->free_chunks[fl_index];
+  c = fs_chunk_sptr (fsh, fss->free_chunks[fl_index]);
   fss->free_chunks[fl_index] = c->next;
 
   fss_chunk_freelist_unlock (fss);
@@ -504,10 +507,10 @@ fs_try_alloc_multi_chunk (fifo_segment_header_t * fsh,
 
   while (req_bytes)
     {
-      c = fss_chunk_free_list_pop (fss, fl_index);
+      c = fss_chunk_free_list_pop (fsh, fss, fl_index);
       if (c)
 	{
-	  c->next = first;
+	  c->next = fs_chunk_sptr (fsh, first);
 	  first = c;
 	  n_alloc += fl_size;
 	  req_bytes -= clib_min (fl_size, req_bytes);
@@ -522,8 +525,8 @@ fs_try_alloc_multi_chunk (fifo_segment_header_t * fsh,
 	      while (c)
 		{
 		  fl_index = fs_freelist_for_size (c->length);
-		  next = c->next;
-		  fss_chunk_free_list_push (fss, fl_index, c);
+		  next = fs_chunk_ptr (fsh, c->next);
+		  fss_chunk_free_list_push (fsh, fss, fl_index, c);
 		  c = next;
 		}
 	      n_alloc = 0;
@@ -533,7 +536,7 @@ fs_try_alloc_multi_chunk (fifo_segment_header_t * fsh,
 	      fl_index = fs_freelist_for_size (data_bytes) + 1;
 	      if (!fss_chunk_fl_index_is_valid (fss, fl_index))
 		return 0;
-	      first = fss_chunk_free_list_pop (fss, fl_index);
+	      first = fss_chunk_free_list_pop (fsh, fss, fl_index);
 	      if (first)
 		{
 		  first->next = 0;
@@ -628,13 +631,13 @@ fsh_try_alloc_chunk_batch (fifo_segment_header_t * fsh,
     {
       c->start_byte = 0;
       c->length = rounded_data_size;
-      c->next = head;
+      c->next = fs_chunk_sptr (fsh, head);
       head = c;
       cmem += sizeof (*c) + rounded_data_size;
       c = (svm_fifo_chunk_t *) cmem;
     }
 
-  fss_chunk_free_list_push_list (fss, fl_index, head, tail);
+  fss_chunk_free_list_push_list (fsh, fss, fl_index, head, tail);
   fss->num_chunks[fl_index] += batch_size;
   fss_fl_chunk_bytes_add (fss, total_chunk_bytes);
   fsh_cached_bytes_add (fsh, total_chunk_bytes);
@@ -682,7 +685,7 @@ fsh_try_alloc_chunk (fifo_segment_header_t * fsh,
   fl_index = fs_freelist_for_size (data_bytes);
 
 free_list:
-  c = fss_chunk_free_list_pop (fss, fl_index);
+  c = fss_chunk_free_list_pop (fsh, fss, fl_index);
   if (c)
     {
       c->next = 0;
@@ -774,10 +777,10 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, u32 slice_index,
       return 0;
     }
 
-  sf->start_chunk = c;
+  sf->start_chunk = fs_chunk_sptr (fsh, c);
   while (c->next)
-    c = c->next;
-  sf->end_chunk = c;
+    c = fs_chunk_ptr (fsh, c->next);
+  sf->end_chunk = fs_chunk_sptr (fsh, c);
   sf->size = data_bytes;
   sf->slice_index = slice_index;
 
@@ -806,9 +809,9 @@ fsh_slice_collect_chunks (fifo_segment_header_t * fsh,
   while (c)
     {
       CLIB_MEM_UNPOISON (c, sizeof (*c));
-      next = c->next;
+      next = fs_chunk_ptr (fsh, c->next);
       fl_index = fs_freelist_for_size (c->length);
-      fss_chunk_free_list_push (fss, fl_index, c);
+      fss_chunk_free_list_push (fsh, fss, fl_index, c);
       n_collect += fs_freelist_index_to_size (fl_index);
       c = next;
     }
@@ -946,7 +949,8 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
     }
 
   /* Free fifo chunks */
-  fsh_slice_collect_chunks (fsh, fss, f->f_shr->start_chunk);
+  fsh_slice_collect_chunks (fsh, fss,
+                            fs_chunk_ptr (fsh, f->f_shr->start_chunk));
 
   f->f_shr->start_chunk = f->f_shr->end_chunk = 0;
   f->f_shr->head_chunk = f->f_shr->tail_chunk = f->ooo_enq = f->ooo_deq = 0;
@@ -988,12 +992,12 @@ fifo_segment_detach_fifo (fifo_segment_t * fs, svm_fifo_t * f)
   if (f->flags & SVM_FIFO_F_LL_TRACKED)
     fss_fifo_del_active_list (fss, f);
 
-  c = f->f_shr->start_chunk;
+  c = fs_chunk_ptr (fs->h, f->f_shr->start_chunk);
   while (c)
     {
       fl_index = fs_freelist_for_size (c->length);
       clib_atomic_fetch_sub_rel (&fss->num_chunks[fl_index], 1);
-      c = c->next;
+      c = fs_chunk_ptr (fs->h, c->next);
     }
 }
 
@@ -1011,12 +1015,12 @@ fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t * f,
   if (f->flags & SVM_FIFO_F_LL_TRACKED)
     fss_fifo_add_active_list (fss, f);
 
-  c = f->f_shr->start_chunk;
+  c = fs_chunk_ptr (fs->h, f->f_shr->start_chunk);
   while (c)
     {
       fl_index = fs_freelist_for_size (c->length);
       clib_atomic_fetch_add_rel (&fss->num_chunks[fl_index], 1);
-      c = c->next;
+      c = fs_chunk_ptr (fs->h, c->next);
     }
 }
 
@@ -1161,7 +1165,8 @@ fifo_segment_num_free_fifos (fifo_segment_t * fs)
 }
 
 static u32
-fs_slice_num_free_chunks (fifo_segment_slice_t * fss, u32 size)
+fs_slice_num_free_chunks (fifo_segment_header_t *fsh,
+                          fifo_segment_slice_t * fss, u32 size)
 {
   u32 count = 0, rounded_size, fl_index;
   svm_fifo_chunk_t *c;
@@ -1178,7 +1183,7 @@ fs_slice_num_free_chunks (fifo_segment_slice_t * fss, u32 size)
 
 	  while (c)
 	    {
-	      c = c->next;
+	      c = fs_chunk_ptr (fsh, c->next);
 	      count++;
 	    }
 	}
@@ -1197,7 +1202,7 @@ fs_slice_num_free_chunks (fifo_segment_slice_t * fss, u32 size)
 
   while (c)
     {
-      c = c->next;
+      c = fs_chunk_ptr (fsh, c->next);
       count++;
     }
   return count;
@@ -1214,7 +1219,7 @@ fifo_segment_num_free_chunks (fifo_segment_t * fs, u32 size)
   for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
     {
       fss = fsh_slice_get (fsh, slice_index);
-      count += fs_slice_num_free_chunks (fss, size);
+      count += fs_slice_num_free_chunks (fsh, fss, size);
     }
   return count;
 }
@@ -1429,7 +1434,7 @@ format_fifo_segment (u8 * s, va_list * args)
 	  count = 0;
 	  while (c)
 	    {
-	      c = c->next;
+	      c = fs_chunk_ptr (fsh, c->next);
 	      count++;
 	    }
 
