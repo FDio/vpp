@@ -32,7 +32,6 @@ from vpp_bvi_interface import VppBviInterface
 from vpp_papi_provider import VppPapiProvider
 import vpp_papi
 from vpp_papi.vpp_stats import VPPStats
-from vpp_papi.vpp_transport_shmem import VppTransportShmemIOError
 from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
     get_logger, colorize
 from vpp_object import VppObjectRegistry
@@ -718,9 +717,9 @@ class VppTestCase(unittest.TestCase):
             os.rename(tmp_api_trace, vpp_api_trace_log)
             self.logger.info(self.vapi.ppcli("api trace custom-dump %s" %
                                              vpp_api_trace_log))
-        except VppTransportShmemIOError:
-            self.logger.debug("VppTransportShmemIOError: Vpp dead. "
-                              "Cannot log show commands.")
+        except vpp_papi.VppIOError as e:
+            self.logger.debug("VppIOError: Vpp dead. "
+                              "Cannot log show commands. %s", e)
             self.vpp_dead = True
         else:
             self.registry.unregister_all(self.logger)
