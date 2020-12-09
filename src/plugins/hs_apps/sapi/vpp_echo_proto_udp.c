@@ -134,8 +134,8 @@ udp_echo_bound_uri_cb (session_bound_msg_t * mp, echo_session_t * session)
 
   rx_fifo = uword_to_pointer (mp->rx_fifo, svm_fifo_t *);
   tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_t *);
-  rx_fifo->client_session_index = session_index;
-  tx_fifo->client_session_index = session_index;
+  rx_fifo->f_shr->client_session_index = session_index;
+  tx_fifo->f_shr->client_session_index = session_index;
 
   session->rx_fifo = rx_fifo;
   session->tx_fifo = tx_fifo;
