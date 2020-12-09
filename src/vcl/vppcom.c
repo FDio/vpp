@@ -952,6 +952,7 @@ vcl_session_app_add_segment_handler (vcl_worker_t * wrk, void *data)
       return;
     }
 
+  clib_warning ("mapped segment %x %p", segment_handle, vcl_segment_get (segment_handle)->ssvm.sh);
   VDBG (1, "mapped new segment '%s' size %d", msg->segment_name,
 	msg->segment_size);
 }
