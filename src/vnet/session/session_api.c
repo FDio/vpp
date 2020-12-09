@@ -386,8 +386,9 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 
   if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
     {
-      mp->rx_fifo = pointer_to_uword (ls->rx_fifo);
-      mp->tx_fifo = pointer_to_uword (ls->tx_fifo);
+      mp->rx_fifo = pointer_to_uword (ls->rx_fifo->f_shr);
+      mp->tx_fifo = pointer_to_uword (ls->tx_fifo->f_shr);
+      mp->segment_handle =  session_segment_handle (ls);
     }
 
 done:
@@ -442,7 +443,9 @@ mq_send_session_migrate_cb (session_t * s, session_handle_t new_sh)
   mp->new_handle = new_sh;
   mp->vpp_thread_index = session_thread_from_handle (new_sh);
   vpp_evt_q = session_main_get_vpp_event_queue (mp->vpp_thread_index);
-  mp->vpp_evt_q = pointer_to_uword (vpp_evt_q);
+  mp->vpp_evt_q = pointer_to_uword (vpp_evt_q);;
+  mp->segment_handle = session_segment_handle (s);
+
   svm_msg_q_add_and_unlock (app_mq, msg);
 }
 
