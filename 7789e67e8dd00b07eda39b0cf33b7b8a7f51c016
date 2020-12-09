@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "1cab6c72_117b956a",
+        "filename": "src/vnet/interface/runtime.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-09T11:49:43Z",
+      "side": 1,
+      "message": "fixed, thanks",
+      "parentUuid": "10db4567_4dc05dbd",
+      "range": {
+        "startLine": 123,
+        "startChar": 8,
+        "endLine": 123,
+        "endChar": 62
+      },
+      "revId": "7789e67e8dd00b07eda39b0cf33b7b8a7f51c016",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bbebb610_23b26c89",
         "filename": "src/vnet/interface/runtime.c",
         "patchSetId": 18
@@ -36,6 +60,30 @@
       "writtenOn": "2020-12-09T10:56:13Z",
       "side": 1,
       "message": "rxq-\u003emode !\u003d VNET_HW_IF_RX_MODE_POLLING\n\nIf we use the node state, poll vectors for a given node are always either full or empty.",
+      "range": {
+        "startLine": 126,
+        "startChar": 8,
+        "endLine": 126,
+        "endChar": 60
+      },
+      "revId": "7789e67e8dd00b07eda39b0cf33b7b8a7f51c016",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "edcaffea_5f587453",
+        "filename": "src/vnet/interface/runtime.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-09T11:49:43Z",
+      "side": 1,
+      "message": "we already know that there is no rxq on this thread which are in polling mode so we can skip constructing rx polling vector",
+      "parentUuid": "bbebb610_23b26c89",
       "range": {
         "startLine": 126,
         "startChar": 8,
