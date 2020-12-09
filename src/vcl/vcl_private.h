@@ -685,6 +685,9 @@ int vcl_segment_attach (u64 segment_handle, char *name,
 void vcl_segment_detach (u64 segment_handle);
 void vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s);
 
+int vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
+				uword txf_offset, vcl_session_t *s);
+
 /*
  * VCL Binary API
  */

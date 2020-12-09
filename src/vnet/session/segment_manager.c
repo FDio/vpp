@@ -211,6 +211,7 @@ segment_manager_del_segment (segment_manager_t * sm, fifo_segment_t * fs)
 	}
     }
 
+  fifo_segment_cleanup (fs);
   ssvm_delete (&fs->ssvm);
 
   if (CLIB_DEBUG)
@@ -612,12 +613,12 @@ segment_manager_del_sessions (segment_manager_t * sm)
          */
         while (f)
           {
-            session = session_get_if_valid (f->master_session_index,
-                                            f->master_thread_index);
-            if (session)
-              vec_add1 (handles, session_handle (session));
-            f = f->next;
-          }
+	    session = session_get_if_valid (f->shr->master_session_index,
+					    f->master_thread_index);
+	    if (session)
+	      vec_add1 (handles, session_handle (session));
+	    f = f->next;
+	  }
       }
 
     /* Instead of removing the segment, test when cleaning up disconnected
@@ -841,7 +842,7 @@ segment_manager_attach_fifo (segment_manager_t * sm, svm_fifo_t * f,
   fifo_segment_attach_fifo (fs, f, s->thread_index);
   segment_manager_segment_reader_unlock (sm);
 
-  f->master_session_index = s->session_index;
+  f->shr->master_session_index = s->session_index;
   f->master_thread_index = s->thread_index;
 }
 
@@ -1059,25 +1060,26 @@ segment_manager_format_sessions (segment_manager_t * sm, int verbose)
             u32 session_index, thread_index;
             session_t *session;
 
-            session_index = f->master_session_index;
-            thread_index = f->master_thread_index;
+	    session_index = f->shr->master_session_index;
+	    thread_index = f->master_thread_index;
 
-            session = session_get (session_index, thread_index);
-            str = format (0, "%U", format_session, session, verbose);
+	    session = session_get (session_index, thread_index);
+	    str = format (0, "%U", format_session, session, verbose);
 
-            if (verbose)
-              s = format (s, "%-40v%-20v%-15u%-10u", str, app_name,
-                          app_wrk->api_client_index, app_wrk->connects_seg_manager);
-            else
-              s = format (s, "%-40v%-20v", str, app_name);
+	    if (verbose)
+	      s = format (s, "%-40v%-20v%-15u%-10u", str, app_name,
+			  app_wrk->api_client_index,
+			  app_wrk->connects_seg_manager);
+	    else
+	      s = format (s, "%-40v%-20v", str, app_name);
 
-            vlib_cli_output (vm, "%v", s);
-            vec_reset_length (s);
-            vec_free (str);
+	    vlib_cli_output (vm, "%v", s);
+	    vec_reset_length (s);
+	    vec_free (str);
 
-            f = f->next;
-          }
-        vec_free (s);
+	    f = f->next;
+	  }
+	vec_free (s);
       }
   }
   /* *INDENT-ON* */

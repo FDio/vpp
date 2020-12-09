@@ -65,9 +65,8 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 	  svm_fifo_t *f = s->data.tx_fifo;
 	  rv = clib_min (svm_fifo_max_enqueue_prod (f), bytes_this_chunk);
 	  svm_fifo_enqueue_nocopy (f, rv);
-	  session_send_io_evt_to_thread_custom (&f->master_session_index,
-						s->thread_index,
-						SESSION_IO_EVT_TX);
+	  session_send_io_evt_to_thread_custom (
+	    &f->shr->master_session_index, s->thread_index, SESSION_IO_EVT_TX);
 	}
       else
 	rv = app_send_stream (&s->data, test_data + test_buf_offset,
@@ -101,9 +100,8 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 	  hdr.lcl_port = at->lcl_port;
 	  svm_fifo_enqueue (f, sizeof (hdr), (u8 *) & hdr);
 	  svm_fifo_enqueue_nocopy (f, rv);
-	  session_send_io_evt_to_thread_custom (&f->master_session_index,
-						s->thread_index,
-						SESSION_IO_EVT_TX);
+	  session_send_io_evt_to_thread_custom (
+	    &f->shr->master_session_index, s->thread_index, SESSION_IO_EVT_TX);
 	}
       else
 	{
@@ -441,9 +439,9 @@ quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   session->bytes_to_send = ecm->bytes_to_send;
   session->bytes_to_receive = ecm->no_return ? 0ULL : ecm->bytes_to_send;
   session->data.rx_fifo = s->rx_fifo;
-  session->data.rx_fifo->client_session_index = session_index;
+  session->data.rx_fifo->shr->client_session_index = session_index;
   session->data.tx_fifo = s->tx_fifo;
-  session->data.tx_fifo->client_session_index = session_index;
+  session->data.tx_fifo->shr->client_session_index = session_index;
   session->data.vpp_evt_q = ecm->vpp_event_queue[thread_index];
   session->vpp_session_handle = session_handle (s);
 
@@ -508,9 +506,9 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   session->bytes_to_send = ecm->bytes_to_send;
   session->bytes_to_receive = ecm->no_return ? 0ULL : ecm->bytes_to_send;
   session->data.rx_fifo = s->rx_fifo;
-  session->data.rx_fifo->client_session_index = session_index;
+  session->data.rx_fifo->shr->client_session_index = session_index;
   session->data.tx_fifo = s->tx_fifo;
-  session->data.tx_fifo->client_session_index = session_index;
+  session->data.tx_fifo->shr->client_session_index = session_index;
   session->data.vpp_evt_q = ecm->vpp_event_queue[thread_index];
   session->vpp_session_handle = session_handle (s);
 
@@ -589,7 +587,8 @@ echo_clients_rx_callback (session_t * s)
       return -1;
     }
 
-  sp = pool_elt_at_index (ecm->sessions, s->rx_fifo->client_session_index);
+  sp =
+    pool_elt_at_index (ecm->sessions, s->rx_fifo->shr->client_session_index);
   receive_data_chunk (ecm, sp);
 
   if (svm_fifo_max_dequeue_cons (s->rx_fifo))
