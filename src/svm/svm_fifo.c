@@ -21,9 +21,11 @@
 #include <svm/fifo_segment.h>
 #include <vppinfra/cpu.h>
 
-CLIB_MARCH_FN (svm_fifo_copy_to_chunk, void, svm_fifo_t * f,
-	       svm_fifo_chunk_t * c, u32 tail_idx, const u8 * src, u32 len,
-	       svm_fifo_chunk_t ** last)
+#define F_INVALID_CPTR (svm_fifo_chunk_ptr_t) ~0ULL
+
+CLIB_MARCH_FN (svm_fifo_copy_to_chunk, void, svm_fifo_t *f,
+	       svm_fifo_chunk_t *c, u32 tail_idx, const u8 *src, u32 len,
+	       svm_fifo_chunk_ptr_t *last)
 {
   u32 n_chunk;
 
@@ -36,15 +38,15 @@ CLIB_MARCH_FN (svm_fifo_copy_to_chunk, void, svm_fifo_t * f,
     {
       u32 to_copy = len;
       clib_memcpy_fast (&c->data[tail_idx], src, n_chunk);
-      c = c->next;
+      c = f_cptr (f, c->next);
       while ((to_copy -= n_chunk))
 	{
 	  n_chunk = clib_min (c->length, to_copy);
 	  clib_memcpy_fast (&c->data[0], src + (len - to_copy), n_chunk);
-	  c = c->length <= to_copy ? c->next : c;
+	  c = c->length <= to_copy ? f_cptr (f, c->next) : c;
 	}
       if (*last)
-	*last = c;
+	*last = f_csptr (f, c);
     }
   else
     {
@@ -52,9 +54,9 @@ CLIB_MARCH_FN (svm_fifo_copy_to_chunk, void, svm_fifo_t * f,
     }
 }
 
-CLIB_MARCH_FN (svm_fifo_copy_from_chunk, void, svm_fifo_t * f,
-	       svm_fifo_chunk_t * c, u32 head_idx, u8 * dst, u32 len,
-	       svm_fifo_chunk_t ** last)
+CLIB_MARCH_FN (svm_fifo_copy_from_chunk, void, svm_fifo_t *f,
+	       svm_fifo_chunk_t *c, u32 head_idx, u8 *dst, u32 len,
+	       svm_fifo_chunk_ptr_t *last)
 {
   u32 n_chunk;
 
@@ -67,17 +69,17 @@ CLIB_MARCH_FN (svm_fifo_copy_from_chunk, void, svm_fifo_t * f,
     {
       u32 to_copy = len;
       clib_memcpy_fast (dst, &c->data[head_idx], n_chunk);
-      c = c->next;
+      c = f_cptr (f, c->next);
       while ((to_copy -= n_chunk))
 	{
 	  CLIB_MEM_UNPOISON (c, sizeof (*c));
 	  CLIB_MEM_UNPOISON (c->data, c->length);
 	  n_chunk = clib_min (c->length, to_copy);
 	  clib_memcpy_fast (dst + (len - to_copy), &c->data[0], n_chunk);
-	  c = c->length <= to_copy ? c->next : c;
+	  c = c->length <= to_copy ? f_cptr (f, c->next) : c;
 	}
       if (*last)
-	*last = c;
+	*last = f_csptr (f, c);
     }
   else
     {
@@ -88,16 +90,16 @@ CLIB_MARCH_FN (svm_fifo_copy_from_chunk, void, svm_fifo_t * f,
 #ifndef CLIB_MARCH_VARIANT
 
 static inline void
-svm_fifo_copy_to_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c, u32 tail_idx,
-			const u8 * src, u32 len, svm_fifo_chunk_t ** last)
+svm_fifo_copy_to_chunk (svm_fifo_t *f, svm_fifo_chunk_t *c, u32 tail_idx,
+			const u8 *src, u32 len, svm_fifo_chunk_ptr_t *last)
 {
   CLIB_MARCH_FN_SELECT (svm_fifo_copy_to_chunk) (f, c, tail_idx, src, len,
 						 last);
 }
 
 static inline void
-svm_fifo_copy_from_chunk (svm_fifo_t * f, svm_fifo_chunk_t * c, u32 head_idx,
-			  u8 * dst, u32 len, svm_fifo_chunk_t ** last)
+svm_fifo_copy_from_chunk (svm_fifo_t *f, svm_fifo_chunk_t *c, u32 head_idx,
+			  u8 *dst, u32 len, svm_fifo_chunk_ptr_t *last)
 {
   CLIB_MARCH_FN_SELECT (svm_fifo_copy_from_chunk) (f, c, head_idx, dst, len,
 						   last);
@@ -387,17 +389,17 @@ svm_fifo_init (svm_fifo_t * f, u32 size)
   /*
    * Initialize chunks
    */
-  f->shr->start_chunk->start_byte = 0;
-  prev = f->shr->start_chunk;
+  prev = f_start_cptr (f);
+  prev->start_byte = 0;
   prev->enq_rb_index = prev->deq_rb_index = RBTREE_TNIL_INDEX;
-  c = prev->next;
+  c = f_cptr (f, prev->next);
 
   while (c)
     {
       c->start_byte = prev->start_byte + prev->length;
       c->enq_rb_index = c->deq_rb_index = RBTREE_TNIL_INDEX;
       prev = c;
-      c = c->next;
+      c = f_cptr (f, c->next);
     }
 }
 
@@ -447,7 +449,7 @@ svm_fifo_alloc (u32 data_size_in_bytes)
   c->length = data_size_in_bytes;
   c->enq_rb_index = RBTREE_TNIL_INDEX;
   c->deq_rb_index = RBTREE_TNIL_INDEX;
-  f->shr->start_chunk = f->shr->end_chunk = c;
+  f->shr->start_chunk = f->shr->end_chunk = f_csptr (f, c);
 
   return f;
 }
@@ -486,9 +488,9 @@ svm_fifo_find_chunk (svm_fifo_t * f, u32 pos)
 {
   svm_fifo_chunk_t *c;
 
-  c = f->shr->start_chunk;
+  c = f_start_cptr (f);
   while (c && !f_chunk_includes_pos (c, pos))
-    c = c->next;
+    c = f_cptr (f, c->next);
 
   return c;
 }
@@ -502,7 +504,7 @@ svm_fifo_find_next_chunk (svm_fifo_t * f, svm_fifo_chunk_t * start, u32 pos)
 
   c = start;
   while (c && !f_chunk_includes_pos (c, pos))
-    c = c->next;
+    c = f_cptr (f, c->next);
 
   return c;
 }
@@ -513,17 +515,16 @@ svm_fifo_max_read_chunk (svm_fifo_t * f)
   u32 head, tail, end_chunk;
 
   f_load_head_tail_cons (f, &head, &tail);
-  ASSERT (!f->shr->head_chunk ||
-	  f_chunk_includes_pos (f->shr->head_chunk, head));
+  ASSERT (!f->shr->head_chunk || f_chunk_includes_pos (f_head_cptr (f), head));
 
   if (!f->shr->head_chunk)
     {
-      f->shr->head_chunk = svm_fifo_find_chunk (f, head);
+      f->shr->head_chunk = f_csptr (f, svm_fifo_find_chunk (f, head));
       if (PREDICT_FALSE (!f->shr->head_chunk))
 	return 0;
     }
 
-  end_chunk = f_chunk_end (f->shr->head_chunk);
+  end_chunk = f_chunk_end (f_head_cptr (f));
 
   return f_pos_lt (end_chunk, tail) ? end_chunk - head : tail - head;
 }
@@ -531,13 +532,15 @@ svm_fifo_max_read_chunk (svm_fifo_t * f)
 u32
 svm_fifo_max_write_chunk (svm_fifo_t * f)
 {
+  svm_fifo_chunk_t *tail_chunk;
   u32 head, tail;
 
   f_load_head_tail_prod (f, &head, &tail);
-  ASSERT (!f->shr->tail_chunk ||
-	  f_chunk_includes_pos (f->shr->tail_chunk, tail));
+  tail_chunk = f_tail_cptr (f);
 
-  return f->shr->tail_chunk ? f_chunk_end (f->shr->tail_chunk) - tail : 0;
+  ASSERT (!tail_chunk || f_chunk_includes_pos (tail_chunk, tail));
+
+  return tail_chunk ? f_chunk_end (tail_chunk) - tail : 0;
 }
 
 static rb_node_t *
@@ -607,13 +610,13 @@ f_update_ooo_enq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
   /* Use linear search if rbtree is not initialized */
   if (PREDICT_FALSE (!rb_tree_is_init (rt)))
     {
-      f->ooo_enq = svm_fifo_find_next_chunk (f, f->shr->tail_chunk, start_pos);
+      f->ooo_enq = svm_fifo_find_next_chunk (f, f_tail_cptr (f), start_pos);
       return;
     }
 
   if (rt->root == RBTREE_TNIL_INDEX)
     {
-      c = f->shr->tail_chunk;
+      c = f_tail_cptr (f);
       ASSERT (c->enq_rb_index == RBTREE_TNIL_INDEX);
       c->enq_rb_index = rb_tree_add_custom (rt, c->start_byte,
 					    pointer_to_uword (c), f_pos_lt);
@@ -633,7 +636,7 @@ f_update_ooo_enq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
 
   do
     {
-      c = c->next;
+      c = f_cptr (f, c->next);
       if (!c || c->enq_rb_index != RBTREE_TNIL_INDEX)
 	break;
 
@@ -662,7 +665,7 @@ f_update_ooo_deq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
 
   if (rt->root == RBTREE_TNIL_INDEX)
     {
-      c = f->shr->start_chunk;
+      c = f_start_cptr (f);
       ASSERT (c->deq_rb_index == RBTREE_TNIL_INDEX);
       c->deq_rb_index = rb_tree_add_custom (rt, c->start_byte,
 					    pointer_to_uword (c), f_pos_lt);
@@ -682,7 +685,7 @@ f_update_ooo_deq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
 
   do
     {
-      c = c->next;
+      c = f_cptr (f, c->next);
       if (!c || c->deq_rb_index != RBTREE_TNIL_INDEX)
 	break;
 
@@ -713,7 +716,7 @@ f_lookup_clear_enq_chunks (svm_fifo_t * f, svm_fifo_chunk_t * start,
 	  c->enq_rb_index = RBTREE_TNIL_INDEX;
 	}
 
-      c = c->next;
+      c = f_cptr (f, c->next);
     }
 
   /* No ooo segments left, so make sure the current chunk
@@ -747,7 +750,7 @@ f_lookup_clear_deq_chunks (svm_fifo_t * f, svm_fifo_chunk_t * start,
 	  c->deq_rb_index = RBTREE_TNIL_INDEX;
 	}
 
-      c = c->next;
+      c = f_cptr (f, c->next);
     }
 
   return c;
@@ -785,18 +788,19 @@ svm_fifo_overwrite_head (svm_fifo_t * f, u8 * src, u32 len)
   f_load_head_tail_cons (f, &head, &tail);
 
   if (!f->shr->head_chunk)
-    f->shr->head_chunk = svm_fifo_find_chunk (f, head);
+    f->shr->head_chunk = f_csptr (f, svm_fifo_find_chunk (f, head));
 
-  c = f->shr->head_chunk;
+  c = f_head_cptr (f);
   head_idx = head - c->start_byte;
   n_chunk = c->length - head_idx;
   if (len <= n_chunk)
     clib_memcpy_fast (&c->data[head_idx], src, len);
   else
     {
-      ASSERT (len - n_chunk <= c->next->length);
+      ASSERT (len - n_chunk <= f_cptr (f, c->next)->length);
       clib_memcpy_fast (&c->data[head_idx], src, n_chunk);
-      clib_memcpy_fast (&c->next->data[0], src + n_chunk, len - n_chunk);
+      clib_memcpy_fast (&f_cptr (f, c->next)->data[0], src + n_chunk,
+			len - n_chunk);
     }
 }
 
@@ -806,7 +810,8 @@ f_try_chunk_alloc (svm_fifo_t * f, u32 head, u32 tail, u32 len)
   svm_fifo_chunk_t *c, *cur, *prev;
   u32 alloc_size, free_alloced;
 
-  free_alloced = f_chunk_end (f->shr->end_chunk) - tail;
+  prev = f_end_cptr (f);
+  free_alloced = f_chunk_end (prev) - tail;
 
   alloc_size = clib_min (f->shr->min_alloc, f->shr->size - (tail - head));
   alloc_size = clib_max (alloc_size, len - free_alloced);
@@ -816,7 +821,6 @@ f_try_chunk_alloc (svm_fifo_t * f, u32 head, u32 tail, u32 len)
     return -1;
 
   cur = c;
-  prev = f->shr->end_chunk;
 
   while (cur)
     {
@@ -825,15 +829,15 @@ f_try_chunk_alloc (svm_fifo_t * f, u32 head, u32 tail, u32 len)
       cur->deq_rb_index = RBTREE_TNIL_INDEX;
 
       prev = cur;
-      cur = cur->next;
+      cur = f_cptr (f, cur->next);
     }
 
+  f_csptr_link (f, f->shr->end_chunk, c);
   prev->next = 0;
-  f->shr->end_chunk->next = c;
-  f->shr->end_chunk = prev;
+  f->shr->end_chunk = f_csptr (f, prev);
 
   if (!f->shr->tail_chunk)
-    f->shr->tail_chunk = c;
+    f->shr->tail_chunk = f_csptr (f, c);
 
   return 0;
 }
@@ -857,20 +861,19 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
   /* number of bytes we're going to copy */
   len = clib_min (free_count, len);
 
-  if (f_pos_gt (tail + len, f_chunk_end (f->shr->end_chunk)))
+  if (f_pos_gt (tail + len, f_chunk_end (f_end_cptr (f))))
     {
       if (PREDICT_FALSE (f_try_chunk_alloc (f, head, tail, len)))
 	{
-	  len = f_chunk_end (f->shr->end_chunk) - tail;
+	  len = f_chunk_end (f_end_cptr (f)) - tail;
 	  if (!len)
 	    return SVM_FIFO_EGROW;
 	}
     }
 
-  old_tail_c = f->shr->tail_chunk;
+  old_tail_c = f_tail_cptr (f);
 
-  svm_fifo_copy_to_chunk (f, f->shr->tail_chunk, tail, src, len,
-			  &f->shr->tail_chunk);
+  svm_fifo_copy_to_chunk (f, old_tail_c, tail, src, len, &f->shr->tail_chunk);
   tail = tail + len;
 
   svm_fifo_trace_add (f, head, len, 2);
@@ -880,7 +883,8 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
     {
       len += ooo_segment_try_collect (f, len, &tail);
       /* Tail chunk might've changed even if nothing was collected */
-      f->shr->tail_chunk = f_lookup_clear_enq_chunks (f, old_tail_c, tail);
+      f->shr->tail_chunk =
+	f_csptr (f, f_lookup_clear_enq_chunks (f, old_tail_c, tail));
       f->ooo_enq = 0;
     }
 
@@ -901,6 +905,7 @@ int
 svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
 {
   u32 tail, head, free_count, enq_pos;
+  svm_fifo_chunk_ptr_t last = F_INVALID_CPTR;
 
   f_load_head_tail_prod (f, &head, &tail);
 
@@ -914,7 +919,7 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
 
   enq_pos = tail + offset;
 
-  if (f_pos_gt (enq_pos + len, f_chunk_end (f->shr->end_chunk)))
+  if (f_pos_gt (enq_pos + len, f_chunk_end (f_end_cptr (f))))
     {
       if (PREDICT_FALSE (f_try_chunk_alloc (f, head, tail, offset + len)))
 	return SVM_FIFO_EGROW;
@@ -926,7 +931,9 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
   if (!f->ooo_enq || !f_chunk_includes_pos (f->ooo_enq, enq_pos))
     f_update_ooo_enq (f, enq_pos, enq_pos + len);
 
-  svm_fifo_copy_to_chunk (f, f->ooo_enq, enq_pos, src, len, &f->ooo_enq);
+  svm_fifo_copy_to_chunk (f, f->ooo_enq, enq_pos, src, len, &last);
+  if (last != F_INVALID_CPTR)
+    f->ooo_enq = f_cptr (f, last);
 
   return 0;
 }
@@ -947,13 +954,13 @@ svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len)
   if (rb_tree_is_init (&f->ooo_enq_lookup))
     {
       f->shr->tail_chunk =
-	f_lookup_clear_enq_chunks (f, f->shr->tail_chunk, tail);
+	f_csptr (f, f_lookup_clear_enq_chunks (f, f_tail_cptr (f), tail));
       f->ooo_enq = 0;
     }
   else
     {
       f->shr->tail_chunk =
-	svm_fifo_find_next_chunk (f, f->shr->tail_chunk, tail);
+	f_csptr (f, svm_fifo_find_next_chunk (f, f_tail_cptr (f), tail));
     }
 
   /* store-rel: producer owned index (paired with load-acq in consumer) */
@@ -980,14 +987,14 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
   for (i = 0; i < n_segs; i++)
     len += segs[i].len;
 
-  old_tail_c = f->shr->tail_chunk;
+  old_tail_c = f_tail_cptr (f);
 
   if (!allow_partial)
     {
       if (PREDICT_FALSE (free_count < len))
 	return SVM_FIFO_EFULL;
 
-      if (f_pos_gt (tail + len, f_chunk_end (f->shr->end_chunk)))
+      if (f_pos_gt (tail + len, f_chunk_end (f_end_cptr (f))))
 	{
 	  if (PREDICT_FALSE (f_try_chunk_alloc (f, head, tail, len)))
 	    return SVM_FIFO_EGROW;
@@ -995,7 +1002,7 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
 
       for (i = 0; i < n_segs; i++)
 	{
-	  svm_fifo_copy_to_chunk (f, f->shr->tail_chunk, tail, segs[i].data,
+	  svm_fifo_copy_to_chunk (f, f_tail_cptr (f), tail, segs[i].data,
 				  segs[i].len, &f->shr->tail_chunk);
 	  tail += segs[i].len;
 	}
@@ -1004,11 +1011,11 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
     {
       len = clib_min (free_count, len);
 
-      if (f_pos_gt (tail + len, f_chunk_end (f->shr->end_chunk)))
+      if (f_pos_gt (tail + len, f_chunk_end (f_end_cptr (f))))
 	{
 	  if (PREDICT_FALSE (f_try_chunk_alloc (f, head, tail, len)))
 	    {
-	      len = f_chunk_end (f->shr->end_chunk) - tail;
+	      len = f_chunk_end (f_end_cptr (f)) - tail;
 	      if (!len)
 		return SVM_FIFO_EGROW;
 	    }
@@ -1018,7 +1025,7 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
       while (len)
 	{
 	  u32 to_copy = clib_min (segs[i].len, len);
-	  svm_fifo_copy_to_chunk (f, f->shr->tail_chunk, tail, segs[i].data,
+	  svm_fifo_copy_to_chunk (f, f_tail_cptr (f), tail, segs[i].data,
 				  to_copy, &f->shr->tail_chunk);
 	  len -= to_copy;
 	  tail += to_copy;
@@ -1031,7 +1038,8 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
     {
       len += ooo_segment_try_collect (f, len, &tail);
       /* Tail chunk might've changed even if nothing was collected */
-      f->shr->tail_chunk = f_lookup_clear_enq_chunks (f, old_tail_c, tail);
+      f->shr->tail_chunk =
+	f_csptr (f, f_lookup_clear_enq_chunks (f, old_tail_c, tail));
       f->ooo_enq = 0;
     }
 
@@ -1048,12 +1056,11 @@ f_unlink_chunks (svm_fifo_t * f, u32 end_pos, u8 maybe_ooo)
   rb_tree_t *rt;
   rb_node_t *n;
 
-  ASSERT (!f_chunk_includes_pos (f->shr->start_chunk, end_pos));
-
   if (maybe_ooo)
     rt = &f->ooo_deq_lookup;
 
-  c = f->shr->start_chunk;
+  c = f_start_cptr (f);
+  ASSERT (!f_chunk_includes_pos (c, end_pos));
 
   do
     {
@@ -1067,7 +1074,7 @@ f_unlink_chunks (svm_fifo_t * f, u32 end_pos, u8 maybe_ooo)
       if (!c->next)
 	break;
       prev = c;
-      c = c->next;
+      c = f_cptr (f, c->next);
     }
   while (!f_chunk_includes_pos (c, end_pos));
 
@@ -1087,8 +1094,8 @@ f_unlink_chunks (svm_fifo_t * f, u32 end_pos, u8 maybe_ooo)
     return 0;
 
   prev->next = 0;
-  start = f->shr->start_chunk;
-  f->shr->start_chunk = c;
+  start = f_start_cptr (f);
+  f->shr->start_chunk = f_csptr (f, c);
 
   return start;
 }
@@ -1109,9 +1116,9 @@ svm_fifo_dequeue (svm_fifo_t * f, u32 len, u8 * dst)
   len = clib_min (cursize, len);
 
   if (!f->shr->head_chunk)
-    f->shr->head_chunk = svm_fifo_find_chunk (f, head);
+    f->shr->head_chunk = f_csptr (f, svm_fifo_find_chunk (f, head));
 
-  svm_fifo_copy_from_chunk (f, f->shr->head_chunk, head, dst, len,
+  svm_fifo_copy_from_chunk (f, f_head_cptr (f), head, dst, len,
 			    &f->shr->head_chunk);
   head = head + len;
 
@@ -1119,7 +1126,7 @@ svm_fifo_dequeue (svm_fifo_t * f, u32 len, u8 * dst)
    * Use svm_fifo_dequeue_drop instead. */
   ASSERT (rb_tree_n_nodes (&f->ooo_deq_lookup) <= 1);
 
-  if (f_pos_geq (head, f_chunk_end (f->shr->start_chunk)))
+  if (f_pos_geq (head, f_chunk_end (f_start_cptr (f))))
     fsh_collect_chunks (f->fs_hdr, f->shr->slice_index,
 			f_unlink_chunks (f, head, 0));
 
@@ -1133,6 +1140,7 @@ int
 svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 len, u8 * dst)
 {
   u32 tail, head, cursize, head_idx;
+  svm_fifo_chunk_ptr_t last = F_INVALID_CPTR;
 
   f_load_head_tail_cons (f, &head, &tail);
 
@@ -1149,7 +1157,9 @@ svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 len, u8 * dst)
   if (!f->ooo_deq || !f_chunk_includes_pos (f->ooo_deq, head_idx))
     f_update_ooo_deq (f, head_idx, head_idx + len);
 
-  svm_fifo_copy_from_chunk (f, f->ooo_deq, head_idx, dst, len, &f->ooo_deq);
+  svm_fifo_copy_from_chunk (f, f->ooo_deq, head_idx, dst, len, &last);
+  if (last != F_INVALID_CPTR)
+    f->ooo_deq = f_cptr (f, last);
   return len;
 }
 
@@ -1173,11 +1183,11 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len)
   /* move head */
   head = head + total_drop_bytes;
 
-  if (f_pos_geq (head, f_chunk_end (f->shr->start_chunk)))
+  if (f_pos_geq (head, f_chunk_end (f_start_cptr (f))))
     {
       fsh_collect_chunks (f->fs_hdr, f->shr->slice_index,
 			  f_unlink_chunks (f, head, 1));
-      f->shr->head_chunk = f_chunk_includes_pos (f->shr->start_chunk, head) ?
+      f->shr->head_chunk = f_chunk_includes_pos (f_start_cptr (f), head) ?
 			     f->shr->start_chunk :
 			     0;
     }
@@ -1199,12 +1209,13 @@ svm_fifo_dequeue_drop_all (svm_fifo_t * f)
 
   f_load_head_tail_all_acq (f, &head, &tail);
 
-  if (!f->shr->head_chunk || !f_chunk_includes_pos (f->shr->head_chunk, head))
-    f->shr->head_chunk = svm_fifo_find_chunk (f, head);
+  if (!f->shr->head_chunk || !f_chunk_includes_pos (f_head_cptr (f), head))
+    f->shr->head_chunk = f_csptr (f, svm_fifo_find_chunk (f, head));
 
-  f->shr->head_chunk = f_lookup_clear_deq_chunks (f, f->shr->head_chunk, tail);
+  f->shr->head_chunk =
+    f_csptr (f, f_lookup_clear_deq_chunks (f, f_head_cptr (f), tail));
 
-  if (f_pos_geq (tail, f_chunk_end (f->shr->start_chunk)))
+  if (f_pos_geq (tail, f_chunk_end (f_start_cptr (f))))
     fsh_collect_chunks (f->fs_hdr, f->shr->slice_index,
 			f_unlink_chunks (f, tail, 0));
 
@@ -1219,7 +1230,7 @@ svm_fifo_fill_chunk_list (svm_fifo_t * f)
 
   f_load_head_tail_prod (f, &head, &tail);
 
-  if (f_chunk_end (f->shr->end_chunk) - head >= f->shr->size)
+  if (f_chunk_end (f_end_cptr (f)) - head >= f->shr->size)
     return 0;
 
   if (f_try_chunk_alloc (f, head, tail, f->shr->size - (tail - head)))
@@ -1240,12 +1251,12 @@ svm_fifo_provision_chunks (svm_fifo_t *f, svm_fifo_seg_t *fs, u32 n_segs,
   if (f_free_count (f, head, tail) < len)
     return SVM_FIFO_EFULL;
 
-  n_avail = f_chunk_end (f->shr->end_chunk) - tail;
+  n_avail = f_chunk_end (f_end_cptr (f)) - tail;
 
   if (n_avail < len && f_try_chunk_alloc (f, head, tail, len))
     return SVM_FIFO_EGROW;
 
-  c = f->shr->tail_chunk;
+  c = f_tail_cptr (f);
   head_pos = (tail - c->start_byte);
   fs[0].data = c->data + head_pos;
   fs[0].len = clib_min (c->length - head_pos, len);
@@ -1253,7 +1264,7 @@ svm_fifo_provision_chunks (svm_fifo_t *f, svm_fifo_seg_t *fs, u32 n_segs,
 
   while (n_bytes < len && fs_index < n_segs)
     {
-      c = c->next;
+      c = f_cptr (f, c->next);
       clen = clib_min (c->length, len - n_bytes);
       fs[fs_index].data = c->data;
       fs[fs_index].len = clen;
@@ -1287,12 +1298,12 @@ svm_fifo_segments (svm_fifo_t * f, u32 offset, svm_fifo_seg_t * fs,
   start = head + offset;
 
   if (!f->shr->head_chunk)
-    f->shr->head_chunk = svm_fifo_find_chunk (f, head);
+    f->shr->head_chunk = f_csptr (f, svm_fifo_find_chunk (f, head));
 
-  c = f->shr->head_chunk;
+  c = f_head_cptr (f);
 
   while (!f_chunk_includes_pos (c, start))
-    c = c->next;
+    c = f_cptr (f, c->next);
 
   head_pos = start - c->start_byte;
   fs[0].data = c->data + head_pos;
@@ -1301,7 +1312,7 @@ svm_fifo_segments (svm_fifo_t * f, u32 offset, svm_fifo_seg_t * fs,
 
   while (n_bytes < to_read && fs_index < n_segs)
     {
-      c = c->next;
+      c = f_cptr (f, c->next);
       len = clib_min (c->length, to_read - n_bytes);
       fs[fs_index].data = c->data;
       fs[fs_index].len = len;
@@ -1327,7 +1338,7 @@ svm_fifo_clone (svm_fifo_t * df, svm_fifo_t * sf)
   /* Support only single chunk clones for now */
   ASSERT (svm_fifo_n_chunks (sf) == 1);
 
-  clib_memcpy_fast (df->shr->head_chunk->data, sf->shr->head_chunk->data,
+  clib_memcpy_fast (f_head_cptr (df)->data, f_head_cptr (sf)->data,
 		    sf->shr->size);
 
   f_load_head_tail_all_acq (sf, &head, &tail);
@@ -1360,10 +1371,12 @@ svm_fifo_init_pointers (svm_fifo_t * f, u32 head, u32 tail)
 
   c = svm_fifo_find_chunk (f, head);
   ASSERT (c != 0);
-  f->shr->head_chunk = f->ooo_deq = c;
+  f->ooo_deq = c;
+  f->shr->head_chunk = f_csptr (f, c);
   c = svm_fifo_find_chunk (f, tail);
   ASSERT (c != 0);
-  f->shr->tail_chunk = f->ooo_enq = c;
+  f->ooo_enq = c;
+  f->shr->tail_chunk = f_csptr (f, c);
 }
 
 void
@@ -1395,19 +1408,18 @@ svm_fifo_is_sane (svm_fifo_t * f)
   svm_fifo_chunk_t *tmp;
 
   if (f->shr->head_chunk &&
-      !f_chunk_includes_pos (f->shr->head_chunk, f->shr->head))
+      !f_chunk_includes_pos (f_head_cptr (f), f->shr->head))
     return 0;
   if (f->shr->tail_chunk &&
-      !f_chunk_includes_pos (f->shr->tail_chunk, f->shr->tail))
+      !f_chunk_includes_pos (f_tail_cptr (f), f->shr->tail))
     return 0;
   if (f->ooo_deq)
     {
       if (rb_tree_is_init (&f->ooo_deq_lookup))
 	{
 	  if (f_pos_lt (f->ooo_deq->start_byte,
-			f->shr->start_chunk->start_byte) ||
-	      f_pos_gt (f->ooo_deq->start_byte,
-			f_chunk_end (f->shr->end_chunk)))
+			f_start_cptr (f)->start_byte) ||
+	      f_pos_gt (f->ooo_deq->start_byte, f_chunk_end (f_end_cptr (f))))
 	    return 0;
 
 	  tmp = f_find_chunk_rbtree (&f->ooo_deq_lookup,
@@ -1423,9 +1435,8 @@ svm_fifo_is_sane (svm_fifo_t * f)
       if (rb_tree_is_init (&f->ooo_enq_lookup))
 	{
 	  if (f_pos_lt (f->ooo_enq->start_byte,
-			f->shr->start_chunk->start_byte) ||
-	      f_pos_gt (f->ooo_enq->start_byte,
-			f_chunk_end (f->shr->end_chunk)))
+			f_start_cptr (f)->start_byte) ||
+	      f_pos_gt (f->ooo_enq->start_byte, f_chunk_end (f_end_cptr (f))))
 	    return 0;
 
 	  tmp = f_find_chunk_rbtree (&f->ooo_enq_lookup,
@@ -1433,19 +1444,19 @@ svm_fifo_is_sane (svm_fifo_t * f)
 	}
       else
 	{
-	  tmp = svm_fifo_find_next_chunk (f, f->shr->tail_chunk,
+	  tmp = svm_fifo_find_next_chunk (f, f_tail_cptr (f),
 					  f->ooo_enq->start_byte);
 	}
       if (tmp != f->ooo_enq)
 	return 0;
     }
 
-  if (f->shr->start_chunk->next)
+  if (f_start_cptr (f)->next)
     {
       svm_fifo_chunk_t *c, *prev = 0, *tmp;
       u32 chunks_bytes = 0;
 
-      c = f->shr->start_chunk;
+      c = f_start_cptr (f);
       do
 	{
 	  tmp = svm_fifo_find_chunk (f, c->start_byte);
@@ -1475,7 +1486,7 @@ svm_fifo_is_sane (svm_fifo_t * f)
 
 	  chunks_bytes += c->length;
 	  prev = c;
-	  c = c->next;
+	  c = f_cptr (f, c->next);
 	}
       while (c);
 
@@ -1492,11 +1503,11 @@ svm_fifo_n_chunks (svm_fifo_t * f)
   svm_fifo_chunk_t *c;
   int n_chunks = 0;
 
-  c = f->shr->start_chunk;
+  c = f_start_cptr (f);
   while (c)
     {
       n_chunks++;
-      c = c->next;
+      c = f_cptr (f, c->next);
     }
 
   return n_chunks;
@@ -1558,7 +1569,7 @@ svm_fifo_replay (u8 * s, svm_fifo_t * f, u8 no_read, u8 verbose)
 
   placeholder_fifo = svm_fifo_alloc (f->shr->size);
   svm_fifo_init (f, f->shr->size);
-  clib_memset (f->shr->head_chunk->data, 0xFF, f->shr->size);
+  clib_memset (f_head_cptr (f)->data, 0xFF, f->shr->size);
   vec_validate (data, f->shr->size);
   for (i = 0; i < vec_len (data); i++)
     data[i] = i;

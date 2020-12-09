@@ -1412,13 +1412,13 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (rv == 2, "should have 2 chunks has %u", rv);
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
-  c = f->shr->head_chunk;
+  c = f_head_cptr (f);
   SFIFO_TEST (c->start_byte == 0, "head start byte should be %u", 0);
   SFIFO_TEST (c->length == 4096, "head chunk length should be %u", 4096);
   SFIFO_TEST (f->shr->tail_chunk == 0, "no tail chunk");
   SFIFO_TEST (f->ooo_enq == 0, "should have no ooo enq chunk");
   SFIFO_TEST (f->ooo_deq == 0, "should have no ooo deq chunk");
-  c = f->shr->end_chunk;
+  c = f_end_cptr (f);
   SFIFO_TEST (c->start_byte == last_start_byte, "end chunk start byte should"
 	      " be %u", last_start_byte);
   SFIFO_TEST (c->length == 4096, "end chunk length should be %u", 4096);
@@ -1466,7 +1466,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->shr->tail_chunk != 0, "should have no tail chunk");
   SFIFO_TEST (f->ooo_enq != 0, "should have an ooo enq chunk");
 
-  c = f->shr->end_chunk;
+  c = f_end_cptr (f);
   SFIFO_TEST (c->start_byte == last_start_byte,
 	      "end chunk should start at %u", last_start_byte);
   SFIFO_TEST (c->length == 8192, "end chunk length should be %u", 8192);
@@ -1580,7 +1580,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->shr->tail_chunk != 0, "should have no tail chunk");
   SFIFO_TEST (f->ooo_enq != 0, "should have an ooo enq chunk");
 
-  c = f->shr->end_chunk;
+  c = f_end_cptr (f);
   SFIFO_TEST (c->start_byte == last_start_byte,
 	      "end chunk should start at %u", last_start_byte);
   SFIFO_TEST (c->length == 16384, "end chunk length should be %u", 16384);
@@ -1623,7 +1623,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   last_start_byte += 16384;
-  c = f->shr->end_chunk;
+  c = f_end_cptr (f);
   SFIFO_TEST (c->start_byte == last_start_byte,
 	      "end chunk should start at %u", last_start_byte);
   SFIFO_TEST (c->length == 4096, "end chunk length should be %u", 4096);
@@ -1673,7 +1673,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   last_start_byte += 4096;
-  c = f->shr->end_chunk;
+  c = f_end_cptr (f);
   SFIFO_TEST (c->start_byte == last_start_byte,
 	      "end chunk should start at %u", last_start_byte);
   SFIFO_TEST (c->length == 16384, "end chunk length should be %u", 16384);
@@ -1941,12 +1941,13 @@ sfifo_test_fifo_indirect (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_set_size (f, fifo_size);
   validate_test_and_buf_vecs (&test_data, &data_buf, fifo_size);
 
-  c = f->shr->start_chunk;
+  c = f_start_cptr (f);
   SFIFO_TEST (c->next == 0, "no next");
 
   svm_fifo_fill_chunk_list (f);
   SFIFO_TEST (c->next != 0, "new chunk should've been allocated");
-  SFIFO_TEST (c->next->length == 4 << 20, "new chunk should be 4MB");
+  SFIFO_TEST (f_cptr (f, c->next)->length == 4 << 20,
+	      "new chunk should be 4MB");
 
   rv = svm_fifo_max_write_chunk (f);
   SFIFO_TEST (rv == 4096, "max write chunk %u", rv);
@@ -1958,7 +1959,7 @@ sfifo_test_fifo_indirect (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   c = svm_fifo_tail_chunk (f);
-  SFIFO_TEST (c == f->shr->end_chunk, "tail is end chunk");
+  SFIFO_TEST (c == f_end_cptr (f), "tail is end chunk");
 
   /* Initialize head chunk */
   rv = svm_fifo_max_read_chunk (f);
@@ -1972,7 +1973,7 @@ sfifo_test_fifo_indirect (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (rv == 4096, "dequeue should work");
 
   c = svm_fifo_head_chunk (f);
-  SFIFO_TEST (c == f->shr->end_chunk, "head chunk should be last");
+  SFIFO_TEST (c == f_end_cptr (f), "head chunk should be last");
 
   rv = svm_fifo_max_read_chunk (f);
   SFIFO_TEST (rv == 0, "max read chunk %u", rv);
