@@ -7,13 +7,15 @@ import logging
 from cffi import FFI
 import cffi
 
+from . import vpp_transport
+
 logger = logging.getLogger('vpp_papi.transport')
 logger.addHandler(logging.NullHandler())
 
 ffi = FFI()
 ffi.cdef("""
-typedef void (*vac_callback_t)(unsigned char * data, int len);
-typedef void (*vac_error_callback_t)(void *, unsigned char *, int);
+typedef void (*vac_callback_t)(unsigned char * data, int len, void * handle);
+typedef void (*vac_error_callback_t)(void *, unsigned char *, int, void * handle);
 int vac_connect(char * name, char * chroot_prefix, vac_callback_t cb,
     int rx_qlen);
 int vac_disconnect(void);
@@ -31,7 +33,6 @@ void vac_set_error_handler(vac_error_callback_t);
 void vac_mem_init (size_t size);
 """)
 
-vpp_object = None
 
 # allow file to be imported so it can be mocked in tests.
 # If the shared library fails, VppTransport cannot be initialized.
@@ -41,22 +42,25 @@ except OSError:
     vpp_api = None
 
 
-@ffi.callback("void(unsigned char *, int)")
-def vac_callback_sync(data, len):
+@ffi.callback("void(unsigned char *, int, void *)")
+def vac_callback_sync(data, len, handle):
+    vpp_object = ffi.from_handle(handle)
     vpp_object.msg_handler_sync(ffi.buffer(data, len))
 
 
-@ffi.callback("void(unsigned char *, int)")
-def vac_callback_async(data, len):
+@ffi.callback("void(unsigned char *, int, void *)")
+def vac_callback_async(data, len, handle):
+    vpp_object = ffi.from_handle(handle)
     vpp_object.msg_handler_async(ffi.buffer(data, len))
 
 
-@ffi.callback("void(void *, unsigned char *, int)")
-def vac_error_handler(arg, msg, msg_len):
+@ffi.callback("void(void *, unsigned char *, int, void *)")
+def vac_error_handler(arg, msg, msg_len, handle):
+    vpp_object = ffi.from_handle(handle)
     vpp_object.logger.warning("VPP API client:: %s", ffi.string(msg, msg_len))
 
 
-class VppTransportShmemIOError(IOError):
+class VppTransportShmemIOError(vpp_transport.VPPIOError):
     """ exception communicating with vpp over shared memory """
 
     def __init__(self, rv, descr):
@@ -66,15 +70,14 @@ class VppTransportShmemIOError(IOError):
         super(VppTransportShmemIOError, self).__init__(rv, descr)
 
 
-class VppTransport:
+class VppTransport(vpp_transport.BaseVppTransport):
     VppTransportShmemIOError = VppTransportShmemIOError
 
-    def __init__(self, parent, read_timeout, server_address):
+    def __init__(self, parent, ctx):
+        super(VppTransport, self).__init__(parent=parent, ctx=ctx)
         self.connected = False
-        self.read_timeout = read_timeout
+        self.read_timeout = ctx['read_timeout']
         self.parent = parent
-        global vpp_object
-        vpp_object = parent
 
         vpp_api.vac_mem_init(0)
 
@@ -85,10 +88,20 @@ class VppTransport:
         # from_buffer supported from 1.8.0
         (major, minor, patch) = [int(s) for s in
                                  cffi.__version__.split('.', 3)]
-        if major >= 1 and minor >= 8:
-            self.write = self._write_new_cffi
-        else:
+        if major <= 1 and minor <= 8:
             self.write = self._write_legacy_cffi
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @parent.setter
+    def parent(self, value):
+        self._parent = value
+        if value is None:
+            self.vpp_object = None
+        else:
+            self.vpp_object = ffi.new_handle(self._parent)
 
     def connect(self, name, pfx, msg_handler, rx_qlen):
         self.connected = True
@@ -106,7 +119,7 @@ class VppTransport:
     def resume(self):
         vpp_api.vac_rx_resume()
 
-    def get_callback(self, do_async):
+    def get_callback(self, do_async, vpp_object):
         return vac_callback_sync if not do_async else vac_callback_async
 
     def get_msg_index(self, name):
@@ -115,7 +128,7 @@ class VppTransport:
     def msg_table_max_index(self):
         return vpp_api.vac_msg_table_max_index()
 
-    def _write_new_cffi(self, buf):
+    def write(self, buf):
         """Send a binary-packed message to VPP."""
         if not self.connected:
             raise VppTransportShmemIOError(1, 'Not connected')
