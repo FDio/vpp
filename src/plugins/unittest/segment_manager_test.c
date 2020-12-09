@@ -684,8 +684,8 @@ segment_manager_test_fifo_ops (vlib_main_t * vm, unformat_input_t * input)
 		"fifo_segment_get_mem_status %s", states_str[rv]);
 
   /* (virtual) fifo size is still large as it is not updated */
-  SEG_MGR_TEST ((rx_fifo->size == most_grown), "rx_fifo->size %u",
-		rx_fifo->size);
+  SEG_MGR_TEST ((rx_fifo->f_shr->size == most_grown), "rx_fifo->size %u",
+		rx_fifo->f_shr->size);
 
   vnet_app_detach_args_t detach_args = {
     .app_index = attach_args.app_index,

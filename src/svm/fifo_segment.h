@@ -69,6 +69,7 @@ typedef struct
   fifo_segment_header_t *h;	/**< fifo segment data */
   uword max_byte_index;
   u8 n_slices;			/**< number of fifo segment slices */
+  fifo_slice_private_t *slices;	/**< private slice information */
 } fifo_segment_t;
 
 typedef struct
@@ -95,6 +96,7 @@ int fifo_segment_create (fifo_segment_main_t * sm,
 int fifo_segment_attach (fifo_segment_main_t * sm,
 			 fifo_segment_create_args_t * a);
 void fifo_segment_delete (fifo_segment_main_t * sm, fifo_segment_t * fs);
+void fifo_segment_cleanup (fifo_segment_t *fs);
 fifo_segment_t *fifo_segment_get_segment (fifo_segment_main_t * sm,
 					  u32 fs_index);
 u32 fifo_segment_index (fifo_segment_main_t * sm, fifo_segment_t * fs);
@@ -112,6 +114,8 @@ svm_fifo_t *fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs,
 					     u32 slice_index,
 					     u32 data_bytes,
 					     fifo_segment_ftype_t ftype);
+svm_fifo_t *fifo_segment_alloc_fifo_w_shared (fifo_segment_t *fs,
+                                              svm_fifo_shared_t *sf);
 
 /**
  * Free fifo allocated in fifo segment
