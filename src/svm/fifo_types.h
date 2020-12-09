@@ -60,9 +60,36 @@ typedef struct
   u32 action;
 } svm_fifo_trace_elem_t;
 
+typedef struct svm_fifo_shr_
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (shared);
+  svm_fifo_chunk_t *start_chunk;/**< first chunk in fifo chunk list */
+  svm_fifo_chunk_t *end_chunk;	/**< end chunk in fifo chunk list */
+  volatile u32 has_event;	/**< non-zero if deq event exists */
+  u32 min_alloc;		/**< min chunk alloc if space available */
+  u32 size;			/**< size of the fifo in bytes */
+  u32 master_session_index;	/**< session layer session index */
+  u32 client_session_index;	/**< app session index */
+  u8 slice_index;		/**< segment slice for fifo */
+  struct svm_fifo_shr_ *next;	/**< next in freelist/active chain */
+
+   CLIB_CACHE_LINE_ALIGN_MARK (consumer);
+  svm_fifo_chunk_t *head_chunk;	/**< tracks chunk where head lands */
+  u32 head;			/**< fifo head position/byte */
+  volatile u32 want_deq_ntf;	/**< producer wants nudge */
+  volatile u32 has_deq_ntf;
+
+  CLIB_CACHE_LINE_ALIGN_MARK (producer);
+  u32 tail;			/**< fifo tail position/byte */
+  svm_fifo_chunk_t *tail_chunk;	/**< tracks chunk where tail lands */
+  volatile u8 n_subscribers;	/**< Number of subscribers for io events */
+  u8 subscribers[SVM_FIFO_MAX_EVT_SUBSCRIBERS];
+} svm_fifo_shared_t;
+
 typedef struct _svm_fifo
 {
-  CLIB_CACHE_LINE_ALIGN_MARK (private);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline);
+  svm_fifo_shared_t *f_shr;	/**< shared fifo in fifo segment memory */
   fifo_segment_header_t *fs_hdr;/**< fifo segment header for fifo */
   rb_tree_t ooo_enq_lookup;	/**< rbtree for ooo enq chunk lookup */
   rb_tree_t ooo_deq_lookup;	/**< rbtree for ooo deq chunk lookup */
@@ -78,41 +105,22 @@ typedef struct _svm_fifo
   i8 refcnt;			/**< reference count  */
   u32 segment_manager;		/**< session layer segment manager index */
   u32 segment_index;		/**< segment index in segment manager */
-  struct _svm_fifo *next;	/**< next in freelist/active chain */
+
+  struct _svm_fifo *next;	/**< prev in active chain */
   struct _svm_fifo *prev;	/**< prev in active chain */
+
+  u32 pool_index;
 
 #if SVM_FIFO_TRACE
   svm_fifo_trace_elem_t *trace;
 #endif
-
-    CLIB_CACHE_LINE_ALIGN_MARK (shared);
-  svm_fifo_chunk_t *start_chunk;/**< first chunk in fifo chunk list */
-  svm_fifo_chunk_t *end_chunk;	/**< end chunk in fifo chunk list */
-  volatile u32 has_event;	/**< non-zero if deq event exists */
-  u32 min_alloc;		/**< min chunk alloc if space available */
-  u32 size;			/**< size of the fifo in bytes */
-  u32 master_session_index;	/**< session layer session index */
-  u32 client_session_index;	/**< app session index */
-  u8 slice_index;		/**< segment slice for fifo */
-
-    CLIB_CACHE_LINE_ALIGN_MARK (consumer);
-  svm_fifo_chunk_t *head_chunk;	/**< tracks chunk where head lands */
-  u32 head;			/**< fifo head position/byte */
-  volatile u32 want_deq_ntf;	/**< producer wants nudge */
-  volatile u32 has_deq_ntf;
-
-    CLIB_CACHE_LINE_ALIGN_MARK (producer);
-  u32 tail;			/**< fifo tail position/byte */
-  svm_fifo_chunk_t *tail_chunk;	/**< tracks chunk where tail lands */
-  volatile u8 n_subscribers;	/**< Number of subscribers for io events */
-  u8 subscribers[SVM_FIFO_MAX_EVT_SUBSCRIBERS];
 } svm_fifo_t;
 
 typedef struct fifo_segment_slice_
 {
   svm_fifo_chunk_t *free_chunks[FS_CHUNK_VEC_LEN];/**< Free chunks by size */
   svm_fifo_t *fifos;			/**< Linked list of active RX fifos */
-  svm_fifo_t *free_fifos;		/**< Freelists by fifo size  */
+  svm_fifo_shared_t *free_fifos;	/**< Freelists of fifo shared hdrs  */
   uword n_fl_chunk_bytes;		/**< Chunk bytes on freelist */
   uword virtual_mem;			/**< Slice sum of all fifo sizes */
   u32 num_chunks[FS_CHUNK_VEC_LEN];	/**< Allocated chunks by chunk size */
@@ -120,6 +128,12 @@ typedef struct fifo_segment_slice_
   CLIB_CACHE_LINE_ALIGN_MARK (lock);
   u32 chunk_lock;
 } fifo_segment_slice_t;
+
+typedef struct fifo_slice_private_
+{
+  svm_fifo_t **fifos;			/**< fixed pool of fifo hdrs */
+  uword virtual_mem;			/**< Slice sum of all fifo sizes */
+} fifo_slice_private_t;
 
 struct fifo_segment_header_
 {

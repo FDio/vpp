@@ -147,8 +147,8 @@ mq_send_session_accepted_cb (session_t * s)
   mp = (session_accepted_msg_t *) evt->data;
   clib_memset (mp, 0, sizeof (*mp));
   mp->context = app->app_index;
-  mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);
-  mp->server_tx_fifo = pointer_to_uword (s->tx_fifo);
+  mp->server_rx_fifo = pointer_to_uword (s->rx_fifo->f_shr);
+  mp->server_tx_fifo = pointer_to_uword (s->tx_fifo->f_shr);
   mp->segment_handle = session_segment_handle (s);
   mp->flags = s->flags;
 
@@ -221,9 +221,9 @@ mq_notify_close_subscribers (u32 app_index, session_handle_t sh,
   if (!app)
     return;
 
-  for (i = 0; i < f->n_subscribers; i++)
+  for (i = 0; i < f->f_shr->n_subscribers; i++)
     {
-      if (!(app_wrk = application_get_worker (app, f->subscribers[i])))
+      if (!(app_wrk = application_get_worker (app, f->f_shr->subscribers[i])))
 	continue;
       mq_send_session_close_evt (app_wrk, sh, SESSION_CTRL_EVT_DISCONNECTED);
     }
@@ -305,8 +305,8 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 
       session_get_endpoint (s, &mp->lcl, 1 /* is_lcl */ );
 
-      mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);
-      mp->server_tx_fifo = pointer_to_uword (s->tx_fifo);
+      mp->server_rx_fifo = pointer_to_uword (s->rx_fifo->f_shr);
+      mp->server_tx_fifo = pointer_to_uword (s->tx_fifo->f_shr);
       mp->segment_handle = session_segment_handle (s);
     }
   else
@@ -320,12 +320,12 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       mp->lcl.is_ip4 = cct->c_is_ip4;
       vpp_mq = session_main_get_vpp_event_queue (s->thread_index);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
-      mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);
-      mp->server_tx_fifo = pointer_to_uword (s->tx_fifo);
+      mp->server_rx_fifo = pointer_to_uword (s->rx_fifo->f_shr);
+      mp->server_tx_fifo = pointer_to_uword (s->tx_fifo->f_shr);
       mp->segment_handle = session_segment_handle (s);
       ss = ct_session_get_peer (s);
-      mp->ct_rx_fifo = pointer_to_uword (ss->tx_fifo);
-      mp->ct_tx_fifo = pointer_to_uword (ss->rx_fifo);
+      mp->ct_rx_fifo = pointer_to_uword (ss->tx_fifo->f_shr);
+      mp->ct_tx_fifo = pointer_to_uword (ss->rx_fifo->f_shr);
       mp->ct_segment_handle = session_segment_handle (ss);
     }
 

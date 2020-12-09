@@ -208,8 +208,8 @@ ct_init_accepted_session (app_worker_t * server_wrk,
     }
 
   sm_index = segment_manager_index (sm);
-  ls->rx_fifo->master_session_index = ls->session_index;
-  ls->tx_fifo->master_session_index = ls->session_index;
+  ls->rx_fifo->f_shr->master_session_index = ls->session_index;
+  ls->tx_fifo->f_shr->master_session_index = ls->session_index;
   ls->rx_fifo->master_thread_index = ls->thread_index;
   ls->tx_fifo->master_thread_index = ls->thread_index;
   ls->rx_fifo->segment_manager = sm_index;
