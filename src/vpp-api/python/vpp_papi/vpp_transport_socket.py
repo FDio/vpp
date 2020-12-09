@@ -10,25 +10,27 @@ import queue
 import logging
 from . import vpp_papi
 
+from . import vpp_transport
+
 logger = logging.getLogger('vpp_papi.transport')
 logger.addHandler(logging.NullHandler())
 
 
-class VppTransportSocketIOError(IOError):
+class VppTransportSocketIOError(vpp_transport.VPPIOError):
     # TODO: Document different values of error number (first numeric argument).
     pass
 
 
-class VppTransport:
+class VppTransport(vpp_transport.BaseVppTransport):
     VppTransportSocketIOError = VppTransportSocketIOError
 
     def __init__(self, parent, read_timeout, server_address):
+        super(VppTransport, self).__init__(parent, read_timeout, server_address)
         self.connected = False
         self.read_timeout = read_timeout if read_timeout > 0 else 1
         self.parent = parent
         self.server_address = server_address
         self.header = struct.Struct('>QII')
-        self.message_table = {}
         # These queues can be accessed async.
         # They are always up, but replaced on connect.
         # TODO: Use multiprocessing.Pipe instead of multiprocessing.Queue
@@ -234,3 +236,4 @@ class VppTransport:
             return self.q.get(True, timeout)
         except queue.Empty:
             return None
+
