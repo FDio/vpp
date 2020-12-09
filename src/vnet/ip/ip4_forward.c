@@ -2109,8 +2109,11 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
       u32 tx_sw_if_index0, tx_sw_if_index1;
       u8 *p;
 
-      vlib_prefetch_buffer_header (b[6], LOAD);
-      vlib_prefetch_buffer_header (b[7], LOAD);
+      if (is_midchain)
+	{
+	  vlib_prefetch_buffer_header (b[6], LOAD);
+	  vlib_prefetch_buffer_header (b[7], LOAD);
+	}
 
       adj_index0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
       adj_index1 = vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
