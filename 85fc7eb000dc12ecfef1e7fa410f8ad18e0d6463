@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bd48a65d_f1191a51",
+        "filename": "src/vpp-api/python/vpp_papi/tests/test_vpp_papi.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-12-09T11:46:36Z",
+      "side": 1,
+      "message": "Why replacing quotes??",
+      "revId": "85fc7eb000dc12ecfef1e7fa410f8ad18e0d6463",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
