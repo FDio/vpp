@@ -126,24 +126,24 @@ udp_echo_reset_cb (session_reset_msg_t * mp, echo_session_t * s)
 static void
 udp_echo_bound_uri_cb (session_bound_msg_t * mp, echo_session_t * session)
 {
-  svm_fifo_t *rx_fifo, *tx_fifo;
   echo_main_t *em = &echo_main;
   u32 session_index = session->session_index;
   if (!em->i_am_master || em->uri_elts.transport_proto != TRANSPORT_PROTO_UDP)
     return;
 
-  rx_fifo = uword_to_pointer (mp->rx_fifo, svm_fifo_t *);
-  tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_t *);
-  rx_fifo->client_session_index = session_index;
-  tx_fifo->client_session_index = session_index;
+  if (echo_attach_session (mp->segment_handle, mp->rx_fifo,
+	                   mp->tx_fifo, session))
+    {
+      ECHO_FAIL (ECHO_FAIL_ACCEPTED_WAIT_FOR_SEG_ALLOC,
+	         "accepted wait_for_segment_allocation errored");
+      return;
+    }
 
-  session->rx_fifo = rx_fifo;
-  session->tx_fifo = tx_fifo;
+  session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
   session->transport.is_ip4 = mp->lcl_is_ip4;
   clib_memcpy_fast (&session->transport.lcl_ip, mp->lcl_ip,
 		    sizeof (ip46_address_t));
   session->transport.lcl_port = mp->lcl_port;
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
 
   echo_notify_event (em, ECHO_EVT_FIRST_QCONNECT);
   session->session_type = ECHO_SESSION_TYPE_STREAM;
