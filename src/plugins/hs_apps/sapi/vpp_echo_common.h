@@ -443,6 +443,8 @@ int echo_segment_attach (u64 segment_handle, char *name,
 			 ssvm_segment_type_t type, int fd);
 u32 echo_segment_lookup (u64 segment_handle);
 void echo_segment_detach (u64 segment_handle);
+int echo_attach_session (uword segment_handle, uword rxf_offset,
+			 uword txf_offset, echo_session_t *s);
 
 /* Binary API */
 

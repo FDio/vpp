@@ -262,6 +262,39 @@ echo_segment_detach (u64 segment_handle)
   clib_spinlock_unlock (&em->segment_handles_lock);
 }
 
+int
+echo_attach_session (uword segment_handle, uword rxf_offset, uword txf_offset,
+		     echo_session_t *s)
+{
+  svm_fifo_shared_t *rx_fifo, *tx_fifo;
+  echo_main_t *em = &echo_main;
+  fifo_segment_t *fs;
+  u32 fs_index;
+
+  fs_index = echo_segment_lookup (segment_handle);
+  if (fs_index == (u32) ~0)
+    {
+      ECHO_LOG (0, "ERROR: segment for session %u is not mounted!",
+		s->session_index);
+      return -1;
+    }
+
+  rx_fifo = uword_to_pointer (rxf_offset, svm_fifo_shared_t *);
+  tx_fifo = uword_to_pointer (txf_offset, svm_fifo_shared_t *);
+  rx_fifo->client_session_index = s->session_index;
+  tx_fifo->client_session_index = s->session_index;
+
+  clib_spinlock_lock (&em->segment_handles_lock);
+
+  fs = fifo_segment_get_segment (&em->segment_main, fs_index);
+  s->rx_fifo = fifo_segment_alloc_fifo_w_shared (fs, rx_fifo);
+  s->tx_fifo = fifo_segment_alloc_fifo_w_shared (fs, tx_fifo);
+
+  clib_spinlock_unlock (&em->segment_handles_lock);
+
+  return 0;
+}
+
 /*
  *
  *  Binary API callbacks
