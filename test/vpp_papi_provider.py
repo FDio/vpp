@@ -10,7 +10,7 @@ import time
 from collections import deque
 
 from six import moves, iteritems
-from vpp_papi import VPPApiClient, mac_pton
+from vpp_papi import VPPApiSocketClient, VPPApiShmClient
 from hook import Hook
 from vpp_ip_route import MPLS_IETF_MAX_LABEL, MPLS_LABEL_INVALID
 
@@ -150,11 +150,15 @@ class VppPapiProvider(object):
                 use_socket = True
         except KeyError:
             pass
+        if use_socket:
+            self.vpp = VPPApiSocketClient(logger=test_class.logger,
+                                          read_timeout=read_timeout,
+                                          server_address=test_class.api_sock)
+        else:
+            self.vpp = VPPApiShmClient(logger=test_class.logger,
+                                       read_timeout=read_timeout,
+                                       server_address=test_class.api_sock)
 
-        self.vpp = VPPApiClient(logger=test_class.logger,
-                                read_timeout=read_timeout,
-                                use_socket=use_socket,
-                                server_address=test_class.api_sock)
         self._events = deque()
 
     def __enter__(self):
@@ -1200,3 +1204,4 @@ class VppPapiProvider(object):
     def want_igmp_events(self, enable=1):
         return self.api(self.papi.want_igmp_events, {'enable': enable,
                                                      'pid': os.getpid()})
+
