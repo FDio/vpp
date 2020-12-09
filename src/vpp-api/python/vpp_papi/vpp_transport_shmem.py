@@ -7,6 +7,8 @@ import logging
 from cffi import FFI
 import cffi
 
+from . import vpp_transport
+
 logger = logging.getLogger('vpp_papi.transport')
 logger.addHandler(logging.NullHandler())
 
@@ -56,7 +58,7 @@ def vac_error_handler(arg, msg, msg_len):
     vpp_object.logger.warning("VPP API client:: %s", ffi.string(msg, msg_len))
 
 
-class VppTransportShmemIOError(IOError):
+class VppTransportShmemIOError(vpp_transport.VPPIOError):
     """ exception communicating with vpp over shared memory """
 
     def __init__(self, rv, descr):
@@ -66,7 +68,7 @@ class VppTransportShmemIOError(IOError):
         super(VppTransportShmemIOError, self).__init__(rv, descr)
 
 
-class VppTransport:
+class VppTransport(vpp_transport.BaseVppTransport):
     VppTransportShmemIOError = VppTransportShmemIOError
 
     def __init__(self, parent, read_timeout, server_address):

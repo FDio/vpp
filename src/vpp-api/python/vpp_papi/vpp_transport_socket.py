@@ -9,17 +9,18 @@ import multiprocessing
 import queue
 import logging
 from . import vpp_papi
+from . import vpp_transport
 
 logger = logging.getLogger('vpp_papi.transport')
 logger.addHandler(logging.NullHandler())
 
 
-class VppTransportSocketIOError(IOError):
+class VppTransportSocketIOError(vpp_transport.VPPIOError):
     # TODO: Document different values of error number (first numeric argument).
     pass
 
 
-class VppTransport:
+class VppTransport(vpp_transport.BaseVppTransport):
     VppTransportSocketIOError = VppTransportSocketIOError
 
     def __init__(self, parent, read_timeout, server_address):
