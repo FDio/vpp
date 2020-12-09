@@ -50,7 +50,7 @@ logger.addHandler(logging.NullHandler())
 __all__ = ('FuncWrapper', 'VPP', 'VppApiDynamicMethodHolder',
            'VppEnum', 'VppEnumType', 'VppEnumFlag',
            'VPPIOError', 'VPPRuntimeError', 'VPPValueError',
-           'VPPApiClient', )
+           'VPPApiClient', 'VPPApiShmClient', 'VPPApiSocketClient')
 
 
 def metaclass(metaclass):
@@ -379,14 +379,14 @@ class VPPApiClient:
     these messages in a background thread.
     """
     apidir = None
+    transport = None
     VPPApiError = VPPApiError
     VPPRuntimeError = VPPRuntimeError
     VPPValueError = VPPValueError
     VPPNotImplementedError = VPPNotImplementedError
     VPPIOError = VPPIOError
 
-
-    def __init__(self, apifiles=None, testmode=False, async_thread=True,
+    def __init__(self, *, apifiles=None, testmode=False, transport=transport, async_thread=True,
                  logger=None, loglevel=None,
                  read_timeout=5, use_socket=False,
                  server_address='/run/vpp/api.sock'):
@@ -416,6 +416,7 @@ class VPPApiClient:
         self.header = VPPType('header', [['u16', 'msgid'],
                                          ['u32', 'client_index']])
         self.apifiles = []
+        self.transport = transport
         self.event_callback = None
         self.message_queue = queue.Queue()
         self.read_timeout = read_timeout
@@ -427,10 +428,12 @@ class VPPApiClient:
         self._apifiles = apifiles
         self.stats = {}
 
-        if use_socket:
-            from . vpp_transport_socket import VppTransport
-        else:
-            from . vpp_transport_shmem import VppTransport
+        # remove after 21.04
+        if self.transport is None:
+            if use_socket:
+                from . vpp_transport_socket import VppTransport
+            else:
+                from . vpp_transport_shmem import VppTransport
 
         if not apifiles:
             # Pick up API definitions from default directory
@@ -457,9 +460,9 @@ class VPPApiClient:
         if not(verify_enum_hint(VppEnum.vl_api_address_family_t)):
             raise VPPRuntimeError("Invalid address family hints. "
                                   "Cannot continue.")
-
-        self.transport = VppTransport(self, read_timeout=read_timeout,
-                                      server_address=server_address)
+        if transport is None:
+            self.transport = VppTransport(self, read_timeout=read_timeout,
+                                          server_address=server_address)
         # Make sure we allow VPP to clean up the message rings.
         atexit.register(vpp_atexit, weakref.ref(self))
 
@@ -896,10 +899,10 @@ class VPPApiClient:
         return message_table_filtered
 
     def __repr__(self):
-        return "<VPPApiClient apifiles=%s, testmode=%s, async_thread=%s, " \
+        return "<VPPApiClient apifiles=%s, transport=%s, testmode=%s, async_thread=%s, " \
                "logger=%s, read_timeout=%s, use_socket=%s, " \
                "server_address='%s'>" % (
-                   self._apifiles, self.testmode, self.async_thread,
+                   self._apifiles, self.transport, self.testmode, self.async_thread,
                    self.logger, self.read_timeout, self.use_socket,
                    self.server_address)
 
@@ -916,5 +919,17 @@ class VPPApiClient:
             if rv.retval == 0 or rv.retval != -165:
                 break
             cursor = rv.cursor
+
+
+from .vpp_transport_shmem import VppTransport as transport_shmem
+from .vpp_transport_socket import VppTransport as transport_socket
+
+
+class VPPApiShmClient(VPPApiClient):
+    transport = transport_shmem
+
+
+class VPPApiSocketClient(VPPApiClient):
+    transport = transport_socket
 
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
