@@ -128,6 +128,24 @@
       "revId": "7789e67e8dd00b07eda39b0cf33b7b8a7f51c016",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4eb5d73a_28c8672c",
+        "filename": "src/vnet/interface/runtime.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-09T13:38:36Z",
+      "side": 1,
+      "message": "I verified the bug Steven, and it is normally fixed in patchset 20",
+      "parentUuid": "57f25226_6bb9a2be",
+      "revId": "7789e67e8dd00b07eda39b0cf33b7b8a7f51c016",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
