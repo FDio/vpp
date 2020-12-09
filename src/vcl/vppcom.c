@@ -601,14 +601,23 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
 
   if (vcl_session_is_cl (session))
     {
-      svm_fifo_t *rx_fifo, *tx_fifo;
-      session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
-      rx_fifo = uword_to_pointer (mp->rx_fifo, svm_fifo_t *);
-      rx_fifo->f_shr->client_session_index = sid;
-      tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_t *);
-      tx_fifo->f_shr->client_session_index = sid;
-      session->rx_fifo = rx_fifo;
-      session->tx_fifo = tx_fifo;
+      svm_fifo_shared_t *rx_fifo, *tx_fifo;
+      fifo_segment_t *fs;
+
+      if (!(fs = vcl_segment_get (mp->segment_handle)))
+        {
+          VDBG (0, "segment for session %u is not mounted!",
+    	    session->session_index);
+          session->session_state = VCL_STATE_DETACHED;
+          return VCL_INVALID_SESSION_INDEX;
+        }
+
+      rx_fifo = uword_to_pointer (mp->rx_fifo, svm_fifo_shared_t *);
+      tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_shared_t *);
+      session->rx_fifo = fifo_segment_alloc_fifo_w_shared (fs, rx_fifo);
+      session->rx_fifo->f_shr->client_session_index = sid;
+      session->tx_fifo = fifo_segment_alloc_fifo_w_shared (fs, tx_fifo);
+      session->tx_fifo->f_shr->client_session_index = sid;
     }
 
   VDBG (0, "session %u [0x%llx]: listen succeeded!", sid, mp->handle);
@@ -653,12 +662,20 @@ static void
 vcl_session_migrated_handler (vcl_worker_t * wrk, void *data)
 {
   session_migrated_msg_t *mp = (session_migrated_msg_t *) data;
+  fifo_segment_t *fs;
   vcl_session_t *s;
 
   s = vcl_session_get_w_vpp_handle (wrk, mp->handle);
   if (!s)
     {
       VDBG (0, "Migrated notification with wrong handle %llx", mp->handle);
+      return;
+    }
+
+  if (!(fs = vcl_segment_get (mp->segment_handle)))
+    {
+      VDBG (0, "segment for session %u is not mounted!", s->session_index);
+      s->session_state = VCL_STATE_DETACHED;
       return;
     }
 
@@ -935,6 +952,7 @@ vcl_session_app_add_segment_handler (vcl_worker_t * wrk, void *data)
       return;
     }
 
+  clib_warning ("mapped segment %x %p", segment_handle, vcl_segment_get (segment_handle)->ssvm.sh);
   VDBG (1, "mapped new segment '%s' size %d", msg->segment_name,
 	msg->segment_size);
 }
