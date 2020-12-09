@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5e683159_4f9ebd63",
+        "filename": "src/vpp-api/client/vppapiclient.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-12-09T11:59:59Z",
+      "side": 1,
+      "message": "Define -1 and -2 as well?\nPerhaps put it in an enum?",
+      "revId": "66a12499582ddb2df0878d54de15d95541969a43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
