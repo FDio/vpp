@@ -16,6 +16,24 @@
       "revId": "66a12499582ddb2df0878d54de15d95541969a43",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d278dbf6_3a14ffa0",
+        "filename": "src/vpp-api/client/vppapiclient.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-09T16:38:46Z",
+      "side": 1,
+      "message": "-1, -2 aren\u0027t defined in this code, but comes from svm_queue_sub",
+      "parentUuid": "5e683159_4f9ebd63",
+      "revId": "66a12499582ddb2df0878d54de15d95541969a43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
