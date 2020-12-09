@@ -252,7 +252,7 @@ clib_cpu_march_priority_icl ()
 {
   if (clib_cpu_supports_avx512_bitalg ())
     return 200;
-  return -1;
+  return 250;
 }
 
 static inline int
