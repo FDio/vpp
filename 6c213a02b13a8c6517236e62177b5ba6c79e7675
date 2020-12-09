@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "922b5880_8d813dbb",
+        "filename": "src/vnet/interface/runtime.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-09T13:20:40Z",
+      "side": 1,
+      "message": "For the same reason we need to drop that, otherwise an interrupt sent for a queue belonging to a node in polling will segfault.",
+      "range": {
+        "startLine": 206,
+        "startChar": 7,
+        "endLine": 206,
+        "endChar": 63
+      },
+      "revId": "6c213a02b13a8c6517236e62177b5ba6c79e7675",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
