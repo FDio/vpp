@@ -486,9 +486,6 @@ active_open_connected_callback (u32 app_index, u32 opaque,
   s->tx_fifo->refcnt++;
   s->rx_fifo->refcnt++;
 
-  svm_fifo_init_ooo_lookup (s->tx_fifo, 1 /* deq ooo */ );
-  svm_fifo_init_ooo_lookup (s->rx_fifo, 0 /* enq ooo */ );
-
   hash_set (pm->proxy_session_by_active_open_handle,
 	    ps->vpp_active_open_handle, opaque);
 
