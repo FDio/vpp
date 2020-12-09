@@ -374,6 +374,40 @@ vcl_segment_detach (u64 segment_handle)
   VDBG (0, "detached segment %u handle %u", segment_index, segment_handle);
 }
 
+int
+vcl_segment_attach_session (uword segment_handle, uword rxf_offset, uword txf_offset,
+                            vcl_session_t *s)
+{
+  svm_fifo_shared_t *rx_fifo, *tx_fifo;
+  fifo_segment_t *fs;
+  u32 fs_index;
+
+  fs_index = vcl_segment_table_lookup (segment_handle);
+  if (fs_index == VCL_INVALID_SEGMENT_INDEX)
+    {
+      VDBG (0, "ERROR: segment for session %u is not mounted!",
+	    s->session_index);
+      return -1;
+    }
+
+  rx_fifo = uword_to_pointer (rxf_offset, svm_fifo_shared_t *);
+  tx_fifo = uword_to_pointer (txf_offset, svm_fifo_shared_t *);
+  rx_fifo->client_session_index = s->session_index;
+  tx_fifo->client_session_index = s->session_index;
+
+  clib_rwlock_reader_lock (&vcm->segment_table_lock);
+
+  fs = fifo_segment_get_segment (&vcm->segment_main, fs_index);
+  s->rx_fifo = fifo_segment_alloc_fifo_w_shared (fs, rx_fifo);
+  s->tx_fifo = fifo_segment_alloc_fifo_w_shared (fs, tx_fifo);
+
+  clib_rwlock_reader_unlock (&vcm->segment_table_lock);
+
+  s->rx_fifo->client_thread_index = vcl_get_worker_index ();
+  s->tx_fifo->client_thread_index = vcl_get_worker_index ();
+
+  return 0;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
