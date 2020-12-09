@@ -433,6 +433,13 @@ class VPPApiClient:
             from . vpp_transport_shmem import VppTransport
 
         if not apifiles:
+            print("""\
+*** passing in 'apifiles=None' is deprecated and will be removed in 21.04.
+instead set apifiles in the client.
+
+apifiles = vpp_papi.VPPApiJSONFiles.find_api_files(apidir)
+api_client = VPPApiClient(apifiles, ...)
+""")
             # Pick up API definitions from default directory
             try:
                 apifiles = VPPApiJSONFiles.find_api_files(self.apidir)
