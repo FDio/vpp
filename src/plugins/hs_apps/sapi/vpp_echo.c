@@ -70,7 +70,7 @@ echo_session_dequeue_notify (echo_session_t * s)
   if (!svm_fifo_set_event (s->rx_fifo))
     return;
   if ((rv =
-       app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo->master_session_index,
+       app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo->f_shr->master_session_index,
 			       SESSION_IO_EVT_RX, SVM_Q_WAIT)))
     ECHO_FAIL (ECHO_FAIL_SEND_IO_EVT, "app_send_io_evt_to_vpp errored %d",
 	       rv);
@@ -579,9 +579,9 @@ session_accepted_handler (session_accepted_msg_t * mp)
   session->vpp_session_handle = mp->handle;
 
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
-  rx_fifo->client_session_index = session->session_index;
+  rx_fifo->f_shr->client_session_index = session->session_index;
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
-  tx_fifo->client_session_index = session->session_index;
+  tx_fifo->f_shr->client_session_index = session->session_index;
 
   session->rx_fifo = rx_fifo;
   session->tx_fifo = tx_fifo;
@@ -644,9 +644,9 @@ session_connected_handler (session_connected_msg_t * mp)
     }
 
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
-  rx_fifo->client_session_index = session->session_index;
+  rx_fifo->f_shr->client_session_index = session->session_index;
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
-  tx_fifo->client_session_index = session->session_index;
+  tx_fifo->f_shr->client_session_index = session->session_index;
 
   session->rx_fifo = rx_fifo;
   session->tx_fifo = tx_fifo;
