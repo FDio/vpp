@@ -146,6 +146,24 @@
       "revId": "7789e67e8dd00b07eda39b0cf33b7b8a7f51c016",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a7092241_007f731b",
+        "filename": "src/vnet/interface/runtime.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-12-09T16:19:13Z",
+      "side": 1,
+      "message": "Cool. The crash is fixed. Can you fix show interface rx-mode? It is displaying the wrong information and it is hard to tell what mode the queue is running.",
+      "parentUuid": "4eb5d73a_28c8672c",
+      "revId": "7789e67e8dd00b07eda39b0cf33b7b8a7f51c016",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
