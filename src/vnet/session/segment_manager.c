@@ -211,6 +211,7 @@ segment_manager_del_segment (segment_manager_t * sm, fifo_segment_t * fs)
 	}
     }
 
+  fifo_segment_cleanup (fs);
   ssvm_delete (&fs->ssvm);
 
   if (CLIB_DEBUG)
@@ -582,7 +583,7 @@ segment_manager_del_sessions (segment_manager_t * sm)
          */
         while (f)
           {
-            session = session_get_if_valid (f->master_session_index,
+            session = session_get_if_valid (f->f_shr->master_session_index,
                                             f->master_thread_index);
             if (session)
               vec_add1 (handles, session_handle (session));
@@ -813,7 +814,7 @@ segment_manager_attach_fifo (segment_manager_t * sm, svm_fifo_t * f,
   fifo_segment_attach_fifo (fs, f, s->thread_index);
   segment_manager_segment_reader_unlock (sm);
 
-  f->master_session_index = s->session_index;
+  f->f_shr->master_session_index = s->session_index;
   f->master_thread_index = s->thread_index;
 }
 
@@ -1036,7 +1037,7 @@ segment_manager_format_sessions (segment_manager_t * sm, int verbose)
             u32 session_index, thread_index;
             session_t *session;
 
-            session_index = f->master_session_index;
+            session_index = f->f_shr->master_session_index;
             thread_index = f->master_thread_index;
 
             session = session_get (session_index, thread_index);
