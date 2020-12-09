@@ -78,7 +78,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
 int
 session_send_io_evt_to_thread (svm_fifo_t * f, session_evt_type_t evt_type)
 {
-  return session_send_evt_to_thread (&f->master_session_index, 0,
+  return session_send_evt_to_thread (&f->f_shr->master_session_index, 0,
 				     f->master_thread_index, evt_type);
 }
 
@@ -436,8 +436,8 @@ session_fifo_tuning (session_t * s, svm_fifo_t * f,
 	{
 	  segment_manager_t *sm;
 	  sm = segment_manager_get (f->segment_manager);
-	  ASSERT (f->size >= 4096);
-	  ASSERT (f->size <= sm->max_fifo_size);
+	  ASSERT (f->f_shr->size >= 4096);
+	  ASSERT (f->f_shr->size <= sm->max_fifo_size);
 	}
     }
 }
@@ -611,9 +611,9 @@ session_notify_subscribers (u32 app_index, session_t * s,
   if (!app)
     return -1;
 
-  for (i = 0; i < f->n_subscribers; i++)
+  for (i = 0; i < f->f_shr->n_subscribers; i++)
     {
-      app_wrk = application_get_worker (app, f->subscribers[i]);
+      app_wrk = application_get_worker (app, f->f_shr->subscribers[i]);
       if (!app_wrk)
 	continue;
       if (app_worker_lock_and_send_event (app_wrk, s, evt_type))
@@ -723,7 +723,7 @@ session_dequeue_notify (session_t * s)
 						     SESSION_IO_EVT_TX)))
     return -1;
 
-  if (PREDICT_FALSE (s->tx_fifo->n_subscribers))
+  if (PREDICT_FALSE (s->tx_fifo->f_shr->n_subscribers))
     return session_notify_subscribers (app_wrk->app_index, s,
 				       s->tx_fifo, SESSION_IO_EVT_TX);
 

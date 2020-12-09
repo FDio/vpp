@@ -200,10 +200,10 @@ app_worker_alloc_session_fifos (segment_manager_t * sm, session_t * s)
 						 &rx_fifo, &tx_fifo)))
     return rv;
 
-  rx_fifo->master_session_index = s->session_index;
+  rx_fifo->f_shr->master_session_index = s->session_index;
   rx_fifo->master_thread_index = s->thread_index;
 
-  tx_fifo->master_session_index = s->session_index;
+  tx_fifo->f_shr->master_session_index = s->session_index;
   tx_fifo->master_thread_index = s->thread_index;
 
   s->rx_fifo = rx_fifo;
@@ -711,7 +711,7 @@ app_send_io_evt_rx (app_worker_t * app_wrk, session_t * s)
 
   msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
   evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
-  evt->session_index = s->rx_fifo->client_session_index;
+  evt->session_index = s->rx_fifo->f_shr->client_session_index;
   evt->event_type = SESSION_IO_EVT_RX;
 
   (void) svm_fifo_set_event (s->rx_fifo);
@@ -750,7 +750,7 @@ app_send_io_evt_tx (app_worker_t * app_wrk, session_t * s)
   msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
   evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
   evt->event_type = SESSION_IO_EVT_TX;
-  evt->session_index = s->tx_fifo->client_session_index;
+  evt->session_index = s->tx_fifo->f_shr->client_session_index;
 
   svm_msg_q_add_and_unlock (mq, &msg);
   return 0;
