@@ -22,21 +22,6 @@
 
 __thread uword __vcl_worker_index = ~0;
 
-static int
-vcl_segment_is_not_mounted (vcl_worker_t * wrk, u64 segment_handle)
-{
-  u32 segment_index;
-
-  if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
-    return 0;
-
-  segment_index = vcl_segment_table_lookup (segment_handle);
-  if (segment_index != VCL_INVALID_SEGMENT_INDEX)
-    return 0;
-
-  return 1;
-}
-
 static inline int
 vcl_mq_dequeue_batch (vcl_worker_t * wrk, svm_msg_q_t * mq, u32 n_max_msg)
 {
@@ -377,7 +362,8 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
 			      u32 ls_index)
 {
   vcl_session_t *session, *listen_session;
-  svm_fifo_t *rx_fifo, *tx_fifo;
+  svm_fifo_shared_t *rx_fifo, *tx_fifo;
+  fifo_segment_t *fs;
   svm_msg_q_t *evt_q;
 
   session = vcl_session_alloc (wrk);
@@ -390,26 +376,25 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
       goto error;
     }
 
-  if (vcl_segment_is_not_mounted (wrk, mp->segment_handle))
+  if (!(fs = vcl_segment_get (mp->segment_handle)))
     {
       VDBG (0, "ERROR: segment for session %u is not mounted!",
 	    session->session_index);
       goto error;
     }
 
-  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
-  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
   session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
 					 svm_msg_q_t *);
+  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_shared_t *);
+  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_shared_t *);
   rx_fifo->client_session_index = session->session_index;
   tx_fifo->client_session_index = session->session_index;
-  rx_fifo->client_thread_index = vcl_get_worker_index ();
-  tx_fifo->client_thread_index = vcl_get_worker_index ();
+  session->rx_fifo = fifo_segment_alloc_fifo_w_shared (fs, rx_fifo);
+  session->tx_fifo = fifo_segment_alloc_fifo_w_shared (fs, tx_fifo);
+  session->rx_fifo->client_thread_index = vcl_get_worker_index ();
+  session->tx_fifo->client_thread_index = vcl_get_worker_index ();
 
   session->vpp_handle = mp->handle;
-  session->rx_fifo = rx_fifo;
-  session->tx_fifo = tx_fifo;
-
   session->session_state = VCL_STATE_READY;
   session->transport.rmt_port = mp->rmt.port;
   session->transport.is_ip4 = mp->rmt.is_ip4;
@@ -448,8 +433,9 @@ static u32
 vcl_session_connected_handler (vcl_worker_t * wrk,
 			       session_connected_msg_t * mp)
 {
-  svm_fifo_t *rx_fifo, *tx_fifo;
+  svm_fifo_shared_t *rx_fifo, *tx_fifo;
   vcl_session_t *session = 0;
+  fifo_segment_t *fs;
   u32 session_index;
 
   session_index = mp->context;
@@ -472,9 +458,9 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   session->vpp_handle = mp->handle;
   session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
 					 svm_msg_q_t *);
-  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
-  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
-  if (vcl_segment_is_not_mounted (wrk, mp->segment_handle))
+  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_shared_t *);
+  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_shared_t *);
+  if (!(fs = vcl_segment_get (mp->segment_handle)))
     {
       VDBG (0, "segment for session %u is not mounted!",
 	    session->session_index);
@@ -483,16 +469,18 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
       return session_index;
     }
 
+  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_shared_t *);
+  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_shared_t *);
   rx_fifo->client_session_index = session_index;
   tx_fifo->client_session_index = session_index;
-  rx_fifo->client_thread_index = vcl_get_worker_index ();
-  tx_fifo->client_thread_index = vcl_get_worker_index ();
+  session->rx_fifo = fifo_segment_alloc_fifo_w_shared (fs, rx_fifo);
+  session->tx_fifo = fifo_segment_alloc_fifo_w_shared (fs, tx_fifo);
+  session->rx_fifo->client_thread_index = vcl_get_worker_index ();
+  session->tx_fifo->client_thread_index = vcl_get_worker_index ();
 
   if (mp->ct_rx_fifo)
     {
-      session->ct_rx_fifo = uword_to_pointer (mp->ct_rx_fifo, svm_fifo_t *);
-      session->ct_tx_fifo = uword_to_pointer (mp->ct_tx_fifo, svm_fifo_t *);
-      if (vcl_segment_is_not_mounted (wrk, mp->ct_segment_handle))
+      if (!(fs = vcl_segment_get (mp->ct_segment_handle)))
 	{
 	  VDBG (0, "ct segment for session %u is not mounted!",
 		session->session_index);
@@ -500,10 +488,12 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 	  vcl_send_session_disconnect (wrk, session);
 	  return session_index;
 	}
+      rx_fifo = uword_to_pointer (mp->ct_rx_fifo, svm_fifo_shared_t *);
+      tx_fifo = uword_to_pointer (mp->ct_tx_fifo, svm_fifo_shared_t *);
+      session->ct_rx_fifo = fifo_segment_alloc_fifo_w_shared (fs, rx_fifo);
+      session->ct_tx_fifo = fifo_segment_alloc_fifo_w_shared (fs, tx_fifo);
     }
 
-  session->rx_fifo = rx_fifo;
-  session->tx_fifo = tx_fifo;
   session->transport.is_ip4 = mp->lcl.is_ip4;
   clib_memcpy_fast (&session->transport.lcl_ip, &mp->lcl.ip,
 		    sizeof (session->transport.lcl_ip));
@@ -614,9 +604,9 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
       svm_fifo_t *rx_fifo, *tx_fifo;
       session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
       rx_fifo = uword_to_pointer (mp->rx_fifo, svm_fifo_t *);
-      rx_fifo->client_session_index = sid;
+      rx_fifo->f_shr->client_session_index = sid;
       tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_t *);
-      tx_fifo->client_session_index = sid;
+      tx_fifo->f_shr->client_session_index = sid;
       session->rx_fifo = rx_fifo;
       session->tx_fifo = tx_fifo;
     }
@@ -680,7 +670,7 @@ vcl_session_migrated_handler (vcl_worker_t * wrk, void *data)
 
   /* Generate new tx event if we have outstanding data */
   if (svm_fifo_has_event (s->tx_fifo))
-    app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->master_session_index,
+    app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->f_shr->master_session_index,
 			    SESSION_IO_EVT_TX, SVM_Q_WAIT);
 
   VDBG (0, "Migrated 0x%lx to thread %u 0x%lx", mp->handle,
@@ -870,6 +860,7 @@ static void
 vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void *data)
 {
   session_worker_update_reply_msg_t *msg;
+  fifo_segment_t *fs;
   vcl_session_t *s;
 
   msg = (session_worker_update_reply_msg_t *) data;
@@ -879,7 +870,7 @@ vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void *data)
       VDBG (0, "unknown handle 0x%llx", msg->handle);
       return;
     }
-  if (vcl_segment_is_not_mounted (wrk, msg->segment_handle))
+  if (!(fs = vcl_segment_get (msg->segment_handle)))
     {
       clib_warning ("segment for session %u is not mounted!",
 		    s->session_index);
@@ -888,10 +879,13 @@ vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void *data)
 
   if (s->rx_fifo)
     {
-      s->rx_fifo = uword_to_pointer (msg->rx_fifo, svm_fifo_t *);
-      s->tx_fifo = uword_to_pointer (msg->tx_fifo, svm_fifo_t *);
-      s->rx_fifo->client_session_index = s->session_index;
-      s->tx_fifo->client_session_index = s->session_index;
+      svm_fifo_shared_t *rx_fifo, *tx_fifo;
+      rx_fifo = uword_to_pointer (msg->rx_fifo, svm_fifo_shared_t *);
+      tx_fifo = uword_to_pointer (msg->tx_fifo, svm_fifo_shared_t *);
+      s->rx_fifo = fifo_segment_alloc_fifo_w_shared (fs, rx_fifo);
+      s->tx_fifo = fifo_segment_alloc_fifo_w_shared (fs, tx_fifo);
+      s->rx_fifo->f_shr->client_session_index = s->session_index;
+      s->tx_fifo->f_shr->client_session_index = s->session_index;
       s->rx_fifo->client_thread_index = wrk->wrk_index;
       s->tx_fifo->client_thread_index = wrk->wrk_index;
     }
@@ -1921,7 +1915,7 @@ read_again:
   if (PREDICT_FALSE (svm_fifo_needs_deq_ntf (rx_fifo, n_read)))
     {
       svm_fifo_clear_deq_ntf (rx_fifo);
-      app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo->master_session_index,
+      app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo->f_shr->master_session_index,
 			      SESSION_IO_EVT_RX, SVM_Q_WAIT);
     }
 
@@ -2132,7 +2126,7 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
 				   0 /* do_evt */ , SVM_Q_WAIT);
 
   if (svm_fifo_set_event (s->tx_fifo))
-    app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->master_session_index,
+    app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->f_shr->master_session_index,
 			    et, SVM_Q_WAIT);
 
   /* The underlying fifo segment can run out of memory */
