@@ -2,6 +2,52 @@
   "comments": [
     {
       "key": {
+        "uuid": "10db4567_4dc05dbd",
+        "filename": "src/vnet/interface/runtime.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-09T10:56:13Z",
+      "side": 1,
+      "message": "rxq-\u003emode \u003d\u003d VNET_HW_IF_RX_MODE_INTERRUPT || rxq-\u003emode \u003d\u003d VNET_HW_IF_RX_MODE_ADAPTIVE\n\nOtherwise you only update last_int when no rxq is polling",
+      "range": {
+        "startLine": 123,
+        "startChar": 8,
+        "endLine": 123,
+        "endChar": 62
+      },
+      "revId": "7789e67e8dd00b07eda39b0cf33b7b8a7f51c016",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bbebb610_23b26c89",
+        "filename": "src/vnet/interface/runtime.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-09T10:56:13Z",
+      "side": 1,
+      "message": "rxq-\u003emode !\u003d VNET_HW_IF_RX_MODE_POLLING\n\nIf we use the node state, poll vectors for a given node are always either full or empty.",
+      "range": {
+        "startLine": 126,
+        "startChar": 8,
+        "endLine": 126,
+        "endChar": 60
+      },
+      "revId": "7789e67e8dd00b07eda39b0cf33b7b8a7f51c016",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "3b86c700_10dd766c",
         "filename": "src/vnet/interface/runtime.c",
         "patchSetId": 18
@@ -13,6 +59,24 @@
       "writtenOn": "2020-12-09T00:46:44Z",
       "side": 1,
       "message": "This for loop does not work when the worker thread handles more than one interface of the same device type. It does not detect \"something_changed\" when one of thee interfaces is set to interrupt mode and crashes due to rt-\u003erxq_interrupts is not allocated. I believe there is a similar problem when the worker thread handles multiple queues for the same interface.\n\nDBGvpp# set interface rx-mode avf-0/d8/a/0 interrupt\nset interface rx-mode avf-0/d8/a/0 interrupt\ninterface/rx-queue [debug ]: set_rx_queue_mode: interface avf-0/d8/a/0 queue-id 0 mode set to interrupt\ninterface/runtime  [debug ]: update node \u0027avf-input\u0027 triggered by interface avf-0/d8/a/0\ninterface/runtime  [debug ]: skipping update of node \u0027avf-input\u0027, no changes detected\nDBGvpp# \nProgram received signal SIGSEGV, Segmentation fault.\n0x00007fffb45b0cbf in clib_interrupt_set (in\u003d0x0, int_num\u003d0)\n    at /home/sluong/vpp/src/vppinfra/interrupt.h:72\n72\t  ASSERT (int_num \u003c ((clib_interrupt_header_t *) in)-\u003en_int);\n(gdb) set pagination off\n(gdb) bt\n#0  0x00007fffb45b0cbf in clib_interrupt_set (in\u003d0x0, int_num\u003d0) at /home/sluong/vpp/src/vppinfra/interrupt.h:72\n#1  0x00007fffb45b09cb in vnet_hw_if_rx_queue_set_int_pending (vnm\u003d0x7ffff7b4cac0 \u003cvnet_main\u003e, queue_index\u003d0) at /home/sluong/vpp/src/vnet/interface/rx_queue_funcs.h:61\n#2  0x00007fffb45ac8fd in avf_irq_n_handler (vm\u003d0x7ffff6596cc0 \u003cvlib_global_main\u003e, h\u003d0, line\u003d0) at /home/sluong/vpp/src/plugins/avf/device.c:1402\n#3  0x00007ffff62b6c7a in linux_pci_vfio_msix_read_ready (uf\u003d0x7fffb70937d8) at /home/sluong/vpp/src/vlib/linux/pci.c:697\n#4  0x00007ffff635e953 in linux_epoll_input_inline (vm\u003d0x7ffff6596cc0 \u003cvlib_global_main\u003e, node\u003d0x7fffb4dbeec0, frame\u003d0x0, thread_index\u003d0) at /home/sluong/vpp/src/vlib/unix/input.c:315\n#5  0x00007ffff635dfd9 in linux_epoll_input (vm\u003d0x7ffff6596cc0 \u003cvlib_global_main\u003e, node\u003d0x7fffb4dbeec0, frame\u003d0x0) at /home/sluong/vpp/src/vlib/unix/input.c:365\n#6  0x00007ffff62db4b6 in dispatch_node (vm\u003d0x7ffff6596cc0 \u003cvlib_global_main\u003e, node\u003d0x7fffb4dbeec0, type\u003dVLIB_NODE_TYPE_PRE_INPUT, dispatch_state\u003dVLIB_NODE_STATE_POLLING, frame\u003d0x0, last_time_stamp\u003d20539315570230272) at /home/sluong/vpp/src/vlib/main.c:1217\n#7  0x00007ffff62d5600 in vlib_main_or_worker_loop (vm\u003d0x7ffff6596cc0 \u003cvlib_global_main\u003e, is_main\u003d1) at /home/sluong/vpp/src/vlib/main.c:1825\n#8  0x00007ffff62d75ea in vlib_main_loop (vm\u003d0x7ffff6596cc0 \u003cvlib_global_main\u003e) at /home/sluong/vpp/src/vlib/main.c:1992\n#9  0x00007ffff62d73f2 in vlib_main (vm\u003d0x7ffff6596cc0 \u003cvlib_global_main\u003e, input\u003d0x7fffb38e4fa8) at /home/sluong/vpp/src/vlib/main.c:2238\n#10 0x00007ffff63612ae in thread0 (arg\u003d140737326443712) at /home/sluong/vpp/src/vlib/unix/main.c:670\n#11 0x00007ffff5719578 in clib_calljmp () at /home/sluong/vpp/src/vppinfra/longjmp.S:123\n#12 0x00007fffffffcf50 in ?? ()\n#13 0x00007ffff6360df4 in vlib_unix_main (argc\u003d49, argv\u003d0x6ec500) at /home/sluong/vpp/src/vlib/unix/main.c:747\n#14 0x0000000000406cd9 in main (argc\u003d49, argv\u003d0x6ec500) at /home/sluong/vpp/src/vpp/vnet/main.c:338\n(gdb) up\n#1  0x00007fffb45b09cb in vnet_hw_if_rx_queue_set_int_pending (vnm\u003d0x7ffff7b4cac0 \u003cvnet_main\u003e, queue_index\u003d0) at /home/sluong/vpp/src/vnet/interface/rx_queue_funcs.h:61\n61\t    clib_interrupt_set (rt-\u003erxq_interrupts, queue_index);\n(gdb) p rt-\u003erxq_interrupts\n$1 \u003d (void *) 0x0\n(gdb)",
+      "revId": "7789e67e8dd00b07eda39b0cf33b7b8a7f51c016",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "57f25226_6bb9a2be",
+        "filename": "src/vnet/interface/runtime.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-09T10:56:13Z",
+      "side": 1,
+      "message": "should be solved by my comments before. In that case, the node stayed in polling, and last_int wasn\u0027t update AND the poll vector wasn\u0027t update, so no change...",
+      "parentUuid": "3b86c700_10dd766c",
       "revId": "7789e67e8dd00b07eda39b0cf33b7b8a7f51c016",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
