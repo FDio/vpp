@@ -402,8 +402,8 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
   session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
 					 svm_msg_q_t *);
-  rx_fifo->client_session_index = session->session_index;
-  tx_fifo->client_session_index = session->session_index;
+  rx_fifo->f_shr->client_session_index = session->session_index;
+  tx_fifo->f_shr->client_session_index = session->session_index;
   rx_fifo->client_thread_index = vcl_get_worker_index ();
   tx_fifo->client_thread_index = vcl_get_worker_index ();
   rx_fifo->fs_hdr = fs->h;
@@ -487,8 +487,8 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
       return session_index;
     }
 
-  rx_fifo->client_session_index = session_index;
-  tx_fifo->client_session_index = session_index;
+  rx_fifo->f_shr->client_session_index = session_index;
+  tx_fifo->f_shr->client_session_index = session_index;
   rx_fifo->client_thread_index = vcl_get_worker_index ();
   tx_fifo->client_thread_index = vcl_get_worker_index ();
   rx_fifo->fs_hdr = fs->h;
@@ -622,9 +622,9 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
       svm_fifo_t *rx_fifo, *tx_fifo;
       session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
       rx_fifo = uword_to_pointer (mp->rx_fifo, svm_fifo_t *);
-      rx_fifo->client_session_index = sid;
+      rx_fifo->f_shr->client_session_index = sid;
       tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_t *);
-      tx_fifo->client_session_index = sid;
+      tx_fifo->f_shr->client_session_index = sid;
       session->rx_fifo = rx_fifo;
       session->tx_fifo = tx_fifo;
     }
@@ -688,7 +688,7 @@ vcl_session_migrated_handler (vcl_worker_t * wrk, void *data)
 
   /* Generate new tx event if we have outstanding data */
   if (svm_fifo_has_event (s->tx_fifo))
-    app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->master_session_index,
+    app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->f_shr->master_session_index,
 			    SESSION_IO_EVT_TX, SVM_Q_WAIT);
 
   VDBG (0, "Migrated 0x%lx to thread %u 0x%lx", mp->handle,
@@ -899,8 +899,8 @@ vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void *data)
     {
       s->rx_fifo = uword_to_pointer (msg->rx_fifo, svm_fifo_t *);
       s->tx_fifo = uword_to_pointer (msg->tx_fifo, svm_fifo_t *);
-      s->rx_fifo->client_session_index = s->session_index;
-      s->tx_fifo->client_session_index = s->session_index;
+      s->rx_fifo->f_shr->client_session_index = s->session_index;
+      s->tx_fifo->f_shr->client_session_index = s->session_index;
       s->rx_fifo->client_thread_index = wrk->wrk_index;
       s->tx_fifo->client_thread_index = wrk->wrk_index;
       s->rx_fifo->fs_hdr = fs->h;
@@ -1932,7 +1932,7 @@ read_again:
   if (PREDICT_FALSE (svm_fifo_needs_deq_ntf (rx_fifo, n_read)))
     {
       svm_fifo_clear_deq_ntf (rx_fifo);
-      app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo->master_session_index,
+      app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo->f_shr->master_session_index,
 			      SESSION_IO_EVT_RX, SVM_Q_WAIT);
     }
 
@@ -2143,7 +2143,7 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
 				   0 /* do_evt */ , SVM_Q_WAIT);
 
   if (svm_fifo_set_event (s->tx_fifo))
-    app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->master_session_index,
+    app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->f_shr->master_session_index,
 			    et, SVM_Q_WAIT);
 
   /* The underlying fifo segment can run out of memory */

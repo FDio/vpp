@@ -768,11 +768,11 @@ fs_try_alloc_fifo (fifo_segment_header_t * fsh, fifo_segment_slice_t * fss,
       return 0;
     }
 
-  f->start_chunk = c;
+  f->f_shr->start_chunk = c;
   while (c->next)
     c = c->next;
-  f->end_chunk = c;
-  f->size = data_bytes;
+  f->f_shr->end_chunk = c;
+  f->f_shr->size = data_bytes;
   f->fs_hdr = fsh;
 
   return f;
@@ -841,7 +841,7 @@ fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs, u32 slice_index,
   if (!f)
     goto done;
 
-  f->slice_index = slice_index;
+  f->f_shr->slice_index = slice_index;
 
   svm_fifo_init (f, data_bytes);
 
@@ -876,7 +876,7 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
   if (--f->refcnt > 0)
     return;
 
-  fss = fsh_slice_get (fsh, f->slice_index);
+  fss = fsh_slice_get (fsh, f->f_shr->slice_index);
 
   /* Remove from active list. Only rx fifos are tracked */
   if (f->flags & SVM_FIFO_F_LL_TRACKED)
@@ -886,10 +886,10 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
     }
 
   /* Free fifo chunks */
-  fsh_slice_collect_chunks (fsh, fss, f->start_chunk);
+  fsh_slice_collect_chunks (fsh, fss, f->f_shr->start_chunk);
 
-  f->start_chunk = f->end_chunk = 0;
-  f->head_chunk = f->tail_chunk = f->ooo_enq = f->ooo_deq = 0;
+  f->f_shr->start_chunk = f->f_shr->end_chunk = 0;
+  f->f_shr->head_chunk = f->f_shr->tail_chunk = f->ooo_enq = f->ooo_deq = 0;
 
   /* not allocated on segment heap */
   svm_fifo_free_chunk_lookup (f);
@@ -897,7 +897,7 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 
   if (CLIB_DEBUG)
     {
-      f->master_session_index = ~0;
+      f->f_shr->master_session_index = ~0;
       f->master_thread_index = ~0;
     }
 
@@ -920,12 +920,12 @@ fifo_segment_detach_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 
   ASSERT (f->refcnt == 1);
 
-  fss = fsh_slice_get (fs->h, f->slice_index);
+  fss = fsh_slice_get (fs->h, f->f_shr->slice_index);
   fss->virtual_mem -= svm_fifo_size (f);
   if (f->flags & SVM_FIFO_F_LL_TRACKED)
     fss_fifo_del_active_list (fss, f);
 
-  c = f->start_chunk;
+  c = f->f_shr->start_chunk;
   while (c)
     {
       fl_index = fs_freelist_for_size (c->length);
@@ -942,13 +942,13 @@ fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t * f,
   svm_fifo_chunk_t *c;
   u32 fl_index;
 
-  f->slice_index = slice_index;
-  fss = fsh_slice_get (fs->h, f->slice_index);
+  f->f_shr->slice_index = slice_index;
+  fss = fsh_slice_get (fs->h, f->f_shr->slice_index);
   fss->virtual_mem += svm_fifo_size (f);
   if (f->flags & SVM_FIFO_F_LL_TRACKED)
     fss_fifo_add_active_list (fss, f);
 
-  c = f->start_chunk;
+  c = f->f_shr->start_chunk;
   while (c)
     {
       fl_index = fs_freelist_for_size (c->length);

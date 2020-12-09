@@ -221,9 +221,9 @@ mq_notify_close_subscribers (u32 app_index, session_handle_t sh,
   if (!app)
     return;
 
-  for (i = 0; i < f->n_subscribers; i++)
+  for (i = 0; i < f->f_shr->n_subscribers; i++)
     {
-      if (!(app_wrk = application_get_worker (app, f->subscribers[i])))
+      if (!(app_wrk = application_get_worker (app, f->f_shr->subscribers[i])))
 	continue;
       mq_send_session_close_evt (app_wrk, sh, SESSION_CTRL_EVT_DISCONNECTED);
     }
