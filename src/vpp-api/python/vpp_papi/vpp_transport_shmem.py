@@ -7,6 +7,8 @@ import logging
 from cffi import FFI
 import cffi
 
+from . import vpp_transport
+
 logger = logging.getLogger('vpp_papi.transport')
 logger.addHandler(logging.NullHandler())
 
@@ -56,7 +58,7 @@ def vac_error_handler(arg, msg, msg_len):
     vpp_object.logger.warning("VPP API client:: %s", ffi.string(msg, msg_len))
 
 
-class VppTransportShmemIOError(IOError):
+class VppTransportShmemIOError(vpp_transport.VPPIOError):
     """ exception communicating with vpp over shared memory """
 
     def __init__(self, rv, descr):
@@ -66,10 +68,11 @@ class VppTransportShmemIOError(IOError):
         super(VppTransportShmemIOError, self).__init__(rv, descr)
 
 
-class VppTransport:
+class VppTransport(vpp_transport.BaseVppTransport):
     VppTransportShmemIOError = VppTransportShmemIOError
 
     def __init__(self, parent, read_timeout, server_address):
+        super(VppTransport, self).__init__(parent, read_timeout, server_address)
         self.connected = False
         self.read_timeout = read_timeout
         self.parent = parent
@@ -85,9 +88,7 @@ class VppTransport:
         # from_buffer supported from 1.8.0
         (major, minor, patch) = [int(s) for s in
                                  cffi.__version__.split('.', 3)]
-        if major >= 1 and minor >= 8:
-            self.write = self._write_new_cffi
-        else:
+        if major <= 1 and minor <= 8:
             self.write = self._write_legacy_cffi
 
     def connect(self, name, pfx, msg_handler, rx_qlen):
@@ -115,7 +116,7 @@ class VppTransport:
     def msg_table_max_index(self):
         return vpp_api.vac_msg_table_max_index()
 
-    def _write_new_cffi(self, buf):
+    def write(self, buf):
         """Send a binary-packed message to VPP."""
         if not self.connected:
             raise VppTransportShmemIOError(1, 'Not connected')
@@ -141,3 +142,4 @@ class VppTransport:
         msg = bytes(ffi.buffer(mem[0], size[0]))
         vpp_api.vac_free(mem[0])
         return msg
+
