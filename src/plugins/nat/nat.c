@@ -2881,6 +2881,7 @@ nat44_plugin_enable (nat44_config_t c)
   sm->endpoint_dependent = c.endpoint_dependent;
   sm->static_mapping_only = c.static_mapping_only;
   sm->static_mapping_connection_tracking = c.connection_tracking;
+  sm->out2in_dpo = c.out2in_dpo;
   sm->forwarding_enabled = 0;
   sm->mss_clamping = 0;
 
