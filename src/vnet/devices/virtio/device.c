@@ -930,6 +930,7 @@ virtio_interface_tx_split_gso_inline (vlib_main_t * vm,
       vring->avail->idx = avail;
       vring->desc_next = next;
       vring->desc_in_use = used;
+      CLIB_MEMORY_BARRIER ();
       if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0)
 	virtio_kick (vm, vring, vif);
     }
