@@ -119,7 +119,6 @@ typedef struct _svm_fifo
 typedef struct fifo_segment_slice_
 {
   svm_fifo_chunk_ptr_t free_chunks[FS_CHUNK_VEC_LEN];/**< Free chunks by size */
-  svm_fifo_t *fifos;			/**< Linked list of active RX fifos */
   svm_fifo_shared_t *free_fifos;	/**< Freelists of fifo shared hdrs  */
   uword n_fl_chunk_bytes;		/**< Chunk bytes on freelist */
   uword virtual_mem;			/**< Slice sum of all fifo sizes */
@@ -133,6 +132,7 @@ typedef struct fifo_slice_private_
 {
   svm_fifo_t *fifos;			/**< fixed pool of fifo hdrs */
   uword virtual_mem;			/**< Slice sum of all fifo sizes */
+  svm_fifo_t *active_fifos;		/**< Linked list of active RX fifos */
 } fifo_slice_private_t;
 
 struct fifo_segment_header_
