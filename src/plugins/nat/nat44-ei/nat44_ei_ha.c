@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
-#include "nat_ha.h"
+#include <nat/nat_inlines.h>
+#include <nat/nat44/ed_inlines.h>
+#include <nat/nat44-ei/nat44_ei_ha.h>
 #include <vnet/udp/udp_local.h>
 #include <nat/nat.h>
 #include <vppinfra/atomics.h>
@@ -150,22 +152,155 @@ typedef struct nat_ha_main_s
   nat_ha_resync_event_cb_t event_callback;
   u32 client_index;
   u32 pid;
-  /* call back functions for received HA events on failover */
-  nat_ha_sadd_cb_t sadd_cb;
-  nat_ha_sdel_cb_t sdel_cb;
-  nat_ha_sref_cb_t sref_cb;
   /* per thread data */
   u32 num_workers;
   nat_ha_per_thread_data_t *per_thread_data;
+
+  u32 ha_handoff_node_index;
+  u32 ha_process_node_index;
+  u32 ha_worker_node_index;
+  u32 ha_node_index;
+
   /* worker handoff frame-queue index */
   u32 fq_index;
 } nat_ha_main_t;
 
 nat_ha_main_t nat_ha_main;
-vlib_node_registration_t nat_ha_process_node;
-vlib_node_registration_t nat_ha_worker_node;
-vlib_node_registration_t nat_ha_node;
-vlib_node_registration_t nat_ha_handoff_node;
+
+static_always_inline void
+nat44_ei_ha_sadd (ip4_address_t *in_addr, u16 in_port, ip4_address_t *out_addr,
+		  u16 out_port, ip4_address_t *eh_addr, u16 eh_port,
+		  ip4_address_t *ehn_addr, u16 ehn_port, u8 proto,
+		  u32 fib_index, u16 flags, u32 thread_index)
+{
+  snat_main_t *sm = &snat_main;
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  snat_user_t *u;
+  snat_session_t *s;
+  clib_bihash_kv_8_8_t kv;
+  vlib_main_t *vm = vlib_get_main ();
+  f64 now = vlib_time_now (vm);
+  nat_outside_fib_t *outside_fib;
+  fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
+  fib_prefix_t pfx = {
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_len = 32,
+    .fp_addr = {
+		.ip4.as_u32 = eh_addr->as_u32,
+		},
+  };
+
+  if (!(flags & SNAT_SESSION_FLAG_STATIC_MAPPING))
+    {
+      if (nat_set_outside_address_and_port (sm->addresses, thread_index,
+					    *out_addr, out_port, proto))
+	return;
+    }
+
+  u = nat_user_get_or_create (sm, in_addr, fib_index, thread_index);
+  if (!u)
+    return;
+
+  s = nat_session_alloc_or_recycle (sm, u, thread_index, now);
+  if (!s)
+    return;
+
+  if (sm->endpoint_dependent)
+    {
+      nat_ed_lru_insert (tsm, s, now, nat_proto_to_ip_proto (proto));
+    }
+
+  s->out2in.addr.as_u32 = out_addr->as_u32;
+  s->out2in.port = out_port;
+  s->nat_proto = proto;
+  s->last_heard = now;
+  s->flags = flags;
+  s->ext_host_addr.as_u32 = eh_addr->as_u32;
+  s->ext_host_port = eh_port;
+  user_session_increment (sm, u, snat_is_session_static (s));
+  switch (vec_len (sm->outside_fibs))
+    {
+    case 0:
+      s->out2in.fib_index = sm->outside_fib_index;
+      break;
+    case 1:
+      s->out2in.fib_index = sm->outside_fibs[0].fib_index;
+      break;
+    default:
+      vec_foreach (outside_fib, sm->outside_fibs)
+	{
+	  fei = fib_table_lookup (outside_fib->fib_index, &pfx);
+	  if (FIB_NODE_INDEX_INVALID != fei)
+	    {
+	      if (fib_entry_get_resolving_interface (fei) != ~0)
+		{
+		  s->out2in.fib_index = outside_fib->fib_index;
+		  break;
+		}
+	    }
+	}
+      break;
+    }
+  init_nat_o2i_kv (&kv, s, s - tsm->sessions);
+  if (clib_bihash_add_del_8_8 (&tsm->out2in, &kv, 1))
+    nat_elog_warn ("out2in key add failed");
+
+  s->in2out.addr.as_u32 = in_addr->as_u32;
+  s->in2out.port = in_port;
+  s->in2out.fib_index = fib_index;
+  init_nat_i2o_kv (&kv, s, s - tsm->sessions);
+  if (clib_bihash_add_del_8_8 (&tsm->in2out, &kv, 1))
+    nat_elog_warn ("in2out key add failed");
+}
+
+static_always_inline void
+nat44_ei_ha_sdel (ip4_address_t *out_addr, u16 out_port,
+		  ip4_address_t *eh_addr, u16 eh_port, u8 proto, u32 fib_index,
+		  u32 ti)
+{
+  snat_main_t *sm = &snat_main;
+  clib_bihash_kv_8_8_t kv, value;
+  u32 thread_index;
+  snat_session_t *s;
+  snat_main_per_thread_data_t *tsm;
+
+  if (sm->num_workers > 1)
+    thread_index = sm->first_worker_index +
+		   (sm->workers[(clib_net_to_host_u16 (out_port) - 1024) /
+				sm->port_per_thread]);
+  else
+    thread_index = sm->num_workers;
+  tsm = vec_elt_at_index (sm->per_thread_data, thread_index);
+
+  init_nat_k (&kv, *out_addr, out_port, fib_index, proto);
+  if (clib_bihash_search_8_8 (&tsm->out2in, &kv, &value))
+    return;
+
+  s = pool_elt_at_index (tsm->sessions, value.value);
+  nat_free_session_data (sm, s, thread_index, 1);
+  nat44_delete_session (sm, s, thread_index);
+}
+
+static_always_inline void
+nat44_ei_ha_sref (ip4_address_t *out_addr, u16 out_port,
+		  ip4_address_t *eh_addr, u16 eh_port, u8 proto, u32 fib_index,
+		  u32 total_pkts, u64 total_bytes, u32 thread_index)
+{
+  snat_main_t *sm = &snat_main;
+  clib_bihash_kv_8_8_t kv, value;
+  snat_session_t *s;
+  snat_main_per_thread_data_t *tsm;
+
+  tsm = vec_elt_at_index (sm->per_thread_data, thread_index);
+
+  init_nat_k (&kv, *out_addr, out_port, fib_index, proto);
+  if (clib_bihash_search_8_8 (&tsm->out2in, &kv, &value))
+    return;
+
+  s = pool_elt_at_index (tsm->sessions, value.value);
+  s->total_pkts = total_pkts;
+  s->total_bytes = total_bytes;
+}
 
 static void
 nat_ha_resync_fin (void)
@@ -311,15 +446,9 @@ nat_ha_resend_scan (f64 now, u32 thread_index)
 }
 
 void
-nat_ha_enable (nat_ha_sadd_cb_t sadd_cb,
-	       nat_ha_sdel_cb_t sdel_cb, nat_ha_sref_cb_t sref_cb)
+nat_ha_enable ()
 {
   nat_ha_main_t *ha = &nat_ha_main;
-
-  ha->sadd_cb = sadd_cb;
-  ha->sdel_cb = sdel_cb;
-  ha->sref_cb = sref_cb;
-
   ha->enabled = 1;
 }
 
@@ -332,10 +461,27 @@ nat_ha_disable ()
 }
 
 void
+nat_ha_set_node_indexes (nat_ha_main_t *ha, vlib_main_t *vm)
+{
+  vlib_node_t *node;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat-ha-handoff");
+  ha->ha_handoff_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat-ha-process");
+  ha->ha_process_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat-ha-worker");
+  ha->ha_worker_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat-ha");
+  ha->ha_node_index = node->index;
+}
+
+void
 nat_ha_init (vlib_main_t * vm, u32 num_workers, u32 num_threads)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   clib_memset (ha, 0, sizeof (*ha));
+
+  nat_ha_set_node_indexes (ha, vm);
 
   ha->vlib_main = vm;
   ha->fq_index = ~0;
@@ -370,13 +516,13 @@ nat_ha_set_listener (ip4_address_t * addr, u16 port, u32 path_mtu)
       if (ha->num_workers > 1)
 	{
 	  if (ha->fq_index == ~0)
-	    ha->fq_index = vlib_frame_queue_main_init (nat_ha_node.index, 0);
+	    ha->fq_index = vlib_frame_queue_main_init (ha->ha_node_index, 0);
 	  udp_register_dst_port (ha->vlib_main, port,
-				 nat_ha_handoff_node.index, 1);
+				 ha->ha_handoff_node_index, 1);
 	}
       else
 	{
-	  udp_register_dst_port (ha->vlib_main, port, nat_ha_node.index, 1);
+	  udp_register_dst_port (ha->vlib_main, port, ha->ha_node_index, 1);
 	}
       nat_elog_info_X1 ("HA listening on port %d for state sync", "i4", port);
     }
@@ -404,7 +550,7 @@ nat_ha_set_failover (ip4_address_t * addr, u16 port,
   ha->dst_port = port;
   ha->session_refresh_interval = session_refresh_interval;
 
-  vlib_process_signal_event (ha->vlib_main, nat_ha_process_node.index, 1, 0);
+  vlib_process_signal_event (ha->vlib_main, ha->ha_process_node_index, 1, 0);
 
   return 0;
 }
@@ -438,9 +584,9 @@ nat_ha_recv_add (nat_ha_event_t * event, f64 now, u32 thread_index)
   fib_index = clib_net_to_host_u32 (event->fib_index);
   flags = clib_net_to_host_u16 (event->flags);
 
-  ha->sadd_cb (&in_addr, event->in_port, &out_addr, event->out_port, &eh_addr,
-	       event->eh_port, &ehn_addr, event->ehn_port, event->protocol,
-	       fib_index, flags, thread_index);
+  nat44_ei_ha_sadd (&in_addr, event->in_port, &out_addr, event->out_port,
+		    &eh_addr, event->eh_port, &ehn_addr, event->ehn_port,
+		    event->protocol, fib_index, flags, thread_index);
 }
 
 static_always_inline void
@@ -457,8 +603,8 @@ nat_ha_recv_del (nat_ha_event_t * event, u32 thread_index)
   eh_addr.as_u32 = event->eh_addr;
   fib_index = clib_net_to_host_u32 (event->fib_index);
 
-  ha->sdel_cb (&out_addr, event->out_port, &eh_addr, event->eh_port,
-	       event->protocol, fib_index, thread_index);
+  nat44_ei_ha_sdel (&out_addr, event->out_port, &eh_addr, event->eh_port,
+		    event->protocol, fib_index, thread_index);
 }
 
 static_always_inline void
@@ -478,9 +624,9 @@ nat_ha_recv_refresh (nat_ha_event_t * event, f64 now, u32 thread_index)
   total_pkts = clib_net_to_host_u32 (event->total_pkts);
   total_bytes = clib_net_to_host_u64 (event->total_bytes);
 
-  ha->sref_cb (&out_addr, event->out_port, &eh_addr, event->eh_port,
-	       event->protocol, fib_index, total_pkts, total_bytes,
-	       thread_index);
+  nat44_ei_ha_sref (&out_addr, event->out_port, &eh_addr, event->eh_port,
+		    event->protocol, fib_index, total_pkts, total_bytes,
+		    thread_index);
 }
 
 /* process received NAT HA event */
@@ -1018,8 +1164,8 @@ nat_ha_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, nat_ha_node.index,
-			       NAT_HA_ERROR_PROCESSED, pkts_processed);
+  vlib_node_increment_counter (vm, ha->ha_node_index, NAT_HA_ERROR_PROCESSED,
+			       pkts_processed);
 
   return frame->n_vectors;
 }
