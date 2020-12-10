@@ -322,7 +322,6 @@ bier_test_mpls_spf (void)
     fib_route_path_t *paths_1_1_1_1 = NULL, *input_paths_1_1_1_1;
     fib_route_path_t path_1_1_1_1 = {
         .frp_addr = nh_1_1_1_1,
-        .frp_bier_fib_index = bti,
         .frp_sw_if_index = ~0,
     };
     fib_mpls_label_t fml_500 = {
@@ -518,7 +517,6 @@ bier_test_mpls_spf (void)
     };
     fib_route_path_t *paths_1_1_1_2 = NULL, *input_paths_1_1_1_2, path_1_1_1_2 = {
         .frp_addr = nh_1_1_1_2,
-        .frp_bier_fib_index = bti,
         .frp_sw_if_index = ~0,
     };
     fib_mpls_label_t fml_501 = {
@@ -825,7 +823,6 @@ bier_test_mpls_disp (void)
     fib_route_path_t *paths_via_disp = NULL, path_via_disp = {
         // .frp_addr = all-zeros
         .frp_proto = DPO_PROTO_BIER,
-        .frp_bier_fib_index = bdti1,
         .frp_sw_if_index = ~0,
     };
     vec_add1(paths_via_disp, path_via_disp);

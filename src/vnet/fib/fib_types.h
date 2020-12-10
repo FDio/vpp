@@ -549,17 +549,11 @@ typedef struct fib_route_path_t_ {
              */
             fib_rpf_id_t frp_rpf_id;
 
-            union {
-                /**
-                 * The FIB index to lookup the nexthop
-                 * Only valid for recursive paths.
-                 */
-                u32 frp_fib_index;
-                /**
-                 * The BIER table to resolve the fmask in
-                 */
-                u32 frp_bier_fib_index;
-            };
+            /**
+             * The FIB index to lookup the nexthop
+             * Only valid for recursive paths.
+             */
+            u32 frp_fib_index;
             /**
              * The outgoing MPLS label Stack. NULL implies no label.
              */

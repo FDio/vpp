@@ -272,16 +272,10 @@ typedef struct fib_path_t_ {
                     mpls_eos_bit_t fp_eos;
                 };
 	    } fp_nh;
-            union {
-                /**
-                 * The FIB table index in which to find the next-hop.
-                 */
-                fib_node_index_t fp_tbl_id;
-                /**
-                 * The BIER FIB the fmask is in
-                 */
-                index_t fp_bier_fib;
-            };
+            /**
+             * The FIB table index in which to find the next-hop.
+             */
+            fib_node_index_t fp_tbl_id;
 	} recursive;
 	struct {
             /**
@@ -359,7 +353,7 @@ typedef struct fib_path_t_ {
     STRUCT_MARK(path_hash_end);
 
     /**
-     * Memebers in this last section represent information that is
+     * Members in this last section represent information that is
      * dervied during resolution. It should not be copied to new paths
      * nor compared.
      */
