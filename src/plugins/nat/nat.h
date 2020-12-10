@@ -1371,14 +1371,6 @@ void nat44_db_init (snat_main_per_thread_data_t * tsm);
 void nat44_db_free (snat_main_per_thread_data_t * tsm);
 
 /**
- * @brief Delete specific NAT44 EI user and his sessions
- *
- * @param addr         IPv4 address
- * @param fib_index    FIB table index
- */
-int nat44_ei_user_del (ip4_address_t * addr, u32 fib_index);
-
-/**
  * @brief Free all NAT44 sessions
  */
 void nat44_sessions_clear ();
@@ -1412,29 +1404,6 @@ snat_session_t *nat_session_alloc_or_recycle (snat_main_t * sm,
 					      u32 thread_index, f64 now);
 
 /**
- * @brief Set address and port assignment algorithm for MAP-E CE
- *
- * @param psid        Port Set Identifier value
- * @param psid_offset number of offset bits
- * @param psid_length length of PSID
- */
-void nat_set_alloc_addr_and_port_mape (u16 psid, u16 psid_offset,
-				       u16 psid_length);
-
-/**
- * @brief Set address and port assignment algorithm for port range
- *
- * @param start_port beginning of the port range
- * @param end_port   end of the port range
- */
-void nat_set_alloc_addr_and_port_range (u16 start_port, u16 end_port);
-
-/**
- * @brief Set address and port assignment algorithm to default/standard
- */
-void nat_set_alloc_addr_and_port_default (void);
-
-/**
  * @brief Free outside address and port pair
  *
  * @param addresses    vector of outside addresses
@@ -1446,26 +1415,6 @@ snat_free_outside_address_and_port (snat_address_t * addresses,
 				    u32 thread_index,
 				    ip4_address_t * addr,
 				    u16 port, nat_protocol_t protocol);
-
-/**
- * @brief Alloc outside address and port
- *
- * @param addresses         vector of outside addresses
- * @param fib_index         FIB table index
- * @param thread_index      thread index
- * @param port_per_thread   number of ports per thread
- * @param snat_thread_index NAT thread index
- *
- * @return 0 on success, non-zero value otherwise
- */
-int snat_alloc_outside_address_and_port (snat_address_t * addresses,
-					 u32 fib_index,
-					 u32 thread_index,
-					 nat_protocol_t proto,
-					 ip4_address_t * addr,
-					 u16 * port,
-					 u16 port_per_thread,
-					 u32 snat_thread_index);
 
 void expire_per_vrf_sessions (u32 fib_index);
 
@@ -1518,23 +1467,7 @@ int snat_static_mapping_match (snat_main_t * sm,
 void snat_add_del_addr_to_fib (ip4_address_t * addr,
 			       u8 p_len, u32 sw_if_index, int is_add);
 
-void
-nat_ha_sadd_cb (ip4_address_t * in_addr, u16 in_port,
-		ip4_address_t * out_addr, u16 out_port,
-		ip4_address_t * eh_addr, u16 eh_port,
-		ip4_address_t * ehn_addr, u16 ehn_port, u8 proto,
-		u32 fib_index, u16 flags, u32 thread_index);
-
-void
-nat_ha_sdel_cb (ip4_address_t * out_addr, u16 out_port,
-		ip4_address_t * eh_addr, u16 eh_port, u8 proto, u32 fib_index,
-		u32 ti);
-
-void
-nat_ha_sref_cb (ip4_address_t * out_addr, u16 out_port,
-		ip4_address_t * eh_addr, u16 eh_port, u8 proto, u32 fib_index,
-		u32 total_pkts, u64 total_bytes, u32 thread_index);
-
+#if 0
 void
 nat_ha_sadd_ed_cb (ip4_address_t * in_addr, u16 in_port,
 		   ip4_address_t * out_addr, u16 out_port,
@@ -1548,15 +1481,15 @@ nat_ha_sdel_ed_cb (ip4_address_t * out_addr, u16 out_port,
 		   u32 fib_index, u32 ti);
 
 void
-nat_ha_sdel_ed_cb (ip4_address_t * out_addr, u16 out_port,
-		   ip4_address_t * eh_addr, u16 eh_port, u8 proto,
-		   u32 fib_index, u32 ti);
-
-void
 nat_ha_sref_ed_cb (ip4_address_t * out_addr, u16 out_port,
 		   ip4_address_t * eh_addr, u16 eh_port, u8 proto,
 		   u32 fib_index, u32 total_pkts, u64 total_bytes,
 		   u32 thread_index);
+#endif
+
+int nat_set_outside_address_and_port (snat_address_t *addresses,
+				      u32 thread_index, ip4_address_t addr,
+				      u16 port, nat_protocol_t protocol);
 
 /*
  * Why is this here? Because we don't need to touch this layer to
