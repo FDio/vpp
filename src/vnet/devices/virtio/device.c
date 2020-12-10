@@ -926,11 +926,11 @@ virtio_interface_tx_split_gso_inline (vlib_main_t * vm,
 
   if (n_left != n_vectors || n_buffers != n_buffers_left)
     {
-      CLIB_MEMORY_STORE_BARRIER ();
-      vring->avail->idx = avail;
+      clib_atomic_store_seq_cst (&vring->avail->idx, avail);
       vring->desc_next = next;
       vring->desc_in_use = used;
-      if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0)
+      if ((clib_atomic_load_seq_cst (&vring->used->flags) &
+	   VRING_USED_F_NO_NOTIFY) == 0)
 	virtio_kick (vm, vring, vif);
     }
 
@@ -996,12 +996,6 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
   u16 n_vectors = frame->n_vectors;
 
   clib_spinlock_lock_if_init (&vring->lockp);
-
-  if (packed && (vring->device_event->flags != VRING_EVENT_F_DISABLE))
-    virtio_kick (vm, vring, vif);
-  else if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0 &&
-	   (vring->last_kick_avail_idx != vring->avail->idx))
-    virtio_kick (vm, vring, vif);
 
   if (vif->packet_coalesce)
     {

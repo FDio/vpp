@@ -135,12 +135,11 @@ more:
       n_slots--;
       used++;
     }
-  CLIB_MEMORY_STORE_BARRIER ();
-  vring->avail->idx = avail;
+  clib_atomic_store_seq_cst (&vring->avail->idx, avail);
   vring->desc_next = next;
   vring->desc_in_use = used;
-
-  if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0)
+  if ((clib_atomic_load_seq_cst (&vring->used->flags) &
+       VRING_USED_F_NO_NOTIFY) == 0)
     {
       virtio_kick (vm, vring, vif);
     }
@@ -588,9 +587,6 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (vif->is_packed)
     {
-      if (vring->device_event->flags != VRING_EVENT_F_DISABLE)
-	virtio_kick (vm, vring, vif);
-
       if (vif->gso_enabled)
 	rv =
 	  virtio_device_input_gso_inline (vm, node, frame, vif, vring, type,
@@ -609,10 +605,6 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
   else
     {
-      if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0 &&
-	  vring->last_kick_avail_idx != vring->avail->idx)
-	virtio_kick (vm, vring, vif);
-
       if (vif->gso_enabled)
 	rv =
 	  virtio_device_input_gso_inline (vm, node, frame, vif, vring, type,
