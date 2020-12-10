@@ -1175,7 +1175,7 @@ vppcom_session_unbind (u32 session_handle)
       vcl_session_table_del_vpp_handle (wrk, accepted_msg->handle);
       vcl_send_session_accepted_reply (session->vpp_evt_q,
 				       accepted_msg->context,
-				       session->vpp_handle, -1);
+				       accepted_msg->handle, -1);
     }
   clib_fifo_free (session->accept_evts_fifo);
 
