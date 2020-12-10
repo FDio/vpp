@@ -51,6 +51,13 @@ fsh_slice_get (fifo_segment_header_t * fsh, u32 slice_index)
   return &fsh->slices[slice_index];
 }
 
+static inline fifo_slice_private_t *
+fs_slice_private_get (fifo_segment_t *fs, u32 slice_index)
+{
+  ASSERT (slice_index < fs->n_slices);
+  return &fs->slices[slice_index];
+}
+
 static char *fifo_segment_mem_status_strings[] = {
 #define _(sym,str) str,
   foreach_segment_mem_status
@@ -245,25 +252,25 @@ fss_chunk_free_list_pop (fifo_segment_header_t * fsh,
 }
 
 static inline void
-fss_fifo_add_active_list (fifo_segment_slice_t * fss, svm_fifo_t * f)
+pfss_fifo_add_active_list (fifo_slice_private_t *pfss, svm_fifo_t * f)
 {
-  if (fss->fifos)
+  if (pfss->active_fifos)
     {
-      fss->fifos->prev = f;
-      f->next = fss->fifos;
+      pfss->active_fifos->prev = f;
+      f->next = pfss->active_fifos;
     }
-  fss->fifos = f;
+  pfss->active_fifos = f;
 }
 
 static inline void
-fss_fifo_del_active_list (fifo_segment_slice_t * fss, svm_fifo_t * f)
+pfss_fifo_del_active_list (fifo_slice_private_t *pfss, svm_fifo_t * f)
 {
   if (f->flags & SVM_FIFO_F_LL_TRACKED)
     {
       if (f->prev)
 	f->prev->next = f->next;
       else
-	fss->fifos = f->next;
+	pfss->active_fifos = f->next;
       if (f->next)
 	f->next->prev = f->prev;
     }
@@ -873,6 +880,7 @@ fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs, u32 slice_index,
 				 u32 data_bytes, fifo_segment_ftype_t ftype)
 {
   fifo_segment_header_t *fsh = fs->h;
+  fifo_slice_private_t *pfss;
   fifo_segment_slice_t *fss;
   svm_fifo_shared_t *sf;
   svm_fifo_t *f = 0;
@@ -894,6 +902,7 @@ fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs, u32 slice_index,
 
   /* TODO cleanup, probably not needed */
   fss = fsh_slice_get (fsh, slice_index);
+  pfss = fs_slice_private_get (fs, slice_index);
 
   /* If rx fifo type add to active fifos list. When cleaning up segment,
    * we need a list of active sessions that should be disconnected. Since
@@ -901,7 +910,7 @@ fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs, u32 slice_index,
    * only one. */
   if (ftype == FIFO_SEGMENT_RX_FIFO)
     {
-      fss_fifo_add_active_list (fss, f);
+      pfss_fifo_add_active_list (pfss, f);
       f->flags |= SVM_FIFO_F_LL_TRACKED;
     }
 
@@ -932,6 +941,7 @@ void
 fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 {
   fifo_segment_header_t *fsh = fs->h;
+  fifo_slice_private_t *pfss;
   fifo_segment_slice_t *fss;
 
   ASSERT (f->refcnt > 0);
@@ -940,11 +950,12 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
     return;
 
   fss = fsh_slice_get (fsh, f->f_shr->slice_index);
+  pfss = fs_slice_private_get (fs, f->f_shr->slice_index);
 
   /* Remove from active list. Only rx fifos are tracked */
   if (f->flags & SVM_FIFO_F_LL_TRACKED)
     {
-      fss_fifo_del_active_list (fss, f);
+      pfss_fifo_del_active_list (pfss, f);
       f->flags &= ~SVM_FIFO_F_LL_TRACKED;
     }
 
@@ -981,6 +992,7 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 void
 fifo_segment_detach_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 {
+  fifo_slice_private_t *pfss;
   fifo_segment_slice_t *fss;
   svm_fifo_chunk_t *c;
   u32 fl_index;
@@ -988,9 +1000,10 @@ fifo_segment_detach_fifo (fifo_segment_t * fs, svm_fifo_t * f)
   ASSERT (f->refcnt == 1);
 
   fss = fsh_slice_get (fs->h, f->f_shr->slice_index);
+  pfss = fs_slice_private_get (fs, f->f_shr->slice_index);
   fss->virtual_mem -= svm_fifo_size (f);
   if (f->flags & SVM_FIFO_F_LL_TRACKED)
-    fss_fifo_del_active_list (fss, f);
+    pfss_fifo_del_active_list (pfss, f);
 
   c = fs_chunk_ptr (fs->h, f->f_shr->start_chunk);
   while (c)
@@ -1005,15 +1018,17 @@ void
 fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t * f,
 			  u32 slice_index)
 {
+  fifo_slice_private_t *pfss;
   fifo_segment_slice_t *fss;
   svm_fifo_chunk_t *c;
   u32 fl_index;
 
   f->f_shr->slice_index = slice_index;
   fss = fsh_slice_get (fs->h, f->f_shr->slice_index);
+  pfss = fs_slice_private_get (fs, f->f_shr->slice_index);
   fss->virtual_mem += svm_fifo_size (f);
   if (f->flags & SVM_FIFO_F_LL_TRACKED)
-    fss_fifo_add_active_list (fss, f);
+    pfss_fifo_add_active_list (pfss, f);
 
   c = fs_chunk_ptr (fs->h, f->f_shr->start_chunk);
   while (c)
@@ -1298,11 +1313,10 @@ fifo_segment_has_fifos (fifo_segment_t * fs)
 svm_fifo_t *
 fifo_segment_get_slice_fifo_list (fifo_segment_t * fs, u32 slice_index)
 {
-  fifo_segment_header_t *fsh = fs->h;
-  fifo_segment_slice_t *fss;
+  fifo_slice_private_t *pfss;
 
-  fss = fsh_slice_get (fsh, slice_index);
-  return fss->fifos;
+  pfss = fs_slice_private_get (fs, slice_index);
+  return pfss->active_fifos;
 }
 
 u8
