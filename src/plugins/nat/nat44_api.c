@@ -31,7 +31,8 @@
 #include <nat/nat44.api_enum.h>
 #include <nat/nat44.api_types.h>
 
-#include <nat/nat_ha.h>
+#include <nat/nat44-ei/nat44_ei_ha.h>
+#include <nat/nat44-ei/nat44_ei.h>
 #include <nat/nat_inlines.h>
 
 #include <nat/nat44/inlines.h>
@@ -350,11 +351,11 @@ static void
   switch (mp->alg)
     {
     case NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT:
-      nat_set_alloc_addr_and_port_default ();
+      nat44_ei_set_alloc_default ();
       break;
     case NAT_ADDR_AND_PORT_ALLOC_ALG_MAPE:
-      nat_set_alloc_addr_and_port_mape (ntohs (mp->psid), mp->psid_offset,
-					mp->psid_length);
+      nat44_ei_set_alloc_mape (ntohs (mp->psid), mp->psid_offset,
+			       mp->psid_length);
       break;
     case NAT_ADDR_AND_PORT_ALLOC_ALG_RANGE:
       port_start = ntohs (mp->start_port);
@@ -364,7 +365,7 @@ static void
 	  rv = VNET_API_ERROR_INVALID_VALUE;
 	  goto send_reply;
 	}
-      nat_set_alloc_addr_and_port_range (port_start, port_end);
+      nat44_ei_set_alloc_range (port_start, port_end);
       break;
     default:
       rv = VNET_API_ERROR_INVALID_VALUE;
