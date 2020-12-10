@@ -772,6 +772,28 @@ u8x16_mask_load (u8x16 a, void *p, u16 mask)
 }
 #endif
 
+static_always_inline i16x8
+i16x8_xcombine_even_elements (i16x8 a, i16x8 b)
+{
+#ifdef __clang__
+  return (i16x8) __builtin_shufflevector (a, b, 0, 8, 2, 10, 4, 12, 6, 14);
+#else
+  u16x8 m = { 0, 8, 2, 10, 4, 12, 6, 14 };
+  return (i16x8) __builtin_shuffle (a, b, m);
+#endif
+}
+
+static_always_inline u32x4
+u32x4_even_elements (u32x4 a, u32x4 b)
+{
+#ifdef __clang__
+  return (u32x4) __builtin_shufflevector (a, b, 0, 2, 4, 6);
+#else
+  u32x4 m = { 0, 2, 4, 6 };
+  return (u32x4) __builtin_shuffle (a, b, m);
+#endif
+}
+
 #endif /* included_vector_sse2_h */
 
 /*

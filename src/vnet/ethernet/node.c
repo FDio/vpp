@@ -334,7 +334,8 @@ eth_input_adv_and_flags_x4 (vlib_buffer_t ** b, int is_l3)
   u32 flags = VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
     VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
-#ifdef CLIB_HAVE_VEC256
+#if defined (CLIB_HAVE_VEC256) || defined (CLIB_HAVE_VEC128)
+#if defined (CLIB_HAVE_VEC256)
   /* to reduce number of small loads/stores we are loading first 64 bits
      of each buffer metadata into 256-bit register so we can advance
      current_data, current_length and flags.
@@ -370,6 +371,49 @@ eth_input_adv_and_flags_x4 (vlib_buffer_t ** b, int is_l3)
   u32x8_scatter_one ((u32x8) r, 2, &vnet_buffer (b[1])->l2_hdr_offset);
   u32x8_scatter_one ((u32x8) r, 4, &vnet_buffer (b[2])->l2_hdr_offset);
   u32x8_scatter_one ((u32x8) r, 6, &vnet_buffer (b[3])->l2_hdr_offset);
+
+#else
+  /* to reduce number of small loads/stores we are loading first 32 bits
+     of each buffer metadata into 128-bit register, so we can advance
+     current_data, current_length, l2_hdr_offset and l3_hdr_offset. */
+  u32x4 cur;
+  i16x8 cur_s16, off_s16;
+  i16x8 cur_adv = {
+    adv, -adv, adv, -adv,
+    adv, -adv, adv, -adv
+  };
+  i16x8 off_adv = {
+    0, adv, 0, adv,
+    0, adv, 0, adv
+  };
+
+  /* load 4 x 32 bits */
+  cur = u32x4_gather (b[0], b[1], b[2], b[3]);
+  cur_s16 = (i16x8) cur;
+
+  /* calculate for l2_hdr_offset and l3_hdr_offset */
+  off_s16 = i16x8_xcombine_even_elements (cur_s16, cur_s16) + off_adv;
+  /* store both l2_hdr_offset and l3_hdr_offset */
+  u32x4_scatter ((u32x4) off_s16,
+		 &vnet_buffer (b[0])->l2_hdr_offset,
+		 &vnet_buffer (b[1])->l2_hdr_offset,
+		 &vnet_buffer (b[2])->l2_hdr_offset,
+		 &vnet_buffer (b[3])->l2_hdr_offset);
+
+  if (is_l3)
+    {
+      /* advance buffer */
+      cur_s16 = cur_s16 + cur_adv;
+      /* write 4 x 32 bits */
+      u32x4_scatter ((u32x4) cur_s16, b[0], b[1], b[2], b[3]);
+    }
+
+  b[0]->flags |= flags;
+  b[1]->flags |= flags;
+  b[2]->flags |= flags;
+  b[3]->flags |= flags;
+
+#endif
 
   if (is_l3)
     {
@@ -945,6 +989,19 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16x16 zero = { 0 };
   u16x16 stairs = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
 #endif
+#ifdef CLIB_HAVE_VEC128
+  u16x8 et8_ip4 = u16x8_splat (et_ip4);
+  u16x8 et8_ip6 = u16x8_splat (et_ip6);
+  u16x8 et8_mpls = u16x8_splat (et_mpls);
+  u16x8 et8_vlan = u16x8_splat (et_vlan);
+  u16x8 et8_dot1ad = u16x8_splat (et_dot1ad);
+  u16x8 next8_ip4 = u16x8_splat (next_ip4);
+  u16x8 next8_ip6 = u16x8_splat (next_ip6);
+  u16x8 next8_mpls = u16x8_splat (next_mpls);
+  u16x8 next8_l2 = u16x8_splat (next_l2);
+  u16x8 zero8 = { 0 };
+  u16x8 stairs8 = { 0, 1, 2, 3, 4, 5, 6, 7 };
+#endif
 
   etype = etypes;
   n_left = n_packets;
@@ -992,6 +1049,44 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  next += 16;
 	  n_left -= 16;
 	  i += 16;
+	  continue;
+	}
+#endif
+#ifdef CLIB_HAVE_VEC128
+      if (n_left >= 8)
+	{
+	  u16x8 r = zero8;
+	  u16x8 e8 = u16x8_load_unaligned (etype);
+	  if (main_is_l3)
+	    {
+	      r += (e8 == et8_ip4) & next8_ip4;
+	      r += (e8 == et8_ip6) & next8_ip6;
+	      r += (e8 == et8_mpls) & next8_mpls;
+	    }
+	  else
+	    r = ((e8 != et8_vlan) & (e8 != et8_dot1ad)) & next8_l2;
+	  u16x8_store_unaligned (r, next);
+
+	  if (!u16x8_is_all_zero (r == zero8))
+	    {
+	      if (u16x8_is_all_zero (r))
+		{
+		  u16x8_store_unaligned (u16x8_splat (i) + stairs8,
+					 slowpath_indices + n_slowpath);
+		  n_slowpath += 8;
+		}
+	      else
+		{
+		  for (int j = 0; j < 8; j++)
+		    if (next[j] == 0)
+		      slowpath_indices[n_slowpath++] = i + j;
+		}
+	    }
+
+	  etype += 8;
+	  next += 8;
+	  n_left -= 8;
+	  i += 8;
 	  continue;
 	}
 #endif
