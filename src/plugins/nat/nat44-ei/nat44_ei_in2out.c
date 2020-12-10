@@ -27,9 +27,8 @@
 #include <nat/nat.h>
 #include <nat/lib/ipfix_logging.h>
 #include <nat/nat_inlines.h>
-#include <nat/nat44/inlines.h>
 #include <nat/lib/nat_syslog.h>
-#include <nat/nat_ha.h>
+#include <nat/nat44-ei/nat44_ei_inlines.h>
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
@@ -261,7 +260,7 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   u16 sm_port;
   u32 sm_fib_index;
 
-  if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
+  if (PREDICT_FALSE (nat44_ei_maximum_sessions_exceeded (sm, thread_index)))
     {
       b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_SESSIONS_EXCEEDED];
       nat_ipfix_logging_max_sessions (thread_index,
@@ -276,13 +275,13 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
        &sm_port, &sm_fib_index, 0, 0, 0, 0, 0, &identity_nat, 0))
     {
       /* Try to create dynamic translation */
-      if (snat_alloc_outside_address_and_port (sm->addresses, rx_fib_index0,
-					       thread_index,
-					       nat_proto,
-					       &sm_addr, &sm_port,
-					       sm->port_per_thread,
-					       sm->per_thread_data
-					       [thread_index].snat_thread_index))
+      if (sm->alloc_addr_and_port (sm->addresses, rx_fib_index0,
+				   thread_index,
+				   nat_proto,
+				   &sm_addr, &sm_port,
+				   sm->port_per_thread,
+				   sm->per_thread_data
+				   [thread_index].snat_thread_index))
 	{
 	  b0->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
 	  return SNAT_IN2OUT_NEXT_DROP;
@@ -817,9 +816,9 @@ icmp_in2out_slow_path (snat_main_t * sm,
   if (PREDICT_TRUE (next0 != SNAT_IN2OUT_NEXT_DROP && s0))
     {
       /* Accounting */
-      nat44_session_update_counters (s0, now,
-				     vlib_buffer_length_in_chain
-				     (vm, b0), thread_index);
+      nat44_ei_session_update_counters (s0, now,
+					vlib_buffer_length_in_chain
+					(vm, b0), thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
     }
@@ -1113,9 +1112,9 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	}
 
       /* Accounting */
-      nat44_session_update_counters (s0, now,
-				     vlib_buffer_length_in_chain (vm, b0),
-				     thread_index);
+      nat44_ei_session_update_counters (s0, now,
+					vlib_buffer_length_in_chain (vm, b0),
+					thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
     trace00:
@@ -1337,9 +1336,9 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	}
 
       /* Accounting */
-      nat44_session_update_counters (s1, now,
-				     vlib_buffer_length_in_chain (vm, b1),
-				     thread_index);
+      nat44_ei_session_update_counters (s1, now,
+					vlib_buffer_length_in_chain (vm, b1),
+					thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s1, thread_index);
     trace01:
@@ -1591,9 +1590,9 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	}
 
       /* Accounting */
-      nat44_session_update_counters (s0, now,
-				     vlib_buffer_length_in_chain (vm, b0),
-				     thread_index);
+      nat44_ei_session_update_counters (s0, now,
+					vlib_buffer_length_in_chain (vm, b0),
+					thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
 

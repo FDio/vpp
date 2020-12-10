@@ -29,9 +29,7 @@ add_vpp_plugin(nat
   SOURCES
   nat.c
   nat44_api.c
-  in2out.c
   in2out_ed.c
-  out2in.c
   out2in_ed.c
   nat_dpo.c
   nat44_cli.c
@@ -40,16 +38,19 @@ add_vpp_plugin(nat
   nat44_classify.c
   nat_affinity.c
   nat_format.c
-  nat_ha.c
+  nat44-ei/nat44_ei.c
+  nat44-ei/nat44_ei_ha.c
+  nat44-ei/nat44_ei_in2out.c
+  nat44-ei/nat44_ei_out2in.c
 
   MULTIARCH_SOURCES
-  in2out.c
   in2out_ed.c
+  out2in_ed.c
   nat44_classify.c
   nat44_hairpinning.c
   nat44_handoff.c
-  out2in.c
-  out2in_ed.c
+  nat44-ei/nat44_ei_in2out.c
+  nat44-ei/nat44_ei_out2in.c
 
   API_FILES
   nat44.api
