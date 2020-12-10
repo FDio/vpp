@@ -24,7 +24,9 @@
 #include <nat/nat44/inlines.h>
 #include <nat/nat_affinity.h>
 #include <vnet/fib/fib_table.h>
-#include <nat/nat_ha.h>
+
+#include <nat/nat44-ei/nat44_ei_ha.h>
+#include <nat/nat44-ei/nat44_ei.h>
 
 #define UNSUPPORTED_IN_ED_MODE_STR \
   "This command is unsupported in endpoint dependent mode"
@@ -354,13 +356,13 @@ nat44_set_alloc_addr_and_port_alg_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "default"))
-	nat_set_alloc_addr_and_port_default ();
+	nat44_ei_set_alloc_default ();
       else
 	if (unformat
 	    (line_input, "map-e psid %d psid-offset %d psid-len %d", &psid,
 	     &psid_offset, &psid_length))
-	nat_set_alloc_addr_and_port_mape ((u16) psid, (u16) psid_offset,
-					  (u16) psid_length);
+	nat44_ei_set_alloc_mape ((u16) psid, (u16) psid_offset,
+				 (u16) psid_length);
       else
 	if (unformat
 	    (line_input, "port-range %d - %d", &port_start, &port_end))
@@ -372,8 +374,7 @@ nat44_set_alloc_addr_and_port_alg_command_fn (vlib_main_t * vm,
 				   "The end-port must be greater than start-port");
 	      goto done;
 	    }
-	  nat_set_alloc_addr_and_port_range ((u16) port_start,
-					     (u16) port_end);
+	  nat44_ei_set_alloc_range ((u16) port_start, (u16) port_end);
 	}
       else
 	{

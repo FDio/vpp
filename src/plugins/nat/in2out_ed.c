@@ -29,7 +29,6 @@
 #include <nat/nat_inlines.h>
 #include <nat/nat44/inlines.h>
 #include <nat/lib/nat_syslog.h>
-#include <nat/nat_ha.h>
 #include <nat/nat44/ed_inlines.h>
 #include <nat/lib/nat_inlines.h>
 
@@ -132,10 +131,6 @@ nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
 			     &s->out2in.addr, s->out2in.port,
 			     &s->ext_host_addr, s->ext_host_port,
 			     s->nat_proto, is_twice_nat_session (s));
-
-      nat_ha_sdel (&s->out2in.addr, s->out2in.port, &s->ext_host_addr,
-		   s->ext_host_port, s->nat_proto, s->out2in.fib_index,
-		   ctx->thread_index);
 
       if (is_twice_nat_session (s))
 	{
@@ -481,11 +476,6 @@ slow_path_ed (snat_main_t * sm,
 			 &s->out2in.addr, s->out2in.port,
 			 &s->ext_host_addr, s->ext_host_port, s->nat_proto,
 			 0);
-
-  nat_ha_sadd (&s->in2out.addr, s->in2out.port, &s->out2in.addr,
-	       s->out2in.port, &s->ext_host_addr, s->ext_host_port,
-	       &s->ext_host_nat_addr, s->ext_host_nat_port,
-	       s->nat_proto, s->in2out.fib_index, s->flags, thread_index, 0);
 
   per_vrf_sessions_register_session (s, thread_index);
 
