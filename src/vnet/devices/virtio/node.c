@@ -123,7 +123,7 @@ more:
        * initialized.
        */
       b->current_data = -hdr_sz;
-      memset (vlib_buffer_get_current (b), 0, hdr_sz);
+      clib_memset (vlib_buffer_get_current (b), 0, hdr_sz);
       d->addr =
 	((type == VIRTIO_IF_TYPE_PCI) ? vlib_buffer_get_current_pa (vm,
 								    b) :
@@ -190,7 +190,7 @@ more:
        * initialized.
        */
       b->current_data = -hdr_sz;
-      memset (vlib_buffer_get_current (b), 0, hdr_sz);
+      clib_memset (vlib_buffer_get_current (b), 0, hdr_sz);
       d->addr =
 	((type == VIRTIO_IF_TYPE_PCI) ? vlib_buffer_get_current_pa (vm,
 								    b) :
