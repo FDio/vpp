@@ -27,9 +27,8 @@
 #include <nat/nat.h>
 #include <nat/lib/ipfix_logging.h>
 #include <nat/nat_inlines.h>
-#include <nat/nat44/inlines.h>
 #include <nat/lib/nat_syslog.h>
-#include <nat/nat_ha.h>
+#include <nat/nat44-ei/nat44_ei_inlines.h>
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
@@ -182,7 +181,7 @@ create_session_for_static_mapping (snat_main_t * sm,
   udp_header_t *udp0;
   nat44_is_idle_session_ctx_t ctx0;
 
-  if (PREDICT_FALSE (nat44_maximum_sessions_exceeded (sm, thread_index)))
+  if (PREDICT_FALSE (nat44_ei_maximum_sessions_exceeded (sm, thread_index)))
     {
       b0->error = node->errors[SNAT_OUT2IN_ERROR_MAX_SESSIONS_EXCEEDED];
       nat_elog_notice ("maximum sessions exceeded");
@@ -675,9 +674,9 @@ icmp_out2in_slow_path (snat_main_t * sm,
   if (PREDICT_TRUE (next0 != SNAT_OUT2IN_NEXT_DROP && s0))
     {
       /* Accounting */
-      nat44_session_update_counters (s0, now,
-				     vlib_buffer_length_in_chain
-				     (vm, b0), thread_index);
+      nat44_ei_session_update_counters (s0, now,
+					vlib_buffer_length_in_chain
+					(vm, b0), thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
     }
@@ -930,9 +929,9 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	}
 
       /* Accounting */
-      nat44_session_update_counters (s0, now,
-				     vlib_buffer_length_in_chain (vm, b0),
-				     thread_index);
+      nat44_ei_session_update_counters (s0, now,
+					vlib_buffer_length_in_chain (vm, b0),
+					thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
     trace0:
@@ -1118,9 +1117,9 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	}
 
       /* Accounting */
-      nat44_session_update_counters (s1, now,
-				     vlib_buffer_length_in_chain (vm, b1),
-				     thread_index);
+      nat44_ei_session_update_counters (s1, now,
+					vlib_buffer_length_in_chain (vm, b1),
+					thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s1, thread_index);
     trace1:
@@ -1334,9 +1333,9 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	}
 
       /* Accounting */
-      nat44_session_update_counters (s0, now,
-				     vlib_buffer_length_in_chain (vm, b0),
-				     thread_index);
+      nat44_ei_session_update_counters (s0, now,
+					vlib_buffer_length_in_chain (vm, b0),
+					thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
     trace00:

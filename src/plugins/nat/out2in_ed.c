@@ -29,7 +29,6 @@
 #include <nat/nat_inlines.h>
 #include <nat/nat44/inlines.h>
 #include <nat/lib/nat_syslog.h>
-#include <nat/nat_ha.h>
 #include <nat/nat44/ed_inlines.h>
 
 static char *nat_out2in_ed_error_strings[] = {
@@ -157,10 +156,6 @@ nat44_o2i_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
 			     &s->ext_host_addr, s->ext_host_port,
 			     s->nat_proto, is_twice_nat_session (s));
 
-      nat_ha_sdel (&s->out2in.addr, s->out2in.port, &s->ext_host_addr,
-		   s->ext_host_port, s->nat_proto, s->out2in.fib_index,
-		   ctx->thread_index);
-
       if (is_twice_nat_session (s))
 	{
 	  for (i = 0; i < vec_len (sm->twice_nat_addresses); i++)
@@ -239,6 +234,95 @@ nat_alloc_addr_and_port_exact (snat_address_t * a,
   return 1;
 }
 
+static_always_inline int
+nat44_ed_alloc_outside_addr_and_port (snat_address_t * addresses,
+				      u32 fib_index,
+				      u32 thread_index,
+				      nat_protocol_t proto,
+				      ip4_address_t * addr,
+				      u16 * port,
+				      u16 port_per_thread,
+				      u32 snat_thread_index)
+{
+  int i;
+  snat_address_t *a, *ga = 0;
+  u32 portnum;
+
+  for (i = 0; i < vec_len (addresses); i++)
+    {
+      a = addresses + i;
+      switch (proto)
+	{
+#define _(N, j, n, s) \
+        case NAT_PROTOCOL_##N: \
+          if (a->busy_##n##_ports_per_thread[thread_index] < port_per_thread) \
+            { \
+              if (a->fib_index == fib_index) \
+                { \
+                  while (1) \
+                    { \
+                      portnum = (port_per_thread * \
+                        snat_thread_index) + \
+                        snat_random_port(0, port_per_thread - 1) + 1024; \
+                      if (a->busy_##n##_port_refcounts[portnum]) \
+                        continue; \
+		      --a->busy_##n##_port_refcounts[portnum]; \
+                      a->busy_##n##_ports_per_thread[thread_index]++; \
+                      a->busy_##n##_ports++; \
+                      *addr = a->addr; \
+                      *port = clib_host_to_net_u16(portnum); \
+                      return 0; \
+                    } \
+                } \
+              else if (a->fib_index == ~0) \
+                { \
+                  ga = a; \
+                } \
+            } \
+          break;
+	  foreach_nat_protocol
+#undef _
+	default:
+	  nat_elog_info ("unknown protocol");
+	  return 1;
+	}
+
+    }
+
+  if (ga)
+    {
+      a = ga;
+      switch (proto)
+	{
+#define _(N, j, n, s) \
+        case NAT_PROTOCOL_##N: \
+          while (1) \
+            { \
+              portnum = (port_per_thread * \
+                snat_thread_index) + \
+                snat_random_port(0, port_per_thread - 1) + 1024; \
+	      if (a->busy_##n##_port_refcounts[portnum]) \
+                continue; \
+	      ++a->busy_##n##_port_refcounts[portnum]; \
+              a->busy_##n##_ports_per_thread[thread_index]++; \
+              a->busy_##n##_ports++; \
+              *addr = a->addr; \
+              *port = clib_host_to_net_u16(portnum); \
+              return 0; \
+            }
+	  break;
+	  foreach_nat_protocol
+#undef _
+	default:
+	  nat_elog_info ("unknown protocol");
+	  return 1;
+	}
+    }
+
+  /* Totally out of translations to use... */
+  nat_ipfix_logging_addresses_exhausted (thread_index, 0);
+  return 1;
+}
 
 static snat_session_t *
 create_session_for_static_mapping_ed (snat_main_t * sm,
@@ -343,12 +427,13 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
       else
 	{
 	  rc =
-	    snat_alloc_outside_address_and_port (sm->twice_nat_addresses, 0,
-						 thread_index, nat_proto,
-						 &s->ext_host_nat_addr,
-						 &s->ext_host_nat_port,
-						 sm->port_per_thread,
-						 tsm->snat_thread_index);
+	    nat44_ed_alloc_outside_addr_and_port (sm->twice_nat_addresses,
+						  0, thread_index,
+						  nat_proto,
+						  &s->ext_host_nat_addr,
+						  &s->ext_host_nat_port,
+						  sm->port_per_thread,
+						  tsm->snat_thread_index);
 	}
 
       if (rc)
@@ -389,11 +474,6 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
 			 &s->out2in.addr, s->out2in.port,
 			 &s->ext_host_addr, s->ext_host_port,
 			 s->nat_proto, is_twice_nat_session (s));
-
-  nat_ha_sadd (&s->in2out.addr, s->in2out.port, &s->out2in.addr,
-	       s->out2in.port, &s->ext_host_addr, s->ext_host_port,
-	       &s->ext_host_nat_addr, s->ext_host_nat_port,
-	       s->nat_proto, s->in2out.fib_index, s->flags, thread_index, 0);
 
   per_vrf_sessions_register_session (s, thread_index);
 

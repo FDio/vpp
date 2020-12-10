@@ -39,10 +39,9 @@ typedef void (*nat_ha_sref_cb_t) (ip4_address_t * out_addr, u16 out_port,
 				  u64 total_bytes, u32 thread_index);
 
 /**
- * @brief Enable NAT HA, set callbacks
+ * @brief Enable NAT HA
  */
-void nat_ha_enable (nat_ha_sadd_cb_t sadd_cb, nat_ha_sdel_cb_t sdel_cb,
-		    nat_ha_sref_cb_t sref_cb);
+void nat_ha_enable ();
 
 /**
  * @brief Disable NAT HA
