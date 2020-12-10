@@ -926,11 +926,11 @@ virtio_interface_tx_split_gso_inline (vlib_main_t * vm,
 
   if (n_left != n_vectors || n_buffers != n_buffers_left)
     {
-      CLIB_MEMORY_STORE_BARRIER ();
-      vring->avail->idx = avail;
+      clib_atomic_store_seq_cst (&vring->avail->idx, avail);
       vring->desc_next = next;
       vring->desc_in_use = used;
-      if ((vring->used->flags & VRING_USED_F_NO_NOTIFY) == 0)
+      if ((clib_atomic_load_seq_cst (&vring->used->flags) &
+	   VRING_USED_F_NO_NOTIFY) == 0)
 	virtio_kick (vm, vring, vif);
     }
 
