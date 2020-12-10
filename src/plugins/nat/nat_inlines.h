@@ -21,7 +21,7 @@
 
 #include <vnet/fib/ip4_fib.h>
 #include <nat/nat.h>
-#include <nat/nat_ha.h>
+//#include <nat/nat44-ei/nat44_ei_ha.h>
 
 always_inline u64
 calc_nat_key (ip4_address_t addr, u16 port, u32 fib_index, u8 proto)
@@ -422,10 +422,12 @@ nat44_session_update_counters (snat_session_t * s, f64 now, uword bytes,
   s->last_heard = now;
   s->total_pkts++;
   s->total_bytes += bytes;
+#if 0
   nat_ha_sref (&s->out2in.addr, s->out2in.port, &s->ext_host_addr,
 	       s->ext_host_port, s->nat_proto, s->out2in.fib_index,
 	       s->total_pkts, s->total_bytes, thread_index,
 	       &s->ha_last_refreshed, now);
+#endif
 }
 
 /** \brief Per-user LRU list maintenance */
