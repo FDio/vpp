@@ -82,6 +82,7 @@ class ARPTestCase(VppTestCase):
         ether = rx[Ether]
         self.assertEqual(ether.dst, "ff:ff:ff:ff:ff:ff")
         self.assertEqual(ether.src, smac)
+        self.assertEqual(ether.type, 0x0806)
 
         arp = rx[ARP]
         self.assertEqual(arp.hwtype, 1)
@@ -98,6 +99,7 @@ class ARPTestCase(VppTestCase):
         ether = rx[Ether]
         self.assertEqual(ether.dst, dmac)
         self.assertEqual(ether.src, smac)
+        self.assertEqual(ether.type, 0x0806)
 
         arp = rx[ARP]
         self.assertEqual(arp.hwtype, 1)
@@ -132,6 +134,7 @@ class ARPTestCase(VppTestCase):
         ether = rx[Ether]
         self.assertEqual(ether.dst, dmac)
         self.assertEqual(ether.src, smac)
+        self.assertEqual(ether.type, 0x0800)
 
         ip = rx[IP]
         self.assertEqual(ip.src, sip)
@@ -141,6 +144,7 @@ class ARPTestCase(VppTestCase):
         ether = rx[Ether]
         self.assertEqual(ether.dst, dmac)
         self.assertEqual(ether.src, smac)
+        self.assertEqual(ether.type, 0x8847)
 
         mpls = rx[MPLS]
         self.assertTrue(mpls.label, label)
