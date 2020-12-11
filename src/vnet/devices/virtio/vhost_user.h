@@ -23,6 +23,7 @@
 #define VHOST_MEMORY_MAX_NREGIONS       8
 #define VHOST_USER_MSG_HDR_SZ           12
 #define VHOST_VRING_MAX_N               16	//8TX + 8RX
+#define VHOST_VRING_EXTENDED_MAX_N      1024
 #define VHOST_VRING_IDX_RX(qid)         (2*qid)
 #define VHOST_VRING_IDX_TX(qid)         (2*qid + 1)
 
@@ -187,6 +188,8 @@ typedef struct
   u8 started;
   u8 enabled;
   u8 log_used;
+  volatile u32 *vring_locks;
+
   //Put non-runtime in a different cache line
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   int errfd;
@@ -238,8 +241,7 @@ typedef struct
   u32 region_mmap_fd[VHOST_MEMORY_MAX_NREGIONS];
 
   //Virtual rings
-  vhost_user_vring_t vrings[VHOST_VRING_MAX_N];
-  volatile u32 *vring_locks[VHOST_VRING_MAX_N];
+  vhost_user_vring_t *vrings;
 
   int virtio_net_hdr_sz;
   int is_any_layout;
