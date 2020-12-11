@@ -376,12 +376,14 @@ vcl_segment_detach (u64 segment_handle)
 
 int
 vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
-			    uword txf_offset, u8 is_ct, vcl_session_t *s)
+			    uword txf_offset, uword mq_offset, u8 is_ct,
+			    vcl_session_t *s)
 {
   svm_fifo_shared_t *rxsf, *txsf;
+  u32 fs_index, eqs_index;
   svm_fifo_t *rxf, *txf;
   fifo_segment_t *fs;
-  u32 fs_index;
+  u64 eqs_handle;
 
   fs_index = vcl_segment_table_lookup (segment_handle);
   if (fs_index == VCL_INVALID_SEGMENT_INDEX)
@@ -389,6 +391,16 @@ vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
       VDBG (0, "ERROR: segment for session %u is not mounted!",
 	    s->session_index);
       return -1;
+    }
+
+  if (mq_offset != (uword) ~0)
+    {
+      s->vpp_evt_q = clib_mem_alloc (sizeof (svm_msg_q_t));
+      memset (s->vpp_evt_q, 0, sizeof (svm_msg_q_t));
+
+      eqs_handle = vcl_vpp_worker_segment_handle (0);
+      eqs_index = vcl_segment_table_lookup (eqs_handle);
+      ASSERT (eqs_index != VCL_INVALID_SEGMENT_INDEX);
     }
 
   rxsf = uword_to_pointer (rxf_offset, svm_fifo_shared_t *);
@@ -399,6 +411,12 @@ vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
   fs = fifo_segment_get_segment (&vcm->segment_main, fs_index);
   rxf = fifo_segment_alloc_fifo_w_shared (fs, rxsf);
   txf = fifo_segment_alloc_fifo_w_shared (fs, txsf);
+
+  if (!is_ct && mq_offset != (uword) ~0)
+    {
+      fs = fifo_segment_get_segment (&vcm->segment_main, eqs_index);
+      s->vpp_evt_q = fifo_segment_msg_q_attach (fs, mq_offset, 0);
+    }
 
   clib_rwlock_reader_unlock (&vcm->segment_table_lock);
 
@@ -416,6 +434,29 @@ vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
       s->ct_rx_fifo = rxf;
       s->ct_tx_fifo = txf;
     }
+
+  return 0;
+}
+
+int
+vcl_segment_attach_mq (uword segment_handle, uword mq_offset, svm_msg_q_t **mq)
+{
+  fifo_segment_t *fs;
+  u32 fs_index;
+
+  fs_index = vcl_segment_table_lookup (segment_handle);
+  if (fs_index == VCL_INVALID_SEGMENT_INDEX)
+    {
+      VDBG (0, "ERROR: mq segment %lx for is not attached!", segment_handle);
+      return -1;
+    }
+
+  clib_rwlock_reader_lock (&vcm->segment_table_lock);
+
+  fs = fifo_segment_get_segment (&vcm->segment_main, fs_index);
+  *mq = fifo_segment_msg_q_attach (fs, mq_offset, 0);
+
+  clib_rwlock_reader_unlock (&vcm->segment_table_lock);
 
   return 0;
 }

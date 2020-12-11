@@ -264,12 +264,12 @@ echo_segment_detach (u64 segment_handle)
 
 int
 echo_attach_session (uword segment_handle, uword rxf_offset, uword txf_offset,
-		     echo_session_t *s)
+		     uword mq_offset, echo_session_t *s)
 {
   svm_fifo_shared_t *rx_fifo, *tx_fifo;
   echo_main_t *em = &echo_main;
+  u32 fs_index, eqs_index;
   fifo_segment_t *fs;
-  u32 fs_index;
 
   fs_index = echo_segment_lookup (segment_handle);
   if (fs_index == (u32) ~0)
@@ -277,6 +277,15 @@ echo_attach_session (uword segment_handle, uword rxf_offset, uword txf_offset,
       ECHO_LOG (0, "ERROR: segment for session %u is not mounted!",
 		s->session_index);
       return -1;
+    }
+
+  if (mq_offset != (uword) ~0)
+    {
+      s->vpp_evt_q = clib_mem_alloc (sizeof (svm_msg_q_t));
+      memset (s->vpp_evt_q, 0, sizeof (svm_msg_q_t));
+
+      eqs_index = echo_segment_lookup (ECHO_MQ_SEG_HANDLE);
+      ASSERT (eqs_index != (u32) ~0);
     }
 
   rx_fifo = uword_to_pointer (rxf_offset, svm_fifo_shared_t *);
@@ -289,6 +298,38 @@ echo_attach_session (uword segment_handle, uword rxf_offset, uword txf_offset,
   fs = fifo_segment_get_segment (&em->segment_main, fs_index);
   s->rx_fifo = fifo_segment_alloc_fifo_w_shared (fs, rx_fifo);
   s->tx_fifo = fifo_segment_alloc_fifo_w_shared (fs, tx_fifo);
+
+  if (mq_offset != (uword) ~0)
+    {
+      fs = fifo_segment_get_segment (&em->segment_main, eqs_index);
+      s->vpp_evt_q = fifo_segment_msg_q_attach (fs, mq_offset, 0);
+    }
+
+  clib_spinlock_unlock (&em->segment_handles_lock);
+
+  return 0;
+}
+
+int
+echo_segment_attach_mq (uword segment_handle, uword mq_offset,
+			svm_msg_q_t **mq)
+{
+  echo_main_t *em = &echo_main;
+  fifo_segment_t *fs;
+  u32 fs_index;
+
+  fs_index = echo_segment_lookup (segment_handle);
+  if (fs_index == (u32) ~0)
+    {
+      ECHO_LOG (0, "ERROR: mq segment %lx for is not attached!",
+		segment_handle);
+      return -1;
+    }
+
+  clib_spinlock_lock (&em->segment_handles_lock);
+
+  fs = fifo_segment_get_segment (&em->segment_main, fs_index);
+  *mq = fifo_segment_msg_q_attach (fs, mq_offset, 0);
 
   clib_spinlock_unlock (&em->segment_handles_lock);
 
@@ -338,8 +379,6 @@ static void
   em->state = STATE_CLEANED_CERT_KEY;
 }
 
-#define ECHO_MQ_SEG_HANDLE ((u64) ~0 - 1)
-
 static void
 vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 {
@@ -364,8 +403,6 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
       ECHO_FAIL (ECHO_FAIL_VL_API_NULL_APP_MQ, "NULL app_mq");
       return;
     }
-  em->app_mq = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
-  em->ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
 
   if (mp->n_fds)
     {
@@ -385,6 +422,8 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 		       "svm_fifo_segment_attach failed on SSVM_SEGMENT_MEMFD");
 	    goto failed;
 	  }
+      echo_segment_attach_mq (ECHO_MQ_SEG_HANDLE, mp->vpp_ctrl_mq,
+			      &em->ctrl_mq);
 
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
 	{
@@ -401,6 +440,7 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 	    }
 	  vec_free (segment_name);
 	}
+      echo_segment_attach_mq (segment_handle, mp->app_mq, &em->app_mq);
 
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
 	svm_msg_q_set_consumer_eventfd (em->app_mq, fds[n_fds++]);
