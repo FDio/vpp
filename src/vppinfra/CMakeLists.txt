@@ -150,7 +150,6 @@ set(VPPINFRA_HEADERS
   pcap_funcs.h
   pmalloc.h
   pool.h
-  pmc.h
   ptclosure.h
   random_buffer.h
   random.h

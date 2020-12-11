@@ -47,7 +47,6 @@
 #include <vppinfra/pool.h>
 #include <vppinfra/random_buffer.h>
 #include <vppinfra/time.h>
-#include <vppinfra/pmc.h>
 #include <vppinfra/pcap.h>
 
 #include <pthread.h>
