@@ -472,8 +472,8 @@ session_mq_worker_update_handler (void *data)
   evt->event_type = SESSION_CTRL_EVT_WORKER_UPDATE_REPLY;
   rmp = (session_worker_update_reply_msg_t *) evt->data;
   rmp->handle = mp->handle;
-  rmp->rx_fifo = pointer_to_uword (s->rx_fifo->shr);
-  rmp->tx_fifo = pointer_to_uword (s->tx_fifo->shr);
+  rmp->rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
+  rmp->tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);
   rmp->segment_handle = session_segment_handle (s);
   svm_msg_q_add_and_unlock (app_wrk->event_queue, msg);
 
