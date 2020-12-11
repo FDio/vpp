@@ -132,14 +132,13 @@ udp_echo_bound_uri_cb (session_bound_msg_t * mp, echo_session_t * session)
     return;
 
   if (echo_attach_session (mp->segment_handle, mp->rx_fifo,
-	                   mp->tx_fifo, session))
+	                   mp->tx_fifo, mp->vpp_evt_q, session))
     {
       ECHO_FAIL (ECHO_FAIL_ACCEPTED_WAIT_FOR_SEG_ALLOC,
 	         "accepted wait_for_segment_allocation errored");
       return;
     }
 
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
   session->transport.is_ip4 = mp->lcl_is_ip4;
   clib_memcpy_fast (&session->transport.lcl_ip, mp->lcl_ip,
 		    sizeof (ip46_address_t));
