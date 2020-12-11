@@ -22,7 +22,14 @@
 
 #define VHOST_MEMORY_MAX_NREGIONS       8
 #define VHOST_USER_MSG_HDR_SZ           12
-#define VHOST_VRING_MAX_N               16	//8TX + 8RX
+#define VHOST_VRING_INIT_MQ_PAIR_SZ     8	//8TX + 8RX
+
+/*
+ * qid is one byte in size in the spec. Please see VHOST_USER_SET_VRING_CALL,
+ * VHOST_USER_SET_VRING_KICK, and VHOST_USER_SET_VRING_ERR.
+ * The max number for q pair is naturally 128.
+ */
+#define VHOST_VRING_MAX_MQ_PAIR_SZ      128
 #define VHOST_VRING_IDX_RX(qid)         (2*qid)
 #define VHOST_VRING_IDX_TX(qid)         (2*qid + 1)
 
@@ -187,6 +194,8 @@ typedef struct
   u8 started;
   u8 enabled;
   u8 log_used;
+  clib_spinlock_t vring_lock;
+
   //Put non-runtime in a different cache line
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   int errfd;
@@ -238,8 +247,15 @@ typedef struct
   u32 region_mmap_fd[VHOST_MEMORY_MAX_NREGIONS];
 
   //Virtual rings
-  vhost_user_vring_t vrings[VHOST_VRING_MAX_N];
-  volatile u32 *vring_locks[VHOST_VRING_MAX_N];
+  vhost_user_vring_t *vrings;
+
+  /*
+   * vrings is a dynamic array. It may have more elements than it is
+   * currently used. num_qid indicates the current total qid's in the
+   * vrings. For example, vec_len(vrings) = 64, num_qid = 60, so the
+   * current valid/used qid is (0, 59) in the vrings array.
+   */
+  u32 num_qid;
 
   int virtio_net_hdr_sz;
   int is_any_layout;
