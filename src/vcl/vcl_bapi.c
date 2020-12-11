@@ -70,6 +70,7 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
   int *fds = 0, i, rv;
   u32 n_fds = 0;
   char *segment_name = 0;
+  fifo_segment_t *apps, *emqs;
 
   if (mp->retval)
     {
@@ -77,13 +78,19 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
       goto failed;
     }
 
-  wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
-  ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
-  vcm->ctrl_mq = wrk->ctrl_mq = ctrl_mq;
+//  wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
+//  ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
+//  vcm->ctrl_mq = wrk->ctrl_mq = ctrl_mq;
   segment_handle = clib_net_to_host_u64 (mp->segment_handle);
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
     {
       VERR ("invalid segment handle");
+      goto failed;
+    }
+
+  if (!mp->n_fds)
+    {
+      VERR ("missing fifo segments");
       goto failed;
     }
 
@@ -100,6 +107,12 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 				fds[n_fds++]))
 	  goto failed;
 
+      ctrl_mq = clib_mem_alloc (sizeof (svm_msg_q_t));
+      memset (ctrl_mq, 0, sizeof (svm_msg_q_t));
+      emqs = vcl_segment_get (vcl_vpp_worker_segment_handle (0));
+      ssvm_msg_q_attach (&emqs->ssvm, mp->vpp_ctrl_mq, ctrl_mq);
+      vcm->ctrl_mq = wrk->ctrl_mq = ctrl_mq;
+
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
 	{
 	  segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
@@ -111,6 +124,8 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 	    goto failed;
 	}
 
+      apps = vcl_segment_get (segment_handle);
+      wrk->app_event_queue = fifo_segment_msg_q_attach (apps, mp->app_mq);
 
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
 	{
@@ -148,6 +163,7 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 					   mp)
 {
   int n_fds = 0, *fds = 0, i, rv;
+  fifo_segment_t *apps;
   u64 segment_handle;
   vcl_worker_t *wrk;
   u32 wrk_index;
@@ -169,8 +185,8 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
     return;
 
   wrk->vpp_wrk_index = clib_net_to_host_u32 (mp->wrk_index);
-  wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
-					   svm_msg_q_t *);
+//  wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
+//					   svm_msg_q_t *);
   wrk->ctrl_mq = vcm->ctrl_mq;
 
   segment_handle = clib_net_to_host_u64 (mp->segment_handle);
@@ -203,6 +219,9 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 	  if (rv != 0)
 	    goto failed;
 	}
+      apps = vcl_segment_get (segment_handle);
+      wrk->app_event_queue = fifo_segment_msg_q_attach (
+	  apps, mp->app_event_queue_address);
 
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
 	{
