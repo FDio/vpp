@@ -65,7 +65,6 @@ static void
 vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 {
   vcl_worker_t *wrk = vcl_worker_get (0);
-  svm_msg_q_t *ctrl_mq;
   u64 segment_handle;
   int *fds = 0, i, rv;
   u32 n_fds = 0;
@@ -77,9 +76,9 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
       goto failed;
     }
 
-  wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
-  ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
-  vcm->ctrl_mq = wrk->ctrl_mq = ctrl_mq;
+  //  wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
+  //  ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
+  //  vcm->ctrl_mq = wrk->ctrl_mq = ctrl_mq;
   segment_handle = clib_net_to_host_u64 (mp->segment_handle);
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
     {
@@ -100,6 +99,10 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 				fds[n_fds++]))
 	  goto failed;
 
+      vcl_segment_attach_mq (vcl_vpp_worker_segment_handle (0),
+			     mp->vpp_ctrl_mq, &wrk->ctrl_mq, 1);
+      vcm->ctrl_mq = wrk->ctrl_mq;
+
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
 	{
 	  segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
@@ -111,6 +114,8 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 	    goto failed;
 	}
 
+      vcl_segment_attach_mq (segment_handle, mp->app_mq, &wrk->app_event_queue,
+			     0);
 
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
 	{
@@ -169,8 +174,8 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
     return;
 
   wrk->vpp_wrk_index = clib_net_to_host_u32 (mp->wrk_index);
-  wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
-					   svm_msg_q_t *);
+  //  wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
+  //					   svm_msg_q_t *);
   wrk->ctrl_mq = vcm->ctrl_mq;
 
   segment_handle = clib_net_to_host_u64 (mp->segment_handle);
@@ -203,6 +208,9 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 	  if (rv != 0)
 	    goto failed;
 	}
+
+      vcl_segment_attach_mq (segment_handle, mp->app_event_queue_address,
+			     &wrk->app_event_queue, 0);
 
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
 	{
