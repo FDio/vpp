@@ -80,37 +80,40 @@ crypto_sw_scheduler_frame_enqueue (vlib_main_t * vm,
   crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
   crypto_sw_scheduler_per_thread_data_t *ptd
     = vec_elt_at_index (cm->per_thread_data, vm->thread_index);
-  crypto_sw_scheduler_queue_t *q = ptd->queues[frame->op];
-  u64 head = q->head;
+  u64 head = ptd->queue.head;
 
-  if (q->jobs[head & CRYPTO_SW_SCHEDULER_QUEUE_MASK])
+  if (ptd->queue.jobs[head & CRYPTO_SW_SCHEDULER_QUEUE_MASK])
     {
       u32 n_elts = frame->n_elts, i;
       for (i = 0; i < n_elts; i++)
 	frame->elts[i].status = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
       return -1;
     }
-  q->jobs[head & CRYPTO_SW_SCHEDULER_QUEUE_MASK] = frame;
+
+  ptd->queue.jobs[head & CRYPTO_SW_SCHEDULER_QUEUE_MASK] = frame;
   head += 1;
   CLIB_MEMORY_STORE_BARRIER ();
-  q->head = head;
+  ptd->queue.head = head;
   return 0;
 }
 
 static_always_inline vnet_crypto_async_frame_t *
-crypto_sw_scheduler_get_pending_frame (crypto_sw_scheduler_queue_t * q)
+crypto_sw_scheduler_get_pending_frame (crypto_sw_scheduler_per_thread_data_t *
+				       ptd,
+				       vnet_crypto_async_op_id_t async_op_id)
 {
   vnet_crypto_async_frame_t *f;
   u32 i;
-  u32 tail = q->tail;
-  u32 head = q->head;
+  u32 tail = ptd->queue.tail;
+  u32 head = ptd->queue.head;
 
   for (i = tail; i < head; i++)
     {
-      f = q->jobs[i & CRYPTO_SW_SCHEDULER_QUEUE_MASK];
+      f = ptd->queue.jobs[i & CRYPTO_SW_SCHEDULER_QUEUE_MASK];
       if (!f)
 	continue;
-      if (clib_atomic_bool_cmp_and_swap
+
+      if (f->op == async_op_id && clib_atomic_bool_cmp_and_swap
 	  (&f->state, VNET_CRYPTO_FRAME_STATE_PENDING,
 	   VNET_CRYPTO_FRAME_STATE_WORK_IN_PROGRESS))
 	{
@@ -121,18 +124,20 @@ crypto_sw_scheduler_get_pending_frame (crypto_sw_scheduler_queue_t * q)
 }
 
 static_always_inline vnet_crypto_async_frame_t *
-crypto_sw_scheduler_get_completed_frame (crypto_sw_scheduler_queue_t * q)
+crypto_sw_scheduler_get_completed_frame (crypto_sw_scheduler_per_thread_data_t
+					 * ptd)
 {
   vnet_crypto_async_frame_t *f = 0;
-  if (q->jobs[q->tail & CRYPTO_SW_SCHEDULER_QUEUE_MASK]
-      && q->jobs[q->tail & CRYPTO_SW_SCHEDULER_QUEUE_MASK]->state
-      >= VNET_CRYPTO_FRAME_STATE_SUCCESS)
+  if (ptd->queue.jobs[ptd->queue.tail & CRYPTO_SW_SCHEDULER_QUEUE_MASK]
+      && ptd->queue.jobs[ptd->queue.
+			 tail & CRYPTO_SW_SCHEDULER_QUEUE_MASK]->state >=
+      VNET_CRYPTO_FRAME_STATE_SUCCESS)
     {
-      u32 tail = q->tail;
+      u32 tail = ptd->queue.tail;
       CLIB_MEMORY_STORE_BARRIER ();
-      q->tail++;
-      f = q->jobs[tail & CRYPTO_SW_SCHEDULER_QUEUE_MASK];
-      q->jobs[tail & CRYPTO_SW_SCHEDULER_QUEUE_MASK] = 0;
+      ptd->queue.tail++;
+      f = ptd->queue.jobs[tail & CRYPTO_SW_SCHEDULER_QUEUE_MASK];
+      ptd->queue.jobs[tail & CRYPTO_SW_SCHEDULER_QUEUE_MASK] = 0;
     }
   return f;
 }
@@ -324,7 +329,6 @@ crypto_sw_scheduler_dequeue_aead (vlib_main_t * vm,
 {
   crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
   crypto_sw_scheduler_per_thread_data_t *ptd = 0;
-  crypto_sw_scheduler_queue_t *q = 0;
   vnet_crypto_async_frame_t *f = 0;
   vnet_crypto_async_frame_elt_t *fe;
   u32 *bi;
@@ -338,8 +342,7 @@ crypto_sw_scheduler_dequeue_aead (vlib_main_t * vm,
       vec_foreach_index (i, cm->per_thread_data)
       {
         ptd = cm->per_thread_data + i;
-        q = ptd->queues[async_op_id];
-        f = crypto_sw_scheduler_get_pending_frame (q);
+        f = crypto_sw_scheduler_get_pending_frame (ptd, async_op_id);
         if (f)
           break;
       }
@@ -347,6 +350,7 @@ crypto_sw_scheduler_dequeue_aead (vlib_main_t * vm,
     }
 
   ptd = cm->per_thread_data + vm->thread_index;
+
 
   if (f)
     {
@@ -376,7 +380,7 @@ crypto_sw_scheduler_dequeue_aead (vlib_main_t * vm,
       *enqueue_thread_idx = f->enqueue_thread_index;
     }
 
-  return crypto_sw_scheduler_get_completed_frame (ptd->queues[async_op_id]);
+  return crypto_sw_scheduler_get_completed_frame (ptd);
 }
 
 static_always_inline vnet_crypto_async_frame_t *
@@ -390,7 +394,6 @@ crypto_sw_scheduler_dequeue_link (vlib_main_t * vm,
 {
   crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
   crypto_sw_scheduler_per_thread_data_t *ptd = 0;
-  crypto_sw_scheduler_queue_t *q = 0;
   vnet_crypto_async_frame_t *f = 0;
   vnet_crypto_async_frame_elt_t *fe;
   u32 *bi;
@@ -404,8 +407,7 @@ crypto_sw_scheduler_dequeue_link (vlib_main_t * vm,
       vec_foreach_index (i, cm->per_thread_data)
       {
         ptd = cm->per_thread_data + i;
-        q = ptd->queues[async_op_id];
-        f = crypto_sw_scheduler_get_pending_frame (q);
+        f = crypto_sw_scheduler_get_pending_frame (ptd, async_op_id);
         if (f)
           break;
       }
@@ -464,7 +466,7 @@ crypto_sw_scheduler_dequeue_link (vlib_main_t * vm,
       *enqueue_thread_idx = f->enqueue_thread_index;
     }
 
-  return crypto_sw_scheduler_get_completed_frame (ptd->queues[async_op_id]);
+  return crypto_sw_scheduler_get_completed_frame (ptd);
 }
 
 static clib_error_t *
@@ -630,8 +632,7 @@ crypto_sw_scheduler_init (vlib_main_t * vm)
   clib_error_t *error = 0;
   crypto_sw_scheduler_per_thread_data_t *ptd;
 
-  u32 queue_size = CRYPTO_SW_SCHEDULER_QUEUE_SIZE * sizeof (void *)
-    + sizeof (crypto_sw_scheduler_queue_t);
+  u32 queue_size = CRYPTO_SW_SCHEDULER_QUEUE_SIZE * sizeof (void *);
 
   vec_validate_aligned (cm->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
@@ -639,15 +640,14 @@ crypto_sw_scheduler_init (vlib_main_t * vm)
   vec_foreach (ptd, cm->per_thread_data)
   {
     ptd->self_crypto_enabled = 1;
-    u32 i;
-    for (i = 0; i < VNET_CRYPTO_ASYNC_OP_N_IDS; i++)
-      {
-	crypto_sw_scheduler_queue_t *q
-	  = clib_mem_alloc_aligned (queue_size, CLIB_CACHE_LINE_BYTES);
-	ASSERT (q != 0);
-	ptd->queues[i] = q;
-	clib_memset_u8 (q, 0, queue_size);
-      }
+    ptd->queue.head = 0;
+    ptd->queue.tail = 0;
+
+    vnet_crypto_async_frame_t **jobs
+      = clib_mem_alloc_aligned (queue_size, CLIB_CACHE_LINE_BYTES);
+    ASSERT (jobs != 0);
+    ptd->queue.jobs = jobs;
+    clib_memset_u8 (jobs, 0, queue_size);
   }
 
   cm->crypto_engine_index =

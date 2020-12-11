@@ -710,7 +710,11 @@ vnet_crypto_init (vlib_main_t * vm)
   cm->async_alg_index_by_name = hash_create_string (0, sizeof (uword));
   vec_validate_aligned (cm->threads, tm->n_vlib_mains, CLIB_CACHE_LINE_BYTES);
   vec_foreach (ct, cm->threads)
-    pool_alloc_aligned (ct->frame_pool, 1024, CLIB_CACHE_LINE_BYTES);
+  {
+    pool_init_fixed (ct->frame_pool,
+		     VNET_CRYPTO_ASYNC_FRAMES_MAX_COUNT +
+		     VNET_CRYPTO_ASYNC_OP_N_IDS);
+  }
   vec_validate (cm->algs, VNET_CRYPTO_N_ALGS);
   vec_validate (cm->async_algs, VNET_CRYPTO_N_ASYNC_ALGS);
   clib_bitmap_validate (cm->async_active_ids, VNET_CRYPTO_ASYNC_OP_N_IDS - 1);

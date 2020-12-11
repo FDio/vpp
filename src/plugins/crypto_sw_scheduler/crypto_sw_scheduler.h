@@ -18,21 +18,23 @@
 #ifndef __crypto_sw_scheduler_h__
 #define __crypto_sw_scheduler_h__
 
-#define CRYPTO_SW_SCHEDULER_QUEUE_SIZE 64
+#define CRYPTO_SW_SCHEDULER_QUEUE_SIZE VNET_CRYPTO_ASYNC_FRAMES_MAX_COUNT
 #define CRYPTO_SW_SCHEDULER_QUEUE_MASK (CRYPTO_SW_SCHEDULER_QUEUE_SIZE - 1)
+STATIC_ASSERT ((0 ==
+		(CRYPTO_SW_SCHEDULER_QUEUE_SIZE &
+		 (CRYPTO_SW_SCHEDULER_QUEUE_SIZE - 1))),
+	       "CRYPTO_SW_SCHEDULER_QUEUE_SIZE is not pow2");
 
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u32 head;
-  u32 tail;
-  vnet_crypto_async_frame_t *jobs[0];
-} crypto_sw_scheduler_queue_t;
 
-typedef struct
-{
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  crypto_sw_scheduler_queue_t *queues[VNET_CRYPTO_ASYNC_OP_N_IDS];
+  struct
+  {
+    u32 head;
+    u32 tail;
+    vnet_crypto_async_frame_t **jobs;
+  } queue;
   vnet_crypto_op_t *crypto_ops;
   vnet_crypto_op_t *integ_ops;
   vnet_crypto_op_t *chained_crypto_ops;
