@@ -104,6 +104,18 @@ fifo_segment_t *fifo_segment_get_segment (fifo_segment_main_t * sm,
 u32 fifo_segment_index (fifo_segment_main_t * sm, fifo_segment_t * fs);
 void fifo_segment_info (fifo_segment_t * seg, char **address, size_t * size);
 
+always_inline void *
+fifo_segment_ptr (fifo_segment_t *fs, uword offset)
+{
+  return (void *)((u8 *) fs->h + offset);
+}
+
+always_inline uword
+fifo_segment_offset (fifo_segment_t *fs, void *p)
+{
+  return (uword)((u8 *) p - (u8 *) fs->h);
+}
+
 /**
  * Allocate fifo in fifo segment
  *
@@ -116,8 +128,8 @@ svm_fifo_t *fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs,
 					     u32 slice_index,
 					     u32 data_bytes,
 					     fifo_segment_ftype_t ftype);
-svm_fifo_t *fifo_segment_alloc_fifo_w_shared (fifo_segment_t *fs,
-                                              svm_fifo_shared_t *sf);
+svm_fifo_t *fifo_segment_alloc_fifo_w_offset (fifo_segment_t *fs,
+                                              uword offset);
 
 /**
  * Free fifo allocated in fifo segment
@@ -130,9 +142,14 @@ void fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f);
 void fifo_segment_detach_fifo (fifo_segment_t * fs, svm_fifo_t * f);
 void fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t * f,
 			       u32 slice_index);
+uword fifo_segment_fifo_offset (svm_fifo_t *f);
 
 svm_msg_q_t *fifo_segment_msg_q_alloc (fifo_segment_t *fs, svm_msg_q_cfg_t *cfg);
 svm_msg_q_t *fifo_segment_msg_q_attach (fifo_segment_t *fs, uword offset);
+uword fifo_segment_msg_q_offset (fifo_segment_t *fs);
+
+uword ssvm_msg_q_offset (ssvm_private_t *s, svm_msg_q_shared_t *mq);
+void ssvm_msg_q_attach (ssvm_private_t *s, uword offset, svm_msg_q_t *mq);
 
 /**
  * Try to preallocate fifo headers
