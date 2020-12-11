@@ -219,6 +219,7 @@ help:
 	@echo " docs-venv            - Build the virtual environment for the Sphinx docs"
 	@echo " docs-clean           - Remove the generated files from the Sphinx docs"
 	@echo " stats-fs-help        - Help to build the stats segment file system"
+	@echo " vpptop               - provide the VPPTop binary"
 	@echo ""
 	@echo "Make Arguments:"
 	@echo " V=[0|1]                  - set build verbosity level"
@@ -684,6 +685,25 @@ stats-fs-force-unmount:
 .PHONY: stats-fs-stop
 stats-fs-stop:
 	@extras/vpp_stats_fs/install.sh stop
+
+# Build VPPTop
+
+.PHONY: vpptop-install
+vpptop-install: json-api-files
+	@extras/scripts/vpptop.sh install
+
+.PHONY: vpptop-start
+vpptop-start:
+	@extras/scripts/vpptop.sh start
+
+.PHONY: vpptop-cleanup
+vpptop-cleanup:
+	@extras/scripts/vpptop.sh cleanup
+
+.PHONY: vpptop-help
+vpptop-help:
+	@extras/scripts/vpptop.sh help
+
 
 #
 # Build the documentation
