@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "0e534d4f_734cd43c",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-12-11T22:52:31Z",
+      "side": 1,
+      "message": "No, I don\u0027t think so. The JSON renderer is just a representation of the API in JSON.\nThis is generating code that will convert between JSON instances and VPP API binary.",
+      "parentUuid": "58b998ee_71ebd925",
+      "range": {
+        "startLine": 190,
+        "startChar": 0,
+        "endLine": 204,
+        "endChar": 43
+      },
+      "revId": "eb7b0b61fd042a837d0c33f02abb39ba5a8b999e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "2d88f5ee_33ae2b5b",
         "filename": "src/vat2/test/vat2_test.api",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2020-12-11T15:35:38Z",
       "side": 1,
       "message": "Do we need to test the other values we talked about?\nBLACK \u003d 0x0\nWHITE \u003d 0x7",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 26,
+        "endChar": 2
+      },
+      "revId": "eb7b0b61fd042a837d0c33f02abb39ba5a8b999e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "159b3beb_9d247844",
+        "filename": "src/vat2/test/vat2_test.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-12-11T22:52:31Z",
+      "side": 1,
+      "message": "This code doesn\u0027t do any validation of the data model as such. Only represents set bits in an enum as JSON arrays.\nBut in general, yes there should be unit tests here for all types converted.\nWill do in separate patch.",
+      "parentUuid": "2d88f5ee_33ae2b5b",
       "range": {
         "startLine": 22,
         "startChar": 0,
