@@ -1909,8 +1909,9 @@ session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
   svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
   svm_msg_q_msg_t msg1, msg2, msg[12];
   int __clib_unused verbose, i, rv;
-  svm_msg_q_t *mq;
+  svm_msg_q_shared_t *smq;
   svm_msg_q_ring_t *ring;
+  svm_msg_q_t _mq, *mq = &_mq;
   u8 *rings_ptr;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1933,28 +1934,29 @@ session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
   cfg->q_nitems = 16;
   cfg->ring_cfgs = rc;
 
-  mq = svm_msg_q_alloc (cfg);
+  smq = svm_msg_q_alloc (cfg);
+  svm_msg_q_attach (mq, smq);
   SESSION_TEST (mq != 0, "svm_msg_q_alloc");
   SESSION_TEST (vec_len (mq->rings) == 2, "ring allocation");
   rings_ptr = (u8 *) mq->rings + vec_bytes (mq->rings);
   vec_foreach (ring, mq->rings)
   {
-    SESSION_TEST (ring->data == rings_ptr, "ring data");
+    SESSION_TEST (ring->shr->data == rings_ptr, "ring data");
     rings_ptr += (uword) ring->nitems * ring->elsize;
   }
 
   msg1 = svm_msg_q_alloc_msg (mq, 8);
-  rv = (mq->rings[0].cursize != 1
+  rv = (mq->rings[0].shr->cursize != 1
 	|| msg1.ring_index != 0 || msg1.elt_index != 0);
   SESSION_TEST (rv == 0, "msg alloc1");
 
   msg2 = svm_msg_q_alloc_msg (mq, 15);
-  rv = (mq->rings[1].cursize != 1
+  rv = (mq->rings[1].shr->cursize != 1
 	|| msg2.ring_index != 1 || msg2.elt_index != 0);
   SESSION_TEST (rv == 0, "msg alloc2");
 
   svm_msg_q_free_msg (mq, &msg1);
-  SESSION_TEST (mq->rings[0].cursize == 0, "free msg");
+  SESSION_TEST (mq->rings[0].shr->cursize == 0, "free msg");
 
   for (i = 0; i < 12; i++)
     {
@@ -1962,7 +1964,7 @@ session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
       *(u32 *) svm_msg_q_msg_data (mq, &msg[i]) = i;
     }
 
-  rv = (mq->rings[0].cursize != 8 || mq->rings[1].cursize != 5);
+  rv = (mq->rings[0].shr->cursize != 8 || mq->rings[1].shr->cursize != 5);
   SESSION_TEST (rv == 0, "msg alloc3");
 
   *(u32 *) svm_msg_q_msg_data (mq, &msg2) = 123;
@@ -1998,7 +2000,7 @@ session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
 	SESSION_TEST (0, "dequeue2 wrong data");
       svm_msg_q_free_msg (mq, &msg[i]);
     }
-  rv = (mq->rings[0].cursize == 0 && mq->rings[1].cursize == 0);
+  rv = (mq->rings[0].shr->cursize == 0 && mq->rings[1].shr->cursize == 0);
   SESSION_TEST (rv, "post dequeue");
 
   return 0;

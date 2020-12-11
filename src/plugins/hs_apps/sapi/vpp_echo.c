@@ -556,15 +556,13 @@ session_accepted_handler (session_accepted_msg_t * mp)
   session = echo_session_new (em);
 
   if (echo_attach_session (mp->segment_handle, mp->server_rx_fifo,
-	                   mp->server_tx_fifo, session))
+	                   mp->server_tx_fifo, mp->vpp_event_queue_address,
+	                   session))
     {
       ECHO_FAIL (ECHO_FAIL_ACCEPTED_WAIT_FOR_SEG_ALLOC,
 	         "accepted wait_for_segment_allocation errored");
       return;
     }
-
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
-					 svm_msg_q_t *);
 
   session->vpp_session_handle = mp->handle;
 
@@ -617,14 +615,14 @@ session_connected_handler (session_connected_msg_t * mp)
   session = echo_session_new (em);
 
   if (echo_attach_session (mp->segment_handle, mp->server_rx_fifo,
-	                   mp->server_tx_fifo, session))
+	                   mp->server_tx_fifo, mp->vpp_event_queue_address,
+	                   session))
     {
       ECHO_FAIL (ECHO_FAIL_CONNECTED_WAIT_FOR_SEG_ALLOC,
 		 "connected wait_for_segment_allocation errored");
       return;
     }
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
-					 svm_msg_q_t *);
+
   session->vpp_session_handle = mp->handle;
   session->start = clib_time_now (&em->clib_time);
   session->listener_index = listener_index;
@@ -806,7 +804,7 @@ echo_process_rpcs (echo_main_t * em)
 {
   echo_rpc_msg_t *rpc;
   svm_msg_q_msg_t msg;
-  svm_msg_q_t *mq = em->rpc_msq_queue;
+  svm_msg_q_t *mq = &em->rpc_msq_queue;
 
   while (em->state < STATE_DATA_DONE && !em->time_to_stop)
     {
@@ -1321,7 +1319,7 @@ main (int argc, char **argv)
   cfg->n_rings = 1;
   cfg->q_nitems = rpc_queue_size;
   cfg->ring_cfgs = rc;
-  em->rpc_msq_queue = svm_msg_q_alloc (cfg);
+  svm_msg_q_attach (&em->rpc_msq_queue, svm_msg_q_alloc (cfg));
 
   signal (SIGINT, stop_signal);
   signal (SIGQUIT, stop_signal);

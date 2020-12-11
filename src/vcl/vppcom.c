@@ -374,11 +374,9 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
       goto error;
     }
 
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
-					 svm_msg_q_t *);
-
   if (vcl_segment_attach_session (mp->segment_handle, mp->server_rx_fifo,
-                                  mp->server_tx_fifo, session))
+                                  mp->server_tx_fifo,
+                                  mp->vpp_event_queue_address, session))
     {
       VDBG (0, "failed to attach fifos for %u", session->session_index);
       goto error;
@@ -412,9 +410,11 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
   return session->session_index;
 
 error:
-  evt_q = uword_to_pointer (mp->vpp_event_queue_address, svm_msg_q_t *);
+  vcl_segment_attach_mq (vcl_vpp_worker_segment_handle (0),
+                         mp->vpp_event_queue_address, &evt_q, 1);
   vcl_send_session_accepted_reply (evt_q, mp->context, mp->handle,
 				   VNET_API_ERROR_INVALID_ARGUMENT);
+  // TODO free evt_q
   vcl_session_free (wrk, session);
   return VCL_INVALID_SESSION_INDEX;
 }
@@ -444,11 +444,10 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
     }
 
   session->vpp_handle = mp->handle;
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
-					 svm_msg_q_t *);
 
   if (vcl_segment_attach_session (mp->segment_handle, mp->server_rx_fifo,
-	                          mp->server_tx_fifo, session))
+	                          mp->server_tx_fifo,
+	                          mp->vpp_event_queue_address, session))
     {
       VDBG (0, "failed to attach fifos for %u", session->session_index);
       session->session_state = VCL_STATE_DETACHED;
@@ -459,7 +458,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   if (mp->ct_rx_fifo)
     {
       if (vcl_segment_attach_session (mp->ct_segment_handle, mp->ct_rx_fifo,
-	                              mp->ct_tx_fifo, session))
+	                              mp->ct_tx_fifo, (uword) ~0, session))
         {
           VDBG (0, "failed to attach ct fifos for %u",
                 session->session_index);
@@ -572,12 +571,11 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
   session->transport.lcl_port = mp->lcl_port;
   vcl_session_table_add_listener (wrk, mp->handle, sid);
   session->session_state = VCL_STATE_LISTEN;
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
 
   if (vcl_session_is_cl (session))
     {
       if (vcl_segment_attach_session (mp->segment_handle, mp->rx_fifo,
-	                              mp->tx_fifo, session))
+	                              mp->tx_fifo, mp->vpp_evt_q, session))
         {
           VDBG (0, "failed to attach fifos for %u", session->session_index);
           session->session_state = VCL_STATE_DETACHED;
@@ -646,7 +644,9 @@ vcl_session_migrated_handler (vcl_worker_t * wrk, void *data)
     }
 
   s->vpp_handle = mp->new_handle;
-  s->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
+
+  vcl_segment_attach_mq (vcl_vpp_worker_segment_handle (0), mp->vpp_evt_q,
+                         &s->vpp_evt_q , 1);
 
   vcl_session_table_del_vpp_handle (wrk, mp->handle);
   vcl_session_table_add_vpp_handle (wrk, mp->new_handle, s->session_index);
@@ -856,7 +856,7 @@ vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void *data)
   if (s->rx_fifo)
     {
       if (vcl_segment_attach_session (msg->segment_handle, msg->rx_fifo,
-                                      msg->tx_fifo, s))
+                                      msg->tx_fifo, (uword) ~0, s))
         {
           VDBG (0, "failed to attach fifos for %u", s->session_index);
           return;
