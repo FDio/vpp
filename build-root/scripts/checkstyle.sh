@@ -141,6 +141,17 @@ for i in ${FILELIST}; do
     fi
 done
 
+if [ "${FULL}" == "0" ]; then
+	# check the last commit or uncommitted changes for trailing whitespace
+	TRAILSPACE_LINES=$((git diff HEAD~1..; git diff) | grep '^+ ' | egrep -e '[ \t]$' | wc -l)
+	if [ "${TRAILSPACE_LINES}" != "0" ]; then
+		echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+		echo "ATTENTION: Found ${TRAILSPACE_LINES} new line(s) with trailing space(s), please fix"
+		echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+		EXIT_CODE=1
+	fi
+fi
+
 if [ ${EXIT_CODE} == 0 ]; then
     echo "*******************************************************************"
     echo "* VPP CHECKSTYLE SUCCESSFULLY COMPLETED"
