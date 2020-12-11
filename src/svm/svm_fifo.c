@@ -398,6 +398,7 @@ svm_fifo_init (svm_fifo_t * f, u32 size)
     {
       c->start_byte = prev->start_byte + prev->length;
       c->enq_rb_index = c->deq_rb_index = RBTREE_TNIL_INDEX;
+      ASSERT (c->length >= 1 << FS_MIN_LOG2_CHUNK_SZ);
       prev = c;
       c = f_cptr (f, c->next);
     }
