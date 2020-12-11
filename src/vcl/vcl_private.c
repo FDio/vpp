@@ -379,7 +379,6 @@ vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
 			    uword txf_offset, uword mq_offset, u8 is_ct,
 			    vcl_session_t *s)
 {
-  svm_fifo_shared_t *rxsf, *txsf;
   u32 fs_index, eqs_index;
   svm_fifo_t *rxf, *txf;
   fifo_segment_t *fs;
@@ -393,24 +392,18 @@ vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
       return -1;
     }
 
-  if (mq_offset != (uword) ~0)
+  if (!is_ct && mq_offset != (uword) ~0)
     {
-      s->vpp_evt_q = clib_mem_alloc (sizeof (svm_msg_q_t));
-      memset (s->vpp_evt_q, 0, sizeof (svm_msg_q_t));
-
       eqs_handle = vcl_vpp_worker_segment_handle (0);
       eqs_index = vcl_segment_table_lookup (eqs_handle);
       ASSERT (eqs_index != VCL_INVALID_SEGMENT_INDEX);
     }
 
-  rxsf = uword_to_pointer (rxf_offset, svm_fifo_shared_t *);
-  txsf = uword_to_pointer (txf_offset, svm_fifo_shared_t *);
-
   clib_rwlock_reader_lock (&vcm->segment_table_lock);
 
   fs = fifo_segment_get_segment (&vcm->segment_main, fs_index);
-  rxf = fifo_segment_alloc_fifo_w_shared (fs, rxsf);
-  txf = fifo_segment_alloc_fifo_w_shared (fs, txsf);
+  rxf = fifo_segment_alloc_fifo_w_offset (fs, rxf_offset);
+  txf = fifo_segment_alloc_fifo_w_offset (fs, txf_offset);
 
   if (!is_ct && mq_offset != (uword) ~0)
     {
@@ -422,8 +415,8 @@ vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
 
   if (!is_ct)
     {
-      rxsf->client_session_index = s->session_index;
-      txsf->client_session_index = s->session_index;
+      rxf->shr->client_session_index = s->session_index;
+      txf->shr->client_session_index = s->session_index;
       rxf->client_thread_index = vcl_get_worker_index ();
       txf->client_thread_index = vcl_get_worker_index ();
       s->rx_fifo = rxf;
