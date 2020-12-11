@@ -278,7 +278,11 @@ fifo_segment_init (fifo_segment_t * fs)
   ASSERT (fsh->max_byte_index <= sh->ssvm_size - offset);
 
   fs->max_byte_index = fsh->max_byte_index;
-  fs->h = sh->opaque[0] = fsh;
+  fs->h = fsh;
+  sh->opaque[0] = (void *) ((u8 *) fsh - (u8 *) fs->ssvm.sh);
+
+  /* Allow random offsets */
+  fs->ssvm.sh->ssvm_va = 0;
 
   vec_validate (fs->slices, fs->n_slices - 1);
   for (i = 0; i < fs->n_slices; i++)
@@ -338,7 +342,7 @@ fifo_segment_attach (fifo_segment_main_t * sm, fifo_segment_create_args_t * a)
   fs->ssvm.ssvm_size = a->segment_size;
   fs->ssvm.my_pid = getpid ();
   fs->ssvm.name = format (0, "%s%c", a->segment_name, 0);
-  fs->ssvm.requested_va = sm->next_baseva;
+  fs->ssvm.requested_va = 0;
   if (a->segment_type == SSVM_SEGMENT_MEMFD)
     fs->ssvm.fd = a->memfd_fd;
   else
@@ -346,17 +350,17 @@ fifo_segment_attach (fifo_segment_main_t * sm, fifo_segment_create_args_t * a)
 
   if ((rv = ssvm_client_init (&fs->ssvm, a->segment_type)))
     {
-      _vec_len (fs) = vec_len (fs) - 1;
+      pool_put (sm->segments, fs);
       return (rv);
     }
 
-  /* Fish the segment header */
-  fsh = fs->h = fs->ssvm.sh->opaque[0];
-
   /* Probably a segment without fifos */
-  if (!fsh)
+  if (!fs->ssvm.sh->opaque[0])
     goto done;
 
+  fsh = fs->h = (void *) fs->ssvm.sh + (uword) fs->ssvm.sh->opaque[0];
+  clib_warning ("segment mapped at %lx opaque %lx", fs->ssvm.sh,
+		(uword) fs->ssvm.sh->opaque[0]);
   fs->max_byte_index = fsh->max_byte_index;
   vec_validate (fs->slices, 0);
   fs->slices[0].fifos =
@@ -824,9 +828,12 @@ done:
 }
 
 svm_fifo_t *
-fifo_segment_alloc_fifo_w_shared (fifo_segment_t *fs, svm_fifo_shared_t *sf)
+fifo_segment_alloc_fifo_w_offset (fifo_segment_t *fs, uword offset)
 {
   svm_fifo_t *f = fs_fifo_alloc (fs, 0);
+  svm_fifo_shared_t *sf;
+
+  sf = (svm_fifo_shared_t *) ((u8 *) fs->h + offset);
   f->fs_hdr = fs->h;
   f->shr = sf;
 
@@ -948,6 +955,12 @@ fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t * f,
       clib_atomic_fetch_add_rel (&fss->num_chunks[fl_index], 1);
       c = fs_chunk_ptr (fs->h, c->next);
     }
+}
+
+uword
+fifo_segment_fifo_offset (svm_fifo_t *f)
+{
+  return (u8 *) f->shr - (u8 *) f->fs_hdr;
 }
 
 svm_msg_q_t *
