@@ -119,23 +119,12 @@ vhost_user_name_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
 }
 
 /**
- * @brief Try once to lock the vring
- * @return 0 on success, non-zero on failure.
- */
-static_always_inline int
-vhost_user_vring_try_lock (vhost_user_intf_t * vui, u32 qid)
-{
-  return clib_atomic_test_and_set (vui->vring_locks[qid]);
-}
-
-/**
  * @brief Spin until the vring is successfully locked
  */
 static_always_inline void
 vhost_user_vring_lock (vhost_user_intf_t * vui, u32 qid)
 {
-  while (vhost_user_vring_try_lock (vui, qid))
-    ;
+  clib_spinlock_lock_if_init (&vui->vrings[qid].vring_lock);
 }
 
 /**
@@ -144,7 +133,7 @@ vhost_user_vring_lock (vhost_user_intf_t * vui, u32 qid)
 static_always_inline void
 vhost_user_vring_unlock (vhost_user_intf_t * vui, u32 qid)
 {
-  clib_atomic_release (vui->vring_locks[qid]);
+  clib_spinlock_unlock_if_init (&vui->vrings[qid].vring_lock);
 }
 
 static_always_inline void
