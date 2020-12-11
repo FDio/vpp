@@ -865,7 +865,9 @@ segment_manager_alloc_queue (fifo_segment_t * segment,
 
 //  base = fifo_segment_alloc (segment, svm_msg_q_size_to_alloc (cfg));
 //  q = svm_msg_q_init (base, cfg);
+
   q = fifo_segment_msg_q_alloc (segment, cfg);
+
 //  oldheap = ssvm_push_heap (segment->ssvm.sh);
 //  q = svm_msg_q_alloc (cfg);
 //  fifo_segment_update_free_bytes (segment);

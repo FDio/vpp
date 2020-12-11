@@ -131,6 +131,7 @@ mq_send_session_accepted_cb (session_t * s)
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   svm_msg_q_msg_t _msg, *msg = &_msg;
   svm_msg_q_t *vpp_queue, *app_mq;
+  ssvm_private_t *eq_seg;
   session_t *listener;
   session_accepted_msg_t *mp;
   session_event_t *evt;
@@ -147,10 +148,12 @@ mq_send_session_accepted_cb (session_t * s)
   mp = (session_accepted_msg_t *) evt->data;
   clib_memset (mp, 0, sizeof (*mp));
   mp->context = app->app_index;
-  mp->server_rx_fifo = pointer_to_uword (s->rx_fifo->f_shr);
-  mp->server_tx_fifo = pointer_to_uword (s->tx_fifo->f_shr);
+  mp->server_rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
+  mp->server_tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);
   mp->segment_handle = session_segment_handle (s);
   mp->flags = s->flags;
+
+  eq_seg = session_main_get_evt_q_segment ();
 
   if (session_has_transport (s))
     {
@@ -165,7 +168,8 @@ mq_send_session_accepted_cb (session_t * s)
 	    mp->listener_handle = listen_session_get_handle (listener);
 	}
       vpp_queue = session_main_get_vpp_event_queue (s->thread_index);
-      mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
+//      mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
+      mp->vpp_event_queue_address = ssvm_msg_q_offset (eq_seg, vpp_queue);
       mp->handle = session_handle (s);
 
       session_get_endpoint (s, &mp->rmt, 0 /* is_lcl */ );
@@ -181,7 +185,8 @@ mq_send_session_accepted_cb (session_t * s)
       mp->rmt.port = ct->c_rmt_port;
       mp->handle = session_handle (s);
       vpp_queue = session_main_get_vpp_event_queue (s->thread_index);
-      mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
+//      mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
+      mp->vpp_event_queue_address = ssvm_msg_q_offset (eq_seg, vpp_queue);
     }
   svm_msg_q_add_and_unlock (app_mq, msg);
 
@@ -264,6 +269,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
   session_connected_msg_t *mp;
   svm_msg_q_t *vpp_mq, *app_mq;
   transport_connection_t *tc;
+  ssvm_private_t *eq_seg;
   app_worker_t *app_wrk;
   session_event_t *evt;
 
@@ -289,6 +295,8 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
   if (err)
     goto done;
 
+  eq_seg = session_main_get_evt_q_segment ();
+
   if (session_has_transport (s))
     {
       tc = session_get_transport (s);
@@ -301,12 +309,13 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 
       vpp_mq = session_main_get_vpp_event_queue (s->thread_index);
       mp->handle = session_handle (s);
-      mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
+//      mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
+      mp->vpp_event_queue_address = ssvm_msg_q_offset (eq_seg, vpp_mq);
 
       session_get_endpoint (s, &mp->lcl, 1 /* is_lcl */ );
 
-      mp->server_rx_fifo = pointer_to_uword (s->rx_fifo->f_shr);
-      mp->server_tx_fifo = pointer_to_uword (s->tx_fifo->f_shr);
+      mp->server_rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
+      mp->server_tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);
       mp->segment_handle = session_segment_handle (s);
     }
   else
@@ -319,13 +328,14 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       mp->lcl.port = cct->c_lcl_port;
       mp->lcl.is_ip4 = cct->c_is_ip4;
       vpp_mq = session_main_get_vpp_event_queue (s->thread_index);
-      mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
-      mp->server_rx_fifo = pointer_to_uword (s->rx_fifo->f_shr);
-      mp->server_tx_fifo = pointer_to_uword (s->tx_fifo->f_shr);
+//      mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
+      mp->vpp_event_queue_address = ssvm_msg_q_offset (eq_seg, vpp_mq);;
+      mp->server_rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
+      mp->server_tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);
       mp->segment_handle = session_segment_handle (s);
       ss = ct_session_get_peer (s);
-      mp->ct_rx_fifo = pointer_to_uword (ss->tx_fifo->f_shr);
-      mp->ct_tx_fifo = pointer_to_uword (ss->rx_fifo->f_shr);
+      mp->ct_rx_fifo = fifo_segment_fifo_offset (ss->tx_fifo);
+      mp->ct_tx_fifo = fifo_segment_fifo_offset (ss->rx_fifo);
       mp->ct_segment_handle = session_segment_handle (ss);
     }
 
@@ -386,8 +396,9 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 
   if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
     {
-      mp->rx_fifo = pointer_to_uword (ls->rx_fifo);
-      mp->tx_fifo = pointer_to_uword (ls->tx_fifo);
+      mp->rx_fifo = fifo_segment_fifo_offset (ls->rx_fifo);
+      mp->tx_fifo = fifo_segment_fifo_offset (ls->tx_fifo);
+      mp->segment_handle = session_segment_handle (ls);
     }
 
 done:
@@ -669,8 +680,11 @@ done:
 	ctrl_mq = session_main_get_vpp_event_queue (ctrl_thread);
 	segp = a->segment;
 	rmp->app_index = clib_host_to_net_u32 (a->app_index);
-	rmp->app_mq = pointer_to_uword (a->app_evt_q);
-	rmp->vpp_ctrl_mq = pointer_to_uword (ctrl_mq);
+//	rmp->app_mq = pointer_to_uword (a->app_evt_q);
+//	rmp->vpp_ctrl_mq = pointer_to_uword (ctrl_mq);
+	rmp->app_mq = fifo_segment_msg_q_offset ((fifo_segment_t *)a->segment);
+	clib_warning ("offset %lx", rmp->app_mq);
+	rmp->vpp_ctrl_mq = ssvm_msg_q_offset (evt_q_segment, ctrl_mq);
 	rmp->vpp_ctrl_mq_thread = ctrl_thread;
 	rmp->n_fds = n_fds;
 	rmp->fd_flags = fd_flags;
@@ -1389,8 +1403,11 @@ done:
       ctrl_thread = vlib_num_workers ()? 1 : 0;
       ctrl_mq = session_main_get_vpp_event_queue (ctrl_thread);
       rmp->app_index = a->app_index;
-      rmp->app_mq = pointer_to_uword (a->app_evt_q);
-      rmp->vpp_ctrl_mq = pointer_to_uword (ctrl_mq);
+//      rmp->app_mq = pointer_to_uword (a->app_evt_q);
+//      rmp->vpp_ctrl_mq = pointer_to_uword (ctrl_mq);
+      rmp->app_mq = fifo_segment_msg_q_offset ((fifo_segment_t *)a->segment);
+      rmp->vpp_ctrl_mq = ssvm_msg_q_offset (evt_q_segment, ctrl_mq);
+      clib_warning ("app mq %lx ctrl %lx ", rmp->app_mq, rmp->vpp_ctrl_mq);
       rmp->vpp_ctrl_mq_thread = ctrl_thread;
       rmp->n_fds = n_fds;
       rmp->fd_flags = fd_flags;
