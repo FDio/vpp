@@ -377,7 +377,6 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
 			      u32 ls_index)
 {
   vcl_session_t *session, *listen_session;
-  svm_fifo_shared_t *rx_fifo, *tx_fifo;
   fifo_segment_t *fs;
   svm_msg_q_t *evt_q;
 
@@ -398,14 +397,18 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
       goto error;
     }
 
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
-					 svm_msg_q_t *);
-  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_shared_t *);
-  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_shared_t *);
-  rx_fifo->client_session_index = session->session_index;
-  tx_fifo->client_session_index = session->session_index;
-  session->rx_fifo = fifo_segment_alloc_fifo_w_shared (fs, rx_fifo);
-  session->tx_fifo = fifo_segment_alloc_fifo_w_shared (fs, tx_fifo);
+//  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
+//					 svm_msg_q_t *);
+  session->vpp_evt_q = clib_mem_alloc (sizeof (svm_msg_q_t));
+  memset (session->vpp_evt_q , 0, sizeof (svm_msg_q_t));
+  fifo_segment_t *emqs = vcl_segment_get (vcl_vpp_worker_segment_handle (0));
+  ssvm_msg_q_attach (&emqs->ssvm, mp->vpp_event_queue_address, session->vpp_evt_q);
+
+  clib_warning ("offsets %lx %lx", mp->server_rx_fifo, mp->server_tx_fifo);
+  session->rx_fifo = fifo_segment_alloc_fifo_w_offset (fs, mp->server_rx_fifo);
+  session->tx_fifo = fifo_segment_alloc_fifo_w_offset (fs, mp->server_tx_fifo);
+  session->rx_fifo->f_shr->client_session_index = session->session_index;
+  session->tx_fifo->f_shr->client_session_index = session->session_index;
   session->rx_fifo->client_thread_index = vcl_get_worker_index ();
   session->tx_fifo->client_thread_index = vcl_get_worker_index ();
 
@@ -448,7 +451,6 @@ static u32
 vcl_session_connected_handler (vcl_worker_t * wrk,
 			       session_connected_msg_t * mp)
 {
-  svm_fifo_shared_t *rx_fifo, *tx_fifo;
   vcl_session_t *session = 0;
   fifo_segment_t *fs;
   u32 session_index;
@@ -471,10 +473,13 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
     }
 
   session->vpp_handle = mp->handle;
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
-					 svm_msg_q_t *);
-  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_shared_t *);
-  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_shared_t *);
+//  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
+//					 svm_msg_q_t *);
+  session->vpp_evt_q = clib_mem_alloc (sizeof (svm_msg_q_t));
+  memset (session->vpp_evt_q , 0, sizeof (svm_msg_q_t));
+  fifo_segment_t *emqs = vcl_segment_get (vcl_vpp_worker_segment_handle (0));
+  ssvm_msg_q_attach (&emqs->ssvm, mp->vpp_event_queue_address, session->vpp_evt_q);
+
   if (!(fs = vcl_segment_get (mp->segment_handle)))
     {
       VDBG (0, "segment for session %u is not mounted!",
@@ -484,12 +489,12 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
       return session_index;
     }
 
-  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_shared_t *);
-  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_shared_t *);
-  rx_fifo->client_session_index = session_index;
-  tx_fifo->client_session_index = session_index;
-  session->rx_fifo = fifo_segment_alloc_fifo_w_shared (fs, rx_fifo);
-  session->tx_fifo = fifo_segment_alloc_fifo_w_shared (fs, tx_fifo);
+  clib_warning ("offsets %lx %lx", mp->server_rx_fifo, mp->server_tx_fifo);
+
+  session->rx_fifo = fifo_segment_alloc_fifo_w_offset (fs, mp->server_rx_fifo);
+  session->tx_fifo = fifo_segment_alloc_fifo_w_offset (fs, mp->server_tx_fifo);
+  session->rx_fifo->f_shr->client_session_index = session_index;
+  session->tx_fifo->f_shr->client_session_index = session_index;
   session->rx_fifo->client_thread_index = vcl_get_worker_index ();
   session->tx_fifo->client_thread_index = vcl_get_worker_index ();
 
@@ -503,10 +508,8 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 	  vcl_send_session_disconnect (wrk, session);
 	  return session_index;
 	}
-      rx_fifo = uword_to_pointer (mp->ct_rx_fifo, svm_fifo_shared_t *);
-      tx_fifo = uword_to_pointer (mp->ct_tx_fifo, svm_fifo_shared_t *);
-      session->ct_rx_fifo = fifo_segment_alloc_fifo_w_shared (fs, rx_fifo);
-      session->ct_tx_fifo = fifo_segment_alloc_fifo_w_shared (fs, tx_fifo);
+      session->ct_rx_fifo = fifo_segment_alloc_fifo_w_offset (fs, mp->ct_rx_fifo);
+      session->ct_tx_fifo = fifo_segment_alloc_fifo_w_offset (fs, mp->ct_tx_fifo);
     }
 
   session->transport.is_ip4 = mp->lcl.is_ip4;
@@ -616,14 +619,19 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
 
   if (vcl_session_is_cl (session))
     {
-      svm_fifo_t *rx_fifo, *tx_fifo;
+//      svm_fifo_t *rx_fifo, *tx_fifo;
+      fifo_segment_t *fs;
+      if (!(fs = vcl_segment_get (mp->segment_handle)))
+        {
+	  VDBG (0, "segment for listener %u is not mounted!",
+	        session->session_index);
+          return VCL_INVALID_SESSION_INDEX;
+        }
       session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
-      rx_fifo = uword_to_pointer (mp->rx_fifo, svm_fifo_t *);
-      rx_fifo->f_shr->client_session_index = sid;
-      tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_t *);
-      tx_fifo->f_shr->client_session_index = sid;
-      session->rx_fifo = rx_fifo;
-      session->tx_fifo = tx_fifo;
+      session->rx_fifo = fifo_segment_alloc_fifo_w_offset (fs, mp->rx_fifo);
+      session->rx_fifo->f_shr->client_session_index = sid;
+      session->tx_fifo = fifo_segment_alloc_fifo_w_offset (fs, mp->tx_fifo);;
+      session->tx_fifo->f_shr->client_session_index = sid;
     }
 
   VDBG (0, "session %u [0x%llx]: listen succeeded!", sid, mp->handle);
@@ -894,11 +902,11 @@ vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void *data)
 
   if (s->rx_fifo)
     {
-      svm_fifo_shared_t *rx_fifo, *tx_fifo;
-      rx_fifo = uword_to_pointer (msg->rx_fifo, svm_fifo_shared_t *);
-      tx_fifo = uword_to_pointer (msg->tx_fifo, svm_fifo_shared_t *);
-      s->rx_fifo = fifo_segment_alloc_fifo_w_shared (fs, rx_fifo);
-      s->tx_fifo = fifo_segment_alloc_fifo_w_shared (fs, tx_fifo);
+//      svm_fifo_shared_t *rx_fifo, *tx_fifo;
+//      rx_fifo = uword_to_pointer (msg->rx_fifo, svm_fifo_shared_t *);
+//      tx_fifo = uword_to_pointer (msg->tx_fifo, svm_fifo_shared_t *);
+      s->rx_fifo = fifo_segment_alloc_fifo_w_offset (fs, msg->rx_fifo);
+      s->tx_fifo = fifo_segment_alloc_fifo_w_offset (fs, msg->tx_fifo);
       s->rx_fifo->f_shr->client_session_index = s->session_index;
       s->tx_fifo->f_shr->client_session_index = s->session_index;
       s->rx_fifo->client_thread_index = wrk->wrk_index;

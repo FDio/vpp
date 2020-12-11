@@ -49,6 +49,7 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
   svm_msg_q_t *ctrl_mq;
   u64 segment_handle;
   u8 *segment_name;
+  fifo_segment_t *apps, *emqs;
 
   if (mp->retval)
     {
@@ -56,10 +57,6 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
       goto failed;
     }
 
-  wrk->api_client_handle = mp->api_client_handle;
-  wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
-  ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
-  vcm->ctrl_mq = wrk->ctrl_mq = ctrl_mq;
   segment_handle = mp->segment_handle;
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
     {
@@ -71,9 +68,19 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
     goto failed;
 
   if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
-    if (vcl_segment_attach (vcl_vpp_worker_segment_handle (0), "vpp-mq-seg",
-			    SSVM_SEGMENT_MEMFD, fds[n_fds_used++]))
-      goto failed;
+    {
+      if (vcl_segment_attach (vcl_vpp_worker_segment_handle (0), "vpp-mq-seg",
+	                      SSVM_SEGMENT_MEMFD, fds[n_fds_used++]))
+	goto failed;
+    }
+
+//  ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
+
+  ctrl_mq = clib_mem_alloc (sizeof (svm_msg_q_t));
+  memset (ctrl_mq, 0, sizeof (svm_msg_q_t));
+  emqs = vcl_segment_get (vcl_vpp_worker_segment_handle (0));
+  ssvm_msg_q_attach (&emqs->ssvm, mp->vpp_ctrl_mq, ctrl_mq);
+  vcm->ctrl_mq = wrk->ctrl_mq = ctrl_mq;
 
   if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
     {
@@ -84,6 +91,8 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
       if (rv != 0)
 	goto failed;
     }
+  apps = vcl_segment_get (segment_handle);
+  wrk->app_event_queue = fifo_segment_msg_q_attach (apps, mp->app_mq);
 
   if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
     {
@@ -92,6 +101,10 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
       vcl_mq_epoll_add_evfd (wrk, wrk->app_event_queue);
     }
 
+  wrk->api_client_handle = mp->api_client_handle;
+//  wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
+
+  clib_warning ("app mq %lx offset %lx ctrl %lx ", wrk->app_event_queue, mp->app_mq, wrk->ctrl_mq);
   vcm->app_index = mp->app_index;
 
   return 0;

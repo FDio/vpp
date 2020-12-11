@@ -140,7 +140,7 @@ svm_msg_q_attach (svm_msg_q_t *mq, void *smq_base)
   q_sz = sizeof (svm_queue_t) + mq->q->maxsize * sizeof (svm_msg_q_msg_t);
   rings = (svm_msg_q_ring_t *)((u8 *) mq->q + q_sz + sizeof (vec_header_t));
   n_rings = vec_len (rings);
-  vec_validate (mq->rings, n_rings);
+  vec_validate (mq->rings, n_rings - 1);
   rings_ptr = (u8 *) rings + sizeof (svm_msg_q_ring_t) * n_rings;
   for (i = 0; i < n_rings; i++)
     {
