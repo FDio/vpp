@@ -1389,8 +1389,11 @@ done:
       ctrl_thread = vlib_num_workers ()? 1 : 0;
       ctrl_mq = session_main_get_vpp_event_queue (ctrl_thread);
       rmp->app_index = a->app_index;
-      rmp->app_mq = pointer_to_uword (a->app_evt_q);
-      rmp->vpp_ctrl_mq = pointer_to_uword (ctrl_mq);
+//      rmp->app_mq = pointer_to_uword (a->app_evt_q);
+//      rmp->vpp_ctrl_mq = pointer_to_uword (ctrl_mq);
+      rmp->app_mq = (uword) ((u8 *) a->app_evt_q - (u8 *) a->segment->sh);
+      rmp->vpp_ctrl_mq = (uword) ((u8 *) ctrl_mq - (u8 *) evt_q_segment->sh);
+      clib_warning ("app mq %lx ctrl %lx ", rmp->app_mq, rmp->vpp_ctrl_mq);
       rmp->vpp_ctrl_mq_thread = ctrl_thread;
       rmp->n_fds = n_fds;
       rmp->fd_flags = fd_flags;

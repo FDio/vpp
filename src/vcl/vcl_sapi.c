@@ -48,7 +48,8 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
   int i, rv, n_fds_used = 0;
   svm_msg_q_t *ctrl_mq;
   u64 segment_handle;
-  u8 *segment_name;
+  u8 *segment_name, *apps_sh = 0, *mqs_sh = 0;
+  fifo_segment_t *mqs, *apps;
 
   if (mp->retval)
     {
@@ -56,10 +57,6 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
       goto failed;
     }
 
-  wrk->api_client_handle = mp->api_client_handle;
-  wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
-  ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
-  vcm->ctrl_mq = wrk->ctrl_mq = ctrl_mq;
   segment_handle = mp->segment_handle;
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
     {
@@ -71,9 +68,13 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
     goto failed;
 
   if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
-    if (vcl_segment_attach (vcl_vpp_worker_segment_handle (0), "vpp-mq-seg",
-			    SSVM_SEGMENT_MEMFD, fds[n_fds_used++]))
-      goto failed;
+    {
+      if (vcl_segment_attach (vcl_vpp_worker_segment_handle (0), "vpp-mq-seg",
+	                      SSVM_SEGMENT_MEMFD, fds[n_fds_used++]))
+	goto failed;
+      mqs = vcl_segment_get (vcl_vpp_worker_segment_handle (0));
+      mqs_sh = (u8 *) mqs->ssvm.sh;
+    }
 
   if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
     {
@@ -83,6 +84,8 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
       vec_free (segment_name);
       if (rv != 0)
 	goto failed;
+      apps = vcl_segment_get (segment_handle);
+      apps_sh = (u8 *) apps->ssvm.sh;
     }
 
   if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
@@ -92,6 +95,14 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
       vcl_mq_epoll_add_evfd (wrk, wrk->app_event_queue);
     }
 
+  wrk->api_client_handle = mp->api_client_handle;
+//  wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
+//  ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
+  wrk->app_event_queue = (void *) (apps_sh + mp->app_mq);
+  ctrl_mq = (void *) (mqs_sh + mp->vpp_ctrl_mq);
+  vcm->ctrl_mq = wrk->ctrl_mq = ctrl_mq;
+
+  clib_warning ("app mq %lx ctrl %lx ", wrk->app_event_queue, wrk->ctrl_mq);
   vcm->app_index = mp->app_index;
 
   return 0;

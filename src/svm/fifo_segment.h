@@ -102,6 +102,18 @@ fifo_segment_t *fifo_segment_get_segment (fifo_segment_main_t * sm,
 u32 fifo_segment_index (fifo_segment_main_t * sm, fifo_segment_t * fs);
 void fifo_segment_info (fifo_segment_t * seg, char **address, size_t * size);
 
+always_inline void *
+fifo_segment_ptr (fifo_segment_t *fs, uword offset)
+{
+  return (void *)((u8 *) fs->h + offset);
+}
+
+always_inline uword
+fifo_segment_offset (fifo_segment_t *fs, void *p)
+{
+  return (uword)((u8 *) p - (u8 *) fs->h);
+}
+
 /**
  * Allocate fifo in fifo segment
  *
