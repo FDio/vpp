@@ -383,8 +383,13 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
       goto error;
     }
 
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
-					 svm_msg_q_t *);
+//  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
+//					 svm_msg_q_t *);
+  session->vpp_evt_q = clib_mem_alloc (sizeof (svm_msg_q_t));
+  memset (session->vpp_evt_q , 0, sizeof (svm_msg_q_t));
+  fifo_segment_t *emqs = vcl_segment_get (vcl_vpp_worker_segment_handle (0));
+  ssvm_msg_q_attach (&emqs->ssvm, mp->vpp_event_queue_address, session->vpp_evt_q);
+
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_shared_t *);
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_shared_t *);
   rx_fifo->client_session_index = session->session_index;
@@ -456,8 +461,13 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
     }
 
   session->vpp_handle = mp->handle;
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
-					 svm_msg_q_t *);
+//  session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
+//					 svm_msg_q_t *);
+  session->vpp_evt_q = clib_mem_alloc (sizeof (svm_msg_q_t));
+  memset (session->vpp_evt_q , 0, sizeof (svm_msg_q_t));
+  fifo_segment_t *emqs = vcl_segment_get (vcl_vpp_worker_segment_handle (0));
+  ssvm_msg_q_attach (&emqs->ssvm, mp->vpp_event_queue_address, session->vpp_evt_q);
+
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_shared_t *);
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_shared_t *);
   if (!(fs = vcl_segment_get (mp->segment_handle)))
@@ -597,7 +607,11 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
   session->transport.lcl_port = mp->lcl_port;
   vcl_session_table_add_listener (wrk, mp->handle, sid);
   session->session_state = VCL_STATE_LISTEN;
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
+
+  session->vpp_evt_q = clib_mem_alloc (sizeof (svm_msg_q_t));
+  memset (session->vpp_evt_q , 0, sizeof (svm_msg_q_t));
+  fifo_segment_t *emqs = vcl_segment_get (vcl_vpp_worker_segment_handle (0));
+  ssvm_msg_q_attach (&emqs->ssvm, mp->vpp_evt_q, session->vpp_evt_q);
 
   if (vcl_session_is_cl (session))
     {
@@ -680,7 +694,11 @@ vcl_session_migrated_handler (vcl_worker_t * wrk, void *data)
     }
 
   s->vpp_handle = mp->new_handle;
-  s->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
+
+  s->vpp_evt_q = clib_mem_alloc (sizeof (svm_msg_q_t));
+  memset (s->vpp_evt_q , 0, sizeof (svm_msg_q_t));
+  fifo_segment_t *emqs = vcl_segment_get (vcl_vpp_worker_segment_handle (0));
+  ssvm_msg_q_attach (&emqs->ssvm, mp->vpp_evt_q, s->vpp_evt_q);
 
   vcl_session_table_del_vpp_handle (wrk, mp->handle);
   vcl_session_table_add_vpp_handle (wrk, mp->new_handle, s->session_index);
