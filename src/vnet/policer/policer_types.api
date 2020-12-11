@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+option version = "1.0.0";
 
 enum sse2_qos_rate_type : u8
 {

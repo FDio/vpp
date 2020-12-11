@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+option version = "1.0.0";
 
 import "vnet/ip/ip_types.api";
 import "vnet/interface_types.api";
