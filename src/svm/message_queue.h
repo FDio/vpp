@@ -34,11 +34,13 @@ typedef struct svm_msg_q_ring_
   u8 *data;				/**< chunk of memory for msg data */
 } __clib_packed svm_msg_q_ring_t;
 
-typedef struct svm_msg_q_
+typedef struct svm_msg_q_shared_
 {
   svm_queue_t *q;			/**< queue for exchanging messages */
   svm_msg_q_ring_t *rings;		/**< rings with message data*/
-} __clib_packed svm_msg_q_t;
+} __clib_packed svm_msg_q_shared_t;
+
+typedef svm_msg_q_shared_t svm_msg_q_t;
 
 typedef struct svm_msg_q_ring_cfg_
 {
@@ -80,6 +82,8 @@ typedef union
 svm_msg_q_t *svm_msg_q_alloc (svm_msg_q_cfg_t * cfg);
 svm_msg_q_t *svm_msg_q_init (void *base, svm_msg_q_cfg_t * cfg);
 uword svm_msg_q_size_to_alloc (svm_msg_q_cfg_t * cfg);
+
+void svm_msg_q_attach (svm_msg_q_t *mq, void *smq_base);
 
 /**
  * Free message queue
