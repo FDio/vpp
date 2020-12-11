@@ -19,6 +19,7 @@
 #include <vlib/vlib.h>
 
 #define VNET_CRYPTO_FRAME_SIZE 64
+#define VNET_CRYPTO_ASYNC_FRAMES_MAX_COUNT 1024
 
 /* CRYPTO_ID, PRETTY_NAME, KEY_LENGTH_IN_BYTES */
 #define foreach_crypto_cipher_alg \
