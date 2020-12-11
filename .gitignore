@@ -112,3 +112,6 @@ compile_commands.json
 
 # extras gomemif build files
 /extras/gomemif/bazel*
+
+# vpptop build files
+/build-root/vpptop
