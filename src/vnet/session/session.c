@@ -1508,7 +1508,6 @@ session_vpp_event_queues_allocate (session_main_t * smm)
   fifo_segment_t *eqs = &smm->evt_qs_segment;
   uword eqs_size = 64 << 20;
   pid_t vpp_pid = getpid ();
-  void *base;
   int i;
 
   if (smm->configured_event_queue_length)
@@ -1531,6 +1530,9 @@ session_vpp_event_queues_allocate (session_main_t * smm)
 
   fifo_segment_init (eqs);
 
+  /* Special fifo segment that's filled only with mqs */
+  eqs->h->n_mqs = vec_len (smm->wrk);
+
   for (i = 0; i < vec_len (smm->wrk); i++)
     {
       svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
@@ -1544,8 +1546,7 @@ session_vpp_event_queues_allocate (session_main_t * smm)
       cfg->q_nitems = evt_q_length;
       cfg->ring_cfgs = rc;
 
-      base = fifo_segment_alloc (eqs, svm_msg_q_size_to_alloc (cfg));
-      smm->wrk[i].vpp_event_queue = svm_msg_q_init (base, cfg);
+      smm->wrk[i].vpp_event_queue = fifo_segment_msg_q_alloc (eqs, i, cfg);
 
       if (svm_msg_q_alloc_consumer_eventfd (smm->wrk[i].vpp_event_queue))
 	clib_warning ("eventfd returned");

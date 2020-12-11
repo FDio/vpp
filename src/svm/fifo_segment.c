@@ -764,9 +764,15 @@ void
 fifo_segment_cleanup (fifo_segment_t *fs)
 {
   int slice_index;
+  svm_msg_q_t *mq = 0;
 
   for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
     clib_mem_bulk_destroy (fs->slices[slice_index].fifos);
+
+  vec_foreach (fs->mqs, mq)
+    vec_free (mq->rings);
+
+  vec_free (fs->mqs);
 }
 
 /**
@@ -942,6 +948,69 @@ fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t * f,
       clib_atomic_fetch_add_rel (&fss->num_chunks[fl_index], 1);
       c = fs_chunk_ptr (fs->h, c->next);
     }
+}
+
+svm_msg_q_t *
+fifo_segment_msg_q_alloc (fifo_segment_t *fs, u32 mq_index,
+			  svm_msg_q_cfg_t *cfg)
+{
+  fifo_segment_header_t *fsh = fs->h;
+  svm_msg_q_shared_t *smq;
+  svm_msg_q_t *mq;
+  void *base;
+  u32 size;
+
+  if (!fs->mqs)
+    {
+      u32 n_mqs = clib_max (fs->h->n_mqs, 1);
+      vec_validate (fs->mqs, n_mqs - 1);
+    }
+
+  size = svm_msg_q_size_to_alloc (cfg);
+  base = fsh_alloc_aligned (fsh, size, 8);
+  fsh->n_reserved_bytes += size;
+
+  smq = svm_msg_q_init (base, cfg);
+  mq = vec_elt_at_index (fs->mqs, mq_index);
+  svm_msg_q_attach (mq, smq);
+
+  return mq;
+}
+
+svm_msg_q_t *
+fifo_segment_msg_q_attach (fifo_segment_t *fs, uword offset, u32 mq_index)
+{
+  svm_msg_q_t *mq;
+
+  if (!fs->mqs)
+    {
+      u32 n_mqs = clib_max (fs->h->n_mqs, 1);
+      vec_validate (fs->mqs, n_mqs - 1);
+    }
+
+  mq = vec_elt_at_index (fs->mqs, mq_index);
+
+  if (!mq->q)
+    {
+      svm_msg_q_shared_t *smq;
+      smq = (svm_msg_q_shared_t *) ((u8 *) fs->h + offset);
+      svm_msg_q_attach (mq, smq);
+    }
+
+  ASSERT (fifo_segment_msg_q_offset (fs, mq_index) == offset);
+
+  return mq;
+}
+
+uword
+fifo_segment_msg_q_offset (fifo_segment_t *fs, u32 mq_index)
+{
+  svm_msg_q_t *mq = vec_elt_at_index (fs->mqs, mq_index);
+
+  if (mq->q == 0)
+    return ~0ULL;
+
+  return (uword) ((u8 *) mq->q - (u8 *) fs->h) - sizeof (svm_msg_q_shared_t);
 }
 
 int
