@@ -130,6 +130,27 @@ svm_msg_q_alloc (svm_msg_q_cfg_t * cfg)
 }
 
 void
+svm_msg_q_attach (svm_msg_q_t *mq, void *smq_base)
+{
+  u32 i, n_rings, q_sz;
+  svm_msg_q_ring_t *rings;
+  u8 *rings_ptr;
+
+  mq->q = (svm_queue_t *) ((u8 *) smq_base + sizeof (svm_msg_q_shared_t));
+  q_sz = sizeof (svm_queue_t) + mq->q->maxsize * sizeof (svm_msg_q_msg_t);
+  rings = (svm_msg_q_ring_t *)((u8 *) mq->q + q_sz + sizeof (vec_header_t));
+  n_rings = vec_len (rings);
+  vec_validate (mq->rings, n_rings);
+  rings_ptr = (u8 *) rings + sizeof (svm_msg_q_ring_t) * n_rings;
+  for (i = 0; i < n_rings; i++)
+    {
+      mq->rings[i] = rings[i];
+      mq->rings[i].data = rings_ptr;
+      rings_ptr += (uword) mq->rings[i].nitems * mq->rings[i].elsize;
+    }
+}
+
+void
 svm_msg_q_free (svm_msg_q_t * mq)
 {
   svm_queue_free (mq->q);
