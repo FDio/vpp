@@ -343,9 +343,7 @@ typedef struct session_bound_msg_
   uword rx_fifo;
   uword tx_fifo;
   uword vpp_evt_q;
-  u32 segment_size;
-  u8 segment_name_length;
-  u8 segment_name[128];
+  u64 segment_handle;
 } __clib_packed session_bound_msg_t;
 
 typedef struct session_unlisten_msg_
