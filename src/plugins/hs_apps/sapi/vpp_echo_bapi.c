@@ -264,12 +264,12 @@ echo_segment_detach (u64 segment_handle)
 
 int
 echo_attach_session (uword segment_handle, uword rxf_offset, uword txf_offset,
-                     echo_session_t *s)
+                     uword mq_offset, echo_session_t *s)
 {
   svm_fifo_shared_t *rx_fifo, *tx_fifo;
   echo_main_t *em = &echo_main;
+  u32 fs_index, eqs_index;
   fifo_segment_t *fs;
-  u32 fs_index;
 
   fs_index = echo_segment_lookup (segment_handle);
   if (fs_index == (u32) ~0)
@@ -277,6 +277,15 @@ echo_attach_session (uword segment_handle, uword rxf_offset, uword txf_offset,
       ECHO_LOG (0, "ERROR: segment for session %u is not mounted!",
                 s->session_index);
       return -1;
+    }
+
+  if (mq_offset != (uword) ~0)
+    {
+      s->vpp_evt_q = clib_mem_alloc (sizeof(svm_msg_q_t));
+      memset (s->vpp_evt_q, 0, sizeof(svm_msg_q_t));
+
+      eqs_index = echo_segment_lookup (ECHO_MQ_SEG_HANDLE);
+      ASSERT (eqs_index != (u32) ~0);
     }
 
   rx_fifo = uword_to_pointer (rxf_offset, svm_fifo_shared_t *);
@@ -289,6 +298,12 @@ echo_attach_session (uword segment_handle, uword rxf_offset, uword txf_offset,
   fs = fifo_segment_get_segment (&em->segment_main, fs_index);
   s->rx_fifo = fifo_segment_alloc_fifo_w_shared (fs, rx_fifo);
   s->tx_fifo = fifo_segment_alloc_fifo_w_shared (fs, tx_fifo);
+
+  if (mq_offset != (uword) ~0)
+    {
+      fs = fifo_segment_get_segment (&em->segment_main, eqs_index);
+      ssvm_msg_q_attach (&fs->ssvm, mq_offset, s->vpp_evt_q);
+    }
 
   clib_spinlock_unlock (&em->segment_handles_lock);
 
@@ -337,8 +352,6 @@ static void
     }
   em->state = STATE_CLEANED_CERT_KEY;
 }
-
-#define ECHO_MQ_SEG_HANDLE ((u64) ~0 - 1)
 
 static void
 vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
