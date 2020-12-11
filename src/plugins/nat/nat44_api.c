@@ -1134,6 +1134,12 @@ static void
   int rv = 0;
   u8 is_del;
 
+  if (sm->static_mapping_only)
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto send_reply;
+    }
+
   is_del = !mp->is_add;
 
   VALIDATE_SW_IF_INDEX (mp);
@@ -1142,6 +1148,8 @@ static void
 				   mp->flags & NAT_API_IS_TWICE_NAT);
 
   BAD_SW_IF_INDEX_LABEL;
+
+send_reply:
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_INTERFACE_ADDR_REPLY);
 }
 
