@@ -67,9 +67,11 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
     goto failed;
 
   if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
-    if (vcl_segment_attach (vcl_vpp_worker_segment_handle (0), "vpp-mq-seg",
-			    SSVM_SEGMENT_MEMFD, fds[n_fds_used++]))
-      goto failed;
+    {
+      if (vcl_segment_attach (vcl_vpp_worker_segment_handle (0), "vpp-mq-seg",
+			      SSVM_SEGMENT_MEMFD, fds[n_fds_used++]))
+	goto failed;
+    }
 
   vcl_segment_attach_mq (vcl_vpp_worker_segment_handle (0), mp->vpp_ctrl_mq,
 			 mp->vpp_ctrl_mq_thread, &wrk->ctrl_mq);
@@ -94,6 +96,10 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
       vcl_mq_epoll_add_evfd (wrk, wrk->app_event_queue);
     }
 
+  //  wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
+
+  clib_warning ("app mq %lx offset %lx ctrl %lx ", wrk->app_event_queue,
+		mp->app_mq, wrk->ctrl_mq);
   vcm->app_index = mp->app_index;
 
   return 0;
