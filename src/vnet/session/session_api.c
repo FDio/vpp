@@ -131,6 +131,7 @@ mq_send_session_accepted_cb (session_t * s)
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   svm_msg_q_msg_t _msg, *msg = &_msg;
   svm_msg_q_t *vpp_queue, *app_mq;
+  ssvm_private_t *eq_seg;
   session_t *listener;
   session_accepted_msg_t *mp;
   session_event_t *evt;
@@ -152,6 +153,8 @@ mq_send_session_accepted_cb (session_t * s)
   mp->segment_handle = session_segment_handle (s);
   mp->flags = s->flags;
 
+  eq_seg = session_main_get_evt_q_segment ();
+
   if (session_has_transport (s))
     {
       listener = listen_session_get_from_handle (s->listener_handle);
@@ -165,7 +168,8 @@ mq_send_session_accepted_cb (session_t * s)
 	    mp->listener_handle = listen_session_get_handle (listener);
 	}
       vpp_queue = session_main_get_vpp_event_queue (s->thread_index);
-      mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
+//      mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
+      mp->vpp_event_queue_address = (uword) ((u8 *) vpp_queue - (u8 *) eq_seg->sh);
       mp->handle = session_handle (s);
 
       session_get_endpoint (s, &mp->rmt, 0 /* is_lcl */ );
@@ -264,6 +268,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
   session_connected_msg_t *mp;
   svm_msg_q_t *vpp_mq, *app_mq;
   transport_connection_t *tc;
+  ssvm_private_t *eq_seg;
   app_worker_t *app_wrk;
   session_event_t *evt;
 
@@ -289,6 +294,8 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
   if (err)
     goto done;
 
+  eq_seg = session_main_get_evt_q_segment ();
+
   if (session_has_transport (s))
     {
       tc = session_get_transport (s);
@@ -301,7 +308,8 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 
       vpp_mq = session_main_get_vpp_event_queue (s->thread_index);
       mp->handle = session_handle (s);
-      mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
+//      mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
+      mp->vpp_event_queue_address = (uword) ((u8 *) vpp_mq - (u8 *) eq_seg->sh);
 
       session_get_endpoint (s, &mp->lcl, 1 /* is_lcl */ );
 
@@ -319,7 +327,8 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       mp->lcl.port = cct->c_lcl_port;
       mp->lcl.is_ip4 = cct->c_is_ip4;
       vpp_mq = session_main_get_vpp_event_queue (s->thread_index);
-      mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
+//      mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
+      mp->vpp_event_queue_address = (uword) ((u8 *) vpp_mq - (u8 *) eq_seg->sh);
       mp->server_rx_fifo = pointer_to_uword (s->rx_fifo->f_shr);
       mp->server_tx_fifo = pointer_to_uword (s->tx_fifo->f_shr);
       mp->segment_handle = session_segment_handle (s);
@@ -669,8 +678,10 @@ done:
 	ctrl_mq = session_main_get_vpp_event_queue (ctrl_thread);
 	segp = a->segment;
 	rmp->app_index = clib_host_to_net_u32 (a->app_index);
-	rmp->app_mq = pointer_to_uword (a->app_evt_q);
-	rmp->vpp_ctrl_mq = pointer_to_uword (ctrl_mq);
+//	rmp->app_mq = pointer_to_uword (a->app_evt_q);
+//	rmp->vpp_ctrl_mq = pointer_to_uword (ctrl_mq);
+	rmp->app_mq = fifo_segment_msg_q_offset ((fifo_segment_t *)a->segment);
+	rmp->vpp_ctrl_mq = (uword) ((u8 *) ctrl_mq - (u8 *) evt_q_segment->sh);
 	rmp->vpp_ctrl_mq_thread = ctrl_thread;
 	rmp->n_fds = n_fds;
 	rmp->fd_flags = fd_flags;
@@ -1389,8 +1400,11 @@ done:
       ctrl_thread = vlib_num_workers ()? 1 : 0;
       ctrl_mq = session_main_get_vpp_event_queue (ctrl_thread);
       rmp->app_index = a->app_index;
-      rmp->app_mq = pointer_to_uword (a->app_evt_q);
-      rmp->vpp_ctrl_mq = pointer_to_uword (ctrl_mq);
+//      rmp->app_mq = pointer_to_uword (a->app_evt_q);
+//      rmp->vpp_ctrl_mq = pointer_to_uword (ctrl_mq);
+      rmp->app_mq = fifo_segment_msg_q_offset ((fifo_segment_t *)a->segment);
+      rmp->vpp_ctrl_mq = (uword) ((u8 *) ctrl_mq - (u8 *) evt_q_segment->sh);
+      clib_warning ("app mq %lx ctrl %lx ", rmp->app_mq, rmp->vpp_ctrl_mq);
       rmp->vpp_ctrl_mq_thread = ctrl_thread;
       rmp->n_fds = n_fds;
       rmp->fd_flags = fd_flags;
