@@ -835,7 +835,7 @@ echo_process_rpcs (echo_main_t * em)
 {
   echo_rpc_msg_t *rpc;
   svm_msg_q_msg_t msg;
-  svm_msg_q_t *mq = em->rpc_msq_queue;
+  svm_msg_q_t *mq = &em->rpc_msq_queue;
 
   while (em->state < STATE_DATA_DONE && !em->time_to_stop)
     {
@@ -1350,7 +1350,7 @@ main (int argc, char **argv)
   cfg->n_rings = 1;
   cfg->q_nitems = rpc_queue_size;
   cfg->ring_cfgs = rc;
-  em->rpc_msq_queue = svm_msg_q_alloc (cfg);
+  svm_msg_q_attach (&em->rpc_msq_queue, svm_msg_q_alloc (cfg));
 
   signal (SIGINT, stop_signal);
   signal (SIGQUIT, stop_signal);

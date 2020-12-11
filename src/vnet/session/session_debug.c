@@ -120,7 +120,7 @@ session_debug_init (void)
 void
 dump_thread_0_event_queue (void)
 {
-  session_main_t *smm = vnet_get_session_main ();
+//  session_main_t *smm = vnet_get_session_main ();
   vlib_main_t *vm = &vlib_global_main;
   u32 my_thread_index = vm->thread_index;
   session_event_t _e, *e = &_e;
@@ -130,7 +130,7 @@ dump_thread_0_event_queue (void)
   svm_msg_q_t *mq;
   int i, index;
 
-  mq = smm->wrk[my_thread_index].vpp_event_queue;
+  mq = session_main_get_vpp_event_queue (my_thread_index);
   index = mq->q->head;
 
   for (i = 0; i < mq->q->cursize; i++)
@@ -226,7 +226,7 @@ session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
   /*
    * Search evt queue
    */
-  mq = wrk->vpp_event_queue;
+  mq = &wrk->vpp_event_queue;
   index = mq->q->head;
   for (i = 0; i < mq->q->cursize; i++)
     {
