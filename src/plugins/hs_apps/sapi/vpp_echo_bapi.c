@@ -266,7 +266,6 @@ int
 echo_attach_session (uword segment_handle, uword rxf_offset, uword txf_offset,
                      uword mq_offset, echo_session_t *s)
 {
-  svm_fifo_shared_t *rx_fifo, *tx_fifo;
   echo_main_t *em = &echo_main;
   u32 fs_index, eqs_index;
   fifo_segment_t *fs;
@@ -288,16 +287,13 @@ echo_attach_session (uword segment_handle, uword rxf_offset, uword txf_offset,
       ASSERT (eqs_index != (u32) ~0);
     }
 
-  rx_fifo = uword_to_pointer (rxf_offset, svm_fifo_shared_t *);
-  tx_fifo = uword_to_pointer (txf_offset, svm_fifo_shared_t *);
-  rx_fifo->client_session_index = s->session_index;
-  tx_fifo->client_session_index = s->session_index;
-
   clib_spinlock_lock (&em->segment_handles_lock);
 
   fs = fifo_segment_get_segment (&em->segment_main, fs_index);
-  s->rx_fifo = fifo_segment_alloc_fifo_w_shared (fs, rx_fifo);
-  s->tx_fifo = fifo_segment_alloc_fifo_w_shared (fs, tx_fifo);
+  s->rx_fifo = fifo_segment_alloc_fifo_w_offset (fs, rxf_offset);
+  s->tx_fifo = fifo_segment_alloc_fifo_w_offset (fs, txf_offset);
+  s->rx_fifo->f_shr->client_session_index = s->session_index;
+  s->tx_fifo->f_shr->client_session_index = s->session_index;
 
   if (mq_offset != (uword) ~0)
     {
