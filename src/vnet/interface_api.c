@@ -21,6 +21,7 @@
 #include <vlibmemory/api.h>
 
 #include <vnet/interface.h>
+#include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/api_errno.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip.h>
@@ -1069,29 +1070,24 @@ static void vl_api_sw_interface_rx_placement_dump_t_handler
 
   if (sw_if_index == ~0)
     {
-      vnet_device_input_runtime_t *rt;
-      vnet_device_and_queue_t *dq;
-      vlib_node_t *pn = vlib_get_node_by_name (am->vlib_main,
-					       (u8 *) "device-input");
-      uword si;
-      int index = 0;
+      vnet_hw_if_rx_queue_t **all_queues = 0;
+      vnet_hw_if_rx_queue_t **qptr;
+      vnet_hw_if_rx_queue_t *q;
+      vec_foreach (q, vnm->interface_main.hw_if_rx_queues)
+	vec_add1 (all_queues, q);
+      vec_sort_with_function (all_queues, vnet_hw_if_rxq_cmp_cli_api);
 
-      /* *INDENT-OFF* */
-      foreach_vlib_main (({
-        clib_bitmap_foreach (si, pn->sibling_bitmap)
-         {
-          rt = vlib_node_get_runtime_data (this_vlib_main, si);
-          vec_foreach (dq, rt->devices_and_queues)
-            {
-              vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm,
-                                                             dq->hw_if_index);
-              send_interface_rx_placement_details (am, reg, hw->sw_if_index, index,
-                                          dq->queue_id, dq->mode, mp->context);
-            }
-        }
-        index++;
-      }));
-      /* *INDENT-ON* */
+      vec_foreach (qptr, all_queues)
+	{
+	  u32 current_thread = qptr[0]->thread_index;
+	  u32 hw_if_index = qptr[0]->hw_if_index;
+	  vnet_hw_interface_t *hw_if =
+	    vnet_get_hw_interface (vnm, hw_if_index);
+	  send_interface_rx_placement_details (
+	    am, reg, hw_if->sw_if_index, current_thread, qptr[0]->queue_id,
+	    qptr[0]->mode, mp->context);
+	}
+      vec_free (all_queues);
     }
   else
     {
@@ -1114,13 +1110,13 @@ static void vl_api_sw_interface_rx_placement_dump_t_handler
 
       vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, si->hw_if_index);
 
-      for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
+      for (i = 0; i < vec_len (hw->rx_queue_indices); i++)
 	{
-	  send_interface_rx_placement_details (am, reg, hw->sw_if_index,
-					       hw->input_node_thread_index_by_queue
-					       [i], i,
-					       hw->rx_mode_by_queue[i],
-					       mp->context);
+	  vnet_hw_if_rx_queue_t *rxq =
+	    vnet_hw_if_get_rx_queue (vnm, hw->rx_queue_indices[i]);
+	  send_interface_rx_placement_details (
+	    am, reg, hw->sw_if_index, rxq->thread_index, rxq->queue_id,
+	    rxq->mode, mp->context);
 	}
     }
 
