@@ -870,6 +870,7 @@ fifo_segment_cleanup (fifo_segment_t *fs)
   // FIXME clib_mem_free to be called on each element or change design
   for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
     pool_free (fs->slices[slice_index].fifos);
+  vec_free (fs->mq.rings);
 }
 
 /**
@@ -1037,6 +1038,52 @@ fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t * f,
       clib_atomic_fetch_add_rel (&fss->num_chunks[fl_index], 1);
       c = fs_chunk_ptr (fs->h, c->next);
     }
+}
+
+svm_msg_q_t *
+fifo_segment_msg_q_alloc (fifo_segment_t *fs, svm_msg_q_cfg_t *cfg)
+{
+  svm_msg_q_shared_t *smq;
+  void * base;
+
+  base = fsh_alloc_aligned (fs->h, svm_msg_q_size_to_alloc (cfg), 8);
+  smq = svm_msg_q_init (base, cfg);
+  svm_msg_q_attach (&fs->mq, smq);
+
+  return &fs->mq;
+}
+
+svm_msg_q_t *
+fifo_segment_msg_q_attach (fifo_segment_t *fs, uword offset)
+{
+  svm_msg_q_shared_t *smq;
+
+  smq = uword_to_pointer ((u8 *)fs->h + offset, svm_msg_q_shared_t *);
+  svm_msg_q_attach (&fs->mq, smq);
+
+  return &fs->mq;
+}
+
+uword
+fifo_segment_msg_q_offset (fifo_segment_t *fs)
+{
+  if (fs->mq.q == 0)
+    return ~0ULL;
+  return (uword) ((u8 *)fs->mq.q - (u8 *)fs->h) - sizeof (u32);
+}
+
+uword
+ssvm_msg_q_offset (ssvm_private_t *s, svm_msg_q_t *mq)
+{
+  return (uword) ((u8 *)mq->q - (u8 *) s->sh) - sizeof (u32);
+}
+
+void
+ssvm_msg_q_attach (ssvm_private_t *s, uword offset, svm_msg_q_t *mq)
+{
+  svm_msg_q_shared_t *smq;
+  smq = (svm_msg_q_shared_t *) ((u8 *)s->sh + offset);
+  svm_msg_q_attach (mq, smq);
 }
 
 int

@@ -543,23 +543,23 @@ echo_send_rpc (echo_main_t * em, void *fp, echo_rpc_args_t * args)
 {
   svm_msg_q_msg_t msg;
   echo_rpc_msg_t *evt;
-  if (PREDICT_FALSE (svm_msg_q_lock (em->rpc_msq_queue)))
+  if (PREDICT_FALSE (svm_msg_q_lock (&em->rpc_msq_queue)))
     {
       ECHO_FAIL (ECHO_FAIL_RPC_SIZE, "RPC lock failed");
       return -1;
     }
-  if (PREDICT_FALSE (svm_msg_q_ring_is_full (em->rpc_msq_queue, 0)))
+  if (PREDICT_FALSE (svm_msg_q_ring_is_full (&em->rpc_msq_queue, 0)))
     {
-      svm_msg_q_unlock (em->rpc_msq_queue);
+      svm_msg_q_unlock (&em->rpc_msq_queue);
       ECHO_FAIL (ECHO_FAIL_RPC_SIZE, "RPC ring is full");
       return -2;
     }
-  msg = svm_msg_q_alloc_msg_w_ring (em->rpc_msq_queue, 0);
-  evt = (echo_rpc_msg_t *) svm_msg_q_msg_data (em->rpc_msq_queue, &msg);
+  msg = svm_msg_q_alloc_msg_w_ring (&em->rpc_msq_queue, 0);
+  evt = (echo_rpc_msg_t *) svm_msg_q_msg_data (&em->rpc_msq_queue, &msg);
   evt->fp = fp;
   clib_memcpy (&evt->args, args, sizeof (evt->args));
 
-  svm_msg_q_add_and_unlock (em->rpc_msq_queue, &msg);
+  svm_msg_q_add_and_unlock (&em->rpc_msq_queue, &msg);
   return 0;
 }
 

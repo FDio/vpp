@@ -17,6 +17,7 @@
 
 #include <svm/ssvm.h>
 #include <svm/fifo_types.h>
+#include <svm/message_queue.h>
 #include <svm/svm_fifo.h>
 
 typedef enum
@@ -70,6 +71,7 @@ typedef struct
   uword max_byte_index;
   u8 n_slices;			/**< number of fifo segment slices */
   fifo_slice_private_t *slices;	/**< private slice information */
+  svm_msg_q_t mq;
 } fifo_segment_t;
 
 typedef struct
@@ -128,6 +130,13 @@ void fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f);
 void fifo_segment_detach_fifo (fifo_segment_t * fs, svm_fifo_t * f);
 void fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t * f,
 			       u32 slice_index);
+
+svm_msg_q_t *fifo_segment_msg_q_alloc (fifo_segment_t *fs, svm_msg_q_cfg_t *cfg);
+svm_msg_q_t *fifo_segment_msg_q_attach (fifo_segment_t *fs, uword offset);
+uword fifo_segment_msg_q_offset (fifo_segment_t *fs);
+
+uword ssvm_msg_q_offset (ssvm_private_t *s, svm_msg_q_t *mq);
+void ssvm_msg_q_attach (ssvm_private_t *s, uword offset, svm_msg_q_t *mq);
 
 /**
  * Try to preallocate fifo headers

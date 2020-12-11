@@ -1423,7 +1423,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   /* Try to dequeue what is available. Don't wait for lock.
    * XXX: we may need priorities here */
-  mq = wrk->vpp_event_queue;
+  mq = &wrk->vpp_event_queue;
   n_to_dequeue = svm_msg_q_size (mq);
   if (n_to_dequeue && svm_msg_q_try_lock (mq) == 0)
     {
@@ -1601,7 +1601,7 @@ session_queue_pre_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				vlib_frame_t * frame)
 {
   session_main_t *sm = &session_main;
-  if (!sm->wrk[0].vpp_event_queue)
+  if (!sm->wrk[0].vpp_event_queue.q)
     return 0;
   node = vlib_node_get_runtime (vm, session_queue_node.index);
   return session_queue_node_fn (vm, node, frame);
