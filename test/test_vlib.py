@@ -50,7 +50,6 @@ class TestVlib(VppTestCase):
                 "event-logger resize 102400",
                 "event-logger restart",
                 "pcap dispatch trace on max 100 buffer-trace pg-input 15",
-                "set pmc instructions-per-clock",
                 "pa en",
                 "show event-log 100 all",
                 "event-log save",
