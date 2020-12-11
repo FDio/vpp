@@ -300,7 +300,7 @@ typedef struct
   uword *shared_segment_handles;	/* Hash table : segment_names -> 1 */
   clib_spinlock_t segment_handles_lock;	/* Hash table lock */
   echo_proto_cb_vft_t *proto_cb_vft;
-  svm_msg_q_t *rpc_msq_queue;	/* MQ between quic_echo threads */
+  svm_msg_q_t rpc_msq_queue;	/* MQ between quic_echo threads */
   fifo_segment_main_t segment_main;
 
   /* State of the connection, shared between msg RX thread and main thread */
