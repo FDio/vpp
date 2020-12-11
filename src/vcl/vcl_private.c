@@ -376,11 +376,12 @@ vcl_segment_detach (u64 segment_handle)
 
 int
 vcl_segment_attach_session (uword segment_handle, uword rxf_offset, uword txf_offset,
-                          vcl_session_t *s)
+                            uword mq_offset, vcl_session_t *s)
 {
   svm_fifo_shared_t *rx_fifo, *tx_fifo;
+  u32 fs_index, wrk_index, eqs_index;
   fifo_segment_t *fs;
-  u32 fs_index;
+  u64 eqs_handle;
 
   fs_index = vcl_segment_table_lookup (segment_handle);
   if (fs_index == VCL_INVALID_SEGMENT_INDEX)
@@ -390,21 +391,70 @@ vcl_segment_attach_session (uword segment_handle, uword rxf_offset, uword txf_of
       return -1;
     }
 
+  if (mq_offset != (uword) ~0)
+    {
+      s->vpp_evt_q = clib_mem_alloc (sizeof(svm_msg_q_t));
+      memset(s->vpp_evt_q, 0, sizeof(svm_msg_q_t));
+
+      eqs_handle = vcl_vpp_worker_segment_handle (0);
+      eqs_index = vcl_segment_table_lookup (eqs_handle);
+      ASSERT (eqs_index != VCL_INVALID_SEGMENT_INDEX);
+    }
+
   rx_fifo = uword_to_pointer (rxf_offset, svm_fifo_shared_t *);
   tx_fifo = uword_to_pointer (txf_offset, svm_fifo_shared_t *);
   rx_fifo->client_session_index = s->session_index;
   tx_fifo->client_session_index = s->session_index;
 
-  clib_rwlock_writer_lock (&vcm->segment_table_lock);
+  clib_rwlock_reader_lock (&vcm->segment_table_lock);
 
   fs = fifo_segment_get_segment (&vcm->segment_main, fs_index);
   s->rx_fifo = fifo_segment_alloc_fifo_w_shared (fs, rx_fifo);
   s->tx_fifo = fifo_segment_alloc_fifo_w_shared (fs, tx_fifo);
 
-  clib_rwlock_writer_unlock (&vcm->segment_table_lock);
+  if (mq_offset != (uword) ~0)
+    {
+      fs = fifo_segment_get_segment (&vcm->segment_main, eqs_index);
+      ssvm_msg_q_attach (&fs->ssvm, mq_offset, s->vpp_evt_q);
+    }
 
-  s->rx_fifo->client_thread_index = vcl_get_worker_index ();
-  s->tx_fifo->client_thread_index = vcl_get_worker_index ();
+  clib_rwlock_reader_unlock (&vcm->segment_table_lock);
+
+  wrk_index = vcl_get_worker_index ();
+  s->rx_fifo->client_thread_index = wrk_index;
+  s->tx_fifo->client_thread_index = wrk_index;
+
+  return 0;
+}
+
+int
+vcl_segment_attach_mq (uword segment_handle, uword mq_offset, svm_msg_q_t **mq, u8 is_vpp)
+{
+  fifo_segment_t *fs;
+  u32 fs_index;
+
+  fs_index = vcl_segment_table_lookup (segment_handle);
+  if (fs_index == VCL_INVALID_SEGMENT_INDEX)
+    {
+      VDBG (0, "ERROR: mq segment %lx for is not attached!", segment_handle);
+      return -1;
+    }
+
+  if (is_vpp)
+    {
+      *mq = clib_mem_alloc (sizeof(svm_msg_q_t));
+      memset(*mq, 0, sizeof(svm_msg_q_t));
+    }
+
+  clib_rwlock_reader_lock (&vcm->segment_table_lock);
+
+  fs = fifo_segment_get_segment (&vcm->segment_main, fs_index);
+  if (is_vpp)
+    ssvm_msg_q_attach (&fs->ssvm, mq_offset, *mq);
+  else
+    *mq = fifo_segment_msg_q_attach (fs, mq_offset);
+
+  clib_rwlock_reader_unlock (&vcm->segment_table_lock);
 
   return 0;
 }
