@@ -212,6 +212,7 @@ help:
 	@echo " docs                 - Build the Sphinx documentation"
 	@echo " docs-venv            - Build the virtual environment for the Sphinx docs"
 	@echo " docs-clean           - Remove the generated files from the Sphinx docs"
+	@echo " vpptop               - provide the VPPTop binary"
 	@echo ""
 	@echo "Make Arguments:"
 	@echo " V=[0|1]                  - set build verbosity level"
@@ -652,6 +653,15 @@ featurelist: centos-pyyaml
 .PHONY: checkfeaturelist
 checkfeaturelist: centos-pyyaml
 	@build-root/scripts/fts.py --validate --all
+
+
+# Build VPPTop
+
+.PHONY: vpptop
+vpptop: json-api-files
+	@sudo -E apt-get update
+	@sudo -E apt-get install git, wget
+	@extras/scripts/vpptop.sh
 
 #
 # Build the documentation
