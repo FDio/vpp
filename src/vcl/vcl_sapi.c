@@ -45,6 +45,7 @@ static int
 vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
+  fifo_segment_t *apps, *emqs;
   int i, rv, n_fds_used = 0;
   svm_msg_q_t *ctrl_mq;
   u64 segment_handle;
@@ -57,9 +58,9 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
     }
 
   wrk->api_client_handle = mp->api_client_handle;
-  wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
-  ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
-  vcm->ctrl_mq = wrk->ctrl_mq = ctrl_mq;
+//  wrk->app_event_queue = uword_to_pointer (mp->app_mq, svm_msg_q_t *);
+//  ctrl_mq = uword_to_pointer (mp->vpp_ctrl_mq, svm_msg_q_t *);
+//  vcm->ctrl_mq = wrk->ctrl_mq = ctrl_mq;
   segment_handle = mp->segment_handle;
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
     {
@@ -75,6 +76,12 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
 			    SSVM_SEGMENT_MEMFD, fds[n_fds_used++]))
       goto failed;
 
+  ctrl_mq = clib_mem_alloc (sizeof (svm_msg_q_t));
+  memset (ctrl_mq, 0, sizeof (svm_msg_q_t));
+  emqs = vcl_segment_get (vcl_vpp_worker_segment_handle (0));
+  ssvm_msg_q_attach (&emqs->ssvm, mp->vpp_ctrl_mq, ctrl_mq);
+  vcm->ctrl_mq = wrk->ctrl_mq = ctrl_mq;
+
   if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
     {
       segment_name = format (0, "memfd-%ld%c", segment_handle, 0);
@@ -84,6 +91,9 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
       if (rv != 0)
 	goto failed;
     }
+
+  apps = vcl_segment_get (segment_handle);
+  wrk->app_event_queue = fifo_segment_msg_q_attach (apps, mp->app_mq);
 
   if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
     {
@@ -186,6 +196,7 @@ vcl_api_add_del_worker_reply_handler (app_sapi_worker_add_del_reply_msg_t *
 				      mp, int *fds)
 {
   int n_fds = 0, i, rv;
+  fifo_segment_t *apps;
   u64 segment_handle;
   vcl_worker_t *wrk;
 
@@ -201,8 +212,8 @@ vcl_api_add_del_worker_reply_handler (app_sapi_worker_add_del_reply_msg_t *
   wrk = vcl_worker_get_current ();
   wrk->api_client_handle = mp->api_client_handle;
   wrk->vpp_wrk_index = mp->wrk_index;
-  wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
-					   svm_msg_q_t *);
+//  wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
+//					   svm_msg_q_t *);
   wrk->ctrl_mq = vcm->ctrl_mq;
 
   segment_handle = mp->segment_handle;
@@ -230,6 +241,10 @@ vcl_api_add_del_worker_reply_handler (app_sapi_worker_add_del_reply_msg_t *
       if (rv != 0)
 	goto failed;
     }
+
+  apps = vcl_segment_get (segment_handle);
+  wrk->app_event_queue = fifo_segment_msg_q_attach (
+      apps, mp->app_event_queue_address);
 
   if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
     {
