@@ -327,7 +327,12 @@ fifo_segment_init (fifo_segment_t * fs)
   ASSERT (fsh->max_byte_index <= sh->ssvm_va + sh->ssvm_size);
   fsh->n_slices = fs->n_slices;
   fs->max_byte_index = fsh->max_byte_index;
-  fs->h = sh->opaque[0] = fsh;
+  fs->h = fsh;
+  sh->opaque[0] = (void *) ((u8*) fsh - (u8 *) fs->ssvm.sh);
+  clib_warning ("opaque %lx", sh->opaque[0]);
+
+  /* Allow random offsets */
+  fs->ssvm.sh->ssvm_va = 0;
 
   vec_validate (fs->slices, fs->n_slices);
 
@@ -394,6 +399,53 @@ fifo_segment_create (fifo_segment_main_t * sm, fifo_segment_create_args_t * a)
   vec_add1 (a->new_segment_indices, fs - sm->segments);
   return (0);
 }
+//
+//static int
+//fs_map_memfd (ssvm_private_t *memfd)
+//{
+//  ssvm_shared_header_t *sh;
+//  uword page_size, seg_size;
+//
+//  page_size = clib_mem_get_fd_page_size (memfd->fd);
+//  if (!page_size)
+//    {
+//      clib_unix_warning ("page size unknown");
+//      return SSVM_API_ERROR_MMAP;
+//    }
+//
+//  /*
+//   * Map the segment once, to look at the shared header
+//   */
+//  sh = (void *) mmap (0, page_size, PROT_READ | PROT_WRITE, MAP_SHARED,
+//		      memfd->fd, 0);
+//
+//  if (sh == MAP_FAILED)
+//    {
+//      clib_unix_warning ("client research mmap (fd %d)", memfd->fd);
+//      close (memfd->fd);
+//      return SSVM_API_ERROR_MMAP;
+//    }
+//
+//  seg_size = sh->ssvm_size;
+//  munmap (sh, page_size);
+//
+//  /*
+//   * Remap the segment at the 'right' address
+//   */
+//  sh = (void*) mmap (0, seg_size, PROT_READ | PROT_WRITE, MAP_SHARED,
+//                     memfd->fd, 0);
+//
+//  if (sh == MAP_FAILED)
+//    {
+//      clib_unix_warning ("client final mmap");
+//      close (memfd->fd);
+//      return SSVM_API_ERROR_MMAP;
+//    }
+//
+//  sh->client_pid = getpid ();
+//  memfd->sh = sh;
+//  return 0;
+//}
 
 /**
  * Attach as slave to a fifo segment
@@ -407,28 +459,36 @@ fifo_segment_attach (fifo_segment_main_t * sm, fifo_segment_create_args_t * a)
 
   pool_get_zero (sm->segments, fs);
 
+//  fs->ssvm.fd = a->memfd_fd;
+//
+//  if ((rv = fs_map_memfd (&fs->ssvm)))
+//    return (rv);
+//
+//  /* Fish the segment header */
+//  fsh = fs->h = (void *) fs->ssvm.sh + (uword) fs->ssvm.sh->opaque[0];
+
   fs->ssvm.ssvm_size = a->segment_size;
   fs->ssvm.my_pid = getpid ();
   fs->ssvm.name = format (0, "%s%c", a->segment_name, 0);
-  fs->ssvm.requested_va = sm->next_baseva;
+//  fs->ssvm.requested_va = sm->next_baseva;
+  fs->ssvm.requested_va = 0;
   if (a->segment_type == SSVM_SEGMENT_MEMFD)
     fs->ssvm.fd = a->memfd_fd;
   else
     fs->ssvm.attach_timeout = sm->timeout_in_seconds;
 
-  if ((rv = ssvm_client_init (&fs->ssvm, a->segment_type)))
-    {
-      _vec_len (fs) = vec_len (fs) - 1;
-      return (rv);
-    }
-
-  /* Fish the segment header */
-  fsh = fs->h = fs->ssvm.sh->opaque[0];
+ if ((rv = ssvm_client_init (&fs->ssvm, a->segment_type)))
+   {
+     pool_put (sm->segments, fs);
+     return (rv);
+   }
 
   /* Probably a segment without fifos */
-  if (!fsh)
+  if (!fs->ssvm.sh->opaque[0])
     goto done;
 
+  fsh = fs->h = (void *) fs->ssvm.sh + (uword) fs->ssvm.sh->opaque[0];
+  clib_warning ("segment mapped at %lx opaque %lx", fs->ssvm.sh, (uword) fs->ssvm.sh->opaque[0]);
   fs->max_byte_index = fsh->max_byte_index;
   vec_validate (fs->slices, 0);
 
@@ -923,9 +983,12 @@ done:
 }
 
 svm_fifo_t *
-fifo_segment_alloc_fifo_w_shared (fifo_segment_t *fs, svm_fifo_shared_t *sf)
+fifo_segment_alloc_fifo_w_offset (fifo_segment_t *fs, uword offset)
 {
   svm_fifo_t *f = fs_fifo_alloc (fs, 0);
+  svm_fifo_shared_t *sf;
+
+  sf = (svm_fifo_shared_t *)((u8 *) fs->h + offset);
   f->fs_hdr = fs->h;
   f->f_shr = sf;
 
@@ -1040,6 +1103,12 @@ fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t * f,
     }
 }
 
+uword
+fifo_segment_fifo_offset (svm_fifo_t *f)
+{
+  return (u8 *)f->f_shr - (u8 *)f->fs_hdr;
+}
+
 svm_msg_q_t *
 fifo_segment_msg_q_alloc (fifo_segment_t *fs, svm_msg_q_cfg_t *cfg)
 {
@@ -1058,7 +1127,9 @@ fifo_segment_msg_q_attach (fifo_segment_t *fs, uword offset)
 {
   svm_msg_q_shared_t *smq;
 
-  smq = uword_to_pointer ((u8 *)fs->h + offset, svm_msg_q_shared_t *);
+  clib_warning ("fsh %lx offset %lx", fs->h, offset);
+
+  smq = (svm_msg_q_shared_t *) ((u8 *)fs->h + offset);
   svm_msg_q_attach (&fs->mq, smq);
 
   return &fs->mq;
