@@ -24,15 +24,29 @@
 #include <vppinfra/error.h>
 #include <svm/queue.h>
 
-typedef struct svm_msg_q_ring_
+typedef struct svm_msg_q_ring_shared_
 {
   volatile u32 cursize;			/**< current size of the ring */
   u32 nitems;				/**< max size of the ring */
   volatile u32 head;			/**< current head (for dequeue) */
   volatile u32 tail;			/**< current tail (for enqueue) */
   u32 elsize;				/**< size of an element */
-  u8 *data;				/**< chunk of memory for msg data */
+  u8 data[0];				/**< chunk of memory for msg data */
+} svm_msg_q_ring_shared_t;
+
+typedef struct svm_msg_q_ring_
+{
+  u32 nitems;				/**< max size of the ring */
+  u32 elsize;				/**< size of an element */
+  svm_msg_q_ring_shared_t *shr;		/**< ring in shared memory */
 } __clib_packed svm_msg_q_ring_t;
+
+typedef struct svm_msg_q_shared_
+{
+  u32 n_rings;				/**< number of rings after q */
+  svm_queue_t q[0];			/**< queue for exchanging messages */
+//  svm_msg_q_ring_shared_t *rings;	/**< variable length rings */
+} __clib_packed svm_msg_q_shared_t;
 
 typedef struct svm_msg_q_
 {
@@ -77,9 +91,11 @@ typedef union
  * 			ring configs
  * @return		message queue
  */
-svm_msg_q_t *svm_msg_q_alloc (svm_msg_q_cfg_t * cfg);
-svm_msg_q_t *svm_msg_q_init (void *base, svm_msg_q_cfg_t * cfg);
+svm_msg_q_shared_t *svm_msg_q_alloc (svm_msg_q_cfg_t * cfg);
+svm_msg_q_shared_t *svm_msg_q_init (void *base, svm_msg_q_cfg_t * cfg);
 uword svm_msg_q_size_to_alloc (svm_msg_q_cfg_t * cfg);
+
+void svm_msg_q_attach (svm_msg_q_t *mq, void *smq_base);
 
 /**
  * Free message queue
@@ -267,8 +283,8 @@ svm_msg_q_is_full (svm_msg_q_t * mq)
 static inline u8
 svm_msg_q_ring_is_full (svm_msg_q_t * mq, u32 ring_index)
 {
-  ASSERT (ring_index < vec_len (mq->rings));
-  return (mq->rings[ring_index].cursize == mq->rings[ring_index].nitems);
+  svm_msg_q_ring_t *ring = vec_elt_at_index (mq->rings, ring_index);
+  return (ring->shr->cursize >= ring->nitems);
 }
 
 /**
