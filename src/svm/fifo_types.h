@@ -146,6 +146,7 @@ struct fifo_segment_header_
   u8 high_watermark;			/**< Memory pressure watermark high */
   u8 low_watermark;			/**< Memory pressure watermark low */
   u8 pct_first_alloc;			/**< Pct of fifo size to alloc */
+  u8 n_mqs;				/**< Num mqs for mqs segment */
   CLIB_CACHE_LINE_ALIGN_MARK (allocator);
   uword byte_index;
   uword max_byte_index;
