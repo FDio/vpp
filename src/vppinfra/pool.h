@@ -422,6 +422,20 @@ _pool_free (void *v)
   return 0;
 }
 
+static_always_inline uword
+pool_get_first_index (void *pool)
+{
+  pool_header_t *h = pool_header (pool);
+  return clib_bitmap_first_clear (h->free_bitmap);
+}
+
+static_always_inline uword
+pool_get_next_index (void *pool, uword last)
+{
+  pool_header_t *h = pool_header (pool);
+  return clib_bitmap_next_clear (h->free_bitmap, last + 1);
+}
+
 /** Free a pool. */
 #define pool_free(p) (p) = _pool_free(p)
 
@@ -509,17 +523,16 @@ do {									\
     @c pool_foreach which builds a vector of active indices, and a
     vec_foreach() (or plain for-loop) to walk the active index vector.
  */
+
+#define pool_foreach2(VAR,POOL)						\
+  if (POOL)								\
+    for (VAR = POOL + pool_get_first_index (POOL);			\
+	 VAR < vec_end (POOL);						\
+	 VAR = POOL + pool_get_next_index (POOL, VAR - POOL))
+
 #define pool_foreach(VAR,POOL,BODY)					\
-do {									\
-  uword _pool_foreach_lo, _pool_foreach_hi;				\
-  pool_foreach_region (_pool_foreach_lo, _pool_foreach_hi, (POOL),	\
-    ({									\
-      for ((VAR) = (POOL) + _pool_foreach_lo;				\
-	   (VAR) < (POOL) + _pool_foreach_hi;				\
-	   (VAR)++)							\
-	do { BODY; } while (0);						\
-    }));								\
-} while (0)
+  pool_foreach2(VAR,POOL)						\
+   { BODY; }
 
 /** Returns pointer to element at given index.
 
@@ -553,13 +566,16 @@ do {									\
   _pool_var(rv);                                                        \
 })
 
+#define pool_foreach_index2(i,v)		\
+  if (v)					\
+    for (i = pool_get_first_index (v);		\
+	 i < vec_len (v);			\
+	 i = pool_get_next_index (v, i))	\
+
 /** Iterate pool by index. */
 #define pool_foreach_index(i,v,body)		\
-  for ((i) = 0; (i) < vec_len (v); (i)++)	\
-    {						\
-      if (! pool_is_free_index ((v), (i)))	\
-	do { body; } while (0);			\
-    }
+  pool_foreach_index2 (i,v)			\
+	{ body; }
 
 /**
  * @brief Remove all elements from a pool in a safe way

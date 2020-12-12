@@ -1230,6 +1230,7 @@ vhost_user_process (vlib_main_t * vm,
 		  /* try to connect */
 		  strncpy (sun.sun_path, (char *) vui->sock_filename,
 			   sizeof (sun.sun_path) - 1);
+		  sun.sun_path[sizeof (sun.sun_path) - 1] = 0;
 
 		  /* Avoid hanging VPP if the other end does not accept */
 		  if (fcntl(sockfd, F_SETFL, O_NONBLOCK) < 0)
