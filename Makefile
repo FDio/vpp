@@ -64,7 +64,7 @@ endif
 DEB_DEPENDS  = curl build-essential autoconf automake ccache
 DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd dh-python
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
-DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
+DEB_DEPENDS += lcov chrpath autoconf clang-format libnuma-dev
 DEB_DEPENDS += python3-all python3-setuptools check
 DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
 DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml
@@ -613,7 +613,7 @@ compdb:
 
 .PHONY: checkstyle
 checkstyle: checkfeaturelist
-	@build-root/scripts/checkstyle.sh
+	@extras/scripts/checkstyle.sh
 
 .PHONY: checkstyle-commit
 checkstyle-commit:
@@ -627,7 +627,7 @@ checkstyle-all: checkstyle-commit checkstyle checkstyle-test
 
 .PHONY: fixstyle
 fixstyle:
-	@build-root/scripts/checkstyle.sh --fix
+	@extras/scripts/checkstyle.sh --fix
 
 .PHONY: checkstyle-api
 checkstyle-api:
