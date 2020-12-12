@@ -1,38 +1,50 @@
----
-AlignEscapedNewlinesLeft: true
-AlignTrailingComments: true
-AllowAllParametersOfDeclarationOnNextLine: true
-AllowShortIfStatementsOnASingleLine: false
-AllowShortLoopsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: false
-AlwaysBreakBeforeMultilineStrings: false
-BreakBeforeBinaryOperators: false
-BreakBeforeTernaryOperators: true
-BinPackParameters: true
-BreakBeforeBraces: GNU
-ColumnLimit:     79
-IndentCaseLabels: false
-MaxEmptyLinesToKeep: 1
-PenaltyBreakBeforeFirstCallParameter: 19
-PenaltyBreakComment: 60
-PenaltyBreakString: 1000
-PenaltyBreakFirstLessLess: 120
-PenaltyExcessCharacter: 1000000
-PenaltyReturnTypeOnItsOwnLine: 60
-PointerBindsToType: false
-SpaceBeforeAssignmentOperators: true
-SpaceBeforeParens: Always
-SpacesBeforeTrailingComments: 1
-SpacesInParentheses: false
-SpaceInEmptyParentheses: false
-SpacesInCStyleCastParentheses: false
-SpaceAfterControlStatementKeyword: true
-Cpp11BracedListStyle: true
-Standard:        Cpp11
+BasedOnStyle: GNU
+UseTab: Always
+SpaceAfterCStyleCast: true
 SortIncludes: false
-IndentWidth:     2
-TabWidth:        4
-UseTab:          Never
-IndentFunctionDeclarationAfterType: false
-ContinuationIndentWidth: 4
-...
+AlignConsecutiveMacros: true
+
+ForEachMacros:
+  - 'clib_bitmap_foreach'
+  - 'pool_foreach'
+  - 'pool_foreach_index'
+  - 'vec_foreach'
+  - 'vec_foreach_backwards'
+  - 'vec_foreach_index'
+  - 'vec_foreach_index_backwards'
+  - 'vlib_foreach_rx_tx'
+
+WhitespaceSensitiveMacros:
+  - 'VLIB_NODE_FN'
+  - 'CLIB_MULTIARCH_FN'
+  - 'VNET_DEVICE_CLASS_TX_FN'
+  - 'CLIB_MARCH_FN'
+  - 'REPLY_MACRO2'
+  - 'REPLY_MACRO2_END'
+  - 'REPLY_MACRO2_ZERO'
+  - 'REPLY_MACRO_DETAILS2'
+  - 'REPLY_MACRO_DETAILS4'
+  - 'REPLY_MACRO3'
+  - 'REPLY_MACRO3_ZERO'
+  - 'REPLY_MACRO4'
+  - 'REPLY_AND_DETAILS_MACRO'
+  - 'REPLY_AND_DETAILS_VEC_MACRO'
+  - 'W2'
+  - 'hash_foreach'
+  - 'hash_foreach_mem'
+  - 'hash_foreach_pair'
+  - 'pool_flush'
+  - 'clib_llist_foreach'
+  - 'clib_llist_foreach_safe'
+  - 'clib_llist_foreach_reverse'
+  - 'heap_foreach'
+  - 'clib_fifo_foreach'
+  - 'foreach_set_bit'
+  - 'foreach_vlib_main'
+  - 'mhash_foreach'
+  - 'foreach_ip_interface_address'
+  - 'FOR_EACH_IPSEC_PROTECT_INPUT_SAI'
+  - 'FOR_EACH_IPSEC_PROTECT_INPUT_SA'
+  - 'FOR_EACH_IP6_SPECIAL'
+  - 'FOR_EACH_MFIB_DELEGATE'
+  - 'MFIB_SIGNAL_CRITICAL_SECTION'
