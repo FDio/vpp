@@ -139,12 +139,12 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
 			       hi, verbose);
 
               /* *INDENT-OFF* */
-	      clib_bitmap_foreach (hw_idx, hi->bond_info,
-              ({
+	      clib_bitmap_foreach (hw_idx, hi->bond_info)
+               {
                 shi = vnet_get_hw_interface(vnm, hw_idx);
                 vlib_cli_output (vm, "%U\n",
                                  format_vnet_hw_interface, vnm, shi, verbose);
-              }));
+              }
               /* *INDENT-ON* */
 	    }
 	}
@@ -1663,8 +1663,8 @@ show_interface_rx_placement_fn (vlib_main_t * vm, unformat_input_t * input,
 
   /* *INDENT-OFF* */
   foreach_vlib_main (({
-    clib_bitmap_foreach (si, pn->sibling_bitmap,
-      ({
+    clib_bitmap_foreach (si, pn->sibling_bitmap)
+       {
         rt = vlib_node_get_runtime_data (this_vlib_main, si);
 
         if (vec_len (rt->devices_and_queues))
@@ -1679,7 +1679,7 @@ show_interface_rx_placement_fn (vlib_main_t * vm, unformat_input_t * input,
 			dq->queue_id,
 			format_vnet_hw_if_rx_mode, dq->mode);
 	  }
-      }));
+      }
     if (vec_len (s) > 0)
       {
         vlib_cli_output(vm, "Thread %u (%s):\n%v", index,

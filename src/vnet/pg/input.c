@@ -1808,10 +1808,10 @@ pg_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     worker_index = vlib_get_current_worker_index ();
 
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (i, pg->enabled_streams[worker_index], ({
+  clib_bitmap_foreach (i, pg->enabled_streams[worker_index])  {
     pg_stream_t *s = vec_elt_at_index (pg->streams, i);
     n_packets += pg_input_stream (node, pg, s);
-  }));
+  }
   /* *INDENT-ON* */
 
   return n_packets;

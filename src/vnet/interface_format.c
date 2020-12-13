@@ -142,9 +142,9 @@ format_vnet_hw_interface_rss_queues (u8 * s, va_list * args)
   if (bitmap)
     {
     /* *INDENT-OFF* */
-    clib_bitmap_foreach (i, bitmap, ({
+    clib_bitmap_foreach (i, bitmap)  {
       s = format (s, "%u ", i);
-    }));
+    }
     /* *INDENT-ON* */
     }
 
@@ -181,8 +181,8 @@ format_vnet_hw_interface (u8 * s, va_list * args)
     {
       int hw_idx;
       s = format (s, "Slave-Idx:");
-      clib_bitmap_foreach (hw_idx, hi->bond_info, s =
-			   format (s, " %d", hw_idx));
+      clib_bitmap_foreach (hw_idx, hi->bond_info)
+	s = format (s, " %d", hw_idx);
     }
   else if (dev_class->format_device_name)
     s = format (s, "%U", dev_class->format_device_name, hi->dev_instance);

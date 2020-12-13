@@ -212,7 +212,7 @@ show_interfaces_span_command_fn (vlib_main_t * vm,
 	  }
 	s = format (s, "%U", format_vnet_sw_if_index_name, vnm,
 		    si - sm->interfaces);
-	clib_bitmap_foreach (i, b, (
+	clib_bitmap_foreach (i, b)
 	  {
 	    int device = (clib_bitmap_get (drxm->mirror_ports, i) +
 		         clib_bitmap_get (dtxm->mirror_ports, i) * 2);
@@ -223,7 +223,7 @@ show_interfaces_span_command_fn (vlib_main_t * vm,
 			     format_vnet_sw_if_index_name, vnm, i,
 			     states[device], states[l2]);
 	    vec_reset_length (s);
-	  }));
+	  }
 	clib_bitmap_free (b);
 	clib_bitmap_free (l);
 	clib_bitmap_free (d);

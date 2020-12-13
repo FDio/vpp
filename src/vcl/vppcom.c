@@ -2454,7 +2454,7 @@ vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
     goto check_rd;
 
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (sid, wrk->wr_bitmap, ({
+  clib_bitmap_foreach (sid, wrk->wr_bitmap)  {
     if (!(session = vcl_session_get (wrk, sid)))
       {
 	clib_bitmap_set_no_check ((uword*)write_map, sid, 1);
@@ -2469,13 +2469,13 @@ vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
       }
     else
       svm_fifo_add_want_deq_ntf (session->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
-  }));
+  }
 
 check_rd:
   if (!read_map)
     goto check_mq;
 
-  clib_bitmap_foreach (sid, wrk->rd_bitmap, ({
+  clib_bitmap_foreach (sid, wrk->rd_bitmap)  {
     if (!(session = vcl_session_get (wrk, sid)))
       {
 	clib_bitmap_set_no_check ((uword*)read_map, sid, 1);
@@ -2488,7 +2488,7 @@ check_rd:
         clib_bitmap_set_no_check ((uword*)read_map, sid, 1);
         bits_set++;
       }
-  }));
+  }
   /* *INDENT-ON* */
 
 check_mq:

@@ -1078,8 +1078,8 @@ static void vl_api_sw_interface_rx_placement_dump_t_handler
 
       /* *INDENT-OFF* */
       foreach_vlib_main (({
-        clib_bitmap_foreach (si, pn->sibling_bitmap,
-        ({
+        clib_bitmap_foreach (si, pn->sibling_bitmap)
+         {
           rt = vlib_node_get_runtime_data (this_vlib_main, si);
           vec_foreach (dq, rt->devices_and_queues)
             {
@@ -1088,7 +1088,7 @@ static void vl_api_sw_interface_rx_placement_dump_t_handler
               send_interface_rx_placement_details (am, reg, hw->sw_if_index, index,
                                           dq->queue_id, dq->mode, mp->context);
             }
-        }));
+        }
         index++;
       }));
       /* *INDENT-ON* */

@@ -85,7 +85,7 @@ span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
     return;
 
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (i, sm0->mirror_ports, (
+  clib_bitmap_foreach (i, sm0->mirror_ports)
     {
       if (mirror_frames[i] == 0)
         {
@@ -121,7 +121,7 @@ span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
 #endif
 	    }
 	}
-    }));
+    }
   /* *INDENT-ON* */
 }
 

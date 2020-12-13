@@ -498,9 +498,9 @@ l2_rw_show_interfaces_cli_fn (vlib_main_t * vm,
 
   uword i;
   /* *INDENT-OFF* */
-  clib_bitmap_foreach(i, rw->configs_bitmap, {
+  clib_bitmap_foreach (i, rw->configs_bitmap) {
       vlib_cli_output (vm, "sw_if_index:%d %U\n", i, format_l2_rw_config, &rw->configs[i]);
-  });
+  }
   /* *INDENT-ON* */
   return 0;
 }

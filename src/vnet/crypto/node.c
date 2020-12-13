@@ -161,10 +161,10 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
   u32 index;
 
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (index, cm->async_active_ids, ({
+  clib_bitmap_foreach (index, cm->async_active_ids)  {
     n_cache = crypto_dequeue_frame (vm, node, ct, cm->dequeue_handlers[index],
 				    n_cache, &n_dispatched);
-  }));
+  }
   /* *INDENT-ON* */
   if (n_cache)
     vlib_buffer_enqueue_to_next (vm, node, ct->buffer_indice, ct->nexts,

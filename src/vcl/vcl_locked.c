@@ -1340,14 +1340,14 @@ vls_select_mp_checks (vcl_si_set * read_map)
   wrk = vcl_worker_get_current ();
 
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (si, read_map, ({
+  clib_bitmap_foreach (si, read_map)  {
     s = vcl_session_get (wrk, si);
     if (s->session_state == VCL_STATE_LISTEN)
       {
 	vls = vls_get (vls_session_index_to_vlsh (si));
 	vls_mp_checks (vls, 1 /* is_add */);
       }
-  }));
+  }
   /* *INDENT-ON* */
 }
 

@@ -283,10 +283,10 @@ nat64_init (vlib_main_t * vm)
 	bitmap = clib_bitmap_set (bitmap, i, 1);
 
       /* *INDENT-OFF* */
-      clib_bitmap_foreach (i, bitmap,
-        ({
+      clib_bitmap_foreach (i, bitmap)
+         {
           vec_add1(nm->workers, i);
-        }));
+        }
       /* *INDENT-ON* */
 
       clib_bitmap_free (bitmap);

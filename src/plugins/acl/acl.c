@@ -679,7 +679,7 @@ acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
 		  seen_acl_bitmap, format_bitmap_hex, change_acl_bitmap);
 
 /* *INDENT-OFF* */
-  clib_bitmap_foreach(acln, change_acl_bitmap, ({
+  clib_bitmap_foreach (acln, change_acl_bitmap)  {
     if (clib_bitmap_get(old_seen_acl_bitmap, acln)) {
       /* ACL is being removed. */
       if (acln < vec_len((*pinout_sw_if_index_vec_by_acl))) {
@@ -691,7 +691,7 @@ acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
       vec_validate((*pinout_sw_if_index_vec_by_acl), acln);
       vec_add1((*pinout_sw_if_index_vec_by_acl)[acln], sw_if_index);
     }
-  }));
+  }
 /* *INDENT-ON* */
 
   vec_free ((*pinout_acl_vec_by_sw_if_index)[sw_if_index]);

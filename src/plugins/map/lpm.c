@@ -111,12 +111,12 @@ lpm_128_lookup (lpm_t *lpm, void *addr_v, u8 pfxlen)
   ip6_address_t *addr = addr_v;
   int i = 0, rv;
   u32 value;
-  clib_bitmap_foreach (i, lpm->prefix_lengths_bitmap,
-    ({
+  clib_bitmap_foreach (i, lpm->prefix_lengths_bitmap)
+     {
       rv = lpm_128_lookup_core(lpm, addr, i, &value);
       if (rv == 0)
 	return value;
-    }));
+    }
   return ~0;
 }
 
