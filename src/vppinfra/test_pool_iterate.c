@@ -78,8 +78,8 @@ main (int argc, char *argv[])
   while (next != ~0);
 
   /* *INDENT-OFF* */
-  pool_foreach (junk, tp,
-  ({
+  pool_foreach (junk, tp)
+   {
     int is_free;
 
     is_free = pool_is_free_index (tp, junk - tp);
@@ -93,7 +93,7 @@ main (int argc, char *argv[])
           if (i != 1 && i != 65)
             clib_warning ("oops, busy index %d reported free", i);
         }
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;

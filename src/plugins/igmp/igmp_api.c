@@ -182,10 +182,10 @@ vl_api_igmp_dump_t_handler (vl_api_igmp_dump_t * mp)
   if (~0 == sw_if_index)
     {
       /* *INDENT-OFF* */
-      pool_foreach (config, im->configs,
-        ({
+      pool_foreach (config, im->configs)
+         {
           igmp_config_dump(im, rp, mp->context, config);
-        }));
+        }
       /* *INDENT-ON* */
     }
   else
@@ -403,12 +403,12 @@ igmp_event (igmp_filter_mode_t filter,
 
 
   /* *INDENT-OFF* */
-  pool_foreach (api_client, im->api_clients,
-    ({
+  pool_foreach (api_client, im->api_clients)
+     {
       rp = vl_api_client_index_to_registration (api_client->client_index);
       if (rp)
         send_igmp_event (rp, filter, sw_if_index, saddr, gaddr);
-    }));
+    }
   /* *INDENT-ON* */
 }
 

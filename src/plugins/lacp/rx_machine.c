@@ -344,7 +344,7 @@ lacp_port_is_moved (vlib_main_t * vm, member_if_t * mif)
   lacp_pdu_t *lacpdu = (lacp_pdu_t *) mif->last_rx_pkt;
 
   /* *INDENT-OFF* */
-  pool_foreach (mif2, bm->neighbors, {
+  pool_foreach (mif2, bm->neighbors) {
       {
 	if ((mif != mif2) && (mif2->rx_state == LACP_RX_STATE_PORT_DISABLED) &&
 	    !memcmp (mif2->partner.system,
@@ -352,7 +352,7 @@ lacp_port_is_moved (vlib_main_t * vm, member_if_t * mif)
 	    (mif2->partner.port_number == lacpdu->partner.port_info.port_number))
 	  return 1;
       }
-  });
+  }
   /* *INDENT-ON* */
 
   return 0;

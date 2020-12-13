@@ -396,8 +396,8 @@ format_ip4_mfib_table_memory (u8 * s, va_list * args)
 
     total_memory = 0;
 
-    pool_foreach (mfib_table, ip4_main.mfibs,
-    ({
+    pool_foreach (mfib_table, ip4_main.mfibs)
+     {
         ip4_mfib_t *mfib = &mfib_table->v4;
         uword mfib_size;
         int i;
@@ -415,7 +415,7 @@ format_ip4_mfib_table_memory (u8 * s, va_list * args)
         }
 
         total_memory += mfib_size;
-    }));
+    }
 
     s = format(s, "%=30s %=6d %=12ld\n",
                "IPv4 multicast",
@@ -525,8 +525,8 @@ ip4_show_mfib (vlib_main_t * vm,
             break;
     }
 
-    pool_foreach (mfib_table, im4->mfibs,
-    ({
+    pool_foreach (mfib_table, im4->mfibs)
+     {
         ip4_mfib_t *mfib = &mfib_table->v4;
 
         if (table_id >= 0 && table_id != (int)mfib->table_id)
@@ -584,7 +584,7 @@ ip4_show_mfib (vlib_main_t * vm,
         {
             ip4_mfib_table_show_one(mfib, vm, &src, &grp, mask);
         }
-    }));
+    }
     if (memory)
         vlib_cli_output (vm, "totals: hash:%ld", total_hash_memory);
 

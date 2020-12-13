@@ -622,11 +622,11 @@ application_detach_process (application_t * app, u32 api_client_index)
 	   app->app_index, api_client_index);
 
   /* *INDENT-OFF* */
-  pool_foreach (wrk_map, app->worker_maps, ({
+  pool_foreach (wrk_map, app->worker_maps)  {
     app_wrk = app_worker_get (wrk_map->wrk_index);
     if (app_wrk->api_client_index == api_client_index)
       vec_add1 (wrks, app_wrk->wrk_index);
-  }));
+  }
   /* *INDENT-ON* */
 
   if (!vec_len (wrks))
@@ -1357,7 +1357,7 @@ application_format_listeners (application_t * app, int verbose)
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (wrk_map, app->worker_maps, ({
+  pool_foreach (wrk_map, app->worker_maps)  {
     app_wrk = app_worker_get (wrk_map->wrk_index);
     if (hash_elts (app_wrk->listeners_table) == 0)
       continue;
@@ -1365,7 +1365,7 @@ application_format_listeners (application_t * app, int verbose)
       vlib_cli_output (vm, "%U", format_app_worker_listener, app_wrk,
                        handle, sm_index, verbose);
     }));
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -1382,10 +1382,10 @@ application_format_connects (application_t * app, int verbose)
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (wrk_map, app->worker_maps, ({
+  pool_foreach (wrk_map, app->worker_maps)  {
     app_wrk = app_worker_get (wrk_map->wrk_index);
     app_worker_format_connects (app_wrk, verbose);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -1488,10 +1488,10 @@ format_application (u8 * s, va_list * args)
 	      format_memory_size, props->tx_fifo_size);
 
   /* *INDENT-OFF* */
-  pool_foreach (wrk_map, app->worker_maps, ({
+  pool_foreach (wrk_map, app->worker_maps)  {
       app_wrk = app_worker_get (wrk_map->wrk_index);
       s = format (s, "%U", format_app_worker, app_wrk);
-  }));
+  }
   /* *INDENT-ON* */
 
   return s;
@@ -1511,9 +1511,9 @@ application_format_all_listeners (vlib_main_t * vm, int verbose)
   application_format_listeners (0, verbose);
 
   /* *INDENT-OFF* */
-  pool_foreach (app, app_main.app_pool, ({
+  pool_foreach (app, app_main.app_pool)  {
     application_format_listeners (app, verbose);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -1531,9 +1531,9 @@ application_format_all_clients (vlib_main_t * vm, int verbose)
   application_format_connects (0, verbose);
 
   /* *INDENT-OFF* */
-  pool_foreach (app, app_main.app_pool, ({
+  pool_foreach (app, app_main.app_pool)  {
     application_format_connects (app, verbose);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -1545,9 +1545,9 @@ show_certificate_command_fn (vlib_main_t * vm, unformat_input_t * input,
   session_cli_return_if_not_enabled ();
 
   /* *INDENT-OFF* */
-  pool_foreach (ckpair, app_main.cert_key_pair_store, ({
+  pool_foreach (ckpair, app_main.cert_key_pair_store)  {
     vlib_cli_output (vm, "%U", format_cert_key_pair, ckpair);
-  }));
+  }
   /* *INDENT-ON* */
   return 0;
 }
@@ -1558,12 +1558,12 @@ appliction_format_app_mq (vlib_main_t * vm, application_t * app)
   app_worker_map_t *map;
   app_worker_t *wrk;
   /* *INDENT-OFF* */
-  pool_foreach (map, app->worker_maps, ({
+  pool_foreach (map, app->worker_maps)  {
     wrk = app_worker_get (map->wrk_index);
     vlib_cli_output (vm, "[A%d][%d]%U", app->app_index,
 		     map->wrk_index, format_svm_msg_q,
 		     wrk->event_queue);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -1582,9 +1582,9 @@ appliction_format_all_app_mq (vlib_main_t * vm)
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (app, app_main.app_pool, ({
+  pool_foreach (app, app_main.app_pool)  {
       appliction_format_app_mq (vm, app);
-  }));
+  }
   /* *INDENT-ON* */
   return 0;
 }
@@ -1660,9 +1660,9 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       vlib_cli_output (vm, "%U", format_application, 0, 0);
       /* *INDENT-OFF* */
-      pool_foreach (app, app_main.app_pool, ({
+      pool_foreach (app, app_main.app_pool)  {
 	vlib_cli_output (vm, "%U", format_application, app, 0);
-      }));
+      }
       /* *INDENT-ON* */
     }
 

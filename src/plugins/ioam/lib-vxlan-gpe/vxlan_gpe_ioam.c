@@ -187,11 +187,10 @@ vxlan_gpe_clear_output_feature_on_all_intfs (vlib_main_t * vm)
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
 
-  pool_foreach (si, im->sw_interfaces, (
-					 {
-					 vxlan_gpe_set_clear_output_feature_on_intf
-					 (vm, si->sw_if_index, 0);
-					 }));
+  pool_foreach (si, im->sw_interfaces)
+  {
+    vxlan_gpe_set_clear_output_feature_on_intf (vm, si->sw_if_index, 0);
+  }
   return;
 }
 
@@ -377,17 +376,12 @@ vxlan_gpe_refresh_output_feature_on_all_dest (void)
   i = vec_len (hm->bool_ref_by_sw_if_index);
   vec_free (hm->bool_ref_by_sw_if_index);
   vec_validate_init_empty (hm->bool_ref_by_sw_if_index, i, ~0);
-  pool_foreach (t, hm->dst_tunnels, (
-				      {
-				      vxlan_gpe_enable_disable_ioam_for_dest
-				      (hm->vlib_main,
-				       t->dst_addr,
-				       t->outer_fib_index,
-				       (t->fp_proto == FIB_PROTOCOL_IP4), 1
-				       /* is_add */
-				      );
-				      }
-		));
+  pool_foreach (t, hm->dst_tunnels)
+  {
+    vxlan_gpe_enable_disable_ioam_for_dest
+      (hm->vlib_main, t->dst_addr, t->outer_fib_index,
+       (t->fp_proto == FIB_PROTOCOL_IP4), 1 /* is_add */ );
+  }
   return;
 }
 
@@ -621,16 +615,14 @@ int vxlan_gpe_ioam_disable_for_dest
       return 0;
     }
 
-  pool_foreach (t, hm->dst_tunnels, (
-				      {
-				      vxlan_gpe_enable_disable_ioam_for_dest
-				      (hm->vlib_main,
-				       t->dst_addr,
-				       t->outer_fib_index,
-				       (t->fp_proto ==
-					FIB_PROTOCOL_IP4), 1 /* is_add */ );
-				      }
-		));
+  pool_foreach (t, hm->dst_tunnels)
+  {
+    vxlan_gpe_enable_disable_ioam_for_dest
+      (hm->vlib_main,
+       t->dst_addr,
+       t->outer_fib_index,
+       (t->fp_proto == FIB_PROTOCOL_IP4), 1 /* is_add */ );
+  }
   vxlan_gpe_clear_output_feature_on_select_intfs ();
   return (0);
 

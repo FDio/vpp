@@ -265,13 +265,13 @@ show_bier_imp (vlib_main_t * vm,
 
     if (INDEX_INVALID == bii)
     {
-        pool_foreach(bi, bier_imp_pool,
-        ({
+        pool_foreach (bi, bier_imp_pool)
+         {
             vlib_cli_output(vm, "%U", format_bier_imp,
                             bier_imp_get_index(bi),
                             1,
                             BIER_SHOW_BRIEF);
-        }));
+        }
     }
     else
     {

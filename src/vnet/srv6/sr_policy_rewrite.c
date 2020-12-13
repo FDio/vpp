@@ -979,10 +979,10 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  sr_policy_fn_registration_t **plugin_it = 0;
 
 	  /* *INDENT-OFF* */
-	  pool_foreach (plugin, sm->policy_plugin_functions,
+	  pool_foreach (plugin, sm->policy_plugin_functions)
 	    {
 	      vec_add1 (vec_plugins, plugin);
-	    });
+	    }
 	  /* *INDENT-ON* */
 
 	  vec_foreach (plugin_it, vec_plugins)
@@ -1121,8 +1121,8 @@ show_sr_policies_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "SR policies:");
 
   /* *INDENT-OFF* */
-  pool_foreach  (sr_policy, sm->sr_policies,
-                {vec_add1 (vec_policies, sr_policy); } );
+  pool_foreach (sr_policy, sm->sr_policies)
+                {vec_add1 (vec_policies, sr_policy); }
   /* *INDENT-ON* */
 
   vec_foreach_index (i, vec_policies)
@@ -3411,8 +3411,8 @@ show_sr_policy_behaviors_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "SR Policy behaviors:\n-----------------------\n\n");
 
   /* *INDENT-OFF* */
-  pool_foreach (plugin, sm->policy_plugin_functions,
-    ({ vec_add1 (plugins_vec, plugin); }));
+  pool_foreach (plugin, sm->policy_plugin_functions)
+     { vec_add1 (plugins_vec, plugin); }
   /* *INDENT-ON* */
 
   vlib_cli_output (vm, "Plugin behaviors:\n");

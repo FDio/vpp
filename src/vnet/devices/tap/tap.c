@@ -946,7 +946,7 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
   tap_interface_details_t *tapid = NULL;
 
   /* *INDENT-OFF* */
-  pool_foreach (vif, mm->interfaces,
+  pool_foreach (vif, mm->interfaces) {
     if ((vif->type != VIRTIO_IF_TYPE_TAP)
       && (vif->type != VIRTIO_IF_TYPE_TUN))
       continue;
@@ -988,7 +988,7 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
       clib_memcpy(tapid->host_ip6_addr.as_u8, &vif->host_ip6_addr, 16);
     tapid->host_ip6_prefix_len = vif->host_ip6_prefix_len;
     tapid->host_mtu_size = vif->host_mtu_size;
-  );
+  }
   /* *INDENT-ON* */
 
   *out_tapids = r_tapids;

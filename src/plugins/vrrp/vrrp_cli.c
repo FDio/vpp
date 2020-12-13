@@ -196,15 +196,14 @@ vrrp_show_vr_command_fn (vlib_main_t * vm,
 	break;
     }
 
-  pool_foreach (vr, vmp->vrs, (
-				{
+  pool_foreach (vr, vmp->vrs)
+  {
 
-				if (sw_if_index && (sw_if_index != ~0) &&
-				    (sw_if_index != vr->config.sw_if_index))
-				continue;
-				vlib_cli_output (vm, "%U", format_vrrp_vr,
-						 vr);}
-		));
+    if (sw_if_index && (sw_if_index != ~0) &&
+	(sw_if_index != vr->config.sw_if_index))
+      continue;
+    vlib_cli_output (vm, "%U", format_vrrp_vr, vr);
+  }
 
   return 0;
 }

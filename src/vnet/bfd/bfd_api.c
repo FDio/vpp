@@ -181,7 +181,7 @@ bfd_event (bfd_main_t * bm, bfd_session_t * bs)
   vpe_client_registration_t *reg;
   vl_api_registration_t *vl_reg;
   /* *INDENT-OFF* */
-  pool_foreach (reg, vam->bfd_events_registrations, ({
+  pool_foreach (reg, vam->bfd_events_registrations)  {
     vl_reg = vl_api_client_index_to_registration (reg->client_index);
     if (vl_reg)
       {
@@ -193,7 +193,7 @@ bfd_event (bfd_main_t * bm, bfd_session_t * bs)
 	    send_bfd_udp_session_details (vl_reg, 0, bs);
 	  }
       }
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -208,11 +208,11 @@ vl_api_bfd_udp_session_dump_t_handler (vl_api_bfd_udp_session_dump_t * mp)
 
   bfd_session_t *bs = NULL;
   /* *INDENT-OFF* */
-  pool_foreach (bs, bfd_main.sessions, ({
+  pool_foreach (bs, bfd_main.sessions)  {
     if (bs->transport == BFD_TRANSPORT_UDP4 ||
 	bs->transport == BFD_TRANSPORT_UDP6)
       send_bfd_udp_session_details (reg, mp->context, bs);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -265,7 +265,7 @@ vl_api_bfd_auth_keys_dump_t_handler (vl_api_bfd_auth_keys_dump_t * mp)
   vl_api_bfd_auth_keys_details_t *rmp = NULL;
 
   /* *INDENT-OFF* */
-  pool_foreach (key, bfd_main.auth_keys, ({
+  pool_foreach (key, bfd_main.auth_keys)  {
     rmp = vl_msg_api_alloc (sizeof (*rmp));
     clib_memset (rmp, 0, sizeof (*rmp));
     rmp->_vl_msg_id = ntohs (VL_API_BFD_AUTH_KEYS_DETAILS);
@@ -274,7 +274,7 @@ vl_api_bfd_auth_keys_dump_t_handler (vl_api_bfd_auth_keys_dump_t * mp)
     rmp->auth_type = key->auth_type;
     rmp->use_count = clib_host_to_net_u32 (key->use_count);
     vl_api_send_msg (reg, (u8 *)rmp);
-  }));
+  }
   /* *INDENT-ON* */
 }
 

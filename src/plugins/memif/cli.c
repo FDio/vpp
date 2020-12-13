@@ -461,9 +461,8 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (vec_len (hw_if_indices) == 0)
     {
       /* *INDENT-OFF* */
-      pool_foreach (mif, mm->interfaces,
+      pool_foreach (mif, mm->interfaces)
 	  vec_add1 (hw_if_indices, mif->hw_if_index);
-      );
       /* *INDENT-ON* */
     }
 

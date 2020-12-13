@@ -245,10 +245,10 @@ lisp_gpe_sub_interface_show (vlib_main_t * vm,
 		   "local RLOC");
 
   /* *INDENT-OFF* */
-  pool_foreach (l3s, lisp_gpe_sub_interface_pool,
-  ({
+  pool_foreach (l3s, lisp_gpe_sub_interface_pool)
+   {
     vlib_cli_output (vm, "%U", format_lisp_gpe_sub_interface, l3s);
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;

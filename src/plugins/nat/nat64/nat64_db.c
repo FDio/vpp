@@ -177,11 +177,11 @@ nat64_db_bib_entry_free (u32 thread_index, nat64_db_t * db,
   /* delete ST entries for static BIB entry */
   if (bibe->is_static)
     {
-      pool_foreach (ste, st, (
-			       {
-			       if (ste->bibe_index == bibe_index)
-			       vec_add1 (ste_to_be_free, ste - st);}
-		    ));
+      pool_foreach (ste, st)
+      {
+	if (ste->bibe_index == bibe_index)
+	  vec_add1 (ste_to_be_free, ste - st);
+      }
       vec_foreach (ste_index, ste_to_be_free)
 	nat64_db_st_entry_free (thread_index, db,
 				pool_elt_at_index (st, ste_index[0]));
@@ -274,17 +274,17 @@ nat64_db_bib_walk (nat64_db_t * db, u8 proto,
     /* *INDENT-OFF* */
     #define _(N, i, n, s) \
       bib = db->bib._##n##_bib; \
-      pool_foreach (bibe, bib, ({ \
+      pool_foreach (bibe, bib)  { \
         if (fn (bibe, ctx)) \
           return; \
-      }));
+      }
       foreach_nat_protocol
     #undef _
       bib = db->bib._unk_proto_bib;
-      pool_foreach (bibe, bib, ({
+      pool_foreach (bibe, bib)  {
         if (fn (bibe, ctx))
           return;
-      }));
+      }
     /* *INDENT-ON* */
     }
   else
@@ -305,11 +305,11 @@ nat64_db_bib_walk (nat64_db_t * db, u8 proto,
 	}
 
       /* *INDENT-OFF* */
-      pool_foreach (bibe, bib,
-      ({
+      pool_foreach (bibe, bib)
+       {
         if (fn (bibe, ctx))
           return;
-      }));
+      }
       /* *INDENT-ON* */
     }
 }
@@ -348,17 +348,17 @@ nat64_db_st_walk (nat64_db_t * db, u8 proto,
     /* *INDENT-OFF* */
     #define _(N, i, n, s) \
       st = db->st._##n##_st; \
-      pool_foreach (ste, st, ({ \
+      pool_foreach (ste, st)  { \
         if (fn (ste, ctx)) \
           return; \
-      }));
+      }
       foreach_nat_protocol
     #undef _
       st = db->st._unk_proto_st;
-      pool_foreach (ste, st, ({
+      pool_foreach (ste, st)  {
         if (fn (ste, ctx))
           return;
-      }));
+      }
     /* *INDENT-ON* */
     }
   else
@@ -379,11 +379,11 @@ nat64_db_st_walk (nat64_db_t * db, u8 proto,
 	}
 
       /* *INDENT-OFF* */
-      pool_foreach (ste, st,
-      ({
+      pool_foreach (ste, st)
+       {
         if (fn (ste, ctx))
           return;
-      }));
+      }
       /* *INDENT-ON* */
     }
 }
@@ -670,12 +670,12 @@ nad64_db_st_free_expired (u32 thread_index, nat64_db_t * db, u32 now)
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
   st = db->st._##n##_st; \
-  pool_foreach (ste, st, ({\
+  pool_foreach (ste, st) {\
     if (i == NAT_PROTOCOL_TCP && !ste->tcp_state) \
       continue; \
     if (ste->expire < now) \
       vec_add1 (ste_to_be_free, ste - st); \
-  })); \
+  } \
   vec_foreach (ste_index, ste_to_be_free) \
     nat64_db_st_entry_free (thread_index, db, \
                             pool_elt_at_index(st, ste_index[0])); \
@@ -684,10 +684,10 @@ nad64_db_st_free_expired (u32 thread_index, nat64_db_t * db, u32 now)
   foreach_nat_protocol
 #undef _
   st = db->st._unk_proto_st;
-  pool_foreach (ste, st, ({
+  pool_foreach (ste, st)  {
     if (ste->expire < now)
       vec_add1 (ste_to_be_free, ste - st);
-  }));
+  }
   vec_foreach (ste_index, ste_to_be_free)
     nat64_db_st_entry_free (thread_index, db,
                             pool_elt_at_index(st, ste_index[0]));
@@ -707,11 +707,11 @@ nat64_db_free_out_addr (u32 thread_index,
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
   st = db->st._##n##_st; \
-  pool_foreach (ste, st, ({ \
+  pool_foreach (ste, st) { \
     bibe = pool_elt_at_index (db->bib._##n##_bib, ste->bibe_index); \
     if (bibe->out_addr.as_u32 == out_addr->as_u32) \
       vec_add1 (ste_to_be_free, ste - st); \
-  })); \
+  } \
   vec_foreach (ste_index, ste_to_be_free) \
     nat64_db_st_entry_free (thread_index, db, \
                             pool_elt_at_index(st, ste_index[0])); \
@@ -720,11 +720,11 @@ nat64_db_free_out_addr (u32 thread_index,
   foreach_nat_protocol
 #undef _
   st = db->st._unk_proto_st;
-  pool_foreach (ste, st, ({
+  pool_foreach (ste, st)  {
     bibe = pool_elt_at_index (db->bib._unk_proto_bib, ste->bibe_index);
     if (bibe->out_addr.as_u32 == out_addr->as_u32)
       vec_add1 (ste_to_be_free, ste - st);
-  }));
+  }
   vec_foreach (ste_index, ste_to_be_free)
     nat64_db_st_entry_free (thread_index, db,
                             pool_elt_at_index(st, ste_index[0]));

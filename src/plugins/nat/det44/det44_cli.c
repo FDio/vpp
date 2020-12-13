@@ -75,8 +75,8 @@ det44_show_mappings_command_fn (vlib_main_t * vm,
   snat_det_map_t *mp;
   vlib_cli_output (vm, "NAT44 deterministic mappings:");
   /* *INDENT-OFF* */
-  pool_foreach (mp, dm->det_maps,
-  ({
+  pool_foreach (mp, dm->det_maps)
+   {
     vlib_cli_output (vm, " in %U/%d out %U/%d\n",
                      format_ip4_address, &mp->in_addr, mp->in_plen,
                      format_ip4_address, &mp->out_addr, mp->out_plen);
@@ -85,7 +85,7 @@ det44_show_mappings_command_fn (vlib_main_t * vm,
     vlib_cli_output (vm, "  number of ports per inside host: %d\n",
                      mp->ports_per_host);
     vlib_cli_output (vm, "  sessions number: %d\n", mp->ses_num);
-  }));
+  }
   /* *INDENT-ON* */
   return 0;
 }
@@ -188,8 +188,8 @@ det44_show_sessions_command_fn (vlib_main_t * vm,
   snat_det_map_t *mp;
   vlib_cli_output (vm, "NAT44 deterministic sessions:");
   /* *INDENT-OFF* */
-  pool_foreach (mp, dm->det_maps,
-  ({
+  pool_foreach (mp, dm->det_maps)
+   {
     int i;
     vec_foreach_index (i, mp->sessions)
       {
@@ -197,7 +197,7 @@ det44_show_sessions_command_fn (vlib_main_t * vm,
         if (ses->in_port)
           vlib_cli_output (vm, "  %U", format_det_map_ses, mp, ses, &i);
       }
-  }));
+  }
   /* *INDENT-ON* */
   return 0;
 }
@@ -487,14 +487,14 @@ det44_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
   det44_interface_t *i;
   vlib_cli_output (vm, "DET44 interfaces:");
   /* *INDENT-OFF* */
-  pool_foreach (i, dm->interfaces,
-  ({
+  pool_foreach (i, dm->interfaces)
+   {
     vlib_cli_output (vm, " %U %s", format_vnet_sw_if_index_name, vnm,
                      i->sw_if_index,
                      (det44_interface_is_inside(i) &&
                       det44_interface_is_outside(i)) ? "in out" :
                      (det44_interface_is_inside(i) ? "in" : "out"));
-  }));
+  }
   /* *INDENT-ON* */
   return 0;
 }

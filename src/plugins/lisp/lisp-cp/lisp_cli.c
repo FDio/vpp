@@ -841,8 +841,8 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
   if (print_all)
     {
       /* *INDENT-OFF* */
-      pool_foreach (mapit, lcm->mapping_pool,
-      ({
+      pool_foreach (mapit, lcm->mapping_pool)
+       {
         if (mapit->pitr_set)
           continue;
 
@@ -855,7 +855,7 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
           }
         vlib_cli_output (vm, "%U", format_eid_entry, lcm->vnet_main,
                          lcm, mapit, ls);
-      }));
+      }
       /* *INDENT-ON* */
     }
   else
@@ -1300,8 +1300,8 @@ lisp_cp_show_locator_sets_command_fn (vlib_main_t * vm,
 		   "Priority", "Weight");
 
   /* *INDENT-OFF* */
-  pool_foreach (lsit, lcm->locator_set_pool,
-  ({
+  pool_foreach (lsit, lcm->locator_set_pool)
+   {
     u8 * msg = 0;
     int next_line = 0;
     if (lsit->local)
@@ -1330,7 +1330,7 @@ lisp_cp_show_locator_sets_command_fn (vlib_main_t * vm,
       }
     vlib_cli_output (vm, "%v", msg);
     vec_free (msg);
-  }));
+  }
   /* *INDENT-ON* */
   return 0;
 }

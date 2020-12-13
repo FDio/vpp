@@ -424,10 +424,10 @@ ipsec_sa_show_all (vlib_main_t * vm, ipsec_main_t * im, u8 detail)
   u32 sai;
 
   /* *INDENT-OFF* */
-  pool_foreach_index (sai, im->sad, ({
+  pool_foreach_index (sai, im->sad)  {
     vlib_cli_output(vm, "%U", format_ipsec_sa, sai,
                     (detail ? IPSEC_FORMAT_DETAIL : IPSEC_FORMAT_BRIEF));
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -437,9 +437,9 @@ ipsec_spd_show_all (vlib_main_t * vm, ipsec_main_t * im)
   u32 spdi;
 
   /* *INDENT-OFF* */
-  pool_foreach_index (spdi, im->spds, ({
+  pool_foreach_index (spdi, im->spds)  {
     vlib_cli_output(vm, "%U", format_ipsec_spd, spdi);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -545,9 +545,9 @@ clear_ipsec_sa_command_fn (vlib_main_t * vm,
   if (~0 == sai)
     {
       /* *INDENT-OFF* */
-      pool_foreach_index (sai, im->sad, ({
+      pool_foreach_index (sai, im->sad)  {
         ipsec_sa_clear(sai);
-      }));
+      }
       /* *INDENT-ON* */
     }
   else
@@ -643,7 +643,7 @@ ipsec_show_backends_command_fn (vlib_main_t * vm,
   u8 *s = format (NULL, "%=25s %=25s %=10s\n", "Name", "Index", "Active");
   ipsec_ah_backend_t *ab;
   /* *INDENT-OFF* */
-  pool_foreach (ab, im->ah_backends, {
+  pool_foreach (ab, im->ah_backends) {
     s = format (s, "%=25s %=25u %=10s\n", ab->name, ab - im->ah_backends,
                 ab - im->ah_backends == im->ah_current_backend ? "yes" : "no");
     if (verbose) {
@@ -657,7 +657,7 @@ ipsec_show_backends_command_fn (vlib_main_t * vm,
         n = vlib_get_node (vm, ab->ah6_decrypt_node_index);
         s = format (s, "     dec6 %s (next %d)\n", n->name, ab->ah6_decrypt_next_index);
     }
-  });
+  }
   /* *INDENT-ON* */
   vlib_cli_output (vm, "%v", s);
   _vec_len (s) = 0;
@@ -665,7 +665,7 @@ ipsec_show_backends_command_fn (vlib_main_t * vm,
   s = format (s, "%=25s %=25s %=10s\n", "Name", "Index", "Active");
   ipsec_esp_backend_t *eb;
   /* *INDENT-OFF* */
-  pool_foreach (eb, im->esp_backends, {
+  pool_foreach (eb, im->esp_backends) {
     s = format (s, "%=25s %=25u %=10s\n", eb->name, eb - im->esp_backends,
                 eb - im->esp_backends == im->esp_current_backend ? "yes"
                                                                  : "no");
@@ -680,7 +680,7 @@ ipsec_show_backends_command_fn (vlib_main_t * vm,
         n = vlib_get_node (vm, eb->esp6_decrypt_node_index);
         s = format (s, "     dec6 %s (next %d)\n", n->name, eb->esp6_decrypt_next_index);
     }
-  });
+  }
   /* *INDENT-ON* */
   vlib_cli_output (vm, "%v", s);
 

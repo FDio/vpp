@@ -90,10 +90,10 @@ vl_api_sw_if_l2tpv3_tunnel_dump_t_handler (vl_api_sw_if_l2tpv3_tunnel_dump_t *
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (session, lm->sessions,
-  ({
+  pool_foreach (session, lm->sessions)
+   {
     send_sw_if_l2tpv3_tunnel_details (am, reg, session, lm, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 }
 

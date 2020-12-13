@@ -903,12 +903,10 @@ show_geneve_tunnel_command_fn (vlib_main_t * vm,
   if (pool_elts (vxm->tunnels) == 0)
     vlib_cli_output (vm, "No geneve tunnels configured...");
 
-  pool_foreach (t, vxm->tunnels, (
-				   {
-				   vlib_cli_output (vm, "%U",
-						    format_geneve_tunnel, t);
-				   }
-		));
+  pool_foreach (t, vxm->tunnels)
+  {
+    vlib_cli_output (vm, "%U", format_geneve_tunnel, t);
+  }
 
   return 0;
 }

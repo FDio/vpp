@@ -190,10 +190,10 @@ static void vl_api_vxlan_gpe_tunnel_dump_t_handler
   if (~0 == sw_if_index)
     {
       /* *INDENT-OFF* */
-      pool_foreach (t, vgm->tunnels,
-      ({
+      pool_foreach (t, vgm->tunnels)
+       {
         send_vxlan_gpe_tunnel_details(t, reg, mp->context);
-      }));
+      }
       /* *INDENT-ON* */
     }
   else

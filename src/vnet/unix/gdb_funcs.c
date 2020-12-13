@@ -249,10 +249,10 @@ gdb_show_traces ()
     trace_apply_filter(this_vlib_main);
 
     traces = 0;
-    pool_foreach (h, tm->trace_buffer_pool,
-    ({
+    pool_foreach (h, tm->trace_buffer_pool)
+     {
       vec_add1 (traces, h[0]);
-    }));
+    }
 
     if (vec_len (traces) == 0)
       {

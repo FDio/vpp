@@ -234,10 +234,10 @@ format_snat_static_mapping (u8 * s, va_list * args)
 		    clib_net_to_host_u16 (m->local_port));
 
       /* *INDENT-OFF* */
-      pool_foreach (local, m->locals,
-      ({
+      pool_foreach (local, m->locals)
+       {
         s = format (s, " vrf %d", local->vrf_id);
-      }));
+      }
       /* *INDENT-ON* */
 
       return s;
@@ -264,13 +264,13 @@ format_snat_static_mapping (u8 * s, va_list * args)
 		      is_out2in_only_static_mapping (m) ? "out2in-only" : "");
 
           /* *INDENT-OFF* */
-          pool_foreach (local, m->locals,
-          ({
+          pool_foreach (local, m->locals)
+           {
 	    s = format (s, "\n  local %U:%d vrf %d probability %d\%",
 			format_ip4_address, &local->addr,
                         clib_net_to_host_u16 (local->port),
 			local->vrf_id, local->probability);
-          }));
+          }
           /* *INDENT-ON* */
 
 	}

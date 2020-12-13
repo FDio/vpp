@@ -69,11 +69,11 @@ cnat_translation_unwatch_addr (u32 cti, cnat_addr_resol_type_t type)
   addr_resolution_t *ar;
   index_t *indexes = 0, *ari;
   /* *INDENT-OFF* */
-  pool_foreach (ar, tr_resolutions, ({
+  pool_foreach (ar, tr_resolutions)  {
     if ((cti == INDEX_INVALID || ar->cti == cti) &&
       (ar->type == type || CNAT_RESOLV_ADDR_ANY == type))
       vec_add1(indexes, ar - tr_resolutions);
-  }));
+  }
   /* *INDENT-ON* */
   vec_foreach (ari, indexes) pool_put_index (tr_resolutions, *ari);
 
@@ -313,11 +313,11 @@ cnat_translation_walk (cnat_translation_walk_cb_t cb, void *ctx)
   u32 api;
 
   /* *INDENT-OFF* */
-  pool_foreach_index(api, cnat_translation_pool,
-  ({
+  pool_foreach_index (api, cnat_translation_pool)
+   {
     if (!cb(api, ctx))
       break;
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -381,11 +381,11 @@ cnat_translation_show (vlib_main_t * vm,
   if (INDEX_INVALID == cti)
     {
       /* *INDENT-OFF* */
-      pool_foreach_index(cti, cnat_translation_pool,
-      ({
+      pool_foreach_index (cti, cnat_translation_pool)
+       {
 	ct = pool_elt_at_index (cnat_translation_pool, cti);
         vlib_cli_output(vm, "%U", format_cnat_translation, ct);
-      }));
+      }
       /* *INDENT-ON* */
     }
   else
@@ -403,10 +403,10 @@ cnat_translation_purge (void)
   index_t tri, *trp, *trs = NULL;
 
   /* *INDENT-OFF* */
-  pool_foreach_index(tri, cnat_translation_pool,
-  ({
+  pool_foreach_index (tri, cnat_translation_pool)
+   {
     vec_add1(trs, tri);
-  }));
+  }
   /* *INDENT-ON* */
 
   vec_foreach (trp, trs) cnat_translation_delete (*trp);
@@ -649,13 +649,13 @@ cnat_if_addr_add_del_callback (u32 sw_if_index, ip_address_t * address,
 {
   addr_resolution_t *ar;
   /* *INDENT-OFF* */
-  pool_foreach (ar, tr_resolutions, ({
+  pool_foreach (ar, tr_resolutions)  {
     if (ar->sw_if_index != sw_if_index)
       continue;
     if (ar->af != ip_addr_version (address))
       continue;
     cnat_if_addr_add_cbs[ar->type] (ar, address, is_del);
-  }));
+  }
   /* *INDENT-ON* */
 }
 

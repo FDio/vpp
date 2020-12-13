@@ -207,12 +207,12 @@ show_fib_urpf_list_command (vlib_main_t * vm,
 	 * show all
 	 */
 	vlib_cli_output (vm, "FIB uRPF Entries:");
-	pool_foreach_index(ui, fib_urpf_list_pool,
-        ({
+	pool_foreach_index (ui, fib_urpf_list_pool)
+         {
 	    vlib_cli_output (vm, "%d@%U",
 			     ui,
 			     format_fib_urpf_list, ui);
-	}));
+	}
     }
 
     return (NULL);

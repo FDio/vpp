@@ -472,11 +472,11 @@ abf_itf_attach_walk (abf_itf_attach_walk_cb_t cb, void *ctx)
   u32 aii;
 
   /* *INDENT-OFF* */
-  pool_foreach_index(aii, abf_itf_attach_pool,
-  ({
+  pool_foreach_index (aii, abf_itf_attach_pool)
+   {
     if (!cb(aii, ctx))
       break;
-  }));
+  }
   /* *INDENT-ON* */
 }
 

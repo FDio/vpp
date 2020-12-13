@@ -85,9 +85,9 @@ vl_api_stn_rules_dump_t_handler (vl_api_stn_rules_dump_t * mp)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (r, stn->rules,({
+  pool_foreach (r, stn->rules) {
     send_stn_rules_details (r, reg, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 }
 

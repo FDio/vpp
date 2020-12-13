@@ -255,7 +255,7 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
 
   lb_as_t *as;
   u32 *as_index;
-  pool_foreach(as_index, vip->as_indexes, {
+  pool_foreach (as_index, vip->as_indexes) {
       as = &lbm->ass[*as_index];
       s = format(s, "%U    %U %u buckets   %Lu flows  dpo:%u %s\n",
                    format_white_space, indent,
@@ -264,7 +264,7 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
                    vlib_refcount_get(&lbm->as_refcount, as - lbm->ass),
                    as->dpo.dpoi_index,
                    (as->flags & LB_AS_FLAGS_USED)?"used":" removed");
-  });
+  }
 
   vec_free(count);
   return s;
@@ -302,7 +302,7 @@ static void lb_vip_garbage_collection(lb_vip_t *vip)
   vip->last_garbage_collection = now;
   lb_as_t *as;
   u32 *as_index;
-  pool_foreach(as_index, vip->as_indexes, {
+  pool_foreach (as_index, vip->as_indexes) {
       as = &lbm->ass[*as_index];
       if (!(as->flags & LB_AS_FLAGS_USED) && //Not used
           clib_u32_loop_gt(now, as->last_used + LB_CONCURRENCY_TIMEOUT) &&
@@ -351,7 +351,7 @@ static void lb_vip_garbage_collection(lb_vip_t *vip)
           pool_put(vip->as_indexes, as_index);
           pool_put(lbm->ass, as);
         }
-  });
+  }
 }
 
 void lb_garbage_collection()
@@ -360,14 +360,14 @@ void lb_garbage_collection()
   lb_get_writer_lock();
   lb_vip_t *vip;
   u32 *to_be_removed_vips = 0, *i;
-  pool_foreach(vip, lbm->vips, {
+  pool_foreach (vip, lbm->vips) {
       lb_vip_garbage_collection(vip);
 
       if (!(vip->flags & LB_VIP_FLAGS_USED) &&
           (pool_elts(vip->as_indexes) == 0)) {
         vec_add1(to_be_removed_vips, vip - lbm->vips);
       }
-  });
+  }
 
   vec_foreach(i, to_be_removed_vips) {
     vip = &lbm->vips[*i];
@@ -392,13 +392,13 @@ static void lb_vip_update_new_flow_table(lb_vip_t *vip)
 
   //Check if some AS is configured or not
   i = 0;
-  pool_foreach(as_index, vip->as_indexes, {
+  pool_foreach (as_index, vip->as_indexes) {
       as = &lbm->ass[*as_index];
       if (as->flags & LB_AS_FLAGS_USED) { //Not used anymore
         i = 1;
         goto out; //Not sure 'break' works in this macro-loop
       }
-  });
+  }
 
 out:
   if (i == 0) {
@@ -414,14 +414,14 @@ out:
   vec_alloc(sort_arr, pool_elts(vip->as_indexes));
 
   i = 0;
-  pool_foreach(as_index, vip->as_indexes, {
+  pool_foreach (as_index, vip->as_indexes) {
       as = &lbm->ass[*as_index];
       if (!(as->flags & LB_AS_FLAGS_USED)) //Not used anymore
         continue;
 
       sort_arr[i].as_index = as - lbm->ass;
       i++;
-  });
+  }
   _vec_len(sort_arr) = i;
 
   vec_sort_with_function(sort_arr, lb_pseudorand_compare);
@@ -503,7 +503,7 @@ int lb_vip_port_find_index(ip46_address_t *prefix, u8 plen,
   /* This must be called with the lock owned */
   CLIB_SPINLOCK_ASSERT_LOCKED (&lbm->writer_lock);
   ip46_prefix_normalize(prefix, plen);
-  pool_foreach(vip, lbm->vips, {
+  pool_foreach (vip, lbm->vips) {
       if ((vip->flags & LB_AS_FLAGS_USED) &&
           vip->plen == plen &&
           vip->prefix.as_u64[0] == prefix->as_u64[0] &&
@@ -522,7 +522,7 @@ int lb_vip_port_find_index(ip46_address_t *prefix, u8 plen,
               return 0;
             }
         }
-  });
+  }
   return VNET_API_ERROR_NO_SUCH_ENTRY;
 }
 
@@ -569,7 +569,7 @@ static int lb_as_find_index_vip(lb_vip_t *vip, ip46_address_t *address, u32 *as_
   CLIB_SPINLOCK_ASSERT_LOCKED (&lbm->writer_lock);
   lb_as_t *as;
   u32 *asi;
-  pool_foreach(asi, vip->as_indexes, {
+  pool_foreach (asi, vip->as_indexes) {
       as = &lbm->ass[*asi];
       if (as->vip_index == (vip - lbm->vips) &&
           as->address.as_u64[0] == address->as_u64[0] &&
@@ -578,7 +578,7 @@ static int lb_as_find_index_vip(lb_vip_t *vip, ip46_address_t *address, u32 *as_
         *as_index = as - lbm->ass;
         return 0;
       }
-  });
+  }
   return -1;
 }
 
@@ -1224,10 +1224,10 @@ int lb_vip_del(u32 vip_index)
     lb_as_t *as;
     u32 *as_index;
 
-    pool_foreach(as_index, vip->as_indexes, {
+    pool_foreach (as_index, vip->as_indexes) {
         as = &lbm->ass[*as_index];
         vec_add1(ass, as->address);
-    });
+    }
     if (vec_len(ass))
       lb_vip_del_ass_withlock(vip_index, ass, vec_len(ass), 0);
     vec_free(ass);

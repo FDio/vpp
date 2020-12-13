@@ -143,10 +143,10 @@ vl_api_ipip_tunnel_dump_t_handler (vl_api_ipip_tunnel_dump_t * mp)
   if (sw_if_index == ~0)
     {
     /* *INDENT-OFF* */
-    pool_foreach(t, im->tunnels,
-    ({
+    pool_foreach (t, im->tunnels)
+     {
       send_ipip_tunnel_details(t, mp);
-    }));
+    }
     /* *INDENT-ON* */
     }
   else

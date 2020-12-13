@@ -314,10 +314,10 @@ timing_wheel_insert (timing_wheel_t * w, u64 insert_cpu_time, u32 user_data)
       {
 	timing_wheel_overflow_elt_t *oe;
 	/* *INDENT-OFF* */
-	pool_foreach (oe, w->overflow_pool, ({
+	pool_foreach (oe, w->overflow_pool)  {
 	  if (oe->user_data == user_data)
 	    pool_put (w->overflow_pool, oe);
-	}));
+	}
 	/* *INDENT-ON* */
       }
 
@@ -398,8 +398,8 @@ timing_wheel_next_expiring_elt_time (timing_wheel_t * w)
       min_t = w->cpu_time_base + min_dt;
 
     /* *INDENT-OFF* */
-    pool_foreach (oe, w->overflow_pool,
-		  ({ min_t = clib_min (min_t, oe->cpu_time); }));
+    pool_foreach (oe, w->overflow_pool)
+		   { min_t = clib_min (min_t, oe->cpu_time); }
     /* *INDENT-ON* */
 
   done:
@@ -503,7 +503,7 @@ advance_cpu_time_base (timing_wheel_t * w, u32 * expired_user_data)
   {
     timing_wheel_overflow_elt_t *oe;
     /* *INDENT-OFF* */
-    pool_foreach (oe, w->overflow_pool, ({
+    pool_foreach (oe, w->overflow_pool)  {
       /* It fits now into 32 bits. */
       if (0 == ((oe->cpu_time - w->cpu_time_base) >> BITS (e->cpu_time_relative_to_base)))
 	{
@@ -520,7 +520,7 @@ advance_cpu_time_base (timing_wheel_t * w, u32 * expired_user_data)
 	    timing_wheel_insert_helper (w, oe->cpu_time, oe->user_data);
 	  pool_put (w->overflow_pool, oe);
 	}
-    }));
+    }
     /* *INDENT-ON* */
   }
   return expired_user_data;

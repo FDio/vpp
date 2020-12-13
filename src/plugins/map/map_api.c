@@ -137,10 +137,10 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach_index(i, mm->domains,
-  ({
+  pool_foreach_index (i, mm->domains)
+   {
     send_domain_details(i, reg, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 }
 

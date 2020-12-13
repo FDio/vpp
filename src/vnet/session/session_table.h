@@ -72,7 +72,7 @@ void session_table_init (session_table_t * slt, u8 fib_proto);
 session_table_t *_get_session_tables ();
 
 #define session_table_foreach(VAR, BODY)		\
-  pool_foreach(VAR, _get_session_tables (), BODY)
+  pool_foreach (VAR, _get_session_tables ()) BODY
 
 #endif /* SRC_VNET_SESSION_SESSION_TABLE_H_ */
 /* *INDENT-ON* */

@@ -258,15 +258,15 @@ trace_apply_filter (vlib_main_t * vm)
    */
   n_accepted = 0;
   /* *INDENT-OFF* */
-  pool_foreach (h, tm->trace_buffer_pool,
-   ({
+  pool_foreach (h, tm->trace_buffer_pool)
+    {
       accept = filter_accept(tm, h[0]);
 
       if ((n_accepted == tm->filter_count) || !accept)
           vec_add1 (traces_to_remove, h);
       else
           n_accepted++;
-  }));
+  }
   /* *INDENT-ON* */
 
   /* remove all traces that we don't want to keep */
@@ -319,10 +319,10 @@ cli_show_trace_buffer (vlib_main_t * vm,
     trace_apply_filter(this_vlib_main);
 
     traces = 0;
-    pool_foreach (h, tm->trace_buffer_pool,
-    ({
+    pool_foreach (h, tm->trace_buffer_pool)
+     {
       vec_add1 (traces, h[0]);
-    }));
+    }
 
     if (vec_len (traces) == 0)
       {

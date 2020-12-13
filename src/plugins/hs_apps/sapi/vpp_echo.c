@@ -263,11 +263,11 @@ echo_free_sessions (echo_main_t * em)
   u32 *session_indexes = 0, *session_index;
 
   /* *INDENT-OFF* */
-  pool_foreach (s, em->sessions,
-  ({
+  pool_foreach (s, em->sessions)
+   {
     if (s->session_state == ECHO_SESSION_STATE_CLOSED)
-      vec_add1 (session_indexes, s->session_index);}
-  ));
+      vec_add1 (session_indexes, s->session_index);
+   }
   /* *INDENT-ON* */
   vec_foreach (session_index, session_indexes)
   {

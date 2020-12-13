@@ -196,10 +196,10 @@ scrape_stats_segment (mt_main_t * mm)
 
   vec_reset_length (pool_indices);
   /* *INDENT-OFF* */
-  pool_foreach (dev, mm->devices,
-  ({
+  pool_foreach (dev, mm->devices)
+   {
     vec_add1 (pool_indices, dev->pool_index);
-  }));
+  }
   /* *INDENT-ON* */
 
   /* Nothing to do... */
@@ -445,10 +445,10 @@ print_device_table (mt_main_t * mm)
 
   fformat (stdout, "%U", format_device, 0 /* header */ , 0 /* verbose */ );
   /* *INDENT-OFF* */
-  pool_foreach (dev, mm->devices,
-  ({
+  pool_foreach (dev, mm->devices)
+   {
     fformat (stdout, "%U", format_device, dev, 0 /* verbose */);
-  }));
+  }
   /* *INDENT-ON* */
 }
 

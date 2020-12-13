@@ -581,7 +581,7 @@ static void vl_api_##nn##_t_handler (                                   \
     svm_queue_t * q;                                     \
                                                                         \
     /* One registration only... */                                      \
-    pool_foreach(reg, vam->nn##_registrations,                          \
+    pool_foreach (reg, vam->nn##_registrations)                          \
     ({                                                                  \
         q = vl_api_client_index_to_input_queue (reg->client_index);     \
         if (q) {                                                        \

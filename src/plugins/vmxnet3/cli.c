@@ -556,9 +556,8 @@ show_vmxnet3_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (vec_len (hw_if_indices) == 0)
     {
-      pool_foreach (vd, vmxm->devices,
-		    vec_add1 (hw_if_indices, vd->hw_if_index);
-	);
+      pool_foreach (vd, vmxm->devices)
+	vec_add1 (hw_if_indices, vd->hw_if_index);
     }
 
   show_vmxnet3 (vm, hw_if_indices, show_descr, show_one_table, which,

@@ -433,10 +433,10 @@ vl_api_mpls_table_dump_t_handler (vl_api_mpls_table_dump_t * mp)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (fib_table, mm->fibs,
-  ({
+  pool_foreach (fib_table, mm->fibs)
+   {
     send_mpls_table_details(am, reg, mp->context, fib_table);
-  }));
+  }
   /* *INDENT-ON* */
 }
 

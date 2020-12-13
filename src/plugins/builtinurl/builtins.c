@@ -101,10 +101,10 @@ handle_get_interface_stats (http_builtin_method_type_t reqtype,
   else				/* default, HTTP_BUILTIN_METHOD_GET */
     {
       /* *INDENT-OFF* */
-      pool_foreach (hi, im->hw_interfaces,
-      ({
+      pool_foreach (hi, im->hw_interfaces)
+       {
         vec_add1 (sw_if_indices, hi->sw_if_index);
-      }));
+      }
       /* *INDENT-ON* */
     }
 
@@ -156,12 +156,12 @@ handle_get_interface_list (http_builtin_method_type_t reqtype,
 
   /* Construct vector of active hw_if_indexes ... */
   /* *INDENT-OFF* */
-  pool_foreach (hi, im->hw_interfaces,
-  ({
+  pool_foreach (hi, im->hw_interfaces)
+   {
     /* No point in mentioning "local0"... */
     if (hi - im->hw_interfaces)
       vec_add1 (hw_if_indices, hi - im->hw_interfaces);
-  }));
+  }
   /* *INDENT-ON* */
 
   /* Build answer */

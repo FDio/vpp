@@ -1965,10 +1965,10 @@ vl_api_acl_dump_t_handler (vl_api_acl_dump_t * mp)
     {
     /* *INDENT-OFF* */
     /* Just dump all ACLs */
-    pool_foreach (acl, am->acls,
-    ({
+    pool_foreach (acl, am->acls)
+     {
       send_acl_details(am, reg, acl, mp->context);
-    }));
+    }
     /* *INDENT-ON* */
     }
   else
@@ -2050,10 +2050,10 @@ vl_api_acl_interface_list_dump_t_handler (vl_api_acl_interface_list_dump_t *
   if (mp->sw_if_index == ~0)
     {
     /* *INDENT-OFF* */
-    pool_foreach (swif, im->sw_interfaces,
-    ({
+    pool_foreach (swif, im->sw_interfaces)
+     {
       send_acl_interface_list_details(am, reg, swif->sw_if_index, mp->context);
-    }));
+    }
     /* *INDENT-ON* */
     }
   else
@@ -2215,10 +2215,10 @@ vl_api_macip_acl_dump_t_handler (vl_api_macip_acl_dump_t * mp)
     {
       /* Just dump all ACLs for now, with sw_if_index = ~0 */
       /* *INDENT-OFF* */
-      pool_foreach (acl, am->macip_acls,
-        ({
+      pool_foreach (acl, am->macip_acls)
+         {
           send_macip_acl_details (am, reg, acl, mp->context);
-        }));
+        }
       /* *INDENT-ON* */
     }
   else
@@ -2424,10 +2424,10 @@ static void
   if (mp->sw_if_index == ~0)
     {
     /* *INDENT-OFF* */
-    pool_foreach (swif, im->sw_interfaces,
-    ({
+    pool_foreach (swif, im->sw_interfaces)
+     {
       send_acl_interface_etype_whitelist_details(am, reg, swif->sw_if_index, mp->context);
-    }));
+    }
     /* *INDENT-ON* */
     }
   else
@@ -3268,8 +3268,8 @@ acl_plugin_show_sessions (acl_main_t * am,
 	}
       vlib_cli_output (vm, "  connection add/del stats:", wk);
       /* *INDENT-OFF* */
-      pool_foreach (swif, im->sw_interfaces,
-        ({
+      pool_foreach (swif, im->sw_interfaces)
+         {
           u32 sw_if_index = swif->sw_if_index;
           u64 n_adds =
             (sw_if_index < vec_len (pw->fa_session_adds_by_sw_if_index) ?
@@ -3291,7 +3291,7 @@ acl_plugin_show_sessions (acl_main_t * am,
                            n_adds -
                            n_dels,
                            n_epoch_changes);
-        }));
+        }
       /* *INDENT-ON* */
 
       vlib_cli_output (vm, "  connection timeout type lists:", wk);

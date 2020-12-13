@@ -581,8 +581,8 @@ format_lldp_intfs_detail (u8 * s, vlib_main_t * vm, const lldp_main_t * lm)
   f64 now = vlib_time_now (vm);
 
   /* *INDENT-OFF* */
-  pool_foreach(
-      n, lm->intfs, ({
+  pool_foreach (
+      n, lm->intfs)  {
         hw = vnet_get_hw_interface(vnm, n->hw_if_index);
         sw = vnet_get_sw_interface(lm->vnet_main, hw->sw_if_index);
 
@@ -639,7 +639,7 @@ format_lldp_intfs_detail (u8 * s, vlib_main_t * vm, const lldp_main_t * lm)
                        vec_len(n->port_id), 1, format_time_ago, n->last_sent,
                        now, format_time_ago, n->last_heard, now);
           }
-      }));
+      }
   /* *INDENT-ON* */
   return s;
 }
@@ -664,8 +664,8 @@ format_lldp_intfs (u8 * s, va_list * va)
 	      "Status");
 
   /* *INDENT-OFF* */
-  pool_foreach(
-      n, lm->intfs, ({
+  pool_foreach (
+      n, lm->intfs)  {
         const vnet_hw_interface_t *hw =
             vnet_get_hw_interface(vnm, n->hw_if_index);
         const vnet_sw_interface_t *sw =
@@ -688,7 +688,7 @@ format_lldp_intfs (u8 * s, va_list * va)
                        "", "", format_time_ago, n->last_heard, now,
                        format_time_ago, n->last_sent, now, "inactive");
           }
-      }));
+      }
   /* *INDENT-ON* */
   return s;
 }

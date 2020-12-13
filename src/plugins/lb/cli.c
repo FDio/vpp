@@ -387,11 +387,11 @@ lb_show_vips_command_fn (vlib_main_t * vm,
     verbose = 1;
 
   /* Hide placeholder VIP */
-  pool_foreach(vip, lbm->vips, {
+  pool_foreach (vip, lbm->vips) {
     if (vip != lbm->vips) {
       vlib_cli_output(vm, "%U\n", verbose?format_lb_vip_detailed:format_lb_vip, vip);
     }
-  });
+  }
 
   unformat_free (&line_input);
   return NULL;

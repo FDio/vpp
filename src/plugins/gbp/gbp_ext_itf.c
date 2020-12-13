@@ -233,11 +233,11 @@ gbp_ext_itf_walk (gbp_ext_itf_cb_t cb, void *ctx)
   gbp_ext_itf_t *ge;
 
   /* *INDENT-OFF* */
-  pool_foreach(ge, gbp_ext_itf_pool,
+  pool_foreach (ge, gbp_ext_itf_pool)
   {
     if (!cb(ge, ctx))
       break;
-  });
+  }
   /* *INDENT-ON* */
 }
 

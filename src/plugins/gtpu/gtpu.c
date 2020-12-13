@@ -914,12 +914,10 @@ show_gtpu_tunnel_command_fn (vlib_main_t * vm,
   if (pool_elts (gtm->tunnels) == 0)
     vlib_cli_output (vm, "No gtpu tunnels configured...");
 
-  pool_foreach (t, gtm->tunnels, (
-				   {
-				   vlib_cli_output (vm, "%U",
-						    format_gtpu_tunnel, t);
-				   }
-		));
+  pool_foreach (t, gtm->tunnels)
+  {
+    vlib_cli_output (vm, "%U", format_gtpu_tunnel, t);
+  }
 
   return 0;
 }

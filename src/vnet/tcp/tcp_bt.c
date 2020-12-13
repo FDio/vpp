@@ -639,9 +639,9 @@ tcp_bt_flush_samples (tcp_connection_t * tc)
   vec_reset_length (samples);
 
   /* *INDENT-OFF* */
-  pool_foreach (bts, bt->samples, ({
+  pool_foreach (bts, bt->samples)  {
     vec_add1 (samples, bts - bt->samples);
-  }));
+  }
   /* *INDENT-ON* */
 
   vec_foreach (si, samples)

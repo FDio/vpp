@@ -598,9 +598,9 @@ show_sr_mpls_policies_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "SR MPLS policies:");
 
 	/* *INDENT-OFF* */
-	pool_foreach(sr_policy, sm->sr_policies, {
+	pool_foreach (sr_policy, sm->sr_policies) {
 		vec_add1(vec_policies, sr_policy);
-	});
+	}
 	/* *INDENT-ON* */
 
   vec_foreach_index (i, vec_policies)

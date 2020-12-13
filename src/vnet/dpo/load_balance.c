@@ -1029,12 +1029,12 @@ load_balance_show (vlib_main_t * vm,
     {
         load_balance_t *lb;
 
-        pool_foreach(lb, load_balance_pool,
-        ({
+        pool_foreach (lb, load_balance_pool)
+         {
             vlib_cli_output (vm, "%U", format_load_balance,
                              load_balance_get_index(lb),
                              LOAD_BALANCE_FORMAT_NONE);
-        }));
+        }
     }
 
     return 0;

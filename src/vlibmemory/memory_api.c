@@ -583,10 +583,10 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
   vec_reset_length (confused_indices);
 
   /* *INDENT-OFF* */
-  pool_foreach (regpp, am->vl_clients, ({
+  pool_foreach (regpp, am->vl_clients)  {
       vl_mem_send_client_keepalive_w_reg (am, now, regpp, &dead_indices,
                                           &confused_indices);
-  }));
+  }
   /* *INDENT-ON* */
 
   /* This should "never happen," but if it does, fix it... */
@@ -893,15 +893,15 @@ vl_api_ring_command (vlib_main_t * vm,
 
       /* For horizontal scaling, add a hash table... */
       /* *INDENT-OFF* */
-      pool_foreach (regpp, am->vl_clients,
-      ({
+      pool_foreach (regpp, am->vl_clients)
+       {
         regp = *regpp;
         if (regp && regp->vlib_rp == vlib_rp)
           {
             vlib_cli_output (vm, "%s segment rings:", regp->name);
             goto found;
           }
-      }));
+      }
       vlib_cli_output (vm, "regp %llx not found?", regp);
       continue;
       /* *INDENT-ON* */

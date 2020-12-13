@@ -364,11 +364,11 @@ gbp_bridge_domain_walk (gbp_bridge_domain_cb_t cb, void *ctx)
   gbp_bridge_domain_t *gbpe;
 
   /* *INDENT-OFF* */
-  pool_foreach(gbpe, gbp_bridge_domain_pool,
+  pool_foreach (gbpe, gbp_bridge_domain_pool)
   {
     if (!cb(gbpe, ctx))
       break;
-  });
+  }
   /* *INDENT-ON* */
 }
 

@@ -346,11 +346,11 @@ abf_policy_walk (abf_policy_walk_cb_t cb, void *ctx)
   u32 api;
 
   /* *INDENT-OFF* */
-  pool_foreach_index(api, abf_policy_pool,
-  ({
+  pool_foreach_index (api, abf_policy_pool)
+   {
     if (!cb(api, ctx))
       break;
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -375,10 +375,10 @@ abf_show_policy_cmd (vlib_main_t * vm,
   if (INDEX_INVALID == policy_id)
     {
       /* *INDENT-OFF* */
-      pool_foreach(ap, abf_policy_pool,
-      ({
+      pool_foreach (ap, abf_policy_pool)
+       {
         vlib_cli_output(vm, "%U", format_abf, ap);
-      }));
+      }
       /* *INDENT-ON* */
     }
   else

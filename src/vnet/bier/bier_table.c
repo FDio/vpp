@@ -909,10 +909,10 @@ bier_table_show_all (vlib_main_t * vm,
     {
         int ii;
 
-        pool_foreach_index(ii, bier_table_pool,
-        ({
+        pool_foreach_index (ii, bier_table_pool)
+         {
             vlib_cli_output (vm, "%U", format_bier_table, ii, flags);
-        }));
+        }
     }
 }
 

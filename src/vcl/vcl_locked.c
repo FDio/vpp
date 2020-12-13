@@ -739,7 +739,7 @@ vls_share_sessions (vls_worker_t * vls_parent_wrk, vls_worker_t * vls_wrk)
   vcl_locked_session_t *vls, *parent_vls;
 
   /* *INDENT-OFF* */
-  pool_foreach (vls, vls_wrk->vls_pool, ({
+  pool_foreach (vls, vls_wrk->vls_pool)  {
     /* Initialize sharing on parent session */
     if (vls->shared_data_index == ~0)
       {
@@ -748,7 +748,7 @@ vls_share_sessions (vls_worker_t * vls_parent_wrk, vls_worker_t * vls_wrk)
 	vls->shared_data_index = parent_vls->shared_data_index;
       }
     vls_share_session (vls_wrk, vls);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -1380,11 +1380,11 @@ vls_unshare_vcl_worker_sessions (vcl_worker_t * wrk)
   is_current = current_wrk == wrk->wrk_index;
 
   /* *INDENT-OFF* */
-  pool_foreach (s, wrk->sessions, ({
+  pool_foreach (s, wrk->sessions)  {
     vls = vls_get (vls_si_wi_to_vlsh (s->session_index, wrk->wrk_index));
     if (vls && (is_current || vls_is_shared_by_wrk (vls, current_wrk)))
       vls_unshare_session (vls, wrk);
-  }));
+  }
   /* *INDENT-ON* */
 }
 

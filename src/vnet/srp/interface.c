@@ -92,10 +92,10 @@ void serialize_srp_main (serialize_main_t * m, va_list * va)
   srp_interface_t * si;
 
   serialize_integer (m, pool_elts (sm->interface_pool), sizeof (u32));
-  pool_foreach (si, sm->interface_pool, ({
+  pool_foreach (si, sm->interface_pool)  {
     serialize_integer (m, si->rings[SRP_RING_OUTER].hw_if_index, sizeof (u32));
     serialize_integer (m, si->rings[SRP_RING_INNER].hw_if_index, sizeof (u32));
-  }));
+  }
 }
 
 void unserialize_srp_main (serialize_main_t * m, va_list * va)

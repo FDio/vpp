@@ -297,9 +297,8 @@ tap_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (vec_len (hw_if_indices) == 0)
     {
       /* *INDENT-OFF* */
-      pool_foreach (vif, mm->interfaces,
+      pool_foreach (vif, mm->interfaces)
 	  vec_add1 (hw_if_indices, vif->hw_if_index);
-      );
       /* *INDENT-ON* */
     }
 
@@ -347,9 +346,8 @@ tun_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (vec_len (hw_if_indices) == 0)
     {
       /* *INDENT-OFF* */
-      pool_foreach (vif, mm->interfaces,
+      pool_foreach (vif, mm->interfaces)
           vec_add1 (hw_if_indices, vif->hw_if_index);
-      );
       /* *INDENT-ON* */
     }
 

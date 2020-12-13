@@ -556,12 +556,12 @@ bier_fmask_show (vlib_main_t * vm,
 
     if (INDEX_INVALID == bfmi)
     {
-        pool_foreach(bfm, bier_fmask_pool,
-        ({
+        pool_foreach (bfm, bier_fmask_pool)
+         {
             vlib_cli_output (vm, "[@%d] %U",
                              bier_fmask_get_index(bfm),
                              format_bier_fmask, bier_fmask_get_index(bfm), 0);
-        }));
+        }
     }
     else
     {

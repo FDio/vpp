@@ -333,12 +333,12 @@ show_fib_entry_delegate_command (vlib_main_t * vm,
 	 * show all
 	 */
 	vlib_cli_output (vm, "FIB Entry Delegates:");
-	pool_foreach_index(fedi, fib_entry_delegate_pool,
-        ({
+	pool_foreach_index (fedi, fib_entry_delegate_pool)
+         {
 	    vlib_cli_output (vm, "%d@%U",
 			     fedi,
 			     format_fib_entry_delegate, fedi);
-	}));
+	}
     }
 
     return (NULL);

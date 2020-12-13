@@ -599,9 +599,9 @@ session_rules_table_cli_dump (vlib_main_t * vm, session_rules_table_t * srt,
       vlib_cli_output (vm, "IP4 rules");
 
       /* *INDENT-OFF* */
-      pool_foreach(sr4, srt4->rules, ({
+      pool_foreach (sr4, srt4->rules)  {
 	vlib_cli_output (vm, "%U", format_session_rule4, srt, sr4);
-      }));
+      }
       /* *INDENT-ON* */
 
     }
@@ -613,9 +613,9 @@ session_rules_table_cli_dump (vlib_main_t * vm, session_rules_table_t * srt,
       vlib_cli_output (vm, "IP6 rules");
 
       /* *INDENT-OFF* */
-      pool_foreach(sr6, srt6->rules, ({
+      pool_foreach (sr6, srt6->rules)  {
         vlib_cli_output (vm, "%U", format_session_rule6, srt, sr6);
-      }));
+      }
       /* *INDENT-ON* */
 
     }

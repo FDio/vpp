@@ -177,7 +177,7 @@ vl_api_lb_vip_dump_t_handler
   lb_vip_t *vip = 0;
 
   /* construct vip list */
-  pool_foreach(vip, lbm->vips, {
+  pool_foreach (vip, lbm->vips) {
       /* Hide placeholder VIP */
       if (vip != lbm->vips) {
         msg_size = sizeof (*rmp);
@@ -199,7 +199,7 @@ vl_api_lb_vip_dump_t_handler
 
         vl_api_send_msg (reg, (u8 *) rmp);
       }
-  });
+  }
 
 
 }
@@ -216,7 +216,7 @@ static void send_lb_as_details
   /* construct as list under this vip */
   lb_as_t *as;
 
-  pool_foreach(as_index, vip->as_indexes, {
+  pool_foreach (as_index, vip->as_indexes) {
       /* Hide placeholder As for specific VIP */
       if (*as_index != 0) {
         as = &lbm->ass[*as_index];
@@ -237,7 +237,7 @@ static void send_lb_as_details
         vl_api_send_msg (reg, (u8 *) rmp);
         asindex++;
       }
-  });
+  }
 
 
 }
@@ -261,8 +261,8 @@ vl_api_lb_as_dump_t_handler
   dump_all = (prefix.ip6.as_u64[0] == 0) && (prefix.ip6.as_u64[1] == 0);
 
   /* *INDENT-OFF* */
-  pool_foreach(vip, lbm->vips,
-  ({
+  pool_foreach (vip, lbm->vips)
+   {
     if ( dump_all
         || ((prefix.as_u64[0] == vip->prefix.as_u64[0])
         && (prefix.as_u64[1] == vip->prefix.as_u64[1])
@@ -271,7 +271,7 @@ vl_api_lb_as_dump_t_handler
       {
         send_lb_as_details(reg, mp->context, vip);
       }
-  }));
+  }
   /* *INDENT-ON* */
 }
 

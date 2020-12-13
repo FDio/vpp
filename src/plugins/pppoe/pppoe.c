@@ -632,10 +632,10 @@ show_pppoe_session_command_fn (vlib_main_t * vm,
   if (pool_elts (pem->sessions) == 0)
     vlib_cli_output (vm, "No pppoe sessions configured...");
 
-  pool_foreach (t, pem->sessions,
-		({
+  pool_foreach (t, pem->sessions)
+		 {
 		    vlib_cli_output (vm, "%U",format_pppoe_session, t);
-		}));
+		}
 
   return 0;
 }

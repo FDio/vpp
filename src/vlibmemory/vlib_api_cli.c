@@ -111,8 +111,8 @@ vl_api_client_command (vlib_main_t * vm,
 		   "Name", "PID", "Queue Length", "Queue VA", "Health");
 
   /* *INDENT-OFF* */
-  pool_foreach (regpp, am->vl_clients,
-  ({
+  pool_foreach (regpp, am->vl_clients)
+   {
     regp = *regpp;
 
     if (regp)
@@ -134,7 +134,7 @@ vl_api_client_command (vlib_main_t * vm,
                       regpp - am->vl_clients);
         vec_add1 (confused_indices, regpp - am->vl_clients);
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   /* This should "never happen," but if it does, fix it... */

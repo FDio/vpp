@@ -322,10 +322,10 @@ show_ct6_command_fn_command_fn (vlib_main_t * vm,
 		0 /* pool */ , 0 /* header */ , verbose);
 
       /* *INDENT-OFF* */
-      pool_foreach (s0, cmp->sessions[i],
-      ({
+      pool_foreach (s0, cmp->sessions[i])
+       {
         s = format (s, "%U", format_ct6_session, cmp, i, s0, verbose);
-      }));
+      }
       /* *INDENT-ON* */
     }
   vlib_cli_output (cmp->vlib_main, "%v", s);
@@ -431,10 +431,10 @@ test_ct6_command_fn_command_fn (vlib_main_t * vm,
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (s0, cmp->sessions[0],
-  ({
+  pool_foreach (s0, cmp->sessions[0])
+   {
     s = format (s, "%U", format_ct6_session, cmp, 0, s0, 1 /* verbose */);
-  }));
+  }
   /* *INDENT-ON* */
 
   vlib_cli_output (vm, "\nEnd state: first index %d last index %d\n%v",
@@ -451,10 +451,10 @@ test_ct6_command_fn_command_fn (vlib_main_t * vm,
   ct6_update_session_hit (cmp, s0, 234.0);
 
   /* *INDENT-OFF* */
-  pool_foreach (s0, cmp->sessions[0],
-  ({
+  pool_foreach (s0, cmp->sessions[0])
+   {
     s = format (s, "%U", format_ct6_session, cmp, 0, s0, 1 /* verbose */);
-  }));
+  }
   /* *INDENT-ON* */
 
   vlib_cli_output (vm, "\nEnd state: first index %d last index %d\n%v",

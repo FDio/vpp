@@ -2821,11 +2821,11 @@ show_fib_path_command (vlib_main_t * vm,
     else
     {
 	vlib_cli_output (vm, "FIB Paths");
-	pool_foreach_index (pi, fib_path_pool,
-	({
+	pool_foreach_index (pi, fib_path_pool)
+	 {
 	    vlib_cli_output (vm, "%U", format_fib_path, pi, 0,
                              FIB_PATH_FORMAT_FLAGS_NONE);
-	}));
+	}
     }
 
     return (NULL);

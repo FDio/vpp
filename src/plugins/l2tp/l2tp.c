@@ -130,10 +130,10 @@ show_l2tp_command_fn (vlib_main_t * vm,
       vlib_cli_output (vm, "L2tp session lookup on %s", keystr);
 
       /* *INDENT-OFF* */
-      pool_foreach (session, lm->sessions,
-      ({
+      pool_foreach (session, lm->sessions)
+       {
         vlib_cli_output (vm, "%U", format_l2t_session, session);
-      }));
+      }
       /* *INDENT-ON* */
     }
 
@@ -160,8 +160,8 @@ test_counters_command_fn (vlib_main_t * vm,
   u32 thread_index = vm->thread_index;
 
   /* *INDENT-OFF* */
-  pool_foreach (session, lm->sessions,
-  ({
+  pool_foreach (session, lm->sessions)
+   {
     session_index = session - lm->sessions;
     counter_index =
       session_index_to_counter_index (session_index,
@@ -176,7 +176,7 @@ test_counters_command_fn (vlib_main_t * vm,
                                      1/*pkt*/, 2222 /*bytes*/);
     nincr++;
 
-  }));
+  }
   /* *INDENT-ON* */
   vlib_cli_output (vm, "Incremented %d active counters\n", nincr);
 
@@ -202,8 +202,8 @@ clear_counters_command_fn (vlib_main_t * vm,
   u32 nincr = 0;
 
   /* *INDENT-OFF* */
-  pool_foreach (session, lm->sessions,
-  ({
+  pool_foreach (session, lm->sessions)
+   {
     session_index = session - lm->sessions;
     counter_index =
       session_index_to_counter_index (session_index,
@@ -211,7 +211,7 @@ clear_counters_command_fn (vlib_main_t * vm,
     vlib_zero_combined_counter (&lm->counter_main, counter_index);
     vlib_zero_combined_counter (&lm->counter_main, counter_index+1);
     nincr++;
-  }));
+  }
   /* *INDENT-ON* */
   vlib_cli_output (vm, "Cleared %d active counters\n", nincr);
 

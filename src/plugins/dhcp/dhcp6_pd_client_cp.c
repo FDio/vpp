@@ -372,10 +372,10 @@ dhcp6_pd_reply_event_handler (vl_api_dhcp6_pd_reply_event_t * mp)
    * so collect active indices.
    */
   /* *INDENT-OFF* */
-  pool_foreach (prefix_info, pm->prefix_pool,
-  ({
+  pool_foreach (prefix_info, pm->prefix_pool)
+   {
     vec_add1 (pm->indices, prefix_info - pm->prefix_pool);
-  }));
+  }
   /* *INDENT-ON* */
 
   for (i = 0; i < n_prefixes; i++)
@@ -481,8 +481,8 @@ create_prefix_list (u32 sw_if_index)
   prefix_info_t *prefix_info, *prefix_list = 0;;
 
   /* *INDENT-OFF* */
-  pool_foreach (prefix_info, pm->prefix_pool,
-  ({
+  pool_foreach (prefix_info, pm->prefix_pool)
+   {
     if (is_dhcpv6_pd_prefix (prefix_info) &&
         prefix_info->opaque_data == sw_if_index)
       {
@@ -490,7 +490,7 @@ create_prefix_list (u32 sw_if_index)
         vec_validate (prefix_list, pos);
         clib_memcpy (&prefix_list[pos], prefix_info, sizeof (*prefix_info));
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   return prefix_list;
@@ -531,8 +531,8 @@ dhcp6_pd_client_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	{
 	  due_time = current_time + 1e9;
           /* *INDENT-OFF* */
-          pool_foreach (prefix_info, pm->prefix_pool,
-          ({
+          pool_foreach (prefix_info, pm->prefix_pool)
+           {
             if (is_dhcpv6_pd_prefix (prefix_info))
               {
                 if (prefix_info->due_time > current_time)
@@ -558,7 +558,7 @@ dhcp6_pd_client_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
                       }
                   }
               }
-	  }));
+	  }
 	  /* *INDENT-ON* */
 	  for (i = 0; i < vec_len (rm->client_state_by_sw_if_index); i++)
 	    {
@@ -788,12 +788,12 @@ cp_ip6_address_find_new_active_prefix (u32 prefix_group_index,
   prefix_info_t *prefix_info;
 
   /* *INDENT-OFF* */
-  pool_foreach (prefix_info, pm->prefix_pool,
-  ({
+  pool_foreach (prefix_info, pm->prefix_pool)
+   {
     if (prefix_info->prefix_group_index == prefix_group_index &&
         prefix_info - pm->prefix_pool != ignore_prefix_index)
         return prefix_info - pm->prefix_pool;
-  }));
+  }
   /* *INDENT-ON* */
   return ~0;
 }
@@ -1139,8 +1139,8 @@ cp_ip6_prefixes_show_command_function (vlib_main_t * vm,
   f64 current_time = vlib_time_now (vm);
 
   /* *INDENT-OFF* */
-  pool_foreach (prefix_info, pm->prefix_pool,
-  ({
+  pool_foreach (prefix_info, pm->prefix_pool)
+   {
     prefix_group =
       pm->prefix_group_name_by_index[prefix_info->prefix_group_index];
     vlib_cli_output (vm, "opaque_data: %lu, prefix: %U/%d, prefix group: %s, "
@@ -1151,7 +1151,7 @@ cp_ip6_prefixes_show_command_function (vlib_main_t * vm,
                      prefix_group,
                      prefix_info->preferred_lt, prefix_info->valid_lt,
                      prefix_info->due_time - current_time);
-  }));
+  }
   /* *INDENT-ON* */
 
   return error;
@@ -1305,8 +1305,8 @@ dhcp6_pd_client_enable_disable (u32 sw_if_index,
       vec_validate (prefix_list, 0);
 
       /* *INDENT-OFF* */
-      pool_foreach (prefix_info, pm->prefix_pool,
-      ({
+      pool_foreach (prefix_info, pm->prefix_pool)
+       {
         if (is_dhcpv6_pd_prefix (prefix_info) &&
             prefix_info->opaque_data == sw_if_index)
           {
@@ -1324,7 +1324,7 @@ dhcp6_pd_client_enable_disable (u32 sw_if_index,
             set_is_dhcpv6_pd_prefix (prefix_info, 0);
             pool_put (pm->prefix_pool, prefix_info);
           }
-      }));
+      }
       /* *INDENT-ON* */
 
       vec_free (prefix_list);

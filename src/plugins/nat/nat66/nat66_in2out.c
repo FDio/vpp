@@ -95,12 +95,12 @@ nat66_not_translate (u32 rx_fib_index, ip6_address_t ip6_addr)
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (i, nm->interfaces,
-  ({
+  pool_foreach (i, nm->interfaces)
+   {
     /* NAT packet aimed at outside interface */
     if (nat66_interface_is_outside (i) && sw_if_index == i->sw_if_index)
       return 0;
-  }));
+  }
   /* *INDENT-ON* */
 
   return 1;

@@ -94,14 +94,14 @@ nat66_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add)
   const char *feature_name;
 
   /* *INDENT-OFF* */
-  pool_foreach (i, nm->interfaces,
-  ({
+  pool_foreach (i, nm->interfaces)
+   {
     if (i->sw_if_index == sw_if_index)
       {
         interface = i;
         break;
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   if (is_add)
@@ -139,11 +139,11 @@ nat66_interfaces_walk (nat66_interface_walk_fn_t fn, void *ctx)
   nat66_interface_t *i = 0;
 
   /* *INDENT-OFF* */
-  pool_foreach (i, nm->interfaces,
-  ({
+  pool_foreach (i, nm->interfaces)
+   {
     if (fn (i, ctx))
       break;
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -257,11 +257,11 @@ nat66_static_mappings_walk (nat66_static_mapping_walk_fn_t fn, void *ctx)
   nat66_static_mapping_t *sm = 0;
 
   /* *INDENT-OFF* */
-  pool_foreach (sm, nm->sm,
-  ({
+  pool_foreach (sm, nm->sm)
+   {
     if (fn (sm, ctx))
       break;
-  }));
+  }
   /* *INDENT-ON* */
 }
 

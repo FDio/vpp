@@ -139,22 +139,22 @@ serialize_vnet_interface_state (serialize_main_t * m, va_list * va)
   /* Serialize hardware interface classes since they may have changed.
      Must do this before sending up/down flags. */
   /* *INDENT-OFF* */
-  pool_foreach (hif, im->hw_interfaces, ({
+  pool_foreach (hif, im->hw_interfaces)  {
     vnet_hw_interface_class_t * hw_class = vnet_get_hw_interface_class (vnm, hif->hw_class_index);
     serialize_cstring (m, hw_class->name);
-  }));
+  }
   /* *INDENT-ON* */
 
   /* Send sw/hw interface state when non-zero. */
   /* *INDENT-OFF* */
-  pool_foreach (sif, im->sw_interfaces, ({
+  pool_foreach (sif, im->sw_interfaces)  {
     if (sif->flags != 0)
       {
 	vec_add2 (sts, st, 1);
 	st->sw_hw_if_index = sif->sw_if_index;
 	st->flags = sif->flags;
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   vec_serialize (m, sts, serialize_vec_vnet_sw_hw_interface_state);
@@ -163,14 +163,14 @@ serialize_vnet_interface_state (serialize_main_t * m, va_list * va)
     _vec_len (sts) = 0;
 
   /* *INDENT-OFF* */
-  pool_foreach (hif, im->hw_interfaces, ({
+  pool_foreach (hif, im->hw_interfaces)  {
     if (hif->flags != 0)
       {
 	vec_add2 (sts, st, 1);
 	st->sw_hw_if_index = hif->hw_if_index;
 	st->flags = vnet_hw_interface_flags_to_sw(hif->flags);
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   vec_serialize (m, sts, serialize_vec_vnet_sw_hw_interface_state);
@@ -204,7 +204,7 @@ unserialize_vnet_interface_state (serialize_main_t * m, va_list * va)
     clib_error_t *error;
 
     /* *INDENT-OFF* */
-    pool_foreach (hif, im->hw_interfaces, ({
+    pool_foreach (hif, im->hw_interfaces)  {
       unserialize_cstring (m, &class_name);
       p = hash_get_mem (im->hw_interface_class_by_name, class_name);
       if (p)
@@ -218,7 +218,7 @@ unserialize_vnet_interface_state (serialize_main_t * m, va_list * va)
       if (error)
 	clib_error_report (error);
       vec_free (class_name);
-    }));
+    }
     /* *INDENT-ON* */
   }
 
@@ -1109,11 +1109,11 @@ vnet_hw_interface_walk (vnet_main_t * vnm,
   im = &vnm->interface_main;
 
   /* *INDENT-OFF* */
-  pool_foreach (hi, im->hw_interfaces,
-  ({
+  pool_foreach (hi, im->hw_interfaces)
+   {
     if (WALK_STOP == fn(vnm, hi->hw_if_index, ctx))
       break;
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -1127,11 +1127,11 @@ vnet_sw_interface_walk (vnet_main_t * vnm,
   im = &vnm->interface_main;
 
   /* *INDENT-OFF* */
-  pool_foreach (si, im->sw_interfaces,
+  pool_foreach (si, im->sw_interfaces)
   {
     if (WALK_STOP == fn (vnm, si, ctx))
       break;
-  });
+  }
   /* *INDENT-ON* */
 }
 

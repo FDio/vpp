@@ -329,10 +329,10 @@ vl_api_det44_interface_dump_t_handler (vl_api_det44_interface_dump_t * mp)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (i, dm->interfaces,
-  ({
+  pool_foreach (i, dm->interfaces)
+   {
     det44_send_interface_details(i, reg, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 }
 

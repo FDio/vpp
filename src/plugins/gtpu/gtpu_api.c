@@ -239,10 +239,10 @@ vl_api_gtpu_tunnel_dump_t_handler (vl_api_gtpu_tunnel_dump_t * mp)
   if (~0 == sw_if_index)
     {
       /* *INDENT-OFF* */
-      pool_foreach (t, gtm->tunnels,
-      ({
+      pool_foreach (t, gtm->tunnels)
+       {
         send_gtpu_tunnel_details(t, reg, mp->context);
-      }));
+      }
       /* *INDENT-ON* */
     }
   else

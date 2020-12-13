@@ -141,13 +141,13 @@ nsh_get_adj_by_sw_if_index (u32 sw_if_index)
   adj_index_t ai = ~0;
 
   /* *INDENT-OFF* */
-  pool_foreach_index(ai, adj_pool,
-  ({
+  pool_foreach_index (ai, adj_pool)
+   {
       if (sw_if_index == adj_get_sw_if_index(ai))
       {
         return ai;
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   return ~0;
@@ -314,13 +314,10 @@ show_nsh_map_command_fn (vlib_main_t * vm,
   if (pool_elts (nm->nsh_mappings) == 0)
     vlib_cli_output (vm, "No nsh maps configured.");
 
-  pool_foreach (map, nm->nsh_mappings, (
-					 {
-					 vlib_cli_output (vm, "%U",
-							  format_nsh_map,
-							  map);
-					 }
-		));
+  pool_foreach (map, nm->nsh_mappings)
+  {
+    vlib_cli_output (vm, "%U", format_nsh_map, map);
+  }
 
   return 0;
 }
@@ -615,16 +612,11 @@ show_nsh_entry_command_fn (vlib_main_t * vm,
   if (pool_elts (nm->nsh_entries) == 0)
     vlib_cli_output (vm, "No nsh entries configured.");
 
-  pool_foreach (nsh_entry, nm->nsh_entries, (
-					      {
-					      vlib_cli_output (vm, "%U",
-							       format_nsh_header,
-							       nsh_entry->rewrite);
-					      vlib_cli_output (vm,
-							       "  rewrite_size: %d bytes",
-							       nsh_entry->rewrite_size);
-					      }
-		));
+  pool_foreach (nsh_entry, nm->nsh_entries)
+  {
+    vlib_cli_output (vm, "%U", format_nsh_header, nsh_entry->rewrite);
+    vlib_cli_output (vm, "  rewrite_size: %d bytes", nsh_entry->rewrite_size);
+  }
 
   return 0;
 }

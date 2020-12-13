@@ -840,14 +840,14 @@ ip_neighbor_entries (u32 sw_if_index, ip_address_family_t af)
   ip_neighbor_t *ipn;
 
   /* *INDENT-OFF* */
-  pool_foreach (ipn, ip_neighbor_pool,
-  ({
+  pool_foreach (ipn, ip_neighbor_pool)
+   {
     if ((sw_if_index == ~0 ||
         ipn->ipn_key->ipnk_sw_if_index == sw_if_index) &&
         (N_AF == af ||
          ip_neighbor_get_af(ipn) == af))
        vec_add1 (ipnis, ip_neighbor_get_index(ipn));
-  }));
+  }
 
   /* *INDENT-ON* */
 
@@ -1152,15 +1152,15 @@ ip_neighbor_ethernet_change_mac (ethernet_main_t * em,
 		   sw_if_index);
 
   /* *INDENT-OFF* */
-  pool_foreach (ipn, ip_neighbor_pool,
-  ({
+  pool_foreach (ipn, ip_neighbor_pool)
+   {
     if (ipn->ipn_key->ipnk_sw_if_index == sw_if_index)
       adj_nbr_walk_nh (ipn->ipn_key->ipnk_sw_if_index,
                        ip_address_family_to_fib_proto(ip_neighbor_get_af(ipn)),
                        &ip_addr_46(&ipn->ipn_key->ipnk_ip),
                        ip_neighbor_mk_complete_walk,
                        ipn);
-  }));
+  }
   /* *INDENT-ON* */
 
   adj_glean_update_rewrite_itf (sw_if_index);
@@ -1177,12 +1177,12 @@ ip_neighbor_populate (ip_address_family_t af, u32 sw_if_index)
 		   sw_if_index, format_ip_address_family, af);
 
   /* *INDENT-OFF* */
-  pool_foreach (ipn, ip_neighbor_pool,
-  ({
+  pool_foreach (ipn, ip_neighbor_pool)
+   {
     if (ip_neighbor_get_af(ipn) == af &&
         ipn->ipn_key->ipnk_sw_if_index == sw_if_index)
       vec_add1 (ipnis, ipn - ip_neighbor_pool);
-  }));
+  }
   /* *INDENT-ON* */
 
   vec_foreach (ipni, ipnis)
@@ -1210,13 +1210,13 @@ ip_neighbor_flush (ip_address_family_t af, u32 sw_if_index)
 		   sw_if_index, format_ip_address_family, af);
 
   /* *INDENT-OFF* */
-  pool_foreach (ipn, ip_neighbor_pool,
-  ({
+  pool_foreach (ipn, ip_neighbor_pool)
+   {
     if (ip_neighbor_get_af(ipn) == af &&
         ipn->ipn_key->ipnk_sw_if_index == sw_if_index &&
         ip_neighbor_is_dynamic (ipn))
       vec_add1 (ipnis, ipn - ip_neighbor_pool);
-  }));
+  }
   /* *INDENT-ON* */
 
   vec_foreach (ipni, ipnis) ip_neighbor_destroy (ip_neighbor_get (*ipni));

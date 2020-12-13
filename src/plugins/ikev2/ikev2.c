@@ -1070,14 +1070,14 @@ ikev2_initial_contact_cleanup_internal (ikev2_main_per_thread_data_t * ptd,
 
   /* find old IKE SAs with the same authenticated identity */
   /* *INDENT-OFF* */
-  pool_foreach (tmp, ptd->sas, ({
+  pool_foreach (tmp, ptd->sas)  {
     if (!ikev2_is_id_equal (&tmp->i_id, &sa->i_id)
         || !ikev2_is_id_equal(&tmp->r_id, &sa->r_id))
       continue;
 
     if (sa->rspi != tmp->rspi)
       vec_add1(delete, tmp - ptd->sas);
-  }));
+  }
   /* *INDENT-ON* */
 
   for (i = 0; i < vec_len (delete); i++)
@@ -1564,7 +1564,7 @@ ikev2_sa_match_ts (ikev2_sa_t * sa)
   ikev2_id_t *id_rem, *id_loc;
 
   /* *INDENT-OFF* */
-  pool_foreach (p, km->profiles, ({
+  pool_foreach (p, km->profiles)  {
 
     if (sa->is_initiator)
       {
@@ -1607,7 +1607,7 @@ ikev2_sa_match_ts (ikev2_sa_t * sa)
       }
 
     break;
-  }));
+  }
   /* *INDENT-ON* */
 
   if (tsi && tsr)
@@ -1667,7 +1667,7 @@ ikev2_sa_auth (ikev2_sa_t * sa)
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (p, km->profiles, ({
+  pool_foreach (p, km->profiles)  {
 
     /* check id */
     if (!ikev2_is_id_equal (&p->rem_id, id_rem)
@@ -1707,7 +1707,7 @@ ikev2_sa_auth (ikev2_sa_t * sa)
 
     vec_free(auth);
     vec_free(psk);
-  }));
+  }
   /* *INDENT-ON* */
 
   if (sel_p)
@@ -2679,11 +2679,11 @@ ikev2_retransmit_sa_init (ike_header_t * ike, ip_address_t iaddr,
   ikev2_main_per_thread_data_t *ptd = ikev2_get_per_thread_data ();
 
   /* *INDENT-OFF* */
-  pool_foreach (sa, ptd->sas, ({
+  pool_foreach (sa, ptd->sas)  {
     res = ikev2_retransmit_sa_init_one (sa, ike, iaddr, raddr, rlen);
     if (res)
       return res;
-  }));
+  }
   /* *INDENT-ON* */
 
   /* req is not retransmit */
@@ -3750,10 +3750,10 @@ ikev2_cleanup_profile_sessions (ikev2_main_t * km, ikev2_profile_t * p)
   u32 *del_sai = 0;
 
   /* *INDENT-OFF* */
-  pool_foreach(sa, km->sais, ({
+  pool_foreach (sa, km->sais)  {
     if (pi == sa->profile_index)
       vec_add1 (del_sai, sa - km->sais);
-  }));
+  }
   /* *INDENT-ON* */
 
   vec_foreach (sai, del_sai)
@@ -3768,10 +3768,10 @@ ikev2_cleanup_profile_sessions (ikev2_main_t * km, ikev2_profile_t * p)
   vec_foreach (tkm, km->per_thread_data)
   {
     /* *INDENT-OFF* */
-    pool_foreach (sa, tkm->sas, ({
+    pool_foreach (sa, tkm->sas)  {
       if (sa->profile_index != ~0 && pi == sa->profile_index)
         vec_add1 (del_sai, sa - tkm->sas);
-    }));
+    }
     /* *INDENT-ON* */
 
     vec_foreach (sai, del_sai)
@@ -4403,14 +4403,14 @@ ikev2_initiate_delete_child_sa (vlib_main_t * vm, u32 ispi)
     if (fchild)
       break;
     /* *INDENT-OFF* */
-    pool_foreach (sa, tkm->sas, ({
+    pool_foreach (sa, tkm->sas)  {
       fchild = ikev2_sa_get_child(sa, ispi, IKEV2_PROTOCOL_ESP, 1);
       if (fchild)
         {
           fsa = sa;
           break;
         }
-    }));
+    }
     /* *INDENT-ON* */
   }
 
@@ -4443,14 +4443,14 @@ ikev2_initiate_delete_ike_sa (vlib_main_t * vm, u64 ispi)
     if (fsa)
       break;
     /* *INDENT-OFF* */
-    pool_foreach (sa, tkm->sas, ({
+    pool_foreach (sa, tkm->sas)  {
       if (sa->ispi == ispi)
         {
           fsa = sa;
           ftkm = tkm;
           break;
         }
-    }));
+    }
     /* *INDENT-ON* */
   }
 
@@ -4526,14 +4526,14 @@ ikev2_initiate_rekey_child_sa (vlib_main_t * vm, u32 ispi)
     if (fchild)
       break;
     /* *INDENT-OFF* */
-    pool_foreach (sa, tkm->sas, ({
+    pool_foreach (sa, tkm->sas)  {
       fchild = ikev2_sa_get_child(sa, ispi, IKEV2_PROTOCOL_ESP, 1);
       if (fchild)
         {
           fsa = sa;
           break;
         }
-    }));
+    }
     /* *INDENT-ON* */
   }
 
@@ -4568,10 +4568,10 @@ ikev2_sa_del (ikev2_profile_t * p, u32 sw_if_index)
   vec_foreach (tkm, km->per_thread_data)
   {
     /* *INDENT-OFF* */
-    pool_foreach (sa, tkm->sas, ({
+    pool_foreach (sa, tkm->sas)  {
       if (ikev2_sa_sw_if_match (sa, sw_if_index))
         vec_add1 (sa_vec, sa);
-    }));
+    }
     /* *INDENT-ON* */
 
     vec_foreach (sap, sa_vec)
@@ -4583,10 +4583,10 @@ ikev2_sa_del (ikev2_profile_t * p, u32 sw_if_index)
   vec_free (sa_vec);
 
   /* *INDENT-OFF* */
-  pool_foreach (sa, km->sais, ({
+  pool_foreach (sa, km->sais)  {
     if (ikev2_sa_sw_if_match (sa, sw_if_index))
       vec_add1 (ispi_vec, sa->ispi);
-  }));
+  }
   /* *INDENT-ON* */
 
   vec_foreach (ispi, ispi_vec)
@@ -4607,10 +4607,10 @@ ikev2_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
     return 0;
 
   /* *INDENT-OFF* */
-  pool_foreach (p, km->profiles, ({
+  pool_foreach (p, km->profiles)  {
     if (p->responder.sw_if_index == sw_if_index)
       ikev2_sa_del (p, sw_if_index);
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;
@@ -4839,14 +4839,14 @@ ikev2_mngr_process_ipsec_sa (ipsec_sa_t * ipsec_sa)
     if (fchild)
       break;
     /* *INDENT-OFF* */
-    pool_foreach (sa, tkm->sas, ({
+    pool_foreach (sa, tkm->sas)  {
       fchild = ikev2_sa_get_child(sa, ipsec_sa->spi, IKEV2_PROTOCOL_ESP, 1);
       if (fchild)
         {
           fsa = sa;
           break;
         }
-    }));
+    }
     /* *INDENT-ON* */
   }
   vlib_get_combined_counter (&ipsec_sa_counters,
@@ -5029,7 +5029,7 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	u32 *to_be_deleted = 0;
 
         /* *INDENT-OFF* */
-        pool_foreach (sa, tkm->sas, ({
+        pool_foreach (sa, tkm->sas)  {
           ikev2_child_sa_t *c;
           u8 del_old_ids = 0;
 
@@ -5049,7 +5049,7 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
           if (!km->dpd_disabled && ikev2_mngr_process_responder_sas (sa))
             vec_add1 (to_be_deleted, sa - tkm->sas);
-        }));
+        }
         /* *INDENT-ON* */
 
 	vec_foreach (sai, to_be_deleted)
@@ -5085,9 +5085,9 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
       /* process ipsec sas */
       ipsec_sa_t *sa;
       /* *INDENT-OFF* */
-      pool_foreach (sa, im->sad, ({
+      pool_foreach (sa, im->sad)  {
         ikev2_mngr_process_ipsec_sa(sa);
-      }));
+      }
       /* *INDENT-ON* */
 
       ikev2_process_pending_sa_init (km);

@@ -282,10 +282,10 @@ api_mactime_dump (vat_main_t * vam)
 
   fformat (vam->ofp, "%U", format_device, 0 /* header */ , 0 /* verbose */ );
   /* *INDENT-OFF* */
-  pool_foreach (dev, tm->devices,
-  ({
+  pool_foreach (dev, tm->devices)
+   {
     fformat (vam->ofp, "%U", format_device, dev, verbose);
-  }));
+  }
   /* *INDENT-ON* */
 
   return ret;

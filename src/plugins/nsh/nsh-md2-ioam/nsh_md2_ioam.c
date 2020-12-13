@@ -64,11 +64,11 @@ nsh_md2_ioam_clear_output_feature_on_all_intfs (vlib_main_t * vm)
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
 
-  pool_foreach (si, im->sw_interfaces, (
+  pool_foreach (si, im->sw_interfaces)
 					 {
 					 nsh_md2_ioam_set_clear_output_feature_on_intf
 					 (vm, si->sw_if_index, 0);
-					 }));
+					 }
   return;
 }
 
@@ -305,7 +305,7 @@ nsh_md2_ioam_refresh_output_feature_on_all_dest (void)
   i = vec_len (hm->bool_ref_by_sw_if_index);
   vec_free (hm->bool_ref_by_sw_if_index);
   vec_validate_init_empty (hm->bool_ref_by_sw_if_index, i, ~0);
-  pool_foreach (t, hm->dst_tunnels, (
+  pool_foreach (t, hm->dst_tunnels)
 				      {
 				      nsh_md2_ioam_enable_disable_for_dest
 				      (gm->vlib_main,
@@ -315,7 +315,6 @@ nsh_md2_ioam_refresh_output_feature_on_all_dest (void)
 				       /* is_add */
 				      );
 				      }
-		));
   return;
 }
 
@@ -382,7 +381,7 @@ int nsh_md2_ioam_disable_for_dest
       return 0;
     }
 
-  pool_foreach (t, hm->dst_tunnels, (
+  pool_foreach (t, hm->dst_tunnels)
 				      {
 				      nsh_md2_ioam_enable_disable_for_dest
 				      (gm->vlib_main,
@@ -391,7 +390,6 @@ int nsh_md2_ioam_disable_for_dest
 				       (t->fp_proto ==
 					FIB_PROTOCOL_IP4), 1 /* is_add */ );
 				      }
-		));
   nsh_md2_ioam_clear_output_feature_on_select_intfs ();
   return (0);
 

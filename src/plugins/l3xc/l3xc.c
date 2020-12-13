@@ -305,11 +305,11 @@ l3xc_walk (l3xc_walk_cb_t cb, void *ctx)
   u32 l3xci;
 
   /* *INDENT-OFF* */
-  pool_foreach_index(l3xci, l3xc_pool,
-  ({
+  pool_foreach_index (l3xci, l3xc_pool)
+   {
     if (!cb(l3xci, ctx))
       break;
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -320,10 +320,10 @@ l3xc_show_cmd (vlib_main_t * vm,
   l3xc_t *l3xc;
 
   /* *INDENT-OFF* */
-  pool_foreach(l3xc, l3xc_pool,
-  ({
+  pool_foreach (l3xc, l3xc_pool)
+   {
     vlib_cli_output(vm, "%U", format_l3xc, l3xc);
-  }));
+  }
   /* *INDENT-ON* */
 
   return (NULL);

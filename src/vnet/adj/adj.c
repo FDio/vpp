@@ -680,8 +680,8 @@ adj_show (vlib_main_t * vm,
         else
         {
             /* *INDENT-OFF* */
-            pool_foreach_index(ai, adj_pool,
-            ({
+            pool_foreach_index (ai, adj_pool)
+             {
                 if (~0 != sw_if_index &&
                     sw_if_index != adj_get_sw_if_index(ai))
                 {
@@ -693,7 +693,7 @@ adj_show (vlib_main_t * vm,
                                      format_ip_adjacency, ai,
                                      FORMAT_IP_ADJACENCY_NONE);
                 }
-            }));
+            }
             /* *INDENT-ON* */
         }
     }

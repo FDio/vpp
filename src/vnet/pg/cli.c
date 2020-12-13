@@ -64,9 +64,9 @@ pg_enable_disable (u32 stream_index, int is_enable)
     {
       /* No stream specified: enable/disable all streams. */
       /* *INDENT-OFF* */
-        pool_foreach (s, pg->streams, ({
+        pool_foreach (s, pg->streams)  {
             pg_stream_enable_disable (pg, s, is_enable);
-        }));
+        }
 	/* *INDENT-ON* */
     }
   else
@@ -245,9 +245,9 @@ show_streams (vlib_main_t * vm,
 
   vlib_cli_output (vm, "%U", format_pg_stream, 0, 0);
   /* *INDENT-OFF* */
-  pool_foreach (s, pg->streams, ({
+  pool_foreach (s, pg->streams)  {
       vlib_cli_output (vm, "%U", format_pg_stream, s, verbose);
-    }));
+    }
   /* *INDENT-ON* */
 
 done:

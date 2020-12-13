@@ -279,9 +279,9 @@ ldp_init (void)
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (ldpw, ldp->workers, ({
+  pool_foreach (ldpw, ldp->workers)  {
     clib_memset (&ldpw->clib_time, 0, sizeof (ldpw->clib_time));
-  }));
+  }
   /* *INDENT-ON* */
 
   LDBG (0, "LDP initialization: done!");

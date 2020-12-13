@@ -553,10 +553,10 @@ show_pmc_command_fn (vlib_main_t * vm,
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (c, pm->capture_pool,
-  ({
+  pool_foreach (c, pm->capture_pool)
+   {
     vec_add1 (captures, *c);
-  }));
+  }
   /* *INDENT-ON* */
 
   vec_sort_with_function (captures, capture_name_sort);

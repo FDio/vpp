@@ -187,10 +187,10 @@ vl_api_ikev2_profile_dump_t_handler (vl_api_ikev2_profile_dump_t * mp)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (profile, im->profiles,
-  ({
+  pool_foreach (profile, im->profiles)
+   {
     send_profile (profile, reg, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -268,12 +268,12 @@ vl_api_ikev2_sa_dump_t_handler (vl_api_ikev2_sa_dump_t * mp)
   vec_foreach (tkm, km->per_thread_data)
   {
     /* *INDENT-OFF* */
-    pool_foreach (sa, tkm->sas,
-    ({
+    pool_foreach (sa, tkm->sas)
+     {
       u32 api_sa_index = ikev2_encode_sa_index (sa - tkm->sas,
                                               tkm - km->per_thread_data);
       send_sa (sa, mp, api_sa_index);
-    }));
+    }
     /* *INDENT-ON* */
   }
 }

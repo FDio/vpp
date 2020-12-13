@@ -145,8 +145,8 @@ vl_api_bier_table_dump_t_handler (vl_api_bier_table_dump_t * mp)
     if (!reg)
       return;
 
-    pool_foreach(bt, bier_table_pool,
-    ({
+    pool_foreach (bt, bier_table_pool)
+     {
         /*
          * skip the ecmp tables.
          */
@@ -154,7 +154,7 @@ vl_api_bier_table_dump_t_handler (vl_api_bier_table_dump_t * mp)
         {
             send_bier_table_details(reg, mp->context, bt);
         }
-    }));
+    }
 }
 
 static void
@@ -405,10 +405,10 @@ vl_api_bier_imp_dump_t_handler (vl_api_bier_imp_dump_t * mp)
     if (!reg)
       return;
 
-    pool_foreach(bi, bier_imp_pool,
-    ({
+    pool_foreach (bi, bier_imp_pool)
+     {
         send_bier_imp_details(reg, mp->context, bi);
-    }));
+    }
 }
 
 static void
@@ -466,10 +466,10 @@ vl_api_bier_disp_table_dump_t_handler (vl_api_bier_disp_table_dump_t * mp)
     if (!reg)
       return;
 
-    pool_foreach(bdt, bier_disp_table_pool,
-    ({
+    pool_foreach (bdt, bier_disp_table_pool)
+     {
         send_bier_disp_table_details(reg, mp->context, bdt);
-    }));
+    }
 }
 
 static void

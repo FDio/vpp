@@ -3575,7 +3575,7 @@ unix_show_files (vlib_main_t * vm,
 		   "Read", "Write", "Error", "File Name", "Description");
 
   /* *INDENT-OFF* */
-  pool_foreach (f, fm->file_pool,(
+  pool_foreach (f, fm->file_pool)
    {
       int rv;
       s = format (s, "/proc/self/fd/%d%c", f->file_descriptor, 0);
@@ -3588,7 +3588,7 @@ unix_show_files (vlib_main_t * vm,
 		       f->read_events, f->write_events, f->error_events,
 		       path, f->description);
       vec_reset_length (s);
-    }));
+    }
   /* *INDENT-ON* */
   vec_free (s);
 
@@ -3728,7 +3728,7 @@ unix_cli_show_cli_sessions (vlib_main_t * vm,
 
 #define fl(x, y) ( (x) ? toupper((y)) : tolower((y)) )
   /* *INDENT-OFF* */
-  pool_foreach (cf, cm->cli_file_pool, ({
+  pool_foreach (cf, cm->cli_file_pool)  {
     uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
     n = vlib_get_node (vm, cf->process_node_index);
     vlib_cli_output (vm,
@@ -3741,7 +3741,7 @@ unix_cli_show_cli_sessions (vlib_main_t * vm,
 		     fl (cf->line_mode, 'l'),
 		     fl (cf->has_epipe, 'p'),
 		     fl (cf->ansi_capable, 'a'));
-  }));
+  }
   /* *INDENT-ON* */
 #undef fl
 

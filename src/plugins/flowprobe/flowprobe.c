@@ -791,12 +791,12 @@ flowprobe_show_table_fn (vlib_main_t * vm,
   for (i = 0; i < vec_len (fm->pool_per_worker); i++)
     {
       /* *INDENT-OFF* */
-      pool_foreach (e, fm->pool_per_worker[i], (
+      pool_foreach (e, fm->pool_per_worker[i])
 	{
 	  vlib_cli_output (vm, "%U",
 			   format_flowprobe_entry,
 			   e);
-	}));
+	}
       /* *INDENT-ON* */
 
     }

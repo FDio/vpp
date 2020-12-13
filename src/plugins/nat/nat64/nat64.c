@@ -423,14 +423,14 @@ nat64_add_del_pool_addr (u32 thread_index,
 
   /* Add/del external address to FIB */
   /* *INDENT-OFF* */
-  pool_foreach (interface, nm->interfaces,
-  ({
+  pool_foreach (interface, nm->interfaces)
+   {
     if (nat64_interface_is_inside(interface))
       continue;
 
     nat64_add_del_addr_to_fib (addr, 32, interface->sw_if_index, is_add);
     break;
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;
@@ -547,14 +547,14 @@ nat64_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add)
 
   /* Check if interface already exists */
   /* *INDENT-OFF* */
-  pool_foreach (i, nm->interfaces,
-  ({
+  pool_foreach (i, nm->interfaces)
+   {
     if (i->sw_if_index == sw_if_index)
       {
         interface = i;
         break;
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   if (is_add)
@@ -642,11 +642,11 @@ nat64_interfaces_walk (nat64_interface_walk_fn_t fn, void *ctx)
   nat64_interface_t *i = 0;
 
   /* *INDENT-OFF* */
-  pool_foreach (i, nm->interfaces,
-  ({
+  pool_foreach (i, nm->interfaces)
+   {
     if (fn (i, ctx))
       break;
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -823,8 +823,8 @@ nat64_static_bib_worker_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
   ip46_address_t addr;
 
   /* *INDENT-OFF* */
-  pool_foreach (static_bib, nm->static_bibs,
-  ({
+  pool_foreach (static_bib, nm->static_bibs)
+   {
     if ((static_bib->thread_index != thread_index) || (static_bib->done))
       continue;
 
@@ -858,7 +858,7 @@ nat64_static_bib_worker_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
       }
 
       static_bib->done = 1;
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;
@@ -978,11 +978,11 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
   if (nm->num_workers)
     {
       /* *INDENT-OFF* */
-      pool_foreach (static_bib, nm->static_bibs,
-      ({
+      pool_foreach (static_bib, nm->static_bibs)
+       {
         if (static_bib->done)
           vec_add1 (to_be_free, static_bib - nm->static_bibs);
-      }));
+      }
       vec_foreach (index, to_be_free)
         pool_put_index (nm->static_bibs, index[0]);
       /* *INDENT-ON* */
@@ -1567,10 +1567,10 @@ nat64_plugin_disable ()
   nm->enabled = 0;
 
   /* *INDENT-OFF* */
-  pool_foreach (i, nm->interfaces,
-  ({
+  pool_foreach (i, nm->interfaces)
+   {
     vec_add1 (interfaces, *i);
-  }));
+  }
   /* *INDENT-ON* */
   vec_foreach (i, interfaces)
   {

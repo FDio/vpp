@@ -730,22 +730,22 @@ snat_add_address (snat_main_t * sm, ip4_address_t * addr, u32 vrf_id,
 
   /* Add external address to FIB */
   /* *INDENT-OFF* */
-  pool_foreach (i, sm->interfaces,
-  ({
+  pool_foreach (i, sm->interfaces)
+   {
     if (nat_interface_is_inside(i) || sm->out2in_dpo)
       continue;
 
     snat_add_del_addr_to_fib(addr, 32, i->sw_if_index, 1);
     break;
-  }));
-  pool_foreach (i, sm->output_feature_interfaces,
-  ({
+  }
+  pool_foreach (i, sm->output_feature_interfaces)
+   {
     if (nat_interface_is_inside(i) || sm->out2in_dpo)
       continue;
 
     snat_add_del_addr_to_fib(addr, 32, i->sw_if_index, 1);
     break;
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;
@@ -756,15 +756,15 @@ is_snat_address_used_in_static_mapping (snat_main_t * sm, ip4_address_t addr)
 {
   snat_static_mapping_t *m;
   /* *INDENT-OFF* */
-  pool_foreach (m, sm->static_mappings,
-  ({
+  pool_foreach (m, sm->static_mappings)
+   {
       if (is_addr_only_static_mapping (m) ||
           is_out2in_only_static_mapping (m) ||
           is_identity_static_mapping (m))
         continue;
       if (m->external_addr.as_u32 == addr.as_u32)
         return 1;
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;
@@ -882,7 +882,7 @@ nat_ed_static_mapping_del_sessions (snat_main_t * sm,
   snat_session_t *s;
   u32 *indexes_to_free = NULL;
   /* *INDENT-OFF* */
-  pool_foreach (s, tsm->sessions, {
+  pool_foreach (s, tsm->sessions) {
     if (s->in2out.fib_index != fib_index ||
         s->in2out.addr.as_u32 != l_addr.as_u32)
       {
@@ -905,7 +905,7 @@ nat_ed_static_mapping_del_sessions (snat_main_t * sm,
     vec_add1 (indexes_to_free, s - tsm->sessions);
     if (!addr_only)
       break;
-  });
+  }
   /* *INDENT-ON* */
   u32 *ses_index;
   vec_foreach (ses_index, indexes_to_free)
@@ -1031,11 +1031,11 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	  if (is_identity_static_mapping (m))
 	    {
               /* *INDENT-OFF* */
-              pool_foreach (local, m->locals,
-              ({
+              pool_foreach (local, m->locals)
+               {
                 if (local->vrf_id == vrf_id)
                   return VNET_API_ERROR_VALUE_EXIST;
-              }));
+              }
               /* *INDENT-ON* */
 	      pool_get (m->locals, local);
 	      local->vrf_id = vrf_id;
@@ -1246,11 +1246,11 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	    vrf_id = sm->inside_vrf_id;
 
           /* *INDENT-OFF* */
-          pool_foreach (local, m->locals,
-          ({
+          pool_foreach (local, m->locals)
+           {
 	    if (local->vrf_id == vrf_id)
               find = local - m->locals;
-	  }));
+	  }
           /* *INDENT-ON* */
 	  if (find == ~0)
 	    return VNET_API_ERROR_NO_SUCH_ENTRY;
@@ -1340,22 +1340,22 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 
   /* Add/delete external address to FIB */
   /* *INDENT-OFF* */
-  pool_foreach (interface, sm->interfaces,
-  ({
+  pool_foreach (interface, sm->interfaces)
+   {
     if (nat_interface_is_inside(interface) || sm->out2in_dpo)
       continue;
 
     snat_add_del_addr_to_fib(&e_addr, 32, interface->sw_if_index, is_add);
     break;
-  }));
-  pool_foreach (interface, sm->output_feature_interfaces,
-  ({
+  }
+  pool_foreach (interface, sm->output_feature_interfaces)
+   {
     if (nat_interface_is_inside(interface) || sm->out2in_dpo)
       continue;
 
     snat_add_del_addr_to_fib(&e_addr, 32, interface->sw_if_index, is_add);
     break;
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;
@@ -1544,8 +1544,8 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 	}
 
       /* *INDENT-OFF* */
-      pool_foreach (local, m->locals,
-      ({
+      pool_foreach (local, m->locals)
+      {
           fib_table_unlock (local->fib_index, FIB_PROTOCOL_IP4,
                             sm->fib_src_low);
           if (!out2in_only)
@@ -1570,7 +1570,7 @@ init_nat_k(&              kv, local->addr, local->port, local->fib_index, m->pro
             tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
 
           /* Delete sessions */
-          pool_foreach (s, tsm->sessions, {
+          pool_foreach (s, tsm->sessions) {
             if (!(is_lb_session (s)))
               continue;
 
@@ -1580,8 +1580,8 @@ init_nat_k(&              kv, local->addr, local->port, local->fib_index, m->pro
 
             nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
             nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
-          });
-      }));
+          }
+      }
       /* *INDENT-ON* */
       if (m->affinity)
 	nat_affinity_flush_service (m->affinity_per_service_list_head_index);
@@ -1625,15 +1625,15 @@ nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
     return VNET_API_ERROR_INVALID_VALUE;
 
   /* *INDENT-OFF* */
-  pool_foreach (local, m->locals,
-  ({
+  pool_foreach (local, m->locals)
+   {
     if ((local->addr.as_u32 == l_addr.as_u32) && (local->port == l_port) &&
         (local->vrf_id == vrf_id))
       {
         match_local = local;
         break;
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   if (is_add)
@@ -1691,7 +1691,7 @@ nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
 
       /* Delete sessions */
       /* *INDENT-OFF* */
-      pool_foreach (s, tsm->sessions, {
+      pool_foreach (s, tsm->sessions) {
         if (!(is_lb_session (s)))
           continue;
 
@@ -1701,7 +1701,7 @@ nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
 
         nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
         nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
-      });
+      }
       /* *INDENT-ON* */
 
       pool_put (m->locals, match_local);
@@ -1710,8 +1710,8 @@ nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
   vec_free (m->workers);
 
   /* *INDENT-OFF* */
-  pool_foreach (local, m->locals,
-  ({
+  pool_foreach (local, m->locals)
+   {
     vec_add1 (locals, local - m->locals);
     if (sm->num_workers > 1)
       {
@@ -1721,7 +1721,7 @@ nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
                                   sm->worker_in2out_cb (&ip, local->fib_index, 0),
                                   1);
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   ASSERT (vec_len (locals) > 1);
@@ -1779,8 +1779,8 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
     {
       ip4_address_t pool_addr = { 0 };
       /* *INDENT-OFF* */
-      pool_foreach (m, sm->static_mappings,
-      ({
+      pool_foreach (m, sm->static_mappings)
+       {
           if (m->external_addr.as_u32 == addr.as_u32)
             (void) snat_add_static_mapping (m->local_addr, m->external_addr,
                                             m->local_port, m->external_port,
@@ -1792,7 +1792,7 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
                                             m->tag,
                                             is_identity_static_mapping(m),
                                             pool_addr, 0);
-      }));
+      }
       /* *INDENT-ON* */
     }
   else
@@ -1814,13 +1814,13 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
       vec_foreach (tsm, sm->per_thread_data)
       {
         /* *INDENT-OFF* */
-        pool_foreach (ses, tsm->sessions, ({
+        pool_foreach (ses, tsm->sessions)  {
           if (ses->out2in.addr.as_u32 == addr.as_u32)
             {
               nat_free_session_data (sm, ses, tsm - sm->per_thread_data, 0);
               vec_add1 (ses_to_be_removed, ses - tsm->sessions);
             }
-        }));
+        }
         /* *INDENT-ON* */
 
 	if (sm->endpoint_dependent)
@@ -1858,22 +1858,22 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
 
   /* Delete external address from FIB */
   /* *INDENT-OFF* */
-  pool_foreach (interface, sm->interfaces,
-  ({
+  pool_foreach (interface, sm->interfaces)
+   {
     if (nat_interface_is_inside(interface) || sm->out2in_dpo)
       continue;
 
     snat_add_del_addr_to_fib(&addr, 32, interface->sw_if_index, 0);
     break;
-  }));
-  pool_foreach (interface, sm->output_feature_interfaces,
-  ({
+  }
+  pool_foreach (interface, sm->output_feature_interfaces)
+   {
     if (nat_interface_is_inside(interface) || sm->out2in_dpo)
       continue;
 
     snat_add_del_addr_to_fib(&addr, 32, interface->sw_if_index, 0);
     break;
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;
@@ -1997,14 +1997,14 @@ snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (i, sm->output_feature_interfaces,
-  ({
+  pool_foreach (i, sm->output_feature_interfaces)
+   {
     if (i->sw_if_index == sw_if_index)
       {
         nat_log_err ("error interface already configured");
         return VNET_API_ERROR_VALUE_EXIST;
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
@@ -2063,8 +2063,8 @@ snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
 
 feature_set:
   /* *INDENT-OFF* */
-  pool_foreach (i, sm->interfaces,
-  ({
+  pool_foreach (i, sm->interfaces)
+   {
     if (i->sw_if_index == sw_if_index)
       {
         if (is_del)
@@ -2180,7 +2180,7 @@ feature_set:
 
         goto fib;
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   if (is_del)
@@ -2226,13 +2226,13 @@ fib:
   vec_foreach (ap, sm->addresses)
     snat_add_del_addr_to_fib(&ap->addr, 32, sw_if_index, !is_del);
 
-  pool_foreach (m, sm->static_mappings,
-  ({
+  pool_foreach (m, sm->static_mappings)
+   {
     if (!(is_addr_only_static_mapping(m)) || (m->local_addr.as_u32 == m->external_addr.as_u32))
       continue;
 
     snat_add_del_addr_to_fib(&m->external_addr, 32, sw_if_index, !is_del);
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;
@@ -2263,14 +2263,14 @@ snat_interface_add_del_output_feature (u32 sw_if_index,
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (i, sm->interfaces,
-  ({
+  pool_foreach (i, sm->interfaces)
+   {
     if (i->sw_if_index == sw_if_index)
       {
         nat_log_err ("error interface already configured");
         return VNET_API_ERROR_VALUE_EXIST;
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   if (sm->endpoint_dependent)
@@ -2403,8 +2403,8 @@ fq:
       vlib_frame_queue_main_init (sm->out2in_node_index, 0);
 
   /* *INDENT-OFF* */
-  pool_foreach (i, sm->output_feature_interfaces,
-  ({
+  pool_foreach (i, sm->output_feature_interfaces)
+   {
     if (i->sw_if_index == sw_if_index)
       {
         if (is_del)
@@ -2414,7 +2414,7 @@ fq:
 
         goto fib;
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   if (is_del)
@@ -2441,13 +2441,13 @@ fib:
   vec_foreach (ap, sm->addresses)
     snat_add_del_addr_to_fib(&ap->addr, 32, sw_if_index, !is_del);
 
-  pool_foreach (m, sm->static_mappings,
-  ({
+  pool_foreach (m, sm->static_mappings)
+   {
     if (!((is_addr_only_static_mapping(m)))  || (m->local_addr.as_u32 == m->external_addr.as_u32))
       continue;
 
     snat_add_del_addr_to_fib(&m->external_addr, 32, sw_if_index, !is_del);
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;
@@ -2499,25 +2499,25 @@ snat_update_outside_fib (ip4_main_t * im, uword opaque,
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (i, sm->interfaces,
-    ({
+  pool_foreach (i, sm->interfaces)
+     {
       if (i->sw_if_index == sw_if_index)
         {
           if (!(nat_interface_is_outside (i)))
 	    return;
           match = 1;
         }
-    }));
+    }
 
-  pool_foreach (i, sm->output_feature_interfaces,
-    ({
+  pool_foreach (i, sm->output_feature_interfaces)
+     {
       if (i->sw_if_index == sw_if_index)
         {
           if (!(nat_interface_is_outside (i)))
 	    return;
           match = 1;
         }
-    }));
+    }
   /* *INDENT-ON* */
 
   if (!match)
@@ -3251,8 +3251,8 @@ snat_static_mapping_match (snat_main_t * sm,
 	    {
 	      u32 thread_index = vlib_get_thread_index ();
               /* *INDENT-OFF* */
-              pool_foreach_index (i, m->locals,
-              ({
+              pool_foreach_index (i, m->locals)
+               {
                 local = pool_elt_at_index (m->locals, i);
 
                 ip4_header_t ip = {
@@ -3264,17 +3264,17 @@ snat_static_mapping_match (snat_main_t * sm,
                   {
                     vec_add1 (tmp, i);
                   }
-              }));
+              }
               /* *INDENT-ON* */
 	      ASSERT (vec_len (tmp) != 0);
 	    }
 	  else
 	    {
               /* *INDENT-OFF* */
-              pool_foreach_index (i, m->locals,
-              ({
+              pool_foreach_index (i, m->locals)
+               {
                 vec_add1 (tmp, i);
-              }));
+              }
               /* *INDENT-ON* */
 	    }
 	  hi = vec_len (tmp) - 1;

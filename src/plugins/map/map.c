@@ -980,8 +980,8 @@ show_map_domain_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!unformat_user (input, unformat_line_input, line_input))
     {
       /* *INDENT-OFF* */
-      pool_foreach(d, mm->domains,
-	({vlib_cli_output(vm, "%U", format_map_domain, d, counters);}));
+      pool_foreach (d, mm->domains)
+	 {vlib_cli_output(vm, "%U", format_map_domain, d, counters);}
       /* *INDENT-ON* */
       return 0;
     }
@@ -1009,8 +1009,8 @@ show_map_domain_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (map_domain_index == ~0)
     {
       /* *INDENT-OFF* */
-      pool_foreach(d, mm->domains,
-	({vlib_cli_output(vm, "%U", format_map_domain, d, counters);}));
+      pool_foreach (d, mm->domains)
+	 {vlib_cli_output(vm, "%U", format_map_domain, d, counters);}
       /* *INDENT-ON* */
     }
   else
@@ -1063,14 +1063,14 @@ show_map_stats_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   /* *INDENT-OFF* */
-  pool_foreach(d, mm->domains, ({
+  pool_foreach (d, mm->domains)  {
     if (d->rules) {
       rulecount+= 0x1 << d->psid_length;
       rules += sizeof(ip6_address_t) * 0x1 << d->psid_length;
     }
     domains += sizeof(*d);
     domaincount++;
-  }));
+  }
   /* *INDENT-ON* */
 
   vlib_cli_output (vm, "MAP domains structure: %d\n", sizeof (map_domain_t));

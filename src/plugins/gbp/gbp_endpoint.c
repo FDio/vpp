@@ -1063,11 +1063,11 @@ gbp_endpoint_walk (gbp_endpoint_cb_t cb, void *ctx)
   u32 index;
 
   /* *INDENT-OFF* */
-  pool_foreach_index(index, gbp_endpoint_pool,
+  pool_foreach_index (index, gbp_endpoint_pool)
   {
     if (!cb(index, ctx))
       break;
-  });
+  }
   /* *INDENT-ON* */
 }
 

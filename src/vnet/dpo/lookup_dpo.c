@@ -1480,13 +1480,13 @@ lookup_dpo_show (vlib_main_t * vm,
     {
         lookup_dpo_t *lkd;
 
-        pool_foreach(lkd, lookup_dpo_pool,
-        ({
+        pool_foreach (lkd, lookup_dpo_pool)
+         {
             vlib_cli_output (vm, "[@%d] %U",
                              lookup_dpo_get_index(lkd),
                              format_lookup_dpo,
                              lookup_dpo_get_index(lkd));
-        }));
+        }
     }
 
     return 0;

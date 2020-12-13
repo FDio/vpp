@@ -240,10 +240,10 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
 
 no_args:
   /* *INDENT-OFF* */
-  pool_foreach (f, fm->global_flow_pool,
+  pool_foreach (f, fm->global_flow_pool)
     {
       vlib_cli_output (vm, "%U\n", format_flow, f);
-    });
+    }
   /* *INDENT-ON* */
 
   return 0;

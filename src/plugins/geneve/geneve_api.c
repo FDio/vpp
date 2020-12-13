@@ -202,10 +202,10 @@ static void vl_api_geneve_tunnel_dump_t_handler
   if (~0 == sw_if_index)
     {
       /* *INDENT-OFF* */
-      pool_foreach (t, vxm->tunnels,
-      ({
+      pool_foreach (t, vxm->tunnels)
+       {
         send_geneve_tunnel_details(t, reg, mp->context);
-      }));
+      }
       /* *INDENT-ON* */
     }
   else

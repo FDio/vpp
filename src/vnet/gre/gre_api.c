@@ -168,10 +168,10 @@ vl_api_gre_tunnel_dump_t_handler (vl_api_gre_tunnel_dump_t * mp)
   if (~0 == sw_if_index)
     {
       /* *INDENT-OFF* */
-      pool_foreach (t, gm->tunnels,
-      ({
+      pool_foreach (t, gm->tunnels)
+       {
         send_gre_tunnel_details(t, mp);
-      }));
+      }
       /* *INDENT-ON* */
     }
 

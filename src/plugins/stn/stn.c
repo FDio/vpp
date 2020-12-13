@@ -378,9 +378,9 @@ show_stn_rules_fn (vlib_main_t * vm,
   stn_main_t *stn = &stn_main;
   u8 *s = 0;
   stn_rule_t *rule;
-  pool_foreach(rule, stn->rules, {
+  pool_foreach (rule, stn->rules) {
       s = format (s, "- %U\n", format_stn_rule, rule);
-  });
+  }
 
   vlib_cli_output(vm, "%v", s);
 

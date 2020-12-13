@@ -135,10 +135,10 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
       u8 *s = format (NULL, "%=10s %=25s %=10s\n", "Configuration Key ID",
 		      "Type", "Use Count");
       /* *INDENT-OFF* */
-      pool_foreach (key, bm->auth_keys, {
+      pool_foreach (key, bm->auth_keys) {
         s = format (s, "%10u %-25s %10u\n", key->conf_key_id,
                     bfd_auth_type_str (key->auth_type), key->use_count);
-      });
+      }
       /* *INDENT-ON* */
       vlib_cli_output (vm, "%v\n", s);
       vec_free (s);
@@ -150,9 +150,9 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
       u8 *s = format (NULL, "%=10s %=32s %=20s %=20s\n", "Index", "Property",
 		      "Local value", "Remote value");
       /* *INDENT-OFF* */
-      pool_foreach (bs, bm->sessions, {
+      pool_foreach (bs, bm->sessions) {
         s = format (s, "%U", format_bfd_session_cli, vm, bs);
-      });
+      }
       /* *INDENT-ON* */
       vlib_cli_output (vm, "%v", s);
       vec_free (s);

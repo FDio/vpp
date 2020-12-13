@@ -838,10 +838,10 @@ ipsec_tun_protect_walk (ipsec_tun_protect_walk_cb_t fn, void *ctx)
   index_t itpi;
 
   /* *INDENT-OFF* */
-  pool_foreach_index(itpi, ipsec_tun_protect_pool,
-  ({
+  pool_foreach_index (itpi, ipsec_tun_protect_pool)
+   {
     fn (itpi, ctx);
-  }));
+  }
   /* *INDENT-ON* */
 }
 

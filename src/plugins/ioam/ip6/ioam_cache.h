@@ -471,10 +471,10 @@ ioam_cache_table_destroy (vlib_main_t * vm)
   ioam_cache_entry_t *entry = 0;
   /* free pool and hash table */
   clib_bihash_free_8_8 (&cm->ioam_rewrite_cache_table);
-  pool_foreach (entry, cm->ioam_rewrite_pool, (
-						{
-						ioam_cache_entry_free (entry);
-						}));
+  pool_foreach (entry, cm->ioam_rewrite_pool)
+  {
+    ioam_cache_entry_free (entry);
+  }
   pool_free (cm->ioam_rewrite_pool);
   cm->ioam_rewrite_pool = 0;
   vec_free (cm->sr_rewrite_template);
@@ -610,13 +610,10 @@ ioam_cache_ts_table_destroy (vlib_main_t * vm)
   /* free pool and hash table */
   for (i = 0; i < no_of_threads; i++)
     {
-      pool_foreach (entry, cm->ioam_ts_pool[i], (
-						  {
-						  ioam_cache_ts_entry_free (i,
-									    entry,
-									    cm->error_node_index);
-						  }
-		    ));
+      pool_foreach (entry, cm->ioam_ts_pool[i])
+      {
+	ioam_cache_ts_entry_free (i, entry, cm->error_node_index);
+      }
       pool_free (cm->ioam_ts_pool[i]);
       cm->ioam_ts_pool = 0;
       tw_timer_wheel_free_16t_2w_512sl (&cm->timer_wheels[i]);

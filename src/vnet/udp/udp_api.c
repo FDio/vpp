@@ -103,10 +103,10 @@ vl_api_udp_encap_dump_t_handler (vl_api_udp_encap_dump_t * mp,
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach(ue, udp_encap_pool,
-  ({
+  pool_foreach (ue, udp_encap_pool)
+   {
     send_udp_encap_details(ue, reg, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 }
 

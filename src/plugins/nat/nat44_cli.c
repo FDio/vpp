@@ -773,8 +773,8 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
       /* *INDENT-OFF* */
       vec_foreach (tsm, sm->per_thread_data)
         {
-          pool_foreach (s, tsm->sessions,
-          ({
+          pool_foreach (s, tsm->sessions)
+           {
             sess_timeout_time = s->last_heard +
 	      (f64) nat44_session_get_timeout (sm, s);
             if (now >= sess_timeout_time)
@@ -810,7 +810,7 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
                 udp_sessions++;
                 break;
               }
-          }));
+          }
           nat44_show_lru_summary (vm, tsm, now, sess_timeout_time);
           count += pool_elts (tsm->sessions);
         }
@@ -820,8 +820,8 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
       /* *INDENT-OFF* */
-      pool_foreach (s, tsm->sessions,
-      ({
+      pool_foreach (s, tsm->sessions)
+       {
         sess_timeout_time = s->last_heard +
 	    (f64) nat44_session_get_timeout (sm, s);
         if (now >= sess_timeout_time)
@@ -857,7 +857,7 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
             udp_sessions++;
             break;
           }
-      }));
+      }
       /* *INDENT-ON* */
       nat44_show_lru_summary (vm, tsm, now, sess_timeout_time);
       count = pool_elts (tsm->sessions);
@@ -1037,24 +1037,24 @@ nat44_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   vlib_cli_output (vm, "NAT44 interfaces:");
   /* *INDENT-OFF* */
-  pool_foreach (i, sm->interfaces,
-  ({
+  pool_foreach (i, sm->interfaces)
+   {
     vlib_cli_output (vm, " %U %s", format_vnet_sw_if_index_name, vnm,
                      i->sw_if_index,
                      (nat_interface_is_inside(i) &&
                       nat_interface_is_outside(i)) ? "in out" :
                      (nat_interface_is_inside(i) ? "in" : "out"));
-  }));
+  }
 
-  pool_foreach (i, sm->output_feature_interfaces,
-  ({
+  pool_foreach (i, sm->output_feature_interfaces)
+   {
     vlib_cli_output (vm, " %U output-feature %s",
                      format_vnet_sw_if_index_name, vnm,
                      i->sw_if_index,
                      (nat_interface_is_inside(i) &&
                       nat_interface_is_outside(i)) ? "in out" :
                      (nat_interface_is_inside(i) ? "in" : "out"));
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;
@@ -1473,10 +1473,10 @@ nat44_show_static_mappings_command_fn (vlib_main_t * vm,
 
   vlib_cli_output (vm, "NAT44 static mappings:");
   /* *INDENT-OFF* */
-  pool_foreach (m, sm->static_mappings,
-  ({
+  pool_foreach (m, sm->static_mappings)
+   {
     vlib_cli_output (vm, " %U", format_snat_static_mapping, m);
-  }));
+  }
   vec_foreach (rp, sm->to_resolve)
     vlib_cli_output (vm, " %U", format_snat_static_map_to_resolve, rp);
   /* *INDENT-ON* */
@@ -1611,18 +1611,18 @@ print:
       if (!sm->endpoint_dependent)
         {
           snat_user_t *u;
-          pool_foreach (u, tsm->users,
-          ({
+          pool_foreach (u, tsm->users)
+           {
             vlib_cli_output (vm, "  %U", format_snat_user, tsm, u, detail);
-          }));
+          }
         }
       else
         {
           snat_session_t *s;
-          pool_foreach (s, tsm->sessions,
-          ({
+          pool_foreach (s, tsm->sessions)
+           {
             vlib_cli_output (vm, "  %U\n", format_snat_session, tsm, s);
-          }));
+          }
         }
     }
   /* *INDENT-ON* */

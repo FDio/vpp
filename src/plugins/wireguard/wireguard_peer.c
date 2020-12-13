@@ -290,13 +290,13 @@ wg_peer_add (u32 tun_sw_if_index,
     return (VNET_API_ERROR_INVALID_SW_IF_INDEX);
 
   /* *INDENT-OFF* */
-  pool_foreach (peer, wg_peer_pool,
-  ({
+  pool_foreach (peer, wg_peer_pool)
+   {
     if (!memcmp (peer->remote.r_public, public_key, NOISE_PUBLIC_KEY_LEN))
     {
       return (VNET_API_ERROR_ENTRY_ALREADY_EXISTS);
     }
-  }));
+  }
   /* *INDENT-ON* */
 
   if (pool_elts (wg_peer_pool) > MAX_PEERS)
@@ -362,11 +362,11 @@ wg_peer_walk (wg_peer_walk_cb_t fn, void *data)
   index_t peeri;
 
   /* *INDENT-OFF* */
-  pool_foreach_index(peeri, wg_peer_pool,
+  pool_foreach_index (peeri, wg_peer_pool)
   {
     if (WALK_STOP == fn(peeri, data))
       return peeri;
-  });
+  }
   /* *INDENT-ON* */
   return INDEX_INVALID;
 }
