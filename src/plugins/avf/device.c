@@ -1307,10 +1307,10 @@ avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
        * during suspend */
       vec_reset_length (dev_pointers);
       /* *INDENT-OFF* */
-      pool_foreach_index (i, am->devices,
+      pool_foreach_index (i, am->devices)
         {
 	  vec_add1 (dev_pointers, avf_get_device (i));
-	});
+	}
 
       vec_foreach_index (i, dev_pointers)
         {
@@ -1519,7 +1519,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (adp, am->devices, ({
+  pool_foreach (adp, am->devices)  {
 	if ((*adp)->pci_addr.as_u32 == args->addr.as_u32)
       {
 	args->rv = VNET_API_ERROR_ADDRESS_IN_USE;
@@ -1528,7 +1528,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 			     &args->addr, "pci address in use");
 	return;
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   pool_get (am->devices, adp);

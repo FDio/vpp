@@ -845,9 +845,9 @@ srp_ips_process (vlib_main_t * vm,
 
   while (1)
     {
-      pool_foreach (si, sm->interface_pool, ({
+      pool_foreach (si, sm->interface_pool)  {
 	maybe_send_ips_message (si);
-      }));
+      }
       vlib_process_suspend (vm, 1.0);
     }
 

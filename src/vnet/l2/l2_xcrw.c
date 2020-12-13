@@ -569,10 +569,10 @@ show_l2xcrw_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "%U", format_l2xcrw, 0, 0);
 
   /* *INDENT-OFF* */
-  pool_foreach (t, xcm->tunnels,
-  ({
+  pool_foreach (t, xcm->tunnels)
+   {
     vlib_cli_output (vm, "%U", format_l2xcrw, vnm, t);
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;

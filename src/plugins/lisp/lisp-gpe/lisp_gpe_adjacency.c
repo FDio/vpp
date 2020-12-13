@@ -559,13 +559,13 @@ lisp_gpe_adjacency_show (vlib_main_t * vm,
   else
     {
       /* *INDENT-OFF* */
-      pool_foreach (ladj, lisp_adj_pool,
-      ({
+      pool_foreach (ladj, lisp_adj_pool)
+       {
 	vlib_cli_output (vm, "[%d] %U\n",
 			 ladj - lisp_adj_pool,
 			 format_lisp_gpe_adjacency, ladj,
 			 LISP_GPE_ADJ_FORMAT_FLAG_NONE);
-      }));
+      }
       /* *INDENT-ON* */
     }
 

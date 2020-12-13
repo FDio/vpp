@@ -84,7 +84,7 @@ cnat_client_throttle_pool_process ()
       vec_reset_length (del_vec);
       clib_spinlock_lock (&cnat_client_db.throttle_pool_lock[i]);
       /* *INDENT-OFF* */
-      pool_foreach(addr, cnat_client_db.throttle_pool[i], ({
+      pool_foreach (addr, cnat_client_db.throttle_pool[i])  {
 	cc = (AF_IP4 == addr->version ?
 	      cnat_client_ip4_find (&ip_addr_v4(addr)) :
 	      cnat_client_ip6_find (&ip_addr_v6(addr)));
@@ -94,7 +94,7 @@ cnat_client_throttle_pool_process ()
 	    cnat_client_cnt_session (cc);
 	    vec_add1(del_vec, addr - cnat_client_db.throttle_pool[i]);
 	  }
-      }));
+      }
       /* *INDENT-ON* */
       vec_foreach (ai, del_vec)
       {
@@ -301,9 +301,8 @@ cnat_client_show (vlib_main_t * vm,
   if (INDEX_INVALID == cci)
     {
       /* *INDENT-OFF* */
-      pool_foreach_index(cci, cnat_client_pool, ({
+      pool_foreach_index (cci, cnat_client_pool)
         vlib_cli_output(vm, "%U", format_cnat_client, cci, 0);
-      }))
       /* *INDENT-ON* */
 
       vlib_cli_output (vm, "%d clients", pool_elts (cnat_client_pool));

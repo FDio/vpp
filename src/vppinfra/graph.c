@@ -160,14 +160,14 @@ format_graph (u8 * s, va_list * args)
 
   s = format (s, "graph %d nodes", pool_elts (g->nodes));
   /* *INDENT-OFF* */
-  pool_foreach (n, g->nodes, ({
+  pool_foreach (n, g->nodes)  {
     s = format (s, "\n%U", format_white_space, indent + 2);
     s = format (s, "%U -> ", format_graph_node, g, n - g->nodes);
     vec_foreach (l, n->next.links)
       s = format (s, "%U (%d), ",
 		  format_graph_node, g, l->node_index,
 		  l->distance);
-  }));
+  }
   /* *INDENT-ON* */
 
   return s;

@@ -109,13 +109,13 @@ vl_api_l2_xconnect_dump_t_handler (vl_api_l2_xconnect_dump_t * mp)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (swif, im->sw_interfaces,
-  ({
+  pool_foreach (swif, im->sw_interfaces)
+   {
     config = vec_elt_at_index (l2im->configs, swif->sw_if_index);
     if (l2_input_is_xconnect(config))
       send_l2_xconnect_details (reg, mp->context, swif->sw_if_index,
                                 config->output_sw_if_index);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -1112,8 +1112,8 @@ l2_arp_term_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    last = now;
 
             /* *INDENT-OFF* */
-            pool_foreach(reg, vpe_api_main.l2_arp_term_events_registrations,
-            ({
+            pool_foreach (reg, vpe_api_main.l2_arp_term_events_registrations)
+             {
               vl_api_registration_t *vl_reg;
               vl_reg = vl_api_client_index_to_registration (reg->client_index);
               ALWAYS_ASSERT (vl_reg != NULL);
@@ -1133,7 +1133,7 @@ l2_arp_term_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
                   mac_address_encode(&event->mac, vevent->mac);
                   vl_api_send_msg (vl_reg, (u8 *) vevent);
                 }
-            }));
+            }
             /* *INDENT-ON* */
 	  }
 	  vec_reset_length (l2am->publish_events);

@@ -130,10 +130,10 @@ vlib_node_runtime_update (vlib_main_t * vm, u32 node_index, u32 next_index)
 	  pf->next_frame_index += n_insert;
       }
       /* *INDENT-OFF* */
-      pool_foreach (pf, nm->suspended_process_frames, ({
+      pool_foreach (pf, nm->suspended_process_frames)  {
 	  if (pf->next_frame_index != ~0 && pf->next_frame_index >= i)
 	    pf->next_frame_index += n_insert;
-      }));
+      }
       /* *INDENT-ON* */
 
       r->n_next_nodes = vec_len (node->next_nodes);

@@ -273,8 +273,8 @@ dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
 
       u8 address_already_present = 0;
       /* *INDENT-OFF* */
-      pool_foreach (address_info, rm->address_pool,
-      ({
+      pool_foreach (address_info, rm->address_pool)
+       {
         if (address_info->sw_if_index != sw_if_index)
           ;
         else if (!ip6_addresses_equal (&address_info->address, address))
@@ -284,7 +284,7 @@ dhcp6_reply_event_handler (vl_api_dhcp6_reply_event_t * mp)
             address_already_present = 1;
             goto address_pool_foreach_out;
           }
-      }));
+      }
       /* *INDENT-ON* */
     address_pool_foreach_out:
 
@@ -346,15 +346,15 @@ create_address_list (u32 sw_if_index)
   address_info_t *address_info, *address_list = 0;;
 
   /* *INDENT-OFF* */
-  pool_foreach (address_info, rm->address_pool,
-  ({
+  pool_foreach (address_info, rm->address_pool)
+   {
     if (address_info->sw_if_index == sw_if_index)
       {
         u32 pos = vec_len (address_list);
         vec_validate (address_list, pos);
         clib_memcpy (&address_list[pos], address_info, sizeof (*address_info));
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   return address_list;
@@ -395,8 +395,8 @@ dhcp6_client_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	{
 	  due_time = current_time + 1e9;
           /* *INDENT-OFF* */
-          pool_foreach (address_info, rm->address_pool,
-          ({
+          pool_foreach (address_info, rm->address_pool)
+           {
             if (address_info->due_time > current_time)
               {
                 if (address_info->due_time < due_time)
@@ -423,7 +423,7 @@ dhcp6_client_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
                                                     0, 1);
                   }
               }
-          }));
+          }
           /* *INDENT-ON* */
 	  for (i = 0; i < vec_len (rm->client_state_by_sw_if_index); i++)
 	    {
@@ -526,15 +526,15 @@ dhcp6_addresses_show_command_function (vlib_main_t * vm,
   f64 current_time = vlib_time_now (vm);
 
   /* *INDENT-OFF* */
-  pool_foreach (address_info, dm->address_pool,
-  ({
+  pool_foreach (address_info, dm->address_pool)
+   {
     vlib_cli_output (vm, "address: %U, "
                      "preferred lifetime: %u, valid lifetime: %u "
                      "(%f remaining)",
                      format_ip6_address, &address_info->address,
                      address_info->preferred_lt, address_info->valid_lt,
                      address_info->due_time - current_time);
-  }));
+  }
   /* *INDENT-ON* */
 
   return error;
@@ -661,8 +661,8 @@ dhcp6_client_enable_disable (u32 sw_if_index, u8 enable)
 	}
 
       /* *INDENT-OFF* */
-      pool_foreach (address_info, rm->address_pool,
-      ({
+      pool_foreach (address_info, rm->address_pool)
+       {
         if (address_info->sw_if_index == sw_if_index)
           {
             ASSERT (sw_if_index < vec_len (rm->client_state_by_sw_if_index) &&
@@ -680,7 +680,7 @@ dhcp6_client_enable_disable (u32 sw_if_index, u8 enable)
                 clib_warning ("Failed to delete interface address");
             pool_put (rm->address_pool, address_info);
           }
-      }));
+      }
       /* *INDENT-ON* */
     }
 

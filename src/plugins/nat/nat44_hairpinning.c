@@ -746,8 +746,8 @@ snat_hairpin_src_fn_inline (vlib_main_t * vm,
 	  vnet_feature_next (&next0, b0);
 
           /* *INDENT-OFF* */
-          pool_foreach (i, sm->output_feature_interfaces,
-          ({
+          pool_foreach (i, sm->output_feature_interfaces)
+           {
             /* Only packets from NAT inside interface */
             if ((nat_interface_is_inside(i)) && (sw_if_index0 == i->sw_if_index))
               {
@@ -761,7 +761,7 @@ snat_hairpin_src_fn_inline (vlib_main_t * vm,
                   }
                 break;
               }
-          }));
+          }
           /* *INDENT-ON* */
 
 	  if (next0 != SNAT_HAIRPIN_SRC_NEXT_DROP)

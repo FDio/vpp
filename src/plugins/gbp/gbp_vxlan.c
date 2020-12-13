@@ -306,11 +306,11 @@ gbp_vxlan_walk (gbp_vxlan_cb_t cb, void *ctx)
   gbp_vxlan_tunnel_t *gt;
 
   /* *INDENT-OFF* */
-  pool_foreach (gt, gbp_vxlan_tunnel_pool,
-    ({
+  pool_foreach (gt, gbp_vxlan_tunnel_pool)
+     {
       if (WALK_CONTINUE != cb(gt, ctx))
         break;
-    }));
+    }
   /* *INDENT-ON* */
 }
 

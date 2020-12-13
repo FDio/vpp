@@ -506,8 +506,8 @@ af_packet_dump_ifs (af_packet_if_detail_t ** out_af_packet_ifs)
   af_packet_if_detail_t *af_packet_if = NULL;
 
   /* *INDENT-OFF* */
-  pool_foreach (apif, apm->interfaces,
-    ({
+  pool_foreach (apif, apm->interfaces)
+     {
       vec_add2 (r_af_packet_ifs, af_packet_if, 1);
       af_packet_if->sw_if_index = apif->sw_if_index;
       if (apif->host_if_name)
@@ -516,7 +516,7 @@ af_packet_dump_ifs (af_packet_if_detail_t ** out_af_packet_ifs)
 		       MIN (ARRAY_LEN (af_packet_if->host_if_name) - 1,
 		       strlen ((const char *) apif->host_if_name)));
 	}
-    }));
+    }
   /* *INDENT-ON* */
 
   *out_af_packet_ifs = r_af_packet_ifs;

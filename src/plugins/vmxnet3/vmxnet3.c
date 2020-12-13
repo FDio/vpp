@@ -661,7 +661,7 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (vd, vmxm->devices, ({
+  pool_foreach (vd, vmxm->devices)  {
     if (vd->pci_addr.as_u32 == args->addr.as_u32)
       {
 	args->rv = VNET_API_ERROR_ADDRESS_IN_USE;
@@ -672,7 +672,7 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
 		  format_vlib_pci_addr, &args->addr, "pci address in use");
 	return;
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   if (args->bind)

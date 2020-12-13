@@ -460,11 +460,11 @@ ipsec_sa_walk (ipsec_sa_walk_cb_t cb, void *ctx)
   ipsec_sa_t *sa;
 
   /* *INDENT-OFF* */
-  pool_foreach (sa, im->sad,
-  ({
+  pool_foreach (sa, im->sad)
+   {
     if (WALK_CONTINUE != cb(sa, ctx))
       break;
-  }));
+  }
   /* *INDENT-ON* */
 }
 

@@ -131,13 +131,13 @@ quic_app_cert_key_pair_delete_callback (app_cert_key_pair_t * ckpair)
   for (i = 0; i < num_threads; i++)
     {
       /* *INDENT-OFF* */
-      pool_foreach (crctx, qm->wrk_ctx[i].crypto_ctx_pool, ({
+      pool_foreach (crctx, qm->wrk_ctx[i].crypto_ctx_pool)  {
 	if (crctx->ckpair_index == ckpair->cert_key_index)
 	  {
 	    quic_crypto_context_make_key_from_crctx (&kv, crctx);
 	    clib_bihash_add_del_24_8 (&qm->wrk_ctx[i].crypto_context_hash, &kv, 0 /* is_add */ );
 	  }
-      }));
+      }
       /* *INDENT-ON* */
     }
   return 0;
@@ -179,9 +179,9 @@ quic_list_crypto_context_command_fn (vlib_main_t * vm,
   for (i = 0; i < num_threads; i++)
     {
       /* *INDENT-OFF* */
-      pool_foreach (crctx, qm->wrk_ctx[i].crypto_ctx_pool, ({
+      pool_foreach (crctx, qm->wrk_ctx[i].crypto_ctx_pool)  {
 	vlib_cli_output (vm, "[%d][Q]%U", i, format_crypto_context, crctx);
-      }));
+      }
       /* *INDENT-ON* */
     }
   return 0;
@@ -2647,8 +2647,8 @@ quic_show_aggregated_stats (vlib_main_t * vm)
   for (i = 0; i < num_workers + 1; i++)
     {
       /* *INDENT-OFF* */
-      pool_foreach (ctx, qm->ctx_pool[i],
-      ({
+      pool_foreach (ctx, qm->ctx_pool[i])
+       {
 	if (quic_ctx_is_conn (ctx) && ctx->conn)
 	  {
 	    quicly_get_stats (ctx->conn, &st);
@@ -2665,7 +2665,7 @@ quic_show_aggregated_stats (vlib_main_t * vm)
 	  }
 	else if (quic_ctx_is_stream (ctx))
 	  nstream++;
-      }));
+      }
       /* *INDENT-ON* */
     }
   vlib_cli_output (vm, "-------- Connections --------");
@@ -2822,15 +2822,15 @@ quic_show_connections_command_fn (vlib_main_t * vm,
   for (int i = 0; i < num_workers + 1; i++)
     {
       /* *INDENT-OFF* */
-      pool_foreach (ctx, qm->ctx_pool[i],
-      ({
+      pool_foreach (ctx, qm->ctx_pool[i])
+       {
         if (quic_ctx_is_stream (ctx) && show_stream)
           vlib_cli_output (vm, "%U", quic_format_stream_ctx, ctx);
         else if (quic_ctx_is_listener (ctx) && show_listeners)
           vlib_cli_output (vm, "%U", quic_format_listener_ctx, ctx);
 	else if (quic_ctx_is_conn (ctx) && show_conn)
           vlib_cli_output (vm, "%U", quic_format_connection_ctx, ctx);
-      }));
+      }
       /* *INDENT-ON* */
     }
 

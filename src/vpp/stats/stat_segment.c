@@ -667,10 +667,10 @@ do_stat_segment_updates (stat_segment_main_t * sm)
 
   /* *INDENT-OFF* */
   stat_segment_gauges_pool_t *g;
-  pool_foreach(g, sm->gauges,
-  ({
+  pool_foreach (g, sm->gauges)
+   {
     g->fn(&sm->directory_vector[g->directory_index], g->caller_index);
-  }));
+  }
   /* *INDENT-ON* */
 
   /* Heartbeat, so clients detect we're still here */

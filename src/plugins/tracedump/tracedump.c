@@ -248,10 +248,10 @@ vl_api_trace_dump_t_handler (vl_api_trace_dump_t * mp)
         /* Filter as directed */
         trace_apply_filter(this_vlib_main);
 
-        pool_foreach (th, tm->trace_buffer_pool,
-        ({
+        pool_foreach (th, tm->trace_buffer_pool)
+         {
           vec_add1 (client_trace_cache[i], th[0]);
-        }));
+        }
 
         /* Sort them by increasing time. */
         if (vec_len (client_trace_cache[i]))

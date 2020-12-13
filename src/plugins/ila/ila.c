@@ -1070,10 +1070,10 @@ ila_show_entries_command_fn (vlib_main_t * vm,
   ila_entry_t *e;
 
   vlib_cli_output (vm, "  %U\n", format_ila_entry, vnm, NULL);
-  pool_foreach (e, ilm->entries,
-    ({
+  pool_foreach (e, ilm->entries)
+     {
       vlib_cli_output (vm, "  %U\n", format_ila_entry, vnm, e);
-    }));
+    }
 
   return NULL;
 }

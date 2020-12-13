@@ -1646,13 +1646,13 @@ show_mfib_entry_command (vlib_main_t * vm,
          * show all
          */
         vlib_cli_output (vm, "FIB Entries:");
-        pool_foreach_index(fei, mfib_entry_pool,
-        ({
+        pool_foreach_index (fei, mfib_entry_pool)
+         {
             vlib_cli_output (vm, "%d@%U",
                              fei,
                              format_mfib_entry, fei,
                              MFIB_ENTRY_FORMAT_BRIEF);
-        }));
+        }
     }
 
     return (NULL);

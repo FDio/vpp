@@ -1610,10 +1610,10 @@ http_show_static_server_command_fn (vlib_main_t * vm,
       for (i = 0; i < vec_len (hsm->sessions); i++)
 	{
           /* *INDENT-OFF* */
-	  pool_foreach (hs, hsm->sessions[i],
-          ({
+	  pool_foreach (hs, hsm->sessions[i])
+           {
             vec_add1 (session_indices, hs - hsm->sessions[i]);
-          }));
+          }
           /* *INDENT-ON* */
 
 	  for (j = 0; j < vec_len (session_indices); j++)

@@ -376,12 +376,12 @@ show_bier_disp_table (vlib_main_t * vm,
 
     if (INDEX_INVALID == bdti)
     {
-        pool_foreach(bdt, bier_disp_table_pool,
-        ({
+        pool_foreach (bdt, bier_disp_table_pool)
+         {
             vlib_cli_output(vm, "%U", format_bier_disp_table,
                             bier_disp_table_get_index(bdt),
                             0, BIER_SHOW_BRIEF);
-        }));
+        }
     }
     else
     {

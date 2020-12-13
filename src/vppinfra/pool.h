@@ -524,14 +524,14 @@ do {									\
     vec_foreach() (or plain for-loop) to walk the active index vector.
  */
 
-#define pool_foreach2(VAR,POOL)						\
+#define pool_foreach(VAR,POOL)						\
   if (POOL)								\
     for (VAR = POOL + pool_get_first_index (POOL);			\
 	 VAR < vec_end (POOL);						\
 	 VAR = POOL + pool_get_next_index (POOL, VAR - POOL))
 
-#define pool_foreach(VAR,POOL,BODY)					\
-  pool_foreach2(VAR,POOL)						\
+#define pool_foreach_old(VAR,POOL,BODY)					\
+  pool_foreach(VAR,POOL)						\
    { BODY; }
 
 /** Returns pointer to element at given index.
@@ -566,15 +566,15 @@ do {									\
   _pool_var(rv);                                                        \
 })
 
-#define pool_foreach_index2(i,v)		\
+#define pool_foreach_index(i,v)		\
   if (v)					\
     for (i = pool_get_first_index (v);		\
 	 i < vec_len (v);			\
 	 i = pool_get_next_index (v, i))	\
 
 /** Iterate pool by index. */
-#define pool_foreach_index(i,v,body)		\
-  pool_foreach_index2 (i,v)			\
+#define pool_foreach_index_old(i,v,body)		\
+  pool_foreach_index (i,v)			\
 	{ body; }
 
 /**
@@ -589,10 +589,10 @@ do {									\
 {                                                       \
   uword *_pool_var(ii), *_pool_var(dv) = NULL;          \
                                                         \
-  pool_foreach((VAR), (POOL),                           \
-  ({                                                    \
+  pool_foreach((VAR), (POOL))                          \
+  {                                                     \
     vec_add1(_pool_var(dv), (VAR) - (POOL));            \
-  }));                                                  \
+  }                                                     \
   vec_foreach(_pool_var(ii), _pool_var(dv))             \
   {                                                     \
     (VAR) = pool_elt_at_index((POOL), *_pool_var(ii));  \

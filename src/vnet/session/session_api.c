@@ -969,12 +969,12 @@ send_session_rules_table_details (session_rules_table_t * srt, u8 fib_proto,
       u8 *tag = 0;
       /* *INDENT-OFF* */
       srt16 = &srt->session_rules_tables_16;
-      pool_foreach (rule16, srt16->rules, ({
+      pool_foreach (rule16, srt16->rules)  {
 	ri = mma_rules_table_rule_index_16 (srt16, rule16);
 	tag = session_rules_table_rule_tag (srt, ri, 1);
         send_session_rule_details4 (rule16, is_local, tp, appns_index, tag,
                                     reg, context);
-      }));
+      }
       /* *INDENT-ON* */
     }
   if (is_local || fib_proto == FIB_PROTOCOL_IP6)
@@ -982,12 +982,12 @@ send_session_rules_table_details (session_rules_table_t * srt, u8 fib_proto,
       u8 *tag = 0;
       /* *INDENT-OFF* */
       srt40 = &srt->session_rules_tables_40;
-      pool_foreach (rule40, srt40->rules, ({
+      pool_foreach (rule40, srt40->rules)  {
 	ri = mma_rules_table_rule_index_40 (srt40, rule40);
 	tag = session_rules_table_rule_tag (srt, ri, 1);
         send_session_rule_details6 (rule40, is_local, tp, appns_index, tag,
                                     reg, context);
-      }));
+      }
       /* *INDENT-ON* */
     }
 }

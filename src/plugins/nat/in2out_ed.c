@@ -627,11 +627,11 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
 
       /* hairpinning */
       /* *INDENT-OFF* */
-      pool_foreach (i, sm->output_feature_interfaces,
-      ({
+      pool_foreach (i, sm->output_feature_interfaces)
+       {
         if ((nat_interface_is_inside (i)) && (rx_sw_if_index == i->sw_if_index))
            return 0;
-      }));
+      }
       /* *INDENT-ON* */
       return 1;
     }
@@ -826,7 +826,7 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
       else
 	{
 	  /* *INDENT-OFF* */
-	  pool_foreach (s, tsm->sessions, {
+	  pool_foreach (s, tsm->sessions) {
       	    if (s->ext_host_addr.as_u32 == ip->dst_address.as_u32)
       	      {
       	        new_addr = ip->src_address.as_u32 = s->out2in.addr.as_u32;
@@ -837,7 +837,7 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
 
       	        break;
       	      }
-      	  });
+      	  }
       	  /* *INDENT-ON* */
 
 	  for (i = 0; i < vec_len (sm->addresses); i++)

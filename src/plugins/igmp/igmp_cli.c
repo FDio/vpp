@@ -356,10 +356,10 @@ igmp_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   igmp_config_t *config;
 
   /* *INDENT-OFF* */
-  pool_foreach (config, im->configs,
-    ({
+  pool_foreach (config, im->configs)
+     {
       vlib_cli_output (vm, "%U", format_igmp_config, config);
-    }));
+    }
   /* *INDENT-ON* */
 
   return error;

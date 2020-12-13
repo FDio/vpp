@@ -231,9 +231,8 @@ show_virtio_pci_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (vec_len (hw_if_indices) == 0)
     {
-      pool_foreach (vif, vim->interfaces,
-		    vec_add1 (hw_if_indices, vif->hw_if_index);
-	);
+      pool_foreach (vif, vim->interfaces)
+	vec_add1 (hw_if_indices, vif->hw_if_index);
     }
   else if (show_device_config)
     {

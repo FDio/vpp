@@ -108,11 +108,11 @@ det44_translate (vlib_node_runtime_t * node, u32 sw_if_index0,
 	{
 	  det44_interface_t *i;
           /* *INDENT-OFF* */
-          pool_foreach (i, dm->interfaces, ({
+          pool_foreach (i, dm->interfaces)  {
             /* NAT packet aimed at outside interface */
 	    if ((det44_interface_is_outside (i)) && (sw_if_index == i->sw_if_index))
               return 0;
-          }));
+          }
           /* *INDENT-ON* */
 	}
     }

@@ -184,7 +184,7 @@ bond_dump_ifs (bond_interface_details_t ** out_bondifs)
   bond_interface_details_t *bondif = NULL;
 
   /* *INDENT-OFF* */
-  pool_foreach (bif, bm->interfaces,
+  pool_foreach (bif, bm->interfaces) {
     vec_add2(r_bondifs, bondif, 1);
     clib_memset (bondif, 0, sizeof (*bondif));
     bondif->id = bif->id;
@@ -200,7 +200,7 @@ bond_dump_ifs (bond_interface_details_t ** out_bondifs)
     bondif->numa_only = bif->numa_only;
     bondif->active_members = vec_len (bif->active_members);
     bondif->members = vec_len (bif->members);
-  );
+  }
   /* *INDENT-ON* */
 
   *out_bondifs = r_bondifs;
@@ -899,14 +899,14 @@ show_bond (vlib_main_t * vm)
 		   "load balance", "active members", "members");
 
   /* *INDENT-OFF* */
-  pool_foreach (bif, bm->interfaces,
-  ({
+  pool_foreach (bif, bm->interfaces)
+   {
     vlib_cli_output (vm, "%-16U %-12d %-13U %-13U %-14u %u",
 		     format_bond_interface_name, bif->dev_instance,
 		     bif->sw_if_index, format_bond_mode, bif->mode,
 		     format_bond_load_balance, bif->lb,
 		     vec_len (bif->active_members), vec_len (bif->members));
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -918,8 +918,8 @@ show_bond_details (vlib_main_t * vm)
   u32 *sw_if_index;
 
   /* *INDENT-OFF* */
-  pool_foreach (bif, bm->interfaces,
-  ({
+  pool_foreach (bif, bm->interfaces)
+   {
     vlib_cli_output (vm, "%U", format_bond_interface_name, bif->dev_instance);
     vlib_cli_output (vm, "  mode: %U",
 		     format_bond_mode, bif->mode);
@@ -955,7 +955,7 @@ show_bond_details (vlib_main_t * vm)
     vlib_cli_output (vm, "  interface id: %d", bif->id);
     vlib_cli_output (vm, "  sw_if_index: %d", bif->sw_if_index);
     vlib_cli_output (vm, "  hw_if_index: %d", bif->hw_if_index);
-  }));
+  }
   /* *INDENT-ON* */
 }
 

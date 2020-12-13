@@ -253,12 +253,10 @@ ioam_cache_table_print (vlib_main_t * vm, u8 verbose)
   int no_of_threads = vec_len (vlib_worker_threads);
   int i;
 
-  pool_foreach (entry, cm->ioam_rewrite_pool, (
-						{
-						vlib_cli_output (vm, "%U",
-								 format_ioam_cache_entry,
-								 entry);
-						}));
+  pool_foreach (entry, cm->ioam_rewrite_pool)
+  {
+    vlib_cli_output (vm, "%U", format_ioam_cache_entry, entry);
+  }
 
   if (cm->ts_stats)
     for (i = 0; i < no_of_threads; i++)
@@ -269,16 +267,11 @@ ioam_cache_table_print (vlib_main_t * vm, u8 verbose)
 
 	if (verbose == 1)
 	  vlib_worker_thread_barrier_sync (vm);
-	pool_foreach (ts_entry, cm->ioam_ts_pool[i], (
-						       {
-						       vlib_cli_output (vm,
-									"%U",
-									format_ioam_cache_ts_entry,
-									ts_entry,
-									(u32)
-									i);
-						       }
-		      ));
+	pool_foreach (ts_entry, cm->ioam_ts_pool[i])
+	{
+	  vlib_cli_output (vm, "%U", format_ioam_cache_ts_entry, ts_entry,
+			   (u32) i);
+	}
 	vlib_worker_thread_barrier_release (vm);
       }
 

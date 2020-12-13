@@ -243,11 +243,11 @@ cnat_timestamp_show (vlib_main_t * vm,
   cnat_timestamp_t *ts;
   clib_rwlock_reader_lock (&cnat_main.ts_lock);
     /* *INDENT-OFF* */
-  pool_foreach (ts, cnat_timestamps, ({
+  pool_foreach (ts, cnat_timestamps)  {
     vlib_cli_output (vm, "[%d] last_seen:%f lifetime:%u ref:%u",
 		     ts - cnat_timestamps,
 		     ts->last_seen, ts->lifetime, ts->refcnt);
-  }));
+  }
   /* *INDENT-ON* */
   clib_rwlock_reader_unlock (&cnat_main.ts_lock);
   return (NULL);

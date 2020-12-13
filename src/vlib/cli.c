@@ -1077,11 +1077,11 @@ restart_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
 
   /* Close all known open files */
   /* *INDENT-OFF* */
-  pool_foreach(f, fm->file_pool,
-    ({
+  pool_foreach (f, fm->file_pool)
+     {
       if (f->file_descriptor > 2)
         close(f->file_descriptor);
-    }));
+    }
   /* *INDENT-ON* */
 
   /* Exec ourself */

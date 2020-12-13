@@ -85,13 +85,13 @@ vl_sock_api_dump_clients (vlib_main_t * vm, api_main_t * am)
   vlib_cli_output (vm, "Socket clients");
   vlib_cli_output (vm, "%20s %8s", "Name", "Fildesc");
     /* *INDENT-OFF* */
-    pool_foreach (reg, sm->registration_pool,
-    ({
+    pool_foreach (reg, sm->registration_pool)
+     {
         if (reg->registration_type == REGISTRATION_TYPE_SOCKET_SERVER) {
             f = vl_api_registration_file (reg);
             vlib_cli_output (vm, "%20s %8d", reg->name, f->file_descriptor);
         }
-    }));
+    }
 /* *INDENT-ON* */
 }
 
@@ -784,11 +784,11 @@ socket_exit (vlib_main_t * vm)
     {
       u32 index;
         /* *INDENT-OFF* */
-        pool_foreach (rp, sm->registration_pool, ({
+        pool_foreach (rp, sm->registration_pool)  {
           vl_api_registration_del_file (rp);
           index = rp->vl_api_registration_pool_index;
           vl_socket_free_registration_index (index);
-        }));
+        }
 /* *INDENT-ON* */
     }
 

@@ -557,8 +557,8 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
       last_run_duration = start_time = vlib_time_now (vm);
       /* *INDENT-OFF* */
-      pool_foreach (mif, mm->interfaces,
-        ({
+      pool_foreach (mif, mm->interfaces)
+         {
 	  memif_socket_file_t * msf = vec_elt_at_index (mm->socket_files, mif->socket_file_index);
 	  /* Allow no more than 10us without a pause */
 	  now = vlib_time_now (vm);
@@ -607,7 +607,7 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
                   sock = clib_mem_alloc (sizeof(clib_socket_t));
 	        }
 	    }
-        }));
+        }
       /* *INDENT-ON* */
       last_run_duration = vlib_time_now (vm) - last_run_duration;
     }

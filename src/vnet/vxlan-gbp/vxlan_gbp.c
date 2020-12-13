@@ -929,10 +929,10 @@ show_vxlan_gbp_tunnel_command_fn (vlib_main_t * vm,
     vlib_cli_output (vm, "No vxlan-gbp tunnels configured...");
 
 /* *INDENT-OFF* */
-  pool_foreach (t, vxm->tunnels,
-  ({
+  pool_foreach (t, vxm->tunnels)
+   {
     vlib_cli_output (vm, "%U", format_vxlan_gbp_tunnel, t);
-  }));
+  }
 /* *INDENT-ON* */
 
   if (raw)

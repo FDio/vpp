@@ -262,11 +262,11 @@ find_mask_type_index(acl_main_t *am, fa_5tuple_t *mask)
 {
   ace_mask_type_entry_t *mte;
   /* *INDENT-OFF* */
-  pool_foreach(mte, am->ace_mask_type_pool,
-  ({
+  pool_foreach (mte, am->ace_mask_type_pool)
+   {
     if(memcmp(&mte->mask, mask, sizeof(*mask)) == 0)
       return (mte - am->ace_mask_type_pool);
-  }));
+  }
   /* *INDENT-ON* */
   return ~0;
 }
@@ -1160,13 +1160,13 @@ acl_plugin_show_tables_mask_type (void)
 
   vlib_cli_output (vm, "Mask-type entries:");
     /* *INDENT-OFF* */
-    pool_foreach(mte, am->ace_mask_type_pool,
-    ({
+    pool_foreach (mte, am->ace_mask_type_pool)
+     {
       vlib_cli_output(vm, "     %3d: %016llx %016llx %016llx %016llx %016llx %016llx  refcount %d",
 		    mte - am->ace_mask_type_pool,
 		    mte->mask.kv_40_8.key[0], mte->mask.kv_40_8.key[1], mte->mask.kv_40_8.key[2],
 		    mte->mask.kv_40_8.key[3], mte->mask.kv_40_8.key[4], mte->mask.kv_40_8.value, mte->refcount);
-    }));
+    }
     /* *INDENT-ON* */
 }
 

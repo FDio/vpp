@@ -254,10 +254,10 @@ show_lisp_gpe_tunnel_command_fn (vlib_main_t * vm,
   else
     {
       /* *INDENT-OFF* */
-      pool_foreach (lgt, lisp_gpe_tunnel_pool,
-      ({
+      pool_foreach (lgt, lisp_gpe_tunnel_pool)
+       {
 	vlib_cli_output (vm, "%U", format_lisp_gpe_tunnel, lgt);
-      }));
+      }
       /* *INDENT-ON* */
     }
 

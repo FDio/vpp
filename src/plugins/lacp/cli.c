@@ -29,7 +29,7 @@ lacp_dump_ifs (lacp_interface_details_t ** out_lacpifs)
   lacp_interface_details_t *lacpif = NULL;
 
   /* *INDENT-OFF* */
-  pool_foreach (mif, bm->neighbors,
+  pool_foreach (mif, bm->neighbors) {
     if (mif->lacp_enabled == 0)
       continue;
     vec_add2(r_lacpifs, lacpif, 1);
@@ -60,7 +60,7 @@ lacp_dump_ifs (lacp_interface_details_t ** out_lacpifs)
     lacpif->tx_state = mif->tx_state;
     lacpif->ptx_state = mif->ptx_state;
     lacpif->mux_state = mif->mux_state;
-  );
+  }
   /* *INDENT-ON* */
 
   *out_lacpifs = r_lacpifs;
@@ -295,9 +295,8 @@ show_lacp_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (vec_len (sw_if_indices) == 0)
     {
-      pool_foreach (mif, bm->neighbors,
-		    vec_add1 (sw_if_indices, mif->sw_if_index);
-	);
+      pool_foreach (mif, bm->neighbors)
+	vec_add1 (sw_if_indices, mif->sw_if_index);
     }
 
   if (details)

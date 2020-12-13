@@ -277,10 +277,10 @@ vl_api_classify_table_ids_t_handler (vl_api_classify_table_ids_t * mp)
   u32 count;
 
    /* *INDENT-OFF* */
-   pool_foreach (t, cm->tables,
-   ({
+   pool_foreach (t, cm->tables)
+    {
      vec_add1 (table_ids, ntohl(t - cm->tables));
-   }));
+   }
    /* *INDENT-ON* */
   count = vec_len (table_ids);
 
@@ -365,8 +365,8 @@ vl_api_classify_table_info_t_handler (vl_api_classify_table_info_t * mp)
   vnet_classify_table_t *t;
 
    /* *INDENT-OFF* */
-   pool_foreach (t, cm->tables,
-   ({
+   pool_foreach (t, cm->tables)
+    {
      if (table_id == t - cm->tables)
        {
          rmp = vl_msg_api_alloc_as_if_client
@@ -385,7 +385,7 @@ vl_api_classify_table_info_t_handler (vl_api_classify_table_info_t * mp)
          rmp->retval = 0;
          break;
        }
-   }));
+   }
    /* *INDENT-ON* */
 
   if (rmp == 0)
@@ -435,8 +435,8 @@ vl_api_classify_session_dump_t_handler (vl_api_classify_session_dump_t * mp)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (t, cm->tables,
-  ({
+  pool_foreach (t, cm->tables)
+   {
     if (table_id == t - cm->tables)
       {
         vnet_classify_bucket_t * b;
@@ -467,7 +467,7 @@ vl_api_classify_session_dump_t_handler (vl_api_classify_session_dump_t * mp)
           }
         break;
       }
-  }));
+  }
   /* *INDENT-ON* */
 }
 

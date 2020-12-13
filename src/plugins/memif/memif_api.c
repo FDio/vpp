@@ -280,8 +280,8 @@ vl_api_memif_dump_t_handler (vl_api_memif_dump_t * mp)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (mif, mm->interfaces,
-    ({
+  pool_foreach (mif, mm->interfaces)
+     {
       swif = vnet_get_sw_interface (vnm, mif->sw_if_index);
 
       if_name = format (if_name, "%U%c",
@@ -290,7 +290,7 @@ vl_api_memif_dump_t_handler (vl_api_memif_dump_t * mp)
 
       send_memif_details (reg, mif, swif, if_name, mp->context);
       _vec_len (if_name) = 0;
-    }));
+    }
   /* *INDENT-ON* */
 
   vec_free (if_name);

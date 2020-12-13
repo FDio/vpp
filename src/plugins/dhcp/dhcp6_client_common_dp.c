@@ -62,12 +62,12 @@ generate_client_duid (void)
   ethernet_interface_t *eth_if = 0;
 
   /* *INDENT-OFF* */
-  pool_foreach (hi, im->hw_interfaces,
-  ({
+  pool_foreach (hi, im->hw_interfaces)
+   {
     eth_if = ethernet_get_interface (&ethernet_main, hi->hw_if_index);
     if (eth_if)
       break;
-  }));
+  }
   /* *INDENT-ON* */
 
   if (eth_if)

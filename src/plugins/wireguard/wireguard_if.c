@@ -373,11 +373,11 @@ wg_if_walk (wg_if_walk_cb_t fn, void *data)
   index_t wgii;
 
   /* *INDENT-OFF* */
-  pool_foreach_index (wgii, wg_if_pool,
+  pool_foreach_index (wgii, wg_if_pool)
   {
     if (WALK_STOP == fn(wgii, data))
       break;
-  });
+  }
   /* *INDENT-ON* */
 }
 

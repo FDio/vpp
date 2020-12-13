@@ -532,9 +532,9 @@ l2_rw_show_entries_cli_fn (vlib_main_t * vm,
     vlib_cli_output (vm, "No entries\n");
 
   /* *INDENT-OFF* */
-  pool_foreach(e, rw->entries, {
+  pool_foreach (e, rw->entries) {
     vlib_cli_output (vm, "%U\n", format_l2_rw_entry, e);
-  });
+  }
   /* *INDENT-ON* */
   return 0;
 }

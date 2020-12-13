@@ -39,7 +39,7 @@ static segment_manager_main_t sm_main;
 #define segment_manager_foreach_segment_w_lock(VAR, SM, BODY)		\
 do {									\
     clib_rwlock_reader_lock (&(SM)->segments_rwlock);			\
-    pool_foreach((VAR), ((SM)->segments), (BODY));			\
+    pool_foreach((VAR), ((SM)->segments)) (BODY);			\
     clib_rwlock_reader_unlock (&(SM)->segments_rwlock);			\
 } while (0)
 
@@ -482,9 +482,9 @@ segment_manager_free (segment_manager_t * sm)
   clib_rwlock_writer_lock (&sm->segments_rwlock);
 
   /* *INDENT-OFF* */
-  pool_foreach (fifo_segment, sm->segments, ({
+  pool_foreach (fifo_segment, sm->segments)  {
     segment_manager_del_segment (sm, fifo_segment);
-  }));
+  }
   /* *INDENT-ON* */
 
   clib_rwlock_writer_unlock (&sm->segments_rwlock);
@@ -667,14 +667,14 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
   segment_manager_segment_reader_lock (sm);
 
   /* *INDENT-OFF* */
-  pool_foreach (cur, sm->segments, ({
+  pool_foreach (cur, sm->segments)  {
     free_bytes = fifo_segment_available_bytes (cur);
     if (free_bytes > max_free_bytes)
       {
         max_free_bytes = free_bytes;
         fs = cur;
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   if (fs)
@@ -955,7 +955,7 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
 		       "HighWater", "LowWater", "FifoTuning");
 
       /* *INDENT-OFF* */
-      pool_foreach (sm, smm->segment_managers, ({
+      pool_foreach (sm, smm->segment_managers)  {
         app_wrk = app_worker_get_if_valid (sm->app_wrk_index);
         app = app_wrk ? application_get (app_wrk->app_index) : 0;
         custom_logic = (app && (app->cb_fns.fifo_tuning_callback)) ? 1 : 0;
@@ -967,7 +967,7 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
                          format_memory_size, max_fifo_size,
                          sm->high_watermark, sm->low_watermark,
                          custom_logic ? "custom" : "none");
-      }));
+      }
       /* *INDENT-ON* */
 
       vlib_cli_output (vm, "\n");
@@ -977,11 +977,11 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
       vlib_cli_output (vm, "%U", format_fifo_segment, 0, verbose);
 
       /* *INDENT-OFF* */
-      pool_foreach (sm, smm->segment_managers, ({
+      pool_foreach (sm, smm->segment_managers)  {
 	  segment_manager_foreach_segment_w_lock (seg, sm, ({
 	    vlib_cli_output (vm, "%U", format_fifo_segment, seg, verbose);
 	  }));
-      }));
+      }
       /* *INDENT-ON* */
 
     }
@@ -1024,7 +1024,7 @@ segment_manager_format_sessions (segment_manager_t * sm, int verbose)
   clib_rwlock_reader_lock (&sm->segments_rwlock);
 
   /* *INDENT-OFF* */
-  pool_foreach (fs, sm->segments, ({
+  pool_foreach (fs, sm->segments)  {
     for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
       {
         f = fifo_segment_get_slice_fifo_list (fs, slice_index);
@@ -1053,7 +1053,7 @@ segment_manager_format_sessions (segment_manager_t * sm, int verbose)
           }
         vec_free (s);
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   clib_rwlock_reader_unlock (&sm->segments_rwlock);

@@ -279,11 +279,11 @@ snat_det_map_by_user (ip4_address_t * user_addr)
   det44_main_t *dm = &det44_main;
   snat_det_map_t *mp;
   /* *INDENT-OFF* */
-  pool_foreach (mp, dm->det_maps,
-  ({
+  pool_foreach (mp, dm->det_maps)
+   {
     if (is_addr_in_net(user_addr, &mp->in_addr, mp->in_plen))
       return mp;
-  }));
+  }
   /* *INDENT-ON* */
   return 0;
 }
@@ -294,11 +294,11 @@ snat_det_map_by_out (ip4_address_t * out_addr)
   det44_main_t *dm = &det44_main;
   snat_det_map_t *mp;
   /* *INDENT-OFF* */
-  pool_foreach (mp, dm->det_maps,
-  ({
+  pool_foreach (mp, dm->det_maps)
+   {
     if (is_addr_in_net(out_addr, &mp->out_addr, mp->out_plen))
       return mp;
-  }));
+  }
   /* *INDENT-ON* */
   return 0;
 }

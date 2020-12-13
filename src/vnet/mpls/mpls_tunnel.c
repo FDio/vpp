@@ -617,10 +617,10 @@ mpls_tunnel_walk (mpls_tunnel_walk_cb_t cb,
 {
     u32 mti;
 
-    pool_foreach_index(mti, mpls_tunnel_pool,
-    ({
+    pool_foreach_index (mti, mpls_tunnel_pool)
+     {
         cb(mti, ctx);
-    }));
+    }
 }
 
 void
@@ -989,12 +989,12 @@ show_mpls_tunnel_command_fn (vlib_main_t * vm,
 
     if (~0 == mti)
     {
-        pool_foreach (mt, mpls_tunnel_pool,
-        ({
+        pool_foreach (mt, mpls_tunnel_pool)
+         {
             vlib_cli_output (vm, "[@%d] %U",
                              mt - mpls_tunnel_pool,
                              format_mpls_tunnel, mt);
-        }));
+        }
     }
     else
     {

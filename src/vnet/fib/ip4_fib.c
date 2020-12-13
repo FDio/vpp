@@ -616,8 +616,8 @@ ip4_show_fib (vlib_main_t * vm,
 	    break;
     }
 
-    pool_foreach (fib_table, im4->fibs,
-    ({
+    pool_foreach (fib_table, im4->fibs)
+     {
 	ip4_fib_t *fib = pool_elt_at_index(im4->v4_fibs, fib_table->ft_index);
         fib_source_t source;
         u8 *s = NULL;
@@ -704,7 +704,7 @@ ip4_show_fib (vlib_main_t * vm,
 	    ip4_fib_table_show_one(fib, vm, &matching_address,
                                    matching_mask, detail);
 	}
-    }));
+    }
 
     if (memory)
     {

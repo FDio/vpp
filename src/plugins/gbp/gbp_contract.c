@@ -567,11 +567,11 @@ gbp_contract_walk (gbp_contract_cb_t cb, void *ctx)
   gbp_contract_t *gc;
 
   /* *INDENT-OFF* */
-  pool_foreach(gc, gbp_contract_pool,
-  ({
+  pool_foreach (gc, gbp_contract_pool)
+   {
     if (!cb(gc, ctx))
       break;
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -710,8 +710,8 @@ gbp_contract_show (vlib_main_t * vm,
   vlib_cli_output (vm, "Contracts:");
 
   /* *INDENT-OFF* */
-  pool_foreach (gc, gbp_contract_pool,
-  ({
+  pool_foreach (gc, gbp_contract_pool)
+   {
     gci = gc - gbp_contract_pool;
 
     if (SCLASS_INVALID != src && SCLASS_INVALID != dst)
@@ -732,7 +732,7 @@ gbp_contract_show (vlib_main_t * vm,
       }
     else
       vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
-  }));
+  }
   /* *INDENT-ON* */
 
   return (NULL);

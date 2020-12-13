@@ -143,8 +143,8 @@ lacp_periodic (vlib_main_t * vm)
   u8 actor_state, partner_state;
 
   /* *INDENT-OFF* */
-  pool_foreach (mif, bm->neighbors,
-  ({
+  pool_foreach (mif, bm->neighbors)
+   {
     if (mif->port_enabled == 0)
       continue;
 
@@ -184,7 +184,7 @@ lacp_periodic (vlib_main_t * vm)
 					[mif->sw_if_index].partner_state,
 					mif->partner.state);
       }
-  }));
+  }
   /* *INDENT-ON* */
 }
 

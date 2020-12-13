@@ -541,10 +541,10 @@ gbp_itf_show (vlib_main_t * vm,
   vlib_cli_output (vm, "Interfaces:");
 
   /* *INDENT-OFF* */
-  pool_foreach_index (gii, gbp_itf_pool,
-  ({
+  pool_foreach_index (gii, gbp_itf_pool)
+   {
     vlib_cli_output (vm, "  [%d] %U", gii, format_gbp_itf, gii);
-  }));
+  }
   /* *INDENT-ON* */
 
   return (NULL);

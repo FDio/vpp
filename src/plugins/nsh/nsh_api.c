@@ -189,12 +189,10 @@ vl_api_nsh_map_dump_t_handler (vl_api_nsh_map_dump_t * mp)
 
   if (~0 == map_index)
     {
-      pool_foreach (t, nm->nsh_mappings, (
-					   {
-					   send_nsh_map_details (t, rp,
-								 mp->context);
-					   }
-		    ));
+      pool_foreach (t, nm->nsh_mappings)
+      {
+	send_nsh_map_details (t, rp, mp->context);
+      }
     }
   else
     {
@@ -652,12 +650,10 @@ vl_api_nsh_entry_dump_t_handler (vl_api_nsh_entry_dump_t * mp)
 
   if (~0 == entry_index)
     {
-      pool_foreach (t, nm->nsh_entries, (
-					  {
-					  send_nsh_entry_details (t, rp,
-								  mp->context);
-					  }
-		    ));
+      pool_foreach (t, nm->nsh_entries)
+      {
+	send_nsh_entry_details (t, rp, mp->context);
+      }
     }
   else
     {

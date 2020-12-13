@@ -263,8 +263,8 @@ ip6_ra_report_handler (const ip6_ra_report_t * r)
       router_lifetime_in_sec = r->router_lifetime_in_sec;
       u8 route_already_present = 0;
       /* *INDENT-OFF* */
-      pool_foreach (default_route, rm->default_route_pool,
-      ({
+      pool_foreach (default_route, rm->default_route_pool)
+       {
         if (default_route->sw_if_index != sw_if_index)
           ;
         else if (0 != memcmp (&default_route->router_address,
@@ -275,7 +275,7 @@ ip6_ra_report_handler (const ip6_ra_report_t * r)
             route_already_present = 1;
             goto default_route_pool_foreach_out;
           }
-      }));
+      }
       /* *INDENT-ON* */
     default_route_pool_foreach_out:
 
@@ -334,8 +334,8 @@ ip6_ra_report_handler (const ip6_ra_report_t * r)
 
       u8 address_already_present = 0;
       /* *INDENT-OFF* */
-      pool_foreach (slaac_address, rm->slaac_address_pool,
-      ({
+      pool_foreach (slaac_address, rm->slaac_address_pool)
+       {
         if (slaac_address->sw_if_index != sw_if_index)
           ;
         else if (slaac_address->address_length != prefix_length)
@@ -348,7 +348,7 @@ ip6_ra_report_handler (const ip6_ra_report_t * r)
             address_already_present = 1;
             goto slaac_address_pool_foreach_out;
           }
-      }));
+      }
       /* *INDENT-ON* */
     slaac_address_pool_foreach_out:
 
@@ -415,8 +415,8 @@ rd_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	   * as we are removing elements inside the loop body
 	   */
           /* *INDENT-OFF* */
-          pool_foreach_index (index, rm->slaac_address_pool,
-          ({
+          pool_foreach_index (index, rm->slaac_address_pool)
+           {
             slaac_address = pool_elt_at_index(rm->slaac_address_pool, index);
             if (slaac_address->due_time > current_time)
               {
@@ -430,9 +430,9 @@ rd_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
                 /* make sure ip6 stays enabled */
                 ip6_link_enable (sw_if_index, NULL);
               }
-          }));
-          pool_foreach_index (index, rm->default_route_pool,
-          ({
+          }
+          pool_foreach_index (index, rm->default_route_pool)
+           {
             default_route = pool_elt_at_index(rm->default_route_pool, index);
             if (default_route->due_time > current_time)
               {
@@ -441,7 +441,7 @@ rd_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
               }
             else
               remove_default_route (vm, default_route);
-          }));
+          }
           /* *INDENT-ON* */
 	  current_time = vlib_time_now (vm);
 	}
@@ -515,19 +515,19 @@ rd_cp_set_address_autoconfig (u32 sw_if_index,
   if (if_config->enabled && !enable)
     {
       /* *INDENT-OFF* */
-      pool_foreach (slaac_address, rm->slaac_address_pool,
-      ({
+      pool_foreach (slaac_address, rm->slaac_address_pool)
+       {
           remove_slaac_address (vm, slaac_address);
-      }));
+      }
       /* *INDENT-ON* */
     }
   if (if_config->install_default_routes && !install_default_routes)
     {
       /* *INDENT-OFF* */
-      pool_foreach (default_route, rm->default_route_pool,
-      ({
+      pool_foreach (default_route, rm->default_route_pool)
+       {
           remove_default_route (vm, default_route);
-      }));
+      }
       /* *INDENT-ON* */
     }
 

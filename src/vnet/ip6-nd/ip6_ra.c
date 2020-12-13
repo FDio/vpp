@@ -525,8 +525,8 @@ icmp6_router_solicitation (vlib_main_t * vm,
 		      ip6_radv_prefix_t *pr_info;
 
 		      /* *INDENT-OFF* */
-		      pool_foreach (pr_info, radv_info->adv_prefixes_pool,
-                      ({
+		      pool_foreach (pr_info, radv_info->adv_prefixes_pool)
+                       {
                         if(pr_info->enabled &&
                            (!pr_info->decrement_lifetime_flag
                             || (pr_info->pref_lifetime_expires >0)))
@@ -589,7 +589,7 @@ icmp6_router_solicitation (vlib_main_t * vm,
                               }
 
                           }
-                      }));
+                      }
 		      /* *INDENT-ON* */
 
 		      /* add additional options before here */
@@ -1007,8 +1007,8 @@ icmp6_router_advertisement (vlib_main_t * vm,
 
 				/* look for matching prefix - if we our advertising it, it better be consistant */
 				/* *INDENT-OFF* */
-				pool_foreach (pr_info, radv_info->adv_prefixes_pool,
-                                ({
+				pool_foreach (pr_info, radv_info->adv_prefixes_pool)
+                                 {
 
                                   ip6_address_t mask;
                                   ip6_address_mask_from_width(&mask, pr_info->prefix_len);
@@ -1036,7 +1036,7 @@ icmp6_router_advertisement (vlib_main_t * vm,
                                         }
                                     }
                                   break;
-                                }));
+                                }
 				/* *INDENT-ON* */
 				break;
 			      }
@@ -1278,12 +1278,12 @@ send_rs_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	{
 	  due_time = current_time + 1e9;
         /* *INDENT-OFF* */
-        pool_foreach (radv_info, ip6_ra_pool,
-        ({
+        pool_foreach (radv_info, ip6_ra_pool)
+         {
 	    if (check_send_rs (vm, radv_info, current_time, &dt)
 		&& (dt < due_time))
 	      due_time = dt;
-        }));
+        }
         /* *INDENT-ON* */
 	  current_time = vlib_time_now (vm);
 	}
@@ -1440,10 +1440,10 @@ ip6_ra_update_secondary_radv_info (ip6_address_t * address, u8 prefix_len,
 
   vec_reset_length (radv_indices);
   /* *INDENT-OFF* */
-  pool_foreach (radv_info, ip6_ra_pool,
-  ({
+  pool_foreach (radv_info, ip6_ra_pool)
+   {
     vec_add1 (radv_indices, radv_info - ip6_ra_pool);
-  }));
+  }
   /* *INDENT-ON* */
 
   /*
@@ -1460,8 +1460,8 @@ ip6_ra_update_secondary_radv_info (ip6_address_t * address, u8 prefix_len,
 	continue;
 
       /* *INDENT-OFF* */
-      pool_foreach (this_prefix, radv_info->adv_prefixes_pool,
-      ({
+      pool_foreach (this_prefix, radv_info->adv_prefixes_pool)
+       {
         if (this_prefix->prefix_len == prefix_len
             && ip6_address_is_equal_masked (&this_prefix->prefix, address,
                                             &mask))
@@ -1481,7 +1481,7 @@ ip6_ra_update_secondary_radv_info (ip6_address_t * address, u8 prefix_len,
             if (rv != 0)
               clib_warning ("ip6_neighbor_ra_prefix returned %d", rv);
           }
-      }));
+      }
       /* *INDENT-ON*/
     }
 }
@@ -1504,8 +1504,8 @@ ip6_ra_process_timer_event (vlib_main_t * vm,
 
   /* Interface ip6 radv info list */
   /* *INDENT-OFF* */
-  pool_foreach (radv_info, ip6_ra_pool,
-  ({
+  pool_foreach (radv_info, ip6_ra_pool)
+   {
     if( !vnet_sw_interface_is_admin_up (vnm, radv_info->sw_if_index))
       {
         radv_info->initial_adverts_sent = radv_info->initial_adverts_count-1;
@@ -1592,7 +1592,7 @@ ip6_ra_process_timer_event (vlib_main_t * vm,
             f = 0;
           }
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   if (f)
@@ -2118,12 +2118,12 @@ format_ip6_ra (u8 * s, va_list * args)
   indent += 2;
 
   /* *INDENT-OFF* */
-  pool_foreach (p, radv_info->adv_prefixes_pool,
-  ({
+  pool_foreach (p, radv_info->adv_prefixes_pool)
+   {
     s = format (s, "%Uprefix %U, length %d\n",
                 format_white_space, indent+2,
                 format_ip6_address, &p->prefix, p->prefix_len);
-  }));
+  }
   /* *INDENT-ON* */
 
   s = format (s, "%UMTU is %d\n",

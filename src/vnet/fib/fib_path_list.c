@@ -1474,10 +1474,10 @@ show_fib_path_list_command (vlib_main_t * vm,
 	 * show all
 	 */
 	vlib_cli_output (vm, "FIB Path Lists");
-	pool_foreach_index (pli, fib_path_list_pool,
-	({
+	pool_foreach_index (pli, fib_path_list_pool)
+	 {
 	    vlib_cli_output (vm, "%U", format_fib_path_list, pli, 0);
-	}));
+	}
     }
     return (NULL);
 }

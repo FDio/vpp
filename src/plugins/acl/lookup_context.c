@@ -37,12 +37,12 @@ static u32 get_acl_user_id(acl_main_t *am, char *user_module_name, char *val1_la
 {
     acl_lookup_context_user_t *auser;
 
-    pool_foreach (auser, am->acl_users,
-    ({
+    pool_foreach (auser, am->acl_users)
+     {
       if (0 == strcmp(auser->user_module_name, user_module_name)) {
         return (auser - am->acl_users);
       }
-    }));
+    }
 
     pool_get(am->acl_users, auser);
     auser->user_module_name = user_module_name;
@@ -310,13 +310,13 @@ acl_plugin_show_lookup_user (u32 user_index)
     vlib_main_t *vm = am->vlib_main;
     acl_lookup_context_user_t *auser;
 
-    pool_foreach (auser, am->acl_users,
-    ({
+    pool_foreach (auser, am->acl_users)
+     {
       u32 curr_user_index = (auser - am->acl_users);
       if (user_index == ~0 || (curr_user_index == user_index)) {
         vlib_cli_output (vm, "index %d:%s:%s:%s", curr_user_index, auser->user_module_name, auser->val1_label, auser->val2_label);
       }
-    }));
+    }
 }
 
 
@@ -333,8 +333,8 @@ acl_plugin_show_lookup_context (u32 lc_index)
     return;
   }
 
-  pool_foreach (acontext, am->acl_lookup_contexts,
-  ({
+  pool_foreach (acontext, am->acl_lookup_contexts)
+   {
     u32 curr_lc_index = (acontext - am->acl_lookup_contexts);
     if ((lc_index == ~0) || (curr_lc_index == lc_index)) {
       if (acl_user_id_valid(am, acontext->context_user_id)) {
@@ -350,7 +350,7 @@ acl_plugin_show_lookup_context (u32 lc_index)
                        format_vec32, acontext->acl_indices, "%d");
       }
     }
-  }));
+  }
 }
 
 void *

@@ -469,10 +469,10 @@ ipsec_interface_show (vlib_main_t * vm,
   index_t ii;
 
   /* *INDENT-OFF* */
-  pool_foreach_index (ii, ipsec_itf_pool,
-  ({
+  pool_foreach_index (ii, ipsec_itf_pool)
+   {
     vlib_cli_output (vm, "%U", format_ipsec_itf, ii);
-  }));
+  }
   /* *INDENT-ON* */
 
   return NULL;

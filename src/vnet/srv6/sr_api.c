@@ -273,10 +273,10 @@ static void vl_api_sr_localsids_dump_t_handler
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (t, sm->localsids,
-  ({
+  pool_foreach (t, sm->localsids)
+   {
     send_sr_localsid_details(t, reg, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -338,10 +338,10 @@ vl_api_sr_policies_dump_t_handler (vl_api_sr_policies_dump_t * mp)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (t, sm->sr_policies,
-  ({
+  pool_foreach (t, sm->sr_policies)
+   {
     send_sr_policies_details(t, reg, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -406,10 +406,10 @@ static void
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (t, sm->sr_policies,
-  ({
+  pool_foreach (t, sm->sr_policies)
+   {
     send_sr_policies_details_with_sl_index(t, reg, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -453,10 +453,10 @@ static void vl_api_sr_steering_pol_dump_t_handler
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (t, sm->steer_policies,
-  ({
+  pool_foreach (t, sm->steer_policies)
+   {
     send_sr_steering_pol_details(t, reg, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 }
 

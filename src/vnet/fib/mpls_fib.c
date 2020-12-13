@@ -441,8 +441,8 @@ mpls_fib_show (vlib_main_t * vm,
 	    break;
     }
 
-    pool_foreach (fib_table, mpls_main.fibs,
-    ({
+    pool_foreach (fib_table, mpls_main.fibs)
+     {
         fib_source_t source;
         u8 *s = NULL;
 
@@ -470,7 +470,7 @@ mpls_fib_show (vlib_main_t * vm,
 	{
 	    mpls_fib_table_show_one(mpls_fib_get(fib_table->ft_index), label, vm);
 	}
-    }));
+    }
 
     return 0;
 }

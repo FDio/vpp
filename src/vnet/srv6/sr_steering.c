@@ -492,7 +492,7 @@ show_sr_steering_policies_command_fn (vlib_main_t * vm,
 
   vlib_cli_output (vm, "SR steering policies:");
   /* *INDENT-OFF* */
-  pool_foreach (steer_pl, sm->steer_policies, ({vec_add1(steer_policies, steer_pl);}));
+  pool_foreach (steer_pl, sm->steer_policies) {vec_add1(steer_policies, steer_pl);}
   /* *INDENT-ON* */
   vlib_cli_output (vm, "Traffic\t\tSR policy BSID");
   for (i = 0; i < vec_len (steer_policies); i++)

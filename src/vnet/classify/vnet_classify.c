@@ -2190,11 +2190,11 @@ show_classify_tables_command_fn (vlib_main_t * vm,
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (t, cm->tables,
-  ({
+  pool_foreach (t, cm->tables)
+   {
     if (match_index == ~0 || (match_index == t - cm->tables))
       vec_add1 (indices, t - cm->tables);
-  }));
+  }
   /* *INDENT-ON* */
 
   if (vec_len (indices))

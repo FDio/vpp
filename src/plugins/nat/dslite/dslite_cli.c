@@ -287,10 +287,10 @@ dslite_show_sessions_command_fn (vlib_main_t * vm,
   /* *INDENT-OFF* */
   vec_foreach (td, dm->per_thread_data)
     {
-      pool_foreach (b4, td->b4s,
-      ({
+      pool_foreach (b4, td->b4s)
+       {
         vlib_cli_output (vm, "%U", format_dslite_b4, td, b4);
-      }));
+      }
     }
   /* *INDENT-ON* */
 

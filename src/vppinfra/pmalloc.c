@@ -643,7 +643,7 @@ format_pmalloc (u8 * s, va_list * va)
 
 
   /* *INDENT-OFF* */
-  pool_foreach (a, pm->arenas,
+  pool_foreach (a, pm->arenas)
     {
       u32 *page_index;
       s = format (s, "\n%Uarena '%s' pages %u subpage-size %U numa-node %u",
@@ -659,7 +659,7 @@ format_pmalloc (u8 * s, va_list * va)
 	    s = format (s, "\n%U%U", format_white_space, indent + 4,
 			format_pmalloc_page, pp, verbose);
 	  }
-    });
+    }
   /* *INDENT-ON* */
 
   return s;

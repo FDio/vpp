@@ -1352,7 +1352,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   u32 interrupt_count = 0;
 
   /* *INDENT-OFF* */
-  pool_foreach (vif, vim->interfaces, ({
+  pool_foreach (vif, vim->interfaces)  {
     if (vif->pci_addr.as_u32 == args->addr)
       {
 	args->rv = VNET_API_ERROR_ADDRESS_IN_USE;
@@ -1363,7 +1363,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
                 " PCI address in use");
 	return;
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   pool_get (vim->interfaces, vif);

@@ -423,11 +423,11 @@ vrrp_intf_enable_disable_mcast (u8 enable, u32 sw_if_index, u8 is_ipv6)
   fib_index = mfib_table_get_index_for_sw_if_index (proto, sw_if_index);
 
   /* *INDENT-OFF* */
-  pool_foreach (vr, vrm->vrs,
-  ({
+  pool_foreach (vr, vrm->vrs)
+   {
     if (vrrp_vr_is_ipv6 (vr) == is_ipv6)
       n_vrs++;
-  }));
+  }
   /* *INDENT-ON* */
 
   if (enable)

@@ -696,8 +696,8 @@ ip6_show_fib (vlib_main_t * vm,
         return (NULL);
     }
 
-    pool_foreach (fib_table, im6->fibs,
-    ({
+    pool_foreach (fib_table, im6->fibs)
+     {
         fib_source_t source;
         u8 *s = NULL;
 
@@ -762,7 +762,7 @@ ip6_show_fib (vlib_main_t * vm,
 	{
 	    ip6_fib_table_show_one(fib, vm, &matching_address, mask_len, detail);
 	}
-    }));
+    }
 
     return 0;
 }

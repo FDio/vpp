@@ -171,11 +171,11 @@ nat_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip0,
     {
       /* hairpinning */
     /* *INDENT-OFF* */
-    pool_foreach (i, sm->output_feature_interfaces,
-    ({
+    pool_foreach (i, sm->output_feature_interfaces)
+     {
       if ((nat_interface_is_inside(i)) && (sw_if_index == i->sw_if_index))
         return 0;
-    }));
+    }
     /* *INDENT-ON* */
       return 1;
     }

@@ -397,10 +397,10 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 	      /* Create a vector out of the plugin pool as recommended */
               /* *INDENT-OFF* */
-              pool_foreach (plugin, sm->plugin_functions,
+              pool_foreach (plugin, sm->plugin_functions)
                 {
                   vec_add1 (vec_plugins, plugin);
-                });
+                }
               /* *INDENT-ON* */
 
 	      vec_foreach (plugin_it, vec_plugins)
@@ -552,7 +552,7 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "SRv6 - My LocalSID Table:");
   vlib_cli_output (vm, "=========================");
   /* *INDENT-OFF* */
-  pool_foreach (ls, sm->localsids, ({ vec_add1 (localsid_list, ls); }));
+  pool_foreach (ls, sm->localsids)  { vec_add1 (localsid_list, ls); }
   /* *INDENT-ON* */
   for (i = 0; i < vec_len (localsid_list); i++)
     {
@@ -2407,8 +2407,8 @@ show_sr_localsid_behaviors_command_fn (vlib_main_t * vm,
 		   "SR LocalSIDs behaviors:\n-----------------------\n\n");
 
   /* *INDENT-OFF* */
-  pool_foreach (plugin, sm->plugin_functions,
-    ({ vec_add1 (plugins_vec, plugin); }));
+  pool_foreach (plugin, sm->plugin_functions)
+    { vec_add1 (plugins_vec, plugin); }
   /* *INDENT-ON* */
 
   /* Print static behaviors */

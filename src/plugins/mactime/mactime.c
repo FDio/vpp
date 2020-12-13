@@ -195,8 +195,8 @@ vl_api_mactime_dump_t_handler (vl_api_mactime_dump_t * mp)
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (dev, mm->devices,
-  ({
+  pool_foreach (dev, mm->devices)
+   {
     message_size = sizeof(*ep) + vec_len(dev->device_name) +
       vec_len(dev->ranges) * sizeof(ep->ranges[0]);
 
@@ -230,7 +230,7 @@ vl_api_mactime_dump_t_handler (vl_api_mactime_dump_t * mp)
                       name_len);
     ep->device_name [ARRAY_LEN(ep->device_name) -1] = 0;
     vl_api_send_msg (rp, (u8 *)ep);
-  }));
+  }
   /* *INDENT-OFF* */
 
  send_reply:
@@ -578,10 +578,10 @@ show_mactime_command_fn (vlib_main_t * vm,
     vlib_cli_output (vm, "Time now: %U", format_clib_timebase_time, now);
 
   /* *INDENT-OFF* */
-  pool_foreach (dp, mm->devices,
-  ({
+  pool_foreach (dp, mm->devices)
+   {
     vec_add1 (pool_indices, dp - mm->devices);
-  }));
+  }
   /* *INDENT-ON* */
 
   vlib_cli_output (vm, "%-15s %18s %14s %10s %11s %13s",

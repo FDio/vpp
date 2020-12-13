@@ -590,8 +590,8 @@ vl_api_lisp_locator_set_dump_t_handler (vl_api_lisp_locator_set_dump_t * mp)
 
   filter = mp->filter;
   /* *INDENT-OFF* */
-  pool_foreach (lsit, lcm->locator_set_pool,
-  ({
+  pool_foreach (lsit, lcm->locator_set_pool)
+   {
     if (filter && !((1 == filter && lsit->local) ||
                     (2 == filter && !lsit->local)))
       {
@@ -599,7 +599,7 @@ vl_api_lisp_locator_set_dump_t_handler (vl_api_lisp_locator_set_dump_t * mp)
       }
     send_lisp_locator_set_details (lcm, lsit, reg, mp->context,
                                    lsit - lcm->locator_set_pool);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -704,11 +704,11 @@ vl_api_lisp_eid_table_dump_t_handler (vl_api_lisp_eid_table_dump_t * mp)
   else
     {
       /* *INDENT-OFF* */
-      pool_foreach (mapit, lcm->mapping_pool,
-      ({
+      pool_foreach (mapit, lcm->mapping_pool)
+       {
         send_lisp_eid_table_details(mapit, reg, mp->context,
                                     mp->filter);
-      }));
+      }
       /* *INDENT-ON* */
     }
 }

@@ -121,10 +121,10 @@ vl_api_pppoe_session_dump_t_handler (vl_api_pppoe_session_dump_t * mp)
   if (~0 == sw_if_index)
     {
       /* *INDENT-OFF* */
-      pool_foreach (t, pem->sessions,
-      ({
+      pool_foreach (t, pem->sessions)
+       {
         send_pppoe_session_details(t, reg, mp->context);
-      }));
+      }
       /* *INDENT-ON* */
     }
   else

@@ -227,11 +227,11 @@ gbp_recirc_walk (gbp_recirc_cb_t cb, void *ctx)
   gbp_recirc_t *ge;
 
   /* *INDENT-OFF* */
-  pool_foreach(ge, gbp_recirc_pool,
+  pool_foreach (ge, gbp_recirc_pool)
   {
     if (!cb(ge, ctx))
       break;
-  });
+  }
   /* *INDENT-ON* */
 }
 

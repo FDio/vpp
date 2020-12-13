@@ -1429,7 +1429,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       devconf->x = conf->default_devconf.x ;
 
   /* *INDENT-OFF* */
-  pool_foreach (devconf, conf->dev_confs, ({
+  pool_foreach (devconf, conf->dev_confs)  {
 
     /* default per-device config items */
     foreach_dpdk_device_config_item
@@ -1471,7 +1471,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  tmp = format (0, "%U%c", format_vlib_pci_addr, &devconf->pci_addr, 0);
 	  vec_add1 (conf->eal_init_args, tmp);
     }
-  }));
+  }
   /* *INDENT-ON* */
 
 #undef _

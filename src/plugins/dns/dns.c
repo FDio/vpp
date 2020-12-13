@@ -52,11 +52,11 @@ dns_cache_clear (dns_main_t * dm)
   dns_cache_lock (dm, 1);
 
   /* *INDENT-OFF* */
-  pool_foreach (ep, dm->entries,
-  ({
+  pool_foreach (ep, dm->entries)
+   {
     vec_free (ep->name);
     vec_free (ep->pending_requests);
-  }));
+  }
   /* *INDENT-ON* */
 
   pool_free (dm->entries);
@@ -2157,8 +2157,8 @@ format_dns_cache (u8 * s, va_list * args)
   if (verbose > 0)
     {
       /* *INDENT-OFF* */
-      pool_foreach (ep, dm->entries,
-      ({
+      pool_foreach (ep, dm->entries)
+       {
         if (ep->flags & DNS_CACHE_ENTRY_FLAG_VALID)
           {
             ASSERT (ep->dns_response);
@@ -2194,7 +2194,7 @@ format_dns_cache (u8 * s, va_list * args)
                         verbose);
           }
         vec_add1 (s, '\n');
-      }));
+      }
       /* *INDENT-ON* */
     }
 

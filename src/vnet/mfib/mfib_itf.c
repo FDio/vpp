@@ -249,12 +249,12 @@ show_mfib_itf_command (vlib_main_t * vm,
          * show all
          */
         vlib_cli_output (vm, "mFIB interfaces::");
-        pool_foreach_index(mfii, mfib_itf_pool,
-        ({
+        pool_foreach_index (mfii, mfib_itf_pool)
+         {
             vlib_cli_output (vm, "%d@%U",
                              mfii,
                              format_mfib_itf, mfii);
-        }));
+        }
     }
 
     return (NULL);

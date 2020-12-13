@@ -700,8 +700,8 @@ dhcp6_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
 	      vpe_client_registration_t *reg;
               /* *INDENT-OFF* */
-              pool_foreach(reg, vpe_api_main.dhcp6_reply_events_registrations,
-              ({
+              pool_foreach (reg, vpe_api_main.dhcp6_reply_events_registrations)
+               {
                 vl_api_registration_t *vl_reg;
                 vl_reg =
                   vl_api_client_index_to_registration (reg->client_index);
@@ -715,7 +715,7 @@ dhcp6_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
                     msg->pid = reg->client_pid;
                     vl_api_send_msg (vl_reg, (u8 *) msg);
                   }
-              }));
+              }
               /* *INDENT-ON* */
 
 	      clib_mem_free (event);
@@ -812,8 +812,8 @@ dhcp6_pd_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
 	      vpe_client_registration_t *reg;
               /* *INDENT-OFF* */
-              pool_foreach(reg, vpe_api_main.dhcp6_pd_reply_events_registrations,
-              ({
+              pool_foreach (reg, vpe_api_main.dhcp6_pd_reply_events_registrations)
+               {
                 vl_api_registration_t *vl_reg;
                 vl_reg =
                   vl_api_client_index_to_registration (reg->client_index);
@@ -827,7 +827,7 @@ dhcp6_pd_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
                     msg->pid = reg->client_pid;
                     vl_api_send_msg (vl_reg, (u8 *) msg);
                   }
-              }));
+              }
               /* *INDENT-ON* */
 
 	      clib_mem_free (event);

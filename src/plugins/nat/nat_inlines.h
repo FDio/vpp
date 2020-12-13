@@ -713,11 +713,11 @@ snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t * node,
 
       snat_interface_t *i;
       /* *INDENT-OFF* */
-      pool_foreach (i, sm->interfaces, ({
+      pool_foreach (i, sm->interfaces)  {
         /* NAT packet aimed at outside interface */
 	if ((nat_interface_is_outside (i)) && (sw_if_index == i->sw_if_index))
           return 0;
-      }));
+      }
       /* *INDENT-ON* */
     }
 

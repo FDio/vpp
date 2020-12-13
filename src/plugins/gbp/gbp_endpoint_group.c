@@ -241,11 +241,11 @@ gbp_endpoint_group_walk (gbp_endpoint_group_cb_t cb, void *ctx)
   gbp_endpoint_group_t *gbpe;
 
   /* *INDENT-OFF* */
-  pool_foreach(gbpe, gbp_endpoint_group_pool,
+  pool_foreach (gbpe, gbp_endpoint_group_pool)
   {
     if (!cb(gbpe, ctx))
       break;
-  });
+  }
   /* *INDENT-ON* */
 }
 

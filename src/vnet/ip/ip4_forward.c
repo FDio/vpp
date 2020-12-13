@@ -677,8 +677,8 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
       ip_interface_address_t *ia;
       vnet_sw_interface_t *sif;
 
-      pool_foreach(sif, vnm->interface_main.sw_interfaces,
-      ({
+      pool_foreach (sif, vnm->interface_main.sw_interfaces)
+       {
           if (im->fib_index_by_sw_if_index[sw_if_index] ==
               im->fib_index_by_sw_if_index[sif->sw_if_index])
             {
@@ -728,7 +728,7 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
                      }
                  }));
             }
-      }));
+      }
     }
   /* *INDENT-ON* */
 

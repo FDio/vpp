@@ -139,20 +139,20 @@ ip_container_proxy_walk (ip_container_proxy_cb_t cb, void *ctx)
   };
 
   /* *INDENT-OFF* */
-  pool_foreach (fib_table, ip4_main.fibs,
-  ({
+  pool_foreach (fib_table, ip4_main.fibs)
+   {
     fib_table_walk(fib_table->ft_index,
                    FIB_PROTOCOL_IP4,
                    ip_container_proxy_fib_table_walk,
                    &wctx);
-  }));
-  pool_foreach (fib_table, ip6_main.fibs,
-  ({
+  }
+  pool_foreach (fib_table, ip6_main.fibs)
+   {
     fib_table_walk(fib_table->ft_index,
                    FIB_PROTOCOL_IP6,
                    ip_container_proxy_fib_table_walk,
                    &wctx);
-  }));
+  }
   /* *INDENT-ON* */
 }
 

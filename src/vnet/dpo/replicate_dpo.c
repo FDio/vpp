@@ -697,12 +697,12 @@ replicate_show (vlib_main_t * vm,
     {
         replicate_t *rep;
 
-        pool_foreach(rep, replicate_pool,
-        ({
+        pool_foreach (rep, replicate_pool)
+         {
             vlib_cli_output (vm, "%U", format_replicate,
                              replicate_get_index(rep),
                              REPLICATE_FORMAT_NONE);
-        }));
+        }
     }
 
     return 0;

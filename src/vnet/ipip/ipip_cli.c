@@ -275,8 +275,8 @@ show_ipip_tunnel_command_fn (vlib_main_t * vm,
   if (ti == ~0)
     {
     /* *INDENT-OFF* */
-    pool_foreach(t, gm->tunnels,
-                 ({vlib_cli_output(vm, "%U", format_ipip_tunnel, t); }));
+    pool_foreach (t, gm->tunnels)
+                  {vlib_cli_output(vm, "%U", format_ipip_tunnel, t); }
     /* *INDENT-ON* */
     }
   else

@@ -219,7 +219,7 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
   vec_foreach (tkm, km->per_thread_data)
   {
     /* *INDENT-OFF* */
-    pool_foreach (sa, tkm->sas, ({
+    pool_foreach (sa, tkm->sas)  {
       if (show_one)
         {
           if (sa->rspi == rspi)
@@ -230,7 +230,7 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
         }
       else
         s = format (s, "%U\n", format_ikev2_sa, sa, details);
-    }));
+    }
     /* *INDENT-ON* */
   }
 
@@ -562,7 +562,7 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
   ikev2_profile_t *p;
 
   /* *INDENT-OFF* */
-  pool_foreach (p, km->profiles, ({
+  pool_foreach (p, km->profiles)  {
     vlib_cli_output(vm, "profile %v", p->name);
 
     if (p->auth.data)
@@ -652,7 +652,7 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
 
     vlib_cli_output(vm, "  lifetime %d jitter %d handover %d maxdata %d",
                     p->lifetime, p->lifetime_jitter, p->handover, p->lifetime_maxdata);
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;

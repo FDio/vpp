@@ -514,9 +514,9 @@ vl_api_ipsec_spds_dump_t_handler (vl_api_ipsec_spds_dump_t * mp)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (spd, im->spds, ({
+  pool_foreach (spd, im->spds)  {
     send_ipsec_spds_details (spd, reg, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 #else
   clib_warning ("unimplemented");
@@ -1130,7 +1130,7 @@ vl_api_ipsec_backend_dump_t_handler (vl_api_ipsec_backend_dump_t * mp)
   ipsec_ah_backend_t *ab;
   ipsec_esp_backend_t *eb;
   /* *INDENT-OFF* */
-  pool_foreach (ab, im->ah_backends, {
+  pool_foreach (ab, im->ah_backends) {
     vl_api_ipsec_backend_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
     clib_memset (mp, 0, sizeof (*mp));
     mp->_vl_msg_id = ntohs (VL_API_IPSEC_BACKEND_DETAILS);
@@ -1141,8 +1141,8 @@ vl_api_ipsec_backend_dump_t_handler (vl_api_ipsec_backend_dump_t * mp)
     mp->index = ab - im->ah_backends;
     mp->active = mp->index == im->ah_current_backend ? 1 : 0;
     vl_api_send_msg (rp, (u8 *)mp);
-  });
-  pool_foreach (eb, im->esp_backends, {
+  }
+  pool_foreach (eb, im->esp_backends) {
     vl_api_ipsec_backend_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
     clib_memset (mp, 0, sizeof (*mp));
     mp->_vl_msg_id = ntohs (VL_API_IPSEC_BACKEND_DETAILS);
@@ -1153,7 +1153,7 @@ vl_api_ipsec_backend_dump_t_handler (vl_api_ipsec_backend_dump_t * mp)
     mp->index = eb - im->esp_backends;
     mp->active = mp->index == im->esp_current_backend ? 1 : 0;
     vl_api_send_msg (rp, (u8 *)mp);
-  });
+  }
   /* *INDENT-ON* */
 }
 

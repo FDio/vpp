@@ -998,10 +998,10 @@ show_vxlan_gpe_tunnel_command_fn (vlib_main_t * vm,
     vlib_cli_output (vm, "No vxlan-gpe tunnels configured.");
 
   /* *INDENT-OFF* */
-  pool_foreach (t, ngm->tunnels,
-  ({
+  pool_foreach (t, ngm->tunnels)
+   {
     vlib_cli_output (vm, "%U", format_vxlan_gpe_tunnel, t);
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;

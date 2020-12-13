@@ -232,14 +232,13 @@ static void
   if (!reg)
     return;
 
-  pool_foreach (vif, vmx->interfaces, (
-					{
-					if (vif->type == VIRTIO_IF_TYPE_PCI)
-					{
-					virtio_pci_send_sw_interface_details
-					(am, reg, vif, mp->context);}
-					}
-		));
+  pool_foreach (vif, vmx->interfaces)
+  {
+    if (vif->type == VIRTIO_IF_TYPE_PCI)
+      {
+	virtio_pci_send_sw_interface_details (am, reg, vif, mp->context);
+      }
+  }
 }
 
 #define vl_msg_name_crc_list

@@ -742,10 +742,10 @@ show_gre_tunnel_command_fn (vlib_main_t * vm,
   if (~0 == ti)
     {
       /* *INDENT-OFF* */
-      pool_foreach (t, gm->tunnels,
-      ({
+      pool_foreach (t, gm->tunnels)
+       {
           vlib_cli_output (vm, "%U", format_gre_tunnel, t);
-      }));
+      }
       /* *INDENT-ON* */
     }
   else

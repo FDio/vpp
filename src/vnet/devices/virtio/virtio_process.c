@@ -46,7 +46,7 @@ virtio_send_interrupt_process (vlib_main_t * vm,
 
 	case ~0:
           /* *INDENT-OFF* */
-          pool_foreach (vif, vim->interfaces, {
+          pool_foreach (vif, vim->interfaces) {
               if (vif->packet_coalesce || vif->packet_buffering)
                 {
                   virtio_vring_t *vring;
@@ -59,7 +59,7 @@ virtio_send_interrupt_process (vlib_main_t * vm,
                                              RX_QUEUE_ACCESS (vring->queue_id));
                   }
                 }
-          });
+          }
           /* *INDENT-ON* */
 	  break;
 

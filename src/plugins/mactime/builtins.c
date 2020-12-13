@@ -43,10 +43,10 @@ handle_get_mactime (http_builtin_method_type_t reqtype,
     mm->sunday_midnight = clib_timebase_find_sunday_midnight (now);
 
     /* *INDENT-OFF* */
-    pool_foreach (dp, mm->devices,
-    ({
+    pool_foreach (dp, mm->devices)
+     {
         vec_add1 (pool_indices, dp - mm->devices);
-    }));
+    }
     /* *INDENT-ON* */
 
   s = format (s, "{%smactime%s: [\n", q, q);

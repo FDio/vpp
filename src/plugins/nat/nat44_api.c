@@ -725,10 +725,10 @@ vl_api_nat44_interface_dump_t_handler (vl_api_nat44_interface_dump_t * mp)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (i, sm->interfaces,
-  ({
+  pool_foreach (i, sm->interfaces)
+   {
     send_nat44_interface_details(i, reg, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -785,10 +785,10 @@ static void
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (i, sm->output_feature_interfaces,
-  ({
+  pool_foreach (i, sm->output_feature_interfaces)
+   {
     send_nat44_interface_output_feature_details(i, reg, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -982,11 +982,11 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (m, sm->static_mappings,
-  ({
+  pool_foreach (m, sm->static_mappings)
+   {
       if (!is_identity_static_mapping(m) && !is_lb_static_mapping (m))
         send_nat44_static_mapping_details (m, reg, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 
   for (j = 0; j < vec_len (sm->to_resolve); j++)
@@ -1104,16 +1104,16 @@ static void
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (m, sm->static_mappings,
-  ({
+  pool_foreach (m, sm->static_mappings)
+   {
       if (is_identity_static_mapping(m) && !is_lb_static_mapping (m))
         {
-          pool_foreach_index (j, m->locals,
-          ({
+          pool_foreach_index (j, m->locals)
+           {
             send_nat44_identity_mapping_details (m, j, reg, mp->context);
-          }));
+          }
         }
-  }));
+  }
   /* *INDENT-ON* */
 
   for (j = 0; j < vec_len (sm->to_resolve); j++)
@@ -1251,7 +1251,7 @@ nat_ed_users_create (snat_main_per_thread_data_t * tsm)
 {
   snat_session_t *s;
   /* *INDENT-OFF* */
-  pool_foreach (s, tsm->sessions, { nat_ed_user_create_helper (tsm, s); });
+  pool_foreach (s, tsm->sessions) { nat_ed_user_create_helper (tsm, s); }
   /* *INDENT-ON* */
 }
 
@@ -1286,10 +1286,10 @@ vl_api_nat44_user_dump_t_handler (vl_api_nat44_user_dump_t * mp)
 	{
 	  nat_ed_users_create (tsm);
 	}
-      pool_foreach (u, tsm->users,
-      ({
+      pool_foreach (u, tsm->users)
+       {
         send_nat44_user_details (u, reg, mp->context);
-      }));
+      }
       if (sm->endpoint_dependent)
 	{
 	  nat_ed_users_destroy (tsm);
@@ -1407,12 +1407,12 @@ vl_api_nat44_user_session_dump_t_handler (vl_api_nat44_user_session_dump_t *
   else
     {
       /* *INDENT-OFF* */
-      pool_foreach (s, tsm->sessions, {
+      pool_foreach (s, tsm->sessions) {
         if (s->in2out.addr.as_u32 == ukey.addr.as_u32)
           {
             send_nat44_user_session_details (s, reg, mp->context);
           }
-      });
+      }
       /* *INDENT-ON* */
     }
 }
@@ -1556,15 +1556,15 @@ send_nat44_lb_static_mapping_details (snat_static_mapping_t * m,
 
   locals = (vl_api_nat44_lb_addr_port_t *) rmp->locals;
   /* *INDENT-OFF* */
-  pool_foreach (ap, m->locals,
-  ({
+  pool_foreach (ap, m->locals)
+   {
     clib_memcpy (locals->addr, &(ap->addr), 4);
     locals->port = ap->port;
     locals->probability = ap->probability;
     locals->vrf_id = ntohl (ap->vrf_id);
     locals++;
     local_num++;
-  }));
+  }
   /* *INDENT-ON* */
   rmp->local_num = ntohl (local_num);
 
@@ -1587,11 +1587,11 @@ static void
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (m, sm->static_mappings,
-  ({
+  pool_foreach (m, sm->static_mappings)
+   {
       if (is_lb_static_mapping(m))
         send_nat44_lb_static_mapping_details (m, reg, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -1644,13 +1644,13 @@ static void
       /* *INDENT-OFF* */
       vec_foreach (tsm, sm->per_thread_data)
       {
-        pool_foreach (s, tsm->sessions,
-        ({
+        pool_foreach (s, tsm->sessions)
+         {
           if (is_fwd_bypass_session(s))
             {
               vec_add1 (ses_to_be_removed, s - tsm->sessions);
             }
-        }));
+        }
 	if(sm->endpoint_dependent){
 	    vec_foreach (ses_index, ses_to_be_removed)
 	      {

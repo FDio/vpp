@@ -297,7 +297,7 @@ app_namespace_show_api (vlib_main_t * vm, app_namespace_t * app_ns)
 
 
   /* *INDENT-OFF* */
-  pool_foreach (cs, app_ns->app_sockets, ({
+  pool_foreach (cs, app_ns->app_sockets)  {
     handle = (app_ns_api_handle_t *) &cs->private_data;
     cf = clib_file_get (&file_main, handle->aah_file_index);
     if (handle->aah_app_wrk_index == APP_INVALID_INDEX)
@@ -308,7 +308,7 @@ app_namespace_show_api (vlib_main_t * vm, app_namespace_t * app_ns)
     app_wrk = app_worker_get (handle->aah_app_wrk_index);
     vlib_cli_output (vm, "%12d%12d%5u", app_wrk->app_index,
                      app_wrk->wrk_map_index, cf->file_descriptor);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -378,9 +378,9 @@ do_ns_list:
 		   "sw_if_index", "Name");
 
   /* *INDENT-OFF* */
-  pool_foreach (app_ns, app_namespace_pool, ({
+  pool_foreach (app_ns, app_namespace_pool)  {
     vlib_cli_output (vm, "%U", format_app_namespace, app_ns);
-  }));
+  }
   /* *INDENT-ON* */
 
 done:

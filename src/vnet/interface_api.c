@@ -367,8 +367,8 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
 
   char *strcasestr (char *, char *);	/* lnx hdr file botch */
   /* *INDENT-OFF* */
-  pool_foreach (swif, im->sw_interfaces,
-  ({
+  pool_foreach (swif, im->sw_interfaces)
+   {
     if (!vnet_swif_is_api_visible (swif))
         continue;
     vec_reset_length(name);
@@ -379,7 +379,7 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
 	continue;
 
     send_sw_interface_details (am, rp, swif, name, mp->context);
-  }));
+  }
   /* *INDENT-ON* */
 
   vec_free (name);
@@ -789,12 +789,12 @@ link_state_process (vlib_main_t * vm,
 	    continue;
 
           /* *INDENT-OFF* */
-          pool_foreach(reg, vam->interface_events_registrations,
-          ({
+          pool_foreach (reg, vam->interface_events_registrations)
+           {
             vl_reg = vl_api_client_index_to_registration (reg->client_index);
             if (vl_reg)
 	      send_sw_interface_event (vam, reg, vl_reg, i, event_by_sw_if_index[i]);
-          }));
+          }
           /* *INDENT-ON* */
 	}
       vec_reset_length (event_by_sw_if_index);

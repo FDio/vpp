@@ -263,11 +263,11 @@ lisp_gpe_tenant_flush (void)
   lisp_gpe_tenant_t *lt;
 
   /* *INDENT-OFF* */
-  pool_foreach(lt, lisp_gpe_tenant_pool,
-  ({
+  pool_foreach (lt, lisp_gpe_tenant_pool)
+   {
     lisp_gpe_tenant_l2_iface_unlock(lt->lt_vni);
     lisp_gpe_tenant_l3_iface_unlock(lt->lt_vni);
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -306,10 +306,10 @@ lisp_gpe_tenant_show (vlib_main_t * vm,
   lisp_gpe_tenant_t *lt;
 
   /* *INDENT-OFF* */
-  pool_foreach (lt, lisp_gpe_tenant_pool,
-  ({
+  pool_foreach (lt, lisp_gpe_tenant_pool)
+   {
     vlib_cli_output (vm, "%U", format_lisp_gpe_tenant, lt);
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;

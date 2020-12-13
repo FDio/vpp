@@ -357,14 +357,14 @@ fib_entry_show_memory (void)
 			  pool_len(fib_entry_pool),
 			  sizeof(fib_entry_t));
 
-    pool_foreach(entry, fib_entry_pool,
-    ({
+    pool_foreach (entry, fib_entry_pool)
+     {
 	n_srcs += vec_len(entry->fe_srcs);
 	vec_foreach(esrc, entry->fe_srcs)
 	{
 	    n_exts += fib_path_ext_list_length(&esrc->fes_path_exts);
 	}
-    }));
+    }
 
     fib_show_memory_usage("Entry Source",
 			  n_srcs, n_srcs, sizeof(fib_entry_src_t));
@@ -1741,11 +1741,11 @@ fib_table_assert_empty (const fib_table_t *fib_table)
     fib_node_index_t *fei, *feis = NULL;
     fib_entry_t *fib_entry;
 
-    pool_foreach (fib_entry, fib_entry_pool,
-    ({
+    pool_foreach (fib_entry, fib_entry_pool)
+     {
         if (fib_entry->fe_fib_index == fib_table->ft_index)
             vec_add1 (feis, fib_entry_get_index(fib_entry));
-    }));
+    }
 
     if (vec_len(feis))
     {
@@ -1787,13 +1787,13 @@ show_fib_entry_command (vlib_main_t * vm,
 	 * show all
 	 */
 	vlib_cli_output (vm, "FIB Entries:");
-	pool_foreach_index(fei, fib_entry_pool,
-        ({
+	pool_foreach_index (fei, fib_entry_pool)
+         {
 	    vlib_cli_output (vm, "%d@%U",
 			     fei,
 			     format_fib_entry, fei,
 			     FIB_ENTRY_FORMAT_BRIEF);
-	}));
+	}
     }
 
     return (NULL);

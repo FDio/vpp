@@ -424,8 +424,8 @@ gbp_subnet_walk (gbp_subnet_cb_t cb, void *ctx)
   sw_if_index = ~0;
 
   /* *INDENT-OFF* */
-  pool_foreach (gs, gbp_subnet_pool,
-  ({
+  pool_foreach (gs, gbp_subnet_pool)
+   {
     grd = gbp_route_domain_get(gs->gs_rd);
 
     switch (gs->gs_type)
@@ -447,7 +447,7 @@ gbp_subnet_walk (gbp_subnet_cb_t cb, void *ctx)
     if (WALK_STOP == cb (grd->grd_id, &gs->gs_key->gsk_pfx,
                          gs->gs_type, sw_if_index, sclass, ctx))
       break;
-  }));
+  }
   /* *INDENT-ON* */
 }
 
@@ -549,11 +549,11 @@ gbp_subnet_show (vlib_main_t * vm,
   else
     {
       /* *INDENT-OFF* */
-      pool_foreach_index(gsi, gbp_subnet_pool,
-      ({
+      pool_foreach_index (gsi, gbp_subnet_pool)
+       {
         vlib_cli_output (vm, "%U", format_gbp_subnet, gsi,
                          GBP_SUBNET_SHOW_BRIEF);
-      }));
+      }
       /* *INDENT-ON* */
     }
 

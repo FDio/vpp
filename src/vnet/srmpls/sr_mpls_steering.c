@@ -800,9 +800,9 @@ show_sr_mpls_steering_policies_command_fn (vlib_main_t * vm,
 
   vlib_cli_output (vm, "SR MPLS steering policies:");
   /* *INDENT-OFF* */
-  pool_foreach(steer_pl, sm->steer_policies, ({
+  pool_foreach (steer_pl, sm->steer_policies)  {
     vec_add1(steer_policies, steer_pl);
-  }));
+  }
   /* *INDENT-ON* */
   for (i = 0; i < vec_len (steer_policies); i++)
     {
