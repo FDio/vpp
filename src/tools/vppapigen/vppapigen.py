@@ -719,13 +719,22 @@ class VPPAPIParser(object):
         p[0] = EnumFlag(p[2], p[4])
 
     def p_enumflag_type(self, p):
-        ''' enumflag : ENUMFLAG ID ':' enum_size '{' enum_statements '}' ';' '''  # noqa : E502
+        ''' enumflag : ENUMFLAG ID ':' enumflag_size '{' enum_statements '}' ';' '''  # noqa : E502
         if len(p) == 9:
             p[0] = EnumFlag(p[2], p[6], enumtype=p[4])
         else:
             p[0] = EnumFlag(p[2], p[4])
 
     def p_enum_size(self, p):
+        ''' enum_size : U8
+                      | U16
+                      | U32
+                      | I8
+                      | I16
+                      | I32 '''
+        p[0] = p[1]
+
+    def p_enumflag_size(self, p):
         ''' enum_size : U8
                       | U16
                       | U32 '''
