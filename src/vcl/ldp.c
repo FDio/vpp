@@ -632,7 +632,7 @@ ldp_select_init_maps (fd_set * __restrict original,
   memset (original, 0, n_bytes);
 
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (fd, *resultb, ({
+  clib_bitmap_foreach (fd, *resultb)  {
     if (fd > nfds)
       break;
     vlsh = ldp_fd_to_vlsh (fd);
@@ -640,7 +640,7 @@ ldp_select_init_maps (fd_set * __restrict original,
       clib_bitmap_set_no_check (*libcb, fd, 1);
     else
       *vclb = clib_bitmap_set (*vclb, vlsh_to_session_index (vlsh), 1);
-  }));
+  }
   /* *INDENT-ON* */
 
   si_bits_set = clib_bitmap_last_set (*vclb) + 1;
@@ -662,7 +662,7 @@ ldp_select_vcl_map_to_libc (clib_bitmap_t * vclb, fd_set * __restrict libcb)
     return 0;
 
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (si, vclb, ({
+  clib_bitmap_foreach (si, vclb)  {
     vlsh = vls_session_index_to_vlsh (si);
     ASSERT (vlsh != VLS_INVALID_HANDLE);
     fd = ldp_vlsh_to_fd (vlsh);
@@ -672,7 +672,7 @@ ldp_select_vcl_map_to_libc (clib_bitmap_t * vclb, fd_set * __restrict libcb)
         return -1;
       }
     FD_SET (fd, libcb);
-  }));
+  }
   /* *INDENT-ON* */
 
   return 0;
@@ -687,9 +687,8 @@ ldp_select_libc_map_merge (clib_bitmap_t * result, fd_set * __restrict libcb)
     return;
 
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (fd, result, ({
+  clib_bitmap_foreach (fd, result)
     FD_SET ((int)fd, libcb);
-  }));
   /* *INDENT-ON* */
 }
 

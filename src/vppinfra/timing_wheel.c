@@ -303,11 +303,11 @@ timing_wheel_insert (timing_wheel_t * w, u64 insert_cpu_time, u32 user_data)
       vec_foreach (l, w->levels)
       {
 	  /* *INDENT-OFF* */
-	  clib_bitmap_foreach (wi, l->occupancy_bitmap, ({
+	  clib_bitmap_foreach (wi, l->occupancy_bitmap)  {
 	    l->elts[wi] = delete_user_data (l->elts[wi], user_data);
 	    if (vec_len (l->elts[wi]) == 0)
 	      l->occupancy_bitmap = clib_bitmap_andnoti (l->occupancy_bitmap, wi);
-	  }));
+	  }
 	  /* *INDENT-ON* */
       }
 
@@ -486,7 +486,7 @@ advance_cpu_time_base (timing_wheel_t * w, u32 * expired_user_data)
   {
     uword wi;
       /* *INDENT-OFF* */
-      clib_bitmap_foreach (wi, l->occupancy_bitmap, ({
+      clib_bitmap_foreach (wi, l->occupancy_bitmap)  {
 	vec_foreach (e, l->elts[wi])
 	  {
 	    /* This should always be true since otherwise we would have already expired
@@ -495,7 +495,7 @@ advance_cpu_time_base (timing_wheel_t * w, u32 * expired_user_data)
 	    ASSERT (e->cpu_time_relative_to_base >= delta);
 	    e->cpu_time_relative_to_base -= delta;
 	  }
-      }));
+      }
       /* *INDENT-ON* */
   }
 
@@ -648,10 +648,10 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time,
 
       level = vec_elt_at_index (w->levels, level_index);
       /* *INDENT-OFF* */
-      clib_bitmap_foreach (wi, level->occupancy_bitmap, ({
+      clib_bitmap_foreach (wi, level->occupancy_bitmap)  {
         expired_user_data = expire_bin (w, level_index, wi, advance_cpu_time,
 					expired_user_data);
-      }));
+      }
       /* *INDENT-ON* */
     }
 

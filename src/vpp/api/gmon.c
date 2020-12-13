@@ -74,8 +74,8 @@ get_significant_errors (gmon_main_t * gm)
   u64 significant_errors = 0;
 
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (code, gm->sig_error_bitmap,
-  ({
+  clib_bitmap_foreach (code, gm->sig_error_bitmap)
+   {
     for (vm_index = 0; vm_index < vec_len (gm->my_vlib_mains); vm_index++)
       {
         this_vlib_main = gm->my_vlib_mains[vm_index];
@@ -84,7 +84,7 @@ get_significant_errors (gmon_main_t * gm)
           ((vec_len(em->counters_last_clear) > code) ?
            em->counters_last_clear[code] : 0);
       }
-  }));
+  }
   /* *INDENT-ON* */
 
   return (significant_errors);

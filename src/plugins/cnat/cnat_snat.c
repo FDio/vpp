@@ -25,11 +25,11 @@ cnat_compute_prefix_lengths_in_search_order (cnat_snat_pfx_table_t *
   vec_reset_length (table->meta[af].prefix_lengths_in_search_order);
   /* Note: bitmap reversed so this is in fact a longest prefix match */
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (i, table->meta[af].non_empty_dst_address_length_bitmap,
-    ({
+  clib_bitmap_foreach (i, table->meta[af].non_empty_dst_address_length_bitmap)
+     {
       int dst_address_length = 128 - i;
       vec_add1 (table->meta[af].prefix_lengths_in_search_order, dst_address_length);
-    }));
+    }
   /* *INDENT-ON* */
 }
 

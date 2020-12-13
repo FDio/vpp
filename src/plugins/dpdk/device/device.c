@@ -629,14 +629,14 @@ dpdk_interface_set_rss_queues (struct vnet_main_t *vnm,
 
   valid_queue_count = 0;
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (i, bitmap, ({
+  clib_bitmap_foreach (i, bitmap)  {
     if (i >= dev_info.nb_rx_queues)
       {
         err = clib_error_return (0, "illegal queue number");
         goto done;
       }
     reta[valid_queue_count++] = i;
-  }));
+  }
   /* *INDENT-ON* */
 
   /* check valid_queue_count not zero, make coverity happy */

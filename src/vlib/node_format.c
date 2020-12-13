@@ -74,11 +74,11 @@ format_vlib_node_graph (u8 * s, va_list * va)
 
   j = 0;
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (i, n->prev_node_bitmap, ({
+  clib_bitmap_foreach (i, n->prev_node_bitmap)  {
 	vec_validate_init_empty (tmps, j, empty);
 	tmps[j].prev_node = i;
 	j++;
-      }));
+      }
   /* *INDENT-ON* */
 
   for (i = 0; i < vec_len (tmps); i++)

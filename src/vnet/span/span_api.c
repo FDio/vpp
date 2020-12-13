@@ -86,7 +86,7 @@ vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
       clib_bitmap_t *b;
       u32 i;
       b = clib_bitmap_dup_or (rxm->mirror_ports, txm->mirror_ports);
-      clib_bitmap_foreach (i, b, (
+      clib_bitmap_foreach (i, b)
         {
           rmp = vl_msg_api_alloc (sizeof (*rmp));
           clib_memset (rmp, 0, sizeof (*rmp));
@@ -100,7 +100,7 @@ vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
 	  rmp->is_l2 = mp->is_l2;
 
           vl_api_send_msg (reg, (u8 *) rmp);
-        }));
+        }
       clib_bitmap_free (b);
     }
     }

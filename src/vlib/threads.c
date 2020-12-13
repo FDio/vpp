@@ -320,13 +320,13 @@ vlib_thread_init (vlib_main_t * vm)
 	{
 	  uword c;
           /* *INDENT-OFF* */
-          clib_bitmap_foreach (c, tr->coremask, ({
+          clib_bitmap_foreach (c, tr->coremask)  {
             if (clib_bitmap_get(avail_cpu, c) == 0)
               return clib_error_return (0, "cpu %u is not available to be used"
                                         " for the '%s' thread",c, tr->name);
 
             avail_cpu = clib_bitmap_set(avail_cpu, c, 0);
-          }));
+          }
           /* *INDENT-ON* */
 	}
       else
@@ -606,14 +606,14 @@ vlib_get_thread_core_numa (vlib_worker_thread_t * w, unsigned cpu_id)
   /* *INDENT-OFF* */
   clib_sysfs_read ("/sys/devices/system/node/online", "%U",
         unformat_bitmap_list, &nbmp);
-  clib_bitmap_foreach (node, nbmp, ({
+  clib_bitmap_foreach (node, nbmp)  {
     p = format (p, "%s%u/cpulist%c", sys_node_path, node, 0);
     clib_sysfs_read ((char *) p, "%U", unformat_bitmap_list, &cbmp);
     if (clib_bitmap_get (cbmp, cpu_id))
       numa_id = node;
     vec_reset_length (cbmp);
     vec_reset_length (p);
-  }));
+  }
   /* *INDENT-ON* */
   vec_free (nbmp);
   vec_free (cbmp);
@@ -976,13 +976,13 @@ start_workers (vlib_main_t * vm)
 	{
 	  uword c;
           /* *INDENT-OFF* */
-          clib_bitmap_foreach (c, tr->coremask, ({
+          clib_bitmap_foreach (c, tr->coremask)  {
             w = vlib_worker_threads + worker_thread_index++;
 	    err = vlib_launch_thread_int (vlib_worker_thread_bootstrap_fn,
 					  w, c);
 	    if (err)
 	      clib_error_report (err);
-          }));
+          }
           /* *INDENT-ON* */
 	}
     }

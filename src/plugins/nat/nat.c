@@ -1491,10 +1491,10 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
       if (sm->num_workers > 1)
 	{
           /* *INDENT-OFF* */
-          clib_bitmap_foreach (i, bitmap,
-            ({
+          clib_bitmap_foreach (i, bitmap)
+             {
                vec_add1(m->workers, i);
-            }));
+            }
           /* *INDENT-ON* */
 	}
     }
@@ -1739,7 +1739,7 @@ nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
   if (sm->num_workers > 1)
     {
       /* *INDENT-OFF* */
-      clib_bitmap_foreach (i, bitmap, ({ vec_add1(m->workers, i); }));
+      clib_bitmap_foreach (i, bitmap)  { vec_add1(m->workers, i); }
       /* *INDENT-ON* */
     }
 
@@ -2467,13 +2467,13 @@ snat_set_workers (uword * bitmap)
 
   vec_free (sm->workers);
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (i, bitmap,
-    ({
+  clib_bitmap_foreach (i, bitmap)
+    {
       vec_add1(sm->workers, i);
       sm->per_thread_data[sm->first_worker_index + i].snat_thread_index = j;
       sm->per_thread_data[sm->first_worker_index + i].thread_index = i;
       j++;
-    }));
+    }
   /* *INDENT-ON* */
 
   sm->port_per_thread = (0xffff - 1024) / _vec_len (sm->workers);

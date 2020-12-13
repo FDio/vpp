@@ -886,7 +886,7 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
 		VLIB_BUFFER_MAX_NUMA_NODES);
 
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (numa_node, bmp,
+  clib_bitmap_foreach (numa_node, bmp)
     {
       u8 *index = bm->default_buffer_pool_index_for_numa + numa_node;
       index[0] = ~0;
@@ -899,7 +899,7 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
 
       if (first_valid_buffer_pool_index == 0xff)
         first_valid_buffer_pool_index = index[0];
-    });
+    }
   /* *INDENT-ON* */
 
   if (first_valid_buffer_pool_index == (u8) ~ 0)
@@ -909,12 +909,12 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
     }
 
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (numa_node, bmp,
+  clib_bitmap_foreach (numa_node, bmp)
     {
       if (bm->default_buffer_pool_index_for_numa[numa_node]  == (u8) ~0)
 	bm->default_buffer_pool_index_for_numa[numa_node] =
 	  first_valid_buffer_pool_index;
-    });
+    }
   /* *INDENT-ON* */
 
   vec_foreach (bp, bm->buffer_pools)

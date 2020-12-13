@@ -707,10 +707,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 	{
 	  int i;
 	  q = 0;
-	  clib_bitmap_foreach (i, devconf->workers, ({
+	  clib_bitmap_foreach (i, devconf->workers)  {
 	    vnet_hw_interface_assign_rx_thread (dm->vnet_main, xd->hw_if_index, q++,
 					     vdm->first_worker_thread_index + i);
-	  }));
+	  }
 	}
       else
 	for (q = 0; q < xd->rx_q_used; q++)
@@ -1354,7 +1354,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       default_hugepage_sz = clib_mem_get_default_hugepage_size ();
 
       /* *INDENT-OFF* */
-      clib_bitmap_foreach (x, tm->cpu_socket_bitmap, (
+      clib_bitmap_foreach (x, tm->cpu_socket_bitmap)
 	{
 	  clib_error_t *e;
 	  uword n_pages;
@@ -1365,7 +1365,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  if ((e = clib_sysfs_prealloc_hugepages(x, 0, n_pages)))
 	    clib_error_report (e);
-      }));
+        }
       /* *INDENT-ON* */
     }
 

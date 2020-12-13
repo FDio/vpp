@@ -213,10 +213,10 @@ interface_handoff_enable_disable (vlib_main_t * vm, u32 sw_if_index,
     {
       d->workers_bitmap = bitmap;
       /* *INDENT-OFF* */
-      clib_bitmap_foreach (i, bitmap,
-	({
+      clib_bitmap_foreach (i, bitmap)
+	 {
 	  vec_add1(d->workers, i);
-	}));
+	}
       /* *INDENT-ON* */
     }
 

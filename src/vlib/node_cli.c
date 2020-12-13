@@ -658,14 +658,14 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
     {
       int j = 0;
       /* *INDENT-OFF* */
-      clib_bitmap_foreach (i, n->prev_node_bitmap, ({
+      clib_bitmap_foreach (i, n->prev_node_bitmap)  {
 	    vlib_node_t *pn = vlib_get_node (vm, i);
 	    if (j++ % 3 == 0)
 	      s = format (s, "\n    ");
 	    s2 = format (s2, "%v (%u)", pn->name, i);
 	    s = format (s, "%-35v", s2);
 	    vec_reset_length (s2);
-	  }));
+	  }
       /* *INDENT-ON* */
 
       if (vec_len (s) == 0)

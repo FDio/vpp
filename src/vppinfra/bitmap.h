@@ -358,7 +358,13 @@ clib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
     @param ai - the bitmap
     @param body - the expression to evaluate for each set bit
 */
-#define clib_bitmap_foreach(i,ai,body)					\
+#define clib_bitmap_foreach(i,ai)					\
+  if (ai)								\
+    for (i = clib_bitmap_first_set (ai);				\
+	 i != ~0;							\
+	 i = clib_bitmap_next_set (ai, i + 1))
+
+#define clib_bitmap_foreach_old(i,ai,body)				\
 do {									\
   uword __bitmap_i, __bitmap_ai, __bitmap_len, __bitmap_first_set;	\
   __bitmap_len = vec_len ((ai));					\
