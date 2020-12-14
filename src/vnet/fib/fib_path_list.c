@@ -62,11 +62,6 @@ typedef struct fib_path_list_t_ {
      * the RPF list calculated for this path list
      */
     fib_node_index_t fpl_urpf;
-
-    /**
-     * Hash table of paths. valid only with INDEXED flag
-     */
-    uword *fpl_db;
 } fib_path_list_t;
 
 /*
