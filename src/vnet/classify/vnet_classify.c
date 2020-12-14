@@ -129,7 +129,7 @@ vnet_classify_register_unformat_opaque_index_fn (unformat_function_t * fn)
 
 vnet_classify_table_t *
 vnet_classify_new_table (vnet_classify_main_t * cm,
-			 u8 * mask, u32 nbuckets, u32 memory_size,
+			 const u8 * mask, u32 nbuckets, u32 memory_size,
 			 u32 skip_n_vectors, u32 match_n_vectors)
 {
   vnet_classify_table_t *t;
@@ -137,8 +137,7 @@ vnet_classify_new_table (vnet_classify_main_t * cm,
 
   nbuckets = 1 << (max_log2 (nbuckets));
 
-  pool_get_aligned (cm->tables, t, CLIB_CACHE_LINE_BYTES);
-  clib_memset (t, 0, sizeof (*t));
+  pool_get_aligned_zero (cm->tables, t, CLIB_CACHE_LINE_BYTES);
 
   vec_validate_aligned (t->mask, match_n_vectors - 1, sizeof (u32x4));
   clib_memcpy_fast (t->mask, mask, match_n_vectors * sizeof (u32x4));
@@ -393,6 +392,7 @@ vnet_classify_entry_claim_resource (vnet_classify_entry_t * e)
       fib_table_lock (e->metadata, FIB_PROTOCOL_IP6, FIB_SOURCE_CLASSIFY);
       break;
     case CLASSIFY_ACTION_SET_METADATA:
+    case CLASSIFY_ACTION_NONE:
       break;
     }
 }
@@ -409,11 +409,12 @@ vnet_classify_entry_release_resource (vnet_classify_entry_t * e)
       fib_table_unlock (e->metadata, FIB_PROTOCOL_IP6, FIB_SOURCE_CLASSIFY);
       break;
     case CLASSIFY_ACTION_SET_METADATA:
+    case CLASSIFY_ACTION_NONE:
       break;
     }
 }
 
-int
+static int
 vnet_classify_add_del (vnet_classify_table_t * t,
 		       vnet_classify_entry_t * add_v, int is_add)
 {
@@ -744,7 +745,7 @@ format_classify_table (u8 * s, va_list * args)
 
 int
 vnet_classify_add_del_table (vnet_classify_main_t * cm,
-			     u8 * mask,
+			     const u8 * mask,
 			     u32 nbuckets,
 			     u32 memory_size,
 			     u32 skip,
@@ -2196,10 +2197,7 @@ VLIB_CLI_COMMAND (show_classify_filter, static) =
 };
 /* *INDENT-ON* */
 
-
-
-
-static u8 *
+u8 *
 format_vnet_classify_table (u8 * s, va_list * args)
 {
   vnet_classify_main_t *cm = va_arg (*args, vnet_classify_main_t *);
@@ -2740,11 +2738,11 @@ unformat_classify_match (unformat_input_t * input, va_list * args)
 int
 vnet_classify_add_del_session (vnet_classify_main_t * cm,
 			       u32 table_index,
-			       u8 * match,
+			       const u8 * match,
 			       u32 hit_next_index,
 			       u32 opaque_index,
 			       i32 advance,
-			       u8 action, u32 metadata, int is_add)
+			       u8 action, u16 metadata, int is_add)
 {
   vnet_classify_table_t *t;
   vnet_classify_entry_5_t _max_e __attribute__ ((aligned (16)));
