@@ -11,8 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+list(APPEND Python_ADDITIONAL_VERSIONS 3.9 3.8 3.7 3.6)
 if (CMAKE_VERSION VERSION_LESS 3.12)
-  find_package(PythonInterp 2.7)
+  find_package(PythonInterp 3)
 else()
   find_package(Python3 COMPONENTS Interpreter)
 endif()
