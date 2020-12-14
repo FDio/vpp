@@ -74,8 +74,6 @@ string(CONCAT CMAKE_C_FLAGS_RELEASE
   "-fno-common "
 )
 
-string(CONCAT CMAKE_EXE_LINKER_FLAGS_RELEASE "-pie")
-
 # debug
 list(APPEND BUILD_TYPES "debug")
 string(CONCAT CMAKE_C_FLAGS_DEBUG
