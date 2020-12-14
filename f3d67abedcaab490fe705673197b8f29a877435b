@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "23d95cba_a108e2b2",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 703,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-12-14T17:51:48Z",
+      "side": 1,
+      "message": "should we grow exponentially instead to avoid resizing too many times? Eg. using 1.5 factor:\n\n  new_max_q \u003d old_max_q + old_max_q / 2\n\nAlso, do we rely on the number of queues being a power-of-2 in the dataplane (eg. to compute a mask)? If so, we *must* resize exponentially using 2 factor:\n\n  new_max_q \u003d old_max_q * 2\n\nFinally we should probably also check that q \u003c VHOST_VRING_EXTENDED_MAX_N to make sure a rogue qemu does not try to allocate more queues than we advertised",
+      "revId": "f3d67abedcaab490fe705673197b8f29a877435b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bf57f9a0_c4cbc45a",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 975,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2020-12-14T17:51:48Z",
+      "side": 1,
+      "message": "this is a bit confusing because VHOST_VRING_MAX_N is number of queue *pairs* whereas VHOST_VRING_EXTENDED_MAX_N is number of *queues*... Maybe change one or the other so they count the same thing?",
+      "revId": "f3d67abedcaab490fe705673197b8f29a877435b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
