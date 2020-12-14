@@ -19,7 +19,13 @@ macro(add_vpp_library lib)
     ${ARGN}
   )
 
-  add_library(${lib} SHARED ${ARG_SOURCES})
+  set (lo ${lib}_objs)
+  add_library(${lo} OBJECT ${ARG_SOURCES})
+  set_target_properties(${lo} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+  add_library(${lib} SHARED)
+  target_sources(${lib} PRIVATE $<TARGET_OBJECTS:${lo}>)
+
   if(VPP_LIB_VERSION)
     set_target_properties(${lib} PROPERTIES SOVERSION ${VPP_LIB_VERSION})
   endif()
@@ -27,6 +33,7 @@ macro(add_vpp_library lib)
   # library deps
   if(ARG_LINK_LIBRARIES)
     target_link_libraries(${lib} ${ARG_LINK_LIBRARIES})
+    target_link_libraries(${lo} ${ARG_LINK_LIBRARIES})
   endif()
   # install .so
   if(NOT ARG_COMPONENT)
@@ -39,11 +46,13 @@ macro(add_vpp_library lib)
   )
 
   if (ARG_LTO AND VPP_USE_LTO)
+     set_property(TARGET ${lo} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
      set_property(TARGET ${lib} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-     target_compile_options (${lib} PRIVATE "-ffunction-sections")
-     target_compile_options (${lib} PRIVATE "-fdata-sections")
-     target_link_libraries (${lib} "-Wl,--gc-sections")
   endif()
+
+  target_compile_options (${lo} PRIVATE "-ffunction-sections")
+  target_compile_options (${lo} PRIVATE "-fdata-sections")
+  target_link_libraries (${lib} "-Wl,--gc-sections")
 
   if(ARG_MULTIARCH_SOURCES)
     vpp_library_set_multiarch_sources(${lib} "${ARG_DEPENDS}" ${ARG_MULTIARCH_SOURCES})
@@ -66,7 +75,7 @@ macro(add_vpp_library lib)
   endif()
 
   if(ARG_DEPENDS)
-    add_dependencies(${lib} ${ARG_DEPENDS})
+    add_dependencies(${lo} ${ARG_DEPENDS})
   endif()
 
   # install headers
