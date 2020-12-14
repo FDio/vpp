@@ -97,7 +97,7 @@ add_vpp_headers(vpp
 ##############################################################################
 add_vpp_executable(vppctl
   SOURCES app/vppctl.c
-  LINK_LIBRARIES vppinfra
+  TARGET_OBJECTS vppinfra_objs
 )
 
 ##############################################################################

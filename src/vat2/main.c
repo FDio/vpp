@@ -61,7 +61,7 @@ vat2_find_plugin_path ()
 }
 
 void
-vac_callback (unsigned char *data, int len)
+vac_callback_fn (unsigned char *data, int len)
 {
   u16 result_msg_id = ntohs(*((u16 *)data));
   DBG("Received something async: %d\n", result_msg_id);
