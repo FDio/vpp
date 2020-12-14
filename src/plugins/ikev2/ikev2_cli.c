@@ -27,18 +27,24 @@ format_ikev2_id_type_and_data (u8 * s, va_list * args)
   if (id->type == 0 || vec_len (id->data) == 0)
     return format (s, "none");
 
-  s = format (s, "%U", format_ikev2_id_type, id->type);
+  s = format (s, "id-type %U data ", format_ikev2_id_type, id->type);
 
-  if (id->type == IKEV2_ID_TYPE_ID_FQDN ||
-      id->type == IKEV2_ID_TYPE_ID_RFC822_ADDR)
+  switch (id->type)
     {
-      s = format (s, " %v", id->data);
-    }
-  else
-    {
-      s =
-	format (s, " %U", format_hex_bytes, &id->data,
-		(uword) (vec_len (id->data)));
+    case IKEV2_ID_TYPE_ID_IPV4_ADDR:
+      s = format (s, "%U", format_ip4_address, id->data);
+      break;
+    case IKEV2_ID_TYPE_ID_IPV6_ADDR:
+      s = format (s, "%U", format_ip6_address, id->data);
+      break;
+    case IKEV2_ID_TYPE_ID_FQDN:	/* fallthrough */
+    case IKEV2_ID_TYPE_ID_RFC822_ADDR:
+      s = format (s, "%v", id->data);
+      break;
+    default:
+      s = format (s, "0x%U", format_hex_bytes, &id->data,
+		  (uword) (vec_len (id->data)));
+      break;
     }
 
   return s;
@@ -577,36 +583,10 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
       }
 
     if (p->loc_id.data)
-      {
-        if (p->loc_id.type == IKEV2_ID_TYPE_ID_IPV4_ADDR)
-          vlib_cli_output(vm, "  local id-type %U data %U",
-                          format_ikev2_id_type, p->loc_id.type,
-                          format_ip_address, p->loc_id.data);
-        else if (p->loc_id.type == IKEV2_ID_TYPE_ID_KEY_ID)
-          vlib_cli_output(vm, "  local id-type %U data 0x%U",
-                          format_ikev2_id_type, p->loc_id.type,
-                          format_hex_bytes, p->loc_id.data,
-                          vec_len(p->loc_id.data));
-        else
-          vlib_cli_output(vm, "  local id-type %U data %v",
-                          format_ikev2_id_type, p->loc_id.type, p->loc_id.data);
-      }
+      vlib_cli_output(vm, "  local %U", format_ikev2_id_type_and_data, &p->loc_id);
 
     if (p->rem_id.data)
-      {
-        if (p->rem_id.type == IKEV2_ID_TYPE_ID_IPV4_ADDR)
-          vlib_cli_output(vm, "  remote id-type %U data %U",
-                          format_ikev2_id_type, p->rem_id.type,
-                          format_ip_address, p->rem_id.data);
-        else if (p->rem_id.type == IKEV2_ID_TYPE_ID_KEY_ID)
-          vlib_cli_output(vm, "  remote id-type %U data 0x%U",
-                          format_ikev2_id_type, p->rem_id.type,
-                          format_hex_bytes, p->rem_id.data,
-                          vec_len(p->rem_id.data));
-        else
-          vlib_cli_output(vm, "  remote id-type %U data %v",
-                          format_ikev2_id_type, p->rem_id.type, p->rem_id.data);
-      }
+      vlib_cli_output(vm, "  remote %U", format_ikev2_id_type_and_data, &p->rem_id);
 
     if (!ip_address_is_zero (&p->loc_ts.start_addr))
       vlib_cli_output(vm, "  local traffic-selector addr %U - %U port %u - %u"
