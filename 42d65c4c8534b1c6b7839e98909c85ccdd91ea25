@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "81bb985a_7c3c5f2f",
+        "filename": "src/vnet/interface_types.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-14T20:00:35Z",
+      "side": 1,
+      "message": "should this be an enumflag?",
+      "range": {
+        "startLine": 76,
+        "startChar": 0,
+        "endLine": 76,
+        "endChar": 4
+      },
+      "revId": "42d65c4c8534b1c6b7839e98909c85ccdd91ea25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "43d3352c_e6eea069",
+        "filename": "src/vnet/interface_types.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-14T20:00:35Z",
+      "side": 1,
+      "message": "should this be None\u003d0, Both\u003d3?",
+      "range": {
+        "startLine": 78,
+        "startChar": 0,
+        "endLine": 79,
+        "endChar": 5
+      },
+      "revId": "42d65c4c8534b1c6b7839e98909c85ccdd91ea25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
