@@ -77,7 +77,7 @@ typedef struct session_worker_
   session_t *sessions;
 
   /** vpp event message queue for worker */
-  svm_msg_q_t *vpp_event_queue;
+  svm_msg_q_t vpp_event_queue;
 
   /** vlib_time_now last time around the track */
   clib_time_type_t last_vlib_time;
@@ -644,7 +644,7 @@ session_main_get_worker_if_valid (u32 thread_index)
 always_inline svm_msg_q_t *
 session_main_get_vpp_event_queue (u32 thread_index)
 {
-  return session_main.wrk[thread_index].vpp_event_queue;
+  return &session_main.wrk[thread_index].vpp_event_queue;
 }
 
 always_inline u8

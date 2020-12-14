@@ -1140,13 +1140,13 @@ fifo_segment_msg_q_offset (fifo_segment_t *fs)
 {
   if (fs->mq.q == 0)
     return ~0ULL;
-  return (uword) ((u8 *)fs->mq.q - (u8 *)fs->h) - sizeof (svm_msg_q_shared_t);
+  return (uword) ((u8 *)fs->mq.q - (u8 *)fs->h) - sizeof (u32);
 }
 
 uword
-ssvm_msg_q_offset (ssvm_private_t *s, svm_msg_q_shared_t *mq)
+ssvm_msg_q_offset (ssvm_private_t *s, svm_msg_q_t *mq)
 {
-  return (uword) ((u8 *)mq - (u8 *) s->sh);
+  return (uword) ((u8 *)mq->q - (u8 *) s->sh) - sizeof (u32);
 }
 
 void
