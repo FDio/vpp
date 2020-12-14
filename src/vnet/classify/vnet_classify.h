@@ -34,7 +34,11 @@ extern vlib_node_registration_t ip6_classify_node;
  *  CLASSIFY_FLAG_USE_CURR_DATA:
  *   - classify packets starting from VPP node’s current data pointer
  */
-#define CLASSIFY_FLAG_USE_CURR_DATA              1
+typedef enum vnet_classify_flags_t_
+{
+  CLASSIFY_FLAG_NONE = 0,
+  CLASSIFY_FLAG_USE_CURR_DATA = (1 << 0),
+} __clib_packed vnet_classify_flags_t;
 
 /*
  * Classify session action
@@ -47,10 +51,11 @@ extern vlib_node_registration_t ip6_classify_node;
  */
 typedef enum vnet_classify_action_t_
 {
+  CLASSIFY_ACTION_NONE = 0,
   CLASSIFY_ACTION_SET_IP4_FIB_INDEX = 1,
   CLASSIFY_ACTION_SET_IP6_FIB_INDEX = 2,
   CLASSIFY_ACTION_SET_METADATA = 3,
-} __attribute__ ((packed)) vnet_classify_action_t;
+} __clib_packed vnet_classify_action_t;
 
 struct _vnet_classify_main;
 typedef struct _vnet_classify_main vnet_classify_main_t;
@@ -62,20 +67,27 @@ _(3)                                            \
 _(4)                                            \
 _(5)
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED(struct _vnet_classify_entry {
-  /* Graph node next index */
-  u32 next_index;
-
+typedef struct _vnet_classify_entry
+{
   /* put into vnet_buffer(b)->l2_classfy.opaque_index */
-  union {
-    struct {
+  union
+  {
+    struct
+    {
       u32 opaque_index;
       /* advance on hit, note it's a signed quantity... */
       i32 advance;
     };
     u64 opaque_count;
   };
+  /* Hit counter */
+  union
+  {
+    u64 hits;
+    struct _vnet_classify_entry *next_free;
+  };
+  /* last heard time */
+  f64 last_heard;
 
   /* Really only need 1 bit */
   u8 flags;
@@ -83,19 +95,17 @@ typedef CLIB_PACKED(struct _vnet_classify_entry {
 
   vnet_classify_action_t action;
   u16 metadata;
-
-  /* Hit counter, last heard time */
-  union {
-    u64 hits;
-    struct _vnet_classify_entry * next_free;
-  };
-
-  f64 last_heard;
+  /* Graph node next index */
+  u32 next_index;
 
   /* Must be aligned to a 16-octet boundary */
   u32x4 key[0];
-}) vnet_classify_entry_t;
-/* *INDENT-ON* */
+} vnet_classify_entry_t;
+
+/**
+ * Check there's no padding in the entry. the key lies on a 16 byte boundary.
+ */
+STATIC_ASSERT_OFFSET_OF (vnet_classify_entry_t, key, 32);
 
 static inline int
 vnet_classify_entry_is_free (vnet_classify_entry_t * e)
@@ -110,15 +120,13 @@ vnet_classify_entry_is_busy (vnet_classify_entry_t * e)
 }
 
 /* Need these to con the vector allocator */
-/* *INDENT-OFF* */
-#define _(size)                                 \
-typedef CLIB_PACKED(struct {                    \
-  u32 pad0[4];                                  \
-  u64 pad1[2];                                  \
-  u32x4 key[size];                              \
-}) vnet_classify_entry_##size##_t;
+#define _(size)                                                               \
+  typedef struct                                                              \
+  {                                                                           \
+    vnet_classify_entry_t e;                                                  \
+    u32x4 key[size];                                                          \
+  } __clib_packed vnet_classify_entry_##size##_t;
 foreach_size_in_u32x4;
-/* *INDENT-ON* */
 #undef _
 
 typedef struct
@@ -141,26 +149,41 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   /* Mask to apply after skipping N vectors */
   u32x4 *mask;
-  /* Buckets and entries */
-  vnet_classify_bucket_t *buckets;
-  vnet_classify_entry_t *entries;
 
-  /* Config parameters */
-  u32 match_n_vectors;
-  u32 skip_n_vectors;
+  /* hash Buckets */
+  vnet_classify_bucket_t *buckets;
+
+  /* Private allocation arena, protected by the writer lock,
+   * where the entries are stored. */
+  void *mheap;
+
+  /* User/client data associated with the table */
+  uword user_ctx;
+
   u32 nbuckets;
   u32 log2_nbuckets;
-  u32 linear_buckets;
-  int entries_per_page;
-  u32 active_elements;
-  u32 current_data_flag;
-  int current_data_offset;
-  u32 data_offset;
+  u32 entries_per_page;
+  u32 skip_n_vectors;
+  u32 match_n_vectors;
+
   /* Index of next table to try */
   u32 next_table_index;
 
+  /* packet offsets */
+  i16 current_data_offset;
+  vnet_classify_flags_t current_data_flag;
   /* Miss next index, return if next_table_index = 0 */
   u32 miss_next_index;
+
+  /**
+   * All members accessed in the DP above here
+   */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+
+  /* Config parameters */
+  u32 linear_buckets;
+  u32 active_elements;
+  u32 data_offset;
 
   /* Per-bucket working copies, one per thread */
   vnet_classify_entry_t **working_copies;
@@ -170,15 +193,23 @@ typedef struct
   /* Free entry freelists */
   vnet_classify_entry_t **freelists;
 
-  u8 *name;
-
-  /* Private allocation arena, protected by the writer lock */
-  void *mheap;
-
   /* Writer (only) lock for this table */
   clib_spinlock_t writer_lock;
 
 } vnet_classify_table_t;
+
+/**
+ * Ensure DP fields don't spill over to cache-line 2
+ */
+STATIC_ASSERT_OFFSET_OF (vnet_classify_table_t, cacheline1,
+			 CLIB_CACHE_LINE_BYTES);
+
+/**
+ * The vector size for the classifier
+ *  in the add/del table 'match' is the number of vectors of this size
+ */
+#define VNET_CLASSIFY_VECTOR_SIZE                                             \
+  sizeof (((vnet_classify_table_t *) 0)->mask[0])
 
 struct _vnet_classify_main
 {
@@ -203,11 +234,20 @@ struct _vnet_classify_main
 extern vnet_classify_main_t vnet_classify_main;
 
 u8 *format_classify_table (u8 * s, va_list * args);
+u8 *format_vnet_classify_table (u8 *s, va_list *args);
 
 u64 vnet_classify_hash_packet (vnet_classify_table_t * t, u8 * h);
 
+static_always_inline vnet_classify_table_t *
+vnet_classify_table_get (u32 table_index)
+{
+  vnet_classify_main_t *vcm = &vnet_classify_main;
+
+  return (pool_elt_at_index (vcm->tables, table_index));
+}
+
 static inline u64
-vnet_classify_hash_packet_inline (vnet_classify_table_t * t, u8 * h)
+vnet_classify_hash_packet_inline (vnet_classify_table_t *t, const u8 *h)
 {
   u32x4 *mask;
 
@@ -297,7 +337,7 @@ vnet_classify_get_entry (vnet_classify_table_t * t, uword offset)
   u8 *hp = clib_mem_get_heap_base (t->mheap);
   u8 *vp = hp + offset;
 
-  return (void *) vp;
+  return (vnet_classify_entry_t *) vp;
 }
 
 static inline uword
@@ -356,8 +396,8 @@ vnet_classify_entry_t *vnet_classify_find_entry (vnet_classify_table_t * t,
 						 u8 * h, u64 hash, f64 now);
 
 static inline vnet_classify_entry_t *
-vnet_classify_find_entry_inline (vnet_classify_table_t * t,
-				 u8 * h, u64 hash, f64 now)
+vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
+				 u64 hash, f64 now)
 {
   vnet_classify_entry_t *v;
   u32x4 *mask, *key;
@@ -393,7 +433,7 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
   v = vnet_classify_entry_at_index (t, v, value_index);
 
 #ifdef CLIB_HAVE_VEC128
-  u32x4u *data = (u32x4u *) h;
+  const u32x4u *data = (const u32x4u *) h;
   for (i = 0; i < limit; i++)
     {
       key = v->key;
@@ -431,7 +471,7 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
     }
 #else
   u32 skip_u64 = t->skip_n_vectors * 2;
-  u64 *data64 = (u64 *) h;
+  const u64 *data64 = (const u64 *) h;
   for (i = 0; i < limit; i++)
     {
       key = v->key;
@@ -488,32 +528,25 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
   return 0;
 }
 
-vnet_classify_table_t *vnet_classify_new_table (vnet_classify_main_t * cm,
-						u8 * mask, u32 nbuckets,
+vnet_classify_table_t *vnet_classify_new_table (vnet_classify_main_t *cm,
+						const u8 *mask, u32 nbuckets,
 						u32 memory_size,
 						u32 skip_n_vectors,
 						u32 match_n_vectors);
 
-int vnet_classify_add_del_session (vnet_classify_main_t * cm,
-				   u32 table_index,
-				   u8 * match,
-				   u32 hit_next_index,
-				   u32 opaque_index,
-				   i32 advance,
-				   u8 action, u32 metadata, int is_add);
+int vnet_classify_add_del_session (vnet_classify_main_t *cm, u32 table_index,
+				   const u8 *match, u32 hit_next_index,
+				   u32 opaque_index, i32 advance, u8 action,
+				   u16 metadata, int is_add);
 
-int vnet_classify_add_del_table (vnet_classify_main_t * cm,
-				 u8 * mask,
-				 u32 nbuckets,
-				 u32 memory_size,
-				 u32 skip,
-				 u32 match,
-				 u32 next_table_index,
-				 u32 miss_next_index,
-				 u32 * table_index,
-				 u8 current_data_flag,
-				 i16 current_data_offset,
+int vnet_classify_add_del_table (vnet_classify_main_t *cm, const u8 *mask,
+				 u32 nbuckets, u32 memory_size, u32 skip,
+				 u32 match, u32 next_table_index,
+				 u32 miss_next_index, u32 *table_index,
+				 u8 current_data_flag, i16 current_data_offset,
 				 int is_add, int del_chain);
+void vnet_classify_delete_table_index (vnet_classify_main_t *cm,
+				       u32 table_index, int del_chain);
 
 unformat_function_t unformat_ip4_mask;
 unformat_function_t unformat_ip6_mask;
