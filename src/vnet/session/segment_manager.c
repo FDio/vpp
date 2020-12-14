@@ -469,7 +469,8 @@ segment_manager_free (segment_manager_t * sm)
   segment_manager_main_t *smm = &sm_main;
   fifo_segment_t *fifo_segment;
 
-  ASSERT (!segment_manager_has_fifos (sm)
+  ASSERT (vlib_get_thread_index () == 0
+	  && !segment_manager_has_fifos (sm)
 	  && segment_manager_app_detached (sm));
 
   if (sm->flags & SEG_MANAGER_F_DETACHED_LISTENER)
@@ -495,9 +496,38 @@ segment_manager_free (segment_manager_t * sm)
   pool_put (smm->segment_managers, sm);
 }
 
+static void
+sm_free_w_index_helper (void *arg)
+{
+  u32 sm_index = *(u32 *) arg;
+  segment_manager_t *sm;
+
+  ASSERT (vlib_get_thread_index () == 0);
+
+  if ((sm = segment_manager_get_if_valid (sm_index)))
+    segment_manager_free (sm);
+}
+
+static void
+segment_manager_free_safe (segment_manager_t * sm)
+{
+  if (!vlib_thread_is_main_w_barrier ())
+    {
+      u32 sm_index = segment_manager_index (sm);
+      vlib_rpc_call_main_thread (sm_free_w_index_helper, (u8 *) & sm_index,
+				 sizeof (sm_index));
+    }
+  else
+    {
+      segment_manager_free (sm);
+    }
+}
+
 void
 segment_manager_init_free (segment_manager_t * sm)
 {
+  ASSERT (vlib_get_thread_index () == 0);
+
   segment_manager_app_detach (sm);
   if (segment_manager_has_fifos (sm))
     segment_manager_del_sessions (sm);
@@ -785,9 +815,7 @@ segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
       /* Remove segment manager if no sessions and detached from app */
       if (segment_manager_app_detached (sm)
 	  && !segment_manager_has_fifos (sm))
-	{
-	  segment_manager_free (sm);
-	}
+	segment_manager_free_safe (sm);
     }
   else
     segment_manager_segment_reader_unlock (sm);
