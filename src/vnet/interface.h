@@ -348,7 +348,7 @@ typedef enum vnet_link_t_
   VNET_LINK_ETHERNET,
   VNET_LINK_ARP,
   VNET_LINK_NSH,
-} __attribute__ ((packed)) vnet_link_t;
+} __attribute__((packed)) vnet_link_t;
 
 #define VNET_LINKS {                   \
     [VNET_LINK_ETHERNET] = "ethernet", \
@@ -364,11 +364,17 @@ typedef enum vnet_link_t_
        _link <= VNET_LINK_NSH;       \
        _link++)
 
+#define FOR_EACH_VNET_IP_LINK(_link)    \
+  for (_link = VNET_LINK_IP4;           \
+       _link <= VNET_LINK_IP6;          \
+       _link++)
+
 /**
- * @brief Number of link types. Not part of the enum so it does not have to be included in
- * switch statements
+ * @brief Number of link types. Not part of the enum so it does not have to be
+ * included in switch statements
  */
 #define VNET_LINK_NUM (VNET_LINK_NSH+1)
+#define VNET_N_LINKS VNET_LINK_NUM
 
 /**
  * @brief Convert a link to to an Ethertype
@@ -726,7 +732,7 @@ typedef enum vnet_sw_interface_flags_t_
   /* Interface has IP configured directed broadcast */
   VNET_SW_INTERFACE_FLAG_DIRECTED_BCAST = (1 << 7),
 
-} __attribute__ ((packed)) vnet_sw_interface_flags_t;
+} __attribute__((packed)) vnet_sw_interface_flags_t;
 
 /* Software-interface.  This corresponds to a Ethernet VLAN, ATM vc, a
    tunnel, etc.  Configuration (e.g. IP address) gets attached to

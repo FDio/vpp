@@ -63,11 +63,25 @@ enum rx_mode
 
 enum if_type
 {
-	/* A hw interface. */
-	IF_API_TYPE_HARDWARE = 0,
+  /* A hw interface. */
+  IF_API_TYPE_HARDWARE = 0,
 
-	/* A sub-interface. */
-	IF_API_TYPE_SUB = 1,
-	IF_API_TYPE_P2P = 2,
-	IF_API_TYPE_PIPE = 3,
+  /* A sub-interface. */
+  IF_API_TYPE_SUB = 1,
+  IF_API_TYPE_P2P = 2,
+  IF_API_TYPE_PIPE = 3,
 };
+
+enum direction:u8
+{
+  RX = 0,
+  TX,
+};
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
