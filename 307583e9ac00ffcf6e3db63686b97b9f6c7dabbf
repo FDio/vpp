@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c9551e9d_e498de06",
+        "filename": "src/plugins/dpdk/device/dpdk.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-14T14:57:52Z",
+      "side": 1,
+      "message": "union",
+      "range": {
+        "startLine": 264,
+        "startChar": 2,
+        "endLine": 265,
+        "endChar": 31
+      },
+      "revId": "307583e9ac00ffcf6e3db63686b97b9f6c7dabbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dd564e99_3500ce05",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 283,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-14T14:57:52Z",
+      "side": 1,
+      "message": "please indent consistently with the above",
+      "range": {
+        "startLine": 283,
+        "startChar": 0,
+        "endLine": 283,
+        "endChar": 2
+      },
+      "revId": "307583e9ac00ffcf6e3db63686b97b9f6c7dabbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5bcc1abc_b1b86279",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 313,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-14T14:57:52Z",
+      "side": 1,
+      "message": "indent consistently",
+      "range": {
+        "startLine": 313,
+        "startChar": 12,
+        "endLine": 313,
+        "endChar": 14
+      },
+      "revId": "307583e9ac00ffcf6e3db63686b97b9f6c7dabbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8a08c6e3_176a0cd8",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 1027,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-14T14:57:52Z",
+      "side": 1,
+      "message": "indent",
+      "range": {
+        "startLine": 1027,
+        "startChar": 0,
+        "endLine": 1027,
+        "endChar": 2
+      },
+      "revId": "307583e9ac00ffcf6e3db63686b97b9f6c7dabbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "98877782_281f2f38",
+        "filename": "src/vlib/vmbus/vmbus.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-14T14:57:52Z",
+      "side": 1,
+      "message": "as_u32[4]\nand use as_u32[0] (or as_u32[3]) in the dpdk plugin code",
+      "range": {
+        "startLine": 27,
+        "startChar": 6,
+        "endLine": 27,
+        "endChar": 12
+      },
+      "revId": "307583e9ac00ffcf6e3db63686b97b9f6c7dabbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "edf178e4_243b0190",
+        "filename": "src/vlib/vmbus/vmbus.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-14T14:57:52Z",
+      "side": 1,
+      "message": "I don\u0027t think it\u0027s necessary once as_u32 becomes a u32[4]",
+      "range": {
+        "startLine": 28,
+        "startChar": 2,
+        "endLine": 28,
+        "endChar": 15
+      },
+      "revId": "307583e9ac00ffcf6e3db63686b97b9f6c7dabbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
