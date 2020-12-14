@@ -364,11 +364,17 @@ typedef enum vnet_link_t_
        _link <= VNET_LINK_NSH;       \
        _link++)
 
+#define FOR_EACH_VNET_IP_LINK(_link)    \
+  for (_link = VNET_LINK_IP4;           \
+       _link <= VNET_LINK_IP6;          \
+       _link++)
+
 /**
- * @brief Number of link types. Not part of the enum so it does not have to be included in
- * switch statements
+ * @brief Number of link types. Not part of the enum so it does not have to be
+ * included in switch statements
  */
 #define VNET_LINK_NUM (VNET_LINK_NSH+1)
+#define VNET_N_LINKS VNET_LINK_NUM
 
 /**
  * @brief Convert a link to to an Ethertype

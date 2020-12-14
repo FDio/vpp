@@ -14,18 +14,31 @@
  * limitations under the License.
  */
 
-#ifndef __INTERFACE_TYPES_API_H__
-#define __INTERFACE_TYPES_API_H__
 
-#include <vnet/vnet.h>
-#include <vlibapi/api_types.h>
+#include <vnet/interface_types_api.h>
 
-#include <vnet/interface.api_types.h>
+STATIC_ASSERT_SIZEOF (vl_api_direction_t, 1);
 
-extern int direction_decode (vl_api_direction_t _dir, vlib_dir_t * out);
-extern vl_api_direction_t direction_encode (vlib_dir_t dir);
+int
+direction_decode (vl_api_direction_t _dir, vlib_dir_t * out)
+{
+  switch (_dir)
+    {
+    case RX:
+      *out = VLIB_RX;
+      return (0);
+    case TX:
+      *out = VLIB_TX;
+      return (0);
+    }
+  return (VNET_API_ERROR_INVALID_VALUE);
+}
 
-#endif
+vl_api_direction_t
+direction_encode (vlib_dir_t dir)
+{
+  return (vl_api_direction_t) dir;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
