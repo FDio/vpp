@@ -38,9 +38,9 @@ static int ikev2_delete_tunnel_interface (vnet_main_t * vnm,
 					  ikev2_sa_t * sa,
 					  ikev2_child_sa_t * child);
 
-#define ikev2_set_state(sa, v) do { \
+#define ikev2_set_state(sa, v, ...) do { \
     (sa)->state = v; \
-    ikev2_elog_sa_state("ispi %lx SA state changed to " #v, sa->ispi); \
+    ikev2_elog_sa_state("ispi %lx SA state changed to " #v __VA_ARGS__, sa->ispi); \
   } while(0);
 
 typedef struct
@@ -1280,7 +1280,7 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa,
   return 1;
 
 malformed:
-  ikev2_set_state (sa, IKEV2_STATE_DELETED);
+  ikev2_set_state (sa, IKEV2_STATE_DELETED, ": malformed IKE_AUTH");
   return 0;
 }
 
@@ -2403,7 +2403,7 @@ ikev2_generate_message (vlib_buffer_t * b, ikev2_sa_t * sa,
 	}
       else
 	{
-	  ikev2_set_state (sa, IKEV2_STATE_DELETED);
+	  ikev2_set_state (sa, IKEV2_STATE_DELETED, ": unexpected IKE_AUTH");
 	  goto done;
 	}
     }
@@ -2433,7 +2433,7 @@ ikev2_generate_message (vlib_buffer_t * b, ikev2_sa_t * sa,
       /* received N(AUTHENTICATION_FAILED) */
       else if (sa->state == IKEV2_STATE_AUTH_FAILED)
 	{
-	  ikev2_set_state (sa, IKEV2_STATE_DELETED);
+	  ikev2_set_state (sa, IKEV2_STATE_DELETED, ": auth failed");
 	  goto done;
 	}
       /* received unsupported critical payload */
