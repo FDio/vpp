@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "1.1.0";
 
 manual_print typedef u8 mac_address[6];
+
+enum ether_type : u16
+{
+    ETHERTYPE_API_ARP = 0x0806,
+    ETHERTYPE_API_IP4 = 0x0800,
+    ETHERTYPE_API_IP6 = 0x86DD,
+};
