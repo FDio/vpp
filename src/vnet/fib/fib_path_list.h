@@ -203,8 +203,6 @@ extern void fib_path_list_walk_w_ext(fib_node_index_t pl_index,
 
 extern void fib_path_list_module_init(void);
 
-extern void fib_path_list_module_init(void);
-
 /*
  * functions for testing.
  */
