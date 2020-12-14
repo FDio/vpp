@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "2e3c673e_91011a25",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 703,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-12-14T18:11:31Z",
+      "side": 1,
+      "message": "I am a bit worried to grow the q more than we need. It may cause the code to iterate and process the additional queues that are never there in many places. The way to resolve that would be to introduce a variable to keep the current queue max which may be differed than vec_len (vui-\u003evrings) and replace many places which use vec_len (vui-\u003evrings) with current queue max. Is it worth the complexity and regression risk than just expanding the queue size as needed?",
+      "parentUuid": "23d95cba_a108e2b2",
+      "revId": "f3d67abedcaab490fe705673197b8f29a877435b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "bf57f9a0_c4cbc45a",
         "filename": "src/vnet/devices/virtio/vhost_user.c",
         "patchSetId": 7
@@ -30,6 +48,24 @@
       "writtenOn": "2020-12-14T17:51:48Z",
       "side": 1,
       "message": "this is a bit confusing because VHOST_VRING_MAX_N is number of queue *pairs* whereas VHOST_VRING_EXTENDED_MAX_N is number of *queues*... Maybe change one or the other so they count the same thing?",
+      "revId": "f3d67abedcaab490fe705673197b8f29a877435b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1fbe541b_edbe627a",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 975,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-12-14T18:11:31Z",
+      "side": 1,
+      "message": "I can rename VHOST_VRING_EXTENDED_MAX_N to something else. Do you have a preference?",
+      "parentUuid": "bf57f9a0_c4cbc45a",
       "revId": "f3d67abedcaab490fe705673197b8f29a877435b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
