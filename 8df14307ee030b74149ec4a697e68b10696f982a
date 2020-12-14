@@ -16,6 +16,24 @@
       "revId": "8df14307ee030b74149ec4a697e68b10696f982a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "67c3e38f_082ad877",
+        "filename": "src/vpp-api/python/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-14T15:26:56Z",
+      "side": 1,
+      "message": "Because if a distro ever bumps to a newer version and installs multiple versions to \"roll forward\", we test against the newer version.\nMy thinking is that if they change the version in their python3 package today, we already know that the old version built yesterday.  So we are covered.  \n\nIf they (or we) install multiple python versions, we test against the one that will likely break the install.\n\nWe don\u0027t have a process to actually test the rpm builds. That\u0027s why we never caught the aenum issue.  \nI thought that we should change the makefile to install papi from the rpm instead of pip if JENKINS_URL is set, but that breaks other things.  Maybe we should just try to install the RPMs after building them if JENKINS_URL is set so that both methods get tested. Since the container gets blown away, we don\u0027t have to worry about polluting the environment.",
+      "parentUuid": "b7b609af_09e51775",
+      "revId": "8df14307ee030b74149ec4a697e68b10696f982a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
