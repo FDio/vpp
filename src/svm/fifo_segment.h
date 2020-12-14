@@ -148,7 +148,7 @@ svm_msg_q_t *fifo_segment_msg_q_alloc (fifo_segment_t *fs, svm_msg_q_cfg_t *cfg)
 svm_msg_q_t *fifo_segment_msg_q_attach (fifo_segment_t *fs, uword offset);
 uword fifo_segment_msg_q_offset (fifo_segment_t *fs);
 
-uword ssvm_msg_q_offset (ssvm_private_t *s, svm_msg_q_shared_t *mq);
+uword ssvm_msg_q_offset (ssvm_private_t *s, svm_msg_q_t *mq);
 void ssvm_msg_q_attach (ssvm_private_t *s, uword offset, svm_msg_q_t *mq);
 
 /**
