@@ -21,10 +21,17 @@
  */
 
 #include <vnet/ethernet/mac_address.h>
+#include <vnet/ethernet/packet.h>
 #include <vlibapi/api_types.h>
+
+#include <vnet/ethernet/ethernet_types.api_types.h>
+
 
 extern void mac_address_decode (const u8 * in, mac_address_t * out);
 extern void mac_address_encode (const mac_address_t * in, u8 * out);
+
+extern int ether_type_decode (vl_api_ether_type_t in, ethernet_type_t * out);
+extern vl_api_ether_type_t ether_type_encode (ethernet_type_t in);
 
 #endif
 
