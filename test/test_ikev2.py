@@ -1546,7 +1546,7 @@ class TestApi(VppTestCase):
                 'ike_ts': {
                         'crypto_alg': 20,
                         'crypto_key_size': 32,
-                        'integ_alg': 1,
+                        'integ_alg': 0,
                         'dh_group': 1},
                 'esp_ts': {
                         'crypto_alg': 13,

@@ -4103,15 +4103,15 @@ ikev2_set_profile_ike_transforms (vlib_main_t * vm, u8 * name,
 				  u32 crypto_key_size)
 {
   ikev2_profile_t *p;
-  clib_error_t *r;
 
   p = ikev2_profile_index_by_name (name);
-
   if (!p)
-    {
-      r = clib_error_return (0, "unknown profile %v", name);
-      return r;
-    }
+    return clib_error_return (0, "unknown profile %v", name);
+
+  if ((IKEV2_TRANSFORM_INTEG_TYPE_NONE != integ_alg) +
+	(IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16 == crypto_alg) !=
+      1)
+    return clib_error_return (0, "invalid cipher + integrity algorithm");
 
   p->ike_ts.crypto_alg = crypto_alg;
   p->ike_ts.integ_alg = integ_alg;
