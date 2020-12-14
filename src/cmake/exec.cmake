@@ -20,6 +20,15 @@ macro(add_vpp_executable exec)
   )
 
   add_executable(${exec} ${ARG_SOURCES})
+
+   if (VPP_USE_LTO)
+      set_property(TARGET ${exec} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+   endif()
+
+   target_compile_options (${exec} PRIVATE "-ffunction-sections")
+   target_compile_options (${exec} PRIVATE "-fdata-sections")
+   target_link_libraries (${exec} "-Wl,--gc-sections")
+
   if(ARG_LINK_LIBRARIES)
     target_link_libraries(${exec} ${ARG_LINK_LIBRARIES})
   endif()
