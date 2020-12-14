@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b7b609af_09e51775",
+        "filename": "src/vpp-api/python/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-12-14T07:35:03Z",
+      "side": 1,
+      "message": "Why is this line needed?",
+      "revId": "8df14307ee030b74149ec4a697e68b10696f982a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
