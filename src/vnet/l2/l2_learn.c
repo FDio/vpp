@@ -169,7 +169,7 @@ l2learn_process (vlib_node_runtime_t * node,
 	return;
 
       /* It is ok to learn */
-      clib_atomic_fetch_add_relax(&msm->global_learn_count,1);
+      clib_atomic_fetch_add_relax (&msm->global_learn_count, 1);
       result0->raw = 0;		/* clear all fields */
       result0->fields.sw_if_index = sw_if_index0;
       if (msm->client_pid != 0)
@@ -208,7 +208,7 @@ l2learn_process (vlib_node_runtime_t * node,
       if (l2fib_entry_result_is_set_AGE_NOT (result0))
 	{
 	  /* The mac was provisioned */
-	  clib_atomic_fetch_add_relax(&msm->global_learn_count,1);
+	  clib_atomic_fetch_add_relax (&msm->global_learn_count, 1);
 	  l2fib_entry_result_clear_AGE_NOT (result0);
 	}
       if (msm->client_pid != 0)
