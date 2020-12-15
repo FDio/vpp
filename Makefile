@@ -638,9 +638,6 @@ checkstyle-api:
 # https://bugzilla.redhat.com/show_bug.cgi?id=1696324
 .PHONY: centos-pyyaml
 centos-pyyaml:
-ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-7)
-	@python3 -m pip install pyyaml
-endif
 ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
 	@sudo -E yum install $(CONFIRM) python3-pyyaml
 endif
