@@ -631,7 +631,7 @@ fixstyle:
 
 .PHONY: checkstyle-api
 checkstyle-api:
-	@extras/scripts/crcchecker.py --check-patch
+	@extras/scripts/crcchecker.py --check-patchset
 
 # necessary because Bug 1696324 - Update to python3.6 breaks PyYAML dependencies
 # Status:	CLOSED CANTFIX
