@@ -24,7 +24,7 @@ F:	build/
 
 Build System Internal
 I:	ebuild
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	build-root/Makefile
 F:	build-data/
 
@@ -46,7 +46,7 @@ F:	docs/
 
 Infrastructure Library
 I:	vppinfra
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/vppinfra/
 
 Physical Memory Allocator
@@ -56,7 +56,7 @@ F:	src/vppinfra/pmalloc.[ch]
 
 Vector Library
 I:	vlib
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vlib/
 E:	src/vlib/buffer*.[ch]
@@ -67,7 +67,7 @@ E:	src/vlib/linux/vfio.[ch]
 Vector Library - Buffer Management
 I:	buffers
 M:	Damjan Marion <damarion@cisco.com>
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/vlib/buffer*.[ch]
 
 Vector Library - PCI
@@ -79,7 +79,7 @@ F:	src/vlib/linux/vfio.[ch]
 
 Binary API Libraries
 I:	api
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/vlibapi/
 F:	src/vlibmemory/
 
@@ -90,7 +90,7 @@ F:	src/vnet/bfd/
 
 VNET Classifier
 I:	classify
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/vnet/classify
 
 VNET Policer
@@ -122,13 +122,13 @@ F:	src/vnet/devices/virtio/
 
 VNET Ethernet
 I:	ethernet
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/ethernet/
 
 VNET Feature Arcs
 I:	feature
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/feature/
 
@@ -142,7 +142,7 @@ F:	src/vnet/adj
 
 VNET IPv4 LPM
 I:	ip
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/vnet/ip/
 
 VNET IPv6 LPM
@@ -163,12 +163,12 @@ F:	src/vnet/qos/
 
 VNET Interface Common
 I:	interface
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/vnet/interface*.[ch]
 
 VNET Packet Generator
 I:	pg
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/vnet/pg/
 
 VNET Segment Routing (IPv6 and MPLS)
@@ -324,19 +324,19 @@ F:	src/vnet/syslog
 
 Plugin - DHCP
 I:	dhcp
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/plugins/dhcp/
 
 Plugin - ARP
 I:	arp
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/plugins/arp/
 
 Plugin - IP6 Neighbor Discovery
 I:	ip6-nd
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/plugins/ip6-nd/
 
@@ -357,7 +357,7 @@ F:	src/vnet/classify/
 
 VPP Main App
 I:	vpp
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vpp/
 
@@ -368,12 +368,12 @@ F:	src/plugins/abf/
 
 Plugin - Allow / Deny List
 I:	adl
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/adl/
 
 Plugin - Simple DNS name resolver
 I:	dns
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/dns/
 
 Plugin - Group Based Policy (GBP)
@@ -415,12 +415,12 @@ F:	src/plugins/flowprobe/
 
 Plugin - http_static
 I:	http_static
-M:	Dave Barach <dbarach@cisco.com>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/http_static/
 
 Plugin - builtinurl
 I:	builtinurl
-M:	Dave Barach <dbarach@cisco.com>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/builtinurl/
 
 Plugin - Group Based Policy (GBP)
@@ -463,7 +463,7 @@ F:	src/plugins/marvell/
 
 Plugin - performance counter
 I:	perfmon
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/perfmon/
 
 Plugin - PPPoE
@@ -517,23 +517,23 @@ F:	src/plugins/nsh/
 Plugin - Time-based MAC filter
 I:	mactime
 Y:	src/plugins/mactime/FEATURE.yaml
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:      src/plugins/mactime/
 
 Plugin - Network Delay Simulator
 I:	nsim
 Y:	src/plugins/nsim/FEATURE.yaml
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/nsim/
 
 Plugin - Buffer Metadata Modification Tracker
 I:	mdata
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/mdata/
 
 Plugin - Unit Tests
 I:	unittest
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 M:	Florin Coras <fcoras@cisco.com
 F:	src/plugins/unittest/
 
@@ -545,32 +545,32 @@ F:	test/
 
 SVM Library
 I:	svm
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/svm
 
 VPP API TEST
 I:	vat
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/vat/
 
 VPP Executable
 I:	vpp
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/vpp/
 
 Emacs templates
 I:	emacs
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	extras/emacs/
 
 Graphical Event Viewer
 I:	g2
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/tools/g2/
 
 Performance Tooling
 I:	perftool
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/tools/perftool/
 
 Plugin - vmxnet3 device driver
@@ -660,7 +660,7 @@ F:	src/plugins/l2e/
 
 IPv6 Connection Tracker
 I:	ct6
-M:	Dave Barach <dave@barachs.net>
+M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/ct6
 
 Steal The NIC
@@ -673,6 +673,7 @@ F:	src/plugins/ioam
 
 Awkward chained buffer geometry tool
 I:	oddbuf
+M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/oddbuf
 
 Plugin - VRRP
