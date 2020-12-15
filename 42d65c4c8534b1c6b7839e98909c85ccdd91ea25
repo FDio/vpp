@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "49dd75c1_a76e803e",
+        "filename": "src/vnet/interface_types.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2020-12-15T15:22:25Z",
+      "side": 1,
+      "message": "i take it back. VPP is converting this into a VLIB_RX/VLIB_TX which is not flag based. so internally there is no both. so this is not a flag.",
+      "parentUuid": "849894dc_7a6b6a95",
+      "range": {
+        "startLine": 76,
+        "startChar": 0,
+        "endLine": 76,
+        "endChar": 4
+      },
+      "revId": "42d65c4c8534b1c6b7839e98909c85ccdd91ea25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "43d3352c_e6eea069",
         "filename": "src/vnet/interface_types.api",
         "patchSetId": 2
