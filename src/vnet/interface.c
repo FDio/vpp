@@ -47,7 +47,7 @@
 /* *INDENT-OFF* */
 VLIB_REGISTER_LOG_CLASS (if_default_log, static) = {
   .class_name = "interface",
-  .default_syslog_level = VLIB_LOG_LEVEL_DEBUG,
+  .default_syslog_level = VLIB_LOG_LEVEL_ERR,
 };
 /* *INDENT-ON* */
 
@@ -382,8 +382,7 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 	  /* Notify everyone when the interface is created as admin up */
 	  error = call_elf_section_interface_callbacks (vnm, sw_if_index,
 							flags,
-							vnm->
-							sw_interface_admin_up_down_functions);
+							vnm->sw_interface_admin_up_down_functions);
 	  if (error)
 	    goto done;
 	}
@@ -1018,7 +1017,8 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   vlib_main_t *vm = vnm->vlib_main;
   vnet_device_class_t *dev_class = vnet_get_device_class (vnm,
-							  hw->dev_class_index);
+							  hw->
+							  dev_class_index);
   /* If it is up, mark it down. */
   if (hw->flags != 0)
     vnet_hw_interface_set_flags (vnm, hw_if_index, /* flags */ 0);
@@ -1610,13 +1610,12 @@ vnet_sw_interface_update_unnumbered (u32 unnumbered_sw_if_index,
 
       ip4_main.lookup_main.if_address_pool_index_by_sw_if_index
 	[unnumbered_sw_if_index] =
-	ip4_main.
-	lookup_main.if_address_pool_index_by_sw_if_index[ip_sw_if_index];
-      ip6_main.
-	lookup_main.if_address_pool_index_by_sw_if_index
-	[unnumbered_sw_if_index] =
-	ip6_main.
-	lookup_main.if_address_pool_index_by_sw_if_index[ip_sw_if_index];
+	ip4_main.lookup_main.
+	if_address_pool_index_by_sw_if_index[ip_sw_if_index];
+      ip6_main.lookup_main.
+	if_address_pool_index_by_sw_if_index[unnumbered_sw_if_index] =
+	ip6_main.lookup_main.
+	if_address_pool_index_by_sw_if_index[ip_sw_if_index];
     }
   else
     {
