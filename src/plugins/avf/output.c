@@ -47,8 +47,8 @@ struct avf_ip4_psh
 
 struct avf_ip6_psh
 {
-  u32 src[4];
-  u32 dst[4];
+  ip6_address_t src;
+  ip6_address_t dst;
   u32 l4len;
   u32 proto;
 };
@@ -113,8 +113,8 @@ avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
       else
 	{
 	  struct avf_ip6_psh psh = { 0 };
-	  clib_memcpy_fast (&psh.src, &ip6->src_address, 16);
-	  clib_memcpy_fast (&psh.dst, &ip6->dst_address, 16);
+	  psh.src = ip6->src_address;
+	  psh.dst = ip6->dst_address;
 	  psh.proto = clib_host_to_net_u32 ((u32) ip6->protocol);
 	  psh.l4len = is_tso ? 0 : ip6->payload_length;
 	  sum = ~ip_csum (&psh, sizeof (psh));
