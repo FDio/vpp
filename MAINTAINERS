@@ -218,6 +218,7 @@ F:	src/plugins/crypto_ipsecmb/
 VNET L2
 I:	l2
 M:	John Lo <loj@cisco.com>
+M:	Steven Luong <sluong@cisco.com>
 F:	src/vnet/l2/
 
 VNET Link Layer Discovery Protocol (LLDP)
@@ -282,6 +283,7 @@ F:	src/vnet/udp
 VNET VXLAN
 I:	vxlan
 M:	John Lo <loj@cisco.com>
+M:	Steven Luong <sluong@cisco.com>
 F:	src/vnet/vxlan/
 
 VNET VXLAN-GPE
