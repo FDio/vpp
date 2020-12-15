@@ -81,6 +81,8 @@ nat44_enable_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "users %u", &c.users));
       else if (unformat (line_input, "sessions %u", &c.sessions));
       else if (unformat (line_input, "user-sessions %u", &c.user_sessions));
+      else if (unformat
+	       (line_input, "frame-queue-nelts %u", &c.frame_queue_nelts));
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
@@ -1991,7 +1993,7 @@ VLIB_CLI_COMMAND (nat44_debug_fib_registration_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (nat44_enable_command, static) = {
   .path = "nat44 enable",
-  .short_help = "nat44 enable sessions <max-number> [users <max-number>] [static-mappig-only [connection-tracking]|out2in-dpo|endpoint-dependent] [inside-vrf <vrf-id>] [outside-vrf <vrf-id>] [user-sessions <max-number>]",
+  .short_help = "nat44 enable sessions <max-number> [users <max-number>] [static-mappig-only [connection-tracking]|out2in-dpo|endpoint-dependent] [inside-vrf <vrf-id>] [outside-vrf <vrf-id>] [user-sessions <max-number>] [frame-queue-nelts <number>]",
   .function = nat44_enable_command_fn,
 };
 
