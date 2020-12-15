@@ -29,7 +29,7 @@ calc_nat_key (ip4_address_t addr, u16 port, u32 fib_index, u8 proto)
   ASSERT (fib_index <= (1 << 14) - 1);
   ASSERT (proto <= (1 << 3) - 1);
   return (u64) addr.as_u32 << 32 | (u64) port << 16 | fib_index << 3 |
-    (proto & 0x7);
+	 (proto & 0x7);
 }
 
 always_inline void
@@ -518,15 +518,12 @@ split_ed_kv (clib_bihash_kv_16_8_t * kv,
 }
 
 static_always_inline int
-get_icmp_i2o_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
-		     u32 thread_index, u32 session_index,
-		     nat_protocol_t * nat_proto, u16 * l_port, u16 * r_port,
-		     clib_bihash_kv_16_8_t * kv)
+nat_get_icmp_session_lookup_values (vlib_buffer_t *b, ip4_header_t *ip0,
+				    ip4_address_t *lookup_saddr,
+				    u16 *lookup_sport,
+				    ip4_address_t *lookup_daddr,
+				    u16 *lookup_dport, u8 *lookup_protocol)
 {
-  u8 proto;
-  u16 _l_port, _r_port;
-  ip4_address_t *l_addr, *r_addr;
-
   icmp46_header_t *icmp0;
   icmp_echo_header_t *echo0, *inner_echo0 = 0;
   ip4_header_t *inner_ip0 = 0;
@@ -536,120 +533,42 @@ get_icmp_i2o_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
   icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
   echo0 = (icmp_echo_header_t *) (icmp0 + 1);
 
+  // avoid warning about unused variables in caller by setting to bogus values
+  *lookup_sport = 0;
+  *lookup_dport = 0;
+
   if (!icmp_type_is_error_message
       (vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags))
     {
-      proto = IP_PROTOCOL_ICMP;
-      l_addr = &ip0->src_address;
-      r_addr = &ip0->dst_address;
-      _l_port = vnet_buffer (b)->ip.reass.l4_src_port;
-      _r_port = 0;
+      *lookup_protocol = IP_PROTOCOL_ICMP;
+      lookup_saddr->as_u32 = ip0->src_address.as_u32;
+      *lookup_sport = vnet_buffer (b)->ip.reass.l4_src_port;
+      lookup_daddr->as_u32 = ip0->dst_address.as_u32;
+      *lookup_dport = vnet_buffer (b)->ip.reass.l4_dst_port;
     }
   else
     {
       inner_ip0 = (ip4_header_t *) (echo0 + 1);
       l4_header = ip4_next_header (inner_ip0);
-      proto = inner_ip0->protocol;
-      r_addr = &inner_ip0->src_address;
-      l_addr = &inner_ip0->dst_address;
+      *lookup_protocol = inner_ip0->protocol;
+      lookup_saddr->as_u32 = inner_ip0->dst_address.as_u32;
+      lookup_daddr->as_u32 = inner_ip0->src_address.as_u32;
       switch (ip_proto_to_nat_proto (inner_ip0->protocol))
 	{
 	case NAT_PROTOCOL_ICMP:
 	  inner_icmp0 = (icmp46_header_t *) l4_header;
 	  inner_echo0 = (icmp_echo_header_t *) (inner_icmp0 + 1);
-	  _r_port = 0;
-	  _l_port = inner_echo0->identifier;
+	  *lookup_sport = inner_echo0->identifier;
+	  *lookup_dport = inner_echo0->identifier;
 	  break;
 	case NAT_PROTOCOL_UDP:
 	case NAT_PROTOCOL_TCP:
-	  _l_port = ((tcp_udp_header_t *) l4_header)->dst_port;
-	  _r_port = ((tcp_udp_header_t *) l4_header)->src_port;
+	  *lookup_sport = ((tcp_udp_header_t *) l4_header)->dst_port;
+	  *lookup_dport = ((tcp_udp_header_t *) l4_header)->src_port;
 	  break;
 	default:
 	  return NAT_IN2OUT_ED_ERROR_UNSUPPORTED_PROTOCOL;
 	}
-    }
-  init_ed_kv (kv, *l_addr, _l_port, *r_addr, _r_port, rx_fib_index, proto,
-	      thread_index, session_index);
-  if (nat_proto)
-    {
-      *nat_proto = ip_proto_to_nat_proto (proto);
-    }
-  if (l_port)
-    {
-      *l_port = _l_port;
-    }
-  if (r_port)
-    {
-      *r_port = _r_port;
-    }
-  return 0;
-}
-
-static_always_inline int
-get_icmp_o2i_ed_key (vlib_buffer_t * b, ip4_header_t * ip0, u32 rx_fib_index,
-		     u32 thread_index, u32 session_index,
-		     nat_protocol_t * nat_proto, u16 * l_port, u16 * r_port,
-		     clib_bihash_kv_16_8_t * kv)
-{
-  icmp46_header_t *icmp0;
-  u8 proto;
-  ip4_address_t *l_addr, *r_addr;
-  u16 _l_port, _r_port;
-  icmp_echo_header_t *echo0, *inner_echo0 = 0;
-  ip4_header_t *inner_ip0;
-  void *l4_header = 0;
-  icmp46_header_t *inner_icmp0;
-
-  icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
-  echo0 = (icmp_echo_header_t *) (icmp0 + 1);
-
-  if (!icmp_type_is_error_message
-      (vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags))
-    {
-      proto = IP_PROTOCOL_ICMP;
-      l_addr = &ip0->dst_address;
-      r_addr = &ip0->src_address;
-      _l_port = vnet_buffer (b)->ip.reass.l4_src_port;
-      _r_port = 0;
-    }
-  else
-    {
-      inner_ip0 = (ip4_header_t *) (echo0 + 1);
-      l4_header = ip4_next_header (inner_ip0);
-      proto = inner_ip0->protocol;
-      l_addr = &inner_ip0->src_address;
-      r_addr = &inner_ip0->dst_address;
-      switch (ip_proto_to_nat_proto (inner_ip0->protocol))
-	{
-	case NAT_PROTOCOL_ICMP:
-	  inner_icmp0 = (icmp46_header_t *) l4_header;
-	  inner_echo0 = (icmp_echo_header_t *) (inner_icmp0 + 1);
-	  _l_port = inner_echo0->identifier;
-	  _r_port = 0;
-	  break;
-	case NAT_PROTOCOL_UDP:
-	case NAT_PROTOCOL_TCP:
-	  _l_port = ((tcp_udp_header_t *) l4_header)->src_port;
-	  _r_port = ((tcp_udp_header_t *) l4_header)->dst_port;
-	  break;
-	default:
-	  return -1;
-	}
-    }
-  init_ed_kv (kv, *l_addr, _l_port, *r_addr, _r_port, rx_fib_index, proto,
-	      thread_index, session_index);
-  if (nat_proto)
-    {
-      *nat_proto = ip_proto_to_nat_proto (proto);
-    }
-  if (l_port)
-    {
-      *l_port = _l_port;
-    }
-  if (r_port)
-    {
-      *r_port = _r_port;
     }
   return 0;
 }
