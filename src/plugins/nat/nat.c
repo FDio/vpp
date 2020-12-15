@@ -37,6 +37,7 @@
 #include <nat/nat44-ei/nat44_ei.h>
 
 #include <vpp/app/version.h>
+#include <nat/lib/nat_inlines.h>
 
 snat_main_t snat_main;
 
@@ -152,11 +153,6 @@ VNET_FEATURE_INIT (ip4_snat_hairpin_dst, static) = {
   .node_name = "nat44-hairpin-dst",
   .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
 };
-VNET_FEATURE_INIT (ip4_nat44_ed_hairpin_dst, static) = {
-  .arc_name = "ip4-unicast",
-  .node_name = "nat44-ed-hairpin-dst",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
-};
 
 /* Hook up output features */
 VNET_FEATURE_INIT (ip4_snat_in2out_output, static) = {
@@ -186,12 +182,6 @@ VNET_FEATURE_INIT (ip4_nat44_ed_in2out_output, static) = {
   .runs_after = VNET_FEATURES ("ip4-sv-reassembly-output-feature"),
   .runs_before = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
 };
-VNET_FEATURE_INIT (ip4_nat44_ed_hairpin_src, static) = {
-  .arc_name = "ip4-output",
-  .node_name = "nat44-ed-hairpin-src",
-  .runs_after = VNET_FEATURES ("ip4-sv-reassembly-output-feature"),
-  .runs_before = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
-};
 
 /* Hook up ip4-local features */
 VNET_FEATURE_INIT (ip4_nat_hairpinning, static) =
@@ -200,13 +190,6 @@ VNET_FEATURE_INIT (ip4_nat_hairpinning, static) =
   .node_name = "nat44-hairpinning",
   .runs_before = VNET_FEATURES("ip4-local-end-of-arc"),
 };
-VNET_FEATURE_INIT (ip4_nat44_ed_hairpinning, static) =
-{
-  .arc_name = "ip4-local",
-  .node_name = "nat44-ed-hairpinning",
-  .runs_before = VNET_FEATURES("ip4-local-end-of-arc"),
-};
-
 
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
@@ -275,13 +258,13 @@ format_ed_session_kvp (u8 * s, va_list * args)
   u32 fib_index;
 
   split_ed_kv (v, &l_addr, &r_addr, &proto, &fib_index, &l_port, &r_port);
-  s =
-    format (s,
-	    "local %U:%d remote %U:%d proto %U fib %d thread-index %u session-index %u",
-	    format_ip4_address, &l_addr, clib_net_to_host_u16 (l_port),
-	    format_ip4_address, &r_addr, clib_net_to_host_u16 (r_port),
-	    format_ip_protocol, proto, fib_index,
-	    ed_value_get_session_index (v), ed_value_get_thread_index (v));
+  s = format (s,
+	      "local %U:%d remote %U:%d proto %U fib %d thread-index %u "
+	      "session-index %u",
+	      format_ip4_address, &l_addr, clib_net_to_host_u16 (l_port),
+	      format_ip4_address, &r_addr, clib_net_to_host_u16 (r_port),
+	      format_ip_protocol, proto, fib_index,
+	      ed_value_get_thread_index (v), ed_value_get_session_index (v));
 
   return s;
 }
@@ -291,39 +274,22 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
 		       u8 is_ha)
 {
   clib_bihash_kv_8_8_t kv;
-  u8 proto;
-  u16 r_port, l_port;
-  ip4_address_t *l_addr, *r_addr;
-  u32 fib_index = 0;
-  clib_bihash_kv_16_8_t ed_kv;
   snat_main_per_thread_data_t *tsm =
     vec_elt_at_index (sm->per_thread_data, thread_index);
 
   if (is_ed_session (s))
     {
       per_vrf_sessions_unregister_session (s, thread_index);
+
+      if (nat_ed_ses_i2o_flow_hash_add_del (sm, thread_index, s, 0))
+	nat_elog_warn ("flow hash del failed");
+
+      if (nat_ed_ses_o2i_flow_hash_add_del (sm, thread_index, s, 0))
+	nat_elog_warn ("flow hash del failed");
     }
 
   if (is_fwd_bypass_session (s))
     {
-      if (snat_is_unk_proto_session (s))
-	{
-	  init_ed_k (&ed_kv, s->in2out.addr, 0, s->ext_host_addr, 0, 0,
-		     s->in2out.port);
-	}
-      else
-	{
-	  l_port = s->in2out.port;
-	  r_port = s->ext_host_port;
-	  l_addr = &s->in2out.addr;
-	  r_addr = &s->ext_host_addr;
-	  proto = nat_proto_to_ip_proto (s->nat_proto);
-	  fib_index = s->in2out.fib_index;
-	  init_ed_k (&ed_kv, *l_addr, l_port, *r_addr, r_port, fib_index,
-		     proto);
-	}
-      if (clib_bihash_add_del_16_8 (&tsm->in2out_ed, &ed_kv, 0))
-	nat_elog_warn ("in2out_ed key del failed");
       return;
     }
 
@@ -333,36 +299,6 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
       if (is_affinity_sessions (s))
 	nat_affinity_unlock (s->ext_host_addr, s->out2in.addr,
 			     s->nat_proto, s->out2in.port);
-      l_addr = &s->out2in.addr;
-      r_addr = &s->ext_host_addr;
-      fib_index = s->out2in.fib_index;
-      if (snat_is_unk_proto_session (s))
-	{
-	  proto = s->in2out.port;
-	  r_port = 0;
-	  l_port = 0;
-	}
-      else
-	{
-	  proto = nat_proto_to_ip_proto (s->nat_proto);
-	  l_port = s->out2in.port;
-	  r_port = s->ext_host_port;
-	}
-      init_ed_k (&ed_kv, *l_addr, l_port, *r_addr, r_port, fib_index, proto);
-      if (clib_bihash_add_del_16_8 (&sm->out2in_ed, &ed_kv, 0))
-	nat_elog_warn ("out2in_ed key del failed");
-      l_addr = &s->in2out.addr;
-      fib_index = s->in2out.fib_index;
-      if (!snat_is_unk_proto_session (s))
-	l_port = s->in2out.port;
-      if (is_twice_nat_session (s))
-	{
-	  r_addr = &s->ext_host_nat_addr;
-	  r_port = s->ext_host_nat_port;
-	}
-      init_ed_k (&ed_kv, *l_addr, l_port, *r_addr, r_port, fib_index, proto);
-      if (clib_bihash_add_del_16_8 (&tsm->in2out_ed, &ed_kv, 0))
-	nat_elog_warn ("in2out_ed key del failed");
 
       if (!is_ha)
 	nat_syslog_nat44_sdel (s->user_index, s->in2out.fib_index,
@@ -1985,18 +1921,14 @@ feature_set:
                                              sw_if_index, 1, 0, 0);
                 if (!is_inside)
                   {
-                    if (sm->endpoint_dependent)
-                      vnet_feature_enable_disable ("ip4-local",
-                                                   "nat44-ed-hairpinning",
-                                                   sw_if_index, 1, 0, 0);
-                    else
-                      vnet_feature_enable_disable ("ip4-local",
-                                                   "nat44-hairpinning",
-                                                   sw_if_index, 1, 0, 0);
-                  }
-              }
-            else
-              {
+		    if (!sm->endpoint_dependent)
+		      vnet_feature_enable_disable ("ip4-local",
+						   "nat44-hairpinning",
+						   sw_if_index, 1, 0, 0);
+		  }
+	      }
+	    else
+	      {
 		int rv = ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, 0);
 		if (rv)
 		  return rv;
@@ -2005,41 +1937,38 @@ feature_set:
                 pool_put (sm->interfaces, i);
                 if (is_inside)
                   {
-                    if (sm->endpoint_dependent)
-                      vnet_feature_enable_disable ("ip4-local",
-                                                   "nat44-ed-hairpinning",
-                                                   sw_if_index, 0, 0, 0);
-                    else
-                      vnet_feature_enable_disable ("ip4-local",
-                                                   "nat44-hairpinning",
-                                                   sw_if_index, 0, 0, 0);
-                  }
-              }
-          }
-        else
-          {
-            if ((nat_interface_is_inside(i) && is_inside) ||
-                (nat_interface_is_outside(i) && !is_inside))
-              return 0;
+		    if (!sm->endpoint_dependent)
+		      vnet_feature_enable_disable ("ip4-local",
+						   "nat44-hairpinning",
+						   sw_if_index, 0, 0, 0);
+		  }
+	      }
+	  }
+	else
+	  {
+	    if ((nat_interface_is_inside (i) && is_inside) ||
+		(nat_interface_is_outside (i) && !is_inside))
+	      return 0;
 
-            if (sm->num_workers > 1)
-              {
-                del_feature_name = !is_inside ?  "nat44-in2out-worker-handoff" :
-                                                 "nat44-out2in-worker-handoff";
-                feature_name = "nat44-handoff-classify";
-              }
-            else if (sm->endpoint_dependent)
-              {
-                del_feature_name = !is_inside ?  "nat-pre-in2out" :
-                                                 "nat-pre-out2in";
+	    if (sm->num_workers > 1)
+	      {
+		del_feature_name = !is_inside ? "nat44-in2out-worker-handoff" :
+						"nat44-out2in-worker-handoff";
+		feature_name = "nat44-handoff-classify";
+	      }
+	    else if (sm->endpoint_dependent)
+	      {
+		del_feature_name =
+		  !is_inside ? "nat-pre-in2out" : "nat-pre-out2in";
 
-                feature_name = "nat44-ed-classify";
-              }
-            else
-              {
-                del_feature_name = !is_inside ?  "nat44-in2out" : "nat44-out2in";
-                feature_name = "nat44-classify";
-              }
+		feature_name = "nat44-ed-classify";
+	      }
+	    else
+	      {
+		del_feature_name =
+		  !is_inside ? "nat44-in2out" : "nat44-out2in";
+		feature_name = "nat44-classify";
+	      }
 
 	    int rv = ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, 1);
 	    if (rv)
@@ -2050,17 +1979,14 @@ feature_set:
                                          sw_if_index, 1, 0, 0);
             if (!is_inside)
               {
-                if (sm->endpoint_dependent)
-                  vnet_feature_enable_disable ("ip4-local", "nat44-ed-hairpinning",
-                                               sw_if_index, 0, 0, 0);
-                else
-                  vnet_feature_enable_disable ("ip4-local", "nat44-hairpinning",
-                                               sw_if_index, 0, 0, 0);
-              }
-            goto set_flags;
-          }
+		if (!sm->endpoint_dependent)
+		  vnet_feature_enable_disable (
+		    "ip4-local", "nat44-hairpinning", sw_if_index, 0, 0, 0);
+	      }
+	    goto set_flags;
+	  }
 
-        goto fib;
+	goto fib;
       }
   }
   /* *INDENT-ON* */
@@ -2085,10 +2011,7 @@ feature_set:
 
   if (is_inside && !sm->out2in_dpo)
     {
-      if (sm->endpoint_dependent)
-	vnet_feature_enable_disable ("ip4-local", "nat44-ed-hairpinning",
-				     sw_if_index, 1, 0, 0);
-      else
+      if (!sm->endpoint_dependent)
 	vnet_feature_enable_disable ("ip4-local", "nat44-hairpinning",
 				     sw_if_index, 1, 0, 0);
     }
@@ -2199,10 +2122,6 @@ feature_set:
 							    !is_del);
 	  if (rv)
 	    return rv;
-	  vnet_feature_enable_disable ("ip4-unicast", "nat44-ed-hairpin-dst",
-				       sw_if_index, !is_del, 0, 0);
-	  vnet_feature_enable_disable ("ip4-output", "nat44-ed-hairpin-src",
-				       sw_if_index, !is_del, 0, 0);
 	}
       else
 	{
@@ -2575,12 +2494,6 @@ nat44_set_node_indexes (snat_main_t * sm, vlib_main_t * vm)
   sm->hairpin_dst_node_index = node->index;
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-hairpin-src");
   sm->hairpin_src_node_index = node->index;
-  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-hairpinning");
-  sm->ed_hairpinning_node_index = node->index;
-  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-hairpin-dst");
-  sm->ed_hairpin_dst_node_index = node->index;
-  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-hairpin-src");
-  sm->ed_hairpin_src_node_index = node->index;
 }
 
 #define nat_init_simple_counter(c, n, sn) \
@@ -2778,8 +2691,8 @@ nat44_ed_plugin_enable (nat44_config_t c)
 
   if (sm->pat)
     {
-      sm->icmp_match_in2out_cb = icmp_match_in2out_ed;
-      sm->icmp_match_out2in_cb = icmp_match_out2in_ed;
+      sm->icmp_match_in2out_cb = NULL;
+      sm->icmp_match_out2in_cb = NULL;
     }
   else
     {
@@ -2906,8 +2819,6 @@ nat44_ed_plugin_disable ()
   sm->output_feature_interfaces = 0;
 
   vec_free (sm->max_translations_per_fib);
-
-  nat_affinity_disable ();
 
   nat44_ed_db_free ();
 
@@ -3258,8 +3169,8 @@ nat44_ed_get_worker_in2out_cb (ip4_header_t *ip, u32 rx_fib_index,
       init_ed_k (&kv16, ip->src_address, udp->src_port, ip->dst_address,
 		 udp->dst_port, fib_index, ip->protocol);
 
-      if (PREDICT_TRUE (!clib_bihash_search_16_8 (&sm->out2in_ed,
-						  &kv16, &value16)))
+      if (PREDICT_TRUE (
+	    !clib_bihash_search_16_8 (&sm->flow_hash, &kv16, &value16)))
 	{
 	  tsm =
 	    vec_elt_at_index (sm->per_thread_data,
@@ -3327,13 +3238,13 @@ nat44_ed_get_worker_out2in_cb (vlib_buffer_t * b, ip4_header_t * ip,
       init_ed_k (&kv16, ip->dst_address, udp->dst_port, ip->src_address,
 		 udp->src_port, rx_fib_index, ip->protocol);
 
-      if (PREDICT_TRUE (!clib_bihash_search_16_8 (&sm->out2in_ed,
-						  &kv16, &value16)))
+      if (PREDICT_TRUE (
+	    !clib_bihash_search_16_8 (&sm->flow_hash, &kv16, &value16)))
 	{
 	  tsm =
 	    vec_elt_at_index (sm->per_thread_data,
 			      ed_value_get_thread_index (&value16));
-	  vnet_buffer2 (b)->nat.ed_out2in_nat_session_index =
+	  vnet_buffer2 (b)->nat.cached_session_index =
 	    ed_value_get_session_index (&value16);
 	  next_worker_index = sm->first_worker_index + tsm->thread_index;
 	  nat_elog_debug_handoff ("HANDOFF OUT2IN (session)",
@@ -3347,10 +3258,17 @@ nat44_ed_get_worker_out2in_cb (vlib_buffer_t * b, ip4_header_t * ip,
     }
   else if (proto == NAT_PROTOCOL_ICMP)
     {
-      if (!get_icmp_o2i_ed_key (b, ip, rx_fib_index, ~0, ~0, 0, 0, 0, &kv16))
+      ip4_address_t lookup_saddr, lookup_daddr;
+      u16 lookup_sport, lookup_dport;
+      u8 lookup_protocol;
+      if (!nat_get_icmp_session_lookup_values (
+	    b, ip, &lookup_saddr, &lookup_sport, &lookup_daddr, &lookup_dport,
+	    &lookup_protocol))
 	{
-	  if (PREDICT_TRUE (!clib_bihash_search_16_8 (&sm->out2in_ed,
-						      &kv16, &value16)))
+	  init_ed_k (&kv16, lookup_saddr, lookup_sport, lookup_daddr,
+		     lookup_dport, rx_fib_index, lookup_protocol);
+	  if (PREDICT_TRUE (
+		!clib_bihash_search_16_8 (&sm->flow_hash, &kv16, &value16)))
 	    {
 	      tsm =
 		vec_elt_at_index (sm->per_thread_data,
@@ -3558,14 +3476,22 @@ nat44_ed_worker_db_init (snat_main_per_thread_data_t *tsm, u32 translations,
   tsm->unk_proto_lru_head_index = head - tsm->lru_pool;
   clib_dlist_init (tsm->lru_pool, tsm->unk_proto_lru_head_index);
 
-  clib_bihash_init_16_8 (&tsm->in2out_ed, "in2out-ed", translation_buckets, 0);
-  clib_bihash_set_kvp_format_fn_16_8 (&tsm->in2out_ed, format_ed_session_kvp);
-
   // TODO: ED nat is not using these
   // before removal large refactor required
   pool_alloc (tsm->list_pool, translations);
   clib_bihash_init_8_8 (&tsm->user_hash, "users", user_buckets, 0);
   clib_bihash_set_kvp_format_fn_8_8 (&tsm->user_hash, format_user_kvp);
+}
+
+static void
+reinit_ed_flow_hash ()
+{
+  snat_main_t *sm = &snat_main;
+  // we expect 2 flows per session, so multiply translation_buckets by 2
+  clib_bihash_init_16_8 (
+    &sm->flow_hash, "ed-flow-hash",
+    clib_max (1, sm->num_workers) * 2 * sm->translation_buckets, 0);
+  clib_bihash_set_kvp_format_fn_16_8 (&sm->flow_hash, format_ed_session_kvp);
 }
 
 static void
@@ -3576,8 +3502,7 @@ nat44_ed_db_init (u32 translations, u32 translation_buckets, u32 user_buckets)
   u32 static_mapping_buckets = 1024;
   u32 static_mapping_memory_size = 64 << 20;
 
-  clib_bihash_init_16_8 (&sm->out2in_ed, "out2in-ed", translation_buckets, 0);
-  clib_bihash_set_kvp_format_fn_16_8 (&sm->out2in_ed, format_ed_session_kvp);
+  reinit_ed_flow_hash ();
 
   clib_bihash_init_8_8 (&sm->static_mapping_by_local,
 			"static_mapping_by_local", static_mapping_buckets,
@@ -3607,7 +3532,6 @@ nat44_ed_worker_db_free (snat_main_per_thread_data_t *tsm)
   pool_free (tsm->sessions);
   pool_free (tsm->lru_pool);
 
-  clib_bihash_free_16_8 (&tsm->in2out_ed);
   vec_free (tsm->per_vrf_sessions_vec);
 
   // TODO: resolve static mappings (put only to !ED)
@@ -3623,7 +3547,7 @@ nat44_ed_db_free ()
   snat_main_per_thread_data_t *tsm;
 
   pool_free (sm->static_mappings);
-  clib_bihash_free_16_8 (&sm->out2in_ed);
+  clib_bihash_free_16_8 (&sm->flow_hash);
   clib_bihash_free_8_8 (&sm->static_mapping_by_local);
   clib_bihash_free_8_8 (&sm->static_mapping_by_external);
 
@@ -3642,11 +3566,7 @@ nat44_ed_sessions_clear ()
   snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm;
 
-  clib_bihash_free_16_8 (&sm->out2in_ed);
-  clib_bihash_init_16_8 (
-    &sm->out2in_ed, "out2in-ed",
-    clib_max (1, sm->num_workers) * sm->translation_buckets, 0);
-  clib_bihash_set_kvp_format_fn_16_8 (&sm->out2in_ed, format_ed_session_kvp);
+  reinit_ed_flow_hash ();
 
   if (sm->pat)
     {
@@ -3896,7 +3816,6 @@ nat44_del_ed_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
 		      u32 vrf_id, int is_in)
 {
   ip4_header_t ip;
-  clib_bihash_16_8_t *t;
   clib_bihash_kv_16_8_t kv, value;
   u32 fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
   snat_session_t *s;
@@ -3913,16 +3832,15 @@ nat44_del_ed_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
   else
     tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
 
-  t = is_in ? &tsm->in2out_ed : &sm->out2in_ed;
   init_ed_k (&kv, *addr, port, *eh_addr, eh_port, fib_index, proto);
-  if (clib_bihash_search_16_8 (t, &kv, &value))
+  if (clib_bihash_search_16_8 (&sm->flow_hash, &kv, &value))
     {
       return VNET_API_ERROR_NO_SUCH_ENTRY;
     }
 
-  if (pool_is_free_index (tsm->sessions, value.value))
+  if (pool_is_free_index (tsm->sessions, ed_value_get_session_index (&value)))
     return VNET_API_ERROR_UNSPECIFIED;
-  s = pool_elt_at_index (tsm->sessions, value.value);
+  s = pool_elt_at_index (tsm->sessions, ed_value_get_session_index (&value));
   nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
   nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
   return 0;
@@ -3952,12 +3870,342 @@ VLIB_REGISTER_NODE (nat_default_node) = {
     [NAT_NEXT_IN2OUT_ED_OUTPUT_SLOW_PATH] = "nat44-ed-in2out-output-slowpath",
     [NAT_NEXT_OUT2IN_ED_FAST_PATH] = "nat44-ed-out2in",
     [NAT_NEXT_OUT2IN_ED_SLOW_PATH] = "nat44-ed-out2in-slowpath",
-    [NAT_NEXT_OUT2IN_ED_HANDOFF] = "nat44-ed-out2in-handoff",
     [NAT_NEXT_IN2OUT_CLASSIFY] = "nat44-in2out-worker-handoff",
     [NAT_NEXT_OUT2IN_CLASSIFY] = "nat44-out2in-worker-handoff",
   },
 };
 /* *INDENT-ON* */
+
+void
+nat_6t_l3_l4_csum_calc (nat_6t_flow_t *f)
+{
+  f->l3_csum_delta = 0;
+  f->l4_csum_delta = 0;
+  if (f->ops & NAT_FLOW_OP_SADDR_REWRITE &&
+      f->rewrite.saddr.as_u32 != f->match.saddr.as_u32)
+    {
+      f->l3_csum_delta =
+	ip_csum_add_even (f->l3_csum_delta, f->rewrite.saddr.as_u32);
+      f->l3_csum_delta =
+	ip_csum_sub_even (f->l3_csum_delta, f->match.saddr.as_u32);
+    }
+  else
+    {
+      f->rewrite.saddr.as_u32 = f->match.saddr.as_u32;
+    }
+  if (f->ops & NAT_FLOW_OP_DADDR_REWRITE &&
+      f->rewrite.daddr.as_u32 != f->match.daddr.as_u32)
+    {
+      f->l3_csum_delta =
+	ip_csum_add_even (f->l3_csum_delta, f->rewrite.daddr.as_u32);
+      f->l3_csum_delta =
+	ip_csum_sub_even (f->l3_csum_delta, f->match.daddr.as_u32);
+    }
+  else
+    {
+      f->rewrite.daddr.as_u32 = f->match.daddr.as_u32;
+    }
+  if (f->ops & NAT_FLOW_OP_SPORT_REWRITE && f->rewrite.sport != f->match.sport)
+    {
+      f->l4_csum_delta = ip_csum_add_even (f->l4_csum_delta, f->rewrite.sport);
+      f->l4_csum_delta = ip_csum_sub_even (f->l4_csum_delta, f->match.sport);
+    }
+  else
+    {
+      f->rewrite.sport = f->match.sport;
+    }
+  if (f->ops & NAT_FLOW_OP_DPORT_REWRITE && f->rewrite.dport != f->match.dport)
+    {
+      f->l4_csum_delta = ip_csum_add_even (f->l4_csum_delta, f->rewrite.dport);
+      f->l4_csum_delta = ip_csum_sub_even (f->l4_csum_delta, f->match.dport);
+    }
+  else
+    {
+      f->rewrite.dport = f->match.dport;
+    }
+  if (f->ops & NAT_FLOW_OP_ICMP_ID_REWRITE &&
+      f->rewrite.icmp_id != f->match.icmp_id)
+    {
+      f->l4_csum_delta =
+	ip_csum_add_even (f->l4_csum_delta, f->rewrite.icmp_id);
+      f->l4_csum_delta = ip_csum_sub_even (f->l4_csum_delta, f->match.icmp_id);
+    }
+  else
+    {
+      f->rewrite.icmp_id = f->match.icmp_id;
+    }
+  if (f->ops & NAT_FLOW_OP_TXFIB_REWRITE)
+    {
+    }
+  else
+    {
+      f->rewrite.fib_index = f->match.fib_index;
+    }
+}
+
+static_always_inline int nat_6t_flow_icmp_translate (snat_main_t *sm,
+						     vlib_buffer_t *b,
+						     ip4_header_t *ip,
+						     nat_6t_flow_t *f);
+
+static_always_inline void
+nat_6t_flow_ip4_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
+			   nat_6t_flow_t *f, nat_protocol_t proto,
+			   int is_icmp_inner_ip4)
+{
+  udp_header_t *udp = ip4_next_header (ip);
+  tcp_header_t *tcp = (tcp_header_t *) udp;
+
+  if ((NAT_PROTOCOL_TCP == proto || NAT_PROTOCOL_UDP == proto) &&
+      !vnet_buffer (b)->ip.reass.is_non_first_fragment)
+    {
+      if (!is_icmp_inner_ip4)
+	{ // regular case
+	  ip->src_address = f->rewrite.saddr;
+	  ip->dst_address = f->rewrite.daddr;
+	  udp->src_port = f->rewrite.sport;
+	  udp->dst_port = f->rewrite.dport;
+	}
+      else
+	{ // icmp inner ip4 - reversed saddr/daddr
+	  ip->src_address = f->rewrite.daddr;
+	  ip->dst_address = f->rewrite.saddr;
+	  udp->src_port = f->rewrite.dport;
+	  udp->dst_port = f->rewrite.sport;
+	}
+
+      if (NAT_PROTOCOL_TCP == proto)
+	{
+	  ip_csum_t tcp_sum = tcp->checksum;
+	  tcp_sum = ip_csum_sub_even (tcp_sum, f->l3_csum_delta);
+	  tcp_sum = ip_csum_sub_even (tcp_sum, f->l4_csum_delta);
+	  mss_clamping (sm->mss_clamping, tcp, &tcp_sum);
+	  tcp->checksum = ip_csum_fold (tcp_sum);
+	}
+      else if (proto == NAT_PROTOCOL_UDP && udp->checksum)
+	{
+	  ip_csum_t udp_sum = udp->checksum;
+	  udp_sum = ip_csum_sub_even (udp_sum, f->l3_csum_delta);
+	  udp_sum = ip_csum_sub_even (udp_sum, f->l4_csum_delta);
+	  udp->checksum = ip_csum_fold (udp_sum);
+	}
+    }
+  else
+    {
+      if (!is_icmp_inner_ip4)
+	{ // regular case
+	  ip->src_address = f->rewrite.saddr;
+	  ip->dst_address = f->rewrite.daddr;
+	}
+      else
+	{ // icmp inner ip4 - reversed saddr/daddr
+	  ip->src_address = f->rewrite.daddr;
+	  ip->dst_address = f->rewrite.saddr;
+	}
+    }
+
+  ip_csum_t ip_sum = ip->checksum;
+  ip_sum = ip_csum_sub_even (ip_sum, f->l3_csum_delta);
+  ip->checksum = ip_csum_fold (ip_sum);
+  ASSERT (ip->checksum == ip4_header_checksum (ip));
+}
+
+static_always_inline int
+nat_6t_flow_icmp_translate (snat_main_t *sm, vlib_buffer_t *b,
+			    ip4_header_t *ip, nat_6t_flow_t *f)
+{
+  if (IP_PROTOCOL_ICMP != ip->protocol)
+    return NAT_ED_TRNSL_ERR_TRANSLATION_FAILED;
+
+  icmp46_header_t *icmp = ip4_next_header (ip);
+  icmp_echo_header_t *echo = (icmp_echo_header_t *) (icmp + 1);
+
+  if ((!vnet_buffer (b)->ip.reass.is_non_first_fragment))
+    {
+      if (icmp->checksum == 0)
+	icmp->checksum = 0xffff;
+
+      if (!icmp_type_is_error_message (icmp->type))
+	{
+	  if ((f->ops & NAT_FLOW_OP_ICMP_ID_REWRITE) &&
+	      (f->rewrite.icmp_id != echo->identifier))
+	    {
+	      ip_csum_t sum = icmp->checksum;
+	      sum = ip_csum_update (sum, echo->identifier, f->rewrite.icmp_id,
+				    icmp_echo_header_t,
+				    identifier /* changed member */);
+	      echo->identifier = f->rewrite.icmp_id;
+	      icmp->checksum = ip_csum_fold (sum);
+	    }
+	}
+      else
+	{
+	  // errors are not fragmented
+	  ip4_header_t *inner_ip = (ip4_header_t *) (echo + 1);
+
+	  if (!ip4_header_checksum_is_valid (inner_ip))
+	    {
+	      return NAT_ED_TRNSL_ERR_TRANSLATION_FAILED;
+	    }
+
+	  nat_protocol_t inner_proto =
+	    ip_proto_to_nat_proto (inner_ip->protocol);
+
+	  ip_csum_t icmp_sum = icmp->checksum;
+
+	  switch (inner_proto)
+	    {
+	    case NAT_PROTOCOL_UDP:
+	    case NAT_PROTOCOL_TCP:
+	      nat_6t_flow_ip4_translate (sm, b, inner_ip, f, inner_proto,
+					 1 /* is_icmp_inner_ip4 */);
+	      icmp_sum = ip_csum_sub_even (icmp_sum, f->l3_csum_delta);
+	      icmp->checksum = ip_csum_fold (icmp_sum);
+	      break;
+	    case NAT_PROTOCOL_ICMP:
+	      if (f->ops & NAT_FLOW_OP_ICMP_ID_REWRITE)
+		{
+		  icmp46_header_t *inner_icmp = ip4_next_header (inner_ip);
+		  icmp_echo_header_t *inner_echo =
+		    (icmp_echo_header_t *) (inner_icmp + 1);
+		  if (f->rewrite.icmp_id != inner_echo->identifier)
+		    {
+		      ip_csum_t sum = icmp->checksum;
+		      sum = ip_csum_update (
+			sum, inner_echo->identifier, f->rewrite.icmp_id,
+			icmp_echo_header_t, identifier /* changed member */);
+		      icmp->checksum = ip_csum_fold (sum);
+		      ip_csum_t inner_sum = inner_icmp->checksum;
+		      inner_sum = ip_csum_update (
+			sum, inner_echo->identifier, f->rewrite.icmp_id,
+			icmp_echo_header_t, identifier /* changed member */);
+		      inner_icmp->checksum = ip_csum_fold (inner_sum);
+		      inner_echo->identifier = f->rewrite.icmp_id;
+		    }
+		}
+	      break;
+	    default:
+	      clib_warning ("unexpected NAT protocol value `%d'", inner_proto);
+	      return NAT_ED_TRNSL_ERR_TRANSLATION_FAILED;
+	    }
+	}
+    }
+  return NAT_ED_TRNSL_ERR_SUCCESS;
+}
+
+nat_translation_error_e
+nat_6t_flow_buf_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
+			   nat_6t_flow_t *f, nat_protocol_t proto,
+			   int is_output_feature)
+{
+  if (!is_output_feature && f->ops & NAT_FLOW_OP_TXFIB_REWRITE)
+    {
+      vnet_buffer (b)->sw_if_index[VLIB_TX] = f->rewrite.fib_index;
+    }
+
+  nat_6t_flow_ip4_translate (sm, b, ip, f, proto, 0 /* is_icmp_inner_ip4 */);
+
+  if (NAT_PROTOCOL_ICMP == proto)
+    {
+      return nat_6t_flow_icmp_translate (sm, b, ip, f);
+    }
+
+  return NAT_ED_TRNSL_ERR_SUCCESS;
+}
+
+u8 *
+format_nat_6t (u8 *s, va_list *args)
+{
+  nat_6t_t *t = va_arg (*args, nat_6t_t *);
+
+  s = format (s, "saddr %U sport %u daddr %U dport %u proto %U fib_idx %u",
+	      format_ip4_address, t->saddr.as_u8,
+	      clib_net_to_host_u16 (t->sport), format_ip4_address,
+	      t->daddr.as_u8, clib_net_to_host_u16 (t->dport),
+	      format_ip_protocol, t->proto, t->fib_index);
+  return s;
+}
+
+u8 *
+format_nat_ed_translation_error (u8 *s, va_list *args)
+{
+  nat_translation_error_e e = va_arg (*args, nat_translation_error_e);
+
+  switch (e)
+    {
+    case NAT_ED_TRNSL_ERR_SUCCESS:
+      s = format (s, "success");
+      break;
+    case NAT_ED_TRNSL_ERR_TRANSLATION_FAILED:
+      s = format (s, "translation-failed");
+      break;
+    case NAT_ED_TRNSL_ERR_FLOW_MISMATCH:
+      s = format (s, "flow-mismatch");
+      break;
+    }
+  return s;
+}
+
+u8 *
+format_nat_6t_flow (u8 *s, va_list *args)
+{
+  nat_6t_flow_t *f = va_arg (*args, nat_6t_flow_t *);
+
+  s = format (s, "match: %U ", format_nat_6t, &f->match);
+  int r = 0;
+  if (f->ops & NAT_FLOW_OP_SADDR_REWRITE)
+    {
+      s = format (s, "rewrite: saddr %U ", format_ip4_address,
+		  f->rewrite.saddr.as_u8);
+      r = 1;
+    }
+  if (f->ops & NAT_FLOW_OP_SPORT_REWRITE)
+    {
+      if (!r)
+	{
+	  s = format (s, "rewrite: ");
+	  r = 1;
+	}
+      s = format (s, "sport %u ", clib_net_to_host_u16 (f->rewrite.sport));
+    }
+  if (f->ops & NAT_FLOW_OP_DADDR_REWRITE)
+    {
+      if (!r)
+	{
+	  s = format (s, "rewrite: ");
+	  r = 1;
+	}
+      s = format (s, "daddr %U ", format_ip4_address, f->rewrite.daddr.as_u8);
+    }
+  if (f->ops & NAT_FLOW_OP_DPORT_REWRITE)
+    {
+      if (!r)
+	{
+	  s = format (s, "rewrite: ");
+	  r = 1;
+	}
+      s = format (s, "dport %u ", clib_net_to_host_u16 (f->rewrite.dport));
+    }
+  if (f->ops & NAT_FLOW_OP_ICMP_ID_REWRITE)
+    {
+      if (!r)
+	{
+	  s = format (s, "rewrite: ");
+	  r = 1;
+	}
+      s = format (s, "icmp-id %u ", clib_net_to_host_u16 (f->rewrite.icmp_id));
+    }
+  if (f->ops & NAT_FLOW_OP_TXFIB_REWRITE)
+    {
+      if (!r)
+	{
+	  s = format (s, "rewrite: ");
+	  r = 1;
+	}
+      s = format (s, "txfib %u ", f->rewrite.fib_index);
+    }
+  return s;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
