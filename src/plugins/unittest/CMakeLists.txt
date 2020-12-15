@@ -41,6 +41,7 @@ add_vpp_plugin(unittest
   rbtree_test.c
   session_test.c
   sparse_vec_test.c
+  spool_test.c
   string_test.c
   svm_fifo_test.c
   segment_manager_test.c
