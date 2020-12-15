@@ -342,6 +342,13 @@ ip4_full_reass_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   vnet_buffer_opaque_t *vnb = vnet_buffer (b);
+  if (pool_is_free_index
+      (vm->trace_main.trace_buffer_pool, vlib_buffer_get_trace_index (b)))
+    {
+      // this buffer's trace is gone
+      b->flags &= ~VLIB_BUFFER_IS_TRACED;
+      return;
+    }
   bool is_after_handoff = false;
   if (vlib_buffer_get_trace_thread (b) != vm->thread_index)
     {

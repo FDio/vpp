@@ -235,6 +235,13 @@ ip4_sv_reass_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 			u32 ip_proto, u16 l4_src_port, u16 l4_dst_port)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+  if (pool_is_free_index
+      (vm->trace_main.trace_buffer_pool, vlib_buffer_get_trace_index (b)))
+    {
+      // this buffer's trace is gone
+      b->flags &= ~VLIB_BUFFER_IS_TRACED;
+      return;
+    }
   ip4_sv_reass_trace_t *t = vlib_add_trace (vm, node, b, sizeof (t[0]));
   if (reass)
     {
