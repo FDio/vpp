@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+option version="0.0.0";
 import "vnet/ip/ip_types.api";
 
 autoreply define test_prefix {
