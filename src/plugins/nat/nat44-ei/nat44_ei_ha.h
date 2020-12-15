@@ -22,6 +22,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <nat/nat.h>
 
 /* Call back functions for received HA events on passive/failover */
 typedef void (*nat_ha_sadd_cb_t) (ip4_address_t * in_addr, u16 in_port,
@@ -30,6 +31,7 @@ typedef void (*nat_ha_sadd_cb_t) (ip4_address_t * in_addr, u16 in_port,
 				  ip4_address_t * ehn_addr, u16 ehn_port,
 				  u8 proto, u32 fib_index, u16 flags,
 				  u32 thread_index);
+
 typedef void (*nat_ha_sdel_cb_t) (ip4_address_t * out_addr, u16 out_port,
 				  ip4_address_t * eh_addr, u16 eh_port,
 				  u8 proto, u32 fib_index, u32 thread_index);
