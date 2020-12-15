@@ -24,7 +24,7 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/devices.h>
+#include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/feature/feature.h>
 
 #include <memif/memif.h>
@@ -876,51 +876,49 @@ VLIB_NODE_FN (memif_input_node) (vlib_main_t * vm,
 {
   u32 n_rx = 0;
   memif_main_t *mm = &memif_main;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
-  vnet_device_and_queue_t *dq;
   memif_interface_mode_t mode_ip = MEMIF_INTERFACE_MODE_IP;
   memif_interface_mode_t mode_eth = MEMIF_INTERFACE_MODE_ETHERNET;
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
-  {
-    memif_if_t *mif;
-    mif = vec_elt_at_index (mm->interfaces, dq->dev_instance);
-    if ((mif->flags & MEMIF_IF_FLAG_ADMIN_UP) &&
-	(mif->flags & MEMIF_IF_FLAG_CONNECTED))
-      {
-	if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
-	  {
-	    if (mif->mode == MEMIF_INTERFACE_MODE_IP)
-	      n_rx += memif_device_input_zc_inline (vm, node, frame, mif,
-						    dq->queue_id, mode_ip);
-	    else
-	      n_rx += memif_device_input_zc_inline (vm, node, frame, mif,
-						    dq->queue_id, mode_eth);
-	  }
-	else if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
-	  {
-	    if (mif->mode == MEMIF_INTERFACE_MODE_IP)
-	      n_rx += memif_device_input_inline (vm, node, frame, mif,
-						 MEMIF_RING_M2S, dq->queue_id,
-						 mode_ip);
-	    else
-	      n_rx += memif_device_input_inline (vm, node, frame, mif,
-						 MEMIF_RING_M2S, dq->queue_id,
-						 mode_eth);
-	  }
-	else
-	  {
-	    if (mif->mode == MEMIF_INTERFACE_MODE_IP)
-	      n_rx += memif_device_input_inline (vm, node, frame, mif,
-						 MEMIF_RING_S2M, dq->queue_id,
-						 mode_ip);
-	    else
-	      n_rx += memif_device_input_inline (vm, node, frame, mif,
-						 MEMIF_RING_S2M, dq->queue_id,
-						 mode_eth);
-	  }
-      }
-  }
+  vnet_hw_if_rxq_poll_vector_t *pv;
+  pv = vnet_hw_if_get_rxq_poll_vector (vm, node);
+  for (int i = 0; i < vec_len (pv); i++)
+    {
+      memif_if_t *mif;
+      u32 qid;
+      mif = vec_elt_at_index (mm->interfaces, pv[i].dev_instance);
+      qid = pv[i].queue_id;
+      if ((mif->flags & MEMIF_IF_FLAG_ADMIN_UP) &&
+	  (mif->flags & MEMIF_IF_FLAG_CONNECTED))
+	{
+	  if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
+	    {
+	      if (mif->mode == MEMIF_INTERFACE_MODE_IP)
+		n_rx += memif_device_input_zc_inline (vm, node, frame, mif,
+						      qid, mode_ip);
+	      else
+		n_rx += memif_device_input_zc_inline (vm, node, frame, mif,
+						      qid, mode_eth);
+	    }
+	  else if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
+	    {
+	      if (mif->mode == MEMIF_INTERFACE_MODE_IP)
+		n_rx += memif_device_input_inline (
+		  vm, node, frame, mif, MEMIF_RING_M2S, qid, mode_ip);
+	      else
+		n_rx += memif_device_input_inline (
+		  vm, node, frame, mif, MEMIF_RING_M2S, qid, mode_eth);
+	    }
+	  else
+	    {
+	      if (mif->mode == MEMIF_INTERFACE_MODE_IP)
+		n_rx += memif_device_input_inline (
+		  vm, node, frame, mif, MEMIF_RING_S2M, qid, mode_ip);
+	      else
+		n_rx += memif_device_input_inline (
+		  vm, node, frame, mif, MEMIF_RING_S2M, qid, mode_eth);
+	    }
+	}
+    }
 
   return n_rx;
 }

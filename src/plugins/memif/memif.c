@@ -36,6 +36,7 @@
 #include <vppinfra/linux/syscall.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/interface/rx_queue_funcs.h>
 #include <vpp/app/version.h>
 #include <memif/memif.h>
 #include <memif/private.h>
@@ -138,12 +139,6 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
       mq = vec_elt_at_index (mif->rx_queues, i);
       if (mq->ring)
 	{
-	  int rv;
-	  rv = vnet_hw_interface_unassign_rx_thread (vnm, mif->hw_if_index, i);
-	  if (rv)
-	    memif_log_warn (mif,
-			   "Unable to unassign interface %d, queue %d: rc=%d",
-			   mif->hw_if_index, i, rv);
 	  if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
 	  {
 	    memif_disconnect_free_zc_queue_buffer(mq, 1);
@@ -151,6 +146,8 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
 	  mq->ring = 0;
 	}
     }
+  vnet_hw_if_unregister_all_rx_queues (vnm, mif->hw_if_index);
+  vnet_hw_if_update_runtime_data (vnm, mif->hw_if_index);
 
   /* *INDENT-OFF* */
   vec_foreach_index (i, mif->tx_queues)
@@ -222,7 +219,7 @@ memif_int_fd_read_ready (clib_file_t * uf)
       return 0;
     }
 
-  vnet_device_input_set_interrupt_pending (vnm, mif->hw_if_index, qid);
+  vnet_hw_if_rx_queue_set_int_pending (vnm, mq->queue_index);
   mq->int_count++;
 
   return 0;
@@ -285,6 +282,7 @@ memif_connect (memif_if_t * mif)
     {
       memif_queue_t *mq = vec_elt_at_index (mif->rx_queues, i);
       u32 ti;
+      u32 qi;
       int rv;
 
       mq->ring = mif->regions[mq->region].shm + mq->offset;
@@ -293,7 +291,9 @@ memif_connect (memif_if_t * mif)
 	  err = clib_error_return (0, "wrong cookie on tx ring %u", i);
 	  goto error;
 	}
-
+      qi = vnet_hw_if_register_rx_queue (vnm, mif->hw_if_index, i,
+					 VNET_HW_IF_RXQ_THREAD_ANY);
+      mq->queue_index = qi;
       if (mq->int_fd > -1)
 	{
 	  template.file_descriptor = mq->int_fd;
@@ -302,26 +302,27 @@ memif_connect (memif_if_t * mif)
 					 format_memif_device_name,
 					 mif->dev_instance, i);
 	  memif_file_add (&mq->int_clib_file_index, &template);
+	  vnet_hw_if_set_rx_queue_file_index (vnm, qi,
+					      mq->int_clib_file_index);
 	}
-      vnet_hw_interface_assign_rx_thread (vnm, mif->hw_if_index, i, ~0);
-      ti = vnet_get_device_input_thread_index (vnm, mif->hw_if_index, i);
+      ti = vnet_hw_if_get_rx_queue_thread_index (vnm, qi);
       mq->buffer_pool_index =
 	vlib_buffer_pool_get_default_for_numa (vm, vlib_mains[ti]->numa_node);
-      rv = vnet_hw_interface_set_rx_mode (vnm, mif->hw_if_index, i,
-					  VNET_HW_IF_RX_MODE_DEFAULT);
+      rv = vnet_hw_if_set_rx_queue_mode (vnm, qi, VNET_HW_IF_RX_MODE_DEFAULT);
+      vnet_hw_if_update_runtime_data (vnm, mif->hw_if_index);
+
       if (rv)
 	memif_log_err
 	  (mif, "Warning: unable to set rx mode for interface %d queue %d: "
 	   "rc=%d", mif->hw_if_index, i, rv);
       else
 	{
-	  vnet_hw_if_rx_mode rxmode;
-	  vnet_hw_interface_get_rx_mode (vnm, mif->hw_if_index, i, &rxmode);
+	  vnet_hw_if_rx_mode rxmode = vnet_hw_if_get_rx_queue_mode (vnm, qi);
 
 	  if (rxmode == VNET_HW_IF_RX_MODE_POLLING)
 	    mq->ring->flags |= MEMIF_RING_FLAG_MASK_INT;
 	  else
-	    vnet_device_input_set_interrupt_pending (vnm, mif->hw_if_index, i);
+	    vnet_hw_if_rx_queue_set_int_pending (vnm, qi);
 	}
     }
   /* *INDENT-ON* */
@@ -1048,9 +1049,7 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 
   hw = vnet_get_hw_interface (vnm, mif->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
-  vnet_hw_interface_set_input_node (vnm, mif->hw_if_index,
-				    memif_input_node.index);
-
+  vnet_hw_if_set_input_node (vnm, mif->hw_if_index, memif_input_node.index);
   mhash_set (&msf->dev_instance_by_id, &mif->id, mif->dev_instance, 0);
 
   if (pool_elts (mm->interfaces) == 1)
