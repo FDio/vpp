@@ -47,8 +47,8 @@ struct avf_ip4_psh
 
 struct avf_ip6_psh
 {
-  u32 src[4];
-  u32 dst[4];
+  ip6_address_t src;
+  ip6_address_t dst;
   u32 l4len;
   u32 proto;
 };
