@@ -160,6 +160,7 @@ set(VPPINFRA_HEADERS
   smp.h
   socket.h
   sparse_vec.h
+  spool.h
   string.h
   time.h
   time_range.h
