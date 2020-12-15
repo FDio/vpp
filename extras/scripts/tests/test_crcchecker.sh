@@ -55,7 +55,7 @@ verify_check_patchset_fails
 
 echo "TEST 7: Verify we can delete deprecated message"
 git commit -a -m "reset"
-cat >src/crccheck.api <<EOL
+cat >crccheck.api <<EOL
 option version="1.0.0";
 autoreply define crccheck
 {
@@ -63,22 +63,22 @@ autoreply define crccheck
   bool foo;
 };
 EOL
-git add src/crccheck.api
+git add crccheck.api
 git commit -m "deprecated api";
 # delete API
-cat >src/crccheck.api <<EOL
+cat >crccheck.api <<EOL
 option version="1.0.0";
 autoreply define crccheck_2
 {
   bool foo;
 };
 EOL
-git add src/crccheck.api
+git add crccheck.api
 git commit -m "deprecated api";
 extras/scripts/crcchecker.py --check-patchset
 
 echo "TEST 7.1: Verify we can delete deprecated message (old/confused style)"
-cat >src/crccheck_dep.api <<EOL
+cat >crccheck_dep.api <<EOL
 option version="1.0.0";
 autoreply define crccheck
 {
@@ -86,31 +86,31 @@ autoreply define crccheck
   bool foo;
 };
 EOL
-git add src/crccheck_dep.api
+git add crccheck_dep.api
 git commit -m "deprecated api";
 # delete API
-cat >src/crccheck_dep.api <<EOL
+cat >crccheck_dep.api <<EOL
 option version="1.0.0";
 autoreply define crccheck_2
 {
   bool foo;
 };
 EOL
-git add src/crccheck_dep.api
+git add crccheck_dep.api
 git commit -m "deprecated api";
 extras/scripts/crcchecker.py --check-patchset
 
 echo "TEST 8: Verify that we can not rename a non-deprecated message"
-sed -i -e 's/crccheck_2/crccheck_3/g' src/crccheck.api
-git add src/crccheck.api
+sed -i -e 's/crccheck_2/crccheck_3/g' crccheck.api
+git add crccheck.api
 git commit -m "renamed api";
 verify_check_patchset_fails
 # fix it.
-sed -i -e 's/crccheck_3/crccheck_2/g' src/crccheck.api
+sed -i -e 's/crccheck_3/crccheck_2/g' crccheck.api
 git commit -a --amend -m "empty commit after we renamed api back" --allow-empty
 
 echo "TEST 9: Verify that the check fails if the changes are not committed"
-cat >>src/crccheck.api <<EOL
+cat >>crccheck.api <<EOL
 autoreply define crc_new_check_in_progress
 {
   option status="in_progress";
@@ -120,31 +120,31 @@ EOL
 verify_check_patchset_fails
 
 echo "TEST10: Verify that the in-progress message can be added"
-git add src/crccheck.api
+git add crccheck.api
 git commit -m "added a new in-progress api";
 extras/scripts/crcchecker.py --check-patchset
 
 echo "TEST11: Verify we can rename an in-progress API"
-sed -i -e 's/crc_new_check_in_progress/crc_new_check_in_progress_2/g' src/crccheck.api
-git add src/crccheck.api
+sed -i -e 's/crc_new_check_in_progress/crc_new_check_in_progress_2/g' crccheck.api
+git add crccheck.api
 git commit -m "renamed in-progress api";
 extras/scripts/crcchecker.py --check-patchset
 
 echo "TEST11.1: Switch to new designation of in-progress API"
-sed -i -e 's/status="in_progress"/in_progress/g' src/crccheck.api
-git add src/crccheck.api
+sed -i -e 's/status="in_progress"/in_progress/g' crccheck.api
+git add crccheck.api
 git commit -m "new designation of in-progress api";
 extras/scripts/crcchecker.py --check-patchset
 
 
 echo "TEST12: Verify we can add a field to an in-progress API"
-sed -i -e 's/foobar;/foobar; bool new_baz;/g' src/crccheck.api
-git add src/crccheck.api
+sed -i -e 's/foobar;/foobar; bool new_baz;/g' crccheck.api
+git add crccheck.api
 git commit -m "new field added in in-progress api";
 extras/scripts/crcchecker.py --check-patchset
 
 echo "TEST13: Verify we fail the check if the file can not be compiled"
-cat >src/crccheck2.api <<EOL
+cat >crccheck2.api <<EOL
 option version="0.0.1";
 autoreply define spot_the_error
 {
@@ -152,7 +152,7 @@ autoreply define spot_the_error
   bool something_important;
 };
 EOL
-git add src/crccheck2.api
+git add crccheck2.api
 git commit -m "a new message with a syntax error";
 verify_check_patchset_fails
 
@@ -160,13 +160,13 @@ verify_check_patchset_fails
 git reset --hard HEAD~1
 
 echo "TEST14: Verify we handle new .api file"
-cat >src/crccheck3.api <<EOL
+cat >crccheck3.api <<EOL
 autoreply define foo
 {
   bool bar;
 };
 EOL
-git add src/crccheck3.api
+git add crccheck3.api
 git commit -m "a new message in new file";
 extras/scripts/crcchecker.py --check-patchset
 
