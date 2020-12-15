@@ -464,7 +464,7 @@ l2fib_add_entry (const u8 * mac, u32 bd_index,
       result.raw = kv.value;
       if ((!l2fib_entry_result_is_set_AGE_NOT (&result))
 	  && (lm->global_learn_count))
-	lm->global_learn_count--;
+        clib_atomic_fetch_sub_relax(&lm->global_learn_count, 1);
     }
 
   /* set up result */
@@ -753,7 +753,7 @@ l2fib_del_entry (const u8 * mac, u32 bd_index, u32 sw_if_index)
   /* decrement counter if dynamically learned mac */
   if ((!l2fib_entry_result_is_set_AGE_NOT (&result)) &&
       (l2learn_main.global_learn_count))
-    l2learn_main.global_learn_count--;
+        clib_atomic_fetch_sub_relax(&l2learn_main.global_learn_count, 1);
 
   /* Remove entry from hash table */
   BV (clib_bihash_add_del) (&mp->mac_table, &kv, 0 /* is_add */ );
