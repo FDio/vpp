@@ -788,8 +788,7 @@ icmp_in2out (snat_main_t * sm,
 
   if (vnet_buffer (b0)->sw_if_index[VLIB_TX] == ~0)
     {
-      if (0 != snat_icmp_hairpinning (sm, b0, ip0, icmp0,
-				      sm->endpoint_dependent))
+      if (0 != snat_icmp_hairpinning (sm, b0, ip0, icmp0))
 	vnet_buffer (b0)->sw_if_index[VLIB_TX] = fib_index;
     }
 
@@ -1912,7 +1911,7 @@ VLIB_NODE_FN (snat_in2out_fast_node) (vlib_main_t * vm,
 
 	  /* Hairpinning */
 	  is_hairpinning =
-	    snat_hairpinning (vm, node, sm, b0, ip0, udp0, tcp0, proto0, 0,
+	    snat_hairpinning (vm, node, sm, b0, ip0, udp0, tcp0, proto0,
 			      0 /* do_trace */ );
 
 	trace0:
