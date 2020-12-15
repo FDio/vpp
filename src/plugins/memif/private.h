@@ -132,6 +132,7 @@ typedef struct
 
   /* queue type */
   memif_ring_type_t type;
+  u32 queue_index;
 } memif_queue_t;
 
 #define foreach_memif_if_flag \
