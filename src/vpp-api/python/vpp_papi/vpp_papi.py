@@ -47,7 +47,7 @@ except ModuleNotFoundError:
 logger = logging.getLogger('vpp_papi')
 logger.addHandler(logging.NullHandler())
 
-__all__ = ('FuncWrapper', 'VPP', 'VppApiDynamicMethodHolder',
+__all__ = ('FuncWrapper', 'VppApiDynamicMethodHolder',
            'VppEnum', 'VppEnumType', 'VppEnumFlag',
            'VPPIOError', 'VPPRuntimeError', 'VPPValueError',
            'VPPApiClient', )
