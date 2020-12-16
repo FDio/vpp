@@ -29,6 +29,8 @@ class TestNodeVariant(VppTestCase):
         # find the position of node_variants in the cmdline args.
 
         if checkX86():
+            if not skipVariant(cls.LINUX_VARIANT):
+                raise unittest.SkipTest()
             node_variants = cls.vpp_cmdline.index("node { ") + 1
             cls.vpp_cmdline[node_variants] = ("default { variant default } "
                                               "ip4-rewrite { variant " +
