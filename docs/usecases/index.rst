@@ -15,7 +15,7 @@ extensive list, but should give a sampling of the many features contained in FD.
    vmxnet3
    acls
    vppcloud
-   homegateway
+   hgw
    contiv/index.rst
    networksim
    webapp
