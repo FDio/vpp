@@ -171,7 +171,8 @@ u32 vec_len_not_inline (void *v);
 })
 
 /** \brief Total number of elements that can fit into vector. */
-#define vec_max_len(v) (vec_capacity(v,0) / sizeof (v[0]))
+#define vec_max_len(v) 								\
+  ((v) ? (vec_capacity (v,0) - vec_header_bytes (0)) / sizeof (v[0]) : 0)
 
 /** \brief Set vector length to a user-defined value */
 #ifndef __COVERITY__		/* Coverity gets confused by ASSERT() */
