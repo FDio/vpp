@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "59781ec9_abe058da",
+        "filename": "src/plugins/nat/nat44_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1996,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-12-16T20:37:20Z",
+      "side": 1,
+      "message": "This looks good. You might want to add API support for this configuration too?",
+      "revId": "8a365c587bd9ce74cc4b8d803c5d080d5ba03651",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
