@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "48e46a36_3ad9a529",
+        "filename": "src/vpp-api/python/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2020-12-16T08:18:21Z",
+      "side": 1,
+      "message": "Why set additional limits? Let cmake pick whatever python3 there is.",
+      "range": {
+        "startLine": 14,
+        "startChar": 12,
+        "endLine": 14,
+        "endChar": 38
+      },
+      "revId": "30f766979c1ba697dcbf5464e37d08d1e81668ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
