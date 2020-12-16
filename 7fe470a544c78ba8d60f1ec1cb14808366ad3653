@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1339bb60_24ce17b1",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_transport_socket.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-16T19:28:16Z",
+      "side": 1,
+      "message": "Why is this here? Aren\u0027t the sockclnt_ calls hardcoded msg_ids?  I mean to say they don\u0027t depend on the api.  If we need it, can we reference it through self.parent and remove the vpp_papi import?",
+      "range": {
+        "startLine": 135,
+        "startChar": 25,
+        "endLine": 135,
+        "endChar": 46
+      },
+      "revId": "7fe470a544c78ba8d60f1ec1cb14808366ad3653",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
