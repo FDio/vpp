@@ -282,5 +282,53 @@ class TestVxlan(BridgeDomain, VppTestCase):
         self.logger.info(self.vapi.cli("show vxlan tunnel"))
 
 
+class TestVxlan2(VppTestCase):
+    """ VXLAN Test Case """
+    def setUp(self):
+        super(TestVxlan2, self).setUp()
+
+        # Create 2 pg interfaces.
+        self.create_pg_interfaces(range(4))
+        for pg in self.pg_interfaces:
+            pg.admin_up()
+
+        # Configure IPv4 addresses on VPP pg0.
+        self.pg0.config_ip4()
+        self.pg0.resolve_arp()
+
+    def tearDown(self):
+        super(TestVxlan2, self).tearDown()
+
+    def test_xconnect(self):
+        """ VXLAN source address not local """
+
+        #
+        # test the broken configuration of a VXLAN tunnel whose
+        # source address is not local ot the box. packets sent
+        # through the tunnel should be dropped
+        #
+        t = VppVxlanTunnel(self,
+                           src="10.0.0.5",
+                           dst=self.pg0.local_ip4,
+                           vni=1000)
+        t.add_vpp_config()
+        t.admin_up()
+
+        self.vapi.sw_interface_set_l2_xconnect(t.sw_if_index,
+                                               self.pg1.sw_if_index,
+                                               enable=1)
+        self.vapi.sw_interface_set_l2_xconnect(self.pg1.sw_if_index,
+                                               t.sw_if_index,
+                                               enable=1)
+
+        p = (Ether(src="00:11:22:33:44:55",
+                   dst="00:00:00:11:22:33") /
+             IP(src="4.3.2.1", dst="1.2.3.4") /
+             UDP(sport=20000, dport=10000) /
+             Raw(b'\xa5' * 1450))
+
+        rx = self.send_and_assert_no_replies(self.pg1, [p])
+
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

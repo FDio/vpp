@@ -20,6 +20,7 @@
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/adj/rewrite.h>
+#include <vnet/dpo/drop_dpo.h>
 #include <vnet/interface.h>
 #include <vnet/flow/flow.h>
 #include <vnet/udp/udp_local.h>
@@ -151,11 +152,19 @@ vxlan_tunnel_restack_dpo (vxlan_tunnel_t * t)
    * skip single bucket load balance dpo's */
   while (DPO_LOAD_BALANCE == dpo.dpoi_type)
     {
-      load_balance_t *lb = load_balance_get (dpo.dpoi_index);
+      const load_balance_t *lb;
+      const dpo_id_t *choice;
+
+      lb = load_balance_get (dpo.dpoi_index);
       if (lb->lb_n_buckets > 1)
 	break;
 
-      dpo_copy (&dpo, load_balance_get_bucket_i (lb, 0));
+      choice = load_balance_get_bucket_i (lb, 0);
+
+      if (DPO_RECEIVE == choice->dpoi_type)
+	dpo_copy (&dpo, drop_dpo_get (choice->dpoi_proto));
+      else
+	dpo_copy (&dpo, choice);
     }
 
   u32 encap_index = is_ip4 ?
