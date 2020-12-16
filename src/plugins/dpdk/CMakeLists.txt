@@ -105,7 +105,7 @@ endif()
 # DPDK plugin
 ##############################################################################
 
-if (${DPDK_VERSION} VERSION_EQUAL "20.8.0")
+if (${DPDK_VERSION} VERSION_GREATER_EQUAL "20.8.0")
   set(DPDK_CRYPTODEV_SOURCE cryptodev_dp_api)
 else ()
   set(DPDK_CRYPTODEV_SOURCE cryptodev)
