@@ -993,6 +993,7 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
   u32 *buffers = vlib_frame_vector_args (frame);
   u32 to[GRO_TO_VECTOR_SIZE (n_left)];
   int packed = vif->is_packed;
+  u16 n_vectors = frame->n_vectors;
 
   clib_spinlock_lock_if_init (&vring->lockp);
 
@@ -1004,7 +1005,8 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
 
   if (vif->packet_coalesce)
     {
-      n_left = vnet_gro_inline (vm, vring->flow_table, buffers, n_left, to);
+      n_vectors = n_left =
+	vnet_gro_inline (vm, vring->flow_table, buffers, n_left, to);
       buffers = to;
     }
 
@@ -1017,17 +1019,17 @@ retry:
   if (vif->type == VIRTIO_IF_TYPE_TAP)
     n_left = virtio_interface_tx_inline (vm, node, vif, vring,
 					 VIRTIO_IF_TYPE_TAP,
-					 &buffers[frame->n_vectors - n_left],
+					 &buffers[n_vectors - n_left],
 					 n_left, packed);
   else if (vif->type == VIRTIO_IF_TYPE_PCI)
     n_left = virtio_interface_tx_inline (vm, node, vif, vring,
 					 VIRTIO_IF_TYPE_PCI,
-					 &buffers[frame->n_vectors - n_left],
+					 &buffers[n_vectors - n_left],
 					 n_left, packed);
   else if (vif->type == VIRTIO_IF_TYPE_TUN)
     n_left = virtio_interface_tx_inline (vm, node, vif, vring,
 					 VIRTIO_IF_TYPE_TUN,
-					 &buffers[frame->n_vectors - n_left],
+					 &buffers[n_vectors - n_left],
 					 n_left, packed);
   else
     ASSERT (0);
@@ -1039,14 +1041,14 @@ retry:
     {
       u16 n_buffered = virtio_vring_buffering_store_packets (vring->buffering,
 							     &buffers
-							     [frame->n_vectors
+							     [n_vectors
 							      - n_left],
 							     n_left);
       n_left -= n_buffered;
     }
   if (n_left)
     virtio_interface_drop_inline (vm, node->node_index,
-				  &buffers[frame->n_vectors - n_left], n_left,
+				  &buffers[n_vectors - n_left], n_left,
 				  VIRTIO_TX_ERROR_NO_FREE_SLOTS);
 
   clib_spinlock_unlock_if_init (&vring->lockp);
