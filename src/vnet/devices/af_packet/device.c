@@ -33,8 +33,7 @@
 #define foreach_af_packet_tx_func_error               \
 _(FRAME_NOT_READY, "tx frame not ready")              \
 _(TXRING_EAGAIN,   "tx sendto temporary failure")     \
-_(TXRING_FATAL,    "tx sendto fatal failure")         \
-_(TXRING_OVERRUN,  "tx ring overrun")
+_(TXRING_FATAL,    "tx sendto fatal failure")
 
 typedef enum
 {
@@ -113,8 +112,9 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
       if (PREDICT_FALSE
 	  (tph->tp_status & (TP_STATUS_SEND_REQUEST | TP_STATUS_SENDING)))
 	{
-	  frame_not_ready++;
-	  goto next;
+	  /* This indicates TX queue full, drop remaining packets */
+	  frame_not_ready = n_left + 1;
+	  break;
 	}
 
       do
@@ -132,12 +132,7 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
       tph->tp_len = tph->tp_snaplen = offset;
       tph->tp_status = TP_STATUS_SEND_REQUEST;
       n_sent++;
-    next:
       tx_frame = (tx_frame + 1) % frame_num;
-
-      /* check if we've exhausted the ring */
-      if (PREDICT_FALSE (frame_not_ready + n_sent == frame_num))
-	break;
     }
 
   CLIB_MEMORY_BARRIER ();
@@ -159,16 +154,17 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 			    AF_PACKET_TX_ERROR_TXRING_EAGAIN, n_sent);
 	}
     }
+  else
+    {
+      /* This indicates TX queue full, just kick it again. */
+      sendto (apif->fd, NULL, 0, MSG_DONTWAIT, NULL, 0);
+    }
 
   clib_spinlock_unlock_if_init (&apif->lockp);
 
   if (PREDICT_FALSE (frame_not_ready))
     vlib_error_count (vm, node->node_index,
 		      AF_PACKET_TX_ERROR_FRAME_NOT_READY, frame_not_ready);
-
-  if (PREDICT_FALSE (frame_not_ready + n_sent == frame_num))
-    vlib_error_count (vm, node->node_index, AF_PACKET_TX_ERROR_TXRING_OVERRUN,
-		      n_left);
 
   vlib_buffer_free (vm, vlib_frame_vector_args (frame), frame->n_vectors);
   return frame->n_vectors;
