@@ -136,9 +136,10 @@ static void
 http_server_session_free (http_session_t * hs)
 {
   http_server_main_t *hsm = &http_server_main;
-  pool_put (hsm->sessions[hs->thread_index], hs);
+  u32 thread = hs->thread_index;
   if (CLIB_DEBUG)
     memset (hs, 0xfa, sizeof (*hs));
+  pool_put (hsm->sessions[thread], hs);
 }
 
 static void
