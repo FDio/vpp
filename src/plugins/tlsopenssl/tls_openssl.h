@@ -45,6 +45,9 @@ typedef struct openssl_main_
   openssl_ctx_t ***ctx_pool;
   openssl_listen_ctx_t *lctx_pool;
 
+  u8 **rx_bufs;
+  u8 **tx_bufs;
+
   /* API message ID base */
   u16 msg_id_base;
 
