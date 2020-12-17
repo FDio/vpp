@@ -12,10 +12,11 @@
 # limitations under the License.
 
 include (CheckFunctionExists)
-if(OPENSSL_FOUND)
+if(OPENSSL_FOUND AND OPENSSL_VERSION VERSION_GREATER_EQUAL "1.1.0")
   include_directories(${OPENSSL_INCLUDE_DIR})
   add_vpp_plugin(tlsopenssl
     SOURCES
+    tls_bio.c
     tls_openssl.c
     tls_openssl_api.c
     tls_async.c
