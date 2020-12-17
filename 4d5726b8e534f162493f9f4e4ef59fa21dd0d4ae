@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "251e07d3_5080847f",
+        "filename": "Makefile",
+        "patchSetId": 12
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-12-17T19:17:10Z",
+      "side": 1,
+      "message": "clang-format-10 is not available on debian-9 or debian-10.\n\nPlease move this to ubuntu specific sections below (line 80 \u0026 line 84) \u0026 the checkstyle/fixstyle targets should print a warning on debian-9 \u0026 10 saying that it is only supported on ubuntu.",
+      "range": {
+        "startLine": 67,
+        "startChar": 37,
+        "endLine": 67,
+        "endChar": 52
+      },
+      "revId": "4d5726b8e534f162493f9f4e4ef59fa21dd0d4ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
