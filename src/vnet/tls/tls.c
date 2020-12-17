@@ -223,6 +223,7 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
   if (err)
     goto failed;
 
+  clib_warning ("notify connected %u", ctx->c_s_index);
   app_session = session_get (ctx->c_s_index, ctx->c_thread_index);
   app_session->app_wrk_index = ctx->parent_app_wrk_index;
   app_session->connection_index = ctx->tls_ctx_handle;
@@ -250,7 +251,8 @@ failed:
   /* Free app session pre-allocated when transport was established */
   session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
   ctx->no_app_session = 1;
-  tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
+//  tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
+  tls_disconnect_transport (ctx);
   return app_worker_connect_notify (app_wrk, 0, err,
 				    ctx->parent_app_api_context);
 }
@@ -453,7 +455,8 @@ tls_app_tx_callback (session_t * tls_session)
   tls_ctx_t *ctx;
 
   ctx = tls_ctx_get (tls_session->opaque);
-  transport_connection_reschedule (&ctx->connection);
+  if (!ctx->no_app_session)
+    transport_connection_reschedule (&ctx->connection);
 
   return 0;
 }
@@ -739,6 +742,7 @@ tls_custom_tx_callback (void *session, transport_send_params_t * sp)
 		     >= SESSION_STATE_TRANSPORT_CLOSED))
     return 0;
 
+  sp->flags = 0;
   ctx = tls_ctx_get (app_session->connection_index);
   return tls_ctx_write (ctx, app_session, sp);
 }
