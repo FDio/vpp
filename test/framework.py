@@ -644,6 +644,8 @@ class VppTestCase(unittest.TestCase):
                 cls.vpp.communicate()
             cls.logger.debug("Deleting class vpp attribute on %s",
                              cls.__name__)
+            cls.vpp.stdout.close()
+            cls.vpp.stderr.close()
             del cls.vpp
 
         if cls.vpp_startup_failed:
