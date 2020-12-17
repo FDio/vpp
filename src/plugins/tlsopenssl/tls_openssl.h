@@ -21,6 +21,9 @@
 #include <vpp/app/version.h>
 #include <vnet/tls/tls.h>
 
+#define TLSO_CTRL_BYTES 1000
+#define TLSO_MIN_ENQ_SPACE (1 << 16)
+
 typedef struct tls_ctx_openssl_
 {
   tls_ctx_t ctx;			/**< First */
