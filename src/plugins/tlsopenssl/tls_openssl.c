@@ -113,32 +113,26 @@ openssl_lctx_get (u32 lctx_index)
 static int
 openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
 {
-  u32 enq_now, enq_max;
-  svm_fifo_chunk_t *c;
-  int read, rv;
+  int read, rv, n_fs, i;
+  const int n_segs = 2;
+  svm_fifo_seg_t fs[n_segs];
 
-  enq_max = svm_fifo_max_enqueue_prod (f);
-  if (!enq_max)
+  n_fs = svm_fifo_provision_chunks (f, fs, n_segs,
+				    svm_fifo_max_enqueue_prod (f));
+  if (n_fs < 0)
     return 0;
 
-  svm_fifo_fill_chunk_list (f);
-
-  enq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max);
-  if (!enq_now)
-    return 0;
-
-  read = SSL_read (ssl, svm_fifo_tail (f), enq_now);
+  /* Return early if we can't read anything */
+  read = SSL_read (ssl, fs[0].data, fs[0].len);
   if (read <= 0)
     return 0;
 
-  c = svm_fifo_tail_chunk (f);
-  while ((c = c->next) && read < enq_max)
+  for (i = 1; i < n_fs; i++)
     {
-      enq_now = clib_min (c->length, enq_max - read);
-      rv = SSL_read (ssl, c->data, enq_now);
+      rv = SSL_read (ssl, fs[i].data, fs[i].len);
       read += rv > 0 ? rv : 0;
 
-      if (rv < enq_now)
+      if (rv < fs[i].len)
 	break;
     }
 
@@ -148,29 +142,27 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
 }
 
 static int
-openssl_write_from_fifo_into_ssl (svm_fifo_t * f, SSL * ssl, u32 len)
+openssl_write_from_fifo_into_ssl (svm_fifo_t * f, SSL * ssl, u32 max_len)
 {
-  svm_fifo_chunk_t *c;
-  int wrote = 0, rv;
-  u32 deq_now;
+  int wrote = 0, rv, i = 0, len;
+  const int n_segs = 2;
+  svm_fifo_seg_t fs[n_segs];
 
-  deq_now = clib_min (svm_fifo_max_read_chunk (f), len);
-  wrote = SSL_write (ssl, svm_fifo_head (f), deq_now);
-  if (wrote <= 0)
+  len = svm_fifo_segments (f, 0, fs, n_segs, max_len);
+  if (len <= 0)
     return 0;
 
-  c = svm_fifo_head_chunk (f);
-  while ((c = c->next) && wrote < len)
+  while (wrote < len && i < n_segs)
     {
-      deq_now = clib_min (c->length, len - wrote);
-      rv = SSL_write (ssl, c->data, deq_now);
-      wrote += rv > 0 ? rv : 0;
-
-      if (rv < deq_now)
+      rv = SSL_write (ssl, fs[i].data, fs[i].len);
+      wrote += (rv > 0) ? rv : 0;
+      if (rv < fs[i].len)
 	break;
+      i++;
     }
 
-  svm_fifo_dequeue_drop (f, wrote);
+  if (wrote)
+    svm_fifo_dequeue_drop (f, wrote);
 
   return wrote;
 }
