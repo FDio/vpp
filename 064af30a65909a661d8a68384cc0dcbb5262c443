@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "ae22a259_051bf90e",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 473,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2020-12-18T20:26:43Z",
+      "side": 1,
+      "message": "Actually I did a first patch where I introduced atomic operations. I abandoned this patch (https://gerrit.fd.io/r/c/vpp/+/30430) because I realized it is not required.\n1) Race condition is unlikely to happen (2 learning at the same time)\n2) When race condition happens, counter may be incremented once instead of twice. \n   a)test in lines 475/477 guarantee that value do not go below 0\n   b)If that happens, the inaccurary is fixed after next l2-scan",
+      "parentUuid": "e1931539_3cab1eef",
+      "revId": "064af30a65909a661d8a68384cc0dcbb5262c443",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "56254aef_55f66b9d",
         "filename": "src/vnet/l2/l2_fib.c",
         "patchSetId": 3
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "1e94a8cf_b48d2a92",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1078,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2020-12-18T20:26:43Z",
+      "side": 1,
+      "message": "bd_index 0 is indeed a special value. So we could do a -1. However, we\u0027ll then need to decrement bd_index by 1 when we want to access to the right value in bd_learn_counts.",
+      "parentUuid": "56254aef_55f66b9d",
+      "revId": "064af30a65909a661d8a68384cc0dcbb5262c443",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c308e193_60f97c7c",
         "filename": "src/vnet/l2/l2_fib.c",
         "patchSetId": 3
@@ -47,6 +83,24 @@
       "writtenOn": "2020-12-18T19:46:17Z",
       "side": 1,
       "message": "I think we should use a static variable and hang on to it instead of doing vec_validate() and vec_free() all the times.",
+      "revId": "064af30a65909a661d8a68384cc0dcbb5262c443",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cb462c5d_4730a6dc",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1261,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2020-12-18T20:26:43Z",
+      "side": 1,
+      "message": "Good point. That will save cycles. Will do it!",
+      "parentUuid": "c308e193_60f97c7c",
       "revId": "064af30a65909a661d8a68384cc0dcbb5262c443",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
