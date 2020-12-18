@@ -208,6 +208,21 @@ svm_fifo_chunk_t *svm_fifo_chunk_alloc (u32 size);
  */
 int svm_fifo_fill_chunk_list (svm_fifo_t * f);
 /**
+ * Provision and return chunks for number of bytes requested
+ *
+ * Allocates enough chunks to cover the bytes requested and returns them
+ * in the fifo segment array. The number of bytes provisioned may be less
+ * than requested if not enough segments were provided.
+ *
+ * @param f		fifo
+ * @param fs		array of fifo segments
+ * @param n_segs	length of fifo segments array
+ * @param len		number of bytes to preallocate
+ * @return		number of fifo segments provisioned or error
+ */
+int svm_fifo_provision_chunks (svm_fifo_t *f, svm_fifo_seg_t *fs, u32 n_segs,
+			       u32 len);
+/**
  * Initialize rbtrees used for ooo lookups
  *
  * @param f		fifo
