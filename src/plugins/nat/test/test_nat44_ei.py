@@ -858,6 +858,30 @@ class MethodHolder(VppTestCase):
             self.assertEqual(data, p[Raw].load)
 
 
+class TestNAT44EIAPI(MethodHolder):
+    """ NAT44EI API Test Cases """
+
+    frame_queue_nelts = 512
+
+    def setUp(self):
+        super(TestNAT44EIAPI, self).setUp()
+        self.vapi.nat44_plugin_enable_disable(
+            frame_queue_nelts=self.frame_queue_nelts,
+            enable=1)
+
+    def tearDown(self):
+        super(TestNAT44EIAPI, self).tearDown()
+        if not self.vpp_dead:
+            self.vapi.nat44_plugin_enable_disable(enable=0)
+            self.vapi.cli("clear logging")
+
+    def test_show_frame_queue_nelts(self):
+        """ API test - worker handoff frame queue elements """
+        nat_config = self.vapi.nat_show_config_2()
+        self.assertEqual(self.frame_queue_nelts,
+                         nat_config.frame_queue_nelts)
+
+
 class TestNAT44EI(MethodHolder):
     """ NAT44EI Test Cases """
 
