@@ -10,6 +10,7 @@ import os
 import json
 import argparse
 import re
+from datetime import date
 from subprocess import run, PIPE, check_output, CalledProcessError
 
 # pylint: disable=subprocess-run-check
@@ -98,6 +99,75 @@ def filelist_from_git_grep(filename):
             filename, _ = line.split(':')
             filelist.append(filename)
     return filelist
+
+
+def filelist_from_git_grep_lineno():
+    '''Returns a list of api files that matches the pattern including
+    line number.'''
+
+    filelist = []
+    try:
+        returncode = check_output(f'git grep -n "option deprecated"'
+                                  ' -- *.api',
+                                  shell=True)
+    except CalledProcessError:
+        return []
+    for line in returncode.decode('ascii').split('\n'):
+        if line:
+            filename, line, _ = line.split(':')
+            filelist.append({'f': filename, 'l': line})
+    return filelist
+
+
+def commitid_from_git_blame_lineno(filename, lineno):
+    '''Returns a commit id for the given  line in file.'''
+    try:
+        returncode = check_output(f'git blame -L{lineno},{lineno} {filename}',
+                                  shell=True)
+    except CalledProcessError:
+        return []
+    lines = returncode.decode('ascii').split('\n')
+    commitid, _ = lines[0].split(' ', 1)
+    return commitid
+
+
+def tag_of_commitid(commitid):
+    '''Returns a date given a commit id.'''
+    try:
+        returncode = check_output(f'git tag --contains {commitid}',
+                                  shell=True)
+    except CalledProcessError:
+        return []
+    lines = returncode.decode('ascii').split('\n')
+    return lines[0]
+
+
+def date_from_commitid(commitid):
+    '''Returns a date given a commit id.'''
+    try:
+        returncode = check_output(f'git show --no-patch --no-notes'
+                                  f' --pretty="%as" {commitid}',
+                                  shell=True)
+    except CalledProcessError:
+        return []
+    lines = returncode.decode('ascii').split('\n')
+    return lines[0]
+
+
+def get_dated_tags():
+    '''Returns a list of date, tag.'''
+    try:
+        returncode = check_output('git log --tags --simplify-by-decoration '
+                                  '--pretty="format:%as %D"',
+                                  shell=True)
+    except CalledProcessError:
+        return []
+    lines = returncode.decode('ascii').split('\n')
+    datetags = {}
+    for line in lines:
+        tagdate, _, tag, = line.split(maxsplit=2)
+        datetags[tag] = tagdate
+    return datetags
 
 
 def filelist_from_patchset(pattern):
@@ -234,6 +304,38 @@ def check_patchset():
         print('*' * 67)
 
 
+def deprecated(verbose=False):
+    '''Lists the messages (i.e. the commits that are marked deprecated and that
+    can be removed'''
+    filelist = filelist_from_git_grep_lineno()
+    datedtags = get_dated_tags()
+    releaselist = sorted(datedtags)
+    release = None
+    for release in reversed(releaselist):
+        if len(release.split('-')) == 1:
+            break
+
+    if not release:
+        print('Cannot find current release')
+        sys.exit(-1)
+
+    releasedate = datedtags[release]
+    print(f'Comparing with current release {release}@{releasedate}')
+    for i in filelist:
+        commitid = commitid_from_git_blame_lineno(i['f'], i['l'])
+        commitdate = date_from_commitid(commitid)
+        tag = tag_of_commitid(commitid)
+        days = (date.fromisoformat(releasedate) -
+                date.fromisoformat(commitdate)).days
+        if verbose:
+            commit_release = 'unreleased' if not tag else tag
+            print(f'Considering {commitid}@{commitdate}[{commit_release}] '
+                  f'({days} days)')
+        if tag and tag != release and days >= 120:
+            print(f'commit {commitid} from relese {tag}@{date} can be removed')
+    print(f'Processed {len(filelist)} occurences of the deprecated option.')
+
+
 def main():
     '''Main entry point.'''
     parser = argparse.ArgumentParser(description='VPP CRC checker.')
@@ -242,7 +344,11 @@ def main():
     parser.add_argument('--dump-manifest', action='store_true',
                         help='Dump CRC for all messages')
     parser.add_argument('--check-patchset', action='store_true',
-                        help='Check patchset for backwards incompatbile changes')
+                        help='Check patchset for backwards '
+                        'incompatbile changes')
+    parser.add_argument('--deprecated', action='store_true',
+                        help='List deprecated messages')
+    parser.add_argument('--verbose', action='store_true')
     parser.add_argument('files', nargs='*')
     parser.add_argument('--diff', help='Files to compare (on filesystem)',
                         nargs=2)
@@ -280,6 +386,10 @@ def main():
                   file=sys.stderr)
             sys.exit(-1)
         check_patchset()
+        sys.exit(0)
+
+    if args.deprecated:
+        deprecated(args.verbose)
         sys.exit(0)
 
     # Find changes between current workspace and revision
