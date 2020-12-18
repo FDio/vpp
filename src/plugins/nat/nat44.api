@@ -48,6 +48,7 @@ enum nat44_config_flags : u8
     @param session_memory - overwrite hash allocation parameter
     @param user_sessions - maximum number of sessions per user
                           (NAT44_IS_ENDPOINT_INDEPENDENT)
+    @param frame_queue_nelts - number of worker handoff frame queue elements
     @param enable - true if enable, false if disable
     @param flags - flag NAT44_IS_ENDPOINT_INDEPENDENT,
                         NAT44_IS_ENDPOINT_DEPENDENT,
@@ -65,6 +66,7 @@ autoreply define nat44_plugin_enable_disable {
   u32 sessions;
   u32 session_memory;
   u32 user_sessions;
+  u32 frame_queue_nelts;
   bool enable;
   vl_api_nat44_config_flags_t flags;
 };
@@ -235,6 +237,7 @@ define nat44_show_running_config
     @param user_buckets - number of user hash buckets
                          (NAT44_IS_ENDPOINT_INDEPENDENT)
     @param translation_buckets - number of translation hash buckets
+    @param frame_queue_nelts - number of worker handoff frame queue elements
     @param flags - flag NAT44_IS_ENDPOINT_INDEPENDENT,
                         NAT44_IS_ENDPOINT_DEPENDENT,
                         NAT44_IS_STATIC_MAPPING_ONLY,
@@ -253,6 +256,7 @@ define nat44_show_running_config_reply
   u32 user_sessions;
   u32 user_buckets;
   u32 translation_buckets;
+  u32 frame_queue_nelts;
   bool forwarding_enabled;
   bool ipfix_logging_enabled;
   vl_api_nat_timeouts_t timeouts;

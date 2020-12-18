@@ -126,6 +126,8 @@ vl_api_nat44_show_running_config_t_handler (vl_api_nat44_show_running_config_t
     rmp->user_buckets = htonl (sm->user_buckets);
     rmp->translation_buckets = htonl (sm->translation_buckets);
 
+    rmp->frame_queue_nelts = htonl (sm->frame_queue_nelts);
+
     rmp->timeouts.udp = htonl (sm->timeouts.udp);
     rmp->timeouts.tcp_established = htonl (sm->timeouts.tcp.established);
     rmp->timeouts.tcp_transitory = htonl (sm->timeouts.tcp.transitory);
@@ -274,6 +276,8 @@ static void
       c.sessions = ntohl (mp->sessions);
 
       c.user_sessions = ntohl (mp->user_sessions);
+
+      c.frame_queue_nelts = ntohl (mp->frame_queue_nelts);
 
       rv = nat44_plugin_enable (c);
     }
