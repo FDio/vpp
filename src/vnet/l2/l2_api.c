@@ -50,33 +50,36 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                                 \
-_(L2_XCONNECT_DUMP, l2_xconnect_dump)                       \
-_(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                   \
-_(L2_FIB_TABLE_DUMP, l2_fib_table_dump)                     \
-_(L2FIB_FLUSH_ALL, l2fib_flush_all)                         \
-_(L2FIB_FLUSH_INT, l2fib_flush_int)                         \
-_(L2FIB_FLUSH_BD, l2fib_flush_bd)                           \
-_(L2FIB_ADD_DEL, l2fib_add_del)                             \
-_(WANT_L2_MACS_EVENTS, want_l2_macs_events)		    \
-_(L2_FLAGS, l2_flags)                                       \
-_(SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)   \
-_(SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge)       \
-_(L2_PATCH_ADD_DEL, l2_patch_add_del)				\
-_(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)             \
-_(BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)                         \
-_(BD_IP_MAC_FLUSH, bd_ip_mac_flush)                             \
-_(BD_IP_MAC_DUMP, bd_ip_mac_dump)				\
-_(BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)                 \
-_(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                       \
-_(BRIDGE_FLAGS, bridge_flags)                                   \
-_(L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite) \
-_(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)   \
-_(BRIDGE_DOMAIN_SET_MAC_AGE, bridge_domain_set_mac_age)         \
-_(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)               \
-_(BVI_CREATE, bvi_create)                                       \
-_(BVI_DELETE, bvi_delete)                                       \
-_(WANT_L2_ARP_TERM_EVENTS, want_l2_arp_term_events)
+#define foreach_vpe_api_msg                                                   \
+  _ (L2_XCONNECT_DUMP, l2_xconnect_dump)                                      \
+  _ (L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                                  \
+  _ (L2_FIB_TABLE_DUMP, l2_fib_table_dump)                                    \
+  _ (L2FIB_FLUSH_ALL, l2fib_flush_all)                                        \
+  _ (L2FIB_FLUSH_INT, l2fib_flush_int)                                        \
+  _ (L2FIB_FLUSH_BD, l2fib_flush_bd)                                          \
+  _ (L2FIB_ADD_DEL, l2fib_add_del)                                            \
+  _ (WANT_L2_MACS_EVENTS, want_l2_macs_events)                                \
+  _ (L2_FLAGS, l2_flags)                                                      \
+  _ (SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)              \
+  _ (SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge)                  \
+  _ (L2_PATCH_ADD_DEL, l2_patch_add_del)                                      \
+  _ (L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                        \
+  _ (BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)                                    \
+  _ (BD_IP_MAC_FLUSH, bd_ip_mac_flush)                                        \
+  _ (BD_IP_MAC_DUMP, bd_ip_mac_dump)                                          \
+  _ (BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)                            \
+  _ (BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                                  \
+  _ (BRIDGE_FLAGS, bridge_flags)                                              \
+  _ (L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite)            \
+  _ (L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)              \
+  _ (BRIDGE_DOMAIN_SET_MAC_AGE, bridge_domain_set_mac_age)                    \
+  _ (SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)                          \
+  _ (BVI_CREATE, bvi_create)                                                  \
+  _ (BVI_DELETE, bvi_delete)                                                  \
+  _ (WANT_L2_ARP_TERM_EVENTS, want_l2_arp_term_events)                        \
+  _ (BRIDGE_DOMAIN_SET_LEARN_LIMIT, bridge_domain_set_learn_limit)            \
+  _ (BRIDGE_DOMAIN_SET_DEFAULT_LEARN_LIMIT,                                   \
+     bridge_domain_set_default_learn_limit)
 
 static void
 send_l2_xconnect_details (vl_api_registration_t * reg, u32 context,
@@ -406,6 +409,45 @@ vl_api_l2_flags_t_handler (vl_api_l2_flags_t * mp)
     rmp->resulting_feature_bitmap = ntohl(rbm);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+vl_api_bridge_domain_set_default_learn_limit_t_handler (
+  vl_api_bridge_domain_set_default_learn_limit_t *mp)
+{
+  vl_api_bridge_domain_set_default_learn_limit_reply_t *rmp;
+  int rv = 0;
+
+  l2learn_main.bd_default_learn_limit = ntohl (mp->learn_limit);
+  REPLY_MACRO (VL_API_BRIDGE_DOMAIN_SET_DEFAULT_LEARN_LIMIT_REPLY);
+}
+
+static void
+vl_api_bridge_domain_set_learn_limit_t_handler (
+  vl_api_bridge_domain_set_learn_limit_t *mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  bd_main_t *bdm = &bd_main;
+  vl_api_bridge_domain_set_learn_limit_reply_t *rmp;
+  int rv = 0;
+  u32 bd_id = ntohl (mp->bd_id);
+  uword *p;
+
+  if (bd_id == 0)
+    {
+      rv = VNET_API_ERROR_BD_NOT_MODIFIABLE;
+      goto out;
+    }
+
+  p = hash_get (bdm->bd_index_by_bd_id, bd_id);
+  if (p == 0)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      goto out;
+    }
+  bd_set_learn_limit (vm, *p, ntohl (mp->learn_limit));
+out:
+  REPLY_MACRO (VL_API_BRIDGE_DOMAIN_SET_LEARN_LIMIT_REPLY);
 }
 
 static void
