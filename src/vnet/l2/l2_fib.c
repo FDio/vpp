@@ -212,8 +212,7 @@ l2fib_show_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
       if (ctx->add && !l2fib_entry_result_is_set_AGE_NOT (&result))
 	return (BIHASH_WALK_CONTINUE);	/* skip learned macs */
 
-      bd_config = vec_elt_at_index (l2input_main.bd_configs,
-				    key.fields.bd_index);
+      bd_config = &vec_elt (l2input_main.bd_configs, key.fields.bd_index);
 
       if (l2fib_entry_result_is_set_AGE_NOT (&result))
 	s = format (s, "no");
@@ -384,6 +383,7 @@ void
 l2fib_clear_table (void)
 {
   l2fib_main_t *mp = &l2fib_main;
+  l2_bridge_domain_t *bd_config;
 
   if (mp->mac_table_initialized == 0)
     return;
@@ -394,6 +394,7 @@ l2fib_clear_table (void)
   BV (clib_bihash_free) (&mp->mac_table);
   l2fib_table_init ();
   l2learn_main.global_learn_count = 0;
+  vec_foreach (bd_config, l2input_main.bd_configs) bd_config->learn_count = 0;
 }
 
 /** Clear all entries in L2FIB.
@@ -462,9 +463,19 @@ l2fib_add_entry (const u8 * mac, u32 bd_index,
     {
       /* decrement counter if overwriting a learned mac  */
       result.raw = kv.value;
-      if ((!l2fib_entry_result_is_set_AGE_NOT (&result))
-	  && (lm->global_learn_count))
-	lm->global_learn_count--;
+      if (!l2fib_entry_result_is_set_AGE_NOT (&result))
+	{
+	  l2_bridge_domain_t *bd_config =
+	    vec_elt_at_index (l2input_main.bd_configs, bd_index);
+
+	  /* check if learn_count == 0 in case of race condition between 2 workers adding an entry simultaneously */
+	  /* learn_count variable may have little inaccuracy because they are not incremented/decremented with atomic operations */
+	  /* l2fib_scan is call every 2sec fixing potential inaccuracy */
+	  if (lm->global_learn_count)
+	    lm->global_learn_count--;
+	  if (bd_config->learn_count)
+	    bd_config->learn_count--;
+	}
     }
 
   /* set up result */
@@ -751,9 +762,15 @@ l2fib_del_entry (const u8 * mac, u32 bd_index, u32 sw_if_index)
     return 1;
 
   /* decrement counter if dynamically learned mac */
-  if ((!l2fib_entry_result_is_set_AGE_NOT (&result)) &&
-      (l2learn_main.global_learn_count))
-    l2learn_main.global_learn_count--;
+  if (!l2fib_entry_result_is_set_AGE_NOT (&result))
+    {
+      l2_bridge_domain_t *bd_config =
+	vec_elt_at_index (l2input_main.bd_configs, bd_index);
+      if (l2learn_main.global_learn_count)
+	l2learn_main.global_learn_count--;
+      if (bd_config->learn_count)
+	bd_config->learn_count--;
+    }
 
   /* Remove entry from hash table */
   BV (clib_bihash_add_del) (&mp->mac_table, &kv, 0 /* is_add */ );
@@ -1051,10 +1068,16 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
   u32 cl_idx = lm->client_index;
   vl_api_l2_macs_event_t *mp = 0;
   vl_api_registration_t *reg = 0;
+  u32 bd_index;
+  static u32 *bd_learn_counts = 0;
 
   /* Don't scan the l2 fib if it hasn't been instantiated yet */
   if (alloc_arena (h) == 0)
     return 0.0;
+
+  vec_zero (bd_learn_counts);
+  vec_reset_length (bd_learn_counts);
+  vec_validate (bd_learn_counts, vec_len (l2input_main.bd_configs) - 1);
 
   if (client)
     {
@@ -1102,7 +1125,11 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 	      l2fib_entry_result_t result = {.raw = v->kvp[k].value };
 
 	      if (!l2fib_entry_result_is_set_AGE_NOT (&result))
-		learn_count++;
+		{
+		  learn_count++;
+		  vec_elt (bd_learn_counts, key.fields.bd_index)++;
+		}
+
 
 	      if (client)
 		{
@@ -1190,6 +1217,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 	      kv.key = key.raw;
 	      BV (clib_bihash_add_del) (&fm->mac_table, &kv, 0);
 	      learn_count--;
+	      vec_elt (bd_learn_counts, key.fields.bd_index)--;
 	      /*
 	       * Note: we may have just freed the bucket's backing
 	       * storage, so check right here...
@@ -1205,6 +1233,11 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 
   /* keep learn count consistent */
   l2learn_main.global_learn_count = learn_count;
+  vec_foreach_index (bd_index, bd_learn_counts)
+  {
+    vec_elt (l2input_main.bd_configs, bd_index).learn_count =
+      vec_elt (bd_learn_counts, bd_index);
+  }
 
   if (mp)
     {

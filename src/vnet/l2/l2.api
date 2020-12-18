@@ -247,6 +247,33 @@ autoreply define bridge_domain_set_mac_age
   u8 mac_age;
 };
 
+/** \brief L2 bridge domain set default learn limit
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param learn limit - maximum number of entries by default for bridge domains
+*/
+autoreply define bridge_domain_set_default_learn_limit
+{
+  u32 client_index;
+  u32 context;
+  u32 learn_limit;
+};
+
+
+/** \brief L2 bridge domain set learn limit
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bd_id - the bridge domain idenntifier
+    @param learn limit - maximum number of entries for this bd
+*/
+autoreply define bridge_domain_set_learn_limit
+{
+  u32 client_index;
+  u32 context;
+  u32 bd_id;
+  u32 learn_limit;
+};
+
 /** \brief L2 bridge domain add or delete request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

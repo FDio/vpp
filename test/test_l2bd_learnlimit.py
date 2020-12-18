@@ -17,7 +17,7 @@ class TestL2LearnLimit(VppTestCase):
     @classmethod
     def setUpClass(self):
         super(TestL2LearnLimit, self).setUpClass()
-        self.create_pg_interfaces(range(2))
+        self.create_pg_interfaces(range(3))
 
     @classmethod
     def tearDownClass(cls):
@@ -94,6 +94,39 @@ class TestL2LearnLimit(VppTestCase):
         # check that bd2 was not able to learn
         self.assertEqual(len(lfs2), 0)
 
+    def test_l2bd_learnlimit03(self):
+        """ L2BD test with bridge domain limit
+        """
+        self.vapi.bridge_domain_set_default_learn_limit(4)
+        self.vapi.bridge_domain_add_del(bd_id=3)
+        self.vapi.sw_interface_set_l2_bridge(
+            self.pg_interfaces[2].sw_if_index, bd_id=3)
+
+        self.vapi.bridge_domain_set_learn_limit(2, 5)
+
+        hosts = self.create_hosts(self.pg_interfaces[1], 20, 2)
+        fhosts = self.create_hosts(self.pg_interfaces[2], 20, 3)
+
+        # inject 20 mac addresses on bd2
+        self.learn_hosts(self.pg_interfaces[1], 2, hosts)
+
+        # inject 20 macs address on bd3
+        self.learn_hosts(self.pg_interfaces[2], 3, fhosts)
+
+        lfs1 = self.vapi.l2_fib_table_dump(2)
+        lfs2 = self.vapi.l2_fib_table_dump(3)
+
+        # check that only 5 macs are learned.
+        self.assertEqual(len(lfs1), 5)
+
+        # check that only 4 macs are learned.
+        self.assertEqual(len(lfs2), 4)
+
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg_interfaces[2].sw_if_index,
+            bd_id=3, enable=0)
+        self.vapi.bridge_domain_add_del(is_add=0, bd_id=3)
+
     def setUp(self):
         super(TestL2LearnLimit, self).setUp()
 
@@ -106,13 +139,15 @@ class TestL2LearnLimit(VppTestCase):
             self.pg_interfaces[1].sw_if_index, bd_id=2)
 
     def tearDown(self):
-        for i in self.pg_interfaces[:2]:
-            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
-                                                 bd_id=1, enable=0)
+        super(TestL2LearnLimit, self).tearDown()
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg_interfaces[0].sw_if_index,
+            bd_id=1, enable=0)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg_interfaces[1].sw_if_index,
+            bd_id=2, enable=0)
         self.vapi.bridge_domain_add_del(bd_id=1, is_add=0)
         self.vapi.bridge_domain_add_del(bd_id=2, is_add=0)
-
-        super(TestL2LearnLimit, self).tearDown()
 
 
 if __name__ == '__main__':
