@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0bf3de99_f946d65a",
+        "filename": "Makefile",
+        "patchSetId": 14
+      },
+      "lineNbr": 619,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2020-12-18T11:28:29Z",
+      "side": 1,
+      "message": "apt-get is a deb/ubuntu specific package manager. On rhel(centos):\nsudo: apt-get: command not found\nmake: *** [Makefile:619: checkstyle] Error 1",
+      "range": {
+        "startLine": 619,
+        "startChar": 2,
+        "endLine": 619,
+        "endChar": 41
+      },
+      "revId": "942542f7c1c3aae62a88612b8702a45f0d3b0e35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
