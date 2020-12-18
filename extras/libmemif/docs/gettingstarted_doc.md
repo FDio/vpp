@@ -1,223 +1,164 @@
 ## Getting started    {#libmemif_gettingstarted_doc}
 
-#### Concept (Connecting to VPP)
-
 For detailed information on api calls and structures please refer to @ref libmemif.h.
 
-1. Initialize memif
-   - Declare callback function handling file descriptor event polling.
-```C
-int
-control_fd_update (int fd, uint8_t events)
+Start by creating a memif socket. Memif socket represents UNIX domain socket and interfaces assigned to use this socket. Memif uses UNIX doman socket to communicate with other memif drivers.
+
+First fill out the `memif_socket_args` struct. The minimum required configuration is the UNIX socket path.
+> Use `@` or `\0` at the beginning of the path to use abstract socket.
+```c
+memif_socket_args_t sargs;
+
+strncpy(sargs.path, socket_path, sizeof(sargs.path));
+```
+```c
+memif_socket_handle_t memif_socket;
+
+memif_create_socket(&memif_socket, &sargs, &private_data);
+```
+Once you have created your socket, you can create memif interfaces on this socket. Fill out the `memif_conn_args` struct. Then call `memif_create()`.
+```c
+memif_conn_args_t cargs;
+
+/* Assign your socket handle */
+cargs.socket = memif_socket;
+```
+```c
+memif_conn_handle_t conn;
+
+/* Assign callbacks */
+memif_create (&conn, &cargs, on_connect_cb, on_disconnect_cb, on_interrupt_cb, &private_data);
+```
+Now start the polling events using libmemifs builtin polling.
+```c
+do {
+    err = memif_poll_event(memif_socket, /* timeout -1 = blocking */ -1);
+} while (err == MEMIF_ERR_SUCCESS);
+```
+Polling can be canceled by calling `memif_cancel_poll_event()`.
+```c
+memif_cancel_poll_event (memif_socket);
+```
+On link status change `on_connect` and `on_disconnect` callbacks are called respectively. Before you can start transmitting data you, first need to call `memif_refill_queue()` for each RX queue to initialize this queue.
+```c
+int on_connect (memif_conn_handle_t conn, void *private_ctx)
 {
-...
+  my_private_data_t *data = (my_private_data_t *) private_ctx;
+
+  err = memif_refill_queue(conn, 0, -1, 0);
+  if (err != MEMIF_ERR_SUCCESS) {
+    INFO("memif_refill_queue: %s", memif_strerror(err));
+    return err;
+  }
+
+  /*
+   * Do stuff.
+   */
+
+  return 0;
 }
 ```
-   - Call memif initialization function. memif\_init
-```C
-err = memif_init (control_fd_update, APP_NAME, NULL, NULL);
-```
-   
-> If event occurs on any file descriptor returned by this callback, call memif\_control\_fd\_handler function. Since version 2.0, last two optional arguments are used to specify custom memory allocation.
-```C
-memif_err = memif_control_fd_handler (evt.data.fd, events);
-``` 
-> If callback function parameter for memif\_init function is set to NULL, libmemif will handle file descriptor event polling.
-  Api call memif\_poll\_event will call epoll\_pwait with user defined timeout to poll event on file descriptors opened by libmemif.
-```C
-/* main loop */
-    while (1)
-    {
-        if (memif_poll_event (-1) < 0)
-        {
-            DBG ("poll_event error!");
-        }
-    }
-```
-    
-> Memif initialization function will initialize internal structures and create timer file descriptor, which will be used for sending periodic connection requests. Timer is disarmed if no memif interface is created.
- 
-2. Creating interface
-   - Declare memif connection handle.
-```C
-memif_conn_handle_t c;
-```
-> example app uses struct that contains connection handle, rx/tx buffers and other connection specific information.
+Now you are ready to transmit packets. 
+> Example implementation @ref examples/common/sender.c and @ref examples/common/responder.c
 
-   - Specify connection arguments.
-```C
-memif_conn_args_t args;
-memset (&args, 0, sizeof (args));
-args.is_master = is_master;
-args.log2_ring_size = 10;
-args.buffer_size = 2048;
-args.num_s2m_rings = 2;
-args.num_m2s_rings = 2;
-strncpy ((char *) args.interface_name, IF_NAME, strlen (IF_NAME));
-args.mode = 0;
-args.interface_id = 0;
-```
-   - Declare callback functions called on connected/disconnected/interrupted status changed.
-```C
-int
-on_connect (memif_conn_handle_t conn, void *private_ctx)
-{
-...
+To transmit or receive data you will need to use `memif_buffer` struct. The important fields here are `void *data`, `uint32_t len` and `uint8_t flags`. The `data` pointer points directly to the shared memory packet buffer. This is where you will find/insert your packets. The `len` field is the length of the buffer. If the flag `MEMIF_BUFFER_FLAG_NEXT` is present in `flags` field, this buffer is chained so the rest of the data is located in the next buffer, and so on.
+
+First let's receive data. To receive data call `memif_rx_burst()`. The function will fill out memif buffers passed to it. Then you would process your data (e.g. copy to your stack). Last you must refill the queue using `memif_refill_queue()` to notify peer that the buffers are now free and can be overwritten.
+```c
+/* Fill out memif buffers and mark them as received */
+err = memif_rx_burst(conn, qid, buffers, num_buffers, &num_received);
+if (err != MEMIF_ERR_SUCCESS) {
+    INFO ("memif_rx_burst: %s", memif_strerror(err));
+    return err;
 }
+/*
+    Process the buffers.
+*/
 
-int
-on_disconnect (memif_conn_handle_t conn, void *private_ctx)
-{
-    INFO ("memif connected!");
-    return 0;
+/* Refill the queue, so that the peer interface can transmit more packets */
+err = memif_refill_queue(conn, qid, num_received, 0);
+if (err != MEMIF_ERR_SUCCESS) {
+    INFO("memif_refill_queue: %s", memif_strerror(err));
+    goto error;
 }
 ```
-   - Call memif interface create function. memif\_create
-```C
-err = memif_create (&c->conn,
-        &args, on_connect, on_disconnect, on_interrupt, &ctx[index]);
-```
-> If connection is in slave mode, arms timer file descriptor.
-> If on interrupt callback is set to NULL, user will not be notified about interrupt. Use memif\_get\_queue\_efd call to get interrupt file descriptor for specific queue.
-```C
-int fd = -1;
-err = memif_get_queue_efd (c->conn, data->qid, &fd);
-```
+In order to transmit data you first need to 'allocate' memif buffers using `memif_buffer_alloc()`. This function simmilar to `memif_rx_burst` will fill out provided memif buffers. You will then insert your packets directly into the shared memory (don't forget to update `len` filed if your packet is smaller that buffer length). Finaly call `memif_tx_burst` to transmit the buffers.
+```c
+/* Alocate memif buffers */
+err = memif_buffer_alloc(conn, qid, buffers, num_pkts, &num_allocated, packet_size);
+if (err != MEMIF_ERR_SUCCESS) {
+    INFO("memif_buffer_alloc: %s", memif_strerror(err));
+    goto error;
+}
 
-3. Connection establishment
-    - User application will poll events on all file descriptors returned in memif\_control\_fd\_update\_t callback.
-    - On event call memif\_control\_fd\_handler.
-    - Everything else regarding connection establishment will be done internally.
-    - Once connection has been established, a callback will inform the user about connection status change.
+/*
+    Fill out the buffers.
 
-4. Interrupt packet receive
-    - If event is polled on interrupt file descriptor, libmemif will call memif\_interrupt\_t callback specified for every connection instance.
-```C
-int
-on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
-{
-...
+    tx_buffers[i].data field points to the shared memory.
+    update tx_buffers[i].len to your packet length, if the packet is smaller.
+*/
+
+/* Transmit the buffers */
+err = memif_tx_burst(conn, qid, buffers, num_allocated, &num_transmitted);
+if (err != MEMIF_ERR_SUCCESS) {
+    INFO("memif_tx_burst: %s", memif_strerror(err));
+    goto error;
+}
+```
+### Zero-copy Slave
+
+Interface with slave role is the buffer producer, as such it can use zero-copy mode.
+
+After receiving buffers, process your packets in place. Then use `memif_buffer_enq_tx()` to enqueue rx buffers to tx queue (by swapping rx buffer with a free tx buffer).
+```c
+/* Fill out memif buffers and mark them as received */
+err = memif_rx_burst(conn, qid, buffers, num_buffers, &num_received);
+if (err != MEMIF_ERR_SUCCESS) {
+    INFO ("memif_rx_burst: %s", memif_strerror(err));
+    return err;
+}
+
+/*
+    Process the buffers in place.
+*/
+
+/* Enqueue processed buffers to tx queue */
+err = memif_buffer_enq_tx(conn, qid, buffers, num_buffers, &num_enqueued);
+if (err != MEMIF_ERR_SUCCESS) {
+    INFO("memif_buffer_alloc: %s", memif_strerror(err));
+    goto error;
+}
+
+/* Refill the queue, so that the peer interface can transmit more packets */
+err = memif_refill_queue(conn, qid, num_enqueued, 0);
+if (err != MEMIF_ERR_SUCCESS) {
+    INFO("memif_refill_queue: %s", memif_strerror(err));
+    goto error;
+}
+
+/* Transmit the buffers. */
+err = memif_tx_burst(conn, qid, buffers, num_enqueued, &num_transmitted);
+if (err != MEMIF_ERR_SUCCESS) {
+    INFO("memif_tx_burst: %s", memif_strerror(err));
+    goto error;
 }
 ```
 
-6. Memif buffers
-    - Packet data are stored in memif\_buffer\_t. Pointer _data_ points to shared memory buffer, and unsigned integer *_len* contains buffer length.
-    - flags: MEMIF\_BUFFER\_FLAG\_NEXT states that the buffer is not large enough to contain whole packet, so next buffer contains the rest of the packet. (chained buffers)
-```C
-typedef struct
-{
-    uint16_t desc_index;
-    uint32_t len;
-    uint8_t flags;
-    void *data;
-} memif_buffer_t;
-```
+### Custom Event Polling
 
-5. Packet receive
-    - Api call memif\_rx\_burst will set all required fields in memif buffers provided by user application, dequeue received buffers and consume interrupt event on receive queue. The event is not consumed, if memif_rx_burst fails.
-```C
-err = memif_rx_burst (c->conn, qid, c->bufs, MAX_MEMIF_BUFS, &rx);
-```
-    - User application can then process packets.
-    - Api call memif\_refill\_queue will enqueue rx buffers.
-```C
-err = memif_refill_queue (c->conn, qid, rx);
-```
+Libmemif can be integrated into your applications fd event polling. You will need to implement `memif_control_fd_update_t` callback and pass it to `memif_socket_args.on_control_fd_update`. Now each time any file descriptor belonging to that socket updates, `on_control_fd_update` callback is called. The file descriptor and event type is passed in `memif_fd_event_t`. It also contains private context that is associated with this fd. When event is polled on the fd you need to call `memif_control_fd_handler` and pass the event type and private context associated with the fd.
 
-6. Packet transmit
-    - Api call memif\_buffer\_alloc will find free tx buffers and set all required fields in memif buffers provided by user application.
-```C
-err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, n, &r);
-```
-    - User application can populate shared memory buffers with packets.
-    - Api call memif\_tx\_burst will enqueue tx buffers
-```C
-err = memif_tx_burst (c->conn, qid, c->tx_bufs, c->tx_buf_num, &r);
-```
+### Multi Threading
 
-7. Helper functions
-    - Memif version
-```C
-uint16_t memif_ver = memif_get_version ();
-```
-    - Memif details
-      - Api call memif\_get\_details will return details about connection.
-```C
-err = memif_get_details (c->conn, &md, buf, buflen);
-```
-    - Memif error messages
-      - Every api call returns error code (integer value) mapped to error string.
-      - Call memif\_strerror will return error message assigned to specific error code.
-```C
-if (err != MEMIF_ERR_SUCCESS)
-    INFO ("memif_get_details: %s", memif_strerror (err));
-```
-        - Not all syscall errors are translated to memif error codes. If error code 1 (MEMIF\_ERR\_SYSCALL) is returned then libmemif needs to be compiled with -DMEMIF_DBG flag to print error message. Use _make -B_ to rebuild libmemif in debug mode.
+#### Connection establishment
 
-#### Example app (libmemif fd event polling):
+Memif sockets should not be handled in paralell. Instead each thread should have it's own socket. However the UNIX socket can be the same. In case of non-listener socket, it's straight forward, just create the socket using the same path. In case of listener socket, the polling should be done by single thread.
+> The socket becomes listener once a Master interface is assigned to it.
 
-- @ref extras/libmemif/examples/icmp_responder
+#### Packet handling
 
-> Optional argument: transmit queue id.
-```
-icmpr 1
-```
-> Set transmit queue id to 1. Default is 0.
-> Application will create memif interface in slave mode and try to connect to VPP. Exit using Ctrl+C. Application will handle SIGINT signal, free allocated memory and exit with EXIT_SUCCESS.
+Single queue must not be handled in paralel. Instead you can assign queues to threads in such way that each queue is only assigned single thread.
 
-#### Example app:
+### Shared Memory Layout
 
-ICMP Responder custom fd event polling.
-
-- @ref extras/libmemif/examples/icmp_responder-epoll
-
-#### Example app (multi-thread queue polling)
-
-ICMP Responder multi-thread.
-- @ref extras/libmemif/examples/icmp_responder-mt
-
-> Simple example of libmemif multi-thread usage. Connection establishment is handled by main thread. There are two rx/tx queues in this example. One in polling mode and second in interrupt mode.
-
-VPP config:
-```
-# create interface memif id 0 master
-# set int state memif0 up
-# set int ip address memif0 192.168.1.1/24
-# ping 192.168.1.2
-```
-For multiple rings (queues) support run VPP with worker threads:
-example startup.conf:
-```
-unix {
-  interactive
-  nodaemon 
-  full-coredump
-}
-
-cpu {
-  workers 2
-}
-```
-VPP config:
-```
-# create interface memif id 0 master
-# set int state memif0 up
-# set int ip address memif0 192.168.1.1/24
-# ping 192.168.1.2
-```
-> Master mode queue number is limited by worker threads. Slave mode interface needs to specify number of queues.
-```
-# create memif id 0 slave rx-queues 2 tx-queues 2
-```
-> Example applications use VPP default socket file for memif: /run/vpp/memif.sock
-> For master mode, socket directory must exist prior to memif\_create call.
-
-#### Unit tests
-
-Unit tests use [Check](https://libcheck.github.io/check/index.html) framework. This framework must be installed in order to build *unit\_test* binary.
-Ubuntu/Debian:
-```
-sudo apt-get install check
-```
-[More platforms](https://libcheck.github.io/check/web/install.html)
-
+Please refer to [DPDK MEMIF documentation](http://doc.dpdk.org/guides/nics/memif.html) `'Shared memory'` section.
