@@ -370,14 +370,10 @@ tcp_options_write (u8 * data, tcp_options_t * opts)
 	}
     }
 
-  /* Terminate TCP options */
-  if (opts_len % 4)
-    {
-      *data++ = TCP_OPTION_EOL;
-      opts_len += TCP_OPTION_LEN_EOL;
-    }
-
-  /* Pad with zeroes to a u32 boundary */
+  /* Terminate TCP options by padding with NOPs to a u32 boundary. Avoid using
+   * EOL because, it seems, it can break peers with broken option parsers that
+   * rely on options ending on a u32 boundary.
+   */
   while (opts_len % 4)
     {
       *data++ = TCP_OPTION_NOOP;
