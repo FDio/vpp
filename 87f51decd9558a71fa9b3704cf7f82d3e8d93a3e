@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "06dded14_fbb5a9e6",
+        "filename": "src/plugins/avf/output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2020-12-18T14:41:29Z",
+      "side": 1,
+      "message": "Please change accordingly with\npsh.src \u003d ip6-\u003esrc_address;\npsh.dst \u003d ip6-\u003edst_address;",
+      "range": {
+        "startLine": 116,
+        "startChar": 3,
+        "endLine": 117,
+        "endChar": 54
+      },
+      "revId": "87f51decd9558a71fa9b3704cf7f82d3e8d93a3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
