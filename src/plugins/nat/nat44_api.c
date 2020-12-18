@@ -101,6 +101,7 @@ vl_api_nat_show_config_2_t_handler (vl_api_nat_show_config_2_t * mp)
     rmp->out2in_dpo = sm->out2in_dpo;
     rmp->max_translations_per_thread = clib_net_to_host_u32(sm->max_translations_per_thread);
     rmp->max_users_per_thread = clib_net_to_host_u32(sm->max_users_per_thread);
+    rmp->frame_queue_nelts = clib_net_to_host_u32(sm->frame_queue_nelts);
   }));
   /* *INDENT-ON* */
 }
@@ -274,6 +275,8 @@ static void
       c.sessions = ntohl (mp->sessions);
 
       c.user_sessions = ntohl (mp->user_sessions);
+
+      c.frame_queue_nelts = ntohl (mp->frame_queue_nelts);
 
       rv = nat44_plugin_enable (c);
     }

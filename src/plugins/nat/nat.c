@@ -2025,11 +2025,13 @@ snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
 
   if (sm->fq_in2out_index == ~0 && sm->num_workers > 1)
     sm->fq_in2out_index =
-      vlib_frame_queue_main_init (sm->in2out_node_index, NAT_FQ_NELTS);
+      vlib_frame_queue_main_init (sm->in2out_node_index,
+				  sm->frame_queue_nelts);
 
   if (sm->fq_out2in_index == ~0 && sm->num_workers > 1)
     sm->fq_out2in_index =
-      vlib_frame_queue_main_init (sm->out2in_node_index, NAT_FQ_NELTS);
+      vlib_frame_queue_main_init (sm->out2in_node_index,
+				  sm->frame_queue_nelts);
 
   if (sm->endpoint_dependent)
     update_per_vrf_sessions_vec (fib_index, is_del);
@@ -2982,6 +2984,10 @@ nat44_plugin_enable (nat44_config_t c)
   vlib_zero_simple_counter (&sm->total_sessions, 0);
   vlib_zero_simple_counter (&sm->user_limit_reached, 0);
 
+  if (!c.frame_queue_nelts)
+    c.frame_queue_nelts = 64;
+  sm->frame_queue_nelts = c.frame_queue_nelts;
+
   sm->enabled = 1;
   sm->rconfig = c;
 
@@ -3097,6 +3103,8 @@ nat44_plugin_disable ()
   sm->auto_add_sw_if_indices_twice_nat = 0;
 
   sm->forwarding_enabled = 0;
+
+  sm->frame_queue_nelts = 0;
 
   sm->enabled = 0;
   clib_memset (&sm->rconfig, 0, sizeof (sm->rconfig));
