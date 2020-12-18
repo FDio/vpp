@@ -47,6 +47,7 @@ typedef struct
 
   u32 per_interface_next_index;
   u8 is_admin_up;
+  u32 queue_index;
 } af_packet_if_t;
 
 typedef struct
