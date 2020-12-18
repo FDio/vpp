@@ -1313,7 +1313,7 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_prefetch_buffer_data (b[3], LOAD);
 	}
 
-      u8 error[2];
+      ip6_error_t error[2];
       error[0] = IP6_ERROR_UNKNOWN_PROTOCOL;
       error[1] = IP6_ERROR_UNKNOWN_PROTOCOL;
 

@@ -983,8 +983,6 @@ ip6_sv_reass_init_function (vlib_main_t * vm)
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
-  ip6_register_protocol (IP_PROTOCOL_IPV6_FRAGMENTATION,
-			 ip6_sv_reass_node.index);
 
   rm->fq_index = vlib_frame_queue_main_init (ip6_sv_reass_node.index, 0);
   rm->fq_feature_index =
