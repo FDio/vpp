@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e1931539_3cab1eef",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 473,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-12-18T19:46:17Z",
+      "side": 1,
+      "message": "Should we use the atomic instruction when increment/decrement the counts, then? clib_atomic_XXX",
+      "revId": "064af30a65909a661d8a68384cc0dcbb5262c443",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "56254aef_55f66b9d",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1078,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-12-18T19:46:17Z",
+      "side": 1,
+      "message": "I think this statement should be\nvec_validate (bd_learn_counts, vec_len (l2input_main.bd_configs) - 1);",
+      "revId": "064af30a65909a661d8a68384cc0dcbb5262c443",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c308e193_60f97c7c",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1261,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-12-18T19:46:17Z",
+      "side": 1,
+      "message": "I think we should use a static variable and hang on to it instead of doing vec_validate() and vec_free() all the times.",
+      "revId": "064af30a65909a661d8a68384cc0dcbb5262c443",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
