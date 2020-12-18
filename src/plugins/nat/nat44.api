@@ -235,6 +235,7 @@ define nat44_show_running_config
     @param user_buckets - number of user hash buckets
                          (NAT44_IS_ENDPOINT_INDEPENDENT)
     @param translation_buckets - number of translation hash buckets
+    @param frame_queue_nelts - number of worker handoff frame queue elements
     @param flags - flag NAT44_IS_ENDPOINT_INDEPENDENT,
                         NAT44_IS_ENDPOINT_DEPENDENT,
                         NAT44_IS_STATIC_MAPPING_ONLY,
@@ -253,6 +254,7 @@ define nat44_show_running_config_reply
   u32 user_sessions;
   u32 user_buckets;
   u32 translation_buckets;
+  u32 frame_queue_nelts;
   bool forwarding_enabled;
   bool ipfix_logging_enabled;
   vl_api_nat_timeouts_t timeouts;
@@ -388,6 +390,18 @@ define nat_get_timeouts_reply {
   u32 tcp_established;
   u32 tcp_transitory;
   u32 icmp;
+};
+
+/** \brief Set NAT handoff frame queue options
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param frame_queue_nelts - number of worker handoff frame queue elements
+*/
+autoreply define nat_set_fq_options {
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  u32 frame_queue_nelts;
 };
 
 /** \brief Set address and port assignment algorithm
