@@ -31,6 +31,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/interface/rx_queue_funcs.h>
 
 #include <vnet/devices/af_packet/af_packet.h>
 
@@ -99,8 +100,7 @@ af_packet_fd_read_ready (clib_file_t * uf)
     clib_bitmap_set (apm->pending_input_bitmap, idx, 1);
 
   /* Schedule the rx node */
-  vnet_device_input_set_interrupt_pending (vnm, apif->hw_if_index, 0);
-
+  vnet_hw_if_rx_queue_set_int_pending (vnm, apif->queue_index);
   return 0;
 }
 
@@ -341,17 +341,6 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   if (tm->n_vlib_mains > 1)
     clib_spinlock_init (&apif->lockp);
 
-  {
-    clib_file_t template = { 0 };
-    template.read_function = af_packet_fd_read_ready;
-    template.file_descriptor = fd;
-    template.private_data = if_index;
-    template.flags = UNIX_FILE_EVENT_EDGE_TRIGGERED;
-    template.description = format (0, "%U", format_af_packet_device_name,
-				   if_index);
-    apif->clib_file_index = clib_file_add (&file_main, &template);
-  }
-
   /*use configured or generate random MAC address */
   if (hw_addr_set)
     clib_memcpy (hw_addr, hw_addr_set, 6);
@@ -385,18 +374,30 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   sw = vnet_get_hw_sw_interface (vnm, apif->hw_if_index);
   hw = vnet_get_hw_interface (vnm, apif->hw_if_index);
   apif->sw_if_index = sw->sw_if_index;
-  vnet_hw_interface_set_input_node (vnm, apif->hw_if_index,
-				    af_packet_input_node.index);
-
-  vnet_hw_interface_assign_rx_thread (vnm, apif->hw_if_index, 0,	/* queue */
-				      ~0 /* any cpu */ );
+  vnet_hw_if_set_input_node (vnm, apif->hw_if_index,
+			     af_packet_input_node.index);
+  apif->queue_index = vnet_hw_if_register_rx_queue (vnm, apif->hw_if_index, 0,
+						    VNET_HW_IF_RXQ_THREAD_ANY);
 
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
   vnet_hw_interface_set_flags (vnm, apif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
 
-  vnet_hw_interface_set_rx_mode (vnm, apif->hw_if_index, 0,
-				 VNET_HW_IF_RX_MODE_INTERRUPT);
+  vnet_hw_if_set_rx_queue_mode (vnm, apif->queue_index,
+				VNET_HW_IF_RX_MODE_INTERRUPT);
+  vnet_hw_if_update_runtime_data (vnm, apif->hw_if_index);
+  {
+    clib_file_t template = { 0 };
+    template.read_function = af_packet_fd_read_ready;
+    template.file_descriptor = fd;
+    template.private_data = if_index;
+    template.flags = UNIX_FILE_EVENT_EDGE_TRIGGERED;
+    template.description =
+      format (0, "%U", format_af_packet_device_name, if_index);
+    apif->clib_file_index = clib_file_add (&file_main, &template);
+  }
+  vnet_hw_if_set_rx_queue_file_index (vnm, apif->queue_index,
+				      apif->clib_file_index);
 
   mhash_set_mem (&apm->if_index_by_host_if_name, host_if_name_dup, &if_index,
 		 0);
@@ -439,7 +440,6 @@ af_packet_delete_if (vlib_main_t * vm, u8 * host_if_name)
 
   /* bring down the interface */
   vnet_hw_interface_set_flags (vnm, apif->hw_if_index, 0);
-  vnet_hw_interface_unassign_rx_thread (vnm, apif->hw_if_index, 0);
 
   /* clean up */
   if (apif->clib_file_index != ~0)

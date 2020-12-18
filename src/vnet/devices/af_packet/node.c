@@ -23,7 +23,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/devices.h>
+#include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/feature/feature.h>
 #include <vnet/ethernet/packet.h>
 
@@ -352,16 +352,15 @@ VLIB_NODE_FN (af_packet_input_node) (vlib_main_t * vm,
 {
   u32 n_rx_packets = 0;
   af_packet_main_t *apm = &af_packet_main;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
-  vnet_device_and_queue_t *dq;
-
-  foreach_device_and_queue (dq, rt->devices_and_queues)
-  {
-    af_packet_if_t *apif;
-    apif = vec_elt_at_index (apm->interfaces, dq->dev_instance);
-    if (apif->is_admin_up)
-      n_rx_packets += af_packet_device_input_fn (vm, node, frame, apif);
-  }
+  vnet_hw_if_rxq_poll_vector_t *pv;
+  pv = vnet_hw_if_get_rxq_poll_vector (vm, node);
+  for (int i = 0; i < vec_len (pv); i++)
+    {
+      af_packet_if_t *apif;
+      apif = vec_elt_at_index (apm->interfaces, pv[i].dev_instance);
+      if (apif->is_admin_up)
+	n_rx_packets += af_packet_device_input_fn (vm, node, frame, apif);
+    }
 
   return n_rx_packets;
 }
