@@ -88,6 +88,9 @@ bd_add_bd_index (bd_main_t * bdm, u32 bd_id)
 
   vec_validate (l2input_main.bd_configs, rv);
   l2input_main.bd_configs[rv].bd_id = bd_id;
+  l2input_main.bd_configs[rv].learn_limit =
+    l2learn_main.bd_default_learn_limit;
+  l2input_main.bd_configs[rv].learn_count = 0;
 
   return rv;
 }
@@ -124,6 +127,8 @@ bd_delete (bd_main_t * bdm, u32 bd_index)
   /* clear BD config for reuse: bd_id to -1 and clear feature_bitmap */
   bd->bd_id = ~0;
   bd->feature_bitmap = 0;
+  bd->learn_limit = 0;
+  bd->learn_count = ~0;
 
   /* free BD tag */
   vec_free (bd->bd_tag);
@@ -356,9 +361,20 @@ bd_set_mac_age (vlib_main_t * vm, u32 bd_index, u8 age)
 }
 
 /**
+    Set learn limit for the bridge domain.
+*/
+void
+bd_set_learn_limit (vlib_main_t *vm, u32 bd_index, u32 learn_limit)
+{
+  l2_bridge_domain_t *bd_config;
+  vec_validate (l2input_main.bd_configs, bd_index);
+  bd_config = vec_elt_at_index (l2input_main.bd_configs, bd_index);
+  bd_config->learn_limit = learn_limit;
+}
+
+/**
     Set the tag for the bridge domain.
 */
-
 static void
 bd_set_bd_tag (vlib_main_t * vm, u32 bd_index, u8 * bd_tag)
 {
@@ -445,6 +461,34 @@ VLIB_CLI_COMMAND (bd_learn_cli, static) = {
   .function = bd_learn,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+bd_default_learn_limit (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
+{
+  l2learn_main_t *l2m = &l2learn_main;
+  clib_error_t *error = 0;
+  u32 learn_limit;
+
+  if (!unformat (input, "%d", &learn_limit))
+    {
+      error = clib_error_return (
+	0, "expecting per bridge-domain max entry number got`%U'",
+	format_unformat_error, input);
+      goto done;
+    }
+
+  l2m->bd_default_learn_limit = learn_limit;
+
+done:
+  return error;
+}
+
+VLIB_CLI_COMMAND (bd_default_learn_limit_cli, static) = {
+  .path = "set bridge-domain default-learn-limit",
+  .short_help = "set bridge-domain default-learn-limit <maxentries>",
+  .function = bd_default_learn_limit,
+};
 
 /**
     Set bridge-domain forward enable/disable.
@@ -818,6 +862,55 @@ VLIB_CLI_COMMAND (bd_mac_age_cli, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+bd_learn_limit (vlib_main_t *vm, unformat_input_t *input,
+		vlib_cli_command_t *cmd)
+{
+  bd_main_t *bdm = &bd_main;
+  clib_error_t *error = 0;
+  u32 bd_index, bd_id;
+  u32 learn_limit;
+  uword *p;
+
+  if (!unformat (input, "%d", &bd_id))
+    {
+      error = clib_error_return (0, "expecting bridge-domain id but got `%U'",
+				 format_unformat_error, input);
+      goto done;
+    }
+
+  if (bd_id == 0)
+    return clib_error_return (
+      0, "No operations on the default bridge domain are supported");
+
+  p = hash_get (bdm->bd_index_by_bd_id, bd_id);
+
+  if (p == 0)
+    return clib_error_return (0, "No such bridge domain %d", bd_id);
+
+  bd_index = p[0];
+
+  if (!unformat (input, "%u", &learn_limit))
+    {
+      error = clib_error_return (
+	0, "expecting maxium number of learned entries but got `%U'",
+	format_unformat_error, input);
+      goto done;
+    }
+
+  bd_set_learn_limit (vm, bd_index, learn_limit);
+
+done:
+  return error;
+}
+
+VLIB_CLI_COMMAND (bd_learn_limit_cli, static) = {
+  .path = "set bridge-domain learn-limit",
+  .short_help =
+    "set bridge-domain learn-limit <bridge-domain-id> <learn-limit>",
+  .function = bd_learn_limit,
+};
+
 /*?
  * Modify whether or not an existing bridge-domain should terminate and respond
  * to ARP Requests. ARP Termination is disabled by default.
@@ -1121,10 +1214,11 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	    {
 	      printed = 1;
 	      vlib_cli_output (vm,
-			       "%=8s %=7s %=4s %=9s %=9s %=9s %=11s %=9s %=9s %=9s %=11s",
-			       "BD-ID", "Index", "BSN", "Age(min)",
-			       "Learning", "U-Forwrd", "UU-Flood",
-			       "Flooding", "ARP-Term", "arp-ufwd",
+			       "%=8s %=7s %=4s %=9s %=9s %=9s %=11s %=9s %=9s "
+			       "%=9s %=8s %=8s %=11s",
+			       "BD-ID", "Index", "BSN", "Age(min)", "Learning",
+			       "U-Forwrd", "UU-Flood", "Flooding", "ARP-Term",
+			       "arp-ufwd", "Learn-count", "Learn-limit",
 			       "BVI-Intf");
 	    }
 
@@ -1132,24 +1226,23 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	    as = format (as, "%d", bd_config->mac_age);
 	  else
 	    as = format (as, "off");
-	  vlib_cli_output (vm,
-			   "%=8d %=7d %=9v %=9s %=9s %=11U %=9s %=9s %=9s %=11U",
-			   bd_config->bd_id, bd_index, as,
-			   bd_config->feature_bitmap & L2INPUT_FEAT_LEARN ?
-			   "on" : "off",
-			   bd_config->feature_bitmap & L2INPUT_FEAT_FWD ?
-			   "on" : "off",
-			   format_uu_cfg, bd_config,
-			   bd_config->feature_bitmap & L2INPUT_FEAT_FLOOD ?
-			   "on" : "off",
-			   bd_config->feature_bitmap & L2INPUT_FEAT_ARP_TERM ?
-			   "on" : "off",
-			   bd_config->feature_bitmap & L2INPUT_FEAT_ARP_UFWD ?
-			   "on" : "off",
-			   format_vnet_sw_if_index_name_with_NA,
-			   vnm, bd_config->bvi_sw_if_index);
-	  vlib_cli_output (vm, "%U", format_l2_input_feature_bitmap,
-			   bd_config->feature_bitmap);
+	  vlib_cli_output (
+	    vm,
+	    "%=8d %=7d %=4d %=9v %=9s %=9s %=11U %=9s %=9s %=9s %=8d %=8d "
+	    "%=11U",
+	    bd_config->bd_id, bd_index, bd_config->seq_num, as,
+	    bd_config->feature_bitmap & L2INPUT_FEAT_LEARN ? "on" : "off",
+	    bd_config->feature_bitmap & L2INPUT_FEAT_FWD ? "on" : "off",
+	    format_uu_cfg, bd_config,
+	    bd_config->feature_bitmap & L2INPUT_FEAT_FLOOD ? "on" : "off",
+	    bd_config->feature_bitmap & L2INPUT_FEAT_ARP_TERM ? "on" : "off",
+	    bd_config->feature_bitmap & L2INPUT_FEAT_ARP_UFWD ? "on" : "off",
+	    bd_config->learn_count, bd_config->learn_limit,
+	    format_vnet_sw_if_index_name_with_NA, vnm,
+	    bd_config->bvi_sw_if_index);
+	  if (detail)
+	    vlib_cli_output (vm, "%U", format_l2_input_feature_bitmap,
+			     bd_config->feature_bitmap);
 	  vec_reset_length (as);
 
 	  if (detail || intf)
@@ -1326,6 +1419,8 @@ bd_add_del (l2_bridge_domain_add_del_args_t * a)
       if (a->bd_tag)
 	bd_set_bd_tag (vm, bd_index, a->bd_tag);
 
+      bd_set_learn_limit (vm, bd_index, l2learn_main.bd_default_learn_limit);
+      vec_elt_at_index (l2input_main.bd_configs, bd_index)->learn_count = 0;
     }
   else
     {
