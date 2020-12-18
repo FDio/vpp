@@ -126,6 +126,8 @@ vl_api_nat44_show_running_config_t_handler (vl_api_nat44_show_running_config_t
     rmp->user_buckets = htonl (sm->user_buckets);
     rmp->translation_buckets = htonl (sm->translation_buckets);
 
+    rmp->frame_queue_nelts = htonl (sm->frame_queue_nelts);
+
     rmp->timeouts.udp = htonl (sm->timeouts.udp);
     rmp->timeouts.tcp_established = htonl (sm->timeouts.tcp.established);
     rmp->timeouts.tcp_transitory = htonl (sm->timeouts.tcp.transitory);
@@ -330,6 +332,16 @@ vl_api_nat_get_timeouts_t_handler (vl_api_nat_get_timeouts_t * mp)
     rmp->icmp = htonl (sm->timeouts.icmp);
   }))
   /* *INDENT-ON* */
+}
+
+static void
+vl_api_nat_set_fq_options_t_handler (vl_api_nat_set_fq_options_t *mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_set_fq_options_reply_t *rmp;
+  int rv = 0;
+  sm->frame_queue_nelts = ntohl (mp->frame_queue_nelts);
+  REPLY_MACRO (VL_API_NAT_SET_FQ_OPTIONS_REPLY);
 }
 
 static void
