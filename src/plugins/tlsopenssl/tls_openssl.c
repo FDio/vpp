@@ -113,32 +113,39 @@ openssl_lctx_get (u32 lctx_index)
 static int
 openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
 {
-  u32 enq_now, enq_max;
-  svm_fifo_chunk_t *c;
-  int read, rv;
+//  svm_fifo_chunk_t *c;
+  svm_fifo_seg_t fs[2];
+  int read, rv, n_fs, i;
 
-  enq_max = svm_fifo_max_enqueue_prod (f);
-  if (!enq_max)
+//  enq_max = svm_fifo_max_enqueue_prod (f);
+//  if (!enq_max)
+//    return 0;
+
+  n_fs = svm_fifo_provision_chunks (f, fs, 2, svm_fifo_max_enqueue_prod (f));
+  if (n_fs < 0)
     return 0;
 
-  svm_fifo_fill_chunk_list (f);
+//  svm_fifo_fill_chunk_list (f);
 
-  enq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max);
-  if (!enq_now)
-    return 0;
+//  enq_now = clib_min (svm_fifo_max_write_chunk (f), enq_max);
+//  if (!enq_now)
+//    return 0;
 
-  read = SSL_read (ssl, svm_fifo_tail (f), enq_now);
+//  read = SSL_read (ssl, svm_fifo_tail (f), enq_now);
+  read = SSL_read (ssl, fs[0].data, fs[0].len);
   if (read <= 0)
     return 0;
 
-  c = svm_fifo_tail_chunk (f);
-  while ((c = c->next) && read < enq_max)
+//  c = svm_fifo_tail_chunk (f);
+//  while ((c = c->next) && read < enq_max)
+  for (i = 1; i < n_fs; i++)
     {
-      enq_now = clib_min (c->length, enq_max - read);
-      rv = SSL_read (ssl, c->data, enq_now);
+//      enq_now = clib_min (c->length, enq_max - read);
+//      rv = SSL_read (ssl, c->data, enq_now);
+      rv = SSL_read (ssl, fs[i].data, fs[i].len);
       read += rv > 0 ? rv : 0;
 
-      if (rv < enq_now)
+      if (rv < fs[i].len)
 	break;
     }
 
@@ -148,27 +155,46 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
 }
 
 static int
-openssl_write_from_fifo_into_ssl (svm_fifo_t * f, SSL * ssl, u32 len)
+openssl_write_from_fifo_into_ssl (svm_fifo_t * f, SSL * ssl, u32 max_len)
 {
-  svm_fifo_chunk_t *c;
-  int wrote = 0, rv;
-  u32 deq_now;
+  svm_fifo_seg_t fs[2];
+  int wrote = 0, rv, i = 0, len;
 
-  deq_now = clib_min (svm_fifo_max_read_chunk (f), len);
-  wrote = SSL_write (ssl, svm_fifo_head (f), deq_now);
-  if (wrote <= 0)
+  len = svm_fifo_segments (f, 0, fs, 2, max_len);
+  if (len <= 0)
     return 0;
 
-  c = svm_fifo_head_chunk (f);
-  while ((c = c->next) && wrote < len)
-    {
-      deq_now = clib_min (c->length, len - wrote);
-      rv = SSL_write (ssl, c->data, deq_now);
-      wrote += rv > 0 ? rv : 0;
+//  if (len < max_len)
+//    clib_warning ("this");
 
-      if (rv < deq_now)
+  while (wrote < len)
+    {
+      rv = SSL_write (ssl, fs[i].data, fs[i].len);
+      wrote += rv > 0 ? rv : 0;
+      if (rv < (int) fs[i].len)
 	break;
+      i++;
     }
+
+//  svm_fifo_chunk_t *c;
+//  u32 deq_now;
+//  int wrote = 0, rv;
+//
+//  deq_now = clib_min (svm_fifo_max_read_chunk (f), max_len);
+//  wrote = SSL_write (ssl, svm_fifo_head (f), deq_now);
+//  if (wrote <= 0)
+//    return 0;
+//
+//  c = svm_fifo_head_chunk (f);
+//  while ((c = c->next) && wrote < max_len)
+//    {
+//      deq_now = clib_min (c->length, max_len - wrote);
+//      rv = SSL_write (ssl, c->data, deq_now);
+//      wrote += rv > 0 ? rv : 0;
+//
+//      if (rv < deq_now)
+//      break;
+//    }
 
   svm_fifo_dequeue_drop (f, wrote);
 
