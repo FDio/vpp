@@ -110,6 +110,12 @@ typedef struct
   /* Bridge domain tag (C string NULL terminated) */
   u8 *bd_tag;
 
+  /* Maximum number of learned entries */
+  u32 learn_limit;
+
+  /* Current number of learned entries */
+  u32 learn_count;
+
 } l2_bridge_domain_t;
 
 /* Limit Bridge Domain ID to 24 bits to match 24-bit VNI range */
@@ -158,6 +164,7 @@ typedef enum bd_flags_t_
 u32 bd_set_flags (vlib_main_t * vm, u32 bd_index, bd_flags_t flags,
 		  u32 enable);
 void bd_set_mac_age (vlib_main_t * vm, u32 bd_index, u8 age);
+void bd_set_learn_limit (vlib_main_t * vm, u32 bd_index, u32 learn_limit);
 int bd_add_del (l2_bridge_domain_add_del_args_t * args);
 
 /**

@@ -76,7 +76,9 @@ _(BRIDGE_DOMAIN_SET_MAC_AGE, bridge_domain_set_mac_age)         \
 _(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)               \
 _(BVI_CREATE, bvi_create)                                       \
 _(BVI_DELETE, bvi_delete)                                       \
-_(WANT_L2_ARP_TERM_EVENTS, want_l2_arp_term_events)
+_(WANT_L2_ARP_TERM_EVENTS, want_l2_arp_term_events)		\
+_(BRIDGE_DOMAIN_SET_LEARN_LIMIT, bridge_domain_set_learn_limit) \
+_(BRIDGE_DOMAIN_SET_DEFAULT_LEARN_LIMIT, bridge_domain_set_default_learn_limit)
 
 static void
 send_l2_xconnect_details (vl_api_registration_t * reg, u32 context,
@@ -406,6 +408,45 @@ vl_api_l2_flags_t_handler (vl_api_l2_flags_t * mp)
     rmp->resulting_feature_bitmap = ntohl(rbm);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+  vl_api_bridge_domain_set_default_learn_limit_t_handler
+  (vl_api_bridge_domain_set_default_learn_limit_t * mp)
+{
+  vl_api_bridge_domain_set_default_learn_limit_reply_t *rmp;
+  int rv = 0;
+
+  l2learn_main.bd_default_learn_limit = ntohl (mp->learn_limit);
+  REPLY_MACRO (VL_API_BRIDGE_DOMAIN_SET_DEFAULT_LEARN_LIMIT_REPLY);
+}
+
+static void
+  vl_api_bridge_domain_set_learn_limit_t_handler
+  (vl_api_bridge_domain_set_learn_limit_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  bd_main_t *bdm = &bd_main;
+  vl_api_bridge_domain_set_learn_limit_reply_t *rmp;
+  int rv = 0;
+  u32 bd_id = ntohl (mp->bd_id);
+  uword *p;
+
+  if (bd_id == 0)
+    {
+      rv = VNET_API_ERROR_BD_NOT_MODIFIABLE;
+      goto out;
+    }
+
+  p = hash_get (bdm->bd_index_by_bd_id, bd_id);
+  if (p == 0)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      goto out;
+    }
+  bd_set_learn_limit (vm, *p, ntohl (mp->learn_limit));
+out:
+  REPLY_MACRO (VL_API_BRIDGE_DOMAIN_SET_LEARN_LIMIT_REPLY);
 }
 
 static void

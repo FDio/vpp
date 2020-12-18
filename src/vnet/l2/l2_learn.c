@@ -119,6 +119,8 @@ l2learn_process (vlib_node_runtime_t * node,
 		 u32 * count,
 		 l2fib_entry_result_t * result0, u16 * next0, u8 timestamp)
 {
+  l2_bridge_domain_t *bd_config =
+    vec_elt_at_index (l2input_main.bd_configs, vnet_buffer (b0)->l2.bd_index);
   /* Set up the default next node (typically L2FWD) */
   *next0 = vnet_l2_feature_next (b0, msm->feat_next_node_index,
 				 L2INPUT_FEAT_LEARN);
@@ -137,6 +139,8 @@ l2learn_process (vlib_node_runtime_t * node,
 	return;			/* Static MAC always age_not */
       if (msm->global_learn_count > msm->global_learn_limit)
 	return;			/* Above learn limit - do not update */
+      if (bd_config->learn_count > bd_config->learn_limit)
+	return;			/* Above bridge domain learn limit - do not update */
 
       /* Limit updates per l2-learn node call to avoid prolonged update burst
        * as dtime advance over 1 minute mark, unless more than 1 min behind
@@ -152,7 +156,8 @@ l2learn_process (vlib_node_runtime_t * node,
       /* Entry not in L2FIB - add it  */
       counter_base[L2LEARN_ERROR_MISS] += 1;
 
-      if (msm->global_learn_count >= msm->global_learn_limit)
+      if ((msm->global_learn_count >= msm->global_learn_limit) ||
+	  (bd_config->learn_count >= bd_config->learn_limit))
 	{
 	  /*
 	   * Global limit reached. Do not learn the mac but forward the packet.
@@ -169,7 +174,10 @@ l2learn_process (vlib_node_runtime_t * node,
 	return;
 
       /* It is ok to learn */
+      /* learn_count variable may have little inaccuracy because they are not incremented/decremented with atomic operations */
+      /* l2fib_scan is call every 2sec fixing potential inaccuracy */
       msm->global_learn_count++;
+      bd_config->learn_count++;
       result0->raw = 0;		/* clear all fields */
       result0->fields.sw_if_index = sw_if_index0;
       if (msm->client_pid != 0)
@@ -208,7 +216,11 @@ l2learn_process (vlib_node_runtime_t * node,
       if (l2fib_entry_result_is_set_AGE_NOT (result0))
 	{
 	  /* The mac was provisioned */
+	  /* learn_count variable may have little inaccuracy because they are not incremented/decremented with atomic operations */
+	  /* l2fib_scan is call every 2sec fixing potential inaccuracy */
 	  msm->global_learn_count++;
+	  bd_config->learn_count++;
+
 	  l2fib_entry_result_clear_AGE_NOT (result0);
 	}
       if (msm->client_pid != 0)
@@ -470,6 +482,11 @@ l2learn_init (vlib_main_t * vm)
    */
   mp->global_learn_limit = L2LEARN_DEFAULT_LIMIT;
 
+  /*
+   * Set the default number of dynamically learned macs to the number
+   * of buckets.
+   */
+  mp->bd_default_learn_limit = L2LEARN_DEFAULT_LIMIT;
   return 0;
 }
 
