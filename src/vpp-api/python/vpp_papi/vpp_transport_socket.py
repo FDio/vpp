@@ -8,7 +8,6 @@ import select
 import multiprocessing
 import queue
 import logging
-from . import vpp_papi
 
 logger = logging.getLogger('vpp_papi.transport')
 logger.addHandler(logging.NullHandler())
@@ -141,8 +140,9 @@ class VppTransport:
         try:
             # Might fail, if VPP closes socket before packet makes it out,
             # or if there was a failure during connect().
+            # TODO: manually build message so that .disconnect releases server-side resources
             rv = self.parent.api.sockclnt_delete(index=self.socket_index)
-        except (IOError, vpp_papi.VPPApiError):
+        except (IOError, self.parent.VPPApiError):
             pass
         self.connected = False
         if self.socket is not None:
