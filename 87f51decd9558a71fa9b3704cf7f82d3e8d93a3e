@@ -22,6 +22,30 @@
       "revId": "87f51decd9558a71fa9b3704cf7f82d3e8d93a3e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3b760afa_c266af42",
+        "filename": "src/plugins/avf/output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 1964
+      },
+      "writtenOn": "2020-12-19T04:50:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "06dded14_fbb5a9e6",
+      "range": {
+        "startLine": 116,
+        "startChar": 3,
+        "endLine": 117,
+        "endChar": 54
+      },
+      "revId": "87f51decd9558a71fa9b3704cf7f82d3e8d93a3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
