@@ -5,6 +5,7 @@ UseTab: Always
 SpaceAfterCStyleCast: true
 SortIncludes: false
 AlignConsecutiveMacros: true
+AlignAfterOpenBracket: Align
 BreakBeforeTernaryOperators: false
 BreakBeforeBinaryOperators: None
 ContinuationIndentWidth: 2
