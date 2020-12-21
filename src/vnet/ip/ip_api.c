@@ -28,6 +28,7 @@
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/ip/ip_punt_drop.h>
 #include <vnet/ip/ip_types_api.h>
+#include <vnet/ip/ip_path_mtu.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_api.h>
 #include <vnet/ethernet/arp_packet.h>
@@ -103,7 +104,11 @@
   _ (IP_REASSEMBLY_SET, ip_reassembly_set)                                    \
   _ (IP_REASSEMBLY_GET, ip_reassembly_get)                                    \
   _ (IP_REASSEMBLY_ENABLE_DISABLE, ip_reassembly_enable_disable)              \
-  _ (IP_PUNT_REDIRECT_DUMP, ip_punt_redirect_dump)
+  _ (IP_PUNT_REDIRECT_DUMP, ip_punt_redirect_dump)                            \
+  _ (IP_PATH_MTU_UPDATE, ip_path_mtu_update)                                  \
+  _ (IP_PATH_MTU_REPLACE_BEGIN, ip_path_mtu_replace_begin)                    \
+  _ (IP_PATH_MTU_REPLACE_END, ip_path_mtu_replace_end)                        \
+  _ (IP_PATH_MTU_GET, ip_path_mtu_get)
 
 static void
   vl_api_sw_interface_ip6_enable_disable_t_handler
@@ -1121,18 +1126,18 @@ static void
   REPLY_MACRO (VL_API_IP_CONTAINER_PROXY_ADD_DEL_REPLY);
 }
 
-typedef struct ip_container_proxy_walk_ctx_t_
+typedef struct ip_walk_ctx_t_
 {
   vl_api_registration_t *reg;
   u32 context;
-} ip_container_proxy_walk_ctx_t;
+} ip_walk_ctx_t;
 
 static int
 ip_container_proxy_send_details (const fib_prefix_t * pfx, u32 sw_if_index,
 				 void *args)
 {
   vl_api_ip_container_proxy_details_t *mp;
-  ip_container_proxy_walk_ctx_t *ctx = args;
+  ip_walk_ctx_t *ctx = args;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   if (!mp)
@@ -1160,7 +1165,7 @@ vl_api_ip_container_proxy_dump_t_handler (vl_api_ip_container_proxy_dump_t *
   if (!reg)
     return;
 
-  ip_container_proxy_walk_ctx_t ctx = {
+  ip_walk_ctx_t ctx = {
     .context = mp->context,
     .reg = reg,
   };
@@ -1611,21 +1616,15 @@ void
   REPLY_MACRO (VL_API_IP_REASSEMBLY_ENABLE_DISABLE_REPLY);
 }
 
-typedef struct ip_punt_redirect_walk_ctx_t_
-{
-  vl_api_registration_t *reg;
-  u32 context;
-} ip_punt_redirect_walk_ctx_t;
-
 static walk_rc_t
 send_ip_punt_redirect_details (u32 rx_sw_if_index,
 			       const ip_punt_redirect_rx_t * ipr, void *arg)
 {
-  ip_punt_redirect_walk_ctx_t *ctx = arg;
   vl_api_ip_punt_redirect_details_t *mp;
   fib_path_encode_ctx_t path_ctx = {
     .rpaths = NULL,
   };
+  ip_walk_ctx_t *ctx = arg;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   if (!mp)
@@ -1663,7 +1662,7 @@ vl_api_ip_punt_redirect_dump_t_handler (vl_api_ip_punt_redirect_dump_t * mp)
   if (mp->is_ipv6 == 1)
     fproto = FIB_PROTOCOL_IP6;
 
-  ip_punt_redirect_walk_ctx_t ctx = {
+  ip_walk_ctx_t ctx = {
     .reg = reg,
     .context = mp->context,
   };
@@ -1684,6 +1683,73 @@ vl_api_ip_punt_redirect_dump_t_handler (vl_api_ip_punt_redirect_dump_t * mp)
     }
   else
     ip_punt_redirect_walk (fproto, send_ip_punt_redirect_details, &ctx);
+}
+
+void
+vl_api_ip_path_mtu_update_t_handler (vl_api_ip_path_mtu_update_t *mp)
+{
+  vl_api_ip_path_mtu_update_reply_t *rmp;
+  ip_address_t nh;
+  int rv = 0;
+
+  ip_address_decode2 (&mp->pmtu.nh, &nh);
+
+  rv = ip_path_mtu_update (&nh, ntohl (mp->pmtu.table_id),
+			   ntohs (mp->pmtu.path_mtu));
+
+  REPLY_MACRO (VL_API_IP_PATH_MTU_UPDATE_REPLY);
+}
+
+void
+vl_api_ip_path_mtu_replace_begin_t_handler (
+  vl_api_ip_path_mtu_replace_begin_t *mp)
+{
+  vl_api_ip_path_mtu_replace_begin_reply_t *rmp;
+  int rv;
+
+  rv = ip_path_mtu_replace_begin ();
+
+  REPLY_MACRO (VL_API_IP_PATH_MTU_REPLACE_BEGIN_REPLY);
+}
+
+void
+vl_api_ip_path_mtu_replace_end_t_handler (vl_api_ip_path_mtu_replace_end_t *mp)
+{
+  vl_api_ip_path_mtu_replace_end_reply_t *rmp;
+  int rv;
+
+  rv = ip_path_mtu_replace_end ();
+
+  REPLY_MACRO (VL_API_IP_PATH_MTU_REPLACE_END_REPLY);
+}
+
+static void
+send_ip_path_mtu_details (index_t ipti, vl_api_registration_t *rp, u32 context)
+{
+  vl_api_ip_path_mtu_details_t *rmp;
+  ip_address_t ip;
+  ip_pmtu_t *ipt;
+
+  ipt = ip_path_mtu_get (ipti);
+
+  REPLY_MACRO_DETAILS4 (VL_API_IP_PATH_MTU_DETAILS, rp, context, ({
+			  ip_pmtu_get_ip (ipt, &ip);
+			  ip_address_encode2 (&ip, &rmp->pmtu.nh);
+			  rmp->pmtu.table_id =
+			    htonl (ip_pmtu_get_table_id (ipt));
+			  rmp->pmtu.path_mtu = htons (ipt->ipt_cfg_pmtu);
+			}));
+}
+
+static void
+vl_api_ip_path_mtu_get_t_handler (vl_api_ip_path_mtu_get_t *mp)
+{
+  vl_api_ip_path_mtu_get_reply_t *rmp;
+  i32 rv = 0;
+
+  REPLY_AND_DETAILS_MACRO (
+    VL_API_IP_PATH_MTU_GET_REPLY, ip_pmtu_pool,
+    ({ send_ip_path_mtu_details (cursor, rp, mp->context); }));
 }
 
 #define vl_msg_name_crc_list
