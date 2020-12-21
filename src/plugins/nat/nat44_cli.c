@@ -44,8 +44,6 @@ nat44_enable_command_fn (vlib_main_t * vm,
   nat44_config_t c = { 0 };
   u8 mode_set = 0;
 
-  // TODO: check this also inside the function so it can be
-  //       safely called from anyplace, also sanity checking required
   if (sm->enabled)
     return clib_error_return (0, "nat44 already enabled");
 
@@ -1148,11 +1146,10 @@ add_static_mapping_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  rv = snat_add_static_mapping (l_addr, e_addr, clib_host_to_net_u16 (l_port),
-				clib_host_to_net_u16 (e_port),
-				vrf_id, addr_only, sw_if_index, proto, is_add,
-				twice_nat, out2in_only, 0, 0, exact_addr,
-				exact);
+  rv = snat_add_static_mapping (
+    l_addr, e_addr, clib_host_to_net_u16 (l_port),
+    clib_host_to_net_u16 (e_port), vrf_id, addr_only, sw_if_index, proto,
+    is_add, twice_nat, out2in_only, 0, 0, exact_addr, exact);
 
   switch (rv)
     {
@@ -1230,11 +1227,9 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
 	}
     }
 
-  rv =
-    snat_add_static_mapping (addr, addr, clib_host_to_net_u16 (port),
-			     clib_host_to_net_u16 (port), vrf_id, addr_only,
-			     sw_if_index, proto, is_add, 0, 0, 0, 1,
-			     pool_addr, 0);
+  rv = snat_add_static_mapping (
+    addr, addr, clib_host_to_net_u16 (port), clib_host_to_net_u16 (port),
+    vrf_id, addr_only, sw_if_index, proto, is_add, 0, 0, 0, 1, pool_addr, 0);
 
   switch (rv)
     {
@@ -1779,9 +1774,8 @@ nat44_del_session_command_fn (vlib_main_t * vm,
 			    clib_host_to_net_u16 (eh_port),
 			    nat_proto_to_ip_proto (proto), vrf_id, is_in);
   else
-    rv =
-      nat44_del_session (sm, &addr, clib_host_to_net_u16 (port), proto,
-			 vrf_id, is_in);
+    rv = nat44_ei_del_session (sm, &addr, clib_host_to_net_u16 (port), proto,
+			       vrf_id, is_in);
 
   switch (rv)
     {
