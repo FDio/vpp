@@ -126,6 +126,7 @@ extern void adj_mcast_remove(fib_protocol_t proto,
 extern void adj_midchain_teardown(ip_adjacency_t *adj);
 
 extern u32 adj_dpo_get_urpf(const dpo_id_t *dpo);
+extern u16 adj_dpo_get_mtu(const dpo_id_t *dpo);
 
 /*
  * Adj BFD
