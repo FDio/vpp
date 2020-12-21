@@ -24,6 +24,8 @@
  * instances.
  */
 
+// clang-format off
+
 #ifndef __DPO_H__
 #define __DPO_H__
 
@@ -362,6 +364,16 @@ extern void dpo_stack_from_node(u32 child_node,
 extern u32 dpo_get_urpf(const dpo_id_t *dpo);
 
 /**
+ * Get the MTU DPO
+ *
+ * @param dpo
+ *  The DPO from which to get the MTU
+ *
+ * @return MTU (0xffff if something more usefull was unavailable)
+ */
+extern u16 dpo_get_mtu(const dpo_id_t *dpo);
+
+/**
  * @brief  A lock function registered for a DPO type
  */
 typedef void (*dpo_lock_fn_t)(dpo_id_t *dpo);
@@ -387,6 +399,11 @@ typedef u32* (*dpo_get_next_node_t)(const dpo_id_t *dpo);
  * be used in an uRPF check
  */
 typedef u32 (*dpo_get_urpf_t)(const dpo_id_t *dpo);
+
+/**
+ * @brief Given a DPO instance return the MTU
+ */
+typedef u16 (*dpo_get_mtu_t)(const dpo_id_t *dpo);
 
 /**
  * @brief Called during FIB interposition when the originally
@@ -432,6 +449,10 @@ typedef struct dpo_vft_t_
      * Get uRPF interface
      */
     dpo_get_urpf_t dv_get_urpf;
+    /**
+     * Get MTU
+     */
+    dpo_get_mtu_t dv_get_mtu;
     /**
      * Signal on an interposed child that the parent has changed
      */
@@ -548,3 +569,5 @@ do {                                                                    \
     if ((YESNO)) vlib_worker_thread_barrier_release((VM));
 
 #endif
+
+// clang-format on
