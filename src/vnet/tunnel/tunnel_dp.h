@@ -121,6 +121,25 @@ tunnel_encap_fixup_4o6 (tunnel_encap_decap_flags_t flags,
 }
 
 static_always_inline void
+tunnel_encap_fixup_mplso6 (tunnel_encap_decap_flags_t flags,
+			   const mpls_unicast_header_t *inner,
+			   ip6_header_t *outer)
+{
+  if (flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP)
+    ip6_set_dscp_network_order (outer,
+				vnet_mpls_uc_get_exp (inner->label_exp_s_ttl));
+}
+
+static_always_inline void
+tunnel_encap_fixup_mplso4 (tunnel_encap_decap_flags_t flags,
+			   const mpls_unicast_header_t *inner,
+			   ip4_header_t *outer)
+{
+  if (flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP)
+    ip4_header_set_dscp (outer, vnet_mpls_uc_get_exp (inner->label_exp_s_ttl));
+}
+
+static_always_inline void
 tunnel_decap_fixup_4o6 (tunnel_encap_decap_flags_t flags,
 			ip4_header_t * inner, const ip6_header_t * outer)
 {
@@ -150,6 +169,20 @@ tunnel_decap_fixup_4o4 (tunnel_encap_decap_flags_t flags,
 {
   if (flags & TUNNEL_ENCAP_DECAP_FLAG_DECAP_COPY_ECN)
     ip4_header_set_ecn_w_chksum (inner, ip4_header_get_ecn (outer));
+}
+
+static_always_inline void
+tunnel_decap_fixup_mplso6 (tunnel_encap_decap_flags_t flags,
+			   mpls_unicast_header_t *inner,
+			   const ip6_header_t *outer)
+{
+}
+
+static_always_inline void
+tunnel_decap_fixup_mplso4 (tunnel_encap_decap_flags_t flags,
+			   mpls_unicast_header_t *inner,
+			   const ip4_header_t *outer)
+{
 }
 
 #endif

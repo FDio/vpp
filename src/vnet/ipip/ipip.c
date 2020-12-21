@@ -93,6 +93,9 @@ ipip_build_rewrite (vnet_main_t * vnm, u32 sw_if_index,
 	case VNET_LINK_IP4:
 	  ip4->protocol = IP_PROTOCOL_IP_IN_IP;
 	  break;
+	case VNET_LINK_MPLS:
+	  ip4->protocol = IP_PROTOCOL_MPLS_IN_IP;
+	  break;
 	default:
 	  break;
 	}
@@ -120,6 +123,9 @@ ipip_build_rewrite (vnet_main_t * vnm, u32 sw_if_index,
 	  break;
 	case VNET_LINK_IP4:
 	  ip6->protocol = IP_PROTOCOL_IP_IN_IP;
+	  break;
+	case VNET_LINK_MPLS:
+	  ip6->protocol = IP_PROTOCOL_MPLS_IN_IP;
 	  break;
 	default:
 	  break;
@@ -202,6 +208,45 @@ ipip66_fixup (vlib_main_t * vm,
 }
 
 static void
+ipipm6_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b,
+	      const void *data)
+{
+  tunnel_encap_decap_flags_t flags;
+  ip6_header_t *ip6;
+
+  flags = pointer_to_uword (data);
+
+  /* Must set locally originated otherwise we're not allowed to
+     fragment the packet later */
+  b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+
+  ip6 = vlib_buffer_get_current (b);
+  ip6->payload_length =
+    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) - sizeof (*ip6));
+  tunnel_encap_fixup_mplso6 (flags, (mpls_unicast_header_t *) (ip6 + 1), ip6);
+}
+
+static void
+ipipm4_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b,
+	      const void *data)
+{
+  tunnel_encap_decap_flags_t flags;
+  ip4_header_t *ip4;
+
+  flags = pointer_to_uword (data);
+
+  /* Must set locally originated otherwise we're not allowed to
+     fragment the packet later */
+  b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+
+  ip4 = vlib_buffer_get_current (b);
+  ip4->length =
+    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) - sizeof (*ip4));
+  tunnel_encap_fixup_mplso4 (flags, (mpls_unicast_header_t *) (ip4 + 1), ip4);
+  ip4->checksum = ip4_header_checksum (ip4);
+}
+
+static void
 ipip_tunnel_stack (adj_index_t ai)
 {
   ip_adjacency_t *adj;
@@ -265,8 +310,12 @@ ipip_get_fixup (const ipip_tunnel_t * t, vnet_link_t lt, adj_flags_t * aflags)
     return (ipip66_fixup);
   if (t->transport == IPIP_TRANSPORT_IP6 && lt == VNET_LINK_IP4)
     return (ipip46_fixup);
+  if (t->transport == IPIP_TRANSPORT_IP6 && lt == VNET_LINK_MPLS)
+    return (ipipm6_fixup);
   if (t->transport == IPIP_TRANSPORT_IP4 && lt == VNET_LINK_IP6)
     return (ipip64_fixup);
+  if (t->transport == IPIP_TRANSPORT_IP4 && lt == VNET_LINK_MPLS)
+    return (ipipm4_fixup);
   if (t->transport == IPIP_TRANSPORT_IP4 && lt == VNET_LINK_IP4)
     {
       *aflags = *aflags | ADJ_FLAG_MIDCHAIN_FIXUP_IP4O4_HDR;
@@ -756,12 +805,14 @@ ipip_add_tunnel (ipip_transport_t transport,
   if (t->transport == IPIP_TRANSPORT_IP6 && !gm->ip6_protocol_registered)
     {
       ip6_register_protocol (IP_PROTOCOL_IP_IN_IP, ipip6_input_node.index);
+      ip6_register_protocol (IP_PROTOCOL_MPLS_IN_IP, ipip6_input_node.index);
       ip6_register_protocol (IP_PROTOCOL_IPV6, ipip6_input_node.index);
       gm->ip6_protocol_registered = true;
     }
   else if (t->transport == IPIP_TRANSPORT_IP4 && !gm->ip4_protocol_registered)
     {
       ip4_register_protocol (IP_PROTOCOL_IP_IN_IP, ipip4_input_node.index);
+      ip4_register_protocol (IP_PROTOCOL_MPLS_IN_IP, ipip4_input_node.index);
       ip4_register_protocol (IP_PROTOCOL_IPV6, ipip4_input_node.index);
       gm->ip4_protocol_registered = true;
     }
