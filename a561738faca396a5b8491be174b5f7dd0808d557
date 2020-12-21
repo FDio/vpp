@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "fe6e366c_c6c5b9c8",
+        "filename": "src/vppinfra/spool.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-12-21T22:35:32Z",
+      "side": 1,
+      "message": "Yup, we should come up with a different name for it. Open to suggestions. \n\nThe only names I can come up with are: struct or object allocator.",
+      "parentUuid": "4558a526_4787a65b",
+      "revId": "a561738faca396a5b8491be174b5f7dd0808d557",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "bf84bad0_d355168d",
         "filename": "src/vppinfra/spool.h",
         "patchSetId": 8
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "7c5226bb_9d3a1d2e",
+        "filename": "src/vppinfra/spool.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-12-21T22:35:32Z",
+      "side": 1,
+      "message": "Good point. Was too lazy to initialize the vector header. Will update.",
+      "parentUuid": "bf84bad0_d355168d",
+      "revId": "a561738faca396a5b8491be174b5f7dd0808d557",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "db8a35db_cc116cbe",
         "filename": "src/vppinfra/spool.h",
         "patchSetId": 8
@@ -47,6 +83,24 @@
       "writtenOn": "2020-12-21T22:05:24Z",
       "side": 1,
       "message": "clib_memset",
+      "revId": "a561738faca396a5b8491be174b5f7dd0808d557",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a6ef4511_98b5ae15",
+        "filename": "src/vppinfra/spool.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2020-12-21T22:35:32Z",
+      "side": 1,
+      "message": "ack",
+      "parentUuid": "db8a35db_cc116cbe",
       "revId": "a561738faca396a5b8491be174b5f7dd0808d557",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
