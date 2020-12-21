@@ -395,6 +395,18 @@ dpo_get_urpf(const dpo_id_t *dpo)
     return (~0);
 }
 
+u16
+dpo_get_mtu(const dpo_id_t *dpo)
+{
+    if (dpo_id_is_valid(dpo) &&
+        (NULL != dpo_vfts[dpo->dpoi_type].dv_get_mtu))
+    {
+        return (dpo_vfts[dpo->dpoi_type].dv_get_mtu(dpo));
+    }
+
+    return (0xffff);
+}
+
 static u32
 dpo_get_next_node (dpo_type_t child_type,
                    dpo_proto_t child_proto,

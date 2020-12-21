@@ -17,7 +17,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppMRoutePath, VppMplsIpBind, \
     VppMplsTable, VppIpTable, FibPathType, find_route, \
     VppIpInterfaceAddress, find_route_in_dump, find_mroute_in_dump
-from vpp_ip import VppIpPuntPolicer, VppIpPuntRedirect
+from vpp_ip import VppIpPuntPolicer, VppIpPuntRedirect, VppIpPathMtu
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_papi import VppEnum
 from vpp_neighbor import VppNeighbor
@@ -2411,6 +2411,168 @@ class TestIP4Replace(VppTestCase):
             self.assertEqual(self.get_n_pfxs(intf), 1)
         for pfx in pfxs:
             self.assertTrue(pfx.query_vpp_config())
+
+
+class TestIPv4PathMTU(VppTestCase):
+    """ IPv4 Path MTU """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv4PathMTU, cls).setUpClass()
+
+        cls.create_pg_interfaces(range(2))
+
+        # setup all interfaces
+        for i in cls.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv4PathMTU, cls).tearDownClass()
+
+    def test_path_mtu(self):
+        """ Path MTU """
+
+        #
+        # The goal here is not test test that fragmentation works correctly,
+        # that's done elsewhere, the intent is to ensure that the Path MTU
+        # settings are honoured.
+        #
+        self.vapi.cli("adjacency counters enable")
+
+        # set the interface MTU to a reasonable value
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
+                                       [1800, 0, 0, 0])
+
+        self.pg1.generate_remote_hosts(4)
+
+        p_2k = (Ether(dst=self.pg0.local_mac,
+                      src=self.pg0.remote_mac) /
+                IP(src=self.pg0.remote_ip4,
+                   dst=self.pg1.remote_ip4) /
+                UDP(sport=1234, dport=5678) /
+                Raw(b'0xa' * 640))
+        p_1k = (Ether(dst=self.pg0.local_mac,
+                      src=self.pg0.remote_mac) /
+                IP(src=self.pg0.remote_ip4,
+                   dst=self.pg1.remote_ip4) /
+                UDP(sport=1234, dport=5678) /
+                Raw(b'0xa' * 320))
+
+        nbr = VppNeighbor(self,
+                          self.pg1.sw_if_index,
+                          self.pg1.remote_mac,
+                          self.pg1.remote_ip4).add_vpp_config()
+
+        # this is now the interface MTU frags
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=2)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1)
+
+        # drop the path MTU for this neighbour to below the interface MTU
+        # expect more frags
+        pmtu = VppIpPathMtu(self, self.pg1.remote_ip4, 900).add_vpp_config()
+
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
+
+        # print/format the adj delegate
+        self.logger.info(self.vapi.cli("sh adj 5"))
+
+        # increase the path MTU to more than the interface
+        # expect to use the interface MTU
+        pmtu.modify(8192)
+
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=2)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1)
+
+        # go back to an MTU from the path
+        pmtu.modify(900)
+
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
+
+        # raise the interface's MTU
+        # should still use that of the path
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
+                                       [2000, 0, 0, 0])
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
+
+        # set path high and interface low
+        pmtu.modify(2000)
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
+                                       [900, 0, 0, 0])
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
+
+        # remove the path MTU
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
+                                       [1800, 0, 0, 0])
+        pmtu.remove_vpp_config()
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=2)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1)
+
+        #
+        # set path MTU for a neighbour that doesn't exist, yet
+        #
+        pmtu2 = VppIpPathMtu(self,
+                             self.pg1.remote_hosts[2].ip4,
+                             900).add_vpp_config()
+
+        p_2k = (Ether(dst=self.pg0.local_mac,
+                      src=self.pg0.remote_mac) /
+                IP(src=self.pg0.remote_ip4,
+                   dst=self.pg1.remote_hosts[2].ip4) /
+                UDP(sport=1234, dport=5678) /
+                Raw(b'0xa' * 640))
+        p_1k = (Ether(dst=self.pg0.local_mac,
+                      src=self.pg0.remote_mac) /
+                IP(src=self.pg0.remote_ip4,
+                   dst=self.pg1.remote_hosts[2].ip4) /
+                UDP(sport=1234, dport=5678) /
+                Raw(b'0xa' * 320))
+
+        nbr2 = VppNeighbor(self,
+                           self.pg1.sw_if_index,
+                           self.pg1.remote_hosts[2].mac,
+                           self.pg1.remote_hosts[2].ip4).add_vpp_config()
+
+        # should frag to the path MTU
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
+
+        # remove and re-add the neighbour
+        nbr2.remove_vpp_config()
+        nbr2.add_vpp_config()
+
+        # should frag to the path MTU
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
+
+        #
+        # set PMTUs for many peers
+        #
+        N_HOSTS = 16
+        self.pg1.generate_remote_hosts(16)
+        self.pg1.configure_ipv4_neighbors()
+
+        for h in range(N_HOSTS):
+            pmtu = VppIpPathMtu(self, self.pg1.remote_hosts[h].ip4, 900)
+            pmtu.add_vpp_config()
+            self.assertTrue(pmtu.query_vpp_config())
+
+        self.logger.info(self.vapi.cli("sh ip pmtu"))
+        self.assertEqual(N_HOSTS, len(self.vapi.ip_path_mtu_dump()))
+
+        for h in range(N_HOSTS):
+            p_2k[IP].dst = self.pg1.remote_hosts[h].ip4
+            p_1k[IP].dst = self.pg1.remote_hosts[h].ip4
+
+            # should frag to the path MTU
+            self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+            self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
 
 
 if __name__ == '__main__':

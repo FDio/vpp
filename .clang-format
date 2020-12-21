@@ -18,4 +18,3 @@ ForEachMacros:
   - 'vec_foreach_index'
   - 'vec_foreach_index_backwards'
   - 'vlib_foreach_rx_tx'
-

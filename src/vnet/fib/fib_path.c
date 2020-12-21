@@ -999,6 +999,7 @@ fib_path_back_walk_notify (fib_node_t *node,
 		&path->fp_dpo);
 	}
 	if ((FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE & ctx->fnbw_reason) ||
+            (FIB_NODE_BW_REASON_FLAG_ADJ_MTU    & ctx->fnbw_reason) ||
             (FIB_NODE_BW_REASON_FLAG_ADJ_DOWN   & ctx->fnbw_reason))
 	{
 	    /*

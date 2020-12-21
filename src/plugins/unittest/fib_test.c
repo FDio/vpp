@@ -5827,10 +5827,14 @@ fib_test_ae (void)
 static int
 fib_test_pref (void)
 {
-    test_main_t *tm = &test_main;
-    int res;
+    test_main_t *tm;
+    ip4_main_t *im;
+    int res, i;
 
+    tm = &test_main;
+    im = &ip4_main;
     res = 0;
+
     const fib_prefix_t pfx_1_1_1_1_s_32 = {
         .fp_len = 32,
         .fp_proto = FIB_PROTOCOL_IP4,
@@ -5840,6 +5844,11 @@ fib_test_pref (void)
             },
         },
     };
+
+    vec_validate(im->fib_index_by_sw_if_index, tm->hw[2]->sw_if_index);
+
+    for (i = 0; i <= 2; i++)
+        im->fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
 
     /*
      * 2 high, 2 medium and 2 low preference non-recursive paths
@@ -9007,12 +9016,25 @@ static int
 fib_test_inherit (void)
 {
     fib_node_index_t fei;
+    int n_feis, res, i;
     test_main_t *tm;
-    int n_feis, res;
+    ip4_main_t *im4;
+    ip6_main_t *im6;
 
-    res = 0;
-    n_feis = fib_entry_pool_size();
     tm = &test_main;
+    im4 = &ip4_main;
+    im6 = &ip6_main;
+    res = 0;
+
+    vec_validate(im4->fib_index_by_sw_if_index, tm->hw[2]->sw_if_index);
+    vec_validate(im6->fib_index_by_sw_if_index, tm->hw[2]->sw_if_index);
+
+    for (i = 0; i <= 2; i++)
+    {
+        im4->fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
+        im6->fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
+    }
+    n_feis = fib_entry_pool_size();
 
     const ip46_address_t nh_10_10_10_1 = {
         .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a01),

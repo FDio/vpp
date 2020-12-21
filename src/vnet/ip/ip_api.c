@@ -28,6 +28,7 @@
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/ip/ip_punt_drop.h>
 #include <vnet/ip/ip_types_api.h>
+#include <vnet/ip/ip_path_mtu.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_api.h>
 #include <vnet/ethernet/arp_packet.h>
@@ -67,40 +68,42 @@
 
 #include <vnet/format_fns.h>
 
-#define foreach_ip_api_msg                                              \
-_(SW_INTERFACE_IP6_ENABLE_DISABLE, sw_interface_ip6_enable_disable)     \
-_(IP_TABLE_DUMP, ip_table_dump)                                         \
-_(IP_ROUTE_DUMP, ip_route_dump)                                         \
-_(IP_MTABLE_DUMP, ip_mtable_dump)                                       \
-_(IP_MROUTE_DUMP, ip_mroute_dump)                                       \
-_(IP_MROUTE_ADD_DEL, ip_mroute_add_del)                                 \
-_(MFIB_SIGNAL_DUMP, mfib_signal_dump)                                   \
-_(IP_ADDRESS_DUMP, ip_address_dump)                                     \
-_(IP_UNNUMBERED_DUMP, ip_unnumbered_dump)                               \
-_(IP_DUMP, ip_dump)                                                     \
-_(IP_TABLE_REPLACE_BEGIN, ip_table_replace_begin)                       \
-_(IP_TABLE_REPLACE_END, ip_table_replace_end)                           \
-_(IP_TABLE_FLUSH, ip_table_flush)                                       \
-_(IP_ROUTE_ADD_DEL, ip_route_add_del)                                   \
-_(IP_ROUTE_LOOKUP, ip_route_lookup)                                     \
-_(IP_TABLE_ADD_DEL, ip_table_add_del)                                   \
-_(IP_PUNT_POLICE, ip_punt_police)                                       \
-_(IP_PUNT_REDIRECT, ip_punt_redirect)                                   \
-_(SET_IP_FLOW_HASH,set_ip_flow_hash)                                    \
-_(IP_CONTAINER_PROXY_ADD_DEL, ip_container_proxy_add_del)               \
-_(IP_CONTAINER_PROXY_DUMP, ip_container_proxy_dump)                     \
-_(IOAM_ENABLE, ioam_enable)                                             \
-_(IOAM_DISABLE, ioam_disable)                                           \
-_(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
-  ip_source_and_port_range_check_add_del)                               \
-_(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
-  ip_source_and_port_range_check_interface_add_del)                     \
- _(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS,                             \
-   sw_interface_ip6_set_link_local_address)                             \
-_(IP_REASSEMBLY_SET, ip_reassembly_set)                                 \
-_(IP_REASSEMBLY_GET, ip_reassembly_get)                                 \
-_(IP_REASSEMBLY_ENABLE_DISABLE, ip_reassembly_enable_disable)           \
-_(IP_PUNT_REDIRECT_DUMP, ip_punt_redirect_dump)
+#define foreach_ip_api_msg                                                    \
+  _ (SW_INTERFACE_IP6_ENABLE_DISABLE, sw_interface_ip6_enable_disable)        \
+  _ (IP_TABLE_DUMP, ip_table_dump)                                            \
+  _ (IP_ROUTE_DUMP, ip_route_dump)                                            \
+  _ (IP_MTABLE_DUMP, ip_mtable_dump)                                          \
+  _ (IP_MROUTE_DUMP, ip_mroute_dump)                                          \
+  _ (IP_MROUTE_ADD_DEL, ip_mroute_add_del)                                    \
+  _ (MFIB_SIGNAL_DUMP, mfib_signal_dump)                                      \
+  _ (IP_ADDRESS_DUMP, ip_address_dump)                                        \
+  _ (IP_UNNUMBERED_DUMP, ip_unnumbered_dump)                                  \
+  _ (IP_DUMP, ip_dump)                                                        \
+  _ (IP_TABLE_REPLACE_BEGIN, ip_table_replace_begin)                          \
+  _ (IP_TABLE_REPLACE_END, ip_table_replace_end)                              \
+  _ (IP_TABLE_FLUSH, ip_table_flush)                                          \
+  _ (IP_ROUTE_ADD_DEL, ip_route_add_del)                                      \
+  _ (IP_ROUTE_LOOKUP, ip_route_lookup)                                        \
+  _ (IP_TABLE_ADD_DEL, ip_table_add_del)                                      \
+  _ (IP_PUNT_POLICE, ip_punt_police)                                          \
+  _ (IP_PUNT_REDIRECT, ip_punt_redirect)                                      \
+  _ (SET_IP_FLOW_HASH, set_ip_flow_hash)                                      \
+  _ (IP_CONTAINER_PROXY_ADD_DEL, ip_container_proxy_add_del)                  \
+  _ (IP_CONTAINER_PROXY_DUMP, ip_container_proxy_dump)                        \
+  _ (IOAM_ENABLE, ioam_enable)                                                \
+  _ (IOAM_DISABLE, ioam_disable)                                              \
+  _ (IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                                  \
+     ip_source_and_port_range_check_add_del)                                  \
+  _ (IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                        \
+     ip_source_and_port_range_check_interface_add_del)                        \
+  _ (SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS,                                 \
+     sw_interface_ip6_set_link_local_address)                                 \
+  _ (IP_REASSEMBLY_SET, ip_reassembly_set)                                    \
+  _ (IP_REASSEMBLY_GET, ip_reassembly_get)                                    \
+  _ (IP_REASSEMBLY_ENABLE_DISABLE, ip_reassembly_enable_disable)              \
+  _ (IP_PUNT_REDIRECT_DUMP, ip_punt_redirect_dump)                            \
+  _ (IP_PATH_MTU_UPDATE, ip_path_mtu_update)                                  \
+  _ (IP_PATH_MTU_DUMP, ip_path_mtu_dump)
 
 static void
   vl_api_sw_interface_ip6_enable_disable_t_handler
@@ -1130,18 +1133,18 @@ static void
   REPLY_MACRO (VL_API_IP_CONTAINER_PROXY_ADD_DEL_REPLY);
 }
 
-typedef struct ip_container_proxy_walk_ctx_t_
+typedef struct ip_walk_ctx_t_
 {
   vl_api_registration_t *reg;
   u32 context;
-} ip_container_proxy_walk_ctx_t;
+} ip_walk_ctx_t;
 
 static int
 ip_container_proxy_send_details (const fib_prefix_t * pfx, u32 sw_if_index,
 				 void *args)
 {
   vl_api_ip_container_proxy_details_t *mp;
-  ip_container_proxy_walk_ctx_t *ctx = args;
+  ip_walk_ctx_t *ctx = args;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   if (!mp)
@@ -1169,7 +1172,7 @@ vl_api_ip_container_proxy_dump_t_handler (vl_api_ip_container_proxy_dump_t *
   if (!reg)
     return;
 
-  ip_container_proxy_walk_ctx_t ctx = {
+  ip_walk_ctx_t ctx = {
     .context = mp->context,
     .reg = reg,
   };
@@ -1596,21 +1599,15 @@ void
   REPLY_MACRO (VL_API_IP_REASSEMBLY_ENABLE_DISABLE_REPLY);
 }
 
-typedef struct ip_punt_redirect_walk_ctx_t_
-{
-  vl_api_registration_t *reg;
-  u32 context;
-} ip_punt_redirect_walk_ctx_t;
-
 static walk_rc_t
 send_ip_punt_redirect_details (u32 rx_sw_if_index,
 			       const ip_punt_redirect_rx_t * ipr, void *arg)
 {
-  ip_punt_redirect_walk_ctx_t *ctx = arg;
   vl_api_ip_punt_redirect_details_t *mp;
   fib_path_encode_ctx_t path_ctx = {
     .rpaths = NULL,
   };
+  ip_walk_ctx_t *ctx = arg;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   if (!mp)
@@ -1648,7 +1645,7 @@ vl_api_ip_punt_redirect_dump_t_handler (vl_api_ip_punt_redirect_dump_t * mp)
   if (mp->is_ipv6 == 1)
     fproto = FIB_PROTOCOL_IP6;
 
-  ip_punt_redirect_walk_ctx_t ctx = {
+  ip_walk_ctx_t ctx = {
     .reg = reg,
     .context = mp->context,
   };
@@ -1669,6 +1666,63 @@ vl_api_ip_punt_redirect_dump_t_handler (vl_api_ip_punt_redirect_dump_t * mp)
     }
   else
     ip_punt_redirect_walk (fproto, send_ip_punt_redirect_details, &ctx);
+}
+
+void
+vl_api_ip_path_mtu_update_t_handler (vl_api_ip_path_mtu_update_t * mp)
+{
+  vl_api_ip_path_mtu_update_reply_t *rmp;
+  ip_address_t nh;
+  int rv = 0;
+
+  ip_address_decode2 (&mp->pmtu.nh, &nh);
+
+  rv = ip_path_mtu_update (&nh, ntohl (mp->pmtu.table_id),
+			   ntohs (mp->pmtu.path_mtu));
+
+  REPLY_MACRO (VL_API_IP_PATH_MTU_UPDATE_REPLY);
+}
+
+static walk_rc_t
+send_ip_path_mtu_details (const ip_address_t *ip, u32 table_id, u16 pmtu,
+			  void *arg)
+{
+  vl_api_ip_path_mtu_details_t *mp;
+  ip_walk_ctx_t *ctx = arg;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  if (!mp)
+    return (WALK_STOP);
+
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_IP_PATH_MTU_DETAILS);
+  mp->context = ctx->context;
+
+  mp->pmtu.table_id = htonl (table_id);
+  mp->pmtu.path_mtu = htons (pmtu);
+
+  ip_address_encode2 (ip, &mp->pmtu.nh);
+
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+  return (WALK_CONTINUE);
+}
+
+static void
+vl_api_ip_path_mtu_dump_t_handler (vl_api_ip_path_mtu_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  ip_walk_ctx_t ctx = {
+    .reg = reg,
+    .context = mp->context,
+  };
+
+  ip_path_mtu_walk (send_ip_path_mtu_details, &ctx);
 }
 
 #define vl_msg_name_crc_list

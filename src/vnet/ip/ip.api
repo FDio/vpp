@@ -634,6 +634,41 @@ autoreply define ip_reassembly_enable_disable
   vl_api_ip_reass_type_t type;
 };
 
+/**
+    @brief Set a Path MTU value. i.e. a MTU value for a given neighbour.
+           The neighbour can be described as attached (w/ interface and next-hop)
+           or remote (w/ table_id and next-hop);
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table_id - table-ID for next-hop
+    @param nh - Next hop
+    @param path_mtu - value to set, 0 is disable.
+*/
+typedef ip_path_mtu
+{
+  u32 client_index;
+  u32 context;
+  u32 table_id;
+  vl_api_address_t nh;
+  u16 path_mtu;
+};
+autoreply define ip_path_mtu_update
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip_path_mtu_t pmtu;
+};
+define ip_path_mtu_dump
+{
+  u32 client_index;
+  u32 context;
+};
+define ip_path_mtu_details
+{
+  u32 context;
+  vl_api_ip_path_mtu_t pmtu;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
