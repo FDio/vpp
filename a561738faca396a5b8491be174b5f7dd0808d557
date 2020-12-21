@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4558a526_4787a65b",
+        "filename": "src/vppinfra/spool.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-21T22:05:24Z",
+      "side": 1,
+      "message": "I dont think this should be called a pool, as we already discussed...",
+      "revId": "a561738faca396a5b8491be174b5f7dd0808d557",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bf84bad0_d355168d",
+        "filename": "src/vppinfra/spool.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-21T22:05:24Z",
+      "side": 1,
+      "message": "Why not clib_mem_alloc, it should be faster?",
+      "revId": "a561738faca396a5b8491be174b5f7dd0808d557",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "db8a35db_cc116cbe",
+        "filename": "src/vppinfra/spool.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2020-12-21T22:05:24Z",
+      "side": 1,
+      "message": "clib_memset",
+      "revId": "a561738faca396a5b8491be174b5f7dd0808d557",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
