@@ -20,6 +20,7 @@
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/adj/adj_delegate.h>
 #include <vnet/fib/fib_node_list.h>
+#include <vnet/fib/fib_walk.h>
 
 /* Adjacency packet/byte counters indexed by adjacency index. */
 vlib_combined_counter_main_t adjacency_counters = {
@@ -326,6 +327,16 @@ adj_dpo_get_urpf (const dpo_id_t *dpo)
     return (adj->rewrite_header.sw_if_index);
 }
 
+u16
+adj_dpo_get_mtu (const dpo_id_t *dpo)
+{
+    ip_adjacency_t *adj;
+
+    adj = adj_get(dpo->dpoi_index);
+
+    return (adj->rewrite_header.max_l3_packet_bytes);
+}
+
 void
 adj_lock (adj_index_t adj_index)
 {
@@ -465,6 +476,19 @@ adj_mtu_update_walk_cb (adj_index_t ai,
 
     vnet_rewrite_update_mtu (vnet_get_main(), adj->ia_link,
                              &adj->rewrite_header);
+    adj_delegate_adj_modified(adj);
+
+    /**
+     * Backwalk to all Path MTU trackers, casual like ..
+     */
+    {
+	fib_node_back_walk_ctx_t bw_ctx = {
+	    .fnbw_reason = FIB_NODE_BW_REASON_FLAG_ADJ_MTU,
+	};
+
+	fib_walk_async(FIB_NODE_TYPE_ADJ, ai,
+                       FIB_WALK_PRIORITY_LOW, &bw_ctx);
+    }
 
     return (ADJ_WALK_RC_CONTINUE);
 }
