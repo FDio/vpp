@@ -7,6 +7,7 @@ import unittest
 from parameterized import parameterized
 import scapy.compat
 import scapy.layers.inet6 as inet6
+from scapy.layers.inet import UDP
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6ND_RA, ICMPv6NDOptMTU, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptPrefixInfo, \
@@ -22,13 +23,14 @@ from six import moves
 from framework import VppTestCase, VppTestRunner
 from util import ppp, ip6_normalize, mk_ll_addr
 from vpp_papi import VppEnum
-from vpp_ip import DpoProto, VppIpPuntPolicer, VppIpPuntRedirect
+from vpp_ip import DpoProto, VppIpPuntPolicer, VppIpPuntRedirect, VppIpPathMtu
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
     VppMRoutePath, VppMplsIpBind, \
     VppMplsRoute, VppMplsTable, VppIpTable, FibPathType, FibPathProto, \
     VppIpInterfaceAddress, find_route_in_dump, find_mroute_in_dump, \
     VppIp6LinkLocalAddress
 from vpp_neighbor import find_nbr, VppNeighbor
+from vpp_ipip_tun_interface import VppIpIpTunInterface
 from vpp_pg_interface import is_ipv6_misc
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from vpp_policer import VppPolicer
@@ -2902,6 +2904,237 @@ class TestIP6LinkLocal(VppTestCase):
 
         VppIp6LinkLocalAddress(self, self.pg1, ll3).add_vpp_config()
         self.send_and_expect(self.pg1, [p_echo_request_3], self.pg1)
+
+
+class TestIPv6PathMTU(VppTestCase):
+    """ IPv6 Path MTU """
+
+    def setUp(self):
+        super(TestIPv6PathMTU, self).setUp()
+
+        self.create_pg_interfaces(range(2))
+
+        # setup all interfaces
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip6()
+            i.resolve_ndp()
+
+    def tearDown(self):
+        super(TestIPv6PathMTU, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip6()
+            i.admin_down()
+
+    def test_path_mtu_local(self):
+        """ Path MTU for attached neighbour """
+
+        self.vapi.cli("set log class ip level debug")
+        #
+        # The goal here is not test that fragmentation works correctly,
+        # that's done elsewhere, the intent is to ensure that the Path MTU
+        # settings are honoured.
+        #
+
+        #
+        # IPv6 will only frag locally generated packets, so use tunnelled
+        # packets post encap
+        #
+        tun = VppIpIpTunInterface(
+            self,
+            self.pg1,
+            self.pg1.local_ip6,
+            self.pg1.remote_ip6)
+        tun.add_vpp_config()
+        tun.admin_up()
+        tun.config_ip6()
+
+        # set the interface MTU to a reasonable value
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
+                                       [2800, 0, 0, 0])
+
+        p_2k = (Ether(dst=self.pg0.local_mac,
+                      src=self.pg0.remote_mac) /
+                IPv6(src=self.pg0.remote_ip6,
+                     dst=tun.remote_ip6) /
+                UDP(sport=1234, dport=5678) /
+                Raw(b'0xa' * 1000))
+        p_1k = (Ether(dst=self.pg0.local_mac,
+                      src=self.pg0.remote_mac) /
+                IPv6(src=self.pg0.remote_ip6,
+                     dst=tun.remote_ip6) /
+                UDP(sport=1234, dport=5678) /
+                Raw(b'0xa' * 600))
+
+        nbr = VppNeighbor(self,
+                          self.pg1.sw_if_index,
+                          self.pg1.remote_mac,
+                          self.pg1.remote_ip6).add_vpp_config()
+
+        # this is now the interface MTU frags
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=2)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1)
+
+        # drop the path MTU for this neighbour to below the interface MTU
+        # expect more frags
+        pmtu = VppIpPathMtu(self, self.pg1.remote_ip6, 1300).add_vpp_config()
+
+        # print/format the adj delegate and trackers
+        self.logger.info(self.vapi.cli("sh ip pmtu"))
+        self.logger.info(self.vapi.cli("sh adj 7"))
+
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
+
+        # increase the path MTU to more than the interface
+        # expect to use the interface MTU
+        pmtu.modify(8192)
+
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=2)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1)
+
+        # go back to an MTU from the path
+        pmtu.modify(1300)
+
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
+
+        # raise the interface's MTU
+        # should still use that of the path
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
+                                       [2000, 0, 0, 0])
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
+
+        # set path high and interface low
+        pmtu.modify(2000)
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
+                                       [1300, 0, 0, 0])
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
+
+        # remove the path MTU
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
+                                       [2800, 0, 0, 0])
+        pmtu.modify(0)
+
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=2)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1)
+
+    def test_path_mtu_remote(self):
+        """ Path MTU for remote neighbour """
+
+        self.vapi.cli("set log class ip level debug")
+        #
+        # The goal here is not test that fragmentation works correctly,
+        # that's done elsewhere, the intent is to ensure that the Path MTU
+        # settings are honoured.
+        #
+        tun_dst = "2001::1"
+
+        route = VppIpRoute(
+            self, tun_dst, 64,
+            [VppRoutePath(self.pg1.remote_ip6,
+                          self.pg1.sw_if_index)]).add_vpp_config()
+
+        #
+        # IPv6 will only frag locally generated packets, so use tunnelled
+        # packets post encap
+        #
+        tun = VppIpIpTunInterface(
+            self,
+            self.pg1,
+            self.pg1.local_ip6,
+            tun_dst)
+        tun.add_vpp_config()
+        tun.admin_up()
+        tun.config_ip6()
+
+        # set the interface MTU to a reasonable value
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
+                                       [2800, 0, 0, 0])
+
+        p_2k = (Ether(dst=self.pg0.local_mac,
+                      src=self.pg0.remote_mac) /
+                IPv6(src=self.pg0.remote_ip6,
+                     dst=tun.remote_ip6) /
+                UDP(sport=1234, dport=5678) /
+                Raw(b'0xa' * 1000))
+        p_1k = (Ether(dst=self.pg0.local_mac,
+                      src=self.pg0.remote_mac) /
+                IPv6(src=self.pg0.remote_ip6,
+                     dst=tun.remote_ip6) /
+                UDP(sport=1234, dport=5678) /
+                Raw(b'0xa' * 600))
+
+        nbr = VppNeighbor(self,
+                          self.pg1.sw_if_index,
+                          self.pg1.remote_mac,
+                          self.pg1.remote_ip6).add_vpp_config()
+
+        # this is now the interface MTU frags
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=2)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1)
+
+        # drop the path MTU for this neighbour to below the interface MTU
+        # expect more frags
+        pmtu = VppIpPathMtu(self, tun_dst, 1300).add_vpp_config()
+
+        # print/format the fib entry/dpo
+        self.logger.info(self.vapi.cli("sh ip6 fib 2001::1"))
+
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
+
+        # increase the path MTU to more than the interface
+        # expect to use the interface MTU
+        pmtu.modify(8192)
+
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=2)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1)
+
+        # go back to an MTU from the path
+        pmtu.modify(1300)
+
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
+
+        # raise the interface's MTU
+        # should still use that of the path
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
+                                       [2000, 0, 0, 0])
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
+
+        # turn the tun_dst into an attached neighbour
+        route.modify([VppRoutePath("::",
+                                   self.pg1.sw_if_index)])
+        nbr2 = VppNeighbor(self,
+                           self.pg1.sw_if_index,
+                           self.pg1.remote_mac,
+                           tun_dst).add_vpp_config()
+
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
+
+        # add back to not attached
+        nbr2.remove_vpp_config()
+        route.modify([VppRoutePath(self.pg1.remote_ip6,
+                                   self.pg1.sw_if_index)])
+
+        # set path high and interface low
+        pmtu.modify(2000)
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
+                                       [1300, 0, 0, 0])
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=3)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
+
+        # remove the path MTU
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
+                                       [2800, 0, 0, 0])
+        pmtu.remove_vpp_config()
+        self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=2)
+        self.send_and_expect(self.pg0, [p_1k], self.pg1)
 
 
 if __name__ == '__main__':
