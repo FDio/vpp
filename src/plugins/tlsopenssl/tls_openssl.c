@@ -153,9 +153,9 @@ openssl_write_from_fifo_into_ssl (svm_fifo_t *f, SSL *ssl, u32 max_len)
   if (len <= 0)
     return 0;
 
-  while (wrote < len && i < n_segs)
+  while (wrote < max_len && i < n_segs)
     {
-      rv = SSL_write (ssl, fs[i].data, fs[i].len);
+      rv = SSL_write (ssl, fs[i].data, clib_min (fs[i].len, max_len - wrote));
       wrote += (rv > 0) ? rv : 0;
       if (rv < fs[i].len)
 	break;
@@ -322,9 +322,12 @@ openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session,
 
   ts = session_get_from_handle (ctx->tls_session_handle);
   space = svm_fifo_max_enqueue_prod (ts->tx_fifo);
-  /* Leave a bit of extra space for tls ctrl data, if any needed */
-  space = clib_max ((int) space - TLSO_CTRL_BYTES, 0);
+  /* Leave a bit of extra space for tls ctrl data, if any needed, and
+   * make sure we can write at least one fully formed packet */
+  if (space < TLSO_CTRL_BYTES + TRANSPORT_PACER_MIN_MSS)
+    goto check_tls_fifo;
 
+  space -= TLSO_CTRL_BYTES;
   f = app_session->tx_fifo;
 
   deq_max = svm_fifo_max_dequeue_cons (f);
