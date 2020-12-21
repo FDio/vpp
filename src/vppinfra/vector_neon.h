@@ -81,6 +81,12 @@ u8x16_compare_byte_mask (u8x16 v)
     return !!(vminvq_u##s (vceqq_##i (a, b)));                                \
   }                                                                           \
                                                                               \
+  static_always_inline t##s##x##c t##s##x##c##_even_elements (t##s##x##c a,   \
+							      t##s##x##c b)   \
+  {                                                                           \
+    return vuzp1q_##i (a, b);                                                 \
+  }                                                                           \
+                                                                              \
   static_always_inline t##s##x##c t##s##x##c##_xcombine_even_elements (       \
     t##s##x##c a, t##s##x##c b)                                               \
   {                                                                           \
