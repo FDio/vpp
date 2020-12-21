@@ -69,6 +69,26 @@ tunnel_encap_fixup_4o4_w_chksum (tunnel_encap_decap_flags_t flags,
 }
 
 static_always_inline void
+tunnel_encap_fixup_mplso4_w_chksum (tunnel_encap_decap_flags_t flags,
+				    const mpls_unicast_header_t *inner,
+				    ip4_header_t *outer)
+{
+  if (flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP)
+    {
+      ip_csum_t sum = outer->checksum;
+      u8 tos = outer->tos;
+
+      if (flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP)
+	ip4_header_set_dscp (outer,
+			     vnet_mpls_uc_get_exp (inner->label_exp_s_ttl));
+
+      sum =
+	ip_csum_update (outer->checksum, tos, outer->tos, ip4_header_t, tos);
+      outer->checksum = ip_csum_fold (sum);
+    }
+}
+
+static_always_inline void
 tunnel_encap_fixup_6o4 (tunnel_encap_decap_flags_t flags,
 			const ip6_header_t * inner, ip4_header_t * outer)
 {

@@ -27,12 +27,13 @@
 
 #include <vnet/gre/packet.h>
 
-#define foreach_esp_decrypt_next                \
-_(DROP, "error-drop")                           \
-_(IP4_INPUT, "ip4-input-no-checksum")           \
-_(IP6_INPUT, "ip6-input")                       \
-_(L2_INPUT, "l2-input")                         \
-_(HANDOFF, "handoff")
+#define foreach_esp_decrypt_next                                              \
+  _ (DROP, "error-drop")                                                      \
+  _ (IP4_INPUT, "ip4-input-no-checksum")                                      \
+  _ (IP6_INPUT, "ip6-input")                                                  \
+  _ (L2_INPUT, "l2-input")                                                    \
+  _ (MPLS_INPUT, "mpls-input")                                                \
+  _ (HANDOFF, "handoff")
 
 #define _(v, s) ESP_DECRYPT_NEXT_##v,
 typedef enum
@@ -42,11 +43,12 @@ typedef enum
     ESP_DECRYPT_N_NEXT,
 } esp_decrypt_next_t;
 
-#define foreach_esp_decrypt_post_next                  \
-_(DROP, "error-drop")                                  \
-_(IP4_INPUT, "ip4-input-no-checksum")                  \
-_(IP6_INPUT, "ip6-input")                              \
-_(L2_INPUT, "l2-input")
+#define foreach_esp_decrypt_post_next                                         \
+  _ (DROP, "error-drop")                                                      \
+  _ (IP4_INPUT, "ip4-input-no-checksum")                                      \
+  _ (IP6_INPUT, "ip6-input")                                                  \
+  _ (MPLS_INPUT, "mpls-input")                                                \
+  _ (L2_INPUT, "l2-input")
 
 #define _(v, s) ESP_DECRYPT_POST_NEXT_##v,
 typedef enum
@@ -913,6 +915,13 @@ esp_decrypt_post_crypto (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b->current_length = pd->current_length - adv;
 	  esp_remove_tail (vm, b, lb, tail);
 	}
+      else if (next_header == IP_PROTOCOL_MPLS_IN_IP)
+	{
+	  next[0] = ESP_DECRYPT_NEXT_MPLS_INPUT;
+	  b->current_data = pd->current_data + adv;
+	  b->current_length = pd->current_length - adv;
+	  esp_remove_tail (vm, b, lb, tail);
+	}
       else
 	{
 	  if (is_tun && next_header == IP_PROTOCOL_GRE)
@@ -1457,6 +1466,7 @@ VLIB_REGISTER_NODE (esp4_decrypt_node) = {
     [ESP_DECRYPT_NEXT_DROP] = "ip4-drop",
     [ESP_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
     [ESP_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
+    [ESP_DECRYPT_NEXT_MPLS_INPUT] = "mpls-drop",
     [ESP_DECRYPT_NEXT_L2_INPUT] = "l2-input",
     [ESP_DECRYPT_NEXT_HANDOFF] = "esp4-decrypt-handoff",
   },
@@ -1488,6 +1498,7 @@ VLIB_REGISTER_NODE (esp6_decrypt_node) = {
     [ESP_DECRYPT_NEXT_DROP] = "ip6-drop",
     [ESP_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
     [ESP_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
+    [ESP_DECRYPT_NEXT_MPLS_INPUT] = "mpls-drop",
     [ESP_DECRYPT_NEXT_L2_INPUT] = "l2-input",
     [ESP_DECRYPT_NEXT_HANDOFF]=  "esp6-decrypt-handoff",
   },
@@ -1517,6 +1528,7 @@ VLIB_REGISTER_NODE (esp4_decrypt_tun_node) = {
     [ESP_DECRYPT_NEXT_DROP] = "ip4-drop",
     [ESP_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
     [ESP_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
+    [ESP_DECRYPT_NEXT_MPLS_INPUT] = "mpls-input",
     [ESP_DECRYPT_NEXT_L2_INPUT] = "l2-input",
     [ESP_DECRYPT_NEXT_HANDOFF] = "esp4-decrypt-tun-handoff",
   },
@@ -1546,6 +1558,7 @@ VLIB_REGISTER_NODE (esp6_decrypt_tun_node) = {
     [ESP_DECRYPT_NEXT_DROP] = "ip6-drop",
     [ESP_DECRYPT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
     [ESP_DECRYPT_NEXT_IP6_INPUT] = "ip6-input",
+    [ESP_DECRYPT_NEXT_MPLS_INPUT] = "mpls-input",
     [ESP_DECRYPT_NEXT_L2_INPUT] = "l2-input",
     [ESP_DECRYPT_NEXT_HANDOFF]=  "esp6-decrypt-tun-handoff",
   },

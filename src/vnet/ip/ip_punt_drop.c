@@ -15,8 +15,6 @@
 
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip_punt_drop.h>
-#include <vnet/policer/policer.h>
-#include <vnet/policer/police_inlines.h>
 #include <vnet/fib/fib_path_list.h>
 
 ip_punt_redirect_cfg_t ip_punt_redirect_cfg;
