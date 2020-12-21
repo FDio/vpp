@@ -274,6 +274,23 @@ typedef struct vlib_main_t
     (struct vlib_main_t *, u64 t);
   clib_spinlock_t worker_thread_main_loop_callback_lock;
 
+  /* dispatch_node callback */
+  void (**volatile worker_thread_dispatch_node_callbacks)
+      (struct vlib_main_t *,
+       struct vlib_node_runtime_t *,
+       vlib_node_type_t,
+       vlib_node_state_t,
+       struct vlib_frame_t *
+       u64);
+  void (**volatile worker_thread_dispatch_node_callbacks_tmp)
+      (struct vlib_main_t *,
+       struct vlib_node_runtime_t *,
+       vlib_node_type_t,
+       vlib_node_state_t,
+       struct vlib_frame_t *
+       u64);
+  clib_spinlock_t worker_thread_dispatch_node_callback_lock;
+
   /* debugging */
   volatile int parked_at_barrier;
 

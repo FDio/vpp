@@ -1191,6 +1191,11 @@ dispatch_node (vlib_main_t * vm,
   vlib_node_runtime_perf_counter (vm, node, frame, 0, last_time_stamp,
 				  VLIB_NODE_RUNTIME_PERF_BEFORE);
 
+  if (PREDICT_FALSE (vec_len (vm->worker_thread_dispatch_node_callbacks)))
+    clib_call_callbacks (vm->worker_thread_dispatch_node_callbacks, 
+                         vm, node, type, dispatch_state, frame, 
+                         last_time_stamp);
+
   /*
    * Turn this on if you run into
    * "bad monkey" contexts, and you want to know exactly
