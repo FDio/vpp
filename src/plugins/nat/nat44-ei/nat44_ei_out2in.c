@@ -29,6 +29,7 @@
 #include <nat/nat_inlines.h>
 #include <nat/lib/nat_syslog.h>
 #include <nat/nat44-ei/nat44_ei_inlines.h>
+#include <nat/nat44-ei/nat44_ei.h>
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
@@ -354,10 +355,9 @@ icmp_match_out2in_slow (snat_main_t * sm, vlib_node_runtime_t * node,
     {
       /* Try to match static mapping by external address and port,
          destination address and port in packet */
-      if (snat_static_mapping_match
-	  (sm, *addr, *port, *fib_index, *proto,
-	   &mapping_addr, &mapping_port, &mapping_fib_index, 1, &is_addr_only,
-	   0, 0, 0, &identity_nat, 0))
+      if (nat44_ei_static_mapping_match (
+	    *addr, *port, *fib_index, *proto, &mapping_addr, &mapping_port,
+	    &mapping_fib_index, 1, &is_addr_only, &identity_nat))
 	{
 	  if (!sm->forwarding_enabled)
 	    {
@@ -481,9 +481,9 @@ icmp_match_out2in_fast (snat_main_t * sm, vlib_node_runtime_t * node,
       next0 = SNAT_OUT2IN_NEXT_DROP;
       goto out;
     }
-  if (snat_static_mapping_match
-      (sm, addr, port, rx_fib_index0, *proto, mapping_addr, mapping_port,
-       mapping_fib_index, 1, &is_addr_only, 0, 0, 0, 0, 0))
+  if (nat44_ei_static_mapping_match (addr, port, rx_fib_index0, *proto,
+				     mapping_addr, mapping_port,
+				     mapping_fib_index, 1, &is_addr_only, 0))
     {
       /* Don't NAT packet aimed at the intfc address */
       if (is_interface_addr (sm, node, sw_if_index0, ip0->dst_address.as_u32))
@@ -828,11 +828,10 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	{
 	  /* Try to match static mapping by external address and port,
 	     destination address and port in packet */
-	  if (snat_static_mapping_match
-	      (sm, ip0->dst_address,
-	       vnet_buffer (b0)->ip.reass.l4_dst_port, rx_fib_index0,
-	       proto0, &sm_addr0, &sm_port0, &sm_fib_index0, 1, 0, 0, 0,
-	       0, &identity_nat0, 0))
+	  if (nat44_ei_static_mapping_match (
+		ip0->dst_address, vnet_buffer (b0)->ip.reass.l4_dst_port,
+		rx_fib_index0, proto0, &sm_addr0, &sm_port0, &sm_fib_index0, 1,
+		0, &identity_nat0))
 	    {
 	      /*
 	       * Send DHCP packets to the ipv4 stack, or we won't
@@ -1003,17 +1002,15 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
       init_nat_k (&kv1, ip1->dst_address,
 		  vnet_buffer (b1)->ip.reass.l4_dst_port, rx_fib_index1,
 		  proto1);
-
       if (clib_bihash_search_8_8
 	  (&sm->per_thread_data[thread_index].out2in, &kv1, &value1))
 	{
 	  /* Try to match static mapping by external address and port,
 	     destination address and port in packet */
-	  if (snat_static_mapping_match
-	      (sm, ip1->dst_address,
-	       vnet_buffer (b1)->ip.reass.l4_dst_port, proto1,
-	       rx_fib_index1, &sm_addr1, &sm_port1, &sm_fib_index1, 1, 0,
-	       0, 0, 0, &identity_nat1, 0))
+	  if (nat44_ei_static_mapping_match (
+		ip1->dst_address, vnet_buffer (b1)->ip.reass.l4_dst_port,
+		rx_fib_index1, proto1, &sm_addr1, &sm_port1, &sm_fib_index1, 1,
+		0, &identity_nat1))
 	    {
 	      /*
 	       * Send DHCP packets to the ipv4 stack, or we won't
@@ -1227,11 +1224,10 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	{
 	  /* Try to match static mapping by external address and port,
 	     destination address and port in packet */
-	  if (snat_static_mapping_match
-	      (sm, ip0->dst_address,
-	       vnet_buffer (b0)->ip.reass.l4_dst_port, rx_fib_index0,
-	       proto0, &sm_addr0, &sm_port0, &sm_fib_index0, 1, 0, 0, 0,
-	       0, &identity_nat0, 0))
+	  if (nat44_ei_static_mapping_match (
+		ip0->dst_address, vnet_buffer (b0)->ip.reass.l4_dst_port,
+		rx_fib_index0, proto0, &sm_addr0, &sm_port0, &sm_fib_index0, 1,
+		0, &identity_nat0))
 	    {
 	      /*
 	       * Send DHCP packets to the ipv4 stack, or we won't
@@ -1454,9 +1450,9 @@ VLIB_NODE_FN (snat_out2in_fast_node) (vlib_main_t * vm,
 	  goto trace00;
 	}
 
-      if (snat_static_mapping_match
-	  (sm, ip0->dst_address, udp0->dst_port, rx_fib_index0, proto0,
-	   &sm_addr0, &sm_port0, &sm_fib_index0, 1, 0, 0, 0, 0, 0, 0))
+      if (nat44_ei_static_mapping_match (ip0->dst_address, udp0->dst_port,
+					 rx_fib_index0, proto0, &sm_addr0,
+					 &sm_port0, &sm_fib_index0, 1, 0, 0))
 	{
 	  b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
 	  goto trace00;

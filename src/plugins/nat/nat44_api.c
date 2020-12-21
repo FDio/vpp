@@ -828,13 +828,10 @@ static void
   tag = format (0, "%s", mp->tag);
   vec_terminate_c_string (tag);
 
-  rv = snat_add_static_mapping (local_addr, external_addr, local_port,
-				external_port, vrf_id,
-				mp->flags & NAT_API_IS_ADDR_ONLY,
-				external_sw_if_index, proto,
-				mp->is_add, twice_nat,
-				mp->flags & NAT_API_IS_OUT2IN_ONLY, tag, 0,
-				pool_addr, 0);
+  rv = snat_add_static_mapping (
+    local_addr, external_addr, local_port, external_port, vrf_id,
+    mp->flags & NAT_API_IS_ADDR_ONLY, external_sw_if_index, proto, mp->is_add,
+    twice_nat, mp->flags & NAT_API_IS_OUT2IN_ONLY, tag, 0, pool_addr, 0);
   vec_free (tag);
 
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_STATIC_MAPPING_REPLY);
@@ -1622,7 +1619,7 @@ vl_api_nat44_del_session_t_handler (vl_api_nat44_del_session_t * mp)
       nat44_del_ed_session (sm, &addr, port, &eh_addr, eh_port, mp->protocol,
 			    vrf_id, is_in);
   else
-    rv = nat44_del_session (sm, &addr, port, proto, vrf_id, is_in);
+    rv = nat44_ei_del_session (sm, &addr, port, proto, vrf_id, is_in);
 
   REPLY_MACRO (VL_API_NAT44_DEL_SESSION_REPLY);
 }
