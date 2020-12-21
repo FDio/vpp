@@ -19,6 +19,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/ip/ip_frag.h>
+#include <vnet/adj/adj_dp.h>
 
 typedef struct {
   /* Adjacency taken. */
@@ -199,16 +200,12 @@ mpls_output_inline (vlib_main_t * vm,
             }
           if (mode == MPLS_OUTPUT_MIDCHAIN_MODE)
           {
-	      adj0->sub_type.midchain.fixup_func
-                (vm, adj0, p0,
-                 adj0->sub_type.midchain.fixup_data);
-	      adj1->sub_type.midchain.fixup_func
-                (vm, adj1, p1,
-                 adj1->sub_type.midchain.fixup_data);
-          }
+	    adj_midchain_fixup (vm, adj0, p0, VNET_LINK_MPLS);
+	    adj_midchain_fixup (vm, adj1, p1, VNET_LINK_MPLS);
+	  }
 
-          p0->error = error_node->errors[error0];
-          p1->error = error_node->errors[error1];
+	  p0->error = error_node->errors[error0];
+	  p1->error = error_node->errors[error1];
 
           if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
             {
@@ -288,12 +285,10 @@ mpls_output_inline (vlib_main_t * vm,
             }
           if (mode == MPLS_OUTPUT_MIDCHAIN_MODE)
           {
-	      adj0->sub_type.midchain.fixup_func
-                (vm, adj0, p0,
-                 adj0->sub_type.midchain.fixup_data);
-          }
+	    adj_midchain_fixup (vm, adj0, p0, VNET_LINK_MPLS);
+	  }
 
-          p0->error = error_node->errors[error0];
+	  p0->error = error_node->errors[error0];
 
 	  from += 1;
 	  n_left_from -= 1;

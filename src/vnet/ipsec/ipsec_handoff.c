@@ -220,6 +220,15 @@ VLIB_NODE_FN (esp6_encrypt_tun_handoff) (vlib_main_t * vm,
 			true);
 }
 
+VLIB_NODE_FN (esp_mpls_encrypt_tun_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  return ipsec_handoff (vm, node, from_frame, im->esp_mpls_enc_tun_fq_index,
+			true);
+}
+
 VLIB_NODE_FN (esp4_decrypt_handoff) (vlib_main_t * vm,
 				     vlib_node_runtime_t * node,
 				     vlib_frame_t * from_frame)
@@ -333,6 +342,18 @@ VLIB_REGISTER_NODE (esp4_encrypt_tun_handoff) = {
 };
 VLIB_REGISTER_NODE (esp6_encrypt_tun_handoff) = {
   .name = "esp6-encrypt-tun-handoff",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ipsec_handoff_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(ipsec_handoff_error_strings),
+  .error_strings = ipsec_handoff_error_strings,
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+VLIB_REGISTER_NODE (esp_mpls_encrypt_tun_handoff) = {
+  .name = "esp-mpls-encrypt-tun-handoff",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
