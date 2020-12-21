@@ -427,7 +427,6 @@ typedef struct
   u32 flags;
   int addr_only;
   int twice_nat;
-  int is_add;
   int out2in_only;
   int identity_nat;
   int exact;
@@ -728,6 +727,9 @@ typedef struct snat_main_s
 
   fib_source_t fib_src_hi;
   fib_source_t fib_src_low;
+
+  /* pat - dynamic mapping enabled or conneciton tracking */
+  u8 pat;
 
   /* nat44 plugin enabled */
   u8 enabled;
@@ -1298,20 +1300,6 @@ int snat_add_interface_address (snat_main_t * sm, u32 sw_if_index, int is_del,
 				u8 twice_nat);
 
 /**
- * @brief Delete NAT44 session
- *
- * @param addr   IPv4 address
- * @param port   L4 port number
- * @param proto  L4 protocol
- * @param vrf_id VRF ID
- * @param is_in  1 = inside network address and port pair, 0 = outside
- *
- * @return 0 on success, non-zero value otherwise
- */
-int nat44_del_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
-		       nat_protocol_t proto, u32 vrf_id, int is_in);
-
-/**
  * @brief Delete NAT44 endpoint-dependent session
  *
  * @param sm     snat global configuration data
@@ -1355,20 +1343,6 @@ int nat44_set_session_limit (u32 session_limit, u32 vrf_id);
  * @return 0 on success, non-zero value otherwise
  */
 int nat44_update_session_limit (u32 session_limit, u32 vrf_id);
-
-/**
- * @brief Initialize NAT44 data
- *
- * @param tsm          per thread data
- */
-void nat44_db_init (snat_main_per_thread_data_t * tsm);
-
-/**
- * @brief Free NAT44 data
- *
- * @param tsm          per thread data
- */
-void nat44_db_free (snat_main_per_thread_data_t * tsm);
 
 /**
  * @brief Free all NAT44 sessions
@@ -1509,6 +1483,18 @@ typedef struct
 } tcp_udp_header_t;
 
 u8 *format_user_kvp (u8 * s, va_list * args);
+
+u32 get_thread_idx_by_port (u16 e_port);
+
+u8 *format_static_mapping_kvp (u8 *s, va_list *args);
+
+u8 *format_session_kvp (u8 *s, va_list *args);
+
+u8 *format_user_kvp (u8 *s, va_list *args);
+
+u32 nat_calc_bihash_buckets (u32 n_elts);
+
+void nat44_addresses_free (snat_address_t **addresses);
 
 #endif /* __included_nat_h__ */
 /*
