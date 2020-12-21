@@ -18,6 +18,8 @@
 #include <vnet/mpls/mpls.h>
 #include <vnet/dpo/drop_dpo.h>
 
+// clang-format off
+
 #ifndef CLIB_MARCH_VARIANT
 /*
  * pool of all MPLS Label DPOs
@@ -1213,12 +1215,25 @@ mpls_label_interpose (const dpo_id_t *original,
             mpls_label_dpo_get_index(mld_clone));
 }
 
+static u16
+mpls_label_dpo_get_mtu (const dpo_id_t *dpo)
+{
+    mpls_label_dpo_t *mld;
+
+    mld = mpls_label_dpo_get(dpo->dpoi_index);
+
+    /* return the parent's MTU minus the amount of header
+     * this DPO imposes */
+    return (dpo_get_mtu (&mld->mld_dpo) - sizeof(mpls_label_t) * mld->mld_n_labels);
+}
+
 const static dpo_vft_t mld_vft = {
     .dv_lock = mpls_label_dpo_lock,
     .dv_unlock = mpls_label_dpo_unlock,
     .dv_format = format_mpls_label_dpo,
     .dv_mem_show = mpls_label_dpo_mem_show,
     .dv_mk_interpose = mpls_label_interpose,
+    .dv_get_mtu = mpls_label_dpo_get_mtu,
 };
 
 const static char* const mpls_label_imp_pipe_ip4_nodes[] =
@@ -1337,3 +1352,5 @@ mpls_label_dpo_get_type (mpls_label_dpo_flags_t flags)
     return (mpls_label_dpo_types[flags]);
 }
 #endif /* CLIB_MARCH_VARIANT */
+
+// clang-format on

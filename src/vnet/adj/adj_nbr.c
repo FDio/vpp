@@ -222,6 +222,27 @@ adj_nbr_alloc (fib_protocol_t nh_proto,
     return (adj);
 }
 
+void
+adj_nbr_set_mtu (adj_index_t adj_index, u16 mtu)
+{
+    ip_adjacency_t *adj;
+
+    ASSERT(ADJ_INDEX_INVALID != adj_index);
+
+    adj = adj_get(adj_index);
+
+    if (0 == mtu)
+        vnet_rewrite_update_mtu(vnet_get_main(), adj->ia_link,
+                                &adj->rewrite_header);
+    else
+    {
+        vnet_rewrite_update_mtu(vnet_get_main(), adj->ia_link,
+                                &adj->rewrite_header);
+        adj->rewrite_header.max_l3_packet_bytes =
+            clib_min (adj->rewrite_header.max_l3_packet_bytes, mtu);
+    }
+}
+
 /*
  * adj_nbr_add_or_lock
  *
@@ -268,13 +289,13 @@ adj_nbr_add_or_lock (fib_protocol_t nh_proto,
 	 * So ask the interface to do it.
 	 */
 	vnet_update_adjacency_for_sw_interface(vnm, sw_if_index, adj_index);
+        adj_delegate_adj_created(adj_get(adj_index));
     }
     else
     {
 	adj_lock(adj_index);
     }
 
-    adj_delegate_adj_created(adj_get(adj_index));
     return (adj_index);
 }
 
@@ -1055,12 +1076,14 @@ const static dpo_vft_t adj_nbr_dpo_vft = {
     .dv_format = format_adj_nbr,
     .dv_mem_show = adj_mem_show,
     .dv_get_urpf = adj_dpo_get_urpf,
+    .dv_get_mtu = adj_dpo_get_mtu,
 };
 const static dpo_vft_t adj_nbr_incompl_dpo_vft = {
     .dv_lock = adj_dpo_lock,
     .dv_unlock = adj_dpo_unlock,
     .dv_format = format_adj_nbr_incomplete,
     .dv_get_urpf = adj_dpo_get_urpf,
+    .dv_get_mtu = adj_dpo_get_mtu,
 };
 
 /**
