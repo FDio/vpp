@@ -74,6 +74,7 @@ typedef struct
   u32 esp6_decrypt_tun_node_index;
   u32 esp6_decrypt_tun_next_index;
   u32 esp6_encrypt_tun_node_index;
+  u32 esp_mpls_encrypt_tun_node_index;
 } ipsec_esp_backend_t;
 
 typedef struct
@@ -145,6 +146,7 @@ typedef struct
   u32 esp6_decrypt_node_index;
   u32 esp6_decrypt_tun_node_index;
   u32 esp6_encrypt_tun_node_index;
+  u32 esp_mpls_encrypt_tun_node_index;
   u32 ah6_encrypt_node_index;
   u32 ah6_decrypt_node_index;
   /* next node indices */
@@ -201,6 +203,7 @@ typedef struct
   u32 esp6_dec_fq_index;
   u32 esp4_enc_tun_fq_index;
   u32 esp6_enc_tun_fq_index;
+  u32 esp_mpls_enc_tun_fq_index;
   u32 esp4_dec_tun_fq_index;
   u32 esp6_dec_tun_fq_index;
 
@@ -231,6 +234,7 @@ extern vlib_node_registration_t esp6_encrypt_node;
 extern vlib_node_registration_t esp6_decrypt_node;
 extern vlib_node_registration_t esp4_encrypt_tun_node;
 extern vlib_node_registration_t esp6_encrypt_tun_node;
+extern vlib_node_registration_t esp_mpls_encrypt_tun_node;
 extern vlib_node_registration_t esp4_decrypt_tun_node;
 extern vlib_node_registration_t esp6_decrypt_tun_node;
 extern vlib_node_registration_t ipsec4_tun_input_node;
@@ -266,19 +270,16 @@ u32 ipsec_register_ah_backend (vlib_main_t * vm, ipsec_main_t * im,
 			       check_support_cb_t ah_check_support_cb,
 			       add_del_sa_sess_cb_t ah_add_del_sa_sess_cb);
 
-u32 ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
-				const char *name,
-				const char *esp4_encrypt_node_name,
-				const char *esp4_encrypt_tun_node_name,
-				const char *esp4_decrypt_node_name,
-				const char *esp4_decrypt_tun_node_name,
-				const char *esp6_encrypt_node_name,
-				const char *esp6_encrypt_tun_node_name,
-				const char *esp6_decrypt_node_name,
-				const char *esp6_decrypt_tun_node_name,
-				check_support_cb_t esp_check_support_cb,
-				add_del_sa_sess_cb_t esp_add_del_sa_sess_cb,
-				enable_disable_cb_t enable_disable_cb);
+u32 ipsec_register_esp_backend (
+  vlib_main_t *vm, ipsec_main_t *im, const char *name,
+  const char *esp4_encrypt_node_name, const char *esp4_encrypt_tun_node_name,
+  const char *esp4_decrypt_node_name, const char *esp4_decrypt_tun_node_name,
+  const char *esp6_encrypt_node_name, const char *esp6_encrypt_tun_node_name,
+  const char *esp6_decrypt_node_name, const char *esp6_decrypt_tun_node_name,
+  const char *esp_mpls_encrypt_tun_node_name,
+  check_support_cb_t esp_check_support_cb,
+  add_del_sa_sess_cb_t esp_add_del_sa_sess_cb,
+  enable_disable_cb_t enable_disable_cb);
 
 int ipsec_select_ah_backend (ipsec_main_t * im, u32 ah_backend_idx);
 int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);

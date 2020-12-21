@@ -235,6 +235,7 @@ typedef struct
   u32 esp6_post_next;
   u32 esp4_tun_post_next;
   u32 esp6_tun_post_next;
+  u32 esp_mpls_tun_post_next;
 } esp_async_post_next_t;
 
 extern esp_async_post_next_t esp_encrypt_async_next;

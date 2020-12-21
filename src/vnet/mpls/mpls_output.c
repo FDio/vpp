@@ -19,6 +19,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/ip/ip_frag.h>
+#include <vnet/adj/adj_dp.h>
 
 typedef struct {
   /* Adjacency taken. */
@@ -199,36 +200,32 @@ mpls_output_inline (vlib_main_t * vm,
             }
           if (mode == MPLS_OUTPUT_MIDCHAIN_MODE)
           {
-	      adj0->sub_type.midchain.fixup_func
-                (vm, adj0, p0,
-                 adj0->sub_type.midchain.fixup_data);
-	      adj1->sub_type.midchain.fixup_func
-                (vm, adj1, p1,
-                 adj1->sub_type.midchain.fixup_data);
-          }
+	    adj_midchain_fixup (vm, adj0, p0, VNET_LINK_MPLS);
+	    adj_midchain_fixup (vm, adj1, p1, VNET_LINK_MPLS);
+	  }
 
-          p0->error = error_node->errors[error0];
-          p1->error = error_node->errors[error1];
+	  p0->error = error_node->errors[error0];
+	  p1->error = error_node->errors[error1];
 
-          if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
-            {
-              mpls_output_trace_t *tr = vlib_add_trace (vm, node,
-                                                        p0, sizeof (*tr));
-              tr->adj_index = vnet_buffer(p0)->ip.adj_index[VLIB_TX];
-              tr->flow_hash = vnet_buffer(p0)->ip.flow_hash;
-            }
-          if (PREDICT_FALSE(p1->flags & VLIB_BUFFER_IS_TRACED))
-            {
-              mpls_output_trace_t *tr = vlib_add_trace (vm, node,
-                                                        p1, sizeof (*tr));
-              tr->adj_index = vnet_buffer(p1)->ip.adj_index[VLIB_TX];
-              tr->flow_hash = vnet_buffer(p1)->ip.flow_hash;
-            }
+	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      mpls_output_trace_t *tr =
+		vlib_add_trace (vm, node, p0, sizeof (*tr));
+	      tr->adj_index = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+	      tr->flow_hash = vnet_buffer (p0)->ip.flow_hash;
+	    }
+	  if (PREDICT_FALSE (p1->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      mpls_output_trace_t *tr =
+		vlib_add_trace (vm, node, p1, sizeof (*tr));
+	      tr->adj_index = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
+	      tr->flow_hash = vnet_buffer (p1)->ip.flow_hash;
+	    }
 
-          vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-                                           to_next, n_left_to_next,
-                                           pi0, pi1, next0, next1);
-        }
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, pi0, pi1, next0,
+					   next1);
+	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
         {
@@ -288,12 +285,10 @@ mpls_output_inline (vlib_main_t * vm,
             }
           if (mode == MPLS_OUTPUT_MIDCHAIN_MODE)
           {
-	      adj0->sub_type.midchain.fixup_func
-                (vm, adj0, p0,
-                 adj0->sub_type.midchain.fixup_data);
-          }
+	    adj_midchain_fixup (vm, adj0, p0, VNET_LINK_MPLS);
+	  }
 
-          p0->error = error_node->errors[error0];
+	  p0->error = error_node->errors[error0];
 
 	  from += 1;
 	  n_left_from -= 1;
