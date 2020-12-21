@@ -25,6 +25,8 @@
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
 
+// clang-format off
+
 /*
  * distribution error tolerance for load-balancing
  */
@@ -918,11 +920,30 @@ load_balance_mem_show (void)
     load_balance_map_show_mem();
 }
 
+static u16
+load_balance_dpo_get_mtu (const dpo_id_t *dpo)
+{
+    const dpo_id_t *buckets;
+    load_balance_t *lb;
+    u16 i, mtu = 0xffff;
+
+    lb = load_balance_get(dpo->dpoi_index);
+    buckets = load_balance_get_buckets(lb);
+
+    for (i = 0; i < lb->lb_n_buckets; i++)
+    {
+        mtu = clib_min (mtu, dpo_get_mtu (&buckets[i]));
+    }
+
+    return (mtu);
+}
+
 const static dpo_vft_t lb_vft = {
     .dv_lock = load_balance_lock,
     .dv_unlock = load_balance_unlock,
     .dv_format = format_load_balance_dpo,
     .dv_mem_show = load_balance_mem_show,
+    .dv_get_mtu = load_balance_dpo_get_mtu,
 };
 
 /**
@@ -1323,3 +1344,5 @@ VLIB_REGISTER_NODE (bier_load_balance_node) = {
   .format_trace = format_bier_load_balance_trace,
   .sibling_of = "mpls-load-balance",
 };
+
+// clang-format on
