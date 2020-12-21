@@ -22,11 +22,12 @@
 #include <vnet/tunnel/tunnel_dp.h>
 #include <vppinfra/sparse_vec.h>
 
-#define foreach_ipip_input_next                                                \
-  _(PUNT, "error-punt")                                                        \
-  _(DROP, "error-drop")                                                        \
-  _(IP4_INPUT, "ip4-input")                                                    \
-  _(IP6_INPUT, "ip6-input")
+#define foreach_ipip_input_next                                               \
+  _ (PUNT, "error-punt")                                                      \
+  _ (DROP, "error-drop")                                                      \
+  _ (IP4_INPUT, "ip4-input")                                                  \
+  _ (IP6_INPUT, "ip6-input")                                                  \
+  _ (MPLS_INPUT, "mpls-input")
 
 typedef enum
 {
@@ -174,6 +175,17 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 					(ip4_header_t *) (ip60 + 1), ip60);
 	      else
 		tunnel_decap_fixup_4o4 (t0->flags, ip40 + 1, ip40);
+	    }
+	  else if (inner_protocol0 == IP_PROTOCOL_MPLS_IN_IP)
+	    {
+	      next0 = IPIP_INPUT_NEXT_MPLS_INPUT;
+
+	      if (is_ipv6)
+		tunnel_decap_fixup_mplso6 (
+		  t0->flags, (mpls_unicast_header_t *) (ip60 + 1), ip60);
+	      else
+		tunnel_decap_fixup_mplso4 (
+		  t0->flags, (mpls_unicast_header_t *) ip40 + 1, ip40);
 	    }
 
 	  if (!is_ipv6 && t0->mode == IPIP_MODE_6RD
