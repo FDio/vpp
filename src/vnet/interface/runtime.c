@@ -103,19 +103,11 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
   pool_foreach (rxq, im->hw_if_rx_queues)
     {
       u32 ti = rxq->thread_index;
-      uword flags;
 
       hi = vnet_get_hw_interface (vnm, rxq->hw_if_index);
 
       if (hi->input_node_index != node_index)
 	continue;
-
-      flags = vnet_sw_interface_get_flags (vnm, hi->sw_if_index);
-      if ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) == 0)
-	{
-	  log_debug ("skip interface %v (admin down)", hi->name);
-	  continue;
-	}
 
       if (rxq->mode == VNET_HW_IF_RX_MODE_INTERRUPT ||
 	  rxq->mode == VNET_HW_IF_RX_MODE_ADAPTIVE)
