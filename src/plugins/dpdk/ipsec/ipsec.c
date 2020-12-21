@@ -1063,19 +1063,12 @@ dpdk_ipsec_main_init (vlib_main_t * vm)
       return 0;
     }
 
-
-  u32 idx = ipsec_register_esp_backend (vm, im, "dpdk backend",
-					"dpdk-esp4-encrypt",
-					"dpdk-esp4-encrypt-tun",
-					"dpdk-esp4-decrypt",
-					"dpdk-esp4-decrypt",
-					"dpdk-esp6-encrypt",
-					"dpdk-esp6-encrypt-tun",
-					"dpdk-esp6-decrypt",
-					"dpdk-esp6-decrypt",
-					dpdk_ipsec_check_support,
-					add_del_sa_session,
-					dpdk_ipsec_enable_disable);
+  u32 idx = ipsec_register_esp_backend (
+    vm, im, "dpdk backend", "dpdk-esp4-encrypt", "dpdk-esp4-encrypt-tun",
+    "dpdk-esp4-decrypt", "dpdk-esp4-decrypt", "dpdk-esp6-encrypt",
+    "dpdk-esp6-encrypt-tun", "dpdk-esp6-decrypt", "dpdk-esp6-decrypt",
+    "error-drop", dpdk_ipsec_check_support, add_del_sa_session,
+    dpdk_ipsec_enable_disable);
   int rv;
   if (im->esp_current_backend == ~0)
     {

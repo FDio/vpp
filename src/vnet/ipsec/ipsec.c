@@ -208,19 +208,16 @@ ipsec_register_ah_backend (vlib_main_t * vm, ipsec_main_t * im,
 }
 
 u32
-ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
-			    const char *name,
-			    const char *esp4_encrypt_node_name,
-			    const char *esp4_encrypt_node_tun_name,
-			    const char *esp4_decrypt_node_name,
-			    const char *esp4_decrypt_tun_node_name,
-			    const char *esp6_encrypt_node_name,
-			    const char *esp6_encrypt_node_tun_name,
-			    const char *esp6_decrypt_node_name,
-			    const char *esp6_decrypt_tun_node_name,
-			    check_support_cb_t esp_check_support_cb,
-			    add_del_sa_sess_cb_t esp_add_del_sa_sess_cb,
-			    enable_disable_cb_t enable_disable_cb)
+ipsec_register_esp_backend (
+  vlib_main_t *vm, ipsec_main_t *im, const char *name,
+  const char *esp4_encrypt_node_name, const char *esp4_encrypt_node_tun_name,
+  const char *esp4_decrypt_node_name, const char *esp4_decrypt_tun_node_name,
+  const char *esp6_encrypt_node_name, const char *esp6_encrypt_node_tun_name,
+  const char *esp6_decrypt_node_name, const char *esp6_decrypt_tun_node_name,
+  const char *esp_mpls_encrypt_node_tun_name,
+  check_support_cb_t esp_check_support_cb,
+  add_del_sa_sess_cb_t esp_add_del_sa_sess_cb,
+  enable_disable_cb_t enable_disable_cb)
 {
   ipsec_esp_backend_t *b;
 
@@ -244,6 +241,8 @@ ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
 
   b->esp6_encrypt_tun_node_index =
     vlib_get_node_by_name (vm, (u8 *) esp6_encrypt_node_tun_name)->index;
+  b->esp_mpls_encrypt_tun_node_index =
+    vlib_get_node_by_name (vm, (u8 *) esp_mpls_encrypt_node_tun_name)->index;
   b->esp4_encrypt_tun_node_index =
     vlib_get_node_by_name (vm, (u8 *) esp4_encrypt_node_tun_name)->index;
 
@@ -326,6 +325,7 @@ ipsec_select_esp_backend (ipsec_main_t * im, u32 backend_idx)
   im->esp6_decrypt_tun_next_index = b->esp6_decrypt_tun_next_index;
   im->esp4_encrypt_tun_node_index = b->esp4_encrypt_tun_node_index;
   im->esp6_encrypt_tun_node_index = b->esp6_encrypt_tun_node_index;
+  im->esp_mpls_encrypt_tun_node_index = b->esp_mpls_encrypt_tun_node_index;
 
   if (b->enable_disable_cb)
     {
@@ -373,6 +373,8 @@ crypto_engine_backend_register_post_node (vlib_main_t * vm)
     vnet_crypto_register_post_node (vm, "esp4-encrypt-tun-post");
   eit->esp6_tun_post_next =
     vnet_crypto_register_post_node (vm, "esp6-encrypt-tun-post");
+  eit->esp_mpls_tun_post_next =
+    vnet_crypto_register_post_node (vm, "esp-mpls-encrypt-tun-post");
 
   dit = &esp_decrypt_async_next;
   dit->esp4_post_next =
@@ -423,17 +425,11 @@ ipsec_init (vlib_main_t * vm)
   ASSERT (0 == rv);
   (void) (rv);			// avoid warning
 
-  idx = ipsec_register_esp_backend (vm, im, "crypto engine backend",
-				    "esp4-encrypt",
-				    "esp4-encrypt-tun",
-				    "esp4-decrypt",
-				    "esp4-decrypt-tun",
-				    "esp6-encrypt",
-				    "esp6-encrypt-tun",
-				    "esp6-decrypt",
-				    "esp6-decrypt-tun",
-				    ipsec_check_esp_support,
-				    NULL, crypto_dispatch_enable_disable);
+  idx = ipsec_register_esp_backend (
+    vm, im, "crypto engine backend", "esp4-encrypt", "esp4-encrypt-tun",
+    "esp4-decrypt", "esp4-decrypt-tun", "esp6-encrypt", "esp6-encrypt-tun",
+    "esp6-decrypt", "esp6-decrypt-tun", "esp-mpls-encrypt-tun",
+    ipsec_check_esp_support, NULL, crypto_dispatch_enable_disable);
   im->esp_default_backend = idx;
 
   rv = ipsec_select_esp_backend (im, idx);
@@ -562,6 +558,8 @@ ipsec_init (vlib_main_t * vm)
     vlib_frame_queue_main_init (esp4_encrypt_tun_node.index, 0);
   im->esp6_enc_tun_fq_index =
     vlib_frame_queue_main_init (esp6_encrypt_tun_node.index, 0);
+  im->esp_mpls_enc_tun_fq_index =
+    vlib_frame_queue_main_init (esp_mpls_encrypt_tun_node.index, 0);
   im->esp4_dec_tun_fq_index =
     vlib_frame_queue_main_init (esp4_decrypt_tun_node.index, 0);
   im->esp6_dec_tun_fq_index =

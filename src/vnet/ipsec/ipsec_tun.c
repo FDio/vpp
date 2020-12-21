@@ -141,33 +141,48 @@ ipsec_tun_protect_get_adj_next (vnet_link_t linkt,
 {
   ipsec_main_t *im;
   ipsec_sa_t *sa;
-  bool is_ip4;
   u32 next;
 
-
-  if (itp->itp_flags & IPSEC_PROTECT_ITF)
-    is_ip4 = linkt == VNET_LINK_IP4;
-  else
-    is_ip4 = ip46_address_is_ip4 (&itp->itp_tun.src);
+  if (!(itp->itp_flags & IPSEC_PROTECT_ITF))
+    {
+      if (ip46_address_is_ip4 (&itp->itp_tun.src))
+	linkt = VNET_LINK_IP4;
+      else
+	linkt = VNET_LINK_IP6;
+    }
 
   sa = ipsec_sa_get (itp->itp_out_sa);
   im = &ipsec_main;
+  next = 0;
 
   if ((sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
        sa->integ_alg == IPSEC_INTEG_ALG_NONE) &&
       !(itp->itp_flags & IPSEC_PROTECT_ITF))
-    next = (is_ip4 ?
-	    im->esp4_no_crypto_tun_node_index :
-	    im->esp6_no_crypto_tun_node_index);
+    next = (VNET_LINK_IP4 == linkt ? im->esp4_no_crypto_tun_node_index :
+				     im->esp6_no_crypto_tun_node_index);
   else if (itp->itp_flags & IPSEC_PROTECT_L2)
-    next = (is_ip4 ?
-	    im->esp4_encrypt_l2_tun_node_index :
-	    im->esp6_encrypt_l2_tun_node_index);
+    next = (VNET_LINK_IP4 == linkt ? im->esp4_encrypt_l2_tun_node_index :
+				     im->esp6_encrypt_l2_tun_node_index);
   else
-    next = (is_ip4 ?
-	    im->esp4_encrypt_tun_node_index :
-	    im->esp6_encrypt_tun_node_index);
-
+    {
+      switch (linkt)
+	{
+	case VNET_LINK_IP4:
+	  next = im->esp4_encrypt_tun_node_index;
+	  break;
+	case VNET_LINK_IP6:
+	  next = im->esp6_encrypt_tun_node_index;
+	  break;
+	case VNET_LINK_MPLS:
+	  next = im->esp_mpls_encrypt_tun_node_index;
+	  break;
+	case VNET_LINK_ARP:
+	case VNET_LINK_NSH:
+	case VNET_LINK_ETHERNET:
+	  ASSERT (0);
+	  break;
+	}
+    }
   return (next);
 }
 
