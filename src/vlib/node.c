@@ -478,6 +478,8 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
     if (vec_len (n->runtime_data) > 0)
       clib_memcpy (rt->runtime_data, n->runtime_data,
 		   vec_len (n->runtime_data));
+    else
+      clib_memset (rt->runtime_data, 0, VLIB_NODE_RUNTIME_DATA_SIZE);
 
     vec_free (n->runtime_data);
   }
