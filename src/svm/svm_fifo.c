@@ -1289,7 +1289,7 @@ svm_fifo_segments (svm_fifo_t * f, u32 offset, svm_fifo_seg_t * fs,
 
   head_pos = start - c->start_byte;
   fs[0].data = c->data + head_pos;
-  fs[0].len = clib_min (c->length - head_pos, cursize - offset);
+  fs[0].len = clib_min (c->length - head_pos, to_read);
   n_bytes = fs[0].len;
 
   while (n_bytes < to_read && fs_index < n_segs)
