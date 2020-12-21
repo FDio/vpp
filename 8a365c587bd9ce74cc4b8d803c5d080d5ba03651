@@ -16,6 +16,24 @@
       "revId": "8a365c587bd9ce74cc4b8d803c5d080d5ba03651",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "66bdab80_e6f83ae8",
+        "filename": "src/plugins/nat/nat44_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1996,
+      "author": {
+        "id": 1899
+      },
+      "writtenOn": "2020-12-21T09:25:49Z",
+      "side": 1,
+      "message": "Please check https://gerrit.fd.io/r/c/vpp/+/30482 that includes API support. I\u0027m thinking it seems best to abandon this one and focus on 30482 instead.",
+      "parentUuid": "59781ec9_abe058da",
+      "revId": "8a365c587bd9ce74cc4b8d803c5d080d5ba03651",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
