@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a6ee937e_3fc833f5",
+        "filename": "test/test_l2bd_learnlimit.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2020-12-21T22:10:29Z",
+      "side": 1,
+      "message": "typo, self -\u003e setlf",
+      "revId": "f154a6ff511277a4500dffbe723a04a8ba6171f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
