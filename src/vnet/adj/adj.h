@@ -373,6 +373,9 @@ STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline3) ==
 /* An adj fits into 4 cachelines on your average machine */
 STATIC_ASSERT_SIZEOF (ip_adjacency_t, 4 * 64);
 #endif
+STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, sub_type.nbr.next_hop) ==
+                STRUCT_OFFSET_OF (ip_adjacency_t, sub_type.midchain.next_hop)),
+	       "IP adjacency nbr and midchain offsets don't match");
 
 /**
  * @brief

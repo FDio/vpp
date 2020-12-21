@@ -181,3 +181,48 @@ class VppIpPuntRedirect(VppObject):
         if self.get_vpp_config():
             return True
         return False
+
+
+class VppIpPathMtu(VppObject):
+    def __init__(self, test, nh, pmtu, table_id=0):
+        self._test = test
+        self.nh = nh
+        self.pmtu = pmtu
+        self.table_id = table_id
+
+    def add_vpp_config(self):
+        self._test.vapi.ip_path_mtu_update(pmtu={'nh': self.nh,
+                                                 'table_id': self.table_id,
+                                                 'path_mtu': self.pmtu})
+        self._test.registry.register(self, self._test.logger)
+        return self
+
+    def modify(self, pmtu):
+        self.pmtu = pmtu
+        self._test.vapi.ip_path_mtu_update(pmtu={'nh': self.nh,
+                                                 'table_id': self.table_id,
+                                                 'path_mtu': self.pmtu})
+        return self
+
+    def remove_vpp_config(self):
+        self._test.vapi.ip_path_mtu_update(pmtu={'nh': self.nh,
+                                                 'table_id': self.table_id,
+                                                 'path_mtu': 0})
+
+    def query_vpp_config(self):
+        ds = self._test.vapi.ip_path_mtu_dump()
+
+        for d in ds:
+            if self.nh == str(d.pmtu.nh) \
+               and self.table_id == d.pmtu.table_id \
+               and self.pmtu == d.pmtu.path_mtu:
+                return True
+        return False
+
+    def object_id(self):
+        return ("ip-path-mtu-%d-%s-%d" % (self.table_id,
+                                          self.nh,
+                                          self.pmtu))
+
+    def __str__(self):
+        return self.object_id()
