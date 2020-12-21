@@ -1,8 +1,16 @@
 diff --git a/scapy/layers/ipsec.py b/scapy/layers/ipsec.py
-index ae057ee1..24a1f6ea 100644
+index ae057ee1..d7a21e8b 100644
 --- a/scapy/layers/ipsec.py
 +++ b/scapy/layers/ipsec.py
-@@ -138,6 +138,7 @@ bind_layers(IP, ESP, proto=socket.IPPROTO_ESP)
+@@ -56,6 +56,7 @@ from scapy.fields import ByteEnumField, ByteField, IntField, PacketField, \
+     ShortField, StrField, XIntField, XStrField, XStrLenField
+ from scapy.packet import Packet, bind_layers, Raw
+ from scapy.layers.inet import IP, UDP
++from scapy.contrib.mpls import MPLS
+ import scapy.modules.six as six
+ from scapy.modules.six.moves import range
+ from scapy.layers.inet6 import IPv6, IPv6ExtHdrHopByHop, IPv6ExtHdrDestOpt, \
+@@ -138,6 +139,7 @@ bind_layers(IP, ESP, proto=socket.IPPROTO_ESP)
  bind_layers(IPv6, ESP, nh=socket.IPPROTO_ESP)
  bind_layers(UDP, ESP, dport=4500)  # NAT-Traversal encapsulation
  bind_layers(UDP, ESP, sport=4500)  # NAT-Traversal encapsulation
@@ -10,7 +18,7 @@ index ae057ee1..24a1f6ea 100644
  
  ###############################################################################
  
-@@ -359,11 +360,8 @@ class CryptAlgo(object):
+@@ -359,11 +361,8 @@ class CryptAlgo(object):
              encryptor = cipher.encryptor()
  
              if self.is_aead:
@@ -24,7 +32,7 @@ index ae057ee1..24a1f6ea 100644
                  data = encryptor.update(data) + encryptor.finalize()
                  data += encryptor.tag[:self.icv_size]
              else:
-@@ -400,12 +398,7 @@ class CryptAlgo(object):
+@@ -400,12 +399,7 @@ class CryptAlgo(object):
  
              if self.is_aead:
                  # Tag value check is done during the finalize method
@@ -38,7 +46,7 @@ index ae057ee1..24a1f6ea 100644
              try:
                  data = decryptor.update(data) + decryptor.finalize()
              except InvalidTag as err:
-@@ -445,6 +438,7 @@ if algorithms:
+@@ -445,6 +439,7 @@ if algorithms:
      CRYPT_ALGOS['AES-CTR'] = CryptAlgo('AES-CTR',
                                         cipher=algorithms.AES,
                                         mode=modes.CTR,
@@ -46,7 +54,7 @@ index ae057ee1..24a1f6ea 100644
                                         iv_size=8,
                                         salt_size=4,
                                         format_mode_iv=_aes_ctr_format_mode_iv)
-@@ -452,6 +446,7 @@ if algorithms:
+@@ -452,6 +447,7 @@ if algorithms:
      CRYPT_ALGOS['AES-GCM'] = CryptAlgo('AES-GCM',
                                         cipher=algorithms.AES,
                                         mode=modes.GCM,
@@ -54,7 +62,7 @@ index ae057ee1..24a1f6ea 100644
                                         salt_size=4,
                                         iv_size=8,
                                         icv_size=16,
-@@ -460,6 +455,7 @@ if algorithms:
+@@ -460,6 +456,7 @@ if algorithms:
          CRYPT_ALGOS['AES-CCM'] = CryptAlgo('AES-CCM',
                                             cipher=algorithms.AES,
                                             mode=modes.CCM,
@@ -62,7 +70,7 @@ index ae057ee1..24a1f6ea 100644
                                             iv_size=8,
                                             salt_size=3,
                                             icv_size=16,
-@@ -544,7 +540,7 @@ class AuthAlgo(object):
+@@ -544,7 +541,7 @@ class AuthAlgo(object):
          else:
              return self.mac(key, self.digestmod(), default_backend())
  
@@ -71,7 +79,7 @@ index ae057ee1..24a1f6ea 100644
          """
          Sign an IPsec (ESP or AH) packet with this algo.
  
-@@ -560,16 +556,20 @@ class AuthAlgo(object):
+@@ -560,16 +557,20 @@ class AuthAlgo(object):
  
          if pkt.haslayer(ESP):
              mac.update(raw(pkt[ESP]))
@@ -93,7 +101,7 @@ index ae057ee1..24a1f6ea 100644
          """
          Check that the integrity check value (icv) of a packet is valid.
  
-@@ -600,6 +600,8 @@ class AuthAlgo(object):
+@@ -600,6 +601,8 @@ class AuthAlgo(object):
              clone = zero_mutable_fields(pkt.copy(), sending=False)
  
          mac.update(raw(clone))
@@ -102,7 +110,16 @@ index ae057ee1..24a1f6ea 100644
          computed_icv = mac.finalize()[:self.icv_size]
  
          # XXX: Cannot use mac.verify because the ICV can be truncated
-@@ -862,6 +864,23 @@ class SecurityAssociation(object):
+@@ -788,7 +791,7 @@ class SecurityAssociation(object):
+     This class is responsible of "encryption" and "decryption" of IPsec packets.  # noqa: E501
+     """
+ 
+-    SUPPORTED_PROTOS = (IP, IPv6)
++    SUPPORTED_PROTOS = (IP, IPv6, MPLS)
+ 
+     def __init__(self, proto, spi, seq_num=1, crypt_algo=None, crypt_key=None,
+                  auth_algo=None, auth_key=None, tunnel_header=None, nat_t_header=None, esn_en=False, esn=0):   # noqa: E501
+@@ -862,6 +865,23 @@ class SecurityAssociation(object):
                  raise TypeError('nat_t_header must be %s' % UDP.name)
          self.nat_t_header = nat_t_header
  
@@ -126,7 +143,7 @@ index ae057ee1..24a1f6ea 100644
      def check_spi(self, pkt):
          if pkt.spi != self.spi:
              raise TypeError('packet spi=0x%x does not match the SA spi=0x%x' %
-@@ -875,7 +894,8 @@ class SecurityAssociation(object):
+@@ -875,7 +895,8 @@ class SecurityAssociation(object):
              if len(iv) != self.crypt_algo.iv_size:
                  raise TypeError('iv length must be %s' % self.crypt_algo.iv_size)  # noqa: E501
  
@@ -136,7 +153,7 @@ index ae057ee1..24a1f6ea 100644
  
          if self.tunnel_header:
              tunnel = self.tunnel_header.copy()
-@@ -899,7 +919,7 @@ class SecurityAssociation(object):
+@@ -899,7 +920,7 @@ class SecurityAssociation(object):
                                        esn_en=esn_en or self.esn_en,
                                        esn=esn or self.esn)
  
@@ -145,7 +162,7 @@ index ae057ee1..24a1f6ea 100644
  
          if self.nat_t_header:
              nat_t_header = self.nat_t_header.copy()
-@@ -926,7 +946,8 @@ class SecurityAssociation(object):
+@@ -926,7 +947,8 @@ class SecurityAssociation(object):
  
      def _encrypt_ah(self, pkt, seq_num=None):
  
@@ -155,7 +172,7 @@ index ae057ee1..24a1f6ea 100644
                  icv=b"\x00" * self.auth_algo.icv_size)
  
          if self.tunnel_header:
-@@ -966,7 +987,8 @@ class SecurityAssociation(object):
+@@ -966,7 +988,8 @@ class SecurityAssociation(object):
          else:
              ip_header.plen = len(ip_header.payload) + len(ah) + len(payload)
  
@@ -165,7 +182,7 @@ index ae057ee1..24a1f6ea 100644
  
          # sequence number must always change, unless specified by the user
          if seq_num is None:
-@@ -1003,11 +1025,12 @@ class SecurityAssociation(object):
+@@ -1003,11 +1026,12 @@ class SecurityAssociation(object):
  
      def _decrypt_esp(self, pkt, verify=True, esn_en=None, esn=None):
  
@@ -179,7 +196,7 @@ index ae057ee1..24a1f6ea 100644
  
          esp = self.crypt_algo.decrypt(self, encrypted, self.crypt_key,
                                        self.crypt_algo.icv_size or
-@@ -1048,9 +1071,10 @@ class SecurityAssociation(object):
+@@ -1048,9 +1072,10 @@ class SecurityAssociation(object):
  
      def _decrypt_ah(self, pkt, verify=True):
  
