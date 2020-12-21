@@ -219,7 +219,7 @@ ext-test-apps:
 
 $(BUILD_TEST_SRC): verify-env
 	@mkdir -p $@
-	@for file in $(VPP_TEST_SRC); do if [ ! -e $(BUILD_TEST_SRC)/$$(basename $$file) ] ; then ln -s $$file $(BUILD_TEST_SRC) ; fi ; done
+	@for file in $(VPP_TEST_SRC); do if [ ! -L $$file ] && [ ! -e $(BUILD_TEST_SRC)/$$(basename $$file) ] ; then ln $$file $(BUILD_TEST_SRC) ; fi ; done
 
 $(FAILED_DIR): reset
 	@mkdir -p $@
