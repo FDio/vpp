@@ -388,12 +388,14 @@ const static dpo_vft_t adj_mcast_dpo_vft = {
     .dv_unlock = adj_dpo_unlock,
     .dv_format = format_adj_mcast,
     .dv_get_urpf = adj_dpo_get_urpf,
+    .dv_get_mtu = adj_dpo_get_mtu,
 };
 const static dpo_vft_t adj_mcast_midchain_dpo_vft = {
     .dv_lock = adj_dpo_lock,
     .dv_unlock = adj_dpo_unlock,
     .dv_format = format_adj_mcast_midchain,
     .dv_get_urpf = adj_dpo_get_urpf,
+    .dv_get_mtu = adj_dpo_get_mtu,
 };
 
 /**

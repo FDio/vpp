@@ -486,8 +486,13 @@ mgre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 			   adj->ia_nh_proto, &adj->sub_type.nbr.next_hop);
 
   if (NULL == ne)
-    // no NHRP entry to provide the next-hop
-    return;
+    {
+      // no TEIB entry to provide the next-hop
+      adj_nbr_midchain_update_rewrite (
+	ai, gre_get_fixup (t->tunnel_dst.fp_proto, adj_get_link_type (ai)),
+	uword_to_pointer (t->flags, void *), ADJ_FLAG_NONE, NULL);
+      return;
+    }
 
   mgre_walk_ctx_t ctx = {
     .t = t,

@@ -467,6 +467,7 @@ const static dpo_vft_t adj_glean_dpo_vft = {
     .dv_unlock = adj_dpo_unlock,
     .dv_format = format_adj_glean,
     .dv_get_urpf = adj_dpo_get_urpf,
+    .dv_get_mtu = adj_dpo_get_mtu,
 };
 
 /**
