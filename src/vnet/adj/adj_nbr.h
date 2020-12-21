@@ -75,6 +75,13 @@ extern adj_index_t adj_nbr_add_or_lock_w_rewrite(fib_protocol_t nh_proto,
 						 const ip46_address_t *nh_addr,
 						 u32 sw_if_index,
 						 u8 *rewrite);
+
+/**
+ * Set the MTU on an adjacency
+ *
+ */
+extern void adj_nbr_set_mtu(adj_index_t ai, u16 mtu);
+
 /**
  * @brief When adding a rewrite to an adjacency these are flags that
  * apply to that rewrite
