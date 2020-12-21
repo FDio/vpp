@@ -415,6 +415,8 @@ list(APPEND VNET_SOURCES
   ip/ip_interface.c
   ip/ip_init.c
   ip/ip_in_out_acl.c
+  ip/ip_path_mtu.c
+  ip/ip_path_mtu_node.c
   ip/ip_punt_drop.c
   ip/ip_types.c
   ip/lookup.c
@@ -437,6 +439,7 @@ list(APPEND VNET_MULTIARCH_SOURCES
   ip/ip6_punt_drop.c
   ip/punt_node.c
   ip/ip_in_out_acl.c
+  ip/ip_path_mtu_node.c
 )
 
 list(APPEND VNET_HEADERS
