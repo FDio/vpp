@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c88592f5_4f1fb38c",
+        "filename": "src/vnet/l2/l2.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-22T15:36:02Z",
+      "side": 1,
+      "message": "Isn\u0027t it better to implement a more generic set_bridge_domain_config or similar?  Do we need a separate api call for every individual setting?",
+      "range": {
+        "startLine": 250,
+        "startChar": 0,
+        "endLine": 260,
+        "endChar": 2
+      },
+      "revId": "486743327cf404d5fce3943ad7997b3cd37eeb19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "89a1386f_c068fb02",
+        "filename": "test/test_l2bd_learnlimit.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-22T15:36:02Z",
+      "side": 1,
+      "message": "why do we need to sleep for 20 sec on teardown?",
+      "range": {
+        "startLine": 151,
+        "startChar": 8,
+        "endLine": 151,
+        "endChar": 22
+      },
+      "revId": "486743327cf404d5fce3943ad7997b3cd37eeb19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
