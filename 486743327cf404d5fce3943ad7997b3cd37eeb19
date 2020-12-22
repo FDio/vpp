@@ -93,6 +93,30 @@
       "revId": "486743327cf404d5fce3943ad7997b3cd37eeb19",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "75e0050f_5aa2ace6",
+        "filename": "test/test_l2bd_learnlimit.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-22T16:17:40Z",
+      "side": 1,
+      "message": "Thanks.  Other modules have flush methods for resetting tests. I don\u0027t know if we have them for l2fib.",
+      "parentUuid": "c41cd6af_39ca664d",
+      "range": {
+        "startLine": 151,
+        "startChar": 8,
+        "endLine": 151,
+        "endChar": 22
+      },
+      "revId": "486743327cf404d5fce3943ad7997b3cd37eeb19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
