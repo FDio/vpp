@@ -555,6 +555,15 @@ clib_mem_get_last_error (void)
   return clib_mem_main.error;
 }
 
+/* bulk allocator */
+
+typedef void *clib_mem_bulk_handle_t;
+clib_mem_bulk_handle_t clib_mem_bulk_init (u32 elt_sz, u32 align,
+					   u32 min_elts_per_chunk);
+void clib_mem_bulk_destroy (clib_mem_bulk_handle_t h);
+void *clib_mem_bulk_alloc (clib_mem_bulk_handle_t h);
+void clib_mem_bulk_free (clib_mem_bulk_handle_t h, void *p);
+u8 *format_clib_mem_bulk (u8 *s, va_list *args);
 
 #include <vppinfra/error.h>	/* clib_panic */
 

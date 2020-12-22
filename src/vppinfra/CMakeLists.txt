@@ -63,6 +63,7 @@ set(VPPINFRA_SRCS
   macros.c
   maplog.c
   mem.c
+  mem_bulk.c
   mem_dlmalloc.c
   mhash.c
   mpcap.c
