@@ -639,6 +639,7 @@ int vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
 
 void vcl_segment_table_add (u64 segment_handle, u32 svm_segment_index);
 u32 vcl_segment_table_lookup (u64 segment_handle);
+fifo_segment_t *vcl_segment_get (u64 segment_handle);
 void vcl_segment_table_del (u64 segment_handle);
 
 int vcl_session_read_ready (vcl_session_t * session);
