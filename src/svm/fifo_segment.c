@@ -146,8 +146,25 @@ fss_chunk_free_list_push (fifo_segment_slice_t * fss, u32 fl_index,
   clib_spinlock_lock (&fss->chunk_lock);
   c->next = fss->free_chunks[fl_index];
   fss->free_chunks[fl_index] = c;
+  CLIB_MEM_POISON (c, sizeof (*c) + c->length);
   clib_spinlock_unlock (&fss->chunk_lock);
 }
+
+#ifdef CLIB_SANITIZE_ADDR
+static void
+FSS_CHUNK_POISON_LIST (svm_fifo_chunk_t *head, const svm_fifo_chunk_t *tail)
+{
+  const svm_fifo_chunk_t *end = tail->next;
+  while (head != end)
+    {
+      svm_fifo_chunk_t *next = head->next;
+      CLIB_MEM_POISON (head, sizeof (*head) + head->length);
+      head = next;
+    }
+}
+#else /* CLIB_SANITIZE_ADDR */
+#define FSS_CHUNK_POISON_LIST(a, b)
+#endif /* CLIB_SANITIZE_ADDR */
 
 static void
 fss_chunk_free_list_push_list (fifo_segment_slice_t * fss, u32 fl_index,
@@ -157,6 +174,7 @@ fss_chunk_free_list_push_list (fifo_segment_slice_t * fss, u32 fl_index,
   clib_spinlock_lock (&fss->chunk_lock);
   tail->next = fss->free_chunks[fl_index];
   fss->free_chunks[fl_index] = head;
+  FSS_CHUNK_POISON_LIST (head, tail);
   clib_spinlock_unlock (&fss->chunk_lock);
 }
 
@@ -176,6 +194,8 @@ fss_chunk_free_list_pop (fifo_segment_slice_t * fss, u32 fl_index)
     }
 
   c = fss->free_chunks[fl_index];
+  CLIB_MEM_UNPOISON (c, sizeof (*c));
+  CLIB_MEM_UNPOISON (c->data, c->length);
   fss->free_chunks[fl_index] = c->next;
 
   clib_spinlock_unlock (&fss->chunk_lock);
@@ -1039,7 +1059,7 @@ fs_slice_num_free_chunks (fifo_segment_slice_t * fss, u32 size)
 
 	  while (c)
 	    {
-	      c = c->next;
+	      c = CLIB_MEM_OVERFLOW_LOAD (*, &c->next);
 	      count++;
 	    }
 	}
@@ -1058,7 +1078,7 @@ fs_slice_num_free_chunks (fifo_segment_slice_t * fss, u32 size)
 
   while (c)
     {
-      c = c->next;
+      c = CLIB_MEM_OVERFLOW_LOAD (*, &c->next);
       count++;
     }
   return count;
