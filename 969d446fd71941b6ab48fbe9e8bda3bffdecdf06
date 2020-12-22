@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ae928661_094fc8a1",
+        "filename": "src/vnet/interface.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 489,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2020-12-22T06:52:06Z",
+      "side": 1,
+      "message": "Isn\u0027t there a better way than an hard coded string to identify this is a tap ?",
+      "revId": "969d446fd71941b6ab48fbe9e8bda3bffdecdf06",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
