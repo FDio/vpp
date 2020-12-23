@@ -30,8 +30,8 @@ from framework import VppTestCase, VppTestRunner
 
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ipsec import VppIpsecSA, VppIpsecTunProtect, VppIpsecInterface
 from vpp_papi import VppEnum
-from vpp_ipsec_tun_interface import VppIpsecTunInterface
 
 NUM_PKTS = 67
 
@@ -857,25 +857,30 @@ class TestExceptionPuntSocket(TestPuntSocket):
         #
         # add some tunnels, make sure it still punts
         #
-        VppIpsecTunInterface(self, self.pg0, 1000, 1000,
-                             (VppEnum.vl_api_ipsec_crypto_alg_t.
-                              IPSEC_API_CRYPTO_ALG_AES_CBC_128),
-                             b"0123456701234567",
-                             b"0123456701234567",
-                             (VppEnum.vl_api_ipsec_integ_alg_t.
-                              IPSEC_API_INTEG_ALG_SHA1_96),
-                             b"0123456701234567",
-                             b"0123456701234567").add_vpp_config()
-        VppIpsecTunInterface(self, self.pg1, 1000, 1000,
-                             (VppEnum.vl_api_ipsec_crypto_alg_t.
-                              IPSEC_API_CRYPTO_ALG_AES_CBC_128),
-                             b"0123456701234567",
-                             b"0123456701234567",
-                             (VppEnum.vl_api_ipsec_integ_alg_t.
-                              IPSEC_API_INTEG_ALG_SHA1_96),
-                             b"0123456701234567",
-                             b"0123456701234567",
-                             udp_encap=True).add_vpp_config()
+        tun = VppIpsecInterface(self).add_vpp_config()
+        sa_in = VppIpsecSA(self, 11, 11,
+                           (VppEnum.vl_api_ipsec_integ_alg_t.
+                            IPSEC_API_INTEG_ALG_SHA1_96),
+                           b"0123456701234567",
+                           (VppEnum.vl_api_ipsec_crypto_alg_t.
+                            IPSEC_API_CRYPTO_ALG_AES_CBC_128),
+                           b"0123456701234567",
+                           50,
+                           self.pg0.local_ip4,
+                           self.pg0.remote_ip4).add_vpp_config()
+        sa_out = VppIpsecSA(self, 22, 22,
+                            (VppEnum.vl_api_ipsec_integ_alg_t.
+                             IPSEC_API_INTEG_ALG_SHA1_96),
+                            b"0123456701234567",
+                            (VppEnum.vl_api_ipsec_crypto_alg_t.
+                             IPSEC_API_CRYPTO_ALG_AES_CBC_128),
+                            b"0123456701234567",
+                            50,
+                            self.pg0.local_ip4,
+                            self.pg0.remote_ip4).add_vpp_config()
+        protect = VppIpsecTunProtect(self, tun,
+                                     sa_out,
+                                     [sa_in]).add_vpp_config()
 
         #
         # send packets for each SPI we expect to be punted
