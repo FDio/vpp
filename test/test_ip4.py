@@ -1118,6 +1118,7 @@ class TestIPLoadBalance(VppTestCase):
         super(TestIPLoadBalance, self).tearDown()
 
     def send_and_expect_load_balancing(self, input, pkts, outputs):
+        self.vapi.cli("clear trace")
         input.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()

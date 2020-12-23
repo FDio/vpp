@@ -357,9 +357,9 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		    clib_host_to_net_u32 (0xfe320000);
 
 		  oh0->ip4.src_address.as_u32 =
-		    sa0->tunnel_src_addr.ip4.as_u32;
+		    sa0->tunnel.t_src.ip.ip4.as_u32;
 		  oh0->ip4.dst_address.as_u32 =
-		    sa0->tunnel_dst_addr.ip4.as_u32;
+		    sa0->tunnel.t_dst.ip.ip4.as_u32;
 
 		  if (ipsec_sa_is_set_UDP_ENCAP (sa0))
 		    {
@@ -392,13 +392,13 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		  oh6_0->ip6.protocol = IP_PROTOCOL_IPSEC_ESP;
 		  oh6_0->ip6.hop_limit = 254;
 		  oh6_0->ip6.src_address.as_u64[0] =
-		    sa0->tunnel_src_addr.ip6.as_u64[0];
+		    sa0->tunnel.t_src.ip.ip6.as_u64[0];
 		  oh6_0->ip6.src_address.as_u64[1] =
-		    sa0->tunnel_src_addr.ip6.as_u64[1];
+		    sa0->tunnel.t_src.ip.ip6.as_u64[1];
 		  oh6_0->ip6.dst_address.as_u64[0] =
-		    sa0->tunnel_dst_addr.ip6.as_u64[0];
+		    sa0->tunnel.t_dst.ip.ip6.as_u64[0];
 		  oh6_0->ip6.dst_address.as_u64[1] =
-		    sa0->tunnel_dst_addr.ip6.as_u64[1];
+		    sa0->tunnel.t_dst.ip.ip6.as_u64[1];
 		  esp0 = &oh6_0->esp;
 		  oh6_0->esp.spi = clib_host_to_net_u32 (sa0->spi);
 		  oh6_0->esp.seq = clib_host_to_net_u32 (sa0->seq);

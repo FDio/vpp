@@ -86,9 +86,6 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 			     vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  ip46_address_t tun_src = { }, tun_dst =
-  {
-  };
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
   ipsec_protocol_t proto;
@@ -100,8 +97,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   u16 udp_src, udp_dst;
   int is_add, rv;
   u32 m_args = 0;
-  ip_dscp_t dscp;
-  u32 tx_table_id;
+  tunnel_t tun;
 
   salt = 0;
   error = NULL;
@@ -111,8 +107,6 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   integ_alg = IPSEC_INTEG_ALG_NONE;
   crypto_alg = IPSEC_CRYPTO_ALG_NONE;
   udp_src = udp_dst = IPSEC_UDP_PORT_NONE;
-  dscp = IP_DSCP_CS0;
-  tx_table_id = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -148,18 +142,12 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "integ-alg %U",
 			 unformat_ipsec_integ_alg, &integ_alg))
 	;
-      else if (unformat (line_input, "tunnel-src %U",
-			 unformat_ip46_address, &tun_src, IP46_TYPE_ANY))
+      else if (unformat (line_input, " %U", unformat_tunnel, &tun))
 	{
 	  flags |= IPSEC_SA_FLAG_IS_TUNNEL;
-	  if (!ip46_address_is_ip4 (&tun_src))
+	  if (AF_IP6 == tunnel_get_af (&tun))
 	    flags |= IPSEC_SA_FLAG_IS_TUNNEL_V6;
 	}
-      else if (unformat (line_input, "tunnel-dst %U",
-			 unformat_ip46_address, &tun_dst, IP46_TYPE_ANY))
-	;
-      else if (unformat (line_input, "tx-table-id %d", &tx_table_id))
-	;
       else if (unformat (line_input, "inbound"))
 	flags |= IPSEC_SA_FLAG_IS_INBOUND;
       else if (unformat (line_input, "use-anti-replay"))
@@ -195,12 +183,9 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	  error = clib_error_return (0, "missing spi");
 	  goto done;
 	}
-      rv = ipsec_sa_add_and_lock (id, spi, proto, crypto_alg,
-				  &ck, integ_alg, &ik, flags,
-				  tx_table_id, clib_host_to_net_u32 (salt),
-				  &tun_src, &tun_dst,
-				  TUNNEL_ENCAP_DECAP_FLAG_NONE, dscp,
-				  &sai, udp_src, udp_dst);
+      rv = ipsec_sa_add_and_lock (id, spi, proto, crypto_alg, &ck, integ_alg,
+				  &ik, flags, clib_host_to_net_u32 (salt),
+				  udp_src, udp_dst, &tun, &sai);
     }
   else
     {

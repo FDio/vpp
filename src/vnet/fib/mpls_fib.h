@@ -34,9 +34,10 @@
 #define MPLS_FIB_DB_SIZE (1 << (MPLS_FIB_KEY_SIZE-1))
 
 /**
- * There are no options for controlling the MPLS flow hash
+ * There are no options for controlling the MPLS flow hash,
+ * but since it mostly entails using IP data to create one, use that.
  */
-#define MPLS_FLOW_HASH_DEFAULT 0
+#define MPLS_FLOW_HASH_DEFAULT IP_FLOW_HASH_DEFAULT
 
 typedef struct mpls_fib_t_
 {

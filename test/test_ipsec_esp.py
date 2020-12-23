@@ -123,7 +123,8 @@ class ConfigIpsecESP(TemplateIpsec):
                                       tun_flags=tun_flags,
                                       dscp=params.dscp,
                                       flags=flags,
-                                      salt=salt)
+                                      salt=salt,
+                                      hop_limit=params.outer_hop_limit)
         params.tun_sa_out = VppIpsecSA(self, vpp_tun_sa_id, vpp_tun_spi,
                                        auth_algo_vpp_id, auth_key,
                                        crypt_algo_vpp_id, crypt_key,
@@ -133,7 +134,8 @@ class ConfigIpsecESP(TemplateIpsec):
                                        tun_flags=tun_flags,
                                        dscp=params.dscp,
                                        flags=flags,
-                                       salt=salt)
+                                       salt=salt,
+                                       hop_limit=params.outer_hop_limit)
         objs.append(params.tun_sa_in)
         objs.append(params.tun_sa_out)
 
@@ -401,7 +403,7 @@ class TestIpsecEspTun(TemplateIpsecEsp, IpsecTun46Tests):
                 Raw(b'X' * payload_size)
                 for i in range(count)]
 
-    def gen_pkts6(self, sw_intf, src, dst, count=1, payload_size=54):
+    def gen_pkts6(self, p, sw_intf, src, dst, count=1, payload_size=54):
         # set the DSCP + ECN - flags are set to copy both
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 IPv6(src=src, dst=dst, tc=5) /
@@ -433,15 +435,13 @@ class TestIpsecEspTun2(TemplateIpsecEsp, IpsecTun46Tests):
         super(TestIpsecEspTun2, self).setUp()
 
     def gen_pkts(self, sw_intf, src, dst, count=1, payload_size=54):
-        # set the DSCP + ECN - flags are set to copy only DSCP
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 IP(src=src, dst=dst) /
                 UDP(sport=4444, dport=4444) /
                 Raw(b'X' * payload_size)
                 for i in range(count)]
 
-    def gen_pkts6(self, sw_intf, src, dst, count=1, payload_size=54):
-        # set the DSCP + ECN - flags are set to copy both
+    def gen_pkts6(self, p, sw_intf, src, dst, count=1, payload_size=54):
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 IPv6(src=src, dst=dst) /
                 UDP(sport=4444, dport=4444) /
@@ -449,13 +449,13 @@ class TestIpsecEspTun2(TemplateIpsecEsp, IpsecTun46Tests):
                 for i in range(count)]
 
     def verify_encrypted(self, p, sa, rxs):
-        # just check that only the DSCP is copied
+        # just check that only the DSCP is set
         for rx in rxs:
             self.assertEqual(rx[IP].tos,
                              VppEnum.vl_api_ip_dscp_t.IP_API_DSCP_EF << 2)
 
     def verify_encrypted6(self, p, sa, rxs):
-        # just check that the DSCP & ECN are copied
+        # just check that the DSCP is set
         for rx in rxs:
             self.assertEqual(rx[IPv6].tc,
                              VppEnum.vl_api_ip_dscp_t.IP_API_DSCP_AF11 << 2)
@@ -657,6 +657,7 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
             p.crypt_key = algo['key']
             p.salt = algo['salt']
             p.flags = p.flags | flag
+            p.outer_flow_label = 2819
 
         self.reporter.send_keep_alive(self)
 
