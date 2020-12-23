@@ -28,14 +28,14 @@ class IPsecIPv4Params:
         self.remote_tun_if_host6 = '1111::1'
 
         self.scapy_tun_sa_id = 100
-        self.scapy_tun_spi = 1001
+        self.scapy_tun_spi = 1000
         self.vpp_tun_sa_id = 200
-        self.vpp_tun_spi = 1000
+        self.vpp_tun_spi = 2000
 
         self.scapy_tra_sa_id = 300
-        self.scapy_tra_spi = 2001
+        self.scapy_tra_spi = 3000
         self.vpp_tra_sa_id = 400
-        self.vpp_tra_spi = 2000
+        self.vpp_tra_spi = 4000
 
         self.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
                                  IPSEC_API_INTEG_ALG_SHA1_96)
@@ -798,7 +798,7 @@ class IpsecTun4(object):
                              "incorrect SA in counts: expected %d != %d" %
                              (count, pkts))
             pkts = p.tun_sa_out.get_stats(worker)['packets']
-            self.assertEqual(pkts, count,
+            self.assertEqual(pkts, n_frags,
                              "incorrect SA out counts: expected %d != %d" %
                              (count, pkts))
 
