@@ -439,9 +439,10 @@ void echo_session_print_stats (echo_main_t * em, echo_session_t * session);
 u8 *echo_format_crypto_engine (u8 * s, va_list * args);
 uword echo_unformat_crypto_engine (unformat_input_t * input, va_list * args);
 u8 *echo_format_bytes_per_sec (u8 * s, va_list * args);
-int echo_ssvm_segment_attach (char *name, ssvm_segment_type_t type, int fd);
-void echo_segment_handle_add_del (echo_main_t * em, u64 segment_handle,
-				  u8 add);
+int echo_segment_attach (u64 segment_handle, char *name,
+			 ssvm_segment_type_t type, int fd);
+u32 echo_segment_lookup (u64 segment_handle);
+void echo_segment_detach (u64 segment_handle);
 
 /* Binary API */
 

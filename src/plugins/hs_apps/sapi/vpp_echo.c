@@ -537,21 +537,6 @@ session_bound_handler (session_bound_msg_t * mp)
     em->proto_cb_vft->bound_uri_cb (mp, listen_session);
 }
 
-static int
-echo_segment_is_not_mapped (u64 segment_handle)
-{
-  echo_main_t *em = &echo_main;
-  uword *segment_present;
-  ECHO_LOG (3, "Check if segment mapped 0x%lx...", segment_handle);
-  clib_spinlock_lock (&em->segment_handles_lock);
-  segment_present = hash_get (em->shared_segment_handles, segment_handle);
-  clib_spinlock_unlock (&em->segment_handles_lock);
-  if (segment_present != 0)
-    return 0;
-  ECHO_LOG (2, "Segment not mapped (0x%lx)", segment_handle);
-  return -1;
-}
-
 static void
 session_accepted_handler (session_accepted_msg_t * mp)
 {
@@ -567,7 +552,7 @@ session_accepted_handler (session_accepted_msg_t * mp)
 		 "Unknown listener handle 0x%lx", mp->listener_handle);
       return;
     }
-  if (echo_segment_is_not_mapped (mp->segment_handle))
+  if (echo_segment_lookup (mp->segment_handle) == ~0)
     {
       ECHO_FAIL (ECHO_FAIL_ACCEPTED_WAIT_FOR_SEG_ALLOC,
 		 "accepted wait_for_segment_allocation errored");
@@ -636,7 +621,7 @@ session_connected_handler (session_connected_msg_t * mp)
     }
 
   session = echo_session_new (em);
-  if (echo_segment_is_not_mapped (mp->segment_handle))
+  if (echo_segment_lookup (mp->segment_handle) == ~0)
     {
       ECHO_FAIL (ECHO_FAIL_CONNECTED_WAIT_FOR_SEG_ALLOC,
 		 "connected wait_for_segment_allocation errored");
@@ -734,7 +719,6 @@ add_segment_handler (session_app_add_segment_msg_t * mp)
 {
   fifo_segment_main_t *sm = &echo_main.segment_main;
   fifo_segment_create_args_t _a, *a = &_a;
-  echo_main_t *em = &echo_main;
   int *fds = 0, i;
   char *seg_name = (char *) mp->segment_name;
   u64 segment_handle = mp->segment_handle;
@@ -749,7 +733,8 @@ add_segment_handler (session_app_add_segment_msg_t * mp)
 	  goto failed;
 	}
 
-      if (echo_ssvm_segment_attach (seg_name, SSVM_SEGMENT_MEMFD, fds[0]))
+      if (echo_segment_attach (segment_handle, seg_name, SSVM_SEGMENT_MEMFD,
+			       fds[0]))
 	{
 	  ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
 		     "svm_fifo_segment_attach ('%s') "
@@ -771,7 +756,6 @@ add_segment_handler (session_app_add_segment_msg_t * mp)
 	  goto failed;
 	}
     }
-  echo_segment_handle_add_del (em, segment_handle, 1 /* add */ );
   ECHO_LOG (2, "Mapped segment 0x%lx", segment_handle);
   return;
 
@@ -784,8 +768,7 @@ failed:
 static void
 del_segment_handler (session_app_del_segment_msg_t * mp)
 {
-  echo_main_t *em = &echo_main;
-  echo_segment_handle_add_del (em, mp->segment_handle, 0 /* add */ );
+  echo_segment_detach (mp->segment_handle);
   ECHO_LOG (2, "Unmaped segment 0x%lx", mp->segment_handle);
 }
 
