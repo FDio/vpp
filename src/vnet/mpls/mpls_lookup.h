@@ -95,14 +95,14 @@ mpls_compute_flow_hash (const mpls_unicast_header_t * hdr,
     {
     case 4:
         /* incorporate the v4 flow-hash */
-        hash ^= ip4_compute_flow_hash ((const ip4_header_t *)hdr,
-                                       IP_FLOW_HASH_DEFAULT);
-        break;
+	hash ^=
+	  ip4_compute_flow_hash ((const ip4_header_t *) hdr, flow_hash_config);
+	break;
     case 6:
         /* incorporate the v6 flow-hash */
-        hash ^= ip6_compute_flow_hash ((const ip6_header_t *)hdr,
-                                       IP_FLOW_HASH_DEFAULT);
-        break;
+	hash ^=
+	  ip6_compute_flow_hash ((const ip6_header_t *) hdr, flow_hash_config);
+	break;
     case 5:
         /* incorporate the bier flow-hash */
         hash ^= bier_compute_flow_hash ((const bier_hdr_t *)hdr);
