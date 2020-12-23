@@ -35,6 +35,7 @@ add_vpp_plugin(unittest
   ipsec_test.c
   llist_test.c
   mactime_test.c
+  mem_bulk_test.c
   mfib_test.c
   mpcap_node.c
   punt_test.c
