@@ -16,6 +16,21 @@
  */
 
 #include <vnet/tunnel/tunnel.h>
+#include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_entry_track.h>
+
+#include <vnet/ip/ip6_inlines.h>
+
+const u8 TUNNEL_ENCAP_DECAP_FLAG_MASK = (
+#define _(a, b, c) TUNNEL_ENCAP_DECAP_FLAG_##a |
+  foreach_tunnel_encap_decap_flag
+#undef _
+  0);
+const u8 TUNNEL_FLAG_MASK = (
+#define _(a, b, c) TUNNEL_FLAG_##a |
+  foreach_tunnel_flag
+#undef _
+  0);
 
 u8 *
 format_tunnel_mode (u8 * s, va_list * args)
@@ -54,10 +69,11 @@ format_tunnel_encap_decap_flags (u8 * s, va_list * args)
   tunnel_encap_decap_flags_t f = va_arg (*args, int);
 
   if (f == TUNNEL_ENCAP_DECAP_FLAG_NONE)
-    return (format (s, "none"));
+    s = format (s, "none");
 
-#define _(a,b,c) if (f & TUNNEL_ENCAP_DECAP_FLAG_##a) s = format(s, "%s ", b);
-  forech_tunnel_encap_decap_flag
+#define _(a, b, c)                                                            \
+  else if (f & TUNNEL_ENCAP_DECAP_FLAG_##a) s = format (s, "%s ", b);
+  foreach_tunnel_encap_decap_flag
 #undef _
     return (s);
 }
@@ -71,11 +87,175 @@ unformat_tunnel_encap_decap_flags (unformat_input_t * input, va_list * args)
   *f |= TUNNEL_ENCAP_DECAP_FLAG_##a;\
   return 1;\
   }
-  forech_tunnel_encap_decap_flag;
+  foreach_tunnel_encap_decap_flag;
 #undef _
   return 0;
 }
 
+u8 *
+format_tunnel_flags (u8 *s, va_list *args)
+{
+  tunnel_flags_t f = va_arg (*args, int);
+
+  if (f == TUNNEL_FLAG_NONE)
+    s = format (s, "none");
+
+#define _(a, b, c) else if (f & TUNNEL_FLAG_##a) s = format (s, "%s ", c);
+  foreach_tunnel_flag
+#undef _
+    return (s);
+}
+
+uword
+unformat_tunnel_flags (unformat_input_t *input, va_list *args)
+{
+  tunnel_flags_t *f = va_arg (*args, tunnel_flags_t *);
+#define _(a, b, c)                                                            \
+  if (unformat (input, c))                                                    \
+    {                                                                         \
+      *f |= TUNNEL_FLAG_##a;                                                  \
+      return 1;                                                               \
+    }
+  foreach_tunnel_flag;
+#undef _
+  return 0;
+}
+
+ip_address_family_t
+tunnel_get_af (const tunnel_t *t)
+{
+  return (ip_addr_version (&t->t_src));
+}
+
+void
+tunnel_copy (const tunnel_t *src, tunnel_t *dst)
+{
+  ip_address_copy (&dst->t_dst, &src->t_dst);
+  ip_address_copy (&dst->t_src, &src->t_src);
+
+  dst->t_encap_decap_flags = src->t_encap_decap_flags;
+  dst->t_flags = src->t_flags;
+  dst->t_mode = src->t_mode;
+  dst->t_table_id = src->t_table_id;
+  dst->t_dscp = src->t_dscp;
+  dst->t_hop_limit = src->t_hop_limit;
+  dst->t_fib_index = src->t_fib_index;
+
+  dst->t_flags &= ~TUNNEL_FLAG_RESOLVED;
+  dst->t_fib_entry_index = FIB_NODE_INDEX_INVALID;
+  dst->t_sibling = ~0;
+}
+
+u8 *
+format_tunnel (u8 *s, va_list *args)
+{
+  const tunnel_t *t = va_arg (*args, tunnel_t *);
+  u32 indent = va_arg (*args, u32);
+
+  s = format (s, "%Utable-ID:%d [%U->%U] hop-limit:%d %U %U [%U] [%U]",
+	      format_white_space, indent, t->t_table_id, format_ip_address,
+	      &t->t_src, format_ip_address, &t->t_dst, t->t_hop_limit,
+	      format_tunnel_mode, t->t_mode, format_ip_dscp, t->t_dscp,
+	      format_tunnel_flags, t->t_flags, format_tunnel_encap_decap_flags,
+	      t->t_encap_decap_flags);
+  if (t->t_flags & TUNNEL_FLAG_RESOLVED)
+    s = format (s, " [resolved via fib-entry: %d]", t->t_fib_entry_index);
+
+  return (s);
+}
+
+uword
+unformat_tunnel (unformat_input_t *input, va_list *args)
+{
+  tunnel_t *t = va_arg (*args, tunnel_t *);
+
+  if (!unformat (input, "tunnel"))
+    return (0);
+
+  unformat (input, "src %U", unformat_ip_address, &t->t_src);
+  unformat (input, "dst %U", unformat_ip_address, &t->t_dst);
+  unformat (input, "table-id:%d", &t->t_table_id);
+  unformat (input, "hop-limit:%d", &t->t_hop_limit);
+  unformat (input, "%U", unformat_ip_dscp, &t->t_dscp);
+  unformat (input, "%U", unformat_tunnel_encap_decap_flags,
+	    &t->t_encap_decap_flags);
+  unformat (input, "%U", unformat_tunnel_flags, &t->t_flags);
+  unformat (input, "%U", unformat_tunnel_mode, &t->t_mode);
+
+  ASSERT (!"Check not 4 and 6");
+
+  return (1);
+}
+
+int
+tunnel_resolve (tunnel_t *t, fib_node_type_t child_type, index_t child_index)
+{
+  fib_prefix_t pfx;
+
+  ip_address_to_fib_prefix (&t->t_dst, &pfx);
+
+  t->t_fib_index = fib_table_find (pfx.fp_proto, t->t_table_id);
+
+  if (t->t_fib_index == ~((u32) 0))
+    return VNET_API_ERROR_NO_SUCH_FIB;
+
+  t->t_fib_entry_index = fib_entry_track (t->t_fib_index, &pfx, child_type,
+					  child_index, &t->t_sibling);
+
+  t->t_flags |= TUNNEL_FLAG_RESOLVED;
+
+  return (0);
+}
+
+void
+tunnel_unresolve (tunnel_t *t)
+{
+  if (t->t_flags & TUNNEL_FLAG_RESOLVED)
+    fib_entry_untrack (t->t_fib_entry_index, t->t_sibling);
+
+  t->t_flags &= ~TUNNEL_FLAG_RESOLVED;
+}
+
+void
+tunnel_contribute_forwarding (const tunnel_t *t, dpo_id_t *dpo)
+{
+  fib_forward_chain_type_t fct;
+
+  fct = fib_forw_chain_type_from_fib_proto (
+    ip_address_family_to_fib_proto (ip_addr_version (&t->t_src)));
+
+  fib_entry_contribute_forwarding (t->t_fib_entry_index, fct, dpo);
+}
+
+void
+tunnel_build_v6_hdr (const tunnel_t *t, ip_protocol_t next_proto,
+		     ip6_header_t *ip)
+{
+  ip->ip_version_traffic_class_and_flow_label = 0x60;
+  ip6_set_dscp_network_order (ip, t->t_dscp);
+
+  ip->hop_limit = 254;
+  ip6_address_copy (&ip->src_address, &ip_addr_v6 (&t->t_src));
+  ip6_address_copy (&ip->dst_address, &ip_addr_v6 (&t->t_dst));
+
+  ip->protocol = next_proto;
+  ip->hop_limit = (t->t_hop_limit == 0 ? 254 : t->t_hop_limit);
+  ip6_set_flow_label_network_order (
+    ip, ip6_compute_flow_hash (ip, IP_FLOW_HASH_DEFAULT));
+}
+
+void
+tunnel_build_v4_hdr (const tunnel_t *t, ip_protocol_t next_proto,
+		     ip4_header_t *ip)
+{
+  ip->ip_version_and_header_length = 0x45;
+  ip->ttl = (t->t_hop_limit == 0 ? 254 : t->t_hop_limit);
+  ip->src_address.as_u32 = t->t_src.ip.ip4.as_u32;
+  ip->dst_address.as_u32 = t->t_dst.ip.ip4.as_u32;
+  ip->tos = t->t_dscp << 2;
+  ip->protocol = next_proto;
+  ip->checksum = ip4_header_checksum (ip);
+}
 
 /*
  * fd.io coding-style-patch-verification: ON

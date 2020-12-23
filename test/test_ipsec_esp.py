@@ -123,7 +123,8 @@ class ConfigIpsecESP(TemplateIpsec):
                                       tun_flags=tun_flags,
                                       dscp=params.dscp,
                                       flags=flags,
-                                      salt=salt)
+                                      salt=salt,
+                                      hop_limit=params.outer_hop_limit)
         params.tun_sa_out = VppIpsecSA(self, vpp_tun_sa_id, vpp_tun_spi,
                                        auth_algo_vpp_id, auth_key,
                                        crypt_algo_vpp_id, crypt_key,
@@ -133,7 +134,8 @@ class ConfigIpsecESP(TemplateIpsec):
                                        tun_flags=tun_flags,
                                        dscp=params.dscp,
                                        flags=flags,
-                                       salt=salt)
+                                       salt=salt,
+                                       hop_limit=params.outer_hop_limit)
         objs.append(params.tun_sa_in)
         objs.append(params.tun_sa_out)
 
@@ -401,7 +403,7 @@ class TestIpsecEspTun(TemplateIpsecEsp, IpsecTun46Tests):
                 Raw(b'X' * payload_size)
                 for i in range(count)]
 
-    def gen_pkts6(self, sw_intf, src, dst, count=1, payload_size=54):
+    def gen_pkts6(self, p, sw_intf, src, dst, count=1, payload_size=54):
         # set the DSCP + ECN - flags are set to copy both
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 IPv6(src=src, dst=dst, tc=5) /
@@ -440,7 +442,7 @@ class TestIpsecEspTun2(TemplateIpsecEsp, IpsecTun46Tests):
                 Raw(b'X' * payload_size)
                 for i in range(count)]
 
-    def gen_pkts6(self, sw_intf, src, dst, count=1, payload_size=54):
+    def gen_pkts6(self, p, sw_intf, src, dst, count=1, payload_size=54):
         # set the DSCP + ECN - flags are set to copy both
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 IPv6(src=src, dst=dst) /
