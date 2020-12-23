@@ -143,16 +143,9 @@ typedef struct ipsec_tun_protect_t_
   }                                                        \
 }
 
-extern int ipsec_tun_protect_update_one (u32 sw_if_index,
-					 const ip_address_t * nh,
-					 u32 sa_out, u32 sa_in);
 extern int ipsec_tun_protect_update (u32 sw_if_index,
 				     const ip_address_t * nh,
 				     u32 sa_out, u32 * sa_ins);
-extern int ipsec_tun_protect_update_in (u32 sw_if_index,
-					const ip_address_t * nh, u32 sa_in);
-extern int ipsec_tun_protect_update_out (u32 sw_if_index,
-					 const ip_address_t * nh, u32 sa_out);
 
 extern int ipsec_tun_protect_del (u32 sw_if_index, const ip_address_t * nh);
 
@@ -168,9 +161,6 @@ extern u8 *format_ipsec_tun_protect_index (u8 * s, va_list * args);
 
 extern void ipsec_tun_register_nodes (ip_address_family_t af);
 extern void ipsec_tun_unregister_nodes (ip_address_family_t af);
-
-extern void ipsec_tun_table_init (ip_address_family_t af,
-				  uword table_size, u32 n_buckets);
 
 // FIXME
 extern vlib_node_registration_t ipsec4_tun_input_node;

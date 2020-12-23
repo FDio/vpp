@@ -259,6 +259,7 @@ class VppIpsecSA(VppObject):
         r = self.test.vapi.ipsec_sad_entry_add_del_v2(is_add=1, entry=entry)
         self.stat_index = r.stat_index
         self.test.registry.register(self, self.test.logger)
+        return self
 
     def remove_vpp_config(self):
         r = self.test.vapi.ipsec_sad_entry_add_del_v2(
