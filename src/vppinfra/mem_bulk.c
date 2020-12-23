@@ -173,7 +173,7 @@ clib_mem_bulk_free (clib_mem_bulk_handle_t h, void *p)
   u32 elt_idx = (offset - b->chunk_hdr_sz) / b->elt_sz;
 
   ASSERT (elt_idx < b->elts_per_chunk);
-  ASSERT (get_chunk_elt_ptr (b, c, elt_idx) != p);
+  ASSERT (get_chunk_elt_ptr (b, c, elt_idx) == p);
 
   c->n_free++;
 
