@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-option version = "1.0.0";
+option version = "1.0.1";
+
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
 
 /**
  * Flags controlling tunnel behaviour
@@ -33,6 +36,10 @@ enum tunnel_encap_decap_flags : u8
   TUNNEL_API_ENCAP_DECAP_FLAG_DECAP_COPY_ECN = 0x10,
   /** at encap, compute flow hash on the inner packet for more entropy */
   TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_INNER_HASH = 0x20 [backwards_compatible],
+  /** at encap, copy the hop-limit/TTL of the payload into the tunnel header */
+  TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_HOP_LIMIT = 0x40 [backwards_compatible],
+  /** at encap, copy the Flow Label of the payload into the tunnel header */
+  TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_FLOW_LABEL = 0x80 [backwards_compatible],
 };
 
 /**
@@ -44,6 +51,36 @@ enum tunnel_mode : u8
   TUNNEL_API_MODE_P2P = 0,
   /** multi-point */
   TUNNEL_API_MODE_MP,
+};
+
+/**
+ * tunnel mode
+ */
+enumflag tunnel_flags : u8
+{
+  /** the tunnel's MTU tracks the MTU of its destination  */
+  TUNNEL_API_FLAG_TRACK_MTU = 0x1,
+};
+
+/**
+ * An IP{v4,v6} over IP{v4,v6} tunnel.
+ */
+typedef tunnel
+{
+  u32 instance; /* If non-~0, specifies a custom dev instance */
+  vl_api_address_t src;
+  vl_api_address_t dst;
+  vl_api_interface_index_t sw_if_index; /* ignored on create, set in
+					   details/dump */
+  u32 table_id;
+  vl_api_tunnel_encap_decap_flags_t encap_decap_flags;
+  vl_api_tunnel_mode_t mode;
+  vl_api_tunnel_flags_t flags;
+  /* DSCP value for the tunnel encap,
+     ignored if ECNAP_COPY_DSCP flag is set */
+  vl_api_ip_dscp_t dscp;
+  /* TTL=0 is considered 255 */
+  u8 hop_limit;
 };
 
 /*

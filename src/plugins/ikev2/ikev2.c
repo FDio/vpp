@@ -1834,8 +1834,8 @@ typedef struct
   u32 remote_spi;
   ipsec_crypto_alg_t encr_type;
   ipsec_integ_alg_t integ_type;
-  ip46_address_t local_ip;
-  ip46_address_t remote_ip;
+  ip_address_t local_ip;
+  ip_address_t remote_ip;
   ipsec_key_t loc_ckey, rem_ckey, loc_ikey, rem_ikey;
   u8 is_rekey;
   u32 old_remote_sa_id;
@@ -1850,12 +1850,32 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   ikev2_main_t *km = &ikev2_main;
   u32 sw_if_index;
   int rv = 0;
+  tunnel_t tun_in = {
+    .t_flags = TUNNEL_FLAG_NONE,
+    .t_encap_decap_flags = TUNNEL_ENCAP_DECAP_FLAG_NONE,
+    .t_dscp = 0,
+    .t_mode = TUNNEL_MODE_P2P,
+    .t_table_id = 0,
+    .t_hop_limit = 255,
+    .t_src = a->local_ip,
+    .t_dst = a->remote_ip,
+  };
+  tunnel_t tun_out = {
+    .t_flags = TUNNEL_FLAG_NONE,
+    .t_encap_decap_flags = TUNNEL_ENCAP_DECAP_FLAG_NONE,
+    .t_dscp = 0,
+    .t_mode = TUNNEL_MODE_P2P,
+    .t_table_id = 0,
+    .t_hop_limit = 255,
+    .t_src = a->remote_ip,
+    .t_dst = a->local_ip,
+  };
 
   if (~0 == a->sw_if_index)
     {
       /* no tunnel associated with the SA/profile - create a new one */
-      rv = ipip_add_tunnel (IPIP_TRANSPORT_IP4, ~0,
-			    &a->local_ip, &a->remote_ip, 0,
+      rv = ipip_add_tunnel (IPIP_TRANSPORT_IP4, ~0, &ip_addr_46 (&a->local_ip),
+			    &ip_addr_46 (&a->remote_ip), 0,
 			    TUNNEL_ENCAP_DECAP_FLAG_NONE, IP_DSCP_CS0,
 			    TUNNEL_MODE_P2P, &sw_if_index);
 
@@ -1894,24 +1914,18 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
       vec_add1 (sas_in, a->old_remote_sa_id);
     }
 
-  rv = ipsec_sa_add_and_lock (a->local_sa_id,
-			      a->local_spi,
-			      IPSEC_PROTOCOL_ESP, a->encr_type,
-			      &a->loc_ckey, a->integ_type, &a->loc_ikey,
-			      a->flags, 0, a->salt_local, &a->local_ip,
-			      &a->remote_ip, TUNNEL_ENCAP_DECAP_FLAG_NONE,
-			      IP_DSCP_CS0, NULL, a->src_port, a->dst_port);
+  rv = ipsec_sa_add_and_lock (a->local_sa_id, a->local_spi, IPSEC_PROTOCOL_ESP,
+			      a->encr_type, &a->loc_ckey, a->integ_type,
+			      &a->loc_ikey, a->flags, a->salt_local,
+			      a->src_port, a->dst_port, &tun_out, NULL);
   if (rv)
     goto err0;
 
-  rv = ipsec_sa_add_and_lock (a->remote_sa_id, a->remote_spi,
-			      IPSEC_PROTOCOL_ESP, a->encr_type, &a->rem_ckey,
-			      a->integ_type, &a->rem_ikey,
-			      (a->flags | IPSEC_SA_FLAG_IS_INBOUND), 0,
-			      a->salt_remote, &a->remote_ip,
-			      &a->local_ip, TUNNEL_ENCAP_DECAP_FLAG_NONE,
-			      IP_DSCP_CS0, NULL,
-			      a->ipsec_over_udp_port, a->ipsec_over_udp_port);
+  rv = ipsec_sa_add_and_lock (
+    a->remote_sa_id, a->remote_spi, IPSEC_PROTOCOL_ESP, a->encr_type,
+    &a->rem_ckey, a->integ_type, &a->rem_ikey,
+    (a->flags | IPSEC_SA_FLAG_IS_INBOUND), a->salt_remote,
+    a->ipsec_over_udp_port, a->ipsec_over_udp_port, &tun_in, NULL);
   if (rv)
     goto err1;
 
@@ -1955,16 +1969,16 @@ ikev2_create_tunnel_interface (vlib_main_t * vm,
 
   if (sa->is_initiator)
     {
-      ip_address_to_46 (&sa->iaddr, &a.local_ip);
-      ip_address_to_46 (&sa->raddr, &a.remote_ip);
+      ip_address_copy (&a.local_ip, &sa->iaddr);
+      ip_address_copy (&a.remote_ip, &sa->raddr);
       proposals = child->r_proposals;
       a.local_spi = child->r_proposals[0].spi;
       a.remote_spi = child->i_proposals[0].spi;
     }
   else
     {
-      ip_address_to_46 (&sa->raddr, &a.local_ip);
-      ip_address_to_46 (&sa->iaddr, &a.remote_ip);
+      ip_address_copy (&a.local_ip, &sa->raddr);
+      ip_address_copy (&a.remote_ip, &sa->iaddr);
       proposals = child->i_proposals;
       a.local_spi = child->i_proposals[0].spi;
       a.remote_spi = child->r_proposals[0].spi;

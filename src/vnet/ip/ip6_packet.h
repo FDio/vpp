@@ -372,6 +372,36 @@ ip6_set_ecn_network_order (ip6_header_t * ip6, ip_ecn_t ecn)
   ip6->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (tmp);
 }
 
+static_always_inline u32
+ip6_flow_label_network_order (const ip6_header_t *ip6)
+{
+  u32 tmp =
+    clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label);
+  return (tmp & 0xfffff);
+}
+
+static_always_inline void
+ip6_set_flow_label_network_order (ip6_header_t *ip6, u32 flow_label)
+{
+  u32 tmp =
+    clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label);
+  tmp &= 0xfffff;
+  tmp |= flow_label;
+  ip6->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (tmp);
+}
+
+static_always_inline u32
+ip6_hop_limit_network_order (const ip6_header_t *ip6)
+{
+  return (ip6->hop_limit);
+}
+
+static_always_inline void
+ip6_set_hop_limit_network_order (ip6_header_t *ip6, u8 hop_limit)
+{
+  ip6->hop_limit = hop_limit;
+}
+
 always_inline void *
 ip6_next_header (ip6_header_t * i)
 {

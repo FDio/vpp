@@ -797,6 +797,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
+	  b[0]->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	}
       else			/* transport mode */
 	{

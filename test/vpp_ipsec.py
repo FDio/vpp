@@ -194,7 +194,7 @@ class VppIpsecSA(VppObject):
                  tun_src=None, tun_dst=None,
                  flags=None, salt=0, tun_flags=None,
                  dscp=None,
-                 udp_src=None, udp_dst=None):
+                 udp_src=None, udp_dst=None, hop_limit=None):
         e = VppEnum.vl_api_ipsec_sad_flags_t
         self.test = test
         self.id = id
@@ -206,6 +206,7 @@ class VppIpsecSA(VppObject):
         self.proto = proto
         self.salt = salt
 
+        self.table_id = 0
         self.tun_src = tun_src
         self.tun_dst = tun_dst
         if not flags:
@@ -228,6 +229,18 @@ class VppIpsecSA(VppObject):
         self.dscp = VppEnum.vl_api_ip_dscp_t.IP_API_DSCP_CS0
         if dscp:
             self.dscp = dscp
+        self.hop_limit = 255
+        if hop_limit:
+            self.hop_limit = hop_limit
+
+    def tunnel_encode(self):
+        return {'src': (self.tun_src if self.tun_src else []),
+                'dst': (self.tun_dst if self.tun_dst else []),
+                'encap_decap_flags': self.tun_flags,
+                'dscp': self.dscp,
+                'hop_limit': self.hop_limit,
+                'table_id': self.table_id
+                }
 
     def add_vpp_config(self):
         entry = {
@@ -244,10 +257,7 @@ class VppIpsecSA(VppObject):
                 'length': len(self.crypto_key),
             },
             'protocol': self.proto,
-            'tunnel_src': (self.tun_src if self.tun_src else []),
-            'tunnel_dst': (self.tun_dst if self.tun_dst else []),
-            'tunnel_flags': self.tun_flags,
-            'dscp': self.dscp,
+            'tunnel': self.tunnel_encode(),
             'flags': self.flags,
             'salt': self.salt
         }
@@ -256,13 +266,13 @@ class VppIpsecSA(VppObject):
             entry['udp_src_port'] = self.udp_src
         if self.udp_dst:
             entry['udp_dst_port'] = self.udp_dst
-        r = self.test.vapi.ipsec_sad_entry_add_del_v2(is_add=1, entry=entry)
+        r = self.test.vapi.ipsec_sad_entry_add_del_v3(is_add=1, entry=entry)
         self.stat_index = r.stat_index
         self.test.registry.register(self, self.test.logger)
         return self
 
     def remove_vpp_config(self):
-        r = self.test.vapi.ipsec_sad_entry_add_del_v2(
+        r = self.test.vapi.ipsec_sad_entry_add_del_v3(
             is_add=0,
             entry={
                 'sad_id': self.id,
@@ -278,9 +288,7 @@ class VppIpsecSA(VppObject):
                     'length': len(self.crypto_key),
                 },
                 'protocol': self.proto,
-                'tunnel_src': (self.tun_src if self.tun_src else []),
-                'tunnel_dst': (self.tun_dst if self.tun_dst else []),
-                'flags': self.flags,
+                'tunnel': self.tunnel_encode(),
                 'salt': self.salt
             })
 
@@ -290,7 +298,7 @@ class VppIpsecSA(VppObject):
     def query_vpp_config(self):
         e = VppEnum.vl_api_ipsec_sad_flags_t
 
-        bs = self.test.vapi.ipsec_sa_v2_dump()
+        bs = self.test.vapi.ipsec_sa_v3_dump()
         for b in bs:
             if b.entry.sad_id == self.id:
                 # if udp encap is configured then the ports should match

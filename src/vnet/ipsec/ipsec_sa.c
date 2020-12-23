@@ -72,15 +72,9 @@ static void
 ipsec_sa_stack (ipsec_sa_t * sa)
 {
   ipsec_main_t *im = &ipsec_main;
-  fib_forward_chain_type_t fct;
   dpo_id_t tmp = DPO_INVALID;
 
-  fct =
-    fib_forw_chain_type_from_fib_proto ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
-					 FIB_PROTOCOL_IP6 :
-					 FIB_PROTOCOL_IP4));
-
-  fib_entry_contribute_forwarding (sa->fib_entry_index, fct, &tmp);
+  tunnel_contribute_forwarding (&sa->tunnel, &tmp);
 
   if (IPSEC_PROTOCOL_AH == sa->protocol)
     dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
@@ -167,21 +161,11 @@ ipsec_sa_set_async_op_ids (ipsec_sa_t * sa)
 }
 
 int
-ipsec_sa_add_and_lock (u32 id,
-		       u32 spi,
-		       ipsec_protocol_t proto,
-		       ipsec_crypto_alg_t crypto_alg,
-		       const ipsec_key_t * ck,
-		       ipsec_integ_alg_t integ_alg,
-		       const ipsec_key_t * ik,
-		       ipsec_sa_flags_t flags,
-		       u32 tx_table_id,
-		       u32 salt,
-		       const ip46_address_t * tun_src,
-		       const ip46_address_t * tun_dst,
-		       tunnel_encap_decap_flags_t tunnel_flags,
-		       ip_dscp_t dscp,
-		       u32 * sa_out_index, u16 src_port, u16 dst_port)
+ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
+		       ipsec_crypto_alg_t crypto_alg, const ipsec_key_t *ck,
+		       ipsec_integ_alg_t integ_alg, const ipsec_key_t *ik,
+		       ipsec_sa_flags_t flags, u32 salt, u16 src_port,
+		       u16 dst_port, const tunnel_t *tun, u32 *sa_out_index)
 {
   vlib_main_t *vm = vlib_get_main ();
   ipsec_main_t *im = &ipsec_main;
@@ -189,6 +173,7 @@ ipsec_sa_add_and_lock (u32 id,
   ipsec_sa_t *sa;
   u32 sa_index;
   uword *p;
+  int rv;
 
   p = hash_get (im->sa_index_by_sa_id, id);
   if (p)
@@ -203,13 +188,12 @@ ipsec_sa_add_and_lock (u32 id,
   vlib_validate_combined_counter (&ipsec_sa_counters, sa_index);
   vlib_zero_combined_counter (&ipsec_sa_counters, sa_index);
 
+  tunnel_copy (tun, &sa->tunnel);
   sa->id = id;
   sa->spi = spi;
   sa->stat_index = sa_index;
   sa->protocol = proto;
   sa->flags = flags;
-  sa->tunnel_flags = tunnel_flags;
-  sa->dscp = dscp;
   sa->salt = salt;
   sa->encrypt_thread_index = (vlib_num_workers ())? ~0 : 0;
   sa->decrypt_thread_index = (vlib_num_workers ())? ~0 : 0;
@@ -222,8 +206,6 @@ ipsec_sa_add_and_lock (u32 id,
   ipsec_sa_set_async_op_ids (sa);
 
   clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
-  ip46_address_copy (&sa->tunnel_src_addr, tun_src);
-  ip46_address_copy (&sa->tunnel_dst_addr, tun_dst);
 
   sa->crypto_key_index = vnet_crypto_key_add (vm,
 					      im->crypto_algs[crypto_alg].alg,
@@ -277,53 +259,48 @@ ipsec_sa_add_and_lock (u32 id,
 
   if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     {
-      fib_protocol_t fproto = (ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
-			       FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
-      fib_prefix_t pfx = {
-	.fp_addr = sa->tunnel_dst_addr,
-	.fp_len = (ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ? 128 : 32),
-	.fp_proto = fproto,
-      };
-      sa->tx_fib_index = fib_table_find (fproto, tx_table_id);
-      if (sa->tx_fib_index == ~((u32) 0))
+      sa->tunnel_flags = sa->tunnel.t_encap_decap_flags;
+      sa->dscp = sa->tunnel.t_dscp;
+
+      rv = tunnel_resolve (&sa->tunnel, FIB_NODE_TYPE_IPSEC_SA, sa_index);
+
+      if (rv)
 	{
 	  pool_put (im->sad, sa);
-	  return VNET_API_ERROR_NO_SUCH_FIB;
+	  return rv;
 	}
-
-      sa->fib_entry_index = fib_entry_track (sa->tx_fib_index,
-					     &pfx,
-					     FIB_NODE_TYPE_IPSEC_SA,
-					     sa_index, &sa->sibling);
       ipsec_sa_stack (sa);
 
       /* generate header templates */
       if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa))
 	{
 	  sa->ip6_hdr.ip_version_traffic_class_and_flow_label = 0x60;
-	  ip6_set_dscp_network_order (&sa->ip6_hdr, sa->dscp);
+	  ip6_set_dscp_network_order (&sa->ip6_hdr, sa->tunnel.t_dscp);
 
 	  sa->ip6_hdr.hop_limit = 254;
 	  sa->ip6_hdr.src_address.as_u64[0] =
-	    sa->tunnel_src_addr.ip6.as_u64[0];
+	    sa->tunnel.t_src.ip.ip6.as_u64[0];
 	  sa->ip6_hdr.src_address.as_u64[1] =
-	    sa->tunnel_src_addr.ip6.as_u64[1];
+	    sa->tunnel.t_src.ip.ip6.as_u64[1];
 	  sa->ip6_hdr.dst_address.as_u64[0] =
-	    sa->tunnel_dst_addr.ip6.as_u64[0];
+	    sa->tunnel.t_dst.ip.ip6.as_u64[0];
 	  sa->ip6_hdr.dst_address.as_u64[1] =
-	    sa->tunnel_dst_addr.ip6.as_u64[1];
+	    sa->tunnel.t_dst.ip.ip6.as_u64[1];
 	  if (ipsec_sa_is_set_UDP_ENCAP (sa))
 	    sa->ip6_hdr.protocol = IP_PROTOCOL_UDP;
 	  else
 	    sa->ip6_hdr.protocol = IP_PROTOCOL_IPSEC_ESP;
+	  sa->ip6_hdr.hop_limit =
+	    (sa->tunnel.t_hop_limit == 0 ? 254 : sa->tunnel.t_hop_limit);
 	}
       else
 	{
 	  sa->ip4_hdr.ip_version_and_header_length = 0x45;
-	  sa->ip4_hdr.ttl = 254;
-	  sa->ip4_hdr.src_address.as_u32 = sa->tunnel_src_addr.ip4.as_u32;
-	  sa->ip4_hdr.dst_address.as_u32 = sa->tunnel_dst_addr.ip4.as_u32;
-	  sa->ip4_hdr.tos = sa->dscp << 2;
+	  sa->ip4_hdr.ttl =
+	    (sa->tunnel.t_hop_limit == 0 ? 254 : sa->tunnel.t_hop_limit);
+	  sa->ip4_hdr.src_address.as_u32 = sa->tunnel.t_src.ip.ip4.as_u32;
+	  sa->ip4_hdr.dst_address.as_u32 = sa->tunnel.t_dst.ip.ip4.as_u32;
+	  sa->ip4_hdr.tos = sa->tunnel.t_dscp << 2;
 
 	  if (ipsec_sa_is_set_UDP_ENCAP (sa))
 	    sa->ip4_hdr.protocol = IP_PROTOCOL_UDP;
@@ -366,6 +343,7 @@ ipsec_sa_del (ipsec_sa_t * sa)
 
   sa_index = sa - im->sad;
   hash_unset (im->sa_index_by_sa_id, sa->id);
+  tunnel_unresolve (&sa->tunnel);
 
   /* no recovery possible when deleting an SA */
   (void) ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
@@ -374,10 +352,7 @@ ipsec_sa_del (ipsec_sa_t * sa)
     ipsec_unregister_udp_port (clib_net_to_host_u16 (sa->udp_hdr.dst_port));
 
   if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
-    {
-      fib_entry_untrack (sa->fib_entry_index, sa->sibling);
-      dpo_reset (&sa->dpo);
-    }
+    dpo_reset (&sa->dpo);
   vnet_crypto_key_del (vm, sa->crypto_key_index);
   if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
     vnet_crypto_key_del (vm, sa->integ_key_index);
