@@ -56,7 +56,9 @@ macro(add_vpp_plugin name)
   if(NOT VPP_EXTERNAL_PROJECT)
     list(APPEND deps vpp_version_h api_headers)
   endif()
-  add_dependencies(${plugin_name} ${deps})
+  if(deps)
+    add_dependencies(${plugin_name} ${deps})
+  endif()
   set_target_properties(${plugin_name} PROPERTIES
     PREFIX ""
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/vpp_plugins)
