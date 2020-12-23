@@ -763,16 +763,15 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      else if (VNET_LINK_IP4 == lt)
 		{
 		  *next_hdr_ptr = IP_PROTOCOL_IP_IN_IP;
-		  tunnel_encap_fixup_4o6 (sa0->tunnel_flags,
-					  (const ip4_header_t *) payload,
-					  ip6);
+		  tunnel_encap_fixup_4o6 (sa0->tunnel_flags, b[0],
+					  (const ip4_header_t *) payload, ip6);
 		}
 	      else if (VNET_LINK_MPLS == lt)
 		{
 		  *next_hdr_ptr = IP_PROTOCOL_MPLS_IN_IP;
 		  tunnel_encap_fixup_mplso6 (
-		    sa0->tunnel_flags, (const mpls_unicast_header_t *) payload,
-		    ip6);
+		    sa0->tunnel_flags, b[0],
+		    (const mpls_unicast_header_t *) payload, ip6);
 		}
 	      else
 		ASSERT (0);
@@ -824,6 +823,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	  else
 	    next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
+	  b[0]->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	}
       else			/* transport mode */
 	{

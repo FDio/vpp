@@ -184,7 +184,7 @@ ipip46_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
   ip6->payload_length =
     clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) -
 			  sizeof (*ip6));
-  tunnel_encap_fixup_4o6 (flags, ((ip4_header_t *) (ip6 + 1)), ip6);
+  tunnel_encap_fixup_4o6 (flags, b, ((ip4_header_t *) (ip6 + 1)), ip6);
 }
 
 static void
@@ -224,7 +224,8 @@ ipipm6_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b,
   ip6 = vlib_buffer_get_current (b);
   ip6->payload_length =
     clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) - sizeof (*ip6));
-  tunnel_encap_fixup_mplso6 (flags, (mpls_unicast_header_t *) (ip6 + 1), ip6);
+  tunnel_encap_fixup_mplso6 (flags, b, (mpls_unicast_header_t *) (ip6 + 1),
+			     ip6);
 }
 
 static void

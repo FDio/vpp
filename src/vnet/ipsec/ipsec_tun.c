@@ -470,10 +470,10 @@ ipsec_tun_protect_set_crypto_addr (ipsec_tun_protect_t * itp)
   ({
     if (ipsec_sa_is_set_IS_TUNNEL (sa))
       {
-        itp->itp_crypto.src = sa->tunnel_dst_addr;
-        itp->itp_crypto.dst = sa->tunnel_src_addr;
-        if (!(itp->itp_flags & IPSEC_PROTECT_ITF))
-          {
+	itp->itp_crypto.src = ip_addr_46 (&sa->tunnel.t_dst);
+	itp->itp_crypto.dst = ip_addr_46 (&sa->tunnel.t_src);
+	if (!(itp->itp_flags & IPSEC_PROTECT_ITF))
+	  {
             ipsec_sa_set_IS_PROTECT (sa);
             itp->itp_flags |= IPSEC_PROTECT_ENCAPED;
           }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "3.0.0";
+option version = "3.0.1";
 
 import "vnet/ip/ip_types.api";
 import "vnet/tunnel/tunnel_types.api";
@@ -157,6 +157,28 @@ typedef ipsec_sad_entry_v2
   vl_api_tunnel_encap_decap_flags_t tunnel_flags;
   vl_api_ip_dscp_t dscp;
   u32 tx_table_id;
+  u32 salt;
+  u16 udp_src_port [default=4500];
+  u16 udp_dst_port [default=4500];
+};
+
+typedef ipsec_sad_entry_v3
+{
+  u32 sad_id;
+  u32 spi;
+
+  vl_api_ipsec_proto_t protocol;
+
+  vl_api_ipsec_crypto_alg_t crypto_algorithm;
+  vl_api_key_t crypto_key;
+
+  vl_api_ipsec_integ_alg_t integrity_algorithm;
+  vl_api_key_t integrity_key;
+
+  vl_api_ipsec_sad_flags_t flags;
+
+  vl_api_tunnel_t tunnel;
+
   u32 salt;
   u16 udp_src_port [default=4500];
   u16 udp_dst_port [default=4500];

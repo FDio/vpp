@@ -165,8 +165,7 @@ typedef struct
 
   ipsec_protocol_t protocol;
   tunnel_encap_decap_flags_t tunnel_flags;
-  ip_dscp_t dscp;
-  u8 __pad[1];
+  u8 __pad[2];
 
   /* data accessed by dataplane code should be above this comment */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
@@ -194,8 +193,7 @@ typedef struct
     u64 data;
   } async_op_data;
 
-  ip46_address_t tunnel_src_addr;
-  ip46_address_t tunnel_dst_addr;
+  tunnel_t tunnel;
 
   fib_node_t node;
 
@@ -204,10 +202,6 @@ typedef struct
   u32 stat_index;
   vnet_crypto_alg_t integ_calg;
   vnet_crypto_alg_t crypto_calg;
-
-  fib_node_index_t fib_entry_index;
-  u32 sibling;
-  u32 tx_fib_index;
 
   /* else u8 packed */
   ipsec_crypto_alg_t crypto_alg;
@@ -249,21 +243,12 @@ extern vlib_combined_counter_main_t ipsec_sa_counters;
 
 extern void ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len);
 
-extern int ipsec_sa_add_and_lock (u32 id,
-				  u32 spi,
-				  ipsec_protocol_t proto,
-				  ipsec_crypto_alg_t crypto_alg,
-				  const ipsec_key_t * ck,
-				  ipsec_integ_alg_t integ_alg,
-				  const ipsec_key_t * ik,
-				  ipsec_sa_flags_t flags,
-				  u32 tx_table_id,
-				  u32 salt,
-				  const ip46_address_t * tunnel_src_addr,
-				  const ip46_address_t * tunnel_dst_addr,
-				  tunnel_encap_decap_flags_t tunnel_flags,
-				  ip_dscp_t dscp,
-				  u32 * sa_index, u16 src_port, u16 dst_port);
+extern int
+ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
+		       ipsec_crypto_alg_t crypto_alg, const ipsec_key_t *ck,
+		       ipsec_integ_alg_t integ_alg, const ipsec_key_t *ik,
+		       ipsec_sa_flags_t flags, u32 salt, u16 src_port,
+		       u16 dst_port, const tunnel_t *tun, u32 *sa_out_index);
 extern index_t ipsec_sa_find_and_lock (u32 id);
 extern int ipsec_sa_unlock_id (u32 id);
 extern void ipsec_sa_unlock (index_t sai);

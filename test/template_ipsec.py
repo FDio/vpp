@@ -37,6 +37,11 @@ class IPsecIPv4Params:
         self.vpp_tra_sa_id = 400
         self.vpp_tra_spi = 4000
 
+        self.outer_hop_limit = 64
+        self.inner_hop_limit = 255
+        self.outer_flow_label = 0
+        self.inner_flow_label = 0x12345
+
         self.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
                                  IPSEC_API_INTEG_ALG_SHA1_96)
         self.auth_algo = 'HMAC-SHA1-96'  # scapy name
@@ -75,6 +80,11 @@ class IPsecIPv6Params:
         self.scapy_tra_spi = 4001
         self.vpp_tra_sa_id = 800
         self.vpp_tra_spi = 4000
+
+        self.outer_hop_limit = 64
+        self.inner_hop_limit = 255
+        self.outer_flow_label = 0
+        self.inner_flow_label = 0x12345
 
         self.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
                                  IPSEC_API_INTEG_ALG_SHA1_96)
@@ -242,7 +252,8 @@ class TemplateIpsec(VppTestCase):
     def gen_encrypt_pkts6(self, p, sa, sw_intf, src, dst, count=1,
                           payload_size=54):
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
-                sa.encrypt(IPv6(src=src, dst=dst) /
+                sa.encrypt(IPv6(src=src, dst=dst,
+                                hlim=p.inner_hop_limit, fl=p.inner_flow_label) /
                            ICMPv6EchoRequest(id=0, seq=1,
                                              data='X' * payload_size))
                 for i in range(count)]
@@ -252,9 +263,10 @@ class TemplateIpsec(VppTestCase):
                 IP(src=src, dst=dst) / ICMP() / Raw(b'X' * payload_size)
                 for i in range(count)]
 
-    def gen_pkts6(self, sw_intf, src, dst, count=1, payload_size=54):
+    def gen_pkts6(self, p, sw_intf, src, dst, count=1, payload_size=54):
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
-                IPv6(src=src, dst=dst) /
+                IPv6(src=src, dst=dst,
+                     hlim=p.inner_hop_limit, fl=p.inner_flow_label) /
                 ICMPv6EchoRequest(id=0, seq=1, data='X' * payload_size)
                 for i in range(count)]
 
@@ -945,7 +957,7 @@ class IpsecTun4(object):
                 self.assert_equal(recv_pkt[IPv6].src, p.remote_tun_if_host6)
                 self.assert_equal(recv_pkt[IPv6].dst, self.pg1.remote_ip6)
                 self.assert_packet_checksums_valid(recv_pkt)
-            send_pkts = self.gen_pkts6(self.pg1, src=self.pg1.remote_ip6,
+            send_pkts = self.gen_pkts6(p, self.pg1, src=self.pg1.remote_ip6,
                                        dst=p.remote_tun_if_host6, count=count)
             recv_pkts = self.send_and_expect(self.pg1, send_pkts, self.tun_if)
             for recv_pkt in recv_pkts:
@@ -1034,6 +1046,8 @@ class IpsecTun6(object):
             self.assert_packet_checksums_valid(rx)
             self.assertEqual(len(rx) - len(Ether()) - len(IPv6()),
                              rx[IPv6].plen)
+            self.assert_equal(rx[IPv6].hlim, p.outer_hop_limit)
+            self.assert_equal(rx[IPv6].fl, p.outer_flow_label)
             try:
                 decrypt_pkt = p.vpp_tun_sa.decrypt(rx[IPv6])
                 if not decrypt_pkt.haslayer(IPv6):
@@ -1041,6 +1055,8 @@ class IpsecTun6(object):
                 self.assert_packet_checksums_valid(decrypt_pkt)
                 self.assert_equal(decrypt_pkt.src, self.pg1.remote_ip6)
                 self.assert_equal(decrypt_pkt.dst, p.remote_tun_if_host)
+                self.assert_equal(decrypt_pkt.hlim, p.inner_hop_limit - 1)
+                self.assert_equal(decrypt_pkt.fl, p.inner_flow_label)
             except:
                 self.logger.debug(ppp("Unexpected packet:", rx))
                 try:
@@ -1076,7 +1092,7 @@ class IpsecTun6(object):
             recv_pkts = self.send_and_expect(self.tun_if, send_pkts, self.pg1)
             self.verify_decrypted6(p_in, recv_pkts)
 
-            send_pkts = self.gen_pkts6(self.pg1, src=self.pg1.remote_ip6,
+            send_pkts = self.gen_pkts6(p_in, self.pg1, src=self.pg1.remote_ip6,
                                        dst=p_out.remote_tun_if_host,
                                        count=count,
                                        payload_size=payload_size)
@@ -1108,7 +1124,7 @@ class IpsecTun6(object):
                                              self.pg1, n_rx=1)
             self.verify_decrypted6(p, recv_pkts)
 
-            send_pkts = self.gen_pkts6(self.pg1, src=self.pg1.remote_ip6,
+            send_pkts = self.gen_pkts6(p, self.pg1, src=self.pg1.remote_ip6,
                                        dst=p.remote_tun_if_host,
                                        count=1,
                                        payload_size=64)
@@ -1198,7 +1214,7 @@ class IpsecTun6HandoffTests(IpsecTun6):
                                              self.pg1, worker=worker)
             self.verify_decrypted6(p, recv_pkts)
 
-            send_pkts = self.gen_pkts6(self.pg1, src=self.pg1.remote_ip6,
+            send_pkts = self.gen_pkts6(p, self.pg1, src=self.pg1.remote_ip6,
                                        dst=p.remote_tun_if_host,
                                        count=N_PKTS)
             recv_pkts = self.send_and_expect(self.pg1, send_pkts,
