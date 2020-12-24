@@ -1,0 +1,25 @@
+---
+name: Linux Control Plane (integration)
+maintainer: Neale Ranns <neale@grahpiant.com>
+
+description: |-
+        This plugin provides the beginnings of an integration with the
+        linux network stack.
+        The plugin provides the capability to 'mirror' VPP interfaces in
+        the linux kernel. This means that for any interface in VPP the user
+        can create a correcsponding TAP or TUN device in the linux kernel
+        and have VPP plumb them together.
+        The plumbing mecahnics is different in each direction.
+        In the RX direction, all packets received on a given VPP interface
+        that are punted (i.e. are not droped or forwarded) are transmitted
+        on its mirror interface (this includes for example ARP, ND etc,
+        so the recommendation is to disabe ARP, ND, ping plugin).
+        In the TX direction, packets recevied by VPP an the mirror Tap/Tun
+        are cross-connected to the VPP interfaces. For IP packets, IP output
+        features are applied.
+        This is the begginnings of integration, because there needs to be
+        an external agent that will configure (and synchronise) the IP
+        configuration of the paried interfaces.
+
+state: experimental
+properties: [API, CLI, MULTITHREAD]
