@@ -201,33 +201,45 @@ do {                                                                    \
     vl_api_send_msg (rp, (u8 *)rmp);                                    \
 } while(0);
 
-#define REPLY_AND_DETAILS_MACRO(t, p, body)			\
-do {								\
-  vl_api_registration_t *rp;					\
-  rp = vl_api_client_index_to_registration (mp->client_index);	\
-  if (rp == 0)							\
-    return;							\
-  u32 cursor = clib_net_to_host_u32 (mp->cursor);		\
-  vlib_main_t *vm = vlib_get_main ();				\
-  f64 start = vlib_time_now (vm);				\
-  if (pool_is_free_index (p, cursor)) {				\
-    cursor = pool_next_index (p, cursor);			\
-    if (cursor == ~0)						\
-      rv = VNET_API_ERROR_INVALID_VALUE;			\
-  }								\
-  while (cursor != ~0) {					\
-    do {body;} while (0);					\
-    cursor = pool_next_index (p, cursor);			\
-    if (vl_api_process_may_suspend (vm, rp, start)) {   	\
-      if (cursor != ~0)						\
-        rv = VNET_API_ERROR_EAGAIN;				\
-      break;							\
-    }								\
-  }								\
-  REPLY_MACRO2 (t, ({						\
-    rmp->cursor = clib_host_to_net_u32 (cursor);		\
-  }));								\
-} while(0);
+#define REPLY_AND_DETAILS_MACRO(t, p, body)                                   \
+  do                                                                          \
+    {                                                                         \
+      if (pool_elts (p) == 0)                                                 \
+	{                                                                     \
+	  REPLY_MACRO (t);                                                    \
+	  break;                                                              \
+	}                                                                     \
+      vl_api_registration_t *rp;                                              \
+      rp = vl_api_client_index_to_registration (mp->client_index);            \
+      if (rp == 0)                                                            \
+	return;                                                               \
+      u32 cursor = clib_net_to_host_u32 (mp->cursor);                         \
+      vlib_main_t *vm = vlib_get_main ();                                     \
+      f64 start = vlib_time_now (vm);                                         \
+      if (pool_is_free_index (p, cursor))                                     \
+	{                                                                     \
+	  cursor = pool_next_index (p, cursor);                               \
+	  if (cursor == ~0)                                                   \
+	    rv = VNET_API_ERROR_INVALID_VALUE;                                \
+	}                                                                     \
+      while (cursor != ~0)                                                    \
+	{                                                                     \
+	  do                                                                  \
+	    {                                                                 \
+	      body;                                                           \
+	    }                                                                 \
+	  while (0);                                                          \
+	  cursor = pool_next_index (p, cursor);                               \
+	  if (vl_api_process_may_suspend (vm, rp, start))                     \
+	    {                                                                 \
+	      if (cursor != ~0)                                               \
+		rv = VNET_API_ERROR_EAGAIN;                                   \
+	      break;                                                          \
+	    }                                                                 \
+	}                                                                     \
+      REPLY_MACRO2 (t, ({ rmp->cursor = clib_host_to_net_u32 (cursor); }));   \
+    }                                                                         \
+  while (0);
 
 #define REPLY_AND_DETAILS_VEC_MACRO(t, v, mp, rmp, rv, body)	\
 do {								\
