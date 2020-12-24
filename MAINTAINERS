@@ -724,6 +724,12 @@ I:	geneve
 M:	community vpp-dev@lists.fd.io
 F:	src/plugins/geneve/
 
+Plugin - linux-cp
+I:	linux-cp
+M:	neale@graphiant.com
+M:	Matthew Smith <mgsmith@netgate.com>
+F:	src/plugins/linux-cp/
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
