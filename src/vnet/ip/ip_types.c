@@ -203,13 +203,12 @@ ip_address_family_to_link_type (ip_address_family_t af)
   return (VNET_LINK_IP4);
 }
 
-
 void
-ip_address_set (ip_address_t * dst, const void *src, u8 version)
+ip_address_set (ip_address_t *dst, const void *src, ip_address_family_t af)
 {
-  ip_addr_version (dst) = version;
+  ip_addr_version (dst) = af;
 
-  switch (version)
+  switch (af)
     {
     case AF_IP4:
       ip_addr_v4 (dst) = *(ip4_address_t *) src;
