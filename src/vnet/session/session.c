@@ -1505,10 +1505,10 @@ void
 session_vpp_event_queues_allocate (session_main_t * smm)
 {
   u32 evt_q_length = 2048, evt_size = sizeof (session_event_t);
-  ssvm_private_t *eqs = &smm->evt_qs_segment;
+  fifo_segment_t *eqs = &smm->evt_qs_segment;
   uword eqs_size = 64 << 20;
   pid_t vpp_pid = getpid ();
-  void *oldheap;
+  void *base;
   int i;
 
   if (smm->configured_event_queue_length)
@@ -1517,19 +1517,19 @@ session_vpp_event_queues_allocate (session_main_t * smm)
   if (smm->evt_qs_segment_size)
     eqs_size = smm->evt_qs_segment_size;
 
-  eqs->ssvm_size = eqs_size;
-  eqs->my_pid = vpp_pid;
-  eqs->name = format (0, "%s%c", "session: evt-qs-segment", 0);
+  eqs->ssvm.ssvm_size = eqs_size;
+  eqs->ssvm.my_pid = vpp_pid;
+  eqs->ssvm.name = format (0, "%s%c", "session: evt-qs-segment", 0);
   /* clib_mem_vm_map_shared consumes first page before requested_va */
-  eqs->requested_va = smm->session_baseva + clib_mem_get_page_size ();
+  eqs->ssvm.requested_va = smm->session_baseva + clib_mem_get_page_size ();
 
-  if (ssvm_server_init (eqs, SSVM_SEGMENT_MEMFD))
+  if (ssvm_server_init (&eqs->ssvm, SSVM_SEGMENT_MEMFD))
     {
       clib_warning ("failed to initialize queue segment");
       return;
     }
 
-  oldheap = ssvm_push_heap (eqs->sh);
+  fifo_segment_init (eqs);
 
   for (i = 0; i < vec_len (smm->wrk); i++)
     {
@@ -1543,15 +1543,16 @@ session_vpp_event_queues_allocate (session_main_t * smm)
       cfg->n_rings = 2;
       cfg->q_nitems = evt_q_length;
       cfg->ring_cfgs = rc;
-      smm->wrk[i].vpp_event_queue = svm_msg_q_alloc (cfg);
+
+      base = fifo_segment_alloc (eqs, svm_msg_q_size_to_alloc (cfg));
+      smm->wrk[i].vpp_event_queue = svm_msg_q_init (base, cfg);
+
       if (svm_msg_q_alloc_consumer_eventfd (smm->wrk[i].vpp_event_queue))
 	clib_warning ("eventfd returned");
     }
-
-  ssvm_pop_heap (oldheap);
 }
 
-ssvm_private_t *
+fifo_segment_t *
 session_main_get_evt_q_segment (void)
 {
   return &session_main.evt_qs_segment;
