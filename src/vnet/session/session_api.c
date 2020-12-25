@@ -601,8 +601,9 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
 {
   int rv = 0, fds[SESSION_N_FD_TYPE], n_fds = 0;
   vl_api_app_attach_reply_t *rmp;
-  ssvm_private_t *segp, *evt_q_segment;
+  ssvm_private_t *segp;
   vnet_app_attach_args_t _a, *a = &_a;
+  fifo_segment_t *evt_q_segment;
   u8 fd_flags = 0, ctrl_thread;
   vl_api_registration_t *reg;
   svm_msg_q_t *ctrl_mq;
@@ -645,7 +646,7 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
   if ((evt_q_segment = session_main_get_evt_q_segment ()))
     {
       fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
-      fds[n_fds] = evt_q_segment->fd;
+      fds[n_fds] = evt_q_segment->ssvm.fd;
       n_fds += 1;
     }
   /* Send fifo segment fd if needed */
@@ -1335,7 +1336,7 @@ session_api_attach_handler (app_namespace_t * app_ns, clib_socket_t * cs,
   int rv = 0, fds[SESSION_N_FD_TYPE], n_fds = 0;
   vnet_app_attach_args_t _a, *a = &_a;
   app_sapi_attach_reply_msg_t *rmp;
-  ssvm_private_t *evt_q_segment;
+  fifo_segment_t *evt_q_segment;
   u8 fd_flags = 0, ctrl_thread;
   app_ns_api_handle_t *handle;
   app_sapi_msg_t msg = { 0 };
@@ -1364,7 +1365,7 @@ session_api_attach_handler (app_namespace_t * app_ns, clib_socket_t * cs,
   if ((evt_q_segment = session_main_get_evt_q_segment ()))
     {
       fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
-      fds[n_fds] = evt_q_segment->fd;
+      fds[n_fds] = evt_q_segment->ssvm.fd;
       n_fds += 1;
     }
   /* Send fifo segment fd if needed */
