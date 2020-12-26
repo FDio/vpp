@@ -75,8 +75,7 @@ teib_add (vlib_main_t * vm,
 
   if (rv)
     {
-      error = clib_error_return_code (NULL, rv, 0,
-				      "NRHP error",
+      error = clib_error_return_code (NULL, rv, 0, "TEIB error",
 				      format_unformat_error, line_input);
     }
 
@@ -141,8 +140,7 @@ teib_del (vlib_main_t * vm,
 
   if (rv)
     {
-      error = clib_error_return_code (NULL, rv, 0,
-				      "NRHP error",
+      error = clib_error_return_code (NULL, rv, 0, "TEIB error",
 				      format_unformat_error, line_input);
     }
 
