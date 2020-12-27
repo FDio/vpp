@@ -9,6 +9,21 @@ picotls_main_t picotls_main;
 #define MAX_QUEUE 12000
 #define PTLS_MAX_PLAINTEXT_RECORD_SIZE 16384
 
+static ptls_key_exchange_algorithm_t *default_key_exchange[] = {
+#ifdef PTLS_OPENSSL_HAVE_X25519
+  &ptls_openssl_x25519,
+#endif
+#ifdef PTLS_OPENSSL_HAVE_SECP256R1
+  &ptls_openssl_secp256r1,
+#endif
+#ifdef PTLS_OPENSSL_HAVE_SECP384R1
+  &ptls_openssl_secp384r1,
+#endif
+#ifdef PTLS_OPENSSL_HAVE_SECP521R1
+  &ptls_openssl_secp521r1
+#endif
+};
+
 static u32
 picotls_ctx_alloc (void)
 {
@@ -113,20 +128,6 @@ picotls_start_listen (tls_ctx_t * lctx)
   ptls_context_t *ptls_ctx;
   u32 ptls_lctx_idx;
   app_cert_key_pair_t *ckpair;
-  static ptls_key_exchange_algorithm_t *key_exchange[] = {
-#ifdef PTLS_OPENSSL_HAVE_X25519
-    &ptls_openssl_x25519,
-#endif
-#ifdef PTLS_OPENSSL_HAVE_SECP256R1
-    &ptls_openssl_secp256r1,
-#endif
-#ifdef PTLS_OPENSSL_HAVE_SECP384R1
-    &ptls_openssl_secp384r1,
-#endif
-#ifdef PTLS_OPENSSL_HAVE_SECP521R1
-    &ptls_openssl_secp521r1
-#endif
-  };
 
   ckpair = app_cert_key_pair_get_if_valid (lctx->ckpair_index);
   if (!ckpair || !ckpair->cert || !ckpair->key)
@@ -151,7 +152,7 @@ picotls_start_listen (tls_ctx_t * lctx)
   load_bio_private_key (ptls_ctx, (char *) ckpair->key);
 
   /* setup protocol related functions */
-  ptls_ctx->key_exchanges = key_exchange;
+  ptls_ctx->key_exchanges = default_key_exchange;
   ptls_ctx->random_bytes = ptls_openssl_random_bytes;
   ptls_ctx->cipher_suites = ptls_vpp_crypto_cipher_suites;
   ptls_ctx->get_time = &ptls_get_time;
@@ -282,7 +283,9 @@ picotls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
       picotls_do_handshake (ptls_ctx, tls_session, TLS_RX_OFFSET (ptls_ctx),
 			    from_tls_len);
       if (picotls_handshake_is_over (ctx))
-	tls_notify_app_accept (ctx);
+	ret = ptls_is_server (ptls_ctx->tls) ?
+		tls_notify_app_accept (ctx) :
+		tls_notify_app_connected (ctx, SESSION_E_NONE);
 
     done_hs:
       if (!TLS_RX_IS_LEFT (ptls_ctx))
@@ -539,12 +542,63 @@ picotls_ctx_init_server (tls_ctx_t * ctx)
   return 0;
 }
 
+static int
+picotls_ctx_init_client (tls_ctx_t *ctx)
+{
+  picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
+  picotls_main_t *pm = &picotls_main;
+  ptls_context_t *client_ptls_ctx = pm->client_ptls_ctx;
+  ptls_handshake_properties_t hsprop = { { { { NULL } } } };
+
+  session_t *tls_session = session_get_from_handle (ctx->tls_session_handle);
+  ptls_buffer_t hs_buf;
+
+  ptls_ctx->tls = ptls_new (client_ptls_ctx, 0);
+  if (ptls_ctx->tls == NULL)
+    {
+      TLS_DBG (1, "Failed to initialize ptls_ssl structure");
+      return -1;
+    }
+
+  ptls_ctx->rx_len = 0;
+  ptls_ctx->rx_offset = 0;
+  ptls_ctx->write_buffer_offset = 0;
+
+  ptls_buffer_init (&hs_buf, "", 0);
+  if (ptls_handshake (ptls_ctx->tls, &hs_buf, NULL, NULL, &hsprop) !=
+      PTLS_ERROR_IN_PROGRESS)
+    {
+      TLS_DBG (1, "Failed to initialize tls connection");
+    }
+
+  picotls_try_handshake_write (ptls_ctx, tls_session, &hs_buf);
+
+  ptls_buffer_dispose (&hs_buf);
+
+  return 0;
+}
+
 tls_ctx_t *
 picotls_ctx_get_w_thread (u32 ctx_index, u8 thread_index)
 {
   picotls_ctx_t **ctx;
   ctx = pool_elt_at_index (picotls_main.ctx_pool[thread_index], ctx_index);
   return &(*ctx)->ctx;
+}
+
+int
+picotls_init_client_ptls_ctx (ptls_context_t **client_ptls_ctx)
+{
+  *client_ptls_ctx = clib_mem_alloc (sizeof (ptls_context_t));
+  memset (*client_ptls_ctx, 0, sizeof (ptls_context_t));
+
+  (*client_ptls_ctx)->update_open_count = NULL;
+  (*client_ptls_ctx)->key_exchanges = default_key_exchange;
+  (*client_ptls_ctx)->random_bytes = ptls_openssl_random_bytes;
+  (*client_ptls_ctx)->cipher_suites = ptls_vpp_crypto_cipher_suites;
+  (*client_ptls_ctx)->get_time = &ptls_get_time;
+
+  return 0;
 }
 
 const static tls_engine_vft_t picotls_engine = {
@@ -556,6 +610,7 @@ const static tls_engine_vft_t picotls_engine = {
   .ctx_start_listen = picotls_start_listen,
   .ctx_stop_listen = picotls_stop_listen,
   .ctx_init_server = picotls_ctx_init_server,
+  .ctx_init_client = picotls_ctx_init_client,
   .ctx_read = picotls_ctx_read,
   .ctx_write = picotls_ctx_write,
   .ctx_transport_close = picotls_transport_close,
@@ -577,6 +632,8 @@ tls_picotls_init (vlib_main_t * vm)
   clib_rwlock_init (&picotls_main.crypto_keys_rw_lock);
 
   tls_register_engine (&picotls_engine, CRYPTO_ENGINE_PICOTLS);
+
+  picotls_init_client_ptls_ctx (&pm->client_ptls_ctx);
 
   return error;
 }
