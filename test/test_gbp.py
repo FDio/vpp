@@ -20,8 +20,25 @@ from scapy.data import ETH_P_IP, ETH_P_IPV6
 
 from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
+
 from vpp_object import VppObject
 from vpp_interface import VppInterface
+
+from vpp_gbp import (
+    VppGbpRouteDomain,
+    VppGbpBridgeDomain,
+    VppGbpEndpointGroup,
+    VppGbpRecirc,
+    VppGbpEndpoint,
+    VppGbpSubnet,
+    VppGbpContract,
+    VppGbpContractRule,
+    VppGbpEndpointRetention,
+    VppGbpVxlanTunnel,
+    VppGbpContractNextHop,
+    VppGbpExtItf,
+    find_gbp_endpoint,
+)
 from vpp_ip_route import (
     VppIpRoute,
     VppRoutePath,

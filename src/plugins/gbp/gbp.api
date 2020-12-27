@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "2.1.0";
 
 import "vnet/ip/ip_types.api";
 import "vnet/ethernet/ethernet_types.api";
 import "vnet/interface_types.api";
 
-enum gbp_bridge_domain_flags
+enumflag gbp_bridge_domain_flags
 {
   GBP_BD_API_FLAG_NONE = 0,
   GBP_BD_API_FLAG_DO_NOT_LEARN = 1,
@@ -35,8 +35,8 @@ typedef gbp_bridge_domain
   u32 rd_id;
   vl_api_gbp_bridge_domain_flags_t flags;
   vl_api_interface_index_t bvi_sw_if_index;
-  vl_api_interface_index_t uu_fwd_sw_if_index;
-  vl_api_interface_index_t bm_flood_sw_if_index;
+  vl_api_interface_index_t uu_fwd_sw_if_index [default=0xffffffff];
+  vl_api_interface_index_t bm_flood_sw_if_index [default=0xffffffff];
 };
 
  autoreply define gbp_bridge_domain_add
@@ -73,8 +73,8 @@ typedef gbp_route_domain
   u32 rd_id;
   u32 ip4_table_id;
   u32 ip6_table_id;
-  vl_api_interface_index_t ip4_uu_sw_if_index;
-  vl_api_interface_index_t ip6_uu_sw_if_index;
+  vl_api_interface_index_t ip4_uu_sw_if_index [default=0xffffffff];
+  vl_api_interface_index_t ip6_uu_sw_if_index [default=0xffffffff];
   vl_api_gbp_scope_t scope;
 };
 
@@ -105,12 +105,7 @@ define gbp_route_domain_details
   vl_api_gbp_route_domain_t rd;
 };
 
-/** \brief Endpoint
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-*/
-
-enum gbp_endpoint_flags
+enumflag gbp_endpoint_flags
 {
   GBP_API_ENDPOINT_FLAG_NONE = 0,
   GBP_API_ENDPOINT_FLAG_BOUNCE = 0x1,
@@ -136,7 +131,11 @@ typedef gbp_endpoint
   vl_api_address_t ips[n_ips];
 };
 
- define gbp_endpoint_add
+/** \brief Endpoint
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define gbp_endpoint_add
 {
   option status="in_progress";
   u32 client_index;
@@ -178,16 +177,16 @@ define gbp_endpoint_details
 
 typedef gbp_endpoint_retention
 {
-  u32 remote_ep_timeout;
+  u32 remote_ep_timeout [default=0xffffffff];
 };
 
 typedef gbp_endpoint_group
 {
   u32 vnid;
-  u16 sclass;
+  u16 sclass [default=0xffff]; /* pcTag */
   u32 bd_id;
   u32 rd_id;
-  vl_api_interface_index_t uplink_sw_if_index;
+  vl_api_interface_index_t uplink_sw_if_index [default=0xffffffff];
   vl_api_gbp_endpoint_retention_t retention;
 };
 
@@ -262,8 +261,8 @@ enum gbp_subnet_type
 typedef gbp_subnet
 {
   u32 rd_id;
-  vl_api_interface_index_t sw_if_index [default= 0xffffffff];
-  u16 sclass [default=0xffffffff];
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
+  u16 sclass [default=0xffff];
   vl_api_gbp_subnet_type_t type;
   vl_api_prefix_t prefix;
 };
@@ -426,7 +425,7 @@ define gbp_vxlan_tunnel_details
   vl_api_gbp_vxlan_tunnel_t tunnel;
 };
 
-enum gbp_ext_itf_flags
+enumflag gbp_ext_itf_flags
 {
   GBP_API_EXT_ITF_F_NONE = 0,
   GBP_API_EXT_ITF_F_ANON = 1,

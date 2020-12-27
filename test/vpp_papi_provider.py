@@ -992,30 +992,6 @@ class VppPapiProvider(object):
         return self.api(self.papi.punt_socket_deregister,
                         {'punt': reg})
 
-    def gbp_endpoint_dump(self):
-        """ GBP endpoint Dump """
-        return self.api(self.papi.gbp_endpoint_dump, {})
-
-    def gbp_recirc_dump(self):
-        """ GBP recirc Dump """
-        return self.api(self.papi.gbp_recirc_dump, {})
-
-    def gbp_ext_itf_dump(self):
-        """ GBP recirc Dump """
-        return self.api(self.papi.gbp_ext_itf_dump, {})
-
-    def gbp_subnet_dump(self):
-        """ GBP Subnet Dump """
-        return self.api(self.papi.gbp_subnet_dump, {})
-
-    def gbp_contract_dump(self):
-        """ GBP contract Dump """
-        return self.api(self.papi.gbp_contract_dump, {})
-
-    def gbp_vxlan_tunnel_dump(self):
-        """ GBP VXLAN tunnel add/del """
-        return self.api(self.papi.gbp_vxlan_tunnel_dump, {})
-
     def igmp_enable_disable(self, sw_if_index, enable, host):
         """ Enable/disable IGMP on a given interface """
         return self.api(self.papi.igmp_enable_disable,
