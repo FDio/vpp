@@ -992,6 +992,7 @@ class VppPapiProvider(object):
         return self.api(self.papi.punt_socket_deregister,
                         {'punt': reg})
 
+<<<<<<< HEAD
     def gbp_endpoint_dump(self):
         """ GBP endpoint Dump """
         return self.api(self.papi.gbp_endpoint_dump, {})
@@ -1011,6 +1012,26 @@ class VppPapiProvider(object):
     def gbp_contract_dump(self):
         """ GBP contract Dump """
         return self.api(self.papi.gbp_contract_dump, {})
+=======
+    def gbp_vxlan_tunnel_add(self, vni, bd_rd_id, mode, src):
+        """ GBP VXLAN tunnel add """
+        return self.api(self.papi.gbp_vxlan_tunnel_add,
+                        {
+                            'tunnel': {
+                                'vni': vni,
+                                'mode': mode,
+                                'bd_rd_id': bd_rd_id,
+                                'src': src
+                            }
+                        })
+
+    def gbp_vxlan_tunnel_del(self, vni):
+        """ GBP VXLAN tunnel del """
+        return self.api(self.papi.gbp_vxlan_tunnel_del,
+                        {
+                            'vni': vni,
+                        })
+>>>>>>> tests: refactor gbp tests
 
     def gbp_vxlan_tunnel_dump(self):
         """ GBP VXLAN tunnel add/del """
