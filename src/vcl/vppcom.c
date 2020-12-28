@@ -1220,6 +1220,7 @@ vppcom_app_create (const char *app_name)
 			  20 /* timeout in secs */ );
   pool_alloc (vcm->workers, vcl_cfg->max_workers);
   clib_spinlock_init (&vcm->workers_lock);
+  clib_spinlock_init (&vcm->worker_rpc_lock);
   clib_rwlock_init (&vcm->segment_table_lock);
   atexit (vppcom_app_exit);
   vcl_elog_init (vcm);
