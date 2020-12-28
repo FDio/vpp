@@ -67,6 +67,13 @@ typedef struct vls_main_
 
 vls_main_t *vlsm;
 
+typedef enum
+{
+  VLS_RPC_STATE_INIT,
+  VLS_RPC_STATE_SUCCESS,
+  VLS_RPC_STATE_SESSION_NOT_EXIST,
+} vls_rpc_state_e;
+
 typedef enum vls_rpc_msg_type_
 {
   VLS_RPC_CLONE_AND_SHARE,
@@ -97,12 +104,10 @@ typedef struct vls_sess_cleanup_msg_
 
 void vls_send_session_cleanup_rpc (vcl_worker_t * wrk,
 				   u32 dst_wrk_index, u32 dst_session_index);
-void vls_send_clone_and_share_rpc (vcl_worker_t * wrk,
-				   vcl_locked_session_t * vls,
+void vls_send_clone_and_share_rpc (vcl_worker_t *wrk, u32 origin_vls_index,
 				   u32 session_index, u32 vls_wrk_index,
 				   u32 dst_wrk_index, u32 dst_vls_index,
 				   u32 dst_session_index);
-
 
 static inline u32
 vls_get_worker_index (void)
@@ -849,12 +854,12 @@ vls_mt_session_should_migrate (vcl_locked_session_t * vls)
 	  && vls->worker_index != vcl_get_worker_index ());
 }
 
-static void
-vls_mt_session_migrate (vcl_locked_session_t * vls)
+static vcl_locked_session_t *
+vls_mt_session_migrate (vcl_locked_session_t *vls)
 {
   u32 wrk_index = vcl_get_worker_index ();
   vcl_worker_t *wrk;
-  u32 src_sid, sid;
+  u32 src_sid, sid, vls_index, own_vcl_wrk_index;
   vcl_session_t *session;
   uword *p;
 
@@ -868,7 +873,7 @@ vls_mt_session_migrate (vcl_locked_session_t * vls)
     {
       vls->worker_index = wrk_index;
       vls->session_index = (u32) p[0];
-      return;
+      return vls;
     }
 
   /*
@@ -881,40 +886,67 @@ vls_mt_session_migrate (vcl_locked_session_t * vls)
     {
       VERR ("session in owner worker(%u) is free", vls->owner_vcl_wrk_index);
       ASSERT (0);
-      return;
+      vls_unlock (vls);
+      vls_mt_table_runlock ();
+      return 0;
     }
 
   src_sid = (u32) p[0];
   wrk = vcl_worker_get_current ();
   session = vcl_session_alloc (wrk);
   sid = session->session_index;
-  vls_send_clone_and_share_rpc (wrk, vls, sid, vls_get_worker_index (),
-				vls->owner_vcl_wrk_index, vls->vls_index,
-				src_sid);
-  session->session_index = sid;
-  vls->worker_index = wrk_index;
-  vls->session_index = sid;
-  hash_set (vls->vcl_wrk_index_to_session_index, wrk_index, sid);
   VDBG (1, "migrate session of worker (session): %u (%u) -> %u (%u)",
 	vls->owner_vcl_wrk_index, src_sid, wrk_index, sid);
 
-  if (PREDICT_FALSE ((session->flags & VCL_SESSION_F_IS_VEP)
-		     && session->vep.next_sh != ~0))
+  vls_index = vls->vls_index;
+  own_vcl_wrk_index = vls->owner_vcl_wrk_index;
+  vls_unlock (vls);
+  vls_mt_table_runlock ();
+  vls_send_clone_and_share_rpc (wrk, vls_index, sid, vls_get_worker_index (),
+				own_vcl_wrk_index, vls_index, src_sid);
+
+  if (PREDICT_FALSE (wrk->rpc_done == VLS_RPC_STATE_SESSION_NOT_EXIST))
     {
-      /* TODO: rollback? */
+      VWRN ("session %u not exist", src_sid);
+      goto err;
+    }
+  else if (PREDICT_FALSE (wrk->rpc_done == VLS_RPC_STATE_INIT))
+    {
+      VWRN ("failed to wait rpc response");
+      goto err;
+    }
+  else if (PREDICT_FALSE ((session->flags & VCL_SESSION_F_IS_VEP) &&
+			  session->vep.next_sh != ~0))
+    {
       VERR ("can't migrate nonempty epoll session");
       ASSERT (0);
-      return;
+      goto err;
     }
   else if (PREDICT_FALSE (!(session->flags & VCL_SESSION_F_IS_VEP) &&
 			  session->session_state != VCL_STATE_CLOSED))
     {
-      /* TODO: rollback? */
       VERR ("migrate NOT supported, session_status (%u)",
 	    session->session_state);
       ASSERT (0);
-      return;
+      goto err;
     }
+
+  vls = vls_get_w_dlock (vls_index);
+  if (PREDICT_FALSE (!vls))
+    {
+      VWRN ("failed to get vls %u", vls_index);
+      goto err;
+    }
+
+  session->session_index = sid;
+  vls->worker_index = wrk_index;
+  vls->session_index = sid;
+  hash_set (vls->vcl_wrk_index_to_session_index, wrk_index, sid);
+  return vls;
+
+err:
+  vcl_session_free (wrk, session);
+  return 0;
 }
 
 static inline void
@@ -924,20 +956,24 @@ vls_mt_detect (void)
     vls_mt_add ();
 }
 
-#define vls_mt_guard(_vls, _op)						\
-  int _locks_acq = 0;							\
-  if (vls_mt_wrk_supported ())						\
-    {									\
-      if (PREDICT_FALSE (_vls 						\
-	    && ((vcl_locked_session_t *)_vls)->worker_index != 		\
-		vcl_get_worker_index ()))				\
-	  vls_mt_session_migrate (_vls);				\
-    }									\
-  else									\
-    {									\
-      if (PREDICT_FALSE (vlsl->vls_mt_n_threads > 1))			\
-        vls_mt_acq_locks (_vls, _op, &_locks_acq);			\
-    }									\
+#define vls_mt_guard(_vls, _op)                                               \
+  int _locks_acq = 0;                                                         \
+  if (vls_mt_wrk_supported ())                                                \
+    {                                                                         \
+      if (PREDICT_FALSE (_vls &&                                              \
+			 ((vcl_locked_session_t *) _vls)->worker_index !=     \
+			   vcl_get_worker_index ()))                          \
+	{                                                                     \
+	  _vls = vls_mt_session_migrate (_vls);                               \
+	  if (PREDICT_FALSE (!_vls))                                          \
+	    return VPPCOM_EBADFD;                                             \
+	}                                                                     \
+    }                                                                         \
+  else                                                                        \
+    {                                                                         \
+      if (PREDICT_FALSE (vlsl->vls_mt_n_threads > 1))                         \
+	vls_mt_acq_locks (_vls, _op, &_locks_acq);                            \
+    }
 
 #define vls_mt_unguard()						\
   if (PREDICT_FALSE (_locks_acq))					\
@@ -1037,7 +1073,11 @@ vls_attr (vls_handle_t vlsh, uint32_t op, void *buffer, uint32_t * buflen)
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
   if (vls_mt_session_should_migrate (vls))
-    vls_mt_session_migrate (vls);
+    {
+      vls = vls_mt_session_migrate (vls);
+      if (PREDICT_FALSE (!vls))
+	return VPPCOM_EBADFD;
+    }
   rv = vppcom_session_attr (vls_to_sh_tu (vls), op, buffer, buflen);
   vls_get_and_unlock (vlsh);
   return rv;
@@ -1162,9 +1202,10 @@ vls_create (uint8_t proto, uint8_t is_nonblocking)
 {
   vcl_session_handle_t sh;
   vls_handle_t vlsh;
+  vcl_locked_session_t *vls = NULL;
 
   vls_mt_detect ();
-  vls_mt_guard (0, VLS_MT_OP_SPOOL);
+  vls_mt_guard (vls, VLS_MT_OP_SPOOL);
   sh = vppcom_session_create (proto, is_nonblocking);
   vls_mt_unguard ();
   if (sh == INVALID_SESSION_ID)
@@ -1277,12 +1318,16 @@ vls_epoll_ctl (vls_handle_t ep_vlsh, int op, vls_handle_t vlsh,
   vls_mt_detect ();
   vls_mt_table_rlock ();
   ep_vls = vls_get_and_lock (ep_vlsh);
-  vls = vls_get_and_lock (vlsh);
 
   if (vls_mt_session_should_migrate (ep_vls))
-    vls_mt_session_migrate (ep_vls);
+    {
+      ep_vls = vls_mt_session_migrate (ep_vls);
+      if (PREDICT_FALSE (!ep_vls))
+	return VPPCOM_EBADFD;
+    }
 
   ep_sh = vls_to_sh (ep_vls);
+  vls = vls_get_and_lock (vlsh);
   sh = vls_to_sh (vls);
 
   if (PREDICT_FALSE (!vlsl->epoll_mp_check))
@@ -1305,13 +1350,13 @@ int
 vls_epoll_wait (vls_handle_t ep_vlsh, struct epoll_event *events,
 		int maxevents, double wait_for_time)
 {
-  vcl_locked_session_t *vls;
+  vcl_locked_session_t *vls, *vls_tmp = NULL;
   int rv;
 
   vls_mt_detect ();
   if (!(vls = vls_get_w_dlock (ep_vlsh)))
     return VPPCOM_EBADFD;
-  vls_mt_guard (0, VLS_MT_OP_XPOLL);
+  vls_mt_guard (vls_tmp, VLS_MT_OP_XPOLL);
   rv = vppcom_epoll_wait (vls_to_sh_tu (vls), events, maxevents,
 			  wait_for_time);
   vls_mt_unguard ();
@@ -1356,9 +1401,10 @@ vls_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
 	    vcl_si_set * except_map, double wait_for_time)
 {
   int rv;
+  vcl_locked_session_t *vls = NULL;
 
   vls_mt_detect ();
-  vls_mt_guard (0, VLS_MT_OP_XPOLL);
+  vls_mt_guard (vls, VLS_MT_OP_XPOLL);
   if (PREDICT_FALSE (!vlsl->select_mp_check))
     vls_select_mp_checks (read_map);
   rv = vppcom_select (n_bits, read_map, write_map, except_map, wait_for_time);
@@ -1560,24 +1606,33 @@ vls_clone_and_share_rpc_handler (void *args)
   vcl_worker_t *vcl_wrk = vcl_worker_get_current (), *dst_vcl_wrk;
   vcl_session_t *s, *dst_s;
 
-  vls = vls_session_get (wrk, msg->vls_index);
+  VDBG (1, "process session clone of worker (session): %u (%u) -> %u (%u)",
+	vcl_wrk->wrk_index, msg->session_index, msg->origin_vcl_wrk,
+	msg->origin_session_index);
+
+  /* VCL locked session can't been protected, so DONT touch it.
+   * VCL session may been free, check it.
+   */
+  dst_vcl_wrk = vcl_worker_get (msg->origin_vcl_wrk);
+  s = vcl_session_get (vcl_wrk, msg->session_index);
+  if (PREDICT_FALSE (!s))
+    {
+      dst_vcl_wrk->rpc_done = VLS_RPC_STATE_SESSION_NOT_EXIST;
+      return;
+    }
 
   if (!vls_mt_wrk_supported ())
-    vls_init_share_session (wrk, vls);
-
-  s = vcl_session_get (vcl_wrk, msg->session_index);
-  dst_wrk = vls_worker_get (msg->origin_vls_wrk);
-  dst_vcl_wrk = vcl_worker_get (msg->origin_vcl_wrk);
-  dst_vls = vls_session_get (dst_wrk, msg->origin_vls_index);
-  dst_vls->shared_data_index = vls->shared_data_index;
+    {
+      vls = vls_session_get (wrk, msg->vls_index);
+      vls_init_share_session (wrk, vls);
+      dst_wrk = vls_worker_get (msg->origin_vls_wrk);
+      dst_vls = vls_session_get (dst_wrk, msg->origin_vls_index);
+      dst_vls->shared_data_index = vls->shared_data_index;
+    }
   dst_s = vcl_session_get (dst_vcl_wrk, msg->origin_session_index);
   clib_memcpy (dst_s, s, sizeof (*s));
 
-  dst_vcl_wrk->rpc_done = 1;
-
-  VDBG (1, "proces session clone of worker (session): %u (%u) -> %u (%u)",
-	vcl_wrk->wrk_index, msg->session_index, dst_vcl_wrk->wrk_index,
-	msg->origin_session_index);
+  dst_vcl_wrk->rpc_done = VLS_RPC_STATE_SUCCESS;
 }
 
 static void
@@ -1585,14 +1640,12 @@ vls_session_cleanup_rpc_handler (void *args)
 {
   vls_sess_cleanup_msg_t *msg = (vls_sess_cleanup_msg_t *) args;
   vcl_worker_t *wrk = vcl_worker_get_current ();
-  vcl_worker_t *dst_wrk = vcl_worker_get (msg->origin_vcl_wrk);
+  vcl_session_handle_t sh = vcl_session_handle_from_index (msg->session_index);
 
-  vppcom_session_close (vcl_session_handle_from_index (msg->session_index));
+  VDBG (1, "process session cleanup of worker (session): %u (%u) from %u ()",
+	wrk->wrk_index, msg->session_index, msg->origin_vcl_wrk);
 
-  dst_wrk->rpc_done = 1;
-
-  VDBG (1, "proces session cleanup of worker (session): %u (%u) from %u ()",
-	wrk->wrk_index, msg->session_index, dst_wrk->wrk_index);
+  vppcom_session_close (sh);
 }
 
 static void
@@ -1613,34 +1666,38 @@ vls_rpc_handler (void *args)
 }
 
 void
-vls_send_clone_and_share_rpc (vcl_worker_t * wrk,
-			      vcl_locked_session_t * vls, u32 session_index,
-			      u32 vls_wrk_index, u32 dst_wrk_index,
-			      u32 dst_vls_index, u32 dst_session_index)
+vls_send_clone_and_share_rpc (vcl_worker_t *wrk, u32 origin_vls_index,
+			      u32 session_index, u32 vls_wrk_index,
+			      u32 dst_wrk_index, u32 dst_vls_index,
+			      u32 dst_session_index)
 {
   u8 data[sizeof (u8) + sizeof (vls_clone_and_share_msg_t)];
   vls_clone_and_share_msg_t *msg;
   vls_rpc_msg_t *rpc;
   int ret;
+  f64 timeout = clib_time_now (&wrk->clib_time) + VLS_WORKER_RPC_TIMEOUT;
 
   rpc = (vls_rpc_msg_t *) & data;
   rpc->type = VLS_RPC_CLONE_AND_SHARE;
   msg = (vls_clone_and_share_msg_t *) & rpc->data;
   msg->origin_vls_wrk = vls_wrk_index;
-  msg->origin_vls_index = vls->vls_index;
+  msg->origin_vls_index = origin_vls_index;
   msg->origin_vcl_wrk = wrk->wrk_index;
   msg->origin_session_index = session_index;
   msg->vls_index = dst_vls_index;
   msg->session_index = dst_session_index;
 
-  wrk->rpc_done = 0;
+  wrk->rpc_done = VLS_RPC_STATE_INIT;
+  clib_spinlock_lock (&vcm->worker_rpc_lock);
   ret = vcl_send_worker_rpc (dst_wrk_index, rpc, sizeof (data));
 
   VDBG (1, "send session clone to wrk (session): %u (%u) -> %u (%u), ret=%d",
 	dst_wrk_index, msg->session_index, msg->origin_vcl_wrk,
 	msg->origin_session_index, ret);
-  while (!ret && !wrk->rpc_done)
+  while (!ret && wrk->rpc_done == VLS_RPC_STATE_INIT &&
+	 clib_time_now (&wrk->clib_time) < timeout)
     ;
+  clib_spinlock_unlock (&vcm->worker_rpc_lock);
 }
 
 void
@@ -1658,13 +1715,10 @@ vls_send_session_cleanup_rpc (vcl_worker_t * wrk,
   msg->origin_vcl_wrk = wrk->wrk_index;
   msg->session_index = dst_session_index;
 
-  wrk->rpc_done = 0;
   ret = vcl_send_worker_rpc (dst_wrk_index, rpc, sizeof (data));
 
   VDBG (1, "send session cleanup to wrk (session): %u (%u) from %u, ret=%d",
 	dst_wrk_index, msg->session_index, msg->origin_vcl_wrk, ret);
-  while (!ret && !wrk->rpc_done)
-    ;
 }
 
 int

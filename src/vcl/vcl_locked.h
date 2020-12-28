@@ -21,6 +21,7 @@
 #include <vcl/vppcom.h>
 
 #define VLS_INVALID_HANDLE ((int)-1)
+#define VLS_WORKER_RPC_TIMEOUT 3 /* timeout to wait rpc response. */
 
 typedef int vls_handle_t;
 
