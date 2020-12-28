@@ -1187,5 +1187,5 @@ VLIB_INIT_FUNCTION (vxlan_gbp_init) =
  *
  * Local Variables:
  * eval: (c-set-style "gnu")
- * End:
+ *
  */
