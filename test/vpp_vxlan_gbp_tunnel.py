@@ -38,39 +38,35 @@ class VppVxlanGbpTunnel(VppInterface):
         else:
             self.mode = mode
 
-    def add_vpp_config(self):
+    def encode(self):
         mcast_sw_if_index = INDEX_INVALID
         if (self.mcast_itf):
             mcast_sw_if_index = self.mcast_itf.sw_if_index
+        return {
+            'src': self.src,
+            'dst': self.dst,
+            'mode': self.mode,
+            'vni': self.vni,
+            'mcast_sw_if_index': mcast_sw_if_index,
+            'encap_table_id': self.encap_table_id,
+            'instance': self.instance
+        }
+
+    def add_vpp_config(self):
+
         reply = self.test.vapi.vxlan_gbp_tunnel_add_del(
             is_add=1,
-            tunnel={
-                'src': self.src,
-                'dst': self.dst,
-                'mode': self.mode,
-                'vni': self.vni,
-                'mcast_sw_if_index': mcast_sw_if_index,
-                'encap_table_id': self.encap_table_id,
-                'instance': self.instance
-            })
-        self.set_sw_if_index(reply.sw_if_index)
+            tunnel=self.encode()
+        )
+        self._sw_if_index = reply.sw_if_index
+        self._name = self.test.vapi.vxlan_gbp_tunnel_dump(sw_if_index=self._sw_if_index)[0].tunnel.interface_name
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        mcast_sw_if_index = INDEX_INVALID
-        if (self.mcast_itf):
-            mcast_sw_if_index = self.mcast_itf.sw_if_index
         self.test.vapi.vxlan_gbp_tunnel_add_del(
             is_add=0,
-            tunnel={
-                'src': self.src,
-                'dst': self.dst,
-                'mode': self.mode,
-                'vni': self.vni,
-                'mcast_sw_if_index': mcast_sw_if_index,
-                'encap_table_id': self.encap_table_id,
-                'instance': self.instance,
-            })
+            tunnel=self.encode()
+        )
 
     def query_vpp_config(self):
         return (INDEX_INVALID != find_vxlan_gbp_tunnel(self._test,

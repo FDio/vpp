@@ -208,6 +208,7 @@ extern void vxlan_gbp_register_udp_ports (void);
 extern void vxlan_gbp_unregister_udp_ports (void);
 
 u8 *format_vxlan_gbp_encap_trace (u8 * s, va_list * args);
+u8 *format_vxlan_gbp_name (u8 *s, va_list *args);
 
 typedef struct
 {
