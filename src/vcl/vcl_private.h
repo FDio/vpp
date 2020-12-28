@@ -334,6 +334,8 @@ typedef struct vppcom_main_t_
   fifo_segment_main_t segment_main;
 
   vcl_rpc_fn_t *wrk_rpc_fn;
+  /** Lock to protect rpc among workers */
+  clib_spinlock_t worker_rpc_lock;
 
   /*
    * Binary api context
