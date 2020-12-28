@@ -167,6 +167,9 @@ static void send_vxlan_gbp_tunnel_details
   rmp->tunnel.mcast_sw_if_index = htonl (t->mcast_sw_if_index);
   rmp->tunnel.vni = htonl (t->vni);
   rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
+  u8 *int_name =
+    format (0, "%U%c", &format_vxlan_gbp_name, t->user_instance, 0);
+  strncpy ((char *) &rmp->tunnel.interface_name, (char *) int_name, 64);
   rmp->context = context;
 
   vl_api_send_msg (reg, (u8 *) rmp);
