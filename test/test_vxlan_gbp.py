@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
-import socket
 from util import ip4_range, reassemble4_ether
 import unittest
 from framework import VppTestCase, VppTestRunner
-from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
@@ -13,6 +11,7 @@ from scapy.layers.vxlan import VXLAN
 
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
+from vpp_vxlan_gbp_tunnel import VppVxlanGbpTunnel
 
 
 class TestVxlanGbp(VppTestCase):
@@ -45,9 +44,9 @@ class TestVxlanGbp(VppTestCase):
                 VXLAN(vni=vni, flags=self.flags, gpflags=self.gpflags,
                 gpid=self.sclass) / pkt)
 
-    def ip_range(self, start, end):
-        """ range of remote ip's """
-        return ip4_range(self.pg0.remote_ip4, start, end)
+    # def ip_range(self, start, end):
+    #     """ range of remote ip's """
+    #     return ip4_range(self.pg0.remote_ip4, start, end)
 
     def decapsulate(self, pkt):
         """
@@ -103,18 +102,19 @@ class TestVxlanGbp(VppTestCase):
                                            INVALID_INDEX)],
                              register=False)
             rip.add_vpp_config()
-            r = cls.vapi.vxlan_gbp_tunnel_add_del(
-                tunnel={
-                    'src': cls.pg0.local_ip4,
-                    'dst': dest_ip4,
-                    'vni': vni,
-                    'instance': INVALID_INDEX,
-                    'mcast_sw_if_index': INVALID_INDEX,
-                    'mode': 1,
-                },
-                is_add=1
+            tun = VppVxlanGbpTunnel(
+                cls,
+                src=cls.pg0.local_ip4,
+                dst=dest_ip4,
+                vni=vni,
+                mcast_itf=None,
+                mode=1,
+                is_ipv6=None,
+                encap_table_id=None,
+                instance=INVALID_INDEX
             )
-            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
+            tun.add_vpp_config()
+            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=tun.sw_if_index,
                                                 bd_id=vni)
 
     # Class method to start the VXLAN GBP test case.
@@ -127,12 +127,12 @@ class TestVxlanGbp(VppTestCase):
         super(TestVxlanGbp, cls).setUpClass()
 
         try:
-            cls.dport = 48879
+            cls.dport = 48879  # 0xbeef
             cls.flags = 0x88
             cls.gpflags = 0x0
             cls.sclass = 0
 
-            # Create 2 pg interfaces.
+            # Create 4 pg interfaces.
             cls.create_pg_interfaces(range(4))
             for pg in cls.pg_interfaces:
                 pg.admin_up()
@@ -143,39 +143,43 @@ class TestVxlanGbp(VppTestCase):
             # Resolve MAC address for VPP's IP address on pg0.
             cls.pg0.resolve_arp()
 
-            # Create VXLAN GBP VTEP on VPP pg0, and put vxlan_gbp_tunnel0 and
-            # pg1 into BD.
-            cls.single_tunnel_bd = 1
-            cls.single_tunnel_vni = 0xabcde
-            r = cls.vapi.vxlan_gbp_tunnel_add_del(
-                tunnel={
-                    'src': cls.pg0.local_ip4,
-                    'dst': cls.pg0.remote_ip4,
-                    'vni': cls.single_tunnel_vni,
-                    'instance': INVALID_INDEX,
-                    'mcast_sw_if_index': INVALID_INDEX,
-                    'mode': 1,
-                },
-                is_add=1
-            )
-            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                                bd_id=cls.single_tunnel_bd)
-            cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg1.sw_if_index,
-                bd_id=cls.single_tunnel_bd)
-
-            # Setup vni 2 to test multicast flooding
-            cls.n_ucast_tunnels = 2
-            # Setup vni 3 to test unicast flooding
-            cls.ucast_flood_bd = 3
-            cls.create_vxlan_gbp_flood_test_bd(cls.ucast_flood_bd,
-                                               cls.n_ucast_tunnels)
-            cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg3.sw_if_index,
-                bd_id=cls.ucast_flood_bd)
         except Exception:
             super(TestVxlanGbp, cls).tearDownClass()
             raise
+
+    def setUp(self):
+        # Create VXLAN GBP VTEP on VPP pg0, and put vxlan_gbp_tunnel0 and
+        # pg1 into BD.
+        self.single_tunnel_bd = 1
+        self.single_tunnel_vni = 0xabcde
+        tun = VppVxlanGbpTunnel(
+            self,
+            src=self.pg0.local_ip4,
+            dst=self.pg0.remote_ip4,
+            vni=self.single_tunnel_vni,
+            instance=INVALID_INDEX,
+            mcast_itf=None,
+            mode=1
+        )
+        tun.add_vpp_config()
+
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=tun.sw_if_index,
+            bd_id=self.single_tunnel_bd)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index,
+            bd_id=self.single_tunnel_bd)
+
+        # Setup vni 2 to test multicast flooding
+        self.n_ucast_tunnels = 2
+        # Setup vni 3 to test unicast flooding
+        self.ucast_flood_bd = 3
+        self.create_vxlan_gbp_flood_test_bd(
+            self.ucast_flood_bd,
+            self.n_ucast_tunnels)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg3.sw_if_index,
+            bd_id=self.ucast_flood_bd)
 
     @classmethod
     def tearDownClass(cls):
@@ -201,7 +205,7 @@ class TestVxlanGbp(VppTestCase):
         encapsulated_pkt = self.encapsulate(self.frame_request,
                                             self.single_tunnel_vni)
 
-        self.pg0.add_stream([encapsulated_pkt, ])
+        self.pg0.add_stream([encapsulated_pkt])
 
         self.pg1.enable_capture()
 
@@ -210,6 +214,7 @@ class TestVxlanGbp(VppTestCase):
         # Pick first received frame and check if it's the non-encapsulated
         # frame
         out = self.pg1.get_capture(1)
+        self.pg1.disable_capture()
         pkt = out[0]
         self.assert_eq_pkts(pkt, self.frame_request)
 
