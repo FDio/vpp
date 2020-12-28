@@ -25,7 +25,7 @@
 
 /**
  * A reference to a VXLAN-GBP tunnel created as a child/dependent tunnel
- * of the tempplate GBP-VXLAN tunnel
+ * of the template GBP-VXLAN tunnel
  */
 typedef struct vxlan_tunnel_ref_t_
 {
@@ -72,7 +72,7 @@ static vlib_punt_hdl_t punt_hdl;
 
 static char *gbp_vxlan_tunnel_layer_strings[] = {
 #define _(n,s) [GBP_VXLAN_TUN_##n] = s,
-  forecah_gbp_vxlan_tunnel_layer
+  foreach_gbp_vxlan_tunnel_layer
 #undef _
 };
 

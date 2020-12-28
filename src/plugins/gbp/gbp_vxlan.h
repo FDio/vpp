@@ -19,14 +19,14 @@
 #include <vnet/fib/fib_types.h>
 #include <plugins/gbp/gbp_itf.h>
 
-#define forecah_gbp_vxlan_tunnel_layer          \
-  _(L2, "l2")                                   \
-  _(L3, "l3")
+#define foreach_gbp_vxlan_tunnel_layer                                        \
+  _ (L2, "l2")                                                                \
+  _ (L3, "l3")
 
 typedef enum gbp_vxlan_tunnel_layer_t_
 {
 #define _(s,n) GBP_VXLAN_TUN_##s,
-  forecah_gbp_vxlan_tunnel_layer
+  foreach_gbp_vxlan_tunnel_layer
 #undef _
 } gbp_vxlan_tunnel_layer_t;
 
@@ -88,7 +88,7 @@ typedef struct gbp_vxlan_tunnel_t_
 typedef enum gbp_vxlan_tunnel_type_t_
 {
   /**
-   * This is the object type deifend above.
+   * This is the object type defined above.
    *  A template representation of a vxlan-gbp tunnel. from this tunnel
    *  type, real vxlan-gbp tunnels are created (by cloning the VNI)
    */
