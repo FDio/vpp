@@ -461,7 +461,8 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
       if (vcl_segment_attach_session (mp->ct_segment_handle, mp->ct_rx_fifo,
 				      mp->ct_tx_fifo, 1, session))
 	{
-	  VDBG (0, "failed to attach ct fifos for %u", session->session_index);
+	  VDBG (0, "failed to attach ct fifos for %u",
+		session->session_index);
 	  session->session_state = VCL_STATE_DETACHED;
 	  vcl_send_session_disconnect (wrk, session);
 	  return session_index;
@@ -1221,6 +1222,7 @@ vppcom_app_create (const char *app_name)
 			  20 /* timeout in secs */ );
   pool_alloc (vcm->workers, vcl_cfg->max_workers);
   clib_spinlock_init (&vcm->workers_lock);
+  clib_spinlock_init (&vcm->worker_rpc_lock);
   clib_rwlock_init (&vcm->segment_table_lock);
   atexit (vppcom_app_exit);
   vcl_elog_init (vcm);
@@ -2100,8 +2102,9 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
 				   0 /* do_evt */ , SVM_Q_WAIT);
 
   if (svm_fifo_set_event (s->tx_fifo))
-    app_send_io_evt_to_vpp (
-      s->vpp_evt_q, s->tx_fifo->shr->master_session_index, et, SVM_Q_WAIT);
+    app_send_io_evt_to_vpp (s->vpp_evt_q,
+			    s->tx_fifo->shr->master_session_index, et,
+			    SVM_Q_WAIT);
 
   /* The underlying fifo segment can run out of memory */
   if (PREDICT_FALSE (n_write < 0))

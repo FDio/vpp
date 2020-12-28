@@ -334,6 +334,8 @@ typedef struct vppcom_main_t_
   fifo_segment_main_t segment_main;
 
   vcl_rpc_fn_t *wrk_rpc_fn;
+  /** Lock to protect rpc among workers */
+  clib_spinlock_t worker_rpc_lock;
 
   /*
    * Binary api context
@@ -686,7 +688,8 @@ void vcl_segment_detach (u64 segment_handle);
 void vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s);
 
 int vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
-				uword txf_offset, u8 is_ct, vcl_session_t *s);
+				uword txf_offset, u8 is_ct,
+				vcl_session_t * s);
 
 /*
  * VCL Binary API
