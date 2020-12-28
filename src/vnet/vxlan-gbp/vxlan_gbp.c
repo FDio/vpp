@@ -72,8 +72,8 @@ format_vxlan_gbp_tunnel (u8 * s, va_list * args)
   return s;
 }
 
-static u8 *
-format_vxlan_gbp_name (u8 * s, va_list * args)
+u8 *
+format_vxlan_gbp_name (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
@@ -1187,5 +1187,5 @@ VLIB_INIT_FUNCTION (vxlan_gbp_init) =
  *
  * Local Variables:
  * eval: (c-set-style "gnu")
- * End:
+ *
  */
