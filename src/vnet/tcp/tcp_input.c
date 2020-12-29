@@ -2561,14 +2561,19 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       b = vlib_get_buffer (vm, bi);
 
-      lc = tcp_listener_get (vnet_buffer (b)->tcp.connection_index);
-      if (PREDICT_FALSE (lc == 0))
+      /* Flags initialized with connection state after lookup */
+      if (vnet_buffer (b)->tcp.flags == TCP_STATE_LISTEN)
+	{
+	  lc = tcp_listener_get (vnet_buffer (b)->tcp.connection_index);
+	}
+      else
 	{
 	  tcp_connection_t *tc;
 	  tc = tcp_connection_get (vnet_buffer (b)->tcp.connection_index,
 				   thread_index);
 	  if (tc->state != TCP_STATE_TIME_WAIT)
 	    {
+	      lc = 0;
 	      error = TCP_ERROR_CREATE_EXISTS;
 	      goto done;
 	    }
@@ -2801,6 +2806,10 @@ tcp_input_dispatch_buffer (tcp_main_t * tm, tcp_connection_t * tc,
   *next = tm->dispatch_table[tc->state][flags].next;
   error = tm->dispatch_table[tc->state][flags].error;
   tc->segs_in += 1;
+
+  /* Track connection state when packet was received. It helps
+   * @ref tcp46_listen_inline detect port reuse */
+  vnet_buffer (b)->tcp.flags = tc->state;
 
   if (PREDICT_FALSE (error != TCP_ERROR_NONE))
     {
