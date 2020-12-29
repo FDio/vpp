@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f0246a02_9d27ad49",
+        "filename": "src/vnet/ipip/ipip.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-29T01:08:55Z",
+      "side": 1,
+      "message": "Is this true for ip4?",
+      "range": {
+        "startLine": 238,
+        "startChar": 2,
+        "endLine": 239,
+        "endChar": 33
+      },
+      "revId": "3ad23a487123509ce0ed7404287f0c13ffa0df8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
