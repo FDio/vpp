@@ -1340,7 +1340,7 @@ svm_fifo_clone (svm_fifo_t * df, svm_fifo_t * sf)
   ASSERT (svm_fifo_n_chunks (sf) == 1);
 
   clib_memcpy_fast (f_head_cptr (df)->data, f_head_cptr (sf)->data,
-		    sf->shr->size);
+		    f_head_cptr (sf)->length);
 
   f_load_head_tail_all_acq (sf, &head, &tail);
   clib_atomic_store_rel_n (&df->shr->head, head);
