@@ -2564,8 +2564,13 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       b = vlib_get_buffer (vm, bi);
 
-      lc = tcp_listener_get (vnet_buffer (b)->tcp.connection_index);
-      if (PREDICT_FALSE (lc == 0))
+      /* Flag set if connection is listener */
+      if (vnet_buffer (b)->tcp.flags)
+	{
+	  lc = tcp_listener_get (vnet_buffer (b)->tcp.connection_index);
+	  ASSERT (lc);
+	}
+      else
 	{
 	  tcp_connection_t *tc;
 	  tc = tcp_connection_get (vnet_buffer (b)->tcp.connection_index,
