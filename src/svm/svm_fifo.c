@@ -1338,9 +1338,11 @@ svm_fifo_clone (svm_fifo_t * df, svm_fifo_t * sf)
 
   /* Support only single chunk clones for now */
   ASSERT (svm_fifo_n_chunks (sf) == 1);
+  clib_warning ("df chunk len %u sf chunk len %u", f_head_cptr (df)->length,
+		f_head_cptr (sf)->length);
 
   clib_memcpy_fast (f_head_cptr (df)->data, f_head_cptr (sf)->data,
-		    sf->shr->size);
+		    f_head_cptr (sf)->length);
 
   f_load_head_tail_all_acq (sf, &head, &tail);
   clib_atomic_store_rel_n (&df->shr->head, head);

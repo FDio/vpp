@@ -35,6 +35,7 @@ app_worker_alloc (application_t * app)
   app_wrk->first_segment_manager = APP_INVALID_SEGMENT_MANAGER_INDEX;
   clib_spinlock_init (&app_wrk->detached_seg_managers_lock);
   APP_DBG ("New app %v worker %u", app->name, app_wrk->wrk_index);
+  clib_warning ("alloc worker %u", app_wrk->wrk_index);
   return app_wrk;
 }
 
@@ -153,6 +154,8 @@ app_worker_free (app_worker_t * app_wrk)
       sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
       segment_manager_init_free (sm);
     }
+
+  clib_warning ("free worker %u", app_wrk->wrk_index);
 
   if (CLIB_DEBUG)
     clib_memset (app_wrk, 0xfe, sizeof (*app_wrk));

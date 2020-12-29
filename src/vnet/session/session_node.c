@@ -447,6 +447,8 @@ session_mq_worker_update_handler (void *data)
     {
       session_req_worker_update_msg_t *wump;
 
+      clib_warning ("notify switch %u to %u", app_wrk->wrk_index,
+		    mp->req_wrk_index);
       svm_msg_q_lock_and_alloc_msg_w_ring (app_wrk->event_queue,
 					   SESSION_MQ_CTRL_EVT_RING,
 					   SVM_Q_WAIT, msg);
