@@ -20,7 +20,6 @@
 typedef struct segment_manager_main_
 {
   segment_manager_t *segment_managers;	/**< Pool of segment managers */
-  clib_valloc_main_t va_allocator;	/**< Virtual address allocator */
   u32 seg_name_counter;			/**< Counter for segment names */
 
   /*
@@ -91,11 +90,11 @@ segment_manager_segment_index (segment_manager_t * sm, fifo_segment_t * seg)
 int
 segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
 {
-  uword baseva = (uword) ~ 0ULL, alloc_size, page_size;
-  u32 rnd_margin = 128 << 10, fs_index = ~0;
   segment_manager_main_t *smm = &sm_main;
   segment_manager_props_t *props;
   fifo_segment_t *fs;
+  u32 fs_index = ~0;
+  uword page_size;
   u8 *seg_name;
   int rv;
 
@@ -128,14 +127,6 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
   if (props->segment_type != SSVM_SEGMENT_PRIVATE)
     {
       seg_name = format (0, "%d-%d%c", getpid (), smm->seg_name_counter++, 0);
-      alloc_size = (uword) segment_size + rnd_margin;
-      baseva = clib_valloc_alloc (&smm->va_allocator, alloc_size, 0);
-      if (!baseva)
-	{
-	  clib_warning ("out of space for segments");
-	  pool_put (sm->segments, fs);
-	  goto done;
-	}
     }
   else
     {
@@ -146,16 +137,12 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
 
   fs->ssvm.ssvm_size = segment_size;
   fs->ssvm.name = seg_name;
-  /* clib_mem_vm_map_shared consumes first page before requested_va */
-  fs->ssvm.requested_va = baseva + page_size;
+  fs->ssvm.requested_va = 0;
 
   if ((rv = ssvm_server_init (&fs->ssvm, props->segment_type)))
     {
       clib_warning ("svm_master_init ('%v', %u) failed", seg_name,
 		    segment_size);
-
-      if (props->segment_type != SSVM_SEGMENT_PRIVATE)
-	clib_valloc_free (&smm->va_allocator, baseva);
       pool_put (sm->segments, fs);
       goto done;
     }
@@ -193,14 +180,8 @@ done:
 void
 segment_manager_del_segment (segment_manager_t * sm, fifo_segment_t * fs)
 {
-  segment_manager_main_t *smm = &sm_main;
-
   if (ssvm_type (&fs->ssvm) != SSVM_SEGMENT_PRIVATE)
     {
-      /* clib_mem_vm_map_shared consumes first page before requested_va */
-      clib_valloc_free (&smm->va_allocator,
-			fs->ssvm.requested_va - clib_mem_get_page_size ());
-
       if (!segment_manager_app_detached (sm))
 	{
 	  app_worker_t *app_wrk;
@@ -937,8 +918,6 @@ segment_manager_main_init (segment_manager_main_init_args_t * a)
 
   ip->baseva = a->baseva;
   ip->size = a->size;
-
-  clib_valloc_init (&sm->va_allocator, ip, 1 /* lock */ );
 
   sm->default_fifo_size = 1 << 12;
   sm->default_segment_size = 1 << 20;
