@@ -310,7 +310,7 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
   vnet_buffer (b)->tcp.data_len = n_data_bytes;
   vnet_buffer (b)->tcp.seq_end = vnet_buffer (b)->tcp.seq_number
     + n_data_bytes;
-  vnet_buffer (b)->tcp.flags = 0;
+  vnet_buffer (b)->tcp.flags = tc ? (tc->rmt_port == 0) : 0;
 
   *error = result ? TCP_ERROR_NONE + result : *error;
 
