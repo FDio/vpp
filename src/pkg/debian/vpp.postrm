@@ -13,9 +13,9 @@ for d in $pci_dirs; do
     done
 done
 if [ -n "${removed}" ]; then
-    echo "There are changes in PCI drivers, rescaning"
+    echo "There are changes in PCI drivers, rescanning"
     echo 1 > /sys/bus/pci/rescan
 else
-    echo "There weren't PCI devices binded"
+    echo "There weren't PCI devices bound"
 fi
 

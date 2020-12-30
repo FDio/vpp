@@ -12,14 +12,7 @@ export PYBUILD_DIR = @CMAKE_SOURCE_DIR@/vpp-api/python
 export PYBUILD_DESTDIR_python3=debian/python3-vpp-api/
 export PYBUILD_DISABLE_python3=test
 export PYBUILD_SYSTEM=distutils
-ifeq (@VPP_DEB_WITH_PYTHON2@,yes)
-export PYBUILD_DESTDIR_python2=debian/vpp-api-python/
-export PYBUILD_DISABLE_python2=test
-buildvers := $(shell pyversions -sv)
-DH_WITH = systemd,python2,python3
-else
 DH_WITH = systemd,python3
-endif
 
 build3vers := $(shell py3versions -sv)
 

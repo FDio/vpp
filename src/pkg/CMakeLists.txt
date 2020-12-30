@@ -35,13 +35,8 @@ foreach(l ${os_release})
   set(OS_${_name} ${_value})
 endforeach()
 
-if (OS_ID STREQUAL "ubuntu" AND OS_VERSION_ID VERSION_LESS 20.04)
-  set(VPP_DEB_BUILD_DEPENDS "python-all, python3-all, python3-setuptools")
-  set(VPP_DEB_WITH_PYTHON2 "yes")
-else()
-  set(VPP_DEB_BUILD_DEPENDS "python3-all, python3-setuptools")
-  set(VPP_DEB_WITH_PYTHON2 "no")
-endif()
+set(VPP_DEB_BUILD_DEPENDS "python3-all, python3-setuptools")
+set(VPP_DEB_WITH_PYTHON2 "no")
 
 foreach(f rules changelog control)
   configure_file(
