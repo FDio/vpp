@@ -196,19 +196,19 @@ f_tail_cptr (svm_fifo_t *f)
 }
 
 always_inline svm_fifo_chunk_t *
-f_cptr (svm_fifo_t *f, svm_fifo_chunk_ptr_t cp)
+f_cptr (svm_fifo_t *f, fs_sptr_t cp)
 {
   return fs_chunk_ptr (f->fs_hdr, cp);
 }
 
-always_inline svm_fifo_chunk_ptr_t
+always_inline fs_sptr_t
 f_csptr (svm_fifo_t *f, svm_fifo_chunk_t *c)
 {
   return fs_chunk_sptr (f->fs_hdr, c);
 }
 
 always_inline void
-f_csptr_link (svm_fifo_t *f, svm_fifo_chunk_ptr_t cp, svm_fifo_chunk_t *c)
+f_csptr_link (svm_fifo_t *f, fs_sptr_t cp, svm_fifo_chunk_t *c)
 {
   fs_chunk_ptr (f->fs_hdr, cp)->next = fs_chunk_sptr (f->fs_hdr, c);
 }

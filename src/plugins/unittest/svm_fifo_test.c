@@ -2410,13 +2410,13 @@ sfifo_test_fifo_segment_slave (int verbose)
       svm_fifo_dequeue (f, vec_len (retrieved_data), retrieved_data);
       if (memcmp (retrieved_data, test_data, vec_len (retrieved_data)))
 	{
-	  result = (u32 *) f->shr->head_chunk->data;
+	  result = (u32 *) f_head_cptr (f)->data;
 	  *result = 1;
 	  _exit (0);
 	}
     }
 
-  result = (u32 *) f->shr->head_chunk->data;
+  result = (u32 *) f_head_cptr (f)->data;
   *result = 0;
 
   vec_free (test_data);
@@ -2470,7 +2470,7 @@ sfifo_test_fifo_segment_master_slave (int verbose)
 
   usleep (1e3);
 
-  result = (u32 *) f->shr->head_chunk->data;
+  result = (u32 *) f_head_cptr (f)->data;
   SFIFO_TEST (*result == 0, "slave reported no error");
 
   vec_free (a->new_segment_indices);
