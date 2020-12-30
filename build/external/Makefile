@@ -106,7 +106,7 @@ endif
 RPM_VER := $(PKG_VERSION)
 RPM_ARCH=$(shell rpm --eval "%{_arch}" 2> /dev/null)
 DEV_RPM=vpp-ext-deps-$(RPM_VER)-$(PKG_SUFFIX).$(RPM_ARCH).rpm
-INSTALLED_RPM_VER=$(shell rpm -q --queryformat '%{VERSION}-%{RELEASE}' vpp-ext-deps 2> /dev/null | grep -v "not inst")
+INSTALLED_RPM_VER=$(shell rpm -q --queryformat '%{VERSION}-%{RELEASE}' vpp-ext-deps 2> /dev/null | grep -v "vpp-ext-deps")
 
 .PHONY: build-rpm install-rpm check-rpm
 
