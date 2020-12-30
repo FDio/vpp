@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "235c80bd_09d6be1f",
+        "filename": "src/pkg/debian/control.in",
+        "patchSetId": 2
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2020-12-30T00:52:25Z",
+      "side": 1,
+      "message": "Are you sure we need these? \nply is only used by vppapigen (vpp-dev)\nand pycparser is already a dependency of python3-cffi.deb\nhttps://ubuntu.pkgs.org/20.04/ubuntu-main-i386/python3-cffi_1.14.0-1build1_all.deb.html",
+      "range": {
+        "startLine": 83,
+        "startChar": 0,
+        "endLine": 84,
+        "endChar": 27
+      },
+      "revId": "64146740614b31ee08dce533ea0c011cd2bd438f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
