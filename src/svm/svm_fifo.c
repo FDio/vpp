@@ -21,11 +21,11 @@
 #include <svm/fifo_segment.h>
 #include <vppinfra/cpu.h>
 
-#define F_INVALID_CPTR (svm_fifo_chunk_ptr_t) ~0ULL
+#define F_INVALID_CPTR (fs_sptr_t) ~0ULL
 
 CLIB_MARCH_FN (svm_fifo_copy_to_chunk, void, svm_fifo_t *f,
 	       svm_fifo_chunk_t *c, u32 tail_idx, const u8 *src, u32 len,
-	       svm_fifo_chunk_ptr_t *last)
+	       fs_sptr_t *last)
 {
   u32 n_chunk;
 
@@ -56,7 +56,7 @@ CLIB_MARCH_FN (svm_fifo_copy_to_chunk, void, svm_fifo_t *f,
 
 CLIB_MARCH_FN (svm_fifo_copy_from_chunk, void, svm_fifo_t *f,
 	       svm_fifo_chunk_t *c, u32 head_idx, u8 *dst, u32 len,
-	       svm_fifo_chunk_ptr_t *last)
+	       fs_sptr_t *last)
 {
   u32 n_chunk;
 
@@ -91,7 +91,7 @@ CLIB_MARCH_FN (svm_fifo_copy_from_chunk, void, svm_fifo_t *f,
 
 static inline void
 svm_fifo_copy_to_chunk (svm_fifo_t *f, svm_fifo_chunk_t *c, u32 tail_idx,
-			const u8 *src, u32 len, svm_fifo_chunk_ptr_t *last)
+			const u8 *src, u32 len, fs_sptr_t *last)
 {
   CLIB_MARCH_FN_SELECT (svm_fifo_copy_to_chunk) (f, c, tail_idx, src, len,
 						 last);
@@ -99,7 +99,7 @@ svm_fifo_copy_to_chunk (svm_fifo_t *f, svm_fifo_chunk_t *c, u32 tail_idx,
 
 static inline void
 svm_fifo_copy_from_chunk (svm_fifo_t *f, svm_fifo_chunk_t *c, u32 head_idx,
-			  u8 *dst, u32 len, svm_fifo_chunk_ptr_t *last)
+			  u8 *dst, u32 len, fs_sptr_t *last)
 {
   CLIB_MARCH_FN_SELECT (svm_fifo_copy_from_chunk) (f, c, head_idx, dst, len,
 						   last);
@@ -906,7 +906,7 @@ int
 svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
 {
   u32 tail, head, free_count, enq_pos;
-  svm_fifo_chunk_ptr_t last = F_INVALID_CPTR;
+  fs_sptr_t last = F_INVALID_CPTR;
 
   f_load_head_tail_prod (f, &head, &tail);
 
@@ -1141,7 +1141,7 @@ int
 svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 len, u8 * dst)
 {
   u32 tail, head, cursize, head_idx;
-  svm_fifo_chunk_ptr_t last = F_INVALID_CPTR;
+  fs_sptr_t last = F_INVALID_CPTR;
 
   f_load_head_tail_cons (f, &head, &tail);
 
