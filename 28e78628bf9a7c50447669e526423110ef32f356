@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8d830d8e_47e7ae0a",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 313,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2020-12-30T03:40:07Z",
+      "side": 1,
+      "message": "Should check if tc is null.",
+      "range": {
+        "startLine": 313,
+        "startChar": 2,
+        "endLine": 313,
+        "endChar": 49
+      },
+      "revId": "28e78628bf9a7c50447669e526423110ef32f356",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
