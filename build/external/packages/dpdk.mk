@@ -160,21 +160,12 @@ DPDK_MESON_ARGS = \
 	--buildtype=$(DPDK_BUILD_TYPE) \
 	${DPDK_MLX_CONFIG_FLAG}
 
-PIP_DOWNLOAD_DIR = $(CURDIR)/downloads/
-
 define dpdk_config_cmds
 	cd $(dpdk_build_dir) && \
-	rm -rf ../dpdk-meson-venv && \
-	mkdir -p ../dpdk-meson-venv && \
-	python3 -m venv ../dpdk-meson-venv && \
-	source ../dpdk-meson-venv/bin/activate && \
-	(if ! ls $(PIP_DOWNLOAD_DIR)meson* ; then pip3 download -d $(PIP_DOWNLOAD_DIR) -f $(DL_CACHE_DIR) meson==0.54 setuptools wheel; fi) && \
-	pip3 install --no-index --find-links=$(PIP_DOWNLOAD_DIR) meson==0.54 && \
 	PKG_CONFIG_PATH=$(dpdk_install_dir)/lib/pkgconfig meson setup $(dpdk_src_dir) \
 		$(dpdk_build_dir) \
 		$(DPDK_MESON_ARGS) \
 			| tee $(dpdk_config_log) && \
-	deactivate && \
 	echo "DPDK post meson configuration" && \
 	echo "Altering rte_build_config.h" && \
 	$(call dpdk_config,PKTMBUF_HEADROOM) && \
@@ -183,19 +174,15 @@ endef
 
 define dpdk_build_cmds
 	cd $(dpdk_build_dir) && \
-	source ../dpdk-meson-venv/bin/activate && \
-	meson compile -C . | tee $(dpdk_build_log) && \
-	deactivate
+	meson compile -C . | tee $(dpdk_build_log)
 endef
 
 define dpdk_install_cmds
 	cd $(dpdk_build_dir) && \
-	source ../dpdk-meson-venv/bin/activate && \
 	meson install && \
 	cd $(dpdk_install_dir)/lib && \
 	echo "GROUP ( $$(ls librte*.a ) )" > libdpdk.a && \
-	rm -rf librte*.so librte*.so.* dpdk/*/librte*.so dpdk/*/librte*.so.* && \
-	deactivate
+	rm -rf librte*.so librte*.so.* dpdk/*/librte*.so dpdk/*/librte*.so.*
 endef
 
 $(eval $(call package,dpdk))
