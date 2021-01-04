@@ -13,20 +13,25 @@
 
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
-set(HEADERS_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(COMMON_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/common)
 
 set(COMMON_SOURCE_FILES
-
+    common/common.c
+    common/sender.c
+    common/responder.c
+    common/packet_handler.c
+    common/icmp_proto.c
 )
 
 list(APPEND EXAMPLES_LIST
-
+  loopback/main.c
+  icmp_responder/main.c
 )
 
 foreach (EXAMPLE_SRC ${EXAMPLES_LIST})
   string(FIND ${EXAMPLE_SRC} "/" INDEX)
   string(SUBSTRING ${EXAMPLE_SRC} 0 ${INDEX} EXECUTABLE)
-  add_executable(${EXECUTABLE} ${COMMON_SOURCE_FILES} ${EXAMPLE_SRC})
-  target_include_directories(${EXECUTABLE} PRIVATE $<BUILD_INTERFACE:${HEADERS_DIR}>)
+  add_executable(${EXECUTABLE} ${COMMON_SOURCE_FILES} ${EXAMPLE_SRC} )
+  target_include_directories(${EXECUTABLE} PRIVATE $<BUILD_INTERFACE:${COMMON_HEADERS}>)
   target_link_libraries(${EXECUTABLE} memif ${CMAKE_THREAD_LIBS_INIT})
 endforeach()
