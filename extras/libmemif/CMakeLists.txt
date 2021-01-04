@@ -39,15 +39,6 @@ endif()
 
 include_directories(src)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-find_package(Check 0.10.0)
-if (CHECK_FOUND)
-  include_directories(${CHECK_INCLUDE_DIR})
-  add_definitions(-DMEMIF_UNIT_TEST)
-  add_subdirectory(test)
-  enable_testing()
-endif ()
-
 add_subdirectory(src)
 add_subdirectory(examples)
 
