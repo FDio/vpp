@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eb3d7283_5d788144",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-01-04T14:38:47Z",
+      "side": 1,
+      "message": "Should be done in the \u0027if (tso)\u0027 above (also, this allows you to remove the \u0027tso ?\u0027conditional )",
+      "range": {
+        "startLine": 248,
+        "startChar": 2,
+        "endLine": 252,
+        "endChar": 0
+      },
+      "revId": "43ee5d8cc4859ecdc04e2aa9aed56155473f22b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
