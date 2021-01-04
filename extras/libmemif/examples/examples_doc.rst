@@ -1,42 +1,87 @@
 .. _libmemif_examples_doc:
 
-Examples
-========
+Libmemif Examples
+=================
 
-After build, root folder will contain scripts linking binary examples
-with library (same name as example apps). These scripts can be executed
-to run example apps without installing the library. Example apps
-binaries can be found in *libs* folder. To run binaries directly, make
-sure that libmemif library is installed.
+Example source code is located in `.../vpp/extras/libmemif/examples/` directory.
+The compiled binaries are located in `.../vpp/extras/libmemif/build/examples/`.
 
-Run in container
-----------------
 
-``ligato/libmemif-sample-service`` image contains built and installed
-libmemf. To run different examples, override docker CMD to start
-container in bash:
+ICMP Responder
+--------------
+**Application Source Code**: `.../vpp/extras/libmemif/examples/icmp_responder`
 
-::
+In this example, memif endpoint connects to an external application. The example
+application can resolve ARP and reply to ICMPv4 packets. The program will exit
+once the interface is disconnected Memif receive mode: interrupt.
 
-   # docker run -it --entrypoint=/bin/bash -i --rm --name icmp-responder --hostname icmp-responder --privileged -v "/run/vpp/:/run/vpp/" ligato/libmemif-sample-service
+VPP (memif master) <--> icmp_responder app (memif slave)
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Start VPP and configure memif interface::
 
-Current WORKDIR is set to root repository directory. Example apps can be
-run from this directory (a script linking binary with library), or
-browse to ``./.libs`` folder and execute binary directly.
+    make run
+    ...
+    DBGvpp# create interface memif id 0 master
+    DBGvpp# set int state memif0/0 up
+    DBGvpp# set int ip address memif0/0 192.168.1.2/24
 
-* ``extras/libmemif/examples/icmp_responder``
+Start icmp_responder example app::
 
-Simplest implementation. Event polling is handled by libmemif.
-Single memif connection in slave mode is created (id 0). Use Ctrl + C to exit app.
-Memif receive mode: interrupt.
+    ./examples/icmp_responder
 
-* ``extras/libmemif/examples/icmp_responder-epoll``  (run in container by default)
+Memif in slave mode will try to connect every 2 seconds. If connection
+establishment is successful, the `memif connected` message will show::
 
-Supports multiple connections and master mode. User can create/delete connections, set ip addresses,
-print connection information. :ref:`libmemif_example_setup_doc` contains instructions on basic
-connection use cases setups. Memif receive mode: interrupt. App provides functionality to disable
-interrupts for specified queue/s for testing purposes. Polling mode is not implemented in this example.
+    INFO: memif connected!
 
-* ``extras/libmemif/examples/icmp_responder-mt``
+**Note**: Error messages like "unmatched interface id" are printed only in debug mode.
 
-Multi-thread example, very similar to icmpr-epoll. Packets are handled in threads assigned to specific queues. Slave mode only. Memif receive mode: polling (memif_rx_poll function), interrupt (memif_rx_interrupt function). Receive modes differ per queue.
+Verify that the memif is connected on VPP side::
+
+    DBGvpp# sh memif
+    interface memif0/0
+    remote-name "ICMP_Responder"
+    remote-interface "memif_connection"
+    id 0 mode ethernet file /run/vpp/memif.sock
+    flags admin-up connected
+    listener-fd 12 conn-fd 13
+    num-s2m-rings 1 num-m2s-rings 1 buffer-size 0
+        master-to-slave ring 0:
+        region 0 offset 32896 ring-size 1024 int-fd 16
+        head 0 tail 0 flags 0x0000 interrupts 0
+        master-to-slave ring 0:
+        region 0 offset 0 ring-size 1024 int-fd 15
+        head 0 tail 0 flags 0x0001 interrupts 0
+
+Send ping from VPP to icmp_responder (Default IPv4: 192.168.1.1)::
+
+    DBGvpp# ping 192.168.1.1
+    64 bytes from 192.168.1.1: icmp_seq=2 ttl=64 time=.1888 ms
+    64 bytes from 192.168.1.1: icmp_seq=3 ttl=64 time=.1985 ms
+    64 bytes from 192.168.1.1: icmp_seq=4 ttl=64 time=.1813 ms
+    64 bytes from 192.168.1.1: icmp_seq=5 ttl=64 time=.1929 ms
+
+    Statistics: 5 sent, 4 received, 20% packet loss
+
+
+Loopback
+--------
+**Application Source Code**: `.../vpp/extras/libmemif/examples/loopback`
+
+In this example, two memif endpoints are connected to create a loopback.
+Once connected, a test packet is sent out the memif master interface to
+the memif slave interface, which replies with the same packet in a
+zero-copy way.
+In reverse mode, the packet is sent from the slave interface and is
+looped back by the master interface.
+
+Running The Loopback Application
+++++++++++++++++++++++++++++++++
+Start the loopback example::
+
+    ./examples/loopback
+
+You should see the `Received correct data.` message::
+
+    INFO: Received correct data.
+    INFO: Stopping the program
