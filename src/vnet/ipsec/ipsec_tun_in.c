@@ -87,9 +87,9 @@ format_ipsec_tun_protect_input_trace (u8 * s, va_list * args)
 }
 
 always_inline u16
-ipsec_ip4_if_no_tunnel (vlib_node_runtime_t * node,
-			vlib_buffer_t * b,
-			const esp_header_t * esp, const ip4_header_t * ip4)
+ipsec_ip4_if_no_tunnel (vlib_node_runtime_t *node, vlib_buffer_t *b,
+			const esp_header_t *esp, const ip4_header_t *ip4,
+			int buf_rewind)
 {
   if (PREDICT_FALSE (0 == esp->spi))
     {
@@ -97,6 +97,7 @@ ipsec_ip4_if_no_tunnel (vlib_node_runtime_t * node,
       b->punt_reason = ipsec_punt_reason[(ip4->protocol == IP_PROTOCOL_UDP ?
 					  IPSEC_PUNT_IP4_SPI_UDP_0 :
 					  IPSEC_PUNT_IP4_NO_SUCH_TUNNEL)];
+      vlib_buffer_advance (b, buf_rewind);
     }
   else
     {
@@ -274,8 +275,8 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else
 		{
-		  next[0] = ipsec_ip4_if_no_tunnel (node, b[0], esp0, ip40);
-		  vlib_buffer_advance (b[0], -buf_rewind0);
+		  next[0] = ipsec_ip4_if_no_tunnel (node, b[0], esp0, ip40,
+						    -buf_rewind0);
 		  n_no_tunnel++;
 		  goto trace00;
 		}

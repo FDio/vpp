@@ -2864,52 +2864,35 @@ ikev2_node_internal (vlib_main_t * vm,
       int ip_hdr_sz = 0;
       int is_req = 0, has_non_esp_marker = 0;
 
-      ASSERT (0 == b0->punt_reason
-	      || (is_ip4
-		  && b0->punt_reason ==
-		  ipsec_punt_reason[IPSEC_PUNT_IP4_SPI_UDP_0]));
-
-      if (is_ip4
-	  && b0->punt_reason == ipsec_punt_reason[IPSEC_PUNT_IP4_SPI_UDP_0])
-	{
-	  u8 *ptr = vlib_buffer_get_current (b0);
-	  ip40 = (ip4_header_t *) ptr;
-	  ptr += sizeof (*ip40);
-	  udp0 = (udp_header_t *) ptr;
-	  ptr += sizeof (*udp0);
-	  ike0 = (ike_header_t *) ptr;
-	  ip_hdr_sz = sizeof (*ip40);
-	}
-      else
-	{
-	  u8 *ipx_hdr = b0->data + vnet_buffer (b0)->l3_hdr_offset;
-	  ike0 = vlib_buffer_get_current (b0);
-	  vlib_buffer_advance (b0, -sizeof (*udp0));
-	  udp0 = vlib_buffer_get_current (b0);
-
-	  if (is_ip4)
-	    {
-	      ip40 = (ip4_header_t *) ipx_hdr;
-	      ip_hdr_sz = sizeof (*ip40);
-	    }
-	  else
-	    {
-	      ip60 = (ip6_header_t *) ipx_hdr;
-	      ip_hdr_sz = sizeof (*ip60);
-	    }
-	  vlib_buffer_advance (b0, -ip_hdr_sz);
-	}
-
-      rlen = b0->current_length - ip_hdr_sz - sizeof (*udp0);
+      ike0 = vlib_buffer_get_current (b0);
 
       /* check for non-esp marker */
       if (*((u32 *) ike0) == 0)
 	{
 	  ike0 =
 	    (ike_header_t *) ((u8 *) ike0 + sizeof (ikev2_non_esp_marker));
-	  rlen -= sizeof (ikev2_non_esp_marker);
 	  has_non_esp_marker = 1;
 	}
+
+      u8 *ipx_hdr = b0->data + vnet_buffer (b0)->l3_hdr_offset;
+      vlib_buffer_advance (b0, -sizeof (*udp0));
+      udp0 = vlib_buffer_get_current (b0);
+
+      if (is_ip4)
+	{
+	  ip40 = (ip4_header_t *) ipx_hdr;
+	  ip_hdr_sz = sizeof (*ip40);
+	}
+      else
+	{
+	  ip60 = (ip6_header_t *) ipx_hdr;
+	  ip_hdr_sz = sizeof (*ip60);
+	}
+      vlib_buffer_advance (b0, -ip_hdr_sz);
+
+      rlen = b0->current_length - ip_hdr_sz - sizeof (*udp0);
+      if (has_non_esp_marker)
+	rlen -= sizeof (ikev2_non_esp_marker);
 
       if (clib_net_to_host_u32 (ike0->length) != rlen)
 	{
