@@ -716,9 +716,8 @@ ikev2_check_payload_length (const ike_payload_header_t * ikep, int rlen,
 }
 
 static int
-ikev2_process_sa_init_req (vlib_main_t * vm,
-			   ikev2_sa_t * sa, ike_header_t * ike,
-			   udp_header_t * udp, u32 len)
+ikev2_process_sa_init_req (vlib_main_t *vm, ikev2_sa_t *sa, ike_header_t *ike,
+			   udp_header_t *udp, u32 len, u32 sw_if_index)
 {
   u8 nonce[IKEV2_NONCE_SIZE];
   int p = 0;
@@ -733,6 +732,7 @@ ikev2_process_sa_init_req (vlib_main_t * vm,
 		       ip_addr_version (&sa->iaddr) == AF_IP4);
 
   sa->ispi = clib_net_to_host_u64 (ike->ispi);
+  sa->sw_if_index = sw_if_index;
 
   /* store whole IKE payload - needed for PSK auth */
   vec_reset_length (sa->last_sa_init_req_packet_data);
@@ -2958,7 +2958,9 @@ ikev2_node_internal (vlib_main_t * vm,
 		      goto dispatch0;
 		    }
 
-		  res = ikev2_process_sa_init_req (vm, sa0, ike0, udp0, rlen);
+		  res = ikev2_process_sa_init_req (
+		    vm, sa0, ike0, udp0, rlen,
+		    vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 		  if (!res)
 		    vlib_node_increment_counter (vm, node->node_index,
 						 IKEV2_ERROR_MALFORMED_PACKET,
