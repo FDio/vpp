@@ -17,7 +17,8 @@ set -eEo pipefail
 
 CLANG_FORMAT_VER=10
 GIT_DIFF_ARGS="-U0 --no-color --relative HEAD~1"
-CLANG_FORMAT_DIFF_ARGS="-style file -p1"
+IREGEX="-iregex \".*\.(cpp|cc|c\+\+|cxx|c|h|hh|hpp)\""
+CLANG_FORMAT_DIFF_ARGS="-style file -p1 ${IREGEX}"
 SUFFIX="-${CLANG_FORMAT_VER}"
 
 clang-format${SUFFIX} --version
@@ -44,19 +45,6 @@ if [ "${1}" == "--fix" ]; then
   git status ${filelist}
   rm ${in}
   exit 0
-fi
-
-line_count=$(sed -n '/^+.*\s\+$/p' ${in} | wc -l)
-if [ ${line_count} -gt 0 ] ; then
-    echo
-    sed -n '/^+++/h; /^+.*\s\+$/{x;p;x;p;}' ${in}
-    echo
-    echo "*******************************************************************"
-    echo "* CHECKSTYLE FAILED"
-    echo "* Trailing whitespace detected"
-    echo "*******************************************************************"
-    rm ${in}
-    exit 1
 fi
 
 out=$(mktemp)
