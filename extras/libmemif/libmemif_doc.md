@@ -20,51 +20,33 @@ Shared memory packet interface (memif) provides high performance packet transmit
 - [x] Multiple queues
   - [x] Multi-thread support
 - [x] Master mode
-	- [ ] Multiple regions (TODO)
-- [ ] Performance testing (TODO)
+	- [x] Multiple regions
+- [x] Loopback
 
 ## Quickstart
 
 This setup will run libmemif ICMP responder example app in container. Install [docker](https://docs.docker.com/engine/installation) engine.
 Useful link: [Docker documentation](https://docs.docker.com/get-started).
 
-Pull image:
+Build the docker image:
 ```
-# docker pull ligato/libmemif-sample-service
+# docker build . -t libmemif
 ```
 
-Now you should be able to see ligato/libmemif-sample-service image on your local machine (IMAGE ID in this README may be outdated):
+Now you should be able to see libmemif image on your local machine:
 ```
 # docker images
 REPOSITORY                       TAG                 IMAGE ID            CREATED              SIZE
-ligato/libmemif-sample-service   latest              32ecc2f9d013        About a minute ago   468MB
+libmemif						 latest              32ecc2f9d013        About a minute ago   468MB
 ...
 ```
 
 Run container:
 ```
-# docker run -it --rm --name icmp-responder --hostname icmp-responder --privileged -v "/run/vpp/:/run/vpp/" ligato/libmemif-sample-service
+# docker run -it --rm --name icmp-responder --hostname icmp-responder --privileged -v "/run/vpp/:/run/vpp/" libmemif
 ```
-Example application will start in debug mode. Output should look like this:
-```
-ICMP_Responder:add_epoll_fd:233: fd 0 added to epoll
-ICMP_Responder:add_epoll_fd:233: fd 5 added to epoll
-LIBMEMIF EXAMPLE APP: ICMP_Responder (debug)
-==============================
-libmemif version: 2.0 (debug)
-memif version: 512
-commands:
-	help - prints this help
-	exit - exit app
-	conn <index> <mode> [<interrupt-desc>] - create memif. index is also used as interface id, mode 0 = slave 1 = master, interrupt-desc none = default 0 = if ring is full wait 1 = handle only ARP requests
-	del  <index> - delete memif
-	show - show connection details
-	ip-set <index> <ip-addr> - set interface ip address
-	rx-mode <index> <qid> <polling|interrupt> - set queue rx mode
-	sh-count - print counters
-	cl-count - clear counters
-	send <index> <tx> <ip> <mac> - send icmp
-```
+
+The interface will by default connect to a master interface listening on `/run/vpp/master.sock`. The example will handle ARP requests and respond to ICMPv4 requests to `192.168.1.1`.
 
 Continue with @ref libmemif_example_setup which contains instructions on how to set up connection between icmpr-epoll example app and VPP-memif.
 
@@ -74,4 +56,3 @@ Continue with @ref libmemif_example_setup which contains instructions on how to 
 - @subpage libmemif_examples_doc
 - @subpage libmemif_example_setup_doc
 - @subpage libmemif_gettingstarted_doc
-- @subpage libmemif_devperftest_doc
