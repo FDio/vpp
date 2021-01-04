@@ -148,17 +148,11 @@ resolve_eth_arp (struct ether_arp *eth_arp, void *eth_arp_resp,
 }
 
 static ssize_t
-resolve_eth (struct ether_header *eth, void *eth_resp)
+resolve_eth (struct ether_header *eth, void *eth_resp, uint8_t hw_addr[6])
 {
   struct ether_header *resp = (struct ether_header *) eth_resp;
   memcpy (resp->ether_dhost, eth->ether_shost, 6);
 
-  uint8_t hw_addr[6];
-  int i;
-  for (i = 0; i < 6; i++)
-    {
-      hw_addr[i] = 'a';
-    }
   memcpy (resp->ether_shost, hw_addr, 6);
 
   resp->ether_type = eth->ether_type;
@@ -205,8 +199,8 @@ resolve_icmp (struct icmphdr *icmp, void *icmp_resp)
 }
 
 int
-resolve_packet (void *in_pck, ssize_t in_size,
-		void *out_pck, uint32_t * out_size, uint8_t ip_addr[4])
+resolve_packet (void *in_pck, ssize_t in_size, void *out_pck,
+		uint32_t *out_size, uint8_t ip_addr[4], uint8_t hw_addr[6])
 {
   struct ether_header *eh;
   struct ether_arp *eah;
@@ -218,7 +212,7 @@ resolve_packet (void *in_pck, ssize_t in_size,
     return -1;
 
   eh = (struct ether_header *) in_pck;
-  *out_size = resolve_eth (eh, out_pck);
+  *out_size = resolve_eth (eh, out_pck, hw_addr);
 
   if (eh->ether_type == 0x0608)
     {
@@ -378,7 +372,8 @@ generate_packet2 (void *pck, uint32_t * size, uint8_t saddr[4],
 				} while (0)
 
 int
-resolve_packet2 (void *pck, uint32_t * size, uint8_t ip_addr[4])
+resolve_packet_zero_copy (void *pck, uint32_t *size, uint8_t ip_addr[4],
+			  uint8_t hw_addr[6])
 {
   struct ether_header *eh;
   struct ether_arp *eah;
@@ -392,7 +387,7 @@ resolve_packet2 (void *pck, uint32_t * size, uint8_t ip_addr[4])
   GET_HEADER (eh, struct ether_header, pck, offset);
 
   memcpy (eh->ether_dhost, eh->ether_shost, 6);
-  memcpy (eh->ether_shost, "aaaaaa", 6);
+  memcpy (eh->ether_shost, hw_addr, 6);
 
   if (eh->ether_type == 0x0608)
     {
@@ -453,9 +448,9 @@ resolve_packet2 (void *pck, uint32_t * size, uint8_t ip_addr[4])
   return 0;
 }
 
-
 int
-resolve_packet3 (void **pck_, uint32_t * size, uint8_t ip_addr[4])
+resolve_packet_zero_copy_add_encap (void **pck_, uint32_t *size,
+				    uint8_t ip_addr[4])
 {
   struct ether_header *eh;
   struct iphdr *ip;
