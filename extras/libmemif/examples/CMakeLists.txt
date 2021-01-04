@@ -13,18 +13,14 @@
 
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
-set(HEADERS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/icmp_responder)
+set(HEADERS_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(COMMON_SOURCE_FILES
-    icmp_responder/icmp_proto.c)
+    
+)
 
 list(APPEND EXAMPLES_LIST
-  icmp_responder/main.c
-  icmp_responder-epoll/main.c
-  icmp_responder-mt/main.c
-  icmp_responder-mt_3-1/main.c
-  icmp_responder-eb/main.c
-  icmp_responder-zero-copy-slave/main.c
+
 )
 
 foreach (EXAMPLE_SRC ${EXAMPLES_LIST})
