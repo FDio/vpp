@@ -62,6 +62,5 @@ The interface will by default connect to a master interface listening on
 ``/run/vpp/master.sock``. The example will handle ARP requests and
 respond to ICMPv4 requests to ``192.168.1.1``.
 
-Continue with :ref:`libmemif_example_setup_doc` which contains instructions on
-how to set up connection between icmpr-epoll example app and VPP-memif.
-
+Continue with :ref:`libmemif_examples_doc` which contains instructions on
+how to set up connection between icmp_responder example app and VPP-memif.
