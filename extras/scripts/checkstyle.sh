@@ -23,7 +23,12 @@ SUFFIX="-${CLANG_FORMAT_VER}"
 clang-format${SUFFIX} --version
 
 in=$(mktemp)
-git diff ${GIT_DIFF_ARGS} > ${in}
+
+# only process files with fd.io footer
+FULLFILELIST=$((git diff HEAD~1.. --name-only; git ls-files -m ) | sort -u)
+FILELIST=`grep -l "fd.io coding-style-patch-verification: ON" ${FULLFILELIST}`
+
+git diff ${GIT_DIFF_ARGS} ${FILELIST} > ${in}
 
 line_count=$(sed -n '/^+.*\*INDENT-O[NF][F]\{0,1\}\*/p' ${in} | wc -l)
 if [ ${line_count} -gt 0 ] ; then
