@@ -2,7 +2,7 @@
 
 #### Install dependencies
 ```
-# sudo apt-get install -y git cmake autoconf pkg_config libtool check
+# sudo apt-get install -y git cmake autoconf pkg_config libtool
 ```
 
 Libmemif is now part of VPP repository. Follow fd.io wiki to pull source code from VPP repository.
@@ -18,30 +18,28 @@ Libmemif is located under extras/libmemif. From extras/libmemif:
 
 #### Verify installation:
 ```
-build# ./examples/icmpr-epoll
+build# ./examples/icmp_responder -?
 ```
-Use _help_ command to display build information and commands:
+Use `-?` flag to display help:
 ```
-LIBMEMIF EXAMPLE APP: ICMP_Responder
+LIBMEMIF EXAMPLE APP: icmp_responder_example
 ==============================
-libmemif version: 3.0
-memif version: 512
-	use CTRL+C to exit
-MEMIF DETAILS
+libmemif version: 4.0, memif version: 2.0
 ==============================
-	interface name: memif_connection
-	app name: ICMP_Responder
-	remote interface name:
-	remote app name:
-	id: 0
-	secret: (null)
-	role: slave
-	mode: ethernet
-	socket filename: /run/vpp/memif.sock
-	socket filename: /run/vpp/memif.sock
-	rx queues:
-	tx queues:
-	link: down
+In this example, memif endpoint connects to an external application.
+The example application can resolve ARP and reply to ICMPv4 packets.
+The program will exit once the interface is disconnected.
+==============================
+Usage: icmp_responder [OPTIONS]
+
+Options:
+        -r      Interface role <slave|master>. Default: slave
+        -s      Socket path. Supports abstract socket using @ before the path. Default: /run/vpp/memif.sock
+        -i      Interface id. Default: 0
+        -a      IPv4 address. Default: 192.168.1.1
+        -h      Mac address. Default: aa:aa:aa:aa:aa:aa
+        -?      Show help and exit.
+        -v      Show libmemif and memif version information and exit.
 ```
 
 #### Examples
