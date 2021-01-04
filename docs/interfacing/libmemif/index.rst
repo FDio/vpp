@@ -19,6 +19,5 @@ packets using libmemif API.
 
     libmemif_doc
     buildinstructions_doc
-    example_setup_doc
-    examples_doc
     gettingstarted_doc
+    examples_doc

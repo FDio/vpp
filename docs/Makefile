@@ -67,8 +67,6 @@ ifeq ($(OS_ID),ubuntu)
 			sudo apt-get update; \
 			sudo apt-get $(CONFIRM) $(FORCE) install $$inst; \
 		fi
-else ifneq ("$(wildcard /etc/redhat-release)","")
-	@sudo yum install $(CONFIRM) $(DOC_RPM_DEPENDS)
 endif
 
 .PHONY: spell

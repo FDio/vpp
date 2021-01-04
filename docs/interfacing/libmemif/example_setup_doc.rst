@@ -1,1 +1,0 @@
-../../../extras/libmemif/examples/example_setup_doc.rst
