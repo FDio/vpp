@@ -275,7 +275,9 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		{
 		  next[0] = ipsec_ip4_if_no_tunnel (node, b[0], esp0, ip40);
-		  vlib_buffer_advance (b[0], -buf_rewind0);
+		  if (b[0]->punt_reason !=
+		      ipsec_punt_reason[IPSEC_PUNT_IP4_SPI_UDP_0])
+		    vlib_buffer_advance (b[0], -buf_rewind0);
 		  n_no_tunnel++;
 		  goto trace00;
 		}
