@@ -27,6 +27,7 @@
 #include <limits.h>
 #include <sys/timerfd.h>
 #include <string.h>
+#include <sys/queue.h>
 
 #include <memif.h>
 #include <libmemif.h>
@@ -76,7 +77,7 @@ typedef enum
 typedef struct
 {
   void *addr;
-  uint32_t region_size;
+  memif_region_size_t region_size;
   uint32_t buffer_offset;
   int fd;
   uint8_t is_external;
@@ -98,19 +99,9 @@ typedef struct
   uint32_t alloc_bufs;
 } memif_queue_t;
 
-typedef struct memif_msg_queue_elt
-{
-  memif_msg_t msg;
-  int fd;
-  struct memif_msg_queue_elt *next;
-} memif_msg_queue_elt_t;
-
 struct memif_connection;
 
 typedef struct memif_connection memif_connection_t;
-
-/* functions called by memif_control_fd_handler */
-typedef int (memif_fn) (memif_connection_t * conn);
 
 typedef struct
 {
@@ -120,7 +111,7 @@ typedef struct
   memif_log2_ring_size_t log2_ring_size;
 } memif_conn_run_args_t;
 
-struct libmemif_main;
+struct memif_control_channel;
 
 typedef struct memif_connection
 {
@@ -128,16 +119,11 @@ typedef struct memif_connection
   memif_conn_args_t args;
   memif_conn_run_args_t run_args;
 
-  int fd;
-
-  memif_fn *write_fn, *read_fn, *error_fn;
+  struct memif_control_channel *control_channel;
 
   memif_connection_update_t *on_connect, *on_disconnect;
-  memif_interrupt_t *on_interrupt;
+  memif_on_interrupt_t *on_interrupt;
   void *private_ctx;
-
-  /* connection message queue */
-  memif_msg_queue_elt_t *msg_queue;
 
   uint8_t remote_if_name[MEMIF_NAME_LEN];
   uint8_t remote_name[MEMIF_NAME_LEN];
@@ -153,61 +139,85 @@ typedef struct memif_connection
 
   uint16_t flags;
 #define MEMIF_CONNECTION_FLAG_WRITE (1 << 0)
+
+  TAILQ_ENTRY (memif_connection) next;
 } memif_connection_t;
 
-typedef struct
+/** \brief Memif message queue element
+ * @param msg - memif control message (defined in memif.h)
+ * @param nex - tailq entry
+ * @param fd - File descriptor to be shared with peer endpoint
+ */
+typedef struct memif_msg_queue_elt
 {
-  int key;
-  void *data_struct;
-} memif_list_elt_t;
+  memif_msg_t msg;
+  TAILQ_ENTRY (memif_msg_queue_elt) next;
+  int fd;
+} memif_msg_queue_elt_t;
 
-typedef struct
+struct memif_socket;
+
+/** \brief Memif control channel
+ * @param fd - fd used for communbication
+ * @param msg_queue - message queue
+ * @param conn - memif connection using this control channel
+ * @param sock - socket this control channel belongs to
+ *
+ * Memif controll channel represents one end of communication between two memif
+ * endpoints. The controll channel is responsible for receiving and
+ * transmitting memif control messages via UNIX domain socket.
+ */
+typedef struct memif_control_channel
 {
   int fd;
-  uint16_t use_count;
-  memif_socket_type_t type;
-  uint8_t *filename;
-  /* unique database */
-  struct libmemif_main *lm;
-  uint16_t interface_list_len;
-  void *private_ctx;
-  memif_list_elt_t *interface_list;	/* memif master interfaces listening on this socket */
-} memif_socket_t;
+  TAILQ_HEAD (, memif_msg_queue_elt) msg_queue;
+  memif_connection_t *conn;
+  struct memif_socket *sock;
+} memif_control_channel_t;
 
-typedef struct libmemif_main
+/** \brief Memif socket
+ * @param args - memif socket arguments (from libmemif.h)
+ * @param epfd - epoll fd, used for internal fd polling
+ * @param poll_cancel_fd - if event is received on this fd, interrupt polling
+ * @param listener_fd - listener fd if this socket is listener else -1
+ * @param private_ctx - private context
+ * @param master_interfaces - master interface queue
+ * @param slave_interfaces - slave interface queue
+ * @param control_channels - controll channel queue
+ */
+typedef struct memif_socket
 {
-  memif_control_fd_update_t *control_fd_update;
-  int timerfd;
+  memif_socket_args_t args;
   int epfd;
   int poll_cancel_fd;
-  struct itimerspec arm, disarm;
-  uint16_t disconn_slaves;
-  uint8_t app_name[MEMIF_NAME_LEN];
-
+  int listener_fd;
+  int timer_fd;
+  struct itimerspec timer;
   void *private_ctx;
+  TAILQ_HEAD (, memif_connection) master_interfaces;
+  TAILQ_HEAD (, memif_connection) slave_interfaces;
 
-  memif_socket_handle_t default_socket;
-
+  /* External region callbacks */
   memif_add_external_region_t *add_external_region;
   memif_get_external_region_addr_t *get_external_region_addr;
   memif_del_external_region_t *del_external_region;
   memif_get_external_buffer_offset_t *get_external_buffer_offset;
+} memif_socket_t;
 
-  memif_alloc_t *alloc;
-  memif_realloc_t *realloc;
-  memif_free_t *free;
+typedef int (memif_fd_event_handler_t) (memif_fd_event_type_t type,
+					void *private_ctx);
 
-  uint16_t control_list_len;
-  uint16_t interrupt_list_len;
-  uint16_t socket_list_len;
-  uint16_t pending_list_len;
-  memif_list_elt_t *control_list;
-  memif_list_elt_t *interrupt_list;
-  memif_list_elt_t *socket_list;
-  memif_list_elt_t *pending_list;
-} libmemif_main_t;
+typedef struct memif_fd_event_data
+{
+  memif_fd_event_handler_t *event_handler;
+  void *private_ctx;
+} memif_fd_event_data_t;
 
-extern libmemif_main_t libmemif_main;
+typedef struct memif_interrupt
+{
+  memif_connection_t *c;
+  uint16_t qid;
+} memif_interrupt_t;
 
 /* main.c */
 
@@ -219,18 +229,10 @@ int memif_init_regions_and_queues (memif_connection_t * c);
 
 int memif_disconnect_internal (memif_connection_t * c);
 
+int memif_interrupt_handler (memif_fd_event_type_t type, void *private_ctx);
+
 /* map errno to memif error code */
 int memif_syscall_error_handler (int err_code);
-
-int add_list_elt (libmemif_main_t *lm, memif_list_elt_t * e, memif_list_elt_t ** list,
-		  uint16_t * len);
-
-int get_list_elt (memif_list_elt_t ** e, memif_list_elt_t * list,
-		  uint16_t len, int key);
-
-int free_list_elt (memif_list_elt_t * list, uint16_t len, int key);
-
-libmemif_main_t *get_libmemif_main (memif_socket_t * ms);
 
 #ifndef __NR_memfd_create
 #if defined __x86_64__
