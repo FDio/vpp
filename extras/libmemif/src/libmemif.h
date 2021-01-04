@@ -458,6 +458,44 @@ typedef struct
   uint8_t *error;
   uint8_t link_up_down;		/* 1 = up, 0 = down */
 } memif_details_t;
+
+/** \brief Memif descriptor details
+    @param flags - flags
+    @param region - index of the buffer region
+    @param length - buffer length
+    @param offset - buffer offset
+    @param metadata - metadata
+
+    Descriptor describes pakcet buffers in the shared memory.
+*/
+typedef struct memif_desc_details
+{
+    uint16_t flags;
+    uint16_t region;
+    uint32_t length;
+    uint32_t offset;
+    uint32_t metadata;
+} memif_desc_details_t;
+
+/** \brief Memif ring details
+    @param head - head
+    @param tail - tail
+    @param flags - flags
+    @param offset - offset from beginning of the shared memory
+    @param ndesc - number of filled out descriptors
+    @param descs - memif buffer descriptors
+
+    Ring represents a ring buffer of descriptors.
+*/
+typedef struct memif_ring_details
+{
+    uint16_t head;
+    uint16_t tail;
+    uint16_t flags;
+    void *offset;
+    uint16_t ndesc;
+    memif_desc_details_t descs[];
+} memif_ring_details_t;
 /** @} */
 
 /**
@@ -506,6 +544,30 @@ int memif_set_rx_mode (memif_conn_handle_t conn, memif_rx_mode_t rx_mode,
     \return Error string
 */
 char *memif_strerror (int err_code);
+
+/** \brief Memif get tx ring details
+    @param conn - memif connection handle
+    @param rd - pointer to memif ring details struct
+    @param qid - queue id
+    @param ndesc - number of allocated memif_desc_details_t (must be at least equal to ring size)
+
+    Note: don't forget to allocate descs field in memif_ring_details_t to hold all the descriptors.
+
+    \return memif_err_t
+*/
+int memif_get_tx_ring_details (memif_conn_handle_t conn, memif_ring_details_t * rd, uint16_t qid, uint16_t ndesc);
+
+/** \brief Memif get rx ring details
+    @param conn - memif connection handle
+    @param rd - pointer to memif ring details struct
+    @param qid - queue id
+    @param ndesc - number of allocated memif_desc_details_t (must be at least equal to ring size)
+
+    Note: don't forget to allocate descs field in memif_ring_details_t to hold all the descriptors.
+
+    \return memif_err_t
+*/
+int memif_get_rx_ring_details (memif_conn_handle_t conn, memif_ring_details_t * rd, uint16_t qid, uint16_t ndesc);
 
 /** \brief Memif get details
     @param conn - memif connection handle

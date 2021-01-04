@@ -1769,6 +1769,66 @@ memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
 }
 
 int
+memif_get_ring_details (memif_connection_t *c, memif_ring_details_t * rd, uint16_t qid, uint16_t ndesc, uint8_t direction)
+{
+  memif_queue_t *mq;
+  memif_ring_t *r;
+  memif_desc_details_t *dd;
+  memif_desc_t *d;
+  int i;
+
+  /* Validate qid and number of descriptors */
+  if ((c->rx_queues_num <= qid) || (ndesc < (1 << c->rx_queues[qid].log2_ring_size)))
+    return MEMIF_ERR_INVAL_ARG;
+  
+  mq = &c->rx_queues[qid];
+  r = mq->ring;
+  
+  /* Fill out ring details */
+  rd->flags = r->flags;
+  rd->head = r->head;
+  rd->tail = r->tail;
+  rd->offset = memif_get_ring (c, direction, qid);
+
+  /* Fill out descriptor  details */
+  for (i = 0; i < (1 << mq->log2_ring_size); i++) {
+    dd = &rd->descs[i];
+    d = &r->desc[i];
+
+    dd->flags = d->flags;
+    dd->length = d->length;
+    dd->metadata = d->metadata;
+    dd->offset = d->offset;
+    dd->region = d->region;
+  }
+  rd->ndesc = (1 << mq->log2_ring_size);
+
+  return MEMIF_ERR_SUCCESS;
+}
+
+int
+memif_get_rx_ring_details (memif_conn_handle_t conn, memif_ring_details_t * rd, uint16_t qid, uint16_t ndesc)
+{
+  memif_connection_t *c = (memif_connection_t *) conn;
+
+  if (c == NULL)
+    return MEMIF_ERR_INVAL_ARG;
+  
+  return memif_get_ring_details(c, rd, qid, ndesc, c->args.is_master ? MEMIF_RING_S2M : MEMIF_RING_M2S);
+}
+
+int
+memif_get_tx_ring_details (memif_conn_handle_t conn, memif_ring_details_t * rd, uint16_t qid, uint16_t ndesc)
+{
+  memif_connection_t *c = (memif_connection_t *) conn;
+
+  if (c == NULL)
+    return MEMIF_ERR_INVAL_ARG;
+  
+  return memif_get_ring_details(c, rd, qid, ndesc, c->args.is_master ? MEMIF_RING_M2S : MEMIF_RING_S2M);
+}
+
+int
 memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
 		   char *buf, ssize_t buflen)
 {
