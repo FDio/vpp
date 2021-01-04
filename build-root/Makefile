@@ -416,7 +416,7 @@ find_filter += -and -not -path '*/.mu_build_*'
 find_newer_filtered_fn =			\
   (! -f $(1)					\
     || -n $(call find_newer_files_fn,$(1),$(3))	\
-    || -n "`find -H $(2)			\
+    || -n "`find -L $(2) 			\
 	      -type f				\
               -and -newer $(1)			\
 	      -and \( $(4) \)			\
