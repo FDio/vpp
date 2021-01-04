@@ -23,7 +23,7 @@ SUFFIX="-${CLANG_FORMAT_VER}"
 clang-format${SUFFIX} --version
 
 in=$(mktemp)
-git diff ${GIT_DIFF_ARGS} > ${in}
+git diff ${GIT_DIFF_ARGS} ':!*.patch' > ${in}
 
 line_count=$(sed -n '/^+.*\*INDENT-O[NF][F]\{0,1\}\*/p' ${in} | wc -l)
 if [ ${line_count} -gt 0 ] ; then
