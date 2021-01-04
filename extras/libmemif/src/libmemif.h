@@ -29,6 +29,7 @@
 
 #include <inttypes.h>
 #include <sys/timerfd.h>
+#include <sys/types.h>
 
 /*! Error codes */
 typedef enum
@@ -50,7 +51,7 @@ typedef enum
   MEMIF_ERR_NOCONN,		/*!< handle points to no connection */
   MEMIF_ERR_CONN,		/*!< handle points to existing connection */
   MEMIF_ERR_CB_FDUPDATE,	/*!< user defined callback memif_control_fd_update_t error */
-  MEMIF_ERR_FILE_NOT_SOCK,	/*!< file specified by socket filename
+  MEMIF_ERR_FILE_NOT_SOCK,	/*!< file specified by socket path
 				   exists, but it's not socket */
   MEMIF_ERR_NO_SHMFD,		/*!< missing shm fd */
   MEMIF_ERR_COOKIE,		/*!< wrong cookie on ring */
@@ -85,15 +86,20 @@ typedef enum
  * @{
  */
 
-/** user needs to set events that occurred on fd and pass them to memif_control_fd_handler */
-#define MEMIF_FD_EVENT_READ  (1 << 0)
-#define MEMIF_FD_EVENT_WRITE (1 << 1)
-/** inform libmemif that error occurred on fd */
-#define MEMIF_FD_EVENT_ERROR (1 << 2)
-/** if set, informs that fd is going to be closed (user may want to stop watching for events on this fd) */
-#define MEMIF_FD_EVENT_DEL   (1 << 3)
-/** update events */
-#define MEMIF_FD_EVENT_MOD   (1 << 4)
+/** \brief Memif fd events
+ * User needs to set events that occurred on fd and pass them to memif_control_fd_handler
+ */
+typedef enum memif_fd_event_type
+{
+    MEMIF_FD_EVENT_READ = 1,  /* 00001 */
+    MEMIF_FD_EVENT_WRITE = 2, /* 00010 */
+    /** inform libmemif that error occurred on fd */
+    MEMIF_FD_EVENT_ERROR = 4, /* 00100 */
+    /** if set, informs that fd is going to be closed (user may want to stop watching for events on this fd) */
+    MEMIF_FD_EVENT_DEL = 8,   /* 01000 */
+    /** update events */
+    MEMIF_FD_EVENT_MOD = 16   /* 10000 */
+} memif_fd_event_type_t;
 /** @} */
 
 /** \brief Memif connection handle
@@ -136,11 +142,21 @@ typedef void (memif_free_t) (void *ptr);
  * @{
  */
 
+/** \brief Memif fd event
+    @param fd - interrupt file descriptor 
+    @param type - memif fd event type
+    @param private_ctx - private event data
+*/
+typedef struct memif_fd_event
+{
+  int fd;
+  memif_fd_event_type_t type;
+  void *private_ctx;
+} memif_fd_event_t;
+
 /** \brief Memif control file descriptor update (callback function)
-    @param fd - new file descriptor to watch
-    @param events - event type(s) to watch for
-    @param private_ctx - libmemif main private context. Is NULL for
-                         libmemif main created by memif_init()
+    @param fde - memif fd event
+    @param private_ctx - private context of socket this fd belongs to
 
 
     This callback is called when there is new fd to watch for events on
@@ -148,7 +164,7 @@ typedef void (memif_free_t) (void *ptr);
     Private context is taken from libmemif_main, 'private_ctx' passed to memif_per_thread_init()
     or NULL in case of memif_init()
 */
-typedef int (memif_control_fd_update_t) (int fd, uint8_t events,
+typedef int (memif_control_fd_update_t) (memif_fd_event_t fde,
 					 void *private_ctx);
 
 /** \brief Memif connection status update (callback function)
@@ -168,7 +184,7 @@ typedef int (memif_connection_update_t) (memif_conn_handle_t conn,
 
     Called when event is received on interrupt fd.
 */
-typedef int (memif_interrupt_t) (memif_conn_handle_t conn, void *private_ctx,
+typedef int (memif_on_interrupt_t) (memif_conn_handle_t conn, void *private_ctx,
 				 uint16_t qid);
 
 /** @} */
@@ -227,7 +243,8 @@ typedef int (memif_del_external_region_t) (void *addr, uint32_t size, int fd,
     @param dr - delete external region callback
     @param go - get external buffer offset callback (optional)
 */
-void memif_register_external_region (memif_add_external_region_t * ar,
+void memif_register_external_region (memif_socket_handle_t sock,
+                     memif_add_external_region_t * ar,
 				     memif_get_external_region_addr_t * gr,
 				     memif_del_external_region_t * dr,
 				     memif_get_external_buffer_offset_t * go);
@@ -267,6 +284,33 @@ typedef enum
   MEMIF_INTERFACE_MODE_PUNT_INJECT = 2,
 } memif_interface_mode_t;
 #endif /* _MEMIF_H_ */
+
+/** \brief Memif socket arguments
+    @param path - UNIX socket path, supports abstract socket (have '\0' or '@' as the first char of the path)
+    @param app_name - application name
+    @param connection_request_timer - automaticaly request connection each time this timer expires, must be non-zero to enable this feature
+    @param on_control_fd_update - if control fd updates inform user to watch new fd
+    @param alloc - custom memory allocator, NULL = default
+    @param realloc - custom memory reallocation, NULL = default
+    @param free - custom memory free, NULL = default
+
+    If param on_control_fd_update is set to NULL,
+    libmemif will handle file descriptor event polling
+    if a valid callback is set, file descriptor event polling needs to be done by
+    user application, all file descriptors and event types will be passed in
+    this callback to user application
+*/
+typedef struct memif_socket_args {
+    char path[108];
+    char app_name[32];
+
+    struct itimerspec connection_request_timer;
+
+    memif_control_fd_update_t *on_control_fd_update;
+    memif_alloc_t *alloc;
+    memif_realloc_t *realloc;
+    memif_free_t *free;
+} memif_socket_args_t;
 
 /** \brief Memif connection arguments
     @param socket - Memif socket handle, if NULL default socket will be used.
@@ -347,7 +391,7 @@ typedef struct
 typedef struct
 {
   uint8_t region;
-  uint8_t qid;
+  uint16_t qid;
   uint32_t ring_size;
 /** if set queue is in polling mode, else in interrupt mode */
 #define MEMIF_QUEUE_FLAG_POLLING 1
@@ -382,7 +426,7 @@ typedef struct
     @param secret - secret
     @param role - 0 = master, 1 = slave
     @param mode - 0 = ethernet, 1 = ip , 2 = punt/inject
-    @param socket_filename - socket filename
+    @param socket_path - socket path
     @param regions_num - number of regions
     @param regions - struct containing region details
     @param rx_queues_num - number of receive queues
@@ -403,7 +447,7 @@ typedef struct
   uint8_t *secret;		/* optional */
   uint8_t role;			/* 0 = master, 1 = slave */
   uint8_t mode;			/* 0 = ethernet, 1 = ip, 2 = punt/inject */
-  uint8_t *socket_filename;
+  uint8_t *socket_path;
   uint8_t regions_num;
   memif_region_details_t *regions;
   uint8_t rx_queues_num;
@@ -428,6 +472,11 @@ typedef struct
     \return ((MEMIF_VERSION_MAJOR << 8) | MEMIF_VERSION_MINOR)
 */
 uint16_t memif_get_version ();
+
+/** \brief Get memif version as string
+    \return major.minor
+*/
+const char * memif_get_version_str ();
 
 /** \brief Memif get queue event file descriptor
     @param conn - memif connection handle
@@ -469,37 +518,6 @@ char *memif_strerror (int err_code);
 int memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
 		       char *buf, ssize_t buflen);
 
-/** \brief Memif initialization
-    @param on_control_fd_update - if control fd updates inform user to watch new fd
-    @param app_name - application name (will be truncated to 32 chars)
-    @param memif_alloc - custom memory allocator, NULL = default
-    @param memif_realloc - custom memory reallocation, NULL = default
-    @param memif_free - custom memory free, NULL = default
-
-    if param on_control_fd_update is set to NULL,
-    libmemif will handle file descriptor event polling
-    if a valid callback is set, file descriptor event polling needs to be done by
-    user application, all file descriptors and event types will be passed in
-    this callback to user application
-
-    Initialize internal libmemif structures. Create timerfd (used to periodically request connection by
-    disconnected memifs in slave mode, with no additional API call). This fd is passed to user with memif_control_fd_update_t
-    timer is inactive at this state. It activates with if there is at least one memif in slave mode.
-
-    \return memif_err_t
-*/
-int memif_init (memif_control_fd_update_t * on_control_fd_update,
-		char *app_name, memif_alloc_t * memif_alloc,
-		memif_realloc_t * memif_realloc, memif_free_t * memif_free);
-
-/** \brief Memif cleanup
-
-    Free libmemif internal allocations.
-
-    \return 0
-*/
-int memif_cleanup ();
-
 /** \brief Memory interface create function
     @param conn - connection handle for client app
     @param args - memory interface connection arguments
@@ -526,27 +544,16 @@ int memif_cleanup ();
 int memif_create (memif_conn_handle_t * conn, memif_conn_args_t * args,
 		  memif_connection_update_t * on_connect,
 		  memif_connection_update_t * on_disconnect,
-		  memif_interrupt_t * on_interrupt, void *private_ctx);
+		  memif_on_interrupt_t * on_interrupt, void *private_ctx);
 
 /** \brief Memif control file descriptor handler
-    @param fd - file descriptor on which the event occurred
+    @param ptr - pointer to event data
     @param events - event type(s) that occurred
-
-    If event occurs on any control fd, call memif_control_fd_handler.
-    Internal - lib will "identify" fd (timerfd, listener, control) and handle event accordingly.
-
-    FD-TYPE -
-        TIMERFD -
-            Every disconnected memif in slave mode will request connection.
-        LISTENER or CONTROL -
-            Handle socket messaging (internal connection establishment).
-        INTERRUPT -
-            Call on_interrupt callback (if set).
 
     \return memif_err_t
 
 */
-int memif_control_fd_handler (int fd, uint8_t events);
+int memif_control_fd_handler (void *ptr, memif_fd_event_type_t events);
 
 /** \brief Memif delete
     @param conn - pointer to memif connection handle
@@ -628,21 +635,19 @@ int memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
 		    memif_buffer_t * bufs, uint16_t count, uint16_t * rx);
 
 /** \brief Memif poll event
+    @param sock - socket to poll events on
     @param timeout - timeout in seconds
 
     Passive event polling -
     timeout = 0 - dont wait for event, check event queue if there is an event and return.
     timeout = -1 - wait until event
-
+ 
     \return memif_err_t
 */
-int memif_poll_event (int timeout);
-
-/** \brief Memif per thread poll event
-    @param pt_main - per thread main handle
-    @param timeout - timeout in seconds
+int memif_poll_event (memif_socket_handle_t sock, int timeout);
 
 /** \brief Send signal to stop concurrently running memif_poll_event().
+    @param sock - stop polling on this socket
 
     The function, however, does not wait for memif_poll_event() to stop.
     memif_poll_event() may still return simply because an event has occurred
@@ -655,17 +660,7 @@ int memif_poll_event (int timeout);
     \return memif_err_t
 */
 #define MEMIF_HAVE_CANCEL_POLL_EVENT 1
-int memif_cancel_poll_event ();
-
-/** \brief Set connection request timer value
-    @param timer - new timer value
-
-    Timer on which all disconnected slaves request connection.
-    See system call 'timer_settime' man-page.
-
-    \return memif_err_t
-*/
-int memif_set_connection_request_timer (struct itimerspec timer);
+int memif_cancel_poll_event (memif_socket_handle_t sock);
 
 /** \brief Send connection request
     @param conn - memif connection handle
@@ -678,7 +673,7 @@ int memif_request_connection (memif_conn_handle_t conn);
 
 /** \brief Create memif socket
     @param sock - socket handle for client app
-    @param filename - path to socket file
+    @param args - memif socket arguments
     @param private_ctx - private context
 
     The first time an interface is assigned a socket, its type is determined.
@@ -690,8 +685,14 @@ int memif_request_connection (memif_conn_handle_t conn);
 
     \return memif_err_t
 */
-int memif_create_socket (memif_socket_handle_t * sock, const char *filename,
-			 void *private_ctx);
+int memif_create_socket (memif_socket_handle_t * sock, memif_socket_args_t * args, void * private_ctx);
+
+/** \brief Get memif socket handle from connection
+    @param conn - memif connection handle
+
+    \return memif_socket_handle_t
+*/
+memif_socket_handle_t memif_get_socket_handle(memif_conn_handle_t conn);
 
 /** \brief Delete memif socket
     @param sock - socket handle for client app
@@ -703,14 +704,40 @@ int memif_create_socket (memif_socket_handle_t * sock, const char *filename,
 */
 int memif_delete_socket (memif_socket_handle_t * sock);
 
-/** \brief Get socket filename
+/** \brief Get socket path
     @param sock - socket handle for client app
 
-    Return constant pointer to socket filename.
+    Return constant pointer to socket path.
 
     \return const char *
 */
-const char *memif_get_socket_filename (memif_socket_handle_t sock);
+const char *memif_get_socket_path (memif_socket_handle_t sock);
+
+/** \brief Get listener file descriptor
+    @param sock - memif socket handle
+
+    \return listener fd
+*/
+int memif_get_listener_fd (memif_socket_handle_t sock);
+
+/** \brief Set listener file descriptor
+    @param sock - memif socket handle
+    @param if - file descriptor
+
+    \return memif_err_t
+*/
+int memif_set_listener_fd (memif_socket_handle_t sock, int fd);
+
+/** \brief Set connection request timer value
+    @param sock - memif socket handle
+    @param timer - new timer value
+
+    Timer on which all disconnected slaves request connection.
+    If the timer doesn't exist (timerspec is 0) create new timer.
+    See system call 'timer_settime' man-page.
+    \return memif_err_t
+*/
+int memif_set_connection_request_timer (memif_socket_handle_t sock, struct itimerspec timer);
 
 /** @} */
 
