@@ -22,6 +22,30 @@
       "revId": "17672aa49d3ebefb217d6f2c67f698b3e7e1f86c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bca33aad_d5e26748",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1667,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2021-01-05T02:40:59Z",
+      "side": 0,
+      "message": "I only copied from vls_send_clone_and_share_rpc. ^_^",
+      "parentUuid": "5ca02287_5d581cf1",
+      "range": {
+        "startLine": 1666,
+        "startChar": 0,
+        "endLine": 1667,
+        "endChar": 5
+      },
+      "revId": "17672aa49d3ebefb217d6f2c67f698b3e7e1f86c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }

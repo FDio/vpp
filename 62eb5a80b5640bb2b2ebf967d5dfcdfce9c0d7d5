@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "0e49e318_c798ed79",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 890,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2021-01-05T02:40:59Z",
+      "side": 1,
+      "message": "If we return 0, then vls_mt_guard check it and return VPPCOM_EBADFD, just like err process in this function.",
+      "parentUuid": "c2e1101d_f2426e31",
+      "range": {
+        "startLine": 889,
+        "startChar": 0,
+        "endLine": 890,
+        "endChar": 30
+      },
+      "revId": "62eb5a80b5640bb2b2ebf967d5dfcdfce9c0d7d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "803036f6_7591886b",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 7
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "cb929983_9135dc3a",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 903,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2021-01-05T02:40:59Z",
+      "side": 1,
+      "message": "OK.",
+      "parentUuid": "803036f6_7591886b",
+      "range": {
+        "startLine": 903,
+        "startChar": 2,
+        "endLine": 903,
+        "endChar": 19
+      },
+      "revId": "62eb5a80b5640bb2b2ebf967d5dfcdfce9c0d7d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "6afca02c_f242aed8",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 7
@@ -59,6 +107,30 @@
       "writtenOn": "2021-01-04T23:43:07Z",
       "side": 1,
       "message": "Won\u0027t the while lower always timeout if two threads send each other clone requests at the same time? Maybe change to:\n```\nwhile (clib_spinlock_trylock ()) \n  vcl_flush_mq_events(); \n```\n\nThat should ensure any incoming rpcs, while waiting for the lock, are handled.",
+      "range": {
+        "startLine": 1691,
+        "startChar": 2,
+        "endLine": 1691,
+        "endChar": 45
+      },
+      "revId": "62eb5a80b5640bb2b2ebf967d5dfcdfce9c0d7d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "268787c2_4c32cca4",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1691,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2021-01-05T02:40:59Z",
+      "side": 1,
+      "message": "OK, fixed!",
+      "parentUuid": "6afca02c_f242aed8",
       "range": {
         "startLine": 1691,
         "startChar": 2,
