@@ -10441,9 +10441,9 @@ api_want_l2_macs_events (vat_main_t * vam)
   unformat_input_t *line_input = vam->input;
   vl_api_want_l2_macs_events_t *mp;
   u8 enable_disable = 1;
-  u32 scan_delay = 0;
-  u32 max_macs_in_event = 0;
-  u32 learn_limit = 0;
+  u32 scan_delay = 10;
+  u32 max_macs_in_event = 10;
+  u32 learn_limit = 1000;
   int ret;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
@@ -10460,6 +10460,34 @@ api_want_l2_macs_events (vat_main_t * vam)
 	break;
     }
 
+#define L2LEARN_DEFAULT_LIMIT ((256 * 1024) * 64)
+  if (enable_disable == 1)
+    {
+      if (scan_delay > 255 || scan_delay == 0)
+	{
+	  errmsg ("bad scan-delay %d: must be between 1 and 255", scan_delay);
+	  return -99;
+	}
+      if (learn_limit > L2LEARN_DEFAULT_LIMIT || learn_limit == 0)
+	{
+	  errmsg ("bad learn-limit %d: must be between 1 and %u", learn_limit,
+		  L2LEARN_DEFAULT_LIMIT);
+	  return -99;
+	}
+    }
+  else /* Disable */
+    {
+      /*
+       * For disable, only learn-limit is valid. 0 is ok. It means to set it
+       * back to default
+       */
+      if (learn_limit > L2LEARN_DEFAULT_LIMIT)
+	{
+	  errmsg ("bad learn-limit %d: must be <= %u", learn_limit,
+		  L2LEARN_DEFAULT_LIMIT);
+	  return -99;
+	}
+    }
   M (WANT_L2_MACS_EVENTS, mp);
   mp->enable_disable = enable_disable;
   mp->pid = htonl (getpid ());

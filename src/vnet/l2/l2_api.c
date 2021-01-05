@@ -270,35 +270,23 @@ vl_api_want_l2_macs_events_t_handler (vl_api_want_l2_macs_events_t * mp)
 
   if (mp->enable_disable)
     {
-      if (lm->client_pid == 0)
+      if ((lm->client_pid == 0) || (lm->client_pid == pid))
 	{
+	  if ((mp->max_macs_in_event == 0) || (mp->scan_delay == 0) ||
+	      (learn_limit == 0) || (learn_limit > L2LEARN_DEFAULT_LIMIT))
+	    {
+	      rv = VNET_API_ERROR_INVALID_VALUE;
+	      goto exit;
+	    }
+
 	  lm->client_pid = pid;
 	  lm->client_index = mp->client_index;
 
-	  if (mp->max_macs_in_event)
-	    fm->max_macs_in_event = mp->max_macs_in_event * 10;
-	  else
-	    {
-	      rv = VNET_API_ERROR_INVALID_VALUE;
-	      goto exit;
-	    }
-
-	  if (mp->scan_delay)
-	    fm->event_scan_delay = (f64) (mp->scan_delay) * 10e-3;
-	  else
-	    {
-	      rv = VNET_API_ERROR_INVALID_VALUE;
-	      goto exit;
-	    }
+	  fm->max_macs_in_event = mp->max_macs_in_event * 10;
+	  fm->event_scan_delay = (f64) (mp->scan_delay) * 10e-3;
 
 	  /* change learn limit and flush all learned MACs */
-	  if (learn_limit && (learn_limit < L2LEARN_DEFAULT_LIMIT))
-	    lm->global_learn_limit = learn_limit;
-	  else
-	    {
-	      rv = VNET_API_ERROR_INVALID_VALUE;
-	      goto exit;
-	    }
+	  lm->global_learn_limit = learn_limit;
 
 	  l2fib_flush_all_mac (vlib_get_main ());
 	}
@@ -312,7 +300,7 @@ vl_api_want_l2_macs_events_t_handler (vl_api_want_l2_macs_events_t * mp)
     {
       lm->client_pid = 0;
       lm->client_index = 0;
-      if (learn_limit && (learn_limit < L2LEARN_DEFAULT_LIMIT))
+      if (learn_limit && (learn_limit <= L2LEARN_DEFAULT_LIMIT))
 	lm->global_learn_limit = learn_limit;
       else
 	lm->global_learn_limit = L2LEARN_DEFAULT_LIMIT;
