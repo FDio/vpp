@@ -2828,7 +2828,7 @@ acl_set_aclplugin_acl_fn (vlib_main_t * vm,
   u32 tcpflags, tcpmask;
   u32 src_prefix_length = 0, dst_prefix_length = 0;
   ip46_address_t src, dst;
-  u8 *tag = (u8 *) "cli";
+  u8 *tag = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -2934,10 +2934,14 @@ acl_set_aclplugin_acl_fn (vlib_main_t * vm,
     }
 
   u32 acl_index = ~0;
+  if (!tag)
+    vec_add (tag, "cli", 4);
+  vec_validate (tag, STRUCT_SIZE_OF (acl_list_t, tag) - 1);
 
   rv = acl_add_list (vec_len (rules), rules, &acl_index, tag);
 
   vec_free (rules);
+  vec_free (tag);
 
   if (rv)
     return (clib_error_return (0, "failed"));
