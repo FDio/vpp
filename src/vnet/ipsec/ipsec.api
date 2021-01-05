@@ -389,6 +389,7 @@ define ipsec_tunnel_if_add_del {
     @param sw_if_index - sw_if_index of new interface (for successful add)
 */
 define ipsec_tunnel_if_add_del_reply {
+  option deprecated;
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
