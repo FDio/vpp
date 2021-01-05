@@ -320,7 +320,12 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
   acl_list_t *a;
   acl_rule_t *r;
   acl_rule_t *acl_new_rules = 0;
+  size_t tag_len;
   int i;
+
+  tag_len = clib_strnlen ((const char *) tag, sizeof (a->tag));
+  if (tag_len == sizeof (a->tag))
+    return VNET_API_ERROR_INVALID_VALUE;
 
   if (am->trace_acl > 255)
     clib_warning ("API dbg: acl_add_list index %d tag %s", *acl_list_index,
@@ -399,7 +404,7 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
 	vec_free (a->rules);
     }
   a->rules = acl_new_rules;
-  memcpy (a->tag, tag, sizeof (a->tag));
+  memcpy (a->tag, tag, tag_len + 1);
   if (am->trace_acl > 255)
     warning_acl_print_acl (am->vlib_main, am, *acl_list_index);
   if (am->reclassify_sessions)
@@ -1548,8 +1553,13 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
   macip_acl_list_t *a;
   macip_acl_rule_t *r;
   macip_acl_rule_t *acl_new_rules = 0;
+  size_t tag_len;
   int i;
   int rv = 0;
+
+  tag_len = clib_strnlen ((const char *) tag, sizeof (a->tag));
+  if (tag_len == sizeof (a->tag))
+    return VNET_API_ERROR_INVALID_VALUE;
 
   if (*acl_list_index != ~0)
     {
@@ -1609,7 +1619,7 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
 
   a->rules = acl_new_rules;
   a->count = count;
-  memcpy (a->tag, tag, sizeof (a->tag));
+  memcpy (a->tag, tag, tag_len + 1);
 
   /* Create and populate the classifier tables */
   macip_create_classify_tables (am, *acl_list_index);
@@ -1936,7 +1946,7 @@ send_acl_details (acl_main_t * am, vl_api_registration_t * reg,
   mp->context = context;
   mp->count = htonl (vec_len (acl_rules));
   mp->acl_index = htonl (acl - am->acls);
-  memcpy (mp->tag, acl->tag, sizeof (mp->tag));
+  snprintf ((char *) mp->tag, sizeof (mp->tag), "%s", acl->tag);
   // clib_memcpy (mp->r, acl->rules, acl->count * sizeof(acl->rules[0]));
   rules = mp->r;
   for (i = 0; i < vec_len (acl_rules); i++)
@@ -2170,7 +2180,7 @@ send_macip_acl_details (acl_main_t * am, vl_api_registration_t * reg,
   mp->context = context;
   if (acl)
     {
-      memcpy (mp->tag, acl->tag, sizeof (mp->tag));
+      snprintf ((char *) mp->tag, sizeof (mp->tag), "%s", acl->tag);
       mp->count = htonl (acl->count);
       mp->acl_index = htonl (acl - am->macip_acls);
       rules = mp->r;
@@ -2828,7 +2838,7 @@ acl_set_aclplugin_acl_fn (vlib_main_t * vm,
   u32 tcpflags, tcpmask;
   u32 src_prefix_length = 0, dst_prefix_length = 0;
   ip46_address_t src, dst;
-  u8 *tag = (u8 *) "cli";
+  u8 *tag = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -2934,10 +2944,13 @@ acl_set_aclplugin_acl_fn (vlib_main_t * vm,
     }
 
   u32 acl_index = ~0;
+  if (!tag)
+    vec_add (tag, "cli", 4);
 
   rv = acl_add_list (vec_len (rules), rules, &acl_index, tag);
 
   vec_free (rules);
+  vec_free (tag);
 
   if (rv)
     return (clib_error_return (0, "failed"));
