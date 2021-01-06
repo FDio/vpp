@@ -178,6 +178,8 @@ typedef struct _vnet_app_add_cert_key_pair_args_
 {
   u8 *cert;
   u8 *key;
+  u32 cert_len;
+  u32 key_len;
   u32 index;
 } vnet_app_add_cert_key_pair_args_t;
 
@@ -271,8 +273,6 @@ int vnet_connect (vnet_connect_args_t * a);
 int vnet_unlisten (vnet_unlisten_args_t * a);
 int vnet_disconnect_session (vnet_disconnect_args_t * a);
 
-clib_error_t *vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a);
-clib_error_t *vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a);
 int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t * a);
 int vnet_app_del_cert_key_pair (u32 index);
 /** Ask for app cb on pair deletion */
