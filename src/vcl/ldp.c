@@ -100,10 +100,15 @@ typedef struct
   u32 vlsh_bit_val;
   u32 vlsh_bit_mask;
   u32 debug;
-  u8 transparent_tls;
 
   /** vcl needs next epoll_create to go to libc_epoll */
   u8 vcl_needs_real_epoll;
+
+  /**
+   * crypto state used only for testing
+   */
+  u8 transparent_tls;
+  u32 ckpair_index;
 } ldp_main_t;
 
 #define LDP_DEBUG ldp->debug
@@ -121,6 +126,7 @@ static ldp_main_t ldp_main = {
   .vlsh_bit_mask = (1 << LDP_SID_BIT_MIN) - 1,
   .debug = LDP_DEBUG_INIT,
   .transparent_tls = 0,
+  .ckpair_index = ~0,
 };
 
 static ldp_main_t *ldp = &ldp_main;
@@ -902,66 +908,69 @@ pselect (int nfds, fd_set * __restrict readfds,
 /* If transparent TLS mode is turned on, then ldp will load key and cert.
  */
 static int
-load_tls_cert (vls_handle_t vlsh)
+load_cert_key_pair (void)
 {
-  char *env_var_str = getenv (LDP_ENV_TLS_CERT);
-  char inbuf[4096];
-  char *tls_cert;
-  int cert_size;
+  char *cert_str = getenv (LDP_ENV_TLS_CERT);
+  char *key_str = getenv (LDP_ENV_TLS_KEY);
+  char cert_buf[4096], key_buf[4096];
+  int cert_size, key_size;
+  vppcom_cert_key_pair_t crypto;
+  int ckp_index;
   FILE *fp;
 
-  if (env_var_str)
-    {
-      fp = fopen (env_var_str, "r");
-      if (fp == NULL)
-	{
-	  LDBG (0, "ERROR: failed to open cert file %s \n", env_var_str);
-	  return -1;
-	}
-      cert_size = fread (inbuf, sizeof (char), sizeof (inbuf), fp);
-      tls_cert = inbuf;
-      vppcom_session_tls_add_cert (vlsh_to_session_index (vlsh), tls_cert,
-				   cert_size);
-      fclose (fp);
-    }
-  else
+  if (!cert_str || !key_str)
     {
       LDBG (0, "ERROR: failed to read LDP environment %s\n",
 	    LDP_ENV_TLS_CERT);
       return -1;
     }
+
+  fp = fopen (cert_str, "r");
+  if (fp == NULL)
+    {
+      LDBG (0, "ERROR: failed to open cert file %s \n", cert_str);
+      return -1;
+    }
+  cert_size = fread (cert_buf, sizeof (char), sizeof (cert_buf), fp);
+  fclose (fp);
+
+  fp = fopen (key_str, "r");
+  if (fp == NULL)
+    {
+      LDBG (0, "ERROR: failed to open key file %s \n", key_str);
+      return -1;
+    }
+  key_size = fread (key_buf, sizeof (char), sizeof (key_buf), fp);
+  fclose (fp);
+
+  crypto.cert = cert_buf;
+  crypto.key = key_buf;
+  crypto.cert_len = cert_size;
+  crypto.key_len = key_size;
+  ckp_index = vppcom_add_cert_key_pair (&crypto);
+  if (ckp_index < 0)
+    {
+      LDBG (0, "ERROR: failed to add cert key pair\n");
+      return -1;
+    }
+
+  ldp->ckpair_index = ckp_index;
+
   return 0;
 }
 
 static int
-load_tls_key (vls_handle_t vlsh)
+assign_cert_key_pair (vls_handle_t vlsh)
 {
-  char *env_var_str = getenv (LDP_ENV_TLS_KEY);
-  char inbuf[4096];
-  char *tls_key;
-  int key_size;
-  FILE *fp;
+  uint32_t ckp_len;
 
-  if (env_var_str)
-    {
-      fp = fopen (env_var_str, "r");
-      if (fp == NULL)
-	{
-	  LDBG (0, "ERROR: failed to open key file %s \n", env_var_str);
-	  return -1;
-	}
-      key_size = fread (inbuf, sizeof (char), sizeof (inbuf), fp);
-      tls_key = inbuf;
-      vppcom_session_tls_add_key (vlsh_to_session_index (vlsh), tls_key,
-				  key_size);
-      fclose (fp);
-    }
-  else
-    {
-      LDBG (0, "ERROR: failed to read LDP environment %s\n", LDP_ENV_TLS_KEY);
-      return -1;
-    }
-  return 0;
+  if (ldp->ckpair_index == ~0 && load_cert_key_pair () < 0)
+    return -1;
+
+  ckp_len = sizeof (ldp->ckpair_index);
+  return vppcom_session_attr (vlsh_to_session_index (vlsh),
+			      VPPCOM_ATTR_SET_CKPAIR, &ldp->ckpair_index,
+			      &ckp_len);
 }
 
 int
@@ -999,10 +1008,8 @@ socket (int domain, int type, int protocol)
 	{
 	  if (ldp->transparent_tls)
 	    {
-	      if (load_tls_cert (vlsh) < 0 || load_tls_key (vlsh) < 0)
-		{
-		  return -1;
-		}
+	      if (assign_cert_key_pair (vlsh) < 0)
+		return -1;
 	    }
 	  rv = ldp_vlsh_to_fd (vlsh);
 	}
