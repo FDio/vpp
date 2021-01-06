@@ -66,6 +66,7 @@ typedef struct
   u8 is_dgram;
   u32 no_copy;				/**< Don't memcpy data to tx fifo */
   u32 quic_streams;			/**< QUIC streams per connection */
+  u32 ckpair_index;			/**< Cert key pair for tls/quic */
 
   /*
    * Test state variables
