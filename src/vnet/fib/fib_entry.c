@@ -965,7 +965,8 @@ fib_entry_source_removed (fib_entry_t *fib_entry,
 {
     const fib_entry_src_t *bsrc;
     fib_source_t best_source;
-
+    fib_table_t *fib_table;
+    fib_node_index_t fib_entry_index = fib_entry_get_index (fib_entry);
     /*
      * if all that is left are inherited sources, then burn them
      */
@@ -979,6 +980,9 @@ fib_entry_source_removed (fib_entry_t *fib_entry,
         /*
          * no more sources left. this entry is toast.
          */
+        fib_table = fib_table_get(fib_entry->fe_fib_index, fib_entry->fe_prefix.fp_proto);
+        fib_table_entry_remove(fib_table, &(fib_entry->fe_prefix) , fib_entry_index);
+        
         fib_entry = fib_entry_post_flag_update_actions(fib_entry, old_flags);
         fib_entry_src_action_uninstall(fib_entry);
 

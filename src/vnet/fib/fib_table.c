@@ -138,7 +138,7 @@ fib_table_get_less_specific (u32 fib_index,
 					  prefix));
 }
 
-static void
+void
 fib_table_entry_remove (fib_table_t *fib_table,
 			const fib_prefix_t *prefix,
 			fib_node_index_t fib_entry_index)
@@ -459,11 +459,6 @@ fib_table_entry_special_remove (u32 fib_index,
 	if (!(FIB_ENTRY_SRC_FLAG_ADDED & src_flag))
 	{
 	    /*
-	     * last source gone. remove from the table
-	     */
-	    fib_table_entry_remove(fib_table, prefix, fib_entry_index);
-
-	    /*
 	     * now the entry is no longer in the table, we can
 	     * inform the entries that it covers to re-calculate their cover
 	     */
@@ -703,11 +698,6 @@ fib_table_entry_path_remove2 (u32 fib_index,
 	if (!(FIB_ENTRY_SRC_FLAG_ADDED & src_flag))
 	{
 	    /*
-	     * last source gone. remove from the table
-	     */
-	    fib_table_entry_remove(fib_table, prefix, fib_entry_index);
-
-	    /*
 	     * now the entry is no longer in the table, we can
 	     * inform the entries that it covers to re-calculate their cover
 	     */
@@ -867,11 +857,6 @@ fib_table_entry_delete_i (u32 fib_index,
 
     if (!(FIB_ENTRY_SRC_FLAG_ADDED & src_flag))
     {
-	/*
-	 * last source gone. remove from the table
-	 */
-	fib_table_entry_remove(fib_table, prefix, fib_entry_index);
-
 	/*
 	 * now the entry is no longer in the table, we can
 	 * inform the entries that it covers to re-calculate their cover

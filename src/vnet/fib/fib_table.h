@@ -957,6 +957,11 @@ extern void fib_table_sub_tree_walk(u32 fib_index,
  */
 extern u8 *format_fib_table_memory(u8 *s, va_list *args);
 
+extern void fib_table_entry_remove (fib_table_t *fib_table, 
+                                          const fib_prefix_t *prefix,
+                                          fib_node_index_t fib_entry_index);
+
+
 /**
  * Debug function
  */
