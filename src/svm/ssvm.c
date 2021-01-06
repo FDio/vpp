@@ -324,6 +324,9 @@ ssvm_client_init_memfd (ssvm_private_t * memfd)
   memfd->ssvm_size = sh->ssvm_size;
   munmap (sh, page_size);
 
+  if (memfd->requested_va)
+    mmap_flags |= MAP_FIXED;
+
   /*
    * Remap the segment at the 'right' address
    */
