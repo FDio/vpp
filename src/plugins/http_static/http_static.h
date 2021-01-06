@@ -181,6 +181,9 @@ typedef struct
   /** Process node index for event scheduling */
   u32 node_index;
 
+  /** Cert and key pair for tls */
+  u32 ckpair_index;
+
   /** Session cleanup timer wheel */
   tw_timer_wheel_2t_1w_2048sl_t tw;
   clib_spinlock_t tw_lock;

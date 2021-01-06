@@ -1320,26 +1320,6 @@ application_get_segment_manager_properties (u32 app_index)
   return &app->sm_properties;
 }
 
-clib_error_t *
-vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a)
-{
-  /* Deprected, will be remove after 20.01 */
-  app_cert_key_pair_t *ckpair;
-  ckpair = app_cert_key_pair_get_default ();
-  ckpair->cert = vec_dup (a->cert);
-  return 0;
-}
-
-clib_error_t *
-vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a)
-{
-  /* Deprected, will be remove after 20.01 */
-  app_cert_key_pair_t *ckpair;
-  ckpair = app_cert_key_pair_get_default ();
-  ckpair->key = vec_dup (a->key);
-  return 0;
-}
-
 static void
 application_format_listeners (application_t * app, int verbose)
 {
@@ -1706,8 +1686,10 @@ int
 vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t * a)
 {
   app_cert_key_pair_t *ckpair = app_cert_key_pair_alloc ();
-  ckpair->cert = vec_dup (a->cert);
-  ckpair->key = vec_dup (a->key);
+  vec_validate (ckpair->cert, a->cert_len - 1);
+  clib_memcpy_fast (ckpair->cert, a->cert, a->cert_len);
+  vec_validate (ckpair->key, a->key_len - 1);
+  clib_memcpy_fast (ckpair->key, a->key, a->key_len);
   a->index = ckpair->cert_key_index;
   return 0;
 }
@@ -1749,7 +1731,7 @@ vnet_app_del_cert_key_pair (u32 index)
 clib_error_t *
 application_init (vlib_main_t * vm)
 {
-  /* Add a certificate with index 0 to support legacy apis */
+  /* Index 0 was originally used by legacy apis, maintain as invalid */
   (void) app_cert_key_pair_alloc ();
   app_main.last_crypto_engine = CRYPTO_ENGINE_LAST;
   app_main.app_by_name = hash_create_vec (0, sizeof (u8), sizeof (uword));

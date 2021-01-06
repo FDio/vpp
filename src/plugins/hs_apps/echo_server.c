@@ -47,7 +47,9 @@ typedef struct
   u32 private_segment_size;	/**< Size of private segments  */
   char *server_uri;		/**< Server URI */
   u32 tls_engine;		/**< TLS engine: mbedtls/openssl */
+  u32 ckpair_index;		/**< Cert and key for tls/quic */
   u8 is_dgram;			/**< set if transport is dgram */
+
   /*
    * Test state
    */
@@ -304,8 +306,7 @@ static session_cb_vft_t echo_server_session_cb_vft = {
 static int
 echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 {
-  vnet_app_add_tls_cert_args_t _a_cert, *a_cert = &_a_cert;
-  vnet_app_add_tls_key_args_t _a_key, *a_key = &_a_key;
+  vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
   echo_server_main_t *esm = &echo_server_main;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
@@ -357,17 +358,17 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   esm->app_index = a->app_index;
   vec_free (a->name);
 
-  clib_memset (a_cert, 0, sizeof (*a_cert));
-  a_cert->app_index = a->app_index;
-  vec_validate (a_cert->cert, test_srv_crt_rsa_len);
-  clib_memcpy_fast (a_cert->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
-  vnet_app_add_tls_cert (a_cert);
+  clib_memset (ck_pair, 0, sizeof (*ck_pair));
+  ck_pair->cert = (u8 *) test_srv_crt_rsa;
+  ck_pair->key = (u8 *) test_srv_key_rsa;
+  ck_pair->cert_len = test_srv_crt_rsa_len;
+  ck_pair->key_len = test_srv_key_rsa_len;
+  vnet_app_add_cert_key_pair (ck_pair);
+  esm->ckpair_index = ck_pair->index;
 
-  clib_memset (a_key, 0, sizeof (*a_key));
-  a_key->app_index = a->app_index;
-  vec_validate (a_key->key, test_srv_key_rsa_len);
-  clib_memcpy_fast (a_key->key, test_srv_key_rsa, test_srv_key_rsa_len);
-  vnet_app_add_tls_key (a_key);
+  vec_free (ck_pair->cert);
+  vec_free (ck_pair->key);
+
   return 0;
 }
 
@@ -381,6 +382,7 @@ echo_server_detach (void)
   da->app_index = esm->app_index;
   rv = vnet_application_detach (da);
   esm->app_index = ~0;
+  vnet_app_del_cert_key_pair (esm->ckpair_index);
   return rv;
 }
 
@@ -389,17 +391,16 @@ echo_server_listen ()
 {
   i32 rv;
   echo_server_main_t *esm = &echo_server_main;
-  vnet_listen_args_t _args = {
-    .app_index = esm->app_index,
-    .sep_ext = {
-		.app_wrk_index = 0,
-		}
-  }, *args = &_args;
+  vnet_listen_args_t _args = { 0 }, *args = &_args;
+
+  args->sep_ext.app_wrk_index = 0;
 
   if ((rv = parse_uri (esm->server_uri, &args->sep_ext)))
     {
       return -1;
     }
+  args->app_index = esm->app_index;
+  args->sep_ext.ckpair_index = esm->ckpair_index;
 
   if (args->sep_ext.transport_proto == TRANSPORT_PROTO_UDP)
     {
