@@ -71,6 +71,14 @@ typedef struct vppcom_endpt_t_
 
 typedef uint32_t vcl_session_handle_t;
 
+typedef struct vppcom_crypto_
+{
+  char *cert;
+  char *key;
+  uint32_t cert_len;
+  uint32_t key_len;
+} vppcom_crypto_t;
+
 typedef enum
 {
   VPPCOM_OK = 0,
@@ -129,6 +137,7 @@ typedef enum
   VPPCOM_ATTR_SET_SHUT,
   VPPCOM_ATTR_GET_SHUT,
   VPPCOM_ATTR_SET_CONNECTED,
+  VPPCOM_ATTR_SET_CRYPTO,
 } vppcom_attr_op_t;
 
 typedef struct _vcl_poll
@@ -204,10 +213,7 @@ extern int vppcom_session_read_segments (uint32_t session_handle,
 					 uint32_t max_bytes);
 extern void vppcom_session_free_segments (uint32_t session_handle,
 					  uint32_t n_bytes);
-extern int vppcom_session_tls_add_cert (uint32_t session_handle, char *cert,
-					uint32_t cert_len);
-extern int vppcom_session_tls_add_key (uint32_t session_handle, char *key,
-				       uint32_t key_len);
+extern int vppcom_add_crypto_pair (vppcom_crypto_t *crypto);
 extern int vppcom_unformat_proto (uint8_t * proto, char *proto_str);
 extern int vppcom_session_is_connectable_listener (uint32_t session_handle);
 extern int vppcom_session_listener (uint32_t session_handle);

@@ -51,6 +51,7 @@ typedef struct
   vcl_test_t post_test;
   uint8_t proto;
   uint32_t n_workers;
+  uint32_t ckpair_index;
   volatile int active_workers;
   struct sockaddr_storage server_addr;
 } vcl_test_client_main_t;
@@ -263,6 +264,13 @@ vtc_connect_test_sessions (vcl_test_client_worker_t * wrk)
 	{
 	  vterr ("vppcom_session_create()", ts->fd);
 	  return ts->fd;
+	}
+
+      if (vcm->proto == VPPCOM_PROTO_TLS)
+	{
+	  uint32_t ckp_len = sizeof (vcm->ckpair_index);
+	  vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_CRYPTO,
+			       &vcm->ckpair_index, &ckp_len);
 	}
 
       /* Connect is blocking */
@@ -1099,11 +1107,23 @@ main (int argc, char **argv)
 
   if (vcm->proto == VPPCOM_PROTO_TLS || vcm->proto == VPPCOM_PROTO_QUIC)
     {
+      vppcom_crypto_t crypto;
+      uint32_t ckp_len;
+      int ckp_index;
+
       vtinf ("Adding tls certs ...");
-      vppcom_session_tls_add_cert (ctrl->fd, vcl_test_crt_rsa,
-				   vcl_test_crt_rsa_len);
-      vppcom_session_tls_add_key (ctrl->fd, vcl_test_key_rsa,
-				  vcl_test_key_rsa_len);
+      crypto.cert = vcl_test_crt_rsa;
+      crypto.key = vcl_test_key_rsa;
+      crypto.cert_len = vcl_test_crt_rsa_len;
+      crypto.key_len = vcl_test_key_rsa_len;
+      ckp_index = vppcom_add_crypto_pair (&crypto);
+      if (ckp_index < 0)
+	vtfail ("vppcom crypto add()", ckp_index);
+
+      vcm->ckpair_index = ckp_index;
+      ckp_len = sizeof (ckp_index);
+      vppcom_session_attr (ctrl->fd, VPPCOM_ATTR_SET_CRYPTO, &ckp_index,
+			   &ckp_len);
     }
 
   vtinf ("Connecting to server...");
