@@ -273,12 +273,29 @@ static void
   wrk->bapi_app_state = STATE_APP_READY;
 }
 
-#define foreach_sock_msg                                        	\
-_(SESSION_ENABLE_DISABLE_REPLY, session_enable_disable_reply)   	\
-_(APP_ATTACH_REPLY, app_attach_reply)           			\
-_(APPLICATION_TLS_CERT_ADD_REPLY, application_tls_cert_add_reply)  	\
-_(APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)  	\
-_(APP_WORKER_ADD_DEL_REPLY, app_worker_add_del_reply)			\
+static void
+vl_api_app_add_cert_key_pair_reply_t_handler (
+  vl_api_app_add_cert_key_pair_reply_t *mp)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+
+  if (mp->retval)
+    {
+      VDBG (0, "Adding cert and key failed: %U", format_api_error,
+	    ntohl (mp->retval));
+      return;
+    }
+  wrk->bapi_return = clib_net_to_host_u32 (mp->index);
+  wrk->bapi_app_state = STATE_APP_READY;
+}
+
+#define foreach_sock_msg                                                      \
+  _ (SESSION_ENABLE_DISABLE_REPLY, session_enable_disable_reply)              \
+  _ (APP_ATTACH_REPLY, app_attach_reply)                                      \
+  _ (APPLICATION_TLS_CERT_ADD_REPLY, application_tls_cert_add_reply)          \
+  _ (APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)            \
+  _ (APP_ADD_CERT_KEY_PAIR_REPLY, app_add_cert_key_pair_reply)                \
+  _ (APP_WORKER_ADD_DEL_REPLY, app_worker_add_del_reply)
 
 static void
 vcl_bapi_hookup (void)
@@ -440,6 +457,28 @@ vcl_bapi_send_application_tls_key_add (vcl_session_t * session, char *key,
   key_mp->key_len = clib_host_to_net_u16 (key_len);
   clib_memcpy_fast (key_mp->key, key, key_len);
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & key_mp);
+}
+
+void
+vcl_bapi_send_app_add_cert_key_pair (vppcom_crypto_t *crypto)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  u32 cert_len = test_srv_crt_rsa_len;
+  u32 key_len = test_srv_key_rsa_len;
+  vl_api_app_add_cert_key_pair_t *bmp;
+
+  bmp = vl_msg_api_alloc (sizeof (*bmp) + cert_len + key_len);
+  clib_memset (bmp, 0, sizeof (*bmp) + cert_len + key_len);
+
+  bmp->_vl_msg_id = ntohs (VL_API_APP_ADD_CERT_KEY_PAIR);
+  bmp->client_index = wrk->api_client_handle;
+  bmp->context = ~0;
+  bmp->cert_len = clib_host_to_net_u16 (cert_len);
+  bmp->certkey_len = clib_host_to_net_u16 (key_len + cert_len);
+  clib_memcpy_fast (bmp->certkey, test_srv_crt_rsa, cert_len);
+  clib_memcpy_fast (bmp->certkey + cert_len, test_srv_key_rsa, key_len);
+
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) &bmp);
 }
 
 u32
@@ -748,6 +787,22 @@ vppcom_session_tls_add_key (uint32_t session_handle, char *key,
   wrk->bapi_app_state = STATE_APP_ADDING_TLS_DATA;
   vcl_bapi_wait_for_wrk_state_change (STATE_APP_READY);
   return VPPCOM_OK;
+}
+
+int
+vcl_bapi_add_cert_key_pair (vppcom_crypto_t *crypto)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+
+  if (crypto->key_len == 0 || crypto->key_len == ~0)
+    return VPPCOM_EINVAL;
+
+  vcl_bapi_send_app_add_cert_key_pair (crypto);
+  wrk->bapi_app_state = STATE_APP_ADDING_TLS_DATA;
+  vcl_bapi_wait_for_wrk_state_change (STATE_APP_READY);
+  if (wrk->bapi_app_state == STATE_APP_READY)
+    return wrk->bapi_return;
+  return VPPCOM_EFAULT;
 }
 
 int

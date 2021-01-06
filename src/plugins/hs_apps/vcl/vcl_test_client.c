@@ -1099,11 +1099,22 @@ main (int argc, char **argv)
 
   if (vcm->proto == VPPCOM_PROTO_TLS || vcm->proto == VPPCOM_PROTO_QUIC)
     {
+      vppcom_crypto_t crypto;
+      uint32_t ckp_len;
+      int ckp_index;
+
       vtinf ("Adding tls certs ...");
-      vppcom_session_tls_add_cert (ctrl->fd, vcl_test_crt_rsa,
-				   vcl_test_crt_rsa_len);
-      vppcom_session_tls_add_key (ctrl->fd, vcl_test_key_rsa,
-				  vcl_test_key_rsa_len);
+      crypto.cert = vcl_test_crt_rsa;
+      crypto.key = vcl_test_key_rsa;
+      crypto.cert_len = vcl_test_crt_rsa_len;
+      crypto.key_len = vcl_test_key_rsa_len;
+      ckp_index = vppcom_add_crypto_pair (&crypto);
+      if (ckp_index < 0)
+	vtfail ("vppcom crypto add()", ckp_index);
+
+      ckp_len = sizeof (ckp_index);
+      vppcom_session_attr (ctrl->fd, VPPCOM_ATTR_SET_CRYPTO, &ckp_index,
+			   &ckp_len);
     }
 
   vtinf ("Connecting to server...");
