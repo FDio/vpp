@@ -604,6 +604,7 @@ vl_api_session_enable_disable_t_handler (vl_api_session_enable_disable_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   int rv = 0;
 
+  clib_warning ("GOT THIS");
   vnet_session_enable_disable (vm, mp->is_enable);
   REPLY_MACRO (VL_API_SESSION_ENABLE_DISABLE_REPLY);
 }
@@ -642,7 +643,9 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
   a->api_client_index = mp->client_index;
   a->options = mp->options;
   a->session_cb_vft = &session_mq_cb_vft;
-  a->namespace_id = vl_api_from_api_to_new_vec (mp, &mp->namespace_id);
+  //  a->namespace_id = vl_api_from_api_to_new_vec (mp, &mp->namespace_id);
+  vec_validate (a->namespace_id, mp->nsid_len - 1);
+  clib_memcpy (a->namespace_id, mp->namespace_id, mp->nsid_len);
 
   if ((rv = vnet_application_attach (a)))
     {

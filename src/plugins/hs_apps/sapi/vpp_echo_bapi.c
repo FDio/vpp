@@ -42,12 +42,12 @@ echo_send_attach (echo_main_t * em)
   bmp->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
   bmp->options[APP_OPTIONS_SEGMENT_SIZE] = 256 << 20;
   bmp->options[APP_OPTIONS_EVT_QUEUE_SIZE] = em->evt_q_size;
-  if (em->appns_id)
-    {
-      vl_api_vec_to_api_string (em->appns_id, &bmp->namespace_id);
-      bmp->options[APP_OPTIONS_FLAGS] |= em->appns_flags;
-      bmp->options[APP_OPTIONS_NAMESPACE_SECRET] = em->appns_secret;
-    }
+  //  if (em->appns_id)
+  //    {
+  //      vl_api_vec_to_api_string (em->appns_id, &bmp->namespace_id);
+  //      bmp->options[APP_OPTIONS_FLAGS] |= em->appns_flags;
+  //      bmp->options[APP_OPTIONS_NAMESPACE_SECRET] = em->appns_secret;
+  //    }
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
 }
 

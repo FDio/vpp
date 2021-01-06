@@ -38,7 +38,8 @@ enum transport_proto : u8
     u32 client_index;
     u32 context;
     u64 options[18];
-    string namespace_id[];
+    u8 nsid_len;
+    u8 namespace_id[128];
  };
 
 /** \brief Application attach reply

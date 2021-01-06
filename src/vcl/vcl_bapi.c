@@ -285,14 +285,20 @@ vcl_bapi_send_session_enable_disable (u8 is_enable)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_session_enable_disable_t *bmp;
-  bmp = vl_msg_api_alloc (sizeof (*bmp));
+  //  bmp = vl_msg_api_alloc (sizeof (*bmp));
+  bmp = vl_socket_client_msg_alloc2 (&wrk->bapi_sock_ctx, sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_SESSION_ENABLE_DISABLE);
+  clib_warning ("client index %u", wrk->api_client_handle);
   bmp->client_index = wrk->api_client_handle;
   bmp->context = htonl (0xfeedface);
   bmp->is_enable = is_enable;
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
+  //  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
+  vl_socket_client_write2 (&wrk->bapi_sock_ctx);
+
+  if (vl_socket_client_read2 (&wrk->bapi_sock_ctx, vcm->cfg.app_timeout))
+    vcm->bapi_app_state = STATE_APP_FAILED;
 }
 
 void
@@ -307,7 +313,9 @@ vcl_bapi_send_attach (void)
 
   tls_engine = vcm->cfg.tls_engine ? vcm->cfg.tls_engine : tls_engine;
 
-  bmp = vl_msg_api_alloc (sizeof (*bmp));
+  //  bmp = vl_msg_api_alloc (sizeof (*bmp));
+  bmp = vl_socket_client_msg_alloc2 (&wrk->bapi_sock_ctx,
+				     sizeof (*bmp) + nsid_len);
   memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_APP_ATTACH);
@@ -332,10 +340,17 @@ vcl_bapi_send_attach (void)
   bmp->options[APP_OPTIONS_TLS_ENGINE] = tls_engine;
   if (nsid_len)
     {
-      vl_api_vec_to_api_string (vcm->cfg.namespace_id, &bmp->namespace_id);
+      //      vl_api_vec_to_api_string (vcm->cfg.namespace_id,
+      //      &bmp->namespace_id);
+      bmp->nsid_len = vec_len (vcm->cfg.namespace_id);
+      clib_memcpy (bmp->namespace_id, vcm->cfg.namespace_id, bmp->nsid_len);
       bmp->options[APP_OPTIONS_NAMESPACE_SECRET] = vcm->cfg.namespace_secret;
     }
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
+  //  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
+  vl_socket_client_write2 (&wrk->bapi_sock_ctx);
+
+  if (vl_socket_client_read2 (&wrk->bapi_sock_ctx, vcm->cfg.app_timeout))
+    vcm->bapi_app_state = STATE_APP_FAILED;
 }
 
 void
@@ -343,13 +358,18 @@ vcl_bapi_send_detach (void)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_application_detach_t *bmp;
-  bmp = vl_msg_api_alloc (sizeof (*bmp));
+  //  bmp = vl_msg_api_alloc (sizeof (*bmp));
+  bmp = vl_socket_client_msg_alloc2 (&wrk->bapi_sock_ctx, sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_DETACH);
   bmp->client_index = wrk->api_client_handle;
   bmp->context = htonl (0xfeedface);
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
+  //  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
+  vl_socket_client_write2 (&wrk->bapi_sock_ctx);
+
+  if (vl_socket_client_read2 (&wrk->bapi_sock_ctx, vcm->cfg.app_timeout))
+    vcm->bapi_app_state = STATE_APP_FAILED;
 }
 
 static void
@@ -358,7 +378,8 @@ vcl_bapi_send_app_worker_add_del (u8 is_add)
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_app_worker_add_del_t *mp;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  //  mp = vl_msg_api_alloc (sizeof (*mp));
+  mp = vl_socket_client_msg_alloc2 (&wrk->bapi_sock_ctx, sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = ntohs (VL_API_APP_WORKER_ADD_DEL);
@@ -369,7 +390,11 @@ vcl_bapi_send_app_worker_add_del (u8 is_add)
   if (!is_add)
     mp->wrk_index = clib_host_to_net_u32 (wrk->vpp_wrk_index);
 
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & mp);
+  //  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & mp);
+  vl_socket_client_write2 (&wrk->bapi_sock_ctx);
+
+  if (vl_socket_client_read2 (&wrk->bapi_sock_ctx, vcm->cfg.app_timeout))
+    vcm->bapi_app_state = STATE_APP_FAILED;
 }
 
 static void
@@ -378,7 +403,8 @@ vcl_bapi_send_child_worker_del (vcl_worker_t * child_wrk)
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_app_worker_add_del_t *mp;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  //  mp = vl_msg_api_alloc (sizeof (*mp));
+  mp = vl_socket_client_msg_alloc2 (&wrk->bapi_sock_ctx, sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = ntohs (VL_API_APP_WORKER_ADD_DEL);
@@ -388,7 +414,11 @@ vcl_bapi_send_child_worker_del (vcl_worker_t * child_wrk)
   mp->is_add = 0;
   mp->wrk_index = clib_host_to_net_u32 (child_wrk->vpp_wrk_index);
 
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & mp);
+  //  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & mp);
+  vl_socket_client_write2 (&wrk->bapi_sock_ctx);
+
+  if (vl_socket_client_read2 (&wrk->bapi_sock_ctx, vcm->cfg.app_timeout))
+    vcm->bapi_app_state = STATE_APP_FAILED;
 }
 
 void
@@ -398,14 +428,20 @@ vcl_bapi_send_application_tls_cert_add (vcl_session_t * session, char *cert,
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_application_tls_cert_add_t *cert_mp;
 
-  cert_mp = vl_msg_api_alloc (sizeof (*cert_mp) + cert_len);
+  //  cert_mp = vl_msg_api_alloc (sizeof (*cert_mp) + cert_len);
+  cert_mp =
+    vl_socket_client_msg_alloc2 (&wrk->bapi_sock_ctx, sizeof (*cert_mp));
   clib_memset (cert_mp, 0, sizeof (*cert_mp));
   cert_mp->_vl_msg_id = ntohs (VL_API_APPLICATION_TLS_CERT_ADD);
   cert_mp->client_index = wrk->api_client_handle;
   cert_mp->context = session->session_index;
   cert_mp->cert_len = clib_host_to_net_u16 (cert_len);
   clib_memcpy_fast (cert_mp->cert, cert, cert_len);
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & cert_mp);
+  //  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & cert_mp);
+  vl_socket_client_write2 (&wrk->bapi_sock_ctx);
+
+  if (vl_socket_client_read2 (&wrk->bapi_sock_ctx, vcm->cfg.app_timeout))
+    vcm->bapi_app_state = STATE_APP_FAILED;
 }
 
 void
@@ -415,21 +451,27 @@ vcl_bapi_send_application_tls_key_add (vcl_session_t * session, char *key,
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_application_tls_key_add_t *key_mp;
 
-  key_mp = vl_msg_api_alloc (sizeof (*key_mp) + key_len);
+  //  key_mp = vl_msg_api_alloc (sizeof (*key_mp) + key_len);
+  key_mp = vl_socket_client_msg_alloc2 (&wrk->bapi_sock_ctx, sizeof (*key_mp));
   clib_memset (key_mp, 0, sizeof (*key_mp));
   key_mp->_vl_msg_id = ntohs (VL_API_APPLICATION_TLS_KEY_ADD);
   key_mp->client_index = wrk->api_client_handle;
   key_mp->context = session->session_index;
   key_mp->key_len = clib_host_to_net_u16 (key_len);
   clib_memcpy_fast (key_mp->key, key, key_len);
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & key_mp);
+  //  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & key_mp);
+  vl_socket_client_write2 (&wrk->bapi_sock_ctx);
+
+  if (vl_socket_client_read2 (&wrk->bapi_sock_ctx, vcm->cfg.app_timeout))
+    vcm->bapi_app_state = STATE_APP_FAILED;
 }
 
 u32
 vcl_bapi_max_nsid_len (void)
 {
-  vl_api_app_attach_t *mp;
-  return (sizeof (mp->namespace_id) - 1);
+  //  vl_api_app_attach_t *mp;
+  //  return (sizeof (mp->namespace_id) - 1);
+  return 128;
 }
 
 static void
@@ -465,7 +507,7 @@ vcl_bapi_connect_to_vpp (void)
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vppcom_cfg_t *vcl_cfg = &vcm->cfg;
   int rv = VPPCOM_OK;
-  api_main_t *am;
+  //  api_main_t *am;
   u8 *wrk_name;
 
   wrk_name = format (0, "%v-wrk-%u%c", vcm->app_name, wrk->wrk_index, 0);
@@ -474,7 +516,7 @@ vcl_bapi_connect_to_vpp (void)
    * forked worker */
   vcl_bapi_cleanup ();
 
-  vlibapi_set_main (&wrk->bapi_api_ctx);
+  //  vlibapi_set_main (&wrk->bapi_api_ctx);
   vcl_bapi_hookup ();
 
   if (!vcl_cfg->vpp_bapi_socket_name)
@@ -493,18 +535,18 @@ vcl_bapi_connect_to_vpp (void)
       goto error;
     }
 
-  if (vl_socket_client_init_shm2 (&wrk->bapi_sock_ctx, 0,
-				  1 /* want_pthread */ ))
-    {
-      VERR ("app (%s) init shm failed!", wrk_name);
-      rv = VPPCOM_ECONNREFUSED;
-      goto error;
-    }
+  //  if (vl_socket_client_init_shm2 (&wrk->bapi_sock_ctx, 0,
+  //				  1 /* want_pthread */ ))
+  //    {
+  //      VERR ("app (%s) init shm failed!", wrk_name);
+  //      rv = VPPCOM_ECONNREFUSED;
+  //      goto error;
+  //    }
 
-  am = vlibapi_get_main ();
-  wrk->vl_input_queue = am->shmem_hdr->vl_input_queue;
-  wrk->api_client_handle = (u32) am->my_client_index;
-
+  //  am = vlibapi_get_main ();
+  //  wrk->vl_input_queue = am->shmem_hdr->vl_input_queue;
+  //  wrk->api_client_handle = (u32) am->my_client_index;
+  wrk->api_client_handle = htonl (wrk->bapi_sock_ctx.client_index);
   VDBG (0, "app (%s) is connected to VPP!", wrk_name);
   vcl_evt (VCL_EVT_INIT, vcm);
 

@@ -283,7 +283,7 @@ typedef struct vcl_worker_
 
   clib_socket_t app_api_sock;
   socket_client_main_t bapi_sock_ctx;
-  api_main_t bapi_api_ctx;
+  //  api_main_t bapi_api_ctx;
 
   /** vcl needs next epoll_create to go to libc_epoll */
   u8 vcl_needs_real_epoll;
