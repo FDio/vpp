@@ -553,7 +553,7 @@ class FromJSON():
 
             write('    item = cJSON_GetObjectItem(o, "{}");\n'
                   .format(t.fieldname))
-            write('    if (!item) return 0;\n')
+            write('    if (!item) {free(a); return 0;}\n')
             self._dispatch[t.type](self, t, toplevel=True)
             write('\n')
 
