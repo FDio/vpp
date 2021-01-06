@@ -208,6 +208,7 @@ vcl_send_session_connect (vcl_worker_t * wrk, vcl_session_t * s)
   mp->port = s->transport.rmt_port;
   mp->lcl_port = s->transport.lcl_port;
   mp->proto = s->session_type;
+  mp->ckpair_index = s->ckpair_index;
   if (s->flags & VCL_SESSION_F_CONNECTED)
     mp->flags |= TRANSPORT_CFG_F_CONNECTED;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
@@ -1282,6 +1283,7 @@ vppcom_session_create (u8 proto, u8 is_nonblocking)
   session->session_type = proto;
   session->session_state = VCL_STATE_CLOSED;
   session->vpp_handle = ~0;
+  session->ckpair_index = ~0;
   session->is_dgram = vcl_proto_is_dgram (proto);
 
   if (is_nonblocking)
@@ -3082,10 +3084,10 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 		     void *buffer, uint32_t * buflen)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
-  vcl_session_t *session;
-  int rv = VPPCOM_OK;
   u32 *flags = buffer, tmp_flags = 0;
   vppcom_endpt_t *ep = buffer;
+  vcl_session_t *session;
+  int rv = VPPCOM_OK;
 
   session = vcl_session_get_w_handle (wrk, session_handle);
   if (!session)
@@ -3633,6 +3635,16 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
       session->flags |= VCL_SESSION_F_CONNECTED;
       break;
 
+    case VPPCOM_ATTR_SET_CRYPTO:
+      if (!(buffer && buflen && (*buflen == sizeof (int)))
+	  || !vcl_session_has_crypto (session))
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      session->ckpair_index = *(uint32_t *)buffer;
+      break;
+
     default:
       rv = VPPCOM_EINVAL;
       break;
@@ -4010,6 +4022,18 @@ vppcom_retval_str (int retval)
     }
 
   return st;
+}
+
+int
+vppcom_add_crypto_pair (vppcom_crypto_t *crypto)
+{
+  if (vcm->cfg.vpp_app_socket_api)
+    {
+      clib_warning ("not supported");
+      return VPPCOM_EINVAL;
+    }
+  vcl_bapi_send_app_add_cert_key_pair (crypto);
+  return 0;
 }
 
 /*

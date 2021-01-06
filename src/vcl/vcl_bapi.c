@@ -425,6 +425,28 @@ vcl_bapi_send_application_tls_key_add (vcl_session_t * session, char *key,
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & key_mp);
 }
 
+void
+vcl_bapi_send_app_add_cert_key_pair (vppcom_crypto_t *crypto)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  u32 cert_len = test_srv_crt_rsa_len;
+  u32 key_len = test_srv_key_rsa_len;
+  vl_api_app_add_cert_key_pair_t *bmp;
+
+  bmp = vl_msg_api_alloc (sizeof (*bmp) + cert_len + key_len);
+  clib_memset (bmp, 0, sizeof (*bmp) + cert_len + key_len);
+
+  bmp->_vl_msg_id = ntohs (VL_API_APP_ADD_CERT_KEY_PAIR);
+  bmp->client_index = wrk->api_client_handle;
+  bmp->context = ntohl (0xfeedface);
+  bmp->cert_len = clib_host_to_net_u16 (cert_len);
+  bmp->certkey_len = clib_host_to_net_u16 (key_len + cert_len);
+  clib_memcpy_fast (bmp->certkey, test_srv_crt_rsa, cert_len);
+  clib_memcpy_fast (bmp->certkey + cert_len, test_srv_key_rsa, key_len);
+
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
+}
+
 u32
 vcl_bapi_max_nsid_len (void)
 {
@@ -724,6 +746,22 @@ vppcom_session_tls_add_key (uint32_t session_handle, char *key,
     return VPPCOM_EBADFD;
 
   vcl_bapi_send_application_tls_key_add (session, key, key_len);
+  vcm->bapi_app_state = STATE_APP_ADDING_TLS_DATA;
+  vcl_bapi_wait_for_app_state_change (STATE_APP_READY);
+  return VPPCOM_OK;
+}
+
+int
+vcl_bapi_add_cert_key_pair (vppcom_crypto_t *crypto)
+{
+
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vcl_session_t *session = 0;
+
+  if (crypto->key_len == 0 || crypto->key_len == ~0)
+    return VPPCOM_EINVAL;
+
+  vcl_bapi_send_app_add_cert_key_pair (crypto);
   vcm->bapi_app_state = STATE_APP_ADDING_TLS_DATA;
   vcl_bapi_wait_for_app_state_change (STATE_APP_READY);
   return VPPCOM_OK;
