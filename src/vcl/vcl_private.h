@@ -154,12 +154,13 @@ typedef struct vcl_session_
   vcl_session_msg_t *accept_evts_fifo;
 
   u64 vpp_handle;
+  u64 parent_handle;
   u32 listener_index;		/**< index of parent listener (if any) */
   int n_accepted_sessions;	/**< sessions accepted by this listener */
-  u32 attributes;		/**< see @ref vppcom_session_attr_t */
-  u64 parent_handle;
-  int libc_epfd;
   vppcom_epoll_t vep;
+  u32 attributes;		/**< see @ref vppcom_session_attr_t */
+  int libc_epfd;
+  u32 ckpair_index;
 
   u32 sndbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_SNDBUF)
   u32 rcvbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_RCVBUF)
@@ -287,6 +288,7 @@ typedef struct vcl_worker_
 
   /* State of the connection, shared between msg RX thread and main thread */
   volatile vcl_bapi_app_state_t bapi_app_state;
+  volatile uword bapi_return;
 
   /** vcl needs next epoll_create to go to libc_epoll */
   u8 vcl_needs_real_epoll;
@@ -536,6 +538,13 @@ vcl_session_is_cl (vcl_session_t * s)
 }
 
 static inline u8
+vcl_session_has_crypto (vcl_session_t *s)
+{
+  return (s->session_type == VPPCOM_PROTO_TLS ||
+	  s->session_type == VPPCOM_PROTO_QUIC);
+}
+
+static inline u8
 vcl_session_is_ready (vcl_session_t * s)
 {
   return (s->session_state == VCL_STATE_READY
@@ -699,10 +708,8 @@ int vcl_bapi_app_worker_add (void);
 void vcl_bapi_app_worker_del (vcl_worker_t * wrk);
 void vcl_bapi_disconnect_from_vpp (void);
 int vcl_bapi_recv_fds (vcl_worker_t * wrk, int *fds, int n_fds);
-void vcl_bapi_send_application_tls_cert_add (vcl_session_t * session,
-					     char *cert, u32 cert_len);
-void vcl_bapi_send_application_tls_key_add (vcl_session_t * session,
-					    char *key, u32 key_len);
+int vcl_bapi_add_cert_key_pair (vppcom_crypto_t *crypto);
+int vcl_bapi_del_cert_key_pair (u32 ckpair_index);
 u32 vcl_bapi_max_nsid_len (void);
 int vcl_bapi_worker_set (void);
 
