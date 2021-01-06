@@ -620,8 +620,7 @@ static session_cb_vft_t echo_clients = {
 static clib_error_t *
 echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 {
-  vnet_app_add_tls_cert_args_t _a_cert, *a_cert = &_a_cert;
-  vnet_app_add_tls_key_args_t _a_key, *a_key = &_a_key;
+  vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
   u32 prealloc_fifos, segment_size = 256 << 20;
   echo_client_main_t *ecm = &echo_client_main;
   vnet_app_attach_args_t _a, *a = &_a;
@@ -667,17 +666,14 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   ecm->app_index = a->app_index;
   vec_free (a->name);
 
-  clib_memset (a_cert, 0, sizeof (*a_cert));
-  a_cert->app_index = a->app_index;
-  vec_validate (a_cert->cert, test_srv_crt_rsa_len);
-  clib_memcpy_fast (a_cert->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
-  vnet_app_add_tls_cert (a_cert);
+  clib_memset (ck_pair, 0, sizeof (*ck_pair));
+  ck_pair->cert = (u8 *) test_srv_crt_rsa;
+  ck_pair->key = (u8 *) test_srv_key_rsa;
+  ck_pair->cert_len = test_srv_crt_rsa_len;
+  ck_pair->key_len = test_srv_key_rsa_len;
+  vnet_app_add_cert_key_pair (ck_pair);
+  ecm->ckpair_index = ck_pair->index;
 
-  clib_memset (a_key, 0, sizeof (*a_key));
-  a_key->app_index = a->app_index;
-  vec_validate (a_key->key, test_srv_key_rsa_len);
-  clib_memcpy_fast (a_key->key, test_srv_key_rsa, test_srv_key_rsa_len);
-  vnet_app_add_tls_key (a_key);
   return 0;
 }
 
@@ -693,6 +689,8 @@ echo_clients_detach ()
   rv = vnet_application_detach (da);
   ecm->test_client_attached = 0;
   ecm->app_index = ~0;
+  vnet_app_del_cert_key_pair (ecm->ckpair_index);
+
   return rv;
 }
 
@@ -723,17 +721,22 @@ echo_clients_start_tx_pthread (echo_client_main_t * ecm)
 clib_error_t *
 echo_clients_connect (vlib_main_t * vm, u32 n_clients)
 {
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   echo_client_main_t *ecm = &echo_client_main;
   vnet_connect_args_t _a, *a = &_a;
   int i, rv;
 
   clib_memset (a, 0, sizeof (*a));
 
+  if (parse_uri ((char *) ecm->connect_uri, &sep))
+    return clib_error_return (0, "invalid uri");
+
   for (i = 0; i < n_clients; i++)
     {
-      a->uri = (char *) ecm->connect_uri;
+      clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
       a->api_context = i;
       a->app_index = ecm->app_index;
+      a->sep_ext.ckpair_index = ecm->ckpair_index;
 
       vlib_worker_thread_barrier_sync (vm);
       if ((rv = vnet_connect_uri (a)))

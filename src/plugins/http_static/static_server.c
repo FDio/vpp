@@ -1140,8 +1140,7 @@ static session_cb_vft_t http_static_server_session_cb_vft = {
 static int
 http_static_server_attach ()
 {
-  vnet_app_add_tls_cert_args_t _a_cert, *a_cert = &_a_cert;
-  vnet_app_add_tls_key_args_t _a_key, *a_key = &_a_key;
+  vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
   http_static_server_main_t *hsm = &http_static_server_main;
   u64 options[APP_OPTIONS_N_OPTIONS];
   vnet_app_attach_args_t _a, *a = &_a;
@@ -1175,17 +1174,13 @@ http_static_server_attach ()
   vec_free (a->name);
   hsm->app_index = a->app_index;
 
-  clib_memset (a_cert, 0, sizeof (*a_cert));
-  a_cert->app_index = a->app_index;
-  vec_validate (a_cert->cert, test_srv_crt_rsa_len);
-  clib_memcpy_fast (a_cert->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
-  vnet_app_add_tls_cert (a_cert);
-
-  clib_memset (a_key, 0, sizeof (*a_key));
-  a_key->app_index = a->app_index;
-  vec_validate (a_key->key, test_srv_key_rsa_len);
-  clib_memcpy_fast (a_key->key, test_srv_key_rsa, test_srv_key_rsa_len);
-  vnet_app_add_tls_key (a_key);
+  clib_memset (ck_pair, 0, sizeof (*ck_pair));
+  ck_pair->cert = (u8 *) test_srv_crt_rsa;
+  ck_pair->key = (u8 *) test_srv_key_rsa;
+  ck_pair->cert_len = test_srv_crt_rsa_len;
+  ck_pair->key_len = test_srv_key_rsa_len;
+  vnet_app_add_cert_key_pair (ck_pair);
+  hsm->ckpair_index = ck_pair->index;
 
   return 0;
 }
@@ -1194,13 +1189,23 @@ static int
 http_static_server_listen ()
 {
   http_static_server_main_t *hsm = &http_static_server_main;
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   vnet_listen_args_t _a, *a = &_a;
+  char *uri = "tcp://0.0.0.0/80";
+
   clib_memset (a, 0, sizeof (*a));
   a->app_index = hsm->app_index;
-  a->uri = "tcp://0.0.0.0/80";
+
   if (hsm->uri)
-    a->uri = (char *) hsm->uri;
-  return vnet_bind_uri (a);
+    uri = (char *) hsm->uri;
+
+  if (parse_uri (uri, &sep))
+    return -1;
+
+  clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
+  a->sep_ext.ckpair_index = hsm->ckpair_index;
+
+  return vnet_listen (a);
 }
 
 static void
