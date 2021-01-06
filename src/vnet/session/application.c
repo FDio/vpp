@@ -1749,7 +1749,7 @@ vnet_app_del_cert_key_pair (u32 index)
 clib_error_t *
 application_init (vlib_main_t * vm)
 {
-  /* Add a certificate with index 0 to support legacy apis */
+  /* Index 0 was originally used by legacy apis, maintain as invalid */
   (void) app_cert_key_pair_alloc ();
   app_main.last_crypto_engine = CRYPTO_ENGINE_LAST;
   app_main.app_by_name = hash_create_vec (0, sizeof (u8), sizeof (uword));
