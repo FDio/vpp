@@ -285,6 +285,9 @@ typedef struct vcl_worker_
   socket_client_main_t bapi_sock_ctx;
   api_main_t bapi_api_ctx;
 
+  /* State of the connection, shared between msg RX thread and main thread */
+  volatile vcl_bapi_app_state_t bapi_app_state;
+
   /** vcl needs next epoll_create to go to libc_epoll */
   u8 vcl_needs_real_epoll;
   volatile int rpc_done;
@@ -338,9 +341,6 @@ typedef struct vppcom_main_t_
   /*
    * Binary api context
    */
-
-  /* State of the connection, shared between msg RX thread and main thread */
-  volatile vcl_bapi_app_state_t bapi_app_state;
 
   /* VNET_API_ERROR_FOO -> "Foo" hash table */
   uword *error_string_by_error_number;
