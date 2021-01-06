@@ -304,9 +304,6 @@ ssvm_client_init_memfd (ssvm_private_t * memfd)
       return SSVM_API_ERROR_MMAP;
     }
 
-  if (memfd->requested_va)
-    mmap_flags |= MAP_FIXED;
-
   /*
    * Map the segment once, to look at the shared header
    */
@@ -323,6 +320,9 @@ ssvm_client_init_memfd (ssvm_private_t * memfd)
   memfd->requested_va = sh->ssvm_va;
   memfd->ssvm_size = sh->ssvm_size;
   munmap (sh, page_size);
+
+  if (memfd->requested_va)
+    mmap_flags |= MAP_FIXED;
 
   /*
    * Remap the segment at the 'right' address
