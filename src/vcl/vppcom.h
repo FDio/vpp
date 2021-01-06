@@ -71,6 +71,14 @@ typedef struct vppcom_endpt_t_
 
 typedef uint32_t vcl_session_handle_t;
 
+typedef struct vppcom_crypto_
+{
+  char *cert;
+  char *key;
+  uint32_t cert_len;
+  uint32_t key_len;
+} vppcom_crypto_t;
+
 typedef enum
 {
   VPPCOM_OK = 0,
@@ -129,6 +137,7 @@ typedef enum
   VPPCOM_ATTR_SET_SHUT,
   VPPCOM_ATTR_GET_SHUT,
   VPPCOM_ATTR_SET_CONNECTED,
+  VPPCOM_ATTR_SET_CRYPTO,
 } vppcom_attr_op_t;
 
 typedef struct _vcl_poll
