@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "3.2.0";
+option version = "4.0.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -125,6 +125,7 @@ autoreply define app_del_cert_key_pair {
     @param cert - certificate as a string
 */
 autoreply define application_tls_cert_add {
+    option deprecated="to be removed post 21.06";
     u32 client_index;
     u32 context;
     u32 app_index;
@@ -140,6 +141,7 @@ autoreply define application_tls_cert_add {
     @param key - PEM encoded key as a string
 */
 autoreply define application_tls_key_add {
+    option deprecated="to be removed post 21.06";
     u32 client_index;
     u32 context;
     u32 app_index;
