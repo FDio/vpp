@@ -42,13 +42,14 @@ include packages/quicly.mk
 include packages/dpdk.mk
 include packages/rdma-core.mk
 include packages/libbpf.mk
+include packages/srtp.mk
 
 .PHONY: clean
 clean:
 	@rm -rf $(B) $(I)
 
 .PHONY: install
-install: $(if $(ARCH_X86_64), nasm-install ipsec-mb-install) dpdk-install rdma-core-install quicly-install libbpf-install
+install: $(if $(ARCH_X86_64), nasm-install ipsec-mb-install) dpdk-install rdma-core-install quicly-install libbpf-install srtp-install
 
 .PHONY: config
 config: $(if $(ARCH_X86_64), nasm-config ipsec-mb-config) dpdk-config rdma-core-config
