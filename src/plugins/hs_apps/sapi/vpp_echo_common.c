@@ -339,6 +339,9 @@ format_transport_proto (u8 * s, va_list * args)
     case TRANSPORT_PROTO_QUIC:
       s = format (s, "QUIC");
       break;
+    case TRANSPORT_PROTO_SRTP:
+      s = format (s, "SRTP");
+      break;
     default:
       s = format (s, "UNKNOWN");
       break;

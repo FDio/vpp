@@ -1825,7 +1825,7 @@ session_main_init (vlib_main_t * vm)
   smm->evt_qs_segment_size = 1 << 20;
 #endif
 
-  smm->last_transport_proto_type = TRANSPORT_PROTO_QUIC;
+  smm->last_transport_proto_type = TRANSPORT_PROTO_SRTP;
 
   return 0;
 }
