@@ -1,0 +1,8 @@
+---
+name: SRTP (Secure Real-time Transport Protocol)
+maintainer: Florin Coras <fcoras@cisco.com>
+features:
+  - SRTP transport protocol implementation
+description: "SRTP transport protocol implementation based on libsrtp2"
+state: experimental
+properties: [MULTITHREAD]

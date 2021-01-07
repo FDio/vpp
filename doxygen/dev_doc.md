@@ -24,3 +24,4 @@ Programming notes for developers.
 - @subpage snap_doc
 - @subpage srv6_ad_flow_plugin_doc
 - @subpage strongswan_test_doc
+- @subpage srtp_doc
