@@ -104,6 +104,7 @@ defaultmapping = {
     'want_igmp_events': {'enable': 1, },
     'want_interface_events': {'enable_disable': 1, },
     'want_l2_macs_events': {'enable_disable': 1, 'pid': os.getpid(), },
+    'want_l2_macs_events2': {'enable_disable': 1, 'pid': os.getpid(), },
 }
 
 
