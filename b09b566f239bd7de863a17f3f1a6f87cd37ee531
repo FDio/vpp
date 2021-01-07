@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "40467666_eeb58f63",
+        "filename": "src/vnet/l2/l2.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-01-07T16:20:25Z",
+      "side": 1,
+      "message": "If we really want u32 which allows a very large scan_delay, we have to worry about not to starve macs aging in the ager process. The logic there is to always use the scan_delay as the default timer which may take a long time to do any macs aging if scan_delay is set to a very large value by this API.",
+      "revId": "b09b566f239bd7de863a17f3f1a6f87cd37ee531",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5ef8ae84_89c18492",
+        "filename": "src/vnet/l2/l2_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-01-07T16:20:25Z",
+      "side": 1,
+      "message": "Shouldn\u0027t the error checking be done first prior to storing the client_pid and client_index? I try to fix that in https://gerrit.fd.io/r/c/vpp/+/30614. I guess it won\u0027t be needed anymore. \n\nCan you please also add the CLI for setting the scan_delay?",
+      "revId": "b09b566f239bd7de863a17f3f1a6f87cd37ee531",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
