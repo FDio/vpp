@@ -342,6 +342,9 @@ format_transport_proto (u8 * s, va_list * args)
     case TRANSPORT_PROTO_DTLS:
       s = format (s, "DTLS");
       break;
+    case TRANSPORT_PROTO_SRTP:
+      s = format (s, "SRTP");
+      break;
     default:
       s = format (s, "UNKNOWN");
       break;
