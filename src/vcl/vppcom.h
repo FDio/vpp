@@ -52,6 +52,7 @@ typedef enum
   VPPCOM_PROTO_NONE,
   VPPCOM_PROTO_TLS,
   VPPCOM_PROTO_QUIC,
+  VPPCOM_PROTO_SRTP,
 } vppcom_proto_t;
 
 typedef enum
