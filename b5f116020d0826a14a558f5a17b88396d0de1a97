@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0baea01b_aefc5b1b",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1561,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-01-07T15:01:50Z",
+      "side": 1,
+      "message": "string tag[64] must be a C string.\nUp to how to validate that.\nThere is other code which does:  mp-\u003etag[ARRAY_LEN (mp-\u003etag) - 1] \u003d \u0027\\0\u0027;",
+      "revId": "b5f116020d0826a14a558f5a17b88396d0de1a97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
