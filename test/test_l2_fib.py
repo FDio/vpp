@@ -498,6 +498,29 @@ class TestL2fib(VppTestCase):
         self.vapi.want_l2_macs_events(enable_disable=0)
         self.assertEqual(len(learned_macs ^ macs), 0)
 
+    def test_l2_fib_mac_learn_evs2(self):
+        """ L2 FIB - mac learning events using want_l2_macs_events2
+        """
+        bd1 = 1
+        hosts = self.create_hosts(10, subnet=39)
+
+        self.vapi.l2fib_set_scan_delay(scan_delay=10)
+        self.vapi.want_l2_macs_events2()
+        self.sleep(1)
+        self.learn_hosts(bd1, hosts)
+
+        self.sleep(1)
+        self.logger.info(self.vapi.ppcli("show l2fib"))
+        evs = self.vapi.collect_events()
+        action = VppEnum.vl_api_mac_event_action_t.MAC_EVENT_ACTION_API_ADD
+        learned_macs = {
+            e.mac[i].mac_addr.packed for e in evs for i in range(e.n_macs)
+            if e.mac[i].action == action}
+        macs = {h.bin_mac for swif in self.bd_ifs(bd1)
+                for h in hosts[self.pg_interfaces[swif].sw_if_index]}
+        self.vapi.want_l2_macs_events2(enable_disable=0)
+        self.assertEqual(len(learned_macs ^ macs), 0)
+
     def test_l2_fib_macs_learn_max(self):
         """ L2 FIB - mac learning max macs in event
         """
@@ -512,6 +535,35 @@ class TestL2fib(VppTestCase):
         self.logger.info(self.vapi.ppcli("show l2fib"))
         evs = self.vapi.collect_events()
         self.vapi.want_l2_macs_events(enable_disable=0)
+
+        self.assertGreater(len(evs), 0)
+        action = VppEnum.vl_api_mac_event_action_t.MAC_EVENT_ACTION_API_ADD
+        learned_macs = {
+            e.mac[i].mac_addr.packed for e in evs for i in range(e.n_macs)
+            if e.mac[i].action == action}
+        macs = {h.bin_mac for swif in self.bd_ifs(bd1)
+                for h in hosts[self.pg_interfaces[swif].sw_if_index]}
+
+        for e in evs:
+            self.assertLess(len(e), ev_macs * 10)
+        self.assertEqual(len(learned_macs ^ macs), 0)
+
+    def test_l2_fib_macs_learn_max2(self):
+        """ L2 FIB - mac learning max macs in event using want_l2_macs_events2
+        """
+        bd1 = 1
+        hosts = self.create_hosts(10, subnet=40)
+
+        ev_macs = 1
+        self.vapi.l2fib_set_scan_delay(scan_delay=10)
+        self.vapi.want_l2_macs_events2(max_macs_in_event=ev_macs)
+        self.sleep(1)
+        self.learn_hosts(bd1, hosts)
+
+        self.sleep(1)
+        self.logger.info(self.vapi.ppcli("show l2fib"))
+        evs = self.vapi.collect_events()
+        self.vapi.want_l2_macs_events2(enable_disable=0)
 
         self.assertGreater(len(evs), 0)
         action = VppEnum.vl_api_mac_event_action_t.MAC_EVENT_ACTION_API_ADD
