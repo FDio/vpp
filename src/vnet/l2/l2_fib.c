@@ -845,6 +845,36 @@ VLIB_CLI_COMMAND (l2fib_del_cli, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+l2fib_set_scan_delay (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
+{
+  clib_error_t *error = 0;
+  u32 scan_delay;
+  l2fib_main_t *fm = &l2fib_main;
+
+  if (!unformat (input, "%d", &scan_delay))
+    {
+      error = clib_error_return (0, "expecting delay but got `%U'",
+				 format_unformat_error, input);
+      goto done;
+    }
+  fm->event_scan_delay = (f64) (scan_delay) *10e-3;
+  l2fib_flush_all_mac (vlib_get_main ());
+done:
+  return error;
+}
+
+/*?
+ * This command set scan delay (in 1/10s unit)
+ *
+?*/
+VLIB_CLI_COMMAND (l2fib_set_scan_delay_cli, static) = {
+  .path = "l2fib set_scan_delay",
+  .short_help = "l2fib set_scan_delay <delay>",
+  .function = l2fib_set_scan_delay,
+};
+
 /**
     Kick off ager to scan MACs to age/delete MAC entries
 */
