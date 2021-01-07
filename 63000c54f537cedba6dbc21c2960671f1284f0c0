@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "59c48b41_114b7448",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2558,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2021-01-07T07:10:14Z",
+      "side": 1,
+      "message": "We should initialize lc to 0, because lc may be used uninitialized after goto done.",
+      "range": {
+        "startLine": 2558,
+        "startChar": 6,
+        "endLine": 2558,
+        "endChar": 26
+      },
+      "revId": "63000c54f537cedba6dbc21c2960671f1284f0c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
