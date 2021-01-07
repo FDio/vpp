@@ -1526,6 +1526,10 @@ vppcom_unformat_proto (uint8_t * proto, char *proto_str)
     *proto = VPPCOM_PROTO_QUIC;
   else if (!strcmp (proto_str, "quic"))
     *proto = VPPCOM_PROTO_QUIC;
+  else if (!strcmp (proto_str, "SRTP"))
+    *proto = VPPCOM_PROTO_SRTP;
+  else if (!strcmp (proto_str, "srtp"))
+    *proto = VPPCOM_PROTO_SRTP;
   else
     return 1;
   return 0;
@@ -3932,6 +3936,9 @@ vppcom_proto_str (vppcom_proto_t proto)
       break;
     case VPPCOM_PROTO_QUIC:
       proto_str = "QUIC";
+      break;
+    case VPPCOM_PROTO_SRTP:
+      proto_str = "SRTP";
       break;
     default:
       proto_str = "UNKNOWN";

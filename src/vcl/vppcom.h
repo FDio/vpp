@@ -45,29 +45,30 @@ extern "C"
 #define VPPCOM_ENV_VPP_API_SOCKET           	"VCL_VPP_API_SOCKET"
 #define VPPCOM_ENV_VPP_SAPI_SOCKET		"VCL_VPP_SAPI_SOCKET"
 
-typedef enum
-{
-  VPPCOM_PROTO_TCP = 0,
-  VPPCOM_PROTO_UDP,
-  VPPCOM_PROTO_NONE,
-  VPPCOM_PROTO_TLS,
-  VPPCOM_PROTO_QUIC,
-} vppcom_proto_t;
+  typedef enum
+  {
+    VPPCOM_PROTO_TCP = 0,
+    VPPCOM_PROTO_UDP,
+    VPPCOM_PROTO_NONE,
+    VPPCOM_PROTO_TLS,
+    VPPCOM_PROTO_QUIC,
+    VPPCOM_PROTO_SRTP,
+  } vppcom_proto_t;
 
-typedef enum
-{
-  VPPCOM_IS_IP6 = 0,
-  VPPCOM_IS_IP4,
-} vppcom_is_ip4_t;
+  typedef enum
+  {
+    VPPCOM_IS_IP6 = 0,
+    VPPCOM_IS_IP4,
+  } vppcom_is_ip4_t;
 
-typedef struct vppcom_endpt_t_
-{
-  uint8_t is_cut_thru;
-  uint8_t is_ip4;
-  uint8_t *ip;
-  uint16_t port;
-  uint64_t parent_handle;
-} vppcom_endpt_t;
+  typedef struct vppcom_endpt_t_
+  {
+    uint8_t is_cut_thru;
+    uint8_t is_ip4;
+    uint8_t *ip;
+    uint16_t port;
+    uint64_t parent_handle;
+  } vppcom_endpt_t;
 
 typedef uint32_t vcl_session_handle_t;
 

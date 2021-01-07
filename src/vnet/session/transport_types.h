@@ -158,12 +158,13 @@ STATIC_ASSERT (STRUCT_OFFSET_OF (transport_connection_t, s_index)
 STATIC_ASSERT (sizeof (transport_connection_t) <= 128,
 	       "moved into 3rd cache line");
 
-#define foreach_transport_proto				\
-  _(TCP, "tcp", "T")					\
-  _(UDP, "udp", "U")					\
-  _(NONE, "ct", "C")					\
-  _(TLS, "tls", "J")					\
-  _(QUIC, "quic", "Q")					\
+#define foreach_transport_proto                                               \
+  _ (TCP, "tcp", "T")                                                         \
+  _ (UDP, "udp", "U")                                                         \
+  _ (NONE, "ct", "C")                                                         \
+  _ (TLS, "tls", "J")                                                         \
+  _ (QUIC, "quic", "Q")                                                       \
+  _ (SRTP, "srtp", "R")
 
 typedef enum _transport_proto
 {
