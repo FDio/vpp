@@ -53,6 +53,7 @@ extern "C"
     VPPCOM_PROTO_TLS,
     VPPCOM_PROTO_QUIC,
     VPPCOM_PROTO_DTLS,
+    VPPCOM_PROTO_SRTP,
   } vppcom_proto_t;
 
   typedef enum
@@ -143,6 +144,7 @@ typedef enum
   VPPCOM_ATTR_SET_VRF,
   VPPCOM_ATTR_GET_VRF,
   VPPCOM_ATTR_GET_DOMAIN,
+  VPPCOM_ATTR_SET_ENDPT_EXT_CFG,
 } vppcom_attr_op_t;
 
 typedef struct _vcl_poll

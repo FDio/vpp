@@ -1613,6 +1613,10 @@ vppcom_unformat_proto (uint8_t * proto, char *proto_str)
     *proto = VPPCOM_PROTO_DTLS;
   else if (!strcmp (proto_str, "dtls"))
     *proto = VPPCOM_PROTO_DTLS;
+  else if (!strcmp (proto_str, "SRTP"))
+    *proto = VPPCOM_PROTO_SRTP;
+  else if (!strcmp (proto_str, "srtp"))
+    *proto = VPPCOM_PROTO_SRTP;
   else
     return 1;
   return 0;
@@ -3744,6 +3748,25 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	    *buflen);
       break;
 
+    case VPPCOM_ATTR_SET_ENDPT_EXT_CFG:
+      if (!(buffer && buflen))
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      if (!session->ext_config)
+	{
+	  vcl_session_alloc_ext_cfg (session, TRANSPORT_ENDPT_EXT_CFG_NONE);
+	}
+      else if (session->ext_config->type != TRANSPORT_ENDPT_EXT_CFG_NONE)
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      clib_memcpy (session->ext_config->data, buffer, *buflen);
+      session->ext_config->len = sizeof (u32) + *buflen;
+      break;
+
     default:
       rv = VPPCOM_EINVAL;
       break;
@@ -4055,6 +4078,9 @@ vppcom_proto_str (vppcom_proto_t proto)
       break;
     case VPPCOM_PROTO_DTLS:
       proto_str = "DTLS";
+      break;
+    case VPPCOM_PROTO_SRTP:
+      proto_str = "SRTP";
       break;
     default:
       proto_str = "UNKNOWN";

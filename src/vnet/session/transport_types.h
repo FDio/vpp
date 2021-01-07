@@ -164,7 +164,8 @@ STATIC_ASSERT (sizeof (transport_connection_t) <= 128,
   _ (NONE, "ct", "C")                                                         \
   _ (TLS, "tls", "J")                                                         \
   _ (QUIC, "quic", "Q")                                                       \
-  _ (DTLS, "dtls", "D")
+  _ (DTLS, "dtls", "D")                                                       \
+  _ (SRTP, "srtp", "R")
 
 typedef enum _transport_proto
 {
@@ -279,6 +280,7 @@ typedef struct transport_endpt_ext_cfg_
   union
   {
     transport_endpt_crypto_cfg_t crypto;
+    u8 default_size[4000];
     u8 data[0];
   };
 } transport_endpt_ext_cfg_t;
