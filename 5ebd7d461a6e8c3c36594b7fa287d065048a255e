@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1fc29ab7_faebae67",
+        "filename": "src/vnet/l2/l2_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2021-01-07T20:11:32Z",
+      "side": 1,
+      "message": "Maybe a user wants to configure max_macs_in_event but leave other parameters untouched (default value). This scenario is no longer possible with that; Isn\u0027t it ?",
+      "revId": "5ebd7d461a6e8c3c36594b7fa287d065048a255e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
