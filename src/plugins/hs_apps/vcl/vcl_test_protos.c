@@ -677,6 +677,290 @@ static const vcl_test_proto_vft_t vcl_test_quic = {
 
 VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_QUIC, vcl_test_quic);
 
+static unsigned char test_key[46] = {
+  0xe1, 0xf9, 0x7a, 0x0d, 0x3e, 0x01, 0x8b, 0xe0, 0xd6, 0x4f, 0xa3, 0x2c,
+  0x06, 0xde, 0x41, 0x39, 0x0e, 0xc6, 0x75, 0xad, 0x49, 0x8a, 0xfe, 0xeb,
+  0xb6, 0x96, 0x0b, 0x3a, 0xab, 0xe6, 0xc1, 0x73, 0xc3, 0x17, 0xf2, 0xda,
+  0xbe, 0x35, 0x77, 0x93, 0xb6, 0x96, 0x0b, 0x3a, 0xab, 0xe6
+};
+
+typedef struct
+{
+  unsigned char cc : 4;
+  unsigned char x : 1;
+  unsigned char p : 1;
+  unsigned char version : 2;
+  unsigned char pt : 7;
+  unsigned char m : 1;
+  uint16_t seq;
+  uint32_t ts;
+  uint32_t ssrc;
+} rtp_hdr_t;
+
+typedef struct
+{
+  rtp_hdr_t tx_hdr;
+  rtp_hdr_t rx_hdr;
+} rtp_headers_t;
+
+typedef struct transport_endpt_cfg_srtp_policy
+{
+  uint32_t ssrc_type;
+  uint32_t ssrc_value;
+  uint32_t window_size;
+  uint8_t allow_repeat_tx;
+  uint8_t key_len;
+  uint8_t key[46];
+} transport_endpt_cfg_srtp_policy_t;
+
+typedef struct transport_endpt_cfg_srtp
+{
+  transport_endpt_cfg_srtp_policy_t policy[2];
+} transport_endpt_cfg_srtp_t;
+
+static void
+vt_session_add_srtp_policy (vcl_test_session_t *ts, int is_connect)
+{
+  transport_endpt_cfg_srtp_t *srtp_cfg;
+  transport_endpt_cfg_srtp_policy_t *test_policy;
+  uint32_t rx_ssrc, tx_ssrc;
+  uint32_t cfg_size;
+
+  rx_ssrc = is_connect ? 0xcafebeef : 0xbeefcafe;
+  tx_ssrc = is_connect ? 0xbeefcafe : 0xcafebeef;
+
+  cfg_size = sizeof (transport_endpt_cfg_srtp_t);
+  srtp_cfg = malloc (cfg_size);
+  memset (srtp_cfg, 0, cfg_size);
+
+  test_policy = &srtp_cfg->policy[0];
+  test_policy->ssrc_type = 1 /* ssrc_specific */;
+  test_policy->ssrc_value = rx_ssrc;
+  memcpy (test_policy->key, test_key, sizeof (test_key));
+  test_policy->key_len = sizeof (test_key);
+  test_policy->window_size = 128;
+  test_policy->allow_repeat_tx = 1;
+
+  test_policy = &srtp_cfg->policy[1];
+  test_policy->ssrc_type = 1 /* ssrc_specific */;
+  test_policy->ssrc_value = tx_ssrc;
+  memcpy (test_policy->key, test_key, sizeof (test_key));
+  test_policy->key_len = sizeof (test_key);
+  test_policy->window_size = 128;
+  test_policy->allow_repeat_tx = 1;
+
+  vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_ENDPT_EXT_CFG, srtp_cfg,
+		       &cfg_size);
+  free (srtp_cfg);
+}
+
+static void
+vt_srtp_session_init (vcl_test_session_t *ts, int is_connect)
+{
+  uint32_t rx_ssrc, tx_ssrc;
+  rtp_headers_t *rtp_hdrs;
+  rtp_hdr_t *hdr;
+
+  rx_ssrc = is_connect ? 0xcafebeef : 0xbeefcafe;
+  tx_ssrc = is_connect ? 0xbeefcafe : 0xcafebeef;
+
+  rtp_hdrs = malloc (sizeof (rtp_headers_t));
+  memset (rtp_hdrs, 0, sizeof (*rtp_hdrs));
+  ts->opaque = rtp_hdrs;
+
+  hdr = &rtp_hdrs->rx_hdr;
+  hdr->version = 2;
+  hdr->p = 0;
+  hdr->x = 0;
+  hdr->cc = 0;
+  hdr->m = 0;
+  hdr->pt = 0x1;
+  hdr->seq = 0;
+  hdr->ts = 0;
+  hdr->ssrc = htonl (rx_ssrc);
+
+  hdr = &rtp_hdrs->tx_hdr;
+  hdr->version = 2;
+  hdr->p = 0;
+  hdr->x = 0;
+  hdr->cc = 0;
+  hdr->m = 0;
+  hdr->pt = 0x1;
+  hdr->seq = 0;
+  hdr->ts = 0;
+  hdr->ssrc = htonl (tx_ssrc);
+}
+
+static int
+vt_srtp_write (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
+{
+  int tx_bytes = 0, nbytes_left = nbytes, rv;
+  vcl_test_stats_t *stats = &ts->stats;
+  rtp_hdr_t *hdr;
+
+  hdr = &((rtp_headers_t *) ts->opaque)->tx_hdr;
+  hdr->seq = htons (ntohs (hdr->seq) + 1);
+  hdr->ts = htonl (ntohl (hdr->ts) + 1);
+
+  memcpy (buf, hdr, sizeof (*hdr));
+
+  do
+    {
+      stats->tx_xacts++;
+      rv = vppcom_session_write (ts->fd, buf, nbytes_left);
+      if (rv < 0)
+	{
+	  if ((rv == VPPCOM_EAGAIN || rv == VPPCOM_EWOULDBLOCK))
+	    stats->tx_eagain++;
+	  break;
+	}
+      tx_bytes += rv;
+      nbytes_left = nbytes_left - rv;
+      buf += rv;
+      stats->tx_incomp++;
+    }
+  while (tx_bytes != nbytes);
+
+  if (tx_bytes < 0)
+    return 0;
+
+  stats->tx_bytes += tx_bytes;
+
+  return (tx_bytes);
+}
+
+static inline int
+vt_srtp_read (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
+{
+  vcl_test_stats_t *stats = &ts->stats;
+  rtp_hdr_t *hdr;
+  int rx_bytes;
+
+  stats->rx_xacts++;
+  rx_bytes = vppcom_session_read (ts->fd, buf, nbytes);
+
+  if (rx_bytes <= 0)
+    {
+      if (rx_bytes == VPPCOM_EAGAIN || rx_bytes == VPPCOM_EWOULDBLOCK)
+	stats->rx_eagain++;
+      else
+	return -1;
+    }
+
+  if (rx_bytes < nbytes)
+    stats->rx_incomp++;
+
+  stats->rx_bytes += rx_bytes;
+
+  hdr = &((rtp_headers_t *) ts->opaque)->rx_hdr;
+  if (((rtp_hdr_t *) buf)->ssrc != hdr->ssrc)
+    hdr->ssrc = ((rtp_hdr_t *) buf)->ssrc;
+  return (rx_bytes);
+}
+
+static int
+vt_srtp_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
+{
+  uint32_t flags, flen;
+  int rv;
+
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_SRTP, 0 /* is_nonblocking */);
+  if (ts->fd < 0)
+    {
+      vterr ("vppcom_session_create()", ts->fd);
+      return ts->fd;
+    }
+
+  vt_session_add_srtp_policy (ts, 1 /* is connect */);
+
+  /* Connect is blocking */
+  rv = vppcom_session_connect (ts->fd, endpt);
+  if (rv < 0)
+    {
+      vterr ("vppcom_session_connect()", rv);
+      return rv;
+    }
+
+  ts->read = vt_srtp_read;
+  ts->write = vt_srtp_write;
+  flags = O_NONBLOCK;
+  flen = sizeof (flags);
+  vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_FLAGS, &flags, &flen);
+  vtinf ("Test session %d (fd %d) connected.", ts->session_index, ts->fd);
+
+  vt_srtp_session_init (ts, 1 /* is connect */);
+
+  return 0;
+}
+
+static int
+vt_srtp_listen (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
+{
+  int rv;
+
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_SRTP, 1 /* is_nonblocking */);
+  if (ts->fd < 0)
+    {
+      vterr ("vppcom_session_create()", ts->fd);
+      return ts->fd;
+    }
+
+  vt_session_add_srtp_policy (ts, 0 /* is connect */);
+
+  rv = vppcom_session_bind (ts->fd, endpt);
+  if (rv < 0)
+    {
+      vterr ("vppcom_session_bind()", rv);
+      return rv;
+    }
+
+  rv = vppcom_session_listen (ts->fd, 10);
+  if (rv < 0)
+    {
+      vterr ("vppcom_session_listen()", rv);
+      return rv;
+    }
+
+  return 0;
+}
+
+static int
+vt_srtp_accept (int listen_fd, vcl_test_session_t *ts)
+{
+  int client_fd;
+
+  client_fd = vppcom_session_accept (listen_fd, &ts->endpt, 0);
+  if (client_fd < 0)
+    {
+      vterr ("vppcom_session_accept()", client_fd);
+      return client_fd;
+    }
+  ts->fd = client_fd;
+  ts->is_open = 1;
+  ts->read = vt_srtp_read;
+  ts->write = vt_srtp_write;
+
+  vt_srtp_session_init (ts, 0 /* is connect */);
+
+  return 0;
+}
+
+static int
+vt_srtp_close (vcl_test_session_t *ts)
+{
+  free (ts->opaque);
+  return 0;
+}
+
+static const vcl_test_proto_vft_t vcl_test_srtp = {
+  .open = vt_srtp_connect,
+  .listen = vt_srtp_listen,
+  .accept = vt_srtp_accept,
+  .close = vt_srtp_close,
+};
+
+VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_SRTP, vcl_test_srtp);
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
