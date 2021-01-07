@@ -22,6 +22,30 @@
       "revId": "63000c54f537cedba6dbc21c2960671f1284f0c0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f0f0fa29_563a6ee8",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2558,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-01-07T16:22:31Z",
+      "side": 1,
+      "message": "Good point! A bit surprised it wasn\u0027t caught by the compiler.\n\nNow instead of doing it here, I did it on the branch that\u0027s problematic especially because I\u0027d expect that to never be hit (if that\u0027s not the case for you, do let me know!).",
+      "parentUuid": "59c48b41_114b7448",
+      "range": {
+        "startLine": 2558,
+        "startChar": 6,
+        "endLine": 2558,
+        "endChar": 26
+      },
+      "revId": "63000c54f537cedba6dbc21c2960671f1284f0c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
