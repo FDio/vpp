@@ -163,7 +163,8 @@ STATIC_ASSERT (sizeof (transport_connection_t) <= 128,
   _ (NONE, "ct", "C")                                                         \
   _ (TLS, "tls", "J")                                                         \
   _ (QUIC, "quic", "Q")                                                       \
-  _ (DTLS, "dtls", "D")
+  _ (DTLS, "dtls", "D")                                                       \
+  _ (SRTP, "srtp", "R")
 
 typedef enum _transport_proto
 {
