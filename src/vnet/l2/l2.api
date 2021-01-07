@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "3.0.0";
+option version = "3.1.0";
 
 import "vnet/ip/ip_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -151,6 +151,7 @@ autoreply define l2fib_add_del
 */
 autoreply define want_l2_macs_events
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   u32 learn_limit [default=1000];
@@ -159,6 +160,35 @@ autoreply define want_l2_macs_events
   bool enable_disable [default=true];
   u32 pid;
 };
+
+/** \brief Register to receive L2 MAC events for learned and aged MAC
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param max_macs_in_event - in units of 10 mac entries
+    @param enable_disable - 1 => register for MAC events, 0 => cancel registration
+    @param pid - sender's pid
+*/
+autoreply define want_l2_macs_events2
+{
+  u32 client_index;
+  u32 context;
+  u8  max_macs_in_event [default=10];
+  bool enable_disable [default=true];
+  u32 pid;
+};
+
+/** \brief set l2 table scan delay
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param scan_delay - event scan delay in 10 msec unit
+*/
+autoreply define l2fib_set_scan_delay
+{
+  u32 client_index;
+  u32 context;
+  u32 scan_delay [default=10];
+};
+
 
 enum mac_event_action
 {

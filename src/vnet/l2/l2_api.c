@@ -58,7 +58,9 @@
   _ (L2FIB_FLUSH_INT, l2fib_flush_int)                                        \
   _ (L2FIB_FLUSH_BD, l2fib_flush_bd)                                          \
   _ (L2FIB_ADD_DEL, l2fib_add_del)                                            \
+  _ (L2FIB_SET_SCAN_DELAY, l2fib_set_scan_delay)                              \
   _ (WANT_L2_MACS_EVENTS, want_l2_macs_events)                                \
+  _ (WANT_L2_MACS_EVENTS2, want_l2_macs_events2)                              \
   _ (L2_FLAGS, l2_flags)                                                      \
   _ (SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)              \
   _ (SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge)                  \
@@ -262,6 +264,48 @@ vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t * mp)
 }
 
 static void
+vl_api_want_l2_macs_events2_t_handler (vl_api_want_l2_macs_events2_t *mp)
+{
+  int rv = 0;
+  vl_api_want_l2_macs_events2_reply_t *rmp;
+  l2learn_main_t *lm = &l2learn_main;
+  l2fib_main_t *fm = &l2fib_main;
+  u32 pid = ntohl (mp->pid);
+
+  if (mp->enable_disable)
+    {
+      if (lm->client_pid == 0)
+	{
+	  lm->client_pid = pid;
+	  lm->client_index = mp->client_index;
+
+	  if (mp->max_macs_in_event)
+	    fm->max_macs_in_event = mp->max_macs_in_event * 10;
+	  else
+	    {
+	      rv = VNET_API_ERROR_INVALID_VALUE;
+	      goto exit;
+	    }
+
+	  l2fib_flush_all_mac (vlib_get_main ());
+	}
+      else if (lm->client_pid != pid)
+	{
+	  rv = VNET_API_ERROR_L2_MACS_EVENT_CLINET_PRESENT;
+	  goto exit;
+	}
+    }
+  else if (lm->client_pid)
+    {
+      lm->client_pid = 0;
+      lm->client_index = 0;
+    }
+
+exit:
+  REPLY_MACRO (VL_API_WANT_L2_MACS_EVENTS2_REPLY);
+}
+
+static void
 vl_api_want_l2_macs_events_t_handler (vl_api_want_l2_macs_events_t * mp)
 {
   int rv = 0;
@@ -369,6 +413,29 @@ vl_api_l2fib_flush_bd_t_handler (vl_api_l2fib_flush_bd_t * mp)
   l2fib_flush_bd_mac (vm, *p);
 out:
   REPLY_MACRO (VL_API_L2FIB_FLUSH_BD_REPLY);
+}
+
+static void
+vl_api_l2fib_set_scan_delay_t_handler (vl_api_l2fib_set_scan_delay_t *mp)
+{
+  int rv = 0;
+  l2fib_main_t *fm = &l2fib_main;
+  vl_api_l2fib_set_scan_delay_reply_t *rmp;
+
+  u32 scan_delay = ntohl (mp->scan_delay);
+  if (mp->scan_delay)
+    {
+      fm->event_scan_delay = (f64) (scan_delay) *10e-3;
+      l2fib_flush_all_mac (vlib_get_main ());
+    }
+  else
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto exit;
+    }
+
+exit:
+  REPLY_MACRO (VL_API_L2FIB_SET_SCAN_DELAY);
 }
 
 static void
