@@ -141,6 +141,7 @@ typedef struct vcl_test_session
   vppcom_endpt_t endpt;
   uint8_t ip[16];
   vppcom_data_segment_t ds[2];
+  void *opaque;
 } vcl_test_session_t;
 
 static __thread int __wrk_index = 0;
@@ -169,7 +170,7 @@ typedef struct
 
 typedef struct
 {
-  const vcl_test_proto_vft_t *protos[VPPCOM_PROTO_DTLS + 1];
+  const vcl_test_proto_vft_t *protos[VPPCOM_PROTO_SRTP + 1];
   uint32_t ckpair_index;
   vcl_test_cfg_t cfg;
   vcl_test_wrk_t *wrk;

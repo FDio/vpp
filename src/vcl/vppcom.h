@@ -53,6 +53,7 @@ extern "C"
     VPPCOM_PROTO_TLS,
     VPPCOM_PROTO_QUIC,
     VPPCOM_PROTO_DTLS,
+    VPPCOM_PROTO_SRTP,
   } vppcom_proto_t;
 
   typedef enum
