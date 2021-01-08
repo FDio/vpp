@@ -1473,61 +1473,6 @@ VLIB_CLI_COMMAND (set_ip_directed_broadcast_command, static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-set_hw_interface_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
-			  u32 queue_id, vnet_hw_if_rx_mode mode)
-{
-  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
-  vnet_device_class_t *dev_class =
-    vnet_get_device_class (vnm, hw->dev_class_index);
-  clib_error_t *error;
-  vnet_hw_if_rx_mode old_mode;
-  int rv;
-
-  if (mode == VNET_HW_IF_RX_MODE_DEFAULT)
-    mode = hw->default_rx_mode;
-
-  rv = vnet_hw_interface_get_rx_mode (vnm, hw_if_index, queue_id, &old_mode);
-  switch (rv)
-    {
-    case 0:
-      if (old_mode == mode)
-	return 0;		/* same rx-mode, no change */
-      break;
-    case VNET_API_ERROR_INVALID_INTERFACE:
-      return clib_error_return (0, "invalid interface");
-    case VNET_API_ERROR_INVALID_QUEUE:
-      return clib_error_return (0, "invalid queue");
-    default:
-      return clib_error_return (0, "unknown error");
-    }
-
-  if (dev_class->rx_mode_change_function)
-    {
-      error = dev_class->rx_mode_change_function (vnm, hw_if_index, queue_id,
-						  mode);
-      if (error)
-	return (error);
-    }
-
-  rv = vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
-  switch (rv)
-    {
-    case 0:
-      break;
-    case VNET_API_ERROR_UNSUPPORTED:
-      return clib_error_return (0, "unsupported");
-    case VNET_API_ERROR_INVALID_INTERFACE:
-      return clib_error_return (0, "invalid interface");
-    case VNET_API_ERROR_INVALID_QUEUE:
-      return clib_error_return (0, "invalid queue");
-    default:
-      return clib_error_return (0, "unknown error");
-    }
-
-  return 0;
-}
-
 clib_error_t *
 set_hw_interface_change_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
 				 u8 queue_id_valid, u32 queue_id,
@@ -1536,28 +1481,8 @@ set_hw_interface_change_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
   clib_error_t *error = 0;
   vnet_hw_interface_t *hw;
   u32 *queue_indices = 0;
-  int i;
 
   hw = vnet_get_hw_interface (vnm, hw_if_index);
-
-  /* to be deprecated */
-  if (vec_len (hw->rx_queue_indices) == 0)
-    {
-      if (queue_id_valid == 0)
-	{
-	  for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
-	    {
-	      error = set_hw_interface_rx_mode (vnm, hw_if_index, i, mode);
-	      if (error)
-		break;
-	    }
-	  hw->default_rx_mode = mode;
-	}
-      else
-	error = set_hw_interface_rx_mode (vnm, hw_if_index, queue_id, mode);
-
-      return (error);
-    }
 
   if (queue_id_valid)
     {
@@ -1757,7 +1682,6 @@ set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
   vnet_device_main_t *vdm = &vnet_device_main;
   vnet_hw_interface_t *hw;
   u32 queue_index;
-  int rv;
 
   if (is_main)
     thread_index = 0;
@@ -1769,28 +1693,6 @@ set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
 			      "please specify valid worker thread or main");
 
   hw = vnet_get_hw_interface (vnm, hw_if_index);
-
-  /* to be deprecated */
-  if (vec_len (hw->rx_queue_indices) == 0)
-    {
-      clib_error_t *error = 0;
-      vnet_hw_if_rx_mode mode = VNET_HW_IF_RX_MODE_UNKNOWN;
-      rv = vnet_hw_interface_get_rx_mode (vnm, hw_if_index, queue_id, &mode);
-
-      if (rv)
-	return clib_error_return (0, "not found");
-
-      rv = vnet_hw_interface_unassign_rx_thread (vnm, hw_if_index, queue_id);
-
-      if (rv)
-	return clib_error_return (0, "not found");
-
-      vnet_hw_interface_assign_rx_thread (vnm, hw_if_index, queue_id,
-					  thread_index);
-      vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
-
-      return (error);
-    }
 
   queue_index =
     vnet_hw_if_get_rx_queue_index_by_id (vnm, hw_if_index, queue_id);
