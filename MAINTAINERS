@@ -718,6 +718,11 @@ I:	geneve
 M:	community vpp-dev@lists.fd.io
 F:	src/plugins/geneve/
 
+Plugin - route nat
+I:	rnat
+M:	Benoît Ganne <bganne@cisco.com>
+F:	src/plugins/route-nat/
+
 THE REST
 I:	misc
 C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>

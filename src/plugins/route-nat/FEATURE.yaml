@@ -1,0 +1,10 @@
+---
+name: Routed NAT
+maintainer: Benoît Ganne <bganne@cisco.com>
+features:
+  - TBD
+missing:
+  - TBD
+description: "static NAT through L3 rewrite"
+state: experimental
+properties: [CLI, MULTITHREAD]

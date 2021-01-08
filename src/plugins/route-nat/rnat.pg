@@ -1,0 +1,31 @@
+create packet-generator interface pg0
+set int ip address pg0 10.202.5.101/24
+set ip neighbor pg0 10.202.5.100 1:2:3:4:5:6 static
+set int state pg0 up
+
+create packet-generator interface pg1
+set int ip address pg1 241.1.0.1/30
+set ip neighbor pg1 241.1.0.2 6:5:4:3:2:1 static
+set int state pg1 up
+
+rnat add dst 241.1.0.2 nh 241.1.0.2
+set int st rnat0 up
+
+set acl-plugin acl permit src 10.202.5.100/32 dst 10.202.5.101/32 proto udp dport 6081
+abf policy add id 0 acl 0 via 241.1.0.2 rnat0
+
+packet-generator new {
+  name x
+  limit 10
+  node ip4-input
+  size 64-64
+  interface pg0
+  data {
+    UDP: 10.202.5.100 -> 10.202.5.101
+    UDP: 4321 -> 6081
+      length 128 checksum 0 incrementing 1
+  }
+}
+
+trace add pg-input 10
+abf attach ip4 policy 0 pg0
