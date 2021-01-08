@@ -12,7 +12,7 @@ from util import Host, ppp
 
 
 class TestL2LearnLimit(VppTestCase):
-    """ L2 Learn no limit Test Case """
+    """ L2 Global Learn limit Test Case """
 
     @classmethod
     def setUpClass(self):
@@ -62,15 +62,27 @@ class TestL2LearnLimit(VppTestCase):
         self.logger.info("Sending broadcast eth frames for MAC learning")
         self.pg_start()
 
-    def test_l2bd_learnlimit(self):
-        """ L2BD test without learn Limit
+    def test_l2bd_learnlimit01(self):
+        """ L2BD test with learn Limit
         """
+        self.vapi.want_l2_macs_events(enable_disable=1, learn_limit=10)
         hosts = self.create_hosts(self.pg_interfaces[0], 20, 1)
-        self.learn_hosts(self.pg_interfaces[0], 1, hosts)
-        lfs = self.vapi.l2_fib_table_dump(1)
+        fhosts = self.create_hosts(self.pg_interfaces[1], 1, 2)
 
-        # check that 20 macs are learned.
-        self.assertEqual(len(lfs), 20)
+        # inject 20 mac addresses on bd1
+        self.learn_hosts(self.pg_interfaces[0], 1, hosts)
+
+        # inject 1 mac address on bd2
+        self.learn_hosts(self.pg_interfaces[1], 2, fhosts)
+
+        lfs1 = self.vapi.l2_fib_table_dump(1)
+        lfs2 = self.vapi.l2_fib_table_dump(2)
+
+        # check that only 10 macs are learned.
+        self.assertEqual(len(lfs1), 10)
+
+        # check that bd2 was not able to learn
+        self.assertEqual(len(lfs2), 0)
 
     def setUp(self):
         super(TestL2LearnLimit, self).setUp()
