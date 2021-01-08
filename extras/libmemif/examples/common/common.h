@@ -50,7 +50,7 @@
 
 struct memif_connection;
 
-typedef int (memif_packet_handler_t) (struct memif_connection *conn);
+typedef int (memif_packet_handler_t) (struct memif_connection *c);
 
 typedef int (packet_generator_t) (struct memif_connection *c,
 				  uint16_t num_pkts);
@@ -74,6 +74,7 @@ typedef struct memif_connection
   /* number of rx buffers pointing to shared memory */
   uint16_t rx_buf_num;
   memif_packet_handler_t *packet_handler;
+  memif_packet_handler_t *after_enq_cb;
   /* interface ip address */
   uint8_t ip_addr[4];
   /* interface hw address */
@@ -96,9 +97,8 @@ void print_memif_rx_ring_details (memif_connection_t *c, uint16_t qid);
 
 void print_memif_tx_ring_details (memif_connection_t *c, uint16_t qid);
 
-int send_packets (memif_connection_t *conn, uint16_t qid,
-		  packet_generator_t *gen, uint32_t num_pkts,
-		  uint16_t max_pkt_size);
+int send_packets (memif_connection_t *c, uint16_t qid, packet_generator_t *gen,
+		  uint32_t num_pkts, uint16_t max_pkt_size);
 
 /* Expect packets smaller than 2048b */
 int responder (memif_conn_handle_t conn, void *private_ctx, uint16_t qid);
@@ -107,10 +107,13 @@ int responder (memif_conn_handle_t conn, void *private_ctx, uint16_t qid);
 int responder_zero_copy (memif_conn_handle_t conn, void *private_ctx,
 			 uint16_t qid);
 
+int responder_zero_copy_out_of_order (memif_conn_handle_t conn,
+				      void *private_ctx, uint16_t qid);
+
 /* reply with the same data */
-int basic_packet_handler (memif_connection_t *conn);
+int basic_packet_handler (memif_connection_t *c);
 
 /* ICMPv4 and ARP handler */
-int icmp_packet_handler (memif_connection_t *conn);
+int icmp_packet_handler (memif_connection_t *c);
 
 #endif /* COMMON_H */

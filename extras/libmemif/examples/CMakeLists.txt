@@ -26,6 +26,7 @@ set(COMMON_SOURCE_FILES
 list(APPEND EXAMPLES_LIST
   loopback/main.c
   icmp_responder/main.c
+  out_of_order_lo/main.c
 )
 
 foreach (EXAMPLE_SRC ${EXAMPLES_LIST})
