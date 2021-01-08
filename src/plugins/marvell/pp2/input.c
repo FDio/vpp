@@ -357,17 +357,18 @@ mrvl_pp2_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 n_rx = 0;
   mrvl_pp2_main_t *ppm = &mrvl_pp2_main;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
-  vnet_device_and_queue_t *dq;
+  vnet_hw_if_rxq_poll_vector_t *pv;
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
-  {
-    mrvl_pp2_if_t *ppif;
-    ppif = vec_elt_at_index (ppm->interfaces, dq->dev_instance);
-    if (ppif->flags & MRVL_PP2_IF_F_ADMIN_UP)
-      n_rx += mrvl_pp2_device_input_inline (vm, node, frame, ppif,
-					    dq->queue_id);
-  }
+  pv = vnet_hw_if_get_rxq_poll_vector (vm, node);
+
+  for (int i = 0; i < vec_len (pv); i++)
+    {
+      mrvl_pp2_if_t *ppif;
+      ppif = vec_elt_at_index (ppm->interfaces, pv[i].dev_instance);
+      if (ppif->flags & MRVL_PP2_IF_F_ADMIN_UP)
+	n_rx +=
+	  mrvl_pp2_device_input_inline (vm, node, frame, ppif, pv[i].queue_id);
+    }
   return n_rx;
 }
 
