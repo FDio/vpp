@@ -97,6 +97,7 @@ class TestL2LearnLimit(VppTestCase):
     def test_l2bd_learnlimit03(self):
         """ L2BD test with bridge domain limit
         """
+        self.vapi.want_l2_macs_events(enable_disable=1, learn_limit=1000)
         self.vapi.bridge_domain_set_default_learn_limit(4)
         self.vapi.bridge_domain_add_del(bd_id=3)
         self.vapi.sw_interface_set_l2_bridge(
@@ -148,12 +149,6 @@ class TestL2LearnLimit(VppTestCase):
             bd_id=2, enable=0)
         self.vapi.bridge_domain_add_del(bd_id=1, is_add=0)
         self.vapi.bridge_domain_add_del(bd_id=2, is_add=0)
-        i = 0
-        while (len(self.vapi.l2_fib_table_dump(bd_id=0xffffffff)) != 0):
-            time.sleep(1)
-            i = i + 1
-            if i == 30:
-                self.assertTrue(False)
 
 
 if __name__ == '__main__':
