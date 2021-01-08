@@ -38,6 +38,7 @@ typedef struct vcl_locked_session_
 
 typedef struct vls_worker_
 {
+  clib_rwlock_t lock; /** valid for multithread workers */
   vcl_locked_session_t *vls_pool;
   uword *session_handle_to_vlsh_table;
   u32 wrk_index;
@@ -201,6 +202,34 @@ vls_mt_table_wunlock (void)
     clib_rwlock_writer_unlock (&vlsm->vls_table_lock);
 }
 
+static inline void
+vls_worker_wlock (vls_worker_t *wrk)
+{
+  if (vls_mt_wrk_supported ())
+    clib_rwlock_writer_lock (&wrk->lock);
+}
+
+static inline void
+vls_worker_wunlock (vls_worker_t *wrk)
+{
+  if (vls_mt_wrk_supported ())
+    clib_rwlock_writer_unlock (&wrk->lock);
+}
+
+static inline void
+vls_worker_rlock (vls_worker_t *wrk)
+{
+  if (vls_mt_wrk_supported ())
+    clib_rwlock_reader_lock (&wrk->lock);
+}
+
+static inline void
+vls_worker_runlock (vls_worker_t *wrk)
+{
+  if (vls_mt_wrk_supported ())
+    clib_rwlock_reader_unlock (&wrk->lock);
+}
+
 typedef enum
 {
   VLS_MT_OP_READ,
@@ -310,6 +339,8 @@ vls_worker_alloc (void)
   vls_worker_t *wrk;
 
   pool_get_zero (vlsm->workers, wrk);
+  if (vls_mt_wrk_supported ())
+    clib_rwlock_init (&wrk->lock);
   wrk->wrk_index = vcl_get_worker_index ();
 }
 
@@ -317,6 +348,8 @@ static void
 vls_worker_free (vls_worker_t * wrk)
 {
   hash_free (wrk->session_handle_to_vlsh_table);
+  if (vls_mt_wrk_supported ())
+    clib_rwlock_free (&wrk->lock);
   pool_free (wrk->vls_pool);
   pool_put (vlsm->workers, wrk);
 }
@@ -342,7 +375,9 @@ vls_alloc (vcl_session_handle_t sh)
   vls->worker_index = vppcom_session_worker (sh);
   vls->vls_index = vls - wrk->vls_pool;
   vls->shared_data_index = ~0;
+  vls_worker_wlock (wrk);
   hash_set (wrk->session_handle_to_vlsh_table, sh, vls->vls_index);
+  vls_worker_wunlock (wrk);
   if (vls_mt_wrk_supported ())
     {
       hash_set (vls->vcl_wrk_index_to_session_index, vls->worker_index,
@@ -370,8 +405,10 @@ vls_free (vcl_locked_session_t * vls)
   vls_worker_t *wrk = vls_worker_get_current ();
 
   ASSERT (vls != 0);
+  vls_worker_wlock (wrk);
   hash_unset (wrk->session_handle_to_vlsh_table,
 	      vcl_session_handle_from_index (vls->session_index));
+  vls_worker_wunlock (wrk);
   clib_spinlock_free (&vls->lock);
   pool_put (wrk->vls_pool, vls);
 }
@@ -451,9 +488,12 @@ vls_si_wi_to_vlsh (u32 session_index, u32 vcl_wrk_index)
 {
   vls_worker_t *wrk = vls_worker_get_current ();
   uword *vlshp;
+
+  vls_worker_rlock (wrk);
   vlshp = hash_get (wrk->session_handle_to_vlsh_table,
 		    vcl_session_handle_from_wrk_session_index (session_index,
 							       vcl_wrk_index));
+  vls_worker_runlock (wrk);
   return vlshp ? *vlshp : VLS_INVALID_HANDLE;
 }
 
@@ -859,6 +899,7 @@ vls_mt_session_migrate (vcl_locked_session_t *vls)
 {
   u32 wrk_index = vcl_get_worker_index ();
   vcl_worker_t *wrk;
+  vls_worker_t *vls_wrk = vls_worker_get_current ();
   u32 src_sid, sid, vls_index, own_vcl_wrk_index;
   vcl_session_t *session;
   uword *p;
@@ -943,6 +984,10 @@ vls_mt_session_migrate (vcl_locked_session_t *vls)
   vls->worker_index = wrk_index;
   vls->session_index = sid;
   hash_set (vls->vcl_wrk_index_to_session_index, wrk_index, sid);
+  vls_worker_wlock (vls_wrk);
+  hash_set (vls_wrk->session_handle_to_vlsh_table,
+	    vcl_session_handle (session), vls->vls_index);
+  vls_worker_wunlock (vls_wrk);
   return vls;
 
 err:
@@ -1641,12 +1686,16 @@ vls_session_cleanup_rpc_handler (void *args)
 {
   vls_sess_cleanup_msg_t *msg = (vls_sess_cleanup_msg_t *) args;
   vcl_worker_t *wrk = vcl_worker_get_current ();
+  vls_worker_t *vls_wrk = vls_worker_get_current ();
   vcl_session_handle_t sh = vcl_session_handle_from_index (msg->session_index);
 
   VDBG (1, "process session cleanup of worker (session): %u (%u) from %u ()",
 	wrk->wrk_index, msg->session_index, msg->origin_vcl_wrk);
 
   vppcom_session_close (sh);
+  vls_worker_wlock (vls_wrk);
+  hash_unset (vls_wrk->session_handle_to_vlsh_table, sh);
+  vls_worker_wunlock (vls_wrk);
 }
 
 static void
