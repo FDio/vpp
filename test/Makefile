@@ -219,7 +219,7 @@ ext-test-apps:
 
 $(BUILD_TEST_SRC): verify-env
 	@mkdir -p $@
-	@for file in $(VPP_TEST_SRC); do if [ ! -L $$file ] && [ ! -e $(BUILD_TEST_SRC)/$$(basename $$file) ] ; then ln $$file $(BUILD_TEST_SRC) ; fi ; done
+	@for file in $(VPP_TEST_SRC); do if [ ! -L $$file ] && [ ! -e $(BUILD_TEST_SRC)/$$(basename $$file) ] ; then ln -s $$file $(BUILD_TEST_SRC) ; fi ; done
 
 $(FAILED_DIR): reset
 	@mkdir -p $@
@@ -267,7 +267,8 @@ reset:
 wipe: reset
 	@make -C ext clean
 	@rm -rf $(VENV_PATH)
-	@rm -rf $(patsubst %,%/__pycache__, $(VPP_TEST_DIRS) $(BUILD_TEST_SRC))
+	@rm -rf $(patsubst %,%/__pycache__, $(VPP_TEST_DIRS))
+	@rm -rf  $(BUILD_TEST_SRC)
 
 $(TEST_DOC_BR): $(PIP_INSTALL_DONE)
 	@mkdir -p $@
