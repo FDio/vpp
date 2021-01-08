@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ab8d86d9_85035063",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 862,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-01-08T16:38:36Z",
+      "side": 1,
+      "message": "fm-\u003eevent_scan_delay can be set artificially large which will cause problem in mac_ager_scanner process. Perhaps we need to do some checking to ensure that value.",
+      "revId": "b63bbc7615c65e608e5edb7467de5ced84ef45a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0e0cfe57_808d11b7",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 873,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-01-08T16:38:36Z",
+      "side": 1,
+      "message": "I think CLI uses \"-\" rather than \"_\" and probably better to break up the set part. May I suggest\nset l2fib scan-delay \u003cvalue\u003e\nThis is consistent with the existing CLI format\nset bridge-domain \u003cblah\u003e",
+      "revId": "b63bbc7615c65e608e5edb7467de5ced84ef45a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e49177ee_215d3d48",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1313,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-01-08T16:38:36Z",
+      "side": 1,
+      "message": "I believe we have a problem here with the new API. If somebody just invokes want_l2_macs_events(pid\u003d1) without doing set l2fib scan-delay first, then fm-\u003eevent_scan_delay\u003d0. Calling vlib_process_wait_for_event_or_clock(vm, 0) will return immediately. We will be spinning in this process loop constantly, I was trying to fix this infinite loop in another patch to prevent this from happening by disallowing the API if scan_delay\u003d0. Now that scan_delay and want_l2_macs_events2 are separate, there is no cross check and I don\u0027t think cross checking API is a good idea.",
+      "revId": "b63bbc7615c65e608e5edb7467de5ced84ef45a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
