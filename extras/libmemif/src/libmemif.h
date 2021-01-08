@@ -368,12 +368,10 @@ typedef enum
 typedef struct
 {
   uint16_t desc_index;
-  void *ring;
+  void *queue;
   uint32_t len;
 /** next buffer present (chained buffers) */
 #define MEMIF_BUFFER_FLAG_NEXT (1 << 0)
-/** states that buffer is from rx ring */
-#define MEMIF_BUFFER_FLAG_RX (1 << 1)
   uint8_t flags;
   void *data;
 } memif_buffer_t;
@@ -650,7 +648,8 @@ int memif_delete (memif_conn_handle_t * conn);
     @param count - number of memif buffers to enqueue
     @param count_out - returns number of allocated buffers
 
-    Slave is producer of buffers.
+    Enqueue buffers to specified tx queue. Can only be used by slave.
+    Updates desc_index field for each memif buffer.
     If connection handle points to master returns MEMIF_ERR_INVAL_ARG.
 
     \return memif_err_t
@@ -658,6 +657,17 @@ int memif_delete (memif_conn_handle_t * conn);
 int memif_buffer_enq_tx (memif_conn_handle_t conn, uint16_t qid,
 			 memif_buffer_t * bufs, uint16_t count,
 			 uint16_t * count_out);
+
+/** \brief Memif buffer enq tx at idx
+    @param conn - memif connection handle
+    @param qid - number identifying queue
+    @param buf - memif buffers
+    @param index - target descriptor index
+
+    Similar to memif_buffer_enq_tx but enqueues the buffer at specified descriptor index.
+    Updates desc_index field for the memif buffer.
+*/
+int memif_buffer_enq_tx_at_idx (memif_conn_handle_t conn, uint16_t qid, memif_buffer_t *buf, uint16_t index);
 
 /** \brief Memif buffer alloc
     @param conn - memif connection handle
