@@ -95,7 +95,7 @@ typedef struct
   int int_fd;
 
   uint64_t int_count;
-  uint32_t alloc_bufs;
+  uint32_t next_buf; /* points to next free buffer */
 } memif_queue_t;
 
 typedef struct memif_msg_queue_elt
