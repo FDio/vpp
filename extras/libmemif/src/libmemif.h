@@ -648,6 +648,17 @@ int memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
 			memif_buffer_t * bufs, uint16_t count,
 			uint16_t * count_out, uint16_t size);
 
+/** \brief Memif set next free buffer
+    @param conn - memif connection handle
+    @param qid - number identifying queue
+    @param buf - next free buffer
+
+    Sets next free descriptor pointer for specified tx queue.
+    The next allocation will happen at this buffer.
+*/
+int memif_set_next_free_buffer (memif_conn_handle_t conn, uint16_t qid,
+				memif_buffer_t *buf);
+
 /** \brief Memif refill queue
     @param conn - memif connection handle
     @param qid - number identifying queue
