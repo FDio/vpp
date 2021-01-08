@@ -2151,6 +2151,34 @@ memif_init_regions_and_queues (memif_connection_t * conn)
   return 0;
 }
 
+int
+memif_set_next_free_descriptor (memif_conn_handle_t conn, uint16_t qid,
+				uint16_t index)
+{
+  memif_connection_t *c = (memif_connection_t *) conn;
+  if (EXPECT_FALSE (c == NULL))
+    return MEMIF_ERR_NOCONN;
+  if (EXPECT_FALSE (qid >= c->tx_queues_num))
+    return MEMIF_ERR_QID;
+
+  uint16_t ring_size, ns;
+  memif_queue_t *mq = &c->tx_queues[qid];
+  memif_ring_t *ring = mq->ring;
+
+  ring_size = (1 << mq->log2_ring_size);
+  if (c->args.is_master)
+    ns = ring->head - mq->next_buf;
+  else
+    ns = ring_size - mq->next_buf + ring->tail;
+
+  if ((index - mq->next_buf) > ns)
+    return MEMIF_ERR_INVAL_ARG;
+
+  mq->next_buf = index;
+
+  return MEMIF_ERR_SUCCESS;
+}
+
 static void
 memif_buffer_enq_at_idx_internal (memif_queue_t *from_q, memif_queue_t *to_q,
 				  memif_buffer_t *buf, uint16_t slot)
