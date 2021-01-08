@@ -36,7 +36,6 @@
  *  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-
 /**
  * @file
  * @brief Interface CLI.
@@ -44,7 +43,6 @@
  * Source code for several CLI interface commands.
  *
  */
-
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vppinfra/bitmap.h>
@@ -53,7 +51,7 @@
 #include <vnet/l2/l2_output.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/classify/vnet_classify.h>
-
+#include <vnet/interface/rx_queue_funcs.h>
 static int
 compare_interface_names (void *a1, void *a2)
 {
@@ -1475,61 +1473,6 @@ VLIB_CLI_COMMAND (set_ip_directed_broadcast_command, static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-set_hw_interface_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
-			  u32 queue_id, vnet_hw_if_rx_mode mode)
-{
-  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
-  vnet_device_class_t *dev_class =
-    vnet_get_device_class (vnm, hw->dev_class_index);
-  clib_error_t *error;
-  vnet_hw_if_rx_mode old_mode;
-  int rv;
-
-  if (mode == VNET_HW_IF_RX_MODE_DEFAULT)
-    mode = hw->default_rx_mode;
-
-  rv = vnet_hw_interface_get_rx_mode (vnm, hw_if_index, queue_id, &old_mode);
-  switch (rv)
-    {
-    case 0:
-      if (old_mode == mode)
-	return 0;		/* same rx-mode, no change */
-      break;
-    case VNET_API_ERROR_INVALID_INTERFACE:
-      return clib_error_return (0, "invalid interface");
-    case VNET_API_ERROR_INVALID_QUEUE:
-      return clib_error_return (0, "invalid queue");
-    default:
-      return clib_error_return (0, "unknown error");
-    }
-
-  if (dev_class->rx_mode_change_function)
-    {
-      error = dev_class->rx_mode_change_function (vnm, hw_if_index, queue_id,
-						  mode);
-      if (error)
-	return (error);
-    }
-
-  rv = vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
-  switch (rv)
-    {
-    case 0:
-      break;
-    case VNET_API_ERROR_UNSUPPORTED:
-      return clib_error_return (0, "unsupported");
-    case VNET_API_ERROR_INVALID_INTERFACE:
-      return clib_error_return (0, "invalid interface");
-    case VNET_API_ERROR_INVALID_QUEUE:
-      return clib_error_return (0, "invalid queue");
-    default:
-      return clib_error_return (0, "unknown error");
-    }
-
-  return 0;
-}
-
 clib_error_t *
 set_hw_interface_change_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
 				 u8 queue_id_valid, u32 queue_id,
@@ -1537,24 +1480,35 @@ set_hw_interface_change_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
 {
   clib_error_t *error = 0;
   vnet_hw_interface_t *hw;
-  int i;
+  u32 *queue_indices = 0;
 
   hw = vnet_get_hw_interface (vnm, hw_if_index);
 
-  if (queue_id_valid == 0)
+  if (queue_id_valid)
     {
-      for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
-	{
-	  error = set_hw_interface_rx_mode (vnm, hw_if_index, i, mode);
-	  if (error)
-	    break;
-	}
-      hw->default_rx_mode = mode;
+      u32 queue_index;
+      queue_index =
+	vnet_hw_if_get_rx_queue_index_by_id (vnm, hw_if_index, queue_id);
+      if (queue_index == ~0)
+	return clib_error_return (0, "unknown queue %u on interface %s",
+				  queue_id, hw->name);
+      vec_add1 (queue_indices, queue_index);
     }
   else
-    error = set_hw_interface_rx_mode (vnm, hw_if_index, queue_id, mode);
+    queue_indices = hw->rx_queue_indices;
 
-  return (error);
+  for (int i = 0; i < vec_len (queue_indices); i++)
+    {
+      int rv = vnet_hw_if_set_rx_queue_mode (vnm, queue_indices[i], mode);
+      if (rv)
+	goto done;
+    }
+
+done:
+  if (queue_indices != hw->rx_queue_indices)
+    vec_free (queue_indices);
+  vnet_hw_if_update_runtime_data (vnm, hw_if_index);
+  return error;
 }
 
 static clib_error_t *
@@ -1655,42 +1609,36 @@ show_interface_rx_placement_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   u8 *s = 0;
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_device_input_runtime_t *rt;
-  vnet_device_and_queue_t *dq;
-  vlib_node_t *pn = vlib_get_node_by_name (vm, (u8 *) "device-input");
-  uword si;
-  int index = 0;
+  vnet_hw_if_rx_queue_t **all_queues = 0;
+  vnet_hw_if_rx_queue_t **qptr;
+  vnet_hw_if_rx_queue_t *q;
+  vec_foreach (q, vnm->interface_main.hw_if_rx_queues)
+    vec_add1 (all_queues, q);
+  vec_sort_with_function (all_queues, vnet_hw_if_rxq_cmp_cli_api);
+  u32 prev_node = ~0;
 
-  /* *INDENT-OFF* */
-  foreach_vlib_main (({
-    clib_bitmap_foreach (si, pn->sibling_bitmap)
-       {
-        rt = vlib_node_get_runtime_data (this_vlib_main, si);
-
-        if (vec_len (rt->devices_and_queues))
-          s = format (s, "  node %U:\n", format_vlib_node_name, vm, si);
-
-        vec_foreach (dq, rt->devices_and_queues)
-	  {
-	    vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm,
-							     dq->hw_if_index);
-	    s = format (s, "    %U queue %u (%U)\n",
-			format_vnet_sw_if_index_name, vnm, hi->sw_if_index,
-			dq->queue_id,
-			format_vnet_hw_if_rx_mode, dq->mode);
-	  }
-      }
-    if (vec_len (s) > 0)
-      {
-        vlib_cli_output(vm, "Thread %u (%s):\n%v", index,
-			vlib_worker_threads[index].name, s);
-        vec_reset_length (s);
-      }
-    index++;
-  }));
-  /* *INDENT-ON* */
-
+  vec_foreach (qptr, all_queues)
+    {
+      u32 current_thread = qptr[0]->thread_index;
+      u32 hw_if_index = qptr[0]->hw_if_index;
+      vnet_hw_interface_t *hw_if = vnet_get_hw_interface (vnm, hw_if_index);
+      u32 current_node = hw_if->input_node_index;
+      if (current_node != prev_node)
+	s = format (s, " node %U:\n", format_vlib_node_name, vm, current_node);
+      s = format (s, "    %U queue %u (%U)\n", format_vnet_sw_if_index_name,
+		  vnm, hw_if->sw_if_index, qptr[0]->queue_id,
+		  format_vnet_hw_if_rx_mode, qptr[0]->mode);
+      if (qptr == all_queues + vec_len (all_queues) - 1 ||
+	  current_thread != qptr[1]->thread_index)
+	{
+	  vlib_cli_output (vm, "Thread %u (%s):\n%v", current_thread,
+			   vlib_worker_threads[current_thread].name, s);
+	  vec_reset_length (s);
+	}
+      prev_node = current_node;
+    }
   vec_free (s);
+  vec_free (all_queues);
   return 0;
 }
 
@@ -1726,16 +1674,14 @@ VLIB_CLI_COMMAND (show_interface_rx_placement, static) = {
   .function = show_interface_rx_placement_fn,
 };
 /* *INDENT-ON* */
-
 clib_error_t *
 set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
 			       u32 thread_index, u8 is_main)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
-  clib_error_t *error = 0;
-  vnet_hw_if_rx_mode mode = VNET_HW_IF_RX_MODE_UNKNOWN;
-  int rv;
+  vnet_hw_interface_t *hw;
+  u32 queue_index;
 
   if (is_main)
     thread_index = 0;
@@ -1746,26 +1692,21 @@ set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
     return clib_error_return (0,
 			      "please specify valid worker thread or main");
 
-  rv = vnet_hw_interface_get_rx_mode (vnm, hw_if_index, queue_id, &mode);
+  hw = vnet_get_hw_interface (vnm, hw_if_index);
 
-  if (rv)
-    return clib_error_return (0, "not found");
-
-  rv = vnet_hw_interface_unassign_rx_thread (vnm, hw_if_index, queue_id);
-
-  if (rv)
-    return clib_error_return (0, "not found");
-
-  vnet_hw_interface_assign_rx_thread (vnm, hw_if_index, queue_id,
-				      thread_index);
-  vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
-
-  return (error);
+  queue_index =
+    vnet_hw_if_get_rx_queue_index_by_id (vnm, hw_if_index, queue_id);
+  if (queue_index == ~0)
+    return clib_error_return (0, "unknown queue %u on interface %s", queue_id,
+			      hw->name);
+  vnet_hw_if_set_rx_queue_thread_index (vnm, queue_index, thread_index);
+  vnet_hw_if_update_runtime_data (vnm, hw_if_index);
+  return 0;
 }
 
 static clib_error_t *
-set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+set_interface_rx_placement (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   clib_error_t *error = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -2017,8 +1958,9 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
     return VNET_API_ERROR_INVALID_VALUE;
 
   /* Disable capture with capture already disabled, not interesting */
-  if (((pp->pcap_rx_enable + pp->pcap_tx_enable + pp->pcap_drop_enable) == 0)
-      && ((a->rx_enable + a->tx_enable + a->drop_enable == 0)))
+  if (((pp->pcap_rx_enable + pp->pcap_tx_enable + pp->pcap_drop_enable) ==
+       0) &&
+      ((a->rx_enable + a->tx_enable + a->drop_enable == 0)))
     return VNET_API_ERROR_VALUE_EXIST;
 
   /* Change number of packets to capture while capturing */

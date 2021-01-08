@@ -18,6 +18,7 @@
 #include <vlib/vlib.h>
 #include <vnet/devices/virtio/virtio.h>
 #include <vnet/gso/gro_func.h>
+#include <vnet/interface/rx_queue_funcs.h>
 
 static uword
 virtio_send_interrupt_process (vlib_main_t * vm,
@@ -45,22 +46,20 @@ virtio_send_interrupt_process (vlib_main_t * vm,
 	  break;
 
 	case ~0:
-          /* *INDENT-OFF* */
-          pool_foreach (vif, vim->interfaces) {
-              if (vif->packet_coalesce || vif->packet_buffering)
-                {
-                  virtio_vring_t *vring;
-                  vec_foreach (vring, vif->rxq_vrings)
-                  {
-                    if (vring->mode == VNET_HW_IF_RX_MODE_INTERRUPT ||
-                        vring->mode == VNET_HW_IF_RX_MODE_ADAPTIVE)
-                      vnet_device_input_set_interrupt_pending (
-                                             vnet_get_main (), vif->hw_if_index,
-                                             RX_QUEUE_ACCESS (vring->queue_id));
-                  }
-                }
-          }
-          /* *INDENT-ON* */
+	  pool_foreach (vif, vim->interfaces)
+	    {
+	      if (vif->packet_coalesce || vif->packet_buffering)
+		{
+		  virtio_vring_t *vring;
+		  vec_foreach (vring, vif->rxq_vrings)
+		    {
+		      if (vring->mode == VNET_HW_IF_RX_MODE_INTERRUPT ||
+			  vring->mode == VNET_HW_IF_RX_MODE_ADAPTIVE)
+			vnet_hw_if_rx_queue_set_int_pending (
+			  vnet_get_main (), vring->queue_index);
+		    }
+		}
+	    }
 	  break;
 
 	default:
