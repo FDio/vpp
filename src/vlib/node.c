@@ -447,6 +447,9 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
       {
 	vec_add2_aligned (nm->nodes_by_type[n->type], rt, 1,
 			  /* align */ CLIB_CACHE_LINE_BYTES);
+	if (n->type == VLIB_NODE_TYPE_INPUT)
+	  clib_interrupt_resize (&nm->interrupts,
+				 vec_len (nm->nodes_by_type[n->type]));
 	n->runtime_index = rt - nm->nodes_by_type[n->type];
       }
 
@@ -475,6 +478,8 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
     if (vec_len (n->runtime_data) > 0)
       clib_memcpy (rt->runtime_data, n->runtime_data,
 		   vec_len (n->runtime_data));
+    else
+      clib_memset (rt->runtime_data, 0, VLIB_NODE_RUNTIME_DATA_SIZE);
 
     vec_free (n->runtime_data);
   }

@@ -26,6 +26,7 @@
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/interface/rx_queue_funcs.h>
 
 #include <rdma/rdma.h>
 
@@ -369,7 +370,6 @@ static void
 rdma_unregister_interface (vnet_main_t * vnm, rdma_device_t * rd)
 {
   vnet_hw_interface_set_flags (vnm, rd->hw_if_index, 0);
-  vnet_hw_interface_unassign_rx_thread (vnm, rd->hw_if_index, 0);
   ethernet_delete_interface (vnm, rd->hw_if_index);
 }
 
@@ -983,11 +983,15 @@ are explicitly disabled, and if the interface supports it.*/
    * vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, rd->hw_if_index);
    * hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
    */
-  vnet_hw_interface_set_input_node (vnm, rd->hw_if_index,
-				    rdma_input_node.index);
-  vec_foreach_index (qid, rd->rxqs)
-    vnet_hw_interface_assign_rx_thread (vnm, rd->hw_if_index, qid, ~0);
+  vnet_hw_if_set_input_node (vnm, rd->hw_if_index, rdma_input_node.index);
 
+  vec_foreach_index (qid, rd->rxqs)
+    {
+      u32 queue_index = vnet_hw_if_register_rx_queue (
+	vnm, rd->hw_if_index, qid, VNET_HW_IF_RXQ_THREAD_ANY);
+      rd->rxqs[qid].queue_index = queue_index;
+    }
+  vnet_hw_if_update_runtime_data (vnm, rd->hw_if_index);
   vec_free (s);
   return;
 
@@ -1055,7 +1059,6 @@ static char *rdma_tx_func_error_strings[] = {
 #undef _
 };
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (rdma_device_class) =
 {
   .name = "RDMA interface",
@@ -1067,7 +1070,6 @@ VNET_DEVICE_CLASS (rdma_device_class) =
   .tx_function_error_strings = rdma_tx_func_error_strings,
   .mac_addr_change_function = rdma_mac_change,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 rdma_init (vlib_main_t * vm)
@@ -1093,12 +1095,10 @@ rdma_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (rdma_init) =
 {
   .runs_after = VLIB_INITS ("pci_bus_init"),
 };
-/* *INDENT-OFF* */
 
 /*
  * fd.io coding-style-patch-verification: ON
