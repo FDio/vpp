@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "48204309_a8645149",
+        "filename": "src/plugins/vmxnet3/vmxnet3.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 872,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-01-08T15:56:39Z",
+      "side": 1,
+      "message": "I think that should be removed (see, e.g., avf driver)",
+      "range": {
+        "startLine": 871,
+        "startChar": 6,
+        "endLine": 872,
+        "endChar": 66
+      },
+      "revId": "41c9a534f5e5b6876856069841cb11dd83430ff8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5be7ca35_00113409",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 1391,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-01-08T15:56:39Z",
+      "side": 1,
+      "message": "I think vnet_hw_interface_unassign_rx_thread shouldn\u0027t be called anymore (same as previous comment)",
+      "range": {
+        "startLine": 1375,
+        "startChar": 6,
+        "endLine": 1391,
+        "endChar": 2
+      },
+      "revId": "41c9a534f5e5b6876856069841cb11dd83430ff8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
