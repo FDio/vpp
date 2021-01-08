@@ -164,6 +164,7 @@ typedef struct
   u16 n_enqueued;
   u8 int_mode;
   u8 buffer_pool_index;
+  u32 queue_index;
 } avf_rxq_t;
 
 typedef struct

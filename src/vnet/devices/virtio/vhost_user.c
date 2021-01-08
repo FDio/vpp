@@ -36,6 +36,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
+#include <vnet/interface/rx_queue_funcs.h>
 
 #include <vnet/devices/virtio/vhost_user.h>
 #include <vnet/devices/virtio/vhost_user_inline.h>
@@ -165,17 +166,19 @@ vhost_user_rx_thread_placement (vhost_user_intf_t * vui, u32 qid)
 
   ASSERT ((qid & 1) == 1);	// should be odd
   // Assign new queue mappings for the interface
-  vnet_hw_interface_set_input_node (vnm, vui->hw_if_index,
-				    vhost_user_input_node.index);
-  vnet_hw_interface_assign_rx_thread (vnm, vui->hw_if_index, q, ~0);
+  vnet_hw_if_set_input_node (vnm, vui->hw_if_index,
+			     vhost_user_input_node.index);
+  txvq->queue_index = vnet_hw_if_register_rx_queue (vnm, vui->hw_if_index, q,
+						    VNET_HW_IF_RXQ_THREAD_ANY);
   if (txvq->mode == VNET_HW_IF_RX_MODE_UNKNOWN)
     /* Set polling as the default */
     txvq->mode = VNET_HW_IF_RX_MODE_POLLING;
   txvq->qid = q;
-  rv = vnet_hw_interface_set_rx_mode (vnm, vui->hw_if_index, q, txvq->mode);
+  rv = vnet_hw_if_set_rx_queue_mode (vnm, txvq->queue_index, txvq->mode);
   if (rv)
     vu_log_warn (vui, "unable to set rx mode for interface %d, "
 		 "queue %d: rc=%d", vui->hw_if_index, q, rv);
+  vnet_hw_if_update_runtime_data (vnm, vui->hw_if_index);
 }
 
 /** @brief Returns whether at least one TX and one RX vring are enabled */
@@ -213,15 +216,20 @@ vhost_user_set_interrupt_pending (vhost_user_intf_t * vui, u32 ifq)
 {
   u32 qid;
   vnet_main_t *vnm = vnet_get_main ();
+  vhost_user_vring_t *txvq;
 
   qid = ifq & 0xff;
   if ((qid & 1) == 0)
     /* Only care about the odd number, or TX, virtqueue */
     return;
 
-  if (vhost_user_intf_ready (vui))
-    // qid >> 1 is to convert virtqueue number to vring queue index
-    vnet_device_input_set_interrupt_pending (vnm, vui->hw_if_index, qid >> 1);
+  // qid >> 1 is to convert virtqueue number to vring queue index
+  qid >>= 1;
+  txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
+  if (vhost_user_intf_ready (vui) &&
+      ((txvq->mode == VNET_HW_IF_RX_MODE_ADAPTIVE) ||
+       (txvq->mode == VNET_HW_IF_RX_MODE_INTERRUPT)))
+    vnet_hw_if_rx_queue_set_int_pending (vnm, txvq->queue_index);
 }
 
 static clib_error_t *
@@ -1370,24 +1378,6 @@ vhost_user_term_if (vhost_user_intf_t * vui)
 
   for (q = 0; q < vui->num_qid; q++)
     {
-      // Remove existing queue mapping for the interface
-      if (q & 1)
-	{
-	  int rv;
-	  vnet_main_t *vnm = vnet_get_main ();
-	  vhost_user_vring_t *txvq = &vui->vrings[q];
-
-	  if (txvq->qid != -1)
-	    {
-	      rv = vnet_hw_interface_unassign_rx_thread (vnm,
-							 vui->hw_if_index,
-							 q >> 1);
-	      if (rv)
-		vu_log_warn (vui, "unable to unassign interface %d, "
-			     "queue %d: rc=%d", vui->hw_if_index, q >> 1, rv);
-	    }
-	}
-
       clib_spinlock_free (&vui->vrings[q].vring_lock);
     }
 
@@ -2224,19 +2214,14 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 	{
 	  vnet_main_t *vnm = vnet_get_main ();
 	  uword thread_index;
-	  vnet_hw_if_rx_mode mode;
 	  vhost_user_vring_t *txvq = &vui->vrings[qid];
 
 	  if (txvq->qid == -1)
 	    continue;
 	  thread_index =
-	    vnet_get_device_input_thread_index (vnm, vui->hw_if_index,
-						qid >> 1);
-	  vnet_hw_interface_get_rx_mode (vnm, vui->hw_if_index, qid >> 1,
-					 &mode);
-	  vlib_cli_output (vm, "   thread %d on vring %d, %U\n",
-			   thread_index, qid,
-			   format_vnet_hw_if_rx_mode, mode);
+	    vnet_hw_if_get_rx_queue_thread_index (vnm, txvq->queue_index);
+	  vlib_cli_output (vm, "   thread %d on vring %d, %U\n", thread_index,
+			   qid, format_vnet_hw_if_rx_mode, txvq->mode);
 	}
 
       vlib_cli_output (vm, " tx placement: %s\n",
