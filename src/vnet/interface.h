@@ -625,12 +625,7 @@ typedef struct vnet_hw_interface_t
   /* input node cpu index by queue */
   u32 *input_node_thread_index_by_queue;
 
-  /* vnet_hw_if_rx_mode by queue */
-  u8 *rx_mode_by_queue;
   vnet_hw_if_rx_mode default_rx_mode;
-
-  /* device input device_and_queue runtime index */
-  uword *dq_runtime_index_by_queue;
 
   /* rx queues */
   u32 *rx_queue_indices;

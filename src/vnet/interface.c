@@ -1079,7 +1079,6 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
   vec_free (hw->name);
   vec_free (hw->hw_address);
   vec_free (hw->input_node_thread_index_by_queue);
-  vec_free (hw->dq_runtime_index_by_queue);
   vec_free (hw->rx_queue_indices);
   pool_put (im->hw_interfaces, hw);
 }
