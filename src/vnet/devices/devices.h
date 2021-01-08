@@ -55,22 +55,6 @@ typedef struct
   uword next_worker_thread_index;
 } vnet_device_main_t;
 
-typedef struct
-{
-  u32 hw_if_index;
-  u32 dev_instance;
-  u16 queue_id;
-  vnet_hw_if_rx_mode mode;
-  u32 interrupt_pending;
-} vnet_device_and_queue_t;
-
-typedef struct
-{
-  vnet_device_and_queue_t *devices_and_queues;
-  vlib_node_state_t enabled_node_state;
-  u32 pad;
-} vnet_device_input_runtime_t;
-
 extern vnet_device_main_t vnet_device_main;
 extern vlib_node_registration_t device_input_node;
 extern const u32 device_input_next_node_advance[];
@@ -83,15 +67,6 @@ vnet_hw_interface_set_input_node (vnet_main_t * vnm, u32 hw_if_index,
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   hw->input_node_index = node_index;
 }
-
-void vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
-					 u16 queue_id, uword thread_index);
-int vnet_hw_interface_unassign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
-					  u16 queue_id);
-int vnet_hw_interface_set_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
-				   u16 queue_id, vnet_hw_if_rx_mode mode);
-int vnet_hw_interface_get_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
-				   u16 queue_id, vnet_hw_if_rx_mode * mode);
 
 static inline u64
 vnet_get_aggregate_rx_packets (void)
@@ -122,28 +97,6 @@ vnet_get_device_input_thread_index (vnet_main_t * vnm, u32 hw_if_index,
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   ASSERT (queue_id < vec_len (hw->input_node_thread_index_by_queue));
   return hw->input_node_thread_index_by_queue[queue_id];
-}
-
-static_always_inline void
-vnet_device_input_set_interrupt_pending (vnet_main_t * vnm, u32 hw_if_index,
-					 u16 queue_id)
-{
-  vlib_main_t *vm;
-  vnet_hw_interface_t *hw;
-  vnet_device_input_runtime_t *rt;
-  vnet_device_and_queue_t *dq;
-  uword idx;
-
-  hw = vnet_get_hw_interface (vnm, hw_if_index);
-  idx = vnet_get_device_input_thread_index (vnm, hw_if_index, queue_id);
-  vm = vlib_mains[idx];
-  rt = vlib_node_get_runtime_data (vm, hw->input_node_index);
-  idx = hw->dq_runtime_index_by_queue[queue_id];
-  dq = vec_elt_at_index (rt->devices_and_queues, idx);
-
-  clib_atomic_store_rel_n (&(dq->interrupt_pending), 1);
-
-  vlib_node_set_interrupt_pending (vm, hw->input_node_index);
 }
 
 /*
