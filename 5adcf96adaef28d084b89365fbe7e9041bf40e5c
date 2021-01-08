@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1665da9e_82aed4e7",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 379,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-01-08T07:37:35Z",
+      "side": 1,
+      "message": "Quick suggestion: add CRD functions for hash table interactions and deal with the lock there, if need be.",
+      "range": {
+        "startLine": 378,
+        "startChar": 0,
+        "endLine": 379,
+        "endChar": 67
+      },
+      "revId": "5adcf96adaef28d084b89365fbe7e9041bf40e5c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
