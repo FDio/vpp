@@ -109,6 +109,8 @@ typedef struct _svm_fifo
   struct _svm_fifo *next; /**< prev in active chain */
   struct _svm_fifo *prev; /**< prev in active chain */
 
+  svm_fifo_chunk_t **chunks_at_clone; /**< chunks to be accounted at detach */
+
 #if SVM_FIFO_TRACE
   svm_fifo_trace_elem_t *trace;
 #endif

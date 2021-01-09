@@ -901,8 +901,6 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 
   /* Add to free list */
   fss_fifo_free_list_push (fsh, fss, sf);
-  //  sf->next = fss->free_fifos;
-  //  fss->free_fifos = fs_sptr (fsh, sf);
 
   fss->virtual_mem -= svm_fifo_size (f);
 
@@ -935,53 +933,67 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 }
 
 void
-fifo_segment_detach_fifo (fifo_segment_t * fs, svm_fifo_t * f)
+fifo_segment_detach_fifo (fifo_segment_t *fs, svm_fifo_t **f)
 {
   fifo_slice_private_t *pfss;
   fifo_segment_slice_t *fss;
-  svm_fifo_chunk_t *c;
-  u32 fl_index;
+  u32 fl_index, slice_index;
+  svm_fifo_chunk_t **c;
+  svm_fifo_t *of = *f;
 
-  ASSERT (f->refcnt == 1);
+  slice_index = of->master_thread_index;
+  fss = fsh_slice_get (fs->h, slice_index);
+  pfss = fs_slice_private_get (fs, slice_index);
+  fss->virtual_mem -= svm_fifo_size (of);
+  if (of->flags & SVM_FIFO_F_LL_TRACKED)
+    pfss_fifo_del_active_list (pfss, of);
 
-  fss = fsh_slice_get (fs->h, f->shr->slice_index);
-  pfss = fs_slice_private_get (fs, f->shr->slice_index);
-  fss->virtual_mem -= svm_fifo_size (f);
-  if (f->flags & SVM_FIFO_F_LL_TRACKED)
-    pfss_fifo_del_active_list (pfss, f);
-
-  c = fs_chunk_ptr (fs->h, f->shr->start_chunk);
-  while (c)
+  /* Update slice counts for chunks that were detached */
+  vec_foreach (c, of->chunks_at_clone)
     {
-      fl_index = fs_freelist_for_size (c->length);
+      fl_index = fs_freelist_for_size ((*c)->length);
       clib_atomic_fetch_sub_rel (&fss->num_chunks[fl_index], 1);
-      c = fs_chunk_ptr (fs->h, c->next);
     }
+  vec_free (of->chunks_at_clone);
+
+  clib_mem_bulk_free (pfss->fifos, *f);
+  *f = 0;
 }
 
 void
-fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t * f,
-			  u32 slice_index)
+fifo_segment_attach_fifo (fifo_segment_t *fs, svm_fifo_t **f, u32 slice_index)
 {
   fifo_slice_private_t *pfss;
   fifo_segment_slice_t *fss;
   svm_fifo_chunk_t *c;
+  svm_fifo_t *nf, *of;
   u32 fl_index;
 
-  f->shr->slice_index = slice_index;
-  fss = fsh_slice_get (fs->h, f->shr->slice_index);
-  pfss = fs_slice_private_get (fs, f->shr->slice_index);
-  fss->virtual_mem += svm_fifo_size (f);
-  if (f->flags & SVM_FIFO_F_LL_TRACKED)
-    pfss_fifo_add_active_list (pfss, f);
+  nf = fs_fifo_alloc (fs, slice_index);
+  clib_memcpy_fast (nf, *f, sizeof (*nf));
 
-  c = fs_chunk_ptr (fs->h, f->shr->start_chunk);
+  nf->shr->slice_index = slice_index;
+  fss = fsh_slice_get (fs->h, nf->shr->slice_index);
+  pfss = fs_slice_private_get (fs, nf->shr->slice_index);
+  fss->virtual_mem += svm_fifo_size (nf);
+  if (nf->flags & SVM_FIFO_F_LL_TRACKED)
+    pfss_fifo_add_active_list (pfss, nf);
+
+  /* Update allocated chunks for fifo segment and build list
+   * of chunks to be freed at detach */
+  of = *f;
+  of->chunks_at_clone = 0;
+
+  c = fs_chunk_ptr (fs->h, nf->shr->start_chunk);
   while (c)
     {
       fl_index = fs_freelist_for_size (c->length);
       clib_atomic_fetch_add_rel (&fss->num_chunks[fl_index], 1);
+      vec_add1 (of->chunks_at_clone, c);
       c = fs_chunk_ptr (fs->h, c->next);
     }
+
+  *f = nf;
 }
 
 uword
