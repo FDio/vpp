@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "24599c5c_ef5ab8c2",
+        "filename": "src/vcl/vcl_private.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 338,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-01-09T00:04:55Z",
+      "side": 1,
+      "message": "Any reason why this is not in vls_main_t?",
+      "range": {
+        "startLine": 338,
+        "startChar": 18,
+        "endLine": 338,
+        "endChar": 33
+      },
+      "revId": "d7194e72b5186b831e91b6dde2476909c326c680",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
