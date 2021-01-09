@@ -901,8 +901,6 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 
   /* Add to free list */
   fss_fifo_free_list_push (fsh, fss, sf);
-  //  sf->next = fss->free_fifos;
-  //  fss->free_fifos = fs_sptr (fsh, sf);
 
   fss->virtual_mem -= svm_fifo_size (f);
 
@@ -935,47 +933,52 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 }
 
 void
-fifo_segment_detach_fifo (fifo_segment_t * fs, svm_fifo_t * f)
+fifo_segment_detach_fifo (fifo_segment_t *fs, svm_fifo_t **f)
 {
   fifo_slice_private_t *pfss;
   fifo_segment_slice_t *fss;
   svm_fifo_chunk_t *c;
+  svm_fifo_t *tf = *f;
   u32 fl_index;
 
-  ASSERT (f->refcnt == 1);
+  fss = fsh_slice_get (fs->h, tf->shr->slice_index);
+  pfss = fs_slice_private_get (fs, tf->shr->slice_index);
+  fss->virtual_mem -= svm_fifo_size (tf);
+  if (tf->flags & SVM_FIFO_F_LL_TRACKED)
+    pfss_fifo_del_active_list (pfss, tf);
 
-  fss = fsh_slice_get (fs->h, f->shr->slice_index);
-  pfss = fs_slice_private_get (fs, f->shr->slice_index);
-  fss->virtual_mem -= svm_fifo_size (f);
-  if (f->flags & SVM_FIFO_F_LL_TRACKED)
-    pfss_fifo_del_active_list (pfss, f);
-
-  c = fs_chunk_ptr (fs->h, f->shr->start_chunk);
+  c = fs_chunk_ptr (fs->h, tf->shr->start_chunk);
   while (c)
     {
       fl_index = fs_freelist_for_size (c->length);
       clib_atomic_fetch_sub_rel (&fss->num_chunks[fl_index], 1);
       c = fs_chunk_ptr (fs->h, c->next);
     }
+
+  *f = 0;
 }
 
 void
-fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t * f,
-			  u32 slice_index)
+fifo_segment_attach_fifo (fifo_segment_t *fs, svm_fifo_t **f, u32 slice_index)
 {
   fifo_slice_private_t *pfss;
   fifo_segment_slice_t *fss;
   svm_fifo_chunk_t *c;
+  svm_fifo_t *nf;
   u32 fl_index;
 
-  f->shr->slice_index = slice_index;
-  fss = fsh_slice_get (fs->h, f->shr->slice_index);
-  pfss = fs_slice_private_get (fs, f->shr->slice_index);
-  fss->virtual_mem += svm_fifo_size (f);
-  if (f->flags & SVM_FIFO_F_LL_TRACKED)
-    pfss_fifo_add_active_list (pfss, f);
+  nf = fs_fifo_alloc (fs, slice_index);
+  clib_memcpy_fast (nf, *f, sizeof (*nf));
+  *f = nf;
 
-  c = fs_chunk_ptr (fs->h, f->shr->start_chunk);
+  nf->shr->slice_index = slice_index;
+  fss = fsh_slice_get (fs->h, nf->shr->slice_index);
+  pfss = fs_slice_private_get (fs, nf->shr->slice_index);
+  fss->virtual_mem += svm_fifo_size (nf);
+  if (nf->flags & SVM_FIFO_F_LL_TRACKED)
+    pfss_fifo_add_active_list (pfss, nf);
+
+  c = fs_chunk_ptr (fs->h, nf->shr->start_chunk);
   while (c)
     {
       fl_index = fs_freelist_for_size (c->length);

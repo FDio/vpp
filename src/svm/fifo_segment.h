@@ -139,8 +139,8 @@ svm_fifo_t *fifo_segment_alloc_fifo_w_offset (fifo_segment_t *fs,
  */
 void fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f);
 
-void fifo_segment_detach_fifo (fifo_segment_t * fs, svm_fifo_t * f);
-void fifo_segment_attach_fifo (fifo_segment_t * fs, svm_fifo_t * f,
+void fifo_segment_detach_fifo (fifo_segment_t *fs, svm_fifo_t **f);
+void fifo_segment_attach_fifo (fifo_segment_t *fs, svm_fifo_t **f,
 			       u32 slice_index);
 uword fifo_segment_fifo_offset (svm_fifo_t *f);
 
