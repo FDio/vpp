@@ -516,7 +516,7 @@ endef
 endif
 
 %.files: .FORCE
-	@find . \( -name '*\.[chyS]' -o -name '*\.java' -o -name '*\.lex' \) -and \
+	@find . \( -name '*\.[chyS]' -o -name '*\.java' -o -name '*\.lex' -o -name '*\.py' \) -and \
 		\( -not -path './build-root*' -o -path \
 		'./build-root/build-vpp_debug-native/dpdk*' \) > $@
 
