@@ -854,22 +854,11 @@ static void
 session_switch_pool_reply (void *arg)
 {
   u32 session_index = pointer_to_uword (arg);
-  segment_manager_t *sm;
-  app_worker_t *app_wrk;
   session_t *s;
 
   s = session_get_if_valid (session_index, vlib_get_thread_index ());
   if (!s)
     return;
-
-  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
-  if (!app_wrk)
-    return;
-
-  /* Attach fifos to the right session and segment slice */
-  sm = app_worker_get_connect_segment_manager (app_wrk);
-  segment_manager_attach_fifo (sm, s->rx_fifo, s);
-  segment_manager_attach_fifo (sm, s->tx_fifo, s);
 
   /* Notify app that it has data on the new session */
   session_enqueue_notify (s);
@@ -910,8 +899,8 @@ session_switch_pool (void *cb_args)
     {
       /* Cleanup fifo segment slice state for fifos */
       sm = app_worker_get_connect_segment_manager (app_wrk);
-      segment_manager_detach_fifo (sm, s->rx_fifo);
-      segment_manager_detach_fifo (sm, s->tx_fifo);
+      segment_manager_detach_fifo (sm, &s->rx_fifo);
+      segment_manager_detach_fifo (sm, &s->tx_fifo);
 
       /* Notify app, using old session, about the migration event */
       app_worker_migrate_notify (app_wrk, s, new_sh);
@@ -935,6 +924,8 @@ session_dgram_connect_notify (transport_connection_t * tc,
 {
   session_t *new_s;
   session_switch_pool_args_t *rpc_args;
+  segment_manager_t *sm;
+  app_worker_t *app_wrk;
 
   /*
    * Clone half-open session to the right thread.
@@ -944,7 +935,17 @@ session_dgram_connect_notify (transport_connection_t * tc,
   new_s->session_state = SESSION_STATE_READY;
   new_s->flags |= SESSION_F_IS_MIGRATING;
 
-  session_lookup_add_connection (tc, session_handle (new_s));
+  if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+    session_lookup_add_connection (tc, session_handle (new_s));
+
+  app_wrk = app_worker_get_if_valid (new_s->app_wrk_index);
+  if (app_wrk)
+    {
+      /* New set of fifos attached to the same shared memory */
+      sm = app_worker_get_connect_segment_manager (app_wrk);
+      segment_manager_attach_fifo (sm, &new_s->rx_fifo, new_s);
+      segment_manager_attach_fifo (sm, &new_s->tx_fifo, new_s);
+    }
 
   /*
    * Ask thread owning the old session to clean it up and make us the tx
