@@ -189,8 +189,15 @@ int
 vnet_crypto_is_set_handler (vnet_crypto_alg_t alg)
 {
   vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_alg_data_t ad = cm->algs[alg];
+  vnet_crypto_op_id_t opt = 0;
+  int i;
 
-  return (alg < vec_len (cm->ops_handlers) && NULL != cm->ops_handlers[alg]);
+  for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
+    if ((opt = ad.op_by_type[i]) != 0)
+      break;
+
+  return (alg < vec_len (cm->ops_handlers) && NULL != cm->ops_handlers[opt]);
 }
 
 void
