@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dc33da56_761d576d",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-01-11T09:30:29Z",
+      "side": 1,
+      "message": "to be removed (see the example of AVF https://gerrit.fd.io/r/c/vpp/+/29808/27/src/plugins/avf/device.c#1418 )",
+      "range": {
+        "startLine": 102,
+        "startChar": 6,
+        "endLine": 102,
+        "endChar": 69
+      },
+      "revId": "0136b0ada0b48089a4809adee97d8d8ee784f02d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
