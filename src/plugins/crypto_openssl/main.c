@@ -253,10 +253,10 @@ openssl_ops_enc_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 			       /* is_gcm */ 1);
 }
 
-static_always_inline u32
-openssl_ops_enc_chacha20_poly1305 (vlib_main_t * vm, vnet_crypto_op_t * ops[],
-				   vnet_crypto_op_chunk_t * chunks, u32 n_ops,
-				   const EVP_CIPHER * cipher)
+static_always_inline __clib_unused u32
+openssl_ops_enc_chacha20_poly1305 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
+				   vnet_crypto_op_chunk_t *chunks, u32 n_ops,
+				   const EVP_CIPHER *cipher)
 {
   return openssl_ops_enc_aead (vm, ops, chunks, n_ops, cipher,
 			       /* is_gcm */ 0);
@@ -317,10 +317,10 @@ openssl_ops_dec_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 			       /* is_gcm */ 1);
 }
 
-static_always_inline u32
-openssl_ops_dec_chacha20_poly1305 (vlib_main_t * vm, vnet_crypto_op_t * ops[],
-				   vnet_crypto_op_chunk_t * chunks, u32 n_ops,
-				   const EVP_CIPHER * cipher)
+static_always_inline __clib_unused u32
+openssl_ops_dec_chacha20_poly1305 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
+				   vnet_crypto_op_chunk_t *chunks, u32 n_ops,
+				   const EVP_CIPHER *cipher)
 {
   return openssl_ops_dec_aead (vm, ops, chunks, n_ops, cipher,
 			       /* is_gcm */ 0);
