@@ -94,6 +94,30 @@
       "revId": "d7194e72b5186b831e91b6dde2476909c326c680",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "824cca98_28ff3601",
+        "filename": "src/vcl/vcl_private.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 338,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-01-11T03:43:43Z",
+      "side": 1,
+      "message": "Thanks!",
+      "parentUuid": "78dfe076_b63e8058",
+      "range": {
+        "startLine": 338,
+        "startChar": 18,
+        "endLine": 338,
+        "endChar": 33
+      },
+      "revId": "d7194e72b5186b831e91b6dde2476909c326c680",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
