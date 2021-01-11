@@ -22,6 +22,30 @@
       "revId": "5adcf96adaef28d084b89365fbe7e9041bf40e5c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2ae977d1_ff125051",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 379,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-01-11T19:51:21Z",
+      "side": 1,
+      "message": "Could you take care of this and rebase the patch?",
+      "parentUuid": "1665da9e_82aed4e7",
+      "range": {
+        "startLine": 378,
+        "startChar": 0,
+        "endLine": 379,
+        "endChar": 67
+      },
+      "revId": "5adcf96adaef28d084b89365fbe7e9041bf40e5c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
