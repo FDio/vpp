@@ -46,6 +46,30 @@
       "revId": "d7194e72b5186b831e91b6dde2476909c326c680",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e2b82cb8_fdc3e054",
+        "filename": "src/vcl/vcl_private.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 338,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-01-11T02:13:53Z",
+      "side": 1,
+      "message": "vls_main should be shared between all vls worker instances since it\u0027s allocated on the same heap where vcl_main is allocated. For instance, vls_table_lock is shared between all workers.",
+      "parentUuid": "6b07dfb5_3047b3e5",
+      "range": {
+        "startLine": 338,
+        "startChar": 18,
+        "endLine": 338,
+        "endChar": 33
+      },
+      "revId": "d7194e72b5186b831e91b6dde2476909c326c680",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
