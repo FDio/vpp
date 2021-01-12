@@ -73,9 +73,7 @@ class ToJSON():
         write = self.stream.write
         write('#endif\n')
 
-    def get_json_func(self, t):
-        '''Given the type, returns the function to use to create a
-        cJSON object'''
+    def get_base_type(self, t):
         vt_type = None
         try:
             vt = self.types_hash[t]
@@ -83,6 +81,12 @@ class ToJSON():
                 vt_type = vt.alias['type']
         except KeyError:
             vt = t
+        return vt, vt_type
+
+    def get_json_func(self, t):
+        '''Given the type, returns the function to use to create a
+        cJSON object'''
+        vt, vt_type = self.get_base_type(t)
 
         if t in self.is_number or vt_type in self.is_number:
             return 'cJSON_AddNumberToObject', '', False
@@ -101,6 +105,9 @@ class ToJSON():
             return 'cJSON_CreateNumber', ''
         if t == 'bool':
             return 'cJSON_CreateBool', ''
+        vt, vt_type = self.get_base_type(t)
+        if vt.type == 'Enum' or vt.type == 'EnumFlag':
+            return '{t}_tojson'.format(t=t), ''
         return '{t}_tojson'.format(t=t), '&'
 
     def print_string(self, o):
@@ -1039,7 +1046,7 @@ def endianfun_array(o):
 '''
 
     output = ''
-    if o.fieldtype == 'u8' or o.fieldtype == 'string':
+    if o.fieldtype == 'u8' or o.fieldtype == 'string' or o.fieldtype == 'bool':
         output += '    /* a->{n} = a->{n} (no-op) */\n'.format(n=o.fieldname)
     else:
         lfield = 'a->' + o.lengthfield if o.lengthfield else o.length
