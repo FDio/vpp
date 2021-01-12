@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "62a966fa_6ccb5b88",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-01-12T03:15:58Z",
+      "side": 1,
+      "message": "If we only plan to use the lock to protect the session_handle_to_vlsh_table hash, let\u0027s embed the lock/unlock functions there, i.e, wlocks for CD operations and rlocks for R operations.",
+      "range": {
+        "startLine": 208,
+        "startChar": 0,
+        "endLine": 208,
+        "endChar": 16
+      },
+      "revId": "78ab025c9438593ac597d6a912d6c94ffee6f163",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0e2867ff_3bfbc621",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 345,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-01-12T03:15:58Z",
+      "side": 1,
+      "message": "As per above, unless we plan to use it for other things, let\u0027s rename to sh_to_vlsh_table_lock or something along those lines",
+      "range": {
+        "startLine": 345,
+        "startChar": 28,
+        "endLine": 345,
+        "endChar": 32
+      },
+      "revId": "78ab025c9438593ac597d6a912d6c94ffee6f163",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aaffc820_35e83b04",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-01-12T03:15:58Z",
+      "side": 1,
+      "message": "Not a strong opinion, but typically we use *_add, *_del, *_get",
+      "range": {
+        "startLine": 368,
+        "startChar": 0,
+        "endLine": 368,
+        "endChar": 24
+      },
+      "revId": "78ab025c9438593ac597d6a912d6c94ffee6f163",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f8682a9e_967da5e8",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 510,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-01-12T03:15:58Z",
+      "side": 1,
+      "message": "Let\u0027s add a get function for this.",
+      "range": {
+        "startLine": 506,
+        "startChar": 0,
+        "endLine": 510,
+        "endChar": 27
+      },
+      "revId": "78ab025c9438593ac597d6a912d6c94ffee6f163",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
