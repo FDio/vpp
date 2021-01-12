@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3d4fee1d_4f1dd1c1",
+        "filename": "extras/scripts/checkstyle.sh",
+        "patchSetId": 5
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-01-12T17:26:52Z",
+      "side": 1,
+      "message": "Why not use -regex flag with clang-format-diff to skip some files...",
+      "revId": "0e0f2afc9559d73c5eb58fd72c0c8bcdc0c850d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1251d0d8_6ce1f648",
+        "filename": "extras/scripts/checkstyle.sh",
+        "patchSetId": 5
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-01-12T17:26:52Z",
+      "side": 1,
+      "message": "I would prefer that we stop using this and just wrap code with /* clang-format off */",
+      "revId": "0e0f2afc9559d73c5eb58fd72c0c8bcdc0c850d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
