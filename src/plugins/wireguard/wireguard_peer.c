@@ -81,6 +81,7 @@ wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
   for (int i = 0; i < WG_N_TIMERS; i++)
     {
       peer->timers[i] = ~0;
+      peer->timers_dispatched[i] = 0;
     }
 
   peer->last_sent_handshake = vlib_time_now (vm) - (REKEY_TIMEOUT + 1);
