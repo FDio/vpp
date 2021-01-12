@@ -34,14 +34,15 @@ set_interface_spd_command_fn (vlib_main_t * vm,
       (line_input, "%U %u", unformat_vnet_sw_interface, im->vnet_main,
        &sw_if_index, &spd_id))
     ;
-  else if (unformat (line_input, "del"))
-    is_add = 0;
   else
     {
       error = clib_error_return (0, "parse error: '%U'",
 				 format_unformat_error, line_input);
       goto done;
     }
+
+  if (unformat (line_input, "del"))
+    is_add = 0;
 
   err = ipsec_set_interface_spd (vm, sw_if_index, spd_id, is_add);
   switch (err)
