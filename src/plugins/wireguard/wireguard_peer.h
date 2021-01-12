@@ -71,6 +71,7 @@ typedef struct wg_peer
   /* Timers */
   tw_timer_wheel_16t_2w_512sl_t *timer_wheel;
   u32 timers[WG_N_TIMERS];
+  u8 timers_dispatched[WG_N_TIMERS];
   u32 timer_handshake_attempts;
   u16 persistent_keepalive_interval;
 
