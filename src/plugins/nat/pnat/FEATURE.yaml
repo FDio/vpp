@@ -1,0 +1,12 @@
+---
+name: Policy 1:1 NAT
+maintainer: Ole Troan <ot@cisco.com>
+description: "Match packet against rule and translate according to given instructions.
+              Rules are kept in a flow cache bihash. Instructions in a pool of translation entries.
+
+              For a given interface/direction all rules must use the same lookup mask. E.g. SA + SP.
+
+              A dynamic NAT would punt to slow path on a miss in the flow cache, in this case the miss behaviour is configurable.
+              Default behaviour is pass packet along unchanged."
+state: experimental
+properties: [API, CLI, MULTITHREAD]
