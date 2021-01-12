@@ -631,7 +631,7 @@ class VPPAPIParser(object):
         '''counter_elements : counter_element
                             | counter_elements counter_element'''
         if len(p) == 2:
-            p[0] = p[1]
+            p[0] = [p[1]]
         else:
             if type(p[1]) is dict:
                 p[0] = [p[1], p[2]]
