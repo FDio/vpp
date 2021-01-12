@@ -50,4 +50,5 @@ add_vpp_plugin(unittest
   unittest.c
   util_test.c
   vlib_test.c
+  counter_test.c
 )

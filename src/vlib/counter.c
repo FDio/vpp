@@ -79,15 +79,26 @@ void
 vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  int i;
+  int i, resized = 0;
   void *oldheap = vlib_stats_push_heap (cm->counters);
 
   vec_validate (cm->counters, tm->n_vlib_mains - 1);
   for (i = 0; i < tm->n_vlib_mains; i++)
-    vec_validate_aligned (cm->counters[i], index, CLIB_CACHE_LINE_BYTES);
+    if (index >= vec_len (cm->counters[i]))
+      {
+	if (vec_resize_will_expand (cm->counters[i],
+				    index - vec_len (cm->counters[i]) +
+				      1 /* length_increment */))
+	  resized++;
+	vec_validate_aligned (cm->counters[i], index, CLIB_CACHE_LINE_BYTES);
+      }
 
-  vlib_stats_pop_heap (cm, oldheap, index,
-		       2 /* STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE */ );
+  /* Avoid the epoch increase when there was no counter vector resize. */
+  if (resized)
+    vlib_stats_pop_heap (cm, oldheap, index,
+			 2 /* STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE */);
+  else
+    clib_mem_set_heap (oldheap);
 }
 
 void
@@ -108,15 +119,26 @@ void
 vlib_validate_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  int i;
+  int i, resized = 0;
   void *oldheap = vlib_stats_push_heap (cm->counters);
 
   vec_validate (cm->counters, tm->n_vlib_mains - 1);
   for (i = 0; i < tm->n_vlib_mains; i++)
-    vec_validate_aligned (cm->counters[i], index, CLIB_CACHE_LINE_BYTES);
+    if (index >= vec_len (cm->counters[i]))
+      {
+	if (vec_resize_will_expand (cm->counters[i],
+				    index - vec_len (cm->counters[i]) +
+				      1 /* length_increment */))
+	  resized++;
+	vec_validate_aligned (cm->counters[i], index, CLIB_CACHE_LINE_BYTES);
+      }
 
-  vlib_stats_pop_heap (cm, oldheap, index,
-		       3 /*STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED */ );
+  /* Avoid the epoch increase when there was no counter vector resize. */
+  if (resized)
+    vlib_stats_pop_heap (cm, oldheap, index,
+			 3 /*STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED */);
+  else
+    clib_mem_set_heap (oldheap);
 }
 
 int
@@ -130,8 +152,7 @@ int
   /* Possibly once in recorded history */
   if (PREDICT_FALSE (vec_len (cm->counters) == 0))
     {
-      vlib_stats_pop_heap (cm, oldheap, index,
-			   3 /*STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED */ );
+      clib_mem_set_heap (oldheap);
       return 1;
     }
 
@@ -144,13 +165,11 @@ int
 				  index - vec_len (cm->counters[i]) +
 				    1 /* length_increment */))
 	{
-	  vlib_stats_pop_heap (cm, oldheap, index,
-			       3 /*STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED */ );
+	  clib_mem_set_heap (oldheap);
 	  return 1;
 	}
     }
-  vlib_stats_pop_heap (cm, oldheap, index,
-		       3 /*STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED */ );
+  clib_mem_set_heap (oldheap);
   return 0;
 }
 
