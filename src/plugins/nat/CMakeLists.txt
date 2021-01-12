@@ -139,3 +139,14 @@ add_vpp_plugin(nat64
 
   LINK_LIBRARIES nat
 )
+
+add_vpp_plugin(pnat
+  SOURCES
+  pnat/pnat_node.c
+  pnat/pnat.c
+  pnat/cli.c
+  pnat/pnat_api.c
+
+  API_FILES
+  pnat/pnat.api
+)
