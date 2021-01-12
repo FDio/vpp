@@ -457,6 +457,24 @@
     },
     {
       "key": {
+        "uuid": "6f867e42_9a3250dd",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-01-12T14:13:05Z",
+      "side": 1,
+      "message": "Ok, then we should probably renamed it VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM instead for consistency. It would also give the nice bonus of breaking compilation for old code relying on old flags.\nSame applies to the other defines below.",
+      "parentUuid": "2aab216c_9d12797e",
+      "revId": "69e1f3f3129d49716a512c04a025dbecd78f5576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "5b211552_096ec6c7",
         "filename": "src/vnet/interface.h",
         "patchSetId": 4
