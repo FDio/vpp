@@ -123,8 +123,8 @@ do {									\
 
 ip_csum_t (*vnet_incremental_checksum_fp) (ip_csum_t, void *, uword);
 
-static clib_error_t *
-ip_checksum_init (vlib_main_t * vm)
+clib_error_t *
+ip_checksum_init (vlib_main_t *vm)
 {
   vnet_incremental_checksum_fp = _ip_incremental_checksum;
   return 0;

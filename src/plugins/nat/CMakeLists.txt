@@ -139,3 +139,60 @@ add_vpp_plugin(nat64
 
   LINK_LIBRARIES nat
 )
+
+add_vpp_plugin(pnat
+  SOURCES
+  pnat/pnat_node.c
+  pnat/pnat.c
+  pnat/pnat_cli.c
+  pnat/pnat_api.c
+
+  API_FILES
+  pnat/pnat.api
+)
+
+#
+# Disable unit test until 5a48b3b9d8 is fixed
+#
+add_vpp_executable(test_pnat
+  SOURCES
+  pnat/pnat_test.c
+  pnat/pnat_node.c
+  pnat/pnat.c
+  ../../vnet/ip/ip_checksum.c
+  LINK_LIBRARIES vppinfra vlib
+)
+
+if("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.13" AND "${CMAKE_C_COMPILER_ID}" MATCHES "(Apple)?[Cc]lang")
+  set(TARGET_NAME test_pnat)
+  set(COV_SOURCES ${CMAKE_SOURCE_DIR}/plugins/nat/pnat/pnat.c ${CMAKE_SOURCE_DIR}/plugins/nat/pnat/pnat_node.h ${CMAKE_SOURCE_DIR}/plugins/nat/pnat/pnat_node.c)
+
+  message("Building with llvm Code Coverage Tools ${TARGET_NAME}")
+  target_compile_options(${TARGET_NAME} PRIVATE -fprofile-instr-generate -fcoverage-mapping)
+  target_link_options(${TARGET_NAME} PRIVATE -fprofile-instr-generate -fcoverage-mapping)
+  #target_compile_options(${TARGET_NAME} PRIVATE -fsanitize=address)
+  #target_link_options(${TARGET_NAME} PRIVATE -fsanitize=address)
+
+  # llvm-cov
+  add_custom_target(${TARGET_NAME}-ccov-preprocessing
+    COMMAND LLVM_PROFILE_FILE=${TARGET_NAME}.profraw $<TARGET_FILE:${TARGET_NAME}>
+    COMMAND llvm-profdata merge -sparse ${TARGET_NAME}.profraw -o ${TARGET_NAME}.profdata
+    DEPENDS ${TARGET_NAME})
+
+  add_custom_target(${TARGET_NAME}-ccov-show
+    COMMAND llvm-cov show $<TARGET_FILE:${TARGET_NAME}> -instr-profile=${TARGET_NAME}.profdata -show-line-counts-or-regions ${COV_SOURCES}
+    DEPENDS ${TARGET_NAME}-ccov-preprocessing)
+
+  add_custom_target(${TARGET_NAME}-ccov-report
+    COMMAND llvm-cov report -show-functions $<TARGET_FILE:${TARGET_NAME}> -instr-profile=${TARGET_NAME}.profdata ${COV_SOURCES}
+    DEPENDS ${TARGET_NAME}-ccov-preprocessing)
+
+  add_custom_target(${TARGET_NAME}-ccov
+    COMMAND llvm-cov show $<TARGET_FILE:${TARGET_NAME}> -instr-profile=${TARGET_NAME}.profdata -show-line-counts-or-regions -output-dir=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${TARGET_NAME}-llvm-cov -format="html" ${COV_SOURCES}
+    DEPENDS ${TARGET_NAME}-ccov-preprocessing)
+
+  add_custom_command(TARGET ${TARGET_NAME}-ccov POST_BUILD
+    COMMAND ;
+    COMMENT "Open ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${TARGET_NAME}-llvm-cov/index.html in your browser to view the coverage report."
+)
+endif()
