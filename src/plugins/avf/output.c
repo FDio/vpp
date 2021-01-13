@@ -67,7 +67,7 @@ avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
   u32 is_ip6 = b->flags & VNET_BUFFER_F_IS_IP6;
   ASSERT (!is_tcp || !is_udp);
   ASSERT (is_ip4 || is_ip6);
-  i16 l2_hdr_offset = vnet_buffer (b)->l2_hdr_offset;
+  i16 l2_hdr_offset = b->current_data;
   i16 l3_hdr_offset = vnet_buffer (b)->l3_hdr_offset;
   i16 l4_hdr_offset = vnet_buffer (b)->l4_hdr_offset;
   u16 l2_len = l3_hdr_offset - l2_hdr_offset;
@@ -158,7 +158,7 @@ avf_tx_fill_ctx_desc (vlib_main_t * vm, avf_txq_t * txq, avf_tx_desc_t * d,
 
   u16 l234hdr_sz =
     vnet_buffer (b)->l4_hdr_offset -
-    vnet_buffer (b)->l2_hdr_offset + vnet_buffer2 (b)->gso_l4_hdr_sz;
+    b->current_data + vnet_buffer2 (b)->gso_l4_hdr_sz;
   u16 tlen = vlib_buffer_length_in_chain (vm, b) - l234hdr_sz;
   d[0].qword[0] = 0;
   d[0].qword[1] = AVF_TXD_DTYP_CTX | AVF_TXD_CTX_CMD_TSO
