@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "1208cce0_a644ded1",
+        "filename": "extras/scripts/checkstyle.sh",
+        "patchSetId": 5
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-13T08:35:31Z",
+      "side": 1,
+      "message": "i can do that to stop checking the .patch files. i propose this:\n IREGEX\u003d\"-iregex \\\".*\\.(cpp|cc|c\\+\\+|cxx|c|h|hh|hpp|api)\\\"\"\n\nclang-format-diff will also remove the trailing whitespace, so i\u0027ll delete the block that does this.",
+      "parentUuid": "3d4fee1d_4f1dd1c1",
+      "revId": "0e0f2afc9559d73c5eb58fd72c0c8bcdc0c850d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "1251d0d8_6ce1f648",
         "filename": "extras/scripts/checkstyle.sh",
         "patchSetId": 5
@@ -30,6 +48,24 @@
       "writtenOn": "2021-01-12T17:26:52Z",
       "side": 1,
       "message": "I would prefer that we stop using this and just wrap code with /* clang-format off */",
+      "revId": "0e0f2afc9559d73c5eb58fd72c0c8bcdc0c850d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3467d97d_7b66242a",
+        "filename": "extras/scripts/checkstyle.sh",
+        "patchSetId": 5
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-13T08:35:31Z",
+      "side": 1,
+      "message": "but that changes the model from an opt-in to an opt-out. therefore anyone changing a file that previously did not opt in will need to and this opt-out pragma around the whole file, otherwise we end up with the mix of styles.\nthere is the option of having a separate patch to clang-format those file that were previously opt-out, but is that worth the churn?\n\nn.b. if we keep this opt-out we don\u0027t need the regex.",
+      "parentUuid": "1251d0d8_6ce1f648",
       "revId": "0e0f2afc9559d73c5eb58fd72c0c8bcdc0c850d5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
