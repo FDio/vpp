@@ -713,7 +713,7 @@ pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
 
-MAKE_VERIFY_GATE_OS ?= ubuntu-18.04
+MAKE_VERIFY_GATE_OS ?= ubuntu-20.04
 .PHONY: verify
 verify: pkg-verify
 ifeq ($(OS_ID)-$(OS_VERSION_ID),$(MAKE_VERIFY_GATE_OS))
