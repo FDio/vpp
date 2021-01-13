@@ -209,6 +209,21 @@ _vec_resize_will_expand (void *v,
   return 1;
 }
 
+/** \brief Determine if vector will resize with next allocation
+
+    @param V pointer to a vector
+    @param N number of elements to add
+    @return 1 if vector will resize 0 otherwise
+*/
+
+#define vec_resize_will_expand(V, N)                                          \
+  ({                                                                          \
+    word _v (n) = (N);                                                        \
+    word _v (l) = vec_len (V);                                                \
+    _vec_resize_will_expand ((V), _v (n),                                     \
+			     (_v (l) + _v (n)) * sizeof ((V)[0]), 0, 0);      \
+  })
+
 /** \brief Predicate function, says whether the supplied vector is a clib heap
     object (general version).
 

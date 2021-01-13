@@ -140,12 +140,9 @@ int
       /* Trivially OK, and proves that index >= vec_len(...) */
       if (index < vec_len (cm->counters[i]))
 	continue;
-      if (_vec_resize_will_expand
-	  (cm->counters[i],
-	   index - vec_len (cm->counters[i]) /* length_increment */ ,
-	   sizeof (cm->counters[i]) /* data_bytes */ ,
-	   0 /* header_bytes */ ,
-	   CLIB_CACHE_LINE_BYTES /* data_alignment */ ))
+      if (vec_resize_will_expand (cm->counters[i],
+				  index - vec_len (cm->counters[i]) +
+				    1 /* length_increment */))
 	{
 	  vlib_stats_pop_heap (cm, oldheap, index,
 			       3 /*STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED */ );
