@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8d978899_0b442065",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2870,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-01-13T14:15:09Z",
+      "side": 1,
+      "message": "why move this test? I think it could have stayed below",
+      "revId": "2f921c82bcda7954ff57a730348183b581bbe1d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b43aa959_fbb42546",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2875,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-01-13T14:15:09Z",
+      "side": 1,
+      "message": "maybe log debug instead?",
+      "revId": "2f921c82bcda7954ff57a730348183b581bbe1d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "951e61ba_19f03083",
+        "filename": "src/vnet/ipsec/ipsec_tun_in.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 278,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-01-13T14:15:09Z",
+      "side": 1,
+      "message": "wouldn\u0027t it be better to move the vlib_buffer_advance() inside ipsec_ip4_if_no_tunnel() in the IPSEC_PUNT_IP4_NO_SUCH_TUNNEL branch?",
+      "revId": "2f921c82bcda7954ff57a730348183b581bbe1d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
