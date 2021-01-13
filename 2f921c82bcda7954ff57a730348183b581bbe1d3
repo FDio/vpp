@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f225f56b_914f8a86",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2870,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2021-01-13T14:48:03Z",
+      "side": 1,
+      "message": "we need to do the test here as the actual IKE header is just behind the non-ESP marker and we read the header afterwards",
+      "parentUuid": "8d978899_0b442065",
+      "revId": "2f921c82bcda7954ff57a730348183b581bbe1d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b43aa959_fbb42546",
         "filename": "src/plugins/ikev2/ikev2.c",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2021-01-13T14:15:09Z",
       "side": 1,
       "message": "maybe log debug instead?",
+      "revId": "2f921c82bcda7954ff57a730348183b581bbe1d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b1075828_d1c18fa3",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2875,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2021-01-13T14:48:03Z",
+      "side": 1,
+      "message": "removed",
+      "parentUuid": "b43aa959_fbb42546",
       "revId": "2f921c82bcda7954ff57a730348183b581bbe1d3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -50,6 +86,24 @@
       "revId": "2f921c82bcda7954ff57a730348183b581bbe1d3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "293b3e86_83039d47",
+        "filename": "src/vnet/ipsec/ipsec_tun_in.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 278,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2021-01-13T14:48:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "951e61ba_19f03083",
+      "revId": "2f921c82bcda7954ff57a730348183b581bbe1d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
