@@ -1,0 +1,211 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "45576507_f654012d",
+        "filename": "build/external/packages/quicly.mk",
+        "patchSetId": 16
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-01-13T16:34:29Z",
+      "side": 1,
+      "message": "2021",
+      "range": {
+        "startLine": 1,
+        "startChar": 16,
+        "endLine": 1,
+        "endChar": 20
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "029efaea_1e328e10",
+        "filename": "build/external/patches/quicly_0.1.2-vpp/0001-cmake-install.patch",
+        "patchSetId": 16
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-01-13T16:34:29Z",
+      "side": 1,
+      "message": "please remove extraneous whitespace in this file",
+      "range": {
+        "startLine": 8,
+        "startChar": 0,
+        "endLine": 8,
+        "endChar": 1
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e19ca532_b9d242ba",
+        "filename": "src/plugins/quic/CMakeLists.txt",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-01-13T16:34:29Z",
+      "side": 1,
+      "message": "2021",
+      "range": {
+        "startLine": 2,
+        "startChar": 16,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6b80052b_e6970978",
+        "filename": "src/plugins/quic/error.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-01-13T16:34:29Z",
+      "side": 1,
+      "message": "2021",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7339330e_6bc2d2aa",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-01-13T16:34:29Z",
+      "side": 1,
+      "message": "2021",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4a775424_0e006401",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-01-13T16:34:29Z",
+      "side": 1,
+      "message": "2021",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "38748e5d_e985a8dd",
+        "filename": "src/plugins/quic/quic_crypto.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-01-13T16:34:29Z",
+      "side": 1,
+      "message": "2021",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cf29c145_79d65bfb",
+        "filename": "src/plugins/quic/quic_crypto.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-01-13T16:34:29Z",
+      "side": 1,
+      "message": "2021",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "38023769_00f56aaa",
+        "filename": "src/plugins/tlspicotls/pico_vpp_crypto.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-01-13T16:34:29Z",
+      "side": 1,
+      "message": "2021",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
