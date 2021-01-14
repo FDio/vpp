@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3fbc87cd_2f6ea9e5",
+        "filename": "build/external/packages/quicly.mk",
+        "patchSetId": 16
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2021-01-14T14:50:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "45576507_f654012d",
+      "range": {
+        "startLine": 1,
+        "startChar": 16,
+        "endLine": 1,
+        "endChar": 20
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "029efaea_1e328e10",
         "filename": "build/external/patches/quicly_0.1.2-vpp/0001-cmake-install.patch",
         "patchSetId": 16
@@ -36,6 +60,30 @@
       "writtenOn": "2021-01-13T16:34:29Z",
       "side": 1,
       "message": "please remove extraneous whitespace in this file",
+      "range": {
+        "startLine": 8,
+        "startChar": 0,
+        "endLine": 8,
+        "endChar": 1
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e3e319b2_84bbad0a",
+        "filename": "build/external/patches/quicly_0.1.2-vpp/0001-cmake-install.patch",
+        "patchSetId": 16
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2021-01-14T14:50:31Z",
+      "side": 1,
+      "message": "I tried to remove extra whitespaces but this results to a build error when applying the patch",
+      "parentUuid": "029efaea_1e328e10",
       "range": {
         "startLine": 8,
         "startChar": 0,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "18ee7251_3a33ec0e",
+        "filename": "src/plugins/quic/CMakeLists.txt",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2021-01-14T14:50:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e19ca532_b9d242ba",
+      "range": {
+        "startLine": 2,
+        "startChar": 16,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6b80052b_e6970978",
         "filename": "src/plugins/quic/error.c",
         "patchSetId": 16
@@ -91,6 +163,30 @@
       "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bd730862_c06f2b75",
+        "filename": "src/plugins/quic/error.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2021-01-14T14:50:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6b80052b_e6970978",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "ea2b699f_8d8f257e",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2021-01-14T14:50:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7339330e_6bc2d2aa",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4a775424_0e006401",
         "filename": "src/plugins/quic/quic.h",
         "patchSetId": 16
@@ -137,6 +257,30 @@
       "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "08a45963_61653bbf",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2021-01-14T14:50:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4a775424_0e006401",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -163,6 +307,30 @@
     },
     {
       "key": {
+        "uuid": "12f7dc5b_a3eb38a1",
+        "filename": "src/plugins/quic/quic_crypto.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2021-01-14T14:50:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "38748e5d_e985a8dd",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "cf29c145_79d65bfb",
         "filename": "src/plugins/quic/quic_crypto.h",
         "patchSetId": 16
@@ -186,6 +354,30 @@
     },
     {
       "key": {
+        "uuid": "73bfbaf3_267866e5",
+        "filename": "src/plugins/quic/quic_crypto.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2021-01-14T14:50:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cf29c145_79d65bfb",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "38023769_00f56aaa",
         "filename": "src/plugins/tlspicotls/pico_vpp_crypto.c",
         "patchSetId": 16
@@ -206,6 +398,30 @@
       "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8b732588_f88097f8",
+        "filename": "src/plugins/tlspicotls/pico_vpp_crypto.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1788
+      },
+      "writtenOn": "2021-01-14T14:50:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "38023769_00f56aaa",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
