@@ -1669,7 +1669,8 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
       qi = vnet_hw_if_register_rx_queue (vnm, ad->hw_if_index, i,
 					 VNET_HW_IF_RXQ_THREAD_ANY);
 
-      if (ad->flags & AVF_DEVICE_F_RX_INT)
+      if ((ad->flags & AVF_DEVICE_F_RX_INT) &&
+	  (ad->feature_bitmap & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR))
 	{
 	  fi = vlib_pci_get_msix_file_index (vm, ad->pci_dev_handle, i + 1);
 	  vnet_hw_if_set_rx_queue_file_index (vnm, qi, fi);
