@@ -1677,6 +1677,11 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   ret = rte_eal_init (vec_len (conf->eal_init_args),
 		      (char **) conf->eal_init_args);
 
+  /* enable the AVX-512 vPMDs in DPDK */
+  if (clib_cpu_supports_avx512_bitalg ())
+    rte_vect_set_max_simd_bitwidth (RTE_VECT_SIMD_512);
+
+
   /* lazy umount hugepages */
   umount2 ((char *) huge_dir_path, MNT_DETACH);
   rmdir ((char *) huge_dir_path);
