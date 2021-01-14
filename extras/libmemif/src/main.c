@@ -2489,7 +2489,10 @@ memif_tx_burst (memif_conn_handle_t conn, uint16_t qid,
   memif_queue_t *mq = &c->tx_queues[qid];
   memif_ring_t *ring = mq->ring;
   uint16_t mask = (1 << mq->log2_ring_size) - 1;
+  uint32_t offset_mask = c->run_args.buffer_size - 1;
   memif_buffer_t *b0;
+  memif_desc_t *d;
+  int64_t data_offset;
   *tx = 0;
   int err = MEMIF_ERR_SUCCESS;
 
@@ -2512,7 +2515,27 @@ memif_tx_burst (memif_conn_handle_t conn, uint16_t qid,
 	  err = MEMIF_ERR_INVAL_ARG;
 	  goto done;
 	}
-      ring->desc[b0->desc_index & mask].length = b0->len;
+      d = &ring->desc[b0->desc_index & mask];
+      d->length = b0->len;
+      if (!c->args.is_master)
+	{
+	  // reset headroom
+	  d->offset = d->offset - (d->offset & offset_mask);
+	  // calculate offset from user data
+	  data_offset = b0->data - (d->offset + c->regions[d->region].addr);
+	  if (data_offset != 0)
+	    {
+	      /* verify data offset */
+	      if ((data_offset < 0) ||
+		  (data_offset > (d->offset + offset_mask)))
+		{
+		  printf ("%ld\n", data_offset);
+		  err = MEMIF_ERR_INVAL_ARG;
+		  goto done;
+		}
+	      d->offset += data_offset;
+	    }
+	}
 
 #ifdef MEMIF_DBG_SHM
       printf ("offset: %-6d\n", ring->desc[b0->desc_index & mask].offset);
@@ -2605,7 +2628,7 @@ memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
 	  b0->flags |= MEMIF_BUFFER_FLAG_NEXT;
 	  ring->desc[cur_slot & mask].flags &= ~MEMIF_DESC_FLAG_NEXT;
 	}
-/*      b0->offset = ring->desc[cur_slot & mask].offset;*/
+
       b0->queue = mq;
 #ifdef MEMIF_DBG_SHM
       printf ("data: %p\n", b0->data);
