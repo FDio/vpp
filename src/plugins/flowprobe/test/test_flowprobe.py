@@ -13,6 +13,7 @@ from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import tag_run_solo
 from vpp_object import VppObject
 from vpp_pg_interface import CaptureTimeoutError
 from util import ppp
@@ -343,12 +344,9 @@ class MethodHolder(VppTestCase):
         return p
 
 
+@tag_run_solo
 class Flowprobe(MethodHolder):
     """Template verification, timer tests"""
-
-    @classmethod
-    def force_solo(cls):
-        return True
 
     @classmethod
     def setUpClass(cls):
