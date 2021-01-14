@@ -264,6 +264,11 @@ class VppTestCase(unittest.TestCase):
     extra_vpp_plugin_config = []
     logger = null_logger
     vapi_response_timeout = 5
+    """ tags for a test case. They allow to do select different tests.
+    Allowed tags:
+       'solo' = in multithreaded run, run this test after everything completes
+    """
+    test_tags = []
 
     @property
     def packet_infos(self):
@@ -279,9 +284,16 @@ class VppTestCase(unittest.TestCase):
             return 0
 
     @classmethod
+    def has_tag(cls, tag):
+        """ if the test case has a given string tag - return true """
+        if tag in cls.test_tags:
+            return True
+        return False
+
+    @classmethod
     def force_solo(cls):
         """ if the test case class is timing-sensitive - return true """
-        return False
+        return cls.has_tag("solo")
 
     @classmethod
     def instance(cls):

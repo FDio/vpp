@@ -14,10 +14,7 @@ from vpp_papi import VppEnum
 
 class TestMemif(VppTestCase):
     """ Memif Test Case """
-
-    @classmethod
-    def force_solo(cls):
-        return True
+    test_tags = ['solo']
 
     @classmethod
     def setUpClass(cls):

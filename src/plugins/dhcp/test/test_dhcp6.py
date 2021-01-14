@@ -222,10 +222,7 @@ class TestDHCPv6DataPlane(VppTestCase):
 
 class TestDHCPv6IANAControlPlane(VppTestCase):
     """ DHCPv6 IA NA Control Plane Test Case """
-
-    @classmethod
-    def force_solo(cls):
-        return True
+    test_tags = ['solo']
 
     @classmethod
     def setUpClass(cls):

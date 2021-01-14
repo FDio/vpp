@@ -686,10 +686,6 @@ class BFD4TestCase(VppTestCase):
     test_session = None
 
     @classmethod
-    def force_solo(cls):
-        return True
-
-    @classmethod
     def setUpClass(cls):
         super(BFD4TestCase, cls).setUpClass()
         cls.vapi.cli("set log class bfd level debug")
@@ -1496,10 +1492,7 @@ class BFD6TestCase(VppTestCase):
     vpp_clock_offset = None
     vpp_session = None
     test_session = None
-
-    @classmethod
-    def force_solo(cls):
-        return True
+    test_tags = ['solo']
 
     @classmethod
     def setUpClass(cls):
@@ -1711,10 +1704,7 @@ class BFDFIBTestCase(VppTestCase):
 
     vpp_session = None
     test_session = None
-
-    @classmethod
-    def force_solo(cls):
-        return True
+    test_tags = ['solo']
 
     @classmethod
     def setUpClass(cls):
@@ -1903,10 +1893,7 @@ class BFDSHA1TestCase(VppTestCase):
     vpp_clock_offset = None
     vpp_session = None
     test_session = None
-
-    @classmethod
-    def force_solo(cls):
-        return True
+    test_tags = ['solo']
 
     @classmethod
     def setUpClass(cls):
@@ -2137,11 +2124,8 @@ class BFDAuthOnOffTestCase(VppTestCase):
     pg0 = None
     vpp_session = None
     test_session = None
-
-    @classmethod
-    def force_solo(cls):
-        return True
-
+    test_tags = ['solo']
+    
     @classmethod
     def setUpClass(cls):
         super(BFDAuthOnOffTestCase, cls).setUpClass()
@@ -2350,10 +2334,7 @@ class BFDAuthOnOffTestCase(VppTestCase):
 class BFDCLITestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (CLI) """
     pg0 = None
-
-    @classmethod
-    def force_solo(cls):
-        return True
+    test_tags = ['solo']
 
     @classmethod
     def setUpClass(cls):

@@ -164,10 +164,7 @@ class TestIPv6ND(VppTestCase):
 
 class TestIPv6(TestIPv6ND):
     """ IPv6 Test Case """
-
-    @classmethod
-    def force_solo(cls):
-        return True
+    test_tags = ['solo']
 
     @classmethod
     def setUpClass(cls):
