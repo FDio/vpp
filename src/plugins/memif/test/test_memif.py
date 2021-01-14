@@ -5,6 +5,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, ICMP
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import tag_run_solo
 from remote_test import RemoteClass, RemoteVppTestCase
 from vpp_memif import remove_all_memif_vpp_config, \
     VppSocketFilename, VppMemif
@@ -12,12 +13,9 @@ from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import VppEnum
 
 
+@tag_run_solo
 class TestMemif(VppTestCase):
     """ Memif Test Case """
-
-    @classmethod
-    def force_solo(cls):
-        return True
 
     @classmethod
     def setUpClass(cls):

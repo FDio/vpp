@@ -19,7 +19,7 @@ from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
     in6_mactoifaceid
 from six import moves
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, tag_run_solo
 from util import ppp, ip6_normalize, mk_ll_addr
 from vpp_papi import VppEnum
 from vpp_ip import DpoProto, VppIpPuntPolicer, VppIpPuntRedirect
@@ -162,12 +162,9 @@ class TestIPv6ND(VppTestCase):
         self.assertEqual(ip.dst, dip)
 
 
+@tag_run_solo
 class TestIPv6(TestIPv6ND):
     """ IPv6 Test Case """
-
-    @classmethod
-    def force_solo(cls):
-        return True
 
     @classmethod
     def setUpClass(cls):

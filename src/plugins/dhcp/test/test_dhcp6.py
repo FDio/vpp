@@ -220,12 +220,9 @@ class TestDHCPv6DataPlane(VppTestCase):
         self.vapi.dhcp6_clients_enable_disable(enable=0)
 
 
+@tag_run_solo
 class TestDHCPv6IANAControlPlane(VppTestCase):
     """ DHCPv6 IA NA Control Plane Test Case """
-
-    @classmethod
-    def force_solo(cls):
-        return True
 
     @classmethod
     def setUpClass(cls):

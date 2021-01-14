@@ -337,7 +337,7 @@ def run_forked(testcase_suites):
     while total_test_runners < concurrent_tests:
         if testcase_suites:
             a_suite = testcase_suites.pop(0)
-            if a_suite.force_solo:
+            if a_suite.is_tagged_run_solo:
                 solo_testcase_suites.append(a_suite)
                 continue
             wrapped_testcase_suite = TestCaseWrapper(a_suite,
@@ -473,7 +473,7 @@ def run_forked(testcase_suites):
                         results.append(TestResult(testcase_suites.pop(0)))
                 elif testcase_suites:
                     a_testcase = testcase_suites.pop(0)
-                    while a_testcase and a_testcase.force_solo:
+                    while a_testcase and a_testcase.is_tagged_run_solo:
                         solo_testcase_suites.append(a_testcase)
                         if testcase_suites:
                             a_testcase = testcase_suites.pop(0)
@@ -521,10 +521,10 @@ class SplitToSuitesCallback:
             self.suite_name = file_name + cls.__name__
             if self.suite_name not in self.suites:
                 self.suites[self.suite_name] = unittest.TestSuite()
-                self.suites[self.suite_name].force_solo = False
+                self.suites[self.suite_name].is_tagged_run_solo = False
             self.suites[self.suite_name].addTest(test_method)
-            if test_method.force_solo():
-                self.suites[self.suite_name].force_solo = True
+            if test_method.is_tagged_run_solo():
+                self.suites[self.suite_name].is_tagged_run_solo = True
 
         else:
             self.filtered.addTest(test_method)
