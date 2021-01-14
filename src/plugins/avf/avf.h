@@ -372,6 +372,17 @@ avf_reg_flush (avf_device_t * ad)
   asm volatile ("":::"memory");
 }
 
+static inline void
+avf_tail_write (volatile u32 *addr, u32 val)
+{
+#ifdef __MOVDIRI__
+  _mm_sfence ();
+  _directstoreu_u32 ((void *) addr, val);
+#else
+  clib_atomic_store_rel_n (addr, val);
+#endif
+}
+
 static_always_inline int
 avf_rxd_is_not_eop (avf_rx_desc_t * d)
 {
