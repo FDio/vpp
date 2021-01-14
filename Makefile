@@ -130,7 +130,7 @@ ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
 	RPM_DEPENDS += yum-utils
-	RPM_DEPENDS += compat-openssl10
+	RPM_DEPENDS += compat-openssl10 openssl-devel
 	RPM_DEPENDS += python2-devel python36-devel python3-ply
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += cmake
