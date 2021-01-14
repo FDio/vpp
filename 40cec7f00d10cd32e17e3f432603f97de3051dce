@@ -96,6 +96,30 @@
     },
     {
       "key": {
+        "uuid": "8c2ebdd1_7aaebb5f",
+        "filename": "build/external/patches/quicly_0.1.2-vpp/0001-cmake-install.patch",
+        "patchSetId": 16
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-01-14T15:39:19Z",
+      "side": 1,
+      "message": "ok, thanks for trying to fix it.\nI didn\u0027t notice this was a patch so it wasn\u0027t the best review comment...",
+      "parentUuid": "e3e319b2_84bbad0a",
+      "range": {
+        "startLine": 8,
+        "startChar": 0,
+        "endLine": 8,
+        "endChar": 1
+      },
+      "revId": "40cec7f00d10cd32e17e3f432603f97de3051dce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e19ca532_b9d242ba",
         "filename": "src/plugins/quic/CMakeLists.txt",
         "patchSetId": 16
