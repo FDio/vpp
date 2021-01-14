@@ -592,6 +592,10 @@ class IkePeer(VppTestCase):
         self.vapi.cli('ikev2 set logging level 4')
         self.vapi.cli('event-lo clear')
 
+    def assert_counter(self, count, name, version='ip4'):
+        node_name = '/err/ikev2-%s/' % version + name
+        self.assertEqual(count, self.statistics.get_err_counter(node_name))
+
     def create_rekey_request(self):
         sa, first_payload = self.generate_auth_payload(is_rekey=True)
         header = ikev2.IKEv2(
@@ -1317,11 +1321,19 @@ class TemplateResponder(IkePeer):
         self.sa.child_sas[0].rspi = prop.SPI
         self.sa.calc_child_keys()
 
+    IKE_NODE_SUFFIX = 'ip4'
+
+    def verify_counters(self):
+        self.assert_counter(2, 'processed', self.IKE_NODE_SUFFIX)
+        self.assert_counter(1, 'exchange_sa_req', self.IKE_NODE_SUFFIX)
+        self.assert_counter(1, 'ike_auth_req', self.IKE_NODE_SUFFIX)
+
     def test_responder(self):
         self.send_sa_init_req()
         self.send_sa_auth()
         self.verify_ipsec_sas()
         self.verify_ike_sas()
+        self.verify_counters()
 
 
 class Ikev2Params(object):
@@ -1624,6 +1636,8 @@ class TestApi(VppTestCase):
 class TestResponderBehindNAT(TemplateResponder, Ikev2Params):
     """ test responder - responder behind NAT """
 
+    IKE_NODE_SUFFIX = 'ip4-natt'
+
     def config_tc(self):
         self.config_params({'r_natt': True})
 
@@ -1782,6 +1796,9 @@ class TestInitiatorDelSAFromResponder(TemplateInitiator, Ikev2Params):
 
 class TestResponderInitBehindNATT(TemplateResponder, Ikev2Params):
     """ test ikev2 responder - initiator behind NAT """
+
+    IKE_NODE_SUFFIX = 'ip4-natt'
+
     def config_tc(self):
         self.config_params(
                 {'i_natt': True})
@@ -1875,6 +1892,7 @@ class Test_IKE_AES_CBC_128_SHA256_128_MODP2048_ESP_AES_CBC_192_SHA_384_192\
 
 class TestAES_CBC_128_SHA256_128_MODP3072_ESP_AES_GCM_16\
         (TemplateResponder, Ikev2Params):
+
     """
     IKE:AES_CBC_128_SHA256_128,DH=modp3072 ESP:AES_GCM_16
     """
@@ -1891,6 +1909,9 @@ class Test_IKE_AES_GCM_16_256(TemplateResponder, Ikev2Params):
     """
     IKE:AES_GCM_16_256
     """
+
+    IKE_NODE_SUFFIX = 'ip6'
+
     def config_tc(self):
         self.config_params({
             'del_sa_from_responder': True,
@@ -1920,6 +1941,7 @@ class TestInitiatorKeepaliveMsg(TestInitiatorPsk):
         self.assertEqual(ih.id, self.sa.msg_id)
         plain = self.sa.hmac_and_decrypt(ih)
         self.assertEqual(plain, b'')
+        self.assert_counter(1, 'keepalive', 'ip4')
 
     def test_initiator(self):
         super(TestInitiatorKeepaliveMsg, self).test_initiator()
@@ -1935,10 +1957,6 @@ class TestMalformedMessages(TemplateResponder, Ikev2Params):
     def config_tc(self):
         self.config_params()
 
-    def assert_counter(self, count, name, version='ip4'):
-        node_name = '/err/ikev2-%s/' % version + name
-        self.assertEqual(count, self.statistics.get_err_counter(node_name))
-
     def create_ike_init_msg(self, length=None, payload=None):
         msg = ikev2.IKEv2(length=length, init_SPI='\x11' * 8,
                           flags='Initiator', exch_type='IKE_SA_INIT')
@@ -1950,13 +1968,13 @@ class TestMalformedMessages(TemplateResponder, Ikev2Params):
     def verify_bad_packet_length(self):
         ike_msg = self.create_ike_init_msg(length=0xdead)
         self.send_and_assert_no_replies(self.pg0, ike_msg * self.pkt_count)
-        self.assert_counter(self.pkt_count, 'Bad packet length')
+        self.assert_counter(self.pkt_count, 'bad_lengt')
 
     def verify_bad_sa_payload_length(self):
         p = ikev2.IKEv2_payload_SA(length=0xdead)
         ike_msg = self.create_ike_init_msg(payload=p)
         self.send_and_assert_no_replies(self.pg0, ike_msg * self.pkt_count)
-        self.assert_counter(self.pkt_count, 'Malformed packet')
+        self.assert_counter(self.pkt_count, 'malformed_packet')
 
     def test_responder(self):
         self.pkt_count = 254
