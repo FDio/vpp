@@ -21,6 +21,7 @@ from threading import Thread, Event
 from inspect import getdoc, isclass
 from traceback import format_exception
 from logging import FileHandler, DEBUG, Formatter
+from enum import Enum
 
 import scapy.compat
 from scapy.packet import Raw
@@ -254,6 +255,15 @@ class KeepAliveReporter(object):
 
         self.pipe.send((desc, test.vpp_bin, test.tempdir, test.vpp.pid))
 
+class TestCaseTag(Enum):
+    RUN_SOLO = 1
+
+def tag_run_solo(cls):
+    try:
+        cls.test_tags.append(TestCaseTag.RUN_SOLO)
+    except AttributeError:
+        cls.test_tags = [ TestCaseTag.RUN_SOLO ]
+    return cls
 
 class VppTestCase(unittest.TestCase):
     """This subclass is a base class for VPP test cases that are implemented as
@@ -264,6 +274,10 @@ class VppTestCase(unittest.TestCase):
     extra_vpp_plugin_config = []
     logger = null_logger
     vapi_response_timeout = 5
+    """ tags for a test case. They allow to do select different tests.
+    Allowed tags:
+       'solo' = in multithreaded run, run this test after everything completes
+    """
 
     @property
     def packet_infos(self):
@@ -279,9 +293,18 @@ class VppTestCase(unittest.TestCase):
             return 0
 
     @classmethod
+    def has_tag(cls, tag):
+        """ if the test case has a given tag - return true """
+        try:
+            return tag in cls.test_tags
+        except AttributeError:
+            pass
+        return False
+
+    @classmethod
     def force_solo(cls):
         """ if the test case class is timing-sensitive - return true """
-        return False
+        return cls.has_tag(TestCaseTag.RUN_SOLO)
 
     @classmethod
     def instance(cls):
