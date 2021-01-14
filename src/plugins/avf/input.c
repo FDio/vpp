@@ -125,7 +125,7 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
       n_alloc -= 8;
     }
 
-  clib_atomic_store_rel_n (rxq->qrx_tail, slot);
+  avf_tail_write (rxq->qrx_tail, slot);
 }
 
 

@@ -441,7 +441,7 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
     }
 
   txq->next = next & mask;
-  clib_atomic_store_rel_n (txq->qtx_tail, txq->next);
+  avf_tail_write (txq->qtx_tail, txq->next);
   txq->n_enqueued += n_desc;
   return n_packets - n_packets_left;
 }
