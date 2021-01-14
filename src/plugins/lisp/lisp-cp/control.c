@@ -106,8 +106,9 @@ ip_interface_get_first_address (ip_lookup_main_t * lm, u32 sw_if_index,
 }
 
 int
-ip_interface_get_first_ip_address (lisp_cp_main_t * lcm, u32 sw_if_index,
-				   u8 version, ip_address_t * result)
+ip_interface_get_first_ip_address (lisp_cp_main_t *lcm, u32 sw_if_index,
+				   ip_address_family_t version,
+				   ip_address_t *result)
 {
   ip_lookup_main_t *lm;
   void *addr;
@@ -149,7 +150,7 @@ ip_fib_get_first_egress_ip_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst,
   u32 si;
   ip_lookup_main_t *lm;
   void *addr = 0;
-  u8 ipver;
+  ip_address_family_t ipver;
 
   ASSERT (result != 0);
 
