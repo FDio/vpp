@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "02060f24_5eb60baa",
+        "filename": "src/vlib/counter.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-01-14T11:18:48Z",
+      "side": 1,
+      "message": "The vector isn\u0027t necessarily reallocated just because it grows. Could you make this even more efficient with _vec_resize_will_expand() instead?\nAssuming that there are no other side-effects I haven\u0027t thought about, about not triggering a client retry when this happens...",
+      "revId": "2f0d8477b6c979d572d78e91231d10e422175a82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
