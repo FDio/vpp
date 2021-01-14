@@ -84,7 +84,7 @@ define memif_create
   bool no_zero_copy; /* disable zero copy */
   vl_api_mac_address_t hw_addr; /* optional, randomly generated if zero */
   string secret[24]; /* optional, default is "", max length 24 */
-  option vat_help = "[id <id>] [socket-id <id>] [ring_size <size>] [buffer_size <size>] [hw_addr <mac_address>] [secret <string>] [mode ip] <master|slave>";
+  option vat_help = "[id <id>] [socket-id <id>] [ring_size <size>] [buffer_size <size>] [hw_addr <mac_address>] [secret <string>] [mode ip] <master|slave> [rx-queues <number>] [tx-queues <number>]";
 };
 
 /** \brief Create memory interface response
