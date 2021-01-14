@@ -496,6 +496,68 @@ autoreply define ikev2_profile_set_liveness
   option status="in_progress";
 };
 
+counters ikev2 {
+  processed {
+    severity info;
+    type counter64;
+    units "packets";
+    description "packets processed";
+  };
+  ike_sa_init_retransmit {
+    severity info;
+    type counter64;
+    units "packets";
+    description "IKE SA INIT retransmit";
+  };
+  ike_sa_init_ignore {
+    severity error;
+    type counter64;
+    units "packets";
+    description "IKE_SA_INIT ignore (IKE SA already auth)";
+  };
+  ike_req_retransmit {
+    severity error;
+    type counter64;
+    units "packets";
+    description "IKE request retransmit";
+  };
+  ike_req_ignore {
+    severity error;
+    type counter64;
+    units "packets";
+    description "IKE request ignore (old msgid)";
+  };
+  not_ikev2 {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Non IKEv2 packets received";
+  };
+  bad_length {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Bad packet length";
+  };
+  malformed_packet {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Malformed packet";
+  };
+  no_buff_space {
+    severity error;
+    type counter64;
+    units "packets";
+    description "No buffer space";
+  };
+};
+paths {
+  "/err/ikev2-ip4" "ike";
+  "/err/ikev2-ip6" "ike";
+  "/err/ikev2-ip4-natt" "ike";
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

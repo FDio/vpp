@@ -28,6 +28,7 @@
 #include <plugins/ikev2/ikev2_priv.h>
 #include <openssl/sha.h>
 #include <vnet/ipsec/ipsec_punt.h>
+#include <plugins/ikev2/ikev2.api_enum.h>
 
 #define IKEV2_LIVENESS_RETRIES 3
 #define IKEV2_LIVENESS_PERIOD_CHECK 30
@@ -91,31 +92,6 @@ format_ikev2_gen_sa_error (u8 * s, va_list * args)
     }
   return s;
 }
-
-#define foreach_ikev2_error \
-_(PROCESSED, "IKEv2 packets processed") \
-_(IKE_SA_INIT_RETRANSMIT, "IKE_SA_INIT retransmit ") \
-_(IKE_SA_INIT_IGNORE, "IKE_SA_INIT ignore (IKE SA already auth)") \
-_(IKE_REQ_RETRANSMIT, "IKE request retransmit") \
-_(IKE_REQ_IGNORE, "IKE request ignore (old msgid)") \
-_(NOT_IKEV2, "Non IKEv2 packets received") \
-_(BAD_LENGTH, "Bad packet length") \
-_(MALFORMED_PACKET, "Malformed packet") \
-_(NO_BUFF_SPACE, "No buffer space")
-
-typedef enum
-{
-#define _(sym,str) IKEV2_ERROR_##sym,
-  foreach_ikev2_error
-#undef _
-    IKEV2_N_ERROR,
-} ikev2_error_t;
-
-static char *ikev2_error_strings[] = {
-#define _(sym,string) string,
-  foreach_ikev2_error
-#undef _
-};
 
 typedef enum
 {
@@ -3351,8 +3327,8 @@ VLIB_REGISTER_NODE (ikev2_node_ip4,static) = {
   .format_trace = format_ikev2_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(ikev2_error_strings),
-  .error_strings = ikev2_error_strings,
+  .n_errors = IKEV2_N_ERROR,
+  .error_counters = ikev2_error_counters,
 
   .n_next_nodes = IKEV2_IP4_N_NEXT,
   .next_nodes = {
@@ -3368,8 +3344,8 @@ VLIB_REGISTER_NODE (ikev2_node_ip4_natt,static) = {
   .format_trace = format_ikev2_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(ikev2_error_strings),
-  .error_strings = ikev2_error_strings,
+  .n_errors = IKEV2_N_ERROR,
+  .error_counters = ikev2_error_counters,
 
   .n_next_nodes = IKEV2_IP4_N_NEXT,
   .next_nodes = {
@@ -3385,8 +3361,8 @@ VLIB_REGISTER_NODE (ikev2_node_ip6,static) = {
   .format_trace = format_ikev2_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(ikev2_error_strings),
-  .error_strings = ikev2_error_strings,
+  .n_errors = IKEV2_N_ERROR,
+  .error_counters = ikev2_error_counters,
 
   .n_next_nodes = IKEV2_IP6_N_NEXT,
   .next_nodes = {
