@@ -345,10 +345,7 @@ class MethodHolder(VppTestCase):
 
 class Flowprobe(MethodHolder):
     """Template verification, timer tests"""
-
-    @classmethod
-    def force_solo(cls):
-        return True
+    test_tags = ['solo']
 
     @classmethod
     def setUpClass(cls):
