@@ -28,6 +28,7 @@
 #include <plugins/ikev2/ikev2_priv.h>
 #include <openssl/sha.h>
 #include <vnet/ipsec/ipsec_punt.h>
+#include <plugins/ikev2/ikev2.api_enum.h>
 
 #define IKEV2_LIVENESS_RETRIES 3
 #define IKEV2_LIVENESS_PERIOD_CHECK 30
@@ -48,6 +49,14 @@ typedef struct
   u32 next_index;
   u32 sw_if_index;
 } ikev2_trace_t;
+
+typedef struct
+{
+  u16 n_keepalives;
+  u16 n_rekey_req;
+  u16 n_exchange_sa_req;
+  u16 n_ike_auth_req;
+} ikev2_stats_t;
 
 static u8 *
 format_ikev2_trace (u8 * s, va_list * args)
@@ -91,31 +100,6 @@ format_ikev2_gen_sa_error (u8 * s, va_list * args)
     }
   return s;
 }
-
-#define foreach_ikev2_error \
-_(PROCESSED, "IKEv2 packets processed") \
-_(IKE_SA_INIT_RETRANSMIT, "IKE_SA_INIT retransmit ") \
-_(IKE_SA_INIT_IGNORE, "IKE_SA_INIT ignore (IKE SA already auth)") \
-_(IKE_REQ_RETRANSMIT, "IKE request retransmit") \
-_(IKE_REQ_IGNORE, "IKE request ignore (old msgid)") \
-_(NOT_IKEV2, "Non IKEv2 packets received") \
-_(BAD_LENGTH, "Bad packet length") \
-_(MALFORMED_PACKET, "Malformed packet") \
-_(NO_BUFF_SPACE, "No buffer space")
-
-typedef enum
-{
-#define _(sym,str) IKEV2_ERROR_##sym,
-  foreach_ikev2_error
-#undef _
-    IKEV2_N_ERROR,
-} ikev2_error_t;
-
-static char *ikev2_error_strings[] = {
-#define _(sym,string) string,
-  foreach_ikev2_error
-#undef _
-};
 
 typedef enum
 {
@@ -2264,8 +2248,8 @@ ikev2_delete_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 }
 
 static u32
-ikev2_generate_message (vlib_buffer_t * b, ikev2_sa_t * sa,
-			ike_header_t * ike, void *user, udp_header_t * udp)
+ikev2_generate_message (vlib_buffer_t *b, ikev2_sa_t *sa, ike_header_t *ike,
+			void *user, udp_header_t *udp, ikev2_stats_t *stats)
 {
   ikev2_main_t *km = &ikev2_main;
   u16 buffer_data_size = vlib_buffer_get_default_data_size (km->vlib_main);
@@ -2448,7 +2432,15 @@ ikev2_generate_message (vlib_buffer_t * b, ikev2_sa_t * sa,
 	  vec_free (data);
 	  sa->unsupported_cp = 0;
 	}
-      /* else send empty response */
+      else
+	/* else send empty response */
+	{
+	  if (ike_hdr_is_response (ike))
+	    {
+	      ASSERT (stats != 0);
+	      stats->n_keepalives++;
+	    }
+	}
     }
   else if (ike->exchange == IKEV2_EXCHANGE_CREATE_CHILD_SA)
     {
@@ -2833,6 +2825,19 @@ ikev2_generate_sa_init_data_and_log (ikev2_sa_t * sa)
     ikev2_elog_error (IKEV2_GENERATE_SA_INIT_OK_ERR_UNSUPP_STR);
 }
 
+static void
+ikev2_update_stats (vlib_main_t *vm, u32 node_index, ikev2_stats_t *s)
+{
+  vlib_node_increment_counter (vm, node_index, IKEV2_ERROR_KEEPALIVE,
+			       s->n_keepalives);
+  vlib_node_increment_counter (vm, node_index, IKEV2_ERROR_REKEY_REQ,
+			       s->n_rekey_req);
+  vlib_node_increment_counter (vm, node_index, IKEV2_ERROR_EXCHANGE_SA_REQ,
+			       s->n_exchange_sa_req);
+  vlib_node_increment_counter (vm, node_index, IKEV2_ERROR_IKE_AUTH_REQ,
+			       s->n_ike_auth_req);
+}
+
 static_always_inline uword
 ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 		     vlib_frame_t *frame, u8 is_ip4, u8 natt)
@@ -2842,8 +2847,10 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
   ikev2_main_per_thread_data_t *ptd = ikev2_get_per_thread_data ();
+  ikev2_stats_t _stats, *stats = &_stats;
   int res;
 
+  clib_memset_u16 (stats, 0, sizeof (stats[0]) / sizeof (u16));
   from = vlib_frame_vector_args (frame);
   vlib_get_buffers (vm, from, bufs, n_left);
   b = bufs;
@@ -2925,6 +2932,7 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  if (ike_hdr_is_initiator (ike0))
 	    {
+	      stats->n_exchange_sa_req++;
 	      if (ike0->rspi == 0)
 		{
 		  if (is_ip4)
@@ -2972,7 +2980,8 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 		      || sa0->state == IKEV2_STATE_NOTIFY_AND_DELETE)
 		    {
 		      ike0->flags = IKEV2_HDR_FLAG_RESPONSE;
-		      slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
+		      slen =
+			ikev2_generate_message (b0, sa0, ike0, 0, udp0, stats);
 		      if (~0 == slen)
 			vlib_node_increment_counter (vm, node->node_index,
 						     IKEV2_ERROR_NO_BUFF_SPACE,
@@ -3023,8 +3032,8 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 			  ike0->msgid =
 			    clib_net_to_host_u32 (sai->last_init_msg_id);
 			  sa0->last_init_msg_id = sai->last_init_msg_id + 1;
-			  slen =
-			    ikev2_generate_message (b0, sa0, ike0, 0, udp0);
+			  slen = ikev2_generate_message (b0, sa0, ike0, 0,
+							 udp0, stats);
 			  if (~0 == slen)
 			    vlib_node_increment_counter (vm,
 							 node->node_index,
@@ -3095,8 +3104,10 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 		}
 	      else
 		{
+		  stats->n_ike_auth_req++;
 		  ike0->flags = IKEV2_HDR_FLAG_RESPONSE;
-		  slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
+		  slen =
+		    ikev2_generate_message (b0, sa0, ike0, 0, udp0, stats);
 		  if (~0 == slen)
 		    vlib_node_increment_counter (vm, node->node_index,
 						 IKEV2_ERROR_NO_BUFF_SPACE,
@@ -3168,7 +3179,8 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      if (ike_hdr_is_request (ike0))
 		{
 		  ike0->flags = IKEV2_HDR_FLAG_RESPONSE;
-		  slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
+		  slen =
+		    ikev2_generate_message (b0, sa0, ike0, 0, udp0, stats);
 		  if (~0 == slen)
 		    vlib_node_increment_counter (vm, node->node_index,
 						 IKEV2_ERROR_NO_BUFF_SPACE,
@@ -3228,8 +3240,10 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    }
 		  else
 		    {
+		      stats->n_rekey_req++;
 		      ike0->flags = IKEV2_HDR_FLAG_RESPONSE;
-		      slen = ikev2_generate_message (b0, sa0, ike0, 0, udp0);
+		      slen =
+			ikev2_generate_message (b0, sa0, ike0, 0, udp0, stats);
 		      if (~0 == slen)
 			vlib_node_increment_counter (vm, node->node_index,
 						     IKEV2_ERROR_NO_BUFF_SPACE,
@@ -3318,6 +3332,7 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
       b += 1;
     }
 
+  ikev2_update_stats (vm, node->node_index, stats);
   vlib_node_increment_counter (vm, node->node_index,
 			       IKEV2_ERROR_PROCESSED, frame->n_vectors);
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
@@ -3351,8 +3366,8 @@ VLIB_REGISTER_NODE (ikev2_node_ip4,static) = {
   .format_trace = format_ikev2_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(ikev2_error_strings),
-  .error_strings = ikev2_error_strings,
+  .n_errors = IKEV2_N_ERROR,
+  .error_counters = ikev2_error_counters,
 
   .n_next_nodes = IKEV2_IP4_N_NEXT,
   .next_nodes = {
@@ -3368,8 +3383,8 @@ VLIB_REGISTER_NODE (ikev2_node_ip4_natt,static) = {
   .format_trace = format_ikev2_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(ikev2_error_strings),
-  .error_strings = ikev2_error_strings,
+  .n_errors = IKEV2_N_ERROR,
+  .error_counters = ikev2_error_counters,
 
   .n_next_nodes = IKEV2_IP4_N_NEXT,
   .next_nodes = {
@@ -3385,8 +3400,8 @@ VLIB_REGISTER_NODE (ikev2_node_ip6,static) = {
   .format_trace = format_ikev2_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(ikev2_error_strings),
-  .error_strings = ikev2_error_strings,
+  .n_errors = IKEV2_N_ERROR,
+  .error_counters = ikev2_error_counters,
 
   .n_next_nodes = IKEV2_IP6_N_NEXT,
   .next_nodes = {
@@ -3722,7 +3737,7 @@ ikev2_initiate_delete_ike_sa_internal (vlib_main_t * vm,
       ike0->flags = 0;
       ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id);
       sa->last_init_msg_id += 1;
-      len = ikev2_generate_message (b0, sa, ike0, 0, 0);
+      len = ikev2_generate_message (b0, sa, ike0, 0, 0, 0);
       if (~0 == len)
 	return;
 
@@ -4392,7 +4407,7 @@ ikev2_delete_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   sa->del->spi = csa->i_proposals->spi;
   ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id);
   sa->last_init_msg_id += 1;
-  len = ikev2_generate_message (b0, sa, ike0, 0, 0);
+  len = ikev2_generate_message (b0, sa, ike0, 0, 0, 0);
   if (~0 == len)
     return;
 
@@ -4518,7 +4533,7 @@ ikev2_rekey_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   RAND_bytes ((u8 *) & proposals[0].spi, sizeof (proposals[0].spi));
   rekey->spi = proposals[0].spi;
   rekey->ispi = csa->i_proposals->spi;
-  len = ikev2_generate_message (b0, sa, ike0, proposals, 0);
+  len = ikev2_generate_message (b0, sa, ike0, proposals, 0, 0);
   if (~0 == len)
     return;
 
@@ -4972,7 +4987,7 @@ ikev2_send_informational_request (ikev2_sa_t * sa)
   ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id);
   ike0->flags = 0;
   sa->last_init_msg_id += 1;
-  len = ikev2_generate_message (b0, sa, ike0, 0, 0);
+  len = ikev2_generate_message (b0, sa, ike0, 0, 0, 0);
   if (~0 == len)
     return;
 
