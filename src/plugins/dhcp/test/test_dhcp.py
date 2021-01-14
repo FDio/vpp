@@ -6,6 +6,7 @@ import struct
 import six
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import tag_run_solo
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import find_route, VppIpTable
 from util import mk_ll_addr
@@ -32,12 +33,9 @@ DHCP6_CLIENT_PORT = 547
 DHCP6_SERVER_PORT = 546
 
 
+@tag_run_solo
 class TestDHCP(VppTestCase):
     """ DHCP Test Case """
-
-    @classmethod
-    def force_solo(cls):
-        return True
 
     @classmethod
     def setUpClass(cls):
