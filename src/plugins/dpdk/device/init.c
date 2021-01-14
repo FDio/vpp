@@ -30,6 +30,7 @@
 #include <vlib/vmbus/vmbus.h>
 
 #include <rte_ring.h>
+#include <rte_vect.h>
 
 #include <stdio.h>
 #include <stdlib.h>
