@@ -2792,8 +2792,8 @@ ikev2_rewrite_v4_addrs (ikev2_sa_t * sa, ip4_header_t * ih)
 }
 
 static_always_inline void
-ikev2_set_ip_address (ikev2_sa_t * sa, const void *iaddr,
-		      const void *raddr, const int af)
+ikev2_set_ip_address (ikev2_sa_t *sa, const void *iaddr, const void *raddr,
+		      const ip_address_family_t af)
 {
   ip_address_set (&sa->raddr, raddr, af);
   ip_address_set (&sa->iaddr, iaddr, af);

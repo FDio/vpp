@@ -1265,7 +1265,7 @@ gid_address_parse (u8 * offset, gid_address_t * a)
 }
 
 void
-gid_address_ip_set (gid_address_t * dst, void *src, u8 version)
+gid_address_ip_set (gid_address_t *dst, void *src, ip_address_family_t version)
 {
   gid_address_ippref_len (dst) = ip_address_max_len (version);
   ip_address_set (&gid_address_ip (dst), src, version);
