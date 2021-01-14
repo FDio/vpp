@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a06b6ece_3b2e2731",
+        "filename": "src/vlib/counter.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2021-01-14T16:57:39Z",
+      "side": 1,
+      "message": "If you prefer, I can also combine vec_len() and vec_resize_will_expand() in a single macro, for example vec_validate_will_expand(). That would further simplify the code.",
+      "revId": "855a31c79a4083b2b50670818fe112dfbcf509bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
