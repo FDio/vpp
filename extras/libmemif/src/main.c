@@ -2340,6 +2340,7 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
       saved_next_buf = mq->next_buf;
 
       b0->desc_index = mq->next_buf;
+      b0->data_offset = 0;
       ring->desc[mq->next_buf & mask].flags = 0;
 
       /* slave can produce buffer with original length */
@@ -2489,7 +2490,9 @@ memif_tx_burst (memif_conn_handle_t conn, uint16_t qid,
   memif_queue_t *mq = &c->tx_queues[qid];
   memif_ring_t *ring = mq->ring;
   uint16_t mask = (1 << mq->log2_ring_size) - 1;
+  uint32_t offset_mask = c->run_args.buffer_size - 1;
   memif_buffer_t *b0;
+  memif_desc_t *d;
   *tx = 0;
   int err = MEMIF_ERR_SUCCESS;
 
@@ -2512,7 +2515,10 @@ memif_tx_burst (memif_conn_handle_t conn, uint16_t qid,
 	  err = MEMIF_ERR_INVAL_ARG;
 	  goto done;
 	}
-      ring->desc[b0->desc_index & mask].length = b0->len;
+      d = &ring->desc[b0->desc_index & mask];
+      d->length = b0->len;
+      if (!c->args.is_master)
+	d->offset = d->offset + b0->data_offset;
 
 #ifdef MEMIF_DBG_SHM
       printf ("offset: %-6d\n", ring->desc[b0->desc_index & mask].offset);
@@ -2594,6 +2600,7 @@ memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
       b0->desc_index = cur_slot;
       b0->data = memif_get_buffer (c, ring, cur_slot & mask);
       b0->len = ring->desc[cur_slot & mask].length;
+      b0->data_offset = 0;
       /* slave resets buffer length */
       if (c->args.is_master == 0)
 	{
@@ -2605,7 +2612,7 @@ memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
 	  b0->flags |= MEMIF_BUFFER_FLAG_NEXT;
 	  ring->desc[cur_slot & mask].flags &= ~MEMIF_DESC_FLAG_NEXT;
 	}
-/*      b0->offset = ring->desc[cur_slot & mask].offset;*/
+
       b0->queue = mq;
 #ifdef MEMIF_DBG_SHM
       printf ("data: %p\n", b0->data);

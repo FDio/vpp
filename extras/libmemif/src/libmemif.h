@@ -328,6 +328,7 @@ typedef struct
 /** next buffer present (chained buffers) */
 #define MEMIF_BUFFER_FLAG_NEXT (1 << 0)
   uint8_t flags;
+  uint32_t data_offset;
   void *data;
 } memif_buffer_t;
 /** @} */
