@@ -10,7 +10,7 @@ class TestUtil (unittest.TestCase):
     """ Test framework utility tests """
 
     @classmethod
-    def force_solo(cls):
+    def is_tagged_run_solo(cls):
         """ if the test case class is timing-sensitive - return true """
         return False
 

@@ -3,6 +3,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
+from framework import tag_run_solo
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
@@ -117,12 +118,9 @@ class TestSessionUnitTests(VppTestCase):
         self.vapi.session_enable_disable(is_enable=0)
 
 
+@tag_run_solo
 class TestSvmFifoUnitTests(VppTestCase):
     """ SVM Fifo Unit Tests Case """
-
-    @classmethod
-    def force_solo(cls):
-        return True
 
     @classmethod
     def setUpClass(cls):
