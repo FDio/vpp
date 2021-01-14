@@ -21,7 +21,7 @@ from scapy.packet import Raw
 
 from bfd import VppBFDAuthKey, BFD, BFDAuthType, VppBFDUDPSession, \
     BFDDiagCode, BFDState, BFD_vpp_echo
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner, running_extended_tests, tag_run_solo
 from util import ppp
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
@@ -676,7 +676,7 @@ def wait_for_bfd_packet(test, timeout=1, pcap_time_min=None, is_tunnel=False):
     test.test_session.verify_bfd(p)
     return p
 
-
+@tag_run_solo
 class BFD4TestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD)"""
 
@@ -684,10 +684,6 @@ class BFD4TestCase(VppTestCase):
     vpp_clock_offset = None
     vpp_session = None
     test_session = None
-
-    @classmethod
-    def force_solo(cls):
-        return True
 
     @classmethod
     def setUpClass(cls):
@@ -1488,7 +1484,7 @@ class BFD4TestCase(VppTestCase):
         self.assert_equal(e.sw_if_index, sw_if_index, "sw_if_index")
         self.assertFalse(vpp_session.query_vpp_config())
 
-
+# @tag_run_solo
 class BFD6TestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (IPv6) """
 
@@ -1496,10 +1492,6 @@ class BFD6TestCase(VppTestCase):
     vpp_clock_offset = None
     vpp_session = None
     test_session = None
-
-    @classmethod
-    def force_solo(cls):
-        return True
 
     @classmethod
     def setUpClass(cls):
@@ -1705,16 +1697,12 @@ class BFD6TestCase(VppTestCase):
         self.assert_equal(e.sw_if_index, sw_if_index, "sw_if_index")
         self.assertFalse(vpp_session.query_vpp_config())
 
-
+# @tag_run_solo
 class BFDFIBTestCase(VppTestCase):
     """ BFD-FIB interactions (IPv6) """
 
     vpp_session = None
     test_session = None
-
-    @classmethod
-    def force_solo(cls):
-        return True
 
     @classmethod
     def setUpClass(cls):
@@ -1895,7 +1883,7 @@ class BFDTunTestCase(VppTestCase):
         # bring session down
         bfd_session_down(self)
 
-
+# @tag_run_solo
 class BFDSHA1TestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (SHA1 auth) """
 
@@ -1903,10 +1891,6 @@ class BFDSHA1TestCase(VppTestCase):
     vpp_clock_offset = None
     vpp_session = None
     test_session = None
-
-    @classmethod
-    def force_solo(cls):
-        return True
 
     @classmethod
     def setUpClass(cls):
@@ -2130,17 +2114,13 @@ class BFDSHA1TestCase(VppTestCase):
         self.test_session.my_discriminator = 0
         bfd_session_up(self)
 
-
+# @tag_run_solo
 class BFDAuthOnOffTestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (changing auth) """
 
     pg0 = None
     vpp_session = None
     test_session = None
-
-    @classmethod
-    def force_solo(cls):
-        return True
 
     @classmethod
     def setUpClass(cls):
@@ -2346,14 +2326,10 @@ class BFDAuthOnOffTestCase(VppTestCase):
         self.assert_equal(len(self.vapi.collect_events()), 0,
                           "number of bfd events")
 
-
+# @tag_run_solo
 class BFDCLITestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (CLI) """
     pg0 = None
-
-    @classmethod
-    def force_solo(cls):
-        return True
 
     @classmethod
     def setUpClass(cls):
