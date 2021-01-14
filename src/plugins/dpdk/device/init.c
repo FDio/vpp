@@ -1303,6 +1303,10 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   conf->device_config_index_by_pci_addr = hash_create (0, sizeof (uword));
   conf->device_config_index_by_vmbus_addr = hash_create (0, sizeof (uword));
 
+  /* enable the AVX-512 vPMDs in DPDK */
+  if (clib_cpu_supports_avx512_bitalg ())
+    rte_vect_set_max_simd_bitwidth (RTE_VECT_SIMD_512);
+
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       /* Prime the pump */
