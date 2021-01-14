@@ -54,3 +54,12 @@ add_vpp_plugin(linux_cp
   LINK_LIBRARIES
   lcp
 )
+
+add_vpp_plugin(linux_nl
+  SOURCES
+  lcp_routing.c
+  lcp_nl.c
+
+  LINK_LIBRARIES
+  lcp
+)
