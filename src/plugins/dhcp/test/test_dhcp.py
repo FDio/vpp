@@ -34,10 +34,7 @@ DHCP6_SERVER_PORT = 546
 
 class TestDHCP(VppTestCase):
     """ DHCP Test Case """
-
-    @classmethod
-    def force_solo(cls):
-        return True
+    test_tags = ['solo']
 
     @classmethod
     def setUpClass(cls):
