@@ -1042,7 +1042,7 @@ fifo_segment_msg_q_attach (fifo_segment_t *fs, uword offset, u32 mq_index)
 
   mq = vec_elt_at_index (fs->mqs, mq_index);
 
-  if (!mq->q)
+  if (!mq->q.shr)
     {
       svm_msg_q_shared_t *smq;
       smq = (svm_msg_q_shared_t *) ((u8 *) fs->h + offset);
@@ -1059,10 +1059,10 @@ fifo_segment_msg_q_offset (fifo_segment_t *fs, u32 mq_index)
 {
   svm_msg_q_t *mq = vec_elt_at_index (fs->mqs, mq_index);
 
-  if (mq->q == 0)
+  if (mq->q.shr == 0)
     return ~0ULL;
 
-  return (uword) ((u8 *) mq->q - (u8 *) fs->h) - sizeof (svm_msg_q_shared_t);
+  return (uword) ((u8 *) mq->q.shr - (u8 *) fs->h) - sizeof (svm_msg_q_shared_t);
 }
 
 int
