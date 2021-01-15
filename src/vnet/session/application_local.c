@@ -520,6 +520,7 @@ ct_custom_tx (void *session, transport_send_params_t * sp)
   session_t *s = (session_t *) session;
   if (session_has_transport (s))
     return 0;
+
   /* If event enqueued towards peer, remove from scheduler and remove
    * session tx flag, i.e., accept new tx events. Unset fifo flag now to
    * avoid missing events if peer did not clear fifo flag yet, which is

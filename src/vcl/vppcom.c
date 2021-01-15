@@ -34,6 +34,7 @@ vcl_mq_dequeue_batch (vcl_worker_t * wrk, svm_msg_q_t * mq, u32 n_max_msg)
       svm_msg_q_sub_raw_batch (mq, wrk->mq_msg_vector + len, sz);
       n_msgs += sz;
     }
+
   return n_msgs;
 }
 
@@ -1062,9 +1063,12 @@ vppcom_wait_for_session_state_change (u32 session_index,
 	  usleep (100);
 	  continue;
 	}
-      e = svm_msg_q_msg_data (wrk->app_event_queue, &msg);
-      vcl_handle_mq_event (wrk, e);
-      svm_msg_q_free_msg (wrk->app_event_queue, &msg);
+      else
+	{
+	  e = svm_msg_q_msg_data (wrk->app_event_queue, &msg);
+	  vcl_handle_mq_event (wrk, e);
+	  svm_msg_q_free_msg (wrk->app_event_queue, &msg);
+	}
     }
   while (clib_time_now (&wrk->clib_time) < timeout);
 
@@ -1097,7 +1101,7 @@ vcl_handle_pending_wrk_updates (vcl_worker_t * wrk)
   vec_reset_length (wrk->pending_session_wrk_updates);
 }
 
-void
+static void
 vcl_worker_flush_mq_events (vcl_worker_t *wrk)
 {
   svm_msg_q_msg_t *msg;
@@ -2065,6 +2069,8 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
   VDBG (2, "session %u [0x%llx]: wrote %d bytes", s->session_index,
 	s->vpp_handle, n_write);
 
+  if (is_ct && !svm_fifo_has_event (s->tx_fifo) && !svm_fifo_has_event (s->ct_tx_fifo))
+    clib_warning ("THIS HAPPENED");
   return n_write;
 }
 
@@ -2323,7 +2329,8 @@ vppcom_select_eventfd (vcl_worker_t * wrk, int n_bits,
 			    except_map, 0, bits_set);
     }
 
-  return (n_mq_evts > 0 ? (int) *bits_set : 0);
+//  return (n_mq_evts > 0 ? (int) *bits_set : 0);
+  return (int) *bits_set;
 }
 
 int
@@ -2377,7 +2384,7 @@ vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
         clib_bitmap_set_no_check ((uword*)write_map, sid, 1);
         bits_set++;
       }
-    else
+    else // FIXME for ct
       svm_fifo_add_want_deq_ntf (session->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
   }
 
@@ -2947,7 +2954,7 @@ vppcom_epoll_wait_eventfd (vcl_worker_t * wrk, struct epoll_event *events,
   vec_validate (wrk->mq_events, pool_elts (wrk->mq_evt_conns));
 again:
   n_mq_evts = epoll_wait (wrk->mqs_epfd, wrk->mq_events,
-			  vec_len (wrk->mq_events), wait_for_time);
+			  vec_len (wrk->mq_events), n_evts ? 0 : wait_for_time);
   for (i = 0; i < n_mq_evts; i++)
     {
       mqc = vcl_mq_evt_conn_get (wrk, wrk->mq_events[i].data.u32);

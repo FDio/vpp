@@ -34,6 +34,8 @@ typedef struct svm_msg_q_shr_queue_
   volatile u32 cursize;
   u32 maxsize;
   u32 elsize;
+  volatile int want_deq_signal;
+  volatile int want_enq_signal;
   u32 pad;
   u8 data[0];
 } svm_msg_q_shared_queue_t;
@@ -304,7 +306,8 @@ u8 *format_svm_msg_q (u8 *s, va_list *args);
 static inline u32
 svm_msg_q_size (svm_msg_q_t *mq)
 {
-  return clib_atomic_load_relax_n (&mq->q.shr->cursize);
+  //  return clib_atomic_load_acq_n (&mq->q.shr->cursize);
+  return __atomic_load_n (&mq->q.shr->cursize, __ATOMIC_SEQ_CST);
 }
 
 /**
@@ -419,6 +422,42 @@ svm_msg_q_get_eventfd (svm_msg_q_t *mq)
 {
   return mq->q.evtfd;
 }
+
+//always_inline int
+//svm_msg_q_want_deq_signal (svm_msg_q_t * mq)
+//{
+//  return clib_atomic_load_relax_n (&mq->q.shr->want_deq_signal);
+//}
+//
+//always_inline void
+//svm_msg_q_set_want_deq_signal (svm_msg_q_t * mq)
+//{
+//  clib_atomic_store_rel_n (&mq->q.shr->want_deq_signal, 1);
+//}
+//
+//always_inline void
+//svm_msg_q_unset_want_deq_signal (svm_msg_q_t * mq)
+//{
+//  clib_atomic_store_rel_n (&mq->q.shr->want_deq_signal, 0);
+//}
+//
+//always_inline int
+//svm_msg_q_want_enq_signal (svm_msg_q_t * mq)
+//{
+//  return clib_atomic_load_relax_n (&mq->q.shr->want_enq_signal);
+//}
+//
+//always_inline void
+//svm_msg_q_set_want_enq_signal (svm_msg_q_t * mq)
+//{
+//  clib_atomic_store_rel_n (&mq->q.shr->want_enq_signal, 1);
+//}
+//
+//always_inline void
+//svm_msg_q_unset_want_enq_signal (svm_msg_q_t * mq)
+//{
+//  clib_atomic_store_rel_n (&mq->q.shr->want_enq_signal, 0);
+//}
 
 #endif /* SRC_SVM_MESSAGE_QUEUE_H_ */
 

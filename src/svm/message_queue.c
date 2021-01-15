@@ -303,9 +303,14 @@ svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
 
   need_signal = clib_atomic_load_relax_n (&sr->cursize) == ring->nitems;
   clib_atomic_fetch_sub_relax (&sr->cursize, 1);
-
   if (PREDICT_FALSE (need_signal))
     svm_msg_q_send_signal (mq, 1 /* is consumer */);
+
+//  if (PREDICT_FALSE (need_signal || svm_msg_q_want_deq_signal (mq)))
+//    {
+//      svm_msg_q_unset_want_deq_signal (mq);
+//      svm_msg_q_send_signal (mq, 1 /* is consumer */);
+//    }
 }
 
 static int
@@ -345,7 +350,12 @@ svm_msg_q_add_raw (svm_msg_q_t *mq, u8 *elem)
 
   sz = clib_atomic_fetch_add_relax (&sq->cursize, 1);
   if (!sz)
-    svm_msg_q_send_signal (mq, 0 /* is consumer */);
+    svm_msg_q_send_signal (mq, 0 /* is consumer*/);
+//  if (!sz || svm_msg_q_want_enq_signal (mq))
+//    {
+//      svm_msg_q_unset_want_enq_signal (mq);
+//      svm_msg_q_send_signal (mq, 0 /* is consumer*/);
+//    }
 }
 
 int
@@ -404,6 +414,11 @@ svm_msg_q_sub_raw (svm_msg_q_t *mq, svm_msg_q_msg_t *elem)
   sz = clib_atomic_fetch_sub_relax (&sq->cursize, 1);
   if (PREDICT_FALSE (sz == sq->maxsize))
     svm_msg_q_send_signal (mq, 1 /* is consumer */);
+//  if (PREDICT_FALSE (sz == sq->maxsize) || svm_msg_q_want_deq_signal (mq))
+//    {
+//      svm_msg_q_unset_want_deq_signal (mq);
+//      svm_msg_q_send_signal (mq, 1 /* is consumer */);
+//    }
 
   return 0;
 }
@@ -480,7 +495,8 @@ int
 svm_msg_q_alloc_eventfd (svm_msg_q_t *mq)
 {
   int fd;
-  if ((fd = eventfd (0, EFD_NONBLOCK)) < 0)
+  //  if ((fd = eventfd (0, EFD_NONBLOCK)) < 0)
+  if ((fd = eventfd (0, 0)) < 0)
     return -1;
   svm_msg_q_set_eventfd (mq, fd);
   return 0;
