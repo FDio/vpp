@@ -200,9 +200,13 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
    )
 endif()
 
+option(VPP_USE_EXTERNAL_LIBEXECINFO "Use external libexecinfo (useful for non-glibc targets)." OFF)
+if(VPP_USE_EXTERNAL_LIBEXECINFO)
+  set(EXECINFO_LIB execinfo)
+endif()
 add_vpp_library(vppinfra
   SOURCES ${VPPINFRA_SRCS}
-  LINK_LIBRARIES m
+  LINK_LIBRARIES m ${EXECINFO_LIB}
   INSTALL_HEADERS ${VPPINFRA_HEADERS}
   COMPONENT libvppinfra
   LTO
