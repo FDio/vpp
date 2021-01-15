@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #define __USE_GNU
+#define _GNU_SOURCE
 #include <sys/socket.h>
 
 #include <svm/ssvm.h>

@@ -16,6 +16,7 @@
 #ifndef included_vlib_log_h
 #define included_vlib_log_h
 
+#include <sys/time.h>
 #include <vppinfra/types.h>
 
 #define foreach_vlib_log_level	\
