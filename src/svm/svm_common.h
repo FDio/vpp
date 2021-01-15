@@ -20,6 +20,7 @@
 
 #include <stdarg.h>
 #include <pthread.h>
+#include <sys/user.h>
 #include <vppinfra/types.h>
 
 #define SVM_VERSION ((1<<16) | 1)	/* set to declare region ready. */
