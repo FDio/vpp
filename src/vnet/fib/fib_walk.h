@@ -16,6 +16,8 @@
 #ifndef __FIB_WALK_H__
 #define __FIB_WALK_H__
 
+#include <sys/types.h>
+
 #include <vnet/fib/fib_node.h>
 
 /**
