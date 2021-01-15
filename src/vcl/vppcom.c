@@ -2377,7 +2377,7 @@ vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
         clib_bitmap_set_no_check ((uword*)write_map, sid, 1);
         bits_set++;
       }
-    else
+    else // FIXME for ct
       svm_fifo_add_want_deq_ntf (session->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
   }
 
@@ -2946,8 +2946,9 @@ vppcom_epoll_wait_eventfd (vcl_worker_t * wrk, struct epoll_event *events,
 
   vec_validate (wrk->mq_events, pool_elts (wrk->mq_evt_conns));
 again:
-  n_mq_evts = epoll_wait (wrk->mqs_epfd, wrk->mq_events,
-			  vec_len (wrk->mq_events), wait_for_time);
+  n_mq_evts =
+    epoll_wait (wrk->mqs_epfd, wrk->mq_events, vec_len (wrk->mq_events),
+		n_evts ? 0 : wait_for_time);
   for (i = 0; i < n_mq_evts; i++)
     {
       mqc = vcl_mq_evt_conn_get (wrk, wrk->mq_events[i].data.u32);
