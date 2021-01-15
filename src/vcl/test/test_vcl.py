@@ -281,6 +281,7 @@ class LDPCutThruTestCase(VCLTestCase):
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vapi.cli("show app mq"))
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ldp_cut_thru_echo(self):
@@ -351,6 +352,7 @@ class VCLCutThruTestCase(VCLTestCase):
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vapi.cli("show app mq"))
 
     def test_vcl_cut_thru_echo(self):
         """ run VCL cut thru echo test """
@@ -406,6 +408,7 @@ class VCLThruHostStackEcho(VCLTestCase):
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.cli("show app server"))
         self.logger.debug(self.vapi.cli("show session verbose"))
+        self.logger.debug(self.vapi.cli("show app mq"))
 
 
 class VCLThruHostStackTLS(VCLTestCase):
@@ -444,6 +447,7 @@ class VCLThruHostStackTLS(VCLTestCase):
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.cli("show app server"))
         self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vapi.cli("show app mq"))
 
 
 class VCLThruHostStackBidirNsock(VCLTestCase):
@@ -476,6 +480,7 @@ class VCLThruHostStackBidirNsock(VCLTestCase):
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vapi.cli("show app mq"))
 
     def test_vcl_thru_host_stack_bi_dir_nsock(self):
         """ run VCL thru host stack bi-directional (multiple sockets) test """
@@ -517,6 +522,7 @@ class LDPThruHostStackBidirNsock(VCLTestCase):
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vapi.cli("show app mq"))
 
     def test_ldp_thru_host_stack_bi_dir_nsock(self):
         """ run LDP thru host stack bi-directional (multiple sockets) test """
@@ -632,6 +638,7 @@ class LDPThruHostStackIperf(VCLTestCase):
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vapi.cli("show app mq"))
 
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
     def test_ldp_thru_host_stack_iperf3(self):
@@ -668,6 +675,7 @@ class LDPThruHostStackIperfUdp(VCLTestCase):
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vapi.cli("show app mq"))
 
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
     def test_ldp_thru_host_stack_iperf3_udp(self):
@@ -688,6 +696,10 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
     @classmethod
     def tearDownClass(cls):
         super(LDPIpv6CutThruTestCase, cls).tearDownClass()
+
+    def show_commands_at_teardown(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vapi.cli("show app mq"))
 
     def setUp(self):
         super(LDPIpv6CutThruTestCase, self).setUp()
@@ -765,6 +777,10 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
     def tearDownClass(cls):
         super(VCLIpv6CutThruTestCase, cls).tearDownClass()
 
+    def show_commands_at_teardown(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vapi.cli("show app mq"))
+
     def setUp(self):
         super(VCLIpv6CutThruTestCase, self).setUp()
 
@@ -788,6 +804,10 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
     def tearDown(self):
         super(VCLIpv6CutThruTestCase, self).tearDown()
         self.cut_thru_tear_down()
+
+    def show_commands_at_teardown(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vapi.cli("show app mq"))
 
     def test_vcl_ipv6_cut_thru_echo(self):
         """ run VCL IPv6 cut thru echo test """
