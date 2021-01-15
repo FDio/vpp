@@ -94,7 +94,6 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
   vcl_segment_attach_mq (vcl_vpp_worker_segment_handle (0), mp->vpp_ctrl_mq,
 			 mp->vpp_ctrl_mq_thread, &wrk->ctrl_mq);
   vcm->ctrl_mq = wrk->ctrl_mq;
-
   vcm->app_index = mp->app_index;
 
   return 0;
@@ -156,7 +155,7 @@ vcl_sapi_attach (void)
   app_sapi_msg_t _rmp, *rmp = &_rmp;
   clib_error_t *err;
   clib_socket_t *cs;
-  int fds[SESSION_N_FD_TYPE];
+  int fds[32];
 
   /*
    * Init client socket and send attach
