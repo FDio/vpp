@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <byteswap.h>
 #include <stddef.h>
 
 #include <vnet/vnet.h>
@@ -216,7 +217,7 @@ static void
     ntohs (VL_API_ACL_PLUGIN_GET_CONN_TABLE_MAX_ENTRIES_REPLY +
 	   am->msg_id_base);
   rmp->context = mp->context;
-  rmp->conn_table_max_entries = __bswap_64 (am->fa_conn_table_max_entries);
+  rmp->conn_table_max_entries = bswap_64 (am->fa_conn_table_max_entries);
 
   vl_api_send_msg (rp, (u8 *) rmp);
 }
