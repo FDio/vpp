@@ -1399,19 +1399,35 @@ session_flush_pending_tx_buffers (session_worker_t * wrk,
   vec_reset_length (wrk->pending_tx_nexts);
 }
 
+int
+session_wrk_handle_mq (session_worker_t *wrk, svm_msg_q_t *mq)
+{
+  svm_msg_q_msg_t _msg, *msg = &_msg;
+  u32 i, n_to_dequeue = 0;
+  session_event_t *evt;
+
+  n_to_dequeue = svm_msg_q_size (mq);
+  for (i = 0; i < n_to_dequeue; i++)
+    {
+      svm_msg_q_sub_raw (mq, msg);
+      evt = svm_msg_q_msg_data (mq, msg);
+      session_evt_add_to_list (wrk, evt);
+      svm_msg_q_free_msg (mq, msg);
+    }
+
+  return n_to_dequeue;
+}
+
 static uword
 session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * frame)
 {
   session_main_t *smm = vnet_get_session_main ();
-  u32 thread_index = vm->thread_index, n_to_dequeue;
+  u32 thread_index = vm->thread_index, n_evts;
   session_worker_t *wrk = &smm->wrk[thread_index];
   session_evt_elt_t *elt, *ctrl_he, *new_he, *old_he;
   clib_llist_index_t ei, next_ei, old_ti;
-  svm_msg_q_msg_t _msg, *msg = &_msg;
-  int i = 0, n_tx_packets;
-  session_event_t *evt;
-  svm_msg_q_t *mq;
+  int n_tx_packets;
 
   SESSION_EVT (SESSION_EVT_DISPATCH_START, wrk);
 
@@ -1426,25 +1442,11 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, UPDATE_TIME, wrk);
 
   /*
-   *  Dequeue and handle new events
+   *  Dequeue new internal mq events
    */
 
-  /* Try to dequeue what is available. Don't wait for lock.
-   * XXX: we may need priorities here */
-  mq = wrk->vpp_event_queue;
-  n_to_dequeue = svm_msg_q_size (mq);
-  if (n_to_dequeue)
-    {
-      for (i = 0; i < n_to_dequeue; i++)
-	{
-	  svm_msg_q_sub_raw (mq, msg);
-	  evt = svm_msg_q_msg_data (mq, msg);
-	  session_evt_add_to_list (wrk, evt);
-	  svm_msg_q_free_msg (mq, msg);
-	}
-    }
-
-  SESSION_EVT (SESSION_EVT_DSP_CNTRS, MQ_DEQ, wrk, n_to_dequeue, !i);
+  n_evts = session_wrk_handle_mq (wrk, wrk->vpp_event_queue);
+  SESSION_EVT (SESSION_EVT_DSP_CNTRS, MQ_DEQ, wrk, n_evts);
 
   /*
    * Handle control events
@@ -1452,12 +1454,10 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   ctrl_he = pool_elt_at_index (wrk->event_elts, wrk->ctrl_head);
 
-  /* *INDENT-OFF* */
   clib_llist_foreach_safe (wrk->event_elts, evt_list, ctrl_he, elt, ({
     clib_llist_remove (wrk->event_elts, evt_list, elt);
     session_event_dispatch_ctrl (wrk, elt);
   }));
-  /* *INDENT-ON* */
 
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, CTRL_EVTS, wrk);
 

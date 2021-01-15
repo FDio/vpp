@@ -237,14 +237,14 @@ extern session_dbg_main_t session_dbg_main;
 
 #if SESSION_CLOCKS_EVT_DBG
 
-#define SESSION_EVT_DSP_CNTRS_UPDATE_TIME_HANDLER(_wrk, _diff, _args...)	\
-  session_dbg_evts_t *sde = &session_dbg_main.wrk[_wrk->vm->thread_index];	\
-  sde->counters[SESS_Q_CLK_UPDATE_TIME].f64 += _diff;       			\
+#define SESSION_EVT_DSP_CNTRS_UPDATE_TIME_HANDLER(_wrk, _diff, _args...)      \
+  session_dbg_evts_t *sde = &session_dbg_main.wrk[_wrk->vm->thread_index];    \
+  sde->counters[SESS_Q_CLK_UPDATE_TIME].f64 += _diff;
 
-#define SESSION_EVT_DSP_CNTRS_MQ_DEQ_HANDLER(_wrk, _diff, _cnt, _dq, _args...)	\
-  session_dbg_evts_t *sde = &session_dbg_main.wrk[_wrk->vm->thread_index];	\
-  sde->counters[SESS_Q_CNT_MQ_EVTS].u64 += _dq * _cnt;      			\
-  sde->counters[SESS_Q_CLK_MQ_DEQ].f64 += _diff;	      			\
+#define SESSION_EVT_DSP_CNTRS_MQ_DEQ_HANDLER(_wrk, _diff, _cnt, _args...)     \
+  session_dbg_evts_t *sde = &session_dbg_main.wrk[_wrk->vm->thread_index];    \
+  sde->counters[SESS_Q_CNT_MQ_EVTS].u64 += _cnt;                              \
+  sde->counters[SESS_Q_CLK_MQ_DEQ].f64 += _diff;
 
 #define SESSION_EVT_DSP_CNTRS_CTRL_EVTS_HANDLER(_wrk, _diff, _args...)		\
   session_dbg_evts_t *sde = &session_dbg_main.wrk[_wrk->vm->thread_index];	\

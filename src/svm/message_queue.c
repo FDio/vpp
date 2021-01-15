@@ -482,7 +482,7 @@ int
 svm_msg_q_alloc_eventfd (svm_msg_q_t *mq)
 {
   int fd;
-  if ((fd = eventfd (0, EFD_NONBLOCK)) < 0)
+  if ((fd = eventfd (0, 0)) < 0)
     return -1;
   svm_msg_q_set_eventfd (mq, fd);
   return 0;
