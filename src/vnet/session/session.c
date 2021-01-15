@@ -1549,8 +1549,9 @@ session_vpp_event_queues_allocate (session_main_t * smm)
 
       smm->wrk[i].vpp_event_queue = fifo_segment_msg_q_alloc (eqs, i, cfg);
 
-      if (svm_msg_q_alloc_consumer_eventfd (smm->wrk[i].vpp_event_queue))
-	clib_warning ("eventfd returned");
+      //      if (svm_msg_q_alloc_consumer_eventfd
+      //      (smm->wrk[i].vpp_event_queue))
+      //	clib_warning ("eventfd returned");
     }
 }
 

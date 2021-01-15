@@ -26,15 +26,25 @@ static inline int
 vcl_mq_dequeue_batch (vcl_worker_t * wrk, svm_msg_q_t * mq, u32 n_max_msg)
 {
   svm_msg_q_msg_t *msg;
-  u32 n_msgs;
+  u32 mq_sz, n_msgs = 0;
   int i;
 
-  n_msgs = clib_min (svm_msg_q_size (mq), n_max_msg);
-  for (i = 0; i < n_msgs; i++)
+  //  n_msgs = clib_min (svm_msg_q_size (mq), n_max_msg);
+  //  for (i = 0; i < n_msgs; i++)
+  //    {
+  //      vec_add2 (wrk->mq_msg_vector, msg, 1);
+  //      svm_msg_q_sub_w_lock (mq, msg);
+  //    }
+  while ((mq_sz = svm_msg_q_size (mq)))
     {
-      vec_add2 (wrk->mq_msg_vector, msg, 1);
-      svm_msg_q_sub_w_lock (mq, msg);
+      n_msgs += mq_sz;
+      for (i = 0; i < mq_sz; i++)
+	{
+	  vec_add2 (wrk->mq_msg_vector, msg, 1);
+	  svm_msg_q_sub_w_lock (mq, msg);
+	}
     }
+
   return n_msgs;
 }
 
@@ -1843,7 +1853,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 	    svm_fifo_unset_event (s->rx_fifo);
 	  svm_fifo_unset_event (rx_fifo);
 	  svm_msg_q_lock (mq);
-	  if (svm_msg_q_is_empty (mq))
+	  while (svm_msg_q_is_empty (mq))
 	    svm_msg_q_wait (mq);
 
 	  svm_msg_q_sub_w_lock (mq, &msg);
@@ -1958,7 +1968,7 @@ vppcom_session_read_segments (uint32_t session_handle,
 	    svm_fifo_unset_event (s->rx_fifo);
 	  svm_fifo_unset_event (rx_fifo);
 	  svm_msg_q_lock (mq);
-	  if (svm_msg_q_is_empty (mq))
+	  while (svm_msg_q_is_empty (mq))
 	    svm_msg_q_wait (mq);
 
 	  svm_msg_q_sub_w_lock (mq, &msg);
@@ -2076,7 +2086,7 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
 	  svm_msg_q_lock (mq);
-	  if (svm_msg_q_is_empty (mq))
+	  while (svm_msg_q_is_empty (mq))
 	    svm_msg_q_wait (mq);
 
 	  svm_msg_q_sub_w_lock (mq, &msg);
@@ -2289,7 +2299,7 @@ vcl_select_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
   u32 i;
 
   svm_msg_q_lock (mq);
-  if (svm_msg_q_is_empty (mq))
+  while (svm_msg_q_is_empty (mq))
     {
       if (*bits_set)
 	{
@@ -2935,7 +2945,7 @@ vcl_epoll_wait_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
     goto handle_dequeued;
 
   svm_msg_q_lock (mq);
-  if (svm_msg_q_is_empty (mq))
+  while (svm_msg_q_is_empty (mq))
     {
       if (!wait_for_time)
 	{
