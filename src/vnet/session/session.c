@@ -1549,8 +1549,9 @@ session_vpp_event_queues_allocate (session_main_t * smm)
 
       smm->wrk[i].vpp_event_queue = fifo_segment_msg_q_alloc (eqs, i, cfg);
 
-      if (svm_msg_q_alloc_consumer_eventfd (smm->wrk[i].vpp_event_queue))
-	clib_warning ("eventfd returned");
+      //      if (svm_msg_q_alloc_consumer_eventfd
+      //      (smm->wrk[i].vpp_event_queue))
+      //	clib_warning ("eventfd returned");
     }
 }
 
@@ -1702,6 +1703,8 @@ session_manager_main_enable (vlib_main_t * vm)
 
       if (num_threads > 1)
 	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
+
+      wrk->app_rx_mqs_epfd = epoll_create1 (0);
     }
 
   /* Allocate vpp event queues segment and queue */

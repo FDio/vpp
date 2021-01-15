@@ -130,11 +130,12 @@ dump_thread_0_event_queue (void)
   int i, index;
 
   mq = session_main_get_vpp_event_queue (my_thread_index);
-  index = mq->q->head;
+  index = mq->q.shr->head;
 
-  for (i = 0; i < mq->q->cursize; i++)
+  for (i = 0; i < mq->q.shr->cursize; i++)
     {
-      msg = (svm_msg_q_msg_t *) (&mq->q->data[0] + mq->q->elsize * index);
+      msg =
+	(svm_msg_q_msg_t *) (&mq->q.shr->data[0] + mq->q.shr->elsize * index);
       ring = svm_msg_q_ring (mq, msg->ring_index);
       clib_memcpy_fast (e, svm_msg_q_msg_data (mq, msg), ring->elsize);
 
@@ -170,7 +171,7 @@ dump_thread_0_event_queue (void)
 
       index++;
 
-      if (index == mq->q->maxsize)
+      if (index == mq->q.shr->maxsize)
 	index = 0;
     }
 }
@@ -226,16 +227,17 @@ session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
    * Search evt queue
    */
   mq = wrk->vpp_event_queue;
-  index = mq->q->head;
-  for (i = 0; i < mq->q->cursize; i++)
+  index = mq->q.shr->head;
+  for (i = 0; i < mq->q.shr->cursize; i++)
     {
-      msg = (svm_msg_q_msg_t *) (&mq->q->data[0] + mq->q->elsize * index);
+      msg =
+	(svm_msg_q_msg_t *) (&mq->q.shr->data[0] + mq->q.shr->elsize * index);
       ring = svm_msg_q_ring (mq, msg->ring_index);
       clib_memcpy_fast (e, svm_msg_q_msg_data (mq, msg), ring->elsize);
       found = session_node_cmp_event (e, f);
       if (found)
 	return 1;
-      index = (index + 1) % mq->q->maxsize;
+      index = (index + 1) % mq->q.shr->maxsize;
     }
   /*
    * Search pending events vector
