@@ -345,7 +345,7 @@ svm_msg_q_add_raw (svm_msg_q_t *mq, u8 *elem)
 
   sz = clib_atomic_fetch_add_relax (&sq->cursize, 1);
   if (!sz)
-    svm_msg_q_send_signal (mq, 0 /* is consumer */);
+    svm_msg_q_send_signal (mq, 0 /* is consumer*/);
 }
 
 int
@@ -480,7 +480,8 @@ int
 svm_msg_q_alloc_eventfd (svm_msg_q_t *mq)
 {
   int fd;
-  if ((fd = eventfd (0, EFD_NONBLOCK)) < 0)
+  //  if ((fd = eventfd (0, EFD_NONBLOCK)) < 0)
+  if ((fd = eventfd (0, 0)) < 0)
     return -1;
   svm_msg_q_set_eventfd (mq, fd);
   return 0;

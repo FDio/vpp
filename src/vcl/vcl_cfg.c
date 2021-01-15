@@ -47,6 +47,7 @@ vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
   vcl_cfg->accept_timeout = 60.0;
   vcl_cfg->event_ring_size = (128 << 10);
   vcl_cfg->event_log_path = "/dev/shm";
+  vcl_cfg->use_mq_eventfd = 1;
 }
 
 #define VCFG_DBG(_lvl, _fmt, _args...) 			\
