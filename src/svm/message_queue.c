@@ -41,15 +41,19 @@ svm_msg_q_shared_t *
 svm_msg_q_init (void *base, svm_msg_q_cfg_t *cfg)
 {
   svm_msg_q_ring_shared_t *ring;
+  svm_msg_q_shared_queue_t *sq;
   svm_msg_q_shared_t *smq;
   u32 q_sz, offset;
   int i;
 
-  q_sz = sizeof (svm_queue_t) + cfg->q_nitems * sizeof (svm_msg_q_msg_t);
+  q_sz = sizeof (*sq) + cfg->q_nitems * sizeof (svm_msg_q_msg_t);
 
   smq = (svm_msg_q_shared_t *) base;
-  svm_queue_init (&smq->q, cfg->q_nitems, sizeof (svm_msg_q_msg_t));
-  smq->q->consumer_pid = cfg->consumer_pid;
+  sq = smq->q;
+  clib_memset (sq, 0, sizeof (*sq));
+  sq->elsize = sizeof (svm_msg_q_msg_t);
+  sq->maxsize = cfg->q_nitems;
+//  svm_msg_q_queue_init (&smq->q, cfg->q_nitems, sizeof (svm_msg_q_msg_t));
   smq->n_rings = cfg->n_rings;
   ring = (void *) ((u8 *) smq->q + q_sz);
   for (i = 0; i < cfg->n_rings; i++)
@@ -111,10 +115,11 @@ svm_msg_q_attach (svm_msg_q_t *mq, void *smq_base)
   u32 i, n_rings, q_sz, offset;
 
   smq = (svm_msg_q_shared_t *) smq_base;
-  mq->q = smq->q;
+  mq->q.shr = smq->q;
+  mq->q.evtfd = -1;
   n_rings = smq->n_rings;
   vec_validate (mq->rings, n_rings - 1);
-  q_sz = sizeof (svm_queue_t) + mq->q->maxsize * sizeof (svm_msg_q_msg_t);
+  q_sz = sizeof (*smq) + mq->q.shr->maxsize * sizeof (svm_msg_q_msg_t);
   ring = (void *) ((u8 *) smq->q + q_sz);
   for (i = 0; i < n_rings; i++)
     {
@@ -124,12 +129,14 @@ svm_msg_q_attach (svm_msg_q_t *mq, void *smq_base)
       offset = sizeof (*ring) + ring->nitems * ring->elsize;
       ring = (void *) ((u8 *) ring + offset);
     }
+  clib_spinlock_init (&mq->q.lock);
 }
 
 void
 svm_msg_q_free (svm_msg_q_t * mq)
 {
-  svm_queue_free (mq->q);
+//  svm_queue_free (mq->q);
+  clib_mem_free (mq->q.shr);
   clib_mem_free (mq);
 }
 
@@ -206,6 +213,18 @@ svm_msg_q_msg_data (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
   return svm_msg_q_ring_data (ring, msg->elt_index);
 }
 
+static void
+svm_msg_q_send_signal (svm_msg_q_t * mq)
+{
+  int __clib_unused rv, fd;
+  u64 data = 1;
+
+  ASSERT (mq->q.evtfd > 0);
+  rv = write (mq->q.evtfd, &data, sizeof(data));
+  if (PREDICT_FALSE (rv < 0))
+    clib_unix_warning ("signal write on %d returned %d", fd, rv);
+}
+
 void
 svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
 {
@@ -231,7 +250,7 @@ svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
   clib_atomic_fetch_sub (&sr->cursize, 1);
 
   if (PREDICT_FALSE (need_signal))
-    svm_queue_send_signal (mq->q, 0);
+    svm_msg_q_send_signal (mq);
 }
 
 static int
@@ -288,13 +307,13 @@ svm_msg_q_sub_w_lock (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
 void
 svm_msg_q_set_consumer_eventfd (svm_msg_q_t * mq, int fd)
 {
-  mq->q->consumer_evtfd = fd;
+  mq->q.evtfd = fd;
 }
 
 void
 svm_msg_q_set_producer_eventfd (svm_msg_q_t * mq, int fd)
 {
-  mq->q->producer_evtfd = fd;
+  mq->q.evtfd = fd;
 }
 
 int
@@ -315,6 +334,37 @@ svm_msg_q_alloc_producer_eventfd (svm_msg_q_t * mq)
     return -1;
   svm_msg_q_set_producer_eventfd (mq, fd);
   return 0;
+}
+
+void
+svm_msg_q_wait (svm_msg_q_t * mq)
+{
+  u64 buf;
+  int rv;
+
+  while ((rv = read (mq->q->evtfd, &buf, sizeof (buf)) < 0))
+    {
+      if (rv != EAGAIN)
+	{
+	  clib_unix_warning ("read error");
+	  return;
+	}
+    }
+}
+
+int
+svm_msg_q_timedwait (svm_msg_q_t * mq, double timeout)
+{
+  struct timeval tv;
+  u64 buf;
+  int rv;
+
+  tv.tv_sec = (u64) timeout;
+  tv.tv_usec = ((u64) timeout - (u64) timeout) * 1e9;
+  setsockopt (mq->q.evtfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv,
+              sizeof tv);
+  rv = read (mq->q->evtfd, &buf, sizeof (buf));
+  return rv < 0 ? ETIMEDOUT : 0;
 }
 
 u8 *
