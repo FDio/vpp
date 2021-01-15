@@ -136,7 +136,10 @@ endif (VPP_ENABLE_SANITIZE_ADDR)
 ##############################################################################
 # install config
 ##############################################################################
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+option(VPP_SET_RPATH "Set rpath for resulting binaries and libraries." ON)
+if(VPP_SET_RPATH)
+  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+endif()
 set(CMAKE_INSTALL_MESSAGE NEVER)
 
 include_directories (
