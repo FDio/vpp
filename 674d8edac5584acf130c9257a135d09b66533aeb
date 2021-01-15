@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d831ddc4_4c90d916",
+        "filename": "src/plugins/nat/nat.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-01-15T17:29:37Z",
+      "side": 1,
+      "message": "19 bytes?\nWouldn\u0027t it be a goal to make this 16 bytes?",
+      "range": {
+        "startLine": 231,
+        "startChar": 0,
+        "endLine": 238,
+        "endChar": 11
+      },
+      "revId": "674d8edac5584acf130c9257a135d09b66533aeb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
