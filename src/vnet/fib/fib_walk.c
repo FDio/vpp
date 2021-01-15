@@ -338,7 +338,7 @@ fib_walk_advance (fib_node_index_t fwi)
     fib_node_back_walk_rc_t wrc;
     fib_node_ptr_t sibling;
     fib_walk_t *fwalk;
-    uint n_ctxs, ii;
+    u32 n_ctxs, ii;
     int more_elts;
 
     /*
