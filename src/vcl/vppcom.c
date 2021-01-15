@@ -2946,8 +2946,9 @@ vppcom_epoll_wait_eventfd (vcl_worker_t * wrk, struct epoll_event *events,
 
   vec_validate (wrk->mq_events, pool_elts (wrk->mq_evt_conns));
 again:
-  n_mq_evts = epoll_wait (wrk->mqs_epfd, wrk->mq_events,
-			  vec_len (wrk->mq_events), wait_for_time);
+  n_mq_evts =
+    epoll_wait (wrk->mqs_epfd, wrk->mq_events, vec_len (wrk->mq_events),
+		n_evts ? 0 : wait_for_time);
   for (i = 0; i < n_mq_evts; i++)
     {
       mqc = vcl_mq_evt_conn_get (wrk, wrk->mq_events[i].data.u32);
