@@ -22,6 +22,7 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/error.h>
+#include <vppinfra/lock.h>
 #include <svm/queue.h>
 
 typedef struct svm_msg_q_shr_queue_
@@ -33,6 +34,8 @@ typedef struct svm_msg_q_shr_queue_
   volatile u32 cursize;
   u32 maxsize;
   u32 elsize;
+  volatile int want_deq_signal;
+  volatile int want_enq_signal;
   u32 pad;
   u8 data[0];
 } svm_msg_q_shared_queue_t;
@@ -41,6 +44,7 @@ typedef struct svm_msg_q_queue_
 {
   svm_msg_q_shared_queue_t *shr; /**< pointer to shared queue */
   int evtfd;			 /**< producer/consumer eventfd */
+  clib_spinlock_t lock;		 /**< private lock for mp/mc */
 } svm_msg_q_queue_t;
 
 typedef struct svm_msg_q_ring_shared_
@@ -278,7 +282,8 @@ u8 *format_svm_msg_q (u8 *s, va_list *args);
 static inline u32
 svm_msg_q_size (svm_msg_q_t *mq)
 {
-  return clib_atomic_load_relax_n (&mq->q.shr->cursize);
+  //  return clib_atomic_load_acq_n (&mq->q.shr->cursize);
+  return __atomic_load_n (&mq->q.shr->cursize, __ATOMIC_SEQ_CST);
 }
 
 /**
@@ -321,10 +326,11 @@ svm_msg_q_msg_is_invalid (svm_msg_q_msg_t * msg)
 static inline int
 svm_msg_q_try_lock (svm_msg_q_t * mq)
 {
-  int rv = pthread_mutex_trylock (&mq->q.shr->mutex);
-  if (PREDICT_FALSE (rv == EOWNERDEAD))
-    rv = pthread_mutex_consistent (&mq->q.shr->mutex);
-  return rv;
+//  int rv = pthread_mutex_trylock (&mq->q.shr->mutex);
+//  if (PREDICT_FALSE (rv == EOWNERDEAD))
+//    rv = pthread_mutex_consistent (&mq->q.shr->mutex);
+//  return rv;
+  return !clib_spinlock_trylock (&mq->q.lock);
 }
 
 /**
@@ -333,10 +339,12 @@ svm_msg_q_try_lock (svm_msg_q_t * mq)
 static inline int
 svm_msg_q_lock (svm_msg_q_t * mq)
 {
-  int rv = pthread_mutex_lock (&mq->q.shr->mutex);
-  if (PREDICT_FALSE (rv == EOWNERDEAD))
-    rv = pthread_mutex_consistent (&mq->q.shr->mutex);
-  return rv;
+//  int rv = pthread_mutex_lock (&mq->q.shr->mutex);
+//  if (PREDICT_FALSE (rv == EOWNERDEAD))
+//    rv = pthread_mutex_consistent (&mq->q.shr->mutex);
+//  return rv;
+  clib_spinlock_lock (&mq->q.lock);
+  return 0;
 }
 
 /**
@@ -345,7 +353,8 @@ svm_msg_q_lock (svm_msg_q_t * mq)
 static inline void
 svm_msg_q_unlock (svm_msg_q_t * mq)
 {
-  pthread_mutex_unlock (&mq->q.shr->mutex);
+//  pthread_mutex_unlock (&mq->q.shr->mutex);
+  clib_spinlock_unlock (&mq->q.lock);
 }
 
 /**
@@ -370,6 +379,42 @@ static inline int
 svm_msg_q_get_eventfd (svm_msg_q_t *mq)
 {
   return mq->q.evtfd;
+}
+
+always_inline int
+svm_msg_q_want_deq_signal (svm_msg_q_t * mq)
+{
+  return clib_atomic_load_relax_n (&mq->q.shr->want_deq_signal);
+}
+
+always_inline void
+svm_msg_q_set_want_deq_signal (svm_msg_q_t * mq)
+{
+  clib_atomic_store_rel_n (&mq->q.shr->want_deq_signal, 1);
+}
+
+always_inline void
+svm_msg_q_unset_want_deq_signal (svm_msg_q_t * mq)
+{
+  clib_atomic_store_rel_n (&mq->q.shr->want_deq_signal, 0);
+}
+
+always_inline int
+svm_msg_q_want_enq_signal (svm_msg_q_t * mq)
+{
+  return clib_atomic_load_relax_n (&mq->q.shr->want_enq_signal);
+}
+
+always_inline void
+svm_msg_q_set_want_enq_signal (svm_msg_q_t * mq)
+{
+  clib_atomic_store_rel_n (&mq->q.shr->want_enq_signal, 1);
+}
+
+always_inline void
+svm_msg_q_unset_want_enq_signal (svm_msg_q_t * mq)
+{
+  clib_atomic_store_rel_n (&mq->q.shr->want_enq_signal, 0);
 }
 
 #endif /* SRC_SVM_MESSAGE_QUEUE_H_ */

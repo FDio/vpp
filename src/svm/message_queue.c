@@ -163,6 +163,7 @@ svm_msg_q_attach (svm_msg_q_t *mq, void *smq_base)
       offset = sizeof (*ring) + ring->nitems * ring->elsize;
       ring = (void *) ((u8 *) ring + offset);
     }
+  clib_spinlock_init (&mq->q.lock);
 }
 
 void
@@ -290,8 +291,11 @@ svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
   need_signal = sr->cursize == ring->nitems;
   clib_atomic_fetch_sub_rel (&sr->cursize, 1);
 
-  if (PREDICT_FALSE (need_signal))
-    svm_msg_q_send_signal (mq);
+  if (PREDICT_FALSE (need_signal || svm_msg_q_want_deq_signal (mq)))
+    {
+      svm_msg_q_unset_want_deq_signal (mq);
+      svm_msg_q_send_signal (mq);
+    }
 }
 
 static int
@@ -330,8 +334,11 @@ svm_msg_q_add_raw (svm_msg_q_t *mq, u8 *elem)
   sq->tail = (sq->tail + 1) % sq->maxsize;
 
   sz = clib_atomic_fetch_add_rel (&sq->cursize, 1);
-  if (!sz)
-    svm_msg_q_send_signal (mq);
+  if (!sz || svm_msg_q_want_enq_signal (mq))
+    {
+      svm_msg_q_unset_want_enq_signal (mq);
+      svm_msg_q_send_signal (mq);
+    }
 }
 
 int
@@ -388,8 +395,11 @@ svm_msg_q_sub_raw (svm_msg_q_t *mq, u8 *elem)
   sq->head = (sq->head + 1) % sq->maxsize;
 
   sz = clib_atomic_fetch_sub_rel (&sq->cursize, 1);
-  if (PREDICT_FALSE (sz == sq->maxsize))
-    svm_msg_q_send_signal (mq);
+  if (PREDICT_FALSE (sz == sq->maxsize) || svm_msg_q_want_deq_signal (mq))
+    {
+      svm_msg_q_unset_want_deq_signal (mq);
+      svm_msg_q_send_signal (mq);
+    }
 
   return 0;
 }
@@ -459,7 +469,8 @@ int
 svm_msg_q_alloc_eventfd (svm_msg_q_t *mq)
 {
   int fd;
-  if ((fd = eventfd (0, EFD_NONBLOCK)) < 0)
+  //  if ((fd = eventfd (0, EFD_NONBLOCK)) < 0)
+  if ((fd = eventfd (0, 0)) < 0)
     return -1;
   svm_msg_q_set_eventfd (mq, fd);
   return 0;
@@ -468,16 +479,16 @@ svm_msg_q_alloc_eventfd (svm_msg_q_t *mq)
 void
 svm_msg_q_wait (svm_msg_q_t *mq)
 {
-  if (mq->q.evtfd == -1)
-    {
-      pthread_cond_wait (&mq->q.shr->condvar, &mq->q.shr->mutex);
-    }
-  else
-    {
+//  if (mq->q.evtfd == -1)
+//    {
+//      pthread_cond_wait (&mq->q.shr->condvar, &mq->q.shr->mutex);
+//    }
+//  else
+//    {
       u64 buf;
       int rv;
 
-      svm_msg_q_unlock (mq);
+//      svm_msg_q_unlock (mq);
       while ((rv = read (mq->q.evtfd, &buf, sizeof (buf))) < 0)
 	{
 	  if (errno != EAGAIN)
@@ -486,23 +497,23 @@ svm_msg_q_wait (svm_msg_q_t *mq)
 	      return;
 	    }
 	}
-      svm_msg_q_lock (mq);
-    }
+//      svm_msg_q_lock (mq);
+//    }
 }
 
 int
 svm_msg_q_timedwait (svm_msg_q_t *mq, double timeout)
 {
-  if (mq->q.evtfd == -1)
-    {
-      struct timespec ts;
-      ts.tv_sec = unix_time_now () + (u32) timeout;
-      ts.tv_nsec = (timeout - (u32) timeout) * 1e9;
-      return pthread_cond_timedwait (&mq->q.shr->condvar, &mq->q.shr->mutex,
-				     &ts);
-    }
-  else
-    {
+//  if (mq->q.evtfd == -1)
+//    {
+//      struct timespec ts;
+//      ts.tv_sec = unix_time_now () + (u32) timeout;
+//      ts.tv_nsec = (timeout - (u32) timeout) * 1e9;
+//      return pthread_cond_timedwait (&mq->q.shr->condvar, &mq->q.shr->mutex,
+//				     &ts);
+//    }
+//  else
+//    {
       struct timeval tv;
       u64 buf;
       int rv;
@@ -512,14 +523,14 @@ svm_msg_q_timedwait (svm_msg_q_t *mq, double timeout)
       setsockopt (mq->q.evtfd, SOL_SOCKET, SO_RCVTIMEO, (const char *) &tv,
 		  sizeof tv);
 
-      svm_msg_q_unlock (mq);
+//      svm_msg_q_unlock (mq);
       rv = read (mq->q.evtfd, &buf, sizeof (buf));
       if (rv < 0)
 	clib_warning ("read %u", errno);
-      svm_msg_q_lock (mq);
+//      svm_msg_q_lock (mq);
 
       return rv < 0 ? errno : 0;
-    }
+//    }
 }
 
 u8 *
