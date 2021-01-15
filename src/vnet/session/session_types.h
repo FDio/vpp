@@ -449,37 +449,38 @@ typedef struct session_dgram_header_
 STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 8),
 	       "session conn id wrong length");
 
-#define foreach_session_error						\
-  _(NONE, "no error")							\
-  _(UNKNOWN, "generic/unknown error")					\
-  _(REFUSED, "refused")							\
-  _(TIMEDOUT, "timedout")						\
-  _(ALLOC, "obj/memory allocation error")				\
-  _(OWNER, "object not owned by application")				\
-  _(NOROUTE, "no route")						\
-  _(NOINTF, "no resolving interface")					\
-  _(NOIP, "no ip for lcl interface")					\
-  _(NOPORT, "no lcl port")						\
-  _(NOSUPPORT, "not supported")						\
-  _(NOLISTEN, "not listening")						\
-  _(NOSESSION, "session does not exist")				\
-  _(NOAPP, "app not attached")						\
-  _(PORTINUSE, "lcl port in use")					\
-  _(IPINUSE, "ip in use")						\
-  _(ALREADY_LISTENING, "ip port pair already listened on")		\
-  _(INVALID_RMT_IP, "invalid remote ip")				\
-  _(INVALID_APPWRK, "invalid app worker")				\
-  _(INVALID_NS, "invalid namespace")					\
-  _(SEG_NO_SPACE, "Couldn't allocate a fifo pair")			\
-  _(SEG_NO_SPACE2, "Created segment, couldn't allocate a fifo pair") 	\
-  _(SEG_CREATE, "Couldn't create a new segment")			\
-  _(FILTERED, "session filtered")					\
-  _(SCOPE, "scope not supported")					\
-  _(BAPI_NO_FD, "bapi doesn't have a socket fd")			\
-  _(BAPI_SEND_FD, "couldn't send fd over bapi socket fd")		\
-  _(BAPI_NO_REG, "app bapi registration not found")			\
-  _(MQ_MSG_ALLOC, "failed to alloc mq msg")				\
-  _(TLS_HANDSHAKE, "failed tls handshake")				\
+#define foreach_session_error                                                 \
+  _ (NONE, "no error")                                                        \
+  _ (UNKNOWN, "generic/unknown error")                                        \
+  _ (REFUSED, "refused")                                                      \
+  _ (TIMEDOUT, "timedout")                                                    \
+  _ (ALLOC, "obj/memory allocation error")                                    \
+  _ (OWNER, "object not owned by application")                                \
+  _ (NOROUTE, "no route")                                                     \
+  _ (NOINTF, "no resolving interface")                                        \
+  _ (NOIP, "no ip for lcl interface")                                         \
+  _ (NOPORT, "no lcl port")                                                   \
+  _ (NOSUPPORT, "not supported")                                              \
+  _ (NOLISTEN, "not listening")                                               \
+  _ (NOSESSION, "session does not exist")                                     \
+  _ (NOAPP, "app not attached")                                               \
+  _ (PORTINUSE, "lcl port in use")                                            \
+  _ (IPINUSE, "ip in use")                                                    \
+  _ (ALREADY_LISTENING, "ip port pair already listened on")                   \
+  _ (INVALID_RMT_IP, "invalid remote ip")                                     \
+  _ (INVALID_APPWRK, "invalid app worker")                                    \
+  _ (INVALID_NS, "invalid namespace")                                         \
+  _ (SEG_NO_SPACE, "Couldn't allocate a fifo pair")                           \
+  _ (SEG_NO_SPACE2, "Created segment, couldn't allocate a fifo pair")         \
+  _ (SEG_CREATE, "Couldn't create a new segment")                             \
+  _ (FILTERED, "session filtered")                                            \
+  _ (SCOPE, "scope not supported")                                            \
+  _ (BAPI_NO_FD, "bapi doesn't have a socket fd")                             \
+  _ (BAPI_SEND_FD, "couldn't send fd over bapi socket fd")                    \
+  _ (BAPI_NO_REG, "app bapi registration not found")                          \
+  _ (MQ_MSG_ALLOC, "failed to alloc mq msg")                                  \
+  _ (TLS_HANDSHAKE, "failed tls handshake")                                   \
+  _ (EVENTFD_ALLOC, "failed to alloc eventfd")
 
 typedef enum session_error_p_
 {
