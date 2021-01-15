@@ -174,6 +174,9 @@ typedef struct session_main_
   /** Poll session node in main thread */
   u8 poll_main;
 
+  /** Allocate private rx mqs for external apps */
+  u8 use_private_rx_mqs;
+
   /** vpp fifo event queue configured length */
   u32 configured_event_queue_length;
 
@@ -295,6 +298,8 @@ session_evt_alloc_old (session_worker_t * wrk)
 		       pool_elt_at_index (wrk->event_elts, wrk->old_head));
   return elt;
 }
+
+int session_wrk_handle_mq (session_worker_t *wrk, svm_msg_q_t *mq);
 
 session_t *session_alloc (u32 thread_index);
 void session_free (session_t * s);
