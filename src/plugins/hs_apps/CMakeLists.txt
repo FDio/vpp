@@ -11,6 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if(VPP_ENABLE_HOST_STACK)
+  message(WARNING "-- Host Stack disabled in configuration - hs_apps plugin disabled")
+  return()
+endif()
+
 ##############################################################################
 # vpp builtin hs apps
 ##############################################################################
