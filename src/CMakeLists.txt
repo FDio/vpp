@@ -162,12 +162,18 @@ include(cmake/plugin.cmake)
 # subdirs - order matters
 ##############################################################################
 option(VPP_HOST_TOOLS_ONLY "Build only host tools" OFF)
+option(VPP_ENABLE_HOST_STACK "Build the VPP host stack" ON)
 if(VPP_HOST_TOOLS_ONLY)
   set(SUBDIRS tools/vppapigen cmake)
 elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
   find_package(OpenSSL REQUIRED)
   set(SUBDIRS
-    vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vat2 vcl plugins
+    vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vat2
+  )
+  if(VPP_ENABLE_HOST_STACK)
+    list(APPEND SUBDIRS vcl)
+  endif()
+  list(APPEND SUBDIRS plugins
     vpp-api tools/vppapigen tools/g2 tools/perftool cmake pkg
     tools/appimage
   )
