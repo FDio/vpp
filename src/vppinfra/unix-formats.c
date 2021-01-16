@@ -50,7 +50,6 @@
 
 #define _GNU_SOURCE		/* to get REG_* in ucontext.h */
 #include <ucontext.h>
-#undef _GNU_SOURCE
 #undef __USE_GNU
 
 #include <unistd.h>
@@ -319,9 +318,9 @@ u8 * format_udp4_packet (u8 * s, va_list * args)
 
   s = format (s, "udp %U:%U -> %U:%U",
 	      format_network_address, AF_INET,  &ip->saddr,
-	      format_network_port, IPPROTO_UDP, ntohs (udp->source),
+	      format_network_port, IPPROTO_UDP, ntohs (udp->uh_sport),
 	      format_network_address, AF_INET,  &ip->daddr,
-	      format_network_port, IPPROTO_UDP, ntohs (udp->dest));
+	      format_network_port, IPPROTO_UDP, ntohs (udp->uh_dport));
 
   return s;
 }
