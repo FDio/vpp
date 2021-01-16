@@ -30,14 +30,34 @@ add_vpp_library(vppcom
   api_headers
 )
 
-add_vpp_library(vcl_ldpreload
-  SOURCES
-  ldp_socket_wrapper.c
-  ldp.c
+# if glibc, then enable VCL LD_PRELOAD by default. otherwise, don't.
+include(CheckCSourceCompiles)
+check_c_source_compiles("
+#include <features.h>
 
-  LINK_LIBRARIES
-  vppinfra svm vlibmemoryclient rt pthread vppcom dl
-)
+int main()
+{
+    #ifdef __GLIBC__
+    return 0;
+    #else
+    # error \"no glibc\"
+    #endif
+}
+"
+    IS_GLIBC)
+
+
+option(VPP_ENABLE_VCL_LD_PRELOAD "Build the LD_PRELOAD library for VCL" ${IS_GLIBC})
+if(VPP_ENABLE_VCL_LD_PRELOAD)
+  add_vpp_library(vcl_ldpreload
+    SOURCES
+    ldp_socket_wrapper.c
+    ldp.c
+
+    LINK_LIBRARIES
+    vppinfra svm vlibmemoryclient rt pthread vppcom dl
+  )
+endif()
 
 add_vpp_headers(vcl
   ldp.h
