@@ -30,14 +30,17 @@ add_vpp_library(vppcom
   api_headers
 )
 
-add_vpp_library(vcl_ldpreload
-  SOURCES
-  ldp_socket_wrapper.c
-  ldp.c
+option(VPP_ENABLE_LD_PRELOAD "Build the LD_PRELOAD library for VCL" ON)
+if(VPP_ENABLE_LD_PRELOAD)
+  add_vpp_library(vcl_ldpreload
+    SOURCES
+    ldp_socket_wrapper.c
+    ldp.c
 
-  LINK_LIBRARIES
-  vppinfra svm vlibmemoryclient rt pthread vppcom dl
-)
+    LINK_LIBRARIES
+    vppinfra svm vlibmemoryclient rt pthread vppcom dl
+  )
+endif()
 
 add_vpp_headers(vcl
   ldp.h
