@@ -1812,13 +1812,10 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  goto drop;
 	}
 
-      /* Half-open completed recently but the connection was't removed
-       * yet by the owning thread */
+      /* Half-open completed or cancelled recently but the connection
+       * was't removed yet by the owning thread */
       if (PREDICT_FALSE (tc0->flags & TCP_CONN_HALF_OPEN_DONE))
 	{
-	  /* Make sure the connection actually exists */
-	  ASSERT (tcp_lookup_connection (tc0->c_fib_index, b0,
-					 my_thread_index, is_ip4));
 	  error0 = TCP_ERROR_SPURIOUS_SYN_ACK;
 	  goto drop;
 	}
