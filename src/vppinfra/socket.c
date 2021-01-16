@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <string.h>		/* strchr */
 #define __USE_GNU
+#define _GNU_SOURCE
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -53,6 +54,11 @@
 #include <vppinfra/socket.h>
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
+
+#ifndef __GLIBC__
+/* IPPORT_USERRESERVED is not part of musl libc. */
+#define IPPORT_USERRESERVED 5000
+#endif
 
 __clib_export void
 clib_socket_tx_add_formatted (clib_socket_t * s, char *fmt, ...)
