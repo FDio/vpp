@@ -67,40 +67,42 @@
 
 #include <vnet/format_fns.h>
 
-#define foreach_ip_api_msg                                              \
-_(SW_INTERFACE_IP6_ENABLE_DISABLE, sw_interface_ip6_enable_disable)     \
-_(IP_TABLE_DUMP, ip_table_dump)                                         \
-_(IP_ROUTE_DUMP, ip_route_dump)                                         \
-_(IP_MTABLE_DUMP, ip_mtable_dump)                                       \
-_(IP_MROUTE_DUMP, ip_mroute_dump)                                       \
-_(IP_MROUTE_ADD_DEL, ip_mroute_add_del)                                 \
-_(MFIB_SIGNAL_DUMP, mfib_signal_dump)                                   \
-_(IP_ADDRESS_DUMP, ip_address_dump)                                     \
-_(IP_UNNUMBERED_DUMP, ip_unnumbered_dump)                               \
-_(IP_DUMP, ip_dump)                                                     \
-_(IP_TABLE_REPLACE_BEGIN, ip_table_replace_begin)                       \
-_(IP_TABLE_REPLACE_END, ip_table_replace_end)                           \
-_(IP_TABLE_FLUSH, ip_table_flush)                                       \
-_(IP_ROUTE_ADD_DEL, ip_route_add_del)                                   \
-_(IP_ROUTE_LOOKUP, ip_route_lookup)                                     \
-_(IP_TABLE_ADD_DEL, ip_table_add_del)                                   \
-_(IP_PUNT_POLICE, ip_punt_police)                                       \
-_(IP_PUNT_REDIRECT, ip_punt_redirect)                                   \
-_(SET_IP_FLOW_HASH,set_ip_flow_hash)                                    \
-_(IP_CONTAINER_PROXY_ADD_DEL, ip_container_proxy_add_del)               \
-_(IP_CONTAINER_PROXY_DUMP, ip_container_proxy_dump)                     \
-_(IOAM_ENABLE, ioam_enable)                                             \
-_(IOAM_DISABLE, ioam_disable)                                           \
-_(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
-  ip_source_and_port_range_check_add_del)                               \
-_(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
-  ip_source_and_port_range_check_interface_add_del)                     \
- _(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS,                             \
-   sw_interface_ip6_set_link_local_address)                             \
-_(IP_REASSEMBLY_SET, ip_reassembly_set)                                 \
-_(IP_REASSEMBLY_GET, ip_reassembly_get)                                 \
-_(IP_REASSEMBLY_ENABLE_DISABLE, ip_reassembly_enable_disable)           \
-_(IP_PUNT_REDIRECT_DUMP, ip_punt_redirect_dump)
+#define foreach_ip_api_msg                                                    \
+  _ (SW_INTERFACE_IP6_ENABLE_DISABLE, sw_interface_ip6_enable_disable)        \
+  _ (IP_TABLE_DUMP, ip_table_dump)                                            \
+  _ (IP_ROUTE_DUMP, ip_route_dump)                                            \
+  _ (IP_MTABLE_DUMP, ip_mtable_dump)                                          \
+  _ (IP_MROUTE_DUMP, ip_mroute_dump)                                          \
+  _ (IP_MROUTE_ADD_DEL, ip_mroute_add_del)                                    \
+  _ (MFIB_SIGNAL_DUMP, mfib_signal_dump)                                      \
+  _ (IP_ADDRESS_DUMP, ip_address_dump)                                        \
+  _ (IP_UNNUMBERED_DUMP, ip_unnumbered_dump)                                  \
+  _ (IP_DUMP, ip_dump)                                                        \
+  _ (IP_TABLE_REPLACE_BEGIN, ip_table_replace_begin)                          \
+  _ (IP_TABLE_REPLACE_END, ip_table_replace_end)                              \
+  _ (IP_TABLE_FLUSH, ip_table_flush)                                          \
+  _ (IP_ROUTE_ADD_DEL, ip_route_add_del)                                      \
+  _ (IP_ROUTE_LOOKUP, ip_route_lookup)                                        \
+  _ (IP_TABLE_ADD_DEL, ip_table_add_del)                                      \
+  _ (IP_PUNT_POLICE, ip_punt_police)                                          \
+  _ (IP_PUNT_REDIRECT, ip_punt_redirect)                                      \
+  _ (SET_IP_FLOW_HASH, set_ip_flow_hash)                                      \
+  _ (IP_CONTAINER_PROXY_ADD_DEL, ip_container_proxy_add_del)                  \
+  _ (IP_CONTAINER_PROXY_DUMP, ip_container_proxy_dump)                        \
+  _ (IOAM_ENABLE, ioam_enable)                                                \
+  _ (IOAM_DISABLE, ioam_disable)                                              \
+  _ (IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                                  \
+     ip_source_and_port_range_check_add_del)                                  \
+  _ (IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                        \
+     ip_source_and_port_range_check_interface_add_del)                        \
+  _ (SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS,                                 \
+     sw_interface_ip6_set_link_local_address)                                 \
+  _ (SW_INTERFACE_IP6_GET_LINK_LOCAL_ADDRESS,                                 \
+     sw_interface_ip6_get_link_local_address)                                 \
+  _ (IP_REASSEMBLY_SET, ip_reassembly_set)                                    \
+  _ (IP_REASSEMBLY_GET, ip_reassembly_get)                                    \
+  _ (IP_REASSEMBLY_ENABLE_DISABLE, ip_reassembly_enable_disable)              \
+  _ (IP_PUNT_REDIRECT_DUMP, ip_punt_redirect_dump)
 
 static void
   vl_api_sw_interface_ip6_enable_disable_t_handler
@@ -1361,6 +1363,27 @@ static void
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS_REPLY);
+}
+
+static void
+vl_api_sw_interface_ip6_get_link_local_address_t_handler (
+  vl_api_sw_interface_ip6_get_link_local_address_t *mp)
+{
+  vl_api_sw_interface_ip6_get_link_local_address_reply_t *rmp;
+  const ip6_address_t *ip;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  ip = ip6_get_link_local_address (ntohl (mp->sw_if_index));
+  if (NULL == ip)
+    rv = VNET_API_ERROR_IP6_NOT_ENABLED;
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO2 (VL_API_SW_INTERFACE_IP6_GET_LINK_LOCAL_ADDRESS_REPLY, ({
+		  if (!rv)
+		    ip6_address_encode (ip, rmp->ip);
+		}));
 }
 
 static void
