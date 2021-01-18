@@ -58,7 +58,7 @@ class VppSubInterface(VppPGInterface, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def create_ndp_req(self):
+    def create_ndp_req(self, addr=None):
         pass
 
     def resolve_arp(self):
@@ -154,8 +154,8 @@ class VppDot1QSubint(VppSubInterface):
         packet = VppPGInterface.create_arp_req(self)
         return self.add_dot1_layer(packet)
 
-    def create_ndp_req(self):
-        packet = VppPGInterface.create_ndp_req(self)
+    def create_ndp_req(self, addr=None):
+        packet = VppPGInterface.create_ndp_req(self, addr)
         return self.add_dot1_layer(packet)
 
     # called before sending packet
@@ -196,8 +196,8 @@ class VppDot1ADSubint(VppSubInterface):
         packet = VppPGInterface.create_arp_req(self)
         return self.add_dot1_layer(packet)
 
-    def create_ndp_req(self):
-        packet = VppPGInterface.create_ndp_req(self)
+    def create_ndp_req(self, addr=None):
+        packet = VppPGInterface.create_ndp_req(self, addr)
         return self.add_dot1_layer(packet)
 
     def add_dot1_layer(self, packet):
@@ -228,6 +228,6 @@ class VppP2PSubint(VppSubInterface):
         packet = VppPGInterface.create_arp_req(self)
         return packet
 
-    def create_ndp_req(self):
-        packet = VppPGInterface.create_ndp_req(self)
+    def create_ndp_req(self, addr=None):
+        packet = VppPGInterface.create_ndp_req(self, addr)
         return packet
