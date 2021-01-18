@@ -29,7 +29,7 @@ define  ipsec-mb_config_cmds
 endef
 
 define  ipsec-mb_build_cmds
-	@make -C $(ipsec-mb_src_dir) -j \
+	@make -C $(ipsec-mb_src_dir)/lib -j \
 	  SHARED=n \
 	  SAFE_PARAM=n \
 	  SAFE_LOOKUP=n \
