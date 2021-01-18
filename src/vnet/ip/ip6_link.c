@@ -319,9 +319,10 @@ ip6_get_link_local_address (u32 sw_if_index)
 {
   const ip6_link_t *il;
 
-  vec_validate (ip6_links, sw_if_index);
+  il = ip6_link_get (sw_if_index);
 
-  il = &ip6_links[sw_if_index];
+  if (NULL == il)
+    return (NULL);
 
   return (&il->il_ll_addr);
 }
@@ -331,7 +332,10 @@ ip6_link_get_mcast_adj (u32 sw_if_index)
 {
   const ip6_link_t *il;
 
-  il = &ip6_links[sw_if_index];
+  il = ip6_link_get (sw_if_index);
+
+  if (NULL == il)
+    return (INDEX_INVALID);
 
   return (il->il_mcast_adj);
 }
