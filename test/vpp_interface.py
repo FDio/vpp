@@ -97,6 +97,10 @@ class VppInterface(metaclass=abc.ABCMeta):
     @property
     def local_ip6_ll(self):
         """Local IPv6 link-local address on VPP interface (string)."""
+        if not self._local_ip6_ll:
+            self._local_ip6_ll = str(
+                self.test.vapi.sw_interface_ip6_get_link_local_address(
+                    self.sw_if_index).ip)
         return self._local_ip6_ll
 
     @property
@@ -192,7 +196,6 @@ class VppInterface(metaclass=abc.ABCMeta):
 
     def set_mac(self, mac):
         self._local_mac = str(mac)
-        self._local_ip6_ll = mk_ll_addr(self._local_mac)
         self.test.vapi.sw_interface_set_mac_address(
             self.sw_if_index, mac.packed)
         return self
@@ -234,8 +237,8 @@ class VppInterface(metaclass=abc.ABCMeta):
                 "Could not find interface with sw_if_index %d "
                 "in interface dump %s" %
                 (self.sw_if_index, moves.reprlib.repr(r)))
-        self._local_ip6_ll = mk_ll_addr(self.local_mac)
         self._remote_ip6_ll = mk_ll_addr(self.remote_mac)
+        self._local_ip6_ll = None
 
     def config_ip4(self):
         """Configure IPv4 address on the VPP interface."""
