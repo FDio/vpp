@@ -442,14 +442,16 @@ class VppPGInterface(VppInterface):
                 ARP(op=ARP.who_has, pdst=self.local_ip4,
                     psrc=self.remote_ip4, hwsrc=self.remote_mac))
 
-    def create_ndp_req(self):
+    def create_ndp_req(self, addr=None):
         """Create NDP - NS applicable for this interface"""
-        nsma = in6_getnsma(inet_pton(socket.AF_INET6, self.local_ip6))
+        if not addr:
+            addr = self.local_ip6
+        nsma = in6_getnsma(inet_pton(socket.AF_INET6, addr))
         d = inet_ntop(socket.AF_INET6, nsma)
 
         return (Ether(dst=in6_getnsmac(nsma)) /
                 IPv6(dst=d, src=self.remote_ip6) /
-                ICMPv6ND_NS(tgt=self.local_ip6) /
+                ICMPv6ND_NS(tgt=addr) /
                 ICMPv6NDOptSrcLLAddr(lladdr=self.remote_mac))
 
     def resolve_arp(self, pg_interface=None):
@@ -488,19 +490,22 @@ class VppPGInterface(VppInterface):
                 ppp("Unexpected response to ARP request:", captured_packet))
             raise
 
-    def resolve_ndp(self, pg_interface=None, timeout=1):
+    def resolve_ndp(self, pg_interface=None, timeout=1, link_layer=False):
         """Resolve NDP using provided packet-generator interface
 
         :param pg_interface: interface used to resolve, if None then this
             interface is used
         :param timeout: how long to wait for response before giving up
+        :param link_layer: resolve for global address if False (default)
+            or for link-layer address if True
 
         """
         if pg_interface is None:
             pg_interface = self
+        addr = self.local_ip6_ll if link_layer else self.local_ip6
         self.test.logger.info("Sending NDP request for %s on port %s" %
-                              (self.local_ip6, pg_interface.name))
-        ndp_req = self.create_ndp_req()
+                              (addr, pg_interface.name))
+        ndp_req = self.create_ndp_req(addr)
         pg_interface.add_stream(ndp_req)
         pg_interface.enable_capture()
         self.test.pg_start()
