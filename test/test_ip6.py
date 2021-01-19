@@ -31,7 +31,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
 from vpp_neighbor import find_nbr, VppNeighbor
 from vpp_pg_interface import is_ipv6_misc
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
-from vpp_policer import VppPolicer
+from vpp_policer import VppPolicer, PolicerAction
 from ipaddress import IPv6Network, IPv6Address
 
 AF_INET6 = socket.AF_INET6
@@ -2292,6 +2292,57 @@ class TestIP6Punt(IP6PuntSetup, VppTestCase):
             self.assertEqual(p.punt.tx_sw_if_index, self.pg3.sw_if_index)
         self.assertNotEqual(punts[1].punt.nh, self.pg3.remote_ip6)
         self.assertEqual(str(punts[2].punt.nh), '::')
+
+
+class TestIP6PuntHandoff(IP6PuntSetup, VppTestCase):
+    """ IPv6 Punt Police/Redirect """
+    worker_config = "workers 2"
+
+    def setUp(self):
+        super(TestIP6PuntHandoff, self).setUp()
+        super(TestIP6PuntHandoff, self).punt_setup()
+
+    def tearDown(self):
+        super(TestIP6PuntHandoff, self).punt_teardown()
+        super(TestIP6PuntHandoff, self).tearDown()
+
+    def test_ip_punt(self):
+        """ IP6 punt policer thread handoff """
+        pkts = self.pkt * NUM_PKTS
+
+        #
+        # Configure a punt redirect via pg1.
+        #
+        nh_addr = self.pg1.remote_ip6
+        ip_punt_redirect = VppIpPuntRedirect(self, self.pg0.sw_if_index,
+                                             self.pg1.sw_if_index, nh_addr)
+        ip_punt_redirect.add_vpp_config()
+
+        action_tx = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT,
+            0)
+        #
+        # This policer drops no packets, we are just
+        # testing that they get to the right thread.
+        #
+        policer = VppPolicer(self, "ip6-punt", 400, 0, 10, 0, 1,
+                             0, 0, False, action_tx, action_tx, action_tx)
+        policer.add_vpp_config()
+        ip_punt_policer = VppIpPuntPolicer(self, policer.policer_index,
+                                           is_ip6=True)
+        ip_punt_policer.add_vpp_config()
+
+        for worker in [0, 1]:
+            self.send_and_expect(self.pg0, pkts, self.pg1, worker=worker)
+            if worker == 0:
+                self.logger.debug(self.vapi.cli("show trace max 100"))
+
+        #
+        # Clean up
+        #
+        ip_punt_policer.remove_vpp_config()
+        policer.remove_vpp_config()
+        ip_punt_redirect.remove_vpp_config()
 
 
 class TestIPDeag(VppTestCase):
