@@ -14,9 +14,23 @@
  */
 #include <stdint.h>
 #include <vnet/policer/policer.h>
+#include <vnet/policer/police_inlines.h>
 #include <vnet/classify/vnet_classify.h>
 
 vnet_policer_main_t vnet_policer_main;
+
+u8 *
+format_policer_handoff_trace (u8 *s, va_list *args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  policer_handoff_trace_t *t = va_arg (*args, policer_handoff_trace_t *);
+
+  s = format (s, "policer %d, handoff thread %d to %d", t->policer_index,
+	      t->current_worker_index, t->next_worker_index);
+
+  return s;
+}
 
 clib_error_t *
 policer_add_del (vlib_main_t * vm,
