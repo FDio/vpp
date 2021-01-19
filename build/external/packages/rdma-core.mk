@@ -39,6 +39,7 @@ define  rdma-core_config_cmds
 	  $(CMAKE) -G Ninja $(rdma-core_src_dir) \
 	    -DENABLE_STATIC=1 -DENABLE_RESOLVE_NEIGH=0 -DNO_PYVERBS=1 -DENABLE_VALGRIND=0\
 	    -DCMAKE_BUILD_TYPE=$(RDMA_BUILD_TYPE) -DCMAKE_INSTALL_PREFIX=$(rdma-core_install_dir) \
+	    -DCMAKE_INSTALL_LIBDIR=lib \
 	    -DCMAKE_C_FLAGS='-fPIC -fvisibility=hidden' > $(rdma-core_config_log)
 endef
 
@@ -52,6 +53,8 @@ define  rdma-core_install_cmds
 	find $(rdma-core_install_dir) -name '*.a' -exec mv -v {} $(rdma-core_install_dir)/lib \; >> $(rdma-core_install_log)
 	rmdir -v $(rdma-core_install_dir)/util $(rdma-core_install_dir)/lib/statics >> $(rdma-core_install_log)
 	sed '/Libs.private:/ s/$$/ -lrdma_util -lccan/' -i $(rdma-core_install_dir)/lib/pkgconfig/libibverbs.pc
+	sed '/Libs.private:/ s/ \S*\(rdmav25\)\S*//g'   -i $(rdma-core_install_dir)/lib/pkgconfig/libibverbs.pc
+	sed '/Libs.private:/ s/-lefa//g'                -i $(rdma-core_install_dir)/lib/pkgconfig/libibverbs.pc
 endef
 
 $(eval $(call package,rdma-core))
