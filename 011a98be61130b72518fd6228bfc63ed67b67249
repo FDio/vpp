@@ -16,6 +16,24 @@
       "revId": "011a98be61130b72518fd6228bfc63ed67b67249",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dc6e7081_ad84f769",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-01-19T12:37:12Z",
+      "side": 1,
+      "message": "My understanding is that it is called internally when software interface flags are set, not hardware interface flags (in vnet_sw_interface_set_flags_helper, not vnet_hw_interface_set_flags_helper).",
+      "parentUuid": "402098c9_ac1c270e",
+      "revId": "011a98be61130b72518fd6228bfc63ed67b67249",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
