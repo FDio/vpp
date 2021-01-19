@@ -779,6 +779,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	      len = payload_len_total + hdr_len - len;
 	      ip6->payload_length = clib_net_to_host_u16 (len);
+	      b[0]->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	    }
 	  else
 	    {
