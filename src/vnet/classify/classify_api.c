@@ -438,7 +438,6 @@ static void vl_api_classify_add_del_session_t_handler
   u32 table_index, hit_next_index, opaque_index, metadata, match_len;
   i32 advance;
   u8 action;
-  u64 value;
   vnet_classify_table_t *t;
 
   table_index = ntohl (mp->table_index);
@@ -446,7 +445,6 @@ static void vl_api_classify_add_del_session_t_handler
   opaque_index = ntohl (mp->opaque_index);
   advance = ntohl (mp->advance);
   action = mp->action;
-  value = ntohll(mp->value);
   metadata = ntohl (mp->metadata);
   match_len = ntohl (mp->match_len);
 
@@ -466,7 +464,7 @@ static void vl_api_classify_add_del_session_t_handler
 
   rv = vnet_classify_add_del_session
     (cm, table_index, mp->match, hit_next_index, opaque_index,
-     advance, action, metadata, value, mp->is_add);
+     advance, action, metadata, mp->is_add);
 
 out:
   REPLY_MACRO (VL_API_CLASSIFY_ADD_DEL_SESSION_REPLY);
