@@ -22,6 +22,30 @@
       "revId": "674d8edac5584acf130c9257a135d09b66533aeb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a91fec2c_fb0978b7",
+        "filename": "src/plugins/nat/nat.h",
+        "patchSetId": 28
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-01-19T15:11:04Z",
+      "side": 1,
+      "message": "This is never directly used as a key. Bihash key is always constructed from these values by a helper function to avoid \"long read after short write\" performance penalty. But making it 16 bytes would surely save a bit of memory. I\u0027ll take a look at it.",
+      "parentUuid": "d831ddc4_4c90d916",
+      "range": {
+        "startLine": 231,
+        "startChar": 0,
+        "endLine": 238,
+        "endChar": 11
+      },
+      "revId": "674d8edac5584acf130c9257a135d09b66533aeb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
