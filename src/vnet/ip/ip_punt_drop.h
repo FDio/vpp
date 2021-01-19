@@ -27,6 +27,7 @@
 typedef struct ip_punt_policer_t_
 {
   u32 policer_index;
+  u32 fq_index;
 } ip_punt_policer_t;
 
 typedef enum ip_punt_policer_next_t_
@@ -53,6 +54,10 @@ typedef enum
 } ip_punt_policer_error_t;
 
 extern u8 *format_ip_punt_policer_trace (u8 * s, va_list * args);
+extern vlib_node_registration_t ip4_punt_policer_node;
+extern ip_punt_policer_t ip4_punt_policer_cfg;
+extern vlib_node_registration_t ip6_punt_policer_node;
+extern ip_punt_policer_t ip6_punt_policer_cfg;
 
 /**
  * IP punt policing node function
