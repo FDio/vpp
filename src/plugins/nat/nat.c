@@ -2660,7 +2660,7 @@ nat44_ed_plugin_enable (nat44_config_t c)
   sm->user_buckets = nat_calc_bihash_buckets (c.users);
 
   if (!c.sessions)
-    c.sessions = 10 * 1024;
+    c.sessions = 63 * 1024;
 
   sm->max_translations_per_thread = c.sessions;
   sm->translation_buckets = nat_calc_bihash_buckets (c.sessions);
