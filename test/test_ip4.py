@@ -1427,35 +1427,16 @@ class TestIPVlan0(VppTestCase):
         self.send_and_expect(self.pg0, pkts, self.pg1)
 
 
-class TestIPPunt(VppTestCase):
-    """ IPv4 Punt Police/Redirect """
+class IPPuntSetup(object):
+    """ Setup for IPv4 Punt Police/Redirect """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestIPPunt, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIPPunt, cls).tearDownClass()
-
-    def setUp(self):
-        super(TestIPPunt, self).setUp()
-
+    def punt_setup(self):
         self.create_pg_interfaces(range(4))
 
         for i in self.pg_interfaces:
             i.admin_up()
             i.config_ip4()
             i.resolve_arp()
-
-    def tearDown(self):
-        super(TestIPPunt, self).tearDown()
-        for i in self.pg_interfaces:
-            i.unconfig_ip4()
-            i.admin_down()
-
-    def test_ip_punt(self):
-        """ IP punt police and redirect """
 
         # use UDP packet that have a port we need to explicitly
         # register to get punted.
@@ -1475,13 +1456,33 @@ class TestIPPunt(VppTestCase):
 
         self.vapi.set_punt(is_add=1, punt=punt_udp)
 
-        p = (Ether(src=self.pg0.remote_mac,
-                   dst=self.pg0.local_mac) /
-             IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
-             UDP(sport=1234, dport=1234) /
-             Raw(b'\xa5' * 100))
+        self.pkt = (Ether(src=self.pg0.remote_mac,
+                          dst=self.pg0.local_mac) /
+                    IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
+                    UDP(sport=1234, dport=1234) /
+                    Raw(b'\xa5' * 100))
 
-        pkts = p * 1025
+    def punt_teardown(self):
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+
+
+class TestIPPunt(IPPuntSetup, VppTestCase):
+    """ IPv4 Punt Police/Redirect """
+
+    def setUp(self):
+        super(TestIPPunt, self).setUp()
+        super(TestIPPunt, self).punt_setup()
+
+    def tearDown(self):
+        super(TestIPPunt, self).punt_teardown()
+        super(TestIPPunt, self).tearDown()
+
+    def test_ip_punt(self):
+        """ IP punt police and redirect """
+
+        pkts = self.pkt * 1025
 
         #
         # Configure a punt redirect via pg1.
