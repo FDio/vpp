@@ -1470,8 +1470,8 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       next[1] =
 	error[1] != IP6_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next[1];
 
-      b[0]->error = error_node->errors[0];
-      b[1]->error = error_node->errors[1];
+      b[0]->error = error_node->errors[error[0]];
+      b[1]->error = error_node->errors[error[1]];
 
       if (head_of_feature_arc)
 	{
@@ -1590,7 +1590,7 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       next[0] =
 	error != IP6_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next[0];
 
-      b[0]->error = error_node->errors[0];
+      b[0]->error = error_node->errors[error];
 
       if (head_of_feature_arc)
 	{
