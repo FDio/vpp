@@ -77,6 +77,8 @@ typedef CLIB_PACKED(struct _vnet_classify_entry {
     u64 opaque_count;
   };
 
+  u64 value;
+
   /* Really only need 1 bit */
   u8 flags;
 #define VNET_CLASSIFY_ENTRY_FREE	(1<<0)

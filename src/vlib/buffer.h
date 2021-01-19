@@ -167,7 +167,7 @@ typedef union
     u32 total_length_not_including_first_buffer;
 
     /**< More opaque data, see ../vnet/vnet/buffer.h */
-    u32 opaque2[14];
+    u32 opaque2[16];
 
     /** start of buffer headroom */
       CLIB_ALIGN_MARK (headroom, 64);
@@ -191,7 +191,7 @@ typedef union
 #endif
 } vlib_buffer_t;
 
-STATIC_ASSERT_SIZEOF (vlib_buffer_t, 128 + VLIB_BUFFER_PRE_DATA_SIZE);
+STATIC_ASSERT_SIZEOF (vlib_buffer_t, 192 + VLIB_BUFFER_PRE_DATA_SIZE);
 STATIC_ASSERT (VLIB_BUFFER_PRE_DATA_SIZE % CLIB_CACHE_LINE_BYTES == 0,
 	       "VLIB_BUFFER_PRE_DATA_SIZE must be divisible by cache line size");
 

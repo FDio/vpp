@@ -380,7 +380,10 @@ typedef struct
       u32 flags;
     } snat;
 
-    u32 unused[6];
+    u64 value;
+    u32 unused[6]; // This is not really unused because ipsec uses this data.
+                   // See vnet/ipsec/esp.h. Another unused member variable
+                   // must be defined here for future use.
   };
 } vnet_buffer_opaque_t;
 
