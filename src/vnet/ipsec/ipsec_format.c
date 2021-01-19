@@ -320,8 +320,10 @@ format_ipsec_sa (u8 * s, va_list * args)
 
   if (ipsec_sa_is_set_IS_TUNNEL (sa))
     {
-      tx_table_id = fib_table_get_table_id (sa->tx_fib_index,
-					    FIB_PROTOCOL_IP4);
+      tx_table_id = fib_table_get_table_id (
+	sa->tx_fib_index,
+	(ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ? FIB_PROTOCOL_IP6 :
+					     FIB_PROTOCOL_IP4));
       s = format (s, "\n   table-ID %d tunnel %U src %U dst %U flags %U",
 		  tx_table_id,
 		  format_ip_dscp, sa->dscp,

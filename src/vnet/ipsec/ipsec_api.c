@@ -454,15 +454,11 @@ static void vl_api_ipsec_sad_entry_add_del_v2_t_handler
   ip_address_decode (&mp->entry.tunnel_dst, &tun_dst);
 
   if (mp->is_add)
-    rv = ipsec_sa_add_and_lock (id, spi, proto,
-				crypto_alg, &crypto_key,
-				integ_alg, &integ_key, flags,
-				0, mp->entry.salt, &tun_src, &tun_dst,
-				tunnel_flags,
-				ip_dscp_decode (mp->entry.dscp),
-				&sa_index,
-				htons (mp->entry.udp_src_port),
-				htons (mp->entry.udp_dst_port));
+    rv = ipsec_sa_add_and_lock (
+      id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
+      htonl (mp->entry.tx_table_id), mp->entry.salt, &tun_src, &tun_dst,
+      tunnel_flags, ip_dscp_decode (mp->entry.dscp), &sa_index,
+      htons (mp->entry.udp_src_port), htons (mp->entry.udp_dst_port));
   else
     rv = ipsec_sa_unlock_id (id);
 
