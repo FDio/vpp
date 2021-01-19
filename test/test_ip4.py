@@ -22,7 +22,7 @@ from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_papi import VppEnum
 from vpp_neighbor import VppNeighbor
 from vpp_lo_interface import VppLoInterface
-from vpp_policer import VppPolicer
+from vpp_policer import VppPolicer, PolicerAction
 
 NUM_PKTS = 67
 
@@ -1571,6 +1571,56 @@ class TestIPPunt(IPPuntSetup, VppTestCase):
             self.assertEqual(p.punt.tx_sw_if_index, self.pg3.sw_if_index)
         self.assertNotEqual(punts[1].punt.nh, self.pg3.remote_ip4)
         self.assertEqual(str(punts[2].punt.nh), '0.0.0.0')
+
+
+class TestIPPuntHandoff(IPPuntSetup, VppTestCase):
+    """ IPv4 Punt Policer thread handoff """
+    worker_config = "workers 2"
+
+    def setUp(self):
+        super(TestIPPuntHandoff, self).setUp()
+        super(TestIPPuntHandoff, self).punt_setup()
+
+    def tearDown(self):
+        super(TestIPPuntHandoff, self).punt_teardown()
+        super(TestIPPuntHandoff, self).tearDown()
+
+    def test_ip_punt_policer_handoff(self):
+        """ IP4 punt policer thread handoff """
+        pkts = self.pkt * NUM_PKTS
+
+        #
+        # Configure a punt redirect via pg1.
+        #
+        nh_addr = self.pg1.remote_ip4
+        ip_punt_redirect = VppIpPuntRedirect(self, self.pg0.sw_if_index,
+                                             self.pg1.sw_if_index, nh_addr)
+        ip_punt_redirect.add_vpp_config()
+
+        action_tx = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT,
+            0)
+        #
+        # This policer drops no packets, we are just
+        # testing that they get to the right thread.
+        #
+        policer = VppPolicer(self, "ip4-punt", 400, 0, 10, 0, 1,
+                             0, 0, False, action_tx, action_tx, action_tx)
+        policer.add_vpp_config()
+        ip_punt_policer = VppIpPuntPolicer(self, policer.policer_index)
+        ip_punt_policer.add_vpp_config()
+
+        for worker in [0, 1]:
+            self.send_and_expect(self.pg0, pkts, self.pg1, worker=worker)
+            if worker == 0:
+                self.logger.debug(self.vapi.cli("show trace max 100"))
+
+        #
+        # Clean up
+        #
+        ip_punt_policer.remove_vpp_config()
+        policer.remove_vpp_config()
+        ip_punt_redirect.remove_vpp_config()
 
 
 class TestIPDeag(VppTestCase):
