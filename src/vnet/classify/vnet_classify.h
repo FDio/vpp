@@ -18,6 +18,8 @@
 #include <vnet/vnet.h>
 #include <vnet/api_errno.h>	/* for API error numbers */
 
+#include <arpa/inet.h>
+
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/cache.h>
@@ -35,6 +37,17 @@ extern vlib_node_registration_t ip6_classify_node;
  *   - classify packets starting from VPP node’s current data pointer
  */
 #define CLASSIFY_FLAG_USE_CURR_DATA              1
+
+inline uint64_t
+htonll(uint64_t n)
+{
+    return htonl(1) == 1 ? n : ((uint64_t) htonl(n) << 32) | htonl(n >> 32);
+}
+inline uint64_t
+ntohll(uint64_t n)
+{
+    return ntohl(1) == 1 ? n : ((uint64_t) ntohl(n) << 32) | ntohl(n >> 32);
+}
 
 /*
  * Classify session action
@@ -94,6 +107,7 @@ typedef CLIB_PACKED(struct _vnet_classify_entry {
 
   /* Must be aligned to a 16-octet boundary */
   u32x4 key[0];
+  u64   value;
 }) vnet_classify_entry_t;
 /* *INDENT-ON* */
 
@@ -501,6 +515,15 @@ int vnet_classify_add_del_session (vnet_classify_main_t * cm,
 				   u32 opaque_index,
 				   i32 advance,
 				   u8 action, u32 metadata, int is_add);
+
+int vnet_classify_add_del_session_w_value (vnet_classify_main_t * cm,
+                                           u32 table_index,
+                                           u8 * match,
+                                           u32 hit_next_index,
+                                           u32 opaque_index,
+                                           i32 advance,
+                                           u8 action, u32 metadata,
+                                           u64 value, int is_add);
 
 int vnet_classify_add_del_table (vnet_classify_main_t * cm,
 				 u8 * mask,

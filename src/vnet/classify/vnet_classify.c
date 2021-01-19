@@ -2738,13 +2738,14 @@ unformat_classify_match (unformat_input_t * input, va_list * args)
 }
 
 int
-vnet_classify_add_del_session (vnet_classify_main_t * cm,
-			       u32 table_index,
-			       u8 * match,
-			       u32 hit_next_index,
-			       u32 opaque_index,
-			       i32 advance,
-			       u8 action, u32 metadata, int is_add)
+vnet_classify_add_del_session_guts (vnet_classify_main_t * cm,
+                                    u32 table_index,
+                                    u8 * match,
+                                    u32 hit_next_index,
+                                    u32 opaque_index,
+                                    i32 advance,
+                                    u8 action, u32 metadata, u64 value,
+                                    int is_add)
 {
   vnet_classify_table_t *t;
   vnet_classify_entry_5_t _max_e __attribute__ ((aligned (16)));
@@ -2764,6 +2765,7 @@ vnet_classify_add_del_session (vnet_classify_main_t * cm,
   e->last_heard = 0;
   e->flags = 0;
   e->action = action;
+  e->value = value;
   if (e->action == CLASSIFY_ACTION_SET_IP4_FIB_INDEX)
     e->metadata = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
 						     metadata,
@@ -2792,6 +2794,39 @@ vnet_classify_add_del_session (vnet_classify_main_t * cm,
   if (rv)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
   return 0;
+}
+
+int
+vnet_classify_add_del_session (vnet_classify_main_t * cm,
+                               u32 table_index,
+                               u8 * match,
+                               u32 hit_next_index,
+                               u32 opaque_index,
+                               i32 advance,
+                               u8 action, u32 metadata, int is_add)
+{
+  return vnet_classify_add_del_session_guts(cm, table_index, match,
+                                            hit_next_index,
+                                            opaque_index,
+                                            advance, action,
+                                            metadata, 0, is_add);
+}
+
+int
+vnet_classify_add_del_session_w_value (vnet_classify_main_t * cm,
+                                       u32 table_index,
+                                       u8 * match,
+                                       u32 hit_next_index,
+                                       u32 opaque_index,
+                                       i32 advance,
+                                       u8 action, u32 metadata, u64 value,
+                                       int is_add)
+{
+  return vnet_classify_add_del_session_guts(cm, table_index, match,
+                                            hit_next_index,
+                                            opaque_index,
+                                            advance, action,
+                                            metadata, value, is_add);
 }
 
 static clib_error_t *
@@ -3221,7 +3256,7 @@ test_classify_churn (test_classify_main_t * tm)
 	(tm->classify_main,
 	 tm->table_index,
 	 key_minus_skip, IP_LOOKUP_NEXT_DROP, i /* opaque_index */ ,
-	 0 /* advance */ , 0, 0,
+	 0 /* advance */ , 0,
 	 0 /* is_add */ );
 
       if (rv != 0)
