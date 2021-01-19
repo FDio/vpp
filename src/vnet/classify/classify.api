@@ -128,6 +128,7 @@ autoreply define classify_add_del_session
   vl_api_classify_action_t action [default=0];
   u32 metadata [default=0];
   u32 match_len;
+  u64 value;
   u8 match[match_len];
 };
 

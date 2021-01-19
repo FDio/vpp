@@ -236,7 +236,7 @@ flow_classify_inline (vlib_main_t * vm,
 		{
 		  misses++;
 		  vnet_classify_add_del_session (vcm, table_index0,
-						 h0, ~0, 0, 0, 0, 0, 1);
+						 h0, ~0, 0, 0, 0, 0, 0, 1);
 		  /* increment counter */
 		  vnet_classify_find_entry (t0, h0, hash0, now);
 		}
