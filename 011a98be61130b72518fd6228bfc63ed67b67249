@@ -52,6 +52,24 @@
       "revId": "011a98be61130b72518fd6228bfc63ed67b67249",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f2b06012_4077202f",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-01-19T15:39:18Z",
+      "side": 1,
+      "message": "Yes there is a reason: the only thing we do after the update_runtime is calling the vnet_hw_if_set_rx_queue_file_index. This function moves the fd on a worker thread. So potentially, it can send an interrupt (concurrently) before the update is done if the update is done afterwards. if an interrupt is dispatched before the update, there might be crashes (I experienced one I think).",
+      "parentUuid": "5fd1e3da_82116af5",
+      "revId": "011a98be61130b72518fd6228bfc63ed67b67249",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
