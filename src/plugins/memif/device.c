@@ -475,22 +475,6 @@ memif_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
 }
 
 static clib_error_t *
-memif_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
-{
-  memif_main_t *mm = &memif_main;
-  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
-  memif_if_t *mif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
-  static clib_error_t *error = 0;
-
-  if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
-    mif->flags |= MEMIF_IF_FLAG_ADMIN_UP;
-  else
-    mif->flags &= ~MEMIF_IF_FLAG_ADMIN_UP;
-
-  return error;
-}
-
-static clib_error_t *
 memif_subif_add_del_function (vnet_main_t * vnm,
 			      u32 hw_if_index,
 			      struct vnet_sw_interface_t *st, int is_add)
