@@ -438,8 +438,9 @@ follows:
 
 ```c
     unformat_input_t input;
+    u8 *s = "<some-C-string>";
 
-    unformat_init_string (&input, "<some-C-string>");
+    unformat_init_string (&input, (char *) s, strlen((char *) s));
     /* or */
     unformat_init_vector (&input, <u8-vector>);
 ```
