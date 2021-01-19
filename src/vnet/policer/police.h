@@ -50,9 +50,12 @@ typedef enum
 // computes the shift amount be the largest possible that still supports the
 // burst size. This makes the rate accuracy as high as possible.
 //
-// The 64-bit last_update_time supports a 4Ghz CPU without rollover for 100 years
+// The 64-bit last_update_time supports a 4Ghz CPU without rollover for 100
+// years
 //
-// The lock field should be used for a spin-lock on the struct.
+// The lock field should be used for a spin-lock on the struct. Alternatively,
+// a thread index field is provided so that policed packets may be handed
+// off to a single worker thread.
 
 #define POLICER_TICKS_PER_PERIOD_SHIFT 17
 #define POLICER_TICKS_PER_PERIOD       (1 << POLICER_TICKS_PER_PERIOD_SHIFT)
@@ -82,7 +85,8 @@ typedef struct
   u32 extended_bucket;		// MOD
 
   u64 last_update_time;		// MOD
-  u64 pad64;
+  u32 thread_index;		// Tie policer to a thread, rather than lock
+  u32 pad32;
 
 } policer_read_response_type_st;
 

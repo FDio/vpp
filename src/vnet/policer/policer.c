@@ -87,6 +87,7 @@ policer_add_del (vlib_main_t * vm,
       pi = policer - pm->policers;
       hash_set_mem (pm->policer_index_by_name, name, pi);
       *policer_index = pi;
+      policer->thread_index = ~0;
     }
   else
     {
