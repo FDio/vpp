@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "db287cf1_2456352c",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1383,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-19T09:19:16Z",
+      "side": 1,
+      "message": "eww 😊\nis it beter if you add the macro to the .clang_format file?",
+      "revId": "00202a539717736a0525660c93c9280cbbc8a3c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
