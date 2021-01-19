@@ -2164,20 +2164,10 @@ class TestIP6LoadBalance(VppTestCase):
         self.send_and_expect_one_itf(self.pg0, port_pkts, self.pg3)
 
 
-class TestIP6Punt(VppTestCase):
-    """ IPv6 Punt Police/Redirect """
+class IP6PuntSetup(object):
+    """ Setup for IPv6 Punt Police/Redirect """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestIP6Punt, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestIP6Punt, cls).tearDownClass()
-
-    def setUp(self):
-        super(TestIP6Punt, self).setUp()
-
+    def punt_setup(self):
         self.create_pg_interfaces(range(4))
 
         for i in self.pg_interfaces:
@@ -2185,23 +2175,34 @@ class TestIP6Punt(VppTestCase):
             i.config_ip6()
             i.resolve_ndp()
 
-    def tearDown(self):
-        super(TestIP6Punt, self).tearDown()
+        self.pkt = (Ether(src=self.pg0.remote_mac,
+                          dst=self.pg0.local_mac) /
+                    IPv6(src=self.pg0.remote_ip6,
+                         dst=self.pg0.local_ip6) /
+                    inet6.TCP(sport=1234, dport=1234) /
+                    Raw(b'\xa5' * 100))
+
+    def punt_teardown(self):
         for i in self.pg_interfaces:
             i.unconfig_ip6()
             i.admin_down()
 
+
+class TestIP6Punt(IP6PuntSetup, VppTestCase):
+    """ IPv6 Punt Police/Redirect """
+
+    def setUp(self):
+        super(TestIP6Punt, self).setUp()
+        super(TestIP6Punt, self).punt_setup()
+
+    def tearDown(self):
+        super(TestIP6Punt, self).punt_teardown()
+        super(TestIP6Punt, self).tearDown()
+
     def test_ip_punt(self):
         """ IP6 punt police and redirect """
 
-        p = (Ether(src=self.pg0.remote_mac,
-                   dst=self.pg0.local_mac) /
-             IPv6(src=self.pg0.remote_ip6,
-                  dst=self.pg0.local_ip6) /
-             inet6.TCP(sport=1234, dport=1234) /
-             Raw(b'\xa5' * 100))
-
-        pkts = p * 1025
+        pkts = self.pkt * 1025
 
         #
         # Configure a punt redirect via pg1.
