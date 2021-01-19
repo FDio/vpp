@@ -334,6 +334,9 @@ static inline uword BV (clib_bihash_get_offset) (BVT (clib_bihash) * h,
   return vp - hp;
 }
 
+#define BIHASH_ADD 1
+#define BIHASH_DEL 0
+
 void BV (clib_bihash_init)
   (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size);
 
