@@ -551,6 +551,8 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	case MEMIF_PROCESS_EVENT_STOP:
 	  enabled = 0;
 	  continue;
+	case MEMIF_PROCESS_EVENT_ADMIN_UP_DOWN:
+	  break;
 	default:
 	  ASSERT (0);
 	}
@@ -1077,6 +1079,24 @@ error:
 
 done:
   return rv;
+}
+
+clib_error_t *
+memif_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
+{
+  memif_main_t *mm = &memif_main;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  memif_if_t *mif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
+  static clib_error_t *error = 0;
+
+  if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
+    mif->flags |= MEMIF_IF_FLAG_ADMIN_UP;
+  else
+    mif->flags &= ~MEMIF_IF_FLAG_ADMIN_UP;
+
+  vlib_process_signal_event (vnm->vlib_main, memif_process_node.index,
+			     MEMIF_PROCESS_EVENT_ADMIN_UP_DOWN, 0);
+  return error;
 }
 
 static clib_error_t *
