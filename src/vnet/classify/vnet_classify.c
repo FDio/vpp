@@ -1917,6 +1917,7 @@ found_table:
 				      0 /* advance */ ,
 				      0 /* action */ ,
 				      0 /* metadata */ ,
+				      0 /* value */,
 				      1 /* is_add */ );
 
   vec_free (match_vector);
@@ -2673,7 +2674,8 @@ vnet_classify_add_del_session (vnet_classify_main_t * cm,
 			       u32 hit_next_index,
 			       u32 opaque_index,
 			       i32 advance,
-			       u8 action, u32 metadata, int is_add)
+			       u8 action, u32 metadata, u64 value,
+			       int is_add)
 {
   vnet_classify_table_t *t;
   vnet_classify_entry_5_t _max_e __attribute__ ((aligned (16)));
@@ -2693,6 +2695,7 @@ vnet_classify_add_del_session (vnet_classify_main_t * cm,
   e->last_heard = 0;
   e->flags = 0;
   e->action = action;
+  e->value = value;
   if (e->action == CLASSIFY_ACTION_SET_IP4_FIB_INDEX)
     e->metadata = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
 						     metadata,
@@ -2737,6 +2740,7 @@ classify_session_command_fn (vlib_main_t * vm,
   i32 advance = 0;
   u32 action = 0;
   u32 metadata = 0;
+  u64 value  = 0;
   int i, rv;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -2801,7 +2805,7 @@ classify_session_command_fn (vlib_main_t * vm,
   rv = vnet_classify_add_del_session (cm, table_index, match,
 				      hit_next_index,
 				      opaque_index, advance,
-				      action, metadata, is_add);
+				      action, metadata, value, is_add);
 
   switch (rv)
     {

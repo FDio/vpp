@@ -25,9 +25,6 @@
 #include <vpp/app/version.h>
 
 #include <vnet/ethernet/ethernet_types_api.h>
-#include <vnet/ip/format.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ip/ip_types_api.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -37,6 +34,7 @@
 #include <acl/acl.api_types.h>
 
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
+#include "manual_fns.h"
 
 #include "fa_node.h"
 #include "public_inlines.h"
@@ -133,26 +131,6 @@ print_cli_and_reset (vlib_main_t * vm, u8 * out0)
 }
 
 typedef void (*acl_vector_print_func_t) (vlib_main_t * vm, u8 * out0);
-
-static inline u8 *
-format_acl_action (u8 * s, u8 action)
-{
-  switch (action)
-    {
-    case 0:
-      s = format (s, "deny");
-      break;
-    case 1:
-      s = format (s, "permit");
-      break;
-    case 2:
-      s = format (s, "permit+reflect");
-      break;
-    default:
-      s = format (s, "action %d", action);
-    }
-  return (s);
-}
 
 static void
 acl_print_acl_x (acl_vector_print_func_t vpr, vlib_main_t * vm,
@@ -651,16 +629,16 @@ acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
 
 
   u32 **pinout_lc_index_by_sw_if_index =
-    is_input ? &am->input_lc_index_by_sw_if_index : &am->
-    output_lc_index_by_sw_if_index;
+    is_input ? &am->
+    input_lc_index_by_sw_if_index : &am->output_lc_index_by_sw_if_index;
 
   u32 ***pinout_acl_vec_by_sw_if_index =
-    is_input ? &am->input_acl_vec_by_sw_if_index : &am->
-    output_acl_vec_by_sw_if_index;
+    is_input ? &am->
+    input_acl_vec_by_sw_if_index : &am->output_acl_vec_by_sw_if_index;
 
   u32 ***pinout_sw_if_index_vec_by_acl =
-    is_input ? &am->input_sw_if_index_vec_by_acl : &am->
-    output_sw_if_index_vec_by_acl;
+    is_input ? &am->
+    input_sw_if_index_vec_by_acl : &am->output_sw_if_index_vec_by_acl;
 
   vec_validate ((*pinout_acl_vec_by_sw_if_index), sw_if_index);
 
@@ -735,9 +713,7 @@ acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
     {
       if (~0 != (*pinout_lc_index_by_sw_if_index)[sw_if_index])
 	{
-	  acl_plugin.
-	    put_lookup_context_index ((*pinout_lc_index_by_sw_if_index)
-				      [sw_if_index]);
+	  acl_plugin.put_lookup_context_index ((*pinout_lc_index_by_sw_if_index)[sw_if_index]);
 	  (*pinout_lc_index_by_sw_if_index)[sw_if_index] = ~0;
 	}
     }
@@ -774,8 +750,8 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
     : VNET_API_ERROR_ACL_IN_USE_OUTBOUND;
 
   u32 ***pinout_acl_vec_by_sw_if_index =
-    is_input ? &am->input_acl_vec_by_sw_if_index : &am->
-    output_acl_vec_by_sw_if_index;
+    is_input ? &am->
+    input_acl_vec_by_sw_if_index : &am->output_acl_vec_by_sw_if_index;
   int rv = 0;
   if (is_add)
     {
@@ -1320,7 +1296,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	  /* add session to table mvec[match_type_index].table_index; */
 	  vnet_classify_add_del_session (cm, tag_table,
 					 mask, a->rules[i].is_permit ? ~0 : 0,
-					 i, 0, action, metadata, 1);
+					 i, 0, action, metadata, 0, 1);
 	  clib_memset (&mask[12], 0, sizeof (mask) - 12);
 	}
 
@@ -1366,7 +1342,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 		      4);
 	      vnet_classify_add_del_session (cm, tag_table, mask,
 					     a->rules[i].is_permit ? ~0 : 0,
-					     i, 0, action, metadata, 1);
+					     i, 0, action, metadata, 0, 1);
 	    }
 	}
       if (macip_permit_also_egress (a->rules[i].is_permit))
@@ -1419,7 +1395,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	      vnet_classify_add_del_session (cm, tag_table,
 					     mask,
 					     a->rules[i].is_permit ? ~0 : 0,
-					     i, 0, action, metadata, 1);
+					     i, 0, action, metadata, 0, 1);
 	      // clib_memset (&mask[12], 0, sizeof (mask) - 12);
 	    }
 
@@ -1459,9 +1435,9 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 
 		  vnet_classify_add_del_session (cm, tag_table,
 						 mask,
-						 a->rules[i].
-						 is_permit ? ~0 : 0, i, 0,
-						 action, metadata, 1);
+						 a->
+						 rules[i].is_permit ? ~0 : 0,
+						 i, 0, action, metadata, 0, 1);
 		}
 	    }
 	}
@@ -2304,8 +2280,7 @@ static void
 	if (~0 != am->macip_acl_by_sw_if_index[sw_if_index])
 	  {
 	    send_macip_acl_interface_list_details (am, reg, sw_if_index,
-						   am->
-						   macip_acl_by_sw_if_index
+						   am->macip_acl_by_sw_if_index
 						   [sw_if_index],
 						   mp->context);
 	  }

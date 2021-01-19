@@ -511,7 +511,8 @@ int vnet_classify_add_del_session (vnet_classify_main_t * cm,
 				   u32 hit_next_index,
 				   u32 opaque_index,
 				   i32 advance,
-				   u8 action, u32 metadata, int is_add);
+				   u8 action, u32 metadata, u64 value,
+				   int is_add);
 
 int vnet_classify_add_del_table (vnet_classify_main_t * cm,
 				 u8 * mask,
