@@ -165,6 +165,7 @@ svm_msg_q_t *fifo_segment_msg_q_alloc (fifo_segment_t *fs, u32 mq_index,
  */
 svm_msg_q_t *fifo_segment_msg_q_attach (fifo_segment_t *fs, uword offset,
 					u32 mq_index);
+void fifo_segment_msg_qs_discover (fifo_segment_t *fs, int *fds, u32 n_fds);
 
 /**
  * Message queue offset on segment

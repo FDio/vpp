@@ -1391,6 +1391,53 @@ session_flush_pending_tx_buffers (session_worker_t * wrk,
   vec_reset_length (wrk->pending_tx_nexts);
 }
 
+static int
+session_wrk_handle_mq (session_worker_t *wrk, svm_msg_q_t *mq)
+{
+  svm_msg_q_msg_t _msg, *msg = &_msg;
+  session_event_t *evt;
+  u32 n_to_dequeue;
+  int i;
+
+  n_to_dequeue = svm_msg_q_size (mq);
+  for (i = 0; i < n_to_dequeue; i++)
+    {
+      svm_msg_q_sub_w_lock (mq, msg);
+      evt = svm_msg_q_msg_data (mq, msg);
+      session_evt_add_to_list (wrk, evt);
+      svm_msg_q_free_msg (mq, msg);
+    }
+
+  return n_to_dequeue;
+}
+
+int
+app_rx_mqs_epoll (session_worker_t *wrk)
+{
+  int n_ep_evts, i;
+  svm_msg_q_t *mq;
+  u32 n_evts = 0;
+  u64 buf;
+
+  vec_validate (wrk->app_rx_mqs_evts, 128);
+  n_ep_evts = epoll_wait (wrk->app_rx_mqs_epfd, wrk->app_rx_mqs_evts,
+		   vec_len (wrk->app_rx_mqs_evts), 0);
+
+  for (i = 0; i < n_ep_evts; i++)
+    {
+      mq = app_rx_mqs_get_w_handle (wrk->app_rx_mqs_evts[i].data.u64);
+      if (!mq)
+	{
+	  clib_warning ("closed?");
+	  continue;
+	}
+      read (svm_msg_q_get_consumer_eventfd (mq), &buf, sizeof(buf));
+      n_evts += session_wrk_handle_mq (wrk, mq);
+    }
+
+  return n_evts;
+}
+
 static uword
 session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * frame)
@@ -1436,6 +1483,8 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       svm_msg_q_unlock (mq);
     }
+
+  n_to_dequeue += app_rx_mqs_epoll (wrk);
 
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, MQ_DEQ, wrk, n_to_dequeue, !i);
 

@@ -32,7 +32,8 @@ typedef struct svm_msg_q_shr_queue_
   volatile int cursize;
   int maxsize;
   int elsize;
-  char data[0];
+  u32 pad;	/* 8-byte aligned */
+  u8 data[0];
 } svm_msg_q_shared_queue_t;
 
 typedef struct svm_msg_q_queue_

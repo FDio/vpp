@@ -100,11 +100,6 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 				fds[n_fds++]))
 	  goto failed;
 
-      vcl_segment_attach_mq (vcl_vpp_worker_segment_handle (0),
-			     mp->vpp_ctrl_mq, mp->vpp_ctrl_mq_thread,
-			     &wrk->ctrl_mq);
-      vcm->ctrl_mq = wrk->ctrl_mq;
-
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
 	{
 	  segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
@@ -125,6 +120,14 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 	  vcl_mq_epoll_add_evfd (wrk, wrk->app_event_queue);
 	  n_fds++;
 	}
+
+      ASSERT (mp->fd_flags & SESSION_FD_F_VPP_MQ_EVENTFD);
+      vcl_segment_discover_mqs (vcl_vpp_worker_segment_handle (0),
+                                fds + n_fds, mp->n_fds - n_fds);
+      vcl_segment_attach_mq (vcl_vpp_worker_segment_handle (0),
+			     mp->vpp_ctrl_mq, mp->vpp_ctrl_mq_thread,
+			     &wrk->ctrl_mq);
+      vcm->ctrl_mq = wrk->ctrl_mq;
 
       vec_free (fds);
     }
