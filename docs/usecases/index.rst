@@ -20,3 +20,4 @@ extensive list, but should give a sampling of the many features contained in FD.
    networksim
    webapp
    container_test
+   trafficgen
