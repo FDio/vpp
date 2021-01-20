@@ -150,6 +150,7 @@ struct fifo_segment_header_
   CLIB_CACHE_LINE_ALIGN_MARK (allocator);
   uword byte_index;
   uword max_byte_index;
+  uword start_byte_index;
   CLIB_CACHE_LINE_ALIGN_MARK (slice);
   fifo_segment_slice_t slices[0]; /** Fixed array of slices */
 };

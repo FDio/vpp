@@ -151,7 +151,7 @@ mq_send_session_accepted_cb (session_t * s)
   mp->segment_handle = session_segment_handle (s);
   mp->flags = s->flags;
 
-  eq_seg = session_main_get_evt_q_segment ();
+  eq_seg = &app->rx_mqs_segment;
 
   if (session_has_transport (s))
     {
@@ -270,6 +270,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
   fifo_segment_t *eq_seg;
   app_worker_t *app_wrk;
   session_event_t *evt;
+  application_t *app;
 
   app_wrk = app_worker_get (app_wrk_index);
   app_mq = app_wrk->event_queue;
@@ -293,7 +294,8 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
   if (err)
     goto done;
 
-  eq_seg = session_main_get_evt_q_segment ();
+  app = application_get (app_wrk->app_index);
+  eq_seg = &app->rx_mqs_segment;
 
   if (session_has_transport (s))
     {
@@ -353,6 +355,7 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   fifo_segment_t *eq_seg;
   app_worker_t *app_wrk;
   session_event_t *evt;
+  application_t *app;
   app_listener_t *al;
   session_t *ls = 0;
   app_wrk = app_worker_get (app_wrk_index);
@@ -388,7 +391,9 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   mp->lcl_is_ip4 = tep.is_ip4;
   clib_memcpy_fast (mp->lcl_ip, &tep.ip, sizeof (tep.ip));
 
-  eq_seg = session_main_get_evt_q_segment ();
+  app = application_get (app_wrk->app_index);
+  eq_seg = &app->rx_mqs_segment;
+
   mp->vpp_evt_q = fifo_segment_msg_q_offset (eq_seg, ls->thread_index);
 
   if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
@@ -436,15 +441,18 @@ mq_send_session_migrate_cb (session_t * s, session_handle_t new_sh)
   app_worker_t *app_wrk;
   session_event_t *evt;
   svm_msg_q_t *app_mq;
+  application_t *app;
   u32 thread_index;
 
   thread_index = session_thread_from_handle (new_sh);
-  eq_seg = session_main_get_evt_q_segment ();
 
   app_wrk = app_worker_get (s->app_wrk_index);
   app_mq = app_wrk->event_queue;
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
     return;
+
+  app = application_get (app_wrk->app_index);
+  eq_seg = &app->rx_mqs_segment;
 
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
@@ -609,12 +617,15 @@ vl_api_session_enable_disable_t_handler (vl_api_session_enable_disable_t * mp)
 static void
 vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
 {
-  int rv = 0, fds[SESSION_N_FD_TYPE], n_fds = 0;
+  int rv = 0, *fds = 0, n_fds = 0, i;
   vl_api_app_attach_reply_t *rmp;
-  fifo_segment_t *segp, *evt_q_segment = 0;
+  fifo_segment_t *segp;
   vnet_app_attach_args_t _a, *a = &_a;
   u8 fd_flags = 0, ctrl_thread;
   vl_api_registration_t *reg;
+  svm_msg_q_t *rx_mq;
+  application_t *app;
+  u32 n_workers;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -650,13 +661,15 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
     }
   vec_free (a->namespace_id);
 
-  /* Send event queues segment */
-  if ((evt_q_segment = session_main_get_evt_q_segment ()))
-    {
-      fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
-      fds[n_fds] = evt_q_segment->ssvm.fd;
-      n_fds += 1;
-    }
+  n_workers = vlib_num_workers ();
+  vec_validate (fds, 3 /* segs + tx evtfd */ + n_workers);
+
+  /* Send rx mqs segment */
+  app = application_get (a->app_index);
+  fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
+  fds[n_fds] = app->rx_mqs_segment.ssvm.fd;
+  n_fds += 1;
+
   /* Send fifo segment fd if needed */
   if (ssvm_type (a->segment) == SSVM_SEGMENT_MEMFD)
     {
@@ -671,17 +684,25 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
       n_fds += 1;
     }
 
+  fd_flags |= SESSION_FD_F_VPP_MQ_EVENTFD;
+  for (i = 0; i < n_workers + 1; i++)
+    {
+      rx_mq = app_rx_mqs_get (app, i);
+      fds[n_fds] = svm_msg_q_get_consumer_eventfd (rx_mq);
+      n_fds += 1;
+    }
+
 done:
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_APP_ATTACH_REPLY, ({
     if (!rv)
       {
-	ctrl_thread = vlib_num_workers () ? 1 : 0;
+	ctrl_thread = n_workers ? 1 : 0;
 	segp = (fifo_segment_t *) a->segment;
 	rmp->app_index = clib_host_to_net_u32 (a->app_index);
 	rmp->app_mq = fifo_segment_msg_q_offset (segp, 0);
-	rmp->vpp_ctrl_mq =
-	  fifo_segment_msg_q_offset (evt_q_segment, ctrl_thread);
+	rmp->vpp_ctrl_mq = fifo_segment_msg_q_offset (&app->rx_mqs_segment,
+	                                              ctrl_thread);
 	rmp->vpp_ctrl_mq_thread = ctrl_thread;
 	rmp->n_fds = n_fds;
 	rmp->fd_flags = fd_flags;
@@ -697,6 +718,7 @@ done:
 
   if (n_fds)
     session_send_fds (reg, fds, n_fds);
+  vec_free (fds);
 }
 
 static void
@@ -1273,15 +1295,15 @@ static void
 session_api_attach_handler (app_namespace_t * app_ns, clib_socket_t * cs,
 			    app_sapi_attach_msg_t * mp)
 {
-  int rv = 0, fds[SESSION_N_FD_TYPE], n_fds = 0;
+  int rv = 0, *fds = 0, n_fds = 0, i, n_workers;
   vnet_app_attach_args_t _a, *a = &_a;
   app_sapi_attach_reply_msg_t *rmp;
-  fifo_segment_t *evt_q_segment;
   u8 fd_flags = 0, ctrl_thread;
   app_ns_api_handle_t *handle;
   app_sapi_msg_t msg = { 0 };
   app_worker_t *app_wrk;
   application_t *app;
+  svm_msg_q_t *rx_mq;
 
   /* Make sure name is null terminated */
   mp->name[63] = 0;
@@ -1300,13 +1322,15 @@ session_api_attach_handler (app_namespace_t * app_ns, clib_socket_t * cs,
       goto done;
     }
 
+  n_workers = vlib_num_workers ();
+  vec_validate (fds, 3 /* segs + tx evtfd */ + n_workers);
+
   /* Send event queues segment */
-  if ((evt_q_segment = session_main_get_evt_q_segment ()))
-    {
-      fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
-      fds[n_fds] = evt_q_segment->ssvm.fd;
-      n_fds += 1;
-    }
+  app = application_get (a->app_index);
+  fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
+  fds[n_fds] = app->rx_mqs_segment.ssvm.fd;
+  n_fds += 1;
+
   /* Send fifo segment fd if needed */
   if (ssvm_type (a->segment) == SSVM_SEGMENT_MEMFD)
     {
@@ -1321,6 +1345,14 @@ session_api_attach_handler (app_namespace_t * app_ns, clib_socket_t * cs,
       n_fds += 1;
     }
 
+  fd_flags |= SESSION_FD_F_VPP_MQ_EVENTFD;
+  for (i = 0; i < n_workers + 1; i++)
+    {
+      rx_mq = app_rx_mqs_get (app, i);
+      fds[n_fds] = svm_msg_q_get_consumer_eventfd (rx_mq);
+      n_fds += 1;
+    }
+
 done:
 
   msg.type = APP_SAPI_MSG_TYPE_ATTACH_REPLY;
@@ -1328,12 +1360,12 @@ done:
   rmp->retval = rv;
   if (!rv)
     {
-      ctrl_thread = vlib_num_workers ()? 1 : 0;
+      ctrl_thread = n_workers ? 1 : 0;
       rmp->app_index = a->app_index;
-      rmp->app_mq =
-	fifo_segment_msg_q_offset ((fifo_segment_t *) a->segment, 0);
-      rmp->vpp_ctrl_mq =
-	fifo_segment_msg_q_offset (evt_q_segment, ctrl_thread);
+      rmp->app_mq = fifo_segment_msg_q_offset ((fifo_segment_t *) a->segment,
+ 0);
+      rmp->vpp_ctrl_mq = fifo_segment_msg_q_offset (&app->rx_mqs_segment,
+                                                    ctrl_thread);
       rmp->vpp_ctrl_mq_thread = ctrl_thread;
       rmp->n_fds = n_fds;
       rmp->fd_flags = fd_flags;
@@ -1344,13 +1376,13 @@ done:
 
       /* Update app index for socket */
       handle = (app_ns_api_handle_t *) & cs->private_data;
-      app = application_get (a->app_index);
       app_wrk = application_get_worker (app, 0);
       handle->aah_app_wrk_index = app_wrk->wrk_index;
     }
 
   clib_socket_sendmsg (cs, &msg, sizeof (msg), fds, n_fds);
   vec_free (a->name);
+  vec_free (fds);
 }
 
 static void
