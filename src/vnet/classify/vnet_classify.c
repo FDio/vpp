@@ -1786,7 +1786,8 @@ classify_set_pcap_chain (vnet_classify_main_t * cm,
    * Put the table index where device drivers can find them.
    * This table index will be either a valid table or a ~0 to clear it.
    */
-  cm->classify_table_index_by_sw_if_index[sw_if_index] = table_index;
+  if (vec_len (cm->classify_table_index_by_sw_if_index) > sw_if_index)
+    cm->classify_table_index_by_sw_if_index[sw_if_index] = table_index;
   if (sw_if_index > 0)
     {
       vnet_hw_interface_t *hi;
