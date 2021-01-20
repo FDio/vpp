@@ -179,19 +179,19 @@ Here are the contents of .../build-data/platforms/vpp.mk:
         vpp_configure_args_vpp += --disable-lb-plugin
         endif
      
-        vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 \
+        vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -D_FORTIFY_SOURCE=2 \
             -fstack-protector-all -fPIC -Werror
-        vpp_debug_TAG_CXXFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 \
+        vpp_debug_TAG_CXXFLAGS = -g -O0 -DCLIB_DEBUG -D_FORTIFY_SOURCE=2 \
             -fstack-protector-all -fPIC -Werror
-        vpp_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 \
+        vpp_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -D_FORTIFY_SOURCE=2 \
             -fstack-protector-all -fPIC -Werror
 
-        vpp_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
-        vpp_TAG_CXXFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
-        vpp_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror -pie -Wl,-z,now
+        vpp_TAG_CFLAGS = -g -O2 -D_FORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
+        vpp_TAG_CXXFLAGS = -g -O2 -D_FORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
+        vpp_TAG_LDFLAGS = -g -O2 -D_FORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror -pie -Wl,-z,now
 
-        vpp_clang_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
-        vpp_clang_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
+        vpp_clang_TAG_CFLAGS = -g -O2 -D_FORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
+        vpp_clang_TAG_LDFLAGS = -g -O2 -D_FORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
 
         vpp_gcov_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -fPIC -Werror -fprofile-arcs -ftest-coverage
         vpp_gcov_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -fPIC -Werror -coverage

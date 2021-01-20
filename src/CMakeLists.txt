@@ -70,7 +70,7 @@ list(APPEND BUILD_TYPES "release")
 string(CONCAT CMAKE_C_FLAGS_RELEASE
   "-O2 "
   "-fstack-protector "
-  "-DFORTIFY_SOURCE=2 "
+  "-D_FORTIFY_SOURCE=2 "
   "-fno-common "
 )
 
@@ -82,7 +82,7 @@ string(CONCAT CMAKE_C_FLAGS_DEBUG
   "-O0 "
   "-DCLIB_DEBUG "
   "-fstack-protector "
-  "-DFORTIFY_SOURCE=2 "
+  "-D_FORTIFY_SOURCE=2 "
   "-fno-common "
 )
 
