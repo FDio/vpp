@@ -35,6 +35,7 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u16 size;
+  u32 queue_index;
   struct pp2_bpool *bpool;
 } mrvl_pp2_inq_t;
 

@@ -25,6 +25,7 @@
 #include <vppinfra/linux/syscall.h>
 #include <vnet/plugin/plugin.h>
 #include <marvell/pp2/pp2.h>
+#include <vnet/interface/rx_queue_funcs.h>
 
 /* size of DMA memory used by musdk (not used for buffers) */
 #define MV_SYS_DMA_MEM_SZ		(2 << 20)
@@ -122,11 +123,7 @@ mrvl_pp2_delete_if (mrvl_pp2_if_t * ppif)
   int i;
 
   if (ppif->hw_if_index != ~0)
-    {
-      vec_foreach_index (i, ppif->inqs)
-	vnet_hw_interface_unassign_rx_thread (vnm, ppif->hw_if_index, i);
       ethernet_delete_interface (vnm, ppif->hw_if_index);
-    }
 
   if (ppif->ppio)
     {
@@ -301,11 +298,15 @@ mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args)
   ppif->sw_if_index = sw->sw_if_index;
   ppif->per_interface_next_index = ~0;
   args->sw_if_index = sw->sw_if_index;
-  vnet_hw_interface_set_input_node (vnm, ppif->hw_if_index,
-				    mrvl_pp2_input_node.index);
-  vnet_hw_interface_assign_rx_thread (vnm, ppif->hw_if_index, 0, ~0);
-  vnet_hw_interface_set_rx_mode (vnm, ppif->hw_if_index, 0,
-				 VNET_HW_IF_RX_MODE_POLLING);
+  vnet_hw_if_set_input_node (vnm, ppif->hw_if_index,
+			     mrvl_pp2_input_node.index);
+  /* FIXME: only one RX queue ? */
+  ppif->inqs[0].queue_index = vnet_hw_if_register_rx_queue (
+    vnm, ppif->hw_if_index, 0, VNET_HW_IF_RXQ_THREAD_ANY);
+
+  vnet_hw_if_set_rx_queue_mode (vnm, ppif->inqs[0].queue_index,
+				VNET_HW_IF_RX_MODE_POLLING);
+  vnet_hw_if_update_runtime_data (vnm, ppif->hw_if_index);
   vnet_hw_interface_set_flags (vnm, ppif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
   goto done;
