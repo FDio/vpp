@@ -34,12 +34,12 @@ arm32_dpdk_make_extra_args = "CPU_CFLAGS='-mfloat-abi=hard' \
 	CONFIG_RTE_MAX_NUMA_NODES=1"
 
 
-arm32_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -DVLIB_MAX_CPUS=4 -march=armv7-a \
+arm32_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -D_FORTIFY_SOURCE=2 -DVLIB_MAX_CPUS=4 -march=armv7-a \
 	-fstack-protector-all -fPIC -Werror
-arm32_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -DVLIB_MAX_CPUS=4 -march=armv7-a \
+arm32_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -D_FORTIFY_SOURCE=2 -DVLIB_MAX_CPUS=4 -march=armv7-a \
 	-fstack-protector-all -fPIC -Werror
 
-arm32_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -DVLIB_MAX_CPUS=4 -march=armv7-a \
+arm32_TAG_CFLAGS = -g -O2 -D_FORTIFY_SOURCE=2 -DVLIB_MAX_CPUS=4 -march=armv7-a \
 	-fstack-protector -fPIC -Werror
-arm32_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -DVLIB_MAX_CPUS=4 -march=armv7-a \
+arm32_TAG_LDFLAGS = -g -O2 -D_FORTIFY_SOURCE=2 -DVLIB_MAX_CPUS=4 -march=armv7-a \
 	-fstack-protector -fPIC -Werror
