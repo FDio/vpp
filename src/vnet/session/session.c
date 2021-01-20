@@ -1703,6 +1703,8 @@ session_manager_main_enable (vlib_main_t * vm)
 
       if (num_threads > 1)
 	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
+
+      wrk->app_rx_mqs_epfd = epoll_create1 (0);
     }
 
   /* Allocate vpp event queues segment and queue */

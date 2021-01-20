@@ -54,7 +54,6 @@ svm_msg_q_init (void *base, svm_msg_q_cfg_t *cfg)
   clib_memset (sq, 0, sizeof (*sq));
   sq->elsize = sizeof (svm_msg_q_msg_t);
   sq->maxsize = cfg->q_nitems;
-  //  svm_msg_q_queue_init (&smq->q, cfg->q_nitems, sizeof (svm_msg_q_msg_t));
   smq->n_rings = cfg->n_rings;
   ring = (void *) ((u8 *) smq->q + q_sz);
   for (i = 0; i < cfg->n_rings; i++)
@@ -138,7 +137,6 @@ svm_msg_q_attach (svm_msg_q_t *mq, void *smq_base)
 void
 svm_msg_q_free (svm_msg_q_t * mq)
 {
-  //  svm_queue_free (mq->q);
   clib_mem_free (mq->q.shr);
   clib_mem_free (mq);
 }
@@ -225,7 +223,6 @@ svm_msg_q_send_signal (svm_msg_q_t *mq)
   if (mq->q.evtfd < 0)
     return;
 
-  ASSERT (mq->q.evtfd > 0);
   rv = write (mq->q.evtfd, &data, sizeof (data));
   if (PREDICT_FALSE (rv < 0))
     clib_unix_warning ("signal write on %d returned %d", mq->q.evtfd, rv);
@@ -255,8 +252,11 @@ svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
   need_signal = sr->cursize == ring->nitems;
   clib_atomic_fetch_sub_rel (&sr->cursize, 1);
 
-  if (PREDICT_FALSE (need_signal))
-    svm_msg_q_send_signal (mq);
+  if (PREDICT_FALSE (need_signal || svm_msg_q_want_deq_signal (mq)))
+    {
+      svm_msg_q_unset_want_deq_signal (mq);
+      svm_msg_q_send_signal (mq);
+    }
 }
 
 static int
@@ -286,19 +286,20 @@ static void
 svm_msg_q_add_raw (svm_msg_q_t *mq, u8 *elem)
 {
   svm_msg_q_shared_queue_t *sq = mq->q.shr;
-  //  u32 need_broadcast;
   i8 *tailp;
+  u32 sz;
 
   tailp = (i8 *) (&sq->data[0] + sq->elsize * sq->tail);
   clib_memcpy_fast (tailp, elem, sq->elsize);
 
-  //  need_broadcast = svm_msg_q_is_empty (mq);
   sq->tail = (sq->tail + 1) % sq->maxsize;
-  //  sq->cursize++;
 
-  //  if (need_broadcast)
-  if (!clib_atomic_fetch_add_rel (&sq->cursize, 1))
-    svm_msg_q_send_signal (mq);
+  sz = clib_atomic_fetch_add_rel (&sq->cursize, 1);
+  if (!sz || svm_msg_q_want_enq_signal (mq))
+    {
+      svm_msg_q_unset_want_enq_signal (mq);
+      svm_msg_q_send_signal (mq);
+    }
 }
 
 int
@@ -344,29 +345,22 @@ static int
 svm_msg_q_sub_raw (svm_msg_q_t *mq, u8 *elem)
 {
   svm_msg_q_shared_queue_t *sq = mq->q.shr;
-  //  int need_broadcast;
-  //  u32 cursize;
   i8 *headp;
+  u32 sz;
 
-  //  if (PREDICT_FALSE (sq->cursize == 0))
-  //    {
-  //      while (sq->cursize == 0)
-  //	;
-  //    }
-
-  //  cursize = svm_msg_q_size (mq);
   ASSERT (!svm_msg_q_is_empty (mq));
 
   headp = (i8 *) (&sq->data[0] + sq->elsize * sq->head);
   clib_memcpy_fast (elem, headp, sq->elsize);
 
-  //  need_broadcast = svm_msg_q_is_full (mq);
   sq->head = (sq->head + 1) % sq->maxsize;
-  //  sq->cursize--;
 
-  if (PREDICT_FALSE (clib_atomic_fetch_sub_rel (&sq->cursize, 1) ==
-		     sq->maxsize))
-    svm_msg_q_send_signal (mq);
+  sz = clib_atomic_fetch_sub_rel (&sq->cursize, 1);
+  if (PREDICT_FALSE (sz == sq->maxsize) || svm_msg_q_want_deq_signal (mq))
+    {
+      svm_msg_q_unset_want_deq_signal (mq);
+      svm_msg_q_send_signal (mq);
+    }
 
   return 0;
 }
@@ -375,7 +369,6 @@ int
 svm_msg_q_sub (svm_msg_q_t * mq, svm_msg_q_msg_t * msg,
 	       svm_q_conditional_wait_t cond, u32 time)
 {
-  //  return svm_queue_sub (mq->q, (u8 *) msg, cond, time);
   int rc = 0;
 
   if (cond == SVM_Q_NOWAIT)
@@ -467,13 +460,6 @@ svm_msg_q_wait (svm_msg_q_t *mq)
   u64 buf;
   int rv;
 
-  //  rv = read (mq->q.evtfd, &buf, sizeof(buf));
-  //  if (rv < 0 && errno != EAGAIN)
-  //    {
-  //      clib_unix_warning ("read %d error", mq->q.evtfd);
-  //      ASSERT(0);
-  //      return;
-  //    }
   while ((rv = read (mq->q.evtfd, &buf, sizeof (buf))) < 0)
     {
       if (errno != EAGAIN)
