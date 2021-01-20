@@ -26,24 +26,28 @@ static inline int
 vcl_mq_dequeue_batch (vcl_worker_t * wrk, svm_msg_q_t * mq, u32 n_max_msg)
 {
   svm_msg_q_msg_t *msg;
-  u32 mq_sz, n_msgs = 0;
+  u32 n_msgs = 0;
   int i;
 
-  //  n_msgs = clib_min (svm_msg_q_size (mq), n_max_msg);
-  //  for (i = 0; i < n_msgs; i++)
-  //    {
-  //      vec_add2 (wrk->mq_msg_vector, msg, 1);
-  //      svm_msg_q_sub_w_lock (mq, msg);
-  //    }
-  while ((mq_sz = svm_msg_q_size (mq)))
+  svm_msg_q_set_want_enq_signal (mq);
+
+  n_msgs = clib_min (svm_msg_q_size (mq), n_max_msg);
+  for (i = 0; i < n_msgs; i++)
     {
-      n_msgs += mq_sz;
-      for (i = 0; i < mq_sz; i++)
-	{
-	  vec_add2 (wrk->mq_msg_vector, msg, 1);
-	  svm_msg_q_sub_w_lock (mq, msg);
-	}
+      vec_add2 (wrk->mq_msg_vector, msg, 1);
+      svm_msg_q_sub_w_lock (mq, msg);
     }
+
+//  u32 mq_sz;
+//  while ((mq_sz = svm_msg_q_size (mq)))
+//    {
+//      n_msgs += mq_sz;
+//      for (i = 0; i < mq_sz; i++)
+//	{
+//	  vec_add2 (wrk->mq_msg_vector, msg, 1);
+//	  svm_msg_q_sub_w_lock (mq, msg);
+//	}
+//    }
 
   return n_msgs;
 }

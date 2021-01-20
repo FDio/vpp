@@ -225,7 +225,6 @@ svm_msg_q_send_signal (svm_msg_q_t *mq)
   if (mq->q.evtfd < 0)
     return;
 
-  ASSERT (mq->q.evtfd > 0);
   rv = write (mq->q.evtfd, &data, sizeof (data));
   if (PREDICT_FALSE (rv < 0))
     clib_unix_warning ("signal write on %d returned %d", mq->q.evtfd, rv);
@@ -255,8 +254,11 @@ svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
   need_signal = sr->cursize == ring->nitems;
   clib_atomic_fetch_sub_rel (&sr->cursize, 1);
 
-  if (PREDICT_FALSE (need_signal))
-    svm_msg_q_send_signal (mq);
+  if (PREDICT_FALSE (need_signal || svm_msg_q_want_deq_signal (mq)))
+    {
+      svm_msg_q_unset_want_deq_signal (mq);
+      svm_msg_q_send_signal (mq);
+    }
 }
 
 static int
@@ -297,8 +299,12 @@ svm_msg_q_add_raw (svm_msg_q_t *mq, u8 *elem)
   //  sq->cursize++;
 
   //  if (need_broadcast)
-  if (!clib_atomic_fetch_add_rel (&sq->cursize, 1))
-    svm_msg_q_send_signal (mq);
+  if (!clib_atomic_fetch_add_rel (&sq->cursize, 1)
+      || svm_msg_q_want_enq_signal (mq))
+    {
+      svm_msg_q_unset_want_enq_signal (mq);
+      svm_msg_q_send_signal (mq);
+    }
 }
 
 int
@@ -365,8 +371,11 @@ svm_msg_q_sub_raw (svm_msg_q_t *mq, u8 *elem)
   //  sq->cursize--;
 
   if (PREDICT_FALSE (clib_atomic_fetch_sub_rel (&sq->cursize, 1) ==
-		     sq->maxsize))
-    svm_msg_q_send_signal (mq);
+		     sq->maxsize) || svm_msg_q_want_deq_signal (mq))
+    {
+      svm_msg_q_unset_want_deq_signal (mq);
+      svm_msg_q_send_signal (mq);
+    }
 
   return 0;
 }
