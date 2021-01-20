@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c5c01682_8ec6ca4b",
+        "filename": "src/vppinfra/socket.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-01-20T08:42:57Z",
+      "side": 1,
+      "message": "I\u0027d move that on line 77 below, right before its use and instead of checking for glibc, just check for the macro itself. Also we usually favor C-style comments.\n  /* IPPORT_USERRESERVED is not part of musl libc */\n  #ifndef IPPORT_USERRESERVED\n  #define IPPORT_USERRESERVED 5000\n  #endif\n\nFlorin, any comment?",
+      "revId": "0b4226b66f7eea3110cd98d7ba4f984822cab202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
