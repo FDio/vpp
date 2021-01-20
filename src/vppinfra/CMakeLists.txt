@@ -101,6 +101,7 @@ set(VPPINFRA_HEADERS
   sanitizer.h
   bihash_16_8.h
   bihash_24_8.h
+  bihash_32_8.h
   bihash_40_8.h
   bihash_48_8.h
   bihash_8_8.h
