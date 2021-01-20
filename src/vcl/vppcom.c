@@ -26,24 +26,28 @@ static inline int
 vcl_mq_dequeue_batch (vcl_worker_t * wrk, svm_msg_q_t * mq, u32 n_max_msg)
 {
   svm_msg_q_msg_t *msg;
-  u32 mq_sz, n_msgs = 0;
+  u32 n_msgs = 0;
   int i;
 
-  //  n_msgs = clib_min (svm_msg_q_size (mq), n_max_msg);
-  //  for (i = 0; i < n_msgs; i++)
-  //    {
-  //      vec_add2 (wrk->mq_msg_vector, msg, 1);
-  //      svm_msg_q_sub_w_lock (mq, msg);
-  //    }
-  while ((mq_sz = svm_msg_q_size (mq)))
+  svm_msg_q_set_want_enq_signal (mq);
+
+  n_msgs = clib_min (svm_msg_q_size (mq), n_max_msg);
+  for (i = 0; i < n_msgs; i++)
     {
-      n_msgs += mq_sz;
-      for (i = 0; i < mq_sz; i++)
-	{
-	  vec_add2 (wrk->mq_msg_vector, msg, 1);
-	  svm_msg_q_sub_w_lock (mq, msg);
-	}
+      vec_add2 (wrk->mq_msg_vector, msg, 1);
+      svm_msg_q_sub_w_lock (mq, msg);
     }
+
+//  u32 mq_sz;
+//  while ((mq_sz = svm_msg_q_size (mq)))
+//    {
+//      n_msgs += mq_sz;
+//      for (i = 0; i < mq_sz; i++)
+//	{
+//	  vec_add2 (wrk->mq_msg_vector, msg, 1);
+//	  svm_msg_q_sub_w_lock (mq, msg);
+//	}
+//    }
 
   return n_msgs;
 }
@@ -1073,9 +1077,12 @@ vppcom_wait_for_session_state_change (u32 session_index,
 	  usleep (100);
 	  continue;
 	}
-      e = svm_msg_q_msg_data (wrk->app_event_queue, &msg);
-      vcl_handle_mq_event (wrk, e);
-      svm_msg_q_free_msg (wrk->app_event_queue, &msg);
+      else
+	{
+	  e = svm_msg_q_msg_data (wrk->app_event_queue, &msg);
+	  vcl_handle_mq_event (wrk, e);
+	  svm_msg_q_free_msg (wrk->app_event_queue, &msg);
+	}
     }
   while (clib_time_now (&wrk->clib_time) < timeout);
 
@@ -1108,10 +1115,9 @@ vcl_handle_pending_wrk_updates (vcl_worker_t * wrk)
   vec_reset_length (wrk->pending_session_wrk_updates);
 }
 
-void
-vcl_flush_mq_events (void)
+static void
+vcl_worker_flush_mq_events (vcl_worker_t *wrk)
 {
-  vcl_worker_t *wrk = vcl_worker_get_current ();
   svm_msg_q_msg_t *msg;
   session_event_t *e;
   svm_msg_q_t *mq;
@@ -1131,6 +1137,12 @@ vcl_flush_mq_events (void)
     }
   vec_reset_length (wrk->mq_msg_vector);
   vcl_handle_pending_wrk_updates (wrk);
+}
+
+void
+vcl_flush_mq_events (void)
+{
+  vcl_worker_flush_mq_events (vcl_worker_get_current ());
 }
 
 static int
@@ -1793,11 +1805,11 @@ vppcom_session_stream_connect (uint32_t session_handle,
   return rv;
 }
 
-static u8
-vcl_is_rx_evt_for_session (session_event_t * e, u32 sid, u8 is_ct)
-{
-  return (e->event_type == SESSION_IO_EVT_RX && e->session_index == sid);
-}
+//static u8
+//vcl_is_rx_evt_for_session (session_event_t * e, u32 sid, u8 is_ct)
+//{
+//  return (e->event_type == SESSION_IO_EVT_RX && e->session_index == sid);
+//}
 
 static inline int
 vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
@@ -1807,7 +1819,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   int rv, n_read = 0, is_nonblocking;
   vcl_session_t *s = 0;
   svm_fifo_t *rx_fifo;
-  svm_msg_q_msg_t msg;
+//  svm_msg_q_msg_t msg;
   session_event_t *e;
   svm_msg_q_t *mq;
   u8 is_ct;
@@ -1852,16 +1864,17 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 	  if (is_ct)
 	    svm_fifo_unset_event (s->rx_fifo);
 	  svm_fifo_unset_event (rx_fifo);
-	  svm_msg_q_lock (mq);
+//	  svm_msg_q_lock (mq);
 	  while (svm_msg_q_is_empty (mq))
 	    svm_msg_q_wait (mq);
 
-	  svm_msg_q_sub_w_lock (mq, &msg);
-	  e = svm_msg_q_msg_data (mq, &msg);
-	  svm_msg_q_unlock (mq);
-	  if (!vcl_is_rx_evt_for_session (e, s->session_index, is_ct))
-	    vcl_handle_mq_event (wrk, e);
-	  svm_msg_q_free_msg (mq, &msg);
+	  vcl_worker_flush_mq_events (wrk);
+//	  svm_msg_q_sub_w_lock (mq, &msg);
+//	  e = svm_msg_q_msg_data (mq, &msg);
+//	  svm_msg_q_unlock (mq);
+//	  if (!vcl_is_rx_evt_for_session (e, s->session_index, is_ct))
+//	    vcl_handle_mq_event (wrk, e);
+//	  svm_msg_q_free_msg (mq, &msg);
 	}
     }
 
@@ -1908,6 +1921,9 @@ read_again:
   VDBG (2, "session %u[0x%llx]: read %d bytes from (%p)", s->session_index,
 	s->vpp_handle, n_read, rx_fifo);
 
+  if (!svm_fifo_is_empty_cons (rx_fifo) && !svm_fifo_has_event (rx_fifo))
+    clib_warning ("this was hit blocking %u read %d", is_nonblocking, n_read);
+
   return n_read;
 }
 
@@ -1932,8 +1948,8 @@ vppcom_session_read_segments (uint32_t session_handle,
   int n_read = 0, is_nonblocking;
   vcl_session_t *s = 0;
   svm_fifo_t *rx_fifo;
-  svm_msg_q_msg_t msg;
-  session_event_t *e;
+//  svm_msg_q_msg_t msg;
+//  session_event_t *e;
   svm_msg_q_t *mq;
   u8 is_ct;
 
@@ -1967,16 +1983,18 @@ vppcom_session_read_segments (uint32_t session_handle,
 	  if (is_ct)
 	    svm_fifo_unset_event (s->rx_fifo);
 	  svm_fifo_unset_event (rx_fifo);
-	  svm_msg_q_lock (mq);
+//	  svm_msg_q_lock (mq);
 	  while (svm_msg_q_is_empty (mq))
 	    svm_msg_q_wait (mq);
 
-	  svm_msg_q_sub_w_lock (mq, &msg);
-	  e = svm_msg_q_msg_data (mq, &msg);
-	  svm_msg_q_unlock (mq);
-	  if (!vcl_is_rx_evt_for_session (e, s->session_index, is_ct))
-	    vcl_handle_mq_event (wrk, e);
-	  svm_msg_q_free_msg (mq, &msg);
+	  vcl_worker_flush_mq_events (wrk);
+
+//	  svm_msg_q_sub_w_lock (mq, &msg);
+//	  e = svm_msg_q_msg_data (mq, &msg);
+//	  svm_msg_q_unlock (mq);
+//	  if (!vcl_is_rx_evt_for_session (e, s->session_index, is_ct))
+//	    vcl_handle_mq_event (wrk, e);
+//	  svm_msg_q_free_msg (mq, &msg);
 	}
     }
 
@@ -2023,11 +2041,11 @@ vppcom_session_free_segments (uint32_t session_handle, uint32_t n_bytes)
   s->rx_bytes_pending -= n_bytes;
 }
 
-static u8
-vcl_is_tx_evt_for_session (session_event_t * e, u32 sid, u8 is_ct)
-{
-  return (e->event_type == SESSION_IO_EVT_TX && e->session_index == sid);
-}
+//static u8
+//vcl_is_tx_evt_for_session (session_event_t * e, u32 sid, u8 is_ct)
+//{
+//  return (e->event_type == SESSION_IO_EVT_TX && e->session_index == sid);
+//}
 
 always_inline u8
 vcl_fifo_is_writeable (svm_fifo_t * f, u32 len, u8 is_dgram)
@@ -2045,9 +2063,9 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
 {
   int n_write, is_nonblocking;
   session_evt_type_t et;
-  svm_msg_q_msg_t msg;
+//  svm_msg_q_msg_t msg;
   svm_fifo_t *tx_fifo;
-  session_event_t *e;
+//  session_event_t *e;
   svm_msg_q_t *mq;
   u8 is_ct;
 
@@ -2085,17 +2103,19 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
 	  svm_fifo_add_want_deq_ntf (tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
-	  svm_msg_q_lock (mq);
+//	  svm_msg_q_lock (mq);
 	  while (svm_msg_q_is_empty (mq))
 	    svm_msg_q_wait (mq);
 
-	  svm_msg_q_sub_w_lock (mq, &msg);
-	  e = svm_msg_q_msg_data (mq, &msg);
-	  svm_msg_q_unlock (mq);
+	  vcl_worker_flush_mq_events (wrk);
 
-	  if (!vcl_is_tx_evt_for_session (e, s->session_index, is_ct))
-	    vcl_handle_mq_event (wrk, e);
-	  svm_msg_q_free_msg (mq, &msg);
+//	  svm_msg_q_sub_w_lock (mq, &msg);
+//	  e = svm_msg_q_msg_data (mq, &msg);
+//	  svm_msg_q_unlock (mq);
+//
+//	  if (!vcl_is_tx_evt_for_session (e, s->session_index, is_ct))
+//	    vcl_handle_mq_event (wrk, e);
+//	  svm_msg_q_free_msg (mq, &msg);
 	}
     }
 
@@ -2122,6 +2142,8 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
   VDBG (2, "session %u [0x%llx]: wrote %d bytes", s->session_index,
 	s->vpp_handle, n_write);
 
+  if (is_ct && !svm_fifo_has_event (s->tx_fifo) && !svm_fifo_has_event (s->ct_tx_fifo))
+    clib_warning ("THIS HAPPENED");
   return n_write;
 }
 
@@ -2393,7 +2415,8 @@ vppcom_select_eventfd (vcl_worker_t * wrk, int n_bits,
 			    except_map, 0, bits_set);
     }
 
-  return (n_mq_evts > 0 ? (int) *bits_set : 0);
+//  return (n_mq_evts > 0 ? (int) *bits_set : 0);
+  return (int) *bits_set;
 }
 
 int
@@ -2447,7 +2470,7 @@ vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
         clib_bitmap_set_no_check ((uword*)write_map, sid, 1);
         bits_set++;
       }
-    else
+    else // FIXME for ct
       svm_fifo_add_want_deq_ntf (session->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
   }
 
@@ -3027,7 +3050,7 @@ vppcom_epoll_wait_eventfd (vcl_worker_t * wrk, struct epoll_event *events,
   vec_validate (wrk->mq_events, pool_elts (wrk->mq_evt_conns));
 again:
   n_mq_evts = epoll_wait (wrk->mqs_epfd, wrk->mq_events,
-			  vec_len (wrk->mq_events), wait_for_time);
+			  vec_len (wrk->mq_events), n_evts ? 0 : wait_for_time);
   for (i = 0; i < n_mq_evts; i++)
     {
       mqc = vcl_mq_evt_conn_get (wrk, wrk->mq_events[i].data.u32);

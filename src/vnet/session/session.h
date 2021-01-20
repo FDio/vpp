@@ -21,6 +21,8 @@
 #include <vnet/session/session_debug.h>
 #include <svm/message_queue.h>
 #include <svm/fifo_segment.h>
+#include <sys/epoll.h>
+
 
 #define foreach_session_input_error                                    	\
 _(NO_SESSION, "No session drops")                                       \
@@ -90,6 +92,9 @@ typedef struct session_worker_
 
   /** Per-proto vector of sessions to enqueue */
   u32 **session_to_enqueue;
+
+  struct epoll_event *app_rx_mqs_evts;
+  int app_rx_mqs_epfd;
 
   /** Context for session tx */
   session_tx_context_t ctx;
