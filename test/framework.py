@@ -257,7 +257,12 @@ class KeepAliveReporter(object):
 
 
 class TestCaseTag(Enum):
+    # marks the suites that must run at the end
+    # using only a single test runner
     RUN_SOLO = 1
+    # marks the suites broken on VPP multi-worker
+    FIXME_VPP_WORKERS = 2
+
 
 
 def create_tag_decorator(e):
@@ -269,7 +274,10 @@ def create_tag_decorator(e):
         return cls
     return decorator
 
+
 tag_run_solo = create_tag_decorator(TestCaseTag.RUN_SOLO)
+tag_fixme_vpp_workers = create_tag_decorator(TestCaseTag.FIXME_VPP_WORKERS)
+
 
 
 class VppTestCase(unittest.TestCase):
@@ -398,7 +406,10 @@ class VppTestCase(unittest.TestCase):
 
         cpu_core_number = cls.get_least_used_cpu()
         if not hasattr(cls, "worker_config"):
-            cls.worker_config = ""
+            cls.worker_config = os.getenv("VPP_WORKER_CONFIG", "")
+            if cls.worker_config != "":
+                if cls.has_tag(TestCaseTag.FIXME_VPP_WORKERS):
+                    cls.worker_config = ""
 
         default_variant = os.getenv("VARIANT")
         if default_variant is not None:
@@ -1434,6 +1445,13 @@ class VppTestResult(unittest.TestResult):
                 # long live PEP-8 and 80 char width limitation...
                 c = YELLOW
                 test_title_colored = colorize("SOLO RUN: " + test_title, c)
+
+            # This block may overwrite the colorized title above,
+            # but we want this to stand out and be fixed
+            if test.has_tag(TestCaseTag.FIXME_VPP_WORKERS):
+                c = RED
+                w = "FIXME with VPP workers: "
+                test_title_colored = colorize(w + test_title, c)
 
             if not hasattr(test.__class__, '_header_printed'):
                 print(double_line_delim)
