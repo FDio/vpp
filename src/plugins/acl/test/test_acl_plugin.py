@@ -11,6 +11,7 @@ from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 from scapy.layers.inet6 import IPv6ExtHdrFragment
 from framework import VppTestCase, VppTestRunner
+from framework import tag_fixme_vpp_workers
 from util import Host, ppp
 from ipaddress import IPv4Network, IPv6Network
 
@@ -19,6 +20,7 @@ from vpp_acl import AclRule, VppAcl, VppAclInterface, VppEtypeWhitelist
 from vpp_ip import INVALID_INDEX
 
 
+@tag_fixme_vpp_workers
 class TestACLplugin(VppTestCase):
     """ ACL plugin Test Case """
 
