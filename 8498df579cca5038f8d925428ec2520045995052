@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "57464161_bba456dc",
+        "filename": "src/vppinfra/socket.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-01-20T15:21:19Z",
+      "side": 1,
+      "message": "please use C style comments...",
+      "revId": "8498df579cca5038f8d925428ec2520045995052",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
