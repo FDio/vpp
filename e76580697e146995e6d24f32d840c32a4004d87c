@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fe2b0fb8_525107a5",
+        "filename": "src/vcl/CMakeLists.txt",
+        "patchSetId": 5
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-01-20T08:39:19Z",
+      "side": 1,
+      "message": "can we rename the option for something more specific eg. \"VPP_ENABLE_VCL_LD_PRELOAD\"? There are other usecase for LD_PRELOAD in VPP not related to VCL eg. https://docs.fd.io/vpp/21.06/d3/d49/mempreload_doc.html",
+      "revId": "e76580697e146995e6d24f32d840c32a4004d87c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
