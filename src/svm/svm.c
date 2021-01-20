@@ -716,12 +716,17 @@ svm_map_region (svm_map_region_args_t * a)
       pid_holding_region_lock = rp->mutex_owner_pid;
       if (pid_holding_region_lock && kill (pid_holding_region_lock, 0) < 0)
 	{
+	  pthread_mutexattr_t attr;
 	  clib_warning
 	    ("region %s mutex held by dead pid %d, tag %d, force unlock",
 	     rp->region_name, pid_holding_region_lock, rp->mutex_owner_tag);
 	  /* owner pid is nonexistent */
-	  rp->mutex.__data.__owner = 0;
-	  rp->mutex.__data.__lock = 0;
+	  if (pthread_mutexattr_init (&attr))
+	    clib_unix_warning ("mutexattr_init");
+	  if (pthread_mutexattr_setpshared (&attr, PTHREAD_PROCESS_SHARED))
+	    clib_unix_warning ("mutexattr_setpshared");
+	  if (pthread_mutex_init (&rp->mutex, &attr))
+	    clib_unix_warning ("mutex_init");
 	  dead_region_recovery = 1;
 	}
 
