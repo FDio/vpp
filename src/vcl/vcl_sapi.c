@@ -94,6 +94,10 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
       vcl_mq_epoll_add_evfd (wrk, wrk->app_event_queue);
     }
 
+  ASSERT (mp->fd_flags & SESSION_FD_F_VPP_MQ_EVENTFD);
+  svm_msg_q_set_producer_eventfd (wrk->ctrl_mq, fds[n_fds_used++]);
+  clib_warning ("ctrl mq fd %d", svm_msg_q_get_producer_eventfd (wrk->ctrl_mq));
+
   vcm->app_index = mp->app_index;
 
   return 0;

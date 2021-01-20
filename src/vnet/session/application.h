@@ -127,6 +127,8 @@ typedef struct application_
   char quic_iv[17];
   u8 quic_iv_set;
 
+  fifo_segment_t rx_mqs_segment;
+  svm_msg_q_t **rx_mqs;
 } application_t;
 
 typedef struct app_main_
@@ -322,6 +324,9 @@ void mq_send_unlisten_reply (app_worker_t * app_wrk, session_handle_t sh,
 
 crypto_engine_type_t app_crypto_engine_type_add (void);
 u8 app_crypto_engine_n_types (void);
+
+svm_msg_q_t *app_rx_mqs_get_w_handle (u64 rx_mq_handle);
+svm_msg_q_t *app_rx_mqs_get (application_t *app, u32 mq_index);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 

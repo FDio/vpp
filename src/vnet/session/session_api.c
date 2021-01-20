@@ -611,10 +611,11 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
 {
   int rv = 0, fds[SESSION_N_FD_TYPE], n_fds = 0;
   vl_api_app_attach_reply_t *rmp;
-  fifo_segment_t *segp, *evt_q_segment = 0;
+  fifo_segment_t *segp;
   vnet_app_attach_args_t _a, *a = &_a;
   u8 fd_flags = 0, ctrl_thread;
   vl_api_registration_t *reg;
+  application_t *app;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -650,13 +651,12 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
     }
   vec_free (a->namespace_id);
 
-  /* Send event queues segment */
-  if ((evt_q_segment = session_main_get_evt_q_segment ()))
-    {
-      fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
-      fds[n_fds] = evt_q_segment->ssvm.fd;
-      n_fds += 1;
-    }
+  /* Send rx mqs segment */
+  app = application_get (a->app_index);
+  fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
+  fds[n_fds] = app->rx_mqs_segment.ssvm.fd;
+  n_fds += 1;
+
   /* Send fifo segment fd if needed */
   if (ssvm_type (a->segment) == SSVM_SEGMENT_MEMFD)
     {
@@ -680,8 +680,8 @@ done:
 	segp = (fifo_segment_t *) a->segment;
 	rmp->app_index = clib_host_to_net_u32 (a->app_index);
 	rmp->app_mq = fifo_segment_msg_q_offset (segp, 0);
-	rmp->vpp_ctrl_mq =
-	  fifo_segment_msg_q_offset (evt_q_segment, ctrl_thread);
+	rmp->vpp_ctrl_mq = fifo_segment_msg_q_offset (&app->rx_mqs_segment,
+	                                              ctrl_thread);
 	rmp->vpp_ctrl_mq_thread = ctrl_thread;
 	rmp->n_fds = n_fds;
 	rmp->fd_flags = fd_flags;
@@ -1276,15 +1276,16 @@ session_api_attach_handler (app_namespace_t * app_ns, clib_socket_t * cs,
   int rv = 0, fds[SESSION_N_FD_TYPE], n_fds = 0;
   vnet_app_attach_args_t _a, *a = &_a;
   app_sapi_attach_reply_msg_t *rmp;
-  fifo_segment_t *evt_q_segment;
   u8 fd_flags = 0, ctrl_thread;
   app_ns_api_handle_t *handle;
   app_sapi_msg_t msg = { 0 };
+  svm_msg_q_t *ctrl_rx_mq;
   app_worker_t *app_wrk;
   application_t *app;
 
   /* Make sure name is null terminated */
   mp->name[63] = 0;
+  ctrl_thread = vlib_num_workers ()? 1 : 0;
 
   clib_memset (a, 0, sizeof (*a));
   a->api_client_index = appns_sapi_socket_handle (app_ns, cs);
@@ -1301,12 +1302,11 @@ session_api_attach_handler (app_namespace_t * app_ns, clib_socket_t * cs,
     }
 
   /* Send event queues segment */
-  if ((evt_q_segment = session_main_get_evt_q_segment ()))
-    {
-      fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
-      fds[n_fds] = evt_q_segment->ssvm.fd;
-      n_fds += 1;
-    }
+  app = application_get (a->app_index);
+  fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
+  fds[n_fds] = app->rx_mqs_segment.ssvm.fd;
+  n_fds += 1;
+
   /* Send fifo segment fd if needed */
   if (ssvm_type (a->segment) == SSVM_SEGMENT_MEMFD)
     {
@@ -1321,6 +1321,11 @@ session_api_attach_handler (app_namespace_t * app_ns, clib_socket_t * cs,
       n_fds += 1;
     }
 
+  fd_flags |= SESSION_FD_F_VPP_MQ_EVENTFD;
+  ctrl_rx_mq = app_rx_mqs_get (app, ctrl_thread);
+  fds[n_fds] = svm_msg_q_get_consumer_eventfd (ctrl_rx_mq);
+  n_fds += 1;
+
 done:
 
   msg.type = APP_SAPI_MSG_TYPE_ATTACH_REPLY;
@@ -1328,12 +1333,11 @@ done:
   rmp->retval = rv;
   if (!rv)
     {
-      ctrl_thread = vlib_num_workers ()? 1 : 0;
       rmp->app_index = a->app_index;
-      rmp->app_mq =
-	fifo_segment_msg_q_offset ((fifo_segment_t *) a->segment, 0);
-      rmp->vpp_ctrl_mq =
-	fifo_segment_msg_q_offset (evt_q_segment, ctrl_thread);
+      rmp->app_mq = fifo_segment_msg_q_offset ((fifo_segment_t *) a->segment,
+                                               0);
+      rmp->vpp_ctrl_mq = fifo_segment_msg_q_offset (&app->rx_mqs_segment,
+                                                    ctrl_thread);
       rmp->vpp_ctrl_mq_thread = ctrl_thread;
       rmp->n_fds = n_fds;
       rmp->fd_flags = fd_flags;
@@ -1344,7 +1348,6 @@ done:
 
       /* Update app index for socket */
       handle = (app_ns_api_handle_t *) & cs->private_data;
-      app = application_get (a->app_index);
       app_wrk = application_get_worker (app, 0);
       handle->aah_app_wrk_index = app_wrk->wrk_index;
     }

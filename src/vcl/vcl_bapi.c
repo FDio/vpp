@@ -126,6 +126,9 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 	  n_fds++;
 	}
 
+      ASSERT (mp->fd_flags & SESSION_FD_F_VPP_MQ_EVENTFD);
+      svm_msg_q_set_producer_eventfd (wrk->ctrl_mq, fds[n_fds++]);
+
       vec_free (fds);
     }
   else
