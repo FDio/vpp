@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3d66ba5f_285e13db",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 451,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-01-20T00:47:46Z",
+      "side": 1,
+      "message": "Don\u0027t forget pool_put (vxm-\u003etunnels, t);\nCoverity: Woof! Woof!",
+      "revId": "5c4b8b1b6eabb40a33ee270fcf2a21cb2ea9eea7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "82626a46_2c4aced9",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 454,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-01-20T00:47:46Z",
+      "side": 1,
+      "message": "Please move your new code up by 4 lines, before hash_set(). This is to prevent the case when we hit an error in ethernet_register_interface, return, and then end up taking a slot in vxm-\u003einstance_used.",
+      "revId": "5c4b8b1b6eabb40a33ee270fcf2a21cb2ea9eea7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
