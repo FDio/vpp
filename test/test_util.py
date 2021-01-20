@@ -14,6 +14,15 @@ class TestUtil (unittest.TestCase):
         """ if the test case class is timing-sensitive - return true """
         return False
 
+    @classmethod
+    def has_tag(cls, tag):
+        """ if the test case has a given tag - return true """
+        try:
+            return tag in cls.test_tags
+        except AttributeError:
+            pass
+        return False
+
     def test_mac_to_binary(self):
         """ MAC to binary and back """
         mac = 'aa:bb:cc:dd:ee:ff'
