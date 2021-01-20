@@ -568,6 +568,35 @@ application_alloc_and_init (app_init_args_t * a)
   return 0;
 }
 
+void
+session_rx_mqs_epoll_add (session_worker_t *wrk, application_t *app)
+{
+  u32 thread_index = wrk->vm->thread_index;
+  struct epoll_event evt;
+  int rv, fd;
+
+  fd = svm_msg_q_get_consumer_eventfd (app->rx_mqs[thread_index]);
+
+  evt.events = EPOLLIN;
+  evt.data.u64 = ((u64) app->app_index << 32) | (u64) thread_index;
+
+  rv = epoll_ctl (wrk->app_rx_mqs_epfd, EPOLL_CTL_ADD, fd, &evt);
+  if (rv < 0)
+    clib_unix_warning ("epoll add");
+}
+
+void
+session_rx_mqs_epoll_del (session_worker_t *wrk, application_t *app)
+{
+  u32 thread_index = wrk->vm->thread_index;
+  int rv, fd;
+
+  fd = svm_msg_q_get_consumer_eventfd (app->rx_mqs[thread_index]);
+  rv = epoll_ctl (wrk->app_rx_mqs_epfd, EPOLL_CTL_DEL, fd, 0);
+  if (rv < 0)
+    clib_unix_warning ("epoll del");
+}
+
 static void
 application_free (application_t * app)
 {
@@ -594,6 +623,21 @@ application_free (application_t * app)
   }));
   /* *INDENT-ON* */
   pool_free (app->worker_maps);
+
+  /*
+   * Free rx mqs if allocated
+   */
+  if (app->rx_mqs)
+    {
+      int i;
+      for (i = 0; i < vec_len(app->rx_mqs); i++)
+	session_rx_mqs_epoll_del (session_main_get_worker (i),
+	                          app);
+
+      fifo_segment_cleanup (&app->rx_mqs_segment);
+      ssvm_delete (&app->rx_mqs_segment.ssvm);
+      vec_free (app->rx_mqs);
+    }
 
   /*
    * Cleanup remaining state
@@ -805,6 +849,75 @@ app_name_from_api_index (u32 api_client_index)
   return format (0, "unknown");
 }
 
+svm_msg_q_t *
+app_rx_mqs_get_w_handle (u64 rx_mq_handle)
+{
+  application_t *app;
+  u32 mq_index;
+
+  app = application_get_if_valid (rx_mq_handle >> 32);
+  if (!app)
+    return 0;
+  mq_index = rx_mq_handle & 0xffffffff;
+  ASSERT (mq_index < vec_len (app->rx_mqs));
+  return app->rx_mqs[mq_index];
+}
+
+svm_msg_q_t *
+app_rx_mqs_get (application_t *app, u32 mq_index)
+{
+  return app->rx_mqs[mq_index];
+}
+
+static void
+app_rx_mqs_alloc (application_t *app)
+{
+  u32 evt_q_length, evt_size = sizeof (session_event_t);
+  fifo_segment_t *eqs = &app->rx_mqs_segment;
+  segment_manager_props_t *props;
+  u32 n_mqs = vlib_num_workers() + 1;
+  int i;
+  session_worker_t *wrk;
+
+  props = application_segment_manager_properties (app);
+  evt_q_length = clib_max (props->evt_q_size, 128);
+
+  svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
+  svm_msg_q_ring_cfg_t rc[SESSION_MQ_N_RINGS] = {
+      {evt_q_length, evt_size, 0},
+      {evt_q_length >> 1, 256, 0}
+  };
+  cfg->consumer_pid = 0;
+  cfg->n_rings = 2;
+  cfg->q_nitems = evt_q_length;
+  cfg->ring_cfgs = rc;
+
+  eqs->ssvm.ssvm_size = svm_msg_q_size_to_alloc (cfg) * n_mqs + (16 << 10);
+  eqs->ssvm.name = format (0, "%s-rx-mqs-seg%c", app->name, 0);
+
+  if (ssvm_server_init (&eqs->ssvm, SSVM_SEGMENT_MEMFD))
+    {
+      clib_warning ("failed to initialize queue segment");
+      return;
+    }
+
+  fifo_segment_init (eqs);
+
+  /* Special fifo segment that's filled only with mqs */
+  eqs->h->n_mqs = n_mqs;
+  vec_validate (app->rx_mqs, n_mqs - 1);
+
+  for (i = 0; i < n_mqs; i++)
+    {
+      app->rx_mqs[i] = fifo_segment_msg_q_alloc (eqs, i, cfg);
+      if (svm_msg_q_alloc_consumer_eventfd (app->rx_mqs[i]))
+	clib_warning ("eventfd returned");
+
+      wrk = session_main_get_worker (i);
+      session_rx_mqs_epoll_add (wrk, app);
+    }
+}
+
 /**
  * Attach application to vpp
  *
@@ -875,6 +988,10 @@ vnet_application_attach (vnet_app_attach_args_t * a)
   a->segment_handle = segment_manager_segment_handle (sm, fs);
 
   segment_manager_segment_reader_unlock (sm);
+
+  if (!application_is_builtin (app))
+    app_rx_mqs_alloc (app);
+
   vec_free (app_name);
   return 0;
 }
