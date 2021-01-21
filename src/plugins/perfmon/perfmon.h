@@ -93,6 +93,7 @@ typedef struct perfmon_bundle
   perfmon_bundle_init_fn_t *init_fn;
 
   char **column_headers;
+  char **raw_column_headers;
   format_function_t *format_fn;
 
   /* do not set manually */
@@ -133,6 +134,7 @@ typedef struct
   uword *source_by_name;
   perfmon_bundle_t *active_bundle;
   int is_running;
+  f64 sample_time;
   int *group_fds;
   int *fds_to_close;
   perfmon_instance_type_t *default_instance_type;
