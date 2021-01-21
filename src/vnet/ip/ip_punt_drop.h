@@ -33,6 +33,7 @@ typedef struct ip_punt_policer_t_
 typedef enum ip_punt_policer_next_t_
 {
   IP_PUNT_POLICER_NEXT_DROP,
+  IP_PUNT_POLICER_NEXT_HANDOFF,
   IP_PUNT_POLICER_N_NEXT,
 } ip_punt_policer_next_t;
 
@@ -71,6 +72,10 @@ ip_punt_policer (vlib_main_t * vm,
   u64 time_in_policer_periods;
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc_index];
+  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_read_response_type_st *pol = &pm->policers[policer_index];
+  u32 pol_thread_index = pol->thread_index;
+  u32 this_thread_index = vm->thread_index;
 
   time_in_policer_periods =
     clib_cpu_time_now () >> POLICER_TICKS_PER_PERIOD_SHIFT;
@@ -78,6 +83,20 @@ ip_punt_policer (vlib_main_t * vm,
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
+
+  if (PREDICT_FALSE (pol_thread_index == ~0))
+    {
+      /*
+       * This is the first packet to use this policer. Set the
+       * thread index in the policer to this thread and any
+       * packets seen by this node on other threads will
+       * be handed off to this one.
+       *
+       * This could happen simultaneously on another thread.
+       */
+      clib_atomic_cmp_and_swap (&pol->thread_index, ~0, this_thread_index);
+      pol_thread_index = this_thread_index;
+    }
 
   while (n_left_from > 0)
     {
@@ -102,45 +121,52 @@ ip_punt_policer (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  vnet_get_config_data (&cm->config_main,
-				&b0->current_config_index, &next0, 0);
-	  vnet_get_config_data (&cm->config_main,
-				&b1->current_config_index, &next1, 0);
+	  if (PREDICT_FALSE (this_thread_index != pol_thread_index))
+	    {
+	      next0 = next1 = IP_PUNT_POLICER_NEXT_HANDOFF;
+	    }
+	  else
+	    {
 
-	  act0 = vnet_policer_police (vm, b0,
-				      policer_index,
-				      time_in_policer_periods,
-				      POLICE_CONFORM);
-	  act1 = vnet_policer_police (vm, b1,
-				      policer_index,
-				      time_in_policer_periods,
-				      POLICE_CONFORM);
+	      vnet_get_config_data (&cm->config_main,
+				    &b0->current_config_index, &next0, 0);
+	      vnet_get_config_data (&cm->config_main,
+				    &b1->current_config_index, &next1, 0);
 
-	  if (PREDICT_FALSE (act0 == SSE2_QOS_ACTION_DROP))
-	    {
-	      next0 = IP_PUNT_POLICER_NEXT_DROP;
-	      b0->error = node->errors[IP_PUNT_POLICER_ERROR_DROP];
-	    }
-	  if (PREDICT_FALSE (act1 == SSE2_QOS_ACTION_DROP))
-	    {
-	      next1 = IP_PUNT_POLICER_NEXT_DROP;
-	      b1->error = node->errors[IP_PUNT_POLICER_ERROR_DROP];
+	      act0 =
+		vnet_policer_police (vm, b0, policer_index,
+				     time_in_policer_periods, POLICE_CONFORM);
+	      act1 =
+		vnet_policer_police (vm, b1, policer_index,
+				     time_in_policer_periods, POLICE_CONFORM);
+
+	      if (PREDICT_FALSE (act0 == SSE2_QOS_ACTION_DROP))
+		{
+		  next0 = IP_PUNT_POLICER_NEXT_DROP;
+		  b0->error = node->errors[IP_PUNT_POLICER_ERROR_DROP];
+		}
+	      if (PREDICT_FALSE (act1 == SSE2_QOS_ACTION_DROP))
+		{
+		  next1 = IP_PUNT_POLICER_NEXT_DROP;
+		  b1->error = node->errors[IP_PUNT_POLICER_ERROR_DROP];
+		}
+
+	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+		{
+		  ip_punt_policer_trace_t *t =
+		    vlib_add_trace (vm, node, b0, sizeof (*t));
+		  t->next = next0;
+		  t->policer_index = policer_index;
+		}
+	      if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
+		{
+		  ip_punt_policer_trace_t *t =
+		    vlib_add_trace (vm, node, b1, sizeof (*t));
+		  t->next = next1;
+		  t->policer_index = policer_index;
+		}
 	    }
 
-	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      ip_punt_policer_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->next = next0;
-	      t->policer_index = policer_index;
-	    }
-	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      ip_punt_policer_trace_t *t =
-		vlib_add_trace (vm, node, b1, sizeof (*t));
-	      t->next = next1;
-	      t->policer_index = policer_index;
-	    }
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
 					   n_left_to_next,
 					   bi0, bi1, next0, next1);
@@ -162,27 +188,32 @@ ip_punt_policer (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  vnet_get_config_data (&cm->config_main,
-				&b0->current_config_index, &next0, 0);
-
-	  act0 = vnet_policer_police (vm, b0,
-				      policer_index,
-				      time_in_policer_periods,
-				      POLICE_CONFORM);
-	  if (PREDICT_FALSE (act0 == SSE2_QOS_ACTION_DROP))
+	  if (PREDICT_FALSE (this_thread_index != pol_thread_index))
 	    {
-	      next0 = IP_PUNT_POLICER_NEXT_DROP;
-	      b0->error = node->errors[IP_PUNT_POLICER_ERROR_DROP];
+	      next0 = IP_PUNT_POLICER_NEXT_HANDOFF;
 	    }
-
-	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	  else
 	    {
-	      ip_punt_policer_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->next = next0;
-	      t->policer_index = policer_index;
-	    }
+	      vnet_get_config_data (&cm->config_main,
+				    &b0->current_config_index, &next0, 0);
 
+	      act0 =
+		vnet_policer_police (vm, b0, policer_index,
+				     time_in_policer_periods, POLICE_CONFORM);
+	      if (PREDICT_FALSE (act0 == SSE2_QOS_ACTION_DROP))
+		{
+		  next0 = IP_PUNT_POLICER_NEXT_DROP;
+		  b0->error = node->errors[IP_PUNT_POLICER_ERROR_DROP];
+		}
+
+	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+		{
+		  ip_punt_policer_trace_t *t =
+		    vlib_add_trace (vm, node, b0, sizeof (*t));
+		  t->next = next0;
+		  t->policer_index = policer_index;
+		}
+	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
 	}
