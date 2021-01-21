@@ -1238,14 +1238,21 @@ encaps_processing_v6 (vlib_node_runtime_t * node,
 		      ip6_header_t * ip0, ip6_header_t * ip0_encap)
 {
   u32 new_l0;
+  u32 flow_label;
 
   ip0_encap->hop_limit -= 1;
   new_l0 =
     ip0->payload_length + sizeof (ip6_header_t) +
     clib_net_to_host_u16 (ip0_encap->payload_length);
   ip0->payload_length = clib_host_to_net_u16 (new_l0);
-  ip0->ip_version_traffic_class_and_flow_label =
-    ip0_encap->ip_version_traffic_class_and_flow_label;
+
+  flow_label = ip6_compute_flow_hash (ip0_encap, IP_FLOW_HASH_DEFAULT);
+  ip0->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (
+    0 |
+    (clib_net_to_host_u32 (
+       ip0_encap->ip_version_traffic_class_and_flow_label) &
+     0xfff00000) |
+    (flow_label & 0x0000ffff));
 }
 
 /**
@@ -1510,6 +1517,7 @@ encaps_processing_v4 (vlib_node_runtime_t * node,
   ip6_sr_header_t *sr0;
 
   u32 checksum0;
+  u32 flow_label;
 
   /* Inner IPv4: Decrement TTL & update checksum */
   ip0_encap->ttl -= 1;
@@ -1520,9 +1528,10 @@ encaps_processing_v4 (vlib_node_runtime_t * node,
   /* Outer IPv6: Update length, FL, proto */
   new_l0 = ip0->payload_length + clib_net_to_host_u16 (ip0_encap->length);
   ip0->payload_length = clib_host_to_net_u16 (new_l0);
-  ip0->ip_version_traffic_class_and_flow_label =
-    clib_host_to_net_u32 (0 | ((6 & 0xF) << 28) |
-			  ((ip0_encap->tos & 0xFF) << 20));
+  flow_label = ip4_compute_flow_hash (ip0_encap, IP_FLOW_HASH_DEFAULT);
+  ip0->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (
+    0 | ((6 & 0xF) << 28) | ((ip0_encap->tos & 0xFF) << 20) |
+    (flow_label & 0x0000ffff));
   if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE)
     {
       sr0 = (void *) (ip0 + 1);
@@ -1861,6 +1870,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_sr_header_t *sr0, *sr1, *sr2, *sr3;
 	  ip6_sr_policy_t *sp0, *sp1, *sp2, *sp3;
 	  ip6_sr_sl_t *sl0, *sl1, *sl2, *sl3;
+	  u32 flow_label0, flow_label1, flow_label2, flow_label3;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -1916,12 +1926,16 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 				   sm->sw_iface_sr_policies[vnet_buffer
 							    (b3)->sw_if_index
 							    [VLIB_RX]]);
+	  flow_label0 = l2_flow_hash (b0);
+	  flow_label1 = l2_flow_hash (b1);
+	  flow_label2 = l2_flow_hash (b2);
+	  flow_label3 = l2_flow_hash (b3);
 
 	  if (vec_len (sp0->segments_lists) == 1)
 	    vnet_buffer (b0)->ip.adj_index[VLIB_TX] = sp0->segments_lists[0];
 	  else
 	    {
-	      vnet_buffer (b0)->ip.flow_hash = l2_flow_hash (b0);
+	      vnet_buffer (b0)->ip.flow_hash = flow_label0;
 	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
 		sp0->segments_lists[(vnet_buffer (b0)->ip.flow_hash &
 				     (vec_len (sp0->segments_lists) - 1))];
@@ -1931,7 +1945,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vnet_buffer (b1)->ip.adj_index[VLIB_TX] = sp1->segments_lists[1];
 	  else
 	    {
-	      vnet_buffer (b1)->ip.flow_hash = l2_flow_hash (b1);
+	      vnet_buffer (b1)->ip.flow_hash = flow_label1;
 	      vnet_buffer (b1)->ip.adj_index[VLIB_TX] =
 		sp1->segments_lists[(vnet_buffer (b1)->ip.flow_hash &
 				     (vec_len (sp1->segments_lists) - 1))];
@@ -1941,7 +1955,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vnet_buffer (b2)->ip.adj_index[VLIB_TX] = sp2->segments_lists[2];
 	  else
 	    {
-	      vnet_buffer (b2)->ip.flow_hash = l2_flow_hash (b2);
+	      vnet_buffer (b2)->ip.flow_hash = flow_label2;
 	      vnet_buffer (b2)->ip.adj_index[VLIB_TX] =
 		sp2->segments_lists[(vnet_buffer (b2)->ip.flow_hash &
 				     (vec_len (sp2->segments_lists) - 1))];
@@ -1951,7 +1965,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vnet_buffer (b3)->ip.adj_index[VLIB_TX] = sp3->segments_lists[3];
 	  else
 	    {
-	      vnet_buffer (b3)->ip.flow_hash = l2_flow_hash (b3);
+	      vnet_buffer (b3)->ip.flow_hash = flow_label3;
 	      vnet_buffer (b3)->ip.adj_index[VLIB_TX] =
 		sp3->segments_lists[(vnet_buffer (b3)->ip.flow_hash &
 				     (vec_len (sp3->segments_lists) - 1))];
@@ -2044,8 +2058,16 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else
 	    ip3->protocol = IP_PROTOCOL_IP6_ETHERNET;
 
-	  /* Which Traffic class and flow label do I set ? */
-	  //ip0->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32(0|((6&0xF)<<28)|((ip0_encap->tos&0xFF)<<20));
+	  /* TC is set to 0 for all ethernet frames, should be taken from COS
+	   * od DSCP of encapsulated packet in the future */
+	  ip0->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (
+	    0 | ((6 & 0xF) << 28) | ((0x00) << 20) | (flow_label0 & 0xffff));
+	  ip1->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (
+	    0 | ((6 & 0xF) << 28) | ((0x00) << 20) | (flow_label1 & 0xffff));
+	  ip2->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (
+	    0 | ((6 & 0xF) << 28) | ((0x00) << 20) | (flow_label2 & 0xffff));
+	  ip3->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (
+	    0 | ((6 & 0xF) << 28) | ((0x00) << 20) | (flow_label3 & 0xffff));
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
@@ -2107,6 +2129,7 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_sr_policy_t *sp0;
 	  ip6_sr_sl_t *sl0;
 	  u32 next0 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
+	  u32 flow_label0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -2121,13 +2144,14 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 				   sm->sw_iface_sr_policies[vnet_buffer
 							    (b0)->sw_if_index
 							    [VLIB_RX]]);
+	  flow_label0 = l2_flow_hash (b0);
 
 	  /* In case there is more than one SL, LB among them */
 	  if (vec_len (sp0->segments_lists) == 1)
 	    vnet_buffer (b0)->ip.adj_index[VLIB_TX] = sp0->segments_lists[0];
 	  else
 	    {
-	      vnet_buffer (b0)->ip.flow_hash = l2_flow_hash (b0);
+	      vnet_buffer (b0)->ip.flow_hash = flow_label0;
 	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
 		sp0->segments_lists[(vnet_buffer (b0)->ip.flow_hash &
 				     (vec_len (sp0->segments_lists) - 1))];
@@ -2157,6 +2181,9 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    ip0->protocol = IP_PROTOCOL_IP6_ETHERNET;
+
+	  ip0->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (
+	    0 | ((6 & 0xF) << 28) | ((0x00) << 20) | (flow_label0 & 0xffff));
 
 	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
 	      PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
