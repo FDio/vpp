@@ -30,6 +30,7 @@ bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
   int i;
   uword p;
   u8 switching_active = 0;
+  vnet_main_t *vnm = vnet_get_main ();
 
   bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
   clib_spinlock_lock_if_init (&bif->lockp);
@@ -60,8 +61,16 @@ bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
 
   /* We get a new member just becoming active */
   if (switching_active)
-    vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
-			       BOND_SEND_GARP_NA, bif->hw_if_index);
+    {
+      if (bif->failover_mac == BOND_FAILOVER_MAC_ACTIVE)
+	{
+	  mif = bond_get_member_by_sw_if_index (bif->active_members[0]);
+	  vnet_hw_interface_change_mac_address (vnm, bif->hw_if_index,
+						mif->persistent_hw_address);
+	}
+      vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
+				 BOND_SEND_GARP_NA, bif->hw_if_index);
+    }
   clib_spinlock_unlock_if_init (&bif->lockp);
 }
 
@@ -123,11 +132,21 @@ bond_sort_members (bond_if_t * bif)
 {
   bond_main_t *bm = &bond_main;
   u32 old_active = bif->active_members[0];
+  member_if_t *mif;
+  vnet_main_t *vnm = vnet_get_main ();
 
   vec_sort_with_function (bif->active_members, bond_member_sort);
   if (old_active != bif->active_members[0])
-    vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
-			       BOND_SEND_GARP_NA, bif->hw_if_index);
+    {
+      if (bif->failover_mac == BOND_FAILOVER_MAC_ACTIVE)
+	{
+	  mif = bond_get_member_by_sw_if_index (bif->active_members[0]);
+	  vnet_hw_interface_change_mac_address (vnm, bif->hw_if_index,
+						mif->persistent_hw_address);
+	}
+      vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
+				 BOND_SEND_GARP_NA, bif->hw_if_index);
+    }
 }
 
 void
@@ -407,6 +426,7 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   bif->lb = args->lb;
   bif->mode = args->mode;
   bif->gso = args->gso;
+  bif->failover_mac = BOND_FAILOVER_MAC_NONE;
 
   // Adjust requested interface id
   if (bif->id == ~0)
@@ -719,9 +739,13 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
 	}
       else
 	{
-	  // subsequent members gets the mac address of the bond interface
-	  vnet_hw_interface_change_mac_address (vnm, mif_hw->hw_if_index,
-						bif->hw_address);
+	  /*
+	   * subsequent member gets the mac address of the bond interface
+	   * if failover-mac is none.
+	   */
+	  if (bif->failover_mac == BOND_FAILOVER_MAC_NONE)
+	    vnet_hw_interface_change_mac_address (vnm, mif_hw->hw_if_index,
+						  bif->hw_address);
 	}
     }
 
@@ -923,6 +947,9 @@ show_bond_details (vlib_main_t * vm)
     vlib_cli_output (vm, "%U", format_bond_interface_name, bif->dev_instance);
     vlib_cli_output (vm, "  mode: %U",
 		     format_bond_mode, bif->mode);
+    if (bif->mode == BOND_MODE_ACTIVE_BACKUP)
+      vlib_cli_output (vm, "  failover mac: %U", format_bond_failover_mac,
+		       bif->failover_mac);
     vlib_cli_output (vm, "  load balance: %U",
 		     format_bond_load_balance, bif->lb);
     if (bif->gso)
@@ -993,7 +1020,7 @@ VLIB_CLI_COMMAND (show_bond_command, static) = {
 /* *INDENT-ON* */
 
 void
-bond_set_intf_weight (vlib_main_t * vm, bond_set_intf_weight_args_t * args)
+bond_set_intf_weight (vlib_main_t *vm, bond_set_intf_args_t *args)
 {
   member_if_t *mif;
   bond_if_t *bif;
@@ -1039,16 +1066,74 @@ bond_set_intf_weight (vlib_main_t * vm, bond_set_intf_weight_args_t * args)
   bond_sort_members (bif);
 }
 
+void
+bond_set_intf_failover_mac (vlib_main_t *vm, bond_set_intf_args_t *args)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  member_if_t *mif;
+  bond_if_t *bif;
+  u32 *sw_if_index;
+
+  bif = bond_get_bond_if_by_sw_if_index (args->sw_if_index);
+  if (!bif)
+    {
+      args->rv = VNET_API_ERROR_INVALID_INTERFACE;
+      args->error = clib_error_return (0, "bond interface not found");
+      return;
+    }
+  if (bif->mode != BOND_MODE_ACTIVE_BACKUP)
+    {
+      args->rv = VNET_API_ERROR_INVALID_ARGUMENT;
+      args->error =
+	clib_error_return (0, "Failover mac valid for active-backup only");
+      return;
+    }
+
+  if (bif->failover_mac == args->failover_mac)
+    return;
+
+  bif->failover_mac = args->failover_mac;
+  if (vec_len (bif->active_members) <= 1)
+    return;
+
+  if (bif->failover_mac == BOND_FAILOVER_MAC_ACTIVE)
+    vec_foreach (sw_if_index, bif->active_members)
+      {
+	mif = bond_get_member_by_sw_if_index (*sw_if_index);
+	if (mif &&
+	    bif->members[0] != *sw_if_index) /* skip 1st active member */
+	  vnet_hw_interface_change_mac_address (vnm, mif->hw_if_index,
+						mif->persistent_hw_address);
+      }
+  else if (bif->failover_mac == BOND_FAILOVER_MAC_NONE)
+    {
+      vec_foreach (sw_if_index, bif->active_members)
+	{
+	  mif = bond_get_member_by_sw_if_index (*sw_if_index);
+	  if (mif && bif->active_members[0] != *sw_if_index)
+	    vnet_hw_interface_change_mac_address (vnm, mif->hw_if_index,
+						  bif->hw_address);
+	}
+    }
+  else
+    {
+      args->rv = VNET_API_ERROR_INVALID_ARGUMENT;
+      args->error = clib_error_return (0, "Invalid failover mac value");
+      return;
+    }
+  //  bond_member_add_del_mac_addrs ();
+}
+
 static clib_error_t *
 bond_set_intf_cmd (vlib_main_t * vm, unformat_input_t * input,
 		   vlib_cli_command_t * cmd)
 {
-  bond_set_intf_weight_args_t args = { 0 };
+  bond_set_intf_args_t args = { 0 };
   u32 sw_if_index = (u32) ~ 0;
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
-  u8 weight_enter = 0;
-  u32 weight = 0;
+  u8 weight_enter = 0, failover_mac_enter = 0;
+  u32 weight = 0, failover_mac = BOND_FAILOVER_MAC_NONE;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1063,6 +1148,9 @@ bond_set_intf_cmd (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "weight %u", &weight))
 	weight_enter = 1;
+      else if (unformat (line_input, "failover-mac %U",
+			 unformat_bond_failover_mac, &failover_mac))
+	failover_mac_enter = 1;
       else
 	{
 	  clib_error_return (0, "unknown input `%U'", format_unformat_error,
@@ -1077,13 +1165,21 @@ bond_set_intf_cmd (vlib_main_t * vm, unformat_input_t * input,
       args.rv = VNET_API_ERROR_INVALID_INTERFACE;
       clib_error_return (0, "Interface name is invalid!");
     }
+  args.sw_if_index = sw_if_index;
+
+  if (failover_mac_enter == 1)
+    {
+      args.failover_mac = failover_mac;
+      bond_set_intf_failover_mac (vm, &args);
+      return (args.error);
+    }
+
   if (weight_enter == 0)
     {
       args.rv = VNET_API_ERROR_INVALID_ARGUMENT;
       clib_error_return (0, "weight missing");
     }
 
-  args.sw_if_index = sw_if_index;
   args.weight = weight;
   bond_set_intf_weight (vm, &args);
 
@@ -1091,10 +1187,10 @@ bond_set_intf_cmd (vlib_main_t * vm, unformat_input_t * input,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND(set_interface_bond_cmd, static) = {
+VLIB_CLI_COMMAND (set_interface_bond_cmd, static) = {
   .path = "set interface bond",
   .short_help = "set interface bond <interface> | sw_if_index <idx>"
-                " weight <value>",
+		" { weight <value> | failover-mac { active | none } }",
   .function = bond_set_intf_cmd,
 };
 /* *INDENT-ON* */
