@@ -28,4 +28,5 @@ add_vpp_plugin(perfmon
   intel/bundle/load_blocks.c
   intel/bundle/mem_bw.c
   intel/bundle/cache_hit_miss.c
+  intel/bundle/branch_mispred.c
 )
