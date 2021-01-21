@@ -22,7 +22,7 @@ class TestBondInterface(VppTestCase):
         super(TestBondInterface, cls).setUpClass()
         # Test variables
         cls.pkts_per_burst = 257    # Number of packets per burst
-        # create 3 pg interfaces
+        # create 4 pg interfaces
         cls.create_pg_interfaces(range(4))
 
         # packet sizes
@@ -56,7 +56,7 @@ class TestBondInterface(VppTestCase):
         #           |        |
         #          BondEthernet0 (10.10.10.1)
         #           |        |
-        # pg3 ------+        +------pg1 (memberx)
+        # pg3 ------+        +------pg1 (member)
         #
 
         # create interface (BondEthernet0)
@@ -311,6 +311,93 @@ class TestBondInterface(VppTestCase):
         # confirm link is still up
         bond0.assert_interface_state(intf_flags.IF_STATUS_API_FLAG_ADMIN_UP,
                                      intf_flags.IF_STATUS_API_FLAG_LINK_UP)
+
+        # delete BondEthernet0
+        self.logger.info("Deleting BondEthernet0")
+        bond0.remove_vpp_config()
+
+    def test_bond_failover_mac(self):
+        """ Bond failover mac test """
+
+        # topology
+        #
+        #          +-+
+        # pg0 -----|B|
+        #          |o|
+        #          |n|
+        #          |d|
+        # pg1 -----|0|
+        #          +-+
+
+        bond0 = VppBondInterface(
+            self,
+            mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_ACTIVE_BACKUP,
+            use_custom_mac=0)
+        bond0.add_vpp_config()
+        bond0.admin_up()
+
+        bond_failover_mac = VppEnum.vl_api_bond_failover_mac_t
+
+        # set failover mac active
+        self.vapi.sw_interface_set_bond_failover_mac(
+            sw_if_index=bond0.sw_if_index,
+            failover_mac=bond_failover_mac.BOND_API_FAILOVER_MAC_ACTIVE)
+
+        # add member pg0 and pg1 to bond0
+        bond0.add_member_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index)
+        bond0.add_member_vpp_bond_interface(sw_if_index=self.pg1.sw_if_index)
+
+        # verify pg0 and pg1 in bond0
+        intfs = self.vapi.sw_member_interface_dump(
+            sw_if_index=bond0.sw_if_index)
+        for intf in intfs:
+            self.assertIn(
+                intf.sw_if_index, (self.pg0.sw_if_index, self.pg1.sw_if_index))
+
+        # dump interfaces
+        bond0_dump = self.vapi.sw_interface_dump(bond0.sw_if_index)
+        pg0_dump = self.vapi.sw_interface_dump(self.pg0.sw_if_index)
+        pg1_dump = self.vapi.sw_interface_dump(self.pg1.sw_if_index)
+
+        # check mac address of bond0 == 1st member, and bond0 != 2nd member
+        self.assertEqual(bond0_dump[0].l2_address, pg0_dump[0].l2_address)
+        self.assertNotEqual(
+            bond0_dump[0].l2_address, pg1_dump[0].l2_address)
+
+        # down the active interface (1st member)
+        self.pg0.admin_down()
+        # check bond0 mac == 2nd member
+        bond0_dump = self.vapi.sw_interface_dump(bond0.sw_if_index)
+        pg1_dump = self.vapi.sw_interface_dump(self.pg1.sw_if_index)
+        self.assertEqual(bond0_dump[0].l2_address, pg1_dump[0].l2_address)
+
+        # up the previous active interface
+        self.pg0.admin_up()
+
+        # check mac address of bond0 not affected byprevious active interface
+        bond0_dump = self.vapi.sw_interface_dump(bond0.sw_if_index)
+        pg0_dump = self.vapi.sw_interface_dump(self.pg0.sw_if_index)
+        pg1_dump = self.vapi.sw_interface_dump(self.pg1.sw_if_index)
+        self.assertEqual(bond0_dump[0].l2_address, pg1_dump[0].l2_address)
+        self.assertNotEqual(
+            bond0_dump[0].l2_address, pg0_dump[0].l2_address)
+
+        # set failover mac none
+        self.vapi.sw_interface_set_bond_failover_mac(
+            sw_if_index=bond0.sw_if_index,
+            failover_mac=bond_failover_mac.BOND_API_FAILOVER_MAC_NONE)
+        # dump interfaces
+        bond0_dump = self.vapi.sw_interface_dump(bond0.sw_if_index)
+        pg0_dump = self.vapi.sw_interface_dump(self.pg0.sw_if_index)
+        pg1_dump = self.vapi.sw_interface_dump(self.pg1.sw_if_index)
+
+        # check mac address of bond0 == 1st member, and bond0 == 2nd member
+        self.assertEqual(bond0_dump[0].l2_address, pg0_dump[0].l2_address)
+        self.assertEqual(bond0_dump[0].l2_address, pg0_dump[0].l2_address)
+
+        # detach members
+        bond0.detach_vpp_bond_interface(sw_if_index=self.pg0.sw_if_index)
+        bond0.detach_vpp_bond_interface(sw_if_index=self.pg1.sw_if_index)
 
         # delete BondEthernet0
         self.logger.info("Deleting BondEthernet0")
