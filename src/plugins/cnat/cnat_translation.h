@@ -75,6 +75,12 @@ typedef enum
   CNAT_ADDR_N_RESOLUTIONS,
 } cnat_addr_resol_type_t;
 
+typedef enum __attribute__ ((__packed__))
+{
+  CNAT_LB_DEFAULT,
+  CNAT_LB_MAGLEV,
+} cnat_lb_type_t;
+
 /**
  * Entry used to account for a translation's backend
  * waiting for address resolution
@@ -149,6 +155,16 @@ typedef struct cnat_translation_t_
    * Translation flags
    */
   u8 flags;
+
+  /**
+   * Type of load balancing
+   */
+  cnat_lb_type_t lb_type;
+
+  union
+  {
+    u32 *lb_maglev;
+  };
 } cnat_translation_t;
 
 extern cnat_translation_t *cnat_translation_pool;
@@ -164,10 +180,10 @@ extern u8 *format_cnat_translation (u8 * s, va_list * args);
  *
  * @return the ID of the translation. used to delete and gather stats
  */
-extern u32 cnat_translation_update (cnat_endpoint_t * vip,
+extern u32 cnat_translation_update (cnat_endpoint_t *vip,
 				    ip_protocol_t ip_proto,
-				    cnat_endpoint_tuple_t *
-				    backends, u8 flags);
+				    cnat_endpoint_tuple_t *backends, u8 flags,
+				    cnat_lb_type_t lb_type);
 
 /**
  * Delete a translation

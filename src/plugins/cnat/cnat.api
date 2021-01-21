@@ -29,6 +29,12 @@ enum cnat_translation_flags:u8
   CNAT_TRANSLATION_ALLOC_PORT = 1,
 };
 
+enum cnat_lb_type:u8
+{
+  CNAT_LB_TYPE_DEFAULT = 0,
+  CNAT_LB_TYPE_MAGLEV = 1,
+};
+
 /* An enpoint is either
  * An IP & a port
  * An interface, an address familiy and a port */
@@ -53,6 +59,7 @@ typedef cnat_translation
   vl_api_ip_proto_t ip_proto;
   u8 is_real_ip;
   u8 flags;
+  vl_api_cnat_lb_type_t lb_type;
   u32 n_paths;
   vl_api_cnat_endpoint_tuple_t paths[n_paths];
 };

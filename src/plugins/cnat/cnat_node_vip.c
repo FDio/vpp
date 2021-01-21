@@ -15,15 +15,8 @@
 
 #include <vlibmemory/api.h>
 #include <cnat/cnat_node.h>
-#include <cnat/cnat_translation.h>
 #include <cnat/cnat_inline.h>
 #include <cnat/cnat_src_policy.h>
-
-#include <vnet/dpo/load_balance.h>
-#include <vnet/dpo/load_balance_map.h>
-
-#include <vnet/ip/ip4_inlines.h>
-#include <vnet/ip/ip6_inlines.h>
 
 typedef struct cnat_translation_trace_t_
 {
@@ -144,14 +137,12 @@ cnat_vip_node_fn (vlib_main_t * vm,
 	}
 
       /* New flow, create the sessions */
-      const load_balance_t *lb0;
       cnat_ep_trk_t *trk0;
-      u32 hash_c0, bucket0;
       u32 rsession_flags = 0;
-      const dpo_id_t *dpo0;
+      u32 dpoi_index = -1;
 
-      lb0 = load_balance_get (ct->ct_lb.dpoi_index);
-      if (!lb0->lb_n_buckets)
+      trk0 = cnat_load_balance (ct, ctx->af, ip4, ip6, &dpoi_index);
+      if (PREDICT_FALSE (NULL == trk0))
 	{
 	  /* Dont translate & Follow the fib programming */
 	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
@@ -159,16 +150,7 @@ cnat_vip_node_fn (vlib_main_t * vm,
 	  goto trace;
 	}
 
-      /* session table miss */
-      hash_c0 = (AF_IP4 == ctx->af ?
-		 ip4_compute_flow_hash (ip4, lb0->lb_hash_config) :
-		 ip6_compute_flow_hash (ip6, lb0->lb_hash_config));
-      bucket0 = hash_c0 % lb0->lb_n_buckets;
-      dpo0 = load_balance_get_fwd_bucket (lb0, bucket0);
-
       /* add the session */
-      trk0 = &ct->ct_paths[bucket0];
-
       ip46_address_copy (&session->value.cs_ip[VLIB_TX],
 			 &trk0->ct_ep[VLIB_TX].ce_ip.ip);
       if (ip_address_is_zero (&trk0->ct_ep[VLIB_RX].ce_ip))
@@ -193,7 +175,7 @@ cnat_vip_node_fn (vlib_main_t * vm,
 	clib_host_to_net_u16 (trk0->ct_ep[VLIB_RX].ce_port);
 
       session->value.dpoi_next_node = ct->ct_lb.dpoi_next_node;
-      session->value.cs_lbi = dpo0->dpoi_index;
+      session->value.cs_lbi = dpoi_index;
 
       rv = cspm->vip_policy (vm, b, session, &rsession_flags, ct, ctx);
       if (CNAT_SOURCE_ERROR_USE_DEFAULT == rv)

@@ -185,6 +185,7 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
   cm->session_max_age = CNAT_DEFAULT_SESSION_MAX_AGE;
   cm->tcp_max_age = CNAT_DEFAULT_TCP_MAX_AGE;
   cm->default_scanner_state = CNAT_SCANNER_ON;
+  cm->maglev_len = CNAT_DEFAULT_MAGLEV_LEN;
   cm->lazy_init_done = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -216,6 +217,8 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "session-max-age %u", &cm->session_max_age))
 	;
       else if (unformat (input, "tcp-max-age %u", &cm->tcp_max_age))
+	;
+      else if (unformat (input, "maglev-len %u", &cm->maglev_len))
 	;
       else
 	return clib_error_return (0, "unknown input '%U'",

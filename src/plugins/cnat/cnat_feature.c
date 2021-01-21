@@ -133,9 +133,8 @@ cnat_input_feature_fn (vlib_main_t * vm,
       /* New flow, create the sessions */
       const load_balance_t *lb0;
       cnat_ep_trk_t *trk0;
-      u32 hash_c0, bucket0;
       u32 rsession_flags = CNAT_SESSION_FLAG_NO_CLIENT;
-      const dpo_id_t *dpo0;
+      u32 dpoi_index = -1;
 
       lb0 = load_balance_get (ct->ct_lb.dpoi_index);
       if (!lb0->lb_n_buckets)
@@ -143,14 +142,14 @@ cnat_input_feature_fn (vlib_main_t * vm,
 	  goto trace;
 
       /* session table miss */
-      hash_c0 = (AF_IP4 == ctx->af ?
-		 ip4_compute_flow_hash (ip4, lb0->lb_hash_config) :
-		 ip6_compute_flow_hash (ip6, lb0->lb_hash_config));
-      bucket0 = hash_c0 % lb0->lb_n_buckets;
-      dpo0 = load_balance_get_fwd_bucket (lb0, bucket0);
-
-      /* add the session */
-      trk0 = &ct->ct_paths[bucket0];
+      trk0 = cnat_load_balance (ct, ctx->af, ip4, ip6, &dpoi_index);
+      if (PREDICT_FALSE (NULL == trk0))
+	{
+	  /* Dont translate & Follow the fib programming */
+	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
+	  next0 = cc->cc_parent.dpoi_next_node;
+	  goto trace;
+	}
 
       ip46_address_copy (&session->value.cs_ip[VLIB_TX],
 			 &trk0->ct_ep[VLIB_TX].ce_ip.ip);
@@ -167,7 +166,7 @@ cnat_input_feature_fn (vlib_main_t * vm,
 	clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port);
       session->value.cs_port[VLIB_RX] = udp0->src_port;
 
-      session->value.cs_lbi = dpo0->dpoi_index;
+      session->value.cs_lbi = dpoi_index;
 
       /* refcnt session in current client */
       cnat_client_cnt_session (cc);
