@@ -275,9 +275,18 @@ show_perfmon_stats_command_fn (vlib_main_t *vm, unformat_input_t *input,
   perfmon_instance_t *in;
   u8 *s = 0;
   int n_row = 0;
+  u8 raw = 0;
 
   if (b == 0)
     return clib_error_return (0, "no budle selected");
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "raw"))
+	raw = 1;
+      else
+	break;
+    }
 
   n_instances = vec_len (it->instances);
   vec_validate (readings, n_instances - 1);
@@ -304,6 +313,13 @@ show_perfmon_stats_command_fn (vlib_main_t *vm, unformat_input_t *input,
       char **hdr = b->column_headers;
       while (hdr[0])
 	table_format_cell (t, -1, n_row++, "%s", hdr++[0]);
+
+      if (b->raw_column_headers && raw)
+	{
+	  hdr = b->raw_column_headers;
+	  while (hdr[0])
+	    table_format_cell (t, -1, n_row++, "%s", hdr++[0]);
+	}
     }
 
   int col = 0;
@@ -340,6 +356,9 @@ show_perfmon_stats_command_fn (vlib_main_t *vm, unformat_input_t *input,
   vlib_cli_output (vm, "%U\n", format_table, t);
   table_free (t);
 
+  if (raw)
+    vlib_cli_output (vm, "Sample time is %.4f seconds \n", pm->sample_time);
+
   if (b->footer)
     vlib_cli_output (vm, "\n%s\n", b->footer);
 
@@ -351,7 +370,7 @@ done:
 
 VLIB_CLI_COMMAND (show_perfmon_stats_command, static) = {
   .path = "show perfmon statistics",
-  .short_help = "show perfmon statistics",
+  .short_help = "show perfmon statistics [raw]",
   .function = show_perfmon_stats_command_fn,
   .is_mp_safe = 1,
 };

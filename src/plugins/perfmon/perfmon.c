@@ -238,6 +238,7 @@ perfmon_start (vlib_main_t *vm)
 	vlib_node_set_dispatch_wrapper (vlib_mains[i],
 					perfmon_dispatch_wrapper);
     }
+  pm->sample_time = vlib_time_now (vm);
   pm->is_running = 1;
   return 0;
 }
@@ -268,6 +269,7 @@ perfmon_stop (vlib_main_t *vm)
     }
 
   pm->is_running = 0;
+  pm->sample_time = vlib_time_now (vm) - pm->sample_time;
   return 0;
 }
 
