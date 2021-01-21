@@ -44,19 +44,20 @@
 #include <vlibapi/api_helper_macros.h>
 #include <vnet/bonding/node.h>
 
-#define foreach_bond_api_msg                     \
-_(BOND_CREATE, bond_create)                      \
-_(BOND_CREATE2, bond_create2)			 \
-_(BOND_DELETE, bond_delete)                      \
-_(BOND_ENSLAVE, bond_enslave)                    \
-_(BOND_ADD_MEMBER, bond_add_member)                    \
-_(SW_INTERFACE_SET_BOND_WEIGHT, sw_interface_set_bond_weight) \
-_(BOND_DETACH_SLAVE, bond_detach_slave)          \
-_(BOND_DETACH_MEMBER, bond_detach_member)          \
-_(SW_INTERFACE_BOND_DUMP, sw_interface_bond_dump) \
-_(SW_BOND_INTERFACE_DUMP, sw_bond_interface_dump) \
-_(SW_INTERFACE_SLAVE_DUMP, sw_interface_slave_dump) \
-_(SW_MEMBER_INTERFACE_DUMP, sw_member_interface_dump)
+#define foreach_bond_api_msg                                                  \
+  _ (BOND_CREATE, bond_create)                                                \
+  _ (BOND_CREATE2, bond_create2)                                              \
+  _ (BOND_DELETE, bond_delete)                                                \
+  _ (BOND_ENSLAVE, bond_enslave)                                              \
+  _ (BOND_ADD_MEMBER, bond_add_member)                                        \
+  _ (SW_INTERFACE_SET_BOND_WEIGHT, sw_interface_set_bond_weight)              \
+  _ (SW_INTERFACE_SET_BOND_FAILOVER_MAC, sw_interface_set_bond_failover_mac)  \
+  _ (BOND_DETACH_SLAVE, bond_detach_slave)                                    \
+  _ (BOND_DETACH_MEMBER, bond_detach_member)                                  \
+  _ (SW_INTERFACE_BOND_DUMP, sw_interface_bond_dump)                          \
+  _ (SW_BOND_INTERFACE_DUMP, sw_bond_interface_dump)                          \
+  _ (SW_INTERFACE_SLAVE_DUMP, sw_interface_slave_dump)                        \
+  _ (SW_MEMBER_INTERFACE_DUMP, sw_member_interface_dump)
 
 static void
 vl_api_bond_delete_t_handler (vl_api_bond_delete_t * mp)
@@ -187,7 +188,7 @@ static void
   (vl_api_sw_interface_set_bond_weight_t * mp)
 {
   vlib_main_t *vm = vlib_get_main ();
-  bond_set_intf_weight_args_t _a, *ap = &_a;
+  bond_set_intf_args_t _a, *ap = &_a;
   vl_api_sw_interface_set_bond_weight_reply_t *rmp;
   int rv = 0;
 
@@ -200,6 +201,26 @@ static void
   rv = ap->rv;
 
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_BOND_WEIGHT_REPLY);
+}
+
+static void
+vl_api_sw_interface_set_bond_failover_mac_t_handler (
+  vl_api_sw_interface_set_bond_failover_mac_t *mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  bond_set_intf_args_t _a, *ap = &_a;
+  vl_api_sw_interface_set_bond_weight_reply_t *rmp;
+  int rv = 0;
+
+  clib_memset (ap, 0, sizeof (*ap));
+
+  ap->sw_if_index = ntohl (mp->sw_if_index);
+  ap->failover_mac = ntohl (mp->failover_mac);
+
+  bond_set_intf_failover_mac (vm, ap);
+  rv = ap->rv;
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_BOND_FAILOVER_MAC_REPLY);
 }
 
 static void

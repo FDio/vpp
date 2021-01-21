@@ -8,6 +8,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
+from vpp_memif import remove_all_memif_vpp_config, VppSocketFilename, VppMemif
 from vpp_bond_interface import VppBondInterface
 from vpp_papi import MACAddress, VppEnum
 
@@ -311,6 +312,101 @@ class TestBondInterface(VppTestCase):
         # confirm link is still up
         bond0.assert_interface_state(intf_flags.IF_STATUS_API_FLAG_ADMIN_UP,
                                      intf_flags.IF_STATUS_API_FLAG_LINK_UP)
+
+        # delete BondEthernet0
+        self.logger.info("Deleting BondEthernet0")
+        bond0.remove_vpp_config()
+
+    def test_bond_failover_mac(self):
+        """ Bond failover mac test """
+
+        # topology
+        #
+        #             +-+
+        # memif1 -----|B|
+        #             |o|
+        #             |n|
+        #             |d|
+        # meeif2 -----|0|
+        #             +-+
+
+        socket1 = VppSocketFilename(
+            self,
+            socket_id=1,
+            socket_filename="%s/memif.sock1" % self.tempdir)
+        socket1.add_vpp_config()
+
+        socket2 = VppSocketFilename(
+            self,
+            socket_id=2,
+            socket_filename="%s/memif.sock2" % self.tempdir)
+        socket2.add_vpp_config()
+
+        memif1 = VppMemif(
+            self,
+            role=VppEnum.vl_api_memif_role_t.MEMIF_ROLE_API_MASTER,
+            mode=VppEnum.vl_api_memif_mode_t.MEMIF_MODE_API_ETHERNET,
+            socket_id=1)
+        memif1.add_vpp_config()
+        memif1.admin_up()
+
+        memif2 = VppMemif(
+            self,
+            role=VppEnum.vl_api_memif_role_t.MEMIF_ROLE_API_SLAVE,
+            mode=VppEnum.vl_api_memif_mode_t.MEMIF_MODE_API_ETHERNET,
+            socket_id=2)
+        memif2.add_vpp_config()
+        memif2.admin_up()
+
+        bond0 = VppBondInterface(
+            self,
+            mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_ACTIVE_BACKUP,
+            use_custom_mac=0)
+        bond0.add_vpp_config()
+        bond0.admin_up()
+
+        bond_failover_mac = VppEnum.vl_api_bond_failover_mac_t
+
+        # set failover mac active
+        self.vapi.sw_interface_set_bond_failover_mac(
+            sw_if_index=bond0.sw_if_index,
+            failover_mac=bond_failover_mac.BOND_API_FAILOVER_MAC_ACTIVE)
+
+        bond0.add_member_vpp_bond_interface(sw_if_index=memif1.sw_if_index)
+        bond0.add_member_vpp_bond_interface(sw_if_index=memif2.sw_if_index)
+
+        # verify memif1 and memif2 in bond0
+        intfs = self.vapi.sw_member_interface_dump(
+            sw_if_index=bond0.sw_if_index)
+        self.assertEqual(len(intfs), 2)
+
+        # dump interfaces
+        bond0_dump = self.vapi.sw_interface_dump(bond0.sw_if_index)
+        memif1_dump = self.vapi.sw_interface_dump(memif1.sw_if_index)
+        memif2_dump = self.vapi.sw_interface_dump(memif2.sw_if_index)
+
+        # check mac address of bond0 == 1st member, and bond0 != 2nd member
+        self.assertEqual(bond0_dump[0].l2_address, memif1_dump[0].l2_address)
+        self.assertNotEqual(
+            bond0_dump[0].l2_address, memif2_dump[0].l2_address)
+
+        # set failover mac none
+        self.vapi.sw_interface_set_bond_failover_mac(
+            sw_if_index=bond0.sw_if_index,
+            failover_mac=bond_failover_mac.BOND_API_FAILOVER_MAC_NONE)
+
+        # dump interfaces
+        bond0_dump = self.vapi.sw_interface_dump(bond0.sw_if_index)
+        memif1_dump = self.vapi.sw_interface_dump(memif1.sw_if_index)
+        memif2_dump = self.vapi.sw_interface_dump(memif2.sw_if_index)
+
+        # check mac address of bond0 == 1st member, and bond0 == 2nd member
+        self.assertEqual(bond0_dump[0].l2_address, memif1_dump[0].l2_address)
+        self.assertEqual(bond0_dump[0].l2_address, memif2_dump[0].l2_address)
+
+        # detach member memif1
+        bond0.detach_vpp_bond_interface(sw_if_index=memif1.sw_if_index)
+        bond0.detach_vpp_bond_interface(sw_if_index=memif2.sw_if_index)
 
         # delete BondEthernet0
         self.logger.info("Deleting BondEthernet0")
