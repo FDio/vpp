@@ -19,10 +19,16 @@
     the bonding device driver
 */
 
-option version = "2.1.0";
+option version = "2.2.0";
 
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
+
+enum bond_failover_mac
+{
+  BOND_API_FAILOVER_MAC_NONE = 0,
+  BOND_API_FAILOVER_MAC_ACTIVE = 1,
+};
 
 enum bond_mode
 {
@@ -345,6 +351,20 @@ autoreply define sw_interface_set_bond_weight
   u32 context;
   vl_api_interface_index_t sw_if_index;
   u32 weight;
+};
+
+/** \brief Interface set bond failover_mac
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - bond interface for which to set the failover mac
+    @param failoveer_mac - failover mac value to be set for the bond interface
+*/
+autoreply define sw_interface_set_bond_failover_mac
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u32 failover_mac;
 };
 
 /*
