@@ -115,10 +115,11 @@ typedef struct
 {
   u32 sw_if_index;
   u32 weight;
+  u32 failover_mac;
   /* return */
   int rv;
   clib_error_t *error;
-} bond_set_intf_weight_args_t;
+} bond_set_intf_args_t;
 
 /** BOND interface details struct */
 typedef struct
@@ -165,11 +166,23 @@ typedef struct
   bond_per_port_queue_t *per_port_queue;
 } bond_per_thread_data_t;
 
+#define foreach_bond_failover_mac                                             \
+  _ (0, NONE, "none")                                                         \
+  _ (1, ACTIVE, "active")
+
+typedef enum
+{
+#define _(v, f, s) BOND_FAILOVER_MAC_##f = v,
+  foreach_bond_failover_mac
+#undef _
+} bond_failover_mac_t;
+
 typedef struct
 {
   u8 admin_up;
   u8 mode;
   u8 lb;
+  u8 failover_mac;
 
   /* the last member index for the rr lb */
   u32 lb_rr_last_index;
@@ -416,8 +429,8 @@ void bond_enable_collecting_distributing (vlib_main_t * vm,
 					  member_if_t * mif);
 u8 *format_bond_interface_name (u8 * s, va_list * args);
 
-void bond_set_intf_weight (vlib_main_t * vm,
-			   bond_set_intf_weight_args_t * args);
+void bond_set_intf_failover_mac (vlib_main_t *vm, bond_set_intf_args_t *args);
+void bond_set_intf_weight (vlib_main_t *vm, bond_set_intf_args_t *args);
 void bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args);
 int bond_delete_if (vlib_main_t * vm, u32 sw_if_index);
 void bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args);
@@ -454,6 +467,40 @@ format_bond_mode (u8 * s, va_list * args)
 #undef _
     default:
       return format (s, "unknown");
+    }
+  return format (s, "%s", t);
+}
+
+static inline uword
+unformat_bond_failover_mac (unformat_input_t *input, va_list *args)
+{
+  u32 *r = va_arg (*args, u32 *);
+
+  if (0)
+    ;
+#define _(v, f, s) else if (unformat (input, s)) *r = BOND_FAILOVER_MAC_##f;
+  foreach_bond_failover_mac
+#undef _
+    else return 0;
+
+  return 1;
+}
+
+static inline u8 *
+format_bond_failover_mac (u8 *s, va_list *args)
+{
+  u32 i = va_arg (*args, u32);
+  u32 *t = 0;
+
+  switch (i)
+    {
+#define _(v, f, s)                                                            \
+  case BOND_FAILOVER_MAC_##f:                                                 \
+    t = (u32 *) s;                                                            \
+    break;
+      foreach_bond_failover_mac
+#undef _
+	default : return format (s, "unknown");
     }
   return format (s, "%s", t);
 }
