@@ -38,6 +38,29 @@ extern ip_punt_policer_t ip6_punt_policer_cfg;
 ip_punt_policer_t ip6_punt_policer_cfg;
 #endif /* CLIB_MARCH_VARIANT */
 
+static char *ip6_punt_policer_handoff_error_strings[] = { "congestion drop" };
+
+VLIB_NODE_FN (ip6_punt_policer_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return policer_handoff (vm, node, frame, ip6_punt_policer_cfg.fq_index,
+			  ip6_punt_policer_cfg.policer_index);
+}
+
+VLIB_REGISTER_NODE (ip6_punt_policer_handoff_node) = {
+  .name = "ip6-punt-policer-handoff",
+  .vector_size = sizeof (u32),
+  .format_trace = format_policer_handoff_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(ip6_punt_policer_handoff_error_strings),
+  .error_strings = ip6_punt_policer_handoff_error_strings,
+
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
 static char *ip6_punt_policer_error_strings[] = {
 #define _(sym,string) string,
   foreach_ip_punt_policer_error
@@ -67,6 +90,7 @@ VLIB_REGISTER_NODE (ip6_punt_policer_node) = {
   /* edit / add dispositions here */
   .next_nodes = {
     [IP_PUNT_POLICER_NEXT_DROP] = "ip6-drop",
+    [IP_PUNT_POLICER_NEXT_HANDOFF] = "ip6-punt-policer-handoff",
   },
 };
 
