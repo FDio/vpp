@@ -110,6 +110,32 @@ cnat_tracker_track (index_t cti, cnat_ep_trk_t * trk)
 				   (pfx.fp_proto), &trk->ct_dpo);
 }
 
+u8 *
+format_cnat_lb_type (u8 *s, va_list *args)
+{
+  cnat_lb_type_t lb_type = va_arg (*args, int);
+  if (CNAT_LB_DEFAULT == lb_type)
+    s = format (s, "default");
+  else if (CNAT_LB_MAGLEV == lb_type)
+    s = format (s, "maglev");
+  else
+    s = format (s, "unknown");
+  return (s);
+}
+
+uword
+unformat_cnat_lb_type (unformat_input_t *input, va_list *args)
+{
+  cnat_lb_type_t *a = va_arg (*args, cnat_lb_type_t *);
+  if (unformat (input, "default"))
+    *a = CNAT_LB_DEFAULT;
+  else if (unformat (input, "maglev"))
+    *a = CNAT_LB_MAGLEV;
+  else
+    return 0;
+  return 1;
+}
+
 /**
  * Add a translation to the bihash
  *
@@ -174,6 +200,112 @@ cnat_remove_translation_from_db (index_t cci, cnat_endpoint_t * vip,
   clib_bihash_add_del_8_8 (&cnat_translation_db, &bkey, 0);
 }
 
+typedef struct
+{
+  cnat_ep_trk_t *trk;
+  u32 index;
+  u32 offset;
+  u32 skip;
+} cnat_maglev_entry_t;
+
+static int
+cnat_maglev_entry_compare (void *_a, void *_b)
+{
+  cnat_ep_trk_t *a = ((cnat_maglev_entry_t *) _a)->trk;
+  cnat_ep_trk_t *b = ((cnat_maglev_entry_t *) _b)->trk;
+  int rv = 0;
+  if ((rv =
+	 ip_address_cmp (&a->ct_ep[VLIB_TX].ce_ip, &b->ct_ep[VLIB_TX].ce_ip)))
+    return rv;
+  if ((rv = a->ct_ep[VLIB_TX].ce_port - a->ct_ep[VLIB_TX].ce_port))
+    return rv;
+  if ((rv =
+	 ip_address_cmp (&a->ct_ep[VLIB_RX].ce_ip, &b->ct_ep[VLIB_RX].ce_ip)))
+    return rv;
+  if ((rv = a->ct_ep[VLIB_RX].ce_port - a->ct_ep[VLIB_RX].ce_port))
+    return rv;
+  return 0;
+}
+
+static void
+cnat_translation_init_maglev (cnat_translation_t *ct)
+{
+  cnat_maglev_entry_t *backends = NULL, *bk;
+  cnat_main_t *cm = &cnat_main;
+  u32 done = 0;
+  cnat_ep_trk_t *trk;
+  int ep_idx = 0;
+
+  vec_foreach (trk, ct->ct_paths)
+    if (trk->is_active)
+      {
+	cnat_maglev_entry_t bk;
+	u32 h1, h2;
+
+	if (AF_IP4 == ip_addr_version (&trk->ct_ep[VLIB_TX].ce_ip))
+	  {
+	    u32 a, b, c;
+	    a = ip_addr_v4 (&trk->ct_ep[VLIB_TX].ce_ip).data_u32;
+	    b =
+	      trk->ct_ep[VLIB_TX].ce_port << 16 | trk->ct_ep[VLIB_RX].ce_port;
+	    c = ip_addr_v4 (&trk->ct_ep[VLIB_RX].ce_ip).data_u32;
+	    hash_v3_mix32 (a, b, c);
+	    hash_v3_finalize32 (a, b, c);
+	    h1 = c;
+	    h2 = b;
+	  }
+	else
+	  {
+	    u64 a, b, c;
+	    a = ip_addr_v6 (&trk->ct_ep[VLIB_TX].ce_ip).as_u64[0] ^
+		ip_addr_v6 (&trk->ct_ep[VLIB_TX].ce_ip).as_u64[1];
+	    b =
+	      trk->ct_ep[VLIB_TX].ce_port << 16 | trk->ct_ep[VLIB_RX].ce_port;
+	    c = ip_addr_v6 (&trk->ct_ep[VLIB_RX].ce_ip).as_u64[0] ^
+		ip_addr_v6 (&trk->ct_ep[VLIB_RX].ce_ip).as_u64[1];
+	    hash_mix64 (a, b, c);
+	    h1 = c;
+	    h2 = b;
+	  }
+
+	bk.offset = h1 % cm->maglev_len;
+	bk.skip = h2 % (cm->maglev_len - 1) + 1;
+	bk.index = ep_idx++;
+	bk.trk = trk;
+	vec_add1 (backends, bk);
+      }
+
+  if (0 == ep_idx)
+    return;
+
+  vec_sort_with_function (backends, cnat_maglev_entry_compare);
+
+  /* Don't free if previous vector exists, just zero */
+  vec_validate (ct->lb_maglev, cm->maglev_len);
+  vec_set (ct->lb_maglev, -1);
+
+  while (1)
+    {
+      vec_foreach (bk, backends)
+	{
+	  u32 next = 0;
+	  u32 c = (bk->offset + next * bk->skip) % cm->maglev_len;
+	  while (ct->lb_maglev[c] != (u32) -1)
+	    {
+	      next++;
+	      c = (bk->offset + next * bk->skip) % cm->maglev_len;
+	    }
+	  ct->lb_maglev[c] = bk->index;
+	  done++;
+	  if (done == cm->maglev_len)
+	    goto finished;
+	}
+    }
+
+finished:
+  vec_free (backends);
+}
+
 static void
 cnat_translation_stack (cnat_translation_t * ct)
 {
@@ -195,6 +327,9 @@ cnat_translation_stack (cnat_translation_t * ct)
   ep_idx = 0;
   vec_foreach (trk, ct->ct_paths) if (trk->is_active)
     load_balance_set_bucket (lbi, ep_idx++, &trk->ct_dpo);
+
+  if (ep_idx > 0 && CNAT_LB_MAGLEV == ct->lb_type)
+    cnat_translation_init_maglev (ct);
 
   dpo_set (&ct->ct_lb, DPO_LOAD_BALANCE, dproto, lbi);
   dpo_stack (cnat_client_dpo, dproto, &ct->ct_lb, &ct->ct_lb);
@@ -225,9 +360,9 @@ cnat_translation_delete (u32 id)
 }
 
 u32
-cnat_translation_update (cnat_endpoint_t * vip,
-			 ip_protocol_t proto,
-			 cnat_endpoint_tuple_t * paths, u8 flags)
+cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
+			 cnat_endpoint_tuple_t *paths, u8 flags,
+			 cnat_lb_type_t lb_type)
 {
   cnat_endpoint_tuple_t *path;
   const cnat_client_t *cc;
@@ -259,6 +394,7 @@ cnat_translation_update (cnat_endpoint_t * vip,
       ct->ct_proto = proto;
       ct->ct_cci = cci;
       ct->index = ct - cnat_translation_pool;
+      ct->lb_type = lb_type;
 
       cnat_add_translation_to_db (cci, vip, proto, ct->index);
       cnat_client_translation_added (cci);
@@ -340,11 +476,13 @@ u8 *
 format_cnat_translation (u8 * s, va_list * args)
 {
   cnat_translation_t *ct = va_arg (*args, cnat_translation_t *);
+  cnat_main_t *cm = &cnat_main;
   cnat_ep_trk_t *ck;
 
   s = format (s, "[%d] ", ct->index);
-  s = format (s, "%U %U", format_cnat_endpoint, &ct->ct_vip,
+  s = format (s, "%U %U ", format_cnat_endpoint, &ct->ct_vip,
 	      format_ip_protocol, ct->ct_proto);
+  s = format (s, "lb:%U ", format_cnat_lb_type, ct->lb_type);
 
   vec_foreach (ck, ct->ct_paths)
     s = format (s, "\n%U", format_cnat_ep_trk, ck, 2);
@@ -355,6 +493,28 @@ format_cnat_translation (u8 * s, va_list * args)
       s = format (s, "\n via:");
       s = format (s, "\n%U%U",
 		  format_white_space, 2, format_dpo_id, &ct->ct_lb, 2);
+    }
+
+  u32 bid = 0;
+  if (CNAT_LB_MAGLEV == ct->lb_type)
+    {
+      s = format (s, "\nmaglev backends map");
+      uword *bitmap = NULL;
+      clib_bitmap_alloc (bitmap, cm->maglev_len);
+      vec_foreach (ck, ct->ct_paths)
+	{
+	  clib_bitmap_zero (bitmap);
+	  for (u32 i = 0; i < vec_len (ct->lb_maglev); i++)
+	    if (ct->lb_maglev[i] == bid)
+	      clib_bitmap_set (bitmap, i, 1);
+	  s = format (s, "\n[%d] %U", bid, format_bitmap_hex, bitmap);
+
+	  //    s = format (s, "\n[%d] %U", bid,
+	  //    format_cnat_translation_maglev,
+	  // ct->lb_maglev, bid);
+	  bid++;
+	}
+      clib_bitmap_free (bitmap);
     }
 
   return (s);
@@ -491,6 +651,7 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
   cnat_endpoint_tuple_t tmp, *paths = NULL, *path;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *e = 0;
+  cnat_lb_type_t lb_type;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -514,6 +675,8 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
 	  vec_add2 (paths, path, 1);
 	  clib_memcpy (path, &tmp, sizeof (cnat_endpoint_tuple_t));
 	}
+      else if (unformat (line_input, "%U", unformat_cnat_lb_type, &lb_type))
+	;
       else
 	{
 	  e = clib_error_return (0, "unknown input '%U'",
@@ -523,7 +686,7 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
     }
 
   if (INDEX_INVALID == del_index)
-    cnat_translation_update (&vip, proto, paths, flags);
+    cnat_translation_update (&vip, proto, paths, flags, lb_type);
   else
     cnat_translation_delete (del_index);
 
