@@ -15,24 +15,8 @@
 
 #include <vlibmemory/api.h>
 #include <cnat/cnat_node.h>
-#include <cnat/cnat_translation.h>
 #include <cnat/cnat_inline.h>
 #include <cnat/cnat_src_policy.h>
-
-#include <vnet/dpo/load_balance.h>
-#include <vnet/dpo/load_balance_map.h>
-
-#include <vnet/ip/ip4_inlines.h>
-#include <vnet/ip/ip6_inlines.h>
-
-typedef struct cnat_translation_trace_t_
-{
-  cnat_session_t session;
-  cnat_translation_t tr;
-  u32 found_session;
-  u32 created_session;
-  u32 has_tr;
-} cnat_translation_trace_t;
 
 typedef enum cnat_translation_next_t_
 {
@@ -44,34 +28,14 @@ typedef enum cnat_translation_next_t_
 vlib_node_registration_t cnat_vip_ip4_node;
 vlib_node_registration_t cnat_vip_ip6_node;
 
-static u8 *
-format_cnat_translation_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  cnat_translation_trace_t *t = va_arg (*args, cnat_translation_trace_t *);
-
-  if (t->found_session)
-    s = format (s, "found: %U", format_cnat_session, &t->session, 1);
-  else if (t->created_session)
-    s = format (s, "created: %U\n  tr: %U",
-		format_cnat_session, &t->session, 1,
-		format_cnat_translation, &t->tr, 0);
-  else if (t->has_tr)
-    s = format (s, "tr pass: %U", format_cnat_translation, &t->tr, 0);
-  else
-    s = format (s, "not found");
-  return s;
-}
-
 /* CNat sub for NAT behind a fib entry (VIP or interposed real IP) */
 static uword
-cnat_vip_node_fn (vlib_main_t * vm,
-		  vlib_node_runtime_t * node,
-		  vlib_buffer_t * b,
-		  cnat_node_ctx_t * ctx, int rv, cnat_session_t * session)
+cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
+		  cnat_node_ctx_t *ctx, int session_not_found,
+		  cnat_session_t *session)
 {
   vlib_combined_counter_main_t *cntm = &cnat_translation_counters;
+  cnat_src_policy_main_t *cspm = &cnat_src_policy_main;
   const cnat_translation_t *ct = NULL;
   ip4_header_t *ip4 = NULL;
   ip_protocol_t iproto;
@@ -80,8 +44,9 @@ cnat_vip_node_fn (vlib_main_t * vm,
   cnat_client_t *cc;
   u16 next0;
   index_t cti;
-  int created_session = 0;
-  cnat_src_policy_main_t *cspm = &cnat_src_policy_main;
+  u8 trace_flags = 0;
+  int rv;
+
   if (AF_IP4 == ctx->af)
     {
       ip4 = vlib_buffer_get_current (b);
@@ -106,7 +71,7 @@ cnat_vip_node_fn (vlib_main_t * vm,
       goto trace;
     }
 
-  if (!rv)
+  if (!session_not_found)
     {
       /* session table hit */
       cnat_timestamp_update (session->value.cs_ts_index, ctx->now);
@@ -144,14 +109,12 @@ cnat_vip_node_fn (vlib_main_t * vm,
 	}
 
       /* New flow, create the sessions */
-      const load_balance_t *lb0;
       cnat_ep_trk_t *trk0;
-      u32 hash_c0, bucket0;
       u32 rsession_flags = 0;
-      const dpo_id_t *dpo0;
+      u32 dpoi_index = -1;
 
-      lb0 = load_balance_get (ct->ct_lb.dpoi_index);
-      if (!lb0->lb_n_buckets)
+      trk0 = cnat_load_balance (ct, ctx->af, ip4, ip6, &dpoi_index);
+      if (PREDICT_FALSE (NULL == trk0))
 	{
 	  /* Dont translate & Follow the fib programming */
 	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
@@ -159,16 +122,7 @@ cnat_vip_node_fn (vlib_main_t * vm,
 	  goto trace;
 	}
 
-      /* session table miss */
-      hash_c0 = (AF_IP4 == ctx->af ?
-		 ip4_compute_flow_hash (ip4, lb0->lb_hash_config) :
-		 ip6_compute_flow_hash (ip6, lb0->lb_hash_config));
-      bucket0 = hash_c0 % lb0->lb_n_buckets;
-      dpo0 = load_balance_get_fwd_bucket (lb0, bucket0);
-
       /* add the session */
-      trk0 = &ct->ct_paths[bucket0];
-
       ip46_address_copy (&session->value.cs_ip[VLIB_TX],
 			 &trk0->ct_ep[VLIB_TX].ce_ip.ip);
       if (ip_address_is_zero (&trk0->ct_ep[VLIB_RX].ce_ip))
@@ -193,7 +147,7 @@ cnat_vip_node_fn (vlib_main_t * vm,
 	clib_host_to_net_u16 (trk0->ct_ep[VLIB_RX].ce_port);
 
       session->value.dpoi_next_node = ct->ct_lb.dpoi_next_node;
-      session->value.cs_lbi = dpo0->dpoi_index;
+      session->value.cs_lbi = dpoi_index;
 
       rv = cspm->vip_policy (vm, b, session, &rsession_flags, ct, ctx);
       if (CNAT_SOURCE_ERROR_USE_DEFAULT == rv)
@@ -214,7 +168,7 @@ cnat_vip_node_fn (vlib_main_t * vm,
       /* refcnt session in current client */
       cnat_client_cnt_session (cc);
       cnat_session_create (session, ctx, CNAT_LOCATION_FIB, rsession_flags);
-      created_session = 1;
+      trace_flags |= CNAT_TRACE_SESSION_CREATED;
 
       next0 = ct->ct_lb.dpoi_next_node;
       vnet_buffer (b)->ip.adj_index[VLIB_TX] = session->value.cs_lbi;
@@ -235,17 +189,8 @@ cnat_vip_node_fn (vlib_main_t * vm,
 trace:
   if (PREDICT_FALSE (ctx->do_trace))
     {
-      cnat_translation_trace_t *t;
-
-      t = vlib_add_trace (vm, node, b, sizeof (*t));
-
-      t->found_session = !rv;
-      t->created_session = created_session;
-      if (t->found_session || t->created_session)
-	clib_memcpy (&t->session, session, sizeof (t->session));
-      t->has_tr = (NULL != ct);
-      if (t->has_tr)
-	clib_memcpy (&t->tr, ct, sizeof (cnat_translation_t));
+      trace_flags |= session_not_found ? 0 : CNAT_TRACE_SESSION_FOUND;
+      cnat_add_trace (vm, node, b, session, ct, trace_flags);
     }
   return next0;
 }
@@ -272,12 +217,11 @@ VLIB_NODE_FN (cnat_vip_ip6_node) (vlib_main_t * vm,
 			   CNAT_LOCATION_FIB, 0 /* do_trace */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (cnat_vip_ip4_node) =
 {
   .name = "ip4-cnat-tx",
   .vector_size = sizeof (u32),
-  .format_trace = format_cnat_translation_trace,
+  .format_trace = format_cnat_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = 0,
   .n_next_nodes = CNAT_TRANSLATION_N_NEXT,
@@ -285,13 +229,13 @@ VLIB_REGISTER_NODE (cnat_vip_ip4_node) =
   {
     [CNAT_TRANSLATION_NEXT_DROP] = "ip4-drop",
     [CNAT_TRANSLATION_NEXT_LOOKUP] = "ip4-lookup",
-  }
+  },
 };
 VLIB_REGISTER_NODE (cnat_vip_ip6_node) =
 {
   .name = "ip6-cnat-tx",
   .vector_size = sizeof (u32),
-  .format_trace = format_cnat_translation_trace,
+  .format_trace = format_cnat_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = 0,
   .n_next_nodes = CNAT_TRANSLATION_N_NEXT,
@@ -299,9 +243,8 @@ VLIB_REGISTER_NODE (cnat_vip_ip6_node) =
   {
     [CNAT_TRANSLATION_NEXT_DROP] = "ip6-drop",
     [CNAT_TRANSLATION_NEXT_LOOKUP] = "ip6-lookup",
-  }
+  },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

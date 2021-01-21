@@ -25,6 +25,12 @@
  */
 extern vlib_combined_counter_main_t cnat_translation_counters;
 
+typedef enum cnat_trk_flag_t_
+{
+  CNAT_TRK_ACTIVE = (1 << 0),
+  CNAT_TRK_FLAG_NO_NAT = (1 << 1),
+} cnat_trk_flag_t;
+
 /**
  * Data used to track an EP in the FIB
  */
@@ -53,7 +59,7 @@ typedef struct cnat_ep_trk_t_
   /**
    * Allows to disable if not resolved yet
    */
-  u8 is_active;
+  u8 ct_flags; /* cnat_trk_flag_t */
 } cnat_ep_trk_t;
 
 typedef enum cnat_translation_flag_t_
@@ -74,6 +80,12 @@ typedef enum
   CNAT_RESOLV_ADDR_TRANSLATION,
   CNAT_ADDR_N_RESOLUTIONS,
 } cnat_addr_resol_type_t;
+
+typedef enum __attribute__ ((__packed__))
+{
+  CNAT_LB_DEFAULT,
+  CNAT_LB_MAGLEV,
+} cnat_lb_type_t;
 
 /**
  * Entry used to account for a translation's backend
@@ -130,6 +142,11 @@ typedef struct cnat_translation_t_
   cnat_ep_trk_t *ct_paths;
 
   /**
+   * The vector of active tracked back-ends
+   */
+  cnat_ep_trk_t *ct_active_paths;
+
+  /**
    * The ip protocol for the translation
    */
   ip_protocol_t ct_proto;
@@ -149,6 +166,16 @@ typedef struct cnat_translation_t_
    * Translation flags
    */
   u8 flags;
+
+  /**
+   * Type of load balancing
+   */
+  cnat_lb_type_t lb_type;
+
+  union
+  {
+    u32 *lb_maglev;
+  };
 } cnat_translation_t;
 
 extern cnat_translation_t *cnat_translation_pool;
@@ -164,10 +191,10 @@ extern u8 *format_cnat_translation (u8 * s, va_list * args);
  *
  * @return the ID of the translation. used to delete and gather stats
  */
-extern u32 cnat_translation_update (cnat_endpoint_t * vip,
+extern u32 cnat_translation_update (cnat_endpoint_t *vip,
 				    ip_protocol_t ip_proto,
-				    cnat_endpoint_tuple_t *
-				    backends, u8 flags);
+				    cnat_endpoint_tuple_t *backends, u8 flags,
+				    cnat_lb_type_t lb_type);
 
 /**
  * Delete a translation

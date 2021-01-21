@@ -42,6 +42,9 @@
 #define CNAT_DEFAULT_TRANSLATION_MEMORY  (256 << 10)
 #define CNAT_DEFAULT_SNAT_MEMORY         (64 << 20)
 
+/* Should be prime >~ 100 * numBackends */
+#define CNAT_DEFAULT_MAGLEV_LEN 1009
+
 /* This should be strictly lower than FIB_SOURCE_INTERFACE
  * from fib_source.h */
 #define CNAT_FIB_SOURCE_PRIORITY  0x02
@@ -54,7 +57,7 @@
 typedef enum
 {
   /* Endpoint addr has been resolved */
-  CNAT_EP_FLAG_RESOLVED = 1,
+  CNAT_EP_FLAG_RESOLVED = (1 << 0),
 } cnat_ep_flag_t;
 
 typedef struct cnat_endpoint_t_
@@ -69,6 +72,7 @@ typedef struct cnat_endpoint_tuple_t_
 {
   cnat_endpoint_t dst_ep;
   cnat_endpoint_t src_ep;
+  u8 ep_flags; /* cnat_trk_flag_t */
 } cnat_endpoint_tuple_t;
 
 typedef struct
@@ -155,6 +159,10 @@ typedef struct cnat_main_
 
   /* SNAT policy for the output feature node */
   cnat_snat_policy_t snat_policy;
+
+  /* Number of buckets for maglev, should be a
+   * prime >= 100 * max num bakends */
+  u32 maglev_len;
 } cnat_main_t;
 
 typedef struct cnat_timestamp_t_

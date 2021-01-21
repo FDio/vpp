@@ -20,8 +20,7 @@
 #include <vppinfra/bihash_template.h>
 #include <vppinfra/bihash_template.c>
 
-
-clib_bihash_40_48_t cnat_session_db;
+cnat_bihash_t cnat_session_db;
 void (*cnat_free_port_cb) (u16 port, ip_protocol_t iproto);
 
 typedef struct cnat_session_walk_ctx_t_
@@ -54,7 +53,7 @@ cnat_session_walk (cnat_session_walk_cb_t cb, void *ctx)
 
 typedef struct cnat_session_purge_walk_t_
 {
-  clib_bihash_kv_40_48_t *keys;
+  cnat_bihash_kv_t *keys;
 } cnat_session_purge_walk_ctx_t;
 
 static int
@@ -68,6 +67,28 @@ cnat_session_purge_walk (BVT (clib_bihash_kv) * key, void *arg)
 }
 
 u8 *
+format_cnat_session_location (u8 *s, va_list *args)
+{
+  u8 location = va_arg (*args, int);
+  switch (location)
+    {
+    case CNAT_LOCATION_INPUT:
+      s = format (s, "input");
+      break;
+    case CNAT_LOCATION_OUTPUT:
+      s = format (s, "output");
+      break;
+    case CNAT_LOCATION_FIB:
+      s = format (s, "fib");
+      break;
+    default:
+      s = format (s, "unknown");
+      break;
+    }
+  return (s);
+}
+
+u8 *
 format_cnat_session (u8 * s, va_list * args)
 {
   cnat_session_t *sess = va_arg (*args, cnat_session_t *);
@@ -77,7 +98,7 @@ format_cnat_session (u8 * s, va_list * args)
     ts = cnat_timestamp_exp (sess->value.cs_ts_index);
 
   s = format (
-    s, "session:[%U;%d -> %U;%d, %U] => %U;%d -> %U;%d loc:%d lb:%d age:%f",
+    s, "session:[%U;%d -> %U;%d, %U] => %U;%d -> %U;%d %U lb:%d age:%f",
     format_ip46_address, &sess->key.cs_ip[VLIB_RX], IP46_TYPE_ANY,
     clib_host_to_net_u16 (sess->key.cs_port[VLIB_RX]), format_ip46_address,
     &sess->key.cs_ip[VLIB_TX], IP46_TYPE_ANY,
@@ -85,8 +106,8 @@ format_cnat_session (u8 * s, va_list * args)
     sess->key.cs_proto, format_ip46_address, &sess->value.cs_ip[VLIB_RX],
     IP46_TYPE_ANY, clib_host_to_net_u16 (sess->value.cs_port[VLIB_RX]),
     format_ip46_address, &sess->value.cs_ip[VLIB_TX], IP46_TYPE_ANY,
-    clib_host_to_net_u16 (sess->value.cs_port[VLIB_TX]), sess->key.location,
-    sess->value.cs_lbi, ts);
+    clib_host_to_net_u16 (sess->value.cs_port[VLIB_TX]),
+    format_cnat_session_location, sess->key.cs_loc, sess->value.cs_lbi, ts);
 
   return (s);
 }
@@ -124,7 +145,7 @@ VLIB_CLI_COMMAND (cnat_session_show_cmd_node, static) = {
 void
 cnat_session_free (cnat_session_t * session)
 {
-  clib_bihash_kv_40_48_t *bkey = (clib_bihash_kv_40_48_t *) session;
+  cnat_bihash_kv_t *bkey = (cnat_bihash_kv_t *) session;
   /* age it */
   if (session->value.flags & CNAT_SESSION_FLAG_ALLOC_PORT)
     cnat_free_port_cb (session->value.cs_port[VLIB_RX],
@@ -133,7 +154,7 @@ cnat_session_free (cnat_session_t * session)
     cnat_client_free_by_ip (&session->key.cs_ip[VLIB_TX], session->key.cs_af);
   cnat_timestamp_free (session->value.cs_ts_index);
 
-  clib_bihash_add_del_40_48 (&cnat_session_db, bkey, 0 /* is_add */ );
+  cnat_bihash_add_del (&cnat_session_db, bkey, 0 /* is_add */);
 }
 
 int
@@ -141,7 +162,7 @@ cnat_session_purge (void)
 {
   /* flush all the session from the DB */
   cnat_session_purge_walk_ctx_t ctx = { };
-  clib_bihash_kv_40_48_t *key;
+  cnat_bihash_kv_t *key;
 
   BV (clib_bihash_foreach_key_value_pair) (&cnat_session_db,
 					   cnat_session_purge_walk, &ctx);
