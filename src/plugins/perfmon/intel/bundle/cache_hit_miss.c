@@ -27,24 +27,28 @@ format_intel_core_cache_hit_miss (u8 *s, va_list *args)
   switch (row)
     {
     case 0:
-      s = format (s, "%.2f", (f64) ns->value[0] / ns->n_packets);
+      s = format (s, "%0.2f", (f64) ns->value[0] / ns->n_packets);
       break;
     case 1:
-      s = format (s, "%.2f", (f64) ns->value[1] / ns->n_packets);
+      s = format (s, "%0.2f", (f64) ns->value[1] / ns->n_packets);
       break;
     case 2:
-      s = format (s, "%.2f",
-		  (f64) (ns->value[1] - ns->value[2]) / ns->n_packets);
+      s =
+	format (s, "%0.2f",
+		(f64) (ns->value[1] - clib_min (ns->value[1], ns->value[2])) /
+		  ns->n_packets);
       break;
     case 3:
-      s = format (s, "%.2f", (f64) ns->value[2] / ns->n_packets);
+      s = format (s, "%0.2f", (f64) ns->value[2] / ns->n_packets);
       break;
     case 4:
-      s = format (s, "%.2f",
-		  (f64) (ns->value[2] - ns->value[3]) / ns->n_packets);
+      s =
+	format (s, "%0.2f",
+		(f64) (ns->value[2] - clib_min (ns->value[2], ns->value[3])) /
+		  ns->n_packets);
       break;
     case 5:
-      s = format (s, "%.2f", (f64) ns->value[3] / ns->n_packets);
+      s = format (s, "%0.2f", (f64) ns->value[3] / ns->n_packets);
       break;
     }
 
