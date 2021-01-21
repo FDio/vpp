@@ -108,7 +108,8 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
   b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? protocol : 0;
   c = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ?
     ((t1 << 16) | t2) : ((t2 << 16) | t1);
-  t1 = ip->ip_version_traffic_class_and_flow_label & IP6_PACKET_FL_MASK;
+  t1 = clib_net_to_host_u32 (ip->ip_version_traffic_class_and_flow_label) &
+       IP6_PACKET_FL_MASK;
   c ^= (flow_hash_config & IP_FLOW_HASH_FL) ? (t1 << 32) : 0;
 
   hash_mix64 (a, b, c);
