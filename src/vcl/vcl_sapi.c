@@ -89,8 +89,7 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
 
   if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
     {
-      svm_msg_q_set_consumer_eventfd (wrk->app_event_queue,
-				      fds[n_fds_used++]);
+      svm_msg_q_set_eventfd (wrk->app_event_queue, fds[n_fds_used++]);
       vcl_mq_epoll_add_evfd (wrk, wrk->app_event_queue);
     }
 
@@ -236,7 +235,7 @@ vcl_api_add_del_worker_reply_handler (app_sapi_worker_add_del_reply_msg_t *
 
   if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
     {
-      svm_msg_q_set_consumer_eventfd (wrk->app_event_queue, fds[n_fds]);
+      svm_msg_q_set_eventfd (wrk->app_event_queue, fds[n_fds]);
       vcl_mq_epoll_add_evfd (wrk, wrk->app_event_queue);
       n_fds++;
     }

@@ -1839,9 +1839,9 @@ session_test_mq_speed (vlib_main_t * vm, unformat_input_t * input)
   mq = app_wrk->event_queue;
   if (use_eventfd)
     {
-      svm_msg_q_alloc_producer_eventfd (mq);
-      svm_msg_q_alloc_consumer_eventfd (mq);
-      prod_fd = svm_msg_q_get_producer_eventfd (mq);
+      svm_msg_q_alloc_eventfd (mq);
+      svm_msg_q_alloc_eventfd (mq);
+      prod_fd = svm_msg_q_get_eventfd (mq);
       SESSION_TEST (prod_fd != -1, "mq producer eventd valid %u", prod_fd);
     }
 
