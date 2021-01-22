@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ec23d910_283adfaf",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-22T19:37:52Z",
+      "side": 1,
+      "message": "are the STS values small enough that we can use simple array indexing and so avoid the branch?",
+      "revId": "738a46289af2d54b8ff073eab6c6418a8fa80e62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
