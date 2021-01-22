@@ -278,8 +278,6 @@ u8 ip_is_local (u32 fib_index, ip46_address_t * ip46_address, u8 is_ip4);
 void ip_copy (ip46_address_t * dst, ip46_address_t * src, u8 is_ip4);
 void ip_set (ip46_address_t * dst, void *src, u8 is_ip4);
 
-int ip_flow_hash_set (ip_address_family_t af, u32 table_id,
-		      flow_hash_config_t flow_hash_config);
 void ip_feature_enable_disable (ip_address_family_t af,
 				ip_sub_address_family_t safi,
 				ip_feature_location_t loc,

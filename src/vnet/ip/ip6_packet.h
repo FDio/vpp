@@ -343,6 +343,13 @@ ip6_ecn_network_order (const ip6_header_t * ip6)
 	  & IP6_PACKET_ECN_MASK) >> 20;
 }
 
+static_always_inline u32
+ip6_flow_label_network_order (const ip6_header_t *ip6)
+{
+  return (clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label) &
+	  IP6_PACKET_FL_MASK);
+}
+
 static_always_inline void
 ip6_set_traffic_class_network_order (ip6_header_t * ip6, ip_dscp_t dscp)
 {

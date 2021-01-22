@@ -88,6 +88,7 @@
   _ (IP_PUNT_REDIRECT, ip_punt_redirect)                                      \
   _ (SET_IP_FLOW_HASH, set_ip_flow_hash)                                      \
   _ (SET_IP_FLOW_HASH_V2, set_ip_flow_hash_v2)                                \
+  _ (SET_IP_FLOW_HASH_ROUTER_ID, set_ip_flow_hash_router_id)                  \
   _ (IP_CONTAINER_PROXY_ADD_DEL, ip_container_proxy_add_del)                  \
   _ (IP_CONTAINER_PROXY_DUMP, ip_container_proxy_dump)                        \
   _ (IOAM_ENABLE, ioam_enable)                                                \
@@ -1044,6 +1045,18 @@ vl_api_set_ip_flow_hash_v2_t_handler (vl_api_set_ip_flow_hash_v2_t *mp)
 			   htonl (mp->flow_hash_config));
 
   REPLY_MACRO (VL_API_SET_IP_FLOW_HASH_V2_REPLY);
+}
+
+static void
+vl_api_set_ip_flow_hash_router_id_t_handler (
+  vl_api_set_ip_flow_hash_router_id_t *mp)
+{
+  vl_api_set_ip_flow_hash_router_id_reply_t *rmp;
+  int rv = 0;
+
+  ip_flow_hash_router_id_set (ntohl (mp->router_id));
+
+  REPLY_MACRO (VL_API_SET_IP_FLOW_HASH_ROUTER_ID_REPLY);
 }
 
 void

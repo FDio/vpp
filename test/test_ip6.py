@@ -1946,9 +1946,12 @@ class TestIP6LoadBalance(VppTestCase):
 
     def send_and_expect_load_balancing(self, input, pkts, outputs):
         self.pg_send(input, pkts)
+        rxs = []
         for oo in outputs:
             rx = oo._get_capture(1)
             self.assertNotEqual(0, len(rx))
+            rxs.append(rx)
+        return rxs
 
     def send_and_expect_one_itf(self, input, pkts, itf):
         self.pg_send(input, pkts)
@@ -2047,16 +2050,31 @@ class TestIP6LoadBalance(VppTestCase):
         # be guaranteed. But with 64 different packets we do expect some
         # balancing. So instead just ensure there is traffic on each link.
         #
-        self.send_and_expect_load_balancing(self.pg0, port_ip_pkts,
-                                            [self.pg1, self.pg2])
+        rx = self.send_and_expect_load_balancing(self.pg0, port_ip_pkts,
+                                                 [self.pg1, self.pg2])
+        n_ip_pg0 = len(rx[0])
         self.send_and_expect_load_balancing(self.pg0, src_ip_pkts,
                                             [self.pg1, self.pg2])
         self.send_and_expect_load_balancing(self.pg0, port_mpls_pkts,
                                             [self.pg1, self.pg2])
         self.send_and_expect_load_balancing(self.pg0, src_mpls_pkts,
                                             [self.pg1, self.pg2])
-        self.send_and_expect_load_balancing(self.pg0, port_mpls_neos_pkts,
-                                            [self.pg1, self.pg2])
+        rx = self.send_and_expect_load_balancing(self.pg0, port_mpls_neos_pkts,
+                                                 [self.pg1, self.pg2])
+        n_mpls_pg0 = len(rx[0])
+
+        #
+        # change the router ID and expect the distribution changes
+        #
+        self.vapi.set_ip_flow_hash_router_id(router_id=0x11111111)
+
+        rx = self.send_and_expect_load_balancing(self.pg0, port_ip_pkts,
+                                                 [self.pg1, self.pg2])
+        self.assertNotEqual(n_ip_pg0, len(rx[0]))
+
+        rx = self.send_and_expect_load_balancing(self.pg0, src_mpls_pkts,
+                                                 [self.pg1, self.pg2])
+        self.assertNotEqual(n_mpls_pg0, len(rx[0]))
 
         #
         # The packets with Entropy label in should not load-balance,
