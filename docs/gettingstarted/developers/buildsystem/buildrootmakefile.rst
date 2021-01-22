@@ -179,11 +179,11 @@ Here are the contents of .../build-data/platforms/vpp.mk:
         vpp_configure_args_vpp += --disable-lb-plugin
         endif
      
-        vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -D_FORTIFY_SOURCE=2 \
+        vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG \
             -fstack-protector-all -fPIC -Werror
-        vpp_debug_TAG_CXXFLAGS = -g -O0 -DCLIB_DEBUG -D_FORTIFY_SOURCE=2 \
+        vpp_debug_TAG_CXXFLAGS = -g -O0 -DCLIB_DEBUG \
             -fstack-protector-all -fPIC -Werror
-        vpp_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -D_FORTIFY_SOURCE=2 \
+        vpp_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG \
             -fstack-protector-all -fPIC -Werror
 
         vpp_TAG_CFLAGS = -g -O2 -D_FORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
