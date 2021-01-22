@@ -870,7 +870,7 @@ segment_manager_alloc_queue (fifo_segment_t * segment,
 
   if (props->use_mq_eventfd)
     {
-      if (svm_msg_q_alloc_producer_eventfd (q))
+      if (svm_msg_q_alloc_eventfd (q))
 	clib_warning ("failed to alloc eventfd");
     }
   return q;

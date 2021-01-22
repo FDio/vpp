@@ -667,7 +667,7 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
   if (a->options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
     {
       fd_flags |= SESSION_FD_F_MQ_EVENTFD;
-      fds[n_fds] = svm_msg_q_get_producer_eventfd (a->app_evt_q);
+      fds[n_fds] = svm_msg_q_get_eventfd (a->app_evt_q);
       n_fds += 1;
     }
 
@@ -751,7 +751,7 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
   if (application_segment_manager_properties (app)->use_mq_eventfd)
     {
       fd_flags |= SESSION_FD_F_MQ_EVENTFD;
-      fds[n_fds] = svm_msg_q_get_producer_eventfd (args.evt_q);
+      fds[n_fds] = svm_msg_q_get_eventfd (args.evt_q);
       n_fds += 1;
     }
 
@@ -1317,7 +1317,7 @@ session_api_attach_handler (app_namespace_t * app_ns, clib_socket_t * cs,
   if (a->options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
     {
       fd_flags |= SESSION_FD_F_MQ_EVENTFD;
-      fds[n_fds] = svm_msg_q_get_producer_eventfd (a->app_evt_q);
+      fds[n_fds] = svm_msg_q_get_eventfd (a->app_evt_q);
       n_fds += 1;
     }
 
@@ -1426,7 +1426,7 @@ sapi_add_del_worker_handler (app_namespace_t * app_ns,
   if (application_segment_manager_properties (app)->use_mq_eventfd)
     {
       fd_flags |= SESSION_FD_F_MQ_EVENTFD;
-      fds[n_fds] = svm_msg_q_get_producer_eventfd (args.evt_q);
+      fds[n_fds] = svm_msg_q_get_eventfd (args.evt_q);
       n_fds += 1;
     }
 
