@@ -21,7 +21,7 @@ from vpp_ip import DpoProto
 from vpp_papi import VppEnum
 
 NUM_PKTS = 67
-engines_supporting_chain_bufs = ["openssl"]
+engines_supporting_chain_bufs = ["openssl", "async"]
 engines = ["ia32", "ipsecmb", "openssl"]
 
 
