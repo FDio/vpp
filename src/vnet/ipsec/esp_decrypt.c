@@ -635,6 +635,8 @@ esp_decrypt_prepare_async_frame (vlib_main_t * vm,
       key_index = sa0->linked_key_index;
       integ_start_offset = payload - b->data;
       integ_len = len;
+      if (PREDICT_TRUE (sa0->integ_op_id != VNET_CRYPTO_OP_NONE))
+	flags |= VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
 
       if (pd->is_chain)
 	{
