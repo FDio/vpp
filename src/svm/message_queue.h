@@ -24,6 +24,27 @@
 #include <vppinfra/error.h>
 #include <svm/queue.h>
 
+typedef struct svm_msg_q_shr_queue_
+{
+  pthread_mutex_t mutex;  /* 8 bytes */
+  pthread_cond_t condvar; /* 8 bytes */
+  int head;
+  int tail;
+  volatile u32 cursize;
+  int maxsize;
+  int elsize;
+  volatile int want_deq_signal;
+  volatile int want_enq_signal;
+  u32 pad;
+  u8 data[0];
+} svm_msg_q_shared_queue_t;
+
+typedef struct svm_msg_q_queue_
+{
+  svm_msg_q_shared_queue_t *shr; /**< pointer to shared queue */
+  int evtfd;			 /**< producer/consumer eventfd */
+} svm_msg_q_queue_t;
+
 typedef struct svm_msg_q_ring_shared_
 {
   volatile u32 cursize;			/**< current size of the ring */
@@ -43,14 +64,14 @@ typedef struct svm_msg_q_ring_
 
 typedef struct svm_msg_q_shared_
 {
-  u32 n_rings;	    /**< number of rings after q */
-  u32 pad;	    /**< 8 byte alignment for q */
-  svm_queue_t q[0]; /**< queue for exchanging messages */
+  u32 n_rings;			 /**< number of rings after q */
+  u32 pad;			 /**< 8 byte alignment for q */
+  svm_msg_q_shared_queue_t q[0]; /**< queue for exchanging messages */
 } __clib_packed svm_msg_q_shared_t;
 
 typedef struct svm_msg_q_
 {
-  svm_queue_t *q;			/**< queue for exchanging messages */
+  svm_msg_q_queue_t q;			/**< queue for exchanging messages */
   svm_msg_q_ring_t *rings;		/**< rings with message data*/
 } __clib_packed svm_msg_q_t;
 
@@ -272,19 +293,28 @@ int svm_msg_q_alloc_producer_eventfd (svm_msg_q_t * mq);
 u8 *format_svm_msg_q (u8 * s, va_list * args);
 
 /**
+ * Check length of message queue
+ */
+static inline u32
+svm_msg_q_size (svm_msg_q_t *mq)
+{
+  return clib_atomic_load_relax_n (&mq->q.shr->cursize);
+}
+
+/**
  * Check if message queue is full
  */
 static inline u8
 svm_msg_q_is_full (svm_msg_q_t * mq)
 {
-  return (mq->q->cursize == mq->q->maxsize);
+  return (svm_msg_q_size (mq) == mq->q.shr->maxsize);
 }
 
 static inline u8
 svm_msg_q_ring_is_full (svm_msg_q_t * mq, u32 ring_index)
 {
   svm_msg_q_ring_t *ring = vec_elt_at_index (mq->rings, ring_index);
-  return (ring->shr->cursize >= ring->nitems);
+  return (clib_atomic_load_relax_n (&ring->shr->cursize) >= ring->nitems);
 }
 
 /**
@@ -293,16 +323,7 @@ svm_msg_q_ring_is_full (svm_msg_q_t * mq, u32 ring_index)
 static inline u8
 svm_msg_q_is_empty (svm_msg_q_t * mq)
 {
-  return (mq->q->cursize == 0);
-}
-
-/**
- * Check length of message queue
- */
-static inline u32
-svm_msg_q_size (svm_msg_q_t * mq)
-{
-  return mq->q->cursize;
+  return (svm_msg_q_size (mq) == 0);
 }
 
 /**
@@ -320,9 +341,9 @@ svm_msg_q_msg_is_invalid (svm_msg_q_msg_t * msg)
 static inline int
 svm_msg_q_try_lock (svm_msg_q_t * mq)
 {
-  int rv = pthread_mutex_trylock (&mq->q->mutex);
+  int rv = pthread_mutex_trylock (&mq->q.shr->mutex);
   if (PREDICT_FALSE (rv == EOWNERDEAD))
-    rv = pthread_mutex_consistent (&mq->q->mutex);
+    rv = pthread_mutex_consistent (&mq->q.shr->mutex);
   return rv;
 }
 
@@ -332,9 +353,9 @@ svm_msg_q_try_lock (svm_msg_q_t * mq)
 static inline int
 svm_msg_q_lock (svm_msg_q_t * mq)
 {
-  int rv = pthread_mutex_lock (&mq->q->mutex);
+  int rv = pthread_mutex_lock (&mq->q.shr->mutex);
   if (PREDICT_FALSE (rv == EOWNERDEAD))
-    rv = pthread_mutex_consistent (&mq->q->mutex);
+    rv = pthread_mutex_consistent (&mq->q.shr->mutex);
   return rv;
 }
 
@@ -344,7 +365,7 @@ svm_msg_q_lock (svm_msg_q_t * mq)
 static inline void
 svm_msg_q_unlock (svm_msg_q_t * mq)
 {
-  pthread_mutex_unlock (&mq->q->mutex);
+  pthread_mutex_unlock (&mq->q.shr->mutex);
 }
 
 /**
@@ -353,11 +374,7 @@ svm_msg_q_unlock (svm_msg_q_t * mq)
  * Must be called with mutex held. The queue only works non-blocking
  * with eventfds, so handle blocking calls as an exception here.
  */
-static inline void
-svm_msg_q_wait (svm_msg_q_t * mq)
-{
-  svm_queue_wait (mq->q);
-}
+void svm_msg_q_wait (svm_msg_q_t *mq);
 
 /**
  * Timed wait for message queue event
@@ -367,22 +384,18 @@ svm_msg_q_wait (svm_msg_q_t * mq)
  * @param mq 		message queue
  * @param timeout	time in seconds
  */
-static inline int
-svm_msg_q_timedwait (svm_msg_q_t * mq, double timeout)
-{
-  return svm_queue_timedwait (mq->q, timeout);
-}
+int svm_msg_q_timedwait (svm_msg_q_t *mq, double timeout);
 
 static inline int
 svm_msg_q_get_consumer_eventfd (svm_msg_q_t * mq)
 {
-  return mq->q->consumer_evtfd;
+  return mq->q.evtfd;
 }
 
 static inline int
 svm_msg_q_get_producer_eventfd (svm_msg_q_t * mq)
 {
-  return mq->q->producer_evtfd;
+  return mq->q.evtfd;
 }
 
 #endif /* SRC_SVM_MESSAGE_QUEUE_H_ */
