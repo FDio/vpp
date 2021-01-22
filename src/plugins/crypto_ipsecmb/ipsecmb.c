@@ -86,15 +86,35 @@ static ipsecmb_main_t ipsecmb_main = { };
   _(AES_192_GCM, 192)                                          \
   _(AES_256_GCM, 256)
 
+static_always_inline vnet_crypto_op_status_t
+ipsecmb_status_job (JOB_STS status)
+{
+  switch (status)
+    {
+    case STS_COMPLETED:
+      return VNET_CRYPTO_OP_STATUS_COMPLETED;
+    case STS_BEING_PROCESSED:
+    case STS_COMPLETED_AES:
+    case STS_COMPLETED_HMAC:
+      return VNET_CRYPTO_OP_STATUS_WORK_IN_PROGRESS;
+    case STS_INVALID_ARGS:
+    case STS_INTERNAL_ERROR:
+    case STS_ERROR:
+      return VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
+    }
+  ASSERT (0);
+  return VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
+}
+
 always_inline void
 ipsecmb_retire_hmac_job (JOB_AES_HMAC * job, u32 * n_fail, u32 digest_size)
 {
   vnet_crypto_op_t *op = job->user_data;
   u32 len = op->digest_len ? op->digest_len : digest_size;
 
-  if (STS_COMPLETED != job->status)
+  if (PREDICT_FALSE (STS_COMPLETED != job->status))
     {
-      op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
+      op->status = ipsecmb_status_job (job->status);
       *n_fail = *n_fail + 1;
       return;
     }
@@ -180,9 +200,9 @@ ipsecmb_retire_cipher_job (JOB_AES_HMAC * job, u32 * n_fail)
 {
   vnet_crypto_op_t *op = job->user_data;
 
-  if (STS_COMPLETED != job->status)
+  if (PREDICT_FALSE (STS_COMPLETED != job->status))
     {
-      op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
+      op->status = ipsecmb_status_job (job->status);
       *n_fail = *n_fail + 1;
     }
   else
