@@ -243,11 +243,11 @@ TAG_PREFIX = $(if $(TAG),$(TAG)-)
 tag_var_with_added_space_fn = $(if $($(TAG)_TAG_$(1)),$($(TAG)_TAG_$(1)) )
 
 # TAG=debug for debugging
-debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -D_FORTIFY_SOURCE=2 -march=$(MARCH) \
+debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -march=$(MARCH) \
 		   -fstack-protector-all -fPIC
-debug_TAG_CXXFLAGS = -g -O0 -DCLIB_DEBUG -D_FORTIFY_SOURCE=2 -march=$(MARCH) \
+debug_TAG_CXXFLAGS = -g -O0 -DCLIB_DEBUG -march=$(MARCH) \
 		   -fstack-protector-all -fPIC
-debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -D_FORTIFY_SOURCE=2 -march=$(MARCH) \
+debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -march=$(MARCH) \
 		   -fstack-protector-all -fPIC
 
 BUILD_PREFIX_package = build-$(TAG_PREFIX)
