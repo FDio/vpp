@@ -437,7 +437,7 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
       echo_segment_attach_mq (segment_handle, mp->app_mq, 0, &em->app_mq);
 
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
-	svm_msg_q_set_consumer_eventfd (em->app_mq, fds[n_fds++]);
+	svm_msg_q_set_eventfd (em->app_mq, fds[n_fds++]);
 
       vec_free (fds);
     }

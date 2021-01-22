@@ -121,7 +121,7 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
 	{
-	  svm_msg_q_set_consumer_eventfd (wrk->app_event_queue, fds[n_fds]);
+	  svm_msg_q_set_eventfd (wrk->app_event_queue, fds[n_fds]);
 	  vcl_mq_epoll_add_evfd (wrk, wrk->app_event_queue);
 	  n_fds++;
 	}
@@ -215,7 +215,7 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
 	{
-	  svm_msg_q_set_consumer_eventfd (wrk->app_event_queue, fds[n_fds]);
+	  svm_msg_q_set_eventfd (wrk->app_event_queue, fds[n_fds]);
 	  vcl_mq_epoll_add_evfd (wrk, wrk->app_event_queue);
 	  n_fds++;
 	}

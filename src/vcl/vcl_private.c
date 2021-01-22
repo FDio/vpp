@@ -46,7 +46,7 @@ vcl_mq_epoll_add_evfd (vcl_worker_t * wrk, svm_msg_q_t * mq)
   u32 mqc_index;
   int mq_fd;
 
-  mq_fd = svm_msg_q_get_consumer_eventfd (mq);
+  mq_fd = svm_msg_q_get_eventfd (mq);
 
   if (wrk->mqs_epfd < 0 || mq_fd == -1)
     return -1;
