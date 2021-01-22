@@ -565,34 +565,29 @@ esp_decrypt_prepare_sync_op (vlib_main_t * vm, vlib_node_runtime_t * node,
       op->key_index = sa0->crypto_key_index;
       op->iv = payload;
 
-      if (ipsec_sa_is_set_IS_AEAD (sa0))
+      if (ipsec_sa_is_set_IS_CTR (sa0))
 	{
-	  esp_header_t *esp0;
-	  esp_aead_t *aad;
-	  u8 *scratch;
-
-	  /*
-	   * construct the AAD and the nonce (Salt || IV) in a scratch
-	   * space in front of the IP header.
-	   */
-	  scratch = payload - esp_sz;
-	  esp0 = (esp_header_t *) (scratch);
-
-	  scratch -= (sizeof (*aad) + pd->hdr_sz);
-	  op->aad = scratch;
-
-	  op->aad_len = esp_aad_fill (op->aad, esp0, sa0);
-
-	  /*
-	   * we don't need to refer to the ESP header anymore so we
-	   * can overwrite it with the salt and use the IV where it is
-	   * to form the nonce = (Salt + IV)
-	   */
-	  op->iv -= sizeof (sa0->salt);
-	  clib_memcpy_fast (op->iv, &sa0->salt, sizeof (sa0->salt));
-
-	  op->tag = payload + len;
-	  op->tag_len = 16;
+	  /* construct nonce in a scratch space in front of the IP header */
+	  esp_ctr_nonce_t *nonce =
+	    (esp_ctr_nonce_t *) (payload - esp_sz - pd->hdr_sz -
+				 sizeof (*nonce));
+	  if (ipsec_sa_is_set_IS_AEAD (sa0))
+	    {
+	      /* constuct aad in a scratch space in front of the nonce */
+	      esp_header_t *esp0 = (esp_header_t *) (payload - esp_sz);
+	      op->aad = (u8 *) nonce - sizeof (esp_aead_t);
+	      op->aad_len = esp_aad_fill (op->aad, esp0, sa0);
+	      op->tag = payload + len;
+	      op->tag_len = 16;
+	    }
+	  else
+	    {
+	      nonce->ctr = clib_host_to_net_u32 (1);
+	    }
+	  nonce->salt = sa0->salt;
+	  ASSERT (sizeof (u64) == iv_sz);
+	  nonce->iv = *(u64 *) op->iv;
+	  op->iv = (u8 *) nonce;
 	}
       op->src = op->dst = payload += iv_sz;
       op->len = len - iv_sz;
@@ -699,32 +694,27 @@ out:
   len -= esp_sz;
   iv = payload;
 
-  if (ipsec_sa_is_set_IS_AEAD (sa0))
+  if (ipsec_sa_is_set_IS_CTR (sa0))
     {
-      esp_header_t *esp0;
-      u8 *scratch;
-
-      /*
-       * construct the AAD and the nonce (Salt || IV) in a scratch
-       * space in front of the IP header.
-       */
-      scratch = payload - esp_sz;
-      esp0 = (esp_header_t *) (scratch);
-
-      scratch -= (sizeof (esp_aead_t) + pd->hdr_sz);
-      aad = scratch;
-
-      esp_aad_fill (aad, esp0, sa0);
-
-      /*
-       * we don't need to refer to the ESP header anymore so we
-       * can overwrite it with the salt and use the IV where it is
-       * to form the nonce = (Salt + IV)
-       */
-      iv -= sizeof (sa0->salt);
-      clib_memcpy_fast (iv, &sa0->salt, sizeof (sa0->salt));
-
-      tag = payload + len;
+      /* construct nonce in a scratch space in front of the IP header */
+      esp_ctr_nonce_t *nonce =
+	(esp_ctr_nonce_t *) (payload - esp_sz - pd->hdr_sz - sizeof (*nonce));
+      if (ipsec_sa_is_set_IS_AEAD (sa0))
+	{
+	  /* constuct aad in a scratch space in front of the nonce */
+	  esp_header_t *esp0 = (esp_header_t *) (payload - esp_sz);
+	  aad = (u8 *) nonce - sizeof (esp_aead_t);
+	  esp_aad_fill (aad, esp0, sa0);
+	  tag = payload + len;
+	}
+      else
+	{
+	  nonce->ctr = clib_host_to_net_u32 (1);
+	}
+      nonce->salt = sa0->salt;
+      ASSERT (sizeof (u64) == iv_sz);
+      nonce->iv = *(u64 *) iv;
+      iv = (u8 *) nonce;
     }
 
   crypto_start_offset = (payload += iv_sz) - b->data;

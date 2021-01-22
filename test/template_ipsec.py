@@ -94,7 +94,7 @@ class IPsecIPv6Params:
 
 
 def mk_scapy_crypt_key(p):
-    if p.crypt_algo == "AES-GCM":
+    if p.crypt_algo in ("AES-GCM", "AES-CTR"):
         return p.crypt_key + struct.pack("!I", p.salt)
     else:
         return p.crypt_key

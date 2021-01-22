@@ -48,6 +48,11 @@ typedef enum
     (_alg == IPSEC_CRYPTO_ALG_AES_GCM_192) ||             \
     (_alg == IPSEC_CRYPTO_ALG_AES_GCM_256)))
 
+#define IPSEC_CRYPTO_ALG_IS_CTR(_alg)                                         \
+  (((_alg == IPSEC_CRYPTO_ALG_AES_CTR_128) ||                                 \
+    (_alg == IPSEC_CRYPTO_ALG_AES_CTR_192) ||                                 \
+    (_alg == IPSEC_CRYPTO_ALG_AES_CTR_256)))
+
 #define foreach_ipsec_integ_alg                                            \
   _ (0, NONE, "none")                                                      \
   _ (1, MD5_96, "md5-96")           /* RFC2403 */                          \
@@ -86,16 +91,17 @@ typedef struct ipsec_key_t_
  * else IPv4 tunnel only valid if is_tunnel is non-zero
  * enable UDP encapsulation for NAT traversal
  */
-#define foreach_ipsec_sa_flags                            \
-  _ (0, NONE, "none")                                     \
-  _ (1, USE_ESN, "esn")                                   \
-  _ (2, USE_ANTI_REPLAY, "anti-replay")                   \
-  _ (4, IS_TUNNEL, "tunnel")                              \
-  _ (8, IS_TUNNEL_V6, "tunnel-v6")                        \
-  _ (16, UDP_ENCAP, "udp-encap")                          \
-  _ (32, IS_PROTECT, "Protect")                           \
-  _ (64, IS_INBOUND, "inbound")                           \
-  _ (128, IS_AEAD, "aead")                                \
+#define foreach_ipsec_sa_flags                                                \
+  _ (0, NONE, "none")                                                         \
+  _ (1, USE_ESN, "esn")                                                       \
+  _ (2, USE_ANTI_REPLAY, "anti-replay")                                       \
+  _ (4, IS_TUNNEL, "tunnel")                                                  \
+  _ (8, IS_TUNNEL_V6, "tunnel-v6")                                            \
+  _ (16, UDP_ENCAP, "udp-encap")                                              \
+  _ (32, IS_PROTECT, "Protect")                                               \
+  _ (64, IS_INBOUND, "inbound")                                               \
+  _ (128, IS_AEAD, "aead")                                                    \
+  _ (256, IS_CTR, "ctr")
 
 typedef enum ipsec_sad_flags_t_
 {
@@ -104,7 +110,7 @@ typedef enum ipsec_sad_flags_t_
 #undef _
 } __clib_packed ipsec_sa_flags_t;
 
-STATIC_ASSERT (sizeof (ipsec_sa_flags_t) == 1, "IPSEC SA flags > 1 byte");
+STATIC_ASSERT (sizeof (ipsec_sa_flags_t) == 2, "IPSEC SA flags != 2 byte");
 
 typedef struct
 {
@@ -116,8 +122,11 @@ typedef struct
   u8 crypto_iv_size;
   u8 esp_block_align;
   u8 integ_icv_size;
+
+  u8 __pad1[3];
+
   u32 thread_index;
-  u32 __pad_u32;
+
   u32 spi;
   u32 seq;
   u32 seq_hi;
@@ -150,9 +159,9 @@ typedef struct
     u64 crypto_op_data;
   };
 
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
-  u64 gcm_iv_counter;
+  u64 ctr_iv_counter;
   union
   {
     ip4_header_t ip4_hdr;
@@ -160,13 +169,13 @@ typedef struct
   };
   udp_header_t udp_hdr;
 
-  /* Salt used in GCM modes - stored in network byte order */
+  /* Salt used in CTR modes (incl. GCM) - stored in network byte order */
   u32 salt;
 
   ipsec_protocol_t protocol;
   tunnel_encap_decap_flags_t tunnel_flags;
   ip_dscp_t dscp;
-  u8 __pad[1];
+  u8 __pad2[1];
 
   /* data accessed by dataplane code should be above this comment */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);

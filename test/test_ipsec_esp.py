@@ -610,7 +610,34 @@ class MyParameters():
                   'scapy-crypto': "NULL",
                   'scapy-integ': "HMAC-SHA1-96",
                   'salt': 0,
-                  'key': b"JPjyOWBeVEQiMe7h00112233"}}
+                  'key': b"JPjyOWBeVEQiMe7h00112233"},
+            'AES-CTR-128/SHA1-96': {
+                  'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
+                                 IPSEC_API_CRYPTO_ALG_AES_CTR_128),
+                  'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
+                                IPSEC_API_INTEG_ALG_SHA1_96),
+                  'scapy-crypto': "AES-CTR",
+                  'scapy-integ': "HMAC-SHA1-96",
+                  'salt': 0,
+                  'key': b"JPjyOWBeVEQiMe7h"},
+            'AES-CTR-192/SHA1-96': {
+                  'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
+                                 IPSEC_API_CRYPTO_ALG_AES_CTR_192),
+                  'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
+                                IPSEC_API_INTEG_ALG_SHA1_96),
+                  'scapy-crypto': "AES-CTR",
+                  'scapy-integ': "HMAC-SHA1-96",
+                  'salt': 1010,
+                  'key': b"JPjyOWBeVEQiMe7hJPjyOWBe"},
+            'AES-CTR-256/SHA1-96': {
+                  'vpp-crypto': (VppEnum.vl_api_ipsec_crypto_alg_t.
+                                 IPSEC_API_CRYPTO_ALG_AES_CTR_256),
+                  'vpp-integ': (VppEnum.vl_api_ipsec_integ_alg_t.
+                                IPSEC_API_INTEG_ALG_SHA1_96),
+                  'scapy-crypto': "AES-CTR",
+                  'scapy-integ': "HMAC-SHA1-96",
+                  'salt': 2020,
+                  'key': b"JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"}}
 
 
 class RunTestIpsecEspAll(ConfigIpsecESP,
@@ -723,7 +750,8 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
 # GEN   for FLG in noESN ESN; do for ALG in AES-GCM-128/NONE \
 # GEN     AES-GCM-192/NONE AES-GCM-256/NONE AES-CBC-128/MD5-96 \
 # GEN     AES-CBC-192/SHA1-96 AES-CBC-256/SHA1-96 \
-# GEN     3DES-CBC/SHA1-96 NONE/SHA1-96; do \
+# GEN     3DES-CBC/SHA1-96 NONE/SHA1-96 \
+# GEN     AES-CTR-128/SHA1-96 AES-CTR-192/SHA1-96 AES-CTR-256/SHA1-96; do \
 # GEN      [[ ${FLG} == "ESN" &&  ${ALG} == *"NONE" ]] && continue
 # GEN      echo -e "\n\nclass Test_${ENG}_${FLG}_${ALG}(RunTestIpsecEspAll):" |
 # GEN             sed -e 's/-/_/g' -e 's#/#_#g' ; \
@@ -781,6 +809,24 @@ class Test_ia32_noESN_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+class Test_ia32_noESN_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
+    """ia32 noESN AES-CTR-128/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_ia32_noESN_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
+    """ia32 noESN AES-CTR-192/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_ia32_noESN_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
+    """ia32 noESN AES-CTR-256/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
 class Test_ia32_ESN_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """ia32 ESN AES-CBC-128/MD5-96 IPSec test"""
     def test_ipsec(self):
@@ -807,6 +853,24 @@ class Test_ia32_ESN_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
 
 class Test_ia32_ESN_NONE_SHA1_96(RunTestIpsecEspAll):
     """ia32 ESN NONE/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_ia32_ESN_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
+    """ia32 ESN AES-CTR-128/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_ia32_ESN_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
+    """ia32 ESN AES-CTR-192/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_ia32_ESN_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
+    """ia32 ESN AES-CTR-256/SHA1-96 IPSec test"""
     def test_ipsec(self):
         self.run_test()
 
@@ -859,6 +923,24 @@ class Test_ipsecmb_noESN_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+class Test_ipsecmb_noESN_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
+    """ipsecmb noESN AES-CTR-128/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_ipsecmb_noESN_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
+    """ipsecmb noESN AES-CTR-192/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_ipsecmb_noESN_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
+    """ipsecmb noESN AES-CTR-256/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
 class Test_ipsecmb_ESN_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """ipsecmb ESN AES-CBC-128/MD5-96 IPSec test"""
     def test_ipsec(self):
@@ -885,6 +967,24 @@ class Test_ipsecmb_ESN_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
 
 class Test_ipsecmb_ESN_NONE_SHA1_96(RunTestIpsecEspAll):
     """ipsecmb ESN NONE/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_ipsecmb_ESN_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
+    """ipsecmb ESN AES-CTR-128/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_ipsecmb_ESN_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
+    """ipsecmb ESN AES-CTR-192/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_ipsecmb_ESN_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
+    """ipsecmb ESN AES-CTR-256/SHA1-96 IPSec test"""
     def test_ipsec(self):
         self.run_test()
 
@@ -937,6 +1037,24 @@ class Test_openssl_noESN_NONE_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+class Test_openssl_noESN_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
+    """openssl noESN AES-CTR-128/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_openssl_noESN_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
+    """openssl noESN AES-CTR-192/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_openssl_noESN_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
+    """openssl noESN AES-CTR-256/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
 class Test_openssl_ESN_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
     """openssl ESN AES-CBC-128/MD5-96 IPSec test"""
     def test_ipsec(self):
@@ -963,6 +1081,24 @@ class Test_openssl_ESN_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
 
 class Test_openssl_ESN_NONE_SHA1_96(RunTestIpsecEspAll):
     """openssl ESN NONE/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_openssl_ESN_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
+    """openssl ESN AES-CTR-128/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_openssl_ESN_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
+    """openssl ESN AES-CTR-192/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_openssl_ESN_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
+    """openssl ESN AES-CTR-256/SHA1-96 IPSec test"""
     def test_ipsec(self):
         self.run_test()
 

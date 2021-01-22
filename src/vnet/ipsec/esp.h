@@ -59,6 +59,18 @@ typedef CLIB_PACKED (struct {
 /* *INDENT-ON* */
 
 /**
+ * AES counter mode nonce
+ */
+typedef struct
+{
+  u32 salt;
+  u64 iv;
+  u32 ctr; /* counter: 1 in big-endian for ctr, unused for gcm */
+} __clib_packed esp_ctr_nonce_t;
+
+STATIC_ASSERT_SIZEOF (esp_ctr_nonce_t, 16);
+
+/**
  * AES GCM Additional Authentication data
  */
 typedef struct esp_aead_t_
@@ -196,6 +208,7 @@ typedef struct
 } esp_decrypt_packet_data_t;
 
 STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, 3 * sizeof (u64));
+STATIC_ASSERT_OFFSET_OF (esp_decrypt_packet_data_t, seq, sizeof (u64));
 
 /* we are forced to store the decrypt post data into 2 separate places -
    vlib_opaque and opaque2. */
