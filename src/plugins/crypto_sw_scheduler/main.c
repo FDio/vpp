@@ -148,8 +148,6 @@ cryptodev_sw_scheduler_sgl (vlib_main_t * vm,
   u32 n_chunks = 0;
   u32 chunk_index = vec_len (ptd->chunks);
 
-  op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
-
   while (len)
     {
       if (nb->current_data + nb->current_length > offset)
@@ -251,15 +249,12 @@ crypto_sw_scheduler_convert_link_crypto (vlib_main_t * vm,
   crypto_op->iv = fe->iv;
   crypto_op->key_index = key->index_crypto;
   crypto_op->user_data = 0;
+  crypto_op->flags = fe->flags & ~VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
   integ_op->op = integ_op_id;
   integ_op->digest = fe->digest;
   integ_op->digest_len = digest_len;
   integ_op->key_index = key->index_integ;
-  crypto_op->flags = integ_op->flags = 0;
-  if (is_enc)
-    crypto_op->flags |= VNET_CRYPTO_OP_FLAG_INIT_IV;
-  else
-    integ_op->flags |= VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
+  integ_op->flags = fe->flags & ~VNET_CRYPTO_OP_FLAG_INIT_IV;
   crypto_op->user_data = integ_op->user_data = index;
 }
 
