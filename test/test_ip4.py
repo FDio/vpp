@@ -1118,6 +1118,7 @@ class TestIPLoadBalance(VppTestCase):
         super(TestIPLoadBalance, self).tearDown()
 
     def send_and_expect_load_balancing(self, input, pkts, outputs):
+        self.vapi.cli("clear trace")
         input.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -1125,8 +1126,7 @@ class TestIPLoadBalance(VppTestCase):
         for oo in outputs:
             rx = oo._get_capture(1)
             self.assertNotEqual(0, len(rx))
-            for r in rx:
-                rxs.append(r)
+            rxs.append(rx)
         return rxs
 
     def send_and_expect_one_itf(self, input, pkts, itf):
@@ -1134,6 +1134,12 @@ class TestIPLoadBalance(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         rx = itf.get_capture(len(pkts))
+
+    def total_len(self, rxs):
+        n = 0
+        for rx in rxs:
+            n += len(rx)
+        return n
 
     def test_ip_load_balance(self):
         """ IP Load-Balancing """
@@ -1195,14 +1201,29 @@ class TestIPLoadBalance(VppTestCase):
         # be guaranteed. But with 64 different packets we do expect some
         # balancing. So instead just ensure there is traffic on each link.
         #
-        self.send_and_expect_load_balancing(self.pg0, port_ip_pkts,
-                                            [self.pg1, self.pg2])
+        rx = self.send_and_expect_load_balancing(self.pg0, port_ip_pkts,
+                                                 [self.pg1, self.pg2])
+        n_ip_pg0 = len(rx[0])
         self.send_and_expect_load_balancing(self.pg0, src_ip_pkts,
                                             [self.pg1, self.pg2])
         self.send_and_expect_load_balancing(self.pg0, port_mpls_pkts,
                                             [self.pg1, self.pg2])
-        self.send_and_expect_load_balancing(self.pg0, src_mpls_pkts,
-                                            [self.pg1, self.pg2])
+        rx = self.send_and_expect_load_balancing(self.pg0, src_mpls_pkts,
+                                                 [self.pg1, self.pg2])
+        n_mpls_pg0 = len(rx[0])
+
+        #
+        # change the router ID and expect the distribution changes
+        #
+        self.vapi.set_ip_flow_hash_router_id(router_id=0x11111111)
+
+        rx = self.send_and_expect_load_balancing(self.pg0, port_ip_pkts,
+                                                 [self.pg1, self.pg2])
+        self.assertNotEqual(n_ip_pg0, len(rx[0]))
+
+        rx = self.send_and_expect_load_balancing(self.pg0, src_mpls_pkts,
+                                                 [self.pg1, self.pg2])
+        self.assertNotEqual(n_mpls_pg0, len(rx[0]))
 
         #
         # change the flow hash config so it's only IP src,dst
@@ -1273,23 +1294,23 @@ class TestIPLoadBalance(VppTestCase):
                                              self.pg3, self.pg4])
 
         #
-        # bring down pg1 expect LB to adjust to use only those that are pu
+        # bring down pg1 expect LB to adjust to use only those that are up
         #
         self.pg1.link_down()
 
         rx = self.send_and_expect_load_balancing(self.pg0, src_pkts,
                                                  [self.pg2, self.pg3,
                                                   self.pg4])
-        self.assertEqual(len(src_pkts), len(rx))
+        self.assertEqual(len(src_pkts), self.total_len(rx))
 
         #
-        # bring down pg2 expect LB to adjust to use only those that are pu
+        # bring down pg2 expect LB to adjust to use only those that are up
         #
         self.pg2.link_down()
 
         rx = self.send_and_expect_load_balancing(self.pg0, src_pkts,
                                                  [self.pg3, self.pg4])
-        self.assertEqual(len(src_pkts), len(rx))
+        self.assertEqual(len(src_pkts), self.total_len(rx))
 
         #
         # bring the links back up - expect LB over all again
@@ -1300,7 +1321,7 @@ class TestIPLoadBalance(VppTestCase):
         rx = self.send_and_expect_load_balancing(self.pg0, src_pkts,
                                                  [self.pg1, self.pg2,
                                                   self.pg3, self.pg4])
-        self.assertEqual(len(src_pkts), len(rx))
+        self.assertEqual(len(src_pkts), self.total_len(rx))
 
         #
         # The same link-up/down but this time admin state
@@ -1309,7 +1330,7 @@ class TestIPLoadBalance(VppTestCase):
         self.pg2.admin_down()
         rx = self.send_and_expect_load_balancing(self.pg0, src_pkts,
                                                  [self.pg3, self.pg4])
-        self.assertEqual(len(src_pkts), len(rx))
+        self.assertEqual(len(src_pkts), self.total_len(rx))
         self.pg1.admin_up()
         self.pg2.admin_up()
         self.pg1.resolve_arp()
@@ -1317,7 +1338,7 @@ class TestIPLoadBalance(VppTestCase):
         rx = self.send_and_expect_load_balancing(self.pg0, src_pkts,
                                                  [self.pg1, self.pg2,
                                                   self.pg3, self.pg4])
-        self.assertEqual(len(src_pkts), len(rx))
+        self.assertEqual(len(src_pkts), self.total_len(rx))
 
         #
         # Recursive prefixes
@@ -1375,7 +1396,7 @@ class TestIPLoadBalance(VppTestCase):
 
         rx = self.send_and_expect_load_balancing(self.pg0, port_pkts,
                                                  [self.pg3, self.pg4])
-        self.assertEqual(len(src_pkts), len(rx))
+        self.assertEqual(len(src_pkts), self.total_len(rx))
 
 
 class TestIPVlan0(VppTestCase):

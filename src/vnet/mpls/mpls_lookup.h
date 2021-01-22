@@ -53,6 +53,7 @@ mpls_compute_flow_hash (const mpls_unicast_header_t * hdr,
 
     ho_label = clib_net_to_host_u32(hdr->label_exp_s_ttl);
     hash = vnet_mpls_uc_get_label(ho_label);
+    hash ^= ip_flow_hash_router_id;
     next_label_is_entropy = 0;
 
     while (MPLS_EOS != vnet_mpls_uc_get_s(ho_label))

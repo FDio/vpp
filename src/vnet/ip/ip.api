@@ -20,7 +20,7 @@
     called through a shared memory interface.
 */
 
-option version = "3.0.2";
+option version = "3.0.3";
 
 import "vnet/interface_types.api";
 import "vnet/fib/fib_types.api";
@@ -275,6 +275,20 @@ autoreply define set_ip_flow_hash_v2
   u32 table_id;
   vl_api_address_family_t af;
   vl_api_ip_flow_hash_config_t flow_hash_config;
+};
+
+/** \brief Set the ip flow hash router ID
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param router_id - The ID of the router. Mixed into the hash.
+                       Used to prevent polarisation across a network,
+                       since each router is assumed to have a different ID
+*/
+autoreply define set_ip_flow_hash_router_id
+{
+  u32 client_index;
+  u32 context;
+  u32 router_id;
 };
 
 /** \brief IPv6 interface enable / disable request

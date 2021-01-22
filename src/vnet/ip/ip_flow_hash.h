@@ -16,6 +16,8 @@
 #ifndef __IP_FLOW_HASH_H__
 #define __IP_FLOW_HASH_H__
 
+#include <vnet/ip/ip_types.h>
+
 /** Default: 5-tuple + flowlabel without the "reverse" bit */
 #define IP_FLOW_HASH_DEFAULT (0x9F)
 
@@ -47,6 +49,13 @@ typedef enum flow_hash_config_t_
   foreach_flow_hash_bit
 #undef _
 } flow_hash_config_t;
+
+/* Router ID mixed into the flow hash to prevent network polarisation */
+extern u32 ip_flow_hash_router_id;
+
+int ip_flow_hash_set (ip_address_family_t af, u32 table_id,
+		      flow_hash_config_t flow_hash_config);
+void ip_flow_hash_router_id_set (u32 router_id);
 
 #endif /* __IP_TYPES_H__ */
 

@@ -89,6 +89,7 @@ ip4_compute_flow_hash (const ip4_header_t * ip,
   b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? ip->protocol : 0;
   c = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ?
     (t1 << 16) | t2 : (t2 << 16) | t1;
+  a ^= ip_flow_hash_router_id;
 
   hash_v3_mix32 (a, b, c);
   hash_v3_finalize32 (a, b, c);

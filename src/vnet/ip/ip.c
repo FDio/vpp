@@ -16,6 +16,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_table.h>
 
+u32 ip_flow_hash_router_id;
+
 u8
 ip_is_zero (ip46_address_t * ip46_address, u8 is_ip4)
 {
@@ -201,6 +203,12 @@ ip_flow_hash_set (ip_address_family_t af, u32 table_id, u32 flow_hash_config)
   fib_table_set_flow_hash_config (fib_index, fproto, flow_hash_config);
 
   return 0;
+}
+
+void
+ip_flow_hash_router_id_set (u32 router_id)
+{
+  ip_flow_hash_router_id = router_id;
 }
 
 u8 *
