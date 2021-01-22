@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "46400b00_981e96ff",
+        "filename": "src/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-01-22T12:58:14Z",
+      "side": 1,
+      "message": "On some systems, we run into https://sourceware.org/git/?p\u003dglibc.git;a\u003dcommit;h\u003d05c2c9618f583ea4acd69b3fe5ae2a2922dd2ddc now...\nUbuntu/Debian reverted this change, so no problem here, but I am not sure for other distros... Consider disabling fortification in debug mode?",
+      "revId": "2a81d9a4cc3436d63dad618ec654572343e89257",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
