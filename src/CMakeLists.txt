@@ -82,7 +82,6 @@ string(CONCAT CMAKE_C_FLAGS_DEBUG
   "-O0 "
   "-DCLIB_DEBUG "
   "-fstack-protector "
-  "-D_FORTIFY_SOURCE=2 "
   "-fno-common "
 )
 

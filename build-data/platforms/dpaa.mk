@@ -72,9 +72,9 @@ vpp_configure_args_dpaa += $(VPP_CFG_ARGS)
 endif
 
 
-dpaa_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -fPIC -fstack-protector-all -D_FORTIFY_SOURCE=2 -mtls-dialect=trad \
+dpaa_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -fPIC -fstack-protector-all -mtls-dialect=trad \
 			-march=$(MARCH) -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=6 -I$(OPENSSL_PATH)/include
-dpaa_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -fstack-protector-all -D_FORTIFY_SOURCE=2 \
+dpaa_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -fstack-protector-all \
 			-march=$(MARCH) -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=6 -L$(OPENSSL_PATH)/lib
 
 
