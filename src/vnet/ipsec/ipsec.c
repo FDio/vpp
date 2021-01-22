@@ -478,6 +478,24 @@ ipsec_init (vlib_main_t * vm)
   a->alg = VNET_CRYPTO_ALG_AES_256_CBC;
   a->iv_size = a->block_align = 16;
 
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_AES_CTR_128;
+  a->enc_op_id = VNET_CRYPTO_OP_AES_128_CTR_ENC;
+  a->dec_op_id = VNET_CRYPTO_OP_AES_128_CTR_DEC;
+  a->alg = VNET_CRYPTO_ALG_AES_128_CTR;
+  a->iv_size = a->block_align = 16;
+
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_AES_CTR_192;
+  a->enc_op_id = VNET_CRYPTO_OP_AES_192_CTR_ENC;
+  a->dec_op_id = VNET_CRYPTO_OP_AES_192_CTR_DEC;
+  a->alg = VNET_CRYPTO_ALG_AES_192_CTR;
+  a->iv_size = a->block_align = 16;
+
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_AES_CTR_256;
+  a->enc_op_id = VNET_CRYPTO_OP_AES_256_CTR_ENC;
+  a->dec_op_id = VNET_CRYPTO_OP_AES_256_CTR_DEC;
+  a->alg = VNET_CRYPTO_ALG_AES_256_CTR;
+  a->iv_size = a->block_align = 16;
+
   a = im->crypto_algs + IPSEC_CRYPTO_ALG_AES_GCM_128;
   a->enc_op_id = VNET_CRYPTO_OP_AES_128_GCM_ENC;
   a->dec_op_id = VNET_CRYPTO_OP_AES_128_GCM_DEC;
