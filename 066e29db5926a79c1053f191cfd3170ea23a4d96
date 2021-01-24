@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7d7ddc23_45d85f83",
+        "filename": "src/vnet/bonding/bond_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 2407
+      },
+      "writtenOn": "2021-01-24T12:24:18Z",
+      "side": 1,
+      "message": "Should the type be vl_api_sw_interface_set_bond_failover_mac_reply_t",
+      "revId": "066e29db5926a79c1053f191cfd3170ea23a4d96",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0747fc8c_0ae4c6f9",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 2407
+      },
+      "writtenOn": "2021-01-24T12:24:18Z",
+      "side": 1,
+      "message": "For failover_mac\u003dactive case, the bond master interface mac address should be set to that of the first active member interface before sending IPv4 GARP/IPv6 Unsolicited neighbor advertisement.\n\nif(BOND_FAILOVER_MAC_ACTIVE \u003d\u003d bif-\u003efailover_mac)\n{\n  mif_hw \u003d vnet_get_sup_hw_interface (vnm, bif-\u003eactive_members[0]);\n  memcpy (bif-\u003ehw_address, mif_hw-\u003ehw_address, 6);\n  vnet_hw_interface_change_mac_address (vnm, bif_hw-\u003ehw_if_index, mif_hw-\u003ehw_address);\n}",
+      "revId": "066e29db5926a79c1053f191cfd3170ea23a4d96",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4fffae5c_32893aba",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 2407
+      },
+      "writtenOn": "2021-01-24T12:24:18Z",
+      "side": 1,
+      "message": "For failover_mac\u003dactive case, the bond master interface mac address should be set to that of the first active member interface before sending IPv4 GARP/IPv6 Unsolicited neighbor advertisement.\n\nif(BOND_FAILOVER_MAC_ACTIVE \u003d\u003d bif-\u003efailover_mac)\n{\n  mif_hw \u003d vnet_get_sup_hw_interface (vnm, bif-\u003eactive_members[0]);\n  memcpy (bif-\u003ehw_address, mif_hw-\u003ehw_address, 6);\n  vnet_hw_interface_change_mac_address (vnm, bif_hw-\u003ehw_if_index, mif_hw-\u003ehw_address);\n}",
+      "revId": "066e29db5926a79c1053f191cfd3170ea23a4d96",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b56152c8_0bf7de9d",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 2407
+      },
+      "writtenOn": "2021-01-24T12:24:18Z",
+      "side": 1,
+      "message": "For failover_mac\u003dactive case, the bond master interface mac address should be set to that of the first active member interface before sending IPv4 GARP/IPv6 Unsolicited neighbor advertisement.\n\nif(BOND_FAILOVER_MAC_ACTIVE \u003d\u003d bif-\u003efailover_mac)\n{\n  mif_hw \u003d vnet_get_sup_hw_interface (vnm, bif-\u003eactive_members[0]);\n  memcpy (bif-\u003ehw_address, mif_hw-\u003ehw_address, 6);\n  vnet_hw_interface_change_mac_address (vnm, bif_hw-\u003ehw_if_index, mif_hw-\u003ehw_address);\n}",
+      "revId": "066e29db5926a79c1053f191cfd3170ea23a4d96",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f655d15f_def8a307",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1126,
+      "author": {
+        "id": 2407
+      },
+      "writtenOn": "2021-01-24T12:24:18Z",
+      "side": 1,
+      "message": "If bond_coerce_mac_addrs() will restore the current active member interface mac address to the original mif-\u003epersistent_hw_address value then for failover_mac\u003dactive case, the bond master interface mac address should be set to that of the first active member interface before sending IPv4 GARP/IPv6 Unsolicited neighbor advertisement.\n\nif(BOND_FAILOVER_MAC_ACTIVE \u003d\u003d bif-\u003efailover_mac)\n{\n  mif_hw \u003d vnet_get_sup_hw_interface (vnm, bif-\u003eactive_members[0]);\n  memcpy (bif-\u003ehw_address, mif_hw-\u003ehw_address, 6);\n  vnet_hw_interface_change_mac_address (vnm, bif_hw-\u003ehw_if_index, mif_hw-\u003ehw_address);\n  vlib_process_signal_event (bm-\u003evlib_main, bond_process_node.index,\n\t\t\t       BOND_SEND_GARP_NA, bif-\u003ehw_if_index);\n}",
+      "revId": "066e29db5926a79c1053f191cfd3170ea23a4d96",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
