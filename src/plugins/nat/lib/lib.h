@@ -95,7 +95,52 @@ nat_reset_timeouts (nat_timeouts_t * timeouts)
   timeouts->icmp = NAT_ICMP_TIMEOUT;
 }
 
-// TODO: move common formating definitions here
+static_always_inline u32
+nat_session_get_timeout (nat_timeouts_t *timeouts, nat_protocol_t proto,
+			 u8 state)
+{
+  switch (proto)
+    {
+    case NAT_PROTOCOL_ICMP:
+      return timeouts->icmp;
+    case NAT_PROTOCOL_UDP:
+      return timeouts->udp;
+    case NAT_PROTOCOL_TCP:
+      {
+	if (state)
+	  return timeouts->tcp.transitory;
+	else
+	  return timeouts->tcp.established;
+      }
+    default:
+      return timeouts->udp;
+    }
+  return 0;
+}
+
+static_always_inline u32
+nat_calc_bihash_buckets (u32 n_elts)
+{
+  n_elts = n_elts / 2.5;
+  u64 lower_pow2 = 1;
+  while (lower_pow2 * 2 < n_elts)
+    {
+      lower_pow2 = 2 * lower_pow2;
+    }
+  u64 upper_pow2 = 2 * lower_pow2;
+  if ((upper_pow2 - n_elts) < (n_elts - lower_pow2))
+    {
+      if (upper_pow2 <= UINT32_MAX)
+	{
+	  return upper_pow2;
+	}
+    }
+  return lower_pow2;
+}
+
+u8 *format_nat_protocol (u8 *s, va_list *args);
+
+uword unformat_nat_protocol (unformat_input_t *input, va_list *args);
 
 #endif /* included_nat_lib_h__ */
 /*

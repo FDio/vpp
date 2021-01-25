@@ -4,7 +4,7 @@ maintainer:
   - Ole Troan <ot@cisco.com>
   - Filip Varga <fivarga@cisco.com>
 features:
-  - NAT44:
+  - NAT44-EI - IPv4 Endpoint Independent NAT
       - 1:1 NAT
       - 1:1 NAT with ports
       - VRF awareness
@@ -12,13 +12,22 @@ features:
       - Hairpinning
       - IPFIX
       - Syslog
-      - Endpoint dependent NAT
+      - TCP MSS clamping
+      - Local bypass (DHCP)
+  - NAT44-ED - IPv4 Endpoint Dependent NAT
+      - 1:1 NAT
+      - 1:1 NAT with ports
+      - VRF awareness
+      - Multiple inside interfaces
+      - Hairpinning
+      - IPFIX
+      - Syslog
       - TCP MSS clamping
       - Local bypass (DHCP)
   - DET44 - deterministic NAT (CGN)
   - NAT64
   - NAT66
-  - DS-lite
+  - DSLITE
   - 464XLAT
 description: "The Network Address Translation (NAT) plugin offers a multiple address
               translation functions. These can be used in a raft of different
