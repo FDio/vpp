@@ -16,7 +16,7 @@
 option version = "1.0.0";
 import "vnet/ip/ip_types.api";
 import "vnet/interface_types.api";
-import "plugins/nat/nat_types.api";
+import "plugins/nat/lib/nat_types.api";
 
 /** \brief Enable/disable NAT66 feature on the interface
     @param client_index - opaque cookie to identify the sender

@@ -47,7 +47,6 @@ class NAT44EDTestCase(VppTestCase):
 
     def plugin_enable(self):
         self.vapi.nat44_plugin_enable_disable(
-            flags=self.nat44_config_flags.NAT44_IS_ENDPOINT_DEPENDENT,
             sessions=self.max_sessions, enable=1)
 
     def plugin_disable(self):
@@ -149,7 +148,7 @@ class NAT44EDTestCase(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(NAT44EDTestCase, cls).setUpClass()
-        cls.vapi.cli("set log class nat level debug")
+        #cls.vapi.cli("set log class nat44-ed level debug")
 
         cls.create_pg_interfaces(range(12))
         cls.interfaces = list(cls.pg_interfaces[:4])
@@ -1976,10 +1975,10 @@ class TestNAT44EDMW(TestNAT44ED):
         self.nat_add_outside_interface(self.pg1)
 
         # in2out
-        tc1 = self.get_stats_counter('/nat44/ed/in2out/slowpath/tcp')
-        uc1 = self.get_stats_counter('/nat44/ed/in2out/slowpath/udp')
-        ic1 = self.get_stats_counter('/nat44/ed/in2out/slowpath/icmp')
-        dc1 = self.get_stats_counter('/nat44/ed/in2out/slowpath/drops')
+        tc1 = self.get_stats_counter('/nat44-ed/in2out/slowpath/tcp')
+        uc1 = self.get_stats_counter('/nat44-ed/in2out/slowpath/udp')
+        ic1 = self.get_stats_counter('/nat44-ed/in2out/slowpath/icmp')
+        dc1 = self.get_stats_counter('/nat44-ed/in2out/slowpath/drops')
 
         pkts = self.create_stream_in(self.pg0, self.pg1)
         # TODO: specify worker=idx, also stats have to
@@ -1991,10 +1990,10 @@ class TestNAT44EDMW(TestNAT44ED):
         self.verify_capture_out(capture, ignore_port=True)
 
         if_idx = self.pg0.sw_if_index
-        tc2 = self.get_stats_counter('/nat44/ed/in2out/slowpath/tcp')
-        uc2 = self.get_stats_counter('/nat44/ed/in2out/slowpath/udp')
-        ic2 = self.get_stats_counter('/nat44/ed/in2out/slowpath/icmp')
-        dc2 = self.get_stats_counter('/nat44/ed/in2out/slowpath/drops')
+        tc2 = self.get_stats_counter('/nat44-ed/in2out/slowpath/tcp')
+        uc2 = self.get_stats_counter('/nat44-ed/in2out/slowpath/udp')
+        ic2 = self.get_stats_counter('/nat44-ed/in2out/slowpath/icmp')
+        dc2 = self.get_stats_counter('/nat44-ed/in2out/slowpath/drops')
 
         self.assertEqual(tc2[if_idx] - tc1[if_idx], 2)
         self.assertEqual(uc2[if_idx] - uc1[if_idx], 1)
@@ -2002,10 +2001,10 @@ class TestNAT44EDMW(TestNAT44ED):
         self.assertEqual(dc2[if_idx] - dc1[if_idx], 0)
 
         # out2in
-        tc1 = self.get_stats_counter('/nat44/ed/out2in/fastpath/tcp')
-        uc1 = self.get_stats_counter('/nat44/ed/out2in/fastpath/udp')
-        ic1 = self.get_stats_counter('/nat44/ed/out2in/fastpath/icmp')
-        dc1 = self.get_stats_counter('/nat44/ed/out2in/fastpath/drops')
+        tc1 = self.get_stats_counter('/nat44-ed/out2in/fastpath/tcp')
+        uc1 = self.get_stats_counter('/nat44-ed/out2in/fastpath/udp')
+        ic1 = self.get_stats_counter('/nat44-ed/out2in/fastpath/icmp')
+        dc1 = self.get_stats_counter('/nat44-ed/out2in/fastpath/drops')
 
         pkts = self.create_stream_out(self.pg1)
         self.pg1.add_stream(pkts)
@@ -2015,17 +2014,17 @@ class TestNAT44EDMW(TestNAT44ED):
         self.verify_capture_in(capture, self.pg0)
 
         if_idx = self.pg1.sw_if_index
-        tc2 = self.get_stats_counter('/nat44/ed/out2in/fastpath/tcp')
-        uc2 = self.get_stats_counter('/nat44/ed/out2in/fastpath/udp')
-        ic2 = self.get_stats_counter('/nat44/ed/out2in/fastpath/icmp')
-        dc2 = self.get_stats_counter('/nat44/ed/out2in/fastpath/drops')
+        tc2 = self.get_stats_counter('/nat44-ed/out2in/fastpath/tcp')
+        uc2 = self.get_stats_counter('/nat44-ed/out2in/fastpath/udp')
+        ic2 = self.get_stats_counter('/nat44-ed/out2in/fastpath/icmp')
+        dc2 = self.get_stats_counter('/nat44-ed/out2in/fastpath/drops')
 
         self.assertEqual(tc2[if_idx] - tc1[if_idx], 2)
         self.assertEqual(uc2[if_idx] - uc1[if_idx], 1)
         self.assertEqual(ic2[if_idx] - ic1[if_idx], 1)
         self.assertEqual(dc2[if_idx] - dc1[if_idx], 0)
 
-        sc = self.get_stats_counter('/nat44/total-sessions')
+        sc = self.get_stats_counter('/nat44-ed/total-sessions')
         self.assertEqual(sc[0], 3)
 
     def test_frag_in_order(self):
@@ -2218,28 +2217,6 @@ class TestNAT44EDMW(TestNAT44ED):
         self.pg_start()
 
         capture = outside.get_capture(len(stream))
-
-    def test_clear_sessions(self):
-        """ NAT44ED session clearing test """
-
-        self.nat_add_address(self.nat_addr)
-        self.nat_add_inside_interface(self.pg0)
-        self.nat_add_outside_interface(self.pg1)
-
-        pkts = self.create_stream_in(self.pg0, self.pg1)
-        self.pg0.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        capture = self.pg1.get_capture(len(pkts))
-        self.verify_capture_out(capture, ignore_port=True)
-
-        sessions = self.get_stats_counter('/nat44/total-sessions')
-        self.assertTrue(sessions[0] > 0)
-
-        self.vapi.cli("clear nat44 sessions")
-
-        sessions = self.get_stats_counter('/nat44/total-sessions')
-        self.assertEqual(sessions[0], 0)
 
     def test_show_max_translations(self):
         """ NAT44ED API test - max translations per thread """
@@ -3329,13 +3306,13 @@ class TestNAT44EDMW(TestNAT44ED):
 
             # in2out
             tcpn = self.get_stats_counter(
-                '/nat44/ed/in2out/slowpath/tcp')
+                '/nat44-ed/in2out/slowpath/tcp')
             udpn = self.get_stats_counter(
-                '/nat44/ed/in2out/slowpath/udp')
+                '/nat44-ed/in2out/slowpath/udp')
             icmpn = self.get_stats_counter(
-                '/nat44/ed/in2out/slowpath/icmp')
+                '/nat44-ed/in2out/slowpath/icmp')
             drops = self.get_stats_counter(
-                '/nat44/ed/in2out/slowpath/drops')
+                '/nat44-ed/in2out/slowpath/drops')
 
             pkts = self.create_stream_in(self.pg7, self.pg8)
             self.pg7.add_stream(pkts)
@@ -3346,27 +3323,27 @@ class TestNAT44EDMW(TestNAT44ED):
 
             if_idx = self.pg7.sw_if_index
             cnt = self.get_stats_counter(
-                '/nat44/ed/in2out/slowpath/tcp')
+                '/nat44-ed/in2out/slowpath/tcp')
             self.assertEqual(cnt[if_idx] - tcpn[if_idx], 2)
             cnt = self.get_stats_counter(
-                '/nat44/ed/in2out/slowpath/udp')
+                '/nat44-ed/in2out/slowpath/udp')
             self.assertEqual(cnt[if_idx] - udpn[if_idx], 1)
             cnt = self.get_stats_counter(
-                '/nat44/ed/in2out/slowpath/icmp')
+                '/nat44-ed/in2out/slowpath/icmp')
             self.assertEqual(cnt[if_idx] - icmpn[if_idx], 1)
             cnt = self.get_stats_counter(
-                '/nat44/ed/in2out/slowpath/drops')
+                '/nat44-ed/in2out/slowpath/drops')
             self.assertEqual(cnt[if_idx] - drops[if_idx], 0)
 
             # out2in
             tcpn = self.get_stats_counter(
-                '/nat44/ed/out2in/fastpath/tcp')
+                '/nat44-ed/out2in/fastpath/tcp')
             udpn = self.get_stats_counter(
-                '/nat44/ed/out2in/fastpath/udp')
+                '/nat44-ed/out2in/fastpath/udp')
             icmpn = self.get_stats_counter(
-                '/nat44/ed/out2in/fastpath/icmp')
+                '/nat44-ed/out2in/fastpath/icmp')
             drops = self.get_stats_counter(
-                '/nat44/ed/out2in/fastpath/drops')
+                '/nat44-ed/out2in/fastpath/drops')
 
             pkts = self.create_stream_out(self.pg8)
             self.pg8.add_stream(pkts)
@@ -3377,19 +3354,19 @@ class TestNAT44EDMW(TestNAT44ED):
 
             if_idx = self.pg8.sw_if_index
             cnt = self.get_stats_counter(
-                '/nat44/ed/out2in/fastpath/tcp')
+                '/nat44-ed/out2in/fastpath/tcp')
             self.assertEqual(cnt[if_idx] - tcpn[if_idx], 2)
             cnt = self.get_stats_counter(
-                '/nat44/ed/out2in/fastpath/udp')
+                '/nat44-ed/out2in/fastpath/udp')
             self.assertEqual(cnt[if_idx] - udpn[if_idx], 1)
             cnt = self.get_stats_counter(
-                '/nat44/ed/out2in/fastpath/icmp')
+                '/nat44-ed/out2in/fastpath/icmp')
             self.assertEqual(cnt[if_idx] - icmpn[if_idx], 1)
             cnt = self.get_stats_counter(
-                '/nat44/ed/out2in/fastpath/drops')
+                '/nat44-ed/out2in/fastpath/drops')
             self.assertEqual(cnt[if_idx] - drops[if_idx], 0)
 
-            sessions = self.get_stats_counter('/nat44/total-sessions')
+            sessions = self.get_stats_counter('/nat44-ed/total-sessions')
             self.assertEqual(sessions[0], 3)
 
         finally:
