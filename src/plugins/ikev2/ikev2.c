@@ -50,14 +50,6 @@ typedef struct
   u32 sw_if_index;
 } ikev2_trace_t;
 
-typedef struct
-{
-  u16 n_keepalives;
-  u16 n_rekey_req;
-  u16 n_exchange_sa_req;
-  u16 n_ike_auth_req;
-} ikev2_stats_t;
-
 static u8 *
 format_ikev2_trace (u8 * s, va_list * args)
 {
@@ -2439,6 +2431,7 @@ ikev2_generate_message (vlib_buffer_t *b, ikev2_sa_t *sa, ike_header_t *ike,
 	    {
 	      ASSERT (stats != 0);
 	      stats->n_keepalives++;
+	      sa->stats.n_keepalives++;
 	    }
 	}
     }
@@ -2623,6 +2616,7 @@ ikev2_retransmit_sa_init_one (ikev2_sa_t * sa, ike_header_t * ike,
 	  /* req is retransmit */
 	  if (sa->state == IKEV2_STATE_SA_INIT)
 	    {
+	      sa->stats.n_init_retransmit++;
 	      tmp = (ike_header_t *) sa->last_sa_init_res_packet_data;
 	      u32 slen = clib_net_to_host_u32 (tmp->length);
 	      ike->ispi = tmp->ispi;
@@ -2700,6 +2694,7 @@ ikev2_retransmit_resp (ikev2_sa_t * sa, ike_header_t * ike)
   /* retransmitted req */
   if (msg_id == sa->last_msg_id)
     {
+      sa->stats.n_retransmit++;
       ike_header_t *tmp = (ike_header_t *) sa->last_res_packet_data;
       u32 slen = clib_net_to_host_u32 (tmp->length);
       ike->ispi = tmp->ispi;
@@ -2832,10 +2827,10 @@ ikev2_update_stats (vlib_main_t *vm, u32 node_index, ikev2_stats_t *s)
 			       s->n_keepalives);
   vlib_node_increment_counter (vm, node_index, IKEV2_ERROR_REKEY_REQ,
 			       s->n_rekey_req);
-  vlib_node_increment_counter (vm, node_index, IKEV2_ERROR_EXCHANGE_SA_REQ,
-			       s->n_exchange_sa_req);
+  vlib_node_increment_counter (vm, node_index, IKEV2_ERROR_INIT_SA_REQ,
+			       s->n_sa_init_req);
   vlib_node_increment_counter (vm, node_index, IKEV2_ERROR_IKE_AUTH_REQ,
-			       s->n_ike_auth_req);
+			       s->n_sa_auth_req);
 }
 
 static_always_inline uword
@@ -2932,7 +2927,8 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  if (ike_hdr_is_initiator (ike0))
 	    {
-	      stats->n_exchange_sa_req++;
+	      sa0->stats.n_sa_init_req++;
+	      stats->n_sa_init_req++;
 	      if (ike0->rspi == 0)
 		{
 		  if (is_ip4)
@@ -3104,7 +3100,8 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 		}
 	      else
 		{
-		  stats->n_ike_auth_req++;
+		  sa0->stats.n_sa_auth_req++;
+		  stats->n_sa_auth_req++;
 		  ike0->flags = IKEV2_HDR_FLAG_RESPONSE;
 		  slen =
 		    ikev2_generate_message (b0, sa0, ike0, 0, udp0, stats);
@@ -3241,6 +3238,7 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  else
 		    {
 		      stats->n_rekey_req++;
+		      sa0->stats.n_rekey_req++;
 		      ike0->flags = IKEV2_HDR_FLAG_RESPONSE;
 		      slen =
 			ikev2_generate_message (b0, sa0, ike0, 0, udp0, stats);
