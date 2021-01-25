@@ -779,7 +779,7 @@ icmp6_init (vlib_main_t * vm)
 #undef _
 
   cm->type_and_code_by_name = hash_create_string (0, sizeof (uword));
-#define _(a,n,t) hash_set_mem (cm->type_by_name, #t, (n) | (ICMP6_##a << 8));
+#define _(a,n,t) hash_set_mem (cm->type_and_code_by_name, #t, (n) | (ICMP6_##a << 8));
   foreach_icmp6_code;
 #undef _
 
