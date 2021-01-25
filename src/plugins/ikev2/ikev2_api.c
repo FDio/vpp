@@ -195,6 +195,17 @@ vl_api_ikev2_profile_dump_t_handler (vl_api_ikev2_profile_dump_t * mp)
 }
 
 static void
+ikev2_copy_stats (vl_api_ikev2_sa_stats_t *dst, const ikev2_stats_t *src)
+{
+  dst->n_rekey_req = src->n_rekey_req;
+  dst->n_keepalives = src->n_keepalives;
+  dst->n_retransmit = src->n_retransmit;
+  dst->n_init_sa_retransmit = src->n_init_retransmit;
+  dst->n_sa_init_req = src->n_sa_init_req;
+  dst->n_sa_auth_req = src->n_sa_auth_req;
+}
+
+static void
 send_sa (ikev2_sa_t * sa, vl_api_ikev2_sa_dump_t * mp, u32 api_sa_index)
 {
   vl_api_ikev2_sa_details_t *rmp = 0;
@@ -252,6 +263,8 @@ send_sa (ikev2_sa_t * sa, vl_api_ikev2_sa_dump_t * mp, u32 api_sa_index)
 
     k->sk_pr_len = vec_len (sa->sk_pr);
     clib_memcpy (&k->sk_pr, sa->sk_pr, k->sk_pr_len);
+
+    ikev2_copy_stats (&rsa->stats, &sa->stats);
 
     vl_api_ikev2_sa_t_endian(rsa);
   });

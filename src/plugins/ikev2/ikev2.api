@@ -563,7 +563,7 @@ counters ikev2 {
     units "packets";
     description "IKE rekey requests received";
   };
-  exchange_sa_req {
+  init_sa_req {
     severity info;
     type counter64;
     units "packets";

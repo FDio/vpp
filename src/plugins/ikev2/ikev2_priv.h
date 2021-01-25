@@ -367,6 +367,16 @@ typedef enum
 
 typedef struct
 {
+  u16 n_keepalives;
+  u16 n_rekey_req;
+  u16 n_sa_auth_req;
+  u16 n_sa_init_req;
+  u16 n_init_retransmit;
+  u16 n_retransmit;
+} ikev2_stats_t;
+
+typedef struct
+{
   ikev2_state_t state;
   u8 unsupported_cp;
   u8 initial_contact;
@@ -446,6 +456,8 @@ typedef struct
   /* is NAT traversal mode */
   ikev2_natt_state_t natt_state;
   u8 keys_generated;
+
+  ikev2_stats_t stats;
 } ikev2_sa_t;
 
 

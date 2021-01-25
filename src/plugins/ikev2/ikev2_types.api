@@ -128,6 +128,16 @@ typedef ikev2_child_sa
   vl_api_ikev2_sa_transform_t esn;
 };
 
+typedef ikev2_sa_stats
+{
+  u16 n_keepalives;
+  u16 n_rekey_req;
+  u16 n_sa_init_req;
+  u16 n_sa_auth_req;
+  u16 n_retransmit;
+  u16 n_init_sa_retransmit;
+};
+
 typedef ikev2_sa
 {
   u32 sa_index;
@@ -148,4 +158,6 @@ typedef ikev2_sa
   vl_api_ikev2_sa_transform_t integrity;
   vl_api_ikev2_sa_transform_t prf;
   vl_api_ikev2_sa_transform_t dh;
+
+  vl_api_ikev2_sa_stats_t stats;
 };

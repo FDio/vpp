@@ -191,6 +191,14 @@ format_ikev2_sa (u8 * s, va_list * va)
 		format_ikev2_child_sa, child, child - sa->childs);
   }
 
+  s = format (s, "Stats:\n");
+  s = format (s, " keepalives :%u\n", sa->stats.n_keepalives);
+  s = format (s, " rekey :%u\n", sa->stats.n_rekey_req);
+  s = format (s, " SA init :%u (retransmit: %u)\n", sa->stats.n_sa_init_req,
+	      sa->stats.n_init_retransmit);
+  s = format (s, " retransmit: %u\n", sa->stats.n_retransmit);
+  s = format (s, " SA auth :%u\n", sa->stats.n_sa_auth_req);
+
   return s;
 }
 

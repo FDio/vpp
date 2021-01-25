@@ -1325,8 +1325,13 @@ class TemplateResponder(IkePeer):
 
     def verify_counters(self):
         self.assert_counter(2, 'processed', self.IKE_NODE_SUFFIX)
-        self.assert_counter(1, 'exchange_sa_req', self.IKE_NODE_SUFFIX)
+        self.assert_counter(1, 'init_sa_req', self.IKE_NODE_SUFFIX)
         self.assert_counter(1, 'ike_auth_req', self.IKE_NODE_SUFFIX)
+
+        r = self.vapi.ikev2_sa_dump()
+        s = r[0].sa.stats
+        self.assertEqual(1, s.n_sa_auth_req)
+        self.assertEqual(1, s.n_sa_init_req)
 
     def test_responder(self):
         self.send_sa_init_req()
@@ -1862,6 +1867,9 @@ class TestResponderRekey(TestResponderPsk):
         self.sa.calc_child_keys()
         self.verify_ike_sas()
         self.verify_ipsec_sas(is_rekey=True)
+        self.assert_counter(1, 'rekey_req', 'ip4')
+        r = self.vapi.ikev2_sa_dump()
+        self.assertEqual(r[0].sa.stats.n_rekey_req, 1)
 
 
 class TestResponderRsaSign(TemplateResponder, Ikev2Params):
@@ -1942,6 +1950,8 @@ class TestInitiatorKeepaliveMsg(TestInitiatorPsk):
         plain = self.sa.hmac_and_decrypt(ih)
         self.assertEqual(plain, b'')
         self.assert_counter(1, 'keepalive', 'ip4')
+        r = self.vapi.ikev2_sa_dump()
+        self.assertEqual(1, r[0].sa.stats.n_keepalives)
 
     def test_initiator(self):
         super(TestInitiatorKeepaliveMsg, self).test_initiator()
