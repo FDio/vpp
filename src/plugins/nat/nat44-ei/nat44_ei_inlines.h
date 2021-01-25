@@ -16,19 +16,174 @@
 #ifndef __included_nat44_ei_inlines_h__
 #define __included_nat44_ei_inlines_h__
 
+#include <vppinfra/clib.h>
+
+#include <nat/nat44-ei/nat44_ei.h>
 #include <nat/nat44-ei/nat44_ei_ha.h>
 
-static_always_inline u8
-nat44_ei_maximum_sessions_exceeded (snat_main_t *sm, u32 thread_index)
+always_inline u64
+calc_nat_key (ip4_address_t addr, u16 port, u32 fib_index, u8 proto)
 {
-  if (pool_elts (sm->per_thread_data[thread_index].sessions) >=
-      sm->max_translations_per_thread)
+  ASSERT (fib_index <= (1 << 14) - 1);
+  ASSERT (proto <= (1 << 3) - 1);
+  return (u64) addr.as_u32 << 32 | (u64) port << 16 | fib_index << 3 |
+	 (proto & 0x7);
+}
+
+always_inline void
+split_nat_key (u64 key, ip4_address_t *addr, u16 *port, u32 *fib_index,
+	       nat_protocol_t *proto)
+{
+  if (addr)
+    {
+      addr->as_u32 = key >> 32;
+    }
+  if (port)
+    {
+      *port = (key >> 16) & (u16) ~0;
+    }
+  if (fib_index)
+    {
+      *fib_index = key >> 3 & ((1 << 13) - 1);
+    }
+  if (proto)
+    {
+      *proto = key & 0x7;
+    }
+}
+
+always_inline void
+init_nat_k (clib_bihash_kv_8_8_t *kv, ip4_address_t addr, u16 port,
+	    u32 fib_index, nat_protocol_t proto)
+{
+  kv->key = calc_nat_key (addr, port, fib_index, proto);
+  kv->value = ~0ULL;
+}
+
+always_inline void
+init_nat_kv (clib_bihash_kv_8_8_t *kv, ip4_address_t addr, u16 port,
+	     u32 fib_index, nat_protocol_t proto, u64 value)
+{
+  init_nat_k (kv, addr, port, fib_index, proto);
+  kv->value = value;
+}
+
+always_inline void
+init_nat_i2o_k (clib_bihash_kv_8_8_t *kv, nat44_ei_session_t *s)
+{
+  return init_nat_k (kv, s->in2out.addr, s->in2out.port, s->in2out.fib_index,
+		     s->nat_proto);
+}
+
+always_inline void
+init_nat_i2o_kv (clib_bihash_kv_8_8_t *kv, nat44_ei_session_t *s, u64 value)
+{
+  init_nat_k (kv, s->in2out.addr, s->in2out.port, s->in2out.fib_index,
+	      s->nat_proto);
+  kv->value = value;
+}
+
+always_inline void
+init_nat_o2i_k (clib_bihash_kv_8_8_t *kv, nat44_ei_session_t *s)
+{
+  return init_nat_k (kv, s->out2in.addr, s->out2in.port, s->out2in.fib_index,
+		     s->nat_proto);
+}
+
+always_inline void
+init_nat_o2i_kv (clib_bihash_kv_8_8_t *kv, nat44_ei_session_t *s, u64 value)
+{
+  init_nat_k (kv, s->out2in.addr, s->out2in.port, s->out2in.fib_index,
+	      s->nat_proto);
+  kv->value = value;
+}
+
+always_inline u8
+nat44_ei_is_interface_addr (ip4_main_t *im, vlib_node_runtime_t *node,
+			    u32 sw_if_index0, u32 ip4_addr)
+{
+  nat44_ei_runtime_t *rt = (nat44_ei_runtime_t *) node->runtime_data;
+  ip4_address_t *first_int_addr;
+
+  if (PREDICT_FALSE (rt->cached_sw_if_index != sw_if_index0))
+    {
+      first_int_addr = ip4_interface_first_address (
+	im, sw_if_index0, 0 /* just want the address */);
+      rt->cached_sw_if_index = sw_if_index0;
+      if (first_int_addr)
+	rt->cached_ip4_address = first_int_addr->as_u32;
+      else
+	rt->cached_ip4_address = 0;
+    }
+
+  if (PREDICT_FALSE (ip4_addr == rt->cached_ip4_address))
+    return 1;
+  else
+    return 0;
+}
+
+/** \brief Per-user LRU list maintenance */
+always_inline void
+nat44_ei_session_update_lru (nat44_ei_main_t *nm, nat44_ei_session_t *s,
+			     u32 thread_index)
+{
+  /* don't update too often - timeout is in magnitude of seconds anyway */
+  if (s->last_heard > s->last_lru_update + 1)
+    {
+      clib_dlist_remove (nm->per_thread_data[thread_index].list_pool,
+			 s->per_user_index);
+      clib_dlist_addtail (nm->per_thread_data[thread_index].list_pool,
+			  s->per_user_list_head_index, s->per_user_index);
+      s->last_lru_update = s->last_heard;
+    }
+}
+
+always_inline void
+nat44_ei_user_session_increment (nat44_ei_main_t *nm, nat44_ei_user_t *u,
+				 u8 is_static)
+{
+  if (u->nsessions + u->nstaticsessions < nm->max_translations_per_user)
+    {
+      if (is_static)
+	u->nstaticsessions++;
+      else
+	u->nsessions++;
+    }
+}
+
+always_inline void
+nat44_ei_delete_user_with_no_session (nat44_ei_main_t *nm, nat44_ei_user_t *u,
+				      u32 thread_index)
+{
+  clib_bihash_kv_8_8_t kv;
+  nat44_ei_user_key_t u_key;
+  nat44_ei_main_per_thread_data_t *tnm =
+    vec_elt_at_index (nm->per_thread_data, thread_index);
+
+  if (u->nstaticsessions == 0 && u->nsessions == 0)
+    {
+      u_key.addr.as_u32 = u->addr.as_u32;
+      u_key.fib_index = u->fib_index;
+      kv.key = u_key.as_u64;
+      pool_put_index (tnm->list_pool, u->sessions_per_user_list_head_index);
+      pool_put (tnm->users, u);
+      clib_bihash_add_del_8_8 (&tnm->user_hash, &kv, 0);
+      vlib_set_simple_counter (&nm->total_users, thread_index, 0,
+			       pool_elts (tnm->users));
+    }
+}
+
+static_always_inline u8
+nat44_ei_maximum_sessions_exceeded (nat44_ei_main_t *nm, u32 thread_index)
+{
+  if (pool_elts (nm->per_thread_data[thread_index].sessions) >=
+      nm->max_translations_per_thread)
     return 1;
   return 0;
 }
 
 always_inline void
-nat44_ei_session_update_counters (snat_session_t *s, f64 now, uword bytes,
+nat44_ei_session_update_counters (nat44_ei_session_t *s, f64 now, uword bytes,
 				  u32 thread_index)
 {
   s->last_heard = now;

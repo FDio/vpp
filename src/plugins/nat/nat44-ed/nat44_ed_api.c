@@ -26,17 +26,10 @@
 #include <nat/lib/nat_inlines.h>
 #include <nat/lib/ipfix_logging.h>
 
-#include <nat/nat.h>
+#include <nat/nat44-ed/nat44_ed.h>
 
-#include <nat/nat44.api_enum.h>
-#include <nat/nat44.api_types.h>
-
-#include <nat/nat44-ei/nat44_ei_ha.h>
-#include <nat/nat44-ei/nat44_ei.h>
-#include <nat/nat_inlines.h>
-
-#include <nat/nat44/inlines.h>
-#include <nat/nat44/ed_inlines.h>
+#include <nat/nat44-ed/nat44_ed.api_enum.h>
+#include <nat/nat44-ed/nat44_ed.api_types.h>
 
 #define REPLY_MSG_ID_BASE sm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
@@ -48,12 +41,10 @@ vl_api_nat_control_ping_t_handler (vl_api_nat_control_ping_t * mp)
   snat_main_t *sm = &snat_main;
   int rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_NAT_CONTROL_PING_REPLY,
   ({
     rmp->vpe_pid = ntohl (getpid ());
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -63,21 +54,19 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t * mp)
   snat_main_t *sm = &snat_main;
   int rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2_ZERO (VL_API_NAT_SHOW_CONFIG_REPLY,
   ({
     rmp->translation_buckets = htonl (sm->translation_buckets);
-    rmp->user_buckets = htonl (sm->user_buckets);
-    rmp->max_translations_per_user = htonl (sm->max_translations_per_user);
+    rmp->user_buckets = 0;
+    rmp->max_translations_per_user = 0;
     rmp->outside_vrf_id = htonl (sm->outside_vrf_id);
     rmp->inside_vrf_id = htonl (sm->inside_vrf_id);
     rmp->static_mapping_only = sm->static_mapping_only;
     rmp->static_mapping_connection_tracking =
       sm->static_mapping_connection_tracking;
-    rmp->endpoint_dependent = sm->endpoint_dependent;
-    rmp->out2in_dpo = sm->out2in_dpo;
+    rmp->endpoint_dependent = 1;
+    rmp->out2in_dpo = 0;
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -87,23 +76,22 @@ vl_api_nat_show_config_2_t_handler (vl_api_nat_show_config_2_t * mp)
   snat_main_t *sm = &snat_main;
   int rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2_ZERO (VL_API_NAT_SHOW_CONFIG_2_REPLY,
   ({
     rmp->translation_buckets = htonl (sm->translation_buckets);
-    rmp->user_buckets = htonl (sm->user_buckets);
-    rmp->max_translations_per_user = htonl (sm->max_translations_per_user);
+    rmp->user_buckets = 0;
+    rmp->max_translations_per_user = 0;
     rmp->outside_vrf_id = htonl (sm->outside_vrf_id);
     rmp->inside_vrf_id = htonl (sm->inside_vrf_id);
     rmp->static_mapping_only = sm->static_mapping_only;
     rmp->static_mapping_connection_tracking =
       sm->static_mapping_connection_tracking;
-    rmp->endpoint_dependent = sm->endpoint_dependent;
-    rmp->out2in_dpo = sm->out2in_dpo;
-    rmp->max_translations_per_thread = clib_net_to_host_u32(sm->max_translations_per_thread);
-    rmp->max_users_per_thread = clib_net_to_host_u32(sm->max_users_per_thread);
+    rmp->endpoint_dependent = 1;
+    rmp->out2in_dpo = 0;
+    rmp->max_translations_per_thread =
+      clib_net_to_host_u32 (sm->max_translations_per_thread);
+    rmp->max_users_per_thread = 0;
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -115,17 +103,18 @@ vl_api_nat44_show_running_config_t_handler (vl_api_nat44_show_running_config_t
   nat44_config_t *rc = &sm->rconfig;
   int rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2_ZERO (VL_API_NAT44_SHOW_RUNNING_CONFIG_REPLY,
   ({
     rmp->inside_vrf = htonl (rc->inside_vrf);
     rmp->outside_vrf = htonl (rc->outside_vrf);
-    rmp->users = htonl (rc->users);
-    rmp->sessions = htonl (rc->sessions);
-    rmp->user_sessions = htonl (rc->user_sessions);
 
-    rmp->user_buckets = htonl (sm->user_buckets);
+    rmp->sessions = htonl (rc->sessions);
     rmp->translation_buckets = htonl (sm->translation_buckets);
+
+    // OBSOLETE
+    rmp->users = 0;
+    rmp->user_buckets = 0;
+    rmp->user_sessions = 0;
 
     rmp->timeouts.udp = htonl (sm->timeouts.udp);
     rmp->timeouts.tcp_established = htonl (sm->timeouts.tcp.established);
@@ -135,20 +124,12 @@ vl_api_nat44_show_running_config_t_handler (vl_api_nat44_show_running_config_t
     rmp->forwarding_enabled = sm->forwarding_enabled == 1;
     // consider how to split functionality between subplugins
     rmp->ipfix_logging_enabled = nat_ipfix_logging_enabled ();
-
-    if (rc->endpoint_dependent)
-      rmp->flags |= NAT44_IS_ENDPOINT_DEPENDENT;
-    else
-      rmp->flags |= NAT44_IS_ENDPOINT_INDEPENDENT;
-
+    rmp->flags |= NAT44_IS_ENDPOINT_DEPENDENT;
     if (rc->static_mapping_only)
       rmp->flags |= NAT44_IS_STATIC_MAPPING_ONLY;
     if (rc->connection_tracking)
       rmp->flags |= NAT44_IS_CONNECTION_TRACKING;
-    if (rc->out2in_dpo)
-      rmp->flags |= NAT44_IS_OUT2IN_DPO;
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -207,10 +188,10 @@ vl_api_nat_worker_dump_t_handler (vl_api_nat_worker_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   vec_foreach (worker_index, sm->workers)
-    send_nat_worker_details(*worker_index, reg, mp->context);
-  /* *INDENT-ON* */
+    {
+      send_nat_worker_details (*worker_index, reg, mp->context);
+    }
 }
 
 static void
@@ -218,7 +199,7 @@ vl_api_nat44_session_cleanup_t_handler (vl_api_nat44_session_cleanup_t * mp)
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat44_session_cleanup_reply_t *rmp;
-  int rv = 0;
+  int rv = VNET_API_ERROR_UNSUPPORTED;
   REPLY_MACRO (VL_API_NAT44_SESSION_CLEANUP_REPLY);
 }
 
@@ -262,24 +243,28 @@ static void
 
   if (mp->enable)
     {
-      c.endpoint_dependent = mp->flags & NAT44_API_IS_ENDPOINT_DEPENDENT;
-      c.static_mapping_only = mp->flags & NAT44_API_IS_STATIC_MAPPING_ONLY;
-      c.connection_tracking = mp->flags & NAT44_API_IS_CONNECTION_TRACKING;
-      c.out2in_dpo = mp->flags & NAT44_API_IS_OUT2IN_DPO;
+      if (mp->flags & NAT44_API_IS_OUT2IN_DPO || mp->users ||
+	  mp->user_sessions)
+	{
+	  rv = VNET_API_ERROR_UNSUPPORTED;
+	}
+      else
+	{
+	  c.static_mapping_only = mp->flags & NAT44_API_IS_STATIC_MAPPING_ONLY;
+	  c.connection_tracking = mp->flags & NAT44_API_IS_CONNECTION_TRACKING;
 
-      c.inside_vrf = ntohl (mp->inside_vrf);
-      c.outside_vrf = ntohl (mp->outside_vrf);
+	  c.inside_vrf = ntohl (mp->inside_vrf);
+	  c.outside_vrf = ntohl (mp->outside_vrf);
 
-      c.users = ntohl (mp->users);
+	  c.sessions = ntohl (mp->sessions);
 
-      c.sessions = ntohl (mp->sessions);
-
-      c.user_sessions = ntohl (mp->user_sessions);
-
-      rv = nat44_plugin_enable (c);
+	  rv = nat44_plugin_enable (c);
+	}
     }
   else
-    rv = nat44_plugin_disable ();
+    {
+      rv = nat44_plugin_disable ();
+    }
 
   REPLY_MACRO (VL_API_NAT44_PLUGIN_ENABLE_DISABLE_REPLY);
 }
@@ -322,7 +307,6 @@ vl_api_nat_get_timeouts_t_handler (vl_api_nat_get_timeouts_t * mp)
   vl_api_nat_get_timeouts_reply_t *rmp;
   int rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_NAT_GET_TIMEOUTS_REPLY,
   ({
     rmp->udp = htonl (sm->timeouts.udp);
@@ -330,7 +314,6 @@ vl_api_nat_get_timeouts_t_handler (vl_api_nat_get_timeouts_t * mp)
     rmp->tcp_transitory = htonl (sm->timeouts.tcp.transitory);
     rmp->icmp = htonl (sm->timeouts.icmp);
   }))
-  /* *INDENT-ON* */
 }
 
 static void
@@ -339,40 +322,7 @@ static void
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat_set_addr_and_port_alloc_alg_reply_t *rmp;
-  int rv = 0;
-  u16 port_start, port_end;
-
-  if (sm->endpoint_dependent)
-    {
-      rv = VNET_API_ERROR_UNSUPPORTED;
-      goto send_reply;
-    }
-
-  switch (mp->alg)
-    {
-    case NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT:
-      nat44_ei_set_alloc_default ();
-      break;
-    case NAT_ADDR_AND_PORT_ALLOC_ALG_MAPE:
-      nat44_ei_set_alloc_mape (ntohs (mp->psid), mp->psid_offset,
-			       mp->psid_length);
-      break;
-    case NAT_ADDR_AND_PORT_ALLOC_ALG_RANGE:
-      port_start = ntohs (mp->start_port);
-      port_end = ntohs (mp->end_port);
-      if (port_end <= port_start)
-	{
-	  rv = VNET_API_ERROR_INVALID_VALUE;
-	  goto send_reply;
-	}
-      nat44_ei_set_alloc_range (port_start, port_end);
-      break;
-    default:
-      rv = VNET_API_ERROR_INVALID_VALUE;
-      break;
-    }
-
-send_reply:
+  int rv = VNET_API_ERROR_UNSUPPORTED;
   REPLY_MACRO (VL_API_NAT_SET_ADDR_AND_PORT_ALLOC_ALG_REPLY);
 }
 
@@ -382,19 +332,8 @@ static void
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat_get_addr_and_port_alloc_alg_reply_t *rmp;
-  int rv = 0;
-
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_NAT_GET_ADDR_AND_PORT_ALLOC_ALG_REPLY,
-  ({
-    rmp->alg = sm->addr_and_port_alloc_alg;
-    rmp->psid_offset = sm->psid_offset;
-    rmp->psid_length = sm->psid_length;
-    rmp->psid = htons (sm->psid);
-    rmp->start_port = htons (sm->start_port);
-    rmp->end_port = htons (sm->end_port);
-  }))
-  /* *INDENT-ON* */
+  int rv = VNET_API_ERROR_UNSUPPORTED;
+  REPLY_MACRO (VL_API_NAT_GET_ADDR_AND_PORT_ALLOC_ALG_REPLY);
 }
 
 static void
@@ -419,13 +358,11 @@ vl_api_nat_get_mss_clamping_t_handler (vl_api_nat_get_mss_clamping_t * mp)
   vl_api_nat_get_mss_clamping_reply_t *rmp;
   int rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_NAT_GET_MSS_CLAMPING_REPLY,
   ({
     rmp->enable = sm->mss_clamping ? 1 : 0;
     rmp->mss_value = htons (sm->mss_clamping);
   }))
-  /* *INDENT-ON* */
 }
 
 static void
@@ -433,14 +370,7 @@ vl_api_nat_ha_set_listener_t_handler (vl_api_nat_ha_set_listener_t * mp)
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat_ha_set_listener_reply_t *rmp;
-  ip4_address_t addr;
-  int rv;
-
-  memcpy (&addr, &mp->ip_address, sizeof (addr));
-  rv =
-    nat_ha_set_listener (&addr, clib_net_to_host_u16 (mp->port),
-			 clib_net_to_host_u32 (mp->path_mtu));
-
+  int rv = VNET_API_ERROR_UNSUPPORTED;
   REPLY_MACRO (VL_API_NAT_HA_SET_LISTENER_REPLY);
 }
 
@@ -449,21 +379,8 @@ vl_api_nat_ha_get_listener_t_handler (vl_api_nat_ha_get_listener_t * mp)
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat_ha_get_listener_reply_t *rmp;
-  int rv = 0;
-  ip4_address_t addr;
-  u16 port;
-  u32 path_mtu;
-
-  nat_ha_get_listener (&addr, &port, &path_mtu);
-
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_NAT_HA_GET_LISTENER_REPLY,
-  ({
-    clib_memcpy (rmp->ip_address, &addr, sizeof (ip4_address_t));
-    rmp->port = clib_host_to_net_u16 (port);
-    rmp->path_mtu = clib_host_to_net_u32 (path_mtu);
-  }))
-  /* *INDENT-ON* */
+  int rv = VNET_API_ERROR_UNSUPPORTED;
+  REPLY_MACRO (VL_API_NAT_HA_GET_LISTENER_REPLY);
 }
 
 static void
@@ -471,14 +388,7 @@ vl_api_nat_ha_set_failover_t_handler (vl_api_nat_ha_set_failover_t * mp)
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat_ha_set_failover_reply_t *rmp;
-  ip4_address_t addr;
-  int rv;
-
-  memcpy (&addr, &mp->ip_address, sizeof (addr));
-  rv =
-    nat_ha_set_failover (&addr, clib_net_to_host_u16 (mp->port),
-			 clib_net_to_host_u32 (mp->session_refresh_interval));
-
+  int rv = VNET_API_ERROR_UNSUPPORTED;
   REPLY_MACRO (VL_API_NAT_HA_SET_FAILOVER_REPLY);
 }
 
@@ -487,21 +397,8 @@ vl_api_nat_ha_get_failover_t_handler (vl_api_nat_ha_get_failover_t * mp)
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat_ha_get_failover_reply_t *rmp;
-  int rv = 0;
-  ip4_address_t addr;
-  u16 port;
-  u32 session_refresh_interval;
-
-  nat_ha_get_failover (&addr, &port, &session_refresh_interval);
-
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_NAT_HA_GET_FAILOVER_REPLY,
-  ({
-    clib_memcpy (rmp->ip_address, &addr, sizeof (ip4_address_t));
-    rmp->port = clib_host_to_net_u16 (port);
-    rmp->session_refresh_interval = clib_host_to_net_u32 (session_refresh_interval);
-  }))
-  /* *INDENT-ON* */
+  int rv = VNET_API_ERROR_UNSUPPORTED;
+  REPLY_MACRO (VL_API_NAT_HA_GET_FAILOVER_REPLY);
 }
 
 static void
@@ -509,33 +406,8 @@ vl_api_nat_ha_flush_t_handler (vl_api_nat_ha_flush_t * mp)
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat_ha_flush_reply_t *rmp;
-  int rv = 0;
-
-  nat_ha_flush (0);
-
+  int rv = VNET_API_ERROR_UNSUPPORTED;
   REPLY_MACRO (VL_API_NAT_HA_FLUSH_REPLY);
-}
-
-static void
-nat_ha_resync_completed_event_cb (u32 client_index, u32 pid, u32 missed_count)
-{
-  snat_main_t *sm = &snat_main;
-  vl_api_registration_t *reg;
-  vl_api_nat_ha_resync_completed_event_t *mp;
-
-  reg = vl_api_client_index_to_registration (client_index);
-  if (!reg)
-    return;
-
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
-  mp->client_index = client_index;
-  mp->pid = pid;
-  mp->missed_count = clib_host_to_net_u32 (missed_count);
-  mp->_vl_msg_id =
-    ntohs (VL_API_NAT_HA_RESYNC_COMPLETED_EVENT + sm->msg_id_base);
-
-  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
@@ -543,13 +415,7 @@ vl_api_nat_ha_resync_t_handler (vl_api_nat_ha_resync_t * mp)
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat_ha_resync_reply_t *rmp;
-  int rv;
-
-  rv =
-    nat_ha_resync (mp->client_index, mp->pid,
-		   mp->want_resync_event ? nat_ha_resync_completed_event_cb :
-		   NULL);
-
+  int rv = VNET_API_ERROR_UNSUPPORTED;
   REPLY_MACRO (VL_API_NAT_HA_RESYNC_REPLY);
 }
 
@@ -558,10 +424,7 @@ vl_api_nat44_del_user_t_handler (vl_api_nat44_del_user_t * mp)
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat44_del_user_reply_t *rmp;
-  ip4_address_t addr;
-  int rv;
-  memcpy (&addr.as_u8, mp->ip_address, 4);
-  rv = nat44_ei_user_del (&addr, ntohl (mp->fib_index));
+  int rv = VNET_API_ERROR_UNSUPPORTED;
   REPLY_MACRO (VL_API_NAT44_DEL_USER_REPLY);
 }
 
@@ -614,9 +477,6 @@ static void
       if (rv)
 	goto send_reply;
 
-      if (sm->out2in_dpo)
-	nat44_add_del_address_dpo (this_addr, is_add);
-
       increment_v4_address (&this_addr);
     }
 
@@ -661,12 +521,10 @@ vl_api_nat44_address_dump_t_handler (vl_api_nat44_address_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   vec_foreach (a, sm->addresses)
     send_nat44_address_details (a, reg, mp->context, 0);
   vec_foreach (a, sm->twice_nat_addresses)
     send_nat44_address_details (a, reg, mp->context, 1);
-  /* *INDENT-ON* */
 }
 
 static void
@@ -725,12 +583,10 @@ vl_api_nat44_interface_dump_t_handler (vl_api_nat44_interface_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (i, sm->interfaces)
    {
     send_nat44_interface_details(i, reg, mp->context);
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -785,12 +641,10 @@ static void
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (i, sm->output_feature_interfaces)
    {
-    send_nat44_interface_output_feature_details(i, reg, mp->context);
+     send_nat44_interface_output_feature_details (i, reg, mp->context);
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -979,13 +833,11 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings)
    {
       if (!is_identity_static_mapping(m) && !is_lb_static_mapping (m))
         send_nat44_static_mapping_details (m, reg, mp->context);
   }
-  /* *INDENT-ON* */
 
   for (j = 0; j < vec_len (sm->to_resolve); j++)
     {
@@ -1101,7 +953,6 @@ static void
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings)
    {
       if (is_identity_static_mapping(m) && !is_lb_static_mapping (m))
@@ -1112,7 +963,6 @@ static void
           }
         }
   }
-  /* *INDENT-ON* */
 
   for (j = 0; j < vec_len (sm->to_resolve); j++)
     {
@@ -1176,13 +1026,44 @@ vl_api_nat44_interface_addr_dump_t_handler (vl_api_nat44_interface_addr_dump_t
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   vec_foreach (i, sm->auto_add_sw_if_indices)
-    send_nat44_interface_addr_details(*i, reg, mp->context, 0);
+    {
+      send_nat44_interface_addr_details (*i, reg, mp->context, 0);
+    }
   vec_foreach (i, sm->auto_add_sw_if_indices_twice_nat)
-    send_nat44_interface_addr_details(*i, reg, mp->context, 1);
-  /* *INDENT-ON* */
+    {
+      send_nat44_interface_addr_details (*i, reg, mp->context, 1);
+    }
 }
+
+/* user (internal host) key */
+typedef struct
+{
+  union
+  {
+    struct
+    {
+      ip4_address_t addr;
+      u32 fib_index;
+    };
+    u64 as_u64;
+  };
+} snat_user_key_t;
+
+typedef struct
+{
+  ip4_address_t addr;
+  u32 fib_index;
+  u32 nsessions;
+  u32 nstaticsessions;
+} snat_user_t;
+
+typedef struct
+{
+  u32 user_buckets;
+  snat_user_t *users;
+  clib_bihash_8_8_t user_hash;
+} user_create_helper_t;
 
 static void
 send_nat44_user_details (snat_user_t * u, vl_api_registration_t * reg,
@@ -1211,8 +1092,7 @@ send_nat44_user_details (snat_user_t * u, vl_api_registration_t * reg,
 }
 
 static void
-nat_ed_user_create_helper (snat_main_per_thread_data_t * tsm,
-			   snat_session_t * s)
+nat_ed_user_create_helper (user_create_helper_t *uch, snat_session_t *s)
 {
   snat_user_key_t k;
   k.addr = s->in2out.addr;
@@ -1220,19 +1100,20 @@ nat_ed_user_create_helper (snat_main_per_thread_data_t * tsm,
   clib_bihash_kv_8_8_t key, value;
   key.key = k.as_u64;
   snat_user_t *u;
-  if (clib_bihash_search_8_8 (&tsm->user_hash, &key, &value))
+
+  if (clib_bihash_search_8_8 (&uch->user_hash, &key, &value))
     {
-      pool_get (tsm->users, u);
+      pool_get (uch->users, u);
       u->addr = k.addr;
       u->fib_index = k.fib_index;
       u->nsessions = 0;
       u->nstaticsessions = 0;
-      key.value = u - tsm->users;
-      clib_bihash_add_del_8_8 (&tsm->user_hash, &key, 1);
+      key.value = u - uch->users;
+      clib_bihash_add_del_8_8 (&uch->user_hash, &key, 1);
     }
   else
     {
-      u = pool_elt_at_index (tsm->users, value.value);
+      u = pool_elt_at_index (uch->users, value.value);
     }
   if (snat_is_session_static (s))
     {
@@ -1244,56 +1125,63 @@ nat_ed_user_create_helper (snat_main_per_thread_data_t * tsm,
     }
 }
 
-static void
-nat_ed_users_create (snat_main_per_thread_data_t * tsm)
+u8 *
+format_user_kvp (u8 *s, va_list *args)
 {
-  snat_session_t *s;
-  /* *INDENT-OFF* */
-  pool_foreach (s, tsm->sessions) { nat_ed_user_create_helper (tsm, s); }
-  /* *INDENT-ON* */
+  clib_bihash_kv_8_8_t *v = va_arg (*args, clib_bihash_kv_8_8_t *);
+  snat_user_key_t k;
+  k.as_u64 = v->key;
+  s = format (s, "%U fib %d user-index %llu", format_ip4_address, &k.addr,
+	      k.fib_index, v->value);
+  return s;
 }
 
 static void
-nat_ed_users_destroy (snat_main_per_thread_data_t * tsm)
+nat_ed_users_create (snat_main_per_thread_data_t *tsm,
+		     user_create_helper_t *uch)
 {
-  snat_user_t *u;
-  /* *INDENT-OFF* */
-  pool_flush (u, tsm->users, { });
-  /* *INDENT-ON* */
-  clib_bihash_free_8_8 (&tsm->user_hash);
-  clib_bihash_init_8_8 (&tsm->user_hash, "users", snat_main.user_buckets, 0);
-  clib_bihash_set_kvp_format_fn_8_8 (&tsm->user_hash, format_user_kvp);
+  snat_session_t *s;
+  clib_bihash_init_8_8 (&uch->user_hash, "users", uch->user_buckets, 0);
+  clib_bihash_set_kvp_format_fn_8_8 (&uch->user_hash, format_user_kvp);
+  pool_foreach (s, tsm->sessions)
+    {
+      nat_ed_user_create_helper (uch, s);
+    }
+}
+
+static void
+nat_ed_users_destroy (user_create_helper_t *uch)
+{
+  pool_free (uch->users);
+  clib_bihash_free_8_8 (&uch->user_hash);
 }
 
 static void
 vl_api_nat44_user_dump_t_handler (vl_api_nat44_user_dump_t * mp)
 {
+  user_create_helper_t uch;
   vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm;
   snat_user_t *u;
 
+  clib_memset (&uch, 0, sizeof (uch));
+
+  uch.user_buckets = nat_calc_bihash_buckets (1024);
+
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   vec_foreach (tsm, sm->per_thread_data)
     {
-      if (sm->endpoint_dependent)
+      nat_ed_users_create (tsm, &uch);
+      pool_foreach (u, uch.users)
 	{
-	  nat_ed_users_create (tsm);
+	  send_nat44_user_details (u, reg, mp->context);
 	}
-      pool_foreach (u, tsm->users)
-       {
-        send_nat44_user_details (u, reg, mp->context);
-      }
-      if (sm->endpoint_dependent)
-	{
-	  nat_ed_users_destroy (tsm);
-	}
+      nat_ed_users_destroy (&uch);
     }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -1353,15 +1241,11 @@ static void
 vl_api_nat44_user_session_dump_t_handler (vl_api_nat44_user_session_dump_t *
 					  mp)
 {
-  vl_api_registration_t *reg;
-  snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm;
-  snat_session_t *s;
-  clib_bihash_kv_8_8_t key, value;
+  snat_main_t *sm = &snat_main;
+  vl_api_registration_t *reg;
   snat_user_key_t ukey;
-  snat_user_t *u;
-  u32 session_index, head_index, elt_index;
-  dlist_elt_t *head, *elt;
+  snat_session_t *s;
   ip4_header_t ip;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -1371,48 +1255,19 @@ vl_api_nat44_user_session_dump_t_handler (vl_api_nat44_user_session_dump_t *
   clib_memcpy (&ukey.addr, mp->ip_address, 4);
   ip.src_address.as_u32 = ukey.addr.as_u32;
   ukey.fib_index = fib_table_find (FIB_PROTOCOL_IP4, ntohl (mp->vrf_id));
-  key.key = ukey.as_u64;
   if (sm->num_workers > 1)
     tsm =
       vec_elt_at_index (sm->per_thread_data,
 			sm->worker_in2out_cb (&ip, ukey.fib_index, 0));
   else
     tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
-  if (!sm->endpoint_dependent)
-    {
-      if (clib_bihash_search_8_8 (&tsm->user_hash, &key, &value))
-	return;
-      u = pool_elt_at_index (tsm->users, value.value);
-      if (!u->nsessions && !u->nstaticsessions)
-	return;
 
-      head_index = u->sessions_per_user_list_head_index;
-      head = pool_elt_at_index (tsm->list_pool, head_index);
-      elt_index = head->next;
-      elt = pool_elt_at_index (tsm->list_pool, elt_index);
-      session_index = elt->value;
-      while (session_index != ~0)
-	{
-	  s = pool_elt_at_index (tsm->sessions, session_index);
-
-	  send_nat44_user_session_details (s, reg, mp->context);
-
-	  elt_index = elt->next;
-	  elt = pool_elt_at_index (tsm->list_pool, elt_index);
-	  session_index = elt->value;
-	}
-    }
-  else
-    {
-      /* *INDENT-OFF* */
       pool_foreach (s, tsm->sessions) {
         if (s->in2out.addr.as_u32 == ukey.addr.as_u32)
           {
             send_nat44_user_session_details (s, reg, mp->context);
           }
       }
-      /* *INDENT-ON* */
-    }
 }
 
 static nat44_lb_addr_port_t *
@@ -1450,12 +1305,6 @@ static void
   nat_protocol_t proto;
   u8 *tag = 0;
 
-  if (!sm->endpoint_dependent)
-    {
-      rv = VNET_API_ERROR_UNSUPPORTED;
-      goto send_reply;
-    }
-
   locals =
     unformat_nat44_lb_addr_port (mp->locals,
 				 clib_net_to_host_u32 (mp->local_num));
@@ -1480,8 +1329,6 @@ static void
 
   vec_free (locals);
   vec_free (tag);
-
-send_reply:
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_LB_STATIC_MAPPING_REPLY);
 }
 
@@ -1494,12 +1341,6 @@ static void
   int rv = 0;
   ip4_address_t e_addr, l_addr;
   nat_protocol_t proto;
-
-  if (!sm->endpoint_dependent)
-    {
-      rv = VNET_API_ERROR_UNSUPPORTED;
-      goto send_reply;
-    }
 
   clib_memcpy (&e_addr, mp->external_addr, 4);
   clib_memcpy (&l_addr, mp->local.addr, 4);
@@ -1515,7 +1356,6 @@ static void
 								 local.vrf_id),
 					   mp->local.probability, mp->is_add);
 
-send_reply:
   REPLY_MACRO (VL_API_NAT44_LB_STATIC_MAPPING_ADD_DEL_LOCAL_REPLY);
 }
 
@@ -1553,7 +1393,6 @@ send_nat44_lb_static_mapping_details (snat_static_mapping_t * m,
     strncpy ((char *) rmp->tag, (char *) m->tag, vec_len (m->tag));
 
   locals = (vl_api_nat44_lb_addr_port_t *) rmp->locals;
-  /* *INDENT-OFF* */
   pool_foreach (ap, m->locals)
    {
     clib_memcpy (locals->addr, &(ap->addr), 4);
@@ -1563,7 +1402,6 @@ send_nat44_lb_static_mapping_details (snat_static_mapping_t * m,
     locals++;
     local_num++;
   }
-  /* *INDENT-ON* */
   rmp->local_num = ntohl (local_num);
 
   vl_api_send_msg (reg, (u8 *) rmp);
@@ -1577,20 +1415,15 @@ static void
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
 
-  if (!sm->endpoint_dependent)
-    return;
-
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings)
    {
       if (is_lb_static_mapping(m))
         send_nat44_lb_static_mapping_details (m, reg, mp->context);
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -1614,12 +1447,8 @@ vl_api_nat44_del_session_t_handler (vl_api_nat44_del_session_t * mp)
 
   is_in = mp->flags & NAT_API_IS_INSIDE;
 
-  if (mp->flags & NAT_API_IS_EXT_HOST_VALID)
-    rv =
-      nat44_del_ed_session (sm, &addr, port, &eh_addr, eh_port, mp->protocol,
-			    vrf_id, is_in);
-  else
-    rv = nat44_ei_del_session (sm, &addr, port, proto, vrf_id, is_in);
+  rv = nat44_del_ed_session (sm, &addr, port, &eh_addr, eh_port, mp->protocol,
+			     vrf_id, is_in);
 
   REPLY_MACRO (VL_API_NAT44_DEL_SESSION_REPLY);
 }
@@ -1628,47 +1457,10 @@ static void
   vl_api_nat44_forwarding_enable_disable_t_handler
   (vl_api_nat44_forwarding_enable_disable_t * mp)
 {
-  snat_main_t *sm = &snat_main;
   vl_api_nat44_forwarding_enable_disable_reply_t *rmp;
+  snat_main_t *sm = &snat_main;
   int rv = 0;
-  u32 *ses_to_be_removed = 0, *ses_index;
-  snat_main_per_thread_data_t *tsm;
-  snat_session_t *s;
-
-  sm->forwarding_enabled = mp->enable != 0;
-
-  if (mp->enable == 0)
-    {
-      /* *INDENT-OFF* */
-      vec_foreach (tsm, sm->per_thread_data)
-      {
-        pool_foreach (s, tsm->sessions)
-         {
-          if (is_fwd_bypass_session(s))
-            {
-              vec_add1 (ses_to_be_removed, s - tsm->sessions);
-            }
-        }
-	if(sm->endpoint_dependent){
-	    vec_foreach (ses_index, ses_to_be_removed)
-	      {
-		s = pool_elt_at_index(tsm->sessions, ses_index[0]);
-		nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
-		nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
-	      }
-	}else{
-	    vec_foreach (ses_index, ses_to_be_removed)
-	      {
-		s = pool_elt_at_index(tsm->sessions, ses_index[0]);
-		nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
-		nat44_delete_session (sm, s, tsm - sm->per_thread_data);
-	      }
-	}
-        vec_free (ses_to_be_removed);
-      }
-      /* *INDENT-ON* */
-    }
-
+  nat44_ed_forwarding_enable_disable (mp->enable);
   REPLY_MACRO (VL_API_NAT44_FORWARDING_ENABLE_DISABLE_REPLY);
 }
 
@@ -1697,7 +1489,7 @@ static void
 
 /* API definitions */
 #include <vnet/format_fns.h>
-#include <nat/nat44.api.c>
+#include <nat/nat44-ed/nat44_ed.api.c>
 
 /* Set up the API message handling tables */
 clib_error_t *

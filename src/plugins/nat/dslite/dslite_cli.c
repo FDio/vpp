@@ -204,25 +204,6 @@ dslite_show_b4_ip6_addr_command_fn (vlib_main_t * vm,
 }
 
 static u8 *
-format_nat_protocol (u8 * s, va_list * args)
-{
-  u32 i = va_arg (*args, u32);
-  u8 *t = 0;
-
-  switch (i)
-    {
-#define _(N, j, n, str) case NAT_PROTOCOL_##N: t = (u8 *) str; break;
-      foreach_nat_protocol
-#undef _
-    default:
-      s = format (s, "unknown");
-      return s;
-    }
-  s = format (s, "%s", t);
-  return s;
-}
-
-static u8 *
 format_dslite_session (u8 * s, va_list * args)
 {
   dslite_session_t *session = va_arg (*args, dslite_session_t *);

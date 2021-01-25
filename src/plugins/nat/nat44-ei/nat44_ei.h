@@ -19,6 +19,92 @@
 #ifndef __included_nat44_ei_h__
 #define __included_nat44_ei_h__
 
+#include <vlib/log.h>
+#include <vlibapi/api.h>
+
+#include <vnet/vnet.h>
+#include <vnet/ip/ip.h>
+#include <vnet/ethernet/ethernet.h>
+#include <vnet/ip/icmp46_packet.h>
+#include <vnet/api_errno.h>
+#include <vnet/fib/fib_source.h>
+
+#include <vppinfra/dlist.h>
+#include <vppinfra/error.h>
+#include <vppinfra/bihash_8_8.h>
+
+#include <nat/lib/lib.h>
+#include <nat/lib/inlines.h>
+
+/* External address and port allocation modes */
+#define foreach_nat44_ei_addr_and_port_alloc_alg                              \
+  _ (0, DEFAULT, "default")                                                   \
+  _ (1, MAPE, "map-e")                                                        \
+  _ (2, RANGE, "port-range")
+
+typedef enum
+{
+#define _(v, N, s) NAT44_EI_ADDR_AND_PORT_ALLOC_ALG_##N = v,
+  foreach_nat44_ei_addr_and_port_alloc_alg
+#undef _
+} nat44_ei_addr_and_port_alloc_alg_t;
+
+/* Interface flags */
+#define NAT44_EI_INTERFACE_FLAG_IS_INSIDE  (1 << 0)
+#define NAT44_EI_INTERFACE_FLAG_IS_OUTSIDE (1 << 1)
+
+/* Session flags */
+#define NAT44_EI_SESSION_FLAG_STATIC_MAPPING (1 << 0)
+#define NAT44_EI_SESSION_FLAG_UNKNOWN_PROTO  (1 << 1)
+
+/* Static mapping flags */
+#define NAT44_EI_STATIC_MAPPING_FLAG_ADDR_ONLY	  (1 << 0)
+#define NAT44_EI_STATIC_MAPPING_FLAG_IDENTITY_NAT (1 << 1)
+
+typedef struct
+{
+  ip4_address_t addr;
+  u32 fib_index;
+#define _(N, i, n, s)                                                         \
+  u32 busy_##n##_ports;                                                       \
+  u32 *busy_##n##_ports_per_thread;                                           \
+  u32 busy_##n##_port_refcounts[65535];
+  foreach_nat_protocol
+#undef _
+} nat44_ei_address_t;
+
+clib_error_t *nat44_ei_api_hookup (vlib_main_t *vm);
+
+/* NAT address and port allocation function */
+typedef int (nat44_ei_alloc_out_addr_and_port_function_t) (
+  nat44_ei_address_t *addresses, u32 fib_index, u32 thread_index,
+  nat_protocol_t proto, ip4_address_t *addr, u16 *port, u16 port_per_thread,
+  u32 snat_thread_index);
+
+typedef struct
+{
+  u16 identifier;
+  u16 sequence;
+} icmp_echo_header_t;
+
+typedef struct
+{
+  u16 src_port, dst_port;
+} tcp_udp_header_t;
+
+typedef struct
+{
+  union
+  {
+    struct
+    {
+      ip4_address_t addr;
+      u32 fib_index;
+    };
+    u64 as_u64;
+  };
+} nat44_ei_user_key_t;
+
 typedef struct
 {
   /* maximum number of users */
@@ -40,13 +126,374 @@ typedef struct
 
 typedef struct
 {
+  ip4_address_t l_addr;
+  ip4_address_t pool_addr;
+  u16 l_port;
+  u16 e_port;
+  u32 sw_if_index;
+  u32 vrf_id;
+  u32 flags;
+  nat_protocol_t proto;
+  u8 addr_only;
+  u8 identity_nat;
+  u8 exact;
+  u8 *tag;
+} nat44_ei_static_map_resolve_t;
+
+// TODO: cleanup/redo (there is no lb in EI nat)
+typedef struct
+{
+  /* backend IP address */
+  ip4_address_t addr;
+  /* backend port number */
+  u16 port;
+  /* probability of the backend to be randomly matched */
+  u8 probability;
+  u8 prefix;
+  /* backend FIB table */
+  u32 vrf_id;
+  u32 fib_index;
+} nat44_ei_lb_addr_port_t;
+
+typedef struct
+{
+  /* prefered pool address */
+  ip4_address_t pool_addr;
+  /* local IP address */
+  ip4_address_t local_addr;
+  /* external IP address */
+  ip4_address_t external_addr;
+  /* local port */
+  u16 local_port;
+  /* external port */
+  u16 external_port;
+  /* local FIB table */
+  u32 vrf_id;
+  u32 fib_index;
+  /* protocol */
+  nat_protocol_t proto;
+  /* worker threads used by backends/local host */
+  u32 *workers;
+  /* opaque string tag */
+  u8 *tag;
+  /* backends for load-balancing mode */
+  nat44_ei_lb_addr_port_t *locals;
+  /* flags */
+  u32 flags;
+} nat44_ei_static_mapping_t;
+
+typedef struct
+{
+  u32 sw_if_index;
+  u8 flags;
+} nat44_ei_interface_t;
+
+typedef struct
+{
+  u32 fib_index;
+  u32 ref_count;
+} nat44_ei_fib_t;
+
+typedef struct
+{
+  u32 fib_index;
+  u32 refcount;
+} nat44_ei_outside_fib_t;
+
+typedef CLIB_PACKED (struct {
+  /* Outside network tuple */
+  struct
+  {
+    ip4_address_t addr;
+    u32 fib_index;
+    u16 port;
+  } out2in;
+
+  /* Inside network tuple */
+  struct
+  {
+    ip4_address_t addr;
+    u32 fib_index;
+    u16 port;
+  } in2out;
+
+  nat_protocol_t nat_proto;
+
+  /* Flags */
+  u32 flags;
+
+  /* Per-user translations */
+  u32 per_user_index;
+  u32 per_user_list_head_index;
+
+  /* head of LRU list in which this session is tracked */
+  u32 lru_head_index;
+  /* index in global LRU list */
+  u32 lru_index;
+  f64 last_lru_update;
+
+  /* Last heard timer */
+  f64 last_heard;
+
+  /* Last HA refresh */
+  f64 ha_last_refreshed;
+
+  /* Counters */
+  u64 total_bytes;
+  u32 total_pkts;
+
+  /* External host address and port */
+  ip4_address_t ext_host_addr;
+  u16 ext_host_port;
+
+  /* External host address and port after translation */
+  ip4_address_t ext_host_nat_addr;
+  u16 ext_host_nat_port;
+
+  /* TCP session state */
+  u8 state;
+  u32 i2o_fin_seq;
+  u32 o2i_fin_seq;
+  u64 tcp_closed_timestamp;
+
+  /* user index */
+  u32 user_index;
+}) nat44_ei_session_t;
+
+typedef CLIB_PACKED (struct {
+  ip4_address_t addr;
+  u32 fib_index;
+  u32 sessions_per_user_list_head_index;
+  u32 nsessions;
+  u32 nstaticsessions;
+}) nat44_ei_user_t;
+
+typedef struct
+{
+  /* Main lookup tables */
+  clib_bihash_8_8_t out2in;
+  clib_bihash_8_8_t in2out;
+
+  /* Find-a-user => src address lookup */
+  clib_bihash_8_8_t user_hash;
+
+  /* User pool */
+  nat44_ei_user_t *users;
+
+  /* Session pool */
+  nat44_ei_session_t *sessions;
+
+  /* Pool of doubly-linked list elements */
+  dlist_elt_t *list_pool;
+
+  /* LRU session list - head is stale, tail is fresh */
+  dlist_elt_t *lru_pool;
+  u32 tcp_trans_lru_head_index;
+  u32 tcp_estab_lru_head_index;
+  u32 udp_lru_head_index;
+  u32 icmp_lru_head_index;
+  u32 unk_proto_lru_head_index;
+
+  /* NAT thread index */
+  u32 snat_thread_index;
+
+  /* real thread index */
+  u32 thread_index;
+
+} nat44_ei_main_per_thread_data_t;
+
+/* Return worker thread index for given packet */
+typedef u32 (nat44_ei_get_worker_in2out_function_t) (ip4_header_t *ip,
+						     u32 rx_fib_index,
+						     u8 is_output);
+
+typedef u32 (nat44_ei_get_worker_out2in_function_t) (vlib_buffer_t *b,
+						     ip4_header_t *ip,
+						     u32 rx_fib_index,
+						     u8 is_output);
+
+typedef struct
+{
+  u32 cached_sw_if_index;
+  u32 cached_ip4_address;
+} nat44_ei_runtime_t;
+
+typedef struct
+{
+  u32 thread_index;
+  f64 now;
+} nat44_ei_is_idle_session_ctx_t;
+
+typedef struct nat44_ei_main_s
+{
   u32 translations;
   u32 translation_buckets;
   u32 user_buckets;
 
+  u8 out2in_dpo;
+  u8 forwarding_enabled;
+  u8 static_mapping_only;
+  u8 static_mapping_connection_tracking;
+
+  u16 mss_clamping;
+
+  /* Find a static mapping by local */
+  clib_bihash_8_8_t static_mapping_by_local;
+
+  /* Find a static mapping by external */
+  clib_bihash_8_8_t static_mapping_by_external;
+
+  /* Static mapping pool */
+  nat44_ei_static_mapping_t *static_mappings;
+
+  /* Interface pool */
+  nat44_ei_interface_t *interfaces;
+  nat44_ei_interface_t *output_feature_interfaces;
+
+  /* Is translation memory size calculated or user defined */
+  u8 translation_memory_size_set;
+
+  u32 max_users_per_thread;
+  u32 max_translations_per_thread;
+  u32 max_translations_per_user;
+
+  u32 inside_vrf_id;
+  u32 inside_fib_index;
+
+  u32 outside_vrf_id;
+  u32 outside_fib_index;
+
+  /* Thread settings */
+  u32 num_workers;
+  u32 first_worker_index;
+  u32 *workers;
+  nat44_ei_get_worker_in2out_function_t *worker_in2out_cb;
+  nat44_ei_get_worker_out2in_function_t *worker_out2in_cb;
+  u16 port_per_thread;
+
+  /* Per thread data */
+  nat44_ei_main_per_thread_data_t *per_thread_data;
+
+  /* Vector of outside addresses */
+  nat44_ei_address_t *addresses;
+
+  nat44_ei_alloc_out_addr_and_port_function_t *alloc_addr_and_port;
+  /* Address and port allocation type */
+  nat44_ei_addr_and_port_alloc_alg_t addr_and_port_alloc_alg;
+  /* Port set parameters (MAP-E) */
+  u8 psid_offset;
+  u8 psid_length;
+  u16 psid;
+  /* Port range parameters */
+  u16 start_port;
+  u16 end_port;
+
+  /* vector of fibs */
+  nat44_ei_fib_t *fibs;
+
+  /* vector of outside fibs */
+  nat44_ei_outside_fib_t *outside_fibs;
+
+  /* sw_if_indices whose intfc addresses should be auto-added */
+  u32 *auto_add_sw_if_indices;
+
+  /* vector of interface address static mappings to resolve. */
+  nat44_ei_static_map_resolve_t *to_resolve;
+
+  u32 in2out_node_index;
+  u32 out2in_node_index;
+  u32 in2out_output_node_index;
+
+  u32 fq_in2out_index;
+  u32 fq_in2out_output_index;
+  u32 fq_out2in_index;
+
+  /* Randomize port allocation order */
+  u32 random_seed;
+
+  /* Port range parameters */
+  // u16 start_port;
+  // u16 end_port;
+
+  nat_timeouts_t timeouts;
+
+  /* counters */
+  vlib_simple_counter_main_t total_users;
+  vlib_simple_counter_main_t total_sessions;
+  vlib_simple_counter_main_t user_limit_reached;
+
+#define _(x) vlib_simple_counter_main_t x;
+  struct
+  {
+    struct
+    {
+      struct
+      {
+	foreach_nat_counter;
+      } in2out;
+
+      struct
+      {
+	foreach_nat_counter;
+      } out2in;
+
+    } fastpath;
+
+    struct
+    {
+      struct
+      {
+	foreach_nat_counter;
+      } in2out;
+
+      struct
+      {
+	foreach_nat_counter;
+      } out2in;
+    } slowpath;
+
+    vlib_simple_counter_main_t hairpinning;
+  } counters;
+#undef _
+
+  /* API message ID base */
+  u16 msg_id_base;
+
+  /* log class */
+  vlib_log_class_t log_class;
+  /* logging level */
+  u8 log_level;
+
+  /* convenience */
+  api_main_t *api_main;
+  ip4_main_t *ip4_main;
+  ip_lookup_main_t *ip4_lookup_main;
+
+  fib_source_t fib_src_hi;
+  fib_source_t fib_src_low;
+
+  /* pat (port address translation)
+   * dynamic mapping enabled or conneciton tracking */
+  u8 pat;
+
+  /* nat44 plugin enabled */
+  u8 enabled;
+
   nat44_ei_config_t rconfig;
 
+  vnet_main_t *vnet_main;
 } nat44_ei_main_t;
+
+extern nat44_ei_main_t nat44_ei_main;
+
+/*
+extern vlib_node_registration_t nat44_ei_in2out_node;
+extern vlib_node_registration_t nat44_ei_in2out_output_node;
+extern vlib_node_registration_t nat44_ei_out2in_node;
+extern vlib_node_registration_t nat44_ei_in2out_worker_handoff_node;
+extern vlib_node_registration_t nat44_ei_in2out_output_worker_handoff_node;
+extern vlib_node_registration_t nat44_ei_out2in_worker_handoff_node;
+*/
 
 int nat44_ei_plugin_enable (nat44_ei_config_t c);
 
@@ -66,11 +513,9 @@ int nat44_ei_user_del (ip4_address_t *addr, u32 fib_index);
  * @param addr         IPv4 address
  * @param fib_index    FIB table index
  */
-void nat44_ei_static_mapping_del_sessions (snat_main_t *sm,
-					   snat_main_per_thread_data_t *tsm,
-					   snat_user_key_t u_key,
-					   int addr_only, ip4_address_t e_addr,
-					   u16 e_port);
+void nat44_ei_static_mapping_del_sessions (
+  nat44_ei_main_t *nm, nat44_ei_main_per_thread_data_t *tnm,
+  nat44_ei_user_key_t u_key, int addr_only, ip4_address_t e_addr, u16 e_port);
 
 u32 nat44_ei_get_in2out_worker_index (ip4_header_t *ip0, u32 rx_fib_index0,
 				      u8 is_output);
@@ -135,7 +580,7 @@ int nat44_ei_add_del_static_mapping (ip4_address_t l_addr,
  *
  * @return 0 on success, non-zero value otherwise
  */
-int nat44_ei_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
+int nat44_ei_del_session (nat44_ei_main_t *nm, ip4_address_t *addr, u16 port,
 			  nat_protocol_t proto, u32 vrf_id, int is_in);
 
 /**
@@ -164,6 +609,95 @@ int nat44_ei_static_mapping_match (ip4_address_t match_addr, u16 match_port,
  * @brief Clear all active NAT44-EI sessions.
  */
 void nat44_ei_sessions_clear ();
+
+nat44_ei_user_t *nat44_ei_user_get_or_create (nat44_ei_main_t *nm,
+					      ip4_address_t *addr,
+					      u32 fib_index, u32 thread_index);
+
+nat44_ei_session_t *nat44_ei_session_alloc_or_recycle (nat44_ei_main_t *nm,
+						       nat44_ei_user_t *u,
+						       u32 thread_index,
+						       f64 now);
+
+void nat44_ei_free_session_data_v2 (nat44_ei_main_t *nm, nat44_ei_session_t *s,
+				    u32 thread_index, u8 is_ha);
+
+void nat44_ei_free_outside_address_and_port (nat44_ei_address_t *addresses,
+					     u32 thread_index,
+					     ip4_address_t *addr, u16 port,
+					     nat_protocol_t protocol);
+
+int nat44_ei_set_outside_address_and_port (nat44_ei_address_t *addresses,
+					   u32 thread_index,
+					   ip4_address_t addr, u16 port,
+					   nat_protocol_t protocol);
+
+int nat44_ei_del_address (nat44_ei_main_t *nm, ip4_address_t addr,
+			  u8 delete_sm);
+
+void nat44_ei_free_session_data (nat44_ei_main_t *nm, nat44_ei_session_t *s,
+				 u32 thread_index, u8 is_ha);
+
+int nat44_ei_set_workers (uword *bitmap);
+
+void nat44_ei_add_del_address_dpo (ip4_address_t addr, u8 is_add);
+
+int nat44_ei_add_address (nat44_ei_main_t *nm, ip4_address_t *addr,
+			  u32 vrf_id);
+
+void nat44_ei_delete_session (nat44_ei_main_t *nm, nat44_ei_session_t *ses,
+			      u32 thread_index);
+
+int nat44_ei_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del);
+
+int nat44_ei_interface_add_del_output_feature (u32 sw_if_index, u8 is_inside,
+					       int is_del);
+
+int nat44_ei_add_interface_address (nat44_ei_main_t *nm, u32 sw_if_index,
+				    int is_del);
+
+/* Call back functions for clib_bihash_add_or_overwrite_stale */
+int nat44_i2o_is_idle_session_cb (clib_bihash_kv_8_8_t *kv, void *arg);
+int nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t *kv, void *arg);
+
+int nat44_ei_hairpinning (vlib_main_t *vm, vlib_node_runtime_t *node,
+			  nat44_ei_main_t *nm, vlib_buffer_t *b0,
+			  ip4_header_t *ip0, udp_header_t *udp0,
+			  tcp_header_t *tcp0, u32 proto0, int do_trace);
+
+void nat44_ei_hairpinning_sm_unknown_proto (nat44_ei_main_t *nm,
+					    vlib_buffer_t *b,
+					    ip4_header_t *ip);
+
+u32 nat44_ei_icmp_hairpinning (nat44_ei_main_t *nm, vlib_buffer_t *b0,
+			       ip4_header_t *ip0, icmp46_header_t *icmp0);
+
+#define nat44_ei_is_session_static(sp)                                        \
+  (sp->flags & NAT44_EI_SESSION_FLAG_STATIC_MAPPING)
+#define nat44_ei_is_unk_proto_session(sp)                                     \
+  (sp->flags & NAT44_EI_SESSION_FLAG_UNKNOWN_PROTO)
+
+#define nat44_ei_interface_is_inside(ip)                                      \
+  (ip->flags & NAT44_EI_INTERFACE_FLAG_IS_INSIDE)
+#define nat44_ei_interface_is_outside(ip)                                     \
+  (ip->flags & NAT44_EI_INTERFACE_FLAG_IS_OUTSIDE)
+
+#define nat44_ei_is_addr_only_static_mapping(mp)                              \
+  (mp->flags & NAT44_EI_STATIC_MAPPING_FLAG_ADDR_ONLY)
+#define nat44_ei_is_identity_static_mapping(mp)                               \
+  (mp->flags & NAT44_EI_STATIC_MAPPING_FLAG_IDENTITY_NAT)
+
+/* logging */
+#define nat44_ei_log_err(...)                                                 \
+  vlib_log (VLIB_LOG_LEVEL_ERR, nat44_ei_main.log_class, __VA_ARGS__)
+#define nat44_ei_log_warn(...)                                                \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, nat44_ei_main.log_class, __VA_ARGS__)
+#define nat44_ei_log_notice(...)                                              \
+  vlib_log (VLIB_LOG_LEVEL_NOTICE, nat44_ei_main.log_class, __VA_ARGS__)
+#define nat44_ei_log_info(...)                                                \
+  vlib_log (VLIB_LOG_LEVEL_INFO, nat44_ei_main.log_class, __VA_ARGS__)
+#define nat44_ei_log_debug(...)                                               \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, nat44_ei_main.log_class, __VA_ARGS__)
 
 #endif /* __included_nat44_ei_h__ */
 /*
