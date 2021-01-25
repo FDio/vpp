@@ -6,8 +6,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# distributed under the License is distributed on an "AS IS" BASIS, # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
@@ -18,43 +17,62 @@ add_vpp_library(nat
   lib/ipfix_logging.c
   lib/nat_syslog.c
   lib/alloc.c
+  lib/lib.c
 
   INSTALL_HEADERS
   lib/ipfix_logging.h
   lib/nat_syslog.h
   lib/alloc.h
+  lib/lib.h
 )
 
-add_vpp_plugin(nat
+add_vpp_plugin(nat44_ed
   SOURCES
-  nat.c
-  nat44_api.c
-  in2out_ed.c
-  out2in_ed.c
-  nat_dpo.c
-  nat44_cli.c
-  nat44_handoff.c
-  nat44_hairpinning.c
-  nat44_classify.c
-  nat_affinity.c
-  nat_format.c
-  nat44-ei/nat44_ei.c
-  nat44-ei/nat44_ei_ha.c
-  nat44-ei/nat44_ei_in2out.c
-  nat44-ei/nat44_ei_out2in.c
+  nat44-ed/nat44_ed.c
+  nat44-ed/nat44_ed_api.c
+  nat44-ed/nat44_ed_in2out.c
+  nat44-ed/nat44_ed_out2in.c
+  nat44-ed/nat44_ed_cli.c
+  nat44-ed/nat44_ed_format.c
+  nat44-ed/nat44_ed_affinity.c
+  nat44-ed/nat44_ed_handoff.c
+  nat44-ed/nat44_ed_classify.c
+  nat44-ed/nat44_ed_hairpinning.c
 
   MULTIARCH_SOURCES
-  in2out_ed.c
-  out2in_ed.c
-  nat44_classify.c
-  nat44_hairpinning.c
-  nat44_handoff.c
-  nat44-ei/nat44_ei_in2out.c
-  nat44-ei/nat44_ei_out2in.c
+  nat44-ed/nat44_ed_in2out.c
+  nat44-ed/nat44_ed_out2in.c
+  nat44-ed/nat44_ed_handoff.c
+  nat44-ed/nat44_ed_classify.c
+  nat44-ed/nat44_ed_hairpinning.c
 
   API_FILES
-  nat44.api
-  nat_types.api
+  nat44-ed/nat44_ed.api
+  lib/nat_types.api
+
+  LINK_LIBRARIES nat
+)
+
+add_vpp_plugin(nat44_ei
+  SOURCES
+  nat44-ei/nat44_ei.c
+  nat44-ei/nat44_ei_ha.c
+  nat44-ei/nat44_ei_cli.c
+  nat44-ei/nat44_ei_api.c
+  nat44-ei/nat44_ei_dpo.c
+  nat44-ei/nat44_ei_in2out.c
+  nat44-ei/nat44_ei_out2in.c
+  nat44-ei/nat44_ei_handoff.c
+  nat44-ei/nat44_ei_hairpinning.c
+
+  MULTIARCH_SOURCES
+  nat44-ei/nat44_ei_in2out.c
+  nat44-ei/nat44_ei_out2in.c
+  nat44-ei/nat44_ei_hairpinning.c
+
+  API_FILES
+  nat44-ei/nat44_ei.api
+  lib/nat_types.api
 
   LINK_LIBRARIES nat
 )
@@ -96,7 +114,7 @@ add_vpp_plugin(nat66
 
   API_FILES
   nat66/nat66.api
-  nat_types.api
+  lib/nat_types.api
 
   LINK_LIBRARIES nat
 )
@@ -115,7 +133,7 @@ add_vpp_plugin(det44
 
   API_FILES
   det44/det44.api
-  nat_types.api
+  lib/nat_types.api
 
   LINK_LIBRARIES nat
 )
@@ -135,7 +153,7 @@ add_vpp_plugin(nat64
 
   API_FILES
   nat64/nat64.api
-  nat_types.api
+  lib/nat_types.api
 
   LINK_LIBRARIES nat
 )

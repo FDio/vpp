@@ -17,8 +17,8 @@
  * @brief NAT plugin client-IP based session affinity for load-balancing
  */
 
-#ifndef __included_nat_affinity_h__
-#define __included_nat_affinity_h__
+#ifndef __included_nat44_ed_affinity_h__
+#define __included_nat44_ed_affinity_h__
 
 #include <vnet/ip/ip.h>
 #include <vppinfra/bihash_16_8.h>
@@ -141,7 +141,7 @@ void nat_affinity_unlock (ip4_address_t client_addr,
 			  ip4_address_t service_addr, u8 proto,
 			  u16 service_port);
 
-#endif /* __included_nat_affinity_h__ */
+#endif /* __included_nat44_ed_affinity_h__ */
 
 /*
  * fd.io coding-style-patch-verification: ON
