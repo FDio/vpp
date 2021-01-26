@@ -1739,8 +1739,8 @@ wait_for_event (svm_msg_q_t * mq, int fd, int epfd, u8 use_eventfd)
   if (!use_eventfd)
     {
       svm_msg_q_lock (mq);
-      while (svm_msg_q_is_empty (mq))
-	svm_msg_q_wait (mq);
+      //      while (svm_msg_q_is_empty (mq))
+      svm_msg_q_wait (mq, 0 /* while empty */);
     }
   else
     {
