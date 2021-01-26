@@ -1739,8 +1739,8 @@ wait_for_event (svm_msg_q_t * mq, int fd, int epfd, u8 use_eventfd)
   if (!use_eventfd)
     {
       svm_msg_q_lock (mq);
-      while (svm_msg_q_is_empty (mq))
-	svm_msg_q_wait (mq);
+      //      while (svm_msg_q_is_empty (mq))
+      svm_msg_q_wait (mq, 0 /* while empty */);
     }
   else
     {
@@ -1871,7 +1871,7 @@ session_test_mq_speed (vlib_main_t * vm, unformat_input_t * input)
       for (i = 0; i < n_test_msgs; i++)
 	{
 	  wait_for_event (mq, prod_fd, epfd, use_eventfd);
-	  svm_msg_q_sub_w_lock (mq, &msg);
+	  svm_msg_q_sub_raw (mq, &msg);
 	  svm_msg_q_free_msg (mq, &msg);
 	  svm_msg_q_unlock (mq);
 	  *counter = *counter + 1;
