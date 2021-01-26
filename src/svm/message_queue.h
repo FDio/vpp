@@ -22,6 +22,7 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/error.h>
+#include <vppinfra/lock.h>
 #include <svm/queue.h>
 
 typedef struct svm_msg_q_shr_queue_
@@ -33,6 +34,8 @@ typedef struct svm_msg_q_shr_queue_
   volatile u32 cursize;
   u32 maxsize;
   u32 elsize;
+  volatile int want_deq_signal;
+  volatile int want_enq_signal;
   u32 pad;
   u8 data[0];
 } svm_msg_q_shared_queue_t;
@@ -41,6 +44,7 @@ typedef struct svm_msg_q_queue_
 {
   svm_msg_q_shared_queue_t *shr; /**< pointer to shared queue */
   int evtfd;			 /**< producer/consumer eventfd */
+  clib_spinlock_t lock;		 /**< private lock for multi-producer */
 } svm_msg_q_queue_t;
 
 typedef struct svm_msg_q_ring_shared_
@@ -231,6 +235,8 @@ int svm_msg_q_sub (svm_msg_q_t * mq, svm_msg_q_msg_t * msg,
  * @return		success status
  */
 void svm_msg_q_sub_w_lock (svm_msg_q_t * mq, svm_msg_q_msg_t * msg);
+void svm_msg_q_sub_batch (svm_msg_q_t *mq, svm_msg_q_msg_t *msg_buf,
+			  u32 n_msgs);
 
 /**
  * Get data for message in queue
@@ -321,10 +327,17 @@ svm_msg_q_msg_is_invalid (svm_msg_q_msg_t * msg)
 static inline int
 svm_msg_q_try_lock (svm_msg_q_t * mq)
 {
-  int rv = pthread_mutex_trylock (&mq->q.shr->mutex);
-  if (PREDICT_FALSE (rv == EOWNERDEAD))
-    rv = pthread_mutex_consistent (&mq->q.shr->mutex);
-  return rv;
+  if (mq->q.evtfd == -1)
+    {
+      int rv = pthread_mutex_trylock (&mq->q.shr->mutex);
+      if (PREDICT_FALSE(rv == EOWNERDEAD))
+	rv = pthread_mutex_consistent (&mq->q.shr->mutex);
+      return rv;
+    }
+  else
+    {
+      return !clib_spinlock_trylock (&mq->q.lock);
+    }
 }
 
 /**
@@ -333,10 +346,18 @@ svm_msg_q_try_lock (svm_msg_q_t * mq)
 static inline int
 svm_msg_q_lock (svm_msg_q_t * mq)
 {
-  int rv = pthread_mutex_lock (&mq->q.shr->mutex);
-  if (PREDICT_FALSE (rv == EOWNERDEAD))
-    rv = pthread_mutex_consistent (&mq->q.shr->mutex);
-  return rv;
+  if (mq->q.evtfd == -1)
+    {
+      int rv = pthread_mutex_lock (&mq->q.shr->mutex);
+      if (PREDICT_FALSE(rv == EOWNERDEAD))
+	rv = pthread_mutex_consistent (&mq->q.shr->mutex);
+      return rv;
+    }
+  else
+    {
+      clib_spinlock_lock (&mq->q.lock);
+      return 0;
+    }
 }
 
 /**
@@ -345,7 +366,14 @@ svm_msg_q_lock (svm_msg_q_t * mq)
 static inline void
 svm_msg_q_unlock (svm_msg_q_t * mq)
 {
-  pthread_mutex_unlock (&mq->q.shr->mutex);
+  if (mq->q.evtfd == -1)
+    {
+      pthread_mutex_unlock (&mq->q.shr->mutex);
+    }
+  else
+    {
+      clib_spinlock_unlock (&mq->q.lock);
+    }
 }
 
 /**
@@ -354,7 +382,7 @@ svm_msg_q_unlock (svm_msg_q_t * mq)
  * Must be called with mutex held. The queue only works non-blocking
  * with eventfds, so handle blocking calls as an exception here.
  */
-void svm_msg_q_wait (svm_msg_q_t *mq);
+int svm_msg_q_wait (svm_msg_q_t *mq);
 
 /**
  * Timed wait for message queue event
@@ -365,6 +393,9 @@ void svm_msg_q_wait (svm_msg_q_t *mq);
  * @param timeout	time in seconds
  */
 int svm_msg_q_timedwait (svm_msg_q_t *mq, double timeout);
+
+int svm_msg_q_wait2 (svm_msg_q_t *mq, int type);
+int svm_msg_q_timedwait2 (svm_msg_q_t *mq, double timeout);
 
 static inline int
 svm_msg_q_get_eventfd (svm_msg_q_t *mq)
