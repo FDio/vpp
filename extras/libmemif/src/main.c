@@ -2406,7 +2406,7 @@ memif_refill_queue (memif_conn_handle_t conn, uint16_t qid, uint16_t count,
   memif_ring_t *ring = mq->ring;
   uint16_t mask = (1 << mq->log2_ring_size) - 1;
   uint32_t offset_mask = c->run_args.buffer_size - 1;
-  uint16_t slot;
+  uint16_t slot, counter = 0;
 
   if (c->args.is_master)
     {
@@ -2418,12 +2418,12 @@ memif_refill_queue (memif_conn_handle_t conn, uint16_t qid, uint16_t count,
     }
 
   uint16_t head = ring->head;
+  slot = head;
   uint16_t ns = (1 << mq->log2_ring_size) - head + mq->last_tail;
-  head += (count < ns) ? count : ns;
+  count = (count < ns) ? count : ns;
 
-  slot = ring->head;
   memif_desc_t *d;
-  while (slot < head)
+  while (counter < count)
     {
       d = &ring->desc[slot & mask];
       d->region = 1;
@@ -2433,10 +2433,11 @@ memif_refill_queue (memif_conn_handle_t conn, uint16_t qid, uint16_t count,
       else
 	d->offset = d->offset - (d->offset & offset_mask) + headroom;
       slot++;
+      counter++;
     }
 
   MEMIF_MEMORY_BARRIER ();
-  ring->head = head;
+  ring->head = slot;
 
   return MEMIF_ERR_SUCCESS;	/* 0 */
 }
