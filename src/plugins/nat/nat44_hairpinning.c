@@ -129,15 +129,14 @@ snat_hairpinning (vlib_main_t *vm, vlib_node_runtime_t *node, snat_main_t *sm,
 
       init_nat_k (&kv0, ip0->dst_address, udp0->dst_port,
 		  sm->outside_fib_index, proto0);
-      rv = clib_bihash_search_8_8 (&sm->per_thread_data[ti].out2in, &kv0,
-				   &value0);
+      rv = clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0);
       if (rv)
 	{
 	  rv = 0;
 	  goto trace;
 	}
 
-      si = value0.value;
+      si = nat_value_get_session_index (&value0);
       s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
       new_dst_addr0 = s0->in2out.addr.as_u32;
       new_dst_port0 = s0->in2out.port;
@@ -249,10 +248,9 @@ snat_icmp_hairpinning (snat_main_t *sm, vlib_buffer_t *b0, ip4_header_t *ip0,
 
       init_nat_k (&kv0, ip0->dst_address, l4_header->src_port,
 		  sm->outside_fib_index, protocol);
-      if (clib_bihash_search_8_8 (&sm->per_thread_data[ti].out2in, &kv0,
-				  &value0))
+      if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
 	return 1;
-      si = value0.value;
+      si = nat_value_get_session_index (&value0);
       s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
       new_dst_addr0 = s0->in2out.addr.as_u32;
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
@@ -290,8 +288,8 @@ snat_icmp_hairpinning (snat_main_t *sm, vlib_buffer_t *b0, ip4_header_t *ip0,
   else
     {
       init_nat_k (&kv0, ip0->dst_address, 0, sm->outside_fib_index, 0);
-      if (clib_bihash_search_8_8
-	  (&sm->static_mapping_by_external, &kv0, &value0))
+      if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv0,
+				  &value0))
 	{
 	  icmp_echo_header_t *echo0 = (icmp_echo_header_t *) (icmp0 + 1);
 	  u16 icmp_id0 = echo0->identifier;
@@ -302,11 +300,10 @@ snat_icmp_hairpinning (snat_main_t *sm, vlib_buffer_t *b0, ip4_header_t *ip0,
 	      (clib_net_to_host_u16 (icmp_id0) - 1024) / sm->port_per_thread;
 	  else
 	    ti = sm->num_workers;
-	  int rv = clib_bihash_search_8_8 (&sm->per_thread_data[ti].out2in,
-					   &kv0, &value0);
+	  int rv = clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0);
 	  if (!rv)
 	    {
-	      si = value0.value;
+	      si = nat_value_get_session_index (&value0);
 	      s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
 	      new_dst_addr0 = s0->in2out.addr.as_u32;
 	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;

@@ -194,15 +194,12 @@ nat44_ei_free_session_data (snat_main_t *sm, snat_session_t *s,
 {
   clib_bihash_kv_8_8_t kv;
 
-  snat_main_per_thread_data_t *tsm =
-    vec_elt_at_index (sm->per_thread_data, thread_index);
-
   init_nat_i2o_k (&kv, s);
-  if (clib_bihash_add_del_8_8 (&tsm->in2out, &kv, 0))
+  if (clib_bihash_add_del_8_8 (&sm->in2out, &kv, 0))
     nat_elog_warn ("in2out key del failed");
 
   init_nat_o2i_k (&kv, s);
-  if (clib_bihash_add_del_8_8 (&tsm->out2in, &kv, 0))
+  if (clib_bihash_add_del_8_8 (&sm->out2in, &kv, 0))
     nat_elog_warn ("out2in key del failed");
 
   if (!is_ha)
@@ -709,7 +706,7 @@ nat44_ei_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
     tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
 
   init_nat_k (&kv, *addr, port, fib_index, proto);
-  t = is_in ? &tsm->in2out : &tsm->out2in;
+  t = is_in ? &sm->in2out : &sm->out2in;
   if (!clib_bihash_search_8_8 (t, &kv, &value))
     {
       if (pool_is_free_index (tsm->sessions, value.value))
@@ -832,7 +829,7 @@ nat44_ei_add_del_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	      local->fib_index = fib_table_find_or_create_and_lock (
 		FIB_PROTOCOL_IP4, vrf_id, sm->fib_src_low);
 	      init_nat_kv (&kv, m->local_addr, m->local_port, local->fib_index,
-			   m->proto, m - sm->static_mappings);
+			   m->proto, 0, m - sm->static_mappings);
 	      clib_bihash_add_del_8_8 (&sm->static_mapping_by_local, &kv, 1);
 	      return 0;
 	    }
@@ -956,11 +953,11 @@ nat44_ei_add_del_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
       else
 	tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
 
-      init_nat_kv (&kv, m->local_addr, m->local_port, fib_index, m->proto,
+      init_nat_kv (&kv, m->local_addr, m->local_port, fib_index, m->proto, 0,
 		   m - sm->static_mappings);
       clib_bihash_add_del_8_8 (&sm->static_mapping_by_local, &kv, 1);
 
-      init_nat_kv (&kv, m->external_addr, m->external_port, 0, m->proto,
+      init_nat_kv (&kv, m->external_addr, m->external_port, 0, m->proto, 0,
 		   m - sm->static_mappings);
       clib_bihash_add_del_8_8 (&sm->static_mapping_by_external, &kv, 1);
 
@@ -1191,8 +1188,6 @@ nat44_ei_worker_db_free (snat_main_per_thread_data_t *tsm)
   pool_free (tsm->sessions);
   pool_free (tsm->users);
 
-  clib_bihash_free_8_8 (&tsm->in2out);
-  clib_bihash_free_8_8 (&tsm->out2in);
   clib_bihash_free_8_8 (&tsm->user_hash);
 }
 
@@ -1206,12 +1201,8 @@ nat44_ei_worker_db_init (snat_main_per_thread_data_t *tsm, u32 translations,
   pool_alloc (tsm->lru_pool, translations);
   pool_alloc (tsm->sessions, translations);
 
-  clib_bihash_init_8_8 (&tsm->in2out, "in2out", translation_buckets, 0);
-  clib_bihash_init_8_8 (&tsm->out2in, "out2in", translation_buckets, 0);
   clib_bihash_init_8_8 (&tsm->user_hash, "users", user_buckets, 0);
 
-  clib_bihash_set_kvp_format_fn_8_8 (&tsm->in2out, format_session_kvp);
-  clib_bihash_set_kvp_format_fn_8_8 (&tsm->out2in, format_session_kvp);
   clib_bihash_set_kvp_format_fn_8_8 (&tsm->user_hash, format_user_kvp);
 
   pool_get (tsm->lru_pool, head);
@@ -1247,6 +1238,8 @@ nat44_ei_db_free ()
 
   if (sm->pat)
     {
+      clib_bihash_free_8_8 (&sm->in2out);
+      clib_bihash_free_8_8 (&sm->out2in);
       vec_foreach (tsm, sm->per_thread_data)
 	{
 	  nat44_ei_worker_db_free (tsm);
@@ -1276,6 +1269,10 @@ nat44_ei_db_init (u32 translations, u32 translation_buckets, u32 user_buckets)
 
   if (sm->pat)
     {
+      clib_bihash_init_8_8 (&sm->in2out, "in2out", translation_buckets, 0);
+      clib_bihash_init_8_8 (&sm->out2in, "out2in", translation_buckets, 0);
+      clib_bihash_set_kvp_format_fn_8_8 (&sm->in2out, format_session_kvp);
+      clib_bihash_set_kvp_format_fn_8_8 (&sm->out2in, format_session_kvp);
       vec_foreach (tsm, sm->per_thread_data)
 	{
 	  nat44_ei_worker_db_init (tsm, translations, translation_buckets,
@@ -1294,6 +1291,12 @@ nat44_ei_sessions_clear ()
 
   if (sm->pat)
     {
+      clib_bihash_free_8_8 (&sm->in2out);
+      clib_bihash_free_8_8 (&sm->out2in);
+      clib_bihash_init_8_8 (&sm->in2out, "in2out", nm->translation_buckets, 0);
+      clib_bihash_init_8_8 (&sm->out2in, "out2in", nm->translation_buckets, 0);
+      clib_bihash_set_kvp_format_fn_8_8 (&sm->in2out, format_session_kvp);
+      clib_bihash_set_kvp_format_fn_8_8 (&sm->out2in, format_session_kvp);
       vec_foreach (tsm, sm->per_thread_data)
 	{
 	  nat44_ei_worker_db_free (tsm);

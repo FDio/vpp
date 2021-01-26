@@ -124,8 +124,7 @@ snat_not_translate (snat_main_t * sm, vlib_node_runtime_t * node,
 
   /* NAT packet aimed at external address if */
   /* has active sessions */
-  if (clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].out2in, &kv0,
-			      &value0))
+  if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
     {
       /* or is static mappings */
       ip4_address_t placeholder_addr;
@@ -159,15 +158,13 @@ nat_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip0,
   init_nat_k (&kv0, ip0->src_address, src_port,
 	      ip4_fib_table_get_index_for_sw_if_index (sw_if_index), proto0);
 
-  if (!clib_bihash_search_8_8
-      (&sm->per_thread_data[thread_index].out2in, &kv0, &value0))
+  if (!clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
     return 1;
 
   /* dst NAT check */
   init_nat_k (&kv0, ip0->dst_address, dst_port,
 	      ip4_fib_table_get_index_for_sw_if_index (sw_if_index), proto0);
-  if (!clib_bihash_search_8_8
-      (&sm->per_thread_data[thread_index].in2out, &kv0, &value0))
+  if (!clib_bihash_search_8_8 (&sm->in2out, &kv0, &value0))
     {
       /* hairpinning */
     /* *INDENT-OFF* */
@@ -200,7 +197,7 @@ nat44_i2o_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg)
   if (ctx->now >= sess_timeout_time)
     {
       init_nat_o2i_k (&s_kv, s);
-      if (clib_bihash_add_del_8_8 (&tsm->out2in, &s_kv, 0))
+      if (clib_bihash_add_del_8_8 (&sm->out2in, &s_kv, 0))
 	nat_elog_warn ("out2in key del failed");
 
       nat_ipfix_logging_nat44_ses_delete (ctx->thread_index,
@@ -354,16 +351,16 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   /* Add to translation hashes */
   ctx0.now = now;
   ctx0.thread_index = thread_index;
-  init_nat_i2o_kv (&kv0, s, s - sm->per_thread_data[thread_index].sessions);
-  if (clib_bihash_add_or_overwrite_stale_8_8
-      (&sm->per_thread_data[thread_index].in2out, &kv0,
-       nat44_i2o_is_idle_session_cb, &ctx0))
+  init_nat_i2o_kv (&kv0, s, thread_index,
+		   s - sm->per_thread_data[thread_index].sessions);
+  if (clib_bihash_add_or_overwrite_stale_8_8 (
+	&sm->in2out, &kv0, nat44_i2o_is_idle_session_cb, &ctx0))
     nat_elog_notice ("in2out key add failed");
 
-  init_nat_o2i_kv (&kv0, s, s - sm->per_thread_data[thread_index].sessions);
-  if (clib_bihash_add_or_overwrite_stale_8_8
-      (&sm->per_thread_data[thread_index].out2in, &kv0,
-       nat44_o2i_is_idle_session_cb, &ctx0))
+  init_nat_o2i_kv (&kv0, s, thread_index,
+		   s - sm->per_thread_data[thread_index].sessions);
+  if (clib_bihash_add_or_overwrite_stale_8_8 (
+	&sm->out2in, &kv0, nat44_o2i_is_idle_session_cb, &ctx0))
     nat_elog_notice ("out2in key add failed");
 
   /* log NAT event */
@@ -474,7 +471,7 @@ icmp_match_in2out_slow (snat_main_t * sm, vlib_node_runtime_t * node,
     }
 
   init_nat_k (&kv0, *addr, *port, *fib_index, *proto);
-  if (clib_bihash_search_8_8 (&tsm->in2out, &kv0, &value0))
+  if (clib_bihash_search_8_8 (&sm->in2out, &kv0, &value0))
     {
       if (vnet_buffer (b0)->sw_if_index[VLIB_TX] != ~0)
 	{
@@ -534,7 +531,8 @@ icmp_match_in2out_slow (snat_main_t * sm, vlib_node_runtime_t * node,
 	  goto out;
 	}
 
-      s0 = pool_elt_at_index (tsm->sessions, value0.value);
+      s0 = pool_elt_at_index (tsm->sessions,
+			      nat_value_get_session_index (&value0));
     }
 
 out:
@@ -988,9 +986,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
       init_nat_k (&kv0, ip0->src_address,
 		  vnet_buffer (b0)->ip.reass.l4_src_port, rx_fib_index0,
 		  proto0);
-      if (PREDICT_FALSE
-	  (clib_bihash_search_8_8
-	   (&sm->per_thread_data[thread_index].in2out, &kv0, &value0) != 0))
+      if (PREDICT_FALSE (clib_bihash_search_8_8 (&sm->in2out, &kv0, &value0) !=
+			 0))
 	{
 	  if (is_slow_path)
 	    {
@@ -1043,9 +1040,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	    }
 	}
       else
-	s0 =
-	  pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
-			     value0.value);
+	s0 = pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
+				nat_value_get_session_index (&value0));
 
       b0->flags |= VNET_BUFFER_F_IS_NATED;
 
@@ -1212,9 +1208,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
       init_nat_k (&kv1, ip1->src_address,
 		  vnet_buffer (b1)->ip.reass.l4_src_port, rx_fib_index1,
 		  proto1);
-      if (PREDICT_FALSE
-	  (clib_bihash_search_8_8
-	   (&sm->per_thread_data[thread_index].in2out, &kv1, &value1) != 0))
+      if (PREDICT_FALSE (clib_bihash_search_8_8 (&sm->in2out, &kv1, &value1) !=
+			 0))
 	{
 	  if (is_slow_path)
 	    {
@@ -1267,9 +1262,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	    }
 	}
       else
-	s1 =
-	  pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
-			     value1.value);
+	s1 = pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
+				nat_value_get_session_index (&value1));
 
       b1->flags |= VNET_BUFFER_F_IS_NATED;
 
@@ -1463,8 +1457,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		  vnet_buffer (b0)->ip.reass.l4_src_port, rx_fib_index0,
 		  proto0);
 
-      if (clib_bihash_search_8_8
-	  (&sm->per_thread_data[thread_index].in2out, &kv0, &value0))
+      if (clib_bihash_search_8_8 (&sm->in2out, &kv0, &value0))
 	{
 	  if (is_slow_path)
 	    {
@@ -1518,9 +1511,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	    }
 	}
       else
-	s0 =
-	  pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
-			     value0.value);
+	s0 = pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
+				nat_value_get_session_index (&value0));
 
       b0->flags |= VNET_BUFFER_F_IS_NATED;
 

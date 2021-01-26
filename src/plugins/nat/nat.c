@@ -217,7 +217,9 @@ format_session_kvp (u8 * s, va_list * args)
 {
   clib_bihash_kv_8_8_t *v = va_arg (*args, clib_bihash_kv_8_8_t *);
 
-  s = format (s, "%U session-index %llu", format_snat_key, v->key, v->value);
+  s = format (s, "%U thread-index %llu session-index %llu", format_snat_key,
+	      v->key, nat_value_get_thread_index (v),
+	      nat_value_get_session_index (v));
 
   return s;
 }
@@ -274,8 +276,6 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
 		       u8 is_ha)
 {
   clib_bihash_kv_8_8_t kv;
-  snat_main_per_thread_data_t *tsm =
-    vec_elt_at_index (sm->per_thread_data, thread_index);
 
   if (is_ed_session (s))
     {
@@ -311,10 +311,10 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
   else
     {
       init_nat_i2o_k (&kv, s);
-      if (clib_bihash_add_del_8_8 (&tsm->in2out, &kv, 0))
+      if (clib_bihash_add_del_8_8 (&sm->in2out, &kv, 0))
 	nat_elog_warn ("in2out key del failed");
       init_nat_o2i_k (&kv, s);
-      if (clib_bihash_add_del_8_8 (&tsm->out2in, &kv, 0))
+      if (clib_bihash_add_del_8_8 (&sm->out2in, &kv, 0))
 	nat_elog_warn ("out2in key del failed");
 
       if (!is_ha)
@@ -833,9 +833,8 @@ nat44_ed_add_del_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	      local->fib_index =
 		fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, vrf_id,
 						   sm->fib_src_low);
-	      init_nat_kv (&kv, m->local_addr, m->local_port,
-			   local->fib_index, m->proto,
-			   m - sm->static_mappings);
+	      init_nat_kv (&kv, m->local_addr, m->local_port, local->fib_index,
+			   m->proto, 0, m - sm->static_mappings);
 	      clib_bihash_add_del_8_8 (&sm->static_mapping_by_local, &kv, 1);
 	      return 0;
 	    }
@@ -974,11 +973,11 @@ nat44_ed_add_del_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
       if (!out2in_only)
 	{
 	  init_nat_kv (&kv, m->local_addr, m->local_port, fib_index, m->proto,
-		       m - sm->static_mappings);
+		       0, m - sm->static_mappings);
 	  clib_bihash_add_del_8_8 (&sm->static_mapping_by_local, &kv, 1);
 	}
 
-      init_nat_kv (&kv, m->external_addr, m->external_port, 0, m->proto,
+      init_nat_kv (&kv, m->external_addr, m->external_port, 0, m->proto, 0,
 		   m - sm->static_mappings);
       clib_bihash_add_del_8_8 (&sm->static_mapping_by_external, &kv, 1);
 
@@ -1268,7 +1267,7 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
       else
 	m->affinity_per_service_list_head_index = ~0;
 
-      init_nat_kv (&kv, m->external_addr, m->external_port, 0, m->proto,
+      init_nat_kv (&kv, m->external_addr, m->external_port, 0, m->proto, 0,
 		   m - sm->static_mappings);
       if (clib_bihash_add_del_8_8 (&sm->static_mapping_by_external, &kv, 1))
 	{
@@ -1285,7 +1284,7 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 	  if (!out2in_only)
 	    {
 	      init_nat_kv (&kv, locals[i].addr, locals[i].port,
-			   locals[i].fib_index, m->proto,
+			   locals[i].fib_index, m->proto, 0,
 			   m - sm->static_mappings);
 	      clib_bihash_add_del_8_8 (&sm->static_mapping_by_local, &kv, 1);
 	    }
@@ -1471,7 +1470,7 @@ nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
 
       if (!is_out2in_only_static_mapping (m))
 	{
-	  init_nat_kv (&kv, l_addr, l_port, local->fib_index, proto,
+	  init_nat_kv (&kv, l_addr, l_port, local->fib_index, proto, 0,
 		       m - sm->static_mappings);
 	  if (clib_bihash_add_del_8_8 (&sm->static_mapping_by_local, &kv, 1))
 	    nat_elog_err ("static_mapping_by_local key add failed");
@@ -1666,24 +1665,24 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
   vec_free (a->busy_##n##_ports_per_thread);
   foreach_nat_protocol
 #undef _
+
     if (twice_nat)
-    {
-      vec_del1 (sm->twice_nat_addresses, i);
-      return 0;
-    }
-  else
-    vec_del1 (sm->addresses, i);
+  {
+    vec_del1 (sm->twice_nat_addresses, i);
+    return 0;
+  }
+  else vec_del1 (sm->addresses, i);
 
   /* Delete external address from FIB */
-  /* *INDENT-OFF* */
   pool_foreach (interface, sm->interfaces)
-   {
-    if (nat_interface_is_inside(interface) || sm->out2in_dpo)
-      continue;
+    {
+      if (nat_interface_is_inside (interface) || sm->out2in_dpo)
+	continue;
 
-    snat_add_del_addr_to_fib(&addr, 32, interface->sw_if_index, 0);
-    break;
-  }
+      snat_add_del_addr_to_fib (&addr, 32, interface->sw_if_index, 0);
+      break;
+    }
+
   pool_foreach (interface, sm->output_feature_interfaces)
    {
     if (nat_interface_is_inside(interface) || sm->out2in_dpo)
@@ -1692,7 +1691,6 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
     snat_add_del_addr_to_fib(&addr, 32, interface->sw_if_index, 0);
     break;
   }
-  /* *INDENT-ON* */
 
   return 0;
 }

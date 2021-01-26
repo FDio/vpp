@@ -241,15 +241,15 @@ nat44_ei_ha_sadd (ip4_address_t *in_addr, u16 in_port, ip4_address_t *out_addr,
 	}
       break;
     }
-  init_nat_o2i_kv (&kv, s, s - tsm->sessions);
-  if (clib_bihash_add_del_8_8 (&tsm->out2in, &kv, 1))
+  init_nat_o2i_kv (&kv, s, thread_index, s - tsm->sessions);
+  if (clib_bihash_add_del_8_8 (&sm->out2in, &kv, 1))
     nat_elog_warn ("out2in key add failed");
 
   s->in2out.addr.as_u32 = in_addr->as_u32;
   s->in2out.port = in_port;
   s->in2out.fib_index = fib_index;
-  init_nat_i2o_kv (&kv, s, s - tsm->sessions);
-  if (clib_bihash_add_del_8_8 (&tsm->in2out, &kv, 1))
+  init_nat_i2o_kv (&kv, s, thread_index, s - tsm->sessions);
+  if (clib_bihash_add_del_8_8 (&sm->in2out, &kv, 1))
     nat_elog_warn ("in2out key add failed");
 }
 
@@ -273,10 +273,10 @@ nat44_ei_ha_sdel (ip4_address_t *out_addr, u16 out_port,
   tsm = vec_elt_at_index (sm->per_thread_data, thread_index);
 
   init_nat_k (&kv, *out_addr, out_port, fib_index, proto);
-  if (clib_bihash_search_8_8 (&tsm->out2in, &kv, &value))
+  if (clib_bihash_search_8_8 (&sm->out2in, &kv, &value))
     return;
 
-  s = pool_elt_at_index (tsm->sessions, value.value);
+  s = pool_elt_at_index (tsm->sessions, nat_value_get_session_index (&value));
   nat_free_session_data (sm, s, thread_index, 1);
   nat44_delete_session (sm, s, thread_index);
 }
@@ -294,10 +294,10 @@ nat44_ei_ha_sref (ip4_address_t *out_addr, u16 out_port,
   tsm = vec_elt_at_index (sm->per_thread_data, thread_index);
 
   init_nat_k (&kv, *out_addr, out_port, fib_index, proto);
-  if (clib_bihash_search_8_8 (&tsm->out2in, &kv, &value))
+  if (clib_bihash_search_8_8 (&sm->out2in, &kv, &value))
     return;
 
-  s = pool_elt_at_index (tsm->sessions, value.value);
+  s = pool_elt_at_index (tsm->sessions, nat_value_get_session_index (&value));
   s->total_pkts = total_pkts;
   s->total_bytes = total_bytes;
 }
