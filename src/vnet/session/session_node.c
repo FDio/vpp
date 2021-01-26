@@ -1400,7 +1400,6 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   session_worker_t *wrk = &smm->wrk[thread_index];
   session_evt_elt_t *elt, *ctrl_he, *new_he, *old_he;
   clib_llist_index_t ei, next_ei, old_ti;
-  svm_msg_q_msg_t _msg, *msg = &_msg;
   int i = 0, n_tx_packets;
   session_event_t *evt;
   svm_msg_q_t *mq;
@@ -1424,17 +1423,16 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* Try to dequeue what is available. Don't wait for lock.
    * XXX: we may need priorities here */
   mq = wrk->vpp_event_queue;
-  n_to_dequeue = svm_msg_q_size (mq);
-  if (n_to_dequeue && svm_msg_q_try_lock (mq) == 0)
+  if ((n_to_dequeue = svm_msg_q_size (mq)))
     {
+      vec_validate (wrk->mq_msgs, n_to_dequeue - 1);
+      svm_msg_q_sub_batch (mq, wrk->mq_msgs, n_to_dequeue);
       for (i = 0; i < n_to_dequeue; i++)
 	{
-	  svm_msg_q_sub_w_lock (mq, msg);
-	  evt = svm_msg_q_msg_data (mq, msg);
+	  evt = svm_msg_q_msg_data (mq, &wrk->mq_msgs[i]);
 	  session_evt_add_to_list (wrk, evt);
-	  svm_msg_q_free_msg (mq, msg);
+	  svm_msg_q_free_msg (mq, &wrk->mq_msgs[i]);
 	}
-      svm_msg_q_unlock (mq);
     }
 
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, MQ_DEQ, wrk, n_to_dequeue, !i);
