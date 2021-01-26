@@ -5,6 +5,8 @@ set -eu
 cd ../../build-root
 echo "make distclean..."
 make distclean > /dev/null 2>&1
+# make sure we don't trip over a symbolic link later
+rm -f .ccache
 cd ../
 echo "construct source tarball..."
 tar -zcf extras/snap/vpp.tgz --exclude=extras/snap/vpp.tgz .
