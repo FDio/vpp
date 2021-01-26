@@ -117,6 +117,9 @@ nat44_ei_plugin_enable (nat44_ei_config_t c)
   vlib_zero_simple_counter (&sm->total_sessions, 0);
   vlib_zero_simple_counter (&sm->user_limit_reached, 0);
 
+  if (!sm->frame_queue_nelts)
+    sm->frame_queue_nelts = NAT_FQ_NELTS_DEFAULT;
+
   sm->enabled = 1;
 
   return 0;

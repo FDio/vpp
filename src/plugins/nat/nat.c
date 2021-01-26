@@ -1841,13 +1841,15 @@ snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
 	feature_name = is_inside ? "nat44-in2out" : "nat44-out2in";
     }
 
+  ASSERT (sm->frame_queue_nelts > 0);
+
   if (sm->fq_in2out_index == ~0 && sm->num_workers > 1)
-    sm->fq_in2out_index =
-      vlib_frame_queue_main_init (sm->in2out_node_index, NAT_FQ_NELTS);
+    sm->fq_in2out_index = vlib_frame_queue_main_init (sm->in2out_node_index,
+						      sm->frame_queue_nelts);
 
   if (sm->fq_out2in_index == ~0 && sm->num_workers > 1)
-    sm->fq_out2in_index =
-      vlib_frame_queue_main_init (sm->out2in_node_index, NAT_FQ_NELTS);
+    sm->fq_out2in_index = vlib_frame_queue_main_init (sm->out2in_node_index,
+						      sm->frame_queue_nelts);
 
   if (sm->endpoint_dependent)
     update_per_vrf_sessions_vec (fib_index, is_del);
@@ -2282,6 +2284,15 @@ snat_set_workers (uword * bitmap)
   return 0;
 }
 
+int
+snat_set_frame_queue_nelts (u32 frame_queue_nelts)
+{
+  fail_if_enabled ();
+  snat_main_t *sm = &snat_main;
+  sm->frame_queue_nelts = frame_queue_nelts;
+  return 0;
+}
+
 static void
 snat_update_outside_fib (ip4_main_t * im, uword opaque,
 			 u32 sw_if_index, u32 new_fib_index,
@@ -2711,6 +2722,9 @@ nat44_ed_plugin_enable (nat44_config_t c)
   vlib_zero_simple_counter (&sm->total_users, 0);
   vlib_zero_simple_counter (&sm->total_sessions, 0);
   vlib_zero_simple_counter (&sm->user_limit_reached, 0);
+
+  if (!sm->frame_queue_nelts)
+    sm->frame_queue_nelts = NAT_FQ_NELTS_DEFAULT;
 
   sm->enabled = 1;
   sm->rconfig = c;
