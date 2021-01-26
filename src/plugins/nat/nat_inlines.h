@@ -63,11 +63,12 @@ init_nat_k (clib_bihash_kv_8_8_t * kv, ip4_address_t addr, u16 port,
 }
 
 always_inline void
-init_nat_kv (clib_bihash_kv_8_8_t * kv, ip4_address_t addr, u16 port,
-	     u32 fib_index, nat_protocol_t proto, u64 value)
+init_nat_kv (clib_bihash_kv_8_8_t *kv, ip4_address_t addr, u16 port,
+	     u32 fib_index, nat_protocol_t proto, u32 thread_index,
+	     u32 session_index)
 {
   init_nat_k (kv, addr, port, fib_index, proto);
-  kv->value = value;
+  kv->value = (u64) thread_index << 32 | session_index;
 }
 
 always_inline void
@@ -78,11 +79,12 @@ init_nat_i2o_k (clib_bihash_kv_8_8_t * kv, snat_session_t * s)
 }
 
 always_inline void
-init_nat_i2o_kv (clib_bihash_kv_8_8_t * kv, snat_session_t * s, u64 value)
+init_nat_i2o_kv (clib_bihash_kv_8_8_t *kv, snat_session_t *s, u32 thread_index,
+		 u32 session_index)
 {
   init_nat_k (kv, s->in2out.addr, s->in2out.port, s->in2out.fib_index,
 	      s->nat_proto);
-  kv->value = value;
+  kv->value = (u64) thread_index << 32 | session_index;
 }
 
 always_inline void
@@ -93,11 +95,24 @@ init_nat_o2i_k (clib_bihash_kv_8_8_t * kv, snat_session_t * s)
 }
 
 always_inline void
-init_nat_o2i_kv (clib_bihash_kv_8_8_t * kv, snat_session_t * s, u64 value)
+init_nat_o2i_kv (clib_bihash_kv_8_8_t *kv, snat_session_t *s, u32 thread_index,
+		 u32 session_index)
 {
   init_nat_k (kv, s->out2in.addr, s->out2in.port, s->out2in.fib_index,
 	      s->nat_proto);
-  kv->value = value;
+  kv->value = (u64) thread_index << 32 | session_index;
+}
+
+always_inline u32
+nat_value_get_thread_index (clib_bihash_kv_8_8_t *value)
+{
+  return value->value >> 32;
+}
+
+always_inline u32
+nat_value_get_session_index (clib_bihash_kv_8_8_t *value)
+{
+  return value->value & ~(u32) 0;
 }
 
 static inline uword
