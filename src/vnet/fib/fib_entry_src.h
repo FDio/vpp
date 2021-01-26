@@ -334,7 +334,7 @@ extern fib_forward_chain_type_t fib_entry_chain_type_fixup(const fib_entry_t *en
                                                            fib_forward_chain_type_t fct);
 
 extern void fib_entry_src_mk_lb (fib_entry_t *fib_entry,
-				 const fib_entry_src_t *esrc,
+				 fib_source_t source,
 				 fib_forward_chain_type_t fct,
 				 dpo_id_t *dpo_lb);
 
