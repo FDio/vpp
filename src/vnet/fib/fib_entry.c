@@ -473,7 +473,7 @@ fib_entry_contribute_forwarding (fib_node_index_t fib_entry_index,
              *      then up on the right trigger is more code. i favour the latter.
              */
             fib_entry_src_mk_lb(fib_entry,
-                                fib_entry_get_best_src_i(fib_entry),
+                                fib_entry_get_best_source(fib_entry_index),
                                 fct,
                                 &tmp);
 
@@ -1435,7 +1435,7 @@ fib_entry_recursive_loop_detect (fib_node_index_t entry_index,
             FOR_EACH_DELEGATE_CHAIN(fib_entry, fdt, fed,
             {
                 fib_entry_src_mk_lb(fib_entry,
-                                    fib_entry_get_best_src_i(fib_entry),
+                                    fib_entry_get_best_source(entry_index),
                                     fib_entry_delegate_type_to_chain_type(fdt),
                                     &fed->fd_dpo);
 	    });
