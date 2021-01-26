@@ -1674,7 +1674,11 @@ ikev2_sa_auth (ikev2_sa_t * sa)
             sel_p = p;
             break;
           }
-
+	else
+	  {
+	    ikev2_elog_uint (IKEV2_LOG_ERROR, "shared key mismatch! ispi %lx",
+			     sa->ispi);
+	  }
       }
     else if (sa_auth->method == IKEV2_AUTH_METHOD_RSA_SIG)
       {
@@ -1687,6 +1691,11 @@ ikev2_sa_auth (ikev2_sa_t * sa)
             sel_p = p;
             break;
           }
+	else
+	  {
+	    ikev2_elog_uint (IKEV2_LOG_ERROR,
+			     "cert verification failed! ispi %lx", sa->ispi);
+	  }
       }
 
     vec_free(auth);
