@@ -1,6 +1,6 @@
 name: vpp
-base: core18
-version: '20.05'
+base: core20
+version: '21.01'
 summary: Vector Packet Processor
 description: |
          High performance user-mode network stack
@@ -17,14 +17,16 @@ parts:
       - gcc-8
       - make
       - libnuma-dev
+      - libpcap-dev
     stage-packages:
       # For the dpdk plugin
       - libnuma1
     override-build: |
-      UNATTENDED=y make install-dep build-release
+      dpkg -i vpp-ext-deps*.deb || true
+      UNATTENDED=y make install-dep install-ext-deps build-release
     override-prime: |
-      # Copy the build results into SNAPCRAFT_PRIME
-      cd $SNAPCRAFT_PART_BUILD/build-root/install-vpp-native
+      # Copy the build result into SNAPCRAFT_PRIME
+      cd $SNAPCRAFT_PART_SRC/../build/build-root/install-vpp-native
       tar cf - . | (cd $SNAPCRAFT_PRIME ; tar xf -)
       # Copy staged libraries into SNAPCRAFT_PRIME
       cp $SNAPCRAFT_STAGE/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/lib* $SNAPCRAFT_PRIME/vpp/lib
